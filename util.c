@@ -6,13 +6,15 @@
 #include "util.h"
 #include "alloc.h"
 
-void die(const char *fmt, ...)
+void vdie(va_list l, const char *fmt, int at)
 {
-	va_list l;
+	extern const char *currentfname;
+	extern int currentline, currentchar;
 
-	va_start(l, fmt);
+	if(at)
+		fprintf(stderr, "%s:%d:%d: ", currentfname, currentline, currentchar);
+
 	vfprintf(stderr, fmt, l);
-	va_end(l);
 
 	if(fmt[strlen(fmt)-1] == ':')
 		perror(NULL);
@@ -20,6 +22,24 @@ void die(const char *fmt, ...)
 		fputc('\n', stderr);
 
 	exit(1);
+}
+
+void die_at(const char *fmt, ...)
+{
+	va_list l;
+
+	va_start(l, fmt);
+	vdie(l, fmt, 1);
+	/* unreachable */
+}
+
+void die(const char *fmt, ...)
+{
+	va_list l;
+
+	va_start(l, fmt);
+	vdie(l, fmt, 0);
+	/* unreachable */
 }
 
 char *fline(FILE *f)
@@ -51,4 +71,25 @@ char *fline(FILE *f)
 			return line;
 		}
 	}while(1);
+}
+
+void dynarray_add(void ***par, void *new)
+{
+	void **ar = *par;
+	int idx = 0;
+
+	if(!ar){
+		ar = umalloc(2 * sizeof(void *));
+	}else{
+		int len = 0;
+		while(ar[len])
+			len++;
+		idx = len;
+		ar = urealloc(ar, (++len + 1) * sizeof(void *));
+	}
+
+	ar[idx] = new;
+	ar[idx+1] = NULL;
+
+	*par = ar;
 }
