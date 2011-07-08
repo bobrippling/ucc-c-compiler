@@ -10,6 +10,7 @@ void *umalloc(size_t l)
 	void *p = malloc(l);
 	if(!p)
 		die("malloc %ld bytes:", l);
+	memset(p, 0, l);
 	return p;
 }
 

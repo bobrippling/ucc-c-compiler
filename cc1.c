@@ -9,7 +9,7 @@ int main(int argc, char **argv)
 	FILE *f;
 
 	if(argc != 2)
-		die("Usage: %s file\n", *argv);
+		die("Usage: %s file", *argv);
 
 	f = fopen(argv[1], "r");
 	if(!f)
