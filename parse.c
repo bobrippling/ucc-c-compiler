@@ -1,27 +1,74 @@
 #include <stdio.h>
+#include <stdarg.h>
 
-#include "parse.h"
 #include "tokenise.h"
 #include "tree.h"
+#include "parse.h"
 #include "alloc.h"
 #include "tokconv.h"
 #include "util.h"
 
+
+/*
+	* order goes:
+	*
+	* parse_expr_unary_op   [-+!~]`parse_expr_single`
+	* parse_expr_binary_op  above [/%*]    above
+	* parse_expr_sum        above [+-]     above
+	* parse_expr_bit_op     above [&|]     above
+	* parse_expr_cmp_op     above [><==!=] above
+	* parse_expr_logical_op above [&&||]   above
+	*/
+#define parse_expr() parse_expr_logical_op()
+
 extern enum token curtok;
 
 tree *parse_code();
-decl *parse_decl(int need_spel);
+expr *parse_expr();
+decl *parse_decl(enum type type, int need_spel);
 
-expr *parse_expr()
+
+/* generalised recursive descent */
+expr *parse_expr_join(
+		expr *(*above)(), expr *(*this)(),
+		enum token accept, ...
+		)
+{
+	va_list l;
+	expr *e = above();
+
+	va_start(l, accept);
+	if(curtok == accept || curtok_in_list(l)){
+		expr *join;
+
+		va_end(l);
+
+		join       = expr_new();
+		join->type = expr_op;
+		join->op   = curtok_to_op();
+		join->lhs  = e;
+
+		eat(curtok);
+		join->rhs = this();
+
+		return join;
+	}else{
+		va_end(l);
+		return e;
+	}
+}
+
+
+
+expr *parse_expr_unary_op()
 {
 	extern int currentval;
 	expr *e;
 
 	switch(curtok){
 		case token_sizeof:
-			e = umalloc(sizeof *e);
-			e->type = expr_const;
-			e->const_type = const_sizeof;
+			e = expr_new();
+			e->type = expr_sizeof;
 			if(curtok != token_identifier)
 				eat(token_identifier); /* raise error */
 			e->spel = token_current_spel();
@@ -30,25 +77,22 @@ expr *parse_expr()
 
 		case token_integer:
 		case token_character:
-			e = umalloc(sizeof *e);
-			e->type = expr_const;
-			e->const_type = const_val;
+			e = expr_new();
+			e->type = expr_val;
 			e->val = currentval;
 			eat(curtok);
 			return e;
 
 		case token_string:
-			e = umalloc(sizeof *e);
-			e->type = expr_const;
-			e->const_type = const_str;
+			e = expr_new();
+			e->type = expr_str;
 			e->spel = token_current_str();
 			eat(token_string);
 			return e;
 
 		case token_identifier:
-			e = umalloc(sizeof *e);
-			e->type = expr_const;
-			e->const_type = const_identifier;
+			e = expr_new();
+			e->type = expr_identifier;
 			e->spel = token_current_spel();
 			eat(token_identifier);
 			return e;
@@ -61,9 +105,9 @@ expr *parse_expr()
 
 		case token_multiply:
 			eat(token_multiply);
-			e = umalloc(sizeof *e);
+			e = expr_new();
 			e->type = expr_op;
-			e->op = op_deref;
+			e->op   = op_deref;
 			e->lhs  = parse_expr();
 			return e;
 
@@ -71,9 +115,8 @@ expr *parse_expr()
 			eat(token_and);
 			if(curtok != token_identifier)
 				eat(token_identifier); /* raise error */
-			e = umalloc(sizeof *e);
-			e->type = expr_const;
-			e->const_type = const_addr;
+			e = expr_new();
+			e->type = expr_addr;
 			e->spel = token_current_spel();
 			eat(token_identifier);
 			return e;
@@ -85,22 +128,25 @@ expr *parse_expr()
 		case token_minus:
 		case token_not:
 		case token_bnot:
-			e = umalloc(sizeof *e);
+			e = expr_new();
 			e->type = expr_op;
 			e->op = curtok_to_op();
-			eat(curtok);
 
 			if(curtok == token_minus){
-				e->lhs = umalloc(sizeof *e->lhs);
-				e->lhs->type = expr_const;
-				e->lhs->const_type = const_val;
-				e->lhs->val = 0; /* e.g. 0 - `expr` */
+				eat(curtok);
 
-				e->rhs = parse_expr();
+				e->lhs = expr_new();
+				e->lhs->type = expr_val;
+				e->lhs->val = 0;
+
+				/* return expr( 0 - `expr` ) */
+
+				e->rhs = parse_expr_unary_op();
 			}else{
-				e->lhs = parse_expr();
+				eat(curtok);
+				e->lhs = parse_expr_unary_op();
 			}
-			break;
+			return e;
 
 		default:
 			break;
@@ -108,11 +154,57 @@ expr *parse_expr()
 	return NULL;
 }
 
+expr *parse_expr_binary_op()
+{
+	/* above [/%*] above */
+	return parse_expr_join(
+			parse_expr_unary_op, parse_expr_binary_op,
+				token_divide, token_multiply, token_modulus,
+				token_unknown);
+}
+
+expr *parse_expr_sum()
+{
+	/* above [+-] above */
+	return parse_expr_join(
+			parse_expr_binary_op, parse_expr_sum,
+				token_plus, token_minus, token_unknown);
+}
+
+expr *parse_expr_bit_op()
+{
+	/* above [&|] above */
+	return parse_expr_join(
+			parse_expr_sum, parse_expr_bit_op,
+				token_and, token_or, token_unknown);
+}
+
+expr *parse_expr_cmp_op()
+{
+	/* above [><==!=] above */
+	return parse_expr_join(
+			parse_expr_bit_op, parse_expr_cmp_op,
+				token_eq, token_ne,
+				token_le, token_lt,
+				token_ge, token_gt,
+				token_unknown);
+}
+
+expr *parse_expr_logical_op()
+{
+	/* above [&&||] above */
+	return parse_expr_join(
+			parse_expr_cmp_op, parse_expr_logical_op,
+			token_orsc, token_andsc, token_unknown);
+}
+
 tree *parse_if()
 {
-	tree *t = umalloc(sizeof *t);
+	tree *t = tree_new();
 	eat(token_if);
 	eat(token_open_paren);
+
+	t->type = stat_if;
 
 	t->expr = parse_expr();
 
@@ -141,7 +233,7 @@ expr **parse_funcargs()
 
 tree *expr_to_tree(expr *e)
 {
-	tree *t = umalloc(sizeof *t);
+	tree *t = tree_new();
 	t->type = stat_expr;
 	t->expr = e;
 	return t;
@@ -158,9 +250,11 @@ tree *parse_identifier()
 	 *
 	 * funcall
 	 *   f(x);
+	 *
+	 * note: this functions eats the semi colon
 	 */
 
-	tree *t = umalloc(sizeof *t);
+	tree *t = tree_new();
 
 	t->lhs = expr_to_tree(parse_expr());
 
@@ -180,6 +274,8 @@ tree *parse_identifier()
 		die_at("expected assignment or funcall");
 	}
 
+	eat(token_semicolon);
+
 	return t;
 }
 
@@ -188,14 +284,58 @@ tree*parse_while(){return NULL;}
 tree*parse_do(){return NULL;}
 tree*parse_for(){return NULL;}
 
-tree *parse_code_single()
+tree *parse_code_declblock()
 {
-	tree *t = umalloc(sizeof *t);
+	tree *t = tree_new();
+	enum type curtype;
+
+	t->type = stat_code;
+
+	eat(token_open_block);
+
+	while(curtok_is_type()){
+		curtype = curtok_to_type();
+		eat(curtok);
+next_decl:
+		dynarray_add((void ***)&t->decls, parse_decl(curtype, 1));
+
+		if(curtok == token_comma){
+			eat(token_comma);
+			goto next_decl; /* don't read another type */
+		}
+		eat(token_semicolon);
+	}
+
+	/* main read loop */
+	do{
+		tree *sub = parse_code();
+
+		if(sub)
+			dynarray_add((void ***)&t->codes, sub);
+		else
+			break;
+	}while(curtok != token_close_block);
+
+	eat(token_close_block);
+	return t;
+}
+
+tree *parse_code()
+{
+	tree *t;
 
 	switch(curtok){
-		case token_semicolon: t->type = stat_noop;   break;
-		case token_break:     t->type = stat_break;  eat(token_break);  break;
-		case token_return:    t->type = stat_return; eat(token_return); break;
+		case token_semicolon: t = tree_new(); t->type = stat_noop; return t;
+
+		case token_break:
+		case token_return:
+			t = tree_new();
+
+			t->type = curtok == token_break ? stat_break : stat_return;
+
+			eat(token_return);
+			eat(token_semicolon);
+			return t;
 
 		case token_switch: return parse_switch();
 		case token_if:     return parse_if();
@@ -205,54 +345,24 @@ tree *parse_code_single()
 
 		case token_identifier: return parse_identifier(); /* x = `expr` */
 
+		case token_open_block: return parse_code_declblock();
+
 		default: break;
 	}
-
+	die_at("expected: statement");
 	return NULL;
 }
 
-tree *parse_code()
-{
-	tree *t = umalloc(sizeof *t);
-
-	if(curtok == token_open_block){
-		eat(token_open_block);
-
-		if(curtok_is_type()){
-next_decl:
-			dynarray_add((void ***)&t->decls, parse_decl(1));
-
-			if(curtok == token_comma){
-				eat(token_comma);
-				goto next_decl;
-			}
-			eat(token_semicolon);
-		}
-
-		/* main read loop */
-		do{
-			tree *sub = parse_code_single();
-
-			eat(token_semicolon);
-
-			if(sub)
-				dynarray_add((void ***)&t->lhs, sub);
-			else
-				break;
-		}while(curtok != token_close_block);
-
-		eat(token_close_block);
-	}
-
-	return t;
-}
-
-decl *parse_decl(int need_spel)
+decl *parse_decl(enum type type, int need_spel)
 {
 	decl *d = umalloc(sizeof *d);
 
-	d->type = curtok_to_type();
-	eat(curtok);
+	if(type == type_unknown){
+		d->type = curtok_to_type();
+		eat(curtok);
+	}else{
+		d->type = type;
+	}
 
 	while(curtok == token_multiply){
 		eat(token_multiply);
@@ -273,12 +383,12 @@ function *parse_function_proto()
 {
 	function *f = umalloc(sizeof *f);
 
-	f->func_decl = parse_decl(1);
+	f->func_decl = parse_decl(type_unknown, 1);
 
 	eat(token_open_paren);
 
 	while((curtok_is_type())){
-		decl *d = parse_decl(0);
+		decl *d = parse_decl(type_unknown, 0);
 
 		dynarray_add((void ***)&f->args, d);
 
@@ -300,16 +410,15 @@ function *parse_function()
 {
 	function *f = parse_function_proto();
 
-	if(curtok == token_semicolon){
+	if(curtok == token_semicolon)
 		eat(token_semicolon);
-	}else{
+	else
 		f->code = parse_code();
-	}
 
 	return f;
 }
 
-void parse()
+function **parse()
 {
 	function **f;
 	int i, n;
@@ -326,4 +435,6 @@ void parse()
 			f = urealloc(f, n * sizeof *f);
 		}
 	}while(curtok != token_eof);
+
+	return f;
 }

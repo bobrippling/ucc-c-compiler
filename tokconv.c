@@ -1,9 +1,11 @@
 #include <stdio.h>
+#include <stdarg.h>
 
 #include "tokenise.h"
 #include "tree.h"
 #include "tokconv.h"
 #include "util.h"
+#include "macros.h"
 
 extern enum token curtok;
 
@@ -18,14 +20,11 @@ enum type curtok_to_type()
 	return type_unknown;
 }
 
-enum expr_op curtok_to_op()
+enum op_type curtok_to_op()
 {
 	switch(curtok){
-		/*
-		 * case token_multiply: return deref ? op_deref : op_multiply;
-		 *
-		 * doesn't matter
-		 */
+		/* multiply - op_deref is handled by the parser */
+		case token_multiply: return op_multiply;
 
 		case token_divide: return op_divide;
 		case token_plus: return op_plus;
@@ -59,23 +58,21 @@ int curtok_is_type()
 
 const char *token_to_str(enum token t)
 {
-#define STR(s) case s: return #s
 	switch(t){
-		STR(token_do);           STR(token_if);            STR(token_else);         STR(token_while);
-		STR(token_for);          STR(token_break);         STR(token_return);       STR(token_switch);
-		STR(token_case);         STR(token_default);       STR(token_sizeof);       STR(token_extern);
-		STR(token_identifier);   STR(token_integer);       STR(token_character);    STR(token_void);
-		STR(token_byte);         STR(token_int);           STR(token_elipsis);      STR(token_string);
-		STR(token_open_paren);   STR(token_open_block);    STR(token_open_square);  STR(token_close_paren);
-		STR(token_close_block);  STR(token_close_square);  STR(token_comma);        STR(token_semicolon);
-		STR(token_colon);        STR(token_plus);          STR(token_minus);        STR(token_multiply);
-		STR(token_divide);       STR(token_modulus);       STR(token_increment);    STR(token_decrement);
-		STR(token_assign);       STR(token_dot);           STR(token_eq);           STR(token_le);
-		STR(token_lt);           STR(token_ge);            STR(token_gt);           STR(token_ne);
-		STR(token_not);          STR(token_bnot);          STR(token_andsc);        STR(token_and);
-		STR(token_orsc);         STR(token_or);            STR(token_eof);          STR(token_unknown);
+		CASE_STR(token_do);           CASE_STR(token_if);            CASE_STR(token_else);         CASE_STR(token_while);
+		CASE_STR(token_for);          CASE_STR(token_break);         CASE_STR(token_return);       CASE_STR(token_switch);
+		CASE_STR(token_case);         CASE_STR(token_default);       CASE_STR(token_sizeof);       CASE_STR(token_extern);
+		CASE_STR(token_identifier);   CASE_STR(token_integer);       CASE_STR(token_character);    CASE_STR(token_void);
+		CASE_STR(token_byte);         CASE_STR(token_int);           CASE_STR(token_elipsis);      CASE_STR(token_string);
+		CASE_STR(token_open_paren);   CASE_STR(token_open_block);    CASE_STR(token_open_square);  CASE_STR(token_close_paren);
+		CASE_STR(token_close_block);  CASE_STR(token_close_square);  CASE_STR(token_comma);        CASE_STR(token_semicolon);
+		CASE_STR(token_colon);        CASE_STR(token_plus);          CASE_STR(token_minus);        CASE_STR(token_multiply);
+		CASE_STR(token_divide);       CASE_STR(token_modulus);       CASE_STR(token_increment);    CASE_STR(token_decrement);
+		CASE_STR(token_assign);       CASE_STR(token_dot);           CASE_STR(token_eq);           CASE_STR(token_le);
+		CASE_STR(token_lt);           CASE_STR(token_ge);            CASE_STR(token_gt);           CASE_STR(token_ne);
+		CASE_STR(token_not);          CASE_STR(token_bnot);          CASE_STR(token_andsc);        CASE_STR(token_and);
+		CASE_STR(token_orsc);         CASE_STR(token_or);            CASE_STR(token_eof);          CASE_STR(token_unknown);
 	}
-#undef STR
 	return NULL;
 }
 
@@ -85,6 +82,15 @@ void eat(enum token t)
 		die_at("expecting token %s, got %s",
 				token_to_str(t), token_to_str(curtok));
 	nexttoken();
+}
+
+int curtok_in_list(va_list l)
+{
+	enum token t;
+	while((t = va_arg(l, enum token)) != token_unknown)
+		if(curtok == t)
+			return 1;
+	return 0;
 }
 
 #define NULL_AND_RET(fnam, cnam)  \

@@ -285,7 +285,7 @@ void nexttoken()
 	switch(c){
 		case '"':
 		{
-			/* read in the string... */
+			/* read in the string - TODO: "hi" "there" */
 			int size;
 			char *end = strchr(bufferpos, '"'), *const start = bufferpos;
 
@@ -382,6 +382,13 @@ void nexttoken()
 			curtok = token_multiply;
 			break;
 		case '/':
+			if(peeknextchar() == '*'){
+				/* comment */
+				fprintf(stderr, "TODO: /* comments */\n");
+				exit(1);
+				nexttoken();
+				return;
+			}
 			curtok = token_divide;
 			break;
 		case '%':
@@ -472,25 +479,4 @@ void nexttoken()
 		default:
 			curtok = token_unknown;
 	}
-}
-
-const char *token_str(enum token t)
-{
-#define T(x) case x: return #x
-	switch(t){
-		T(token_do);           T(token_if);            T(token_else);         T(token_while);
-		T(token_for);          T(token_break);         T(token_return);       T(token_switch);
-		T(token_case);         T(token_default);       T(token_sizeof);       T(token_extern);
-		T(token_identifier);   T(token_integer);       T(token_character);    T(token_void);
-		T(token_byte);         T(token_int);           T(token_elipsis);      T(token_string);
-		T(token_open_paren);   T(token_open_block);    T(token_open_square);  T(token_close_paren);
-		T(token_close_block);  T(token_close_square);  T(token_comma);        T(token_semicolon);
-		T(token_colon);        T(token_plus);          T(token_minus);        T(token_multiply);
-		T(token_divide);       T(token_modulus);       T(token_increment);    T(token_decrement);
-		T(token_assign);       T(token_dot);           T(token_eq);           T(token_le);
-		T(token_lt);           T(token_ge);            T(token_gt);           T(token_ne);
-		T(token_not);          T(token_bnot);          T(token_andsc);        T(token_and);
-		T(token_orsc);         T(token_or);            T(token_eof);          T(token_unknown);
-	}
-	return NULL;
 }

@@ -12,7 +12,8 @@ void vdie(va_list l, const char *fmt, int at)
 	extern int currentline, currentchar;
 
 	if(at)
-		fprintf(stderr, "%s:%d:%d: ", currentfname, currentline, currentchar);
+		fprintf(stderr, "%s:%d:%d: ",
+				currentfname, currentline, currentchar + 1);
 
 	vfprintf(stderr, fmt, l);
 
