@@ -23,9 +23,10 @@
 
 extern enum token curtok;
 
-tree *parse_code();
-expr *parse_expr();
-decl *parse_decl(enum type type, int need_spel);
+tree  *parse_code();
+expr **parse_funcargs();
+expr  *parse_expr();
+decl  *parse_decl(enum type type, int need_spel);
 
 
 /* generalised recursive descent */
@@ -58,8 +59,6 @@ expr *parse_expr_join(
 	}
 }
 
-
-
 expr *parse_expr_unary_op()
 {
 	extern int currentval;
@@ -88,13 +87,6 @@ expr *parse_expr_unary_op()
 			e->type = expr_str;
 			e->spel = token_current_str();
 			eat(token_string);
-			return e;
-
-		case token_identifier:
-			e = expr_new();
-			e->type = expr_identifier;
-			e->spel = token_current_spel();
-			eat(token_identifier);
 			return e;
 
 		case token_open_paren:
@@ -148,9 +140,34 @@ expr *parse_expr_unary_op()
 			}
 			return e;
 
+		case token_identifier:
+			e = expr_new();
+
+			e->spel = token_current_spel();
+			eat(token_identifier);
+
+			if(curtok == token_assign){
+				eat(token_assign);
+
+				e->type = expr_assign;
+				e->expr = parse_expr();
+				return e;
+
+			}else if(curtok == token_open_paren){
+				eat(token_open_paren);
+				e->type = expr_funcall;
+				e->funcargs = parse_funcargs();
+				eat(token_close_paren);
+				return e;
+			}else{
+				e->type = expr_identifier;
+				return e;
+			}
+
 		default:
 			break;
 	}
+	fprintf(stderr, "warning: parse_expr_unary_op() returning NULL @ %s\n", token_to_str(curtok));
 	return NULL;
 }
 
@@ -239,46 +256,6 @@ tree *expr_to_tree(expr *e)
 	return t;
 }
 
-tree *parse_identifier()
-{
-	/*
-	 * expect:
-	 * assignment
-	 *   x = 5;
-	 *   *y = 2;
-	 *   *x[2] = 3;
-	 *
-	 * funcall
-	 *   f(x);
-	 *
-	 * note: this functions eats the semi colon
-	 */
-
-	tree *t = tree_new();
-
-	t->lhs = expr_to_tree(parse_expr());
-
-	if(curtok == token_assign){
-		/* expr - const_str, for e.g. */
-		eat(token_assign);
-
-		t->type = stat_assign;
-		t->rhs = expr_to_tree(parse_expr());
-
-	}else if(curtok == token_open_paren){
-		eat(token_open_paren);
-		t->type = stat_funcall;
-
-		t->funcargs = parse_funcargs();
-	}else{
-		die_at("expected assignment or funcall");
-	}
-
-	eat(token_semicolon);
-
-	return t;
-}
-
 tree*parse_switch(){return NULL;}
 tree*parse_while(){return NULL;}
 tree*parse_do(){return NULL;}
@@ -325,14 +302,17 @@ tree *parse_code()
 	tree *t;
 
 	switch(curtok){
-		case token_semicolon: t = tree_new(); t->type = stat_noop; return t;
+		case token_semicolon:
+			t = tree_new();
+			t->type = stat_noop;
+			eat(token_semicolon);
+			return t;
+
 
 		case token_break:
 		case token_return:
 			t = tree_new();
-
 			t->type = curtok == token_break ? stat_break : stat_return;
-
 			eat(token_return);
 			eat(token_semicolon);
 			return t;
@@ -343,14 +323,14 @@ tree *parse_code()
 		case token_do:     return parse_do();
 		case token_for:    return parse_for();
 
-		case token_identifier: return parse_identifier(); /* x = `expr` */
-
 		case token_open_block: return parse_code_declblock();
 
 		default: break;
 	}
-	die_at("expected: statement");
-	return NULL;
+
+	t = expr_to_tree(parse_expr());
+	eat(token_semicolon);
+	return t;
 }
 
 decl *parse_decl(enum type type, int need_spel)

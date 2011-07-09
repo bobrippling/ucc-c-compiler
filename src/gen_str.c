@@ -49,6 +49,8 @@ const char *expr_to_str(enum expr_type t)
 		CASE_STR(expr_sizeof);
 		CASE_STR(expr_str);
 		CASE_STR(expr_identifier);
+		CASE_STR(expr_assign);
+		CASE_STR(expr_funcall);
 	}
 	return NULL;
 }
@@ -102,6 +104,32 @@ void printexpr(expr *e)
 			idt_printf("str: \"%s\"\n", e->spel);
 			break;
 
+		case expr_assign:
+			idt_printf("assign to %s:\n", e->spel);
+			indent++;
+			printexpr(e->expr);
+			indent--;
+			break;
+
+		case expr_funcall:
+		{
+			expr **iter;
+
+			idt_printf("%s():\n", e->spel);
+			indent++;
+			if(e->funcargs)
+				for(iter = e->funcargs; *iter; iter++){
+					idt_printf("arg:\n");
+					indent++;
+					printexpr(*iter);
+					indent--;
+				}
+			else
+				idt_printf("no args\n");
+			indent--;
+			break;
+		}
+
 		default:
 			break;
 	}
@@ -118,8 +146,6 @@ const char *stat_to_str(enum stat_type t)
 		CASE_STR(stat_break);
 		CASE_STR(stat_return);
 		CASE_STR(stat_expr);
-		CASE_STR(stat_assign);
-		CASE_STR(stat_funcall);
 		CASE_STR(stat_noop);
 		CASE_STR(stat_code);
 	}
