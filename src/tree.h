@@ -16,7 +16,9 @@ struct expr
 		expr_addr, /* &x */
 		expr_sizeof,
 		expr_str, /* "abc" */
-		expr_identifier
+		expr_identifier,
+		expr_assign,
+		expr_funcall
 	} type;
 
 	enum op_type
@@ -44,6 +46,8 @@ struct expr
 	int val;
 	char *spel;
 	where where;
+	expr *expr; /* x = 5; expr is the 5 */
+	expr **funcargs;
 };
 
 typedef struct tree     tree;
@@ -62,8 +66,6 @@ struct tree
 		stat_break,
 		stat_return,
 		stat_expr,
-		stat_assign,
-		stat_funcall,
 		stat_code,
 		stat_noop
 	} type;
@@ -76,7 +78,6 @@ struct tree
 	int val;
 	function *func;
 	decl **decls; /* block definitions, e.g. { int i... } */
-	expr **funcargs;
 	tree **codes; /* for a code block */
 };
 

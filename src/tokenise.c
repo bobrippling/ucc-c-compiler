@@ -296,9 +296,7 @@ void nexttoken()
 			if(!end){
 				if((end = strchr(bufferpos, '\n')))
 					*end = '\0';
-				fprintf(stderr, "Couldn't find terminating quote to \"%s\"\n", bufferpos);
-				curtok = token_unknown;
-				break;
+				die_at("Couldn't find terminating quote to \"%s\"", bufferpos);
 			}
 
 			size = end - start + 1;
@@ -349,8 +347,8 @@ void nexttoken()
 			if((c = nextchar()) == '\'')
 				curtok = token_character;
 			else{
-				fprintf(stderr, "Invalid character token\n"
-						"(expected single quote, not '%c')\n", c);
+				die_at("Invalid character token\n"
+						"(expected single quote, not '%c')", c);
 				curtok = token_unknown;
 				return;
 			}
@@ -384,9 +382,14 @@ void nexttoken()
 		case '/':
 			if(peeknextchar() == '*'){
 				/* comment */
-				fprintf(stderr, "TODO: /* comments */\n");
-				exit(1);
-				nexttoken();
+				while(rawnextchar() != EOF)
+					if(!strncmp(bufferpos, "*/", 2)){
+						rawnextchar(); /* eat the * and the / */
+						rawnextchar();
+						nexttoken();
+						return;
+					}
+				die_at("No end to comment");
 				return;
 			}
 			curtok = token_divide;
