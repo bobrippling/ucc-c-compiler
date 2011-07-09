@@ -105,5 +105,8 @@ struct function
 
 tree *tree_new();
 expr *expr_new();
+const char *op_to_str(enum op_type o);
+const char *expr_to_str(enum expr_type t);
+const char *stat_to_str(enum stat_type t);
 
 #endif

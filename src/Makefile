@@ -14,11 +14,12 @@ test: cc1
 
 alloc.o: alloc.c alloc.h util.h
 cc1.o: cc1.c tokenise.h util.h tree.h parse.h gen.h
+gen_asm.o: gen_asm.c tree.h macros.h
 gen.o: gen.c tree.h gen_str.h
 gen_str.o: gen_str.c tree.h macros.h
 parse.o: parse.c tokenise.h tree.h parse.h alloc.h tokconv.h util.h
 str.o: str.c
 tokconv.o: tokconv.c tokenise.h tree.h tokconv.h util.h macros.h
 tokenise.o: tokenise.c tokenise.h alloc.h util.h str.h
-tree.o: tree.c util.h tree.h
+tree.o: tree.c alloc.h tree.h macros.h
 util.o: util.c util.h alloc.h

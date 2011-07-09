@@ -6,5 +6,5 @@ void gen(function **funcs)
 	function **iter;
 
 	for(iter = funcs; *iter; iter++)
-		printfn(*iter);
+		print_fn(*iter);
 }
