@@ -1,25 +1,25 @@
 #ifndef TREE_H
 #define TREE_H
 
+typedef struct where
+{
+	int line, chr;
+} where;
+
 typedef struct expr expr;
 struct expr
 {
 	enum expr_type
 	{
-		expr_const,
-		expr_op
+		expr_op,
+		expr_val,
+		expr_addr, /* &x */
+		expr_sizeof,
+		expr_str, /* "abc" */
+		expr_identifier
 	} type;
 
-	enum expr_const
-	{
-		const_val,
-		const_addr, /* &x */
-		const_sizeof,
-		const_str,
-		const_identifier
-	} const_type;
-
-	enum expr_op
+	enum op_type
 	{
 		op_multiply,
 		op_divide,
@@ -43,6 +43,7 @@ struct expr
 
 	int val;
 	char *spel;
+	where where;
 };
 
 typedef struct tree     tree;
@@ -63,17 +64,20 @@ struct tree
 		stat_expr,
 		stat_assign,
 		stat_funcall,
+		stat_code,
 		stat_noop
 	} type;
 
 	tree *lhs, *rhs;
 	expr *expr; /* test expr for if and do, etc */
+	where where;
 
 	/* specific data */
 	int val;
 	function *func;
 	decl **decls; /* block definitions, e.g. { int i... } */
 	expr **funcargs;
+	tree **codes; /* for a code block */
 };
 
 enum type
@@ -97,5 +101,8 @@ struct function
 	decl **args;
 	tree *code;
 };
+
+tree *tree_new();
+expr *expr_new();
 
 #endif
