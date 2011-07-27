@@ -4,6 +4,7 @@
 #include <math.h>
 #include <ctype.h>
 
+#include "tree.h"
 #include "tokenise.h"
 #include "alloc.h"
 #include "util.h"
@@ -296,7 +297,7 @@ void nexttoken()
 			if(!end){
 				if((end = strchr(bufferpos, '\n')))
 					*end = '\0';
-				die_at("Couldn't find terminating quote to \"%s\"", bufferpos);
+				die_at(NULL, "Couldn't find terminating quote to \"%s\"", bufferpos);
 			}
 
 			size = end - start + 1;
@@ -347,7 +348,7 @@ void nexttoken()
 			if((c = nextchar()) == '\'')
 				curtok = token_character;
 			else{
-				die_at("Invalid character token\n"
+				die_at(NULL, "Invalid character token\n"
 						"(expected single quote, not '%c')", c);
 				curtok = token_unknown;
 				return;
@@ -382,14 +383,15 @@ void nexttoken()
 		case '/':
 			if(peeknextchar() == '*'){
 				/* comment */
-				while(rawnextchar() != EOF)
-					if(!strncmp(bufferpos, "*/", 2)){
-						rawnextchar(); /* eat the * and the / */
-						rawnextchar();
+				for(;;){
+					int c = rawnextchar();
+					if(c == '*' && *bufferpos == '/'){
+						rawnextchar(); /* eat the / */
 						nexttoken();
 						return;
 					}
-				die_at("No end to comment");
+				}
+				die_at(NULL, "No end to comment");
 				return;
 			}
 			curtok = token_divide;
