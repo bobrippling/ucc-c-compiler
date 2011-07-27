@@ -3,6 +3,7 @@
 
 #include "tree.h"
 #include "macros.h"
+#include "sym.h"
 
 
 #define PRINT_IF(x, sub, fn) \
@@ -38,6 +39,14 @@ void print_decl(decl *d)
 			d->type == type_byte ? "void" :
 			"unknown"
 			);
+}
+
+void print_sym(sym *s)
+{
+	idt_printf("sym: offset=%d\n", s->offset);
+	indent++;
+	print_decl(s->decl);
+	indent--;
 }
 
 void print_expr(expr *e)
@@ -109,6 +118,16 @@ void print_tree(tree *t)
 		for(iter = t->decls; *iter; iter++){
 			indent++;
 			print_decl(*iter);
+			indent--;
+		}
+	}
+
+	if(t->symtab_parent){
+		sym *s;
+		idt_printf("symtable [master]:\n");
+		for(s = t->symtab->first; s; s = s->next){
+			indent++;
+			print_sym(s);
 			indent--;
 		}
 	}

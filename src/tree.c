@@ -4,22 +4,42 @@
 #include "tree.h"
 #include "macros.h"
 
-extern int currentline, currentchar;
+void where_new(struct where *w)
+{
+	extern int currentline, currentchar;
+	extern const char *currentfname;
+
+	w->line  = currentline;
+	w->chr   = currentchar;
+	w->fname = currentfname;
+}
 
 tree *tree_new()
 {
 	tree *t = umalloc(sizeof *t);
-	t->where.line = currentline;
-	t->where.chr  = currentchar;
+	where_new(&t->where);
 	return t;
 }
 
 expr *expr_new()
 {
 	expr *e = umalloc(sizeof *e);
-	e->where.line = currentline;
-	e->where.chr  = currentchar;
+	where_new(&e->where);
 	return e;
+}
+
+decl *decl_new()
+{
+	decl *d = umalloc(sizeof *d);
+	where_new(&d->where);
+	return d;
+}
+
+function *function_new()
+{
+	function *f = umalloc(sizeof *f);
+	where_new(&f->where);
+	return f;
 }
 
 const char *expr_to_str(enum expr_type t)
