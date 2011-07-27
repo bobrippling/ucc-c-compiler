@@ -312,8 +312,14 @@ tree *parse_code()
 		case token_break:
 		case token_return:
 			t = tree_new();
-			t->type = curtok == token_break ? stat_break : stat_return;
-			eat(token_return);
+			if(curtok == token_break){
+				t->type = stat_break;
+			}else{
+				t->type = stat_return;
+				if(curtok != token_semicolon)
+					t->expr = parse_expr();
+			}
+			eat(curtok);
 			eat(token_semicolon);
 			return t;
 
@@ -335,11 +341,15 @@ tree *parse_code()
 
 decl *parse_decl(enum type type, int need_spel)
 {
-	decl *d = umalloc(sizeof *d);
+	decl *d = decl_new();
 
 	if(type == type_unknown){
 		d->type = curtok_to_type();
-		eat(curtok);
+		if(d->type == type_unknown){
+			d->type = type_int; /* default to int */
+		}else{
+			eat(curtok);
+		}
 	}else{
 		d->type = type;
 	}
@@ -361,9 +371,10 @@ decl *parse_decl(enum type type, int need_spel)
 
 function *parse_function_proto()
 {
-	function *f = umalloc(sizeof *f);
+	function *f = function_new();
 
 	f->func_decl = parse_decl(type_unknown, 1);
+	f->func_decl->func = 1;
 
 	eat(token_open_paren);
 
@@ -410,10 +421,8 @@ function **parse()
 	do{
 		f[i++] = parse_function();
 
-		if(i == n){
-			n += 10;
-			f = urealloc(f, n * sizeof *f);
-		}
+		if(i == n)
+			f = urealloc(f, (n += 10) * sizeof *f);
 	}while(curtok != token_eof);
 
 	return f;

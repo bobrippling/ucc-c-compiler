@@ -79,7 +79,7 @@ const char *token_to_str(enum token t)
 void eat(enum token t)
 {
 	if(t != curtok)
-		die_at("expecting token %s, got %s",
+		die_at(NULL, "expecting token %s, got %s",
 				token_to_str(t), token_to_str(curtok));
 	nexttoken();
 }

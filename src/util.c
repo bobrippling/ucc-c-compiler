@@ -3,17 +3,14 @@
 #include <stdarg.h>
 #include <string.h>
 
+#include "tree.h"
 #include "util.h"
 #include "alloc.h"
 
-void vdie(va_list l, const char *fmt, int at)
+void vdie(struct where *w, va_list l, const char *fmt)
 {
-	extern const char *currentfname;
-	extern int currentline, currentchar;
-
-	if(at)
-		fprintf(stderr, "%s:%d:%d: ",
-				currentfname, currentline, currentchar + 1);
+	if(w)
+		fprintf(stderr, "%s:%d:%d: ", w->fname, w->line, w->chr + 1);
 
 	vfprintf(stderr, fmt, l);
 
@@ -25,12 +22,23 @@ void vdie(va_list l, const char *fmt, int at)
 	exit(1);
 }
 
-void die_at(const char *fmt, ...)
+void die_at(struct where *w, const char *fmt, ...)
 {
+	struct where x;
 	va_list l;
 
+	if(!w){
+		extern int currentline, currentchar;
+		extern const char *currentfname;
+
+		w = &x;
+		x.fname = currentfname;
+		x.line  = currentline;
+		x.chr   = currentchar;
+	}
+
 	va_start(l, fmt);
-	vdie(l, fmt, 1);
+	vdie(w, l, fmt);
 	/* unreachable */
 }
 
@@ -39,8 +47,14 @@ void die(const char *fmt, ...)
 	va_list l;
 
 	va_start(l, fmt);
-	vdie(l, fmt, 0);
+	vdie(NULL, l, fmt);
 	/* unreachable */
+}
+
+void die_ice(const char *fnam, int lin)
+{
+	fprintf(stderr, "ICE @ %s:%d\n", fnam, lin);
+	exit(2);
 }
 
 char *fline(FILE *f)
