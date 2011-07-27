@@ -42,13 +42,18 @@ void walk_expr(expr *e, symtable *tab)
 		case expr_funcall:
 		{
 			expr **iter;
+			int nargs = 0;
 
 			if(e->funcargs)
-				for(iter = e->funcargs; *iter; iter++)
+				for(iter = e->funcargs; *iter; iter++){
 					walk_expr(*iter, tab);
+					nargs++;
+				}
 
 			asm_new(asm_call, e->spel);
-			asm_temp("; TODO: pop args");
+			if(nargs)
+				asm_temp("add rsp, %d ; %d args",
+						nargs * platform_word_size(), nargs);
 			break;
 		}
 
@@ -79,8 +84,10 @@ void walk_tree(tree *t)
 		sym *s;
 
 		for(s = t->symtab->first; s; s = s->next)
-			offset += s->offset;
-		asm_temp("sub rsp, %d", offset);
+			offset += platform_word_size();
+
+		if(offset)
+			asm_temp("sub rsp, %d", offset);
 	}
 
 	if(t->codes){
