@@ -93,11 +93,11 @@ void asm_operate(expr *e, symtable *tab)
 		/* normal mafs */
 		case op_multiply: instruct = "imul"; break;
 		case op_plus:     instruct = "add";  break;
-		case op_minus:    instruct = "sub";  break;
 		case op_or:       instruct = "or";   break;
 		case op_and:      instruct = "and";  break;
 
 		/* single register op */
+		case op_minus:    instruct = "neg"; break;
 		case op_bnot:     instruct = "not"; break;
 
 		case op_not:
@@ -143,7 +143,7 @@ void asm_operate(expr *e, symtable *tab)
 	}
 
 	/* get here if op is *, +, - or ~ */
-	if(e->op == op_bnot){
+	if(e->op == op_bnot || e->op == op_minus){
 		asm_temp("pop rax");
 		asm_temp("%s rax", instruct);
 	}else{
