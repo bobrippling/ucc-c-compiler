@@ -72,6 +72,7 @@ void walk_expr(expr *e, symtable *tab)
 
 void walk_tree(tree *t)
 {
+	/* FIXME: switch t->type - specifically if() - test/printd.c */
 	WALK_IF(t, lhs, walk_tree);
 	WALK_IF(t, rhs, walk_tree);
 	if(t->expr)

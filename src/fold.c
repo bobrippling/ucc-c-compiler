@@ -46,12 +46,16 @@ void fold_code(tree *t, symtable *parent_tab)
 
 	switch(t->type){
 		case stat_do:
-		case stat_if:
 		case stat_else:
 		case stat_while:
 		case stat_for:
 		case stat_break:
 			fprintf(stderr, "fold TODO with %s\n", stat_to_str(t->type));
+			break;
+
+		case stat_if:
+			fold_expr(t->expr, parent_tab);
+			fold_code(t->lhs,  parent_tab);
 			break;
 
 		case stat_code:
@@ -100,7 +104,7 @@ void fold_code(tree *t, symtable *parent_tab)
 
 void fold_decl(decl *d)
 {
-	if(d->type == type_void && !d->ptr_depth)
+	if(d->type == type_void && !d->ptr_depth && !d->func)
 		die_at(&d->where, "can't have a void variable");
 }
 
