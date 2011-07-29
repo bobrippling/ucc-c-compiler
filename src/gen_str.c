@@ -43,7 +43,9 @@ void print_decl(decl *d)
 
 void print_sym(sym *s)
 {
-	idt_printf("sym: offset=%d\n", s->offset);
+	idt_printf("sym: type=%s, offset=%d\n",
+			s->type == sym_auto ? "auto" : "arg",
+			s->offset);
 	indent++;
 	print_decl(s->decl);
 	indent--;
@@ -122,16 +124,6 @@ void print_tree(tree *t)
 		}
 	}
 
-	if(t->symtab_parent){
-		sym *s;
-		idt_printf("symtable [master]:\n");
-		for(s = t->symtab->first; s; s = s->next){
-			indent++;
-			print_sym(s);
-			indent--;
-		}
-	}
-
 	if(t->codes){
 		tree **iter;
 
@@ -144,10 +136,23 @@ void print_tree(tree *t)
 	}
 }
 
-void print_fn(function *f)
+void gen_str(function *f)
 {
+	sym *s;
+
 	idt_printf("function: decl: ");
+	indent++;
+
 	print_decl(f->func_decl);
 
+	idt_printf("symtable:\n");
+	for(s = f->symtab->first; s; s = s->next){
+		indent++;
+		print_sym(s);
+		indent--;
+	}
+
 	PRINT_IF(f, code, print_tree)
+
+	indent--;
 }

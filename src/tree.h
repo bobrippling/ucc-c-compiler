@@ -85,8 +85,7 @@ struct tree
 	decl **decls; /* block definitions, e.g. { int i... } */
 	tree **codes; /* for a code block */
 
-	symtable *symtab; /* for a code block */
-	int symtab_parent; /* are we the 'master' */
+	symtable *symtab; /* pointer to the containing function's symtab */
 };
 
 enum type
@@ -114,6 +113,7 @@ struct function
 	decl *func_decl;
 	decl **args;
 	tree *code;
+	symtable *symtab;
 };
 
 tree     *tree_new();

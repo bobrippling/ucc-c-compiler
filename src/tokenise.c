@@ -98,7 +98,7 @@ static int rawnextchar()
 	if(buffereof)
 		return EOF;
 
-	while(!bufferpos || *bufferpos == '\0'){
+	while(!bufferpos || !*bufferpos){
 		tokenise_read_line();
 		if(buffereof)
 			return EOF;

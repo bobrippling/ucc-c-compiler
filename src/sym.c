@@ -19,7 +19,7 @@ symtable *symtab_new()
 	return p;
 }
 
-void symtab_add(symtable *tab, decl *d)
+sym *symtab_add(symtable *tab, decl *d)
 {
 	sym *new;
 
@@ -27,6 +27,10 @@ void symtab_add(symtable *tab, decl *d)
 
 	new->next = tab->first;
 	tab->first = new;
+
+	new->type = sym_auto;
+
+	return new;
 }
 
 void symtab_free(symtable *tab)

@@ -17,10 +17,16 @@ void walk_expr(expr *e, symtable *tab)
 {
 	switch(e->type){
 		case expr_identifier:
-			/*asm_new(asm_load_ident, e->spel);*/
-			asm_temp("mov rax, [rbp - %d]", symtab_search(tab, e->spel)->offset);
+		{
+			sym *s = symtab_search(tab, e->spel);
+			if(s->type == sym_auto)
+				asm_temp("mov rax, [rbp - %d]", (2 * platform_word_size()) + s->offset);
+			else
+				asm_temp("mov rax, [rbp + %d]", platform_word_size() + s->offset);
+
 			asm_temp("push rax");
 			break;
+		}
 
 		case expr_val:
 			/*asm_new(asm_load_val, &e->val);*/
@@ -73,22 +79,10 @@ void walk_expr(expr *e, symtable *tab)
 
 void walk_tree(tree *t)
 {
-	int offset = 0;
-
 	WALK_IF(t, lhs, walk_tree);
 	WALK_IF(t, rhs, walk_tree);
 	if(t->expr)
 		walk_expr(t->expr, t->symtab);
-
-	if(t->symtab_parent){
-		sym *s;
-
-		for(s = t->symtab->first; s; s = s->next)
-			offset += platform_word_size();
-
-		if(offset)
-			asm_temp("sub rsp, %d", offset);
-	}
 
 	if(t->codes){
 		tree **iter;
@@ -96,18 +90,28 @@ void walk_tree(tree *t)
 		for(iter = t->codes; *iter; iter++)
 			walk_tree(*iter);
 	}
-
-	if(offset)
-		asm_temp("add rsp, %d", offset);
 }
 
-void walk_fn(function *f)
+void gen_asm(function *f)
 {
 	if(f->code){
+		int offset;
+		sym *s;
+
 		asm_temp("%s:", f->func_decl->spel);
 		asm_temp("push rbp");
 		asm_temp("mov rbp, rsp");
+
+		for(s = f->symtab->first; s; s = s->next)
+			if(s->type == sym_auto)
+				offset += platform_word_size();
+
+		if(offset)
+			asm_temp("sub rsp, %d", offset);
 		walk_tree(f->code);
+		if(offset)
+			asm_temp("add rsp, %d", offset);
+
 		asm_temp("leave");
 		asm_temp("ret");
 	}
