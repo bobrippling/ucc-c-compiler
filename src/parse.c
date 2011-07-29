@@ -182,10 +182,10 @@ expr *parse_expr_binary_op()
 
 expr *parse_expr_sum()
 {
-	/* above [+-] above */
+	/* above [+] above (token_minus is handled as a unary operator) */
 	return parse_expr_join(
 			parse_expr_binary_op, parse_expr_sum,
-				token_plus, token_minus, token_unknown);
+				token_plus, token_unknown);
 }
 
 expr *parse_expr_bit_op()
