@@ -17,8 +17,15 @@ typedef struct
 
 } asmop;
 
+enum asm_sym_type
+{
+	ASM_SET,
+	ASM_LOAD
+};
+
 void asm_new(enum asm_type, void *);
 void asm_temp(const char *, ...);
+void asm_sym(enum asm_sym_type, sym *, const char *);
 
 
 #endif

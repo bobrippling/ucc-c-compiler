@@ -17,16 +17,9 @@ void walk_expr(expr *e, symtable *tab)
 {
 	switch(e->type){
 		case expr_identifier:
-		{
-			sym *s = symtab_search(tab, e->spel);
-			if(s->type == sym_auto)
-				asm_temp("mov rax, [rbp - %d]", (2 * platform_word_size()) + s->offset);
-			else
-				asm_temp("mov rax, [rbp + %d]", platform_word_size() + s->offset);
-
+			asm_sym(ASM_LOAD, symtab_search(tab, e->spel), "rax");
 			asm_temp("push rax");
 			break;
-		}
 
 		case expr_val:
 			/*asm_new(asm_load_val, &e->val);*/
@@ -42,7 +35,7 @@ void walk_expr(expr *e, symtable *tab)
 			walk_expr(e->expr, tab);
 			/*asm_new(asm_assign, e->spel);*/
 			asm_temp("pop rax");
-			asm_temp("mov [rbp - %d], rax", symtab_search(tab, e->spel)->offset);
+			asm_sym(ASM_SET, symtab_search(tab, e->spel), "rax");
 			break;
 
 		case expr_funcall:
@@ -98,6 +91,7 @@ void gen_asm(function *f)
 		int offset;
 		sym *s;
 
+		asm_temp("global %s", f->func_decl->spel);
 		asm_temp("%s:", f->func_decl->spel);
 		asm_temp("push rbp");
 		asm_temp("mov rbp, rsp");
@@ -114,5 +108,7 @@ void gen_asm(function *f)
 
 		asm_temp("leave");
 		asm_temp("ret");
+	}else{
+		asm_temp("extern %s", f->func_decl->spel);
 	}
 }

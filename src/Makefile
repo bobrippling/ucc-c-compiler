@@ -22,13 +22,15 @@ test: cc1
 .PHONY: clean test
 
 alloc.o: alloc.c tree.h alloc.h util.h
-asm.o: asm.c asm.h tree.h
-asm_op.o: asm_op.c tree.h gen_asm.h asm.h util.h
-cc1.o: cc1.c tree.h tokenise.h util.h parse.h fold.h gen.h
-fold.o: fold.c tree.h fold.h util.h sym.h
-gen_asm.o: gen_asm.c tree.h macros.h asm.h platform.h sym.h asm_op.h
+asm.o: asm.c tree.h sym.h asm.h platform.h
+asm_op.o: asm_op.c tree.h gen_asm.h asm.h util.h asm_op.h
+cc1.o: cc1.c tree.h tokenise.h util.h parse.h fold.h gen.h gen_asm.h \
+ gen_str.h
+fold.o: fold.c tree.h fold.h util.h sym.h platform.h
+gen_asm.o: gen_asm.c tree.h macros.h asm.h platform.h sym.h asm_op.h \
+ gen_asm.h
 gen.o: gen.c tree.h gen_str.h gen_asm.h
-gen_str.o: gen_str.c tree.h macros.h
+gen_str.o: gen_str.c tree.h macros.h sym.h
 INPUT.o: INPUT.c
 parse.o: parse.c tokenise.h tree.h parse.h alloc.h tokconv.h util.h
 platform.o: platform.c platform.h
