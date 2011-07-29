@@ -2,10 +2,10 @@
 #include "gen_str.h"
 #include "gen_asm.h"
 
-void gen(function **funcs)
+void gen(function **funcs, void (*f)(function *))
 {
 	function **iter;
 
 	for(iter = funcs; *iter; iter++)
-		walk_fn(*iter);
+		f(*iter);
 }

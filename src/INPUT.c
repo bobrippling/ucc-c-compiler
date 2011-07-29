@@ -1,18 +1,22 @@
+tim(int a, int b, int c)
+{
+	printd(a + b + c);
+}
+
 main()
 {
+	tim(1,2,3);
+	/*
 	int i, j;
+
+	i = 1;
 	j = 2;
-	i = 5 + 2 - j;
 
 	{
-		int q;
-		q = 2;
+		int k;
+		k = 3;
+
+		tim(i, j, k);
 	}
+	*/
 }
-/*
-tim()
-{
-	int x, y;
-	y = 2;
-}
-*/

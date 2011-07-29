@@ -42,6 +42,8 @@ void fold_expr(expr *e, symtable *stab)
 
 void fold_code(tree *t, symtable *parent_tab)
 {
+	t->symtab = parent_tab;
+
 	switch(t->type){
 		case stat_do:
 		case stat_if:
@@ -56,12 +58,6 @@ void fold_code(tree *t, symtable *parent_tab)
 			if(t->decls){
 				decl **iter;
 
-				if(!parent_tab){
-					/* this tree is the first in a function */
-					parent_tab = symtab_new();
-					t->symtab_parent = 1;
-				}
-
 				for(iter = t->decls; *iter; iter++)
 					symtab_add(parent_tab, *iter);
 			}
@@ -74,12 +70,20 @@ void fold_code(tree *t, symtable *parent_tab)
 			}
 
 			if(parent_tab){
+				int auto_offset, arg_offset;
 				sym *s;
-				int offset = 0;
+
+				auto_offset = arg_offset = 0;
+
 				for(s = parent_tab->first; s; s = s->next){
 					/* extern check goes here */
-					s->offset = offset;
-					offset += platform_word_size(); /* for now */
+					if(s->type == sym_auto){
+						s->offset = auto_offset;
+						auto_offset += platform_word_size();
+					}else{
+						s->offset = arg_offset;
+						arg_offset += platform_word_size();
+					}
 				}
 			}
 			break;
@@ -92,8 +96,6 @@ void fold_code(tree *t, symtable *parent_tab)
 		case stat_noop:
 			break;
 	}
-
-	t->symtab = parent_tab;
 }
 
 void fold_decl(decl *d)
@@ -111,8 +113,19 @@ void fold_func(function *f)
 	for(diter = f->args; diter && *diter; diter++)
 		fold_decl(*diter);
 
-	if(f->code)
-		fold_code(f->code, NULL);
+	if(f->code){
+		decl **d;
+
+		f->symtab = symtab_new();
+
+		if(f->args)
+			for(d = f->args; *d; d++){
+				sym *new = symtab_add(f->symtab, *d);
+				new->type = sym_arg;
+			}
+
+		fold_code(f->code, f->symtab);
+	}
 }
 
 void fold(function **fs)

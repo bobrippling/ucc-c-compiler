@@ -379,14 +379,10 @@ function *parse_function_proto()
 	eat(token_open_paren);
 
 	while((curtok_is_type())){
-		decl *d = parse_decl(type_unknown, 0);
+		dynarray_add((void ***)&f->args, parse_decl(type_unknown, 0));
 
-		dynarray_add((void ***)&f->args, d);
-
-		if(curtok == token_close_paren){
-			eat(token_close_paren);
+		if(curtok == token_close_paren)
 			break;
-		}
 
 		eat(token_comma);
 		/* continue loop */
@@ -401,10 +397,18 @@ function *parse_function()
 {
 	function *f = parse_function_proto();
 
-	if(curtok == token_semicolon)
+	if(curtok == token_semicolon){
 		eat(token_semicolon);
-	else
+	}else{
+		if(f->args){
+			decl **iter;
+			/* check for unnamed params */
+			for(iter = f->args; *iter; iter++)
+				if(!(*iter)->spel)
+					die_at(NULL, "function \"%s\" has unnamed arguments", f->func_decl->spel);
+		}
 		f->code = parse_code();
+	}
 
 	return f;
 }
