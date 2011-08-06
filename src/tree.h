@@ -66,7 +66,6 @@ struct tree
 	{
 		stat_do,
 		stat_if,
-		stat_else,
 		stat_while,
 		stat_for,
 		stat_break,

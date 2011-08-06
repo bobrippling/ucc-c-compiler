@@ -88,7 +88,6 @@ const char *stat_to_str(enum stat_type t)
 	switch(t){
 		CASE_STR(stat_do);
 		CASE_STR(stat_if);
-		CASE_STR(stat_else);
 		CASE_STR(stat_while);
 		CASE_STR(stat_for);
 		CASE_STR(stat_break);

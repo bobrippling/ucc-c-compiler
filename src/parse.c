@@ -229,6 +229,8 @@ tree *parse_if()
 
 	t->lhs = parse_code();
 
+	/* TODO: else */
+
 	return t;
 }
 

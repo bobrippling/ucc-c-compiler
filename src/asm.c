@@ -16,7 +16,8 @@ void asm_sym(enum asm_sym_type t, sym *s, const char *reg)
 			is_auto ? '-' : '+',
 			((is_auto ? 1 : 2) * platform_word_size()) + s->offset);
 
-	asm_temp("mov %s, %s ; %s",
+	asm_temp("%s %s, %s ; %s",
+			t == ASM_LEA ? "lea"    : "mov",
 			t == ASM_SET ? brackets : reg,
 			t == ASM_SET ? reg      : brackets,
 			s->decl->spel
@@ -55,7 +56,7 @@ void asm_new(enum asm_type t, void *p)
 			break;
 
 		case asm_addrof:
-			printf("&%s\n", p);
+			fprintf(stderr, "BUH?? (addrof)\n");
 			break;
 	}
 }

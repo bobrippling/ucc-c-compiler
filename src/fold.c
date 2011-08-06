@@ -46,7 +46,6 @@ void fold_code(tree *t, symtable *parent_tab)
 
 	switch(t->type){
 		case stat_do:
-		case stat_else:
 		case stat_while:
 		case stat_for:
 		case stat_break:

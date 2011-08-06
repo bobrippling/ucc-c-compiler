@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "tree.h"
 #include "macros.h"
@@ -8,10 +9,26 @@
 #include "sym.h"
 #include "asm_op.h"
 #include "gen_asm.h"
+#include "alloc.h"
 
 #define WALK_IF(st, sub, fn) \
 	if(st->sub) \
 		fn(st->sub)
+
+static int label_last = 1;
+
+char *label(const char *fmt)
+{
+	int len;
+	char *ret;
+
+	len = strlen(fmt) + 5;
+	ret = umalloc(len + 1);
+
+	snprintf(ret, len, "%s_%d", fmt, label_last);
+
+	return ret;
+}
 
 void walk_expr(expr *e, symtable *tab)
 {
@@ -57,7 +74,8 @@ void walk_expr(expr *e, symtable *tab)
 		}
 
 		case expr_addr:
-			asm_new(asm_addrof, e->spel);
+			asm_sym(ASM_LEA, symtab_search(tab, e->spel), "rax");
+			asm_temp("push rax");
 			break;
 
 		case expr_sizeof:
@@ -72,17 +90,53 @@ void walk_expr(expr *e, symtable *tab)
 
 void walk_tree(tree *t)
 {
-	/* FIXME: switch t->type - specifically if() - test/printd.c */
-	WALK_IF(t, lhs, walk_tree);
-	WALK_IF(t, rhs, walk_tree);
-	if(t->expr)
-		walk_expr(t->expr, t->symtab);
+	switch(t->type){
+		case stat_if:
+		{
+			char *lbl_else = label("else");
+			char *lbl_fi   = label("fi");
 
-	if(t->codes){
-		tree **iter;
+			walk_expr(t->expr, t->symtab);
 
-		for(iter = t->codes; *iter; iter++)
-			walk_tree(*iter);
+			asm_temp("pop rax");
+			asm_temp("test rax, rax");
+			asm_temp("jz %s", lbl_else);
+			walk_tree(t->lhs);
+			asm_temp("jmp %s", lbl_fi);
+			asm_temp("%s:", lbl_else);
+			asm_temp("; else goes here");
+			asm_temp("%s:", lbl_fi);
+#if 0
+			WALK_IF(t, lhs, walk_tree);
+			WALK_IF(t, rhs, walk_tree);
+#endif
+			free(lbl_else);
+			break;
+			}
+
+		case stat_do:
+		case stat_while:
+		case stat_for:
+		case stat_break:
+		case stat_return:
+			fprintf(stderr, "walk_tree: TODO %s\n", stat_to_str(t->type));
+			break;
+
+		case stat_expr:
+			walk_expr(t->expr, t->symtab);
+			break;
+
+		case stat_code:
+			if(t->codes){
+				tree **iter;
+
+				for(iter = t->codes; *iter; iter++)
+					walk_tree(*iter);
+			}
+			break;
+
+		case stat_noop:
+			break;
 	}
 }
 
