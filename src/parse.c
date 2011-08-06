@@ -124,20 +124,8 @@ expr *parse_expr_unary_op()
 			e->type = expr_op;
 			e->op = curtok_to_op();
 
-			if(curtok == token_minus){
-				eat(curtok);
-
-				e->lhs = expr_new();
-				e->lhs->type = expr_val;
-				e->lhs->val = 0;
-
-				/* return expr( 0 - `expr` ) */
-
-				e->rhs = parse_expr_unary_op();
-			}else{
-				eat(curtok);
-				e->lhs = parse_expr_unary_op();
-			}
+			eat(curtok);
+			e->lhs = parse_expr_unary_op();
 			return e;
 
 		case token_identifier:
@@ -229,7 +217,10 @@ tree *parse_if()
 
 	t->lhs = parse_code();
 
-	/* TODO: else */
+	if(curtok == token_else){
+		eat(token_else);
+		t->rhs = parse_code();
+	}
 
 	return t;
 }
@@ -399,18 +390,10 @@ function *parse_function()
 {
 	function *f = parse_function_proto();
 
-	if(curtok == token_semicolon){
+	if(curtok == token_semicolon)
 		eat(token_semicolon);
-	}else{
-		if(f->args){
-			decl **iter;
-			/* check for unnamed params */
-			for(iter = f->args; *iter; iter++)
-				if(!(*iter)->spel)
-					die_at(NULL, "function \"%s\" has unnamed arguments", f->func_decl->spel);
-		}
+	else
 		f->code = parse_code();
-	}
 
 	return f;
 }

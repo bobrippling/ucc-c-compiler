@@ -55,6 +55,8 @@ void fold_code(tree *t, symtable *parent_tab)
 		case stat_if:
 			fold_expr(t->expr, parent_tab);
 			fold_code(t->lhs,  parent_tab);
+			if(t->rhs)
+				fold_code(t->rhs,  parent_tab);
 			break;
 
 		case stat_code:
@@ -118,6 +120,14 @@ void fold_func(function *f)
 
 	if(f->code){
 		decl **d;
+
+		if(f->args){
+			decl **iter;
+			/* check for unnamed params */
+			for(iter = f->args; *iter; iter++)
+				if(!(*iter)->spel)
+					die_at(&f->where, "function \"%s\" has unnamed arguments", f->func_decl->spel);
+		}
 
 		f->symtab = symtab_new();
 

@@ -69,20 +69,18 @@ static void asm_compare(expr *e, symtable *tab)
 
 static void asm_shortcircuit(expr *e, symtable *tab)
 {
-	char *baillabel = ".shortcircuit_bail_TODO";
+	char *baillabel = asm_label("shortcircuit_bail");
 	walk_expr(e->lhs, tab);
 
 	asm_temp("mov rax,[rsp]");
 	asm_temp("test rax,rax");
 	/* leave the result on the stack (if false) and bail */
-	if(e->op == op_andsc)
-		asm_temp("jz %s", baillabel);
-	else
-		asm_temp("jnz %s", baillabel);
+	asm_temp("j%sz %s", e->op == op_andsc ? "" : "n", baillabel);
 	asm_temp("pop rax");
 	walk_expr(e->rhs, tab);
 
 	asm_temp(baillabel);
+	free(baillabel);
 }
 
 void asm_operate(expr *e, symtable *tab)
@@ -143,11 +141,11 @@ void asm_operate(expr *e, symtable *tab)
 	}
 
 	/* get here if op is *, +, - or ~ */
+	walk_expr(e->lhs, tab);
 	if(e->op == op_bnot || e->op == op_minus){
 		asm_temp("pop rax");
 		asm_temp("%s rax", instruct);
 	}else{
-		walk_expr(e->lhs, tab);
 		walk_expr(e->rhs, tab);
 		asm_temp("pop rbx");
 		asm_temp("pop rax");
