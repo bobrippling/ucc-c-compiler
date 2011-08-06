@@ -16,8 +16,10 @@ cc1: \
 clean:
 	rm -f *.o cc1
 
-test: cc1
-	./cc1 INPUT.c
+test: INPUT.c cc1
+	./cc1 $< > INPUT.s
+	nasm -f elf64 -o INPUT.o INPUT.s
+	ld -o $@ INPUT.o ../lib/*.o
 
 .PHONY: clean test
 
@@ -28,7 +30,7 @@ cc1.o: cc1.c tree.h tokenise.h util.h parse.h fold.h gen.h gen_asm.h \
  gen_str.h
 fold.o: fold.c tree.h fold.h util.h sym.h platform.h
 gen_asm.o: gen_asm.c tree.h macros.h asm.h platform.h sym.h asm_op.h \
- gen_asm.h
+ gen_asm.h alloc.h
 gen.o: gen.c tree.h gen_str.h gen_asm.h
 gen_str.o: gen_str.c tree.h macros.h sym.h
 INPUT.o: INPUT.c

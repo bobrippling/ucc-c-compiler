@@ -1,6 +1,5 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
 
 #include "tree.h"
 #include "macros.h"
@@ -9,26 +8,10 @@
 #include "sym.h"
 #include "asm_op.h"
 #include "gen_asm.h"
-#include "alloc.h"
 
 #define WALK_IF(st, sub, fn) \
 	if(st->sub) \
 		fn(st->sub)
-
-static int label_last = 1;
-
-char *label(const char *fmt)
-{
-	int len;
-	char *ret;
-
-	len = strlen(fmt) + 5;
-	ret = umalloc(len + 1);
-
-	snprintf(ret, len, "%s_%d", fmt, label_last);
-
-	return ret;
-}
 
 void walk_expr(expr *e, symtable *tab)
 {
@@ -93,8 +76,8 @@ void walk_tree(tree *t)
 	switch(t->type){
 		case stat_if:
 		{
-			char *lbl_else = label("else");
-			char *lbl_fi   = label("fi");
+			char *lbl_else = asm_label("else");
+			char *lbl_fi   = asm_label("fi");
 
 			walk_expr(t->expr, t->symtab);
 
@@ -104,15 +87,14 @@ void walk_tree(tree *t)
 			walk_tree(t->lhs);
 			asm_temp("jmp %s", lbl_fi);
 			asm_temp("%s:", lbl_else);
-			asm_temp("; else goes here");
+			if(t->rhs)
+				walk_tree(t->rhs);
 			asm_temp("%s:", lbl_fi);
-#if 0
-			WALK_IF(t, lhs, walk_tree);
-			WALK_IF(t, rhs, walk_tree);
-#endif
+
 			free(lbl_else);
+			free(lbl_fi);
 			break;
-			}
+		}
 
 		case stat_do:
 		case stat_while:

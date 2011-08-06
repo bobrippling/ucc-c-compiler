@@ -36,7 +36,7 @@ void print_decl(decl *d)
 			d->spel, d->ptr_depth,
 			d->type == type_int ? "int" :
 			d->type == type_byte ? "byte" :
-			d->type == type_byte ? "void" :
+			d->type == type_void ? "void" :
 			"unknown"
 			);
 }
@@ -145,11 +145,13 @@ void gen_str(function *f)
 
 	print_decl(f->func_decl);
 
-	idt_printf("symtable:\n");
-	for(s = f->symtab->first; s; s = s->next){
-		indent++;
-		print_sym(s);
-		indent--;
+	if(f->symtab){
+		idt_printf("symtable:\n");
+		for(s = f->symtab->first; s; s = s->next){
+			indent++;
+			print_sym(s);
+			indent--;
+		}
 	}
 
 	PRINT_IF(f, code, print_tree)

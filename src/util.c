@@ -14,10 +14,12 @@ void vdie(struct where *w, va_list l, const char *fmt)
 
 	vfprintf(stderr, fmt, l);
 
-	if(fmt[strlen(fmt)-1] == ':')
+	if(fmt[strlen(fmt)-1] == ':'){
+		fputc(' ', stderr);
 		perror(NULL);
-	else
+	}else{
 		fputc('\n', stderr);
+	}
 
 	exit(1);
 }

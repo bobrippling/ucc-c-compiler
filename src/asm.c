@@ -1,11 +1,28 @@
 #include <stdio.h>
 #include <stdarg.h>
+#include <string.h>
 
 #include "tree.h"
 #include "sym.h"
 #include "asm.h"
 #include "tree.h"
 #include "platform.h"
+#include "alloc.h"
+
+static int label_last = 1;
+
+char *asm_label(const char *fmt)
+{
+	int len;
+	char *ret;
+
+	len = strlen(fmt) + 5;
+	ret = umalloc(len + 1);
+
+	snprintf(ret, len, "%s_%d", fmt, label_last++);
+
+	return ret;
+}
 
 void asm_sym(enum asm_sym_type t, sym *s, const char *reg)
 {
