@@ -20,7 +20,8 @@ typedef struct
 enum asm_sym_type
 {
 	ASM_SET,
-	ASM_LOAD
+	ASM_LOAD,
+	ASM_LEA
 };
 
 void asm_new(enum asm_type, void *);
