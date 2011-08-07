@@ -1,17 +1,17 @@
 CC  = ../src/cc1
-OBJ = crt.o printd.o
+OBJ = crt.o print.o
 
 libs: ${OBJ}
 
 crt.o: crt.s
 	nasm -f elf64 -o $@ $<
-printd.o: printd.s
+print.o: print.s
 	nasm -f elf64 -o $@ $<
 
-printd.s: printd.c
+print.s: print.c
 	../src/cc1 $< > $@
 
 clean:
-	rm -f *.o printd.s
+	rm -f *.o print.s
 
 .PHONY: libs clean

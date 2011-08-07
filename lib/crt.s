@@ -5,6 +5,10 @@ section .text
 	extern main
 
 _start:
+	pop rdi ; argc
+	mov rsi, rsp ; argv
+	push rdi
+	push rsi
 	call main
 	mov rax, 0
 	push rax
