@@ -1,4 +1,4 @@
-int write(int, int, int);
+int write(int, byte *, int);
 
 void printd_rec(int n)
 {
@@ -6,7 +6,7 @@ void printd_rec(int n)
 	d = n / 10;
 	m = n % 10;
 	if(d)
-		printd(d);
+		printd_rec(d);
 	m = m + '0';
 	write(1, &m, 1);
 }
@@ -25,4 +25,17 @@ void printd(int n)
 	printd_rec(n);
 	nl = '\n';
 	write(1, &nl, 1);
+}
+
+printc(byte c)
+{
+	write(1, &c, 1);
+}
+
+printstr(byte *str)
+{
+	while(*str){
+		printc(*str);
+		str = str + 1;
+	}
 }
