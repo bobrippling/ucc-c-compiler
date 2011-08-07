@@ -62,7 +62,7 @@ void walk_expr(expr *e, symtable *tab)
 			break;
 
 		case expr_sizeof:
-			fprintf(stderr, "TODO: sizeof\n");
+			asm_temp("push %d ; sizeof %s", platform_word_size(), e->spel);
 			break;
 
 		case expr_str:
@@ -76,8 +76,8 @@ void walk_tree(tree *t)
 	switch(t->type){
 		case stat_if:
 		{
-			char *lbl_else = asm_label("else");
-			char *lbl_fi   = asm_label("fi");
+			char *lbl_else = asm_new_label("else");
+			char *lbl_fi   = asm_new_label("fi");
 
 			walk_expr(t->expr, t->symtab);
 
@@ -86,21 +86,66 @@ void walk_tree(tree *t)
 			asm_temp("jz %s", lbl_else);
 			walk_tree(t->lhs);
 			asm_temp("jmp %s", lbl_fi);
-			asm_temp("%s:", lbl_else);
+			asm_label(lbl_else);
 			if(t->rhs)
 				walk_tree(t->rhs);
-			asm_temp("%s:", lbl_fi);
+			asm_label(lbl_fi);
 
 			free(lbl_else);
 			free(lbl_fi);
 			break;
 		}
 
-		case stat_do:
-		case stat_while:
 		case stat_for:
-		case stat_break:
-		case stat_return:
+		{
+			char *lbl_for, *lbl_fin;
+
+			lbl_for = asm_new_label("for");
+			lbl_fin = asm_new_label("for_fin");
+
+			walk_expr(t->flow->for_init, t->symtab);
+
+			asm_label(lbl_for);
+			walk_expr(t->flow->for_while, t->symtab);
+
+			asm_temp("pop rax");
+			asm_temp("test rax, rax");
+			asm_temp("jz %s", lbl_fin);
+
+			walk_tree(t->lhs);
+			walk_expr(t->flow->for_inc, t->symtab);
+
+			asm_temp("jmp %s", lbl_for);
+
+			asm_label(lbl_fin);
+
+			free(lbl_for);
+			free(lbl_fin);
+			break;
+		}
+
+		case stat_while:
+		{
+			char *lbl_start, *lbl_fin;
+
+			lbl_start = asm_new_label("while");
+			lbl_fin   = asm_new_label("while_fin");
+
+			asm_label(lbl_start);
+			walk_expr(t->expr, t->symtab);
+			asm_temp("pop rax");
+			asm_temp("test rax, rax");
+			asm_temp("jz %s", lbl_fin);
+			walk_tree(t->lhs);
+			asm_temp("jmp %s", lbl_start);
+			asm_label(lbl_fin);
+
+			free(lbl_start);
+			free(lbl_fin);
+			break;
+		}
+
+		default:
 			fprintf(stderr, "walk_tree: TODO %s\n", stat_to_str(t->type));
 			break;
 
@@ -129,7 +174,7 @@ void gen_asm(function *f)
 		sym *s;
 
 		asm_temp("global %s", f->func_decl->spel);
-		asm_temp("%s:", f->func_decl->spel);
+		asm_label(f->func_decl->spel);
 		asm_temp("push rbp");
 		asm_temp("mov rbp, rsp");
 

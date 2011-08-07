@@ -26,8 +26,10 @@ enum asm_sym_type
 
 void asm_new(enum asm_type, void *);
 void asm_temp(const char *, ...);
+void asm_label(const char *);
 void asm_sym(enum asm_sym_type, sym *, const char *);
-char *asm_label(const char *fmt);
+
+char *asm_new_label(const char *fmt);
 
 
 #endif

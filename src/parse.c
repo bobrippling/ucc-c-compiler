@@ -66,6 +66,7 @@ expr *parse_expr_unary_op()
 
 	switch(curtok){
 		case token_sizeof:
+			eat(token_sizeof);
 			e = expr_new();
 			e->type = expr_sizeof;
 			if(curtok != token_identifier)
@@ -127,6 +128,11 @@ expr *parse_expr_unary_op()
 			eat(curtok);
 			e->lhs = parse_expr_unary_op();
 			return e;
+
+		case token_increment:
+		case token_decrement:
+			fprintf(stderr, "TODO: ");
+			break;
 
 		case token_identifier:
 			e = expr_new();
@@ -250,9 +256,47 @@ tree *expr_to_tree(expr *e)
 }
 
 tree*parse_switch(){return NULL;}
-tree*parse_while(){return NULL;}
 tree*parse_do(){return NULL;}
-tree*parse_for(){return NULL;}
+
+tree *parse_while()
+{
+	tree *t = tree_new();
+
+	eat(token_while);
+	eat(token_open_paren);
+
+	t->expr = parse_expr();
+	eat(token_close_paren);
+	t->lhs = parse_code();
+
+	t->type = stat_while;
+
+	return t;
+}
+
+tree *parse_for()
+{
+	tree *t = tree_new();
+	tree_flow *tf;
+
+	eat(token_for);
+	eat(token_open_paren);
+
+	tf = t->flow = tree_flow_new();
+
+	tf->for_init  = parse_expr();
+	eat(token_semicolon);
+	tf->for_while = parse_expr();
+	eat(token_semicolon);
+	tf->for_inc   = parse_expr();
+	eat(token_close_paren);
+
+	t->lhs = parse_code();
+
+	t->type = stat_for;
+
+	return t;
+}
 
 tree *parse_code_declblock()
 {
