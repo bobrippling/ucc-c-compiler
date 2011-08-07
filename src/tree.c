@@ -14,6 +14,12 @@ void where_new(struct where *w)
 	w->fname = currentfname;
 }
 
+tree_flow *tree_flow_new()
+{
+	tree_flow *t = umalloc(sizeof *t);
+	return t;
+}
+
 tree *tree_new()
 {
 	tree *t = umalloc(sizeof *t);
@@ -95,6 +101,17 @@ const char *stat_to_str(enum stat_type t)
 		CASE_STR(stat_expr);
 		CASE_STR(stat_noop);
 		CASE_STR(stat_code);
+	}
+	return NULL;
+}
+
+const char *type_to_str(enum type t)
+{
+	switch(t){
+		CASE_STR(type_int);
+		CASE_STR(type_byte);
+		CASE_STR(type_void);
+		CASE_STR(type_unknown);
 	}
 	return NULL;
 }

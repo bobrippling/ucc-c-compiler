@@ -11,7 +11,7 @@
 
 static int label_last = 1;
 
-char *asm_label(const char *fmt)
+char *asm_new_label(const char *fmt)
 {
 	int len;
 	char *ret;
@@ -33,10 +33,11 @@ void asm_sym(enum asm_sym_type t, sym *s, const char *reg)
 			is_auto ? '-' : '+',
 			((is_auto ? 1 : 2) * platform_word_size()) + s->offset);
 
-	asm_temp("%s %s, %s ; %s",
+	asm_temp("%s %s, %s ; %s%s",
 			t == ASM_LEA ? "lea"    : "mov",
 			t == ASM_SET ? brackets : reg,
 			t == ASM_SET ? reg      : brackets,
+			t == ASM_LEA ? "&"      : "",
 			s->decl->spel
 			);
 }
@@ -76,6 +77,11 @@ void asm_new(enum asm_type t, void *p)
 			fprintf(stderr, "BUH?? (addrof)\n");
 			break;
 	}
+}
+
+void asm_label(const char *lbl)
+{
+	asm_temp("%s:", lbl);
 }
 
 void asm_temp(const char *fmt, ...)

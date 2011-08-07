@@ -7,6 +7,15 @@ typedef struct where
 	int line, chr;
 } where;
 
+enum type
+{
+#define type_ptr type_int
+	type_int,
+	type_byte,
+	type_void,
+	type_unknown
+};
+
 typedef struct expr expr;
 struct expr
 {
@@ -50,13 +59,16 @@ struct expr
 	char *spel;
 	expr *expr; /* x = 5; expr is the 5 */
 	expr **funcargs;
+
+	enum type deref_type;
 };
 
-typedef struct tree     tree;
-typedef struct decl     decl;
-typedef struct function function;
-typedef struct symtable symtable;
-typedef struct sym      sym;
+typedef struct tree      tree;
+typedef struct decl      decl;
+typedef struct function  function;
+typedef struct symtable  symtable;
+typedef struct sym       sym;
+typedef struct tree_flow tree_flow;
 
 struct tree
 {
@@ -78,6 +90,8 @@ struct tree
 	tree *lhs, *rhs;
 	expr *expr; /* test expr for if and do, etc */
 
+	tree_flow *flow; /* for, switch (do and while are simple enough for ->[lr]hs) */
+
 	/* specific data */
 	int val;
 	function *func;
@@ -87,12 +101,10 @@ struct tree
 	symtable *symtab; /* pointer to the containing function's symtab */
 };
 
-enum type
+struct tree_flow
 {
-	type_int,
-	type_byte,
-	type_void,
-	type_unknown
+	expr *for_init, *for_while, *for_inc;
+	/* TODO: switch */
 };
 
 struct decl
@@ -115,13 +127,16 @@ struct function
 	symtable *symtab;
 };
 
-tree     *tree_new();
-expr     *expr_new();
-decl     *decl_new();
-function *function_new();
+tree      *tree_new();
+expr      *expr_new();
+decl      *decl_new();
+function  *function_new();
+
+tree_flow *tree_flow_new();
 
 const char *op_to_str(enum op_type o);
 const char *expr_to_str(enum expr_type t);
 const char *stat_to_str(enum stat_type t);
+const char *type_to_str(enum type t);
 
 #endif

@@ -69,7 +69,7 @@ static void asm_compare(expr *e, symtable *tab)
 
 static void asm_shortcircuit(expr *e, symtable *tab)
 {
-	char *baillabel = asm_label("shortcircuit_bail");
+	char *baillabel = asm_new_label("shortcircuit_bail");
 	walk_expr(e->lhs, tab);
 
 	asm_temp("mov rax,[rsp]");
@@ -111,7 +111,16 @@ void asm_operate(expr *e, symtable *tab)
 		case op_deref:
 			walk_expr(e->lhs, tab);
 			asm_temp("pop rax");
-			asm_temp("mov rax, [rax]");
+			switch(e->deref_type){
+				case type_byte:
+					asm_temp("movzx rax, byte [rax]");
+					break;
+				case type_int:
+				case type_void:
+				case type_unknown:
+					asm_temp("mov rax, [rax]");
+					break;
+			}
 			asm_temp("push rax");
 			return;
 

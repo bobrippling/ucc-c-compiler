@@ -17,6 +17,8 @@
 
 static int indent = 0;
 
+void print_tree(tree *t);
+
 void idt_printf(const char *fmt, ...)
 {
 	va_list l;
@@ -66,6 +68,8 @@ void print_expr(expr *e)
 
 		case expr_op:
 			idt_printf("op: %s\n", op_to_str(e->op));
+			if(e->op == op_deref)
+				idt_printf("deref size: %s\n", type_to_str(e->deref_type));
 			PRINT_IF(e, lhs, print_expr);
 			PRINT_IF(e, rhs, print_expr);
 			break;
@@ -100,9 +104,24 @@ void print_expr(expr *e)
 			break;
 		}
 
+		case expr_addr:
+			idt_printf("&%s\n", e->spel);
+			break;
+
 		default:
+			idt_printf("%s not handled!\n", expr_to_str(e->type));
 			break;
 	}
+}
+
+void print_tree_flow(tree_flow *t)
+{
+	idt_printf("flow:\n");
+	indent++;
+	PRINT_IF(t, for_init,  print_expr);
+	PRINT_IF(t, for_while, print_expr);
+	PRINT_IF(t, for_inc,   print_expr);
+	indent--;
 }
 
 void print_tree(tree *t)
@@ -133,6 +152,13 @@ void print_tree(tree *t)
 			print_tree(*iter);
 			indent--;
 		}
+	}
+
+	if(t->flow){
+		indent++;
+		print_tree_flow(t->flow);
+		PRINT_IF(t, lhs, print_tree);
+		indent--;
 	}
 }
 
