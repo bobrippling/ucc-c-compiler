@@ -1,0 +1,3 @@
+Everything must have a type (for casts later on)
+i.e.
+	t->type, instead of just for identifiers, etc
