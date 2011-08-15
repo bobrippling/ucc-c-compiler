@@ -24,13 +24,13 @@ test: INPUT.c cc1
 .PHONY: clean test
 
 alloc.o: alloc.c tree.h alloc.h util.h
-asm.o: asm.c tree.h sym.h asm.h platform.h
+asm.o: asm.c tree.h sym.h asm.h platform.h alloc.h
 asm_op.o: asm_op.c tree.h gen_asm.h asm.h util.h asm_op.h
 cc1.o: cc1.c tree.h tokenise.h util.h parse.h fold.h gen.h gen_asm.h \
  gen_str.h
-fold.o: fold.c tree.h fold.h util.h sym.h platform.h
+fold.o: fold.c tree.h fold.h util.h sym.h platform.h asm.h
 gen_asm.o: gen_asm.c tree.h macros.h asm.h platform.h sym.h asm_op.h \
- gen_asm.h alloc.h
+ gen_asm.h
 gen.o: gen.c tree.h gen_str.h gen_asm.h
 gen_str.o: gen_str.c tree.h macros.h sym.h
 INPUT.o: INPUT.c

@@ -19,7 +19,7 @@ symtable *symtab_new()
 	return p;
 }
 
-sym *symtab_add(symtable *tab, decl *d)
+sym *symtab_add(symtable *tab, decl *d, enum sym_type t)
 {
 	sym *new;
 
@@ -28,7 +28,7 @@ sym *symtab_add(symtable *tab, decl *d)
 	new->next = tab->first;
 	tab->first = new;
 
-	new->type = sym_auto;
+	new->type = t;
 
 	return new;
 }
@@ -49,7 +49,8 @@ sym *symtab_search(symtable *tab, const char *s)
 
 	for(; tab; tab = tab->parent)
 		for(sym = tab->first; sym; sym = sym->next)
-			if(!strcmp(s, sym->decl->spel))
+			/* if sym->decl->spel is NULL, then it's a string lit. */
+			if(sym->decl->spel && !strcmp(s, sym->decl->spel))
 				return sym;
 
 	return NULL;

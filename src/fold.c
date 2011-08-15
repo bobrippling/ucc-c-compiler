@@ -5,6 +5,8 @@
 #include "util.h"
 #include "sym.h"
 #include "platform.h"
+#include "asm.h"
+
 
 typedef struct
 {
@@ -96,9 +98,18 @@ void fold_expr(expr *e, symtable *stab, fold_state *fs)
 		}
 
 		case expr_str:
-			/* TODO: escape escapes */
-			fprintf(stderr, "TODO: fold: handle escapes?\n");
+		{
+			/* TODO: escape escapes? */
+			/* TODO: pre-walk for all strings, add a _name db "str..." */
+			/* TODO: string id, for lookups later on */
+			sym *sym;
+			sym = symtab_add(stab, decl_new(), sym_str);
+
+			sym->str_lbl = label_str();
+
+			e->sym = sym;
 			break;
+		}
 
 		case expr_funcall:
 			if(e->funcargs){
@@ -139,7 +150,7 @@ void fold_code(tree *t, symtable *parent_tab, fold_state *fs)
 				decl **iter;
 
 				for(iter = t->decls; *iter; iter++)
-					symtab_add(parent_tab, *iter);
+					symtab_add(parent_tab, *iter, sym_auto);
 			}
 
 			/* decls must be walked first */
@@ -211,10 +222,8 @@ void fold_func(function *f)
 		f->symtab = symtab_new();
 
 		if(f->args)
-			for(d = f->args; *d; d++){
-				sym *new = symtab_add(f->symtab, *d);
-				new->type = sym_arg;
-			}
+			for(d = f->args; *d; d++)
+				symtab_add(f->symtab, *d, sym_arg);
 
 		fold_code(f->code, f->symtab, &fs);
 	}

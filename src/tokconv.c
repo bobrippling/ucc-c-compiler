@@ -13,7 +13,7 @@ enum type curtok_to_type()
 {
 	switch(curtok){
 		case token_int:  return type_int;
-		case token_byte: return type_byte;
+		case token_char: return type_char;
 		case token_void: return type_void;
 		default: break;
 	}
@@ -63,7 +63,7 @@ const char *token_to_str(enum token t)
 		CASE_STR(token_for);          CASE_STR(token_break);         CASE_STR(token_return);       CASE_STR(token_switch);
 		CASE_STR(token_case);         CASE_STR(token_default);       CASE_STR(token_sizeof);       CASE_STR(token_extern);
 		CASE_STR(token_identifier);   CASE_STR(token_integer);       CASE_STR(token_character);    CASE_STR(token_void);
-		CASE_STR(token_byte);         CASE_STR(token_int);           CASE_STR(token_elipsis);      CASE_STR(token_string);
+		CASE_STR(token_char);         CASE_STR(token_int);           CASE_STR(token_elipsis);      CASE_STR(token_string);
 		CASE_STR(token_open_paren);   CASE_STR(token_open_block);    CASE_STR(token_open_square);  CASE_STR(token_close_paren);
 		CASE_STR(token_close_block);  CASE_STR(token_close_square);  CASE_STR(token_comma);        CASE_STR(token_semicolon);
 		CASE_STR(token_colon);        CASE_STR(token_plus);          CASE_STR(token_minus);        CASE_STR(token_multiply);
@@ -103,4 +103,14 @@ char *fnam()                      \
 }
 
 NULL_AND_RET(token_current_spel, currentspelling)
-NULL_AND_RET(token_current_str,  currentstring)
+
+void token_get_current_str(char **ps, int *pl)
+{
+	extern char *currentstring;
+	extern int   currentstringlen;
+
+	*ps = currentstring;
+	*pl = currentstringlen;
+
+	currentstring = NULL;
+}

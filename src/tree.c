@@ -109,7 +109,7 @@ const char *type_to_str(enum type t)
 {
 	switch(t){
 		CASE_STR(type_int);
-		CASE_STR(type_byte);
+		CASE_STR(type_char);
 		CASE_STR(type_void);
 		CASE_STR(type_unknown);
 	}

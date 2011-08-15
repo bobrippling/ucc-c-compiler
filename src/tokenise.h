@@ -22,7 +22,7 @@ enum token
 	token_integer,     /* aka [1-9] */
 	token_character,   /* aka 'f' */
 	token_void,        /* aka subroutine */
-	token_byte,        /* aka "byte" */
+	token_char,        /* aka "char" */
 	token_int,         /* aka "int" */
 	token_elipsis,     /* aka ... */
 	token_string,      /* aka \"...\" */

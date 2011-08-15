@@ -86,7 +86,7 @@ expr *parse_expr_unary_op()
 		case token_string:
 			e = expr_new();
 			e->type = expr_str;
-			e->spel = token_current_str();
+			token_get_current_str(&e->spel, &e->val);
 			eat(token_string);
 			return e;
 

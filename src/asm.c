@@ -9,18 +9,25 @@
 #include "platform.h"
 #include "alloc.h"
 
-static int label_last = 1;
+static int label_last = 1, str_last = 1;
 
-char *asm_new_label(const char *fmt)
+char *label_code(const char *fmt)
 {
 	int len;
 	char *ret;
 
-	len = strlen(fmt) + 5;
+	len = strlen(fmt) + 10;
 	ret = umalloc(len + 1);
 
-	snprintf(ret, len, "%s_%d", fmt, label_last++);
+	snprintf(ret, len, ".%s_%d", fmt, label_last++);
 
+	return ret;
+}
+
+char *label_str()
+{
+	char *ret = umalloc(8);
+	snprintf(ret, 8, "str_%d", str_last++);
 	return ret;
 }
 
