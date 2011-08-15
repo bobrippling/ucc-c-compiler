@@ -29,7 +29,7 @@ struct statement
 	{ "case",    token_case    },
 	{ "def",     token_default },
 
-	{ "byte",    token_byte    },
+	{ "char",    token_char    },
 	{ "int",     token_int     },
 	{ "void",    token_void    },
 	{ "extern",  token_extern  },

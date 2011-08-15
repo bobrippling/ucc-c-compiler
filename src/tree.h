@@ -1,6 +1,14 @@
 #ifndef TREE_H
 #define TREE_H
 
+typedef struct expr expr;
+typedef struct tree      tree;
+typedef struct decl      decl;
+typedef struct function  function;
+typedef struct symtable  symtable;
+typedef struct sym       sym;
+typedef struct tree_flow tree_flow;
+
 typedef struct where
 {
 	const char *fname;
@@ -11,12 +19,11 @@ enum type
 {
 #define type_ptr type_int
 	type_int,
-	type_byte,
+	type_char,
 	type_void,
 	type_unknown
 };
 
-typedef struct expr expr;
 struct expr
 {
 	where where;
@@ -56,19 +63,13 @@ struct expr
 	expr *lhs, *rhs;
 
 	int val;
-	char *spel;
+	char *spel; /* variable name, OR string literal, in which case, val is the length */
 	expr *expr; /* x = 5; expr is the 5 */
 	expr **funcargs;
 
 	enum type deref_type;
+	sym *sym; /* used for strings, points to the string's symtable entry */
 };
-
-typedef struct tree      tree;
-typedef struct decl      decl;
-typedef struct function  function;
-typedef struct symtable  symtable;
-typedef struct sym       sym;
-typedef struct tree_flow tree_flow;
 
 struct tree
 {

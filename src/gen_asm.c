@@ -9,9 +9,6 @@
 #include "asm_op.h"
 #include "gen_asm.h"
 
-#define WALK_IF(st, sub, fn) \
-	if(st->sub) \
-		fn(st->sub)
 
 void walk_expr(expr *e, symtable *tab)
 {
@@ -66,7 +63,8 @@ void walk_expr(expr *e, symtable *tab)
 			break;
 
 		case expr_str:
-			fprintf(stderr, "TODO: walk_expr with \"%s\"\n", e->spel);
+			/* the ->spel is the string itself */
+			asm_temp("mov rax, %s", e->sym->str_lbl);
 			break;
 	}
 }
@@ -76,8 +74,8 @@ void walk_tree(tree *t)
 	switch(t->type){
 		case stat_if:
 		{
-			char *lbl_else = asm_new_label("else");
-			char *lbl_fi   = asm_new_label("fi");
+			char *lbl_else = label_code("else");
+			char *lbl_fi   = label_code("fi");
 
 			walk_expr(t->expr, t->symtab);
 
@@ -100,8 +98,8 @@ void walk_tree(tree *t)
 		{
 			char *lbl_for, *lbl_fin;
 
-			lbl_for = asm_new_label("for");
-			lbl_fin = asm_new_label("for_fin");
+			lbl_for = label_code("for");
+			lbl_fin = label_code("for_fin");
 
 			walk_expr(t->flow->for_init, t->symtab);
 
@@ -128,8 +126,8 @@ void walk_tree(tree *t)
 		{
 			char *lbl_start, *lbl_fin;
 
-			lbl_start = asm_new_label("while");
-			lbl_fin   = asm_new_label("while_fin");
+			lbl_start = label_code("while");
+			lbl_fin   = label_code("while_fin");
 
 			asm_label(lbl_start);
 			walk_expr(t->expr, t->symtab);
@@ -167,11 +165,58 @@ void walk_tree(tree *t)
 	}
 }
 
+void decl_walk_expr(expr *e, symtable *stab)
+{
+	if(e->type == expr_str)
+		/* FIXME - sym->len */
+		asm_temp("%s db \"%s\"", e->sym->str_lbl, e->spel);
+
+	if(e->expr)
+		decl_walk_expr(e->expr, stab);
+
+	if(e->funcargs){
+		expr **iter;
+		for(iter = e->funcargs; *iter; iter++)
+			decl_walk_expr(*iter, stab);
+	}
+}
+
+void decl_walk_tree(tree *t)
+{
+	if(t->type == stat_expr){
+		decl_walk_expr(t->expr, t->symtab);
+	}else{
+		if(t->codes){
+			tree **iter;
+
+			for(iter = t->codes; *iter; iter++)
+				decl_walk_tree(*iter);
+		}
+
+#define WALK_IF(x) if(x) decl_walk_expr(x, t->symtab)
+		if(t->flow){
+			WALK_IF(t->flow->for_init);
+			WALK_IF(t->flow->for_while);
+			WALK_IF(t->flow->for_inc);
+		}
+#undef WALK_IF
+
+#define WALK_IF(x) if(x) decl_walk_tree(x)
+		WALK_IF(t->lhs);
+		WALK_IF(t->rhs);
+#undef WALK_IF
+	}
+}
+
 void gen_asm(function *f)
 {
 	if(f->code){
 		int offset;
 		sym *s;
+
+		/* walk string + array decl */
+		decl_walk_tree(f->code);
+
 
 		asm_temp("global %s", f->func_decl->spel);
 		asm_label(f->func_decl->spel);

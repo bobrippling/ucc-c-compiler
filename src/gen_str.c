@@ -37,7 +37,7 @@ void print_decl(decl *d)
 	idt_printf("{ spel=\"%s\", ptr_depth=%d, type=%s }\n",
 			d->spel, d->ptr_depth,
 			d->type == type_int ? "int" :
-			d->type == type_byte ? "byte" :
+			d->type == type_char ? "char" :
 			d->type == type_void ? "void" :
 			"unknown"
 			);
@@ -75,7 +75,7 @@ void print_expr(expr *e)
 			break;
 
 		case expr_str:
-			idt_printf("str: \"%s\"\n", e->spel);
+			idt_printf("str: %s, \"%s\"\n", e->sym->str_lbl, e->spel);
 			break;
 
 		case expr_assign:
