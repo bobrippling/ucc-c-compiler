@@ -91,6 +91,14 @@ void asm_label(const char *lbl)
 	asm_temp("%s:", lbl);
 }
 
+void asm_declare_str(const char *lbl, const char *str)
+{
+	printf("%s db ", lbl);
+
+	for(; *str; str++)
+		printf("%d, %s", *str, str[1] ? "" : "0\n");
+}
+
 void asm_temp(const char *fmt, ...)
 {
 	va_list l;

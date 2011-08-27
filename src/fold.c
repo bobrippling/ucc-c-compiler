@@ -28,22 +28,20 @@ void fold_expr(expr *e, symtable *stab, fold_state *fs)
 			if(!symtab_search(stab, e->spel))
 				die_at(&e->where, "undeclared identifier \"%s\"", e->spel);
 
-			if(e->type == expr_assign)
-				/* FIXME? */
-				break;
-
-			if(fs->deref_depth && fs->deref_type == type_unknown){
+			if(e->type == expr_assign){
+				fold_expr(e->expr, stab, fs);
+			}else if(fs->deref_depth && fs->deref_type == type_unknown){
 				/*
-				 * we've found the symbol we're trying to deref
-				 * int x = d->ptr_depth - deref_depth
-				 *
-				 * if x == 0, we deref by a size of e->spel's type
-				 * if x >  0, we are doing something like:
-				 *            char ****x; *x;
-				 *            hence dereferencing to a pointer-size
-				 * if x <  0, we are doing something like
-				 *            char *x; ***x;
-				 */
+					* we've found the symbol we're trying to deref
+					* int x = d->ptr_depth - deref_depth
+					*
+					* if x == 0, we deref by a size of e->spel's type
+					* if x >  0, we are doing something like:
+					*            char ****x; *x;
+					*            hence dereferencing to a pointer-size
+					* if x <  0, we are doing something like
+					*            char *x; ***x;
+					*/
 				decl *d;
 				int diff;
 
@@ -72,12 +70,11 @@ void fold_expr(expr *e, symtable *stab, fold_state *fs)
 				newfs = *fs;
 			}
 
-			if(e->lhs)
-				fold_expr(e->lhs,  stab, &newfs);
-			if(e->expr)
-				fold_expr(e->expr, stab, &newfs);
-			if(e->rhs)
-				fold_expr(e->rhs,  stab, &newfs);
+#define WALK_IF(x) if(x) fold_expr(x, stab, &newfs)
+			WALK_IF(e->lhs);
+			WALK_IF(e->expr);
+			WALK_IF(e->rhs);
+#undef WALK_IF
 
 			if(e->op == op_deref){
 				e->deref_type = newfs.deref_type;
