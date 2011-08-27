@@ -9,6 +9,7 @@
 #include "asm_op.h"
 #include "gen_asm.h"
 
+static char *curfunc_lblfin;
 
 void walk_expr(expr *e, symtable *tab)
 {
@@ -144,8 +145,14 @@ void walk_tree(tree *t)
 			break;
 		}
 
+		case stat_return:
+			walk_expr(t->expr, t->symtab);
+			asm_temp("pop rax");
+			asm_temp("jmp %s", curfunc_lblfin);
+			break;
+
 		default:
-			fprintf(stderr, "walk_tree: TODO %s\n", stat_to_str(t->type));
+			fprintf(stderr, "\x1b[1;31mwalk_tree: TODO %s\x1b[m\n", stat_to_str(t->type));
 			break;
 
 		case stat_expr:
@@ -231,14 +238,18 @@ void gen_asm(function *f)
 			if(s->type == sym_auto)
 				offset += platform_word_size();
 
+		curfunc_lblfin = label_code(f->func_decl->spel);
+
 		if(offset)
 			asm_temp("sub rsp, %d", offset);
 		walk_tree(f->code);
+		asm_label(curfunc_lblfin);
 		if(offset)
 			asm_temp("add rsp, %d", offset);
 
 		asm_temp("leave");
 		asm_temp("ret");
+		free(curfunc_lblfin);
 	}else{
 		asm_temp("extern %s", f->func_decl->spel);
 	}

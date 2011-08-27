@@ -10,7 +10,6 @@ _start:
 	push rdi
 	push rsi
 	call main
-	mov rax, 0
 	push rax
 	call exit
 
