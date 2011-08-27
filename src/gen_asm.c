@@ -65,6 +65,7 @@ void walk_expr(expr *e, symtable *tab)
 		case expr_str:
 			/* the ->spel is the string itself */
 			asm_temp("mov rax, %s", e->sym->str_lbl);
+			asm_temp("push rax");
 			break;
 	}
 }
@@ -168,11 +169,14 @@ void walk_tree(tree *t)
 void decl_walk_expr(expr *e, symtable *stab)
 {
 	if(e->type == expr_str)
-		/* FIXME - sym->len */
-		asm_temp("%s db \"%s\"", e->sym->str_lbl, e->spel);
+		/* some arrays will go here too */
+		asm_declare_str(e->sym->str_lbl, e->spel);
 
-	if(e->expr)
-		decl_walk_expr(e->expr, stab);
+#define WALK_IF(x) if(x) decl_walk_expr(x, stab)
+	WALK_IF(e->lhs);
+	WALK_IF(e->expr);
+	WALK_IF(e->rhs);
+#undef WALK_IF
 
 	if(e->funcargs){
 		expr **iter;
@@ -214,11 +218,11 @@ void gen_asm(function *f)
 		int offset;
 		sym *s;
 
+		asm_temp("global %s", f->func_decl->spel);
+
 		/* walk string + array decl */
 		decl_walk_tree(f->code);
 
-
-		asm_temp("global %s", f->func_decl->spel);
 		asm_label(f->func_decl->spel);
 		asm_temp("push rbp");
 		asm_temp("mov rbp, rsp");
