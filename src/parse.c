@@ -351,12 +351,13 @@ tree *parse_code()
 			t = tree_new();
 			if(curtok == token_break){
 				t->type = stat_break;
+				eat(token_break);
 			}else{
 				t->type = stat_return;
+				eat(token_return);
 				if(curtok != token_semicolon)
 					t->expr = parse_expr();
 			}
-			eat(curtok);
 			eat(token_semicolon);
 			return t;
 
