@@ -76,11 +76,11 @@ const char *token_to_str(enum token t)
 	return NULL;
 }
 
-void eat(enum token t)
+void eat(enum token t, const char *fnam, int line)
 {
 	if(t != curtok)
-		die_at(NULL, "expecting token %s, got %s",
-				token_to_str(t), token_to_str(curtok));
+		die_at(NULL, "expecting token %s, got %s (%s:%d)",
+				token_to_str(t), token_to_str(curtok), fnam, line);
 	nexttoken();
 }
 

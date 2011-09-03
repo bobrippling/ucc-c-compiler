@@ -67,7 +67,7 @@ struct expr
 	expr *expr; /* x = 5; expr is the 5 */
 	expr **funcargs;
 
-	enum type deref_type;
+	enum type vartype; /* type propagation */
 	sym *sym; /* used for strings, points to the string's symtable entry */
 };
 
