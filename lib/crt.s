@@ -4,15 +4,6 @@ section .text
 	global exit
 	extern main
 
-_start:
-	pop rdi ; argc
-	mov rsi, rsp ; argv
-	push rdi
-	push rsi
-	call main
-	push rax
-	call exit
-
 exit:
 	mov rax, 60
 	pop rdi

@@ -69,7 +69,7 @@ void print_expr(expr *e)
 		case expr_op:
 			idt_printf("op: %s\n", op_to_str(e->op));
 			if(e->op == op_deref)
-				idt_printf("deref size: %s\n", type_to_str(e->deref_type));
+				idt_printf("deref size: %s\n", type_to_str(e->vartype));
 			PRINT_IF(e, lhs, print_expr);
 			PRINT_IF(e, rhs, print_expr);
 			break;

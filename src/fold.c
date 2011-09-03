@@ -77,8 +77,8 @@ void fold_expr(expr *e, symtable *stab, fold_state *fs)
 #undef WALK_IF
 
 			if(e->op == op_deref){
-				e->deref_type = newfs.deref_type;
-				if(e->deref_type == type_unknown)
+				e->vartype = newfs.deref_type;
+				if(e->vartype == type_unknown)
 					die_at(&e->where, "no identifier to dereference");
 
 				if(fs->deref_depth){

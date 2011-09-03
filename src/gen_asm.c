@@ -60,7 +60,11 @@ void walk_expr(expr *e, symtable *tab)
 			break;
 
 		case expr_sizeof:
-			asm_temp("push %d ; sizeof %s", platform_word_size(), e->spel);
+			/* TODO */
+			if(e->spel)
+				asm_temp("push %d ; sizeof %s", platform_word_size(), e->spel);
+			else
+				asm_temp("push %d ; sizeof type %s", platform_word_size(), type_to_str(e->vartype));
 			break;
 
 		case expr_str:

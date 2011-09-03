@@ -4,7 +4,9 @@
 enum type    curtok_to_type();
 enum op_type curtok_to_op();
 
-void eat(enum token);
+void eat(enum token, const char *fnam, int line);
+
+#define EAT(t) eat(t, __FILE__, __LINE__)
 
 int curtok_is_type();
 int curtok_in_list(va_list l);
