@@ -1,0 +1,52 @@
+#!/usr/bin/perl
+
+sub dirname($)
+{
+	my $p = shift;
+	return $p unless $p =~ /(.*)\/[^\/]+$/;
+	return $1;
+}
+
+my($output, $input);
+my($f_s, $f_o, $f);
+my @tmpfs;
+
+open STDOUT, '| sh -ex' or die "sh pipe: $!\n";
+
+for my $i (0 .. $#ARGV){
+	my $_ = $ARGV[$i];
+	if($_ eq '-c'){
+		$obj = 1;
+	}elsif($_ eq '-o'){
+		$output = $ARGV[++$i] || die "need output\n";
+	}else{
+		die "too many args\n" if $input;
+		$input = $ARGV[$i];
+	}
+}
+
+$where = dirname(readlink($0) || $0);
+
+$f_s = "/tmp/ucc_$$.s";
+$f_o = "/tmp/ucc_$$.o";
+$f   = $output || "a.out";
+
+$\ = "\n";
+
+push @tmpfs, $f_s;
+print "$where/cc1 $input > $f_s";
+
+if($obj){
+	$f_o = $output || "a.o";
+}else{
+	push @tmpfs, $f_o;
+}
+
+print "nasm -f elf64 -o $f_o $f_s";
+exit 0 if $obj;
+print "ld -o $f $f_o $where/../lib/*.o";
+
+END {
+	print "rm @tmpfs";
+	close STDOUT;
+}
