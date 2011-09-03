@@ -1,6 +1,8 @@
 CFLAGS  = -g -Wall -Wextra -pedantic -std=c99
 LDFLAGS = -g -lm
 
+include ../config.mk
+
 cc1: \
 		alloc.o str.o util.o platform.o \
 		cc1.o \
@@ -16,12 +18,16 @@ cc1: \
 clean:
 	rm -f *.o cc1
 
-test: INPUT.c cc1
-	./cc1 $< > INPUT.s
-	nasm -f elf64 -o INPUT.o INPUT.s
-	ld -o $@ INPUT.o ../lib/*.o
+test: test.o
+	${LD} ${UCC_LDFLAGS} -o $@ $< ../lib/*.o
 
-.PHONY: clean test
+test.o: test.s
+	${NASM} -f ${ARCH} -o INPUT.o INPUT.s
+
+test.s: TEST.c cc1
+	./cc1 $< > INPUT.s
+
+.PHONY: clean
 
 alloc.o: alloc.c tree.h alloc.h util.h
 asm.o: asm.c tree.h sym.h asm.h platform.h alloc.h
