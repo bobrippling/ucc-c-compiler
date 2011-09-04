@@ -24,6 +24,16 @@ enum type
 	type_unknown
 };
 
+struct decl
+{
+	where where;
+
+	enum type type;
+	int func;
+	int ptr_depth;
+	char *spel;
+};
+
 struct expr
 {
 	where where;
@@ -67,7 +77,8 @@ struct expr
 	expr *expr; /* x = 5; expr is the 5 */
 	expr **funcargs;
 
-	enum type vartype; /* type propagation */
+	decl vartype; /* type propagation */
+
 	sym *sym; /* used for strings, points to the string's symtable entry */
 };
 
@@ -106,16 +117,6 @@ struct tree_flow
 {
 	expr *for_init, *for_while, *for_inc;
 	/* TODO: switch */
-};
-
-struct decl
-{
-	where where;
-
-	enum type type;
-	int func;
-	int ptr_depth;
-	char *spel;
 };
 
 struct function
