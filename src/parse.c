@@ -74,7 +74,7 @@ expr *parse_expr_unary_op()
 				e->spel = token_current_spel();
 				EAT(token_identifier);
 			}else if(curtok_is_type()){
-				e->vartype = curtok_to_type();
+				e->type = curtok_to_type();
 				EAT(curtok);
 			}else{
 				EAT(token_identifier); /* raise error */

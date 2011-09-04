@@ -112,10 +112,14 @@ void asm_operate(expr *e, symtable *tab)
 		case op_deref:
 			walk_expr(e->lhs, tab);
 			asm_temp("pop rax");
-			switch(e->vartype){
+
+			if(e->vartype.ptr_depth)
+				goto ptr;
+			switch(e->vartype.type){
 				case type_char:
 					asm_temp("movzx rax, byte [rax]");
 					break;
+ptr:
 				case type_int:
 				case type_void:
 				case type_unknown:

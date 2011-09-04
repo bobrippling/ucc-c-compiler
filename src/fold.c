@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 
 #include "tree.h"
 #include "fold.h"
@@ -7,118 +8,122 @@
 #include "platform.h"
 #include "asm.h"
 
+#define DIE_UNDECL() \
+		die_at(&e->where, "undeclared identifier \"%s\"", e->spel)
 
-typedef struct
+void fold_expr(expr *e, symtable *stab)
 {
-	enum type deref_type;
-	int deref_depth;
-} fold_state;
+#define GET_VARTYPE(from) \
+	do{ \
+		memcpy(&e->vartype, from, sizeof e->vartype); \
+		e->vartype.spel = NULL; \
+	}while(0)
 
-void fold_expr(expr *e, symtable *stab, fold_state *fs)
-{
 	switch(e->type){
 		case expr_val:
-		case expr_addr:
 		case expr_sizeof:
+			e->vartype.type = type_int;
 			break;
 
-		case expr_identifier:
-		case expr_assign:
-			/* TODO: check e->expr's type is sym_find(e->spel)'s type */
-			if(!symtab_search(stab, e->spel))
-				die_at(&e->where, "undeclared identifier \"%s\"", e->spel);
-
-			if(e->type == expr_assign){
-				fold_expr(e->expr, stab, fs);
-			}else if(fs->deref_depth && fs->deref_type == type_unknown){
-				/*
-					* we've found the symbol we're trying to deref
-					* int x = d->ptr_depth - deref_depth
-					*
-					* if x == 0, we deref by a size of e->spel's type
-					* if x >  0, we are doing something like:
-					*            char ****x; *x;
-					*            hence dereferencing to a pointer-size
-					* if x <  0, we are doing something like
-					*            char *x; ***x;
-					*/
-				decl *d;
-				int diff;
-
-				d = symtab_search(stab, e->spel)->decl;
-				diff = d->ptr_depth - fs->deref_depth;
-
-				if(diff == 0)
-					fs->deref_type = d->type;
-				else if(diff > 0)
-					fs->deref_type = type_ptr;
-				else /*if(diff < 0)*/
-					die_at(&e->where, "dereferencing a non-pointer");
-			}
-			break;
-
-
-		case expr_op:
+		case expr_addr:
 		{
-			fold_state newfs;
+			sym *s = symtab_search(stab, e->spel);
+			if(!s)
+				DIE_UNDECL();
 
-			if(e->op == op_deref){
-				/* descend, searching for a variable to base the deref on */
-				newfs.deref_type  = type_unknown;
-				newfs.deref_depth = fs->deref_depth + 1;
-			}else{
-				newfs = *fs;
-			}
-
-#define WALK_IF(x) if(x) fold_expr(x, stab, &newfs)
-			WALK_IF(e->lhs);
-			WALK_IF(e->expr);
-			WALK_IF(e->rhs);
-#undef WALK_IF
-
-			if(e->op == op_deref){
-				e->vartype = newfs.deref_type;
-				if(e->vartype == type_unknown)
-					die_at(&e->where, "no identifier to dereference");
-
-				if(fs->deref_depth){
-					/* we're in a dereference sub-tree */
-					fs->deref_type = type_ptr; /* obviously pointer-to-pointer */
-				}else{
-					/* we are the top of the deref sub-tree */
-					fs->deref_type  = newfs.deref_type;
-				}
-			}else{
-				*fs = newfs;
-			}
+			e->vartype.type = s->decl->type;
+			e->vartype.ptr_depth = 1;
 			break;
 		}
 
+		case expr_identifier:
+		{
+			sym *s;
+
+			s = symtab_search(stab, e->spel);
+			if(!s)
+				DIE_UNDECL();
+
+			GET_VARTYPE(s->decl);
+			break;
+		}
+
+		case expr_assign:
+		{
+			sym *s;
+			if(!(s = symtab_search(stab, e->spel)))
+				DIE_UNDECL();
+
+			fold_expr(e->expr, stab);
+			/* read the vartype from what we're assigning to, not the expr */
+			GET_VARTYPE(s->decl);
+			break;
+		}
+
+
+		case expr_op:
+			fold_expr(e->lhs, stab);
+			if(e->rhs)
+				fold_expr(e->rhs, stab);
+
+			/* XXX: note, this assumes that e.g. "1 + 2" the lhs and rhs have the same type */
+			GET_VARTYPE(&e->lhs->vartype);
+
+			if(e->op == op_deref){
+				e->vartype.ptr_depth--;
+
+				if(e->vartype.ptr_depth == 0)
+					switch(e->lhs->vartype.type){
+						case type_unknown:
+						case type_void:
+							die_at(&e->where, "can't dereference void pointer");
+						default:
+							/* e->vartype.type already set to deref type */
+							break;
+					}
+				else if(e->vartype.ptr_depth < 0)
+					die_at(&e->where, "can't dereference non-pointer");
+			}
+			break;
+
 		case expr_str:
 		{
-			/* TODO: escape escapes? */
-			/* TODO: pre-walk for all strings, add a _name db "str..." */
-			/* TODO: string id, for lookups later on */
 			sym *sym;
 			sym = symtab_add(stab, decl_new(), sym_str);
 
 			sym->str_lbl = label_str();
 
 			e->sym = sym;
+
+			e->vartype.type      = type_char;
+			e->vartype.ptr_depth = 1;
 			break;
 		}
 
 		case expr_funcall:
+		{
+			sym *s;
+
 			if(e->funcargs){
 				expr **iter;
 				for(iter = e->funcargs; *iter; iter++)
-					fold_expr(*iter, stab, fs);
+					fold_expr(*iter, stab);
+			}
+
+			s = symtab_search(stab, e->spel);
+			if(s){
+				GET_VARTYPE(s->decl); /* XXX: check */
+			}else{
+				fprintf(stderr, "warning: %s undeclared, assuming return type int\n", e->spel);
+				e->vartype.type = type_int;
 			}
 			break;
+		}
 	}
+#undef GET_VARTYPE
 }
 
-void fold_code(tree *t, symtable *parent_tab, fold_state *fs)
+void fold_code(tree *t, symtable *parent_tab)
 {
 	t->symtab = parent_tab;
 
@@ -129,17 +134,17 @@ void fold_code(tree *t, symtable *parent_tab, fold_state *fs)
 
 		case stat_while:
 		case stat_if:
-			fold_expr(t->expr, parent_tab, fs);
-			fold_code(t->lhs,  parent_tab, fs);
+			fold_expr(t->expr, parent_tab);
+			fold_code(t->lhs,  parent_tab);
 			if(t->rhs)
-				fold_code(t->rhs,  parent_tab, fs);
+				fold_code(t->rhs,  parent_tab);
 			break;
 
 		case stat_for:
-			fold_expr(t->flow->for_init,  parent_tab, fs);
-			fold_expr(t->flow->for_while, parent_tab, fs);
-			fold_expr(t->flow->for_inc,   parent_tab, fs);
-			fold_code(t->lhs,             parent_tab, fs);
+			fold_expr(t->flow->for_init,  parent_tab);
+			fold_expr(t->flow->for_while, parent_tab);
+			fold_expr(t->flow->for_inc,   parent_tab);
+			fold_code(t->lhs,             parent_tab);
 			break;
 
 		case stat_code:
@@ -154,7 +159,7 @@ void fold_code(tree *t, symtable *parent_tab, fold_state *fs)
 			if(t->codes){
 				tree **iter;
 				for(iter = t->codes; *iter; iter++)
-					fold_code(*iter, parent_tab /* init'd */, fs);
+					fold_code(*iter, parent_tab /* init'd */);
 			}
 
 			if(parent_tab){
@@ -185,7 +190,7 @@ void fold_code(tree *t, symtable *parent_tab, fold_state *fs)
 
 		case stat_expr:
 		case stat_return:
-			fold_expr(t->expr, parent_tab, fs);
+			fold_expr(t->expr, parent_tab);
 			break;
 
 		case stat_noop:
@@ -202,10 +207,6 @@ void fold_decl(decl *d)
 void fold_func(function *f)
 {
 	decl **diter;
-	fold_state fs;
-
-	fs.deref_type  = type_unknown;
-	fs.deref_depth = 0;
 
 	fold_decl(f->func_decl);
 
@@ -229,7 +230,7 @@ void fold_func(function *f)
 			for(d = f->args; *d; d++)
 				symtab_add(f->symtab, *d, sym_arg);
 
-		fold_code(f->code, f->symtab, &fs);
+		fold_code(f->code, f->symtab);
 	}
 }
 

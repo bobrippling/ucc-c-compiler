@@ -1,11 +1,9 @@
-Everything must have a type (for casts later on)
-i.e.
-	t->type, instead of just for identifiers, etc
+casts
 
 fix:
 	int main(){1;}
 	pop 1 from the stack
 
 *(int *)5 = 2;
-general lhs assignment:
+general lhs assignment (since it's currently identifier only):
 	(b ? x : y) = 5;

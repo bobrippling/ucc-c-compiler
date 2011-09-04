@@ -34,8 +34,14 @@ void idt_printf(const char *fmt, ...)
 
 void print_decl(decl *d)
 {
-	idt_printf("{ spel=\"%s\", ptr_depth=%d, type=%s }\n",
-			d->spel, d->ptr_depth,
+	char buf[256];
+
+	if(d->spel)
+		snprintf(buf, sizeof buf, "spel=\"%s\", ", d->spel);
+
+	idt_printf("{ %sptr_depth=%d, type=%s }\n",
+			d->spel ? buf : "",
+			d->ptr_depth,
 			d->type == type_int ? "int" :
 			d->type == type_char ? "char" :
 			d->type == type_void ? "void" :
@@ -55,6 +61,11 @@ void print_expr(expr *e)
 {
 	idt_printf("e->type: %s\n", expr_to_str(e->type));
 
+	idt_printf("vartype:\n");
+	indent++;
+	print_decl(&e->vartype);
+	indent--;
+
 	switch(e->type){
 		case expr_identifier:
 			idt_printf("identifier: \"%s\"\n", e->spel);
@@ -66,10 +77,16 @@ void print_expr(expr *e)
 
 		case expr_op:
 			idt_printf("op: %s\n", op_to_str(e->op));
+			indent++;
+
 			if(e->op == op_deref)
-				idt_printf("deref size: %s\n", type_to_str(e->vartype));
+				idt_printf("deref size: %s\n",
+						type_to_str(
+							e->vartype.ptr_depth ? type_ptr : e->vartype.type));
+
 			PRINT_IF(e, lhs, print_expr);
 			PRINT_IF(e, rhs, print_expr);
+			indent--;
 			break;
 
 		case expr_str:
@@ -164,7 +181,7 @@ void gen_str(function *f)
 {
 	sym *s;
 
-	idt_printf("function: decl: ");
+	idt_printf("function: decl:\n");
 	indent++;
 
 	print_decl(f->func_decl);
