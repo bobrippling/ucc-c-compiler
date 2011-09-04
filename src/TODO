@@ -7,3 +7,5 @@ fix:
 *(int *)5 = 2;
 general lhs assignment (since it's currently identifier only):
 	(b ? x : y) = 5;
+
+32-bit code gen
