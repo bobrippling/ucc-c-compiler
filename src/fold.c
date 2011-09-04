@@ -165,12 +165,19 @@ void fold_code(tree *t, symtable *parent_tab, fold_state *fs)
 
 				for(s = parent_tab->first; s; s = s->next){
 					/* extern check goes here */
-					if(s->type == sym_auto){
-						s->offset = auto_offset;
-						auto_offset += platform_word_size();
-					}else{
-						s->offset = arg_offset;
-						arg_offset += platform_word_size();
+					switch(s->type){
+						case sym_auto:
+							s->offset = auto_offset;
+							auto_offset += platform_word_size();
+							break;
+
+						case sym_arg:
+							s->offset = arg_offset;
+							arg_offset += platform_word_size();
+							break;
+
+						case sym_str:
+							break;
 					}
 				}
 			}

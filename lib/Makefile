@@ -1,23 +1,23 @@
 CC  = ../src/cc1
 OBJ = start.o crt.o print.o
 
+BUILD_NASM = ${NASM} -f ${ARCH} -o $@ $<
+
 include ../config.mk
 
-libs: ${OBJ}
+libs: ${OBJ} ${CC}
 
 crt.o: crt.s
-	${NASM} -f ${ARCH} -o $@ $<
+	${BUILD_NASM}
 start.o: start.s
-	${NASM} -f ${ARCH} -o $@ $<
+	${BUILD_NASM}
 print.o: print.s
-	${NASM} -f ${ARCH} -o $@ $<
+	${BUILD_NASM}
 
-start.s: start.c
-	../src/cc1 $< > $@
 print.s: print.c
-	../src/cc1 $< > $@
+	${CC} $< > $@
 
 clean:
-	rm -f *.o print.s start.s
+	rm -f *.o print.s
 
 .PHONY: libs clean

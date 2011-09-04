@@ -49,8 +49,10 @@ void walk_expr(expr *e, symtable *tab)
 
 			asm_new(asm_call, e->spel);
 			if(nargs)
-				asm_temp("add rsp, %d ; %d args",
-						nargs * platform_word_size(), nargs);
+				asm_temp("add rsp, %d ; %d arg%s",
+						nargs * platform_word_size(),
+						nargs,
+						nargs == 1 ? "":"s");
 			break;
 		}
 

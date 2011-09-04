@@ -393,6 +393,10 @@ void nexttoken()
 				}
 				die_at(NULL, "No end to comment");
 				return;
+			}else if(peeknextchar() == '/'){
+				tokenise_read_line();
+				nexttoken();
+				return;
 			}
 			curtok = token_divide;
 			break;

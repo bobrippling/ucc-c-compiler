@@ -45,9 +45,7 @@ void print_decl(decl *d)
 
 void print_sym(sym *s)
 {
-	idt_printf("sym: type=%s, offset=%d\n",
-			s->type == sym_auto ? "auto" : "arg",
-			s->offset);
+	idt_printf("sym: type=%s, offset=%d\n", sym_to_str(s->type), s->offset);
 	indent++;
 	print_decl(s->decl);
 	indent--;
@@ -109,7 +107,7 @@ void print_expr(expr *e)
 			break;
 
 		default:
-			idt_printf("%s not handled!\n", expr_to_str(e->type));
+			idt_printf("\x1b[1;31m%s not handled!\x1b[m\n", expr_to_str(e->type));
 			break;
 	}
 }
