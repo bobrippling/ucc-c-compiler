@@ -14,4 +14,6 @@ int curtok_in_list(va_list l);
 char *token_current_spel();
 void token_get_current_str(char **ps, int *pl);
 
+const char *token_to_str(enum token t);
+
 #endif

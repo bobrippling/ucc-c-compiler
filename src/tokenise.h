@@ -69,6 +69,5 @@ enum token
 
 void tokenise_set_file(FILE *f, const char *nam);
 void nexttoken();
-const char *token_to_str(enum token t);
 
 #endif

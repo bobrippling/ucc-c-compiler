@@ -10,15 +10,15 @@
 
 
 /*
-	* order goes:
-	*
-	* parse_expr_unary_op   [-+!~]`parse_expr_single`
-	* parse_expr_binary_op  above [/%*]    above
-	* parse_expr_sum        above [+-]     above
-	* parse_expr_bit_op     above [&|]     above
-	* parse_expr_cmp_op     above [><==!=] above
-	* parse_expr_logical_op above [&&||]   above
-	*/
+ * order goes:
+ *
+ * parse_expr_unary_op   [-+!~]`parse_expr_single`
+ * parse_expr_binary_op  above [/%*]    above
+ * parse_expr_sum        above [+-]     above
+ * parse_expr_bit_op     above [&|]     above
+ * parse_expr_cmp_op     above [><==!=] above
+ * parse_expr_logical_op above [&&||]   above
+ */
 #define parse_expr() parse_expr_logical_op()
 
 extern enum token curtok;
@@ -28,6 +28,7 @@ expr **parse_funcargs();
 expr  *parse_expr();
 decl  *parse_decl(enum type type, int need_spel);
 
+expr *parse_expr_binary_op();
 
 /* generalised recursive descent */
 expr *parse_expr_join(
@@ -101,7 +102,7 @@ expr *parse_expr_unary_op()
 			EAT(token_close_paren);
 			return e;
 
-		case token_multiply:
+		case token_multiply: /* deref! */
 			EAT(token_multiply);
 			e = expr_new();
 			e->type = expr_op;
@@ -124,6 +125,14 @@ expr *parse_expr_unary_op()
 			return parse_expr();
 
 		case token_minus:
+			e = expr_new();
+			e->type = expr_op;
+			e->op = curtok_to_op();
+
+			EAT(token_minus);
+			e->lhs = parse_expr_binary_op();
+			return e;
+
 		case token_not:
 		case token_bnot:
 			e = expr_new();
@@ -131,7 +140,7 @@ expr *parse_expr_unary_op()
 			e->op = curtok_to_op();
 
 			EAT(curtok);
-			e->lhs = parse_expr_unary_op();
+			e->lhs = parse_expr_binary_op();
 			return e;
 
 		case token_increment:
@@ -170,29 +179,28 @@ expr *parse_expr_unary_op()
 	return NULL;
 }
 
-expr *parse_expr_negation()
-{
-	/* above [-] above */
-	/* note: this is separate from -`expr` */
-	return parse_expr_join(
-			parse_expr_unary_op, parse_expr_negation,
-			token_minus, token_unknown);
-}
-
 expr *parse_expr_binary_op()
 {
 	/* above [/%*] above */
 	return parse_expr_join(
-			parse_expr_negation, parse_expr_binary_op,
+			parse_expr_unary_op, parse_expr_binary_op,
 				token_divide, token_multiply, token_modulus,
 				token_unknown);
+}
+
+expr *parse_expr_neg()
+{
+	/* above [-] above */
+	return parse_expr_join(
+			parse_expr_binary_op, parse_expr_neg,
+				token_minus, token_unknown);
 }
 
 expr *parse_expr_sum()
 {
 	/* above [+] above */
 	return parse_expr_join(
-			parse_expr_binary_op, parse_expr_sum,
+			parse_expr_neg, parse_expr_sum,
 				token_plus, token_unknown);
 }
 

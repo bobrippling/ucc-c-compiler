@@ -95,8 +95,9 @@ void asm_operate(expr *e, symtable *tab)
 		case op_and:      instruct = "and";  break;
 
 		/* single register op */
-		case op_minus:    instruct = "neg"; break;
-		case op_bnot:     instruct = "not"; break;
+		case op_minus: instruct = e->rhs ? "sub" : "neg"; break;
+		case op_bnot:  instruct = "not";                  break;
+
 
 		case op_not:
 			/* compare with 0 */
@@ -151,14 +152,14 @@ void asm_operate(expr *e, symtable *tab)
 
 	/* get here if op is *, +, - or ~ */
 	walk_expr(e->lhs, tab);
-	if(e->op == op_bnot || e->op == op_minus){
-		asm_temp("pop rax");
-		asm_temp("%s rax", instruct);
-	}else{
+	if(e->rhs){
 		walk_expr(e->rhs, tab);
 		asm_temp("pop rbx");
 		asm_temp("pop rax");
 		asm_temp("%s rax, rbx", instruct);
+	}else{
+		asm_temp("pop rax");
+		asm_temp("%s rax", instruct);
 	}
 
 	asm_temp("push rax");

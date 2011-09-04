@@ -1,5 +1,4 @@
 section .text
-	global _start
 	global write
 	global exit
 	extern main

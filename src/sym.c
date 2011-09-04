@@ -5,6 +5,7 @@
 #include "tree.h"
 #include "sym.h"
 #include "alloc.h"
+#include "macros.h"
 
 sym *sym_new(decl *d)
 {
@@ -53,5 +54,15 @@ sym *symtab_search(symtable *tab, const char *s)
 			if(sym->decl->spel && !strcmp(s, sym->decl->spel))
 				return sym;
 
+	return NULL;
+}
+
+const char *sym_to_str(enum sym_type t)
+{
+	switch(t){
+		CASE_STR(sym_auto);
+		CASE_STR(sym_arg);
+		CASE_STR(sym_str);
+	}
 	return NULL;
 }

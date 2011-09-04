@@ -29,4 +29,6 @@ sym *symtab_add( symtable *, decl *, enum sym_type);
 void symtab_push(symtable *, symtable *);
 sym  *symtab_search(symtable *, const char *);
 
+const char *sym_to_str(enum sym_type);
+
 #endif

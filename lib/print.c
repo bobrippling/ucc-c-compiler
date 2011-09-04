@@ -30,8 +30,13 @@ printc(char c)
 
 printstr(char *str)
 {
-	while(*str){
-		printc(*str);
-		str = str + 1;
-	}
+	/*
+	if(!str)
+		printstr("(null)");
+	else
+	*/
+		while(*str){
+			printc(*str);
+			str = str + 1;
+		}
 }

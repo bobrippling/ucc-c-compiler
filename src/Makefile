@@ -18,14 +18,14 @@ cc1: \
 clean:
 	rm -f *.o cc1
 
-test: test.o
+test: test.o ../lib/*.o
 	${LD} ${UCC_LDFLAGS} -o $@ $< ../lib/*.o
 
 test.o: test.s
-	${NASM} -f ${ARCH} -o INPUT.o INPUT.s
+	${NASM} -f ${ARCH} -o test.o test.s
 
 test.s: TEST.c cc1
-	./cc1 $< > INPUT.s
+	./cc1 $< > test.s
 
 .PHONY: clean
 
@@ -39,7 +39,6 @@ gen_asm.o: gen_asm.c tree.h macros.h asm.h platform.h sym.h asm_op.h \
  gen_asm.h
 gen.o: gen.c tree.h gen_str.h gen_asm.h
 gen_str.o: gen_str.c tree.h macros.h sym.h
-INPUT.o: INPUT.c
 parse.o: parse.c tokenise.h tree.h parse.h alloc.h tokconv.h util.h
 platform.o: platform.c platform.h
 str.o: str.c

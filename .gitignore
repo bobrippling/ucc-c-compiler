@@ -1,2 +1,6 @@
 *.o
 cc1
+lib/print.s
+src/TEST.c
+src/test
+src/test.s
