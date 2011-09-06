@@ -9,3 +9,5 @@ general lhs assignment (since it's currently identifier only):
 	(b ? x : y) = 5;
 
 32-bit code gen
+
+(x ? a : b)(2);

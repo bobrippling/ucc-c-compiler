@@ -74,7 +74,7 @@ expr *parse_expr_unary_op()
 				e->spel = token_current_spel();
 				EAT(token_identifier);
 			}else if(curtok_is_type()){
-				e->type = curtok_to_type();
+				e->vartype.type = curtok_to_type();
 				EAT(curtok);
 			}else{
 				EAT(token_identifier); /* raise error */
@@ -179,12 +179,20 @@ expr *parse_expr_unary_op()
 	return NULL;
 }
 
+expr *parse_expr_div()
+{
+	/* above [/] above */
+	return parse_expr_join(
+			parse_expr_unary_op, parse_expr_div,
+				token_divide, token_unknown);
+}
+
 expr *parse_expr_binary_op()
 {
-	/* above [/%*] above */
+	/* above [%*] above */
 	return parse_expr_join(
-			parse_expr_unary_op, parse_expr_binary_op,
-				token_divide, token_multiply, token_modulus,
+			parse_expr_div, parse_expr_binary_op,
+				token_multiply, token_modulus,
 				token_unknown);
 }
 
@@ -405,11 +413,10 @@ decl *parse_decl(enum type type, int need_spel)
 
 	if(type == type_unknown){
 		d->type = curtok_to_type();
-		if(d->type == type_unknown){
+		if(d->type == type_unknown)
 			d->type = type_int; /* default to int */
-		}else{
+		else
 			EAT(curtok);
-		}
 	}else{
 		d->type = type;
 	}
@@ -424,6 +431,28 @@ decl *parse_decl(enum type type, int need_spel)
 		EAT(token_identifier);
 	}else if(need_spel){
 		EAT(token_identifier); /* raise error */
+	}
+
+	/* array parsing */
+	while(curtok == token_open_square){
+		expr *size;
+		int fin;
+
+		fin = 0;
+
+		EAT(token_open_square);
+		if(curtok != token_close_square)
+			size = parse_expr(); /* fold.c checks for const-ness */
+		else
+			fin = 1;
+		EAT(token_close_square);
+
+		if(fin){
+			d->ptr_depth++;
+			break;
+		}
+
+		dynarray_add((void ***)&d->arraysizes, size);
 	}
 
 	return d;

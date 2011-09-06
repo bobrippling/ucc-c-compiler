@@ -32,6 +32,13 @@ struct decl
 	int func;
 	int ptr_depth;
 	char *spel;
+
+	expr **arraysizes;
+	/*
+	 * int x[5][]; -> arraysizes = { expr(5), NULL }
+	 *
+	 * for the last [], ptr_depth is ++'d
+	 */
 };
 
 struct expr
