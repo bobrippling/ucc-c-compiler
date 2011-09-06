@@ -1,19 +1,42 @@
+;%define MAC 1
+%ifdef MAC
+%define SYS_exit  0x2000001
+%define SYS_read  0x2000003
+%define SYS_write 0x2000004
+%else
+%define SYS_read  0
+%define SYS_write 1
+%define SYS_exit  60
+%endif
+
 section .text
-	global write
-	global exit
 	extern main
 
+	global exit
 exit:
-	mov rax, 60
+	mov rax,  SYS_exit
 	pop rdi
 	pop rdi
 	syscall
 	hlt
 
+	global read
+read:
+	push rbp
+	mov rbp, rsp
+	mov rax, SYS_read
+	mov rdi, [rbp + 16]
+	mov rsi, [rbp + 24]
+	mov rdx, [rbp + 32]
+	syscall
+	leave
+	ret
+
+	global write
 write:
 	push rbp
 	mov rbp, rsp
-	mov rax, 1
+	mov rax, SYS_write
 	mov rdi, [rbp + 16]
 	mov rsi, [rbp + 24]
 	mov rdx, [rbp + 32]
