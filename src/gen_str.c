@@ -18,6 +18,7 @@
 static int indent = 0;
 
 void print_tree(tree *t);
+void print_expr(expr *e);
 
 void idt_printf(const char *fmt, ...)
 {
@@ -35,6 +36,7 @@ void idt_printf(const char *fmt, ...)
 void print_decl(decl *d)
 {
 	char buf[256];
+	int i;
 
 	if(d->spel)
 		snprintf(buf, sizeof buf, "spel=\"%s\", ", d->spel);
@@ -42,11 +44,15 @@ void print_decl(decl *d)
 	idt_printf("{ %sptr_depth=%d, type=%s }\n",
 			d->spel ? buf : "",
 			d->ptr_depth,
-			d->type == type_int ? "int" :
-			d->type == type_char ? "char" :
-			d->type == type_void ? "void" :
-			"unknown"
+			type_to_str(d->type)
 			);
+
+	for(i = 0; d->arraysizes && d->arraysizes[i]; i++){
+		idt_printf("array[%d] size:\n", i);
+		indent++;
+		print_expr(d->arraysizes[i]);
+		indent--;
+	}
 }
 
 void print_sym(sym *s)
@@ -123,6 +129,10 @@ void print_expr(expr *e)
 			idt_printf("&%s\n", e->spel);
 			break;
 
+		case expr_sizeof:
+			idt_printf("sizeof %s\n", e->spel ? e->spel : type_to_str(e->vartype.type));
+			break;
+
 		default:
 			idt_printf("\x1b[1;31m%s not handled!\x1b[m\n", expr_to_str(e->type));
 			break;
@@ -172,7 +182,6 @@ void print_tree(tree *t)
 	if(t->flow){
 		indent++;
 		print_tree_flow(t->flow);
-		PRINT_IF(t, lhs, print_tree);
 		indent--;
 	}
 }
