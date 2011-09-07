@@ -52,14 +52,14 @@ function *function_new()
 const char *expr_to_str(enum expr_type t)
 {
 	switch(t){
-		CASE_STR(expr_op);
-		CASE_STR(expr_val);
-		CASE_STR(expr_addr);
-		CASE_STR(expr_sizeof);
-		CASE_STR(expr_str);
-		CASE_STR(expr_identifier);
-		CASE_STR(expr_assign);
-		CASE_STR(expr_funcall);
+		CASE_STR_PREFIX(expr, op);
+		CASE_STR_PREFIX(expr, val);
+		CASE_STR_PREFIX(expr, addr);
+		CASE_STR_PREFIX(expr, sizeof);
+		CASE_STR_PREFIX(expr, str);
+		CASE_STR_PREFIX(expr, identifier);
+		CASE_STR_PREFIX(expr, assign);
+		CASE_STR_PREFIX(expr, funcall);
 	}
 	return NULL;
 }
@@ -67,25 +67,25 @@ const char *expr_to_str(enum expr_type t)
 const char *op_to_str(enum op_type o)
 {
 	switch(o){
-		CASE_STR(op_multiply);
-		CASE_STR(op_divide);
-		CASE_STR(op_plus);
-		CASE_STR(op_minus);
-		CASE_STR(op_modulus);
-		CASE_STR(op_deref);
-		CASE_STR(op_eq);
-		CASE_STR(op_ne);
-		CASE_STR(op_le);
-		CASE_STR(op_lt);
-		CASE_STR(op_ge);
-		CASE_STR(op_gt);
-		CASE_STR(op_or);
-		CASE_STR(op_and);
-		CASE_STR(op_orsc);
-		CASE_STR(op_andsc);
-		CASE_STR(op_not);
-		CASE_STR(op_bnot);
-		CASE_STR(op_unknown);
+		CASE_STR_PREFIX(op, multiply);
+		CASE_STR_PREFIX(op, divide);
+		CASE_STR_PREFIX(op, plus);
+		CASE_STR_PREFIX(op, minus);
+		CASE_STR_PREFIX(op, modulus);
+		CASE_STR_PREFIX(op, deref);
+		CASE_STR_PREFIX(op, eq);
+		CASE_STR_PREFIX(op, ne);
+		CASE_STR_PREFIX(op, le);
+		CASE_STR_PREFIX(op, lt);
+		CASE_STR_PREFIX(op, ge);
+		CASE_STR_PREFIX(op, gt);
+		CASE_STR_PREFIX(op, or);
+		CASE_STR_PREFIX(op, and);
+		CASE_STR_PREFIX(op, orsc);
+		CASE_STR_PREFIX(op, andsc);
+		CASE_STR_PREFIX(op, not);
+		CASE_STR_PREFIX(op, bnot);
+		CASE_STR_PREFIX(op, unknown);
 	}
 	return NULL;
 }
@@ -93,15 +93,15 @@ const char *op_to_str(enum op_type o)
 const char *stat_to_str(enum stat_type t)
 {
 	switch(t){
-		CASE_STR(stat_do);
-		CASE_STR(stat_if);
-		CASE_STR(stat_while);
-		CASE_STR(stat_for);
-		CASE_STR(stat_break);
-		CASE_STR(stat_return);
-		CASE_STR(stat_expr);
-		CASE_STR(stat_noop);
-		CASE_STR(stat_code);
+		CASE_STR_PREFIX(stat, do);
+		CASE_STR_PREFIX(stat, if);
+		CASE_STR_PREFIX(stat, while);
+		CASE_STR_PREFIX(stat, for);
+		CASE_STR_PREFIX(stat, break);
+		CASE_STR_PREFIX(stat, return);
+		CASE_STR_PREFIX(stat, expr);
+		CASE_STR_PREFIX(stat, noop);
+		CASE_STR_PREFIX(stat, code);
 	}
 	return NULL;
 }
@@ -109,10 +109,10 @@ const char *stat_to_str(enum stat_type t)
 const char *type_to_str(enum type t)
 {
 	switch(t){
-		CASE_STR(type_int);
-		CASE_STR(type_char);
-		CASE_STR(type_void);
-		CASE_STR(type_unknown);
+		CASE_STR_PREFIX(type, int);
+		CASE_STR_PREFIX(type, char);
+		CASE_STR_PREFIX(type, void);
+		CASE_STR_PREFIX(type, unknown);
 	}
 	return NULL;
 }
@@ -120,9 +120,9 @@ const char *type_to_str(enum type t)
 const char *spec_to_str(enum type_spec s)
 {
 	switch(s){
-		CASE_STR(spec_const);
-		CASE_STR(spec_extern);
-		CASE_STR(spec_none);
+		CASE_STR_PREFIX(spec, const);
+		CASE_STR_PREFIX(spec, extern);
+		CASE_STR_PREFIX(spec, none);
 	}
 	return NULL;
 }
