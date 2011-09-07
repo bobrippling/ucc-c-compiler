@@ -25,9 +25,9 @@ read:
 	push rbp
 	mov rbp, rsp
 	mov rax, SYS_read
-	mov rdi, [rbp + 16]
+	mov rdi, [rbp + 32]
 	mov rsi, [rbp + 24]
-	mov rdx, [rbp + 32]
+	mov rdx, [rbp + 16]
 	syscall
 	leave
 	ret
@@ -37,9 +37,9 @@ write:
 	push rbp
 	mov rbp, rsp
 	mov rax, SYS_write
-	mov rdi, [rbp + 16]
+	mov rdi, [rbp + 32]
 	mov rsi, [rbp + 24]
-	mov rdx, [rbp + 32]
+	mov rdx, [rbp + 16]
 	syscall
 	leave
 	ret
