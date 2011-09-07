@@ -285,8 +285,26 @@ tree *expr_to_tree(expr *e)
 	return t;
 }
 
-tree*parse_switch(){return NULL;}
-tree*parse_do(){return NULL;}
+tree *parse_switch(){return NULL;}
+
+tree *parse_do()
+{
+	tree *t = tree_new();
+
+	EAT(token_do);
+
+	t->lhs = parse_code();
+
+	EAT(token_while);
+	EAT(token_open_paren);
+	t->expr = parse_expr();
+	EAT(token_close_paren);
+	EAT(token_semicolon);
+
+	t->type = stat_do;
+
+	return t;
+}
 
 tree *parse_while()
 {

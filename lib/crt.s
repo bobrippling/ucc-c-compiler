@@ -14,7 +14,7 @@ section .text
 
 	global exit
 exit:
-	mov rax,  SYS_exit
+	mov rax, SYS_exit
 	pop rdi
 	pop rdi
 	syscall

@@ -1,13 +1,8 @@
 casts
 
-fix:
-	int main(){1;}
-	pop 1 from the stack
-
 *(int *)5 = 2;
 general lhs assignment (since it's currently identifier only):
 	(b ? x : y) = 5;
+	(x ? a : b)(2); // similarly
 
 32-bit code gen
-
-(x ? a : b)(2);
