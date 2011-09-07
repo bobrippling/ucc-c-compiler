@@ -7,6 +7,7 @@
 #include "sym.h"
 #include "platform.h"
 #include "asm.h"
+#include "const.h"
 
 #define DIE_UNDECL() \
 		die_at(&e->where, "undeclared identifier \"%s\"", e->spel)
@@ -18,6 +19,8 @@ void fold_expr(expr *e, symtable *stab)
 		memcpy(&e->vartype, from, sizeof e->vartype); \
 		e->vartype.spel = NULL; \
 	}while(0)
+
+	const_fold(e);
 
 	switch(e->type){
 		case expr_val:
@@ -166,7 +169,7 @@ void fold_code(tree *t, symtable *parent_tab)
 				int auto_offset, arg_offset;
 				sym *s;
 
-				auto_offset = arg_offset = 0;
+				auto_offset = arg_offset = 0; /* FIXME? { int i; { int j; } } */
 
 				for(s = parent_tab->first; s; s = s->next){
 					/* extern check goes here */
@@ -198,39 +201,56 @@ void fold_code(tree *t, symtable *parent_tab)
 	}
 }
 
-void fold_decl(decl *d)
+int fold_is_const(expr *e)
 {
+	(void)e;
+	fprintf(stderr, "FIXME: fold_is_const()\n");
+	return 1;
+}
+
+void fold_decl(decl *d, symtable *stab)
+{
+	int i;
+
 	if(d->type == type_void && !d->ptr_depth && !d->func)
 		die_at(&d->where, "can't have a void variable");
+
+	for(i = 0; d->arraysizes && d->arraysizes[i]; i++){
+		fold_expr(d->arraysizes[i], stab);
+
+		if(!fold_is_const(d->arraysizes[i]))
+			die_at(&d->arraysizes[i]->where, "not a constant expression");
+	}
 }
 
 void fold_func(function *f)
 {
 	decl **diter;
 
-	fold_decl(f->func_decl);
+	fold_decl(f->func_decl, NULL /* TODO: global symtab */);
 
 	for(diter = f->args; diter && *diter; diter++)
-		fold_decl(*diter);
+		fold_decl(*diter, NULL /* TODO: also here */);
 
 	if(f->code){
 		decl **d;
-
-		if(f->args){
-			decl **iter;
-			/* check for unnamed params */
-			for(iter = f->args; *iter; iter++)
-				if(!(*iter)->spel)
-					die_at(&f->where, "function \"%s\" has unnamed arguments", f->func_decl->spel);
-		}
+		sym *s;
 
 		f->symtab = symtab_new();
 
 		if(f->args)
+			/* check for unnamed params */
 			for(d = f->args; *d; d++)
-				symtab_add(f->symtab, *d, sym_arg);
+				if(!(*d)->spel)
+					die_at(&f->where, "function \"%s\" has unnamed arguments", f->func_decl->spel);
+				else
+					symtab_add(f->symtab, *d, sym_arg);
+
 
 		fold_code(f->code, f->symtab);
+
+		for(s = f->symtab->first; s; s = s->next)
+			fold_decl(s->decl, f->symtab);
 	}
 }
 
