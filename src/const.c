@@ -113,5 +113,6 @@ int fold_expr_is_const(expr *e)
 	if(e->type == expr_val || e->type == expr_sizeof || e->type == expr_str)
 		return 1;
 
-	return e->sym ? e->sym->decl->spec & spec_const : 0;
+	/* can't have a const+extern in a constant expression */
+	return e->sym ? (e->sym->decl->spec & spec_const && (e->sym->decl->spec & spec_extern) == 0) : 0;
 }
