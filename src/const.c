@@ -2,6 +2,7 @@
 
 #include "tree.h"
 #include "const.h"
+#include "sym.h"
 
 int operate(expr *lhs, expr *rhs, enum op_type op, int *bad)
 {
@@ -67,10 +68,21 @@ int const_fold(expr *e)
 			return 0;
 
 		case expr_addr:
-		case expr_identifier:
 		case expr_assign:
 		case expr_funcall: /* could extend to have int x() const; */
 			return 1;
+
+		case expr_identifier:
+			if(e->sym && e->sym->decl->spec & spec_const){
+				/*
+				 * TODO
+				 * (needs "const int x = 5;" parsing)
+				 * can fold, do so
+				 */
+				fprintf(stderr, "TODO: fold expression with const identifier %s\n", e->spel);
+			}
+			return 1;
+
 
 		case expr_op:
 		{
@@ -94,4 +106,12 @@ int const_fold(expr *e)
 		}
 	}
 	return 1;
+}
+
+int fold_expr_is_const(expr *e)
+{
+	if(e->type == expr_val || e->type == expr_sizeof || e->type == expr_str)
+		return 1;
+
+	return e->sym ? e->sym->decl->spec & spec_const : 0;
 }

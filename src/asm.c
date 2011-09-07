@@ -57,11 +57,11 @@ void asm_new(enum asm_type t, void *p)
 			break;
 
 		case asm_call:
-			printf("call %s\n", p);
+			printf("call %s\n", (const char *)p);
 			break;
 
 		case asm_load_ident:
-			printf("load %s\n", p);
+			printf("load %s\n", (const char *)p);
 			break;
 
 		case asm_load_val:

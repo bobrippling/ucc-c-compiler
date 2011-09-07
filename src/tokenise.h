@@ -26,6 +26,7 @@ enum token
 	token_int,         /* aka "int" */
 	token_elipsis,     /* aka ... */
 	token_string,      /* aka \"...\" */
+	token_const,
 
 	token_open_paren,
 	token_open_block,

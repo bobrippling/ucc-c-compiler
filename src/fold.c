@@ -19,6 +19,8 @@ void fold_expr(expr *e, symtable *stab)
 		memcpy(&e->vartype, from, sizeof e->vartype); \
 		e->vartype.spel = NULL; \
 	}while(0)
+	if(e->spel)
+		e->sym = symtab_search(stab, e->spel);
 
 	const_fold(e);
 
@@ -29,39 +31,28 @@ void fold_expr(expr *e, symtable *stab)
 			break;
 
 		case expr_addr:
-		{
-			sym *s = symtab_search(stab, e->spel);
-			if(!s)
+			if(!e->sym)
 				DIE_UNDECL();
 
-			e->vartype.type = s->decl->type;
+			e->vartype.type = e->sym->decl->type;
 			e->vartype.ptr_depth = 1;
 			break;
-		}
 
 		case expr_identifier:
-		{
-			sym *s;
-
-			s = symtab_search(stab, e->spel);
-			if(!s)
+			if(!e->sym)
 				DIE_UNDECL();
 
-			GET_VARTYPE(s->decl);
+			GET_VARTYPE(e->sym->decl);
 			break;
-		}
 
 		case expr_assign:
-		{
-			sym *s;
-			if(!(s = symtab_search(stab, e->spel)))
+			if(!e->sym)
 				DIE_UNDECL();
 
 			fold_expr(e->expr, stab);
 			/* read the vartype from what we're assigning to, not the expr */
-			GET_VARTYPE(s->decl);
+			GET_VARTYPE(e->sym->decl);
 			break;
-		}
 
 
 		case expr_op:
@@ -96,6 +87,7 @@ void fold_expr(expr *e, symtable *stab)
 
 			sym->str_lbl = label_str();
 
+			/* e->sym shouldn't be !NULL anyway */
 			e->sym = sym;
 
 			e->vartype.type      = type_char;
@@ -104,24 +96,19 @@ void fold_expr(expr *e, symtable *stab)
 		}
 
 		case expr_funcall:
-		{
-			sym *s;
-
 			if(e->funcargs){
 				expr **iter;
 				for(iter = e->funcargs; *iter; iter++)
 					fold_expr(*iter, stab);
 			}
 
-			s = symtab_search(stab, e->spel);
-			if(s){
-				GET_VARTYPE(s->decl); /* XXX: check */
+			if(e->sym){
+				GET_VARTYPE(e->sym->decl); /* XXX: check */
 			}else{
 				fprintf(stderr, "warning: %s undeclared, assuming return type int\n", e->spel);
 				e->vartype.type = type_int;
 			}
 			break;
-		}
 	}
 #undef GET_VARTYPE
 }
@@ -202,13 +189,6 @@ void fold_code(tree *t, symtable *parent_tab)
 	}
 }
 
-int fold_is_const(expr *e)
-{
-	(void)e;
-	fprintf(stderr, "FIXME: fold_is_const()\n");
-	return 1;
-}
-
 void fold_decl(decl *d, symtable *stab)
 {
 	int i;
@@ -219,7 +199,7 @@ void fold_decl(decl *d, symtable *stab)
 	for(i = 0; d->arraysizes && d->arraysizes[i]; i++){
 		fold_expr(d->arraysizes[i], stab);
 
-		if(!fold_is_const(d->arraysizes[i]))
+		if(!fold_expr_is_const(d->arraysizes[i]))
 			die_at(&d->arraysizes[i]->where, "not a constant expression");
 	}
 }

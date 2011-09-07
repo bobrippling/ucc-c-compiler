@@ -24,11 +24,19 @@ enum type
 	type_unknown
 };
 
+enum type_spec
+{
+	spec_none = 0,
+	spec_const  = 1 << 0,
+	spec_extern = 1 << 1
+};
+
 struct decl
 {
 	where where;
 
 	enum type type;
+	enum type_spec spec;
 	int func;
 	int ptr_depth;
 	char *spel;
@@ -147,6 +155,7 @@ const char *op_to_str(  enum op_type   o);
 const char *expr_to_str(enum expr_type t);
 const char *stat_to_str(enum stat_type t);
 const char *type_to_str(enum type      t);
+const char *spec_to_str(enum type_spec s);
 const char *where_str(  struct where *w);
 
 #endif

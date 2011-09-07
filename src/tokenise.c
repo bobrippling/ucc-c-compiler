@@ -47,6 +47,7 @@ struct statement
 	{ "int",     token_int     },
 	{ "void",    token_void    },
 	{ "extern",  token_extern  },
+	{ "const",   token_const   },
 
 	{ "sizeof",  token_sizeof  }
 };
