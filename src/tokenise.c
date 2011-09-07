@@ -17,17 +17,31 @@ struct statement
 	const char *str;
 	enum token tok;
 } statements[] = {
-	{ "do",      token_do      },
+#ifdef BRITISH
+	{ "perchance", token_if      },
+	{ "otherwise", token_else    },
+
+	{ "what_about",        token_switch  },
+	{ "perhaps",           token_case    },
+	{ "on_the_off_chance", token_default },
+
+	{ "splendid", token_break   },
+	{ "goodday",  token_return  },
+#else
 	{ "if",      token_if      },
 	{ "else",    token_else    },
-	{ "while",   token_while   },
-	{ "for",     token_for     },
-	{ "break",   token_break   },
-	{ "return",  token_return  },
 
 	{ "switch",  token_switch  },
 	{ "case",    token_case    },
-	{ "def",     token_default },
+	{ "default", token_default },
+
+	{ "break",   token_break   },
+	{ "return",  token_return  },
+#endif
+
+	{ "do",      token_do      },
+	{ "while",   token_while   },
+	{ "for",     token_for     },
 
 	{ "char",    token_char    },
 	{ "int",     token_int     },
