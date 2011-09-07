@@ -355,7 +355,12 @@ int parse_type(enum type *t, enum type_spec *s)
 
 		if(is_spec){
 			do{
-				*s |= curtok_to_type_specifier();
+				const enum type_spec spec = curtok_to_type_specifier();
+
+				if(*s & spec)
+					die_at(NULL, "duplicate type specifier \"%s\"", spec_to_str(spec));
+
+				*s |= spec;
 				EAT(curtok);
 			}while(curtok_is_type_specifier());
 		}
