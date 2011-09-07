@@ -20,6 +20,16 @@ enum type curtok_to_type()
 	return type_unknown;
 }
 
+enum type_spec curtok_to_type_specifier()
+{
+	switch(curtok){
+		case token_const:  return spec_const;
+		case token_extern: return spec_extern;
+		default: break;
+	}
+	return spec_none;
+}
+
 enum op_type curtok_to_op()
 {
 	switch(curtok){
@@ -56,6 +66,16 @@ int curtok_is_type()
 	return curtok_to_type() != type_unknown;
 }
 
+int curtok_is_type_specifier()
+{
+	return curtok_to_type_specifier() != spec_none;
+}
+
+int curtok_is_type_prething()
+{
+	return curtok_is_type() || curtok_is_type_specifier();
+}
+
 const char *token_to_str(enum token t)
 {
 	switch(t){
@@ -72,6 +92,7 @@ const char *token_to_str(enum token t)
 		CASE_STR(token_lt);           CASE_STR(token_ge);            CASE_STR(token_gt);           CASE_STR(token_ne);
 		CASE_STR(token_not);          CASE_STR(token_bnot);          CASE_STR(token_andsc);        CASE_STR(token_and);
 		CASE_STR(token_orsc);         CASE_STR(token_or);            CASE_STR(token_eof);          CASE_STR(token_unknown);
+		CASE_STR(token_const);
 	}
 	return NULL;
 }

@@ -117,6 +117,16 @@ const char *type_to_str(enum type t)
 	return NULL;
 }
 
+const char *spec_to_str(enum type_spec s)
+{
+	switch(s){
+		CASE_STR(spec_const);
+		CASE_STR(spec_extern);
+		CASE_STR(spec_none);
+	}
+	return NULL;
+}
+
 const char *where_str(struct where *w)
 {
 	static char buf[128];

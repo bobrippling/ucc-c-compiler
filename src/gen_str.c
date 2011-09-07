@@ -41,11 +41,20 @@ void print_decl(decl *d)
 	if(d->spel)
 		snprintf(buf, sizeof buf, "spel=\"%s\", ", d->spel);
 
-	idt_printf("{ %sptr_depth=%d, type=%s }\n",
+	idt_printf("{ %sptr_depth=%d, type=%s%s",
 			d->spel ? buf : "",
 			d->ptr_depth,
-			type_to_str(d->type)
+			type_to_str(d->type),
+			d->spec ?  ", type_spec=" : " "
 			);
+
+	if(d->spec & spec_const)
+		fputs("const ", stdout);
+	if(d->spec & spec_extern)
+		fputs("extern ", stdout);
+
+
+	puts("}");
 
 	for(i = 0; d->arraysizes && d->arraysizes[i]; i++){
 		idt_printf("array[%d] size:\n", i);

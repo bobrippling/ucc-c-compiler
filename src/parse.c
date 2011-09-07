@@ -26,7 +26,7 @@ extern enum token curtok;
 tree  *parse_code();
 expr **parse_funcargs();
 expr  *parse_expr();
-decl  *parse_decl(enum type type, int need_spel);
+decl  *parse_decl(enum type type, enum type_spec spec, int need_spel);
 
 expr *parse_expr_binary_op();
 
@@ -346,20 +346,43 @@ tree *parse_for()
 	return t;
 }
 
+int parse_type(enum type *t, enum type_spec *s)
+{
+	int is_spec = 0;
+
+	if(curtok_is_type() || (is_spec = curtok_is_type_specifier())){
+		*s = spec_none;
+
+		if(is_spec){
+			do{
+				*s |= curtok_to_type_specifier();
+				EAT(curtok);
+			}while(curtok_is_type_specifier());
+		}
+
+		if((*t = curtok_to_type()) == type_unknown)
+			*t = type_int; /* default to int */
+		else
+			EAT(curtok);
+
+		return 0;
+	}
+	return 1;
+}
+
 tree *parse_code_declblock()
 {
 	tree *t = tree_new();
 	enum type curtype;
+	enum type_spec curspec;
 
 	t->type = stat_code;
 
 	EAT(token_open_block);
 
-	while(curtok_is_type()){
-		curtype = curtok_to_type();
-		EAT(curtok);
+	while(!parse_type(&curtype, &curspec)){
 next_decl:
-		dynarray_add((void ***)&t->decls, parse_decl(curtype, 1));
+		dynarray_add((void ***)&t->decls, parse_decl(curtype, curspec, 1));
 
 		if(curtok == token_comma){
 			EAT(token_comma);
@@ -425,18 +448,15 @@ tree *parse_code()
 	return t;
 }
 
-decl *parse_decl(enum type type, int need_spel)
+decl *parse_decl(enum type type, enum type_spec spec, int need_spel)
 {
 	decl *d = decl_new();
 
 	if(type == type_unknown){
-		d->type = curtok_to_type();
-		if(d->type == type_unknown)
-			d->type = type_int; /* default to int */
-		else
-			EAT(curtok);
+		parse_type(&d->type, &d->spec);
 	}else{
 		d->type = type;
+		d->spec = spec;
 	}
 
 	while(curtok == token_multiply){
@@ -480,13 +500,13 @@ function *parse_function_proto()
 {
 	function *f = function_new();
 
-	f->func_decl = parse_decl(type_unknown, 1);
+	f->func_decl = parse_decl(type_unknown, spec_none, 1);
 	f->func_decl->func = 1;
 
 	EAT(token_open_paren);
 
-	while((curtok_is_type())){
-		dynarray_add((void ***)&f->args, parse_decl(type_unknown, 0));
+	while((curtok_is_type_prething())){
+		dynarray_add((void ***)&f->args, parse_decl(type_unknown, spec_none, 0));
 
 		if(curtok == token_close_paren)
 			break;

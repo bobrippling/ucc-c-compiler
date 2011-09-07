@@ -1,7 +1,8 @@
 #ifndef TOKCONV_H
 #define TOKCONV_H
 
-enum type    curtok_to_type();
+enum type      curtok_to_type();
+enum type_spec curtok_to_type_specifier();
 enum op_type curtok_to_op();
 
 void eat(enum token, const char *fnam, int line);
@@ -9,6 +10,8 @@ void eat(enum token, const char *fnam, int line);
 #define EAT(t) eat(t, __FILE__, __LINE__)
 
 int curtok_is_type();
+int curtok_is_type_specifier();
+int curtok_is_type_prething();
 int curtok_in_list(va_list l);
 
 char *token_current_spel();
