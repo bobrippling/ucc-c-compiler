@@ -9,7 +9,7 @@ cc1: \
 		tree.o \
 		tokconv.o tokenise.o \
 		parse.o \
-		fold.o \
+		fold.o const.o \
 		sym.o \
 		gen_asm.o gen.o gen_str.o \
 		asm.o asm_op.o

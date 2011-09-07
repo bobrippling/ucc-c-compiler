@@ -143,9 +143,10 @@ function  *function_new();
 
 tree_flow *tree_flow_new();
 
-const char *op_to_str(enum op_type o);
+const char *op_to_str(  enum op_type   o);
 const char *expr_to_str(enum expr_type t);
 const char *stat_to_str(enum stat_type t);
-const char *type_to_str(enum type t);
+const char *type_to_str(enum type      t);
+const char *where_str(  struct where *w);
 
 #endif

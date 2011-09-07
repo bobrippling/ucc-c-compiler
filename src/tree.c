@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "alloc.h"
 #include "tree.h"
@@ -114,4 +115,11 @@ const char *type_to_str(enum type t)
 		CASE_STR(type_unknown);
 	}
 	return NULL;
+}
+
+const char *where_str(struct where *w)
+{
+	static char buf[128];
+	snprintf(buf, sizeof buf, "%s:%d:%d", w->fname, w->line, w->chr + 1);
+	return buf;
 }

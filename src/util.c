@@ -10,7 +10,7 @@
 void vdie(struct where *w, va_list l, const char *fmt)
 {
 	if(w)
-		fprintf(stderr, "%s:%d:%d: ", w->fname, w->line, w->chr + 1);
+		fprintf(stderr, "%s: ", where_str(w));
 
 	vfprintf(stderr, fmt, l);
 
