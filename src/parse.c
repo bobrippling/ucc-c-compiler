@@ -20,6 +20,7 @@
  * parse_expr_logical_op above [&&||]   above
  */
 #define parse_expr() parse_expr_logical_op()
+#define accept(tok) ((tok) == curtok ? (EAT(tok), 1) : 0)
 
 extern enum token curtok;
 
@@ -70,9 +71,8 @@ expr *parse_expr_unary_op()
 			EAT(token_sizeof);
 			e = expr_new();
 			e->type = expr_sizeof;
-			if(curtok == token_identifier){
+			if(accept(token_identifier)){
 				e->spel = token_current_spel();
-				EAT(token_identifier);
 			}else if(curtok_is_type()){
 				e->vartype.type = curtok_to_type();
 				EAT(curtok);
@@ -154,15 +154,12 @@ expr *parse_expr_unary_op()
 			e->spel = token_current_spel();
 			EAT(token_identifier);
 
-			if(curtok == token_assign){
-				EAT(token_assign);
-
+			if(accept(token_assign)){
 				e->type = expr_assign;
 				e->expr = parse_expr();
 				return e;
 
-			}else if(curtok == token_open_paren){
-				EAT(token_open_paren);
+			}else if(accept(token_open_paren)){
 				e->type = expr_funcall;
 				e->funcargs = parse_funcargs();
 				EAT(token_close_paren);
@@ -253,10 +250,8 @@ tree *parse_if()
 
 	t->lhs = parse_code();
 
-	if(curtok == token_else){
-		EAT(token_else);
+	if(accept(token_else))
 		t->rhs = parse_code();
-	}
 
 	return t;
 }
@@ -389,10 +384,8 @@ tree *parse_code_declblock()
 next_decl:
 		dynarray_add((void ***)&t->decls, parse_decl(curtype, curspec, 1));
 
-		if(curtok == token_comma){
-			EAT(token_comma);
+		if(accept(token_comma))
 			goto next_decl; /* don't read another type */
-		}
 		EAT(token_semicolon);
 	}
 
@@ -425,9 +418,8 @@ tree *parse_code()
 		case token_break:
 		case token_return:
 			t = tree_new();
-			if(curtok == token_break){
+			if(accept(token_break)){
 				t->type = stat_break;
-				EAT(token_break);
 			}else{
 				t->type = stat_return;
 				EAT(token_return);
@@ -529,10 +521,9 @@ function *parse_function()
 {
 	function *f = parse_function_proto();
 
-	if(curtok == token_semicolon)
-		EAT(token_semicolon);
-	else
+	if(!accept(token_semicolon))
 		f->code = parse_code();
+	/* else ';' is eaten */
 
 	return f;
 }
