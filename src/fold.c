@@ -136,6 +136,7 @@ void fold_code(tree *t, symtable *parent_tab)
 			break;
 
 		case stat_while:
+		case stat_do:
 		case stat_if:
 			fold_expr(t->expr, parent_tab);
 			fold_code(t->lhs,  parent_tab);

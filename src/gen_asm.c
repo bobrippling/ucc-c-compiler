@@ -53,6 +53,8 @@ void walk_expr(expr *e, symtable *tab)
 						nargs * platform_word_size(),
 						nargs,
 						nargs == 1 ? "":"s");
+
+			asm_temp("push rax ; ret");
 			break;
 		}
 
@@ -151,6 +153,24 @@ void walk_tree(tree *t)
 			break;
 		}
 
+		case stat_do:
+		{
+			char *lbl_start;
+
+			lbl_start = label_code("do");
+
+			asm_label(lbl_start);
+			walk_tree(t->lhs);
+
+			walk_expr(t->expr, t->symtab);
+			asm_temp("pop rax");
+			asm_temp("test rax, rax");
+			asm_temp("jnz %s", lbl_start);
+
+			free(lbl_start);
+			break;
+		}
+
 		case stat_return:
 			walk_expr(t->expr, t->symtab);
 			asm_temp("pop rax");
@@ -163,6 +183,7 @@ void walk_tree(tree *t)
 
 		case stat_expr:
 			walk_expr(t->expr, t->symtab);
+			asm_temp("pop rax ; unused expr");
 			break;
 
 		case stat_code:
