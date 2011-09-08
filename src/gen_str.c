@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdarg.h>
+#include <unistd.h>
 
 #include "tree.h"
 #include "macros.h"
@@ -14,47 +15,55 @@
 		indent--; \
 	}
 
+#define colour_low()  ((void)(colour && printf("\x1b[1;30m")))
+#define colour_norm() ((void)(colour && printf("\x1b[m")))
 
 static int indent = 0;
+static int colour = 1;
 
 void print_tree(tree *t);
 void print_expr(expr *e);
 
-void idt_printf(const char *fmt, ...)
+void idt_print()
 {
-	va_list l;
 	int i;
 
 	for(i = indent; i > 0; i--)
 		fputs("  ", stdout);
+}
+
+void idt_printf(const char *fmt, ...)
+{
+	va_list l;
+
+	idt_print();
 
 	va_start(l, fmt);
 	vprintf(fmt, l);
 	va_end(l);
 }
 
-void print_decl(decl *d)
+void print_decl(decl *d, int idt)
 {
-	char buf[256];
 	int i;
 
-	if(d->spel)
-		snprintf(buf, sizeof buf, "spel=\"%s\", ", d->spel);
-
-	idt_printf("{ %sptr_depth=%d, type=%s%s",
-			d->spel ? buf : "",
-			d->ptr_depth,
-			type_to_str(d->type),
-			d->spec ?  ", type_spec=" : " "
-			);
+	if(idt)
+		idt_print();
 
 	if(d->spec & spec_const)
 		fputs("const ", stdout);
 	if(d->spec & spec_extern)
 		fputs("extern ", stdout);
 
+	printf("%s%s", type_to_str(d->type), (d->ptr_depth || d->spel) ? " " : "");
 
-	puts("}");
+	for(i = d->ptr_depth; i > 0; i--)
+		putchar('*');
+
+	if(d->spel)
+		fputs(d->spel, stdout);
+
+	putchar('\n');
 
 	for(i = 0; d->arraysizes && d->arraysizes[i]; i++){
 		idt_printf("array[%d] size:\n", i);
@@ -66,20 +75,16 @@ void print_decl(decl *d)
 
 void print_sym(sym *s)
 {
-	idt_printf("sym: type=%s, offset=%d\n", sym_to_str(s->type), s->offset);
-	indent++;
-	print_decl(s->decl);
-	indent--;
+	idt_printf("sym: type=%s, offset=%d, type: ", sym_to_str(s->type), s->offset);
+	print_decl(s->decl, 0);
 }
 
 void print_expr(expr *e)
 {
-	idt_printf("e->type: %s\n", expr_to_str(e->type));
+	idt_printf("vartype: ");
+	print_decl(&e->vartype, 0);
 
-	idt_printf("vartype:\n");
-	indent++;
-	print_decl(&e->vartype);
-	indent--;
+	idt_printf("e->type: %s\n", expr_to_str(e->type));
 
 	switch(e->type){
 		case expr_identifier:
@@ -109,9 +114,13 @@ void print_expr(expr *e)
 			break;
 
 		case expr_assign:
-			idt_printf("assign to %s:\n", e->spel);
+			idt_printf("assign to:\n");
 			indent++;
-			print_expr(e->expr);
+			print_expr(e->lhs);
+			indent--;
+			idt_printf("assign from:\n");
+			indent++;
+			print_expr(e->rhs);
 			indent--;
 			break;
 
@@ -169,12 +178,14 @@ void print_tree(tree *t)
 	if(t->decls){
 		decl **iter;
 
+		colour_low();
 		idt_printf("decls:\n");
 		for(iter = t->decls; *iter; iter++){
 			indent++;
-			print_decl(*iter);
+			print_decl(*iter, 1);
 			indent--;
 		}
+		colour_norm();
 	}
 
 	if(t->codes){
@@ -199,10 +210,12 @@ void gen_str(function *f)
 {
 	sym *s;
 
-	idt_printf("function: decl:\n");
+	colour = isatty(1);
+
+	idt_printf("function: ");
 	indent++;
 
-	print_decl(f->func_decl);
+	print_decl(f->func_decl, 0);
 
 	if(f->symtab){
 		idt_printf("symtable:\n");

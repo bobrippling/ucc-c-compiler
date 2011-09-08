@@ -10,7 +10,23 @@
 #include "const.h"
 
 #define DIE_UNDECL() \
-		die_at(&e->where, "undeclared identifier \"%s\"", e->spel)
+		die_at(&e->where, "undeclared identifier \"%s\" (%s:%d)", e->spel, __FILE__, __LINE__)
+
+int fold_is_lvalue(expr *e)
+{
+	/*
+	 * valid lvaluess:
+	 *
+	 *   x = 5;
+	 *   *(expr) = 5;
+	 *
+	 *
+	 * also can't be const
+	 */
+
+	return e->type == expr_identifier ||
+		(e->type == expr_op && e->op == op_deref);
+}
 
 void fold_expr(expr *e, symtable *stab)
 {
@@ -18,7 +34,9 @@ void fold_expr(expr *e, symtable *stab)
 	do{ \
 		memcpy(&e->vartype, from, sizeof e->vartype); \
 		e->vartype.spel = NULL; \
+		e->vartype.arraysizes = NULL; \
 	}while(0)
+
 	if(e->spel)
 		e->sym = symtab_search(stab, e->spel);
 
@@ -46,12 +64,18 @@ void fold_expr(expr *e, symtable *stab)
 			break;
 
 		case expr_assign:
-			if(!e->sym)
-				DIE_UNDECL();
+			if(!fold_is_lvalue(e->lhs))
+				die_at(&e->lhs->where, "not an lvalue");
 
-			fold_expr(e->expr, stab);
-			/* read the vartype from what we're assigning to, not the expr */
-			GET_VARTYPE(e->sym->decl);
+			fold_expr(e->lhs, stab);
+			fold_expr(e->rhs, stab);
+
+			if(e->sym)
+				/* read the vartype from what we're assigning to, not the expr */
+				GET_VARTYPE(e->sym->decl);
+			else
+				/* get the vartype from the dereference's vartype */
+				GET_VARTYPE(&e->lhs->vartype);
 			break;
 
 
@@ -76,7 +100,7 @@ void fold_expr(expr *e, symtable *stab)
 							break;
 					}
 				else if(e->vartype.ptr_depth < 0)
-					die_at(&e->where, "can't dereference non-pointer");
+					die_at(&e->where, "can't dereference non-pointer (%s)", type_to_str(e->vartype.type));
 			}
 			break;
 

@@ -61,6 +61,57 @@ expr *parse_expr_join(
 	}
 }
 
+expr *parse_array(expr *base)
+{
+	/*
+	 * char **tim;
+	 *
+	 * tim[5][2];
+	 * ->
+	 * *(*(tim + 5) + 2)
+	 */
+	expr *sum, *deref;
+
+	if(!accept(token_open_square))
+		return base;
+
+	sum = expr_new();
+
+	sum->type = expr_op;
+	sum->op   = op_plus;
+
+	sum->lhs  = base;
+	sum->rhs  = parse_expr();
+
+	EAT(token_close_square);
+
+	deref = expr_new();
+	deref->type = expr_op;
+	deref->op   = op_deref;
+	deref->lhs  = sum;
+
+	return parse_array(deref);
+}
+
+expr *parse_identifier()
+{
+	expr *e = expr_new();
+
+	e->spel = token_current_spel();
+	EAT(token_identifier);
+	e->type = expr_identifier;
+
+	if(accept(token_open_paren)){
+		e->type = expr_funcall;
+		e->funcargs = parse_funcargs();
+		EAT(token_close_paren);
+	}else if(curtok == token_open_square){
+		return parse_array(e);
+	}
+
+	return e;
+}
+
 expr *parse_expr_unary_op()
 {
 	extern int currentval;
@@ -149,25 +200,7 @@ expr *parse_expr_unary_op()
 			break;
 
 		case token_identifier:
-			e = expr_new();
-
-			e->spel = token_current_spel();
-			EAT(token_identifier);
-
-			if(accept(token_assign)){
-				e->type = expr_assign;
-				e->expr = parse_expr();
-				return e;
-
-			}else if(accept(token_open_paren)){
-				e->type = expr_funcall;
-				e->funcargs = parse_funcargs();
-				EAT(token_close_paren);
-				return e;
-			}else{
-				e->type = expr_identifier;
-				return e;
-			}
+			return parse_identifier();
 
 		default:
 			break;
@@ -341,6 +374,22 @@ tree *parse_for()
 	return t;
 }
 
+expr *parse_assignment()
+{
+	expr *ret = parse_expr();
+
+	if(accept(token_assign)){
+		expr *e = expr_new();
+
+		e->lhs = ret;
+		ret = e;
+
+		e->rhs = parse_expr();
+		e->type = expr_assign;
+	}
+	return ret;
+}
+
 int parse_type(enum type *t, enum type_spec *s)
 {
 	int is_spec = 0;
@@ -414,7 +463,6 @@ tree *parse_code()
 			EAT(token_semicolon);
 			return t;
 
-
 		case token_break:
 		case token_return:
 			t = tree_new();
@@ -440,7 +488,10 @@ tree *parse_code()
 		default: break;
 	}
 
-	t = expr_to_tree(parse_expr());
+
+	/* read an expression and optionally an assignment (fold checks for lvalues) */
+	t = expr_to_tree(parse_assignment());
+
 	EAT(token_semicolon);
 	return t;
 }
@@ -480,12 +531,12 @@ decl *parse_decl(enum type type, enum type_spec spec, int need_spel)
 			size = parse_expr(); /* fold.c checks for const-ness */
 		else
 			fin = 1;
+
+		d->ptr_depth++;
 		EAT(token_close_square);
 
-		if(fin){
-			d->ptr_depth++;
+		if(fin)
 			break;
-		}
 
 		dynarray_add((void ***)&d->arraysizes, size);
 	}

@@ -11,11 +11,11 @@
 
 static char *curfunc_lblfin;
 
-void walk_expr(expr *e, symtable *tab)
+void walk_expr(expr *e, symtable *stab)
 {
 	switch(e->type){
 		case expr_identifier:
-			asm_sym(ASM_LOAD, symtab_search(tab, e->spel), "rax");
+			asm_sym(ASM_LOAD, e->sym, "rax");
 			asm_temp("push rax");
 			break;
 
@@ -26,14 +26,26 @@ void walk_expr(expr *e, symtable *tab)
 			break;
 
 		case expr_op:
-			asm_operate(e, tab);
+			asm_operate(e, stab);
 			break;
 
 		case expr_assign:
-			walk_expr(e->expr, tab);
-			/*asm_new(asm_assign, e->spel);*/
-			asm_temp("pop rax");
-			asm_sym(ASM_SET, symtab_search(tab, e->spel), "rax");
+			walk_expr(e->rhs, stab);
+
+			if(e->lhs->type == expr_identifier){
+				asm_temp("pop rax");
+				asm_sym(ASM_SET, e->lhs->sym, "rax");
+
+			}else{
+				/* a dereference */
+				walk_expr(e->lhs->lhs, stab); /* skip over the *() bit */
+
+				/* move `pop` into `pop` */
+				asm_temp("pop rax ; ptr");
+				asm_temp("mov rbx, [rsp] ; val");
+				asm_temp("mov [rax], rbx");
+			}
+
 			break;
 
 		case expr_funcall:
@@ -43,7 +55,7 @@ void walk_expr(expr *e, symtable *tab)
 
 			if(e->funcargs)
 				for(iter = e->funcargs; *iter; iter++){
-					walk_expr(*iter, tab);
+					walk_expr(*iter, stab);
 					nargs++;
 				}
 
@@ -59,7 +71,7 @@ void walk_expr(expr *e, symtable *tab)
 		}
 
 		case expr_addr:
-			asm_sym(ASM_LEA, symtab_search(tab, e->spel), "rax");
+			asm_sym(ASM_LEA, e->sym, "rax");
 			asm_temp("push rax");
 			break;
 
