@@ -15,7 +15,9 @@ void walk_expr(expr *e, symtable *stab)
 {
 	switch(e->type){
 		case expr_identifier:
-			asm_sym(ASM_LOAD, e->sym, "rax");
+			/* if it's an array, lea, else, load */
+			asm_sym(e->sym->decl->arraysizes ? ASM_LEA : ASM_LOAD, e->sym, "rax");
+
 			asm_temp("push rax");
 			break;
 
@@ -45,7 +47,6 @@ void walk_expr(expr *e, symtable *stab)
 				asm_temp("mov rbx, [rsp] ; val");
 				asm_temp("mov [rax], rbx");
 			}
-
 			break;
 
 		case expr_funcall:
@@ -274,8 +275,17 @@ void gen_asm(function *f)
 		asm_temp("mov rbp, rsp");
 
 		for(s = f->symtab->first; s; s = s->next)
-			if(s->type == sym_auto)
-				offset += platform_word_size();
+			if(s->type == sym_auto){
+				/* TODO: optimise for chars / don't assume everything is an int */
+				if(s->decl->arraysizes){
+					/* should've been folded fully */
+					int i;
+					for(i = 0; s->decl->arraysizes[i]; i++)
+						offset += s->decl->arraysizes[i]->val * platform_word_size();
+				}else{
+					offset += platform_word_size();
+				}
+			}
 
 		curfunc_lblfin = label_code(f->func_decl->spel);
 
