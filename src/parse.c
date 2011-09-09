@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdlib.h>
 
 #include "tokenise.h"
 #include "tree.h"
@@ -421,6 +422,7 @@ int parse_type(enum type *t, enum type_spec *s)
 
 tree *parse_code_declblock()
 {
+	expr **assignments = NULL;
 	tree *t = tree_new();
 	enum type curtype;
 	enum type_spec curspec;
@@ -430,12 +432,34 @@ tree *parse_code_declblock()
 	EAT(token_open_block);
 
 	while(!parse_type(&curtype, &curspec)){
+		decl *d;
 next_decl:
-		dynarray_add((void ***)&t->decls, parse_decl(curtype, curspec, 1));
+		dynarray_add((void ***)&t->decls, d = parse_decl(curtype, curspec, 1));
+
+		if(accept(token_assign)){
+			expr *e = expr_new();
+
+			e->type = expr_assign;
+			e->lhs = expr_new();
+			e->lhs->type = expr_identifier;
+			e->lhs->spel = d->spel;
+			e->rhs = parse_expr();
+
+			dynarray_add((void ***)&assignments, e);
+		}
 
 		if(accept(token_comma))
 			goto next_decl; /* don't read another type */
+
 		EAT(token_semicolon);
+	}
+
+	/* handle assignments */
+	if(assignments){
+		expr **iter;
+		for(iter = assignments; *iter; iter++)
+			dynarray_add((void ***)&t->codes, expr_to_tree(*iter));
+		free(assignments);
 	}
 
 	/* main read loop */
