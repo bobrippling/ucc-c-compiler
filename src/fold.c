@@ -52,8 +52,8 @@ void fold_expr(expr *e, symtable *stab)
 			if(!e->sym)
 				DIE_UNDECL();
 
-			e->vartype.type = e->sym->decl->type;
-			e->vartype.ptr_depth = 1;
+			GET_VARTYPE(e->sym->decl);
+			e->vartype.ptr_depth++;
 			break;
 
 		case expr_identifier:
