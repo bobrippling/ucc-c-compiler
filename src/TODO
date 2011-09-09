@@ -6,3 +6,13 @@ general lhs assignment (since it's currently identifier only):
 	(x ? a : b)(2); // similarly
 
 32-bit code gen
+
+fix:
+	set(int *p){*p = 5;}
+	main()
+	{
+		int x[2];
+		set(&x);
+	}
+
+generates the same as `set(x)`
