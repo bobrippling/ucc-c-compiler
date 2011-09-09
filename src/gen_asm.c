@@ -33,7 +33,7 @@ void walk_expr(expr *e, symtable *stab)
 			walk_expr(e->rhs, stab);
 
 			if(e->lhs->type == expr_identifier){
-				asm_temp("pop rax");
+				asm_temp("mov rax, [rsp]");
 				asm_sym(ASM_SET, e->lhs->sym, "rax");
 
 			}else{
