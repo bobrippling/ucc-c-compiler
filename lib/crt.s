@@ -1,13 +1,23 @@
 ;%define MAC 1
-%ifdef MAC
+;%define BSD 1
+
+%ifdef BSD
+%define SYS_exit   1
+%define SYS_read   3
+%define SYS_write  4
+
+%elifdef MAC
 %define SYS_exit  0x2000001
 %define SYS_read  0x2000003
 %define SYS_write 0x2000004
+
 %else
+%define SYS_exit  60
 %define SYS_read  0
 %define SYS_write 1
-%define SYS_exit  60
+
 %endif
+
 
 section .text
 	extern main
