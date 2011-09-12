@@ -15,7 +15,7 @@ print.o: print.s
 	${BUILD_NASM}
 
 print.s: print.c
-	${CC} $< > $@
+	${CC} print.c > $@
 
 clean:
 	rm -f *.o print.s
