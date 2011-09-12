@@ -8,6 +8,7 @@ typedef struct function  function;
 typedef struct symtable  symtable;
 typedef struct sym       sym;
 typedef struct tree_flow tree_flow;
+typedef struct type      type;
 
 typedef struct where
 {
@@ -15,7 +16,7 @@ typedef struct where
 	int line, chr;
 } where;
 
-enum type
+enum type_primitive
 {
 #define type_ptr type_int
 	type_int,
@@ -31,14 +32,22 @@ enum type_spec
 	spec_extern = 1 << 1
 };
 
+struct type
+{
+	where where;
+
+	enum type_primitive primitive;
+	enum type_spec      spec;
+	int func;
+	int ptr_depth;
+};
+
 struct decl
 {
 	where where;
 
-	enum type type;
-	enum type_spec spec;
-	int func;
-	int ptr_depth;
+	type *type;
+
 	char *spel;
 
 	expr **arraysizes;
@@ -62,7 +71,8 @@ struct expr
 		expr_str, /* "abc" */
 		expr_identifier,
 		expr_assign,
-		expr_funcall
+		expr_funcall,
+		expr_cast
 	} type;
 
 	enum op_type
@@ -92,7 +102,7 @@ struct expr
 	expr *expr; /* x = 5; expr is the 5 */
 	expr **funcargs;
 
-	decl vartype; /* type propagation */
+	type *vartype; /* type propagation */
 
 	sym *sym; /* used for strings, points to the string's symtable entry */
 };
@@ -146,16 +156,20 @@ struct function
 
 tree      *tree_new();
 expr      *expr_new();
+type      *type_new();
 decl      *decl_new();
 function  *function_new();
+type      *type_copy(type *);
 
 tree_flow *tree_flow_new();
 
 const char *op_to_str(  enum op_type   o);
 const char *expr_to_str(enum expr_type t);
 const char *stat_to_str(enum stat_type t);
-const char *type_to_str(enum type      t);
+const char *type_to_str(type          *t);
 const char *spec_to_str(enum type_spec s);
 const char *where_str(  struct where *w);
+
+#define free_type(x) free(x)
 
 #endif

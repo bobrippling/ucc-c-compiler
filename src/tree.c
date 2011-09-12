@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "alloc.h"
 #include "tree.h"
@@ -32,6 +33,7 @@ expr *expr_new()
 {
 	expr *e = umalloc(sizeof *e);
 	where_new(&e->where);
+	e->vartype = type_new();
 	return e;
 }
 
@@ -39,7 +41,22 @@ decl *decl_new()
 {
 	decl *d = umalloc(sizeof *d);
 	where_new(&d->where);
+	d->type = type_new();
 	return d;
+}
+
+type *type_new()
+{
+	type *t = umalloc(sizeof *t);
+	where_new(&t->where);
+	return t;
+}
+
+type *type_copy(type *t)
+{
+	type *ret = umalloc(sizeof *ret);
+	memcpy(ret, t, sizeof *ret);
+	return ret;
 }
 
 function *function_new()
@@ -60,6 +77,7 @@ const char *expr_to_str(enum expr_type t)
 		CASE_STR_PREFIX(expr, identifier);
 		CASE_STR_PREFIX(expr, assign);
 		CASE_STR_PREFIX(expr, funcall);
+		CASE_STR_PREFIX(expr, cast);
 	}
 	return NULL;
 }
@@ -106,9 +124,9 @@ const char *stat_to_str(enum stat_type t)
 	return NULL;
 }
 
-const char *type_to_str(enum type t)
+const char *type_to_str(type *t)
 {
-	switch(t){
+	switch(t->primitive){
 		CASE_STR_PREFIX(type, int);
 		CASE_STR_PREFIX(type, char);
 		CASE_STR_PREFIX(type, void);

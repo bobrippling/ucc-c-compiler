@@ -9,7 +9,7 @@
 
 extern enum token curtok;
 
-enum type curtok_to_type()
+enum type_primitive curtok_to_type_primitive()
 {
 	switch(curtok){
 		case token_int:  return type_int;
@@ -63,7 +63,7 @@ enum op_type curtok_to_op()
 
 int curtok_is_type()
 {
-	return curtok_to_type() != type_unknown;
+	return curtok_to_type_primitive() != type_unknown;
 }
 
 int curtok_is_type_specifier()

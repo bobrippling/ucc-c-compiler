@@ -43,6 +43,21 @@ void idt_printf(const char *fmt, ...)
 	va_end(l);
 }
 
+void print_type(type *t)
+{
+	int i;
+
+	if(t->spec & spec_const)
+		fputs("const ", stdout);
+	if(t->spec & spec_extern)
+		fputs("extern ", stdout);
+
+	printf("%s ", type_to_str(t));
+
+	for(i = t->ptr_depth; i > 0; i--)
+		putchar('*');
+}
+
 void print_decl(decl *d, int idt)
 {
 	int i;
@@ -50,15 +65,7 @@ void print_decl(decl *d, int idt)
 	if(idt)
 		idt_print();
 
-	if(d->spec & spec_const)
-		fputs("const ", stdout);
-	if(d->spec & spec_extern)
-		fputs("extern ", stdout);
-
-	printf("%s%s", type_to_str(d->type), (d->ptr_depth || d->spel) ? " " : "");
-
-	for(i = d->ptr_depth; i > 0; i--)
-		putchar('*');
+	print_type(d->type);
 
 	if(d->spel)
 		fputs(d->spel, stdout);
@@ -82,7 +89,8 @@ void print_sym(sym *s)
 void print_expr(expr *e)
 {
 	idt_printf("vartype: ");
-	print_decl(&e->vartype, 0);
+	print_type(e->vartype);
+	putchar('\n');
 
 	idt_printf("e->type: %s\n", expr_to_str(e->type));
 
@@ -101,8 +109,7 @@ void print_expr(expr *e)
 
 			if(e->op == op_deref)
 				idt_printf("deref size: %s\n",
-						type_to_str(
-							e->vartype.ptr_depth ? type_ptr : e->vartype.type));
+						type_to_str(e->vartype));
 
 			PRINT_IF(e, lhs, print_expr);
 			PRINT_IF(e, rhs, print_expr);
@@ -148,7 +155,14 @@ void print_expr(expr *e)
 			break;
 
 		case expr_sizeof:
-			idt_printf("sizeof %s\n", e->spel ? e->spel : type_to_str(e->vartype.type));
+			idt_printf("sizeof %s\n", e->spel ? e->spel : type_to_str(e->vartype));
+			break;
+
+		case expr_cast:
+			idt_printf("cast expr:\n");
+			indent++;
+			print_expr(e->rhs);
+			indent--;
 			break;
 
 		default:
