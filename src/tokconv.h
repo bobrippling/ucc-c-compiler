@@ -1,8 +1,8 @@
 #ifndef TOKCONV_H
 #define TOKCONV_H
 
-enum type      curtok_to_type();
-enum type_spec curtok_to_type_specifier();
+enum type_primitive curtok_to_type_primitive();
+enum type_spec      curtok_to_type_specifier();
 enum op_type curtok_to_op();
 
 void eat(enum token, const char *fnam, int line);

@@ -14,6 +14,11 @@ static char *curfunc_lblfin;
 void walk_expr(expr *e, symtable *stab)
 {
 	switch(e->type){
+		case expr_cast:
+			/* ignore the lhs, it's just a type spec */
+			walk_expr(e->rhs, stab);
+			break;
+
 		case expr_identifier:
 			/* if it's an array, lea, else, load */
 			asm_sym(e->sym->decl->arraysizes ? ASM_LEA : ASM_LOAD, e->sym, "rax");
@@ -81,7 +86,7 @@ void walk_expr(expr *e, symtable *stab)
 			if(e->spel)
 				asm_temp("push %d ; sizeof %s", platform_word_size(), e->spel);
 			else
-				asm_temp("push %d ; sizeof type %s", platform_word_size(), type_to_str(e->type));
+				asm_temp("push %d ; sizeof type %s", platform_word_size(), type_to_str(e->vartype));
 			break;
 
 		case expr_str:

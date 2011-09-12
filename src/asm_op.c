@@ -113,9 +113,9 @@ void asm_operate(expr *e, symtable *tab)
 			walk_expr(e->lhs, tab);
 			asm_temp("pop rax");
 
-			if(e->vartype.ptr_depth)
+			if(e->vartype->ptr_depth)
 				goto ptr;
-			switch(e->vartype.type){
+			switch(e->vartype->primitive){
 				case type_char:
 					asm_temp("movzx rax, byte [rax]");
 					break;

@@ -65,6 +65,7 @@ int const_fold(expr *e)
 		case expr_val:
 		case expr_sizeof:
 		case expr_str:
+		case expr_cast:
 			return 0;
 
 		case expr_addr:
@@ -73,7 +74,7 @@ int const_fold(expr *e)
 			return 1;
 
 		case expr_identifier:
-			if(e->sym && e->sym->decl->spec & spec_const){
+			if(e->sym && e->sym->decl->type->spec & spec_const){
 				/*
 				 * TODO
 				 * (needs "const int x = 5;" parsing)
@@ -114,5 +115,5 @@ int fold_expr_is_const(expr *e)
 		return 1;
 
 	/* can't have a const+extern in a constant expression */
-	return e->sym ? (e->sym->decl->spec & spec_const && (e->sym->decl->spec & spec_extern) == 0) : 0;
+	return e->sym ? (e->sym->decl->type->spec & spec_const && (e->sym->decl->type->spec & spec_extern) == 0) : 0;
 }

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "tokenise.h"
 #include "tree.h"
@@ -28,43 +29,18 @@ extern enum token curtok;
 tree  *parse_code();
 expr **parse_funcargs();
 expr  *parse_expr();
-decl  *parse_decl(enum type type, enum type_spec spec, int need_spel);
+decl  *parse_decl(type *t, int need_spel);
+type  *parse_type();
 
 expr *parse_expr_binary_op();
 
-/* generalised recursive descent */
-expr *parse_expr_join(
-		expr *(*above)(), expr *(*this)(),
-		enum token accept, ...
-		)
-{
-	va_list l;
-	expr *e = above();
-
-	va_start(l, accept);
-	if(curtok == accept || curtok_in_list(l)){
-		expr *join;
-
-		va_end(l);
-
-		join       = expr_new();
-		join->type = expr_op;
-		join->op   = curtok_to_op();
-		join->lhs  = e;
-
-		EAT(curtok);
-		join->rhs = this();
-
-		return join;
-	}else{
-		va_end(l);
-		return e;
-	}
-}
 
 expr *parse_array(expr *base)
 {
 	/*
+	 * FIXME:
+	 * ((int *)x)[2]
+	 *
 	 * char **tim;
 	 *
 	 * tim[5][2];
@@ -126,7 +102,7 @@ expr *parse_expr_unary_op()
 			if(accept(token_identifier)){
 				e->spel = token_current_spel();
 			}else if(curtok_is_type()){
-				e->vartype.type = curtok_to_type();
+				e->vartype->primitive = curtok_to_type_primitive();
 				EAT(curtok);
 			}else{
 				EAT(token_identifier); /* raise error */
@@ -150,8 +126,19 @@ expr *parse_expr_unary_op()
 
 		case token_open_paren:
 			EAT(token_open_paren);
-			e = parse_expr();
-			EAT(token_close_paren);
+
+			if(curtok_is_type_prething()){
+				e = expr_new();
+				e->type = expr_cast;
+				e->lhs = expr_new();
+				e->lhs->vartype = parse_type();
+				EAT(token_close_paren);
+				e->rhs = parse_expr();
+			}else{
+				e = parse_expr();
+				EAT(token_close_paren);
+			}
+
 			return e;
 
 		case token_multiply: /* deref! */
@@ -208,6 +195,36 @@ expr *parse_expr_unary_op()
 	}
 	fprintf(stderr, "warning: parse_expr_unary_op() returning NULL @ %s\n", token_to_str(curtok));
 	return NULL;
+}
+
+/* generalised recursive descent */
+expr *parse_expr_join(
+		expr *(*above)(), expr *(*this)(),
+		enum token accept, ...
+		)
+{
+	va_list l;
+	expr *e = above();
+
+	va_start(l, accept);
+	if(curtok == accept || curtok_in_list(l)){
+		expr *join;
+
+		va_end(l);
+
+		join       = expr_new();
+		join->type = expr_op;
+		join->op   = curtok_to_op();
+		join->lhs  = e;
+
+		EAT(curtok);
+		join->rhs = this();
+
+		return join;
+	}else{
+		va_end(l);
+		return e;
+	}
 }
 
 expr *parse_expr_div()
@@ -391,50 +408,48 @@ expr *parse_assignment()
 	return ret;
 }
 
-int parse_type(enum type *t, enum type_spec *s)
+type *parse_type()
 {
-	int is_spec = 0;
+	type *t = type_new();
 
-	if(curtok_is_type() || (is_spec = curtok_is_type_specifier())){
-		*s = spec_none;
+	t->spec = spec_none;
 
-		if(is_spec){
-			do{
-				const enum type_spec spec = curtok_to_type_specifier();
+	while(curtok_is_type_specifier()){
+		const enum type_spec spec = curtok_to_type_specifier();
 
-				if(*s & spec)
-					die_at(NULL, "duplicate type specifier \"%s\"", spec_to_str(spec));
+		if(t->spec & spec)
+			die_at(NULL, "duplicate type specifier \"%s\"", spec_to_str(spec));
 
-				*s |= spec;
-				EAT(curtok);
-			}while(curtok_is_type_specifier());
-		}
-
-		if((*t = curtok_to_type()) == type_unknown)
-			*t = type_int; /* default to int */
-		else
-			EAT(curtok);
-
-		return 0;
+		t->spec |= spec;
+		EAT(curtok);
 	}
-	return 1;
+
+	if((t->primitive = curtok_to_type_primitive()) == type_unknown)
+		t->primitive = type_int; /* default to int */
+	else
+		EAT(curtok);
+
+	while(curtok == token_multiply){
+		EAT(token_multiply);
+		t->ptr_depth++;
+	}
+
+	return t;
 }
 
 tree *parse_code_declblock()
 {
 	expr **assignments = NULL;
 	tree *t = tree_new();
-	enum type curtype;
-	enum type_spec curspec;
 
 	t->type = stat_code;
 
 	EAT(token_open_block);
 
-	while(!parse_type(&curtype, &curspec)){
+	while(curtok_is_type_prething()){
 		decl *d;
 next_decl:
-		dynarray_add((void ***)&t->decls, d = parse_decl(curtype, curspec, 1));
+		dynarray_add((void ***)&t->decls, d = parse_decl(parse_type(), 1));
 
 		if(accept(token_assign)){
 			expr *e = expr_new();
@@ -520,20 +535,15 @@ tree *parse_code()
 	return t;
 }
 
-decl *parse_decl(enum type type, enum type_spec spec, int need_spel)
+decl *parse_decl(type *type, int need_spel)
 {
 	decl *d = decl_new();
 
-	if(type == type_unknown){
-		parse_type(&d->type, &d->spec);
+	if(type->primitive == type_unknown){
+		free_type(type);
+		d->type = parse_type();
 	}else{
 		d->type = type;
-		d->spec = spec;
-	}
-
-	while(curtok == token_multiply){
-		EAT(token_multiply);
-		d->ptr_depth++;
 	}
 
 	if(curtok == token_identifier){
@@ -552,11 +562,11 @@ decl *parse_decl(enum type type, enum type_spec spec, int need_spel)
 
 		EAT(token_open_square);
 		if(curtok != token_close_square)
-			size = parse_expr(); /* fold.c checks for const-ness */
+			size = parse_expr(); /* fold->c checks for const-ness */
 		else
 			fin = 1;
 
-		d->ptr_depth++;
+		d->type->ptr_depth++;
 		EAT(token_close_square);
 
 		if(fin)
@@ -572,13 +582,13 @@ function *parse_function_proto()
 {
 	function *f = function_new();
 
-	f->func_decl = parse_decl(type_unknown, spec_none, 1);
-	f->func_decl->func = 1;
+	f->func_decl = parse_decl(parse_type(), 1);
+	f->func_decl->type->func = 1;
 
 	EAT(token_open_paren);
 
 	while((curtok_is_type_prething())){
-		dynarray_add((void ***)&f->args, parse_decl(type_unknown, spec_none, 0));
+		dynarray_add((void ***)&f->args, parse_decl(parse_type(), 0));
 
 		if(curtok == token_close_paren)
 			break;

@@ -30,12 +30,7 @@ int fold_is_lvalue(expr *e)
 
 void fold_expr(expr *e, symtable *stab)
 {
-#define GET_VARTYPE(from) \
-	do{ \
-		memcpy(&e->vartype, from, sizeof e->vartype); \
-		e->vartype.spel = NULL; \
-		e->vartype.arraysizes = NULL; \
-	}while(0)
+#define GET_VARTYPE(from) e->vartype = type_copy(from)
 
 	if(e->spel)
 		e->sym = symtab_search(stab, e->spel);
@@ -45,22 +40,27 @@ void fold_expr(expr *e, symtable *stab)
 	switch(e->type){
 		case expr_val:
 		case expr_sizeof:
-			e->vartype.type = type_int;
+			e->vartype->primitive = type_int;
+			break;
+
+		case expr_cast:
+			fold_expr(e->rhs, stab);
+			GET_VARTYPE(e->lhs->vartype);
 			break;
 
 		case expr_addr:
 			if(!e->sym)
 				DIE_UNDECL();
 
-			GET_VARTYPE(e->sym->decl);
-			e->vartype.ptr_depth++;
+			GET_VARTYPE(e->sym->decl->type);
+			e->vartype->ptr_depth++;
 			break;
 
 		case expr_identifier:
 			if(!e->sym)
 				DIE_UNDECL();
 
-			GET_VARTYPE(e->sym->decl);
+			GET_VARTYPE(e->sym->decl->type);
 			break;
 
 		case expr_assign:
@@ -72,10 +72,10 @@ void fold_expr(expr *e, symtable *stab)
 
 			if(e->sym)
 				/* read the vartype from what we're assigning to, not the expr */
-				GET_VARTYPE(e->sym->decl);
+				GET_VARTYPE(e->sym->decl->type);
 			else
 				/* get the vartype from the dereference's vartype */
-				GET_VARTYPE(&e->lhs->vartype);
+				GET_VARTYPE(e->lhs->vartype);
 			break;
 
 
@@ -85,22 +85,22 @@ void fold_expr(expr *e, symtable *stab)
 				fold_expr(e->rhs, stab);
 
 			/* XXX: note, this assumes that e.g. "1 + 2" the lhs and rhs have the same type */
-			GET_VARTYPE(&e->lhs->vartype);
+			GET_VARTYPE(e->lhs->vartype);
 
 			if(e->op == op_deref){
-				e->vartype.ptr_depth--;
+				e->vartype->ptr_depth--;
 
-				if(e->vartype.ptr_depth == 0)
-					switch(e->lhs->vartype.type){
+				if(e->vartype->ptr_depth == 0)
+					switch(e->lhs->vartype->primitive){
 						case type_unknown:
 						case type_void:
 							die_at(&e->where, "can't dereference void pointer");
 						default:
-							/* e->vartype.type already set to deref type */
+							/* e->vartype already set to deref type */
 							break;
 					}
-				else if(e->vartype.ptr_depth < 0)
-					die_at(&e->where, "can't dereference non-pointer (%s)", type_to_str(e->vartype.type));
+				else if(e->vartype->ptr_depth < 0)
+					die_at(&e->where, "can't dereference non-pointer (%s)", type_to_str(e->vartype));
 			}
 			break;
 
@@ -114,8 +114,8 @@ void fold_expr(expr *e, symtable *stab)
 			/* e->sym shouldn't be !NULL anyway */
 			e->sym = sym;
 
-			e->vartype.type      = type_char;
-			e->vartype.ptr_depth = 1;
+			e->vartype->primitive = type_char;
+			e->vartype->ptr_depth = 1;
 			break;
 		}
 
@@ -127,10 +127,10 @@ void fold_expr(expr *e, symtable *stab)
 			}
 
 			if(e->sym){
-				GET_VARTYPE(e->sym->decl); /* XXX: check */
+				GET_VARTYPE(e->sym->decl->type); /* XXX: check */
 			}else{
 				fprintf(stderr, "warning: %s undeclared, assuming return type int\n", e->spel);
-				e->vartype.type = type_int;
+				e->vartype->primitive = type_int;
 			}
 			break;
 	}
@@ -213,12 +213,17 @@ void fold_code(tree *t, symtable *parent_tab)
 	}
 }
 
+void fold_type(type *t)
+{
+	if(t->primitive == type_void && !t->ptr_depth && !t->func)
+		die_at(&t->where, "can't have a void variable");
+}
+
 void fold_decl(decl *d, symtable *stab)
 {
 	int i;
 
-	if(d->type == type_void && !d->ptr_depth && !d->func)
-		die_at(&d->where, "can't have a void variable");
+	fold_type(d->type);
 
 	for(i = 0; d->arraysizes && d->arraysizes[i]; i++){
 		fold_expr(d->arraysizes[i], stab);
