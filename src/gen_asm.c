@@ -90,7 +90,6 @@ void walk_expr(expr *e, symtable *stab)
 			break;
 
 		case expr_str:
-			/* the ->spel is the string itself */
 			asm_temp("mov rax, %s", e->sym->str_lbl);
 			asm_temp("push rax");
 			break;
@@ -222,7 +221,7 @@ void decl_walk_expr(expr *e, symtable *stab)
 {
 	if(e->type == expr_str)
 		/* some arrays will go here too */
-		asm_declare_str(e->sym->str_lbl, e->spel);
+		asm_declare_str(e->sym->str_lbl, e->spel, e->val);
 
 #define WALK_IF(x) if(x) decl_walk_expr(x, stab)
 	WALK_IF(e->lhs);

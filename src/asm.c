@@ -91,12 +91,15 @@ void asm_label(const char *lbl)
 	asm_temp("%s:", lbl);
 }
 
-void asm_declare_str(const char *lbl, const char *str)
+void asm_declare_str(const char *lbl, const char *str, int len)
 {
+	int i;
+
 	printf("%s db ", lbl);
 
-	for(; *str; str++)
-		printf("%d, %s", *str, str[1] ? "" : "0\n");
+	for(i = 0; i < len; i++)
+		printf("%d%s", str[i], i == len-1 ? "" : ", ");
+	putchar('\n');
 }
 
 void asm_temp(const char *fmt, ...)
