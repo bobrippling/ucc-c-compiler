@@ -58,7 +58,7 @@ void print_type(type *t)
 		putchar('*');
 }
 
-void print_decl(decl *d, int idt)
+void print_decl(decl *d, int idt, int nl)
 {
 	int i;
 
@@ -70,7 +70,8 @@ void print_decl(decl *d, int idt)
 	if(d->spel)
 		fputs(d->spel, stdout);
 
-	putchar('\n');
+	if(nl)
+		putchar('\n');
 
 	for(i = 0; d->arraysizes && d->arraysizes[i]; i++){
 		idt_printf("array[%d] size:\n", i);
@@ -83,7 +84,7 @@ void print_decl(decl *d, int idt)
 void print_sym(sym *s)
 {
 	idt_printf("sym: type=%s, offset=%d, type: ", sym_to_str(s->type), s->offset);
-	print_decl(s->decl, 0);
+	print_decl(s->decl, 0, 1);
 }
 
 void print_expr(expr *e)
@@ -196,7 +197,7 @@ void print_tree(tree *t)
 		idt_printf("decls:\n");
 		for(iter = t->decls; *iter; iter++){
 			indent++;
-			print_decl(*iter, 1);
+			print_decl(*iter, 1, 1);
 			indent--;
 		}
 		colour_norm();
@@ -226,10 +227,19 @@ void gen_str(function *f)
 
 	colour = isatty(1);
 
-	idt_printf("function: ");
+	idt_printf("%sfunction: ", f->variadic ? "variadic ":"");
 	indent++;
 
-	print_decl(f->func_decl, 0);
+	print_decl(f->func_decl, 0, 0);
+
+	putchar('(');
+	if(f->symtab)
+		for(s = f->symtab->first; s; s = s->next)
+			if(s->type == sym_arg){
+				print_decl(s->decl, 0, 0);
+				putchar(' '); /* TODO: comma and reverse order */
+			}
+	puts(")");
 
 	if(f->symtab){
 		idt_printf("symtable:\n");

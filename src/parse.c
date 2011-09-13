@@ -537,6 +537,7 @@ tree *parse_code()
 
 decl *parse_decl(type *type, int need_spel)
 {
+	/* this should be changed/joined with parse_type, and the spelling can be assigned/ignored separately */
 	decl *d = decl_new();
 
 	if(type->primitive == type_unknown){
@@ -594,6 +595,12 @@ function *parse_function_proto()
 			break;
 
 		EAT(token_comma);
+
+		if(accept(token_elipsis)){
+			f->variadic = 1;
+			break;
+		}
+
 		/* continue loop */
 	}
 
