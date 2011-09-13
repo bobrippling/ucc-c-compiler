@@ -118,7 +118,7 @@ void print_expr(expr *e)
 			break;
 
 		case expr_str:
-			idt_printf("str: %s, \"%s\"\n", e->sym->str_lbl, e->spel);
+			idt_printf("str: %s, \"%s\" (length=%d)\n", e->sym->str_lbl, e->spel, e->val);
 			break;
 
 		case expr_assign:
