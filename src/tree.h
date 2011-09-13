@@ -152,6 +152,7 @@ struct function
 	decl **args;
 	tree *code;
 	symtable *symtab;
+	int variadic;
 };
 
 tree      *tree_new();

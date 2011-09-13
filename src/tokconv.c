@@ -79,20 +79,20 @@ int curtok_is_type_prething()
 const char *token_to_str(enum token t)
 {
 	switch(t){
-		CASE_STR(token_do);           CASE_STR(token_if);            CASE_STR(token_else);         CASE_STR(token_while);
-		CASE_STR(token_for);          CASE_STR(token_break);         CASE_STR(token_return);       CASE_STR(token_switch);
-		CASE_STR(token_case);         CASE_STR(token_default);       CASE_STR(token_sizeof);       CASE_STR(token_extern);
-		CASE_STR(token_identifier);   CASE_STR(token_integer);       CASE_STR(token_character);    CASE_STR(token_void);
-		CASE_STR(token_char);         CASE_STR(token_int);           CASE_STR(token_elipsis);      CASE_STR(token_string);
-		CASE_STR(token_open_paren);   CASE_STR(token_open_block);    CASE_STR(token_open_square);  CASE_STR(token_close_paren);
-		CASE_STR(token_close_block);  CASE_STR(token_close_square);  CASE_STR(token_comma);        CASE_STR(token_semicolon);
-		CASE_STR(token_colon);        CASE_STR(token_plus);          CASE_STR(token_minus);        CASE_STR(token_multiply);
-		CASE_STR(token_divide);       CASE_STR(token_modulus);       CASE_STR(token_increment);    CASE_STR(token_decrement);
-		CASE_STR(token_assign);       CASE_STR(token_dot);           CASE_STR(token_eq);           CASE_STR(token_le);
-		CASE_STR(token_lt);           CASE_STR(token_ge);            CASE_STR(token_gt);           CASE_STR(token_ne);
-		CASE_STR(token_not);          CASE_STR(token_bnot);          CASE_STR(token_andsc);        CASE_STR(token_and);
-		CASE_STR(token_orsc);         CASE_STR(token_or);            CASE_STR(token_eof);          CASE_STR(token_unknown);
-		CASE_STR(token_const);
+		CASE_STR_PREFIX(token, do);           CASE_STR_PREFIX(token, if);            CASE_STR_PREFIX(token, else);         CASE_STR_PREFIX(token, while);
+		CASE_STR_PREFIX(token, for);          CASE_STR_PREFIX(token, break);         CASE_STR_PREFIX(token, return);       CASE_STR_PREFIX(token, switch);
+		CASE_STR_PREFIX(token, case);         CASE_STR_PREFIX(token, default);       CASE_STR_PREFIX(token, sizeof);       CASE_STR_PREFIX(token, extern);
+		CASE_STR_PREFIX(token, identifier);   CASE_STR_PREFIX(token, integer);       CASE_STR_PREFIX(token, character);    CASE_STR_PREFIX(token, void);
+		CASE_STR_PREFIX(token, char);         CASE_STR_PREFIX(token, int);           CASE_STR_PREFIX(token, elipsis);      CASE_STR_PREFIX(token, string);
+		CASE_STR_PREFIX(token, open_paren);   CASE_STR_PREFIX(token, open_block);    CASE_STR_PREFIX(token, open_square);  CASE_STR_PREFIX(token, close_paren);
+		CASE_STR_PREFIX(token, close_block);  CASE_STR_PREFIX(token, close_square);  CASE_STR_PREFIX(token, comma);        CASE_STR_PREFIX(token, semicolon);
+		CASE_STR_PREFIX(token, colon);        CASE_STR_PREFIX(token, plus);          CASE_STR_PREFIX(token, minus);        CASE_STR_PREFIX(token, multiply);
+		CASE_STR_PREFIX(token, divide);       CASE_STR_PREFIX(token, modulus);       CASE_STR_PREFIX(token, increment);    CASE_STR_PREFIX(token, decrement);
+		CASE_STR_PREFIX(token, assign);       CASE_STR_PREFIX(token, dot);           CASE_STR_PREFIX(token, eq);           CASE_STR_PREFIX(token, le);
+		CASE_STR_PREFIX(token, lt);           CASE_STR_PREFIX(token, ge);            CASE_STR_PREFIX(token, gt);           CASE_STR_PREFIX(token, ne);
+		CASE_STR_PREFIX(token, not);          CASE_STR_PREFIX(token, bnot);          CASE_STR_PREFIX(token, andsc);        CASE_STR_PREFIX(token, and);
+		CASE_STR_PREFIX(token, orsc);         CASE_STR_PREFIX(token, or);            CASE_STR_PREFIX(token, eof);          CASE_STR_PREFIX(token, unknown);
+		CASE_STR_PREFIX(token, const);
 	}
 	return NULL;
 }
