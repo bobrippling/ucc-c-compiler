@@ -21,16 +21,16 @@
  * parse_expr_cmp_op     above [><==!=] above
  * parse_expr_logical_op above [&&||]   above
  */
-#define parse_expr() parse_expr_logical_op()
+#define parse_expr() parse_expr_if()
 #define accept(tok) ((tok) == curtok ? (EAT(tok), 1) : 0)
 
 extern enum token curtok;
 
 tree  *parse_code();
 expr **parse_funcargs();
-expr  *parse_expr();
 decl  *parse_decl(type *t, int need_spel);
 type  *parse_type();
+expr  *parse_expr_if();
 
 expr *parse_expr_binary_op();
 
@@ -193,7 +193,7 @@ expr *parse_expr_unary_op()
 		default:
 			break;
 	}
-	fprintf(stderr, "warning: parse_expr_unary_op() returning NULL @ %s\n", token_to_str(curtok));
+	die_at(NULL, "expected: unary expression");
 	return NULL;
 }
 
@@ -285,6 +285,28 @@ expr *parse_expr_logical_op()
 	return parse_expr_join(
 			parse_expr_cmp_op, parse_expr_logical_op,
 			token_orsc, token_andsc, token_unknown);
+}
+
+expr *parse_expr_if()
+{
+	expr *e = parse_expr_logical_op();
+	if(accept(token_question)){
+		expr *q = expr_new();
+
+		q->type = expr_if;
+		q->expr = e;
+		if(accept(token_colon)){
+			q->lhs = NULL; /* sentinel */
+		}else{
+			q->lhs = parse_expr();
+			EAT(token_colon);
+		}
+		q->rhs = parse_expr();
+
+		return q;
+	}else{
+		return e;
+	}
 }
 
 tree *parse_if()
@@ -541,7 +563,7 @@ decl *parse_decl(type *type, int need_spel)
 	decl *d = decl_new();
 
 	if(type->primitive == type_unknown){
-		free_type(type);
+		type_free(type);
 		d->type = parse_type();
 	}else{
 		d->type = type;

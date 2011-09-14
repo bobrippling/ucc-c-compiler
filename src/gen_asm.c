@@ -19,6 +19,27 @@ void walk_expr(expr *e, symtable *stab)
 			walk_expr(e->rhs, stab);
 			break;
 
+		case expr_if:
+		{
+			char *lblfin, *lblelse;
+			lblfin  = label_code("ifexpa");
+			lblelse = label_code("ifexpb");
+
+			walk_expr(e->expr, stab);
+			asm_temp("pop rax");
+			asm_temp("test rax, rax");
+			asm_temp("jz %s", lblelse);
+			walk_expr(e->lhs ? e->lhs : e->expr, stab);
+			asm_temp("jmp %s", lblfin);
+			asm_label(lblelse);
+			walk_expr(e->rhs, stab);
+			asm_label(lblfin);
+
+			free(lblfin);
+			free(lblelse);
+			break;
+		}
+
 		case expr_identifier:
 			/* if it's an array, lea, else, load */
 			asm_sym(e->sym->decl->arraysizes ? ASM_LEA : ASM_LOAD, e->sym, "rax");

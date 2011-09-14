@@ -72,7 +72,8 @@ struct expr
 		expr_identifier,
 		expr_assign,
 		expr_funcall,
-		expr_cast
+		expr_cast,
+		expr_if
 	} type;
 
 	enum op_type
@@ -171,6 +172,6 @@ const char *type_to_str(type          *t);
 const char *spec_to_str(enum type_spec s);
 const char *where_str(  struct where *w);
 
-#define free_type(x) free(x)
+#define type_free(x) free(x)
 
 #endif

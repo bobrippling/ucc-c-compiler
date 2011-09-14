@@ -78,6 +78,7 @@ const char *expr_to_str(enum expr_type t)
 		CASE_STR_PREFIX(expr, assign);
 		CASE_STR_PREFIX(expr, funcall);
 		CASE_STR_PREFIX(expr, cast);
+		CASE_STR_PREFIX(expr, if);
 	}
 	return NULL;
 }

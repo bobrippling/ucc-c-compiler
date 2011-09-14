@@ -84,6 +84,13 @@ int const_fold(expr *e)
 			}
 			return 1;
 
+		case expr_if:
+			if(!const_fold(e->expr) && (e->lhs ? !const_fold(e->lhs) : 1) && !const_fold(e->rhs)){
+				e->type = expr_val;
+				e->val = e->expr->val ? (e->lhs ? e->lhs->val : e->expr->val) : e->rhs->val;
+				return 0;
+			}
+			break;
 
 		case expr_op:
 		{

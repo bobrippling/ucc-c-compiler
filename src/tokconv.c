@@ -92,7 +92,7 @@ const char *token_to_str(enum token t)
 		CASE_STR_PREFIX(token, lt);           CASE_STR_PREFIX(token, ge);            CASE_STR_PREFIX(token, gt);           CASE_STR_PREFIX(token, ne);
 		CASE_STR_PREFIX(token, not);          CASE_STR_PREFIX(token, bnot);          CASE_STR_PREFIX(token, andsc);        CASE_STR_PREFIX(token, and);
 		CASE_STR_PREFIX(token, orsc);         CASE_STR_PREFIX(token, or);            CASE_STR_PREFIX(token, eof);          CASE_STR_PREFIX(token, unknown);
-		CASE_STR_PREFIX(token, const);
+		CASE_STR_PREFIX(token, const);        CASE_STR_PREFIX(token, question);
 	}
 	return NULL;
 }
