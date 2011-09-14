@@ -6,3 +6,5 @@ general lhs assignment (since it's currently identifier only):
 	(x ? a : b)(2); // similarly
 
 32-bit code gen
+
+check ?: parses to the correct tree, same as gcc

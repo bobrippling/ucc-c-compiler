@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "tree.h"
 #include "fold.h"
@@ -30,7 +31,12 @@ int fold_is_lvalue(expr *e)
 
 void fold_expr(expr *e, symtable *stab)
 {
-#define GET_VARTYPE(from) e->vartype = type_copy(from)
+#define GET_VARTYPE(from) \
+	do{ \
+		if(e->vartype) \
+			type_free(e->vartype); \
+		e->vartype = type_copy(from); \
+	}while(0)
 
 	if(e->spel)
 		e->sym = symtab_search(stab, e->spel);
@@ -41,6 +47,14 @@ void fold_expr(expr *e, symtable *stab)
 		case expr_val:
 		case expr_sizeof:
 			e->vartype->primitive = type_int;
+			break;
+
+		case expr_if:
+			fold_expr(e->expr, stab);
+			if(e->lhs)
+				fold_expr(e->lhs,  stab);
+			fold_expr(e->rhs,  stab);
+			GET_VARTYPE(e->rhs->vartype); /* TODO: check they're the same */
 			break;
 
 		case expr_cast:

@@ -39,6 +39,7 @@ enum token
 	token_comma,
 	token_semicolon,
 	token_colon,
+	token_question,
 
 	token_plus,
 	token_minus,

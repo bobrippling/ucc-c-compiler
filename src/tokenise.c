@@ -475,6 +475,10 @@ void nexttoken()
 			curtok = token_colon;
 			break;
 
+		case '?':
+			curtok = token_question;
+			break;
+
 		case ';':
 			curtok = token_semicolon;
 			break;

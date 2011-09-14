@@ -23,6 +23,7 @@ static int colour = 1;
 
 void print_tree(tree *t);
 void print_expr(expr *e);
+void idt_print();
 
 void idt_print()
 {
@@ -164,6 +165,27 @@ void print_expr(expr *e)
 			indent++;
 			print_expr(e->rhs);
 			indent--;
+			break;
+
+		case expr_if:
+			idt_printf("if expression:\n");
+			indent++;
+#define SUB_PRINT(nam) \
+			do{\
+				idt_printf(#nam  ":\n"); \
+				indent++; \
+				print_expr(e->nam); \
+				indent--; \
+			}while(0)
+
+			SUB_PRINT(expr);
+			if(e->lhs)
+				SUB_PRINT(lhs);
+			else
+				idt_printf("?: syntactic sugar\n");
+
+			SUB_PRINT(rhs);
+#undef SUB_PRINT
 			break;
 
 		default:
