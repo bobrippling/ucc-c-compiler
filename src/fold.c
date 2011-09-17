@@ -123,7 +123,7 @@ void fold_expr(expr *e, symtable *stab)
 							break;
 					}
 				else if(e->vartype->ptr_depth < 0)
-					die_at(&e->where, "can't dereference non-pointer (%s)", type_to_str(e->vartype));
+					;//die_at(&e->where, "can't dereference non-pointer (%s)", type_to_str(e->vartype));
 			}
 			break;
 

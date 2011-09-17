@@ -41,7 +41,7 @@ expr *expr_new_val(int v)
 {
 	expr *e = expr_new();
 	e->type = expr_val;
-	e->val = v;
+	e->val.i = v;
 	return e;
 }
 

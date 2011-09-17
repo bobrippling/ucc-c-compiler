@@ -74,12 +74,14 @@ void print_decl(decl *d, int idt, int nl)
 	if(nl)
 		putchar('\n');
 
+	indent++;
 	for(i = 0; d->arraysizes && d->arraysizes[i]; i++){
 		idt_printf("array[%d] size:\n", i);
 		indent++;
 		print_expr(d->arraysizes[i]);
 		indent--;
 	}
+	indent--;
 }
 
 void print_sym(sym *s)
@@ -119,7 +121,7 @@ void print_expr(expr *e)
 			break;
 
 		case expr_str:
-			idt_printf("str: %s, \"%s\" (length=%d)\n", e->sym->str_lbl, e->spel, e->val);
+			idt_printf("str: %s, \"%s\" (length=%d)\n", e->sym->str_lbl, e->val.s, e->strl);
 			break;
 
 		case expr_assign:

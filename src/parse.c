@@ -21,7 +21,7 @@
  * parse_expr_cmp_op     above [><==!=] above
  * parse_expr_logical_op above [&&||]   above
  */
-#define parse_expr() parse_expr_assign()
+#define parse_expr() parse_expr_if()
 #define accept(tok) ((tok) == curtok ? (EAT(tok), 1) : 0)
 
 extern enum token curtok;
@@ -30,9 +30,9 @@ tree  *parse_code();
 expr **parse_funcargs();
 decl  *parse_decl(type *t, int need_spel);
 type  *parse_type();
-expr  *parse_expr();
 
-expr *parse_expr_binary_op();
+expr  *parse_expr();
+expr *parse_expr_binary_op(); /* needed to limit [+-] parsing */
 
 
 expr *parse_expr_unary_op()
@@ -64,7 +64,8 @@ expr *parse_expr_unary_op()
 		case token_string:
 			e = expr_new();
 			e->type = expr_str;
-			token_get_current_str(&e->spel, &e->val);
+			token_get_current_str(&e->val.s, &e->strl);
+			e->ptr_safe = 1;
 			EAT(token_string);
 			return e;
 
@@ -284,28 +285,6 @@ expr *parse_expr_logical_op()
 			token_orsc, token_andsc, token_unknown);
 }
 
-expr *parse_expr_if()
-{
-	expr *e = parse_expr_logical_op();
-	if(accept(token_question)){
-		expr *q = expr_new();
-
-		q->type = expr_if;
-		q->expr = e;
-		if(accept(token_colon)){
-			q->lhs = NULL; /* sentinel */
-		}else{
-			q->lhs = parse_expr();
-			EAT(token_colon);
-		}
-		q->rhs = parse_expr();
-
-		return q;
-	}else{
-		return e;
-	}
-}
-
 expr *parse_expr_assign()
 {
 	expr *e;
@@ -324,6 +303,28 @@ expr *parse_expr_assign()
 	}
 
 	return e;
+}
+
+expr *parse_expr_if()
+{
+	expr *e = parse_expr_assign();
+	if(accept(token_question)){
+		expr *q = expr_new();
+
+		q->type = expr_if;
+		q->expr = e;
+		if(accept(token_colon)){
+			q->lhs = NULL; /* sentinel */
+		}else{
+			q->lhs = parse_expr();
+			EAT(token_colon);
+		}
+		q->rhs = parse_expr();
+
+		return q;
+	}else{
+		return e;
+	}
 }
 
 tree *parse_if()

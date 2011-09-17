@@ -3,10 +3,16 @@
 #include "tree.h"
 #include "const.h"
 #include "sym.h"
+#include "util.h"
 
 int operate(expr *lhs, expr *rhs, enum op_type op, int *bad)
 {
-#define OP(a, b) case a: return lhs->val b rhs->val
+#define OP(a, b) case a: return lhs->val.i b rhs->val.i
+	if(op != op_deref && lhs->type != expr_val){
+		*bad = 1;
+		return 0;
+	}
+
 	switch(op){
 		OP(op_multiply,   *);
 		OP(op_modulus,    %);
@@ -22,30 +28,42 @@ int operate(expr *lhs, expr *rhs, enum op_type op, int *bad)
 		OP(op_andsc,      &&);
 
 		case op_divide:
-			if(!rhs->val)
-				fprintf(stderr, "%s: division by zero\n", where_str(&rhs->where));
-			else
-				return lhs->val / rhs->val;
+			if(rhs->val.i)
+				return lhs->val.i / rhs->val.i;
+			fprintf(stderr, "%s: division by zero\n", where_str(&rhs->where));
 			*bad = 1;
 			return 0;
 
 		case op_plus:
 			if(rhs)
-				return lhs->val + rhs->val;
-			return lhs->val;
+				return lhs->val.i + rhs->val.i;
+			return lhs->val.i;
 
 		case op_minus:
 			if(rhs)
-				return lhs->val - rhs->val;
-			return -lhs->val;
+				return lhs->val.i - rhs->val.i;
+			return -lhs->val.i;
 
-		case op_not:  return !lhs->val;
-		case op_bnot: return !lhs->val;
+		case op_not:  return !lhs->val.i;
+		case op_bnot: return ~lhs->val.i;
 
 		case op_deref:
-			/* check if we're directly derefing a string */
+			/*
+			 * potential for major ICE here
+			 * I mean, we might not even be dereferencing the right size pointer
+			 */
+			/*
+			switch(lhs->vartype->primitive){
+				case type_int:  return *(int *)lhs->val.s;
+				case type_char: return *       lhs->val.s;
+				default:
+					break;
+			}
+
+			ignore for now, just deal with simple stuff
+			*/
 			if(lhs->type == expr_str)
-				return *lhs->spel;
+				return *lhs->val.s;
 			*bad = 1;
 			return 0;
 
@@ -53,8 +71,7 @@ int operate(expr *lhs, expr *rhs, enum op_type op, int *bad)
 			break;
 	}
 
-	fprintf(stderr, "fold error: unknown op\n");
-	*bad = 1;
+	DIE_ICE();
 	return 0;
 }
 
@@ -64,8 +81,8 @@ int const_fold(expr *e)
 	switch(e->type){
 		case expr_val:
 		case expr_sizeof:
-		case expr_str:
 		case expr_cast:
+		case expr_str:
 			return 0;
 
 		case expr_addr:
@@ -77,8 +94,7 @@ int const_fold(expr *e)
 			if(e->sym && e->sym->decl->type->spec & spec_const){
 				/*
 				 * TODO
-				 * (needs "const int x = 5;" parsing)
-				 * can fold, do so
+				 * fold. need to hunt for assignment tree
 				 */
 				fprintf(stderr, "TODO: fold expression with const identifier %s\n", e->spel);
 			}
@@ -87,7 +103,7 @@ int const_fold(expr *e)
 		case expr_if:
 			if(!const_fold(e->expr) && (e->lhs ? !const_fold(e->lhs) : 1) && !const_fold(e->rhs)){
 				e->type = expr_val;
-				e->val = e->expr->val ? (e->lhs ? e->lhs->val : e->expr->val) : e->rhs->val;
+				e->val.i = e->expr->val.i ? (e->lhs ? e->lhs->val.i : e->expr->val.i) : e->rhs->val.i;
 				return 0;
 			}
 			break;
@@ -100,7 +116,8 @@ int const_fold(expr *e)
 
 			if(!l && !r){
 				int bad = 0;
-				e->val = operate(e->lhs, e->rhs, e->op, &bad);
+
+				e->val.i = operate(e->lhs, e->rhs, e->op, &bad);
 
 				if(!bad)
 					e->type = expr_val;

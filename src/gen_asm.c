@@ -266,7 +266,7 @@ void decl_walk_expr(expr *e, symtable *stab)
 {
 	if(e->type == expr_str)
 		/* some arrays will go here too */
-		asm_declare_str(e->sym->str_lbl, e->spel, e->val);
+		asm_declare_str(e->sym->str_lbl, e->val.s, e->strl);
 
 #define WALK_IF(x) if(x) decl_walk_expr(x, stab)
 	WALK_IF(e->lhs);
@@ -283,29 +283,27 @@ void decl_walk_expr(expr *e, symtable *stab)
 
 void decl_walk_tree(tree *t)
 {
-	if(t->type == stat_expr){
-		decl_walk_expr(t->expr, t->symtab);
-	}else{
-		if(t->codes){
-			tree **iter;
+#define WALK_IF(x) if(x) decl_walk_tree(x)
+	WALK_IF(t->lhs);
+	WALK_IF(t->rhs);
+#undef WALK_IF
 
-			for(iter = t->codes; *iter; iter++)
-				decl_walk_tree(*iter);
-		}
+	if(t->codes){
+		tree **iter;
+
+		for(iter = t->codes; *iter; iter++)
+			decl_walk_tree(*iter);
+	}
 
 #define WALK_IF(x) if(x) decl_walk_expr(x, t->symtab)
-		if(t->flow){
-			WALK_IF(t->flow->for_init);
-			WALK_IF(t->flow->for_while);
-			WALK_IF(t->flow->for_inc);
-		}
-#undef WALK_IF
+	WALK_IF(t->expr);
 
-#define WALK_IF(x) if(x) decl_walk_tree(x)
-		WALK_IF(t->lhs);
-		WALK_IF(t->rhs);
-#undef WALK_IF
+	if(t->flow){
+		WALK_IF(t->flow->for_init);
+		WALK_IF(t->flow->for_while);
+		WALK_IF(t->flow->for_inc);
 	}
+#undef WALK_IF
 }
 
 void gen_asm(function *f)
@@ -330,7 +328,7 @@ void gen_asm(function *f)
 					/* should've been folded fully */
 					int i;
 					for(i = 0; s->decl->arraysizes[i]; i++)
-						offset += s->decl->arraysizes[i]->val * platform_word_size();
+						offset += s->decl->arraysizes[i]->val.i * platform_word_size();
 				}else{
 					offset += platform_word_size();
 				}
