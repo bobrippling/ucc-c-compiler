@@ -41,11 +41,18 @@ enum token
 	token_colon,
 	token_question,
 
-	token_plus,
-	token_minus,
-	token_multiply,
-	token_divide,
-	token_modulus,
+#define TOK_AND_EQ(x) x, x##_assign
+	TOK_AND_EQ(token_plus),
+	TOK_AND_EQ(token_minus),
+	TOK_AND_EQ(token_multiply),
+	TOK_AND_EQ(token_divide),
+	TOK_AND_EQ(token_modulus),
+	TOK_AND_EQ(token_not),
+	TOK_AND_EQ(token_bnot),
+	TOK_AND_EQ(token_and),
+	TOK_AND_EQ(token_or),
+#undef TOK_AND_EQ
+
 	token_increment,
 	token_decrement,
 
@@ -58,12 +65,8 @@ enum token
 	token_ge,
 	token_gt,
 	token_ne,
-	token_not,
-	token_bnot,
 	token_andsc,
-	token_and,
 	token_orsc,
-	token_or,
 
 	token_eof,
 	token_unknown
