@@ -217,9 +217,9 @@ void print_tree(tree *t)
 {
 	idt_printf("t->type: %s\n", stat_to_str(t->type));
 
+	PRINT_IF(t, expr, print_expr);
 	PRINT_IF(t, lhs,  print_tree);
 	PRINT_IF(t, rhs,  print_tree);
-	PRINT_IF(t, expr, print_expr);
 
 	if(t->decls){
 		decl **iter;
