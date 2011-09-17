@@ -1,14 +1,15 @@
 #ifndef TREE_H
 #define TREE_H
 
-typedef struct expr expr;
-typedef struct tree      tree;
-typedef struct decl      decl;
-typedef struct function  function;
-typedef struct symtable  symtable;
-typedef struct sym       sym;
-typedef struct tree_flow tree_flow;
-typedef struct type      type;
+typedef struct expr        expr;
+typedef struct tree        tree;
+typedef struct decl        decl;
+typedef struct function    function;
+typedef struct symtable    symtable;
+typedef struct sym         sym;
+typedef struct tree_flow   tree_flow;
+typedef struct type        type;
+typedef struct assignment  assignment;
 
 typedef struct where
 {
@@ -73,7 +74,7 @@ struct expr
 		expr_assign,
 		expr_funcall,
 		expr_cast,
-		expr_if
+		expr_if,
 	} type;
 
 	enum op_type
@@ -95,6 +96,16 @@ struct expr
 
 		op_unknown
 	} op;
+	enum assign_type
+	{
+		assign_normal,
+
+		/* ++x, x--, ... - fold.c rearranges to ensure these work */
+		assign_pre_increment,
+		assign_pre_decrement,
+		assign_post_increment,
+		assign_post_decrement
+	} assign_type;
 
 	expr *lhs, *rhs;
 
@@ -161,7 +172,9 @@ expr      *expr_new();
 type      *type_new();
 decl      *decl_new();
 function  *function_new();
+
 type      *type_copy(type *);
+expr      *expr_new_val(int);
 
 tree_flow *tree_flow_new();
 
@@ -171,6 +184,7 @@ const char *stat_to_str(enum stat_type t);
 const char *type_to_str(type          *t);
 const char *spec_to_str(enum type_spec s);
 const char *where_str(  struct where *w);
+const char *assign_to_str(enum assign_type);
 
 #define type_free(x) free(x)
 

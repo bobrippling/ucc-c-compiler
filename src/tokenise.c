@@ -208,6 +208,34 @@ int readnumber(char c)
 	return 0;
 }
 
+enum token curtok_to_xequal()
+{
+#define MAP(x) case x: return x ## _assign
+	switch(curtok){
+		MAP(token_plus);
+		MAP(token_minus);
+		MAP(token_multiply);
+		MAP(token_divide);
+		MAP(token_modulus);
+		MAP(token_not);
+		MAP(token_bnot);
+		MAP(token_and);
+		MAP(token_or);
+		/* TODO: >>=, etc... */
+#undef MAP
+
+		default:
+			break;
+	}
+	return token_unknown;
+}
+
+int curtok_is_xequal()
+{
+	return curtok_to_xequal(curtok) != token_unknown;
+}
+
+
 void nexttoken()
 {
 	int c;
@@ -267,13 +295,13 @@ void nexttoken()
 		}
 	}
 
-	if(isalpha(c) || c == '_'){
+	if(isalpha(c) || c == '_' || c == '$'){
 		unsigned int len = 1, i;
 		char *const start = bufferpos - 1; /* regrab the char we switched on */
 
 		do{ /* allow numbers */
 			c = peeknextchar();
-			if(isalnum(c) || c == '_'){
+			if(isalnum(c) || c == '_' || c == '$'){
 				nextchar();
 				len++;
 			}else
@@ -382,15 +410,17 @@ void nexttoken()
 			if(peeknextchar() == '+'){
 				nextchar();
 				curtok = token_increment;
-			}else
+			}else{
 				curtok = token_plus;
+			}
 			break;
 		case '-':
 			if(peeknextchar() == '-'){
 				nextchar();
 				curtok = token_decrement;
-			}else
+			}else{
 				curtok = token_minus;
+			}
 			break;
 		case '*':
 			curtok = token_multiply;
@@ -503,8 +533,12 @@ void nexttoken()
 			curtok = token_bnot;
 			break;
 
-
 		default:
 			curtok = token_unknown;
+	}
+
+	if(curtok_is_xequal() && peeknextchar() == '='){
+		nextchar();
+		curtok = curtok_to_xequal(); /* '+' '=' -> "+=" */
 	}
 }

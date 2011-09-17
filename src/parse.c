@@ -21,7 +21,7 @@
  * parse_expr_cmp_op     above [><==!=] above
  * parse_expr_logical_op above [&&||]   above
  */
-#define parse_expr() parse_expr_if()
+#define parse_expr() parse_expr_assign()
 #define accept(tok) ((tok) == curtok ? (EAT(tok), 1) : 0)
 
 extern enum token curtok;
@@ -30,64 +30,10 @@ tree  *parse_code();
 expr **parse_funcargs();
 decl  *parse_decl(type *t, int need_spel);
 type  *parse_type();
-expr  *parse_expr_if();
+expr  *parse_expr();
 
 expr *parse_expr_binary_op();
 
-
-expr *parse_array(expr *base)
-{
-	/*
-	 * FIXME:
-	 * ((int *)x)[2]
-	 *
-	 * char **tim;
-	 *
-	 * tim[5][2];
-	 * ->
-	 * *(*(tim + 5) + 2)
-	 */
-	expr *sum, *deref;
-
-	if(!accept(token_open_square))
-		return base;
-
-	sum = expr_new();
-
-	sum->type = expr_op;
-	sum->op   = op_plus;
-
-	sum->lhs  = base;
-	sum->rhs  = parse_expr();
-
-	EAT(token_close_square);
-
-	deref = expr_new();
-	deref->type = expr_op;
-	deref->op   = op_deref;
-	deref->lhs  = sum;
-
-	return parse_array(deref);
-}
-
-expr *parse_identifier()
-{
-	expr *e = expr_new();
-
-	e->spel = token_current_spel();
-	EAT(token_identifier);
-	e->type = expr_identifier;
-
-	if(accept(token_open_paren)){
-		e->type = expr_funcall;
-		e->funcargs = parse_funcargs();
-		EAT(token_close_paren);
-	}else if(curtok == token_open_square){
-		return parse_array(e);
-	}
-
-	return e;
-}
 
 expr *parse_expr_unary_op()
 {
@@ -111,9 +57,7 @@ expr *parse_expr_unary_op()
 
 		case token_integer:
 		case token_character:
-			e = expr_new();
-			e->type = expr_val;
-			e->val = currentval;
+			e = expr_new_val(currentval);
 			EAT(curtok);
 			return e;
 
@@ -184,11 +128,36 @@ expr *parse_expr_unary_op()
 
 		case token_increment:
 		case token_decrement:
-			fprintf(stderr, "TODO: ");
-			break;
+			e = expr_new();
+			e->type = expr_assign;
+			e->assign_type = curtok == token_increment ? assign_pre_increment : assign_pre_decrement;
+			EAT(curtok);
+			e->expr = parse_expr();
+			return e;
 
 		case token_identifier:
-			return parse_identifier();
+			e = expr_new();
+
+			e->spel = token_current_spel();
+			EAT(token_identifier);
+			e->type = expr_identifier;
+
+			if(accept(token_open_paren)){
+				e->type = expr_funcall;
+				e->funcargs = parse_funcargs();
+				EAT(token_close_paren);
+			}else{
+				int flag = 0;
+
+				if((flag = accept(token_increment)) || accept(token_decrement)){
+					expr *inc = expr_new();
+					inc->type = expr_assign;
+					inc->assign_type = flag ? assign_post_increment : assign_post_decrement;
+					inc->expr = e;
+					return inc;
+				}
+			}
+			return e;
 
 		default:
 			break;
@@ -227,11 +196,39 @@ expr *parse_expr_join(
 	}
 }
 
+expr *parse_expr_array()
+{
+#define parse_above() parse_expr_unary_op()
+	expr *sum, *deref;
+	expr *base = parse_above();
+
+	if(!accept(token_open_square))
+		return base;
+
+	sum = expr_new();
+
+	sum->type = expr_op;
+	sum->op   = op_plus;
+
+	sum->lhs  = base;
+	sum->rhs  = parse_above();
+
+	EAT(token_close_square);
+
+	deref = expr_new();
+	deref->type = expr_op;
+	deref->op   = op_deref;
+	deref->lhs  = sum;
+
+	return deref;
+#undef parse_above
+}
+
 expr *parse_expr_div()
 {
 	/* above [/] above */
 	return parse_expr_join(
-			parse_expr_unary_op, parse_expr_div,
+			parse_expr_array, parse_expr_div,
 				token_divide, token_unknown);
 }
 
@@ -307,6 +304,26 @@ expr *parse_expr_if()
 	}else{
 		return e;
 	}
+}
+
+expr *parse_expr_assign()
+{
+	expr *e;
+
+	e = parse_expr_logical_op();
+
+	if(accept(token_assign)){
+		expr *ass = expr_new();
+
+		ass->type = expr_assign;
+
+		ass->lhs = e;
+		ass->rhs = parse_expr();
+
+		e = ass;
+	}
+
+	return e;
 }
 
 tree *parse_if()
@@ -412,22 +429,6 @@ tree *parse_for()
 	t->type = stat_for;
 
 	return t;
-}
-
-expr *parse_assignment()
-{
-	expr *ret = parse_expr();
-
-	if(accept(token_assign)){
-		expr *e = expr_new();
-
-		e->lhs = ret;
-		ret = e;
-
-		e->rhs = parse_expr();
-		e->type = expr_assign;
-	}
-	return ret;
 }
 
 type *parse_type()
@@ -546,15 +547,15 @@ tree *parse_code()
 
 		case token_open_block: return parse_code_declblock();
 
-		default: break;
+		default:
+			/* read an expression and optionally an assignment (fold checks for lvalues) */
+			t = expr_to_tree(parse_expr());
+
+			EAT(token_semicolon);
+			return t;
 	}
 
-
-	/* read an expression and optionally an assignment (fold checks for lvalues) */
-	t = expr_to_tree(parse_assignment());
-
-	EAT(token_semicolon);
-	return t;
+	/* unreachable */
 }
 
 decl *parse_decl(type *type, int need_spel)

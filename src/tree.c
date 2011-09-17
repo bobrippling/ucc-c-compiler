@@ -37,6 +37,14 @@ expr *expr_new()
 	return e;
 }
 
+expr *expr_new_val(int v)
+{
+	expr *e = expr_new();
+	e->type = expr_val;
+	e->val = v;
+	return e;
+}
+
 decl *decl_new()
 {
 	decl *d = umalloc(sizeof *d);
@@ -142,6 +150,18 @@ const char *spec_to_str(enum type_spec s)
 		CASE_STR_PREFIX(spec, const);
 		CASE_STR_PREFIX(spec, extern);
 		CASE_STR_PREFIX(spec, none);
+	}
+	return NULL;
+}
+
+const char *assign_to_str(enum assign_type t)
+{
+	switch(t){
+		CASE_STR_PREFIX(assign, normal);
+		CASE_STR_PREFIX(assign, pre_increment);
+		CASE_STR_PREFIX(assign, pre_decrement);
+		CASE_STR_PREFIX(assign, post_increment);
+		CASE_STR_PREFIX(assign, post_decrement);
 	}
 	return NULL;
 }

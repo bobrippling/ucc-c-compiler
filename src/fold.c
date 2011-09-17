@@ -78,19 +78,28 @@ void fold_expr(expr *e, symtable *stab)
 			break;
 
 		case expr_assign:
-			if(!fold_is_lvalue(e->lhs))
-				die_at(&e->lhs->where, "not an lvalue");
+		{
+			const int assign   = e->assign_type == assign_normal;
+			expr *const use_me = assign ? e->lhs : e->expr;
 
-			fold_expr(e->lhs, stab);
-			fold_expr(e->rhs, stab);
+			if(!fold_is_lvalue(use_me))
+				die_at(&use_me->where, "not an lvalue");
+
+			if(e->assign_type == assign_normal){
+				fold_expr(e->lhs, stab);
+				fold_expr(e->rhs, stab);
+			}else{
+				fold_expr(e->expr, stab);
+			}
 
 			if(e->sym)
 				/* read the vartype from what we're assigning to, not the expr */
 				GET_VARTYPE(e->sym->decl->type);
 			else
 				/* get the vartype from the dereference's vartype */
-				GET_VARTYPE(e->lhs->vartype);
+				GET_VARTYPE(use_me->vartype);
 			break;
+		}
 
 
 		case expr_op:

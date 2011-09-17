@@ -58,20 +58,44 @@ void walk_expr(expr *e, symtable *stab)
 			break;
 
 		case expr_assign:
-			walk_expr(e->rhs, stab);
+			if(e->assign_type == assign_normal){
+				walk_expr(e->rhs, stab);
 
-			if(e->lhs->type == expr_identifier){
-				asm_temp("mov rax, [rsp]");
-				asm_sym(ASM_SET, e->lhs->sym, "rax");
+				if(e->lhs->type == expr_identifier){
+					asm_temp("mov rax, [rsp]");
+					asm_sym(ASM_SET, e->lhs->sym, "rax");
 
+				}else{
+					/* a dereference */
+					walk_expr(e->lhs->lhs, stab); /* skip over the *() bit */
+
+					/* move `pop` into `pop` */
+					asm_temp("pop rax ; ptr");
+					asm_temp("mov rbx, [rsp] ; val");
+					asm_temp("mov [rax], rbx");
+				}
 			}else{
-				/* a dereference */
-				walk_expr(e->lhs->lhs, stab); /* skip over the *() bit */
+				int flag;
 
-				/* move `pop` into `pop` */
-				asm_temp("pop rax ; ptr");
-				asm_temp("mov rbx, [rsp] ; val");
-				asm_temp("mov [rax], rbx");
+				/* these aren't actually treated as assignments, more expressions that alter values */
+				walk_expr(e->expr, stab);
+				/*
+				 * load the identifier and keep it on the stack for returning
+				 * now we inc/dec it
+				 */
+
+				flag = e->assign_type == assign_pre_increment || e->assign_type == assign_post_increment;
+
+				/* shouldn't need to laod it, but just in case */
+				asm_temp("mov rax, [rsp]");
+				asm_temp("%s rax", flag ? "inc" : "dec");
+
+				if((flag = e->assign_type == assign_pre_increment) || e->assign_type == assign_pre_decrement)
+					/* change the value we are "returning", too */
+					asm_temp("mov [rsp], rax");
+
+				/* store back to the sym's home */
+				asm_sym(ASM_SET, e->expr->sym, "rax");
 			}
 			break;
 
