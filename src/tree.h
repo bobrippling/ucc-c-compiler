@@ -109,8 +109,15 @@ struct expr
 
 	expr *lhs, *rhs;
 
-	int val;
-	char *spel; /* variable name, OR string literal, in which case, val is the length */
+	union
+	{
+		int i;
+		char *s;
+	} val; /* stores both int values, and string pointers (used in const.c arithmetic) */
+	int strl;
+	int ptr_safe; /* does val point to a string we know about? */
+
+	char *spel;
 	expr *expr; /* x = 5; expr is the 5 */
 	expr **funcargs;
 
