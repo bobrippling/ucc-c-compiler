@@ -91,7 +91,7 @@ expr *parse_expr_unary_op()
 			e = expr_new();
 			e->type = expr_op;
 			e->op   = op_deref;
-			e->lhs  = parse_expr();
+			e->lhs  = parse_expr_unary_op();
 			return e;
 
 		case token_and:
@@ -469,6 +469,10 @@ tree *parse_code_declblock()
 	t->type = stat_code;
 
 	EAT(token_open_block);
+
+	if(accept(token_close_block))
+		/* if(x){} */
+		return t;
 
 	while(curtok_is_type_prething()){
 		decl *d;
