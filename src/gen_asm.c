@@ -11,6 +11,25 @@
 
 static char *curfunc_lblfin;
 
+void walk_expr(expr *e, symtable *stab);
+
+void asm_stack_to_store(expr *e, symtable *stab)
+{
+	if(e->type == expr_identifier){
+		asm_temp("mov rax, [rsp]");
+		asm_sym(ASM_SET, e->sym, "rax");
+
+	}else{
+		/* a dereference */
+		walk_expr(e->lhs, stab); /* skip over the *() bit */
+
+		/* move `pop` into `pop` */
+		asm_temp("pop rax ; ptr");
+		asm_temp("mov rbx, [rsp] ; val");
+		asm_temp("mov [rax], rbx");
+	}
+}
+
 void walk_expr(expr *e, symtable *stab)
 {
 	switch(e->type){
@@ -60,24 +79,14 @@ void walk_expr(expr *e, symtable *stab)
 		case expr_assign:
 			if(e->assign_type == assign_normal){
 				walk_expr(e->rhs, stab);
-
-				if(e->lhs->type == expr_identifier){
-					asm_temp("mov rax, [rsp]");
-					asm_sym(ASM_SET, e->lhs->sym, "rax");
-
-				}else{
-					/* a dereference */
-					walk_expr(e->lhs->lhs, stab); /* skip over the *() bit */
-
-					/* move `pop` into `pop` */
-					asm_temp("pop rax ; ptr");
-					asm_temp("mov rbx, [rsp] ; val");
-					asm_temp("mov [rax], rbx");
-				}
+				asm_stack_to_store(e->lhs, stab);
 			}else{
 				int flag;
 
-				/* these aren't actually treated as assignments, more expressions that alter values */
+				/*
+				 * these aren't actually treated as assignments,
+				 * more expressions that alter values
+				 */
 				walk_expr(e->expr, stab);
 				/*
 				 * load the identifier and keep it on the stack for returning
@@ -95,7 +104,7 @@ void walk_expr(expr *e, symtable *stab)
 					asm_temp("mov [rsp], rax");
 
 				/* store back to the sym's home */
-				asm_sym(ASM_SET, e->expr->sym, "rax");
+				asm_stack_to_store(e->expr, stab);
 			}
 			break;
 

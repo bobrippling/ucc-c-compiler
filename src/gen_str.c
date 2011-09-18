@@ -162,7 +162,9 @@ void print_expr(expr *e)
 		}
 
 		case expr_addr:
+			indent++;
 			idt_printf("&%s\n", e->spel);
+			indent--;
 			break;
 
 		case expr_sizeof:
