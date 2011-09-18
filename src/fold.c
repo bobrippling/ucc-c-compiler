@@ -108,9 +108,9 @@ void fold_expr(expr *e, symtable *stab)
 				fold_expr(e->rhs, stab);
 
 			/* XXX: note, this assumes that e.g. "1 + 2" the lhs and rhs have the same type */
-			GET_VARTYPE(e->lhs->vartype);
-
 			if(e->op == op_deref){
+				GET_VARTYPE(e->lhs->vartype);
+
 				e->vartype->ptr_depth--;
 
 				if(e->vartype->ptr_depth == 0)
@@ -124,6 +124,9 @@ void fold_expr(expr *e, symtable *stab)
 					}
 				else if(e->vartype->ptr_depth < 0)
 					die_at(&e->where, "can't dereference non-pointer (%s)", type_to_str(e->vartype));
+			}else{
+				e->vartype = type_new();
+				e->vartype->primitive = type_int;
 			}
 			break;
 

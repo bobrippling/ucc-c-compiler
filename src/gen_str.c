@@ -111,9 +111,13 @@ void print_expr(expr *e)
 			idt_printf("op: %s\n", op_to_str(e->op));
 			indent++;
 
-			if(e->op == op_deref)
-				idt_printf("deref size: %s\n",
-						type_to_str(e->vartype));
+			if(e->op == op_deref){
+				int i;
+				idt_printf("deref size: %s ", type_to_str(e->vartype));
+				for(i = 0; i < e->vartype->ptr_depth; i++)
+					putchar('*');
+				putchar('\n');
+			}
 
 			PRINT_IF(e, lhs, print_expr);
 			PRINT_IF(e, rhs, print_expr);
@@ -260,7 +264,7 @@ void gen_str(function *f)
 
 	colour = isatty(1);
 
-	idt_printf("%sfunction: ", f->variadic ? "variadic ":"");
+	idt_printf("function: ");
 	indent++;
 
 	print_decl(f->func_decl, 0, 0);
@@ -272,7 +276,7 @@ void gen_str(function *f)
 				print_decl(s->decl, 0, 0);
 				putchar(' '); /* TODO: comma and reverse order */
 			}
-	puts(")");
+	printf("%s)\n", f->variadic ? ", ..." : "");
 
 	if(f->symtab){
 		idt_printf("symtable:\n");
