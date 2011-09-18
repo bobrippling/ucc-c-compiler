@@ -15,8 +15,11 @@ void walk_expr(expr *e, symtable *stab);
 
 void asm_stack_to_store(expr *e, symtable *stab)
 {
+	/*
+	 * this function should really be called:
+	 * asm_stack_to_store_if_pointer_otherwise_rax_to_store
+	 */
 	if(e->type == expr_identifier){
-		asm_temp("mov rax, [rsp]");
 		asm_sym(ASM_SET, e->sym, "rax");
 
 	}else{
@@ -79,6 +82,7 @@ void walk_expr(expr *e, symtable *stab)
 		case expr_assign:
 			if(e->assign_type == assign_normal){
 				walk_expr(e->rhs, stab);
+				asm_temp("mov rax, [rsp] ; %s", e->spel);
 				asm_stack_to_store(e->lhs, stab);
 			}else{
 				int flag;
@@ -113,11 +117,14 @@ void walk_expr(expr *e, symtable *stab)
 			expr **iter;
 			int nargs = 0;
 
-			if(e->funcargs)
-				for(iter = e->funcargs; *iter; iter++){
+			if(e->funcargs){
+				/* need to push on in reverse order */
+				for(iter = e->funcargs; *iter; iter++);
+				for(iter--; iter >= e->funcargs; iter--){
 					walk_expr(*iter, stab);
 					nargs++;
 				}
+			}
 
 			asm_new(asm_call, e->spel);
 			if(nargs)
