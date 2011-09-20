@@ -133,7 +133,7 @@ expr *parse_expr_unary_op()
 			e->type = expr_assign;
 			e->assign_type = curtok == token_increment ? assign_pre_increment : assign_pre_decrement;
 			EAT(curtok);
-			e->expr = parse_expr();
+			e->expr = parse_expr_unary_op();
 			return e;
 
 		case token_identifier:
