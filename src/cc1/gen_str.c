@@ -15,11 +15,7 @@
 		indent--; \
 	}
 
-#define colour_low()  ((void)(colour && printf("\x1b[1;30m")))
-#define colour_norm() ((void)(colour && printf("\x1b[m")))
-
 static int indent = 0;
-static int colour = 1;
 
 void print_tree(tree *t);
 void print_expr(expr *e);
@@ -230,14 +226,12 @@ void print_tree(tree *t)
 	if(t->decls){
 		decl **iter;
 
-		colour_low();
 		idt_printf("decls:\n");
 		for(iter = t->decls; *iter; iter++){
 			indent++;
 			print_decl(*iter, 1, 1);
 			indent--;
 		}
-		colour_norm();
 	}
 
 	if(t->codes){
@@ -258,36 +252,36 @@ void print_tree(tree *t)
 	}
 }
 
-void gen_str(function *f)
+void print_func(function *f)
 {
-	sym *s;
-
-	colour = isatty(1);
-
 	idt_printf("function: ");
 	indent++;
 
 	print_decl(f->func_decl, 0, 0);
 
 	putchar('(');
-	if(f->symtab)
-		for(s = f->symtab->first; s; s = s->next)
-			if(s->type == sym_arg){
-				print_decl(s->decl, 0, 0);
-				putchar(' '); /* TODO: comma and reverse order */
-			}
-	printf("%s)\n", f->variadic ? ", ..." : "");
-
-	if(f->symtab){
-		idt_printf("symtable:\n");
-		for(s = f->symtab->first; s; s = s->next){
-			indent++;
-			print_sym(s);
-			indent--;
+	if(f->args){
+		decl **iter;
+		for(iter = f->args; *iter; iter++){
+			print_decl(*iter, 0, 0);
+			putchar(' '); /* TODO: comma and reverse order */
 		}
 	}
+
+	printf("%s)\n", f->variadic ? ", ..." : "");
 
 	PRINT_IF(f, code, print_tree)
 
 	indent--;
+}
+
+void gen_str(global **g)
+{
+	for(; *g; g++)
+		if((*g)->isfunc){
+			print_func((*g)->ptr.f);
+		}else{
+			printf("global variable: ");
+			print_decl((*g)->ptr.d, 1, 1);
+		}
 }

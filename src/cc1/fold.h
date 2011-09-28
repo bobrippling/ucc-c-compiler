@@ -1,6 +1,6 @@
 #ifndef FOLD_H
 #define FOLD_H
 
-void fold(function **);
+void fold(global ***);
 
 #endif

@@ -52,3 +52,16 @@ int escapestring(char *str, int *len)
 
 	return 1;
 }
+
+int literalprint(FILE *f, const char *s, int len)
+{
+	for(; len; s++, len--)
+		if(!isprint(*s)){
+			if(fprintf(f, "\\%03o", *s) < 0)
+				return EOF;
+		}else if(fputc(*s, f) == EOF)
+			return EOF;
+
+	return 0;
+}
+

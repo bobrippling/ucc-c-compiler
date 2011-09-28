@@ -6,19 +6,19 @@
 #include "util.h"
 #include "parse.h"
 #include "fold.h"
-#include "gen.h"
 #include "gen_asm.h"
 #include "gen_str.h"
+#include "sym.h"
 
 int main(int argc, char **argv)
 {
-	static function **prog;
-	void (*gfunc)(function *);
+	static global **globs;
+	void (*gf)(global **);
 	FILE *f;
 	const char *fname;
 	int i;
 
-	gfunc = gen_asm;
+	gf = gen_asm;
 	fname = NULL;
 
 	for(i = 1; i < argc; i++){
@@ -27,9 +27,9 @@ int main(int argc, char **argv)
 				goto usage;
 
 			if(!strcmp(argv[i], "print"))
-				gfunc = gen_str;
+				gf = gen_str;
 			else if(!strcmp(argv[i], "asm"))
-				gfunc = gen_asm;
+				gf = gen_asm;
 			else
 				goto usage;
 
@@ -55,11 +55,12 @@ use_stdin:
 	}
 
 	tokenise_set_file(f, fname);
-	prog = parse();
+	globs = parse();
 	if(f != stdin)
 		fclose(f);
-	fold(prog);
-	gen(prog, gfunc);
+
+	fold(&globs);
+	gf(globs);
 
 	return 0;
 }

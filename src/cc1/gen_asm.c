@@ -11,15 +11,10 @@
 
 static char *curfunc_lblfin;
 
-void walk_expr(expr *e, symtable *stab);
-
 void asm_stack_to_store(expr *e, symtable *stab)
 {
-	/*
-	 * this function should really be called:
-	 * asm_stack_to_store_if_pointer_otherwise_rax_to_store
-	 */
 	if(e->type == expr_identifier){
+		asm_temp("mov rax, [rsp]");
 		asm_sym(ASM_SET, e->sym, "rax");
 
 	}else{
@@ -82,7 +77,6 @@ void walk_expr(expr *e, symtable *stab)
 		case expr_assign:
 			if(e->assign_type == assign_normal){
 				walk_expr(e->rhs, stab);
-				asm_temp("mov rax, [rsp] ; %s", e->spel);
 				asm_stack_to_store(e->lhs, stab);
 			}else{
 				int flag;
@@ -108,7 +102,9 @@ void walk_expr(expr *e, symtable *stab)
 					asm_temp("mov [rsp], rax");
 
 				/* store back to the sym's home */
+				asm_temp("push rax"); /* guard the possibly inc'd value. TODO: optimise */
 				asm_stack_to_store(e->expr, stab);
+				asm_temp("pop rax");
 			}
 			break;
 
@@ -190,6 +186,7 @@ void walk_tree(tree *t)
 			lbl_fin = label_code("for_fin");
 
 			walk_expr(t->flow->for_init, t->symtab);
+			asm_temp("pop rax ; unused for init");
 
 			asm_label(lbl_for);
 			walk_expr(t->flow->for_while, t->symtab);
@@ -200,6 +197,7 @@ void walk_tree(tree *t)
 
 			walk_tree(t->lhs);
 			walk_expr(t->flow->for_inc, t->symtab);
+			asm_temp("pop rax ; unused for inc");
 
 			asm_temp("jmp %s", lbl_for);
 
@@ -322,7 +320,7 @@ void decl_walk_tree(tree *t)
 #undef WALK_IF
 }
 
-void gen_asm(function *f)
+void gen_asm_func(function *f)
 {
 	if(f->code){
 		int offset;
@@ -330,14 +328,14 @@ void gen_asm(function *f)
 
 		asm_temp("global %s", f->func_decl->spel);
 
-		/* walk string + array decl */
+		/* walk string decls */
 		decl_walk_tree(f->code);
 
 		asm_label(f->func_decl->spel);
 		asm_temp("push rbp");
 		asm_temp("mov rbp, rsp");
 
-		for(s = f->symtab->first; s; s = s->next)
+		for(s = f->code->symtab->first; s; s = s->next){
 			if(s->type == sym_auto){
 				/* TODO: optimise for chars / don't assume everything is an int */
 				if(s->decl->arraysizes){
@@ -349,6 +347,7 @@ void gen_asm(function *f)
 					offset += platform_word_size();
 				}
 			}
+		}
 
 		curfunc_lblfin = label_code(f->func_decl->spel);
 
@@ -362,7 +361,21 @@ void gen_asm(function *f)
 		asm_temp("leave");
 		asm_temp("ret");
 		free(curfunc_lblfin);
-	}else{
+	}else if(f->func_decl->type->spec & spec_extern){
 		asm_temp("extern %s", f->func_decl->spel);
 	}
+}
+
+void gen_asm_decl(decl *d)
+{
+	fprintf(stderr, "TODO: gen_asm_decl %p\n", (void *)d);
+}
+
+void gen_asm(global **globs)
+{
+	for(; *globs; globs++)
+		if((*globs)->isfunc)
+			gen_asm_func((*globs)->ptr.f);
+		else
+			gen_asm_decl((*globs)->ptr.d);
 }

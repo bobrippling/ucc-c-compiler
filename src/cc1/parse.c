@@ -464,9 +464,7 @@ type *parse_type()
 tree *parse_code_declblock()
 {
 	expr **assignments = NULL;
-	tree *t = tree_new();
-
-	t->type = stat_code;
+	tree *t = tree_new_code();
 
 	EAT(token_open_block);
 
@@ -607,62 +605,56 @@ decl *parse_decl(type *type, int need_spel)
 	return d;
 }
 
-function *parse_function_proto()
+global *parse_global()
 {
-	function *f = function_new();
+	decl *d;
 
-	f->func_decl = parse_decl(parse_type(), 1);
-	f->func_decl->type->func = 1;
+	d = parse_decl(parse_type(), 1);
 
-	EAT(token_open_paren);
+	if(accept(token_open_paren)){
+		function *f = function_new();
 
-	while((curtok_is_type_prething())){
-		dynarray_add((void ***)&f->args, parse_decl(parse_type(), 0));
+		f->func_decl = d;
+		d->type->func = 1;
 
-		if(curtok == token_close_paren)
-			break;
+		while((curtok_is_type_prething())){
+			dynarray_add((void ***)&f->args, parse_decl(parse_type(), 0));
 
-		EAT(token_comma);
+			if(curtok == token_close_paren)
+				break;
 
-		if(accept(token_elipsis)){
-			f->variadic = 1;
-			break;
+			EAT(token_comma);
+
+			if(accept(token_elipsis)){
+				f->variadic = 1;
+				break;
+			}
+
+			/* continue loop */
 		}
 
-		/* continue loop */
+		EAT(token_close_paren);
+
+		if(!accept(token_semicolon))
+			f->code = parse_code();
+		/* else ';' is eaten */
+
+		return global_new(f, NULL);
+	}else{
+		EAT(token_semicolon);
+		return global_new(NULL, d);
 	}
 
-	EAT(token_close_paren);
-
-	return f;
+	/* unreachable */
 }
 
-function *parse_function()
+global **parse()
 {
-	function *f = parse_function_proto();
+	global **globals = NULL;
 
-	if(!accept(token_semicolon))
-		f->code = parse_code();
-	/* else ';' is eaten */
+	do
+		dynarray_add((void ***)&globals, parse_global());
+	while(curtok != token_eof);
 
-	return f;
-}
-
-function **parse()
-{
-	function **f;
-	int i, n;
-
-	n = 10;
-	i = 0;
-	f = umalloc(n * sizeof *f);
-
-	do{
-		f[i++] = parse_function();
-
-		if(i == n)
-			f = urealloc(f, (n += 10) * sizeof *f);
-	}while(curtok != token_eof);
-
-	return f;
+	return globals;
 }
