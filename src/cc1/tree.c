@@ -5,6 +5,7 @@
 #include "alloc.h"
 #include "tree.h"
 #include "macros.h"
+#include "sym.h"
 
 void where_new(struct where *w)
 {
@@ -26,6 +27,14 @@ tree *tree_new()
 {
 	tree *t = umalloc(sizeof *t);
 	where_new(&t->where);
+	return t;
+}
+
+tree *tree_new_code()
+{
+	tree *t = tree_new();
+	t->type = stat_code;
+	t->symtab = symtab_new();
 	return t;
 }
 
@@ -72,6 +81,18 @@ function *function_new()
 	function *f = umalloc(sizeof *f);
 	where_new(&f->where);
 	return f;
+}
+
+global *global_new(function *f, decl *d)
+{
+	global *g = umalloc(sizeof *g);
+	where_new(&g->where);
+	if(f)
+		g->ptr.f = f;
+	else
+		g->ptr.d = d;
+	g->isfunc = !!f;
+	return g;
 }
 
 const char *expr_to_str(enum expr_type t)
@@ -149,6 +170,7 @@ const char *spec_to_str(enum type_spec s)
 	switch(s){
 		CASE_STR_PREFIX(spec, const);
 		CASE_STR_PREFIX(spec, extern);
+		CASE_STR_PREFIX(spec, static);
 		CASE_STR_PREFIX(spec, none);
 	}
 	return NULL;

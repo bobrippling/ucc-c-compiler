@@ -96,7 +96,7 @@ int const_fold(expr *e)
 				 * TODO
 				 * fold. need to hunt for assignment tree
 				 */
-				fprintf(stderr, "TODO: fold expression with const identifier %s\n", e->spel);
+				//fprintf(stderr, "TODO: fold expression with const identifier %s\n", e->spel);
 			}
 			return 1;
 

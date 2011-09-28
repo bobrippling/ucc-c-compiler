@@ -1,6 +1,6 @@
 #ifndef PARSE_H
 #define PARSE_H
 
-function **parse();
+global **parse();
 
 #endif

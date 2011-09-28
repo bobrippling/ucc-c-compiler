@@ -1,6 +1,3 @@
 *.o
-cc1
-lib/print.s
-src/TEST.c
-src/test
-src/test.s
+src/cc1/cc1*
+src/cpp/cpp*

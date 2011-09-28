@@ -10,6 +10,7 @@ typedef struct sym         sym;
 typedef struct tree_flow   tree_flow;
 typedef struct type        type;
 typedef struct assignment  assignment;
+typedef struct global      global;
 
 typedef struct where
 {
@@ -30,7 +31,8 @@ enum type_spec
 {
 	spec_none = 0,
 	spec_const  = 1 << 0,
-	spec_extern = 1 << 1
+	spec_extern = 1 << 1,
+	spec_static = 1 << 2
 };
 
 struct type
@@ -169,9 +171,21 @@ struct function
 
 	decl *func_decl;
 	decl **args;
+	symtable *autos;
 	tree *code;
-	symtable *symtab;
 	int variadic;
+};
+
+struct global
+{
+	where where;
+
+	int isfunc;
+	union
+	{
+		function *f;
+		decl     *d;
+	} ptr;
 };
 
 tree      *tree_new();
@@ -179,8 +193,10 @@ expr      *expr_new();
 type      *type_new();
 decl      *decl_new();
 function  *function_new();
+global    *global_new(function *, decl *);
 
 type      *type_copy(type *);
+tree      *tree_new_code();
 expr      *expr_new_val(int);
 
 tree_flow *tree_flow_new();

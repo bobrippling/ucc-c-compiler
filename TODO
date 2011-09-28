@@ -9,3 +9,8 @@ general lhs assignment (since it's currently identifier only):
 32-bit code gen
 
 check ?: parses to the correct tree, same as gcc
+
++=
+
+fix x86 argument order - syscall needs them a specific way around
+(stick with current, and add __attribute__((fastcall)) or something to __syscall's proto?)

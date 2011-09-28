@@ -13,6 +13,8 @@
 #define DIE_UNDECL() \
 		die_at(&e->where, "undeclared identifier \"%s\" (%s:%d)", e->spel, __FILE__, __LINE__)
 
+static global **fold_globals;
+
 int fold_is_lvalue(expr *e)
 {
 	/*
@@ -39,7 +41,7 @@ void fold_expr(expr *e, symtable *stab)
 	}while(0)
 
 	if(e->spel)
-		e->sym = symtab_search(stab, e->spel);
+		e->sym = symtab_search(stab, e->spel, fold_globals);
 
 	const_fold(e);
 
@@ -152,91 +154,32 @@ void fold_expr(expr *e, symtable *stab)
 					fold_expr(*iter, stab);
 			}
 
-			if(e->sym){
-				GET_VARTYPE(e->sym->decl->type); /* XXX: check */
-			}else{
-				fprintf(stderr, "warning: %s undeclared, assuming return type int\n", e->spel);
-				e->vartype->primitive = type_int;
+			if(!e->sym){
+				symtable *paren;
+				function *f;
+
+				f = function_new();
+				f->func_decl = decl_new();
+
+				f->func_decl->type->primitive = type_int;
+				f->func_decl->type->func = 1;
+				f->func_decl->spel = e->spel;
+
+				memcpy(&f->func_decl->where,       &e->where, sizeof e->where);
+				memcpy(&f->func_decl->type->where, &e->where, sizeof e->where);
+
+				fprintf(stderr, "%s: function \"%s\" undeclared, assuming return type int\n", where_str(&e->where), e->spel);
+
+				dynarray_add((void ***)&fold_globals, global_new(f, NULL));
+
+				for(paren = stab; paren->parent; paren = paren->parent);
+				e->sym = symtab_add(paren, f->func_decl, sym_func);
 			}
+
+			GET_VARTYPE(e->sym->decl->type); /* XXX: check */
 			break;
 	}
 #undef GET_VARTYPE
-}
-
-void fold_code(tree *t, symtable *parent_tab)
-{
-	t->symtab = parent_tab;
-
-	switch(t->type){
-		default:
-			fprintf(stderr, "fold TODO with %s\n", stat_to_str(t->type));
-			break;
-
-		case stat_while:
-		case stat_do:
-		case stat_if:
-			fold_expr(t->expr, parent_tab);
-			fold_code(t->lhs,  parent_tab);
-			if(t->rhs)
-				fold_code(t->rhs,  parent_tab);
-			break;
-
-		case stat_for:
-			fold_expr(t->flow->for_init,  parent_tab);
-			fold_expr(t->flow->for_while, parent_tab);
-			fold_expr(t->flow->for_inc,   parent_tab);
-			fold_code(t->lhs,             parent_tab);
-			break;
-
-		case stat_code:
-			if(t->decls){
-				decl **iter;
-
-				for(iter = t->decls; *iter; iter++)
-					symtab_add(parent_tab, *iter, sym_auto);
-			}
-
-			/* decls must be walked first */
-			if(t->codes){
-				tree **iter;
-				for(iter = t->codes; *iter; iter++)
-					fold_code(*iter, parent_tab /* init'd */);
-			}
-
-			if(parent_tab){
-				int auto_offset, arg_offset;
-				sym *s;
-
-				auto_offset = arg_offset = 0; /* FIXME? { int i; { int j; } } */
-
-				for(s = parent_tab->first; s; s = s->next){
-					/* extern check goes here */
-					switch(s->type){
-						case sym_auto:
-							s->offset = auto_offset;
-							auto_offset += platform_word_size();
-							break;
-
-						case sym_arg:
-							s->offset = arg_offset;
-							arg_offset += platform_word_size();
-							break;
-
-						case sym_str:
-							break;
-					}
-				}
-			}
-			break;
-
-		case stat_expr:
-		case stat_return:
-			fold_expr(t->expr, parent_tab);
-			break;
-
-		case stat_noop:
-			break;
-	}
 }
 
 void fold_type(type *t)
@@ -259,20 +202,98 @@ void fold_decl(decl *d, symtable *stab)
 	}
 }
 
-void fold_func(function *f)
+void fold_code(tree *t)
+{
+	switch(t->type){
+		default:
+			fprintf(stderr, "fold TODO with %s\n", stat_to_str(t->type));
+			break;
+
+		case stat_while:
+		case stat_do:
+		case stat_if:
+			fold_expr(t->expr, t->symtab);
+
+			symtab_nest(t->symtab, &t->lhs->symtab);
+			fold_code(t->lhs);
+
+			if(t->rhs){
+				symtab_nest(t->symtab, &t->rhs->symtab);
+				fold_code(t->rhs);
+			}
+			break;
+
+		case stat_for:
+			fold_expr(t->flow->for_init,  t->symtab);
+			fold_expr(t->flow->for_while, t->symtab);
+			fold_expr(t->flow->for_inc,   t->symtab);
+
+			symtab_nest(t->symtab, &t->lhs->symtab);
+			fold_code(t->lhs);
+			break;
+
+		case stat_code:
+		{
+			int auto_offset, arg_offset;
+			sym *s;
+
+			if(t->decls){
+				decl **iter;
+
+				for(iter = t->decls; *iter; iter++){
+					symtab_add(t->symtab, *iter, sym_auto);
+					fold_decl(*iter, t->symtab);
+				}
+			}
+
+			/* decls must be walked first, above */
+
+			if(t->codes){
+				tree **iter;
+				for(iter = t->codes; *iter; iter++){
+					symtab_nest(t->symtab, &(*iter)->symtab);
+					fold_code(*iter);
+				}
+			}
+
+			auto_offset = t->symtab->parent ? t->symtab->parent->auto_offset : 0;
+			arg_offset  = 0;
+
+			for(s = t->symtab->first; s; s = s->next)
+				if(s->type == sym_auto){
+					s->offset = auto_offset;
+					auto_offset += platform_word_size();
+				}else if(s->type == sym_arg){
+					s->offset = arg_offset;
+					arg_offset += platform_word_size();
+				}
+
+			t->symtab->auto_offset = auto_offset;
+
+			break;
+		}
+
+		case stat_expr:
+		case stat_return:
+			fold_expr(t->expr, t->symtab);
+			break;
+
+		case stat_noop:
+			break;
+	}
+}
+
+void fold_func(function *f, symtable *globsyms, global **globs)
 {
 	decl **diter;
 
-	fold_decl(f->func_decl, NULL /* TODO: global symtab */);
+	fold_decl(f->func_decl, globsyms);
 
 	for(diter = f->args; diter && *diter; diter++)
-		fold_decl(*diter, NULL /* TODO: also here */);
+		fold_decl(*diter, globsyms);
 
 	if(f->code){
 		decl **d;
-		sym *s;
-
-		f->symtab = symtab_new();
 
 		if(f->args)
 			/* check for unnamed params */
@@ -280,20 +301,51 @@ void fold_func(function *f)
 				if(!(*d)->spel)
 					die_at(&f->where, "function \"%s\" has unnamed arguments", f->func_decl->spel);
 				else
-					symtab_add(f->symtab, *d, sym_arg);
+					symtab_add(f->code->symtab, *d, sym_arg);
 
+		symtab_nest(globsyms, &f->code->symtab);
 
-		fold_code(f->code, f->symtab);
+		fold_code(f->code);
+	}else{
+		global **iter;
+		int found = 0;
 
-		for(s = f->symtab->first; s; s = s->next)
-			fold_decl(s->decl, f->symtab);
+		for(iter = globs; *iter; iter++)
+			if((*iter)->isfunc){
+				function *f2 = (*iter)->ptr.f;
+
+				if(f2->code && !strcmp(f2->func_decl->spel, f->func_decl->spel)){
+					found = 1;
+					break;
+				}
+			}
+
+		if(!found){
+			f->func_decl->type->spec |= spec_extern;
+			fprintf(stderr, "%s: assuming \"%s\" is extern\n", where_str(&f->where), f->func_decl->spel);
+		}
 	}
 }
 
-void fold(function **fs)
+void fold(global ***globs)
 {
-	function **f;
+	symtable *stab = symtab_new();
+	int i;
 
-	for(f = fs; *f; f++)
-		fold_func(*f /* TODO: (*f)->parent_symtable = global_syms */);
+	fold_globals = *globs;
+
+	/* globs is now invalid, since it might change, thus we must use fold_globals */
+	for(i = 0; fold_globals[i]; i++){
+		if(fold_globals[i]->isfunc){
+			symtab_add(stab, fold_globals[i]->ptr.f->func_decl, sym_func);
+			fold_func(fold_globals[i]->ptr.f, stab, fold_globals);
+		}else{
+			symtab_add(stab, fold_globals[i]->ptr.d, sym_auto);
+			fold_decl(fold_globals[i]->ptr.d, stab);
+		}
+	}
+
+	*globs = fold_globals;
+
+	/* FIXME: free symtab if we only have decls */
 }

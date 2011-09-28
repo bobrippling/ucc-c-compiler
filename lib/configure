@@ -1,0 +1,30 @@
+#!/bin/sh
+
+# mac: uname -a: Darwin GladiOS.local 11.0.1 Darwin Kernel Version 11.0.1: Wed Jun 29 19:53:22 PDT 2011; root:xnu-1699.23.2~1/RELEASE_X86_64 x86_64
+#      uname -s: Darwin
+
+os_cfg(){
+	echo "#define $1" >> os.h
+	echo "Configured for $2"
+}
+
+echo -n > os.h
+
+case "$(uname -s)" in
+	Darwin)
+		os_cfg __MACOSX__ "Mac OS X" # check this
+		;;
+
+	Linux)
+		os_cfg __linux__ Linux
+		;;
+
+	FreeBSD)
+		os_cfg __FreeBSD__ BSD
+		;;
+
+	*)
+		echo "unknown OS ($(uname -a))" >&2
+		exit 1
+		;;
+esac
