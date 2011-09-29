@@ -16,6 +16,7 @@
 	}
 
 static int indent = 0;
+extern FILE *cc1_out;
 
 void print_tree(tree *t);
 void print_expr(expr *e);
@@ -26,7 +27,7 @@ void idt_print()
 	int i;
 
 	for(i = indent; i > 0; i--)
-		fputs("  ", stdout);
+		fputs("  ", cc1_out);
 }
 
 void idt_printf(const char *fmt, ...)
@@ -36,7 +37,7 @@ void idt_printf(const char *fmt, ...)
 	idt_print();
 
 	va_start(l, fmt);
-	vprintf(fmt, l);
+	vfprintf(cc1_out, fmt, l);
 	va_end(l);
 }
 
@@ -45,14 +46,14 @@ void print_type(type *t)
 	int i;
 
 	if(t->spec & spec_const)
-		fputs("const ", stdout);
+		fputs("const ", cc1_out);
 	if(t->spec & spec_extern)
-		fputs("extern ", stdout);
+		fputs("extern ", cc1_out);
 
-	printf("%s ", type_to_str(t));
+	fprintf(cc1_out, "%s ", type_to_str(t));
 
 	for(i = t->ptr_depth; i > 0; i--)
-		putchar('*');
+		fputc('*', stdout);
 }
 
 void print_decl(decl *d, int idt, int nl)
@@ -65,10 +66,10 @@ void print_decl(decl *d, int idt, int nl)
 	print_type(d->type);
 
 	if(d->spel)
-		fputs(d->spel, stdout);
+		fputs(d->spel, cc1_out);
 
 	if(nl)
-		putchar('\n');
+		fputc('\n', cc1_out);
 
 	indent++;
 	for(i = 0; d->arraysizes && d->arraysizes[i]; i++){
@@ -90,7 +91,7 @@ void print_expr(expr *e)
 {
 	idt_printf("vartype: ");
 	print_type(e->vartype);
-	putchar('\n');
+	fputc('\n', cc1_out);
 
 	idt_printf("e->type: %s\n", expr_to_str(e->type));
 
@@ -111,8 +112,8 @@ void print_expr(expr *e)
 				int i;
 				idt_printf("deref size: %s ", type_to_str(e->vartype));
 				for(i = 0; i < e->vartype->ptr_depth; i++)
-					putchar('*');
-				putchar('\n');
+					fputc('*', cc1_out);
+				fputc('\n', cc1_out);
 			}
 
 			PRINT_IF(e, lhs, print_expr);
@@ -259,16 +260,16 @@ void print_func(function *f)
 
 	print_decl(f->func_decl, 0, 0);
 
-	putchar('(');
+	fputc('(', cc1_out);
 	if(f->args){
 		decl **iter;
 		for(iter = f->args; *iter; iter++){
 			print_decl(*iter, 0, 0);
-			putchar(' '); /* TODO: comma and reverse order */
+			fputc(' ', cc1_out); /* TODO: comma and reverse order */
 		}
 	}
 
-	printf("%s)\n", f->variadic ? ", ..." : "");
+	fprintf(cc1_out, "%s)\n", f->variadic ? ", ..." : "");
 
 	PRINT_IF(f, code, print_tree)
 
@@ -281,7 +282,7 @@ void gen_str(global **g)
 		if((*g)->isfunc){
 			print_func((*g)->ptr.f);
 		}else{
-			printf("global variable: ");
+			fprintf(cc1_out, "global variable: ");
 			print_decl((*g)->ptr.d, 1, 1);
 		}
 }

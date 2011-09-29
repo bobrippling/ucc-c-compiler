@@ -20,7 +20,7 @@ sub run
 }
 
 my($output, $input);
-my($f_e, $f_s, $f_o, $f);
+my($f_s, $f_o, $f);
 my @tmpfs;
 
 my $i = 0;
@@ -28,8 +28,6 @@ while($i <= $#ARGV){
 	my $_ = $ARGV[$i];
 	if($_ eq '-c'){
 		$obj = 1;
-	}elsif($_ eq '-E'){
-		$pre = 1;
 	}elsif($_ eq '-o'){
 		$output = $ARGV[++$i] || die "need output\n";
 	}else{
@@ -41,40 +39,25 @@ while($i <= $#ARGV){
 
 $where = dirname(readlink($0) || $0);
 
-$f_e = "/tmp/ucc_$$.e";
 $f_s = "/tmp/ucc_$$.s";
 $f_o = "/tmp/ucc_$$.o";
 $f   = $output || "a.out";
 
-
-if($pre){
-	$f_e = $output || "/dev/stdout";
-}else{
-	push @tmpfs, $f_e;
-}
-run "$where/cpp/cpp $input > $f_e";
-exit 0 if $pre;
-
-if($asm){
-	$f_s = $output || "a.s";
-}else{
-	push @tmpfs, $f_s;
-}
-run "$where/cc1/cc1 $f_e > $f_s";
-exit 0 if $asm;
+push @tmpfs, $f_s;
+run "$where/cc1 $input > $f_s";
 
 if($obj){
 	$f_o = $output || "a.o";
 }else{
 	push @tmpfs, $f_o;
 }
+
 run "nasm -f elf64 -o $f_o $f_s";
 exit 0 if $obj;
-
 run "ld -o $f $f_o $where/../lib/*.o";
 
 END {
-	#run "rm @tmpfs" if @tmpfs;
+	run "rm @tmpfs";
 	close STDOUT;
 	exit $exit_code;
 }

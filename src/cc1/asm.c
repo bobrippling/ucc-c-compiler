@@ -10,6 +10,7 @@
 #include "alloc.h"
 
 static int label_last = 1, str_last = 1;
+extern FILE *cc1_out;
 
 char *label_code(const char *fmt)
 {
@@ -53,31 +54,31 @@ void asm_new(enum asm_type t, void *p)
 {
 	switch(t){
 		case asm_assign:
-			printf("pop rax");
+			asm_temp("pop rax");
 			break;
 
 		case asm_call:
-			printf("call %s\n", (const char *)p);
+			asm_temp("call %s\n", (const char *)p);
 			break;
 
 		case asm_load_ident:
-			printf("load %s\n", (const char *)p);
+			asm_temp("load %s\n", (const char *)p);
 			break;
 
 		case asm_load_val:
-			printf("load val %d\n", *(int *)p);
+			asm_temp("load val %d\n", *(int *)p);
 			break;
 
 		case asm_op:
-			printf("%s\n", op_to_str(*(enum op_type *)p));
+			asm_temp("%s\n", op_to_str(*(enum op_type *)p));
 			break;
 
 		case asm_pop:
-			printf("pop\n");
+			asm_temp("pop\n");
 			break;
 
 		case asm_push:
-			printf("push\n");
+			asm_temp("push\n");
 			break;
 
 		case asm_addrof:
@@ -95,18 +96,18 @@ void asm_declare_str(const char *lbl, const char *str, int len)
 {
 	int i;
 
-	printf("%s db ", lbl);
+	fprintf(cc1_out, "%s db ", lbl);
 
 	for(i = 0; i < len; i++)
-		printf("%d%s", str[i], i == len-1 ? "" : ", ");
-	putchar('\n');
+		fprintf(cc1_out, "%d%s", str[i], i == len-1 ? "" : ", ");
+	fputc('\n', cc1_out);
 }
 
 void asm_temp(const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
-	vprintf(fmt, l);
+	vfprintf(cc1_out, fmt, l);
 	va_end(l);
-	putchar('\n');
+	fputc('\n', cc1_out);
 }

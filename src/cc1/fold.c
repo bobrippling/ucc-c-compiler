@@ -26,6 +26,8 @@ int fold_is_lvalue(expr *e)
 	 *
 	 * also can't be const
 	 */
+	if(e->vartype->spec & spec_const)
+		die_at(&e->where, "can't modify const expression");
 
 	return e->type == expr_identifier ||
 		(e->type == expr_op && e->op == op_deref);

@@ -1,5 +1,51 @@
 #!/bin/sh
 
 set -e
-cd lib
-. ./configure
+
+os_cfg(){
+	echo "#define $1" > lib/os.h
+
+	cat > config.mk <<!
+UCC_NASM    = ${UCC_NASM}
+UCC_LD      = ${UCC_LD}
+UCC_ARCH    = ${UCC_ARCH}
+UCC_LDFLAGS = ${UCC_LDFLAGS}
+!
+
+	cat > src/cc.h <<!
+#define UCC_NASM    "${UCC_NASM}"
+#define UCC_LD      "${UCC_LD}"
+#define UCC_ARCH    "${UCC_ARCH}"
+#define UCC_LDFLAGS "${UCC_LDFLAGS}"
+!
+
+	echo "Configured for $2"
+}
+
+UCC_NASM=nasm
+UCC_LD=ld
+
+UCC_ARCH=elf64
+UCC_LDFLAGS=''
+
+
+case "$(uname -s)" in
+	Darwin)
+		UCC_ARCH=macho64
+		UCC_LDFLAGS='-e _start'
+		os_cfg __MACOSX__ "Mac OS X" # check this
+		;;
+
+	Linux)
+		os_cfg __linux__ Linux
+		;;
+
+	FreeBSD)
+		os_cfg __FreeBSD__ BSD
+		;;
+
+	*)
+		echo "unknown OS ($(uname -a))" >&2
+		exit 1
+		;;
+esac

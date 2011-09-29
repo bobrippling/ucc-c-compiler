@@ -11,19 +11,19 @@
 
 static char *curfunc_lblfin;
 
-void asm_stack_to_store(expr *e, symtable *stab)
+void asm_ax_to_store(expr *e, symtable *stab)
 {
 	if(e->type == expr_identifier){
-		asm_temp("mov rax, [rsp]");
 		asm_sym(ASM_SET, e->sym, "rax");
 
 	}else{
 		/* a dereference */
+		asm_temp("push rax ; save val");
 		walk_expr(e->lhs, stab); /* skip over the *() bit */
 
 		/* move `pop` into `pop` */
 		asm_temp("pop rax ; ptr");
-		asm_temp("mov rbx, [rsp] ; val");
+		asm_temp("pop rbx ; val");
 		asm_temp("mov [rax], rbx");
 	}
 }
@@ -77,7 +77,8 @@ void walk_expr(expr *e, symtable *stab)
 		case expr_assign:
 			if(e->assign_type == assign_normal){
 				walk_expr(e->rhs, stab);
-				asm_stack_to_store(e->lhs, stab);
+				asm_temp("mov rax, [rsp]");
+				asm_ax_to_store(e->lhs, stab);
 			}else{
 				int flag;
 
@@ -102,9 +103,7 @@ void walk_expr(expr *e, symtable *stab)
 					asm_temp("mov [rsp], rax");
 
 				/* store back to the sym's home */
-				asm_temp("push rax"); /* guard the possibly inc'd value. TODO: optimise */
-				asm_stack_to_store(e->expr, stab);
-				asm_temp("pop rax");
+				asm_ax_to_store(e->expr, stab);
 			}
 			break;
 
