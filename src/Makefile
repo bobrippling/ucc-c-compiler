@@ -10,4 +10,8 @@ cc1:
 cpp:
 	make -C cpp
 
-.PHONY: cc1 cpp
+clean:
+	make -C cc1 clean
+	make -C cpp clean
+
+.PHONY: cc1 cpp clean
