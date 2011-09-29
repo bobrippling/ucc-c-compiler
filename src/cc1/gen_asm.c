@@ -11,15 +11,16 @@
 
 static char *curfunc_lblfin;
 
-void asm_ax_to_store(expr *e, symtable *stab)
+void asm_ax_to_store(expr *store, symtable *stab)
 {
-	if(e->type == expr_identifier){
-		asm_sym(ASM_SET, e->sym, "rax");
+	if(store->type == expr_identifier){
+		asm_sym(ASM_SET, store->sym, "rax");
 
 	}else{
 		/* a dereference */
 		asm_temp("push rax ; save val");
-		walk_expr(e->lhs, stab); /* skip over the *() bit */
+
+		walk_expr(store->lhs, stab); /* skip over the *() bit */
 
 		/* move `pop` into `pop` */
 		asm_temp("pop rax ; ptr");
@@ -60,7 +61,6 @@ void walk_expr(expr *e, symtable *stab)
 		case expr_identifier:
 			/* if it's an array, lea, else, load */
 			asm_sym(e->sym->decl->arraysizes ? ASM_LEA : ASM_LOAD, e->sym, "rax");
-
 			asm_temp("push rax");
 			break;
 
@@ -323,7 +323,6 @@ void gen_asm_func(function *f)
 {
 	if(f->code){
 		int offset;
-		sym *s;
 
 		asm_temp("global %s", f->func_decl->spel);
 
@@ -334,23 +333,9 @@ void gen_asm_func(function *f)
 		asm_temp("push rbp");
 		asm_temp("mov rbp, rsp");
 
-		for(s = f->code->symtab->first; s; s = s->next){
-			if(s->type == sym_auto){
-				/* TODO: optimise for chars / don't assume everything is an int */
-				if(s->decl->arraysizes){
-					/* should've been folded fully */
-					int i;
-					for(i = 0; s->decl->arraysizes[i]; i++)
-						offset += s->decl->arraysizes[i]->val.i * platform_word_size();
-				}else{
-					offset += platform_word_size();
-				}
-			}
-		}
-
 		curfunc_lblfin = label_code(f->func_decl->spel);
 
-		if(offset)
+		if((offset = f->code->symtab->auto_offset))
 			asm_temp("sub rsp, %d", offset);
 		walk_tree(f->code);
 		asm_label(curfunc_lblfin);

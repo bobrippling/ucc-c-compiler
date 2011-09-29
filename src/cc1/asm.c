@@ -58,27 +58,27 @@ void asm_new(enum asm_type t, void *p)
 			break;
 
 		case asm_call:
-			asm_temp("call %s\n", (const char *)p);
+			asm_temp("call %s", (const char *)p);
 			break;
 
 		case asm_load_ident:
-			asm_temp("load %s\n", (const char *)p);
+			asm_temp("load %s", (const char *)p);
 			break;
 
 		case asm_load_val:
-			asm_temp("load val %d\n", *(int *)p);
+			asm_temp("load val %d", *(int *)p);
 			break;
 
 		case asm_op:
-			asm_temp("%s\n", op_to_str(*(enum op_type *)p));
+			asm_temp("%s", op_to_str(*(enum op_type *)p));
 			break;
 
 		case asm_pop:
-			asm_temp("pop\n");
+			asm_temp("pop");
 			break;
 
 		case asm_push:
-			asm_temp("push\n");
+			asm_temp("push");
 			break;
 
 		case asm_addrof:

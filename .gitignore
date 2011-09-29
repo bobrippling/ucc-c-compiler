@@ -1,3 +1,14 @@
 *.o
-src/cc1/cc1*
-src/cpp/cpp*
+
+config.mk
+
+src/cc.h
+src/cc
+src/cc1/cc1
+src/cpp/cpp
+
+src/cc1/TEST.c
+src/cc1/test
+src/cc1/test.s
+
+lib/os.h
