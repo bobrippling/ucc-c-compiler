@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
 
 #include "tree.h"
 #include "tokenise.h"
@@ -9,6 +10,8 @@
 #include "gen_asm.h"
 #include "gen_str.h"
 #include "sym.h"
+
+FILE *cc1_out = NULL;
 
 int main(int argc, char **argv)
 {
@@ -33,6 +36,18 @@ int main(int argc, char **argv)
 			else
 				goto usage;
 
+		}else if(!strcmp(argv[i], "-o")){
+			if(++i == argc)
+				goto usage;
+
+			if(strcmp(argv[i], "-")){
+				cc1_out = fopen(argv[i], "w");
+				if(!cc1_out){
+					fprintf(stderr, "open %s: %s\n", argv[i], strerror(errno));
+					return 1;
+				}
+			}
+
 		}else if(!fname){
 			fname = argv[i];
 		}else{
@@ -54,6 +69,9 @@ use_stdin:
 		fname = "-";
 	}
 
+	if(!cc1_out)
+		cc1_out = stdout;
+
 	tokenise_set_file(f, fname);
 	globs = parse();
 	if(f != stdin)
@@ -61,6 +79,8 @@ use_stdin:
 
 	fold(&globs);
 	gf(globs);
+
+	fclose(cc1_out);
 
 	return 0;
 }
