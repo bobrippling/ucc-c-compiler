@@ -248,15 +248,6 @@ void fold_code(tree *t)
 				}
 			}
 
-			/* decls must be walked first, above */
-
-			if(t->codes){
-				tree **iter;
-				for(iter = t->codes; *iter; iter++){
-					symtab_nest(t->symtab, &(*iter)->symtab);
-					fold_code(*iter);
-				}
-			}
 
 			auto_offset = t->symtab->parent ? t->symtab->parent->auto_offset : 0;
 			arg_offset  = 0;
@@ -264,7 +255,19 @@ void fold_code(tree *t)
 			for(s = t->symtab->first; s; s = s->next)
 				if(s->type == sym_auto){
 					s->offset = auto_offset;
-					auto_offset += platform_word_size();
+
+					/* TODO: optimise for chars / don't assume everything is an int */
+					if(s->decl->arraysizes){
+						/* should've been folded fully */
+						int i;
+						for(i = 0; s->decl->arraysizes[i]; i++)
+							auto_offset += s->decl->arraysizes[i]->val.i * platform_word_size();
+
+						auto_offset += platform_word_size();
+					}else{
+						/* assume sizeof(int) for chars etc etc */
+						auto_offset += platform_word_size();
+					}
 				}else if(s->type == sym_arg){
 					s->offset = arg_offset;
 					arg_offset += platform_word_size();
@@ -272,6 +275,34 @@ void fold_code(tree *t)
 
 			t->symtab->auto_offset = auto_offset;
 
+			if(t->codes){
+				tree **iter;
+				int subtab_offsets = 0;
+
+				for(iter = t->codes; *iter; iter++){
+					int offset;
+
+					symtab_nest(t->symtab, &(*iter)->symtab);
+					fold_code(*iter);
+					offset = (*iter)->symtab->auto_offset;
+
+					if(offset > subtab_offsets)
+						subtab_offsets = offset;
+						/*
+						 * we only need take the largest, other space can be reused
+						 * because:
+						 * {
+						 *   int i;
+						 * }
+						 * {
+						 *   int j;
+						 * }
+						 * never needs to access i and j at the same time
+						 */
+				}
+
+				t->symtab->auto_offset += subtab_offsets;
+			}
 			break;
 		}
 
@@ -295,15 +326,19 @@ void fold_func(function *f, symtable *globsyms, global **globs)
 		fold_decl(*diter, globsyms);
 
 	if(f->code){
-		decl **d;
-
-		if(f->args)
+		if(f->args){
 			/* check for unnamed params */
-			for(d = f->args; *d; d++)
-				if(!(*d)->spel)
+			int nargs, i;
+
+			for(nargs = 0; f->args[nargs]; nargs++);
+
+			/* add args backwards, since we push them onto the stack backwards */
+			for(i = nargs - 1; i >= 0; i--)
+				if(!f->args[i]->spel)
 					die_at(&f->where, "function \"%s\" has unnamed arguments", f->func_decl->spel);
 				else
-					symtab_add(f->code->symtab, *d, sym_arg);
+					symtab_add(f->code->symtab, f->args[i], sym_arg);
+		}
 
 		symtab_nest(globsyms, &f->code->symtab);
 

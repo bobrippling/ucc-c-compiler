@@ -88,6 +88,10 @@ int main(int argc, const char **argv)
 					break;
 				}
 
+				case '\0':
+					/* we've been passed "-" as a filename */
+					break;
+
 				default:
 					USAGE();
 			}
