@@ -33,12 +33,16 @@ int printf(const char *fmt, ...)
 	while(*fmt){
 		if(*fmt == '%'){
 			fmt++;
-			/**/ if(*fmt == 's') write(1, *(char **)ap, strlen(*(char **)ap));
-			else if(*fmt == 'c') write(1, *(char  *)ap, 1);
-			else if(*fmt == 'd') printd(  *(int   *)ap);
+			if(*fmt == 's')
+				write(1, *(char **)ap, strlen(*(char **)ap));
+			else if(*fmt == 'c')
+				write(1, ap, 1);
+			else if(*fmt == 'd')
+				printd(*(int *)ap);
+
 			ap = ap + sizeof int;
 		}else{
-			write(1, *fmt, 1);
+			write(1, fmt, 1);
 		}
 		fmt++;
 	}
