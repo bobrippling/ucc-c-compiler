@@ -8,6 +8,7 @@
 #include "sym.h"
 #include "asm_op.h"
 #include "gen_asm.h"
+#include "util.h"
 
 static char *curfunc_lblfin;
 
@@ -16,7 +17,7 @@ void asm_ax_to_store(expr *store, symtable *stab)
 	if(store->type == expr_identifier){
 		asm_sym(ASM_SET, store->sym, "rax");
 
-	}else{
+	}else if(store->type == expr_op && store->op == op_deref){
 		/* a dereference */
 		asm_temp("push rax ; save val");
 
@@ -26,6 +27,8 @@ void asm_ax_to_store(expr *store, symtable *stab)
 		asm_temp("pop rax ; ptr");
 		asm_temp("pop rbx ; val");
 		asm_temp("mov [rax], rbx");
+	}else{
+		DIE_ICE();
 	}
 }
 

@@ -22,17 +22,18 @@
  * parse_expr_logical_op above [&&||]   above
  */
 #define parse_expr() parse_expr_if()
+expr *parse_expr();
 #define accept(tok) ((tok) == curtok ? (EAT(tok), 1) : 0)
 
 extern enum token curtok;
 
-tree  *parse_code();
-expr **parse_funcargs();
+tree  *parse_code(void);
+expr **parse_funcargs(void);
 decl  *parse_decl(type *t, int need_spel);
-type  *parse_type();
+type  *parse_type(void);
 
-expr  *parse_expr();
-expr *parse_expr_binary_op(); /* needed to limit [+-] parsing */
+expr *parse_expr_binary_op(void); /* needed to limit [+-] parsing */
+expr *parse_expr_logical_op(void);
 
 
 expr *parse_expr_unary_op()
@@ -78,7 +79,7 @@ expr *parse_expr_unary_op()
 				e->lhs = expr_new();
 				e->lhs->vartype = parse_type();
 				EAT(token_close_paren);
-				e->rhs = parse_expr();
+				e->rhs = parse_expr_logical_op(); /* the parse level just below assign */
 			}else{
 				e = parse_expr();
 				EAT(token_close_paren);

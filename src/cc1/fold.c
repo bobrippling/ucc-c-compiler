@@ -22,15 +22,18 @@ int fold_is_lvalue(expr *e)
 	 *
 	 *   x = 5;
 	 *   *(expr) = 5;
-	 *
+	 *   (cast *)expr = 5;
 	 *
 	 * also can't be const
 	 */
 	if(e->vartype->spec & spec_const)
 		die_at(&e->where, "can't modify const expression");
 
-	return e->type == expr_identifier ||
-		(e->type == expr_op && e->op == op_deref);
+	return
+		 e->type == expr_identifier ||
+		(e->type == expr_op && e->op == op_deref && fold_is_lvalue(e->lhs)) ||
+		(e->type == expr_cast && e->lhs->vartype->ptr_depth) /* assignment to pointer-deref */
+		;
 }
 
 void fold_expr(expr *e, symtable *stab)
