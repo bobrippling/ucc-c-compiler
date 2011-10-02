@@ -82,6 +82,7 @@ void walk_expr(expr *e, symtable *stab)
 				walk_expr(e->rhs, stab);
 				asm_temp("mov rax, [rsp]");
 				asm_ax_to_store(e->lhs, stab);
+
 			}else{
 				int flag;
 

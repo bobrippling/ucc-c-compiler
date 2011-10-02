@@ -86,13 +86,29 @@ void fold_expr(expr *e, symtable *stab)
 
 		case expr_assign:
 		{
-			const int assign   = e->assign_type == assign_normal;
-			expr *const use_me = assign ? e->lhs : e->expr;
+			int assign;
+			expr *use_me;
+
+			if(e->assign_type == assign_augmented){
+				/* make a normal op from it */
+				expr *rhs = expr_new();
+
+				rhs->type = expr_op;
+				rhs->op   = e->op;
+				rhs->lhs  = e->lhs;
+				rhs->rhs  = e->rhs;
+
+				e->assign_type = assign_normal;
+				e->rhs = rhs;
+			}
+
+			assign = e->assign_type == assign_normal;
+			use_me = assign ? e->lhs : e->expr;
 
 			if(!fold_is_lvalue(use_me))
 				die_at(&use_me->where, "not an lvalue");
 
-			if(e->assign_type == assign_normal){
+			if(assign){
 				fold_expr(e->lhs, stab);
 				fold_expr(e->rhs, stab);
 			}else{
@@ -129,6 +145,7 @@ void fold_expr(expr *e, symtable *stab)
 					case assign_post_decrement:
 						addition->op = op_minus;
 						break;
+					case assign_augmented:
 					case assign_normal:
 						DIE_ICE();
 				}

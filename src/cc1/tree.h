@@ -101,6 +101,7 @@ struct expr
 	enum assign_type
 	{
 		assign_normal,
+		assign_augmented, /* +=, ... - type stored in ->op */
 
 		/* ++x, x--, ... - fold.c rearranges to ensure these work */
 		assign_pre_increment,

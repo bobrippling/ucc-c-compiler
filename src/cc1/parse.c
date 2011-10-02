@@ -164,7 +164,7 @@ expr *parse_expr_unary_op()
 		default:
 			break;
 	}
-	die_at(NULL, "expected: unary expression");
+	die_at(NULL, "expected: unary expression, got %s", token_to_str(curtok));
 	return NULL;
 }
 
@@ -224,37 +224,21 @@ expr *parse_expr_array()
 	return deref;
 }
 
-expr *parse_expr_div()
-{
-	/* above [/] above */
-	return parse_expr_join(
-			parse_expr_array, parse_expr_div,
-				token_divide, token_unknown);
-}
-
 expr *parse_expr_binary_op()
 {
-	/* above [%*] above */
+	/* above [/%*] above */
 	return parse_expr_join(
-			parse_expr_div, parse_expr_binary_op,
-				token_multiply, token_modulus,
+			parse_expr_array, parse_expr_binary_op,
+				token_multiply, token_divide, token_modulus,
 				token_unknown);
-}
-
-expr *parse_expr_neg()
-{
-	/* above [-] above */
-	return parse_expr_join(
-			parse_expr_binary_op, parse_expr_neg,
-				token_minus, token_unknown);
 }
 
 expr *parse_expr_sum()
 {
-	/* above [+] above */
+	/* above [+-] above */
 	return parse_expr_join(
-			parse_expr_neg, parse_expr_sum,
-				token_plus, token_unknown);
+			parse_expr_binary_op, parse_expr_sum,
+				token_plus, token_minus, token_unknown);
 }
 
 expr *parse_expr_bit_op()
@@ -294,6 +278,21 @@ expr *parse_expr_assign()
 		expr *ass = expr_new();
 
 		ass->type = expr_assign;
+
+		ass->lhs = e;
+		ass->rhs = parse_expr();
+
+		e = ass;
+	}else if(curtok_is_augmented_assignment()){
+		/* +=, ... */
+		expr *ass = expr_new();
+
+		ass->type = expr_assign;
+		ass->assign_type = assign_augmented;
+
+		ass->op = curtok_to_augmented_op();
+
+		EAT(curtok);
 
 		ass->lhs = e;
 		ass->rhs = parse_expr();

@@ -78,6 +78,8 @@ int operate(expr *lhs, expr *rhs, enum op_type op, int *bad)
 /* returns 0 if successfully folded */
 int const_fold(expr *e)
 {
+	return 0;
+
 	switch(e->type){
 		case expr_val:
 		case expr_sizeof:

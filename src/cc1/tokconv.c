@@ -77,6 +77,31 @@ int curtok_is_type_prething()
 	return curtok_is_type() || curtok_is_type_specifier();
 }
 
+enum op_type curtok_to_augmented_op()
+{
+#define CASE(x) case token_ ## x ## _assign: return op_ ## x
+	switch(curtok){
+		CASE(plus);
+		CASE(minus);
+		CASE(multiply);
+		CASE(divide);
+		CASE(modulus);
+		CASE(not);
+		CASE(bnot);
+		CASE(and);
+		CASE(or);
+		default:
+			break;
+	}
+	return op_unknown;
+#undef CASE
+}
+
+int curtok_is_augmented_assignment()
+{
+	return curtok_to_augmented_op() != op_unknown;
+}
+
 const char *token_to_str(enum token t)
 {
 	switch(t){
