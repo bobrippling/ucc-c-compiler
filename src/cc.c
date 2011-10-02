@@ -1,4 +1,5 @@
 #define _POSIX_C_SOURCE 200112L
+#define _XOPEN_SOURCE
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -45,7 +46,10 @@ void run(const char *cmd)
 		printf("run(\"%s\")\n", cmd);
 	ret = system(cmd);
 	if(ret){
-		fprintf(stderr, "\"%s\" returned %d\n", cmd, ret);
+		if(WIFSIGNALED(ret))
+			fprintf(stderr, "\"%s\" caught signal %d\n", cmd, WTERMSIG(ret));
+		else
+			fprintf(stderr, "\"%s\" returned %d\n", cmd, ret);
 		exit(1);
 	}
 }
