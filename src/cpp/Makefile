@@ -1,7 +1,8 @@
 CFLAGS = -Wall -Wextra -pedantic
+OBJ    = pp.o main.o utils.o
 
-cpp: pp.o main.o utils.o
-	${CC} ${CFLAGS} -o $@ $^
+cpp: ${OBJ}
+	${CC} ${CFLAGS} -o $@ ${OBJ}
 
 clean:
 	rm -f *.o cpp
