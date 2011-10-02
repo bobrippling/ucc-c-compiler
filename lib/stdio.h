@@ -2,8 +2,10 @@
 
 // FIXME: typedef
 #define FILE int
+#define size_t int
+#define long int
 
-
+/*
 FILE   *fopen(const char *, const char *);
 int     fclose(FILE *);
 
@@ -37,12 +39,14 @@ int   fileno(FILE *);
 void  clearerr(FILE *);
 void  perror(const char *);
 
+*/
 int   printf(const char *, ...);
+/*
 int   fprintf(FILE *, const char *, ...);
 int   snprintf(char *, size_t, const char *, ...);
 int   vprintf(const char *, va_list);
 int   vfprintf(FILE *, const char *, va_list);
-int   vsnprintf(char *, size_t, const char *, va_list;
+int   vsnprintf(char *, size_t, const char *, va_list);
 
 int   scanf(const char *, ...);
 int   fscanf(FILE *, const char *, ...);
@@ -54,6 +58,7 @@ int   vsscanf(const char *, const char *, va_list arg);
 
 int   remove(const char *);
 int   rename(const char *, const char *);
+*/
 
 //int pclose(FILE *);
 //FILE *popen(const char *, const char *);
