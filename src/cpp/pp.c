@@ -19,6 +19,7 @@ static struct def *defs = NULL;
 static const char **dirs = NULL;
 static int    ndirs = 0;
 static FILE  *devnull;
+static int    pp_verbose = 0;
 
 static void die(struct pp *p, const char *fmt, ...)
 {
@@ -50,9 +51,9 @@ void adddir(const char *d)
 		dirs[ndirs++] = d;
 		dirs[ndirs  ] = NULL;
 	}
-#ifdef VERBOSE
-	fprintf(stderr, "adddir(\"%s\")\n", d);
-#endif
+
+	if(pp_verbose)
+		fprintf(stderr, "adddir(\"%s\")\n", d);
 }
 
 void adddef(const char *n, const char *v)
@@ -77,9 +78,9 @@ void adddef(const char *n, const char *v)
 
 	d->next = defs;
 	defs = d;
-#ifdef VERBOSE
-	fprintf(stderr, "adddef(\"%s\", \"%s\")\n", n, v);
-#endif
+
+	if(pp_verbose)
+		fprintf(stderr, "adddef(\"%s\", \"%s\")\n", n, v);
 }
 
 static char *strdup_printf(struct pp *p, const char *fmt, ...)
@@ -223,6 +224,8 @@ static int pp(struct pp *p, int skip)
 						inc = fopen(path, "r");
 
 						if(inc){
+							if(pp_verbose)
+								fprintf(stderr, "including %s\n", path);
 							found = 1;
 							pp2.fname = path;
 							break;
@@ -245,6 +248,9 @@ static int pp(struct pp *p, int skip)
 						case PROC_ERR:
 							die(p, "eof expected from including \"%s\"\n", pp2.fname);
 					}
+
+					if(pp_verbose)
+						fprintf(stderr, "included %s\n", path);
 
 					fclose(inc);
 					free(path); /* pp2.fname */
@@ -274,20 +280,19 @@ static int pp(struct pp *p, int skip)
 				int gotdef;
 				int ret;
 
-				gotdef = !!getdef(line + 7);
-
-#ifdef VERBOSE
-				fprintf(stderr, "getdef(\"%s\") = %s\n", line+7, gotdef ? getdef(line+7)->val : "(not defined)");
-#endif
+				if(skip)
+					gotdef = 0;
+				else
+					gotdef = !!getdef(line + 7);
 
 				memcpy(&arg, p, sizeof arg);
 				arg.out = devnull;
 
-				ret = pp(gotdef ? p : &arg, !gotdef);
+				ret = pp(gotdef ? p : &arg, skip || !gotdef);
 
 				switch(ret){
 					case PROC_ELSE:
-						ret = pp(gotdef ? &arg : p, gotdef);
+						ret = pp(gotdef ? &arg : p, skip || gotdef);
 						if(ret != PROC_ENDIF)
 							die(p, "endif expected\n");
 					case PROC_ENDIF:
@@ -296,7 +301,6 @@ static int pp(struct pp *p, int skip)
 					case PROC_EOF:
 						die(p, "eof unexpected\n");
 				}
-
 			}else if(MACRO("else")){
 				free(line);
 				return PROC_ELSE;
@@ -354,6 +358,8 @@ enum proc_ret preprocess(struct pp *p, int verbose)
 {
 	struct def *d;
 	int ret;
+
+	pp_verbose = verbose;
 
 	devnull = fopen("/dev/null", "w");
 	if(!devnull){
