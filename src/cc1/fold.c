@@ -102,6 +102,42 @@ void fold_expr(expr *e, symtable *stab)
 			else
 				/* get the vartype from the dereference's vartype */
 				GET_VARTYPE(use_me->vartype);
+
+
+			if(!assign && e->vartype->ptr_depth && (e->vartype->ptr_depth > 1 || e->vartype->primitive != type_char)){
+				/*
+				 * we're inc/dec'ing a pointer, we need to inc by sizeof(*ptr)
+				 * convert from inc/dec to a standard addition
+				 *
+				 * if-optimisation above - don't change inc to + if it's a char *
+				 */
+				expr *addition = expr_new();
+
+				type_free(addition->vartype);
+				addition->vartype = type_copy(e->vartype);
+
+				addition->type = expr_op;
+				switch(e->assign_type){
+					case assign_pre_increment:
+					case assign_post_increment:
+						addition->op = op_plus;
+						break;
+					case assign_pre_decrement:
+					case assign_post_decrement:
+						addition->op = op_minus;
+						break;
+					case assign_normal:
+						DIE_ICE();
+				}
+
+				addition->lhs = e->expr;
+				addition->rhs = expr_ptr_multiply(expr_new_val(1), addition->vartype);
+
+				e->assign_type = assign_normal;
+				e->lhs         = e->expr;
+				e->rhs         = addition;
+			}
+
 			break;
 		}
 
@@ -129,8 +165,28 @@ void fold_expr(expr *e, symtable *stab)
 				else if(e->vartype->ptr_depth < 0)
 					die_at(&e->where, "can't dereference non-pointer (%s)", type_to_str(e->vartype));
 			}else{
-				e->vartype = type_new();
-				e->vartype->primitive = type_int;
+				/* look either side - if either is a pointer, take that as the vartype */
+				/* TODO: checks for pointer + pointer, etc etc */
+				if(e->rhs && e->rhs->vartype->ptr_depth)
+					GET_VARTYPE(e->rhs->vartype);
+				else
+					GET_VARTYPE(e->lhs->vartype);
+
+				switch(e->op){
+					case op_plus:
+					case op_minus:
+						if(e->vartype->ptr_depth && e->rhs){
+							/* we're dealing with pointers, adjust the amount we add by */
+
+							if(e->lhs->vartype->ptr_depth)
+								/* lhs is the pointer, we're adding on rhs, hence multiply rhs by lhs's ptr size */
+								e->rhs = expr_ptr_multiply(e->rhs, e->lhs->vartype);
+							else
+								e->lhs = expr_ptr_multiply(e->lhs, e->rhs->vartype);
+						}
+					default:
+						break;
+				}
 			}
 			break;
 
