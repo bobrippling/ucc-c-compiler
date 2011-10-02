@@ -1,6 +1,8 @@
 CC  = ../src/cc
 OBJ = syscall.o crt.o unistd.o stdio.o string.o stdlib.o
 
+LIBDEPS = ${CC} ../src/cc1/cc1 ../src/cpp/cpp
+
 BUILD_NASM = ${UCC_NASM} -f ${UCC_ARCH} -o $@ $<
 
 include ../config.mk
@@ -18,7 +20,7 @@ clean:
 
 .PHONY: libs clean
 
-stdio.o: stdio.c unistd.h ${CC}
-stdlib.o: stdlib.c stdlib.h syscalls.h os.h ${CC}
-string.o: string.c string.h ${CC}
-unistd.o: unistd.c unistd.h syscalls.h os.h ${CC}
+stdio.o: stdio.c unistd.h ${LIBDEPS}
+stdlib.o: stdlib.c stdlib.h syscalls.h os.h ${LIBDEPS}
+string.o: string.c string.h ${LIBDEPS}
+unistd.o: unistd.c unistd.h syscalls.h os.h ${LIBDEPS}

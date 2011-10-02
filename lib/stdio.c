@@ -28,11 +28,12 @@ static printd(int n)
 
 int printf(const char *fmt, ...)
 {
-	void *ap = &fmt + sizeof int;
+	void *ap = &fmt + 1;
 
 	while(*fmt){
 		if(*fmt == '%'){
 			fmt++;
+
 			if(*fmt == 's')
 				write(1, *(char **)ap, strlen(*(char **)ap));
 			else if(*fmt == 'c')
@@ -40,7 +41,7 @@ int printf(const char *fmt, ...)
 			else if(*fmt == 'd')
 				printd(*(int *)ap);
 
-			ap = ap + sizeof int;
+			ap++;
 		}else{
 			write(1, fmt, 1);
 		}

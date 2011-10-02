@@ -12,7 +12,7 @@ __syscall:
 	mov rdx, [rbp + 40] ; edx
 	mov rcx, [rbp + 48] ; edi
 	mov r8,  [rbp + 56] ; esi
-	mov r9,  [rbp + 64]
+	mov r9,  [rbp + 64] ; e8?
 	syscall
 	cmp rax, -1
 	je .err

@@ -12,8 +12,8 @@ _start:
 	lea rbx, [rsp + 8] ; argv (before the stackp is altered)
 	mov rax, [rsp]     ; argc
 
-	push rax ; argc
 	push rbx ; argv
+	push rax ; argc
 
 	call main
 	push rax
