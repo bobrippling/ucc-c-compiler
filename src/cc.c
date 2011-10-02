@@ -29,6 +29,7 @@ struct
 
 enum mode mode;
 int debug = 0;
+const char *backend = "";
 
 char where[1024];
 char  f_e[32]; /* "/tmp/ucc_$$.s"; */
@@ -60,7 +61,7 @@ void unlink_files()
 
 int gen(const char *input, const char *output)
 {
-	char  cmd[256];
+	char cmd[256];
 
 #define TMP(s, pre, post) \
 		snprintf(s, sizeof s, pre "%d." post, getpid())
@@ -88,7 +89,7 @@ int gen(const char *input, const char *output)
 
 	SHORTEN_OUTPUT(MODE_COMPILE, f_s);
 	//push @tmpfs, $f_s;
-	RUN(1, "cc1/cc1 -o  %s %s", f_s, f_e);
+	RUN(1, "cc1/cc1 %s %s -o %s %s", *backend ? "-X" : "", backend, f_s, f_e);
 	if(mode == MODE_COMPILE)
 		return 0;
 
@@ -115,29 +116,41 @@ int main(int argc, char **argv)
 
 	for(i = 1; i < argc; i++)
 		if(strlen(argv[i]) == 2 && *argv[i] == '-'){
-			if(argv[i][1] == 'o'){
-				if(argv[++i]){
-					output = argv[i];
-				}else{
-					goto usage;
-				}
-			}else{
-				int j;
-				enum mode m;
-
-				m = MODE_UNKNOWN;
-				for(j = 0; j < 3; j++)
-					if(argv[i][1] == modes[j].arg){
-						m = j;
-						break;
-					}
-
-				if(m == MODE_UNKNOWN){
-					if(argv[i][1] == 'd')
-						debug = 1;
-					else
+			switch(argv[i][1]){
+				case 'o':
+					if(argv[++i]){
+						output = argv[i];
+					}else{
 						goto usage;
-				}else{
+					}
+					break;
+
+				case 'd':
+					debug = 1;
+					break;
+
+				case 'X':
+					if(argv[++i]){
+						backend = argv[i];
+					}else{
+						goto usage;
+					}
+					break;
+
+				default:
+				{
+					int j;
+					enum mode m;
+
+					m = MODE_UNKNOWN;
+					for(j = 0; j < 3; j++)
+						if(argv[i][1] == modes[j].arg){
+							m = j;
+							break;
+						}
+
+					if(m == MODE_UNKNOWN)
+						goto usage;
 					mode = m;
 				}
 			}
@@ -145,7 +158,7 @@ int main(int argc, char **argv)
 			input = argv[i];
 		}else{
 		usage:
-			fprintf(stderr, "Usage: %s [-c] [-o output] input\n", *argv);
+			fprintf(stderr, "Usage: %s [-d] [-X backend] [-[ESc]] [-o output] input\n", *argv);
 			return 1;
 		}
 
