@@ -199,9 +199,8 @@ expr *parse_expr_join(
 
 expr *parse_expr_array()
 {
-#define parse_above() parse_expr_unary_op()
 	expr *sum, *deref;
-	expr *base = parse_above();
+	expr *base = parse_expr_unary_op();
 
 	if(!accept(token_open_square))
 		return base;
@@ -212,7 +211,7 @@ expr *parse_expr_array()
 	sum->op   = op_plus;
 
 	sum->lhs  = base;
-	sum->rhs  = parse_above();
+	sum->rhs  = parse_expr();
 
 	EAT(token_close_square);
 
@@ -222,7 +221,6 @@ expr *parse_expr_array()
 	deref->lhs  = sum;
 
 	return deref;
-#undef parse_above
 }
 
 expr *parse_expr_div()
