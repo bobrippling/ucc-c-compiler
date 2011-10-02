@@ -6,6 +6,7 @@
 #include "tree.h"
 #include "macros.h"
 #include "sym.h"
+#include "platform.h"
 
 void where_new(struct where *w)
 {
@@ -93,6 +94,36 @@ global *global_new(function *f, decl *d)
 		g->ptr.d = d;
 	g->isfunc = !!f;
 	return g;
+}
+
+expr *expr_ptr_multiply(expr *e, type *t)
+{
+	expr *ret = expr_new();
+	memcpy(&ret->where, &e->where, sizeof e->where);
+
+	ret->type = expr_op;
+	ret->op   = op_multiply;
+
+	ret->lhs  = e;
+	ret->rhs  = expr_new_val(type_size(t));
+
+	return ret;
+}
+
+int type_size(type *t)
+{
+	if(t->ptr_depth)
+		return platform_word_size();
+	switch(t->primitive){
+		case type_char:
+			return 1;
+
+		case type_unknown:
+		case type_void:
+		case type_int:
+			return platform_word_size(); /* should be 4 */
+	}
+	return platform_word_size();
 }
 
 const char *expr_to_str(enum expr_type t)
