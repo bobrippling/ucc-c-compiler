@@ -64,7 +64,7 @@ enum archtype getarch()
 		perror("uname()");
 	else if(!strcmp("i686", un.machine))
 		return ARCH_32;
-	else if(!strcmp("x86_64", un.machine))
+	else if(!strcmp("x86_64", un.machine) || !strcmp("amd64", un.machine))
 		return ARCH_64;
 	else
 		fprintf(stderr, "unrecognised machine architecture: \"%s\"\n", un.machine);
