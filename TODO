@@ -1,16 +1,16 @@
-casts
+Ordered By Priority
+-------------------
 
-*(int *)5 = 2;
++=
+
+check ?: parses to the correct tree, same as gcc
+
+struct parsing
+
+32-bit code gen
+
 general lhs assignment (since it's currently identifier only):
 	(b ? x : y) = 5;
 	^-- note: gnu extension
 	(x ? a : b)(2); // similarly
 	(x = y) = 2; // assign to x
-
-32-bit code gen
-
-check ?: parses to the correct tree, same as gcc
-
-+=
-
-strlen
