@@ -53,7 +53,7 @@ void print_type(type *t)
 	fprintf(cc1_out, "%s ", type_to_str(t));
 
 	for(i = t->ptr_depth; i > 0; i--)
-		fputc('*', stdout);
+		fputc('*', cc1_out);
 }
 
 void print_decl(decl *d, int idt, int nl)
@@ -220,6 +220,12 @@ void print_tree(tree *t)
 {
 	idt_printf("t->type: %s\n", stat_to_str(t->type));
 
+	if(t->flow){
+		indent++;
+		print_tree_flow(t->flow);
+		indent--;
+	}
+
 	PRINT_IF(t, expr, print_expr);
 	PRINT_IF(t, lhs,  print_tree);
 	PRINT_IF(t, rhs,  print_tree);
@@ -245,12 +251,6 @@ void print_tree(tree *t)
 			indent--;
 		}
 	}
-
-	if(t->flow){
-		indent++;
-		print_tree_flow(t->flow);
-		indent--;
-	}
 }
 
 void print_func(function *f)
@@ -265,7 +265,7 @@ void print_func(function *f)
 		decl **iter;
 		for(iter = f->args; *iter; iter++){
 			print_decl(*iter, 0, 0);
-			fputc(' ', cc1_out); /* TODO: comma and reverse order */
+			fprintf(cc1_out, "%s ", iter[1] ? "," : ""); /* TODO: comma and reverse order */
 		}
 	}
 
