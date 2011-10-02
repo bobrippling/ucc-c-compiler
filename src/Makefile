@@ -11,6 +11,7 @@ cpp:
 	make -C cpp
 
 clean:
+	rm -f cc *.o
 	make -C cc1 clean
 	make -C cpp clean
 
