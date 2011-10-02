@@ -209,6 +209,9 @@ const char *spec_to_str(enum type_spec s);
 const char *where_str(  struct where *w);
 const char *assign_to_str(enum assign_type);
 
+int   type_size(type *);
+expr *expr_ptr_multiply(expr *, type *);
+
 #define type_free(x) free(x)
 
 #endif
