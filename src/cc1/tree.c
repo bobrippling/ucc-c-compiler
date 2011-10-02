@@ -211,6 +211,7 @@ const char *assign_to_str(enum assign_type t)
 {
 	switch(t){
 		CASE_STR_PREFIX(assign, normal);
+		CASE_STR_PREFIX(assign, augmented);
 		CASE_STR_PREFIX(assign, pre_increment);
 		CASE_STR_PREFIX(assign, pre_decrement);
 		CASE_STR_PREFIX(assign, post_increment);

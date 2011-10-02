@@ -126,6 +126,7 @@ void print_expr(expr *e)
 			break;
 
 		case expr_assign:
+			idt_printf("%s assignment, expr:\n", assign_to_str(e->assign_type));
 			if(e->assign_type == assign_normal){
 				idt_printf("assign to:\n");
 				indent++;
@@ -136,7 +137,6 @@ void print_expr(expr *e)
 				print_expr(e->rhs);
 				indent--;
 			}else{
-				idt_printf("%s assignment, expr:\n", assign_to_str(e->assign_type));
 				indent++;
 				print_expr(e->expr);
 				indent--;

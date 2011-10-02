@@ -31,10 +31,7 @@ static void asm_idiv(expr *e, symtable *tab)
 	asm_temp("pop rax");
 	asm_temp("idiv rbx");
 
-	if(e->op == op_divide)
-		asm_temp("push rax");
-	else /* modulo */
-		asm_temp("push rdx");
+	asm_temp("push r%cx", e->op == op_divide ? 'a' : 'd');
 }
 
 static void asm_compare(expr *e, symtable *tab)

@@ -1,16 +1,20 @@
 Ordered By Priority
 -------------------
 
-+=
+fix 3 - 2 - 1 parsing
 
 check ?: parses to the correct tree, same as gcc
+
+typedefs
 
 struct parsing
 
 32-bit code gen
 
-general lhs assignment (since it's currently identifier only):
+general lhs assignment:
 	(b ? x : y) = 5;
 	^-- note: gnu extension
 	(x ? a : b)(2); // similarly
 	(x = y) = 2; // assign to x
+
+assembly optimisation - remove asm_temp()
