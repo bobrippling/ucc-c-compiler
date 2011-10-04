@@ -18,3 +18,9 @@ general lhs assignment:
 	(x = y) = 2; // assign to x
 
 assembly optimisation - remove asm_temp()
+
+main(argc,argv)
+char **argv;
+{
+}
+parsing
