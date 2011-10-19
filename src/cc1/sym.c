@@ -2,10 +2,12 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdarg.h>
 
+#include "../util/util.h"
 #include "tree.h"
 #include "sym.h"
-#include "alloc.h"
+#include "../util/alloc.h"
 #include "macros.h"
 
 sym *sym_new(decl *d)

@@ -6,7 +6,9 @@
 #include <errno.h>
 
 #include "pp.h"
-#include "utils.h"
+#include "../util/util.h"
+#include "../util/alloc.h"
+#include "../util/platform.h"
 
 struct def
 {
@@ -21,25 +23,25 @@ static int    ndirs = 0;
 static FILE  *devnull;
 static int    pp_verbose = 0;
 
-static void die(struct pp *p, const char *fmt, ...)
+static void ppdie(struct pp *p, const char *fmt, ...)
 {
 	va_list l;
+	struct where where;
 
-	if(p)
-		fprintf(stderr, "%s:%d: ", p->fname, p->nline);
+	if(p){
+		where.fname = p->fname;
+		where.line  = p->nline;
+		where.chr   = -1;
+	}
 
 	va_start(l, fmt);
-	vfprintf(stderr, fmt, l);
-	va_end(l);
-	exit(1);
+	vdie(&where, l, fmt);
 }
 
 void adddir(const char *d)
 {
 	if(!dirs){
-		dirs = malloc(2 * sizeof(*dirs));
-		if(!dirs)
-			die(NULL, "malloc: %s\n", strerror(errno));
+		dirs = umalloc(2 * sizeof(*dirs));
 		dirs[0] = d;
 		dirs[1] = NULL;
 		ndirs = 1;
@@ -60,15 +62,10 @@ void adddef(const char *n, const char *v)
 {
 	/* FIXME: check for substring v in n */
 	char *n2, *v2;
-	struct def *d = malloc(sizeof *d);
+	struct def *d = umalloc(sizeof *d);
 
-	n2 = strdup(n);
-	v2 = strdup(v);
-
-	if(!n2 || !v2)
-		die(NULL, "strdup(): %s\n", strerror(errno));
-	else if(!d)
-		die(NULL, "malloc %ld bytes\n", sizeof *d);
+	n2 = ustrdup(n);
+	v2 = ustrdup(v);
 
 	strcpy(n2, n);
 	strcpy(v2, v);
@@ -83,7 +80,7 @@ void adddef(const char *n, const char *v)
 		fprintf(stderr, "adddef(\"%s\", \"%s\")\n", n, v);
 }
 
-static char *strdup_printf(struct pp *p, const char *fmt, ...)
+static char *strdup_printf(const char *fmt, ...)
 {
 	va_list l;
 	char *buf = NULL;
@@ -91,10 +88,7 @@ static char *strdup_printf(struct pp *p, const char *fmt, ...)
 
 	do{
 		len *= 2;
-		buf = realloc(buf, len);
-		if(!buf)
-			die(p, "realloc()\n");
-
+		buf = urealloc(buf, len);
 		va_start(l, fmt);
 		ret = vsnprintf(buf, len, fmt, l);
 		va_end(l);
@@ -136,7 +130,7 @@ static void substitutedef(struct pp *p, char **line)
 				val = d->val;
 			}
 
-			new = strdup_printf(p, "%s%s%s", *line, val, post);
+			new = strdup_printf("%s%s%s", *line, val, post);
 			free(*line);
 			*line = new;
 			d = defs;
@@ -165,7 +159,7 @@ static int pp(struct pp *p, int skip)
 	char *line, *nl;
 
 	do{
-		line = readline(p->in);
+		line = fline(p->in);
 		p->nline++;
 
 		if(!line){
@@ -173,16 +167,28 @@ static int pp(struct pp *p, int skip)
 				/* normal exit here */
 				return PROC_EOF;
 
-			die(p, "read(): %s\n", strerror(errno));
+			ppdie(p, "read(): %s\n", strerror(errno));
 		}
 
 		if((nl = strchr(line, '\n')))
 			*nl = '\0';
 
-#define MACRO(str) !strncmp(line, "#" str, strlen("#" str))
-
 		if(*line == '#'){
-			if(MACRO("include ")){
+			char  *dup = ustrdup(line + 1);
+			char  *start = dup;
+			char **argv;
+
+#if 0
+			for(; *strsep(&start, " \t");)
+				if(**start)
+					dynarray_add((void ***)&argv, ustrdup(start));
+#endif
+
+			free(dup);
+
+
+#if 0
+			if(MACRO("include", 1)){
 				if(!skip){
 					struct pp pp2;
 					FILE *inc;
@@ -203,7 +209,7 @@ static int pp(struct pp *p, int skip)
 							break;
 
 						default:
-							die(p, "invalid include char %c\n", *base);
+							ppdie(p, "invalid include char %c\n", *base);
 					}
 
 					for(path = ++base; *path; path++)
@@ -214,12 +220,12 @@ static int pp(struct pp *p, int skip)
 						}
 
 					if(!found)
-						die(p, "no terminating %c for include \"%s\"\n", incchar, line);
+						ppdie(p, "no terminating '%c' for include \"%s\"\n", incchar, line);
 
 					found = 0;
 					/* FIXME: switch on incchar */
 					for(i = 0; i < ndirs; i++){
-						path = strdup_printf(p, "%s/%s", dirs[i], base);
+						path = strdup_printf("%s/%s", dirs[i], base);
 
 						inc = fopen(path, "r");
 
@@ -234,7 +240,7 @@ static int pp(struct pp *p, int skip)
 					}
 
 					if(!found)
-						die(p, "can't find include file \"%s\"\n", base);
+						ppdie(p, "can't find include file \"%s\"\n", base);
 
 					pp2.in  = inc;
 					pp2.out = p->out;
@@ -246,7 +252,7 @@ static int pp(struct pp *p, int skip)
 						case PROC_ELSE:
 						case PROC_ENDIF:
 						case PROC_ERR:
-							die(p, "eof expected from including \"%s\"\n", pp2.fname);
+							ppdie(p, "eof expected from including \"%s\"\n", pp2.fname);
 					}
 
 					if(pp_verbose)
@@ -255,7 +261,7 @@ static int pp(struct pp *p, int skip)
 					fclose(inc);
 					free(path); /* pp2.fname */
 				}
-			}else if(MACRO("define ")){
+			}else if(MACRO("define", 1)){
 				if(!skip){
 					char *word, *space = line + 8;
 
@@ -275,7 +281,7 @@ static int pp(struct pp *p, int skip)
 
 					adddef(word, space);
 				}
-			}else if(MACRO("ifdef ")){
+			}else if(MACRO("ifdef", 1)){
 				struct pp arg;
 				int gotdef;
 				int ret;
@@ -294,22 +300,23 @@ static int pp(struct pp *p, int skip)
 					case PROC_ELSE:
 						ret = pp(gotdef ? &arg : p, skip || gotdef);
 						if(ret != PROC_ENDIF)
-							die(p, "endif expected\n");
+							ppdie(p, "endif expected\n");
 					case PROC_ENDIF:
 						break;
 
 					case PROC_EOF:
-						die(p, "eof unexpected\n");
+						ppdie(p, "eof unexpected\n");
 				}
-			}else if(MACRO("else")){
+			}else if(MACRO("else", 0)){
 				free(line);
 				return PROC_ELSE;
-			}else if(MACRO("endif")){
+			}else if(MACRO("endif", 0)){
 				free(line);
 				return PROC_ENDIF;
 			}else{
-				die(p, "\"%s\" unexpected\n", line);
+				ppdie(p, "\"%s\" unexpected\n", line);
 			}
+#endif
 		}else{
 			substitutedef(p, &line);
 			fprintf(p->out, "%s\n", line);
@@ -324,7 +331,7 @@ void def_defs(void)
 	char regc;
 	int b64;
 
-	b64 = getarch() == ARCH_64;
+	b64 = platform_type() == PLATFORM_64;
 
 	if(b64){
 		adddef("UCC_64_BIT", "");

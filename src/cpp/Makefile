@@ -1,5 +1,5 @@
 CFLAGS = -Wall -Wextra -pedantic
-OBJ    = pp.o main.o utils.o
+OBJ    = pp.o main.o ../util/util.o ../util/alloc.o ../util/platform.o
 
 cpp: ${OBJ}
 	${CC} ${CFLAGS} -o $@ ${OBJ}

@@ -3,9 +3,15 @@
 #include <stdarg.h>
 #include <string.h>
 
-#include "tree.h"
 #include "util.h"
 #include "alloc.h"
+
+const char *where_str(struct where *w)
+{
+	static char buf[128];
+	snprintf(buf, sizeof buf, "%s:%d:%d", w->fname, w->line, w->chr + 1);
+	return buf;
+}
 
 void vdie(struct where *w, va_list l, const char *fmt)
 {
@@ -26,18 +32,7 @@ void vdie(struct where *w, va_list l, const char *fmt)
 
 void die_at(struct where *w, const char *fmt, ...)
 {
-	struct where x;
 	va_list l;
-
-	if(!w){
-		extern int currentline, currentchar;
-		extern const char *currentfname;
-
-		w = &x;
-		x.fname = currentfname;
-		x.line  = currentline;
-		x.chr   = currentchar;
-	}
 
 	va_start(l, fmt);
 	vdie(w, l, fmt);

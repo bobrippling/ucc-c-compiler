@@ -12,12 +12,6 @@ typedef struct type        type;
 typedef struct assignment  assignment;
 typedef struct global      global;
 
-typedef struct where
-{
-	const char *fname;
-	int line, chr;
-} where;
-
 enum type_primitive
 {
 #define type_ptr type_int

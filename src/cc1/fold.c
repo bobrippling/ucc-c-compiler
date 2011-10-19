@@ -1,12 +1,14 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdarg.h>
 
+#include "../util/util.h"
 #include "tree.h"
 #include "fold.h"
-#include "util.h"
+#include "../util/util.h"
 #include "sym.h"
-#include "platform.h"
+#include "../util/platform.h"
 #include "asm.h"
 #include "const.h"
 

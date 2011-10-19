@@ -1,12 +1,14 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdarg.h>
 
-#include "alloc.h"
+#include "../util/alloc.h"
+#include "../util/util.h"
 #include "tree.h"
 #include "macros.h"
 #include "sym.h"
-#include "platform.h"
+#include "../util/platform.h"
 
 void where_new(struct where *w)
 {
@@ -218,11 +220,4 @@ const char *assign_to_str(enum assign_type t)
 		CASE_STR_PREFIX(assign, post_decrement);
 	}
 	return NULL;
-}
-
-const char *where_str(struct where *w)
-{
-	static char buf[128];
-	snprintf(buf, sizeof buf, "%s:%d:%d", w->fname, w->line, w->chr + 1);
-	return buf;
 }

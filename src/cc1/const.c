@@ -1,9 +1,11 @@
 #include <stdio.h>
+#include <stdarg.h>
 
+#include "../util/util.h"
 #include "tree.h"
 #include "const.h"
 #include "sym.h"
-#include "util.h"
+#include "../util/util.h"
 
 int operate(expr *lhs, expr *rhs, enum op_type op, int *bad)
 {
