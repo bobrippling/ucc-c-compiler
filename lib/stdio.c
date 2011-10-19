@@ -1,4 +1,14 @@
 #include "unistd.h"
+#include "stdio.h"
+
+static int _stdin  = 0;
+static int _stdout = 1;
+static int _stderr = 2;
+
+FILE *stdin  = &_stdin;
+FILE *stdout = &_stdout;
+FILE *stderr = &_stderr;
+
 
 /* Private */
 static printd_rec(int n)
@@ -26,9 +36,10 @@ static printd(int n)
 
 /* Public */
 
-int printf(const char *fmt, ...)
+int fprintf(FILE *file, const char *fmt, ...)
 {
 	void *ap = &fmt + 1;
+	int fd = *file;
 
 	while(*fmt){
 		if(*fmt == '%'){

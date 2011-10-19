@@ -1,9 +1,9 @@
-// extern FILE *stdin, *stdout, *stderr;
-
 // FIXME: typedef
 #define FILE int
 #define size_t int
 #define long int
+
+extern FILE *stdin, *stdout, *stderr;
 
 /*
 FILE   *fopen(const char *, const char *);
