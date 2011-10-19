@@ -78,8 +78,6 @@ int operate(expr *lhs, expr *rhs, enum op_type op, int *bad)
 /* returns 0 if successfully folded */
 int const_fold(expr *e)
 {
-	return 0;
-
 	switch(e->type){
 		case expr_val:
 		case expr_sizeof:
@@ -129,6 +127,8 @@ int const_fold(expr *e)
 				 */
 
 				return bad;
+			}else if(e->op == op_orsc || e->op == op_andsc){
+				/* check if one side is (&& ? false : true) and short circuit it without needing to check the other side */
 			}
 		}
 	}

@@ -459,6 +459,36 @@ type *parse_type()
 	return t;
 }
 
+decl **parse_decls(expr ***assignments)
+{
+	decl **ret = NULL;
+
+	while(curtok_is_type_prething()){
+		decl *d;
+next_decl:
+		dynarray_add((void ***)&ret, d = parse_decl(parse_type(), 1));
+
+		if(accept(token_assign)){
+			expr *e = expr_new();
+
+			e->type = expr_assign;
+			e->lhs  = expr_new();
+			e->lhs->type = expr_identifier;
+			e->lhs->spel = d->spel;
+			e->rhs = parse_expr();
+
+			dynarray_add((void ***)assignments, e);
+		}
+
+		if(accept(token_comma))
+			goto next_decl; /* don't read another type */
+
+		EAT(token_semicolon);
+	}
+
+	return ret;
+}
+
 tree *parse_code_declblock()
 {
 	expr **assignments = NULL;
@@ -470,28 +500,7 @@ tree *parse_code_declblock()
 		/* if(x){} */
 		return t;
 
-	while(curtok_is_type_prething()){
-		decl *d;
-next_decl:
-		dynarray_add((void ***)&t->decls, d = parse_decl(parse_type(), 1));
-
-		if(accept(token_assign)){
-			expr *e = expr_new();
-
-			e->type = expr_assign;
-			e->lhs = expr_new();
-			e->lhs->type = expr_identifier;
-			e->lhs->spel = d->spel;
-			e->rhs = parse_expr();
-
-			dynarray_add((void ***)&assignments, e);
-		}
-
-		if(accept(token_comma))
-			goto next_decl; /* don't read another type */
-
-		EAT(token_semicolon);
-	}
+	t->decls = parse_decls(&assignments);
 
 	/* handle assignments */
 	if(assignments){
@@ -603,56 +612,60 @@ decl *parse_decl(type *type, int need_spel)
 	return d;
 }
 
-global *parse_global()
-{
-	decl *d;
-
-	d = parse_decl(parse_type(), 1);
-
-	if(accept(token_open_paren)){
-		function *f = function_new();
-
-		f->func_decl = d;
-		d->type->func = 1;
-
-		while((curtok_is_type_prething())){
-			dynarray_add((void ***)&f->args, parse_decl(parse_type(), 0));
-
-			if(curtok == token_close_paren)
-				break;
-
-			EAT(token_comma);
-
-			if(accept(token_elipsis)){
-				f->variadic = 1;
-				break;
-			}
-
-			/* continue loop */
-		}
-
-		EAT(token_close_paren);
-
-		if(!accept(token_semicolon))
-			f->code = parse_code();
-		/* else ';' is eaten */
-
-		return global_new(f, NULL);
-	}else{
-		EAT(token_semicolon);
-		return global_new(NULL, d);
-	}
-
-	/* unreachable */
-}
-
 global **parse()
 {
 	global **globals = NULL;
 
-	do
-		dynarray_add((void ***)&globals, parse_global());
-	while(curtok != token_eof);
+	do{
+		decl *d;
+
+		d = parse_decl(parse_type(), 1);
+
+		if(accept(token_open_paren)){
+			function *f = function_new();
+
+			f->func_decl = d;
+			d->type->func = 1;
+
+			while((curtok_is_type_prething())){
+				dynarray_add((void ***)&f->args, parse_decl(parse_type(), 0));
+
+				if(curtok == token_close_paren)
+					break;
+
+				EAT(token_comma);
+
+				if(accept(token_elipsis)){
+					f->variadic = 1;
+					break;
+				}
+
+				/* continue loop */
+			}
+
+			EAT(token_close_paren);
+
+			if(!accept(token_semicolon))
+				f->code = parse_code();
+			/* else ';' is eaten */
+
+			dynarray_add((void ***)&globals, global_new(f, NULL));
+		}else{
+			/* read comma separated, normal decl list */
+			type *t;
+
+			dynarray_add((void ***)&globals, global_new(NULL, d));
+
+			t = d->type;
+
+			while(accept(token_comma)){
+				decl *d = parse_decl(t, 1);
+				dynarray_add((void ***)&globals, global_new(NULL, d));
+			}
+			EAT(token_semicolon);
+		}
+
+	}while(curtok != token_eof);
 
 	return globals;
 }
