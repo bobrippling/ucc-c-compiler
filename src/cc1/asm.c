@@ -2,13 +2,12 @@
 #include <stdarg.h>
 #include <string.h>
 
+#include "../util/util.h"
 #include "tree.h"
 #include "sym.h"
 #include "asm.h"
-#include "tree.h"
-#include "platform.h"
-#include "alloc.h"
-#include "util.h"
+#include "../util/platform.h"
+#include "../util/alloc.h"
 
 static int label_last = 1, str_last = 1;
 extern FILE *cc1_out;

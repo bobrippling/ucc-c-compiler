@@ -1,11 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <setjmp.h>
 
 #include "pp.h"
-
-jmp_buf allocerr;
 
 void usage(const char *);
 void adddir(const char *);
@@ -31,11 +28,6 @@ int main(int argc, const char **argv)
 	struct pp arg;
 
 	memset(&arg, 0, sizeof arg);
-
-	if(setjmp(allocerr)){
-		perror("malloc()");
-		return 2;
-	}
 
 	adddir(".");
 

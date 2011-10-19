@@ -4,11 +4,12 @@
 #include <string.h>
 
 #include "tokenise.h"
+#include "../util/util.h"
 #include "tree.h"
 #include "parse.h"
-#include "alloc.h"
+#include "../util/alloc.h"
 #include "tokconv.h"
-#include "util.h"
+#include "../util/util.h"
 
 
 /*

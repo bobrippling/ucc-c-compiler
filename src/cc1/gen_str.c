@@ -2,6 +2,7 @@
 #include <stdarg.h>
 #include <unistd.h>
 
+#include "../util/util.h"
 #include "tree.h"
 #include "macros.h"
 #include "sym.h"

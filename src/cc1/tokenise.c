@@ -3,11 +3,13 @@
 #include <string.h>
 #include <math.h>
 #include <ctype.h>
+#include <stdarg.h>
 
+#include "../util/util.h"
 #include "tree.h"
 #include "tokenise.h"
-#include "alloc.h"
-#include "util.h"
+#include "../util/alloc.h"
+#include "../util/util.h"
 #include "str.h"
 
 #define isoct(x) ('0' <= (x) && (x) < '8')

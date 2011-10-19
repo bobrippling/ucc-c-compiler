@@ -1,10 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 
-#include "tree.h"
+#include "../util/util.h"
 #include "alloc.h"
-#include "util.h"
+#include "../util/util.h"
 
 void *umalloc(size_t l)
 {

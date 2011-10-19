@@ -4,7 +4,8 @@
 
 #include "platform.h"
 
-static int init = 0, wordsize;
+static int init = 0;
+static enum platform platform_t;
 
 #define INIT() \
 	do{ \
@@ -20,19 +21,25 @@ static void platform_init()
 
 	if(uname(&u) == -1){
 		perror("uname()");
-		wordsize = 4;
+		platform_t = PLATFORM_32;
 	}else if(!strcmp("i686", u.machine)){
-		wordsize = 4;
+		platform_t = PLATFORM_32;
 	}else if(!strcmp("x86_64", u.machine) || !strcmp("amd64", u.machine)){
-		wordsize = 8;
+		platform_t = PLATFORM_64;
 	}else{
 		fprintf(stderr, "unrecognised machine architecture: \"%s\"\n", u.machine);
-		wordsize = 4;
+		platform_t = PLATFORM_32;
 	}
 }
 
 int platform_word_size()
 {
 	INIT();
-	return wordsize;
+	return platform_t == PLATFORM_32 ? 4 : 8;
+}
+
+enum platform platform_type()
+{
+	INIT();
+	return platform_t;
 }

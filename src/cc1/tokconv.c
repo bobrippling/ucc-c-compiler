@@ -2,9 +2,10 @@
 #include <stdarg.h>
 
 #include "tokenise.h"
+#include "../util/util.h"
 #include "tree.h"
 #include "tokconv.h"
-#include "util.h"
+#include "../util/util.h"
 #include "macros.h"
 
 extern enum token curtok;

@@ -1,10 +1,12 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdarg.h>
 
+#include "../util/util.h"
 #include "tree.h"
 #include "gen_asm.h"
 #include "asm.h"
-#include "util.h"
+#include "../util/util.h"
 #include "asm_op.h"
 
 static void asm_idiv(expr *e, symtable *tab)

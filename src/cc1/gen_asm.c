@@ -1,14 +1,16 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdarg.h>
 
+#include "../util/util.h"
 #include "tree.h"
 #include "macros.h"
 #include "asm.h"
-#include "platform.h"
+#include "../util/platform.h"
 #include "sym.h"
 #include "asm_op.h"
 #include "gen_asm.h"
-#include "util.h"
+#include "../util/util.h"
 
 static char *curfunc_lblfin;
 
