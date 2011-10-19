@@ -308,7 +308,7 @@ static int pp(struct pp *p, int skip)
 				free(line);
 				return PROC_ENDIF;
 			}else{
-				die(p, "%s unexpected\n", line+1);
+				die(p, "\"%s\" unexpected\n", line);
 			}
 		}else{
 			substitutedef(p, &line);
