@@ -455,6 +455,13 @@ void fold(global ***globs)
 		}else{
 			symtab_add(stab, fold_globals[i]->ptr.d, sym_auto);
 			fold_decl(fold_globals[i]->ptr.d, stab);
+
+			if(fold_globals[i]->init){
+				fold_expr(fold_globals[i]->init,  stab);
+				if(const_fold(fold_globals[i]->init))
+					/* yes I know fold_expr does const_fold, but this is a decent way to check */
+					die_at(&fold_globals[i]->init->where, "not a constant expression");
+			}
 		}
 	}
 

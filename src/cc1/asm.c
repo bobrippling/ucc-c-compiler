@@ -8,6 +8,7 @@
 #include "tree.h"
 #include "platform.h"
 #include "alloc.h"
+#include "util.h"
 
 static int label_last = 1, str_last = 1;
 extern FILE *cc1_out;
@@ -34,20 +35,36 @@ char *label_str()
 
 void asm_sym(enum asm_sym_type t, sym *s, const char *reg)
 {
-	int is_auto = s->type == sym_auto;
-	char brackets[16];
+	switch(s->type){
+		case sym_auto:
+		case sym_arg:
+		{
+			int is_auto = s->type == sym_auto;
+			char brackets[16];
 
-	snprintf(brackets, sizeof brackets, "[rbp %c %d]",
-			is_auto ? '-' : '+',
-			((is_auto ? 1 : 2) * platform_word_size()) + s->offset);
+			snprintf(brackets, sizeof brackets, "[rbp %c %d]",
+					is_auto ? '-' : '+',
+					((is_auto ? 1 : 2) * platform_word_size()) + s->offset);
 
-	asm_temp("%s %s, %s ; %s%s",
-			t == ASM_LEA ? "lea"    : "mov",
-			t == ASM_SET ? brackets : reg,
-			t == ASM_SET ? reg      : brackets,
-			t == ASM_LEA ? "&"      : "",
-			s->decl->spel
-			);
+			asm_temp("%s %s, %s ; %s%s",
+					t == ASM_LEA ? "lea"    : "mov",
+					t == ASM_SET ? brackets : reg,
+					t == ASM_SET ? reg      : brackets,
+					t == ASM_LEA ? "&"      : "",
+					s->decl->spel
+					);
+
+			break;
+		}
+
+		case sym_global:
+			fprintf(stderr, "TODO: sym_global command on %s\n", s->decl->spel);
+			break;
+
+		case sym_str:
+		case sym_func:
+			DIE_ICE();
+	}
 }
 
 void asm_new(enum asm_type t, void *p)

@@ -187,6 +187,8 @@ struct global
 		function *f;
 		decl     *d;
 	} ptr;
+
+	expr *init;
 };
 
 tree      *tree_new();

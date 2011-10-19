@@ -49,6 +49,8 @@ void print_type(type *t)
 		fputs("const ", cc1_out);
 	if(t->spec & spec_extern)
 		fputs("extern ", cc1_out);
+	if(t->spec & spec_static)
+		fputs("static ", cc1_out);
 
 	fprintf(cc1_out, "%s ", type_to_str(t));
 
@@ -283,6 +285,12 @@ void gen_str(global **g)
 			print_func((*g)->ptr.f);
 		}else{
 			fprintf(cc1_out, "global variable: ");
-			print_decl((*g)->ptr.d, 1, 1);
+			print_decl((*g)->ptr.d, 0, 1);
+			if((*g)->init){
+				fprintf(cc1_out, "init:\n");
+				indent++;
+				print_expr((*g)->init);
+				indent--;
+			}
 		}
 }

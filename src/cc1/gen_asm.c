@@ -354,9 +354,14 @@ void gen_asm_func(function *f)
 	}
 }
 
-void gen_asm_decl(decl *d)
+void gen_asm_global_var(global *g)
 {
-	fprintf(stderr, "TODO: gen_asm_decl %p\n", (void *)d);
+	/* MASSIVE TODO */
+	if(g->init){
+		asm_temp("%s dq %d ; TODO", g->ptr.d->spel, g->init->val);
+	}else{
+		asm_temp("%s resq 1 ; TODO", g->ptr.d->spel);
+	}
 }
 
 void gen_asm(global **globs)
@@ -365,5 +370,5 @@ void gen_asm(global **globs)
 		if((*globs)->isfunc)
 			gen_asm_func((*globs)->ptr.f);
 		else
-			gen_asm_decl((*globs)->ptr.d);
+			gen_asm_global_var(*globs);
 }
