@@ -1,5 +1,4 @@
-CFLAGS  = -g -Wall -Wextra -pedantic -std=c99
-LDFLAGS = -g -lm
+include ../src_config.mk
 
 OBJ = platform.o util.o
 
