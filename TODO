@@ -1,13 +1,15 @@
 Ordered By Priority
 -------------------
 
+cpp - #include is relative to the file's directory, not $PWD
+
 cc1 - can't do die(NULL) any more, default it to {currentfname,currentline,currentchar} etc
 
 dprintf
 
 fix 3 - 2 - 1 parsing
 
-check ?: parses to the correct tree, same as gcc
+check ?: parses to the correct tree, same as gcc (i.e. the largest expression possible before the ?)
 
 typedefs
 
