@@ -33,6 +33,18 @@ void vdie(struct where *w, va_list l, const char *fmt)
 void die_at(struct where *w, const char *fmt, ...)
 {
 	va_list l;
+	struct where instead;
+
+	if(!w){
+		extern const char *current_fname;
+		extern int current_line, current_chr;
+
+		w = &instead;
+
+		instead.fname = current_fname;
+		instead.line  = current_line;
+		instead.chr   = current_chr;
+	}
 
 	va_start(l, fmt);
 	vdie(w, l, fmt);
