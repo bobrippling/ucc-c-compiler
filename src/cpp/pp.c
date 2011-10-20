@@ -23,6 +23,9 @@ static int    ndirs = 0;
 static FILE  *devnull;
 static int    pp_verbose = 0;
 
+int current_line = 0, current_chr = 0;
+const char *current_fname = NULL;
+
 static void ppdie(struct pp *p, const char *fmt, ...)
 {
 	va_list l;
@@ -174,21 +177,28 @@ static int pp(struct pp *p, int skip)
 			*nl = '\0';
 
 		if(*line == '#'){
-			char  *dup = ustrdup(line + 1);
-			char  *start = dup;
-			char **argv;
+			char *argv[3] = { NULL };
+			char *s, *last;
+			int i, argc;
 
-#if 0
-			for(; *strsep(&start, " \t");)
-				if(**start)
-					dynarray_add((void ***)&argv, ustrdup(start));
-#endif
+			for(i = 0, last = s = line + 1; *s; s++)
+				if(isspace(*s)){
+					argv[i++] = last;
+					if(i == 3)
+						break;
+					*s++ = '\0';
+					while(isspace(*s))
+						s++;
+					last = s;
+				}
+			if(i < 3 && last != s)
+				argv[i++] = last;
+			argc = i;
 
-			free(dup);
+			if(!strcmp(argv[0], "include")){
+				if(argc != 2)
+					ppdie(p, "include takes one argument");
 
-
-#if 0
-			if(MACRO("include", 1)){
 				if(!skip){
 					struct pp pp2;
 					FILE *inc;
@@ -261,35 +271,25 @@ static int pp(struct pp *p, int skip)
 					fclose(inc);
 					free(path); /* pp2.fname */
 				}
-			}else if(MACRO("define", 1)){
-				if(!skip){
-					char *word, *space = line + 8;
+			}else if(!strcmp(argv[0], "define")){
+				if(argc < 2)
+					ppdie(p, "define takes at least one argument");
 
-					while(isspace(*space))
-						space++;
+				if(!skip)
+					adddef(argv[1], argv[2] ? argv[2] : "");
 
-					if(*space){
-						word = space;
-						while(*space && !isspace(*space))
-							space++;
-
-						if(*space)
-							*space++ = '\0';
-						else
-							space = "";
-					}
-
-					adddef(word, space);
-				}
-			}else if(MACRO("ifdef", 1)){
+			}else if(!strcmp(argv[0], "ifdef")){
 				struct pp arg;
 				int gotdef;
 				int ret;
 
+				if(argc != 2)
+					ppdie(p, "ifdef takes one argument");
+
 				if(skip)
 					gotdef = 0;
 				else
-					gotdef = !!getdef(line + 7);
+					gotdef = !!getdef(argv[1]);
 
 				memcpy(&arg, p, sizeof arg);
 				arg.out = devnull;
@@ -307,16 +307,21 @@ static int pp(struct pp *p, int skip)
 					case PROC_EOF:
 						ppdie(p, "eof unexpected\n");
 				}
-			}else if(MACRO("else", 0)){
+			}else if(!strcmp(argv[0], "else")){
+				if(argc != 1)
+					ppdie(p, "invalid #else");
+
 				free(line);
 				return PROC_ELSE;
-			}else if(MACRO("endif", 0)){
+			}else if(!strcmp(argv[0], "endif")){
+				if(argc != 1)
+					ppdie(p, "invalid #endif");
+
 				free(line);
 				return PROC_ENDIF;
 			}else{
 				ppdie(p, "\"%s\" unexpected\n", line);
 			}
-#endif
 		}else{
 			substitutedef(p, &line);
 			fprintf(p->out, "%s\n", line);
