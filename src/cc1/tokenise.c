@@ -56,7 +56,7 @@ struct statement
 };
 
 static FILE *infile;
-const char *currentfname;
+const char *current_fname;
 
 static char *buffer, *bufferpos;
 static int buffereof = 0;
@@ -72,8 +72,8 @@ char *currentstring   = NULL; /* a string literal */
 int   currentstringlen = 0;
 
 /* -- */
-int currentline = 0;
-int currentchar = 0;
+int current_line = 0;
+int current_chr  = 0;
 
 
 static void tokenise_read_line()
@@ -95,8 +95,8 @@ static void tokenise_read_line()
 		else
 			die("read():");
 	}else{
-		currentline++;
-		currentchar = -1;
+		current_line++;
+		current_chr = -1;
 	}
 
 	bufferpos = buffer = l;
@@ -105,8 +105,8 @@ static void tokenise_read_line()
 void tokenise_set_file(FILE *f, const char *nam)
 {
 	infile = f;
-	currentfname = nam;
-	currentline = 0;
+	current_fname = nam;
+	current_line = 0;
 	buffereof = 0;
 	nexttoken();
 }
@@ -122,7 +122,7 @@ static int rawnextchar()
 			return EOF;
 	}
 
-	currentchar++;
+	current_chr++;
 	return *bufferpos++;
 }
 

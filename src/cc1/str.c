@@ -39,12 +39,12 @@ int escapestring(char *str, int *len)
 				memmove(c, c+1, strlen(c)); /* strlen(c) to include \0 */
 				c--;
 			}else{
-				extern int currentline, currentchar;
-				extern const char *currentfname;
+				extern int current_line, current_chr;
+				extern const char *current_fname;
 
 				fprintf(stderr,
 						"%s:%d:%d Warning: Ignoring escape char before '%c'\n",
-						currentfname, currentline, currentchar + 1, *c);
+						current_fname, current_line, current_chr + 1, *c);
 				memmove(c - 1, c, strlen(c) + 1);
 			}
 			--*len;

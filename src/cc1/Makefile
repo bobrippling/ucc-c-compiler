@@ -1,5 +1,6 @@
-CFLAGS  = -g -Wall -Wextra -pedantic -std=c99
-LDFLAGS = -g -lm
+include ../src_config.mk
+
+LDFLAGS += -lm
 
 OBJ = ../util/alloc.o ../util/util.o ../util/platform.o \
 	str.o \
@@ -30,3 +31,24 @@ test.s: TEST.c cc1
 	./cc1 TEST.c > test.s
 
 .PHONY: clean
+
+asm.o: asm.c ../util/util.h tree.h sym.h asm.h ../util/platform.h \
+ ../util/alloc.h
+asm_op.o: asm_op.c ../util/util.h tree.h gen_asm.h asm.h asm_op.h
+cc1.o: cc1.c ../util/util.h tree.h tokenise.h parse.h fold.h gen_asm.h \
+ gen_str.h sym.h
+const.o: const.c ../util/util.h tree.h const.h sym.h
+fold.o: fold.c ../util/util.h tree.h fold.h sym.h ../util/platform.h \
+ asm.h const.h
+gen_asm.o: gen_asm.c ../util/util.h tree.h macros.h asm.h \
+ ../util/platform.h sym.h asm_op.h gen_asm.h
+gen_str.o: gen_str.c ../util/util.h tree.h macros.h sym.h
+parse.o: parse.c tokenise.h ../util/util.h tree.h parse.h ../util/alloc.h \
+ tokconv.h
+str.o: str.c
+sym.o: sym.c ../util/util.h tree.h sym.h ../util/alloc.h macros.h
+tokconv.o: tokconv.c tokenise.h ../util/util.h tree.h tokconv.h macros.h
+tokenise.o: tokenise.c ../util/util.h tree.h tokenise.h ../util/alloc.h \
+ str.h
+tree.o: tree.c ../util/alloc.h ../util/util.h tree.h macros.h sym.h \
+ ../util/platform.h

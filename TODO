@@ -30,3 +30,6 @@ char **argv;
 {
 }
 parsing
+
+({ expr; })
+parsing

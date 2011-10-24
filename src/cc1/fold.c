@@ -28,13 +28,13 @@ int fold_is_lvalue(expr *e)
 	 *
 	 * also can't be const
 	 */
-	if(e->vartype->spec & spec_const)
+	if(e->tree_type.vartype->spec & spec_const)
 		die_at(&e->where, "can't modify const expression");
 
 	return
 		 e->type == expr_identifier ||
 		(e->type == expr_op && e->op == op_deref && fold_is_lvalue(e->lhs)) ||
-		(e->type == expr_cast && e->lhs->vartype->ptr_depth) /* assignment to pointer-deref */
+		(e->type == expr_cast && e->lhs->vartype->tree_type.ptr_depth) /* assignment to pointer-deref */
 		;
 }
 
