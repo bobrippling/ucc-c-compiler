@@ -50,7 +50,7 @@ expr *parse_expr_unary_op()
 			if(accept(token_identifier)){
 				e->spel = token_current_spel();
 			}else if(curtok_is_type()){
-				e->vartype->primitive = curtok_to_type_primitive();
+				e->tree_type.vartype->primitive = curtok_to_type_primitive();
 				EAT(curtok);
 			}else{
 				EAT(token_identifier); /* raise error */
@@ -78,7 +78,12 @@ expr *parse_expr_unary_op()
 				e = expr_new();
 				e->type = expr_cast;
 				e->lhs = expr_new();
-				e->lhs->vartype = parse_type();
+				e->lhs->tree_type.vartype;
+				parse_decl();
+
+				/* FIXME */
+				"FIXME - parse_decl without spelling";
+
 				EAT(token_close_paren);
 				e->rhs = parse_expr_logical_op(); /* the parse level just below assign */
 			}else{
@@ -452,11 +457,6 @@ type *parse_type()
 	else
 		EAT(curtok);
 
-	while(curtok == token_multiply){
-		EAT(token_multiply);
-		t->ptr_depth++;
-	}
-
 	return t;
 }
 
@@ -581,6 +581,11 @@ decl *parse_decl(type *type, int need_spel)
 		d->type = type;
 	}
 
+	while(curtok == token_multiply){
+		EAT(token_multiply);
+		d->ptr_depth++;
+	}
+
 	if(curtok == token_identifier){
 		d->spel = token_current_spel();
 		EAT(token_identifier);
@@ -601,7 +606,7 @@ decl *parse_decl(type *type, int need_spel)
 		else
 			fin = 1;
 
-		d->type->ptr_depth++;
+		d->ptr_depth++;
 		EAT(token_close_square);
 
 		if(fin)

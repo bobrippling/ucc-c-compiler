@@ -36,7 +36,8 @@ struct type
 	enum type_primitive primitive;
 	enum type_spec      spec;
 	int func;
-	int ptr_depth;
+
+	/*int ptr_depth; - this is per decl */
 };
 
 struct decl
@@ -48,6 +49,8 @@ struct decl
 	char *spel;
 
 	expr **arraysizes;
+
+	int ptr_depth;
 	/*
 	 * int x[5][]; -> arraysizes = { expr(5), NULL }
 	 *
@@ -118,7 +121,12 @@ struct expr
 	expr *expr; /* x = 5; expr is the 5 */
 	expr **funcargs;
 
-	type *vartype; /* type propagation */
+	/* type propagation */
+	struct
+	{
+		type *vartype;
+		int ptr_depth;
+	} tree_type;
 
 	sym *sym; /* used for strings, points to the string's symtable entry */
 };

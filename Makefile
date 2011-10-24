@@ -1,9 +1,12 @@
-all:
+all: configure
 	make -C src
 	make -C lib
+
+configure:
+	@if ! test -e lib/os.h; then echo ucc needs configuring; exit 1; fi
 
 clean:
 	make -C src clean
 	make -C lib clean
 
-.PHONY: all clean
+.PHONY: all clean configure

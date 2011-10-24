@@ -12,12 +12,12 @@
 
 void where_new(struct where *w)
 {
-	extern int currentline, currentchar;
-	extern const char *currentfname;
+	extern int current_line, current_chr;
+	extern const char *current_fname;
 
-	w->line  = currentline;
-	w->chr   = currentchar;
-	w->fname = currentfname;
+	w->line  = current_line;
+	w->chr   = current_chr;
+	w->fname = current_fname;
 }
 
 tree_flow *tree_flow_new()
@@ -45,7 +45,7 @@ expr *expr_new()
 {
 	expr *e = umalloc(sizeof *e);
 	where_new(&e->where);
-	e->vartype = type_new();
+	e->tree_type.vartype = type_new();
 	return e;
 }
 
@@ -112,11 +112,11 @@ expr *expr_ptr_multiply(expr *e, type *t)
 	return ret;
 }
 
-int type_size(type *t)
+int decl_size(decl *d)
 {
-	if(t->ptr_depth)
+	if(d->ptr_depth)
 		return platform_word_size();
-	switch(t->primitive){
+	switch(d->type->primitive){
 		case type_char:
 			return 1;
 
