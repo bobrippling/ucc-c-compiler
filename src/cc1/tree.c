@@ -45,7 +45,7 @@ expr *expr_new()
 {
 	expr *e = umalloc(sizeof *e);
 	where_new(&e->where);
-	e->tree_type.vartype = type_new();
+	e->tree_type = decl_new();
 	return e;
 }
 
@@ -79,6 +79,14 @@ type *type_copy(type *t)
 	return ret;
 }
 
+decl *decl_copy(decl *d)
+{
+	decl *ret = umalloc(sizeof *d);
+	memcpy(ret, d, sizeof *ret);
+	/*ret->spel = NULL;*/
+	return ret;
+}
+
 function *function_new()
 {
 	function *f = umalloc(sizeof *f);
@@ -86,19 +94,7 @@ function *function_new()
 	return f;
 }
 
-global *global_new(function *f, decl *d)
-{
-	global *g = umalloc(sizeof *g);
-	where_new(&g->where);
-	if(f)
-		g->ptr.f = f;
-	else
-		g->ptr.d = d;
-	g->isfunc = !!f;
-	return g;
-}
-
-expr *expr_ptr_multiply(expr *e, type *t)
+expr *expr_ptr_multiply(expr *e, decl *d)
 {
 	expr *ret = expr_new();
 	memcpy(&ret->where, &e->where, sizeof e->where);
@@ -107,7 +103,7 @@ expr *expr_ptr_multiply(expr *e, type *t)
 	ret->op   = op_multiply;
 
 	ret->lhs  = e;
-	ret->rhs  = expr_new_val(type_size(t));
+	ret->rhs  = expr_new_val(decl_size(d));
 
 	return ret;
 }
@@ -196,6 +192,20 @@ const char *type_to_str(type *t)
 		CASE_STR_PREFIX(type, unknown);
 	}
 	return NULL;
+}
+
+const char *decl_to_str(decl *d)
+{
+	static char buf[32];
+	unsigned int i;
+	int n;
+
+	i = snprintf(buf, sizeof buf, "%s", type_to_str(d->type));
+
+	for(n = d->ptr_depth; i < sizeof buf && n > 0; n--)
+		buf[i++] = '*';
+
+	return buf;
 }
 
 const char *spec_to_str(enum type_spec s)

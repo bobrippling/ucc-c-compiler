@@ -26,11 +26,18 @@
 expr *parse_expr();
 #define accept(tok) ((tok) == curtok ? (EAT(tok), 1) : 0)
 
+enum decl_spel
+{
+	SPEL_REQ,
+	SPEL_OPT,
+	SPEL_NONE
+};
+
 extern enum token curtok;
 
 tree  *parse_code(void);
 expr **parse_funcargs(void);
-decl  *parse_decl(type *t, int need_spel);
+decl  *parse_decl(type *type, enum decl_spel need_spel);
 type  *parse_type(void);
 
 expr *parse_expr_binary_op(void); /* needed to limit [+-] parsing */
@@ -50,7 +57,7 @@ expr *parse_expr_unary_op()
 			if(accept(token_identifier)){
 				e->spel = token_current_spel();
 			}else if(curtok_is_type()){
-				e->tree_type.vartype->primitive = curtok_to_type_primitive();
+				e->tree_type->type->primitive = curtok_to_type_primitive();
 				EAT(curtok);
 			}else{
 				EAT(token_identifier); /* raise error */
@@ -78,11 +85,8 @@ expr *parse_expr_unary_op()
 				e = expr_new();
 				e->type = expr_cast;
 				e->lhs = expr_new();
-				e->lhs->tree_type.vartype;
-				parse_decl();
-
-				/* FIXME */
-				"FIXME - parse_decl without spelling";
+				decl_free(e->lhs->tree_type);
+				e->lhs->tree_type = parse_decl(NULL, SPEL_NONE);
 
 				EAT(token_close_paren);
 				e->rhs = parse_expr_logical_op(); /* the parse level just below assign */
@@ -460,29 +464,61 @@ type *parse_type()
 	return t;
 }
 
-decl **parse_decls(expr ***assignments)
+decl **parse_decls(void)
 {
 	decl **ret = NULL;
 
 	while(curtok_is_type_prething()){
 		decl *d;
 next_decl:
-		dynarray_add((void ***)&ret, d = parse_decl(parse_type(), 1));
+		dynarray_add((void ***)&ret, d = parse_decl(parse_type(), SPEL_REQ));
 
-		if(accept(token_assign)){
-			expr *e = expr_new();
+		if(accept(token_open_paren)){
+			d->func = function_new();
+			d->type->func = 1;
 
-			e->type = expr_assign;
-			e->lhs  = expr_new();
-			e->lhs->type = expr_identifier;
-			e->lhs->spel = d->spel;
-			e->rhs = parse_expr();
+			while((curtok_is_type_prething())){
+				dynarray_add((void ***)&d->func->args, parse_decl(parse_type(), SPEL_OPT));
 
-			dynarray_add((void ***)assignments, e);
+				if(curtok == token_close_paren)
+					break;
+
+				EAT(token_comma);
+
+				if(accept(token_elipsis)){
+					d->func->variadic = 1;
+					break;
+				}
+
+				/* continue loop */
+			}
+
+			EAT(token_close_paren);
+
+			if(!accept(token_semicolon))
+				d->func->code = parse_code();
+			/* else ';' is eaten */
+
+			dynarray_add((void ***)&ret, d);
+
+		}else{
+			if(accept(token_assign)){
+				expr *e = expr_new();
+
+				e->type = expr_assign;
+				e->lhs  = expr_new();
+				e->lhs->type = expr_identifier;
+				e->lhs->spel = d->spel;
+				e->rhs = parse_expr();
+
+				d->init = e;
+			}
+
+			dynarray_add((void ***)&ret, d);
+
+			if(accept(token_comma))
+				goto next_decl; /* don't read another type */
 		}
-
-		if(accept(token_comma))
-			goto next_decl; /* don't read another type */
 
 		EAT(token_semicolon);
 	}
@@ -492,8 +528,8 @@ next_decl:
 
 tree *parse_code_declblock()
 {
-	expr **assignments = NULL;
 	tree *t = tree_new_code();
+	decl **diter;
 
 	EAT(token_open_block);
 
@@ -501,15 +537,13 @@ tree *parse_code_declblock()
 		/* if(x){} */
 		return t;
 
-	t->decls = parse_decls(&assignments);
+	t->decls = parse_decls();
 
-	/* handle assignments */
-	if(assignments){
-		expr **iter;
-		for(iter = assignments; *iter; iter++)
-			dynarray_add((void ***)&t->codes, expr_to_tree(*iter));
-		free(assignments);
-	}
+	for(diter = t->decls; diter && *diter; diter++)
+		if((*diter)->init){
+			dynarray_add((void ***)&t->codes, expr_to_tree((*diter)->init));
+			(*diter)->init = NULL; /* we are a code block, not global, this is fine */
+		}
 
 	/* main read loop */
 	do{
@@ -569,12 +603,12 @@ tree *parse_code()
 	/* unreachable */
 }
 
-decl *parse_decl(type *type, int need_spel)
+decl *parse_decl(type *type, enum decl_spel need_spel)
 {
 	/* this should be changed/joined with parse_type, and the spelling can be assigned/ignored separately */
 	decl *d = decl_new();
 
-	if(type->primitive == type_unknown){
+	if(!type || type->primitive == type_unknown){
 		type_free(type);
 		d->type = parse_type();
 	}else{
@@ -587,10 +621,12 @@ decl *parse_decl(type *type, int need_spel)
 	}
 
 	if(curtok == token_identifier){
+		if(need_spel == SPEL_NONE)
+			die_at(NULL, "identifier not wanted here");
 		d->spel = token_current_spel();
 		EAT(token_identifier);
-	}else if(need_spel){
-		EAT(token_identifier); /* raise error */
+	}else if(need_spel == SPEL_REQ){
+		die_at(NULL, "need identifier, not just type");
 	}
 
 	/* array parsing */
@@ -618,60 +654,14 @@ decl *parse_decl(type *type, int need_spel)
 	return d;
 }
 
-global **parse()
+symtable *parse()
 {
-	global **globals = NULL;
+	symtable *globals = symtab_new();
 
-	do{
-		decl *d;
-
-		d = parse_decl(parse_type(), 1);
-
-		if(accept(token_open_paren)){
-			function *f = function_new();
-
-			f->func_decl = d;
-			d->type->func = 1;
-
-			while((curtok_is_type_prething())){
-				dynarray_add((void ***)&f->args, parse_decl(parse_type(), 0));
-
-				if(curtok == token_close_paren)
-					break;
-
-				EAT(token_comma);
-
-				if(accept(token_elipsis)){
-					f->variadic = 1;
-					break;
-				}
-
-				/* continue loop */
-			}
-
-			EAT(token_close_paren);
-
-			if(!accept(token_semicolon))
-				f->code = parse_code();
-			/* else ';' is eaten */
-
-			dynarray_add((void ***)&globals, global_new(f, NULL));
-		}else{
-			/* read comma separated, normal decl list */
-			type *t;
-
-			dynarray_add((void ***)&globals, global_new(NULL, d));
-
-			t = d->type;
-
-			while(accept(token_comma)){
-				decl *d = parse_decl(t, 1);
-				dynarray_add((void ***)&globals, global_new(NULL, d));
-			}
-			EAT(token_semicolon);
-		}
-
-	}while(curtok != token_eof);
+	while(curtok != token_eof){
+		decl **decls = parse_decls();
+		symtab_add(globals, );
+	}
 
 	return globals;
 }

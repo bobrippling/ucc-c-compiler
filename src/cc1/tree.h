@@ -5,12 +5,10 @@ typedef struct expr        expr;
 typedef struct tree        tree;
 typedef struct decl        decl;
 typedef struct function    function;
-typedef struct symtable    symtable;
-typedef struct sym         sym;
 typedef struct tree_flow   tree_flow;
 typedef struct type        type;
 typedef struct assignment  assignment;
-typedef struct global      global;
+typedef struct function    function;
 
 enum type_primitive
 {
@@ -35,9 +33,6 @@ struct type
 
 	enum type_primitive primitive;
 	enum type_spec      spec;
-	int func;
-
-	/*int ptr_depth; - this is per decl */
 };
 
 struct decl
@@ -49,6 +44,7 @@ struct decl
 	char *spel;
 
 	expr **arraysizes;
+	expr *init; /* NULL except for global variables */
 
 	int ptr_depth;
 	/*
@@ -56,6 +52,8 @@ struct decl
 	 *
 	 * for the last [], ptr_depth is ++'d
 	 */
+
+	function *func;
 };
 
 struct expr
@@ -122,13 +120,7 @@ struct expr
 	expr **funcargs;
 
 	/* type propagation */
-	struct
-	{
-		type *vartype;
-		int ptr_depth;
-	} tree_type;
-
-	sym *sym; /* used for strings, points to the string's symtable entry */
+	decl *tree_type;
 };
 
 struct tree
@@ -172,25 +164,10 @@ struct function
 {
 	where where;
 
-	decl *func_decl;
 	decl **args;
 	symtable *autos;
 	tree *code;
 	int variadic;
-};
-
-struct global
-{
-	where where;
-
-	int isfunc;
-	union
-	{
-		function *f;
-		decl     *d;
-	} ptr;
-
-	expr *init;
 };
 
 tree      *tree_new();
@@ -198,9 +175,9 @@ expr      *expr_new();
 type      *type_new();
 decl      *decl_new();
 function  *function_new();
-global    *global_new(function *, decl *);
 
 type      *type_copy(type *);
+decl      *decl_copy(decl *);
 tree      *tree_new_code();
 expr      *expr_new_val(int);
 
@@ -209,14 +186,16 @@ tree_flow *tree_flow_new();
 const char *op_to_str(  enum op_type   o);
 const char *expr_to_str(enum expr_type t);
 const char *stat_to_str(enum stat_type t);
+const char *decl_to_str(decl          *t);
 const char *type_to_str(type          *t);
 const char *spec_to_str(enum type_spec s);
 const char *where_str(  struct where *w);
 const char *assign_to_str(enum assign_type);
 
-int   type_size(type *);
-expr *expr_ptr_multiply(expr *, type *);
+int   decl_size(decl *);
+expr *expr_ptr_multiply(expr *, decl *);
 
 #define type_free(x) free(x)
+#define decl_free(x) do{type_free((x)->type); free(x);}while(0)
 
 #endif

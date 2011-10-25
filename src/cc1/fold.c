@@ -28,23 +28,23 @@ int fold_is_lvalue(expr *e)
 	 *
 	 * also can't be const
 	 */
-	if(e->tree_type.vartype->spec & spec_const)
+	if(e->tree_type->type->spec & spec_const)
 		die_at(&e->where, "can't modify const expression");
 
 	return
 		 e->type == expr_identifier ||
 		(e->type == expr_op && e->op == op_deref && fold_is_lvalue(e->lhs)) ||
-		(e->type == expr_cast && e->lhs->vartype->tree_type.ptr_depth) /* assignment to pointer-deref */
+		(e->type == expr_cast && e->lhs->tree_type->ptr_depth) /* assignment to pointer-deref */
 		;
 }
 
 void fold_expr(expr *e, symtable *stab)
 {
-#define GET_VARTYPE(from) \
+#define GET_TREE_TYPE(from) \
 	do{ \
-		if(e->vartype) \
-			type_free(e->vartype); \
-		e->vartype = type_copy(from); \
+		if(e->tree_type) \
+			decl_free(e->tree_type); \
+		e->tree_type = decl_copy(from); \
 	}while(0)
 
 	if(e->spel)
@@ -55,7 +55,7 @@ void fold_expr(expr *e, symtable *stab)
 	switch(e->type){
 		case expr_val:
 		case expr_sizeof:
-			e->vartype->primitive = type_int;
+			e->tree_type->type->primitive = type_int;
 			break;
 
 		case expr_if:
@@ -63,27 +63,27 @@ void fold_expr(expr *e, symtable *stab)
 			if(e->lhs)
 				fold_expr(e->lhs,  stab);
 			fold_expr(e->rhs,  stab);
-			GET_VARTYPE(e->rhs->vartype); /* TODO: check they're the same */
+			GET_TREE_TYPE(e->rhs->tree_type); /* TODO: check they're the same */
 			break;
 
 		case expr_cast:
 			fold_expr(e->rhs, stab);
-			GET_VARTYPE(e->lhs->vartype);
+			GET_TREE_TYPE(e->lhs->tree_type);
 			break;
 
 		case expr_addr:
 			if(!e->sym)
 				DIE_UNDECL();
 
-			GET_VARTYPE(e->sym->decl->type);
-			e->vartype->ptr_depth++;
+			GET_TREE_TYPE(e->sym->decl);
+			e->tree_type->ptr_depth++;
 			break;
 
 		case expr_identifier:
 			if(!e->sym)
 				DIE_UNDECL();
 
-			GET_VARTYPE(e->sym->decl->type);
+			GET_TREE_TYPE(e->sym->decl);
 			break;
 
 		case expr_assign:
@@ -118,14 +118,14 @@ void fold_expr(expr *e, symtable *stab)
 			}
 
 			if(e->sym)
-				/* read the vartype from what we're assigning to, not the expr */
-				GET_VARTYPE(e->sym->decl->type);
+				/* read the tree_type from what we're assigning to, not the expr */
+				GET_TREE_TYPE(e->sym->decl);
 			else
-				/* get the vartype from the dereference's vartype */
-				GET_VARTYPE(use_me->vartype);
+				/* get the tree_type from the dereference's tree_type */
+				GET_TREE_TYPE(use_me->tree_type);
 
 
-			if(!assign && e->vartype->ptr_depth && (e->vartype->ptr_depth > 1 || e->vartype->primitive != type_char)){
+			if(!assign && e->tree_type->ptr_depth && (e->tree_type->ptr_depth > 1 || e->tree_type->type->primitive != type_char)){
 				/*
 				 * we're inc/dec'ing a pointer, we need to inc by sizeof(*ptr)
 				 * convert from inc/dec to a standard addition
@@ -134,8 +134,8 @@ void fold_expr(expr *e, symtable *stab)
 				 */
 				expr *addition = expr_new();
 
-				type_free(addition->vartype);
-				addition->vartype = type_copy(e->vartype);
+				type_free(addition->tree_type);
+				addition->tree_type = decl_copy(e->tree_type);
 
 				addition->type = expr_op;
 				switch(e->assign_type){
@@ -153,7 +153,7 @@ void fold_expr(expr *e, symtable *stab)
 				}
 
 				addition->lhs = e->expr;
-				addition->rhs = expr_ptr_multiply(expr_new_val(1), addition->vartype);
+				addition->rhs = expr_ptr_multiply(expr_new_val(1), addition->tree_type);
 
 				e->assign_type = assign_normal;
 				e->lhs         = e->expr;
@@ -171,40 +171,40 @@ void fold_expr(expr *e, symtable *stab)
 
 			/* XXX: note, this assumes that e.g. "1 + 2" the lhs and rhs have the same type */
 			if(e->op == op_deref){
-				GET_VARTYPE(e->lhs->vartype);
+				GET_TREE_TYPE(e->lhs->tree_type);
 
-				e->vartype->ptr_depth--;
+				e->tree_type->ptr_depth--;
 
-				if(e->vartype->ptr_depth == 0)
-					switch(e->lhs->vartype->primitive){
+				if(e->tree_type->ptr_depth == 0)
+					switch(e->lhs->tree_type->type->primitive){
 						case type_unknown:
 						case type_void:
 							die_at(&e->where, "can't dereference void pointer");
 						default:
-							/* e->vartype already set to deref type */
+							/* e->tree_type already set to deref type */
 							break;
 					}
-				else if(e->vartype->ptr_depth < 0)
-					die_at(&e->where, "can't dereference non-pointer (%s)", type_to_str(e->vartype));
+				else if(e->tree_type->ptr_depth < 0)
+					die_at(&e->where, "can't dereference non-pointer (%s)", type_to_str(e->tree_type->type));
 			}else{
-				/* look either side - if either is a pointer, take that as the vartype */
+				/* look either side - if either is a pointer, take that as the tree_type */
 				/* TODO: checks for pointer + pointer, etc etc */
-				if(e->rhs && e->rhs->vartype->ptr_depth)
-					GET_VARTYPE(e->rhs->vartype);
+				if(e->rhs && e->rhs->tree_type->ptr_depth)
+					GET_TREE_TYPE(e->rhs->tree_type);
 				else
-					GET_VARTYPE(e->lhs->vartype);
+					GET_TREE_TYPE(e->lhs->tree_type);
 
 				switch(e->op){
 					case op_plus:
 					case op_minus:
-						if(e->vartype->ptr_depth && e->rhs){
+						if(e->tree_type->ptr_depth && e->rhs){
 							/* we're dealing with pointers, adjust the amount we add by */
 
-							if(e->lhs->vartype->ptr_depth)
+							if(e->lhs->tree_type->ptr_depth)
 								/* lhs is the pointer, we're adding on rhs, hence multiply rhs by lhs's ptr size */
-								e->rhs = expr_ptr_multiply(e->rhs, e->lhs->vartype);
+								e->rhs = expr_ptr_multiply(e->rhs, e->lhs->tree_type);
 							else
-								e->lhs = expr_ptr_multiply(e->lhs, e->rhs->vartype);
+								e->lhs = expr_ptr_multiply(e->lhs, e->rhs->tree_type);
 						}
 					default:
 						break;
@@ -222,8 +222,8 @@ void fold_expr(expr *e, symtable *stab)
 			/* e->sym shouldn't be !NULL anyway */
 			e->sym = sym;
 
-			e->vartype->primitive = type_char;
-			e->vartype->ptr_depth = 1;
+			e->tree_type->type->primitive = type_char;
+			e->tree_type->ptr_depth = 1;
 			break;
 		}
 
@@ -256,23 +256,19 @@ void fold_expr(expr *e, symtable *stab)
 				e->sym = symtab_add(paren, f->func_decl, sym_func);
 			}
 
-			GET_VARTYPE(e->sym->decl->type); /* XXX: check */
+			GET_TREE_TYPE(e->sym->decl); /* XXX: check */
 			break;
 	}
-#undef GET_VARTYPE
-}
-
-void fold_type(type *t)
-{
-	if(t->primitive == type_void && !t->ptr_depth && !t->func)
-		die_at(&t->where, "can't have a void variable");
+#undef GET_TREE_TYPE
 }
 
 void fold_decl(decl *d, symtable *stab)
 {
 	int i;
 
-	fold_type(d->type);
+	if(d->type->primitive == type_void && !d->ptr_depth && !d->type->func)
+		die_at(&d->type->where, "can't have a void variable");
+
 
 	for(i = 0; d->arraysizes && d->arraysizes[i]; i++){
 		fold_expr(d->arraysizes[i], stab);
