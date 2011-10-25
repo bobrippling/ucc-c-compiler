@@ -44,8 +44,6 @@ void idt_printf(const char *fmt, ...)
 
 void print_type(type *t)
 {
-	int i;
-
 	if(t->spec & spec_const)
 		fputs("const ", cc1_out);
 	if(t->spec & spec_extern)
@@ -54,9 +52,6 @@ void print_type(type *t)
 		fputs("static ", cc1_out);
 
 	fprintf(cc1_out, "%s ", type_to_str(t));
-
-	for(i = t->ptr_depth; i > 0; i--)
-		fputc('*', cc1_out);
 }
 
 void print_decl(decl *d, int idt, int nl)
@@ -67,6 +62,8 @@ void print_decl(decl *d, int idt, int nl)
 		idt_print();
 
 	print_type(d->type);
+	for(i = d->ptr_depth; i > 0; i--)
+		fputc('*', cc1_out);
 
 	if(d->spel)
 		fputs(d->spel, cc1_out);
@@ -93,8 +90,7 @@ void print_sym(sym *s)
 void print_expr(expr *e)
 {
 	idt_printf("vartype: ");
-	print_type(e->vartype);
-	fputc('\n', cc1_out);
+	print_decl(e->tree_type, 0, 1);
 
 	idt_printf("e->type: %s\n", expr_to_str(e->type));
 
@@ -113,8 +109,8 @@ void print_expr(expr *e)
 
 			if(e->op == op_deref){
 				int i;
-				idt_printf("deref size: %s ", type_to_str(e->vartype));
-				for(i = 0; i < e->vartype->ptr_depth; i++)
+				idt_printf("deref size: %s ", decl_to_str(e->tree_type));
+				for(i = 0; i < e->tree_type->ptr_depth; i++)
 					fputc('*', cc1_out);
 				fputc('\n', cc1_out);
 			}
@@ -172,7 +168,7 @@ void print_expr(expr *e)
 			break;
 
 		case expr_sizeof:
-			idt_printf("sizeof %s\n", e->spel ? e->spel : type_to_str(e->vartype));
+			idt_printf("sizeof %s\n", e->spel ? e->spel : decl_to_str(e->tree_type));
 			break;
 
 		case expr_cast:

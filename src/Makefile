@@ -2,7 +2,7 @@ CFLAGS = -Wall -Wextra -pedantic -std=c99
 
 all: cc1 cpp cc
 
-cc: cc.c
+cc: cc.c cc.h
 
 cc1: util
 	make -C cc1
