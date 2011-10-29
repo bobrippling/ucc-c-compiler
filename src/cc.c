@@ -8,6 +8,15 @@
 
 #include "cc.h"
 
+enum mode
+{
+	MODE_PREPROCESS,
+	MODE_COMPILE,
+	MODE_ASSEMBLE,
+	MODE_LINK,
+	MODE_UNKNOWN
+};
+
 struct
 {
 	char arg;
