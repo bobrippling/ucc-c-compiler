@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#include <errno.h>
 
 #include "util.h"
 #include "alloc.h"
@@ -13,26 +14,8 @@ const char *where_str(struct where *w)
 	return buf;
 }
 
-void vdie(struct where *w, va_list l, const char *fmt)
+void vwarn(struct where *w, va_list l, const char *fmt)
 {
-	if(w)
-		fprintf(stderr, "%s: ", where_str(w));
-
-	vfprintf(stderr, fmt, l);
-
-	if(fmt[strlen(fmt)-1] == ':'){
-		fputc(' ', stderr);
-		perror(NULL);
-	}else{
-		fputc('\n', stderr);
-	}
-
-	exit(1);
-}
-
-void die_at(struct where *w, const char *fmt, ...)
-{
-	va_list l;
 	struct where instead;
 
 	if(!w){
@@ -46,6 +29,34 @@ void die_at(struct where *w, const char *fmt, ...)
 		instead.chr   = current_chr;
 	}
 
+	fprintf(stderr, "%s: ", where_str(w));
+	vfprintf(stderr, fmt, l);
+
+	if(fmt[strlen(fmt)-1] == ':'){
+		fputc(' ', stderr);
+		perror(NULL);
+	}else{
+		fputc('\n', stderr);
+	}
+}
+
+void vdie(struct where *w, va_list l, const char *fmt)
+{
+	vwarn(w, l, fmt);
+	exit(1);
+}
+
+void warn_at(struct where *w, const char *fmt, ...)
+{
+	va_list l;
+	va_start(l, fmt);
+	vwarn(w, l, fmt);
+	/* unreachable */
+}
+
+void die_at(struct where *w, const char *fmt, ...)
+{
+	va_list l;
 	va_start(l, fmt);
 	vdie(w, l, fmt);
 	/* unreachable */
@@ -54,7 +65,6 @@ void die_at(struct where *w, const char *fmt, ...)
 void die(const char *fmt, ...)
 {
 	va_list l;
-
 	va_start(l, fmt);
 	vdie(NULL, l, fmt);
 	/* unreachable */
@@ -72,7 +82,10 @@ char *fline(FILE *f)
 	char *line = umalloc(len);
 
 	do{
+		errno = 0;
 		if((c = fgetc(f)) == EOF){
+			if(errno == EINTR)
+				continue;
 			free(line);
 			return NULL;
 		}

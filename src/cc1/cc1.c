@@ -17,8 +17,8 @@ FILE *cc1_out = NULL;
 
 int main(int argc, char **argv)
 {
-	static global **globs;
-	void (*gf)(global **);
+	static symtable *globs;
+	void (*gf)(symtable *);
 	FILE *f;
 	const char *fname;
 	int i;
@@ -79,7 +79,7 @@ use_stdin:
 	if(f != stdin)
 		fclose(f);
 
-	fold(&globs);
+	fold(globs);
 	gf(globs);
 
 	fclose(cc1_out);

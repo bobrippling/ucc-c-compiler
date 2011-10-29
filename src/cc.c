@@ -39,7 +39,7 @@ void run(const char *cmd)
 	if(ret){
 		if(WIFSIGNALED(ret))
 			fprintf(stderr, "\"%s\" caught signal %d\n", cmd, WTERMSIG(ret));
-		else
+		else if(debug)
 			fprintf(stderr, "\"%s\" returned %d\n", cmd, ret);
 		exit(1);
 	}

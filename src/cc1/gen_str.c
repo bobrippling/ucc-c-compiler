@@ -252,12 +252,14 @@ void print_tree(tree *t)
 	}
 }
 
-void print_func(function *f)
+void print_func(decl *d)
 {
+	function *f = d->func;
+
 	idt_printf("function: ");
 	indent++;
 
-	print_decl(f->func_decl, 0, 0);
+	print_decl(d, 0, 0);
 
 	fputc('(', cc1_out);
 	if(f->args){
@@ -275,18 +277,19 @@ void print_func(function *f)
 	indent--;
 }
 
-void gen_str(global **g)
+void gen_str(symtable *symtab)
 {
-	for(; *g; g++)
-		if((*g)->isfunc){
-			print_func((*g)->ptr.f);
+	decl **diter;
+	for(diter = symtab->decls; diter && *diter; diter++)
+		if((*diter)->func){
+			print_func(*diter);
 		}else{
 			fprintf(cc1_out, "global variable: ");
-			print_decl((*g)->ptr.d, 0, 1);
-			if((*g)->init){
+			print_decl(*diter, 0, 1);
+			if((*diter)->init){
 				fprintf(cc1_out, "init:\n");
 				indent++;
-				print_expr((*g)->init);
+				print_expr((*diter)->init);
 				indent--;
 			}
 		}

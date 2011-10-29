@@ -1,6 +1,9 @@
 #ifndef TREE_H
 #define TREE_H
 
+typedef struct sym         sym;
+typedef struct symtable    symtable;
+
 typedef struct expr        expr;
 typedef struct tree        tree;
 typedef struct decl        decl;
@@ -8,7 +11,6 @@ typedef struct function    function;
 typedef struct tree_flow   tree_flow;
 typedef struct type        type;
 typedef struct assignment  assignment;
-typedef struct function    function;
 
 enum type_primitive
 {
@@ -54,6 +56,8 @@ struct decl
 	 */
 
 	function *func;
+
+	sym *sym;
 };
 
 struct expr
@@ -118,6 +122,8 @@ struct expr
 	char *spel;
 	expr *expr; /* x = 5; expr is the 5 */
 	expr **funcargs;
+
+	sym *sym;
 
 	/* type propagation */
 	decl *tree_type;

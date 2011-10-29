@@ -12,9 +12,10 @@
 
 sym *sym_new(decl *d)
 {
-	sym *p = umalloc(sizeof *p);
-	p->decl = d;
-	return p;
+	sym *s = umalloc(sizeof *s);
+	s->decl = d;
+	d->sym  = s;
+	return s;
 }
 
 symtable *symtab_new()
@@ -28,6 +29,12 @@ symtable *symtab_child(symtable *paren)
 	symtable *ret = symtab_new();
 	ret->parent = paren;
 	return ret;
+}
+
+symtable *symtab_grandparent(symtable *child)
+{
+	for(; child->parent; child = child->parent);
+	return child;
 }
 
 void symtab_nest(symtable *parent, symtable **brat)
@@ -46,43 +53,21 @@ sym *symtab_add(symtable *tab, decl *d, enum sym_type t)
 	sym *new;
 
 	new = sym_new(d);
-
-	new->next = tab->first;
-	tab->first = new;
-
 	new->type = t;
+
+	dynarray_add((void ***)&tab->decls, d);
 
 	return new;
 }
 
-void symtab_free(symtable *tab)
+sym *symtab_search(symtable *tab, const char *spel)
 {
-	sym *iter, *fme;
-
-	for(iter = tab->first; iter; iter = iter->next, free(fme))
-		fme = iter;
-
-	free(tab);
-}
-
-sym *symtab_search(symtable *tab, const char *spel, global **globals)
-{
-	sym *s;
-
-	for(; tab; tab = tab->parent)
-		for(s = tab->first; s; s = s->next)
-			/* if s->decl->spel is NULL, then it's a string lit. */
-			if(s->decl->spel && !strcmp(spel, s->decl->spel))
-				return s;
-
-	for(; *globals; globals++){
-		decl *d = (*globals)->isfunc ? (*globals)->ptr.f->func_decl : (*globals)->ptr.d;
-		if(!strcmp(spel, d->spel)){
-			s = sym_new(d);
-			s->offset = 0;
-			s->type = sym_global;
-			return s;
-		}
+	for(; tab; tab = tab->parent){
+		decl **diter;
+		for(diter = tab->decls; diter && *diter; diter++)
+			/* if diter->decl->spel is NULL, then it's a string lit. */
+			if((*diter)->spel && !strcmp(spel, (*diter)->spel))
+				return (*diter)->sym;
 	}
 
 	return NULL;
