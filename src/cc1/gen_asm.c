@@ -325,21 +325,22 @@ void decl_walk_tree(tree *t)
 #undef WALK_IF
 }
 
-void gen_asm_func(function *f)
+void gen_asm_func(decl *d)
 {
+	function *f = d->func;
 	if(f->code){
 		int offset;
 
-		asm_temp("global %s", f->func_decl->spel);
+		asm_temp("global %s", d->spel);
 
 		/* walk string decls */
 		decl_walk_tree(f->code);
 
-		asm_label(f->func_decl->spel);
+		asm_label(d->spel);
 		asm_temp("push rbp");
 		asm_temp("mov rbp, rsp");
 
-		curfunc_lblfin = label_code(f->func_decl->spel);
+		curfunc_lblfin = label_code(d->spel);
 
 		if((offset = f->code->symtab->auto_offset))
 			asm_temp("sub rsp, %d", offset);
@@ -351,26 +352,27 @@ void gen_asm_func(function *f)
 		asm_temp("leave");
 		asm_temp("ret");
 		free(curfunc_lblfin);
-	}else if(f->func_decl->type->spec & spec_extern){
-		asm_temp("extern %s", f->func_decl->spel);
+	}else if(d->type->spec & spec_extern){
+		asm_temp("extern %s", d->spel);
 	}
 }
 
-void gen_asm_global_var(global *g)
+void gen_asm_global_var(decl *d)
 {
 	/* MASSIVE TODO */
-	if(g->init){
-		asm_temp("%s dq %d ; TODO", g->ptr.d->spel, g->init->val);
+	if(d->init){
+		asm_temp("%s dq %d ; TODO", d->spel, d->init->val);
 	}else{
-		asm_temp("%s resq 1 ; TODO", g->ptr.d->spel);
+		asm_temp("%s resq 1 ; TODO", d->spel);
 	}
 }
 
-void gen_asm(global **globs)
+void gen_asm(symtable *globs)
 {
-	for(; *globs; globs++)
-		if((*globs)->isfunc)
-			gen_asm_func((*globs)->ptr.f);
+	decl **diter;
+	for(diter = globs->decls; diter && *diter; diter++)
+		if((*diter)->func)
+			gen_asm_func(*diter);
 		else
-			gen_asm_global_var(*globs);
+			gen_asm_global_var(*diter);
 }

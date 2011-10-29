@@ -10,7 +10,10 @@
 #include "../util/alloc.h"
 #include "tokconv.h"
 #include "../util/util.h"
+#include "sym.h"
 
+#define NEED_TYPE_YES 1
+#define NEED_TYPE_NO  1
 
 /*
  * order goes:
@@ -456,26 +459,33 @@ type *parse_type()
 		EAT(curtok);
 	}
 
-	if((t->primitive = curtok_to_type_primitive()) == type_unknown)
+	if((t->primitive = curtok_to_type_primitive()) == type_unknown){
+		warn_at(&t->where, "defaulting type to int");
 		t->primitive = type_int; /* default to int */
-	else
+	}else{
 		EAT(curtok);
+	}
 
 	return t;
 }
 
-decl **parse_decls(void)
+decl **parse_decls(int need_type)
 {
 	decl **ret = NULL;
 
-	while(curtok_is_type_prething()){
+	if(need_type && !curtok_is_type_prething())
+		/* no decls available */
+		return NULL;
+
+	for(; curtok != token_eof;){
+		type *curtype = parse_type(); /* specific to each line */
 		decl *d;
+
 next_decl:
-		dynarray_add((void ***)&ret, d = parse_decl(parse_type(), SPEL_REQ));
+		dynarray_add((void ***)&ret, d = parse_decl(curtype, SPEL_REQ));
 
 		if(accept(token_open_paren)){
 			d->func = function_new();
-			d->type->func = 1;
 
 			while((curtok_is_type_prething())){
 				dynarray_add((void ***)&d->func->args, parse_decl(parse_type(), SPEL_OPT));
@@ -497,10 +507,6 @@ next_decl:
 
 			if(!accept(token_semicolon))
 				d->func->code = parse_code();
-			/* else ';' is eaten */
-
-			dynarray_add((void ***)&ret, d);
-
 		}else{
 			if(accept(token_assign)){
 				expr *e = expr_new();
@@ -514,13 +520,12 @@ next_decl:
 				d->init = e;
 			}
 
-			dynarray_add((void ***)&ret, d);
-
 			if(accept(token_comma))
+				/* should probably not accept functions as part of next decl */
 				goto next_decl; /* don't read another type */
-		}
 
-		EAT(token_semicolon);
+			EAT(token_semicolon);
+		}
 	}
 
 	return ret;
@@ -537,7 +542,7 @@ tree *parse_code_declblock()
 		/* if(x){} */
 		return t;
 
-	t->decls = parse_decls();
+	t->decls = parse_decls(NEED_TYPE_YES);
 
 	for(diter = t->decls; diter && *diter; diter++)
 		if((*diter)->init){
@@ -626,7 +631,7 @@ decl *parse_decl(type *type, enum decl_spel need_spel)
 		d->spel = token_current_spel();
 		EAT(token_identifier);
 	}else if(need_spel == SPEL_REQ){
-		die_at(NULL, "need identifier, not just type");
+		die_at(NULL, "need identifier, not just type (%s)", type_to_str(d->type));
 	}
 
 	/* array parsing */
@@ -658,10 +663,9 @@ symtable *parse()
 {
 	symtable *globals = symtab_new();
 
-	while(curtok != token_eof){
-		decl **decls = parse_decls();
-		symtab_add(globals, );
-	}
+	globals->decls = parse_decls(NEED_TYPE_NO);
+
+	EAT(token_eof);
 
 	return globals;
 }

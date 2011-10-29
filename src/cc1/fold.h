@@ -1,6 +1,6 @@
 #ifndef FOLD_H
 #define FOLD_H
 
-void fold(global ***);
+void fold(symtable *);
 
 #endif

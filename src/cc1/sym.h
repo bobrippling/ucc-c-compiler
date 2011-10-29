@@ -1,9 +1,6 @@
 #ifndef SYM_H
 #define SYM_H
 
-typedef struct symtable    symtable;
-typedef struct sym         sym;
-
 struct sym
 {
 	int offset; /* stack offset */
@@ -16,26 +13,25 @@ struct sym
 		sym_func
 	} type;
 
-	decl *decl;
 	char *str_lbl;
 
-	sym *next
+	decl *decl;
 };
 
 struct symtable
 {
 	int auto_offset;
 	symtable *parent;
-	decl **syms;
+	decl **decls;
 };
 
 symtable *symtab_new();
 symtable *symtab_child(symtable *);
+symtable *symtab_grandparent(symtable *child);
 
 sym *symtab_add( symtable *, decl *, enum sym_type);
-void symtab_push(symtable *, symtable *);
-sym  *symtab_search(symtable *, const char *, global **globals);
-void symtab_nest(symtable *parent, symtable **brat);
+sym  *symtab_search(symtable *, const char *);
+void  symtab_nest(symtable *parent, symtable **brat);
 
 const char *sym_to_str(enum sym_type);
 
