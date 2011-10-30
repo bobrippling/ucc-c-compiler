@@ -57,6 +57,7 @@ struct decl
 
 	function *func;
 
+	int ignore; /* ignore during code-gen, due to extern and prototypes being overwritten, etc */
 	sym *sym;
 };
 

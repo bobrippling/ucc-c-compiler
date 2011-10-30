@@ -49,7 +49,7 @@ void fold_expr(expr *e, symtable *stab)
 		if(!e->sym)
 			e->sym = symtab_search(stab, e->spel);
 		else
-			fprintf(stderr, "ICW: expression for \"%s\" already has a symbol\n", e->spel);
+			warn_at(&e->where, "ICW: expression for \"%s\" already has a symbol\n", e->spel);
 	}
 
 	const_fold(e);
@@ -262,9 +262,31 @@ void fold_decl(decl *d, symtable *stab)
 {
 	int i;
 
+#if 0
+	/* if global extern... */
+	if(!stab->parent && d->type->type_spec & spec_extern){
+		/* check all other globs for an instantiation of this decl */
+		decl **iter;
+		for(iter = stab->decls; iter && *iter; iter++){
+			decl *dit = *iter;
+
+			if(dit->spel && !strcmp(dit->spel, d->spel)){
+				if(!(dit->type->type_spec & spec_extern))
+					;
+			}
+		}
+	}
+#endif
+
+	if(d->init){
+		fold_expr(d->init, stab);
+		if(const_fold(d->init))
+			/* yes I know fold_expr does const_fold, but this is a decent way to check */
+			die_at(&d->init->where, "not a constant expression");
+	}
+
 	if(d->type->primitive == type_void && !d->ptr_depth && !d->func)
 		die_at(&d->type->where, "can't have a void variable");
-
 
 	for(i = 0; d->arraysizes && d->arraysizes[i]; i++){
 		fold_expr(d->arraysizes[i], stab);
@@ -317,7 +339,6 @@ void fold_code(tree *t)
 					fold_decl(*iter, t->symtab);
 				}
 			}
-
 
 			auto_offset = t->symtab->parent ? t->symtab->parent->auto_offset : 0;
 			arg_offset  = 0;
@@ -441,20 +462,35 @@ void fold(symtable *globs)
 {
 	decl **iter;
 
+	/* extern removal */
 	for(iter = globs->decls; iter && *iter; iter++){
-		if((*iter)->func){
-			//symtab_add(globs, *iter, sym_func);
+		decl *d = *iter;
+
+		if(d->type->spec & spec_extern){
+			decl **iter2;
+
+			for(iter2 = globs->decls; iter2 && *iter2; iter2++){
+				decl *d2 = *iter2;
+				if(!strcmp(d2->spel, d->spel) && (d2->type->spec & spec_extern) == 0){
+					fprintf(stderr, "overriding extern \"%s\"\n", d->spel);
+					d->ignore = 1;
+					break;
+				}
+			}
+		}
+	}
+
+	for(iter = globs->decls; iter && *iter; iter++){
+		decl *d = *iter;
+
+		if(d->ignore)
+			continue;
+
+		if(d->func){
 			fold_func(*iter, globs);
 		}else{
-			//symtab_add(globs, *iter, sym_auto);
+			fprintf(stderr, "fold_decl(\"%s\")\n", d->spel);
 			fold_decl(*iter, globs);
-
-			if((*iter)->init){
-				fold_expr((*iter)->init,  globs);
-				if(const_fold((*iter)->init))
-					/* yes I know fold_expr does const_fold, but this is a decent way to check */
-					die_at(&(*iter)->init->where, "not a constant expression");
-			}
 		}
 	}
 }
