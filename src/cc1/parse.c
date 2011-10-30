@@ -41,7 +41,7 @@ extern enum token curtok;
 tree  *parse_code(void);
 expr **parse_funcargs(void);
 decl  *parse_decl(type *type, enum decl_spel need_spel);
-type  *parse_type(void);
+type  *parse_type(int can_default);
 
 expr *parse_expr_binary_op(void); /* needed to limit [+-] parsing */
 expr *parse_expr_logical_op(void);
@@ -443,7 +443,7 @@ tree *parse_for()
 	return t;
 }
 
-type *parse_type()
+type *parse_type(int can_default)
 {
 	type *t = type_new();
 
@@ -460,6 +460,9 @@ type *parse_type()
 	}
 
 	if((t->primitive = curtok_to_type_primitive()) == type_unknown){
+		if(!can_default && t->spec == spec_none)
+			return NULL;
+
 		warn_at(&t->where, "defaulting type to int");
 		t->primitive = type_int; /* default to int */
 	}else{
@@ -473,13 +476,12 @@ decl **parse_decls(int need_type)
 {
 	decl **ret = NULL;
 
-	if(need_type && !curtok_is_type_prething())
-		/* no decls available */
-		return NULL;
-
 	for(; curtok != token_eof;){
-		type *curtype = parse_type(); /* specific to each line */
+		type *curtype = parse_type(!need_type); /* specific to each line */
 		decl *d;
+
+		if(need_type && !curtype)
+			return ret;
 
 next_decl:
 		dynarray_add((void ***)&ret, d = parse_decl(curtype, SPEL_REQ));
@@ -488,7 +490,7 @@ next_decl:
 			d->func = function_new();
 
 			while((curtok_is_type_prething())){
-				dynarray_add((void ***)&d->func->args, parse_decl(parse_type(), SPEL_OPT));
+				dynarray_add((void ***)&d->func->args, parse_decl(parse_type(!need_type), SPEL_OPT));
 
 				if(curtok == token_close_paren)
 					break;
@@ -610,12 +612,11 @@ tree *parse_code()
 
 decl *parse_decl(type *type, enum decl_spel need_spel)
 {
-	/* this should be changed/joined with parse_type, and the spelling can be assigned/ignored separately */
 	decl *d = decl_new();
 
 	if(!type || type->primitive == type_unknown){
 		type_free(type);
-		d->type = parse_type();
+		d->type = parse_type(0);
 	}else{
 		d->type = type;
 	}
