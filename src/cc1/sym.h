@@ -29,7 +29,7 @@ symtable *symtab_new();
 symtable *symtab_child(symtable *);
 symtable *symtab_grandparent(symtable *child);
 
-sym *symtab_add( symtable *, decl *, enum sym_type);
+sym  *symtab_add(   symtable *, decl *, enum sym_type);
 sym  *symtab_search(symtable *, const char *);
 void  symtab_nest(symtable *parent, symtable **brat);
 

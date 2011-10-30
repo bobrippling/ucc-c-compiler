@@ -62,13 +62,18 @@ sym *symtab_add(symtable *tab, decl *d, enum sym_type t)
 
 sym *symtab_search(symtable *tab, const char *spel)
 {
-	for(; tab; tab = tab->parent){
-		decl **diter;
-		for(diter = tab->decls; diter && *diter; diter++)
-			/* if diter->decl->spel is NULL, then it's a string lit. */
-			if((*diter)->spel && !strcmp(spel, (*diter)->spel))
-				return (*diter)->sym;
+	decl **diter;
+
+	fprintf(stderr, "symtab_search for %s\n", spel);
+
+	for(diter = tab->decls; diter && *diter; diter++){
+		decl *d = *diter;
+		if(d->spel && d->sym && !strcmp(spel, d->spel))
+			return d->sym;
 	}
+
+	if(tab->parent)
+		return symtab_search(tab->parent, spel);
 
 	return NULL;
 }
