@@ -385,7 +385,23 @@ void gen_asm_global_var(decl *d)
 	if(d->init){
 		/* TODO: direct to .bss */
 		/* TODO: arrays */
-		asm_temp("%s d%c %d", d->spel, type_ch, d->init->val);
+		switch(d->init->type){
+			case expr_val:
+				asm_temp("%s d%c %d", d->spel, type_ch, d->init->val);
+				break;
+			case expr_cast:
+			case expr_addr:
+			case expr_sizeof:
+			case expr_str:
+			case expr_identifier:
+				/* TODO */
+				asm_temp("; TODO: init with %s", expr_to_str(d->init->type));
+				ICE("TODO: init with %s", expr_to_str(d->init->type));
+				break;
+
+			default:
+				ICE("unexpected global initaliser");
+		}
 
 	}else{
 		/* TODO: direct to .data */
