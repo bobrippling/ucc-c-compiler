@@ -510,17 +510,8 @@ next_decl:
 			if(!accept(token_semicolon))
 				d->func->code = parse_code();
 		}else{
-			if(accept(token_assign)){
-				expr *e = expr_new();
-
-				e->type = expr_assign;
-				e->lhs  = expr_new();
-				e->lhs->type = expr_identifier;
-				e->lhs->spel = d->spel;
-				e->rhs = parse_expr();
-
-				d->init = e;
-			}
+			if(accept(token_assign))
+				d->init = parse_expr();
 
 			if(accept(token_comma))
 				/* should probably not accept functions as part of next decl */

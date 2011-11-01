@@ -60,22 +60,39 @@ sym *symtab_add(symtable *tab, decl *d, enum sym_type t)
 	return new;
 }
 
-sym *symtab_search(symtable *tab, const char *spel)
+
+sym *symtab_search2(symtable *tab, const void *item, int (*cmp)(const void *, decl *))
 {
 	decl **diter;
 
-	fprintf(stderr, "symtab_search for %s\n", spel);
-
-	for(diter = tab->decls; diter && *diter; diter++){
-		decl *d = *diter;
-		if(d->spel && d->sym && !strcmp(spel, d->spel))
-			return d->sym;
-	}
+	for(diter = tab->decls; diter && *diter; diter++)
+		if(cmp(item, *diter))
+			return (*diter)->sym;
 
 	if(tab->parent)
-		return symtab_search(tab->parent, spel);
+		return symtab_search2(tab->parent, item, cmp);
 
 	return NULL;
+}
+
+int spel_cmp(const void *test, decl *item)
+{
+	return item->spel && item->sym && !strcmp(test, item->spel);
+}
+
+sym *symtab_search(symtable *tab, const char *spel)
+{
+	return symtab_search2(tab, spel, spel_cmp);
+}
+
+int decl_cmp(const void *test, decl *item)
+{
+	return (decl *)test == item;
+}
+
+sym *symtab_has(symtable *tab, decl *d)
+{
+	return symtab_search2(tab, d, decl_cmp);
 }
 
 const char *sym_to_str(enum sym_type t)
