@@ -11,27 +11,27 @@ FILE *stderr = &_stderr;
 
 
 /* Private */
-static printd_rec(int n)
+static printd_rec(int fd, int n)
 {
 	int d, m;
 	d = n / 10;
 	m = n % 10;
 	if(d)
-		printd_rec(d);
+		printd_rec(fd, d);
 	m = m + '0';
-	write(1, &m, 1);
+	write(fd, &m, 1);
 }
 
-static printd(int n)
+static printd(int fd, int n)
 {
 	if(n < 0){
 		int neg;
 		n = -n;
 		neg = '-';
-		write(1, &neg, 1);
+		write(fd, &neg, 1);
 	}
 
-	printd_rec(n);
+	printd_rec(fd, n);
 }
 
 /* Public */
@@ -45,15 +45,15 @@ vfprintf(FILE *file, const char *fmt, va_list ap)
 			fmt++;
 
 			if(*fmt == 's')
-				write(1, *(char **)ap, strlen(*(char **)ap));
+				write(fd, *(char **)ap, strlen(*(char **)ap));
 			else if(*fmt == 'c')
-				write(1, ap, 1);
+				write(fd, *(char *)ap, 1);
 			else if(*fmt == 'd')
-				printd(*(int *)ap);
+				printd(fd, *(int *)ap);
 
 			ap++;
 		}else{
-			write(1, fmt, 1);
+			write(fd, fmt, 1);
 		}
 		fmt++;
 	}
