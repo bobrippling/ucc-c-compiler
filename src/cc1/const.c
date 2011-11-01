@@ -73,7 +73,7 @@ int operate(expr *lhs, expr *rhs, enum op_type op, int *bad)
 			break;
 	}
 
-	DIE_ICE();
+	ICE("unhandled asm operate type");
 	return 0;
 }
 

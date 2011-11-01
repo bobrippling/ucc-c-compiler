@@ -78,6 +78,7 @@ type *type_new()
 {
 	type *t = umalloc(sizeof *t);
 	where_new(&t->where);
+	t->spec = spec_none;
 	return t;
 }
 

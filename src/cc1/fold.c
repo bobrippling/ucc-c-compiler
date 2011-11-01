@@ -45,16 +45,8 @@ void fold_expr(expr *e, symtable *stab)
 		e->tree_type = decl_copy(from); \
 	}while(0)
 
-	if(e->spel){
-		/* if it has a sym and isn't a global var */
-		if(e->sym && stab->parent){
-			warn_at(&e->where, "expression for \"%s\" already has a symbol (%s %s)",
-					e->spel, sym_to_str(e->sym->type), decl_to_str(e->sym->decl));
-			DIE_ICE();
-		}
-
+	if(e->spel && !e->sym)
 		e->sym = symtab_search(stab, e->spel);
-	}
 
 	const_fold(e);
 
@@ -155,7 +147,7 @@ void fold_expr(expr *e, symtable *stab)
 						break;
 					case assign_augmented:
 					case assign_normal:
-						DIE_ICE();
+						ICE("error in augmented assignment tree");
 				}
 
 				addition->lhs = e->expr;
@@ -251,6 +243,14 @@ void fold_expr(expr *e, symtable *stab)
 				warn_at(&e->where, "function \"%s\" undeclared, assuming return type int", e->spel);
 
 				e->sym = symtab_add(symtab_grandparent(stab), d, sym_func);
+
+				d->sym = NULL;
+				/*
+				 * fold() sets d->sym below,
+				 * and doesn't expect it to be set.
+				 * -> d is now part of the global sym table,
+				 * having just been added via grandparent()
+				 */
 			}
 
 			GET_TREE_TYPE(e->sym->decl); /* XXX: check */
@@ -263,19 +263,6 @@ void fold_decl(decl *d, symtable *stab)
 {
 	int i;
 
-	if(d->init){
-		if(!stab->parent)
-			/* global variable - never added anywhere, never gets a sym, give it one */
-			d->init->sym = symtab_add(stab, d, sym_global);
-
-		fold_expr(d->init, stab);
-
-		if(const_fold(d->init))
-			/* yes I know fold_expr does const_fold, but this is a decent way to check */
-			die_at(&d->init->where, "not a constant expression (initialiser is %s)",
-					expr_to_str(d->init->type));
-	}
-
 	if(d->type->primitive == type_void && !d->ptr_depth && !d->func)
 		die_at(&d->type->where, "can't have a void variable");
 
@@ -286,6 +273,24 @@ void fold_decl(decl *d, symtable *stab)
 			die_at(&d->arraysizes[i]->where, "not a constant expression");
 	}
 }
+
+void fold_decl_global(decl *d, symtable *stab)
+{
+	if(d->init){
+		if(d->type->spec & spec_extern)
+			die_at(&d->where, "externs can't be initalised");
+
+		fold_expr(d->init, stab);
+
+		if(const_fold(d->init))
+			/* yes I know fold_expr does const_fold, but this is a decent way to check */
+			die_at(&d->init->where, "not a constant expression (initialiser is %s)",
+					expr_to_str(d->init->type));
+	}
+
+	fold_decl(d, stab);
+}
+
 
 void fold_code(tree *t)
 {
@@ -432,36 +437,51 @@ void fold_func(decl *df, symtable *globsymtab)
 		decl **iter;
 		int found = 0;
 
-		for(iter = globsymtab->decls; iter && *iter; iter++)
-			if((*iter)->func){
-				function *f2 = (*iter)->func;
+		/* this is similar to the extern-ignore, but for overwriting function prototypes */
+		if((df->type->spec & spec_extern) == 0){
+			for(iter = globsymtab->decls; iter && *iter; iter++)
+				if((*iter)->func){
+					function *f2 = (*iter)->func;
 
-				if(f2->code && !strcmp((*iter)->spel, df->spel)){
-					found = 1;
-					break;
+					if(f2->code && !strcmp((*iter)->spel, df->spel)){
+						found = 1;
+						df->ignore = 1;
+						break;
+					}
 				}
-			}
 
-		if(!found){
-			df->type->spec |= spec_extern;
-			warn_at(&f->where, "assuming \"%s\" is extern", df->spel);
+			if(!found){
+				df->type->spec |= spec_extern;
+				warn_at(&f->where, "assuming \"%s\" is extern", df->spel);
+			}
 		}
 	}
 }
 
 void fold(symtable *globs)
 {
+#define D(x) globs->decls[x]
 	int i;
 
-	for(i = 0; globs->decls[i]; i++){
-#define d globs->decls[i]
+	for(i = 0; D(i); i++){
+		int j;
 
-		if(d->func){
-			fold_func(d, globs);
-		}else{
-			fold_decl(d, globs);
-		}
+		if(D(i)->sym)
+			ICE("%s: sym already set for global variable \"%s\"", where_str(&D(i)->where), D(i)->spel);
 
-#undef d
+		/* extern overwrite check */
+		if(D(i)->type->spec & spec_extern)
+			for(j = 0; D(j); j++)
+				if(j != i && D(j)->spel && !strcmp(D(j)->spel, D(i)->spel) && (D(j)->type->spec & spec_extern) == 0)
+					D(i)->ignore = 1;
+
+		D(i)->sym = sym_new(D(i), sym_global);
+
+		if(D(i)->func)
+			fold_func(D(i), globs);
+		else
+			fold_decl_global(D(i), globs);
+
+#undef D
 	}
 }

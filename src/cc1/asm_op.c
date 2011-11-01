@@ -60,7 +60,7 @@ static void asm_compare(expr *e, symtable *tab)
 			break;
 	}
 	if(!cmp)
-		DIE_ICE();
+		ICE("asm_compare: unhandled comparison");
 
 	asm_temp("set%s cl", cmp);
 	asm_temp("push rcx");
@@ -150,7 +150,7 @@ ptr:
 			return;
 
 		case op_unknown:
-			DIE_ICE();
+			ICE("asm_operate: unknown operator got through");
 	}
 
 	/* get here if op is *, +, - or ~ */

@@ -10,11 +10,12 @@
 #include "../util/alloc.h"
 #include "macros.h"
 
-sym *sym_new(decl *d)
+sym *sym_new(decl *d, enum sym_type t)
 {
 	sym *s = umalloc(sizeof *s);
 	s->decl = d;
 	d->sym  = s;
+	s->type = t;
 	return s;
 }
 
@@ -41,7 +42,7 @@ void symtab_nest(symtable *parent, symtable **brat)
 {
 	if(*brat){
 		if((*brat)->parent)
-			fprintf(stderr, "ICW: code symtable parent already set\n");
+			ICW("code symtable parent already set");
 		(*brat)->parent = parent;
 	}else{
 		*brat = symtab_child(parent);
@@ -52,8 +53,7 @@ sym *symtab_add(symtable *tab, decl *d, enum sym_type t)
 {
 	sym *new;
 
-	new = sym_new(d);
-	new->type = t;
+	new = sym_new(d, t);
 
 	dynarray_add((void ***)&tab->decls, d);
 

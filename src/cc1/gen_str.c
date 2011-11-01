@@ -61,6 +61,9 @@ void print_decl(decl *d, int idt, int nl)
 	if(idt)
 		idt_print();
 
+	if(d->ignore)
+		fprintf(cc1_out, "(ignored/overridden later) ");
+
 	print_type(d->type);
 	for(i = d->ptr_depth; i > 0; i--)
 		fputc('*', cc1_out);
@@ -287,10 +290,11 @@ void gen_str(symtable *symtab)
 			fprintf(cc1_out, "global variable: ");
 			print_decl(*diter, 0, 1);
 			if((*diter)->init){
+				indent++;
 				fprintf(cc1_out, "init:\n");
 				indent++;
 				print_expr((*diter)->init);
-				indent--;
+				indent -= 2;
 			}
 		}
 }
