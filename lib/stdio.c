@@ -36,9 +36,8 @@ static printd(int n)
 
 /* Public */
 
-int fprintf(FILE *file, const char *fmt, ...)
+vfprintf(FILE *file, const char *fmt, va_list ap)
 {
-	void *ap = &fmt + 1;
 	int fd = *file;
 
 	while(*fmt){
@@ -58,4 +57,14 @@ int fprintf(FILE *file, const char *fmt, ...)
 		}
 		fmt++;
 	}
+}
+
+fprintf(FILE *file, const char *fmt, ...)
+{
+	return vfprintf(file, fmt, &fmt + 1);
+}
+
+printf(const char *fmt, ...)
+{
+	return vfprintf(stdout, fmt, &fmt + 1);
 }
