@@ -3,6 +3,9 @@
 #define size_t int
 #define long int
 
+// This should be moved to stdarg.h
+#define va_list void *
+
 extern FILE *stdin, *stdout, *stderr;
 
 /*
