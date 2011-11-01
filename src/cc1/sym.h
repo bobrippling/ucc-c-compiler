@@ -31,6 +31,7 @@ symtable *symtab_grandparent(symtable *child);
 
 sym  *symtab_add(   symtable *, decl *, enum sym_type);
 sym  *symtab_search(symtable *, const char *);
+sym  *symtab_has(   symtable *, decl *);
 void  symtab_nest(symtable *parent, symtable **brat);
 
 const char *sym_to_str(enum sym_type);

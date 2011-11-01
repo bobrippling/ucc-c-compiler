@@ -65,6 +65,15 @@ decl *decl_new()
 	return d;
 }
 
+decl *decl_new_where(where *w)
+{
+	decl *d = decl_new();
+	memcpy(&d->where,       w, sizeof w);
+	memcpy(&d->type->where, w, sizeof w);
+	return d;
+}
+
+
 type *type_new()
 {
 	type *t = umalloc(sizeof *t);

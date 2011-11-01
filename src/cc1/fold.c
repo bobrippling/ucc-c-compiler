@@ -46,10 +46,14 @@ void fold_expr(expr *e, symtable *stab)
 	}while(0)
 
 	if(e->spel){
-		if(!e->sym)
-			e->sym = symtab_search(stab, e->spel);
-		else
-			warn_at(&e->where, "ICW: expression for \"%s\" already has a symbol\n", e->spel);
+		/* if it has a sym and isn't a global var */
+		if(e->sym && stab->parent){
+			warn_at(&e->where, "expression for \"%s\" already has a symbol (%s %s)",
+					e->spel, sym_to_str(e->sym->type), decl_to_str(e->sym->decl));
+			DIE_ICE();
+		}
+
+		e->sym = symtab_search(stab, e->spel);
 	}
 
 	const_fold(e);
@@ -217,7 +221,7 @@ void fold_expr(expr *e, symtable *stab)
 		case expr_str:
 		{
 			sym *sym;
-			sym = symtab_add(stab, decl_new(), sym_str);
+			sym = symtab_add(stab, decl_new_where(&e->where), sym_str);
 
 			sym->str_lbl = label_str();
 
@@ -237,15 +241,12 @@ void fold_expr(expr *e, symtable *stab)
 			}
 
 			if(!e->sym){
-				decl *d = decl_new();;
+				decl *d = decl_new_where(&e->where);
 
 				d->func = function_new();
 
 				d->type->primitive = type_int;
 				d->spel = e->spel;
-
-				memcpy(&d->where,       &e->where, sizeof e->where);
-				memcpy(&d->type->where, &e->where, sizeof e->where);
 
 				warn_at(&e->where, "function \"%s\" undeclared, assuming return type int", e->spel);
 
@@ -262,27 +263,17 @@ void fold_decl(decl *d, symtable *stab)
 {
 	int i;
 
-#if 0
-	/* if global extern... */
-	if(!stab->parent && d->type->type_spec & spec_extern){
-		/* check all other globs for an instantiation of this decl */
-		decl **iter;
-		for(iter = stab->decls; iter && *iter; iter++){
-			decl *dit = *iter;
-
-			if(dit->spel && !strcmp(dit->spel, d->spel)){
-				if(!(dit->type->type_spec & spec_extern))
-					;
-			}
-		}
-	}
-#endif
-
 	if(d->init){
+		if(!stab->parent)
+			/* global variable - never added anywhere, never gets a sym, give it one */
+			d->init->sym = symtab_add(stab, d, sym_global);
+
 		fold_expr(d->init, stab);
+
 		if(const_fold(d->init))
 			/* yes I know fold_expr does const_fold, but this is a decent way to check */
-			die_at(&d->init->where, "not a constant expression");
+			die_at(&d->init->where, "not a constant expression (initialiser is %s)",
+					expr_to_str(d->init->type));
 	}
 
 	if(d->type->primitive == type_void && !d->ptr_depth && !d->func)
@@ -460,37 +451,17 @@ void fold_func(decl *df, symtable *globsymtab)
 
 void fold(symtable *globs)
 {
-	decl **iter;
+	int i;
 
-	/* extern removal */
-	for(iter = globs->decls; iter && *iter; iter++){
-		decl *d = *iter;
-
-		if(d->type->spec & spec_extern){
-			decl **iter2;
-
-			for(iter2 = globs->decls; iter2 && *iter2; iter2++){
-				decl *d2 = *iter2;
-				if(!strcmp(d2->spel, d->spel) && (d2->type->spec & spec_extern) == 0){
-					fprintf(stderr, "overriding extern \"%s\"\n", d->spel);
-					d->ignore = 1;
-					break;
-				}
-			}
-		}
-	}
-
-	for(iter = globs->decls; iter && *iter; iter++){
-		decl *d = *iter;
-
-		if(d->ignore)
-			continue;
+	for(i = 0; globs->decls[i]; i++){
+#define d globs->decls[i]
 
 		if(d->func){
-			fold_func(*iter, globs);
+			fold_func(d, globs);
 		}else{
-			fprintf(stderr, "fold_decl(\"%s\")\n", d->spel);
-			fold_decl(*iter, globs);
+			fold_decl(d, globs);
 		}
+
+#undef d
 	}
 }

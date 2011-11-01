@@ -85,9 +85,9 @@ int const_fold(expr *e)
 		case expr_sizeof:
 		case expr_cast:
 		case expr_str:
+		case expr_addr:
 			return 0;
 
-		case expr_addr:
 		case expr_assign:
 		case expr_funcall: /* could extend to have int x() const; */
 			return 1;

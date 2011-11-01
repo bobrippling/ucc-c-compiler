@@ -57,7 +57,6 @@ struct decl
 
 	function *func;
 
-	int ignore; /* ignore during code-gen, due to extern and prototypes being overwritten, etc */
 	sym *sym;
 };
 
@@ -181,6 +180,7 @@ tree      *tree_new();
 expr      *expr_new();
 type      *type_new();
 decl      *decl_new();
+decl      *decl_new_where(where *);
 function  *function_new();
 
 type      *type_copy(type *);
