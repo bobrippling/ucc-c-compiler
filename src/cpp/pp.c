@@ -4,6 +4,8 @@
 #include <string.h>
 #include <stdarg.h>
 #include <errno.h>
+/* dirname */
+#include <libgen.h>
 
 #include "pp.h"
 #include "../util/util.h"
@@ -233,24 +235,38 @@ static int pp(struct pp *p, int skip)
 						ppdie(p, "no terminating '%c' for include \"%s\"\n", incchar, line);
 
 					found = 0;
+
 					/* FIXME: switch on incchar */
-					for(i = 0; i < ndirs; i++){
-						path = strdup_printf("%s/%s", dirs[i], base);
 
-						inc = fopen(path, "r");
+					if(incchar == '<'){
+						for(i = 0; i < ndirs; i++){
+							path = strdup_printf("%s/%s", dirs[i], base);
 
-						if(inc){
-							if(pp_verbose)
-								fprintf(stderr, "including %s\n", path);
-							found = 1;
-							pp2.fname = path;
-							break;
+							inc = fopen(path, "r");
+
+							if(inc){
+								found = 1;
+								break;
+							}
+
+							free(path);
 						}
-						free(path);
+
+						if(!found)
+							ppdie(p, "can't find include file \"%s\"\n", base);
+
+					}else{
+						char *dname = strdup_printf("./%s", p->fname);
+						dirname(dname);
+						path = strdup_printf("%s/%s", dname, base);
+						inc = fopen(path, "r");
+						if(!inc)
+							ppdie(p, "can't open \"%s\": %s", path, strerror(errno));
 					}
 
-					if(!found)
-						ppdie(p, "can't find include file \"%s\"\n", base);
+					if(pp_verbose)
+						fprintf(stderr, "including %s\n", path);
+					pp2.fname = path;
 
 					pp2.in  = inc;
 					pp2.out = p->out;
