@@ -13,7 +13,7 @@
 #include "sym.h"
 
 #define NEED_TYPE_YES 1
-#define NEED_TYPE_NO  1
+#define NEED_TYPE_NO  0
 
 /*
  * order goes:
@@ -447,8 +447,6 @@ type *parse_type(int can_default)
 {
 	type *t = type_new();
 
-	t->spec = spec_none;
-
 	while(curtok_is_type_specifier()){
 		const enum type_spec spec = curtok_to_type_specifier();
 
@@ -472,7 +470,7 @@ type *parse_type(int can_default)
 	return t;
 }
 
-decl **parse_decls(int need_type)
+decl **parse_decls(const int need_type)
 {
 	decl **ret = NULL;
 

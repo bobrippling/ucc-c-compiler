@@ -30,7 +30,7 @@ void asm_ax_to_store(expr *store, symtable *stab)
 		asm_temp("pop rbx ; val");
 		asm_temp("mov [rax], rbx");
 	}else{
-		DIE_ICE();
+		ICE("asm_ax_to_store: invalid store expression");
 	}
 }
 
@@ -359,20 +359,59 @@ void gen_asm_func(decl *d)
 
 void gen_asm_global_var(decl *d)
 {
-	/* MASSIVE TODO */
-	if(d->init){
-		asm_temp("%s dq %d ; TODO", d->spel, d->init->val);
+	int type_ch;
+
+	if(d->ptr_depth){
+		type_ch = 'q';
 	}else{
-		asm_temp("%s resq 1 ; TODO", d->spel);
+		switch(d->type->primitive){
+			case type_int:
+				type_ch = 'w'; /* or q */
+				break;
+
+			case type_char:
+				type_ch = 'b';
+				break;
+
+			case type_void:
+				ICE("type primitive is void");
+
+			case type_unknown:
+			default:
+				ICE("type primitive not set");
+		}
+	}
+
+	if(d->init){
+		/* TODO: direct to .bss */
+		/* TODO: arrays */
+		asm_temp("%s d%c %d", d->spel, type_ch, d->init->val);
+
+	}else{
+		/* TODO: direct to .data */
+		int arraylen = 1;
+		int i;
+
+		for(i = 0; d->arraysizes && d->arraysizes[i]; i++)
+			arraylen = (i + 1) * d->arraysizes[i]->val.i;
+		/* TODO: check that i+1 is correct for the order here */
+
+		asm_temp("%s res%c %d", d->spel, type_ch, arraylen);
 	}
 }
 
 void gen_asm(symtable *globs)
 {
 	decl **diter;
-	for(diter = globs->decls; diter && *diter; diter++)
-		if((*diter)->func)
-			gen_asm_func(*diter);
+	for(diter = globs->decls; diter && *diter; diter++){
+		decl *d = *diter;
+
+		if(d->ignore)
+			continue;
+
+		if(d->func)
+			gen_asm_func(d);
 		else
-			gen_asm_global_var(*diter);
+			gen_asm_global_var(d);
+	}
 }

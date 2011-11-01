@@ -37,13 +37,17 @@ void asm_sym(enum asm_sym_type t, sym *s, const char *reg)
 	switch(s->type){
 		case sym_auto:
 		case sym_arg:
+		case sym_global:
 		{
 			int is_auto = s->type == sym_auto;
 			char brackets[16];
 
-			snprintf(brackets, sizeof brackets, "[rbp %c %d]",
-					is_auto ? '-' : '+',
-					((is_auto ? 1 : 2) * platform_word_size()) + s->offset);
+			if(s->type == sym_global)
+				snprintf(brackets, sizeof brackets, "[%s]", s->decl->spel);
+			else
+				snprintf(brackets, sizeof brackets, "[rbp %c %d]",
+						is_auto ? '-' : '+',
+						((is_auto ? 1 : 2) * platform_word_size()) + s->offset);
 
 			asm_temp("%s %s, %s ; %s%s",
 					t == ASM_LEA ? "lea"    : "mov",
@@ -56,13 +60,9 @@ void asm_sym(enum asm_sym_type t, sym *s, const char *reg)
 			break;
 		}
 
-		case sym_global:
-			fprintf(stderr, "TODO: sym_global command on %s\n", s->decl->spel);
-			break;
-
 		case sym_str:
 		case sym_func:
-			DIE_ICE();
+			ICE("asm_sym: can't handle str nor func");
 	}
 }
 

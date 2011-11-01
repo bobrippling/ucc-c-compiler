@@ -15,6 +15,9 @@ void die_ice(const char *, int);
 char *fline(FILE *f);
 void dynarray_add(void ***, void *);
 
-#define DIE_ICE() die_ice(__FILE__, __LINE__)
+void ice(const char *f, int line, const char *fmt, ...);
+void icw(const char *f, int line, const char *fmt, ...);
+#define ICE(...) ice(__FILE__, __LINE__, __VA_ARGS__)
+#define ICW(...) icw(__FILE__, __LINE__, __VA_ARGS__)
 
 #endif

@@ -70,10 +70,22 @@ void die(const char *fmt, ...)
 	/* unreachable */
 }
 
-void die_ice(const char *fnam, int lin)
+#define ICE_STR(s)  \
+	va_list l; \
+	fprintf(stderr, s " @ %s:%d: ", f, line); \
+	va_start(l, fmt); \
+	vfprintf(stderr, fmt, l); \
+	fputc('\n', stderr)
+
+void ice(const char *f, int line, const char *fmt, ...)
 {
-	fprintf(stderr, "ICE @ %s:%d\n", fnam, lin);
+	ICE_STR("ICE");
 	exit(2);
+}
+
+void icw(const char *f, int line, const char *fmt, ...)
+{
+	ICE_STR("ICW");
 }
 
 char *fline(FILE *f)
