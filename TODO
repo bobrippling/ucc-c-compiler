@@ -1,11 +1,7 @@
 Ordered By Priority
 -------------------
 
-cpp - #include is relative to the file's directory, not $PWD
-
 dprintf
-
-fix "extern int i; int i;" internal compiler warning
 
 fix 3 - 2 - 1 parsing
 
