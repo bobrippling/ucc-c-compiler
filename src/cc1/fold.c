@@ -43,6 +43,7 @@ void fold_expr(expr *e, symtable *stab)
 		if(e->tree_type) \
 			decl_free(e->tree_type); \
 		e->tree_type = decl_copy(from); \
+		e->tree_type->spel = NULL; \
 	}while(0)
 
 	if(e->spel && !e->sym)
