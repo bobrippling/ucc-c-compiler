@@ -202,6 +202,7 @@ const char *assign_to_str(enum assign_type);
 
 int   decl_size(decl *);
 expr *expr_ptr_multiply(expr *, decl *);
+expr *expr_assignment(expr *to, expr *from);
 
 #define type_free(x) free(x)
 #define decl_free(x) do{type_free((x)->type); free(x);}while(0)

@@ -288,14 +288,7 @@ expr *parse_expr_assign()
 	e = parse_expr_logical_op();
 
 	if(accept(token_assign)){
-		expr *ass = expr_new();
-
-		ass->type = expr_assign;
-
-		ass->lhs = e;
-		ass->rhs = parse_expr();
-
-		e = ass;
+		e = expr_assignment(e, parse_expr());
 	}else if(curtok_is_augmented_assignment()){
 		/* +=, ... */
 		expr *ass = expr_new();
@@ -537,7 +530,14 @@ tree *parse_code_declblock()
 
 	for(diter = t->decls; diter && *diter; diter++)
 		if((*diter)->init){
-			dynarray_add((void ***)&t->codes, expr_to_tree((*diter)->init));
+			expr *sym = expr_new();
+
+			sym = expr_new();
+			sym->type = expr_identifier;
+			sym->spel = (*diter)->spel;
+
+			dynarray_add((void ***)&t->codes, expr_to_tree(expr_assignment(sym, (*diter)->init)));
+
 			(*diter)->init = NULL; /* we are a code block, not global, this is fine */
 		}
 
