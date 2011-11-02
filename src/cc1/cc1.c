@@ -45,7 +45,7 @@ int main(int argc, char **argv)
 			if(strcmp(argv[i], "-")){
 				cc1_out = fopen(argv[i], "w");
 				if(!cc1_out){
-					fprintf(stderr, "open %s: %s\n", argv[i], strerror(errno));
+					die("open %s:", argv[i]);
 					return 1;
 				}
 			}

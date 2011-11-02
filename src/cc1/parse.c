@@ -652,8 +652,14 @@ decl *parse_decl(type *type, enum decl_spel need_spel)
 symtable *parse()
 {
 	symtable *globals = symtab_new();
+	decl **decls = parse_decls(NEED_TYPE_NO);
+	int i;
 
-	globals->decls = parse_decls(NEED_TYPE_NO);
+	for(i = 0; decls[i]; i++){
+		symtab_add(globals, decls[i], sym_global);
+		sym_free(decls[i]->sym);
+		decls[i]->sym = NULL; /* fold links up */
+	}
 
 	EAT(token_eof);
 
