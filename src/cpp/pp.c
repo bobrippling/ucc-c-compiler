@@ -6,6 +6,8 @@
 #include <errno.h>
 /* dirname */
 #include <libgen.h>
+/* chdir */
+#include <unistd.h>
 
 #include "pp.h"
 #include "../util/util.h"
@@ -162,6 +164,12 @@ static void freedefs()
 static int pp(struct pp *p, int skip)
 {
 	char *line, *nl;
+	char *wd;
+
+	/* make sure everything is relative to the file */
+	wd = udirname(p->fname);
+	if(chdir(wd))
+		ppdie(p, "chdir(\"%s\"): %s", wd, strerror(errno));
 
 	do{
 		line = fline(p->in);
@@ -172,7 +180,7 @@ static int pp(struct pp *p, int skip)
 				/* normal exit here */
 				return PROC_EOF;
 
-			ppdie(p, "read(): %s\n", strerror(errno));
+			ppdie(p, "read(): %s", strerror(errno));
 		}
 
 		if((nl = strchr(line, '\n')))
@@ -221,7 +229,7 @@ static int pp(struct pp *p, int skip)
 							break;
 
 						default:
-							ppdie(p, "invalid include char %c\n", *base);
+							ppdie(p, "invalid include char %c", *base);
 					}
 
 					for(path = ++base; *path; path++)
@@ -232,7 +240,7 @@ static int pp(struct pp *p, int skip)
 						}
 
 					if(!found)
-						ppdie(p, "no terminating '%c' for include \"%s\"\n", incchar, line);
+						ppdie(p, "no terminating '%c' for include \"%s\"", incchar, line);
 
 					found = 0;
 
@@ -253,12 +261,10 @@ static int pp(struct pp *p, int skip)
 						}
 
 						if(!found)
-							ppdie(p, "can't find include file \"%s\"\n", base);
+							ppdie(p, "can't find include file \"%s\"", base);
 
 					}else{
-						char *dname = strdup_printf("./%s", p->fname);
-						dirname(dname);
-						path = strdup_printf("%s/%s", dname, base);
+						path = ustrdup(base);
 						inc = fopen(path, "r");
 						if(!inc)
 							ppdie(p, "can't open \"%s\": %s", path, strerror(errno));
@@ -278,7 +284,7 @@ static int pp(struct pp *p, int skip)
 						case PROC_ELSE:
 						case PROC_ENDIF:
 						case PROC_ERR:
-							ppdie(p, "eof expected from including \"%s\"\n", pp2.fname);
+							ppdie(p, "eof expected from including \"%s\"", pp2.fname);
 					}
 
 					if(pp_verbose)
@@ -316,12 +322,12 @@ static int pp(struct pp *p, int skip)
 					case PROC_ELSE:
 						ret = pp(gotdef ? &arg : p, skip || gotdef);
 						if(ret != PROC_ENDIF)
-							ppdie(p, "endif expected\n");
+							ppdie(p, "endif expected");
 					case PROC_ENDIF:
 						break;
 
 					case PROC_EOF:
-						ppdie(p, "eof unexpected\n");
+						ppdie(p, "eof unexpected");
 				}
 			}else if(!strcmp(argv[0], "else")){
 				if(argc != 1)
@@ -336,7 +342,7 @@ static int pp(struct pp *p, int skip)
 				free(line);
 				return PROC_ENDIF;
 			}else{
-				ppdie(p, "\"%s\" unexpected\n", line);
+				ppdie(p, "\"%s\" unexpected", line);
 			}
 		}else{
 			substitutedef(p, &line);
