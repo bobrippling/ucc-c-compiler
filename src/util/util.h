@@ -14,6 +14,7 @@ void die(const char *fmt, ...);
 void die_ice(const char *, int);
 char *fline(FILE *f);
 void dynarray_add(void ***, void *);
+char *udirname(const char *);
 
 void ice(const char *f, int line, const char *fmt, ...);
 void icw(const char *f, int line, const char *fmt, ...);

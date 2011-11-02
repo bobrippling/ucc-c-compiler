@@ -66,7 +66,7 @@ void die(const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
-	vdie(NULL, l, fmt);
+	vdie(NULL, l, fmt); /* FIXME: this is called before current_fname etc is init'd */
 	/* unreachable */
 }
 
@@ -141,4 +141,19 @@ void dynarray_add(void ***par, void *new)
 	ar[idx+1] = NULL;
 
 	*par = ar;
+}
+
+char *udirname(const char *f)
+{
+	const char *fin;
+
+	fin = strrchr(f, '/');
+
+	if(fin){
+		char *dup = ustrdup(f);
+		dup[fin - f] = '\0';
+		return dup;
+	}else{
+		return ustrdup("./");
+	}
 }
