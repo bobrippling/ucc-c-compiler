@@ -1,6 +1,8 @@
 Ordered By Priority
 -------------------
 
+duplicate symbol check: "int x; x(){}"
+
 dprintf
 
 fix 3 - 2 - 1 parsing
