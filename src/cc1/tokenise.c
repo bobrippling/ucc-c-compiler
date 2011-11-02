@@ -200,7 +200,7 @@ int readnumber(char c)
 			}while(1);
 
 			if(charsread < 1){
-				fputs("need proper hex number!\n", stderr);
+				warn_at(NULL, "need proper hex number!");
 				curtok = token_unknown;
 				return 1;
 			}
@@ -275,9 +275,6 @@ void nexttoken()
 			/* cv = n * 10 ^ cv */
 		}
 
-#if token_read_debug
-		printf(DEBUG_WORD"found integer: %d\n", currentval);
-#endif
 		curtok = token_integer;
 		return;
 	}
@@ -371,7 +368,7 @@ void nexttoken()
 			c = rawnextchar();
 			switch(c){
 				case EOF:
-					fputs("Invalid character\n", stderr);
+					warn_at(NULL, "Invalid character");
 					curtok = token_unknown;
 					return;
 
@@ -383,7 +380,7 @@ void nexttoken()
 					c = escapechar((save = nextchar()));
 
 					if(!c){
-						fprintf(stderr, "Warning: Ignoring escape character before '%c'\n", save);
+						warn_at(NULL, "Warning: Ignoring escape character before '%c'", save);
 						c = save;
 					}
 					break;

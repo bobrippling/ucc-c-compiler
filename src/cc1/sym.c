@@ -19,6 +19,12 @@ sym *sym_new(decl *d, enum sym_type t)
 	return s;
 }
 
+void sym_free(sym *s)
+{
+	type_free(s->str_lbl);
+	free(s);
+}
+
 symtable *symtab_new()
 {
 	symtable *p = umalloc(sizeof *p);
@@ -49,19 +55,7 @@ void symtab_nest(symtable *parent, symtable **brat)
 	}
 }
 
-sym *symtab_add(symtable *tab, decl *d, enum sym_type t)
-{
-	sym *new;
-
-	new = sym_new(d, t);
-
-	dynarray_add((void ***)&tab->decls, d);
-
-	return new;
-}
-
-
-sym *symtab_search2(symtable *tab, const void *item, int (*cmp)(const void *, decl *))
+sym *symtab_search2(symtable *tab, const void *item, int (*cmp)(const void *, decl *), int descend)
 {
 	decl **diter;
 
@@ -69,8 +63,8 @@ sym *symtab_search2(symtable *tab, const void *item, int (*cmp)(const void *, de
 		if(cmp(item, *diter))
 			return (*diter)->sym;
 
-	if(tab->parent)
-		return symtab_search2(tab->parent, item, cmp);
+	if(tab->parent && descend)
+		return symtab_search2(tab->parent, item, cmp, descend);
 
 	return NULL;
 }
@@ -82,7 +76,7 @@ int spel_cmp(const void *test, decl *item)
 
 sym *symtab_search(symtable *tab, const char *spel)
 {
-	return symtab_search2(tab, spel, spel_cmp);
+	return symtab_search2(tab, spel, spel_cmp, 1);
 }
 
 int decl_cmp(const void *test, decl *item)
@@ -92,7 +86,24 @@ int decl_cmp(const void *test, decl *item)
 
 sym *symtab_has(symtable *tab, decl *d)
 {
-	return symtab_search2(tab, d, decl_cmp);
+	return symtab_search2(tab, d, decl_cmp, 1);
+}
+
+sym *symtab_add(symtable *tab, decl *d, enum sym_type t)
+{
+	sym *new;
+
+	if((new = symtab_search2(tab, d, spel_cmp, 0)))
+		die_at(&d->where, "\"%s\" already declared%s%s",
+				d->spel,
+				new->decl ? " at " : "",
+				new->decl ? where_str(&new->decl->where) : "");
+
+	new = sym_new(d, t);
+
+	dynarray_add((void ***)&tab->decls, d);
+
+	return new;
 }
 
 const char *sym_to_str(enum sym_type t)

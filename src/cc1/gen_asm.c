@@ -366,7 +366,7 @@ void gen_asm_global_var(decl *d)
 	}else{
 		switch(d->type->primitive){
 			case type_int:
-				type_ch = 'w'; /* or q */
+				type_ch = 'q';
 				break;
 
 			case type_char:
@@ -389,8 +389,12 @@ void gen_asm_global_var(decl *d)
 			case expr_val:
 				asm_temp("%s d%c %d", d->spel, type_ch, d->init->val);
 				break;
-			case expr_cast:
+
 			case expr_addr:
+				asm_temp("%s equ %s", d->spel, d->init->spel);
+				break;
+
+			case expr_cast:
 			case expr_sizeof:
 			case expr_str:
 			case expr_identifier:
