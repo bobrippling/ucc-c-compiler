@@ -204,6 +204,8 @@ void fold_expr(expr *e, symtable *stab)
 								e->rhs = expr_ptr_multiply(e->rhs, e->lhs->tree_type);
 							else
 								e->lhs = expr_ptr_multiply(e->lhs, e->rhs->tree_type);
+
+							/* TODO: const_fold again */
 						}
 					default:
 						break;

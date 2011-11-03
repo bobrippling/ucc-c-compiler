@@ -44,7 +44,7 @@ decl  *parse_decl(type *type, enum decl_spel need_spel);
 type  *parse_type(int can_default);
 
 expr *parse_expr_binary_op(void); /* needed to limit [+-] parsing */
-expr *parse_expr_logical_op(void);
+expr *parse_expr_array(void);
 
 
 expr *parse_expr_unary_op()
@@ -92,7 +92,7 @@ expr *parse_expr_unary_op()
 				e->lhs->tree_type = parse_decl(NULL, SPEL_NONE);
 
 				EAT(token_close_paren);
-				e->rhs = parse_expr_logical_op(); /* the parse level just below assign */
+				e->rhs = parse_expr_array(); /* grab only the closest */
 			}else{
 				e = parse_expr();
 				EAT(token_close_paren);
