@@ -7,6 +7,11 @@ check parsing of "(void *)&x + 2" - (void *) should only apply to "&x"
 
 duplicate symbol check: "int x; x(){}"
 
+void f();
+f(2); // valid
+void g(void);
+g(2); // invalid
+
 dprintf
 
 fix 3 - 2 - 1 parsing
