@@ -329,7 +329,8 @@ void nexttoken()
 	switch(c){
 		case '"':
 		{
-			/* read in the string - TODO: "hi" "there" */
+			/* TODO: "hi" "there" tokenising */
+			/* TODO: read in "hello\\" - parse string char by char, rather than guessing and escaping later */
 			int size;
 			char *end = strchr(bufferpos, '"'), *const start = bufferpos;
 
