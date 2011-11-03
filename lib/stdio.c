@@ -1,5 +1,6 @@
 #include "unistd.h"
 #include "stdio.h"
+#include "string.h"
 
 static int _stdin  = 0;
 static int _stdout = 1;
@@ -11,7 +12,7 @@ FILE *stderr = &_stderr;
 
 
 /* Private */
-static printd_rec(int fd, int n)
+static void printd_rec(int fd, int n)
 {
 	int d, m;
 	d = n / 10;
@@ -22,7 +23,7 @@ static printd_rec(int fd, int n)
 	write(fd, &m, 1);
 }
 
-static printd(int fd, int n)
+static void printd(int fd, int n)
 {
 	if(n < 0){
 		int neg;
@@ -36,7 +37,7 @@ static printd(int fd, int n)
 
 /* Public */
 
-vfprintf(FILE *file, const char *fmt, va_list ap)
+int vfprintf(FILE *file, const char *fmt, va_list ap)
 {
 	int fd = *file;
 
@@ -59,12 +60,12 @@ vfprintf(FILE *file, const char *fmt, va_list ap)
 	}
 }
 
-fprintf(FILE *file, const char *fmt, ...)
+int fprintf(FILE *file, const char *fmt, ...)
 {
 	return vfprintf(file, fmt, &fmt + 1);
 }
 
-printf(const char *fmt, ...)
+int printf(const char *fmt, ...)
 {
 	return vfprintf(stdout, fmt, &fmt + 1);
 }

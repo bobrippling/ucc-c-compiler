@@ -1,1 +1,1 @@
-int strlen(char *);
+int strlen(const char *);
