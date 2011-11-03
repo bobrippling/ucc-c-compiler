@@ -25,7 +25,8 @@
  * parse_expr_cmp_op     above [><==!=] above
  * parse_expr_logical_op above [&&||]   above
  */
-#define parse_expr() parse_expr_if()
+#define parse_expr() parse_expr_comma()
+#define parse_expr_funcallarg() parse_expr_assign()
 expr *parse_expr();
 #define accept(tok) ((tok) == curtok ? (EAT(tok), 1) : 0)
 
@@ -175,9 +176,8 @@ expr *parse_expr_unary_op()
 			return e;
 
 		default:
-			break;
+			die_at(NULL, "expected: unary expression, got %s", token_to_str(curtok));
 	}
-	die_at(NULL, "expected: unary expression, got %s", token_to_str(curtok));
 	return NULL;
 }
 
@@ -288,7 +288,7 @@ expr *parse_expr_assign()
 	e = parse_expr_logical_op();
 
 	if(accept(token_assign)){
-		e = expr_assignment(e, parse_expr());
+		e = expr_assignment(e, parse_expr_assign());
 	}else if(curtok_is_augmented_assignment()){
 		/* +=, ... */
 		expr *ass = expr_new();
@@ -308,6 +308,23 @@ expr *parse_expr_assign()
 
 	return e;
 }
+
+expr *parse_expr_comma()
+{
+	expr *e;
+
+	e = parse_expr_assign();
+
+	if(accept(token_comma)){
+		expr *ret = expr_new();
+		ret->type = expr_comma;
+		ret->lhs = e;
+		ret->rhs = parse_expr_comma();
+		return ret;
+	}
+	return e;
+}
+
 
 expr *parse_expr_if()
 {
@@ -356,7 +373,7 @@ expr **parse_funcargs()
 	expr **args = NULL;
 
 	while(curtok != token_close_paren){
-		dynarray_add((void ***)&args, parse_expr());
+		dynarray_add((void ***)&args, parse_expr_funcallarg());
 
 		if(curtok == token_close_paren)
 			break;

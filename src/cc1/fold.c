@@ -57,6 +57,12 @@ void fold_expr(expr *e, symtable *stab)
 			e->tree_type->type->primitive = type_int;
 			break;
 
+		case expr_comma:
+			fold_expr(e->lhs, stab);
+			fold_expr(e->rhs, stab);
+			GET_TREE_TYPE(e->rhs->tree_type);
+			break;
+
 		case expr_if:
 			fold_expr(e->expr, stab);
 			if(e->lhs)
@@ -298,8 +304,8 @@ void fold_decl_global(decl *d, symtable *stab)
 void fold_code(tree *t)
 {
 	switch(t->type){
-		default:
-			fprintf(stderr, "fold TODO with %s\n", stat_to_str(t->type));
+		case stat_break:
+			ICE("stat_break not coded yet");
 			break;
 
 		case stat_while:

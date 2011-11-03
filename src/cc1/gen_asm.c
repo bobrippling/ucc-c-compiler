@@ -39,6 +39,13 @@ void walk_expr(expr *e, symtable *stab)
 	switch(e->type){
 		case expr_cast:
 			/* ignore the lhs, it's just a type spec */
+			/* FIXME: size changing? */
+			walk_expr(e->rhs, stab);
+			break;
+
+		case expr_comma:
+			walk_expr(e->lhs, stab);
+			asm_temp("pop rax ; unused comma expr");
 			walk_expr(e->rhs, stab);
 			break;
 
@@ -161,6 +168,10 @@ void walk_expr(expr *e, symtable *stab)
 void walk_tree(tree *t)
 {
 	switch(t->type){
+		case stat_break:
+			ICE("no break code yet");
+			break;
+
 		case stat_if:
 		{
 			char *lbl_else = label_code("else");
@@ -256,10 +267,6 @@ void walk_tree(tree *t)
 			walk_expr(t->expr, t->symtab);
 			asm_temp("pop rax");
 			asm_temp("jmp %s", curfunc_lblfin);
-			break;
-
-		default:
-			fprintf(stderr, "\x1b[1;31mwalk_tree: TODO %s\x1b[m\n", stat_to_str(t->type));
 			break;
 
 		case stat_expr:
