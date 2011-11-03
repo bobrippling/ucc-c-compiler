@@ -167,6 +167,8 @@ void walk_expr(expr *e, symtable *stab)
 
 void walk_tree(tree *t)
 {
+	asm_nl();
+
 	switch(t->type){
 		case stat_break:
 			ICE("no break code yet");

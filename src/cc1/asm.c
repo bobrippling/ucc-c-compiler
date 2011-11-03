@@ -127,3 +127,8 @@ void asm_temp(const char *fmt, ...)
 	va_end(l);
 	fputc('\n', cc1_out);
 }
+
+void asm_nl(void)
+{
+	fputc('\n', cc1_out);
+}
