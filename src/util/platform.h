@@ -7,8 +7,8 @@ enum platform
 	PLATFORM_64
 };
 
-enum platform platform_type();
+enum platform platform_type(void);
 
-int platform_word_size();
+int platform_word_size(void);
 
 #endif

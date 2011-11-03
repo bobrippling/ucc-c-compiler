@@ -74,6 +74,6 @@ enum token
 };
 
 void tokenise_set_file(FILE *f, const char *nam);
-void nexttoken();
+void nexttoken(void);
 
 #endif
