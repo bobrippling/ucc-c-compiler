@@ -106,14 +106,20 @@ function *function_new()
 
 expr *expr_ptr_multiply(expr *e, decl *d)
 {
-	expr *ret = expr_new();
+	int sz = decl_size(d);
+	expr *ret;
+
+	if(sz == 1)
+		return e;
+
+	ret = expr_new();
 	memcpy(&ret->where, &e->where, sizeof e->where);
 
 	ret->type = expr_op;
 	ret->op   = op_multiply;
 
 	ret->lhs  = e;
-	ret->rhs  = expr_new_val(decl_size(d));
+	ret->rhs  = expr_new_val(sz);
 
 	return ret;
 }
@@ -132,8 +138,12 @@ expr *expr_assignment(expr *to, expr *from)
 
 int decl_size(decl *d)
 {
-	if(d->ptr_depth)
+	if(d->ptr_depth){
+		if(d->type->primitive == type_void)
+			return 1;
 		return platform_word_size();
+	}
+
 	switch(d->type->primitive){
 		case type_char:
 			return 1;
