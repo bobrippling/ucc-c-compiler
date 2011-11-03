@@ -56,11 +56,8 @@ static void asm_compare(expr *e, symtable *tab)
 		case op_gt: cmp = "g";  break;
 
 		default:
-			cmp = NULL;
-			break;
+			ICE("asm_compare: unhandled comparison");
 	}
-	if(!cmp)
-		ICE("asm_compare: unhandled comparison");
 
 	asm_temp("set%s cl", cmp);
 	asm_temp("push rcx");

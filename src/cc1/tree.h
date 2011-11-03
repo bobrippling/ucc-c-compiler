@@ -77,6 +77,7 @@ struct expr
 		expr_funcall,
 		expr_cast,
 		expr_if,
+		expr_comma,
 	} type;
 
 	enum op_type

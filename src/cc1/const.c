@@ -88,6 +88,9 @@ int const_fold(expr *e)
 		case expr_addr:
 			return 0;
 
+		case expr_comma:
+			return !const_fold(e->lhs) && !const_fold(e->rhs);
+
 		case expr_assign:
 		case expr_funcall: /* could extend to have int x() const; */
 			return 1;

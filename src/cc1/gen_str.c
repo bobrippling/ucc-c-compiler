@@ -98,6 +98,18 @@ void print_expr(expr *e)
 	idt_printf("e->type: %s\n", expr_to_str(e->type));
 
 	switch(e->type){
+		case expr_comma:
+			idt_printf("comma expression\n");
+			idt_printf("comma lhs:\n");
+			indent++;
+			print_expr(e->lhs);
+			indent--;
+			idt_printf("comma rhs:\n");
+			indent++;
+			print_expr(e->rhs);
+			indent--;
+			break;
+
 		case expr_identifier:
 			idt_printf("identifier: \"%s\"\n", e->spel);
 			break;
@@ -200,10 +212,6 @@ void print_expr(expr *e)
 
 			SUB_PRINT(rhs);
 #undef SUB_PRINT
-			break;
-
-		default:
-			idt_printf("\x1b[1;31m%s not handled!\x1b[m\n", expr_to_str(e->type));
 			break;
 	}
 }
