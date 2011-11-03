@@ -28,6 +28,7 @@ void asm_new(enum asm_type, void *);
 void asm_temp(const char *, ...);
 void asm_label(const char *);
 void asm_sym(enum asm_sym_type, sym *, const char *);
+void asm_nl(void);
 
 void asm_declare_str(const char *lbl, const char *str, int len);
 
