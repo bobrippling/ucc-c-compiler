@@ -1,6 +1,10 @@
 Ordered By Priority
 -------------------
 
+variadic functions - function args are being overwritten
+
+check parsing of "(void *)&x + 2" - (void *) should only apply to "&x"
+
 duplicate symbol check: "int x; x(){}"
 
 dprintf
