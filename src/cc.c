@@ -31,6 +31,7 @@ struct
 enum mode mode;
 int debug = 0;
 const char *backend = "";
+char *argv0;
 
 char where[1024];
 char  f_e[32]; /* "/tmp/ucc_$$.s"; */
@@ -66,6 +67,34 @@ void unlink_files()
 int gen(const char *input, const char *output)
 {
 	char cmd[256];
+	enum mode start_mode;
+	int i;
+
+	start_mode = MODE_PREPROCESS;
+
+	i = strlen(input);
+	if(i >= 3){
+		if(input[i - 2] == '.'){
+			switch(input[i - 1]){
+
+#define CHAR_MAP(c, m) \
+			case c: start_mode = m; break
+				CHAR_MAP('c', MODE_PREPROCESS);
+				CHAR_MAP('e', MODE_COMPILE);
+				CHAR_MAP('s', MODE_ASSEMBLE);
+				CHAR_MAP('o', MODE_LINK);
+#undef CHAR_MAP
+
+				default:
+					goto unknown_file;
+			}
+		}else{
+unknown_file:
+			fprintf(stderr, "%s: assuming input \"%s\" is c-source\n", argv0, input);
+		}
+	}else{
+		goto unknown_file;
+	}
 
 #define TMP(s, pre, post) \
 		snprintf(s, sizeof s, pre "%d." post, getpid())
@@ -85,24 +114,39 @@ int gen(const char *input, const char *output)
 	if(mode == m) \
 		snprintf(path, sizeof path, "%s", output)
 
+#define START_MODE(m, lbl, file) \
+	case m: \
+		RUN(0, "cp %s %s", input, file); \
+		goto lbl
+
+	switch(start_mode){
+		START_MODE(MODE_ASSEMBLE, start_assemble, f_s);
+		START_MODE(MODE_COMPILE,  start_compile,  f_e);
+		START_MODE(MODE_LINK,     start_link,     f_o);
+
+		case MODE_PREPROCESS:
+		case MODE_UNKNOWN:  
+				break;
+	}
+
 	SHORTEN_OUTPUT(MODE_PREPROCESS, f_e);
-	//push @tmpfs, $f_s;
 	RUN(1, "cpp/cpp -o %s %s", f_e, input);
 	if(mode == MODE_PREPROCESS)
 		return 0;
 
+start_compile:
 	SHORTEN_OUTPUT(MODE_COMPILE, f_s);
-	//push @tmpfs, $f_s;
 	RUN(1, "cc1/cc1 %s %s -o %s %s", *backend ? "-X" : "", backend, f_s, f_e);
 	if(mode == MODE_COMPILE)
 		return 0;
 
+start_assemble:
 	SHORTEN_OUTPUT(MODE_ASSEMBLE, f_o);
-	//push @tmpfs, $f_s;
 	RUN(0, UCC_NASM " -f " UCC_ARCH " -o %s %s", f_o, f_s);
 	if(mode == MODE_ASSEMBLE)
 		return 0;
 
+start_link:
 	RUN(0, UCC_LD " " UCC_LDFLAGS " -o %s %s %s/../lib/*.o", f, f_o, where);
 	return 0;
 }
@@ -114,6 +158,9 @@ int main(int argc, char **argv)
 	char *output;
 	char *p;
 	int i;
+
+	argv0 = malloc(strlen(*argv) + 1);
+	strcpy(argv0, *argv);
 
 	mode = MODE_LINK;
 	input = output = NULL;
