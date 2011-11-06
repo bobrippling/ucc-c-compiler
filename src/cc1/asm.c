@@ -12,7 +12,7 @@
 static int label_last = 1, str_last = 1;
 extern FILE *cc1_out;
 
-char *label_code(const char *fmt)
+char *asm_code_label(const char *fmt)
 {
 	int len;
 	char *ret;
@@ -25,10 +25,10 @@ char *label_code(const char *fmt)
 	return ret;
 }
 
-char *label_str()
+char *asm_str_label()
 {
-	char *ret = umalloc(8);
-	snprintf(ret, 8, "str_%d", str_last++);
+	char *ret = umalloc(16);
+	snprintf(ret, 16, "__str_%d", str_last++);
 	return ret;
 }
 
@@ -42,14 +42,20 @@ void asm_sym(enum asm_sym_type t, sym *s, const char *reg)
 			int is_auto = s->type == sym_auto;
 			char brackets[16];
 
-			if(s->type == sym_global)
-				snprintf(brackets, sizeof brackets, "[%s]", s->decl->spel);
-			else
+			if(s->type == sym_global){
+				const char *type_s = " ";
+
+				if(s->decl->ptr_depth || s->decl->type->primitive == type_int)
+					type_s = "qword ";
+
+				snprintf(brackets, sizeof brackets, "%s%s", type_s, s->decl->spel);
+			}else{
 				snprintf(brackets, sizeof brackets, "[rbp %c %d]",
 						is_auto ? '-' : '+',
 						((is_auto ? 1 : 2) * platform_word_size()) + s->offset);
+			}
 
-			asm_temp("%s %s, %s ; %s%s",
+			asm_temp(1, "%s %s, %s ; %s%s",
 					t == ASM_LEA ? "lea"    : "mov",
 					t == ASM_SET ? brackets : reg,
 					t == ASM_SET ? reg      : brackets,
@@ -70,31 +76,31 @@ void asm_new(enum asm_type t, void *p)
 {
 	switch(t){
 		case asm_assign:
-			asm_temp("pop rax");
+			asm_temp(1, "pop rax");
 			break;
 
 		case asm_call:
-			asm_temp("call %s", (const char *)p);
+			asm_temp(1, "call %s", (const char *)p);
 			break;
 
 		case asm_load_ident:
-			asm_temp("load %s", (const char *)p);
+			asm_temp(1, "load %s", (const char *)p);
 			break;
 
 		case asm_load_val:
-			asm_temp("load val %d", *(int *)p);
+			asm_temp(1, "load val %d", *(int *)p);
 			break;
 
 		case asm_op:
-			asm_temp("%s", op_to_str(*(enum op_type *)p));
+			asm_temp(1, "%s", op_to_str(*(enum op_type *)p));
 			break;
 
 		case asm_pop:
-			asm_temp("pop");
+			asm_temp(1, "pop");
 			break;
 
 		case asm_push:
-			asm_temp("push");
+			asm_temp(1, "push");
 			break;
 
 		case asm_addrof:
@@ -105,7 +111,7 @@ void asm_new(enum asm_type t, void *p)
 
 void asm_label(const char *lbl)
 {
-	asm_temp("%s:", lbl);
+	asm_temp(0, "%s:", lbl);
 }
 
 void asm_declare_str(const char *lbl, const char *str, int len)
@@ -119,9 +125,11 @@ void asm_declare_str(const char *lbl, const char *str, int len)
 	fputc('\n', cc1_out);
 }
 
-void asm_temp(const char *fmt, ...)
+void asm_temp(int indent, const char *fmt, ...)
 {
 	va_list l;
+	if(indent)
+		fputc('\t', cc1_out);
 	va_start(l, fmt);
 	vfprintf(cc1_out, fmt, l);
 	va_end(l);

@@ -21,14 +21,14 @@ void asm_ax_to_store(expr *store, symtable *stab)
 
 	}else if(store->type == expr_op && store->op == op_deref){
 		/* a dereference */
-		asm_temp("push rax ; save val");
+		asm_temp(1, "push rax ; save val");
 
 		walk_expr(store->lhs, stab); /* skip over the *() bit */
 
 		/* move `pop` into `pop` */
-		asm_temp("pop rax ; ptr");
-		asm_temp("pop rbx ; val");
-		asm_temp("mov [rax], rbx");
+		asm_temp(1, "pop rax ; ptr");
+		asm_temp(1, "pop rbx ; val");
+		asm_temp(1, "mov [rax], rbx");
 	}else{
 		ICE("asm_ax_to_store: invalid store expression");
 	}
@@ -45,22 +45,22 @@ void walk_expr(expr *e, symtable *stab)
 
 		case expr_comma:
 			walk_expr(e->lhs, stab);
-			asm_temp("pop rax ; unused comma expr");
+			asm_temp(1, "pop rax ; unused comma expr");
 			walk_expr(e->rhs, stab);
 			break;
 
 		case expr_if:
 		{
 			char *lblfin, *lblelse;
-			lblfin  = label_code("ifexpa");
-			lblelse = label_code("ifexpb");
+			lblfin  = asm_code_label("ifexpa");
+			lblelse = asm_code_label("ifexpb");
 
 			walk_expr(e->expr, stab);
-			asm_temp("pop rax");
-			asm_temp("test rax, rax");
-			asm_temp("jz %s", lblelse);
+			asm_temp(1, "pop rax");
+			asm_temp(1, "test rax, rax");
+			asm_temp(1, "jz %s", lblelse);
 			walk_expr(e->lhs ? e->lhs : e->expr, stab);
-			asm_temp("jmp %s", lblfin);
+			asm_temp(1, "jmp %s", lblfin);
 			asm_label(lblelse);
 			walk_expr(e->rhs, stab);
 			asm_label(lblfin);
@@ -73,13 +73,13 @@ void walk_expr(expr *e, symtable *stab)
 		case expr_identifier:
 			/* if it's an array, lea, else, load */
 			asm_sym(e->sym->decl->arraysizes ? ASM_LEA : ASM_LOAD, e->sym, "rax");
-			asm_temp("push rax");
+			asm_temp(1, "push rax");
 			break;
 
 		case expr_val:
 			/*asm_new(asm_load_val, &e->val);*/
-			asm_temp("mov rax, %d", e->val);
-			asm_temp("push rax");
+			asm_temp(1, "mov rax, %d", e->val);
+			asm_temp(1, "push rax");
 			break;
 
 		case expr_op:
@@ -89,7 +89,7 @@ void walk_expr(expr *e, symtable *stab)
 		case expr_assign:
 			if(e->assign_type == assign_normal){
 				walk_expr(e->rhs, stab);
-				asm_temp("mov rax, [rsp]");
+				asm_temp(1, "mov rax, [rsp]");
 				asm_ax_to_store(e->lhs, stab);
 
 			}else{
@@ -108,12 +108,12 @@ void walk_expr(expr *e, symtable *stab)
 				flag = e->assign_type == assign_pre_increment || e->assign_type == assign_post_increment;
 
 				/* shouldn't need to laod it, but just in case */
-				asm_temp("mov rax, [rsp]");
-				asm_temp("%s rax", flag ? "inc" : "dec");
+				asm_temp(1, "mov rax, [rsp]");
+				asm_temp(1, "%s rax", flag ? "inc" : "dec");
 
 				if((flag = e->assign_type == assign_pre_increment) || e->assign_type == assign_pre_decrement)
 					/* change the value we are "returning", too */
-					asm_temp("mov [rsp], rax");
+					asm_temp(1, "mov [rsp], rax");
 
 				/* store back to the sym's home */
 				asm_ax_to_store(e->expr, stab);
@@ -136,39 +136,37 @@ void walk_expr(expr *e, symtable *stab)
 
 			asm_new(asm_call, e->spel);
 			if(nargs)
-				asm_temp("add rsp, %d ; %d arg%s",
+				asm_temp(1, "add rsp, %d ; %d arg%s",
 						nargs * platform_word_size(),
 						nargs,
 						nargs == 1 ? "":"s");
 
-			asm_temp("push rax ; ret");
+			asm_temp(1, "push rax ; ret");
 			break;
 		}
 
 		case expr_addr:
 			asm_sym(ASM_LEA, e->sym, "rax");
-			asm_temp("push rax");
+			asm_temp(1, "push rax");
 			break;
 
 		case expr_sizeof:
 			/* TODO */
 			if(e->spel)
-				asm_temp("push %d ; sizeof %s", platform_word_size(), e->spel);
+				asm_temp(1, "push %d ; sizeof %s", platform_word_size(), e->spel);
 			else
-				asm_temp("push %d ; sizeof type %s", platform_word_size(), decl_to_str(e->tree_type));
+				asm_temp(1, "push %d ; sizeof type %s", platform_word_size(), decl_to_str(e->tree_type));
 			break;
 
 		case expr_str:
-			asm_temp("mov rax, %s", e->sym->str_lbl);
-			asm_temp("push rax");
+			asm_temp(1, "mov rax, %s", e->sym->decl->spel);
+			asm_temp(1, "push rax");
 			break;
 	}
 }
 
 void walk_tree(tree *t)
 {
-	asm_nl();
-
 	switch(t->type){
 		case stat_break:
 			ICE("no break code yet");
@@ -176,16 +174,16 @@ void walk_tree(tree *t)
 
 		case stat_if:
 		{
-			char *lbl_else = label_code("else");
-			char *lbl_fi   = label_code("fi");
+			char *lbl_else = asm_code_label("else");
+			char *lbl_fi   = asm_code_label("fi");
 
 			walk_expr(t->expr, t->symtab);
 
-			asm_temp("pop rax");
-			asm_temp("test rax, rax");
-			asm_temp("jz %s", lbl_else);
+			asm_temp(1, "pop rax");
+			asm_temp(1, "test rax, rax");
+			asm_temp(1, "jz %s", lbl_else);
 			walk_tree(t->lhs);
-			asm_temp("jmp %s", lbl_fi);
+			asm_temp(1, "jmp %s", lbl_fi);
 			asm_label(lbl_else);
 			if(t->rhs)
 				walk_tree(t->rhs);
@@ -200,24 +198,24 @@ void walk_tree(tree *t)
 		{
 			char *lbl_for, *lbl_fin;
 
-			lbl_for = label_code("for");
-			lbl_fin = label_code("for_fin");
+			lbl_for = asm_code_label("for");
+			lbl_fin = asm_code_label("for_fin");
 
 			walk_expr(t->flow->for_init, t->symtab);
-			asm_temp("pop rax ; unused for init");
+			asm_temp(1, "pop rax ; unused for init");
 
 			asm_label(lbl_for);
 			walk_expr(t->flow->for_while, t->symtab);
 
-			asm_temp("pop rax");
-			asm_temp("test rax, rax");
-			asm_temp("jz %s", lbl_fin);
+			asm_temp(1, "pop rax");
+			asm_temp(1, "test rax, rax");
+			asm_temp(1, "jz %s", lbl_fin);
 
 			walk_tree(t->lhs);
 			walk_expr(t->flow->for_inc, t->symtab);
-			asm_temp("pop rax ; unused for inc");
+			asm_temp(1, "pop rax ; unused for inc");
 
-			asm_temp("jmp %s", lbl_for);
+			asm_temp(1, "jmp %s", lbl_for);
 
 			asm_label(lbl_fin);
 
@@ -230,16 +228,16 @@ void walk_tree(tree *t)
 		{
 			char *lbl_start, *lbl_fin;
 
-			lbl_start = label_code("while");
-			lbl_fin   = label_code("while_fin");
+			lbl_start = asm_code_label("while");
+			lbl_fin   = asm_code_label("while_fin");
 
 			asm_label(lbl_start);
 			walk_expr(t->expr, t->symtab);
-			asm_temp("pop rax");
-			asm_temp("test rax, rax");
-			asm_temp("jz %s", lbl_fin);
+			asm_temp(1, "pop rax");
+			asm_temp(1, "test rax, rax");
+			asm_temp(1, "jz %s", lbl_fin);
 			walk_tree(t->lhs);
-			asm_temp("jmp %s", lbl_start);
+			asm_temp(1, "jmp %s", lbl_start);
 			asm_label(lbl_fin);
 
 			free(lbl_start);
@@ -251,15 +249,15 @@ void walk_tree(tree *t)
 		{
 			char *lbl_start;
 
-			lbl_start = label_code("do");
+			lbl_start = asm_code_label("do");
 
 			asm_label(lbl_start);
 			walk_tree(t->lhs);
 
 			walk_expr(t->expr, t->symtab);
-			asm_temp("pop rax");
-			asm_temp("test rax, rax");
-			asm_temp("jnz %s", lbl_start);
+			asm_temp(1, "pop rax");
+			asm_temp(1, "test rax, rax");
+			asm_temp(1, "jnz %s", lbl_start);
 
 			free(lbl_start);
 			break;
@@ -267,13 +265,13 @@ void walk_tree(tree *t)
 
 		case stat_return:
 			walk_expr(t->expr, t->symtab);
-			asm_temp("pop rax");
-			asm_temp("jmp %s", curfunc_lblfin);
+			asm_temp(1, "pop rax");
+			asm_temp(1, "jmp %s", curfunc_lblfin);
 			break;
 
 		case stat_expr:
 			walk_expr(t->expr, t->symtab);
-			asm_temp("pop rax ; unused expr");
+			asm_temp(1, "pop rax ; unused expr");
 			break;
 
 		case stat_code:
@@ -288,13 +286,15 @@ void walk_tree(tree *t)
 		case stat_noop:
 			break;
 	}
+
+	asm_nl();
 }
 
 void decl_walk_expr(expr *e, symtable *stab)
 {
 	if(e->type == expr_str)
 		/* some arrays will go here too */
-		asm_declare_str(e->sym->str_lbl, e->val.s, e->strl);
+		asm_declare_str(e->sym->decl->spel, e->val.s, e->strl);
 
 #define WALK_IF(x) if(x) decl_walk_expr(x, stab)
 	WALK_IF(e->lhs);
@@ -340,35 +340,44 @@ void gen_asm_func(decl *d)
 	if(f->code){
 		int offset;
 
-		asm_temp("global %s", d->spel);
+		asm_nl();
+		asm_temp(0, "global %s", d->spel);
 
 		/* walk string decls */
 		decl_walk_tree(f->code);
 
 		asm_label(d->spel);
-		asm_temp("push rbp");
-		asm_temp("mov rbp, rsp");
+		asm_temp(1, "push rbp");
+		asm_temp(1, "mov rbp, rsp");
 
-		curfunc_lblfin = label_code(d->spel);
+		curfunc_lblfin = asm_code_label(d->spel);
 
 		if((offset = f->code->symtab->auto_offset))
-			asm_temp("sub rsp, %d", offset);
+			asm_temp(1, "sub rsp, %d", offset);
 		walk_tree(f->code);
 		asm_label(curfunc_lblfin);
 		if(offset)
-			asm_temp("add rsp, %d", offset);
+			asm_temp(1, "add rsp, %d", offset);
 
-		asm_temp("leave");
-		asm_temp("ret");
+		asm_temp(1, "leave");
+		asm_temp(1, "ret");
 		free(curfunc_lblfin);
 	}else if(d->type->spec & spec_extern){
-		asm_temp("extern %s", d->spel);
+		asm_temp(0, "extern %s", d->spel);
 	}
 }
 
 void gen_asm_global_var(decl *d)
 {
 	int type_ch;
+
+	if(d->type->spec & spec_extern){
+		asm_temp(0, "extern %s", d->spel);
+		return;
+	}
+
+	if((d->type->spec & spec_static) == 0)
+		asm_temp(0, "global %s", d->spel);
 
 	if(d->ptr_depth){
 		type_ch = 'q';
@@ -396,19 +405,27 @@ void gen_asm_global_var(decl *d)
 		/* TODO: arrays */
 		switch(d->init->type){
 			case expr_val:
-				asm_temp("%s d%c %d", d->spel, type_ch, d->init->val);
+				asm_temp(0, "%s d%c %d", d->spel, type_ch, d->init->val);
 				break;
 
 			case expr_addr:
-				asm_temp("%s equ %s", d->spel, d->init->spel);
+			{
+				const char *type_s = "";
+				if(d->ptr_depth > 0 || d->type->primitive != type_char)
+					type_s = "qword";
+
+				asm_temp(0, "%s equ %s %s", d->spel, type_s, d->init->spel);
+				break;
+			}
+
+			case expr_str:
+				asm_declare_str(d->sym->decl->spel, d->init->val.s, d->init->strl);
 				break;
 
 			case expr_cast:
 			case expr_sizeof:
-			case expr_str:
 			case expr_identifier:
 				/* TODO */
-				asm_temp("; TODO: init with %s", expr_to_str(d->init->type));
 				ICE("TODO: init with %s", expr_to_str(d->init->type));
 				break;
 
@@ -425,7 +442,7 @@ void gen_asm_global_var(decl *d)
 			arraylen = (i + 1) * d->arraysizes[i]->val.i;
 		/* TODO: check that i+1 is correct for the order here */
 
-		asm_temp("%s res%c %d", d->spel, type_ch, arraylen);
+		asm_temp(1, "%s res%c %d", d->spel, type_ch, arraylen);
 	}
 }
 

@@ -28,12 +28,12 @@ static void asm_idiv(expr *e, symtable *tab)
 	walk_expr(e->rhs, tab);
 	/* pop top stack (rhs) into b, and next top into a */
 
-	asm_temp("xor rdx,rdx");
-	asm_temp("pop rbx");
-	asm_temp("pop rax");
-	asm_temp("idiv rbx");
+	asm_temp(1, "xor rdx,rdx");
+	asm_temp(1, "pop rbx");
+	asm_temp(1, "pop rax");
+	asm_temp(1, "idiv rbx");
 
-	asm_temp("push r%cx", e->op == op_divide ? 'a' : 'd');
+	asm_temp(1, "push r%cx", e->op == op_divide ? 'a' : 'd');
 }
 
 static void asm_compare(expr *e, symtable *tab)
@@ -42,10 +42,10 @@ static void asm_compare(expr *e, symtable *tab)
 
 	walk_expr(e->lhs, tab);
 	walk_expr(e->rhs, tab);
-	asm_temp("pop rbx");
-	asm_temp("pop rax");
-	asm_temp("xor rcx,rcx"); /* must be before cmp */
-	asm_temp("cmp rax,rbx");
+	asm_temp(1, "pop rbx");
+	asm_temp(1, "pop rax");
+	asm_temp(1, "xor rcx,rcx"); /* must be before cmp */
+	asm_temp(1, "cmp rax,rbx");
 
 	switch(e->op){
 		case op_eq: cmp = "e";  break;
@@ -59,23 +59,23 @@ static void asm_compare(expr *e, symtable *tab)
 			ICE("asm_compare: unhandled comparison");
 	}
 
-	asm_temp("set%s cl", cmp);
-	asm_temp("push rcx");
+	asm_temp(1, "set%s cl", cmp);
+	asm_temp(1, "push rcx");
 }
 
 static void asm_shortcircuit(expr *e, symtable *tab)
 {
-	char *baillabel = label_code("shortcircuit_bail");
+	char *baillabel = asm_code_label("shortcircuit_bail");
 	walk_expr(e->lhs, tab);
 
-	asm_temp("mov rax,[rsp]");
-	asm_temp("test rax,rax");
+	asm_temp(1, "mov rax,[rsp]");
+	asm_temp(1, "test rax,rax");
 	/* leave the result on the stack (if false) and bail */
-	asm_temp("j%sz %s", e->op == op_andsc ? "" : "n", baillabel);
-	asm_temp("pop rax");
+	asm_temp(1, "j%sz %s", e->op == op_andsc ? "" : "n", baillabel);
+	asm_temp(1, "pop rax");
 	walk_expr(e->rhs, tab);
 
-	asm_temp(baillabel);
+	asm_temp(1, baillabel);
 	free(baillabel);
 }
 
@@ -98,31 +98,31 @@ void asm_operate(expr *e, symtable *tab)
 		case op_not:
 			/* compare with 0 */
 			walk_expr(e->lhs, tab);
-			asm_temp("xor rbx,rbx");
-			asm_temp("pop rax");
-			asm_temp("test rax,rax");
-			asm_temp("setz bl");
-			asm_temp("push rbx");
+			asm_temp(1, "xor rbx,rbx");
+			asm_temp(1, "pop rax");
+			asm_temp(1, "test rax,rax");
+			asm_temp(1, "setz bl");
+			asm_temp(1, "push rbx");
 			return;
 
 		case op_deref:
 			walk_expr(e->lhs, tab);
-			asm_temp("pop rax");
+			asm_temp(1, "pop rax");
 
 			if(e->tree_type->ptr_depth)
 				goto ptr;
 			switch(e->tree_type->type->primitive){
 				case type_char:
-					asm_temp("movzx rax, byte [rax]");
+					asm_temp(1, "movzx rax, byte [rax]");
 					break;
 ptr:
 				case type_int:
 				case type_void:
 				case type_unknown:
-					asm_temp("mov rax, [rax]");
+					asm_temp(1, "mov rax, [rax]");
 					break;
 			}
-			asm_temp("push rax");
+			asm_temp(1, "push rax");
 			return;
 
 		/* comparison */
@@ -154,13 +154,13 @@ ptr:
 	walk_expr(e->lhs, tab);
 	if(e->rhs){
 		walk_expr(e->rhs, tab);
-		asm_temp("pop rbx");
-		asm_temp("pop rax");
-		asm_temp("%s rax, rbx", instruct);
+		asm_temp(1, "pop rbx");
+		asm_temp(1, "pop rax");
+		asm_temp(1, "%s rax, rbx", instruct);
 	}else{
-		asm_temp("pop rax");
-		asm_temp("%s rax", instruct);
+		asm_temp(1, "pop rax");
+		asm_temp(1, "%s rax", instruct);
 	}
 
-	asm_temp("push rax");
+	asm_temp(1, "push rax");
 }
