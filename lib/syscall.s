@@ -14,7 +14,7 @@ __syscall:
 	mov r8,  [rbp + 56] ; esi
 	mov r9,  [rbp + 64] ; e8?
 	syscall
-	; FIXME: need different check for freebsd here
+	; FIXME: need different check for freebsd here (and probably MacOSX)
 	cmp rax, -1
 	jl .err
 	jmp .fin
