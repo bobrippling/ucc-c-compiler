@@ -201,7 +201,9 @@ const char *spec_to_str(enum type_spec s);
 const char *where_str(  struct where *w);
 const char *assign_to_str(enum assign_type);
 
+int   type_equal(type *, type *);
 int   decl_size(decl *);
+int   decl_equal(decl *, decl *);
 expr *expr_ptr_multiply(expr *, decl *);
 expr *expr_assignment(expr *to, expr *from);
 

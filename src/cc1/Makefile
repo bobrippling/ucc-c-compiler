@@ -44,7 +44,7 @@ gen_asm.o: gen_asm.c ../util/util.h tree.h macros.h asm.h \
  ../util/platform.h sym.h asm_op.h gen_asm.h
 gen_str.o: gen_str.c ../util/util.h tree.h macros.h sym.h
 parse.o: parse.c tokenise.h ../util/util.h tree.h parse.h ../util/alloc.h \
- tokconv.h
+ tokconv.h sym.h
 str.o: str.c
 sym.o: sym.c ../util/util.h tree.h sym.h ../util/alloc.h macros.h
 tokconv.o: tokconv.c tokenise.h ../util/util.h tree.h tokconv.h macros.h

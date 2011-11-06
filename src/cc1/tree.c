@@ -156,6 +156,17 @@ int decl_size(decl *d)
 	return platform_word_size();
 }
 
+int type_equal(type *a, type *b)
+{
+	/* TODO: check for const */
+	return a->primitive == b->primitive;
+}
+
+int decl_equal(decl *a, decl *b)
+{
+	return a->ptr_depth == b->ptr_depth && type_equal(a->type, b->type);
+}
+
 const char *expr_to_str(enum expr_type t)
 {
 	switch(t){
