@@ -28,9 +28,11 @@ struct
 	[MODE_LINK]       = {  0,    0  }
 };
 
-enum mode mode;
+int no_startfiles = 0, no_stdlib = 0;
 int debug = 0;
 const char *backend = "";
+
+enum mode mode;
 char *argv0;
 
 char where[1024];
@@ -125,7 +127,7 @@ unknown_file:
 		START_MODE(MODE_LINK,     start_link,     f_o);
 
 		case MODE_PREPROCESS:
-		case MODE_UNKNOWN:  
+		case MODE_UNKNOWN:
 				break;
 	}
 
@@ -147,7 +149,12 @@ start_assemble:
 		return 0;
 
 start_link:
-	RUN(0, UCC_LD " " UCC_LDFLAGS " -o %s %s %s/../lib/*.o", f, f_o, where);
+	RUN(0, UCC_LD " " UCC_LDFLAGS " -o %s %s %s%s %s%s", f, f_o,
+			no_stdlib     ? "" : where,
+			no_stdlib     ? "" : "/../lib/{stdio,stdlib,string,unistd,syscall}.o",
+			no_startfiles ? "" : where,
+			no_startfiles ? "" : "/../lib/crt.o"
+			);
 	return 0;
 }
 
@@ -205,11 +212,18 @@ int main(int argc, char **argv)
 					mode = m;
 				}
 			}
+		}else if(!strncmp(argv[i], "-nost", 5)){
+			if(!strcmp(argv[i] + 5, "artfiles"))
+				no_startfiles = 1;
+			else if(!strcmp(argv[i] + 5, "dlib"))
+				no_stdlib = 1;
+			else
+				goto usage;
 		}else if(!input){
 			input = argv[i];
 		}else{
 		usage:
-			fprintf(stderr, "Usage: %s [-d] [-X backend] [-[ESc]] [-o output] input\n", *argv);
+			fprintf(stderr, "Usage: %s [-nost{dlib,artfiles}] [-d] [-X backend] [-[ESc]] [-o output] input\n", *argv);
 			return 1;
 		}
 
