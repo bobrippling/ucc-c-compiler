@@ -107,10 +107,14 @@ void fold_funcall(expr *e, symtable *stab)
 		}
 
 		if(e->funcargs){
-			iter_decl = df->func->args;
-			for(i = 1, iter_arg = e->funcargs; *iter_arg; iter_arg++, i++)
-				if(!decl_equal((*iter_arg)->tree_type, *iter_decl))
-					warn_at(&e->where, "mismatching argument type for argument %d to %s", i, df->spel);
+			for(i = 0, iter_decl = df->func->args, iter_arg = e->funcargs;
+					iter_decl[i];
+					i++)
+				if(!decl_equal(iter_arg[i]->tree_type, iter_decl[i])){
+					char buf[32];
+					strcpy(buf, decl_to_str(iter_arg[i]->tree_type));
+					warn_at(&e->where, "mismatching arguments for arg %d to %s: got %s, expected %s", i, df->spel, buf, decl_to_str(iter_decl[i]));
+				}
 		}
 	}
 }
