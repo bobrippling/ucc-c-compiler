@@ -244,7 +244,7 @@ const char *decl_to_str(decl *d)
 	unsigned int i;
 	int n;
 
-	i = snprintf(buf, sizeof buf, "%s", type_to_str(d->type));
+	i = snprintf(buf, sizeof buf, "%s%s", type_to_str(d->type), d->ptr_depth ? " " : "");
 
 	for(n = d->ptr_depth; i < sizeof buf && n > 0; n--)
 		buf[i++] = '*';
