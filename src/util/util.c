@@ -80,7 +80,7 @@ void die(const char *fmt, ...)
 void ice(const char *f, int line, const char *fmt, ...)
 {
 	ICE_STR("ICE");
-	exit(2);
+	abort();
 }
 
 void icw(const char *f, int line, const char *fmt, ...)
