@@ -19,12 +19,6 @@ sym *sym_new(decl *d, enum sym_type t)
 	return s;
 }
 
-void sym_free(sym *s)
-{
-	type_free(s->str_lbl);
-	free(s);
-}
-
 symtable *symtab_new()
 {
 	symtable *p = umalloc(sizeof *p);

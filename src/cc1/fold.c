@@ -15,6 +15,8 @@
 #define DIE_UNDECL() \
 		die_at(&e->where, "undeclared identifier \"%s\" (%s:%d)", e->spel, __FILE__, __LINE__)
 
+void fold_expr(expr *e, symtable *stab);
+
 int fold_is_lvalue(expr *e)
 {
 	/*
@@ -36,16 +38,85 @@ int fold_is_lvalue(expr *e)
 		;
 }
 
-void fold_expr(expr *e, symtable *stab)
-{
 #define GET_TREE_TYPE(from) \
 	do{ \
-		if(e->tree_type) \
-			decl_free(e->tree_type); \
+		/*if(e->tree_type) \
+			decl_free(e->tree_type);*/ \
 		e->tree_type = decl_copy(from); \
 		e->tree_type->spel = NULL; \
 	}while(0)
 
+void fold_funcall(expr *e, symtable *stab)
+{
+	decl *df;
+
+	if(e->funcargs){
+		expr **iter;
+		for(iter = e->funcargs; *iter; iter++)
+			fold_expr(*iter, stab);
+	}
+
+	if(!e->sym){
+		df = decl_new_where(&e->where);
+
+		df->func = function_new();
+
+		df->type->primitive = type_int;
+		df->spel = e->spel;
+
+		warn_at(&e->where, "implicit declaration of function \"%s\"", e->spel);
+
+		e->sym = symtab_add(symtab_grandparent(stab), df, sym_func);
+
+		df->sym = NULL;
+		/*
+			* fold() sets df->sym below,
+			* and doesn't expect it to be set.
+			* -> df is now part of the global sym table,
+			* having just been added via grandparent()
+			*/
+
+		/* set up the function args to correspond with the arg types */
+		if(e->funcargs){
+			expr **iter;
+			for(iter = e->funcargs; *iter; iter++)
+				dynarray_add((void ***)&df->func->args, (*iter)->tree_type);
+		}
+	}else{
+		df = e->sym->decl;
+	}
+
+	GET_TREE_TYPE(e->sym->decl); /* XXX: check */
+
+	/* func count comparison */
+	{
+		expr **iter_arg;
+		decl **iter_decl;
+		int count_decl, count_arg;
+		int i;
+
+		count_decl = count_arg = 0;
+
+		for(iter_arg  = e->funcargs;    iter_arg  && *iter_arg;  iter_arg++,  count_arg++);
+		for(iter_decl = df->func->args; iter_decl && *iter_decl; iter_decl++, count_decl++);
+
+		if(count_decl != count_arg && (df->func->variadic ? count_arg < count_decl : 1)){
+			die_at(&e->where, "too %s arguments to function %s",
+					count_arg > count_decl ? "many" : "few",
+					df->spel);
+		}
+
+		if(e->funcargs){
+			iter_decl = df->func->args;
+			for(i = 1, iter_arg = e->funcargs; *iter_arg; iter_arg++, i++)
+				if(!decl_equal((*iter_arg)->tree_type, *iter_decl))
+					warn_at(&e->where, "mismatching argument type for argument %d to %s", i, df->spel);
+		}
+	}
+}
+
+void fold_expr(expr *e, symtable *stab)
+{
 	if(e->spel && !e->sym)
 		e->sym = symtab_search(stab, e->spel);
 
@@ -202,7 +273,22 @@ void fold_expr(expr *e, symtable *stab)
 				switch(e->op){
 					case op_plus:
 					case op_minus:
-						if(e->tree_type->ptr_depth && e->rhs){
+						/*
+						 * check if it's greater than one, e.g.
+						 *
+						 * const char *a = "hi";
+						 * putchar(a[0]);
+						 *
+						 * gives
+						 *
+						 * expr_deref {
+						 *    expr_op {
+						 *      expr_ident = a
+						 *      expr_val   = 0
+						 *    }
+						 *  }
+						 */
+						if(e->tree_type->ptr_depth > 1 && e->rhs){
 							/* we're dealing with pointers, adjust the amount we add by */
 
 							if(e->lhs->tree_type->ptr_depth)
@@ -224,9 +310,8 @@ void fold_expr(expr *e, symtable *stab)
 			sym *sym;
 			sym = symtab_add(stab, decl_new_where(&e->where), sym_str);
 
-			sym->str_lbl = label_str();
+			sym->decl->spel = asm_str_label();
 
-			/* e->sym shouldn't be !NULL anyway */
 			e->sym = sym;
 
 			e->tree_type->type->primitive = type_char;
@@ -235,34 +320,7 @@ void fold_expr(expr *e, symtable *stab)
 		}
 
 		case expr_funcall:
-			if(e->funcargs){
-				expr **iter;
-				for(iter = e->funcargs; *iter; iter++)
-					fold_expr(*iter, stab);
-			}
-
-			if(!e->sym){
-				decl *d = decl_new_where(&e->where);
-
-				d->func = function_new();
-
-				d->type->primitive = type_int;
-				d->spel = e->spel;
-
-				warn_at(&e->where, "function \"%s\" undeclared, assuming return type int", e->spel);
-
-				e->sym = symtab_add(symtab_grandparent(stab), d, sym_func);
-
-				d->sym = NULL;
-				/*
-				 * fold() sets d->sym below,
-				 * and doesn't expect it to be set.
-				 * -> d is now part of the global sym table,
-				 * having just been added via grandparent()
-				 */
-			}
-
-			GET_TREE_TYPE(e->sym->decl); /* XXX: check */
+			fold_funcall(e, stab);
 			break;
 	}
 #undef GET_TREE_TYPE
@@ -274,6 +332,9 @@ void fold_decl(decl *d, symtable *stab)
 
 	if(d->type->primitive == type_void && !d->ptr_depth && !d->func)
 		die_at(&d->type->where, "can't have a void variable");
+
+	if(d->type->spec & spec_extern && d->type->spec & spec_static)
+		die_at(&d->type->where, "can't have static extern");
 
 	for(i = 0; d->arraysizes && d->arraysizes[i]; i++){
 		fold_expr(d->arraysizes[i], stab);
@@ -348,26 +409,31 @@ void fold_code(tree *t)
 			auto_offset = t->symtab->parent ? t->symtab->parent->auto_offset : 0;
 			arg_offset  = 0;
 
-			for(diter = t->symtab->decls; diter && *diter; diter++){
-				sym *s = (*diter)->sym;
-				if(s->type == sym_auto){
-					s->offset = auto_offset;
+			/* need to walk backwards */
+			if(t->symtab->decls){
+				for(diter = t->symtab->decls; *diter; diter++);
 
-					/* TODO: optimise for chars / don't assume everything is an int */
-					if(s->decl->arraysizes){
-						/* should've been folded fully */
-						int i;
-						for(i = 0; s->decl->arraysizes[i]; i++)
-							auto_offset += s->decl->arraysizes[i]->val.i * platform_word_size();
+				for(diter--; diter >= t->symtab->decls; diter--){
+					sym *s = (*diter)->sym;
+					if(s->type == sym_auto){
+						s->offset = auto_offset;
 
-						auto_offset += platform_word_size();
-					}else{
-						/* assume sizeof(int) for chars etc etc */
-						auto_offset += platform_word_size();
+						/* TODO: optimise for chars / don't assume everything is an int */
+						if(s->decl->arraysizes){
+							/* should've been folded fully */
+							int i;
+							for(i = 0; s->decl->arraysizes[i]; i++)
+								auto_offset += s->decl->arraysizes[i]->val.i * platform_word_size();
+
+							auto_offset += platform_word_size();
+						}else{
+							/* assume sizeof(int) for chars etc etc */
+							auto_offset += platform_word_size();
+						}
+					}else if(s->type == sym_arg){
+						s->offset = arg_offset;
+						arg_offset += platform_word_size();
 					}
-				}else if(s->type == sym_arg){
-					s->offset = arg_offset;
-					arg_offset += platform_word_size();
 				}
 			}
 
@@ -475,7 +541,7 @@ void fold(symtable *globs)
 	for(i = 0; D(i); i++){
 		int j;
 
-		if(D(i)->sym)
+		if(D(i)->sym && D(i)->sym->type != sym_str)
 			ICE("%s: sym already set for global variable \"%s\"", where_str(&D(i)->where), D(i)->spel);
 
 		/* extern overwrite check */

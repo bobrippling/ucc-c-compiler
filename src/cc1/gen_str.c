@@ -136,7 +136,7 @@ void print_expr(expr *e)
 			break;
 
 		case expr_str:
-			idt_printf("str: %s, \"%s\" (length=%d)\n", e->sym->str_lbl, e->val.s, e->strl);
+			idt_printf("str: %s, \"%s\" (length=%d)\n", e->sym->decl->spel, e->val.s, e->strl);
 			break;
 
 		case expr_assign:
@@ -163,15 +163,17 @@ void print_expr(expr *e)
 
 			idt_printf("%s():\n", e->spel);
 			indent++;
-			if(e->funcargs)
-				for(iter = e->funcargs; *iter; iter++){
-					idt_printf("arg:\n");
+			if(e->funcargs){
+				int i;
+				for(i = 1, iter = e->funcargs; *iter; iter++, i++){
+					idt_printf("arg %d:\n", i);
 					indent++;
 					print_expr(*iter);
 					indent--;
 				}
-			else
+			}else{
 				idt_printf("no args\n");
+			}
 			indent--;
 			break;
 		}
@@ -266,6 +268,7 @@ void print_tree(tree *t)
 void print_func(decl *d)
 {
 	function *f = d->func;
+	decl **iter;
 
 	idt_printf("function: ");
 	indent++;
@@ -273,17 +276,19 @@ void print_func(decl *d)
 	print_decl(d, 0, 0);
 
 	fputc('(', cc1_out);
-	if(f->args){
-		decl **iter;
-		for(iter = f->args; *iter; iter++){
-			print_decl(*iter, 0, 0);
-			fprintf(cc1_out, "%s ", iter[1] ? "," : ""); /* TODO: comma and reverse order */
-		}
+	for(iter = f->args; iter && *iter; iter++){
+		print_decl(*iter, 0, 0);
+		fprintf(cc1_out, "%s ", iter[1] ? "," : "");
 	}
 
 	fprintf(cc1_out, "%s)\n", f->variadic ? ", ..." : "");
 
-	PRINT_IF(f, code, print_tree)
+	if(f->code){
+		for(iter = f->args; iter && *iter; iter++)
+			idt_printf("offset of %s = %d\n", (*iter)->spel, (*iter)->sym->offset);
+
+		PRINT_IF(f, code, print_tree)
+	}
 
 	indent--;
 }
