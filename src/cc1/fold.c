@@ -12,8 +12,10 @@
 #include "asm.h"
 #include "const.h"
 
-#define DIE_UNDECL() \
-		die_at(&e->where, "undeclared identifier \"%s\" (%s:%d)", e->spel, __FILE__, __LINE__)
+#define DIE_UNDECL_SPEL(sp) \
+		die_at(&e->where, "undeclared identifier \"%s\" (%s:%d)", sp, __FILE__, __LINE__)
+
+#define DIE_UNDECL() DIE_UNDECL_SPEL(e->spel)
 
 void fold_expr(expr *e, symtable *stab);
 
@@ -109,15 +111,116 @@ void fold_funcall(expr *e, symtable *stab)
 		if(e->funcargs){
 			for(i = 0, iter_decl = df->func->args, iter_arg = e->funcargs;
 					iter_decl[i];
-					i++)
-				if(!decl_equal(iter_arg[i]->tree_type, iter_decl[i])){
-					char buf[32];
+					i++){
+				/* TODO: -fstrict-types - changes the below 0 to a 1 */
+				if(!decl_equal(iter_arg[i]->tree_type, iter_decl[i], 0)){
+					char buf[DECL_STATIC_BUFSIZ];
 					strcpy(buf, decl_to_str(iter_arg[i]->tree_type));
-					warn_at(&e->where, "mismatching arguments for arg %d to %s: got %s, expected %s", i, df->spel, buf, decl_to_str(iter_decl[i]));
+					warn_at(&e->where, "mismatching arguments for arg %d to %s: got %s, expected %s",
+							i, df->spel, buf, decl_to_str(iter_decl[i]));
 				}
+			}
 		}
 	}
 }
+
+void fold_assignment(expr *e, symtable *stab)
+{
+	int norm_assign;
+	expr *assigning_to, *assigning_from;
+
+	if(e->assign_type == assign_augmented){
+		/* make a normal op from it */
+		expr *rhs = expr_new();
+
+		rhs->type = expr_op;
+		rhs->op   = e->op;
+		rhs->lhs  = e->lhs;
+		rhs->rhs  = e->rhs;
+
+		e->assign_type = assign_normal;
+		e->rhs = rhs;
+	}
+
+	norm_assign = e->assign_type == assign_normal;
+
+	if(norm_assign){
+		assigning_to   = e->lhs;
+		assigning_from = e->rhs;
+	}else{
+		assigning_to = assigning_from = e->expr;
+	}
+
+	if(!fold_is_lvalue(assigning_to))
+		die_at(&assigning_to->where, "not an lvalue");
+
+	if(norm_assign){
+		fold_expr(e->lhs, stab);
+		fold_expr(e->rhs, stab);
+	}else{
+		fold_expr(e->expr, stab);
+	}
+
+
+	if(!e->sym){
+		/* need this here, since the generic sym-assignment does it from ->spel and not with assigning_to either */
+		e->sym = symtab_search(stab, assigning_to->spel);
+
+		if(!e->sym)
+			DIE_UNDECL_SPEL(assigning_to->spel);
+	}
+
+
+	/* read the tree_type from what we're assigning to, not the expr */
+	GET_TREE_TYPE(e->sym->decl);
+
+	if(!norm_assign && e->tree_type->ptr_depth &&
+			(e->tree_type->ptr_depth > 1 || e->tree_type->type->primitive != type_char)){
+		/*
+			* we're inc/dec'ing a pointer, we need to inc by sizeof(*ptr)
+			* convert from inc/dec to a standard addition
+			*
+			* if-optimisation above - don't change inc to + if it's a char *
+			*/
+		expr *addition = expr_new();
+
+		type_free(addition->tree_type);
+		addition->tree_type = decl_copy(e->tree_type);
+
+		addition->type = expr_op;
+		switch(e->assign_type){
+			case assign_pre_increment:
+			case assign_post_increment:
+				addition->op = op_plus;
+				break;
+			case assign_pre_decrement:
+			case assign_post_decrement:
+				addition->op = op_minus;
+				break;
+			case assign_augmented:
+			case assign_normal:
+				ICE("error in augmented assignment tree");
+		}
+
+		addition->lhs = e->expr;
+		addition->rhs = expr_ptr_multiply(expr_new_val(1), addition->tree_type);
+
+		e->assign_type = assign_normal;
+		e->lhs         = e->expr;
+		e->rhs         = addition;
+	}
+
+	/* type check */
+	if(!decl_equal(assigning_from->tree_type, assigning_to->tree_type, 0)){
+		char buf[DECL_STATIC_BUFSIZ];
+
+		strcpy(buf, decl_to_str(assigning_from->tree_type));
+
+		warn_at(&e->where, "assignment type mismatch: got %s, expected %s",
+				buf, decl_to_str(assigning_to->tree_type));
+	}
+}
+
 
 void fold_expr(expr *e, symtable *stab)
 {
@@ -167,82 +270,8 @@ void fold_expr(expr *e, symtable *stab)
 			break;
 
 		case expr_assign:
-		{
-			int assign;
-			expr *use_me;
-
-			if(e->assign_type == assign_augmented){
-				/* make a normal op from it */
-				expr *rhs = expr_new();
-
-				rhs->type = expr_op;
-				rhs->op   = e->op;
-				rhs->lhs  = e->lhs;
-				rhs->rhs  = e->rhs;
-
-				e->assign_type = assign_normal;
-				e->rhs = rhs;
-			}
-
-			assign = e->assign_type == assign_normal;
-			use_me = assign ? e->lhs : e->expr;
-
-			if(!fold_is_lvalue(use_me))
-				die_at(&use_me->where, "not an lvalue");
-
-			if(assign){
-				fold_expr(e->lhs, stab);
-				fold_expr(e->rhs, stab);
-			}else{
-				fold_expr(e->expr, stab);
-			}
-
-			if(e->sym)
-				/* read the tree_type from what we're assigning to, not the expr */
-				GET_TREE_TYPE(e->sym->decl);
-			else
-				/* get the tree_type from the dereference's tree_type */
-				GET_TREE_TYPE(use_me->tree_type);
-
-
-			if(!assign && e->tree_type->ptr_depth && (e->tree_type->ptr_depth > 1 || e->tree_type->type->primitive != type_char)){
-				/*
-				 * we're inc/dec'ing a pointer, we need to inc by sizeof(*ptr)
-				 * convert from inc/dec to a standard addition
-				 *
-				 * if-optimisation above - don't change inc to + if it's a char *
-				 */
-				expr *addition = expr_new();
-
-				type_free(addition->tree_type);
-				addition->tree_type = decl_copy(e->tree_type);
-
-				addition->type = expr_op;
-				switch(e->assign_type){
-					case assign_pre_increment:
-					case assign_post_increment:
-						addition->op = op_plus;
-						break;
-					case assign_pre_decrement:
-					case assign_post_decrement:
-						addition->op = op_minus;
-						break;
-					case assign_augmented:
-					case assign_normal:
-						ICE("error in augmented assignment tree");
-				}
-
-				addition->lhs = e->expr;
-				addition->rhs = expr_ptr_multiply(expr_new_val(1), addition->tree_type);
-
-				e->assign_type = assign_normal;
-				e->lhs         = e->expr;
-				e->rhs         = addition;
-			}
-
+			fold_assignment(e, stab);
 			break;
-		}
-
 
 		case expr_op:
 			fold_expr(e->lhs, stab);

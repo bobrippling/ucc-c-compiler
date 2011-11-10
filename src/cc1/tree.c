@@ -136,7 +136,7 @@ expr *expr_assignment(expr *to, expr *from)
 	return ass;
 }
 
-int decl_size(decl *d)
+int decl_size(const decl *d)
 {
 	if(d->ptr_depth){
 		if(d->type->primitive == type_void)
@@ -156,18 +156,24 @@ int decl_size(decl *d)
 	return platform_word_size();
 }
 
-int type_equal(type *a, type *b)
+int type_equal(const type *a, const type *b)
 {
 	/* TODO: check for const */
 	return a->primitive == b->primitive;
 }
 
-int decl_equal(decl *a, decl *b)
+int decl_equal(const decl *a, const decl *b, int strict)
 {
-	return a->ptr_depth == b->ptr_depth && type_equal(a->type, b->type);
+	const int ptreq = a->ptr_depth == b->ptr_depth;
+
+	/* if the pointers are equal depth and we're not strict, and they are actually pointers... */
+	if(!strict && a->ptr_depth && ptreq)
+		return 1;
+
+	return ptreq && type_equal(a->type, b->type);
 }
 
-const char *expr_to_str(enum expr_type t)
+const char *expr_to_str(const enum expr_type t)
 {
 	switch(t){
 		CASE_STR_PREFIX(expr, op);
@@ -185,7 +191,7 @@ const char *expr_to_str(enum expr_type t)
 	return NULL;
 }
 
-const char *op_to_str(enum op_type o)
+const char *op_to_str(const enum op_type o)
 {
 	switch(o){
 		CASE_STR_PREFIX(op, multiply);
@@ -211,7 +217,7 @@ const char *op_to_str(enum op_type o)
 	return NULL;
 }
 
-const char *stat_to_str(enum stat_type t)
+const char *stat_to_str(const enum stat_type t)
 {
 	switch(t){
 		CASE_STR_PREFIX(stat, do);
@@ -227,7 +233,7 @@ const char *stat_to_str(enum stat_type t)
 	return NULL;
 }
 
-const char *type_to_str(type *t)
+const char *type_to_str(const type *t)
 {
 	switch(t->primitive){
 		CASE_STR_PREFIX(type, int);
@@ -238,21 +244,22 @@ const char *type_to_str(type *t)
 	return NULL;
 }
 
-const char *decl_to_str(decl *d)
+const char *decl_to_str(const decl *d)
 {
-	static char buf[32];
+	static char buf[DECL_STATIC_BUFSIZ];
 	unsigned int i;
 	int n;
 
 	i = snprintf(buf, sizeof buf, "%s%s", type_to_str(d->type), d->ptr_depth ? " " : "");
 
-	for(n = d->ptr_depth; i < sizeof buf && n > 0; n--)
+	for(n = d->ptr_depth; i + 1 < sizeof buf && n > 0; n--)
 		buf[i++] = '*';
+	buf[i] = '\0';
 
 	return buf;
 }
 
-const char *spec_to_str(enum type_spec s)
+const char *spec_to_str(const enum type_spec s)
 {
 	switch(s){
 		CASE_STR_PREFIX(spec, const);
@@ -263,7 +270,7 @@ const char *spec_to_str(enum type_spec s)
 	return NULL;
 }
 
-const char *assign_to_str(enum assign_type t)
+const char *assign_to_str(const enum assign_type t)
 {
 	switch(t){
 		CASE_STR_PREFIX(assign, normal);
