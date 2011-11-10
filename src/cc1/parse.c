@@ -47,6 +47,19 @@ type  *parse_type(int can_default);
 expr *parse_expr_binary_op(void); /* needed to limit [+-] parsing */
 expr *parse_expr_array(void);
 
+expr *parse_lone_identifier()
+{
+	expr *e = expr_new();
+
+	if(curtok != token_identifier)
+		EAT(token_identifier); /* raise error */
+
+	e->spel = token_current_spel();
+	EAT(token_identifier);
+	e->type = expr_identifier;
+
+	return e;
+}
 
 expr *parse_expr_unary_op()
 {
@@ -58,8 +71,9 @@ expr *parse_expr_unary_op()
 			EAT(token_sizeof);
 			e = expr_new();
 			e->type = expr_sizeof;
-			if(accept(token_identifier)){
+			if(curtok == token_identifier){
 				e->spel = token_current_spel();
+				EAT(token_identifier);
 			}else if(curtok_is_type()){
 				e->tree_type->type->primitive = curtok_to_type_primitive();
 				EAT(curtok);
@@ -111,12 +125,8 @@ expr *parse_expr_unary_op()
 
 		case token_and:
 			EAT(token_and);
-			if(curtok != token_identifier)
-				EAT(token_identifier); /* raise error */
-			e = expr_new();
+			e = parse_lone_identifier();
 			e->type = expr_addr;
-			e->spel = token_current_spel();
-			EAT(token_identifier);
 			return e;
 
 		case token_plus:
@@ -152,11 +162,7 @@ expr *parse_expr_unary_op()
 			return e;
 
 		case token_identifier:
-			e = expr_new();
-
-			e->spel = token_current_spel();
-			EAT(token_identifier);
-			e->type = expr_identifier;
+			e = parse_lone_identifier();
 
 			if(accept(token_open_paren)){
 				e->type = expr_funcall;
@@ -585,14 +591,19 @@ tree *parse_code()
 
 		case token_break:
 		case token_return:
+		case token_goto:
 			t = tree_new();
 			if(accept(token_break)){
 				t->type = stat_break;
-			}else{
+			}else if(accept(token_return)){
 				t->type = stat_return;
-				EAT(token_return);
 				if(curtok != token_semicolon)
 					t->expr = parse_expr();
+			}else{
+				EAT(token_goto);
+
+				t->expr = parse_lone_identifier();
+				t->type = stat_goto;
 			}
 			EAT(token_semicolon);
 			return t;

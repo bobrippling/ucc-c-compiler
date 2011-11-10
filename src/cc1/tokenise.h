@@ -14,6 +14,7 @@ enum token
 	token_switch,
 	token_case,
 	token_default,
+	token_goto,
 
 	token_sizeof,
 	token_extern,

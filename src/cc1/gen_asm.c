@@ -172,6 +172,10 @@ void walk_tree(tree *t)
 			ICE("no break code yet");
 			break;
 
+		case stat_goto:
+			asm_temp(1, "goto %s", t->expr->spel);
+			break;
+
 		case stat_if:
 		{
 			char *lbl_else = asm_code_label("else");
