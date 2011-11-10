@@ -7,7 +7,7 @@
 #include "util.h"
 #include "alloc.h"
 
-const char *where_str(struct where *w)
+const char *where_str(const struct where *w)
 {
 	static char buf[128];
 	snprintf(buf, sizeof buf, "%s:%d:%d", w->fname, w->line, w->chr + 1);

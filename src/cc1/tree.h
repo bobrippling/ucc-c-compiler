@@ -192,20 +192,21 @@ expr      *expr_new_val(int);
 
 tree_flow *tree_flow_new();
 
-const char *op_to_str(  enum op_type   o);
-const char *expr_to_str(enum expr_type t);
-const char *stat_to_str(enum stat_type t);
-const char *decl_to_str(decl          *t);
-const char *type_to_str(type          *t);
-const char *spec_to_str(enum type_spec s);
-const char *where_str(  struct where *w);
-const char *assign_to_str(enum assign_type);
+const char *op_to_str(  const enum op_type   o);
+const char *expr_to_str(const enum expr_type t);
+const char *stat_to_str(const enum stat_type t);
+const char *decl_to_str(const decl          *t);
+const char *type_to_str(const type          *t);
+const char *spec_to_str(const enum type_spec s);
+const char *assign_to_str(const enum assign_type);
 
-int   type_equal(type *, type *);
-int   decl_size(decl *);
-int   decl_equal(decl *, decl *);
+int   type_equal(const type *, const type *);
+int   decl_size(const decl *);
+int   decl_equal(const decl *, const decl *, int strict);
 expr *expr_ptr_multiply(expr *, decl *);
 expr *expr_assignment(expr *to, expr *from);
+
+#define DECL_STATIC_BUFSIZ 32
 
 #define type_free(x) free(x)
 #define decl_free(x) do{type_free((x)->type); free(x);}while(0)

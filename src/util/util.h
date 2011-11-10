@@ -7,6 +7,8 @@ typedef struct where
 	int line, chr;
 } where;
 
+const char *where_str(const struct where *w);
+
 void warn_at(struct where *, const char *, ...);
 void die_at(struct where *, const char *, ...);
 void vdie(struct where *w, va_list l, const char *fmt);

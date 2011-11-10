@@ -19,7 +19,7 @@ sym *sym_new(decl *d, enum sym_type t)
 	return s;
 }
 
-symtable *symtab_new()
+symtable *symtab_new(void)
 {
 	symtable *p = umalloc(sizeof *p);
 	return p;

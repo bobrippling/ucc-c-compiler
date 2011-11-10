@@ -40,3 +40,8 @@ parsing
 
 ({ expr; })
 parsing
+
+for(...){
+}else{
+	printf("for not entered");
+}
