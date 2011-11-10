@@ -59,7 +59,7 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 			if(*fmt == 's')
 				write(fd, *(char **)ap, strlen(*(char **)ap));
 			else if(*fmt == 'c')
-				write(fd, *(char *)ap, 1);
+				write(fd, (char *)ap, 1);
 			else if(*fmt == 'd')
 				printd(fd, *(int *)ap);
 			else if(*fmt == 'p')
@@ -75,10 +75,10 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 
 int fprintf(FILE *file, const char *fmt, ...)
 {
-	return vfprintf(file, fmt, &fmt + 1);
+	return vfprintf(file, fmt, (void *)(&fmt + 1));
 }
 
 int printf(const char *fmt, ...)
 {
-	return vfprintf(stdout, fmt, &fmt + 1);
+	return vfprintf(stdout, fmt, (void *)(&fmt + 1));
 }
