@@ -29,6 +29,8 @@ struct statement
 
 	{ "splendid", token_break   },
 	{ "goodday",  token_return  },
+
+	{ "tallyho", token_goto    },
 #else
 	{ "if",      token_if      },
 	{ "else",    token_else    },
@@ -39,6 +41,8 @@ struct statement
 
 	{ "break",   token_break   },
 	{ "return",  token_return  },
+
+	{ "goto",    token_goto    },
 #endif
 
 	{ "do",      token_do      },

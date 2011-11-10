@@ -402,6 +402,13 @@ void fold_code(tree *t)
 			ICE("stat_break not coded yet");
 			break;
 
+		case stat_goto:
+			ICE("goto not implemented");
+			if(t->expr->type != expr_identifier)
+				die_at(&t->expr->where, "not a label identifier");
+			/*t->expr->sym = symtab_search(SYMTAB_LABEL, t->expr->spel); ???*/
+			break;
+
 		case stat_while:
 		case stat_do:
 		case stat_if:

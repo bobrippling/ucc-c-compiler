@@ -143,6 +143,7 @@ struct tree
 		stat_for,
 		stat_break,
 		stat_return,
+		stat_goto,
 		stat_expr,
 		stat_code,
 		stat_noop
