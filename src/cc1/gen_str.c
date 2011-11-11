@@ -123,10 +123,7 @@ void print_expr(expr *e)
 			indent++;
 
 			if(e->op == op_deref){
-				int i;
 				idt_printf("deref size: %s ", decl_to_str(e->tree_type));
-				for(i = 0; i < e->tree_type->ptr_depth; i++)
-					fputc('*', cc1_out);
 				fputc('\n', cc1_out);
 			}
 
