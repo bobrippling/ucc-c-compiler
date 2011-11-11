@@ -25,10 +25,8 @@ static void printd_rec(int fd, int n, int base)
 static void printn(int fd, int n, int base)
 {
 	if(n < 0){
-		int neg;
+		write(fd, "-", 1);
 		n = -n;
-		neg = '-';
-		write(fd, &neg, 1);
 	}
 
 	printd_rec(fd, n, base);
