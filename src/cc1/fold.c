@@ -174,6 +174,14 @@ void fold_assignment(expr *e, symtable *stab)
 	/* read the tree_type from what we're assigning to, not the expr */
 	GET_TREE_TYPE(e->sym->decl);
 
+	/*
+	 * FIXME: this needs moving, it's not just assignments where we need to alter the amount we increase by
+	 *
+	 * needs to be done on fold with expr_type == expr_op && op_type =~ [+-]
+	 *
+	 * also need to expand += _before_ the above check
+	 * also need to do the check for ++ and --
+	 */
 	if(!norm_assign && e->tree_type->ptr_depth &&
 			(e->tree_type->ptr_depth > 1 || e->tree_type->type->primitive != type_char)){
 		/*
@@ -316,6 +324,7 @@ void fold_expr(expr *e, symtable *stab)
 						 *
 						 * expr_deref {
 						 *    expr_op {
+						 *      op_type    = '+'
 						 *      expr_ident = a
 						 *      expr_val   = 0
 						 *    }
