@@ -30,7 +30,7 @@ struct
 
 int no_startfiles = 0, no_stdlib = 0;
 int debug = 0;
-const char *backend = "";
+char *backend = "";
 
 enum mode mode;
 char *argv0;
@@ -161,10 +161,19 @@ start_link:
 
 int main(int argc, char **argv)
 {
-	const char *input;
+	char *input;
 	char *output;
 	char *p;
 	int i;
+
+	struct
+	{
+		char optn;
+		char **ptr;
+	} opts[] = {
+		{ 'o', &output },
+		{ 'X', &backend }
+	};
 
 	argv0 = malloc(strlen(*argv) + 1);
 	strcpy(argv0, *argv);
@@ -173,45 +182,8 @@ int main(int argc, char **argv)
 	input = output = NULL;
 
 	for(i = 1; i < argc; i++)
-		if(strlen(argv[i]) == 2 && *argv[i] == '-'){
-			switch(argv[i][1]){
-				case 'o':
-					if(argv[++i]){
-						output = argv[i];
-					}else{
-						goto usage;
-					}
-					break;
-
-				case 'd':
-					debug = 1;
-					break;
-
-				case 'X':
-					if(argv[++i]){
-						backend = argv[i];
-					}else{
-						goto usage;
-					}
-					break;
-
-				default:
-				{
-					int j;
-					enum mode m;
-
-					m = MODE_UNKNOWN;
-					for(j = 0; j < 3; j++)
-						if(argv[i][1] == modes[j].arg){
-							m = j;
-							break;
-						}
-
-					if(m == MODE_UNKNOWN)
-						goto usage;
-					mode = m;
-				}
-			}
+		if(!strcmp(argv[i], "d")){
+			debug = 1;
 		}else if(!strncmp(argv[i], "-nost", 5)){
 			if(!strcmp(argv[i] + 5, "artfiles"))
 				no_startfiles = 1;
@@ -219,13 +191,51 @@ int main(int argc, char **argv)
 				no_stdlib = 1;
 			else
 				goto usage;
-		}else if(!input){
-			input = argv[i];
 		}else{
-		usage:
-			fprintf(stderr, "Usage: %s [-nost{dlib,artfiles}] [-d] [-X backend] [-[ESc]] [-o output] input\n", *argv);
-			return 1;
+			if(argv[i][0] == '-'){
+				unsigned int j;
+				int found;
+
+				if(!argv[i][2]){
+					found = 0;
+					for(j = 0; j < 3; j++)
+						if(argv[i][1] == modes[j].arg){
+							mode = j;
+							found = 1;
+							break;
+						}
+
+					if(found)
+						continue;
+				}
+
+				found = 0;
+				for(j = 0; j < sizeof(opts) / sizeof(opts[0]); j++)
+					if(argv[i][1] == opts[j].optn){
+						if(argv[i][2]){
+							*opts[j].ptr = argv[i] + 2;
+						}else{
+							if(!argv[++i])
+								goto usage;
+							*opts[j].ptr = argv[i];
+						}
+						found = 1;
+						break;
+					}
+
+				if(found)
+					continue;
+			}
+
+			if(!input){
+				input = argv[i];
+			}else{
+			usage:
+				fprintf(stderr, "Usage: %s [-nost{dlib,artfiles}] [-d] [-X backend] [-[ESc]] [-o output] input\n", *argv);
+				return 1;
+			}
 		}
+
 
 	if(!input)
 		goto usage;
@@ -247,6 +257,8 @@ int main(int argc, char **argv)
 				sprintf(output, "%s.%c", input, modes[mode].suffix);
 			}
 		}
+	}else if(!strcmp(output, "-") && mode >= MODE_ASSEMBLE){
+		fprintf(stderr, "%s: warning: outputting to the file \"-\", not stdout\n", *argv);
 	}
 
 #if 0
