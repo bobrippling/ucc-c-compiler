@@ -174,22 +174,11 @@ void fold_assignment(expr *e, symtable *stab)
 	/* read the tree_type from what we're assigning to, not the expr */
 	GET_TREE_TYPE(e->sym->decl);
 
-	/*
-	 * FIXME: this needs moving, it's not just assignments where we need to alter the amount we increase by
-	 *
-	 * needs to be done on fold with expr_type == expr_op && op_type =~ [+-]
-	 *
-	 * also need to expand += _before_ the above check
-	 * also need to do the check for ++ and --
-	 */
-	if(!norm_assign && e->tree_type->ptr_depth &&
-			(e->tree_type->ptr_depth > 1 || e->tree_type->type->primitive != type_char)){
+	if(!norm_assign && e->tree_type->ptr_depth){
 		/*
-			* we're inc/dec'ing a pointer, we need to inc by sizeof(*ptr)
-			* convert from inc/dec to a standard addition
-			*
-			* if-optimisation above - don't change inc to + if it's a char *
-			*/
+		 * we're inc/dec'ing a pointer, we need to inc by sizeof(*ptr)
+		 * convert from inc/dec to a standard addition
+		 */
 		expr *addition = expr_new();
 
 		type_free(addition->tree_type);
@@ -305,45 +294,24 @@ void fold_expr(expr *e, symtable *stab)
 					die_at(&e->where, "can't dereference non-pointer (%s)", type_to_str(e->tree_type->type));
 			}else{
 				/* look either side - if either is a pointer, take that as the tree_type */
-				/* TODO: checks for pointer + pointer, etc etc */
+				/* TODO: checks for pointer + pointer (invalid), etc etc */
 				if(e->rhs && e->rhs->tree_type->ptr_depth)
 					GET_TREE_TYPE(e->rhs->tree_type);
 				else
 					GET_TREE_TYPE(e->lhs->tree_type);
+			}
 
-				switch(e->op){
-					case op_plus:
-					case op_minus:
-						/*
-						 * check if it's greater than one, e.g.
-						 *
-						 * const char *a = "hi";
-						 * putchar(a[0]);
-						 *
-						 * gives
-						 *
-						 * expr_deref {
-						 *    expr_op {
-						 *      op_type    = '+'
-						 *      expr_ident = a
-						 *      expr_val   = 0
-						 *    }
-						 *  }
-						 */
-						if(e->tree_type->ptr_depth > 1 && e->rhs){
-							/* we're dealing with pointers, adjust the amount we add by */
+			/* need to do this check _after_ we get the correct tree type */
+			if((e->op == op_plus || e->op == op_minus) && e->tree_type->ptr_depth && e->rhs){
+				/* we're dealing with pointers, adjust the amount we add by */
 
-							if(e->lhs->tree_type->ptr_depth)
-								/* lhs is the pointer, we're adding on rhs, hence multiply rhs by lhs's ptr size */
-								e->rhs = expr_ptr_multiply(e->rhs, e->lhs->tree_type);
-							else
-								e->lhs = expr_ptr_multiply(e->lhs, e->rhs->tree_type);
+				if(e->lhs->tree_type->ptr_depth)
+					/* lhs is the pointer, we're adding on rhs, hence multiply rhs by lhs's ptr size */
+					e->rhs = expr_ptr_multiply(e->rhs, e->lhs->tree_type);
+				else
+					e->lhs = expr_ptr_multiply(e->lhs, e->rhs->tree_type);
 
-							/* TODO: const_fold again */
-						}
-					default:
-						break;
-				}
+				/* TODO: const_fold again */
 			}
 			break;
 

@@ -106,8 +106,13 @@ function *function_new()
 
 expr *expr_ptr_multiply(expr *e, decl *d)
 {
-	int sz = decl_size(d);
+	decl tmp;
+	int sz;
 	expr *ret;
+
+	memcpy(&tmp, d, sizeof tmp);
+	tmp.ptr_depth--;
+	sz = decl_size(&tmp);
 
 	if(sz == 1)
 		return e;
