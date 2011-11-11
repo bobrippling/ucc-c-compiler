@@ -26,7 +26,7 @@
  * parse_expr_logical_op above [&&||]   above
  */
 #define parse_expr() parse_expr_comma()
-#define parse_expr_funcallarg() parse_expr_assign()
+#define parse_expr_funcallarg() parse_expr_if()
 expr *parse_expr();
 #define accept(tok) ((tok) == curtok ? (EAT(tok), 1) : 0)
 
@@ -315,23 +315,6 @@ expr *parse_expr_assign()
 	return e;
 }
 
-expr *parse_expr_comma()
-{
-	expr *e;
-
-	e = parse_expr_assign();
-
-	if(accept(token_comma)){
-		expr *ret = expr_new();
-		ret->type = expr_comma;
-		ret->lhs = e;
-		ret->rhs = parse_expr_comma();
-		return ret;
-	}
-	return e;
-}
-
-
 expr *parse_expr_if()
 {
 	expr *e = parse_expr_assign();
@@ -352,6 +335,22 @@ expr *parse_expr_if()
 	}else{
 		return e;
 	}
+}
+
+expr *parse_expr_comma()
+{
+	expr *e;
+
+	e = parse_expr_funcallarg();
+
+	if(accept(token_comma)){
+		expr *ret = expr_new();
+		ret->type = expr_comma;
+		ret->lhs = e;
+		ret->rhs = parse_expr_comma();
+		return ret;
+	}
+	return e;
 }
 
 tree *parse_if()
