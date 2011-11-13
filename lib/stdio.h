@@ -34,7 +34,9 @@ int   ungetc(int, FILE *);
 int   putchar(int);
 int   putc( int, FILE *);
 int   fputc(int, FILE *);
+*/
 int   puts( const char *);
+/*
 int   fputs(const char *, FILE *);
 
 FILE *fdopen(int, const char *);
@@ -76,3 +78,5 @@ int   rename(const char *, const char *);
 //int vsprintf(char *, const char *, va_list);
 //void setbuf(FILE *, char *);
 //int setvbuf(FILE *, char *, int, size_t);
+
+int dprintf(int, const char *, ...);

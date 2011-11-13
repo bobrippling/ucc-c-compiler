@@ -71,6 +71,11 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 	}
 }
 
+int dprintf(int fd, const char *fmt, ...)
+{
+	return vfprintf(&fd, fmt, (void *)(&fmt + 1));
+}
+
 int fprintf(FILE *file, const char *fmt, ...)
 {
 	return vfprintf(file, fmt, (void *)(&fmt + 1));
@@ -79,4 +84,9 @@ int fprintf(FILE *file, const char *fmt, ...)
 int printf(const char *fmt, ...)
 {
 	return vfprintf(stdout, fmt, (void *)(&fmt + 1));
+}
+
+int puts(const char *s)
+{
+	return printf("%s\n", s) > 0 ? 1 : -1;
 }
