@@ -174,13 +174,16 @@ void fold_assignment(expr *e, symtable *stab)
 	/* read the tree_type from what we're assigning to, not the expr */
 	GET_TREE_TYPE(e->sym->decl);
 
-	if(!norm_assign && e->tree_type->ptr_depth){
-		/*
-		 * we're inc/dec'ing a pointer, we need to inc by sizeof(*ptr)
-		 * convert from inc/dec to a standard addition
-		 */
-		expr *addition = expr_new();
+	/*
+	 * if we're inc/dec'ing a pointer, we need to inc by sizeof(*ptr)
+	 * convert from inc/dec to a standard addition
+	 *
+	 * unless the sizeof the pointer is 1, obviously we're just adding one
+	 */
+	if(!norm_assign && e->tree_type->ptr_depth &&
+			(e->tree_type->type->primitive != type_char || e->tree_type->ptr_depth != 1)){
 
+		expr *addition = expr_new();
 		type_free(addition->tree_type);
 		addition->tree_type = decl_copy(e->tree_type);
 
@@ -205,6 +208,12 @@ void fold_assignment(expr *e, symtable *stab)
 		e->assign_type = assign_normal;
 		e->lhs         = e->expr;
 		e->rhs         = addition;
+
+		/*
+		 * FIXME:
+		 * have post incerments for any size, not just 'inc' and 'dec', i.e. +1, have +8 etc etc
+		 */
+		ICW("ucc bug: converting from inc/dec addition to +/-, this is a bug for x++ assignments");
 	}
 
 	/* type check */

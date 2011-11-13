@@ -93,7 +93,7 @@ void walk_expr(expr *e, symtable *stab)
 				asm_ax_to_store(e->lhs, stab);
 
 			}else{
-				int flag;
+				int incr;
 
 				/*
 				 * these aren't actually treated as assignments,
@@ -105,13 +105,13 @@ void walk_expr(expr *e, symtable *stab)
 				 * now we inc/dec it
 				 */
 
-				flag = e->assign_type == assign_pre_increment || e->assign_type == assign_post_increment;
+				incr = e->assign_type == assign_pre_increment || e->assign_type == assign_post_increment;
 
 				/* shouldn't need to laod it, but just in case */
 				asm_temp(1, "mov rax, [rsp]");
-				asm_temp(1, "%s rax", flag ? "inc" : "dec");
+				asm_temp(1, "%s rax", incr ? "inc" : "dec");
 
-				if((flag = e->assign_type == assign_pre_increment) || e->assign_type == assign_pre_decrement)
+				if(e->assign_type == assign_pre_increment || e->assign_type == assign_pre_decrement)
 					/* change the value we are "returning", too */
 					asm_temp(1, "mov [rsp], rax");
 
