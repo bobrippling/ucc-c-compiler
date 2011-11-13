@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #include "cc.h"
 
@@ -182,7 +184,7 @@ int main(int argc, char **argv)
 	input = output = NULL;
 
 	for(i = 1; i < argc; i++)
-		if(!strcmp(argv[i], "d")){
+		if(!strcmp(argv[i], "-d")){
 			debug = 1;
 		}else if(!strncmp(argv[i], "-nost", 5)){
 			if(!strcmp(argv[i] + 5, "artfiles"))

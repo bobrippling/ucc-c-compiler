@@ -1,10 +1,8 @@
 include ../src_config.mk
 
-OBJ = platform.o util.o
+OBJ = platform.o util.o alloc.o
 
-BUILD_CC = ${CC} -c -o $@ $^
-
-include ../../config.mk
+BUILD_CC = ${CC} -c -o $@ $<
 
 all: ${OBJ}
 
