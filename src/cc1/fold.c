@@ -153,7 +153,7 @@ void fold_assignment(expr *e, symtable *stab)
 		strcpy(buf, decl_to_str(e->lhs->tree_type));
 
 		warn_at(&e->where, "assignment type mismatch: got %s, expected %s",
-				buf, decl_to_str(e->rhs->tree_type));
+				decl_to_str(e->rhs->tree_type), buf);
 	}
 }
 
