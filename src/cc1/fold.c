@@ -117,7 +117,7 @@ void fold_funcall(expr *e, symtable *stab)
 					char buf[DECL_STATIC_BUFSIZ];
 					strcpy(buf, decl_to_str(iter_arg[i]->tree_type));
 					warn_at(&e->where, "mismatching arguments for arg %d to %s: got %s, expected %s",
-							i, df->spel, buf, decl_to_str(iter_decl[i]));
+							i + 1, df->spel, buf, decl_to_str(iter_decl[i]));
 				}
 			}
 		}
