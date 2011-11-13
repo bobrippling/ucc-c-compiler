@@ -18,6 +18,7 @@
 #define DIE_UNDECL() DIE_UNDECL_SPEL(e->spel)
 
 void fold_expr(expr *e, symtable *stab);
+void fold_code(tree *t);
 
 int fold_is_lvalue(expr *e)
 {
@@ -309,6 +310,86 @@ void fold_decl_global(decl *d, symtable *stab)
 	fold_decl(d, stab);
 }
 
+void fold_block(tree *t)
+{
+	int auto_offset, arg_offset;
+
+	if(t->decls){
+		decl **iter;
+
+		for(iter = t->decls; *iter; iter++){
+			symtab_add(t->symtab, *iter, sym_auto);
+			fold_decl(*iter, t->symtab);
+		}
+	}
+
+	if(!t->symtab->parent)
+		ICE("symtab has no parent");
+
+	auto_offset = t->symtab->parent->auto_offset;
+	arg_offset  = 0;
+
+	/* need to walk backwards */
+	if(t->symtab->decls){
+		decl **diter;
+
+		for(diter = t->symtab->decls; *diter; diter++);
+
+		for(diter--; diter >= t->symtab->decls; diter--){
+			sym *s = (*diter)->sym;
+			if(s->type == sym_auto){
+				s->offset = auto_offset;
+
+				/* TODO: optimise for chars / don't assume everything is an int */
+				if(s->decl->arraysizes){
+					/* should've been folded fully */
+					int i;
+					for(i = 0; s->decl->arraysizes[i]; i++)
+						auto_offset += s->decl->arraysizes[i]->val.i * platform_word_size();
+
+					auto_offset += platform_word_size();
+				}else{
+					/* assume sizeof(int) for chars etc etc */
+					auto_offset += platform_word_size();
+				}
+			}else if(s->type == sym_arg){
+				s->offset = arg_offset;
+				arg_offset += platform_word_size();
+			}
+		}
+	}
+
+	t->symtab->auto_offset = auto_offset;
+
+	if(t->codes){
+		tree **iter;
+		int subtab_offsets = 0;
+
+		for(iter = t->codes; *iter; iter++){
+			int offset;
+
+			symtab_nest(t->symtab, &(*iter)->symtab);
+			fold_code(*iter);
+			offset = (*iter)->symtab->auto_offset;
+
+			if(offset > subtab_offsets)
+				subtab_offsets = offset;
+				/*
+					* we only need take the largest, other space can be reused
+					* because:
+					* {
+					*   int i;
+					* }
+					* {
+					*   int j;
+					* }
+					* never needs to access i and j at the same time
+					*/
+		}
+
+		t->symtab->auto_offset += subtab_offsets;
+	}
+}
 
 void fold_code(tree *t)
 {
@@ -329,11 +410,11 @@ void fold_code(tree *t)
 		case stat_if:
 			fold_expr(t->expr, t->symtab);
 
-			symtab_nest(t->symtab, &t->lhs->symtab);
+			symtab_nest(t->symtab->parent, &t->lhs->symtab);
 			fold_code(t->lhs);
 
 			if(t->rhs){
-				symtab_nest(t->symtab, &t->rhs->symtab);
+				symtab_nest(t->symtab->parent, &t->rhs->symtab);
 				fold_code(t->rhs);
 			}
 			break;
@@ -343,87 +424,19 @@ void fold_code(tree *t)
 			fold_expr(t->flow->for_while, t->symtab);
 			fold_expr(t->flow->for_inc,   t->symtab);
 
-			symtab_nest(t->symtab, &t->lhs->symtab);
+			/*
+			 * here, as above with `while, do and if`, the symtab is nested
+			 * into the current code's parent symtab, not the current code's symtab itself
+			 * otherwise the decls aren't taken into account for offset calculations
+			 * bodge?
+			 */
+			symtab_nest(t->symtab->parent, &t->lhs->symtab);
 			fold_code(t->lhs);
 			break;
 
 		case stat_code:
-		{
-			int auto_offset, arg_offset;
-			decl **diter;
-
-			if(t->decls){
-				decl **iter;
-
-				for(iter = t->decls; *iter; iter++){
-					symtab_add(t->symtab, *iter, sym_auto);
-					fold_decl(*iter, t->symtab);
-				}
-			}
-
-			auto_offset = t->symtab->parent ? t->symtab->parent->auto_offset : 0;
-			arg_offset  = 0;
-
-			/* need to walk backwards */
-			if(t->symtab->decls){
-				for(diter = t->symtab->decls; *diter; diter++);
-
-				for(diter--; diter >= t->symtab->decls; diter--){
-					sym *s = (*diter)->sym;
-					if(s->type == sym_auto){
-						s->offset = auto_offset;
-
-						/* TODO: optimise for chars / don't assume everything is an int */
-						if(s->decl->arraysizes){
-							/* should've been folded fully */
-							int i;
-							for(i = 0; s->decl->arraysizes[i]; i++)
-								auto_offset += s->decl->arraysizes[i]->val.i * platform_word_size();
-
-							auto_offset += platform_word_size();
-						}else{
-							/* assume sizeof(int) for chars etc etc */
-							auto_offset += platform_word_size();
-						}
-					}else if(s->type == sym_arg){
-						s->offset = arg_offset;
-						arg_offset += platform_word_size();
-					}
-				}
-			}
-
-			t->symtab->auto_offset = auto_offset;
-
-			if(t->codes){
-				tree **iter;
-				int subtab_offsets = 0;
-
-				for(iter = t->codes; *iter; iter++){
-					int offset;
-
-					symtab_nest(t->symtab, &(*iter)->symtab);
-					fold_code(*iter);
-					offset = (*iter)->symtab->auto_offset;
-
-					if(offset > subtab_offsets)
-						subtab_offsets = offset;
-						/*
-						 * we only need take the largest, other space can be reused
-						 * because:
-						 * {
-						 *   int i;
-						 * }
-						 * {
-						 *   int j;
-						 * }
-						 * never needs to access i and j at the same time
-						 */
-				}
-
-				t->symtab->auto_offset += subtab_offsets;
-			}
+			fold_block(t);
 			break;
-		}
 
 		case stat_expr:
 		case stat_return:
@@ -511,7 +524,7 @@ void fold(symtable *globs)
 			fold_func(D(i), globs);
 		else
 			fold_decl_global(D(i), globs);
+	}
 
 #undef D
-	}
 }

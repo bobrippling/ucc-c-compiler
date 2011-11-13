@@ -10,7 +10,7 @@
 
 #define PRINT_IF(x, sub, fn) \
 	if(x->sub){ \
-		idt_printf(#sub " (%p):\n", x->sub); \
+		idt_printf(#sub ":\n"); \
 		indent++; \
 		fn(x->sub); \
 		indent--; \
@@ -54,7 +54,7 @@ void print_type(type *t)
 	fprintf(cc1_out, "%s", type_to_str(t));
 }
 
-void print_decl(decl *d, int idt, int nl)
+void print_decl(decl *d, int idt, int nl, int sym_offset)
 {
 	int i;
 
@@ -74,6 +74,9 @@ void print_decl(decl *d, int idt, int nl)
 	if(d->spel)
 		fputs(d->spel, cc1_out);
 
+	if(sym_offset)
+		fprintf(cc1_out, " (sym offset = %d)", d->sym->offset);
+
 	if(nl)
 		fputc('\n', cc1_out);
 
@@ -90,13 +93,13 @@ void print_decl(decl *d, int idt, int nl)
 void print_sym(sym *s)
 {
 	idt_printf("sym: type=%s, offset=%d, type: ", sym_to_str(s->type), s->offset);
-	print_decl(s->decl, 0, 1);
+	print_decl(s->decl, 0, 1, 0);
 }
 
 void print_expr(expr *e)
 {
 	idt_printf("vartype: ");
-	print_decl(e->tree_type, 0, 1);
+	print_decl(e->tree_type, 0, 1, 0);
 
 	idt_printf("e->type: %s\n", expr_to_str(e->type));
 
@@ -242,7 +245,7 @@ void print_tree(tree *t)
 		idt_printf("decls:\n");
 		for(iter = t->decls; *iter; iter++){
 			indent++;
-			print_decl(*iter, 1, 1);
+			print_decl(*iter, 1, 1, 1);
 			indent--;
 		}
 	}
@@ -267,11 +270,11 @@ void print_func(decl *d)
 	idt_printf("function: ");
 	indent++;
 
-	print_decl(d, 0, 0);
+	print_decl(d, 0, 0, 0);
 
 	fputc('(', cc1_out);
 	for(iter = f->args; iter && *iter; iter++){
-		print_decl(*iter, 0, 0);
+		print_decl(*iter, 0, 0, 0);
 		fprintf(cc1_out, "%s", iter[1] ? ", " : "");
 	}
 
@@ -279,7 +282,7 @@ void print_func(decl *d)
 
 	if(f->code){
 		for(iter = f->args; iter && *iter; iter++)
-			idt_printf("offset of %s = %d\n", (*iter)->spel, (*iter)->sym->offset);
+			idt_printf(" offset of %s = %d\n", (*iter)->spel, (*iter)->sym->offset);
 
 		PRINT_IF(f, code, print_tree)
 	}
@@ -295,7 +298,7 @@ void gen_str(symtable *symtab)
 			print_func(*diter);
 		}else{
 			fprintf(cc1_out, "global variable: ");
-			print_decl(*diter, 0, 1);
+			print_decl(*diter, 0, 1, 0);
 			if((*diter)->init){
 				indent++;
 				fprintf(cc1_out, "init:\n");

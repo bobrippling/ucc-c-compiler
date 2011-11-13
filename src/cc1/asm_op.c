@@ -75,7 +75,7 @@ static void asm_shortcircuit(expr *e, symtable *tab)
 	asm_temp(1, "pop rax");
 	walk_expr(e->rhs, tab);
 
-	asm_temp(1, baillabel);
+	asm_label(baillabel);
 	free(baillabel);
 }
 
