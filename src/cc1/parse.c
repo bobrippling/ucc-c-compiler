@@ -502,26 +502,105 @@ next_decl:
 		if(accept(token_open_paren)){
 			d->func = function_new();
 
-			while((curtok_is_type_prething())){
-				dynarray_add((void ***)&d->func->args, parse_decl(parse_type(!need_type), SPEL_OPT));
+			/*
+			 * either:
+			 *
+			 * [<type>] <name>( [<type> [<name>]]... )
+			 * {
+			 * }
+			 *
+			 * with optional {}
+			 *
+			 * or
+			 *
+			 * [<type>] <name>( [<name>...] )
+			 *   <type> <name>, ...;
+			 *   <type> <name>, ...;
+			 * {
+			 * }
+			 *
+			 * non-optional code
+			 *
+			 * i.e.
+			 *
+			 * int x(int y);
+			 * int x(int y){}
+			 *
+			 * or
+			 *
+			 * int x(y)
+			 *   int y;
+			 * {
+			 * }
+			 *
+			 */
 
-				if(curtok == token_close_paren)
-					break;
+			if(curtok == token_identifier){
+				int i, len;
+				char **spells = NULL;
+				decl **args;
 
-				EAT(token_comma);
+				do{
+					dynarray_add((void ***)&spells, token_current_spel());
+					EAT(token_identifier);
+				}while(accept(token_comma));
+				EAT(token_close_paren);
 
-				if(accept(token_elipsis)){
-					d->func->variadic = 1;
-					break;
+				/* parse decls, then check they correspond */
+				args = parse_decls(NEED_TYPE_YES);
+
+				len = dynarray_count((void ***)&args);
+				if(len != dynarray_count((void ***)&spells))
+					die_at(&args[0]->where, "mismatching argument counts");
+
+				for(i = 0; i < len; i++){
+					int j, found;
+
+					if(args[i]->init)
+						die_at(&args[i]->where, "parameter \"%s\" is initialised", args[i]->spel);
+
+					found = 0;
+					for(j = 0; j < len; j++)
+						if(!strcmp(spells[j], args[i]->spel)){
+							found = 1;
+							break;
+						}
+
+					if(!found)
+						die_at(&args[i]->where, "\"%s\": no corresponding identifier for \"%s\"", d->spel, args[i]->spel);
+				}
+				/* no need to check the other way around, since the counts are equal */
+				/* FIXME: uniq() on parse_decls() in general */
+				dynarray_free((void ***)&spells, free);
+
+				d->func->args = args;
+				d->func->code = parse_code();
+
+			}else{
+				while((curtok_is_type_prething())){
+					/* actually, we don't need a type here, default to int, i think */
+					dynarray_add((void ***)&d->func->args, parse_decl(parse_type(!need_type), SPEL_OPT));
+
+					if(curtok == token_close_paren)
+						break;
+
+					EAT(token_comma);
+
+					if(accept(token_elipsis)){
+						d->func->variadic = 1;
+						break;
+					}
+
+					/* continue loop */
 				}
 
-				/* continue loop */
+				EAT(token_close_paren);
+
+				if(!accept(token_semicolon))
+					d->func->code = parse_code();
 			}
+			/* end of function parsing */
 
-			EAT(token_close_paren);
-
-			if(!accept(token_semicolon))
-				d->func->code = parse_code();
 		}else{
 			if(accept(token_assign))
 				d->init = parse_expr();
