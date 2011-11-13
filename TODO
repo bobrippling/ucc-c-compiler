@@ -3,11 +3,6 @@ Ordered By Priority
 
 duplicate symbol check: "int x; x(){}"
 
-sizeof:
-		sizeof(type)
-	and
-		sizeof `expr`
-
 void f();
 f(2); // valid
 void g(void);

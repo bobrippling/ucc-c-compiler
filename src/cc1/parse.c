@@ -71,14 +71,16 @@ expr *parse_expr_unary_op()
 			EAT(token_sizeof);
 			e = expr_new();
 			e->type = expr_sizeof;
-			if(curtok == token_identifier){
-				e->spel = token_current_spel();
-				EAT(token_identifier);
-			}else if(curtok_is_type()){
-				e->tree_type->type->primitive = curtok_to_type_primitive();
-				EAT(curtok);
+
+			if(accept(token_open_paren)){
+				if(curtok_is_type_prething())
+					e->tree_type = parse_decl(NULL, SPEL_NONE);
+				else
+					e->expr = parse_expr();
+
+				EAT(token_close_paren);
 			}else{
-				EAT(token_identifier); /* raise error */
+				e->expr = parse_expr();
 			}
 			return e;
 
