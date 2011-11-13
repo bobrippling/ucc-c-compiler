@@ -140,21 +140,15 @@ void print_expr(expr *e)
 			break;
 
 		case expr_assign:
-			idt_printf("%s assignment, expr:\n", assign_to_str(e->assign_type));
-			if(e->assign_type == assign_normal){
-				idt_printf("assign to:\n");
-				indent++;
-				print_expr(e->lhs);
-				indent--;
-				idt_printf("assign from:\n");
-				indent++;
-				print_expr(e->rhs);
-				indent--;
-			}else{
-				indent++;
-				print_expr(e->expr);
-				indent--;
-			}
+			idt_printf("%sassignment, expr:\n", e->assign_is_post ? "post-inc/dec " : "");
+			idt_printf("assign to:\n");
+			indent++;
+			print_expr(e->lhs);
+			indent--;
+			idt_printf("assign from:\n");
+			indent++;
+			print_expr(e->rhs);
+			indent--;
 			break;
 
 		case expr_funcall:

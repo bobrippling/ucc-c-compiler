@@ -154,12 +154,39 @@ expr *parse_expr_unary_op()
 
 		case token_increment:
 		case token_decrement:
+		{
+			const int inc = curtok == token_increment;
+			/* this is a normal increment, i.e. ++x, simply translate it to x = x + 1 */
 			e = expr_new();
 			e->type = expr_assign;
-			e->assign_type = curtok == token_increment ? assign_pre_increment : assign_pre_decrement;
 			EAT(curtok);
-			e->expr = parse_expr_unary_op();
+
+			/* assign to... */
+			e->lhs = parse_expr_unary_op();
+			e->rhs = expr_new();
+			e->rhs->op = inc ? op_plus : op_minus;
+			e->rhs->lhs = e->lhs;
+			e->rhs->rhs = expr_new_val(1);
+			/*
+			 * looks like this:
+			 *
+			 * e {
+			 *   op = op_plus
+			 *   lhs {
+			 *     "varname"
+			 *   }
+			 *   rhs {
+			 *     lhs {
+			 *       "varname"
+			 *     }
+			 *     rhs {
+			 *       1
+			 *     }
+			 *   }
+			 * }
+			 */
 			return e;
+		}
 
 		case token_identifier:
 			e = parse_lone_identifier();
@@ -174,9 +201,14 @@ expr *parse_expr_unary_op()
 				if((flag = accept(token_increment)) || accept(token_decrement)){
 					expr *inc = expr_new();
 					inc->type = expr_assign;
-					inc->assign_type = flag ? assign_post_increment : assign_post_decrement;
-					inc->expr = e;
-					return inc;
+					inc->assign_is_post = 1;
+
+					inc->lhs = e;
+					inc->rhs = expr_new();
+					inc->rhs->op = flag ? op_plus : op_minus;
+					inc->rhs->lhs = e;
+					inc->rhs->rhs = expr_new_val(1);
+					e = inc;
 				}
 			}
 			return e;
@@ -300,14 +332,15 @@ expr *parse_expr_assign()
 		expr *ass = expr_new();
 
 		ass->type = expr_assign;
-		ass->assign_type = assign_augmented;
-
-		ass->op = curtok_to_augmented_op();
-
-		EAT(curtok);
 
 		ass->lhs = e;
-		ass->rhs = parse_expr();
+		ass->rhs = expr_new();
+
+		ass->rhs->op = curtok_to_augmented_op();
+		EAT(curtok);
+
+		ass->rhs->lhs = e;
+		ass->rhs->rhs = parse_expr();
 
 		e = ass;
 	}

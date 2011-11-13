@@ -126,48 +126,19 @@ void fold_funcall(expr *e, symtable *stab)
 
 void fold_assignment(expr *e, symtable *stab)
 {
-	int norm_assign;
-	expr *assigning_to, *assigning_from;
+	if(!fold_is_lvalue(e->lhs))
+		die_at(&e->lhs->where, "not an lvalue");
 
-	if(e->assign_type == assign_augmented){
-		/* make a normal op from it */
-		expr *rhs = expr_new();
-
-		rhs->type = expr_op;
-		rhs->op   = e->op;
-		rhs->lhs  = e->lhs;
-		rhs->rhs  = e->rhs;
-
-		e->assign_type = assign_normal;
-		e->rhs = rhs;
-	}
-
-	norm_assign = e->assign_type == assign_normal;
-
-	if(norm_assign){
-		assigning_to   = e->lhs;
-		assigning_from = e->rhs;
-	}else{
-		assigning_to = assigning_from = e->expr;
-	}
-
-	if(!fold_is_lvalue(assigning_to))
-		die_at(&assigning_to->where, "not an lvalue");
-
-	if(norm_assign){
-		fold_expr(e->lhs, stab);
-		fold_expr(e->rhs, stab);
-	}else{
-		fold_expr(e->expr, stab);
-	}
+	fold_expr(e->lhs, stab);
+	fold_expr(e->rhs, stab);
 
 
 	if(!e->sym){
 		/* need this here, since the generic sym-assignment does it from ->spel and not with assigning_to either */
-		e->sym = symtab_search(stab, assigning_to->spel);
+		e->sym = symtab_search(stab, e->lhs->spel);
 
 		if(!e->sym)
-			DIE_UNDECL_SPEL(assigning_to->spel);
+			DIE_UNDECL_SPEL(e->lhs->spel);
 	}
 
 
@@ -178,52 +149,31 @@ void fold_assignment(expr *e, symtable *stab)
 	 * if we're inc/dec'ing a pointer, we need to inc by sizeof(*ptr)
 	 * convert from inc/dec to a standard addition
 	 *
-	 * unless the sizeof the pointer is 1, obviously we're just adding one
+	 * unless the sizeof the pointer is 1 (char), obviously we're just adding one
 	 */
-	if(!norm_assign && e->tree_type->ptr_depth &&
-			(e->tree_type->type->primitive != type_char || e->tree_type->ptr_depth != 1)){
-
+	if(e->tree_type->ptr_depth && (e->tree_type->type->primitive != type_char || e->tree_type->ptr_depth != 1)){
 		expr *addition = expr_new();
+
 		type_free(addition->tree_type);
 		addition->tree_type = decl_copy(e->tree_type);
 
 		addition->type = expr_op;
-		switch(e->assign_type){
-			case assign_pre_increment:
-			case assign_post_increment:
-				addition->op = op_plus;
-				break;
-			case assign_pre_decrement:
-			case assign_post_decrement:
-				addition->op = op_minus;
-				break;
-			case assign_augmented:
-			case assign_normal:
-				ICE("error in augmented assignment tree");
-		}
+		addition->op   = e->op;
 
-		addition->lhs = e->expr;
+		addition->lhs = e->rhs;
 		addition->rhs = expr_ptr_multiply(expr_new_val(1), addition->tree_type);
 
-		e->assign_type = assign_normal;
-		e->lhs         = e->expr;
-		e->rhs         = addition;
-
-		/*
-		 * FIXME:
-		 * have post incerments for any size, not just 'inc' and 'dec', i.e. +1, have +8 etc etc
-		 */
-		ICW("ucc bug: converting from inc/dec addition to +/-, this is a bug for x++ assignments");
+		e->rhs = addition;
 	}
 
 	/* type check */
-	if(!decl_equal(assigning_from->tree_type, assigning_to->tree_type, 0)){
+	if(!decl_equal(e->lhs->tree_type, e->rhs->tree_type, 0)){
 		char buf[DECL_STATIC_BUFSIZ];
 
-		strcpy(buf, decl_to_str(assigning_from->tree_type));
+		strcpy(buf, decl_to_str(e->lhs->tree_type));
 
 		warn_at(&e->where, "assignment type mismatch: got %s, expected %s",
-				buf, decl_to_str(assigning_to->tree_type));
+				buf, decl_to_str(e->rhs->tree_type));
 	}
 }
 

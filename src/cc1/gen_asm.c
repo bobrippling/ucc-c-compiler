@@ -34,6 +34,25 @@ void asm_ax_to_store(expr *store, symtable *stab)
 	}
 }
 
+void gen_assign(expr *e, symtable *stab)
+{
+	if(e->assign_is_post){
+		/* if this is the case, ->rhs->lhs is ->lhs, and ->rhs is an addition/subtraction of 1 * something */
+		walk_expr(e->lhs, stab);
+		asm_temp(1, "; save previous for post assignment");
+	}
+
+	walk_expr(e->rhs, stab);
+
+	/* store back to the sym's home */
+	asm_ax_to_store(e->lhs, stab);
+
+	if(e->assign_is_post){
+		asm_temp(1, "pop rax ; the value from ++/--");
+		asm_temp(1, "mov rax, [rsp] ; the value we saved");
+	}
+}
+
 void walk_expr(expr *e, symtable *stab)
 {
 	switch(e->type){
@@ -87,37 +106,7 @@ void walk_expr(expr *e, symtable *stab)
 			break;
 
 		case expr_assign:
-			if(e->assign_type == assign_normal){
-				walk_expr(e->rhs, stab);
-				asm_temp(1, "mov rax, [rsp]");
-				asm_ax_to_store(e->lhs, stab);
-
-			}else{
-				int incr;
-
-				/*
-				 * these aren't actually treated as assignments,
-				 * more expressions that alter values
-				 */
-				walk_expr(e->expr, stab);
-				/*
-				 * load the identifier and keep it on the stack for returning
-				 * now we inc/dec it
-				 */
-
-				incr = e->assign_type == assign_pre_increment || e->assign_type == assign_post_increment;
-
-				/* shouldn't need to laod it, but just in case */
-				asm_temp(1, "mov rax, [rsp]");
-				asm_temp(1, "%s rax", incr ? "inc" : "dec");
-
-				if(e->assign_type == assign_pre_increment || e->assign_type == assign_pre_decrement)
-					/* change the value we are "returning", too */
-					asm_temp(1, "mov [rsp], rax");
-
-				/* store back to the sym's home */
-				asm_ax_to_store(e->expr, stab);
-			}
+			gen_assign(e, stab);
 			break;
 
 		case expr_funcall:

@@ -150,6 +150,8 @@ ptr:
 			ICE("asm_operate: unknown operator got through");
 	}
 
+	/* asm_temp(1, "%s rax", incr ? "inc" : "dec"); TODO: optimise */
+
 	/* get here if op is *, +, - or ~ */
 	walk_expr(e->lhs, tab);
 	if(e->rhs){
