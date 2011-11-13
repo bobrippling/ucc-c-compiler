@@ -51,7 +51,7 @@ void print_type(type *t)
 	if(t->spec & spec_static)
 		fputs("static ", cc1_out);
 
-	fprintf(cc1_out, "%s ", type_to_str(t));
+	fprintf(cc1_out, "%s", type_to_str(t));
 }
 
 void print_decl(decl *d, int idt, int nl)
@@ -62,9 +62,12 @@ void print_decl(decl *d, int idt, int nl)
 		idt_print();
 
 	if(d->ignore)
-		fprintf(cc1_out, "(ignored/overridden later) ");
+		fprintf(cc1_out, "((extern) ignored/overridden later) ");
 
 	print_type(d->type);
+	if(d->ptr_depth || d->spel)
+		fputc(' ', cc1_out);
+
 	for(i = d->ptr_depth; i > 0; i--)
 		fputc('*', cc1_out);
 
@@ -275,7 +278,7 @@ void print_func(decl *d)
 	fputc('(', cc1_out);
 	for(iter = f->args; iter && *iter; iter++){
 		print_decl(*iter, 0, 0);
-		fprintf(cc1_out, "%s ", iter[1] ? "," : "");
+		fprintf(cc1_out, "%s", iter[1] ? ", " : "");
 	}
 
 	fprintf(cc1_out, "%s)\n", f->variadic ? ", ..." : "");
