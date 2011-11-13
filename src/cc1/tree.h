@@ -14,7 +14,6 @@ typedef struct assignment  assignment;
 
 enum type_primitive
 {
-#define type_ptr type_int
 	type_int,
 	type_char,
 	type_void,
@@ -23,7 +22,7 @@ enum type_primitive
 
 enum type_spec
 {
-	spec_none = 0,
+	spec_none   = 0,
 	spec_const  = 1 << 0,
 	spec_extern = 1 << 1,
 	spec_static = 1 << 2
@@ -99,17 +98,8 @@ struct expr
 
 		op_unknown
 	} op;
-	enum assign_type
-	{
-		assign_normal,
-		assign_augmented, /* +=, ... - type stored in ->op */
 
-		/* ++x, x--, ... - fold.c rearranges to ensure these work */
-		assign_pre_increment,
-		assign_pre_decrement,
-		assign_post_increment,
-		assign_post_decrement
-	} assign_type;
+	int assign_is_post; /* do we return the altered value or the old one? */
 
 	expr *lhs, *rhs;
 
@@ -199,7 +189,6 @@ const char *stat_to_str(const enum stat_type t);
 const char *decl_to_str(const decl          *t);
 const char *type_to_str(const type          *t);
 const char *spec_to_str(const enum type_spec s);
-const char *assign_to_str(const enum assign_type);
 
 int   type_equal(const type *, const type *);
 int   decl_size(const decl *);
