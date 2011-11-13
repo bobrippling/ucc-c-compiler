@@ -37,12 +37,6 @@ general lhs assignment:
 
 assembly optimisation - remove asm_temp()
 
-main(argc,argv)
-char **argv;
-{
-}
-parsing
-
 ({ expr; })
 parsing
 

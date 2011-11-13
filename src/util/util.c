@@ -130,17 +130,40 @@ void dynarray_add(void ***par, void *new)
 	if(!ar){
 		ar = umalloc(2 * sizeof(void *));
 	}else{
-		int len = 0;
-		while(ar[len])
-			len++;
-		idx = len;
-		ar = urealloc(ar, (++len + 1) * sizeof(void *));
+		idx = dynarray_count(par);
+		ar = urealloc(ar, (idx + 2) * sizeof(void *));
 	}
 
 	ar[idx] = new;
 	ar[idx+1] = NULL;
 
 	*par = ar;
+}
+
+int dynarray_count(void ***par)
+{
+	void **ar;
+	int len = 0;
+
+	if(!*par)
+		return 0;
+
+	ar = *par;
+	while(ar[len])
+		len++;
+
+	return len;
+}
+
+int dynarray_free(void ***par, void (*f)(void *))
+{
+	void **ar = *par;
+	while(*ar){
+		f(*ar);
+		ar++;
+	}
+	free(*par);
+	*par = NULL;
 }
 
 char *udirname(const char *f)
