@@ -1,4 +1,4 @@
-CFLAGS = -Wall -Wextra -pedantic -std=c99
+include src_config.mk
 
 all: cc1 cpp cc
 

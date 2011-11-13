@@ -3,14 +3,6 @@ Ordered By Priority
 
 duplicate symbol check: "int x; x(){}"
 
-fix:
-{
-	int i;
-	do{
-		int j; // no stack space reserved, this is specific to it being inside an if/do/while
-	}while(0);
-}
-
 sizeof:
 		sizeof(type)
 	and
