@@ -140,11 +140,7 @@ void walk_expr(expr *e, symtable *stab)
 			break;
 
 		case expr_sizeof:
-			/* TODO */
-			if(e->spel)
-				asm_temp(1, "push %d ; sizeof %s", platform_word_size(), e->spel);
-			else
-				asm_temp(1, "push %d ; sizeof type %s", platform_word_size(), decl_to_str(e->tree_type));
+			asm_temp(1, "push %d ; sizeof type %s", decl_size(e->tree_type), decl_to_str(e->tree_type));
 			break;
 
 		case expr_str:

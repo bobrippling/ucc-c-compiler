@@ -167,8 +167,15 @@ void fold_expr(expr *e, symtable *stab)
 
 	switch(e->type){
 		case expr_val:
-		case expr_sizeof:
 			e->tree_type->type->primitive = type_int;
+			break;
+
+		case expr_sizeof:
+			if(e->expr){
+				fold_expr(e->expr, stab);
+				GET_TREE_TYPE(e->expr->tree_type);
+			}
+			/* else ->tree_type has already been initialised */
 			break;
 
 		case expr_comma:
