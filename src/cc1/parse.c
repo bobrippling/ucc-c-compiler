@@ -171,11 +171,13 @@ expr *parse_expr_unary_op()
 			 * looks like this:
 			 *
 			 * e {
-			 *   op = op_plus
+			 *   type = assign
 			 *   lhs {
 			 *     "varname"
 			 *   }
 			 *   rhs {
+			 *     type = assign
+			 *     op   = op_plus
 			 *     lhs {
 			 *       "varname"
 			 *     }

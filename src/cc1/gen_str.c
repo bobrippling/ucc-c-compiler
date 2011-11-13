@@ -10,7 +10,7 @@
 
 #define PRINT_IF(x, sub, fn) \
 	if(x->sub){ \
-		idt_printf(#sub ":\n"); \
+		idt_printf(#sub " (%p):\n", x->sub); \
 		indent++; \
 		fn(x->sub); \
 		indent--; \

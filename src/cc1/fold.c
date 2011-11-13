@@ -145,27 +145,6 @@ void fold_assignment(expr *e, symtable *stab)
 	/* read the tree_type from what we're assigning to, not the expr */
 	GET_TREE_TYPE(e->sym->decl);
 
-	/*
-	 * if we're inc/dec'ing a pointer, we need to inc by sizeof(*ptr)
-	 * convert from inc/dec to a standard addition
-	 *
-	 * unless the sizeof the pointer is 1 (char), obviously we're just adding one
-	 */
-	if(e->tree_type->ptr_depth && (e->tree_type->type->primitive != type_char || e->tree_type->ptr_depth != 1)){
-		expr *addition = expr_new();
-
-		type_free(addition->tree_type);
-		addition->tree_type = decl_copy(e->tree_type);
-
-		addition->type = expr_op;
-		addition->op   = e->op;
-
-		addition->lhs = e->rhs;
-		addition->rhs = expr_ptr_multiply(expr_new_val(1), addition->tree_type);
-
-		e->rhs = addition;
-	}
-
 	/* type check */
 	if(!decl_equal(e->lhs->tree_type, e->rhs->tree_type, 0)){
 		char buf[DECL_STATIC_BUFSIZ];

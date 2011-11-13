@@ -178,6 +178,7 @@ function  *function_new();
 
 type      *type_copy(type *);
 decl      *decl_copy(decl *);
+/*expr      *expr_copy(expr *);*/
 tree      *tree_new_code();
 expr      *expr_new_val(int);
 
