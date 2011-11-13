@@ -91,11 +91,32 @@ type *type_copy(type *t)
 
 decl *decl_copy(decl *d)
 {
-	decl *ret = umalloc(sizeof *d);
+	decl *ret = umalloc(sizeof *ret);
 	memcpy(ret, d, sizeof *ret);
 	/*ret->spel = NULL;*/
 	return ret;
 }
+
+#if 0
+expr *expr_copy(expr *e)
+{
+	expr *ret;
+
+	if(!e)
+		return NULL;
+
+	ret = umalloc(sizeof *ret);
+
+	ret->lhs  = expr_copy(e->lhs);
+	ret->rhs  = expr_copy(e->rhs);
+	ret->spel = ustrdup(  e->spel);
+	ret->expr = expr_copy(e->expr);
+	ret->funcargs = NULL;
+	ret->tree_type = decl_copy(e->tree_type);
+
+	return ret;
+}
+#endif
 
 function *function_new()
 {

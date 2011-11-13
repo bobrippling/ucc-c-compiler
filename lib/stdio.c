@@ -60,10 +60,12 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 				write(fd, (char *)ap, 1);
 			else if(*fmt == 'd')
 				printd(fd, *(int *)ap);
-			else if(*fmt == 'p')
+			else if(*fmt == 'p' || *fmt == 'x')
 				printx(fd, *(int *)ap);
+			else
+				write(fd, fmt, 1); /* default to just printing the char */
 
-			ap += 8;
+			ap++;
 		}else{
 			write(fd, fmt, 1);
 		}
