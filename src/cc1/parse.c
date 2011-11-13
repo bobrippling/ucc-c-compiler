@@ -291,9 +291,21 @@ expr *parse_expr_binary_op()
 expr *parse_expr_sum()
 {
 	/* above [+-] above */
-	return parse_expr_join(
-			parse_expr_binary_op, parse_expr_sum,
-				token_plus, token_minus, token_unknown);
+	expr *e = parse_expr_join(parse_expr_binary_op, parse_expr_sum, token_plus, token_unknown);
+
+	while(accept(token_minus)){
+		expr *subthis = parse_expr_binary_op();
+		expr *ret = expr_new();
+
+		ret->type = expr_op;
+		ret->op   = op_minus;
+		ret->lhs  = e;
+		ret->rhs  = subthis;
+
+		e = ret;
+	}
+
+	return e;
 }
 
 expr *parse_expr_bit_op()

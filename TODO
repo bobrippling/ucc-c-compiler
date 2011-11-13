@@ -8,8 +8,6 @@ f(2); // valid
 void g(void);
 g(2); // invalid
 
-fix 3 - 2 - 1 parsing
-
 typedefs
 
 struct parsing
