@@ -6,11 +6,6 @@ for(;;){
 
 duplicate symbol check: "int x; x(){}"
 
-void f();
-f(2); // valid
-void g(void);
-g(2); // invalid
-
 typedefs
 
 struct parsing
