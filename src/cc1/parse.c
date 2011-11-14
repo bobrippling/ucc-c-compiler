@@ -600,7 +600,7 @@ next_decl:
 
 				len = dynarray_count((void ***)&args);
 				if(len != dynarray_count((void ***)&spells))
-					die_at(&args[0]->where, "mismatching argument counts");
+					die_at(args ? &args[0]->where : &d->func->where, "old-style function decl: mismatching argument counts");
 
 				for(i = 0; i < len; i++){
 					int j, found;
@@ -644,6 +644,17 @@ next_decl:
 				}
 
 				EAT(token_close_paren);
+
+				if(dynarray_count((void ***)&d->func->args) == 1 &&
+						d->func->args[0]->type->primitive == type_void &&
+						d->func->args[0]->ptr_depth == 0 &&
+						d->func->args[0]->spel == NULL){
+					/* x(void); */
+					decl_free(d->func->args[0]);
+					free(d->func->args);
+					d->func->args = NULL;
+					d->func->args_void = 1;
+				}
 
 				if(!accept(token_semicolon))
 					d->func->code = parse_code();
