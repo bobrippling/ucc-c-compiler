@@ -691,15 +691,21 @@ tree *parse_code_declblock()
 			(*diter)->init = NULL; /* we are a code block, not global, this is fine */
 		}
 
-	/* main read loop */
-	do{
-		tree *sub = parse_code();
+	if(curtok != token_close_block){
+		/* main read loop */
+		do{
+			tree *sub = parse_code();
 
-		if(sub)
-			dynarray_add((void ***)&t->codes, sub);
-		else
-			break;
-	}while(curtok != token_close_block);
+			if(sub)
+				dynarray_add((void ***)&t->codes, sub);
+			else
+				break;
+		}while(curtok != token_close_block);
+	}
+	/*
+	 * else:
+	 * { int i; }
+	 */
 
 	EAT(token_close_block);
 	return t;
