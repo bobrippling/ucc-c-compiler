@@ -91,8 +91,8 @@ void fold_funcall(expr *e, symtable *stab)
 
 	GET_TREE_TYPE(e->sym->decl); /* XXX: check */
 
-	/* func count comparison */
-	{
+	/* func count comparison, only if the func has arg-decls, or the func is f(void) */
+	if(df->func->args || df->func->args_void){
 		expr **iter_arg;
 		decl **iter_decl;
 		int count_decl, count_arg;
