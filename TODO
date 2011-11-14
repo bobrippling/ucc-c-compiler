@@ -1,6 +1,9 @@
 Ordered By Priority
 -------------------
 
+for(;;){
+}
+
 duplicate symbol check: "int x; x(){}"
 
 void f();
