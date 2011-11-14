@@ -73,11 +73,11 @@ void fold_funcall(expr *e, symtable *stab)
 
 		df->sym = NULL;
 		/*
-			* fold() sets df->sym below,
-			* and doesn't expect it to be set.
-			* -> df is now part of the global sym table,
-			* having just been added via grandparent()
-			*/
+		 * fold() sets df->sym below,
+		 * and doesn't expect it to be set.
+		 * -> df is now part of the global sym table,
+		 * having just been added via grandparent()
+		 */
 
 		/* set up the function args to correspond with the arg types */
 		if(e->funcargs){
@@ -333,7 +333,7 @@ void fold_block(tree *t)
 	if(!t->symtab->parent)
 		ICE("symtab has no parent");
 
-	auto_offset = t->symtab->parent->auto_offset;
+	auto_offset = t->symtab->parent->auto_offset; /* FIXME */
 	arg_offset  = 0;
 
 	/* need to walk backwards */
@@ -374,7 +374,7 @@ void fold_block(tree *t)
 			}
 		}
 	}
-	t->symtab->auto_offset += auto_offset;
+	t->symtab->auto_offset += auto_offset; /* FIXME */
 
 	if(t->codes){
 		tree **iter;
@@ -390,19 +390,19 @@ void fold_block(tree *t)
 			if(offset > subtab_offsets)
 				subtab_offsets = offset;
 				/*
-					* we only need take the largest, other space can be reused
-					* because:
-					* {
-					*   int i;
-					* }
-					* {
-					*   int j;
-					* }
-					* never needs to access i and j at the same time
-					*/
+				 * we only need take the largest, other space can be reused
+				 * because:
+				 * {
+				 *   int i;
+				 * }
+				 * {
+				 *   int j;
+				 * }
+				 * never needs to access i and j at the same time
+				 */
 		}
 
-		t->symtab->auto_offset += subtab_offsets;
+		t->symtab->auto_offset += subtab_offsets; /* FIXME */
 	}
 }
 
@@ -425,12 +425,14 @@ void fold_code(tree *t)
 		case stat_if:
 			fold_expr(t->expr, t->symtab);
 
-			symtab_nest(t->symtab->parent, &t->lhs->symtab);
+			symtab_nest(t->symtab, &t->lhs->symtab);
 			fold_code(t->lhs);
+			t->symtab->auto_offset += t->lhs->symtab->auto_offset; /* FIXME */
 
 			if(t->rhs){
-				symtab_nest(t->symtab->parent, &t->rhs->symtab);
+				symtab_nest(t->symtab, &t->rhs->symtab);
 				fold_code(t->rhs);
+				t->symtab->auto_offset += t->rhs->symtab->auto_offset; /* FIXME */
 			}
 			break;
 
@@ -439,14 +441,9 @@ void fold_code(tree *t)
 			fold_expr(t->flow->for_while, t->symtab);
 			fold_expr(t->flow->for_inc,   t->symtab);
 
-			/*
-			 * here, as above with `while, do and if`, the symtab is nested
-			 * into the current code's parent symtab, not the current code's symtab itself
-			 * otherwise the decls aren't taken into account for offset calculations
-			 * bodge?
-			 */
-			symtab_nest(t->symtab->parent, &t->lhs->symtab);
+			symtab_nest(t->symtab, &t->lhs->symtab);
 			fold_code(t->lhs);
+			t->symtab->auto_offset += t->lhs->symtab->auto_offset; /* FIXME */
 			break;
 
 		case stat_code:
@@ -461,6 +458,8 @@ void fold_code(tree *t)
 		case stat_noop:
 			break;
 	}
+
+	t->symtab->parent->auto_offset += t->symtab->auto_offset;
 }
 
 void fold_func(decl *df, symtable *globsymtab)
