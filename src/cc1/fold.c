@@ -338,6 +338,7 @@ void fold_block(tree *t)
 
 	/* need to walk backwards */
 	if(t->symtab->decls){
+		const int word_size = platform_word_size();
 		decl **diter;
 
 		for(diter = t->symtab->decls; *diter; diter++);
@@ -350,23 +351,30 @@ void fold_block(tree *t)
 				/* TODO: optimise for chars / don't assume everything is an int */
 				if(s->decl->arraysizes){
 					/* should've been folded fully */
+					decl dtmp;
 					int i;
-					for(i = 0; s->decl->arraysizes[i]; i++)
-						auto_offset += s->decl->arraysizes[i]->val.i * platform_word_size();
 
-					auto_offset += platform_word_size();
+					memcpy(&dtmp, s->decl, sizeof dtmp);
+					dtmp.ptr_depth--;
+
+					for(i = 0; s->decl->arraysizes[i]; i++)
+						auto_offset += s->decl->arraysizes[i]->val.i * decl_size(&dtmp);
+
+					/* needs to be a multiple of word_size */
+					if(auto_offset % word_size)
+						auto_offset += word_size - auto_offset % word_size;
+
 				}else{
-					/* assume sizeof(int) for chars etc etc */
-					auto_offset += platform_word_size();
+					/* use sizeof(int) for single chars etc etc */
+					auto_offset += word_size;
 				}
 			}else if(s->type == sym_arg){
 				s->offset = arg_offset;
-				arg_offset += platform_word_size();
+				arg_offset += word_size;
 			}
 		}
 	}
-
-	t->symtab->auto_offset = auto_offset;
+	t->symtab->auto_offset += auto_offset;
 
 	if(t->codes){
 		tree **iter;
