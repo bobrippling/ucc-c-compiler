@@ -1,7 +1,15 @@
 Ordered By Priority
 -------------------
 
-duplicate symbol check: "int x; x(){}"
+{
+	int i;
+}
+{
+	int j;
+}
+can compress to 8-stack space, rather than 16
+
+errno - particularly BSD-systems
 
 typedefs
 
