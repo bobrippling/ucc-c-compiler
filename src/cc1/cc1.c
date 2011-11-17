@@ -15,6 +15,22 @@
 
 FILE *cc1_out = NULL;
 
+void ccdie(const char *fmt, ...)
+{
+	const int i = strlen(fmt);
+	va_list l;
+
+	va_start(fmt, l);
+	vfprintf(stderr, fmt, l);
+	va_end(l);
+
+	if(fmt[i-1] == ':')
+		perror(NULL);
+
+	fputc('\n', stderr);
+	exit(1);
+}
+
 int main(int argc, char **argv)
 {
 	static symtable *globs;
@@ -45,7 +61,7 @@ int main(int argc, char **argv)
 			if(strcmp(argv[i], "-")){
 				cc1_out = fopen(argv[i], "w");
 				if(!cc1_out){
-					die("open %s:", argv[i]);
+					ccdie("open %s:", argv[i]);
 					return 1;
 				}
 			}
@@ -54,7 +70,7 @@ int main(int argc, char **argv)
 			fname = argv[i];
 		}else{
 usage:
-			die("Usage: %s [-X backend] file", *argv);
+			ccdie("Usage: %s [-X backend] file", *argv);
 		}
 	}
 
@@ -62,7 +78,7 @@ usage:
 		f = fopen(fname, "r");
 		if(!f){
 			if(strcmp(fname, "-"))
-				die("open %s:", fname);
+				ccdie("open %s:", fname);
 			goto use_stdin;
 		}
 	}else{
