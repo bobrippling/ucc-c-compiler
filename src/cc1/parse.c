@@ -493,12 +493,21 @@ tree *parse_for()
 
 	tf = t->flow = tree_flow_new();
 
-	tf->for_init  = parse_expr();
-	EAT(token_semicolon);
-	tf->for_while = parse_expr();
-	EAT(token_semicolon);
-	tf->for_inc   = parse_expr();
-	EAT(token_close_paren);
+#define SEMI_WRAP(code) \
+	if(!accept(token_semicolon)){ \
+		code; \
+		EAT(token_semicolon); \
+	}
+
+	SEMI_WRAP(tf->for_init  = parse_expr());
+	SEMI_WRAP(tf->for_while = parse_expr());
+
+#undef SEMI_WRAP
+
+	if(!accept(token_close_paren)){
+		tf->for_inc   = parse_expr();
+		EAT(token_close_paren);
+	}
 
 	t->lhs = parse_code();
 

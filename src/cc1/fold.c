@@ -442,9 +442,11 @@ void fold_code(tree *t)
 			break;
 
 		case stat_for:
-			fold_expr(t->flow->for_init,  t->symtab);
-			fold_expr(t->flow->for_while, t->symtab);
-			fold_expr(t->flow->for_inc,   t->symtab);
+#define FOLD_IF(x) if(x) fold_expr(x, t->symtab)
+			FOLD_IF(t->flow->for_init);
+			FOLD_IF(t->flow->for_while);
+			FOLD_IF(t->flow->for_inc);
+#undef FOLD_IF
 
 			symtab_nest(t->symtab, &t->lhs->symtab);
 			fold_code(t->lhs);
@@ -455,9 +457,10 @@ void fold_code(tree *t)
 			fold_block(t);
 			break;
 
-		case stat_expr:
 		case stat_return:
-			fold_expr(t->expr, t->symtab);
+			if(t->expr)
+		case stat_expr:
+				fold_expr(t->expr, t->symtab);
 			break;
 
 		case stat_noop:
