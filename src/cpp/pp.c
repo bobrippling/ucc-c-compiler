@@ -6,7 +6,7 @@
 #include <errno.h>
 /* dirname */
 #include <libgen.h>
-/* chdir */
+/* chdir, getcwd */
 #include <unistd.h>
 
 #include "pp.h"
@@ -266,8 +266,11 @@ static int pp(struct pp *p, int skip)
 					}else{
 						path = ustrdup(base);
 						inc = fopen(path, "r");
-						if(!inc)
-							ppdie(p, "can't open \"%s\": %s", path, strerror(errno));
+						if(!inc){
+							char pwd[1024];
+							getcwd(pwd, sizeof pwd);
+							ppdie(p, "can't open \"%s\": %s (pwd %s)", path, strerror(errno), pwd);
+						}
 					}
 
 					if(pp_verbose)
