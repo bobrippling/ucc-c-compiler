@@ -153,7 +153,7 @@ start_assemble:
 start_link:
 	RUN(0, UCC_LD " " UCC_LDFLAGS " -o %s %s %s%s %s%s", f, f_o,
 			no_stdlib     ? "" : where,
-			no_stdlib     ? "" : "/../lib/{stdio,stdlib,string,unistd,syscall}.o",
+			no_stdlib     ? "" : "/../lib/{stdio,stdlib,string,unistd,syscall,fcntl}.o", /* FIXME */
 			no_startfiles ? "" : where,
 			no_startfiles ? "" : "/../lib/crt.o"
 			);

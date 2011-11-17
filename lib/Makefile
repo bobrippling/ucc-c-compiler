@@ -1,5 +1,5 @@
 UCC_CC = ../src/cc
-OBJ    = syscall.o crt.o unistd.o stdio.o string.o stdlib.o
+OBJ    = syscall.o crt.o unistd.o stdio.o string.o stdlib.o fcntl.o
 
 LIBDEPS = ${UCC_CC} ../src/cc1/cc1 ../src/cpp/cpp
 
@@ -21,6 +21,8 @@ stdlib.o: stdlib.c
 string.o: string.c
 	${BUILD_CMD}
 unistd.o: unistd.c
+	${BUILD_CMD}
+fcntl.o: fcntl.c
 	${BUILD_CMD}
 
 clean:
