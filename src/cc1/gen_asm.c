@@ -190,19 +190,25 @@ void walk_tree(tree *t)
 			lbl_for = asm_code_label("for");
 			lbl_fin = asm_code_label("for_fin");
 
-			walk_expr(t->flow->for_init, t->symtab);
-			asm_temp(1, "pop rax ; unused for init");
+			if(t->flow->for_init){
+				walk_expr(t->flow->for_init, t->symtab);
+				asm_temp(1, "pop rax ; unused for init");
+			}
 
 			asm_label(lbl_for);
-			walk_expr(t->flow->for_while, t->symtab);
+			if(t->flow->for_while){
+				walk_expr(t->flow->for_while, t->symtab);
 
-			asm_temp(1, "pop rax");
-			asm_temp(1, "test rax, rax");
-			asm_temp(1, "jz %s", lbl_fin);
+				asm_temp(1, "pop rax");
+				asm_temp(1, "test rax, rax");
+				asm_temp(1, "jz %s", lbl_fin);
+			}
 
 			walk_tree(t->lhs);
-			walk_expr(t->flow->for_inc, t->symtab);
-			asm_temp(1, "pop rax ; unused for inc");
+			if(t->flow->for_inc){
+				walk_expr(t->flow->for_inc, t->symtab);
+				asm_temp(1, "pop rax ; unused for inc");
+			}
 
 			asm_temp(1, "jmp %s", lbl_for);
 
@@ -253,8 +259,10 @@ void walk_tree(tree *t)
 		}
 
 		case stat_return:
-			walk_expr(t->expr, t->symtab);
-			asm_temp(1, "pop rax");
+			if(t->expr){
+				walk_expr(t->expr, t->symtab);
+				asm_temp(1, "pop rax");
+			}
 			asm_temp(1, "jmp %s", curfunc_lblfin);
 			break;
 
