@@ -333,7 +333,7 @@ void fold_block(tree *t)
 	if(!t->symtab->parent)
 		ICE("symtab has no parent");
 
-	auto_offset = t->symtab->parent->auto_offset; /* FIXME */
+	auto_offset = t->symtab->parent->auto_offset;
 	arg_offset  = 0;
 
 	/* need to walk backwards */
@@ -345,6 +345,7 @@ void fold_block(tree *t)
 
 		for(diter--; diter >= t->symtab->decls; diter--){
 			sym *s = (*diter)->sym;
+
 			if(s->type == sym_auto){
 				s->offset = auto_offset;
 
@@ -374,43 +375,47 @@ void fold_block(tree *t)
 			}
 		}
 	}
-	t->symtab->auto_offset += auto_offset; /* FIXME */
 
 	if(t->codes){
 		tree **iter;
-		int subtab_offsets = 0;
+		int subtab_offsets = auto_offset;
 
 		for(iter = t->codes; *iter; iter++){
 			int offset;
 
 			symtab_nest(t->symtab, &(*iter)->symtab);
+
+			/* assign so subtrees know the correct parent offset */
+			(*iter)->symtab->auto_offset = auto_offset;
 			fold_code(*iter);
 			offset = (*iter)->symtab->auto_offset;
 
 			if(offset > subtab_offsets)
 				subtab_offsets = offset;
-				/*
-				 * we only need take the largest, other space can be reused
-				 * because:
-				 * {
-				 *   int i;
-				 * }
-				 * {
-				 *   int j;
-				 * }
-				 * never needs to access i and j at the same time
-				 */
+			/*
+			 * we only need take the largest, other space can be reused
+			 * because:
+			 * {
+			 *   int i;
+			 * }
+			 * {
+			 *   int j;
+			 * }
+			 * never needs to access i and j at the same time
+			 */
 		}
 
-		t->symtab->auto_offset += subtab_offsets; /* FIXME */
+		auto_offset = subtab_offsets;
 	}
+
+	t->symtab->auto_offset = auto_offset;
 }
 
 void fold_code(tree *t)
 {
 	switch(t->type){
 		case stat_break:
-			ICE("stat_break not coded yet");
+			ICE("break not coded yet");
 			break;
 
 		case stat_goto:
@@ -427,12 +432,12 @@ void fold_code(tree *t)
 
 			symtab_nest(t->symtab, &t->lhs->symtab);
 			fold_code(t->lhs);
-			t->symtab->auto_offset += t->lhs->symtab->auto_offset; /* FIXME */
+			t->symtab->auto_offset = t->lhs->symtab->auto_offset;
 
 			if(t->rhs){
 				symtab_nest(t->symtab, &t->rhs->symtab);
 				fold_code(t->rhs);
-				t->symtab->auto_offset += t->rhs->symtab->auto_offset; /* FIXME */
+				t->symtab->auto_offset = t->rhs->symtab->auto_offset;
 			}
 			break;
 
@@ -443,7 +448,7 @@ void fold_code(tree *t)
 
 			symtab_nest(t->symtab, &t->lhs->symtab);
 			fold_code(t->lhs);
-			t->symtab->auto_offset += t->lhs->symtab->auto_offset; /* FIXME */
+			t->symtab->auto_offset = t->lhs->symtab->auto_offset;
 			break;
 
 		case stat_code:
