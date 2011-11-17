@@ -2,6 +2,7 @@
 #include <string.h>
 #include <errno.h>
 #include <stdarg.h>
+#include <stdlib.h>
 
 #include "../util/util.h"
 #include "tree.h"
@@ -20,7 +21,7 @@ void ccdie(const char *fmt, ...)
 	const int i = strlen(fmt);
 	va_list l;
 
-	va_start(fmt, l);
+	va_start(l, fmt);
 	vfprintf(stderr, fmt, l);
 	va_end(l);
 
