@@ -12,3 +12,5 @@ src/cc1/test
 src/cc1/test.s
 
 lib/os.h
+lib/syscall.s
+lib/syscall_err.s

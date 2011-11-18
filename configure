@@ -20,6 +20,19 @@ UCC_LDFLAGS = ${UCC_LDFLAGS}
 int main(int argc, char **argv);
 !
 
+	if [ $1 = __linux__ ]
+	then
+		cat <<!
+	cmp rax, -1
+	jne .fin
+!
+	else
+		cat <<!
+	jnc .fin
+	; else, carry - err
+!
+	fi > lib/syscall_err.s
+
 	echo "Configured for $2"
 }
 

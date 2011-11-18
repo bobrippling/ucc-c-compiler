@@ -25,6 +25,9 @@ unistd.o: unistd.c
 fcntl.o: fcntl.c
 	${BUILD_CMD}
 
+syscall.s: syscall_in.s syscall_err.s
+	../src/cpp/cpp -o $@ $<
+
 clean:
 	rm -f *.o
 
