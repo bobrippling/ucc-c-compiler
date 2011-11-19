@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <ctype.h>
 #include <stdlib.h>
@@ -172,7 +173,7 @@ static int pp(struct pp *p, int skip)
 	char *wd;
 
 	/* save for "cd -" */
-	curwdfd = open(".", O_RDONLY | O_DIRECTORY);
+	curwdfd = open(".", O_RDONLY);
 	if(curwdfd == -1)
 		ppdie(p, "open(\".\"): %s", strerror(errno));
 
