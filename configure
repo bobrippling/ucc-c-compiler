@@ -25,11 +25,12 @@ int main(int argc, char **argv);
 		cat <<!
 	cmp rax, -1
 	jne .fin
+	neg rax ; get positive errno
 !
 	else
 		cat <<!
 	jnc .fin
-	; else, carry - err
+	; else, carry - err is in rax
 !
 	fi > lib/syscall_err.s
 
