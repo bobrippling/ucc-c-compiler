@@ -64,8 +64,7 @@ void run(const char *cmd)
 	if(ret){
 		if(WIFSIGNALED(ret))
 			die("\"%s\" caught signal %d\n", cmd, WTERMSIG(ret));
-		else if(debug)
-			die("\"%s\" returned %d\n", cmd, ret);
+		die("\"%s\" returned %d\n", cmd, ret);
 	}
 }
 
