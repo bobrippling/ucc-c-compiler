@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <ctype.h>
 #include <stdlib.h>
@@ -8,6 +9,8 @@
 #include <libgen.h>
 /* chdir, getcwd */
 #include <unistd.h>
+/* open */
+#include <fcntl.h>
 
 #include "pp.h"
 #include "../util/util.h"
@@ -163,13 +166,22 @@ static void freedefs()
 
 static int pp(struct pp *p, int skip)
 {
+#define RET(x) do{ ret = x; goto fin; }while(0)
+	int curwdfd;
+	int ret;
 	char *line, *nl;
 	char *wd;
+
+	/* save for "cd -" */
+	curwdfd = open(".", O_RDONLY);
+	if(curwdfd == -1)
+		ppdie(p, "open(\".\"): %s", strerror(errno));
 
 	/* make sure everything is relative to the file */
 	wd = udirname(p->fname);
 	if(chdir(wd))
 		ppdie(p, "chdir(\"%s\"): %s", wd, strerror(errno));
+
 
 	do{
 		line = fline(p->in);
@@ -178,7 +190,7 @@ static int pp(struct pp *p, int skip)
 		if(!line){
 			if(feof(p->in))
 				/* normal exit here */
-				return PROC_EOF;
+				RET(PROC_EOF);
 
 			ppdie(p, "read(): %s", strerror(errno));
 		}
@@ -337,13 +349,13 @@ static int pp(struct pp *p, int skip)
 					ppdie(p, "invalid #else");
 
 				free(line);
-				return PROC_ELSE;
+				RET(PROC_ELSE);
 			}else if(!strcmp(argv[0], "endif")){
 				if(argc != 1)
 					ppdie(p, "invalid #endif");
 
 				free(line);
-				return PROC_ENDIF;
+				RET(PROC_ENDIF);
 			}else{
 				ppdie(p, "\"%s\" unexpected", line);
 			}
@@ -353,6 +365,12 @@ static int pp(struct pp *p, int skip)
 		}
 		free(line);
 	}while(1);
+#undef RET
+fin:
+	if(fchdir(curwdfd) == -1)
+		ppdie(p, "chdir(\"-\"): %s", strerror(errno));
+	close(curwdfd);
+	return ret;
 }
 
 void def_defs(void)

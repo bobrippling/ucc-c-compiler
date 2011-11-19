@@ -32,3 +32,8 @@ for(...){
 }else{
 	printf("for not entered");
 }
+
+signed vs unsigned:
+jl, jle, jg, jge
+vs
+jb, jbe, ja, jae - above + below
