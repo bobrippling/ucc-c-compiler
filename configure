@@ -24,7 +24,7 @@ int main(int argc, char **argv);
 	then
 		cat <<!
 	cmp rax, -1
-	jne .fin
+	jg .fin
 	neg rax ; get positive errno
 !
 	else
