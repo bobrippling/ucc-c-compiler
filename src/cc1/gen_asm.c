@@ -402,16 +402,16 @@ void gen_asm_global_var(decl *d)
 		/* TODO: arrays */
 		switch(d->init->type){
 			case expr_val:
-				asm_temp(0, "%s d%c %d", d->spel, type_ch, d->init->val);
+				asm_tempf(f, 0, "%s d%c %d", d->spel, type_ch, d->init->val);
 				break;
 
 			case expr_addr:
 			{
-				const char *type_s = "";
+				char type_s = 'b';
 				if(d->ptr_depth > 0 || d->type->primitive != type_char)
-					type_s = "qword";
+					type_s = 'q';
 
-				asm_temp(0, "%s equ %s %s", d->spel, type_s, d->init->spel);
+				asm_tempf(f, 0, "%s d%c %s", d->spel, type_s, d->init->spel);
 				break;
 			}
 

@@ -43,12 +43,15 @@ void asm_sym(enum asm_sym_type t, sym *s, const char *reg)
 			char brackets[16];
 
 			if(s->type == sym_global){
-				const char *type_s = " ";
+				const char *type_s = "";
 
 				if(s->decl->ptr_depth || s->decl->type->primitive == type_int)
 					type_s = "qword ";
 
-				snprintf(brackets, sizeof brackets, "[%s%s]", type_s, s->decl->spel);
+				/* get warnings for "lea rax, [qword tim]", just do "lea rax, [tim]" */
+				snprintf(brackets, sizeof brackets, "[%s%s]",
+						t == ASM_LEA ? "" : type_s,
+						s->decl->spel);
 			}else{
 				snprintf(brackets, sizeof brackets, "[rbp %c %d]",
 						is_auto ? '-' : '+',
