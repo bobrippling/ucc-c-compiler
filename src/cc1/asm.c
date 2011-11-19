@@ -48,7 +48,7 @@ void asm_sym(enum asm_sym_type t, sym *s, const char *reg)
 				if(s->decl->ptr_depth || s->decl->type->primitive == type_int)
 					type_s = "qword ";
 
-				snprintf(brackets, sizeof brackets, "%s%s", type_s, s->decl->spel);
+				snprintf(brackets, sizeof brackets, "[%s%s]", type_s, s->decl->spel);
 			}else{
 				snprintf(brackets, sizeof brackets, "[rbp %c %d]",
 						is_auto ? '-' : '+',
