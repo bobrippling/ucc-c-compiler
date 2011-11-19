@@ -836,11 +836,12 @@ symtable *parse()
 	decl **decls = parse_decls(NEED_TYPE_NO);
 	int i;
 
-	for(i = 0; decls[i]; i++){
-		symtab_add(globals, decls[i], sym_global);
-		sym_free(decls[i]->sym);
-		decls[i]->sym = NULL; /* fold links up */
-	}
+	if(decls)
+		for(i = 0; decls[i]; i++){
+			symtab_add(globals, decls[i], sym_global);
+			sym_free(decls[i]->sym);
+			decls[i]->sym = NULL; /* fold links up */
+		}
 
 	EAT(token_eof);
 

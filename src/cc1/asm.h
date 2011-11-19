@@ -25,10 +25,10 @@ enum asm_sym_type
 };
 
 void asm_new(enum asm_type, void *);
-void asm_temp(int indent, const char *, ...);
+void asm_temp(          int indent, const char *, ...);
+void asm_tempf(FILE *f, int indent, const char *, ...);
 void asm_label(const char *);
 void asm_sym(enum asm_sym_type, sym *, const char *);
-void asm_nl(void);
 
 void asm_declare_str(const char *lbl, const char *str, int len);
 

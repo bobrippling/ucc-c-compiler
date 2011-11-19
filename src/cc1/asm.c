@@ -8,9 +8,9 @@
 #include "asm.h"
 #include "../util/platform.h"
 #include "../util/alloc.h"
+#include "cc1.h"
 
 static int label_last = 1, str_last = 1;
-extern FILE *cc1_out;
 
 char *asm_code_label(const char *fmt)
 {
@@ -121,25 +121,35 @@ void asm_declare_str(const char *lbl, const char *str, int len)
 {
 	int i;
 
-	fprintf(cc1_out, "%s db ", lbl);
+	fprintf(cc_out[SECTION_TEXT], "%s db ", lbl);
 
 	for(i = 0; i < len; i++)
-		fprintf(cc1_out, "%d%s", str[i], i == len-1 ? "" : ", ");
-	fputc('\n', cc1_out);
+		fprintf(cc_out[SECTION_TEXT], "%d%s", str[i], i == len-1 ? "" : ", ");
+	fputc('\n', cc_out[SECTION_TEXT]);
+}
+
+void asm_tempfv(FILE *f, int indent, const char *fmt, va_list l)
+{
+	if(indent)
+		fputc('\t', f);
+
+	vfprintf(f, fmt, l);
+
+	fputc('\n', f);
 }
 
 void asm_temp(int indent, const char *fmt, ...)
 {
 	va_list l;
-	if(indent)
-		fputc('\t', cc1_out);
 	va_start(l, fmt);
-	vfprintf(cc1_out, fmt, l);
+	asm_tempfv(cc_out[SECTION_TEXT], indent, fmt, l);
 	va_end(l);
-	fputc('\n', cc1_out);
 }
 
-void asm_nl(void)
+void asm_tempf(FILE *f, int indent, const char *fmt, ...)
 {
-	fputc('\n', cc1_out);
+	va_list l;
+	va_start(l, fmt);
+	asm_tempfv(f, indent, fmt, l);
+	va_end(l);
 }

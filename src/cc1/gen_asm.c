@@ -11,6 +11,7 @@
 #include "asm_op.h"
 #include "gen_asm.h"
 #include "../util/util.h"
+#include "cc1.h"
 
 static char *curfunc_lblfin;
 
@@ -284,7 +285,7 @@ void walk_tree(tree *t)
 			break;
 	}
 
-	asm_nl();
+	asm_temp(0, "\n");
 }
 
 void decl_walk_expr(expr *e, symtable *stab)
@@ -337,7 +338,7 @@ void gen_asm_func(decl *d)
 	if(f->code){
 		int offset;
 
-		asm_nl();
+		asm_temp(0, "\n");
 		asm_temp(0, "global %s", d->spel);
 
 		/* walk string decls */
@@ -367,14 +368,17 @@ void gen_asm_func(decl *d)
 void gen_asm_global_var(decl *d)
 {
 	int type_ch;
+	FILE *f;
+
+	f = d->init ? cc_out[SECTION_DATA] : cc_out[SECTION_BSS];
 
 	if(d->type->spec & spec_extern){
-		asm_temp(0, "extern %s", d->spel);
+		asm_tempf(f, 0, "extern %s", d->spel);
 		return;
 	}
 
 	if((d->type->spec & spec_static) == 0)
-		asm_temp(0, "global %s", d->spel);
+		asm_tempf(f, 0, "global %s", d->spel);
 
 	if(d->ptr_depth){
 		type_ch = 'q';
@@ -439,7 +443,7 @@ void gen_asm_global_var(decl *d)
 			arraylen = (i + 1) * d->arraysizes[i]->val.i;
 		/* TODO: check that i+1 is correct for the order here */
 
-		asm_temp(1, "%s res%c %d", d->spel, type_ch, arraylen);
+		asm_tempf(f, 0, "%s res%c %d", d->spel, type_ch, arraylen);
 	}
 }
 

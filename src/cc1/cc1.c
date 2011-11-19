@@ -4,6 +4,8 @@
 #include <stdarg.h>
 #include <stdlib.h>
 
+#include <unistd.h>
+
 #include "../util/util.h"
 #include "tree.h"
 #include "tokenise.h"
@@ -13,8 +15,15 @@
 #include "gen_asm.h"
 #include "gen_str.h"
 #include "sym.h"
+#include "cc1.h"
 
-FILE *cc1_out = NULL;
+FILE *cc_out[NUM_SECTIONS];     /* temporary section files */
+char  fnames[NUM_SECTIONS][32]; /* duh */
+FILE *cc1_out;                  /* final output */
+
+const char *section_names[NUM_SECTIONS] = {
+	"text", "data", "bss"
+};
 
 void ccdie(const char *fmt, ...)
 {
@@ -30,6 +39,52 @@ void ccdie(const char *fmt, ...)
 
 	fputc('\n', stderr);
 	exit(1);
+}
+
+void io_setup(void)
+{
+	int i;
+
+	if(!cc1_out)
+		cc1_out = stdout;
+
+	for(i = 0; i < NUM_SECTIONS; i++){
+		snprintf(fnames[i], sizeof fnames[i], "/tmp/cc1_%d%d", getpid(), i);
+
+		cc_out[i] = fopen(fnames[i], "w+"); /* need to seek */
+		if(!cc_out[i])
+			ccdie("open \"%s\":", fnames[i]);
+	}
+}
+
+void io_fin(int do_sections)
+{
+	int i;
+
+	for(i = 0; i < NUM_SECTIONS; i++){
+		/* cat cc_out[i] to cc1_out, with section headers */
+		if(do_sections){
+			char buf[256];
+			long last = ftell(cc_out[i]);
+
+			if(last == -1 || fseek(cc_out[i], 0, SEEK_SET) == -1)
+				ccdie("seeking on section file %d:", i);
+
+			fprintf(cc1_out, "section .%s\n", section_names[i]);
+
+			while(fgets(buf, sizeof buf, cc_out[i]))
+				if(fputs(buf, cc1_out) <= 0)
+					ccdie("write to cc1 output:");
+
+			if(ferror(cc_out[i]))
+				ccdie("read from section file %d:", i);
+		}
+		fclose(cc_out[i]);
+		remove(fnames[i]);
+	}
+
+	if(fclose(cc1_out))
+		ccdie("close cc1 output");
 }
 
 int main(int argc, char **argv)
@@ -88,18 +143,19 @@ use_stdin:
 		fname = "-";
 	}
 
-	if(!cc1_out)
-		cc1_out = stdout;
+	io_setup();
 
 	tokenise_set_file(f, fname);
 	globs = parse();
 	if(f != stdin)
 		fclose(f);
 
-	fold(globs);
-	gf(globs);
+	if(globs->decls){
+		fold(globs);
+		gf(globs);
+	}
 
-	fclose(cc1_out);
+	io_fin(gf == gen_asm);
 
 	return 0;
 }

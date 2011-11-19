@@ -6,6 +6,7 @@
 #include "tree.h"
 #include "macros.h"
 #include "sym.h"
+#include "cc1.h"
 
 
 #define PRINT_IF(x, sub, fn) \
@@ -17,7 +18,6 @@
 	}
 
 static int indent = 0;
-extern FILE *cc1_out;
 
 void print_tree(tree *t);
 void print_expr(expr *e);
