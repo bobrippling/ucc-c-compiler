@@ -5,7 +5,6 @@
 
 #include "../util/util.h"
 #include "alloc.h"
-#include "../util/util.h"
 
 void *umalloc(size_t l)
 {

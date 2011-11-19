@@ -7,8 +7,10 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <stdarg.h>
 
 #include "cc.h"
+#include "util/alloc.h"
 
 enum mode
 {
@@ -42,7 +44,16 @@ char  f_e[32]; /* "/tmp/ucc_$$.s"; */
 char  f_s[32]; /* "/tmp/ucc_$$.s"; */
 char  f_o[32]; /* "/tmp/ucc_$$.o"; */
 const char *f;
+char *stdlib_files;
 
+void die(const char *fmt, ...)
+{
+	va_list l;
+	va_start(l, fmt);
+	vfprintf(stderr, fmt, l);
+	va_end(l);
+	exit(1);
+}
 
 void run(const char *cmd)
 {
@@ -52,10 +63,9 @@ void run(const char *cmd)
 	ret = system(cmd);
 	if(ret){
 		if(WIFSIGNALED(ret))
-			fprintf(stderr, "\"%s\" caught signal %d\n", cmd, WTERMSIG(ret));
+			die("\"%s\" caught signal %d\n", cmd, WTERMSIG(ret));
 		else if(debug)
-			fprintf(stderr, "\"%s\" returned %d\n", cmd, ret);
-		exit(1);
+			die("\"%s\" returned %d\n", cmd, ret);
 	}
 }
 
@@ -66,6 +76,34 @@ void unlink_files()
 	RM(MODE_COMPILE,    f_s);
 	RM(MODE_ASSEMBLE,   f_o);
 	RM(MODE_LINK,       f);
+}
+
+char *gen_stdlib_files(void)
+{
+	const char *base = "/../lib/";
+	const char *names[] = {
+		"stdio",
+		"stdlib",
+		"string",
+		"unistd",
+		"syscall",
+		"fcntl",
+		NULL
+	};
+	const int blen = strlen(where) + strlen(base);
+	char *ret;
+	int len;
+	int i;
+
+	for(i = len = 0; names[i]; i++)
+		len += blen + strlen(names[i]) + 3; /* for ".o " */
+
+	ret = umalloc(len + 1);
+
+	for(i = len = 0; names[i]; i++)
+		len += sprintf(ret + len, "%s%s%s.o ", where, base, names[i]);
+
+	return ret;
 }
 
 int gen(const char *input, const char *output)
@@ -151,9 +189,8 @@ start_assemble:
 		return 0;
 
 start_link:
-	RUN(0, UCC_LD " " UCC_LDFLAGS " -o %s %s %s%s %s%s", f, f_o,
-			no_stdlib     ? "" : where,
-			no_stdlib     ? "" : "/../lib/{stdio,stdlib,string,unistd,syscall,fcntl}.o", /* FIXME */
+	RUN(0, UCC_LD " " UCC_LDFLAGS " -o %s %s %s %s%s", f, f_o,
+			no_stdlib     ? "" : stdlib_files,
 			no_startfiles ? "" : where,
 			no_startfiles ? "" : "/../lib/crt.o"
 			);
@@ -177,7 +214,7 @@ int main(int argc, char **argv)
 		{ 'X', &backend }
 	};
 
-	argv0 = malloc(strlen(*argv) + 1);
+	argv0 = umalloc(strlen(*argv) + 1);
 	strcpy(argv0, *argv);
 
 	mode = MODE_LINK;
@@ -250,7 +287,7 @@ int main(int argc, char **argv)
 		}else{
 			int len = strlen(input);
 
-			output = malloc(len + 3);
+			output = umalloc(len + 3);
 
 			if(input[len - 2] == '.'){
 				strcpy(output, input);
@@ -273,12 +310,16 @@ int main(int argc, char **argv)
 	return 0;
 #endif
 
+
 	if(readlink(argv[0], where, sizeof where) == -1)
 		snprintf(where, sizeof where, "%s", argv[0]);
-
 	/* dirname */
 	p = strrchr(where, '/');
 	if(p)
 		*++p = '\0';
+
+
+	stdlib_files = gen_stdlib_files();
+
 	return gen(input, output);
 }

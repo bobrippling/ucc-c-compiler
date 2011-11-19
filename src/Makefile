@@ -2,7 +2,8 @@ include src_config.mk
 
 all: cc1 cpp cc
 
-cc: cc.c cc.h
+cc: cc.c cc.h util/alloc.o
+	${CC} ${CFLAGS} -o $@ cc.c util/alloc.o
 
 cc1: util
 	make -C cc1
