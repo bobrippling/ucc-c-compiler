@@ -58,13 +58,20 @@ void die(const char *fmt, ...)
 void run(const char *cmd)
 {
 	int ret;
+
 	if(debug)
 		printf("run(\"%s\")\n", cmd);
+
 	ret = system(cmd);
+
 	if(ret){
+		char *arg0 = ustrdup(cmd);
+
+		*strchr(arg0, ' ') = '\0';
+
 		if(WIFSIGNALED(ret))
-			die("\"%s\" caught signal %d\n", cmd, WTERMSIG(ret));
-		die("\"%s\" returned %d\n", cmd, ret);
+			die("\"%s\" caught signal %d\n", arg0, WTERMSIG(ret));
+		die("\"%s\" returned %d\n", arg0, ret);
 	}
 }
 
@@ -107,7 +114,7 @@ char *gen_stdlib_files(void)
 
 int gen(const char *input, const char *output)
 {
-	char cmd[256];
+	char cmd[4096];
 	enum mode start_mode;
 	int i;
 
