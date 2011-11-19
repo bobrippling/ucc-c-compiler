@@ -26,7 +26,7 @@ fcntl.o: fcntl.c
 	${BUILD_CMD}
 
 syscall.s: syscall_in.s syscall_err.s
-	../src/cpp/cpp -o $@ $<
+	../src/cpp/cpp -o $@ syscall_in.s
 
 clean:
 	rm -f *.o
