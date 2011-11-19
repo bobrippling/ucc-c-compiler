@@ -1,4 +1,5 @@
 section .bss
+	global errno
 	errno resq 1
 
 section .text
@@ -15,7 +16,6 @@ __syscall:
 	mov r9,  [rbp + 64] ; e8?
 	syscall
 #include "syscall_err.s"
-	neg rax
 	mov [qword errno], rax
 	mov rax, -1
 .fin:
