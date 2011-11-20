@@ -1,11 +1,11 @@
 #ifndef CC1_H
 #define CC1_H
 
-enum
+enum section_type
 {
-	SECTION_TEXT,
-	SECTION_DATA,
 	SECTION_BSS,
+	SECTION_DATA,
+	SECTION_TEXT,
 	NUM_SECTIONS
 };
 

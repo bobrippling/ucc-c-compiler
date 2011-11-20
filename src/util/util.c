@@ -155,7 +155,7 @@ int dynarray_count(void ***par)
 	return len;
 }
 
-int dynarray_free(void ***par, void (*f)(void *))
+void dynarray_free(void ***par, void (*f)(void *))
 {
 	void **ar = *par;
 	while(*ar){

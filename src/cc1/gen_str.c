@@ -139,7 +139,8 @@ void print_expr(expr *e)
 			break;
 
 		case expr_str:
-			idt_printf("str: %s, \"%s\" (length=%d)\n", e->sym->decl->spel, e->val.s, e->strl);
+			if(e->sym)
+				idt_printf("str: %s, \"%s\" (length=%d)\n", e->sym->decl->spel, e->val.s, e->strl);
 			break;
 
 		case expr_assign:
@@ -295,11 +296,12 @@ void print_func(decl *d)
 void gen_str(symtable *symtab)
 {
 	decl **diter;
-	for(diter = symtab->decls; diter && *diter; diter++)
+	for(diter = symtab->decls; diter && *diter; diter++){
 		if((*diter)->func){
 			print_func(*diter);
 		}else{
-			fprintf(cc1_out, "global variable: ");
+			fprintf(cc1_out, "global variable:\n");
+
 			print_decl(*diter, 0, 1, 0);
 			if((*diter)->init){
 				indent++;
@@ -309,4 +311,6 @@ void gen_str(symtable *symtab)
 				indent -= 2;
 			}
 		}
+		fputc('\n', cc1_out);
+	}
 }
