@@ -3,14 +3,15 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
+#include "cc1.h"
 #include "../util/util.h"
 #include "tree.h"
 #include "fold.h"
 #include "../util/util.h"
 #include "sym.h"
 #include "../util/platform.h"
-#include "asm.h"
 #include "const.h"
+#include "asm.h"
 
 #define DIE_UNDECL_SPEL(sp) \
 		die_at(&e->where, "undeclared identifier \"%s\" (%s:%d)", sp, __FILE__, __LINE__)
@@ -264,14 +265,18 @@ void fold_expr(expr *e, symtable *stab)
 		case expr_str:
 		{
 			sym *sym;
-			sym = symtab_add(stab, decl_new_where(&e->where), sym_str);
-
-			sym->decl->spel = asm_str_label();
+			sym = symtab_add(stab, decl_new_where(&e->where), stab->parent ? sym_auto : sym_global);
 
 			e->sym = sym;
 
 			e->tree_type->type->primitive = type_char;
+			e->tree_type->type->spec     &= spec_static;
 			e->tree_type->ptr_depth = 1;
+
+			memcpy(sym->decl, e->tree_type, sizeof *sym->decl);
+
+			/*sym->decl->ignore = 1;*/
+			sym->decl->spel = asm_str_label();
 			break;
 		}
 
@@ -304,6 +309,7 @@ void fold_decl_global(decl *d, symtable *stab)
 {
 	if(d->init){
 		if(d->type->spec & spec_extern)
+			/* only need this check for globals, since block-decls aren't initalised */
 			die_at(&d->where, "externs can't be initalised");
 
 		fold_expr(d->init, stab);
@@ -316,6 +322,7 @@ void fold_decl_global(decl *d, symtable *stab)
 
 	fold_decl(d, stab);
 }
+
 
 void fold_block(tree *t)
 {
@@ -515,10 +522,9 @@ void fold_func(decl *df, symtable *globsymtab)
 					}
 				}
 
-			if(!found){
+			if(!found)
 				df->type->spec |= spec_extern;
-				warn_at(&f->where, "assuming \"%s\" is extern", df->spel);
-			}
+				/*warn_at(&f->where, "assuming \"%s\" is extern", df->spel);*/
 		}
 	}
 }
@@ -531,7 +537,7 @@ void fold(symtable *globs)
 	for(i = 0; D(i); i++){
 		int j;
 
-		if(D(i)->sym && D(i)->sym->type != sym_str)
+		if(D(i)->sym)
 			ICE("%s: sym already set for global variable \"%s\"", where_str(&D(i)->where), D(i)->spel);
 
 		/* extern overwrite check */

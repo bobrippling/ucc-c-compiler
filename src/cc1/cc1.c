@@ -22,7 +22,7 @@ char  fnames[NUM_SECTIONS][32]; /* duh */
 FILE *cc1_out;                  /* final output */
 
 const char *section_names[NUM_SECTIONS] = {
-	"text", "data", "bss"
+	"bss", "data", "text"
 };
 
 void ccdie(const char *fmt, ...)

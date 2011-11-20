@@ -19,7 +19,7 @@ char *udirname(const char *);
 
 void dynarray_add(void ***, void *);
 int  dynarray_count(void ***);
-int  dynarray_free(void ***, void (*)(void *));
+void dynarray_free(void ***par, void (*f)(void *));
 
 void ice(const char *f, int line, const char *fmt, ...);
 void icw(const char *f, int line, const char *fmt, ...);

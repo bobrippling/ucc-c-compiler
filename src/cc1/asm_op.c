@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 
+#include "cc1.h"
 #include "../util/util.h"
 #include "tree.h"
 #include "gen_asm.h"

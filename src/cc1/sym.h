@@ -8,7 +8,6 @@ struct sym
 	{
 		sym_global,
 		sym_auto,
-		sym_str,
 		sym_arg,
 		sym_func
 	} type;

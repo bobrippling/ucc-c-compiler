@@ -91,11 +91,22 @@ expr *parse_expr_unary_op()
 			return e;
 
 		case token_string:
+		case token_open_block: /* array */
 			e = expr_new();
-			e->type = expr_str;
-			token_get_current_str(&e->val.s, &e->strl);
+			e->type = expr_array;
 			e->ptr_safe = 1;
-			EAT(token_string);
+
+			if(curtok == token_string){
+				token_get_current_str(&e->val.s, &e->strl);
+				EAT(token_string);
+			}else{
+				EAT(token_open_block);
+
+				/* TODO */
+
+				EAT(token_close_block);
+			}
+
 			return e;
 
 		case token_open_paren:

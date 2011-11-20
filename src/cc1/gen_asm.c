@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 
+#include "cc1.h"
 #include "../util/util.h"
 #include "tree.h"
 #include "macros.h"
@@ -11,7 +12,6 @@
 #include "asm_op.h"
 #include "gen_asm.h"
 #include "../util/util.h"
-#include "cc1.h"
 
 static char *curfunc_lblfin;
 
@@ -292,7 +292,7 @@ void decl_walk_expr(expr *e, symtable *stab)
 {
 	if(e->type == expr_str)
 		/* some arrays will go here too */
-		asm_declare_str(e->sym->decl->spel, e->val.s, e->strl);
+		asm_declare_str(SECTION_DATA, e->sym->decl->spel, e->val.s, e->strl);
 
 #define WALK_IF(x) if(x) decl_walk_expr(x, stab)
 	WALK_IF(e->lhs);
@@ -339,7 +339,6 @@ void gen_asm_func(decl *d)
 		int offset;
 
 		asm_temp(0, "\n");
-		asm_temp(0, "global %s", d->spel);
 
 		/* walk string decls */
 		decl_walk_tree(f->code);
@@ -377,9 +376,6 @@ void gen_asm_global_var(decl *d)
 		return;
 	}
 
-	if((d->type->spec & spec_static) == 0)
-		asm_tempf(f, 0, "global %s", d->spel);
-
 	if(d->ptr_depth){
 		type_ch = 'q';
 	}else{
@@ -402,7 +398,6 @@ void gen_asm_global_var(decl *d)
 	}
 
 	if(d->init){
-		/* TODO: direct to .bss */
 		/* TODO: arrays */
 		switch(d->init->type){
 			case expr_val:
@@ -420,7 +415,7 @@ void gen_asm_global_var(decl *d)
 			}
 
 			case expr_str:
-				asm_declare_str(d->sym->decl->spel, d->init->val.s, d->init->strl);
+				asm_declare_str(SECTION_DATA, d->spel, d->init->val.s, d->init->strl);
 				break;
 
 			case expr_cast:
@@ -455,6 +450,9 @@ void gen_asm(symtable *globs)
 
 		if(d->ignore)
 			continue;
+
+		if((d->type->spec & spec_static) == 0)
+			asm_temp(0, "global %s", d->spel);
 
 		if(d->func)
 			gen_asm_func(d);

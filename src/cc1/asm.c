@@ -2,13 +2,13 @@
 #include <stdarg.h>
 #include <string.h>
 
+#include "cc1.h"
 #include "../util/util.h"
 #include "tree.h"
 #include "sym.h"
 #include "asm.h"
 #include "../util/platform.h"
 #include "../util/alloc.h"
-#include "cc1.h"
 
 static int label_last = 1, str_last = 1;
 
@@ -50,8 +50,7 @@ void asm_sym(enum asm_sym_type t, sym *s, const char *reg)
 
 				/* get warnings for "lea rax, [qword tim]", just do "lea rax, [tim]" */
 				snprintf(brackets, sizeof brackets, "[%s%s]",
-						t == ASM_LEA ? "" : type_s,
-						s->decl->spel);
+						t == ASM_LEA ? "" : type_s, s->decl->spel);
 			}else{
 				snprintf(brackets, sizeof brackets, "[rbp %c %d]",
 						is_auto ? '-' : '+',
@@ -69,9 +68,8 @@ void asm_sym(enum asm_sym_type t, sym *s, const char *reg)
 			break;
 		}
 
-		case sym_str:
 		case sym_func:
-			ICE("asm_sym: can't handle str nor func");
+			ICE("asm_sym: can't handle sym_func");
 	}
 }
 
@@ -117,15 +115,15 @@ void asm_label(const char *lbl)
 	asm_temp(0, "%s:", lbl);
 }
 
-void asm_declare_str(const char *lbl, const char *str, int len)
+void asm_declare_str(enum section_type output, const char *lbl, const char *str, int len)
 {
 	int i;
 
-	fprintf(cc_out[SECTION_TEXT], "%s db ", lbl);
+	fprintf(cc_out[output], "%s db ", lbl);
 
 	for(i = 0; i < len; i++)
-		fprintf(cc_out[SECTION_TEXT], "%d%s", str[i], i == len-1 ? "" : ", ");
-	fputc('\n', cc_out[SECTION_TEXT]);
+		fprintf(cc_out[output], "%d%s", str[i], i == len-1 ? "" : ", ");
+	fputc('\n', cc_out[output]);
 }
 
 void asm_tempfv(FILE *f, int indent, const char *fmt, va_list l)

@@ -108,7 +108,6 @@ const char *sym_to_str(enum sym_type t)
 	switch(t){
 		CASE_STR(sym_auto);
 		CASE_STR(sym_arg);
-		CASE_STR(sym_str);
 		CASE_STR(sym_func);
 		CASE_STR(sym_global);
 	}
