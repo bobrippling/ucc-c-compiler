@@ -1,6 +1,11 @@
 Ordered By Priority
 -------------------
 
+char *s = "hi";
+	the symbol s is initialised as the start of "hi", rather than a
+	pointer to the data "hi"
+
+
 {
 	int i;
 }

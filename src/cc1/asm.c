@@ -25,10 +25,10 @@ char *asm_code_label(const char *fmt)
 	return ret;
 }
 
-char *asm_str_label()
+char *asm_array_label(int str)
 {
 	char *ret = umalloc(16);
-	snprintf(ret, 16, "__str_%d", str_last++);
+	snprintf(ret, 16, "__%s_%d", str ? "str" : "array", str_last++);
 	return ret;
 }
 
@@ -115,14 +115,19 @@ void asm_label(const char *lbl)
 	asm_temp(0, "%s:", lbl);
 }
 
-void asm_declare_str(enum section_type output, const char *lbl, const char *str, int len)
+void asm_declare_array(enum section_type output, const char *lbl, expr *e)
 {
 	int i;
 
 	fprintf(cc_out[output], "%s db ", lbl);
 
-	for(i = 0; i < len; i++)
-		fprintf(cc_out[output], "%d%s", str[i], i == len-1 ? "" : ", ");
+	if(e->array_type == ARRAY_STR)
+		for(i = 0; i < e->arrayl; i++)
+			fprintf(cc_out[output], "%d%s", e->val.s[i],            i == e->arrayl - 1 ? "" : ", ");
+	else
+		for(i = 0; i < e->arrayl; i++)
+			fprintf(cc_out[output], "%d%s", e->val.exprs[i]->val.i, i == e->arrayl - 1 ? "" : ", ");
+
 	fputc('\n', cc_out[output]);
 }
 

@@ -262,21 +262,31 @@ void fold_expr(expr *e, symtable *stab)
 			}
 			break;
 
-		case expr_str:
+		case expr_array:
 		{
 			sym *sym;
 			sym = symtab_add(stab, decl_new_where(&e->where), stab->parent ? sym_auto : sym_global);
 
-			e->sym = sym;
+			if(e->array_type == ARRAY_STR){
+				e->tree_type->type->primitive = type_char;
+			}else{
+				int i;
+				e->tree_type->type->primitive = type_int;
 
-			e->tree_type->type->primitive = type_char;
-			e->tree_type->type->spec     &= spec_static;
+				for(i = 0; e->val.exprs[i]; i++){
+					fold_expr(e->val.exprs[i], stab);
+					if(!const_fold(e->val.exprs[i]))
+						die_at(&e->val.exprs[i]->where, "array init not constant");
+				}
+			}
+
+			e->tree_type->type->spec &= spec_static;
 			e->tree_type->ptr_depth = 1;
 
 			memcpy(sym->decl, e->tree_type, sizeof *sym->decl);
 
-			/*sym->decl->ignore = 1;*/
-			sym->decl->spel = asm_str_label();
+			sym->decl->spel = asm_array_label(e->array_type == ARRAY_STR);
+			e->sym = sym;
 			break;
 		}
 

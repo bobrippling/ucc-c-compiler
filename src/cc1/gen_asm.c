@@ -144,7 +144,7 @@ void walk_expr(expr *e, symtable *stab)
 			asm_temp(1, "push %d ; sizeof type %s", decl_size(e->tree_type), decl_to_str(e->tree_type));
 			break;
 
-		case expr_str:
+		case expr_array:
 			asm_temp(1, "mov rax, %s", e->sym->decl->spel);
 			asm_temp(1, "push rax");
 			break;
@@ -290,9 +290,8 @@ void walk_tree(tree *t)
 
 void decl_walk_expr(expr *e, symtable *stab)
 {
-	if(e->type == expr_str)
-		/* some arrays will go here too */
-		asm_declare_str(SECTION_DATA, e->sym->decl->spel, e->val.s, e->strl);
+	if(e->type == expr_array)
+		asm_declare_array(SECTION_DATA, e->sym->decl->spel, e);
 
 #define WALK_IF(x) if(x) decl_walk_expr(x, stab)
 	WALK_IF(e->lhs);
@@ -414,8 +413,8 @@ void gen_asm_global_var(decl *d)
 				break;
 			}
 
-			case expr_str:
-				asm_declare_str(SECTION_DATA, d->spel, d->init->val.s, d->init->strl);
+			case expr_array:
+				asm_declare_array(SECTION_DATA, d->spel, d->init);
 				break;
 
 			case expr_cast:

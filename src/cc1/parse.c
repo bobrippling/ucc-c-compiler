@@ -97,16 +97,19 @@ expr *parse_expr_unary_op()
 			e->ptr_safe = 1;
 
 			if(curtok == token_string){
-				token_get_current_str(&e->val.s, &e->strl);
+				token_get_current_str(&e->val.s, &e->arrayl);
 				EAT(token_string);
+				e->array_type = ARRAY_STR;
 			}else{
 				EAT(token_open_block);
-
-				/* TODO */
-
+				do
+					dynarray_add((void ***)&e->val.exprs, parse_expr());
+				while(accept(token_comma));
 				EAT(token_close_block);
-			}
 
+				e->arrayl = dynarray_count((void ***)&e->val.exprs);
+				e->array_type = ARRAY_EXPR;
+			}
 			return e;
 
 		case token_open_paren:
