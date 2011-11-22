@@ -206,7 +206,7 @@ const char *expr_to_str(const enum expr_type t)
 		CASE_STR_PREFIX(expr, val);
 		CASE_STR_PREFIX(expr, addr);
 		CASE_STR_PREFIX(expr, sizeof);
-		CASE_STR_PREFIX(expr, str);
+		CASE_STR_PREFIX(expr, array);
 		CASE_STR_PREFIX(expr, identifier);
 		CASE_STR_PREFIX(expr, assign);
 		CASE_STR_PREFIX(expr, funcall);

@@ -138,9 +138,21 @@ void print_expr(expr *e)
 			indent--;
 			break;
 
-		case expr_str:
-			if(e->sym)
-				idt_printf("str: %s, \"%s\" (length=%d)\n", e->sym->decl->spel, e->val.s, e->strl);
+		case expr_array:
+			if(e->array_type == ARRAY_STR){
+				idt_printf("str: %s, \"%s\" (length=%d)\n", e->sym->decl->spel, e->val.s, e->arrayl);
+			}else{
+				int i;
+				idt_printf("array: %s:\n", e->sym->decl->spel);
+				indent++;
+				for(i = 0; e->val.exprs[i]; i++){
+					idt_printf("array[%d]:\n", i);
+					indent++;
+					print_expr(e->val.exprs[i]);
+					indent--;
+				}
+				indent--;
+			}
 			break;
 
 		case expr_assign:

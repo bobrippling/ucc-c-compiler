@@ -70,13 +70,13 @@ struct expr
 		expr_val,
 		expr_addr, /* &x */
 		expr_sizeof,
-		expr_str, /* "abc" */
+		expr_array, /* "abc" or { 1, 2, 3 } */
 		expr_identifier,
 		expr_assign,
 		expr_funcall,
 		expr_cast,
 		expr_if,
-		expr_comma,
+		expr_comma
 	} type;
 
 	enum op_type
@@ -107,9 +107,19 @@ struct expr
 	{
 		int i;
 		char *s;
-	} val; /* stores both int values, and string pointers (used in const.c arithmetic) */
-	int strl;
+		expr **exprs;
+	} val; /*
+				  * stores both int values,
+					* and string pointers (used in const.c arithmetic)
+					* and array members
+					*/
+	int arrayl; /* string or array length */
 	int ptr_safe; /* does val point to a string we know about? */
+	enum
+	{
+		ARRAY_STR,
+		ARRAY_EXPR
+	} array_type;
 
 	char *spel;
 	expr *expr; /* x = 5; expr is the 5 */
