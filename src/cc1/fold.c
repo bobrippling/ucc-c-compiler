@@ -117,8 +117,12 @@ void fold_funcall(expr *e, symtable *stab)
 				/* TODO: -fstrict-types - changes the below 0 to a 1 */
 				if(!decl_equal(iter_arg[i]->tree_type, iter_decl[i], 0)){
 					char buf[DECL_STATIC_BUFSIZ];
+					void (*fn)(where *, const char *, ...);
+
+					fn = iter_arg[i]->tree_type->type->primitive == type_void ? die_at : warn_at;
+
 					strcpy(buf, decl_to_str(iter_arg[i]->tree_type));
-					warn_at(&e->where, "mismatching arguments for arg %d to %s: got %s, expected %s",
+					fn(&e->where, "mismatching arguments for arg %d to %s: got %s, expected %s",
 							i + 1, df->spel, buf, decl_to_str(iter_decl[i]));
 				}
 			}
@@ -150,10 +154,17 @@ void fold_assignment(expr *e, symtable *stab)
 	/* type check */
 	if(!decl_equal(e->lhs->tree_type, e->rhs->tree_type, 0)){
 		char buf[DECL_STATIC_BUFSIZ];
+		void (*fn)(where *, const char *, ...);
 
 		strcpy(buf, decl_to_str(e->lhs->tree_type));
 
-		warn_at(&e->where, "assignment type mismatch: got %s, expected %s",
+		if(e->lhs->tree_type->type->primitive == type_void ||
+		   e->rhs->tree_type->type->primitive == type_void)
+			fn = die_at;
+		else
+			fn = warn_at;
+
+		fn(&e->where, "assignment type mismatch: got %s, expected %s",
 				decl_to_str(e->rhs->tree_type), buf);
 	}
 }
