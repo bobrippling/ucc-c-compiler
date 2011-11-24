@@ -348,7 +348,7 @@ void gen_asm_func(decl *d)
 
 		curfunc_lblfin = asm_code_label(d->spel);
 
-		if((offset = f->code->symtab->auto_offset))
+		if((offset = f->code->symtab->auto_offset_finish))
 			asm_temp(1, "sub rsp, %d", offset);
 		walk_tree(f->code);
 		asm_label(curfunc_lblfin);

@@ -395,7 +395,7 @@ void fold_block(tree *t)
 	if(!t->symtab->parent)
 		ICE("symtab has no parent");
 
-	auto_offset = t->symtab->parent->auto_offset;
+	auto_offset = t->symtab->parent->auto_offset_start;
 	arg_offset  = 0;
 
 	/* need to walk backwards */
@@ -440,7 +440,7 @@ void fold_block(tree *t)
 
 	if(t->codes){
 		tree **iter;
-		int subtab_offsets = auto_offset;
+		int subtab_offsets = 0;
 
 		for(iter = t->codes; *iter; iter++){
 			int offset;
@@ -448,9 +448,9 @@ void fold_block(tree *t)
 			symtab_nest(t->symtab, &(*iter)->symtab);
 
 			/* assign so subtrees know the correct parent offset */
-			(*iter)->symtab->auto_offset = auto_offset;
+			(*iter)->symtab->auto_offset_start = auto_offset;
 			fold_code(*iter);
-			offset = (*iter)->symtab->auto_offset;
+			offset = (*iter)->symtab->auto_offset_finish - auto_offset;
 
 			if(offset > subtab_offsets)
 				subtab_offsets = offset;
@@ -467,10 +467,11 @@ void fold_block(tree *t)
 			 */
 		}
 
-		auto_offset = subtab_offsets;
+		if(subtab_offsets > auto_offset)
+			auto_offset = subtab_offsets;
 	}
 
-	t->symtab->auto_offset = auto_offset;
+	t->symtab->auto_offset_finish = auto_offset;
 }
 
 void fold_code(tree *t)
@@ -494,12 +495,14 @@ void fold_code(tree *t)
 
 			symtab_nest(t->symtab, &t->lhs->symtab);
 			fold_code(t->lhs);
-			t->symtab->auto_offset = t->lhs->symtab->auto_offset;
+			t->symtab->auto_offset_finish = t->lhs->symtab->auto_offset_finish;
 
 			if(t->rhs){
 				symtab_nest(t->symtab, &t->rhs->symtab);
 				fold_code(t->rhs);
-				t->symtab->auto_offset = t->rhs->symtab->auto_offset;
+
+				if(t->rhs->symtab->auto_offset_finish > t->symtab->auto_offset_finish)
+					t->symtab->auto_offset_finish = t->rhs->symtab->auto_offset_finish;
 			}
 			break;
 
@@ -512,7 +515,7 @@ void fold_code(tree *t)
 
 			symtab_nest(t->symtab, &t->lhs->symtab);
 			fold_code(t->lhs);
-			t->symtab->auto_offset = t->lhs->symtab->auto_offset;
+			t->symtab->auto_offset_finish = t->lhs->symtab->auto_offset_finish;
 			break;
 
 		case stat_code:
@@ -528,8 +531,6 @@ void fold_code(tree *t)
 		case stat_noop:
 			break;
 	}
-
-	t->symtab->parent->auto_offset += t->symtab->auto_offset;
 }
 
 void fold_func(decl *df, symtable *globsymtab)
@@ -560,6 +561,7 @@ void fold_func(decl *df, symtable *globsymtab)
 		symtab_nest(globsymtab, &f->code->symtab);
 
 		fold_code(f->code);
+
 	}else{
 		decl **iter;
 		int found = 0;
