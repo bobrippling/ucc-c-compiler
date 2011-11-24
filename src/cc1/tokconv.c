@@ -24,9 +24,11 @@ enum type_primitive curtok_to_type_primitive()
 enum type_spec curtok_to_type_specifier()
 {
 	switch(curtok){
-		case token_const:  return spec_const;
-		case token_extern: return spec_extern;
-		case token_static: return spec_static;
+		case token_const:    return spec_const;
+		case token_extern:   return spec_extern;
+		case token_static:   return spec_static;
+		case token_signed:   return spec_signed;
+		case token_unsigned: return spec_unsigned;
 		default: break;
 	}
 	return spec_none;
@@ -122,7 +124,7 @@ const char *token_to_str(enum token t)
 		CASE_STR_PREFIX(token,  const);            CASE_STR_PREFIX(token,  question);       CASE_STR_PREFIX(token,  plus_assign);     CASE_STR_PREFIX(token,  minus_assign);
 		CASE_STR_PREFIX(token,  multiply_assign);  CASE_STR_PREFIX(token,  divide_assign);  CASE_STR_PREFIX(token,  modulus_assign);  CASE_STR_PREFIX(token,  not_assign);
 		CASE_STR_PREFIX(token,  bnot_assign);      CASE_STR_PREFIX(token,  and_assign);     CASE_STR_PREFIX(token,  or_assign);       CASE_STR_PREFIX(token,  static);
-		CASE_STR_PREFIX(token,  goto);
+		CASE_STR_PREFIX(token,  goto);             CASE_STR_PREFIX(token,  signed);         CASE_STR_PREFIX(token,  unsigned);
 	}
 	return NULL;
 }

@@ -48,13 +48,16 @@ static void asm_compare(expr *e, symtable *tab)
 	asm_temp(1, "xor rcx,rcx"); /* must be before cmp */
 	asm_temp(1, "cmp rax,rbx");
 
+#define SIGNED(s, u) e->tree_type->type->spec & spec_signed ? s : u
+
 	switch(e->op){
 		case op_eq: cmp = "e";  break;
 		case op_ne: cmp = "ne"; break;
-		case op_le: cmp = "le"; break;
-		case op_lt: cmp = "l";  break;
-		case op_ge: cmp = "ge"; break;
-		case op_gt: cmp = "g";  break;
+
+		case op_le: cmp = SIGNED("le", "be"); break;
+		case op_lt: cmp = SIGNED("l",  "b");  break;
+		case op_ge: cmp = SIGNED("ge", "ae"); break;
+		case op_gt: cmp = SIGNED("g",  "a");  break;
 
 		default:
 			ICE("asm_compare: unhandled comparison");

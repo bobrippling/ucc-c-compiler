@@ -44,12 +44,10 @@ void idt_printf(const char *fmt, ...)
 
 void print_type(type *t)
 {
-	if(t->spec & spec_const)
-		fputs("const ", cc1_out);
-	if(t->spec & spec_extern)
-		fputs("extern ", cc1_out);
-	if(t->spec & spec_static)
-		fputs("static ", cc1_out);
+	int i;
+	for(i = 0; i < SPEC_MAX; i++)
+		if(t->spec & (1 << i))
+			fprintf(cc1_out, "%s ", spec_to_str(1 << i));
 
 	fprintf(cc1_out, "%s", type_to_str(t));
 }

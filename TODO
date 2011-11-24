@@ -5,6 +5,7 @@ char *s = "hi";
 	the symbol s is initialised as the start of "hi", rather than a
 	pointer to the data "hi"
 
+s/ICE/UCC_ASSERT/
 
 {
 	int i;

@@ -222,6 +222,36 @@ void fold_expr(expr *e, symtable *stab)
 			if(e->rhs)
 				fold_expr(e->rhs, stab);
 
+			if(e->rhs){
+				enum {
+					SIGNED, UNSIGNED
+				} rhs, lhs;
+
+				rhs = e->rhs->tree_type->type->spec & spec_unsigned ? UNSIGNED : SIGNED;
+				lhs = e->lhs->tree_type->type->spec & spec_unsigned ? UNSIGNED : SIGNED;
+
+				if(rhs != lhs){
+#define SIGN_CONVERT(test_hs, assert_hs) \
+					if(e->test_hs->type == expr_val && e->test_hs->val.i >= 0){ \
+						/*                                              \
+						 * assert(lhs == UNSIGNED);                     \
+						 * vals default to signed, change to unsigned   \
+						 */                                             \
+						if(assert_hs != UNSIGNED)                       \
+							ICE("signed-unsigned assumption failure");    \
+                                                            \
+						e->test_hs->tree_type->type->spec |= spec_unsigned; \
+						goto noproblem;                                 \
+					}
+
+					SIGN_CONVERT(rhs, lhs)
+					SIGN_CONVERT(lhs, rhs)
+
+					warn_at(&e->where, "comparison between signed and unsigned");
+				}
+			}
+noproblem:
+
 			/* XXX: note, this assumes that e.g. "1 + 2" the lhs and rhs have the same type */
 			if(e->op == op_deref){
 				GET_TREE_TYPE(e->lhs->tree_type);
@@ -304,8 +334,12 @@ void fold_decl(decl *d, symtable *stab)
 	if(d->type->primitive == type_void && !d->ptr_depth && !d->func)
 		die_at(&d->type->where, "can't have a void variable");
 
+	/* type spec checks */
 	if(d->type->spec & spec_extern && d->type->spec & spec_static)
 		die_at(&d->type->where, "can't have static extern");
+
+	if(d->type->spec & spec_signed && d->type->spec & spec_unsigned)
+		die_at(&d->type->where, "can't have signed unsigned");
 
 	for(i = 0; d->arraysizes && d->arraysizes[i]; i++){
 		fold_expr(d->arraysizes[i], stab);

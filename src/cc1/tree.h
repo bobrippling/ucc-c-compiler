@@ -22,10 +22,13 @@ enum type_primitive
 
 enum type_spec
 {
-	spec_none   = 0,
-	spec_const  = 1 << 0,
-	spec_extern = 1 << 1,
-	spec_static = 1 << 2
+	spec_none     = 0,
+	spec_const    = 1 << 0,
+	spec_extern   = 1 << 1,
+	spec_static   = 1 << 2,
+	spec_signed   = 1 << 3,
+	spec_unsigned = 1 << 4,
+#define SPEC_MAX 5
 };
 
 struct type
