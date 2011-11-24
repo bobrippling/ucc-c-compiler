@@ -17,7 +17,7 @@ struct sym
 
 struct symtable
 {
-	int auto_offset;
+	int auto_offset_start, auto_offset_finish;
 	symtable *parent;
 	decl **decls;
 };

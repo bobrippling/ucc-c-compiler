@@ -292,7 +292,12 @@ void print_func(decl *d)
 	fprintf(cc1_out, "%s)\n", f->variadic ? ", ..." : "");
 
 	if(f->code){
-		idt_printf("stack space = %d\n", f->code->symtab->auto_offset);
+#define STAB f->code->symtab
+		idt_printf("stack space = %d (start %d, finish %d)\n",
+				STAB->auto_offset_finish - STAB->auto_offset_start,
+				STAB->auto_offset_start,
+				STAB->auto_offset_finish
+				);
 
 		for(iter = f->args; iter && *iter; iter++)
 			idt_printf(" offset of %s = %d\n", (*iter)->spel, (*iter)->sym->offset);

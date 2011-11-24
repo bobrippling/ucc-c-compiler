@@ -178,7 +178,6 @@ struct function
 
 	int args_void; /* true if "spel(void);" otherwise if !args, then we have "spel();" */
 	decl **args;
-	symtable *autos;
 	tree *code;
 	int variadic;
 };

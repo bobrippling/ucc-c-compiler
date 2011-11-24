@@ -7,14 +7,6 @@ char *s = "hi";
 
 s/ICE/UCC_ASSERT/
 
-{
-	int i;
-}
-{
-	int j;
-}
-can compress to 8-stack space, rather than 16
-
 errno - particularly BSD-systems
 
 typedefs
