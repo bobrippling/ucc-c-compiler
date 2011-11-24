@@ -66,12 +66,17 @@ void run(const char *cmd)
 
 	if(ret){
 		char *arg0 = ustrdup(cmd);
+		char *p;
 
 		*strchr(arg0, ' ') = '\0';
+		if((p = strrchr(arg0, '/')))
+			p++;
+		else
+			p = arg0;
 
-		if(WIFSIGNALED(ret))
-			die("\"%s\" caught signal %d\n", arg0, WTERMSIG(ret));
-		die("\"%s\" returned %d\n", arg0, ret);
+
+		if(WIFSIGNALED(ret)) die("%s caught signal %d\n", p, WTERMSIG(ret));
+		die("%s returned %d\n", p, ret);
 	}
 }
 
