@@ -27,8 +27,11 @@ enum token
 	token_int,         /* aka "int" */
 	token_elipsis,     /* aka ... */
 	token_string,      /* aka \"...\" */
+
 	token_const,
 	token_static,
+	token_signed,
+	token_unsigned,
 
 	token_open_paren,
 	token_open_block,

@@ -55,6 +55,8 @@ struct statement
 	{ "extern",  token_extern  },
 	{ "const",   token_const   },
 	{ "static",  token_static  },
+	{ "signed",  token_signed  },
+	{ "unsigned",token_unsigned},
 
 	{ "sizeof",  token_sizeof  }
 };

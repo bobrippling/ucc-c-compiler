@@ -292,6 +292,8 @@ const char *spec_to_str(const enum type_spec s)
 		CASE_STR_PREFIX(spec, const);
 		CASE_STR_PREFIX(spec, extern);
 		CASE_STR_PREFIX(spec, static);
+		CASE_STR_PREFIX(spec, signed);
+		CASE_STR_PREFIX(spec, unsigned);
 		CASE_STR_PREFIX(spec, none);
 	}
 	return NULL;

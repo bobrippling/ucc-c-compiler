@@ -537,6 +537,7 @@ type *parse_type(int can_default)
 	while(curtok_is_type_specifier()){
 		const enum type_spec spec = curtok_to_type_specifier();
 
+		/* we can't check in fold, since 1 & 1 & 1 is still just 1 */
 		if(t->spec & spec)
 			die_at(NULL, "duplicate type specifier \"%s\"", spec_to_str(spec));
 
