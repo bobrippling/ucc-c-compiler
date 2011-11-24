@@ -22,7 +22,7 @@ char  fnames[NUM_SECTIONS][32]; /* duh */
 FILE *cc1_out;                  /* final output */
 
 const char *section_names[NUM_SECTIONS] = {
-	"bss", "data", "text"
+	"text", "data", "bss"
 };
 
 void ccdie(const char *fmt, ...)
@@ -70,7 +70,8 @@ void io_fin(int do_sections)
 			if(last == -1 || fseek(cc_out[i], 0, SEEK_SET) == -1)
 				ccdie("seeking on section file %d:", i);
 
-			fprintf(cc1_out, "section .%s\n", section_names[i]);
+			if(fprintf(cc1_out, "section .%s\n", section_names[i]) < 0)
+				ccdie("write to cc1 output:");
 
 			while(fgets(buf, sizeof buf, cc_out[i]))
 				if(fputs(buf, cc1_out) <= 0)
