@@ -284,8 +284,6 @@ void walk_tree(tree *t)
 		case stat_noop:
 			break;
 	}
-
-	asm_temp(0, "\n");
 }
 
 void decl_walk_expr(expr *e, symtable *stab)
@@ -336,8 +334,6 @@ void gen_asm_func(decl *d)
 	function *f = d->func;
 	if(f->code){
 		int offset;
-
-		asm_temp(0, "\n");
 
 		/* walk string decls */
 		decl_walk_tree(f->code);
