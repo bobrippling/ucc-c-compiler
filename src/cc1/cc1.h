@@ -3,9 +3,9 @@
 
 enum section_type
 {
-	SECTION_BSS,
-	SECTION_DATA,
 	SECTION_TEXT,
+	SECTION_DATA,
+	SECTION_BSS,
 	NUM_SECTIONS
 };
 
