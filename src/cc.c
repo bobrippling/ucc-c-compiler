@@ -290,6 +290,12 @@ int main(int argc, char **argv)
 	if(!input)
 		goto usage;
 
+	if(!strcmp(backend, "print") && mode > MODE_COMPILE){
+		mode = MODE_COMPILE;
+		if(!output)
+			output = "-";
+	}
+
 	if(!output){
 		if(mode == MODE_PREPROCESS){
 			output = "-";
@@ -320,7 +326,6 @@ int main(int argc, char **argv)
 			input, output);
 	return 0;
 #endif
-
 
 	if(readlink(argv[0], where, sizeof where) == -1)
 		snprintf(where, sizeof where, "%s", argv[0]);
