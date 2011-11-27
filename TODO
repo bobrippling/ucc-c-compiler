@@ -9,6 +9,8 @@ s/ICE/UCC_ASSERT/
 
 errno - particularly BSD-systems
 
+cc -MM *.c
+
 typedefs
 
 struct parsing
