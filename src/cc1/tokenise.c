@@ -137,7 +137,7 @@ static int nextchar()
 	int c;
 	do
 		c = rawnextchar();
-	while(isspace(c));
+	while(isspace(c) || c == '\f'); /* C allows ^L aka '\f' anywhere in the code */
 	return c;
 }
 
