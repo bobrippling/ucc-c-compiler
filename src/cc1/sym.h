@@ -19,10 +19,11 @@ struct symtable
 {
 	int auto_offset_start, auto_offset_finish;
 	symtable *parent;
+	array_decl **arrays;
 	decl **decls;
 };
 
-sym      *sym_new(decl *d, enum sym_type t);
+sym *sym_new(decl *d, enum sym_type t);
 
 symtable *symtab_new();
 symtable *symtab_child(symtable *);

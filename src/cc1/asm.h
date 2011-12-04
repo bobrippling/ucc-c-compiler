@@ -30,7 +30,7 @@ void asm_tempf(FILE *f, int indent, const char *, ...);
 void asm_label(const char *);
 void asm_sym(enum asm_sym_type, sym *, const char *);
 
-void asm_declare_array(enum section_type output, const char *lbl, expr *e);
+void asm_declare_array(enum section_type output, const char *lbl, array_decl *e);
 
 char *asm_code_label(const char *fmt);
 char *asm_array_label(int str);

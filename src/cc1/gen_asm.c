@@ -136,17 +136,16 @@ void walk_expr(expr *e, symtable *stab)
 		}
 
 		case expr_addr:
-			asm_sym(ASM_LEA, e->sym, "rax");
+			if(e->array_store)
+				asm_temp(1, "mov rax, %s", e->array_store->label);
+			else
+				asm_sym(ASM_LEA, e->sym, "rax");
+
 			asm_temp(1, "push rax");
 			break;
 
 		case expr_sizeof:
 			asm_temp(1, "push %d ; sizeof type %s", decl_size(e->tree_type), decl_to_str(e->tree_type));
-			break;
-
-		case expr_array:
-			asm_temp(1, "mov rax, %s", e->sym->decl->spel);
-			asm_temp(1, "push rax");
 			break;
 	}
 }
@@ -288,8 +287,8 @@ void walk_tree(tree *t)
 
 void decl_walk_expr(expr *e, symtable *stab)
 {
-	if(e->type == expr_array)
-		asm_declare_array(SECTION_DATA, e->sym->decl->spel, e);
+	if(e->type == expr_addr && e->array_store)
+		asm_declare_array(SECTION_DATA, e->array_store->label, e->array_store);
 
 #define WALK_IF(x) if(x) decl_walk_expr(x, stab)
 	WALK_IF(e->lhs);
@@ -408,10 +407,6 @@ void gen_asm_global_var(decl *d)
 				asm_tempf(f, 0, "%s d%c %s", d->spel, type_s, d->init->spel);
 				break;
 			}
-
-			case expr_array:
-				asm_declare_array(SECTION_DATA, d->spel, d->init);
-				break;
 
 			case expr_cast:
 			case expr_sizeof:

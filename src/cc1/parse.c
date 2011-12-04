@@ -93,22 +93,32 @@ expr *parse_expr_unary_op()
 		case token_string:
 		case token_open_block: /* array */
 			e = expr_new();
-			e->type = expr_array;
-			e->ptr_safe = 1;
+			e->array_store = array_decl_new();
+
+			e->type = expr_addr;
+			/*e->ptr_safe = 1;*/
 
 			if(curtok == token_string){
-				token_get_current_str(&e->val.s, &e->arrayl);
+				char *s;
+				int l;
+
+				token_get_current_str(&s, &l);
 				EAT(token_string);
-				e->array_type = ARRAY_STR;
+
+				e->array_store->data.str = s;
+				e->array_store->len      = l;
+
+				e->array_store->type = array_str;
 			}else{
 				EAT(token_open_block);
 				do
-					dynarray_add((void ***)&e->val.exprs, parse_expr());
+					dynarray_add((void ***)&e->array_store->data.exprs, parse_expr());
 				while(accept(token_comma));
 				EAT(token_close_block);
 
-				e->arrayl = dynarray_count((void ***)&e->val.exprs);
-				e->array_type = ARRAY_EXPR;
+				e->array_store->len = dynarray_count((void ***)&e->array_store->data);
+
+				e->array_store->type = array_exprs;
 			}
 			return e;
 
@@ -131,7 +141,7 @@ expr *parse_expr_unary_op()
 
 			return e;
 
-		case token_multiply: /* deref! */
+		case token_multiply: /* deref */
 			EAT(token_multiply);
 			e = expr_new();
 			e->type = expr_op;
@@ -609,7 +619,7 @@ next_decl:
 			 */
 
 			if(curtok == token_identifier){
-				int i, len;
+				int i, n_spels, n_decls;
 				char **spells = NULL;
 				decl **args;
 
@@ -622,26 +632,38 @@ next_decl:
 				/* parse decls, then check they correspond */
 				args = parse_decls(NEED_TYPE_YES);
 
-				len = dynarray_count((void ***)&args);
-				if(len != dynarray_count((void ***)&spells))
+				n_decls = dynarray_count((void ***)&args);
+				n_spels = dynarray_count((void ***)&spells);
+
+				if(n_decls > n_spels)
 					die_at(args ? &args[0]->where : &d->func->where, "old-style function decl: mismatching argument counts");
 
-				for(i = 0; i < len; i++){
+				for(i = 0; i < n_spels; i++){
 					int j, found;
 
-					if(args[i]->init)
-						die_at(&args[i]->where, "parameter \"%s\" is initialised", args[i]->spel);
-
 					found = 0;
-					for(j = 0; j < len; j++)
-						if(!strcmp(spells[j], args[i]->spel)){
+					for(j = 0; j < n_decls; j++)
+						if(!strcmp(spells[i], args[j]->spel)){
+							if(args[j]->init)
+								die_at(&args[j]->where, "parameter \"%s\" is initialised", args[j]->spel);
+
 							found = 1;
 							break;
 						}
 
-					if(!found)
-						die_at(&args[i]->where, "\"%s\": no corresponding identifier for \"%s\"", d->spel, args[i]->spel);
+					if(!found){
+						/*
+						 * void f(x){ ... }
+						 * - x is implicitly int
+						 */
+						decl *d = decl_new();
+						d->type->primitive = type_int;
+						d->spel = spells[i];
+						spells[i] = NULL; /* prevent free */
+						dynarray_add((void ***)&args, d);
+					}
 				}
+
 				/* no need to check the other way around, since the counts are equal */
 				/* FIXME: uniq() on parse_decls() in general */
 				dynarray_free((void ***)&spells, free);

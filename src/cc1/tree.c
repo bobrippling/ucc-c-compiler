@@ -73,6 +73,11 @@ decl *decl_new_where(where *w)
 	return d;
 }
 
+array_decl *array_decl_new()
+{
+	array_decl *ad = umalloc(sizeof *ad);
+	return ad;
+}
 
 type *type_new()
 {
@@ -206,7 +211,6 @@ const char *expr_to_str(const enum expr_type t)
 		CASE_STR_PREFIX(expr, val);
 		CASE_STR_PREFIX(expr, addr);
 		CASE_STR_PREFIX(expr, sizeof);
-		CASE_STR_PREFIX(expr, array);
 		CASE_STR_PREFIX(expr, identifier);
 		CASE_STR_PREFIX(expr, assign);
 		CASE_STR_PREFIX(expr, funcall);

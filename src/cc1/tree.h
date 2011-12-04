@@ -7,6 +7,7 @@ typedef struct symtable    symtable;
 typedef struct expr        expr;
 typedef struct tree        tree;
 typedef struct decl        decl;
+typedef struct array_decl  array_decl;
 typedef struct function    function;
 typedef struct tree_flow   tree_flow;
 typedef struct type        type;
@@ -63,6 +64,24 @@ struct decl
 	sym *sym;
 };
 
+struct array_decl
+{
+	union
+	{
+		char *str;
+		expr **exprs;
+	} data;
+
+	char *label;
+	int len;
+
+	enum
+	{
+		array_exprs,
+		array_str
+	} type;
+};
+
 struct expr
 {
 	where where;
@@ -71,9 +90,8 @@ struct expr
 	{
 		expr_op,
 		expr_val,
-		expr_addr, /* &x */
+		expr_addr, /* &x, or string/array pointer */
 		expr_sizeof,
-		expr_array, /* "abc" or { 1, 2, 3 } */
 		expr_identifier,
 		expr_assign,
 		expr_funcall,
@@ -110,19 +128,9 @@ struct expr
 	{
 		int i;
 		char *s;
-		expr **exprs;
-	} val; /*
-				  * stores both int values,
-					* and string pointers (used in const.c arithmetic)
-					* and array members
-					*/
-	int arrayl; /* string or array length */
+	} val;
+
 	int ptr_safe; /* does val point to a string we know about? */
-	enum
-	{
-		ARRAY_STR,
-		ARRAY_EXPR
-	} array_type;
 
 	char *spel;
 	expr *expr; /* x = 5; expr is the 5 */
@@ -132,6 +140,7 @@ struct expr
 
 	/* type propagation */
 	decl *tree_type;
+	array_decl *array_store;
 };
 
 struct tree
@@ -182,20 +191,21 @@ struct function
 	int variadic;
 };
 
-tree      *tree_new();
-expr      *expr_new();
-type      *type_new();
-decl      *decl_new();
-decl      *decl_new_where(where *);
-function  *function_new();
+tree        *tree_new(void);
+expr        *expr_new(void);
+type        *type_new(void);
+decl        *decl_new(void);
+decl        *decl_new_where(where *);
+array_decl  *array_decl_new(void);
+function    *function_new(void);
 
 type      *type_copy(type *);
 decl      *decl_copy(decl *);
 /*expr      *expr_copy(expr *);*/
-tree      *tree_new_code();
+tree      *tree_new_code(void);
 expr      *expr_new_val(int);
 
-tree_flow *tree_flow_new();
+tree_flow *tree_flow_new(void);
 
 const char *op_to_str(  const enum op_type   o);
 const char *expr_to_str(const enum expr_type t);
