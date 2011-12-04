@@ -17,6 +17,8 @@
 #include "../util/alloc.h"
 #include "../util/platform.h"
 
+#define newline() outline(p, "")
+
 struct def
 {
 	char *name, *val;
@@ -33,6 +35,8 @@ static int    pp_verbose = 0;
 int current_line = 0, current_chr = 0;
 const char *current_fname = NULL;
 
+extern int make_rules;
+
 static void ppdie(struct pp *p, const char *fmt, ...)
 {
 	va_list l;
@@ -43,6 +47,8 @@ static void ppdie(struct pp *p, const char *fmt, ...)
 		where.line  = p->nline;
 		where.chr   = -1;
 	}
+
+	fputs("cpp: ", stderr);
 
 	va_start(l, fmt);
 	vdie(&where, l, fmt);
@@ -56,9 +62,7 @@ void adddir(const char *d)
 		dirs[1] = NULL;
 		ndirs = 1;
 	}else{
-		dirs = realloc(dirs, (ndirs + 2) * sizeof(*dirs));
-		if(!dirs)
-			die(NULL, "realloc: %s\n", strerror(errno));
+		dirs = urealloc(dirs, (ndirs + 2) * sizeof(*dirs));
 
 		dirs[ndirs++] = d;
 		dirs[ndirs  ] = NULL;
@@ -88,6 +92,24 @@ void adddef(const char *n, const char *v)
 
 	if(pp_verbose)
 		fprintf(stderr, "adddef(\"%s\", \"%s\")\n", n, v);
+}
+
+void undef(const char *s)
+{
+	struct def *d, *prev;
+
+	for(prev = NULL, d = defs; d; prev = d, d = d->next)
+		if(!strcmp(d->name, s)){
+			if(prev){
+				prev->next = d->next;
+			}else{
+				defs = d->next;
+			}
+			free(d->name);
+			free(d->val);
+			free(d);
+			break;
+		}
 }
 
 static char *strdup_printf(const char *fmt, ...)
@@ -164,7 +186,13 @@ static void freedefs()
 	}
 }
 
-static int pp(struct pp *p, int skip)
+static void outline(struct pp *p, const char *line)
+{
+	if(!make_rules)
+		fprintf(p->out, "%s\n", line);
+}
+
+static int pp(struct pp *p, int skip, int need_chdir)
 {
 #define RET(x) do{ ret = x; goto fin; }while(0)
 	int curwdfd;
@@ -173,14 +201,18 @@ static int pp(struct pp *p, int skip)
 	char *wd;
 
 	/* save for "cd -" */
-	curwdfd = open(".", O_RDONLY);
-	if(curwdfd == -1)
-		ppdie(p, "open(\".\"): %s", strerror(errno));
+	if(need_chdir){
+		curwdfd = open(".", O_RDONLY);
+		if(curwdfd == -1)
+			ppdie(p, "open(\".\"): %s", strerror(errno));
 
-	/* make sure everything is relative to the file */
-	wd = udirname(p->fname);
-	if(chdir(wd))
-		ppdie(p, "chdir(\"%s\"): %s", wd, strerror(errno));
+		/* make sure everything is relative to the file */
+		wd = udirname(p->fname);
+		if(chdir(wd))
+			ppdie(p, "chdir(\"%s\"): %s (for %s)", wd, strerror(errno), p->fname);
+	}else{
+		curwdfd = -1;
+	}
 
 
 	do{
@@ -236,8 +268,11 @@ static int pp(struct pp *p, int skip)
 
 					switch(*base){
 						case '"':
+							incchar = '"';
+							break;
+
 						case '<':
-							incchar = *base;
+							incchar = '>';
 							break;
 
 						default:
@@ -285,6 +320,9 @@ static int pp(struct pp *p, int skip)
 						}
 					}
 
+					if(incchar == '"' && make_rules)
+						dynarray_add((void ***)&p->deps, path);
+
 					if(pp_verbose)
 						fprintf(stderr, "including %s\n", path);
 					pp2.fname = path;
@@ -292,7 +330,7 @@ static int pp(struct pp *p, int skip)
 					pp2.in  = inc;
 					pp2.out = p->out;
 
-					switch(pp(&pp2, 0)){
+					switch(pp(&pp2, 0, 1)){
 						case PROC_EOF:
 							break;
 
@@ -312,16 +350,29 @@ static int pp(struct pp *p, int skip)
 				if(argc < 2)
 					ppdie(p, "define takes at least one argument");
 
+				newline();
 				if(!skip)
 					adddef(argv[1], argv[2] ? argv[2] : "");
 
-			}else if(!strcmp(argv[0], "ifdef")){
+			}else if(!strcmp(argv[0], "undef")){
+				if(argc != 2)
+					ppdie(p, "undef takes a single argument");
+
+				newline();
+				undef(argv[1]);
+
+			}else if(!strcmp(argv[0], "ifdef") || !strcmp(argv[0], "ifndef")){
 				struct pp arg;
 				int gotdef;
 				int ret;
 
+				newline();
+
 				if(argc != 2)
 					ppdie(p, "ifdef takes one argument");
+
+				if(!strcmp(argv[0], "ifndef"))
+					skip = !skip;
 
 				if(skip)
 					gotdef = 0;
@@ -331,11 +382,11 @@ static int pp(struct pp *p, int skip)
 				memcpy(&arg, p, sizeof arg);
 				arg.out = devnull;
 
-				ret = pp(gotdef ? p : &arg, skip || !gotdef);
+				ret = pp(gotdef ? p : &arg, skip || !gotdef, 0);
 
 				switch(ret){
 					case PROC_ELSE:
-						ret = pp(gotdef ? &arg : p, skip || gotdef);
+						ret = pp(gotdef ? &arg : p, skip || gotdef, 0);
 						if(ret != PROC_ENDIF)
 							ppdie(p, "endif expected");
 					case PROC_ENDIF:
@@ -344,7 +395,9 @@ static int pp(struct pp *p, int skip)
 					case PROC_EOF:
 						ppdie(p, "eof unexpected");
 				}
+
 			}else if(!strcmp(argv[0], "else")){
+				newline();
 				if(argc != 1)
 					ppdie(p, "invalid #else");
 
@@ -354,6 +407,7 @@ static int pp(struct pp *p, int skip)
 				if(argc != 1)
 					ppdie(p, "invalid #endif");
 
+				newline();
 				free(line);
 				RET(PROC_ENDIF);
 			}else{
@@ -361,15 +415,36 @@ static int pp(struct pp *p, int skip)
 			}
 		}else{
 			substitutedef(p, &line);
-			fprintf(p->out, "%s\n", line);
+			outline(p, line);
 		}
 		free(line);
 	}while(1);
 #undef RET
 fin:
-	if(fchdir(curwdfd) == -1)
-		ppdie(p, "chdir(\"-\"): %s", strerror(errno));
-	close(curwdfd);
+	if(curwdfd != -1){
+		if(fchdir(curwdfd) == -1)
+			ppdie(p, "chdir(-): %s", strerror(errno));
+		close(curwdfd);
+	}
+
+	if(make_rules){
+		char **i;
+		char *tmp;
+
+		/*
+		 * if we're handling "tim.c", we should output this:
+		 * tim.o: tim.c [includes]
+		 */
+
+		printf("%s: %s", tmp = ext_replace(p->fname, "o"), p->fname);
+		free(tmp);
+
+		for(i = p->deps; i && *i; i++){
+			printf(" %s", *i);
+		}
+		putchar('\n');
+	}
+
 	return ret;
 }
 
@@ -435,7 +510,26 @@ enum proc_ret preprocess(struct pp *p, int verbose)
 			fprintf(stderr, "include dir \"%s\"\n", dirs[i]);
 	}
 
-	ret = pp(p, 0);
+	ret = pp(p, 0, 1);
+
+	if(make_rules){
+		char **i;
+		char *tmp;
+
+		/*
+		 * if we're handling "tim.c", we should output this:
+		 * tim.o: tim.c [includes]
+		 */
+
+		printf("%s: %s", tmp = ext_replace(p->fname, "o"), p->fname);
+		free(tmp);
+
+		for(i = p->deps; i && *i; i++){
+			printf(" %s", *i);
+		}
+		putchar('\n');
+	}
+
 	freedefs();
 
 	fclose(devnull);

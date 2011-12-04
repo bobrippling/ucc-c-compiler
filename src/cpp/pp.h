@@ -4,6 +4,7 @@
 struct pp
 {
 	const char *fname;
+	char **deps; /* for cc -MM */
 	int nline;
 	FILE *in, *out;
 };
