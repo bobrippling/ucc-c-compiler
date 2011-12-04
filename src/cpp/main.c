@@ -4,23 +4,10 @@
 
 #include "pp.h"
 
-void usage(const char *);
-void adddir(const char *);
-
-void usage(const char *name)
-{
-	fprintf(stderr, "Usage: %s [options] [file]\n", name);
-	fputs(" Options:\n"
-				"  -v: verbose\n"
-				"  -Idir: Add search directory\n"
-				"  -Dxyz: Define xyz\n"
-				"  -o output: output file\n", stderr);
-	exit(1);
-}
+int make_rules = 0;
 
 int main(int argc, const char **argv)
 {
-#define USAGE() usage(*argv)
 	const char *inputfilename = NULL,
 	           *outputfilename = NULL;
 	char argv_options = 1;
@@ -43,32 +30,39 @@ int main(int argc, const char **argv)
 					if(argv[i][2])
 						adddir(argv[i]+2);
 					else
-						USAGE();
+						goto usage;
 					break;
 
 				case 'v':
 					if(argv[i][2])
-						USAGE();
+						goto usage;
 					verbose = 1;
 					break;
 
 				case 'o':
 					if(outputfilename)
-						USAGE();
+						goto usage;
 
 					if(argv[i][2] != '\0')
 						outputfilename = argv[i] + 2;
 					else if(++i < argc)
 						outputfilename = argv[i];
 					else
-						USAGE();
+						goto usage;
+					break;
+
+				case 'M':
+					if(!strcmp(argv[i] + 2, "M"))
+						make_rules = 1;
+					else
+						goto usage;
 					break;
 
 				case 'D':
 				{
 					char *eq;
 					if(!argv[i][2])
-						USAGE();
+						goto usage;
 
 					eq = strchr(argv[i] + 2, '=');
 					if(eq){
@@ -85,14 +79,16 @@ int main(int argc, const char **argv)
 					break;
 
 				default:
-					USAGE();
+					goto usage;
 			}
+		}else{
+			break;
+		}
 
-		}else if(!inputfilename)
-			inputfilename = argv[i];
-		else
-			USAGE();
-
+	if(make_rules && !inputfilename){
+		fprintf(stderr, "%s: can't generate makefile rules with no input\n", *argv);
+		return 1;
+	}
 
 #define CHECK_FILE(var, file, mode, def) \
 	if(var){ \
@@ -109,17 +105,30 @@ int main(int argc, const char **argv)
 	}else \
 		arg.file = def;
 
-	CHECK_FILE(inputfilename,  in,  "r", stdin)
 	CHECK_FILE(outputfilename, out, "w", stdout)
 
-	arg.fname = inputfilename ? inputfilename : "-";
+	for(; i < argc; i++){
+		const char *inputfilename = argv[i];
 
-	ret = preprocess(&arg, verbose);
+		CHECK_FILE(inputfilename, in, "r", stdin)
 
-	if(fclose(arg.in) == EOF)
-		perror("fclose()");
-	if(fclose(arg.out) == EOF)
-		perror("fclose()");
+		arg.fname = inputfilename ? inputfilename : "-";
+
+		ret |= preprocess(&arg, verbose);
+
+		if(fclose(arg.in) == EOF)
+			perror("fclose()");
+		if(fclose(arg.out) == EOF)
+			perror("fclose()");
+	}
 
 	return ret;
+usage:
+	fprintf(stderr, "Usage: %s [options] files...\n", *argv);
+	fputs(" Options:\n"
+				"  -v: verbose\n"
+				"  -Idir: Add search directory\n"
+				"  -Dxyz: Define xyz\n"
+				"  -o output: output file\n", stderr);
+	return 1;
 }
