@@ -115,18 +115,14 @@ void asm_label(const char *lbl)
 	asm_temp(0, "%s:", lbl);
 }
 
-void asm_declare_array(enum section_type output, const char *lbl, expr *e)
+void asm_declare_array(enum section_type output, const char *lbl, array_decl *ad)
 {
 	int i;
 
 	fprintf(cc_out[output], "%s db ", lbl);
 
-	if(e->array_type == ARRAY_STR)
-		for(i = 0; i < e->arrayl; i++)
-			fprintf(cc_out[output], "%d%s", e->val.s[i],            i == e->arrayl - 1 ? "" : ", ");
-	else
-		for(i = 0; i < e->arrayl; i++)
-			fprintf(cc_out[output], "%d%s", e->val.exprs[i]->val.i, i == e->arrayl - 1 ? "" : ", ");
+	for(i = 0; i < ad->len; i++)
+		fprintf(cc_out[output], "%d%s", ad->type == array_str ? ad->data.str[i] : ad->data.exprs[i]->val.i, i == ad->len - 1 ? "" : ", ");
 
 	fputc('\n', cc_out[output]);
 }

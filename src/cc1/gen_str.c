@@ -136,23 +136,6 @@ void print_expr(expr *e)
 			indent--;
 			break;
 
-		case expr_array:
-			if(e->array_type == ARRAY_STR){
-				idt_printf("str: %s, \"%s\" (length=%d)\n", e->sym->decl->spel, e->val.s, e->arrayl);
-			}else{
-				int i;
-				idt_printf("array: %s:\n", e->sym->decl->spel);
-				indent++;
-				for(i = 0; e->val.exprs[i]; i++){
-					idt_printf("array[%d]:\n", i);
-					indent++;
-					print_expr(e->val.exprs[i]);
-					indent--;
-				}
-				indent--;
-			}
-			break;
-
 		case expr_assign:
 			idt_printf("%sassignment, expr:\n", e->assign_is_post ? "post-inc/dec " : "");
 			idt_printf("assign to:\n");
@@ -188,7 +171,27 @@ void print_expr(expr *e)
 
 		case expr_addr:
 			indent++;
-			idt_printf("&%s\n", e->spel);
+
+			if(e->array_store){
+				if(e->array_store->type == array_str){
+					idt_printf("label: %s, \"%s\" (length=%d)\n", e->array_store->label, e->array_store->data.str, e->array_store->len);
+				}else{
+					int i;
+					idt_printf("array: %s:\n", e->array_store->label);
+					indent++;
+					for(i = 0; e->array_store->data.exprs[i]; i++){
+						idt_printf("array[%d]:\n", i);
+						indent++;
+						print_expr(e->array_store->data.exprs[i]);
+						indent--;
+					}
+					indent--;
+				}
+			}else{
+				idt_printf("&%s\n", e->spel);
+			}
+			break;
+
 			indent--;
 			break;
 

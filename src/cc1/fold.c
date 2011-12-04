@@ -210,11 +210,47 @@ void fold_expr(expr *e, symtable *stab)
 			break;
 
 		case expr_addr:
-			if(!e->sym)
-				DIE_UNDECL();
 
-			GET_TREE_TYPE(e->sym->decl);
-			e->tree_type->ptr_depth++;
+			if(e->array_store){
+				sym *array_sym;
+
+				if(e->sym)
+					ICE("symbol found when looking for array store");
+
+				e->spel = e->array_store->label = asm_array_label(e->array_store->type == array_str);
+
+
+				e->tree_type->type->spec &= spec_static;
+				e->tree_type->ptr_depth = 1;
+
+				array_sym = symtab_add(stab, decl_new_where(&e->where), stab->parent ? sym_auto : sym_global);
+				memcpy(array_sym->decl, e->tree_type, sizeof *array_sym->decl);
+
+				switch(e->array_store->type){
+					case array_str:
+						e->tree_type->type->primitive = type_char;
+						break;
+
+					case array_exprs:
+					{
+						int i;
+						e->tree_type->type->primitive = type_int;
+
+						for(i = 0; e->array_store->data.exprs[i]; i++){
+							fold_expr(e->array_store->data.exprs[i], stab);
+							if(!const_fold(e->array_store->data.exprs[i]))
+								die_at(&e->array_store->data.exprs[i]->where, "array init not constant");
+						}
+					}
+				}
+
+			}else{
+				if(!e->sym)
+					DIE_UNDECL();
+
+				GET_TREE_TYPE(e->sym->decl);
+				e->tree_type->ptr_depth++;
+			}
 			break;
 
 		case expr_identifier:
@@ -302,34 +338,6 @@ noproblem:
 				/* TODO: const_fold again */
 			}
 			break;
-
-		case expr_array:
-		{
-			sym *sym;
-			sym = symtab_add(stab, decl_new_where(&e->where), stab->parent ? sym_auto : sym_global);
-
-			if(e->array_type == ARRAY_STR){
-				e->tree_type->type->primitive = type_char;
-			}else{
-				int i;
-				e->tree_type->type->primitive = type_int;
-
-				for(i = 0; e->val.exprs[i]; i++){
-					fold_expr(e->val.exprs[i], stab);
-					if(!const_fold(e->val.exprs[i]))
-						die_at(&e->val.exprs[i]->where, "array init not constant");
-				}
-			}
-
-			e->tree_type->type->spec &= spec_static;
-			e->tree_type->ptr_depth = 1;
-
-			memcpy(sym->decl, e->tree_type, sizeof *sym->decl);
-
-			sym->decl->spel = asm_array_label(e->array_type == ARRAY_STR);
-			e->sym = sym;
-			break;
-		}
 
 		case expr_funcall:
 			fold_funcall(e, stab);

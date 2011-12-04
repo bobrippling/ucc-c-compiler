@@ -64,10 +64,10 @@ int operate(expr *lhs, expr *rhs, enum op_type op, int *bad)
 
 			ignore for now, just deal with simple stuff
 			*/
-			if(lhs->type == expr_array){
-				if(lhs->array_type == ARRAY_STR)
+			if(lhs->ptr_safe && lhs->type == expr_addr){
+				if(lhs->array_store->type == array_str)
 					return *lhs->val.s;
-				return lhs->val.exprs[0]->val.i;
+				/*return lhs->val.exprs[0]->val.i;*/
 			}
 			*bad = 1;
 			return 0;
@@ -87,7 +87,6 @@ int const_fold(expr *e)
 		case expr_val:
 		case expr_sizeof:
 		case expr_cast:
-		case expr_array:
 		case expr_addr:
 			return 0;
 
@@ -145,7 +144,7 @@ int const_fold(expr *e)
 
 int fold_expr_is_const(expr *e)
 {
-	if(e->type == expr_val || e->type == expr_sizeof || e->type == expr_array)
+	if(e->type == expr_val || e->type == expr_sizeof || e->type == expr_addr)
 		return 1;
 
 	/* can't have a const+extern in a constant expression */
