@@ -180,3 +180,22 @@ char *udirname(const char *f)
 		return ustrdup("./");
 	}
 }
+
+char *ext_replace(const char *str, const char *ext)
+{
+	char *dot;
+	dot = strrchr(str, '.');
+
+	if(dot){
+		char *dup;
+
+		dup = umalloc(strlen(ext) + strlen(str));
+
+		strcpy(dup, str);
+		sprintf(dup + (dot - str), ".%s", ext);
+
+		return dup;
+	}else{
+		return ustrdup(str);
+	}
+}
