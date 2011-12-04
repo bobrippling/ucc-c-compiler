@@ -16,6 +16,7 @@ void die(const char *fmt, ...);
 void die_ice(const char *, int);
 char *fline(FILE *f);
 char *udirname(const char *);
+char *ext_replace(const char *str, const char *ext);
 
 void dynarray_add(void ***, void *);
 int  dynarray_count(void ***);

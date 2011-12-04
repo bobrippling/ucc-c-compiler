@@ -49,9 +49,11 @@ char *stdlib_files;
 void die(const char *fmt, ...)
 {
 	va_list l;
-	va_start(l, fmt);
-	vfprintf(stderr, fmt, l);
-	va_end(l);
+	if(fmt){
+		va_start(l, fmt);
+		vfprintf(stderr, fmt, l);
+		va_end(l);
+	}
 	exit(1);
 }
 
@@ -76,7 +78,7 @@ void run(const char *cmd)
 
 
 		if(WIFSIGNALED(ret)) die("%s caught signal %d\n", p, WTERMSIG(ret));
-		die("%s returned %d\n", p, ret);
+		die(debug ? "%s returned %d\n" : NULL, p, ret);
 	}
 }
 
