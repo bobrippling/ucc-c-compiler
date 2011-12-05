@@ -214,8 +214,7 @@ void fold_expr(expr *e, symtable *stab)
 			if(e->array_store){
 				sym *array_sym;
 
-				if(e->sym)
-					ICE("symbol found when looking for array store");
+				UCC_ASSERT(!e->sym, "symbol found when looking for array store");
 
 				e->tree_type->type->spec |= spec_static;
 				e->tree_type->ptr_depth = 1;
@@ -409,8 +408,7 @@ void fold_block(tree *t)
 		}
 	}
 
-	if(!t->symtab->parent)
-		ICE("symtab has no parent");
+	UCC_ASSERT(t->symtab->parent, "symtab has no parent");
 
 	auto_offset = t->symtab->parent->auto_offset_start;
 	arg_offset  = 0;

@@ -40,8 +40,7 @@ symtable *symtab_grandparent(symtable *child)
 
 void symtab_nest(symtable *parent, symtable **brat)
 {
-	if(!parent)
-		ICE("symtab_nest with NULL parent");
+	UCC_ASSERT(parent, "symtab_nest with NULL parent");
 
 	if(*brat){
 		if((*brat)->parent)

@@ -1,7 +1,7 @@
 Ordered By Priority
 -------------------
 
-s/ICE/UCC_ASSERT/
+fix "1 - 2 + 3"
 
 errno - particularly BSD-systems
 

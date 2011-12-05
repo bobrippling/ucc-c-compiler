@@ -24,6 +24,7 @@ void dynarray_free(void ***par, void (*f)(void *));
 
 void ice(const char *f, int line, const char *fmt, ...);
 void icw(const char *f, int line, const char *fmt, ...);
+#define UCC_ASSERT(b, ...) do{ if(!(b)) ice(__FILE__, __LINE__, __VA_ARGS__); } while(0)
 #define ICE(...) ice(__FILE__, __LINE__, __VA_ARGS__)
 #define ICW(...) icw(__FILE__, __LINE__, __VA_ARGS__)
 
