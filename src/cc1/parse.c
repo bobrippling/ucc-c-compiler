@@ -46,6 +46,7 @@ type  *parse_type(int can_default);
 
 expr *parse_expr_binary_op(void); /* needed to limit [+-] parsing */
 expr *parse_expr_array(void);
+expr *parse_expr_if(void);
 
 expr *parse_lone_identifier()
 {
@@ -112,7 +113,8 @@ expr *parse_expr_unary_op()
 			}else{
 				EAT(token_open_block);
 				do
-					dynarray_add((void ***)&e->array_store->data.exprs, parse_expr());
+					dynarray_add((void ***)&e->array_store->data.exprs, parse_expr_funcallarg());
+					/* don't want commas taken in */
 				while(accept(token_comma));
 				EAT(token_close_block);
 
