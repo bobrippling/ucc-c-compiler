@@ -92,9 +92,9 @@ int main(int argc, const char **argv)
 
 #define CHECK_FILE(var, file, mode, def) \
 	if(var){ \
-		if(!strcmp(var, "-")) \
+		if(!strcmp(var, "-")){ \
 			arg.file = def; \
-		else{ \
+		}else{ \
 			arg.file = fopen(var, mode); \
 			if(!arg.file){ \
 				fprintf(stderr, "open: %s: ", var); \
@@ -102,10 +102,13 @@ int main(int argc, const char **argv)
 				return 1; \
 			} \
 		} \
-	}else \
-		arg.file = def;
+	}else{ \
+		arg.file = def; \
+	}
 
 	CHECK_FILE(outputfilename, out, "w", stdout)
+
+	ret = 0;
 
 	for(; i < argc; i++){
 		const char *inputfilename = argv[i];
