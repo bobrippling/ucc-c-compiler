@@ -33,7 +33,7 @@ clean:
 
 .PHONY: libs clean
 
-stdio.o: stdio.c unistd.h ${LIBDEPS}
-stdlib.o: stdlib.c stdlib.h syscalls.h os.h ${LIBDEPS}
-string.o: string.c string.h ${LIBDEPS}
-unistd.o: unistd.c unistd.h syscalls.h os.h ${LIBDEPS}
+fcntl.o: fcntl.c fcntl.h syscalls.h os.h
+stdio.o: stdio.c unistd.h stdio.h string.h
+stdlib.o: stdlib.c stdlib.h syscalls.h os.h
+unistd.o: unistd.c unistd.h syscalls.h os.h

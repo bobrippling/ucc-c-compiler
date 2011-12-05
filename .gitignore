@@ -14,3 +14,4 @@ src/cc1/test.s
 lib/os.h
 lib/syscall.s
 lib/syscall_err.s
+lib/string_strerrs.h
