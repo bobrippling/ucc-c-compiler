@@ -170,8 +170,6 @@ void print_expr(expr *e)
 		}
 
 		case expr_addr:
-			indent++;
-
 			if(e->array_store){
 				if(e->array_store->type == array_str){
 					idt_printf("label: %s, \"%s\" (length=%d)\n", e->array_store->label, e->array_store->data.str, e->array_store->len);
@@ -320,6 +318,7 @@ void gen_str(symtable *symtab)
 		}else{
 			fprintf(cc1_out, "global variable:\n");
 
+			indent++;
 			print_decl(*diter, 0, 1, 0);
 			if((*diter)->init){
 				indent++;
@@ -328,6 +327,7 @@ void gen_str(symtable *symtab)
 				print_expr((*diter)->init);
 				indent -= 2;
 			}
+			indent--;
 		}
 		fputc('\n', cc1_out);
 	}

@@ -285,57 +285,11 @@ void walk_tree(tree *t)
 	}
 }
 
-void decl_walk_expr(expr *e, symtable *stab)
-{
-	if(e->type == expr_addr && e->array_store)
-		asm_declare_array(SECTION_DATA, e->array_store->label, e->array_store);
-
-#define WALK_IF(x) if(x) decl_walk_expr(x, stab)
-	WALK_IF(e->lhs);
-	WALK_IF(e->expr);
-	WALK_IF(e->rhs);
-#undef WALK_IF
-
-	if(e->funcargs){
-		expr **iter;
-		for(iter = e->funcargs; *iter; iter++)
-			decl_walk_expr(*iter, stab);
-	}
-}
-
-void decl_walk_tree(tree *t)
-{
-#define WALK_IF(x) if(x) decl_walk_tree(x)
-	WALK_IF(t->lhs);
-	WALK_IF(t->rhs);
-#undef WALK_IF
-
-	if(t->codes){
-		tree **iter;
-
-		for(iter = t->codes; *iter; iter++)
-			decl_walk_tree(*iter);
-	}
-
-#define WALK_IF(x) if(x) decl_walk_expr(x, t->symtab)
-	WALK_IF(t->expr);
-
-	if(t->flow){
-		WALK_IF(t->flow->for_init);
-		WALK_IF(t->flow->for_while);
-		WALK_IF(t->flow->for_inc);
-	}
-#undef WALK_IF
-}
-
 void gen_asm_func(decl *d)
 {
 	function *f = d->func;
 	if(f->code){
 		int offset;
-
-		/* walk string decls */
-		decl_walk_tree(f->code);
 
 		asm_label(d->spel);
 		asm_temp(1, "push rbp");
@@ -418,6 +372,8 @@ void gen_asm_global_var(decl *d)
 			default:
 				ICE("unexpected global initaliser");
 		}
+	}else if(d->arrayinit){
+		asm_declare_array(SECTION_DATA, d->arrayinit->label, d->arrayinit);
 
 	}else{
 		/* TODO: direct to .data */

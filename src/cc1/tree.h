@@ -50,6 +50,7 @@ struct decl
 
 	expr **arraysizes;
 	expr *init; /* NULL except for global variables */
+	array_decl *arrayinit;
 
 	int ptr_depth;
 	/*

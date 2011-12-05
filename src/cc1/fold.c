@@ -217,14 +217,19 @@ void fold_expr(expr *e, symtable *stab)
 				if(e->sym)
 					ICE("symbol found when looking for array store");
 
-				e->spel = e->array_store->label = asm_array_label(e->array_store->type == array_str);
-
-
-				e->tree_type->type->spec &= spec_static;
+				e->tree_type->type->spec |= spec_static;
 				e->tree_type->ptr_depth = 1;
 
-				array_sym = symtab_add(stab, decl_new_where(&e->where), stab->parent ? sym_auto : sym_global);
+				array_sym = symtab_add(symtab_grandparent(stab), decl_new_where(&e->where), stab->parent ? sym_auto : sym_global);
 				memcpy(array_sym->decl, e->tree_type, sizeof *array_sym->decl);
+
+				e->spel =
+				e->array_store->label =
+				array_sym->decl->spel =
+					asm_array_label(e->array_store->type == array_str);
+
+				array_sym->decl->arrayinit = e->array_store;
+
 
 				switch(e->array_store->type){
 					case array_str:
@@ -233,13 +238,17 @@ void fold_expr(expr *e, symtable *stab)
 
 					case array_exprs:
 					{
+						expr **inits;
 						int i;
+
 						e->tree_type->type->primitive = type_int;
 
-						for(i = 0; e->array_store->data.exprs[i]; i++){
-							fold_expr(e->array_store->data.exprs[i], stab);
-							if(!const_fold(e->array_store->data.exprs[i]))
-								die_at(&e->array_store->data.exprs[i]->where, "array init not constant");
+						inits = e->array_store->data.exprs;
+
+						for(i = 0; inits[i]; i++){
+							fold_expr(inits[i], stab);
+							if(const_fold(inits[i]))
+								die_at(&inits[i]->where, "array init not constant (%s)", expr_to_str(inits[i]->type));
 						}
 					}
 				}
