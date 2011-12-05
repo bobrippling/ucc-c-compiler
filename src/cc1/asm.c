@@ -119,7 +119,7 @@ void asm_declare_array(enum section_type output, const char *lbl, array_decl *ad
 {
 	int i;
 
-	fprintf(cc_out[output], "%s db ", lbl);
+	fprintf(cc_out[output], "%s d%c ", lbl, ad->type == array_str ? 'b' : 'q');
 
 	for(i = 0; i < ad->len; i++)
 		fprintf(cc_out[output], "%d%s", ad->type == array_str ? ad->data.str[i] : ad->data.exprs[i]->val.i, i == ad->len - 1 ? "" : ", ");
