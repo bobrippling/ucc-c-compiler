@@ -31,6 +31,7 @@ static const char **dirs = NULL;
 static int    ndirs = 0;
 static FILE  *devnull;
 static int    pp_verbose = 0;
+static int counter; /* __COUNTER__ */
 
 int current_line = 0, current_chr = 0;
 const char *current_fname = NULL;
@@ -146,6 +147,7 @@ static void substitutedef(struct pp *p, char **line)
 
 	for(d = defs; d; d = d->next){
 		while((pos = strstr(*line, d->name))){
+			char nbuf[16];
 			char *const post = pos + strlen(d->name);
 			char *new;
 			const char *val;
@@ -153,11 +155,13 @@ static void substitutedef(struct pp *p, char **line)
 			*pos = post[-1] = '\0';
 
 			if(!strcmp(d->name, "__LINE__")){
-				static char linebuf[16];
-				snprintf(linebuf, sizeof linebuf, "%d", p->nline);
-				val = linebuf;
+				snprintf(nbuf, sizeof nbuf, "%d", p->nline);
+				val = nbuf;
 			}else if(!strcmp(d->name, "__FILE__")){
 				val = p->fname; /* FIXME: quote */
+			}else if(!strcmp(d->name, "__COUNTER__")){
+				snprintf(nbuf, sizeof nbuf, "%d", counter++);
+				val = nbuf;
 			}else{
 				val = d->val;
 			}
@@ -482,6 +486,7 @@ void def_defs(void)
 
 	adddef("__FILE__", "");
 	adddef("__LINE__", "");
+	adddef("__COUNTER__", "");
 }
 
 enum proc_ret preprocess(struct pp *p, int verbose)
