@@ -34,6 +34,13 @@ int main(int argc, char **argv);
 !
 	fi > lib/syscall_err.s
 
+	perl -e '
+	for(1 .. 100){
+		$! = $_;
+		printf "\t\"%s\"%s\n", $!, $_ == 100 ? "" : ",";
+	}
+	' > lib/string_strerrs.h
+
 	echo "Configured for $2"
 }
 
