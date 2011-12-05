@@ -115,14 +115,85 @@ void asm_label(const char *lbl)
 	asm_temp(0, "%s:", lbl);
 }
 
+void asm_declare_single_part(FILE *f, expr *e)
+{
+	switch(e->type){
+		case expr_val:
+			fprintf(f, "%d", e->val);
+			break;
+
+		case expr_addr:
+			fprintf(f, "%s", e->spel);
+			break;
+
+		case expr_cast:
+		case expr_sizeof:
+		case expr_identifier:
+			/* TODO */
+			ICE("TODO: init with %s", expr_to_str(e->type));
+			break;
+
+		default:
+			ICE("unexpected global initaliser");
+	}
+}
+
+int asm_type_ch(decl *d)
+{
+	int type_ch;
+
+	if(d->ptr_depth){
+		type_ch = 'q';
+	}else{
+		switch(d->type->primitive){
+			case type_int:
+				type_ch = 'q';
+				break;
+
+			case type_char:
+				type_ch = 'b';
+				break;
+
+			case type_void:
+				ICE("type primitive is void");
+
+			case type_unknown:
+			default:
+				ICE("type primitive not set");
+		}
+	}
+
+	return type_ch;
+}
+
+void asm_declare_single(FILE *f, decl *d)
+{
+	int type_ch;
+
+	type_ch = asm_type_ch(d);
+
+	fprintf(f, "%s d%c ", d->spel, type_ch);
+
+	asm_declare_single_part(f, d->init);
+
+	fputc('\n', f);
+}
+
 void asm_declare_array(enum section_type output, const char *lbl, array_decl *ad)
 {
 	int i;
 
 	fprintf(cc_out[output], "%s d%c ", lbl, ad->type == array_str ? 'b' : 'q');
 
-	for(i = 0; i < ad->len; i++)
-		fprintf(cc_out[output], "%d%s", ad->type == array_str ? ad->data.str[i] : ad->data.exprs[i]->val.i, i == ad->len - 1 ? "" : ", ");
+	for(i = 0; i < ad->len; i++){
+		if(ad->type == array_str)
+			fprintf(cc_out[output], "%d", ad->data.str[i]);
+		else
+			asm_declare_single_part(cc_out[output], ad->data.exprs[i]);
+
+		if(i < ad->len - 1)
+			fputs(", ", cc_out[output]);
+	}
 
 	fputc('\n', cc_out[output]);
 }

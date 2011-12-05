@@ -314,7 +314,6 @@ void gen_asm_func(decl *d)
 
 void gen_asm_global_var(decl *d)
 {
-	int type_ch;
 	FILE *f;
 
 	f = d->init ? cc_out[SECTION_DATA] : cc_out[SECTION_BSS];
@@ -324,67 +323,22 @@ void gen_asm_global_var(decl *d)
 		return;
 	}
 
-	if(d->ptr_depth){
-		type_ch = 'q';
-	}else{
-		switch(d->type->primitive){
-			case type_int:
-				type_ch = 'q';
-				break;
-
-			case type_char:
-				type_ch = 'b';
-				break;
-
-			case type_void:
-				ICE("type primitive is void");
-
-			case type_unknown:
-			default:
-				ICE("type primitive not set");
-		}
-	}
-
 	if(d->init){
-		/* TODO: arrays */
-		switch(d->init->type){
-			case expr_val:
-				asm_tempf(f, 0, "%s d%c %d", d->spel, type_ch, d->init->val);
-				break;
+		asm_declare_single(f, d);
 
-			case expr_addr:
-			{
-				char type_s = 'b';
-				if(d->ptr_depth > 0 || d->type->primitive != type_char)
-					type_s = 'q';
-
-				asm_tempf(f, 0, "%s d%c %s", d->spel, type_s, d->init->spel);
-				break;
-			}
-
-			case expr_cast:
-			case expr_sizeof:
-			case expr_identifier:
-				/* TODO */
-				ICE("TODO: init with %s", expr_to_str(d->init->type));
-				break;
-
-			default:
-				ICE("unexpected global initaliser");
-		}
 	}else if(d->arrayinit){
 		asm_declare_array(SECTION_DATA, d->arrayinit->label, d->arrayinit);
 
 	}else{
-		/* TODO: direct to .data */
 		int arraylen = 1;
 		int i;
 
 		for(i = 0; d->arraysizes && d->arraysizes[i]; i++)
 			arraylen = (i + 1) * d->arraysizes[i]->val.i;
+
 		/* TODO: check that i+1 is correct for the order here */
 
-		asm_tempf(f, 0, "%s res%c %d", d->spel, type_ch, arraylen);
+		asm_tempf(f, 0, "%s res%c %d", d->spel, asm_type_ch(d), arraylen);
 	}
 }
 
