@@ -112,11 +112,17 @@ expr *parse_expr_unary_op()
 				e->array_store->type = array_str;
 			}else{
 				EAT(token_open_block);
-				do
+				for(;;){
 					dynarray_add((void ***)&e->array_store->data.exprs, parse_expr_funcallarg());
-					/* don't want commas taken in */
-				while(accept(token_comma));
-				EAT(token_close_block);
+					if(accept(token_comma)){
+						if(accept(token_close_block)) /* { 1, } */
+							break;
+						continue;
+					}else{
+						EAT(token_close_block);
+						break;
+					}
+				}
 
 				e->array_store->len = dynarray_count((void ***)&e->array_store->data);
 
