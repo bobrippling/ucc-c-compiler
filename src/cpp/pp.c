@@ -73,28 +73,6 @@ void adddir(const char *d)
 		fprintf(stderr, "adddir(\"%s\")\n", d);
 }
 
-void adddef(const char *n, const char *v)
-{
-	/* FIXME: check for substring v in n */
-	char *n2, *v2;
-	struct def *d = umalloc(sizeof *d);
-
-	n2 = ustrdup(n);
-	v2 = ustrdup(v);
-
-	strcpy(n2, n);
-	strcpy(v2, v);
-
-	d->name = n2;
-	d->val  = v2;
-
-	d->next = defs;
-	defs = d;
-
-	if(pp_verbose)
-		fprintf(stderr, "adddef(\"%s\", \"%s\")\n", n, v);
-}
-
 void undef(const char *s)
 {
 	struct def *d, *prev;
@@ -138,6 +116,37 @@ static struct def *getdef(const char *s)
 		if(!strcmp(d->name, s))
 			return d;
 	return NULL;
+}
+
+void adddef(const char *n, const char *v)
+{
+	/* FIXME: check for substring v in n */
+	char *n2, *v2;
+	struct def *d;
+
+	if((d = getdef(n))){
+		fprintf(stderr, "warning: \"%s\" redefined\n", n);
+		free(d->val);
+		d->val = ustrdup(v);
+		return;
+	}
+
+	d = umalloc(sizeof *d);
+
+	n2 = ustrdup(n);
+	v2 = ustrdup(v);
+
+	strcpy(n2, n);
+	strcpy(v2, v);
+
+	d->name = n2;
+	d->val  = v2;
+
+	d->next = defs;
+	defs = d;
+
+	if(pp_verbose)
+		fprintf(stderr, "adddef(\"%s\", \"%s\")\n", n, v);
 }
 
 static void substitutedef(struct pp *p, char **line)
