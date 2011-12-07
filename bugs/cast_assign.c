@@ -1,11 +1,8 @@
 main()
 {
-	int i;
 	int p;
 
-	p = (int)&i;
+	(char *)0 = 1;
 
-	*(char *)p = 5;
-
-	return i;
+	(char *)p = 1;
 }
