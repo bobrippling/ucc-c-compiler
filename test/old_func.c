@@ -1,4 +1,4 @@
-#include "lib/stdio.h"
+#include <stdio.h>
 
 main(argc, argv)
 	int argc;
