@@ -11,6 +11,7 @@
 #include "tokconv.h"
 #include "../util/util.h"
 #include "sym.h"
+#include "cc1.h"
 
 #define NEED_TYPE_YES 1
 #define NEED_TYPE_NO  0
@@ -567,7 +568,7 @@ type *parse_type(int can_default)
 		if(!can_default && t->spec == spec_none)
 			return NULL;
 
-		warn_at(&t->where, "defaulting type to int");
+		cc1_warn_at(&t->where, WARN_IMPLICIT_INT, "defaulting type to int");
 		t->primitive = type_int; /* default to int */
 	}else{
 		EAT(curtok);
