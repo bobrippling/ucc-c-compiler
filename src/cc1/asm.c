@@ -1,10 +1,11 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#include <stdlib.h>
 
-#include "cc1.h"
 #include "../util/util.h"
 #include "tree.h"
+#include "cc1.h"
 #include "sym.h"
 #include "asm.h"
 #include "../util/platform.h"
@@ -20,7 +21,7 @@ char *asm_label_code(const char *fmt)
 	len = strlen(fmt) + 10;
 	ret = umalloc(len + 1);
 
-	snprintf(ret, len, ".%s_%d", fmt, label_last++);
+	snprintf(ret, len, ".%s.%d", fmt, label_last++);
 
 	return ret;
 }
@@ -28,15 +29,15 @@ char *asm_label_code(const char *fmt)
 char *asm_label_array(int str)
 {
 	char *ret = umalloc(16);
-	snprintf(ret, 16, "__%s_%d", str ? "str" : "array", str_last++);
+	snprintf(ret, 16, "%s.%d", str ? "str" : "array", str_last++);
 	return ret;
 }
 
 char *asm_label_static_local(decl *df, const char *spel)
 {
-	char *ret = umalloc(strlen(df->spel) + strlen(spel) + 4);
+	char *ret = umalloc(strlen(df->spel) + strlen(spel) + 2);
 	UCC_ASSERT(df->func, "no function for asm_label_static_local()");
-	sprintf(ret, "__%s_%s", df->spel, spel);
+	sprintf(ret, "%s.%s", df->spel, spel);
 	return ret;
 }
 
@@ -48,19 +49,24 @@ void asm_sym(enum asm_sym_type t, sym *s, const char *reg)
 		case sym_global:
 		{
 			int is_auto = s->type == sym_local;
-			char brackets[16];
+			char  stackbrackets[16];
+			char *brackets;
 
 			if(s->type == sym_global || (s->type == sym_local && (s->decl->type->spec & (spec_extern | spec_static)))){
 				const char *type_s = "";
+				const int bracket_len = strlen(s->decl->spel) + 16;
+
+				brackets = umalloc(bracket_len + 1);
 
 				if(s->decl->ptr_depth || s->decl->type->primitive == type_int)
 					type_s = "qword ";
 
 				/* get warnings for "lea rax, [qword tim]", just do "lea rax, [tim]" */
-				snprintf(brackets, sizeof brackets, "[%s%s]",
+				snprintf(brackets, bracket_len, "[%s%s]",
 						t == ASM_LEA ? "" : type_s, s->decl->spel);
 			}else{
-				snprintf(brackets, sizeof brackets, "[rbp %c %d]",
+				brackets = stackbrackets;
+				snprintf(brackets, sizeof stackbrackets, "[rbp %c %d]",
 						is_auto ? '-' : '+',
 						((is_auto ? 1 : 2) * platform_word_size()) + s->offset);
 			}
@@ -73,6 +79,8 @@ void asm_sym(enum asm_sym_type t, sym *s, const char *reg)
 					s->decl->spel
 					);
 
+			if(brackets != stackbrackets)
+				free(brackets);
 			break;
 		}
 

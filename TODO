@@ -1,8 +1,7 @@
 Ordered By Priority
 -------------------
 
-static initalisation
--> currently the initalisation just gets added to the code block
+const - prevent writing to const vars
 
 change static var name mangling from __[func]_[var] to func.var?
 
