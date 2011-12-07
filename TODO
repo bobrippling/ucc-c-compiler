@@ -5,6 +5,11 @@ const - prevent writing to const vars
 
 cpp - remove static vars from pp.c - multi-file processing. or limit to one file?
 
+cc -E dir/x.c
+doesn't work, but
+cd dir; cc -E x.c
+does
+
 -W code in cc.c
 -g in cc.c and eventually cc1.c with stabs/dwarf
 
