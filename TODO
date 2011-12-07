@@ -3,7 +3,10 @@ Ordered By Priority
 
 const - prevent writing to const vars
 
-change static var name mangling from __[func]_[var] to func.var?
+cpp - remove static vars from pp.c - multi-file processing. or limit to one file?
+
+-W code in cc.c
+-g in cc.c and eventually cc1.c with stabs/dwarf
 
 options:
 	warn on "{ 1, 2, 3, }" - final comma
