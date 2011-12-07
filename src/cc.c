@@ -12,6 +12,8 @@
 #include "cc.h"
 #include "util/alloc.h"
 
+#define LIB_PATH "/../lib/"
+
 enum mode
 {
 	MODE_PREPROCESS,
@@ -33,6 +35,7 @@ struct
 };
 
 int no_startfiles = 0, no_stdlib = 0;
+int no_warn = 0;
 int debug = 0;
 char *backend = "";
 
@@ -62,7 +65,7 @@ void run(const char *cmd)
 	int ret;
 
 	if(debug)
-		printf("run(\"%s\")\n", cmd);
+		fprintf(stderr, "run(\"%s\")\n", cmd);
 
 	ret = system(cmd);
 
@@ -93,7 +96,7 @@ void unlink_files()
 
 char *gen_stdlib_files(void)
 {
-	const char *base = "/../lib/";
+	const char *base = LIB_PATH;
 	const char *names[] = {
 		"stdio",
 		"stdlib",
@@ -185,13 +188,13 @@ unknown_file:
 	}
 
 	SHORTEN_OUTPUT(MODE_PREPROCESS, f_e);
-	RUN(1, "cpp/cpp -o %s %s", f_e, input);
+	RUN(1, "cpp/cpp -I'%s" LIB_PATH "' -o %s %s", where, f_e, input);
 	if(mode == MODE_PREPROCESS)
 		return 0;
 
 start_compile:
 	SHORTEN_OUTPUT(MODE_COMPILE, f_s);
-	RUN(1, "cc1/cc1 %s %s -o %s %s", *backend ? "-X" : "", backend, f_s, f_e);
+	RUN(1, "cc1/cc1 %s %s %s -o %s %s", no_warn ? "-w" : "", *backend ? "-X" : "", backend, f_s, f_e);
 	if(mode == MODE_COMPILE)
 		return 0;
 
@@ -236,6 +239,8 @@ int main(int argc, char **argv)
 	for(i = 1; i < argc; i++)
 		if(!strcmp(argv[i], "-d")){
 			debug = 1;
+		}else if(!strcmp(argv[i], "-w")){
+			no_warn = 1;
 		}else if(!strncmp(argv[i], "-nost", 5)){
 			if(!strcmp(argv[i] + 5, "artfiles"))
 				no_startfiles = 1;
