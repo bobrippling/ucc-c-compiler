@@ -1,9 +1,9 @@
-#include "lib/stdio.h"
-#include "lib/string.h"
-#include "lib/errno.h"
+#include <stdio.h>
+#include <string.h>
+#include <errno.h>
 
-#include "lib/fcntl.h"
-#include "lib/unistd.h"
+#include <fcntl.h>
+#include <unistd.h>
 
 
 void cat(int fd)
