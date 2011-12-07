@@ -14,7 +14,7 @@ const char *where_str(const struct where *w)
 	return buf;
 }
 
-void vwarn(struct where *w, va_list l, const char *fmt)
+void vwarn(struct where *w, const char *fmt, va_list l)
 {
 	struct where instead;
 
@@ -40,9 +40,9 @@ void vwarn(struct where *w, va_list l, const char *fmt)
 	}
 }
 
-void vdie(struct where *w, va_list l, const char *fmt)
+void vdie(struct where *w, const char *fmt, va_list l)
 {
-	vwarn(w, l, fmt);
+	vwarn(w, fmt, l);
 	exit(1);
 }
 
@@ -50,7 +50,7 @@ void warn_at(struct where *w, const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
-	vwarn(w, l, fmt);
+	vwarn(w, fmt, l);
 	/* unreachable */
 }
 
@@ -58,7 +58,7 @@ void die_at(struct where *w, const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
-	vdie(w, l, fmt);
+	vdie(w, fmt, l);
 	/* unreachable */
 }
 
@@ -66,7 +66,7 @@ void die(const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
-	vdie(NULL, l, fmt); /* FIXME: this is called before current_fname etc is init'd */
+	vdie(NULL, fmt, l); /* FIXME: this is called before current_fname etc is init'd */
 	/* unreachable */
 }
 
