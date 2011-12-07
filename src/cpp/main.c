@@ -1,12 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 #include "pp.h"
 
 int make_rules = 0;
 
-int main(int argc, const char **argv)
+int main(int argc, char **argv)
 {
 	const char *inputfilename = NULL,
 	           *outputfilename = NULL;
@@ -110,19 +111,30 @@ int main(int argc, const char **argv)
 
 	ret = 0;
 
-	for(; i < argc; i++){
-		const char *inputfilename = argv[i];
+	if(i == argc){
+		arg.fname = "-";
+		arg.in = stdin;
+		ret = preprocess(&arg, verbose);
+	}else{
+		for(; i < argc; i++){
+			const char *inputfilename = argv[i];
 
-		CHECK_FILE(inputfilename, in, "r", stdin)
+			CHECK_FILE(inputfilename, in, "r", stdin)
 
-		arg.fname = inputfilename ? inputfilename : "-";
+			fprintf(stderr, "proc %s\n", argv[i]);
 
-		ret |= preprocess(&arg, verbose);
+			arg.fname = inputfilename ? inputfilename : "-";
 
-		if(fclose(arg.in) == EOF)
-			perror("fclose()");
-		if(fclose(arg.out) == EOF)
-			perror("fclose()");
+			ret |= preprocess(&arg, verbose);
+
+			fclose(arg.in);
+			if(errno)
+				perror("fclose()");
+
+			fclose(arg.out);
+			if(errno)
+				perror("fclose()");
+		}
 	}
 
 	return ret;

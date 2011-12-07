@@ -28,7 +28,6 @@ struct def
 
 static struct def *defs = NULL;
 static const char **dirs = NULL;
-static int    ndirs = 0;
 static FILE  *devnull;
 static int    pp_verbose = 0;
 static int counter; /* __COUNTER__ */
@@ -52,22 +51,12 @@ static void ppdie(struct pp *p, const char *fmt, ...)
 	fputs("cpp: ", stderr);
 
 	va_start(l, fmt);
-	vdie(&where, l, fmt);
+	vdie(&where, fmt, l);
 }
 
-void adddir(const char *d)
+void adddir(char *d)
 {
-	if(!dirs){
-		dirs = umalloc(2 * sizeof(*dirs));
-		dirs[0] = d;
-		dirs[1] = NULL;
-		ndirs = 1;
-	}else{
-		dirs = urealloc(dirs, (ndirs + 2) * sizeof(*dirs));
-
-		dirs[ndirs++] = d;
-		dirs[ndirs  ] = NULL;
-	}
+	dynarray_add((void ***)&dirs, d);
 
 	if(pp_verbose)
 		fprintf(stderr, "adddir(\"%s\")\n", d);
@@ -304,10 +293,8 @@ static int pp(struct pp *p, int skip, int need_chdir)
 
 					found = 0;
 
-					/* FIXME: switch on incchar */
-
-					if(incchar == '<'){
-						for(i = 0; i < ndirs; i++){
+					if(incchar == '>'){
+						for(i = 0; dirs[i]; i++){
 							path = strdup_printf("%s/%s", dirs[i], base);
 
 							inc = fopen(path, "r");
@@ -320,16 +307,30 @@ static int pp(struct pp *p, int skip, int need_chdir)
 							free(path);
 						}
 
-						if(!found)
-							ppdie(p, "can't find include file \"%s\"", base);
+						if(!found){
+							char pwd[1024];
+							if(pp_verbose)
+								getcwd(pwd, sizeof pwd);
+							ppdie(p, "can't find include file <%s>%s%s%s", base,
+									pp_verbose ? " (pwd " : "",
+									pp_verbose ? pwd : "",
+									pp_verbose ? ")" : ""
+									);
+						}
 
 					}else{
 						path = ustrdup(base);
 						inc = fopen(path, "r");
 						if(!inc){
 							char pwd[1024];
-							getcwd(pwd, sizeof pwd);
-							ppdie(p, "can't open \"%s\": %s (pwd %s)", path, strerror(errno), pwd);
+							if(pp_verbose)
+								getcwd(pwd, sizeof pwd);
+
+							ppdie(p, "can't open \"%s\": %s%s%s%s", path, strerror(errno),
+									pp_verbose ? " (pwd " : "",
+									pp_verbose ? pwd : "",
+									pp_verbose ? ")" : ""
+									);
 						}
 					}
 
@@ -520,7 +521,7 @@ enum proc_ret preprocess(struct pp *p, int verbose)
 		for(d = defs; d; d = d->next)
 			fprintf(stderr, "%s = %s\n", d->name, d->val);
 
-		for(i = 0; i < ndirs; i++)
+		for(i = 0; dirs[i]; i++)
 			fprintf(stderr, "include dir \"%s\"\n", dirs[i]);
 	}
 

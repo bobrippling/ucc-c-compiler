@@ -18,7 +18,7 @@ enum proc_ret
 };
 
 void adddef(const char *n, const char *v);
-void adddir(const char *d);
+void adddir(char *d);
 enum proc_ret preprocess(struct pp *, int verbose);
 
 #endif
