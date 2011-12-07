@@ -98,6 +98,7 @@ decl *decl_copy(decl *d)
 {
 	decl *ret = umalloc(sizeof *ret);
 	memcpy(ret, d, sizeof *ret);
+	ret->type = type_copy(d->type);
 	/*ret->spel = NULL;*/
 	return ret;
 }
@@ -202,6 +203,16 @@ int decl_equal(const decl *a, const decl *b, int strict)
 		return 1;
 
 	return ptreq && type_equal(a->type, b->type);
+}
+
+void function_empty_args(decl *d)
+{
+	if(d->func->args){
+		decl_free(d->func->args[0]);
+		free(d->func->args);
+		d->func->args = NULL;
+	}
+	d->func->args_void = 0;
 }
 
 const char *expr_to_str(const enum expr_type t)

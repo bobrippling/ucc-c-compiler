@@ -7,7 +7,7 @@ struct sym
 	enum sym_type
 	{
 		sym_global,
-		sym_auto,
+		sym_local,
 		sym_arg,
 		sym_func
 	} type;

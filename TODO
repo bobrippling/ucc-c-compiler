@@ -1,6 +1,13 @@
 Ordered By Priority
 -------------------
 
+static initalisation
+-> currently the initalisation just gets added to the code block
+
+options:
+	warn on "{ 1, 2, 3, }" - final comma
+	warn on ?:
+
 fix "1 - 2 + 3"
 
 errno - particularly BSD-systems

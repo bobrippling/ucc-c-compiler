@@ -220,6 +220,7 @@ int   decl_size(const decl *);
 int   decl_equal(const decl *, const decl *, int strict);
 expr *expr_ptr_multiply(expr *, decl *);
 expr *expr_assignment(expr *to, expr *from);
+void function_empty_args(decl *d);
 
 #define DECL_STATIC_BUFSIZ 32
 

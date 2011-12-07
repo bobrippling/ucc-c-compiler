@@ -69,7 +69,7 @@ static void asm_compare(expr *e, symtable *tab)
 
 static void asm_shortcircuit(expr *e, symtable *tab)
 {
-	char *baillabel = asm_code_label("shortcircuit_bail");
+	char *baillabel = asm_label_code("shortcircuit_bail");
 	walk_expr(e->lhs, tab);
 
 	asm_temp(1, "mov rax,[rsp]");
