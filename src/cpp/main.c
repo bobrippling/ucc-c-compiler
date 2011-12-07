@@ -121,8 +121,6 @@ int main(int argc, char **argv)
 
 			CHECK_FILE(inputfilename, in, "r", stdin)
 
-			fprintf(stderr, "proc %s\n", argv[i]);
-
 			arg.fname = inputfilename ? inputfilename : "-";
 
 			ret |= preprocess(&arg, verbose);
