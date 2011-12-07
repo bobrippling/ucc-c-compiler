@@ -17,9 +17,64 @@
 #include "sym.h"
 #include "cc1.h"
 
+/* TODO */
+#define WARN_FORMAT         0
+#define WARN_INT_TO_PTR     0
+#define WARN_PTR_ARITH      0
+#define WARN_SHADOW         0
+#define WARN_UNINITIALISED  0
+#define WARN_UNUSED_PARAM   0
+#define WARN_UNUSED_VAL     0
+#define WARN_UNUSED_VAR     0
+
+struct
+{
+	const char *arg;
+	enum warning type;
+} arg[] = {
+	{ "all",             ~0 },
+	{ "extra",            0 }, /* TODO */
+	{ "mismatch-arg",    WARN_ARG_MISMATCH                      }, /* x(int); x("hi"); */
+	{ "array-comma",     WARN_ARRAY_COMMA                       }, /* { 1, 2, 3, } */
+	{ "mismatch-assign", WARN_ASSIGN_MISMATCH                   }, /* int i = &q; */
+	{ "return-type",     WARN_RETURN_TYPE                       }, /* void x(){return 5;} and vice versa*/
+
+	{ "sign-compare",    WARN_SIGN_COMPARE                      }, /* unsigned x = 5; if(x == -1)... */
+	{ "extern-assume",   WARN_EXTERN_ASSUME                     }, /* int printf(); [^printf]+$ */
+
+	{ "implicit-int",    WARN_IMPLICIT_INT                      }, /* x(){...} and [spec] x; in global/arg scope */
+	{ "implicit-func",   WARN_IMPLICIT_FUNC                     }, /* ^main(){x();} */
+	{ "implicit",        WARN_IMPLICIT_FUNC | WARN_IMPLICIT_INT }, /* ^main(){x();} */
+
+	/* TODO */
+	{ "unused-parameter", WARN_UNUSED_PARAM },
+	{ "unused-variable",  WARN_UNUSED_VAR   },
+	{ "unused-value",     WARN_UNUSED_VAL   },
+	{ "unused",           WARN_UNUSED_PARAM | WARN_UNUSED_VAR | WARN_UNUSED_VAL },
+
+	/* TODO */
+	{ "uninitialised",    WARN_UNINITIALISED },
+
+	/* TODO */
+	{ "array-bounds",     WARN_UNINITIALISED },
+
+	/* TODO */
+	{ "shadow",           WARN_SHADOW }, /* int x; { int x; } */
+
+	/* TODO */
+	{ "format",           WARN_FORMAT }, /* int x; { int x; } */
+
+	/* TODO */
+	{ "pointer-arith",    WARN_PTR_ARITH }, /* void *x; x++; */
+	{ "int-ptr-cast",     WARN_INT_TO_PTR }, /* void *x; x++; */
+};
+
+
 FILE *cc_out[NUM_SECTIONS];     /* temporary section files */
 char  fnames[NUM_SECTIONS][32]; /* duh */
 FILE *cc1_out;                  /* final output */
+
+enum warning warn_mode = 0; /* FIXME */
 
 const char *section_names[NUM_SECTIONS] = {
 	"text", "data", "bss"
@@ -39,6 +94,18 @@ void ccdie(const char *fmt, ...)
 
 	fputc('\n', stderr);
 	exit(1);
+}
+
+void cc1_warn_at(struct where *where, enum warning w, const char *fmt, ...)
+{
+	va_list l;
+
+	if((w & warn_mode) == 0)
+		return;
+
+	va_start(l, fmt);
+	vwarn(where, fmt, l);
+	va_end(l);
 }
 
 void io_setup(void)
@@ -122,6 +189,16 @@ int main(int argc, char **argv)
 					return 1;
 				}
 			}
+
+		}else if(!strcmp(argv[i], "-w")){
+			warn_mode = WARN_NONE;
+
+		}else if(!strncmp(argv[i], "-W", 2)){
+			/*char *arg = argv[i] + 2;*/
+
+			/* TODO: -Wno-... */
+
+			ccdie("%s: -W... not implemented", *argv);
 
 		}else if(!fname){
 			fname = argv[i];
