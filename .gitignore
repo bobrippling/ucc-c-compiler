@@ -15,3 +15,11 @@ lib/os.h
 lib/syscall.s
 lib/syscall_err.s
 lib/string_strerrs.h
+test/addr
+test/cat
+test/late_decl
+test/old_func
+test/printf_args
+test/printf_simple
+test/ptr_arith
+test/sizeof
