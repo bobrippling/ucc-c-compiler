@@ -9,6 +9,8 @@ include ../config.mk
 
 libs: ${OBJ}
 
+${OBJ}: ${LIBDEPS}
+
 crt.o: crt.s
 	${BUILD_CMD}
 syscall.o: syscall.s

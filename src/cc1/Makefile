@@ -41,7 +41,7 @@ const.o: const.c ../util/util.h tree.h const.h sym.h
 fold.o: fold.c cc1.h ../util/util.h tree.h fold.h sym.h \
  ../util/platform.h const.h asm.h
 gen_asm.o: gen_asm.c cc1.h ../util/util.h tree.h macros.h asm.h \
- ../util/platform.h sym.h asm_op.h gen_asm.h
+ ../util/platform.h sym.h asm_op.h gen_asm.h const.h
 gen_str.o: gen_str.c ../util/util.h tree.h macros.h sym.h cc1.h
 parse.o: parse.c tokenise.h ../util/util.h tree.h parse.h ../util/alloc.h \
  tokconv.h sym.h

@@ -36,8 +36,8 @@ void asm_declare_array(enum section_type output, const char *lbl, array_decl *ad
 void asm_declare_single(FILE *f, decl *d);
 void asm_declare_single_part(FILE *f, expr *e);
 
-char *asm_code_label(const char *fmt);
-char *asm_array_label(int str);
-
+char *asm_label_code(const char *fmt);
+char *asm_label_array(int str);
+char *asm_label_static_local(decl *df, const char *spel);
 
 #endif

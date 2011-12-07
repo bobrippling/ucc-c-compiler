@@ -142,11 +142,17 @@ int const_fold(expr *e)
 	return 1;
 }
 
-int fold_expr_is_const(expr *e)
+int const_expr_is_const(expr *e)
 {
 	if(e->type == expr_val || e->type == expr_sizeof || e->type == expr_addr)
 		return 1;
 
 	/* can't have a const+extern in a constant expression */
 	return e->sym ? (e->sym->decl->type->spec & spec_const && (e->sym->decl->type->spec & spec_extern) == 0) : 0;
+}
+
+int const_expr_is_zero(expr *e)
+{
+	/* TODO: go through casts */
+	return const_expr_is_const(e) && (e->type == expr_val ? e->val.i == 0 : 0);
 }

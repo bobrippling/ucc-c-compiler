@@ -18,6 +18,10 @@
 
 #define DIE_UNDECL() DIE_UNDECL_SPEL(e->spel)
 
+
+static decl *curfuncdecl;
+
+
 void fold_expr(expr *e, symtable *stab);
 void fold_code(tree *t);
 
@@ -80,11 +84,19 @@ void fold_funcall(expr *e, symtable *stab)
 		 * having just been added via grandparent()
 		 */
 
-		/* set up the function args to correspond with the arg types */
 		if(e->funcargs){
+#ifdef IMPLICIT_FUNC_ARG_EXACT
+			/* set up the function args to correspond with the arg types */
 			expr **iter;
-			for(iter = e->funcargs; *iter; iter++)
-				dynarray_add((void ***)&df->func->args, (*iter)->tree_type);
+			for(iter = e->funcargs; *iter; iter++){
+				decl *arg_decl = decl_copy((*iter)->tree_type);
+				arg_decl->type->spec &= ~(spec_extern | spec_static); /* don't inherit these, obv. */
+				dynarray_add((void ***)&df->func->args, arg_decl);
+			}
+#else
+			/* set up the function args as if it's "x()" - i.e. any args */
+			function_empty_args(df);
+#endif
 		}
 	}else{
 		df = e->sym->decl;
@@ -219,13 +231,13 @@ void fold_expr(expr *e, symtable *stab)
 				e->tree_type->type->spec |= spec_static;
 				e->tree_type->ptr_depth = 1;
 
-				array_sym = symtab_add(symtab_grandparent(stab), decl_new_where(&e->where), stab->parent ? sym_auto : sym_global);
+				array_sym = symtab_add(symtab_grandparent(stab), decl_new_where(&e->where), stab->parent ? sym_local : sym_global);
 				memcpy(array_sym->decl, e->tree_type, sizeof *array_sym->decl);
 
 				e->spel =
 				e->array_store->label =
 				array_sym->decl->spel =
-					asm_array_label(e->array_store->type == array_str);
+					asm_label_array(e->array_store->type == array_str);
 
 				array_sym->decl->arrayinit = e->array_store;
 
@@ -371,7 +383,7 @@ void fold_decl(decl *d, symtable *stab)
 	for(i = 0; d->arraysizes && d->arraysizes[i]; i++){
 		fold_expr(d->arraysizes[i], stab);
 
-		if(!fold_expr_is_const(d->arraysizes[i]))
+		if(!const_expr_is_const(d->arraysizes[i]))
 			die_at(&d->arraysizes[i]->where, "not a constant expression");
 	}
 }
@@ -403,7 +415,7 @@ void fold_block(tree *t)
 		decl **iter;
 
 		for(iter = t->decls; *iter; iter++){
-			symtab_add(t->symtab, *iter, sym_auto);
+			symtab_add(t->symtab, *iter, sym_local);
 			fold_decl(*iter, t->symtab);
 		}
 	}
@@ -423,7 +435,7 @@ void fold_block(tree *t)
 		for(diter--; diter >= t->symtab->decls; diter--){
 			sym *s = (*diter)->sym;
 
-			if(s->type == sym_auto){
+			if(s->type == sym_local && (s->decl->type->spec & (spec_extern | spec_static)) == 0){
 				s->offset = auto_offset;
 
 				/* TODO: optimise for chars / don't assume everything is an int */
@@ -534,8 +546,23 @@ void fold_code(tree *t)
 			break;
 
 		case stat_code:
+		{
+			decl **diter;
+
 			fold_block(t);
+
+			/* check static decls - after we fold, so we've linked the syms */
+			for(diter = t->decls; diter && *diter; diter++){
+				decl *d = *diter;
+				if(d->type->spec & spec_static){
+					char *save = d->spel;
+					d->spel = asm_label_static_local(curfuncdecl, d->spel);
+					free(save);
+				}
+			}
+
 			break;
+		}
 
 		case stat_return:
 			if(t->expr)
@@ -550,18 +577,33 @@ void fold_code(tree *t)
 
 void fold_func(decl *df, symtable *globsymtab)
 {
+	int i;
 	decl **diter;
 	function *f = df->func;
+
+	curfuncdecl = df;
 
 	fold_decl(df, globsymtab);
 
 	for(diter = df->func->args; diter && *diter; diter++)
 		fold_decl(*diter, globsymtab);
 
+	if(f->args)
+		for(i = 0; f->args[i]; i++)
+			if(f->args[i]->type->spec & (spec_static | spec_extern)){
+				const char *sp = f->args[i]->spel;
+				die_at(&f->where, "argument %d %s%s%sin function \"%s\" is static or extern",
+						i + 1,
+						sp ? "(" : "",
+						sp ? sp  : "",
+						sp ? ") " : "",
+						df->spel);
+			}
+
 	if(f->code){
 		if(f->args){
-			/* check for unnamed params */
-			int nargs, i;
+			/* check for unnamed params and extern/static specs */
+			int nargs;
 
 			for(nargs = 0; f->args[nargs]; nargs++);
 
@@ -599,6 +641,8 @@ void fold_func(decl *df, symtable *globsymtab)
 				/*warn_at(&f->where, "assuming \"%s\" is extern", df->spel);*/
 		}
 	}
+
+	curfuncdecl = NULL;
 }
 
 void fold(symtable *globs)

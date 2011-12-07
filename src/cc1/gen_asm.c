@@ -12,8 +12,11 @@
 #include "asm_op.h"
 #include "gen_asm.h"
 #include "../util/util.h"
+#include "const.h"
 
 static char *curfunc_lblfin;
+
+void gen_asm_global_var(decl *d);
 
 void asm_ax_to_store(expr *store, symtable *stab)
 {
@@ -72,8 +75,8 @@ void walk_expr(expr *e, symtable *stab)
 		case expr_if:
 		{
 			char *lblfin, *lblelse;
-			lblfin  = asm_code_label("ifexpa");
-			lblelse = asm_code_label("ifexpb");
+			lblfin  = asm_label_code("ifexpa");
+			lblelse = asm_label_code("ifexpb");
 
 			walk_expr(e->expr, stab);
 			asm_temp(1, "pop rax");
@@ -163,8 +166,8 @@ void walk_tree(tree *t)
 
 		case stat_if:
 		{
-			char *lbl_else = asm_code_label("else");
-			char *lbl_fi   = asm_code_label("fi");
+			char *lbl_else = asm_label_code("else");
+			char *lbl_fi   = asm_label_code("fi");
 
 			walk_expr(t->expr, t->symtab);
 
@@ -187,8 +190,8 @@ void walk_tree(tree *t)
 		{
 			char *lbl_for, *lbl_fin;
 
-			lbl_for = asm_code_label("for");
-			lbl_fin = asm_code_label("for_fin");
+			lbl_for = asm_label_code("for");
+			lbl_fin = asm_label_code("for_fin");
 
 			if(t->flow->for_init){
 				walk_expr(t->flow->for_init, t->symtab);
@@ -223,8 +226,8 @@ void walk_tree(tree *t)
 		{
 			char *lbl_start, *lbl_fin;
 
-			lbl_start = asm_code_label("while");
-			lbl_fin   = asm_code_label("while_fin");
+			lbl_start = asm_label_code("while");
+			lbl_fin   = asm_label_code("while_fin");
 
 			asm_label(lbl_start);
 			walk_expr(t->expr, t->symtab);
@@ -244,7 +247,7 @@ void walk_tree(tree *t)
 		{
 			char *lbl_start;
 
-			lbl_start = asm_code_label("do");
+			lbl_start = asm_label_code("do");
 
 			asm_label(lbl_start);
 			walk_tree(t->lhs);
@@ -273,10 +276,18 @@ void walk_tree(tree *t)
 
 		case stat_code:
 			if(t->codes){
-				tree **iter;
+				tree **titer;
+				decl **diter;
 
-				for(iter = t->codes; *iter; iter++)
-					walk_tree(*iter);
+				/* declare statics */
+				for(diter = t->decls; diter && *diter; diter++){
+					decl *d = *diter;
+					if(d->type->spec & spec_static)
+						gen_asm_global_var(d);
+				}
+
+				for(titer = t->codes; *titer; titer++)
+					walk_tree(*titer);
 			}
 			break;
 
@@ -295,11 +306,13 @@ void gen_asm_func(decl *d)
 		asm_temp(1, "push rbp");
 		asm_temp(1, "mov rbp, rsp");
 
-		curfunc_lblfin = asm_code_label(d->spel);
+		curfunc_lblfin = asm_label_code(d->spel);
 
 		if((offset = f->code->symtab->auto_offset_finish))
 			asm_temp(1, "sub rsp, %d", offset);
+
 		walk_tree(f->code);
+
 		asm_label(curfunc_lblfin);
 		if(offset)
 			asm_temp(1, "add rsp, %d", offset);
@@ -314,20 +327,17 @@ void gen_asm_func(decl *d)
 
 void gen_asm_global_var(decl *d)
 {
-	FILE *f;
-
-	f = d->init ? cc_out[SECTION_DATA] : cc_out[SECTION_BSS];
-
 	if(d->type->spec & spec_extern){
-		asm_tempf(f, 0, "extern %s", d->spel);
+		/* should be fine... */
+		asm_tempf(cc_out[SECTION_BSS], 0, "extern %s", d->spel);
 		return;
 	}
 
-	if(d->init){
-		asm_declare_single(f, d);
-
-	}else if(d->arrayinit){
+	if(d->arrayinit){
 		asm_declare_array(SECTION_DATA, d->arrayinit->label, d->arrayinit);
+
+	}else if(d->init && !const_expr_is_zero(d->init)){
+		asm_declare_single(cc_out[SECTION_DATA], d);
 
 	}else{
 		int arraylen = 1;
@@ -338,7 +348,7 @@ void gen_asm_global_var(decl *d)
 
 		/* TODO: check that i+1 is correct for the order here */
 
-		asm_tempf(f, 0, "%s res%c %d", d->spel, asm_type_ch(d), arraylen);
+		asm_tempf(cc_out[SECTION_BSS], 0, "%s res%c %d", d->spel, asm_type_ch(d), arraylen);
 	}
 }
 

@@ -704,10 +704,8 @@ next_decl:
 						d->func->args[0]->ptr_depth == 0 &&
 						d->func->args[0]->spel == NULL){
 					/* x(void); */
-					decl_free(d->func->args[0]);
-					free(d->func->args);
-					d->func->args = NULL;
-					d->func->args_void = 1;
+					function_empty_args(d);
+					d->func->args_void = 1; /* (void) vs () */
 				}
 
 				if(!accept(token_semicolon))
@@ -744,7 +742,8 @@ tree *parse_code_declblock()
 	t->decls = parse_decls(NEED_TYPE_YES);
 
 	for(diter = t->decls; diter && *diter; diter++)
-		if((*diter)->init){
+		/* only extract the init if it's not static */
+		if((*diter)->init && ((*diter)->type->spec & spec_static) == 0){
 			expr *sym = expr_new();
 
 			sym = expr_new();
