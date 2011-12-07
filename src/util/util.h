@@ -10,9 +10,12 @@ typedef struct where
 const char *where_str(const struct where *w);
 
 void warn_at(struct where *, const char *, ...);
-void die_at(struct where *, const char *, ...);
-void vdie(struct where *w, va_list l, const char *fmt);
+void die_at( struct where *, const char *, ...);
+void vwarn(  struct where *, const char *, va_list);
+void vdie(   struct where *, const char *, va_list);
+
 void die(const char *fmt, ...);
+
 void die_ice(const char *, int);
 char *fline(FILE *f);
 char *udirname(const char *);
