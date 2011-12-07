@@ -4,6 +4,8 @@ Ordered By Priority
 static initalisation
 -> currently the initalisation just gets added to the code block
 
+change static var name mangling from __[func]_[var] to func.var?
+
 options:
 	warn on "{ 1, 2, 3, }" - final comma
 	warn on ?:
