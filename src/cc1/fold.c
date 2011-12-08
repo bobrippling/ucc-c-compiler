@@ -217,6 +217,16 @@ void fold_expr(expr *e, symtable *stab)
 
 		case expr_cast:
 			fold_expr(e->rhs, stab);
+			if(e->rhs->type == expr_cast){
+				/* FIXME: check (for *(int *)0 = 5;) */
+				/* get rid of e->rhs, replace with e->rhs->rhs */
+				expr *del = e->rhs;
+
+				e->rhs = e->rhs->rhs;
+
+				expr_free(del->lhs); /* the overridden cast */
+				expr_free(del);
+			}
 			GET_TREE_TYPE(e->lhs->tree_type);
 			break;
 
