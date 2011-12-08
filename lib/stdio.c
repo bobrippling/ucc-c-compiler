@@ -46,7 +46,7 @@ static void printx(int fd, int n)
 
 /* Public */
 
-int vfprintf(FILE *file, const char *fmt, va_list ap)
+int vfprintf(FILE *file, char *fmt, va_list ap)
 {
 	int fd = *file;
 
