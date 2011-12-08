@@ -31,18 +31,16 @@ int fold_is_lvalue(expr *e)
 	 * valid lvaluess:
 	 *
 	 *   x = 5;
-	 *   *(expr) = 5;
-	 *   (cast *)expr = 5;
+	 *   (cast)expr = 5;
+	 *   *[above] = 5;
 	 *
-	 * also can't be const
+	 * also can't be const, checked in fold_assign
 	 */
-	if(e->tree_type->type->spec & spec_const)
-		die_at(&e->where, "can't modify const expression");
 
 	return
 		 e->type == expr_identifier ||
 		(e->type == expr_op && e->op == op_deref && fold_is_lvalue(e->lhs)) ||
-		(e->type == expr_cast && e->lhs->tree_type->ptr_depth) /* assignment to pointer-deref */
+		(e->type == expr_cast && fold_is_lvalue(e->rhs))
 		;
 }
 
@@ -146,24 +144,28 @@ void fold_funcall(expr *e, symtable *stab)
 
 void fold_assignment(expr *e, symtable *stab)
 {
-	if(!fold_is_lvalue(e->lhs))
-		die_at(&e->lhs->where, "not an lvalue");
-
 	fold_expr(e->lhs, stab);
 	fold_expr(e->rhs, stab);
 
+	/* wait until we get the tree types, etc */
+	if(!fold_is_lvalue(e->lhs))
+		die_at(&e->lhs->where, "not an lvalue");
 
-	if(!e->sym){
+	if(e->lhs->tree_type->type->spec & spec_const)
+		die_at(&e->where, "can't modify const expression");
+
+
+	if(!e->sym && e->lhs->spel){
 		/* need this here, since the generic sym-assignment does it from ->spel and not with assigning_to either */
 		e->sym = symtab_search(stab, e->lhs->spel);
 
 		if(!e->sym)
 			DIE_UNDECL_SPEL(e->lhs->spel);
+
+		/* read the tree_type from what we're assigning to, not the expr */
+		GET_TREE_TYPE(e->sym->decl);
 	}
 
-
-	/* read the tree_type from what we're assigning to, not the expr */
-	GET_TREE_TYPE(e->sym->decl);
 
 	/* type check */
 	if(!decl_equal(e->lhs->tree_type, e->rhs->tree_type, 0)){
