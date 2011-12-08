@@ -1,8 +1,8 @@
 main()
 {
-	int p;
+	//int p;
 
 	(char *)0 = 1;
 
-	(char *)p = 1;
+	//(char *)p = 1;
 }
