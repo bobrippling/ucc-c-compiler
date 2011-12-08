@@ -48,10 +48,14 @@ static void ppdie(struct pp *p, const char *fmt, ...)
 		where.chr   = -1;
 	}
 
-	fputs("cpp: ", stderr);
+	if(fmt){
+		fputs("cpp: ", stderr);
 
-	va_start(l, fmt);
-	vdie(&where, fmt, l);
+		va_start(l, fmt);
+		vdie(&where, fmt, l);
+	}else{
+		exit(1);
+	}
 }
 
 void adddir(char *d)
@@ -218,6 +222,8 @@ static int pp(struct pp *p, int skip, int need_chdir)
 
 
 	do{
+		int flag;
+
 		line = fline(p->in);
 		p->nline++;
 
@@ -375,7 +381,7 @@ static int pp(struct pp *p, int skip, int need_chdir)
 				newline();
 				undef(argv[1]);
 
-			}else if(!strcmp(argv[0], "ifdef") || !strcmp(argv[0], "ifndef")){
+			}else if(!strcmp(argv[0], "ifdef") || (flag = !strcmp(argv[0], "ifndef"))){
 				struct pp arg;
 				int gotdef;
 				int ret;
@@ -385,7 +391,7 @@ static int pp(struct pp *p, int skip, int need_chdir)
 				if(argc != 2)
 					ppdie(p, "ifdef takes one argument");
 
-				if(!strcmp(argv[0], "ifndef"))
+				if(flag)
 					skip = !skip;
 
 				if(skip)
@@ -424,6 +430,18 @@ static int pp(struct pp *p, int skip, int need_chdir)
 				newline();
 				free(line);
 				RET(PROC_ENDIF);
+			}else if(!strcmp(argv[0], "warning") || (flag = !strcmp(argv[0], "error"))){
+				const char *mode = flag ? "error" : "warning";
+				int i;
+				if(argc < 2)
+					ppdie(p, "#%s needs at least one arg", mode);
+				fprintf(stderr, "%s: ", mode);
+				for(i = 1; i < argc; i++)
+					fprintf(stderr, "%s%c", argv[i], i == argc - 1 ? '\n' : ' ');
+
+				newline();
+				if(flag)
+					ppdie(p, NULL);
 			}else{
 				ppdie(p, "\"%s\" unexpected", line);
 			}
