@@ -226,5 +226,6 @@ void function_empty_args(decl *d);
 
 #define type_free(x) free(x)
 #define decl_free(x) do{type_free((x)->type); free(x);}while(0)
+#define expr_free(x) do{decl_free((x)->tree_type); free(x);}while(0)
 
 #endif
