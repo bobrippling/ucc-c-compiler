@@ -89,8 +89,10 @@ void ccdie(const char *fmt, ...)
 	vfprintf(stderr, fmt, l);
 	va_end(l);
 
-	if(fmt[i-1] == ':')
+	if(fmt[i-1] == ':'){
+		fputc(' ', stderr);
 		perror(NULL);
+	}
 
 	fputc('\n', stderr);
 	exit(1);
@@ -141,7 +143,7 @@ void io_fin(int do_sections)
 				ccdie("write to cc1 output:");
 
 			while(fgets(buf, sizeof buf, cc_out[i]))
-				if(fputs(buf, cc1_out) <= 0)
+				if(fputs(buf, cc1_out) == EOF)
 					ccdie("write to cc1 output:");
 
 			if(ferror(cc_out[i]))
