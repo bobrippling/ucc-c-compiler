@@ -19,6 +19,8 @@
 
 #define newline() outline(p, "")
 
+#define VERBOSE(...) do{ if(pp_verbose) fprintf(stderr, __VA_ARGS__); }while(0)
+
 struct def
 {
 	char *name, *val;
@@ -62,8 +64,7 @@ void adddir(char *d)
 {
 	dynarray_add((void ***)&dirs, d);
 
-	if(pp_verbose)
-		fprintf(stderr, "adddir(\"%s\")\n", d);
+	VERBOSE("adddir(\"%s\")\n", d);
 }
 
 void undef(const char *s)
@@ -138,8 +139,7 @@ void adddef(const char *n, const char *v)
 	d->next = defs;
 	defs = d;
 
-	if(pp_verbose)
-		fprintf(stderr, "adddef(\"%s\", \"%s\")\n", n, v);
+	VERBOSE("adddef(\"%s\", \"%s\")\n", n, v);
 }
 
 static void substitutedef(struct pp *p, char **line)
@@ -222,8 +222,6 @@ static int pp(struct pp *p, int skip, int need_chdir)
 
 
 	do{
-		int flag;
-
 		line = fline(p->in);
 		p->nline++;
 
@@ -242,6 +240,7 @@ static int pp(struct pp *p, int skip, int need_chdir)
 			char *argv[3] = { NULL };
 			char *s, *last;
 			int i, argc;
+			int flag = 0;
 
 			for(i = 0, last = s = line + 1; *s; s++)
 				if(isspace(*s)){
@@ -343,8 +342,7 @@ static int pp(struct pp *p, int skip, int need_chdir)
 					if(incchar == '"' && make_rules)
 						dynarray_add((void ***)&p->deps, path);
 
-					if(pp_verbose)
-						fprintf(stderr, "including %s\n", path);
+					VERBOSE("including %s\n", path);
 					pp2.fname = path;
 
 					pp2.in  = inc;
@@ -360,8 +358,7 @@ static int pp(struct pp *p, int skip, int need_chdir)
 							ppdie(p, "eof expected from including \"%s\"", pp2.fname);
 					}
 
-					if(pp_verbose)
-						fprintf(stderr, "included %s\n", path);
+					VERBOSE("included %s\n", path);
 
 					fclose(inc);
 					free(path); /* pp2.fname */
@@ -519,7 +516,6 @@ void def_defs(void)
 
 enum proc_ret preprocess(struct pp *p, int verbose)
 {
-	struct def *d;
 	int ret;
 
 	pp_verbose = verbose;
@@ -533,6 +529,7 @@ enum proc_ret preprocess(struct pp *p, int verbose)
 	def_defs();
 
 	if(verbose){
+		struct def *d;
 		int i;
 
 		fputs("defs:\n", stderr);
