@@ -112,7 +112,7 @@ int main(int argc, char **argv)
 	ret = 0;
 
 	if(i == argc){
-		arg.fname = "-";
+		arg.fname = "stdin";
 		arg.in = stdin;
 		ret = preprocess(&arg, verbose);
 	}else{
