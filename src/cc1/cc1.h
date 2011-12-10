@@ -22,7 +22,7 @@ enum warning
 	WARN_IMPLICIT_INT     = 1 << 8,
 };
 
-void cc1_warn_at(struct where *, enum warning, const char *, ...);
+void cc1_warn_at(struct where *where, int die, enum warning w, const char *fmt, ...);
 
 extern FILE *cc_out[NUM_SECTIONS];
 extern FILE *cc1_out;

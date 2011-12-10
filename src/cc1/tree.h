@@ -215,14 +215,15 @@ const char *decl_to_str(const decl          *t);
 const char *type_to_str(const type          *t);
 const char *spec_to_str(const enum type_spec s);
 
-int   type_equal(const type *, const type *);
+int   type_equal(const type *a, const type *b, int strict);
 int   decl_size(const decl *);
 int   decl_equal(const decl *, const decl *, int strict);
 expr *expr_ptr_multiply(expr *, decl *);
 expr *expr_assignment(expr *to, expr *from);
 void function_empty_args(decl *d);
 
-#define DECL_STATIC_BUFSIZ 32
+#define TYPE_STATIC_BUFSIZ 64
+#define DECL_STATIC_BUFSIZ (32 + TYPE_STATIC_BUFSIZ)
 
 #define type_free(x) free(x)
 #define decl_free(x) do{type_free((x)->type); free(x);}while(0)

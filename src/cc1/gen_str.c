@@ -44,12 +44,10 @@ void idt_printf(const char *fmt, ...)
 
 void print_type(type *t)
 {
-	int i;
-	for(i = 0; i < SPEC_MAX; i++)
-		if(t->spec & (1 << i))
-			fprintf(cc1_out, "%s ", spec_to_str(1 << i));
-
-	fprintf(cc1_out, "%s", type_to_str(t));
+	fprintf(cc1_out, "%s%s%s",
+			spec_to_str(t->spec),
+			t->spec ? " " : "",
+			type_to_str(t));
 }
 
 void print_decl(decl *d, int idt, int nl, int sym_offset)
