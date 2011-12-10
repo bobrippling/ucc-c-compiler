@@ -74,7 +74,7 @@ FILE *cc_out[NUM_SECTIONS];     /* temporary section files */
 char  fnames[NUM_SECTIONS][32]; /* duh */
 FILE *cc1_out;                  /* final output */
 
-enum warning warn_mode = 0; /* FIXME */
+enum warning warn_mode = ~0; /* FIXME */
 
 const char *section_names[NUM_SECTIONS] = {
 	"text", "data", "bss"
@@ -98,16 +98,21 @@ void ccdie(const char *fmt, ...)
 	exit(1);
 }
 
-void cc1_warn_at(struct where *where, enum warning w, const char *fmt, ...)
+void cc1_warn_at(struct where *where, int die, enum warning w, const char *fmt, ...)
 {
 	va_list l;
 
-	if((w & warn_mode) == 0)
+	if(!die && (w & warn_mode) == 0)
 		return;
 
 	va_start(l, fmt);
 	vwarn(where, fmt, l);
 	va_end(l);
+
+	if(die){
+		fprintf(stderr, "dying (fmt=%s)\n", fmt);
+		exit(1);
+	}
 }
 
 void io_setup(void)

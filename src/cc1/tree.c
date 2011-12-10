@@ -53,6 +53,7 @@ expr *expr_new_val(int v)
 {
 	expr *e = expr_new();
 	e->type = expr_val;
+	e->tree_type->type->spec |= spec_const;
 	e->val.i = v;
 	return e;
 }
@@ -188,9 +189,15 @@ int decl_size(const decl *d)
 	return platform_word_size();
 }
 
-int type_equal(const type *a, const type *b)
+int type_equal(const type *a, const type *b, int strict)
 {
-	/* TODO: check for const */
+	/*
+	 * basic const checking, doesn't work with
+	 * const char *const x, etc..
+	 */
+	if(strict && b->spec & spec_const && (a->spec & spec_const) == 0)
+		return 0; /* we can assign from const to non-const, but not vice versa */
+
 	return a->primitive == b->primitive;
 }
 
@@ -202,7 +209,7 @@ int decl_equal(const decl *a, const decl *b, int strict)
 	if(!strict && a->ptr_depth && ptreq)
 		return 1;
 
-	return ptreq && type_equal(a->type, b->type);
+	return ptreq && type_equal(a->type, b->type, strict);
 }
 
 void function_empty_args(decl *d)
@@ -275,15 +282,40 @@ const char *stat_to_str(const enum stat_type t)
 	return NULL;
 }
 
-const char *type_to_str(const type *t)
+const char *spec_to_str(const enum type_spec s)
 {
-	switch(t->primitive){
-		CASE_STR_PREFIX(type, int);
-		CASE_STR_PREFIX(type, char);
-		CASE_STR_PREFIX(type, void);
-		CASE_STR_PREFIX(type, unknown);
+	switch(s){
+		CASE_STR_PREFIX(spec, const);
+		CASE_STR_PREFIX(spec, extern);
+		CASE_STR_PREFIX(spec, static);
+		CASE_STR_PREFIX(spec, signed);
+		CASE_STR_PREFIX(spec, unsigned);
+		case spec_none: return "";
 	}
 	return NULL;
+}
+
+const char *type_to_str(const type *t)
+{
+#define buf_size (sizeof(buf) - (bufp - buf))
+	static char buf[TYPE_STATIC_BUFSIZ];
+	int i;
+	char *bufp = buf;
+
+	for(i = 0; i < SPEC_MAX; i++)
+		if(t->spec & (1 << i))
+			bufp += snprintf(bufp, buf_size, "%s ", spec_to_str(1 << i));
+
+#define APPEND(t) case type_ ## t: snprintf(bufp, buf_size, "%s", #t); break
+	switch(t->primitive){
+		APPEND(int);
+		APPEND(char);
+		APPEND(void);
+		APPEND(unknown);
+	}
+#undef APPEND
+
+	return buf;
 }
 
 const char *decl_to_str(const decl *d)
@@ -299,17 +331,4 @@ const char *decl_to_str(const decl *d)
 	buf[i] = '\0';
 
 	return buf;
-}
-
-const char *spec_to_str(const enum type_spec s)
-{
-	switch(s){
-		CASE_STR_PREFIX(spec, const);
-		CASE_STR_PREFIX(spec, extern);
-		CASE_STR_PREFIX(spec, static);
-		CASE_STR_PREFIX(spec, signed);
-		CASE_STR_PREFIX(spec, unsigned);
-		CASE_STR_PREFIX(spec, none);
-	}
-	return NULL;
 }

@@ -70,7 +70,7 @@ void fold_funcall(expr *e, symtable *stab)
 		df->type->primitive = type_int;
 		df->spel = e->spel;
 
-		cc1_warn_at(&e->where, WARN_IMPLICIT_FUNC, "implicit declaration of function \"%s\"", e->spel);
+		cc1_warn_at(&e->where, 0, WARN_IMPLICIT_FUNC, "implicit declaration of function \"%s\"", e->spel);
 
 		e->sym = symtab_add(symtab_grandparent(stab), df, sym_func);
 
@@ -125,17 +125,15 @@ void fold_funcall(expr *e, symtable *stab)
 					iter_decl[i];
 					i++){
 				/* TODO: -fstrict-types - changes the below 0 to a 1 */
-				if(!decl_equal(iter_arg[i]->tree_type, iter_decl[i], 0)){
+
+				if(!decl_equal(iter_decl[i], iter_arg[i]->tree_type, 0)){
 					char buf[DECL_STATIC_BUFSIZ];
+					int die = iter_arg[i]->tree_type->type->primitive == type_void;
 
 					strcpy(buf, decl_to_str(iter_arg[i]->tree_type));
 
-					if(iter_arg[i]->tree_type->type->primitive == type_void)
-						die_at(&e->where, "mismatching arguments for arg %d to %s: got %s, expected %s",
-							i + 1, df->spel, buf, decl_to_str(iter_decl[i]));
-					else
-						cc1_warn_at(&e->where, WARN_ARG_MISMATCH, "mismatching arguments for arg %d to %s: got %s, expected %s",
-							i + 1, df->spel, buf, decl_to_str(iter_decl[i]));
+					cc1_warn_at(&e->where, die, WARN_ARG_MISMATCH, "mismatching arguments for arg %d to %s: got %s, expected %s",
+						i + 1, df->spel, buf, decl_to_str(iter_decl[i]));
 				}
 			}
 		}
@@ -170,14 +168,11 @@ void fold_assignment(expr *e, symtable *stab)
 	/* type check */
 	if(!decl_equal(e->lhs->tree_type, e->rhs->tree_type, 0)){
 		char buf[DECL_STATIC_BUFSIZ];
+		int die = e->lhs->tree_type->type->primitive == type_void || e->rhs->tree_type->type->primitive == type_void;
 
 		strcpy(buf, decl_to_str(e->lhs->tree_type));
 
-		if(e->lhs->tree_type->type->primitive == type_void || e->rhs->tree_type->type->primitive == type_void)
-			die_at(&e->where, "assignment type mismatch: got %s, expected %s",
-					decl_to_str(e->rhs->tree_type), buf);
-		else
-			cc1_warn_at(&e->where, WARN_ASSIGN_MISMATCH, "assignment type mismatch: got %s, expected %s",
+		cc1_warn_at(&e->where, die, WARN_ASSIGN_MISMATCH, "assignment type mismatch: got %s, expected %s",
 				decl_to_str(e->rhs->tree_type), buf);
 	}
 }
@@ -325,7 +320,7 @@ void fold_expr(expr *e, symtable *stab)
 					SIGN_CONVERT(rhs, lhs)
 					SIGN_CONVERT(lhs, rhs)
 
-					cc1_warn_at(&e->where, WARN_SIGN_COMPARE, "comparison between signed and unsigned");
+					cc1_warn_at(&e->where, 0, WARN_SIGN_COMPARE, "comparison between signed and unsigned");
 				}
 			}
 noproblem:
@@ -649,7 +644,7 @@ void fold_func(decl *df, symtable *globsymtab)
 
 			if(!found)
 				df->type->spec |= spec_extern;
-				/*cc1_warn_at(&f->where, WARN_EXTERN_ASSUME, "assuming \"%s\" is extern", df->spel);*/
+				/*cc1_warn_at(&f->where, 0, WARN_EXTERN_ASSUME, "assuming \"%s\" is extern", df->spel);*/
 		}
 	}
 
