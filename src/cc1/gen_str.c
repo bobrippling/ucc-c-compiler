@@ -42,14 +42,6 @@ void idt_printf(const char *fmt, ...)
 	va_end(l);
 }
 
-void print_type(type *t)
-{
-	fprintf(cc1_out, "%s%s%s",
-			spec_to_str(t->spec),
-			t->spec ? " " : "",
-			type_to_str(t));
-}
-
 void print_decl(decl *d, int idt, int nl, int sym_offset)
 {
 	int i;
@@ -60,7 +52,8 @@ void print_decl(decl *d, int idt, int nl, int sym_offset)
 	if(d->ignore)
 		fprintf(cc1_out, "((extern) ignored/overridden later) ");
 
-	print_type(d->type);
+	fputs(type_to_str(d->type), cc1_out);
+
 	if(d->ptr_depth || d->spel)
 		fputc(' ', cc1_out);
 
