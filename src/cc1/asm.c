@@ -33,12 +33,22 @@ char *asm_label_array(int str)
 	return ret;
 }
 
+char *asm_label_function(decl *df, const char *spel, const char *pre, const char *tag)
+{
+	char *ret = umalloc(strlen(df->spel) + strlen(spel) + strlen(tag) + 3);
+	UCC_ASSERT(df->func, "no function for asm_label_function()");
+	sprintf(ret, "%s%s.%s_%s", pre, df->spel, tag, spel);
+	return ret;
+}
+
 char *asm_label_static_local(decl *df, const char *spel)
 {
-	char *ret = umalloc(strlen(df->spel) + strlen(spel) + 2);
-	UCC_ASSERT(df->func, "no function for asm_label_static_local()");
-	sprintf(ret, "%s.%s", df->spel, spel);
-	return ret;
+	return asm_label_function(df, spel, "", "static");
+}
+
+char *asm_label_goto(decl *df, char *lbl)
+{
+	return asm_label_function(df, lbl, ".", "lbl");
 }
 
 void asm_sym(enum asm_sym_type t, sym *s, const char *reg)

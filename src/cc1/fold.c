@@ -19,7 +19,7 @@
 #define DIE_UNDECL() DIE_UNDECL_SPEL(e->spel)
 
 
-static decl *curfuncdecl;
+static decl *curfunc_decl;
 
 
 void fold_expr(expr *e, symtable *stab);
@@ -515,11 +515,16 @@ void fold_code(tree *t)
 			break;
 
 		case stat_goto:
-			ICE("goto not implemented");
+		case stat_label:
+		{
+			char *save = t->expr->spel;
 			if(t->expr->type != expr_identifier)
 				die_at(&t->expr->where, "not a label identifier");
-			/*t->expr->sym = symtab_search(SYMTAB_LABEL, t->expr->spel); ???*/
+			/* else let the assembler check for link errors */
+			t->expr->spel = asm_label_goto(curfunc_decl, t->expr->spel);
+			free(save);
 			break;
+		}
 
 		case stat_while:
 		case stat_do:
@@ -562,7 +567,7 @@ void fold_code(tree *t)
 				decl *d = *diter;
 				if(d->type->spec & spec_static){
 					char *save = d->spel;
-					d->spel = asm_label_static_local(curfuncdecl, d->spel);
+					d->spel = asm_label_static_local(curfunc_decl, d->spel);
 					free(save);
 				}
 			}
@@ -587,7 +592,7 @@ void fold_func(decl *df, symtable *globsymtab)
 	decl **diter;
 	function *f = df->func;
 
-	curfuncdecl = df;
+	curfunc_decl = df;
 
 	fold_decl(df, globsymtab);
 
@@ -648,7 +653,7 @@ void fold_func(decl *df, symtable *globsymtab)
 		}
 	}
 
-	curfuncdecl = NULL;
+	curfunc_decl = NULL;
 }
 
 void fold(symtable *globs)
