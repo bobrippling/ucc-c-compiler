@@ -48,7 +48,8 @@ static void asm_compare(expr *e, symtable *tab)
 	asm_temp(1, "xor rcx,rcx"); /* must be before cmp */
 	asm_temp(1, "cmp rax,rbx");
 
-#define SIGNED(s, u) e->tree_type->type->spec & spec_signed ? s : u
+	/* check for unsigned, since signed isn't explicitly set */
+#define SIGNED(s, u) e->tree_type->type->spec & spec_unsigned ? u : s
 
 	switch(e->op){
 		case op_eq: cmp = "e";  break;
