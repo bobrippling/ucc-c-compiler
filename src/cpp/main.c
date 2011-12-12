@@ -9,84 +9,88 @@ int make_rules = 0;
 
 int main(int argc, char **argv)
 {
-	const char *inputfilename = NULL,
-	           *outputfilename = NULL;
-	char argv_options = 1;
+	const char *inputfname, *outputfname;
 	int i, ret, verbose = 0;
 	struct pp arg;
+
+	inputfname = outputfname = NULL;
 
 	memset(&arg, 0, sizeof arg);
 
 	adddir(".");
 
-	for(i = 1; i < argc; i++)
-		if(argv_options && *argv[i] == '-'){
-			if(!strcmp(argv[i]+1, "-")){
-				argv_options = 0;
-				continue;
-			}
-
-			switch(argv[i][1]){
-				case 'I':
-					if(argv[i][2])
-						adddir(argv[i]+2);
-					else
-						goto usage;
-					break;
-
-				case 'v':
-					if(argv[i][2])
-						goto usage;
-					verbose = 1;
-					break;
-
-				case 'o':
-					if(outputfilename)
-						goto usage;
-
-					if(argv[i][2] != '\0')
-						outputfilename = argv[i] + 2;
-					else if(++i < argc)
-						outputfilename = argv[i];
-					else
-						goto usage;
-					break;
-
-				case 'M':
-					if(!strcmp(argv[i] + 2, "M"))
-						make_rules = 1;
-					else
-						goto usage;
-					break;
-
-				case 'D':
-				{
-					char *eq;
-					if(!argv[i][2])
-						goto usage;
-
-					eq = strchr(argv[i] + 2, '=');
-					if(eq){
-						*eq++ = '\0';
-						adddef(argv[i] + 2, eq);
-					}else
-						adddef(argv[i] + 2, "");
-
-					break;
-				}
-
-				case '\0':
-					/* we've been passed "-" as a filename */
-					break;
-
-				default:
-					goto usage;
-			}
-		}else{
+	for(i = 1; i < argc && *argv[i] == '-'; i++){
+		if(!strcmp(argv[i]+1, "-"))
 			break;
-		}
 
-	if(make_rules && !inputfilename){
+		switch(argv[i][1]){
+			case 'I':
+				if(argv[i][2])
+					adddir(argv[i]+2);
+				else
+					goto usage;
+				break;
+
+			case 'v':
+				if(argv[i][2])
+					goto usage;
+				verbose = 1;
+				break;
+
+			case 'o':
+				if(outputfname)
+					goto usage;
+
+				if(argv[i][2] != '\0')
+					outputfname = argv[i] + 2;
+				else if(++i < argc)
+					outputfname = argv[i];
+				else
+					goto usage;
+				break;
+
+			case 'M':
+				if(!strcmp(argv[i] + 2, "M"))
+					make_rules = 1;
+				else
+					goto usage;
+				break;
+
+			case 'D':
+			{
+				char *eq;
+				if(!argv[i][2])
+					goto usage;
+
+				eq = strchr(argv[i] + 2, '=');
+				if(eq){
+					*eq++ = '\0';
+					adddef(argv[i] + 2, eq);
+				}else
+					adddef(argv[i] + 2, "");
+
+				break;
+			}
+
+			case '\0':
+				/* we've been passed "-" as a filename */
+			default:
+				break;
+		}
+	}
+
+	if(i < argc){
+		inputfname = argv[i++];
+		if(i < argc){
+			if(outputfname)
+				goto usage;
+			outputfname = argv[i++];
+			if(i < argc)
+				goto usage;
+		}
+	}
+
+	if(make_rules && !inputfname){
 		fprintf(stderr, "%s: can't generate makefile rules with no input\n", *argv);
 		return 1;
 	}
@@ -107,33 +111,23 @@ int main(int argc, char **argv)
 		arg.file = def; \
 	}
 
-	CHECK_FILE(outputfilename, out, "w", stdout)
+	CHECK_FILE(outputfname, out, "w", stdout)
+	CHECK_FILE(inputfname,   in, "r", stdin);
 
-	ret = 0;
+	if(!inputfname)
+		inputfname = "stdin";
 
-	if(i == argc){
-		arg.fname = "stdin";
-		arg.in = stdin;
-		ret = preprocess(&arg, verbose);
-	}else{
-		for(; i < argc; i++){
-			const char *inputfilename = argv[i];
+	arg.fname = inputfname;
 
-			CHECK_FILE(inputfilename, in, "r", stdin)
+	ret = preprocess(&arg, verbose);
 
-			arg.fname = inputfilename ? inputfilename : "-";
+	fclose(arg.in);
+	if(errno)
+		perror("close()");
 
-			ret |= preprocess(&arg, verbose);
-
-			fclose(arg.in);
-			if(errno)
-				perror("fclose()");
-
-			fclose(arg.out);
-			if(errno)
-				perror("fclose()");
-		}
-	}
+	fclose(arg.out);
+	if(errno)
+		perror("close()");
 
 	return ret;
 usage:
