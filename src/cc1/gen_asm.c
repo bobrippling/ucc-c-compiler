@@ -48,6 +48,8 @@ void gen_assign(expr *e, symtable *stab)
 
 	walk_expr(e->rhs, stab);
 
+	asm_temp(1, "mov rax, [rsp]");
+
 	/* store back to the sym's home */
 	asm_ax_to_store(e->lhs, stab);
 
