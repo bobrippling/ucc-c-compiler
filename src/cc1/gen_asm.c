@@ -160,8 +160,11 @@ void walk_tree(tree *t)
 			ICE("no break code yet");
 			break;
 
+		case stat_label:
+			asm_temp(0, "%s:", t->expr->spel);
+			break;
 		case stat_goto:
-			asm_temp(1, "goto %s", t->expr->spel);
+			asm_temp(1, "jmp %s", t->expr->spel);
 			break;
 
 		case stat_if:
@@ -361,7 +364,7 @@ void gen_asm(symtable *globs)
 		if(d->ignore)
 			continue;
 
-		if((d->type->spec & spec_static) == 0)
+		if(!(d->type->spec & spec_static) && !(d->type->spec & spec_extern))
 			asm_temp(0, "global %s", d->spel);
 
 		if(d->func)

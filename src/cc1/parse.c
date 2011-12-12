@@ -815,10 +815,13 @@ tree *parse_code()
 		case token_open_block: return parse_code_declblock();
 
 		default:
-			/* read an expression and optionally an assignment (fold checks for lvalues) */
 			t = expr_to_tree(parse_expr());
 
-			EAT(token_semicolon);
+			if(t->expr->type == expr_identifier && accept(token_colon))
+				t->type = stat_label;
+			else
+				EAT(token_semicolon);
+
 			return t;
 	}
 

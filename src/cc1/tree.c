@@ -278,6 +278,7 @@ const char *stat_to_str(const enum stat_type t)
 		CASE_STR_PREFIX(stat, noop);
 		CASE_STR_PREFIX(stat, code);
 		CASE_STR_PREFIX(stat, goto);
+		CASE_STR_PREFIX(stat, label);
 	}
 	return NULL;
 }

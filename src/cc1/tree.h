@@ -12,6 +12,7 @@ typedef struct function    function;
 typedef struct tree_flow   tree_flow;
 typedef struct type        type;
 typedef struct assignment  assignment;
+typedef struct label       label;
 
 enum type_primitive
 {
@@ -159,6 +160,7 @@ struct tree
 		stat_goto,
 		stat_expr,
 		stat_code,
+		stat_label,
 		stat_noop
 	} type;
 
