@@ -1,15 +1,13 @@
-Ordered By Priority
--------------------
-
 cc1:
+	fix "1 - 2 + 3"
+
 	const:
 		const char *s; - *s is not writable, s is
 
 		const char *a = "hi";
 		int x(char *s);
 		x(a); // warning - removing const
-
-	fix "1 - 2 + 3"
+		// same for assignments
 
 
 cpp:
@@ -35,11 +33,11 @@ Features
 
 typedefs
 
-struct parsing
-
-32-bit code gen
+structs
 
 cc accepts multiple input source files
+
+32-bit code gen
 
 general lhs assignment:
 	(b ? x : y) = 5;
@@ -50,14 +48,9 @@ general lhs assignment:
 assembly optimisation - remove asm_temp()
 
 ({ expr; })
-parsing
+parsing + gen
 
 for(...){
 }else{
 	printf("for not entered");
 }
-
-signed vs unsigned:
-jl, jle, jg, jge
-vs
-jb, jbe, ja, jae - above + below
