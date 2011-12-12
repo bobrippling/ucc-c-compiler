@@ -13,8 +13,6 @@ cc1:
 
 
 cpp:
-	remove static vars from pp.c - multi-file processing. or limit to one file?
-
 	cc -E dir/x.c
 	doesn't work, but
 	cd dir; cc -E x.c
