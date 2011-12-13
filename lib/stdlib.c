@@ -1,5 +1,6 @@
 #include "stdlib.h"
 #include "syscalls.h"
+#include "unistd.h"
 
 void exit(int code)
 {
@@ -17,4 +18,14 @@ int atoi(char *s)
 			break;
 
 	return i;
+}
+
+void *malloc(unsigned size)
+{
+	return sbrk(size);
+}
+
+void free(void *p)
+{
+	/* no op... :C */
 }
