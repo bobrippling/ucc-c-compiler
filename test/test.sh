@@ -37,7 +37,10 @@ CC=../src/cc
 
 for f in *.c
 do
-	$cmd $f || exit $?
+	of=$(outfile $f)
+	if [ ! -e $of -o $f -nt $of ]
+	then $cmd $f || exit $?
+	fi
 done
 
 # TODO: run
