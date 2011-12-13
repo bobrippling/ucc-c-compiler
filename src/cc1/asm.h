@@ -39,6 +39,9 @@ void asm_declare_single_part(FILE *f, expr *e);
 char *asm_label_code(const char *fmt);
 char *asm_label_array(int str);
 char *asm_label_static_local(decl *df, const char *spel);
-char *asm_label_goto(decl *df, char *lbl);
+char *asm_label_goto(char *lbl);
+char *asm_label_case(int is_default, int val);
+#define asm_label_break(flow_t) flow_t->lblfin
+char *asm_label_flowfin(void);
 
 #endif

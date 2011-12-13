@@ -11,7 +11,7 @@
 #include "../util/platform.h"
 #include "../util/alloc.h"
 
-static int label_last = 1, str_last = 1;
+static int label_last = 1, str_last = 1, switch_last = 1, flow_last = 1;
 
 char *asm_label_code(const char *fmt)
 {
@@ -33,22 +33,38 @@ char *asm_label_array(int str)
 	return ret;
 }
 
-char *asm_label_function(decl *df, const char *spel, const char *pre, const char *tag)
+char *asm_label_static_local(decl *df, const char *spel)
 {
-	char *ret = umalloc(strlen(df->spel) + strlen(spel) + strlen(tag) + 3);
-	UCC_ASSERT(df->func, "no function for asm_label_function()");
-	sprintf(ret, "%s%s.%s_%s", pre, df->spel, tag, spel);
+	char *ret = umalloc(strlen(df->spel) + strlen(spel) + 9);
+	UCC_ASSERT(df->func, "no function for asm_label_static_local()");
+	sprintf(ret, "%s.static_%s", df->spel, spel);
 	return ret;
 }
 
-char *asm_label_static_local(decl *df, const char *spel)
+char *asm_label_goto(char *lbl)
 {
-	return asm_label_function(df, spel, "", "static");
+	char *ret = umalloc(strlen(lbl) + 6);
+	sprintf(ret, ".lbl_%s", lbl);
+	return ret;
 }
 
-char *asm_label_goto(decl *df, char *lbl)
+char *asm_label_case(int is_default, int val)
 {
-	return asm_label_function(df, lbl, ".", "lbl");
+	char *ret = umalloc(8 + 32);
+	if(is_default)
+		sprintf(ret, ".case_%d_default", switch_last);
+	else
+		sprintf(ret, ".case_%d_%d", switch_last, val);
+	switch_last++;
+	return ret;
+
+}
+
+char *asm_label_flowfin()
+{
+	char *ret = umalloc(16);
+	sprintf(ret, ".flowfin_%d", flow_last++);
+	return ret;
 }
 
 void asm_sym(enum asm_sym_type t, sym *s, const char *reg)

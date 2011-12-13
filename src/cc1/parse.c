@@ -479,7 +479,22 @@ tree *expr_to_tree(expr *e)
 	return t;
 }
 
-tree *parse_switch(){return NULL;}
+tree *parse_switch()
+{
+	tree *t = tree_new();
+
+	EAT(token_switch);
+	EAT(token_open_paren);
+
+	t->type = stat_switch;
+	t->expr = parse_expr();
+
+	EAT(token_close_paren);
+
+	t->lhs = parse_code();
+
+	return t;
+}
 
 tree *parse_do()
 {
@@ -806,13 +821,27 @@ tree *parse_code()
 			EAT(token_semicolon);
 			return t;
 
-		case token_switch: return parse_switch();
 		case token_if:     return parse_if();
 		case token_while:  return parse_while();
 		case token_do:     return parse_do();
 		case token_for:    return parse_for();
 
 		case token_open_block: return parse_code_declblock();
+
+		case token_switch:
+			return parse_switch();
+		case token_default:
+			EAT(token_default);
+			EAT(token_colon);
+			t = tree_new();
+			t->type = stat_default;
+			return t;
+		case token_case:
+			EAT(token_case);
+			t = expr_to_tree(parse_expr());
+			EAT(token_colon);
+			t->type = stat_case;
+			return t;
 
 		default:
 			t = expr_to_tree(parse_expr());
