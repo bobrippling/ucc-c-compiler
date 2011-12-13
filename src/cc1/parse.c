@@ -583,7 +583,10 @@ type *parse_type(int can_default)
 		if(!can_default && t->spec == spec_none)
 			return NULL;
 
-		cc1_warn_at(&t->where, 0, WARN_IMPLICIT_INT, "defaulting type to int");
+		if(!t->spec)
+			cc1_warn_at(&t->where, 0, WARN_IMPLICIT_INT, "defaulting type to int");
+		/* allow "unsigned x" */
+
 		t->primitive = type_int; /* default to int */
 	}else{
 		EAT(curtok);
