@@ -353,16 +353,24 @@ noproblem:
 			}
 
 			/* need to do this check _after_ we get the correct tree type */
-			if((e->op == op_plus || e->op == op_minus) && e->tree_type->ptr_depth && e->rhs){
-				/* we're dealing with pointers, adjust the amount we add by */
+			if((e->op == op_plus || e->op == op_minus) &&
+					e->tree_type->ptr_depth &&
+					e->rhs){
 
-				if(e->lhs->tree_type->ptr_depth)
-					/* lhs is the pointer, we're adding on rhs, hence multiply rhs by lhs's ptr size */
-					e->rhs = expr_ptr_multiply(e->rhs, e->lhs->tree_type);
-				else
-					e->lhs = expr_ptr_multiply(e->lhs, e->rhs->tree_type);
+				/* 2 + (void *)5 is 7, not 2 + 8*5 */
+				if(e->tree_type->type->primitive != type_void){
+					/* we're dealing with pointers, adjust the amount we add by */
 
-				/* TODO: const_fold again */
+					if(e->lhs->tree_type->ptr_depth)
+						/* lhs is the pointer, we're adding on rhs, hence multiply rhs by lhs's ptr size */
+						e->rhs = expr_ptr_multiply(e->rhs, e->lhs->tree_type);
+					else
+						e->lhs = expr_ptr_multiply(e->lhs, e->rhs->tree_type);
+
+					/* TODO: const_fold again */
+				}else{
+					cc1_warn_at(&e->tree_type->type->where, 0, WARN_VOID_ARITH, "arithmetic with void pointer");
+				}
 			}
 			break;
 

@@ -67,6 +67,8 @@ struct
 	/* TODO */
 	{ "pointer-arith",    WARN_PTR_ARITH }, /* void *x; x++; */
 	{ "int-ptr-cast",     WARN_INT_TO_PTR }, /* void *x; x++; */
+
+	{ "pointer-arith",    WARN_INT_TO_PTR }, /* void *x; x++; */
 };
 
 
@@ -74,7 +76,7 @@ FILE *cc_out[NUM_SECTIONS];     /* temporary section files */
 char  fnames[NUM_SECTIONS][32]; /* duh */
 FILE *cc1_out;                  /* final output */
 
-enum warning warn_mode = ~0; /* FIXME */
+enum warning warn_mode = ~WARN_VOID_ARITH; /* FIXME */
 
 const char *section_names[NUM_SECTIONS] = {
 	"text", "data", "bss"
