@@ -158,14 +158,46 @@ void walk_expr(expr *e, symtable *stab)
 void walk_tree(tree *t)
 {
 	switch(t->type){
-		case stat_break:
-			ICE("no break code yet");
+		case stat_switch:
+		{
+			tree **titer, *tdefault;
+
+			tdefault = NULL;
+
+			walk_expr(t->expr, t->symtab);
+			asm_temp(1, "mov rax, [rsp] ; switch on this");
+
+			for(titer = t->codes; titer && *titer; titer++){
+				tree *cse = *titer;
+				if(cse->expr->expr_is_default){
+					tdefault = cse;
+				}else{
+					/* FIXME: address-of, etc? */
+					asm_temp(1, "cmp rax, %d", cse->expr->val.i);
+					asm_temp(1, "je %s", cse->expr->spel);
+				}
+			}
+
+			if(tdefault)
+				asm_temp(1, "jmp %s", tdefault->expr->spel);
+			else
+				asm_temp(1, "jmp %s", t->lblfin);
+
+			walk_tree(t->lhs); /* the actual code inside the switch */
+
+			asm_label(t->lblfin);
+			asm_temp(1, "add rsp, %d ; switch val", platform_word_size());
+			break;
+		}
+
+		case stat_case:
+		case stat_default:
+		case stat_label:
+			asm_label(t->expr->spel);
 			break;
 
-		case stat_label:
-			asm_temp(0, "%s:", t->expr->spel);
-			break;
 		case stat_goto:
+		case stat_break:
 			asm_temp(1, "jmp %s", t->expr->spel);
 			break;
 
@@ -193,10 +225,9 @@ void walk_tree(tree *t)
 
 		case stat_for:
 		{
-			char *lbl_for, *lbl_fin;
+			char *lbl_for;
 
 			lbl_for = asm_label_code("for");
-			lbl_fin = asm_label_code("for_fin");
 
 			if(t->flow->for_init){
 				walk_expr(t->flow->for_init, t->symtab);
@@ -209,7 +240,7 @@ void walk_tree(tree *t)
 
 				asm_temp(1, "pop rax");
 				asm_temp(1, "test rax, rax");
-				asm_temp(1, "jz %s", lbl_fin);
+				asm_temp(1, "jz %s", t->lblfin);
 			}
 
 			walk_tree(t->lhs);
@@ -220,31 +251,28 @@ void walk_tree(tree *t)
 
 			asm_temp(1, "jmp %s", lbl_for);
 
-			asm_label(lbl_fin);
+			asm_label(t->lblfin);
 
 			free(lbl_for);
-			free(lbl_fin);
 			break;
 		}
 
 		case stat_while:
 		{
-			char *lbl_start, *lbl_fin;
+			char *lbl_start;
 
 			lbl_start = asm_label_code("while");
-			lbl_fin   = asm_label_code("while_fin");
 
 			asm_label(lbl_start);
 			walk_expr(t->expr, t->symtab);
 			asm_temp(1, "pop rax");
 			asm_temp(1, "test rax, rax");
-			asm_temp(1, "jz %s", lbl_fin);
+			asm_temp(1, "jz %s", t->lblfin);
 			walk_tree(t->lhs);
 			asm_temp(1, "jmp %s", lbl_start);
-			asm_label(lbl_fin);
+			asm_label(t->lblfin);
 
 			free(lbl_start);
-			free(lbl_fin);
 			break;
 		}
 
@@ -263,6 +291,7 @@ void walk_tree(tree *t)
 			asm_temp(1, "jnz %s", lbl_start);
 
 			free(lbl_start);
+			asm_label(t->lblfin);
 			break;
 		}
 

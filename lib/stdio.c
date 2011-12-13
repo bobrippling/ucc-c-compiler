@@ -54,16 +54,24 @@ int vfprintf(FILE *file, char *fmt, va_list ap)
 		if(*fmt == '%'){
 			fmt++;
 
-			if(*fmt == 's')
-				write(fd, *(char **)ap, strlen(*(char **)ap));
-			else if(*fmt == 'c')
-				write(fd, (char *)ap, 1);
-			else if(*fmt == 'd')
-				printd(fd, *(int *)ap);
-			else if(*fmt == 'p' || *fmt == 'x')
-				printx(fd, *(int *)ap);
-			else
-				write(fd, fmt, 1); /* default to just printing the char */
+			switch(*fmt){
+				case 's':
+					write(fd, *(char **)ap, strlen(*(char **)ap));
+					break;
+				case 'c':
+					write(fd, (char *)ap, 1);
+					break;
+				case 'd':
+					printd(fd, *(int *)ap);
+					break;
+				case 'p':
+				case 'x':
+					printx(fd, *(int *)ap);
+					break;
+
+				default:
+					write(fd, fmt, 1); /* default to just printing the char */
+			}
 
 			ap++;
 		}else{

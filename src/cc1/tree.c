@@ -279,6 +279,9 @@ const char *stat_to_str(const enum stat_type t)
 		CASE_STR_PREFIX(stat, code);
 		CASE_STR_PREFIX(stat, goto);
 		CASE_STR_PREFIX(stat, label);
+		CASE_STR_PREFIX(stat, switch);
+		CASE_STR_PREFIX(stat, case);
+		CASE_STR_PREFIX(stat, default);
 	}
 	return NULL;
 }

@@ -19,8 +19,9 @@
 #define DIE_UNDECL() DIE_UNDECL_SPEL(e->spel)
 
 
-static decl *curfunc_decl;
-
+static decl *curdecl_func;   /* for function-local labels */
+static tree *curtree_switch; /* for case + default */
+static tree *curtree_flow;   /* for break */
 
 void fold_expr(expr *e, symtable *stab);
 void fold_code(tree *t);
@@ -511,7 +512,12 @@ void fold_code(tree *t)
 {
 	switch(t->type){
 		case stat_break:
-			ICE("break not coded yet");
+			if(!curtree_flow)
+				die_at(&t->expr->where, "break outside a flow-control statement");
+
+			t->expr = expr_new();
+			t->expr->type = expr_identifier;
+			t->expr->spel = curtree_flow->lblfin;
 			break;
 
 		case stat_goto:
@@ -521,13 +527,19 @@ void fold_code(tree *t)
 			if(t->expr->type != expr_identifier)
 				die_at(&t->expr->where, "not a label identifier");
 			/* else let the assembler check for link errors */
-			t->expr->spel = asm_label_goto(curfunc_decl, t->expr->spel);
+			t->expr->spel = asm_label_goto(t->expr->spel);
 			free(save);
 			break;
 		}
 
 		case stat_while:
 		case stat_do:
+		{
+			tree *oldflowtree = curtree_flow;
+			curtree_flow = t;
+
+			t->lblfin = asm_label_flowfin();
+
 		case stat_if:
 			fold_expr(t->expr, t->symtab);
 
@@ -542,9 +554,19 @@ void fold_code(tree *t)
 				if(t->rhs->symtab->auto_offset_finish > t->symtab->auto_offset_finish)
 					t->symtab->auto_offset_finish = t->rhs->symtab->auto_offset_finish;
 			}
+
+			if(t->type != stat_if)
+				curtree_flow = oldflowtree;
+
 			break;
+		}
 
 		case stat_for:
+		{
+			tree *oldflowtree = curtree_flow;
+			curtree_flow = t;
+
+			t->lblfin = asm_label_flowfin();
 #define FOLD_IF(x) if(x) fold_expr(x, t->symtab)
 			FOLD_IF(t->flow->for_init);
 			FOLD_IF(t->flow->for_while);
@@ -554,7 +576,52 @@ void fold_code(tree *t)
 			symtab_nest(t->symtab, &t->lhs->symtab);
 			fold_code(t->lhs);
 			t->symtab->auto_offset_finish = t->lhs->symtab->auto_offset_finish;
+
+			curtree_flow = oldflowtree;
 			break;
+		}
+
+
+		case stat_case:
+		{
+			int def;
+
+			fold_expr(t->expr, t->symtab);
+			if(const_fold(t->expr))
+				die_at(&t->expr->where, "case expression not constant");
+			if(!curtree_switch)
+				die_at(&t->expr->where, "not inside a switch statement");
+			/* fall */
+		case stat_default:
+			if((def = !t->expr)){
+				t->expr = expr_new();
+				t->expr->expr_is_default = 1;
+			}
+			t->expr->spel = asm_label_case(def, t->expr->val.i);
+			dynarray_add((void ***)&curtree_switch->codes, t);
+			break;
+		}
+
+		case stat_switch:
+		{
+			tree *oldswtree = curtree_switch;
+			tree *oldflowtree = curtree_flow;
+			curtree_flow = t;
+
+			t->lblfin = asm_label_flowfin();
+
+			curtree_switch = t;
+
+			symtab_nest(t->symtab, &t->lhs->symtab);
+			fold_expr(t->expr, t->symtab);
+			fold_code(t->lhs);
+
+			/* FIXME: check for duplicate case values and at most, 1 default */
+
+			curtree_switch = oldswtree;
+			curtree_flow = oldflowtree;
+			break;
+		}
 
 		case stat_code:
 		{
@@ -567,7 +634,7 @@ void fold_code(tree *t)
 				decl *d = *diter;
 				if(d->type->spec & spec_static){
 					char *save = d->spel;
-					d->spel = asm_label_static_local(curfunc_decl, d->spel);
+					d->spel = asm_label_static_local(curdecl_func, d->spel);
 					free(save);
 				}
 			}
@@ -592,7 +659,7 @@ void fold_func(decl *df, symtable *globsymtab)
 	decl **diter;
 	function *f = df->func;
 
-	curfunc_decl = df;
+	curdecl_func = df;
 
 	fold_decl(df, globsymtab);
 
@@ -653,7 +720,7 @@ void fold_func(decl *df, symtable *globsymtab)
 		}
 	}
 
-	curfunc_decl = NULL;
+	curdecl_func = NULL;
 }
 
 void fold(symtable *globs)

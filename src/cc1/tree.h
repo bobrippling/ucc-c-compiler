@@ -123,6 +123,7 @@ struct expr
 	} op;
 
 	int assign_is_post; /* do we return the altered value or the old one? */
+#define expr_is_default assign_is_post
 
 	expr *lhs, *rhs;
 
@@ -158,9 +159,15 @@ struct tree
 		stat_break,
 		stat_return,
 		stat_goto,
+
 		stat_expr,
 		stat_code,
+
 		stat_label,
+		stat_switch,
+		stat_case,
+		stat_default,
+
 		stat_noop
 	} type;
 
@@ -171,6 +178,7 @@ struct tree
 
 	/* specific data */
 	int val;
+	char *lblfin;
 	function *func;
 	decl **decls; /* block definitions, e.g. { int i... } */
 	tree **codes; /* for a code block */
