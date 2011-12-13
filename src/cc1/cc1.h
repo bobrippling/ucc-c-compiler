@@ -20,6 +20,7 @@ enum warning
 	WARN_EXTERN_ASSUME    = 1 << 6,
 	WARN_IMPLICIT_FUNC    = 1 << 7,
 	WARN_IMPLICIT_INT     = 1 << 8,
+	WARN_VOID_ARITH       = 1 << 9,
 };
 
 void cc1_warn_at(struct where *where, int die, enum warning w, const char *fmt, ...);

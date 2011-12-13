@@ -73,7 +73,7 @@ int vfprintf(FILE *file, char *fmt, va_list ap)
 					write(fd, fmt, 1); /* default to just printing the char */
 			}
 
-			ap++;
+			ap += sizeof(int); /* void arith */
 		}else{
 			write(fd, fmt, 1);
 		}
