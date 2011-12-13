@@ -109,10 +109,8 @@ void cc1_warn_at(struct where *where, int die, enum warning w, const char *fmt, 
 	vwarn(where, fmt, l);
 	va_end(l);
 
-	if(die){
-		fprintf(stderr, "dying (fmt=%s)\n", fmt);
+	if(die)
 		exit(1);
-	}
 }
 
 void io_setup(void)
