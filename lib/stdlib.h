@@ -1,1 +1,2 @@
-void exit(int code);
+void exit(int);
+int atoi(const char *);
