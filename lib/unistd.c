@@ -1,6 +1,42 @@
 #include "unistd.h"
 #include "syscalls.h"
 
+static void *ucc_brk(void *p)
+{
+	return __syscall(SYS_brk, p);
+}
+
+int brk(void *p)
+{
+	void *ret;
+
+	ret = ucc_brk(p);
+
+	/* linux brk() returns the current break on failure */
+	if(ret == p){
+		return 0;
+	}else{
+		/* failure */
+		/*errno = ENOMEM;*/
+		return -1;
+	}
+}
+
+void *sbrk(int inc)
+{
+	void *new;
+
+	new = ucc_brk(NULL) + inc;
+
+	if(brk(new) == -1){
+		/*errno = ENOMEM;*/
+		return (void *)-1;
+	}
+
+	return new;
+}
+
+
 int read(int fd, void *p, int size)
 {
 	return __syscall(SYS_read, fd, p, size);
