@@ -153,6 +153,8 @@ int const_expr_is_const(expr *e)
 
 int const_expr_is_zero(expr *e)
 {
-	/* TODO: go through casts */
+	if(e->type == expr_cast)
+		return const_expr_is_zero(e->rhs);
+
 	return const_expr_is_const(e) && (e->type == expr_val ? e->val.i == 0 : 0);
 }
