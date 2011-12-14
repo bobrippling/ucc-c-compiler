@@ -231,7 +231,11 @@ void print_tree_flow(tree_flow *t)
 
 void print_tree(tree *t)
 {
-	idt_printf("t->type: %s\n", stat_to_str(t->type));
+	idt_printf("t->type: %s (stack start %d, finish %d)\n",
+			stat_to_str(t->type),
+			t->symtab->auto_offset_start,
+			t->symtab->auto_offset_finish
+			);
 
 	if(t->flow){
 		indent++;
@@ -289,10 +293,11 @@ void print_func(decl *d)
 
 	if(f->code){
 #define STAB f->code->symtab
-		idt_printf("stack space = %d (start %d, finish %d)\n",
+		idt_printf("function stack space = %d (start %d, finish %d [%d * 8])\n",
 				STAB->auto_offset_finish - STAB->auto_offset_start,
 				STAB->auto_offset_start,
-				STAB->auto_offset_finish
+				STAB->auto_offset_finish,
+				STAB->auto_offset_finish / 8
 				);
 
 		for(iter = f->args; iter && *iter; iter++)
