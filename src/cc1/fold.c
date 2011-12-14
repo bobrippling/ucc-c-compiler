@@ -311,8 +311,8 @@ void fold_expr(expr *e, symtable *stab)
 						 * assert(lhs == UNSIGNED);                     \
 						 * vals default to signed, change to unsigned   \
 						 */                                             \
-						if(assert_hs != UNSIGNED)                       \
-							ICE("signed-unsigned assumption failure");    \
+						UCC_ASSERT(assert_hs == UNSIGNED,               \
+								"signed-unsigned assumption failure");      \
                                                             \
 						e->test_hs->tree_type->type->spec |= spec_unsigned; \
 						goto noproblem;                                 \
@@ -426,16 +426,21 @@ void fold_block(tree *t)
 {
 	int auto_offset, arg_offset;
 
+	UCC_ASSERT(t->symtab->parent, "symtab has no parent");
+
 	if(t->decls){
 		decl **iter;
 
 		for(iter = t->decls; *iter; iter++){
-			symtab_add(t->symtab, *iter, sym_local);
-			fold_decl(*iter, t->symtab);
+			decl *d = *iter;
+
+			if(d->func && d->func->code)
+				die_at(&d->func->code->where, "can't nest functions");
+
+			symtab_add(t->symtab, d, d->func ? sym_func : sym_local);
+			fold_decl(d, t->symtab);
 		}
 	}
-
-	UCC_ASSERT(t->symtab->parent, "symtab has no parent");
 
 	auto_offset = t->symtab->parent->auto_offset_start;
 	arg_offset  = 0;
@@ -458,12 +463,14 @@ void fold_block(tree *t)
 					/* should've been folded fully */
 					decl dtmp;
 					int i;
+					int siz;
 
 					memcpy(&dtmp, s->decl, sizeof dtmp);
 					dtmp.ptr_depth--;
+					siz = decl_size(&dtmp);
 
 					for(i = 0; s->decl->arraysizes[i]; i++)
-						auto_offset += s->decl->arraysizes[i]->val.i * decl_size(&dtmp);
+						auto_offset += s->decl->arraysizes[i]->val.i * siz;
 
 					/* needs to be a multiple of word_size */
 					if(auto_offset % word_size)

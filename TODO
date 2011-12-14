@@ -38,6 +38,8 @@ structs
 
 cc accepts multiple input source files
 
+link function prototypes with the function instance + arg check
+
 32-bit code gen
 
 general lhs assignment:

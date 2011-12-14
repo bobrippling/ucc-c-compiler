@@ -8,7 +8,7 @@ main()
 
 	*p++ = 7;
 
-	printf("p[3] = %d, p[9] = %d\n", p[3], p[9]);
+	printf("p[1] = %d, p[3] = %d\n", p[1], p[3]);
 
 	return 0;
 }
