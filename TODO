@@ -1,6 +1,8 @@
 cc1:
 	fix "1 - 2 + 3"
 
+	&x[y]
+
 	const:
 		const char *s; - *s is not writable, s is
 
