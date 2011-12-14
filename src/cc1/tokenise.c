@@ -386,8 +386,8 @@ void nexttoken()
 					/* special parsing */
 					c = escapechar((save = nextchar()));
 
-					if(!c){
-						warn_at(NULL, "Warning: Ignoring escape character before '%c'", save);
+					if(c == -1){
+						warn_at(NULL, "warning: ignoring escape character before '%c'", save);
 						c = save;
 					}
 					break;
