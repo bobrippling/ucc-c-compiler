@@ -21,6 +21,7 @@ static int indent = 0;
 
 void print_tree(tree *t);
 void print_expr(expr *e);
+void print_func(decl *d);
 void idt_print(void);
 
 void idt_print()
@@ -63,7 +64,7 @@ void print_decl(decl *d, int idt, int nl, int sym_offset)
 	if(d->spel)
 		fputs(d->spel, cc1_out);
 
-	if(sym_offset)
+	if(sym_offset && d->sym)
 		fprintf(cc1_out, " (sym offset = %d)", d->sym->offset);
 
 	if(nl)
@@ -248,7 +249,10 @@ void print_tree(tree *t)
 		idt_printf("decls:\n");
 		for(iter = t->decls; *iter; iter++){
 			indent++;
-			print_decl(*iter, 1, 1, 1);
+			if((*iter)->func)
+				print_func(*iter);
+			else
+				print_decl(*iter, 1, 1, 1);
 			indent--;
 		}
 	}
