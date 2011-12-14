@@ -38,11 +38,16 @@ int fold_is_lvalue(expr *e)
 	 * also can't be const, checked in fold_assign
 	 */
 
-	return
-		 e->type == expr_identifier ||
-		(e->type == expr_op && e->op == op_deref && fold_is_lvalue(e->lhs)) ||
-		(e->type == expr_cast && fold_is_lvalue(e->rhs))
-		;
+	if(e->type == expr_identifier)
+		return 1;
+
+	if(e->type == expr_op && e->op == op_deref)
+		return 1;
+
+	if(e->type == expr_cast)
+		return fold_is_lvalue(e->rhs);
+
+	return 0;
 }
 
 #define GET_TREE_TYPE(from) \
