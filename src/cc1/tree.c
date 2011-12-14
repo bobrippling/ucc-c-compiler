@@ -198,7 +198,7 @@ int type_equal(const type *a, const type *b, int strict)
 	if(strict && b->spec & spec_const && (a->spec & spec_const) == 0)
 		return 0; /* we can assign from const to non-const, but not vice versa */
 
-	return a->primitive == b->primitive;
+	return strict ? a->primitive == b->primitive : 1; /* int == char */
 }
 
 int decl_equal(const decl *a, const decl *b, int strict)
