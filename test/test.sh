@@ -5,12 +5,19 @@ outfile(){
 }
 
 compile(){
+	f=$1
+	of=$(outfile $f)
+
 	echo CC $f
-	$CC -w -o $(outfile $f) $f
+	if [ ! -e $of -o $f -nt $of ]
+	then $CC -w -o $of $f
+	fi
 }
 
 clean(){
-	rm -f $(outfile $f)
+	f=$(outfile $1)
+	echo rm $f
+	rm -f $f
 }
 
 usage(){
@@ -37,10 +44,7 @@ CC=../src/cc
 
 for f in *.c
 do
-	of=$(outfile $f)
-	if [ ! -e $of -o $f -nt $of ]
-	then $cmd $f || exit $?
-	fi
+	$cmd $f || exit $?
 done
 
 # TODO: run
