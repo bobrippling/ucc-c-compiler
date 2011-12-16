@@ -54,8 +54,3 @@ assembly optimisation - remove asm_temp()
 
 ({ expr; })
 parsing + gen
-
-for(...){
-}else{
-	printf("for not entered");
-}
