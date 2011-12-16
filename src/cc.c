@@ -188,7 +188,7 @@ unknown_file:
 	}
 
 	SHORTEN_OUTPUT(MODE_PREPROCESS, f_e);
-	RUN(1, "cpp/cpp -I'%s" LIB_PATH "' -o %s %s", where, f_e, input);
+	RUN(1, "cpp/cpp %s -I'%s" LIB_PATH "' -o %s %s", debug ? "-v" : "", where, f_e, input);
 	if(mode == MODE_PREPROCESS)
 		return 0;
 
