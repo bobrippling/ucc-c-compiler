@@ -169,7 +169,7 @@ void asm_declare_single_part(FILE *f, expr *e)
 			break;
 
 		case expr_cast:
-			asm_declare_single(f, e->rhs);
+			asm_declare_single_part(f, e->rhs);
 			break;
 
 		case expr_sizeof:

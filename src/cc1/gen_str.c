@@ -64,8 +64,12 @@ void print_decl(decl *d, int idt, int nl, int sym_offset)
 	if(d->spel)
 		fputs(d->spel, cc1_out);
 
-	if(sym_offset && d->sym)
-		fprintf(cc1_out, " (sym offset = %d)", d->sym->offset);
+	if(sym_offset){
+		if(d->sym)
+			fprintf(cc1_out, " (sym offset = %d)", d->sym->offset);
+		else
+			fprintf(cc1_out, " (no sym)");
+	}
 
 	if(nl)
 		fputc('\n', cc1_out);
@@ -107,7 +111,7 @@ void print_expr(expr *e)
 			break;
 
 		case expr_identifier:
-			idt_printf("identifier: \"%s\"\n", e->spel);
+			idt_printf("identifier: \"%s\" (sym %p)\n", e->spel, e->sym);
 			break;
 
 		case expr_val:
@@ -231,11 +235,7 @@ void print_tree_flow(tree_flow *t)
 
 void print_tree(tree *t)
 {
-	idt_printf("t->type: %s (stack start %d, finish %d)\n",
-			stat_to_str(t->type),
-			t->symtab->auto_offset_start,
-			t->symtab->auto_offset_finish
-			);
+	idt_printf("t->type: %s\n", stat_to_str(t->type));
 
 	if(t->flow){
 		indent++;
@@ -250,13 +250,25 @@ void print_tree(tree *t)
 	if(t->decls){
 		decl **iter;
 
+		idt_printf("stack space %d, (%d-%d, this only: %d-%d)\n",
+				t->symtab->auto_size,
+				t->symtab->auto_offset_start,
+				t->symtab->auto_total_size,
+
+				t->symtab->auto_offset_start,
+				t->symtab->auto_offset_start + t->symtab->auto_size
+				);
+
 		idt_printf("decls:\n");
+
 		for(iter = t->decls; *iter; iter++){
+			decl *d = *iter;
+
 			indent++;
-			if((*iter)->func)
-				print_func(*iter);
+			if(d->func)
+				print_func(d);
 			else
-				print_decl(*iter, 1, 1, 1);
+				print_decl(d, 1, 1, 1);
 			indent--;
 		}
 	}
@@ -292,18 +304,12 @@ void print_func(decl *d)
 	fprintf(cc1_out, "%s)\n", f->variadic ? ", ..." : "");
 
 	if(f->code){
-#define STAB f->code->symtab
-		idt_printf("function stack space = %d (start %d, finish %d [%d * 8])\n",
-				STAB->auto_offset_finish - STAB->auto_offset_start,
-				STAB->auto_offset_start,
-				STAB->auto_offset_finish,
-				STAB->auto_offset_finish / 8
-				);
-
 		for(iter = f->args; iter && *iter; iter++)
-			idt_printf(" offset of %s = %d\n", (*iter)->spel, (*iter)->sym->offset);
+			idt_printf("offset of %s = %d\n", (*iter)->spel, (*iter)->sym->offset);
 
-		PRINT_IF(f, code, print_tree)
+		idt_printf("function stack space %d\n", f->code->symtab->auto_total_size);
+
+		print_tree(f->code);
 	}
 
 	indent--;
