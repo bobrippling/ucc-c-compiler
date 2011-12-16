@@ -14,6 +14,16 @@ compile(){
 	fi
 }
 
+run(){
+	f=$(outfile $1)
+	./$f
+}
+
+comp_and_run(){
+	compile $1
+	run $1
+}
+
 clean(){
 	f=$(outfile $1)
 	echo rm $f
@@ -32,6 +42,9 @@ then
 	if [ "$1" = clean ]
 	then
 		cmd=clean
+	elif [ "$1" = 'run' ]
+	then
+		cmd=comp_and_run
 	else
 		usage
 	fi
@@ -46,5 +59,3 @@ for f in *.c
 do
 	$cmd $f || exit $?
 done
-
-# TODO: run

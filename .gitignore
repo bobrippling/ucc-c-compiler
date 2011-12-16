@@ -13,6 +13,7 @@ lib/syscall_err.s
 lib/string_strerrs.h
 
 test/addr
+test/alphabet
 test/assign_order
 test/atoi
 test/break
@@ -30,3 +31,4 @@ test/tcc_first
 test/title
 test/variadic
 test/void_func_test
+test/zero

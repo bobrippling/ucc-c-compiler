@@ -6,7 +6,7 @@ main()
 	for(i = 0; strs[i]; i++)
 		printf("strs[%d] = %s\n", i, strs[i]);
 
-	return 2;
+	return 0;
 }
 
 char *strs[] = {
