@@ -154,8 +154,12 @@ void fold_assignment(expr *e, symtable *stab)
 	if(!fold_is_lvalue(e->lhs))
 		die_at(&e->lhs->where, "not an lvalue");
 
-	if(e->lhs->tree_type->type->spec & spec_const)
-		die_at(&e->where, "can't modify const expression");
+	if(e->lhs->tree_type->type->spec & spec_const){
+		/* allow const init: */
+		if(e->lhs->sym->decl->init != e->rhs)
+			die_at(&e->where, "can't modify const expression");
+		/* otherwise it's the init expr, allow */
+	}
 
 
 	if(!e->sym && e->lhs->spel){

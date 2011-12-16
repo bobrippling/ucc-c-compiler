@@ -763,15 +763,18 @@ tree *parse_code_declblock()
 	for(diter = t->decls; diter && *diter; diter++)
 		/* only extract the init if it's not static */
 		if((*diter)->init && ((*diter)->type->spec & spec_static) == 0){
-			expr *sym = expr_new();
+			expr *e = expr_new();
 
-			sym = expr_new();
-			sym->type = expr_identifier;
-			sym->spel = (*diter)->spel;
+			e = expr_new();
+			e->type = expr_identifier;
+			e->spel = (*diter)->spel;
 
-			dynarray_add((void ***)&t->codes, expr_to_tree(expr_assignment(sym, (*diter)->init)));
+			dynarray_add((void ***)&t->codes, expr_to_tree(expr_assignment(e, (*diter)->init)));
 
-			(*diter)->init = NULL; /* we are a code block, not global, this is fine */
+			/*
+			 *(*diter)->init = NULL;
+			 * leave it set, so we can check later in, say, fold.c for const init
+			 */
 		}
 
 	if(curtok != token_close_block){
