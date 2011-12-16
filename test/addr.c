@@ -5,4 +5,6 @@ main()
 		write(1, &neg, 1);
 	}
 	printf("\n");
+
+	return 0;
 }

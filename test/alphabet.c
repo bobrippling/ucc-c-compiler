@@ -14,7 +14,7 @@ int main(void)
 
 	s[i] = '\0';
 
-	printf("alphabet = \"%s\"\n", s);
+	printf("\"%s\"\n", s);
 
 	return 0;
 }
