@@ -44,7 +44,7 @@ void symtab_nest(symtable *parent, symtable **brat)
 
 	if(*brat){
 		if((*brat)->parent)
-			ICW("code symtable parent already set");
+			ICE("code symtable parent already set");
 		(*brat)->parent = parent;
 	}else{
 		*brat = symtab_child(parent);
