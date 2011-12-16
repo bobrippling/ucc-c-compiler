@@ -314,8 +314,13 @@ static int pp(struct pp *p, int skip, int need_chdir)
 
 						if(!found){
 							char pwd[1024];
-							if(pp_verbose)
+							if(pp_verbose){
 								getcwd(pwd, sizeof pwd);
+
+								for(i = 0; dirs[i]; i++)
+									fprintf(stderr, "tried %s/%s\n", dirs[i], base);
+							}
+
 							ppdie(p, "can't find include file <%s>%s%s%s", base,
 									pp_verbose ? " (pwd " : "",
 									pp_verbose ? pwd : "",
@@ -479,36 +484,6 @@ fin:
 
 void def_defs(void)
 {
-	char buf[8];
-	char regc;
-	int b64;
-
-	b64 = platform_type() == PLATFORM_64;
-
-	if(b64){
-		adddef("UCC_64_BIT", "");
-		regc = 'r';
-	}else{
-		regc = 'e';
-	}
-
-	adddef("UCC_WORD_SIZE", b64 ? "8" : "4");
-
-#define ADD_REG(C, c) \
-	sprintf(buf, "%c"c, regc); \
-	adddef("UCC_REG_" C, buf)
-
-	ADD_REG("A", "ax");
-	ADD_REG("B", "bx");
-	ADD_REG("C", "cx");
-	ADD_REG("D", "dx");
-
-	ADD_REG("SI", "si");
-	ADD_REG("DI", "di");
-
-	ADD_REG("SP", "sp");
-	ADD_REG("BP", "bp");
-
 	adddef("__FILE__", "");
 	adddef("__LINE__", "");
 	adddef("__COUNTER__", "");
@@ -529,13 +504,7 @@ enum proc_ret preprocess(struct pp *p, int verbose)
 	def_defs();
 
 	if(verbose){
-		struct def *d;
 		int i;
-
-		fputs("defs:\n", stderr);
-		for(d = defs; d; d = d->next)
-			fprintf(stderr, "%s = %s\n", d->name, d->val);
-
 		for(i = 0; dirs[i]; i++)
 			fprintf(stderr, "include dir \"%s\"\n", dirs[i]);
 	}

@@ -74,8 +74,10 @@ int main(int argc, char **argv)
 
 			case '\0':
 				/* we've been passed "-" as a filename */
-			default:
 				break;
+
+			default:
+				goto usage;
 		}
 	}
 
@@ -118,6 +120,10 @@ int main(int argc, char **argv)
 		inputfname = "stdin";
 
 	arg.fname = inputfname;
+
+	if(verbose)
+		for(i = 0; i < argc; i++)
+			fprintf(stderr, "argv[%d] = %s\n", i, argv[i]);
 
 	ret = preprocess(&arg, verbose);
 
