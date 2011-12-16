@@ -30,7 +30,8 @@ enum type_spec
 	spec_static   = 1 << 2,
 	spec_signed   = 1 << 3,
 	spec_unsigned = 1 << 4,
-#define SPEC_MAX 5
+	spec_auto     = 1 << 5,
+#define SPEC_MAX 6
 };
 
 struct type

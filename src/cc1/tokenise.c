@@ -57,6 +57,7 @@ struct statement
 	{ "static",  token_static  },
 	{ "signed",  token_signed  },
 	{ "unsigned",token_unsigned},
+	{ "auto",    token_auto    },
 
 	{ "sizeof",  token_sizeof  }
 };
