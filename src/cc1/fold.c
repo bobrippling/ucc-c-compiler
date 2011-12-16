@@ -392,12 +392,27 @@ void fold_decl(decl *d, symtable *stab)
 	if(d->type->primitive == type_void && !d->ptr_depth && !d->func)
 		die_at(&d->type->where, "can't have a void variable");
 
+#define SPEC(x) (d->type->spec & (x))
+
 	/* type spec checks */
-	if(d->type->spec & spec_extern && d->type->spec & spec_static)
+	if(SPEC(spec_extern) && SPEC(spec_static))
 		die_at(&d->type->where, "can't have static extern");
 
-	if(d->type->spec & spec_signed && d->type->spec & spec_unsigned)
+	if(SPEC(spec_signed) && SPEC(spec_unsigned))
 		die_at(&d->type->where, "can't have signed unsigned");
+
+	if(SPEC(spec_auto)){
+#define CANT_HAVE(sp) \
+		if(SPEC(sp)) \
+			die_at(&d->type->where, "can't have auto %s", spec_to_str(sp))
+
+		CANT_HAVE(spec_static);
+		CANT_HAVE(spec_extern);
+
+#undef CANT_HAVE
+	}
+
+#undef SPEC
 
 	for(i = 0; d->arraysizes && d->arraysizes[i]; i++){
 		fold_expr(d->arraysizes[i], stab);

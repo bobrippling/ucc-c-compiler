@@ -17,7 +17,6 @@ enum token
 	token_goto,
 
 	token_sizeof,
-	token_extern,
 
 	token_identifier,
 	token_integer,     /* aka [1-9] */
@@ -32,6 +31,8 @@ enum token
 	token_static,
 	token_signed,
 	token_unsigned,
+	token_extern,
+	token_auto,
 
 	token_open_paren,
 	token_open_block,
