@@ -1,5 +1,6 @@
 UCC_CC = ../src/cc
-OBJ    = syscall.o crt.o unistd.o stdio.o string.o stdlib.o fcntl.o
+OBJ    = syscall.o crt.o unistd.o stdio.o string.o \
+				 stdlib.o sys/fcntl.o sys/wait.o
 
 LIBDEPS = ${UCC_CC} ../src/cc1/cc1 ../src/cpp/cpp
 
@@ -24,18 +25,22 @@ string.o: string.c
 	${BUILD_CMD}
 unistd.o: unistd.c
 	${BUILD_CMD}
-fcntl.o: fcntl.c
+sys/fcntl.o: sys/fcntl.c
+	${BUILD_CMD}
+sys/wait.o: sys/wait.c
 	${BUILD_CMD}
 
 syscall.s: syscall_in.s syscall_err.s
 	../src/cpp/cpp -o $@ syscall_in.s
 
 clean:
-	rm -f *.o
+	rm -f *.o sys/*.o
 
 .PHONY: libs clean
 
-fcntl.o: fcntl.c fcntl.h syscalls.h os.h
 stdio.o: stdio.c unistd.h stdio.h string.h
-stdlib.o: stdlib.c stdlib.h syscalls.h os.h
+stdlib.o: stdlib.c stdlib.h syscalls.h os.h unistd.h
+string.o: string.c string.h string_strerrs.h
 unistd.o: unistd.c unistd.h syscalls.h os.h
+fcntl.o: sys/fcntl.c sys/fcntl.h syscalls.h os.h
+wait.o: sys/wait.c sys/wait.h syscalls.h os.h

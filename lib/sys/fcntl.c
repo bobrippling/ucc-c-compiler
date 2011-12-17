@@ -1,5 +1,5 @@
 #include "fcntl.h"
-#include "syscalls.h"
+#include "../syscalls.h"
 
 int open(const char *fname, int mode, ...)
 {
