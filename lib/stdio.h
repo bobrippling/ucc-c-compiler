@@ -46,8 +46,8 @@ void  perror(const char *);
 
 */
 int   printf(const char *, ...);
-/*
 int   fprintf(FILE *, const char *, ...);
+/*
 int   snprintf(char *, size_t, const char *, ...);
 int   vprintf(const char *, va_list);
 int   vfprintf(FILE *, const char *, va_list);
