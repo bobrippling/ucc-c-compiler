@@ -549,7 +549,7 @@ void fold_tree(tree *t)
 
 			fold_expr(t->expr, t->symtab);
 
-			symtab_nest(t->symtab, &t->lhs->symtab);
+			t->lhs->symtab = t->symtab; /* don't bother nesting */
 			fold_tree(t->lhs);
 
 			/* FIXME: check for duplicate case values and at most, 1 default */
