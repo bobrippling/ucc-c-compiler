@@ -181,7 +181,11 @@ void fold_assignment(expr *e, symtable *stab)
 
 		strcpy(buf, decl_to_str(e->lhs->tree_type));
 
-		cc1_warn_at(&e->where, die, WARN_ASSIGN_MISMATCH, "assignment type mismatch: got %s, expected %s",
+		cc1_warn_at(&e->where, die, WARN_ASSIGN_MISMATCH,
+				"assignment type mismatch%s%s%s: got %s, expected %s",
+				e->lhs->spel ? " (" : "",
+				e->lhs->spel ? e->lhs->spel : "",
+				e->lhs->spel ? ")" : "",
 				decl_to_str(e->rhs->tree_type), buf);
 	}
 }
