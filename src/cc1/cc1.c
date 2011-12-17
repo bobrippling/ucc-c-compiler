@@ -115,6 +115,15 @@ void cc1_warn_at(struct where *where, int die, enum warning w, const char *fmt, 
 		exit(1);
 }
 
+void io_cleanup(void)
+{
+	int i;
+	for(i = 0; i < NUM_SECTIONS; i++){
+		fclose(cc_out[i]);
+		remove(fnames[i]);
+	}
+}
+
 void io_setup(void)
 {
 	int i;
@@ -129,6 +138,8 @@ void io_setup(void)
 		if(!cc_out[i])
 			ccdie("open \"%s\":", fnames[i]);
 	}
+
+	atexit(io_cleanup);
 }
 
 void io_fin(int do_sections)
@@ -154,8 +165,6 @@ void io_fin(int do_sections)
 			if(ferror(cc_out[i]))
 				ccdie("read from section file %d:", i);
 		}
-		fclose(cc_out[i]);
-		remove(fnames[i]);
 	}
 
 	if(fclose(cc1_out))
