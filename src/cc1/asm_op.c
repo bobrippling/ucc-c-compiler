@@ -87,6 +87,7 @@ static void asm_shortcircuit(expr *e, symtable *tab)
 void asm_operate(expr *e, symtable *tab)
 {
 	const char *instruct = NULL;
+	const char *rhs = "rcx";
 
 	switch(e->op){
 		/* normal mafs */
@@ -99,6 +100,11 @@ void asm_operate(expr *e, symtable *tab)
 		case op_minus: instruct = e->rhs ? "sub" : "neg"; break;
 		case op_bnot:  instruct = "not";                  break;
 
+#define SHIFT(side) \
+		case op_shift ## side: instruct = "sh" # side; rhs = "cl"; break
+
+		SHIFT(l);
+		SHIFT(r);
 
 		case op_not:
 			/* compare with 0 */
@@ -161,9 +167,9 @@ ptr:
 	walk_expr(e->lhs, tab);
 	if(e->rhs){
 		walk_expr(e->rhs, tab);
-		asm_temp(1, "pop rbx");
+		asm_temp(1, "pop rcx");
 		asm_temp(1, "pop rax");
-		asm_temp(1, "%s rax, rbx", instruct);
+		asm_temp(1, "%s rax, %s", instruct, rhs);
 	}else{
 		asm_temp(1, "pop rax");
 		asm_temp(1, "%s rax", instruct);

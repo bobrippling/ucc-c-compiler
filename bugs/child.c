@@ -9,20 +9,21 @@ main()
 	int pid = fork();
 
 	switch(pid){
+		case -1:
+			fprintf(stderr, "fork(): %s\n", strerror(errno));
+			return 1;
+
 		case 0:
 			printf("yo from child\n");
 			exit(5);
 
-		case 1:
-		{
-			int stat;
-			waitpid(-1, &stat, 0);
-			printf("yo from parent, child ret %d\n", stat);
-			return stat;
-		}
-
 		default:
-			fprintf(stderr, "fork(): %s\n", strerror(errno));
-			return 1;
+		{
+			int stat, ec;
+			waitpid(-1, &stat, 0);
+			ec = WEXITSTATUS(stat);
+			printf("yo from parent, child (pid %d) ret %d (exit status %d)\n", pid, stat, ec);
+			return ec;
+		}
 	}
 }

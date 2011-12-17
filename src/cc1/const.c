@@ -28,6 +28,8 @@ int operate(expr *lhs, expr *rhs, enum op_type op, int *bad)
 		OP(op_and,        &);
 		OP(op_orsc,       ||);
 		OP(op_andsc,      &&);
+		OP(op_shiftl,     <<);
+		OP(op_shiftr,     >>);
 
 		case op_divide:
 			if(rhs->val.i)

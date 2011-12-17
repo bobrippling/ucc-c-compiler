@@ -22,6 +22,7 @@
  * parse_expr_unary_op   [-+!~]`parse_expr_single`
  * parse_expr_binary_op  above [/%*]    above
  * parse_expr_sum        above [+-]     above
+ * parse_expr_shift      above [<<|>>]  above
  * parse_expr_bit_op     above [&|]     above
  * parse_expr_cmp_op     above [><==!=] above
  * parse_expr_logical_op above [&&||]   above
@@ -341,11 +342,19 @@ expr *parse_expr_sum()
 	return e;
 }
 
+expr *parse_expr_shift()
+{
+	/* above *shift* above */
+	return parse_expr_join(
+			parse_expr_sum, parse_expr_shift,
+				token_shiftl, token_shiftr, token_unknown);
+}
+
 expr *parse_expr_bit_op()
 {
 	/* above [&|] above */
 	return parse_expr_join(
-			parse_expr_sum, parse_expr_bit_op,
+			parse_expr_shift, parse_expr_bit_op,
 				token_and, token_or, token_unknown);
 }
 

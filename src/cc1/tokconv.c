@@ -60,6 +60,9 @@ enum op_type curtok_to_op()
 		case token_not: return op_not;
 		case token_bnot: return op_bnot;
 
+		case token_shiftl: return op_shiftl;
+		case token_shiftr: return op_shiftr;
+
 		default: break;
 	}
 
@@ -94,6 +97,8 @@ enum op_type curtok_to_augmented_op()
 		CASE(bnot);
 		CASE(and);
 		CASE(or);
+		CASE(shiftl);
+		CASE(shiftr);
 		default:
 			break;
 	}
@@ -126,6 +131,7 @@ const char *token_to_str(enum token t)
 		CASE_STR_PREFIX(token,  multiply_assign);  CASE_STR_PREFIX(token,  divide_assign);  CASE_STR_PREFIX(token,  modulus_assign);  CASE_STR_PREFIX(token,  not_assign);
 		CASE_STR_PREFIX(token,  bnot_assign);      CASE_STR_PREFIX(token,  and_assign);     CASE_STR_PREFIX(token,  or_assign);       CASE_STR_PREFIX(token,  static);
 		CASE_STR_PREFIX(token,  goto);             CASE_STR_PREFIX(token,  signed);         CASE_STR_PREFIX(token,  unsigned);        CASE_STR_PREFIX(token,  auto);
+		CASE_STR_PREFIX(token, shiftl);            CASE_STR_PREFIX(token, shiftr);          CASE_STR_PREFIX(token, shiftl_assign);    CASE_STR_PREFIX(token, shiftr_assign);
 	}
 	return NULL;
 }
