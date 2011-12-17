@@ -51,10 +51,16 @@ char *asm_label_goto(char *lbl)
 char *asm_label_case(int is_default, int val)
 {
 	char *ret = umalloc(8 + 32);
-	if(is_default)
+	if(is_default){
 		sprintf(ret, ".case_%d_default", switch_last);
-	else
-		sprintf(ret, ".case_%d_%d", switch_last, val);
+	}else{
+		const char *extra = "";
+		if(val < 0){
+			val = -val;
+			extra = "m";
+		}
+		sprintf(ret, ".case_%d_%s%d", switch_last, extra, val);
+	}
 	switch_last++;
 	return ret;
 
