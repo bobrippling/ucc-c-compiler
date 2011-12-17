@@ -200,10 +200,9 @@ static void outline(struct pp *p, const char *line)
 
 static int pp(struct pp *p, int skip, int need_chdir)
 {
-#define RET(x) do{ ret = x; goto fin; }while(0)
+#define RET(x) do{ free(linealloc); ret = x; goto fin; }while(0)
 	int curwdfd;
 	int ret;
-	char *line, *nl;
 	char *wd;
 
 	/* save for "cd -" */
@@ -222,7 +221,10 @@ static int pp(struct pp *p, int skip, int need_chdir)
 
 
 	do{
-		line = fline(p->in);
+		char *linealloc;
+		char *line, *nl;
+
+		line = linealloc = fline(p->in);
 		p->nline++;
 
 		if(!line){
@@ -242,7 +244,14 @@ static int pp(struct pp *p, int skip, int need_chdir)
 			int i, argc;
 			int flag = 0;
 
-			for(i = 0, last = s = line + 1; *s; s++)
+			line++;
+			while(isspace(*line))
+				line++;
+
+			if(!*line)
+				ppdie(p, "no preprocessor command");
+
+			for(i = 0, s = last = line; *s; s++)
 				if(isspace(*s)){
 					argv[i++] = last;
 					if(i == 3)
@@ -269,7 +278,7 @@ static int pp(struct pp *p, int skip, int need_chdir)
 
 					memset(&pp2, 0, sizeof pp2);
 
-					base = line + 9;
+					base = line + 8;
 					while(isspace(*base))
 						base++;
 
@@ -283,7 +292,7 @@ static int pp(struct pp *p, int skip, int need_chdir)
 							break;
 
 						default:
-							ppdie(p, "invalid include char %c", *base);
+							ppdie(p, "invalid include char %c (%s)", *base, line);
 					}
 
 					for(path = ++base; *path; path++)
@@ -423,14 +432,12 @@ static int pp(struct pp *p, int skip, int need_chdir)
 				if(argc != 1)
 					ppdie(p, "invalid #else");
 
-				free(line);
 				RET(PROC_ELSE);
 			}else if(!strcmp(argv[0], "endif")){
 				if(argc != 1)
 					ppdie(p, "invalid #endif");
 
 				newline();
-				free(line);
 				RET(PROC_ENDIF);
 			}else if(!strcmp(argv[0], "warning") || (flag = !strcmp(argv[0], "error"))){
 				const char *mode = flag ? "error" : "warning";
@@ -448,10 +455,10 @@ static int pp(struct pp *p, int skip, int need_chdir)
 				ppdie(p, "\"%s\" unexpected", line);
 			}
 		}else{
-			substitutedef(p, &line);
-			outline(p, line);
+			substitutedef(p, &linealloc);
+			outline(p, linealloc);
 		}
-		free(line);
+		free(linealloc);
 	}while(1);
 #undef RET
 fin:
