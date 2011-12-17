@@ -461,16 +461,24 @@ void nexttoken()
 			if(peeknextchar() == '='){
 				nextchar();
 				curtok = token_le;
-			}else
+			}else if(peeknextchar() == '<'){
+				nextchar();
+				curtok = token_shiftl;
+			}else{
 				curtok = token_lt;
+			}
 			break;
 
 		case '>':
 			if(peeknextchar() == '='){
 				nextchar();
 				curtok = token_ge;
-			}else
+			}else if(peeknextchar() == '>'){
+				nextchar();
+				curtok = token_shiftr;
+			}else{
 				curtok = token_gt;
+			}
 			break;
 
 		case '=':

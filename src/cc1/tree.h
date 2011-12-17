@@ -120,6 +120,8 @@ struct expr
 		op_orsc, op_andsc,
 		op_not,  op_bnot,
 
+		op_shiftl, op_shiftr,
+
 		op_unknown
 	} op;
 

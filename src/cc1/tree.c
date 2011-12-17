@@ -260,6 +260,8 @@ const char *op_to_str(const enum op_type o)
 		CASE_STR_PREFIX(op, andsc);
 		CASE_STR_PREFIX(op, not);
 		CASE_STR_PREFIX(op, bnot);
+		CASE_STR_PREFIX(op, shiftl);
+		CASE_STR_PREFIX(op, shiftr);
 		CASE_STR_PREFIX(op, unknown);
 	}
 	return NULL;

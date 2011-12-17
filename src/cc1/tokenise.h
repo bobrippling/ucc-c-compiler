@@ -57,6 +57,8 @@ enum token
 	TOK_AND_EQ(token_bnot),
 	TOK_AND_EQ(token_and),
 	TOK_AND_EQ(token_or),
+	TOK_AND_EQ(token_shiftl),
+	TOK_AND_EQ(token_shiftr),
 #undef TOK_AND_EQ
 
 	token_increment,
