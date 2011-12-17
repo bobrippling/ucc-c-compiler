@@ -6,7 +6,7 @@
 
 main()
 {
-	int pid = fork();
+	pid_t pid = fork();
 
 	switch(pid){
 		case -1:
@@ -20,9 +20,13 @@ main()
 		default:
 		{
 			int stat, ec;
-			waitpid(-1, &stat, 0);
-			ec = WEXITSTATUS(stat);
-			printf("yo from parent, child (pid %d) ret %d (exit status %d)\n", pid, stat, ec);
+			pid_t ret;
+
+			ret = waitpid(-1, &stat, 0);
+
+			printf("yo from parent, fork() = %d, waitpid(%d) = %d (exit status %d)\n",
+					pid, stat, ret, ec = WEXITSTATUS(stat));
+
 			return ec;
 		}
 	}
