@@ -127,6 +127,8 @@ void dynarray_add(void ***par, void *new)
 	void **ar = *par;
 	int idx = 0;
 
+	UCC_ASSERT(new, "dynarray_add(): adding NULL");
+
 	if(!ar){
 		ar = umalloc(2 * sizeof(void *));
 	}else{
