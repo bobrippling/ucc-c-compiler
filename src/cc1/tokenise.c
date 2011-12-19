@@ -231,7 +231,8 @@ enum token curtok_to_xequal()
 		MAP(token_bnot);
 		MAP(token_and);
 		MAP(token_or);
-		/* TODO: >>=, etc... */
+		MAP(token_shiftl);
+		MAP(token_shiftr);
 #undef MAP
 
 		default:
