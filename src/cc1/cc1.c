@@ -94,9 +94,10 @@ void ccdie(const char *fmt, ...)
 	if(fmt[i-1] == ':'){
 		fputc(' ', stderr);
 		perror(NULL);
+	}else{
+		fputc('\n', stderr);
 	}
 
-	fputc('\n', stderr);
 	exit(1);
 }
 
