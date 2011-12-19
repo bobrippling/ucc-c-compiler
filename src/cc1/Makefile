@@ -7,7 +7,7 @@ OBJ = ../util/alloc.o ../util/util.o ../util/platform.o \
 	cc1.o \
 	tree.o \
 	tokconv.o tokenise.o \
-	parse.o \
+	parse.o typedef.o \
 	fold.o const.o \
 	sym.o \
 	gen_asm.o gen_str.o \

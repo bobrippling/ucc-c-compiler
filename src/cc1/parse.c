@@ -12,9 +12,7 @@
 #include "../util/util.h"
 #include "sym.h"
 #include "cc1.h"
-
-#define NEED_TYPE_YES 1
-#define NEED_TYPE_NO  0
+#include "typedef.h"
 
 /*
  * order goes:
@@ -39,16 +37,29 @@ enum decl_spel
 	SPEL_NONE
 };
 
+enum decl_mode
+{
+	DECL_SPEL_NEED    = 1,
+	DECL_SPEL_OPT     = 1 << 1,
+	DECL_SPEL_NO      = 1 << 2,
+	DECL_NO_TYPE      = 1 << 3,
+	DECL_CAN_DEFAULT  = 1 << 4,
+};
+
 extern enum token curtok;
 
 tree  *parse_code(void);
 expr **parse_funcargs(void);
-decl  *parse_decl(type *type, enum decl_spel need_spel);
-type  *parse_type(int can_default);
+decl *parse_decl(enum decl_mode decl_mode);
+decl **parse_decls(const int can_default);
 
 expr *parse_expr_binary_op(void); /* needed to limit [+-] parsing */
 expr *parse_expr_array(void);
 expr *parse_expr_if(void);
+
+
+static tdeftable *typedefs_current;
+
 
 expr *parse_lone_identifier()
 {
@@ -76,9 +87,9 @@ expr *parse_expr_unary_op()
 			e->type = expr_sizeof;
 
 			if(accept(token_open_paren)){
-				if(curtok_is_type_prething())
-					e->tree_type = parse_decl(NULL, SPEL_NONE);
-				else
+				e->tree_type = parse_decl(DECL_SPEL_NO);
+
+				if(!e->tree_type)
 					e->expr = parse_expr();
 
 				EAT(token_close_paren);
@@ -133,14 +144,17 @@ expr *parse_expr_unary_op()
 			return e;
 
 		case token_open_paren:
+		{
+			decl *d;
+
 			EAT(token_open_paren);
 
-			if(curtok_is_type_prething()){
+			if((d = parse_decl(DECL_SPEL_NO))){
 				e = expr_new();
 				e->type = expr_cast;
 				e->lhs = expr_new();
 				decl_free(e->lhs->tree_type);
-				e->lhs->tree_type = parse_decl(NULL, SPEL_NONE);
+				e->lhs->tree_type = d;
 
 				EAT(token_close_paren);
 				e->rhs = parse_expr_array(); /* grab only the closest */
@@ -150,6 +164,7 @@ expr *parse_expr_unary_op()
 			}
 
 			return e;
+		}
 
 		case token_multiply: /* deref */
 			EAT(token_multiply);
@@ -573,187 +588,189 @@ tree *parse_for()
 	return t;
 }
 
-type *parse_type(int can_default)
+function *parse_function()
 {
-	type *t = type_new();
+	/*
+	 * either:
+	 *
+	 * [<type>] <name>( [<type> [<name>]]... )
+	 * {
+	 * }
+	 *
+	 * with optional {}
+	 *
+	 * or
+	 *
+	 * [<type>] <name>( [<name>...] )
+	 *   <type> <name>, ...;
+	 *   <type> <name>, ...;
+	 * {
+	 * }
+	 *
+	 * non-optional code
+	 *
+	 * i.e.
+	 *
+	 * int x(int y);
+	 * int x(int y){}
+	 *
+	 * or
+	 *
+	 * int x(y)
+	 *   int y;
+	 * {
+	 * }
+	 *
+	 */
+	function *f;
 
-	while(curtok_is_type_specifier()){
-		const enum type_spec spec = curtok_to_type_specifier();
+	f = function_new();
 
-		/* we can't check in fold, since 1 & 1 & 1 is still just 1 */
-		if(t->spec & spec)
-			die_at(NULL, "duplicate type specifier \"%s\"", spec_to_str(spec));
+	if(curtok == token_identifier){
+		int i, n_spels, n_decls;
+		char **spells = NULL;
+		decl **args;
 
-		t->spec |= spec;
-		EAT(curtok);
-	}
+		do{
+			dynarray_add((void ***)&spells, token_current_spel());
+			EAT(token_identifier);
+		}while(accept(token_comma));
+		EAT(token_close_paren);
 
-	if((t->primitive = curtok_to_type_primitive()) == type_unknown){
-		if(!can_default && t->spec == spec_none)
-			return NULL;
+		/* parse decls, then check they correspond */
+		args = parse_decls(0);
 
-		if(!t->spec)
-			cc1_warn_at(&t->where, 0, WARN_IMPLICIT_INT, "defaulting type to int");
-		/* allow "unsigned x" */
+		n_decls = dynarray_count((void ***)&args);
+		n_spels = dynarray_count((void ***)&spells);
 
-		t->primitive = type_int; /* default to int */
+		if(n_decls > n_spels)
+			die_at(args ? &args[0]->where : &f->where, "old-style function decl: mismatching argument counts");
+
+		for(i = 0; i < n_spels; i++){
+			int j, found;
+
+			found = 0;
+			for(j = 0; j < n_decls; j++)
+				if(!strcmp(spells[i], args[j]->spel)){
+					if(args[j]->init)
+						die_at(&args[j]->where, "parameter \"%s\" is initialised", args[j]->spel);
+
+					found = 1;
+					break;
+				}
+
+			if(!found){
+				/*
+					* void f(x){ ... }
+					* - x is implicitly int
+					*/
+				decl *d = decl_new();
+				d->type->primitive = type_int;
+				d->spel = spells[i];
+				spells[i] = NULL; /* prevent free */
+				dynarray_add((void ***)&args, d);
+			}
+		}
+
+		/* no need to check the other way around, since the counts are equal */
+		/* FIXME: uniq() on parse_decls() in general */
+		dynarray_free((void ***)&spells, free);
+
+		f->args = args;
+		f->code = parse_code();
+
 	}else{
-		EAT(curtok);
+		decl *argdecl;
+
+		while((argdecl = parse_decl(DECL_SPEL_OPT | DECL_CAN_DEFAULT))){
+			/* actually, we don't need a type here, default to int, i think */
+			dynarray_add((void ***)&f->args, argdecl);
+
+			if(curtok == token_close_paren)
+				break;
+
+			EAT(token_comma);
+
+			if(accept(token_elipsis)){
+				f->variadic = 1;
+				break;
+			}
+
+			/* continue loop */
+		}
+
+		EAT(token_close_paren);
+
+		if(dynarray_count((void ***)&f->args) == 1 &&
+				f->args[0]->type->primitive == type_void &&
+				f->args[0]->ptr_depth == 0 &&
+				f->args[0]->spel == NULL){
+			/* x(void); */
+			function_empty_args(f);
+			f->args_void = 1; /* (void) vs () */
+		}
+
+		if(!accept(token_semicolon))
+			f->code = parse_code();
 	}
 
-	return t;
+	return f;
 }
 
-decl **parse_decls(const int need_type)
+decl **parse_decls(const int can_default)
 {
 	decl **ret = NULL;
+	decl *initial_decl = NULL;
+	const enum decl_mode decl_mode =
+			DECL_SPEL_NEED | (can_default ? DECL_CAN_DEFAULT : 0);
 
-	for(; curtok != token_eof;){
-		type *curtype = parse_type(!need_type); /* specific to each line */
+	for(;;){
 		decl *d;
 
-		if(need_type && !curtype)
-			return ret;
+		d = parse_decl(decl_mode | (initial_decl ? DECL_NO_TYPE : 0));
 
-next_decl:
-		dynarray_add((void ***)&ret, d = parse_decl(curtype, SPEL_REQ));
+		if(!d)
+			break;
+
+		if(initial_decl){
+			/* set the decl's ->type to the same */
+
+			type_free(d->type);
+			d->type = type_copy(initial_decl->type);
+
+			if(initial_decl->tdef){
+				/*
+				 * typedef int *p;
+				 * p *x; // int **x;
+				 */
+				d->ptr_depth += initial_decl->ptr_depth;
+			}
+		}else{
+			initial_decl = d;
+		}
+
+		dynarray_add((void ***)&ret, d);
 
 		if(accept(token_open_paren)){
-			d->func = function_new();
+			d->func = parse_function();
 
-			/*
-			 * either:
-			 *
-			 * [<type>] <name>( [<type> [<name>]]... )
-			 * {
-			 * }
-			 *
-			 * with optional {}
-			 *
-			 * or
-			 *
-			 * [<type>] <name>( [<name>...] )
-			 *   <type> <name>, ...;
-			 *   <type> <name>, ...;
-			 * {
-			 * }
-			 *
-			 * non-optional code
-			 *
-			 * i.e.
-			 *
-			 * int x(int y);
-			 * int x(int y){}
-			 *
-			 * or
-			 *
-			 * int x(y)
-			 *   int y;
-			 * {
-			 * }
-			 *
-			 */
-
-			if(curtok == token_identifier){
-				int i, n_spels, n_decls;
-				char **spells = NULL;
-				decl **args;
-
-				do{
-					dynarray_add((void ***)&spells, token_current_spel());
-					EAT(token_identifier);
-				}while(accept(token_comma));
-				EAT(token_close_paren);
-
-				/* parse decls, then check they correspond */
-				args = parse_decls(NEED_TYPE_YES);
-
-				n_decls = dynarray_count((void ***)&args);
-				n_spels = dynarray_count((void ***)&spells);
-
-				if(n_decls > n_spels)
-					die_at(args ? &args[0]->where : &d->func->where, "old-style function decl: mismatching argument counts");
-
-				for(i = 0; i < n_spels; i++){
-					int j, found;
-
-					found = 0;
-					for(j = 0; j < n_decls; j++)
-						if(!strcmp(spells[i], args[j]->spel)){
-							if(args[j]->init)
-								die_at(&args[j]->where, "parameter \"%s\" is initialised", args[j]->spel);
-
-							found = 1;
-							break;
-						}
-
-					if(!found){
-						/*
-						 * void f(x){ ... }
-						 * - x is implicitly int
-						 */
-						decl *d = decl_new();
-						d->type->primitive = type_int;
-						d->spel = spells[i];
-						spells[i] = NULL; /* prevent free */
-						dynarray_add((void ***)&args, d);
-					}
-				}
-
-				/* no need to check the other way around, since the counts are equal */
-				/* FIXME: uniq() on parse_decls() in general */
-				dynarray_free((void ***)&spells, free);
-
-				d->func->args = args;
-				d->func->code = parse_code();
-
-			}else{
-				while((curtok_is_type_prething())){
-					/* actually, we don't need a type here, default to int, i think */
-					dynarray_add((void ***)&d->func->args, parse_decl(parse_type(!need_type), SPEL_OPT));
-
-					if(curtok == token_close_paren)
-						break;
-
-					EAT(token_comma);
-
-					if(accept(token_elipsis)){
-						d->func->variadic = 1;
-						break;
-					}
-
-					/* continue loop */
-				}
-
-				EAT(token_close_paren);
-
-				if(dynarray_count((void ***)&d->func->args) == 1 &&
-						d->func->args[0]->type->primitive == type_void &&
-						d->func->args[0]->ptr_depth == 0 &&
-						d->func->args[0]->spel == NULL){
-					/* x(void); */
-					function_empty_args(d);
-					d->func->args_void = 1; /* (void) vs () */
-				}
-
-				if(!accept(token_semicolon))
-					d->func->code = parse_code();
-			}
-			/* end of function parsing */
-
+			initial_decl = NULL;
 		}else{
 			if(accept(token_assign))
 				d->init = parse_expr();
 
-			if(accept(token_comma))
-				/* should probably not accept functions as part of next decl */
-				goto next_decl; /* don't read another type */
-
-			EAT(token_semicolon);
+			if(!accept(token_comma)){
+				EAT(token_semicolon);
+				initial_decl = NULL;
+			}
 		}
+
+		if(curtok == token_eof)
+			break;
 	}
 
 	return ret;
+#undef initial_decl
 }
 
 tree *parse_code_declblock()
@@ -767,7 +784,7 @@ tree *parse_code_declblock()
 		/* if(x){} */
 		return t;
 
-	t->decls = parse_decls(NEED_TYPE_YES);
+	t->decls = parse_decls(0);
 
 	for(diter = t->decls; diter && *diter; diter++)
 		/* only extract the init if it's not static */
@@ -872,15 +889,71 @@ tree *parse_code()
 	/* unreachable */
 }
 
-decl *parse_decl(type *type, enum decl_spel need_spel)
+enum type_spec parse_type_spec(void)
 {
-	decl *d = decl_new();
+	enum type_spec ret = 0;
 
-	if(!type || type->primitive == type_unknown){
-		type_free(type);
-		d->type = parse_type(0);
+	while(curtok_is_type_specifier()){
+		const enum type_spec spec = curtok_to_type_specifier();
+
+		/* we can't check in fold, since 1 & 1 & 1 is still just 1 */
+		if(ret & spec)
+			die_at(NULL, "duplicate type specifier \"%s\"", spec_to_str(spec));
+
+		ret |= spec;
+		EAT(curtok);
+	}
+
+	return ret;
+}
+
+decl *parse_decl(enum decl_mode decl_mode)
+{
+	char *spel;
+	decl *d;
+	enum type_spec spec;
+
+	spec = parse_type_spec();
+	/* FIXME: int const x; */
+
+	if((decl_mode & DECL_NO_TYPE) == 0){
+		if(curtok == token_identifier){
+			/*
+			 * either:
+			 * x;
+			 * or:
+			 * type [*...][spel];
+			 */
+			d = typedef_find(typedefs_current, token_current_spel_peek());
+
+			if(d){
+				d = decl_copy(d);
+				EAT(token_identifier);
+			}else if(spec || decl_mode & DECL_CAN_DEFAULT){
+				/* identifier; - default to int */
+default_int:
+				d = decl_new();
+				d->type->primitive = type_int;
+				cc1_warn_at(&d->where, 0, WARN_IMPLICIT_INT, "defaulting type to int");
+			}else{
+				goto no_decl;
+			}
+		}else{
+			if(curtok_is_type()){
+				d = decl_new();
+				d->type->primitive = curtok_to_type_primitive();
+				EAT(curtok);
+			}else if(spec){
+				if(decl_mode & DECL_CAN_DEFAULT)
+					goto default_int;
+				else
+					goto no_decl;
+			}else{
+				return NULL;
+			}
+		}
 	}else{
-		d->type = type;
+		d = decl_new();
 	}
 
 	while(curtok == token_multiply){
@@ -889,11 +962,23 @@ decl *parse_decl(type *type, enum decl_spel need_spel)
 	}
 
 	if(curtok == token_identifier){
-		if(need_spel == SPEL_NONE)
-			die_at(NULL, "identifier not wanted here");
-		d->spel = token_current_spel();
+		/*
+		 * type [*...]spel
+		 */
+		spel = token_current_spel();
 		EAT(token_identifier);
-	}else if(need_spel == SPEL_REQ){
+	}else{
+		spel = NULL;
+	}
+
+	d->type->spec = spec;
+	free(d->spel);
+	d->spel = spel;
+
+	if(spel){
+		if(decl_mode & DECL_SPEL_NO)
+			die_at(NULL, "identifier (%s) not wanted here", spel);
+	}else if(decl_mode & DECL_SPEL_NEED){
 		die_at(NULL, "need identifier, not just type (%s)", type_to_str(d->type));
 	}
 
@@ -906,7 +991,7 @@ decl *parse_decl(type *type, enum decl_spel need_spel)
 
 		EAT(token_open_square);
 		if(curtok != token_close_square)
-			size = parse_expr(); /* fold->c checks for const-ness */
+			size = parse_expr(); /* fold.c checks for const-ness */
 		else
 			fin = 1;
 
@@ -920,13 +1005,21 @@ decl *parse_decl(type *type, enum decl_spel need_spel)
 	}
 
 	return d;
+no_decl:
+	if(spec)
+		die_at(NULL, "expected a type or identifier");
+	return NULL;
 }
 
 symtable *parse()
 {
-	symtable *globals = symtab_new();
-	decl **decls = parse_decls(NEED_TYPE_NO);
+	symtable *globals;
+	decl **decls;
 	int i;
+
+	typedefs_current = umalloc(sizeof *typedefs_current);
+	globals = symtab_new();
+	decls = parse_decls(DECL_CAN_DEFAULT);
 
 	if(decls)
 		for(i = 0; decls[i]; i++){

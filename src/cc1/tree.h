@@ -4,6 +4,8 @@
 typedef struct sym         sym;
 typedef struct symtable    symtable;
 
+typedef struct tdef        tdef;
+
 typedef struct expr        expr;
 typedef struct tree        tree;
 typedef struct decl        decl;
@@ -62,6 +64,7 @@ struct decl
 	 */
 
 	function *func;
+	tdef *tdef;
 
 	int ignore; /* ignore during code-gen, for example ignoring overridden externs */
 	sym *sym;
@@ -233,7 +236,7 @@ int   decl_size(const decl *);
 int   decl_equal(const decl *, const decl *, int strict);
 expr *expr_ptr_multiply(expr *, decl *);
 expr *expr_assignment(expr *to, expr *from);
-void function_empty_args(decl *d);
+void function_empty_args(function *);
 
 #define TYPE_STATIC_BUFSIZ 64
 #define DECL_STATIC_BUFSIZ (32 + TYPE_STATIC_BUFSIZ)
