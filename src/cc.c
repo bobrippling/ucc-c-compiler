@@ -103,7 +103,8 @@ char *gen_stdlib_files(void)
 		"string",
 		"unistd",
 		"syscall",
-		"fcntl",
+		"sys/fcntl",
+		"sys/wait",
 		NULL
 	};
 	const int blen = strlen(where) + strlen(base);
