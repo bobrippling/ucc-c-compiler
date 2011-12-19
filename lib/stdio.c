@@ -2,6 +2,8 @@
 #include "stdio.h"
 #include "string.h"
 
+#define PRINTF_OPTIMISE
+
 static int _stdin  = 0;
 static int _stdout = 1;
 static int _stderr = 2;
@@ -49,9 +51,18 @@ static void printx(int fd, int n)
 int vfprintf(FILE *file, char *fmt, va_list ap)
 {
 	int fd = *file;
+#ifdef PRINTF_OPTIMISE
+	char *buf  = fmt;
+	int buflen = 0;
+#endif
 
 	while(*fmt){
 		if(*fmt == '%'){
+#ifdef PRINTF_OPTIMISE
+			if(buflen)
+				write(fd, buf, buflen);
+#endif
+
 			fmt++;
 
 			switch(*fmt){
@@ -73,12 +84,26 @@ int vfprintf(FILE *file, char *fmt, va_list ap)
 					write(fd, fmt, 1); /* default to just printing the char */
 			}
 
+#ifdef PRINTF_OPTIMISE
+			buf = fmt + 1;
+			buflen = 0;
+#endif
+
 			ap += sizeof(int); /* void arith */
 		}else{
+#ifdef PRINTF_OPTIMISE
+			buflen++;
+#else
 			write(fd, fmt, 1);
+#endif
 		}
 		fmt++;
 	}
+
+#ifdef PRINTF_OPTIMISE
+	if(buflen)
+		write(fd, buf, buflen);
+#endif
 }
 
 int dprintf(int fd, const char *fmt, ...)
