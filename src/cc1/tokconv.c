@@ -79,11 +79,6 @@ int curtok_is_type_specifier()
 	return curtok_to_type_specifier() != spec_none;
 }
 
-int curtok_is_type_prething()
-{
-	return curtok_is_type() || curtok_is_type_specifier();
-}
-
 enum op_type curtok_to_augmented_op()
 {
 #define CASE(x) case token_ ## x ## _assign: return op_ ## x
@@ -156,13 +151,17 @@ int curtok_in_list(va_list l)
 #define NULL_AND_RET(fnam, cnam)  \
 char *fnam()                      \
 {                                 \
-	extern char *cnam;              \
 	char *ret = cnam;               \
 	cnam = NULL;                    \
 	return ret;                     \
 }
 
+extern char *currentspelling;
 NULL_AND_RET(token_current_spel, currentspelling)
+char *token_current_spel_peek(void)
+{
+	return currentspelling;
+}
 
 void token_get_current_str(char **ps, int *pl)
 {

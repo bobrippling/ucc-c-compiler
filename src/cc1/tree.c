@@ -212,14 +212,14 @@ int decl_equal(const decl *a, const decl *b, int strict)
 	return ptreq && type_equal(a->type, b->type, strict);
 }
 
-void function_empty_args(decl *d)
+void function_empty_args(function *func)
 {
-	if(d->func->args){
-		decl_free(d->func->args[0]);
-		free(d->func->args);
-		d->func->args = NULL;
+	if(func->args){
+		decl_free(func->args[0]);
+		free(func->args);
+		func->args = NULL;
 	}
-	d->func->args_void = 0;
+	func->args_void = 0;
 }
 
 const char *expr_to_str(const enum expr_type t)

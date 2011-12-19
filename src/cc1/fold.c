@@ -98,7 +98,7 @@ void fold_funcall(expr *e, symtable *stab)
 			}
 #else
 			/* set up the function args as if it's "x()" - i.e. any args */
-			function_empty_args(df);
+			function_empty_args(df->func);
 #endif
 		}
 	}else{

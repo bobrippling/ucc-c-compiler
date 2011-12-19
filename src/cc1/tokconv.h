@@ -11,10 +11,10 @@ void eat(enum token, const char *fnam, int line);
 
 int curtok_is_type(void);
 int curtok_is_type_specifier(void);
-int curtok_is_type_prething(void);
 int curtok_in_list(va_list l);
 
 char *token_current_spel(void);
+char *token_current_spel_peek(void);
 void token_get_current_str(char **ps, int *pl);
 
 enum op_type curtok_to_augmented_op(void);
