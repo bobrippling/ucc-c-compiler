@@ -57,6 +57,26 @@ int fold_is_lvalue(expr *e)
 		e->tree_type->spel = NULL; \
 	}while(0)
 
+void fold_decl_equal(decl *a, decl *b, where *w, enum warning warn,
+		const char *errfmt, ...)
+{
+	/* TODO: -fstrict-types - changes the below 0 to a 1 */
+
+	if(!decl_equal(a, b, 0)){
+		/*char buf[DECL_STATIC_BUFSIZ];
+		va_list l;
+
+		strcpy(buf, decl_to_str(b));*/
+
+		/* TODO: prefix with decl_to_str() */
+		va_list l;
+
+		va_start(l, errfmt);
+		cc1_warn_atv(w, a->type->primitive == type_void && !a->ptr_depth, warn, errfmt, l);
+		va_end(l);
+	}
+}
+
 void fold_funcall(expr *e, symtable *stab)
 {
 	decl *df;
@@ -129,17 +149,9 @@ void fold_funcall(expr *e, symtable *stab)
 			for(i = 0, iter_decl = df->func->args, iter_arg = e->funcargs;
 					iter_decl[i];
 					i++){
-				/* TODO: -fstrict-types - changes the below 0 to a 1 */
-
-				if(!decl_equal(iter_decl[i], iter_arg[i]->tree_type, 0)){
-					char buf[DECL_STATIC_BUFSIZ];
-					int die = iter_arg[i]->tree_type->type->primitive == type_void;
-
-					strcpy(buf, decl_to_str(iter_arg[i]->tree_type));
-
-					cc1_warn_at(&e->where, die, WARN_ARG_MISMATCH, "mismatching arguments for arg %d to %s: got %s, expected %s",
-						i + 1, df->spel, buf, decl_to_str(iter_decl[i]));
-				}
+				fold_decl_equal(iter_decl[i], iter_arg[i]->tree_type, &e->where,
+						WARN_ARG_MISMATCH, "mismatching arguments for arg %d to %s",
+						i + 1, df->spel);
 			}
 		}
 	}
@@ -175,19 +187,12 @@ void fold_assignment(expr *e, symtable *stab)
 
 
 	/* type check */
-	if(!decl_equal(e->lhs->tree_type, e->rhs->tree_type, 0)){
-		char buf[DECL_STATIC_BUFSIZ];
-		int die = e->lhs->tree_type->type->primitive == type_void || e->rhs->tree_type->type->primitive == type_void;
-
-		strcpy(buf, decl_to_str(e->lhs->tree_type));
-
-		cc1_warn_at(&e->where, die, WARN_ASSIGN_MISMATCH,
-				"assignment type mismatch%s%s%s: got %s, expected %s",
+	fold_decl_equal(e->lhs->tree_type, e->rhs->tree_type,
+		&e->where, WARN_ASSIGN_MISMATCH,
+				"assignment type mismatch%s%s%s",
 				e->lhs->spel ? " (" : "",
 				e->lhs->spel ? e->lhs->spel : "",
-				e->lhs->spel ? ")" : "",
-				decl_to_str(e->rhs->tree_type), buf);
-	}
+				e->lhs->spel ? ")" : "");
 }
 
 
@@ -364,25 +369,32 @@ noproblem:
 					GET_TREE_TYPE(e->lhs->tree_type);
 			}
 
-			/* need to do this check _after_ we get the correct tree type */
-			if((e->op == op_plus || e->op == op_minus) &&
-					e->tree_type->ptr_depth &&
-					e->rhs){
+			if(e->rhs){
+				/* need to do this check _after_ we get the correct tree type */
+				if((e->op == op_plus || e->op == op_minus) &&
+						e->tree_type->ptr_depth &&
+						e->rhs){
 
-				/* 2 + (void *)5 is 7, not 2 + 8*5 */
-				if(e->tree_type->type->primitive != type_void){
-					/* we're dealing with pointers, adjust the amount we add by */
+					/* 2 + (void *)5 is 7, not 2 + 8*5 */
+					if(e->tree_type->type->primitive != type_void){
+						/* we're dealing with pointers, adjust the amount we add by */
 
-					if(e->lhs->tree_type->ptr_depth)
-						/* lhs is the pointer, we're adding on rhs, hence multiply rhs by lhs's ptr size */
-						e->rhs = expr_ptr_multiply(e->rhs, e->lhs->tree_type);
-					else
-						e->lhs = expr_ptr_multiply(e->lhs, e->rhs->tree_type);
+						if(e->lhs->tree_type->ptr_depth)
+							/* lhs is the pointer, we're adding on rhs, hence multiply rhs by lhs's ptr size */
+							e->rhs = expr_ptr_multiply(e->rhs, e->lhs->tree_type);
+						else
+							e->lhs = expr_ptr_multiply(e->lhs, e->rhs->tree_type);
 
-					/* TODO: const_fold again */
-				}else{
-					cc1_warn_at(&e->tree_type->type->where, 0, WARN_VOID_ARITH, "arithmetic with void pointer");
+						/* TODO: const_fold again */
+					}else{
+						cc1_warn_at(&e->tree_type->type->where, 0, WARN_VOID_ARITH, "arithmetic with void pointer");
+					}
 				}
+
+				/* check types */
+				if(e->rhs)
+					fold_decl_equal(e->lhs->tree_type, e->rhs->tree_type, &e->where, WARN_COMPARE_MISMATCH,
+							"operation between mismatching types");
 			}
 			break;
 

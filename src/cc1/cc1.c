@@ -76,7 +76,7 @@ FILE *cc_out[NUM_SECTIONS];     /* temporary section files */
 char  fnames[NUM_SECTIONS][32]; /* duh */
 FILE *cc1_out;                  /* final output */
 
-enum warning warn_mode = ~WARN_VOID_ARITH; /* FIXME */
+enum warning warn_mode = ~(WARN_VOID_ARITH | WARN_COMPARE_MISMATCH); /* FIXME */
 
 const char *section_names[NUM_SECTIONS] = {
 	"text", "data", "bss"
@@ -101,19 +101,24 @@ void ccdie(const char *fmt, ...)
 	exit(1);
 }
 
+void cc1_warn_atv(struct where *where, int die, enum warning w, const char *fmt, va_list l)
+{
+	if(!die && (w & warn_mode) == 0)
+		return;
+
+	vwarn(where, fmt, l);
+
+	if(die)
+		exit(1);
+}
+
 void cc1_warn_at(struct where *where, int die, enum warning w, const char *fmt, ...)
 {
 	va_list l;
 
-	if(!die && (w & warn_mode) == 0)
-		return;
-
 	va_start(l, fmt);
-	vwarn(where, fmt, l);
+	cc1_warn_atv(where, die, w, fmt, l);
 	va_end(l);
-
-	if(die)
-		exit(1);
 }
 
 void io_cleanup(void)
