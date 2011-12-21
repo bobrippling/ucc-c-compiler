@@ -88,7 +88,6 @@ expr *parse_expr_unary_op()
 
 			if(accept(token_open_paren)){
 				e->tree_type = parse_decl(DECL_SPEL_NO);
-
 				if(!e->tree_type)
 					e->expr = parse_expr();
 
@@ -623,19 +622,59 @@ function *parse_function()
 	 *
 	 */
 	function *f;
+	decl *argdecl;
 
 	f = function_new();
+	argdecl = parse_decl(DECL_SPEL_OPT | DECL_CAN_DEFAULT);
 
-	if(curtok == token_identifier){
+	if(argdecl){
+		do{
+			dynarray_add((void ***)&f->args, argdecl);
+
+			if(curtok == token_close_paren)
+				break;
+
+			EAT(token_comma);
+
+			if(accept(token_elipsis)){
+				f->variadic = 1;
+				break;
+			}
+
+			/* continue loop */
+			/* actually, we don't need a type here, default to int, i think */
+			argdecl = parse_decl(DECL_SPEL_OPT | DECL_CAN_DEFAULT);
+		}while(argdecl);
+
+		EAT(token_close_paren);
+
+		if(dynarray_count((void ***)&f->args) == 1 &&
+				f->args[0]->type->primitive == type_void &&
+				f->args[0]->ptr_depth == 0 &&
+				f->args[0]->spel == NULL){
+			/* x(void); */
+			function_empty_args(f);
+			f->args_void = 1; /* (void) vs () */
+		}
+
+		if(!accept(token_semicolon))
+			f->code = parse_code();
+
+	}else{
 		int i, n_spels, n_decls;
 		char **spells = NULL;
 		decl **args;
 
 		do{
+			if(accept(token_close_paren))
+				break;
+
+			if(curtok != token_identifier)
+				die_at(&f->where, "expected: identifier");
+
 			dynarray_add((void ***)&spells, token_current_spel());
 			EAT(token_identifier);
-		}while(accept(token_comma));
-		EAT(token_close_paren);
+		}while(1);
 
 		/* parse decls, then check they correspond */
 		args = parse_decls(0);
@@ -674,44 +713,14 @@ function *parse_function()
 
 		/* no need to check the other way around, since the counts are equal */
 		/* FIXME: uniq() on parse_decls() in general */
-		dynarray_free((void ***)&spells, free);
+		if(spells)
+			dynarray_free((void ***)&spells, free);
 
 		f->args = args;
+
+		if(curtok != token_open_block)
+			die_at(&f->where, "no code for old-style function");
 		f->code = parse_code();
-
-	}else{
-		decl *argdecl;
-
-		while((argdecl = parse_decl(DECL_SPEL_OPT | DECL_CAN_DEFAULT))){
-			/* actually, we don't need a type here, default to int, i think */
-			dynarray_add((void ***)&f->args, argdecl);
-
-			if(curtok == token_close_paren)
-				break;
-
-			EAT(token_comma);
-
-			if(accept(token_elipsis)){
-				f->variadic = 1;
-				break;
-			}
-
-			/* continue loop */
-		}
-
-		EAT(token_close_paren);
-
-		if(dynarray_count((void ***)&f->args) == 1 &&
-				f->args[0]->type->primitive == type_void &&
-				f->args[0]->ptr_depth == 0 &&
-				f->args[0]->spel == NULL){
-			/* x(void); */
-			function_empty_args(f);
-			f->args_void = 1; /* (void) vs () */
-		}
-
-		if(!accept(token_semicolon))
-			f->code = parse_code();
 	}
 
 	return f;
@@ -724,11 +733,15 @@ decl **parse_decls(const int can_default)
 	const enum decl_mode decl_mode =
 			DECL_SPEL_NEED | (can_default ? DECL_CAN_DEFAULT : 0);
 
+	int are_typedefs;
+
 	for(;;){
 		decl *d;
 
-		d = parse_decl(decl_mode | (initial_decl ? DECL_NO_TYPE : 0));
+		if(!initial_decl)
+			are_typedefs = accept(token_typedef);
 
+		d = parse_decl(decl_mode | (initial_decl ? DECL_NO_TYPE : 0));
 		if(!d)
 			break;
 
@@ -749,8 +762,6 @@ decl **parse_decls(const int can_default)
 			initial_decl = d;
 		}
 
-		dynarray_add((void ***)&ret, d);
-
 		if(accept(token_open_paren)){
 			d->func = parse_function();
 
@@ -764,6 +775,11 @@ decl **parse_decls(const int can_default)
 				initial_decl = NULL;
 			}
 		}
+
+		if(are_typedefs)
+			typedef_add(typedefs_current, d);
+		else
+			dynarray_add((void ***)&ret, d);
 
 		if(curtok == token_eof)
 			break;
@@ -972,7 +988,7 @@ default_int:
 	}
 
 	d->type->spec = spec;
-	free(d->spel);
+	/*free(d->spel);*/
 	d->spel = spel;
 
 	if(spel){
