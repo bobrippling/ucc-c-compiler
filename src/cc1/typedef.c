@@ -22,5 +22,17 @@ decl *typedef_find(struct tdeftable *defs, const char *spel)
 
 void typedef_add(struct tdeftable *defs, decl *d)
 {
-	ICE("todo");
+	tdef *new = umalloc(sizeof *new);
+
+	new->decl = d;
+
+	if(defs->first){
+		tdef *td;
+
+		for(td = defs->first; td->next; td = td->next);
+
+		td->next = new;
+	}else{
+		defs->first = new;
+	}
 }
