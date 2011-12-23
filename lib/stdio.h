@@ -1,12 +1,14 @@
-// FIXME: typedef
-#define FILE int
-#define size_t int
-#define long int
+#ifndef __STDIO_H
+#define __STDIO_H
 
-// This should be moved to stdarg.h
-#define va_list void *
+
+typedef int FILE;
+typedef int size_t;
 
 extern FILE *stdin, *stdout, *stderr;
+
+/* va_list */
+#include "stdarg.h"
 
 /*
 FILE   *fopen(const char *, const char *);
@@ -80,3 +82,5 @@ int   rename(const char *, const char *);
 //int setvbuf(FILE *, char *, int, size_t);
 
 int dprintf(int, const char *, ...);
+
+#endif

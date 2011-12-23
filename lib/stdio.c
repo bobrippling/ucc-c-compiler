@@ -94,7 +94,7 @@ int vfprintf(FILE *file, char *fmt, va_list ap)
 			buflen = 0;
 #endif
 
-			ap += sizeof(int); /* void arith */
+			ap += sizeof(void *); /* void arith, use pointer size */
 		}else{
 #ifdef PRINTF_OPTIMISE
 			buflen++;
