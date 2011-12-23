@@ -133,7 +133,7 @@ struct def *addmacro(char *mname, char **args, char *rest)
 	if(pp_verbose){
 		int i;
 		fprintf(stderr, "macro %s\n", mname);
-		for(i = 0; args[i]; i++)
+		for(i = 0; args && args[i]; i++)
 			fprintf(stderr, "macro_arg[%d] = %s\n", i, args[i]);
 		fprintf(stderr, "rest %s\n", rest);
 	}
@@ -262,8 +262,13 @@ static void freedefs()
 	while(defs){
 		d = defs;
 		defs = defs->next;
+
+		if(d->args)
+			dynarray_free((void ***)&d->args, free);
+
 		free(d->name);
 		free(d->val);
+
 		free(d);
 	}
 }
