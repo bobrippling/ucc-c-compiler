@@ -205,8 +205,6 @@ static void substitutedef(struct pp *p, char **line)
 					ppdie(p, "mismatching argument counts for macro (got %d, expected %d)",
 							arg_got, arg_expected);
 
-#define MACRO_FUNC_DEBUG
-
 #ifdef MACRO_FUNC_DEBUG
 				for(i = 0; args[i]; i++)
 					fprintf(stderr, "args[%d] = \"%s\"\n", i, args[i]);
