@@ -16,6 +16,7 @@
 #include "../util/util.h"
 #include "../util/alloc.h"
 #include "../util/platform.h"
+#include "str.h"
 
 #define newline() outline(p, "")
 
@@ -24,6 +25,8 @@
 struct def
 {
 	char *name, *val;
+	char **args;
+	int is_func;
 	struct def *next;
 };
 
@@ -85,23 +88,6 @@ void undef(const char *s)
 		}
 }
 
-static char *strdup_printf(const char *fmt, ...)
-{
-	va_list l;
-	char *buf = NULL;
-	int len = 8, ret;
-
-	do{
-		len *= 2;
-		buf = urealloc(buf, len);
-		va_start(l, fmt);
-		ret = vsnprintf(buf, len, fmt, l);
-		va_end(l);
-	}while(ret >= len);
-
-	return buf;
-}
-
 static struct def *getdef(const char *s)
 {
 	struct def *d;
@@ -112,34 +98,47 @@ static struct def *getdef(const char *s)
 	return NULL;
 }
 
-void adddef(const char *n, const char *v)
+struct def *adddef(char *n, char *v)
 {
 	/* FIXME: check for substring v in n */
-	char *n2, *v2;
 	struct def *d;
 
 	if((d = getdef(n))){
 		fprintf(stderr, "warning: \"%s\" redefined\n", n);
 		free(d->val);
 		d->val = ustrdup(v);
-		return;
+		return d;
 	}
 
 	d = umalloc(sizeof *d);
 
-	n2 = ustrdup(n);
-	v2 = ustrdup(v);
-
-	strcpy(n2, n);
-	strcpy(v2, v);
-
-	d->name = n2;
-	d->val  = v2;
+	d->name = n;
+	d->val  = v;
 
 	d->next = defs;
 	defs = d;
 
 	VERBOSE("adddef(\"%s\", \"%s\")\n", n, v);
+
+	return d;
+}
+
+struct def *addmacro(char *mname, char **args, char *rest)
+{
+	struct def *d = adddef(mname, rest);
+
+	d->is_func = 1;
+	d->args = args;
+
+	if(pp_verbose){
+		int i;
+		fprintf(stderr, "macro %s\n", mname);
+		for(i = 0; args[i]; i++)
+			fprintf(stderr, "macro_arg[%d] = %s\n", i, args[i]);
+		fprintf(stderr, "rest %s\n", rest);
+	}
+
+	return d;
 }
 
 static void substitutedef(struct pp *p, char **line)
@@ -148,19 +147,21 @@ static void substitutedef(struct pp *p, char **line)
 	char *pos;
 
 	for(d = defs; d; d = d->next){
-		while((pos = strstr(*line, d->name))){
+		/* TODO: word-sep */
+		while((pos = findword(*line, d->name))){
 			char nbuf[16];
-			char *const post = pos + strlen(d->name);
-			char *new;
-			const char *val;
+			char *post;
+			char *val;
+			int freeval = 0;
 
-			*pos = post[-1] = '\0';
+			post = pos + strlen(d->name);
 
 			if(!strcmp(d->name, "__LINE__")){
 				snprintf(nbuf, sizeof nbuf, "%d", p->nline);
 				val = nbuf;
 			}else if(!strcmp(d->name, "__FILE__")){
-				val = p->fname; /* FIXME: quote */
+				val = ustrprintf("\"%s\"", p->fname);
+				freeval = 1;
 			}else if(!strcmp(d->name, "__COUNTER__")){
 				snprintf(nbuf, sizeof nbuf, "%d", counter++);
 				val = nbuf;
@@ -168,10 +169,86 @@ static void substitutedef(struct pp *p, char **line)
 				val = d->val;
 			}
 
-			new = strdup_printf("%s%s%s", *line, val, post);
-			free(*line);
-			*line = new;
+			if(d->is_func){
+				char **args = NULL;
+				int arg_got, arg_expected;
+				int i;
+
+				{
+					char *arg_start, *arg_fin;
+					char *dup, *cur;
+					int len;
+
+					arg_start = post + 1;
+					arg_fin = strchr(arg_start, ')'); /* FIXME: nesting */
+
+					if(!arg_fin)
+						ppdie(p, "no close paren for macro call (%s)", dup);
+
+					arg_fin--;
+
+					dup = umalloc(len = arg_fin - arg_start + 2);
+					strncpy(dup, arg_start, len - 1);
+					dup[len-1] = '\0';
+
+					for(cur = strtok(dup, ","); cur; cur = strtok(NULL, ","))
+						dynarray_add((void ***)&args, ustrdup(cur));
+					free(dup);
+
+					post = arg_fin + 2;
+				}
+
+				arg_got      = dynarray_count((void **)args);
+				arg_expected = dynarray_count((void **)d->args);
+
+				if(arg_expected != arg_got)
+					ppdie(p, "mismatching argument counts for macro (got %d, expected %d)",
+							arg_got, arg_expected);
+
+#define MACRO_FUNC_DEBUG
+
+#ifdef MACRO_FUNC_DEBUG
+				for(i = 0; args[i]; i++)
+					fprintf(stderr, "args[%d] = \"%s\"\n", i, args[i]);
+#endif
+
+				val = ustrdup(val);
+				freeval = 1;
+
+				for(i = 0; args[i]; i++){
+					char *new;
+
+#ifdef MACRO_FUNC_DEBUG
+					fprintf(stderr, "before = \"%s\", s/%s/%s/g, after = \"",
+							val, d->args[i], args[i]);
+#endif
+
+					new = strreplace(val, d->args[i], args[i]);
+
+#ifdef MACRO_FUNC_DEBUG
+					fprintf(stderr, "%s\"\n", new);
+#endif
+
+					free(val);
+					val = new;
+
+					free(args[i]);
+				}
+			}
+
+			{
+				char *new;
+
+				*pos = post[-1] = '\0';
+
+				new = ustrprintf("%s%s%s", *line, val, post);
+				free(*line);
+				*line = new;
+			}
 			d = defs;
+
+			if(freeval)
+				free(val);
 			/*
 			 * recursive defs - could be infinite loop, but oh well,
 			 * run out of memory eventually
@@ -196,6 +273,76 @@ static void outline(struct pp *p, const char *line)
 {
 	if(!make_rules)
 		fprintf(p->out, "%s\n", line);
+}
+
+static void define(struct pp *pp, char **argv)
+{
+	if(strchr(argv[1], '(')){
+		char **args = NULL;
+		char *mname = NULL;
+		char *line;
+		char *p, *iter, *fin;
+
+		line = umalloc(strlen(argv[1]) + strlen(argv[2]) + 1);
+		sprintf(line, "%s%s", argv[1], argv[2]);
+
+		p   = strchr(line, '(');
+		fin = strchr(p,    ')');
+
+		if(!fin)
+			ppdie(pp, "no closing paren for macro definition");
+
+		*fin = '\0';
+
+		for(iter = argv[1]; *iter; iter++)
+			if(*iter == '(')
+				break;
+			else if(!isalpha(*iter) && *iter != '_')
+				ppdie(pp, "invalid macro name %s (char %c)", argv[1], *iter);
+
+		*iter = '\0';
+		mname = ustrdup(argv[1]);
+		*iter = '(';
+
+#define SPACE_WALK() \
+			while(isspace(*iter)) \
+				iter++
+
+		for(iter = p + 1; *iter; iter++){
+			SPACE_WALK();
+
+			if(isalpha(*iter)){
+				char *start = iter;
+				char save;
+
+				while(isalnum(*iter))
+					iter++;
+
+				save = *iter;
+				*iter = '\0';
+				dynarray_add((void ***)&args, ustrdup(start));
+				*iter = save;
+
+				SPACE_WALK();
+
+				if(*iter == ',')
+					continue;
+				else if(iter == fin)
+					break;
+				else
+					goto invalid_ch;
+			}else{
+invalid_ch:
+				ppdie(pp, "invalid macro (at char #%d)", *iter);
+			}
+		}
+
+		addmacro(mname, args, ustrdup(fin+1));
+
+		free(line);
+	}else{
+		ADDDEF(argv[1], argv[2] ? argv[2] : "");
+	}
 }
 
 static int pp(struct pp *p, int skip, int need_chdir)
@@ -309,7 +456,7 @@ static int pp(struct pp *p, int skip, int need_chdir)
 
 					if(incchar == '>'){
 						for(i = 0; dirs[i]; i++){
-							path = strdup_printf("%s/%s", dirs[i], base);
+							path = ustrprintf("%s/%s", dirs[i], base);
 
 							inc = fopen(path, "r");
 
@@ -383,7 +530,7 @@ static int pp(struct pp *p, int skip, int need_chdir)
 
 				newline();
 				if(!skip)
-					adddef(argv[1], argv[2] ? argv[2] : "");
+					define(p, argv);
 
 			}else if(!strcmp(argv[0], "undef")){
 				if(argc != 2)
@@ -491,9 +638,9 @@ fin:
 
 void def_defs(void)
 {
-	adddef("__FILE__", "");
-	adddef("__LINE__", "");
-	adddef("__COUNTER__", "");
+	ADDDEF("__FILE__", "");
+	ADDDEF("__LINE__", "");
+	ADDDEF("__COUNTER__", "");
 }
 
 enum proc_ret preprocess(struct pp *p, int verbose)

@@ -65,9 +65,9 @@ int main(int argc, char **argv)
 				eq = strchr(argv[i] + 2, '=');
 				if(eq){
 					*eq++ = '\0';
-					adddef(argv[i] + 2, eq);
+					ADDDEF(argv[i] + 2, eq);
 				}else
-					adddef(argv[i] + 2, "");
+					ADDDEF(argv[i] + 2, "");
 
 				break;
 			}
