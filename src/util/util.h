@@ -22,7 +22,7 @@ char *udirname(const char *);
 char *ext_replace(const char *str, const char *ext);
 
 void dynarray_add(void ***, void *);
-int  dynarray_count(void ***);
+int  dynarray_count(void **);
 void dynarray_free(void ***par, void (*f)(void *));
 
 void ice(const char *f, int line, const char *fmt, ...);

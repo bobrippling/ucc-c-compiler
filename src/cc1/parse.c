@@ -136,7 +136,7 @@ expr *parse_expr_unary_op()
 					}
 				}
 
-				e->array_store->len = dynarray_count((void ***)&e->array_store->data);
+				e->array_store->len = dynarray_count((void *)e->array_store->data.exprs);
 
 				e->array_store->type = array_exprs;
 			}
@@ -648,7 +648,7 @@ function *parse_function()
 
 		EAT(token_close_paren);
 
-		if(dynarray_count((void ***)&f->args) == 1 &&
+		if(dynarray_count((void *)f->args) == 1 &&
 				f->args[0]->type->primitive == type_void &&
 				f->args[0]->ptr_depth == 0 &&
 				f->args[0]->spel == NULL){
@@ -679,8 +679,8 @@ function *parse_function()
 		/* parse decls, then check they correspond */
 		args = parse_decls(0);
 
-		n_decls = dynarray_count((void ***)&args);
-		n_spels = dynarray_count((void ***)&spells);
+		n_decls = dynarray_count((void *)args);
+		n_spels = dynarray_count((void *)spells);
 
 		if(n_decls > n_spels)
 			die_at(args ? &args[0]->where : &f->where, "old-style function decl: mismatching argument counts");
