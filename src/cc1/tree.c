@@ -171,20 +171,20 @@ expr *expr_assignment(expr *to, expr *from)
 
 int decl_size(const decl *d)
 {
-	if(d->ptr_depth){
-		if(d->type->primitive == type_void)
-			return 1;
+	if(d->ptr_depth)
 		return platform_word_size();
-	}
 
 	switch(d->type->primitive){
 		case type_char:
+		case type_void:
 			return 1;
 
-		case type_unknown:
-		case type_void:
 		case type_int:
-			return platform_word_size(); /* should be 4 */
+			/* FIXME: 4 for int */
+			return platform_word_size();
+
+		case type_unknown:
+			ICE("unknown type in decl_size()");
 	}
 	return platform_word_size();
 }
