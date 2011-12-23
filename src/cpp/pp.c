@@ -20,7 +20,7 @@
 
 #define newline() outline(p, "")
 
-#define VERBOSE(...) do{ if(pp_verbose) fprintf(stderr, __VA_ARGS__); }while(0)
+#define VERBOSE(...) do{ if(pp_verbose) fprintf(stderr, ">> " __VA_ARGS__); }while(0)
 
 struct def
 {
@@ -179,22 +179,23 @@ static void substitutedef(struct pp *p, char **line)
 					char *dup, *cur;
 					int len;
 
-					arg_start = post + 1;
-					arg_fin = strchr(arg_start, ')'); /* FIXME: nesting */
+					arg_start = post;
+					arg_fin = strchr(arg_start - 1, ')'); /* FIXME: nesting */
 
 					if(!arg_fin)
-						ppdie(p, "no close paren for macro call (%s)", dup);
+						ppdie(p, "no close paren for macro call (%s)", *line);
 
 					arg_fin--;
+					len = arg_fin - arg_start + 2;
+					if(len){
+						dup = umalloc(len);
+						strncpy(dup, arg_start, len - 1);
+						dup[len-1] = '\0';
 
-					dup = umalloc(len = arg_fin - arg_start + 2);
-					strncpy(dup, arg_start, len - 1);
-					dup[len-1] = '\0';
-
-					for(cur = strtok(dup, ","); cur; cur = strtok(NULL, ","))
-						dynarray_add((void ***)&args, ustrdup(cur));
-					free(dup);
-
+						for(cur = strtok(dup, ","); cur; cur = strtok(NULL, ","))
+							dynarray_add((void ***)&args, ustrdup(cur));
+						free(dup);
+					}
 					post = arg_fin + 2;
 				}
 
@@ -206,14 +207,14 @@ static void substitutedef(struct pp *p, char **line)
 							arg_got, arg_expected);
 
 #ifdef MACRO_FUNC_DEBUG
-				for(i = 0; args[i]; i++)
+				for(i = 0; args && args[i]; i++)
 					fprintf(stderr, "args[%d] = \"%s\"\n", i, args[i]);
 #endif
 
 				val = ustrdup(val);
 				freeval = 1;
 
-				for(i = 0; args[i]; i++){
+				for(i = 0; args && args[i]; i++){
 					char *new;
 
 #ifdef MACRO_FUNC_DEBUG
@@ -229,9 +230,9 @@ static void substitutedef(struct pp *p, char **line)
 
 					free(val);
 					val = new;
-
-					free(args[i]);
 				}
+
+				dynarray_free((void ***)&args, free);
 			}
 
 			{
@@ -280,6 +281,12 @@ static void define(struct pp *pp, char **argv)
 		char *mname = NULL;
 		char *line;
 		char *p, *iter, *fin;
+
+		if(!argv[2]){
+			/* #define x() */
+			addmacro(ustrdup(argv[1]), NULL, ustrdup(""));
+			return;
+		}
 
 		line = umalloc(strlen(argv[1]) + strlen(argv[2]) + 1);
 		sprintf(line, "%s%s", argv[1], argv[2]);
@@ -348,10 +355,11 @@ static int pp(struct pp *p, int skip, int need_chdir)
 #define RET(x) do{ free(linealloc); ret = x; goto fin; }while(0)
 	int curwdfd;
 	int ret;
-	char *wd;
 
 	/* save for "cd -" */
 	if(need_chdir){
+		char *wd;
+
 		curwdfd = open(".", O_RDONLY);
 		if(curwdfd == -1)
 			ppdie(p, "open(\".\"): %s", strerror(errno));
@@ -360,6 +368,7 @@ static int pp(struct pp *p, int skip, int need_chdir)
 		wd = udirname(p->fname);
 		if(chdir(wd))
 			ppdie(p, "chdir(\"%s\"): %s (for %s)", wd, strerror(errno), p->fname);
+		free(wd);
 	}else{
 		curwdfd = -1;
 	}
@@ -545,15 +554,18 @@ static int pp(struct pp *p, int skip, int need_chdir)
 				newline();
 
 				if(argc != 2)
-					ppdie(p, "ifdef takes one argument");
+					ppdie(p, "if%sdef takes one argument", flag ? "n" : "");
 
-				if(flag)
-					skip = !skip;
+				VERBOSE("if%sdef %s\n", flag ? "n" : "", argv[1]);
 
-				if(skip)
+				if(skip){
 					gotdef = 0;
-				else
+				}else{
 					gotdef = !!getdef(argv[1]);
+
+					if(flag)
+						gotdef = !gotdef;
+				}
 
 				memcpy(&arg, p, sizeof arg);
 				arg.out = devnull;
@@ -577,10 +589,14 @@ static int pp(struct pp *p, int skip, int need_chdir)
 				if(argc != 1)
 					ppdie(p, "invalid #else");
 
+				VERBOSE("else\n");
+
 				RET(PROC_ELSE);
 			}else if(!strcmp(argv[0], "endif")){
 				if(argc != 1)
 					ppdie(p, "invalid #endif");
+
+				VERBOSE("endif\n");
 
 				newline();
 				RET(PROC_ENDIF);
@@ -658,7 +674,7 @@ enum proc_ret preprocess(struct pp *p, int verbose)
 	if(verbose){
 		int i;
 		for(i = 0; dirs[i]; i++)
-			fprintf(stderr, "include dir \"%s\"\n", dirs[i]);
+			fprintf(stderr, ">> include dir \"%s\"\n", dirs[i]);
 	}
 
 	ret = pp(p, 0, 1);
