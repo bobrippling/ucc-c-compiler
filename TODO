@@ -34,9 +34,9 @@ cc:
 Features
 --------
 
-typedefs
-
 structs
+
+long and short
 
 cc accepts multiple input source files
 
