@@ -4,6 +4,7 @@
 #include <errno.h>
 
 #include "pp.h"
+#include "../util/alloc.h"
 
 int make_rules = 0;
 

@@ -152,12 +152,15 @@ int dynarray_count(void **ar)
 void dynarray_free(void ***par, void (*f)(void *))
 {
 	void **ar = *par;
-	while(*ar){
-		f(*ar);
-		ar++;
+
+	if(ar){
+		while(*ar){
+			f(*ar);
+			ar++;
+		}
+		free(*par);
+		*par = NULL;
 	}
-	free(*par);
-	*par = NULL;
 }
 
 char *udirname(const char *f)
