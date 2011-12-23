@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include <stdarg.h>
+
+#include "../util/util.h"
 
 int escapechar(int c)
 {
@@ -27,7 +30,7 @@ int escapechar(int c)
 	return -1;
 }
 
-int escapestring(char *str, int *len)
+void escapestring(char *str, int *len)
 {
 	char *c;
 	int esc;
@@ -39,18 +42,11 @@ int escapestring(char *str, int *len)
 				memmove(c, c+1, strlen(c)); /* strlen(c) to include \0 */
 				c--;
 			}else{
-				extern int current_line, current_chr;
-				extern const char *current_fname;
-
-				fprintf(stderr,
-						"%s:%d:%d Warning: Ignoring escape char before '%c'\n",
-						current_fname, current_line, current_chr + 1, *c);
+				warn_at(NULL, "ignoring escape char before '%c'", *c);
 				memmove(c - 1, c, strlen(c) + 1);
 			}
 			--*len;
 		}
-
-	return 1;
 }
 
 int literalprint(FILE *f, const char *s, int len)

@@ -68,6 +68,7 @@ const char *current_fname;
 
 static char *buffer, *bufferpos;
 static int buffereof = 0;
+static int ungetch = EOF;
 
 /* -- */
 enum token curtok;
@@ -248,6 +249,34 @@ int curtok_is_xequal()
 }
 
 
+void read_string(char **sptr, int *plen)
+{
+	char *end = strchr(bufferpos, '"'), *const start = bufferpos;
+	int size;
+
+	if(!end){
+		if((end = strchr(bufferpos, '\n')))
+			*end = '\0';
+		die_at(NULL, "Couldn't find terminating quote to \"%s\"", bufferpos);
+	}
+
+	if(end > bufferpos)
+		while(end && end[-1] == '\\') /* FIXME: "hi\\" */
+			end = strchr(end + 1, '"');
+
+	size = end - start + 1;
+
+	*sptr = umalloc(size);
+	*plen = size;
+
+	strncpy(*sptr, start, size);
+	(*sptr)[size-1] = '\0';
+
+	escapestring(*sptr, plen);
+
+	bufferpos += size;
+}
+
 void nexttoken()
 {
 	int c;
@@ -257,7 +286,13 @@ void nexttoken()
 		return;
 	}
 
-	c = nextchar();
+	if(ungetch != EOF){
+		c = ungetch;
+		ungetch = EOF;
+	}else{
+		c = nextchar();
+	}
+
 	if(c == EOF){
 		curtok = token_eof;
 		return;
@@ -340,36 +375,41 @@ void nexttoken()
 		{
 			/* TODO: "hi" "there" tokenising */
 			/* TODO: read in "hello\\" - parse string char by char, rather than guessing and escaping later */
-			int size;
-			char *end = strchr(bufferpos, '"'), *const start = bufferpos;
+			char *str;
+			int len;
 
-			if(end > bufferpos)
-				while(end && end[-1] == '\\')
-					end = strchr(end + 1, '"');
-
-			if(!end){
-				if((end = strchr(bufferpos, '\n')))
-					*end = '\0';
-				die_at(NULL, "Couldn't find terminating quote to \"%s\"", bufferpos);
-			}
-
-			size = end - start + 1;
-
-			free(currentstring);
-			currentstring = umalloc(size);
-			currentstringlen = size;
-
-			strncpy(currentstring, start, size);
-			currentstring[size-1] = '\0';
-
-			if(!escapestring(currentstring, &currentstringlen)){
-				curtok = token_unknown;
-				return;
-			}
+			read_string(&str, &len);
 
 			curtok = token_string;
 
-			bufferpos += size;
+recheck:
+			c = nextchar();
+			if(c == '"'){
+				char *new, *alloc;
+				int newlen;
+
+				read_string(&new, &newlen);
+
+				alloc = umalloc(newlen + len);
+
+				memcpy(alloc, str, len);
+				memcpy(alloc + len - 1, new, newlen);
+
+				free(str);
+				free(new);
+
+				str = alloc;
+				len += newlen - 1;
+
+				goto recheck;
+			}else{
+				if(ungetch != EOF)
+					ICE("ungetch");
+				ungetch = c;
+			}
+
+			currentstring    = str;
+			currentstringlen = len;
 			break;
 		}
 
