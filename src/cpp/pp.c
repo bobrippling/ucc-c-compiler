@@ -186,10 +186,10 @@ static void substitutedef(struct pp *p, char **line)
 						ppdie(p, "no close paren for macro call (%s)", *line);
 
 					arg_fin--;
-					len = arg_fin - arg_start + 2;
-					if(len){
+					len = arg_fin - arg_start + 1;
+					if(len > 0){
 						dup = umalloc(len);
-						strncpy(dup, arg_start, len - 1);
+						strncpy(dup, arg_start + 1, len - 1);
 						dup[len-1] = '\0';
 
 						for(cur = strtok(dup, ","); cur; cur = strtok(NULL, ","))
