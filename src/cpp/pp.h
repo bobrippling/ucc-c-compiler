@@ -17,8 +17,10 @@ enum proc_ret
 	PROC_ERR
 };
 
-void adddef(const char *n, const char *v);
 void adddir(char *d);
+struct def *adddef(char *n, char *v);
 enum proc_ret preprocess(struct pp *, int verbose);
+
+#define ADDDEF(x, y) adddef(ustrdup(x), ustrdup(y))
 
 #endif
