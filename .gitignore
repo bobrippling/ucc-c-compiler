@@ -6,6 +6,7 @@ src/cc.h
 src/cc
 src/cc1/cc1
 src/cpp/cpp
+src/cpp2/cpp
 
 lib/os.h
 lib/syscall.s
