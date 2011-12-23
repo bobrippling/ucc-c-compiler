@@ -67,8 +67,13 @@ int vfprintf(FILE *file, char *fmt, va_list ap)
 
 			switch(*fmt){
 				case 's':
-					write(fd, *(char **)ap, strlen(*(char **)ap));
+				{
+					char *s = *(char **)ap;
+					if(!s)
+						s = "(null)";
+					write(fd, s, strlen(s));
 					break;
+				}
 				case 'c':
 					write(fd, (char *)ap, 1);
 					break;
