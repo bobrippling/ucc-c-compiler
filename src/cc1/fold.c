@@ -150,7 +150,7 @@ void fold_funcall(expr *e, symtable *stab)
 					iter_decl[i];
 					i++){
 				fold_decl_equal(iter_decl[i], iter_arg[i]->tree_type, &e->where,
-						WARN_ARG_MISMATCH, "mismatching arguments for arg %d to %s",
+						WARN_ARG_MISMATCH, "mismatching argument type for arg %d to %s",
 						i + 1, df->spel);
 			}
 		}

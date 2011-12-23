@@ -29,3 +29,20 @@ char *ustrdup(const char *s)
 	strcpy(r, s);
 	return r;
 }
+
+char *ustrprintf(const char *fmt, ...)
+{
+	va_list l;
+	char *buf = NULL;
+	int len = 8, ret;
+
+	do{
+		len *= 2;
+		buf = urealloc(buf, len);
+		va_start(l, fmt);
+		ret = vsnprintf(buf, len, fmt, l);
+		va_end(l);
+	}while(ret >= len);
+
+	return buf;
+}

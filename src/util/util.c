@@ -104,14 +104,8 @@ char *fline(FILE *f)
 
 		line[pos++] = c;
 		if(pos == len){
-			char *tmp;
 			len *= 2;
-			tmp = realloc(line, len);
-			if(!tmp){
-				free(line);
-				return NULL;
-			}
-			line = tmp;
+			line = urealloc(line, len);
 			line[pos+1] = '\0';
 		}
 
@@ -130,10 +124,10 @@ void dynarray_add(void ***par, void *new)
 	UCC_ASSERT(new, "dynarray_add(): adding NULL");
 
 	if(!ar){
-		ar = umalloc(2 * sizeof(void *));
+		ar = umalloc(2 * sizeof *ar);
 	}else{
-		idx = dynarray_count(par);
-		ar = urealloc(ar, (idx + 2) * sizeof(void *));
+		idx = dynarray_count(ar);
+		ar = urealloc(ar, (idx + 2) * sizeof *ar);
 	}
 
 	ar[idx] = new;
@@ -142,15 +136,13 @@ void dynarray_add(void ***par, void *new)
 	*par = ar;
 }
 
-int dynarray_count(void ***par)
+int dynarray_count(void **ar)
 {
-	void **ar;
 	int len = 0;
 
-	if(!*par)
+	if(!ar)
 		return 0;
 
-	ar = *par;
 	while(ar[len])
 		len++;
 
