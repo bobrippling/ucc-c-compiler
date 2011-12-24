@@ -129,12 +129,15 @@ void walk_expr(expr *e, symtable *stab)
 				}
 			}
 
-			asm_new(asm_call, e->spel);
+			/*asm_new(asm_call, e->spel);*/
+			/* currently only identifiers are allowed */
+			asm_temp(1, "call %s", e->expr->spel);
+
 			if(nargs)
 				asm_temp(1, "add rsp, %d ; %d arg%s",
 						nargs * platform_word_size(),
 						nargs,
-						nargs == 1 ? "":"s");
+						nargs == 1 ? "" : "s");
 
 			asm_temp(1, "push rax ; ret");
 			break;
