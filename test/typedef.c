@@ -1,18 +1,33 @@
-typedef int x;
+typedef int typedef_int;
 typedef int *intptr_t;
-typedef void vd;
+typedef void typedef_void;
 
-vd x(intptr_t);
+typedef_void x(intptr_t);
 
-x main()
+typedef_int main()
 {
-	x i;
+	typedef_int i;
+	typedef_int *p;
 	intptr_t q;
-	x *p;
 	intptr_t *pq;
 
 	pq = &q;
 
-	p = q = (x *)&i;
-	(vd)(i = (x)2);
+	p = q = (typedef_int *)&i;
+	(typedef_void)(i = (typedef_int)2);
+
+	function();
+
+	return **pq; /* 2 */
+}
+
+typedef int typedef_int2;
+typedef typedef_int2 *intptr_t2;
+
+typedef_int2 function()
+{
+	typedef_int2 p;
+	intptr_t2 q;
+	*(q = &p) = 2;
+	return p;
 }
