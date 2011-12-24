@@ -148,20 +148,26 @@ void print_expr(expr *e)
 		{
 			expr **iter;
 
-			idt_printf("%s():\n", e->spel);
+			idt_printf("funcall, calling:\n");
+
 			indent++;
+			print_expr(e->expr);
+			indent--;
+
 			if(e->funcargs){
 				int i;
+				idt_printf("args:\n");
+				indent++;
 				for(i = 1, iter = e->funcargs; *iter; iter++, i++){
 					idt_printf("arg %d:\n", i);
 					indent++;
 					print_expr(*iter);
 					indent--;
 				}
+				indent--;
 			}else{
 				idt_printf("no args\n");
 			}
-			indent--;
 			break;
 		}
 

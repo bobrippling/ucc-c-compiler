@@ -19,6 +19,9 @@
 #define DIE_UNDECL() DIE_UNDECL_SPEL(e->spel)
 
 
+#define funcall_name(e) (e)->spel
+
+
 static decl *curdecl_func;   /* for function-local labels */
 static tree *curtree_switch; /* for case + default */
 static tree *curtree_flow;   /* for break */
@@ -47,6 +50,11 @@ int fold_is_lvalue(expr *e)
 		return fold_is_lvalue(e->rhs);
 
 	return 0;
+}
+
+int fold_is_callable(expr *e)
+{
+	return e->type == expr_identifier; /* TODO: extend to function pointer */
 }
 
 #define GET_TREE_TYPE(from) \
@@ -79,7 +87,11 @@ void fold_decl_equal(decl *a, decl *b, where *w, enum warning warn,
 
 void fold_funcall(expr *e, symtable *stab)
 {
+	char *spel;
 	decl *df;
+
+	if(!fold_is_callable(e->expr))
+		die_at(&e->expr->where, "expression %s not callable", expr_to_str(e->expr->type));
 
 	if(e->funcargs){
 		expr **iter;
@@ -87,15 +99,17 @@ void fold_funcall(expr *e, symtable *stab)
 			fold_expr(*iter, stab);
 	}
 
+	spel = funcall_name(e->expr);
+	e->sym = symtab_search(stab, spel);
 	if(!e->sym){
 		df = decl_new_where(&e->where);
 
 		df->func = function_new();
 
 		df->type->primitive = type_int;
-		df->spel = e->spel;
+		df->spel = spel;
 
-		cc1_warn_at(&e->where, 0, WARN_IMPLICIT_FUNC, "implicit declaration of function \"%s\"", e->spel);
+		cc1_warn_at(&e->where, 0, WARN_IMPLICIT_FUNC, "implicit declaration of function \"%s\"", funcall_name(e->expr));
 
 		e->sym = symtab_add(symtab_grandparent(stab), df, sym_func);
 
@@ -125,7 +139,7 @@ void fold_funcall(expr *e, symtable *stab)
 		df = e->sym->decl;
 	}
 
-	GET_TREE_TYPE(e->sym->decl); /* XXX: check */
+	GET_TREE_TYPE(e->sym->decl);
 
 	/* func count comparison, only if the func has arg-decls, or the func is f(void) */
 	if(df->func->args || df->func->args_void){

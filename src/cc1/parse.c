@@ -165,14 +165,6 @@ expr *parse_expr_unary_op()
 			return e;
 		}
 
-		case token_multiply: /* deref */
-			EAT(token_multiply);
-			e = expr_new();
-			e->type = expr_op;
-			e->op   = op_deref;
-			e->lhs  = parse_expr_unary_op();
-			return e;
-
 		case token_and:
 			EAT(token_and);
 			e = parse_lone_identifier();
@@ -241,29 +233,26 @@ expr *parse_expr_unary_op()
 		}
 
 		case token_identifier:
+		{
+			int flag = 0;
+
 			e = parse_lone_identifier();
 
-			if(accept(token_open_paren)){
-				e->type = expr_funcall;
-				e->funcargs = parse_funcargs();
-				EAT(token_close_paren);
-			}else{
-				int flag = 0;
+			if((flag = accept(token_increment)) || accept(token_decrement)){
+				expr *inc = expr_new();
+				inc->type = expr_assign;
+				inc->assign_is_post = 1;
 
-				if((flag = accept(token_increment)) || accept(token_decrement)){
-					expr *inc = expr_new();
-					inc->type = expr_assign;
-					inc->assign_is_post = 1;
-
-					inc->lhs = e;
-					inc->rhs = expr_new();
-					inc->rhs->op = flag ? op_plus : op_minus;
-					inc->rhs->lhs = e;
-					inc->rhs->rhs = expr_new_val(1);
-					e = inc;
-				}
+				inc->lhs = e;
+				inc->rhs = expr_new();
+				inc->rhs->op = flag ? op_plus : op_minus;
+				inc->rhs->lhs = e;
+				inc->rhs->rhs = expr_new_val(1);
+				e = inc;
 			}
+
 			return e;
+		}
 
 		default:
 			die_at(NULL, "expected: unary expression, got %s", token_to_str(curtok));
@@ -327,11 +316,41 @@ expr *parse_expr_array()
 	return deref;
 }
 
+expr *parse_expr_funcall()
+{
+	expr *e = parse_expr_array();
+
+	if(accept(token_open_paren)){
+		expr *sub = e;
+		e = expr_new();
+		e->type = expr_funcall;
+		e->funcargs = parse_funcargs();
+		e->expr = sub;
+		EAT(token_close_paren);
+	}
+
+	return e;
+}
+
+expr *parse_expr_deref()
+{
+	if(accept(token_multiply)){
+		expr *e = expr_new();
+		e->type = expr_op;
+		e->op   = op_deref;
+		e->lhs  = parse_expr_deref();
+		return e;
+	}
+
+	return parse_expr_funcall();
+}
+
+
 expr *parse_expr_binary_op()
 {
 	/* above [/%*] above */
 	return parse_expr_join(
-			parse_expr_array, parse_expr_binary_op,
+			parse_expr_deref, parse_expr_binary_op,
 				token_multiply, token_divide, token_modulus,
 				token_unknown);
 }
@@ -931,6 +950,7 @@ decl *parse_decl(enum decl_mode decl_mode)
 
 	spec = parse_type_spec();
 	/* FIXME: int const x; */
+	d = NULL;
 
 	if((decl_mode & DECL_NO_TYPE) == 0){
 		if(curtok == token_identifier){
@@ -964,13 +984,18 @@ default_int:
 					goto default_int;
 				else
 					goto no_decl;
-			}else{
+			}else if((decl_mode & DECL_CAN_DEFAULT) == 0 || curtok != token_multiply){
+				/*
+				 * look for "*[spel]" if we can default the type,
+				 * otherwise we have finished decl parsing
+				 */
 				return NULL;
 			}
 		}
-	}else{
-		d = decl_new();
 	}
+
+	if(!d)
+		d = decl_new();
 
 	while(curtok == token_multiply){
 		EAT(token_multiply);
