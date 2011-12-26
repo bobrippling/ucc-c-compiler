@@ -1,7 +1,8 @@
-// TODO: typedef
-#define pid_t int
+#ifndef __WAIT_H
+#define __WAIT_H
 
-// TODO: move to sys/wait, and bring fcntl along too
+typedef int pid_t;
+
 pid_t fork(void);
 //pid_t wait(int *status); FIXME
 pid_t waitpid(int pid, int *status, int options);
@@ -27,4 +28,6 @@ int WEXITSTATUS(int);
 
 /* Nonzero if STATUS indicates the child is stopped.  */
 #define	__WIFSTOPPED(status)	(((status) & 0xff) == 0x7f)
+#endif
+
 #endif

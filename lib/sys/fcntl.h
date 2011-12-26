@@ -1,3 +1,6 @@
+#ifndef __FCNTL_H
+#define __FCNTL_H
+
 #define O_RDONLY	     00
 #define O_WRONLY	     01
 #define O_RDWR		     02
@@ -13,3 +16,5 @@
 
 
 int open(const char *fname, int mode, ...); /* third arg iff O_CREAT */
+
+#endif
