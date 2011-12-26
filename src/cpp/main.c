@@ -5,6 +5,7 @@
 
 #include "pp.h"
 #include "../util/alloc.h"
+#include "../util/platform.h"
 
 int make_rules = 0;
 
@@ -81,6 +82,9 @@ int main(int argc, char **argv)
 				goto usage;
 		}
 	}
+
+	if(platform_type() == PLATFORM_64)
+		ADDDEF("__x86_64__", "1");
 
 	if(i < argc){
 		inputfname = argv[i++];

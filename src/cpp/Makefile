@@ -11,6 +11,6 @@ clean:
 
 .PHONY: clean
 
-main.o: main.c pp.h
+main.o: main.c pp.h ../util/alloc.h ../util/platform.h
 pp.o: pp.c pp.h ../util/util.h ../util/alloc.h ../util/platform.h str.h
 str.o: str.c str.h ../util/alloc.h
