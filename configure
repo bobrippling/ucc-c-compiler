@@ -34,12 +34,24 @@ int main(int argc, char **argv);
 !
 	fi > lib/syscall_err.s
 
-	perl -e '
-	for(1 .. 100){
-		$! = $_;
-		printf "\t\"%s\",\n", $!;
-	}
-	' > lib/string_strerrs.h
+	if ! which perl > /dev/null
+	then
+		if [ $1 = __MACOSX__ ]
+		then m=" (and mac syscalls)"
+		fi
+		echo >&2 "Perl not found, generate strerror$m yourself"
+	else
+		perl -e '
+		for(1 .. 100){
+			$! = $_;
+			printf "\t\"%s\",\n", $!;
+		}
+		' > lib/string_strerrs.h
+
+		if [ $1 = __MACOSX__ ]
+		then perl lib/syscalls_mac.pl < lib/syscalls_32.h > lib/syscalls_mac.h
+		fi
+	fi
 
 	echo "Configured for $2"
 }
