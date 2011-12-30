@@ -30,13 +30,18 @@ symtable *symtab_new();
 symtable *symtab_child(symtable *);
 symtable *symtab_grandparent(symtable *child);
 
-sym  *symtab_add(   symtable *, decl *, enum sym_type);
-sym  *symtab_search(symtable *, const char *);
-sym  *symtab_has(   symtable *, decl *);
-void  symtab_nest(symtable *parent, symtable **brat);
+sym  *symtab_add(      symtable *, decl *, enum sym_type);
+void  symtab_add_nosym(symtable *, decl *);
+sym  *symtab_search(   symtable *, const char *);
+sym  *symtab_has(      symtable *, decl *);
+void  symtab_nest(     symtable *parent, symtable **brat);
 
 const char *sym_to_str(enum sym_type);
 
 #define sym_free(s) free(s)
+
+
+#define symtab_add_nosym(    tab, d) dynarray_add(    (void ***)&(tab)->decls, (d))
+#define symtab_prepend_nosym(tab, d) dynarray_prepend((void ***)&(tab)->decls, (d))
 
 #endif

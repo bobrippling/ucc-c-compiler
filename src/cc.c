@@ -49,6 +49,8 @@ char  f_o[32]; /* "/tmp/ucc_$$.o"; */
 const char *f;
 char *stdlib_files;
 
+char *args[4] = { "", "", "", "" };
+
 void die(const char *fmt, ...)
 {
 	va_list l;
@@ -58,6 +60,18 @@ void die(const char *fmt, ...)
 		va_end(l);
 	}
 	exit(1);
+}
+
+void args_add(enum mode m, const char *arg)
+{
+	if(!*args[m]){
+		args[m] = ustrdup(arg);
+	}else{
+		args[m] = urealloc(args[m], strlen(args[m]) + strlen(arg) + 2);
+
+		strcat(args[m], " ");
+		strcat(args[m], arg);
+	}
 }
 
 void run(const char *cmd)
@@ -80,7 +94,9 @@ void run(const char *cmd)
 			p = arg0;
 
 
-		if(WIFSIGNALED(ret)) die("%s caught signal %d\n", p, WTERMSIG(ret));
+		if(WIFSIGNALED(ret))
+			die("%s caught signal %d\n", p, WTERMSIG(ret));
+
 		die(debug ? "%s returned %d\n" : NULL, p, ret);
 	}
 }
@@ -189,27 +205,28 @@ unknown_file:
 	}
 
 	SHORTEN_OUTPUT(MODE_PREPROCESS, f_e);
-	RUN(1, "cpp/cpp %s -I'%s" LIB_PATH "' -o %s %s", debug ? "-v" : "", where, f_e, input);
+	RUN(1, "cpp/cpp %s -I'%s" LIB_PATH "' %s -o %s %s", debug ? "-v" : "", where, args[MODE_PREPROCESS], f_e, input);
 	if(mode == MODE_PREPROCESS)
 		return 0;
 
 start_compile:
 	SHORTEN_OUTPUT(MODE_COMPILE, f_s);
-	RUN(1, "cc1/cc1 %s %s %s -o %s %s", no_warn ? "-w" : "", *backend ? "-X" : "", backend, f_s, f_e);
+	RUN(1, "cc1/cc1 %s %s %s %s -o %s %s", no_warn ? "-w" : "", *backend ? "-X" : "", backend, args[MODE_COMPILE], f_s, f_e);
 	if(mode == MODE_COMPILE)
 		return 0;
 
 start_assemble:
 	SHORTEN_OUTPUT(MODE_ASSEMBLE, f_o);
-	RUN(0, UCC_NASM " -f " UCC_ARCH " -o %s %s", f_o, f_s);
+	RUN(0, UCC_NASM " -f " UCC_ARCH " %s -o %s %s", args[MODE_ASSEMBLE], f_o, f_s);
 	if(mode == MODE_ASSEMBLE)
 		return 0;
 
 start_link:
-	RUN(0, UCC_LD " " UCC_LDFLAGS " -o %s %s %s %s%s", f, f_o,
+	RUN(0, UCC_LD " " UCC_LDFLAGS " -o %s %s %s %s%s %s", f, f_o,
 			no_stdlib     ? "" : stdlib_files,
 			no_startfiles ? "" : where,
-			no_startfiles ? "" : "/../lib/crt.o"
+			no_startfiles ? "" : "/../lib/crt.o",
+			args[MODE_LINK]
 			);
 	return 0;
 }
@@ -253,6 +270,11 @@ int main(int argc, char **argv)
 			if(argv[i][0] == '-'){
 				unsigned int j;
 				int found;
+
+				if(argv[i][1] == 'f' || argv[i][1] == 'W'){
+					args_add(MODE_COMPILE, argv[i]);
+					continue;
+				}
 
 				if(!argv[i][2]){
 					found = 0;

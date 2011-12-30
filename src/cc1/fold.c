@@ -7,11 +7,11 @@
 #include "tree.h"
 #include "cc1.h"
 #include "fold.h"
-#include "../util/util.h"
 #include "sym.h"
 #include "../util/platform.h"
 #include "const.h"
 #include "asm.h"
+#include "../util/alloc.h"
 
 #define DIE_UNDECL_SPEL(sp) \
 		die_at(&e->where, "undeclared identifier \"%s\" (%s:%d)", sp, __FILE__, __LINE__)
@@ -68,9 +68,7 @@ int fold_is_callable(expr *e)
 void fold_decl_equal(decl *a, decl *b, where *w, enum warning warn,
 		const char *errfmt, ...)
 {
-	/* TODO: -fstrict-types - changes the below 0 to a 1 */
-
-	if(!decl_equal(a, b, 0)){
+	if(!decl_equal(a, b, fopt_mode & FOPT_STRICT_TYPES)){
 		/*char buf[DECL_STATIC_BUFSIZ];
 		va_list l;
 
@@ -773,6 +771,24 @@ void fold(symtable *globs)
 #define D(x) globs->decls[x]
 	int i;
 
+	if(fopt_mode & FOPT_ENABLE_ASM){
+		decl *d;
+		function *f;
+		d = decl_new();
+		f = d->func = function_new();
+		d->spel = ustrdup(ASM_INLINE_FNAME);
+
+
+		f->args = umalloc(2 * sizeof *f->args);
+		f->args[0] = decl_new();
+		f->args[1] = NULL;
+		f->args[0]->type->primitive = type_char;
+		f->args[0]->type->spec     |= spec_const;
+		f->args[0]->ptr_depth = 1;
+
+		symtab_prepend_nosym(globs, d);
+	}
+
 	for(i = 0; D(i); i++){
 		int j;
 
@@ -784,6 +800,9 @@ void fold(symtable *globs)
 			for(j = 0; D(j); j++)
 				if(j != i && D(j)->spel && !strcmp(D(j)->spel, D(i)->spel) && (D(j)->type->spec & spec_extern) == 0)
 					D(i)->ignore = 1;
+
+		if(!D(i)->ignore && symtab_search(globs, D(i)->spel))
+			die_at(&D(i)->where, "duplicate global symbol \"%s\"", D(i)->spel);
 
 		D(i)->sym = sym_new(D(i), sym_global);
 
