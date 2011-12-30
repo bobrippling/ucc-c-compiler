@@ -136,6 +136,28 @@ void dynarray_add(void ***par, void *new)
 	*par = ar;
 }
 
+void dynarray_prepend(void ***par, void *new)
+{
+	void **ar;
+	int i;
+
+	dynarray_add(par, new);
+
+	ar = *par;
+
+//#define SLOW
+#ifdef SLOW
+	for(i = dynarray_count(ar) - 2; i >= 0; i--)
+		ar[i + 1] = ar[i];
+#else
+	i = dynarray_count(ar) - 1;
+	if(i > 0)
+		memmove(ar + 1, ar, i * sizeof *ar);
+#endif
+
+	ar[0] = new;
+}
+
 int dynarray_count(void **ar)
 {
 	int len = 0;

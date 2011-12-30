@@ -97,7 +97,7 @@ sym *symtab_add(symtable *tab, decl *d, enum sym_type t)
 
 	new = sym_new(d, t);
 
-	dynarray_add((void ***)&tab->decls, d);
+	symtab_add_nosym(tab, d);
 
 	return new;
 }

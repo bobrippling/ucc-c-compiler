@@ -17,58 +17,56 @@
 #include "sym.h"
 #include "cc1.h"
 
-/* TODO */
-#define WARN_FORMAT         0
-#define WARN_INT_TO_PTR     0
-#define WARN_PTR_ARITH      0
-#define WARN_SHADOW         0
-#define WARN_UNINITIALISED  0
-#define WARN_UNUSED_PARAM   0
-#define WARN_UNUSED_VAL     0
-#define WARN_UNUSED_VAR     0
-
 struct
 {
+	int is_opt;
 	const char *arg;
-	enum warning type;
-} arg[] = {
-	{ "all",             ~0 },
-	{ "extra",            0 }, /* TODO */
-	{ "mismatch-arg",    WARN_ARG_MISMATCH                      }, /* x(int); x("hi"); */
-	{ "array-comma",     WARN_ARRAY_COMMA                       }, /* { 1, 2, 3, } */
-	{ "mismatch-assign", WARN_ASSIGN_MISMATCH                   }, /* int i = &q; */
-	{ "return-type",     WARN_RETURN_TYPE                       }, /* void x(){return 5;} and vice versa*/
+	int mask;
+} args[] = {
+	{ 0,  "all",             ~0 },
+	{ 0,  "extra",            0 },
 
-	{ "sign-compare",    WARN_SIGN_COMPARE                      }, /* unsigned x = 5; if(x == -1)... */
-	{ "extern-assume",   WARN_EXTERN_ASSUME                     }, /* int printf(); [^printf]+$ */
+	{ 0,  "mismatch-arg",    WARN_ARG_MISMATCH                      },
+	{ 0,  "array-comma",     WARN_ARRAY_COMMA                       },
+	{ 0,  "mismatch-assign", WARN_ASSIGN_MISMATCH | WARN_COMPARE_MISMATCH },
+	{ 0,  "return-type",     WARN_RETURN_TYPE                       },
 
-	{ "implicit-int",    WARN_IMPLICIT_INT                      }, /* x(){...} and [spec] x; in global/arg scope */
-	{ "implicit-func",   WARN_IMPLICIT_FUNC                     }, /* ^main(){x();} */
-	{ "implicit",        WARN_IMPLICIT_FUNC | WARN_IMPLICIT_INT }, /* ^main(){x();} */
+	{ 0,  "sign-compare",    WARN_SIGN_COMPARE                      },
+	{ 0,  "extern-assume",   WARN_EXTERN_ASSUME                     },
 
-	/* TODO */
-	{ "unused-parameter", WARN_UNUSED_PARAM },
-	{ "unused-variable",  WARN_UNUSED_VAR   },
-	{ "unused-value",     WARN_UNUSED_VAL   },
-	{ "unused",           WARN_UNUSED_PARAM | WARN_UNUSED_VAR | WARN_UNUSED_VAL },
+	{ 0,  "implicit-int",    WARN_IMPLICIT_INT                      },
+	{ 0,  "implicit-func",   WARN_IMPLICIT_FUNC                     },
+	{ 0,  "implicit",        WARN_IMPLICIT_FUNC | WARN_IMPLICIT_INT },
 
 	/* TODO */
-	{ "uninitialised",    WARN_UNINITIALISED },
+	{ 0,  "unused-parameter", WARN_UNUSED_PARAM },
+	{ 0,  "unused-variable",  WARN_UNUSED_VAR   },
+	{ 0,  "unused-value",     WARN_UNUSED_VAL   },
+	{ 0,  "unused",           WARN_UNUSED_PARAM | WARN_UNUSED_VAR | WARN_UNUSED_VAL },
 
 	/* TODO */
-	{ "array-bounds",     WARN_UNINITIALISED },
+	{ 0,  "uninitialised",    WARN_UNINITIALISED },
 
 	/* TODO */
-	{ "shadow",           WARN_SHADOW }, /* int x; { int x; } */
+	{ 0,  "array-bounds",     WARN_ARRAY_BOUNDS },
 
 	/* TODO */
-	{ "format",           WARN_FORMAT }, /* int x; { int x; } */
+	{ 0,  "shadow",           WARN_SHADOW },
 
 	/* TODO */
-	{ "pointer-arith",    WARN_PTR_ARITH }, /* void *x; x++; */
-	{ "int-ptr-cast",     WARN_INT_TO_PTR }, /* void *x; x++; */
+	{ 0,  "format",           WARN_FORMAT },
 
-	{ "pointer-arith",    WARN_INT_TO_PTR }, /* void *x; x++; */
+	/* TODO */
+	{ 0,  "pointer-arith",    WARN_PTR_ARITH  }, /* void *x; x++; */
+	{ 0,  "int-ptr-cast",     WARN_INT_TO_PTR },
+
+
+/* --- options --- */
+
+	{ 1,  "enable-asm",    FOPT_ENABLE_ASM   },
+	{ 1,  "strict-types",  FOPT_STRICT_TYPES },
+
+	{ 0,  NULL, 0 }
 };
 
 
@@ -76,15 +74,25 @@ FILE *cc_out[NUM_SECTIONS];     /* temporary section files */
 char  fnames[NUM_SECTIONS][32]; /* duh */
 FILE *cc1_out;                  /* final output */
 
-enum warning warn_mode = ~(WARN_VOID_ARITH | WARN_COMPARE_MISMATCH); /* FIXME */
+enum warning warn_mode = ~(WARN_VOID_ARITH | WARN_COMPARE_MISMATCH);
+enum fopt    fopt_mode = FOPT_NONE;
+
 
 const char *section_names[NUM_SECTIONS] = {
 	"text", "data", "bss"
 };
 
-void ccdie(const char *fmt, ...)
+
+/* compile time check for enum <-> int compat */
+#define COMP_CHECK(pre, test) \
+struct unused_ ## pre { char check[test ? -1 : 1]; }
+COMP_CHECK(a, sizeof warn_mode != sizeof(int));
+COMP_CHECK(b, sizeof fopt_mode != sizeof(int));
+
+
+void ccdie(int verbose, const char *fmt, ...)
 {
-	const int i = strlen(fmt);
+	int i = strlen(fmt);
 	va_list l;
 
 	va_start(l, fmt);
@@ -96,6 +104,12 @@ void ccdie(const char *fmt, ...)
 		perror(NULL);
 	}else{
 		fputc('\n', stderr);
+	}
+
+	if(verbose){
+		fputs("warnings:\n", stderr);
+		for(i = 0; args[i].arg; i++)
+			fprintf(stderr, "  -%c%s\n", args[i].is_opt["Wf"], args[i].arg);
 	}
 
 	exit(1);
@@ -142,7 +156,7 @@ void io_setup(void)
 
 		cc_out[i] = fopen(fnames[i], "w+"); /* need to seek */
 		if(!cc_out[i])
-			ccdie("open \"%s\":", fnames[i]);
+			ccdie(0, "open \"%s\":", fnames[i]);
 	}
 
 	atexit(io_cleanup);
@@ -159,22 +173,22 @@ void io_fin(int do_sections)
 			long last = ftell(cc_out[i]);
 
 			if(last == -1 || fseek(cc_out[i], 0, SEEK_SET) == -1)
-				ccdie("seeking on section file %d:", i);
+				ccdie(0, "seeking on section file %d:", i);
 
 			if(fprintf(cc1_out, "section .%s\n", section_names[i]) < 0)
-				ccdie("write to cc1 output:");
+				ccdie(0, "write to cc1 output:");
 
 			while(fgets(buf, sizeof buf, cc_out[i]))
 				if(fputs(buf, cc1_out) == EOF)
-					ccdie("write to cc1 output:");
+					ccdie(0, "write to cc1 output:");
 
 			if(ferror(cc_out[i]))
-				ccdie("read from section file %d:", i);
+				ccdie(0, "read from section file %d:", i);
 		}
 	}
 
 	if(fclose(cc1_out))
-		ccdie("close cc1 output");
+		ccdie(0, "close cc1 output");
 }
 
 int main(int argc, char **argv)
@@ -207,7 +221,7 @@ int main(int argc, char **argv)
 			if(strcmp(argv[i], "-")){
 				cc1_out = fopen(argv[i], "w");
 				if(!cc1_out){
-					ccdie("open %s:", argv[i]);
+					ccdie(0, "open %s:", argv[i]);
 					return 1;
 				}
 			}
@@ -215,30 +229,56 @@ int main(int argc, char **argv)
 		}else if(!strcmp(argv[i], "-w")){
 			warn_mode = WARN_NONE;
 
-		}else if(!strncmp(argv[i], "-W", 2)){
-			/*char *arg = argv[i] + 2;*/
+		}else if(argv[i][0] == '-' && (argv[i][1] == 'W' || argv[i][1] == 'f')){
+			char *arg = argv[i] + 2;
+			int *mask;
+			int j, found, rev;
 
-			/* TODO: -Wno-... */
+			rev = found = 0;
 
-			ccdie("%s: -W... not implemented", *argv);
+			if(!strncmp(arg, "no-", 3)){
+				arg += 3;
+				rev = 1;
+			}
+
+			if(argv[i][1] == 'f'){
+				mask = (int *)&fopt_mode;
+				for(j = 0; !args[j].is_opt; j++);
+			}else{
+				mask = (int *)&warn_mode;
+			}
+
+			for(; args[j].arg; j++)
+				if(!strcmp(arg, args[j].arg)){
+					if(rev)
+						*mask &= ~args[j].mask;
+					else
+						*mask |=  args[j].mask;
+					found = 1;
+					break;
+				}
+
+			if(!found){
+				fprintf(stderr, "%s \"%s\" unrecognised\n",
+						argv[i][1] == 'W' ? "warning" : "option",
+						arg
+						);
+				goto usage;
+			}
 
 		}else if(!fname){
 			fname = argv[i];
 		}else{
 usage:
-			ccdie("Usage: %s [-X backend] file", *argv);
+			ccdie(1, "Usage: %s [-W[no-]warning] [-f[no-]option] [-X backend] [-o output] file", *argv);
 		}
 	}
 
-	if(fname){
+	if(fname && strcmp(fname, "-")){
 		f = fopen(fname, "r");
-		if(!f){
-			if(strcmp(fname, "-"))
-				ccdie("open %s:", fname);
-			goto use_stdin;
-		}
+		if(!f)
+			ccdie(0, "open %s:", fname);
 	}else{
-use_stdin:
 		f = stdin;
 		fname = "-";
 	}

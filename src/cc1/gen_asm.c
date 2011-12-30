@@ -1,6 +1,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <string.h>
+#include <ctype.h>
 
 #include "../util/util.h"
 #include "tree.h"
@@ -117,8 +119,37 @@ void walk_expr(expr *e, symtable *stab)
 
 		case expr_funcall:
 		{
+			/* currently only identifiers are allowed */
+			const char *const fname = e->expr->spel;
 			expr **iter;
 			int nargs = 0;
+
+			if(fopt_mode & FOPT_ENABLE_ASM && !strcmp(fname, ASM_INLINE_FNAME)){
+				const char *str;
+				expr *arg1;
+				int i;
+
+				if(!e->funcargs || e->funcargs[1] || e->funcargs[0]->type != expr_addr)
+					die_at(&e->where, "invalid __asm__ arguments");
+
+				arg1 = e->funcargs[0];
+				str = arg1->array_store->data.str;
+				for(i = 0; i < arg1->array_store->len - 1; i++){
+					char ch = str[i];
+					if(ch != '\n' && !isprint(ch))
+invalid:
+						die_at(&arg1->where, "invalid __asm__ string (character %d)", ch);
+				}
+
+				if(str[i])
+					goto invalid;
+
+				asm_temp(0, "; start manual __asm__");
+				fprintf(cc_out[SECTION_TEXT], "%s\n", arg1->array_store->data.str);
+				asm_temp(0, "; end manual __asm__");
+				break;
+			}
+			/* continue with normal funcall */
 
 			if(e->funcargs){
 				/* need to push on in reverse order */
@@ -130,8 +161,7 @@ void walk_expr(expr *e, symtable *stab)
 			}
 
 			/*asm_new(asm_call, e->spel);*/
-			/* currently only identifiers are allowed */
-			asm_temp(1, "call %s", e->expr->spel);
+			asm_temp(1, "call %s", fname);
 
 			if(nargs)
 				asm_temp(1, "add rsp, %d ; %d arg%s",
@@ -310,7 +340,11 @@ void walk_tree(tree *t)
 
 		case stat_expr:
 			walk_expr(t->expr, t->symtab);
-			asm_temp(1, "pop rax ; unused expr");
+			if((fopt_mode & FOPT_ENABLE_ASM) == 0 ||
+					!t->expr ||
+					t->expr->type != expr_funcall ||
+					strcmp(t->expr->expr->spel, ASM_INLINE_FNAME))
+				asm_temp(1, "pop rax ; unused expr");
 			break;
 
 		case stat_code:
