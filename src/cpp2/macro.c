@@ -9,7 +9,7 @@
 #include "str.h"
 #include "macro.h"
 
-#define DEBUG(...) fprintf(stderr, ">>> " __VA_ARGS__)
+#define DEBUG(...) if(debug) fprintf(stderr, ">>> " __VA_ARGS__)
 #define TODO() fprintf(stderr, "%s: TODO\n", __func__); exit(1)
 
 typedef struct
@@ -34,10 +34,14 @@ typedef struct
 } macro;
 
 
+/* vars */
+extern int debug;
+
 macro **macros = NULL;
 char ifdef_stack[32] = { 0 };
 int  ifdef_idx = 0;
 int noop = 0;
+
 
 
 void macro_add_dir(const char *d)
