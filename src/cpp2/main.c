@@ -15,6 +15,8 @@ static const struct
 };
 
 const char *current_fname;
+int debug;
+
 
 int main(int argc, char **argv)
 {
@@ -23,6 +25,9 @@ int main(int argc, char **argv)
 	int i;
 
 	infname = outfname = NULL;
+
+	for(i = 0; initial_defs[i].nam; i++)
+		macro_add(initial_defs[i].nam, initial_defs[i].val);
 
 	for(i = 1; i < argc && *argv[i] == '-'; i++){
 		if(!strcmp(argv[i]+1, "-"))
@@ -72,6 +77,10 @@ int main(int argc, char **argv)
 				}
 				break;
 			}
+
+			case 'd':
+				debug = 1;
+				break;
 
 			case '\0':
 				/* we've been passed "-" as a filename */
@@ -130,6 +139,7 @@ usage:
 	fputs(" Options:\n"
 				"  -Idir: Add search directory\n"
 				"  -Dxyz: Define xyz\n"
-				"  -o output: output file\n", stderr);
+				"  -o output: output file\n"
+				"  -d: Turn on debug tracing\n", stderr);
 	return 1;
 }
