@@ -9,7 +9,13 @@
 #include "str.h"
 #include "macro.h"
 
-#define DEBUG(...) if(debug) fprintf(stderr, ">>> " __VA_ARGS__)
+enum
+{
+	DEBUG_NORM = 0,
+	DEBUG_VERB = 1,
+};
+#define DEBUG(level, ...) if(level < debug) fprintf(stderr, ">>> " __VA_ARGS__)
+
 #define TODO() fprintf(stderr, "%s: TODO\n", __func__); exit(1)
 
 typedef struct
@@ -43,7 +49,6 @@ int  ifdef_idx = 0;
 int noop = 0;
 
 
-
 void macro_add_dir(const char *d)
 {
 	(void)d;
@@ -59,7 +64,7 @@ void macro_add(const char *nam, const char *val)
 	m->nam = ustrdup(nam);
 	m->val = ustrdup(val);
 
-	DEBUG("macro_add(\"%s\", \"%s\")\n", nam, val);
+	DEBUG(DEBUG_NORM, "macro_add(\"%s\", \"%s\")\n", nam, val);
 }
 
 int macro_find(const char *sp)
@@ -133,21 +138,22 @@ void filter_macro(char **pline)
 	char *pos;
 	macro **iter;
 
-	if(noop){
+	if(noop)
 		**pline = '\0';
-		return;
-	}
+
+	if(!**pline)
+		return; /* optimise for empty lines also */
 
 	for(iter = macros; iter && *iter; iter++){
 		macro *m = *iter;
 
 		pos = *pline;
-		DEBUG("word_find(\"%s\", \"%s\")\n", pos, m->nam);
+		DEBUG(DEBUG_VERB, "word_find(\"%s\", \"%s\")\n", pos, m->nam);
 
 		while((pos = word_find(pos, m->nam))){
 			int posidx = pos - *pline;
 
-			DEBUG("word_replace(line=\"%s\", pos=\"%s\", nam=\"%s\", val=\"%s\")\n",
+			DEBUG(DEBUG_VERB, "word_replace(line=\"%s\", pos=\"%s\", nam=\"%s\", val=\"%s\")\n",
 					*pline, pos, m->nam, m->val);
 
 			*pline = word_replace(*pline, pos, m->nam, m->val);
@@ -213,17 +219,19 @@ void handle_include(token **tokens)
 	TODO();
 }
 
-void ifdef_push()
+void ifdef_push(int val)
 {
-	ifdef_stack[ifdef_idx++] = noop;
+	ifdef_stack[ifdef_idx++] = val;
+
 	if(ifdef_idx == sizeof ifdef_stack)
 		die("ifdef stack exceeded");
 }
 
-void ifdef_pop()
+void ifdef_pop(void)
 {
 	if(ifdef_idx == 0)
 		die("internal preprocessor error: ifdef_idx == 0");
+
 	noop = ifdef_stack[--ifdef_idx];
 }
 
@@ -232,17 +240,18 @@ void handle_ifdef(token **tokens)
 	if(dynarray_count((void **)tokens) != 1 || tokens[0]->tok != TOKEN_WORD)
 		die("invalid ifdef macro", dynarray_count((void **)tokens));
 
-	noop = !macro_find(tokens[0]->w);
-
 	ifdef_push(noop);
 
-	DEBUG("ifdef \"%s\" = %d\n", tokens[0]->w, !noop);
+	noop = !macro_find(tokens[0]->w);
 }
 
 void handle_else(token **tokens)
 {
 	if(dynarray_count((void **)tokens))
 		die("invalid else macro");
+
+	if(ifdef_idx == 0)
+		die("else unexpected");
 
 	noop = !noop;
 }
@@ -251,6 +260,9 @@ void handle_endif(token **tokens)
 {
 	if(dynarray_count((void **)tokens))
 		die("invalid else macro");
+
+	if(ifdef_idx == 0)
+		die("endif unexpected");
 
 	ifdef_pop();
 }
@@ -265,19 +277,19 @@ void handle_macro(char **pline)
 	if(tokens[0]->tok != TOKEN_WORD)
 		die("invalid preproc token");
 
-#define MAP(s, f)               \
+#define MAP(s, f)                \
 	if(!strcmp(tokens[0]->w, s)){  \
-		f(tokens + 1);              \
-		return;                     \
+		f(tokens + 1);               \
+		return;                      \
 	}
 
-	if(noop == 0){
-		MAP("define",  handle_define);
-		MAP("include", handle_include);
-		MAP("ifdef",   handle_ifdef);
-	}
-	MAP("else",    handle_else);
-	MAP("endif",   handle_endif);
+	DEBUG(DEBUG_NORM, "macro %s\n", tokens[0]->w);
 
-	die("unrecognised preproc command");
+	MAP("define",  handle_define)
+	MAP("include", handle_include)
+	MAP("ifdef",   handle_ifdef)
+	MAP("else",    handle_else)
+	MAP("endif",   handle_endif)
+
+	die("unrecognised preproc command \"%s\"", tokens[0]->w);
 }

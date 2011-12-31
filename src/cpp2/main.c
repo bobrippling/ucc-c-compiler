@@ -15,7 +15,7 @@ static const struct
 };
 
 const char *current_fname;
-int debug;
+int debug = 0;
 
 
 int main(int argc, char **argv)
@@ -79,7 +79,7 @@ int main(int argc, char **argv)
 			}
 
 			case 'd':
-				debug = 1;
+				debug++;
 				break;
 
 			case '\0':
