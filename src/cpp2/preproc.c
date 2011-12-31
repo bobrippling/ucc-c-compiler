@@ -111,10 +111,12 @@ char **filter_macros(char **lines)
 	int i;
 
 	for(i = 0; lines[i]; i++)
-		if(*lines[i] == '#')
+		if(*lines[i] == '#'){
 			handle_macro(lines + i);
-		else
+			*lines[i] = '\0';
+		}else{
 			filter_macro(lines + i);
+		}
 
 	return lines;
 }
