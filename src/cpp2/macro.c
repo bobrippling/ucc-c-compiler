@@ -6,8 +6,17 @@
 
 #include "../util/alloc.h"
 #include "../util/util.h"
+#include "../util/dynarray.h"
 #include "str.h"
 #include "macro.h"
+
+#define SINGLE_TOKEN(err) \
+	if(dynarray_count((void **)tokens) != 1 || tokens[0]->tok != TOKEN_WORD) \
+		die(err, dynarray_count((void **)tokens))
+
+#define NO_TOKEN(err) \
+	if(dynarray_count((void **)tokens)) \
+		die(err)
 
 enum
 {
@@ -55,11 +64,29 @@ void macro_add_dir(const char *d)
 	TODO();
 }
 
+macro *macro_find(const char *sp)
+{
+	macro **i;
+	for(i = macros; i && *i; i++)
+		if(!strcmp((*i)->nam, sp))
+			return *i;
+	return 0;
+}
+
 void macro_add(const char *nam, const char *val)
 {
-	macro *m = umalloc(sizeof *m);
+	macro *m;
 
-	dynarray_add((void ***)&macros, m);
+	m = macro_find(nam);
+
+	if(m){
+		fprintf(stderr, "cpp: warning: redefining \"%s\"\n", nam);
+		free(m->nam);
+		free(m->val);
+	}else{
+		m = umalloc(sizeof *m);
+		dynarray_add((void ***)&macros, m);
+	}
 
 	m->nam = ustrdup(nam);
 	m->val = ustrdup(val);
@@ -67,13 +94,16 @@ void macro_add(const char *nam, const char *val)
 	DEBUG(DEBUG_NORM, "macro_add(\"%s\", \"%s\")\n", nam, val);
 }
 
-int macro_find(const char *sp)
+void macro_remove(const char *nam)
 {
-	macro **i;
-	for(i = macros; i && *i; i++)
-		if(!strcmp((*i)->nam, sp))
-			return 1;
-	return 0;
+	macro *m = macro_find(nam);
+
+	if(m){
+		free(m->nam);
+		free(m->val);
+		dynarray_rm((void ***)macros, m);
+		free(m);
+	}
 }
 
 token **tokenise(char *line)
@@ -213,9 +243,16 @@ void handle_define(token **tokens)
 	}
 }
 
+void handle_undef(token **tokens)
+{
+	SINGLE_TOKEN("invalid undef macro");
+
+	macro_remove(tokens[0]->w);
+}
+
 void handle_include(token **tokens)
 {
-	(void)tokens;
+	SINGLE_TOKEN("invalid include macro");
 	TODO();
 }
 
@@ -237,8 +274,7 @@ void ifdef_pop(void)
 
 void handle_ifdef(token **tokens)
 {
-	if(dynarray_count((void **)tokens) != 1 || tokens[0]->tok != TOKEN_WORD)
-		die("invalid ifdef macro", dynarray_count((void **)tokens));
+	SINGLE_TOKEN("invalid ifdef macro");
 
 	ifdef_push(noop);
 
@@ -247,8 +283,7 @@ void handle_ifdef(token **tokens)
 
 void handle_else(token **tokens)
 {
-	if(dynarray_count((void **)tokens))
-		die("invalid else macro");
+	NO_TOKEN("invalid else macro");
 
 	if(ifdef_idx == 0)
 		die("else unexpected");
@@ -258,8 +293,7 @@ void handle_else(token **tokens)
 
 void handle_endif(token **tokens)
 {
-	if(dynarray_count((void **)tokens))
-		die("invalid else macro");
+	NO_TOKEN("invalid endif macro");
 
 	if(ifdef_idx == 0)
 		die("endif unexpected");
@@ -286,7 +320,10 @@ void handle_macro(char **pline)
 	DEBUG(DEBUG_NORM, "macro %s\n", tokens[0]->w);
 
 	MAP("define",  handle_define)
+	MAP("undef",   handle_undef)
+
 	MAP("include", handle_include)
+
 	MAP("ifdef",   handle_ifdef)
 	MAP("else",    handle_else)
 	MAP("endif",   handle_endif)

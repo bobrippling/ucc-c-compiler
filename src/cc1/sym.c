@@ -9,6 +9,7 @@
 #include "sym.h"
 #include "../util/alloc.h"
 #include "macros.h"
+#include "../util/dynarray.h"
 
 sym *sym_new(decl *d, enum sym_type t)
 {

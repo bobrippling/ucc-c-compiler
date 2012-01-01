@@ -12,6 +12,7 @@
 #include "const.h"
 #include "asm.h"
 #include "../util/alloc.h"
+#include "../util/dynarray.h"
 
 #define DIE_UNDECL_SPEL(sp) \
 		die_at(&e->where, "undeclared identifier \"%s\" (%s:%d)", sp, __FILE__, __LINE__)
@@ -397,7 +398,7 @@ noproblem:
 						else
 							e->lhs = expr_ptr_multiply(e->lhs, e->rhs->tree_type);
 
-						/* TODO: const_fold again */
+						const_fold(e);
 					}else{
 						cc1_warn_at(&e->tree_type->type->where, 0, WARN_VOID_ARITH, "arithmetic with void pointer");
 					}

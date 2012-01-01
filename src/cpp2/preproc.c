@@ -6,6 +6,7 @@
 
 #include "../util/util.h"
 #include "../util/alloc.h"
+#include "../util/dynarray.h"
 #include "macro.h"
 
 int current_line, current_chr;
