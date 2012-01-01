@@ -330,3 +330,9 @@ void handle_macro(char **pline)
 
 	die("unrecognised preproc command \"%s\"", tokens[0]->w);
 }
+
+void macro_finish()
+{
+	if(ifdef_idx)
+		die("endif expected");
+}

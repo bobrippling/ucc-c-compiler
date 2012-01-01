@@ -133,5 +133,6 @@ char **output(char **lines)
 void preprocess()
 {
 	char **lines = output(filter_macros(strip_comments(splice_lines())));
+	macro_finish();
 	dynarray_free((void ***)&lines, free);
 }
