@@ -127,7 +127,9 @@ token **tokenise(char *line)
 
 		c = *p;
 		if(isalpha(c) || c == '_'){
-			char *start = p;
+			char *start;
+word:
+			start = p;
 
 			t->tok = TOKEN_WORD;
 
@@ -149,7 +151,7 @@ token **tokenise(char *line)
 			p++;
 			break;
 		}else{
-			break;
+			goto word;
 		}
 	}
 
@@ -208,6 +210,7 @@ const char *token_str(token *t)
 #undef MAP
 	}
 
+	die("invalid token %d", t->tok);
 	return NULL;
 }
 
@@ -301,9 +304,8 @@ void handle_endif(token **tokens)
 	ifdef_pop();
 }
 
-void handle_macro(char **pline)
+void handle_macro(char *line)
 {
-	char *line = *pline;
 	token **tokens;
 	int i;
 
