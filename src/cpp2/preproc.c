@@ -10,14 +10,13 @@
 #include "macro.h"
 
 int current_line, current_chr;
+int strip_in_block = 0;
 
-char **splice_lines()
+char *splice_line(void)
 {
-	char **lines;
 	char *last;
 	int join;
 
-	lines = NULL;
 	join  = 0;
 
 	for(;;){
@@ -27,12 +26,9 @@ char **splice_lines()
 		line = fline(stdin);
 
 		if(!line){
-			if(feof(stdin)){
-				if(!lines)
-					dynarray_add((void ***)&lines, ustrdup(""));
-				return lines;
-			}
-			die("read():");
+			if(ferror(stdin))
+				die("read():");
+			return NULL;
 		}
 
 		current_line++;
@@ -52,87 +48,79 @@ char **splice_lines()
 			join = 1;
 			last = line;
 		}else{
-			dynarray_add((void ***)&lines, line);
+			return line;
 		}
 	}
 }
 
-char **strip_comments(char **lines)
+char *strip_comment(char *line)
 {
-	char **iter;
-	int in_block;
+	char *s;
 
-	in_block = 0;
-
-	for(iter = lines; *iter; iter++){
-		char *s;
-		for(s = *iter; *s; s++){
-			if(in_block){
-				if(*s == '*' && s[1] == '/'){
-					*s = s[1] = ' ';
-					s++;
-					in_block = 0;
-				}else{
-					*s = ' ';
-				}
-			}else if(*s == '"'){
-				/* read until the end of the string */
-keep_going:
+	for(s = line; *s; s++){
+		if(strip_in_block){
+			if(*s == '*' && s[1] == '/'){
+				*s = s[1] = ' ';
 				s++;
-				while(*s && *s != '"')
-					s++;
-				if(!*s)
-					die("no terminating quote to comment");
-				if(s[-1] == '\\')
-					goto keep_going;
-				/* finish of string */
-			}else if(*s == '/'){
-				if(s[1] == '/'){
-					/* ignore //.* */
-					*s = '\0';
-					break;
-				}else if(s[1] == '*'){
-					/* wait for terminator elsewhere (i'll be back) */
-					*s = s[1] = ' ';
-					in_block = 1;
-					s++;
-				}
+				strip_in_block = 0;
+			}else{
+				*s = ' ';
+			}
+		}else if(*s == '"'){
+			/* read until the end of the string */
+keep_going:
+			s++;
+			while(*s && *s != '"')
+				s++;
+			if(!*s)
+				die("no terminating quote to comment");
+			if(s[-1] == '\\')
+				goto keep_going;
+			/* finish of string */
+		}else if(*s == '/'){
+			if(s[1] == '/'){
+				/* ignore //.* */
+				*s = '\0';
+				break;
+			}else if(s[1] == '*'){
+				/* wait for terminator elsewhere (i'll be back) */
+				*s = s[1] = ' ';
+				strip_in_block = 1;
+				s++;
 			}
 		}
 	}
 
-	if(in_block)
-		die("no terminating comment block");
-
-	return lines;
+	return line;
 }
 
-char **filter_macros(char **lines)
+char *filter_macros(char *line)
 {
-	int i;
+	if(*line == '#'){
+		handle_macro(line);
+		*line = '\0';
+	}else{
+		filter_macro(&line);
+	}
 
-	for(i = 0; lines[i]; i++)
-		if(*lines[i] == '#'){
-			handle_macro(lines + i);
-			*lines[i] = '\0';
-		}else{
-			filter_macro(lines + i);
-		}
-
-	return lines;
+	return line;
 }
 
-char **output(char **lines)
+char *output(char *line)
 {
-	char **iter;
-	for(iter = lines; *iter; iter++)
-		printf("%s\n", *iter);
-	return lines;
+	printf("%s\n", line);
+	return line;
 }
 
 void preprocess()
 {
-	char **lines = output(filter_macros(strip_comments(splice_lines())));
+	char *line;
+
+	while((line = splice_line()))
+		free(output(filter_macros(strip_comment(line))));
+
+	if(strip_in_block)
+		die("no terminating block comment");
+
 	macro_finish();
-	dynarray_free((void ***)&lines, free);
 }
