@@ -16,6 +16,7 @@
 #include "../util/util.h"
 #include "../util/alloc.h"
 #include "../util/platform.h"
+#include "../util/dynarray.h"
 #include "str.h"
 
 #define newline() outline(p, "")
@@ -132,27 +133,48 @@ struct def *addmacro(char *mname, char **args, char *rest)
 
 	if(pp_verbose){
 		int i;
-		fprintf(stderr, "macro %s\n", mname);
+		fprintf(stderr, ">> macro %s\n", mname);
 		for(i = 0; args && args[i]; i++)
-			fprintf(stderr, "macro_arg[%d] = %s\n", i, args[i]);
-		fprintf(stderr, "rest %s\n", rest);
+			fprintf(stderr, ">> macro_arg[%d] = %s\n", i, args[i]);
+		fprintf(stderr, ">> rest %s\n", rest);
 	}
 
 	return d;
 }
 
+int in_quote(const char *line, const char *pos)
+{
+	const char *p;
+	int in = 0;
+	for(p = line; p < pos; p++)
+		if(*p == '"' && (p > line ? p[-1] != '\\' : 1))
+			in = !in; /* this is broken for "\\" */
+	return in;
+}
+
 static void substitutedef(struct pp *p, char **line)
 {
 	struct def *d;
-	char *pos;
+	char *pos = *line;
 
 	for(d = defs; d; d = d->next){
 		/* TODO: word-sep */
-		while((pos = findword(*line, d->name))){
+restart:
+		while(pos && (pos = findword(pos, d->name))){
 			char nbuf[16];
 			char *post;
 			char *val;
 			int freeval = 0;
+
+			/* dirty hack */
+			if(in_quote(*line, pos)){
+				fprintf(stderr, "%s in quote\n", pos);
+				pos++;
+				goto restart;
+			}
+
+			if(pp_verbose)
+				fprintf(stderr, "replacing %s\n", pos);
 
 			post = pos + strlen(d->name);
 
@@ -202,9 +224,14 @@ static void substitutedef(struct pp *p, char **line)
 				arg_got      = dynarray_count((void **)args);
 				arg_expected = dynarray_count((void **)d->args);
 
-				if(arg_expected != arg_got)
+				if(arg_expected != arg_got){
+					if(pp_verbose)
+						for(i = 0; i < arg_got; i++)
+							fprintf(stderr, "arg[%d] = \"%s\"\n", i, args[i]);
+
 					ppdie(p, "mismatching argument counts for macro (got %d, expected %d)",
 							arg_got, arg_expected);
+				}
 
 #ifdef MACRO_FUNC_DEBUG
 				for(i = 0; args && args[i]; i++)
@@ -245,6 +272,7 @@ static void substitutedef(struct pp *p, char **line)
 				*line = new;
 			}
 			d = defs;
+			pos = *line;
 
 			if(freeval)
 				free(val);

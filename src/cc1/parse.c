@@ -13,6 +13,7 @@
 #include "sym.h"
 #include "cc1.h"
 #include "typedef.h"
+#include "../util/dynarray.h"
 
 /*
  * order goes:

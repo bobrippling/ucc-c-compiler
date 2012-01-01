@@ -1,7 +1,8 @@
 include ../src_config.mk
 
 OBJ = preproc.o main.o macro.o str.o \
-			../util/util.o ../util/alloc.o ../util/platform.o
+			../util/util.o ../util/alloc.o \
+			../util/platform.o ../util/dynarray.o
 
 cpp: ${OBJ}
 	${CC} ${CFLAGS} -o $@ ${OBJ}
