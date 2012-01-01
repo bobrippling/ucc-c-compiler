@@ -101,7 +101,7 @@ void macro_remove(const char *nam)
 	if(m){
 		free(m->nam);
 		free(m->val);
-		dynarray_rm((void ***)macros, m);
+		dynarray_rm((void **)macros, m);
 		free(m);
 	}
 }

@@ -49,12 +49,10 @@ void dynarray_prepend(void ***par, void *new)
 	ar[0] = new;
 }
 
-void dynarray_rm(void ***par, void *x)
+void dynarray_rm(void **ar, void *x)
 {
-	void **ar;
 	int i, n;
 
-	ar = *par;
 	n = dynarray_count(ar);
 
 	for(i = 0; ar[i]; i++)
