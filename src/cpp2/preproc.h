@@ -8,5 +8,6 @@ struct macro
 };
 
 void preprocess(void);
+void preproc_push(FILE *f);
 
 #endif
