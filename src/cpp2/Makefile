@@ -12,7 +12,9 @@ clean:
 
 .PHONY: clean
 
-macro.o: macro.c ../util/alloc.h ../util/util.h str.h macro.h
+macro.o: macro.c ../util/alloc.h ../util/util.h ../util/dynarray.h str.h \
+ macro.h preproc.h
 main.o: main.c macro.h preproc.h
-preproc.o: preproc.c ../util/util.h ../util/alloc.h macro.h
+preproc.o: preproc.c ../util/util.h ../util/alloc.h ../util/dynarray.h \
+ macro.h
 str.o: str.c str.h ../util/alloc.h

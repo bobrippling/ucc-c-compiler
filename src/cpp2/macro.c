@@ -3,12 +3,14 @@
 #include <ctype.h>
 #include <stdarg.h>
 #include <string.h>
+#include <errno.h>
 
 #include "../util/alloc.h"
 #include "../util/util.h"
 #include "../util/dynarray.h"
 #include "str.h"
 #include "macro.h"
+#include "preproc.h"
 
 #define SINGLE_TOKEN(err) \
 	if(dynarray_count((void **)tokens) != 1 || tokens[0]->tok != TOKEN_WORD) \
@@ -18,6 +20,8 @@
 	if(dynarray_count((void **)tokens)) \
 		die(err)
 
+#define NOOP_RET() if(should_noop()) return
+
 enum
 {
 	DEBUG_NORM = 0,
@@ -25,7 +29,7 @@ enum
 };
 #define DEBUG(level, ...) if(level < debug) fprintf(stderr, ">>> " __VA_ARGS__)
 
-#define TODO() fprintf(stderr, "%s: TODO\n", __func__); exit(1)
+#define TODO() do{fprintf(stderr, "%s: TODO\n", __func__); exit(1);}while(0)
 
 typedef struct
 {
@@ -57,6 +61,26 @@ char ifdef_stack[32] = { 0 };
 int  ifdef_idx = 0;
 int noop = 0;
 
+
+int should_noop(void)
+{
+	int i;
+
+	/*
+	 * all must be zero to noop
+	 * i.e. every noop for each ifdef of the current position
+	 * should be 0, meaning no noops
+	 */
+	if(noop)
+		return 1;
+
+	/* TODO: optimise with memcmp? */
+	for(i = 0; i < ifdef_idx; i++)
+		if(ifdef_stack[i])
+			return 1;
+
+	return 0;
+}
 
 void macro_add_dir(const char *d)
 {
@@ -150,6 +174,21 @@ word:
 			t->tok = TOKEN_CLOSE_PAREN;
 			p++;
 			break;
+		}else if(c == '"'){
+			char *end  = strchr(p + 1, '"');
+			char c;
+
+			/* guaranteed, since strip_comment() checks */
+			while(end[-1] == '\\')
+				end = strchr(end + 1, '"');
+
+			c = end[1];
+			end[1] = '\0';
+			t->w = ustrdup(p);
+			end[1] = c;
+			p = end;
+
+			t->tok = TOKEN_WORD;
 		}else{
 			goto word;
 		}
@@ -170,7 +209,7 @@ void filter_macro(char **pline)
 	char *pos;
 	macro **iter;
 
-	if(noop)
+	if(should_noop())
 		**pline = '\0';
 
 	if(!**pline)
@@ -221,6 +260,8 @@ void handle_define(token **tokens)
 	if(tokens[0]->tok != TOKEN_WORD)
 		die("word expected");
 
+	NOOP_RET();
+
 	name = tokens[0]->w;
 
 	if(tokens[1] && tokens[1]->tok == TOKEN_OPEN_PAREN && !tokens[1]->had_whitespace){
@@ -250,13 +291,41 @@ void handle_undef(token **tokens)
 {
 	SINGLE_TOKEN("invalid undef macro");
 
+	NOOP_RET();
+
 	macro_remove(tokens[0]->w);
 }
 
 void handle_include(token **tokens)
 {
+	FILE *f;
+	char *fname;
+	int len;
+
 	SINGLE_TOKEN("invalid include macro");
-	TODO();
+
+	fname = tokens[0]->w;
+	len = strlen(fname);
+
+	if(*fname == '<' && fname[len-1] != '>')
+		die("invalid include end");
+	else if(*fname != '"')
+		die("invalid include start");
+
+	/* if it's '"' then we've got a finishing '"' */
+
+	if(*fname == '<')
+		TODO();
+
+	NOOP_RET();
+
+	fname[len-1] = '\0';
+	fname++;
+
+	f = fopen(fname, "r");
+	if(!f)
+		die("open %s: %s", fname, strerror(errno));
+	preproc_push(f);
 }
 
 void ifdef_push(int val)
@@ -270,18 +339,28 @@ void ifdef_push(int val)
 void ifdef_pop(void)
 {
 	if(ifdef_idx == 0)
-		die("internal preprocessor error: ifdef_idx == 0");
+		ICE("ifdef_idx == 0 on ifdef_pop()");
 
 	noop = ifdef_stack[--ifdef_idx];
 }
 
-void handle_ifdef(token **tokens)
+void handle_somedef(token **tokens, int rev)
 {
 	SINGLE_TOKEN("invalid ifdef macro");
 
 	ifdef_push(noop);
 
-	noop = !macro_find(tokens[0]->w);
+	noop = rev ^ !macro_find(tokens[0]->w);
+}
+
+void handle_ifdef(token **tokens)
+{
+	handle_somedef(tokens, 0);
+}
+
+void handle_ifndef(token **tokens)
+{
+	handle_somedef(tokens, 1);
 }
 
 void handle_else(token **tokens)
@@ -331,6 +410,7 @@ void handle_macro(char *line)
 	MAP("include", handle_include)
 
 	MAP("ifdef",   handle_ifdef)
+	MAP("ifndef",  handle_ifndef)
 	MAP("else",    handle_else)
 	MAP("endif",   handle_endif)
 

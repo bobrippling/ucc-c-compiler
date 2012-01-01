@@ -12,6 +12,23 @@
 int current_line, current_chr;
 int strip_in_block = 0;
 
+FILE *file_stack[8] = { NULL };
+int   file_stack_idx = 0;
+
+void preproc_push(FILE *f)
+{
+	file_stack[file_stack_idx++] = f;
+	if(file_stack_idx == sizeof(file_stack) / sizeof(file_stack[0]))
+		die("too many includes");
+}
+
+void preproc_pop(void)
+{
+	if(!file_stack_idx)
+		ICE("file stack idx = 0 on pop()");
+	file_stack_idx--;
+}
+
 char *splice_line(void)
 {
 	char *last;
@@ -20,14 +37,26 @@ char *splice_line(void)
 	join  = 0;
 
 	for(;;){
+		FILE *f;
 		int len;
 		char *line;
 
-		line = fline(stdin);
+re_read:
+		if(file_stack_idx <= 0)
+			ICE("file stack idx = 0 on read()");
+		f = file_stack[file_stack_idx - 1];
+		line = fline(f);
 
 		if(!line){
-			if(ferror(stdin))
+			if(ferror(f))
 				die("read():");
+
+			fclose(f);
+			if(file_stack_idx > 1){
+				preproc_pop();
+				goto re_read;
+			}
+
 			return NULL;
 		}
 
@@ -115,6 +144,8 @@ char *output(char *line)
 void preprocess()
 {
 	char *line;
+
+	preproc_push(stdin);
 
 	while((line = splice_line()))
 		free(output(filter_macros(strip_comment(line))));
