@@ -305,8 +305,12 @@ void handle_macro(char **pline)
 {
 	char *line = *pline;
 	token **tokens;
+	int i;
 
 	tokens = tokenise(line);
+
+	if(!tokens)
+		return;
 
 	if(tokens[0]->tok != TOKEN_WORD)
 		die("invalid preproc token");
@@ -314,7 +318,7 @@ void handle_macro(char **pline)
 #define MAP(s, f)                \
 	if(!strcmp(tokens[0]->w, s)){  \
 		f(tokens + 1);               \
-		return;                      \
+		goto fin;                    \
 	}
 
 	DEBUG(DEBUG_NORM, "macro %s\n", tokens[0]->w);
@@ -329,6 +333,12 @@ void handle_macro(char **pline)
 	MAP("endif",   handle_endif)
 
 	die("unrecognised preproc command \"%s\"", tokens[0]->w);
+fin:
+	for(i = 0; tokens[i]; i++){
+		free(tokens[i]->w);
+		free(tokens[i]);
+	}
+	free(tokens);
 }
 
 void macro_finish()
