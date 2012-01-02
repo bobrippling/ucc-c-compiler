@@ -24,7 +24,7 @@ char *word_replace(char *line, char *pos, const char *find, const char *replace)
 		char *del = line;
 
 		*pos = '\0';
-		line = ustrprintf("%s%s%s", line, replace, pos + len_find + 1);
+		line = ustrprintf("%s%s%s", line, replace, pos + len_find);
 		free(del);
 
 		return line;
