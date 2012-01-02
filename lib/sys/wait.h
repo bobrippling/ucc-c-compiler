@@ -1,9 +1,8 @@
 #ifndef __WAIT_H
 #define __WAIT_H
 
-typedef int pid_t;
+#include <unistd.h>
 
-pid_t fork(void);
 //pid_t wait(int *status); FIXME
 pid_t waitpid(int pid, int *status, int options);
 
