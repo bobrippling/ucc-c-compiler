@@ -1,6 +1,6 @@
 #include "stdlib.h"
-#include "syscalls.h"
 #include "unistd.h"
+#include "syscalls.h"
 
 void exit(int code)
 {
@@ -28,4 +28,12 @@ void *malloc(unsigned size)
 void free(void *p)
 {
 	/* no op... :C */
+}
+
+void abort()
+{
+	// TODO: unblock SIGABRT
+	raise(SIGABRT);
+
+	// TODO: restore + unblock SIGABRT and re-raise
 }

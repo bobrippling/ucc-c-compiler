@@ -14,7 +14,6 @@
 #define O_NOFOLLOW	0400000
 #define O_CLOEXEC   02000000
 
-
 int open(const char *fname, int mode, ...); /* third arg iff O_CREAT */
 
 #endif
