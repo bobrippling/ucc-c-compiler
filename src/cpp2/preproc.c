@@ -20,6 +20,20 @@ void preproc_push(FILE *f)
 	file_stack[file_stack_idx++] = f;
 	if(file_stack_idx == sizeof(file_stack) / sizeof(file_stack[0]))
 		die("too many includes");
+
+#ifdef DO_CHDIR
+		char *wd;
+
+		curwdfd = open(".", O_RDONLY);
+		if(curwdfd == -1)
+			ppdie(p, "open(\".\"): %s", strerror(errno));
+
+		/* make sure everything is relative to the file */
+		wd = udirname(p->fname);
+		if(chdir(wd))
+			ppdie(p, "chdir(\"%s\"): %s (for %s)", wd, strerror(errno), p->fname);
+		free(wd);
+#endif
 }
 
 void preproc_pop(void)
@@ -27,6 +41,14 @@ void preproc_pop(void)
 	if(!file_stack_idx)
 		ICE("file stack idx = 0 on pop()");
 	file_stack_idx--;
+
+#ifdef DO_CHDIR
+	if(curwdfd != -1){
+		if(fchdir(curwdfd) == -1)
+			ppdie(p, "chdir(-): %s", strerror(errno));
+		close(curwdfd);
+	}
+#endif
 }
 
 char *splice_line(void)
