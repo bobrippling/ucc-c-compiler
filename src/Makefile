@@ -10,6 +10,7 @@ cc1: util
 
 cpp: util
 	make -C cpp
+	make -C cpp2
 
 util:
 	make -C util
