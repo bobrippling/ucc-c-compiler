@@ -22,6 +22,13 @@
 
 #define NOOP_RET() if(should_noop()) return
 
+#define SHOW_TOKENS(pre, t) \
+	do{ \
+		int i; \
+		for(len = 0; t[i]; i++) \
+			fprintf(stderr, pre "token %d = %s\n", i, token_str(t[i])) \
+	}while(0)
+
 
 char ifdef_stack[32] = { 0 };
 int  ifdef_idx = 0;
@@ -140,6 +147,23 @@ const char *token_str(token *t)
 	return NULL;
 }
 
+char *tokens_join(token **tokens)
+{
+	int i;
+	int len;
+	char *val;
+
+	len = 1;
+	for(i = 0; tokens[i]; i++)
+		len += strlen(token_str(tokens[i]));
+	val = umalloc(len);
+	*val = '\0';
+	for(i = 0; tokens[i]; i++)
+		strcat(val, token_str(tokens[i]));
+
+	return val;
+}
+
 void handle_define(token **tokens)
 {
 	char *name;
@@ -153,20 +177,46 @@ void handle_define(token **tokens)
 
 	if(tokens[1] && tokens[1]->tok == TOKEN_OPEN_PAREN && !tokens[1]->had_whitespace){
 		/* function macro */
-		TODO();
+		int i;
+		char **args;
+		char *val;
+
+		for(i = 2; tokens[i]; i++){
+			switch(tokens[i]->tok){
+				case TOKEN_CLOSE_PAREN:
+					i++;
+					goto for_fin;
+				case TOKEN_WORD:
+					dynarray_add((void ***)&args, ustrdup(token_str(tokens[i])));
+
+					i++;
+					switch(tokens[i]->tok){
+						case TOKEN_COMMA:
+							continue;
+						case TOKEN_CLOSE_PAREN:
+							i++;
+							goto for_fin;
+						default:
+							die("expected: comma or close paren");
+					}
+
+				default:
+					die("unexpected token %s", token_str(tokens[i]));
+			}
+		}
+for_fin:
+		if(!tokens[i])
+			val = ustrdup("");
+		else
+			val = tokens_join(tokens + i);
+
+		macro_add_func(name, val, args);
+
+		free(val);
 
 	}else{
 		char *val;
-		int i;
-		int len;
-
-		len = 1;
-		for(i = 1; tokens[i]; i++)
-			len += strlen(token_str(tokens[i]));
-		val = umalloc(len);
-		*val = '\0';
-		for(i = 1; tokens[i]; i++)
-			strcat(val, token_str(tokens[i]));
+		val = tokens_join(tokens + 1);
 
 		macro_add(name, val);
 
@@ -187,32 +237,67 @@ void handle_include(token **tokens)
 {
 	FILE *f;
 	char *fname;
-	int len;
+	int len, free_fname, lib;
 
-	SINGLE_TOKEN("invalid include macro");
+	free_fname = 0;
 
-	fname = tokens[0]->w;
-	len = strlen(fname);
+	if(tokens[1]){
+		int i;
 
-	if(*fname == '<' && fname[len-1] != '>')
-		die("invalid include end");
-	else if(*fname != '"')
-		die("invalid include start");
+		len = 0;
+
+		for(i = 0; tokens[i]; i++)
+			len += strlen(token_str(tokens[i]));
+
+		fname = umalloc(len + 1);
+		*fname = '\0';
+
+		for(i = 0; tokens[i]; i++)
+			strcat(fname, token_str(tokens[i]));
+
+		free_fname = 1;
+	}else{
+		fname = tokens[0]->w;
+		len = strlen(fname);
+	}
+
+	if(*fname == '<'){
+		if(fname[len-1] != '>')
+			die("invalid include end '%c'", fname[len-1]);
+	}else if(*fname != '"'){
+		die("invalid include start '%c'", *fname);
+	}
 
 	/* if it's '"' then we've got a finishing '"' */
 
-	if(*fname == '<')
-		TODO();
 
 	NOOP_RET();
 
+	lib = *fname == '<';
 	fname[len-1] = '\0';
 	fname++;
 
-	f = fopen(fname, "r");
-	if(!f)
-		die("open %s: %s", fname, strerror(errno));
+	if(lib){
+		for(lib = 0; lib_dirs && lib_dirs[lib]; lib++){
+			char *path = ustrprintf("%s/%s", lib_dirs[lib], fname);
+			f = fopen(path, "r");
+			free(path);
+			if(f)
+				break;
+		}
+
+		if(!f)
+			die("can't find include file <%s>", fname);
+	}else{
+		f = fopen(fname, "r");
+		if(!f)
+			die("open %s: %s", fname, strerror(errno));
+	}
+
 	preproc_push(f);
+
+	if(free_fname)
+		free(fname - 1);
 }
 
 void ifdef_push(int val)

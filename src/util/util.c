@@ -9,7 +9,7 @@
 
 const char *where_str(const struct where *w)
 {
-	static char buf[128];
+	static char buf[WHERE_BUF_SIZ];
 	snprintf(buf, sizeof buf, "%s:%d:%d", w->fname, w->line, w->chr + 1);
 	return buf;
 }
@@ -106,7 +106,7 @@ char *fline(FILE *f)
 		if(pos == len){
 			len *= 2;
 			line = urealloc(line, len);
-			line[pos+1] = '\0';
+			line[pos] = '\0';
 		}
 
 		if(c == '\n'){
