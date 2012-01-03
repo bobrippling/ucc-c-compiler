@@ -110,7 +110,7 @@ void fold_funcall(expr *e, symtable *stab)
 
 		cc1_warn_at(&e->where, 0, WARN_IMPLICIT_FUNC, "implicit declaration of function \"%s\"", funcall_name(e->expr));
 
-		e->sym = symtab_add(symtab_grandparent(stab), df, sym_func);
+		e->sym = SYMTAB_ADD(symtab_grandparent(stab), df, sym_func);
 
 		df->sym = NULL;
 		/*
@@ -268,7 +268,7 @@ void fold_expr(expr *e, symtable *stab)
 				e->tree_type->type->spec |= spec_static;
 				e->tree_type->ptr_depth = 1;
 
-				array_sym = symtab_add(symtab_grandparent(stab), decl_new_where(&e->where), stab->parent ? sym_local : sym_global);
+				array_sym = SYMTAB_ADD(symtab_grandparent(stab), decl_new_where(&e->where), stab->parent ? sym_local : sym_global);
 				memcpy(array_sym->decl, e->tree_type, sizeof *array_sym->decl);
 
 				e->spel =
@@ -602,7 +602,7 @@ void fold_tree(tree *t)
 
 					fold_decl(d, t->symtab);
 
-					symtab_add(t->symtab, d, d->func ? sym_func : sym_local);
+					SYMTAB_ADD(t->symtab, d, d->func ? sym_func : sym_local);
 				}
 			}
 
@@ -735,7 +735,7 @@ void fold_func(decl *df, symtable *globsymtab)
 				if(!f->args[i]->spel)
 					die_at(&f->where, "function \"%s\" has unnamed arguments", df->spel);
 				else
-					symtab_add(f->code->symtab, f->args[i], sym_arg);
+					SYMTAB_ADD(f->code->symtab, f->args[i], sym_arg);
 		}
 
 		symtab_nest(globsymtab, &f->code->symtab);
@@ -787,7 +787,7 @@ void fold(symtable *globs)
 		f->args[0]->type->spec     |= spec_const;
 		f->args[0]->ptr_depth = 1;
 
-		symtab_prepend_nosym(globs, d);
+		symtab_add(globs, d, sym_global, SYMTAB_WITH_SYM, SYMTAB_PREPEND);
 	}
 
 	for(i = 0; D(i); i++){
@@ -801,9 +801,6 @@ void fold(symtable *globs)
 			for(j = 0; D(j); j++)
 				if(j != i && D(j)->spel && !strcmp(D(j)->spel, D(i)->spel) && (D(j)->type->spec & spec_extern) == 0)
 					D(i)->ignore = 1;
-
-		if(!D(i)->ignore && symtab_search(globs, D(i)->spel))
-			die_at(&D(i)->where, "duplicate global symbol \"%s\"", D(i)->spel);
 
 		D(i)->sym = sym_new(D(i), sym_global);
 

@@ -1065,7 +1065,7 @@ symtable *parse()
 
 	if(decls)
 		for(i = 0; decls[i]; i++)
-			symtab_add_nosym(globals, decls[i]);
+			symtab_add(globals, decls[i], sym_global, SYMTAB_NO_SYM, SYMTAB_APPEND);
 
 	EAT(token_eof);
 

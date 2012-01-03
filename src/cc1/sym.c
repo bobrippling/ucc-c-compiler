@@ -86,7 +86,7 @@ sym *symtab_has(symtable *tab, decl *d)
 	return symtab_search2(tab, d, decl_cmp, 1);
 }
 
-sym *symtab_add(symtable *tab, decl *d, enum sym_type t)
+sym *symtab_add(symtable *tab, decl *d, enum sym_type t, int with_sym, int prepend)
 {
 	sym *new;
 
@@ -96,9 +96,12 @@ sym *symtab_add(symtable *tab, decl *d, enum sym_type t)
 				new->decl ? " at " : "",
 				new->decl ? where_str(&new->decl->where) : "");
 
-	new = sym_new(d, t);
+	if(with_sym)
+		new = sym_new(d, t);
+	else
+		new = NULL;
 
-	symtab_add_nosym(tab, d);
+	(prepend ? dynarray_prepend : dynarray_add)((void ***)&tab->decls, d);
 
 	return new;
 }
