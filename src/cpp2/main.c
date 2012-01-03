@@ -2,9 +2,11 @@
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
+#include <stdarg.h>
 
 #include "macro.h"
 #include "preproc.h"
+#include "../util/util.h"
 
 static const struct
 {
@@ -115,23 +117,15 @@ int main(int argc, char **argv)
 	CHECK_FILE(infname,  "r", stdin)
 
 	if(!infname)
-		infname = "stdin";
+		infname = "<stdin>";
 
 	current_fname = infname;
 
 	preprocess();
 
-	fclose(stdin);
-	if(errno){
-		perror("close()");
-		ret = 1;
-	}
-
 	fclose(stdout);
-	if(errno){
-		perror("close()");
-		ret = 1;
-	}
+	if(errno)
+		die("close():");
 
 	return ret;
 usage:

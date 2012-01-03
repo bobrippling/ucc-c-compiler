@@ -27,4 +27,6 @@ void icw(const char *f, int line, const char *fmt, ...);
 #define ICE(...) ice(__FILE__, __LINE__, __VA_ARGS__)
 #define ICW(...) icw(__FILE__, __LINE__, __VA_ARGS__)
 
+#define WHERE_BUF_SIZ 128
+
 #endif

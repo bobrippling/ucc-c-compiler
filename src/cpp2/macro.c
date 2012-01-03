@@ -10,11 +10,11 @@
 
 
 macro **macros = NULL;
-char **dirs = NULL;
+char **lib_dirs = NULL;
 
 void macro_add_dir(char *d)
 {
-	dynarray_add((void ***)&dirs, d);
+	dynarray_add((void ***)&lib_dirs, d);
 }
 
 macro *macro_find(const char *sp)
@@ -26,7 +26,7 @@ macro *macro_find(const char *sp)
 	return 0;
 }
 
-void macro_add(const char *nam, const char *val)
+macro *macro_add(const char *nam, const char *val)
 {
 	macro *m;
 
@@ -45,6 +45,15 @@ void macro_add(const char *nam, const char *val)
 	m->val = ustrdup(val);
 
 	DEBUG(DEBUG_NORM, "macro_add(\"%s\", \"%s\")\n", nam, val);
+
+	return m;
+}
+
+macro *macro_add_func(const char *nam, const char *val, char **args)
+{
+	macro *m  = macro_add(nam, val);
+	m->args = args;
+	return m;
 }
 
 void macro_remove(const char *nam)
@@ -72,6 +81,9 @@ void filter_macro(char **pline)
 
 	for(iter = macros; iter && *iter; iter++){
 		macro *m = *iter;
+
+		if(m->args)
+			TODO();
 
 		pos = *pline;
 		DEBUG(DEBUG_VERB, "word_find(\"%s\", \"%s\")\n", pos, m->nam);
