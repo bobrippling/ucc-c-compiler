@@ -20,6 +20,8 @@ cpp:
 
 	cc -MM *.c
 
+	push current_line when descending into #include
+
 
 cc:
 	-W code in cc.c

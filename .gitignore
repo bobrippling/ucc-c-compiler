@@ -11,6 +11,7 @@ src/cpp2/cpp
 lib/os.h
 lib/syscall.s
 lib/syscall_err.s
+lib/syscalls_mac.h
 lib/string_strerrs.h
 
 test/addr
