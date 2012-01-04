@@ -64,6 +64,7 @@ int fold_is_callable(expr *e)
 			decl_free(e->tree_type);*/ \
 		e->tree_type = decl_copy(from); \
 		e->tree_type->spel = NULL; \
+		e->tree_type->arraysizes = NULL; \
 	}while(0)
 
 void fold_decl_equal(decl *a, decl *b, where *w, enum warning warn,
@@ -259,7 +260,6 @@ void fold_expr(expr *e, symtable *stab)
 			break;
 
 		case expr_addr:
-
 			if(e->array_store){
 				sym *array_sym;
 
@@ -306,13 +306,26 @@ void fold_expr(expr *e, symtable *stab)
 					DIE_UNDECL();
 
 				GET_TREE_TYPE(e->sym->decl);
-				e->tree_type->ptr_depth++;
+
+				/*
+				 * int x[2];
+				 * int *p = &x;
+				 * p is int *, not int **
+				 * hence the following if
+				 */
+				if(!e->sym->decl->arraysizes)
+					e->tree_type->ptr_depth++;
 			}
 			break;
 
 		case expr_identifier:
-			if(!e->sym)
-				DIE_UNDECL();
+			if(!e->sym){
+				if(!strcmp(e->spel, "__func__")){
+					ICE("TODO: __func__");
+				}else{
+					DIE_UNDECL();
+				}
+			}
 
 			GET_TREE_TYPE(e->sym->decl);
 			break;
