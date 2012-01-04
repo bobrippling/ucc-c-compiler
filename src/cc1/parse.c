@@ -170,6 +170,17 @@ expr *parse_expr_unary_op()
 			EAT(token_and);
 			e = parse_lone_identifier();
 			e->type = expr_addr;
+			if(accept(token_open_square)){
+				/* &x[5] */
+				expr *new = expr_new();
+				new->lhs = e;
+				new->rhs = parse_expr();
+				EAT(token_close_square);
+
+				e = new;
+				e->type = expr_op;
+				e->op   = op_plus;
+			}
 			return e;
 
 		case token_plus:
