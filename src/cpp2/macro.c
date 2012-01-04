@@ -1,11 +1,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdarg.h>
 
 #include "macro.h"
 #include "parse.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
+#include "../util/util.h"
 #include "str.h"
 
 
@@ -70,7 +72,6 @@ void macro_remove(const char *nam)
 
 void filter_macro(char **pline)
 {
-	char *pos;
 	macro **iter;
 
 	if(should_noop())
@@ -81,23 +82,68 @@ void filter_macro(char **pline)
 
 	for(iter = macros; iter && *iter; iter++){
 		macro *m = *iter;
+		int did_replace = 0;
 
-		if(m->args)
-			TODO();
+		if(m->args){
+			char *s, *last;
+			char **args;
+			char *open_b, *close_b; /* TODO: nesting */
+			char *replace;
+			char *line;
+			int i;
 
-		pos = *pline;
-		DEBUG(DEBUG_VERB, "word_find(\"%s\", \"%s\")\n", pos, m->nam);
+			line = *pline;
 
-		while((pos = word_find(pos, m->nam))){
-			int posidx = pos - *pline;
+			open_b  = strchr(line, '(');
+			close_b = strchr(line, ')');
+			if(!open_b){
+					/* ignore the macro */
+					line++;
+					continue;
+			}
+			if(!close_b)
+				die("no close paren for function-macro");
 
-			DEBUG(DEBUG_VERB, "word_replace(line=\"%s\", pos=\"%s\", nam=\"%s\", val=\"%s\")\n",
-					*pline, pos, m->nam, m->val);
+			*open_b  = '\0';
+			*close_b = '\0';
 
-			*pline = word_replace(*pline, pos, m->nam, m->val);
-			pos = *pline + posidx + strlen(m->val);
+			args = NULL;
+			for(last = s = open_b + 1; *s; s++){
+				/* FIXME: tokenise and fix in general */
+				if(*s == ','){
+					if(s == last)
+						die("no argument to function macro");
+					*s = '\0';
+					dynarray_add((void ***)&args, ustrdup(last));
+					*s = ',';
+					last = s + 1;
+				}
+			}
 
-			iter = macros;
+			{
+				int got, exp;
+				got = dynarray_count((void **)args);
+				exp = dynarray_count((void **)m->args);
+				if(got != exp)
+					die("wrong number of args to function macro \"%s\", got %d, expected %d",
+							m->nam, got, exp);
+			}
+
+			replace = ustrdup(m->val);
+
+			for(i = 0; args[i]; i++)
+				word_replace_g(&replace, m->args[i], args[i]);
+
+			*pline = str_replace(*pline, open_b, close_b, replace);
+
+			free(replace);
+
+			did_replace = 1;
+		}else{
+			did_replace = word_replace_g(pline, m->nam, m->val);
 		}
+
+		if(did_replace)
+			iter = macros;
 	}
 }
