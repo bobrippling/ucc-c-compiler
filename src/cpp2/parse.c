@@ -143,7 +143,7 @@ const char *token_str(token *t)
 #undef MAP
 	}
 
-	die("invalid token %d", t->tok);
+	ICE("invalid token %d", t->tok);
 	return NULL;
 }
 
