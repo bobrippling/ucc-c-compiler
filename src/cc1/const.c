@@ -82,6 +82,41 @@ int operate(expr *lhs, expr *rhs, enum op_type op, int *bad)
 	return 0;
 }
 
+void operate_optimise(expr *e)
+{
+	/* TODO */
+
+	switch(e->op){
+		case op_orsc:
+		case op_andsc:
+			/* check if one side is (&& ? false : true) and short circuit it without needing to check the other side */
+			if(e->lhs->type == expr_val || e->rhs->type == expr_val)
+				warn_at(&e->where, "short circuit optimisation possible (TODO)");
+			break;
+
+#define VAL(e, x) (e->type == expr_val && e->val.i == x)
+
+		case op_plus:
+		case op_minus:
+			if(VAL(e->lhs, 0) || VAL(e->rhs, 0))
+				warn_at(&e->where, "zero being added or subtracted - optimisation possible (TODO)");
+			break;
+
+		case op_multiply:
+			if(VAL(e->lhs, 1) || VAL(e->lhs, 0) || VAL(e->rhs, 1) || VAL(e->rhs, 0))
+				warn_at(&e->where, "1 or 0 being multiplied - optimisation possible (TODO)");
+			else
+		case op_divide:
+			if(VAL(e->rhs, 1))
+				warn_at(&e->where, "divide by 1 - optimisation possible (TODO)");
+			break;
+
+		default:
+			break;
+#undef VAL
+	}
+}
+
 /* returns 0 if successfully folded */
 int const_fold(expr *e)
 {
@@ -136,8 +171,8 @@ int const_fold(expr *e)
 				 */
 
 				return bad;
-			}else if(e->op == op_orsc || e->op == op_andsc){
-				/* check if one side is (&& ? false : true) and short circuit it without needing to check the other side */
+			}else{
+				operate_optimise(e);
 			}
 		}
 	}
