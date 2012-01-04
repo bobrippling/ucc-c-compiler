@@ -56,7 +56,8 @@ char *splice_line(void)
 	char *last;
 	int join;
 
-	join  = 0;
+	last = NULL;
+	join = 0;
 
 	for(;;){
 		FILE *f;
@@ -94,7 +95,7 @@ re_read:
 		}
 
 		len = strlen(line);
-		if(line[len - 1] == '\\'){
+		if(len && line[len - 1] == '\\'){
 			line[len - 1] = '\0';
 			join = 1;
 			last = line;

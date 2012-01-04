@@ -181,6 +181,8 @@ void handle_define(token **tokens)
 		char **args;
 		char *val;
 
+		args = NULL;
+
 		for(i = 2; tokens[i]; i++){
 			switch(tokens[i]->tok){
 				case TOKEN_CLOSE_PAREN:
@@ -278,6 +280,8 @@ void handle_include(token **tokens)
 	fname++;
 
 	if(lib){
+		f = NULL;
+
 		for(lib = 0; lib_dirs && lib_dirs[lib]; lib++){
 			char *path = ustrprintf("%s/%s", lib_dirs[lib], fname);
 			f = fopen(path, "r");
