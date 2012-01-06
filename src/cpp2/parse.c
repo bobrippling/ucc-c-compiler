@@ -74,6 +74,11 @@ token **tokenise(char *line)
 			p++;
 		}
 
+		if(!*p){
+			t->w = ustrdup("");
+			break;
+		}
+
 		c = *p;
 		if(isalpha(c) || c == '_'){
 			char *start;
@@ -134,6 +139,8 @@ const char *token_str(token *t)
 	switch(t->tok){
 		case TOKEN_OTHER:
 		case TOKEN_WORD:
+			if(!t->w)
+				ICE("no string for token word");
 			return t->w;
 
 #define MAP(e, c) case e: return c
