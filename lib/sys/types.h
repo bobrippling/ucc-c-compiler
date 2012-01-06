@@ -21,4 +21,8 @@ typedef unsigned int   uint32_t;
 //typedef unsigned long  uint64_t;
 #endif
 
+
+typedef unsigned int  size_t;
+typedef          int ssize_t;
+
 #endif
