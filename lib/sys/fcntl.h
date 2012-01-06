@@ -1,5 +1,5 @@
-#ifndef __FCNTL_H
-#define __FCNTL_H
+#ifndef __SYS_FCNTL_H
+#define __SYS_FCNTL_H
 
 #define O_RDONLY	     00
 #define O_WRONLY	     01

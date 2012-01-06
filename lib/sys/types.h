@@ -1,5 +1,5 @@
-#ifndef __TYPES_H
-#define __TYPES_H
+#ifndef __SYS_TYPES_H
+#define __SYS_TYPES_H
 
 #ifdef __x86_64__
 #  define __WORDSIZE    64

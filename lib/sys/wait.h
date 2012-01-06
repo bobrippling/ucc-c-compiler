@@ -1,5 +1,5 @@
-#ifndef __WAIT_H
-#define __WAIT_H
+#ifndef __SYS_WAIT_H
+#define __SYS_WAIT_H
 
 #include <unistd.h>
 
