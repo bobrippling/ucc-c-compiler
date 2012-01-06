@@ -1,6 +1,7 @@
 #include "stdlib.h"
 #include "unistd.h"
 #include "syscalls.h"
+#include "signal.h"
 
 void exit(int code)
 {
