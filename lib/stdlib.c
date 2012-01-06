@@ -21,7 +21,7 @@ int atoi(char *s)
 	return i;
 }
 
-void *malloc(unsigned size)
+void *malloc(size_t size)
 {
 	return sbrk(size);
 }
