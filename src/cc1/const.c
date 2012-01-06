@@ -98,12 +98,12 @@ void operate_optimise(expr *e)
 
 		case op_plus:
 		case op_minus:
-			if(VAL(e->lhs, 0) || VAL(e->rhs, 0))
+			if(VAL(e->lhs, 0) || (e->rhs ? VAL(e->rhs, 0) : 0))
 				warn_at(&e->where, "zero being added or subtracted - optimisation possible (TODO)");
 			break;
 
 		case op_multiply:
-			if(VAL(e->lhs, 1) || VAL(e->lhs, 0) || VAL(e->rhs, 1) || VAL(e->rhs, 0))
+			if(VAL(e->lhs, 1) || VAL(e->lhs, 0) || (e->rhs ? VAL(e->rhs, 1) || VAL(e->rhs, 0) : 0))
 				warn_at(&e->where, "1 or 0 being multiplied - optimisation possible (TODO)");
 			else
 		case op_divide:
