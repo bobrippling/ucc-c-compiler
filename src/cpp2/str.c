@@ -20,13 +20,13 @@ char *str_replace(char *line, char *start, char *end, const char *replace)
 	if(len_replace < len_find){
 		/* start<->end distance is less than replace.length */
 		memcpy(start, replace, len_replace);
-		memmove(start + len_replace, end + 1, strlen(end));
+		memmove(start + len_replace, end, strlen(end) + 1);
 		return line;
 	}else{
 		char *del = line;
 
 		*start = '\0';
-		line = ustrprintf("%s%s%s", line, replace, end + 1);
+		line = ustrprintf("%s%s%s", line, replace, end);
 		free(del);
 
 		return line;
