@@ -1,3 +1,6 @@
+cpp2:
+	fix dir-relative file opening
+
 cc1:
 	fix "1 - 2 + 3"
 
