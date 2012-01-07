@@ -47,6 +47,15 @@ static void printx(int fd, int n)
 
 
 /* Public */
+int fputc(int c, FILE *f)
+{
+	return write(*f, &c, 1) == 1 ? c : EOF;
+}
+
+int putchar(int c)
+{
+	return fputc(c, stdout);
+}
 
 int vfprintf(FILE *file, char *fmt, va_list ap)
 {
@@ -75,7 +84,7 @@ int vfprintf(FILE *file, char *fmt, va_list ap)
 					break;
 				}
 				case 'c':
-					fputc(va_arg(ap, char), f);
+					fputc(va_arg(ap, char), file);
 					break;
 				case 'd':
 					printd(fd, va_arg(ap, int));
@@ -145,7 +154,42 @@ int printf(const char *fmt, ...)
 	return r;
 }
 
+int fputs(const char *s, FILE *f)
+{
+	return fprintf(f, "%s\n", s) > 0 ? 1 : EOF;
+}
+
 int puts(const char *s)
 {
-	return printf("%s\n", s) > 0 ? 1 : -1;
+	return fputs(s, stdout);
+}
+
+int getchar()
+{
+	return fgetc(stdin);
+}
+
+int fgetc(FILE *f)
+{
+	int ch;
+	return read(*f, &ch, 1) == 1 ? ch : EOF;
+}
+
+char *fgets(char *s, int l, FILE *f)
+{
+	int r;
+
+	r = read(*f, s, l - 1);
+
+	switch(r){
+		case  0: /* EOF */
+		case -1: /* error */
+			return NULL;
+	}
+
+	/* FIXME: read only one line at a time */
+
+	s[l] = '\0';
+
+	return s;
 }
