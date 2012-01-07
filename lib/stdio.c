@@ -68,21 +68,21 @@ int vfprintf(FILE *file, char *fmt, va_list ap)
 			switch(*fmt){
 				case 's':
 				{
-					char *s = *(char **)ap;
+					char *s = va_arg(ap, char *);
 					if(!s)
 						s = "(null)";
 					write(fd, s, strlen(s));
 					break;
 				}
 				case 'c':
-					write(fd, (char *)ap, 1);
+					fputc(va_arg(ap, char), f);
 					break;
 				case 'd':
-					printd(fd, *(int *)ap);
+					printd(fd, va_arg(ap, int));
 					break;
 				case 'p':
 				case 'x':
-					printx(fd, *(int *)ap);
+					printx(fd, va_arg(ap, int));
 					break;
 
 				default:
@@ -93,8 +93,6 @@ int vfprintf(FILE *file, char *fmt, va_list ap)
 			buf = fmt + 1;
 			buflen = 0;
 #endif
-
-			ap += sizeof(void *); /* void arith, use pointer size */
 		}else{
 #ifdef PRINTF_OPTIMISE
 			buflen++;
@@ -113,17 +111,38 @@ int vfprintf(FILE *file, char *fmt, va_list ap)
 
 int dprintf(int fd, const char *fmt, ...)
 {
-	return vfprintf(&fd, fmt, (void *)(&fmt + 1));
+	va_list l;
+	int r;
+
+	va_start(l, fmt);
+	r = vfprintf(&fd, fmt, l);
+	va_end(l);
+
+	return r;
 }
 
 int fprintf(FILE *file, const char *fmt, ...)
 {
-	return vfprintf(file, fmt, (void *)(&fmt + 1));
+	va_list l;
+	int r;
+
+	va_start(l, fmt);
+	r = vfprintf(file, fmt, l);
+	va_end(l);
+
+	return r;
 }
 
 int printf(const char *fmt, ...)
 {
-	return vfprintf(stdout, fmt, (void *)(&fmt + 1));
+	va_list l;
+	int r;
+
+	va_start(l, fmt);
+	r = vfprintf(stdout, fmt, l);
+	va_end(l);
+
+	return r;
 }
 
 int puts(const char *s)
