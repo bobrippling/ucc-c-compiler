@@ -154,9 +154,9 @@ void fold_funcall(expr *e, symtable *stab)
 		for(iter_decl = df->func->args; iter_decl && *iter_decl; iter_decl++, count_decl++);
 
 		if(count_decl != count_arg && (df->func->variadic ? count_arg < count_decl : 1)){
-			die_at(&e->where, "too %s arguments to function %s",
+			die_at(&e->where, "too %s arguments to function %s (got %d, need %d)",
 					count_arg > count_decl ? "many" : "few",
-					df->spel);
+					df->spel, count_arg, count_decl);
 		}
 
 		if(e->funcargs){
