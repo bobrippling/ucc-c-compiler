@@ -76,6 +76,7 @@ re_read:
 
 			fclose(f);
 			if(file_stack_idx > 1){
+				free(dirname_pop());
 				preproc_pop();
 				goto re_read;
 			}
