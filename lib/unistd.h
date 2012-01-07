@@ -12,5 +12,6 @@ int   brk(void *);
 void *sbrk(int inc);
 
 pid_t fork(void);
+pid_t getpid(void);
 
 #endif

@@ -3,8 +3,6 @@
 set -e
 
 os_cfg(){
-	echo "#define $1" > lib/os.h
-
 	cat > config.mk <<!
 UCC_NASM    = ${UCC_NASM}
 UCC_LD      = ${UCC_LD}
@@ -20,7 +18,7 @@ UCC_LDFLAGS = ${UCC_LDFLAGS}
 int main(int argc, char **argv);
 !
 
-	if [ $1 = __linux__ ]
+	if [ $1 = Linux ]
 	then
 		cat <<!
 	cmp rax, -1
@@ -36,7 +34,7 @@ int main(int argc, char **argv);
 
 	if ! which perl > /dev/null
 	then
-		if [ $1 = __MACOSX__ ]
+		if [ $1 = Mac ]
 		then m=" (and mac syscalls)"
 		fi
 		echo >&2 "Perl not found, generate strerror$m yourself"
@@ -48,12 +46,12 @@ int main(int argc, char **argv);
 		}
 		' > lib/string_strerrs.h
 
-		if [ $1 = __MACOSX__ ]
+		if [ $1 = Mac ]
 		then perl lib/syscalls_mac.pl < lib/syscalls_32.h > lib/syscalls_mac.h
 		fi
 	fi
 
-	echo "Configured for $2"
+	echo "Configured for $1"
 }
 
 
@@ -90,15 +88,15 @@ case "$(uname -s)" in
 	Darwin)
 		UCC_ARCH=macho64
 		UCC_LDFLAGS='-e _start'
-		os_cfg __MACOSX__ "Mac OS X" # check this is standard
+		os_cfg Darwin
 		;;
 
 	Linux)
-		os_cfg __linux__ Linux
+		os_cfg Linux
 		;;
 
 	FreeBSD)
-		os_cfg __FreeBSD__ BSD
+		os_cfg FreeBSD
 		;;
 
 	*)

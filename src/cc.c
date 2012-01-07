@@ -15,6 +15,17 @@
 #define LIB_PATH "/../lib/"
 #define CPP "cpp2"
 
+#define LIBS        \
+		"stdio",        \
+		"stdlib",       \
+		"string",       \
+		"unistd",       \
+		"syscall",      \
+		"signal",       \
+		"assert",       \
+		"sys/fcntl",    \
+		"sys/wait",
+
 enum mode
 {
 	MODE_PREPROCESS,
@@ -115,13 +126,7 @@ char *gen_stdlib_files(void)
 {
 	const char *base = LIB_PATH;
 	const char *names[] = {
-		"stdio",
-		"stdlib",
-		"string",
-		"unistd",
-		"syscall",
-		"sys/fcntl",
-		"sys/wait",
+		LIBS
 		NULL
 	};
 	const int blen = strlen(where) + strlen(base);

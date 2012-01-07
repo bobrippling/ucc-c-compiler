@@ -1,5 +1,3 @@
-#include "os.h"
-
 #ifdef __FreeBSD__
 #  include "syscalls_32.h"
 #else
