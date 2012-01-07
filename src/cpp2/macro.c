@@ -146,7 +146,7 @@ relook:
 			for(i = 0; args[i]; i++)
 				word_replace_g(&replace, m->args[i], args[i]);
 
-			*pline = str_replace(*pline, pos, close_b, replace);
+			*pline = str_replace(*pline, pos, close_b + 1, replace);
 
 			free(replace);
 
