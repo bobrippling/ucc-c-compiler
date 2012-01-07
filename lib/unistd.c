@@ -36,6 +36,10 @@ void *sbrk(int inc)
 	return new;
 }
 
+pid_t getpid()
+{
+	return __syscall(SYS_getpid);
+}
 
 int read(int fd, void *p, int size)
 {

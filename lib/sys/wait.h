@@ -1,7 +1,7 @@
 #ifndef __SYS_WAIT_H
 #define __SYS_WAIT_H
 
-#include <unistd.h>
+#include "../unistd.h"
 
 //pid_t wait(int *status); FIXME
 pid_t waitpid(int pid, int *status, int options);

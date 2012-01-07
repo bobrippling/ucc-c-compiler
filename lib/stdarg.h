@@ -1,7 +1,7 @@
 #ifndef __STDARG_H
 #define __STDARG_H
 
-#include <sys/types.h>
+#include "sys/types.h"
 
 typedef void *va_list;
 
