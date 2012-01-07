@@ -7,6 +7,9 @@
 #include "macro.h"
 #include "preproc.h"
 #include "../util/util.h"
+#include "../util/dynarray.h"
+#include "../util/alloc.h"
+#include "../util/platform.h"
 
 static const struct
 {
@@ -17,8 +20,22 @@ static const struct
 };
 
 const char *current_fname;
+char **dirnames = NULL;
 int debug = 0;
 
+void dirname_push(char *d)
+{
+	/*fprintf(stderr, "dirname_push(%s = %p)\n", d, d);*/
+	dynarray_add((void ***)&dirnames, d);
+}
+
+char *dirname_pop()
+{
+	char *r = dynarray_pop((void **)dirnames);
+	/*fprintf(stderr, "dirname_pop() = %s (%p)\n", r, r);
+	return r; TODO - free*/
+	return NULL;
+}
 
 int main(int argc, char **argv)
 {
@@ -30,6 +47,17 @@ int main(int argc, char **argv)
 
 	for(i = 0; initial_defs[i].nam; i++)
 		macro_add(initial_defs[i].nam, initial_defs[i].val);
+
+	if(platform_type() == PLATFORM_64)
+		macro_add("__x86_64__", "1");
+
+	switch(platform_sys()){
+#define MAP(t, s) case t: macro_add(s, "1"); break
+		MAP(PLATFORM_LINUX,   "__linux__");
+		MAP(PLATFORM_FREEBSD, "__FreeBSD__");
+		MAP(PLATFORM_DARWIN,  "__DARWIN__");
+#undef MAP
+	}
 
 	for(i = 1; i < argc && *argv[i] == '-'; i++){
 		if(!strcmp(argv[i]+1, "-"))
@@ -116,12 +144,25 @@ int main(int argc, char **argv)
 	CHECK_FILE(outfname, "w", stdout)
 	CHECK_FILE(infname,  "r", stdin)
 
-	if(!infname)
+	if(infname){
+		dirname_push(udirname(infname));
+	}else{
 		infname = "<stdin>";
+		dirname_push(ustrdup("."));
+	}
 
 	current_fname = infname;
 
+	if(DEBUG_VERB < debug){
+		extern macro **macros;
+		for(i = 0; macros[i]; i++)
+			fprintf(stderr, "### macro \"%s\" = \"%s\"\n",
+					macros[i]->nam, macros[i]->val);
+	}
+
 	preprocess();
+
+	free(dirname_pop());
 
 	fclose(stdout);
 	if(errno)
@@ -134,6 +175,6 @@ usage:
 				"  -Idir: Add search directory\n"
 				"  -Dxyz: Define xyz\n"
 				"  -o output: output file\n"
-				"  -d: Turn on debug tracing\n", stderr);
+				"  -d: increase debug tracing\n", stderr);
 	return 1;
 }

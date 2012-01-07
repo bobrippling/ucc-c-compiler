@@ -27,6 +27,20 @@ void dynarray_add(void ***par, void *new)
 	*par = ar;
 }
 
+void *dynarray_pop(void **ar)
+{
+	void *r;
+	int i;
+
+	i = dynarray_count(ar) - 1;
+	r = ar[i];
+	ar[i] = NULL;
+
+	UCC_ASSERT(r, "dynarray_pop(): empty array");
+
+	return r;
+}
+
 void dynarray_prepend(void ***par, void *new)
 {
 	void **ar;
@@ -54,6 +68,8 @@ void dynarray_rm(void **ar, void *x)
 	int i, n;
 
 	n = dynarray_count(ar);
+
+	UCC_ASSERT(n, "dynarray_rm(): empty array");
 
 	for(i = 0; ar[i]; i++)
 		if(ar[i] == x){

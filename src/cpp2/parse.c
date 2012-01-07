@@ -248,6 +248,11 @@ void handle_include(token **tokens)
 	char *fname;
 	int len, free_fname, lib;
 
+	extern char **dirnames;
+	char *dname;
+	char *path = NULL;
+	int i;
+
 	free_fname = 0;
 
 	if(tokens[1]){
@@ -276,9 +281,7 @@ void handle_include(token **tokens)
 	}else if(*fname != '"'){
 		die("invalid include start '%c'", *fname);
 	}
-
 	/* if it's '"' then we've got a finishing '"' */
-
 
 	NOOP_RET();
 
@@ -286,13 +289,15 @@ void handle_include(token **tokens)
 	fname[len-1] = '\0';
 	fname++;
 
+	i = dynarray_count((void **)dirnames);
+	dname = dirnames[i - 1];
+
 	if(lib){
 		f = NULL;
 
-		for(lib = 0; lib_dirs && lib_dirs[lib]; lib++){
-			char *path = ustrprintf("%s/%s", lib_dirs[lib], fname);
+		for(i = 0; lib_dirs && lib_dirs[i]; i++){
+			path = ustrprintf("%s/%s/%s", dname, lib_dirs[i], fname);
 			f = fopen(path, "r");
-			free(path);
 			if(f)
 				break;
 		}
@@ -300,12 +305,21 @@ void handle_include(token **tokens)
 		if(!f)
 			die("can't find include file <%s>", fname);
 	}else{
-		f = fopen(fname, "r");
-		if(!f)
-			die("open %s: %s", fname, strerror(errno));
+		path = ustrprintf("%s/%s", dname, fname);
+		f = fopen(path, "r");
+		if(!f){
+			/* remove this */
+			i;
+			char x[256];
+			getcwd(x, 256);
+			fprintf(stderr, "pwd=%s\n", x);
+			die("open %s (%s): %s", fname, path, strerror(errno));
+		}
 	}
 
 	preproc_push(f);
+	dirname_push(udirname(path));
+	free(path);
 
 	if(free_fname)
 		free(fname - 1);
