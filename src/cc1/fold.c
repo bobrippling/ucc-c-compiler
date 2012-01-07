@@ -321,7 +321,18 @@ void fold_expr(expr *e, symtable *stab)
 		case expr_identifier:
 			if(!e->sym){
 				if(!strcmp(e->spel, "__func__")){
-					ICE("TODO: __func__");
+					/* mutate into a string literal */
+					e->type = expr_addr;
+					e->array_store = array_decl_new();
+
+					e->array_store->data.str = curdecl_func->spel;
+					e->array_store->len = strlen(curdecl_func->spel) + 1; /* +1 - take the null byte */
+
+					e->array_store->type = array_str;
+
+					fold_expr(e, stab);
+					return;
+
 				}else{
 					DIE_UNDECL();
 				}
