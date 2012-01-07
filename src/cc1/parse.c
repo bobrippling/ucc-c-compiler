@@ -94,7 +94,7 @@ expr *parse_expr_unary_op()
 
 				EAT(token_close_paren);
 			}else{
-				e->expr = parse_expr();
+				e->expr = parse_expr_funcallarg();
 			}
 			return e;
 
