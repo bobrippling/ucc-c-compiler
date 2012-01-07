@@ -26,7 +26,7 @@ char *str_replace(char *line, char *start, char *end, const char *replace)
 		char *del = line;
 
 		*start = '\0';
-		line = ustrprintf("%s%s%s", line, replace, end);
+		line = ustrprintf("%s%s%s", line, replace, end + 1);
 		free(del);
 
 		return line;

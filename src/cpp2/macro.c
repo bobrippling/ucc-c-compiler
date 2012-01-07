@@ -87,7 +87,7 @@ void filter_macro(char **pline)
 		if(m->args){
 			char *s, *last;
 			char **args;
-			char *open_b, *close_b; /* TODO: nesting */
+			char *open_b, *close_b;
 			char *replace;
 			char *line;
 			char *pos;
@@ -100,11 +100,11 @@ relook:
 				continue;
 
 			open_b  = strchr(pos, '(');
-			close_b = strchr(open_b + 1, ')');
+			close_b = strchr(open_b + 1, ')'); /* TODO: nesting */
 			if(!open_b){
-					/* ignore the macro */
-					pos++;
-					goto relook;
+				/* ignore the macro */
+				pos++;
+				goto relook;
 			}
 			if(!close_b)
 				die("no close paren for function-macro");
@@ -124,11 +124,14 @@ relook:
 					last = s + 1;
 				}
 			}
+			if(last != s)
+				dynarray_add((void ***)&args, ustrdup(last));
 
 			{
 				int got, exp;
 				got = dynarray_count((void **)args);
 				exp = dynarray_count((void **)m->args);
+
 				if(got != exp)
 					die("wrong number of args to function macro \"%s\", got %d, expected %d%s%s%s",
 							m->nam, got, exp,
@@ -143,7 +146,7 @@ relook:
 			for(i = 0; args[i]; i++)
 				word_replace_g(&replace, m->args[i], args[i]);
 
-			*pline = str_replace(*pline, open_b, close_b, replace);
+			*pline = str_replace(*pline, pos, close_b, replace);
 
 			free(replace);
 
