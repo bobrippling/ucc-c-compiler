@@ -4,6 +4,6 @@
 
 void __assert_fail(int line, const char *fname, const char *func)
 {
-	fprintf(stderr, "assertion failure at %s:%d:%s\n", line, fname, func);
+	fprintf(stderr, "assertion failure at %s:%d in %s()\n", fname, line, func);
 	abort();
 }
