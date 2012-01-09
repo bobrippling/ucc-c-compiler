@@ -566,6 +566,31 @@ void fold_tree(tree *t)
 		}
 
 
+		case stat_case_range:
+		{
+			int l, r;
+
+			symtab_nest(t->symtab, &t->lhs->symtab);
+			fold_tree(t->lhs);
+
+			symtab_nest(t->symtab, &t->rhs->symtab);
+			fold_tree(t->rhs);
+
+			if(const_fold(t->lhs->expr) || const_fold(t->rhs->expr))
+				die_at(&t->where, "case range not constant");
+			if(!curtree_switch)
+				die_at(&t->where, "not inside a switch statement");
+
+			l = t->lhs->expr->val.i;
+			r = t->rhs->expr->val.i;
+
+			if(l >= r)
+				die_at(&t->where, "case range equal or inverse");
+
+			t->lhs->expr->spel = asm_label_case(CASE_RANGE, l);
+			goto case_add;
+		}
+
 		case stat_case:
 		{
 			int def;
@@ -581,7 +606,8 @@ void fold_tree(tree *t)
 				t->expr = expr_new();
 				t->expr->expr_is_default = 1;
 			}
-			t->expr->spel = asm_label_case(def, t->expr->val.i);
+			t->expr->spel = asm_label_case(def ? CASE_DEF : CASE_CASE, t->expr->val.i);
+case_add:
 			dynarray_add((void ***)&curtree_switch->codes, t);
 			break;
 		}

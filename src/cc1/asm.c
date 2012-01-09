@@ -48,18 +48,25 @@ char *asm_label_goto(char *lbl)
 	return ret;
 }
 
-char *asm_label_case(int is_default, int val)
+char *asm_label_case(enum asm_label_type lbltype, int val)
 {
-	char *ret = umalloc(8 + 32);
-	if(is_default){
-		sprintf(ret, ".case_%d_default", switch_last);
-	}else{
-		const char *extra = "";
-		if(val < 0){
-			val = -val;
-			extra = "m";
+	char *ret = umalloc(15 + 32);
+	switch(lbltype){
+		case CASE_DEF:
+			sprintf(ret, ".case_%d_default", switch_last);
+			break;
+
+		case CASE_CASE:
+		case CASE_RANGE:
+		{
+			const char *extra = "";
+			if(val < 0){
+				val = -val;
+				extra = "m";
+			}
+			sprintf(ret, ".case%s_%d_%s%d", lbltype == CASE_RANGE ? "_rng" : "", switch_last, extra, val);
+			break;
 		}
-		sprintf(ret, ".case_%d_%s%d", switch_last, extra, val);
 	}
 	switch_last++;
 	return ret;

@@ -701,7 +701,7 @@ function *parse_function()
 				break;
 
 			if(curtok != token_identifier)
-				die_at(&f->where, "expected: identifier");
+				die_at(&f->where, "expected: identifier, got %s", token_to_str(curtok));
 
 			dynarray_add((void ***)&spells, token_current_spel());
 			EAT(token_identifier);
@@ -916,11 +916,22 @@ tree *parse_code()
 			t->type = stat_default;
 			return t;
 		case token_case:
+		{
+			expr *a;
 			EAT(token_case);
-			t = expr_to_tree(parse_expr());
+			a = parse_expr();
+			if(accept(token_elipsis)){
+				t = tree_new();
+				t->type = stat_case_range;
+				t->lhs = expr_to_tree(a);
+				t->rhs = expr_to_tree(parse_expr());
+			}else{
+				t = expr_to_tree(a);
+				t->type = stat_case;
+			}
 			EAT(token_colon);
-			t->type = stat_case;
 			return t;
+		}
 
 		default:
 			t = expr_to_tree(parse_expr());
