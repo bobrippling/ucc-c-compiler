@@ -205,9 +205,11 @@ int decl_equal(const decl *a, const decl *b, int strict)
 {
 	const int ptreq = a->ptr_depth == b->ptr_depth;
 
-	/* if the pointers are equal depth and we're not strict, and they are actually pointers... */
-	if(!strict && a->ptr_depth && ptreq)
-		return 1;
+#define VOID_PTR(d) \
+		 (d->type->primitive == type_void && d->ptr_depth == 1)
+
+	if(VOID_PTR(a) || VOID_PTR(b))
+		return 1; /* one side is void * */
 
 	return ptreq && type_equal(a->type, b->type, strict);
 }
@@ -283,6 +285,7 @@ const char *stat_to_str(const enum stat_type t)
 		CASE_STR_PREFIX(stat, label);
 		CASE_STR_PREFIX(stat, switch);
 		CASE_STR_PREFIX(stat, case);
+		CASE_STR_PREFIX(stat, case_range);
 		CASE_STR_PREFIX(stat, default);
 	}
 	return NULL;

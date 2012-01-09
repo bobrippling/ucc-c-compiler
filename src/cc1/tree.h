@@ -172,6 +172,7 @@ struct tree
 		stat_label,
 		stat_switch,
 		stat_case,
+		stat_case_range,
 		stat_default,
 
 		stat_noop

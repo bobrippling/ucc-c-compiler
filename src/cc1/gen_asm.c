@@ -196,6 +196,7 @@ void walk_tree(tree *t)
 		case stat_switch:
 		{
 			tree **titer, *tdefault;
+			int is_unsigned = t->expr->tree_type->type->spec & spec_unsigned;
 
 			tdefault = NULL;
 
@@ -204,7 +205,16 @@ void walk_tree(tree *t)
 
 			for(titer = t->codes; titer && *titer; titer++){
 				tree *cse = *titer;
-				if(cse->expr->expr_is_default){
+
+				if(cse->type == stat_case_range){
+					char *skip = asm_label_code("range_skip");
+					asm_temp(1, "cmp rax, %d", cse->lhs->expr->val.i);
+					asm_temp(1, "j%s %s", is_unsigned ? "b" : "l", skip);
+					asm_temp(1, "cmp rax, %d", cse->rhs->expr->val.i);
+					asm_temp(1, "j%se %s", is_unsigned ? "b" : "l", cse->lhs->expr->spel);
+					asm_label(skip);
+					free(skip);
+				}else if(cse->expr->expr_is_default){
 					tdefault = cse;
 				}else{
 					/* FIXME: address-of, etc? */
@@ -229,6 +239,9 @@ void walk_tree(tree *t)
 		case stat_default:
 		case stat_label:
 			asm_label(t->expr->spel);
+			break;
+		case stat_case_range:
+			asm_label(t->lhs->expr->spel);
 			break;
 
 		case stat_goto:

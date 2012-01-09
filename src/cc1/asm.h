@@ -24,6 +24,13 @@ enum asm_sym_type
 	ASM_LEA
 };
 
+enum asm_label_type
+{
+	CASE_CASE,
+	CASE_DEF,
+	CASE_RANGE
+};
+
 void asm_new(enum asm_type, void *);
 void asm_temp(          int indent, const char *, ...);
 void asm_tempf(FILE *f, int indent, const char *, ...);
@@ -40,7 +47,7 @@ char *asm_label_code(const char *fmt);
 char *asm_label_array(int str);
 char *asm_label_static_local(decl *df, const char *spel);
 char *asm_label_goto(char *lbl);
-char *asm_label_case(int is_default, int val);
+char *asm_label_case(enum asm_label_type, int val);
 #define asm_label_break(flow_t) flow_t->lblfin
 char *asm_label_flowfin(void);
 
