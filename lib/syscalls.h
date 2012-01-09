@@ -1,7 +1,7 @@
 #ifdef __FreeBSD__
 #  include "syscalls_32.h"
 #else
-#ifdef __MACOSX__
+#ifdef __DARWIN__
 #  include "syscalls_mac.h"
 #else
 #ifdef __x86_64__
