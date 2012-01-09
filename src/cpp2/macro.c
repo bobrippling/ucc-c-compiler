@@ -44,7 +44,7 @@ macro *macro_add(const char *nam, const char *val)
 	}
 
 	m->nam = ustrdup(nam);
-	m->val = ustrdup(val);
+	m->val = val ? ustrdup(val) : NULL;
 
 	DEBUG(DEBUG_NORM, "macro_add(\"%s\", \"%s\")\n", nam, val);
 
@@ -152,7 +152,29 @@ relook:
 
 			did_replace = 1;
 		}else{
-			did_replace = word_replace_g(pline, m->nam, m->val);
+			char *val;
+			int fval = 0;
+
+			if(m->val){
+				val = m->val;
+			}else{
+				extern const char *current_fname;
+				extern int current_line;
+
+				fval = 1;
+
+				if(!strcmp(m->nam, "__FILE__"))
+					val = ustrprintf("\"%s\"", current_fname);
+				else if(!strcmp(m->nam, "__LINE__"))
+					val = ustrprintf("%d", current_line);
+				else
+					ICE("invalid macro");
+			}
+
+			did_replace = word_replace_g(pline, m->nam, val);
+
+			if(fval)
+				free(val);
 		}
 
 		if(did_replace)
