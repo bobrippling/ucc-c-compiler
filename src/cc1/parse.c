@@ -656,6 +656,12 @@ function *parse_function()
 	decl *argdecl;
 
 	f = function_new();
+
+	if(accept(token_close_paren))
+		goto empty_func;
+	if(curtok == token_identifier && !typedef_find(typedefs_current, token_current_spel_peek()))
+		goto old_func;
+
 	argdecl = parse_decl(DECL_SPEL_OPT | DECL_CAN_DEFAULT);
 
 	if(argdecl){
@@ -688,23 +694,29 @@ function *parse_function()
 			f->args_void = 1; /* (void) vs () */
 		}
 
+empty_func:
 		if(!accept(token_semicolon))
 			f->code = parse_code();
 
 	}else{
 		int i, n_spels, n_decls;
-		char **spells = NULL;
+		char **spells;
 		decl **args;
 
-		do{
-			if(accept(token_close_paren))
-				break;
+old_func:
+		spells = NULL;
 
+		do{
 			if(curtok != token_identifier)
 				die_at(&f->where, "expected: identifier, got %s", token_to_str(curtok));
 
 			dynarray_add((void ***)&spells, token_current_spel());
 			EAT(token_identifier);
+
+			if(accept(token_close_paren))
+				break;
+			EAT(token_comma);
+
 		}while(1);
 
 		/* parse decls, then check they correspond */
