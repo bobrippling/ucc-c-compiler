@@ -2,9 +2,11 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdio.h>
+#include <stdarg.h>
 
 #include "str.h"
 #include "../util/alloc.h"
+#include "../util/util.h"
 #include "macro.h"
 
 static int iswordpart(char c)
@@ -60,13 +62,29 @@ int word_replace_g(char **pline, char *find, const char *replace)
 	return r;
 }
 
+char *word_strstr(char *haystack, char *needle)
+{
+	const int nlen = strlen(needle);
+	char *i;
+
+	for(i = haystack; *i; i++)
+		if(*i == '"'){
+			i = strchr(i + 1, '"');
+			if(!i)
+				ICE("terminating quote not found");
+		}else if(!strncmp(i, needle, nlen)){
+			return i;
+		}
+
+	return NULL;
+}
 
 char *word_find(char *line, char *word)
 {
 	const int wordlen = strlen(word);
 	char *pos = line;
 
-	while((pos = strstr(pos, word))){
+	while((pos = word_strstr(pos, word))){
 		char *fin;
 		if(pos > line && iswordpart(pos[-1])){
 			pos++;
