@@ -5,6 +5,7 @@ typedef struct sym         sym;
 typedef struct symtable    symtable;
 
 typedef struct tdef        tdef;
+typedef struct struc       struc;
 
 typedef struct expr        expr;
 typedef struct tree        tree;
@@ -53,6 +54,8 @@ struct decl
 	char *spel;
 
 	expr **arraysizes;
+	struc *struc; /* NULL unless this is a structure */
+
 	expr *init; /* NULL except for global variables */
 	array_decl *arrayinit;
 
@@ -101,6 +104,7 @@ struct expr
 		expr_identifier,
 		expr_assign,
 		expr_funcall,
+		expr_struct,
 		expr_cast,
 		expr_if,
 		expr_comma

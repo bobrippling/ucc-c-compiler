@@ -13,12 +13,16 @@
 #include "asm.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
+#include "struct.h"
 
 #define DIE_UNDECL_SPEL(sp) \
 		die_at(&e->where, "undeclared identifier \"%s\" (%s:%d)", sp, __FILE__, __LINE__)
 
 #define DIE_UNDECL() DIE_UNDECL_SPEL(e->spel)
 
+#define EXPR_NON_VOID(e, s) \
+	if(!e->tree_type->ptr_depth && e->tree_type->type->primitive == type_void) \
+		die_at(&e->where, "%s requires non-void expression", s)
 
 #define funcall_name(e) (e)->spel
 
@@ -209,6 +213,58 @@ void fold_assignment(expr *e, symtable *stab)
 				e->lhs->spel ? ")" : "");
 }
 
+void fold_struct(expr *e, symtable *stab)
+{
+	struc *st;
+	decl *d, **i;
+	char *spel;
+
+	/*
+	 * lhs = struct var
+	 * rhs = struct member (nested)
+	 *
+	 * struct a
+	 * {
+	 *   struct
+	 *
+	 * lhs =
+	 */
+
+	if(e->lhs->type == expr_struct){
+		fold_struct(e->lhs, stab);
+
+	}else if(e->lhs->type == expr_identifier){
+		sym *s = symtab_search(stab, e->lhs->spel);
+
+		if(!s)
+			die_at(&e->lhs->where, "undeclared struct identifier %s\n", e->lhs->spel);
+
+		e->lhs->sym = s;
+		e->lhs->tree_type->struc = st = s->decl->struc; /* ??? */
+
+	}else{
+		die_at(&e->lhs->where, "struct initial expr not identifier");
+	}
+
+	ICE("TODO: struct folding");
+
+	if(e->rhs->type != expr_identifier)
+		die_at(&e->rhs->where, "struct member must be an identifier");
+
+	spel = e->rhs->spel;
+	d = NULL;
+
+	for(i = st->members; *i; i++)
+		if(!strcmp((*i)->spel, spel)){
+			d = *i;
+			break;
+		}
+
+	if(!d)
+		die_at(&e->rhs->where, "\"%s\" has no member named \"%s\"", st->spel, spel);
+
+	GET_TREE_TYPE(d);
+}
 
 void fold_expr(expr *e, symtable *stab)
 {
@@ -257,6 +313,10 @@ void fold_expr(expr *e, symtable *stab)
 				expr_free(del);
 			}
 			GET_TREE_TYPE(e->lhs->tree_type);
+			break;
+
+		case expr_struct:
+			fold_struct(e, stab);
 			break;
 
 		case expr_addr:
@@ -533,6 +593,7 @@ void fold_tree(tree *t)
 
 		case stat_if:
 			fold_expr(t->expr, t->symtab);
+			EXPR_NON_VOID(t->expr, stat_to_str(t->type));
 
 			symtab_nest(t->symtab, &t->lhs->symtab);
 			fold_tree(t->lhs);
@@ -552,11 +613,14 @@ void fold_tree(tree *t)
 			curtree_flow = t;
 
 			t->lblfin = asm_label_flowfin();
+
 #define FOLD_IF(x) if(x) fold_expr(x, t->symtab)
 			FOLD_IF(t->flow->for_init);
 			FOLD_IF(t->flow->for_while);
 			FOLD_IF(t->flow->for_inc);
 #undef FOLD_IF
+
+			EXPR_NON_VOID(t->flow->for_while, "for-while");
 
 			symtab_nest(t->symtab, &t->lhs->symtab);
 			fold_tree(t->lhs);
@@ -581,6 +645,9 @@ void fold_tree(tree *t)
 			if(!curtree_switch)
 				die_at(&t->where, "not inside a switch statement");
 
+			EXPR_NON_VOID(t->lhs->expr, "case");
+			EXPR_NON_VOID(t->rhs->expr, "case");
+
 			l = t->lhs->expr->val.i;
 			r = t->rhs->expr->val.i;
 
@@ -596,6 +663,9 @@ void fold_tree(tree *t)
 			int def;
 
 			fold_expr(t->expr, t->symtab);
+
+			EXPR_NON_VOID(t->expr, "case");
+
 			if(const_fold(t->expr))
 				die_at(&t->expr->where, "case expression not constant");
 			if(!curtree_switch)
@@ -623,6 +693,8 @@ case_add:
 			t->lblfin = asm_label_flowfin();
 
 			fold_expr(t->expr, t->symtab);
+
+			EXPR_NON_VOID(t->expr, "switch");
 
 			t->lhs->symtab = t->symtab; /* don't bother nesting */
 			fold_tree(t->lhs);
@@ -738,9 +810,14 @@ case_add:
 		}
 
 		case stat_return:
-			if(t->expr)
-		case stat_expr:
+			if(t->expr){
 				fold_expr(t->expr, t->symtab);
+				EXPR_NON_VOID(t->expr, "return");
+			}
+			break;
+
+		case stat_expr:
+			fold_expr(t->expr, t->symtab);
 			break;
 
 		case stat_noop:

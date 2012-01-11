@@ -14,6 +14,7 @@
 #include "cc1.h"
 #include "typedef.h"
 #include "../util/dynarray.h"
+#include "struct.h"
 
 /*
  * order goes:
@@ -60,7 +61,7 @@ expr *parse_expr_if(void);
 
 
 static tdeftable *typedefs_current;
-
+static struc     *structs_current;
 
 expr *parse_lone_identifier()
 {
@@ -302,10 +303,27 @@ expr *parse_expr_join(
 	}
 }
 
+expr *parse_expr_struct()
+{
+	expr *e = parse_expr_unary_op();
+
+	while(accept(token_dot)){
+		expr *stru = expr_new();
+
+		stru->type = expr_struct;
+		stru->lhs = e;
+		stru->rhs = parse_lone_identifier();
+
+		e = stru;
+	}
+
+	return e;
+}
+
 expr *parse_expr_array()
 {
 	expr *sum, *deref;
-	expr *base = parse_expr_unary_op();
+	expr *base = parse_expr_struct();
 
 	if(!accept(token_open_square))
 		return base;
@@ -977,11 +995,59 @@ enum type_spec parse_type_spec(void)
 	return ret;
 }
 
+decl *parse_decl_struct(enum decl_mode decl_mode)
+{
+	char *spel;
+	decl *d;
+
+	d = decl_new();
+
+	if(accept(token_identifier))
+		spel = token_current_spel();
+	else
+		spel = NULL;
+
+	if(accept(token_open_block)){
+		struc *struc = umalloc(sizeof *struc);
+
+		struc->spel = spel;
+		struc->members = parse_decls((decl_mode & ~(DECL_SPEL_NO | DECL_SPEL_OPT)) | DECL_CAN_DEFAULT | DECL_SPEL_NEED);
+
+		EAT(token_close_block);
+
+		d->struc = struc;
+
+		dynarray_add((void ***)&structs_current, struc);
+	}
+
+	if(curtok != token_identifier){
+		/* struct { int x; int y; }; */
+		decl_free(d);
+		d = NULL;
+	}else{
+		d->spel = token_current_spel();
+		EAT(token_identifier);
+	}
+
+	return d;
+}
+
 decl *parse_decl(enum decl_mode decl_mode)
 {
 	char *spel;
 	decl *d;
 	enum type_spec spec;
+
+	if(accept(token_struct)){
+		d = parse_decl_struct(decl_mode);
+		if(d){
+			if(accept(token_comma))
+				ICE("need to do struct x [{ ... }] nam, nam2, nam3...;");
+			return d;
+		}
+		EAT(token_semicolon);
+		/* else just a struct def, continue parsing */
+	}
 
 	spec = parse_type_spec();
 	/* FIXME: int const x; */

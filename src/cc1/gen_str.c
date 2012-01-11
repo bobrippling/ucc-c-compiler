@@ -7,6 +7,7 @@
 #include "macros.h"
 #include "sym.h"
 #include "cc1.h"
+#include "struct.h"
 
 
 #define PRINT_IF(x, sub, fn) \
@@ -90,6 +91,13 @@ void print_sym(sym *s)
 	print_decl(s->decl, 0, 1, 0);
 }
 
+void print_struct_expr(expr *e)
+{
+	char *spel = e->lhs->tree_type->struc->spel;
+	idt_printf("struct %s\n", spel ? spel : "<anon>");
+	print_expr(e->lhs);
+}
+
 void print_expr(expr *e)
 {
 	idt_printf("vartype: ");
@@ -105,6 +113,20 @@ void print_expr(expr *e)
 			print_expr(e->lhs);
 			indent--;
 			idt_printf("comma rhs:\n");
+			indent++;
+			print_expr(e->rhs);
+			indent--;
+			break;
+
+		case expr_struct:
+			idt_printf("struct expression:\n");
+			indent++;
+			if(e->lhs->type == expr_struct)
+				print_struct_expr(e->lhs);
+			else
+				print_expr(e->lhs);
+			indent--;
+			idt_printf("member:\n");
 			indent++;
 			print_expr(e->rhs);
 			indent--;
