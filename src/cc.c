@@ -48,7 +48,8 @@ struct
 
 int no_startfiles = 0, no_stdlib = 0;
 int no_warn = 0;
-int debug = 0;
+int verbose = 0;
+int debug   = 0;
 char *backend = "";
 
 enum mode mode;
@@ -90,7 +91,7 @@ void run(const char *cmd)
 {
 	int ret;
 
-	if(debug)
+	if(verbose)
 		fprintf(stderr, "run(\"%s\")\n", cmd);
 
 	ret = system(cmd);
@@ -109,7 +110,7 @@ void run(const char *cmd)
 		if(WIFSIGNALED(ret))
 			die("%s caught signal %d\n", p, WTERMSIG(ret));
 
-		die(debug ? "%s returned %d\n" : NULL, p, ret);
+		die(verbose ? "%s returned %d\n" : NULL, p, ret);
 	}
 }
 
@@ -211,7 +212,7 @@ unknown_file:
 	}
 
 	SHORTEN_OUTPUT(MODE_PREPROCESS, f_e);
-	RUN(1, CPP "/cpp %s -I'%s" LIB_PATH "' %s -o %s %s", debug ? "-d" : "", where, args[MODE_PREPROCESS], f_e, input);
+	RUN(1, CPP "/cpp %s -I'%s" LIB_PATH "' %s -o %s %s", verbose ? "-d" : "", where, args[MODE_PREPROCESS], f_e, input);
 	if(mode == MODE_PREPROCESS)
 		return 0;
 
@@ -221,14 +222,16 @@ start_compile:
 	if(mode == MODE_COMPILE)
 		return 0;
 
+#define DEBUG_STR debug ? "-g" : ""
+
 start_assemble:
 	SHORTEN_OUTPUT(MODE_ASSEMBLE, f_o);
-	RUN(0, UCC_NASM " -f " UCC_ARCH " %s -o %s %s", args[MODE_ASSEMBLE], f_o, f_s);
+	RUN(0, UCC_NASM " -f " UCC_ARCH " %s %s -o %s %s", args[MODE_ASSEMBLE], DEBUG_STR, f_o, f_s);
 	if(mode == MODE_ASSEMBLE)
 		return 0;
 
 start_link:
-	RUN(0, UCC_LD " " UCC_LDFLAGS " -o %s %s %s %s%s %s", f, f_o,
+	RUN(0, UCC_LD " " UCC_LDFLAGS " %s -o %s %s %s %s%s %s", DEBUG_STR, f, f_o,
 			no_stdlib     ? "" : stdlib_files,
 			no_startfiles ? "" : where,
 			no_startfiles ? "" : "/../lib/crt.o",
@@ -262,6 +265,8 @@ int main(int argc, char **argv)
 
 	for(i = 1; i < argc; i++)
 		if(!strcmp(argv[i], "-d")){
+			verbose = 1;
+		}else if(!strcmp(argv[i], "-g")){
 			debug = 1;
 		}else if(!strcmp(argv[i], "-w")){
 			no_warn = 1;
