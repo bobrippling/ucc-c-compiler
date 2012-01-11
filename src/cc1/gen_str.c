@@ -44,17 +44,20 @@ void idt_printf(const char *fmt, ...)
 	va_end(l);
 }
 
-void print_decl(decl *d, int idt, int nl, int sym_offset)
+void print_decl(decl *d, int idt, int nl, int sym_offset, int print_ignore)
 {
 	int i;
 
 	if(idt)
 		idt_print();
 
-	if(d->ignore)
-		fprintf(cc1_out, "((extern) ignored/overridden later) ");
+	if(print_ignore && d->ignore)
+		fprintf(cc1_out, "(extern ignored) ");
 
-	fputs(type_to_str(d->type), cc1_out);
+	if(d->struc)
+		fprintf(cc1_out, "struct %s", STRUCT_SPEL(d->struc));
+	else
+		fputs(type_to_str(d->type), cc1_out);
 
 	if(d->ptr_depth || d->spel)
 		fputc(' ', cc1_out);
@@ -88,20 +91,13 @@ void print_decl(decl *d, int idt, int nl, int sym_offset)
 void print_sym(sym *s)
 {
 	idt_printf("sym: type=%s, offset=%d, type: ", sym_to_str(s->type), s->offset);
-	print_decl(s->decl, 0, 1, 0);
-}
-
-void print_struct_expr(expr *e)
-{
-	char *spel = e->lhs->tree_type->struc->spel;
-	idt_printf("struct %s\n", spel ? spel : "<anon>");
-	print_expr(e->lhs);
+	print_decl(s->decl, 0, 1, 0, 1);
 }
 
 void print_expr(expr *e)
 {
-	idt_printf("vartype: ");
-	print_decl(e->tree_type, 0, 1, 0);
+	idt_printf("tree_type: ");
+	print_decl(e->tree_type, 0, 1, 0, 0);
 
 	idt_printf("e->type: %s\n", expr_to_str(e->type));
 
@@ -121,10 +117,7 @@ void print_expr(expr *e)
 		case expr_struct:
 			idt_printf("struct expression:\n");
 			indent++;
-			if(e->lhs->type == expr_struct)
-				print_struct_expr(e->lhs);
-			else
-				print_expr(e->lhs);
+			print_expr(e->lhs);
 			indent--;
 			idt_printf("member:\n");
 			indent++;
@@ -296,7 +289,7 @@ void print_tree(tree *t)
 			if(d->func)
 				print_func(d);
 			else
-				print_decl(d, 1, 1, 1);
+				print_decl(d, 1, 1, 1, 1);
 			indent--;
 		}
 	}
@@ -321,11 +314,11 @@ void print_func(decl *d)
 	idt_printf("function: ");
 	indent++;
 
-	print_decl(d, 0, 0, 0);
+	print_decl(d, 0, 0, 0, 1);
 
 	fputc('(', cc1_out);
 	for(iter = f->args; iter && *iter; iter++){
-		print_decl(*iter, 0, 0, 0);
+		print_decl(*iter, 0, 0, 0, 1);
 		fprintf(cc1_out, "%s", iter[1] ? ", " : "");
 	}
 
@@ -343,9 +336,35 @@ void print_func(decl *d)
 	indent--;
 }
 
+void print_struct(struc *st)
+{
+	decl **iter;
+
+	idt_printf("struct %s%s:\n", st->spel);
+
+	indent++;
+	for(iter = st->members; *iter; iter++){
+		decl *d = *iter;
+		print_decl(d, 1, 1, 0, 0);
+		idt_printf("offset %d\n", d->struct_offset);
+	}
+	indent--;
+}
+
 void gen_str(symtable *symtab)
 {
 	decl **diter;
+
+	if(symtab->structs){
+		/* FIXME: when struct decls are local to blocks, this will need moving */
+		struc **it;
+		idt_printf("structs:\n");
+		indent++;
+		for(it = symtab->structs; *it; it++)
+			print_struct(*it);
+		indent--;
+	}
+
 	for(diter = symtab->decls; diter && *diter; diter++){
 		if((*diter)->func){
 			print_func(*diter);
@@ -353,7 +372,7 @@ void gen_str(symtable *symtab)
 			fprintf(cc1_out, "global variable:\n");
 
 			indent++;
-			print_decl(*diter, 0, 1, 0);
+			print_decl(*diter, 0, 1, 0, 1);
 			if((*diter)->init){
 				indent++;
 				fprintf(cc1_out, "init:\n");

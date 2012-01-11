@@ -1,21 +1,26 @@
+#ifdef TIMMY
+struct timmy
+{
+	int i;
+	void *p;
+};
+#endif
+
 int
 main()
 {
 	struct int_struct_ptr
 	{
 		int i;
-		struct one_int
+		struct ptr_struct
 		{
-			int j;
+			void *p;
 		} sub;
 		void *p;
 	} x;
+#ifdef TIMMY
+	struct timmy tim; // FIXME
+#endif
 
-	//nam.mem;
-
-	x.i;
-
-	x.sub.j;
-
-	//nam.mem.mem;
+	x.sub;
 }

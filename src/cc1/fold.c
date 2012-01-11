@@ -54,6 +54,10 @@ int fold_is_lvalue(expr *e)
 	if(e->type == expr_cast)
 		return fold_is_lvalue(e->rhs);
 
+	if(e->type == expr_struct)
+		return 1; /*fold_is_lvalue(e->rhs); rhs is just an identifier,
+								not even a valid sym */
+
 	return 0;
 }
 
@@ -62,14 +66,17 @@ int fold_is_callable(expr *e)
 	return e->type == expr_identifier; /* TODO: extend to function pointer */
 }
 
-#define GET_TREE_TYPE(from) \
+#define GET_TREE_TYPE_TO(to, from) \
 	do{ \
 		/*if(e->tree_type) \
 			decl_free(e->tree_type);*/ \
-		e->tree_type = decl_copy(from); \
-		e->tree_type->spel = NULL; \
-		e->tree_type->arraysizes = NULL; \
+		to->tree_type = decl_copy(from); \
+		to->tree_type->spel = NULL; \
+		to->tree_type->arraysizes = NULL; \
 	}while(0)
+
+#define GET_TREE_TYPE(from) \
+	GET_TREE_TYPE_TO(e, from)
 
 void fold_decl_equal(decl *a, decl *b, where *w, enum warning warn,
 		const char *errfmt, ...)
@@ -182,7 +189,7 @@ void fold_assignment(expr *e, symtable *stab)
 
 	/* wait until we get the tree types, etc */
 	if(!fold_is_lvalue(e->lhs))
-		die_at(&e->lhs->where, "not an lvalue");
+		die_at(&e->lhs->where, "not an lvalue (%s)", expr_to_str(e->lhs->type));
 
 	if(e->lhs->tree_type->type->spec & spec_const){
 		/* allow const init: */
@@ -213,7 +220,7 @@ void fold_assignment(expr *e, symtable *stab)
 				e->lhs->spel ? ")" : "");
 }
 
-void fold_struct(expr *e, symtable *stab)
+void fold_expr_struct(expr *e, symtable *stab)
 {
 	struc *st;
 	decl *d, **i;
@@ -230,30 +237,32 @@ void fold_struct(expr *e, symtable *stab)
 	 * lhs =
 	 */
 
-	if(e->lhs->type == expr_struct){
-		fold_struct(e->lhs, stab);
-
-	}else if(e->lhs->type == expr_identifier){
-		sym *s = symtab_search(stab, e->lhs->spel);
-
-		if(!s)
-			die_at(&e->lhs->where, "undeclared struct identifier %s\n", e->lhs->spel);
-
-		e->lhs->sym = s;
-		e->lhs->tree_type->struc = st = s->decl->struc; /* ??? */
-
-	}else{
-		die_at(&e->lhs->where, "struct initial expr not identifier");
-	}
-
-	ICE("TODO: struct folding");
-
 	if(e->rhs->type != expr_identifier)
 		die_at(&e->rhs->where, "struct member must be an identifier");
+	/*
+	 * don't fold the rhs, it is simply a name for a member,
+	 * look up that instead
+	 * (done with GET_TREE_TYPE)
+	 */
 
 	spel = e->rhs->spel;
-	d = NULL;
 
+	/* we either access a struct or an identifier */
+	if(e->lhs->type == expr_struct){
+		fold_expr_struct(e->lhs, stab);
+
+		st = e->lhs->tree_type->struc;
+
+	}else if(e->lhs->type == expr_identifier){
+		fold_expr(e->lhs, stab);
+
+		st = e->lhs->sym->decl->struc;
+
+	}else{
+		die_at(&e->lhs->where, "invalid struct expr");
+	}
+
+	d = NULL;
 	for(i = st->members; *i; i++)
 		if(!strcmp((*i)->spel, spel)){
 			d = *i;
@@ -261,9 +270,10 @@ void fold_struct(expr *e, symtable *stab)
 		}
 
 	if(!d)
-		die_at(&e->rhs->where, "\"%s\" has no member named \"%s\"", st->spel, spel);
+		die_at(&e->rhs->where, "struct %s has no member named \"%s\"", STRUCT_SPEL(st), spel);
 
 	GET_TREE_TYPE(d);
+	GET_TREE_TYPE_TO(e->rhs, d);
 }
 
 void fold_expr(expr *e, symtable *stab)
@@ -316,7 +326,9 @@ void fold_expr(expr *e, symtable *stab)
 			break;
 
 		case expr_struct:
-			fold_struct(e, stab);
+			fold_expr_struct(e, stab);
+			if(e->tree_type->struc)
+				warn_at(&e->where, "warning: struct in expression");
 			break;
 
 		case expr_addr:
@@ -750,7 +762,7 @@ case_add:
 
 							memcpy(&dtmp, s->decl, sizeof dtmp);
 							dtmp.ptr_depth--;
-							siz = decl_size(&dtmp);
+							siz = decl_size(&dtmp); /* FIXME: round to wordsize */
 
 							for(i = 0; s->decl->arraysizes[i]; i++)
 								auto_offset += s->decl->arraysizes[i]->val.i * siz;
@@ -760,8 +772,7 @@ case_add:
 								auto_offset += word_size - auto_offset % word_size;
 
 						}else{
-							/* use sizeof(int) for single chars etc etc */
-							auto_offset += word_size;
+							auto_offset += decl_size(s->decl); /* FIXME: round to wordsize */
 						}
 					}else if(s->type == sym_arg){
 						s->offset = arg_offset;
@@ -894,6 +905,26 @@ void fold_func(decl *df, symtable *globsymtab)
 	curdecl_func = NULL;
 }
 
+void fold_struct(struc *st)
+{
+	int offset;
+	decl **i;
+
+	for(offset = 0, i = st->members; *i; i++){
+		decl *d = *i;
+		if(d->struc){
+			d->struct_offset = offset;
+			fold_struct(d->struc);
+			offset += d->struc->size;
+		}else{
+			d->struct_offset = offset;
+			offset += decl_size(d);
+		}
+	}
+
+	st->size = offset;
+}
+
 void fold(symtable *globs)
 {
 #define D(x) globs->decls[x]
@@ -915,6 +946,13 @@ void fold(symtable *globs)
 		f->args[0]->ptr_depth = 1;
 
 		symtab_add(globs, d, sym_global, SYMTAB_WITH_SYM, SYMTAB_PREPEND);
+	}
+
+	{
+		/* FIXME: when struct decls are local to blocks, this will need moving */
+		struc **it;
+		for(it = globs->structs; it && *it; it++)
+			fold_struct(*it);
 	}
 
 	for(i = 0; D(i); i++){

@@ -9,7 +9,7 @@ OBJ = ../util/alloc.o ../util/util.o ../util/platform.o ../util/dynarray.o \
 	tokconv.o tokenise.o \
 	parse.o typedef.o \
 	fold.o const.o \
-	sym.o \
+	sym.o struct.o \
 	gen_asm.o gen_str.o \
 	asm.o asm_op.o
 

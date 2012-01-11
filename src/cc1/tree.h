@@ -70,6 +70,7 @@ struct decl
 	tdef *tdef;
 
 	int ignore; /* ignore during code-gen, for example ignoring overridden externs */
+#define struct_offset ignore
 	sym *sym;
 };
 

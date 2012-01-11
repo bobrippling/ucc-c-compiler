@@ -9,6 +9,7 @@
 #include "macros.h"
 #include "sym.h"
 #include "../util/platform.h"
+#include "struct.h"
 
 void where_new(struct where *w)
 {
@@ -173,6 +174,9 @@ int decl_size(const decl *d)
 {
 	if(d->ptr_depth)
 		return platform_word_size();
+
+	if(d->struc)
+		return d->struc->size;
 
 	switch(d->type->primitive){
 		case type_char:

@@ -20,8 +20,8 @@ struct symtable
 	int auto_offset_start, auto_size;
 	int auto_total_size;
 	symtable *parent;
-	array_decl **arrays;
-	decl **decls;
+	decl  **decls;
+	struc **structs;
 };
 
 sym *sym_new(decl *d, enum sym_type t);

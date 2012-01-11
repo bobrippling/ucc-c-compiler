@@ -59,9 +59,8 @@ expr *parse_expr_binary_op(void); /* needed to limit [+-] parsing */
 expr *parse_expr_array(void);
 expr *parse_expr_if(void);
 
-
 static tdeftable *typedefs_current;
-static struc     *structs_current;
+static struc    **structs_current;
 
 expr *parse_lone_identifier()
 {
@@ -1166,6 +1165,8 @@ symtable *parse()
 	if(decls)
 		for(i = 0; decls[i]; i++)
 			symtab_add(globals, decls[i], sym_global, SYMTAB_NO_SYM, SYMTAB_APPEND);
+
+	globals->structs = structs_current; /* FIXME: structs should be per-block */
 
 	EAT(token_eof);
 
