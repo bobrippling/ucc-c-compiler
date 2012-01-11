@@ -76,6 +76,9 @@ void walk_expr(expr *e, symtable *stab)
 			walk_expr(e->rhs, stab);
 			break;
 
+		case expr_struct:
+			ICE("TODO");
+
 		case expr_if:
 		{
 			char *lblfin, *lblelse;

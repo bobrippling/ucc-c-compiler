@@ -237,6 +237,7 @@ const char *expr_to_str(const enum expr_type t)
 		CASE_STR_PREFIX(expr, cast);
 		CASE_STR_PREFIX(expr, if);
 		CASE_STR_PREFIX(expr, comma);
+		CASE_STR_PREFIX(expr, struct);
 	}
 	return NULL;
 }

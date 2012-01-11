@@ -6,6 +6,8 @@ cc1:
 
 	&x[y]
 
+	typedefs and struct decls need to be scoped
+
 	const:
 		const char *s; - *s is not writable, s is
 

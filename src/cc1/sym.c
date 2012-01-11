@@ -73,6 +73,8 @@ int spel_cmp(const void *test, decl *item)
 
 sym *symtab_search(symtable *tab, const char *spel)
 {
+	if(!spel)
+		ICE("symtab_search() with NULL spel");
 	return symtab_search2(tab, spel, spel_cmp, 1);
 }
 
@@ -83,6 +85,8 @@ int decl_cmp(const void *test, decl *item)
 
 sym *symtab_has(symtable *tab, decl *d)
 {
+	if(!d)
+		ICE("symtab_has() with NULL decl");
 	return symtab_search2(tab, d, decl_cmp, 1);
 }
 
