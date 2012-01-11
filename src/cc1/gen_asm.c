@@ -15,29 +15,61 @@
 #include "gen_asm.h"
 #include "../util/util.h"
 #include "const.h"
+#include "struct.h"
 
 static char *curfunc_lblfin;
 
 void gen_asm_global_var(decl *d);
 
+void struct_member_addr_to_ax(expr *struct_base)
+{
+	int full_offset = struct_member_offset(struct_base);
+	expr *e;
+
+	for(e = struct_base->lhs; !e->sym; e = e->lhs);
+
+	asm_sym(ASM_LEA, e->sym, "rax");
+
+	asm_temp(1, "; ^ address of struct %s, (sub)member %s",
+			e->sym->decl->spel,
+			struct_base->rhs->spel);
+
+	asm_temp(1, "sub rax, %d ; offset of member", full_offset);
+}
+
 void asm_ax_to_store(expr *store, symtable *stab)
 {
-	if(store->type == expr_identifier){
-		asm_sym(ASM_SET, store->sym, "rax");
+	switch(store->type){
+		case expr_identifier:
+			asm_sym(ASM_SET, store->sym, "rax");
+			return;
 
-	}else if(store->type == expr_op && store->op == op_deref){
-		/* a dereference */
-		asm_temp(1, "push rax ; save val");
+		case expr_struct:
+			asm_temp(1, "push rax");
+			struct_member_addr_to_ax(store);
+			asm_temp(1, "pop rbx        ; val for struct");
+			asm_temp(1, "mov [rax], rbx ; save to struct");
+			return;
 
-		walk_expr(store->lhs, stab); /* skip over the *() bit */
+		case expr_op:
+			if(store->op != op_deref)
+				break;
+			/* a dereference */
+			asm_temp(1, "push rax ; save val");
 
-		/* move `pop` into `pop` */
-		asm_temp(1, "pop rax ; ptr");
-		asm_temp(1, "pop rbx ; val");
-		asm_temp(1, "mov [rax], rbx");
-	}else{
-		ICE("asm_ax_to_store: invalid store expression");
+			walk_expr(store->lhs, stab); /* skip over the *() bit */
+
+			/* move `pop` into `pop` */
+			asm_temp(1, "pop rax ; ptr");
+			asm_temp(1, "pop rbx ; val");
+			asm_temp(1, "mov [rax], rbx");
+			return;
+
+		default:
+			break;
 	}
+
+	ICE("asm_ax_to_store: invalid store expression %s", expr_to_str(store->type));
 }
 
 void gen_assign(expr *e, symtable *stab)
@@ -77,7 +109,10 @@ void walk_expr(expr *e, symtable *stab)
 			break;
 
 		case expr_struct:
-			ICE("TODO");
+			struct_member_addr_to_ax(e);
+			asm_temp(1, "mov rax, [rax] ; val from struct");
+			asm_temp(1, "push rax");
+			break;
 
 		case expr_if:
 		{
