@@ -7,7 +7,6 @@
 
 int struct_member_offset(expr *e)
 {
-	struc *st;
 	int offset = e->rhs->tree_type->struct_offset;
 
 	UCC_ASSERT(e->type == expr_struct, "not a struct");
