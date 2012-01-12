@@ -251,12 +251,12 @@ void fold_expr_struct(expr *e, symtable *stab)
 	if(e->lhs->type == expr_struct){
 		fold_expr_struct(e->lhs, stab);
 
-		st = e->lhs->tree_type->struc;
+		st = e->lhs->tree_type->type->struc;
 
 	}else if(e->lhs->type == expr_identifier){
 		fold_expr(e->lhs, stab);
 
-		st = e->lhs->sym->decl->struc;
+		st = e->lhs->sym->decl->type->struc;
 
 	}else{
 		die_at(&e->lhs->where, "invalid struct expr");
@@ -327,7 +327,7 @@ void fold_expr(expr *e, symtable *stab)
 
 		case expr_struct:
 			fold_expr_struct(e, stab);
-			if(e->tree_type->struc)
+			if(e->tree_type->type->struc)
 				warn_at(&e->where, "warning: struct in expression");
 			break;
 
@@ -912,10 +912,10 @@ void fold_struct(struc *st)
 
 	for(offset = 0, i = st->members; *i; i++){
 		decl *d = *i;
-		if(d->struc){
+		if(d->type->struc){
 			d->struct_offset = offset;
-			fold_struct(d->struc);
-			offset += d->struc->size;
+			fold_struct(d->type->struc);
+			offset += d->type->struc->size;
 		}else{
 			d->struct_offset = offset;
 			offset += decl_size(d);

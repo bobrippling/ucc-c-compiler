@@ -36,6 +36,7 @@ void asm_temp(          int indent, const char *, ...);
 void asm_tempf(FILE *f, int indent, const char *, ...);
 void asm_label(const char *);
 void asm_sym(enum asm_sym_type, sym *, const char *);
+void asm_sym_struct(expr *, const char *);
 
 int asm_type_ch(decl *d);
 

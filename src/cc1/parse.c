@@ -305,15 +305,23 @@ expr *parse_expr_join(
 expr *parse_expr_struct()
 {
 	expr *e = parse_expr_unary_op();
+	int flag;
 
-	while(accept(token_dot)){
-		expr *stru = expr_new();
+	while((flag = accept(token_ptr)) || accept(token_dot)){
+		if(!flag){
+			/*
+			 * a.x -> (&a)->x
+			 */
+			ICE("FIXME: struct.member");
+		}else{
+			expr *stru = expr_new();
 
-		stru->type = expr_struct;
-		stru->lhs = e;
-		stru->rhs = parse_lone_identifier();
+			stru->type = expr_struct;
+			stru->lhs = e;
+			stru->rhs = parse_lone_identifier();
 
-		e = stru;
+			e = stru;
+		}
 	}
 
 	return e;
@@ -994,12 +1002,13 @@ enum type_spec parse_type_spec(void)
 	return ret;
 }
 
-decl *parse_decl_struct(enum decl_mode decl_mode)
+type *parse_type_struct()
 {
 	char *spel;
-	decl *d;
+	type *t;
+	struc *struc;
 
-	d = decl_new();
+	t = NULL;
 
 	if(accept(token_identifier))
 		spel = token_current_spel();
@@ -1007,28 +1016,22 @@ decl *parse_decl_struct(enum decl_mode decl_mode)
 		spel = NULL;
 
 	if(accept(token_open_block)){
-		struc *struc = umalloc(sizeof *struc);
+		struc = umalloc(sizeof *struc);
 
 		struc->spel = spel;
-		struc->members = parse_decls((decl_mode & ~(DECL_SPEL_NO | DECL_SPEL_OPT)) | DECL_CAN_DEFAULT | DECL_SPEL_NEED);
+		struc->members = parse_decls(DECL_CAN_DEFAULT | DECL_SPEL_NEED);
 
 		EAT(token_close_block);
 
-		d->struc = struc;
-
 		dynarray_add((void ***)&structs_current, struc);
-	}
-
-	if(curtok != token_identifier){
-		/* struct { int x; int y; }; */
-		decl_free(d);
-		d = NULL;
 	}else{
-		d->spel = token_current_spel();
-		EAT(token_identifier);
+		struc = NULL;
 	}
 
-	return d;
+	t = type_new();
+	t->struc = struc;
+
+	return t;
 }
 
 decl *parse_decl(enum decl_mode decl_mode)
@@ -1037,22 +1040,12 @@ decl *parse_decl(enum decl_mode decl_mode)
 	decl *d;
 	enum type_spec spec;
 
-	if(accept(token_struct)){
-		d = parse_decl_struct(decl_mode);
-		if(d){
-			if(accept(token_comma))
-				ICE("need to do struct x [{ ... }] nam, nam2, nam3...;");
-			return d;
-		}
-		EAT(token_semicolon);
-		/* else just a struct def, continue parsing */
-	}
-
 	spec = parse_type_spec();
 	/* FIXME: int const x; */
 	d = NULL;
 
 	if((decl_mode & DECL_NO_TYPE) == 0){
+		/* type wanted */
 		if(curtok == token_identifier){
 			/*
 			 * either:
@@ -1065,14 +1058,19 @@ decl *parse_decl(enum decl_mode decl_mode)
 			if(d){
 				d = decl_copy(d);
 				EAT(token_identifier);
-			}else if(spec || decl_mode & DECL_CAN_DEFAULT){
-				/* identifier; - default to int */
-default_int:
-				d = decl_new();
-				d->type->primitive = type_int;
-				cc1_warn_at(&d->where, 0, WARN_IMPLICIT_INT, "defaulting type to int");
-			}else{
+			}else if(!spec && (decl_mode & DECL_CAN_DEFAULT) == 0){
 				goto no_decl;
+			}
+			/* else identifier; - default to int (further down) */
+
+		}else if(accept(token_struct)){
+			d = decl_new();
+			type_free(d->type);
+			d->type = parse_type_struct(decl_mode);
+			if(!d->type){
+				/* just a struct def, continue parsing */
+				EAT(token_semicolon);
+				return NULL;
 			}
 		}else{
 			if(curtok_is_type()){
@@ -1080,10 +1078,9 @@ default_int:
 				d->type->primitive = curtok_to_type_primitive();
 				EAT(curtok);
 			}else if(spec){
-				if(decl_mode & DECL_CAN_DEFAULT)
-					goto default_int;
-				else
+				if((decl_mode & DECL_CAN_DEFAULT) == 0)
 					goto no_decl;
+				/* else assume int */
 			}else if((decl_mode & DECL_CAN_DEFAULT) == 0 || curtok != token_multiply){
 				/*
 				 * look for "*[spel]" if we can default the type,
@@ -1094,8 +1091,12 @@ default_int:
 		}
 	}
 
-	if(!d)
+	/* FIXME: this is in the wrong place, we should check for a type in parse_declS() */
+	if(!d){
 		d = decl_new();
+		d->type->primitive = type_int;
+		cc1_warn_at(&d->where, 0, WARN_IMPLICIT_INT, "defaulting type to int");
+	}
 
 	while(curtok == token_multiply){
 		EAT(token_multiply);
