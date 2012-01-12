@@ -54,10 +54,7 @@ void print_decl(decl *d, int idt, int nl, int sym_offset, int print_ignore)
 	if(print_ignore && d->ignore)
 		fprintf(cc1_out, "(extern ignored) ");
 
-	if(d->struc)
-		fprintf(cc1_out, "struct %s", STRUCT_SPEL(d->struc));
-	else
-		fputs(type_to_str(d->type), cc1_out);
+	fputs(type_to_str(d->type), cc1_out);
 
 	if(d->ptr_depth || d->spel)
 		fputc(' ', cc1_out);

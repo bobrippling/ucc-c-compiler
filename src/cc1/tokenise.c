@@ -467,11 +467,18 @@ recheck:
 			}
 			break;
 		case '-':
-			if(peeknextchar() == '-'){
-				nextchar();
-				curtok = token_decrement;
-			}else{
-				curtok = token_minus;
+			switch(peeknextchar()){
+				case '-':
+					nextchar();
+					curtok = token_decrement;
+					break;
+				case '>':
+					nextchar();
+					curtok = token_ptr;
+					break;
+
+				default:
+					curtok = token_minus;
 			}
 			break;
 		case '*':

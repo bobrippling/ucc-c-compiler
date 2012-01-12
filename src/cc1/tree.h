@@ -43,6 +43,8 @@ struct type
 
 	enum type_primitive primitive;
 	enum type_spec      spec;
+
+	struc *struc; /* NULL unless this is a structure */
 };
 
 struct decl
@@ -54,7 +56,6 @@ struct decl
 	char *spel;
 
 	expr **arraysizes;
-	struc *struc; /* NULL unless this is a structure */
 
 	expr *init; /* NULL except for global variables */
 	array_decl *arrayinit;
