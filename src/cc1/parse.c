@@ -58,6 +58,7 @@ decl **parse_decls(const int can_default);
 expr *parse_expr_binary_op(void); /* needed to limit [+-] parsing */
 expr *parse_expr_array(void);
 expr *parse_expr_if(void);
+expr *parse_expr_deref(void);
 
 static tdeftable *typedefs_current;
 static struc    **structs_current;
@@ -90,11 +91,13 @@ expr *parse_expr_unary_op()
 			if(accept(token_open_paren)){
 				e->tree_type = parse_decl(DECL_SPEL_NO);
 				if(!e->tree_type)
+					/* parse a full one, since we're in brackets */
 					e->expr = parse_expr();
 
 				EAT(token_close_paren);
 			}else{
-				e->expr = parse_expr_funcallarg();
+				e->expr = parse_expr_deref();
+				/* don't go any higher, sizeof a - 1, means sizeof(a) - 1 */
 			}
 			return e;
 
