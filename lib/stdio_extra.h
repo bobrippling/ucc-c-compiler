@@ -44,7 +44,6 @@ int   vfscanf(FILE *, const char *, va_list);
 int   vsscanf(const char *, const char *, va_list arg);
 
 
-int   remove(const char *);
 int   rename(const char *, const char *);
 
 int pclose(FILE *);

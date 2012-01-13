@@ -36,4 +36,8 @@ int   fgetc(FILE *);
 /*char *gets( char *);*/
 char *fgets(char *, int, FILE *);
 
+
+/* file system */
+int remove(const char *);
+
 #endif

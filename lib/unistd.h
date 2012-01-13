@@ -14,4 +14,7 @@ void *sbrk(int inc);
 pid_t fork(void);
 pid_t getpid(void);
 
+int unlink(const char *);
+int rmdir( const char *);
+
 #endif
