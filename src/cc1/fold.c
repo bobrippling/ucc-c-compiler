@@ -42,10 +42,10 @@ int fold_is_lvalue(expr *e)
 	 *   (cast)expr = 5;
 	 *   *[above] = 5;
 	 *
-	 * also can't be const, checked in fold_assign
+	 * also can't be const, checked in fold_assign (since we allow const inits)
 	 */
 
-	if(e->type == expr_identifier)
+	if(e->type == expr_identifier && !e->tree_type->func && !e->tree_type->arraysizes)
 		return 1;
 
 	if(e->type == expr_op && e->op == op_deref)
@@ -229,12 +229,6 @@ void fold_expr_struct(expr *e, symtable *stab)
 	/*
 	 * lhs = struct var
 	 * rhs = struct member (nested)
-	 *
-	 * struct a
-	 * {
-	 *   struct
-	 *
-	 * lhs =
 	 */
 
 	if(e->rhs->type != expr_identifier)
