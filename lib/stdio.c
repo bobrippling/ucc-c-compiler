@@ -1,6 +1,7 @@
 #include "unistd.h"
 #include "stdio.h"
 #include "string.h"
+#include "errno.h"
 
 #define PRINTF_OPTIMISE
 
@@ -192,4 +193,16 @@ char *fgets(char *s, int l, FILE *f)
 	s[l] = '\0';
 
 	return s;
+}
+
+/* file system */
+
+int remove(const char *f)
+{
+	if(unlink(f)){
+		if(errno == EISDIR)
+			return rmdir(f);
+		return -1;
+	}
+	return 0;
 }

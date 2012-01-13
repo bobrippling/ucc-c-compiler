@@ -55,3 +55,13 @@ int close(int fd)
 {
 	return __syscall(SYS_close, fd);
 }
+
+int unlink(const char *f)
+{
+	return __syscall(SYS_unlink, f);
+}
+
+int rmdir(const char *d)
+{
+	return __syscall(SYS_rmdir, d);
+}
