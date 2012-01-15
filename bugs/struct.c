@@ -28,10 +28,12 @@ main()
 		void *p;
 	} y, *x;
 
-	x = array_hack;
+	//x = array_hack;
+	x = &y;
+
 	x->i = 5;
 
-	y->i = 2;
+	y.i = 2;
 
 	return x->i;
 }
