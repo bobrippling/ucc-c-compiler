@@ -175,8 +175,12 @@ int decl_size(const decl *d)
 	if(d->ptr_depth)
 		return platform_word_size();
 
-	if(d->struc)
-		return d->struc->size;
+	if(d->type->struc){
+		struc *s = d->type->struc;
+		UCC_ASSERT(s->size, "no size for struct %s", s->spel);
+		return s->size;
+	}
+
 
 	switch(d->type->primitive){
 		case type_char:
@@ -312,23 +316,26 @@ const char *spec_to_str(const enum type_spec s)
 
 const char *type_to_str(const type *t)
 {
-#define buf_size (sizeof(buf) - (bufp - buf))
+#define BUF_SIZE (sizeof(buf) - (bufp - buf))
 	static char buf[TYPE_STATIC_BUFSIZ];
 	int i;
 	char *bufp = buf;
 
 	for(i = 0; i < SPEC_MAX; i++)
 		if(t->spec & (1 << i))
-			bufp += snprintf(bufp, buf_size, "%s ", spec_to_str(1 << i));
+			bufp += snprintf(bufp, BUF_SIZE, "%s ", spec_to_str(1 << i));
 
-#define APPEND(t) case type_ ## t: snprintf(bufp, buf_size, "%s", #t); break
-	switch(t->primitive){
-		APPEND(int);
-		APPEND(char);
-		APPEND(void);
-		APPEND(unknown);
-	}
+	if(t->struc)
+		snprintf(bufp, BUF_SIZE, "struct %s", STRUCT_SPEL(t->struc));
+	else
+		switch(t->primitive){
+#define APPEND(t) case type_ ## t: snprintf(bufp, BUF_SIZE, "%s", #t); break
+			APPEND(int);
+			APPEND(char);
+			APPEND(void);
+			APPEND(unknown);
 #undef APPEND
+		}
 
 	return buf;
 }
