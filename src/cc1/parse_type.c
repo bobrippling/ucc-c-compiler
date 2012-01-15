@@ -37,9 +37,10 @@ type *parse_type()
 {
 	enum type_spec spec = 0;
 	type *t = NULL;
+	decl *td;
 	int flag;
 
-	while((flag = curtok_is_type_specifier()) || curtok_is_type()){
+	while((flag = curtok_is_type_specifier()) || curtok_is_type() || (td = TYPEDEF_FIND())){
 		if(flag){
 			const enum type_spec this = curtok_to_type_specifier();
 
@@ -49,9 +50,8 @@ type *parse_type()
 
 			spec |= this;
 			EAT(curtok);
-		}else if(curtok == token_identifier){
-			/* _possible_ typedef name */
-			decl *td;
+		}else if(td){
+			/* typedef name */
 
 			if(t)
 				break; /* "int x" - we are at x */
@@ -101,14 +101,10 @@ decl *parse_decl(type *t, enum decl_mode mode)
 		EAT(token_identifier);
 	}
 
-	if(accept(token_open_paren)){
+	if(accept(token_open_paren))
 		d->func = parse_function();
-
-		fprintf(stderr, "parsed function for %s, %p\n", d->spel, d->func);
-
-	}else if(accept(token_assign)){
+	else if(accept(token_assign))
 		d->init = parse_expr();
-	}
 
 	return d;
 }
@@ -164,15 +160,12 @@ decl **parse_decls(const int can_default)
 				}
 
 				last = d;
-				fprintf(stderr, "parsed decl %s\n", d->spel);
 			}else{
 				break;
 			}
 		}while(accept(token_comma));
 
-		if(last && !last->func){
-			fprintf(stderr, "last = %p (%s), eating ';'\n", last, last?last->spel:"");
+		if(last && !last->func)
 			EAT(token_semicolon);
-		}
 	}
 }

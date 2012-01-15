@@ -30,6 +30,7 @@ enum type_spec curtok_to_type_specifier()
 		case token_signed:   return spec_signed;
 		case token_unsigned: return spec_unsigned;
 		case token_auto:     return spec_auto;
+		case token_typedef:  return spec_typedef;
 		default: break;
 	}
 	return spec_none;
