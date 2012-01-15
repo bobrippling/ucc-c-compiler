@@ -58,7 +58,6 @@ struct statement
 	{ "signed",  token_signed  },
 	{ "unsigned",token_unsigned},
 	{ "auto",    token_auto    },
-
 	{ "typedef", token_typedef },
 	{ "struct",  token_struct  },
 

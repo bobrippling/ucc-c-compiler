@@ -28,5 +28,9 @@ main()
 
 	(int)k;
 	(int *)k;
-	//(int *q)k;
+	//(int *spel)k;
 }
+
+typedef int int_tdef;
+
+int_tdef q;

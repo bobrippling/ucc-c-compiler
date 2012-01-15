@@ -33,7 +33,6 @@ enum token
 	token_unsigned,
 	token_extern,
 	token_auto,
-
 	token_typedef,
 	token_struct,
 
