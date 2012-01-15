@@ -250,6 +250,9 @@ void fold_expr_struct(expr *e, symtable *stab)
 	}else if(e->lhs->type == expr_identifier){
 		fold_expr(e->lhs, stab);
 
+		if(e->lhs->tree_type->ptr_depth != 1)
+			die_at(&e->lhs->where, "left hand operand of struct access is not a pointer-to-struct");
+
 		st = e->lhs->sym->decl->type->struc;
 
 	}else{
