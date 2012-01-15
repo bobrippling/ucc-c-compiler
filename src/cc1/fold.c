@@ -629,7 +629,8 @@ void fold_tree(tree *t)
 			FOLD_IF(t->flow->for_inc);
 #undef FOLD_IF
 
-			EXPR_NON_VOID(t->flow->for_while, "for-while");
+			if(t->flow->for_while)
+				EXPR_NON_VOID(t->flow->for_while, "for-while");
 
 			symtab_nest(t->symtab, &t->lhs->symtab);
 			fold_tree(t->lhs);

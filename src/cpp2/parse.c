@@ -11,6 +11,7 @@
 #include "../util/dynarray.h"
 #include "../util/util.h"
 #include "preproc.h"
+#include "main.h"
 
 #define SINGLE_TOKEN(err) \
 	if(dynarray_count((void **)tokens) != 1 || tokens[0]->tok != TOKEN_WORD) \
@@ -296,7 +297,9 @@ void handle_include(token **tokens)
 		f = NULL;
 
 		for(i = 0; lib_dirs && lib_dirs[i]; i++){
-			path = ustrprintf("%s/%s/%s", dname, lib_dirs[i], fname);
+			path = ustrprintf("%s/%s/%s",
+					*lib_dirs[i] == '/' ? "" : dname,
+					lib_dirs[i], fname);
 			f = fopen(path, "r");
 			if(f)
 				break;
@@ -307,14 +310,8 @@ void handle_include(token **tokens)
 	}else{
 		path = ustrprintf("%s/%s", dname, fname);
 		f = fopen(path, "r");
-		if(!f){
-			/* remove this */
-			i;
-			char x[256];
-			getcwd(x, 256);
-			fprintf(stderr, "pwd=%s\n", x);
+		if(!f)
 			die("open %s (%s): %s", fname, path, strerror(errno));
-		}
 	}
 
 	preproc_push(f);
