@@ -8,5 +8,6 @@ void  dynarray_rm(     void **,  void *);
 int   dynarray_count(  void **);
 void  dynarray_free(   void ***par, void (*f)(void *));
 
+void  dynarray_add_array(void ***, void **);
 
 #endif

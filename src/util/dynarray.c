@@ -96,11 +96,36 @@ void dynarray_free(void ***par, void (*f)(void *))
 	void **ar = *par;
 
 	if(ar){
-		while(*ar){
-			f(*ar);
-			ar++;
-		}
+		if(f)
+			while(*ar){
+				f(*ar);
+				ar++;
+			}
 		free(*par);
 		*par = NULL;
 	}
+}
+
+void dynarray_add_array(void ***par, void **ar2)
+{
+	void **ar = *par;
+	int n, n2, total;
+
+	if(!ar){
+		n = dynarray_count(ar2);
+		ar = umalloc(n * sizeof *ar);
+		memcpy(ar, ar2, n * sizeof *ar2);
+		*par = ar;
+		return;
+	}
+
+	n  = dynarray_count(ar);
+	n2 = dynarray_count(ar2);
+
+	total = n + n2;
+
+	ar = urealloc(ar, (total + 1) * sizeof *ar);
+	memcpy(ar + n, ar2, (n2 + 1) * sizeof *ar2);
+
+	*par = ar;
 }
