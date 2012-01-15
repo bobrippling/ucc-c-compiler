@@ -21,22 +21,6 @@ static char *curfunc_lblfin;
 
 void gen_asm_global_var(decl *d);
 
-void struct_member_addr_to_ax(expr *struct_base)
-{
-	int full_offset = struct_member_offset(struct_base);
-	expr *e;
-
-	for(e = struct_base->lhs; !e->sym; e = e->lhs);
-
-	asm_sym(ASM_LEA, e->sym, "rax");
-
-	asm_temp(1, "; ^ address of struct %s, (sub)member %s",
-			e->sym->decl->spel,
-			struct_base->rhs->spel);
-
-	asm_temp(1, "sub rax, %d ; offset of member", full_offset);
-}
-
 void asm_ax_to_store(expr *store, symtable *stab)
 {
 	switch(store->type){
@@ -45,10 +29,8 @@ void asm_ax_to_store(expr *store, symtable *stab)
 			return;
 
 		case expr_struct:
-			asm_temp(1, "push rax");
-			struct_member_addr_to_ax(store);
-			asm_temp(1, "pop rbx        ; val for struct");
-			asm_temp(1, "mov [rax], rbx ; save to struct");
+			asm_sym_struct(store, "rbx");
+			asm_temp(1, "mov [rbx], rax ; save to struct");
 			return;
 
 		case expr_op:
@@ -109,7 +91,7 @@ void walk_expr(expr *e, symtable *stab)
 			break;
 
 		case expr_struct:
-			struct_member_addr_to_ax(e);
+			asm_sym_struct(e, "rax");
 			asm_temp(1, "mov rax, [rax] ; val from struct");
 			asm_temp(1, "push rax");
 			break;

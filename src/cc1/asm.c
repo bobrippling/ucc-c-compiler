@@ -10,6 +10,7 @@
 #include "asm.h"
 #include "../util/platform.h"
 #include "../util/alloc.h"
+#include "struct.h"
 
 static int label_last = 1, str_last = 1, switch_last = 1, flow_last = 1;
 
@@ -126,6 +127,12 @@ void asm_sym(enum asm_sym_type t, sym *s, const char *reg)
 		case sym_func:
 			ICE("asm_sym: can't handle sym_func");
 	}
+}
+
+void asm_sym_struct(expr *store, const char *reg)
+{
+	asm_sym(ASM_LOAD, store->lhs->sym, reg); /* load, because store is a struct * */
+	asm_temp(1, "sub %s, %d ; offset of member", reg, struct_member_offset(store));
 }
 
 void asm_new(enum asm_type t, void *p)

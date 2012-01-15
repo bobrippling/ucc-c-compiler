@@ -69,6 +69,7 @@ enum token
 
 	token_assign,
 	token_dot,
+	token_ptr, /* -> */
 
 	token_eq,
 	token_le,
