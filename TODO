@@ -61,3 +61,6 @@ assembly optimisation - remove asm_temp()
 
 ({ expr; })
 parsing + gen
+
+__attribute__((pure))
+- function with no side effects (e.g. strlen())
