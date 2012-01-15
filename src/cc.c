@@ -282,9 +282,18 @@ int main(int argc, char **argv)
 				unsigned int j;
 				int found;
 
-				if(argv[i][1] == 'f' || argv[i][1] == 'W'){
-					args_add(MODE_COMPILE, argv[i]);
-					continue;
+				switch(argv[i][1]){
+					case 'f':
+					case 'W':
+						args_add(MODE_COMPILE, argv[i]);
+						continue;
+					case 'I':
+						args_add(MODE_PREPROCESS, argv[i]);
+						continue;
+					case 'l':
+					case 'L':
+						args_add(MODE_LINK, argv[i]);
+						continue;
 				}
 
 				if(!argv[i][2]){
