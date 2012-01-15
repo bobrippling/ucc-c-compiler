@@ -134,9 +134,16 @@ const char *token_to_str(enum token t)
 
 void eat(enum token t, const char *fnam, int line)
 {
-	if(t != curtok)
-		die_at(NULL, "expecting token %s, got %s (%s:%d)",
-				token_to_str(t), token_to_str(curtok), fnam, line);
+	if(t != curtok){
+		const int ident = curtok == token_identifier;
+		die_at(NULL, "expecting token %s, got %s %s%s%s(%s:%d)",
+				token_to_str(t), token_to_str(curtok),
+				ident ? "\"" : "",
+				ident ? token_current_spel_peek() : "",
+				ident ? "\" " : "",
+				fnam, line);
+	}
+
 	nexttoken();
 }
 
