@@ -1,6 +1,6 @@
-typedef int typedef_int;
+int typedef typedef_int;
 typedef int *intptr_t;
-typedef void typedef_void;
+void typedef typedef_void;
 
 typedef_void x(intptr_t);
 

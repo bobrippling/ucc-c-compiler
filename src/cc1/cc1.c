@@ -139,8 +139,10 @@ void io_cleanup(void)
 {
 	int i;
 	for(i = 0; i < NUM_SECTIONS; i++){
-		fclose(cc_out[i]);
-		remove(fnames[i]);
+		if(fclose(cc_out[i]) == EOF)
+			fprintf(stderr, "close %s: %s\n", fnames[i], strerror(errno));
+		if(remove(fnames[i]))
+			fprintf(stderr, "remove %s: %s\n", fnames[i], strerror(errno));
 	}
 }
 

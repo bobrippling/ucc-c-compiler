@@ -86,6 +86,7 @@ type *type_new()
 	type *t = umalloc(sizeof *t);
 	where_new(&t->where);
 	t->spec = spec_none;
+	t->primitive = type_unknown;
 	return t;
 }
 
@@ -190,6 +191,12 @@ int decl_size(const decl *d)
 		case type_int:
 			/* FIXME: 4 for int */
 			return platform_word_size();
+
+		case type_typedef:
+			return decl_size(d->type->tdef);
+
+		case type_struct:
+			return struct_size(d->type->struc);
 
 		case type_unknown:
 			ICE("unknown type in decl_size()");
@@ -335,6 +342,9 @@ const char *type_to_str(const type *t)
 			APPEND(char);
 			APPEND(void);
 			APPEND(unknown);
+			case type_typedef:
+			case type_struct:
+				break;
 #undef APPEND
 		}
 

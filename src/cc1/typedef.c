@@ -12,6 +12,8 @@ decl *typedef_find(struct tdeftable *defs, const char *spel)
 {
 	tdef *td;
 
+	UCC_ASSERT(spel, "NULL spell in %s", __func__);
+
 	for(; defs; defs = defs->parent)
 		for(td = defs->first; td; td = td->next)
 			if(!strcmp(td->decl->spel, spel))
