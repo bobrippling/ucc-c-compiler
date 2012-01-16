@@ -19,6 +19,12 @@ func2()
 {
 }
 
+array()
+{
+	int x[5] = { 1, 2, 3, 4, 5 };
+	return x[2];
+}
+
 main()
 {
 	static j = 2;
@@ -27,10 +33,8 @@ main()
 	int l, m, n;
 
 	(int)k;
-	(int *)k;
+	(int *)&k;
 	//(int *spel)k;
+
+	return array();
 }
-
-typedef int int_tdef;
-
-int_tdef q;

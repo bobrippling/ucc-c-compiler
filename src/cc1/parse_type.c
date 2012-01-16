@@ -21,13 +21,16 @@ type *parse_type_struct()
 		struc->members = parse_decls(DECL_CAN_DEFAULT | DECL_SPEL_NEED);
 
 		EAT(token_close_block);
-
 		dynarray_add((void ***)&structs_current, struc);
 	}else{
 		struc = NULL;
+		if(!spel)
+			die_at(NULL, "expected: struct definition or name");
+		ICE("TODO: find struct %s\n", spel);
 	}
 
 	t = type_new();
+	t->primitive = type_struct;
 	t->struc = struc;
 
 	return t;
@@ -35,17 +38,23 @@ type *parse_type_struct()
 
 type *parse_type()
 {
-	enum type_spec spec = 0;
-	type *t = NULL;
+	enum type_spec spec;
+	type *t;
 	decl *td;
 	int flag;
 
-	while((flag = curtok_is_type_specifier()) || curtok_is_type() || (td = TYPEDEF_FIND())){
-		if(flag){
+	spec = 0;
+	t = NULL;
+
+	/* read "const", "unsigned", ... and "int"/"long" ... in any order */
+	while(td = NULL, (flag = curtok_is_type_specifier()) || curtok_is_type() || curtok == token_struct || (td = TYPEDEF_FIND())){
+		if(accept(token_struct)){
+			return parse_type_struct();
+		}else if(flag){
 			const enum type_spec this = curtok_to_type_specifier();
 
 			/* we can't check in fold, since 1 & 1 & 1 is still just 1 */
-			if(spec & spec)
+			if(this & spec)
 				die_at(NULL, "duplicate type specifier \"%s\"", spec_to_str(spec));
 
 			spec |= this;
@@ -53,20 +62,27 @@ type *parse_type()
 		}else if(td){
 			/* typedef name */
 
-			if(t)
-				break; /* "int x" - we are at x */
+			if(t){
+				/* "int x" - we are at x, which is also a typedef somewhere */
+				/*cc1_warn_at(NULL, 0, WARN_IDENT_TYPEDEF, "identifier is a typedef name");*/
+				break;
+			}
 
-			td = TYPEDEF_FIND();
-			if(!td)
-				return NULL;
-			warn_at(NULL, "yo");
-			ICE("typedef todo");
-		}else if(t){
-			die_at(NULL, "type name unexpected");
-		}else{
 			t = type_new();
-			t->primitive = curtok_to_type_primitive();
-			EAT(curtok);
+			t->primitive = type_typedef;
+			t->tdef = td;
+
+			EAT(token_identifier);
+
+		}else{
+			/* curtok_is_type */
+			if(t){
+				die_at(NULL, "second type name unexpected");
+			}else{
+				t = type_new();
+				t->primitive = curtok_to_type_primitive();
+				EAT(curtok);
+			}
 		}
 	}
 
@@ -91,6 +107,12 @@ decl *parse_decl(type *t, enum decl_mode mode)
 		/* FIXME: int *const x; */
 		d->ptr_depth++;
 
+	if(t->tdef){
+		if(t->tdef->arraysizes)
+			ICE("todo: typedef with arraysizes");
+		d->ptr_depth += t->tdef->ptr_depth;
+	}
+
 	if(curtok == token_identifier){
 		if(mode & DECL_SPEL_NO)
 			die_at(&d->where, "identifier unexpected");
@@ -103,7 +125,27 @@ decl *parse_decl(type *t, enum decl_mode mode)
 
 	if(accept(token_open_paren))
 		d->func = parse_function();
-	else if(accept(token_assign))
+
+	while(accept(token_open_square)){
+		expr *size;
+		int fin;
+		fin = 0;
+
+		if(curtok != token_close_square)
+			size = parse_expr(); /* fold.c checks for const-ness */
+		else
+			fin = 1;
+
+		d->ptr_depth++;
+		EAT(token_close_square);
+
+		if(fin)
+			break;
+
+		dynarray_add((void ***)&d->arraysizes, size);
+	}
+
+	if(accept(token_assign))
 		d->init = parse_expr();
 
 	return d;
@@ -122,14 +164,18 @@ decl *parse_decl_single(enum decl_mode mode)
 		}
 	}
 
+	if(t->spec & spec_typedef)
+		die_at(&t->where, "typedef unexpected");
+
 	return parse_decl(t, mode);
 }
 
 decl **parse_decls(const int can_default)
 {
 	const enum decl_mode flag = DECL_SPEL_NEED | (can_default ? DECL_CAN_DEFAULT : 0);
-	decl **ret = NULL;
+	decl **decls = NULL;
 	decl *last;
+	int are_tdefs;
 
 	/* read a type, then *spels separated by commas, then a semi colon, then repeat */
 	for(;;){
@@ -137,25 +183,37 @@ decl **parse_decls(const int can_default)
 		type *t;
 
 		last = NULL;
+		are_tdefs = 0;
 
 		t = parse_type();
 
 		if(!t){
-			if(can_default){
+			if(curtok == token_identifier && can_default){
 				INT_TYPE(t);
 				cc1_warn_at(&t->where, 0, WARN_IMPLICIT_INT, "defaulting type to int");
 			}else{
-				return ret;
+				return decls;
 			}
 		}
+
+		if(t->spec & spec_typedef)
+			are_tdefs = 1;
 
 		do{
 			d = parse_decl(t, flag);
 			if(d){
-				dynarray_add((void ***)&ret, d);
+				if(are_tdefs)
+					typedef_add(typedefs_current, d);
+				else
+					dynarray_add((void ***)&decls, d);
+
+				if(are_tdefs)
+					if(d->func)
+						die_at(&d->where, "can't have a typedef function");
+
 				if(d->func && d->func->code){
 					if(curtok == token_eof)
-						return ret;
+						return decls;
 					continue;
 				}
 

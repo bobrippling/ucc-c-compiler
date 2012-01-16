@@ -22,6 +22,10 @@ enum type_primitive
 	type_int,
 	type_char,
 	type_void,
+
+	type_typedef,
+	type_struct,
+
 	type_unknown
 };
 
@@ -46,6 +50,7 @@ struct type
 	enum type_spec      spec;
 
 	struc *struc; /* NULL unless this is a structure */
+	decl  *tdef;
 };
 
 struct decl

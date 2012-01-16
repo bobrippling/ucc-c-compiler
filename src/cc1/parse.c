@@ -32,7 +32,7 @@
 expr *parse_expr();
 #define accept(tok) ((tok) == curtok ? (EAT(tok), 1) : 0)
 
-#define TYPEDEF_FIND() typedef_find(typedefs_current, token_current_spel_peek())
+#define TYPEDEF_FIND() (curtok == token_identifier ? typedef_find(typedefs_current, token_current_spel_peek()) : NULL)
 
 extern enum token curtok;
 
