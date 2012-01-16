@@ -98,7 +98,7 @@ void asm_sym(enum asm_sym_type t, sym *s, const char *reg)
 
 				brackets = umalloc(bracket_len + 1);
 
-				if(s->decl->ptr_depth || s->decl->type->primitive == type_int)
+				if(asm_type_size(s->decl) == ASM_SIZE_WORD)
 					type_s = "qword ";
 
 				/* get warnings for "lea rax, [qword tim]", just do "lea rax, [tim]" */
@@ -203,41 +203,43 @@ void asm_declare_single_part(FILE *f, expr *e)
 	}
 }
 
-int asm_type_ch(decl *d)
+enum asm_size asm_type_size(decl *d)
 {
-	int type_ch;
-
 	if(d->ptr_depth){
-		type_ch = 'q';
+		return ASM_SIZE_WORD;
 	}else{
 		switch(d->type->primitive){
 			case type_int:
-				type_ch = 'q';
-				break;
+				return ASM_SIZE_WORD;
 
 			case type_char:
-				type_ch = 'b';
-				break;
+				return ASM_SIZE_1;
 
 			case type_void:
 				ICE("type primitive is void");
 
+			case type_typedef:
+				return asm_type_size(d->type->tdef);
+
+			case type_struct:
+				ICE("asm_type_size(): type primitive is struct");
 			case type_unknown:
-			default:
 				ICE("type primitive not set");
 		}
 	}
 
-	return type_ch;
+	ICE("asm_type_size switch error");
+	return ASM_SIZE_WORD;
+}
+
+char asm_type_ch(decl *d)
+{
+	return asm_type_size(d) == ASM_SIZE_WORD ? 'q' : 'b';
 }
 
 void asm_declare_single(FILE *f, decl *d)
 {
-	int type_ch;
-
-	type_ch = asm_type_ch(d);
-
-	fprintf(f, "%s d%c ", d->spel, type_ch);
+	fprintf(f, "%s d%c ", d->spel, asm_type_ch(d));
 
 	asm_declare_single_part(f, d->init);
 
