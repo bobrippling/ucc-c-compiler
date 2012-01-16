@@ -9,6 +9,7 @@ struct struc
 };
 
 int struct_member_offset(expr *e);
+int struct_size(struc *);
 
 #define STRUCT_SPEL(st) ((st)->spel ? (st)->spel : "<anon>")
 

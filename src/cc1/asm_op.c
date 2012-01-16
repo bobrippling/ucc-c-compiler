@@ -120,19 +120,11 @@ void asm_operate(expr *e, symtable *tab)
 			walk_expr(e->lhs, tab);
 			asm_temp(1, "pop rax");
 
-			if(e->tree_type->ptr_depth)
-				goto ptr;
-			switch(e->tree_type->type->primitive){
-				case type_char:
-					asm_temp(1, "movzx rax, byte [rax]");
-					break;
-ptr:
-				case type_int:
-				case type_void:
-				case type_unknown:
-					asm_temp(1, "mov rax, [rax]");
-					break;
-			}
+			if(asm_type_size(e->tree_type) == ASM_SIZE_WORD)
+				asm_temp(1, "mov rax, [rax]");
+			else
+				asm_temp(1, "movzx rax, byte [rax]");
+
 			asm_temp(1, "push rax");
 			return;
 

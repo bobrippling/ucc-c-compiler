@@ -23,3 +23,12 @@ int struct_member_offset(expr *e)
 
 	return offset;
 }
+
+int struct_size(struc *st)
+{
+	decl **i;
+	int r = 0;
+	for(i = st->members; *i; i++)
+		r += decl_size(*i);
+	return r;
+}
