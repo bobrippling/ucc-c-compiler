@@ -64,8 +64,6 @@ void gen_assign(expr *e, symtable *stab)
 
 	walk_expr(e->rhs, stab);
 
-	asm_temp(1, "mov rax, [rsp]");
-
 	/* store back to the sym's home */
 	asm_ax_to_store(e->lhs, stab);
 
@@ -221,7 +219,6 @@ void walk_tree(tree *t)
 			tdefault = NULL;
 
 			walk_expr(t->expr, t->symtab);
-			asm_temp(1, "mov rax, [rsp] ; switch on this");
 
 			for(titer = t->codes; titer && *titer; titer++){
 				tree *cse = *titer;
@@ -366,7 +363,7 @@ void walk_tree(tree *t)
 		case stat_return:
 			if(t->expr){
 				walk_expr(t->expr, t->symtab);
-				asm_temp(1, "pop rax");
+				asm_temp(1, "pop rax ; return");
 			}
 			asm_temp(1, "jmp %s", curfunc_lblfin);
 			break;
