@@ -87,7 +87,7 @@ done
 case "$(uname -s)" in
 	Darwin)
 		UCC_ARCH=macho64
-		UCC_LDFLAGS='-e _start'
+		UCC_LDFLAGS='-e _start -macosx_version_min 10.5'
 		os_cfg Darwin
 		;;
 
