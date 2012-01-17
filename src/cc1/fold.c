@@ -227,8 +227,8 @@ void fold_expr_struct(expr *e, symtable *stab)
 	char *spel;
 
 	/*
-	 * lhs = struct var
-	 * rhs = struct member (nested)
+	 * lhs = any ptr-to-struct
+	 * rhs = struct member (and then again...)
 	 */
 
 	if(e->rhs->type != expr_identifier)
@@ -256,7 +256,7 @@ void fold_expr_struct(expr *e, symtable *stab)
 		st = e->lhs->sym->decl->type->struc;
 
 	}else{
-		die_at(&e->lhs->where, "invalid struct expr");
+		die_at(&e->lhs->where, "invalid struct-expr: %s", expr_to_str(e->lhs->type));
 	}
 
 	d = NULL;
@@ -451,6 +451,12 @@ noproblem:
 
 			/* XXX: note, this assumes that e.g. "1 + 2" the lhs and rhs have the same type */
 			if(e->op == op_deref){
+				/* check for *&x */
+
+				if(e->lhs->type == expr_addr)
+					warn_at(&e->lhs->where, "possible optimisation for *& expression");
+
+
 				GET_TREE_TYPE(e->lhs->tree_type);
 
 				e->tree_type->ptr_depth--;

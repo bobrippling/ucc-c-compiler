@@ -306,19 +306,36 @@ expr *parse_expr_struct()
 	int flag;
 
 	while((flag = accept(token_ptr)) || accept(token_dot)){
-		if(!flag){
+		if(flag){
+			expr *struct_access = expr_new();
+
+			struct_access->expr = e;
+			struct_access->lhs = parse_lone_identifier();
+
+			e = struct_access;
+
+		}else{
 			/*
 			 * a.x -> (&a)->x
 			 */
-			ICE("FIXME: struct.member");
-		}else{
-			expr *stru = expr_new();
+			expr *sub = expr_new();
+
+#if 0
+			e->type = expr_struct;
+			e->expr = sub;
+
+			sub->type = expr_addr;
+			sub->spel = e->spel;
 
 			stru->type = expr_struct;
-			stru->lhs = e;
+			stru->lhs = addr;
 			stru->rhs = parse_lone_identifier();
 
 			e = stru;
+#else
+			ICE("FIXME: struct access parsing");
+#endif
+
 		}
 	}
 
