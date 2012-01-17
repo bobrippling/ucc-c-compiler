@@ -188,7 +188,8 @@ decl **parse_decls(const int can_default)
 		t = parse_type();
 
 		if(!t){
-			if(curtok == token_identifier && can_default){
+			/* don't like this, seems hacky */
+			if((curtok == token_identifier || curtok == token_multiply) && can_default){
 				INT_TYPE(t);
 				cc1_warn_at(&t->where, 0, WARN_IMPLICIT_INT, "defaulting type to int");
 			}else{
