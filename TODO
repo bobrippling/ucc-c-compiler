@@ -1,3 +1,6 @@
+parse_expr() in parse_type/decl
+get rid of __asm__ hacks (mainly in gen_asm.c)
+
 cpp2:
 	fix dir-relative file opening
 
