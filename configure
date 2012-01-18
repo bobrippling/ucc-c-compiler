@@ -34,8 +34,8 @@ int main(int argc, char **argv);
 
 	if ! which perl > /dev/null
 	then
-		if [ $1 = Mac ]
-		then m=" (and mac syscalls)"
+		if [ $1 = Darwin ]
+		then m=" (and darwin syscalls)"
 		fi
 		echo >&2 "Perl not found, generate strerror$m yourself"
 	else
@@ -46,8 +46,8 @@ int main(int argc, char **argv);
 		}
 		' > lib/string_strerrs.h
 
-		if [ $1 = Mac ]
-		then perl lib/syscalls_mac.pl < lib/syscalls_32.h > lib/syscalls_mac.h
+		if [ $1 = Darwin ]
+		then perl lib/syscalls_darwin.pl < lib/syscalls_32.h > lib/syscalls_darwin.h
 		fi
 	fi
 
