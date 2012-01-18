@@ -6,6 +6,7 @@
 #include "const.h"
 #include "sym.h"
 #include "../util/util.h"
+#include "cc1.h"
 
 int operate(expr *lhs, expr *rhs, enum op_type op, int *bad)
 {
@@ -120,6 +121,9 @@ void operate_optimise(expr *e)
 /* returns 0 if successfully folded */
 int const_fold(expr *e)
 {
+	if((fopt_mode & FOPT_CONST_FOLD) == 0)
+		return 1;
+
 	switch(e->type){
 		case expr_val:
 		case expr_sizeof:

@@ -277,6 +277,8 @@ int main(int argc, char **argv)
 				no_stdlib = 1;
 			else
 				goto usage;
+		}else if(!strcmp(argv[i], "--help")){
+			goto usage;
 		}else{
 			if(argv[i][0] == '-'){
 				unsigned int j;
@@ -331,7 +333,7 @@ int main(int argc, char **argv)
 				input = argv[i];
 			}else{
 			usage:
-				fprintf(stderr, "Usage: %s [-nost{dlib,artfiles}] [-d] [-X backend] [-[ESc]] [-o output] input\n", *argv);
+				fprintf(stderr, "Usage: %s [-Wwarning...] [-foption...] [-nost{dlib,artfiles}] [-d] [-X backend] [-[ESc]] [-o output] input\n", *argv);
 				return 1;
 			}
 		}
