@@ -271,33 +271,34 @@ expr *parse_expr_unary_op()
 }
 
 /* generalised recursive descent */
-expr *parse_expr_join(
-		expr *(*above)(), expr *(*this)(),
-		enum token accept, ...
-		)
+expr *parse_expr_join(expr *(*above)(), enum token accept, ...)
 {
 	va_list l;
 	expr *e = above();
 
-	va_start(l, accept);
-	if(curtok == accept || curtok_in_list(l)){
-		expr *join;
+	for(;;){
+		va_start(l, accept);
+		if(curtok == accept || curtok_in_list(l)){
+			expr *join;
 
-		va_end(l);
+			va_end(l);
 
-		join       = expr_new();
-		join->type = expr_op;
-		join->op   = curtok_to_op();
-		join->lhs  = e;
+			join       = expr_new();
+			join->type = expr_op;
+			join->op   = curtok_to_op();
+			join->lhs  = e;
 
-		EAT(curtok);
-		join->rhs = this();
+			EAT(curtok);
+			join->rhs = above();
 
-		return join;
-	}else{
-		va_end(l);
-		return e;
+			e = join;
+		}else{
+			va_end(l);
+			break;
+		}
 	}
+
+	return e;
 }
 
 expr *parse_expr_struct()
@@ -401,8 +402,7 @@ expr *parse_expr_deref()
 expr *parse_expr_binary_op()
 {
 	/* above [/%*] above */
-	return parse_expr_join(
-			parse_expr_deref, parse_expr_binary_op,
+	return parse_expr_join(parse_expr_deref,
 				token_multiply, token_divide, token_modulus,
 				token_unknown);
 }
@@ -410,44 +410,28 @@ expr *parse_expr_binary_op()
 expr *parse_expr_sum()
 {
 	/* above [+-] above */
-	expr *e = parse_expr_join(parse_expr_binary_op, parse_expr_sum, token_plus, token_unknown);
-
-	while(accept(token_minus)){
-		expr *subthis = parse_expr_binary_op();
-		expr *ret = expr_new();
-
-		ret->type = expr_op;
-		ret->op   = op_minus;
-		ret->lhs  = e;
-		ret->rhs  = subthis;
-
-		e = ret;
-	}
-
-	return e;
+	return parse_expr_join(parse_expr_binary_op,
+			token_plus, token_minus, token_unknown);
 }
 
 expr *parse_expr_shift()
 {
 	/* above *shift* above */
-	return parse_expr_join(
-			parse_expr_sum, parse_expr_shift,
+	return parse_expr_join(parse_expr_sum,
 				token_shiftl, token_shiftr, token_unknown);
 }
 
 expr *parse_expr_bit_op()
 {
 	/* above [&|] above */
-	return parse_expr_join(
-			parse_expr_shift, parse_expr_bit_op,
+	return parse_expr_join(parse_expr_shift,
 				token_and, token_or, token_unknown);
 }
 
 expr *parse_expr_cmp_op()
 {
 	/* above [><==!=] above */
-	return parse_expr_join(
-			parse_expr_bit_op, parse_expr_cmp_op,
+	return parse_expr_join(parse_expr_bit_op,
 				token_eq, token_ne,
 				token_le, token_lt,
 				token_ge, token_gt,
@@ -457,8 +441,7 @@ expr *parse_expr_cmp_op()
 expr *parse_expr_logical_op()
 {
 	/* above [&&||] above */
-	return parse_expr_join(
-			parse_expr_cmp_op, parse_expr_logical_op,
+	return parse_expr_join(parse_expr_cmp_op,
 			token_orsc, token_andsc, token_unknown);
 }
 
