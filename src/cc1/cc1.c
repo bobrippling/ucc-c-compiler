@@ -65,6 +65,7 @@ struct
 
 	{ 1,  "enable-asm",    FOPT_ENABLE_ASM   },
 	{ 1,  "strict-types",  FOPT_STRICT_TYPES },
+	{ 1,  "const-fold",    FOPT_CONST_FOLD   },
 
 	{ 0,  NULL, 0 }
 };
@@ -75,7 +76,7 @@ char  fnames[NUM_SECTIONS][32]; /* duh */
 FILE *cc1_out;                  /* final output */
 
 enum warning warn_mode = ~(WARN_VOID_ARITH | WARN_COMPARE_MISMATCH);
-enum fopt    fopt_mode = FOPT_NONE;
+enum fopt    fopt_mode = FOPT_CONST_FOLD;
 
 
 const char *section_names[NUM_SECTIONS] = {
