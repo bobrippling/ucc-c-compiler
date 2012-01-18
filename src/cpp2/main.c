@@ -167,6 +167,7 @@ int main(int argc, char **argv)
 
 	free(dirname_pop());
 
+	errno = 0;
 	fclose(stdout);
 	if(errno)
 		die("close():");
