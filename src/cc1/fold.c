@@ -7,6 +7,7 @@
 #include "tree.h"
 #include "cc1.h"
 #include "fold.h"
+#include "sym_fold.h"
 #include "sym.h"
 #include "../util/platform.h"
 #include "const.h"
@@ -651,9 +652,8 @@ void fold_tree(tree *t)
 			int l, r;
 
 			symtab_nest(t->symtab, &t->lhs->symtab);
-			fold_tree(t->lhs);
-
 			symtab_nest(t->symtab, &t->rhs->symtab);
+			fold_tree(t->lhs);
 			fold_tree(t->rhs);
 
 			if(const_fold(t->lhs->expr) || const_fold(t->rhs->expr))
@@ -723,12 +723,6 @@ case_add:
 		}
 
 		case stat_code:
-		{
-			int auto_offset, arg_offset;
-
-			auto_offset = t->symtab->auto_offset_start;
-			arg_offset  = 0;
-
 			if(t->decls){
 				decl **iter;
 
@@ -744,76 +738,25 @@ case_add:
 				}
 			}
 
-			if(t->symtab->decls){
-				const int word_size = platform_word_size();
-				decl **diter;
-
-				/* need to walk backwards for args */
-				for(diter = t->symtab->decls; *diter; diter++);
-
-				for(diter--; diter >= t->symtab->decls; diter--){
-					sym *s = (*diter)->sym;
-
-					if(s->type == sym_local && (s->decl->type->spec & (spec_extern | spec_static)) == 0){
-						s->offset = auto_offset;
-
-						/* TODO: optimise for chars / don't assume everything is an int */
-						if(s->decl->arraysizes){
-							/* should've been folded fully */
-							decl dtmp;
-							int i;
-							int siz;
-
-							memcpy(&dtmp, s->decl, sizeof dtmp);
-							dtmp.ptr_depth--;
-							siz = decl_size(&dtmp); /* FIXME: round to wordsize */
-
-							for(i = 0; s->decl->arraysizes[i]; i++)
-								auto_offset += s->decl->arraysizes[i]->val.i * siz;
-
-							/* needs to be a multiple of word_size */
-							if(auto_offset % word_size)
-								auto_offset += word_size - auto_offset % word_size;
-
-						}else{
-							auto_offset += decl_size(s->decl); /* FIXME: round to wordsize */
-						}
-					}else if(s->type == sym_arg){
-						s->offset = arg_offset;
-						arg_offset += word_size;
-					}
-				}
-			}
-
-			t->symtab->auto_size = auto_offset - t->symtab->auto_offset_start;
-			t->symtab->auto_total_size = auto_offset;
-
 			if(t->codes){
 				tree **iter;
-
 				for(iter = t->codes; *iter; iter++){
 					tree *subt = *iter;
-
 					symtab_nest(t->symtab, &subt->symtab);
-
-					subt->symtab->auto_offset_start = auto_offset;
 					fold_tree(subt);
-
-					if(t->symtab->auto_total_size < subt->symtab->auto_total_size)
-						t->symtab->auto_total_size = subt->symtab->auto_total_size;
 				}
 			}
 
-			/* unrelated static folding */
+			/* static folding */
 			if(t->decls){
 				decl **iter;
 
 				for(iter = t->decls; *iter; iter++){
 					decl *d = *iter;
 					/*
-					* check static decls - after we fold,
-					* so we've linked the syms and can change ->spel
-					*/
+					 * check static decls - after we fold,
+					 * so we've linked the syms and can change ->spel
+					 */
 					if(d->type->spec & spec_static){
 						char *save = d->spel;
 						d->spel = asm_label_static_local(curdecl_func, d->spel);
@@ -822,7 +765,6 @@ case_add:
 				}
 			}
 			break;
-		}
 
 		case stat_return:
 			if(t->expr){
