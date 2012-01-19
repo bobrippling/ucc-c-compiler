@@ -301,52 +301,53 @@ expr *parse_expr_join(expr *(*above)(), enum token accept, ...)
 	return e;
 }
 
-expr *parse_expr_struct()
+expr *parse_expr_struct(expr *left)
 {
-	expr *e = parse_expr_unary_op();
-	int flag;
+	for(;;){
+		int flag;
 
-	while((flag = accept(token_ptr)) || accept(token_dot)){
-		if(flag){
-			expr *struct_access = expr_new();
+		if((flag = accept(token_ptr)) || accept(token_dot)){
+			if(flag){
+				expr *struct_access = expr_new();
 
-			struct_access->expr = e;
-			struct_access->lhs = parse_lone_identifier();
+				struct_access->type = expr_struct;
+				struct_access->lhs = left;
+				struct_access->rhs = parse_lone_identifier();
 
-			e = struct_access;
-
-		}else{
-			/*
-			 * a.x -> (&a)->x
-			 */
-			expr *sub = expr_new();
-
+				return parse_expr_struct(struct_access);
+			}else{
+				/*
+				* a.x -> (&a)->x
+				*/
 #if 0
-			e->type = expr_struct;
-			e->expr = sub;
+				expr *sub = expr_new();
 
-			sub->type = expr_addr;
-			sub->spel = e->spel;
+				e->type = expr_struct;
+				e->expr = sub;
 
-			stru->type = expr_struct;
-			stru->lhs = addr;
-			stru->rhs = parse_lone_identifier();
+				sub->type = expr_addr;
+				sub->spel = e->spel;
 
-			e = stru;
+				stru->type = expr_struct;
+				stru->lhs = addr;
+				stru->rhs = parse_lone_identifier();
+
+				e = stru;
 #else
-			ICE("FIXME: struct access parsing");
+				ICE("FIXME: struct access parsing");
 #endif
 
+			}
+		}else{
+			return left;
 		}
 	}
-
-	return e;
 }
 
 expr *parse_expr_array()
 {
 	expr *sum, *deref;
-	expr *base = parse_expr_struct();
+	expr *base = parse_expr_struct(parse_expr_unary_op());
 
 	if(!accept(token_open_square))
 		return base;
