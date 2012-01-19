@@ -208,7 +208,6 @@ struct tree
 struct tree_flow
 {
 	expr *for_init, *for_while, *for_inc;
-	/* TODO: switch */
 };
 
 struct function
@@ -245,6 +244,7 @@ const char *type_to_str(const type          *t);
 const char *spec_to_str(const enum type_spec s);
 
 int   type_equal(const type *a, const type *b, int strict);
+int   type_size(const type *);
 int   decl_size(const decl *);
 int   decl_equal(const decl *, const decl *, int strict);
 expr *expr_ptr_multiply(expr *, decl *);

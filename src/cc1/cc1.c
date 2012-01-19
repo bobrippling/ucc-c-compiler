@@ -15,6 +15,7 @@
 #include "gen_asm.h"
 #include "gen_str.h"
 #include "sym.h"
+#include "sym_fold.h"
 #include "cc1.h"
 
 struct
@@ -295,6 +296,7 @@ usage:
 
 	if(globs->decls){
 		fold(globs);
+		symtab_fold(globs, 0);
 		gf(globs);
 	}
 

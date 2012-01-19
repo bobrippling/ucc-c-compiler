@@ -268,15 +268,7 @@ void print_tree(tree *t)
 	if(t->decls){
 		decl **iter;
 
-		idt_printf("stack space %d, (%d-%d, this only: %d-%d)\n",
-				t->symtab->auto_size,
-				t->symtab->auto_offset_start,
-				t->symtab->auto_total_size,
-
-				t->symtab->auto_offset_start,
-				t->symtab->auto_offset_start + t->symtab->auto_size
-				);
-
+		idt_printf("stack space %d\n", t->symtab->auto_total_size);
 		idt_printf("decls:\n");
 
 		for(iter = t->decls; *iter; iter++){

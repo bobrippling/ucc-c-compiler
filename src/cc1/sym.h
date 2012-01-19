@@ -17,9 +17,8 @@ struct sym
 
 struct symtable
 {
-	int auto_offset_start, auto_size;
 	int auto_total_size;
-	symtable *parent;
+	symtable *parent, **children;
 	decl  **decls;
 	struc **structs;
 };
@@ -40,6 +39,7 @@ sym  *symtab_add(      symtable *, decl *, enum sym_type, int with_sym, int prep
 sym  *symtab_search(   symtable *, const char *);
 sym  *symtab_has(      symtable *, decl *);
 void  symtab_nest(     symtable *parent, symtable **brat);
+void  symtab_nest_finish(symtable *parent, symtable *brat);
 
 #define SYMTAB_ADD(tab, decl, type) symtab_add(tab, decl, type, SYMTAB_WITH_SYM, SYMTAB_APPEND)
 

@@ -171,19 +171,9 @@ expr *expr_assignment(expr *to, expr *from)
 	return ass;
 }
 
-int decl_size(const decl *d)
+int type_size(const type *t)
 {
-	if(d->ptr_depth)
-		return platform_word_size();
-
-	if(d->type->struc){
-		struc *s = d->type->struc;
-		UCC_ASSERT(s->size, "no size for struct %s", s->spel);
-		return s->size;
-	}
-
-
-	switch(d->type->primitive){
+	switch(t->primitive){
 		case type_char:
 		case type_void:
 			return 1;
@@ -193,15 +183,48 @@ int decl_size(const decl *d)
 			return platform_word_size();
 
 		case type_typedef:
-			return decl_size(d->type->tdef);
+			return decl_size(t->tdef);
 
 		case type_struct:
-			return struct_size(d->type->struc);
+			return struct_size(t->struc);
 
+		default:
 		case type_unknown:
 			ICE("unknown type in decl_size()");
+			return -1;
 	}
-	return platform_word_size();
+}
+
+int decl_size(const decl *d)
+{
+	if(d->ptr_depth)
+		return platform_word_size();
+
+	if(d->arraysizes){
+		/* should've been folded fully */
+		const int word_size = platform_word_size();
+		const int siz = type_size(d->type);
+		int i;
+		int ret = 0;
+
+		for(i = 0; d->arraysizes[i]; i++)
+			ret += d->arraysizes[i]->val.i * siz;
+
+		/* needs to be a multiple of word_size */
+		if(ret % word_size)
+			ret += word_size - ret % word_size;
+
+		return ret;
+	}
+
+
+	if(d->type->struc){
+		struc *s = d->type->struc;
+		UCC_ASSERT(s->size, "no size for struct %s", s->spel);
+		return s->size;
+	}
+
+	return type_size(d->type);
 }
 
 int type_equal(const type *a, const type *b, int strict)

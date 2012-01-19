@@ -50,6 +50,8 @@ void symtab_nest(symtable *parent, symtable **brat)
 	}else{
 		*brat = symtab_child(parent);
 	}
+
+	dynarray_add((void ***)&parent->children, *brat);
 }
 
 sym *symtab_search2(symtable *tab, const void *item, int (*cmp)(const void *, decl *), int descend)
