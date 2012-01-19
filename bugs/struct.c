@@ -1,5 +1,6 @@
-#define BASIC
+//#define BASIC
 //#define SIMPLE
+#define EXPR_TEST
 //#define NESTED
 //#define NAMING
 //#define NESTED_DIFFERENT
@@ -18,9 +19,9 @@ main()
 	x->i = 5;
 	x->j = 2;
 
-	y.i = 3;
+	//y.i = 3;
 
-	return x->i;
+	return x->i + x->j;
 }
 #endif
 
@@ -46,6 +47,24 @@ main()
 	list->sub->e = 5;
 
 	return list->sub->d + list->c;
+}
+#endif
+
+#ifdef EXPR_TEST
+main()
+{
+	void *p;
+	struct A
+	{
+		int i;
+		int j;
+	} a, *pa;
+
+	p = pa = &a;
+
+	((struct A *)p)->i = 5;
+
+	return pa->i;
 }
 #endif
 
