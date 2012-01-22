@@ -215,7 +215,7 @@ expr *parse_expr_unary_op()
 			EAT(curtok);
 
 			/* assign to... */
-			e->lhs = parse_expr_unary_op();
+			e->lhs = parse_expr_deref();
 			e->rhs = expr_new();
 			e->rhs->op = inc ? op_plus : op_minus;
 			e->rhs->lhs = e->lhs;
