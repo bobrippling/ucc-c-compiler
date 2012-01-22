@@ -368,7 +368,8 @@ int main(int argc, char **argv)
 				}
 			}else{
 	unknown_file:
-				fprintf(stderr, "%s: assuming input \"%s\" is c-source\n", argv0, input);
+				if(strcmp(input, "-"))
+					fprintf(stderr, "%s: assuming input \"%s\" is c-source\n", argv0, input);
 			}
 		}else{
 			goto unknown_file;
