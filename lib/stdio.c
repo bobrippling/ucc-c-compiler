@@ -64,6 +64,8 @@ int vfprintf(FILE *file, char *fmt, va_list ap)
 #ifdef PRINTF_OPTIMISE
 	char *buf  = fmt;
 	int buflen = 0;
+#else
+# warning printf unoptimised
 #endif
 
 	while(*fmt){
