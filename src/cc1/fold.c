@@ -73,8 +73,9 @@ int fold_is_callable(expr *e)
 			decl_free(e->tree_type);*/ \
 		to->tree_type = decl_copy(from); \
 		to->tree_type->spel = NULL; \
-		to->tree_type->arraysizes = NULL; \
 	}while(0)
+
+/* keep ->arraysizes, since we use it in decl_size() */
 
 #define GET_TREE_TYPE(from) \
 	GET_TREE_TYPE_TO(e, from)
@@ -282,16 +283,14 @@ void fold_expr(expr *e, symtable *stab)
 	const_fold(e);
 
 	switch(e->type){
+		case expr_sizeof:
+			if(e->expr)
+				fold_expr(e->expr, stab);
+			if(!e->tree_type)
+				e->tree_type = decl_new();
+			/* fall through - tree type int */
 		case expr_val:
 			e->tree_type->type->primitive = type_int;
-			break;
-
-		case expr_sizeof:
-			if(e->expr){
-				fold_expr(e->expr, stab);
-				GET_TREE_TYPE(e->expr->tree_type);
-			}
-			/* else ->tree_type has already been initialised */
 			break;
 
 		case expr_comma:
@@ -460,7 +459,15 @@ noproblem:
 
 				GET_TREE_TYPE(e->lhs->tree_type);
 
+				/*
+				 * ensure ->arraysizes is kept in sync
+				 */
 				e->tree_type->ptr_depth--;
+				memmove(
+						&e->tree_type->arraysizes[0],
+						&e->tree_type->arraysizes[1],
+						dynarray_count((void **)e->tree_type->arraysizes)
+						);
 
 				if(e->tree_type->ptr_depth == 0)
 					switch(e->lhs->tree_type->type->primitive){

@@ -10,7 +10,7 @@
 
 int symtab_fold(symtable *tab, int current)
 {
-	const int start = current;
+	const int this_start = current;
 
 	if(tab->decls){
 		const int word_size = platform_word_size();
@@ -26,8 +26,14 @@ int symtab_fold(symtable *tab, int current)
 			sym *s = (*diter)->sym;
 
 			if(s->type == sym_local && (s->decl->type->spec & (spec_extern | spec_static)) == 0){
+				int siz = decl_size(s->decl);
+
+				/* needs to be a multiple of word_size */
+				if(siz % word_size)
+					siz += word_size - siz % word_size;
+
 				s->offset = current;
-				current += decl_size(s->decl);
+				current += siz;
 
 			}else if(s->type == sym_arg){
 				s->offset = arg_offset;
@@ -37,18 +43,18 @@ int symtab_fold(symtable *tab, int current)
 		}
 	}
 
-
 	{
 		symtable **tabi;
-		int subtab_size = 0;
+		int subtab_max = 0;
 
-		for(tabi = tab->children; tabi && *tabi; tabi++)
-			subtab_size += symtab_fold(*tabi, current);
+		for(tabi = tab->children; tabi && *tabi; tabi++){
+			int this = symtab_fold(*tabi, current);
+			if(this > subtab_max)
+				subtab_max = this;
+		}
 
-		current += subtab_size;
+		tab->auto_total_size = current - this_start + subtab_max;
 	}
 
-	tab->auto_total_size = current;
-
-	return current;
+	return tab->auto_total_size;
 }

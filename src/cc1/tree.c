@@ -190,19 +190,15 @@ int type_size(const type *t)
 
 		default:
 		case type_unknown:
-			ICE("unknown type in decl_size()");
+			ICE("type %s in decl_size()", type_to_str(t));
 			return -1;
 	}
 }
 
 int decl_size(const decl *d)
 {
-	if(d->ptr_depth)
-		return platform_word_size();
-
 	if(d->arraysizes){
 		/* should've been folded fully */
-		const int word_size = platform_word_size();
 		const int siz = type_size(d->type);
 		int i;
 		int ret = 0;
@@ -210,13 +206,11 @@ int decl_size(const decl *d)
 		for(i = 0; d->arraysizes[i]; i++)
 			ret += d->arraysizes[i]->val.i * siz;
 
-		/* needs to be a multiple of word_size */
-		if(ret % word_size)
-			ret += word_size - ret % word_size;
-
 		return ret;
 	}
 
+	if(d->ptr_depth)
+		return platform_word_size();
 
 	if(d->type->struc){
 		struc *s = d->type->struc;
