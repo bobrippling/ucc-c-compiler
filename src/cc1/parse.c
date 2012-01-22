@@ -84,6 +84,7 @@ expr *parse_expr_unary_op()
 			e->type = expr_sizeof;
 
 			if(accept(token_open_paren)){
+				decl_free(e->tree_type);
 				e->tree_type = parse_decl_single(DECL_SPEL_NO);
 				if(!e->tree_type)
 					/* parse a full one, since we're in brackets */
