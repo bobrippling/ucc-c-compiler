@@ -15,6 +15,13 @@
 #define LIB_PATH "/../lib/"
 #define CPP "cpp2"
 
+#define MODE_TO_STR(m) \
+	(const char *[]){    \
+		"preprocess",      \
+		"compile",         \
+		"assemble",        \
+		"link" }[m]
+
 #define LIBS        \
 		"stdio",        \
 		"stdlib",       \
@@ -50,9 +57,11 @@ int no_startfiles = 0, no_stdlib = 0;
 int no_warn = 0;
 int verbose = 0;
 int debug   = 0;
-char *backend = "";
+char *backend  = "";
+char *frontend = "";
 
-enum mode mode;
+enum mode out_mode;
+enum mode start_mode;
 char *argv0;
 
 char where[1024];
@@ -116,7 +125,7 @@ void run(const char *cmd)
 
 void unlink_files()
 {
-#define RM(m, path) if(mode == m) return; unlink(path)
+#define RM(m, path) if(out_mode == m) return; unlink(path)
 	RM(MODE_PREPROCESS, f_e);
 	RM(MODE_COMPILE,    f_s);
 	RM(MODE_ASSEMBLE,   f_o);
@@ -149,34 +158,6 @@ char *gen_stdlib_files(void)
 int gen(const char *input, const char *output)
 {
 	char cmd[4096];
-	enum mode start_mode;
-	int i;
-
-	start_mode = MODE_PREPROCESS;
-
-	i = strlen(input);
-	if(i >= 3){
-		if(input[i - 2] == '.'){
-			switch(input[i - 1]){
-
-#define CHAR_MAP(c, m) \
-			case c: start_mode = m; break
-				CHAR_MAP('c', MODE_PREPROCESS);
-				CHAR_MAP('e', MODE_COMPILE);
-				CHAR_MAP('s', MODE_ASSEMBLE);
-				CHAR_MAP('o', MODE_LINK);
-#undef CHAR_MAP
-
-				default:
-					goto unknown_file;
-			}
-		}else{
-unknown_file:
-			fprintf(stderr, "%s: assuming input \"%s\" is c-source\n", argv0, input);
-		}
-	}else{
-		goto unknown_file;
-	}
 
 #define TMP(s, pre, post) \
 		snprintf(s, sizeof s, pre "%d." post, getpid())
@@ -193,7 +174,7 @@ unknown_file:
 		run(cmd)
 
 #define SHORTEN_OUTPUT(m, path) \
-	if(mode == m) \
+	if(out_mode == m) \
 		snprintf(path, sizeof path, "%s", output)
 
 #define START_MODE(m, lbl, file) \
@@ -213,13 +194,13 @@ unknown_file:
 
 	SHORTEN_OUTPUT(MODE_PREPROCESS, f_e);
 	RUN(1, CPP "/cpp %s -I'%s" LIB_PATH "' %s -o %s %s", verbose ? "-d" : "", where, args[MODE_PREPROCESS], f_e, input);
-	if(mode == MODE_PREPROCESS)
+	if(out_mode == MODE_PREPROCESS)
 		return 0;
 
 start_compile:
 	SHORTEN_OUTPUT(MODE_COMPILE, f_s);
 	RUN(1, "cc1/cc1 %s %s %s %s -o %s %s", no_warn ? "-w" : "", *backend ? "-X" : "", backend, args[MODE_COMPILE], f_s, f_e);
-	if(mode == MODE_COMPILE)
+	if(out_mode == MODE_COMPILE)
 		return 0;
 
 #define DEBUG_STR debug ? "-g" : ""
@@ -227,7 +208,7 @@ start_compile:
 start_assemble:
 	SHORTEN_OUTPUT(MODE_ASSEMBLE, f_o);
 	RUN(0, UCC_NASM " -f " UCC_ARCH " %s %s -o %s %s", args[MODE_ASSEMBLE], DEBUG_STR, f_o, f_s);
-	if(mode == MODE_ASSEMBLE)
+	if(out_mode == MODE_ASSEMBLE)
 		return 0;
 
 start_link:
@@ -243,6 +224,7 @@ start_link:
 
 int main(int argc, char **argv)
 {
+	int assumed_start_mode = 0;
 	char *input;
 	char *output;
 	char *p;
@@ -253,14 +235,15 @@ int main(int argc, char **argv)
 		char optn;
 		char **ptr;
 	} opts[] = {
-		{ 'o', &output },
-		{ 'X', &backend }
+		{ 'o', &output   },
+		{ 'X', &backend  },
+		{ 'x', &frontend }
 	};
 
 	argv0 = umalloc(strlen(*argv) + 1);
 	strcpy(argv0, *argv);
 
-	mode = MODE_LINK;
+	out_mode = MODE_LINK;
 	input = output = NULL;
 
 	for(i = 1; i < argc; i++)
@@ -302,7 +285,7 @@ int main(int argc, char **argv)
 					found = 0;
 					for(j = 0; j < 3; j++)
 						if(argv[i][1] == modes[j].arg){
-							mode = j;
+							out_mode = j;
 							found = 1;
 							break;
 						}
@@ -333,7 +316,14 @@ int main(int argc, char **argv)
 				input = argv[i];
 			}else{
 			usage:
-				fprintf(stderr, "Usage: %s [-Wwarning...] [-foption...] [-nost{dlib,artfiles}] [-d] [-X backend] [-[ESc]] [-o output] input\n", *argv);
+				fprintf(stderr,
+						"Usage: %s [-Wwarning...] [-foption...] [-[ESc]] [-o output] input\n"
+						"Other options:\n"
+						"  -nost{dlib,artfiles} - don't like with stdlib/crt.o\n"
+						"  -d - run in debug/verbose mode\n"
+						"  -X backend - specify cc1 backend\n"
+						"  -x frontend - specify starting point (c, cpp-output and asm)\n",
+						*argv);
 				return 1;
 			}
 		}
@@ -342,16 +332,69 @@ int main(int argc, char **argv)
 	if(!input)
 		goto usage;
 
-	if(!strcmp(backend, "print") && mode > MODE_COMPILE){
-		mode = MODE_COMPILE;
+	if(*frontend){
+		if(!strcmp(frontend, "c"))
+			start_mode = MODE_PREPROCESS;
+		else if(!strcmp(frontend, "cpp-output"))
+			start_mode = MODE_COMPILE;
+		else if(!strcmp(frontend, "asm"))
+			start_mode = MODE_ASSEMBLE;
+		else
+			goto usage;
+
+		/* "asm-with-cpp", MODE??? */
+
+	}else{
+		/* figure out the start mode from the file name */
+		assumed_start_mode = 1;
+
+		start_mode = MODE_PREPROCESS;
+
+		i = strlen(input);
+		if(i >= 3){
+			if(input[i - 2] == '.'){
+				switch(input[i - 1]){
+
+#define CHAR_MAP(c, m) \
+				case c: start_mode = m; break
+					CHAR_MAP('c', MODE_PREPROCESS);
+					CHAR_MAP('e', MODE_COMPILE);
+					CHAR_MAP('s', MODE_ASSEMBLE);
+					CHAR_MAP('o', MODE_LINK);
+#undef CHAR_MAP
+
+					default:
+						goto unknown_file;
+				}
+			}else{
+	unknown_file:
+				fprintf(stderr, "%s: assuming input \"%s\" is c-source\n", argv0, input);
+			}
+		}else{
+			goto unknown_file;
+		}
+	}
+
+	/* "cc -Xprint" will act as in "cc -S -o- -Xprint" was given */
+	if(!strcmp(backend, "print") && out_mode > MODE_COMPILE){
+		out_mode = MODE_COMPILE;
 		if(!output)
 			output = "-";
 	}
 
+	if(out_mode < start_mode){
+		if(assumed_start_mode){
+			fprintf(stderr, "%s: warning: output mode \"%s\" is past start mode \"%s\" - fixing\n",
+					*argv, MODE_TO_STR(out_mode), MODE_TO_STR(start_mode));
+		}
+
+		start_mode = out_mode;
+	}
+
 	if(!output){
-		if(mode == MODE_PREPROCESS){
+		if(out_mode == MODE_PREPROCESS){
 			output = "-";
-		}else if(mode == MODE_LINK){
+		}else if(out_mode == MODE_LINK){
 			output = "a.out";
 		}else{
 			int len = strlen(input);
@@ -360,21 +403,21 @@ int main(int argc, char **argv)
 
 			if(input[len - 2] == '.'){
 				strcpy(output, input);
-				output[len - 1] = modes[mode].suffix;
+				output[len - 1] = modes[out_mode].suffix;
 			}else{
-				sprintf(output, "%s.%c", input, modes[mode].suffix);
+				sprintf(output, "%s.%c", input, modes[out_mode].suffix);
 			}
 		}
-	}else if(!strcmp(output, "-") && mode >= MODE_ASSEMBLE){
+	}else if(!strcmp(output, "-") && out_mode >= MODE_ASSEMBLE){
 		fprintf(stderr, "%s: warning: outputting to the file \"-\", not stdout\n", *argv);
 	}
 
 #if 0
-	printf("mode = %s, input = %s, output = %s\n",
-			mode == MODE_PREPROCESS ? "preprocess" :
-			mode == MODE_COMPILE    ? "compile" :
-			mode == MODE_ASSEMBLE   ? "assemble" :
-			mode == MODE_LINK       ? "link" : "unknown",
+	printf("out_mode = %s, input = %s, output = %s\n",
+			out_mode == MODE_PREPROCESS ? "preprocess" :
+			out_mode == MODE_COMPILE    ? "compile" :
+			out_mode == MODE_ASSEMBLE   ? "assemble" :
+			out_mode == MODE_LINK       ? "link" : "unknown",
 			input, output);
 	return 0;
 #endif

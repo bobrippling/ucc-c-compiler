@@ -36,7 +36,7 @@ sys/wait.o: sys/wait.c
 	${BUILD_CMD}
 
 syscall.s: syscall_in.s syscall_err.s
-	../src/cpp/cpp -o $@ syscall_in.s
+	${UCC_CC} -x c -E -o $@ syscall_in.s
 
 clean:
 	rm -f *.o sys/*.o
