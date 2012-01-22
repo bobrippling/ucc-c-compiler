@@ -63,6 +63,9 @@ void gen_assign(expr *e, symtable *stab)
 	}
 
 	walk_expr(e->rhs, stab);
+#ifdef USE_MOVE_RAX_RSP
+	asm_temp(1, "mov rax, [rsp]");
+#endif
 
 	/* store back to the sym's home */
 	asm_ax_to_store(e->lhs, stab);
@@ -223,6 +226,9 @@ void walk_tree(tree *t)
 			tdefault = NULL;
 
 			walk_expr(t->expr, t->symtab);
+#ifdef USE_MOVE_RAX_RSP
+			asm_temp(1, "mov rax, [rsp] ; switch on this");
+#endif
 
 			for(titer = t->codes; titer && *titer; titer++){
 				tree *cse = *titer;
