@@ -157,12 +157,12 @@ int printf(const char *fmt, ...)
 
 int fputs(const char *s, FILE *f)
 {
-	return fprintf(f, "%s\n", s) > 0 ? 1 : EOF;
+	return write(*f, s, strlen(s)) > 0 ? 1 : EOF;
 }
 
 int puts(const char *s)
 {
-	return fputs(s, stdout);
+	return printf("%s\n", s) > 0 ? 1 : EOF;
 }
 
 int getchar()
