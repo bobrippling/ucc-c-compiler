@@ -163,11 +163,14 @@ char *tokens_join(token **tokens)
 
 	len = 1;
 	for(i = 0; tokens[i]; i++)
-		len += strlen(token_str(tokens[i]));
+		len += 1 + strlen(token_str(tokens[i]));
 	val = umalloc(len);
 	*val = '\0';
-	for(i = 0; tokens[i]; i++)
+	for(i = 0; tokens[i]; i++){
 		strcat(val, token_str(tokens[i]));
+		if(tokens[i+1])
+			strcat(val, " ");
+	}
 
 	return val;
 }
