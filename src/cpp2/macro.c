@@ -100,7 +100,7 @@ relook:
 				continue;
 
 			open_b  = strchr(pos, '(');
-			close_b = strchr(open_b + 1, ')'); /* TODO: nesting */
+			close_b = nest_close_paren(open_b + 1);
 			if(!open_b){
 				/* ignore the macro */
 				pos++;
