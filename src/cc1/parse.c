@@ -243,26 +243,7 @@ expr *parse_expr_unary_op()
 		}
 
 		case token_identifier:
-		{
-			int flag = 0;
-
-			e = parse_lone_identifier();
-
-			if((flag = accept(token_increment)) || accept(token_decrement)){
-				expr *inc = expr_new();
-				inc->type = expr_assign;
-				inc->assign_is_post = 1;
-
-				inc->lhs = e;
-				inc->rhs = expr_new();
-				inc->rhs->op = flag ? op_plus : op_minus;
-				inc->rhs->lhs = e;
-				inc->rhs->rhs = expr_new_val(1);
-				e = inc;
-			}
-
-			return e;
-		}
+			return parse_lone_identifier();
 
 		default:
 			die_at(NULL, "expected: unary expression, got %s", token_to_str(curtok));
@@ -370,9 +351,30 @@ expr *parse_expr_array()
 	return deref;
 }
 
-expr *parse_expr_funcall()
+expr *parse_expr_inc_dec()
 {
 	expr *e = parse_expr_array();
+	int flag = 0;
+
+	if((flag = accept(token_increment)) || accept(token_decrement)){
+		expr *inc = expr_new();
+		inc->type = expr_assign;
+		inc->assign_is_post = 1;
+
+		inc->lhs = e;
+		inc->rhs = expr_new();
+		inc->rhs->op = flag ? op_plus : op_minus;
+		inc->rhs->lhs = e;
+		inc->rhs->rhs = expr_new_val(1);
+		e = inc;
+	}
+
+	return e;
+}
+
+expr *parse_expr_funcall()
+{
+	expr *e = parse_expr_inc_dec();
 
 	while(accept(token_open_paren)){
 		expr *sub = e;
