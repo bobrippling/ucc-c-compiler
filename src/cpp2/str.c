@@ -99,3 +99,22 @@ char *word_find(char *line, char *word)
 	}
 	return NULL;
 }
+
+char *nest_close_paren(char *start)
+{
+	int nest = 0;
+
+	while(*start){
+		switch(*start){
+			case '(':
+				nest++;
+				break;
+			case ')':
+				if(nest-- == 0)
+					return start;
+		}
+		start++;
+	}
+
+	return NULL;
+}
