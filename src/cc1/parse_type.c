@@ -146,7 +146,7 @@ decl *parse_decl(type *t, enum decl_mode mode)
 	}
 
 	if(accept(token_assign))
-		d->init = parse_expr();
+		d->init = parse_expr_funcallarg(); /* int x = 5, j; - don't grab the comma expr */
 
 	return d;
 }
