@@ -177,7 +177,7 @@ usage:
 	fprintf(stderr, "Usage: %s [options] files...\n", *argv);
 	fputs(" Options:\n"
 				"  -Idir: Add search directory\n"
-				"  -Dxyz: Define xyz\n"
+				"  -Dxyz[=abc]: Define xyz (to equal abc)\n"
 				"  -o output: output file\n"
 				"  -d: increase debug tracing\n", stderr);
 	return 1;
