@@ -246,6 +246,31 @@ void handle_undef(token **tokens)
 	macro_remove(tokens[0]->w);
 }
 
+void handle_error_warning(token **tokens, const char *pre)
+{
+	/*extern const char *current_fname;
+	extern int         current_line;*/
+	char *s;
+
+	s = tokens_join(tokens);
+	fprintf(stderr, "#%s: %s\n", pre, s);
+	free(s);
+
+}
+
+void handle_warning(token **tokens)
+{
+	NOOP_RET();
+	handle_error_warning(tokens, "warning");
+}
+
+void handle_error(token **tokens)
+{
+	NOOP_RET();
+	handle_error_warning(tokens, "error");
+	exit(1);
+}
+
 void handle_include(token **tokens)
 {
 	FILE *f;
@@ -410,6 +435,9 @@ void handle_macro(char *line)
 	MAP("ifndef",  handle_ifndef)
 	MAP("else",    handle_else)
 	MAP("endif",   handle_endif)
+
+	MAP("warning", handle_warning)
+	MAP("error",   handle_error)
 
 	die("unrecognised preproc command \"%s\"", tokens[0]->w);
 fin:
