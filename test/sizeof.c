@@ -1,24 +1,26 @@
+#include <assert.h>
 main()
 {
+	char array[5];
 	int i;
 	void *p;
 	int  *pi;
 	char c;
 
-	/* TODO: assert */
+	assert(sizeof array - 1 == 4);
 
 	/*sizeof int;*/
-	sizeof(int);
+	assert(sizeof(int) == 8);
 
-	sizeof i;
-	sizeof(i);
+	assert(sizeof i    == 8);
+	assert(sizeof(i)   == 8);
 
-	sizeof p;
-	sizeof(p);
+	assert(sizeof p    == 8);
+	assert(sizeof(p)   == 8);
 
-	sizeof pi;
-	sizeof(pi);
+	assert(sizeof pi   == 8);
+	assert(sizeof(pi)  == 8);
 
-	sizeof c;
-	sizeof(c);
+	assert(sizeof c    == 1);
+	assert(sizeof(c)   == 1);
 }
