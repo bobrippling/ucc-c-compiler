@@ -35,7 +35,7 @@ int operate(expr *lhs, expr *rhs, enum op_type op, int *bad)
 		case op_divide:
 			if(rhs->val.i)
 				return lhs->val.i / rhs->val.i;
-			fprintf(stderr, "%s: division by zero\n", where_str(&rhs->where));
+			fprintf(stderr, "%s: warning: division by zero\n", where_str(&rhs->where));
 			*bad = 1;
 			return 0;
 
@@ -127,9 +127,11 @@ int const_fold(expr *e)
 	switch(e->type){
 		case expr_val:
 		case expr_sizeof:
-		case expr_cast:
 		case expr_addr:
 			return 0;
+
+		case expr_cast:
+			return const_fold(e->rhs);
 
 		case expr_comma:
 			return !const_fold(e->lhs) && !const_fold(e->rhs);
@@ -163,7 +165,9 @@ int const_fold(expr *e)
 			l = const_fold(e->lhs);
 			r = e->rhs ? const_fold(e->rhs) : 0;
 
-			if(!l && !r){
+#define VAL(x) x->type == expr_val
+
+			if(!l && !r && VAL(e->lhs) && (e->rhs ? VAL(e->rhs) : 1)){
 				int bad = 0;
 
 				e->val.i = operate(e->lhs, e->rhs, e->op, &bad);
@@ -179,6 +183,7 @@ int const_fold(expr *e)
 			}else{
 				operate_optimise(e);
 			}
+#undef VAL
 		}
 	}
 	return 1;
