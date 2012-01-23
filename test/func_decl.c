@@ -20,3 +20,5 @@ new_with_typedef(size_t a)
 normal(int a)
 {
 }
+
+main(){}

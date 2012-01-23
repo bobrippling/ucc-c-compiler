@@ -31,7 +31,7 @@ clean(){
 }
 
 usage(){
-	echo Usage: $0 >&2
+	echo "Usage: $0 [clean|run]" >&2
 	exit 1
 }
 
@@ -42,7 +42,7 @@ then
 	if [ "$1" = clean ]
 	then
 		cmd=clean
-	elif [ "$1" = 'run' ]
+	elif [ "$1" = run ]
 	then
 		cmd=comp_and_run
 	else

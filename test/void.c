@@ -1,4 +1,5 @@
-void x(){}
+//void x(){}
+int x(){}
 
 main()
 {
