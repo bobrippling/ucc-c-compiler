@@ -6,7 +6,7 @@
 //#define NESTED_DIFFERENT
 
 #ifdef BASIC
-main()
+int main()
 {
 	struct
 	{
@@ -26,7 +26,7 @@ main()
 #endif
 
 #ifdef SIMPLE
-main()
+int main()
 {
 	struct
 	{
@@ -51,7 +51,7 @@ main()
 #endif
 
 #ifdef EXPR_TEST
-main()
+int main()
 {
 	void *p;
 	struct A
@@ -69,12 +69,12 @@ main()
 #endif
 
 #ifdef NESTED
-main()
+int main()
 {
 	struct int_struct_ptr
 	{
 		int i;
-		struct ptr_struct
+		struct ptr_int
 		{
 			void *p;
 			int i;
@@ -107,7 +107,7 @@ struct
 #endif
 
 #ifdef NESTED_DIFFERENT
-main()
+int main()
 {
 	struct C
 	{
