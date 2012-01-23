@@ -244,6 +244,7 @@ void fold_expr_struct(expr *e, symtable *stab)
 	spel = e->rhs->spel;
 
 	/* we either access a struct or an identifier */
+	/* FIXME - access anything whose tree_type has a ->struc */
 	if(e->lhs->type == expr_struct){
 		fold_expr_struct(e->lhs, stab);
 
@@ -258,7 +259,7 @@ void fold_expr_struct(expr *e, symtable *stab)
 		st = e->lhs->sym->decl->type->struc;
 
 	}else{
-		die_at(&e->lhs->where, "invalid struct-expr: %s", expr_to_str(e->lhs->type));
+		die_at(&e->lhs->where, "invalid struct-expr: %s (FIXME)", expr_to_str(e->lhs->type));
 	}
 
 	d = NULL;
