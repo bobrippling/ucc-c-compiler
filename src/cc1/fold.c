@@ -284,10 +284,8 @@ void fold_expr(expr *e, symtable *stab)
 
 	switch(e->type){
 		case expr_sizeof:
-			if(e->expr)
+			if(!e->expr->expr_is_sizeof)
 				fold_expr(e->expr, stab);
-			if(!e->tree_type)
-				e->tree_type = decl_new();
 			/* fall through - tree type int */
 		case expr_val:
 			e->tree_type->type->primitive = type_int;
