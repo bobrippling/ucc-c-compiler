@@ -205,11 +205,8 @@ invalid:
 
 		case expr_sizeof:
 		{
-			decl *this;
-
-			this = e->expr ? e->expr->tree_type : e->tree_type;
-
-			asm_temp(1, "push %d ; sizeof type %s", decl_size(this), decl_to_str(this));
+			decl *d = e->expr->tree_type;
+			asm_temp(1, "push %d ; sizeof %s%s", decl_size(d), e->expr->expr_is_sizeof ? "type " : "", decl_to_str(d));
 			break;
 		}
 	}
