@@ -69,6 +69,7 @@ UCC_LD=ld
 UCC_ARCH=elf64
 UCC_LDFLAGS=''
 
+clean=0
 
 i=1
 while [ $i -le $# ]
@@ -77,12 +78,20 @@ do
 	if echo "$arg" | grep -- '^--nasm=' > /dev/null
 	then
 		UCC_NASM="$(echo "$arg" | sed 's/^--nasm=//')"
+	elif [ "$arg" = clean ]
+	then
+		clean=1
 	else
 		usage
 	fi
 	i=`expr $i + 1`
 done
 
+if [ $clean -ne 0 ]
+then
+	rm -f config.mk src/cc.h lib/syscall_err.s lib/string_strerrs.h lib/syscalls_darwin.h
+	exit
+fi
 
 case "$(uname -s)" in
 	Darwin)
