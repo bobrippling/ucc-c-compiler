@@ -46,7 +46,7 @@ int fold_is_lvalue(expr *e)
 	 * also can't be const, checked in fold_assign (since we allow const inits)
 	 */
 
-	if(e->type == expr_identifier && !e->tree_type->func && !e->tree_type->arraysizes)
+	if(e->type == expr_identifier && !e->tree_type->func)
 		return 1;
 
 	if(e->type == expr_op && e->op == op_deref)
