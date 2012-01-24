@@ -16,7 +16,7 @@ OBJ = ../util/alloc.o ../util/util.o ../util/platform.o ../util/dynarray.o \
 include ../../config.mk
 
 cc1: ${OBJ}
-	${CC} ${LDFLAGS} -o $@ ${OBJ}
+	${CC} ${CFLAGS} ${LDFLAGS} -o $@ ${OBJ}
 
 clean:
 	rm -f *.o cc1
