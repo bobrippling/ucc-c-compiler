@@ -346,6 +346,9 @@ const char *type_to_str(const type *t)
 	int i;
 	char *bufp = buf;
 
+	if(t->tdef)
+		return type_to_str(t->tdef->type);
+
 	for(i = 0; i < SPEC_MAX; i++)
 		if(t->spec & (1 << i))
 			bufp += snprintf(bufp, BUF_SIZE, "%s ", spec_to_str(1 << i));
@@ -360,8 +363,9 @@ const char *type_to_str(const type *t)
 			APPEND(void);
 			APPEND(unknown);
 			case type_typedef:
+				ICE("typedef without ->tdef");
 			case type_struct:
-				break;
+				ICE("struct without ->struc");
 #undef APPEND
 		}
 
