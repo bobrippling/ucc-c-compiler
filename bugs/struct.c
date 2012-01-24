@@ -1,9 +1,10 @@
 //#define BASIC
-//#define SIMPLE
-#define EXPR_TEST
+#define SIMPLE
 //#define NESTED
 //#define NAMING
 //#define NESTED_DIFFERENT
+
+//#define EXPR_TEST
 
 #ifdef BASIC
 int main()
@@ -51,20 +52,35 @@ int main()
 #endif
 
 #ifdef EXPR_TEST
+#include <assert.h>
+
+struct A
+{
+	int i;
+	int j;
+};
+
+void set_j_3(struct A *p)
+{
+	p->j = 3;
+}
+
 int main()
 {
-	void *p;
-	struct A
-	{
-		int i;
-		int j;
-	} a, *pa;
+	struct A a, *p;
+	void *vp;
+	int val;
 
-	p = pa = &a;
+	vp = p = &a;
 
-	((struct A *)p)->i = 5;
+	p->j = 99;
+	set_j_3(p);
 
-	return pa->i;
+	((struct A *)vp)->i = 2;
+
+	val = p->i + p->j;
+	assert(val == 5);
+	return 0;
 }
 #endif
 

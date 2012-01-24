@@ -224,44 +224,30 @@ void fold_assignment(expr *e, symtable *stab)
 
 void fold_expr_struct(expr *e, symtable *stab)
 {
+	/*
+	 * lhs = any ptr-to-struct expr
+	 * rhs = struct member ident
+	 */
 	struc *st;
 	decl *d, **i;
 	char *spel;
 
-	/*
-	 * lhs = any ptr-to-struct
-	 * rhs = struct member (and then again...)
-	 */
+	fold_expr(e->lhs, stab);
+	/* don't fold the rhs - just a member name */
 
 	if(e->rhs->type != expr_identifier)
 		die_at(&e->rhs->where, "struct member must be an identifier");
-	/*
-	 * don't fold the rhs, it is simply a name for a member,
-	 * look up that instead
-	 * (done with GET_TREE_TYPE)
-	 */
-
 	spel = e->rhs->spel;
 
 	/* we either access a struct or an identifier */
-	/* FIXME - access anything whose tree_type has a ->struc */
-	if(e->lhs->type == expr_struct){
-		fold_expr_struct(e->lhs, stab);
+	if(e->lhs->tree_type->type->primitive != type_struct || e->lhs->tree_type->ptr_depth != 1)
+		die_at(&e->lhs->where, "not a pointer-to-struct");
 
-		st = e->lhs->tree_type->type->struc;
+	st = e->lhs->tree_type->type->struc;
 
-	}else if(e->lhs->type == expr_identifier){
-		fold_expr(e->lhs, stab);
+	UCC_ASSERT(st, "NULL ->struc in tree_type");
 
-		if(e->lhs->tree_type->ptr_depth != 1)
-			die_at(&e->lhs->where, "left hand operand of struct access is not a pointer-to-struct");
-
-		st = e->lhs->sym->decl->type->struc;
-
-	}else{
-		die_at(&e->lhs->where, "invalid struct-expr: %s (FIXME)", expr_to_str(e->lhs->type));
-	}
-
+	/* found the struct, find the member */
 	d = NULL;
 	for(i = st->members; *i; i++)
 		if(!strcmp((*i)->spel, spel)){
@@ -272,8 +258,8 @@ void fold_expr_struct(expr *e, symtable *stab)
 	if(!d)
 		die_at(&e->rhs->where, "struct %s has no member named \"%s\"", STRUCT_SPEL(st), spel);
 
-	GET_TREE_TYPE(d);
 	GET_TREE_TYPE_TO(e->rhs, d);
+	GET_TREE_TYPE(d);
 }
 
 void fold_expr(expr *e, symtable *stab)

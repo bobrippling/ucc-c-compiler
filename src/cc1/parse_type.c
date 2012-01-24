@@ -3,38 +3,31 @@ type *parse_type_struct()
 {
 	char *spel;
 	type *t;
-	struc *struc;
 
-	t = NULL;
+	spel = NULL;
+	t = type_new();
+	t->primitive = type_struct;
 
 	if(curtok == token_identifier){
 		spel = token_current_spel();
 		EAT(token_identifier);
-	}else{
-		spel = NULL;
 	}
 
 	if(accept(token_open_block)){
-		struc = umalloc(sizeof *struc);
-
-		struc->spel = spel;
-		struc->members = parse_decls(DECL_CAN_DEFAULT | DECL_SPEL_NEED);
-
+		decl **members = parse_decls(DECL_CAN_DEFAULT | DECL_SPEL_NEED);
 		EAT(token_close_block);
-		dynarray_add((void ***)&structs_current, struc);
+		struct_add(&structs_current, spel, members);
 	}else{
 		if(!spel)
 			die_at(NULL, "expected: struct definition or name");
 
-		struc = struct_find(structs_current, spel);
+		t->struc = struct_find(structs_current, spel);
 
-		if(!struc)
+		if(!t->struc)
 			die_at(NULL, "struct %s not defined", spel);
-	}
 
-	t = type_new();
-	t->primitive = type_struct;
-	t->struc = struc;
+		free(spel);
+	}
 
 	return t;
 }
@@ -175,7 +168,7 @@ decl *parse_decl_single(enum decl_mode mode)
 
 decl **parse_decls(const int can_default)
 {
-	const enum decl_mode flag = DECL_SPEL_NEED | (can_default ? DECL_CAN_DEFAULT : 0);
+	const enum decl_mode parse_flag = DECL_SPEL_NEED | (can_default ? DECL_CAN_DEFAULT : 0);
 	decl **decls = NULL;
 	decl *last;
 	int are_tdefs;
@@ -191,8 +184,8 @@ decl **parse_decls(const int can_default)
 		t = parse_type();
 
 		if(!t){
-			/* don't like this, seems hacky */
-			if((curtok == token_identifier || curtok == token_multiply) && can_default){
+			/* can_default makes sure we don't parse { int *p; *p = 5; } the latter as a decl */
+			if(parse_possible_decl() && can_default){
 				INT_TYPE(t);
 				cc1_warn_at(&t->where, 0, WARN_IMPLICIT_INT, "defaulting type to int");
 			}else{
@@ -202,9 +195,12 @@ decl **parse_decls(const int can_default)
 
 		if(t->spec & spec_typedef)
 			are_tdefs = 1;
+		else if(t->struc && !parse_possible_decl())
+			goto next; /* struct { int i; }; - continue to next one */
 
 		do{
-			d = parse_decl(t, flag);
+			d = parse_decl(t, parse_flag);
+
 			if(d){
 				if(are_tdefs)
 					typedef_add(typedefs_current, d);
@@ -227,7 +223,9 @@ decl **parse_decls(const int can_default)
 			}
 		}while(accept(token_comma));
 
-		if(last && !last->func)
+		if(last && !last->func){
+next:
 			EAT(token_semicolon);
+		}
 	}
 }

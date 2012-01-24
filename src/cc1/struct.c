@@ -3,6 +3,8 @@
 #include <stdarg.h>
 
 #include "../util/util.h"
+#include "../util/alloc.h"
+#include "../util/dynarray.h"
 #include "tree.h"
 #include "struct.h"
 
@@ -38,9 +40,28 @@ struc *struct_find(struc **structs, const char *spel)
 {
 	struc **i;
 
-	for(i = structs; i && *i; i++)
-		if(!strcmp((*i)->spel, spel))
-			return *i;
+	for(i = structs; i && *i; i++){
+		struc *st = *structs;
+		if(st->spel && !strcmp(st->spel, spel))
+			return st;
+	}
 
 	return NULL;
+}
+
+void struct_add(struc ***structs, char *spel, decl **members)
+{
+	struc *struc;
+
+	if((struc = struct_find(*structs, spel))){
+		char buf[WHERE_BUF_SIZ];
+		strcpy(buf, where_str(&members[0]->where));
+		die_at(&struc->members[0]->where, "duplicate struct from %s", buf);
+	}
+
+	struc          = umalloc(sizeof *struc);
+	struc->spel    = spel;
+	struc->members = members;
+
+	dynarray_add((void ***)structs, struc);
 }

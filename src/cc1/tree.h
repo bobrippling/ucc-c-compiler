@@ -239,7 +239,7 @@ tree_flow *tree_flow_new(void);
 const char *op_to_str(  const enum op_type   o);
 const char *expr_to_str(const enum expr_type t);
 const char *stat_to_str(const enum stat_type t);
-const char *decl_to_str(const decl          *t);
+const char *decl_to_str(const decl          *d);
 const char *type_to_str(const type          *t);
 const char *spec_to_str(const enum type_spec s);
 
