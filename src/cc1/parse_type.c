@@ -23,10 +23,13 @@ type *parse_type_struct()
 		EAT(token_close_block);
 		dynarray_add((void ***)&structs_current, struc);
 	}else{
-		struc = NULL;
 		if(!spel)
 			die_at(NULL, "expected: struct definition or name");
-		ICE("TODO: find struct %s\n", spel);
+
+		struc = struct_find(structs_current, spel);
+
+		if(!struc)
+			die_at(NULL, "struct %s not defined", spel);
 	}
 
 	t = type_new();

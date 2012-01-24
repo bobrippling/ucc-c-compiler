@@ -140,9 +140,30 @@ expr *expr_ptr_multiply(expr *e, decl *d)
 	int sz;
 	expr *ret;
 
+	/*
+	 * we need to adjust the pointer-ness
+	 * normally this is fine, but if we do
+	 * this for a typedef'd variable, then
+	 * we could get:
+	 * d->ptr_depth = 0
+	 * d->primitive = abc
+	 * d->tdef = { .ptr_depth = 1, .primitive = abc }
+	 *
+	 * which means they are out of sync
+	 * thus the decl-clone
+	 */
+
 	memcpy(&tmp, d, sizeof tmp);
 	tmp.ptr_depth--;
+	if(tmp.type->tdef){
+		tmp.type->tdef = decl_copy(tmp.type->tdef);
+		tmp.type->tdef->ptr_depth--;
+	}
+
 	sz = decl_size(&tmp);
+
+	if(tmp.type->tdef)
+		decl_free(tmp.type->tdef);
 
 	if(sz == 1)
 		return e;

@@ -9,4 +9,7 @@ clean:
 	make -C src clean
 	make -C lib clean
 
-.PHONY: all clean configure
+cleanall: clean
+	./configure clean
+
+.PHONY: all clean cleanall configure

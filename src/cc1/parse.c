@@ -84,11 +84,19 @@ expr *parse_expr_unary_op()
 			e->type = expr_sizeof;
 
 			if(accept(token_open_paren)){
-				decl_free(e->tree_type);
-				e->tree_type = parse_decl_single(DECL_SPEL_NO);
-				if(!e->tree_type)
+				decl *d = parse_decl_single(DECL_SPEL_NO);
+
+				if(d){
+					e->expr = expr_new();
+					e->expr->type = expr_cast;
+					decl_free(e->expr->tree_type);
+					e->expr->tree_type = d;
+				}else{
 					/* parse a full one, since we're in brackets */
 					e->expr = parse_expr();
+				}
+
+				e->expr->expr_is_sizeof = !!d;
 
 				EAT(token_close_paren);
 			}else{

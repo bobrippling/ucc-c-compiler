@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include <stdarg.h>
 
 #include "../util/util.h"
@@ -31,4 +32,15 @@ int struct_size(struc *st)
 	for(i = st->members; *i; i++)
 		r += decl_size(*i);
 	return r;
+}
+
+struc *struct_find(struc **structs, const char *spel)
+{
+	struc **i;
+
+	for(i = structs; i && *i; i++)
+		if(!strcmp((*i)->spel, spel))
+			return *i;
+
+	return NULL;
 }

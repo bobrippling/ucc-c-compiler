@@ -51,8 +51,10 @@ int main(int argc, char **argv)
 	for(i = 0; initial_defs[i].nam; i++)
 		macro_add(initial_defs[i].nam, initial_defs[i].val);
 
-	if(platform_type() == PLATFORM_64)
+	if(platform_type() == PLATFORM_64){
 		macro_add("__x86_64__", "1");
+		macro_add("__LP64__", "1");
+	}
 
 	switch(platform_sys()){
 #define MAP(t, s) case t: macro_add(s, "1"); break
