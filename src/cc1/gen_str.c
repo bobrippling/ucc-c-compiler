@@ -334,7 +334,7 @@ void print_struct(struc *st)
 {
 	decl **iter;
 
-	idt_printf("struct %s%s:\n", st->spel);
+	idt_printf("struct %s:\n", STRUCT_SPEL(st));
 
 	indent++;
 	for(iter = st->members; *iter; iter++){
