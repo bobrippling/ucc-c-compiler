@@ -208,11 +208,11 @@ void print_expr(expr *e)
 			break;
 
 		case expr_sizeof:
-			if(e->expr){
+			if(e->expr->expr_is_sizeof){
+				idt_printf("sizeof %s\n", decl_to_str(e->expr->tree_type));
+			}else{
 				idt_printf("sizeof expr:\n");
 				print_expr(e->expr);
-			}else{
-				idt_printf("sizeof %s\n", decl_to_str(e->tree_type));
 			}
 			break;
 

@@ -46,7 +46,7 @@ int fold_is_lvalue(expr *e)
 	 * also can't be const, checked in fold_assign (since we allow const inits)
 	 */
 
-	if(e->type == expr_identifier && !e->tree_type->func && !e->tree_type->arraysizes)
+	if(e->type == expr_identifier && !e->tree_type->func)
 		return 1;
 
 	if(e->type == expr_op && e->op == op_deref)
@@ -244,6 +244,7 @@ void fold_expr_struct(expr *e, symtable *stab)
 	spel = e->rhs->spel;
 
 	/* we either access a struct or an identifier */
+	/* FIXME - access anything whose tree_type has a ->struc */
 	if(e->lhs->type == expr_struct){
 		fold_expr_struct(e->lhs, stab);
 
@@ -258,7 +259,7 @@ void fold_expr_struct(expr *e, symtable *stab)
 		st = e->lhs->sym->decl->type->struc;
 
 	}else{
-		die_at(&e->lhs->where, "invalid struct-expr: %s", expr_to_str(e->lhs->type));
+		die_at(&e->lhs->where, "invalid struct-expr: %s (FIXME)", expr_to_str(e->lhs->type));
 	}
 
 	d = NULL;
@@ -284,10 +285,8 @@ void fold_expr(expr *e, symtable *stab)
 
 	switch(e->type){
 		case expr_sizeof:
-			if(e->expr)
+			if(!e->expr->expr_is_sizeof)
 				fold_expr(e->expr, stab);
-			if(!e->tree_type)
-				e->tree_type = decl_new();
 			/* fall through - tree type int */
 		case expr_val:
 			e->tree_type->type->primitive = type_int;

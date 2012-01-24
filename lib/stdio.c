@@ -42,7 +42,6 @@ static void printd(int fd, int n)
 
 static void printx(int fd, int n)
 {
-	write(fd, "0x", 2);
 	printn(fd, n, 16);
 }
 
@@ -93,6 +92,7 @@ int vfprintf(FILE *file, char *fmt, va_list ap)
 					printd(fd, va_arg(ap, int));
 					break;
 				case 'p':
+					write(fd, "0x", 2);
 				case 'x':
 					printx(fd, va_arg(ap, int));
 					break;

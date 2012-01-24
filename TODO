@@ -30,9 +30,7 @@ cpp:
 
 
 cc:
-	-W code in cc.c
-	-g in cc.c and eventually cc1.c with stabs/dwarf
-	-I
+	eventually cc1.c with stabs/dwarf
 
 	options:
 		warn on "{ 1, 2, 3, }" - final comma
