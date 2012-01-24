@@ -2,7 +2,6 @@
 #define __STDIO_H
 
 typedef int FILE;
-typedef int size_t;
 
 extern FILE *stdin, *stdout, *stderr;
 
