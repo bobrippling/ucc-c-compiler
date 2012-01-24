@@ -29,8 +29,16 @@ void asm_ax_to_store(expr *store, symtable *stab)
 			return;
 
 		case expr_struct:
-			asm_sym_struct(store, "rbx");
-			asm_temp(1, "mov [rbx], rax ; save to struct");
+			asm_temp(1, "push rax ; save val");
+
+			walk_expr(store->lhs, stab);
+			/* pointer on stack */
+
+			/* move `pop` into `pop` */
+			asm_temp(1, "pop rbx ; struct addr");
+			asm_temp(1, "sub rbx, %d ; offset of member %s", struct_member_offset(store), store->rhs->spel);
+			asm_temp(1, "pop rax ; saved val");
+			asm_temp(1, "mov [rbx], rax");
 			return;
 
 		case expr_op:
@@ -92,7 +100,12 @@ void walk_expr(expr *e, symtable *stab)
 			break;
 
 		case expr_struct:
-			asm_sym_struct(e, "rax");
+			walk_expr(e->lhs, stab);
+			/* pointer to the struct is on the stack, get from the offset */
+
+			asm_temp(1, "pop rax");
+			asm_temp(1, "sub rax, %d ; offset of member %s",
+					struct_member_offset(e), e->rhs->spel);
 			asm_temp(1, "mov rax, [rax] ; val from struct");
 			asm_temp(1, "push rax");
 			break;

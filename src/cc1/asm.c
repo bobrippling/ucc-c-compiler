@@ -129,12 +129,6 @@ void asm_sym(enum asm_sym_type t, sym *s, const char *reg)
 	}
 }
 
-void asm_sym_struct(expr *store, const char *reg)
-{
-	asm_sym(ASM_LOAD, store->lhs->sym, reg); /* load, because store is a struct * */
-	asm_temp(1, "sub %s, %d ; offset of member", reg, struct_member_offset(store));
-}
-
 void asm_new(enum asm_type t, void *p)
 {
 	switch(t){
