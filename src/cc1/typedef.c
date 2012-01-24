@@ -25,6 +25,13 @@ decl *typedef_find(struct tdeftable *defs, const char *spel)
 void typedef_add(struct tdeftable *defs, decl *d)
 {
 	tdef *new = umalloc(sizeof *new);
+	decl *dup;
+
+	if((dup = typedef_find(defs, d->spel))){
+		char buf[WHERE_BUF_SIZ];
+		strcpy(buf, where_str(&dup->where));
+		die_at(&d->where, "duplicate typedef (from %s)", buf);
+	}
 
 	new->decl = d;
 
