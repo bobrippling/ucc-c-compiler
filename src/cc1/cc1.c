@@ -5,6 +5,7 @@
 #include <stdlib.h>
 
 #include <unistd.h>
+#include <signal.h>
 
 #include "../util/util.h"
 #include "tree.h"
@@ -79,6 +80,7 @@ FILE *cc1_out;                  /* final output */
 enum warning warn_mode = ~(WARN_VOID_ARITH | WARN_COMPARE_MISMATCH);
 enum fopt    fopt_mode = FOPT_CONST_FOLD;
 
+int caught_sig = 0;
 
 const char *section_names[NUM_SECTIONS] = {
 	"text", "data", "bss"
@@ -141,9 +143,9 @@ void io_cleanup(void)
 {
 	int i;
 	for(i = 0; i < NUM_SECTIONS; i++){
-		if(fclose(cc_out[i]) == EOF)
+		if(fclose(cc_out[i]) == EOF && !caught_sig)
 			fprintf(stderr, "close %s: %s\n", fnames[i], strerror(errno));
-		if(remove(fnames[i]))
+		if(remove(fnames[i]) && !caught_sig)
 			fprintf(stderr, "remove %s: %s\n", fnames[i], strerror(errno));
 	}
 }
@@ -195,6 +197,13 @@ void io_fin(int do_sections)
 		ccdie(0, "close cc1 output");
 }
 
+void sigh(int sig)
+{
+	(void)sig;
+	caught_sig = 1;
+	io_cleanup();
+}
+
 int main(int argc, char **argv)
 {
 	static symtable *globs;
@@ -202,6 +211,9 @@ int main(int argc, char **argv)
 	FILE *f;
 	const char *fname;
 	int i;
+
+	signal(SIGSEGV, sigh);
+	signal(SIGABRT, sigh);
 
 	gf = gen_asm;
 	fname = NULL;
