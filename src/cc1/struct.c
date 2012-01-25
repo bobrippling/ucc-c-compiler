@@ -49,11 +49,11 @@ struc *struct_find(struc **structs, const char *spel)
 	return NULL;
 }
 
-void struct_add(struc ***structs, char *spel, decl **members)
+struc *struct_add(struc ***structs, char *spel, decl **members)
 {
 	struc *struc;
 
-	if((struc = struct_find(*structs, spel))){
+	if(spel && (struc = struct_find(*structs, spel))){
 		char buf[WHERE_BUF_SIZ];
 		strcpy(buf, where_str(&members[0]->where));
 		die_at(&struc->members[0]->where, "duplicate struct from %s", buf);
@@ -64,4 +64,6 @@ void struct_add(struc ***structs, char *spel, decl **members)
 	struc->members = members;
 
 	dynarray_add((void ***)structs, struc);
+
+	return struc;
 }

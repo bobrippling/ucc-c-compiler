@@ -216,7 +216,8 @@ enum asm_size asm_type_size(decl *d)
 				return asm_type_size(d->type->tdef);
 
 			case type_struct:
-				ICE("asm_type_size(): type primitive is struct");
+				ICE("asm_type_size of a struct - can't be word nor byte");
+
 			case type_unknown:
 				ICE("type primitive not set");
 		}

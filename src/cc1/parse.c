@@ -36,6 +36,8 @@ expr *parse_expr();
 
 #define TYPEDEF_FIND() (curtok == token_identifier ? typedef_find(typedefs_current, token_current_spel_peek()) : NULL)
 
+#define PARSE_DECLS() parse_decls(0, 0)
+
 extern enum token curtok;
 
 enum decl_mode
@@ -48,7 +50,7 @@ enum decl_mode
 decl *parse_decl_single(enum decl_mode);
 
 tree  *parse_code(void);
-decl **parse_decls(const int can_default);
+decl **parse_decls(const int can_default, const int accept_field_width);
 type *parse_type(void);
 
 expr **parse_funcargs(void);
@@ -177,18 +179,21 @@ expr *parse_expr_unary_op()
 
 		case token_and:
 			EAT(token_and);
-			e = parse_lone_identifier();
+			e = expr_new();
 			e->type = expr_addr;
+
+			e->expr = parse_lone_identifier();
 			if(accept(token_open_square)){
 				/* &x[5] */
 				expr *new = expr_new();
-				new->lhs = e;
-				new->rhs = parse_expr();
-				EAT(token_close_square);
 
-				e = new;
-				e->type = expr_op;
-				e->op   = op_plus;
+				new->type = expr_op;
+				new->op   = op_plus;
+				new->lhs  = e;
+				new->rhs  = parse_expr();
+
+				EAT(token_close_square);
+				return new;
 			}
 			return e;
 
@@ -309,26 +314,18 @@ expr *parse_expr_struct(expr *left)
 				return parse_expr_struct(struct_access);
 			}else{
 				/*
-				* a.x -> (&a)->x
-				*/
-#if 0
-				expr *sub = expr_new();
+				 * a.x -> (&a)->x
+				 */
+				expr *stru;
 
-				e->type = expr_struct;
-				e->expr = sub;
-
-				sub->type = expr_addr;
-				sub->spel = e->spel;
-
+				stru = expr_new();
 				stru->type = expr_struct;
-				stru->lhs = addr;
+				stru->lhs = left;
 				stru->rhs = parse_lone_identifier();
 
-				e = stru;
-#else
-				ICE("FIXME: struct access parsing");
-#endif
+				ICE("TODO: a.b");
 
+				return parse_expr_struct(stru);
 			}
 		}else{
 			return left;
@@ -759,7 +756,7 @@ old_func:
 		}while(1);
 
 		/* parse decls, then check they correspond */
-		args = parse_decls(0);
+		args = PARSE_DECLS();
 
 		n_decls = dynarray_count((void *)args);
 		n_spels = dynarray_count((void *)spells);
@@ -817,7 +814,7 @@ tree *parse_code_block()
 	if(accept(token_close_block))
 		return t;
 
-	t->decls = parse_decls(0);
+	t->decls = PARSE_DECLS();
 
 	for(diter = t->decls; diter && *diter; diter++)
 		/* only extract the init if it's not static */
@@ -944,7 +941,7 @@ symtable *parse()
 	typedefs_current = umalloc(sizeof *typedefs_current);
 	globals = symtab_new();
 
-	decls = parse_decls(1);
+	decls = parse_decls(1, 0);
 	EAT(token_eof);
 
 	if(decls)

@@ -57,6 +57,7 @@ struct decl
 {
 	where where;
 
+	int field_width;
 	type *type;
 
 	char *spel;
