@@ -272,6 +272,8 @@ int main(int argc, char **argv)
 					case 'W':
 						args_add(MODE_COMPILE, argv[i]);
 						continue;
+					case 'D':
+					case 'U':
 					case 'I':
 						args_add(MODE_PREPROCESS, argv[i]);
 						continue;
