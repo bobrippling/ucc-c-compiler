@@ -113,6 +113,12 @@ int main(int argc, char **argv)
 				break;
 			}
 
+			case 'U':
+				if(!argv[i][2])
+					goto usage;
+				macro_remove(argv[i] + 2);
+				break;
+
 			case 'd':
 				debug++;
 				break;
@@ -180,6 +186,7 @@ usage:
 	fputs(" Options:\n"
 				"  -Idir: Add search directory\n"
 				"  -Dxyz[=abc]: Define xyz (to equal abc)\n"
+				"  -Uxyz: Undefine xyz\n"
 				"  -o output: output file\n"
 				"  -d: increase debug tracing\n", stderr);
 	return 1;
