@@ -1,0 +1,30 @@
+TODO: This file
+
+src: Compiler source files
+	cpp2: Preprocessor
+	//cpp: Broken, old preprocessor
+	cc1: The parser and code generator
+	util: Common code
+	cc.c: The cc wrapper program
+
+lib: Include files and library object location
+	Contains partial C standard lib
+
+The compiler (cc1) runs in three main stages.
+
+Parsing (parse{,_type}.c)
+Folding (fold.c)
+Code Generation (gen_asm.c / gen_str.c)
+
+Parsing simply constructs a syntax tree (tree.h + struct.h + typedef.h).
+There are expressions and statements, shown in tree.h
+
+Folding links up symbols, checks for [in]valid code (such as *(void *)0 = 5)
+and calculates stack offsets, struct offsets and so on.
+
+Code generation walks the tree, outputting a visual representation (gen_str) or
+the x64 assembly (gen_asm.c - highly suboptimal) of the program.
+
+TODO:
+Two optimisation stages - one at the fold stage, one at the assembly output
+stage
