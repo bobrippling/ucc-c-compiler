@@ -210,6 +210,8 @@ void fold_assignment(expr *e, symtable *stab)
 
 		/* read the tree_type from what we're assigning to, not the expr */
 		GET_TREE_TYPE(e->sym->decl);
+	}else{
+		GET_TREE_TYPE(e->lhs->tree_type);
 	}
 
 
@@ -241,7 +243,7 @@ void fold_expr_struct(expr *e, symtable *stab)
 
 	/* we either access a struct or an identifier */
 	if(e->lhs->tree_type->type->primitive != type_struct || e->lhs->tree_type->ptr_depth != 1)
-		die_at(&e->lhs->where, "not a pointer-to-struct");
+		die_at(&e->lhs->where, "not a pointer-to-struct (%s)", decl_to_str(e->lhs->tree_type));
 
 	st = e->lhs->tree_type->type->struc;
 
@@ -309,8 +311,6 @@ void fold_expr(expr *e, symtable *stab)
 
 		case expr_struct:
 			fold_expr_struct(e, stab);
-			if(e->tree_type->type->struc)
-				warn_at(&e->where, "warning: struct in expression");
 			break;
 
 		case expr_addr:
@@ -318,6 +318,7 @@ void fold_expr(expr *e, symtable *stab)
 				sym *array_sym;
 
 				UCC_ASSERT(!e->sym, "symbol found when looking for array store");
+				UCC_ASSERT(!e->expr, "expression found in array store address-of");
 
 				e->tree_type->type->spec |= spec_static;
 				e->tree_type->ptr_depth = 1;
@@ -356,19 +357,43 @@ void fold_expr(expr *e, symtable *stab)
 				}
 
 			}else{
-				if(!e->sym)
-					DIE_UNDECL();
-
-				GET_TREE_TYPE(e->sym->decl);
-
 				/*
-				 * int x[2];
-				 * int *p = &x;
-				 * p is int *, not int **
-				 * hence the following if
+				 * struct A a, *p;
+				 *
+				 * from
+				 *   (*p).y
+				 * we have:
+				 *   (&(*a))->y
+				 *
+				 * from
+				 *   a.y
+				 * or
+				 *   (&a)->y
 				 */
-				if(!e->sym->decl->arraysizes)
+				fold_expr(e->expr, stab);
+
+				if(e->expr->type == expr_identifier){
+					sym *s = e->expr->sym;
+
+					if(!s)
+						DIE_UNDECL();
+
+					GET_TREE_TYPE(s->decl);
+
+					/*
+						* int x[2];
+						* int *p = &x;
+						* p is int *, not int **
+						* hence the following if
+						*/
+					if(!s->decl->arraysizes)
+						e->tree_type->ptr_depth++;
+				}else if(e->expr->type == expr_struct){
+					GET_TREE_TYPE(e->expr->tree_type);
 					e->tree_type->ptr_depth++;
+				}else{
+					die_at(&e->where, "invalid address-of operand (%s)", expr_to_str(e->expr->type));
+				}
 			}
 			break;
 

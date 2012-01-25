@@ -14,9 +14,9 @@ type *parse_type_struct()
 	}
 
 	if(accept(token_open_block)){
-		decl **members = parse_decls(DECL_CAN_DEFAULT | DECL_SPEL_NEED);
+		decl **members = parse_decls(DECL_CAN_DEFAULT | DECL_SPEL_NEED, 1);
 		EAT(token_close_block);
-		struct_add(&structs_current, spel, members);
+		t->struc = struct_add(&structs_current, spel, members);
 	}else{
 		if(!spel)
 			die_at(NULL, "expected: struct definition or name");
@@ -166,7 +166,7 @@ decl *parse_decl_single(enum decl_mode mode)
 	return parse_decl(t, mode);
 }
 
-decl **parse_decls(const int can_default)
+decl **parse_decls(const int can_default, const int accept_field_width)
 {
 	const enum decl_mode parse_flag = DECL_SPEL_NEED | (can_default ? DECL_CAN_DEFAULT : 0);
 	decl **decls = NULL;
@@ -211,10 +211,17 @@ decl **parse_decls(const int can_default)
 					if(d->func)
 						die_at(&d->where, "can't have a typedef function");
 
-				if(d->func && d->func->code){
-					if(curtok == token_eof)
-						return decls;
-					continue;
+				if(d->func){
+					if(d->func->code){
+						if(curtok == token_eof)
+							return decls;
+						continue;
+					}
+				}else if(accept_field_width && accept(token_colon)){
+					/* normal decl, check field spec */
+					extern int currentval;
+					d->field_width = currentval;
+					EAT(token_integer);
 				}
 
 				last = d;
