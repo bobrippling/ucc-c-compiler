@@ -1,6 +1,8 @@
 parse_expr() in parse_type/decl
 get rid of __asm__ hacks (mainly in gen_asm.c)
 
+test field_width in struct parsing
+
 cpp2:
 	fix dir-relative file opening
 
