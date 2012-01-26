@@ -8,25 +8,6 @@
 #include "tree.h"
 #include "struct.h"
 
-int struct_member_offset(expr *e)
-{
-	int offset = e->rhs->tree_type->struct_offset;
-
-	UCC_ASSERT(e->type == expr_struct, "not a struct");
-
-	/*
-	 * walk down e->lhs->lhs->lhs... until we reach an identifier
-	 * adding offsets as we go
-	 */
-
-	while(e->lhs->type == expr_struct){
-		offset += e->lhs->tree_type->struct_offset;
-		e = e->lhs;
-	}
-
-	return offset;
-}
-
 int struct_size(struc *st)
 {
 	decl **i;
@@ -60,7 +41,14 @@ struc *struct_add(struc ***structs, char *spel, decl **members)
 	}
 
 	struc          = umalloc(sizeof *struc);
-	struc->spel    = spel;
+
+	if(spel){
+		struc->spel = spel;
+	}else{
+		struc->spel = umalloc(32);
+		snprintf(struc->spel, 32, "<anon %p>", (void *)struc);
+	}
+
 	struc->members = members;
 
 	dynarray_add((void ***)structs, struc);

@@ -112,7 +112,6 @@ struct expr
 		expr_identifier,
 		expr_assign,
 		expr_funcall,
-		expr_struct,
 		expr_cast,
 		expr_if,
 		expr_comma
@@ -136,6 +135,8 @@ struct expr
 		op_not,  op_bnot,
 
 		op_shiftl, op_shiftr,
+
+		op_struct_ptr, op_struct_dot,
 
 		op_unknown
 	} op;

@@ -111,17 +111,6 @@ void print_expr(expr *e)
 			indent--;
 			break;
 
-		case expr_struct:
-			idt_printf("struct expression:\n");
-			indent++;
-			print_expr(e->lhs);
-			indent--;
-			idt_printf("member:\n");
-			indent++;
-			print_expr(e->rhs);
-			indent--;
-			break;
-
 		case expr_identifier:
 			idt_printf("identifier: \"%s\" (sym %p)\n", e->spel, e->sym);
 			break;
@@ -334,7 +323,7 @@ void print_struct(struc *st)
 {
 	decl **iter;
 
-	idt_printf("struct %s:\n", STRUCT_SPEL(st));
+	idt_printf("struct %s:\n", st->spel);
 
 	indent++;
 	for(iter = st->members; *iter; iter++){

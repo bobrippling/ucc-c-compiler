@@ -212,8 +212,11 @@ int main(int argc, char **argv)
 	const char *fname;
 	int i;
 
-	signal(SIGSEGV, sigh);
+	/*signal(SIGINT , sigh);*/
+	signal(SIGQUIT, sigh);
+	signal(SIGTERM, sigh);
 	signal(SIGABRT, sigh);
+	signal(SIGSEGV, sigh);
 
 	gf = gen_asm;
 	fname = NULL;

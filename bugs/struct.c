@@ -1,5 +1,5 @@
-//#define BASIC
-#define SIMPLE
+#define BASIC
+//#define SIMPLE
 //#define NESTED
 //#define NAMING
 //#define NESTED_DIFFERENT
@@ -17,8 +17,8 @@ int main()
 
 	x = &y;
 
-	x->i = 5;
-	x->j = 2;
+	//x->i = 5;
+	//x->j = 2;
 
 	//y.i = 3;
 

@@ -290,7 +290,6 @@ const char *expr_to_str(const enum expr_type t)
 		CASE_STR_PREFIX(expr, cast);
 		CASE_STR_PREFIX(expr, if);
 		CASE_STR_PREFIX(expr, comma);
-		CASE_STR_PREFIX(expr, struct);
 	}
 	return NULL;
 }
@@ -318,6 +317,8 @@ const char *op_to_str(const enum op_type o)
 		CASE_STR_PREFIX(op, bnot);
 		CASE_STR_PREFIX(op, shiftl);
 		CASE_STR_PREFIX(op, shiftr);
+		CASE_STR_PREFIX(op, struct_ptr);
+		CASE_STR_PREFIX(op, struct_dot);
 		CASE_STR_PREFIX(op, unknown);
 	}
 	return NULL;
@@ -375,7 +376,7 @@ const char *type_to_str(const type *t)
 			bufp += snprintf(bufp, BUF_SIZE, "%s ", spec_to_str(1 << i));
 
 	if(t->struc)
-		snprintf(bufp, BUF_SIZE, "struct %s", STRUCT_SPEL(t->struc));
+		snprintf(bufp, BUF_SIZE, "struct %s", t->struc->spel);
 	else
 		switch(t->primitive){
 #define APPEND(t) case type_ ## t: snprintf(bufp, BUF_SIZE, "%s", #t); break
