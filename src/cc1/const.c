@@ -75,6 +75,11 @@ int operate(expr *lhs, expr *rhs, enum op_type op, int *bad)
 			*bad = 1;
 			return 0;
 
+		case op_struct_ptr:
+		case op_struct_dot:
+			*bad = 1;
+			return 0;
+
 		case op_unknown:
 			break;
 	}
@@ -137,7 +142,6 @@ int const_fold(expr *e)
 			return !const_fold(e->lhs) && !const_fold(e->rhs);
 
 		case expr_assign: /* could check if the assignment subtree is const */
-		case expr_struct:
 		case expr_funcall: /* could extend to have int x() const; */
 			return 1;
 

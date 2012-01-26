@@ -8,12 +8,9 @@ struct struc
 	int size;
 };
 
-int struct_member_offset(expr *e);
 int struct_size(struc *);
 
 struc *struct_add(struc ***structs, char *spel, decl **members);
 struc *struct_find(struc **structs, const char *spel);
-
-#define STRUCT_SPEL(st) ((st)->spel ? (st)->spel : "<anon>")
 
 #endif

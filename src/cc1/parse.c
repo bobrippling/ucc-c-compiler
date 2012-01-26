@@ -179,20 +179,18 @@ expr *parse_expr_unary_op()
 
 		case token_and:
 			EAT(token_and);
-			e = expr_new();
+			e = parse_lone_identifier();
 			e->type = expr_addr;
-
-			e->expr = parse_lone_identifier();
 			if(accept(token_open_square)){
 				/* &x[5] */
 				expr *new = expr_new();
+				new->lhs = e;
+				new->rhs = parse_expr();
+				EAT(token_close_square);
 
 				new->type = expr_op;
 				new->op   = op_plus;
-				new->lhs  = e;
-				new->rhs  = parse_expr();
 
-				EAT(token_close_square);
 				return new;
 			}
 			return e;
@@ -298,45 +296,17 @@ expr *parse_expr_join(expr *(*above)(), enum token accept, ...)
 	return e;
 }
 
-expr *parse_expr_struct(expr *left)
+expr *parse_expr_struct()
 {
-	for(;;){
-		int flag;
-
-		if((flag = accept(token_ptr)) || accept(token_dot)){
-			if(flag){
-				expr *struct_access = expr_new();
-
-				struct_access->type = expr_struct;
-				struct_access->lhs = left;
-				struct_access->rhs = parse_lone_identifier();
-
-				return parse_expr_struct(struct_access);
-			}else{
-				/*
-				 * a.x -> (&a)->x
-				 */
-				expr *stru;
-
-				stru = expr_new();
-				stru->type = expr_struct;
-				stru->lhs = left;
-				stru->rhs = parse_lone_identifier();
-
-				ICE("TODO: a.b");
-
-				return parse_expr_struct(stru);
-			}
-		}else{
-			return left;
-		}
-	}
+	return parse_expr_join(parse_expr_unary_op,
+				token_ptr, token_dot,
+				token_unknown);
 }
 
 expr *parse_expr_array()
 {
 	expr *sum, *deref;
-	expr *base = parse_expr_struct(parse_expr_unary_op());
+	expr *base = parse_expr_struct();
 
 	if(!accept(token_open_square))
 		return base;

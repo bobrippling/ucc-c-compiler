@@ -28,32 +28,35 @@ void asm_ax_to_store(expr *store, symtable *stab)
 			asm_sym(ASM_SET, store->sym, "rax");
 			return;
 
-		case expr_struct:
-			asm_temp(1, "push rax ; save val");
-
-			walk_expr(store->lhs, stab);
-			/* pointer on stack */
-
-			/* move `pop` into `pop` */
-			asm_temp(1, "pop rbx ; struct addr");
-			asm_temp(1, "sub rbx, %d ; offset of member %s", struct_member_offset(store), store->rhs->spel);
-			asm_temp(1, "pop rax ; saved val");
-			asm_temp(1, "mov [rbx], rax");
-			return;
-
 		case expr_op:
-			if(store->op != op_deref)
-				break;
-			/* a dereference */
-			asm_temp(1, "push rax ; save val");
+			switch(store->op){
+				case op_deref:
+					/* a dereference */
+					asm_temp(1, "push rax ; save val");
 
-			walk_expr(store->lhs, stab); /* skip over the *() bit */
+					walk_expr(store->lhs, stab); /* skip over the *() bit */
+					/* pointer on stack */
 
-			/* move `pop` into `pop` */
-			asm_temp(1, "pop rax ; ptr");
-			asm_temp(1, "pop rbx ; val");
-			asm_temp(1, "mov [rax], rbx");
-			return;
+					/* move `pop` into `pop` */
+					asm_temp(1, "pop rax ; ptr");
+					asm_temp(1, "pop rbx ; val");
+					asm_temp(1, "mov [rax], rbx");
+					return;
+
+				case op_struct_ptr:
+				case op_struct_dot:
+					ICE("TODO: op_struct_*");
+					asm_temp(1, "pop rbx ; struct addr");
+					asm_temp(1, "sub rbx, %d ; offset of member %s", -1/*struct_member_offset(store)*/, store->rhs->spel);
+					asm_temp(1, "pop rax ; saved val");
+					asm_temp(1, "mov [rbx], rax");
+					break;
+					return;
+
+				default:
+					break;
+			}
+
 
 		default:
 			break;
@@ -97,17 +100,6 @@ void walk_expr(expr *e, symtable *stab)
 			walk_expr(e->lhs, stab);
 			asm_temp(1, "pop rax ; unused comma expr");
 			walk_expr(e->rhs, stab);
-			break;
-
-		case expr_struct:
-			walk_expr(e->lhs, stab);
-			/* pointer to the struct is on the stack, get from the offset */
-
-			asm_temp(1, "pop rax");
-			asm_temp(1, "sub rax, %d ; offset of member %s",
-					struct_member_offset(e), e->rhs->spel);
-			asm_temp(1, "mov rax, [rax] ; val from struct");
-			asm_temp(1, "push rax");
 			break;
 
 		case expr_if:

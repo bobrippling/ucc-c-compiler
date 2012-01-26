@@ -84,6 +84,20 @@ static void asm_shortcircuit(expr *e, symtable *tab)
 	free(baillabel);
 }
 
+void asm_operate_struct(expr *e, symtable *tab)
+{
+	(void)tab;
+
+	ICE("%s: TODO", __func__);
+
+	/* pointer to the struct is on the stack, get from the offset */
+	asm_temp(1, "pop rax");
+	asm_temp(1, "sub rax, %d ; offset of member %s",
+			/*struct_member_offset(e)*/-1, e->rhs->spel);
+	asm_temp(1, "mov rax, [rax] ; val from struct");
+	asm_temp(1, "push rax");
+}
+
 void asm_operate(expr *e, symtable *tab)
 {
 	const char *instruct = NULL;
@@ -126,6 +140,11 @@ void asm_operate(expr *e, symtable *tab)
 				asm_temp(1, "movzx rax, byte [rax]");
 
 			asm_temp(1, "push rax");
+			return;
+
+		case op_struct_ptr:
+		case op_struct_dot:
+			asm_operate_struct(e, tab);
 			return;
 
 		/* comparison */
