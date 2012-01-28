@@ -228,9 +228,7 @@ void walk_tree(tree *t)
 			tdefault = NULL;
 
 			walk_expr(t->expr, t->symtab);
-#ifdef USE_MOVE_RAX_RSP
-			asm_temp(1, "mov rax, [rsp] ; switch on this");
-#endif
+			asm_temp(1, "pop rax ; switch on this");
 
 			for(titer = t->codes; titer && *titer; titer++){
 				tree *cse = *titer;
@@ -260,7 +258,6 @@ void walk_tree(tree *t)
 			walk_tree(t->lhs); /* the actual code inside the switch */
 
 			asm_label(t->lblfin);
-			asm_temp(1, "add rsp, %d ; switch val", platform_word_size());
 			break;
 		}
 
