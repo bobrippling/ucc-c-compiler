@@ -17,4 +17,6 @@ pid_t getpid(void);
 int unlink(const char *);
 int rmdir( const char *);
 
+int pipe(int [2]);
+
 #endif
