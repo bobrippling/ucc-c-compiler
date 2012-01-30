@@ -65,3 +65,8 @@ int rmdir(const char *d)
 {
 	return __syscall(SYS_rmdir, d);
 }
+
+int pipe(int fd[2])
+{
+	return __syscall(SYS_pipe, fd);
+}
