@@ -19,6 +19,7 @@ typedef struct
 typedef struct
 {
 	char *nam, *val;
+	int func;
 	char **args;
 } macro;
 

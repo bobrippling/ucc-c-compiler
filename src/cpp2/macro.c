@@ -55,6 +55,7 @@ macro *macro_add_func(const char *nam, const char *val, char **args)
 {
 	macro *m  = macro_add(nam, val);
 	m->args = args;
+	m->func = 1;
 	return m;
 }
 
@@ -84,7 +85,7 @@ void filter_macro(char **pline)
 		macro *m = *iter;
 		int did_replace = 0;
 
-		if(m->args){
+		if(m->func){
 			char *s, *last;
 			char **args;
 			char *open_b, *close_b;
@@ -143,8 +144,9 @@ relook:
 
 			replace = ustrdup(m->val);
 
-			for(i = 0; args[i]; i++)
-				word_replace_g(&replace, m->args[i], args[i]);
+			if(args)
+				for(i = 0; args[i]; i++)
+					word_replace_g(&replace, m->args[i], args[i]);
 
 			*pline = str_replace(*pline, pos, close_b + 1, replace);
 

@@ -25,9 +25,9 @@
 
 #define SHOW_TOKENS(pre, t) \
 	do{ \
-		int i; \
+		int i, len; \
 		for(len = 0; t[i]; i++) \
-			fprintf(stderr, pre "token %d = %s\n", i, token_str(t[i])) \
+			fprintf(stderr, pre "token %d = %s (whitespace = %c)\n", i, token_str(t[i]), t[i]->had_whitespace["NY"]); \
 	}while(0)
 
 
