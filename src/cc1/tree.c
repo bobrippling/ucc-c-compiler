@@ -156,6 +156,9 @@ expr *expr_ptr_multiply(expr *e, decl *d)
 	memcpy(&tmp, d, sizeof tmp);
 	tmp.ptr_depth--;
 	if(tmp.type->tdef){
+		if(tmp.type->tdef->type->tdef)
+			ICE("FIXME: typedef'd typedef");
+
 		tmp.type->tdef = decl_copy(tmp.type->tdef);
 		tmp.type->tdef->ptr_depth--;
 	}
@@ -232,12 +235,6 @@ int decl_size(const decl *d)
 
 	if(d->ptr_depth)
 		return platform_word_size();
-
-	if(d->type->struc){
-		struc *s = d->type->struc;
-		UCC_ASSERT(s->size, "no size for struct %s", s->spel);
-		return s->size;
-	}
 
 	return type_size(d->type);
 }

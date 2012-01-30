@@ -4,6 +4,7 @@ void fold_op_struct(expr *e, symtable *stab)
 	 * lhs = any ptr-to-struct expr
 	 * rhs = struct member ident
 	 */
+	const int ptr_depth_exp = e->op == op_struct_ptr ? 1 : 0;
 	struc *st;
 	decl *d, **i;
 	char *spel;
@@ -16,8 +17,8 @@ void fold_op_struct(expr *e, symtable *stab)
 	spel = e->rhs->spel;
 
 	/* we either access a struct or an identifier */
-	if(e->lhs->tree_type->type->primitive != type_struct || e->lhs->tree_type->ptr_depth != 1)
-		die_at(&e->lhs->where, "not a pointer-to-struct (%s)", decl_to_str(e->lhs->tree_type));
+	if(e->lhs->tree_type->type->primitive != type_struct || e->lhs->tree_type->ptr_depth != ptr_depth_exp)
+		die_at(&e->lhs->where, "%s is not a %sstruct", decl_to_str(e->lhs->tree_type), ptr_depth_exp == 1 ? "pointer-to-" : "");
 
 	st = e->lhs->tree_type->type->struc;
 
@@ -42,6 +43,7 @@ void fold_op(expr *e, symtable *stab)
 {
 	if(e->op == op_struct_ptr || e->op == op_struct_dot){
 		fold_op_struct(e, stab);
+		return;
 	}else{
 		fold_expr(e->lhs, stab);
 		if(e->rhs)
@@ -89,8 +91,8 @@ noproblem:
 		GET_TREE_TYPE(e->lhs->tree_type);
 
 		/*
-			* ensure ->arraysizes is kept in sync
-			*/
+		 * ensure ->arraysizes is kept in sync
+		 */
 		e->tree_type->ptr_depth--;
 		memmove(
 				&e->tree_type->arraysizes[0],

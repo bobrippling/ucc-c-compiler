@@ -11,18 +11,21 @@ int main()
 {
 	struct
 	{
-		int i, j;
-		int *p;
-	} *x, y;
+		struct
+		{
+			int i, j;
+		} st;
+		int q;
+	} *x;
 
-	x = &y;
+	//x = &y;
 
 	//x->i = 5;
 	//x->j = 2;
 
 	//y.i = 3;
 
-	return x->i + x->j;
+	return x->st.i;// + x->j;
 }
 #endif
 

@@ -5,7 +5,7 @@
 #include "tree.h"
 #include "cc1.h"
 #include "sym.h"
-#include "sym_fold.h"
+#include "fold_sym.h"
 #include "../util/platform.h"
 
 int symtab_fold(symtable *tab, int current)
