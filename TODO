@@ -39,6 +39,13 @@ cc:
 		warn on ?:
 
 
+Tests
+-----
+
+parse / cpp tests
+assert tests
+
+
 Features
 --------
 
