@@ -16,7 +16,7 @@
 #include "gen_asm.h"
 #include "gen_str.h"
 #include "sym.h"
-#include "sym_fold.h"
+#include "fold_sym.h"
 #include "cc1.h"
 
 struct

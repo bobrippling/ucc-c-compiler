@@ -5,7 +5,6 @@ struct struc
 {
 	char *spel; /* NULL if anon */
 	decl **members;
-	int size;
 };
 
 int struct_size(struc *);

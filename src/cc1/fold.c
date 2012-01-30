@@ -7,7 +7,7 @@
 #include "tree.h"
 #include "cc1.h"
 #include "fold.h"
-#include "sym_fold.h"
+#include "fold_sym.h"
 #include "sym.h"
 #include "../util/platform.h"
 #include "const.h"
@@ -192,6 +192,9 @@ void fold_assignment(expr *e, symtable *stab)
 	fold_expr(e->lhs, stab);
 	fold_expr(e->rhs, stab);
 
+	if(e->lhs->tree_type->arraysizes)
+		die_at(&e->lhs->where, "can't assign to array yet");
+
 	/* wait until we get the tree types, etc */
 	if(!fold_is_lvalue(e->lhs))
 		die_at(&e->lhs->where, "not an lvalue (%s)", expr_to_str(e->lhs->type));
@@ -352,7 +355,6 @@ void fold_expr(expr *e, symtable *stab)
 					return;
 
 				}else{
-					break; // FIXME
 					DIE_UNDECL();
 				}
 			}
@@ -708,7 +710,7 @@ void fold_func(decl *df, symtable *globsymtab)
 	curdecl_func = NULL;
 }
 
-void fold_struct(struc *st)
+int fold_struct(struc *st)
 {
 	int offset;
 	decl **i;
@@ -717,15 +719,14 @@ void fold_struct(struc *st)
 		decl *d = *i;
 		if(d->type->struc){
 			d->struct_offset = offset;
-			fold_struct(d->type->struc);
-			offset += d->type->struc->size;
+			offset += fold_struct(d->type->struc);
 		}else{
 			d->struct_offset = offset;
 			offset += decl_size(d);
 		}
 	}
 
-	st->size = offset;
+	return offset;
 }
 
 void fold(symtable *globs)
