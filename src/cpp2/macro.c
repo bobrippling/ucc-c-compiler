@@ -25,7 +25,7 @@ macro *macro_find(const char *sp)
 	for(i = macros; i && *i; i++)
 		if(!strcmp((*i)->nam, sp))
 			return *i;
-	return 0;
+	return NULL;
 }
 
 macro *macro_add(const char *nam, const char *val)
@@ -92,8 +92,9 @@ void filter_macro(char **pline)
 			char *replace;
 			char *line;
 			char *pos;
-			int i;
+			int i, nest;
 
+			nest = 0;
 			line = *pline;
 
 relook:
@@ -115,14 +116,22 @@ relook:
 
 			args = NULL;
 			for(last = s = open_b + 1; *s; s++){
-				/* FIXME: tokenise and fix in general */
-				if(*s == ','){
-					if(s == last)
-						die("no argument to function macro");
-					*s = '\0';
-					dynarray_add((void ***)&args, ustrdup(last));
-					*s = ',';
-					last = s + 1;
+				switch(*s){
+					case ',':
+						if(nest > 0)
+							break;
+						if(s == last)
+							die("no argument to function macro");
+						*s = '\0';
+						dynarray_add((void ***)&args, ustrdup(last));
+						*s = ',';
+						last = s + 1;
+						break;
+					case '(':
+						nest++;
+						break;
+					case ')':
+						nest--;
 				}
 			}
 			if(last != s)
