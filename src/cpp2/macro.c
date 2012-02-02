@@ -142,20 +142,53 @@ relook:
 				got = dynarray_count((void **)args);
 				exp = dynarray_count((void **)m->args);
 
-				if(got != exp)
+				if(got != exp){
+					if(debug)
+						for(i = 0; i < got; i++)
+							fprintf(stderr, "args[%d] = \"%s\"\n", i, args[i]);
+
 					die("wrong number of args to function macro \"%s\", got %d, expected %d%s%s%s",
 							m->nam, got, exp,
 							debug ? " (" : "",
 							debug ? line : "",
 							debug ? ")"  : ""
 							);
+				}
 			}
 
 			replace = ustrdup(m->val);
 
-			if(args)
+			/* replace #x with the quote of arg x */
+			for(s = strchr(replace, '#'); s; s = strchr(last, '#')){
+				char *arg_target = word_dup(s + 1);
+
+				last = s;
+
+				for(i = 0; m->args[i]; i++){
+					if(!strcmp(m->args[i], arg_target)){
+						char *finish = s + 1 + strlen(arg_target);
+						char *quoted = str_quote(args[i]);
+						int offset;
+
+						offset = (s - replace) + strlen(quoted);
+
+						replace = str_replace(replace, s, finish, quoted);
+
+						free(quoted);
+
+						last = replace + offset;
+						break;
+					}
+				}
+
+				free(arg_target);
+			}
+
+			if(args){
 				for(i = 0; args[i]; i++)
 					word_replace_g(&replace, m->args[i], args[i]);
+				dynarray_free((void ***)&args, free);
+			}
 
 			*pline = str_replace(*pline, pos, close_b + 1, replace);
 

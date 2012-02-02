@@ -14,6 +14,49 @@ static int iswordpart(char c)
 	return isalnum(c) || c == '_';
 }
 
+char *ustrdup2(const char *a, const char *b)
+{
+	int len = b - a;
+	char *ret;
+	ret = umalloc(len + 1);
+	strncpy(ret, a, len);
+	return ret;
+}
+
+char *word_dup(const char *s)
+{
+	const char *start = s;
+	while(iswordpart(*s))
+		s++;
+	return ustrdup2(start, s);
+}
+
+char *str_quote(const char *quoteme)
+{
+	int len;
+	const char *s;
+	char *ret, *p;
+
+	len = 3; /* ""\0 */
+	for(s = quoteme; *s; s++, len++)
+		if(*s == '"')
+			len++;
+
+	p = ret = umalloc(len);
+
+	*p++ = '"';
+
+	for(s = quoteme; *s; s++){
+		if(*s == '"')
+			*p++ = '\\';
+		*p++ = *s;
+	}
+
+	strcpy(p, "\"");
+
+	return ret;
+}
+
 char *str_replace(char *line, char *start, char *end, const char *replace)
 {
 	const unsigned int len_find    = end - start;
@@ -69,9 +112,13 @@ char *word_strstr(char *haystack, char *needle)
 
 	for(i = haystack; *i; i++)
 		if(*i == '"'){
+refind:
 			i = strchr(i + 1, '"');
 			if(!i)
-				ICE("terminating quote not found");
+				ICE("terminating quote not found\nhaystack = \"%s\"\nneedle = \"%s\"",
+						haystack, needle);
+			else if(i[-1] == '\\')
+				goto refind;
 		}else if(!strncmp(i, needle, nlen)){
 			return i;
 		}
