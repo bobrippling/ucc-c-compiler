@@ -104,7 +104,7 @@ word:
 		}else if(c == ')'){
 			t->tok = TOKEN_CLOSE_PAREN;
 			p++;
-			break;
+			break; /* exit early */
 		}else if(c == '"'){
 			char *end  = strchr(p + 1, '"');
 			char c;
@@ -335,11 +335,15 @@ void handle_include(token **tokens)
 
 		if(!f)
 			die("can't find include file <%s>", fname);
+		if(debug)
+			fprintf(stderr, ">>> include lib: %s\n", path);
 	}else{
 		path = ustrprintf("%s/%s", dname, fname);
 		f = fopen(path, "r");
 		if(!f)
 			die("open %s (%s): %s", fname, path, strerror(errno));
+		if(debug)
+			fprintf(stderr, ">>> include \"%s/%s\"\n", dname, fname);
 	}
 
 	preproc_push(f);
