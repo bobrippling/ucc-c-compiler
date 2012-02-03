@@ -1,6 +1,7 @@
-main()
+#include <errno.h>
+
+int main()
 {
-	extern errno = 2;
 	perror(0);
 	perror("open()");
 }
