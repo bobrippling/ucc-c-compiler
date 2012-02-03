@@ -156,6 +156,9 @@ relook:
 				}
 			}
 
+			for(i = 0; args[i]; i++)
+				str_trim(args[i]);
+
 			replace = ustrdup(m->val);
 
 			/* replace #x with the quote of arg x */
