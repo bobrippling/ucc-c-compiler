@@ -17,7 +17,7 @@ int strlen(char *s)
 
 const char *strerror(int eno)
 {
-	//extern const char *_errs[];
+	// TODO: bounds check + snprintf
 	return _errs[eno - 1];
 }
 
