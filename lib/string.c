@@ -1,5 +1,4 @@
 #include "string.h"
-#include "sys/types.h"
 #include "limits.h"
 
 static const char *_errs[] = {
