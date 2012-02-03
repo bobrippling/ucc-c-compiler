@@ -394,7 +394,7 @@ void walk_tree(tree *t)
 				/* declare statics */
 				for(diter = t->decls; diter && *diter; diter++){
 					decl *d = *diter;
-					if(d->type->spec & spec_static)
+					if(d->type->spec & (spec_static | spec_extern))
 						gen_asm_global_var(d);
 				}
 
@@ -404,6 +404,7 @@ void walk_tree(tree *t)
 			break;
 
 		case stat_noop:
+			asm_temp(1, "; noop");
 			break;
 	}
 }
