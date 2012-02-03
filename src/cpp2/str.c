@@ -14,6 +14,22 @@ static int iswordpart(char c)
 	return isalnum(c) || c == '_';
 }
 
+void str_trim(char *str)
+{
+	char *s;
+
+	for(s = str; isspace(*s); s++);
+
+	memmove(str, s, strlen(s) + 1);
+
+	for(s = str; *s; s++);
+
+	while(s > str && isspace(*s))
+		s--;
+
+	*s = '\0';
+}
+
 char *ustrdup2(const char *a, const char *b)
 {
 	int len = b - a;

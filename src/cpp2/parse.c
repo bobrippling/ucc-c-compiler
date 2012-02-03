@@ -12,6 +12,7 @@
 #include "../util/util.h"
 #include "preproc.h"
 #include "main.h"
+#include "str.h"
 
 #define SINGLE_TOKEN(err) \
 	if(dynarray_count((void **)tokens) != 1 || tokens[0]->tok != TOKEN_WORD) \
@@ -130,6 +131,14 @@ word:
 		dynarray_add((void ***)&tokens, t);
 		t->tok = TOKEN_OTHER;
 		t->w = ustrdup(p);
+	}
+
+	/* trim tokens */
+	{
+		int i;
+		for(i = 0; tokens[i]; i++)
+			if(tokens[i]->w)
+				str_trim(tokens[i]->w);
 	}
 
 	return tokens;
