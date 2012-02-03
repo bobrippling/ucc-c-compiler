@@ -352,7 +352,7 @@ void fold_expr(expr *e, symtable *stab)
 					e->array_store->type = array_str;
 
 					fold_expr(e, stab);
-					return;
+					break;
 
 				}else{
 					DIE_UNDECL();
