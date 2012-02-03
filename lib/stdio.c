@@ -266,13 +266,10 @@ char *fgets(char *s, int l, FILE *f)
 /* error */
 void perror(const char *s)
 {
-	if(s)
-		fprintf(stderr, "%s: ", s);
-	fprintf(stderr, "%s\n", strerror(errno));
-	/*fprintf(stderr, "%s%s%s\n",
+	fprintf(stderr, "%s%s%s\n",
 			s ? s    : "",
 			s ? ": " : "",
-			strerror(errno)); - waiting for ?: bugfix */
+			strerror(errno));
 }
 
 /* file system */
