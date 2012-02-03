@@ -24,6 +24,9 @@ int fputc(int, FILE *);
 #define putc fputc
 int  putchar(int);
 
+/* error */
+void perror(const char *);
+
 /* writing, variadic */
 int vfprintf(FILE *, char *, va_list);
 
