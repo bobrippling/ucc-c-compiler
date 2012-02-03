@@ -2,6 +2,8 @@
 #include "stdio.h"
 #include "string.h"
 #include "errno.h"
+#include "stdlib.h"
+#include "sys/fcntl.h"
 
 #define PRINTF_OPTIMISE
 
@@ -47,6 +49,57 @@ static void printx(int fd, int n)
 
 
 /* Public */
+FILE *fopen(const char *path, char *smode)
+{
+	FILE *f;
+	int fd, mode;
+
+	f = malloc(sizeof *f);
+	if(!f)
+		return NULL;
+
+	mode = 0;
+	while(*smode)
+		switch(*smode++){
+			case 'b':
+				break;
+			case 'r':
+				mode |= O_RDONLY;
+				break;
+			case 'w':
+				mode |= O_WRONLY | O_CREAT | O_TRUNC;
+				break;
+			case 'a':
+				mode |= O_WRONLY | O_CREAT; /* ? */
+				break;
+			case '+':
+				mode &= ~(O_WRONLY | O_RDONLY);
+				mode |= O_RDWR;
+				break;
+			default:
+inval:
+				errno = EINVAL;
+				return NULL;
+		}
+	if(!mode)
+		goto inval;
+
+	fd = open(path, mode, 0644);
+	if(fd == -1)
+		return NULL;
+
+	*f = fd;
+
+	return f;
+}
+
+int fclose(FILE *f)
+{
+	int r = close(*f) == 0 ? 0 : EOF;
+	free(f);
+	return r;
+}
+
 int fputc(int c, FILE *f)
 {
 	return write(*f, &c, 1) == 1 ? c : EOF;

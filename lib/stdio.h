@@ -10,6 +10,10 @@ extern FILE *stdin, *stdout, *stderr;
 /* va_list */
 #include "stdarg.h"
 
+/* io */
+FILE *fopen(const char *path, const char *mode);
+int   fclose(FILE *);
+/* TODO: freopen */
 
 /* writing */
 int fprintf(FILE *, const char *, ...);
