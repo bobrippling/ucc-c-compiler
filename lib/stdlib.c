@@ -51,9 +51,9 @@ char *getenv(const char *key)
 		e = *i;
 
 		if(equ = strchr(e, '=')){
-			const int len = equ - e - 1;
+			const int len = equ - e;
 
-			if(len == keylen && strncmp(key, e, len))
+			if(len == keylen && !strncmp(key, e, len))
 				return equ + 1;
 		}
 	}
