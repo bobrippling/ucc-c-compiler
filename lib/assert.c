@@ -2,8 +2,10 @@
 #include "stdlib.h"
 #include "assert.h"
 
-void __assert_fail(int line, const char *fname, const char *func)
+void __assert_fail(const char *src, int line, const char *fname, const char *func)
 {
-	fprintf(stderr, "assertion failure at %s:%d in %s()\n", fname, line, func);
+	// a.out: assert.c:5: main: Assertion `argc == 2' failed.
+	fprintf(stderr, "%s: %s:%d: %s: Assertion '%s' failed.\n",
+			__progname, fname, line, func, src);
 	abort();
 }
