@@ -9,9 +9,13 @@ extern FILE *stdin, *stdout, *stderr;
 
 /* va_list */
 #include "stdarg.h"
-
 /* null */
 #include "macros.h"
+
+/* io */
+FILE *fopen(const char *path, const char *mode);
+int   fclose(FILE *);
+/* TODO: freopen */
 
 /* writing */
 int fprintf(FILE *, const char *, ...);
@@ -25,6 +29,9 @@ int  puts(const char *);
 int fputc(int, FILE *);
 #define putc fputc
 int  putchar(int);
+
+/* error */
+void perror(const char *);
 
 /* writing, variadic */
 int vfprintf(FILE *, char *, va_list);
