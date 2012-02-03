@@ -1,7 +1,7 @@
 #ifndef __UNISTD_H
 #define __UNISTD_H
 
-#define NULL (void *)0
+#include "macros.h"
 typedef int pid_t;
 
 int read( int fd, void *p, int size);
@@ -18,5 +18,7 @@ int unlink(const char *);
 int rmdir( const char *);
 
 int pipe(int [2]);
+
+extern char **environ;
 
 #endif
