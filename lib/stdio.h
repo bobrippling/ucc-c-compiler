@@ -10,6 +10,8 @@ extern FILE *stdin, *stdout, *stderr;
 /* va_list */
 #include "stdarg.h"
 
+/* null */
+#include "macros.h"
 
 /* writing */
 int fprintf(FILE *, const char *, ...);

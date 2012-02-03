@@ -11,4 +11,8 @@ void free(void *);
 void exit(int);
 void abort(void);
 
+char *getenv(const char *);
+
+extern char *__progname;
+
 #endif

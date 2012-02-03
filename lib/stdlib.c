@@ -2,6 +2,7 @@
 #include "unistd.h"
 #include "syscalls.h"
 #include "signal.h"
+#include "string.h"
 
 void exit(int code)
 {
@@ -37,4 +38,25 @@ void abort()
 	raise(SIGABRT);
 
 	// TODO: restore + unblock SIGABRT and re-raise
+}
+
+char *getenv(const char *key)
+{
+	const int keylen = strlen(key);
+	char **i;
+
+	for(i = environ; *i; i++){
+		char save, *equ, *e;
+
+		e = *i;
+
+		if(equ = strchr(e, '=')){
+			const int len = equ - e - 1;
+
+			if(len == keylen && strncmp(key, e, len))
+				return equ + 1;
+		}
+	}
+
+	return NULL;
 }
