@@ -197,6 +197,18 @@ char *fgets(char *s, int l, FILE *f)
 	return s;
 }
 
+/* error */
+void perror(const char *s)
+{
+	if(s)
+		fprintf(stderr, "%s: ", s);
+	fprintf(stderr, "%s\n", strerror(errno));
+	/*fprintf(stderr, "%s%s%s\n",
+			s ? s    : "",
+			s ? ": " : "",
+			strerror(errno)); - waiting for ?: bugfix */
+}
+
 /* file system */
 
 int remove(const char *f)
