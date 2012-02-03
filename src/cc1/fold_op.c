@@ -62,9 +62,9 @@ void fold_op(expr *e, symtable *stab)
 #define SIGN_CONVERT(test_hs, assert_hs) \
 			if(e->test_hs->type == expr_val && e->test_hs->val.i >= 0){ \
 				/*                                              \
-					* assert(lhs == UNSIGNED);                     \
-					* vals default to signed, change to unsigned   \
-					*/                                             \
+				 * assert(lhs == UNSIGNED);                     \
+				 * vals default to signed, change to unsigned   \
+				 */                                             \
 				UCC_ASSERT(assert_hs == UNSIGNED,               \
 						"signed-unsigned assumption failure");      \
 																												\
@@ -114,7 +114,12 @@ noproblem:
 	}else{
 		/* look either side - if either is a pointer, take that as the tree_type */
 		/* TODO: checks for pointer + pointer (invalid), etc etc */
-		if(e->rhs && e->rhs->tree_type->ptr_depth)
+
+#define IS_PTR(x) x->tree_type->ptr_depth
+
+		if(e->op == op_minus && IS_PTR(e->lhs) && IS_PTR(e->rhs))
+			e->tree_type->type->primitive = type_int;
+		else if(e->rhs && IS_PTR(e->rhs))
 			GET_TREE_TYPE(e->rhs->tree_type);
 		else
 			GET_TREE_TYPE(e->lhs->tree_type);
