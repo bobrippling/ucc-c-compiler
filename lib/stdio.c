@@ -53,23 +53,30 @@ FILE *fopen(const char *path, char *smode)
 {
 	FILE *f;
 	int fd, mode;
+	int got_primary;
 
-	f = malloc(sizeof *f);
-	if(!f)
-		return NULL;
+#define PRIMARY_CHECK() \
+	if(got_primary) \
+		goto inval; \
+	got_primary = 1
 
-	mode = 0;
+	got_primary = mode = 0;
 	while(*smode)
 		switch(*smode++){
 			case 'b':
 				break;
 			case 'r':
+				PRIMARY_CHECK();
+				if(mode & O_CREAT)
+					goto inval;
 				mode |= O_RDONLY;
 				break;
 			case 'w':
+				PRIMARY_CHECK();
 				mode |= O_WRONLY | O_CREAT | O_TRUNC;
 				break;
 			case 'a':
+				PRIMARY_CHECK();
 				mode |= O_WRONLY | O_CREAT; /* ? */
 				break;
 			case '+':
@@ -83,6 +90,12 @@ inval:
 		}
 	if(!mode)
 		goto inval;
+
+#undef PRIMARY_CHECK
+
+	f = malloc(sizeof *f);
+	if(!f)
+		return NULL;
 
 	fd = open(path, mode, 0644);
 	if(fd == -1)
