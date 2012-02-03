@@ -469,7 +469,7 @@ expr *parse_expr_if()
 			q->lhs = parse_expr();
 			EAT(token_colon);
 		}
-		q->rhs = parse_expr();
+		q->rhs = parse_expr_funcallarg();
 
 		return q;
 	}else{
