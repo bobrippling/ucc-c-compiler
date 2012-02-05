@@ -27,8 +27,9 @@ void dynarray_add(void ***par, void *new)
 	*par = ar;
 }
 
-void *dynarray_pop(void **ar)
+void *dynarray_pop(void ***par)
 {
+	void **ar = *par;
 	void *r;
 	int i;
 
@@ -37,6 +38,11 @@ void *dynarray_pop(void **ar)
 	ar[i] = NULL;
 
 	UCC_ASSERT(r, "dynarray_pop(): empty array");
+
+	if(i == 0){
+		free(ar);
+		*par = NULL;
+	}
 
 	return r;
 }
