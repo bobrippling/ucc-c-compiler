@@ -3,9 +3,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "tokenise.h"
 #include "../util/util.h"
 #include "tree.h"
+#include "tokenise.h"
 #include "parse.h"
 #include "../util/alloc.h"
 #include "tokconv.h"
@@ -78,7 +78,6 @@ expr *parse_lone_identifier()
 
 expr *parse_expr_unary_op()
 {
-	extern int currentval;
 	expr *e;
 
 	switch(curtok){
@@ -111,7 +110,7 @@ expr *parse_expr_unary_op()
 
 		case token_integer:
 		case token_character:
-			e = expr_new_val(currentval);
+			e = expr_new_intval(&currentval);
 			EAT(curtok);
 			return e;
 

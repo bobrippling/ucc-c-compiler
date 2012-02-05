@@ -1,6 +1,8 @@
 #ifndef token_ise_h
 #define token_ise_h
 
+extern intval currentval;
+
 enum token
 {
 	token_do,

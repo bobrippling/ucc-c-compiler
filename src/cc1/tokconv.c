@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <stdarg.h>
 
-#include "tokenise.h"
 #include "../util/util.h"
 #include "tree.h"
+#include "tokenise.h"
 #include "tokconv.h"
 #include "../util/util.h"
 #include "macros.h"

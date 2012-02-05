@@ -43,15 +43,18 @@ clean:
 
 .PHONY: libs clean
 
-assert.o: assert.c stdio.h stdarg.h sys/types.h stdlib.h assert.h
-signal.o: signal.c signal.h unistd.h sys/signal.h syscalls.h \
+assert.o: assert.c stdio.h stdarg.h sys/types.h macros.h stdlib.h \
+ assert.h
+signal.o: signal.c signal.h unistd.h macros.h sys/signal.h syscalls.h \
  syscalls_64.h
-stdio.o: stdio.c unistd.h stdio.h stdarg.h sys/types.h string.h errno.h
-stdlib.o: stdlib.c stdlib.h sys/types.h unistd.h syscalls.h syscalls_64.h \
- signal.h sys/signal.h
-string.o: string.c string.h string_strerrs.h
-unistd.o: unistd.c unistd.h syscalls.h syscalls_64.h
+stdio.o: stdio.c unistd.h macros.h stdio.h stdarg.h sys/types.h string.h \
+ errno.h stdlib.h sys/fcntl.h
+stdlib.o: stdlib.c stdlib.h sys/types.h unistd.h macros.h syscalls.h \
+ syscalls_64.h signal.h sys/signal.h string.h
+string.o: string.c string.h macros.h sys/types.h limits.h \
+ string_strerrs.h
+unistd.o: unistd.c unistd.h macros.h syscalls.h syscalls_64.h
 sys/fcntl.o: sys/fcntl.c sys/fcntl.h sys/../stdarg.h sys/../sys/types.h \
  sys/../syscalls.h sys/../syscalls_64.h
-sys/wait.o: sys/wait.c sys/wait.h sys/../unistd.h sys/../syscalls.h \
- sys/../syscalls_64.h
+sys/wait.o: sys/wait.c sys/wait.h sys/../unistd.h sys/../macros.h \
+ sys/../syscalls.h sys/../syscalls_64.h

@@ -171,11 +171,25 @@ void asm_label(const char *lbl)
 	asm_temp(0, "%s:", lbl);
 }
 
+void asm_out_intval(FILE *f, intval *iv)
+{
+	char fmt[4];
+	char *p = fmt;
+
+	*p++ = '%';
+	if(iv->suffix & VAL_LONG)
+		*p++ = 'l';
+
+	strcpy(p, iv->suffix & VAL_UNSIGNED ? "u" : "d");
+
+	fprintf(f, fmt, iv->val);
+}
+
 void asm_declare_single_part(FILE *f, expr *e)
 {
 	switch(e->type){
 		case expr_val:
-			fprintf(f, "%d", e->val.i);
+			asm_out_intval(f, &e->val.i);
 			break;
 
 		case expr_addr:

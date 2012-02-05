@@ -17,6 +17,9 @@ typedef struct type        type;
 typedef struct assignment  assignment;
 typedef struct label       label;
 
+typedef struct intval intval;
+
+
 enum type_primitive
 {
 	type_int,
@@ -99,6 +102,16 @@ struct array_decl
 	} type;
 };
 
+struct intval
+{
+	long val;
+	enum
+	{
+		VAL_UNSIGNED = 1 << 0,
+		VAL_LONG     = 1 << 1
+	} suffix;
+};
+
 struct expr
 {
 	where where;
@@ -149,7 +162,7 @@ struct expr
 
 	union
 	{
-		int i;
+		intval i;
 		char *s;
 	} val;
 
@@ -235,6 +248,7 @@ decl      *decl_copy(decl *);
 /*expr      *expr_copy(expr *);*/
 tree      *tree_new_code(void);
 expr      *expr_new_val(int);
+expr      *expr_new_intval(intval *);
 
 tree_flow *tree_flow_new(void);
 

@@ -256,9 +256,11 @@ void fold_expr(expr *e, symtable *stab)
 
 		case expr_if:
 			fold_expr(e->expr, stab);
+			if(const_expr_is_const(e->expr))
+				POSSIBLE_OPT(e->expr, "constant ?: expression");
 			if(e->lhs)
-				fold_expr(e->lhs,  stab);
-			fold_expr(e->rhs,  stab);
+				fold_expr(e->lhs, stab);
+			fold_expr(e->rhs, stab);
 			GET_TREE_TYPE(e->rhs->tree_type); /* TODO: check they're the same */
 			break;
 
@@ -470,6 +472,8 @@ void fold_tree(tree *t)
 			fold_expr(t->expr, t->symtab);
 			EXPR_NON_VOID(t->expr, stat_to_str(t->type));
 
+			OPT_CHECK(t->expr, "constant expression in if/while");
+
 			symtab_nest(t->symtab, &t->lhs->symtab);
 			fold_tree(t->lhs);
 
@@ -498,6 +502,8 @@ void fold_tree(tree *t)
 			if(t->flow->for_while)
 				EXPR_NON_VOID(t->flow->for_while, "for-while");
 
+			OPT_CHECK(t->flow->for_while, "constant expression in for");
+
 			symtab_nest(t->symtab, &t->lhs->symtab);
 			fold_tree(t->lhs);
 
@@ -523,8 +529,8 @@ void fold_tree(tree *t)
 			EXPR_NON_VOID(t->lhs->expr, "case");
 			EXPR_NON_VOID(t->rhs->expr, "case");
 
-			l = t->lhs->expr->val.i;
-			r = t->rhs->expr->val.i;
+			l = t->lhs->expr->val.i.val;
+			r = t->rhs->expr->val.i.val;
 
 			if(l >= r)
 				die_at(&t->where, "case range equal or inverse");
@@ -551,7 +557,7 @@ void fold_tree(tree *t)
 				t->expr = expr_new();
 				t->expr->expr_is_default = 1;
 			}
-			t->expr->spel = asm_label_case(def ? CASE_DEF : CASE_CASE, t->expr->val.i);
+			t->expr->spel = asm_label_case(def ? CASE_DEF : CASE_CASE, t->expr->val.i.val);
 case_add:
 			dynarray_add((void ***)&curtree_switch->codes, t);
 			break;
@@ -570,6 +576,8 @@ case_add:
 			fold_expr(t->expr, t->symtab);
 
 			EXPR_NON_VOID(t->expr, "switch");
+
+			OPT_CHECK(t->expr, "constant expression in switch");
 
 			t->lhs->symtab = t->symtab; /* don't bother nesting */
 			fold_tree(t->lhs);

@@ -50,12 +50,21 @@ expr *expr_new()
 	return e;
 }
 
-expr *expr_new_val(int v)
+expr *expr_new_intval(intval *iv)
 {
 	expr *e = expr_new();
 	e->type = expr_val;
 	e->tree_type->type->spec |= spec_const;
-	e->val.i = v;
+	memcpy(&e->val.i, iv, sizeof e->val.i);
+	return e;
+}
+
+expr *expr_new_val(int i)
+{
+	expr *e = expr_new();
+	e->type = expr_val;
+	e->tree_type->type->spec |= spec_const;
+	e->val.i.val = i;
 	return e;
 }
 
@@ -228,7 +237,7 @@ int decl_size(const decl *d)
 		int ret = 0;
 
 		for(i = 0; d->arraysizes[i]; i++)
-			ret += d->arraysizes[i]->val.i * siz;
+			ret += d->arraysizes[i]->val.i.val * siz;
 
 		return ret;
 	}
@@ -380,7 +389,8 @@ const char *type_to_str(const type *t)
 			APPEND(int);
 			APPEND(char);
 			APPEND(void);
-			APPEND(unknown);
+			case type_unknown:
+				ICE("unknown type primitive");
 			case type_typedef:
 				ICE("typedef without ->tdef");
 			case type_struct:

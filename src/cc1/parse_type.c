@@ -219,8 +219,7 @@ decl **parse_decls(const int can_default, const int accept_field_width)
 					}
 				}else if(accept_field_width && accept(token_colon)){
 					/* normal decl, check field spec */
-					extern int currentval;
-					d->field_width = currentval;
+					d->field_width = currentval.val;
 					EAT(token_integer);
 				}
 

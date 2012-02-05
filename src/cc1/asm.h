@@ -38,8 +38,11 @@ enum asm_size
 };
 
 void asm_new(enum asm_type, void *);
+
 void asm_temp(          int indent, const char *, ...);
 void asm_tempf(FILE *f, int indent, const char *, ...);
+void asm_out_intval(FILE *f, intval *iv);
+
 void asm_label(const char *);
 void asm_sym(enum asm_sym_type, sym *, const char *);
 
