@@ -156,8 +156,9 @@ relook:
 				}
 			}
 
-			for(i = 0; args[i]; i++)
-				str_trim(args[i]);
+			if(args)
+				for(i = 0; args[i]; i++)
+					str_trim(args[i]);
 
 			replace = ustrdup(m->val);
 
