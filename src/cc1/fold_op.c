@@ -44,11 +44,11 @@ void fold_op(expr *e, symtable *stab)
 	if(e->op == op_struct_ptr || e->op == op_struct_dot){
 		fold_op_struct(e, stab);
 		return;
-	}else{
-		fold_expr(e->lhs, stab);
-		if(e->rhs)
-			fold_expr(e->rhs, stab);
 	}
+
+	fold_expr(e->lhs, stab);
+	if(e->rhs)
+		fold_expr(e->rhs, stab);
 
 	if(e->rhs){
 		enum {
@@ -93,12 +93,23 @@ noproblem:
 		/*
 		 * ensure ->arraysizes is kept in sync
 		 */
+		if(e->tree_type->arraysizes){
+			for(int i = 0; e->tree_type->arraysizes[i]; i++)
+				fprintf(stderr, "pre  arraysizes[%d] = %p\n", i, e->tree_type->arraysizes[i]);
+
+				fprintf(stderr, "pre  count = %d\n", dynarray_count((void **)e->tree_type->arraysizes));
+		}
+
 		e->tree_type->ptr_depth--;
-		memmove(
-				&e->tree_type->arraysizes[0],
-				&e->tree_type->arraysizes[1],
-				dynarray_count((void **)e->tree_type->arraysizes)
-				);
+		if(e->tree_type->arraysizes){
+			ICE("FIXME: arraysize adjustment");
+			expr *popped = dynarray_pop((void ***)&e->tree_type->arraysizes);
+			expr_free(popped);
+		}
+
+		if(e->tree_type->arraysizes)
+			for(int i = 0; e->tree_type->arraysizes[i]; i++)
+				fprintf(stderr, "post arraysizes[%d] = %p\n", i, e->tree_type->arraysizes[i]);
 
 		if(e->tree_type->ptr_depth == 0)
 			switch(e->lhs->tree_type->type->primitive){
