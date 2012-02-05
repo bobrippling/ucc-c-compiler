@@ -60,7 +60,7 @@ void fold_op(expr *e, symtable *stab)
 
 		if(rhs != lhs){
 #define SIGN_CONVERT(test_hs, assert_hs) \
-			if(e->test_hs->type == expr_val && e->test_hs->val.i >= 0){ \
+			if(e->test_hs->type == expr_val && e->test_hs->val.i.val >= 0){ \
 				/*                                              \
 				 * assert(lhs == UNSIGNED);                     \
 				 * vals default to signed, change to unsigned   \

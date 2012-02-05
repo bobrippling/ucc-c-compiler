@@ -10,7 +10,7 @@
 
 int operate(expr *lhs, expr *rhs, enum op_type op, int *bad)
 {
-#define OP(a, b) case a: return lhs->val.i b rhs->val.i
+#define OP(a, b) case a: return lhs->val.i.val b rhs->val.i.val
 	if(op != op_deref && lhs->type != expr_val){
 		*bad = 1;
 		return 0;
@@ -33,24 +33,24 @@ int operate(expr *lhs, expr *rhs, enum op_type op, int *bad)
 		OP(op_shiftr,     >>);
 
 		case op_divide:
-			if(rhs->val.i)
-				return lhs->val.i / rhs->val.i;
-			fprintf(stderr, "%s: warning: division by zero\n", where_str(&rhs->where));
+			if(rhs->val.i.val)
+				return lhs->val.i.val / rhs->val.i.val;
+			warn_at(&rhs->where, "division by zero");
 			*bad = 1;
 			return 0;
 
 		case op_plus:
 			if(rhs)
-				return lhs->val.i + rhs->val.i;
-			return lhs->val.i;
+				return lhs->val.i.val + rhs->val.i.val;
+			return lhs->val.i.val;
 
 		case op_minus:
 			if(rhs)
-				return lhs->val.i - rhs->val.i;
-			return -lhs->val.i;
+				return lhs->val.i.val - rhs->val.i.val;
+			return -lhs->val.i.val;
 
-		case op_not:  return !lhs->val.i;
-		case op_bnot: return ~lhs->val.i;
+		case op_not:  return !lhs->val.i.val;
+		case op_bnot: return ~lhs->val.i.val;
 
 		case op_deref:
 			/*
@@ -97,24 +97,24 @@ void operate_optimise(expr *e)
 		case op_andsc:
 			/* check if one side is (&& ? false : true) and short circuit it without needing to check the other side */
 			if(e->lhs->type == expr_val || e->rhs->type == expr_val)
-				warn_at(&e->where, "short circuit optimisation possible (TODO)");
+				POSSIBLE_OPT(e, "short circuit const");
 			break;
 
-#define VAL(e, x) (e->type == expr_val && e->val.i == x)
+#define VAL(e, x) (e->type == expr_val && e->val.i.val == x)
 
 		case op_plus:
 		case op_minus:
 			if(VAL(e->lhs, 0) || (e->rhs ? VAL(e->rhs, 0) : 0))
-				warn_at(&e->where, "zero being added or subtracted - optimisation possible (TODO)");
+				POSSIBLE_OPT(e, "zero being added or subtracted");
 			break;
 
 		case op_multiply:
 			if(VAL(e->lhs, 1) || VAL(e->lhs, 0) || (e->rhs ? VAL(e->rhs, 1) || VAL(e->rhs, 0) : 0))
-				warn_at(&e->where, "1 or 0 being multiplied - optimisation possible (TODO)");
+				POSSIBLE_OPT(e, "1 or 0 being multiplied");
 			else
 		case op_divide:
 			if(VAL(e->rhs, 1))
-				warn_at(&e->where, "divide by 1 - optimisation possible (TODO)");
+				POSSIBLE_OPT(e, "divide by 1");
 			break;
 
 		default:
@@ -158,7 +158,7 @@ int const_fold(expr *e)
 		case expr_if:
 			if(!const_fold(e->expr) && (e->lhs ? !const_fold(e->lhs) : 1) && !const_fold(e->rhs)){
 				e->type = expr_val;
-				e->val.i = e->expr->val.i ? (e->lhs ? e->lhs->val.i : e->expr->val.i) : e->rhs->val.i;
+				e->val.i.val = e->expr->val.i.val ? (e->lhs ? e->lhs->val.i.val : e->expr->val.i.val) : e->rhs->val.i.val;
 				return 0;
 			}
 			break;
@@ -174,7 +174,7 @@ int const_fold(expr *e)
 			if(!l && !r && VAL(e->lhs) && (e->rhs ? VAL(e->rhs) : 1)){
 				int bad = 0;
 
-				e->val.i = operate(e->lhs, e->rhs, e->op, &bad);
+				e->val.i.val = operate(e->lhs, e->rhs, e->op, &bad);
 
 				if(!bad)
 					e->type = expr_val;
@@ -199,7 +199,8 @@ int const_expr_is_const(expr *e)
 		return 1;
 
 	/* can't have a const+extern in a constant expression */
-	return e->sym ? (e->sym->decl->type->spec & spec_const && (e->sym->decl->type->spec & spec_extern) == 0) : 0;
+	return 0; /*e->sym ? (e->sym->decl->type->spec & spec_const && (e->sym->decl->type->spec & spec_extern) == 0) : 0;
+							the above needs to be added in when *const parsing is done */
 }
 
 int const_expr_is_zero(expr *e)
@@ -207,5 +208,5 @@ int const_expr_is_zero(expr *e)
 	if(e->type == expr_cast)
 		return const_expr_is_zero(e->rhs);
 
-	return const_expr_is_const(e) && (e->type == expr_val ? e->val.i == 0 : 0);
+	return const_expr_is_const(e) && (e->type == expr_val ? e->val.i.val == 0 : 0);
 }

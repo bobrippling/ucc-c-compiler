@@ -19,7 +19,7 @@
 # define INT_MIN  (-INT_MAX - 1)
 # define INT_MAX    2147483647
 
-# define UINT_MAX  4294967295
+# define UINT_MAX  4294967295U
 
 /*
 # if __WORDSIZE == 64

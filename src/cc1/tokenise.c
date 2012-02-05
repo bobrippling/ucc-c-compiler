@@ -74,7 +74,7 @@ static int ungetch = EOF;
 /* -- */
 enum token curtok;
 
-int currentval = 0; /* an integer literal */
+intval currentval = { 0, 0 }; /* an integer literal */
 
 char *currentspelling = NULL; /* e.g. name of a variable */
 
@@ -154,8 +154,9 @@ static int peeknextchar()
 int readnumber(char c)
 {
 	enum { DEC, HEX, OCT, BIN } mode = c == '0' ? OCT : DEC;
+	unsigned long lval;
 
-	currentval = c - '0';
+	lval = c - '0';
 	c = peeknextchar();
 
 	if((c == 'x' || c == 'b') && mode == OCT){
@@ -171,10 +172,11 @@ int readnumber(char c)
 					c = peeknextchar(); \
 				} \
 				if(test){ \
-					currentval = base * currentval + c - '0'; \
+					lval = base * lval + c - '0'; \
 					nextchar(); \
-				}else \
+				}else{ \
 					break; \
+				} \
 				c = peeknextchar(); \
 			}while(1);
 
@@ -197,10 +199,11 @@ int readnumber(char c)
 			do{
 				if(isxdigit(c)){
 					c = tolower(c);
-					currentval = 0x10 * currentval + (isdigit(c) ? c - '0' : 10 + c - 'a');
+					lval = 0x10 * lval + (isdigit(c) ? c - '0' : 10 + c - 'a');
 					nextchar();
-				}else
+				}else{
 					break;
+				}
 				c = peeknextchar();
 				while(c == '_'){
 					nextchar();
@@ -218,7 +221,23 @@ int readnumber(char c)
 		}
 	}
 
-	return 0;
+	currentval.val = lval;
+	currentval.suffix = 0;
+
+	while(1)
+		switch(peeknextchar()){
+			case 'U':
+				currentval.suffix = VAL_UNSIGNED;
+				nextchar();
+				break;
+			case 'L':
+				currentval.suffix = VAL_LONG;
+				nextchar();
+				ICE("TODO: long integer suffix");
+				break;
+			default:
+				return 0;
+		}
 }
 
 enum token curtok_to_xequal()
@@ -306,7 +325,7 @@ void nexttoken()
 		}
 
 		if(tolower(peeknextchar()) == 'e'){
-			int n = currentval;
+			int n = currentval.val;
 
 			/* 5e2 */
 			nextchar();
@@ -316,7 +335,7 @@ void nexttoken()
 				return;
 			}
 
-			currentval = n * pow(10, currentval);
+			currentval.val = n * pow(10, currentval.val);
 			/* cv = n * 10 ^ cv */
 		}
 
@@ -438,7 +457,8 @@ recheck:
 				}
 			}
 
-			currentval = c;
+			currentval.val = c;
+			currentval.suffix = 0;
 			if((c = nextchar()) == '\'')
 				curtok = token_character;
 			else{

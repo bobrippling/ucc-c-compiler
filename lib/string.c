@@ -23,9 +23,23 @@ const char *strerror(int eno)
 int strncmp(char *a, char *b, size_t n)
 {
 	while(n > 0){
-		int x = *b - *a;
-		if(x)
-			return x;
+		int diff, sum;
+		char ac, bc;
+
+		ac = *a;
+		bc = *b;
+
+		if(ac + bc == 0) /* both '\0' */
+			return 0;
+		else if(!ac)
+			return -1;
+		else if(!bc)
+			return 1;
+
+		diff = ac - bc;
+		if(diff)
+			return diff;
+
 		n--;
 		a++;
 		b++;
