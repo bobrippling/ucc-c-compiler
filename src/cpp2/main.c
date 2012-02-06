@@ -34,7 +34,7 @@ void dirname_push(char *d)
 
 char *dirname_pop()
 {
-	char *r = dynarray_pop((void **)dirnames);
+	char *r = dynarray_pop((void ***)&dirnames);
 	/*fprintf(stderr, "dirname_pop() = %s (%p)\n", r, r);
 	return r; TODO - free*/
 	return NULL;
