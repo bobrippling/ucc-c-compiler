@@ -7,35 +7,39 @@ _start:
 	; need to set up stack base pointer
 	mov rbp, rsp
 
-	; push argc, then argv (address of the stack)
+	; rdi = argc
+	; rsi = argv
+	; rdx = env
+	; rcx = __progname
+	; rax - used for assigning to bss
 
-	lea rbx, [rsp + 8] ; argv (before the stackp is altered)
-	mov rax, [rsp]     ; argc
+	mov rdi, [rsp]     ; argc
+	lea rsi, [rsp + 8] ; argv (before the stackp is altered)
 
-	; argv[0]
-	mov rcx, [rbx]
-	mov [__progname], rcx
+	; __progname = argv[0]
+	mov rcx, [rsi]
+
+	mov rax, rcx
+	mov [qword __progname], rax
 
 	; find the first env variable
-	mov rcx, rbx ; argv
-	inc rax
-	lea rcx, [rcx + rax * 8] ; rcx = argv + argc + 1
-	dec rax
-	mov [environ], rcx
+	lea rax, [rdi + 1]       ; argc + 1
+	lea rax, [rsi + rax * 8] ; rax = argv + (argc + 1) * 8
+	mov [qword environ], rax
 
-	push rcx ; environ
-	push rbx ; argv
-	push rax ; argc
+	push rax ; environ
+	push rsi ; argv
+	push rdi ; argc
 
 	call main
 	push rax
 	call exit
 	hlt
 
-section .data
+section .bss
 	; other things we sort out at startup
 	global environ
-	environ dq 1
+	environ resq 1
 
 	global __progname
-	__progname dq 1
+	__progname resq 1
