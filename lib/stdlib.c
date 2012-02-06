@@ -4,6 +4,11 @@
 #include "signal.h"
 #include "string.h"
 
+#include "sys/types.h"
+#include "sys/mman.h"
+
+#define MMAP_PAGE_SIZE 4096
+
 void exit(int code)
 {
 	__syscall(SYS_exit, code);
@@ -24,7 +29,23 @@ int atoi(char *s)
 
 void *malloc(size_t size)
 {
+#ifdef MALLOC_SBRK
+# warning sbrk malloc implementation
 	return sbrk(size);
+#else
+# warning mmap malloc implementation
+	void *p;
+
+	p = mmap(NULL, MMAP_PAGE_SIZE,
+			PROT_READ   | PROT_WRITE,
+			MAP_PRIVATE | MAP_ANONYMOUS,
+			-1, 0);
+
+	if(p == MAP_FAILED)
+		return NULL;
+
+	return p;
+#endif
 }
 
 void free(void *p)

@@ -31,7 +31,8 @@
 		"signal",       \
 		"assert",       \
 		"sys/fcntl",    \
-		"sys/wait",
+		"sys/wait",    \
+		"sys/mman",
 
 enum mode
 {
