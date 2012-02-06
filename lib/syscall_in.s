@@ -11,7 +11,7 @@ __syscall:
 	mov rdi, [rbp + 24] ; ebx
 	mov rsi, [rbp + 32] ; ecx
 	mov rdx, [rbp + 40] ; edx
-	mov rcx, [rbp + 48] ; edi
+	mov r10, [rbp + 48] ; edi
 	mov r8,  [rbp + 56] ; esi
 	mov r9,  [rbp + 64] ; e8?
 	syscall
