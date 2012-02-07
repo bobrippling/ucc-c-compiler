@@ -13,8 +13,12 @@
 
 #define MAP_FAILED ((void *)-1)
 
-#define MAP_FILE      0x00
-#define MAP_ANONYMOUS 0x20
+#define MAP_FILE        0x00
+#ifdef __DARWIN__
+#  define MAP_ANON      0x1000
+#else
+#  define MAP_ANONYMOUS 0x20
+#endif
 
 void *mmap(void *addr, size_t len,
   int prot, int flags,
