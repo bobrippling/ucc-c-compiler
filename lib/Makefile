@@ -1,6 +1,7 @@
 UCC_CC = ../src/cc
 OBJ    = crt.o syscall.o \
-         stdio.o stdlib.o string.o unistd.o signal.o assert.o \
+         stdio.o stdlib.o string.o unistd.o signal.o \
+				 assert.o ctype.o \
          sys/fcntl.o sys/wait.o sys/mman.o
 
 LIBDEPS = ${UCC_CC} ../src/cc1/cc1 ../src/cpp/cpp
@@ -36,6 +37,8 @@ sys/wait.o: sys/wait.c
 	${BUILD_CMD}
 sys/mman.o: sys/mman.c
 	${BUILD_CMD}
+ctype.o: ctype.c
+	${BUILD_CMD}
 
 syscall.s: syscall_in.s syscall_err.s
 	${UCC_CC} -x c -E -o $@ syscall_in.s
@@ -45,16 +48,18 @@ clean:
 
 .PHONY: libs clean
 
+
 assert.o: assert.c stdio.h stdarg.h sys/types.h macros.h stdlib.h \
-  assert.h
+ assert.h
+ctype.o: ctype.c ctype.h
 signal.o: signal.c signal.h unistd.h macros.h sys/signal.h syscalls.h \
-  syscalls_64.h
+ syscalls_64.h
 stdio.o: stdio.c unistd.h macros.h stdio.h stdarg.h sys/types.h string.h \
-  errno.h stdlib.h sys/fcntl.h
+ errno.h stdlib.h sys/fcntl.h assert.h ctype.h
 stdlib.o: stdlib.c stdlib.h sys/types.h unistd.h macros.h syscalls.h \
-  syscalls_64.h signal.h sys/signal.h string.h sys/mman.h
+ syscalls_64.h signal.h sys/signal.h string.h assert.h sys/mman.h
 string.o: string.c string.h macros.h sys/types.h limits.h \
-  string_strerrs.h
+ string_strerrs.h
 unistd.o: unistd.c unistd.h macros.h syscalls.h syscalls_64.h
 
 sys/fcntl.o: sys/fcntl.c sys/fcntl.h sys/../stdarg.h sys/../sys/types.h \

@@ -4,6 +4,8 @@
 #include "errno.h"
 #include "stdlib.h"
 #include "sys/fcntl.h"
+#include "assert.h"
+#include "ctype.h"
 
 #define PRINTF_OPTIMISE
 
@@ -135,12 +137,24 @@ int vfprintf(FILE *file, char *fmt, va_list ap)
 
 	while(*fmt){
 		if(*fmt == '%'){
+			int pad = 0;
+
 #ifdef PRINTF_OPTIMISE
 			if(buflen)
 				write(fd, buf, buflen);
 #endif
 
 			fmt++;
+
+			if(*fmt == '0'){
+				// %0([0-9]+)d
+				fmt++;
+				pad = 0;
+				while(isdigit(*fmt)){
+					pad += *fmt - '0';
+					fmt++;
+				}
+			}
 
 			switch(*fmt){
 				case 's':
@@ -156,8 +170,30 @@ int vfprintf(FILE *file, char *fmt, va_list ap)
 					break;
 				case 'u':
 				case 'd':
-					printd(fd, va_arg(ap, int), *fmt == 'd');
+number:
+				{
+					const int n = va_arg(ap, int);
+
+					if(pad){
+						if(n){
+							int len = 0, copy = n;
+
+							while(copy){
+								copy /= 10;
+								len++;
+							}
+
+							while(pad-- > len)
+								putchar('0');
+						}else{
+							while(--pad)
+								putchar('0');
+						}
+					}
+
+					printd(fd, n, *fmt == 'd');
 					break;
+				}
 				case 'p':
 					write(fd, "0x", 2);
 				case 'x':
