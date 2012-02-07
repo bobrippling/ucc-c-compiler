@@ -7,6 +7,11 @@ section .text
 __syscall:
 	push rbp
 	mov rbp, rsp
+
+	; x64 convention: rdi, rsi, rdx, rcx, r8, r9
+	; linux kernel:   rdi, rsi, rdx, r10, r8, r9
+	; rcx and r11 are destroyed - should save...
+
 	mov rax, [rbp + 16] ; eax
 	mov rdi, [rbp + 24] ; ebx
 	mov rsi, [rbp + 32] ; ecx
