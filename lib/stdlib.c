@@ -3,11 +3,19 @@
 #include "syscalls.h"
 #include "signal.h"
 #include "string.h"
+#include "assert.h"
 
 #include "sys/types.h"
 #include "sys/mman.h"
 
 #define MMAP_PAGE_SIZE 4096
+// getpagesize()
+
+#define MALLOC_MMAP
+
+#ifdef __DARWIN__
+# define MAP_ANONYMOUS MAP_ANON
+#endif
 
 void exit(int code)
 {
@@ -29,22 +37,37 @@ int atoi(char *s)
 
 void *malloc(size_t size)
 {
-#ifdef MALLOC_SBRK
-# warning sbrk malloc implementation
-	return sbrk(size);
-#else
-# warning mmap malloc implementation
+#ifdef MALLOC_MMAP
+	static void   *last_page     = NULL;
+	static size_t  last_page_use = 0;
+
 	void *p;
+	int need_new;
 
-	p = mmap(NULL, MMAP_PAGE_SIZE,
-			PROT_READ   | PROT_WRITE,
-			MAP_PRIVATE | MAP_ANONYMOUS,
-			-1, 0);
+	assert(size <= MMAP_PAGE_SIZE); // TODO
 
-	if(p == MAP_FAILED)
-		return NULL;
+	need_new = !last_page || last_page_use + size > MMAP_PAGE_SIZE;
+
+	if(need_new){
+		last_page_use = 0;
+
+		// memleak
+		last_page = p = mmap(NULL, MMAP_PAGE_SIZE,
+				PROT_READ | PROT_WRITE | PROT_EXEC,
+				MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+
+		if(p == MAP_FAILED)
+			return NULL;
+
+	}else{
+		p = last_page + last_page_use;
+	}
+
+	last_page_use += size;
 
 	return p;
+#else
+	return sbrk(size);
 #endif
 }
 
