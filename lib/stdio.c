@@ -27,9 +27,9 @@ static void printd_rec(int fd, int n, int base)
 	write(fd, nums + n % base, 1);
 }
 
-static void printn(int fd, int n, int base)
+static void printn(int fd, int n, int base, int is_signed)
 {
-	if(n < 0){
+	if(is_signed && n < 0){
 		write(fd, "-", 1);
 		n = -n;
 	}
@@ -37,14 +37,14 @@ static void printn(int fd, int n, int base)
 	printd_rec(fd, n, base);
 }
 
-static void printd(int fd, int n)
+static void printd(int fd, int n, int is_signed)
 {
-	printn(fd, n, 10);
+	printn(fd, n, 10, is_signed);
 }
 
-static void printx(int fd, int n)
+static void printx(int fd, int n, int is_signed)
 {
-	printn(fd, n, 16);
+	printn(fd, n, 16, is_signed);
 }
 
 
@@ -154,13 +154,14 @@ int vfprintf(FILE *file, char *fmt, va_list ap)
 				case 'c':
 					fputc(va_arg(ap, char), file);
 					break;
+				case 'u':
 				case 'd':
-					printd(fd, va_arg(ap, int));
+					printd(fd, va_arg(ap, int), *fmt == 'd');
 					break;
 				case 'p':
 					write(fd, "0x", 2);
 				case 'x':
-					printx(fd, va_arg(ap, int));
+					printx(fd, va_arg(ap, int), 1);
 					break;
 
 				default:
