@@ -1,3 +1,29 @@
+#include <stdio.h>
+#include <stdarg.h>
+#include <stdlib.h>
+
+#include "../util/util.h"
+#include "../util/dynarray.h"
+#include "tree.h"
+#include "sym.h"
+
+#include "tokenise.h"
+#include "tokconv.h"
+
+#include "struct.h"
+#include "typedef.h"
+
+#include "cc1.h"
+
+#include "parse.h"
+#include "parse_type.h"
+
+// TODO
+extern tdeftable *typedefs_current;
+extern struc    **structs_current;
+
+type  *parse_type_struct(void);
+
 #define INT_TYPE(t) t = type_new(); t->primitive = type_int
 type *parse_type_struct()
 {
@@ -34,6 +60,7 @@ type *parse_type_struct()
 
 type *parse_type()
 {
+	// TODO: recursive descent
 	enum type_spec spec;
 	type *t;
 	decl *td;
