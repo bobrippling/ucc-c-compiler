@@ -757,7 +757,7 @@ void fold(symtable *globs)
 		f->args[0]->type->spec     |= spec_const;
 		f->args[0]->ptr_depth = 1;
 
-		symtab_add(globs, d, sym_global, SYMTAB_WITH_SYM, SYMTAB_PREPEND);
+		symtab_add(globs, d, sym_global, SYMTAB_NO_SYM, SYMTAB_PREPEND);
 	}
 
 	{
