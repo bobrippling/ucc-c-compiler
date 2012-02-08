@@ -7,7 +7,7 @@ OBJ = ../util/alloc.o ../util/util.o ../util/platform.o ../util/dynarray.o \
 	cc1.o \
 	tree.o \
 	tokconv.o tokenise.o \
-	parse.o typedef.o \
+	parse.o parse_type.o typedef.o \
 	fold.o fold_sym.o const.o \
 	sym.o struct.o \
 	gen_asm.o gen_str.o \
@@ -46,16 +46,18 @@ fold_sym.o: fold_sym.c ../util/util.h tree.h cc1.h sym.h fold_sym.h \
  ../util/platform.h
 gen_asm.o: gen_asm.c ../util/util.h tree.h cc1.h macros.h asm.h \
  ../util/platform.h sym.h asm_op.h gen_asm.h const.h struct.h
+gen_c.o: gen_c.c
 gen_str.o: gen_str.c ../util/util.h tree.h macros.h sym.h cc1.h struct.h
-parse.o: parse.c tokenise.h ../util/util.h tree.h parse.h ../util/alloc.h \
- tokconv.h sym.h cc1.h typedef.h ../util/dynarray.h struct.h parse_type.c
-parse_type.o: parse_type.c
+parse.o: parse.c ../util/util.h tree.h tokenise.h parse.h ../util/alloc.h \
+ tokconv.h sym.h cc1.h typedef.h ../util/dynarray.h struct.h parse_type.h
+parse_type.o: parse_type.c ../util/util.h ../util/dynarray.h tree.h sym.h \
+ tokenise.h tokconv.h struct.h typedef.h cc1.h parse.h parse_type.h
 str.o: str.c ../util/util.h
 struct.o: struct.c ../util/util.h ../util/alloc.h ../util/dynarray.h \
  tree.h struct.h
 sym.o: sym.c ../util/util.h tree.h sym.h ../util/alloc.h macros.h \
  ../util/dynarray.h
-tokconv.o: tokconv.c tokenise.h ../util/util.h tree.h tokconv.h macros.h
+tokconv.o: tokconv.c ../util/util.h tree.h tokenise.h tokconv.h macros.h
 tokenise.o: tokenise.c ../util/util.h tree.h tokenise.h ../util/alloc.h \
  str.h
 tree.o: tree.c ../util/alloc.h ../util/util.h tree.h macros.h sym.h \
