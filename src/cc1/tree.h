@@ -259,6 +259,8 @@ const char *decl_to_str(const decl          *d);
 const char *type_to_str(const type          *t);
 const char *spec_to_str(const enum type_spec s);
 
+int op_is_cmp(enum op_type o);
+
 int   type_equal(const type *a, const type *b, int strict);
 int   type_size(const type *);
 int   decl_size(const decl *);
