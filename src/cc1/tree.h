@@ -52,7 +52,14 @@ struct type
 	enum type_primitive primitive;
 	enum type_spec      spec;
 
-	struc *struc; /* NULL unless this is a structure */
+	/* NULL unless this is a structure */
+	struc *struc;
+
+	/*
+	 * should be NULL'd when folded:
+	 * typedef names should be resolved and the types copied
+	 * TODO
+	 */
 	decl  *tdef;
 };
 
