@@ -24,6 +24,7 @@ enum warning
 	WARN_IMPLICIT_FUNC    = 1 << 7,
 	WARN_IMPLICIT_INT     = 1 << 8,
 	WARN_VOID_ARITH       = 1 << 9,
+	WARN_OPT_POSSIBLE     = 1 << 20,
 
 	/* TODO */
 	WARN_FORMAT           = 1 << 10,

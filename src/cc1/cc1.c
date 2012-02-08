@@ -62,6 +62,8 @@ struct
 	{ 0,  "pointer-arith",    WARN_PTR_ARITH  }, /* void *x; x++; */
 	{ 0,  "int-ptr-cast",     WARN_INT_TO_PTR },
 
+	{ 0,  "optimisation",     WARN_OPT_POSSIBLE },
+
 
 /* --- options --- */
 
@@ -77,7 +79,7 @@ FILE *cc_out[NUM_SECTIONS];     /* temporary section files */
 char  fnames[NUM_SECTIONS][32]; /* duh */
 FILE *cc1_out;                  /* final output */
 
-enum warning warn_mode = ~(WARN_VOID_ARITH | WARN_COMPARE_MISMATCH);
+enum warning warn_mode = ~(WARN_VOID_ARITH | WARN_COMPARE_MISMATCH | WARN_IMPLICIT_INT);
 enum fopt    fopt_mode = FOPT_CONST_FOLD;
 
 int caught_sig = 0;
@@ -253,7 +255,7 @@ int main(int argc, char **argv)
 			int *mask;
 			int j, found, rev;
 
-			rev = found = 0;
+			j = rev = found = 0;
 
 			if(!strncmp(arg, "no-", 3)){
 				arg += 3;
@@ -262,7 +264,7 @@ int main(int argc, char **argv)
 
 			if(argv[i][1] == 'f'){
 				mask = (int *)&fopt_mode;
-				for(j = 0; !args[j].is_opt; j++);
+				for(; !args[j].is_opt; j++);
 			}else{
 				mask = (int *)&warn_mode;
 			}
@@ -278,10 +280,7 @@ int main(int argc, char **argv)
 				}
 
 			if(!found){
-				fprintf(stderr, "%s \"%s\" unrecognised\n",
-						argv[i][1] == 'W' ? "warning" : "option",
-						arg
-						);
+				fprintf(stderr, "\"%s\" unrecognised\n", argv[i]);
 				goto usage;
 			}
 
