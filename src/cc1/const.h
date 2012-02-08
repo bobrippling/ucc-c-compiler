@@ -6,7 +6,7 @@ int const_expr_is_const(expr *e);
 int const_expr_is_zero( expr *e);
 
 #define POSSIBLE_OPT(e, s) \
-	warn_at(&e->where, "optimisation possible - %s (%s)", s, expr_to_str(e->type))
+	cc1_warn_at(&e->where, 0, WARN_OPT_POSSIBLE, "optimisation possible - %s (%s)", s, expr_to_str(e->type))
 
 #define OPT_CHECK(e, s) \
 	if(const_expr_is_const(e)) \

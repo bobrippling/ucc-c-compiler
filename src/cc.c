@@ -31,6 +31,7 @@
 		"signal",       \
 		"assert",       \
 		"ctype",        \
+		"ucc",          \
 		"sys/fcntl",    \
 		"sys/wait",     \
 		"sys/mman",
