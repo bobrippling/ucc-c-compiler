@@ -367,6 +367,22 @@ const char *spec_to_str(const enum type_spec s)
 	return NULL;
 }
 
+int op_is_cmp(enum op_type o)
+{
+	switch(o){
+		case op_eq:
+		case op_ne:
+		case op_le:
+		case op_lt:
+		case op_ge:
+		case op_gt:
+			return 1;
+		default:
+			break;
+	}
+	return 0;
+}
+
 const char *type_to_str(const type *t)
 {
 #define BUF_SIZE (sizeof(buf) - (bufp - buf))

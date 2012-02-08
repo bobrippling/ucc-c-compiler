@@ -58,7 +58,7 @@ void fold_op(expr *e, symtable *stab)
 		rhs = e->rhs->tree_type->type->spec & spec_unsigned ? UNSIGNED : SIGNED;
 		lhs = e->lhs->tree_type->type->spec & spec_unsigned ? UNSIGNED : SIGNED;
 
-		if(rhs != lhs){
+		if(op_is_cmp(e->op) && rhs != lhs){
 #define SIGN_CONVERT(test_hs, assert_hs) \
 			if(e->test_hs->type == expr_val && e->test_hs->val.i.val >= 0){ \
 				/*                                              \
@@ -75,7 +75,13 @@ void fold_op(expr *e, symtable *stab)
 			SIGN_CONVERT(rhs, lhs)
 			SIGN_CONVERT(lhs, rhs)
 
-			cc1_warn_at(&e->where, 0, WARN_SIGN_COMPARE, "comparison between signed and unsigned");
+#define SPEL_IF_IDENT(hs)                              \
+					hs->type == expr_identifier ? " ("     : "", \
+					hs->type == expr_identifier ? hs->spel : "", \
+					hs->type == expr_identifier ? ")"      : ""  \
+
+			cc1_warn_at(&e->where, 0, WARN_SIGN_COMPARE, "comparison between signed and unsigned%s%s%s%s%s%s",
+					SPEL_IF_IDENT(e->lhs), SPEL_IF_IDENT(e->rhs));
 		}
 	}
 noproblem:
@@ -95,7 +101,7 @@ noproblem:
 		 */
 		if(e->tree_type->arraysizes){
 			for(int i = 0; e->tree_type->arraysizes[i]; i++)
-				fprintf(stderr, "pre  arraysizes[%d] = %p\n", i, e->tree_type->arraysizes[i]);
+				fprintf(stderr, "pre  arraysizes[%d] = %p\n", i, (void *)e->tree_type->arraysizes[i]);
 
 				fprintf(stderr, "pre  count = %d\n", dynarray_count((void **)e->tree_type->arraysizes));
 		}
@@ -109,7 +115,7 @@ noproblem:
 
 		if(e->tree_type->arraysizes)
 			for(int i = 0; e->tree_type->arraysizes[i]; i++)
-				fprintf(stderr, "post arraysizes[%d] = %p\n", i, e->tree_type->arraysizes[i]);
+				fprintf(stderr, "post arraysizes[%d] = %p\n", i, (void *)e->tree_type->arraysizes[i]);
 
 		if(e->tree_type->ptr_depth == 0)
 			switch(e->lhs->tree_type->type->primitive){
