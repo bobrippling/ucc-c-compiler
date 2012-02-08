@@ -25,7 +25,7 @@ struct symtable
 
 sym *sym_new(decl *d, enum sym_type t);
 
-symtable *symtab_new();
+symtable *symtab_new(void);
 symtable *symtab_child(symtable *);
 symtable *symtab_grandparent(symtable *child);
 

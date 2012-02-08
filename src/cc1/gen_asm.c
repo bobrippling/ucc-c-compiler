@@ -44,14 +44,16 @@ void asm_ax_to_store(expr *store, symtable *stab)
 					return;
 
 				case op_struct_ptr:
-				case op_struct_dot:
-					ICE("TODO: op_struct_*");
+					ICE("TODO: a->b");
 					asm_temp(1, "pop rbx ; struct addr");
 					asm_temp(1, "sub rbx, %d ; offset of member %s", -1/*struct_member_offset(store)*/, store->rhs->spel);
 					asm_temp(1, "pop rax ; saved val");
 					asm_temp(1, "mov [rbx], rax");
 					break;
-					return;
+
+				case op_struct_dot:
+					ICE("TODO: a.b");
+					break;
 
 				default:
 					break;
