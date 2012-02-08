@@ -24,7 +24,8 @@ extern struc    **structs_current;
 
 type  *parse_type_struct(void);
 
-#define INT_TYPE(t) t = type_new(); t->primitive = type_int
+#define INT_TYPE(t) do{ t = type_new(); t->primitive = type_int; }while(0)
+
 type *parse_type_struct()
 {
 	char *spel;
@@ -109,10 +110,9 @@ type *parse_type()
 		}
 	}
 
-	if(!t && spec){
+	if(!t && spec)
 		/* unsigned x; */
 		INT_TYPE(t);
-	}
 
 	if(t)
 		t->spec = spec;
