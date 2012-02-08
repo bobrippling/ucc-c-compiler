@@ -15,6 +15,8 @@
 #include "typedef.h"
 #include "../util/dynarray.h"
 #include "struct.h"
+#include "parse_type.h"
+
 
 /*
  * order goes:
@@ -27,40 +29,9 @@
  * parse_expr_cmp_op     above [><==!=] above
  * parse_expr_logical_op above [&&||]   above
  */
-#define parse_expr() parse_expr_comma()
-#define parse_expr_funcallarg() parse_expr_if()
-expr *parse_expr();
-#define accept(tok) ((tok) == curtok ? (EAT(tok), 1) : 0)
 
-#define parse_possible_decl() (curtok == token_identifier || curtok == token_multiply)
-
-#define TYPEDEF_FIND() (curtok == token_identifier ? typedef_find(typedefs_current, token_current_spel_peek()) : NULL)
-
-#define PARSE_DECLS() parse_decls(0, 0)
-
-extern enum token curtok;
-
-enum decl_mode
-{
-	DECL_SPEL_NEED    = 1,
-	DECL_SPEL_NO      = 1 << 1,
-	DECL_CAN_DEFAULT  = 1 << 2,
-};
-
-decl *parse_decl_single(enum decl_mode);
-
-tree  *parse_code(void);
-decl **parse_decls(const int can_default, const int accept_field_width);
-type *parse_type(void);
-
-expr **parse_funcargs(void);
-expr *parse_expr_binary_op(void); /* needed to limit [+-] parsing */
-expr *parse_expr_array(void);
-expr *parse_expr_if(void);
-expr *parse_expr_deref(void);
-
-static tdeftable *typedefs_current;
-static struc    **structs_current;
+tdeftable *typedefs_current;
+struc    **structs_current;
 
 expr *parse_lone_identifier()
 {
@@ -899,8 +870,6 @@ tree *parse_code()
 	/* unreachable */
 }
 
-#include "parse_type.c"
-
 symtable *parse()
 {
 	symtable *globals;
@@ -914,8 +883,10 @@ symtable *parse()
 	EAT(token_eof);
 
 	if(decls)
-		for(i = 0; decls[i]; i++)
+		for(i = 0; decls[i]; i++){
 			symtab_add(globals, decls[i], sym_global, SYMTAB_NO_SYM, SYMTAB_APPEND);
+			UCC_ASSERT(!decls[i]->sym, "symtab_add(... SYMTAB_NO_SYM) gave a sym");
+		}
 
 	globals->structs = structs_current; /* FIXME: structs should be per-block */
 

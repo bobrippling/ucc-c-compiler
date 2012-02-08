@@ -1,6 +1,40 @@
 #ifndef PARSE_H
 #define PARSE_H
 
-symtable *parse();
+enum decl_mode
+{
+	DECL_SPEL_NEED    = 1,
+	DECL_SPEL_NO      = 1 << 1,
+	DECL_CAN_DEFAULT  = 1 << 2,
+};
+
+extern enum token curtok;
+#define accept(tok) ((tok) == curtok ? (EAT(tok), 1) : 0)
+#define TYPEDEF_FIND() (curtok == token_identifier ? typedef_find(typedefs_current, token_current_spel_peek()) : NULL)
+#define PARSE_DECLS() parse_decls(0, 0)
+
+
+
+#define parse_expr() parse_expr_comma()
+#define parse_expr_funcallarg() parse_expr_if()
+#define parse_possible_decl() (curtok == token_identifier || curtok == token_multiply)
+expr *parse_expr();
+
+decl *parse_decl_single(enum decl_mode);
+
+tree  *parse_code(void);
+decl **parse_decls(const int can_default, const int accept_field_width);
+type *parse_type(void);
+
+expr **parse_funcargs(void);
+expr *parse_expr_binary_op(void); /* needed to limit [+-] parsing */
+expr *parse_expr_array(void);
+expr *parse_expr_if(void);
+expr *parse_expr_deref(void);
+
+
+function *parse_function(void);
+
+symtable *parse(void);
 
 #endif
