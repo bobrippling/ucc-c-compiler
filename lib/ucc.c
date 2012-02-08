@@ -33,7 +33,12 @@ static const char *regnames[] = {
 
 void __dump_regs()
 {
-#define get_reg(r) __asm__("mov rax, " r)
+#define get_reg(r)            \
+	__asm__(                    \
+			"\tmov rax, " r "\n"    \
+			"\tpush rax\n"          \
+	)
+
 	unsigned int regs[10];
 	unsigned int *rp; // arraysizes workaround
 	int i;
@@ -45,13 +50,15 @@ void __dump_regs()
 	rp[RAX] = get_reg("rax");
 	rp[RBX] = get_reg("rbx");
 	rp[RCX] = get_reg("rcx");
-//#ifdef FULL
+#ifdef FULL
+	// seems to segfault if this code is included
 	rp[RDX] = get_reg("rdx");
 
 	rp[RDI] = get_reg("rdi");
 	rp[RSI] = get_reg("rsi");
 
 	rp[R8 ] = get_reg("r8 ");
+#endif
 	rp[R9 ] = get_reg("r9 ");
 	rp[R10] = get_reg("r10");
 	rp[R11] = get_reg("r11");
@@ -59,7 +66,6 @@ void __dump_regs()
 	for(i = 0; i < 10; i++)
 		printf("register[%d] = %s = 0x%x (%d)\n",
 				i, regnames[i], rp[i], rp[i]);
-//#endif
 }
 
 /*
@@ -78,7 +84,6 @@ int main()
 
 	__dump_regs();
 
-	printf("back in main\n");
 	return 0;
 }
 */
