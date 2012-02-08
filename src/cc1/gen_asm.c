@@ -167,7 +167,7 @@ void walk_expr(expr *e, symtable *stab)
 				str = arg1->array_store->data.str;
 				for(i = 0; i < arg1->array_store->len - 1; i++){
 					char ch = str[i];
-					if(ch != '\n' && !isprint(ch))
+					if(!isprint(ch) && !isspace(ch))
 invalid:
 						die_at(&arg1->where, "invalid __asm__ string (character %d)", ch);
 				}
