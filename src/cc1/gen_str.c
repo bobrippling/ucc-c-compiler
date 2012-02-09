@@ -56,10 +56,10 @@ void print_decl(decl *d, int idt, int nl, int sym_offset, int print_ignore)
 
 	fputs(type_to_str(d->type), cc1_out);
 
-	if(d->ptr_depth || d->spel)
+	if(decl_ptr_depth(d) || d->spel)
 		fputc(' ', cc1_out);
 
-	for(i = d->ptr_depth; i > 0; i--)
+	for(i = decl_ptr_depth(d); i > 0; i--)
 		fputc('*', cc1_out);
 
 	if(d->spel)
@@ -76,12 +76,12 @@ void print_decl(decl *d, int idt, int nl, int sym_offset, int print_ignore)
 		fputc('\n', cc1_out);
 
 	indent++;
-	for(i = 0; d->arraysizes && d->arraysizes[i]; i++){
+	/*for(i = 0; d->arraysizes && d->arraysizes[i]; i++){
 		idt_printf("array[%d] size:\n", i);
 		indent++;
 		print_expr(d->arraysizes[i]);
 		indent--;
-	}
+	}*/
 	indent--;
 }
 
@@ -269,7 +269,7 @@ void print_tree(tree *t)
 			decl *d = *iter;
 
 			indent++;
-			if(d->func)
+			if(decl_is_function(d))
 				print_func(d);
 			else
 				print_decl(d, 1, 1, 1, 1);
@@ -291,7 +291,7 @@ void print_tree(tree *t)
 
 void print_func(decl *d)
 {
-	function *f = d->func;
+	function *f = decl_is_function(d);
 	decl **iter;
 
 	idt_printf("function: ");
@@ -349,7 +349,7 @@ void gen_str(symtable *symtab)
 	}
 
 	for(diter = symtab->decls; diter && *diter; diter++){
-		if((*diter)->func){
+		if((*diter)->decl_ptr->func){
 			print_func(*diter);
 		}else{
 			fprintf(cc1_out, "global variable:\n");

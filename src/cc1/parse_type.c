@@ -3,6 +3,7 @@
 #include <stdlib.h>
 
 #include "../util/util.h"
+#include "../util/alloc.h"
 #include "../util/dynarray.h"
 #include "tree.h"
 #include "sym.h"
@@ -22,7 +23,10 @@
 extern tdeftable *typedefs_current;
 extern struc    **structs_current;
 
+
 type  *parse_type_struct(void);
+decl_ptr *parse_decl_ptr(decl *parent, enum decl_mode mode);
+
 
 #define INT_TYPE(t) do{ t = type_new(); t->primitive = type_int; }while(0)
 
@@ -61,7 +65,6 @@ type *parse_type_struct()
 
 type *parse_type()
 {
-	// TODO: recursive descent
 	enum type_spec spec;
 	type *t;
 	decl *td;
@@ -120,32 +123,39 @@ type *parse_type()
 	return t;
 }
 
-decl *parse_decl(type *t, enum decl_mode mode)
+decl_ptr *parse_decl_ptr_nofunc(decl *parent, enum decl_mode mode)
 {
-	decl *d = decl_new();
+	if(accept(token_open_paren)){
+		decl_ptr *ret = parse_decl_ptr(parent, mode);
+		EAT(token_close_paren);
+		return ret;
 
-	d->type = t;
+	}else if(accept(token_multiply)){
+		decl_ptr *ret = decl_ptr_new();
 
-	while(accept(token_multiply))
-		/* FIXME: int *const x; */
-		d->ptr_depth++;
+		if(accept(token_const))
+			ret->is_const = 1;
 
-	if(t->tdef){
-		if(t->tdef->arraysizes)
-			ICE("todo: typedef with arraysizes");
-		d->ptr_depth += t->tdef->ptr_depth;
-	}
+		ret->child = parse_decl_ptr(parent, mode);
+		return ret;
 
-	if(curtok == token_identifier){
+	}else if(curtok == token_identifier){
+		decl_ptr *ret = decl_ptr_new();
+
 		if(mode & DECL_SPEL_NO)
-			die_at(&d->where, "identifier unexpected");
+			die_at(&ret->where, "identifier unexpected");
 
-		d->spel = token_current_spel();
+		parent->spel = token_current_spel();
 		EAT(token_identifier);
+
+		return ret;
 	}else if(mode & DECL_SPEL_NEED){
-		EAT(token_identifier);
+		EAT(token_identifier); /* raise error */
 	}
 
+	return NULL;
+
+#if 0
 	if(accept(token_open_paren))
 		d->func = parse_function();
 
@@ -167,6 +177,35 @@ decl *parse_decl(type *t, enum decl_mode mode)
 
 		dynarray_add((void ***)&d->arraysizes, size);
 	}
+#endif
+}
+
+decl_ptr *parse_decl_ptr(decl *parent, enum decl_mode mode)
+{
+	decl_ptr *dp;
+
+	dp = parse_decl_ptr_nofunc(parent, mode);
+
+	if(accept(token_open_paren)){
+		/*
+		 * e.g.:
+		 * int x(
+		 * int (*x)(
+		 * int (((x))(
+		 */
+		dp->func = parse_function();
+	}
+
+	return dp;
+}
+
+decl *parse_decl(type *t, enum decl_mode mode)
+{
+	decl *d = decl_new();
+
+	d->type = t;
+
+	d->decl_ptr = parse_decl_ptr(d, mode);
 
 	if(accept(token_assign))
 		d->init = parse_expr_funcallarg(); /* int x = 5, j; - don't grab the comma expr */
@@ -234,7 +273,7 @@ decl **parse_decls(const int can_default, const int accept_field_width)
 				else
 					dynarray_add((void ***)&decls, d);
 
-				if(are_tdefs)
+				/*if(are_tdefs)
 					if(d->func)
 						die_at(&d->where, "can't have a typedef function");
 
@@ -244,7 +283,7 @@ decl **parse_decls(const int can_default, const int accept_field_width)
 							return decls;
 						continue;
 					}
-				}else if(accept_field_width && accept(token_colon)){
+				}else*/ if(accept_field_width && accept(token_colon)){
 					/* normal decl, check field spec */
 					d->field_width = currentval.val;
 					EAT(token_integer);
@@ -256,7 +295,7 @@ decl **parse_decls(const int can_default, const int accept_field_width)
 			}
 		}while(accept(token_comma));
 
-		if(last && !last->func){
+		if(last){// && !last->func){
 next:
 			EAT(token_semicolon);
 		}

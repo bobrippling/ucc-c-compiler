@@ -659,9 +659,10 @@ function *parse_function()
 
 		EAT(token_close_paren);
 
+		ICE("TODO .+2");
 		if(dynarray_count((void *)f->args) == 1 &&
 				f->args[0]->type->primitive == type_void &&
-				f->args[0]->ptr_depth == 0 &&
+				//f->args[0]->ptr_depth == 0 &&
 				f->args[0]->spel == NULL){
 			/* x(void); */
 			function_empty_args(f);

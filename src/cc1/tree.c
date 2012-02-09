@@ -68,6 +68,13 @@ expr *expr_new_val(int i)
 	return e;
 }
 
+decl_ptr *decl_ptr_new()
+{
+	decl_ptr *dp = umalloc(sizeof *dp);
+	where_new(&dp->where);
+	return dp;
+}
+
 decl *decl_new()
 {
 	decl *d = umalloc(sizeof *d);
@@ -162,6 +169,7 @@ expr *expr_ptr_multiply(expr *e, decl *d)
 	 * thus the decl-clone
 	 */
 
+#if 0
 	memcpy(&tmp, d, sizeof tmp);
 	tmp.ptr_depth--;
 	if(tmp.type->tdef){
@@ -171,6 +179,10 @@ expr *expr_ptr_multiply(expr *e, decl *d)
 		tmp.type->tdef = decl_copy(tmp.type->tdef);
 		tmp.type->tdef->ptr_depth--;
 	}
+#else
+	(void)d;
+	ICE("TODO: expr_ptr_multiply()");
+#endif
 
 	sz = decl_size(&tmp);
 
@@ -230,6 +242,7 @@ int type_size(const type *t)
 
 int decl_size(const decl *d)
 {
+#if 0
 	if(d->arraysizes){
 		/* should've been folded fully */
 		const int siz = type_size(d->type);
@@ -241,8 +254,9 @@ int decl_size(const decl *d)
 
 		return ret;
 	}
+#endif
 
-	if(d->ptr_depth)
+	if(d->decl_ptr) /* pointer */
 		return platform_word_size();
 
 	return type_size(d->type);
@@ -262,6 +276,7 @@ int type_equal(const type *a, const type *b, int strict)
 
 int decl_equal(const decl *a, const decl *b, int strict)
 {
+#if 0
 	const int ptreq = a->ptr_depth == b->ptr_depth;
 
 #define VOID_PTR(d) \
@@ -271,6 +286,11 @@ int decl_equal(const decl *a, const decl *b, int strict)
 		return 1; /* one side is void * */
 
 	return ptreq && type_equal(a->type, b->type, strict);
+#else
+	ICE("TODO");
+	(void)(a - b + strict);
+	return 5;
+#endif
 }
 
 void function_empty_args(function *func)
@@ -383,6 +403,17 @@ int op_is_cmp(enum op_type o)
 	return 0;
 }
 
+int decl_ptr_depth(const decl *d)
+{
+	decl_ptr *dp;
+	int i = 0;
+
+	for(dp = d->decl_ptr; dp; dp = dp->child)
+		i++;
+
+	return i - 1;
+}
+
 const char *type_to_str(const type *t)
 {
 #define BUF_SIZE (sizeof(buf) - (bufp - buf))
@@ -419,6 +450,7 @@ const char *type_to_str(const type *t)
 
 const char *decl_to_str(const decl *d)
 {
+#if 0
 	static char buf[DECL_STATIC_BUFSIZ];
 	unsigned int i;
 	int n;
@@ -430,4 +462,9 @@ const char *decl_to_str(const decl *d)
 	buf[i] = '\0';
 
 	return buf;
+#else
+	(void)d;
+	ICE("TODO");
+	return NULL;
+#endif
 }

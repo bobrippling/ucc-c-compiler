@@ -127,7 +127,7 @@ void walk_expr(expr *e, symtable *stab)
 
 		case expr_identifier:
 			/* if it's an array, lea, else, load */
-			asm_sym(e->sym->decl->arraysizes ? ASM_LEA : ASM_LOAD, e->sym, "rax");
+			/*asm_sym(e->sym->decl->arraysizes ? ASM_LEA : ASM_LOAD, e->sym, "rax");*/
 			asm_temp(1, "push rax");
 			break;
 
@@ -416,7 +416,7 @@ void walk_tree(tree *t)
 
 void gen_asm_func(decl *d)
 {
-	function *f = d->func;
+	function *f = decl_is_function(d);
 	if(f->code){
 		int offset;
 
@@ -459,10 +459,11 @@ void gen_asm_global_var(decl *d)
 
 	}else{
 		int arraylen = 1;
-		int i;
+		//int i;
 
-		for(i = 0; d->arraysizes && d->arraysizes[i]; i++)
-			arraylen = (i + 1) * d->arraysizes[i]->val.i.val;
+		ICE("array");
+		/*for(i = 0; d->arraysizes && d->arraysizes[i]; i++)
+			arraylen = (i + 1) * d->arraysizes[i]->val.i.val;*/
 
 		/* TODO: check that i+1 is correct for the order here */
 
@@ -482,7 +483,7 @@ void gen_asm(symtable *globs)
 		if(!(d->type->spec & spec_static) && !(d->type->spec & spec_extern))
 			asm_temp(0, "global %s", d->spel);
 
-		if(d->func)
+		if(decl_is_function(d))
 			gen_asm_func(d);
 		else
 			gen_asm_global_var(d);

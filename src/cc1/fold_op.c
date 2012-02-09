@@ -17,7 +17,7 @@ void fold_op_struct(expr *e, symtable *stab)
 	spel = e->rhs->spel;
 
 	/* we either access a struct or an identifier */
-	if(e->lhs->tree_type->type->primitive != type_struct || e->lhs->tree_type->ptr_depth != ptr_depth_exp)
+	if(e->lhs->tree_type->type->primitive != type_struct || decl_ptr_depth(e->lhs->tree_type) != ptr_depth_exp)
 		die_at(&e->lhs->where, "%s is not a %sstruct", decl_to_str(e->lhs->tree_type), ptr_depth_exp == 1 ? "pointer-to-" : "");
 
 	st = e->lhs->tree_type->type->struc;
@@ -96,28 +96,9 @@ noproblem:
 
 		GET_TREE_TYPE(e->lhs->tree_type);
 
-		/*
-		 * ensure ->arraysizes is kept in sync
-		 */
-		if(e->tree_type->arraysizes){
-			for(int i = 0; e->tree_type->arraysizes[i]; i++)
-				fprintf(stderr, "pre  arraysizes[%d] = %p\n", i, (void *)e->tree_type->arraysizes[i]);
+		ICE("fixme: ptr_depth--");
 
-				fprintf(stderr, "pre  count = %d\n", dynarray_count((void **)e->tree_type->arraysizes));
-		}
-
-		e->tree_type->ptr_depth--;
-		if(e->tree_type->arraysizes){
-			ICE("FIXME: arraysize adjustment");
-			expr *popped = dynarray_pop((void ***)&e->tree_type->arraysizes);
-			expr_free(popped);
-		}
-
-		if(e->tree_type->arraysizes)
-			for(int i = 0; e->tree_type->arraysizes[i]; i++)
-				fprintf(stderr, "post arraysizes[%d] = %p\n", i, (void *)e->tree_type->arraysizes[i]);
-
-		if(e->tree_type->ptr_depth == 0)
+		if(decl_ptr_depth(e->tree_type) == 0)
 			switch(e->lhs->tree_type->type->primitive){
 				case type_unknown:
 				case type_void:
@@ -126,13 +107,13 @@ noproblem:
 					/* e->tree_type already set to deref type */
 					break;
 			}
-		else if(e->tree_type->ptr_depth < 0)
+		else if(decl_ptr_depth(e->tree_type) < 0)
 			die_at(&e->where, "can't dereference non-pointer (%s)", type_to_str(e->tree_type->type));
 	}else{
 		/* look either side - if either is a pointer, take that as the tree_type */
 		/* TODO: checks for pointer + pointer (invalid), etc etc */
 
-#define IS_PTR(x) x->tree_type->ptr_depth
+#define IS_PTR(x) decl_ptr_depth(x->tree_type)
 
 		if(e->op == op_minus && IS_PTR(e->lhs) && IS_PTR(e->rhs))
 			e->tree_type->type->primitive = type_int;
@@ -145,14 +126,14 @@ noproblem:
 	if(e->rhs){
 		/* need to do this check _after_ we get the correct tree type */
 		if((e->op == op_plus || e->op == op_minus) &&
-				e->tree_type->ptr_depth &&
+				decl_ptr_depth(e->tree_type) &&
 				e->rhs){
 
 			/* 2 + (void *)5 is 7, not 2 + 8*5 */
 			if(e->tree_type->type->primitive != type_void){
 				/* we're dealing with pointers, adjust the amount we add by */
 
-				if(e->lhs->tree_type->ptr_depth)
+				if(decl_ptr_depth(e->lhs->tree_type))
 					/* lhs is the pointer, we're adding on rhs, hence multiply rhs by lhs's ptr size */
 					e->rhs = expr_ptr_multiply(e->rhs, e->lhs->tree_type);
 				else
