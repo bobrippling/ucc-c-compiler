@@ -22,7 +22,7 @@
 #define DIE_UNDECL() DIE_UNDECL_SPEL(e->spel)
 
 #define EXPR_NON_VOID(e, s) \
-	if(!e->tree_type->ptr_depth && e->tree_type->type->primitive == type_void) \
+	if(!decl_ptr_depth(e->tree_type) && e->tree_type->type->primitive == type_void) \
 		die_at(&e->where, "%s requires non-void expression", s)
 
 #define funcall_name(e) (e)->spel
@@ -46,7 +46,7 @@ int fold_is_lvalue(expr *e)
 	 * also can't be const, checked in fold_assign (since we allow const inits)
 	 */
 
-	if(e->type == expr_identifier && !e->tree_type->func)
+	if(e->type == expr_identifier && !decl_is_function(e->tree_type))
 		return 1;
 
 	if(e->type == expr_op)
@@ -96,7 +96,7 @@ void fold_decl_equal(decl *a, decl *b, where *w, enum warning warn,
 		va_list l;
 
 		va_start(l, errfmt);
-		cc1_warn_atv(w, a->type->primitive == type_void && !a->ptr_depth, warn, errfmt, l);
+		cc1_warn_atv(w, a->type->primitive == type_void && !decl_ptr_depth(a), warn, errfmt, l);
 		va_end(l);
 	}
 }
@@ -120,7 +120,8 @@ void fold_funcall(expr *e, symtable *stab)
 	if(!e->sym){
 		df = decl_new_where(&e->where);
 
-		df->func = function_new();
+		df->decl_ptr = decl_ptr_new();
+		decl_is_function(df) = function_new();
 
 		df->type->primitive = type_int;
 		df->spel = spel;
@@ -137,20 +138,10 @@ void fold_funcall(expr *e, symtable *stab)
 		 * having just been added via grandparent()
 		 */
 
-		if(e->funcargs){
-#ifdef IMPLICIT_FUNC_ARG_EXACT
-			/* set up the function args to correspond with the arg types */
-			expr **iter;
-			for(iter = e->funcargs; *iter; iter++){
-				decl *arg_decl = decl_copy((*iter)->tree_type);
-				arg_decl->type->spec &= ~(spec_extern | spec_static); /* don't inherit these, obv. */
-				dynarray_add((void ***)&df->func->args, arg_decl);
-			}
-#else
+		if(e->funcargs)
 			/* set up the function args as if it's "x()" - i.e. any args */
-			function_empty_args(df->func);
-#endif
-		}
+			function_empty_args(decl_is_function(df));
+
 	}else{
 		df = e->sym->decl;
 	}
@@ -158,7 +149,7 @@ void fold_funcall(expr *e, symtable *stab)
 	GET_TREE_TYPE(e->sym->decl);
 
 	/* func count comparison, only if the func has arg-decls, or the func is f(void) */
-	if(df->func->args || df->func->args_void){
+	if(decl_is_function(df)->args || df->decl_ptr->func->args_void){
 		expr **iter_arg;
 		decl **iter_decl;
 		int count_decl, count_arg;
@@ -167,16 +158,16 @@ void fold_funcall(expr *e, symtable *stab)
 		count_decl = count_arg = 0;
 
 		for(iter_arg  = e->funcargs;    iter_arg  && *iter_arg;  iter_arg++,  count_arg++);
-		for(iter_decl = df->func->args; iter_decl && *iter_decl; iter_decl++, count_decl++);
+		for(iter_decl = decl_is_function(df)->args; iter_decl && *iter_decl; iter_decl++, count_decl++);
 
-		if(count_decl != count_arg && (df->func->variadic ? count_arg < count_decl : 1)){
+		if(count_decl != count_arg && (decl_is_function(df)->variadic ? count_arg < count_decl : 1)){
 			die_at(&e->where, "too %s arguments to function %s (got %d, need %d)",
 					count_arg > count_decl ? "many" : "few",
 					df->spel, count_arg, count_decl);
 		}
 
 		if(e->funcargs){
-			for(i = 0, iter_decl = df->func->args, iter_arg = e->funcargs;
+			for(i = 0, iter_decl = decl_is_function(df)->args, iter_arg = e->funcargs;
 					iter_decl[i];
 					i++){
 				fold_decl_equal(iter_decl[i], iter_arg[i]->tree_type, &e->where,
@@ -191,9 +182,6 @@ void fold_assignment(expr *e, symtable *stab)
 {
 	fold_expr(e->lhs, stab);
 	fold_expr(e->rhs, stab);
-
-	if(e->lhs->tree_type->arraysizes)
-		die_at(&e->lhs->where, "can't assign to array yet");
 
 	/* wait until we get the tree types, etc */
 	if(!fold_is_lvalue(e->lhs))
@@ -287,7 +275,8 @@ void fold_expr(expr *e, symtable *stab)
 				UCC_ASSERT(!e->expr, "expression found in array store address-of");
 
 				e->tree_type->type->spec |= spec_static;
-				e->tree_type->ptr_depth = 1;
+
+				e->tree_type->decl_ptr->child = decl_ptr_new();
 
 				array_sym = SYMTAB_ADD(symtab_grandparent(stab), decl_new_where(&e->where), stab->parent ? sym_local : sym_global);
 				memcpy(array_sym->decl, e->tree_type, sizeof *array_sym->decl);
@@ -329,15 +318,6 @@ void fold_expr(expr *e, symtable *stab)
 					DIE_UNDECL();
 
 				GET_TREE_TYPE(s->decl);
-
-				/*
-					* int x[2];
-					* int *p = &x;
-					* p is int *, not int **
-					* hence the following if
-					*/
-				if(!s->decl->arraysizes)
-					e->tree_type->ptr_depth++;
 			}
 			break;
 
@@ -381,9 +361,9 @@ void fold_expr(expr *e, symtable *stab)
 
 void fold_decl(decl *d, symtable *stab)
 {
-	int i;
+	(void)stab;
 
-	if(d->type->primitive == type_void && !d->ptr_depth && !d->func)
+	if(d->type->primitive == type_void && !decl_ptr_depth(d) && !decl_is_function(d))
 		die_at(&d->type->where, "can't have a void variable");
 
 #define SPEC(x) (d->type->spec & (x))
@@ -407,13 +387,6 @@ void fold_decl(decl *d, symtable *stab)
 	}
 
 #undef SPEC
-
-	for(i = 0; d->arraysizes && d->arraysizes[i]; i++){
-		fold_expr(d->arraysizes[i], stab);
-
-		if(!const_expr_is_const(d->arraysizes[i]))
-			die_at(&d->arraysizes[i]->where, "not a constant expression");
-	}
 }
 
 void fold_decl_global(decl *d, symtable *stab)
@@ -596,12 +569,12 @@ case_add:
 				for(iter = t->decls; *iter; iter++){
 					decl *d = *iter;
 
-					if(d->func && d->func->code)
-						die_at(&d->func->code->where, "can't nest functions");
+					if(decl_is_function(d) && d->decl_ptr->func->code)
+						die_at(&decl_is_function(d)->code->where, "can't nest functions");
 
 					fold_decl(d, t->symtab);
 
-					SYMTAB_ADD(t->symtab, d, d->func ? sym_func : sym_local);
+					SYMTAB_ADD(t->symtab, d, decl_is_function(d) ? sym_func : sym_local);
 				}
 			}
 
@@ -653,13 +626,13 @@ void fold_func(decl *df, symtable *globsymtab)
 {
 	int i;
 	decl **diter;
-	function *f = df->func;
+	function *f = decl_is_function(df);
 
 	curdecl_func = df;
 
 	fold_decl(df, globsymtab);
 
-	for(diter = df->func->args; diter && *diter; diter++)
+	for(diter = decl_is_function(df)->args; diter && *diter; diter++)
 		fold_decl(*diter, globsymtab);
 
 	if(f->args)
@@ -699,8 +672,8 @@ void fold_func(decl *df, symtable *globsymtab)
 		/* this is similar to the extern-ignore, but for overwriting function prototypes */
 		if((df->type->spec & spec_extern) == 0){
 			for(iter = globsymtab->decls; iter && *iter; iter++)
-				if((*iter)->func){
-					function *f2 = (*iter)->func;
+				if((*iter)->decl_ptr->func){
+					function *f2 = (*iter)->decl_ptr->func;
 
 					if(f2->code && !strcmp((*iter)->spel, df->spel)){
 						found = 1;
@@ -746,7 +719,7 @@ void fold(symtable *globs)
 		decl *d;
 		function *f;
 		d = decl_new();
-		f = d->func = function_new();
+		f = decl_is_function(d) = function_new();
 		d->spel = ustrdup(ASM_INLINE_FNAME);
 
 
@@ -755,7 +728,7 @@ void fold(symtable *globs)
 		f->args[1] = NULL;
 		f->args[0]->type->primitive = type_char;
 		f->args[0]->type->spec     |= spec_const;
-		f->args[0]->ptr_depth = 1;
+		f->args[0]->decl_ptr->child = decl_ptr_new();
 
 		symtab_add(globs, d, sym_global, SYMTAB_NO_SYM, SYMTAB_PREPEND);
 	}
@@ -781,7 +754,7 @@ void fold(symtable *globs)
 
 		D(i)->sym = sym_new(D(i), sym_global);
 
-		if(D(i)->func)
+		if(D(i)->decl_ptr->func)
 			fold_func(D(i), globs);
 		else
 			fold_decl_global(D(i), globs);

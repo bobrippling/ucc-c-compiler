@@ -10,6 +10,7 @@ typedef struct struc       struc;
 typedef struct expr        expr;
 typedef struct tree        tree;
 typedef struct decl        decl;
+typedef struct decl_ptr    decl_ptr;
 typedef struct array_decl  array_decl;
 typedef struct function    function;
 typedef struct tree_flow   tree_flow;
@@ -63,6 +64,15 @@ struct type
 	decl  *tdef;
 };
 
+struct decl_ptr
+{
+	where where;
+
+	int is_const;     /* int *const x */
+	function *func;   /* int (*x)() and int a(){}  */
+	decl_ptr *child;  /* int (*const (*x)()) - *[x] is child */
+};
+
 struct decl
 {
 	where where;
@@ -72,23 +82,18 @@ struct decl
 
 	char *spel;
 
-	expr **arraysizes;
-
 	expr *init; /* NULL except for global variables */
 	array_decl *arrayinit;
 
-	int ptr_depth;
-	/*
-	 * int x[5][]; -> arraysizes = { expr(5), NULL }
-	 *
-	 * for the last [], ptr_depth is ++'d
-	 */
-
-	function *func;
+	function *func_code;
 
 	int ignore; /* ignore during code-gen, for example ignoring overridden externs */
 #define struct_offset ignore
+
 	sym *sym;
+
+	/* recursive */
+	decl_ptr *decl_ptr;
 };
 
 struct array_decl
@@ -246,6 +251,7 @@ tree        *tree_new(void);
 expr        *expr_new(void);
 type        *type_new(void);
 decl        *decl_new(void);
+decl_ptr    *decl_ptr_new(void);
 decl        *decl_new_where(where *);
 array_decl  *array_decl_new(void);
 function    *function_new(void);
@@ -272,6 +278,10 @@ int   type_equal(const type *a, const type *b, int strict);
 int   type_size(const type *);
 int   decl_size(const decl *);
 int   decl_equal(const decl *, const decl *, int strict);
+
+#define decl_is_function(d) ((d)->decl_ptr->func)
+int   decl_ptr_depth(  const decl *);
+
 expr *expr_ptr_multiply(expr *, decl *);
 expr *expr_assignment(expr *to, expr *from);
 void function_empty_args(function *);
