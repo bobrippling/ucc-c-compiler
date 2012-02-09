@@ -8,8 +8,7 @@ cc: cc.c cc.h util/alloc.o
 cc1: util
 	make -C cc1
 
-cpp: util
-	make -C cpp
+cpp2: util
 	make -C cpp2
 
 util:
@@ -21,4 +20,4 @@ clean:
 	make -C cpp  clean
 	make -C util clean
 
-.PHONY: cc1 cpp util clean
+.PHONY: cc1 cpp2 util clean

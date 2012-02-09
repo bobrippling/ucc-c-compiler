@@ -30,6 +30,25 @@ void str_trim(char *str)
 	*s = '\0';
 }
 
+char *str_join(char **strs, const char *with)
+{
+	const int with_len = strlen(with);
+	int len;
+	char **itr;
+	char *ret, *p;
+
+	len = 1; /* \0 */
+	for(itr = strs; *itr; itr++)
+		len += strlen(*itr) + with_len;
+
+	p = ret = umalloc(len);
+
+	for(itr = strs; *itr; itr++)
+		p += sprintf(p, "%s%s", *itr, itr[1] ? with : "");
+
+	return ret;
+}
+
 char *ustrdup2(const char *a, const char *b)
 {
 	int len = b - a;

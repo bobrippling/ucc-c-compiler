@@ -9,6 +9,7 @@ typedef struct
 		TOKEN_OPEN_PAREN,
 		TOKEN_CLOSE_PAREN,
 		TOKEN_COMMA,
+		TOKEN_ELIPSIS,
 		TOKEN_OTHER
 	} tok;
 	char *w;
@@ -19,12 +20,12 @@ typedef struct
 typedef struct
 {
 	char *nam, *val;
-	int func;
+	enum { MACRO, FUNC, VARIADIC } type;
 	char **args;
 } macro;
 
 macro *macro_add(     const char *nam, const char *val);
-macro *macro_add_func(const char *nam, const char *val, char **args);
+macro *macro_add_func(const char *nam, const char *val, char **args, int variadic);
 
 macro *macro_find(const char *sp);
 void   macro_add_dir(char *d);

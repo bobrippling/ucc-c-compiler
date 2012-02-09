@@ -106,6 +106,9 @@ word:
 			t->tok = TOKEN_CLOSE_PAREN;
 			p++;
 			break; /* exit early */
+		}else if(!strncmp(p, "...", 3)){
+			t->tok = TOKEN_ELIPSIS;
+			p += 2;
 		}else if(c == '"'){
 			char *end  = strchr(p + 1, '"');
 			char c;
@@ -157,6 +160,7 @@ const char *token_str(token *t)
 		MAP(TOKEN_OPEN_PAREN,  "(");
 		MAP(TOKEN_CLOSE_PAREN, ")");
 		MAP(TOKEN_COMMA,       ",");
+		MAP(TOKEN_ELIPSIS,   "...");
 #undef MAP
 	}
 
@@ -197,10 +201,11 @@ void handle_define(token **tokens)
 
 	if(tokens[1] && tokens[1]->tok == TOKEN_OPEN_PAREN && !tokens[1]->had_whitespace){
 		/* function macro */
-		int i;
+		int i, variadic;
 		char **args;
 		char *val;
 
+		variadic = 0;
 		args = NULL;
 
 		for(i = 2; tokens[i]; i++){
@@ -208,6 +213,15 @@ void handle_define(token **tokens)
 				case TOKEN_CLOSE_PAREN:
 					i++;
 					goto for_fin;
+
+				case TOKEN_ELIPSIS:
+					variadic = 1;
+					i++;
+					if(tokens[i]->tok != TOKEN_CLOSE_PAREN)
+						die("expected: close paren");
+					i++;
+					goto for_fin;
+
 				case TOKEN_WORD:
 					dynarray_add((void ***)&args, ustrdup(token_str(tokens[i])));
 
@@ -232,7 +246,7 @@ for_fin:
 		else
 			val = tokens_join(tokens + i);
 
-		macro_add_func(name, val, args);
+		macro_add_func(name, val, args, variadic);
 
 		free(val);
 

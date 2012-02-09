@@ -5,6 +5,7 @@ char *ustrdup2(const char *a, const char *b);
 char *word_dup(const char *);
 
 char *str_quote(const char *s);
+char *str_join(char **, const char *with);
 void  str_trim(char *);
 
 char *word_replace(char *line, char *pos, const char *find, const char *replace);
