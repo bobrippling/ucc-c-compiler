@@ -295,7 +295,7 @@ decl **parse_decls(const int can_default, const int accept_field_width)
 			}
 		}while(accept(token_comma));
 
-		if(last){// && !last->func){
+		if(last && !decl_is_function(last)){
 next:
 			EAT(token_semicolon);
 		}

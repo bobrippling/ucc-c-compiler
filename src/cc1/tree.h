@@ -279,7 +279,7 @@ int   type_size(const type *);
 int   decl_size(const decl *);
 int   decl_equal(const decl *, const decl *, int strict);
 
-#define decl_is_function(d) ((d)->decl_ptr->func)
+#define decl_is_function(d) (!!(d)->decl_ptr->func)
 int   decl_ptr_depth(  const decl *);
 
 expr *expr_ptr_multiply(expr *, decl *);

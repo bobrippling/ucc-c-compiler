@@ -40,14 +40,17 @@ int fold_is_lvalue(expr *e)
 	 * valid lvaluess:
 	 *
 	 *   x = 5;
-	 *   (cast)expr = 5;
+	 *   (cast)[above] = 5;
 	 *   *[above] = 5;
 	 *
 	 * also can't be const, checked in fold_assign (since we allow const inits)
 	 */
 
-	if(e->type == expr_identifier && !decl_is_function(e->tree_type))
+	if(e->type == expr_identifier){
+		if(decl_is_function(e->tree_type))
+			return !e->tree_type->decl_ptr->func->code;
 		return 1;
+	}
 
 	if(e->type == expr_op)
 		switch(e->op){
@@ -121,7 +124,7 @@ void fold_funcall(expr *e, symtable *stab)
 		df = decl_new_where(&e->where);
 
 		df->decl_ptr = decl_ptr_new();
-		decl_is_function(df) = function_new();
+		df->decl_ptr->func = function_new();
 
 		df->type->primitive = type_int;
 		df->spel = spel;
@@ -140,7 +143,7 @@ void fold_funcall(expr *e, symtable *stab)
 
 		if(e->funcargs)
 			/* set up the function args as if it's "x()" - i.e. any args */
-			function_empty_args(decl_is_function(df));
+			function_empty_args(df->decl_ptr->func);
 
 	}else{
 		df = e->sym->decl;
@@ -149,7 +152,7 @@ void fold_funcall(expr *e, symtable *stab)
 	GET_TREE_TYPE(e->sym->decl);
 
 	/* func count comparison, only if the func has arg-decls, or the func is f(void) */
-	if(decl_is_function(df)->args || df->decl_ptr->func->args_void){
+	if(df->decl_ptr->func->args || df->decl_ptr->func->args_void){
 		expr **iter_arg;
 		decl **iter_decl;
 		int count_decl, count_arg;
@@ -158,16 +161,16 @@ void fold_funcall(expr *e, symtable *stab)
 		count_decl = count_arg = 0;
 
 		for(iter_arg  = e->funcargs;    iter_arg  && *iter_arg;  iter_arg++,  count_arg++);
-		for(iter_decl = decl_is_function(df)->args; iter_decl && *iter_decl; iter_decl++, count_decl++);
+		for(iter_decl = df->decl_ptr->func->args; iter_decl && *iter_decl; iter_decl++, count_decl++);
 
-		if(count_decl != count_arg && (decl_is_function(df)->variadic ? count_arg < count_decl : 1)){
+		if(count_decl != count_arg && (df->decl_ptr->func->variadic ? count_arg < count_decl : 1)){
 			die_at(&e->where, "too %s arguments to function %s (got %d, need %d)",
 					count_arg > count_decl ? "many" : "few",
 					df->spel, count_arg, count_decl);
 		}
 
 		if(e->funcargs){
-			for(i = 0, iter_decl = decl_is_function(df)->args, iter_arg = e->funcargs;
+			for(i = 0, iter_decl = df->decl_ptr->func->args, iter_arg = e->funcargs;
 					iter_decl[i];
 					i++){
 				fold_decl_equal(iter_decl[i], iter_arg[i]->tree_type, &e->where,
@@ -276,6 +279,7 @@ void fold_expr(expr *e, symtable *stab)
 
 				e->tree_type->type->spec |= spec_static;
 
+				e->tree_type->decl_ptr = decl_ptr_new();
 				e->tree_type->decl_ptr->child = decl_ptr_new();
 
 				array_sym = SYMTAB_ADD(symtab_grandparent(stab), decl_new_where(&e->where), stab->parent ? sym_local : sym_global);
@@ -570,7 +574,7 @@ case_add:
 					decl *d = *iter;
 
 					if(decl_is_function(d) && d->decl_ptr->func->code)
-						die_at(&decl_is_function(d)->code->where, "can't nest functions");
+						die_at(&d->decl_ptr->func->code->where, "can't nest functions");
 
 					fold_decl(d, t->symtab);
 
@@ -626,13 +630,13 @@ void fold_func(decl *df, symtable *globsymtab)
 {
 	int i;
 	decl **diter;
-	function *f = decl_is_function(df);
+	function *f = df->decl_ptr->func;
 
 	curdecl_func = df;
 
 	fold_decl(df, globsymtab);
 
-	for(diter = decl_is_function(df)->args; diter && *diter; diter++)
+	for(diter = df->decl_ptr->func->args; diter && *diter; diter++)
 		fold_decl(*diter, globsymtab);
 
 	if(f->args)
@@ -719,7 +723,7 @@ void fold(symtable *globs)
 		decl *d;
 		function *f;
 		d = decl_new();
-		f = decl_is_function(d) = function_new();
+		f = d->decl_ptr->func = function_new();
 		d->spel = ustrdup(ASM_INLINE_FNAME);
 
 
