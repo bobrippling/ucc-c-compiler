@@ -45,17 +45,18 @@ macro *macro_add(const char *nam, const char *val)
 
 	m->nam = ustrdup(nam);
 	m->val = val ? ustrdup(val) : NULL;
+	m->type = MACRO;
 
 	DEBUG(DEBUG_NORM, "macro_add(\"%s\", \"%s\")\n", nam, val);
 
 	return m;
 }
 
-macro *macro_add_func(const char *nam, const char *val, char **args)
+macro *macro_add_func(const char *nam, const char *val, char **args, int variadic)
 {
 	macro *m  = macro_add(nam, val);
 	m->args = args;
-	m->func = 1;
+	m->type = variadic ? VARIADIC : FUNC;
 	return m;
 }
 
@@ -85,7 +86,7 @@ void filter_macro(char **pline)
 		macro *m = *iter;
 		int did_replace = 0;
 
-		if(m->func){
+		if(m->type != MACRO){
 			char *s, *last;
 			char **args;
 			char *open_b, *close_b;
@@ -142,7 +143,7 @@ relook:
 				got = dynarray_count((void **)args);
 				exp = dynarray_count((void **)m->args);
 
-				if(got != exp){
+				if(m->type == VARIADIC ? got <= exp : got != exp){
 					if(debug)
 						for(i = 0; i < got; i++)
 							fprintf(stderr, "args[%d] = \"%s\"\n", i, args[i]);
@@ -189,8 +190,19 @@ relook:
 			}
 
 			if(args){
-				for(i = 0; args[i]; i++)
-					word_replace_g(&replace, m->args[i], args[i]);
+				i = 0;
+
+				if(m->args)
+					for(; m->args[i]; i++)
+						word_replace_g(&replace, m->args[i], args[i]);
+
+				if(m->type == VARIADIC){
+					char *rest = str_join(args + i, ", ");
+
+					word_replace_g(&replace, "__VA_ARGS__", rest);
+					free(rest);
+				}
+
 				dynarray_free((void ***)&args, free);
 			}
 
