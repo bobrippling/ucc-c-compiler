@@ -287,9 +287,9 @@ int decl_equal(const decl *a, const decl *b, int strict)
 
 	return ptreq && type_equal(a->type, b->type, strict);
 #else
-	ICE("TODO");
+	fprintf(stderr, "WARNING: assuming decls equal (%s:%d)\n", __FILE__, __LINE__);
 	(void)(a - b + strict);
-	return 5;
+	return 1;
 #endif
 }
 

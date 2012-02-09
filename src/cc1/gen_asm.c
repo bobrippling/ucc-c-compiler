@@ -416,7 +416,7 @@ void walk_tree(tree *t)
 
 void gen_asm_func(decl *d)
 {
-	function *f = decl_is_function(d);
+	function *f = d->decl_ptr->func;
 	if(f->code){
 		int offset;
 
@@ -461,7 +461,6 @@ void gen_asm_global_var(decl *d)
 		int arraylen = 1;
 		//int i;
 
-		ICE("array");
 		/*for(i = 0; d->arraysizes && d->arraysizes[i]; i++)
 			arraylen = (i + 1) * d->arraysizes[i]->val.i.val;*/
 
