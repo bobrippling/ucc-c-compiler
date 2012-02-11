@@ -1,6 +1,6 @@
 include src_config.mk
 
-all: cc1 cpp cc
+all: cc1 cpp2 cc
 
 cc: cc.c cc.h util/alloc.o
 	${CC} ${CFLAGS} -o $@ cc.c util/alloc.o
@@ -17,7 +17,7 @@ util:
 clean:
 	rm -f cc *.o
 	make -C cc1  clean
-	make -C cpp  clean
+	make -C cpp2 clean
 	make -C util clean
 
 .PHONY: cc1 cpp2 util clean

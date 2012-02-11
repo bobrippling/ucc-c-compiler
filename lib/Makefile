@@ -5,7 +5,7 @@ OBJ    = crt.o syscall.o \
 				 ucc.o \
          sys/fcntl.o sys/wait.o sys/mman.o
 
-LIBDEPS = ${UCC_CC} ../src/cc1/cc1 ../src/cpp/cpp
+LIBDEPS = ${UCC_CC} ../src/cc1/cc1 ../src/cpp2/cpp
 
 BUILD_CMD = ${UCC_CC} -c -o $@ $<
 
