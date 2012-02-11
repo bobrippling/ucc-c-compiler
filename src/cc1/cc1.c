@@ -70,6 +70,7 @@ struct
 	{ 1,  "enable-asm",    FOPT_ENABLE_ASM   },
 	{ 1,  "strict-types",  FOPT_STRICT_TYPES },
 	{ 1,  "const-fold",    FOPT_CONST_FOLD   },
+	{ 1,  "english",       FOPT_ENGLISH      },
 
 	{ 0,  NULL, 0 }
 };

@@ -268,7 +268,6 @@ int curtok_is_xequal()
 	return curtok_to_xequal(curtok) != token_unknown;
 }
 
-
 void read_string(char **sptr, int *plen)
 {
 	char *end = strchr(bufferpos, '"'), *const start = bufferpos;

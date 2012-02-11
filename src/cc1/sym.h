@@ -27,7 +27,7 @@ sym *sym_new(decl *d, enum sym_type t);
 
 symtable *symtab_new(void);
 symtable *symtab_child(symtable *);
-symtable *symtab_grandparent(symtable *child);
+symtable *symtab_root(symtable *child);
 
 #define SYMTAB_APPEND  0
 #define SYMTAB_PREPEND 1

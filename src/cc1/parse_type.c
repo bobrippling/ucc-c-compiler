@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "../util/util.h"
 #include "../util/alloc.h"
@@ -25,7 +26,7 @@ extern struc    **structs_current;
 
 
 type  *parse_type_struct(void);
-decl_ptr *parse_decl_ptr(decl *parent, enum decl_mode mode);
+decl_ptr *parse_decl_ptr(enum decl_mode mode);
 
 
 #define INT_TYPE(t) do{ t = type_new(); t->primitive = type_int; }while(0)
@@ -55,7 +56,7 @@ type *parse_type_struct()
 		t->struc = struct_find(structs_current, spel);
 
 		if(!t->struc)
-			die_at(NULL, "struct %s not defined", spel);
+			ICE("struct %s not defined FIXME", spel); /* this should be done at fold time */
 
 		free(spel);
 	}
@@ -123,10 +124,10 @@ type *parse_type()
 	return t;
 }
 
-decl_ptr *parse_decl_ptr_nofunc(decl *parent, enum decl_mode mode)
+decl_ptr *parse_decl_ptr_nofunc(enum decl_mode mode)
 {
 	if(accept(token_open_paren)){
-		decl_ptr *ret = parse_decl_ptr(parent, mode);
+		decl_ptr *ret = parse_decl_ptr(mode);
 		EAT(token_close_paren);
 		return ret;
 
@@ -136,7 +137,7 @@ decl_ptr *parse_decl_ptr_nofunc(decl *parent, enum decl_mode mode)
 		if(accept(token_const))
 			ret->is_const = 1;
 
-		ret->child = parse_decl_ptr(parent, mode);
+		ret->child = parse_decl_ptr(mode);
 		return ret;
 
 	}else if(curtok == token_identifier){
@@ -145,7 +146,7 @@ decl_ptr *parse_decl_ptr_nofunc(decl *parent, enum decl_mode mode)
 		if(mode & DECL_SPEL_NO)
 			die_at(&ret->where, "identifier unexpected");
 
-		parent->spel = token_current_spel();
+		ret->spel = token_current_spel();
 		EAT(token_identifier);
 
 		return ret;
@@ -156,9 +157,6 @@ decl_ptr *parse_decl_ptr_nofunc(decl *parent, enum decl_mode mode)
 	return NULL;
 
 #if 0
-	if(accept(token_open_paren))
-		d->func = parse_function();
-
 	while(accept(token_open_square)){
 		expr *size;
 		int fin;
@@ -180,20 +178,170 @@ decl_ptr *parse_decl_ptr_nofunc(decl *parent, enum decl_mode mode)
 #endif
 }
 
-decl_ptr *parse_decl_ptr(decl *parent, enum decl_mode mode)
+funcargs *parse_func_arglist()
+{
+	/*
+	 * either:
+	 *
+	 * [<type>] <name>( [<type> [<name>]]... )
+	 * {
+	 * }
+	 *
+	 * with optional {}
+	 *
+	 * or
+	 *
+	 * [<type>] <name>( [<name>...] )
+	 *   <type> <name>, ...;
+	 *   <type> <name>, ...;
+	 * {
+	 * }
+	 *
+	 * non-optional code
+	 *
+	 * i.e.
+	 *
+	 * int x(int y);
+	 * int x(int y){}
+	 *
+	 * or
+	 *
+	 * int x(y)
+	 *   int y;
+	 * {
+	 * }
+	 *
+	 */
+	funcargs *args;
+	decl *argdecl;
+
+	args = funcargs_new();
+
+	if(curtok == token_close_paren)
+		goto empty_func;
+
+	if(curtok == token_identifier && !TYPEDEF_FIND())
+		goto old_func;
+
+	argdecl = parse_decl_single(DECL_CAN_DEFAULT);
+
+	if(argdecl){
+		do{
+			dynarray_add((void ***)&args->arglist, argdecl);
+
+			if(curtok == token_close_paren)
+				break;
+
+			EAT(token_comma);
+
+			if(accept(token_elipsis)){
+				args->variadic = 1;
+				break;
+			}
+
+			/* continue loop */
+			/* actually, we don't need a type here, default to int, i think */
+			argdecl = parse_decl_single(DECL_CAN_DEFAULT);
+		}while(argdecl);
+
+		if(dynarray_count((void *)args->arglist) == 1 &&
+				args->arglist[0]->type->primitive == type_void &&
+				decl_ptr_depth(args->arglist[0]) == 0 &&
+				!decl_spel(args->arglist[0])){
+			/* x(void); */
+			function_empty_args(args);
+			args->args_void = 1; /* (void) vs () */
+		}
+
+	}else{
+		int i, n_spels, n_decls;
+		char **spells;
+		decl **argar;
+
+old_func:
+		spells = NULL;
+
+		ICE("TODO: old functions (on %s)", token_to_str(curtok));
+
+		do{
+			if(curtok != token_identifier)
+				EAT(token_identifier); /* error */
+
+			dynarray_add((void ***)&spells, token_current_spel());
+			EAT(token_identifier);
+
+			if(accept(token_close_paren))
+				break;
+			EAT(token_comma);
+
+		}while(1);
+
+		/* parse decls, then check they correspond */
+		argar = PARSE_DECLS();
+
+		n_decls = dynarray_count((void *)argar);
+		n_spels = dynarray_count((void *)spells);
+
+		if(n_decls > n_spels)
+			die_at(argar ? &argar[0]->where : &args->where, "old-style funcargs decl: mismatching argument counts");
+
+		for(i = 0; i < n_spels; i++){
+			int j, found;
+
+			found = 0;
+			for(j = 0; j < n_decls; j++)
+				if(!strcmp(spells[i], decl_spel(argar[j]))){
+					if(argar[j]->init)
+						die_at(&argar[j]->where, "parameter \"%s\" is initialised", decl_spel(argar[j]));
+
+					found = 1;
+					break;
+				}
+
+			if(!found){
+				/*
+					* void f(x){ ... }
+					* - x is implicitly int
+					*/
+				decl *d = decl_new_with_ptr();
+				d->type->primitive = type_int;
+				decl_set_spel(d, spells[i]);
+				spells[i] = NULL; /* prevent free */
+				dynarray_add((void ***)&argar, d);
+			}
+		}
+
+		/* no need to check the other way around, since the counts are equal */
+		if(spells)
+			dynarray_free((void ***)&spells, free);
+
+		args->arglist = argar;
+
+		if(curtok != token_open_block)
+			die_at(&args->where, "no code for old-style funcargs");
+		//args->code = parse_code();
+	}
+
+empty_func:
+
+	return args;
+}
+
+decl_ptr *parse_decl_ptr(enum decl_mode mode)
 {
 	decl_ptr *dp;
 
-	dp = parse_decl_ptr_nofunc(parent, mode);
+	dp = parse_decl_ptr_nofunc(mode);
 
-	if(accept(token_open_paren)){
+	if(dp && accept(token_open_paren)){
 		/*
 		 * e.g.:
 		 * int x(
 		 * int (*x)(
 		 * int (((x))(
 		 */
-		dp->func = parse_function();
+		dp->func = parse_func_arglist();
+		EAT(token_close_paren);
 	}
 
 	return dp;
@@ -202,13 +350,18 @@ decl_ptr *parse_decl_ptr(decl *parent, enum decl_mode mode)
 decl *parse_decl(type *t, enum decl_mode mode)
 {
 	decl *d = decl_new();
+	decl_ptr *dp = parse_decl_ptr(mode);
+
+	if(!dp)
+		dp = decl_ptr_new();
 
 	d->type = t;
-
-	d->decl_ptr = parse_decl_ptr(d, mode);
+	d->decl_ptr = dp;
 
 	if(accept(token_assign))
 		d->init = parse_expr_funcallarg(); /* int x = 5, j; - don't grab the comma expr */
+	else if(curtok == token_open_block)
+		d->func_code = parse_code();
 
 	return d;
 }
@@ -275,7 +428,7 @@ decl **parse_decls(const int can_default, const int accept_field_width)
 
 				/*if(are_tdefs)
 					if(d->func)
-						die_at(&d->where, "can't have a typedef function");
+						die_at(&d->where, "can't have a typedef funcargs");
 
 				if(d->func){
 					if(d->func->code){
@@ -295,7 +448,7 @@ decl **parse_decls(const int can_default, const int accept_field_width)
 			}
 		}while(accept(token_comma));
 
-		if(last && !decl_is_function(last)){
+		if(last && !decl_has_func_code(last)){
 next:
 			EAT(token_semicolon);
 		}

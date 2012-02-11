@@ -7,7 +7,8 @@ enum op_type        curtok_to_op(void);
 
 void eat(enum token, const char *fnam, int line);
 
-#define EAT(t) eat(t, __FILE__, __LINE__)
+#define EAT(t)      eat((t), __FILE__, __LINE__)
+#define accept(tok) ((tok) == curtok ? (EAT(tok), 1) : 0)
 
 int curtok_is_type(void);
 int curtok_is_type_specifier(void);

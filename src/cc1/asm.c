@@ -36,9 +36,10 @@ char *asm_label_array(int str)
 
 char *asm_label_static_local(decl *df, const char *spel)
 {
-	char *ret = umalloc(strlen(df->spel) + strlen(spel) + 9);
-	UCC_ASSERT(decl_is_function(df), "no function for asm_label_static_local()");
-	sprintf(ret, "%s.static_%s", df->spel, spel);
+	char *dsp = decl_spel(df);
+	char *ret = umalloc(strlen(dsp) + strlen(spel) + 9);
+	UCC_ASSERT(decl_has_func_code(df), "no funcargs for asm_label_static_local()");
+	sprintf(ret, "%s.static_%s", dsp, spel);
 	return ret;
 }
 
@@ -88,13 +89,14 @@ void asm_sym(enum asm_sym_type t, sym *s, const char *reg)
 		case sym_arg:
 		case sym_global:
 		{
+			char *const dsp = decl_spel(s->decl);
 			int is_auto = s->type == sym_local;
 			char  stackbrackets[16];
 			char *brackets;
 
 			if(s->type == sym_global || (s->type == sym_local && (s->decl->type->spec & (spec_extern | spec_static)))){
 				const char *type_s = "";
-				const int bracket_len = strlen(s->decl->spel) + 16;
+				const int bracket_len = strlen(dsp) + 16;
 
 				brackets = umalloc(bracket_len + 1);
 
@@ -103,7 +105,7 @@ void asm_sym(enum asm_sym_type t, sym *s, const char *reg)
 
 				/* get warnings for "lea rax, [qword tim]", just do "lea rax, [tim]" */
 				snprintf(brackets, bracket_len, "[%s%s]",
-						t == ASM_LEA ? "" : type_s, s->decl->spel);
+						t == ASM_LEA ? "" : type_s, dsp);
 			}else{
 				brackets = stackbrackets;
 				snprintf(brackets, sizeof stackbrackets, "[rbp %c %d]",
@@ -116,7 +118,7 @@ void asm_sym(enum asm_sym_type t, sym *s, const char *reg)
 					t == ASM_SET ? brackets : reg,
 					t == ASM_SET ? reg      : brackets,
 					t == ASM_LEA ? "&"      : "",
-					s->decl->spel
+					dsp
 					);
 
 			if(brackets != stackbrackets)
@@ -248,7 +250,7 @@ char asm_type_ch(decl *d)
 
 void asm_declare_single(FILE *f, decl *d)
 {
-	fprintf(f, "%s d%c ", d->spel, asm_type_ch(d));
+	fprintf(f, "%s d%c ", decl_spel(d), asm_type_ch(d));
 
 	asm_declare_single_part(f, d->init);
 

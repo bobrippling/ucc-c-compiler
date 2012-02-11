@@ -72,18 +72,18 @@ void die(const char *fmt, ...)
 
 #define ICE_STR(s)  \
 	va_list l; \
-	fprintf(stderr, s " @ %s:%d: ", f, line); \
+	fprintf(stderr, s " @ %s:%d: %s: ", f, line, fn); \
 	va_start(l, fmt); \
 	vfprintf(stderr, fmt, l); \
 	fputc('\n', stderr)
 
-void ice(const char *f, int line, const char *fmt, ...)
+void ice(const char *f, int line, const char *fn, const char *fmt, ...)
 {
 	ICE_STR("ICE");
 	abort();
 }
 
-void icw(const char *f, int line, const char *fmt, ...)
+void icw(const char *f, int line, const char *fn, const char *fmt, ...)
 {
 	ICE_STR("ICW");
 }

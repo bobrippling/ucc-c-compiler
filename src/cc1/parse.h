@@ -9,7 +9,6 @@ enum decl_mode
 };
 
 extern enum token curtok;
-#define accept(tok) ((tok) == curtok ? (EAT(tok), 1) : 0)
 #define TYPEDEF_FIND() (curtok == token_identifier ? typedef_find(typedefs_current, token_current_spel_peek()) : NULL)
 #define PARSE_DECLS() parse_decls(0, 0)
 
@@ -17,7 +16,7 @@ extern enum token curtok;
 
 #define parse_expr() parse_expr_comma()
 #define parse_expr_funcallarg() parse_expr_if()
-#define parse_possible_decl() (curtok == token_identifier || curtok == token_multiply)
+#define parse_possible_decl() (curtok == token_identifier || curtok == token_multiply || curtok == token_open_paren)
 expr *parse_expr();
 
 decl *parse_decl_single(enum decl_mode);
@@ -31,9 +30,6 @@ expr *parse_expr_binary_op(void); /* needed to limit [+-] parsing */
 expr *parse_expr_array(void);
 expr *parse_expr_if(void);
 expr *parse_expr_deref(void);
-
-
-function *parse_function(void);
 
 symtable *parse(void);
 

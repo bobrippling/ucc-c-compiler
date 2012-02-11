@@ -22,7 +22,7 @@ static int indent = 0;
 
 void print_tree(tree *t);
 void print_expr(expr *e);
-void print_func(decl *d);
+void print_decl(decl *d, int idt, int nl, int sym_offset, int print_ignore);
 void idt_print(void);
 
 void idt_print()
@@ -44,26 +44,62 @@ void idt_printf(const char *fmt, ...)
 	va_end(l);
 }
 
+void print_decl_eng(decl *d)
+{
+	(void)d;
+	/*if(dp->func){
+		fprintf(cc1_out, "function returning ");
+
+	}*/
+}
+
+void print_decl_ptr(decl_ptr *dp)
+{
+	if(dp->child){
+		if(dp->func)
+			fputc('(', cc1_out);
+
+		fprintf(cc1_out, "*%s", dp->is_const ? "const " : "");
+
+		print_decl_ptr(dp->child);
+
+		if(dp->func){
+			funcargs *fargs = dp->func;
+			decl **iter;
+
+			fputs(")(", cc1_out);
+
+			for(iter = fargs->arglist; iter && *iter; iter++){
+				print_decl(*iter, 0, 0, 0, 0);
+				fprintf(cc1_out, "%s", iter[1] ? ", " : "");
+			}
+			fprintf(cc1_out, "%s)", fargs->variadic ? ", ..." : "");
+		}
+
+		UCC_ASSERT(!dp->spel, "spel found on non-leaf decl");
+	}else if(dp->spel){
+		fputs(dp->spel, cc1_out);
+	}
+}
+
 void print_decl(decl *d, int idt, int nl, int sym_offset, int print_ignore)
 {
-	int i;
-
 	if(idt)
 		idt_print();
 
 	if(print_ignore && d->ignore)
 		fprintf(cc1_out, "(extern ignored) ");
 
-	fputs(type_to_str(d->type), cc1_out);
+	if((fopt_mode & FOPT_ENGLISH) == 0){
+		fputs(type_to_str(d->type), cc1_out);
 
-	if(decl_ptr_depth(d) || d->spel)
-		fputc(' ', cc1_out);
+		if(decl_spel(d))
+			fputc(' ', cc1_out);
 
-	for(i = decl_ptr_depth(d); i > 0; i--)
-		fputc('*', cc1_out);
-
-	if(d->spel)
-		fputs(d->spel, cc1_out);
+		print_decl_ptr(d->decl_ptr);
+	}else{
+		print_decl_eng(d);
+	}
 
 	if(sym_offset){
 		if(d->sym)
@@ -83,6 +119,17 @@ void print_decl(decl *d, int idt, int nl, int sym_offset, int print_ignore)
 		indent--;
 	}*/
 	indent--;
+
+	if(decl_has_func_code(d)){
+		decl **iter;
+
+		for(iter = d->func_code->symtab->decls; iter && *iter; iter++)
+			idt_printf("offset of %s = %d\n", decl_spel(*iter), (*iter)->sym->offset);
+
+		idt_printf("funcargs stack space %d\n", d->func_code->symtab->auto_total_size);
+
+		print_tree(d->func_code);
+	}
 }
 
 void print_sym(sym *s)
@@ -269,10 +316,7 @@ void print_tree(tree *t)
 			decl *d = *iter;
 
 			indent++;
-			if(decl_is_function(d))
-				print_func(d);
-			else
-				print_decl(d, 1, 1, 1, 1);
+			print_decl(d, 1, 1, 1, 1);
 			indent--;
 		}
 	}
@@ -287,36 +331,6 @@ void print_tree(tree *t)
 			indent--;
 		}
 	}
-}
-
-void print_func(decl *d)
-{
-	function *f = decl_is_function(d);
-	decl **iter;
-
-	idt_printf("function: ");
-	indent++;
-
-	print_decl(d, 0, 0, 0, 1);
-
-	fputc('(', cc1_out);
-	for(iter = f->args; iter && *iter; iter++){
-		print_decl(*iter, 0, 0, 0, 1);
-		fprintf(cc1_out, "%s", iter[1] ? ", " : "");
-	}
-
-	fprintf(cc1_out, "%s)\n", f->variadic ? ", ..." : "");
-
-	if(f->code){
-		for(iter = f->args; iter && *iter; iter++)
-			idt_printf("offset of %s = %d\n", (*iter)->spel, (*iter)->sym->offset);
-
-		idt_printf("function stack space %d\n", f->code->symtab->auto_total_size);
-
-		print_tree(f->code);
-	}
-
-	indent--;
 }
 
 void print_struct(struc *st)
@@ -349,22 +363,14 @@ void gen_str(symtable *symtab)
 	}
 
 	for(diter = symtab->decls; diter && *diter; diter++){
-		if((*diter)->decl_ptr->func){
-			print_func(*diter);
-		}else{
-			fprintf(cc1_out, "global variable:\n");
-
+		print_decl(*diter, 1, 1, 0, 1);
+		if((*diter)->init){
+			idt_printf("init:\n");
 			indent++;
-			print_decl(*diter, 0, 1, 0, 1);
-			if((*diter)->init){
-				indent++;
-				fprintf(cc1_out, "init:\n");
-				indent++;
-				print_expr((*diter)->init);
-				indent -= 2;
-			}
+			print_expr((*diter)->init);
 			indent--;
 		}
+
 		fputc('\n', cc1_out);
 	}
 }

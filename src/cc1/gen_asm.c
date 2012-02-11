@@ -19,7 +19,7 @@
 
 static char *curfunc_lblfin;
 
-void gen_asm_global_var(decl *d);
+void gen_asm_global(decl *d);
 
 void asm_ax_to_store(expr *store, symtable *stab)
 {
@@ -400,7 +400,7 @@ void walk_tree(tree *t)
 				for(diter = t->decls; diter && *diter; diter++){
 					decl *d = *diter;
 					if(d->type->spec & (spec_static | spec_extern))
-						gen_asm_global_var(d);
+						gen_asm_global(d);
 				}
 
 				for(titer = t->codes; *titer; titer++)
@@ -414,22 +414,27 @@ void walk_tree(tree *t)
 	}
 }
 
-void gen_asm_func(decl *d)
+void gen_asm_global(decl *d)
 {
-	function *f = d->decl_ptr->func;
-	if(f->code){
+	if(d->type->spec & spec_extern){
+		/* should be fine... */
+		asm_tempf(cc_out[SECTION_BSS], 0, "extern %s", decl_spel(d));
+		return;
+	}
+
+	if(decl_has_func_code(d)){
 		int offset;
 
-		asm_label(d->spel);
+		asm_label(decl_spel(d));
 		asm_temp(1, "push rbp");
 		asm_temp(1, "mov rbp, rsp");
 
-		curfunc_lblfin = asm_label_code(d->spel);
+		curfunc_lblfin = asm_label_code(decl_spel(d));
 
-		if((offset = f->code->symtab->auto_total_size))
+		if((offset = d->func_code->symtab->auto_total_size))
 			asm_temp(1, "sub rsp, %d", offset);
 
-		walk_tree(f->code);
+		walk_tree(d->func_code);
 
 		asm_label(curfunc_lblfin);
 		if(offset)
@@ -438,20 +443,8 @@ void gen_asm_func(decl *d)
 		asm_temp(1, "leave");
 		asm_temp(1, "ret");
 		free(curfunc_lblfin);
-	}else if(d->type->spec & spec_extern){
-		asm_temp(0, "extern %s", d->spel);
-	}
-}
 
-void gen_asm_global_var(decl *d)
-{
-	if(d->type->spec & spec_extern){
-		/* should be fine... */
-		asm_tempf(cc_out[SECTION_BSS], 0, "extern %s", d->spel);
-		return;
-	}
-
-	if(d->arrayinit){
+	}else if(d->arrayinit){
 		asm_declare_array(SECTION_DATA, d->arrayinit->label, d->arrayinit);
 
 	}else if(d->init && !const_expr_is_zero(d->init)){
@@ -466,7 +459,7 @@ void gen_asm_global_var(decl *d)
 
 		/* TODO: check that i+1 is correct for the order here */
 
-		asm_tempf(cc_out[SECTION_BSS], 0, "%s res%c %d", d->spel, asm_type_ch(d), arraylen);
+		asm_tempf(cc_out[SECTION_BSS], 0, "%s res%c %d", decl_spel(d), asm_type_ch(d), arraylen);
 	}
 }
 
@@ -480,11 +473,8 @@ void gen_asm(symtable *globs)
 			continue;
 
 		if(!(d->type->spec & spec_static) && !(d->type->spec & spec_extern))
-			asm_temp(0, "global %s", d->spel);
+			asm_temp(0, "global %s", decl_spel(d));
 
-		if(decl_is_function(d))
-			gen_asm_func(d);
-		else
-			gen_asm_global_var(d);
+		gen_asm_global(d);
 	}
 }

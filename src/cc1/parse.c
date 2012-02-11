@@ -592,159 +592,6 @@ tree *parse_for()
 	return t;
 }
 
-function *parse_function()
-{
-	/*
-	 * either:
-	 *
-	 * [<type>] <name>( [<type> [<name>]]... )
-	 * {
-	 * }
-	 *
-	 * with optional {}
-	 *
-	 * or
-	 *
-	 * [<type>] <name>( [<name>...] )
-	 *   <type> <name>, ...;
-	 *   <type> <name>, ...;
-	 * {
-	 * }
-	 *
-	 * non-optional code
-	 *
-	 * i.e.
-	 *
-	 * int x(int y);
-	 * int x(int y){}
-	 *
-	 * or
-	 *
-	 * int x(y)
-	 *   int y;
-	 * {
-	 * }
-	 *
-	 */
-	function *f;
-	decl *argdecl;
-
-	f = function_new();
-
-	if(accept(token_close_paren))
-		goto empty_func;
-	if(curtok == token_identifier && !TYPEDEF_FIND())
-		goto old_func;
-
-	argdecl = parse_decl_single(DECL_CAN_DEFAULT);
-
-	if(argdecl){
-		do{
-			dynarray_add((void ***)&f->args, argdecl);
-
-			if(curtok == token_close_paren)
-				break;
-
-			EAT(token_comma);
-
-			if(accept(token_elipsis)){
-				f->variadic = 1;
-				break;
-			}
-
-			/* continue loop */
-			/* actually, we don't need a type here, default to int, i think */
-			argdecl = parse_decl_single(DECL_CAN_DEFAULT);
-		}while(argdecl);
-
-		EAT(token_close_paren);
-
-		ICE("TODO .+2");
-		if(dynarray_count((void *)f->args) == 1 &&
-				f->args[0]->type->primitive == type_void &&
-				//f->args[0]->ptr_depth == 0 &&
-				f->args[0]->spel == NULL){
-			/* x(void); */
-			function_empty_args(f);
-			f->args_void = 1; /* (void) vs () */
-		}
-
-empty_func:
-		if(curtok != token_semicolon)
-			f->code = parse_code();
-		else
-			EAT(token_semicolon);
-
-	}else{
-		int i, n_spels, n_decls;
-		char **spells;
-		decl **args;
-
-old_func:
-		spells = NULL;
-
-		do{
-			if(curtok != token_identifier)
-				die_at(&f->where, "expected: identifier, got %s", token_to_str(curtok));
-
-			dynarray_add((void ***)&spells, token_current_spel());
-			EAT(token_identifier);
-
-			if(accept(token_close_paren))
-				break;
-			EAT(token_comma);
-
-		}while(1);
-
-		/* parse decls, then check they correspond */
-		args = PARSE_DECLS();
-
-		n_decls = dynarray_count((void *)args);
-		n_spels = dynarray_count((void *)spells);
-
-		if(n_decls > n_spels)
-			die_at(args ? &args[0]->where : &f->where, "old-style function decl: mismatching argument counts");
-
-		for(i = 0; i < n_spels; i++){
-			int j, found;
-
-			found = 0;
-			for(j = 0; j < n_decls; j++)
-				if(!strcmp(spells[i], args[j]->spel)){
-					if(args[j]->init)
-						die_at(&args[j]->where, "parameter \"%s\" is initialised", args[j]->spel);
-
-					found = 1;
-					break;
-				}
-
-			if(!found){
-				/*
-					* void f(x){ ... }
-					* - x is implicitly int
-					*/
-				decl *d = decl_new();
-				d->type->primitive = type_int;
-				d->spel = spells[i];
-				spells[i] = NULL; /* prevent free */
-				dynarray_add((void ***)&args, d);
-			}
-		}
-
-		/* no need to check the other way around, since the counts are equal */
-		if(spells)
-			dynarray_free((void ***)&spells, free);
-
-		f->args = args;
-
-		if(curtok != token_open_block)
-			die_at(&f->where, "no code for old-style function");
-		f->code = parse_code();
-	}
-
-	return f;
-}
-
 tree *parse_code_block()
 {
 	tree *t = tree_new_code();
@@ -764,7 +611,7 @@ tree *parse_code_block()
 
 			e = expr_new();
 			e->type = expr_identifier;
-			e->spel = (*diter)->spel;
+			e->spel = decl_spel(*diter);
 
 			dynarray_add((void ***)&t->codes, expr_to_tree(expr_assignment(e, (*diter)->init)));
 
@@ -890,8 +737,6 @@ symtable *parse()
 		}
 
 	globals->structs = structs_current; /* FIXME: structs should be per-block */
-
-	EAT(token_eof);
 
 	return globals;
 }
