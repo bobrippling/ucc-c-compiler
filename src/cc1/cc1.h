@@ -45,6 +45,7 @@ enum fopt
 	FOPT_ENABLE_ASM   = 1 << 0,
 	FOPT_STRICT_TYPES = 1 << 1,
 	FOPT_CONST_FOLD   = 1 << 2,
+	FOPT_ENGLISH      = 1 << 3,
 };
 
 extern enum fopt fopt_mode;

@@ -46,7 +46,7 @@ expr *expr_new()
 {
 	expr *e = umalloc(sizeof *e);
 	where_new(&e->where);
-	e->tree_type = decl_new();
+	e->tree_type = decl_new_with_ptr();
 	return e;
 }
 
@@ -83,11 +83,25 @@ decl *decl_new()
 	return d;
 }
 
+decl *decl_new_with_ptr()
+{
+	decl *d = decl_new();
+	d->decl_ptr = decl_ptr_new();
+	return d;
+}
+
 decl *decl_new_where(where *w)
 {
 	decl *d = decl_new();
 	memcpy(&d->where,       w, sizeof w);
 	memcpy(&d->type->where, w, sizeof w);
+	return d;
+}
+
+decl *decl_new_where_with_ptr(where *w)
+{
+	decl *d = decl_new_where(w);
+	d->decl_ptr = decl_ptr_new();
 	return d;
 }
 
@@ -143,9 +157,9 @@ expr *expr_copy(expr *e)
 }
 #endif
 
-function *function_new()
+funcargs *funcargs_new()
 {
-	function *f = umalloc(sizeof *f);
+	funcargs *f = umalloc(sizeof *f);
 	where_new(&f->where);
 	return f;
 }
@@ -293,12 +307,12 @@ int decl_equal(const decl *a, const decl *b, int strict)
 #endif
 }
 
-void function_empty_args(function *func)
+void function_empty_args(funcargs *func)
 {
-	if(func->args){
-		decl_free(func->args[0]);
-		free(func->args);
-		func->args = NULL;
+	if(func->arglist){
+		decl_free(func->arglist[0]);
+		free(func->arglist);
+		func->arglist = NULL;
 	}
 	func->args_void = 0;
 }
@@ -414,6 +428,27 @@ int decl_ptr_depth(const decl *d)
 	return i - 1;
 }
 
+decl_ptr *decl_leaf(const decl *d)
+{
+	decl_ptr *dp;
+	UCC_ASSERT(d->decl_ptr, "decl param null");
+	for(dp = d->decl_ptr; dp->child; dp = dp->child);
+	return dp;
+}
+
+char *decl_spel(const decl *d)
+{
+	return decl_leaf(d)->spel;
+}
+
+void decl_set_spel(const decl *d, char *sp)
+{
+	char **psp = &decl_leaf(d)->spel;
+	if(*psp)
+		ICW("decl %p already has spel %s", d, *psp);
+	*psp = sp;
+}
+
 const char *type_to_str(const type *t)
 {
 #define BUF_SIZE (sizeof(buf) - (bufp - buf))
@@ -437,7 +472,9 @@ const char *type_to_str(const type *t)
 			APPEND(char);
 			APPEND(void);
 			case type_unknown:
-				ICE("unknown type primitive");
+				ICW("unknown type primitive");
+				strcpy(buf, "???");
+				break;
 			case type_typedef:
 				ICE("typedef without ->tdef");
 			case type_struct:
