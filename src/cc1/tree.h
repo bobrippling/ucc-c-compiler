@@ -281,6 +281,7 @@ int   decl_size(const decl *);
 int   decl_equal(const decl *, const decl *, int strict);
 
 #define decl_has_func_code(d) (!!(d)->func_code)
+int   decl_is_func(  const decl *);
 int   decl_ptr_depth(const decl *);
 void  decl_set_spel( const decl *, char *);
 char *decl_spel(     const decl *);

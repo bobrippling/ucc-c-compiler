@@ -226,7 +226,7 @@ funcargs *parse_func_arglist()
 	argdecl = parse_decl_single(DECL_CAN_DEFAULT);
 
 	if(argdecl){
-		do{
+		for(;;){
 			dynarray_add((void ***)&args->arglist, argdecl);
 
 			if(curtok == token_close_paren)
@@ -242,12 +242,12 @@ funcargs *parse_func_arglist()
 			/* continue loop */
 			/* actually, we don't need a type here, default to int, i think */
 			argdecl = parse_decl_single(DECL_CAN_DEFAULT);
-		}while(argdecl);
+		}
 
 		if(dynarray_count((void *)args->arglist) == 1 &&
-				args->arglist[0]->type->primitive == type_void &&
-				decl_ptr_depth(args->arglist[0]) == 0 &&
-				!decl_spel(args->arglist[0])){
+				                      args->arglist[0]->type->primitive == type_void &&
+				       decl_ptr_depth(args->arglist[0]) == 0 &&
+				           !decl_spel(args->arglist[0])){
 			/* x(void); */
 			function_empty_args(args);
 			args->args_void = 1; /* (void) vs () */

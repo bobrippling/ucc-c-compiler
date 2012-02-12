@@ -449,6 +449,12 @@ void decl_set_spel(const decl *d, char *sp)
 	*psp = sp;
 }
 
+int decl_is_func(const decl *d)
+{
+	decl_ptr *dp = d->decl_ptr;
+	return dp->func && !dp->child;
+}
+
 const char *type_to_str(const type *t)
 {
 #define BUF_SIZE (sizeof(buf) - (bufp - buf))
