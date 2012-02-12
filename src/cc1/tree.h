@@ -286,6 +286,8 @@ int   decl_ptr_depth(const decl *);
 void  decl_set_spel( const decl *, char *);
 char *decl_spel(     const decl *);
 
+decl_ptr *decl_leaf(const decl *d);
+
 expr *expr_ptr_multiply(expr *, decl *);
 expr *expr_assignment(expr *to, expr *from);
 void function_empty_args(funcargs *);

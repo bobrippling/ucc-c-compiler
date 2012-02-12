@@ -75,7 +75,6 @@ int fold_is_callable(expr *e)
 		/*if(e->tree_type) \
 			decl_free(e->tree_type);*/ \
 		to->tree_type = decl_copy(from); \
-		decl_set_spel(to->tree_type, NULL); \
 	}while(0)
 
 /* keep ->arraysizes, since we use it in decl_size() */
@@ -118,32 +117,20 @@ void fold_funcall(expr *e, symtable *stab)
 	spel = funcall_name(e->expr);
 	e->sym = symtab_search(stab, spel);
 	if(!e->sym){
-		ICE("implicit func");
-#if 0
 		df = decl_new_where_with_ptr(&e->where);
 
-		df->func_code = function_new();
-
 		df->type->primitive = type_int;
+		cc1_warn_at(&e->where, 0, WARN_IMPLICIT_FUNC, "implicit declaration of function \"%s\"", funcall_name(e->expr));
+
 		decl_set_spel(df, spel);
 
-		cc1_warn_at(&e->where, 0, WARN_IMPLICIT_FUNC, "implicit declaration of funcargs \"%s\"", funcall_name(e->expr));
-
-		e->sym = SYMTAB_ADD(symtab_root(stab), df, sym_func);
-
-		df->sym = NULL;
-		/*
-		 * fold() sets df->sym below,
-		 * and doesn't expect it to be set.
-		 * -> df is now part of the global sym table,
-		 * having just been added via root()
-		 */
+		df->decl_ptr->func = funcargs_new();
 
 		if(e->funcargs)
 			/* set up the funcargs args as if it's "x()" - i.e. any args */
 			function_empty_args(df->decl_ptr->func);
-#endif
 
+		e->sym = symtab_add(symtab_root(stab), df, sym_func, SYMTAB_WITH_SYM, SYMTAB_PREPEND);
 	}else{
 		df = e->sym->decl;
 	}
@@ -279,16 +266,13 @@ void fold_expr(expr *e, symtable *stab)
 				e->tree_type->type->spec |= spec_static;
 
 				/* pointer */
-				ICE("FIXME: add to leaf");
-				e->tree_type->decl_ptr->child = decl_ptr_new();
+				decl_leaf(e->tree_type)->child = decl_ptr_new();
 
-				array_sym = SYMTAB_ADD(symtab_root(stab), decl_new_where(&e->where), stab->parent ? sym_local : sym_global);
-				memcpy(array_sym->decl, e->tree_type, sizeof *array_sym->decl);
+				e->spel = e->array_store->label = asm_label_array(e->array_store->type == array_str);
 
-				decl_set_spel(array_sym->decl,
-					e->spel =
-					e->array_store->label =
-						asm_label_array(e->array_store->type == array_str));
+				decl_set_spel(e->tree_type, e->spel);
+
+				array_sym = SYMTAB_ADD(symtab_root(stab), e->tree_type, stab->parent ? sym_local : sym_global);
 
 				array_sym->decl->arrayinit = e->array_store;
 
@@ -722,6 +706,9 @@ void fold(symtable *globs)
 	if(fopt_mode & FOPT_ENABLE_ASM){
 		decl *df;
 		funcargs *fargs;
+
+		ICE("__asm__ - FIXME");
+
 		df = decl_new_with_ptr();
 		fargs = df->decl_ptr->func = funcargs_new();
 		decl_set_spel(df, ustrdup(ASM_INLINE_FNAME));
@@ -743,21 +730,27 @@ void fold(symtable *globs)
 			fold_struct(*it);
 	}
 
+
 	for(i = 0; D(i); i++){
 		int j;
 
+		for(j = 0; D(j); j++);
+		fprintf(stderr, "handling sym[%d/%d] %s\n", i, j, decl_spel(D(i)));
+		// BUG HERE TODO
+
+
 		if(D(i)->sym)
-			ICE("%s: sym already set for global variable \"%s\"", where_str(&D(i)->where), decl_spel(D(i)));
+			ICE("%s: sym (%p) already set for global \"%s\"", where_str(&D(i)->where), D(i)->sym, decl_spel(D(i)));
 
 		/* extern overwrite check */
 		if(D(i)->type->spec & spec_extern)
 			for(j = 0; D(j); j++)
-				if(j != i && decl_spel(D(j)) && !strcmp(decl_spel(D(j)), decl_spel(D(i))) && (D(j)->type->spec & spec_extern) == 0){
+				if(j != i && decl_spel(D(j)) && !strcmp(decl_spel(D(j)), decl_spel(D(i))) && (D(j)->type->spec & spec_extern) == 0)
 					D(i)->ignore = 1;
-				}
 
 		D(i)->sym = sym_new(D(i), sym_global);
 
+		// FIXME: this should be a single call now
 		if(D(i)->decl_ptr->func)
 			fold_func(D(i), globs);
 		else
