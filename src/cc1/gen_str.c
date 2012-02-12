@@ -9,6 +9,7 @@
 #include "cc1.h"
 #include "struct.h"
 
+#define ENGLISH_PRINT_ARGLIST
 
 #define PRINT_IF(x, sub, fn) \
 	if(x->sub){ \
@@ -44,13 +45,46 @@ void idt_printf(const char *fmt, ...)
 	va_end(l);
 }
 
+void print_decl_ptr_eng(decl_ptr *dp)
+{
+	if(dp->child){
+		print_decl_ptr_eng(dp->child);
+
+		fprintf(cc1_out, "%spointer to ", dp->is_const    ? "const " : "");
+	}
+
+	if(dp->func){
+		fputs("function", cc1_out);
+#ifdef ENGLISH_PRINT_ARGLIST
+		funcargs *fargs = dp->func;
+		decl **iter;
+
+		fputc('(', cc1_out);
+		if(fargs->arglist){
+			for(iter = fargs->arglist; iter && *iter; iter++){
+				print_decl(*iter, 0, 0, 0, 0);
+				fprintf(cc1_out, "%s", iter[1] ? ", " : "");
+			}
+			fprintf(cc1_out, "%s", fargs->variadic ? "variadic" : "");
+		}else{
+			fprintf(cc1_out, "taking %s arguments", fargs->args_void ? "no" : "unspecified");
+		}
+		fputc(')', cc1_out);
+#endif
+		fputs(" returning ", cc1_out);
+	}
+}
+
 void print_decl_eng(decl *d)
 {
-	(void)d;
-	/*if(dp->func){
-		fprintf(cc1_out, "function returning ");
+	char *sp;
 
-	}*/
+	if((sp = decl_spel(d)))
+		fprintf(cc1_out, "\"%s\": ", sp);
+
+	print_decl_ptr_eng(d->decl_ptr);
+
+	fprintf(cc1_out, "%s", type_to_str(d->type));
 }
 
 void print_decl_ptr(decl_ptr *dp)
@@ -62,23 +96,26 @@ void print_decl_ptr(decl_ptr *dp)
 		fprintf(cc1_out, "*%s", dp->is_const ? "const " : "");
 
 		print_decl_ptr(dp->child);
+	}
 
-		if(dp->func){
-			funcargs *fargs = dp->func;
-			decl **iter;
+	if(dp->spel)
+		fputs(dp->spel, cc1_out);
 
-			fputs(")(", cc1_out);
+	if(dp->func){
+		funcargs *fargs = dp->func;
+		decl **iter;
 
-			for(iter = fargs->arglist; iter && *iter; iter++){
+		fprintf(cc1_out, "%s(", dp->child ? ")" : "");
+
+		if(fargs->arglist)
+			for(iter = fargs->arglist; *iter; iter++){
 				print_decl(*iter, 0, 0, 0, 0);
 				fprintf(cc1_out, "%s", iter[1] ? ", " : "");
 			}
-			fprintf(cc1_out, "%s)", fargs->variadic ? ", ..." : "");
-		}
+		else if(fargs->args_void)
+			fputs("void", cc1_out);
 
-		UCC_ASSERT(!dp->spel, "spel found on non-leaf decl");
-	}else if(dp->spel){
-		fputs(dp->spel, cc1_out);
+		fprintf(cc1_out, "%s)", fargs->variadic ? ", ..." : "");
 	}
 }
 

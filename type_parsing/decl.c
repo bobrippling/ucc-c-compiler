@@ -1,22 +1,35 @@
-int (*const ((*(x))));
-int ***y;
-int ((**(*(z))));
-int ((**(*a)));
-int (**(*b));
-char c;
-int const *const *const *const d;
+char a;
+int b = 5;
 
-int initialise = 5;
+int *pi;
+
+int (*const ((*(c))));
+int ***d;
+int ((**(*(e))));
+int ((**(*f)));
+int (**(*g));
+
+int const *const *const *const h;
 
 //void f;
+const char *user_str;
+const char **argv;
+char *const editable_str;
 
-void *g;
-void (*h);
-void (*i)();
-void (*j)(void);
+void *i;
+void (*j);
+void (*k)();
+void (*l)(void);
 
-void  (*k)(int i, int j);
-void *(*l)(int);
+void  (*m)(int i, int j);
+void *(*n)(int);
 
-int const static *(*const (*m)(void *, int *))(char *(*f));
-//int (*const ((*(n))()))();
+void func_unspec();
+void func(void);
+void (*pfunc_unspec)();
+void (*pfunc)(void);
+
+// FIXME: pointer arguments show up with one less pointer depth than they should
+int const static *(*const (*o)(void *, void **, void ***))(char *(*f));
+
+int (*const ((*(n))(*,*))(((*()))))(*);

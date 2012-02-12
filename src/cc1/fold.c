@@ -367,7 +367,7 @@ void fold_decl(decl *d, symtable *stab)
 {
 	(void)stab;
 
-	if(d->type->primitive == type_void && !decl_ptr_depth(d) && !decl_has_func_code(d))
+	if(d->type->primitive == type_void && !decl_ptr_depth(d) && !decl_is_func(d))
 		die_at(&d->type->where, "can't have a void variable");
 
 #define SPEC(x) (d->type->spec & (x))
@@ -651,42 +651,44 @@ void fold_func(decl *df, symtable *globsymtab)
 						decl_spel(df));
 			}
 
-	if(decl_has_func_code(df)){
-		if(fargs->arglist){
-			/* check for unnamed params and extern/static specs */
-			int nargs;
+	if(decl_is_func(df)){
+		if(decl_has_func_code(df)){
+			if(fargs->arglist){
+				/* check for unnamed params and extern/static specs */
+				int nargs;
 
-			for(nargs = 0; fargs->arglist[nargs]; nargs++);
+				for(nargs = 0; fargs->arglist[nargs]; nargs++);
 
-			/* add args backwards, since we push them onto the stack backwards */
-			for(i = nargs - 1; i >= 0; i--)
-				if(!decl_spel(fargs->arglist[i]))
-					die_at(&fargs->where, "funcargs \"%s\" has unnamed arguments", decl_spel(df));
-				else
-					SYMTAB_ADD(df->func_code->symtab, fargs->arglist[i], sym_arg);
-		}
+				/* add args backwards, since we push them onto the stack backwards */
+				for(i = nargs - 1; i >= 0; i--)
+					if(!decl_spel(fargs->arglist[i]))
+						die_at(&fargs->where, "funcargs \"%s\" has unnamed arguments", decl_spel(df));
+					else
+						SYMTAB_ADD(df->func_code->symtab, fargs->arglist[i], sym_arg);
+			}
 
-		symtab_nest(globsymtab, &df->func_code->symtab);
-		fold_tree(df->func_code);
+			symtab_nest(globsymtab, &df->func_code->symtab);
+			fold_tree(df->func_code);
 
-	}else{
-		decl **iter;
-		int found = 0;
+		}else{
+			decl **iter;
+			int found = 0;
 
-		/* this is similar to the extern-ignore, but for overwriting funcargs prototypes */
-		if((df->type->spec & spec_extern) == 0){
-			for(iter = globsymtab->decls; iter && *iter; iter++)
-				if((*iter)->decl_ptr->func){
-					if(decl_has_func_code(*iter) && !strcmp(decl_spel(*iter), decl_spel(df))){
-						found = 1;
-						df->ignore = 1;
-						break;
+			/* this is similar to the extern-ignore, but for overwriting funcargs prototypes */
+			if((df->type->spec & spec_extern) == 0){
+				for(iter = globsymtab->decls; iter && *iter; iter++)
+					if((*iter)->decl_ptr->func){
+						if(decl_has_func_code(*iter) && !strcmp(decl_spel(*iter), decl_spel(df))){
+							found = 1;
+							df->ignore = 1;
+							break;
+						}
 					}
-				}
 
-			if(!found)
-				df->type->spec |= spec_extern;
-				/*cc1_warn_at(&f->where, 0, WARN_EXTERN_ASSUME, "assuming \"%s\" is extern", decl_spel(df));*/
+				if(!found)
+					df->type->spec |= spec_extern;
+					/*cc1_warn_at(&f->where, 0, WARN_EXTERN_ASSUME, "assuming \"%s\" is extern", decl_spel(df));*/
+			}
 		}
 	}
 
