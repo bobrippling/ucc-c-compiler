@@ -46,5 +46,12 @@ Examples
 - assemble test.s -> test.o
 (preprocessing and compilation are skipped)
 
+./src/cc -fenglish -Xprint -o- test.c
+- (-fenglish) show the abstract parse tree with output decls in english
+e.g.:
+	int *(*const (*x)(void))(int);
+becomes:
+	"x": pointer to function(taking no arguments) returning const pointer to function(int) returning pointer to int
+
 ./src/cc -E -o- test.c
 - if you need to ask then read some proper compiler documentation
