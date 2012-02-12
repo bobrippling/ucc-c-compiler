@@ -54,18 +54,26 @@ void print_decl_ptr_eng(decl_ptr *dp)
 	}
 
 	if(dp->func){
-		fputs("function", cc1_out);
 #ifdef ENGLISH_PRINT_ARGLIST
 		funcargs *fargs = dp->func;
 		decl **iter;
+#endif
 
+		fputs("function", cc1_out);
+
+#ifdef ENGLISH_PRINT_ARGLIST
 		fputc('(', cc1_out);
 		if(fargs->arglist){
+
 			for(iter = fargs->arglist; iter && *iter; iter++){
 				print_decl(*iter, 0, 0, 0, 0);
-				fprintf(cc1_out, "%s", iter[1] ? ", " : "");
+				if(iter[1])
+					fputs(", ", cc1_out);
 			}
-			fprintf(cc1_out, "%s", fargs->variadic ? "variadic" : "");
+
+			if(fargs->variadic)
+				fputs("variadic", cc1_out);
+
 		}else{
 			fprintf(cc1_out, "taking %s arguments", fargs->args_void ? "no" : "unspecified");
 		}
@@ -110,7 +118,8 @@ void print_decl_ptr(decl_ptr *dp)
 		if(fargs->arglist)
 			for(iter = fargs->arglist; *iter; iter++){
 				print_decl(*iter, 0, 0, 0, 0);
-				fprintf(cc1_out, "%s", iter[1] ? ", " : "");
+				if(iter[1])
+					fputs(", ", cc1_out);
 			}
 		else if(fargs->args_void)
 			fputs("void", cc1_out);
