@@ -425,13 +425,15 @@ int decl_ptr_depth(const decl *d)
 	for(dp = d->decl_ptr; dp; dp = dp->child)
 		i++;
 
+	UCC_ASSERT(i > 1, "invalid decl_ptr");
+
 	return i - 1;
 }
 
 decl_ptr *decl_leaf(const decl *d)
 {
 	decl_ptr *dp;
-	UCC_ASSERT(d->decl_ptr, "decl param null");
+	UCC_ASSERT(d->decl_ptr, "null decl param");
 	for(dp = d->decl_ptr; dp->child; dp = dp->child);
 	return dp;
 }
@@ -444,8 +446,11 @@ char *decl_spel(const decl *d)
 void decl_set_spel(const decl *d, char *sp)
 {
 	char **psp = &decl_leaf(d)->spel;
+
+	UCC_ASSERT(sp, "setting null spel for decl");
+
 	if(*psp)
-		ICW("decl %p already has spel %s", d, *psp);
+		ICW("decl %p spel %s -> %s", d, *psp, sp);
 	*psp = sp;
 }
 
