@@ -72,7 +72,7 @@ void die(const char *fmt, ...)
 
 #define ICE_STR(s)  \
 	va_list l; \
-	fprintf(stderr, s " @ %s:%d: %s: ", f, line, fn); \
+	fprintf(stderr, s " @ %s:%s:%d: ", f, fn, line); \
 	va_start(l, fmt); \
 	vfprintf(stderr, fmt, l); \
 	fputc('\n', stderr)
