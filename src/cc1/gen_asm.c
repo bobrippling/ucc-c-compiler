@@ -89,6 +89,67 @@ void gen_assign(expr *e, symtable *stab)
 	}
 }
 
+void gen_funcall(expr *e, symtable *stab)
+{
+	const char *const fname = e->expr->spel;
+	expr **iter;
+	int nargs = 0;
+
+	if(fopt_mode & FOPT_ENABLE_ASM && fname && !strcmp(fname, ASM_INLINE_FNAME)){
+		const char *str;
+		expr *arg1;
+		int i;
+
+		if(!e->funcargs || e->funcargs[1] || e->funcargs[0]->type != expr_addr)
+			die_at(&e->where, "invalid __asm__ arguments");
+
+		arg1 = e->funcargs[0];
+		str = arg1->array_store->data.str;
+		for(i = 0; i < arg1->array_store->len - 1; i++){
+			char ch = str[i];
+			if(!isprint(ch) && !isspace(ch))
+invalid:
+				die_at(&arg1->where, "invalid __asm__ string (character %d)", ch);
+		}
+
+		if(str[i])
+			goto invalid;
+
+		asm_temp(0, "; start manual __asm__");
+		fprintf(cc_out[SECTION_TEXT], "%s\n", arg1->array_store->data.str);
+		asm_temp(0, "; end manual __asm__");
+	}else{
+		/* continue with normal funcall */
+
+		if(e->funcargs){
+			/* need to push on in reverse order */
+			for(iter = e->funcargs; *iter; iter++);
+			for(iter--; iter >= e->funcargs; iter--){
+				walk_expr(*iter, stab);
+				nargs++;
+			}
+		}
+
+		/*asm_new(asm_call, e->spel);*/
+		if(0 && e->expr->type == expr_identifier){
+			/* simple */
+			asm_temp(1, "call %s", fname);
+		}else{
+			walk_expr(e->expr, stab);
+			asm_temp(1, "pop rax  ; function address");
+			asm_temp(1, "call rax ; duh");
+		}
+
+		if(nargs)
+			asm_temp(1, "add rsp, %d ; %d arg%s",
+					nargs * platform_word_size(),
+					nargs,
+					nargs == 1 ? "" : "s");
+
+		asm_temp(1, "push rax ; ret");
+	}
+}
+
 void walk_expr(expr *e, symtable *stab)
 {
 	switch(e->type){
@@ -126,8 +187,15 @@ void walk_expr(expr *e, symtable *stab)
 		}
 
 		case expr_identifier:
-			/* if it's an array, lea, else, load */
-			/*asm_sym(e->sym->decl->arraysizes ? ASM_LEA : ASM_LOAD, e->sym, "rax");*/
+			if(e->sym){
+				/* if it's an array, lea, else, load */
+				//asm_sym(e->sym->decl->arraysizes ? ASM_LEA : ASM_LOAD, e->sym, "rax");
+				// FIXME: int (*x)() = printf; directs to here, instead of the else clause
+				asm_sym(ASM_LOAD, e->sym, "rax");
+			}else{
+				asm_temp(1, "mov rax, %s", e->spel);
+			}
+
 			asm_temp(1, "push rax");
 			break;
 
@@ -149,60 +217,8 @@ void walk_expr(expr *e, symtable *stab)
 			break;
 
 		case expr_funcall:
-		{
-			/* currently only identifiers are allowed */
-			const char *const fname = e->expr->spel;
-			expr **iter;
-			int nargs = 0;
-
-			if(fopt_mode & FOPT_ENABLE_ASM && !strcmp(fname, ASM_INLINE_FNAME)){
-				const char *str;
-				expr *arg1;
-				int i;
-
-				if(!e->funcargs || e->funcargs[1] || e->funcargs[0]->type != expr_addr)
-					die_at(&e->where, "invalid __asm__ arguments");
-
-				arg1 = e->funcargs[0];
-				str = arg1->array_store->data.str;
-				for(i = 0; i < arg1->array_store->len - 1; i++){
-					char ch = str[i];
-					if(!isprint(ch) && !isspace(ch))
-invalid:
-						die_at(&arg1->where, "invalid __asm__ string (character %d)", ch);
-				}
-
-				if(str[i])
-					goto invalid;
-
-				asm_temp(0, "; start manual __asm__");
-				fprintf(cc_out[SECTION_TEXT], "%s\n", arg1->array_store->data.str);
-				asm_temp(0, "; end manual __asm__");
-				break;
-			}
-			/* continue with normal funcall */
-
-			if(e->funcargs){
-				/* need to push on in reverse order */
-				for(iter = e->funcargs; *iter; iter++);
-				for(iter--; iter >= e->funcargs; iter--){
-					walk_expr(*iter, stab);
-					nargs++;
-				}
-			}
-
-			/*asm_new(asm_call, e->spel);*/
-			asm_temp(1, "call %s", fname);
-
-			if(nargs)
-				asm_temp(1, "add rsp, %d ; %d arg%s",
-						nargs * platform_word_size(),
-						nargs,
-						nargs == 1 ? "" : "s");
-
-			asm_temp(1, "push rax ; ret");
+			gen_funcall(e, stab);
 			break;
-		}
 
 		case expr_addr:
 			if(e->array_store)

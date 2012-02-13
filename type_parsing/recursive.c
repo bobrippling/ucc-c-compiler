@@ -1,4 +1,10 @@
 int x(int (*self)())
 {
-	self();
+	printf("hi\n");
+	self(self);
+}
+
+main()
+{
+	x(x);
 }

@@ -293,7 +293,7 @@ expr *expr_assignment(expr *to, expr *from);
 void function_empty_args(funcargs *);
 
 #define TYPE_STATIC_BUFSIZ 64
-#define DECL_STATIC_BUFSIZ (32 + TYPE_STATIC_BUFSIZ)
+#define DECL_STATIC_BUFSIZ (128 + TYPE_STATIC_BUFSIZ)
 
 #define type_free(x) free(x)
 #define decl_free(x) do{type_free((x)->type); free(x);}while(0)

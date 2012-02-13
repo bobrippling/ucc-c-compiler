@@ -190,10 +190,14 @@ void print_sym(sym *s)
 
 void print_expr(expr *e)
 {
-	idt_printf("tree_type: ");
-	print_decl(e->tree_type, 0, 1, 0, 0);
-
 	idt_printf("e->type: %s\n", expr_to_str(e->type));
+	{
+		decl *d = e->tree_type;
+		if(e->type != expr_identifier || !decl_has_func_code(d)){
+			idt_printf("tree_type: ");
+			print_decl(e->tree_type, 0, 1, 0, 0);
+		}
+	}
 
 	switch(e->type){
 		case expr_comma:

@@ -96,7 +96,14 @@ noproblem:
 
 		GET_TREE_TYPE(e->lhs->tree_type);
 
-		ICE("fixme: ptr_depth--");
+		/* TODO: *const propagation */
+
+		e->tree_type = decl_copy(e->tree_type);
+		e->tree_type->decl_ptr = e->tree_type->decl_ptr->child;
+
+
+		/* XXX: memleak */
+		UCC_ASSERT(e->tree_type->decl_ptr, "ptr_depth-- - gives bad decl");
 
 		if(decl_ptr_depth(e->tree_type) == 0)
 			switch(e->lhs->tree_type->type->primitive){
