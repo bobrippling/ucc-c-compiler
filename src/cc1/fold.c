@@ -25,8 +25,6 @@
 	if(!decl_ptr_depth(e->tree_type) && e->tree_type->type->primitive == type_void) \
 		die_at(&e->where, "%s requires non-void expression", s)
 
-#define funcall_name(e) (e)->spel
-
 static decl_ptr *curdecl_func;   /* for funcargs-local labels */
 static tree *curtree_switch; /* for case + default */
 static tree *curtree_flow;   /* for break */
@@ -65,11 +63,6 @@ int fold_is_lvalue(expr *e)
 	return 0;
 }
 
-int fold_is_callable(expr *e)
-{
-	return e->type == expr_identifier; /* TODO: extend to funcargs pointer */
-}
-
 #define GET_TREE_TYPE_TO(to, from) \
 	do{ \
 		/*if(e->tree_type) \
@@ -102,40 +95,56 @@ void fold_decl_equal(decl *a, decl *b, where *w, enum warning warn,
 
 void fold_funcall(expr *e, symtable *stab)
 {
-	char *spel;
 	decl *df;
 
-	if(!fold_is_callable(e->expr))
-		die_at(&e->expr->where, "expression %s not callable", expr_to_str(e->expr->type));
+	if(e->expr->type == expr_identifier && e->expr->spel){
+		char *const sp = e->expr->spel;
+
+		e->sym = symtab_search(stab, sp);
+		if(!e->sym){
+			df = decl_new_where_with_ptr(&e->where);
+
+			df->type->primitive = type_int;
+			df->type->spec     |= spec_extern;
+
+			cc1_warn_at(&e->where, 0, WARN_IMPLICIT_FUNC, "implicit declaration of function \"%s\"", sp);
+
+			decl_set_spel(df, sp);
+
+			df->decl_ptr->func = funcargs_new();
+
+			if(e->funcargs)
+				/* set up the funcargs as if it's "x()" - i.e. any args */
+				function_empty_args(df->decl_ptr->func);
+
+			e->sym = symtab_add(symtab_root(stab), df, sym_func, SYMTAB_WITH_SYM, SYMTAB_PREPEND);
+		}else{
+			df = e->sym->decl;
+		}
+
+		fold_expr(e->expr, stab);
+	}else{
+		expr *const call_this = e->expr;
+
+		fold_expr(call_this, stab);
+
+		df = call_this->tree_type;
+
+		if(!decl_is_func(df)){
+			/* check for (*x)() - this evaluates to the return type of x */
+			if(!decl_is_func(call_this->tree_type)){
+				die_at(&e->expr->where, "expression %s not callable", expr_to_str(e->expr->type));
+			}
+		}
+	}
+
+	GET_TREE_TYPE(df);
 
 	if(e->funcargs){
 		expr **iter;
 		for(iter = e->funcargs; *iter; iter++)
 			fold_expr(*iter, stab);
 	}
-
-	spel = funcall_name(e->expr);
-	e->sym = symtab_search(stab, spel);
-	if(!e->sym){
-		df = decl_new_where_with_ptr(&e->where);
-
-		df->type->primitive = type_int;
-		cc1_warn_at(&e->where, 0, WARN_IMPLICIT_FUNC, "implicit declaration of function \"%s\"", funcall_name(e->expr));
-
-		decl_set_spel(df, spel);
-
-		df->decl_ptr->func = funcargs_new();
-
-		if(e->funcargs)
-			/* set up the funcargs as if it's "x()" - i.e. any args */
-			function_empty_args(df->decl_ptr->func);
-
-		e->sym = symtab_add(symtab_root(stab), df, sym_func, SYMTAB_WITH_SYM, SYMTAB_PREPEND);
-	}else{
-		df = e->sym->decl;
-	}
-
-	GET_TREE_TYPE(e->sym->decl);
 
 	/* func count comparison, only if the func has arg-decls, or the func is f(void) */
 	if(df->decl_ptr->func->arglist || df->decl_ptr->func->args_void){
@@ -715,8 +724,6 @@ void fold(symtable *globs)
 	if(fopt_mode & FOPT_ENABLE_ASM){
 		decl *df;
 		funcargs *fargs;
-
-		ICE("__asm__ - FIXME");
 
 		df = decl_new_with_ptr();
 		fargs = df->decl_ptr->func = funcargs_new();

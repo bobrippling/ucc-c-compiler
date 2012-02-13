@@ -127,11 +127,22 @@ type *type_copy(type *t)
 	return ret;
 }
 
+decl_ptr *decl_ptr_copy(decl_ptr *dp)
+{
+	decl_ptr *ret = umalloc(sizeof *ret);
+	memcpy(ret, dp, sizeof *ret);
+	if(dp->child)
+		ret->child = decl_ptr_copy(dp->child);
+	/* leave func and spel, tis fine */
+	return ret;
+}
+
 decl *decl_copy(decl *d)
 {
 	decl *ret = umalloc(sizeof *ret);
 	memcpy(ret, d, sizeof *ret);
 	ret->type = type_copy(d->type);
+	ret->decl_ptr = decl_ptr_copy(d->decl_ptr);
 	/*ret->spel = NULL;*/
 	return ret;
 }
@@ -427,7 +438,7 @@ int decl_ptr_depth(const decl *d)
 	for(dp = d->decl_ptr; dp; dp = dp->child)
 		i++;
 
-	UCC_ASSERT(i > 1, "invalid decl_ptr");
+	UCC_ASSERT(i > 0, "invalid decl_ptr");
 
 	return i - 1;
 }
@@ -500,21 +511,16 @@ const char *type_to_str(const type *t)
 
 const char *decl_to_str(const decl *d)
 {
-#if 0
 	static char buf[DECL_STATIC_BUFSIZ];
 	unsigned int i;
-	int n;
+	decl_ptr *dp;
 
-	i = snprintf(buf, sizeof buf, "%s%s", type_to_str(d->type), d->ptr_depth ? " " : "");
+	i = snprintf(buf, sizeof buf, "%s%s", type_to_str(d->type), d->decl_ptr->child ? " " : "");
 
-	for(n = d->ptr_depth; i + 1 < sizeof buf && n > 0; n--)
-		buf[i++] = '*';
+	for(dp = d->decl_ptr; i + 1 < sizeof buf && dp; dp = dp->child)
+		i += snprintf(buf + i, sizeof buf - i, "*%s%s", dp->is_const ? "*" : "", dp->func ? "(#)" : "");
+
 	buf[i] = '\0';
 
 	return buf;
-#else
-	(void)d;
-	ICE("TODO");
-	return NULL;
-#endif
 }
