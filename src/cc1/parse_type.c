@@ -124,60 +124,6 @@ type *parse_type()
 	return t;
 }
 
-decl_ptr *parse_decl_ptr_nofunc(enum decl_mode mode)
-{
-	if(accept(token_open_paren)){
-		decl_ptr *ret = parse_decl_ptr(mode);
-		EAT(token_close_paren);
-		return ret;
-
-	}else if(accept(token_multiply)){
-		decl_ptr *ret = decl_ptr_new();
-
-		if(accept(token_const))
-			ret->is_const = 1;
-
-		ret->child = parse_decl_ptr(mode);
-		return ret;
-
-	}else if(curtok == token_identifier){
-		decl_ptr *ret = decl_ptr_new();
-
-		if(mode & DECL_SPEL_NO)
-			die_at(&ret->where, "identifier unexpected");
-
-		ret->spel = token_current_spel();
-		EAT(token_identifier);
-
-		return ret;
-	}else if(mode & DECL_SPEL_NEED){
-		EAT(token_identifier); /* raise error */
-	}
-
-	return NULL;
-
-#if 0
-	while(accept(token_open_square)){
-		expr *size;
-		int fin;
-		fin = 0;
-
-		if(curtok != token_close_square)
-			size = parse_expr(); /* fold.c checks for const-ness */
-		else
-			fin = 1;
-
-		d->ptr_depth++;
-		EAT(token_close_square);
-
-		if(fin)
-			break;
-
-		dynarray_add((void ***)&d->arraysizes, size);
-	}
-#endif
-}
-
 funcargs *parse_func_arglist()
 {
 	/*
@@ -246,8 +192,8 @@ funcargs *parse_func_arglist()
 
 		if(dynarray_count((void *)args->arglist) == 1 &&
 				                      args->arglist[0]->type->primitive == type_void &&
-				       decl_ptr_depth(args->arglist[0]) == 0 &&
-				           !decl_spel(args->arglist[0])){
+				                     !args->arglist[0]->decl_ptr->child && /* manual checks, since decl_*() assert */
+				                     !args->arglist[0]->decl_ptr->spel){
 			/* x(void); */
 			function_empty_args(args);
 			args->args_void = 1; /* (void) vs () */
@@ -283,7 +229,7 @@ old_func:
 		n_spels = dynarray_count((void *)spells);
 
 		if(n_decls > n_spels)
-			die_at(argar ? &argar[0]->where : &args->where, "old-style funcargs decl: mismatching argument counts");
+			die_at(argar ? &argar[0]->where : &args->where, "old-style function decl: mismatching argument counts");
 
 		for(i = 0; i < n_spels; i++){
 			int j, found;
@@ -318,7 +264,7 @@ old_func:
 		args->arglist = argar;
 
 		if(curtok != token_open_block)
-			die_at(&args->where, "no code for old-style funcargs");
+			die_at(&args->where, "no code for old-style function");
 		//args->code = parse_code();
 	}
 
@@ -327,22 +273,83 @@ empty_func:
 	return args;
 }
 
+decl_ptr *parse_decl_ptr_nofunc(enum decl_mode mode)
+{
+	if(accept(token_open_paren)){
+		decl_ptr *ret = parse_decl_ptr(mode);
+		EAT(token_close_paren);
+		return ret;
+
+	}else if(accept(token_multiply)){
+		decl_ptr *ret = decl_ptr_new();
+
+		if(accept(token_const))
+			ret->is_const = 1;
+
+		ret->child = parse_decl_ptr(mode);
+		return ret;
+
+	}else if(curtok == token_identifier){
+		decl_ptr *ret = decl_ptr_new();
+
+		if(mode & DECL_SPEL_NO)
+			die_at(&ret->where, "identifier unexpected");
+
+		ret->spel = token_current_spel();
+		EAT(token_identifier);
+
+		return ret;
+	}else if(mode & DECL_SPEL_NEED){
+		EAT(token_identifier); /* raise error */
+	}
+
+	return NULL;
+
+#if 0
+	while(accept(token_open_square)){
+		expr *size;
+		int fin;
+		fin = 0;
+
+		if(curtok != token_close_square)
+			size = parse_expr(); /* fold.c checks for const-ness */
+		else
+			fin = 1;
+
+		d->ptr_depth++;
+		EAT(token_close_square);
+
+		if(fin)
+			break;
+
+		dynarray_add((void ***)&d->arraysizes, size);
+	}
+#endif
+}
+
 decl_ptr *parse_decl_ptr(enum decl_mode mode)
 {
 	decl_ptr *dp;
 
 	dp = parse_decl_ptr_nofunc(mode);
 
-	if(dp && accept(token_open_paren)){
+	if(accept(token_open_paren)){
 		/*
-		 * e.g.:
-		 * int x(
-		 * int (*x)(
-		 * int (((x))(
-		 */
+			* e.g.:
+			* int x(
+			* int (*x)(
+			* int (((x))(
+			*/
+		if(dp->func)
+			goto func_ret_func;
+
 		dp->func = parse_func_arglist();
 		EAT(token_close_paren);
 	}
+
+	if(accept(token_open_paren))
+func_ret_func:
+		die_at(&dp->where, "can't have function returning function");
 
 	return dp;
 }
@@ -428,7 +435,7 @@ decl **parse_decls(const int can_default, const int accept_field_width)
 
 				/*if(are_tdefs)
 					if(d->func)
-						die_at(&d->where, "can't have a typedef funcargs");
+						die_at(&d->where, "can't have a typedef function");
 
 				if(d->func){
 					if(d->func->code){

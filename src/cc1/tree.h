@@ -69,7 +69,7 @@ struct decl_ptr
 	where where;
 
 	int is_const;     /* int *const x */
-	funcargs *func;   /* int (*x)() and int a()  */
+	funcargs *func;   /* int (*x)() - args to function */
 	decl_ptr *child;  /* int (*const (*x)()) - *[x] is child */
 
 	char *spel;
