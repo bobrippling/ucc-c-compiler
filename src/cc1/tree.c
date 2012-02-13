@@ -310,6 +310,8 @@ int decl_equal(const decl *a, const decl *b, int strict)
 void function_empty_args(funcargs *func)
 {
 	if(func->arglist){
+		UCC_ASSERT(!func->arglist[1], "empty_args called when it shouldn't be");
+
 		decl_free(func->arglist[0]);
 		free(func->arglist);
 		func->arglist = NULL;

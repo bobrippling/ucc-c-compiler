@@ -1,4 +1,4 @@
-main()
+main(void)
 {
 	printf("yo\n");
 }

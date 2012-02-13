@@ -34,12 +34,14 @@ char *asm_label_array(int str)
 	return ret;
 }
 
-char *asm_label_static_local(decl *df, const char *spel)
+char *asm_label_static_local(decl_ptr *dp, const char *spel)
 {
-	char *dsp = decl_spel(df);
-	char *ret = umalloc(strlen(dsp) + strlen(spel) + 9);
-	UCC_ASSERT(decl_has_func_code(df), "no funcargs for asm_label_static_local()");
-	sprintf(ret, "%s.static_%s", dsp, spel);
+	char *ret;
+
+	UCC_ASSERT(dp->spel, "no spel for %s", __func__);
+
+	ret = umalloc(strlen(dp->spel) + strlen(spel) + 9);
+	sprintf(ret, "%s.static_%s", dp->spel, spel);
 	return ret;
 }
 

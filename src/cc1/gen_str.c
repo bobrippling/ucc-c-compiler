@@ -169,12 +169,16 @@ void print_decl(decl *d, int idt, int nl, int sym_offset, int print_ignore)
 	if(decl_has_func_code(d)){
 		decl **iter;
 
+		indent++;
+
 		for(iter = d->func_code->symtab->decls; iter && *iter; iter++)
 			idt_printf("offset of %s = %d\n", decl_spel(*iter), (*iter)->sym->offset);
 
-		idt_printf("funcargs stack space %d\n", d->func_code->symtab->auto_total_size);
+		idt_printf("function stack space %d\n", d->func_code->symtab->auto_total_size);
 
 		print_tree(d->func_code);
+
+		indent--;
 	}
 }
 

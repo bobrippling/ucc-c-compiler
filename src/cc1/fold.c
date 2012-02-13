@@ -27,12 +27,12 @@
 
 #define funcall_name(e) (e)->spel
 
-
-static decl *curdecl_func;   /* for funcargs-local labels */
+static decl_ptr *curdecl_func;   /* for funcargs-local labels */
 static tree *curtree_switch; /* for case + default */
 static tree *curtree_flow;   /* for break */
 
 void fold_expr(expr *e, symtable *stab);
+void fold_func(decl *func_decl, funcargs *fargs, symtable *globsymtab);
 
 int fold_is_lvalue(expr *e)
 {
@@ -127,7 +127,7 @@ void fold_funcall(expr *e, symtable *stab)
 		df->decl_ptr->func = funcargs_new();
 
 		if(e->funcargs)
-			/* set up the funcargs args as if it's "x()" - i.e. any args */
+			/* set up the funcargs as if it's "x()" - i.e. any args */
 			function_empty_args(df->decl_ptr->func);
 
 		e->sym = symtab_add(symtab_root(stab), df, sym_func, SYMTAB_WITH_SYM, SYMTAB_PREPEND);
@@ -150,7 +150,7 @@ void fold_funcall(expr *e, symtable *stab)
 		for(iter_decl = df->decl_ptr->func->arglist; iter_decl && *iter_decl; iter_decl++, count_decl++);
 
 		if(count_decl != count_arg && (df->decl_ptr->func->variadic ? count_arg < count_decl : 1)){
-			die_at(&e->where, "too %s arguments to funcargs %s (got %d, need %d)",
+			die_at(&e->where, "too %s arguments to function %s (got %d, need %d)",
 					count_arg > count_decl ? "many" : "few",
 					decl_spel(df), count_arg, count_decl);
 		}
@@ -316,8 +316,9 @@ void fold_expr(expr *e, symtable *stab)
 					e->type = expr_addr;
 					e->array_store = array_decl_new();
 
-					e->array_store->data.str = decl_spel(curdecl_func);
-					e->array_store->len = strlen(decl_spel(curdecl_func)) + 1; /* +1 - take the null byte */
+					UCC_ASSERT(curdecl_func->spel, "no spel for current func");
+					e->array_store->data.str = curdecl_func->spel;
+					e->array_store->len = strlen(curdecl_func->spel) + 1; /* +1 - take the null byte */
 
 					e->array_store->type = array_str;
 
@@ -347,6 +348,18 @@ void fold_expr(expr *e, symtable *stab)
 #undef GET_TREE_TYPE
 }
 
+void fold_decl_ptr(decl_ptr *dp, symtable *stab, decl *root)
+{
+	if(dp->func){
+		curdecl_func = dp;
+		fold_func(root, dp->func, stab);
+		curdecl_func = NULL;
+	}
+
+	if(dp->child)
+		fold_decl_ptr(dp->child, stab, root);
+}
+
 void fold_decl(decl *d, symtable *stab)
 {
 	(void)stab;
@@ -373,6 +386,8 @@ void fold_decl(decl *d, symtable *stab)
 
 #undef CANT_HAVE
 	}
+
+	fold_decl_ptr(d->decl_ptr, stab, d);
 
 #undef SPEC
 }
@@ -610,33 +625,29 @@ case_add:
 	}
 }
 
-void fold_func(decl *df, symtable *globsymtab)
+void fold_func(decl *func_decl, funcargs *fargs, symtable *globsymtab)
 {
+	char *const func_spel = decl_spel(func_decl);
 	int i;
 	decl **diter;
-	funcargs *fargs = df->decl_ptr->func;
 
-	curdecl_func = df;
-
-	fold_decl(df, globsymtab);
-
-	for(diter = df->decl_ptr->func->arglist; diter && *diter; diter++)
+	for(diter = fargs->arglist; diter && *diter; diter++)
 		fold_decl(*diter, globsymtab);
 
 	if(fargs->arglist)
 		for(i = 0; fargs->arglist[i]; i++)
 			if(fargs->arglist[i]->type->spec & (spec_static | spec_extern)){
 				const char *sp = decl_spel(fargs->arglist[i]);
-				die_at(&fargs->where, "argument %d %s%s%sin funcargs \"%s\" is static or extern",
+				die_at(&fargs->where, "argument %d %s%s%sin function \"%s\" is static or extern",
 						i + 1,
 						sp ? "(" : "",
 						sp ? sp  : "",
 						sp ? ") " : "",
-						decl_spel(df));
+						func_spel);
 			}
 
-	if(decl_is_func(df)){
-		if(decl_has_func_code(df)){
+	if(decl_is_func(func_decl)){
+		if(decl_has_func_code(func_decl)){
 			if(fargs->arglist){
 				/* check for unnamed params and extern/static specs */
 				int nargs;
@@ -646,37 +657,35 @@ void fold_func(decl *df, symtable *globsymtab)
 				/* add args backwards, since we push them onto the stack backwards */
 				for(i = nargs - 1; i >= 0; i--)
 					if(!decl_spel(fargs->arglist[i]))
-						die_at(&fargs->where, "funcargs \"%s\" has unnamed arguments", decl_spel(df));
+						die_at(&fargs->where, "function \"%s\" has unnamed arguments", decl_spel(func_decl));
 					else
-						SYMTAB_ADD(df->func_code->symtab, fargs->arglist[i], sym_arg);
+						SYMTAB_ADD(func_decl->func_code->symtab, fargs->arglist[i], sym_arg);
 			}
 
-			symtab_nest(globsymtab, &df->func_code->symtab);
-			fold_tree(df->func_code);
+			symtab_nest(globsymtab, &func_decl->func_code->symtab);
+			fold_tree(func_decl->func_code);
 
 		}else{
 			decl **iter;
 			int found = 0;
 
-			/* this is similar to the extern-ignore, but for overwriting funcargs prototypes */
-			if((df->type->spec & spec_extern) == 0){
+			/* this is similar to the extern-ignore, but for overwriting function prototypes */
+			if((func_decl->type->spec & spec_extern) == 0){
 				for(iter = globsymtab->decls; iter && *iter; iter++)
 					if((*iter)->decl_ptr->func){
-						if(decl_has_func_code(*iter) && !strcmp(decl_spel(*iter), decl_spel(df))){
+						if(decl_has_func_code(*iter) && !strcmp(decl_spel(*iter), decl_spel(func_decl))){
 							found = 1;
-							df->ignore = 1;
+							func_decl->ignore = 1;
 							break;
 						}
 					}
 
 				if(!found)
-					df->type->spec |= spec_extern;
-					/*cc1_warn_at(&f->where, 0, WARN_EXTERN_ASSUME, "assuming \"%s\" is extern", decl_spel(df));*/
+					func_decl->type->spec |= spec_extern;
+					/*cc1_warn_at(&f->where, 0, WARN_EXTERN_ASSUME, "assuming \"%s\" is extern", decl_spel(func_decl));*/
 			}
 		}
 	}
-
-	curdecl_func = NULL;
 }
 
 int fold_struct(struc *st)
@@ -730,31 +739,32 @@ void fold(symtable *globs)
 			fold_struct(*it);
 	}
 
-
-	for(i = 0; D(i); i++){
-		int j;
-
-		for(j = 0; D(j); j++);
-		fprintf(stderr, "handling sym[%d/%d] %s\n", i, j, decl_spel(D(i)));
-		// BUG HERE TODO
-
-
+	for(i = 0; D(i); i++)
 		if(D(i)->sym)
 			ICE("%s: sym (%p) already set for global \"%s\"", where_str(&D(i)->where), D(i)->sym, decl_spel(D(i)));
 
+	for(;;){
+		int i;
+
+		/* find the next sym (since we can prepend, start at 0 each time */
+		for(i = 0; D(i); i++)
+			if(!D(i)->sym)
+				break;
+
+		if(!D(i))
+			break; /* finished */
+
 		/* extern overwrite check */
-		if(D(i)->type->spec & spec_extern)
+		if(D(i)->type->spec & spec_extern){
+			int j;
 			for(j = 0; D(j); j++)
 				if(j != i && decl_spel(D(j)) && !strcmp(decl_spel(D(j)), decl_spel(D(i))) && (D(j)->type->spec & spec_extern) == 0)
 					D(i)->ignore = 1;
+		}
 
 		D(i)->sym = sym_new(D(i), sym_global);
 
-		// FIXME: this should be a single call now
-		if(D(i)->decl_ptr->func)
-			fold_func(D(i), globs);
-		else
-			fold_decl_global(D(i), globs);
+		fold_decl_global(D(i), globs);
 	}
 
 #undef D
