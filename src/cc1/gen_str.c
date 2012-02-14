@@ -21,9 +21,20 @@
 
 static int indent = 0;
 
+enum pdeclargs
+{
+	PDECL_NONE          = 0,
+	PDECL_INDENT        = 1 << 0,
+	PDECL_NEWLINE       = 1 << 1,
+	PDECL_SYM_OFFSET    = 1 << 2,
+	PDECL_FUNC_DESCEND  = 1 << 3,
+	PDECL_PIGNORE       = 1 << 4,
+};
+
+void print_decl(decl *d, enum pdeclargs);
+
 void print_tree(tree *t);
 void print_expr(expr *e);
-void print_decl(decl *d, int idt, int nl, int sym_offset, int print_ignore);
 void idt_print(void);
 
 void idt_print()
@@ -66,7 +77,7 @@ void print_decl_ptr_eng(decl_ptr *dp)
 		if(fargs->arglist){
 
 			for(iter = fargs->arglist; iter && *iter; iter++){
-				print_decl(*iter, 0, 0, 0, 0);
+				print_decl(*iter, PDECL_NONE);
 				if(iter[1])
 					fputs(", ", cc1_out);
 			}
@@ -117,7 +128,7 @@ void print_decl_ptr(decl_ptr *dp)
 
 		if(fargs->arglist)
 			for(iter = fargs->arglist; *iter; iter++){
-				print_decl(*iter, 0, 0, 0, 0);
+				print_decl(*iter, PDECL_NONE);
 				if(iter[1])
 					fputs(", ", cc1_out);
 			}
@@ -128,12 +139,12 @@ void print_decl_ptr(decl_ptr *dp)
 	}
 }
 
-void print_decl(decl *d, int idt, int nl, int sym_offset, int print_ignore)
+void print_decl(decl *d, enum pdeclargs mode)
 {
-	if(idt)
+	if(mode & PDECL_INDENT)
 		idt_print();
 
-	if(print_ignore && d->ignore)
+	if((mode & PDECL_PIGNORE) && d->ignore)
 		fprintf(cc1_out, "(extern ignored) ");
 
 	if((fopt_mode & FOPT_ENGLISH) == 0){
@@ -147,14 +158,14 @@ void print_decl(decl *d, int idt, int nl, int sym_offset, int print_ignore)
 		print_decl_eng(d);
 	}
 
-	if(sym_offset){
+	if(mode & PDECL_SYM_OFFSET){
 		if(d->sym)
 			fprintf(cc1_out, " (sym offset = %d)", d->sym->offset);
 		else
 			fprintf(cc1_out, " (no sym)");
 	}
 
-	if(nl)
+	if(mode & PDECL_NEWLINE)
 		fputc('\n', cc1_out);
 
 	indent++;
@@ -166,7 +177,7 @@ void print_decl(decl *d, int idt, int nl, int sym_offset, int print_ignore)
 	}*/
 	indent--;
 
-	if(decl_has_func_code(d)){
+	if((mode & PDECL_FUNC_DESCEND) && decl_has_func_code(d)){
 		decl **iter;
 
 		indent++;
@@ -185,19 +196,16 @@ void print_decl(decl *d, int idt, int nl, int sym_offset, int print_ignore)
 void print_sym(sym *s)
 {
 	idt_printf("sym: type=%s, offset=%d, type: ", sym_to_str(s->type), s->offset);
-	print_decl(s->decl, 0, 1, 0, 1);
+	print_decl(s->decl, PDECL_NEWLINE | PDECL_PIGNORE);
 }
 
 void print_expr(expr *e)
 {
 	idt_printf("e->type: %s\n", expr_to_str(e->type));
-	{
-		decl *d = e->tree_type;
-		if(e->type != expr_identifier || !decl_has_func_code(d)){
-			idt_printf("tree_type: ");
-			print_decl(e->tree_type, 0, 1, 0, 0);
-		}
-	}
+	idt_printf("tree_type: ");
+	indent++;
+	print_decl(e->tree_type, PDECL_NEWLINE);
+	indent--;
 
 	switch(e->type){
 		case expr_comma:
@@ -370,7 +378,7 @@ void print_tree(tree *t)
 			decl *d = *iter;
 
 			indent++;
-			print_decl(d, 1, 1, 1, 1);
+			print_decl(d, PDECL_INDENT | PDECL_NEWLINE | PDECL_SYM_OFFSET | PDECL_PIGNORE);
 			indent--;
 		}
 	}
@@ -396,7 +404,7 @@ void print_struct(struc *st)
 	indent++;
 	for(iter = st->members; *iter; iter++){
 		decl *d = *iter;
-		print_decl(d, 1, 1, 0, 0);
+		print_decl(d, PDECL_INDENT | PDECL_NEWLINE | PDECL_SYM_OFFSET);
 		idt_printf("offset %d\n", d->struct_offset);
 	}
 	indent--;
@@ -417,7 +425,7 @@ void gen_str(symtable *symtab)
 	}
 
 	for(diter = symtab->decls; diter && *diter; diter++){
-		print_decl(*diter, 1, 1, 0, 1);
+		print_decl(*diter, PDECL_INDENT | PDECL_NEWLINE | PDECL_PIGNORE | PDECL_FUNC_DESCEND);
 		if((*diter)->init){
 			idt_printf("init:\n");
 			indent++;
