@@ -130,10 +130,9 @@ invalid:
 			}
 		}
 
-		/*asm_new(asm_call, e->spel);*/
-		if(0 && e->expr->type == expr_identifier){
+		if(e->sym && !e->sym->decl->decl_ptr->child && e->sym->decl->decl_ptr->spel){
 			/* simple */
-			asm_temp(1, "call %s", fname);
+			asm_temp(1, "call %s", e->sym->decl->decl_ptr->spel);
 		}else{
 			walk_expr(e->expr, stab);
 			asm_temp(1, "pop rax  ; function address");
