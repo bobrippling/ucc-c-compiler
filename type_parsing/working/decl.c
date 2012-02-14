@@ -29,7 +29,6 @@ void func(void);
 void (*pfunc_unspec)();
 void (*pfunc)(void);
 
-// FIXME: pointer arguments show up with one less pointer depth than they should
 int const static *(*const (*o)(void *, void **, void ***))(char *(*f));
 
-int (*const ((*(n))(*,*))(((*()))))(*);
+//int (*const ((*(n))(*,*))(((*()))))(*);
