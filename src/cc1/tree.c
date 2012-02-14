@@ -469,7 +469,12 @@ void decl_set_spel(const decl *d, char *sp)
 
 int decl_is_func(const decl *d)
 {
-	decl_ptr *dp = d->decl_ptr;
+	decl_ptr *dp = decl_leaf(d);
+	/*
+	 * leaf - walk over all the ptrs,
+	 * e.g. void ***x(); has a level of three,
+	 * then get the ->func
+	 */
 	return dp->func && !dp->child;
 }
 
@@ -517,7 +522,7 @@ const char *decl_to_str(const decl *d)
 
 	i = snprintf(buf, sizeof buf, "%s%s", type_to_str(d->type), d->decl_ptr->child ? " " : "");
 
-	for(dp = d->decl_ptr; i + 1 < sizeof buf && dp; dp = dp->child)
+	for(dp = d->decl_ptr->child; i + 1 < sizeof buf && dp; dp = dp->child)
 		i += snprintf(buf + i, sizeof buf - i, "*%s%s", dp->is_const ? "*" : "", dp->func ? "(#)" : "");
 
 	buf[i] = '\0';
