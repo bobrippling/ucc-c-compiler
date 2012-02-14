@@ -99,10 +99,11 @@ noproblem:
 		/* TODO: *const propagation */
 
 		e->tree_type = decl_copy(e->tree_type);
-		e->tree_type->decl_ptr = e->tree_type->decl_ptr->child;
+		e->tree_type->decl_ptr = e->tree_type->decl_ptr->child; /* XXX: memleak */
 
+		if(e->tree_type->decl_ptr->is_const)
+			e->tree_type->type->spec |= spec_const;
 
-		/* XXX: memleak */
 		UCC_ASSERT(e->tree_type->decl_ptr, "ptr_depth-- - gives bad decl");
 
 		if(decl_ptr_depth(e->tree_type) == 0)
