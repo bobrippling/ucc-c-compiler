@@ -86,51 +86,47 @@ char *asm_label_flowfin()
 
 void asm_sym(enum asm_sym_type t, sym *s, const char *reg)
 {
-	switch(s->type){
-		case sym_local:
-		case sym_arg:
-		case sym_global:
-		{
-			char *const dsp = decl_spel(s->decl);
-			int is_auto = s->type == sym_local;
-			char  stackbrackets[16];
-			char *brackets;
+	char *const dsp = decl_spel(s->decl);
+	int is_auto = s->type == sym_local;
+	char  stackbrackets[16];
+	char *brackets;
 
-			if(s->type == sym_global || (s->type == sym_local && (s->decl->type->spec & (spec_extern | spec_static)))){
-				const char *type_s = "";
-				const int bracket_len = strlen(dsp) + 16;
+	if(s->type == sym_global || (s->type == sym_local && (s->decl->type->spec & (spec_extern | spec_static)))){
+		const int bracket_len = strlen(dsp) + 16;
 
-				brackets = umalloc(bracket_len + 1);
+		brackets = umalloc(bracket_len + 1);
 
-				if(asm_type_size(s->decl) == ASM_SIZE_WORD)
-					type_s = "qword ";
+		if(decl_is_func(s->decl)){
+			snprintf(brackets, bracket_len, "%s", dsp); /* int (*p)() = printf; for example */
+			/* force a mov (i.e. &func == func) */
+			t = ASM_LOAD;
+		}else{
+			const char *type_s = "";
 
-				/* get warnings for "lea rax, [qword tim]", just do "lea rax, [tim]" */
-				snprintf(brackets, bracket_len, "[%s%s]",
-						t == ASM_LEA ? "" : type_s, dsp);
-			}else{
-				brackets = stackbrackets;
-				snprintf(brackets, sizeof stackbrackets, "[rbp %c %d]",
-						is_auto ? '-' : '+',
-						((is_auto ? 1 : 2) * platform_word_size()) + s->offset);
-			}
+			if(asm_type_size(s->decl) == ASM_SIZE_WORD)
+				type_s = "qword ";
 
-			asm_temp(1, "%s %s, %s ; %s%s",
-					t == ASM_LEA ? "lea"    : "mov",
-					t == ASM_SET ? brackets : reg,
-					t == ASM_SET ? reg      : brackets,
-					t == ASM_LEA ? "&"      : "",
-					dsp
-					);
-
-			if(brackets != stackbrackets)
-				free(brackets);
-			break;
+			/* get warnings for "lea rax, [qword tim]", just do "lea rax, [tim]" */
+			snprintf(brackets, bracket_len, "[%s%s]",
+					t == ASM_LEA ? "" : type_s, dsp);
 		}
-
-		case sym_func:
-			ICE("asm_sym: can't handle sym_func");
+	}else{
+		brackets = stackbrackets;
+		snprintf(brackets, sizeof stackbrackets, "[rbp %c %d]",
+				is_auto ? '-' : '+',
+				((is_auto ? 1 : 2) * platform_word_size()) + s->offset);
 	}
+
+	asm_temp(1, "%s %s, %s ; %s%s",
+			t == ASM_LEA ? "lea"    : "mov",
+			t == ASM_SET ? brackets : reg,
+			t == ASM_SET ? reg      : brackets,
+			t == ASM_LEA ? "&"      : "",
+			dsp
+			);
+
+	if(brackets != stackbrackets)
+		free(brackets);
 }
 
 void asm_new(enum asm_type t, void *p)
