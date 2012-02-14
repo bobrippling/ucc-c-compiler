@@ -8,8 +8,7 @@ struct sym
 	{
 		sym_global,
 		sym_local,
-		sym_arg,
-		sym_func
+		sym_arg
 	} type;
 
 	decl *decl;
