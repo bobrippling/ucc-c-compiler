@@ -30,7 +30,7 @@ static tree *curtree_switch; /* for case + default */
 static tree *curtree_flow;   /* for break */
 
 void fold_expr(expr *e, symtable *stab);
-void fold_func(decl *func_decl, funcargs *fargs, symtable *globsymtab);
+void fold_funcargs(decl_ptr *dp, symtable *stab, char *context);
 
 int fold_is_lvalue(expr *e)
 {
@@ -117,7 +117,7 @@ void fold_funcall(expr *e, symtable *stab)
 				/* set up the funcargs as if it's "x()" - i.e. any args */
 				function_empty_args(df->decl_ptr->func);
 
-			e->sym = symtab_add(symtab_root(stab), df, sym_func, SYMTAB_WITH_SYM, SYMTAB_PREPEND);
+			e->sym = symtab_add(symtab_root(stab), df, sym_global, SYMTAB_WITH_SYM, SYMTAB_PREPEND);
 		}else{
 			df = e->sym->decl;
 		}
@@ -361,7 +361,7 @@ void fold_decl_ptr(decl_ptr *dp, symtable *stab, decl *root)
 {
 	if(dp->func){
 		curdecl_func = dp;
-		fold_func(root, dp->func, stab);
+		fold_funcargs(dp, stab, decl_spel(root));
 		curdecl_func = NULL;
 	}
 
@@ -634,17 +634,19 @@ case_add:
 	}
 }
 
-void fold_func(decl *func_decl, funcargs *fargs, symtable *globsymtab)
+void fold_funcargs(decl_ptr *dp, symtable *stab, char *context)
 {
-	char *const func_spel = decl_spel(func_decl);
-	int i;
 	decl **diter;
+	funcargs *fargs = dp->func;
 
 	for(diter = fargs->arglist; diter && *diter; diter++)
-		fold_decl(*diter, globsymtab);
+		fold_decl(*diter, stab);
 
-	if(fargs->arglist)
-		for(i = 0; fargs->arglist[i]; i++)
+	if(fargs->arglist){
+		/* check for unnamed params and extern/static specs */
+		int i;
+
+		for(i = 0; fargs->arglist[i]; i++){
 			if(fargs->arglist[i]->type->spec & (spec_static | spec_extern)){
 				const char *sp = decl_spel(fargs->arglist[i]);
 				die_at(&fargs->where, "argument %d %s%s%sin function \"%s\" is static or extern",
@@ -652,15 +654,27 @@ void fold_func(decl *func_decl, funcargs *fargs, symtable *globsymtab)
 						sp ? "(" : "",
 						sp ? sp  : "",
 						sp ? ") " : "",
-						func_spel);
+						context);
 			}
+		}
+	}
+}
+
+void fold_func(decl *func_decl, symtable *globsymtab)
+{
+	int i;
 
 	if(decl_is_func(func_decl)){
 		if(decl_has_func_code(func_decl)){
-			if(fargs->arglist){
-				/* check for unnamed params and extern/static specs */
-				int nargs;
+			funcargs *fargs = func_decl->decl_ptr->func;
+			int nargs;
 
+			UCC_ASSERT(fargs, "function %s has no funcargs");
+
+			symtab_nest(globsymtab, &func_decl->func_code->symtab);
+			fold_tree(func_decl->func_code);
+
+			if(fargs->arglist){
 				for(nargs = 0; fargs->arglist[nargs]; nargs++);
 
 				/* add args backwards, since we push them onto the stack backwards */
@@ -669,29 +683,6 @@ void fold_func(decl *func_decl, funcargs *fargs, symtable *globsymtab)
 						die_at(&fargs->where, "function \"%s\" has unnamed arguments", decl_spel(func_decl));
 					else
 						SYMTAB_ADD(func_decl->func_code->symtab, fargs->arglist[i], sym_arg);
-			}
-
-			symtab_nest(globsymtab, &func_decl->func_code->symtab);
-			fold_tree(func_decl->func_code);
-
-		}else{
-			decl **iter;
-			int found = 0;
-
-			/* this is similar to the extern-ignore, but for overwriting function prototypes */
-			if((func_decl->type->spec & spec_extern) == 0){
-				for(iter = globsymtab->decls; iter && *iter; iter++)
-					if((*iter)->decl_ptr->func){
-						if(decl_has_func_code(*iter) && !strcmp(decl_spel(*iter), decl_spel(func_decl))){
-							found = 1;
-							func_decl->ignore = 1;
-							break;
-						}
-					}
-
-				if(!found)
-					func_decl->type->spec |= spec_extern;
-					/*cc1_warn_at(&f->where, 0, WARN_EXTERN_ASSUME, "assuming \"%s\" is extern", decl_spel(func_decl));*/
 			}
 		}
 	}
@@ -761,17 +752,40 @@ void fold(symtable *globs)
 		if(!D(i))
 			break; /* finished */
 
-		/* extern overwrite check */
-		if(D(i)->type->spec & spec_extern){
-			int j;
-			for(j = 0; D(j); j++)
-				if(j != i && decl_spel(D(j)) && !strcmp(decl_spel(D(j)), decl_spel(D(i))) && (D(j)->type->spec & spec_extern) == 0)
-					D(i)->ignore = 1;
-		}
-
 		D(i)->sym = sym_new(D(i), sym_global);
 
 		fold_decl_global(D(i), globs);
+		if(decl_has_func_code(D(i)))
+			fold_func(D(i), globs);
+	}
+
+	/*
+	 * change int x(); to extern int x();
+	 * if there is no decl->func_code for "x"
+	 *
+	 * otherwise, ignore it (since we have a func code for it elsewhere)
+	 * e.g. int x(); int x(){}
+	 */
+	for(i = 0; D(i); i++){
+		char *const spel_i = decl_spel(D(i));
+
+		if(decl_is_func(D(i)) && !decl_has_func_code(D(i))){
+			int found = 0;
+			int j;
+
+			for(j = 0; D(j); j++){
+				if(j != i && decl_has_func_code(D(j)) && !strcmp(spel_i, decl_spel(D(j)))){
+					D(i)->ignore = 1;
+					found = 1;
+					break;
+				}
+			}
+
+			if(!found){
+				D(i)->type->spec |= spec_extern;
+				/*cc1_warn_at(&f->where, 0, WARN_EXTERN_ASSUME, "assuming \"%s\" is extern", decl_spel(func_decl));*/
+			}
+		}
 	}
 
 #undef D
