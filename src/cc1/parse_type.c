@@ -286,7 +286,9 @@ decl_ptr *parse_decl_ptr_nofunc(enum decl_mode mode)
 		if(accept(token_const))
 			ret->is_const = 1;
 
-		ret->child = parse_decl_ptr(mode);
+		ret->child = parse_decl_ptr(mode); /* check if we have anything else */
+		if(!ret->child)
+			ret->child = decl_ptr_new(); /* if not, we need to ensure we mark that it's a pointer */
 		return ret;
 
 	}else if(curtok == token_identifier){
@@ -360,7 +362,7 @@ decl *parse_decl(type *t, enum decl_mode mode)
 	decl_ptr *dp = parse_decl_ptr(mode);
 
 	if(!dp)
-		dp = decl_ptr_new();
+		dp = decl_ptr_new(); /* (int)x - no ->dp for "int", add one */
 
 	d->type = t;
 	d->decl_ptr = dp;
