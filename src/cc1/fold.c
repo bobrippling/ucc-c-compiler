@@ -25,9 +25,9 @@
 	if(!decl_ptr_depth(e->tree_type) && e->tree_type->type->primitive == type_void) \
 		die_at(&e->where, "%s requires non-void expression", s)
 
-static decl_ptr *curdecl_func;   /* for funcargs-local labels */
-static tree *curtree_switch; /* for case + default */
-static tree *curtree_flow;   /* for break */
+static char *curdecl_func_sp;    /* for funcargs-local labels */
+static tree *curtree_switch;     /* for case + default */
+static tree *curtree_flow;       /* for break */
 
 void fold_expr(expr *e, symtable *stab);
 void fold_funcargs(decl_ptr *dp, symtable *stab, char *context);
@@ -124,21 +124,37 @@ void fold_funcall(expr *e, symtable *stab)
 
 		fold_expr(e->expr, stab);
 	}else{
-		expr *const call_this = e->expr;
+		expr *call_this = e->expr;
 
 		fold_expr(call_this, stab);
 
 		df = call_this->tree_type;
 
-		if(!decl_is_func(df)){
-			/* check for (*x)() - this evaluates to the return type of x */
-			if(!decl_is_func(call_this->tree_type)){
-				die_at(&e->expr->where, "expression %s not callable", expr_to_str(e->expr->type));
-			}
+		if(!decl_is_callable(df)){
+			die_at(&e->expr->where, "expression %s (%s) not callable",
+					expr_to_str(e->expr->type),
+					decl_to_str(df));
+		}
+
+		/*
+		 * convert int (*)() to remove the deref
+		 * - we have both a ->child and ->func, which means we are a pointer, _then_ a function
+		 */
+		/*if(call_this->tree_type->decl_ptr->child && call_this->tree_type->decl_ptr->func)*/
+		if(call_this->type == expr_op && call_this->op == op_deref){
+			/* XXX: memleak */
+			e->expr = call_this = call_this->lhs;
 		}
 	}
 
 	GET_TREE_TYPE(df);
+	/*
+	 * TODO:
+	 *
+	 * int (*x)();
+	 * (*x)();
+	 * evaluates to tree_type = int;
+	 */
 
 	if(e->funcargs){
 		expr **iter;
@@ -325,9 +341,9 @@ void fold_expr(expr *e, symtable *stab)
 					e->type = expr_addr;
 					e->array_store = array_decl_new();
 
-					UCC_ASSERT(curdecl_func->spel, "no spel for current func");
-					e->array_store->data.str = curdecl_func->spel;
-					e->array_store->len = strlen(curdecl_func->spel) + 1; /* +1 - take the null byte */
+					UCC_ASSERT(curdecl_func_sp, "no spel for current func");
+					e->array_store->data.str = curdecl_func_sp;
+					e->array_store->len = strlen(curdecl_func_sp) + 1; /* +1 - take the null byte */
 
 					e->array_store->type = array_str;
 
@@ -359,11 +375,8 @@ void fold_expr(expr *e, symtable *stab)
 
 void fold_decl_ptr(decl_ptr *dp, symtable *stab, decl *root)
 {
-	if(dp->func){
-		curdecl_func = dp;
+	if(dp->func)
 		fold_funcargs(dp, stab, decl_spel(root));
-		curdecl_func = NULL;
-	}
 
 	if(dp->child)
 		fold_decl_ptr(dp->child, stab, root);
@@ -611,7 +624,7 @@ case_add:
 					 */
 					if(d->type->spec & spec_static){
 						char *save = decl_spel(d);
-						decl_set_spel(d, asm_label_static_local(curdecl_func, decl_spel(d)));
+						decl_set_spel(d, asm_label_static_local(curdecl_func_sp, decl_spel(d)));
 						free(save);
 					}
 				}
@@ -666,13 +679,15 @@ void fold_func(decl *func_decl, symtable *globsymtab)
 
 	if(decl_is_func(func_decl)){
 		if(decl_has_func_code(func_decl)){
-			funcargs *fargs = func_decl->decl_ptr->func;
+			funcargs *fargs;
 			int nargs;
 
-			UCC_ASSERT(fargs, "function %s has no funcargs");
+			curdecl_func_sp = decl_spel(func_decl);
+
+			fargs = decl_func_args(func_decl);
+			UCC_ASSERT(fargs, "function %s has no funcargs", decl_spel(func_decl));
 
 			symtab_nest(globsymtab, &func_decl->func_code->symtab);
-			fold_tree(func_decl->func_code);
 
 			if(fargs->arglist){
 				for(nargs = 0; fargs->arglist[nargs]; nargs++);
@@ -684,6 +699,10 @@ void fold_func(decl *func_decl, symtable *globsymtab)
 					else
 						SYMTAB_ADD(func_decl->func_code->symtab, fargs->arglist[i], sym_arg);
 			}
+
+			fold_tree(func_decl->func_code);
+
+			curdecl_func_sp = NULL;
 		}
 	}
 }

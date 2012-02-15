@@ -463,19 +463,38 @@ void decl_set_spel(const decl *d, char *sp)
 	UCC_ASSERT(sp, "setting null spel for decl");
 
 	if(*psp)
-		ICW("decl %p spel %s -> %s", d, *psp, sp);
+		ICW("replacing decl (at %p) spel %s -> %s", d, *psp, sp);
 	*psp = sp;
 }
 
 int decl_is_func(const decl *d)
 {
-	decl_ptr *dp = decl_leaf(d);
 	/*
 	 * leaf - walk over all the ptrs,
 	 * e.g. void ***x(); has a level of three,
 	 * then get the ->func
 	 */
-	return dp->func && !dp->child;
+	return !!decl_leaf(d)->func;
+}
+
+int decl_is_callable(const decl *d)
+{
+	/* either ->func on the leaf, or one up from the leaf (func _ptr_) */
+	decl_ptr *dp;
+
+	for(dp = d->decl_ptr; dp->child && dp->child->child; dp = dp->child);
+
+	return (dp->child ? dp->child->func : 0) || dp->func;
+}
+
+int decl_is_const( const decl *d)
+{
+	return decl_leaf(d)->is_const;
+}
+
+funcargs *decl_func_args(const decl *d)
+{
+	return decl_leaf(d)->func;
 }
 
 const char *type_to_str(const type *t)
@@ -517,13 +536,18 @@ const char *type_to_str(const type *t)
 const char *decl_to_str(const decl *d)
 {
 	static char buf[DECL_STATIC_BUFSIZ];
-	unsigned int i;
+	unsigned int i = 0;
 	decl_ptr *dp;
 
-	i = snprintf(buf, sizeof buf, "%s%s", type_to_str(d->type), d->decl_ptr->child ? " " : "");
+#define BUF_ADD(...) i += snprintf(buf + i, sizeof buf - i, __VA_ARGS__)
 
-	for(dp = d->decl_ptr->child; i + 1 < sizeof buf && dp; dp = dp->child)
-		i += snprintf(buf + i, sizeof buf - i, "*%s%s", dp->is_const ? "*" : "", dp->func ? "(#)" : "");
+	BUF_ADD("%s%s", type_to_str(d->type), d->decl_ptr->child ? " " : "");
+
+	for(dp = d->decl_ptr->child; dp; dp = dp->child)
+		BUF_ADD("*%s%s", dp->is_const ? "*" : "", dp->func ? "(#)" : "");
+
+	if(d->decl_ptr->func)
+		BUF_ADD("(...)");
 
 	buf[i] = '\0';
 

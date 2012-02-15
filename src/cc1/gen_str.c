@@ -145,17 +145,30 @@ void print_decl(decl *d, enum pdeclargs mode)
 		idt_print();
 
 	if((mode & PDECL_PIGNORE) && d->ignore)
-		fprintf(cc1_out, "(extern ignored) ");
+		fprintf(cc1_out, "(ignored) ");
 
-	if((fopt_mode & FOPT_ENGLISH) == 0){
+	if(fopt_mode & FOPT_ENGLISH){
+		print_decl_eng(d);
+	}else{
 		fputs(type_to_str(d->type), cc1_out);
 
-		if(decl_spel(d))
-			fputc(' ', cc1_out);
+		if(fopt_mode & FOPT_DECL_PTR_TREE){
+			const int idt_orig = indent;
+			decl_ptr *dpi;
 
-		print_decl_ptr(d->decl_ptr);
-	}else{
-		print_decl_eng(d);
+			fputc('\n', cc1_out);
+			for(dpi = d->decl_ptr; dpi; dpi = dpi->child){
+				indent++;
+				idt_printf("decl_ptr: %s%s\n", dpi->is_const ? "const" : "", dpi->func ? "(#)" : "");
+			}
+
+			indent = idt_orig;
+		}else{
+			if(decl_spel(d))
+				fputc(' ', cc1_out);
+
+			print_decl_ptr(d->decl_ptr);
+		}
 	}
 
 	if(mode & PDECL_SYM_OFFSET){

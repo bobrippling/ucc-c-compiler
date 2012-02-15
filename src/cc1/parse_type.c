@@ -366,6 +366,7 @@ decl *parse_decl(type *t, enum decl_mode mode)
 
 	d->type = t;
 	d->decl_ptr = dp;
+	dp->is_const |= (t->spec & spec_const); /* we never check t->spec, just ->is_const */
 
 	if(accept(token_assign))
 		d->init = parse_expr_funcallarg(); /* int x = 5, j; - don't grab the comma expr */
