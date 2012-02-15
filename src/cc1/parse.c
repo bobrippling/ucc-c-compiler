@@ -275,28 +275,31 @@ expr *parse_expr_struct()
 
 expr *parse_expr_array()
 {
-	expr *sum, *deref;
 	expr *base = parse_expr_struct();
 
-	if(!accept(token_open_square))
-		return base;
+	while(accept(token_open_square)){
+		expr *sum, *deref;
 
-	sum = expr_new();
+		sum = expr_new();
 
-	sum->type = expr_op;
-	sum->op   = op_plus;
+		sum->type = expr_op;
+		sum->op   = op_plus;
 
-	sum->lhs  = base;
-	sum->rhs  = parse_expr();
+		sum->lhs  = base;
+		sum->rhs  = parse_expr();
 
-	EAT(token_close_square);
+		EAT(token_close_square);
 
-	deref = expr_new();
-	deref->type = expr_op;
-	deref->op   = op_deref;
-	deref->lhs  = sum;
+		deref = expr_new();
+		deref->type = expr_op;
+		deref->op   = op_deref;
+		deref->lhs  = sum;
 
-	return deref;
+
+		base = deref;
+	}
+
+	return base;
 }
 
 expr *parse_expr_inc_dec()
