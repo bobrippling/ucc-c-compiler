@@ -1,4 +1,4 @@
-void *x(int); // the pointer breaks this
+void *x(int i){} // the pointer breaks this
 
 main()
 {

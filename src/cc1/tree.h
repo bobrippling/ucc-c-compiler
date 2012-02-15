@@ -281,10 +281,14 @@ int   decl_size(const decl *);
 int   decl_equal(const decl *, const decl *, int strict);
 
 #define decl_has_func_code(d) (!!(d)->func_code)
-int   decl_is_func(  const decl *);
-int   decl_ptr_depth(const decl *);
-void  decl_set_spel( const decl *, char *);
-char *decl_spel(     const decl *);
+int   decl_is_func(    const decl *);
+int   decl_is_callable(const decl *);
+int   decl_is_const(   const decl *);
+int   decl_ptr_depth(  const decl *);
+void  decl_set_spel(   const decl *, char *);
+char *decl_spel(       const decl *);
+
+funcargs *decl_func_args(const decl *);
 
 decl_ptr *decl_leaf(const decl *d);
 

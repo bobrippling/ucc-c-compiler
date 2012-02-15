@@ -32,3 +32,4 @@ void (*pfunc)(void);
 int const static *(*const (*o)(void *, void **, void ***))(char *(*f));
 
 //int (*const ((*(n))(*,*))(((*()))))(*);
+main(){}

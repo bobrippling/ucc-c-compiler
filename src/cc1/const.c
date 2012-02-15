@@ -198,9 +198,10 @@ int const_expr_is_const(expr *e)
 	if(e->type == expr_val || e->type == expr_sizeof || e->type == expr_addr)
 		return 1;
 
-	/* can't have a const+extern in a constant expression */
-	return 0; /*e->sym ? (e->sym->decl->type->spec & spec_const && (e->sym->decl->type->spec & spec_extern) == 0) : 0;
-							the above needs to be added in when *const parsing is done */
+	if(e->sym)
+		return decl_is_const(e->sym->decl);
+
+	return decl_is_const(e->tree_type);
 }
 
 int const_expr_is_zero(expr *e)

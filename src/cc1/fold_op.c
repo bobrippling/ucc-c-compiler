@@ -94,17 +94,16 @@ noproblem:
 			warn_at(&e->lhs->where, "possible optimisation for *& expression");
 
 
+		//fprintf(stderr, "lhs tt: %s\n", decl_to_str(e->lhs->tree_type));
+		{
+			//fprintf(stderr, "deref of '%s' -> '", decl_to_str(e->tree_type));
+			e->tree_type = decl_copy(e->tree_type);
+			e->tree_type->decl_ptr = e->tree_type->decl_ptr->child; /* XXX: memleak */
+			//fprintf(stderr, "%s'\n", decl_to_str(e->tree_type));
+		}
+
 		GET_TREE_TYPE(e->lhs->tree_type);
-
-		/* TODO: *const propagation */
-
-		e->tree_type = decl_copy(e->tree_type);
-		e->tree_type->decl_ptr = e->tree_type->decl_ptr->child; /* XXX: memleak */
-
-		if(e->tree_type->decl_ptr->is_const)
-			e->tree_type->type->spec |= spec_const;
-
-		UCC_ASSERT(e->tree_type->decl_ptr, "ptr_depth-- - gives bad decl");
+		UCC_ASSERT(e->tree_type->decl_ptr, "deref gives bad decl");
 
 		if(decl_ptr_depth(e->tree_type) == 0)
 			switch(e->lhs->tree_type->type->primitive){
