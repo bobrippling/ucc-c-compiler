@@ -214,6 +214,7 @@ struct tree
 
 	tree *lhs, *rhs;
 	expr *expr; /* test expr for if and do, etc */
+	expr *expr2;
 
 	tree_flow *flow; /* for, switch (do and while are simple enough for ->[lr]hs) */
 

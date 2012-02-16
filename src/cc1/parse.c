@@ -796,6 +796,22 @@ tree *parse_code_block()
 	return t;
 }
 
+tree *parse_label_next(tree *lbl)
+{
+	lbl->lhs = parse_code();
+	/*
+	 * a label must have a block of code after it:
+	 *
+	 * if(x)
+	 *   lbl:
+	 *   printf("yo\n");
+	 *
+	 * both the label and the printf statements are in the if
+	 * as a compound statement
+	 */
+	return lbl;
+}
+
 tree *parse_code()
 {
 	tree *t;
@@ -840,7 +856,7 @@ tree *parse_code()
 			EAT(token_colon);
 			t = tree_new();
 			t->type = stat_default;
-			return t;
+			return parse_label_next(t);
 		case token_case:
 		{
 			expr *a;
@@ -849,25 +865,26 @@ tree *parse_code()
 			if(accept(token_elipsis)){
 				t = tree_new();
 				t->type = stat_case_range;
-				t->lhs = expr_to_tree(a);
-				t->rhs = expr_to_tree(parse_expr());
+				t->expr  = a;
+				t->expr2 = parse_expr();
 			}else{
 				t = expr_to_tree(a);
 				t->type = stat_case;
 			}
 			EAT(token_colon);
-			return t;
+			return parse_label_next(t);
 		}
 
 		default:
 			t = expr_to_tree(parse_expr());
 
-			if(t->expr->type == expr_identifier && accept(token_colon))
+			if(t->expr->type == expr_identifier && accept(token_colon)){
 				t->type = stat_label;
-			else
+				return parse_label_next(t);
+			}else{
 				EAT(token_semicolon);
-
-			return t;
+				return t;
+			}
 	}
 
 	/* unreachable */
