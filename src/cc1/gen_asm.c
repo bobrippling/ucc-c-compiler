@@ -255,10 +255,10 @@ void walk_tree(tree *t)
 
 				if(cse->type == stat_case_range){
 					char *skip = asm_label_code("range_skip");
-					asm_temp(1, "cmp rax, %d", cse->lhs->expr->val.i);
+					asm_temp(1, "cmp rax, %d", cse->expr->val.i);
 					asm_temp(1, "j%s %s", is_unsigned ? "b" : "l", skip);
-					asm_temp(1, "cmp rax, %d", cse->rhs->expr->val.i);
-					asm_temp(1, "j%se %s", is_unsigned ? "b" : "l", cse->lhs->expr->spel);
+					asm_temp(1, "cmp rax, %d", cse->expr2->val.i);
+					asm_temp(1, "j%se %s", is_unsigned ? "b" : "l", cse->expr->spel);
 					asm_label(skip);
 					free(skip);
 				}else if(cse->expr->expr_is_default){
@@ -284,10 +284,9 @@ void walk_tree(tree *t)
 		case stat_case:
 		case stat_default:
 		case stat_label:
-			asm_label(t->expr->spel);
-			break;
 		case stat_case_range:
-			asm_label(t->lhs->expr->spel);
+			asm_label(t->expr->spel);
+			walk_tree(t->lhs); /* the code-part of the compound statement */
 			break;
 
 		case stat_goto:

@@ -521,7 +521,7 @@ const char *type_to_str(const type *t)
 			APPEND(void);
 			case type_unknown:
 				ICW("unknown type primitive");
-				strcpy(buf, "???");
+				snprintf(bufp, BUF_SIZE, "UNKNOWN");
 				break;
 			case type_typedef:
 				ICE("typedef without ->tdef");
