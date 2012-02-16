@@ -37,6 +37,7 @@ enum token
 	token_auto,
 	token_typedef,
 	token_struct,
+	token_enum,
 
 	token_open_paren,
 	token_open_block,

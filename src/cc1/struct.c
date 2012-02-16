@@ -8,7 +8,7 @@
 #include "tree.h"
 #include "struct.h"
 
-int struct_size(struc *st)
+int struct_size(struct_st *st)
 {
 	decl **i;
 	int r = 0;
@@ -17,12 +17,12 @@ int struct_size(struc *st)
 	return r;
 }
 
-struc *struct_find(struc **structs, const char *spel)
+struct_st *struct_find(struct_st **structs, const char *spel)
 {
-	struc **i;
+	struct_st **i;
 
 	for(i = structs; i && *i; i++){
-		struc *st = *structs;
+		struct_st *st = *structs;
 		if(st->spel && !strcmp(st->spel, spel))
 			return st;
 	}
@@ -30,28 +30,35 @@ struc *struct_find(struc **structs, const char *spel)
 	return NULL;
 }
 
-struc *struct_add(struc ***structs, char *spel, decl **members)
+struct_st *struct_add(struct_st ***structs, char *spel, decl **members)
 {
-	struc *struc;
+	struct_st *struct_st;
+	decl **iter;
 
-	if(spel && (struc = struct_find(*structs, spel))){
+	if(spel && (struct_st = struct_find(*structs, spel))){
 		char buf[WHERE_BUF_SIZ];
 		strcpy(buf, where_str(&members[0]->where));
-		die_at(&struc->members[0]->where, "duplicate struct from %s", buf);
+		die_at(&struct_st->members[0]->where, "duplicate struct from %s", buf);
 	}
 
-	struc          = umalloc(sizeof *struc);
+	struct_st = umalloc(sizeof *struct_st);
+
+	for(iter = members; *iter; iter++){
+		decl *d = *iter;
+		if(d->init)
+			die_at(&d->init->where, "struct member %s is initialised", d->spel);
+	}
 
 	if(spel){
-		struc->spel = spel;
+		struct_st->spel = spel;
 	}else{
-		struc->spel = umalloc(32);
-		snprintf(struc->spel, 32, "<anon %p>", (void *)struc);
+		struct_st->spel = umalloc(32);
+		snprintf(struct_st->spel, 32, "<anon %p>", (void *)struct_st);
 	}
 
-	struc->members = members;
+	struct_st->members = members;
 
-	dynarray_add((void ***)structs, struc);
+	dynarray_add((void ***)structs, struct_st);
 
-	return struc;
+	return struct_st;
 }

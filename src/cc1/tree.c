@@ -397,9 +397,11 @@ const char *type_to_str(const type *t)
 		if(t->spec & (1 << i))
 			bufp += snprintf(bufp, BUF_SIZE, "%s ", spec_to_str(1 << i));
 
-	if(t->struc)
+	if(t->struc){
 		snprintf(bufp, BUF_SIZE, "struct %s", t->struc->spel);
-	else
+	}else if(t->enu){
+		ICE("TODO: ->enu");
+	}else{
 		switch(t->primitive){
 #define APPEND(t) case type_ ## t: snprintf(bufp, BUF_SIZE, "%s", #t); break
 			APPEND(int);
@@ -413,8 +415,11 @@ const char *type_to_str(const type *t)
 				ICE("typedef without ->tdef");
 			case type_struct:
 				ICE("struct without ->struc");
+			case type_enum:
+				ICE("enum without ->enu");
 #undef APPEND
 		}
+	}
 
 	return buf;
 }
