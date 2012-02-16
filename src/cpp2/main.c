@@ -15,10 +15,11 @@ static const struct
 {
 	const char *nam, *val;
 } initial_defs[] = {
-	{ "__unix__", "1"  },
-	{ "__FILE__", NULL },
-	{ "__LINE__", NULL },
-	{ NULL,       NULL }
+	{ "__unix__",       "1"  },
+	{ "__FILE__",       NULL },
+	{ "__LINE__",       NULL },
+	{ "__COUNTER__",    NULL },
+	{ NULL,             NULL }
 };
 
 const char *current_fname;
