@@ -31,6 +31,7 @@ static tree *curtree_flow;       /* for break */
 
 void fold_expr(expr *e, symtable *stab);
 void fold_funcargs(decl_ptr *dp, symtable *stab, char *context);
+void fold_tree(tree *t);
 
 int fold_is_lvalue(expr *e)
 {
@@ -432,6 +433,12 @@ void fold_decl_global(decl *d, symtable *stab)
 	fold_decl(d, stab);
 }
 
+void fold_tree_nest(tree *paren, tree *child)
+{
+	symtab_nest(paren->symtab, &child->symtab);
+	fold_tree(child);
+}
+
 void fold_tree(tree *t)
 {
 	UCC_ASSERT(t->symtab->parent, "symtab has no parent");
@@ -455,6 +462,9 @@ void fold_tree(tree *t)
 			/* else let the assembler check for link errors */
 			t->expr->spel = asm_label_goto(t->expr->spel);
 			free(save);
+
+			if(t->type == stat_label)
+				fold_tree_nest(t, t->lhs); /* compound */
 			break;
 		}
 
@@ -472,15 +482,12 @@ void fold_tree(tree *t)
 
 			OPT_CHECK(t->expr, "constant expression in if/while");
 
-			symtab_nest(t->symtab, &t->lhs->symtab);
-			fold_tree(t->lhs);
+			fold_tree_nest(t, t->lhs);
 
-			if(t->type != stat_if){
+			if(t->type != stat_if)
 				curtree_flow = oldflowtree;
-			}else if(t->rhs){
-				symtab_nest(t->symtab, &t->rhs->symtab);
-				fold_tree(t->rhs);
-			}
+			else if(t->rhs)
+				fold_tree_nest(t, t->rhs);
 			break;
 		}
 
@@ -502,8 +509,7 @@ void fold_tree(tree *t)
 
 			OPT_CHECK(t->flow->for_while, "constant expression in for");
 
-			symtab_nest(t->symtab, &t->lhs->symtab);
-			fold_tree(t->lhs);
+			fold_tree_nest(t, t->lhs);
 
 			curtree_flow = oldflowtree;
 			break;
@@ -514,26 +520,24 @@ void fold_tree(tree *t)
 		{
 			int l, r;
 
-			symtab_nest(t->symtab, &t->lhs->symtab);
-			symtab_nest(t->symtab, &t->rhs->symtab);
-			fold_tree(t->lhs);
-			fold_tree(t->rhs);
+			fold_expr(t->expr,  t->symtab);
+			fold_expr(t->expr2, t->symtab);
 
-			if(const_fold(t->lhs->expr) || const_fold(t->rhs->expr))
+			if(const_fold(t->expr) || const_fold(t->expr2))
 				die_at(&t->where, "case range not constant");
 			if(!curtree_switch)
 				die_at(&t->where, "not inside a switch statement");
 
-			EXPR_NON_VOID(t->lhs->expr, "case");
-			EXPR_NON_VOID(t->rhs->expr, "case");
+			EXPR_NON_VOID(t->expr,  "case");
+			EXPR_NON_VOID(t->expr2, "case");
 
-			l = t->lhs->expr->val.i.val;
-			r = t->rhs->expr->val.i.val;
+			l = t->expr->val.i.val;
+			r = t->expr2->val.i.val;
 
 			if(l >= r)
 				die_at(&t->where, "case range equal or inverse");
 
-			t->lhs->expr->spel = asm_label_case(CASE_RANGE, l);
+			t->expr->spel = asm_label_case(CASE_RANGE, l);
 			goto case_add;
 		}
 
@@ -557,6 +561,7 @@ void fold_tree(tree *t)
 			}
 			t->expr->spel = asm_label_case(def ? CASE_DEF : CASE_CASE, t->expr->val.i.val);
 case_add:
+			fold_tree_nest(t, t->lhs); /* compound */
 			dynarray_add((void ***)&curtree_switch->codes, t);
 			break;
 		}
@@ -577,9 +582,7 @@ case_add:
 
 			OPT_CHECK(t->expr, "constant expression in switch");
 
-			t->lhs->symtab = t->symtab; /* don't bother nesting */
-			fold_tree(t->lhs);
-
+			fold_tree_nest(t, t->lhs);
 			/* FIXME: check for duplicate case values and at most, 1 default */
 
 			curtree_switch = oldswtree;
@@ -605,11 +608,8 @@ case_add:
 
 			if(t->codes){
 				tree **iter;
-				for(iter = t->codes; *iter; iter++){
-					tree *subt = *iter;
-					symtab_nest(t->symtab, &subt->symtab);
-					fold_tree(subt);
-				}
+				for(iter = t->codes; *iter; iter++)
+					fold_tree_nest(t, *iter);
 			}
 
 			/* static folding */
