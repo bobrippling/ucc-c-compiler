@@ -406,7 +406,9 @@ const char *type_to_str(const type *t)
 			APPEND(char);
 			APPEND(void);
 			case type_unknown:
-				ICE("unknown type primitive");
+				ICW("unknown type primitive");
+				snprintf(bufp, BUF_SIZE, "UNKNOWN");
+				break;
 			case type_typedef:
 				ICE("typedef without ->tdef");
 			case type_struct:
