@@ -12,7 +12,6 @@
 #include "../util/util.h"
 #include "sym.h"
 #include "cc1.h"
-#include "typedef.h"
 #include "../util/dynarray.h"
 #include "struct.h"
 #include "parse_type.h"
@@ -29,9 +28,6 @@
  * parse_expr_cmp_op     above [><==!=] above
  * parse_expr_logical_op above [&&||]   above
  */
-
-tdeftable *typedefs_current;
-struc    **structs_current;
 
 expr *parse_lone_identifier()
 {
@@ -636,8 +632,8 @@ function *parse_function()
 
 	if(accept(token_close_paren))
 		goto empty_func;
-	if(curtok == token_identifier && !TYPEDEF_FIND())
-		goto old_func;
+	/*if(curtok == token_identifier && !TYPEDEF_FIND())
+		goto old_func;*/
 
 	argdecl = parse_decl_single(DECL_CAN_DEFAULT);
 
@@ -682,8 +678,10 @@ empty_func:
 		char **spells;
 		decl **args;
 
-old_func:
+/*old_func:*/
 		spells = NULL;
+
+		ICE("old func parsing broken (typedefs)");
 
 		do{
 			if(curtok != token_identifier)
@@ -896,7 +894,6 @@ symtable *parse()
 	decl **decls = NULL;
 	int i;
 
-	typedefs_current = umalloc(sizeof *typedefs_current);
 	globals = symtab_new();
 
 	decls = parse_decls(1, 0);
@@ -907,8 +904,6 @@ symtable *parse()
 			symtab_add(globals, decls[i], sym_global, SYMTAB_NO_SYM, SYMTAB_APPEND);
 			UCC_ASSERT(!decls[i]->sym, "symtab_add(... SYMTAB_NO_SYM) gave a sym");
 		}
-
-	globals->structs = structs_current; /* FIXME: structs should be per-block */
 
 	EAT(token_eof);
 

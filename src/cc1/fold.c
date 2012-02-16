@@ -15,6 +15,7 @@
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
 #include "struct.h"
+#include "enum.h"
 
 #define DIE_UNDECL_SPEL(sp) \
 		die_at(&e->where, "undeclared identifier \"%s\" (%s:%d)", sp, __FILE__, __LINE__)
@@ -208,18 +209,11 @@ void fold_assignment(expr *e, symtable *stab)
 	}
 
 
-	if(!e->sym && e->lhs->spel){
-		/* need this here, since the generic sym-assignment does it from ->spel and not with assigning_to either */
-		e->sym = symtab_search(stab, e->lhs->spel);
-
-		if(!e->sym)
-			DIE_UNDECL_SPEL(e->lhs->spel);
-
+	if(e->lhs->sym)
 		/* read the tree_type from what we're assigning to, not the expr */
-		GET_TREE_TYPE(e->sym->decl);
-	}else{
+		GET_TREE_TYPE(e->lhs->sym->decl);
+	else
 		GET_TREE_TYPE(e->lhs->tree_type);
-	}
 
 
 	/* type check */
@@ -358,6 +352,24 @@ void fold_expr(expr *e, symtable *stab)
 					break;
 
 				}else{
+					/* check for an enum */
+					enum_st **i;
+
+					for(i = stab->enums; i && *i; i++){
+						enum_member **mi;
+
+						for(mi = (*i)->members; *mi; mi++){
+							enum_member *m = *mi;
+							fprintf(stderr, "enum cmp %s <-> %s\n", e->spel, m->spel);
+							if(!strcmp(m->spel, e->spel)){
+								e->type = expr_val;
+								e->val = m->val->val;
+								fold_expr(e, stab);
+								return;
+							}
+						}
+					}
+
 					DIE_UNDECL();
 				}
 			}
@@ -439,6 +451,43 @@ void fold_tree_nest(tree *paren, tree *child)
 {
 	symtab_nest(paren->symtab, &child->symtab);
 	fold_tree(child);
+}
+
+int fold_struct(struct_st *st)
+{
+	int offset;
+	decl **i;
+
+	for(offset = 0, i = st->members; *i; i++){
+		decl *d = *i;
+		if(d->type->struc){
+			d->struct_offset = offset;
+			offset += fold_struct(d->type->struc);
+		}else{
+			d->struct_offset = offset;
+			offset += decl_size(d);
+		}
+	}
+
+	return offset;
+}
+
+void fold_enum(enum_st *en, symtable *stab)
+{
+	enum_member **i;
+	int defval = 0;
+
+	for(i = en->members; *i; i++){
+		expr *e = (*i)->val;
+		if(e == (expr *)-1){
+			e = expr_new_val(defval++);
+		}else{
+			fold_expr(e, stab);
+			if(!const_expr_is_const(e))
+				die_at(&e->where, "enum value not constant");
+			defval = const_expr_val(e) + 1;
+		}
+	}
 }
 
 void fold_tree(tree *t)
@@ -594,7 +643,9 @@ case_add:
 
 		case stat_code:
 			if(t->decls){
-				decl **iter;
+				decl      **iter;
+				struct_st **sit;
+				enum_st   **eit;
 
 				for(iter = t->decls; *iter; iter++){
 					decl *d = *iter;
@@ -606,6 +657,12 @@ case_add:
 
 					SYMTAB_ADD(t->symtab, d, d->func ? sym_func : sym_local);
 				}
+
+				for(sit = t->symtab->structs; sit && *sit; sit++)
+					fold_struct(*sit);
+
+				for(eit = t->symtab->enums; eit && *eit; eit++)
+					fold_enum(*eit, t->symtab);
 			}
 
 			if(t->codes){
@@ -718,25 +775,6 @@ void fold_func(decl *df, symtable *globsymtab)
 	curdecl_func = NULL;
 }
 
-int fold_struct(struc *st)
-{
-	int offset;
-	decl **i;
-
-	for(offset = 0, i = st->members; *i; i++){
-		decl *d = *i;
-		if(d->type->struc){
-			d->struct_offset = offset;
-			offset += fold_struct(d->type->struc);
-		}else{
-			d->struct_offset = offset;
-			offset += decl_size(d);
-		}
-	}
-
-	return offset;
-}
-
 void fold(symtable *globs)
 {
 #define D(x) globs->decls[x]
@@ -758,13 +796,6 @@ void fold(symtable *globs)
 		f->args[0]->ptr_depth = 1;
 
 		symtab_add(globs, d, sym_global, SYMTAB_NO_SYM, SYMTAB_PREPEND);
-	}
-
-	{
-		/* FIXME: when struct decls are local to blocks, this will need moving */
-		struc **it;
-		for(it = globs->structs; it && *it; it++)
-			fold_struct(*it);
 	}
 
 	for(i = 0; D(i); i++){

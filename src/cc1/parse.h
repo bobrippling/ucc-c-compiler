@@ -10,10 +10,7 @@ enum decl_mode
 
 extern enum token curtok;
 #define accept(tok) ((tok) == curtok ? (EAT(tok), 1) : 0)
-#define TYPEDEF_FIND() (curtok == token_identifier ? typedef_find(typedefs_current, token_current_spel_peek()) : NULL)
 #define PARSE_DECLS() parse_decls(0, 0)
-
-
 
 #define parse_expr() parse_expr_comma()
 #define parse_expr_funcallarg() parse_expr_if()
@@ -32,9 +29,11 @@ expr *parse_expr_array(void);
 expr *parse_expr_if(void);
 expr *parse_expr_deref(void);
 
-
 function *parse_function(void);
 
 symtable *parse(void);
+
+/* tables local to the current scope */
+extern symtable *current_scope;
 
 #endif

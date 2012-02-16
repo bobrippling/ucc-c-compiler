@@ -8,8 +8,7 @@ struct sym
 	{
 		sym_global,
 		sym_local,
-		sym_arg,
-		sym_func
+		sym_arg
 	} type;
 
 	decl *decl;
@@ -19,8 +18,11 @@ struct symtable
 {
 	int auto_total_size;
 	symtable *parent, **children;
-	decl  **decls;
-	struc **structs;
+
+	decl      **decls;
+	struct_st **structs;
+	enum_st   **enums;
+	tdeftable  *typedefs;
 };
 
 sym *sym_new(decl *d, enum sym_type t);
@@ -40,6 +42,8 @@ sym  *symtab_search(   symtable *, const char *);
 sym  *symtab_has(      symtable *, decl *);
 void  symtab_nest(     symtable *parent, symtable **brat);
 void  symtab_nest_finish(symtable *parent, symtable *brat);
+
+sym  *symtab_search_with_enum(symtable *, const char *);
 
 #define SYMTAB_ADD(tab, decl, type) symtab_add(tab, decl, type, SYMTAB_WITH_SYM, SYMTAB_APPEND)
 

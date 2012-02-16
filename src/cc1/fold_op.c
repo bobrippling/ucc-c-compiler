@@ -5,7 +5,7 @@ void fold_op_struct(expr *e, symtable *stab)
 	 * rhs = struct member ident
 	 */
 	const int ptr_depth_exp = e->op == op_struct_ptr ? 1 : 0;
-	struc *st;
+	struct_st *st;
 	decl *d, **i;
 	char *spel;
 

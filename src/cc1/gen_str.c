@@ -319,7 +319,7 @@ void print_func(decl *d)
 	indent--;
 }
 
-void print_struct(struc *st)
+void print_struct(struct_st *st)
 {
 	decl **iter;
 
@@ -340,7 +340,7 @@ void gen_str(symtable *symtab)
 
 	if(symtab->structs){
 		/* FIXME: when struct decls are local to blocks, this will need moving */
-		struc **it;
+		struct_st **it;
 		idt_printf("structs:\n");
 		indent++;
 		for(it = symtab->structs; *it; it++)
