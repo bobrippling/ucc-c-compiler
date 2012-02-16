@@ -195,7 +195,16 @@ number:
 					break;
 				}
 				case 'p':
-					write(fd, "0x", 2);
+				{
+					void *p = va_arg(ap, void *);
+					if(p){
+						fputs(file, "0x");
+						printx(fd, p, 0);
+					}else{
+						fputs(file, "(nil)");
+					}
+					break;
+				}
 				case 'x':
 					printx(fd, va_arg(ap, int), 1);
 					break;
