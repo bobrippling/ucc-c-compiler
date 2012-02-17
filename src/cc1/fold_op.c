@@ -17,8 +17,11 @@ void fold_op_struct(expr *e, symtable *stab)
 	spel = e->rhs->spel;
 
 	/* we access a struct, of the right ptr depth */
-	if(e->lhs->tree_type->type->primitive != type_struct || e->lhs->tree_type->ptr_depth != ptr_depth_exp)
-		die_at(&e->lhs->where, "%s is not a %sstruct", decl_to_str(e->lhs->tree_type), ptr_depth_exp == 1 ? "pointer-to-" : "");
+	if(e->lhs->tree_type->type->primitive != type_struct
+			|| e->lhs->tree_type->ptr_depth != ptr_depth_exp)
+		die_at(&e->lhs->where, "%s is not a %sstruct",
+				decl_to_str(e->lhs->tree_type),
+				ptr_depth_exp == 1 ? "pointer-to-" : "");
 
 	st = e->lhs->tree_type->type->struc;
 
@@ -36,7 +39,6 @@ void fold_op_struct(expr *e, symtable *stab)
 		die_at(&e->rhs->where, "struct %s has no member named \"%s\"", st->spel, spel);
 
 	GET_TREE_TYPE_TO(e->rhs, d);
-	GET_TREE_TYPE(d);
 
 	/*
 	 * if it's a.b, convert to (&a)->b for asm gen
@@ -54,6 +56,9 @@ void fold_op_struct(expr *e, symtable *stab)
 		e->op   = op_struct_ptr;
 
 		fold_expr(e->lhs, stab);
+		GET_TREE_TYPE(e->lhs->tree_type);
+	}else{
+		GET_TREE_TYPE(d);
 	}
 }
 

@@ -103,15 +103,13 @@ void gen_addr(expr *e, symtable *stab)
 
 	if(e->array_store){
 		asm_temp(1, "mov rax, %s", e->array_store->label);
-	}else if(e->expr){
+	}else{
 		/* address of possibly an ident "(&a)->b" or a struct expr "&a->b" */
 		if(e->expr->type == expr_identifier){
 			asm_sym(ASM_LEA, e->expr->sym, "rax");
 		}else{
 			ICE("TODO: address of %s", expr_to_str(e->expr->type));
 		}
-	}else{
-		asm_sym(ASM_LEA, e->sym, "rax");
 	}
 
 	asm_temp(1, "push rax");

@@ -188,13 +188,11 @@ void print_expr(expr *e)
 					}
 					indent--;
 				}
-			}else if(e->expr){
+			}else{
 				idt_printf("address of expr:\n");
 				indent++;
 				print_expr(e->expr);
 				indent--;
-			}else{
-				idt_printf("&%s\n", e->spel);
 			}
 			break;
 
