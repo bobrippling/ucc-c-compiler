@@ -212,6 +212,8 @@ relook:
 
 			did_replace = 1;
 		}else{
+			int is_counter;
+			static int counter = 0; /* __COUNTER__ */
 			char *val;
 			int fval = 0;
 
@@ -227,11 +229,16 @@ relook:
 					val = ustrprintf("\"%s\"", current_fname);
 				else if(!strcmp(m->nam, "__LINE__"))
 					val = ustrprintf("%d", current_line);
+				else if((is_counter = !strcmp(m->nam, "__COUNTER__")))
+					val = ustrprintf("%d", counter);
 				else
 					ICE("invalid macro");
 			}
 
 			did_replace = word_replace_g(pline, m->nam, val);
+
+			if(is_counter && did_replace)
+				counter++;
 
 			if(fval)
 				free(val);
