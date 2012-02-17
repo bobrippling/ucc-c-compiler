@@ -149,20 +149,9 @@ expr *parse_expr_unary_op()
 
 		case token_and:
 			EAT(token_and);
-			e = parse_lone_identifier();
+			e = expr_new();
 			e->type = expr_addr;
-			if(accept(token_open_square)){
-				/* &x[5] */
-				expr *new = expr_new();
-				new->lhs = e;
-				new->rhs = parse_expr();
-				EAT(token_close_square);
-
-				new->type = expr_op;
-				new->op   = op_plus;
-
-				return new;
-			}
+			e->expr = parse_expr_array();
 			return e;
 
 		case token_plus:

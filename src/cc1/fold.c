@@ -70,6 +70,11 @@ int fold_is_callable(expr *e)
 	return e->type == expr_identifier; /* TODO: extend to function pointer */
 }
 
+int fold_expr_is_addressable(expr *e)
+{
+	return e->type == expr_identifier;
+}
+
 #define GET_TREE_TYPE_TO(to, from) \
 	do{ \
 		/*if(e->tree_type) \
@@ -322,25 +327,11 @@ void fold_expr(expr *e, symtable *stab)
 					}
 				}
 
-			}else if(e->expr){
-				fold_expr(e->expr, stab);
-
 			}else{
-				sym *s = e->sym;
-
-				if(!s)
-					DIE_UNDECL();
-
-				GET_TREE_TYPE(s->decl);
-
-				/*
-					* int x[2];
-					* int *p = &x;
-					* p is int *, not int **
-					* hence the following if
-					*/
-				if(!s->decl->arraysizes)
-					e->tree_type->ptr_depth++;
+				fold_expr(e->expr, stab);
+				if(!fold_expr_is_addressable(e->expr))
+					die_at(&e->expr->where, "can't take the address of %s", expr_to_str(e->expr->type));
+				e->tree_type->ptr_depth++;
 			}
 			break;
 
