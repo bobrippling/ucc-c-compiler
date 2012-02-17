@@ -16,7 +16,7 @@ void fold_op_struct(expr *e, symtable *stab)
 		die_at(&e->rhs->where, "struct member must be an identifier");
 	spel = e->rhs->spel;
 
-	/* we either access a struct or an identifier */
+	/* we access a struct, of the right ptr depth */
 	if(e->lhs->tree_type->type->primitive != type_struct || e->lhs->tree_type->ptr_depth != ptr_depth_exp)
 		die_at(&e->lhs->where, "%s is not a %sstruct", decl_to_str(e->lhs->tree_type), ptr_depth_exp == 1 ? "pointer-to-" : "");
 
@@ -37,6 +37,24 @@ void fold_op_struct(expr *e, symtable *stab)
 
 	GET_TREE_TYPE_TO(e->rhs, d);
 	GET_TREE_TYPE(d);
+
+	/*
+	 * if it's a.b, convert to (&a)->b for asm gen
+	 * e = { lhs = "a", rhs = "b", type = dot }
+	 * e = { lhs = { expr = "a", type = addr }, rhs = "b", type = ptr }
+	 */
+	if(ptr_depth_exp == 0){
+		expr *new = expr_new();
+
+		new->expr = e->lhs;
+		e->lhs = new;
+		new->type = expr_addr;
+
+		e->type = expr_op;
+		e->op   = op_struct_ptr;
+
+		fold_expr(e->lhs, stab);
+	}
 }
 
 void fold_op(expr *e, symtable *stab)

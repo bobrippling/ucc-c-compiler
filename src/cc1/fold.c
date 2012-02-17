@@ -322,6 +322,9 @@ void fold_expr(expr *e, symtable *stab)
 					}
 				}
 
+			}else if(e->expr){
+				fold_expr(e->expr, stab);
+
 			}else{
 				sym *s = e->sym;
 
