@@ -100,8 +100,10 @@ inval:
 		return NULL;
 
 	fd = open(path, mode, 0644);
-	if(fd == -1)
+	if(fd == -1){
+		free(f);
 		return NULL;
+	}
 
 	*f = fd;
 

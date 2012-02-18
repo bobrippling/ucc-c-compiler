@@ -12,7 +12,6 @@
 #include "../util/util.h"
 #include "sym.h"
 #include "cc1.h"
-#include "typedef.h"
 #include "../util/dynarray.h"
 #include "struct.h"
 #include "parse_type.h"
@@ -30,8 +29,9 @@
  * parse_expr_logical_op above [&&||]   above
  */
 
-tdeftable *typedefs_current;
-struc    **structs_current;
+/* parse_type uses this for structs, tdefs and enums */
+symtable *current_scope;
+
 
 expr *parse_lone_identifier()
 {
@@ -149,20 +149,9 @@ expr *parse_expr_unary_op()
 
 		case token_and:
 			EAT(token_and);
-			e = parse_lone_identifier();
+			e = expr_new();
 			e->type = expr_addr;
-			if(accept(token_open_square)){
-				/* &x[5] */
-				expr *new = expr_new();
-				new->lhs = e;
-				new->rhs = parse_expr();
-				EAT(token_close_square);
-
-				new->type = expr_op;
-				new->op   = op_plus;
-
-				return new;
-			}
+			e->expr = parse_expr_array();
 			return e;
 
 		case token_plus:
@@ -599,11 +588,15 @@ tree *parse_code_block()
 {
 	tree *t = tree_new_code();
 	decl **diter;
+	symtable *old_scope;
+
+	old_scope = current_scope;
+	current_scope = t->symtab;
 
 	EAT(token_open_block);
 
 	if(accept(token_close_block))
-		return t;
+		goto ret;
 
 	t->decls = PARSE_DECLS();
 
@@ -641,6 +634,8 @@ tree *parse_code_block()
 	 */
 
 	EAT(token_close_block);
+ret:
+	current_scope = old_scope;
 	return t;
 }
 
@@ -744,19 +739,14 @@ symtable *parse()
 	decl **decls = NULL;
 	int i;
 
-	typedefs_current = umalloc(sizeof *typedefs_current);
-	globals = symtab_new();
+	current_scope = globals = symtab_new();
 
 	decls = parse_decls(1, 0);
 	EAT(token_eof);
 
 	if(decls)
-		for(i = 0; decls[i]; i++){
+		for(i = 0; decls[i]; i++)
 			symtab_add(globals, decls[i], sym_global, SYMTAB_NO_SYM, SYMTAB_APPEND);
-			UCC_ASSERT(!decls[i]->sym, "symtab_add(... SYMTAB_NO_SYM) gave a sym");
-		}
-
-	globals->structs = structs_current; /* FIXME: structs should be per-block */
 
 	return globals;
 }

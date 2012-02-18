@@ -60,6 +60,7 @@ struct statement
 	{ "auto",    token_auto    },
 	{ "typedef", token_typedef },
 	{ "struct",  token_struct  },
+	{ "enum",    token_enum    },
 
 	{ "sizeof",  token_sizeof  }
 };

@@ -8,6 +8,7 @@
 #include "sym.h"
 #include "cc1.h"
 #include "struct.h"
+#include "enum.h"
 
 #define ENGLISH_PRINT_ARGLIST
 
@@ -311,7 +312,10 @@ void print_expr(expr *e)
 					indent--;
 				}
 			}else{
-				idt_printf("&%s\n", e->spel);
+				idt_printf("address of expr:\n");
+				indent++;
+				print_expr(e->expr);
+				indent--;
 			}
 			break;
 
@@ -367,6 +371,35 @@ void print_tree_flow(tree_flow *t)
 	indent--;
 }
 
+void print_struct(struct_st *st)
+{
+	decl **iter;
+
+	idt_printf("struct %s:\n", st->spel);
+
+	indent++;
+	for(iter = st->members; *iter; iter++){
+		decl *d = *iter;
+		print_decl(d, PDECL_INDENT | PDECL_NEWLINE);
+		idt_printf("offset %d\n", d->struct_offset);
+	}
+	indent--;
+}
+
+void print_enum(enum_st *et)
+{
+	enum_member **mi;
+
+	idt_printf("enum %s:\n", et->spel);
+
+	indent++;
+	for(mi = et->members; *mi; mi++){
+		enum_member *m = *mi;
+		idt_printf("member %s = %d\n", m->spel, m->val->val.i.val);
+	}
+	indent--;
+}
+
 void print_tree(tree *t)
 {
 	idt_printf("t->type: %s\n", stat_to_str(t->type));
@@ -396,6 +429,18 @@ void print_tree(tree *t)
 		}
 	}
 
+	{
+		struct_st **sit;
+		enum_st   **eit;
+
+		/* fold structs, then enums, then decls - decls may rely on enums */
+		for(sit = t->symtab->structs; sit && *sit; sit++)
+			print_struct(*sit);
+
+		for(eit = t->symtab->enums; eit && *eit; eit++)
+			print_enum(*eit);
+	}
+
 	if(t->codes){
 		tree **iter;
 
@@ -408,34 +453,9 @@ void print_tree(tree *t)
 	}
 }
 
-void print_struct(struc *st)
-{
-	decl **iter;
-
-	idt_printf("struct %s:\n", st->spel);
-
-	indent++;
-	for(iter = st->members; *iter; iter++){
-		decl *d = *iter;
-		print_decl(d, PDECL_INDENT | PDECL_NEWLINE | PDECL_SYM_OFFSET);
-		idt_printf("offset %d\n", d->struct_offset);
-	}
-	indent--;
-}
-
 void gen_str(symtable *symtab)
 {
 	decl **diter;
-
-	if(symtab->structs){
-		/* FIXME: when struct decls are local to blocks, this will need moving */
-		struc **it;
-		idt_printf("structs:\n");
-		indent++;
-		for(it = symtab->structs; *it; it++)
-			print_struct(*it);
-		indent--;
-	}
 
 	for(diter = symtab->decls; diter && *diter; diter++){
 		print_decl(*diter, PDECL_INDENT | PDECL_NEWLINE | PDECL_PIGNORE | PDECL_FUNC_DESCEND);

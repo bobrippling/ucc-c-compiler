@@ -7,59 +7,100 @@
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
 #include "tree.h"
-#include "sym.h"
+#include "typedef.h"
 
 #include "tokenise.h"
 #include "tokconv.h"
 
 #include "struct.h"
-#include "typedef.h"
+#include "enum.h"
+#include "sym.h"
 
 #include "cc1.h"
 
 #include "parse.h"
 #include "parse_type.h"
 
-// TODO
-extern tdeftable *typedefs_current;
-extern struc    **structs_current;
-
-
-type  *parse_type_struct(void);
+type *parse_type_struct(void);
+type *parse_type_enum(void);
 decl_ptr *parse_decl_ptr(enum decl_mode mode);
-
 
 #define INT_TYPE(t) do{ t = type_new(); t->primitive = type_int; }while(0)
 
-type *parse_type_struct()
+void parse_type_preamble(type **tp, char **psp, enum type_primitive primitive)
 {
 	char *spel;
 	type *t;
 
 	spel = NULL;
 	t = type_new();
-	t->primitive = type_struct;
+	t->primitive = primitive;
 
 	if(curtok == token_identifier){
 		spel = token_current_spel();
 		EAT(token_identifier);
 	}
 
+	*psp = spel;
+	*tp = t;
+}
+
+type *parse_type_struct()
+{
+	type *t;
+	char *spel;
+
+	parse_type_preamble(&t, &spel, type_struct);
+
 	if(accept(token_open_block)){
 		decl **members = parse_decls(DECL_CAN_DEFAULT | DECL_SPEL_NEED, 1);
 		EAT(token_close_block);
-		t->struc = struct_add(&structs_current, spel, members);
-	}else{
-		if(!spel)
-			die_at(NULL, "expected: struct definition or name");
-
-		t->struc = struct_find(structs_current, spel);
-
-		if(!t->struc)
-			ICE("struct %s not defined FIXME", spel); /* this should be done at fold time */
-
-		free(spel);
+		t->struc = struct_add(current_scope, spel, members);
+	}else if(!spel){
+		die_at(NULL, "expected: struct definition or name");
 	}
+
+	t->spel = spel; /* save for lookup */
+
+	return t;
+}
+
+type *parse_type_enum()
+{
+	type *t;
+	char *spel;
+
+	parse_type_preamble(&t, &spel, type_enum);
+
+	if(accept(token_open_block)){
+		enum_st *en = enum_st_new();
+
+		do{
+			expr *e;
+			char *sp;
+
+			sp = token_current_spel();
+			EAT(token_identifier);
+
+			if(accept(token_assign))
+				e = parse_expr_funcallarg(); /* no commas */
+			else
+				e = NULL;
+
+			enum_vals_add(en, sp, e);
+
+			if(!accept(token_comma))
+				break;
+		}while(curtok == token_identifier);
+
+		EAT(token_close_block);
+
+		t->enu = enum_add(&current_scope->enums, spel, en);
+	}else if(!spel){
+		die_at(NULL, "expected: enum definition or name");
+	}
+
+	t->spel = spel; /* save for lookup */
 
 	return t;
 }
@@ -75,9 +116,16 @@ type *parse_type()
 	t = NULL;
 
 	/* read "const", "unsigned", ... and "int"/"long" ... in any order */
-	while(td = NULL, (flag = curtok_is_type_specifier()) || curtok_is_type() || curtok == token_struct || (td = TYPEDEF_FIND())){
+	while(td = NULL,
+			(flag = curtok_is_type_specifier()) ||
+			curtok_is_type() ||
+			curtok == token_struct ||
+			curtok == token_enum){
+
 		if(accept(token_struct)){
 			return parse_type_struct();
+		}else if(accept(token_enum)){
+			return parse_type_enum();
 		}else if(flag){
 			const enum type_spec this = curtok_to_type_specifier();
 
@@ -166,7 +214,7 @@ funcargs *parse_func_arglist()
 	if(curtok == token_close_paren)
 		goto empty_func;
 
-	if(curtok == token_identifier && !TYPEDEF_FIND())
+	if(curtok == token_identifier)
 		goto old_func;
 
 	argdecl = parse_decl_single(DECL_CAN_DEFAULT);
@@ -302,7 +350,7 @@ decl_ptr *parse_decl_ptr_nofunc(enum decl_mode mode)
 
 		return ret;
 	}else if(mode & DECL_SPEL_NEED){
-		EAT(token_identifier); /* raise error */
+		die_at(NULL, "need identifier for decl");
 	}
 
 	return NULL;
@@ -404,7 +452,6 @@ decl **parse_decls(const int can_default, const int accept_field_width)
 
 	/* read a type, then *spels separated by commas, then a semi colon, then repeat */
 	for(;;){
-		decl *d;
 		type *t;
 
 		last = NULL;
@@ -424,38 +471,35 @@ decl **parse_decls(const int can_default, const int accept_field_width)
 
 		if(t->spec & spec_typedef)
 			are_tdefs = 1;
-		else if(t->struc && !parse_possible_decl())
+		else if((t->struc || t->enu) && !parse_possible_decl())
 			goto next; /* struct { int i; }; - continue to next one */
 
 		do{
-			d = parse_decl(t, parse_flag);
+			decl *d = parse_decl(t, parse_flag);
 
-			if(d){
-				if(are_tdefs)
-					typedef_add(typedefs_current, d);
-				else
-					dynarray_add((void ***)&decls, d);
-
-				/*if(are_tdefs)
-					if(d->func)
-						die_at(&d->where, "can't have a typedef function");
-
-				if(d->func){
-					if(d->func->code){
-						if(curtok == token_eof)
-							return decls;
-						continue;
-					}
-				}else*/ if(accept_field_width && accept(token_colon)){
-					/* normal decl, check field spec */
-					d->field_width = currentval.val;
-					EAT(token_integer);
-				}
-
-				last = d;
-			}else{
+			if(!d)
 				break;
+
+			dynarray_add(are_tdefs
+					? (void ***)&current_scope->typedefs
+					:  (void ***)&decls,
+					d);
+
+			if(are_tdefs)
+				if(decl_has_func_code(d))
+					die_at(&d->where, "can't have a typedef function");
+
+			if(decl_has_func_code(d)){
+				if(curtok == token_eof)
+					return decls;
+				continue;
+			}else if(accept_field_width && accept(token_colon)){
+				/* normal decl, check field spec */
+				d->field_width = currentval.val;
+				EAT(token_integer);
 			}
+
+			last = d;
 		}while(accept(token_comma));
 
 		if(last && !decl_has_func_code(last)){

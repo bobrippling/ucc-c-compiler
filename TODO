@@ -3,6 +3,9 @@ get rid of __asm__ hacks (mainly in gen_asm.c)
 
 test field_width in struct parsing
 
+merge struct and enum common code
+fix typedefs
+
 cpp2:
 	fix dir-relative file opening
 
