@@ -5,7 +5,7 @@ void fold_op_struct(expr *e, symtable *stab)
 	 * rhs = struct member ident
 	 */
 	const int ptr_depth_exp = e->op == op_struct_ptr ? 1 : 0;
-	struc *st;
+	struct_st *st;
 	decl *d, **i;
 	char *spel;
 
@@ -62,6 +62,60 @@ void fold_op_struct(expr *e, symtable *stab)
 	}
 }
 
+void fold_op_typecheck(expr *e, symtable *stab)
+{
+	enum {
+		SIGNED, UNSIGNED
+	} rhs, lhs;
+	type *type_l, *type_r;
+
+	(void)stab;
+
+	if(!e->rhs)
+		return;
+
+	type_l = e->lhs->tree_type->type;
+	type_r = e->rhs->tree_type->type;
+
+	if(type_l->primitive == type_enum
+			&& type_r->primitive == type_enum
+			&& type_l->enu != type_r->enu){
+		cc1_warn_at(&e->where, 0, WARN_ENUM_CMP, "comparison between enum %s and enum %s", type_l->spel, type_r->spel);
+	}
+
+
+	lhs = type_l->spec & spec_unsigned ? UNSIGNED : SIGNED;
+	rhs = type_r->spec & spec_unsigned ? UNSIGNED : SIGNED;
+
+	if(op_is_cmp(e->op) && rhs != lhs){
+#define SIGN_CONVERT(test_hs, assert_hs) \
+		if(e->test_hs->type == expr_val && e->test_hs->val.i.val >= 0){ \
+			/*                                              \
+				* assert(lhs == UNSIGNED);                     \
+				* vals default to signed, change to unsigned   \
+				*/                                             \
+			UCC_ASSERT(assert_hs == UNSIGNED,               \
+					"signed-unsigned assumption failure");      \
+																											\
+			e->test_hs->tree_type->type->spec |= spec_unsigned; \
+			goto noproblem;                                 \
+		}
+
+		SIGN_CONVERT(rhs, lhs)
+		SIGN_CONVERT(lhs, rhs)
+
+#define SPEL_IF_IDENT(hs)                              \
+				hs->type == expr_identifier ? " ("     : "", \
+				hs->type == expr_identifier ? hs->spel : "", \
+				hs->type == expr_identifier ? ")"      : ""  \
+
+		cc1_warn_at(&e->where, 0, WARN_SIGN_COMPARE, "comparison between signed and unsigned%s%s%s%s%s%s",
+				SPEL_IF_IDENT(e->lhs), SPEL_IF_IDENT(e->rhs));
+	}
+noproblem:
+	return;
+}
+
 void fold_op(expr *e, symtable *stab)
 {
 	if(e->op == op_struct_ptr || e->op == op_struct_dot){
@@ -73,41 +127,7 @@ void fold_op(expr *e, symtable *stab)
 	if(e->rhs)
 		fold_expr(e->rhs, stab);
 
-	if(e->rhs){
-		enum {
-			SIGNED, UNSIGNED
-		} rhs, lhs;
-
-		rhs = e->rhs->tree_type->type->spec & spec_unsigned ? UNSIGNED : SIGNED;
-		lhs = e->lhs->tree_type->type->spec & spec_unsigned ? UNSIGNED : SIGNED;
-
-		if(op_is_cmp(e->op) && rhs != lhs){
-#define SIGN_CONVERT(test_hs, assert_hs) \
-			if(e->test_hs->type == expr_val && e->test_hs->val.i.val >= 0){ \
-				/*                                              \
-				 * assert(lhs == UNSIGNED);                     \
-				 * vals default to signed, change to unsigned   \
-				 */                                             \
-				UCC_ASSERT(assert_hs == UNSIGNED,               \
-						"signed-unsigned assumption failure");      \
-																												\
-				e->test_hs->tree_type->type->spec |= spec_unsigned; \
-				goto noproblem;                                 \
-			}
-
-			SIGN_CONVERT(rhs, lhs)
-			SIGN_CONVERT(lhs, rhs)
-
-#define SPEL_IF_IDENT(hs)                              \
-					hs->type == expr_identifier ? " ("     : "", \
-					hs->type == expr_identifier ? hs->spel : "", \
-					hs->type == expr_identifier ? ")"      : ""  \
-
-			cc1_warn_at(&e->where, 0, WARN_SIGN_COMPARE, "comparison between signed and unsigned%s%s%s%s%s%s",
-					SPEL_IF_IDENT(e->lhs), SPEL_IF_IDENT(e->rhs));
-		}
-	}
-noproblem:
+	fold_op_typecheck(e, stab);
 
 	/* XXX: note, this assumes that e.g. "1 + 2" the lhs and rhs have the same type */
 	if(e->op == op_deref){

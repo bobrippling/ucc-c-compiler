@@ -123,9 +123,6 @@ void asm_sym(enum asm_sym_type t, sym *s, const char *reg)
 				free(brackets);
 			break;
 		}
-
-		case sym_func:
-			ICE("asm_sym: can't handle sym_func");
 	}
 }
 
@@ -225,6 +222,7 @@ enum asm_size asm_type_size(decl *d)
 		return ASM_SIZE_WORD;
 	}else{
 		switch(d->type->primitive){
+			case type_enum:
 			case type_int:
 				return ASM_SIZE_WORD;
 

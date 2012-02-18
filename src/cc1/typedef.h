@@ -1,8 +1,6 @@
 #ifndef TYPEDEF_H
 #define TYPEDEF_H
 
-typedef struct tdeftable tdeftable;
-
 struct tdef
 {
 	decl *decl;

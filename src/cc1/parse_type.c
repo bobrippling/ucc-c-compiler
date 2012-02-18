@@ -5,56 +5,99 @@
 #include "../util/util.h"
 #include "../util/dynarray.h"
 #include "tree.h"
-#include "sym.h"
+#include "typedef.h"
 
 #include "tokenise.h"
 #include "tokconv.h"
 
 #include "struct.h"
-#include "typedef.h"
+#include "enum.h"
+#include "sym.h"
 
 #include "cc1.h"
 
 #include "parse.h"
 #include "parse_type.h"
 
-// TODO
-extern tdeftable *typedefs_current;
-extern struc    **structs_current;
-
 type  *parse_type_struct(void);
+type *parse_type_enum(void);
 
 #define INT_TYPE(t) do{ t = type_new(); t->primitive = type_int; }while(0)
 
-type *parse_type_struct()
+void parse_type_preamble(type **tp, char **psp, enum type_primitive primitive)
 {
 	char *spel;
 	type *t;
 
 	spel = NULL;
 	t = type_new();
-	t->primitive = type_struct;
+	t->primitive = primitive;
 
 	if(curtok == token_identifier){
 		spel = token_current_spel();
 		EAT(token_identifier);
 	}
 
+	*psp = spel;
+	*tp = t;
+}
+
+type *parse_type_struct()
+{
+	type *t;
+	char *spel;
+
+	parse_type_preamble(&t, &spel, type_struct);
+
 	if(accept(token_open_block)){
 		decl **members = parse_decls(DECL_CAN_DEFAULT | DECL_SPEL_NEED, 1);
 		EAT(token_close_block);
-		t->struc = struct_add(&structs_current, spel, members);
-	}else{
-		if(!spel)
-			die_at(NULL, "expected: struct definition or name");
-
-		t->struc = struct_find(structs_current, spel);
-
-		if(!t->struc)
-			die_at(NULL, "struct %s not defined", spel);
-
-		free(spel);
+		t->struc = struct_add(current_scope, spel, members);
+	}else if(!spel){
+		die_at(NULL, "expected: struct definition or name");
 	}
+
+	t->spel = spel; /* save for lookup */
+
+	return t;
+}
+
+type *parse_type_enum()
+{
+	type *t;
+	char *spel;
+
+	parse_type_preamble(&t, &spel, type_enum);
+
+	if(accept(token_open_block)){
+		enum_st *en = enum_st_new();
+
+		do{
+			expr *e;
+			char *sp;
+
+			sp = token_current_spel();
+			EAT(token_identifier);
+
+			if(accept(token_assign))
+				e = parse_expr_funcallarg(); /* no commas */
+			else
+				e = NULL;
+
+			enum_vals_add(en, sp, e);
+
+			if(!accept(token_comma))
+				break;
+		}while(curtok == token_identifier);
+
+		EAT(token_close_block);
+
+		t->enu = enum_add(&current_scope->enums, spel, en);
+	}else if(!spel){
+		die_at(NULL, "expected: enum definition or name");
+	}
+
+	t->spel = spel; /* save for lookup */
 
 	return t;
 }
@@ -71,9 +114,16 @@ type *parse_type()
 	t = NULL;
 
 	/* read "const", "unsigned", ... and "int"/"long" ... in any order */
-	while(td = NULL, (flag = curtok_is_type_specifier()) || curtok_is_type() || curtok == token_struct || (td = TYPEDEF_FIND())){
+	while(td = NULL,
+			(flag = curtok_is_type_specifier()) ||
+			curtok_is_type() ||
+			curtok == token_struct ||
+			curtok == token_enum){
+
 		if(accept(token_struct)){
 			return parse_type_struct();
+		}else if(accept(token_enum)){
+			return parse_type_enum();
 		}else if(flag){
 			const enum type_spec this = curtok_to_type_specifier();
 
@@ -143,7 +193,7 @@ decl *parse_decl(type *t, enum decl_mode mode)
 		d->spel = token_current_spel();
 		EAT(token_identifier);
 	}else if(mode & DECL_SPEL_NEED){
-		EAT(token_identifier);
+		die_at(&d->where, "need identifier for decl");
 	}
 
 	if(accept(token_open_paren))
@@ -222,7 +272,7 @@ decl **parse_decls(const int can_default, const int accept_field_width)
 
 		if(t->spec & spec_typedef)
 			are_tdefs = 1;
-		else if(t->struc && !parse_possible_decl())
+		else if((t->struc || t->enu) && !parse_possible_decl())
 			goto next; /* struct { int i; }; - continue to next one */
 
 		do{
@@ -230,7 +280,7 @@ decl **parse_decls(const int can_default, const int accept_field_width)
 
 			if(d){
 				if(are_tdefs)
-					typedef_add(typedefs_current, d);
+					typedef_add(current_scope->typedefs, d);
 				else
 					dynarray_add((void ***)&decls, d);
 

@@ -9,7 +9,7 @@ OBJ = ../util/alloc.o ../util/util.o ../util/platform.o ../util/dynarray.o \
 	tokconv.o tokenise.o \
 	parse.o parse_type.o typedef.o \
 	fold.o fold_sym.o const.o \
-	sym.o struct.o \
+	sym.o struct.o enum.o struct_enum.o \
 	gen_asm.o gen_str.o \
 	asm.o asm_op.o
 
@@ -33,33 +33,37 @@ test.s: TEST.c cc1
 .PHONY: clean
 
 asm.o: asm.c ../util/util.h tree.h cc1.h sym.h asm.h ../util/platform.h \
- ../util/alloc.h struct.h
+  ../util/alloc.h struct.h
 asm_op.o: asm_op.c ../util/util.h tree.h cc1.h gen_asm.h asm.h asm_op.h
 cc1.o: cc1.c ../util/util.h tree.h tokenise.h parse.h fold.h gen_asm.h \
- gen_str.h sym.h fold_sym.h cc1.h
+  gen_str.h sym.h fold_sym.h cc1.h
 const.o: const.c ../util/util.h tree.h const.h sym.h cc1.h
+enum.o: enum.c ../util/util.h ../util/alloc.h ../util/dynarray.h tree.h \
+  enum.h sym.h struct_enum.h
 fold.o: fold.c ../util/util.h tree.h cc1.h fold.h fold_sym.h sym.h \
- ../util/platform.h const.h asm.h ../util/alloc.h ../util/dynarray.h \
- struct.h fold_op.c
+  ../util/platform.h const.h asm.h ../util/alloc.h ../util/dynarray.h \
+  struct.h enum.h fold_op.c
 fold_op.o: fold_op.c
 fold_sym.o: fold_sym.c ../util/util.h tree.h cc1.h sym.h fold_sym.h \
- ../util/platform.h
+  ../util/platform.h
 gen_asm.o: gen_asm.c ../util/util.h tree.h cc1.h macros.h asm.h \
- ../util/platform.h sym.h asm_op.h gen_asm.h const.h struct.h
+  ../util/platform.h sym.h asm_op.h gen_asm.h const.h struct.h
 gen_c.o: gen_c.c
 gen_str.o: gen_str.c ../util/util.h tree.h macros.h sym.h cc1.h struct.h
 parse.o: parse.c ../util/util.h tree.h tokenise.h parse.h ../util/alloc.h \
- tokconv.h sym.h cc1.h typedef.h ../util/dynarray.h struct.h parse_type.h
-parse_type.o: parse_type.c ../util/util.h ../util/dynarray.h tree.h sym.h \
- tokenise.h tokconv.h struct.h typedef.h cc1.h parse.h parse_type.h
+  tokconv.h sym.h cc1.h ../util/dynarray.h struct.h parse_type.h
+parse_type.o: parse_type.c ../util/util.h ../util/dynarray.h tree.h \
+  typedef.h tokenise.h tokconv.h struct.h enum.h sym.h cc1.h parse.h \
+  parse_type.h
 str.o: str.c ../util/util.h
 struct.o: struct.c ../util/util.h ../util/alloc.h ../util/dynarray.h \
- tree.h struct.h
+  tree.h struct.h sym.h struct_enum.h
+struct_enum.o: struct_enum.c ../util/alloc.h struct_enum.h
 sym.o: sym.c ../util/util.h tree.h sym.h ../util/alloc.h macros.h \
- ../util/dynarray.h
+  ../util/dynarray.h typedef.h
 tokconv.o: tokconv.c ../util/util.h tree.h tokenise.h tokconv.h macros.h
 tokenise.o: tokenise.c ../util/util.h tree.h tokenise.h ../util/alloc.h \
- str.h
+  str.h
 tree.o: tree.c ../util/alloc.h ../util/util.h tree.h macros.h sym.h \
- ../util/platform.h struct.h
+  ../util/platform.h struct.h enum.h
 typedef.o: typedef.c ../util/util.h tree.h ../util/alloc.h typedef.h
