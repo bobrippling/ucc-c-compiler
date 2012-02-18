@@ -40,6 +40,9 @@ struct
 	{ 0,  "implicit-func",   WARN_IMPLICIT_FUNC                     },
 	{ 0,  "implicit",        WARN_IMPLICIT_FUNC | WARN_IMPLICIT_INT },
 
+	{ 0,  "switch-enum",     WARN_SWITCH_ENUM                       },
+	{ 0,  "enum-compare",    WARN_ENUM_CMP                          },
+
 	/* TODO */
 	{ 0,  "unused-parameter", WARN_UNUSED_PARAM },
 	{ 0,  "unused-variable",  WARN_UNUSED_VAR   },

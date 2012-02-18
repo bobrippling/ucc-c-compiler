@@ -10,6 +10,7 @@
 #include "sym.h"
 #include "../util/platform.h"
 #include "struct.h"
+#include "enum.h"
 
 void where_new(struct where *w)
 {
@@ -211,6 +212,7 @@ int type_size(const type *t)
 		case type_void:
 			return 1;
 
+		case type_enum:
 		case type_int:
 			/* FIXME: 4 for int */
 			return platform_word_size();
@@ -221,11 +223,12 @@ int type_size(const type *t)
 		case type_struct:
 			return struct_size(t->struc);
 
-		default:
 		case type_unknown:
-			ICE("type %s in decl_size()", type_to_str(t));
-			return -1;
+			break;
 	}
+
+	ICE("type %s in decl_size()", type_to_str(t));
+	return -1;
 }
 
 int decl_size(const decl *d)
@@ -398,9 +401,9 @@ const char *type_to_str(const type *t)
 			bufp += snprintf(bufp, BUF_SIZE, "%s ", spec_to_str(1 << i));
 
 	if(t->struc){
-		snprintf(bufp, BUF_SIZE, "struct %s", t->struc->spel);
+		snprintf(bufp, BUF_SIZE, "%s", t->struc->spel);
 	}else if(t->enu){
-		ICE("TODO: ->enu");
+		snprintf(bufp, BUF_SIZE, "%s", t->enu->spel);
 	}else{
 		switch(t->primitive){
 #define APPEND(t) case type_ ## t: snprintf(bufp, BUF_SIZE, "%s", #t); break

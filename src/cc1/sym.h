@@ -43,8 +43,6 @@ sym  *symtab_has(      symtable *, decl *);
 void  symtab_nest(     symtable *parent, symtable **brat);
 void  symtab_nest_finish(symtable *parent, symtable *brat);
 
-sym  *symtab_search_with_enum(symtable *, const char *);
-
 #define SYMTAB_ADD(tab, decl, type) symtab_add(tab, decl, type, SYMTAB_WITH_SYM, SYMTAB_APPEND)
 
 const char *sym_to_str(enum sym_type);

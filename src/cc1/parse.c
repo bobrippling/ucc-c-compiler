@@ -29,6 +29,10 @@
  * parse_expr_logical_op above [&&||]   above
  */
 
+/* parse_type uses this for structs, tdefs and enums */
+symtable *current_scope;
+
+
 expr *parse_lone_identifier()
 {
 	expr *e = expr_new();
@@ -749,11 +753,15 @@ tree *parse_code_block()
 {
 	tree *t = tree_new_code();
 	decl **diter;
+	symtable *old_scope;
+
+	old_scope = current_scope;
+	current_scope = t->symtab;
 
 	EAT(token_open_block);
 
 	if(accept(token_close_block))
-		return t;
+		goto ret;
 
 	t->decls = PARSE_DECLS();
 
@@ -791,6 +799,8 @@ tree *parse_code_block()
 	 */
 
 	EAT(token_close_block);
+ret:
+	current_scope = old_scope;
 	return t;
 }
 
@@ -894,7 +904,7 @@ symtable *parse()
 	decl **decls = NULL;
 	int i;
 
-	globals = symtab_new();
+	current_scope = globals = symtab_new();
 
 	decls = parse_decls(1, 0);
 	EAT(token_eof);

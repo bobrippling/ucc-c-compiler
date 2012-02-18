@@ -60,6 +60,8 @@ struct type
 	/* NULL unless this is an enum */
 	enum_st *enu;
 
+	char *spel; /* spel for struct/enum lookup */
+
 	/*
 	 * should be NULL'd when folded:
 	 * typedef names should be resolved and the types copied

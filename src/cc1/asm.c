@@ -123,9 +123,6 @@ void asm_sym(enum asm_sym_type t, sym *s, const char *reg)
 				free(brackets);
 			break;
 		}
-
-		case sym_func:
-			ICE("asm_sym: can't handle sym_func");
 	}
 }
 
