@@ -7,6 +7,7 @@
 #  define __WORDSIZE    32
 #endif
 
+#ifdef __TYPEDEFS_WORKING
 typedef signed   char   int8_t;
 
 typedef unsigned char  uint8_t;
@@ -27,5 +28,14 @@ typedef   signed int ssize_t;
 
 //typedef unsigned long off_t;
 typedef unsigned int off_t;
+#else
+# define int8_t     signed char
+# define uint8_t  unsigned char
+# define int32_t    signed int
+# define uint32_t unsigned int
+# define size_t   unsigned int
+# define ssize_t    signed int
+# define off_t    unsigned int
+#endif
 
 #endif
