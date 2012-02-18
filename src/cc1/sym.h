@@ -22,7 +22,7 @@ struct symtable
 	decl      **decls;
 	struct_st **structs;
 	enum_st   **enums;
-	tdeftable  *typedefs;
+	decl      **typedefs;
 };
 
 sym *sym_new(decl *d, enum sym_type t);

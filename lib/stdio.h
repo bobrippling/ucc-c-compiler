@@ -1,7 +1,11 @@
 #ifndef __STDIO_H
 #define __STDIO_H
 
+#ifdef __TYPEDEFS_WORKING
 typedef int FILE;
+#else
+#define FILE int
+#endif
 
 extern FILE *stdin, *stdout, *stderr;
 

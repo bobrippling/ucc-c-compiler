@@ -252,7 +252,6 @@ decl **parse_decls(const int can_default, const int accept_field_width)
 
 	/* read a type, then *spels separated by commas, then a semi colon, then repeat */
 	for(;;){
-		decl *d;
 		type *t;
 
 		last = NULL;
@@ -276,34 +275,33 @@ decl **parse_decls(const int can_default, const int accept_field_width)
 			goto next; /* struct { int i; }; - continue to next one */
 
 		do{
-			d = parse_decl(t, parse_flag);
+			decl *d = parse_decl(t, parse_flag);
 
-			if(d){
-				if(are_tdefs)
-					typedef_add(current_scope->typedefs, d);
-				else
-					dynarray_add((void ***)&decls, d);
-
-				if(are_tdefs)
-					if(d->func)
-						die_at(&d->where, "can't have a typedef function");
-
-				if(d->func){
-					if(d->func->code){
-						if(curtok == token_eof)
-							return decls;
-						continue;
-					}
-				}else if(accept_field_width && accept(token_colon)){
-					/* normal decl, check field spec */
-					d->field_width = currentval.val;
-					EAT(token_integer);
-				}
-
-				last = d;
-			}else{
+			if(!d)
 				break;
+
+			dynarray_add(are_tdefs
+					?  (void ***)&decls
+					: (void ***)&current_scope->typedefs,
+					d);
+
+			if(are_tdefs)
+				if(d->func)
+					die_at(&d->where, "can't have a typedef function");
+
+			if(d->func){
+				if(d->func->code){
+					if(curtok == token_eof)
+						return decls;
+					continue;
+				}
+			}else if(accept_field_width && accept(token_colon)){
+				/* normal decl, check field spec */
+				d->field_width = currentval.val;
+				EAT(token_integer);
 			}
+
+			last = d;
 		}while(accept(token_comma));
 
 		if(last && !last->func){
