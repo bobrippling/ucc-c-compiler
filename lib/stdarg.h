@@ -3,7 +3,11 @@
 
 #include "sys/types.h"
 
+#ifdef __TYPEDEFS_WORKING
 typedef void *va_list;
+#else
+#define va_list void *
+#endif
 
 #define va_start(l, arg) l = (void *)&arg
 /*

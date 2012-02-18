@@ -2,7 +2,12 @@
 #define __UNISTD_H
 
 #include "macros.h"
+
+#ifdef __TYPEDEFS_WORKING
 typedef int pid_t;
+#else
+#define pid_t int
+#endif
 
 int read( int fd, void *p, int size);
 int write(int fd, void *p, int size);
