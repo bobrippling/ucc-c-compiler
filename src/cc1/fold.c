@@ -129,7 +129,7 @@ void fold_funcall(expr *e, symtable *stab)
 
 		cc1_warn_at(&e->where, 0, WARN_IMPLICIT_FUNC, "implicit declaration of function \"%s\"", funcall_name(e->expr));
 
-		e->sym = SYMTAB_ADD(symtab_grandparent(stab), df, sym_func);
+		e->sym = SYMTAB_ADD(symtab_grandparent(stab), df, sym_global);
 
 		df->sym = NULL;
 		/*
@@ -353,24 +353,15 @@ void fold_expr(expr *e, symtable *stab)
 
 				}else{
 					/* check for an enum */
-					enum_st **i;
+					enum_member *m = enum_find_member(stab, e->spel);
 
-					for(i = stab->enums; i && *i; i++){
-						enum_member **mi;
+					if(!m)
+						DIE_UNDECL_SPEL(e->spel);
 
-						for(mi = (*i)->members; *mi; mi++){
-							enum_member *m = *mi;
-							fprintf(stderr, "enum cmp %s <-> %s\n", e->spel, m->spel);
-							if(!strcmp(m->spel, e->spel)){
-								e->type = expr_val;
-								e->val = m->val->val;
-								fold_expr(e, stab);
-								return;
-							}
-						}
-					}
-
-					DIE_UNDECL();
+					e->type = expr_val;
+					e->val = m->val->val;
+					fold_expr(e, stab);
+					return;
 				}
 			}
 
@@ -396,8 +387,31 @@ void fold_decl(decl *d, symtable *stab)
 {
 	int i;
 
-	if(d->type->primitive == type_void && !d->ptr_depth && !d->func)
-		die_at(&d->type->where, "can't have a void variable");
+	switch(d->type->primitive){
+		case type_void:
+			if(!d->ptr_depth && !d->func)
+				die_at(&d->type->where, "can't have a void variable");
+			break;
+
+		case type_enum:
+			if(!d->type->enu){
+				UCC_ASSERT(d->type->spel, "enum lookup: no enum spel (decl %s)", d->spel);
+				d->type->enu = enum_find(stab, d->type->spel);
+				if(!d->type->enu)
+					die_at(&d->type->where, "no such enum \"%s\"", d->type->spel);
+			}else if(!d->type->spel){
+				/* get the anon enum name */
+				d->type->spel = d->type->enu->spel;
+			}
+			break;
+
+		case type_struct:
+			UCC_ASSERT(d->type->struc, "TODO: struct lookup");
+			break;
+
+		default:
+			break;
+	}
 
 #define SPEC(x) (d->type->spec & (x))
 
@@ -460,6 +474,9 @@ int fold_struct(struct_st *st)
 
 	for(offset = 0, i = st->members; *i; i++){
 		decl *d = *i;
+		if(d->type->primitive == type_struct && !d->type->struc)
+			ICE("TODO: struct lookup");
+
 		if(d->type->struc){
 			d->struct_offset = offset;
 			offset += fold_struct(d->type->struc);
@@ -478,9 +495,12 @@ void fold_enum(enum_st *en, symtable *stab)
 	int defval = 0;
 
 	for(i = en->members; *i; i++){
-		expr *e = (*i)->val;
+		enum_member *m = *i;
+		expr *e = m->val;
+
 		if(e == (expr *)-1){
-			e = expr_new_val(defval++);
+			/*expr_free(e); XXX: memleak */
+			m->val = expr_new_val(defval++);
 		}else{
 			fold_expr(e, stab);
 			if(!const_expr_is_const(e))
@@ -488,6 +508,57 @@ void fold_enum(enum_st *en, symtable *stab)
 			defval = const_expr_val(e) + 1;
 		}
 	}
+}
+
+void fold_symtab_scope(symtable *stab)
+{
+	struct_st **sit;
+	enum_st   **eit;
+
+	/* fold structs, then enums, then decls - decls may rely on enums */
+	for(sit = stab->structs; sit && *sit; sit++)
+		fold_struct(*sit);
+
+	for(eit = stab->enums; eit && *eit; eit++)
+		fold_enum(*eit, stab);
+}
+
+void fold_switch_enum(tree *sw, type *enum_type)
+{
+	const int nents = enum_nentries(enum_type->enu);
+	tree **titer;
+	char *marks = umalloc(nents * sizeof *marks);
+	int midx;
+
+	/* for each case/default/case_range... */
+	for(titer = sw->codes; titer && *titer; titer++){
+		tree *cse = *titer;
+		int v, w;
+
+		if(cse->expr->expr_is_default)
+			goto ret;
+
+		v = cse->expr->val.i.val;
+
+		if(cse->type == stat_case_range)
+			w = cse->expr2->val.i.val;
+		else
+			w = v;
+
+		for(; v <= w; v++){
+			enum_member **mi;
+			for(midx = 0, mi = enum_type->enu->members; *mi; midx++, mi++)
+				if(v == (*mi)->val->val.i.val)
+					marks[midx]++;
+		}
+	}
+
+	for(midx = 0; midx < nents; midx++)
+		if(!marks[midx])
+			cc1_warn_at(&sw->where, 0, WARN_SWITCH_ENUM, "enum %s not handled in switch", enum_type->enu->members[midx]->spel);
+
+ret:
+	free(marks);
 }
 
 void fold_tree(tree *t)
@@ -576,8 +647,6 @@ void fold_tree(tree *t)
 
 			if(const_fold(t->expr) || const_fold(t->expr2))
 				die_at(&t->where, "case range not constant");
-			if(!curtree_switch)
-				die_at(&t->where, "not inside a switch statement");
 
 			EXPR_NON_VOID(t->expr,  "case");
 			EXPR_NON_VOID(t->expr2, "case");
@@ -602,8 +671,6 @@ void fold_tree(tree *t)
 
 			if(const_fold(t->expr))
 				die_at(&t->expr->where, "case expression not constant");
-			if(!curtree_switch)
-				die_at(&t->expr->where, "not inside a switch statement");
 			/* fall */
 		case stat_default:
 			if((def = !t->expr)){
@@ -613,6 +680,8 @@ void fold_tree(tree *t)
 			t->expr->spel = asm_label_case(def ? CASE_DEF : CASE_CASE, t->expr->val.i.val);
 case_add:
 			fold_tree_nest(t, t->lhs); /* compound */
+			if(!curtree_switch)
+				die_at(&t->expr->where, "not inside a switch statement");
 			dynarray_add((void ***)&curtree_switch->codes, t);
 			break;
 		}
@@ -621,6 +690,7 @@ case_add:
 		{
 			tree *oldswtree = curtree_switch;
 			tree *oldflowtree = curtree_flow;
+			type *typ;
 
 			curtree_switch = t;
 			curtree_flow   = t;
@@ -636,33 +706,33 @@ case_add:
 			fold_tree_nest(t, t->lhs);
 			/* FIXME: check for duplicate case values and at most, 1 default */
 
+			/* check for an enum */
+			typ = t->expr->tree_type->type;
+			if(typ->primitive == type_enum){
+				UCC_ASSERT(typ->enu, "no enum for enum type");
+				fold_switch_enum(t, typ);
+			}
+
 			curtree_switch = oldswtree;
 			curtree_flow   = oldflowtree;
 			break;
 		}
 
 		case stat_code:
-			if(t->decls){
-				decl      **iter;
-				struct_st **sit;
-				enum_st   **eit;
+		{
+			decl **iter;
 
-				for(iter = t->decls; *iter; iter++){
-					decl *d = *iter;
+			fold_symtab_scope(t->symtab);
 
-					if(d->func && d->func->code)
-						die_at(&d->func->code->where, "can't nest functions");
+			for(iter = t->decls; iter && *iter; iter++){
+				decl *d = *iter;
 
-					fold_decl(d, t->symtab);
+				if(d->func && d->func->code)
+					die_at(&d->func->code->where, "can't nest functions");
 
-					SYMTAB_ADD(t->symtab, d, d->func ? sym_func : sym_local);
-				}
+				fold_decl(d, t->symtab);
 
-				for(sit = t->symtab->structs; sit && *sit; sit++)
-					fold_struct(*sit);
-
-				for(eit = t->symtab->enums; eit && *eit; eit++)
-					fold_enum(*eit, t->symtab);
+				SYMTAB_ADD(t->symtab, d, sym_local);
 			}
 
 			if(t->codes){
@@ -689,6 +759,7 @@ case_add:
 				}
 			}
 			break;
+		}
 
 		case stat_return:
 			if(t->expr){
@@ -797,6 +868,8 @@ void fold(symtable *globs)
 
 		symtab_add(globs, d, sym_global, SYMTAB_NO_SYM, SYMTAB_PREPEND);
 	}
+
+	fold_symtab_scope(globs);
 
 	for(i = 0; D(i); i++){
 		int j;

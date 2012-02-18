@@ -9,7 +9,7 @@ struct struct_st
 
 int struct_size(struct_st *);
 
-struct_st *struct_add( struct_st ***structs, char *spel, decl **members);
-struct_st *struct_find(struct_st **structs, const char *spel);
+struct_st *struct_add( symtable *, char *spel, decl **members);
+struct_st *struct_find(symtable *, const char *spel);
 
 #endif

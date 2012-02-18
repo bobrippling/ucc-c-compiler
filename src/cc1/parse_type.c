@@ -52,18 +52,12 @@ type *parse_type_struct()
 	if(accept(token_open_block)){
 		decl **members = parse_decls(DECL_CAN_DEFAULT | DECL_SPEL_NEED, 1);
 		EAT(token_close_block);
-		t->struc = struct_add(&current_scope->structs, spel, members);
-	}else{
-		if(!spel)
-			die_at(NULL, "expected: struct definition or name");
-
-		t->struc = struct_find(current_scope, spel);
-
-		if(!t->struc)
-			die_at(NULL, "struct %s not defined", spel);
-
-		free(spel);
+		t->struc = struct_add(current_scope, spel, members);
+	}else if(!spel){
+		die_at(NULL, "expected: struct definition or name");
 	}
+
+	t->spel = spel; /* save for lookup */
 
 	return t;
 }
@@ -78,7 +72,7 @@ type *parse_type_enum()
 	if(accept(token_open_block)){
 		enum_st *en = enum_st_new();
 
-		while(curtok == token_identifier){
+		do{
 			expr *e;
 			char *sp;
 
@@ -94,17 +88,16 @@ type *parse_type_enum()
 
 			if(!accept(token_comma))
 				break;
-		}
+		}while(curtok == token_identifier);
 
 		EAT(token_close_block);
 
-		t->enu = enum_add(&enums_current, spel, en);
-	}else{
-		if(!spel)
-			die_at(NULL, "expected: enum definition or name");
-
-		t->enu = enum_find(enums_current, spel);
+		t->enu = enum_add(&current_scope->enums, spel, en);
+	}else if(!spel){
+		die_at(NULL, "expected: enum definition or name");
 	}
+
+	t->spel = spel; /* save for lookup */
 
 	return t;
 }
@@ -287,7 +280,7 @@ decl **parse_decls(const int can_default, const int accept_field_width)
 
 			if(d){
 				if(are_tdefs)
-					typedef_add(typedefs_current, d);
+					typedef_add(current_scope->typedefs, d);
 				else
 					dynarray_add((void ***)&decls, d);
 
