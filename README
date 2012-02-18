@@ -27,6 +27,14 @@ I haven't made an install make target yet.
 
 All programs compiled by ucc are staticly linked.
 
+C-Features Todo
+=============
+
+nested struct support (parsing works, no code generation)
+scoped typedefs / better type parsing
+unions
+function pointer branch completion + merge
+
 Examples
 ========
 
