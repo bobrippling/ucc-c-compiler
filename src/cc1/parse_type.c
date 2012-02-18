@@ -281,8 +281,8 @@ decl **parse_decls(const int can_default, const int accept_field_width)
 				break;
 
 			dynarray_add(are_tdefs
-					?  (void ***)&decls
-					: (void ***)&current_scope->typedefs,
+					? (void ***)&current_scope->typedefs
+					:  (void ***)&decls,
 					d);
 
 			if(are_tdefs)

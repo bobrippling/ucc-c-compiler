@@ -899,10 +899,8 @@ symtable *parse()
 	EAT(token_eof);
 
 	if(decls)
-		for(i = 0; decls[i]; i++){
+		for(i = 0; decls[i]; i++)
 			symtab_add(globals, decls[i], sym_global, SYMTAB_NO_SYM, SYMTAB_APPEND);
-			UCC_ASSERT(!decls[i]->sym, "symtab_add(... SYMTAB_NO_SYM) gave a sym");
-		}
 
 	EAT(token_eof);
 
