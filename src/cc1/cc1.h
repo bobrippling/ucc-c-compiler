@@ -25,6 +25,8 @@ enum warning
 	WARN_IMPLICIT_INT     = 1 << 8,
 	WARN_VOID_ARITH       = 1 << 9,
 	WARN_OPT_POSSIBLE     = 1 << 20,
+	WARN_SWITCH_ENUM      = 1 << 21,
+	WARN_ENUM_CMP         = 1 << 22,
 
 	/* TODO */
 	WARN_FORMAT           = 1 << 10,

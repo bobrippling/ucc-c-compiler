@@ -18,8 +18,11 @@ struct symtable
 {
 	int auto_total_size;
 	symtable *parent, **children;
-	decl  **decls;
-	struc **structs;
+
+	decl      **decls;
+	struct_st **structs;
+	enum_st   **enums;
+	decl      **typedefs;
 };
 
 sym *sym_new(decl *d, enum sym_type t);

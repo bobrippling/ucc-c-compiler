@@ -15,6 +15,7 @@
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
 #include "struct.h"
+#include "enum.h"
 
 #define DIE_UNDECL_SPEL(sp) \
 		die_at(&e->where, "undeclared identifier \"%s\" (%s:%d)", sp, __FILE__, __LINE__)
@@ -62,6 +63,11 @@ int fold_is_lvalue(expr *e)
 		return fold_is_lvalue(e->rhs);
 
 	return 0;
+}
+
+int fold_expr_is_addressable(expr *e)
+{
+	return e->type == expr_identifier;
 }
 
 #define GET_TREE_TYPE_TO(to, from) \
@@ -210,18 +216,11 @@ void fold_assignment(expr *e, symtable *stab)
 	}
 
 
-	if(!e->sym && e->lhs->spel){
-		/* need this here, since the generic sym-assignment does it from ->spel and not with assigning_to either */
-		e->sym = symtab_search(stab, e->lhs->spel);
-
-		if(!e->sym)
-			DIE_UNDECL_SPEL(e->lhs->spel);
-
+	if(e->lhs->sym)
 		/* read the tree_type from what we're assigning to, not the expr */
-		GET_TREE_TYPE(e->sym->decl);
-	}else{
+		GET_TREE_TYPE(e->lhs->sym->decl);
+	else
 		GET_TREE_TYPE(e->lhs->tree_type);
-	}
 
 
 	/* type check */
@@ -326,12 +325,12 @@ void fold_expr(expr *e, symtable *stab)
 				}
 
 			}else{
-				sym *s = e->sym;
+				fold_expr(e->expr, stab);
+				if(!fold_expr_is_addressable(e->expr))
+					die_at(&e->expr->where, "can't take the address of %s", expr_to_str(e->expr->type));
 
-				if(!s)
-					DIE_UNDECL();
-
-				GET_TREE_TYPE(s->decl);
+				GET_TREE_TYPE(e->expr->sym ? e->expr->sym->decl : e->expr->tree_type);
+				decl_leaf(e->tree_type)->child = decl_ptr_new();
 			}
 			break;
 
@@ -352,7 +351,16 @@ void fold_expr(expr *e, symtable *stab)
 					break;
 
 				}else{
-					DIE_UNDECL();
+					/* check for an enum */
+					enum_member *m = enum_find_member(stab, e->spel);
+
+					if(!m)
+						DIE_UNDECL_SPEL(e->spel);
+
+					e->type = expr_val;
+					e->val = m->val->val;
+					fold_expr(e, stab);
+					return;
 				}
 			}
 
@@ -387,8 +395,31 @@ void fold_decl(decl *d, symtable *stab)
 {
 	(void)stab;
 
-	if(d->type->primitive == type_void && !decl_ptr_depth(d) && !decl_is_func(d))
-		die_at(&d->type->where, "can't have a void variable");
+	switch(d->type->primitive){
+		case type_void:
+			if(!decl_ptr_depth(d) && !decl_is_func(d))
+				die_at(&d->type->where, "can't have a void variable");
+			break;
+
+		case type_enum:
+			if(!d->type->enu){
+				UCC_ASSERT(d->type->spel, "enum lookup: no enum spel (decl %s)", decl_spel(d));
+				d->type->enu = enum_find(stab, d->type->spel);
+				if(!d->type->enu)
+					die_at(&d->type->where, "no such enum \"%s\"", d->type->spel);
+			}else if(!d->type->spel){
+				/* get the anon enum name */
+				d->type->spel = d->type->enu->spel;
+			}
+			break;
+
+		case type_struct:
+			UCC_ASSERT(d->type->struc, "TODO: struct lookup");
+			break;
+
+		default:
+			break;
+	}
 
 #define SPEC(x) (d->type->spec & (x))
 
@@ -437,6 +468,100 @@ void fold_tree_nest(tree *paren, tree *child)
 {
 	symtab_nest(paren->symtab, &child->symtab);
 	fold_tree(child);
+}
+
+int fold_struct(struct_st *st)
+{
+	int offset;
+	decl **i;
+
+	for(offset = 0, i = st->members; *i; i++){
+		decl *d = *i;
+		if(d->type->primitive == type_struct && !d->type->struc)
+			ICE("TODO: struct lookup");
+
+		if(d->type->struc){
+			d->struct_offset = offset;
+			offset += fold_struct(d->type->struc);
+		}else{
+			d->struct_offset = offset;
+			offset += decl_size(d);
+		}
+	}
+
+	return offset;
+}
+
+void fold_enum(enum_st *en, symtable *stab)
+{
+	enum_member **i;
+	int defval = 0;
+
+	for(i = en->members; *i; i++){
+		enum_member *m = *i;
+		expr *e = m->val;
+
+		if(e == (expr *)-1){
+			/*expr_free(e); XXX: memleak */
+			m->val = expr_new_val(defval++);
+		}else{
+			fold_expr(e, stab);
+			if(!const_expr_is_const(e))
+				die_at(&e->where, "enum value not constant");
+			defval = const_expr_val(e) + 1;
+		}
+	}
+}
+
+void fold_symtab_scope(symtable *stab)
+{
+	struct_st **sit;
+	enum_st   **eit;
+
+	/* fold structs, then enums, then decls - decls may rely on enums */
+	for(sit = stab->structs; sit && *sit; sit++)
+		fold_struct(*sit);
+
+	for(eit = stab->enums; eit && *eit; eit++)
+		fold_enum(*eit, stab);
+}
+
+void fold_switch_enum(tree *sw, type *enum_type)
+{
+	const int nents = enum_nentries(enum_type->enu);
+	tree **titer;
+	char *marks = umalloc(nents * sizeof *marks);
+	int midx;
+
+	/* for each case/default/case_range... */
+	for(titer = sw->codes; titer && *titer; titer++){
+		tree *cse = *titer;
+		int v, w;
+
+		if(cse->expr->expr_is_default)
+			goto ret;
+
+		v = cse->expr->val.i.val;
+
+		if(cse->type == stat_case_range)
+			w = cse->expr2->val.i.val;
+		else
+			w = v;
+
+		for(; v <= w; v++){
+			enum_member **mi;
+			for(midx = 0, mi = enum_type->enu->members; *mi; midx++, mi++)
+				if(v == (*mi)->val->val.i.val)
+					marks[midx]++;
+		}
+	}
+
+	for(midx = 0; midx < nents; midx++)
+		if(!marks[midx])
+			cc1_warn_at(&sw->where, 0, WARN_SWITCH_ENUM, "enum %s not handled in switch", enum_type->enu->members[midx]->spel);
+
+ret:
+	free(marks);
 }
 
 void fold_tree(tree *t)
@@ -525,8 +650,6 @@ void fold_tree(tree *t)
 
 			if(const_fold(t->expr) || const_fold(t->expr2))
 				die_at(&t->where, "case range not constant");
-			if(!curtree_switch)
-				die_at(&t->where, "not inside a switch statement");
 
 			EXPR_NON_VOID(t->expr,  "case");
 			EXPR_NON_VOID(t->expr2, "case");
@@ -551,8 +674,6 @@ void fold_tree(tree *t)
 
 			if(const_fold(t->expr))
 				die_at(&t->expr->where, "case expression not constant");
-			if(!curtree_switch)
-				die_at(&t->expr->where, "not inside a switch statement");
 			/* fall */
 		case stat_default:
 			if((def = !t->expr)){
@@ -562,6 +683,8 @@ void fold_tree(tree *t)
 			t->expr->spel = asm_label_case(def ? CASE_DEF : CASE_CASE, t->expr->val.i.val);
 case_add:
 			fold_tree_nest(t, t->lhs); /* compound */
+			if(!curtree_switch)
+				die_at(&t->expr->where, "not inside a switch statement");
 			dynarray_add((void ***)&curtree_switch->codes, t);
 			break;
 		}
@@ -570,6 +693,7 @@ case_add:
 		{
 			tree *oldswtree = curtree_switch;
 			tree *oldflowtree = curtree_flow;
+			type *typ;
 
 			curtree_switch = t;
 			curtree_flow   = t;
@@ -585,25 +709,33 @@ case_add:
 			fold_tree_nest(t, t->lhs);
 			/* FIXME: check for duplicate case values and at most, 1 default */
 
+			/* check for an enum */
+			typ = t->expr->tree_type->type;
+			if(typ->primitive == type_enum){
+				UCC_ASSERT(typ->enu, "no enum for enum type");
+				fold_switch_enum(t, typ);
+			}
+
 			curtree_switch = oldswtree;
 			curtree_flow   = oldflowtree;
 			break;
 		}
 
 		case stat_code:
-			if(t->decls){
-				decl **iter;
+		{
+			decl **iter;
 
-				for(iter = t->decls; *iter; iter++){
-					decl *d = *iter;
+			fold_symtab_scope(t->symtab);
 
-					if(decl_has_func_code(d))
-						die_at(&d->func_code->where, "can't nest functions");
+			for(iter = t->decls; iter && *iter; iter++){
+				decl *d = *iter;
 
-					fold_decl(d, t->symtab);
+				if(decl_has_func_code(d))
+					die_at(&d->func_code->where, "can't nest functions");
 
-					SYMTAB_ADD(t->symtab, d, sym_local);
-				}
+				fold_decl(d, t->symtab);
+
+				SYMTAB_ADD(t->symtab, d, sym_local);
 			}
 
 			if(t->codes){
@@ -630,6 +762,7 @@ case_add:
 				}
 			}
 			break;
+		}
 
 		case stat_return:
 			if(t->expr){
@@ -707,25 +840,6 @@ void fold_func(decl *func_decl, symtable *globsymtab)
 	}
 }
 
-int fold_struct(struc *st)
-{
-	int offset;
-	decl **i;
-
-	for(offset = 0, i = st->members; *i; i++){
-		decl *d = *i;
-		if(d->type->struc){
-			d->struct_offset = offset;
-			offset += fold_struct(d->type->struc);
-		}else{
-			d->struct_offset = offset;
-			offset += decl_size(d);
-		}
-	}
-
-	return offset;
-}
-
 void fold(symtable *globs)
 {
 #define D(x) globs->decls[x]
@@ -749,12 +863,7 @@ void fold(symtable *globs)
 		symtab_add(globs, df, sym_global, SYMTAB_NO_SYM, SYMTAB_PREPEND);
 	}
 
-	{
-		/* FIXME: when struct decls are local to blocks, this will need moving */
-		struc **it;
-		for(it = globs->structs; it && *it; it++)
-			fold_struct(*it);
-	}
+	fold_symtab_scope(globs);
 
 	for(i = 0; D(i); i++)
 		if(D(i)->sym)

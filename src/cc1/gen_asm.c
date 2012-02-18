@@ -44,12 +44,15 @@ void asm_ax_to_store(expr *store, symtable *stab)
 					return;
 
 				case op_struct_ptr:
-					ICE("TODO: a->b");
+					walk_expr(store->lhs, stab);
+
 					asm_temp(1, "pop rbx ; struct addr");
-					asm_temp(1, "sub rbx, %d ; offset of member %s", -1/*struct_member_offset(store)*/, store->rhs->spel);
+					asm_temp(1, "sub rbx, %d ; offset of member %s",
+							store->rhs->tree_type->struct_offset,
+							store->rhs->spel);
 					asm_temp(1, "pop rax ; saved val");
 					asm_temp(1, "mov [rbx], rax");
-					break;
+					return;
 
 				case op_struct_dot:
 					ICE("TODO: a.b");
@@ -64,7 +67,12 @@ void asm_ax_to_store(expr *store, symtable *stab)
 			break;
 	}
 
-	ICE("asm_ax_to_store: invalid store expression %s", expr_to_str(store->type));
+	ICE("asm_ax_to_store: invalid store expression %s%s%s%s",
+			expr_to_str(store->type),
+			store->type == expr_op ? " (" : "",
+			store->type == expr_op ? op_to_str(store->op) : "",
+			store->type == expr_op ?  ")" : ""
+			);
 }
 
 void gen_assign(expr *e, symtable *stab)
@@ -149,6 +157,24 @@ invalid:
 	}
 }
 
+void gen_addr(expr *e, symtable *stab)
+{
+	(void)stab;
+
+	if(e->array_store){
+		asm_temp(1, "mov rax, %s", e->array_store->label);
+	}else{
+		/* address of possibly an ident "(&a)->b" or a struct expr "&a->b" */
+		if(e->expr->type == expr_identifier){
+			asm_sym(ASM_LEA, e->expr->sym, "rax");
+		}else{
+			ICE("TODO: address of %s", expr_to_str(e->expr->type));
+		}
+	}
+
+	asm_temp(1, "push rax");
+}
+
 void walk_expr(expr *e, symtable *stab)
 {
 	switch(e->type){
@@ -220,12 +246,7 @@ void walk_expr(expr *e, symtable *stab)
 			break;
 
 		case expr_addr:
-			if(e->array_store)
-				asm_temp(1, "mov rax, %s", e->array_store->label);
-			else
-				asm_sym(ASM_LEA, e->sym, "rax");
-
-			asm_temp(1, "push rax");
+			gen_addr(e, stab);
 			break;
 
 		case expr_sizeof:

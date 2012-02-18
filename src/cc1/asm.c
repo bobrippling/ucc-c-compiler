@@ -193,7 +193,15 @@ void asm_declare_single_part(FILE *f, expr *e)
 			break;
 
 		case expr_addr:
-			fprintf(f, "%s", e->spel);
+			/* TODO: merge tis code with gen_addr / walk_expr with expr_addr */
+			if(e->array_store){
+				/* address of an array store */
+				fprintf(f, "%s", e->array_store->label);
+			}else{
+				UCC_ASSERT(e->expr->type == expr_identifier,
+						"globals addr-of can only be identifier for now");
+				fprintf(f, "%s", e->expr->spel);
+			}
 			break;
 
 		case expr_cast:
@@ -217,6 +225,7 @@ enum asm_size asm_type_size(decl *d)
 		return ASM_SIZE_WORD;
 	}else{
 		switch(d->type->primitive){
+			case type_enum:
 			case type_int:
 				return ASM_SIZE_WORD;
 
