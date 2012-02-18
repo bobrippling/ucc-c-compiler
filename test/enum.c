@@ -13,4 +13,6 @@ main()
 	}
 
 	b == a;
+
+	return Z;
 }
