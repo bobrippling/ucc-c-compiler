@@ -203,6 +203,26 @@ int const_expr_is_const(expr *e)
 							the above needs to be added in when *const parsing is done */
 }
 
+int const_expr_val(expr *e)
+{
+	switch(e->type){
+		case expr_val:
+			return e->val.i.val; /* FIXME: doesn't account for longs */
+
+		case expr_sizeof:
+			ICE("TODO: const_expr_val with sizeof");
+
+		case expr_addr:
+			die_at(&e->where, "address of expression can't be resolved at compile-time");
+
+		default:
+			break;
+	}
+
+	ICE("const_expr_val on non-const expr");
+	return 0;
+}
+
 int const_expr_is_zero(expr *e)
 {
 	if(e->type == expr_cast)

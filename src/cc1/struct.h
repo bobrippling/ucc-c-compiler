@@ -1,15 +1,15 @@
 #ifndef STRUCT_H
 #define STRUCT_H
 
-struct struc
+struct struct_st
 {
 	char *spel; /* NULL if anon */
 	decl **members;
 };
 
-int struct_size(struc *);
+int struct_size(struct_st *);
 
-struc *struct_add(struc ***structs, char *spel, decl **members);
-struc *struct_find(struc **structs, const char *spel);
+struct_st *struct_add( symtable *, char *spel, decl **members);
+struct_st *struct_find(symtable *, const char *spel);
 
 #endif

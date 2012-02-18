@@ -7,8 +7,10 @@
 #include "../util/dynarray.h"
 #include "tree.h"
 #include "struct.h"
+#include "sym.h"
+#include "struct_enum.h"
 
-int struct_size(struc *st)
+int struct_size(struct_st *st)
 {
 	decl **i;
 	int r = 0;
@@ -17,41 +19,45 @@ int struct_size(struc *st)
 	return r;
 }
 
-struc *struct_find(struc **structs, const char *spel)
+/* TODO: merge with similar code in enum.c -> struct_enum.c */
+struct_st *struct_find(symtable *stab, const char *spel)
 {
-	struc **i;
+	for(; stab; stab = stab->parent){
+		struct_st **i;
 
-	for(i = structs; i && *i; i++){
-		struc *st = *structs;
-		if(st->spel && !strcmp(st->spel, spel))
-			return st;
+		for(i = stab->structs; i && *i; i++){
+			struct_st *st = *i;
+			if(st->spel && !strcmp(st->spel, spel))
+				return st;
+		}
 	}
-
 	return NULL;
 }
 
-struc *struct_add(struc ***structs, char *spel, decl **members)
+struct_st *struct_add(symtable *const stab, char *spel, decl **members)
 {
-	struc *struc;
+	struct_st *struct_st;
+	decl **iter;
 
-	if(spel && (struc = struct_find(*structs, spel))){
+	if(spel && (struct_st = struct_find(stab, spel))){
 		char buf[WHERE_BUF_SIZ];
 		strcpy(buf, where_str(&members[0]->where));
-		die_at(&struc->members[0]->where, "duplicate struct from %s", buf);
+		die_at(&struct_st->members[0]->where, "duplicate struct from %s", buf);
 	}
 
-	struc          = umalloc(sizeof *struc);
+	struct_st = umalloc(sizeof *struct_st);
 
-	if(spel){
-		struc->spel = spel;
-	}else{
-		struc->spel = umalloc(32);
-		snprintf(struc->spel, 32, "<anon %p>", (void *)struc);
+	for(iter = members; *iter; iter++){
+		decl *d = *iter;
+		if(d->init)
+			die_at(&d->init->where, "struct member %s is initialised", d->spel);
 	}
 
-	struc->members = members;
+	st_en_set_spel(&struct_st->spel, spel, "struct");
 
-	dynarray_add((void ***)structs, struc);
+	struct_st->members = members;
 
-	return struc;
+	dynarray_add((void ***)&stab->structs, struct_st);
+
+	return struct_st;
 }

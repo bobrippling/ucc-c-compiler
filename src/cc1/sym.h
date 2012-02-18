@@ -8,8 +8,7 @@ struct sym
 	{
 		sym_global,
 		sym_local,
-		sym_arg,
-		sym_func
+		sym_arg
 	} type;
 
 	decl *decl;
@@ -19,8 +18,11 @@ struct symtable
 {
 	int auto_total_size;
 	symtable *parent, **children;
-	decl  **decls;
-	struc **structs;
+
+	decl      **decls;
+	struct_st **structs;
+	enum_st   **enums;
+	tdeftable  *typedefs;
 };
 
 sym *sym_new(decl *d, enum sym_type t);

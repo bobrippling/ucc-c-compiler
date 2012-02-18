@@ -10,6 +10,7 @@
 #include "../util/alloc.h"
 #include "macros.h"
 #include "../util/dynarray.h"
+#include "typedef.h"
 
 sym *sym_new(decl *d, enum sym_type t)
 {
@@ -23,6 +24,7 @@ sym *sym_new(decl *d, enum sym_type t)
 symtable *symtab_new(void)
 {
 	symtable *p = umalloc(sizeof *p);
+	p->typedefs = umalloc(sizeof *p->typedefs);
 	return p;
 }
 
@@ -117,7 +119,6 @@ const char *sym_to_str(enum sym_type t)
 	switch(t){
 		CASE_STR(sym_local);
 		CASE_STR(sym_arg);
-		CASE_STR(sym_func);
 		CASE_STR(sym_global);
 	}
 	return NULL;

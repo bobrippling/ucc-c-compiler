@@ -5,7 +5,9 @@ typedef struct sym         sym;
 typedef struct symtable    symtable;
 
 typedef struct tdef        tdef;
-typedef struct struc       struc;
+typedef struct tdeftable   tdeftable;
+typedef struct struct_st   struct_st;
+typedef struct enum_st     enum_st;
 
 typedef struct expr        expr;
 typedef struct tree        tree;
@@ -28,6 +30,7 @@ enum type_primitive
 
 	type_typedef,
 	type_struct,
+	type_enum,
 
 	type_unknown
 };
@@ -53,7 +56,11 @@ struct type
 	enum type_spec      spec;
 
 	/* NULL unless this is a structure */
-	struc *struc;
+	struct_st *struc;
+	/* NULL unless this is an enum */
+	enum_st *enu;
+
+	char *spel; /* spel for struct/enum lookup */
 
 	/*
 	 * should be NULL'd when folded:
