@@ -16,6 +16,7 @@
 #include "../util/dynarray.h"
 #include "struct.h"
 #include "enum.h"
+#include "struct_enum.h"
 
 #define DIE_UNDECL_SPEL(sp) \
 		die_at(&e->where, "undeclared identifier \"%s\" (%s:%d)", sp, __FILE__, __LINE__)
@@ -94,13 +95,12 @@ void fold_decl_equal(decl *a, decl *b, where *w, enum warning warn,
 		const char *errfmt, ...)
 {
 	if(!decl_equal(a, b, fopt_mode & FOPT_STRICT_TYPES)){
-		/*char buf[DECL_STATIC_BUFSIZ];
+		char buf[DECL_STATIC_BUFSIZ];
 		va_list l;
 
-		strcpy(buf, decl_to_str(b));*/
+		strcpy(buf, decl_to_str(b));
 
-		/* TODO: prefix with decl_to_str() */
-		va_list l;
+		cc1_warn_at(w, 0, warn, "%s vs. %s", decl_to_str(a), buf);
 
 		va_start(l, errfmt);
 		cc1_warn_atv(w, a->type->primitive == type_void && !a->ptr_depth, warn, errfmt, l);
@@ -162,7 +162,7 @@ void fold_funcall(expr *e, symtable *stab)
 		df = e->sym->decl;
 	}
 
-	GET_TREE_TYPE(e->sym->decl);
+	GET_TREE_TYPE(df);
 
 	/* func count comparison, only if the func has arg-decls, or the func is f(void) */
 	if(df->func->args || df->func->args_void){
@@ -326,6 +326,7 @@ void fold_expr(expr *e, symtable *stab)
 				fold_expr(e->expr, stab);
 				if(!fold_expr_is_addressable(e->expr))
 					die_at(&e->expr->where, "can't take the address of %s", expr_to_str(e->expr->type));
+				GET_TREE_TYPE(e->expr->tree_type);
 				e->tree_type->ptr_depth++;
 			}
 			break;
@@ -355,7 +356,7 @@ void fold_expr(expr *e, symtable *stab)
 					e->type = expr_val;
 					e->val = m->val->val;
 					fold_expr(e, stab);
-					return;
+					goto fin;
 				}
 			}
 
@@ -375,6 +376,9 @@ void fold_expr(expr *e, symtable *stab)
 			break;
 	}
 #undef GET_TREE_TYPE
+
+fin:
+	UCC_ASSERT(e->tree_type->type->primitive != type_unknown, "unknown type after folding expr %s", expr_to_str(e->type));
 }
 
 void fold_decl(decl *d, symtable *stab)
@@ -388,19 +392,11 @@ void fold_decl(decl *d, symtable *stab)
 			break;
 
 		case type_enum:
-			if(!d->type->enu){
-				UCC_ASSERT(d->type->spel, "enum lookup: no enum spel (decl %s)", d->spel);
-				d->type->enu = enum_find(stab, d->type->spel);
-				if(!d->type->enu)
-					die_at(&d->type->where, "no such enum \"%s\"", d->type->spel);
-			}else if(!d->type->spel){
-				/* get the anon enum name */
-				d->type->spel = d->type->enu->spel;
-			}
+			st_en_lookup((void **)&d->type->enu,   d, stab, (void *(*)(struct symtable *, const char *))enum_find,   0);
 			break;
 
 		case type_struct:
-			UCC_ASSERT(d->type->struc, "TODO: struct lookup");
+			st_en_lookup((void **)&d->type->struc, d, stab, (void *(*)(struct symtable *, const char *))struct_find, 1);
 			break;
 
 		default:
@@ -851,6 +847,8 @@ void fold(symtable *globs)
 		d = decl_new();
 		f = d->func = function_new();
 		d->spel = ustrdup(ASM_INLINE_FNAME);
+
+		d->type->primitive = type_int;
 
 
 		f->args = umalloc(2 * sizeof *f->args);

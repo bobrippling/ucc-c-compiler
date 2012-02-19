@@ -227,7 +227,7 @@ int type_size(const type *t)
 			break;
 	}
 
-	ICE("type %s in decl_size()", type_to_str(t));
+	ICE("type %s in type_size()", type_to_str(t));
 	return -1;
 }
 
@@ -247,6 +247,9 @@ int decl_size(const decl *d)
 
 	if(d->ptr_depth)
 		return platform_word_size();
+
+	if(d->field_width)
+		return d->field_width;
 
 	return type_size(d->type);
 }
