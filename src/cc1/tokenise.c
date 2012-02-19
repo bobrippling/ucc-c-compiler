@@ -393,7 +393,6 @@ void nexttoken()
 	switch(c){
 		case '"':
 		{
-			/* TODO: "hi" "there" tokenising */
 			/* TODO: read in "hello\\" - parse string char by char, rather than guessing and escaping later */
 			char *str;
 			int len;

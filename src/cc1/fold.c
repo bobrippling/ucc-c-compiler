@@ -274,7 +274,6 @@ void fold_expr(expr *e, symtable *stab)
 		case expr_cast:
 			fold_expr(e->rhs, stab);
 			if(e->rhs->type == expr_cast){
-				/* FIXME: check (for *(int *)0 = 5;) */
 				/* get rid of e->rhs, replace with e->rhs->rhs */
 				expr *del = e->rhs;
 
@@ -335,7 +334,8 @@ void fold_expr(expr *e, symtable *stab)
 					die_at(&e->expr->where, "can't take the address of %s", expr_to_str(e->expr->type));
 
 				GET_TREE_TYPE(e->expr->sym ? e->expr->sym->decl : e->expr->tree_type);
-				decl_leaf(e->tree_type)->child = decl_ptr_new();
+
+				e->tree_type = decl_ptr_depth_inc(e->tree_type);
 			}
 			break;
 
