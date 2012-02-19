@@ -302,23 +302,30 @@ int type_equal(const type *a, const type *b, int strict)
 	return strict ? a->primitive == b->primitive : 1; /* int == char */
 }
 
+int decl_ptr_equal(const decl_ptr *dpa, const decl_ptr *dpb)
+{
+	if(dpa->is_const != dpb->is_const)
+		return 0;
+
+	if(dpa->child)
+		return dpb->child && decl_ptr_equal(dpa->child, dpb->child);
+
+	return !dpb->child;
+}
+
 int decl_equal(const decl *a, const decl *b, int strict)
 {
-#if 0
-	const int ptreq = a->ptr_depth == b->ptr_depth;
-
-#define VOID_PTR(d) \
-		 (d->type->primitive == type_void && d->ptr_depth == 1)
+#define VOID_PTR(d) (                   \
+			d->type->primitive == type_void   \
+			&&  d->decl_ptr->child            \
+			&& !d->decl_ptr->child->child     \
+		)
 
 	if(VOID_PTR(a) || VOID_PTR(b))
 		return 1; /* one side is void * */
 
-	return ptreq && type_equal(a->type, b->type, strict);
-#else
-	ICW("assuming decls equal");
-	(void)(a - b + strict);
-	return 1;
-#endif
+	return type_equal(a->type, b->type, strict)
+		&& decl_ptr_equal(a->decl_ptr, b->decl_ptr);
 }
 
 void function_empty_args(funcargs *func)
@@ -505,11 +512,6 @@ decl_ptr *decl_first_func(const decl *d)
 		ICE("no decl_ptr with func for decl at %s", where_str(&d->where));
 
 	return dp;
-}
-
-funcargs *decl_func_args(const decl *d)
-{
-	return decl_first_func(d)->func;
 }
 
 const char *type_to_str(const type *t)
