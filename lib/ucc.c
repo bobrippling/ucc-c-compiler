@@ -12,10 +12,12 @@ enum reg
 	RDI,
 	RSI,
 
+#ifdef EIGHT_ONWARDS
 	R8,
 	R9,
 	R10,
 	R11,
+#endif
 };
 
 static const char *regnames[] = {
@@ -27,10 +29,12 @@ static const char *regnames[] = {
 	"rdi",
 	"rsi",
 
+#ifdef EIGHT_ONWARDS
 	"r8 ",
 	"r9 ",
 	"r10",
 	"r11",
+#endif
 };
 
 void __dump_regs()
@@ -60,10 +64,10 @@ void __dump_regs()
 	rp[RSI] = get_reg("rsi");
 
 	rp[R8 ] = get_reg("r8 ");
-#endif
 	rp[R9 ] = get_reg("r9 ");
 	rp[R10] = get_reg("r10");
 	rp[R11] = get_reg("r11");
+#endif
 
 	for(i = 0; i < 10; i++)
 		printf("register[%d] = %s = 0x%x (%d)\n",
