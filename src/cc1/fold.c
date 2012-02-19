@@ -103,7 +103,7 @@ void fold_decl_equal(decl *a, decl *b, where *w, enum warning warn,
 void fold_funcall(expr *e, symtable *stab)
 {
 	decl *df;
-	decl_ptr *dp;
+	funcargs *args_exp;
 
 	if(e->expr->type == expr_identifier && e->expr->spel){
 		char *const sp = e->expr->spel;
@@ -132,29 +132,24 @@ void fold_funcall(expr *e, symtable *stab)
 
 		fold_expr(e->expr, stab);
 	}else{
-		expr *call_this = e->expr;
-
-		fold_expr(call_this, stab);
-
-		df = call_this->tree_type;
-
-		if(!decl_is_callable(df)){
-			die_at(&e->expr->where, "expression %s (%s) not callable",
-					expr_to_str(e->expr->type),
-					decl_to_str(df));
-		}
-
-		/* FIXME - find the correct ->func */
-		dp = decl_leaf(df);
+		fold_expr(e->expr, stab);
 
 		/*
 		 * convert int (*)() to remove the deref
 		 * - we have both a ->child and ->func, which means we are a pointer, _then_ a function
 		 */
-		/*if(call_this->tree_type->decl_ptr->child && call_this->tree_type->decl_ptr->func)*/
-		if(call_this->type == expr_op && call_this->op == op_deref){
+		/*if(e->expr->tree_type->decl_ptr->child && e->expr->tree_type->decl_ptr->func)*/
+		if(e->expr->type == expr_op && e->expr->op == op_deref){
 			/* XXX: memleak */
-			e->expr = call_this = call_this->lhs;
+			e->expr = e->expr->lhs;
+		}
+
+		df = e->expr->tree_type;
+
+		if(!decl_is_callable(df)){
+			die_at(&e->expr->where, "expression %s (%s) not callable",
+					expr_to_str(e->expr->type),
+					decl_to_str(df));
 		}
 	}
 
@@ -174,7 +169,8 @@ void fold_funcall(expr *e, symtable *stab)
 	}
 
 	/* func count comparison, only if the func has arg-decls, or the func is f(void) */
-	if(df->decl_ptr->func->arglist || df->decl_ptr->func->args_void){
+	args_exp = decl_func_args(df);
+	if(args_exp->arglist || args_exp->args_void){
 		expr **iter_arg;
 		decl **iter_decl;
 		int count_decl, count_arg;
@@ -182,17 +178,17 @@ void fold_funcall(expr *e, symtable *stab)
 
 		count_decl = count_arg = 0;
 
-		for(iter_arg  = e->funcargs;    iter_arg  && *iter_arg;  iter_arg++,  count_arg++);
-		for(iter_decl = df->decl_ptr->func->arglist; iter_decl && *iter_decl; iter_decl++, count_decl++);
+		for(iter_arg  = e->funcargs;       iter_arg  && *iter_arg;  iter_arg++,  count_arg++);
+		for(iter_decl = args_exp->arglist; iter_decl && *iter_decl; iter_decl++, count_decl++);
 
-		if(count_decl != count_arg && (df->decl_ptr->func->variadic ? count_arg < count_decl : 1)){
+		if(count_decl != count_arg && (args_exp->variadic ? count_arg < count_decl : 1)){
 			die_at(&e->where, "too %s arguments to function %s (got %d, need %d)",
 					count_arg > count_decl ? "many" : "few",
 					decl_spel(df), count_arg, count_decl);
 		}
 
 		if(e->funcargs){
-			for(i = 0, iter_decl = df->decl_ptr->func->arglist, iter_arg = e->funcargs;
+			for(i = 0, iter_decl = args_exp->arglist, iter_arg = e->funcargs;
 					iter_decl[i];
 					i++){
 				fold_decl_equal(iter_decl[i], iter_arg[i]->tree_type, &e->where,
