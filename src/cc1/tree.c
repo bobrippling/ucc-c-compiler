@@ -354,6 +354,7 @@ const char *op_to_str(const enum op_type o)
 		CASE_STR_PREFIX(op, ge);
 		CASE_STR_PREFIX(op, gt);
 		CASE_STR_PREFIX(op, or);
+		CASE_STR_PREFIX(op, xor);
 		CASE_STR_PREFIX(op, and);
 		CASE_STR_PREFIX(op, orsc);
 		CASE_STR_PREFIX(op, andsc);

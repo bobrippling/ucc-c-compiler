@@ -618,6 +618,10 @@ recheck:
 			curtok = token_bnot;
 			break;
 
+		case '^':
+			curtok = token_xor;
+			break;
+
 		default:
 			curtok = token_unknown;
 	}
