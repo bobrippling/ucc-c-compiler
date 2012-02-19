@@ -4,4 +4,5 @@ main()
 {
 	x; // should load the address of x
 	&x;
+	return 0;
 }
