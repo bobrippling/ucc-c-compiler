@@ -30,7 +30,6 @@ int (*getptr(char ch))()
 
 int main(int argc, char **argv)
 {
-	char ch;
 	int a, b;
 	int (*f)(int, int);
 
@@ -41,6 +40,6 @@ int main(int argc, char **argv)
 	b = 2;
 	f = getptr(argv[1][0]);
 
-	printf("%d %c %d = %d\n", a, ch, b, f(a, b));
+	printf("%d %c %d = %d\n", a, argv[1][0], b, f(a, b));
 	return 0;
 }
