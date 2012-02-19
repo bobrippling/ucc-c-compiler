@@ -357,27 +357,6 @@ decl_ptr *parse_decl_ptr_nofunc(enum decl_mode mode)
 	}
 
 	return NULL;
-
-#if 0
-	while(accept(token_open_square)){
-		expr *size;
-		int fin;
-		fin = 0;
-
-		if(curtok != token_close_square)
-			size = parse_expr(); /* fold.c checks for const-ness */
-		else
-			fin = 1;
-
-		d->ptr_depth++;
-		EAT(token_close_square);
-
-		if(fin)
-			break;
-
-		dynarray_add((void ***)&d->arraysizes, size);
-	}
-#endif
 }
 
 decl_ptr *parse_decl_ptr(enum decl_mode mode)
@@ -398,6 +377,26 @@ decl_ptr *parse_decl_ptr(enum decl_mode mode)
 
 		dp->func = parse_func_arglist();
 		EAT(token_close_paren);
+	}else{
+		while(accept(token_open_square)){
+			expr *size;
+			int fin;
+			fin = 0;
+
+			if(curtok != token_close_square)
+				size = parse_expr(); /* fold.c checks for const-ness */
+			else
+				fin = 1;
+
+			//d->ptr_depth++; /* here is where we need to recurse? */
+			ICE("recursive array decl parsing");
+			EAT(token_close_square);
+
+			if(fin)
+				break;
+
+			dynarray_add((void ***)&dp->array_sizes, size);
+		}
 	}
 
 	if(accept(token_open_paren))
