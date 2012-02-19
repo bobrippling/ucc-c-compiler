@@ -25,6 +25,7 @@ int operate(expr *lhs, expr *rhs, enum op_type op, int *bad)
 		OP(op_lt,         <);
 		OP(op_ge,         >=);
 		OP(op_gt,         >);
+		OP(op_xor,        ^);
 		OP(op_or,         |);
 		OP(op_and,        &);
 		OP(op_orsc,       ||);
