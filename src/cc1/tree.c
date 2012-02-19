@@ -269,15 +269,16 @@ int type_equal(const type *a, const type *b, int strict)
 	 * basic const checking, doesn't work with
 	 * const char *const x, etc..
 	 */
-	if(strict && b->spec & spec_const && (a->spec & spec_const) == 0)
-		return 0; /* we can assign from const to non-const, but not vice versa */
+	if(strict && (b->spec & spec_const) && (a->spec & spec_const) == 0)
+		return 0; /* we can assign from const to non-const, but not vice versa - FIXME should be elsewhere? */
 
 	return strict ? a->primitive == b->primitive : 1; /* int == char */
 }
 
 int decl_ptr_equal(const decl_ptr *dpa, const decl_ptr *dpb)
 {
-	if(dpa->is_const != dpb->is_const)
+	/* if we are assigning from const, target must be const */
+	if(dpb->is_const ? dpa->is_const : 0)
 		return 0;
 
 	if(dpa->child)
