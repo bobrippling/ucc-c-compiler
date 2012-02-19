@@ -169,7 +169,7 @@ void fold_funcall(expr *e, symtable *stab)
 	}
 
 	/* func count comparison, only if the func has arg-decls, or the func is f(void) */
-	args_exp = decl_func_args(df);
+	args_exp = decl_first_func(df)->func;
 	if(args_exp->arglist || args_exp->args_void){
 		expr **iter_arg;
 		decl **iter_decl;
@@ -808,35 +808,35 @@ void fold_funcargs(decl_ptr *dp, symtable *stab, char *context)
 
 void fold_func(decl *func_decl, symtable *globsymtab)
 {
-	int i;
+	if(decl_is_func(func_decl) && decl_has_func_code(func_decl)){
+		funcargs *fargs;
 
-	if(decl_is_func(func_decl)){
-		if(decl_has_func_code(func_decl)){
-			funcargs *fargs;
-			int nargs;
+		curdecl_func_sp = decl_spel(func_decl);
 
-			curdecl_func_sp = decl_spel(func_decl);
+		fargs = decl_leaf(func_decl)->func;
+		UCC_ASSERT(fargs, "function %s has no funcargs", decl_spel(func_decl));
 
-			fargs = decl_func_args(func_decl);
-			UCC_ASSERT(fargs, "function %s has no funcargs", decl_spel(func_decl));
+		fprintf(stderr, "func args for %s: %s\n", curdecl_func_sp,
+				fargs->arglist ? decl_spel(fargs->arglist[0]) : "<none>");
 
-			symtab_nest(globsymtab, &func_decl->func_code->symtab);
+		symtab_nest(globsymtab, &func_decl->func_code->symtab);
 
-			if(fargs->arglist){
-				for(nargs = 0; fargs->arglist[nargs]; nargs++);
+		if(fargs->arglist){
+			int nargs, i;
 
-				/* add args backwards, since we push them onto the stack backwards */
-				for(i = nargs - 1; i >= 0; i--)
-					if(!decl_spel(fargs->arglist[i]))
-						die_at(&fargs->where, "function \"%s\" has unnamed arguments", decl_spel(func_decl));
-					else
-						SYMTAB_ADD(func_decl->func_code->symtab, fargs->arglist[i], sym_arg);
-			}
+			for(nargs = 0; fargs->arglist[nargs]; nargs++);
 
-			fold_tree(func_decl->func_code);
-
-			curdecl_func_sp = NULL;
+			/* add args backwards, since we push them onto the stack backwards */
+			for(i = nargs - 1; i >= 0; i--)
+				if(!decl_spel(fargs->arglist[i]))
+					die_at(&fargs->where, "function \"%s\" has unnamed arguments", decl_spel(func_decl));
+				else
+					SYMTAB_ADD(func_decl->func_code->symtab, fargs->arglist[i], sym_arg);
 		}
+
+		fold_tree(func_decl->func_code);
+
+		curdecl_func_sp = NULL;
 	}
 }
 
