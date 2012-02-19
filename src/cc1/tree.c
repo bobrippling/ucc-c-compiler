@@ -315,7 +315,7 @@ int decl_equal(const decl *a, const decl *b, int strict)
 
 	return ptreq && type_equal(a->type, b->type, strict);
 #else
-	fprintf(stderr, "WARNING: assuming decls equal (%s:%d)\n", __FILE__, __LINE__);
+	ICW("assuming decls equal");
 	(void)(a - b + strict);
 	return 1;
 #endif
@@ -495,9 +495,21 @@ int decl_is_const( const decl *d)
 	return decl_leaf(d)->is_const;
 }
 
+decl_ptr *decl_first_func(const decl *d)
+{
+	decl_ptr *dp;
+
+	for(dp = d->decl_ptr; dp && !dp->func; dp = dp->child);
+
+	if(!dp)
+		ICE("no decl_ptr with func for decl at %s", where_str(&d->where));
+
+	return dp;
+}
+
 funcargs *decl_func_args(const decl *d)
 {
-	return decl_leaf(d)->func;
+	return decl_first_func(d)->func;
 }
 
 const char *type_to_str(const type *t)
