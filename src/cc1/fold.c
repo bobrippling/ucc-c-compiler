@@ -103,6 +103,7 @@ void fold_decl_equal(decl *a, decl *b, where *w, enum warning warn,
 void fold_funcall(expr *e, symtable *stab)
 {
 	decl *df;
+	decl_ptr *dp;
 
 	if(e->expr->type == expr_identifier && e->expr->spel){
 		char *const sp = e->expr->spel;
@@ -142,6 +143,9 @@ void fold_funcall(expr *e, symtable *stab)
 					expr_to_str(e->expr->type),
 					decl_to_str(df));
 		}
+
+		/* FIXME - find the correct ->func */
+		dp = decl_leaf(df);
 
 		/*
 		 * convert int (*)() to remove the deref
