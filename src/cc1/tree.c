@@ -64,6 +64,7 @@ expr *expr_new_val(int i)
 {
 	expr *e = expr_new();
 	e->type = expr_val;
+	e->tree_type->type->primitive = type_int; /* FIXME: long */
 	e->tree_type->type->spec |= spec_const;
 	e->val.i.val = i;
 	return e;
@@ -183,6 +184,9 @@ expr *expr_ptr_multiply(expr *e, decl *d)
 
 	ret = expr_new();
 	memcpy(&ret->where, &e->where, sizeof e->where);
+
+	decl_free(ret->tree_type);
+	ret->tree_type = decl_copy(e->tree_type);
 
 	ret->type = expr_op;
 	ret->op   = op_multiply;
@@ -414,7 +418,7 @@ const char *type_to_str(const type *t)
 			APPEND(char);
 			APPEND(void);
 			case type_unknown:
-				ICW("unknown type primitive");
+				ICW("unknown type primitive (%s)", where_str(&t->where));
 				snprintf(bufp, BUF_SIZE, "UNKNOWN");
 				break;
 			case type_typedef:

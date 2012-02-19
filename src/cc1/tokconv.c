@@ -69,7 +69,6 @@ enum op_type curtok_to_op()
 
 		default: break;
 	}
-
 	return op_unknown;
 }
 

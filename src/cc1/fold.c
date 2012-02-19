@@ -286,7 +286,8 @@ void fold_expr(expr *e, symtable *stab)
 				UCC_ASSERT(!e->sym, "symbol found when looking for array store");
 				UCC_ASSERT(!e->expr, "expression found in array store address-of");
 
-				e->tree_type->type->spec |= spec_static;
+				e->tree_type->type->primitive = type_char;
+				e->tree_type->type->spec |= spec_static | spec_const;
 				e->tree_type->ptr_depth = 1;
 
 				array_sym = SYMTAB_ADD(symtab_grandparent(stab), decl_new_where(&e->where), stab->parent ? sym_local : sym_global);
@@ -563,6 +564,7 @@ void fold_tree(tree *t)
 			t->expr = expr_new();
 			t->expr->type = expr_identifier;
 			t->expr->spel = curtree_flow->lblfin;
+			t->expr->tree_type->type->primitive = type_int;
 			break;
 
 		case stat_goto:
@@ -853,10 +855,10 @@ void fold(symtable *globs)
 
 		f->args = umalloc(2 * sizeof *f->args);
 		f->args[0] = decl_new();
-		f->args[1] = NULL;
 		f->args[0]->type->primitive = type_char;
 		f->args[0]->type->spec     |= spec_const;
 		f->args[0]->ptr_depth = 1;
+		f->args[1] = NULL;
 
 		symtab_add(globs, d, sym_global, SYMTAB_NO_SYM, SYMTAB_PREPEND);
 	}
