@@ -157,6 +157,7 @@ struct expr
 		op_le, op_lt,
 		op_ge, op_gt,
 
+		op_xor,
 		op_or,   op_and,
 		op_orsc, op_andsc,
 		op_not,  op_bnot,

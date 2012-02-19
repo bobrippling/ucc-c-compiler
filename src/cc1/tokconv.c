@@ -54,6 +54,7 @@ enum op_type curtok_to_op()
 		case token_ge: return op_ge;
 		case token_gt: return op_gt;
 
+		case token_xor: return op_xor;
 		case token_or: return op_or;
 		case token_and: return op_and;
 		case token_orsc: return op_orsc;
@@ -95,6 +96,7 @@ enum op_type curtok_to_augmented_op()
 		CASE(bnot);
 		CASE(and);
 		CASE(or);
+		CASE(xor);
 		CASE(shiftl);
 		CASE(shiftr);
 		default:
@@ -128,9 +130,10 @@ const char *token_to_str(enum token t)
 		CASE_STR_PREFIX(token,  const);            CASE_STR_PREFIX(token,  question);       CASE_STR_PREFIX(token,  plus_assign);     CASE_STR_PREFIX(token,  minus_assign);
 		CASE_STR_PREFIX(token,  multiply_assign);  CASE_STR_PREFIX(token,  divide_assign);  CASE_STR_PREFIX(token,  modulus_assign);  CASE_STR_PREFIX(token,  not_assign);
 		CASE_STR_PREFIX(token,  bnot_assign);      CASE_STR_PREFIX(token,  and_assign);     CASE_STR_PREFIX(token,  or_assign);       CASE_STR_PREFIX(token,  static);
-		CASE_STR_PREFIX(token,  goto);             CASE_STR_PREFIX(token,  signed);         CASE_STR_PREFIX(token,  unsigned);        CASE_STR_PREFIX(token,  auto);
-		CASE_STR_PREFIX(token,  shiftl);           CASE_STR_PREFIX(token,  shiftr);         CASE_STR_PREFIX(token,  shiftl_assign);   CASE_STR_PREFIX(token,  shiftr_assign);
-		CASE_STR_PREFIX(token,  typedef);          CASE_STR_PREFIX(token,  struct);         CASE_STR_PREFIX(token,  enum);            CASE_STR_PREFIX(token,  ptr);
+		CASE_STR_PREFIX(token,  xor);              CASE_STR_PREFIX(token,  xor_assign);     CASE_STR_PREFIX(token,  goto);            CASE_STR_PREFIX(token,  signed);
+		CASE_STR_PREFIX(token,  unsigned);         CASE_STR_PREFIX(token,  auto);           CASE_STR_PREFIX(token,  shiftl);          CASE_STR_PREFIX(token,  shiftr);
+		CASE_STR_PREFIX(token,  shiftl_assign);    CASE_STR_PREFIX(token,  shiftr_assign);  CASE_STR_PREFIX(token,  typedef);         CASE_STR_PREFIX(token,  struct);
+		CASE_STR_PREFIX(token,  enum);            CASE_STR_PREFIX(token,  ptr);
 	}
 	return NULL;
 }
