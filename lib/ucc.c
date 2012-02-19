@@ -2,19 +2,21 @@
 
 #include "ucc.h"
 
-// TODO: enum
-#define RAX 0
-#define RBX 1
-#define RCX 2
-#define RDX 3
+enum reg
+{
+	RAX,
+	RBX,
+	RCX,
+	RDX,
 
-#define RDI 4
-#define RSI 5
+	RDI,
+	RSI,
 
-#define R8  6
-#define R9  7
-#define R10 8
-#define R11 9
+	R8,
+	R9,
+	R10,
+	R11,
+};
 
 static const char *regnames[] = {
 	"rax",
