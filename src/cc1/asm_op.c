@@ -110,6 +110,7 @@ void asm_operate(expr *e, symtable *tab)
 		/* normal mafs */
 		case op_multiply: instruct = "imul"; break;
 		case op_plus:     instruct = "add";  break;
+		case op_xor:      instruct = "xor";  break;
 		case op_or:       instruct = "or";   break;
 		case op_and:      instruct = "and";  break;
 
