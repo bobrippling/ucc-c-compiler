@@ -1,8 +1,11 @@
+#include <assert.h>
+
 printf();
+
+static int i = 0;
 
 x()
 {
-	static int i = 0;
 	printf("%d\n", ++i);
 }
 
@@ -31,4 +34,8 @@ main()
 	(*q)();
 	(*getptr())();
 	(*getptr_addr())();
+
+	assert(i == 8);
+
+	return 0;
 }

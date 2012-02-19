@@ -31,4 +31,5 @@ int main(int argc, char **argv)
 	f = getptr(argv[1][0]);
 
 	printf("%d %c %d = %d\n", a, ch, b, f(a, b));
+	return 0;
 }

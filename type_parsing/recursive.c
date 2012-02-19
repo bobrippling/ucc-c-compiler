@@ -7,4 +7,5 @@ int x(int (*self)())
 main()
 {
 	x(x);
+	return 0;
 }
