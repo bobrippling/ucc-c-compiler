@@ -1,9 +1,7 @@
-parse_expr() in parse_type/decl
 get rid of __asm__ hacks (mainly in gen_asm.c)
 
-test field_width in struct parsing
+struct access tree type
 
-merge struct and enum common code
 fix typedefs
 
 cpp2:
