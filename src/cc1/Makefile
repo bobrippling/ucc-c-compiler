@@ -42,7 +42,7 @@ enum.o: enum.c ../util/util.h ../util/alloc.h ../util/dynarray.h tree.h \
  enum.h sym.h struct_enum.h
 fold.o: fold.c ../util/util.h tree.h cc1.h fold.h fold_sym.h sym.h \
  ../util/platform.h const.h asm.h ../util/alloc.h ../util/dynarray.h \
- struct.h enum.h fold_op.c
+ struct.h enum.h struct_enum.h fold_op.c
 fold_op.o: fold_op.c
 fold_sym.o: fold_sym.c ../util/util.h tree.h cc1.h sym.h fold_sym.h \
  ../util/platform.h
@@ -59,7 +59,8 @@ parse_type.o: parse_type.c ../util/util.h ../util/alloc.h \
 str.o: str.c ../util/util.h
 struct.o: struct.c ../util/util.h ../util/alloc.h ../util/dynarray.h \
  tree.h struct.h sym.h struct_enum.h
-struct_enum.o: struct_enum.c ../util/alloc.h struct_enum.h
+struct_enum.o: struct_enum.c ../util/alloc.h ../util/util.h tree.h \
+ struct.h enum.h struct_enum.h
 sym.o: sym.c ../util/util.h tree.h sym.h ../util/alloc.h macros.h \
  ../util/dynarray.h typedef.h
 tokconv.o: tokconv.c ../util/util.h tree.h tokenise.h tokconv.h macros.h

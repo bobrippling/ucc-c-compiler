@@ -8,7 +8,7 @@
 #include "sys/types.h"
 #include "sys/mman.h"
 
-#define MMAP_PAGE_SIZE 4096
+#define PAGE_SIZE 4096
 // getpagesize()
 
 #define MALLOC_MMAP
@@ -44,15 +44,15 @@ void *malloc(size_t size)
 	void *p;
 	int need_new;
 
-	assert(size <= MMAP_PAGE_SIZE); // TODO
+	assert(size <= PAGE_SIZE); // TODO
 
-	need_new = !last_page || last_page_use + size > MMAP_PAGE_SIZE;
+	need_new = !last_page || last_page_use + size > PAGE_SIZE;
 
 	if(need_new){
 		last_page_use = 0;
 
 		// memleak
-		last_page = p = mmap(NULL, MMAP_PAGE_SIZE,
+		last_page = p = mmap(NULL, PAGE_SIZE,
 				PROT_READ | PROT_WRITE | PROT_EXEC,
 				MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
@@ -67,7 +67,13 @@ void *malloc(size_t size)
 
 	return p;
 #else
+# ifdef MALLOC_SBRK
 	return sbrk(size);
+# else
+# warning malloc static buf implementation
+	static malloc_buf[PAGE_SIZE];
+	return ...; // TODO
+# endif
 #endif
 }
 

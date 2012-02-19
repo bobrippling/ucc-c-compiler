@@ -64,6 +64,7 @@ expr *expr_new_val(int i)
 {
 	expr *e = expr_new();
 	e->type = expr_val;
+	e->tree_type->type->primitive = type_int; /* FIXME: long */
 	e->tree_type->type->spec |= spec_const;
 	e->val.i.val = i;
 	return e;
@@ -194,6 +195,9 @@ expr *expr_ptr_multiply(expr *e, decl *d)
 	ret = expr_new();
 	memcpy(&ret->where, &e->where, sizeof e->where);
 
+	decl_free(ret->tree_type);
+	ret->tree_type = decl_copy(e->tree_type);
+
 	ret->type = expr_op;
 	ret->op   = op_multiply;
 
@@ -237,7 +241,7 @@ int type_size(const type *t)
 			break;
 	}
 
-	ICE("type %s in decl_size()", type_to_str(t));
+	ICE("type %s in type_size()", type_to_str(t));
 	return -1;
 }
 
@@ -259,6 +263,9 @@ int decl_size(const decl *d)
 
 	if(d->decl_ptr->child) /* pointer */
 		return platform_word_size();
+
+	if(d->field_width)
+		return d->field_width;
 
 	return type_size(d->type);
 }
@@ -526,7 +533,7 @@ const char *type_to_str(const type *t)
 			APPEND(char);
 			APPEND(void);
 			case type_unknown:
-				ICW("unknown type primitive");
+				ICW("unknown type primitive (%s)", where_str(&t->where));
 				snprintf(bufp, BUF_SIZE, "UNKNOWN");
 				break;
 			case type_typedef:
