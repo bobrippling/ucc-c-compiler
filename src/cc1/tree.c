@@ -489,7 +489,7 @@ decl_ptr *decl_first_func(const decl *d)
 
 decl *decl_ptr_depth_inc(decl *d)
 {
-	ICE("TODO");
+	decl_leaf(d)->child = decl_ptr_new();
 	return d;
 }
 
