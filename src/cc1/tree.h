@@ -301,6 +301,9 @@ funcargs *decl_func_args(const decl *);
 decl_ptr *decl_leaf(const decl *d);
 decl_ptr *decl_first_func(const decl *d);
 
+decl *decl_ptr_depth_inc(decl *d);
+decl *decl_ptr_depth_dec(decl *d);
+
 expr *expr_ptr_multiply(expr *, decl *);
 expr *expr_assignment(expr *to, expr *from);
 void function_empty_args(funcargs *);

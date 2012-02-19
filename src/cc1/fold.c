@@ -191,9 +191,14 @@ void fold_funcall(expr *e, symtable *stab)
 			for(i = 0, iter_decl = args_exp->arglist, iter_arg = e->funcargs;
 					iter_decl[i];
 					i++){
+				char a[DECL_STATIC_BUFSIZ], b[DECL_STATIC_BUFSIZ];
+
+				strcpy(a, decl_to_str(iter_decl[i]));
+				strcpy(b, decl_to_str(iter_arg[i]->tree_type));
+
 				fold_decl_equal(iter_decl[i], iter_arg[i]->tree_type, &e->where,
-						WARN_ARG_MISMATCH, "mismatching argument type for arg %d to %s",
-						i + 1, decl_spel(df));
+						WARN_ARG_MISMATCH, "mismatching argument for arg %d to %s (%s vs. %s)",
+						i + 1, decl_spel(df), a, b);
 			}
 		}
 	}
@@ -815,9 +820,6 @@ void fold_func(decl *func_decl, symtable *globsymtab)
 
 		fargs = decl_leaf(func_decl)->func;
 		UCC_ASSERT(fargs, "function %s has no funcargs", decl_spel(func_decl));
-
-		fprintf(stderr, "func args for %s: %s\n", curdecl_func_sp,
-				fargs->arglist ? decl_spel(fargs->arglist[0]) : "<none>");
 
 		symtab_nest(globsymtab, &func_decl->func_code->symtab);
 
