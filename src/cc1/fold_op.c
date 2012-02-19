@@ -158,17 +158,27 @@ void fold_op(expr *e, symtable *stab)
 		else if(decl_ptr_depth(e->tree_type) < 0)
 			die_at(&e->where, "can't dereference non-pointer (%s)", type_to_str(e->tree_type->type));
 	}else{
-		/* look either side - if either is a pointer, take that as the tree_type */
-		/* TODO: checks for pointer + pointer (invalid), etc etc */
+		/*
+		 * look either side - if either is a pointer, take that as the tree_type
+		 *
+		 * operation between two values of any type
+		 *
+		 * TODO: checks for pointer + pointer (invalid), etc etc
+		 */
 
 #define IS_PTR(x) decl_ptr_depth(x->tree_type)
 
-		if(e->op == op_minus && IS_PTR(e->lhs) && IS_PTR(e->rhs))
-			e->tree_type->type->primitive = type_int;
-		else if(e->rhs && IS_PTR(e->rhs))
-			GET_TREE_TYPE(e->rhs->tree_type);
-		else
+		if(e->rhs){
+			if(e->op == op_minus && IS_PTR(e->lhs) && IS_PTR(e->rhs))
+				e->tree_type->type->primitive = type_int;
+			else if(IS_PTR(e->rhs))
+				GET_TREE_TYPE(e->rhs->tree_type);
+			else
+				goto norm_tt;
+		}else{
+norm_tt:
 			GET_TREE_TYPE(e->lhs->tree_type);
+		}
 	}
 
 	if(e->rhs){
