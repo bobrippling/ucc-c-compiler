@@ -292,10 +292,11 @@ void fold_expr(expr *e, symtable *stab)
 				UCC_ASSERT(!e->sym, "symbol found when looking for array store");
 				UCC_ASSERT(!e->expr, "expression found in array store address-of");
 
-				e->tree_type->type->spec |= spec_static;
+				e->tree_type->type->spec |= spec_static | spec_const;
 
 				/* pointer */
 				decl_leaf(e->tree_type)->child = decl_ptr_new();
+				e->tree_type->decl_ptr->child->is_const = 1;
 
 				e->spel = e->array_store->label = asm_label_array(e->array_store->type == array_str);
 
