@@ -10,9 +10,9 @@ do
 	$d/../src/cc $f > $log 2>&1
 	if [ $? -ne 0 ]
 	then
-		printf >&2 '\e[1;31mbroke: %s:\e[m\n' "$f"
-		sed 's/^/	/' $log >&2
-	fi
+		printf '\e[1;31mbroke: %s:\e[m\n' "$f"
+		sed 's/^/	/' $log
+	fi >&2
 done
 
 rm -f a.out

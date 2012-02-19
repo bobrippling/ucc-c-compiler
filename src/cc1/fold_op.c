@@ -137,15 +137,13 @@ void fold_op(expr *e, symtable *stab)
 			warn_at(&e->lhs->where, "possible optimisation for *& expression");
 
 
-		//fprintf(stderr, "lhs tt: %s\n", decl_to_str(e->lhs->tree_type));
-		{
-			//fprintf(stderr, "deref of '%s' -> '", decl_to_str(e->tree_type));
-			e->tree_type = decl_copy(e->tree_type);
-			e->tree_type->decl_ptr = e->tree_type->decl_ptr->child; /* XXX: memleak */
-			//fprintf(stderr, "%s'\n", decl_to_str(e->tree_type));
-		}
-
 		GET_TREE_TYPE(e->lhs->tree_type);
+
+		//fprintf(stderr, "lhs tt: %s\n", decl_to_str(e->lhs->tree_type));
+		//fprintf(stderr, "deref of '%s' -> '", decl_to_str(e->tree_type));
+		e->tree_type = decl_ptr_depth_dec(e->tree_type);
+		//fprintf(stderr, "%s'\n", decl_to_str(e->tree_type));
+
 		UCC_ASSERT(e->tree_type->decl_ptr, "deref gives bad decl");
 
 		if(decl_ptr_depth(e->tree_type) == 0)

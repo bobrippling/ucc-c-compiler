@@ -178,42 +178,15 @@ funcargs *funcargs_new()
 
 expr *expr_ptr_multiply(expr *e, decl *d)
 {
-	decl tmp;
-	int sz;
+	decl *dtmp;
 	expr *ret;
+	int sz;
 
-	/*
-	 * we need to adjust the pointer-ness
-	 * normally this is fine, but if we do
-	 * this for a typedef'd variable, then
-	 * we could get:
-	 * d->ptr_depth = 0
-	 * d->primitive = abc
-	 * d->tdef = { .ptr_depth = 1, .primitive = abc }
-	 *
-	 * which means they are out of sync
-	 * thus the decl-clone
-	 */
+	dtmp = decl_copy(d);
 
-#if 0
-	memcpy(&tmp, d, sizeof tmp);
-	tmp.ptr_depth--;
-	if(tmp.type->tdef){
-		if(tmp.type->tdef->type->tdef)
-			ICE("FIXME: typedef'd typedef");
+	sz = decl_size(decl_ptr_depth_dec(dtmp));
 
-		tmp.type->tdef = decl_copy(tmp.type->tdef);
-		tmp.type->tdef->ptr_depth--;
-	}
-#else
-	(void)d;
-	ICE("TODO: expr_ptr_multiply()");
-#endif
-
-	sz = decl_size(&tmp);
-
-	if(tmp.type->tdef)
-		decl_free(tmp.type->tdef);
+	decl_free(dtmp);
 
 	if(sz == 1)
 		return e;
@@ -284,7 +257,7 @@ int decl_size(const decl *d)
 	}
 #endif
 
-	if(d->decl_ptr) /* pointer */
+	if(d->decl_ptr->child) /* pointer */
 		return platform_word_size();
 
 	return type_size(d->type);
@@ -512,6 +485,19 @@ decl_ptr *decl_first_func(const decl *d)
 		ICE("no decl_ptr with func for decl at %s", where_str(&d->where));
 
 	return dp;
+}
+
+decl *decl_ptr_depth_inc(decl *d)
+{
+	ICE("TODO");
+	return d;
+}
+
+decl *decl_ptr_depth_dec(decl *d)
+{
+	/* XXX: memleak */
+	d->decl_ptr = d->decl_ptr->child;
+	return d;
 }
 
 const char *type_to_str(const type *t)
