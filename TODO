@@ -1,3 +1,5 @@
+arrays decl, e.g. x[5];
+
 get rid of __asm__ hacks (mainly in gen_asm.c)
 
 struct access tree type

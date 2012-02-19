@@ -79,6 +79,8 @@ struct decl_ptr
 	funcargs *func;   /* int (*x)() - args to function */
 	decl_ptr *child;  /* int (*const (*x)()) - *[x] is child */
 
+	expr **array_sizes; /* int (x[5][2])[2] */
+
 	char *spel;
 };
 
