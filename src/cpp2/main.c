@@ -19,6 +19,7 @@ static const struct
 	{ "__FILE__",       NULL },
 	{ "__LINE__",       NULL },
 	{ "__COUNTER__",    NULL },
+	{ "__UCC__",        "1"  },
 	{ NULL,             NULL }
 };
 
