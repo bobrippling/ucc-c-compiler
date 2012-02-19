@@ -115,10 +115,10 @@ type *parse_type()
 
 	/* read "const", "unsigned", ... and "int"/"long" ... in any order */
 	while(td = NULL,
-			(flag = curtok_is_type_specifier()) ||
+			((flag = curtok_is_type_specifier()) ||
 			curtok_is_type() ||
 			curtok == token_struct ||
-			curtok == token_enum){
+			curtok == token_enum)){
 
 		if(accept(token_struct)){
 			return parse_type_struct();
@@ -126,6 +126,8 @@ type *parse_type()
 			return parse_type_enum();
 		}else if(flag){
 			const enum type_spec this = curtok_to_type_specifier();
+
+			UCC_ASSERT(this != spec_none, "spec none where spec expected");
 
 			/* we can't check in fold, since 1 & 1 & 1 is still just 1 */
 			if(this & spec)
@@ -155,6 +157,7 @@ type *parse_type()
 			}else{
 				t = type_new();
 				t->primitive = curtok_to_type_primitive();
+				UCC_ASSERT(t->primitive != type_unknown, "unknown type where type expected");
 				EAT(curtok);
 			}
 		}
