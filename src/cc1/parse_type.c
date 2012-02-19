@@ -298,6 +298,8 @@ decl **parse_decls(const int can_default, const int accept_field_width)
 			}else if(accept_field_width && accept(token_colon)){
 				/* normal decl, check field spec */
 				d->field_width = currentval.val;
+				if(d->field_width <= 0)
+					die_at(&d->where, "field width must be positive");
 				EAT(token_integer);
 			}
 
