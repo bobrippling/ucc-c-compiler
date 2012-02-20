@@ -466,12 +466,6 @@ void fold_decl_global(decl *d, symtable *stab)
 	fold_decl(d, stab);
 }
 
-void fold_tree_nest(tree *paren, tree *child)
-{
-	symtab_nest(paren->symtab, &child->symtab);
-	fold_tree(child);
-}
-
 int fold_struct(struct_st *st)
 {
 	int offset;
@@ -592,7 +586,7 @@ void fold_tree(tree *t)
 			free(save);
 
 			if(t->type == stat_label)
-				fold_tree_nest(t, t->lhs); /* compound */
+				fold_tree(t->lhs); /* compound */
 			break;
 		}
 
@@ -610,12 +604,12 @@ void fold_tree(tree *t)
 
 			OPT_CHECK(t->expr, "constant expression in if/while");
 
-			fold_tree_nest(t, t->lhs);
+			fold_tree(t->lhs);
 
 			if(t->type != stat_if)
 				curtree_flow = oldflowtree;
 			else if(t->rhs)
-				fold_tree_nest(t, t->rhs);
+				fold_tree(t->rhs);
 			break;
 		}
 
@@ -637,7 +631,7 @@ void fold_tree(tree *t)
 
 			OPT_CHECK(t->flow->for_while, "constant expression in for");
 
-			fold_tree_nest(t, t->lhs);
+			fold_tree(t->lhs);
 
 			curtree_flow = oldflowtree;
 			break;
@@ -685,7 +679,7 @@ void fold_tree(tree *t)
 			}
 			t->expr->spel = asm_label_case(def ? CASE_DEF : CASE_CASE, t->expr->val.i.val);
 case_add:
-			fold_tree_nest(t, t->lhs); /* compound */
+			fold_tree(t->lhs); /* compound */
 			if(!curtree_switch)
 				die_at(&t->expr->where, "not inside a switch statement");
 			dynarray_add((void ***)&curtree_switch->codes, t);
@@ -709,7 +703,7 @@ case_add:
 
 			OPT_CHECK(t->expr, "constant expression in switch");
 
-			fold_tree_nest(t, t->lhs);
+			fold_tree(t->lhs);
 			/* FIXME: check for duplicate case values and at most, 1 default */
 
 			/* check for an enum */
@@ -744,7 +738,7 @@ case_add:
 			if(t->codes){
 				tree **iter;
 				for(iter = t->codes; *iter; iter++)
-					fold_tree_nest(t, *iter);
+					fold_tree(*iter);
 			}
 
 			/* static folding */
@@ -809,7 +803,7 @@ void fold_funcargs(decl_ptr *dp, symtable *stab, char *context)
 	}
 }
 
-void fold_func(decl *func_decl, symtable *globsymtab)
+void fold_func(decl *func_decl, symtable *globs)
 {
 	if(decl_is_func(func_decl) && decl_has_func_code(func_decl)){
 		funcargs *fargs;
@@ -818,8 +812,6 @@ void fold_func(decl *func_decl, symtable *globsymtab)
 
 		fargs = decl_leaf(func_decl)->func;
 		UCC_ASSERT(fargs, "function %s has no funcargs", decl_spel(func_decl));
-
-		symtab_nest(globsymtab, &func_decl->func_code->symtab);
 
 		if(fargs->arglist){
 			int nargs, i;
@@ -833,6 +825,8 @@ void fold_func(decl *func_decl, symtable *globsymtab)
 				else
 					SYMTAB_ADD(func_decl->func_code->symtab, fargs->arglist[i], sym_arg);
 		}
+
+		func_decl->func_code->symtab->parent = globs;
 
 		fold_tree(func_decl->func_code);
 

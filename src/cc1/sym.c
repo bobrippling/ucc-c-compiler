@@ -21,39 +21,18 @@ sym *sym_new(decl *d, enum sym_type t)
 	return s;
 }
 
-symtable *symtab_new(void)
+symtable *symtab_new(symtable *parent)
 {
 	symtable *p = umalloc(sizeof *p);
 	p->typedefs = umalloc(sizeof *p->typedefs);
+	p->parent = parent;
 	return p;
-}
-
-symtable *symtab_child(symtable *paren)
-{
-	symtable *ret = symtab_new();
-	ret->parent = paren;
-	return ret;
 }
 
 symtable *symtab_root(symtable *child)
 {
 	for(; child->parent; child = child->parent);
 	return child;
-}
-
-void symtab_nest(symtable *parent, symtable **brat)
-{
-	UCC_ASSERT(parent, "symtab_nest with NULL parent");
-
-	if(*brat){
-		if((*brat)->parent)
-			ICE("code symtable parent already set");
-		(*brat)->parent = parent;
-	}else{
-		*brat = symtab_child(parent);
-	}
-
-	dynarray_add((void ***)&parent->children, *brat);
 }
 
 sym *symtab_search2(symtable *tab, const void *item, int (*cmp)(const void *, decl *), int descend)

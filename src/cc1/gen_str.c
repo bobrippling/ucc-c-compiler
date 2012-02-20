@@ -400,10 +400,11 @@ void print_enum(enum_st *et)
 	indent--;
 }
 
-void print_structs_and_eums(symtable *stab)
+void print_st_en_tdef(symtable *stab)
 {
 	struct_st **sit;
 	enum_st   **eit;
+	decl      **tit;
 
 	/* fold structs, then enums, then decls - decls may rely on enums */
 	for(sit = stab->structs; sit && *sit; sit++)
@@ -411,6 +412,9 @@ void print_structs_and_eums(symtable *stab)
 
 	for(eit = stab->enums; eit && *eit; eit++)
 		print_enum(*eit);
+
+	for(tit = stab->typedefs; tit && *tit; tit++)
+		print_decl(*tit, PDECL_INDENT | PDECL_NEWLINE);
 }
 
 void print_tree(tree *t)
@@ -442,7 +446,7 @@ void print_tree(tree *t)
 		}
 	}
 
-	print_structs_and_eums(t->symtab);
+	print_st_en_tdef(t->symtab);
 
 	if(t->codes){
 		tree **iter;
@@ -460,7 +464,7 @@ void gen_str(symtable *symtab)
 {
 	decl **diter;
 
-	print_structs_and_eums(symtab);
+	print_st_en_tdef(symtab);
 
 	for(diter = symtab->decls; diter && *diter; diter++){
 		print_decl(*diter, PDECL_INDENT | PDECL_NEWLINE | PDECL_PIGNORE | PDECL_FUNC_DESCEND);

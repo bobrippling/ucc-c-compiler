@@ -2,10 +2,9 @@
 
 printf();
 
-static int i = 0;
-
 x()
 {
+	static int i = 0;
 	printf("%d\n", ++i);
 }
 

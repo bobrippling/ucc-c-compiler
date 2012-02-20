@@ -28,18 +28,11 @@ tree_flow *tree_flow_new()
 	return t;
 }
 
-tree *tree_new()
+tree *tree_new(symtable *stab)
 {
 	tree *t = umalloc(sizeof *t);
 	where_new(&t->where);
-	return t;
-}
-
-tree *tree_new_code()
-{
-	tree *t = tree_new();
-	t->type = stat_code;
-	t->symtab = symtab_new();
+	t->symtab = stab;
 	return t;
 }
 

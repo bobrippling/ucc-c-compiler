@@ -117,10 +117,12 @@ type *parse_type()
 
 	/* read "const", "unsigned", ... and "int"/"long" ... in any order */
 	while(td = NULL,
-			((flag = curtok_is_type_specifier()) ||
-			curtok_is_type() ||
-			curtok == token_struct ||
-			curtok == token_enum)){
+			((flag = curtok_is_type_specifier())
+			 || curtok_is_type()
+			 || curtok == token_struct
+			 || curtok == token_enum
+			 || (curtok == token_identifier && (td = typedef_find(current_scope, token_current_spel_peek())))
+		 	)){
 
 		if(accept(token_struct)){
 			return parse_type_struct();
@@ -142,7 +144,7 @@ type *parse_type()
 
 			if(t){
 				/* "int x" - we are at x, which is also a typedef somewhere */
-				/*cc1_warn_at(NULL, 0, WARN_IDENT_TYPEDEF, "identifier is a typedef name");*/
+				cc1_warn_at(NULL, 0, WARN_IDENT_TYPEDEF, "identifier is a typedef name");
 				break;
 			}
 
