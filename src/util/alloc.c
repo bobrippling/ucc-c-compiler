@@ -8,10 +8,9 @@
 
 void *umalloc(size_t l)
 {
-	void *p = malloc(l);
+	void *p = calloc(1, l);
 	if(!p)
-		die("malloc %ld bytes:", l);
-	memset(p, 0, l);
+		die("calloc %ld bytes:", l);
 	return p;
 }
 

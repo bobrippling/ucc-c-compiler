@@ -257,7 +257,7 @@ struct funcargs
 	int variadic;
 };
 
-tree        *tree_new(void);
+tree        *tree_new(symtable *stab);
 expr        *expr_new(void);
 type        *type_new(void);
 decl        *decl_new(void);
@@ -271,7 +271,6 @@ funcargs    *funcargs_new(void);
 type      *type_copy(type *);
 decl      *decl_copy(decl *);
 /*expr      *expr_copy(expr *);*/
-tree      *tree_new_code(void);
 expr      *expr_new_val(int);
 expr      *expr_new_intval(intval *);
 

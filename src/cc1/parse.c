@@ -16,6 +16,9 @@
 #include "struct.h"
 #include "parse_type.h"
 
+#define TREE_NEW() tree_new(current_scope)
+
+#define TREE_NEW_NEST() tree_new(symtab_new(current_scope))
 
 /*
  * order goes:
@@ -316,7 +319,7 @@ expr *parse_expr_funcall()
 {
 	expr *e = parse_expr_inc_dec();
 
-	while(accept(token_open_paren)){
+	if(accept(token_open_paren)){
 		expr *sub = e;
 		e = expr_new();
 		e->type = expr_funcall;
@@ -457,7 +460,7 @@ expr *parse_expr_comma()
 
 tree *parse_if()
 {
-	tree *t = tree_new();
+	tree *t = TREE_NEW_NEST();
 	EAT(token_if);
 	EAT(token_open_paren);
 
@@ -480,7 +483,10 @@ expr **parse_funcargs()
 	expr **args = NULL;
 
 	while(curtok != token_close_paren){
-		dynarray_add((void ***)&args, parse_expr_funcallarg());
+		expr *arg = parse_expr_funcallarg();
+		if(!arg)
+			die_at(&arg->where, "expected: funcall arg");
+		dynarray_add((void ***)&args, arg);
 
 		if(curtok == token_close_paren)
 			break;
@@ -493,7 +499,7 @@ expr **parse_funcargs()
 
 tree *expr_to_tree(expr *e)
 {
-	tree *t = tree_new();
+	tree *t = TREE_NEW();
 	t->type = stat_expr;
 	t->expr = e;
 	return t;
@@ -501,7 +507,7 @@ tree *expr_to_tree(expr *e)
 
 tree *parse_switch()
 {
-	tree *t = tree_new();
+	tree *t = TREE_NEW_NEST();
 
 	EAT(token_switch);
 	EAT(token_open_paren);
@@ -518,7 +524,7 @@ tree *parse_switch()
 
 tree *parse_do()
 {
-	tree *t = tree_new();
+	tree *t = TREE_NEW_NEST();
 
 	EAT(token_do);
 
@@ -537,7 +543,7 @@ tree *parse_do()
 
 tree *parse_while()
 {
-	tree *t = tree_new();
+	tree *t = TREE_NEW_NEST();
 
 	EAT(token_while);
 	EAT(token_open_paren);
@@ -553,7 +559,7 @@ tree *parse_while()
 
 tree *parse_for()
 {
-	tree *t = tree_new();
+	tree *t = TREE_NEW_NEST();
 	tree_flow *tf;
 
 	EAT(token_for);
@@ -586,11 +592,11 @@ tree *parse_for()
 
 tree *parse_code_block()
 {
-	tree *t = tree_new_code();
+	tree *t = TREE_NEW_NEST();
 	decl **diter;
-	symtable *old_scope;
 
-	old_scope = current_scope;
+	t->type = stat_code;
+
 	current_scope = t->symtab;
 
 	EAT(token_open_block);
@@ -635,7 +641,7 @@ tree *parse_code_block()
 
 	EAT(token_close_block);
 ret:
-	current_scope = old_scope;
+	current_scope = t->symtab->parent;
 	return t;
 }
 
@@ -661,7 +667,7 @@ tree *parse_code()
 
 	switch(curtok){
 		case token_semicolon:
-			t = tree_new();
+			t = TREE_NEW();
 			t->type = stat_noop;
 			EAT(token_semicolon);
 			return t;
@@ -669,7 +675,7 @@ tree *parse_code()
 		case token_break:
 		case token_return:
 		case token_goto:
-			t = tree_new();
+			t = TREE_NEW();
 			if(accept(token_break)){
 				t->type = stat_break;
 			}else if(accept(token_return)){
@@ -697,7 +703,7 @@ tree *parse_code()
 		case token_default:
 			EAT(token_default);
 			EAT(token_colon);
-			t = tree_new();
+			t = TREE_NEW();
 			t->type = stat_default;
 			return parse_label_next(t);
 		case token_case:
@@ -706,7 +712,7 @@ tree *parse_code()
 			EAT(token_case);
 			a = parse_expr();
 			if(accept(token_elipsis)){
-				t = tree_new();
+				t = TREE_NEW();
 				t->type = stat_case_range;
 				t->expr  = a;
 				t->expr2 = parse_expr();
@@ -739,7 +745,7 @@ symtable *parse()
 	decl **decls = NULL;
 	int i;
 
-	current_scope = globals = symtab_new();
+	current_scope = globals = symtab_new(NULL);
 
 	decls = parse_decls(1, 0);
 	EAT(token_eof);

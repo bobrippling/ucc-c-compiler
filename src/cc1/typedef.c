@@ -9,13 +9,11 @@
 #include "typedef.h"
 #include "sym.h"
 
-decl *typedef_find(symtable *tab, const char *spel)
+decl *typedef_find(symtable *stab, const char *spel)
 {
-	UCC_ASSERT(spel, "NULL spell in %s", __func__);
-
-	for(; tab; tab = tab->parent){
+	for(; stab; stab = stab->parent){
 		decl **di;
-		for(di = tab->typedefs; di; di++){
+		for(di = stab->typedefs; di && *di; di++){
 			decl *d = *di;
 			if(!strcmp(decl_spel(d), spel))
 				return d;
