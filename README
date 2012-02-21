@@ -2,6 +2,7 @@ It should be fairly obvious what this program does
 
 It doesn't use system include files nor libraries yet, just some simple ones in lib/
 
+
 Requirements
 ========================
 
@@ -27,13 +28,15 @@ I haven't made an install make target yet.
 
 All programs compiled by ucc are staticly linked.
 
-C-Features Todo
+
+Major C-Features Todo
 =============
 
 nested struct support (parsing works, no code generation)
-scoped typedefs / better type parsing
 unions
-function pointer branch completion + merge
+floating point numbers
+long + short types
+
 
 Examples
 ========

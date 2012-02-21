@@ -1,6 +1,9 @@
+floats
+long + short
+
 get rid of __asm__ hacks (mainly in gen_asm.c)
 
-struct access tree type
+struct access tree type propagation
 
 cpp2:
 	fix dir-relative file opening
