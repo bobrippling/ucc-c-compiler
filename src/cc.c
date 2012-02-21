@@ -60,6 +60,7 @@ int no_startfiles = 0, no_stdlib = 0;
 int no_warn = 0;
 int verbose = 0;
 int debug   = 0;
+int do_rm   = 1;
 char *backend  = "";
 char *frontend = "";
 
@@ -170,7 +171,8 @@ int gen(const char *input, const char *output)
 	TMP(f_o, "/tmp/ucc_", "o");
 	f = output ? output : "a.out";
 
-	atexit(unlink_files);
+	if(do_rm)
+		atexit(unlink_files);
 
 #define RUN(local, fmt, ...) \
 		snprintf(cmd, sizeof cmd, "%s" fmt, local ? where : "", __VA_ARGS__); \
@@ -265,6 +267,8 @@ int main(int argc, char **argv)
 				goto usage;
 		}else if(!strcmp(argv[i], "--help")){
 			goto usage;
+		}else if(!strcmp(argv[i], "-no-rm")){
+			do_rm = 0;
 		}else{
 			if(argv[i][0] == '-'){
 				unsigned int j;
@@ -325,6 +329,7 @@ int main(int argc, char **argv)
 						"Usage: %s [-Wwarning...] [-foption...] [-[ESc]] [-o output] input\n"
 						"Other options:\n"
 						"  -nost{dlib,artfiles} - don't like with stdlib/crt.o\n"
+						"  -no-rm - don't remove temporary files\n"
 						"  -d - run in debug/verbose mode\n"
 						"  -X backend - specify cc1 backend\n"
 						"  -x frontend - specify starting point (c, cpp-output and asm)\n",
