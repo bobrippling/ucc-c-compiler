@@ -139,12 +139,10 @@ void fold_op(expr *e, symtable *stab)
 
 		GET_TREE_TYPE(e->lhs->tree_type);
 
-		//fprintf(stderr, "lhs tt: %s\n", decl_to_str(e->lhs->tree_type));
-		//fprintf(stderr, "deref of '%s' -> '", decl_to_str(e->tree_type));
 		e->tree_type = decl_ptr_depth_dec(e->tree_type);
-		//fprintf(stderr, "%s'\n", decl_to_str(e->tree_type));
 
-		UCC_ASSERT(e->tree_type->decl_ptr, "deref gives bad decl");
+		if(!e->tree_type->decl_ptr)
+			goto non_pointer;
 
 		if(decl_ptr_depth(e->tree_type) == 0)
 			switch(e->lhs->tree_type->type->primitive){
@@ -156,6 +154,7 @@ void fold_op(expr *e, symtable *stab)
 					break;
 			}
 		else if(decl_ptr_depth(e->tree_type) < 0)
+non_pointer:
 			die_at(&e->where, "can't dereference non-pointer (%s)", type_to_str(e->tree_type->type));
 	}else{
 		/*

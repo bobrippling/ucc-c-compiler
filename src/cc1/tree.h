@@ -76,12 +76,13 @@ struct decl_ptr
 	where where;
 
 	int is_const;     /* int *const x */
-	funcargs *func;   /* int (*x)() - args to function */
 	decl_ptr *child;  /* int (*const (*x)()) - *[x] is child */
 
-	expr **array_sizes; /* int (x[5][2])[2] */
-
 	char *spel;
+
+	/* either a func OR an array_size, not both */
+	funcargs *func;   /* int (*x)() - args to function */
+	expr *array_size; /* int (x[5][2])[2] */
 };
 
 struct decl
@@ -286,12 +287,13 @@ const char *spec_to_str(const enum type_spec s);
 int op_is_cmp(enum op_type o);
 
 int   type_equal(const type *a, const type *b, int strict);
-int   type_size(const type *);
-int   decl_size(const decl *);
+int   type_size( const type *);
+int   decl_size( const decl *);
 int   decl_equal(const decl *, const decl *, int strict);
 
 #define decl_has_func_code(d) (!!(d)->func_code)
 int   decl_is_func(    const decl *); /* includes ptr to func */
+int   decl_has_array(  const decl *);
 int   decl_is_callable(const decl *);
 int   decl_is_const(   const decl *);
 int   decl_ptr_depth(  const decl *);

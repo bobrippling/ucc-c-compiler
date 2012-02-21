@@ -23,7 +23,7 @@
 
 type *parse_type_struct(void);
 type *parse_type_enum(void);
-decl_ptr *parse_decl_ptr(enum decl_mode mode);
+decl_ptr *parse_decl_ptr_array(enum decl_mode mode);
 
 #define INT_TYPE(t) do{ t = type_new(); t->primitive = type_int; }while(0)
 
@@ -326,10 +326,10 @@ empty_func:
 	return args;
 }
 
-decl_ptr *parse_decl_ptr_nofunc(enum decl_mode mode)
+decl_ptr *parse_decl_ptr_rec(enum decl_mode mode)
 {
 	if(accept(token_open_paren)){
-		decl_ptr *ret = parse_decl_ptr(mode);
+		decl_ptr *ret = parse_decl_ptr_array(mode);
 		EAT(token_close_paren);
 		return ret;
 
@@ -339,7 +339,7 @@ decl_ptr *parse_decl_ptr_nofunc(enum decl_mode mode)
 		if(accept(token_const))
 			ret->is_const = 1;
 
-		ret->child = parse_decl_ptr(mode); /* check if we have anything else */
+		ret->child = parse_decl_ptr_array(mode); /* check if we have anything else */
 		if(!ret->child)
 			ret->child = decl_ptr_new(); /* if not, we need to ensure we mark that it's a pointer */
 		return ret;
@@ -361,44 +361,25 @@ decl_ptr *parse_decl_ptr_nofunc(enum decl_mode mode)
 	return NULL;
 }
 
-decl_ptr *parse_decl_ptr(enum decl_mode mode)
+decl_ptr *parse_decl_ptr_func(enum decl_mode mode)
 {
-	decl_ptr *dp;
-
-	dp = parse_decl_ptr_nofunc(mode);
+	decl_ptr *dp = parse_decl_ptr_rec(mode);
 
 	if(accept(token_open_paren)){
+		if(!dp)
+			dp = decl_ptr_new();
+
 		/*
-			* e.g.:
-			* int x(
-			* int (*x)(
-			* int (((x))(
-			*/
+		 * e.g.:
+		 * int x(
+		 * int (*x)(
+		 * int (((x))(
+		 */
 		if(dp->func)
 			goto func_ret_func;
 
 		dp->func = parse_func_arglist();
 		EAT(token_close_paren);
-	}else{
-		while(accept(token_open_square)){
-			expr *size;
-			int fin;
-			fin = 0;
-
-			if(curtok != token_close_square)
-				size = parse_expr(); /* fold.c checks for const-ness */
-			else
-				fin = 1;
-
-			//d->ptr_depth++; /* here is where we need to recurse? */
-			ICE("recursive array decl parsing");
-			EAT(token_close_square);
-
-			if(fin)
-				break;
-
-			dynarray_add((void ***)&dp->array_sizes, size);
-		}
 	}
 
 	if(accept(token_open_paren))
@@ -408,17 +389,46 @@ func_ret_func:
 	return dp;
 }
 
+decl_ptr *parse_decl_ptr_array(enum decl_mode mode)
+{
+	decl_ptr *dp = parse_decl_ptr_func(mode);
+
+	while(accept(token_open_square)){
+		decl_ptr *dp_new;
+		expr *size;
+
+		if(accept(token_close_square)){
+			/* take size as zero */
+			size = expr_new_val(0);
+		}else{
+			/* fold.c checks for const-ness */
+			size = parse_expr();
+			EAT(token_close_square);
+		}
+
+		dp_new = decl_ptr_new();
+
+		/* is this right? t'other way around? append to leaf? */
+		dp_new->child = dp;
+		dp_new->array_size = size;
+
+		dp = dp_new;
+	}
+
+	return dp;
+}
+
+
 decl *parse_decl(type *t, enum decl_mode mode)
 {
 	decl *d = decl_new();
-	decl_ptr *dp = parse_decl_ptr(mode);
+	decl_ptr *dp = parse_decl_ptr_array(mode);
 
 	if(!dp)
 		dp = decl_ptr_new(); /* (int)x - no ->dp for "int", add one */
 
 	d->type = t;
 	d->decl_ptr = dp;
-	dp->is_const |= (t->spec & spec_const); /* we never check t->spec, just ->is_const */
 
 	if(accept(token_assign))
 		d->init = parse_expr_funcallarg(); /* int x = 5, j; - don't grab the comma expr */

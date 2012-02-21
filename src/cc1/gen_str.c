@@ -57,12 +57,20 @@ void idt_printf(const char *fmt, ...)
 	va_end(l);
 }
 
+void print_expr_val(expr *e)
+{
+	UCC_ASSERT(e->type == expr_val, "%s: not a value expression", __func__);
+	fprintf(cc1_out, "%ld", e->val.i.val);
+}
+
 void print_decl_ptr_eng(decl_ptr *dp)
 {
 	if(dp->child){
 		print_decl_ptr_eng(dp->child);
 
-		fprintf(cc1_out, "%spointer to ", dp->is_const    ? "const " : "");
+		fprintf(cc1_out, "%s%s",
+				dp->array_size ? "" : "pointer to ",
+				dp->is_const    ? "const " : "");
 	}
 
 	if(dp->func){
@@ -93,6 +101,11 @@ void print_decl_ptr_eng(decl_ptr *dp)
 #endif
 		fputs(" returning ", cc1_out);
 	}
+	if(dp->array_size){
+		fputs("array[", cc1_out);
+		print_expr_val(dp->array_size);
+		fputs("] of ", cc1_out);
+	}
 }
 
 void print_decl_eng(decl *d)
@@ -113,7 +126,9 @@ void print_decl_ptr(decl_ptr *dp)
 		if(dp->func)
 			fputc('(', cc1_out);
 
-		fprintf(cc1_out, "*%s", dp->is_const ? "const " : "");
+		fprintf(cc1_out, "%s%s",
+				dp->array_size ? "" : "*",
+				dp->is_const ? "const " : "");
 
 		print_decl_ptr(dp->child);
 	}
@@ -138,6 +153,11 @@ void print_decl_ptr(decl_ptr *dp)
 
 		fprintf(cc1_out, "%s)", fargs->variadic ? ", ..." : "");
 	}
+	if(dp->array_size){
+		fputc('[', cc1_out);
+		print_expr_val(dp->array_size);
+		fputc(']', cc1_out);
+	}
 }
 
 void print_decl(decl *d, enum pdeclargs mode)
@@ -160,7 +180,17 @@ void print_decl(decl *d, enum pdeclargs mode)
 			fputc('\n', cc1_out);
 			for(dpi = d->decl_ptr; dpi; dpi = dpi->child){
 				indent++;
-				idt_printf("decl_ptr: %s%s\n", dpi->is_const ? "const" : "", dpi->func ? "(#)" : "");
+				idt_printf("decl_ptr: %s%s",
+						dpi->is_const ? "const" : "",
+						dpi->func ? "(#)" : "");
+
+				if(dpi->array_size){
+					fputs("\n", cc1_out);
+					idt_printf("array size:\n");
+					indent++;
+					print_expr(dpi->array_size);
+					indent--;
+				}
 			}
 
 			indent = idt_orig;
@@ -181,15 +211,6 @@ void print_decl(decl *d, enum pdeclargs mode)
 
 	if(mode & PDECL_NEWLINE)
 		fputc('\n', cc1_out);
-
-	indent++;
-	/*for(i = 0; d->arraysizes && d->arraysizes[i]; i++){
-		idt_printf("array[%d] size:\n", i);
-		indent++;
-		print_expr(d->arraysizes[i]);
-		indent--;
-	}*/
-	indent--;
 
 	if((mode & PDECL_FUNC_DESCEND) && decl_has_func_code(d)){
 		decl **iter;

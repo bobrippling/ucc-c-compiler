@@ -240,19 +240,22 @@ int type_size(const type *t)
 
 int decl_size(const decl *d)
 {
-#if 0
-	if(d->arraysizes){
-		/* should've been folded fully */
+	if(decl_has_array(d)){
 		const int siz = type_size(d->type);
-		int i;
+		decl_ptr *dp;
 		int ret = 0;
 
-		for(i = 0; d->arraysizes[i]; i++)
-			ret += d->arraysizes[i]->val.i.val * siz;
+		for(dp = d->decl_ptr; dp; dp = dp->child)
+			if(dp->array_size){
+				/* should've been folded fully */
+				long v = dp->array_size->val.i.val;
+				if(!v)
+					v = platform_word_size(); /* int x[0] - the 0 is a sentinel */
+				ret += v * siz;
+			}
 
 		return ret;
 	}
-#endif
 
 	if(d->decl_ptr->child) /* pointer */
 		return platform_word_size();
@@ -447,8 +450,10 @@ void decl_set_spel(const decl *d, char *sp)
 
 	UCC_ASSERT(sp, "setting null spel for decl");
 
-	if(*psp)
+#ifdef WARN_SPEL_REPLACE
+	if(*psp) /* XXX: memleak (possibly) */
 		ICW("replacing decl (at %p) spel %s -> %s", d, *psp, sp);
+#endif
 	*psp = sp;
 }
 
@@ -470,6 +475,16 @@ int decl_is_callable(const decl *d)
 	for(dp = d->decl_ptr; dp->child && dp->child->child; dp = dp->child);
 
 	return (dp->child ? dp->child->func : 0) || dp->func;
+}
+
+int decl_has_array(const decl *d)
+{
+	decl_ptr *dp;
+
+	for(dp = d->decl_ptr; dp; dp = dp->child)
+		if(dp->array_size)
+			return 1;
+	return 0;
 }
 
 int decl_is_const( const decl *d)
@@ -554,7 +569,10 @@ const char *decl_to_str(const decl *d)
 	BUF_ADD("%s%s", type_to_str(d->type), d->decl_ptr->child ? " " : "");
 
 	for(dp = d->decl_ptr->child; dp; dp = dp->child)
-		BUF_ADD("*%s%s", dp->is_const ? "*" : "", dp->func ? "(#)" : "");
+		BUF_ADD("*%s%s%s",
+				dp->is_const   ? "*"   : "",
+				dp->func       ? "(#)" : "",
+				dp->array_size ? "[]"  : "");
 
 	if(d->decl_ptr->func)
 		BUF_ADD("(...)");

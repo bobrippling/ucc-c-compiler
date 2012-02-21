@@ -40,9 +40,11 @@ int fold_is_lvalue(expr *e)
 	/*
 	 * valid lvaluess:
 	 *
-	 *   x = 5;
-	 *   (cast)[above] = 5;
-	 *   *[above] = 5;
+	 *   x              = 5;
+	 *   *(expr)        = 5;
+	 *   struct.member  = 5;
+	 *   struct->member = 5;
+	 * and so on
 	 *
 	 * also can't be const, checked in fold_assign (since we allow const inits)
 	 */
@@ -59,9 +61,6 @@ int fold_is_lvalue(expr *e)
 			default:
 				break;
 		}
-
-	if(e->type == expr_cast)
-		return fold_is_lvalue(e->rhs);
 
 	return 0;
 }
@@ -211,7 +210,11 @@ void fold_assignment(expr *e, symtable *stab)
 
 	/* wait until we get the tree types, etc */
 	if(!fold_is_lvalue(e->lhs))
-		die_at(&e->lhs->where, "not an lvalue (%s)", expr_to_str(e->lhs->type));
+		die_at(&e->lhs->where, "not an lvalue (%s%s%s)",
+				expr_to_str(e->lhs->type),
+				e->lhs->type == expr_op ? " - " : "",
+				e->lhs->type == expr_op ? op_to_str(e->lhs->op) : ""
+			);
 
 	if(e->lhs->tree_type->type->spec & spec_const){
 		/* allow const init: */
@@ -397,6 +400,13 @@ void fold_decl_ptr(decl_ptr *dp, symtable *stab, decl *root)
 	if(dp->func)
 		fold_funcargs(dp, stab, decl_spel(root));
 
+	if(dp->array_size){
+		long v;
+		fold_expr(dp->array_size, stab);
+		if((v = dp->array_size->val.i.val) < 0)
+			die_at(&dp->where, "negative array length");
+	}
+
 	if(dp->child)
 		fold_decl_ptr(dp->child, stab, root);
 }
@@ -458,9 +468,23 @@ void fold_decl_global(decl *d, symtable *stab)
 		fold_expr(d->init, stab);
 
 		if(const_fold(d->init))
-			/* yes I know fold_expr does const_fold, but this is a decent way to check */
 			die_at(&d->init->where, "not a constant expression (initialiser is %s)",
 					expr_to_str(d->init->type));
+	}else if(d->type->spec & spec_extern){
+		/* we have an extern, check if it's overridden */
+		char *const spel = decl_spel(d);
+		decl **dit;
+
+		for(dit = stab->decls; dit && *dit; dit++){
+			decl *d2 = *dit;
+			if(!strcmp(decl_spel(d2), spel)){
+				if((d2->type->spec & spec_extern) == 0){
+					/* found an override */
+					d->ignore = 1;
+					break;
+				}
+			}
+		}
 	}
 
 	fold_decl(d, stab);
@@ -826,7 +850,7 @@ void fold_func(decl *func_decl, symtable *globs)
 					SYMTAB_ADD(func_decl->func_code->symtab, fargs->arglist[i], sym_arg);
 		}
 
-		func_decl->func_code->symtab->parent = globs;
+		symtab_set_parent(func_decl->func_code->symtab, globs);
 
 		fold_tree(func_decl->func_code);
 

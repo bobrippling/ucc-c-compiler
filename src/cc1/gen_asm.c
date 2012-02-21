@@ -486,15 +486,7 @@ void gen_asm_global(decl *d)
 		asm_declare_single(cc_out[SECTION_DATA], d);
 
 	}else{
-		int arraylen = 1;
-		//int i;
-
-		/*for(i = 0; d->arraysizes && d->arraysizes[i]; i++)
-			arraylen = (i + 1) * d->arraysizes[i]->val.i.val;*/
-
-		/* TODO: check that i+1 is correct for the order here */
-
-		asm_tempf(cc_out[SECTION_BSS], 0, "%s res%c %d", decl_spel(d), asm_type_ch(d), arraylen);
+		asm_tempf(cc_out[SECTION_BSS], 0, "%s res%c %d", decl_spel(d), asm_type_ch(d), decl_size(d));
 	}
 }
 
