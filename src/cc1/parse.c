@@ -20,6 +20,10 @@
 
 #define TREE_NEW_NEST() tree_new(symtab_new(current_scope))
 
+#define PARSE_SMALL parse_expr_inc_dec
+
+expr *PARSE_SMALL(void);
+
 /*
  * order goes:
  *
@@ -30,6 +34,10 @@
  * parse_expr_bit_op     above [&|^]    above
  * parse_expr_cmp_op     above [><==!=] above
  * parse_expr_logical_op above [&&||]   above
+ *
+ * yeah yeah this has changed since i started
+ * grep '^expr \+\*' $f
+ * will do the trick
  */
 
 /* parse_type uses this for structs, tdefs and enums */
@@ -141,7 +149,7 @@ expr *parse_expr_unary_op()
 				e->lhs->tree_type = d;
 
 				EAT(token_close_paren);
-				e->rhs = parse_expr_array(); /* grab only the closest */
+				e->rhs = PARSE_SMALL(); /* grab only the closest */
 			}else{
 				e = parse_expr();
 				EAT(token_close_paren);
@@ -154,7 +162,7 @@ expr *parse_expr_unary_op()
 			EAT(token_and);
 			e = expr_new();
 			e->type = expr_addr;
-			e->expr = parse_expr_array();
+			e->expr = PARSE_SMALL();
 			return e;
 
 		case token_plus:
@@ -190,7 +198,7 @@ expr *parse_expr_unary_op()
 			EAT(curtok);
 
 			/* assign to... */
-			e->lhs = parse_expr_deref();
+			e->lhs = parse_expr_array();
 			e->rhs = expr_new();
 			e->rhs->op = inc ? op_plus : op_minus;
 			e->rhs->lhs = e->lhs;
@@ -344,11 +352,41 @@ expr *parse_expr_deref()
 	return parse_expr_funcall();
 }
 
+expr *parse_expr_assign()
+{
+#define above parse_expr
+	expr *e;
+
+	e = parse_expr_deref();
+
+	if(accept(token_assign)){
+		e = expr_assignment(e, above());
+	}else if(curtok_is_augmented_assignment()){
+		/* +=, ... */
+		expr *ass = expr_new();
+
+		ass->type = expr_assign;
+
+		ass->lhs = e;
+		ass->rhs = expr_new();
+
+		ass->rhs->op = curtok_to_augmented_op();
+		EAT(curtok);
+
+		ass->rhs->lhs = e;
+		ass->rhs->rhs = above();
+
+		e = ass;
+	}
+
+	return e;
+#undef above
+}
 
 expr *parse_expr_binary_op()
 {
 	/* above [/%*] above */
-	return parse_expr_join(parse_expr_deref,
+	return parse_expr_join(parse_expr_assign,
 				token_multiply, token_divide, token_modulus,
 				token_unknown);
 }
@@ -391,38 +429,9 @@ expr *parse_expr_logical_op()
 			token_orsc, token_andsc, token_unknown);
 }
 
-expr *parse_expr_assign()
-{
-	expr *e;
-
-	e = parse_expr_logical_op();
-
-	if(accept(token_assign)){
-		e = expr_assignment(e, parse_expr_assign());
-	}else if(curtok_is_augmented_assignment()){
-		/* +=, ... */
-		expr *ass = expr_new();
-
-		ass->type = expr_assign;
-
-		ass->lhs = e;
-		ass->rhs = expr_new();
-
-		ass->rhs->op = curtok_to_augmented_op();
-		EAT(curtok);
-
-		ass->rhs->lhs = e;
-		ass->rhs->rhs = parse_expr();
-
-		e = ass;
-	}
-
-	return e;
-}
-
 expr *parse_expr_if()
 {
-	expr *e = parse_expr_assign();
+	expr *e = parse_expr_logical_op();
 	if(accept(token_question)){
 		expr *q = expr_new();
 

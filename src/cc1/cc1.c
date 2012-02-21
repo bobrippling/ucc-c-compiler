@@ -118,7 +118,7 @@ void ccdie(int verbose, const char *fmt, ...)
 	}
 
 	if(verbose){
-		fputs("warnings:\n", stderr);
+		fputs("warnings + options:\n", stderr);
 		for(i = 0; args[i].arg; i++)
 			fprintf(stderr, "  -%c%s\n", args[i].is_opt["Wf"], args[i].arg);
 	}

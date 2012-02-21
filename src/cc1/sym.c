@@ -21,11 +21,17 @@ sym *sym_new(decl *d, enum sym_type t)
 	return s;
 }
 
+void symtab_set_parent(symtable *child, symtable *parent)
+{
+	child->parent = parent;
+	dynarray_add((void ***)&parent->children, child);
+}
+
 symtable *symtab_new(symtable *parent)
 {
 	symtable *p = umalloc(sizeof *p);
-	p->typedefs = umalloc(sizeof *p->typedefs);
-	p->parent = parent;
+	if(parent)
+		symtab_set_parent(p, parent);
 	return p;
 }
 
