@@ -12,4 +12,6 @@ int strncmp(char *, char *, size_t);
 
 char *strchr(char *s, char c);
 
+void *memset(void *, unsigned char c, size_t len);
+
 #endif

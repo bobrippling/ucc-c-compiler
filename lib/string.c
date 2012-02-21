@@ -61,3 +61,12 @@ char *strchr(char *s, char c)
 			s++;
 	return NULL;
 }
+
+void *memset(void *p, unsigned char c, size_t len)
+{
+	void *const start = p;
+	// TODO: asm / duff's device
+	while(len > 0)
+		*(char *)p++ = c;
+	return start;
+}

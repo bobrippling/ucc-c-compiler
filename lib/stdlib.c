@@ -77,6 +77,25 @@ void *malloc(size_t size)
 #endif
 }
 
+void *calloc(size_t count, size_t len)
+{
+	const size_t sz = count * len;
+	void *const p = malloc(sz); // overflow if too large..?
+
+	if(!p)
+		return NULL;
+
+	memset(p, 0, sz);
+	return p;
+}
+
+void *realloc(void *p, size_t l)
+{
+	const char *s = "realloc() not implemented\n";
+	write(2, s, strlen(s));
+	abort();
+}
+
 void free(void *p)
 {
 	/* no op... :C */

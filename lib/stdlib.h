@@ -7,7 +7,9 @@
 int atoi(const char *);
 
 void *malloc(size_t);
-void free(void *);
+void *calloc(size_t count, size_t);
+void *realloc(void *, size_t);
+void  free(   void *);
 
 void exit(int);
 void abort(void);
