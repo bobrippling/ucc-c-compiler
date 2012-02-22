@@ -50,7 +50,7 @@ struct_st *struct_add(symtable *const stab, char *spel, decl **members)
 	for(iter = members; *iter; iter++){
 		decl *d = *iter;
 		if(d->init)
-			die_at(&d->init->where, "struct member %s is initialised", decl_spel(d));
+			die_at(&d->init->where, "struct member %s is initialised", d->spel);
 	}
 
 	st_en_set_spel(&struct_st->spel, spel, "struct");

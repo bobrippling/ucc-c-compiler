@@ -23,7 +23,7 @@
 
 type *parse_type_struct(void);
 type *parse_type_enum(void);
-decl_ptr *parse_decl_ptr_array(enum decl_mode mode);
+decl_ptr *parse_decl_ptr_array(enum decl_mode mode, char **psp);
 
 #define INT_TYPE(t) do{ t = type_new(); t->primitive = type_int; }while(0)
 
@@ -122,7 +122,7 @@ type *parse_type()
 			 || curtok == token_struct
 			 || curtok == token_enum
 			 || (curtok == token_identifier && (td = typedef_find(current_scope, token_current_spel_peek())))
-		 	)){
+			 )){
 
 		if(accept(token_struct)){
 			return parse_type_struct();
@@ -153,6 +153,7 @@ type *parse_type()
 			t->tdef = td;
 
 			EAT(token_identifier);
+			break;
 
 		}else{
 			/* curtok_is_type */
@@ -219,9 +220,6 @@ funcargs *parse_func_arglist()
 	if(curtok == token_close_paren)
 		goto empty_func;
 
-	if(curtok == token_identifier)
-		goto old_func;
-
 	argdecl = parse_decl_single(DECL_CAN_DEFAULT);
 
 	if(argdecl){
@@ -245,8 +243,8 @@ funcargs *parse_func_arglist()
 
 		if(dynarray_count((void *)args->arglist) == 1 &&
 				                      args->arglist[0]->type->primitive == type_void &&
-				                     !args->arglist[0]->decl_ptr->child && /* manual checks, since decl_*() assert */
-				                     !args->arglist[0]->decl_ptr->spel){
+				                     !args->arglist[0]->decl_ptr && /* manual checks, since decl_*() assert */
+				                     !args->arglist[0]->spel){
 			/* x(void); */
 			function_empty_args(args);
 			args->args_void = 1; /* (void) vs () */
@@ -257,10 +255,13 @@ funcargs *parse_func_arglist()
 		char **spells;
 		decl **argar;
 
-old_func:
 		spells = NULL;
 
-		ICE("TODO: old functions (on %s)", token_to_str(curtok));
+		ICE("TODO: old functions (on %s%s%s)",
+				token_to_str(curtok),
+				curtok == token_identifier ? ": " : "",
+				curtok == token_identifier ? token_current_spel_peek() : ""
+				);
 
 		do{
 			if(curtok != token_identifier)
@@ -289,9 +290,9 @@ old_func:
 
 			found = 0;
 			for(j = 0; j < n_decls; j++)
-				if(!strcmp(spells[i], decl_spel(argar[j]))){
+				if(!strcmp(spells[i], argar[j]->spel)){
 					if(argar[j]->init)
-						die_at(&argar[j]->where, "parameter \"%s\" is initialised", decl_spel(argar[j]));
+						die_at(&argar[j]->where, "parameter \"%s\" is initialised", argar[j]->spel);
 
 					found = 1;
 					break;
@@ -304,7 +305,7 @@ old_func:
 					*/
 				decl *d = decl_new_with_ptr();
 				d->type->primitive = type_int;
-				decl_set_spel(d, spells[i]);
+				d->spel = spells[i];
 				spells[i] = NULL; /* prevent free */
 				dynarray_add((void ***)&argar, d);
 			}
@@ -326,10 +327,10 @@ empty_func:
 	return args;
 }
 
-decl_ptr *parse_decl_ptr_rec(enum decl_mode mode)
+decl_ptr *parse_decl_ptr_rec(enum decl_mode mode, char **psp)
 {
 	if(accept(token_open_paren)){
-		decl_ptr *ret = parse_decl_ptr_array(mode);
+		decl_ptr *ret = parse_decl_ptr_array(mode, psp);
 		EAT(token_close_paren);
 		return ret;
 
@@ -339,9 +340,7 @@ decl_ptr *parse_decl_ptr_rec(enum decl_mode mode)
 		if(accept(token_const))
 			ret->is_const = 1;
 
-		ret->child = parse_decl_ptr_array(mode); /* check if we have anything else */
-		if(!ret->child)
-			ret->child = decl_ptr_new(); /* if not, we need to ensure we mark that it's a pointer */
+		ret->child = parse_decl_ptr_array(mode, psp); /* check if we have anything else */
 		return ret;
 
 	}else if(curtok == token_identifier){
@@ -350,7 +349,9 @@ decl_ptr *parse_decl_ptr_rec(enum decl_mode mode)
 		if(mode & DECL_SPEL_NO)
 			die_at(&ret->where, "identifier unexpected");
 
-		ret->spel = token_current_spel();
+		if(*psp)
+			die_at(&ret->where, "already got identifier for decl");
+		*psp = token_current_spel();
 		EAT(token_identifier);
 
 		return ret;
@@ -361,9 +362,9 @@ decl_ptr *parse_decl_ptr_rec(enum decl_mode mode)
 	return NULL;
 }
 
-decl_ptr *parse_decl_ptr_func(enum decl_mode mode)
+decl_ptr *parse_decl_ptr_func(enum decl_mode mode, char **psp)
 {
-	decl_ptr *dp = parse_decl_ptr_rec(mode);
+	decl_ptr *dp = parse_decl_ptr_rec(mode, psp);
 
 	if(accept(token_open_paren)){
 		if(!dp)
@@ -389,9 +390,9 @@ func_ret_func:
 	return dp;
 }
 
-decl_ptr *parse_decl_ptr_array(enum decl_mode mode)
+decl_ptr *parse_decl_ptr_array(enum decl_mode mode, char **psp)
 {
-	decl_ptr *dp = parse_decl_ptr_func(mode);
+	decl_ptr *dp = parse_decl_ptr_func(mode, psp);
 
 	while(accept(token_open_square)){
 		decl_ptr *dp_new;
@@ -418,17 +419,27 @@ decl_ptr *parse_decl_ptr_array(enum decl_mode mode)
 	return dp;
 }
 
-
 decl *parse_decl(type *t, enum decl_mode mode)
 {
-	decl *d = decl_new();
-	decl_ptr *dp = parse_decl_ptr_array(mode);
+	char *spel = NULL;
+	decl_ptr *dp = parse_decl_ptr_array(mode, &spel);
+	decl *d;
 
-	if(!dp)
-		dp = decl_ptr_new(); /* (int)x - no ->dp for "int", add one */
+	if(t->tdef){
+		/* get the typedef stuff now */
+		d = decl_copy(t->tdef);
+		d->type->tdef = NULL;
 
-	d->type = t;
-	d->decl_ptr = dp;
+		d->spel = NULL;
+
+		*decl_leaf(d) = dp;
+	}else{
+		d = decl_new();
+		d->type = t;
+		d->decl_ptr = dp;
+	}
+
+	d->spel = spel;
 
 	if(accept(token_assign))
 		d->init = parse_expr_funcallarg(); /* int x = 5, j; - don't grab the comma expr */
@@ -494,7 +505,7 @@ decl **parse_decls(const int can_default, const int accept_field_width)
 			if(!d)
 				break;
 
-			if(!decl_spel(d)){
+			if(!d->spel){
 				/*
 				 * int; - error
 				 * struct A; - fine

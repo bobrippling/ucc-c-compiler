@@ -622,7 +622,7 @@ tree *parse_code_block()
 
 			e = expr_new();
 			e->type = expr_identifier;
-			e->spel = decl_spel(*diter);
+			e->spel = (*diter)->spel;
 
 			dynarray_add((void ***)&t->codes, expr_to_tree(expr_assignment(e, (*diter)->init)));
 

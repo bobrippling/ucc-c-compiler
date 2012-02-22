@@ -138,9 +138,9 @@ invalid:
 			}
 		}
 
-		if(e->sym && !e->sym->decl->decl_ptr->child && e->sym->decl->decl_ptr->spel){
+		if(e->sym && !e->sym->decl->decl_ptr && e->sym->decl->spel){
 			/* simple */
-			asm_temp(1, "call %s", e->sym->decl->decl_ptr->spel);
+			asm_temp(1, "call %s", e->sym->decl->spel);
 		}else{
 			walk_expr(e->expr, stab);
 			asm_temp(1, "pop rax  ; function address");
@@ -455,18 +455,18 @@ void gen_asm_global(decl *d)
 {
 	if(d->type->spec & spec_extern){
 		/* should be fine... */
-		asm_tempf(cc_out[SECTION_BSS], 0, "extern %s", decl_spel(d));
+		asm_tempf(cc_out[SECTION_BSS], 0, "extern %s", d->spel);
 		return;
 	}
 
 	if(decl_has_func_code(d)){
 		int offset;
 
-		asm_label(decl_spel(d));
+		asm_label(d->spel);
 		asm_temp(1, "push rbp");
 		asm_temp(1, "mov rbp, rsp");
 
-		curfunc_lblfin = asm_label_code(decl_spel(d));
+		curfunc_lblfin = asm_label_code(d->spel);
 
 		if((offset = d->func_code->symtab->auto_total_size))
 			asm_temp(1, "sub rsp, %d", offset);
@@ -488,7 +488,7 @@ void gen_asm_global(decl *d)
 		asm_declare_single(cc_out[SECTION_DATA], d);
 
 	}else{
-		asm_tempf(cc_out[SECTION_BSS], 0, "%s res%c %d", decl_spel(d), asm_type_ch(d), decl_size(d));
+		asm_tempf(cc_out[SECTION_BSS], 0, "%s res%c %d", d->spel, asm_type_ch(d), decl_size(d));
 	}
 }
 
@@ -502,7 +502,7 @@ void gen_asm(symtable *globs)
 			continue;
 
 		if(!(d->type->spec & spec_static) && !(d->type->spec & spec_extern))
-			asm_temp(0, "global %s", decl_spel(d));
+			asm_temp(0, "global %s", d->spel);
 
 		gen_asm_global(d);
 	}
