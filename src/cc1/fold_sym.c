@@ -28,11 +28,14 @@ int symtab_fold(symtable *tab, int current)
 			if(s->type == sym_local && (s->decl->type->spec & (spec_extern | spec_static)) == 0){
 				int siz = decl_size(s->decl);
 
-				/* needs to be a multiple of word_size */
+				if(decl_has_array(s->decl))
+					s->offset = current + siz; /* an array starts at the bottom */
+				else
+					s->offset = current;
+
+				/* need to increase by a multiple of word_size */
 				if(siz % word_size)
 					siz += word_size - siz % word_size;
-
-				s->offset = current;
 				current += siz;
 
 			}else if(s->type == sym_arg){

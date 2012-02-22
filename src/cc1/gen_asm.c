@@ -213,10 +213,12 @@ void walk_expr(expr *e, symtable *stab)
 
 		case expr_identifier:
 			if(e->sym){
-				/* if it's an array, lea, else, load */
-				//asm_sym(e->sym->decl->arraysizes ? ASM_LEA : ASM_LOAD, e->sym, "rax");
-				// FIXME: int (*x)() = printf; directs to here, instead of the else clause
-				asm_sym(ASM_LOAD, e->sym, "rax");
+				/*
+				 * if it's an array, lea, else, load
+				 * note that array-leas load the bottom address (smallest value)
+				 * since arrays grow upwards... duh
+				 */
+				asm_sym(decl_has_array(e->sym->decl) ? ASM_LEA : ASM_LOAD, e->sym, "rax");
 			}else{
 				asm_temp(1, "mov rax, %s", e->spel);
 			}

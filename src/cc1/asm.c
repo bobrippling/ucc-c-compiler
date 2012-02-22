@@ -86,19 +86,25 @@ char *asm_label_flowfin()
 
 void asm_sym(enum asm_sym_type t, sym *s, const char *reg)
 {
+	const int is_global = s->type == sym_global || (s->decl->type->spec & (spec_extern | spec_static));
 	char *const dsp = decl_spel(s->decl);
 	int is_auto = s->type == sym_local;
 	char  stackbrackets[16];
 	char *brackets;
 
-	if(s->type == sym_global || (s->type == sym_local && (s->decl->type->spec & (spec_extern | spec_static)))){
+	if(is_global){
 		const int bracket_len = strlen(dsp) + 16;
 
 		brackets = umalloc(bracket_len + 1);
 
-		if(decl_is_func(s->decl)){
+		if(t == ASM_LEA || decl_is_func(s->decl)){
 			snprintf(brackets, bracket_len, "%s", dsp); /* int (*p)() = printf; for example */
-			/* force a mov (i.e. &func == func) */
+			/*
+			 * either:
+			 *   we want             lea rax, [a]
+			 *   and convert this to mov rax, a   // this is because Macho-64 is an awful binary format
+			 * force a mov for funcs (i.e. &func == func)
+			 */
 			t = ASM_LOAD;
 		}else{
 			const char *type_s = "";

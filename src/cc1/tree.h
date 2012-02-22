@@ -271,6 +271,7 @@ funcargs    *funcargs_new(void);
 
 type      *type_copy(type *);
 decl      *decl_copy(decl *);
+decl_ptr  *decl_ptr_copy(decl_ptr *);
 /*expr      *expr_copy(expr *);*/
 expr      *expr_new_val(int);
 expr      *expr_new_intval(intval *);
@@ -316,7 +317,8 @@ void function_empty_args(funcargs *);
 #define DECL_STATIC_BUFSIZ (128 + TYPE_STATIC_BUFSIZ)
 
 #define type_free(x) free(x)
-#define decl_free(x) do{type_free((x)->type); free(x);}while(0)
+#define decl_free_notype(x) do{free(x);}while(0)
+#define decl_free(x) do{type_free((x)->type); decl_free_notype(x);}while(0)
 #define expr_free(x) do{decl_free((x)->tree_type); free(x);}while(0)
 
 #endif
