@@ -459,7 +459,7 @@ decl *parse_decl_single(enum decl_mode mode)
 
 decl **parse_decls(const int can_default, const int accept_field_width)
 {
-	const enum decl_mode parse_flag = DECL_SPEL_NEED | (can_default ? DECL_CAN_DEFAULT : 0);
+	const enum decl_mode parse_flag = can_default ? DECL_CAN_DEFAULT : 0;
 	decl **decls = NULL;
 	decl *last;
 	int are_tdefs;
@@ -493,6 +493,17 @@ decl **parse_decls(const int can_default, const int accept_field_width)
 
 			if(!d)
 				break;
+
+			if(!decl_spel(d)){
+				/*
+				 * int; - error
+				 * struct A; - fine
+				 */
+				decl_free_notype(d);
+				if(t->primitive == type_struct)
+					goto next;
+				die_at(&d->where, "identifier expected after decl");
+			}
 
 			dynarray_add(are_tdefs
 					? (void ***)&current_scope->typedefs

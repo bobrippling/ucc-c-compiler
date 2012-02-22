@@ -91,7 +91,7 @@ void fold_decl_equal(decl *a, decl *b, where *w, enum warning warn,
 
 		strcpy(buf, decl_to_str(b));
 
-		cc1_warn_at(w, 0, warn, "%s vs. %s", decl_to_str(a), buf);
+		cc1_warn_at(w, 0, warn, "%s vs. %s for...", decl_to_str(a), buf);
 
 		va_start(l, errfmt);
 		cc1_warn_atv(w, a->type->primitive == type_void && !decl_ptr_depth(a), warn, errfmt, l);
@@ -413,21 +413,46 @@ void fold_decl_ptr(decl_ptr *dp, symtable *stab, decl *root)
 
 void fold_decl(decl *d, symtable *stab)
 {
-	(void)stab;
-
 	switch(d->type->primitive){
+		int incomplete;
+
 		case type_void:
 			if(!decl_ptr_depth(d) && !decl_is_func(d))
 				die_at(&d->type->where, "can't have a void variable");
 			break;
 
 		case type_enum:
-			st_en_lookup((void **)&d->type->enu,   d, stab, (void *(*)(struct symtable *, const char *))enum_find,   0);
-			break;
+			st_en_lookup((void **)&d->type->enu,   &incomplete, d, stab, (void *(*)(struct symtable *, const char *))enum_find,   0);
+			goto incomp_check;
 
 		case type_struct:
-			st_en_lookup((void **)&d->type->struc, d, stab, (void *(*)(struct symtable *, const char *))struct_find, 1);
+			st_en_lookup((void **)&d->type->struc, &incomplete, d, stab, (void *(*)(struct symtable *, const char *))struct_find, 1);
+incomp_check:
+			if(incomplete && !decl_ptr_depth(d))
+				die_at(&d->where, "use of incomplete type \"%s\"", decl_spel(d));
 			break;
+
+		case type_typedef:
+		{
+			/* collapse */
+			decl *lowest;
+			decl_ptr *this_ptr;
+
+			for(lowest = d->type->tdef; lowest->type->tdef; lowest = lowest->type->tdef);
+			/* copy tdef from lowest to d */
+
+			d->type = lowest->type; /* XXX: memleak */
+
+			UCC_ASSERT(!decl_has_array(d), "TODO: merge typedef with both having arrays");
+
+			this_ptr = d->decl_ptr->child;
+			if(lowest->decl_ptr->child)
+				d->decl_ptr->child = decl_ptr_copy(lowest->decl_ptr->child); /* XXX: check */
+			decl_leaf(d)->child = this_ptr;
+
+			UCC_ASSERT(!decl_is_func(d), "TODO: func copy for typedef");
+			break;
+		}
 
 		default:
 			break;

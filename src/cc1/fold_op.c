@@ -25,7 +25,11 @@ void fold_op_struct(expr *e, symtable *stab)
 
 	st = e->lhs->tree_type->type->struc;
 
-	UCC_ASSERT(st, "NULL ->struc in tree_type");
+	if(!st)
+		die_at(&e->lhs->where, "%s incomplete type",
+				ptr_depth_exp == 1 /* this should always be true.. */
+				? "dereferencing pointer to"
+				: "use of");
 
 	/* found the struct, find the member */
 	d = NULL;

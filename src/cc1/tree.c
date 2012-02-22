@@ -542,15 +542,15 @@ const char *type_to_str(const type *t)
 			APPEND(char);
 			APPEND(void);
 			case type_unknown:
-				ICW("unknown type primitive (%s)", where_str(&t->where));
-				snprintf(bufp, BUF_SIZE, "UNKNOWN");
-				break;
+				ICE("unknown type primitive (%s)", where_str(&t->where));
 			case type_typedef:
 				ICE("typedef without ->tdef");
-			case type_struct:
-				ICE("struct without ->struc");
 			case type_enum:
 				ICE("enum without ->enu");
+			case type_struct:
+				snprintf(bufp, BUF_SIZE, "incomplete struct %s", t->spel);
+				/*ICE("struct without ->struc");*/
+				break;
 #undef APPEND
 		}
 	}
