@@ -1,5 +1,6 @@
-#!/bin/awk -f
+#!/bin/sh
 
+exec awk '
 /pop/ {
 	if(--indent < 0)
 		print "AWK: indent less than zero (" indent ")" #| "cat >&2"
@@ -16,3 +17,4 @@
 /push/ {
 	indent++
 }
+'
