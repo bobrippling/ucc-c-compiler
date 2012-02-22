@@ -43,6 +43,8 @@ struct
 	{ 0,  "switch-enum",     WARN_SWITCH_ENUM                       },
 	{ 0,  "enum-compare",    WARN_ENUM_CMP                          },
 
+	{ 0,  "incomplete-use",  WARN_INCOMPLETE_USE                    },
+
 	/* TODO */
 	{ 0,  "unused-parameter", WARN_UNUSED_PARAM },
 	{ 0,  "unused-variable",  WARN_UNUSED_VAR   },
@@ -84,7 +86,7 @@ FILE *cc_out[NUM_SECTIONS];     /* temporary section files */
 char  fnames[NUM_SECTIONS][32]; /* duh */
 FILE *cc1_out;                  /* final output */
 
-enum warning warn_mode = ~(WARN_VOID_ARITH | WARN_COMPARE_MISMATCH | WARN_IMPLICIT_INT);
+enum warning warn_mode = ~(WARN_VOID_ARITH | WARN_COMPARE_MISMATCH | WARN_IMPLICIT_INT | WARN_INCOMPLETE_USE);
 enum fopt    fopt_mode = FOPT_CONST_FOLD;
 
 int caught_sig = 0;
