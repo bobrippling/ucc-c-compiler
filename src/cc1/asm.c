@@ -87,7 +87,7 @@ char *asm_label_flowfin()
 void asm_sym(enum asm_sym_type t, sym *s, const char *reg)
 {
 	const int is_global = s->type == sym_global || (s->decl->type->spec & (spec_extern | spec_static));
-	char *const dsp = decl_spel(s->decl);
+	char *const dsp = s->decl->spel;
 	int is_auto = s->type == sym_local;
 	char  stackbrackets[16];
 	char *brackets;
@@ -263,7 +263,7 @@ char asm_type_ch(decl *d)
 
 void asm_declare_single(FILE *f, decl *d)
 {
-	fprintf(f, "%s d%c ", decl_spel(d), asm_type_ch(d));
+	fprintf(f, "%s d%c ", d->spel, asm_type_ch(d));
 
 	asm_declare_single_part(f, d->init);
 

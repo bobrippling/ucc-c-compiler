@@ -13,5 +13,6 @@ int strncmp(char *, char *, size_t);
 char *strchr(char *s, char c);
 
 void *memset(void *, unsigned char c, size_t len);
+void *memcpy(void *dest, const void *src, size_t n);
 
 #endif

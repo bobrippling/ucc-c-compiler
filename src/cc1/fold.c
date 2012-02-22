@@ -72,12 +72,8 @@ int fold_expr_is_addressable(expr *e)
 
 #define GET_TREE_TYPE_TO(to, from) \
 	do{ \
-		/*if(e->tree_type) \
-			decl_free(e->tree_type);*/ \
 		to->tree_type = decl_copy(from); \
 	}while(0)
-
-/* keep ->arraysizes, since we use it in decl_size() */
 
 #define GET_TREE_TYPE(from) \
 	GET_TREE_TYPE_TO(e, from)
@@ -116,7 +112,7 @@ void fold_funcall(expr *e, symtable *stab)
 
 			cc1_warn_at(&e->where, 0, WARN_IMPLICIT_FUNC, "implicit declaration of function \"%s\"", sp);
 
-			decl_set_spel(df, sp);
+			df->spel = sp;
 
 			df->decl_ptr->func = funcargs_new();
 
@@ -183,7 +179,7 @@ void fold_funcall(expr *e, symtable *stab)
 		if(count_decl != count_arg && (args_exp->variadic ? count_arg < count_decl : 1)){
 			die_at(&e->where, "too %s arguments to function %s (got %d, need %d)",
 					count_arg > count_decl ? "many" : "few",
-					decl_spel(df), count_arg, count_decl);
+					df->spel, count_arg, count_decl);
 		}
 
 		if(e->funcargs){
@@ -197,7 +193,7 @@ void fold_funcall(expr *e, symtable *stab)
 
 				fold_decl_equal(iter_decl[i], iter_arg[i]->tree_type, &e->where,
 						WARN_ARG_MISMATCH, "mismatching argument for arg %d to %s (%s vs. %s)",
-						i + 1, decl_spel(df), a, b);
+						i + 1, df->spel, a, b);
 			}
 		}
 	}
@@ -216,11 +212,10 @@ void fold_assignment(expr *e, symtable *stab)
 				e->lhs->type == expr_op ? op_to_str(e->lhs->op) : ""
 			);
 
-	if(e->lhs->tree_type->type->spec & spec_const){
+	if(decl_is_const(e->lhs->tree_type)){
 		/* allow const init: */
 		if(e->lhs->sym->decl->init != e->rhs)
 			die_at(&e->where, "can't modify const expression");
-		/* otherwise it's the init expr, allow */
 	}
 
 
@@ -296,7 +291,7 @@ void fold_expr(expr *e, symtable *stab)
 				UCC_ASSERT(!e->expr, "expression found in array store address-of");
 
 				/* static const char * */
-				decl_leaf(e->tree_type)->child = decl_ptr_new();
+				(*decl_leaf(e->tree_type))->child = decl_ptr_new();
 
 				e->tree_type->type->spec |= spec_static | spec_const;
 				e->tree_type->decl_ptr->child->is_const = 1;
@@ -304,7 +299,7 @@ void fold_expr(expr *e, symtable *stab)
 
 				e->spel = e->array_store->label = asm_label_array(e->array_store->type == array_str);
 
-				decl_set_spel(e->tree_type, e->spel);
+				e->tree_type->spel = e->spel;
 
 				array_sym = SYMTAB_ADD(symtab_root(stab), e->tree_type, stab->parent ? sym_local : sym_global);
 
@@ -398,7 +393,7 @@ fin:
 void fold_decl_ptr(decl_ptr *dp, symtable *stab, decl *root)
 {
 	if(dp->func)
-		fold_funcargs(dp, stab, decl_spel(root));
+		fold_funcargs(dp, stab, root->spel);
 
 	if(dp->array_size){
 		long v;
@@ -429,30 +424,8 @@ void fold_decl(decl *d, symtable *stab)
 			st_en_lookup((void **)&d->type->struc, &incomplete, d, stab, (void *(*)(struct symtable *, const char *))struct_find, 1);
 incomp_check:
 			if(incomplete && !decl_ptr_depth(d))
-				die_at(&d->where, "use of incomplete type \"%s\"", decl_spel(d));
+				die_at(&d->where, "use of incomplete type \"%s\"", d->spel);
 			break;
-
-		case type_typedef:
-		{
-			/* collapse */
-			decl *lowest;
-			decl_ptr *this_ptr;
-
-			for(lowest = d->type->tdef; lowest->type->tdef; lowest = lowest->type->tdef);
-			/* copy tdef from lowest to d */
-
-			d->type = lowest->type; /* XXX: memleak */
-
-			UCC_ASSERT(!decl_has_array(d), "TODO: merge typedef with both having arrays");
-
-			this_ptr = d->decl_ptr->child;
-			if(lowest->decl_ptr->child)
-				d->decl_ptr->child = decl_ptr_copy(lowest->decl_ptr->child); /* XXX: check */
-			decl_leaf(d)->child = this_ptr;
-
-			UCC_ASSERT(!decl_is_func(d), "TODO: func copy for typedef");
-			break;
-		}
 
 		default:
 			break;
@@ -478,7 +451,8 @@ incomp_check:
 #undef CANT_HAVE
 	}
 
-	fold_decl_ptr(d->decl_ptr, stab, d);
+	if(d->decl_ptr)
+		fold_decl_ptr(d->decl_ptr, stab, d);
 
 #undef SPEC
 }
@@ -497,12 +471,12 @@ void fold_decl_global(decl *d, symtable *stab)
 					expr_to_str(d->init->type));
 	}else if(d->type->spec & spec_extern){
 		/* we have an extern, check if it's overridden */
-		char *const spel = decl_spel(d);
+		char *const spel = d->spel;
 		decl **dit;
 
 		for(dit = stab->decls; dit && *dit; dit++){
 			decl *d2 = *dit;
-			if(!strcmp(decl_spel(d2), spel)){
+			if(!strcmp(d2->spel, spel)){
 				if((d2->type->spec & spec_extern) == 0){
 					/* found an override */
 					d->ignore = 1;
@@ -801,8 +775,8 @@ case_add:
 					 * so we've linked the syms and can change ->spel
 					 */
 					if(d->type->spec & spec_static){
-						char *save = decl_spel(d);
-						decl_set_spel(d, asm_label_static_local(curdecl_func_sp, decl_spel(d)));
+						char *save = d->spel;
+						d->spel = asm_label_static_local(curdecl_func_sp, d->spel);
 						free(save);
 					}
 				}
@@ -840,7 +814,7 @@ void fold_funcargs(decl_ptr *dp, symtable *stab, char *context)
 
 		for(i = 0; fargs->arglist[i]; i++){
 			if(fargs->arglist[i]->type->spec & (spec_static | spec_extern)){
-				const char *sp = decl_spel(fargs->arglist[i]);
+				const char *sp = fargs->arglist[i]->spel;
 				die_at(&fargs->where, "argument %d %s%s%sin function \"%s\" is static or extern",
 						i + 1,
 						sp ? "(" : "",
@@ -857,10 +831,10 @@ void fold_func(decl *func_decl, symtable *globs)
 	if(decl_is_func(func_decl) && decl_has_func_code(func_decl)){
 		funcargs *fargs;
 
-		curdecl_func_sp = decl_spel(func_decl);
+		curdecl_func_sp = func_decl->spel;
 
-		fargs = decl_leaf(func_decl)->func;
-		UCC_ASSERT(fargs, "function %s has no funcargs", decl_spel(func_decl));
+		fargs = (*decl_leaf(func_decl))->func;
+		UCC_ASSERT(fargs, "function %s has no funcargs", func_decl->spel);
 
 		if(fargs->arglist){
 			int nargs, i;
@@ -869,8 +843,8 @@ void fold_func(decl *func_decl, symtable *globs)
 
 			/* add args backwards, since we push them onto the stack backwards */
 			for(i = nargs - 1; i >= 0; i--)
-				if(!decl_spel(fargs->arglist[i]))
-					die_at(&fargs->where, "function \"%s\" has unnamed arguments", decl_spel(func_decl));
+				if(!fargs->arglist[i]->spel)
+					die_at(&fargs->where, "function \"%s\" has unnamed arguments", func_decl->spel);
 				else
 					SYMTAB_ADD(func_decl->func_code->symtab, fargs->arglist[i], sym_arg);
 		}
@@ -894,7 +868,7 @@ void fold(symtable *globs)
 
 		df = decl_new_with_ptr();
 		fargs = df->decl_ptr->func = funcargs_new();
-		decl_set_spel(df, ustrdup(ASM_INLINE_FNAME));
+		df->spel = ustrdup(ASM_INLINE_FNAME);
 
 		df->type->primitive = type_int;
 
@@ -912,7 +886,7 @@ void fold(symtable *globs)
 
 	for(i = 0; D(i); i++)
 		if(D(i)->sym)
-			ICE("%s: sym (%p) already set for global \"%s\"", where_str(&D(i)->where), D(i)->sym, decl_spel(D(i)));
+			ICE("%s: sym (%p) already set for global \"%s\"", where_str(&D(i)->where), D(i)->sym, D(i)->spel);
 
 	for(;;){
 		int i;
@@ -940,14 +914,14 @@ void fold(symtable *globs)
 	 * e.g. int x(); int x(){}
 	 */
 	for(i = 0; D(i); i++){
-		char *const spel_i = decl_spel(D(i));
+		char *const spel_i = D(i)->spel;
 
 		if(decl_is_func(D(i)) && !decl_has_func_code(D(i))){
 			int found = 0;
 			int j;
 
 			for(j = 0; D(j); j++){
-				if(j != i && decl_has_func_code(D(j)) && !strcmp(spel_i, decl_spel(D(j)))){
+				if(j != i && decl_has_func_code(D(j)) && !strcmp(spel_i, D(j)->spel)){
 					D(i)->ignore = 1;
 					found = 1;
 					break;
@@ -956,7 +930,7 @@ void fold(symtable *globs)
 
 			if(!found){
 				D(i)->type->spec |= spec_extern;
-				/*cc1_warn_at(&f->where, 0, WARN_EXTERN_ASSUME, "assuming \"%s\" is extern", decl_spel(func_decl));*/
+				/*cc1_warn_at(&f->where, 0, WARN_EXTERN_ASSUME, "assuming \"%s\" is extern", func_decl->spel);*/
 			}
 		}
 	}

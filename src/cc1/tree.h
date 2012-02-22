@@ -60,15 +60,10 @@ struct type
 	struct_st *struc;
 	/* NULL unless this is an enum */
 	enum_st *enu;
+	/* NULL unless.. a typedef.. duh */
+	decl  *tdef;
 
 	char *spel; /* spel for struct/enum lookup */
-
-	/*
-	 * should be NULL'd when folded:
-	 * typedef names should be resolved and the types copied
-	 * TODO
-	 */
-	decl  *tdef;
 };
 
 struct decl_ptr
@@ -77,8 +72,6 @@ struct decl_ptr
 
 	int is_const;     /* int *const x */
 	decl_ptr *child;  /* int (*const (*x)()) - *[x] is child */
-
-	char *spel;
 
 	/* either a func OR an array_size, not both */
 	funcargs *func;   /* int (*x)() - args to function */
@@ -99,6 +92,8 @@ struct decl
 #define struct_offset ignore
 
 	sym *sym;
+
+	char *spel;
 
 	/* recursive */
 	decl_ptr *decl_ptr;
@@ -269,6 +264,8 @@ decl        *decl_new_where_with_ptr(where *);
 array_decl  *array_decl_new(void);
 funcargs    *funcargs_new(void);
 
+void where_new(struct where *w);
+
 type      *type_copy(type *);
 decl      *decl_copy(decl *);
 decl_ptr  *decl_ptr_copy(decl_ptr *);
@@ -281,7 +278,7 @@ tree_flow *tree_flow_new(void);
 const char *op_to_str(  const enum op_type   o);
 const char *expr_to_str(const enum expr_type t);
 const char *stat_to_str(const enum stat_type t);
-const char *decl_to_str(const decl          *d);
+const char *decl_to_str(decl          *d);
 const char *type_to_str(const type          *t);
 const char *spec_to_str(const enum type_spec s);
 
@@ -289,22 +286,20 @@ int op_is_cmp(enum op_type o);
 
 int   type_equal(const type *a, const type *b, int strict);
 int   type_size( const type *);
-int   decl_size( const decl *);
-int   decl_equal(const decl *, const decl *, int strict);
+int   decl_size( decl *);
+int   decl_equal(decl *, decl *, int strict);
 
 #define decl_has_func_code(d) (!!(d)->func_code)
-int   decl_is_func(    const decl *); /* includes ptr to func */
-int   decl_has_array(  const decl *);
-int   decl_is_callable(const decl *);
-int   decl_is_const(   const decl *);
-int   decl_ptr_depth(  const decl *);
-void  decl_set_spel(   const decl *, char *);
-char *decl_spel(       const decl *);
+int   decl_is_func(    decl *); /* includes ptr to func */
+int   decl_has_array(  decl *);
+int   decl_is_callable(decl *);
+int   decl_is_const(   decl *);
+int   decl_ptr_depth(  decl *);
 
-funcargs *decl_func_args(const decl *);
+funcargs *decl_func_args(decl *);
 
-decl_ptr *decl_leaf(const decl *d);
-decl_ptr *decl_first_func(const decl *d);
+decl_ptr **decl_leaf(decl *d);
+decl_ptr  *decl_first_func(decl *d);
 
 decl *decl_ptr_depth_inc(decl *d);
 decl *decl_ptr_depth_dec(decl *d);

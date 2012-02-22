@@ -57,7 +57,7 @@ sym *symtab_search2(symtable *tab, const void *item, int (*cmp)(const void *, de
 
 int spel_cmp(const void *test, decl *item)
 {
-	char *sp = decl_spel(item);
+	char *sp = item->spel;
 	return sp && item->sym && !strcmp(test, sp);
 }
 
@@ -86,7 +86,7 @@ sym *symtab_add(symtable *tab, decl *d, enum sym_type t, int with_sym, int prepe
 
 	if((new = symtab_search2(tab, d, spel_cmp, 0)))
 		die_at(&d->where, "\"%s\" already declared%s%s",
-				decl_spel(d),
+				d->spel,
 				new->decl ? " at " : "",
 				new->decl ? where_str(&new->decl->where) : "");
 

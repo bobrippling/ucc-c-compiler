@@ -7,20 +7,22 @@
 #include "util.h"
 #include "alloc.h"
 
+#define WHERE_FMT "%s:%d:%d"
+#define WHERE_ARGS w->fname, w->line, w->chr + 1
+
 const char *where_str(const struct where *w)
 {
 	static char buf[WHERE_BUF_SIZ];
-	snprintf(buf, sizeof buf, "%s:%d:%d", w->fname, w->line, w->chr + 1);
+	snprintf(buf, sizeof buf, WHERE_FMT, WHERE_ARGS);
 	return buf;
 }
 
-void vwarn(struct where *w, const char *fmt, va_list l)
+struct where *default_where(struct where *w)
 {
-	struct where instead;
-
 	if(!w){
 		extern const char *current_fname;
 		extern int current_line, current_chr;
+		static struct where instead;
 
 		w = &instead;
 
@@ -28,6 +30,13 @@ void vwarn(struct where *w, const char *fmt, va_list l)
 		instead.line  = current_line;
 		instead.chr   = current_chr;
 	}
+
+	return w;
+}
+
+void vwarn(struct where *w, const char *fmt, va_list l)
+{
+	w = default_where(w);
 
 	fprintf(stderr, "%s: ", where_str(w));
 	vfprintf(stderr, fmt, l);
@@ -72,7 +81,8 @@ void die(const char *fmt, ...)
 
 #define ICE_STR(s)  \
 	va_list l; \
-	fprintf(stderr, s " @ %s:%s:%d: ", f, fn, line); \
+	struct where *w = default_where(NULL); \
+	fprintf(stderr, s " in " WHERE_FMT " @ %s:%s:%d: ", WHERE_ARGS, f, fn, line); \
 	va_start(l, fmt); \
 	vfprintf(stderr, fmt, l); \
 	fputc('\n', stderr)

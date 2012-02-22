@@ -34,7 +34,7 @@ void fold_op_struct(expr *e, symtable *stab)
 	/* found the struct, find the member */
 	d = NULL;
 	for(i = st->members; *i; i++)
-		if(!strcmp(decl_spel(*i), spel)){
+		if(!strcmp((*i)->spel, spel)){
 			d = *i;
 			break;
 		}
@@ -145,9 +145,6 @@ void fold_op(expr *e, symtable *stab)
 
 		e->tree_type = decl_ptr_depth_dec(e->tree_type);
 
-		if(!e->tree_type->decl_ptr)
-			goto non_pointer;
-
 		if(decl_ptr_depth(e->tree_type) == 0)
 			switch(e->lhs->tree_type->type->primitive){
 				case type_unknown:
@@ -157,9 +154,6 @@ void fold_op(expr *e, symtable *stab)
 					/* e->tree_type already set to deref type */
 					break;
 			}
-		else if(decl_ptr_depth(e->tree_type) < 0)
-non_pointer:
-			die_at(&e->where, "can't dereference non-pointer (%s)", type_to_str(e->tree_type->type));
 	}else{
 		/*
 		 * look either side - if either is a pointer, take that as the tree_type

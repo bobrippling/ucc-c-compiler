@@ -137,7 +137,8 @@ decl *decl_copy(decl *d)
 	decl *ret = umalloc(sizeof *ret);
 	memcpy(ret, d, sizeof *ret);
 	ret->type = type_copy(d->type);
-	ret->decl_ptr = decl_ptr_copy(d->decl_ptr);
+	if(d->decl_ptr)
+		ret->decl_ptr = decl_ptr_copy(d->decl_ptr);
 	/*ret->spel = NULL;*/
 	return ret;
 }
@@ -238,7 +239,7 @@ int type_size(const type *t)
 	return -1;
 }
 
-int decl_size(const decl *d)
+int decl_size(decl *d)
 {
 	if(decl_has_array(d)){
 		const int siz = type_size(d->type);
@@ -257,7 +258,7 @@ int decl_size(const decl *d)
 		return ret;
 	}
 
-	if(d->decl_ptr->child) /* pointer */
+	if(d->decl_ptr) /* pointer */
 		return platform_word_size();
 
 	if(d->field_width)
@@ -278,7 +279,7 @@ int type_equal(const type *a, const type *b, int strict)
 	return strict ? a->primitive == b->primitive : 1; /* int == char */
 }
 
-int decl_ptr_equal(const decl_ptr *dpa, const decl_ptr *dpb)
+int decl_ptr_equal(decl_ptr *dpa, decl_ptr *dpb)
 {
 	/* if we are assigning from const, target must be const */
 	if(dpb->is_const ? dpa->is_const : 0)
@@ -290,19 +291,24 @@ int decl_ptr_equal(const decl_ptr *dpa, const decl_ptr *dpb)
 	return !dpb->child;
 }
 
-int decl_equal(const decl *a, const decl *b, int strict)
+int decl_equal(decl *a, decl *b, int strict)
 {
 #define VOID_PTR(d) (                   \
 			d->type->primitive == type_void   \
-			&&  d->decl_ptr->child            \
-			&& !d->decl_ptr->child->child     \
+			&&  d->decl_ptr                   \
+			&& !d->decl_ptr->child            \
 		)
 
 	if(VOID_PTR(a) || VOID_PTR(b))
 		return 1; /* one side is void * */
 
-	return type_equal(a->type, b->type, strict)
-		&& decl_ptr_equal(a->decl_ptr, b->decl_ptr);
+	return
+		type_equal(a->type, b->type, strict)
+		&& (
+				a->decl_ptr
+				? b->decl_ptr && decl_ptr_equal(a->decl_ptr, b->decl_ptr)
+				: !b->decl_ptr
+			);
 }
 
 void function_empty_args(funcargs *func)
@@ -418,7 +424,7 @@ int op_is_cmp(enum op_type o)
 	return 0;
 }
 
-int decl_ptr_depth(const decl *d)
+int decl_ptr_depth(decl *d)
 {
 	decl_ptr *dp;
 	int i = 0;
@@ -426,48 +432,28 @@ int decl_ptr_depth(const decl *d)
 	for(dp = d->decl_ptr; dp; dp = dp->child)
 		i++;
 
-	UCC_ASSERT(i > 0, "invalid decl_ptr");
-
-	return i - 1;
+	return i;
 }
 
-decl_ptr *decl_leaf(const decl *d)
+decl_ptr **decl_leaf(decl *d)
 {
-	decl_ptr *dp;
-	UCC_ASSERT(d->decl_ptr, "null decl param");
-	for(dp = d->decl_ptr; dp->child; dp = dp->child);
+	decl_ptr **dp;
+	UCC_ASSERT(d, "null decl param");
+	for(dp = &d->decl_ptr; *dp && (*dp)->child; dp = &(*dp)->child);
 	return dp;
 }
 
-char *decl_spel(const decl *d)
-{
-	return decl_leaf(d)->spel;
-}
-
-void decl_set_spel(const decl *d, char *sp)
-{
-	char **psp = &decl_leaf(d)->spel;
-
-	UCC_ASSERT(sp, "setting null spel for decl");
-
-#ifdef WARN_SPEL_REPLACE
-	if(*psp) /* XXX: memleak (possibly) */
-		ICW("replacing decl (at %p) spel %s -> %s", d, *psp, sp);
-#endif
-	*psp = sp;
-}
-
-int decl_is_func(const decl *d)
+int decl_is_func(decl *d)
 {
 	/*
 	 * leaf - walk over all the ptrs,
 	 * e.g. void ***x(); has a level of three,
 	 * then get the ->func
 	 */
-	return !!decl_leaf(d)->func;
+	return !!(*decl_leaf(d))->func;
 }
 
-int decl_is_callable(const decl *d)
+int decl_is_callable(decl *d)
 {
 	/* either ->func on the leaf, or one up from the leaf (func _ptr_) */
 	decl_ptr *dp;
@@ -477,7 +463,7 @@ int decl_is_callable(const decl *d)
 	return (dp->child ? dp->child->func : 0) || dp->func;
 }
 
-int decl_has_array(const decl *d)
+int decl_has_array(decl *d)
 {
 	decl_ptr *dp;
 
@@ -487,12 +473,12 @@ int decl_has_array(const decl *d)
 	return 0;
 }
 
-int decl_is_const( const decl *d)
+int decl_is_const(decl *d)
 {
-	return decl_leaf(d)->is_const;
+	return (*decl_leaf(d))->is_const;
 }
 
-decl_ptr *decl_first_func(const decl *d)
+decl_ptr *decl_first_func(decl *d)
 {
 	decl_ptr *dp;
 
@@ -506,13 +492,12 @@ decl_ptr *decl_first_func(const decl *d)
 
 decl *decl_ptr_depth_inc(decl *d)
 {
-	decl_leaf(d)->child = decl_ptr_new();
+	(*decl_leaf(d))->child = decl_ptr_new();
 	return d;
 }
 
 decl *decl_ptr_depth_dec(decl *d)
 {
-	/* XXX: memleak */
 	d->decl_ptr = d->decl_ptr->child;
 	return d;
 }
@@ -558,7 +543,7 @@ const char *type_to_str(const type *t)
 	return buf;
 }
 
-const char *decl_to_str(const decl *d)
+const char *decl_to_str(decl *d)
 {
 	static char buf[DECL_STATIC_BUFSIZ];
 	unsigned int i = 0;
@@ -566,16 +551,13 @@ const char *decl_to_str(const decl *d)
 
 #define BUF_ADD(...) i += snprintf(buf + i, sizeof buf - i, __VA_ARGS__)
 
-	BUF_ADD("%s%s", type_to_str(d->type), d->decl_ptr->child ? " " : "");
+	BUF_ADD("%s%s", type_to_str(d->type), d->decl_ptr ? " " : "");
 
-	for(dp = d->decl_ptr->child; dp; dp = dp->child)
+	for(dp = d->decl_ptr; dp; dp = dp->child)
 		BUF_ADD("*%s%s%s",
-				dp->is_const   ? "*"   : "",
-				dp->func       ? "(#)" : "",
+				dp->is_const   ? "K"   : "",
+				dp->func       ? "()" : "",
 				dp->array_size ? "[]"  : "");
-
-	if(d->decl_ptr->func)
-		BUF_ADD("(...)");
 
 	buf[i] = '\0';
 

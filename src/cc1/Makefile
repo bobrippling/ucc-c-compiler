@@ -60,7 +60,7 @@ str.o: str.c ../util/util.h
 struct.o: struct.c ../util/util.h ../util/alloc.h ../util/dynarray.h \
  tree.h struct.h sym.h struct_enum.h
 struct_enum.o: struct_enum.c ../util/alloc.h ../util/util.h tree.h \
- struct.h enum.h struct_enum.h
+ struct.h enum.h struct_enum.h cc1.h
 sym.o: sym.c ../util/util.h tree.h sym.h ../util/alloc.h macros.h \
  ../util/dynarray.h typedef.h
 tokconv.o: tokconv.c ../util/util.h tree.h tokenise.h tokconv.h macros.h
