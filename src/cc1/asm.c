@@ -97,7 +97,7 @@ void asm_sym(enum asm_sym_type t, sym *s, const char *reg)
 
 		brackets = umalloc(bracket_len + 1);
 
-		if(t == ASM_LEA || decl_is_func(s->decl)){
+		if(t == ASM_LEA || s->decl->func_code){
 			snprintf(brackets, bracket_len, "%s", dsp); /* int (*p)() = printf; for example */
 			/*
 			 * either:

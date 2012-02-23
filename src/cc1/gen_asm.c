@@ -459,7 +459,7 @@ void gen_asm_global(decl *d)
 		return;
 	}
 
-	if(decl_has_func_code(d)){
+	if(d->func_code){
 		int offset;
 
 		asm_label(d->spel);

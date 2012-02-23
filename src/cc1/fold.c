@@ -32,7 +32,7 @@ static tree *curtree_switch;     /* for case + default */
 static tree *curtree_flow;       /* for break */
 
 void fold_expr(expr *e, symtable *stab);
-void fold_funcargs(decl_ptr *dp, symtable *stab, char *context);
+void fold_funcargs(funcargs *fargs, symtable *stab, char *context);
 void fold_tree(tree *t);
 
 int fold_is_lvalue(expr *e)
@@ -50,7 +50,7 @@ int fold_is_lvalue(expr *e)
 	 */
 
 	if(e->type == expr_identifier)
-		return !decl_has_func_code(e->tree_type);
+		return !e->tree_type->func_code;
 
 	if(e->type == expr_op)
 		switch(e->op){
@@ -105,7 +105,7 @@ void fold_funcall(expr *e, symtable *stab)
 
 		e->sym = symtab_search(stab, sp);
 		if(!e->sym){
-			df = decl_new_where_with_ptr(&e->where);
+			df = decl_new_where(&e->where);
 
 			df->type->primitive = type_int;
 			df->type->spec     |= spec_extern;
@@ -114,11 +114,11 @@ void fold_funcall(expr *e, symtable *stab)
 
 			df->spel = sp;
 
-			df->decl_ptr->func = funcargs_new();
+			df->funcargs = funcargs_new();
 
 			if(e->funcargs)
 				/* set up the funcargs as if it's "x()" - i.e. any args */
-				function_empty_args(df->decl_ptr->func);
+				function_empty_args(df->funcargs);
 
 			e->sym = symtab_add(symtab_root(stab), df, sym_global, SYMTAB_WITH_SYM, SYMTAB_PREPEND);
 		}else{
@@ -128,16 +128,6 @@ void fold_funcall(expr *e, symtable *stab)
 		fold_expr(e->expr, stab);
 	}else{
 		fold_expr(e->expr, stab);
-
-		/*
-		 * convert int (*)() to remove the deref
-		 * - we have both a ->child and ->func, which means we are a pointer, _then_ a function
-		 */
-		/*if(e->expr->tree_type->decl_ptr->child && e->expr->tree_type->decl_ptr->func)*/
-		if(e->expr->type == expr_op && e->expr->op == op_deref){
-			/* XXX: memleak */
-			e->expr = e->expr->lhs;
-		}
 
 		df = e->expr->tree_type;
 
@@ -164,7 +154,18 @@ void fold_funcall(expr *e, symtable *stab)
 	}
 
 	/* func count comparison, only if the func has arg-decls, or the func is f(void) */
-	args_exp = decl_first_func(df)->func;
+	args_exp = df->funcargs;
+
+	if(!args_exp){
+		/*
+		 * int f(); - has funcargs on the decl
+		 * int (*x)(); - funcargs are on the first ->decl_ptr
+		 */
+		args_exp = df->decl_ptr->fptrargs;
+	}
+
+	UCC_ASSERT(args_exp, "no funcargs for decl %s", df->spel);
+
 	if(args_exp->arglist || args_exp->args_void){
 		expr **iter_arg;
 		decl **iter_decl;
@@ -291,10 +292,9 @@ void fold_expr(expr *e, symtable *stab)
 				UCC_ASSERT(!e->expr, "expression found in array store address-of");
 
 				/* static const char * */
-				(*decl_leaf(e->tree_type))->child = decl_ptr_new();
+				*decl_leaf(e->tree_type) = decl_ptr_new();
 
 				e->tree_type->type->spec |= spec_static | spec_const;
-				e->tree_type->decl_ptr->child->is_const = 1;
 				e->tree_type->type->primitive = type_char;
 
 				e->spel = e->array_store->label = asm_label_array(e->array_store->type == array_str);
@@ -392,8 +392,8 @@ fin:
 
 void fold_decl_ptr(decl_ptr *dp, symtable *stab, decl *root)
 {
-	if(dp->func)
-		fold_funcargs(dp, stab, root->spel);
+	if(dp->fptrargs)
+		fold_funcargs(dp->fptrargs, stab, root->spel);
 
 	if(dp->array_size){
 		long v;
@@ -412,8 +412,8 @@ void fold_decl(decl *d, symtable *stab)
 		int incomplete;
 
 		case type_void:
-			if(!decl_ptr_depth(d) && !decl_is_func(d))
-				die_at(&d->type->where, "can't have a void variable");
+			if(!decl_ptr_depth(d) && !d->funcargs)
+				die_at(&d->type->where, "can't have a void variable (%s)", decl_to_str(d));
 			break;
 
 		case type_enum:
@@ -476,12 +476,10 @@ void fold_decl_global(decl *d, symtable *stab)
 
 		for(dit = stab->decls; dit && *dit; dit++){
 			decl *d2 = *dit;
-			if(!strcmp(d2->spel, spel)){
-				if((d2->type->spec & spec_extern) == 0){
-					/* found an override */
-					d->ignore = 1;
-					break;
-				}
+			if(!strcmp(d2->spel, spel) && (d2->type->spec & spec_extern) == 0){
+				/* found an override */
+				d->ignore = 1;
+				break;
 			}
 		}
 	}
@@ -750,7 +748,7 @@ case_add:
 			for(iter = t->decls; iter && *iter; iter++){
 				decl *d = *iter;
 
-				if(decl_has_func_code(d))
+				if(d->func_code)
 					die_at(&d->func_code->where, "can't nest functions");
 
 				fold_decl(d, t->symtab);
@@ -800,10 +798,9 @@ case_add:
 	}
 }
 
-void fold_funcargs(decl_ptr *dp, symtable *stab, char *context)
+void fold_funcargs(funcargs *fargs, symtable *stab, char *context)
 {
 	decl **diter;
-	funcargs *fargs = dp->func;
 
 	for(diter = fargs->arglist; diter && *diter; diter++)
 		fold_decl(*diter, stab);
@@ -828,12 +825,12 @@ void fold_funcargs(decl_ptr *dp, symtable *stab, char *context)
 
 void fold_func(decl *func_decl, symtable *globs)
 {
-	if(decl_is_func(func_decl) && decl_has_func_code(func_decl)){
+	if(func_decl->func_code){
 		funcargs *fargs;
 
 		curdecl_func_sp = func_decl->spel;
 
-		fargs = (*decl_leaf(func_decl))->func;
+		fargs = func_decl->funcargs;
 		UCC_ASSERT(fargs, "function %s has no funcargs", func_decl->spel);
 
 		if(fargs->arglist){
@@ -866,18 +863,18 @@ void fold(symtable *globs)
 		decl *df;
 		funcargs *fargs;
 
-		df = decl_new_with_ptr();
-		fargs = df->decl_ptr->func = funcargs_new();
+		df = decl_new();
+		fargs = df->funcargs = funcargs_new();
 		df->spel = ustrdup(ASM_INLINE_FNAME);
 
 		df->type->primitive = type_int;
 
 		fargs->arglist    = umalloc(2 * sizeof *fargs->arglist);
-		fargs->arglist[0] = decl_new_with_ptr();
+		fargs->arglist[0] = decl_new();
 		fargs->arglist[1] = NULL;
 		fargs->arglist[0]->type->primitive = type_char;
 		fargs->arglist[0]->type->spec     |= spec_const;
-		fargs->arglist[0]->decl_ptr->child = decl_ptr_new();
+		fargs->arglist[0]->decl_ptr        = decl_ptr_new();
 
 		symtab_add(globs, df, sym_global, SYMTAB_NO_SYM, SYMTAB_PREPEND);
 	}
@@ -902,7 +899,7 @@ void fold(symtable *globs)
 		D(i)->sym = sym_new(D(i), sym_global);
 
 		fold_decl_global(D(i), globs);
-		if(decl_has_func_code(D(i)))
+		if(D(i)->func_code)
 			fold_func(D(i), globs);
 	}
 
@@ -916,12 +913,12 @@ void fold(symtable *globs)
 	for(i = 0; D(i); i++){
 		char *const spel_i = D(i)->spel;
 
-		if(decl_is_func(D(i)) && !decl_has_func_code(D(i))){
+		if(D(i)->funcargs && !D(i)->func_code){
 			int found = 0;
 			int j;
 
 			for(j = 0; D(j); j++){
-				if(j != i && decl_has_func_code(D(j)) && !strcmp(spel_i, D(j)->spel)){
+				if(j != i && D(j)->func_code && !strcmp(spel_i, D(j)->spel)){
 					D(i)->ignore = 1;
 					found = 1;
 					break;
