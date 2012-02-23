@@ -45,10 +45,15 @@ is converted into the tokens:
 
 some tokens, such as _integer and _string come with extra data
 These are available as follows:
-	extern int currentval
+	extern intval currentval [struct allowing use of longs and ints, describing signed or unsigned]
 	char *token_current_spel()
 
-which are used from parse.c
+The current token is available as follows:
+	extern enum token curtok [parse.h]
+
+the token enum is defined in tokenise.h
+
+These are used from parse.c
 
 when a data structure has been constructed, the parser calls EAT() or accept() with the token
 is wants to step over, for example, EAT(token_character) will attempt to move to the next token,
