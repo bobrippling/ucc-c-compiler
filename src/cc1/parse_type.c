@@ -23,7 +23,7 @@
 
 type *parse_type_struct(void);
 type *parse_type_enum(void);
-decl_ptr *parse_decl_ptr_array(enum decl_mode mode, char **psp);
+decl_ptr *parse_decl_ptr_array(enum decl_mode mode, char **decl_sp, funcargs **decl_args);
 
 #define INT_TYPE(t) do{ t = type_new(); t->primitive = type_int; }while(0)
 
@@ -303,7 +303,7 @@ funcargs *parse_func_arglist()
 					* void f(x){ ... }
 					* - x is implicitly int
 					*/
-				decl *d = decl_new_with_ptr();
+				decl *d = decl_new();
 				d->type->primitive = type_int;
 				d->spel = spells[i];
 				spells[i] = NULL; /* prevent free */
@@ -327,72 +327,69 @@ empty_func:
 	return args;
 }
 
-decl_ptr *parse_decl_ptr_rec(enum decl_mode mode, char **psp)
+decl_ptr *parse_decl_ptr_rec(enum decl_mode mode, char **decl_sp, funcargs **decl_args)
 {
+	decl_ptr *ret = NULL;
+
 	if(accept(token_open_paren)){
-		decl_ptr *ret = parse_decl_ptr_array(mode, psp);
+		ret = parse_decl_ptr_array(mode, decl_sp, decl_args);
 		EAT(token_close_paren);
-		return ret;
 
 	}else if(accept(token_multiply)){
-		decl_ptr *ret = decl_ptr_new();
+		ret = decl_ptr_new();
 
 		if(accept(token_const))
 			ret->is_const = 1;
 
-		ret->child = parse_decl_ptr_array(mode, psp); /* check if we have anything else */
-		return ret;
+		ret->child = parse_decl_ptr_array(mode, decl_sp, decl_args); /* check if we have anything else */
 
-	}else if(curtok == token_identifier){
-		decl_ptr *ret = decl_ptr_new();
+	}else{
+		if(curtok == token_identifier){
+			if(mode & DECL_SPEL_NO)
+				die_at(NULL, "identifier unexpected");
 
-		if(mode & DECL_SPEL_NO)
-			die_at(&ret->where, "identifier unexpected");
+			if(*decl_sp)
+				die_at(NULL, "already got identifier for decl");
+			*decl_sp = token_current_spel();
+			EAT(token_identifier);
 
-		if(*psp)
-			die_at(&ret->where, "already got identifier for decl");
-		*psp = token_current_spel();
-		EAT(token_identifier);
-
-		return ret;
-	}else if(mode & DECL_SPEL_NEED){
-		die_at(NULL, "need identifier for decl");
-	}
-
-	return NULL;
-}
-
-decl_ptr *parse_decl_ptr_func(enum decl_mode mode, char **psp)
-{
-	decl_ptr *dp = parse_decl_ptr_rec(mode, psp);
-
-	if(accept(token_open_paren)){
-		if(!dp)
-			dp = decl_ptr_new();
+		}else if(mode & DECL_SPEL_NEED){
+			die_at(NULL, "need identifier for decl");
+		}
 
 		/*
-		 * e.g.:
-		 * int x(
-		 * int (*x)(
-		 * int (((x))(
+		 * here is the end of the line, from now on,
+		 * we are coming out of the recursion
+		 * so we check for the initial decl func parms
 		 */
-		if(dp->func)
-			goto func_ret_func;
-
-		dp->func = parse_func_arglist();
-		EAT(token_close_paren);
+		if(accept(token_open_paren)){
+			*decl_args = parse_func_arglist();
+			EAT(token_close_paren);
+		}
 	}
 
-	if(accept(token_open_paren))
-func_ret_func:
-		die_at(&dp->where, "can't have function returning function");
+	if(ret && accept(token_open_paren)){
+		/*
+			* e.g.:
+			* int (*x)(
+			*/
+		if(ret->fptrargs)
+			goto func_ret_func;
 
-	return dp;
+		ret->fptrargs = parse_func_arglist();
+		EAT(token_close_paren);
+
+		if(accept(token_open_paren))
+func_ret_func:
+			die_at(&ret->where, "can't have function returning function");
+	}
+
+	return ret;
 }
 
-decl_ptr *parse_decl_ptr_array(enum decl_mode mode, char **psp)
+decl_ptr *parse_decl_ptr_array(enum decl_mode mode, char **decl_sp, funcargs **decl_args)
 {
-	decl_ptr *dp = parse_decl_ptr_func(mode, psp);
+	decl_ptr *dp = parse_decl_ptr_rec(mode, decl_sp, decl_args);
 
 	while(accept(token_open_square)){
 		decl_ptr *dp_new;
@@ -422,28 +419,32 @@ decl_ptr *parse_decl_ptr_array(enum decl_mode mode, char **psp)
 decl *parse_decl(type *t, enum decl_mode mode)
 {
 	char *spel = NULL;
-	decl_ptr *dp = parse_decl_ptr_array(mode, &spel);
+	funcargs *args = NULL;
+	decl_ptr *dp;
 	decl *d;
+
+	dp = parse_decl_ptr_array(mode, &spel, &args);
 
 	if(t->tdef){
 		/* get the typedef stuff now */
 		d = decl_copy(t->tdef);
-		d->type->tdef = NULL;
 
-		d->spel = NULL;
+		d->type->tdef = NULL;
+		d->type->spec |= t->spec;
 
 		*decl_leaf(d) = dp;
 	}else{
 		d = decl_new();
-		d->type = t;
 		d->decl_ptr = dp;
+		d->type = type_copy(t);
 	}
 
-	d->spel = spel;
+	d->spel     = spel;
+	d->funcargs = args;
 
 	if(accept(token_assign))
 		d->init = parse_expr_funcallarg(); /* int x = 5, j; - don't grab the comma expr */
-	else if(curtok == token_open_block)
+	else if(d->funcargs && curtok == token_open_block)
 		d->func_code = parse_code();
 
 	return d;
@@ -522,14 +523,10 @@ decl **parse_decls(const int can_default, const int accept_field_width)
 					d);
 
 			if(are_tdefs)
-				if(decl_has_func_code(d))
+				if(d->funcargs)
 					die_at(&d->where, "can't have a typedef function");
 
-			if(decl_has_func_code(d)){
-				if(curtok == token_eof)
-					return decls;
-				continue;
-			}else if(accept_field_width && accept(token_colon)){
+			if(accept_field_width && accept(token_colon)){
 				/* normal decl, check field spec */
 				d->field_width = currentval.val;
 				if(d->field_width <= 0)
@@ -540,7 +537,7 @@ decl **parse_decls(const int can_default, const int accept_field_width)
 			last = d;
 		}while(accept(token_comma));
 
-		if(last && !decl_has_func_code(last)){
+		if(last && !last->func_code){
 next:
 			EAT(token_semicolon);
 		}

@@ -74,8 +74,8 @@ struct decl_ptr
 	decl_ptr *child;  /* int (*const (*x)()) - *[x] is child */
 
 	/* either a func OR an array_size, not both */
-	funcargs *func;   /* int (*x)() - args to function */
-	expr *array_size; /* int (x[5][2])[2] */
+	funcargs *fptrargs;    /* int (*x)() - args to function */
+	expr *array_size;      /* int (x[5][2])[2] */
 };
 
 struct decl
@@ -87,6 +87,7 @@ struct decl
 
 	expr *init; /* NULL except for global variables */
 	array_decl *arrayinit;
+	funcargs *funcargs; /* int x() - args to function, distinct from fptr */
 
 	int ignore; /* ignore during code-gen, for example ignoring overridden externs */
 #define struct_offset ignore
@@ -258,9 +259,7 @@ expr        *expr_new(void);
 type        *type_new(void);
 decl        *decl_new(void);
 decl_ptr    *decl_ptr_new(void);
-decl        *decl_new_with_ptr(void);
 decl        *decl_new_where(where *);
-decl        *decl_new_where_with_ptr(where *);
 array_decl  *array_decl_new(void);
 funcargs    *funcargs_new(void);
 
@@ -289,8 +288,6 @@ int   type_size( const type *);
 int   decl_size( decl *);
 int   decl_equal(decl *, decl *, int strict);
 
-#define decl_has_func_code(d) (!!(d)->func_code)
-int   decl_is_func(    decl *); /* includes ptr to func */
 int   decl_has_array(  decl *);
 int   decl_is_callable(decl *);
 int   decl_is_const(   decl *);
@@ -308,7 +305,8 @@ expr *expr_ptr_multiply(expr *, decl *);
 expr *expr_assignment(expr *to, expr *from);
 void function_empty_args(funcargs *);
 
-#define TYPE_STATIC_BUFSIZ 64
+#define SPEC_STATIC_BUFSIZ 64
+#define TYPE_STATIC_BUFSIZ (SPEC_STATIC_BUFSIZ + 64)
 #define DECL_STATIC_BUFSIZ (128 + TYPE_STATIC_BUFSIZ)
 
 #define type_free(x) free(x)

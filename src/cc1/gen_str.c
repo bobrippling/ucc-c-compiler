@@ -73,9 +73,9 @@ void print_decl_ptr_eng(decl_ptr *dp)
 				dp->is_const    ? "const " : "");
 	}
 
-	if(dp->func){
+	if(dp->fptrargs){
 #ifdef ENGLISH_PRINT_ARGLIST
-		funcargs *fargs = dp->func;
+		funcargs *fargs = dp->fptrargs;
 		decl **iter;
 #endif
 
@@ -118,37 +118,40 @@ void print_decl_eng(decl *d)
 	fprintf(cc1_out, "%s", type_to_str(d->type));
 }
 
+void print_funcargs(funcargs *fargs)
+{
+	if(fargs->arglist){
+		decl **iter;
+
+		for(iter = fargs->arglist; *iter; iter++){
+			print_decl(*iter, PDECL_NONE);
+			if(iter[1])
+				fputs(", ", cc1_out);
+		}
+	}else if(fargs->args_void){
+		fputs("void", cc1_out);
+	}
+
+	fprintf(cc1_out, "%s)", fargs->variadic ? ", ..." : "");
+}
+
 void print_decl_ptr(decl_ptr *dp, decl *parent)
 {
-	if(dp->child){
-		if(dp->func)
-			fputc('(', cc1_out);
+	fprintf(cc1_out, "*%s%s", dp->is_const ? "const " : "", dp->array_size ? "[]" : "");
 
-		fprintf(cc1_out, "%s%s",
-				dp->array_size ? "" : "*",
-				dp->is_const ? "const " : "");
+	if(dp->child){
+		if(dp->fptrargs)
+			fputc('(', cc1_out);
 
 		print_decl_ptr(dp->child, parent);
 	}else if(parent->spel){
 		fputs(parent->spel, cc1_out);
 	}
 
-	if(dp->func){
-		funcargs *fargs = dp->func;
-		decl **iter;
-
+	if(dp->fptrargs){
 		fprintf(cc1_out, "%s(", dp->child ? ")" : "");
 
-		if(fargs->arglist)
-			for(iter = fargs->arglist; *iter; iter++){
-				print_decl(*iter, PDECL_NONE);
-				if(iter[1])
-					fputs(", ", cc1_out);
-			}
-		else if(fargs->args_void)
-			fputs("void", cc1_out);
-
-		fprintf(cc1_out, "%s)", fargs->variadic ? ", ..." : "");
+		print_funcargs(dp->fptrargs);
 	}
 	if(dp->array_size){
 		fputc('[', cc1_out);
@@ -179,7 +182,7 @@ void print_decl(decl *d, enum pdeclargs mode)
 				indent++;
 				idt_printf("decl_ptr: %s%s",
 						dpi->is_const ? "const" : "",
-						dpi->func ? "(#)" : "");
+						dpi->fptrargs ? "(#)" : "");
 
 				if(dpi->array_size){
 					fputs("\n", cc1_out);
@@ -197,6 +200,11 @@ void print_decl(decl *d, enum pdeclargs mode)
 
 			print_decl_ptr(d->decl_ptr, d);
 		}
+
+		if(d->funcargs){
+			idt_printf("function args:\n");
+			print_funcargs(d->funcargs);
+		}
 	}
 
 	if(mode & PDECL_SYM_OFFSET){
@@ -209,7 +217,7 @@ void print_decl(decl *d, enum pdeclargs mode)
 	if(mode & PDECL_NEWLINE)
 		fputc('\n', cc1_out);
 
-	if((mode & PDECL_FUNC_DESCEND) && decl_has_func_code(d)){
+	if((mode & PDECL_FUNC_DESCEND) && d->func_code){
 		decl **iter;
 
 		indent++;

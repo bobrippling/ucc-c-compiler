@@ -40,7 +40,7 @@ expr *expr_new()
 {
 	expr *e = umalloc(sizeof *e);
 	where_new(&e->where);
-	e->tree_type = decl_new_with_ptr();
+	e->tree_type = decl_new();
 	return e;
 }
 
@@ -78,25 +78,11 @@ decl *decl_new()
 	return d;
 }
 
-decl *decl_new_with_ptr()
-{
-	decl *d = decl_new();
-	d->decl_ptr = decl_ptr_new();
-	return d;
-}
-
 decl *decl_new_where(where *w)
 {
 	decl *d = decl_new();
 	memcpy(&d->where,       w, sizeof w);
 	memcpy(&d->type->where, w, sizeof w);
-	return d;
-}
-
-decl *decl_new_where_with_ptr(where *w)
-{
-	decl *d = decl_new_where(w);
-	d->decl_ptr = decl_ptr_new();
 	return d;
 }
 
@@ -408,6 +394,21 @@ const char *spec_to_str(const enum type_spec s)
 	return NULL;
 }
 
+const char *spec_to_str_full(const enum type_spec s)
+{
+	static char buf[SPEC_STATIC_BUFSIZ];
+	char *bufp = buf;
+	int i;
+
+	*buf = '\0';
+
+	for(i = 0; i < SPEC_MAX; i++)
+		if(s & (1 << i))
+			bufp += snprintf(bufp, sizeof buf - (bufp - buf), "%s ", spec_to_str(1 << i));
+
+	return buf;
+}
+
 int op_is_cmp(enum op_type o)
 {
 	switch(o){
@@ -439,18 +440,8 @@ decl_ptr **decl_leaf(decl *d)
 {
 	decl_ptr **dp;
 	UCC_ASSERT(d, "null decl param");
-	for(dp = &d->decl_ptr; *dp && (*dp)->child; dp = &(*dp)->child);
+	for(dp = &d->decl_ptr; *dp; dp = &(*dp)->child);
 	return dp;
-}
-
-int decl_is_func(decl *d)
-{
-	/*
-	 * leaf - walk over all the ptrs,
-	 * e.g. void ***x(); has a level of three,
-	 * then get the ->func
-	 */
-	return !!(*decl_leaf(d))->func;
 }
 
 int decl_is_callable(decl *d)
@@ -460,7 +451,7 @@ int decl_is_callable(decl *d)
 
 	for(dp = d->decl_ptr; dp->child && dp->child->child; dp = dp->child);
 
-	return (dp->child ? dp->child->func : 0) || dp->func;
+	return (dp->child ? dp->child->fptrargs : 0) || dp->fptrargs;
 }
 
 int decl_has_array(decl *d)
@@ -475,24 +466,15 @@ int decl_has_array(decl *d)
 
 int decl_is_const(decl *d)
 {
-	return (*decl_leaf(d))->is_const;
-}
-
-decl_ptr *decl_first_func(decl *d)
-{
-	decl_ptr *dp;
-
-	for(dp = d->decl_ptr; dp && !dp->func; dp = dp->child);
-
-	if(!dp)
-		ICE("no decl_ptr with func for decl at %s", where_str(&d->where));
-
-	return dp;
+	decl_ptr *dp = *decl_leaf(d);
+	if(dp)
+		return dp->is_const;
+	return 0;/*d->type->spec & spec_const; TODO */
 }
 
 decl *decl_ptr_depth_inc(decl *d)
 {
-	(*decl_leaf(d))->child = decl_ptr_new();
+	*decl_leaf(d) = decl_ptr_new();
 	return d;
 }
 
@@ -506,15 +488,12 @@ const char *type_to_str(const type *t)
 {
 #define BUF_SIZE (sizeof(buf) - (bufp - buf))
 	static char buf[TYPE_STATIC_BUFSIZ];
-	int i;
 	char *bufp = buf;
 
 	if(t->tdef)
 		return type_to_str(t->tdef->type);
 
-	for(i = 0; i < SPEC_MAX; i++)
-		if(t->spec & (1 << i))
-			bufp += snprintf(bufp, BUF_SIZE, "%s ", spec_to_str(1 << i));
+	bufp += snprintf(bufp, BUF_SIZE, "%s ", spec_to_str_full(t->spec));
 
 	if(t->struc){
 		snprintf(bufp, BUF_SIZE, "%s", t->struc->spel);
@@ -551,15 +530,23 @@ const char *decl_to_str(decl *d)
 
 #define BUF_ADD(...) i += snprintf(buf + i, sizeof buf - i, __VA_ARGS__)
 
-	BUF_ADD("%s%s", type_to_str(d->type), d->decl_ptr ? " " : "");
+	BUF_ADD("%s%s",
+			type_to_str(d->type),
+			d->decl_ptr ? " " : ""
+			);
 
 	for(dp = d->decl_ptr; dp; dp = dp->child)
-		BUF_ADD("*%s%s%s",
-				dp->is_const   ? "K"   : "",
-				dp->func       ? "()" : "",
-				dp->array_size ? "[]"  : "");
+		BUF_ADD("%s*%s%s%s%s",
+				dp->fptrargs   ? "("  : "",
+				dp->is_const   ? "K"  : "",
+				dp->fptrargs   ? "()" : "",
+				dp->array_size ? "[]" : "",
+				dp->fptrargs   ? ")"  : "");
 
 	buf[i] = '\0';
+
+	if(d->funcargs)
+		BUF_ADD("()");
 
 	return buf;
 }
