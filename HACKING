@@ -1,30 +1,138 @@
-TODO: This file
+File Layout
+-----------
 
-src: Compiler source files
-	cpp2: Preprocessor
-	//cpp: Broken, old preprocessor
-	cc1: The parser and code generator
-	util: Common code
+src/: Compiler source files
+	cpp2/: Preprocessor
+	cc1/: The parser and code generator
+	util/: Common code
 	cc.c: The cc wrapper program
 
-lib: Include files and library object location
+lib/: Include files and library object location
 	Contains partial C standard lib
+
+
+Overview
+---------
 
 The compiler (cc1) runs in three main stages.
 
+It operates on data structures described in tree.h
+
+these are mainly:
+	expressions: 5 + 2, f("hello"), x = y
+	and
+	statements:  if(...){...}, while, do, for
+
+statements are of type "tree", expressions are of type "expr"
+
+
 Parsing (parse{,_type}.c)
-Folding (fold.c)
-Code Generation (gen_asm.c / gen_str.c)
+-------------------------
 
 Parsing simply constructs a syntax tree (tree.h + struct.h + typedef.h).
 There are expressions and statements, shown in tree.h
 
+The parser for expressions is a recursive descent. It uses the tokeniser to convert the input into tokens.
+This makes it easier to parse.
+The string
+	"2 + 'a' ^ 3"
+is converted into the tokens:
+	token_integer
+	token_plus
+	token_character
+	token_xor
+	token_integer
+
+some tokens, such as _integer and _string come with extra data
+These are available as follows:
+	extern int currentval
+	char *token_current_spel()
+
+which are used from parse.c
+
+when a data structure has been constructed, the parser calls EAT() or accept() with the token
+is wants to step over, for example, EAT(token_character) will attempt to move to the next token,
+discarding the current one, if it is a character. Otherwise an error is raised and the program exits.
+accept() is similar, but doesn't abort the program. It returns true if the token was stepped over.
+
+
+Folding (fold*.c)
+----------------
+
 Folding links up symbols, checks for [in]valid code (such as *(void *)0 = 5)
 and calculates stack offsets, struct offsets and so on.
+
+The main part of fold is propagating the type of an expression down through its tree,
+assigning to tree_type.
+
+e.g.
+	int **a;
+	a[5] + 2
+
+is parsed to:
+
+	plus(deref(plus(a, multiply(5, 8))), 2)
+
+a[5] -> *(a + 5) -> *(a + 5 * 8)
+the multiplication by 8 is because an int has a width of eight (should be four, I've yet to sort this)
+
+
+thus when the folding is complete, we get this:
+
+	<int *>plus(<int *>deref(<int **>plus(<int **>a, <int>multiply(<int>5, <int>8))), <int>2)
+
+for example:
+  adding an <int *> and an <int> gives an <int *>
+  dereferencing an <int **> gives an <int *>
+
+this helps for type checking, etc
+
+
+Code Generation (gen_asm.c / gen_str.c)
+---------------------------------------
 
 Code generation walks the tree, outputting a visual representation (gen_str) or
 the x64 assembly (gen_asm.c - highly suboptimal) of the program.
 
-TODO:
-Two optimisation stages - one at the fold stage, one at the assembly output
-stage
+This walks the statement and expression trees, generating code for each.
+For example,
+
+if(5 + 2)
+  x(2, f() + 1);
+
+has the tree representation:
+
+if:
+  expr: plus(5, 2)
+  then:
+    funcall: {
+      func = "x",
+      arg[0]: 2,
+      arg[1]: plus(
+        funcall: {
+          func = "f",
+        },
+        1
+      )
+    }
+
+a depth-first walk is done on the tree, generating the following (pseudo) assembly code
+
+  push 5
+  push 2
+  add
+
+  compare_to_zero
+  branch_if_true "finish"
+
+  call f
+  push result
+  push 1
+  add
+  push 2
+  call x
+
+  finish:
+
+Of course, the compiler does constant folding, so expressions like plus(5, 2) are evaluated
+at compile time.

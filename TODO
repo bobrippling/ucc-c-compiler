@@ -1,59 +1,20 @@
+---------------------------------------------------- cc1
+
 floats
 long + short
 
-get rid of __asm__ hacks (mainly in gen_asm.c)
+link function prototypes with the function instance + arg check
 
 struct access tree type propagation
 
-cpp2:
-	fix dir-relative file opening
+&x[y]
 
-cc1:
-	&x[y]
-
-	typedefs and struct decls need to be scoped
-
-	const:
-		const char *s; - *s is not writable, s is
-
-		const char *a = "hi";
-		int x(char *s);
-		x(a); // warning - removing const
-		// same for assignments
-
-
-cpp:
-	cc -E dir/x.c
-	doesn't work, but
-	cd dir; cc -E x.c
-	does
-
-	cc -MM *.c
-
-	push current_line when descending into #include
-
-
-cc:
-	eventually cc1.c with stabs/dwarf
-
-	options:
-		warn on "{ 1, 2, 3, }" - final comma
-		warn on ?:
-
-
-Tests
------
-
-parse / cpp tests
-assert tests
-
-
-Features
---------
-
-cc accepts multiple input source files
-
-link function prototypes with the function instance + arg check
+const:
+	const char *s; - *s is not writable, s is
+	const char *a = "hi";
+	int x(char *s);
+	x(a); // warning - removing const
+	// same for assignments
 
 32-bit code gen
 
@@ -70,3 +31,25 @@ parsing + gen
 
 __attribute__((pure))
 - function with no side effects (e.g. strlen())
+
+get rid of __asm__ hacks (mainly in gen_asm.c)
+
+stabs/dwarf debugging annotations
+
+
+---------------------------------------------------- cpp
+
+fix dir-relative file opening:
+	cc -E dir/x.c
+	doesn't work, but
+	cd dir; cc -E x.c
+	does
+
+cc -MM *.c
+
+push current_line when descending into #include/# [0-9] for cc1
+
+
+---------------------------------------------------- cc
+
+accept multiple input source files
