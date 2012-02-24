@@ -3,7 +3,7 @@
 
 void bad_input(const char *desc)
 {
-	fprintf(stderr, "bad input (%s)\n", desc);
+	fprintf(stderr, "%s: bad input (%s)\n", __progname, desc);
 	exit(1);
 }
 
