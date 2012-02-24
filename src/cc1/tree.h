@@ -283,10 +283,16 @@ const char *spec_to_str(const enum type_spec s);
 
 int op_is_cmp(enum op_type o);
 
+enum decl_cmp
+{
+	DECL_CMP_STRICT_PRIMITIVE = 1 << 0,
+	DECL_CMP_ALLOW_VOID_PTR   = 1 << 1,
+};
+
 int   type_equal(const type *a, const type *b, int strict);
 int   type_size( const type *);
 int   decl_size( decl *);
-int   decl_equal(decl *, decl *, int strict);
+int   decl_equal(decl *, decl *, enum decl_cmp mode);
 
 int   decl_has_array(  decl *);
 int   decl_is_callable(decl *);
@@ -313,5 +319,6 @@ void function_empty_args(funcargs *);
 #define decl_free_notype(x) do{free(x);}while(0)
 #define decl_free(x) do{type_free((x)->type); decl_free_notype(x);}while(0)
 #define expr_free(x) do{decl_free((x)->tree_type); free(x);}while(0)
+void funcargs_free(funcargs *args, int free_decls);
 
 #endif

@@ -81,7 +81,7 @@ int fold_expr_is_addressable(expr *e)
 void fold_decl_equal(decl *a, decl *b, where *w, enum warning warn,
 		const char *errfmt, ...)
 {
-	if(!decl_equal(a, b, fopt_mode & FOPT_STRICT_TYPES)){
+	if(!decl_equal(a, b, DECL_CMP_ALLOW_VOID_PTR | (fopt_mode & FOPT_STRICT_TYPES ? DECL_CMP_STRICT_PRIMITIVE : 0))){
 		char buf[DECL_STATIC_BUFSIZ];
 		va_list l;
 
@@ -92,6 +92,37 @@ void fold_decl_equal(decl *a, decl *b, where *w, enum warning warn,
 		va_start(l, errfmt);
 		cc1_warn_atv(w, a->type->primitive == type_void && !decl_ptr_depth(a), warn, errfmt, l);
 		va_end(l);
+	}
+}
+
+void fold_funcargs_equal(funcargs *args_a, funcargs *args_b, int check_vari, where *w, const char *warn_pre, const char *func_spel)
+{
+	const int count_a = dynarray_count((void **)args_a->arglist);
+	const int count_b = dynarray_count((void **)args_b->arglist);
+	int i;
+
+	if(!(check_vari && args_a->variadic ? count_a <= count_b : count_a == count_b)){
+		char wbuf[WHERE_BUF_SIZ];
+		strcpy(wbuf, where_str(&args_a->where));
+		die_at(w, "mismatching argument counts for function %s (%s)", func_spel, wbuf);
+	}
+
+	if(!count_a)
+		return;
+
+	for(i = 0; args_a->arglist[i]; i++){
+		char buf_a[DECL_STATIC_BUFSIZ], buf_b[DECL_STATIC_BUFSIZ];
+		decl *a, *b;
+
+		a = args_a->arglist[i];
+		b = args_b->arglist[i];
+
+		strcpy(buf_a, decl_to_str(a));
+		strcpy(buf_b, decl_to_str(b));
+
+		fold_decl_equal(a, b, w, WARN_ARG_MISMATCH,
+				"mismatching %s for arg %d in %s (%s vs. %s)",
+				warn_pre, i + 1, func_spel, buf_a, buf_b);
 	}
 }
 
@@ -170,7 +201,6 @@ void fold_funcall(expr *e, symtable *stab)
 		expr **iter_arg;
 		decl **iter_decl;
 		int count_decl, count_arg;
-		int i;
 
 		count_decl = count_arg = 0;
 
@@ -184,18 +214,13 @@ void fold_funcall(expr *e, symtable *stab)
 		}
 
 		if(e->funcargs){
-			for(i = 0, iter_decl = args_exp->arglist, iter_arg = e->funcargs;
-					iter_decl[i];
-					i++){
-				char a[DECL_STATIC_BUFSIZ], b[DECL_STATIC_BUFSIZ];
+			funcargs *argument_decls = funcargs_new();
 
-				strcpy(a, decl_to_str(iter_decl[i]));
-				strcpy(b, decl_to_str(iter_arg[i]->tree_type));
+			for(iter_arg = e->funcargs; *iter_arg; iter_arg++)
+				dynarray_add((void ***)&argument_decls->arglist, (*iter_arg)->tree_type);
 
-				fold_decl_equal(iter_decl[i], iter_arg[i]->tree_type, &e->where,
-						WARN_ARG_MISMATCH, "mismatching argument for arg %d to %s (%s vs. %s)",
-						i + 1, df->spel, a, b);
-			}
+			fold_funcargs_equal(args_exp, argument_decls, 1, &e->where, "argument", df->spel);
+			funcargs_free(argument_decls, 0);
 		}
 	}
 }
@@ -918,9 +943,21 @@ void fold(symtable *globs)
 			int j;
 
 			for(j = 0; D(j); j++){
-				if(j != i && D(j)->func_code && !strcmp(spel_i, D(j)->spel)){
-					D(i)->ignore = 1;
-					found = 1;
+				if(j != i && !strcmp(spel_i, D(j)->spel)){
+					/* D(i) is a prototype, check the args match D(j) */
+					fold_funcargs_equal(D(i)->funcargs, D(j)->funcargs, 0, &D(j)->where, "type", D(j)->spel);
+
+					if(!decl_equal(D(i), D(j), DECL_CMP_STRICT_PRIMITIVE)){
+						char wbuf[WHERE_BUF_SIZ];
+						strcpy(wbuf, where_str(&D(j)->where));
+						die_at(&D(i)->where, "mismatching return types for function %s (%s)", D(i)->spel, wbuf);
+					}
+
+					if(D(j)->func_code){
+						/* D(j) is the implementation */
+						D(i)->ignore = 1;
+						found = 1;
+					}
 					break;
 				}
 			}

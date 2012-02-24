@@ -157,6 +157,16 @@ funcargs *funcargs_new()
 	return f;
 }
 
+void funcargs_free(funcargs *args, int free_decls)
+{
+	if(free_decls){
+		int i;
+		for(i = 0; args->arglist[i]; i++)
+			decl_free(args->arglist[i]);
+	}
+	free(args);
+}
+
 expr *expr_ptr_multiply(expr *e, decl *d)
 {
 	decl *dtmp;
@@ -277,7 +287,7 @@ int decl_ptr_equal(decl_ptr *dpa, decl_ptr *dpb)
 	return !dpb->child;
 }
 
-int decl_equal(decl *a, decl *b, int strict)
+int decl_equal(decl *a, decl *b, enum decl_cmp mode)
 {
 #define VOID_PTR(d) (                   \
 			d->type->primitive == type_void   \
@@ -285,16 +295,20 @@ int decl_equal(decl *a, decl *b, int strict)
 			&& !d->decl_ptr->child            \
 		)
 
-	if(VOID_PTR(a) || VOID_PTR(b))
+	if((mode & DECL_CMP_ALLOW_VOID_PTR) && (VOID_PTR(a) || VOID_PTR(b)))
 		return 1; /* one side is void * */
 
-	return
-		type_equal(a->type, b->type, strict)
-		&& (
-				a->decl_ptr
-				? b->decl_ptr && decl_ptr_equal(a->decl_ptr, b->decl_ptr)
-				: !b->decl_ptr
-			);
+	if(!type_equal(a->type, b->type, mode & DECL_CMP_STRICT_PRIMITIVE))
+		return 0;
+
+	if(a->decl_ptr){
+		if(b->decl_ptr)
+			return decl_ptr_equal(a->decl_ptr, b->decl_ptr);
+	}else if(!b->decl_ptr){
+		return 1;
+	}
+
+	return 0;
 }
 
 void function_empty_args(funcargs *func)
