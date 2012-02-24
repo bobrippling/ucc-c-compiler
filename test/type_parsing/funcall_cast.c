@@ -2,10 +2,12 @@
 
 cvGetSize()
 {
+printf("size()\n");
 }
 
 cvCreateImage()
 {
+printf("create()\n");
 }
 
 main()
