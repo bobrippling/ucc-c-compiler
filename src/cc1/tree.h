@@ -299,7 +299,7 @@ int   decl_is_callable(decl *);
 int   decl_is_const(   decl *);
 int   decl_ptr_depth(  decl *);
 
-funcargs *decl_func_args(decl *);
+funcargs *decl_funcargs(decl *d);
 
 decl_ptr **decl_leaf(decl *d);
 decl_ptr  *decl_first_func(decl *d);

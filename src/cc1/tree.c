@@ -458,14 +458,23 @@ decl_ptr **decl_leaf(decl *d)
 	return dp;
 }
 
-int decl_is_callable(decl *d)
+funcargs *decl_funcargs(decl *d)
 {
-	/* either ->func on the leaf, or one up from the leaf (func _ptr_) */
+	/* either ->func on the decl, or on a decl_ptr (in the case of a funcptr) */
 	decl_ptr *dp;
 
-	for(dp = d->decl_ptr; dp->child && dp->child->child; dp = dp->child);
+	if(d->funcargs)
+		return d->funcargs;
 
-	return (dp->child ? dp->child->fptrargs : 0) || dp->fptrargs;
+	for(dp = d->decl_ptr; dp; dp = dp->child)
+		if(dp->fptrargs)
+			return dp->fptrargs;
+	return NULL;
+}
+
+int decl_is_callable(decl *d)
+{
+	return !!decl_funcargs(d);
 }
 
 int decl_has_array(decl *d)
@@ -507,7 +516,8 @@ const char *type_to_str(const type *t)
 	if(t->tdef)
 		return type_to_str(t->tdef->type);
 
-	bufp += snprintf(bufp, BUF_SIZE, "%s ", spec_to_str_full(t->spec));
+	if(t->spec)
+		bufp += snprintf(bufp, BUF_SIZE, "%s ", spec_to_str_full(t->spec));
 
 	if(t->struc){
 		snprintf(bufp, BUF_SIZE, "%s", t->struc->spel);
@@ -544,10 +554,7 @@ const char *decl_to_str(decl *d)
 
 #define BUF_ADD(...) i += snprintf(buf + i, sizeof buf - i, __VA_ARGS__)
 
-	BUF_ADD("%s%s",
-			type_to_str(d->type),
-			d->decl_ptr ? " " : ""
-			);
+	BUF_ADD("%s", type_to_str(d->type));
 
 	for(dp = d->decl_ptr; dp; dp = dp->child)
 		BUF_ADD("%s*%s%s%s%s",
