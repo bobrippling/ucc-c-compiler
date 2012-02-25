@@ -120,6 +120,7 @@ void print_decl_eng(decl *d)
 
 void print_funcargs(funcargs *fargs)
 {
+	fputc('(', cc1_out);
 	if(fargs->arglist){
 		decl **iter;
 
@@ -149,7 +150,8 @@ void print_decl_ptr(decl_ptr *dp, decl *parent)
 	}
 
 	if(dp->fptrargs){
-		fprintf(cc1_out, "%s(", dp->child ? ")" : "");
+		if(dp->child)
+			fputc(')', cc1_out);
 
 		print_funcargs(dp->fptrargs);
 	}
@@ -198,13 +200,14 @@ void print_decl(decl *d, enum pdeclargs mode)
 			if(d->spel)
 				fputc(' ', cc1_out);
 
-			print_decl_ptr(d->decl_ptr, d);
+			if(d->decl_ptr)
+				print_decl_ptr(d->decl_ptr, d); /* handles spel */
+			else if(d->spel)
+				fputs(d->spel, cc1_out);
 		}
 
-		if(d->funcargs){
-			idt_printf("function args:\n");
+		if(d->funcargs)
 			print_funcargs(d->funcargs);
-		}
 	}
 
 	if(mode & PDECL_SYM_OFFSET){
