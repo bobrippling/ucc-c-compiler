@@ -518,7 +518,7 @@ int fold_struct(struct_st *st)
 	int offset;
 	decl **i;
 
-	for(offset = 0, i = st->members; *i; i++){
+	for(offset = 0, i = st->members; i && *i; i++){
 		decl *d = *i;
 		if(d->type->primitive == type_struct && !d->type->struc)
 			ICE("TODO: struct lookup");

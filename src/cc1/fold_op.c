@@ -33,7 +33,7 @@ void fold_op_struct(expr *e, symtable *stab)
 
 	/* found the struct, find the member */
 	d = NULL;
-	for(i = st->members; *i; i++)
+	for(i = st->members; i && *i; i++)
 		if(!strcmp((*i)->spel, spel)){
 			d = *i;
 			break;
