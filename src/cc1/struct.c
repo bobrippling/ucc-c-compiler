@@ -14,7 +14,7 @@ int struct_size(struct_st *st)
 {
 	decl **i;
 	int r = 0;
-	for(i = st->members; *i; i++)
+	for(i = st->members; i && *i; i++)
 		r += decl_size(*i);
 	return r;
 }
@@ -47,7 +47,7 @@ struct_st *struct_add(symtable *const stab, char *spel, decl **members)
 
 	struct_st = umalloc(sizeof *struct_st);
 
-	for(iter = members; *iter; iter++){
+	for(iter = members; iter && *iter; iter++){
 		decl *d = *iter;
 		if(d->init)
 			die_at(&d->init->where, "struct member %s is initialised", d->spel);

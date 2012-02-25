@@ -407,7 +407,7 @@ void print_struct(struct_st *st)
 	idt_printf("struct %s:\n", st->spel);
 
 	indent++;
-	for(iter = st->members; *iter; iter++){
+	for(iter = st->members; iter && *iter; iter++){
 		decl *d = *iter;
 		print_decl(d, PDECL_INDENT | PDECL_NEWLINE);
 		idt_printf("offset %d\n", d->struct_offset);
