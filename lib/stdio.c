@@ -200,7 +200,7 @@ number:
 				{
 					void *p = va_arg(ap, void *);
 					if(p){
-						fputs(file, "0x");
+						fputs("0x", file);
 						printx(fd, p, 0);
 					}else{
 						fputs(file, "(nil)");
