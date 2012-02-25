@@ -160,6 +160,15 @@ void fold_funcall(expr *e, symtable *stab)
 	}else{
 		fold_expr(e->expr, stab);
 
+		/*
+		 * convert int (*)() to remove the deref
+		 */
+		/*if(e->expr->tree_type->decl_ptr->child && e->expr->tree_type->decl_ptr->func)*/
+		if(e->expr->type == expr_op && e->expr->op == op_deref){
+			/* XXX: memleak */
+			e->expr = e->expr->lhs;
+		}
+
 		df = e->expr->tree_type;
 
 		if(!decl_is_callable(df)){
@@ -185,15 +194,7 @@ void fold_funcall(expr *e, symtable *stab)
 	}
 
 	/* func count comparison, only if the func has arg-decls, or the func is f(void) */
-	args_exp = df->funcargs;
-
-	if(!args_exp){
-		/*
-		 * int f(); - has funcargs on the decl
-		 * int (*x)(); - funcargs are on the first ->decl_ptr
-		 */
-		args_exp = df->decl_ptr->fptrargs;
-	}
+	args_exp = decl_funcargs(df);
 
 	UCC_ASSERT(args_exp, "no funcargs for decl %s", df->spel);
 

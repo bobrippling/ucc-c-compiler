@@ -327,7 +327,7 @@ expr *parse_expr_funcall()
 {
 	expr *e = parse_expr_inc_dec();
 
-	if(accept(token_open_paren)){
+	while(accept(token_open_paren)){
 		expr *sub = e;
 		e = expr_new();
 		e->type = expr_funcall;
