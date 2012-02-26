@@ -404,7 +404,7 @@ void print_struct(struct_st *st)
 {
 	decl **iter;
 
-	idt_printf("struct %s:\n", st->spel);
+	idt_printf("struct %s (size %d):\n", st->spel, struct_size(st));
 
 	indent++;
 	for(iter = st->members; iter && *iter; iter++){
@@ -442,8 +442,13 @@ void print_st_en_tdef(symtable *stab)
 	for(eit = stab->enums; eit && *eit; eit++)
 		print_enum(*eit);
 
-	for(tit = stab->typedefs; tit && *tit; tit++)
-		print_decl(*tit, PDECL_INDENT | PDECL_NEWLINE);
+	if(stab->typedefs){
+		idt_printf("typedefs:\n");
+		indent++;
+		for(tit = stab->typedefs; tit && *tit; tit++)
+			print_decl(*tit, PDECL_INDENT | PDECL_NEWLINE);
+		indent--;
+	}
 }
 
 void print_tree(tree *t)
