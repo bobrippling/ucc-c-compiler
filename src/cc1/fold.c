@@ -457,6 +457,9 @@ incomp_check:
 			break;
 	}
 
+	if(d->funcargs)
+		fold_funcargs(d->funcargs, stab, d->spel);
+
 #define SPEC(x) (d->type->spec & (x))
 
 	/* type spec checks */
@@ -851,25 +854,20 @@ void fold_funcargs(funcargs *fargs, symtable *stab, char *context)
 
 void fold_func(decl *func_decl, symtable *globs)
 {
+	curdecl_func_sp = func_decl->spel;
+
 	if(func_decl->func_code){
-		funcargs *fargs;
+		int nargs, i;
 
-		curdecl_func_sp = func_decl->spel;
-
-		fargs = func_decl->funcargs;
-		UCC_ASSERT(fargs, "function %s has no funcargs", func_decl->spel);
-
-		if(fargs->arglist){
-			int nargs, i;
-
-			for(nargs = 0; fargs->arglist[nargs]; nargs++);
-
-			/* add args backwards, since we push them onto the stack backwards */
-			for(i = nargs - 1; i >= 0; i--)
-				if(!fargs->arglist[i]->spel)
-					die_at(&fargs->where, "function \"%s\" has unnamed arguments", func_decl->spel);
+		if(func_decl->funcargs->arglist){
+			for(nargs = 0; func_decl->funcargs->arglist[nargs]; nargs++);
+			/* add args backwards, since we push them onto the stack backwards - still need to do this here? */
+			for(i = nargs - 1; i >= 0; i--){
+				if(!func_decl->funcargs->arglist[i]->spel)
+					die_at(&func_decl->funcargs->where, "function \"%s\" has unnamed arguments", func_decl->spel);
 				else
-					SYMTAB_ADD(func_decl->func_code->symtab, fargs->arglist[i], sym_arg);
+					SYMTAB_ADD(func_decl->func_code->symtab, func_decl->funcargs->arglist[i], sym_arg);
+			}
 		}
 
 		symtab_set_parent(func_decl->func_code->symtab, globs);
@@ -925,7 +923,7 @@ void fold(symtable *globs)
 		D(i)->sym = sym_new(D(i), sym_global);
 
 		fold_decl_global(D(i), globs);
-		if(D(i)->func_code)
+		if(D(i)->funcargs)
 			fold_func(D(i), globs);
 	}
 
