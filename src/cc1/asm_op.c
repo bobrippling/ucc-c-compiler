@@ -94,7 +94,7 @@ void asm_operate_struct(expr *e, symtable *tab)
 
 	/* pointer to the struct is on the stack, get from the offset */
 	asm_temp(1, "pop rax ; struct ptr");
-	asm_temp(1, "sub rax, %d ; offset of member %s",
+	asm_temp(1, "add rax, %d ; offset of member %s",
 			e->rhs->tree_type->struct_offset,
 			e->rhs->spel);
 	asm_temp(1, "mov rax, [rax] ; val from struct");

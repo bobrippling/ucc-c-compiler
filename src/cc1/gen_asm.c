@@ -47,10 +47,10 @@ void asm_ax_to_store(expr *store, symtable *stab)
 					walk_expr(store->lhs, stab);
 
 					asm_temp(1, "pop rbx ; struct addr");
-					asm_temp(1, "sub rbx, %d ; offset of member %s",
+					asm_temp(1, "add rbx, %d ; offset of member %s",
 							store->rhs->tree_type->struct_offset,
 							store->rhs->spel);
-					asm_temp(1, "pop rax ; saved val");
+					asm_temp(1, "mov rax, [rsp] ; saved val");
 					asm_temp(1, "mov [rbx], rax");
 					return;
 
