@@ -517,12 +517,12 @@ const char *type_to_str(const type *t)
 		return type_to_str(t->tdef->type);
 
 	if(t->spec)
-		bufp += snprintf(bufp, BUF_SIZE, "%s ", spec_to_str_full(t->spec));
+		bufp += snprintf(bufp, BUF_SIZE, "%s", spec_to_str_full(t->spec));
 
 	if(t->struc){
-		snprintf(bufp, BUF_SIZE, "%s", t->struc->spel);
+		snprintf(bufp, BUF_SIZE, "struct %s", t->struc->spel);
 	}else if(t->enu){
-		snprintf(bufp, BUF_SIZE, "%s", t->enu->spel);
+		snprintf(bufp, BUF_SIZE, "enum %s", t->enu->spel);
 	}else{
 		switch(t->primitive){
 #define APPEND(t) case type_ ## t: snprintf(bufp, BUF_SIZE, "%s", #t); break
@@ -536,7 +536,7 @@ const char *type_to_str(const type *t)
 			case type_enum:
 				ICE("enum without ->enu");
 			case type_struct:
-				snprintf(bufp, BUF_SIZE, "incomplete struct %s", t->spel);
+				snprintf(bufp, BUF_SIZE, "incomplete-struct %s", t->spel);
 				/*ICE("struct without ->struc");*/
 				break;
 #undef APPEND

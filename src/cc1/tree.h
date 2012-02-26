@@ -298,6 +298,7 @@ int   decl_has_array(  decl *);
 int   decl_is_callable(decl *);
 int   decl_is_const(   decl *);
 int   decl_ptr_depth(  decl *);
+#define decl_is_void(d) ((d)->type->primitive == type_void && !(d)->decl_ptr)
 
 funcargs *decl_funcargs(decl *d);
 
