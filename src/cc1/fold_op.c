@@ -120,6 +120,20 @@ noproblem:
 	return;
 }
 
+void fold_deref(expr *e)
+{
+	/* check for *&x */
+	if(e->lhs->type == expr_addr)
+		warn_at(&e->lhs->where, "possible optimisation for *& expression");
+
+	GET_TREE_TYPE(e->lhs->tree_type);
+
+	e->tree_type = decl_ptr_depth_dec(e->tree_type);
+
+	if(decl_ptr_depth(e->tree_type) == 0 && e->lhs->tree_type->type->primitive == type_void)
+		die_at(&e->where, "can't dereference void pointer");
+}
+
 void fold_op(expr *e, symtable *stab)
 {
 	if(e->op == op_struct_ptr || e->op == op_struct_dot){
@@ -133,27 +147,8 @@ void fold_op(expr *e, symtable *stab)
 
 	fold_op_typecheck(e, stab);
 
-	/* XXX: note, this assumes that e.g. "1 + 2" the lhs and rhs have the same type */
 	if(e->op == op_deref){
-		/* check for *&x */
-
-		if(e->lhs->type == expr_addr)
-			warn_at(&e->lhs->where, "possible optimisation for *& expression");
-
-
-		GET_TREE_TYPE(e->lhs->tree_type);
-
-		e->tree_type = decl_ptr_depth_dec(e->tree_type);
-
-		if(decl_ptr_depth(e->tree_type) == 0)
-			switch(e->lhs->tree_type->type->primitive){
-				case type_unknown:
-				case type_void:
-					die_at(&e->where, "can't dereference void pointer");
-				default:
-					/* e->tree_type already set to deref type */
-					break;
-			}
+		fold_deref(e);
 	}else{
 		/*
 		 * look either side - if either is a pointer, take that as the tree_type
@@ -163,8 +158,8 @@ void fold_op(expr *e, symtable *stab)
 		 * TODO: checks for pointer + pointer (invalid), etc etc
 		 */
 
-#define IS_PTR(x) decl_ptr_depth(x->tree_type)
 
+#define IS_PTR(x) decl_ptr_depth(x->tree_type)
 		if(e->rhs){
 			if(e->op == op_minus && IS_PTR(e->lhs) && IS_PTR(e->rhs))
 				e->tree_type->type->primitive = type_int;
@@ -201,8 +196,10 @@ norm_tt:
 		}
 
 		/* check types */
-		if(e->rhs)
-			fold_decl_equal(e->lhs->tree_type, e->rhs->tree_type, &e->where, WARN_COMPARE_MISMATCH,
+		if(e->rhs){
+			fold_decl_equal(e->lhs->tree_type, e->rhs->tree_type,
+					&e->where, WARN_COMPARE_MISMATCH,
 					"operation between mismatching types");
+		}
 	}
 }
