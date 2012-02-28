@@ -18,4 +18,6 @@ char *getenv(const char *);
 
 extern char *__progname;
 
+int atexit(void (*)(void));
+
 #endif
