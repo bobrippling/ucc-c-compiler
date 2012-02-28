@@ -17,6 +17,18 @@ FILE *fopen(const char *path, const char *mode);
 int   fclose(FILE *);
 /* TODO: freopen */
 
+/* TODO: func interface */
+
+typedef size_t fpos_t;
+FILE	*funopen(
+		const void *,
+		int    (*)(void *, char *, int),
+		int    (*)(void *, const char *, int),
+		fpos_t (*)(void *, fpos_t, int),
+		int    (*)(void *)
+	);
+
+
 /* writing */
 int fprintf(FILE *, const char *, ...);
 int  printf(const char *, ...);
