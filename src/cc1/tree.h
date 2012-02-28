@@ -298,6 +298,7 @@ int   decl_has_array(  decl *);
 int   decl_is_callable(decl *);
 int   decl_is_const(   decl *);
 int   decl_ptr_depth(  decl *);
+int   decl_is_func_ptr(decl *);
 #define decl_is_void(d) ((d)->type->primitive == type_void && !(d)->decl_ptr)
 
 funcargs *decl_funcargs(decl *d);
@@ -307,6 +308,7 @@ decl_ptr  *decl_first_func(decl *d);
 
 decl *decl_ptr_depth_inc(decl *d);
 decl *decl_ptr_depth_dec(decl *d);
+decl *decl_func_deref(   decl *d);
 
 expr *expr_ptr_multiply(expr *, decl *);
 expr *expr_assignment(expr *to, expr *from);

@@ -163,10 +163,12 @@ void fold_funcall(expr *e, symtable *stab)
 		/*
 		 * convert int (*)() to remove the deref
 		 */
-		/*if(e->expr->tree_type->decl_ptr->child && e->expr->tree_type->decl_ptr->func)*/
-		if(e->expr->type == expr_op && e->expr->op == op_deref){
+		if(decl_is_func_ptr(e->expr->tree_type)){
 			/* XXX: memleak */
 			e->expr = e->expr->lhs;
+			fprintf(stderr, "FUNCPTR\n");
+		}else{
+			fprintf(stderr, "decl %s\n", decl_to_str(e->expr->tree_type));
 		}
 
 		df = e->expr->tree_type;
@@ -180,12 +182,12 @@ void fold_funcall(expr *e, symtable *stab)
 
 	GET_TREE_TYPE(df);
 	/*
-	 * TODO:
-	 *
 	 * int (*x)();
 	 * (*x)();
 	 * evaluates to tree_type = int;
 	 */
+	decl_func_deref(e->tree_type);
+
 
 	if(e->funcargs){
 		expr **iter;
@@ -194,7 +196,7 @@ void fold_funcall(expr *e, symtable *stab)
 	}
 
 	/* func count comparison, only if the func has arg-decls, or the func is f(void) */
-	args_exp = decl_funcargs(df);
+	args_exp = decl_funcargs(e->tree_type);
 
 	UCC_ASSERT(args_exp, "no funcargs for decl %s", df->spel);
 

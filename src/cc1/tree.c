@@ -495,6 +495,11 @@ int decl_is_const(decl *d)
 	return 0;/*d->type->spec & spec_const; TODO */
 }
 
+int decl_is_func_ptr(decl *d)
+{
+	return !!decl_funcargs(d);
+}
+
 decl *decl_ptr_depth_inc(decl *d)
 {
 	*decl_leaf(d) = decl_ptr_new();
@@ -504,6 +509,11 @@ decl *decl_ptr_depth_inc(decl *d)
 decl *decl_ptr_depth_dec(decl *d)
 {
 	d->decl_ptr = d->decl_ptr->child;
+	return d;
+}
+
+decl *decl_func_deref(decl *d)
+{
 	return d;
 }
 
