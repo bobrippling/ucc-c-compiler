@@ -181,7 +181,7 @@ char *tokens_join(token **tokens)
 	*val = '\0';
 	for(i = 0; tokens[i]; i++){
 		strcat(val, token_str(tokens[i]));
-		if(tokens[i+1])
+		if(tokens[i+1] && tokens[i]->had_whitespace)
 			strcat(val, " ");
 	}
 
