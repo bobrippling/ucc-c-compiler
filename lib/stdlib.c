@@ -4,6 +4,7 @@
 #include "signal.h"
 #include "string.h"
 #include "assert.h"
+#include "errno.h"
 
 #include "sys/types.h"
 #include "sys/mman.h"
@@ -16,11 +17,6 @@
 #ifdef __DARWIN__
 # define MAP_ANONYMOUS MAP_ANON
 #endif
-
-void exit(int code)
-{
-	__syscall(SYS_exit, code);
-}
 
 int atoi(char *s)
 {
@@ -128,4 +124,49 @@ char *getenv(const char *key)
 	}
 
 	return NULL;
+}
+
+#define ATEXIT_SINGLE
+
+#ifdef ATEXIT_SINGLE
+static void (*exit_func)(void);
+
+#else
+#define N_EXITS 32
+#warning broken atexit()
+
+static void (*exit_funcs[N_EXITS])(void);
+static int    exit_fidx;
+#endif
+
+int atexit(void (*f)(void))
+{
+#ifdef ATEXIT_SINGLE
+	if(exit_func)
+		return -1;
+	exit_func = f;
+	return 0;
+#else
+	if(exit_fidx == N_EXITS){
+		errno = ENOMEM;
+		return -1;
+	}
+
+	exit_funcs[exit_fidx++] = f;
+	return 0;
+#endif
+}
+
+void exit(int code)
+{
+	/* call exit funcs */
+#ifdef ATEXIT_SINGLE
+	if(exit_func)
+		exit_func();
+#else
+	while(exit_fidx > 0)
+		exit_funcs[--exit_fidx]();
+#endif
+
+	__syscall(SYS_exit, code);
 }
