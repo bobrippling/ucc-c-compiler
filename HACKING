@@ -141,3 +141,97 @@ a depth-first walk is done on the tree, generating the following (pseudo) assemb
 
 Of course, the compiler does constant folding, so expressions like plus(5, 2) are evaluated
 at compile time.
+
+
+
+Data Structures
+---------------------------------------
+
+The expression data structre is pretty easy, an expression has a left and a right hand side, etc etc
+
+The complicated bit is the type/decl structure.
+
+I shall explain this when I get around to it.
+
+e.g.
+	const int ***x;
+is represented as
+	decl { .spel = "x", .type = { .primitive = int, .spec = const } }
+		.decl_ptr
+			.decl_ptr
+				.decl_ptr
+
+e.g.
+	int y;
+is represented as
+	decl { .spel = "y", .type = { .primitive = int } }
+
+e.g.
+	int *const z;
+is represented as
+	decl { .spel = "y", .type = { .primitive = int } }
+		.decl_ptr { .is_const = 1 }
+
+e.g.
+	int (*f)();
+is represented as
+	decl { .spel = "y", .type = { .primitive = int } }
+		.decl_ptr { .funcargs = { } }
+
+e.g.
+	int *(*g)(int, char);
+is represented as
+	decl { .spel = "y", .type = { .primitive = int } }
+		.decl_ptr
+			.decl_ptr { .funcargs = { int, char } }
+
+
+dereferencing a decl removes its lowest decl_ptr/leaf node.
+in the case that we have:
+
+int (*x)();
+*x;
+
+*x's decl looks like this:
+
+decl { .spel = "x", .type = { .primitive = int }, .funcargs = { } }
+
+specifically, the .funcargs are moved to the decl.
+(this has yet to be coded in the code)
+
+
+int ***(*func_returning_lots)();
+	decl { .spel = "func_returning_lots", .type = { .primitive = int } }
+		.decl_ptr
+			.decl_ptr
+				.decl_ptr
+					.decl_ptr { .funcargs = {} }
+dereferenced, becomes:
+	decl { .spel = "func_returning_lots", .type = { .primitive = int }, .funcargs = {} }
+		.decl_ptr
+			.decl_ptr
+				.decl_ptr
+
+aka
+int ***func_returning_lots();
+
+
+
+finally:
+
+int *(*(*func_returning_fptr)(int))(char);
+	decl { .spel = "func_returning_fptr", .type = { .primitive = int } }
+		.decl_ptr
+			.decl_ptr { .funcargs = { int } }
+				.decl_ptr { .funcargs = { char } }
+
+dereferenced, becomes:
+	decl { .spel = "func_returning_fptr", .type = { .primitive = int }, .funcargs = { int } }
+		.decl_ptr
+			.decl_ptr
+				.decl_ptr { .funcargs = { char } }
+
+aka
+int *(*func_returning_fptr(int))(char)
+
+not sure this is right.. shall check in the morning
