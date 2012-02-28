@@ -142,8 +142,10 @@ static int    exit_fidx;
 int atexit(void (*f)(void))
 {
 #ifdef ATEXIT_SINGLE
-	if(exit_func)
+	if(exit_func){
+		errno = ENOMEM;
 		return -1;
+	}
 	exit_func = f;
 	return 0;
 #else
