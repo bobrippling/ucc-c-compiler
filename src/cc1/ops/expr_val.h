@@ -1,0 +1,3 @@
+func_fold fold_expr_val;
+func_gen gen_expr_val;
+func_str str_expr_val;

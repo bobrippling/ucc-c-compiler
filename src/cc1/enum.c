@@ -6,7 +6,7 @@
 #include "../util/util.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
-#include "tree.h"
+#include "data_structs.h"
 #include "enum.h"
 #include "sym.h"
 #include "struct_enum.h"

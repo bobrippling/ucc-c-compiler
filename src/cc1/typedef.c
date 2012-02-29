@@ -4,7 +4,7 @@
 #include <string.h>
 
 #include "../util/util.h"
-#include "tree.h"
+#include "data_structs.h"
 #include "../util/alloc.h"
 #include "typedef.h"
 #include "sym.h"
