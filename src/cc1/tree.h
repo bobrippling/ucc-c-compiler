@@ -1,28 +1,6 @@
 #ifndef TREE_H
 #define TREE_H
 
-typedef struct sym         sym;
-typedef struct symtable    symtable;
-
-typedef struct tdef        tdef;
-typedef struct tdeftable   tdeftable;
-typedef struct struct_st   struct_st;
-typedef struct enum_st     enum_st;
-
-typedef struct expr        expr;
-typedef struct tree        tree;
-typedef struct decl        decl;
-typedef struct decl_ptr    decl_ptr;
-typedef struct array_decl  array_decl;
-typedef struct funcargs    funcargs;
-typedef struct tree_flow   tree_flow;
-typedef struct type        type;
-typedef struct assignment  assignment;
-typedef struct label       label;
-
-typedef struct intval intval;
-
-
 enum type_primitive
 {
 	type_int,
@@ -120,84 +98,6 @@ struct array_decl
 	} type;
 };
 
-struct intval
-{
-	long val;
-	enum
-	{
-		VAL_UNSIGNED = 1 << 0,
-		VAL_LONG     = 1 << 1
-	} suffix;
-};
-
-struct expr
-{
-	where where;
-
-	enum expr_type
-	{
-		expr_op,
-		expr_val,
-		expr_addr, /* &x, or string/array pointer */
-		expr_sizeof,
-		expr_identifier,
-		expr_assign,
-		expr_funcall,
-		expr_cast,
-		expr_if,
-		expr_comma
-	} type;
-
-	enum op_type
-	{
-		op_multiply,
-		op_divide,
-		op_plus,
-		op_minus,
-		op_modulus,
-		op_deref,
-
-		op_eq, op_ne,
-		op_le, op_lt,
-		op_ge, op_gt,
-
-		op_xor,
-		op_or,   op_and,
-		op_orsc, op_andsc,
-		op_not,  op_bnot,
-
-		op_shiftl, op_shiftr,
-
-		op_struct_ptr, op_struct_dot,
-
-		op_unknown
-	} op;
-
-	int assign_is_post; /* do we return the altered value or the old one? */
-#define expr_is_default assign_is_post
-#define expr_is_sizeof  assign_is_post
-
-	expr *lhs, *rhs;
-
-	union
-	{
-		intval i;
-		char *s;
-	} val;
-
-	int ptr_safe; /* does val point to a string we know about? */
-
-	char *spel;
-	expr *expr; /* x = 5; expr is the 5 */
-	expr **funcargs;
-
-	sym *sym;
-
-	/* type propagation */
-	decl *tree_type;
-	array_decl *array_store;
-};
-
 struct tree
 {
 	where where;
@@ -254,8 +154,8 @@ struct funcargs
 	int variadic;
 };
 
+
 tree        *tree_new(symtable *stab);
-expr        *expr_new(void);
 type        *type_new(void);
 decl        *decl_new(void);
 decl_ptr    *decl_ptr_new(void);
@@ -268,14 +168,10 @@ void where_new(struct where *w);
 type      *type_copy(type *);
 decl      *decl_copy(decl *);
 decl_ptr  *decl_ptr_copy(decl_ptr *);
-/*expr      *expr_copy(expr *);*/
-expr      *expr_new_val(int);
-expr      *expr_new_intval(intval *);
 
 tree_flow *tree_flow_new(void);
 
 const char *op_to_str(  const enum op_type   o);
-const char *expr_to_str(const enum expr_type t);
 const char *stat_to_str(const enum stat_type t);
 const char *decl_to_str(decl          *d);
 const char *type_to_str(const type          *t);
@@ -310,8 +206,6 @@ decl *decl_ptr_depth_inc(decl *d);
 decl *decl_ptr_depth_dec(decl *d);
 decl *decl_func_deref(   decl *d);
 
-expr *expr_ptr_multiply(expr *, decl *);
-expr *expr_assignment(expr *to, expr *from);
 void function_empty_args(funcargs *);
 
 #define SPEC_STATIC_BUFSIZ 64
@@ -321,7 +215,6 @@ void function_empty_args(funcargs *);
 #define type_free(x) free(x)
 #define decl_free_notype(x) do{free(x);}while(0)
 #define decl_free(x) do{type_free((x)->type); decl_free_notype(x);}while(0)
-#define expr_free(x) do{decl_free((x)->tree_type); free(x);}while(0)
 void funcargs_free(funcargs *args, int free_decls);
 
 #endif

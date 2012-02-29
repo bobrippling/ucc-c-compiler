@@ -2,7 +2,7 @@
 #include <stdarg.h>
 
 #include "../util/util.h"
-#include "tree.h"
+#include "data_structs.h"
 #include "cc1.h"
 #include "sym.h"
 #include "fold_sym.h"

@@ -1,0 +1,3 @@
+func_fold fold_expr_sizeof;
+func_gen gen_expr_sizeof;
+func_str str_expr_sizeof;

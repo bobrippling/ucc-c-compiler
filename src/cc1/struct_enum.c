@@ -4,7 +4,7 @@
 
 #include "../util/alloc.h"
 #include "../util/util.h"
-#include "tree.h"
+#include "data_structs.h"
 #include "struct.h"
 #include "enum.h"
 #include "struct_enum.h"

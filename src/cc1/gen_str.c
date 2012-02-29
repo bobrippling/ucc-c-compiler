@@ -3,7 +3,7 @@
 #include <unistd.h>
 
 #include "../util/util.h"
-#include "tree.h"
+#include "data_structs.h"
 #include "macros.h"
 #include "sym.h"
 #include "cc1.h"
