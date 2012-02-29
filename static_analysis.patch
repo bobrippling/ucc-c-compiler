@@ -1,0 +1,48 @@
+diff --git a/src/cc1/fold.c b/src/cc1/fold.c
+index b7f2392..09d3867 100644
+--- a/src/cc1/fold.c
++++ b/src/cc1/fold.c
+@@ -248,11 +248,14 @@ void fold_assignment(expr *e, symtable *stab)
+ 	}
+ 
+ 
+-	if(e->lhs->sym)
++	if(e->lhs->sym){
+ 		/* read the tree_type from what we're assigning to, not the expr */
+ 		GET_TREE_TYPE(e->lhs->sym->decl);
+-	else
++
++		e->lhs->sym->assigned_to = 1; /* static analysis - TODO move to new file */
++	}else{
+ 		GET_TREE_TYPE(e->lhs->tree_type);
++	}
+ 
+ 
+ 	/* type check */
+@@ -395,6 +398,12 @@ void fold_expr(expr *e, symtable *stab)
+ 					fold_expr(e, stab);
+ 					goto fin;
+ 				}
++			}else{
++				/* static analysis */
++				if(!e->sym->assigned_to){
++					e->sym->assigned_to = 1; /* silence future warnings */
++					warn_at(&e->where, "\"%s\" read before written to", e->sym->decl->spel);
++				}
+ 			}
+ 
+ 			GET_TREE_TYPE(e->sym->decl);
+diff --git a/src/cc1/sym.h b/src/cc1/sym.h
+index f79739e..a6aa5e7 100644
+--- a/src/cc1/sym.h
++++ b/src/cc1/sym.h
+@@ -12,6 +12,9 @@ struct sym
+ 	} type;
+ 
+ 	decl *decl;
++
++	/* static analysis */
++	int assigned_to;
+ };
+ 
+ struct symtable
