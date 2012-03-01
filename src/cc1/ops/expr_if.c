@@ -1,16 +1,23 @@
-#include "../data_structs.h"
-#include "expr_sizeof.h"
+#include <stdlib.h>
+#include "ops.h"
 
-void fold_const_expr_if(expr *e)
+const char *expr_str_if()
 {
-	if(!const_fold(e->expr) && (e->lhs ? !const_fold(e->lhs) : 1) && !const_fold(e->rhs)){
-		e->type = expr_val;
-		e->val.i.val = e->expr->val.i.val ? (e->lhs ? e->lhs->val.i.val : e->expr->val.i.val) : e->rhs->val.i.val;
-		return 0;
-	}
+	return "if";
 }
 
-void fold_expr_if(expr *e, symtable *stab)
+int fold_const_expr_if(expr *e)
+{
+	if(!const_fold(e->expr) && (e->lhs ? !const_fold(e->lhs) : 1) && !const_fold(e->rhs)){
+		expr_mutate_wrapper(e, val);
+
+		e->val.iv.val = e->expr->val.iv.val ? (e->lhs ? e->lhs->val.iv.val : e->expr->val.iv.val) : e->rhs->val.iv.val;
+		return 0;
+	}
+	return 1;
+}
+
+void expr_fold_if(expr *e, symtable *stab)
 {
 	fold_expr(e->expr, stab);
 	if(const_expr_is_const(e->expr))
@@ -18,11 +25,11 @@ void fold_expr_if(expr *e, symtable *stab)
 	if(e->lhs)
 		fold_expr(e->lhs, stab);
 	fold_expr(e->rhs, stab);
-	GET_TREE_TYPE(e->rhs->tree_type); /* TODO: check they're the same */
+	e->tree_type = decl_copy(e->rhs->tree_type); /* TODO: check they're the same */
 }
 
 
-void gen_expr_if(expr *e, symtable *stab)
+void expr_gen_if(expr *e, symtable *stab)
 {
 	char *lblfin, *lblelse;
 	lblfin  = asm_label_code("ifexpa");
@@ -40,4 +47,33 @@ void gen_expr_if(expr *e, symtable *stab)
 
 	free(lblfin);
 	free(lblelse);
+}
+
+void expr_gen_str_if(expr *e)
+{
+	idt_printf("if expression:\n");
+	gen_str_indent++;
+#define SUB_PRINT(nam) \
+	do{\
+		idt_printf(#nam  ":\n"); \
+		gen_str_indent++; \
+		print_expr(e->nam); \
+		gen_str_indent--; \
+	}while(0)
+
+	SUB_PRINT(expr);
+	if(e->lhs)
+		SUB_PRINT(lhs);
+	else
+		idt_printf("?: syntactic sugar\n");
+
+	SUB_PRINT(rhs);
+#undef SUB_PRINT
+}
+
+expr *expr_new_if(expr *test)
+{
+	expr *e = expr_new_wrapper(if);
+	e->expr = test;
+	return e;
 }

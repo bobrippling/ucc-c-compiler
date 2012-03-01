@@ -11,14 +11,12 @@
 #include "asm.h"
 #include "../util/platform.h"
 #include "sym.h"
-#include "asm_op.h"
 #include "gen_asm.h"
 #include "../util/util.h"
 #include "const.h"
 #include "struct.h"
 
 char *curfunc_lblfin; /* extern */
-
 
 void gen_expr(expr *e, symtable *stab)
 {
@@ -41,11 +39,13 @@ void walk_tree(tree *t)
 			for(titer = t->codes; titer && *titer; titer++){
 				tree *cse = *titer;
 
+				UCC_ASSERT(cse->expr->expr_is_default || !(cse->expr->val.iv.suffix & VAL_UNSIGNED), "don't handle unsigned yet");
+
 				if(cse->type == stat_case_range){
 					char *skip = asm_label_code("range_skip");
-					asm_temp(1, "cmp rax, %d", cse->expr->val.i);
+					asm_temp(1, "cmp rax, %d", cse->expr->val.iv.val);
 					asm_temp(1, "j%s %s", is_unsigned ? "b" : "l", skip);
-					asm_temp(1, "cmp rax, %d", cse->expr2->val.i);
+					asm_temp(1, "cmp rax, %d", cse->expr2->val.iv.val);
 					asm_temp(1, "j%se %s", is_unsigned ? "b" : "l", cse->expr->spel);
 					asm_label(skip);
 					free(skip);
@@ -53,7 +53,7 @@ void walk_tree(tree *t)
 					tdefault = cse;
 				}else{
 					/* FIXME: address-of, etc? */
-					asm_temp(1, "cmp rax, %d", cse->expr->val.i);
+					asm_temp(1, "cmp rax, %d", cse->expr->val.iv.val);
 					asm_temp(1, "je %s", cse->expr->spel);
 				}
 			}
@@ -186,11 +186,14 @@ void walk_tree(tree *t)
 
 		case stat_expr:
 			gen_expr(t->expr, t->symtab);
-			if((fopt_mode & FOPT_ENABLE_ASM) == 0 ||
-					!t->expr ||
-					expr_kind(t->expr, funcall) ||
-					strcmp(t->expr->expr->spel, ASM_INLINE_FNAME))
+			if((fopt_mode & FOPT_ENABLE_ASM) == 0
+			|| !t->expr
+			|| expr_kind(t->expr, funcall)
+			|| !t->expr->spel
+			|| strcmp(t->expr->spel, ASM_INLINE_FNAME))
+			{
 				asm_temp(1, "pop rax ; unused expr");
+			}
 			break;
 
 		case stat_code:

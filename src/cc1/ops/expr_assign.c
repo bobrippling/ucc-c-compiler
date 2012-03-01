@@ -1,12 +1,17 @@
-#include "../data_structs.h"
-#include "expr_sizeof.h"
+#include "ops.h"
+
+const char *expr_str_assign()
+{
+	return "assign";
+}
 
 int fold_const_expr_assign(expr *e)
 {
+	(void)e;
 	return 1; /* could check if the assignment subtree is const */
 }
 
-static int fold_is_lvalue(expr *e)
+static int is_lvalue(expr *e)
 {
 	/*
 	 * valid lvaluess:
@@ -20,10 +25,10 @@ static int fold_is_lvalue(expr *e)
 	 * also can't be const, checked in fold_assign (since we allow const inits)
 	 */
 
-	if(e->type == expr_identifier)
+	if(expr_kind(e, identifier))
 		return !e->tree_type->func_code;
 
-	if(e->type == expr_op)
+	if(expr_kind(e, op))
 		switch(e->op){
 			case op_deref:
 			case op_struct_ptr:
@@ -36,17 +41,17 @@ static int fold_is_lvalue(expr *e)
 	return 0;
 }
 
-void fold_expr_assignment(expr *e, symtable *stab)
+void expr_fold_assign(expr *e, symtable *stab)
 {
 	fold_expr(e->lhs, stab);
 	fold_expr(e->rhs, stab);
 
 	/* wait until we get the tree types, etc */
-	if(!fold_is_lvalue(e->lhs))
+	if(!is_lvalue(e->lhs))
 		die_at(&e->lhs->where, "not an lvalue (%s%s%s)",
-				expr_to_str(e->lhs->type),
-				e->lhs->type == expr_op ? " - " : "",
-				e->lhs->type == expr_op ? op_to_str(e->lhs->op) : ""
+				e->lhs->f_str(),
+				expr_kind(e->lhs, op) ? " - " : "",
+				expr_kind(e->lhs, op) ? op_to_str(e->lhs->op) : ""
 			);
 
 	if(decl_is_const(e->lhs->tree_type)){
@@ -58,9 +63,9 @@ void fold_expr_assignment(expr *e, symtable *stab)
 
 	if(e->lhs->sym)
 		/* read the tree_type from what we're assigning to, not the expr */
-		GET_TREE_TYPE(e->lhs->sym->decl);
+		e->tree_type = decl_copy(e->lhs->sym->decl);
 	else
-		GET_TREE_TYPE(e->lhs->tree_type);
+		e->tree_type = decl_copy(e->lhs->tree_type);
 
 
 	/* type check */
@@ -72,72 +77,46 @@ void fold_expr_assignment(expr *e, symtable *stab)
 				e->lhs->spel ? ")" : "");
 }
 
-void gen_expr_assign(expr *e, symtable *stab)
+void expr_gen_assign(expr *e, symtable *stab)
 {
 	if(e->assign_is_post){
 		/* if this is the case, ->rhs->lhs is ->lhs, and ->rhs is an addition/subtraction of 1 * something */
-		walk_expr(e->lhs, stab);
+		gen_expr(e->lhs, stab);
 		asm_temp(1, "; save previous for post assignment");
 	}
 
-	walk_expr(e->rhs, stab);
+	gen_expr(e->rhs, stab);
 #ifdef USE_MOVE_RAX_RSP
 	asm_temp(1, "mov rax, [rsp]");
 #endif
 
+	UCC_ASSERT(e->lhs->f_store, "invalid store expression %s (no f_store())", e->lhs->f_str());
+
 	/* store back to the sym's home */
-	switch(store->type){
-		case expr_identifier:
-			asm_sym(ASM_SET, store->sym, "rax");
-			return;
-
-		case expr_op:
-			switch(store->op){
-				case op_deref:
-					/* a dereference */
-					asm_temp(1, "push rax ; save val");
-
-					walk_expr(store->lhs, stab); /* skip over the *() bit */
-					/* pointer on stack */
-
-					/* move `pop` into `pop` */
-					asm_temp(1, "pop rax ; ptr");
-					asm_temp(1, "pop rbx ; val");
-					asm_temp(1, "mov [rax], rbx");
-					return;
-
-				case op_struct_ptr:
-					walk_expr(store->lhs, stab);
-
-					asm_temp(1, "pop rbx ; struct addr");
-					asm_temp(1, "add rbx, %d ; offset of member %s",
-							store->rhs->tree_type->struct_offset,
-							store->rhs->spel);
-					asm_temp(1, "mov rax, [rsp] ; saved val");
-					asm_temp(1, "mov [rbx], rax");
-					return;
-
-				case op_struct_dot:
-					ICE("TODO: a.b");
-					break;
-
-				default:
-					break;
-			}
-
-
-		default:
-			ICE("asm_ax_to_store: invalid store expression %s%s%s%s",
-					expr_to_str(store->type),
-					store->type == expr_op ? " (" : "",
-					store->type == expr_op ? op_to_str(store->op) : "",
-					store->type == expr_op ?  ")" : ""
-				);
-	}
-
+	e->lhs->f_store(e->lhs, stab);
 
 	if(e->assign_is_post){
 		asm_temp(1, "pop rax ; the value from ++/--");
 		asm_temp(1, "mov rax, [rsp] ; the value we saved");
 	}
+}
+
+void expr_gen_str_assign(expr *e)
+{
+	idt_printf("%sassignment, expr:\n", e->assign_is_post ? "post-inc/dec " : "");
+	idt_printf("assign to:\n");
+	gen_str_indent++;
+	print_expr(e->lhs);
+	gen_str_indent--;
+	idt_printf("assign from:\n");
+	gen_str_indent++;
+	print_expr(e->rhs);
+	gen_str_indent--;
+}
+
+expr *expr_new_assign()
+{
+	expr *e = expr_new_wrapper(assign);
+	e->f_const_fold = fold_const_expr_assign;
+	return e;
 }
