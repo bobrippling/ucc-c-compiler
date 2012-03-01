@@ -1,16 +1,26 @@
-#include "expr_funcall.h"
+#include <string.h>
+#include <ctype.h>
+#include "ops.h"
+#include "../../util/dynarray.h"
+#include "../../util/platform.h"
 
-int fold_const_expr_funcall(expr *e)
+const char *expr_str_funcall()
 {
+	return "funcall";
+}
+
+int const_fold_expr_funcall(expr *e)
+{
+	(void)e;
 	return 1; /* could extend to have int x() const; */
 }
 
-void fold_expr_funcall(expr *e, symtable *stab)
+void expr_fold_funcall(expr *e, symtable *stab)
 {
 	decl *df;
 	funcargs *args_exp;
 
-	if(e->expr->type == expr_identifier && e->expr->spel){
+	if(expr_kind(e->expr, identifier) && e->expr->spel){
 		char *const sp = e->expr->spel;
 
 		e->sym = symtab_search(stab, sp);
@@ -54,12 +64,12 @@ void fold_expr_funcall(expr *e, symtable *stab)
 
 		if(!decl_is_callable(df)){
 			die_at(&e->expr->where, "expression %s (%s) not callable",
-					expr_to_str(e->expr->type),
+					e->expr->f_str(),
 					decl_to_str(df));
 		}
 	}
 
-	GET_TREE_TYPE(df);
+	e->tree_type = decl_copy(df);
 	/*
 	 * int (*x)();
 	 * (*x)();
@@ -107,7 +117,7 @@ void fold_expr_funcall(expr *e, symtable *stab)
 	}
 }
 
-void gen_expr_funcall(expr *e, symtable *stab)
+void expr_gen_funcall(expr *e, symtable *stab)
 {
 	const char *const fname = e->expr->spel;
 	expr **iter;
@@ -118,7 +128,7 @@ void gen_expr_funcall(expr *e, symtable *stab)
 		expr *arg1;
 		int i;
 
-		if(!e->funcargs || e->funcargs[1] || e->funcargs[0]->type != expr_addr)
+		if(!e->funcargs || e->funcargs[1] || !expr_kind(e->funcargs[0], addr))
 			die_at(&e->where, "invalid __asm__ arguments");
 
 		arg1 = e->funcargs[0];
@@ -143,7 +153,7 @@ invalid:
 			/* need to push on in reverse order */
 			for(iter = e->funcargs; *iter; iter++);
 			for(iter--; iter >= e->funcargs; iter--){
-				walk_expr(*iter, stab);
+				gen_expr(*iter, stab);
 				nargs++;
 			}
 		}
@@ -152,7 +162,7 @@ invalid:
 			/* simple */
 			asm_temp(1, "call %s", e->sym->decl->spel);
 		}else{
-			walk_expr(e->expr, stab);
+			gen_expr(e->expr, stab);
 			asm_temp(1, "pop rax  ; function address");
 			asm_temp(1, "call rax ; duh");
 		}
@@ -167,7 +177,28 @@ invalid:
 	}
 }
 
-const char *str_expr_funcall()
+void expr_gen_str_funcall(expr *e)
 {
-	return "funcall";
+	expr **iter;
+
+	idt_printf("funcall, calling:\n");
+
+	gen_str_indent++;
+	print_expr(e->expr);
+	gen_str_indent--;
+
+	if(e->funcargs){
+		int i;
+		idt_printf("args:\n");
+		gen_str_indent++;
+		for(i = 1, iter = e->funcargs; *iter; iter++, i++){
+			idt_printf("arg %d:\n", i);
+			gen_str_indent++;
+			print_expr(*iter);
+			gen_str_indent--;
+		}
+		gen_str_indent--;
+	}else{
+		idt_printf("no args\n");
+	}
 }

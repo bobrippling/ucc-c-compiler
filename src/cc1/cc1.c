@@ -12,12 +12,12 @@
 #include "tokenise.h"
 #include "../util/util.h"
 #include "parse.h"
+#include "cc1.h"
 #include "fold.h"
 #include "gen_asm.h"
 #include "gen_str.h"
 #include "sym.h"
 #include "fold_sym.h"
-#include "cc1.h"
 
 struct
 {

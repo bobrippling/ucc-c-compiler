@@ -1,7 +1,13 @@
-#include "../data_structs.h"
-#include "expr_sizeof.h"
+#include <string.h>
+#include "ops.h"
+#include "../enum.h"
 
-void fold_const_expr_identifier(expr *e)
+const char *expr_str_identifier()
+{
+	return "identifier";
+}
+
+int fold_const_expr_identifier(expr *e)
 {
 	if(e->sym && e->sym->decl->type->spec & spec_const){
 		/*
@@ -13,12 +19,13 @@ void fold_const_expr_identifier(expr *e)
 	return 1;
 }
 
-void fold_expr_identifier(expr *e, symtable *stab)
+void expr_fold_identifier(expr *e, symtable *stab)
 {
 	if(!e->sym){
 		if(!strcmp(e->spel, "__func__")){
 			/* mutate into a string literal */
-			e->type = expr_addr;
+			expr_mutate_wrapper(e, addr);
+
 			e->array_store = array_decl_new();
 
 			UCC_ASSERT(curdecl_func_sp, "no spel for current func");
@@ -28,27 +35,40 @@ void fold_expr_identifier(expr *e, symtable *stab)
 			e->array_store->type = array_str;
 
 			fold_expr(e, stab);
-			break;
 
 		}else{
 			/* check for an enum */
 			enum_member *m = enum_find_member(stab, e->spel);
 
 			if(!m)
-				DIE_UNDECL_SPEL(e->spel);
+				die_at(&e->where, "undeclared identifier \"%s\"", e->spel);
 
-			e->type = expr_val;
+			expr_mutate_wrapper(e, val);
+
 			e->val = m->val->val;
 			fold_expr(e, stab);
-			goto fin;
-		}
-	}
 
-	GET_TREE_TYPE(e->sym->decl);
+			return;
+		}
+	}else{
+		e->tree_type = decl_copy(e->sym->decl);
+	}
 }
 
-void gen_expr_identifier(expr *e, symtable *stab)
+void expr_gen_str_identifier(expr *e)
 {
+	idt_printf("identifier: \"%s\" (sym %p)\n", e->spel, e->sym);
+}
+
+void expr_gen_identifier_1(expr *e, FILE *f)
+{
+	asm_out_intval(f, &e->val.iv);
+}
+
+void expr_gen_identifier(expr *e, symtable *stab)
+{
+	(void)stab;
+
 	if(e->sym){
 		/*
 			* if it's an array, lea, else, load
@@ -61,4 +81,22 @@ void gen_expr_identifier(expr *e, symtable *stab)
 	}
 
 	asm_temp(1, "push rax");
+}
+
+void expr_gen_identifier_store(expr *e, symtable *stab)
+{
+	(void)stab;
+	asm_sym(ASM_SET, e->sym, "rax");
+}
+
+expr *expr_new_identifier(char *sp)
+{
+	expr *e = expr_new_wrapper(identifier);
+	e->spel = sp;
+
+	e->f_store      = expr_gen_identifier_store;
+	e->f_gen_1      = expr_gen_identifier_1;
+	e->f_const_fold = fold_const_expr_identifier;
+
+	return e;
 }

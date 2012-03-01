@@ -82,19 +82,21 @@ void die(const char *fmt, ...)
 #define ICE_STR(s)  \
 	va_list l; \
 	struct where *w = default_where(NULL); \
-	fprintf(stderr, s " in " WHERE_FMT " @ %s:%s:%d: ", WHERE_ARGS, f, fn, line); \
+	fprintf(stderr, s " in " WHERE_FMT " @ %s:%d: ", WHERE_ARGS, f, line); \
 	va_start(l, fmt); \
 	vfprintf(stderr, fmt, l); \
 	fputc('\n', stderr)
 
 void ice(const char *f, int line, const char *fn, const char *fmt, ...)
 {
+	(void)fn;
 	ICE_STR("ICE");
 	abort();
 }
 
 void icw(const char *f, int line, const char *fn, const char *fmt, ...)
 {
+	(void)fn;
 	ICE_STR("ICW");
 }
 

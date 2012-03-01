@@ -3,19 +3,26 @@
 
 typedef struct expr expr;
 
-typedef void         func_fold(expr *, symtable *);
-typedef void         func_gen(expr *, symtable *);
+typedef void         func_fold(     expr *, symtable *);
+typedef void         func_gen(      expr *, symtable *);
+typedef void         func_gen_store(expr *, symtable *);
+typedef void         func_gen_1(    expr *, FILE *);
+typedef int          func_const(    expr *);
 typedef const char  *func_str(void);
-typedef int          func_const(expr *);
 
 struct expr
 {
 	where where;
 
-	func_fold   *f_fold;
-	func_gen    *f_gen;
-	func_str    *f_str;
-	func_const  *f_const_fold; /* optional */
+	func_fold      *f_fold;
+	func_const     *f_const_fold; /* optional */
+
+	func_gen       *f_gen;
+	func_gen_1     *f_gen_1; /* optional */
+	func_gen_store *f_store; /* optional */
+
+	func_str       *f_str;
+
 
 	enum op_type
 	{
@@ -50,7 +57,7 @@ struct expr
 
 	union
 	{
-		intval i;
+		intval iv;
 		char *s;
 	} val;
 
@@ -68,7 +75,8 @@ struct expr
 };
 
 
-expr *expr_new(func_fold *f_fold, func_gen *f_gen, func_str *f_str);
+expr *expr_new(   func_fold *f_fold, func_gen *f_gen, func_str *f_str);
+void  expr_mutate(expr *e, func_fold *f_fold, func_gen *f_gen, func_str *f_str);
 
 expr *expr_new_intval(intval *);
 
@@ -88,20 +96,21 @@ expr *expr_assignment(expr *to, expr *from);
 #include "ops/expr_sizeof.h"
 #include "ops/expr_val.h"
 
-#define expr_new_wrapper(type)  expr_new(fold_expr_ ## type, gen_expr_ ## type, str_expr_ ## type)
+#define expr_new_wrapper(type)       expr_new(expr_fold_ ## type, expr_gen_ ## type, expr_str_ ## type)
+#define expr_mutate_wrapper(e, type) expr_mutate(e, expr_fold_ ## type, expr_gen_ ## type, expr_str_ ## type)
 
-#define expr_kind(exp, kind) ((exp)->f_fold == fold_expr_ ## kind)
+#define expr_kind(exp, kind) ((exp)->f_fold == expr_fold_ ## kind)
 
-#define expr_new_addr()         expr_new_wrapper(addr)
 #define expr_new_sizeof()       expr_new_wrapper(sizeof)
-#define expr_new_assign()       expr_new_wrapper(assign)
 #define expr_new_funcall()      expr_new_wrapper(funcall)
-#define expr_new_comma()        expr_new_wrapper(comma)
 
 expr *expr_new_identifier(char *sp);
 expr *expr_new_cast(decl *cast_to);
 expr *expr_new_val(int val);
 expr *expr_new_op(enum op_type o);
 expr *expr_new_if(expr *test);
+expr *expr_new_addr(void);
+expr *expr_new_assign(void);
+expr *expr_new_comma(void);
 
 #endif

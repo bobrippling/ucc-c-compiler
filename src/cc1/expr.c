@@ -7,22 +7,28 @@
 #include "../util/alloc.h"
 #include "data_structs.h"
 
+/* needed for expr_assignment() */
+#include "ops/expr_assign.h"
+
+void expr_mutate(expr *e, func_fold *f_fold, func_gen *f_gen, func_str *f_str)
+{
+	e->f_fold = f_fold;
+	e->f_gen  = f_gen;
+	e->f_str  = f_str;
+}
+
 expr *expr_new(func_fold *f_fold, func_gen *f_gen, func_str *f_str)
 {
 	expr *e = umalloc(sizeof *e);
 	where_new(&e->where);
-	e->tree_type = decl_new();
-	e->f_fold = f_fold;
-	e->f_gen  = f_gen;
-	e->f_str  = f_str;
+	expr_mutate(e, f_fold, f_gen, f_str);
 	return e;
 }
 
 expr *expr_new_intval(intval *iv)
 {
-	expr *e = expr_new_val();
-	e->tree_type->type->spec |= spec_const;
-	memcpy(&e->val.i, iv, sizeof e->val.i);
+	expr *e = expr_new_val(0);
+	memcpy(&e->val.iv, iv, sizeof e->val.iv);
 	return e;
 }
 
@@ -62,17 +68,15 @@ expr *expr_ptr_multiply(expr *e, decl *d)
 	if(sz == 1)
 		return e;
 
-	ret = expr_new_op();
+	ret = expr_new_op(op_multiply);
 	memcpy(&ret->where, &e->where, sizeof e->where);
 
-	decl_free(ret->tree_type);
+	if(ret->tree_type)
+		decl_free(ret->tree_type);
 	ret->tree_type = decl_copy(e->tree_type);
 
-	ret->op   = op_multiply;
-
 	ret->lhs  = e;
-	ret->rhs  = expr_new_val();
-	ret->rhs->val.i.val = sz;
+	ret->rhs  = expr_new_val(sz);
 
 	return ret;
 }

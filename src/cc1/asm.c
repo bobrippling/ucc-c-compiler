@@ -4,7 +4,7 @@
 #include <stdlib.h>
 
 #include "../util/util.h"
-#include "tree.h"
+#include "data_structs.h"
 #include "cc1.h"
 #include "sym.h"
 #include "asm.h"
@@ -193,36 +193,10 @@ void asm_out_intval(FILE *f, intval *iv)
 
 void asm_declare_single_part(FILE *f, expr *e)
 {
-	switch(e->type){
-		case expr_val:
-			asm_out_intval(f, &e->val.i);
-			break;
+	if(!e->f_gen_1)
+		ICE("unexpected global initaliser %s (no gen_1())", e->f_str());
 
-		case expr_addr:
-			/* TODO: merge tis code with gen_addr / walk_expr with expr_addr */
-			if(e->array_store){
-				/* address of an array store */
-				fprintf(f, "%s", e->array_store->label);
-			}else{
-				UCC_ASSERT(e->expr->type == expr_identifier,
-						"globals addr-of can only be identifier for now");
-				fprintf(f, "%s", e->expr->spel);
-			}
-			break;
-
-		case expr_cast:
-			asm_declare_single_part(f, e->rhs);
-			break;
-
-		case expr_sizeof:
-		case expr_identifier:
-			/* TODO */
-			ICE("TODO: init with %s", expr_to_str(e->type));
-			break;
-
-		default:
-			ICE("unexpected global initaliser");
-	}
+	e->f_gen_1(e, f);
 }
 
 enum asm_size asm_type_size(decl *d)

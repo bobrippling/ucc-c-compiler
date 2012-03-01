@@ -18,47 +18,14 @@
 #include "enum.h"
 #include "struct_enum.h"
 
-#define DIE_UNDECL_SPEL(sp) \
-		die_at(&e->where, "undeclared identifier \"%s\" (%s:%d)", sp, __FILE__, __LINE__)
-
-#define DIE_UNDECL() DIE_UNDECL_SPEL((e)->spel)
-
 #define EXPR_NON_VOID(e, s) \
 	if(!decl_ptr_depth(e->tree_type) && e->tree_type->type->primitive == type_void) \
 		die_at(&e->where, "%s requires non-void expression", s)
 
-static char *curdecl_func_sp;    /* for funcargs-local labels */
+char *curdecl_func_sp;           /* for funcargs-local labels */
 static tree *curtree_switch;     /* for case + default */
 static tree *curtree_flow;       /* for break */
 
-void fold_expr(expr *e, symtable *stab);
-void fold_funcargs(funcargs *fargs, symtable *stab, char *context);
-void fold_tree(tree *t);
-
-#define GET_TREE_TYPE_TO(to, from) \
-	do{ \
-		to->tree_type = decl_copy(from); \
-	}while(0)
-
-#define GET_TREE_TYPE(from) \
-	GET_TREE_TYPE_TO(e, from)
-
-void fold_decl_equal(decl *a, decl *b, where *w, enum warning warn,
-		const char *errfmt, ...)
-{
-	if(!decl_equal(a, b, DECL_CMP_ALLOW_VOID_PTR | (fopt_mode & FOPT_STRICT_TYPES ? DECL_CMP_STRICT_PRIMITIVE : 0))){
-		char buf[DECL_STATIC_BUFSIZ];
-		va_list l;
-
-		strcpy(buf, decl_to_str(b));
-
-		cc1_warn_at(w, 0, warn, "%s vs. %s for...", decl_to_str(a), buf);
-
-		va_start(l, errfmt);
-		cc1_warn_atv(w, a->type->primitive == type_void && !decl_ptr_depth(a), warn, errfmt, l);
-		va_end(l);
-	}
-}
 
 void fold_funcargs_equal(funcargs *args_a, funcargs *args_b, int check_vari, where *w, const char *warn_pre, const char *func_spel)
 {
@@ -91,6 +58,24 @@ void fold_funcargs_equal(funcargs *args_a, funcargs *args_b, int check_vari, whe
 	}
 }
 
+
+void fold_decl_equal(decl *a, decl *b, where *w, enum warning warn,
+		const char *errfmt, ...)
+{
+	if(!decl_equal(a, b, DECL_CMP_ALLOW_VOID_PTR | (fopt_mode & FOPT_STRICT_TYPES ? DECL_CMP_STRICT_PRIMITIVE : 0))){
+		char buf[DECL_STATIC_BUFSIZ];
+		va_list l;
+
+		strcpy(buf, decl_to_str(b));
+
+		cc1_warn_at(w, 0, warn, "%s vs. %s for...", decl_to_str(a), buf);
+
+		va_start(l, errfmt);
+		cc1_warn_atv(w, a->type->primitive == type_void && !decl_ptr_depth(a), warn, errfmt, l);
+		va_end(l);
+	}
+}
+
 void fold_expr(expr *e, symtable *stab)
 {
 	if(e->spel && !e->sym)
@@ -100,6 +85,7 @@ void fold_expr(expr *e, symtable *stab)
 
 	e->f_fold(e, stab);
 
+	UCC_ASSERT(e->tree_type, "no tree_type after fold (%s)", e->f_str());
 	UCC_ASSERT(e->tree_type->type->primitive != type_unknown, "unknown type after folding expr %s", e->f_str());
 }
 
@@ -111,7 +97,7 @@ void fold_decl_ptr(decl_ptr *dp, symtable *stab, decl *root)
 	if(dp->array_size){
 		long v;
 		fold_expr(dp->array_size, stab);
-		if((v = dp->array_size->val.i.val) < 0)
+		if((v = dp->array_size->val.iv.val) < 0)
 			die_at(&dp->where, "negative array length");
 	}
 
@@ -274,17 +260,17 @@ void fold_switch_enum(tree *sw, type *enum_type)
 		if(cse->expr->expr_is_default)
 			goto ret;
 
-		v = cse->expr->val.i.val;
+		v = cse->expr->val.iv.val;
 
 		if(cse->type == stat_case_range)
-			w = cse->expr2->val.i.val;
+			w = cse->expr2->val.iv.val;
 		else
 			w = v;
 
 		for(; v <= w; v++){
 			enum_member **mi;
 			for(midx = 0, mi = enum_type->enu->members; *mi; midx++, mi++)
-				if(v == (*mi)->val->val.i.val)
+				if(v == (*mi)->val->val.iv.val)
 					marks[midx]++;
 		}
 	}
@@ -307,6 +293,7 @@ void fold_tree(tree *t)
 				die_at(&t->expr->where, "break outside a flow-control statement");
 
 			t->expr = expr_new_identifier(curtree_flow->lblfin);
+			t->expr->tree_type = decl_new();
 			t->expr->tree_type->type->primitive = type_int;
 			break;
 
@@ -386,8 +373,8 @@ void fold_tree(tree *t)
 			EXPR_NON_VOID(t->expr,  "case");
 			EXPR_NON_VOID(t->expr2, "case");
 
-			l = t->expr->val.i.val;
-			r = t->expr2->val.i.val;
+			l = t->expr->val.iv.val;
+			r = t->expr2->val.iv.val;
 
 			if(l >= r)
 				die_at(&t->where, "case range equal or inverse");
@@ -406,9 +393,10 @@ void fold_tree(tree *t)
 			/* fall */
 		case stat_default:
 			if(t->expr){
-				t->expr->spel = asm_label_case(CASE_CASE, t->expr->val.i.val);
+				t->expr->spel = asm_label_case(CASE_CASE, t->expr->val.iv.val);
 			}else{
-				t->expr = expr_new_identifier(asm_label_case(CASE_CASE, t->expr->val.i.val));
+				t->expr = expr_new_identifier(NULL);
+				t->expr->spel = asm_label_case(CASE_CASE, t->expr->val.iv.val);
 				t->expr->expr_is_default = 1;
 			}
 case_add:

@@ -155,7 +155,7 @@ int decl_size(decl *d)
 		for(dp = d->decl_ptr; dp; dp = dp->child)
 			if(dp->array_size){
 				/* should've been folded fully */
-				long v = dp->array_size->val.i.val;
+				long v = dp->array_size->val.iv.val;
 				if(!v)
 					v = platform_word_size(); /* int x[0] - the 0 is a sentinel */
 				ret += v * siz;

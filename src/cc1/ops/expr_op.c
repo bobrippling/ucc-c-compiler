@@ -1,43 +1,155 @@
+#include <string.h>
 #include <stdlib.h>
-#include <stdio.h>
-#include <stdarg.h>
+#include "ops.h"
+#include "../struct.h"
 
-#include "../util/util.h"
-#include "tree.h"
-#include "cc1.h"
-#include "gen_asm.h"
-#include "asm.h"
-#include "../util/util.h"
-#include "asm_op.h"
+const char *expr_str_op()
+{
+	return "op";
+}
 
-#include "../data_structs.h"
-#include "expr_op.h"
+int operate(expr *lhs, expr *rhs, enum op_type op, int *bad)
+{
+#define OP(a, b) case a: return lhs->val.iv.val b rhs->val.iv.val
+	if(op != op_deref && !expr_kind(lhs, val)){
+		*bad = 1;
+		return 0;
+	}
 
-void fold_const_expr_op(expr *e)
+	switch(op){
+		OP(op_multiply,   *);
+		OP(op_modulus,    %);
+		OP(op_eq,         ==);
+		OP(op_ne,         !=);
+		OP(op_le,         <=);
+		OP(op_lt,         <);
+		OP(op_ge,         >=);
+		OP(op_gt,         >);
+		OP(op_xor,        ^);
+		OP(op_or,         |);
+		OP(op_and,        &);
+		OP(op_orsc,       ||);
+		OP(op_andsc,      &&);
+		OP(op_shiftl,     <<);
+		OP(op_shiftr,     >>);
+
+		case op_divide:
+			if(rhs->val.iv.val)
+				return lhs->val.iv.val / rhs->val.iv.val;
+			warn_at(&rhs->where, "division by zero");
+			*bad = 1;
+			return 0;
+
+		case op_plus:
+			if(rhs)
+				return lhs->val.iv.val + rhs->val.iv.val;
+			return lhs->val.iv.val;
+
+		case op_minus:
+			if(rhs)
+				return lhs->val.iv.val - rhs->val.iv.val;
+			return -lhs->val.iv.val;
+
+		case op_not:  return !lhs->val.iv.val;
+		case op_bnot: return ~lhs->val.iv.val;
+
+		case op_deref:
+			/*
+			 * potential for major ICE here
+			 * I mean, we might not even be dereferencing the right size pointer
+			 */
+			/*
+			switch(lhs->vartype->primitive){
+				case type_int:  return *(int *)lhs->val.s;
+				case type_char: return *       lhs->val.s;
+				default:
+					break;
+			}
+
+			ignore for now, just deal with simple stuff
+			*/
+			if(lhs->ptr_safe && expr_kind(lhs, addr)){
+				if(lhs->array_store->type == array_str)
+					return *lhs->val.s;
+				/*return lhs->val.exprs[0]->val.i;*/
+			}
+			*bad = 1;
+			return 0;
+
+		case op_struct_ptr:
+		case op_struct_dot:
+			*bad = 1;
+			return 0;
+
+		case op_unknown:
+			break;
+	}
+
+	ICE("unhandled asm operate type");
+	return 0;
+}
+
+void operate_optimise(expr *e)
+{
+	/* TODO */
+
+	switch(e->op){
+		case op_orsc:
+		case op_andsc:
+			/* check if one side is (&& ? false : true) and short circuit it without needing to check the other side */
+			if(expr_kind(e->lhs, val) || expr_kind(e->rhs, val))
+				POSSIBLE_OPT(e, "short circuit const");
+			break;
+
+#define VAL(e, x) (expr_kind(e, val) && e->val.iv.val == x)
+
+		case op_plus:
+		case op_minus:
+			if(VAL(e->lhs, 0) || (e->rhs ? VAL(e->rhs, 0) : 0))
+				POSSIBLE_OPT(e, "zero being added or subtracted");
+			break;
+
+		case op_multiply:
+			if(VAL(e->lhs, 1) || VAL(e->lhs, 0) || (e->rhs ? VAL(e->rhs, 1) || VAL(e->rhs, 0) : 0))
+				POSSIBLE_OPT(e, "1 or 0 being multiplied");
+			else
+		case op_divide:
+			if(VAL(e->rhs, 1))
+				POSSIBLE_OPT(e, "divide by 1");
+			break;
+
+		default:
+			break;
+#undef VAL
+	}
+}
+
+int fold_const_expr_op(expr *e)
 {
 	int l, r;
 	l = const_fold(e->lhs);
 	r = e->rhs ? const_fold(e->rhs) : 0;
 
-#define VAL(x) x->type == expr_val
-
-	if(!l && !r && VAL(e->lhs) && (e->rhs ? VAL(e->rhs) : 1)){
+	if(!l && !r && expr_kind(e->lhs, val) && (e->rhs ? expr_kind(e->rhs, val) : 1)){
 		int bad = 0;
 
-		e->val.i.val = operate(e->lhs, e->rhs, e->op, &bad);
+		e->val.iv.val = operate(e->lhs, e->rhs, e->op, &bad);
 
 		if(!bad)
-			e->type = expr_val;
+			expr_mutate_wrapper(e, val);
+
 		/*
-			* TODO: else free e->[lr]hs
-			* currently not a leak, just ignored
-			*/
+		 * TODO: else free e->[lr]hs
+		 * currently not a leak, just ignored
+		 */
 
 		return bad;
 	}else{
 		operate_optimise(e);
 	}
 #undef VAL
+
+	return 1;
 }
 
 void fold_op_struct(expr *e, symtable *stab)
@@ -54,7 +166,7 @@ void fold_op_struct(expr *e, symtable *stab)
 	fold_expr(e->lhs, stab);
 	/* don't fold the rhs - just a member name */
 
-	if(e->rhs->type != expr_identifier)
+	if(expr_kind(e->rhs, identifier))
 		die_at(&e->rhs->where, "struct member must be an identifier");
 	spel = e->rhs->spel;
 
@@ -84,7 +196,7 @@ void fold_op_struct(expr *e, symtable *stab)
 	if(!d)
 		die_at(&e->rhs->where, "struct %s has no member named \"%s\"", st->spel, spel);
 
-	GET_TREE_TYPE_TO(e->rhs, d);
+	e->rhs->tree_type = d;
 
 	/*
 	 * if it's a.b, convert to (&a)->b for asm gen
@@ -92,19 +204,18 @@ void fold_op_struct(expr *e, symtable *stab)
 	 * e = { lhs = { expr = "a", type = addr }, rhs = "b", type = ptr }
 	 */
 	if(ptr_depth_exp == 0){
-		expr *new = expr_new();
+		expr *new = expr_new_addr();
 
 		new->expr = e->lhs;
 		e->lhs = new;
-		new->type = expr_addr;
 
-		e->type = expr_op;
+		expr_mutate_wrapper(e, op);
 		e->op   = op_struct_ptr;
 
 		fold_expr(e->lhs, stab);
-		GET_TREE_TYPE(e->lhs->tree_type);
+		e->tree_type = decl_copy(e->lhs->tree_type);
 	}else{
-		GET_TREE_TYPE(d);
+		e->tree_type = decl_copy(d);
 	}
 }
 
@@ -135,7 +246,7 @@ void fold_op_typecheck(expr *e, symtable *stab)
 
 	if(op_is_cmp(e->op) && rhs != lhs){
 #define SIGN_CONVERT(test_hs, assert_hs) \
-		if(e->test_hs->type == expr_val && e->test_hs->val.i.val >= 0){ \
+		if(expr_kind(e->test_hs, val) && e->test_hs->val.iv.val >= 0){ \
 			/*                                              \
 				* assert(lhs == UNSIGNED);                     \
 				* vals default to signed, change to unsigned   \
@@ -151,9 +262,9 @@ void fold_op_typecheck(expr *e, symtable *stab)
 		SIGN_CONVERT(lhs, rhs)
 
 #define SPEL_IF_IDENT(hs)                              \
-				hs->type == expr_identifier ? " ("     : "", \
-				hs->type == expr_identifier ? hs->spel : "", \
-				hs->type == expr_identifier ? ")"      : ""  \
+				expr_kind(hs, identifier) ? " ("     : "", \
+				expr_kind(hs, identifier) ? hs->spel : "", \
+				expr_kind(hs, identifier) ? ")"      : ""  \
 
 		cc1_warn_at(&e->where, 0, WARN_SIGN_COMPARE, "comparison between signed and unsigned%s%s%s%s%s%s",
 				SPEL_IF_IDENT(e->lhs), SPEL_IF_IDENT(e->rhs));
@@ -165,18 +276,16 @@ noproblem:
 void fold_deref(expr *e)
 {
 	/* check for *&x */
-	if(e->lhs->type == expr_addr)
+	if(expr_kind(e->lhs, addr))
 		warn_at(&e->lhs->where, "possible optimisation for *& expression");
 
-	GET_TREE_TYPE(e->lhs->tree_type);
-
-	e->tree_type = decl_ptr_depth_dec(e->tree_type);
+	e->tree_type = decl_ptr_depth_dec(decl_copy(e->lhs->tree_type));
 
 	if(decl_ptr_depth(e->tree_type) == 0 && e->lhs->tree_type->type->primitive == type_void)
 		die_at(&e->where, "can't dereference void pointer");
 }
 
-void fold_op(expr *e, symtable *stab)
+void expr_fold_op(expr *e, symtable *stab)
 {
 	if(e->op == op_struct_ptr || e->op == op_struct_dot){
 		fold_op_struct(e, stab);
@@ -203,15 +312,17 @@ void fold_op(expr *e, symtable *stab)
 
 #define IS_PTR(x) decl_ptr_depth(x->tree_type)
 		if(e->rhs){
-			if(e->op == op_minus && IS_PTR(e->lhs) && IS_PTR(e->rhs))
+			if(e->op == op_minus && IS_PTR(e->lhs) && IS_PTR(e->rhs)){
+				e->tree_type = decl_new();
 				e->tree_type->type->primitive = type_int;
-			else if(IS_PTR(e->rhs))
-				GET_TREE_TYPE(e->rhs->tree_type);
-			else
+			}else if(IS_PTR(e->rhs)){
+				e->tree_type = decl_copy(e->rhs->tree_type);
+			}else{
 				goto norm_tt;
+			}
 		}else{
 norm_tt:
-			GET_TREE_TYPE(e->lhs->tree_type);
+			e->tree_type = decl_copy(e->lhs->tree_type);
 		}
 	}
 
@@ -246,6 +357,23 @@ norm_tt:
 	}
 }
 
+void expr_gen_str_op(expr *e)
+{
+	idt_printf("op: %s\n", op_to_str(e->op));
+	gen_str_indent++;
+
+	if(e->op == op_deref){
+		idt_printf("deref size: %s ", decl_to_str(e->tree_type));
+		fputc('\n', cc1_out);
+	}
+
+#define PRINT_IF(hs) if(e->hs) print_expr(e->hs)
+	PRINT_IF(lhs);
+	PRINT_IF(rhs);
+#undef PRINT_IF
+
+	gen_str_indent--;
+}
 
 static void asm_idiv(expr *e, symtable *tab)
 {
@@ -262,8 +390,8 @@ static void asm_idiv(expr *e, symtable *tab)
 	 * idiv DWORD PTR [var] — divide the contents of EDX:EAS by the 32-bit value stored at memory location var. Place the quotient in EAX and the remainder in EDX.
 	 */
 
-	walk_expr(e->lhs, tab);
-	walk_expr(e->rhs, tab);
+	gen_expr(e->lhs, tab);
+	gen_expr(e->rhs, tab);
 	/* pop top stack (rhs) into b, and next top into a */
 
 	asm_temp(1, "xor rdx,rdx");
@@ -278,8 +406,8 @@ static void asm_compare(expr *e, symtable *tab)
 {
 	const char *cmp = NULL;
 
-	walk_expr(e->lhs, tab);
-	walk_expr(e->rhs, tab);
+	gen_expr(e->lhs, tab);
+	gen_expr(e->rhs, tab);
 	asm_temp(1, "pop rbx");
 	asm_temp(1, "pop rax");
 	asm_temp(1, "xor rcx,rcx"); /* must be before cmp */
@@ -308,14 +436,14 @@ static void asm_compare(expr *e, symtable *tab)
 static void asm_shortcircuit(expr *e, symtable *tab)
 {
 	char *baillabel = asm_label_code("shortcircuit_bail");
-	walk_expr(e->lhs, tab);
+	gen_expr(e->lhs, tab);
 
 	asm_temp(1, "mov rax,[rsp]");
 	asm_temp(1, "test rax,rax");
 	/* leave the result on the stack (if false) and bail */
 	asm_temp(1, "j%sz %s", e->op == op_andsc ? "" : "n", baillabel);
 	asm_temp(1, "pop rax");
-	walk_expr(e->rhs, tab);
+	gen_expr(e->rhs, tab);
 
 	asm_label(baillabel);
 	free(baillabel);
@@ -327,7 +455,7 @@ void asm_operate_struct(expr *e, symtable *tab)
 
 	UCC_ASSERT(e->op == op_struct_ptr, "a.b should have been handled by now");
 
-	walk_expr(e->lhs, tab);
+	gen_expr(e->lhs, tab);
 
 	/* pointer to the struct is on the stack, get from the offset */
 	asm_temp(1, "pop rax ; struct ptr");
@@ -338,7 +466,7 @@ void asm_operate_struct(expr *e, symtable *tab)
 	asm_temp(1, "push rax");
 }
 
-void asm_operate(expr *e, symtable *tab)
+void expr_gen_op(expr *e, symtable *tab)
 {
 	const char *instruct = NULL;
 	const char *rhs = "rcx";
@@ -363,7 +491,7 @@ void asm_operate(expr *e, symtable *tab)
 
 		case op_not:
 			/* compare with 0 */
-			walk_expr(e->lhs, tab);
+			gen_expr(e->lhs, tab);
 			asm_temp(1, "xor rbx,rbx");
 			asm_temp(1, "pop rax");
 			asm_temp(1, "test rax,rax");
@@ -372,7 +500,7 @@ void asm_operate(expr *e, symtable *tab)
 			return;
 
 		case op_deref:
-			walk_expr(e->lhs, tab);
+			gen_expr(e->lhs, tab);
 			asm_temp(1, "pop rax");
 
 			if(asm_type_size(e->tree_type) == ASM_SIZE_WORD)
@@ -416,9 +544,9 @@ void asm_operate(expr *e, symtable *tab)
 	/* asm_temp(1, "%s rax", incr ? "inc" : "dec"); TODO: optimise */
 
 	/* get here if op is *, +, - or ~ */
-	walk_expr(e->lhs, tab);
+	gen_expr(e->lhs, tab);
 	if(e->rhs){
-		walk_expr(e->rhs, tab);
+		gen_expr(e->rhs, tab);
 		asm_temp(1, "pop rcx");
 		asm_temp(1, "pop rax");
 		asm_temp(1, "%s rax, %s", instruct, rhs);
@@ -428,4 +556,49 @@ void asm_operate(expr *e, symtable *tab)
 	}
 
 	asm_temp(1, "push rax");
+}
+
+void expr_gen_op_store(expr *e, symtable *stab)
+{
+	switch(e->op){
+		case op_deref:
+			/* a dereference */
+			asm_temp(1, "push rax ; save val");
+
+			gen_expr(e->lhs, stab); /* skip over the *() bit */
+			/* pointer on stack */
+
+			/* move `pop` into `pop` */
+			asm_temp(1, "pop rax ; ptr");
+			asm_temp(1, "pop rbx ; val");
+			asm_temp(1, "mov [rax], rbx");
+			return;
+
+		case op_struct_ptr:
+			gen_expr(e->lhs, stab);
+
+			asm_temp(1, "pop rbx ; struct addr");
+			asm_temp(1, "add rbx, %d ; offset of member %s",
+					e->rhs->tree_type->struct_offset,
+					e->rhs->spel);
+			asm_temp(1, "mov rax, [rsp] ; saved val");
+			asm_temp(1, "mov [rbx], rax");
+			return;
+
+		case op_struct_dot:
+			ICE("TODO: a.b");
+			break;
+
+		default:
+			break;
+	}
+	ICE("invalid store-op %s", op_to_str(e->op));
+}
+
+expr *expr_new_op(enum op_type op)
+{
+	expr *e = expr_new_wrapper(op);
+	e->f_store = expr_gen_op_store;
+	e->op = op;
+	return e;
 }

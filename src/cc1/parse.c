@@ -46,10 +46,15 @@ symtable *current_scope;
 
 expr *parse_lone_identifier()
 {
+	expr *e;
+
 	if(curtok != token_identifier)
 		EAT(token_identifier); /* raise error */
 
-	return expr_new_identifier(token_current_spel());
+	e = expr_new_identifier(token_current_spel());
+	EAT(token_identifier);
+
+	return e;
 }
 
 expr *parse_expr_unary_op()
@@ -64,11 +69,12 @@ expr *parse_expr_unary_op()
 			if(accept(token_open_paren)){
 				decl *d = parse_decl_single(DECL_SPEL_NO);
 
-				if(d)
-					e->expr = expr_new_cast(d);
-				else
+				if(d){
+					e->tree_type = d;
+				}else{
 					/* parse a full one, since we're in brackets */
 					e->expr = parse_expr();
+				}
 
 				e->expr->expr_is_sizeof = !!d;
 
@@ -94,6 +100,8 @@ expr *parse_expr_unary_op()
 		case token_string:
 		case token_open_block: /* array */
 			e = expr_new_addr();
+
+			e->array_store = array_decl_new();
 
 			if(curtok == token_string){
 				char *s;
@@ -135,7 +143,7 @@ expr *parse_expr_unary_op()
 			if((d = parse_decl_single(DECL_SPEL_NO))){
 				e = expr_new_cast(d);
 				EAT(token_close_paren);
-				e->rhs = PARSE_SMALL(); /* grab only the closest */
+				e->expr = PARSE_SMALL(); /* grab only the closest */
 			}else{
 				e = parse_expr();
 				EAT(token_close_paren);

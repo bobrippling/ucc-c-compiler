@@ -1,3 +1,4 @@
-func_fold fold_expr_op;
-func_gen gen_expr_op;
-func_str str_expr_op;
+func_fold    expr_fold_op;
+func_gen     expr_gen_op;
+func_const   expr_const_op;
+func_str     expr_str_op;
