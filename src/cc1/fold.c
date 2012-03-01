@@ -4,7 +4,7 @@
 #include <stdarg.h>
 
 #include "../util/util.h"
-#include "tree.h"
+#include "data_structs.h"
 #include "cc1.h"
 #include "fold.h"
 #include "fold_sym.h"
@@ -18,82 +18,14 @@
 #include "enum.h"
 #include "struct_enum.h"
 
-#define DIE_UNDECL_SPEL(sp) \
-		die_at(&e->where, "undeclared identifier \"%s\" (%s:%d)", sp, __FILE__, __LINE__)
-
-#define DIE_UNDECL() DIE_UNDECL_SPEL((e)->spel)
-
 #define EXPR_NON_VOID(e, s) \
 	if(!decl_ptr_depth(e->tree_type) && e->tree_type->type->primitive == type_void) \
 		die_at(&e->where, "%s requires non-void expression", s)
 
-static char *curdecl_func_sp;    /* for funcargs-local labels */
+char *curdecl_func_sp;           /* for funcargs-local labels */
 static tree *curtree_switch;     /* for case + default */
 static tree *curtree_flow;       /* for break */
 
-void fold_expr(expr *e, symtable *stab);
-void fold_funcargs(funcargs *fargs, symtable *stab, char *context);
-void fold_tree(tree *t);
-
-int fold_is_lvalue(expr *e)
-{
-	/*
-	 * valid lvaluess:
-	 *
-	 *   x              = 5;
-	 *   *(expr)        = 5;
-	 *   struct.member  = 5;
-	 *   struct->member = 5;
-	 * and so on
-	 *
-	 * also can't be const, checked in fold_assign (since we allow const inits)
-	 */
-
-	if(e->type == expr_identifier)
-		return !e->tree_type->func_code;
-
-	if(e->type == expr_op)
-		switch(e->op){
-			case op_deref:
-			case op_struct_ptr:
-			case op_struct_dot:
-				return 1;
-			default:
-				break;
-		}
-
-	return 0;
-}
-
-int fold_expr_is_addressable(expr *e)
-{
-	return e->type == expr_identifier;
-}
-
-#define GET_TREE_TYPE_TO(to, from) \
-	do{ \
-		to->tree_type = decl_copy(from); \
-	}while(0)
-
-#define GET_TREE_TYPE(from) \
-	GET_TREE_TYPE_TO(e, from)
-
-void fold_decl_equal(decl *a, decl *b, where *w, enum warning warn,
-		const char *errfmt, ...)
-{
-	if(!decl_equal(a, b, DECL_CMP_ALLOW_VOID_PTR | (fopt_mode & FOPT_STRICT_TYPES ? DECL_CMP_STRICT_PRIMITIVE : 0))){
-		char buf[DECL_STATIC_BUFSIZ];
-		va_list l;
-
-		strcpy(buf, decl_to_str(b));
-
-		cc1_warn_at(w, 0, warn, "%s vs. %s for...", decl_to_str(a), buf);
-
-		va_start(l, errfmt);
-		cc1_warn_atv(w, a->type->primitive == type_void && !decl_ptr_depth(a), warn, errfmt, l);
-		va_end(l);
-	}
-}
 
 void fold_funcargs_equal(funcargs *args_a, funcargs *args_b, int check_vari, where *w, const char *warn_pre, const char *func_spel)
 {
@@ -126,145 +58,23 @@ void fold_funcargs_equal(funcargs *args_a, funcargs *args_b, int check_vari, whe
 	}
 }
 
-void fold_funcall(expr *e, symtable *stab)
+
+void fold_decl_equal(decl *a, decl *b, where *w, enum warning warn,
+		const char *errfmt, ...)
 {
-	decl *df;
-	funcargs *args_exp;
+	if(!decl_equal(a, b, DECL_CMP_ALLOW_VOID_PTR | (fopt_mode & FOPT_STRICT_TYPES ? DECL_CMP_STRICT_PRIMITIVE : 0))){
+		char buf[DECL_STATIC_BUFSIZ];
+		va_list l;
 
-	if(e->expr->type == expr_identifier && e->expr->spel){
-		char *const sp = e->expr->spel;
+		strcpy(buf, decl_to_str(b));
 
-		e->sym = symtab_search(stab, sp);
-		if(!e->sym){
-			df = decl_new_where(&e->where);
+		cc1_warn_at(w, 0, warn, "%s vs. %s for...", decl_to_str(a), buf);
 
-			df->type->primitive = type_int;
-			df->type->spec     |= spec_extern;
-
-			cc1_warn_at(&e->where, 0, WARN_IMPLICIT_FUNC, "implicit declaration of function \"%s\"", sp);
-
-			df->spel = sp;
-
-			df->funcargs = funcargs_new();
-
-			if(e->funcargs)
-				/* set up the funcargs as if it's "x()" - i.e. any args */
-				function_empty_args(df->funcargs);
-
-			e->sym = symtab_add(symtab_root(stab), df, sym_global, SYMTAB_WITH_SYM, SYMTAB_PREPEND);
-		}else{
-			df = e->sym->decl;
-		}
-
-		fold_expr(e->expr, stab);
-	}else{
-		fold_expr(e->expr, stab);
-
-		/*
-		 * convert int (*)() to remove the deref
-		 */
-		if(decl_is_func_ptr(e->expr->tree_type)){
-			/* XXX: memleak */
-			e->expr = e->expr->lhs;
-			fprintf(stderr, "FUNCPTR\n");
-		}else{
-			fprintf(stderr, "decl %s\n", decl_to_str(e->expr->tree_type));
-		}
-
-		df = e->expr->tree_type;
-
-		if(!decl_is_callable(df)){
-			die_at(&e->expr->where, "expression %s (%s) not callable",
-					expr_to_str(e->expr->type),
-					decl_to_str(df));
-		}
-	}
-
-	GET_TREE_TYPE(df);
-	/*
-	 * int (*x)();
-	 * (*x)();
-	 * evaluates to tree_type = int;
-	 */
-	decl_func_deref(e->tree_type);
-
-
-	if(e->funcargs){
-		expr **iter;
-		for(iter = e->funcargs; *iter; iter++)
-			fold_expr(*iter, stab);
-	}
-
-	/* func count comparison, only if the func has arg-decls, or the func is f(void) */
-	args_exp = decl_funcargs(e->tree_type);
-
-	UCC_ASSERT(args_exp, "no funcargs for decl %s", df->spel);
-
-	if(args_exp->arglist || args_exp->args_void){
-		expr **iter_arg;
-		decl **iter_decl;
-		int count_decl, count_arg;
-
-		count_decl = count_arg = 0;
-
-		for(iter_arg  = e->funcargs;       iter_arg  && *iter_arg;  iter_arg++,  count_arg++);
-		for(iter_decl = args_exp->arglist; iter_decl && *iter_decl; iter_decl++, count_decl++);
-
-		if(count_decl != count_arg && (args_exp->variadic ? count_arg < count_decl : 1)){
-			die_at(&e->where, "too %s arguments to function %s (got %d, need %d)",
-					count_arg > count_decl ? "many" : "few",
-					df->spel, count_arg, count_decl);
-		}
-
-		if(e->funcargs){
-			funcargs *argument_decls = funcargs_new();
-
-			for(iter_arg = e->funcargs; *iter_arg; iter_arg++)
-				dynarray_add((void ***)&argument_decls->arglist, (*iter_arg)->tree_type);
-
-			fold_funcargs_equal(args_exp, argument_decls, 1, &e->where, "argument", df->spel);
-			funcargs_free(argument_decls, 0);
-		}
+		va_start(l, errfmt);
+		cc1_warn_atv(w, a->type->primitive == type_void && !decl_ptr_depth(a), warn, errfmt, l);
+		va_end(l);
 	}
 }
-
-void fold_assignment(expr *e, symtable *stab)
-{
-	fold_expr(e->lhs, stab);
-	fold_expr(e->rhs, stab);
-
-	/* wait until we get the tree types, etc */
-	if(!fold_is_lvalue(e->lhs))
-		die_at(&e->lhs->where, "not an lvalue (%s%s%s)",
-				expr_to_str(e->lhs->type),
-				e->lhs->type == expr_op ? " - " : "",
-				e->lhs->type == expr_op ? op_to_str(e->lhs->op) : ""
-			);
-
-	if(decl_is_const(e->lhs->tree_type)){
-		/* allow const init: */
-		if(e->lhs->sym->decl->init != e->rhs)
-			die_at(&e->where, "can't modify const expression");
-	}
-
-
-	if(e->lhs->sym)
-		/* read the tree_type from what we're assigning to, not the expr */
-		GET_TREE_TYPE(e->lhs->sym->decl);
-	else
-		GET_TREE_TYPE(e->lhs->tree_type);
-
-
-	/* type check */
-	fold_decl_equal(e->lhs->tree_type, e->rhs->tree_type,
-		&e->where, WARN_ASSIGN_MISMATCH,
-				"assignment type mismatch%s%s%s",
-				e->lhs->spel ? " (" : "",
-				e->lhs->spel ? e->lhs->spel : "",
-				e->lhs->spel ? ")" : "");
-}
-
-#include "fold_op.c"
 
 void fold_expr(expr *e, symtable *stab)
 {
@@ -273,149 +83,10 @@ void fold_expr(expr *e, symtable *stab)
 
 	const_fold(e);
 
-	switch(e->type){
-		case expr_sizeof:
-			if(!e->expr->expr_is_sizeof)
-				fold_expr(e->expr, stab);
-			/* fall through - tree type int */
-		case expr_val:
-			e->tree_type->type->primitive = type_int;
-			break;
+	e->f_fold(e, stab);
 
-		case expr_comma:
-			fold_expr(e->lhs, stab);
-			fold_expr(e->rhs, stab);
-			GET_TREE_TYPE(e->rhs->tree_type);
-			break;
-
-		case expr_if:
-			fold_expr(e->expr, stab);
-			if(const_expr_is_const(e->expr))
-				POSSIBLE_OPT(e->expr, "constant ?: expression");
-			if(e->lhs)
-				fold_expr(e->lhs, stab);
-			fold_expr(e->rhs, stab);
-			GET_TREE_TYPE(e->rhs->tree_type); /* TODO: check they're the same */
-			break;
-
-		case expr_cast:
-			fold_expr(e->rhs, stab);
-			if(e->rhs->type == expr_cast){
-				/* get rid of e->rhs, replace with e->rhs->rhs */
-				expr *del = e->rhs;
-
-				e->rhs = e->rhs->rhs;
-
-				expr_free(del->lhs); /* the overridden cast */
-				expr_free(del);
-			}
-			GET_TREE_TYPE(e->lhs->tree_type);
-			break;
-
-		case expr_addr:
-			if(e->array_store){
-				sym *array_sym;
-
-				UCC_ASSERT(!e->sym, "symbol found when looking for array store");
-				UCC_ASSERT(!e->expr, "expression found in array store address-of");
-
-				/* static const char * */
-				*decl_leaf(e->tree_type) = decl_ptr_new();
-
-				e->tree_type->type->spec |= spec_static | spec_const;
-				e->tree_type->type->primitive = type_char;
-
-				e->spel = e->array_store->label = asm_label_array(e->array_store->type == array_str);
-
-				e->tree_type->spel = e->spel;
-
-				array_sym = SYMTAB_ADD(symtab_root(stab), e->tree_type, stab->parent ? sym_local : sym_global);
-
-				array_sym->decl->arrayinit = e->array_store;
-
-
-				switch(e->array_store->type){
-					case array_str:
-						e->tree_type->type->primitive = type_char;
-						break;
-
-					case array_exprs:
-					{
-						expr **inits;
-						int i;
-
-						e->tree_type->type->primitive = type_int;
-
-						inits = e->array_store->data.exprs;
-
-						for(i = 0; inits[i]; i++){
-							fold_expr(inits[i], stab);
-							if(const_fold(inits[i]))
-								die_at(&inits[i]->where, "array init not constant (%s)", expr_to_str(inits[i]->type));
-						}
-					}
-				}
-
-			}else{
-				fold_expr(e->expr, stab);
-				if(!fold_expr_is_addressable(e->expr))
-					die_at(&e->expr->where, "can't take the address of %s", expr_to_str(e->expr->type));
-
-				GET_TREE_TYPE(e->expr->sym ? e->expr->sym->decl : e->expr->tree_type);
-
-				e->tree_type = decl_ptr_depth_inc(e->tree_type);
-			}
-			break;
-
-		case expr_identifier:
-			if(!e->sym){
-				if(!strcmp(e->spel, "__func__")){
-					/* mutate into a string literal */
-					e->type = expr_addr;
-					e->array_store = array_decl_new();
-
-					UCC_ASSERT(curdecl_func_sp, "no spel for current func");
-					e->array_store->data.str = curdecl_func_sp;
-					e->array_store->len = strlen(curdecl_func_sp) + 1; /* +1 - take the null byte */
-
-					e->array_store->type = array_str;
-
-					fold_expr(e, stab);
-					break;
-
-				}else{
-					/* check for an enum */
-					enum_member *m = enum_find_member(stab, e->spel);
-
-					if(!m)
-						DIE_UNDECL_SPEL(e->spel);
-
-					e->type = expr_val;
-					e->val = m->val->val;
-					fold_expr(e, stab);
-					goto fin;
-				}
-			}
-
-			GET_TREE_TYPE(e->sym->decl);
-			break;
-
-		case expr_assign:
-			fold_assignment(e, stab);
-			break;
-
-		case expr_op:
-			fold_op(e, stab);
-			break;
-
-		case expr_funcall:
-			fold_funcall(e, stab);
-			break;
-	}
-#undef GET_TREE_TYPE
-
-fin:
-	UCC_ASSERT(e->tree_type->type->primitive != type_unknown, "unknown type after folding expr %s", expr_to_str(e->type));
+	UCC_ASSERT(e->tree_type, "no tree_type after fold (%s)", e->f_str());
+	UCC_ASSERT(e->tree_type->type->primitive != type_unknown, "unknown type after folding expr %s", e->f_str());
 }
 
 void fold_decl_ptr(decl_ptr *dp, symtable *stab, decl *root)
@@ -426,7 +97,7 @@ void fold_decl_ptr(decl_ptr *dp, symtable *stab, decl *root)
 	if(dp->array_size){
 		long v;
 		fold_expr(dp->array_size, stab);
-		if((v = dp->array_size->val.i.val) < 0)
+		if((v = dp->array_size->val.iv.val) < 0)
 			die_at(&dp->where, "negative array length");
 	}
 
@@ -498,8 +169,8 @@ void fold_decl_global(decl *d, symtable *stab)
 		fold_expr(d->init, stab);
 
 		if(const_fold(d->init))
-			die_at(&d->init->where, "not a constant expression (initialiser is %s)",
-					expr_to_str(d->init->type));
+			die_at(&d->init->where, "not a constant expression (initialiser is %s)", d->init->f_str());
+
 	}else if(d->type->spec & spec_extern){
 		/* we have an extern, check if it's overridden */
 		char *const spel = d->spel;
@@ -589,17 +260,17 @@ void fold_switch_enum(tree *sw, type *enum_type)
 		if(cse->expr->expr_is_default)
 			goto ret;
 
-		v = cse->expr->val.i.val;
+		v = cse->expr->val.iv.val;
 
 		if(cse->type == stat_case_range)
-			w = cse->expr2->val.i.val;
+			w = cse->expr2->val.iv.val;
 		else
 			w = v;
 
 		for(; v <= w; v++){
 			enum_member **mi;
 			for(midx = 0, mi = enum_type->enu->members; *mi; midx++, mi++)
-				if(v == (*mi)->val->val.i.val)
+				if(v == (*mi)->val->val.iv.val)
 					marks[midx]++;
 		}
 	}
@@ -621,9 +292,8 @@ void fold_tree(tree *t)
 			if(!curtree_flow)
 				die_at(&t->expr->where, "break outside a flow-control statement");
 
-			t->expr = expr_new();
-			t->expr->type = expr_identifier;
-			t->expr->spel = curtree_flow->lblfin;
+			t->expr = expr_new_identifier(curtree_flow->lblfin);
+			t->expr->tree_type = decl_new();
 			t->expr->tree_type->type->primitive = type_int;
 			break;
 
@@ -631,7 +301,7 @@ void fold_tree(tree *t)
 		case stat_label:
 		{
 			char *save = t->expr->spel;
-			if(t->expr->type != expr_identifier)
+			if(!expr_kind(t->expr, identifier))
 				die_at(&t->expr->where, "not a label identifier");
 			/* else let the assembler check for link errors */
 			t->expr->spel = asm_label_goto(t->expr->spel);
@@ -703,8 +373,8 @@ void fold_tree(tree *t)
 			EXPR_NON_VOID(t->expr,  "case");
 			EXPR_NON_VOID(t->expr2, "case");
 
-			l = t->expr->val.i.val;
-			r = t->expr2->val.i.val;
+			l = t->expr->val.iv.val;
+			r = t->expr2->val.iv.val;
 
 			if(l >= r)
 				die_at(&t->where, "case range equal or inverse");
@@ -714,9 +384,6 @@ void fold_tree(tree *t)
 		}
 
 		case stat_case:
-		{
-			int def;
-
 			fold_expr(t->expr, t->symtab);
 
 			EXPR_NON_VOID(t->expr, "case");
@@ -725,18 +392,19 @@ void fold_tree(tree *t)
 				die_at(&t->expr->where, "case expression not constant");
 			/* fall */
 		case stat_default:
-			if((def = !t->expr)){
-				t->expr = expr_new();
+			if(t->expr){
+				t->expr->spel = asm_label_case(CASE_CASE, t->expr->val.iv.val);
+			}else{
+				t->expr = expr_new_identifier(NULL);
+				t->expr->spel = asm_label_case(CASE_CASE, t->expr->val.iv.val);
 				t->expr->expr_is_default = 1;
 			}
-			t->expr->spel = asm_label_case(def ? CASE_DEF : CASE_CASE, t->expr->val.i.val);
 case_add:
 			fold_tree(t->lhs); /* compound */
 			if(!curtree_switch)
 				die_at(&t->expr->where, "not inside a switch statement");
 			dynarray_add((void ***)&curtree_switch->codes, t);
 			break;
-		}
 
 		case stat_switch:
 		{

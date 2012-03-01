@@ -10,9 +10,9 @@ int const_expr_val(expr *e);
 	cc1_warn_at(&e->where, 0, WARN_OPT_POSSIBLE,     \
 			"optimisation possible - %s (%s%s%s)",       \
 			s,                                           \
-			expr_to_str(e->type),                        \
-			e->type == expr_op ? " - " : "",             \
-			e->type == expr_op ? op_to_str(e->op) : "")
+			e->f_str(),                                  \
+			expr_kind(e, op) ? " - " : "",             \
+			expr_kind(e, op) ? op_to_str(e->op) : "")
 
 
 #define OPT_CHECK(e, s) \

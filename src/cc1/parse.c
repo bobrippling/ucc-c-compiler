@@ -4,7 +4,7 @@
 #include <string.h>
 
 #include "../util/util.h"
-#include "tree.h"
+#include "data_structs.h"
 #include "tokenise.h"
 #include "parse.h"
 #include "../util/alloc.h"
@@ -46,14 +46,13 @@ symtable *current_scope;
 
 expr *parse_lone_identifier()
 {
-	expr *e = expr_new();
+	expr *e;
 
 	if(curtok != token_identifier)
 		EAT(token_identifier); /* raise error */
 
-	e->spel = token_current_spel();
+	e = expr_new_identifier(token_current_spel());
 	EAT(token_identifier);
-	e->type = expr_identifier;
 
 	return e;
 }
@@ -65,17 +64,13 @@ expr *parse_expr_unary_op()
 	switch(curtok){
 		case token_sizeof:
 			EAT(token_sizeof);
-			e = expr_new();
-			e->type = expr_sizeof;
+			e = expr_new_sizeof();
 
 			if(accept(token_open_paren)){
 				decl *d = parse_decl_single(DECL_SPEL_NO);
 
 				if(d){
-					e->expr = expr_new();
-					e->expr->type = expr_cast;
-					decl_free(e->expr->tree_type);
-					e->expr->tree_type = d;
+					e->tree_type = d;
 				}else{
 					/* parse a full one, since we're in brackets */
 					e->expr = parse_expr();
@@ -96,13 +91,17 @@ expr *parse_expr_unary_op()
 			EAT(curtok);
 			return e;
 
+		case token_and:
+			EAT(token_and);
+			e = expr_new_addr();
+			e->expr = PARSE_SMALL();
+			return e;
+
 		case token_string:
 		case token_open_block: /* array */
-			e = expr_new();
-			e->array_store = array_decl_new();
+			e = expr_new_addr();
 
-			e->type = expr_addr;
-			/*e->ptr_safe = 1;*/
+			e->array_store = array_decl_new();
 
 			if(curtok == token_string){
 				char *s;
@@ -142,14 +141,9 @@ expr *parse_expr_unary_op()
 			EAT(token_open_paren);
 
 			if((d = parse_decl_single(DECL_SPEL_NO))){
-				e = expr_new();
-				e->type = expr_cast;
-				e->lhs = expr_new();
-				decl_free(e->lhs->tree_type);
-				e->lhs->tree_type = d;
-
+				e = expr_new_cast(d);
 				EAT(token_close_paren);
-				e->rhs = PARSE_SMALL(); /* grab only the closest */
+				e->expr = PARSE_SMALL(); /* grab only the closest */
 			}else{
 				e = parse_expr();
 				EAT(token_close_paren);
@@ -158,31 +152,19 @@ expr *parse_expr_unary_op()
 			return e;
 		}
 
-		case token_and:
-			EAT(token_and);
-			e = expr_new();
-			e->type = expr_addr;
-			e->expr = PARSE_SMALL();
-			return e;
-
 		case token_plus:
 			EAT(token_plus);
 			return parse_expr();
 
 		case token_minus:
-			e = expr_new();
-			e->type = expr_op;
-			e->op = curtok_to_op();
-
+			e = expr_new_op(curtok_to_op());
 			EAT(token_minus);
 			e->lhs = parse_expr_binary_op();
 			return e;
 
 		case token_not:
 		case token_bnot:
-			e = expr_new();
-			e->type = expr_op;
-			e->op = curtok_to_op();
+			e = expr_new_op(curtok_to_op());
 
 			EAT(curtok);
 			e->lhs = parse_expr_binary_op();
@@ -193,14 +175,12 @@ expr *parse_expr_unary_op()
 		{
 			const int inc = curtok == token_increment;
 			/* this is a normal increment, i.e. ++x, simply translate it to x = x + 1 */
-			e = expr_new();
-			e->type = expr_assign;
+			e = expr_new_assign();
 			EAT(curtok);
 
 			/* assign to... */
 			e->lhs = parse_expr_array();
-			e->rhs = expr_new();
-			e->rhs->op = inc ? op_plus : op_minus;
+			e->rhs = expr_new_op(inc ? op_plus : op_minus);
 			e->rhs->lhs = e->lhs;
 			e->rhs->rhs = expr_new_val(1);
 			/*
@@ -248,9 +228,7 @@ expr *parse_expr_join(expr *(*above)(), enum token accept, ...)
 
 			va_end(l);
 
-			join       = expr_new();
-			join->type = expr_op;
-			join->op   = curtok_to_op();
+			join       = expr_new_op(curtok_to_op());
 			join->lhs  = e;
 
 			EAT(curtok);
@@ -280,19 +258,14 @@ expr *parse_expr_array()
 	while(accept(token_open_square)){
 		expr *sum, *deref;
 
-		sum = expr_new();
-
-		sum->type = expr_op;
-		sum->op   = op_plus;
+		sum = expr_new_op(op_plus);
 
 		sum->lhs  = base;
 		sum->rhs  = parse_expr();
 
 		EAT(token_close_square);
 
-		deref = expr_new();
-		deref->type = expr_op;
-		deref->op   = op_deref;
+		deref = expr_new_op(op_deref);
 		deref->lhs  = sum;
 
 
@@ -308,13 +281,11 @@ expr *parse_expr_inc_dec()
 	int flag = 0;
 
 	if((flag = accept(token_increment)) || accept(token_decrement)){
-		expr *inc = expr_new();
-		inc->type = expr_assign;
+		expr *inc = expr_new_assign();
 		inc->assign_is_post = 1;
 
 		inc->lhs = e;
-		inc->rhs = expr_new();
-		inc->rhs->op = flag ? op_plus : op_minus;
+		inc->rhs = expr_new_op(flag ? op_plus : op_minus);
 		inc->rhs->lhs = e;
 		inc->rhs->rhs = expr_new_val(1);
 		e = inc;
@@ -329,8 +300,7 @@ expr *parse_expr_funcall()
 
 	while(accept(token_open_paren)){
 		expr *sub = e;
-		e = expr_new();
-		e->type = expr_funcall;
+		e = expr_new_funcall();
 		e->funcargs = parse_funcargs();
 		e->expr = sub;
 		EAT(token_close_paren);
@@ -342,9 +312,7 @@ expr *parse_expr_funcall()
 expr *parse_expr_deref()
 {
 	if(accept(token_multiply)){
-		expr *e = expr_new();
-		e->type = expr_op;
-		e->op   = op_deref;
+		expr *e = expr_new_op(op_deref);
 		e->lhs  = parse_expr_deref();
 		return e;
 	}
@@ -363,14 +331,10 @@ expr *parse_expr_assign()
 		e = expr_assignment(e, above());
 	}else if(curtok_is_augmented_assignment()){
 		/* +=, ... */
-		expr *ass = expr_new();
-
-		ass->type = expr_assign;
+		expr *ass = expr_new_assign();
 
 		ass->lhs = e;
-		ass->rhs = expr_new();
-
-		ass->rhs->op = curtok_to_augmented_op();
+		ass->rhs = expr_new_op(curtok_to_augmented_op());
 		EAT(curtok);
 
 		ass->rhs->lhs = e;
@@ -433,10 +397,8 @@ expr *parse_expr_if()
 {
 	expr *e = parse_expr_logical_op();
 	if(accept(token_question)){
-		expr *q = expr_new();
+		expr *q = expr_new_if(e);
 
-		q->type = expr_if;
-		q->expr = e;
 		if(accept(token_colon)){
 			q->lhs = NULL; /* sentinel */
 		}else{
@@ -458,8 +420,7 @@ expr *parse_expr_comma()
 	e = parse_expr_funcallarg();
 
 	if(accept(token_comma)){
-		expr *ret = expr_new();
-		ret->type = expr_comma;
+		expr *ret = expr_new_comma();
 		ret->lhs = e;
 		ret->rhs = parse_expr_comma();
 		return ret;
@@ -618,11 +579,9 @@ tree *parse_code_block()
 	for(diter = t->decls; diter && *diter; diter++)
 		/* only extract the init if it's not static */
 		if((*diter)->init && ((*diter)->type->spec & spec_static) == 0){
-			expr *e = expr_new();
+			expr *e;
 
-			e = expr_new();
-			e->type = expr_identifier;
-			e->spel = (*diter)->spel;
+			e = expr_new_identifier((*diter)->spel);
 
 			dynarray_add((void ***)&t->codes, expr_to_tree(expr_assignment(e, (*diter)->init)));
 
@@ -736,7 +695,7 @@ tree *parse_code()
 		default:
 			t = expr_to_tree(parse_expr());
 
-			if(t->expr->type == expr_identifier && accept(token_colon)){
+			if(expr_kind(t->expr, identifier) && accept(token_colon)){
 				t->type = stat_label;
 				return parse_label_next(t);
 			}else{

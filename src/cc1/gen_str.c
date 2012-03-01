@@ -3,46 +3,31 @@
 #include <unistd.h>
 
 #include "../util/util.h"
-#include "tree.h"
+#include "data_structs.h"
 #include "macros.h"
 #include "sym.h"
 #include "cc1.h"
 #include "struct.h"
 #include "enum.h"
+#include "gen_str.h"
 
 #define ENGLISH_PRINT_ARGLIST
 
 #define PRINT_IF(x, sub, fn) \
 	if(x->sub){ \
 		idt_printf(#sub ":\n"); \
-		indent++; \
+		gen_str_indent++; \
 		fn(x->sub); \
-		indent--; \
+		gen_str_indent--; \
 	}
 
-static int indent = 0;
-
-enum pdeclargs
-{
-	PDECL_NONE          = 0,
-	PDECL_INDENT        = 1 << 0,
-	PDECL_NEWLINE       = 1 << 1,
-	PDECL_SYM_OFFSET    = 1 << 2,
-	PDECL_FUNC_DESCEND  = 1 << 3,
-	PDECL_PIGNORE       = 1 << 4,
-};
-
-void print_decl(decl *d, enum pdeclargs);
-
-void print_tree(tree *t);
-void print_expr(expr *e);
-void idt_print(void);
+int gen_str_indent = 0;
 
 void idt_print()
 {
 	int i;
 
-	for(i = indent; i > 0; i--)
+	for(i = gen_str_indent; i > 0; i--)
 		fputs("  ", cc1_out);
 }
 
@@ -59,8 +44,9 @@ void idt_printf(const char *fmt, ...)
 
 void print_expr_val(expr *e)
 {
-	UCC_ASSERT(e->type == expr_val, "%s: not a value expression", __func__);
-	fprintf(cc1_out, "%ld", e->val.i.val);
+	UCC_ASSERT(expr_kind(e, val), "%s: not a value expression", __func__);
+	UCC_ASSERT((e->val.iv.suffix & VAL_UNSIGNED) == 0, "TODO: unsigned");
+	fprintf(cc1_out, "%ld", e->val.iv.val);
 }
 
 void print_decl_ptr_eng(decl_ptr *dp)
@@ -176,12 +162,12 @@ void print_decl(decl *d, enum pdeclargs mode)
 		fputs(type_to_str(d->type), cc1_out);
 
 		if(fopt_mode & FOPT_DECL_PTR_TREE){
-			const int idt_orig = indent;
+			const int idt_orig = gen_str_indent;
 			decl_ptr *dpi;
 
 			fputc('\n', cc1_out);
 			for(dpi = d->decl_ptr; dpi; dpi = dpi->child){
-				indent++;
+				gen_str_indent++;
 				idt_printf("decl_ptr: %s%s",
 						dpi->is_const ? "const" : "",
 						dpi->fptrargs ? "(#)" : "");
@@ -189,13 +175,13 @@ void print_decl(decl *d, enum pdeclargs mode)
 				if(dpi->array_size){
 					fputs("\n", cc1_out);
 					idt_printf("array size:\n");
-					indent++;
+					gen_str_indent++;
 					print_expr(dpi->array_size);
-					indent--;
+					gen_str_indent--;
 				}
 			}
 
-			indent = idt_orig;
+			gen_str_indent = idt_orig;
 		}else{
 			if(d->spel)
 				fputc(' ', cc1_out);
@@ -223,7 +209,7 @@ void print_decl(decl *d, enum pdeclargs mode)
 	if((mode & PDECL_FUNC_DESCEND) && d->func_code){
 		decl **iter;
 
-		indent++;
+		gen_str_indent++;
 
 		for(iter = d->func_code->symtab->decls; iter && *iter; iter++)
 			idt_printf("offset of %s = %d\n", (*iter)->spel, (*iter)->sym->offset);
@@ -232,7 +218,7 @@ void print_decl(decl *d, enum pdeclargs mode)
 
 		print_tree(d->func_code);
 
-		indent--;
+		gen_str_indent--;
 	}
 }
 
@@ -244,160 +230,24 @@ void print_sym(sym *s)
 
 void print_expr(expr *e)
 {
-	idt_printf("e->type: %s\n", expr_to_str(e->type));
-	idt_printf("tree_type: ");
-	indent++;
-	print_decl(e->tree_type, PDECL_NEWLINE);
-	indent--;
-
-	switch(e->type){
-		case expr_comma:
-			idt_printf("comma expression\n");
-			idt_printf("comma lhs:\n");
-			indent++;
-			print_expr(e->lhs);
-			indent--;
-			idt_printf("comma rhs:\n");
-			indent++;
-			print_expr(e->rhs);
-			indent--;
-			break;
-
-		case expr_identifier:
-			idt_printf("identifier: \"%s\" (sym %p)\n", e->spel, e->sym);
-			break;
-
-		case expr_val:
-			idt_printf("val: %d\n", e->val);
-			break;
-
-		case expr_op:
-			idt_printf("op: %s\n", op_to_str(e->op));
-			indent++;
-
-			if(e->op == op_deref){
-				idt_printf("deref size: %s ", decl_to_str(e->tree_type));
-				fputc('\n', cc1_out);
-			}
-
-			PRINT_IF(e, lhs, print_expr);
-			PRINT_IF(e, rhs, print_expr);
-			indent--;
-			break;
-
-		case expr_assign:
-			idt_printf("%sassignment, expr:\n", e->assign_is_post ? "post-inc/dec " : "");
-			idt_printf("assign to:\n");
-			indent++;
-			print_expr(e->lhs);
-			indent--;
-			idt_printf("assign from:\n");
-			indent++;
-			print_expr(e->rhs);
-			indent--;
-			break;
-
-		case expr_funcall:
-		{
-			expr **iter;
-
-			idt_printf("funcall, calling:\n");
-
-			indent++;
-			print_expr(e->expr);
-			indent--;
-
-			if(e->funcargs){
-				int i;
-				idt_printf("args:\n");
-				indent++;
-				for(i = 1, iter = e->funcargs; *iter; iter++, i++){
-					idt_printf("arg %d:\n", i);
-					indent++;
-					print_expr(*iter);
-					indent--;
-				}
-				indent--;
-			}else{
-				idt_printf("no args\n");
-			}
-			break;
-		}
-
-		case expr_addr:
-			if(e->array_store){
-				if(e->array_store->type == array_str){
-					idt_printf("label: %s, \"%s\" (length=%d)\n", e->array_store->label, e->array_store->data.str, e->array_store->len);
-				}else{
-					int i;
-					idt_printf("array: %s:\n", e->array_store->label);
-					indent++;
-					for(i = 0; e->array_store->data.exprs[i]; i++){
-						idt_printf("array[%d]:\n", i);
-						indent++;
-						print_expr(e->array_store->data.exprs[i]);
-						indent--;
-					}
-					indent--;
-				}
-			}else{
-				idt_printf("address of expr:\n");
-				indent++;
-				print_expr(e->expr);
-				indent--;
-			}
-			break;
-
-			indent--;
-			break;
-
-		case expr_sizeof:
-			if(e->expr->expr_is_sizeof){
-				idt_printf("sizeof %s\n", decl_to_str(e->expr->tree_type));
-			}else{
-				idt_printf("sizeof expr:\n");
-				print_expr(e->expr);
-			}
-			break;
-
-		case expr_cast:
-			idt_printf("cast expr:\n");
-			indent++;
-			print_expr(e->rhs);
-			indent--;
-			break;
-
-		case expr_if:
-			idt_printf("if expression:\n");
-			indent++;
-#define SUB_PRINT(nam) \
-			do{\
-				idt_printf(#nam  ":\n"); \
-				indent++; \
-				print_expr(e->nam); \
-				indent--; \
-			}while(0)
-
-			SUB_PRINT(expr);
-			if(e->lhs)
-				SUB_PRINT(lhs);
-			else
-				idt_printf("?: syntactic sugar\n");
-
-			SUB_PRINT(rhs);
-#undef SUB_PRINT
-			break;
+	if(e->tree_type){ /* might be a label */
+		idt_printf("e->type: %s\n", e->f_str());
+		idt_printf("tree_type: ");
+		gen_str_indent++;
+		print_decl(e->tree_type, PDECL_NEWLINE);
+		gen_str_indent--;
 	}
+	e->f_gen(e, NULL);
 }
 
 void print_tree_flow(tree_flow *t)
 {
 	idt_printf("flow:\n");
-	indent++;
+	gen_str_indent++;
 	PRINT_IF(t, for_init,  print_expr);
 	PRINT_IF(t, for_while, print_expr);
 	PRINT_IF(t, for_inc,   print_expr);
-	indent--;
+	gen_str_indent--;
 }
 
 void print_struct(struct_st *st)
@@ -406,13 +256,13 @@ void print_struct(struct_st *st)
 
 	idt_printf("struct %s (size %d):\n", st->spel, struct_size(st));
 
-	indent++;
+	gen_str_indent++;
 	for(iter = st->members; iter && *iter; iter++){
 		decl *d = *iter;
 		print_decl(d, PDECL_INDENT | PDECL_NEWLINE);
 		idt_printf("offset %d\n", d->struct_offset);
 	}
-	indent--;
+	gen_str_indent--;
 }
 
 void print_enum(enum_st *et)
@@ -421,12 +271,12 @@ void print_enum(enum_st *et)
 
 	idt_printf("enum %s:\n", et->spel);
 
-	indent++;
+	gen_str_indent++;
 	for(mi = et->members; *mi; mi++){
 		enum_member *m = *mi;
-		idt_printf("member %s = %d\n", m->spel, m->val->val.i.val);
+		idt_printf("member %s = %d\n", m->spel, m->val->val.iv.val);
 	}
-	indent--;
+	gen_str_indent--;
 }
 
 void print_st_en_tdef(symtable *stab)
@@ -444,10 +294,10 @@ void print_st_en_tdef(symtable *stab)
 
 	if(stab->typedefs){
 		idt_printf("typedefs:\n");
-		indent++;
+		gen_str_indent++;
 		for(tit = stab->typedefs; tit && *tit; tit++)
 			print_decl(*tit, PDECL_INDENT | PDECL_NEWLINE);
-		indent--;
+		gen_str_indent--;
 	}
 }
 
@@ -456,9 +306,9 @@ void print_tree(tree *t)
 	idt_printf("t->type: %s\n", stat_to_str(t->type));
 
 	if(t->flow){
-		indent++;
+		gen_str_indent++;
 		print_tree_flow(t->flow);
-		indent--;
+		gen_str_indent--;
 	}
 
 	PRINT_IF(t, expr, print_expr);
@@ -474,9 +324,9 @@ void print_tree(tree *t)
 		for(iter = t->decls; *iter; iter++){
 			decl *d = *iter;
 
-			indent++;
+			gen_str_indent++;
 			print_decl(d, PDECL_INDENT | PDECL_NEWLINE | PDECL_SYM_OFFSET | PDECL_PIGNORE);
-			indent--;
+			gen_str_indent--;
 		}
 	}
 
@@ -487,9 +337,9 @@ void print_tree(tree *t)
 
 		idt_printf("code(s):\n");
 		for(iter = t->codes; *iter; iter++){
-			indent++;
+			gen_str_indent++;
 			print_tree(*iter);
-			indent--;
+			gen_str_indent--;
 		}
 	}
 }
@@ -504,9 +354,9 @@ void gen_str(symtable *symtab)
 		print_decl(*diter, PDECL_INDENT | PDECL_NEWLINE | PDECL_PIGNORE | PDECL_FUNC_DESCEND);
 		if((*diter)->init){
 			idt_printf("init:\n");
-			indent++;
+			gen_str_indent++;
 			print_expr((*diter)->init);
-			indent--;
+			gen_str_indent--;
 		}
 
 		fputc('\n', cc1_out);

@@ -5,7 +5,7 @@
 
 #include "../util/alloc.h"
 #include "../util/util.h"
-#include "tree.h"
+#include "data_structs.h"
 #include "macros.h"
 #include "sym.h"
 #include "../util/platform.h"
@@ -34,33 +34,6 @@ tree *tree_new(symtable *stab)
 	where_new(&t->where);
 	t->symtab = stab;
 	return t;
-}
-
-expr *expr_new()
-{
-	expr *e = umalloc(sizeof *e);
-	where_new(&e->where);
-	e->tree_type = decl_new();
-	return e;
-}
-
-expr *expr_new_intval(intval *iv)
-{
-	expr *e = expr_new();
-	e->type = expr_val;
-	e->tree_type->type->spec |= spec_const;
-	memcpy(&e->val.i, iv, sizeof e->val.i);
-	return e;
-}
-
-expr *expr_new_val(int i)
-{
-	expr *e = expr_new();
-	e->type = expr_val;
-	e->tree_type->type->primitive = type_int; /* FIXME: long */
-	e->tree_type->type->spec |= spec_const;
-	e->val.i.val = i;
-	return e;
 }
 
 decl_ptr *decl_ptr_new()
@@ -129,27 +102,6 @@ decl *decl_copy(decl *d)
 	return ret;
 }
 
-#if 0
-expr *expr_copy(expr *e)
-{
-	expr *ret;
-
-	if(!e)
-		return NULL;
-
-	ret = umalloc(sizeof *ret);
-
-	ret->lhs  = expr_copy(e->lhs);
-	ret->rhs  = expr_copy(e->rhs);
-	ret->spel = ustrdup(  e->spel);
-	ret->expr = expr_copy(e->expr);
-	ret->funcargs = NULL;
-	ret->tree_type = decl_copy(e->tree_type);
-
-	return ret;
-}
-#endif
-
 funcargs *funcargs_new()
 {
 	funcargs *f = umalloc(sizeof *f);
@@ -165,48 +117,6 @@ void funcargs_free(funcargs *args, int free_decls)
 			decl_free(args->arglist[i]);
 	}
 	free(args);
-}
-
-expr *expr_ptr_multiply(expr *e, decl *d)
-{
-	decl *dtmp;
-	expr *ret;
-	int sz;
-
-	dtmp = decl_copy(d);
-
-	sz = decl_size(decl_ptr_depth_dec(dtmp));
-
-	decl_free(dtmp);
-
-	if(sz == 1)
-		return e;
-
-	ret = expr_new();
-	memcpy(&ret->where, &e->where, sizeof e->where);
-
-	decl_free(ret->tree_type);
-	ret->tree_type = decl_copy(e->tree_type);
-
-	ret->type = expr_op;
-	ret->op   = op_multiply;
-
-	ret->lhs  = e;
-	ret->rhs  = expr_new_val(sz);
-
-	return ret;
-}
-
-expr *expr_assignment(expr *to, expr *from)
-{
-	expr *ass = expr_new();
-
-	ass->type = expr_assign;
-
-	ass->lhs = to;
-	ass->rhs = from;
-
-	return ass;
 }
 
 int type_size(const type *t)
@@ -245,7 +155,7 @@ int decl_size(decl *d)
 		for(dp = d->decl_ptr; dp; dp = dp->child)
 			if(dp->array_size){
 				/* should've been folded fully */
-				long v = dp->array_size->val.i.val;
+				long v = dp->array_size->val.iv.val;
 				if(!v)
 					v = platform_word_size(); /* int x[0] - the 0 is a sentinel */
 				ret += v * siz;
@@ -321,23 +231,6 @@ void function_empty_args(funcargs *func)
 		func->arglist = NULL;
 	}
 	func->args_void = 0;
-}
-
-const char *expr_to_str(const enum expr_type t)
-{
-	switch(t){
-		CASE_STR_PREFIX(expr, op);
-		CASE_STR_PREFIX(expr, val);
-		CASE_STR_PREFIX(expr, addr);
-		CASE_STR_PREFIX(expr, sizeof);
-		CASE_STR_PREFIX(expr, identifier);
-		CASE_STR_PREFIX(expr, assign);
-		CASE_STR_PREFIX(expr, funcall);
-		CASE_STR_PREFIX(expr, cast);
-		CASE_STR_PREFIX(expr, if);
-		CASE_STR_PREFIX(expr, comma);
-	}
-	return NULL;
 }
 
 const char *op_to_str(const enum op_type o)

@@ -6,7 +6,7 @@
 #include "../util/util.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
-#include "tree.h"
+#include "data_structs.h"
 #include "typedef.h"
 
 #include "tokenise.h"

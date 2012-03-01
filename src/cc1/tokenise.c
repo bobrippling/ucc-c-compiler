@@ -6,7 +6,7 @@
 #include <stdarg.h>
 
 #include "../util/util.h"
-#include "tree.h"
+#include "data_structs.h"
 #include "tokenise.h"
 #include "../util/alloc.h"
 #include "../util/util.h"
