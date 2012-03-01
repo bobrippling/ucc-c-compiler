@@ -86,7 +86,7 @@ void expr_gen_identifier(expr *e, symtable *stab)
 void expr_gen_identifier_store(expr *e, symtable *stab)
 {
 	(void)stab;
-	asm_sym(ASM_SET, e->sym, "rax");
+	asm_sym_store(e->sym, "rax");
 }
 
 expr *expr_new_identifier(char *sp)

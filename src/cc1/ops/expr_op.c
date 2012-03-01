@@ -219,58 +219,81 @@ void fold_op_struct(expr *e, symtable *stab)
 	}
 }
 
-void fold_op_typecheck(expr *e, symtable *stab)
+void fold_typecheck_sign(where *where, expr *lhs, expr *rhs, enum op_type op)
 {
-	enum {
+	enum
+	{
 		SIGNED, UNSIGNED
-	} rhs, lhs;
+	} rhs_signed, lhs_signed;
 	type *type_l, *type_r;
 
-	(void)stab;
-
-	if(!e->rhs)
-		return;
-
-	type_l = e->lhs->tree_type->type;
-	type_r = e->rhs->tree_type->type;
+	type_l = lhs->tree_type->type;
+	type_r = rhs->tree_type->type;
 
 	if(type_l->primitive == type_enum
 			&& type_r->primitive == type_enum
 			&& type_l->enu != type_r->enu){
-		cc1_warn_at(&e->where, 0, WARN_ENUM_CMP, "comparison between enum %s and enum %s", type_l->spel, type_r->spel);
+		cc1_warn_at(where, 0, WARN_ENUM_CMP, "operation between enum %s and enum %s", type_l->spel, type_r->spel);
 	}
 
+	lhs_signed = type_l->spec & spec_unsigned ? UNSIGNED : SIGNED;
+	rhs_signed = type_r->spec & spec_unsigned ? UNSIGNED : SIGNED;
 
-	lhs = type_l->spec & spec_unsigned ? UNSIGNED : SIGNED;
-	rhs = type_r->spec & spec_unsigned ? UNSIGNED : SIGNED;
-
-	if(op_is_cmp(e->op) && rhs != lhs){
-#define SIGN_CONVERT(test_hs, assert_hs) \
-		if(expr_kind(e->test_hs, val) && e->test_hs->val.iv.val >= 0){ \
+	if(op_is_cmp(op) && rhs_signed != lhs_signed){
+#define SIGN_CONVERT(hs) \
+		if(hs->type == expr_val && hs->val.i.val >= 0){ \
 			/*                                              \
-				* assert(lhs == UNSIGNED);                     \
+				* assert(lhs_signed == UNSIGNED);                     \
 				* vals default to signed, change to unsigned   \
 				*/                                             \
-			UCC_ASSERT(assert_hs == UNSIGNED,               \
+			UCC_ASSERT(hs ## _signed == UNSIGNED,               \
 					"signed-unsigned assumption failure");      \
 																											\
-			e->test_hs->tree_type->type->spec |= spec_unsigned; \
+			hs->tree_type->type->spec |= spec_unsigned; \
 			goto noproblem;                                 \
 		}
 
-		SIGN_CONVERT(rhs, lhs)
-		SIGN_CONVERT(lhs, rhs)
+		SIGN_CONVERT(rhs)
+		SIGN_CONVERT(lhs)
 
 #define SPEL_IF_IDENT(hs)                              \
-				expr_kind(hs, identifier) ? " ("     : "", \
-				expr_kind(hs, identifier) ? hs->spel : "", \
-				expr_kind(hs, identifier) ? ")"      : ""  \
+				hs->type == expr_identifier ? " ("     : "", \
+				hs->type == expr_identifier ? hs->spel : "", \
+				hs->type == expr_identifier ? ")"      : ""  \
 
-		cc1_warn_at(&e->where, 0, WARN_SIGN_COMPARE, "comparison between signed and unsigned%s%s%s%s%s%s",
-				SPEL_IF_IDENT(e->lhs), SPEL_IF_IDENT(e->rhs));
+		cc1_warn_at(where, 0, WARN_SIGN_COMPARE, "comparison between signed and unsigned%s%s%s%s%s%s",
+				SPEL_IF_IDENT(lhs), SPEL_IF_IDENT(rhs));
 	}
+
 noproblem:
 	return;
+}
+
+void fold_typecheck_primitive(expr **plhs, expr **prhs)
+{
+	expr *lhs, *rhs;
+
+	lhs = *plhs;
+	rhs = *prhs;
+
+	if(lhs->tree_type->type->primitive != rhs->tree_type->type->primitive){
+		/* insert a cast: rhs -> lhs */
+		expr *cast = *prhs = expr_new();
+
+		cast->type = expr_cast;
+
+		cast->lhs = expr_new(); /* just the type */
+		cast->lhs->tree_type = decl_copy(lhs->tree_type); /* cast to lhs */
+		cast->rhs = rhs;
+
+		GET_TREE_TYPE_TO(cast, lhs->tree_type);
+	}
+}
+
+void fold_op_typecheck(expr *e, symtable *stab)
+{
+	fold_typecheck_sign(&e->where, e->lhs, e->rhs, e->op);
+	fold_typecheck_primitive(&e->lhs, &e->rhs);
 }
 
 void fold_deref(expr *e)
@@ -503,10 +526,10 @@ void expr_gen_op(expr *e, symtable *tab)
 			gen_expr(e->lhs, tab);
 			asm_temp(1, "pop rax");
 
-			if(asm_type_size(e->tree_type) == ASM_SIZE_WORD)
-				asm_temp(1, "mov rax, [rax]");
-			else
-				asm_temp(1, "movzx rax, byte [rax]");
+			/* e.g. "movzx rax, byte [rax]" */
+			asm_temp(1, "mov %sax, %s [rax]",
+					asm_reg_name(e->tree_type),
+					asm_type_str(e->tree_type));
 
 			asm_temp(1, "push rax");
 			return;
@@ -563,24 +586,54 @@ void expr_gen_op_store(expr *e, symtable *stab)
 	switch(e->op){
 		case op_deref:
 			/* a dereference */
-			asm_temp(1, "push rax ; save val");
+			asm_push(store->tree_type, 'a');
+			asm_comment("value to save");
 
 			gen_expr(e->lhs, stab); /* skip over the *() bit */
-			/* pointer on stack */
+			asm_comment("pointer on stack");
 
 			/* move `pop` into `pop` */
-			asm_temp(1, "pop rax ; ptr");
-			asm_temp(1, "pop rbx ; val");
-			asm_temp(1, "mov [rax], rbx");
+			asm_pop(store->tree_type, 'a');
+			asm_comment("address");
+
+
+			asm_pop(store->tree_type, 'b');
+			asm_comment("value");
+
+			asm_mov(store->tree_type, asm_o HERE
+
+			asm_output_new(
+						asm_out_type_mov,
+						asm_operand_new_deref(store->tree_type, asm_operand_new_reg(store->tree_type, 'a'), 0),
+						asm_operand_new_reg(  store->lhs->tree_type, 'b')
+					);
 			return;
 
 		case op_struct_ptr:
 			gen_expr(e->lhs, stab);
 
-			asm_temp(1, "pop rbx ; struct addr");
-			asm_temp(1, "add rbx, %d ; offset of member %s",
-					e->rhs->tree_type->struct_offset,
-					e->rhs->spel);
+			asm_pop('b');
+			asm_comment("struct addr");
+
+			asm_output_new(
+					asm_out_type_add,
+					asm_operand_new_reg(store->tree_type, 'b'),
+					asm_operand_new_val(store->tree_type, store->rhs->tree_type->struct_offset)
+				);
+			asm_comment("offset of member %s", store->rhs->spel);
+
+			asm_output_new(
+						asm_out_type_mov,
+						asm_operand_new_reg(store->tree_type, 'a'),
+						asm_operand_new_deref(store->tree_type, "rsp", 0)
+					);
+
+			asm_output_new(
+					asm_out_type_mov,
+					asm_operand_new_reg('a'),
+					/* TODO */
+					1);
+
 			asm_temp(1, "mov rax, [rsp] ; saved val");
 			asm_temp(1, "mov [rbx], rax");
 			return;

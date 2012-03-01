@@ -126,10 +126,17 @@ int type_size(const type *t)
 		case type_void:
 			return 1;
 
+		case type_short:
+			return 2;
+
 		case type_enum:
 		case type_int:
-			/* FIXME: 4 for int */
-			return platform_word_size();
+		case type_float:
+			return 4;
+
+		case type_long:
+		case type_double:
+			return 8; /* FIXME: 4 on 32-bit */
 
 		case type_typedef:
 			return decl_size(t->tdef);
@@ -429,9 +436,14 @@ const char *type_to_str(const type *t)
 	}else{
 		switch(t->primitive){
 #define APPEND(t) case type_ ## t: snprintf(bufp, BUF_SIZE, "%s", #t); break
-			APPEND(int);
-			APPEND(char);
 			APPEND(void);
+			APPEND(char);
+			APPEND(short);
+			APPEND(int);
+			APPEND(long);
+			APPEND(float);
+			APPEND(double);
+
 			case type_unknown:
 				ICE("unknown type primitive (%s)", where_str(&t->where));
 			case type_typedef:

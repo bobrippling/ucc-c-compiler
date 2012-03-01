@@ -23,11 +23,16 @@ enum token
 	token_identifier,
 	token_integer,     /* aka [1-9] */
 	token_character,   /* aka 'f' */
-	token_void,        /* aka subroutine */
-	token_char,        /* aka "char" */
-	token_int,         /* aka "int" */
 	token_elipsis,     /* aka ... */
 	token_string,      /* aka \"...\" */
+
+	token_void,        /* aka subroutine */
+	token_char,        /* aka "char" */
+	token_short,
+	token_int,         /* aka "int" */
+	token_long,
+	token_float,
+	token_double,
 
 	token_const,
 	token_static,

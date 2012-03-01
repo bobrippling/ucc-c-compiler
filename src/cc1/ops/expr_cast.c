@@ -37,7 +37,33 @@ void expr_gen_cast(expr *e, symtable *stab)
 {
 	/* ignore the lhs, it's just a type spec */
 	/* FIXME: size changing? */
+	char buf[DECL_STATIC_BUFSIZ];
+	decl *dlhs, *drhs;
+
 	gen_expr(e->expr, stab);
+
+	dlhs = e->tree_type;
+	drhs = e->expr->tree_type;
+
+	/* type convert */
+	strcpy(buf, decl_to_str(drhs));
+	asm_temp(1, "; cast %s to %s", decl_to_str(dlhs), buf);
+
+	/* check float <--> int conversion */
+	if(decl_is_float(dlhs) != decl_is_float(drhs))
+		ICE("TODO: float <-> int casting");
+
+	/* decide if casting to a larger or smaller type */
+	if(asm_type_size(dlhs) != asm_type_size(drhs)){
+		char from, to;
+
+		from = asm_type_ch(drhs);
+		to   = asm_type_ch(dlhs);
+
+		asm_temp(1, "pop rax");
+		asm_temp(1, "c%c%c ; convert %s to %s", from, to, asm_type_str(drhs), asm_type_str(dlhs));
+		asm_temp(1, "push rax");
+	}
 }
 
 void expr_gen_str_cast(expr *e)

@@ -158,7 +158,24 @@ type *parse_type()
 		}else{
 			/* curtok_is_type */
 			if(t){
-				die_at(NULL, "second type name unexpected");
+				/* allow "long int" and "short int" */
+				enum type_primitive this, got;
+
+				this = curtok_to_type_primitive();
+				got  = t->primitive;
+
+#define INT(x)   x == type_int
+#define SHORT(x) x == type_short
+#define LONG(x)  x == type_long
+
+				if(      INT(this) && (SHORT(got)  || LONG(got))){
+					t->primitive = got;
+				}else if(INT(got)  && (SHORT(this) || LONG(this))){
+					/* fine, ignore the int */
+				}else{
+					die_at(NULL, "second type name unexpected");
+				}
+				EAT(curtok);
 			}else{
 				t = type_new();
 				t->primitive = curtok_to_type_primitive();

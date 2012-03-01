@@ -49,9 +49,16 @@ struct statement
 	{ "while",   token_while   },
 	{ "for",     token_for     },
 
-	{ "char",    token_char    },
-	{ "int",     token_int     },
-	{ "void",    token_void    },
+#define TYPE(x) { #x, token_##x }
+	TYPE(void),
+	TYPE(char),
+	TYPE(short),
+	TYPE(int),
+	TYPE(long),
+	TYPE(float),
+	TYPE(double),
+#undef TYPE
+
 	{ "extern",  token_extern  },
 	{ "const",   token_const   },
 	{ "static",  token_static  },

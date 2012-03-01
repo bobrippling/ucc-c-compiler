@@ -67,6 +67,7 @@ void expr_fold_assign(expr *e, symtable *stab)
 	else
 		e->tree_type = decl_copy(e->lhs->tree_type);
 
+	fold_op_typecheck(e);
 
 	/* type check */
 	fold_decl_equal(e->lhs->tree_type, e->rhs->tree_type,

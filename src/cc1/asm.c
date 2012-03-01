@@ -14,6 +14,17 @@
 
 static int label_last = 1, str_last = 1, switch_last = 1, flow_last = 1;
 
+static const struct
+{
+	int sz;
+	char ch, *str, *regname;
+} asm_type_table[] = {
+	{ 1,  'b', "byte" , "al"  },
+	{ 2,  'w', "word" , "ax"  },
+	{ 4,  'd', "dword", "eax" },
+	{ 8,  'q', "qword", "rax" },
+};
+
 char *asm_label_code(const char *fmt)
 {
 	int len;
@@ -107,14 +118,9 @@ void asm_sym(enum asm_sym_type t, sym *s, const char *reg)
 			 */
 			t = ASM_LOAD;
 		}else{
-			const char *type_s = "";
-
-			if(asm_type_size(s->decl) == ASM_SIZE_WORD)
-				type_s = "qword ";
-
 			/* get warnings for "lea rax, [qword tim]", just do "lea rax, [tim]" */
 			snprintf(brackets, bracket_len, "[%s%s]",
-					t == ASM_LEA ? "" : type_s, dsp);
+					t == ASM_LEA ? "" : asm_type_str(s->decl), dsp);
 		}
 	}else{
 		brackets = stackbrackets;
@@ -133,43 +139,6 @@ void asm_sym(enum asm_sym_type t, sym *s, const char *reg)
 
 	if(brackets != stackbrackets)
 		free(brackets);
-}
-
-void asm_new(enum asm_type t, void *p)
-{
-	switch(t){
-		case asm_assign:
-			asm_temp(1, "pop rax");
-			break;
-
-		case asm_call:
-			asm_temp(1, "call %s", (const char *)p);
-			break;
-
-		case asm_load_ident:
-			asm_temp(1, "load %s", (const char *)p);
-			break;
-
-		case asm_load_val:
-			asm_temp(1, "load val %d", *(int *)p);
-			break;
-
-		case asm_op:
-			asm_temp(1, "%s", op_to_str(*(enum op_type *)p));
-			break;
-
-		case asm_pop:
-			asm_temp(1, "pop");
-			break;
-
-		case asm_push:
-			asm_temp(1, "push");
-			break;
-
-		case asm_addrof:
-			fprintf(stderr, "BUH?? (addrof)\n");
-			break;
-	}
 }
 
 void asm_label(const char *lbl)
@@ -199,40 +168,68 @@ void asm_declare_single_part(FILE *f, expr *e)
 	e->f_gen_1(e, f);
 }
 
-enum asm_size asm_type_size(decl *d)
+int asm_table_lookup(decl *d)
 {
+	enum
+	{
+		INDEX_PTR   = 3,
+		INDEX_CHAR  = 0,
+		INDEX_SHORT = 1,
+		INDEX_INT   = 2,
+		INDEX_LONG  = 3
+	};
+
 	if(decl_ptr_depth(d)){
-		return ASM_SIZE_WORD;
+		return INDEX_PTR;
 	}else{
 		switch(d->type->primitive){
-			case type_enum:
-			case type_int:
-				return ASM_SIZE_WORD;
-
-			case type_char:
-				return ASM_SIZE_1;
-
 			case type_void:
 				ICE("type primitive is void");
 
+			case type_char:  return INDEX_CHAR;
+			case type_short: return INDEX_SHORT;
+
+			case type_enum:
+			case type_int:
+			case type_float:
+				return INDEX_INT;
+
+			case type_double:
+			case type_long:
+				return INDEX_LONG;
+
 			case type_typedef:
-				return asm_type_size(d->type->tdef);
+				return asm_table_lookup(d->type->tdef);
 
 			case type_struct:
-				ICE("asm_type_size of a struct - can't be word nor byte");
+				ICE("asm_type_size of a struct - can't be word nor byte (or can it?)"); /* TODO - structs in regs */
 
 			case type_unknown:
 				ICE("type primitive not set");
 		}
 	}
-
-	ICE("asm_type_size switch error");
-	return ASM_SIZE_WORD;
+	ICE("%s switch error", __func__);
+	return 0;
 }
 
 char asm_type_ch(decl *d)
 {
-	return asm_type_size(d) == ASM_SIZE_WORD ? 'q' : 'b';
+	return asm_type_table[asm_table_lookup(d)].ch;
+}
+
+const char *asm_type_str(decl *d)
+{
+	return asm_type_table[asm_table_lookup(d)].str;
+}
+
+const char *asm_reg_name(decl *d)
+{
+	return asm_type_table[asm_table_lookup(d)].regname;
+}
+
+int asm_type_size(decl *d)
+{
+	return asm_type_table[asm_table_lookup(d)].sz;
 }
 
 void asm_declare_single(FILE *f, decl *d)

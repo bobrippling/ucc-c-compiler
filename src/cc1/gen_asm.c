@@ -15,6 +15,7 @@
 #include "../util/util.h"
 #include "const.h"
 #include "struct.h"
+#include "asm_out.h"
 
 char *curfunc_lblfin; /* extern */
 

@@ -1,29 +1,6 @@
 #ifndef ASM_H
 #define ASM_H
 
-typedef struct
-{
-	enum asm_type
-	{
-		asm_assign,
-		asm_call,
-		asm_load_ident,
-		asm_load_val,
-		asm_op,
-		asm_pop,
-		asm_push,
-		asm_addrof
-	} type;
-
-} asmop;
-
-enum asm_sym_type
-{
-	ASM_SET,
-	ASM_LOAD,
-	ASM_LEA
-};
-
 enum asm_label_type
 {
 	CASE_CASE,
@@ -31,34 +8,27 @@ enum asm_label_type
 	CASE_RANGE
 };
 
-enum asm_size
-{
-	ASM_SIZE_WORD,
-	ASM_SIZE_1
-};
-
-void asm_new(enum asm_type, void *);
-
-void asm_temp(          int indent, const char *, ...);
-void asm_tempf(FILE *f, int indent, const char *, ...);
-void asm_out_intval(FILE *f, intval *iv);
+char        asm_type_ch(decl *);
+const char *asm_type_str(decl *);
+const char *asm_reg_name(decl *);
+int         asm_type_size(decl *);
 
 void asm_label(const char *);
-void asm_sym(enum asm_sym_type, sym *, const char *);
 
-char asm_type_ch(decl *d);
-enum asm_size asm_type_size(decl *d);
+void asm_sym_load(     sym *, const char *reg);
+void asm_sym_store(    sym *, const char *reg);
+void asm_sym_load_addr(sym *, const char *reg);
 
 void asm_declare_array(enum section_type output, const char *lbl, array_decl *ad);
-void asm_declare_single(FILE *f, decl *d);
 void asm_declare_single_part(FILE *f, expr *e);
+void asm_declare_single(     FILE *f, decl *d);
 
 char *asm_label_code(const char *fmt);
 char *asm_label_array(int str);
 char *asm_label_static_local(const char *funcsp, const char *spel);
 char *asm_label_goto(char *lbl);
 char *asm_label_case(enum asm_label_type, int val);
-#define asm_label_break(flow_t) flow_t->lblfin
 char *asm_label_flowfin(void);
+#define asm_label_break(flow_t) flow_t->lblfin
 
 #endif

@@ -17,6 +17,7 @@
 #include "struct.h"
 #include "enum.h"
 #include "struct_enum.h"
+#include "fold_op.h"
 
 #define EXPR_NON_VOID(e, s) \
 	if(!decl_ptr_depth(e->tree_type) && e->tree_type->type->primitive == type_void) \

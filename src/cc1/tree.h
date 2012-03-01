@@ -3,9 +3,13 @@
 
 enum type_primitive
 {
-	type_int,
-	type_char,
 	type_void,
+	type_char,
+	type_short,
+	type_int,
+	type_long,
+	type_float,
+	type_double,
 
 	type_typedef,
 	type_struct,
@@ -195,7 +199,9 @@ int   decl_is_callable(decl *);
 int   decl_is_const(   decl *);
 int   decl_ptr_depth(  decl *);
 int   decl_is_func_ptr(decl *);
-#define decl_is_void(d) ((d)->type->primitive == type_void && !(d)->decl_ptr)
+#define decl_is_pointer(d)   !!((d)->decl_ptr)
+#define decl_is_void(d)       ( (d)->type->primitive == type_void && !decl_is_pointer(d))
+#define decl_is_float(d)      (((d)->type->primitive == type_float || (d)->type->primitive == type_double) && !decl_is_pointer(d))
 
 funcargs *decl_funcargs(decl *d);
 
