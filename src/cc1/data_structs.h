@@ -8,7 +8,7 @@ typedef struct enum_st     enum_st;
 
 typedef struct tree        tree;
 typedef struct decl        decl;
-typedef struct decl_ptr    decl_ptr;
+typedef struct decl_desc   decl_desc;
 typedef struct array_decl  array_decl;
 typedef struct funcargs    funcargs;
 typedef struct tree_flow   tree_flow;

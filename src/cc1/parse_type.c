@@ -23,7 +23,7 @@
 
 type *parse_type_struct(void);
 type *parse_type_enum(void);
-decl_ptr *parse_decl_ptr_array(enum decl_mode mode, char **decl_sp, funcargs **decl_args);
+decl_desc *parse_decl_desc_array(enum decl_mode mode, char **decl_sp, funcargs **decl_args);
 
 #define INT_TYPE(t) do{ t = type_new(); t->primitive = type_int; }while(0)
 
@@ -241,10 +241,10 @@ funcargs *parse_func_arglist()
 			argdecl = parse_decl_single(DECL_CAN_DEFAULT);
 		}
 
-		if(dynarray_count((void *)args->arglist) == 1 &&
-				                      args->arglist[0]->type->primitive == type_void &&
-				                     !args->arglist[0]->decl_ptr && /* manual checks, since decl_*() assert */
-				                     !args->arglist[0]->spel){
+		if(dynarray_count((void *)args->arglist) == 1
+				&& args->arglist[0]->type->primitive == type_void
+				&& !decl_ptr_depth(args->arglist[0])
+				&& !args->arglist[0]->spel){
 			/* x(void); */
 			function_empty_args(args);
 			args->args_void = 1; /* (void) vs () */
@@ -327,21 +327,42 @@ empty_func:
 	return args;
 }
 
-decl_ptr *parse_decl_ptr_rec(enum decl_mode mode, char **decl_sp, funcargs **decl_args)
+decl_desc *parse_decl_desc_func(void)
 {
-	decl_ptr *ret = NULL;
+	if(accept(token_open_paren)){
+		/*
+		 * e.g.:
+		 * int (*x)(
+		 *         ^
+		 */
+
+		if(ret->fptrargs)
+			goto func_ret_func;
+
+		ret->fptrargs = parse_func_arglist();
+		EAT(token_close_paren);
+
+		if(accept(token_open_paren))
+func_ret_func:
+			die_at(&ret->where, "can't have function returning function");
+	}
+}
+
+decl_desc *parse_decl_desc_rec(enum decl_mode mode, char **decl_sp, funcargs **decl_args)
+{
+	decl_desc *ret = NULL;
 
 	if(accept(token_open_paren)){
-		ret = parse_decl_ptr_array(mode, decl_sp, decl_args);
+		ret = parse_decl_desc_array(mode, decl_sp, decl_args);
 		EAT(token_close_paren);
 
 	}else if(accept(token_multiply)){
-		ret = decl_ptr_new();
+		ret = decl_desc_ptr_new();
 
 		if(accept(token_const))
 			ret->is_const = 1;
 
-		ret->child = parse_decl_ptr_array(mode, decl_sp, decl_args); /* check if we have anything else */
+		ret->child = parse_decl_desc_func();
 
 	}else{
 		if(curtok == token_identifier){
@@ -367,32 +388,15 @@ decl_ptr *parse_decl_ptr_rec(enum decl_mode mode, char **decl_sp, funcargs **dec
 			EAT(token_close_paren);
 		}
 	}
-
-	if(ret && accept(token_open_paren)){
-		/*
-			* e.g.:
-			* int (*x)(
-			*/
-		if(ret->fptrargs)
-			goto func_ret_func;
-
-		ret->fptrargs = parse_func_arglist();
-		EAT(token_close_paren);
-
-		if(accept(token_open_paren))
-func_ret_func:
-			die_at(&ret->where, "can't have function returning function");
-	}
-
 	return ret;
 }
 
-decl_ptr *parse_decl_ptr_array(enum decl_mode mode, char **decl_sp, funcargs **decl_args)
+decl_desc *parse_decl_desc_array(enum decl_mode mode, char **decl_sp, funcargs **decl_args)
 {
-	decl_ptr *dp = parse_decl_ptr_rec(mode, decl_sp, decl_args);
+	decl_desc *dp = parse_decl_desc_rec(mode, decl_sp, decl_args);
 
 	while(accept(token_open_square)){
-		decl_ptr *dp_new;
+		decl_desc *dp_new;
 		expr *size;
 
 		if(accept(token_close_square)){
@@ -404,7 +408,7 @@ decl_ptr *parse_decl_ptr_array(enum decl_mode mode, char **decl_sp, funcargs **d
 			EAT(token_close_square);
 		}
 
-		dp_new = decl_ptr_new();
+		dp_new = decl_desc_array_new();
 
 		/* is this right? t'other way around? append to leaf? */
 		dp_new->child = dp;
@@ -420,10 +424,10 @@ decl *parse_decl(type *t, enum decl_mode mode)
 {
 	char *spel = NULL;
 	funcargs *args = NULL;
-	decl_ptr *dp;
+	decl_desc *dp;
 	decl *d;
 
-	dp = parse_decl_ptr_array(mode, &spel, &args);
+	dp = parse_decl_desc_array(mode, &spel, &args);
 
 	if(t->tdef){
 		/* get the typedef stuff now */
@@ -435,7 +439,7 @@ decl *parse_decl(type *t, enum decl_mode mode)
 		*decl_leaf(d) = dp;
 	}else{
 		d = decl_new();
-		d->decl_ptr = dp;
+		d->desc = dp;
 		d->type = type_copy(t);
 	}
 

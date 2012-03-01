@@ -36,11 +36,22 @@ tree *tree_new(symtable *stab)
 	return t;
 }
 
-decl_ptr *decl_ptr_new()
+decl_desc *decl_desc_new(enum decl_desc_type t)
 {
-	decl_ptr *dp = umalloc(sizeof *dp);
+	decl_desc *dp = umalloc(sizeof *dp);
 	where_new(&dp->where);
+	dp->type = t;
 	return dp;
+}
+
+decl_desc *decl_desc_ptr_new()
+{
+	return decl_desc_new(decl_desc_ptr);
+}
+
+decl_desc *decl_desc_array_new()
+{
+	return decl_desc_new(decl_desc_array);
 }
 
 decl *decl_new()
@@ -81,12 +92,12 @@ type *type_copy(type *t)
 	return ret;
 }
 
-decl_ptr *decl_ptr_copy(decl_ptr *dp)
+decl_desc *decl_desc_copy(decl_desc *dp)
 {
-	decl_ptr *ret = umalloc(sizeof *ret);
+	decl_desc *ret = umalloc(sizeof *ret);
 	memcpy(ret, dp, sizeof *ret);
 	if(dp->child)
-		ret->child = decl_ptr_copy(dp->child);
+		ret->child = decl_desc_copy(dp->child);
 	/* leave func and spel, tis fine */
 	return ret;
 }
@@ -96,8 +107,8 @@ decl *decl_copy(decl *d)
 	decl *ret = umalloc(sizeof *ret);
 	memcpy(ret, d, sizeof *ret);
 	ret->type = type_copy(d->type);
-	if(d->decl_ptr)
-		ret->decl_ptr = decl_ptr_copy(d->decl_ptr);
+	if(d->desc)
+		ret->desc = decl_desc_copy(d->desc);
 	/*ret->spel = NULL;*/
 	return ret;
 }
@@ -149,10 +160,10 @@ int decl_size(decl *d)
 {
 	if(decl_has_array(d)){
 		const int siz = type_size(d->type);
-		decl_ptr *dp;
+		decl_desc *dp;
 		int ret = 0;
 
-		for(dp = d->decl_ptr; dp; dp = dp->child)
+		for(dp = d->desc; dp; dp = dp->child)
 			if(dp->array_size){
 				/* should've been folded fully */
 				long v = dp->array_size->val.iv.val;
@@ -164,7 +175,7 @@ int decl_size(decl *d)
 		return ret;
 	}
 
-	if(d->decl_ptr) /* pointer */
+	if(d->desc) /* pointer */
 		return platform_word_size();
 
 	if(d->field_width)
@@ -185,14 +196,14 @@ int type_equal(const type *a, const type *b, int strict)
 	return strict ? a->primitive == b->primitive : 1; /* int == char */
 }
 
-int decl_ptr_equal(decl_ptr *dpa, decl_ptr *dpb)
+int decl_desc_equal(decl_desc *dpa, decl_desc *dpb)
 {
 	/* if we are assigning from const, target must be const */
 	if(dpb->is_const ? dpa->is_const : 0)
 		return 0;
 
 	if(dpa->child)
-		return dpb->child && decl_ptr_equal(dpa->child, dpb->child);
+		return dpb->child && decl_desc_equal(dpa->child, dpb->child);
 
 	return !dpb->child;
 }
@@ -201,8 +212,8 @@ int decl_equal(decl *a, decl *b, enum decl_cmp mode)
 {
 #define VOID_PTR(d) (                   \
 			d->type->primitive == type_void   \
-			&&  d->decl_ptr                   \
-			&& !d->decl_ptr->child            \
+			&&  d->desc                   \
+			&& !d->desc->child            \
 		)
 
 	if((mode & DECL_CMP_ALLOW_VOID_PTR) && (VOID_PTR(a) || VOID_PTR(b)))
@@ -211,10 +222,10 @@ int decl_equal(decl *a, decl *b, enum decl_cmp mode)
 	if(!type_equal(a->type, b->type, mode & DECL_CMP_STRICT_PRIMITIVE))
 		return 0;
 
-	if(a->decl_ptr){
-		if(b->decl_ptr)
-			return decl_ptr_equal(a->decl_ptr, b->decl_ptr);
-	}else if(!b->decl_ptr){
+	if(a->desc){
+		if(b->desc)
+			return decl_desc_equal(a->desc, b->desc);
+	}else if(!b->desc){
 		return 1;
 	}
 
@@ -334,32 +345,32 @@ int op_is_cmp(enum op_type o)
 
 int decl_ptr_depth(decl *d)
 {
-	decl_ptr *dp;
+	decl_desc *dp;
 	int i = 0;
 
-	for(dp = d->decl_ptr; dp; dp = dp->child)
+	for(dp = d->desc; dp; dp = dp->child)
 		i++;
 
 	return i;
 }
 
-decl_ptr **decl_leaf(decl *d)
+decl_desc **decl_leaf(decl *d)
 {
-	decl_ptr **dp;
+	decl_desc **dp;
 	UCC_ASSERT(d, "null decl param");
-	for(dp = &d->decl_ptr; *dp; dp = &(*dp)->child);
+	for(dp = &d->desc; *dp; dp = &(*dp)->child);
 	return dp;
 }
 
 funcargs *decl_funcargs(decl *d)
 {
-	/* either ->func on the decl, or on a decl_ptr (in the case of a funcptr) */
-	decl_ptr *dp;
+	/* either ->func on the decl, or on a decl_desc (in the case of a funcptr) */
+	decl_desc *dp;
 
 	if(d->funcargs)
 		return d->funcargs;
 
-	for(dp = d->decl_ptr; dp; dp = dp->child)
+	for(dp = d->desc; dp; dp = dp->child)
 		if(dp->fptrargs)
 			return dp->fptrargs;
 	return NULL;
@@ -372,9 +383,9 @@ int decl_is_callable(decl *d)
 
 int decl_has_array(decl *d)
 {
-	decl_ptr *dp;
+	decl_desc *dp;
 
-	for(dp = d->decl_ptr; dp; dp = dp->child)
+	for(dp = d->desc; dp; dp = dp->child)
 		if(dp->array_size)
 			return 1;
 	return 0;
@@ -382,7 +393,7 @@ int decl_has_array(decl *d)
 
 int decl_is_const(decl *d)
 {
-	decl_ptr *dp = *decl_leaf(d);
+	decl_desc *dp = *decl_leaf(d);
 	if(dp)
 		return dp->is_const;
 	return 0;/*d->type->spec & spec_const; TODO */
@@ -393,20 +404,50 @@ int decl_is_func_ptr(decl *d)
 	return !!decl_funcargs(d);
 }
 
-decl *decl_ptr_depth_inc(decl *d)
+decl *decl_desc_depth_inc(decl *d)
 {
-	*decl_leaf(d) = decl_ptr_new();
+	*decl_leaf(d) = decl_desc_ptr_new();
 	return d;
 }
 
-decl *decl_ptr_depth_dec(decl *d)
+decl *decl_desc_depth_dec(decl *d)
 {
-	d->decl_ptr = d->decl_ptr->child;
+	/* if we are derefing a function pointer, move its func args up to the decl */
+	if(d->desc->fptrargs){
+		UCC_ASSERT(!d->funcargs, "can't dereference function (?)");
+		d->funcargs = d->desc->fptrargs;
+	}
+	*decl_leaf(d) = NULL;
 	return d;
 }
 
 decl *decl_func_deref(decl *d)
 {
+	decl_desc *it,        *last_parent,
+					 *last_fptr, *last_fptr_parent;
+
+	UCC_ASSERT(!d->funcargs, "decl already is a function");
+
+	last_fptr_parent = last_fptr = NULL;
+
+	for(last_parent = NULL, it = d->desc; it; last_parent = it, it = it->child){
+		if(it->fptrargs){
+			last_fptr = it;
+			last_fptr_parent = last_parent;
+		}
+	}
+
+	UCC_ASSERT(last_fptr, "no func-pointer for %s", __func__);
+
+	if(last_fptr_parent)
+		last_fptr_parent->child = NULL;
+	else
+		d->desc = NULL;
+
+	d->funcargs = last_fptr->fptrargs;
+
+	decl_desc_free(last_fptr);
+
 	return d;
 }
 
@@ -449,28 +490,41 @@ const char *type_to_str(const type *t)
 	return buf;
 }
 
+int decl_desc_add_str(char *bufp, unsigned int len, decl_desc *dp)
+{
+	unsigned int n;
+
+	n = snprintf(bufp, len, "%s%s%s",
+			dp->fptrargs   ? "("   : "",
+			dp->array_size ? ""    : "*",
+			dp->is_const   ? "K"   : "");
+
+	if(dp->child)
+		n += decl_desc_add_str(bufp + n, len - n, dp->child);
+
+#define CAT(s) strncat(bufp + n, s, len - n)
+
+	if(dp->array_size)
+		CAT("[]");
+
+	if(dp->fptrargs)
+		CAT(")()");
+
+	return n;
+}
+
 const char *decl_to_str(decl *d)
 {
 	static char buf[DECL_STATIC_BUFSIZ];
-	unsigned int i = 0;
-	decl_ptr *dp;
+	int n;
 
-#define BUF_ADD(...) i += snprintf(buf + i, sizeof buf - i, __VA_ARGS__)
+	n = snprintf(buf, sizeof buf, "%s", type_to_str(d->type));
 
-	BUF_ADD("%s", type_to_str(d->type));
-
-	for(dp = d->decl_ptr; dp; dp = dp->child)
-		BUF_ADD("%s*%s%s%s%s",
-				dp->fptrargs   ? "("  : "",
-				dp->is_const   ? "K"  : "",
-				dp->fptrargs   ? "()" : "",
-				dp->array_size ? "[]" : "",
-				dp->fptrargs   ? ")"  : "");
-
-	buf[i] = '\0';
+	if(d->desc)
+		decl_desc_add_str(buf + n, sizeof(buf) - n, d->desc);
 
 	if(d->funcargs)
-		BUF_ADD("()");
+		strncat(buf, "()", sizeof(buf) - strlen(buf) - 1);
 
 	return buf;
 }
