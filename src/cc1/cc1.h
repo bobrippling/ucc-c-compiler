@@ -28,6 +28,7 @@ enum warning
 	WARN_SWITCH_ENUM      = 1 << 21,
 	WARN_ENUM_CMP         = 1 << 22,
 	WARN_INCOMPLETE_USE   = 1 << 23,
+	WARN_UNUSED_EXPR      = 1 << 24,
 
 	/* TODO */
 	WARN_FORMAT           = 1 << 10,

@@ -45,6 +45,9 @@ struct
 
 	{ 0,  "incomplete-use",  WARN_INCOMPLETE_USE                    },
 
+	{ 0,  "unused-expr",     WARN_UNUSED_EXPR                       },
+
+
 	/* TODO */
 	{ 0,  "unused-parameter", WARN_UNUSED_PARAM },
 	{ 0,  "unused-variable",  WARN_UNUSED_VAR   },

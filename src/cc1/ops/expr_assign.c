@@ -118,5 +118,6 @@ expr *expr_new_assign()
 {
 	expr *e = expr_new_wrapper(assign);
 	e->f_const_fold = fold_const_expr_assign;
+	e->freestanding = 1;
 	return e;
 }

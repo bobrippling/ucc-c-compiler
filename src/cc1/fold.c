@@ -490,6 +490,8 @@ case_add:
 
 		case stat_expr:
 			fold_expr(t->expr, t->symtab);
+			if(!t->expr->freestanding)
+				cc1_warn_at(&t->expr->where, 0, WARN_UNUSED_EXPR, "unused expression");
 			break;
 
 		case stat_noop:

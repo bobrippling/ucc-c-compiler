@@ -202,3 +202,10 @@ void expr_gen_str_funcall(expr *e)
 		idt_printf("no args\n");
 	}
 }
+
+expr *expr_new_funcall()
+{
+	expr *e = expr_new_wrapper(funcall);
+	e->freestanding = 1;
+	return e;
+}

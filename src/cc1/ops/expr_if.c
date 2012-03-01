@@ -26,6 +26,8 @@ void expr_fold_if(expr *e, symtable *stab)
 		fold_expr(e->lhs, stab);
 	fold_expr(e->rhs, stab);
 	e->tree_type = decl_copy(e->rhs->tree_type); /* TODO: check they're the same */
+
+	e->freestanding = e->lhs->freestanding || e->rhs->freestanding;
 }
 
 

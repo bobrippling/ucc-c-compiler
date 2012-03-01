@@ -23,6 +23,8 @@ struct expr
 
 	func_str       *f_str;
 
+	int freestanding; /* e.g. 1; needs use, whereas x(); doesn't - freestanding */
+
 
 	enum op_type
 	{
@@ -102,7 +104,6 @@ expr *expr_assignment(expr *to, expr *from);
 #define expr_kind(exp, kind) ((exp)->f_fold == expr_fold_ ## kind)
 
 #define expr_new_sizeof()       expr_new_wrapper(sizeof)
-#define expr_new_funcall()      expr_new_wrapper(funcall)
 
 expr *expr_new_identifier(char *sp);
 expr *expr_new_cast(decl *cast_to);
@@ -112,5 +113,6 @@ expr *expr_new_if(expr *test);
 expr *expr_new_addr(void);
 expr *expr_new_assign(void);
 expr *expr_new_comma(void);
+expr *expr_new_funcall(void);
 
 #endif
