@@ -230,8 +230,8 @@ void print_sym(sym *s)
 
 void print_expr(expr *e)
 {
+	idt_printf("expr: %s\n", e->f_str());
 	if(e->tree_type){ /* might be a label */
-		idt_printf("expr: %s\n", e->f_str());
 		idt_printf("tree_type: ");
 		gen_str_indent++;
 		print_decl(e->tree_type, PDECL_NEWLINE);

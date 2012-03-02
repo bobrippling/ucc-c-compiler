@@ -24,8 +24,9 @@ void gen_expr_comma(expr *e, symtable *stab)
 	gen_expr(e->rhs, stab);
 }
 
-void gen_expr_str_comma(expr *e)
+void gen_expr_str_comma(expr *e, symtable *stab)
 {
+	(void)stab;
 	idt_printf("comma expression\n");
 	idt_printf("comma lhs:\n");
 	gen_str_indent++;

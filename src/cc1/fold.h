@@ -20,6 +20,7 @@ void fold_symtab_scope(symtable *stab);
 
 void fold_stat_and_add_to_curswitch(stat *);
 
+void fold_typecheck(expr *lhs, expr *rhs, symtable *stab, where *where);
 
 void fold_test_expr(expr *e, const char *stat_desc);
 

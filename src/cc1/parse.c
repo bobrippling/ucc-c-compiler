@@ -19,10 +19,9 @@
 #define STAT_NEW(type)      stat_new_wrapper(type, current_scope)
 #define STAT_NEW_NEST(type) stat_new_wrapper(type, symtab_new(current_scope))
 
-#define PARSE_SMALL parse_expr_inc_dec
-
-expr *PARSE_SMALL(void);
 stat *parse_code_block(void);
+expr *parse_expr_funcall(void);
+expr *parse_expr_inc_dec(void);
 
 /*
  * order goes:
@@ -94,7 +93,7 @@ expr *parse_expr_unary_op()
 		case token_and:
 			EAT(token_and);
 			e = expr_new_addr();
-			e->expr = PARSE_SMALL();
+			e->expr = parse_expr_array();
 			return e;
 
 		case token_string:
@@ -143,7 +142,7 @@ expr *parse_expr_unary_op()
 			if((d = parse_decl_single(DECL_SPEL_NO))){
 				e = expr_new_cast(d);
 				EAT(token_close_paren);
-				e->expr = PARSE_SMALL(); /* grab only the closest */
+				e->expr = parse_expr_funcall(); /* grab only the closest */
 				return e;
 			}
 

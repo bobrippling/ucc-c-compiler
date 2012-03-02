@@ -96,6 +96,8 @@ enum fopt    fopt_mode = FOPT_CONST_FOLD;
 
 int caught_sig = 0;
 
+int backend_str = 0;
+
 const char *section_names[NUM_SECTIONS] = {
 	"text", "data", "bss"
 };
@@ -312,6 +314,8 @@ usage:
 		f = stdin;
 		fname = "-";
 	}
+
+	backend_str = gf == gen_str;
 
 	io_setup();
 

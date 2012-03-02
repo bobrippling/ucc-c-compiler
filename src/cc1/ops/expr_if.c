@@ -51,8 +51,9 @@ void gen_expr_if(expr *e, symtable *stab)
 	free(lblelse);
 }
 
-void gen_expr_str_if(expr *e)
+void gen_expr_str_if(expr *e, symtable *stab)
 {
+	(void)stab;
 	idt_printf("if expression:\n");
 	gen_str_indent++;
 #define SUB_PRINT(nam) \

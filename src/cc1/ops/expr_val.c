@@ -29,8 +29,9 @@ void gen_expr_val(expr *e, symtable *stab)
 	asm_temp(1, "push rax");
 }
 
-void gen_expr_str_val(expr *e)
+void gen_expr_str_val(expr *e, symtable *stab)
 {
+	(void)stab;
 	idt_printf("val: %d\n", e->val);
 }
 

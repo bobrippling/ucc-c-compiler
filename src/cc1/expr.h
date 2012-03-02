@@ -53,8 +53,8 @@ struct expr
 };
 
 
-expr *expr_new(   func_fold *f_fold, func_gen *f_gen, func_str *f_str);
-void  expr_mutate(expr *e, func_fold *f_fold, func_gen *f_gen, func_str *f_str);
+expr *expr_new(            func_fold *f_fold, func_str *f_str, func_gen *f_gen, func_gen *f_gen_str);
+void  expr_mutate(expr *e, func_fold *f_fold, func_str *f_str, func_gen *f_gen, func_gen *f_gen_str);
 
 expr *expr_new_intval(intval *);
 
@@ -73,8 +73,8 @@ expr *expr_assignment(expr *to, expr *from);
 #include "ops/expr_val.h"
 #include "ops/expr_stat.h"
 
-#define expr_new_wrapper(type)       expr_new(fold_expr_ ## type, gen_expr_ ## type, str_expr_ ## type)
-#define expr_mutate_wrapper(e, type) expr_mutate(e, fold_expr_ ## type, gen_expr_ ## type, str_expr_ ## type)
+#define expr_new_wrapper(type)       expr_new(      fold_expr_ ## type, str_expr_ ## type, gen_expr_ ## type, gen_expr_str_ ## type)
+#define expr_mutate_wrapper(e, type) expr_mutate(e, fold_expr_ ## type, str_expr_ ## type, gen_expr_ ## type, gen_expr_str_ ## type)
 
 #define expr_free(x) do{decl_free((x)->tree_type); free(x);}while(0)
 

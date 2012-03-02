@@ -40,8 +40,9 @@ void gen_expr_cast(expr *e, symtable *stab)
 	gen_expr(e->expr, stab);
 }
 
-void gen_expr_str_cast(expr *e)
+void gen_expr_str_cast(expr *e, symtable *stab)
 {
+	(void)stab;
 	idt_printf("cast expr:\n");
 	gen_str_indent++;
 	print_expr(e->expr);

@@ -177,9 +177,11 @@ invalid:
 	}
 }
 
-void gen_expr_str_funcall(expr *e)
+void gen_expr_str_funcall(expr *e, symtable *stab)
 {
 	expr **iter;
+
+	(void)stab;
 
 	idt_printf("funcall, calling:\n");
 

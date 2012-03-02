@@ -80,6 +80,31 @@ void fold_decl_equal(decl *a, decl *b, where *w, enum warning warn,
 	}
 }
 
+void fold_typecheck(expr *lhs, expr *rhs, symtable *stab, where *where)
+{
+	decl *decl_l, *decl_r;
+
+	(void)stab;
+
+	if(!rhs)
+		return;
+
+	decl_l = lhs->tree_type;
+	decl_r = rhs->tree_type;
+
+#define IS_VOID(d) (d->type->primitive == type_void && !decl_ptr_depth(d))
+	if(IS_VOID(decl_l) || IS_VOID(decl_r))
+		die_at(where, "use of void expression");
+
+
+	if(    decl_l->type->primitive == type_enum
+			&& decl_r->type->primitive == type_enum
+			&& decl_l->type->enu != decl_r->type->enu){
+
+		cc1_warn_at(where, 0, WARN_ENUM_CMP, "expression with enum %s and enum %s", decl_l->type->spel, decl_r->spel);
+	}
+}
+
 void fold_expr(expr *e, symtable *stab)
 {
 	if(e->spel && !e->sym)

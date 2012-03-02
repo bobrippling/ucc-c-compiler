@@ -27,8 +27,9 @@ void gen_expr_sizeof(expr *e, symtable *stab)
 	asm_temp(1, "push %d ; sizeof %s%s", decl_size(d), e->expr->expr_is_sizeof ? "type " : "", decl_to_str(d));
 }
 
-void gen_expr_str_sizeof(expr *e)
+void gen_expr_str_sizeof(expr *e, symtable *stab)
 {
+	(void)stab;
 	if(e->expr->expr_is_sizeof){
 		idt_printf("sizeof %s\n", decl_to_str(e->expr->tree_type));
 	}else{
