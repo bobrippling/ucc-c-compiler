@@ -18,14 +18,18 @@
 #include "enum.h"
 #include "struct_enum.h"
 
-#define EXPR_NON_VOID(e, s) \
-	if(!decl_ptr_depth(e->tree_type) && e->tree_type->type->primitive == type_void) \
-		die_at(&e->where, "%s requires non-void expression", s)
+char *curdecl_func_sp;       /* for funcargs-local labels */
+stat *curstat_flow;          /* for break */
+stat *curstat_switch;        /* for case + default */
 
-char *curdecl_func_sp;           /* for funcargs-local labels */
-static tree *curtree_switch;     /* for case + default */
-static tree *curtree_flow;       /* for break */
 
+void fold_stat_and_add_to_curswitch(stat *t)
+{
+	fold_stat(t->lhs); /* compound */
+	if(!curstat_switch)
+		die_at(&t->expr->where, "not inside a switch statement");
+	dynarray_add((void ***)&curstat_switch->codes, t);
+}
 
 void fold_funcargs_equal(funcargs *args_a, funcargs *args_b, int check_vari, where *w, const char *warn_pre, const char *func_spel)
 {
@@ -245,258 +249,20 @@ void fold_symtab_scope(symtable *stab)
 		fold_enum(*eit, stab);
 }
 
-void fold_switch_enum(tree *sw, type *enum_type)
+void fold_test_expr(expr *e, const char *stat_desc)
 {
-	const int nents = enum_nentries(enum_type->enu);
-	tree **titer;
-	char *marks = umalloc(nents * sizeof *marks);
-	int midx;
+	if(!decl_ptr_depth(e->tree_type) && e->tree_type->type->primitive == type_void)
+		die_at(&e->where, "%s requires non-void expression", stat_desc);
 
-	/* for each case/default/case_range... */
-	for(titer = sw->codes; titer && *titer; titer++){
-		tree *cse = *titer;
-		int v, w;
-
-		if(cse->expr->expr_is_default)
-			goto ret;
-
-		v = cse->expr->val.iv.val;
-
-		if(cse->type == stat_case_range)
-			w = cse->expr2->val.iv.val;
-		else
-			w = v;
-
-		for(; v <= w; v++){
-			enum_member **mi;
-			for(midx = 0, mi = enum_type->enu->members; *mi; midx++, mi++)
-				if(v == (*mi)->val->val.iv.val)
-					marks[midx]++;
-		}
-	}
-
-	for(midx = 0; midx < nents; midx++)
-		if(!marks[midx])
-			cc1_warn_at(&sw->where, 0, WARN_SWITCH_ENUM, "enum %s not handled in switch", enum_type->enu->members[midx]->spel);
-
-ret:
-	free(marks);
+	if(expr_kind(e, assign))
+		cc1_warn_at(&e->where, 0, WARN_TEST_ASSIGN, "testing an assignment in %s", stat_desc);
 }
 
-void fold_tree(tree *t)
+void fold_stat(stat *t)
 {
 	UCC_ASSERT(t->symtab->parent, "symtab has no parent");
 
-	switch(t->type){
-		case stat_break:
-			if(!curtree_flow)
-				die_at(&t->expr->where, "break outside a flow-control statement");
-
-			t->expr = expr_new_identifier(curtree_flow->lblfin);
-			t->expr->tree_type = decl_new();
-			t->expr->tree_type->type->primitive = type_int;
-			break;
-
-		case stat_goto:
-		case stat_label:
-		{
-			char *save = t->expr->spel;
-			if(!expr_kind(t->expr, identifier))
-				die_at(&t->expr->where, "not a label identifier");
-			/* else let the assembler check for link errors */
-			t->expr->spel = asm_label_goto(t->expr->spel);
-			free(save);
-
-			if(t->type == stat_label)
-				fold_tree(t->lhs); /* compound */
-			break;
-		}
-
-		case stat_while:
-		case stat_do:
-		{
-			tree *oldflowtree = curtree_flow;
-			curtree_flow = t;
-
-			t->lblfin = asm_label_flowfin();
-
-		case stat_if:
-			fold_expr(t->expr, t->symtab);
-			EXPR_NON_VOID(t->expr, stat_to_str(t->type));
-
-			OPT_CHECK(t->expr, "constant expression in if/while");
-
-			fold_tree(t->lhs);
-
-			if(t->type != stat_if)
-				curtree_flow = oldflowtree;
-			else if(t->rhs)
-				fold_tree(t->rhs);
-			break;
-		}
-
-		case stat_for:
-		{
-			tree *oldflowtree = curtree_flow;
-			curtree_flow = t;
-
-			t->lblfin = asm_label_flowfin();
-
-#define FOLD_IF(x) if(x) fold_expr(x, t->symtab)
-			FOLD_IF(t->flow->for_init);
-			FOLD_IF(t->flow->for_while);
-			FOLD_IF(t->flow->for_inc);
-#undef FOLD_IF
-
-			if(t->flow->for_while)
-				EXPR_NON_VOID(t->flow->for_while, "for-while");
-
-			OPT_CHECK(t->flow->for_while, "constant expression in for");
-
-			fold_tree(t->lhs);
-
-			curtree_flow = oldflowtree;
-			break;
-		}
-
-
-		case stat_case_range:
-		{
-			int l, r;
-
-			fold_expr(t->expr,  t->symtab);
-			fold_expr(t->expr2, t->symtab);
-
-			if(const_fold(t->expr) || const_fold(t->expr2))
-				die_at(&t->where, "case range not constant");
-
-			EXPR_NON_VOID(t->expr,  "case");
-			EXPR_NON_VOID(t->expr2, "case");
-
-			l = t->expr->val.iv.val;
-			r = t->expr2->val.iv.val;
-
-			if(l >= r)
-				die_at(&t->where, "case range equal or inverse");
-
-			t->expr->spel = asm_label_case(CASE_RANGE, l);
-			goto case_add;
-		}
-
-		case stat_case:
-			fold_expr(t->expr, t->symtab);
-
-			EXPR_NON_VOID(t->expr, "case");
-
-			if(const_fold(t->expr))
-				die_at(&t->expr->where, "case expression not constant");
-			/* fall */
-		case stat_default:
-			if(t->expr){
-				t->expr->spel = asm_label_case(CASE_CASE, t->expr->val.iv.val);
-			}else{
-				t->expr = expr_new_identifier(NULL);
-				t->expr->spel = asm_label_case(CASE_CASE, t->expr->val.iv.val);
-				t->expr->expr_is_default = 1;
-			}
-case_add:
-			fold_tree(t->lhs); /* compound */
-			if(!curtree_switch)
-				die_at(&t->expr->where, "not inside a switch statement");
-			dynarray_add((void ***)&curtree_switch->codes, t);
-			break;
-
-		case stat_switch:
-		{
-			tree *oldswtree = curtree_switch;
-			tree *oldflowtree = curtree_flow;
-			type *typ;
-
-			curtree_switch = t;
-			curtree_flow   = t;
-
-			t->lblfin = asm_label_flowfin();
-
-			fold_expr(t->expr, t->symtab);
-
-			EXPR_NON_VOID(t->expr, "switch");
-
-			OPT_CHECK(t->expr, "constant expression in switch");
-
-			fold_tree(t->lhs);
-			/* FIXME: check for duplicate case values and at most, 1 default */
-
-			/* check for an enum */
-			typ = t->expr->tree_type->type;
-			if(typ->primitive == type_enum){
-				UCC_ASSERT(typ->enu, "no enum for enum type");
-				fold_switch_enum(t, typ);
-			}
-
-			curtree_switch = oldswtree;
-			curtree_flow   = oldflowtree;
-			break;
-		}
-
-		case stat_code:
-		{
-			decl **iter;
-
-			fold_symtab_scope(t->symtab);
-
-			for(iter = t->decls; iter && *iter; iter++){
-				decl *d = *iter;
-
-				if(d->func_code)
-					die_at(&d->func_code->where, "can't nest functions");
-
-				fold_decl(d, t->symtab);
-
-				SYMTAB_ADD(t->symtab, d, sym_local);
-			}
-
-			if(t->codes){
-				tree **iter;
-				for(iter = t->codes; *iter; iter++)
-					fold_tree(*iter);
-			}
-
-			/* static folding */
-			if(t->decls){
-				decl **iter;
-
-				for(iter = t->decls; *iter; iter++){
-					decl *d = *iter;
-					/*
-					 * check static decls - after we fold,
-					 * so we've linked the syms and can change ->spel
-					 */
-					if(d->type->spec & spec_static){
-						char *save = d->spel;
-						d->spel = asm_label_static_local(curdecl_func_sp, d->spel);
-						free(save);
-					}
-				}
-			}
-			break;
-		}
-
-		case stat_return:
-			if(t->expr){
-				fold_expr(t->expr, t->symtab);
-				EXPR_NON_VOID(t->expr, "return");
-			}
-			break;
-
-		case stat_expr:
-			fold_expr(t->expr, t->symtab);
-			if(!t->expr->freestanding)
-				cc1_warn_at(&t->expr->where, 0, WARN_UNUSED_EXPR, "unused expression");
-			break;
-
-		case stat_noop:
-			break;
-	}
+	t->f_fold(t);
 }
 
 void fold_funcargs(funcargs *fargs, symtable *stab, char *context)
@@ -544,7 +310,7 @@ void fold_func(decl *func_decl, symtable *globs)
 
 		symtab_set_parent(func_decl->func_code->symtab, globs);
 
-		fold_tree(func_decl->func_code);
+		fold_stat(func_decl->func_code);
 
 		curdecl_func_sp = NULL;
 	}

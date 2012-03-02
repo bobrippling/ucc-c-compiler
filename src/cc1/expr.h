@@ -1,8 +1,6 @@
 #ifndef EXPR_H
 #define EXPR_H
 
-typedef struct expr expr;
-
 typedef void         func_fold(     expr *, symtable *);
 typedef void         func_gen(      expr *, symtable *);
 typedef void         func_gen_store(expr *, symtable *);
@@ -26,30 +24,7 @@ struct expr
 	int freestanding; /* e.g. 1; needs use, whereas x(); doesn't - freestanding */
 
 
-	enum op_type
-	{
-		op_multiply,
-		op_divide,
-		op_plus,
-		op_minus,
-		op_modulus,
-		op_deref,
-
-		op_eq, op_ne,
-		op_le, op_lt,
-		op_ge, op_gt,
-
-		op_xor,
-		op_or,   op_and,
-		op_orsc, op_andsc,
-		op_not,  op_bnot,
-
-		op_shiftl, op_shiftr,
-
-		op_struct_ptr, op_struct_dot,
-
-		op_unknown
-	} op;
+	enum op_type op;
 
 	int assign_is_post; /* do we return the altered value or the old one? */
 #define expr_is_default assign_is_post
@@ -68,6 +43,7 @@ struct expr
 	char *spel;
 	expr *expr; /* x = 5; expr is the 5 */
 	expr **funcargs;
+	stat *code; /* ({ ... }) */
 
 	sym *sym;
 
@@ -85,8 +61,6 @@ expr *expr_new_intval(intval *);
 expr *expr_ptr_multiply(expr *, decl *);
 expr *expr_assignment(expr *to, expr *from);
 
-#define expr_free(x) do{decl_free((x)->tree_type); free(x);}while(0)
-
 #include "ops/expr_addr.h"
 #include "ops/expr_assign.h"
 #include "ops/expr_cast.h"
@@ -97,11 +71,14 @@ expr *expr_assignment(expr *to, expr *from);
 #include "ops/expr_op.h"
 #include "ops/expr_sizeof.h"
 #include "ops/expr_val.h"
+#include "ops/expr_stat.h"
 
-#define expr_new_wrapper(type)       expr_new(expr_fold_ ## type, expr_gen_ ## type, expr_str_ ## type)
-#define expr_mutate_wrapper(e, type) expr_mutate(e, expr_fold_ ## type, expr_gen_ ## type, expr_str_ ## type)
+#define expr_new_wrapper(type)       expr_new(fold_expr_ ## type, gen_expr_ ## type, str_expr_ ## type)
+#define expr_mutate_wrapper(e, type) expr_mutate(e, fold_expr_ ## type, gen_expr_ ## type, str_expr_ ## type)
 
-#define expr_kind(exp, kind) ((exp)->f_fold == expr_fold_ ## kind)
+#define expr_free(x) do{decl_free((x)->tree_type); free(x);}while(0)
+
+#define expr_kind(exp, kind) ((exp)->f_fold == fold_expr_ ## kind)
 
 #define expr_new_sizeof()       expr_new_wrapper(sizeof)
 
@@ -114,5 +91,6 @@ expr *expr_new_addr(void);
 expr *expr_new_assign(void);
 expr *expr_new_comma(void);
 expr *expr_new_funcall(void);
+expr *expr_new_stat(stat *code);
 
 #endif

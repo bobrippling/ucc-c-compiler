@@ -18,7 +18,7 @@ expr *parse_expr();
 
 decl *parse_decl_single(enum decl_mode);
 
-tree  *parse_code(void);
+stat  *parse_code(void);
 decl **parse_decls(const int can_default, const int accept_field_width);
 type *parse_type(void);
 

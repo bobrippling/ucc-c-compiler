@@ -16,7 +16,7 @@ void idt_print(void);
 
 void print_decl(decl *d, enum pdeclargs);
 
-void print_tree(tree *t);
+void print_stat(stat *t);
 void print_expr(expr *e);
 
 void gen_str(symtable *);

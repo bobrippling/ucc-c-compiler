@@ -1,16 +1,16 @@
 #include "ops.h"
 
-const char *expr_str_addr()
+const char *str_expr_addr()
 {
 	return "addr";
 }
 
-static int expr_fold_is_addressable(expr *e)
+static int fold_expr_is_addressable(expr *e)
 {
 	return expr_kind(e, identifier);
 }
 
-void expr_fold_addr(expr *e, symtable *stab)
+void fold_expr_addr(expr *e, symtable *stab)
 {
 	if(e->array_store){
 		sym *array_sym;
@@ -58,14 +58,14 @@ void expr_fold_addr(expr *e, symtable *stab)
 
 	}else{
 		fold_expr(e->expr, stab);
-		if(!expr_fold_is_addressable(e->expr))
+		if(!fold_expr_is_addressable(e->expr))
 			die_at(&e->expr->where, "can't take the address of %s", e->expr->f_str());
 
 		e->tree_type = decl_ptr_depth_inc(decl_copy(e->expr->sym ? e->expr->sym->decl : e->expr->tree_type));
 	}
 }
 
-void expr_gen_addr(expr *e, symtable *stab)
+void gen_expr_addr(expr *e, symtable *stab)
 {
 	(void)stab;
 
@@ -83,7 +83,7 @@ void expr_gen_addr(expr *e, symtable *stab)
 	asm_temp(1, "push rax");
 }
 
-void expr_gen_addr_1(expr *e, FILE *f)
+void gen_expr_addr_1(expr *e, FILE *f)
 {
 	/* TODO: merge tis code with gen_addr / walk_expr with expr_addr */
 	if(e->array_store){
@@ -95,7 +95,7 @@ void expr_gen_addr_1(expr *e, FILE *f)
 	}
 }
 
-void expr_gen_str_addr(expr *e, symtable *stab)
+void gen_expr_str_addr(expr *e, symtable *stab)
 {
 	(void)stab;
 
@@ -125,6 +125,6 @@ void expr_gen_str_addr(expr *e, symtable *stab)
 expr *expr_new_addr()
 {
 	expr *e = expr_new_wrapper(addr);
-	e->f_gen_1 = expr_gen_addr_1;
+	e->f_gen_1 = gen_expr_addr_1;
 	return e;
 }

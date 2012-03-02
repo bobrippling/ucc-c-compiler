@@ -3,7 +3,7 @@
 #include "ops.h"
 #include "../struct.h"
 
-const char *expr_str_op()
+const char *str_expr_op()
 {
 	return "op";
 }
@@ -285,7 +285,7 @@ void fold_deref(expr *e)
 		die_at(&e->where, "can't dereference void pointer");
 }
 
-void expr_fold_op(expr *e, symtable *stab)
+void fold_expr_op(expr *e, symtable *stab)
 {
 	if(e->op == op_struct_ptr || e->op == op_struct_dot){
 		fold_op_struct(e, stab);
@@ -357,7 +357,7 @@ norm_tt:
 	}
 }
 
-void expr_gen_str_op(expr *e)
+void gen_expr_str_op(expr *e)
 {
 	idt_printf("op: %s\n", op_to_str(e->op));
 	gen_str_indent++;
@@ -466,7 +466,7 @@ void asm_operate_struct(expr *e, symtable *tab)
 	asm_temp(1, "push rax");
 }
 
-void expr_gen_op(expr *e, symtable *tab)
+void gen_expr_op(expr *e, symtable *tab)
 {
 	const char *instruct = NULL;
 	const char *rhs = "rcx";
@@ -558,7 +558,7 @@ void expr_gen_op(expr *e, symtable *tab)
 	asm_temp(1, "push rax");
 }
 
-void expr_gen_op_store(expr *e, symtable *stab)
+void gen_expr_op_store(expr *e, symtable *stab)
 {
 	switch(e->op){
 		case op_deref:
@@ -598,7 +598,7 @@ void expr_gen_op_store(expr *e, symtable *stab)
 expr *expr_new_op(enum op_type op)
 {
 	expr *e = expr_new_wrapper(op);
-	e->f_store = expr_gen_op_store;
+	e->f_store = gen_expr_op_store;
 	e->op = op;
 	return e;
 }

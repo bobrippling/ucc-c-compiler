@@ -29,6 +29,7 @@ enum warning
 	WARN_ENUM_CMP         = 1 << 22,
 	WARN_INCOMPLETE_USE   = 1 << 23,
 	WARN_UNUSED_EXPR      = 1 << 24,
+	WARN_TEST_ASSIGN      = 1 << 25,
 
 	/* TODO */
 	WARN_FORMAT           = 1 << 10,
@@ -50,7 +51,7 @@ enum fopt
 	FOPT_STRICT_TYPES    = 1 << 1,
 	FOPT_CONST_FOLD      = 1 << 2,
 	FOPT_ENGLISH         = 1 << 3,
-	FOPT_DECL_PTR_TREE   = 1 << 4,
+	FOPT_DECL_PTR_STAT   = 1 << 4,
 };
 
 extern enum fopt fopt_mode;

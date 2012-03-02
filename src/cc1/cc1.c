@@ -47,6 +47,8 @@ struct
 
 	{ 0,  "unused-expr",     WARN_UNUSED_EXPR                       },
 
+	{ 0,  "test-in-assign",  WARN_TEST_ASSIGN                       },
+
 
 	/* TODO */
 	{ 0,  "unused-parameter", WARN_UNUSED_PARAM },
@@ -79,7 +81,7 @@ struct
 	{ 1,  "strict-types",  FOPT_STRICT_TYPES    },
 	{ 1,  "const-fold",    FOPT_CONST_FOLD      },
 	{ 1,  "english",       FOPT_ENGLISH         },
-	{ 1,  "dptr-tree",     FOPT_DECL_PTR_TREE   },
+	{ 1,  "dptr-tree",     FOPT_DECL_PTR_STAT   },
 
 	{ 0,  NULL, 0 }
 };
