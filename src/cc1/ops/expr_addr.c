@@ -57,6 +57,8 @@ void fold_expr_addr(expr *e, symtable *stab)
 		}
 
 	}else{
+		fold_inc_writes_if_sym(e->expr, stab);
+
 		fold_expr(e->expr, stab);
 		if(!fold_expr_is_addressable(e->expr))
 			die_at(&e->expr->where, "can't take the address of %s", e->expr->f_str());

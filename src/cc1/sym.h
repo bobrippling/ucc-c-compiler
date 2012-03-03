@@ -12,6 +12,9 @@ struct sym
 	} type;
 
 	decl *decl;
+
+	/* static analysis */
+	int nreads, nwrites;
 };
 
 struct symtable

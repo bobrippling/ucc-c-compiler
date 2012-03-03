@@ -52,6 +52,16 @@ void fold_expr_identifier(expr *e, symtable *stab)
 		}
 	}else{
 		e->tree_type = decl_copy(e->sym->decl);
+
+		if(e->sym->type == sym_local
+		&& (e->sym->decl->type->spec & (spec_extern | spec_static)) == 0
+		&& !decl_has_array(e->sym->decl)
+		&& e->sym->nwrites == 0)
+		{
+			cc1_warn_at(&e->where, 0, WARN_READ_BEFORE_WRITE, "\"%s\" uninitialised on read", e->sym->decl->spel);
+		}
+
+		e->sym->nreads++;
 	}
 }
 

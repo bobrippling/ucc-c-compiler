@@ -105,10 +105,24 @@ void fold_typecheck(expr *lhs, expr *rhs, symtable *stab, where *where)
 	}
 }
 
+int fold_get_sym(expr *e, symtable *stab)
+{
+	if(!e->sym && e->spel){
+		e->sym = symtab_search(stab, e->spel);
+		return 1;
+	}
+	return 0;
+}
+
+void fold_inc_writes_if_sym(expr *e, symtable *stab)
+{
+	if(fold_get_sym(e, stab))
+		e->sym->nwrites++;
+}
+
 void fold_expr(expr *e, symtable *stab)
 {
-	if(e->spel && !e->sym)
-		e->sym = symtab_search(stab, e->spel);
+	fold_get_sym(e, stab);
 
 	const_fold(e);
 

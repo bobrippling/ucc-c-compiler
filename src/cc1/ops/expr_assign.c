@@ -43,6 +43,8 @@ static int is_lvalue(expr *e)
 
 void fold_expr_assign(expr *e, symtable *stab)
 {
+	fold_inc_writes_if_sym(e->lhs, stab);
+
 	fold_expr(e->lhs, stab);
 	fold_expr(e->rhs, stab);
 
