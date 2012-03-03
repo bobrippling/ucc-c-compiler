@@ -107,7 +107,6 @@ static void tokenise_read_line()
 			die("read():");
 	}else{
 		/* check for preprocessor line info */
-		char fname[1024];
 		int lno;
 
 		/* format is # [0-9] "filename" ([0-9])* */
@@ -127,9 +126,8 @@ static void tokenise_read_line()
 				fin++;
 			}
 
-
 			free(current_fname);
-			current_fname = ustrdup(fname);
+			current_fname = ustrdup2(p + 1, fin);
 
 			current_line = lno - 1; /* inc'd below */
 
