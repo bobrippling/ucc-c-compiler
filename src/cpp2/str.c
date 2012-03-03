@@ -49,15 +49,6 @@ char *str_join(char **strs, const char *with)
 	return ret;
 }
 
-char *ustrdup2(const char *a, const char *b)
-{
-	int len = b - a;
-	char *ret;
-	ret = umalloc(len + 1);
-	strncpy(ret, a, len);
-	return ret;
-}
-
 char *word_dup(const char *s)
 {
 	const char *start = s;

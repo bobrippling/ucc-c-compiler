@@ -463,6 +463,10 @@ void handle_macro(char *line)
 	MAP("warning", handle_warning)
 	MAP("error",   handle_error)
 
+	/* check for '# [0-9]+ "..."' */
+	if(sscanf(tokens[0]->w, "%d \"", &i) == 1)
+		return; /* ignore */
+
 	die("unrecognised preproc command \"%s\"", tokens[0]->w);
 fin:
 	for(i = 0; tokens[i]; i++){
