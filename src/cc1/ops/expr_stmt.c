@@ -13,18 +13,20 @@ void fold_expr_stmt(expr *e, symtable *stab)
 
 	(void)stab;
 
+	last = dynarray_count((void **)e->code->codes);
+	if(last){
+		last_stmt = e->code->codes[last - 1];
+		last_stmt->freestanding = 1; /* allow the final to be freestanding */
+	}
+
 	fold_stmt(e->code); /* symtab should've been set by parse */
 
-	last = dynarray_count((void **)e->code->codes);
-	if(!last)
-		die_at(&e->code->where, "no expression in ({ ... })");
-
-	last_stmt = e->code->codes[last - 1];
-
-	if(stmt_kind(last_stmt, expr))
+	if(last && stmt_kind(last_stmt, expr)){
 		e->tree_type = decl_copy(last_stmt->expr->tree_type);
-	else
+	}else{
+		e->tree_type = decl_new();
 		e->tree_type->type->primitive = type_void; /* void expr */
+	}
 }
 
 void gen_expr_stmt(expr *e, symtable *stab)

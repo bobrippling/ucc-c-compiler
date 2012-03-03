@@ -23,6 +23,8 @@ struct stmt
 	int val;
 	char *lblfin;
 
+	int freestanding; /* if this is freestanding, non-freestanding expressions inside are allowed */
+
 	decl **decls; /* block definitions, e.g. { int i... } */
 	stmt **codes; /* for a code block */
 
