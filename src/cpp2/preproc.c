@@ -66,8 +66,6 @@ void preproc_push(FILE *f, const char *fname)
 
 void preproc_pop(void)
 {
-	extern const char *current_fname;
-
 	if(!file_stack_idx)
 		ICE("file stack idx = 0 on pop()");
 
@@ -198,22 +196,18 @@ char *filter_macros(char *line)
 	}
 }
 
-char *output(char *line)
-{
-	printf("%s\n", line);
-	return line;
-}
-
 void preprocess()
 {
 	char *line;
 
-	preproc_push(stdin, "<stdin>");
+	preproc_push(stdin, current_fname);
 
 	while((line = splice_line())){
 		char *s = filter_macros(strip_comment(line));
-		if(s)
-			free(output(s));
+		if(s){
+			puts(s);
+			free(s);
+		}
 	}
 
 	if(strip_in_block)
