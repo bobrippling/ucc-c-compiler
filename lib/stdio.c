@@ -172,7 +172,6 @@ int vfprintf(FILE *file, char *fmt, va_list ap)
 					break;
 				case 'u':
 				case 'd':
-number:
 				{
 					const int n = va_arg(ap, int);
 
