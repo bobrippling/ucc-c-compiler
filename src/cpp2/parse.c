@@ -450,6 +450,15 @@ void handle_macro(char *line)
 
 	DEBUG(DEBUG_NORM, "macro %s\n", tokens[0]->w);
 
+	putchar('\n'); /* keep line-no.s in sync */
+
+	/* check for '# [0-9]+ "..."' */
+	if(sscanf(tokens[0]->w, "%d \"", &i) == 1){
+		/* output, and ignore */
+		puts(line);
+		return;
+	}
+
 	MAP("define",  handle_define)
 	MAP("undef",   handle_undef)
 
@@ -462,13 +471,6 @@ void handle_macro(char *line)
 
 	MAP("warning", handle_warning)
 	MAP("error",   handle_error)
-
-	/* check for '# [0-9]+ "..."' */
-	if(sscanf(tokens[0]->w, "%d \"", &i) == 1){
-		/* output, and ignore */
-		puts(line);
-		return;
-	}
 
 	die("unrecognised preproc command \"%s\"", tokens[0]->w);
 fin:
