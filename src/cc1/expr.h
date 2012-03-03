@@ -39,6 +39,7 @@ struct expr
 	} val;
 
 	int ptr_safe; /* does val point to a string we know about? */
+	int in_parens; /* for if((x = 5)) testing */
 
 	char *spel;
 	expr *expr; /* x = 5; expr is the 5 */

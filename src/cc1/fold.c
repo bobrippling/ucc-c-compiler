@@ -293,7 +293,7 @@ void fold_test_expr(expr *e, const char *stmt_desc)
 	if(!decl_ptr_depth(e->tree_type) && e->tree_type->type->primitive == type_void)
 		die_at(&e->where, "%s requires non-void expression", stmt_desc);
 
-	if(expr_kind(e, assign))
+	if(!e->in_parens && expr_kind(e, assign))
 		cc1_warn_at(&e->where, 0, WARN_TEST_ASSIGN, "testing an assignment in %s", stmt_desc);
 }
 

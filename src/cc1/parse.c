@@ -151,6 +151,8 @@ expr *parse_expr_unary_op()
 				e = expr_new_stmt(parse_code_block());
 			}else{
 				e = parse_expr();
+				e->in_parens = 1;
+				/* mark as being inside parens, for if((x = 5)) checking */
 			}
 			EAT(token_close_paren);
 			return e;

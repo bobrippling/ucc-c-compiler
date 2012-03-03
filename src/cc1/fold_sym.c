@@ -39,7 +39,7 @@ int symtab_fold(symtable *tab, int current)
 				current += siz;
 
 				/* static analysis on sym (only auto-vars) */
-				if(s->nwrites == 0)
+				if(s->nwrites == 0 && !decl_has_array(s->decl))
 					cc1_warn_at(&s->decl->where, 0, WARN_SYM_NEVER_WRITTEN, "\"%s\" never written to", s->decl->spel);
 
 			}else if(s->type == sym_arg){
