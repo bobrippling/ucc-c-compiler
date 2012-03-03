@@ -187,7 +187,7 @@ int vfprintf(FILE *file, char *fmt, va_list ap)
 							while(pad-- > len)
 								putchar('0');
 						}else{
-							while(--pad)
+							while((--pad))
 								putchar('0');
 						}
 					}

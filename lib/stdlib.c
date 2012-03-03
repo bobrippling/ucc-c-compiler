@@ -115,7 +115,7 @@ char *getenv(const char *key)
 
 		e = *i;
 
-		if(equ = strchr(e, '=')){
+		if((equ = strchr(e, '='))){
 			const int len = equ - e;
 
 			if(len == keylen && !strncmp(key, e, len))
