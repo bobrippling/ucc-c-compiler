@@ -216,7 +216,7 @@ void print_decl(decl *d, enum pdeclargs mode)
 
 		idt_printf("function stack space %d\n", d->func_code->symtab->auto_total_size);
 
-		print_stat(d->func_code);
+		print_stmt(d->func_code);
 
 		gen_str_indent--;
 	}
@@ -291,7 +291,7 @@ void print_st_en_tdef(symtable *stab)
 	}
 }
 
-void print_stat_flow(stat_flow *t)
+void print_stmt_flow(stmt_flow *t)
 {
 	idt_printf("flow:\n");
 	gen_str_indent++;
@@ -301,20 +301,20 @@ void print_stat_flow(stat_flow *t)
 	gen_str_indent--;
 }
 
-void print_stat(stat *t)
+void print_stmt(stmt *t)
 {
-	idt_printf("statement: %s\n", t->f_str());
+	idt_printf("stmtement: %s\n", t->f_str());
 
 	if(t->flow){
 		gen_str_indent++;
-		print_stat_flow(t->flow);
+		print_stmt_flow(t->flow);
 		gen_str_indent--;
 	}
 
 	PRINT_IF(t, expr, print_expr);
-	PRINT_IF(t, lhs,  print_stat);
-	PRINT_IF(t, rhs,  print_stat);
-	PRINT_IF(t, rhs,  print_stat);
+	PRINT_IF(t, lhs,  print_stmt);
+	PRINT_IF(t, rhs,  print_stmt);
+	PRINT_IF(t, rhs,  print_stmt);
 
 	if(t->decls){
 		decl **iter;
@@ -334,12 +334,12 @@ void print_stat(stat *t)
 	print_st_en_tdef(t->symtab);
 
 	if(t->codes){
-		stat **iter;
+		stmt **iter;
 
 		idt_printf("code(s):\n");
 		for(iter = t->codes; *iter; iter++){
 			gen_str_indent++;
-			print_stat(*iter);
+			print_stmt(*iter);
 			gen_str_indent--;
 		}
 	}

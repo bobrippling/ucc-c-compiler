@@ -23,7 +23,7 @@ void gen_expr(expr *e, symtable *stab)
 	e->f_gen(e, stab);
 }
 
-void gen_stat(stat *t)
+void gen_stmt(stmt *t)
 {
 	t->f_gen(t);
 }
@@ -48,7 +48,7 @@ void gen_asm_global(decl *d)
 		if((offset = d->func_code->symtab->auto_total_size))
 			asm_temp(1, "sub rsp, %d", offset);
 
-		gen_stat(d->func_code);
+		gen_stmt(d->func_code);
 
 		asm_label(curfunc_lblfin);
 		if(offset)

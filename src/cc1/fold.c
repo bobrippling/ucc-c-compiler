@@ -19,15 +19,15 @@
 #include "struct_enum.h"
 
 char *curdecl_func_sp;       /* for funcargs-local labels */
-stat *curstat_flow;          /* for break */
-stat *curstat_switch;        /* for case + default */
+stmt *curstat_flow;          /* for break */
+stmt *curstat_switch;        /* for case + default */
 
 
-void fold_stat_and_add_to_curswitch(stat *t)
+void fold_stmt_and_add_to_curswitch(stmt *t)
 {
-	fold_stat(t->lhs); /* compound */
+	fold_stmt(t->lhs); /* compound */
 	if(!curstat_switch)
-		die_at(&t->expr->where, "not inside a switch statement");
+		die_at(&t->expr->where, "not inside a switch stmtement");
 	dynarray_add((void ***)&curstat_switch->codes, t);
 }
 
@@ -274,16 +274,16 @@ void fold_symtab_scope(symtable *stab)
 		fold_enum(*eit, stab);
 }
 
-void fold_test_expr(expr *e, const char *stat_desc)
+void fold_test_expr(expr *e, const char *stmt_desc)
 {
 	if(!decl_ptr_depth(e->tree_type) && e->tree_type->type->primitive == type_void)
-		die_at(&e->where, "%s requires non-void expression", stat_desc);
+		die_at(&e->where, "%s requires non-void expression", stmt_desc);
 
 	if(expr_kind(e, assign))
-		cc1_warn_at(&e->where, 0, WARN_TEST_ASSIGN, "testing an assignment in %s", stat_desc);
+		cc1_warn_at(&e->where, 0, WARN_TEST_ASSIGN, "testing an assignment in %s", stmt_desc);
 }
 
-void fold_stat(stat *t)
+void fold_stmt(stmt *t)
 {
 	UCC_ASSERT(t->symtab->parent, "symtab has no parent");
 
@@ -335,7 +335,7 @@ void fold_func(decl *func_decl, symtable *globs)
 
 		symtab_set_parent(func_decl->func_code->symtab, globs);
 
-		fold_stat(func_decl->func_code);
+		fold_stmt(func_decl->func_code);
 
 		curdecl_func_sp = NULL;
 	}

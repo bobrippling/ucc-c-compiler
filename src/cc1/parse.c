@@ -16,10 +16,10 @@
 #include "struct.h"
 #include "parse_type.h"
 
-#define STAT_NEW(type)      stat_new_wrapper(type, current_scope)
-#define STAT_NEW_NEST(type) stat_new_wrapper(type, symtab_new(current_scope))
+#define STAT_NEW(type)      stmt_new_wrapper(type, current_scope)
+#define STAT_NEW_NEST(type) stmt_new_wrapper(type, symtab_new(current_scope))
 
-stat *parse_code_block(void);
+stmt *parse_code_block(void);
 expr *parse_expr_funcall(void);
 expr *parse_expr_inc_dec(void);
 
@@ -148,7 +148,7 @@ expr *parse_expr_unary_op()
 
 			if(curtok == token_open_block){
 				/* ({ ... }) */
-				e = expr_new_stat(parse_code_block());
+				e = expr_new_stmt(parse_code_block());
 			}else{
 				e = parse_expr();
 			}
@@ -432,9 +432,9 @@ expr *parse_expr_comma()
 	return e;
 }
 
-stat *parse_if()
+stmt *parse_if()
 {
-	stat *t = STAT_NEW_NEST(if);
+	stmt *t = STAT_NEW_NEST(if);
 	EAT(token_if);
 	EAT(token_open_paren);
 
@@ -469,16 +469,16 @@ expr **parse_funcargs()
 }
 
 
-stat *expr_to_stat(expr *e)
+stmt *expr_to_stmt(expr *e)
 {
-	stat *t = STAT_NEW(expr);
+	stmt *t = STAT_NEW(expr);
 	t->expr = e;
 	return t;
 }
 
-stat *parse_switch()
+stmt *parse_switch()
 {
-	stat *t = STAT_NEW_NEST(switch);
+	stmt *t = STAT_NEW_NEST(switch);
 
 	EAT(token_switch);
 	EAT(token_open_paren);
@@ -492,9 +492,9 @@ stat *parse_switch()
 	return t;
 }
 
-stat *parse_do()
+stmt *parse_do()
 {
-	stat *t = STAT_NEW_NEST(do);
+	stmt *t = STAT_NEW_NEST(do);
 
 	EAT(token_do);
 
@@ -509,9 +509,9 @@ stat *parse_do()
 	return t;
 }
 
-stat *parse_while()
+stmt *parse_while()
 {
-	stat *t = STAT_NEW_NEST(while);
+	stmt *t = STAT_NEW_NEST(while);
 
 	EAT(token_while);
 	EAT(token_open_paren);
@@ -523,15 +523,15 @@ stat *parse_while()
 	return t;
 }
 
-stat *parse_for()
+stmt *parse_for()
 {
-	stat *s = STAT_NEW_NEST(for);
-	stat_flow *sf;
+	stmt *s = STAT_NEW_NEST(for);
+	stmt_flow *sf;
 
 	EAT(token_for);
 	EAT(token_open_paren);
 
-	sf = s->flow = stat_flow_new();
+	sf = s->flow = stmt_flow_new();
 
 #define SEMI_WRAP(code) \
 	if(!accept(token_semicolon)){ \
@@ -554,9 +554,9 @@ stat *parse_for()
 	return s;
 }
 
-stat *parse_code_block()
+stmt *parse_code_block()
 {
-	stat *t = STAT_NEW_NEST(code);
+	stmt *t = STAT_NEW_NEST(code);
 	decl **diter;
 
 	current_scope = t->symtab;
@@ -575,7 +575,7 @@ stat *parse_code_block()
 
 			e = expr_new_identifier((*diter)->spel);
 
-			dynarray_add((void ***)&t->codes, expr_to_stat(expr_assignment(e, (*diter)->init)));
+			dynarray_add((void ***)&t->codes, expr_to_stmt(expr_assignment(e, (*diter)->init)));
 
 			/*
 			 *(*diter)->init = NULL;
@@ -586,7 +586,7 @@ stat *parse_code_block()
 	if(curtok != token_close_block){
 		/* main read loop */
 		do{
-			stat *sub = parse_code();
+			stmt *sub = parse_code();
 
 			if(sub)
 				dynarray_add((void ***)&t->codes, sub);
@@ -605,7 +605,7 @@ ret:
 	return t;
 }
 
-stat *parse_label_next(stat *lbl)
+stmt *parse_label_next(stmt *lbl)
 {
 	lbl->lhs = parse_code();
 	/*
@@ -615,15 +615,15 @@ stat *parse_label_next(stat *lbl)
 	 *   lbl:
 	 *   printf("yo\n");
 	 *
-	 * both the label and the printf statements are in the if
-	 * as a compound statement
+	 * both the label and the printf stmtements are in the if
+	 * as a compound stmtement
 	 */
 	return lbl;
 }
 
-stat *parse_code()
+stmt *parse_code()
 {
-	stat *t;
+	stmt *t;
 
 	switch(curtok){
 		case token_semicolon:
@@ -673,18 +673,18 @@ stat *parse_code()
 				t->expr  = a;
 				t->expr2 = parse_expr();
 			}else{
-				t = expr_to_stat(a);
-				stat_mutate_wrapper(t, case);
+				t = expr_to_stmt(a);
+				stmt_mutate_wrapper(t, case);
 			}
 			EAT(token_colon);
 			return parse_label_next(t);
 		}
 
 		default:
-			t = expr_to_stat(parse_expr());
+			t = expr_to_stmt(parse_expr());
 
 			if(expr_kind(t->expr, identifier) && accept(token_colon)){
-				stat_mutate_wrapper(t, label);
+				stmt_mutate_wrapper(t, label);
 				return parse_label_next(t);
 			}else{
 				EAT(token_semicolon);

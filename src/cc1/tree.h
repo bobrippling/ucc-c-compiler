@@ -2,8 +2,8 @@
 #define TREE_H
 
 typedef struct expr expr;
-typedef struct stat stat;
-typedef struct stat_flow stat_flow;
+typedef struct stmt stmt;
+typedef struct stmt_flow stmt_flow;
 
 typedef struct sym         sym;
 typedef struct symtable    symtable;
@@ -95,7 +95,7 @@ struct decl
 	/* recursive */
 	decl_ptr *decl_ptr;
 
-	stat *func_code;
+	stmt *func_code;
 };
 
 struct array_decl
@@ -126,7 +126,7 @@ struct funcargs
 };
 
 
-stat        *tree_new(symtable *stab);
+stmt        *tree_new(symtable *stab);
 type        *type_new(void);
 decl        *decl_new(void);
 decl_ptr    *decl_ptr_new(void);

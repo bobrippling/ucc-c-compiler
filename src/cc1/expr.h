@@ -43,7 +43,7 @@ struct expr
 	char *spel;
 	expr *expr; /* x = 5; expr is the 5 */
 	expr **funcargs;
-	stat *code; /* ({ ... }) */
+	stmt *code; /* ({ ... }) */
 
 	sym *sym;
 
@@ -71,7 +71,7 @@ expr *expr_assignment(expr *to, expr *from);
 #include "ops/expr_op.h"
 #include "ops/expr_sizeof.h"
 #include "ops/expr_val.h"
-#include "ops/expr_stat.h"
+#include "ops/expr_stmt.h"
 
 #define expr_new_wrapper(type)       expr_new(      fold_expr_ ## type, str_expr_ ## type, gen_expr_ ## type, gen_expr_str_ ## type)
 #define expr_mutate_wrapper(e, type) expr_mutate(e, fold_expr_ ## type, str_expr_ ## type, gen_expr_ ## type, gen_expr_str_ ## type)
@@ -91,6 +91,6 @@ expr *expr_new_addr(void);
 expr *expr_new_assign(void);
 expr *expr_new_comma(void);
 expr *expr_new_funcall(void);
-expr *expr_new_stat(stat *code);
+expr *expr_new_stmt(stmt *code);
 
 #endif

@@ -40,5 +40,5 @@ enum op_type
 
 #include "tree.h"
 #include "expr.h"
-#include "stat.h"
+#include "stmt.h"
 #include "sym.h"

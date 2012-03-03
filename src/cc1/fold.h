@@ -18,19 +18,19 @@ void fold_funcargs_equal(
 
 void fold_symtab_scope(symtable *stab);
 
-void fold_stat_and_add_to_curswitch(stat *);
+void fold_stmt_and_add_to_curswitch(stmt *);
 
 void fold_typecheck(expr *lhs, expr *rhs, symtable *stab, where *where);
 
-void fold_test_expr(expr *e, const char *stat_desc);
+void fold_test_expr(expr *e, const char *stmt_desc);
 
 void fold_expr(expr *e, symtable *stab);
-void fold_stat(stat *t);
+void fold_stmt(stmt *t);
 
 void fold(symtable *);
 
 extern char *curdecl_func_sp;
-extern stat *curstat_flow;
-extern stat *curstat_switch;
+extern stmt *curstat_flow;
+extern stmt *curstat_switch;
 
 #endif
