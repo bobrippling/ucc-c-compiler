@@ -166,8 +166,8 @@ void fold_op_struct(expr *e, symtable *stab)
 	fold_expr(e->lhs, stab);
 	/* don't fold the rhs - just a member name */
 
-	if(expr_kind(e->rhs, identifier))
-		die_at(&e->rhs->where, "struct member must be an identifier");
+	if(!expr_kind(e->rhs, identifier))
+		die_at(&e->rhs->where, "struct member must be an identifier (got %s)", e->rhs->f_str());
 	spel = e->rhs->spel;
 
 	/* we access a struct, of the right ptr depth */
