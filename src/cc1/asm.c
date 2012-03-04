@@ -45,14 +45,14 @@ char *asm_label_array(int str)
 	return ret;
 }
 
-char *asm_label_static_local(const char *funcsp, const char *spel)
+char *asm_label_stmtic_local(const char *funcsp, const char *spel)
 {
 	char *ret;
 
 	UCC_ASSERT(funcsp, "no spel for %s", __func__);
 
 	ret = umalloc(strlen(funcsp) + strlen(spel) + 9);
-	sprintf(ret, "%s.static_%s", funcsp, spel);
+	sprintf(ret, "%s.stmtic_%s", funcsp, spel);
 	return ret;
 }
 

@@ -1,11 +1,11 @@
 #include "ops.h"
 
-const char *expr_str_sizeof()
+const char *str_expr_sizeof()
 {
 	return "sizeof";
 }
 
-void expr_fold_sizeof(expr *e, symtable *stab)
+void fold_expr_sizeof(expr *e, symtable *stab)
 {
 	if(!e->expr->expr_is_sizeof)
 		fold_expr(e->expr, stab);
@@ -14,12 +14,12 @@ void expr_fold_sizeof(expr *e, symtable *stab)
 	e->tree_type->type->primitive = type_int;
 }
 
-void expr_gen_sizeof_1(expr *e)
+void gen_expr_sizeof_1(expr *e)
 {
 	ICE("TODO: init with %s", e->f_str());
 }
 
-void expr_gen_sizeof(expr *e, symtable *stab)
+void gen_expr_sizeof(expr *e, symtable *stab)
 {
 	decl *d = e->expr->tree_type;
 	(void)stab;
@@ -27,8 +27,9 @@ void expr_gen_sizeof(expr *e, symtable *stab)
 	asm_temp(1, "push %d ; sizeof %s%s", decl_size(d), e->expr->expr_is_sizeof ? "type " : "", decl_to_str(d));
 }
 
-void expr_gen_str_sizeof(expr *e)
+void gen_expr_str_sizeof(expr *e, symtable *stab)
 {
+	(void)stab;
 	if(e->expr->expr_is_sizeof){
 		idt_printf("sizeof %s\n", decl_to_str(e->expr->tree_type));
 	}else{

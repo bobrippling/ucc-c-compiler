@@ -166,7 +166,7 @@ int gen(const char *input, const char *output)
 #define TMP(s, pre, post) \
 		snprintf(s, sizeof s, pre "%d." post, getpid())
 
-	TMP(f_e, "/tmp/ucc_", "e");
+	TMP(f_e, "/tmp/ucc_", "i");
 	TMP(f_s, "/tmp/ucc_", "s");
 	TMP(f_o, "/tmp/ucc_", "o");
 	f = output ? output : "a.out";
@@ -368,7 +368,7 @@ int main(int argc, char **argv)
 #define CHAR_MAP(c, m) \
 				case c: start_mode = m; break
 					CHAR_MAP('c', MODE_PREPROCESS);
-					CHAR_MAP('e', MODE_COMPILE);
+					CHAR_MAP('i', MODE_COMPILE);
 					CHAR_MAP('s', MODE_ASSEMBLE);
 					CHAR_MAP('o', MODE_LINK);
 #undef CHAR_MAP

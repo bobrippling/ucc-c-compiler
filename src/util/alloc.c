@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <assert.h>
 
 #include "../util/util.h"
 #include "alloc.h"
@@ -27,6 +28,16 @@ char *ustrdup(const char *s)
 	char *r = umalloc(strlen(s) + 1);
 	strcpy(r, s);
 	return r;
+}
+
+char *ustrdup2(const char *a, const char *b)
+{
+	int len = b - a;
+	char *ret;
+	assert(b >= a);
+	ret = umalloc(len + 1);
+	strncpy(ret, a, len);
+	return ret;
 }
 
 char *ustrprintf(const char *fmt, ...)

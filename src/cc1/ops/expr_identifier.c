@@ -2,7 +2,7 @@
 #include "ops.h"
 #include "../enum.h"
 
-const char *expr_str_identifier()
+const char *str_expr_identifier()
 {
 	return "identifier";
 }
@@ -19,7 +19,7 @@ int fold_const_expr_identifier(expr *e)
 	return 1;
 }
 
-void expr_fold_identifier(expr *e, symtable *stab)
+void fold_expr_identifier(expr *e, symtable *stab)
 {
 	if(!e->sym){
 		if(!strcmp(e->spel, "__func__")){
@@ -52,20 +52,31 @@ void expr_fold_identifier(expr *e, symtable *stab)
 		}
 	}else{
 		e->tree_type = decl_copy(e->sym->decl);
+
+		if(e->sym->type == sym_local
+		&& (e->sym->decl->type->spec & (spec_extern | spec_static)) == 0
+		&& !decl_has_array(e->sym->decl)
+		&& e->sym->nwrites == 0)
+		{
+			cc1_warn_at(&e->where, 0, WARN_READ_BEFORE_WRITE, "\"%s\" uninitialised on read", e->sym->decl->spel);
+		}
+
+		e->sym->nreads++;
 	}
 }
 
-void expr_gen_str_identifier(expr *e)
+void gen_expr_str_identifier(expr *e, symtable *stab)
 {
+	(void)stab;
 	idt_printf("identifier: \"%s\" (sym %p)\n", e->spel, e->sym);
 }
 
-void expr_gen_identifier_1(expr *e, FILE *f)
+void gen_expr_identifier_1(expr *e, FILE *f)
 {
 	asm_out_intval(f, &e->val.iv);
 }
 
-void expr_gen_identifier(expr *e, symtable *stab)
+void gen_expr_identifier(expr *e, symtable *stab)
 {
 	(void)stab;
 
@@ -83,7 +94,7 @@ void expr_gen_identifier(expr *e, symtable *stab)
 	asm_temp(1, "push rax");
 }
 
-void expr_gen_identifier_store(expr *e, symtable *stab)
+void gen_expr_identifier_store(expr *e, symtable *stab)
 {
 	(void)stab;
 	asm_sym_store(e->sym, "rax");
@@ -94,8 +105,8 @@ expr *expr_new_identifier(char *sp)
 	expr *e = expr_new_wrapper(identifier);
 	e->spel = sp;
 
-	e->f_store      = expr_gen_identifier_store;
-	e->f_gen_1      = expr_gen_identifier_1;
+	e->f_store      = gen_expr_identifier_store;
+	e->f_gen_1      = gen_expr_identifier_1;
 	e->f_const_fold = fold_const_expr_identifier;
 
 	return e;

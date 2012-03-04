@@ -271,14 +271,11 @@ void handle_undef(token **tokens)
 
 void handle_error_warning(token **tokens, const char *pre)
 {
-	/*extern const char *current_fname;
-	extern int         current_line;*/
 	char *s;
 
 	s = tokens_join(tokens);
 	fprintf(stderr, "#%s: %s\n", pre, s);
 	free(s);
-
 }
 
 void handle_warning(token **tokens)
@@ -369,7 +366,7 @@ void handle_include(token **tokens)
 			fprintf(stderr, ">>> include \"%s/%s\"\n", dname, fname);
 	}
 
-	preproc_push(f);
+	preproc_push(f, path);
 	dirname_push(udirname(path));
 	free(path);
 
@@ -452,6 +449,15 @@ void handle_macro(char *line)
 	}
 
 	DEBUG(DEBUG_NORM, "macro %s\n", tokens[0]->w);
+
+	putchar('\n'); /* keep line-no.s in sync */
+
+	/* check for '# [0-9]+ "..."' */
+	if(sscanf(tokens[0]->w, "%d \"", &i) == 1){
+		/* output, and ignore */
+		puts(line);
+		return;
+	}
 
 	MAP("define",  handle_define)
 	MAP("undef",   handle_undef)

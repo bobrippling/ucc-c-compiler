@@ -9,6 +9,8 @@ struct access tree type propagation
 
 &x[y]
 
+static analysis for labels - flag unused labels
+
 const:
 	const char *s; - *s is not writable, s is
 	const char *a = "hi";

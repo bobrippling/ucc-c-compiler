@@ -1,20 +1,5 @@
-typedef struct sym         sym;
-typedef struct symtable    symtable;
-
-typedef struct tdef        tdef;
-typedef struct tdeftable   tdeftable;
-typedef struct struct_st   struct_st;
-typedef struct enum_st     enum_st;
-
-typedef struct tree        tree;
-typedef struct decl        decl;
-typedef struct decl_ptr    decl_ptr;
-typedef struct array_decl  array_decl;
 typedef struct funcargs    funcargs;
 typedef struct tree_flow   tree_flow;
-typedef struct type        type;
-typedef struct assignment  assignment;
-typedef struct label       label;
 
 typedef struct intval intval;
 
@@ -28,7 +13,32 @@ struct intval
 	} suffix;
 };
 
+enum op_type
+{
+	op_multiply,
+	op_divide,
+	op_plus,
+	op_minus,
+	op_modulus,
+	op_deref,
 
-#include "expr.h"
-#include "sym.h"
+	op_eq, op_ne,
+	op_le, op_lt,
+	op_ge, op_gt,
+
+	op_xor,
+	op_or,   op_and,
+	op_orsc, op_andsc,
+	op_not,  op_bnot,
+
+	op_shiftl, op_shiftr,
+
+	op_struct_ptr, op_struct_dot,
+
+	op_unknown
+};
+
 #include "tree.h"
+#include "expr.h"
+#include "stmt.h"
+#include "sym.h"
