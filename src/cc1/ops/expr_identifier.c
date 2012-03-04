@@ -97,7 +97,7 @@ void gen_expr_identifier(expr *e, symtable *stab)
 void gen_expr_identifier_store(expr *e, symtable *stab)
 {
 	(void)stab;
-	asm_sym_store(e->sym, "rax");
+	asm_sym(ASM_STORE, e->sym, "rax");
 }
 
 expr *expr_new_identifier(char *sp)

@@ -8,6 +8,13 @@ enum asm_label_type
 	CASE_RANGE
 };
 
+enum asm_sym_type
+{
+	ASM_LEA,
+	ASM_LOAD,
+	ASM_STORE
+};
+
 char        asm_type_ch(decl *);
 const char *asm_type_str(decl *);
 const char *asm_reg_name(decl *);
@@ -15,9 +22,7 @@ int         asm_type_size(decl *);
 
 void asm_label(const char *);
 
-void asm_sym_load(     sym *, const char *reg);
-void asm_sym_store(    sym *, const char *reg);
-void asm_sym_load_addr(sym *, const char *reg);
+void asm_sym(enum asm_sym_type, sym *, asm_operand *reg);
 
 void asm_declare_array(enum section_type output, const char *lbl, array_decl *ad);
 void asm_declare_single_part(FILE *f, expr *e);

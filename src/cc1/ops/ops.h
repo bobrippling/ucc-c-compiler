@@ -33,6 +33,7 @@
 #include "stmt_while.h"
 
 #include "../cc1.h"
+#include "../asm_out.h"
 #include "../asm.h"
 #include "../fold.h"
 #include "../const.h"

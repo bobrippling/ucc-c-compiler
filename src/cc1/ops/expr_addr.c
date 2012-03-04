@@ -72,17 +72,24 @@ void gen_expr_addr(expr *e, symtable *stab)
 	(void)stab;
 
 	if(e->array_store){
-		asm_temp(1, "mov rax, %s", e->array_store->label);
+		/*decl *d = e->array_store->data.exprs[0];*/
+
+		asm_output_new(
+				asm_out_type_mov,
+				asm_operand_new_reg(  NULL, ASM_REG_A),
+				asm_operand_new_label(NULL, e->array_store->label)
+			);
+
 	}else{
 		/* address of possibly an ident "(&a)->b" or a struct expr "&a->b" */
 		if(expr_kind(e->expr, identifier)){
-			asm_sym(ASM_LEA, e->expr->sym, "rax");
+			asm_sym(ASM_LEA, e->expr->sym, asm_operand_new_reg(e->expr->sym->decl, ASM_REG_A));
 		}else{
 			ICE("TODO: address of %s", e->expr->f_str());
 		}
 	}
 
-	asm_temp(1, "push rax");
+	asm_push(ASM_REG_A);
 }
 
 void gen_expr_addr_1(expr *e, FILE *f)

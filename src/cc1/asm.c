@@ -7,6 +7,7 @@
 #include "data_structs.h"
 #include "cc1.h"
 #include "sym.h"
+#include "asm_out.h"
 #include "asm.h"
 #include "../util/platform.h"
 #include "../util/alloc.h"
@@ -95,21 +96,16 @@ char *asm_label_flowfin()
 	return ret;
 }
 
-void asm_sym(enum asm_sym_type t, sym *s, const char *reg)
+void asm_sym(enum asm_sym_type t, sym *s, asm_operand *reg)
 {
 	const int is_global = s->type == sym_global || (s->decl->type->spec & (spec_extern | spec_static));
 	char *const dsp = s->decl->spel;
 	int is_auto = s->type == sym_local;
-	char  stackbrackets[16];
-	char *brackets;
+	asm_operand *brackets;
 
 	if(is_global){
-		const int bracket_len = strlen(dsp) + 16;
-
-		brackets = umalloc(bracket_len + 1);
-
 		if(t == ASM_LEA || s->decl->func_code){
-			snprintf(brackets, bracket_len, "%s", dsp); /* int (*p)() = printf; for example */
+			brackets = asm_operand_new_label(NULL, dsp);
 			/*
 			 * either:
 			 *   we want             lea rax, [a]
@@ -119,16 +115,19 @@ void asm_sym(enum asm_sym_type t, sym *s, const char *reg)
 			t = ASM_LOAD;
 		}else{
 			/* get warnings for "lea rax, [qword tim]", just do "lea rax, [tim]" */
-			snprintf(brackets, bracket_len, "[%s%s]",
-					t == ASM_LEA ? "" : asm_type_str(s->decl), dsp);
+			brackets = asm_operand_new_deref(
+					s->decl,
+					asm_operand_new_label(NULL, dsp),
+					0);
 		}
 	}else{
-		brackets = stackbrackets;
-		snprintf(brackets, sizeof stackbrackets, "[rbp %c %d]",
-				is_auto ? '-' : '+',
-				((is_auto ? 1 : 2) * platform_word_size()) + s->offset);
+		brackets = asm_operand_new_deref(
+				s->decl,
+				asm_operand_new_reg(NULL, ASM_REG_BP),
+				((is_auto ? -1 : 2) * platform_word_size()) + s->offset);
 	}
 
+#if 0
 	asm_temp(1, "%s %s, %s ; %s%s",
 			t == ASM_LEA ? "lea"    : "mov",
 			t == ASM_SET ? brackets : reg,
@@ -136,14 +135,19 @@ void asm_sym(enum asm_sym_type t, sym *s, const char *reg)
 			t == ASM_LEA ? "&"      : "",
 			dsp
 			);
+#endif
 
-	if(brackets != stackbrackets)
-		free(brackets);
+	asm_output_new(
+			t == ASM_LEA   ? asm_out_type_lea : asm_out_type_mov,
+			t == ASM_STORE ? brackets         : reg,
+			t == ASM_STORE ? reg              : brackets);
+
+	asm_comment("%s%s", t == ASM_LEA ? "&" : "", dsp);
 }
 
 void asm_label(const char *lbl)
 {
-	asm_temp(0, "%s:", lbl);
+	asm_out_str(cc_out[SECTION_TEXT], "%s:", lbl);
 }
 
 void asm_out_intval(FILE *f, intval *iv)

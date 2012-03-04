@@ -3,6 +3,9 @@
 #include "ops.h"
 #include "../struct.h"
 
+#define ASM_XOR(reg) \
+	asm_output_new(asm_out_type_xor, asm_operand_new_reg(ASM_REG_ ## reg), asm_operand_new_reg(ASM_REG_ ## reg))
+
 const char *str_expr_op()
 {
 	return "op";
@@ -252,7 +255,7 @@ void fold_expr_op(expr *e, symtable *stab)
 	if(e->rhs){
 		fold_expr(e->rhs, stab);
 
-		fold_typecheck(e->lhs, e->rhs, stab, &e->where);
+		fold_typecheck(&e->lhs, &e->rhs, stab, &e->where);
 	}
 
 	if(e->op == op_deref){
@@ -354,12 +357,19 @@ static void asm_idiv(expr *e, symtable *tab)
 	gen_expr(e->rhs, tab);
 	/* pop top stack (rhs) into b, and next top into a */
 
-	asm_temp(1, "xor rdx,rdx");
-	asm_temp(1, "pop rbx");
-	asm_temp(1, "pop rax");
-	asm_temp(1, "idiv rbx");
+	/*
+	xor rdx,rdx
+	pop rbx
+	pop rax
+	idiv rbx
+	push r%cx, e->op == op_divide ? 'a' : 'd'
+	*/
 
-	asm_temp(1, "push r%cx", e->op == op_divide ? 'a' : 'd');
+	ASM_XOR(D);
+	asm_pop(ASM_REG_B);
+	asm_pop(ASM_REG_A);
+	asm_output_new(asm_out_type_idiv, asm_operand_reg(ASM_REG_A), NULL);
+	asm_push(e->op == op_divide ? ASM_REG_A : ASM_REG_D);
 }
 
 static void asm_compare(expr *e, symtable *tab)
@@ -368,10 +378,20 @@ static void asm_compare(expr *e, symtable *tab)
 
 	gen_expr(e->lhs, tab);
 	gen_expr(e->rhs, tab);
+
+	/*
 	asm_temp(1, "pop rbx");
 	asm_temp(1, "pop rax");
-	asm_temp(1, "xor rcx,rcx"); /* must be before cmp */
+	asm_temp(1, "xor rcx,rcx"); * must be before cmp *
 	asm_temp(1, "cmp rax,rbx");
+	*/
+
+	asm_pop(ASM_REG_B);
+	asm_pop(ASM_REG_A);
+	ASM_XOR(C);
+	asm_output_new(asm_out_type_cmp,
+			asm_operand_new_reg(ASM_REG_A),
+			asm_operand_new_reg(ASM_REG_B));
 
 	/* check for unsigned, since signed isn't explicitly set */
 #define SIGNED(s, u) e->tree_type->type->spec & spec_unsigned ? u : s
@@ -389,8 +409,8 @@ static void asm_compare(expr *e, symtable *tab)
 			ICE("asm_compare: unhandled comparison");
 	}
 
-	asm_temp(1, "set%s cl", cmp);
-	asm_temp(1, "push rcx");
+	asm_set(cmp, ASM_REG_C);
+	asm_push(ASM_REG_C);
 }
 
 static void asm_shortcircuit(expr *e, symtable *tab)
@@ -398,11 +418,22 @@ static void asm_shortcircuit(expr *e, symtable *tab)
 	char *baillabel = asm_label_code("shortcircuit_bail");
 	gen_expr(e->lhs, tab);
 
-	asm_temp(1, "mov rax,[rsp]");
-	asm_temp(1, "test rax,rax");
+	asm_output_new(
+			asm_out_type_mov,
+			asm_operand_new_reg(ASM_REG_A),
+			asm_operand_new_deref(asm_operand_new_reg(ASM_REG_SP))
+		);
+
+	asm_output_new(
+			asm_out_type_test,
+			asm_operand_new_reg(ASM_REG_A),
+			asm_operand_new_reg(ASM_REG_A)
+		);
+
 	/* leave the result on the stack (if false) and bail */
-	asm_temp(1, "j%sz %s", e->op == op_andsc ? "" : "n", baillabel);
-	asm_temp(1, "pop rax");
+	asm_jmp_if_zero(e->op == op_andsc ? "" : "n", baillabel);
+
+	asm_pop(ASM_REG_A);
 	gen_expr(e->rhs, tab);
 
 	asm_label(baillabel);
@@ -418,12 +449,26 @@ void asm_operate_struct(expr *e, symtable *tab)
 	gen_expr(e->lhs, tab);
 
 	/* pointer to the struct is on the stack, get from the offset */
-	asm_temp(1, "pop rax ; struct ptr");
-	asm_temp(1, "add rax, %d ; offset of member %s",
-			e->rhs->tree_type->struct_offset,
-			e->rhs->spel);
-	asm_temp(1, "mov rax, [rax] ; val from struct");
-	asm_temp(1, "push rax");
+	asm_pop(ASM_REG_A);
+	asm_comment("struct ptr");
+
+	asm_output_new(
+			asm_out_type_add,
+			asm_operand_new_reg(ASM_REG_A),
+			asm_operand_new_val(e->rhs->tree_type->struct_offset)
+		);
+
+	asm_comment("offset of member %s", e->rhs->spel);
+
+	asm_output_new(
+			asm_out_type_mov,
+			asm_operand_new_reg(ASM_REG_A),
+			asm_operand_new_deref(asm_operand_new_reg(ASM_REG_A))
+		);
+
+	asm_comment("val from struct");
+
+	asm_push(ASM_REG_A);
 }
 
 void gen_expr_op(expr *e, symtable *tab)

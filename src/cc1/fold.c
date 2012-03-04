@@ -11,7 +11,6 @@
 #include "sym.h"
 #include "../util/platform.h"
 #include "const.h"
-#include "asm.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
 #include "struct.h"
