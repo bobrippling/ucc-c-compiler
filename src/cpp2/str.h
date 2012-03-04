@@ -1,7 +1,6 @@
 #ifndef STR_H
 #define STR_H
 
-char *ustrdup2(const char *a, const char *b);
 char *word_dup(const char *);
 
 char *str_quote(const char *s);

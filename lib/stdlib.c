@@ -111,11 +111,11 @@ char *getenv(const char *key)
 	char **i;
 
 	for(i = environ; *i; i++){
-		char save, *equ, *e;
+		char *equ, *e;
 
 		e = *i;
 
-		if(equ = strchr(e, '=')){
+		if((equ = strchr(e, '='))){
 			const int len = equ - e;
 
 			if(len == keylen && !strncmp(key, e, len))

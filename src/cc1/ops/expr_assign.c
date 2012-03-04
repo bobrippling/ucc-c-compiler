@@ -1,6 +1,6 @@
 #include "ops.h"
 
-const char *expr_str_assign()
+const char *str_expr_assign()
 {
 	return "assign";
 }
@@ -41,8 +41,10 @@ static int is_lvalue(expr *e)
 	return 0;
 }
 
-void expr_fold_assign(expr *e, symtable *stab)
+void fold_expr_assign(expr *e, symtable *stab)
 {
+	fold_inc_writes_if_sym(e->lhs, stab);
+
 	fold_expr(e->lhs, stab);
 	fold_expr(e->rhs, stab);
 
@@ -67,6 +69,7 @@ void expr_fold_assign(expr *e, symtable *stab)
 	else
 		e->tree_type = decl_copy(e->lhs->tree_type);
 
+	fold_typecheck(e->lhs, e->rhs, stab, &e->where);
 
 	/* type check */
 	fold_decl_equal(e->lhs->tree_type, e->rhs->tree_type,
@@ -77,7 +80,7 @@ void expr_fold_assign(expr *e, symtable *stab)
 				e->lhs->spel ? ")" : "");
 }
 
-void expr_gen_assign(expr *e, symtable *stab)
+void gen_expr_assign(expr *e, symtable *stab)
 {
 	if(e->assign_is_post){
 		/* if this is the case, ->rhs->lhs is ->lhs, and ->rhs is an addition/subtraction of 1 * something */
@@ -101,8 +104,9 @@ void expr_gen_assign(expr *e, symtable *stab)
 	}
 }
 
-void expr_gen_str_assign(expr *e)
+void gen_expr_str_assign(expr *e, symtable *stab)
 {
+	(void)stab;
 	idt_printf("%sassignment, expr:\n", e->assign_is_post ? "post-inc/dec " : "");
 	idt_printf("assign to:\n");
 	gen_str_indent++;

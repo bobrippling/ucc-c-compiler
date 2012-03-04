@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include "ops.h"
 
-const char *expr_str_if()
+const char *str_expr_if()
 {
 	return "if";
 }
@@ -17,7 +17,7 @@ int fold_const_expr_if(expr *e)
 	return 1;
 }
 
-void expr_fold_if(expr *e, symtable *stab)
+void fold_expr_if(expr *e, symtable *stab)
 {
 	fold_expr(e->expr, stab);
 	if(const_expr_is_const(e->expr))
@@ -31,7 +31,7 @@ void expr_fold_if(expr *e, symtable *stab)
 }
 
 
-void expr_gen_if(expr *e, symtable *stab)
+void gen_expr_if(expr *e, symtable *stab)
 {
 	char *lblfin, *lblelse;
 	lblfin  = asm_label_code("ifexpa");
@@ -51,8 +51,9 @@ void expr_gen_if(expr *e, symtable *stab)
 	free(lblelse);
 }
 
-void expr_gen_str_if(expr *e)
+void gen_expr_str_if(expr *e, symtable *stab)
 {
+	(void)stab;
 	idt_printf("if expression:\n");
 	gen_str_indent++;
 #define SUB_PRINT(nam) \

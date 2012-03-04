@@ -16,13 +16,12 @@
 #include "struct.h"
 #include "parse_type.h"
 
-#define TREE_NEW() tree_new(current_scope)
+#define STAT_NEW(type)      stmt_new_wrapper(type, current_scope)
+#define STAT_NEW_NEST(type) stmt_new_wrapper(type, symtab_new(current_scope))
 
-#define TREE_NEW_NEST() tree_new(symtab_new(current_scope))
-
-#define PARSE_SMALL parse_expr_inc_dec
-
-expr *PARSE_SMALL(void);
+stmt *parse_code_block(void);
+expr *parse_expr_funcall(void);
+expr *parse_expr_inc_dec(void);
 
 /*
  * order goes:
@@ -94,7 +93,7 @@ expr *parse_expr_unary_op()
 		case token_and:
 			EAT(token_and);
 			e = expr_new_addr();
-			e->expr = PARSE_SMALL();
+			e->expr = parse_expr_array();
 			return e;
 
 		case token_string:
@@ -143,12 +142,19 @@ expr *parse_expr_unary_op()
 			if((d = parse_decl_single(DECL_SPEL_NO))){
 				e = expr_new_cast(d);
 				EAT(token_close_paren);
-				e->expr = PARSE_SMALL(); /* grab only the closest */
-			}else{
-				e = parse_expr();
-				EAT(token_close_paren);
+				e->expr = parse_expr_funcall(); /* grab only the closest */
+				return e;
 			}
 
+			if(curtok == token_open_block){
+				/* ({ ... }) */
+				e = expr_new_stmt(parse_code_block());
+			}else{
+				e = parse_expr();
+				e->in_parens = 1;
+				/* mark as being inside parens, for if((x = 5)) checking */
+			}
+			EAT(token_close_paren);
 			return e;
 		}
 
@@ -244,7 +250,7 @@ expr *parse_expr_join(expr *(*above)(), enum token accept, ...)
 	return e;
 }
 
-expr *parse_expr_struct()
+expr *parse_str_expruct()
 {
 	return parse_expr_join(parse_expr_unary_op,
 				token_ptr, token_dot,
@@ -253,7 +259,7 @@ expr *parse_expr_struct()
 
 expr *parse_expr_array()
 {
-	expr *base = parse_expr_struct();
+	expr *base = parse_str_expruct();
 
 	while(accept(token_open_square)){
 		expr *sum, *deref;
@@ -428,13 +434,11 @@ expr *parse_expr_comma()
 	return e;
 }
 
-tree *parse_if()
+stmt *parse_if()
 {
-	tree *t = TREE_NEW_NEST();
+	stmt *t = STAT_NEW_NEST(if);
 	EAT(token_if);
 	EAT(token_open_paren);
-
-	t->type = stat_if;
 
 	t->expr = parse_expr();
 
@@ -467,22 +471,20 @@ expr **parse_funcargs()
 }
 
 
-tree *expr_to_tree(expr *e)
+stmt *expr_to_stmt(expr *e)
 {
-	tree *t = TREE_NEW();
-	t->type = stat_expr;
+	stmt *t = STAT_NEW(expr);
 	t->expr = e;
 	return t;
 }
 
-tree *parse_switch()
+stmt *parse_switch()
 {
-	tree *t = TREE_NEW_NEST();
+	stmt *t = STAT_NEW_NEST(switch);
 
 	EAT(token_switch);
 	EAT(token_open_paren);
 
-	t->type = stat_switch;
 	t->expr = parse_expr();
 
 	EAT(token_close_paren);
@@ -492,9 +494,9 @@ tree *parse_switch()
 	return t;
 }
 
-tree *parse_do()
+stmt *parse_do()
 {
-	tree *t = TREE_NEW_NEST();
+	stmt *t = STAT_NEW_NEST(do);
 
 	EAT(token_do);
 
@@ -506,14 +508,12 @@ tree *parse_do()
 	EAT(token_close_paren);
 	EAT(token_semicolon);
 
-	t->type = stat_do;
-
 	return t;
 }
 
-tree *parse_while()
+stmt *parse_while()
 {
-	tree *t = TREE_NEW_NEST();
+	stmt *t = STAT_NEW_NEST(while);
 
 	EAT(token_while);
 	EAT(token_open_paren);
@@ -522,20 +522,18 @@ tree *parse_while()
 	EAT(token_close_paren);
 	t->lhs = parse_code();
 
-	t->type = stat_while;
-
 	return t;
 }
 
-tree *parse_for()
+stmt *parse_for()
 {
-	tree *t = TREE_NEW_NEST();
-	tree_flow *tf;
+	stmt *s = STAT_NEW_NEST(for);
+	stmt_flow *sf;
 
 	EAT(token_for);
 	EAT(token_open_paren);
 
-	tf = t->flow = tree_flow_new();
+	sf = s->flow = stmt_flow_new();
 
 #define SEMI_WRAP(code) \
 	if(!accept(token_semicolon)){ \
@@ -543,29 +541,25 @@ tree *parse_for()
 		EAT(token_semicolon); \
 	}
 
-	SEMI_WRAP(tf->for_init  = parse_expr());
-	SEMI_WRAP(tf->for_while = parse_expr());
+	SEMI_WRAP(sf->for_init  = parse_expr());
+	SEMI_WRAP(sf->for_while = parse_expr());
 
 #undef SEMI_WRAP
 
 	if(!accept(token_close_paren)){
-		tf->for_inc   = parse_expr();
+		sf->for_inc   = parse_expr();
 		EAT(token_close_paren);
 	}
 
-	t->lhs = parse_code();
+	s->lhs = parse_code();
 
-	t->type = stat_for;
-
-	return t;
+	return s;
 }
 
-tree *parse_code_block()
+stmt *parse_code_block()
 {
-	tree *t = TREE_NEW_NEST();
+	stmt *t = STAT_NEW_NEST(code);
 	decl **diter;
-
-	t->type = stat_code;
 
 	current_scope = t->symtab;
 
@@ -583,7 +577,7 @@ tree *parse_code_block()
 
 			e = expr_new_identifier((*diter)->spel);
 
-			dynarray_add((void ***)&t->codes, expr_to_tree(expr_assignment(e, (*diter)->init)));
+			dynarray_add((void ***)&t->codes, expr_to_stmt(expr_assignment(e, (*diter)->init)));
 
 			/*
 			 *(*diter)->init = NULL;
@@ -594,7 +588,7 @@ tree *parse_code_block()
 	if(curtok != token_close_block){
 		/* main read loop */
 		do{
-			tree *sub = parse_code();
+			stmt *sub = parse_code();
 
 			if(sub)
 				dynarray_add((void ***)&t->codes, sub);
@@ -613,7 +607,7 @@ ret:
 	return t;
 }
 
-tree *parse_label_next(tree *lbl)
+stmt *parse_label_next(stmt *lbl)
 {
 	lbl->lhs = parse_code();
 	/*
@@ -623,38 +617,36 @@ tree *parse_label_next(tree *lbl)
 	 *   lbl:
 	 *   printf("yo\n");
 	 *
-	 * both the label and the printf statements are in the if
-	 * as a compound statement
+	 * both the label and the printf stmtements are in the if
+	 * as a compound stmtement
 	 */
 	return lbl;
 }
 
-tree *parse_code()
+stmt *parse_code()
 {
-	tree *t;
+	stmt *t;
 
 	switch(curtok){
 		case token_semicolon:
-			t = TREE_NEW();
-			t->type = stat_noop;
+			t = STAT_NEW(noop);
 			EAT(token_semicolon);
 			return t;
 
 		case token_break:
 		case token_return:
 		case token_goto:
-			t = TREE_NEW();
 			if(accept(token_break)){
-				t->type = stat_break;
+				t = STAT_NEW(break);
 			}else if(accept(token_return)){
-				t->type = stat_return;
+				t = STAT_NEW(return);
 				if(curtok != token_semicolon)
 					t->expr = parse_expr();
 			}else{
 				EAT(token_goto);
 
+				t = STAT_NEW(goto);
 				t->expr = parse_lone_identifier();
-				t->type = stat_goto;
 			}
 			EAT(token_semicolon);
 			return t;
@@ -671,8 +663,7 @@ tree *parse_code()
 		case token_default:
 			EAT(token_default);
 			EAT(token_colon);
-			t = TREE_NEW();
-			t->type = stat_default;
+			t = STAT_NEW(default);
 			return parse_label_next(t);
 		case token_case:
 		{
@@ -680,23 +671,22 @@ tree *parse_code()
 			EAT(token_case);
 			a = parse_expr();
 			if(accept(token_elipsis)){
-				t = TREE_NEW();
-				t->type = stat_case_range;
+				t = STAT_NEW(case_range);
 				t->expr  = a;
 				t->expr2 = parse_expr();
 			}else{
-				t = expr_to_tree(a);
-				t->type = stat_case;
+				t = expr_to_stmt(a);
+				stmt_mutate_wrapper(t, case);
 			}
 			EAT(token_colon);
 			return parse_label_next(t);
 		}
 
 		default:
-			t = expr_to_tree(parse_expr());
+			t = expr_to_stmt(parse_expr());
 
 			if(expr_kind(t->expr, identifier) && accept(token_colon)){
-				t->type = stat_label;
+				stmt_mutate_wrapper(t, label);
 				return parse_label_next(t);
 			}else{
 				EAT(token_semicolon);

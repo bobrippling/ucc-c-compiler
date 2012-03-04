@@ -47,6 +47,8 @@ struct
 
 	{ 0,  "unused-expr",     WARN_UNUSED_EXPR                       },
 
+	{ 0,  "test-in-assign",  WARN_TEST_ASSIGN                       },
+
 
 	/* TODO */
 	{ 0,  "unused-parameter", WARN_UNUSED_PARAM },
@@ -79,7 +81,7 @@ struct
 	{ 1,  "strict-types",  FOPT_STRICT_TYPES    },
 	{ 1,  "const-fold",    FOPT_CONST_FOLD      },
 	{ 1,  "english",       FOPT_ENGLISH         },
-	{ 1,  "dptr-tree",     FOPT_DECL_PTR_TREE   },
+	{ 1,  "dptr-tree",     FOPT_DECL_PTR_STAT   },
 
 	{ 0,  NULL, 0 }
 };
@@ -93,6 +95,8 @@ enum warning warn_mode = ~(WARN_VOID_ARITH | WARN_COMPARE_MISMATCH | WARN_IMPLIC
 enum fopt    fopt_mode = FOPT_CONST_FOLD;
 
 int caught_sig = 0;
+
+int backend_str = 0;
 
 const char *section_names[NUM_SECTIONS] = {
 	"text", "data", "bss"
@@ -310,6 +314,8 @@ usage:
 		f = stdin;
 		fname = "-";
 	}
+
+	backend_str = gf == gen_str;
 
 	io_setup();
 

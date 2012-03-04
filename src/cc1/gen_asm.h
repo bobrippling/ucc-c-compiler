@@ -7,5 +7,6 @@ void gen_asm_global(decl *d);
 
 void gen_asm(symtable *);
 void gen_expr(expr *e, symtable *stab);
+void gen_stmt(stmt *t);
 
 #endif

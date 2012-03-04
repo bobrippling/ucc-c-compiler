@@ -4,4 +4,6 @@
 void dirname_push(char *d);
 char *dirname_pop(void);
 
+extern const char *current_fname;
+
 #endif

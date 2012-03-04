@@ -23,7 +23,7 @@ const char *strerror(int eno)
 int strncmp(char *a, char *b, size_t n)
 {
 	while(n > 0){
-		int diff, sum;
+		int diff;
 		char ac, bc;
 
 		ac = *a;

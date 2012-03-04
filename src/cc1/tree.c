@@ -22,20 +22,6 @@ void where_new(struct where *w)
 	w->fname = current_fname;
 }
 
-tree_flow *tree_flow_new()
-{
-	tree_flow *t = umalloc(sizeof *t);
-	return t;
-}
-
-tree *tree_new(symtable *stab)
-{
-	tree *t = umalloc(sizeof *t);
-	where_new(&t->where);
-	t->symtab = stab;
-	return t;
-}
-
 decl_desc *decl_desc_new(enum decl_desc_type t)
 {
 	decl_desc *dp = umalloc(sizeof *dp);
@@ -271,28 +257,6 @@ const char *op_to_str(const enum op_type o)
 		CASE_STR_PREFIX(op, struct_ptr);
 		CASE_STR_PREFIX(op, struct_dot);
 		CASE_STR_PREFIX(op, unknown);
-	}
-	return NULL;
-}
-
-const char *stat_to_str(const enum stat_type t)
-{
-	switch(t){
-		CASE_STR_PREFIX(stat, do);
-		CASE_STR_PREFIX(stat, if);
-		CASE_STR_PREFIX(stat, while);
-		CASE_STR_PREFIX(stat, for);
-		CASE_STR_PREFIX(stat, break);
-		CASE_STR_PREFIX(stat, return);
-		CASE_STR_PREFIX(stat, expr);
-		CASE_STR_PREFIX(stat, noop);
-		CASE_STR_PREFIX(stat, code);
-		CASE_STR_PREFIX(stat, goto);
-		CASE_STR_PREFIX(stat, label);
-		CASE_STR_PREFIX(stat, switch);
-		CASE_STR_PREFIX(stat, case);
-		CASE_STR_PREFIX(stat, case_range);
-		CASE_STR_PREFIX(stat, default);
 	}
 	return NULL;
 }

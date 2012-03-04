@@ -161,7 +161,7 @@ void print_decl(decl *d, enum pdeclargs mode)
 	}else{
 		fputs(type_to_str(d->type), cc1_out);
 
-		if(fopt_mode & FOPT_DECL_PTR_TREE){
+		if(fopt_mode & FOPT_DECL_PTR_STAT){
 			const int idt_orig = gen_str_indent;
 			decl_ptr *dpi;
 
@@ -216,7 +216,7 @@ void print_decl(decl *d, enum pdeclargs mode)
 
 		idt_printf("function stack space %d\n", d->func_code->symtab->auto_total_size);
 
-		print_tree(d->func_code);
+		print_stmt(d->func_code);
 
 		gen_str_indent--;
 	}
@@ -230,24 +230,14 @@ void print_sym(sym *s)
 
 void print_expr(expr *e)
 {
+	idt_printf("expr: %s\n", e->f_str());
 	if(e->tree_type){ /* might be a label */
-		idt_printf("e->type: %s\n", e->f_str());
 		idt_printf("tree_type: ");
 		gen_str_indent++;
 		print_decl(e->tree_type, PDECL_NEWLINE);
 		gen_str_indent--;
 	}
 	e->f_gen(e, NULL);
-}
-
-void print_tree_flow(tree_flow *t)
-{
-	idt_printf("flow:\n");
-	gen_str_indent++;
-	PRINT_IF(t, for_init,  print_expr);
-	PRINT_IF(t, for_while, print_expr);
-	PRINT_IF(t, for_inc,   print_expr);
-	gen_str_indent--;
 }
 
 void print_struct(struct_st *st)
@@ -301,19 +291,30 @@ void print_st_en_tdef(symtable *stab)
 	}
 }
 
-void print_tree(tree *t)
+void print_stmt_flow(stmt_flow *t)
 {
-	idt_printf("t->type: %s\n", stat_to_str(t->type));
+	idt_printf("flow:\n");
+	gen_str_indent++;
+	PRINT_IF(t, for_init,  print_expr);
+	PRINT_IF(t, for_while, print_expr);
+	PRINT_IF(t, for_inc,   print_expr);
+	gen_str_indent--;
+}
+
+void print_stmt(stmt *t)
+{
+	idt_printf("stmtement: %s\n", t->f_str());
 
 	if(t->flow){
 		gen_str_indent++;
-		print_tree_flow(t->flow);
+		print_stmt_flow(t->flow);
 		gen_str_indent--;
 	}
 
 	PRINT_IF(t, expr, print_expr);
-	PRINT_IF(t, lhs,  print_tree);
-	PRINT_IF(t, rhs,  print_tree);
+	PRINT_IF(t, lhs,  print_stmt);
+	PRINT_IF(t, rhs,  print_stmt);
+	PRINT_IF(t, rhs,  print_stmt);
 
 	if(t->decls){
 		decl **iter;
@@ -333,12 +334,12 @@ void print_tree(tree *t)
 	print_st_en_tdef(t->symtab);
 
 	if(t->codes){
-		tree **iter;
+		stmt **iter;
 
 		idt_printf("code(s):\n");
 		for(iter = t->codes; *iter; iter++){
 			gen_str_indent++;
-			print_tree(*iter);
+			print_stmt(*iter);
 			gen_str_indent--;
 		}
 	}

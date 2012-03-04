@@ -4,7 +4,7 @@
 #include "../../util/dynarray.h"
 #include "../../util/platform.h"
 
-const char *expr_str_funcall()
+const char *str_expr_funcall()
 {
 	return "funcall";
 }
@@ -15,7 +15,7 @@ int const_fold_expr_funcall(expr *e)
 	return 1; /* could extend to have int x() const; */
 }
 
-void expr_fold_funcall(expr *e, symtable *stab)
+void fold_expr_funcall(expr *e, symtable *stab)
 {
 	decl *df;
 	funcargs *args_exp;
@@ -117,7 +117,7 @@ void expr_fold_funcall(expr *e, symtable *stab)
 	}
 }
 
-void expr_gen_funcall(expr *e, symtable *stab)
+void gen_expr_funcall(expr *e, symtable *stab)
 {
 	const char *const fname = e->expr->spel;
 	expr **iter;
@@ -177,9 +177,11 @@ invalid:
 	}
 }
 
-void expr_gen_str_funcall(expr *e)
+void gen_expr_str_funcall(expr *e, symtable *stab)
 {
 	expr **iter;
+
+	(void)stab;
 
 	idt_printf("funcall, calling:\n");
 

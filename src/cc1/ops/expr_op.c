@@ -3,7 +3,7 @@
 #include "ops.h"
 #include "../struct.h"
 
-const char *expr_str_op()
+const char *str_expr_op()
 {
 	return "op";
 }
@@ -219,60 +219,6 @@ void fold_op_struct(expr *e, symtable *stab)
 	}
 }
 
-void fold_op_typecheck(expr *e, symtable *stab)
-{
-	enum {
-		SIGNED, UNSIGNED
-	} rhs, lhs;
-	type *type_l, *type_r;
-
-	(void)stab;
-
-	if(!e->rhs)
-		return;
-
-	type_l = e->lhs->tree_type->type;
-	type_r = e->rhs->tree_type->type;
-
-	if(type_l->primitive == type_enum
-			&& type_r->primitive == type_enum
-			&& type_l->enu != type_r->enu){
-		cc1_warn_at(&e->where, 0, WARN_ENUM_CMP, "comparison between enum %s and enum %s", type_l->spel, type_r->spel);
-	}
-
-
-	lhs = type_l->spec & spec_unsigned ? UNSIGNED : SIGNED;
-	rhs = type_r->spec & spec_unsigned ? UNSIGNED : SIGNED;
-
-	if(op_is_cmp(e->op) && rhs != lhs){
-#define SIGN_CONVERT(test_hs, assert_hs) \
-		if(expr_kind(e->test_hs, val) && e->test_hs->val.iv.val >= 0){ \
-			/*                                              \
-				* assert(lhs == UNSIGNED);                     \
-				* vals default to signed, change to unsigned   \
-				*/                                             \
-			UCC_ASSERT(assert_hs == UNSIGNED,               \
-					"signed-unsigned assumption failure");      \
-																											\
-			e->test_hs->tree_type->type->spec |= spec_unsigned; \
-			goto noproblem;                                 \
-		}
-
-		SIGN_CONVERT(rhs, lhs)
-		SIGN_CONVERT(lhs, rhs)
-
-#define SPEL_IF_IDENT(hs)                              \
-				expr_kind(hs, identifier) ? " ("     : "", \
-				expr_kind(hs, identifier) ? hs->spel : "", \
-				expr_kind(hs, identifier) ? ")"      : ""  \
-
-		cc1_warn_at(&e->where, 0, WARN_SIGN_COMPARE, "comparison between signed and unsigned%s%s%s%s%s%s",
-				SPEL_IF_IDENT(e->lhs), SPEL_IF_IDENT(e->rhs));
-	}
-noproblem:
-	return;
-}
-
 void fold_deref(expr *e)
 {
 	/* check for *&x */
@@ -285,18 +231,55 @@ void fold_deref(expr *e)
 		die_at(&e->where, "can't dereference void pointer");
 }
 
-void expr_fold_op(expr *e, symtable *stab)
+void fold_expr_op(expr *e, symtable *stab)
 {
+#define IS_PTR(x) decl_ptr_depth(x->tree_type)
+
+#define SPEL_IF_IDENT(hs)                              \
+					expr_kind(hs, identifier) ? " ("     : "", \
+					expr_kind(hs, identifier) ? hs->spel : "", \
+					expr_kind(hs, identifier) ? ")"      : ""  \
+
+#define RHS e->rhs
+#define LHS e->lhs
+
+	enum {
+		SIGNED, UNSIGNED
+	} rhs_su, lhs_su;
+
 	if(e->op == op_struct_ptr || e->op == op_struct_dot){
 		fold_op_struct(e, stab);
 		return;
 	}
 
 	fold_expr(e->lhs, stab);
-	if(e->rhs)
+	if(e->rhs){
+
 		fold_expr(e->rhs, stab);
 
-	fold_op_typecheck(e, stab);
+		fold_typecheck(e->lhs, e->rhs, stab, &e->where);
+
+		lhs_su = e->lhs->tree_type->type->spec & spec_unsigned ? UNSIGNED : SIGNED;
+		rhs_su = e->rhs->tree_type->type->spec & spec_unsigned ? UNSIGNED : SIGNED;
+
+		if(op_is_cmp(e->op) && rhs_su != lhs_su){
+			/*
+			* assert(LHS == UNSIGNED);
+			* vals default to signed, change to unsigned
+			*/
+
+			if(expr_kind(RHS, val) && RHS->val.iv.val >= 0){
+				UCC_ASSERT(lhs_su == UNSIGNED, "signed-unsigned assumption failure");
+				RHS->tree_type->type->spec |= spec_unsigned;
+			}else if(expr_kind(LHS, val) && LHS->val.iv.val >= 0){
+				UCC_ASSERT(rhs_su == UNSIGNED, "signed-unsigned assumption failure");
+				LHS->tree_type->type->spec |= spec_unsigned;
+			}else{
+					cc1_warn_at(&e->where, 0, WARN_SIGN_COMPARE, "comparison between signed and unsigned%s%s%s%s%s%s",
+							SPEL_IF_IDENT(LHS), SPEL_IF_IDENT(RHS));
+			}
+		}
+	}
 
 	if(e->op == op_deref){
 		fold_deref(e);
@@ -310,7 +293,6 @@ void expr_fold_op(expr *e, symtable *stab)
 		 */
 
 
-#define IS_PTR(x) decl_ptr_depth(x->tree_type)
 		if(e->rhs){
 			if(e->op == op_minus && IS_PTR(e->lhs) && IS_PTR(e->rhs)){
 				e->tree_type = decl_new();
@@ -355,10 +337,14 @@ norm_tt:
 					"operation between mismatching types");
 		}
 	}
+
+#undef SPEL_IF_IDENT
+#undef IS_PTR
 }
 
-void expr_gen_str_op(expr *e)
+void gen_expr_str_op(expr *e, symtable *stab)
 {
+	(void)stab;
 	idt_printf("op: %s\n", op_to_str(e->op));
 	gen_str_indent++;
 
@@ -466,7 +452,7 @@ void asm_operate_struct(expr *e, symtable *tab)
 	asm_temp(1, "push rax");
 }
 
-void expr_gen_op(expr *e, symtable *tab)
+void gen_expr_op(expr *e, symtable *tab)
 {
 	const char *instruct = NULL;
 	const char *rhs = "rcx";
@@ -558,7 +544,7 @@ void expr_gen_op(expr *e, symtable *tab)
 	asm_temp(1, "push rax");
 }
 
-void expr_gen_op_store(expr *e, symtable *stab)
+void gen_expr_op_store(expr *e, symtable *stab)
 {
 	switch(e->op){
 		case op_deref:
@@ -598,7 +584,7 @@ void expr_gen_op_store(expr *e, symtable *stab)
 expr *expr_new_op(enum op_type op)
 {
 	expr *e = expr_new_wrapper(op);
-	e->f_store = expr_gen_op_store;
+	e->f_store = gen_expr_op_store;
 	e->op = op;
 	return e;
 }

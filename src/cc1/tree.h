@@ -1,6 +1,25 @@
 #ifndef TREE_H
 #define TREE_H
 
+typedef struct expr expr;
+typedef struct stmt stmt;
+typedef struct stmt_flow stmt_flow;
+
+typedef struct sym         sym;
+typedef struct symtable    symtable;
+
+typedef struct tdef        tdef;
+typedef struct tdeftable   tdeftable;
+typedef struct struct_st   struct_st;
+typedef struct enum_st     enum_st;
+
+typedef struct type        type;
+typedef struct decl        decl;
+typedef struct decl_desc   decl_desc;
+typedef struct array_decl  array_decl;
+typedef struct funcargs    funcargs;
+
+
 enum type_primitive
 {
 	type_int,
@@ -78,10 +97,11 @@ struct decl
 
 	sym *sym;
 	char *spel;
-	tree *func_code;
 
+	/* recursive */
 	decl_desc *desc;
-	funcargs *funcargs; /* int x() - args to function, distinct from fptr */
+
+	stmt *func_code;
 };
 
 struct array_decl
@@ -102,53 +122,6 @@ struct array_decl
 	} type;
 };
 
-struct tree
-{
-	where where;
-
-	enum stat_type
-	{
-		stat_do,
-		stat_if,
-		stat_while,
-		stat_for,
-		stat_break,
-		stat_return,
-		stat_goto,
-
-		stat_expr,
-		stat_code,
-
-		stat_label,
-		stat_switch,
-		stat_case,
-		stat_case_range,
-		stat_default,
-
-		stat_noop
-	} type;
-
-	tree *lhs, *rhs;
-	expr *expr; /* test expr for if and do, etc */
-	expr *expr2;
-
-	tree_flow *flow; /* for, switch (do and while are simple enough for ->[lr]hs) */
-
-	/* specific data */
-	int val;
-	char *lblfin;
-
-	decl **decls; /* block definitions, e.g. { int i... } */
-	tree **codes; /* for a code block */
-
-	symtable *symtab; /* pointer to the containing funcargs's symtab */
-};
-
-struct tree_flow
-{
-	expr *for_init, *for_while, *for_inc;
-};
-
 struct funcargs
 {
 	where where;
@@ -159,10 +132,9 @@ struct funcargs
 };
 
 
-tree        *tree_new(symtable *stab);
+stmt        *tree_new(symtable *stab);
 type        *type_new(void);
 decl        *decl_new(void);
-decl_desc   *decl_desc_new(void);
 decl        *decl_new_where(where *);
 array_decl  *array_decl_new(void);
 funcargs    *funcargs_new(void);
@@ -177,10 +149,7 @@ type      *type_copy(type *);
 decl      *decl_copy(decl *);
 decl_desc *decl_desc_copy(decl_desc *);
 
-tree_flow *tree_flow_new(void);
-
 const char *op_to_str(  const enum op_type   o);
-const char *stat_to_str(const enum stat_type t);
 const char *decl_to_str(decl          *d);
 const char *type_to_str(const type          *t);
 const char *spec_to_str(const enum type_spec s);

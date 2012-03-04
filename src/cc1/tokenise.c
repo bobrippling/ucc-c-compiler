@@ -14,11 +14,11 @@
 
 #define isoct(x) ('0' <= (x) && (x) < '8')
 
-struct statement
+struct stmtement
 {
 	const char *str;
 	enum token tok;
-} statements[] = {
+} stmtements[] = {
 #ifdef BRITISH
 	{ "perchance", token_if      },
 	{ "otherwise", token_else    },
@@ -66,7 +66,7 @@ struct statement
 };
 
 static FILE *infile;
-const char *current_fname;
+char *current_fname;
 
 static char *buffer, *bufferpos;
 static int buffereof = 0;
@@ -106,6 +106,35 @@ static void tokenise_read_line()
 		else
 			die("read():");
 	}else{
+		/* check for preprocessor line info */
+		int lno;
+
+		/* format is # [0-9] "filename" ([0-9])* */
+		if(sscanf(l, "# %d ", &lno) == 1){
+			char *p = strchr(l, '"');
+			char *fin;
+
+			fin = p + 1;
+			for(;;){
+				fin = strchr(fin, '"');
+
+				if(!fin)
+					die("no terminating quote for pre-proc info");
+
+				if(fin[-1] != '\\')
+					break;
+				fin++;
+			}
+
+			free(current_fname);
+			current_fname = ustrdup2(p + 1, fin);
+
+			current_line = lno - 1; /* inc'd below */
+
+			tokenise_read_line();
+			return;
+		}
+
 		current_line++;
 		current_chr = -1;
 	}
@@ -116,7 +145,7 @@ static void tokenise_read_line()
 void tokenise_set_file(FILE *f, const char *nam)
 {
 	infile = f;
-	current_fname = nam;
+	current_fname = ustrdup(nam);
 	current_line = 0;
 	buffereof = 0;
 	nexttoken();
@@ -372,10 +401,10 @@ void nexttoken()
 				break;
 		}while(1);
 
-		/* check for a built in statement - while, if, etc */
-		for(i = 0; i < sizeof(statements) / sizeof(statements[0]); i++)
-			if(strlen(statements[i].str) == len && !strncmp(statements[i].str, start, len)){
-				curtok = statements[i].tok;
+		/* check for a built in stmtement - while, if, etc */
+		for(i = 0; i < sizeof(stmtements) / sizeof(stmtements[0]); i++)
+			if(strlen(stmtements[i].str) == len && !strncmp(stmtements[i].str, start, len)){
+				curtok = stmtements[i].tok;
 				return;
 			}
 
