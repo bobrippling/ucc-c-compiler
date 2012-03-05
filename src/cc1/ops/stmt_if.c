@@ -27,11 +27,11 @@ void gen_stmt_if(stmt *s)
 
 	gen_expr(s->expr, s->symtab);
 
-	asm_temp(1, "pop rax");
-	asm_temp(1, "test rax, rax");
-	asm_temp(1, "jz %s", lbl_else);
+	asm_pop(ASM_REG_A);
+	ASM_TEST(s->expr->tree_type, ASM_REG_A);
+	asm_jmp_if_zero(0, lbl_else);
 	gen_stmt(s->lhs);
-	asm_temp(1, "jmp %s", lbl_fi);
+	asm_jmp(lbl_fi);
 	asm_label(lbl_else);
 	if(s->rhs)
 		gen_stmt(s->rhs);

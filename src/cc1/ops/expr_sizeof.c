@@ -24,7 +24,14 @@ void gen_expr_sizeof(expr *e, symtable *stab)
 	decl *d = e->expr->tree_type;
 	(void)stab;
 
-	asm_temp(1, "push %d ; sizeof %s%s", decl_size(d), e->expr->expr_is_sizeof ? "type " : "", decl_to_str(d));
+	asm_output_new(
+		asm_out_type_push,
+		asm_operand_new_val(decl_size(d)),
+		NULL);
+
+	asm_comment("sizeof %s%s", e->expr->expr_is_sizeof ? "type " : "", decl_to_str(d));
+
+	/*asm_temp(1, "push %d ; sizeof %s%s", decl_size(d), e->expr->expr_is_sizeof ? "type " : "", decl_to_str(d));*/
 }
 
 void gen_expr_str_sizeof(expr *e, symtable *stab)

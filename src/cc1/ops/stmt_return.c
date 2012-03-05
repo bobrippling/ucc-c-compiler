@@ -18,7 +18,8 @@ void gen_stmt_return(stmt *s)
 {
 	if(s->expr){
 		gen_expr(s->expr, s->symtab);
-		asm_temp(1, "pop rax ; return");
+		asm_pop(ASM_REG_A);
+		asm_comment("return");
 	}
-	asm_temp(1, "jmp %s", curfunc_lblfin);
+	asm_jmp(curfunc_lblfin);
 }

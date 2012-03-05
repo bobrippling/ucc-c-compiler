@@ -1,4 +1,6 @@
 #include <stdlib.h>
+#include <string.h>
+
 #include "ops.h"
 
 const char *str_expr_cast()
@@ -47,7 +49,7 @@ void gen_expr_cast(expr *e, symtable *stab)
 
 	/* type convert */
 	strcpy(buf, decl_to_str(drhs));
-	asm_temp(1, "; cast %s to %s", decl_to_str(dlhs), buf);
+	asm_comment("cast %s to %s", decl_to_str(dlhs), buf);
 
 	/* check float <--> int conversion */
 	if(decl_is_float(dlhs) != decl_is_float(drhs))
@@ -60,9 +62,11 @@ void gen_expr_cast(expr *e, symtable *stab)
 		from = asm_type_ch(drhs);
 		to   = asm_type_ch(dlhs);
 
-		asm_temp(1, "pop rax");
-		asm_temp(1, "c%c%c ; convert %s to %s", from, to, asm_type_str(drhs), asm_type_str(dlhs));
-		asm_temp(1, "push rax");
+		asm_pop(ASM_REG_A);
+		asm_comment("TODO: convert");
+		warn_at(&e->where, "TODO: type conversion (cast");
+		//asm_temp(1, "c%c%c ; convert %s to %s", from, to, asm_type_str(drhs), asm_type_str(dlhs));
+		asm_push(ASM_REG_A);
 	}
 }
 

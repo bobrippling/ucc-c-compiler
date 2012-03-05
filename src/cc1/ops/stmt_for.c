@@ -39,25 +39,27 @@ void gen_stmt_for(stmt *s)
 
 	if(s->flow->for_init){
 		gen_expr(s->flow->for_init, s->symtab);
-		asm_temp(1, "pop rax ; unused for init");
+		asm_pop(ASM_REG_A);
+		asm_comment("unused for init");
 	}
 
 	asm_label(lbl_for);
 	if(s->flow->for_while){
 		gen_expr(s->flow->for_while, s->symtab);
 
-		asm_temp(1, "pop rax");
-		asm_temp(1, "test rax, rax");
-		asm_temp(1, "jz %s", s->lblfin);
+		asm_pop(ASM_REG_A);
+		ASM_TEST(s->flow->for_while->tree_type, ASM_REG_A);
+		asm_jmp_if_zero(0, s->lblfin);
 	}
 
 	gen_stmt(s->lhs);
 	if(s->flow->for_inc){
 		gen_expr(s->flow->for_inc, s->symtab);
-		asm_temp(1, "pop rax ; unused for inc");
+		asm_pop(ASM_REG_A);
+		asm_comment("unused for inc");
 	}
 
-	asm_temp(1, "jmp %s", lbl_for);
+	asm_jmp(lbl_for);
 
 	asm_label(s->lblfin);
 

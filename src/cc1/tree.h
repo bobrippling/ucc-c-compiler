@@ -191,4 +191,6 @@ void function_empty_args(funcargs *);
 #define decl_free(x) do{type_free((x)->type); decl_free_notype(x);}while(0)
 void funcargs_free(funcargs *args, int free_decls);
 
+intval *intval_new(long v);
+
 #endif

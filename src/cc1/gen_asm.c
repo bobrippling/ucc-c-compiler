@@ -51,7 +51,7 @@ void gen_asm_global(decl *d)
 		if((offset = d->func_code->symtab->auto_total_size)){
 			asm_output_new(asm_out_type_sub,
 					asm_operand_new_reg(NULL, ASM_REG_SP),
-					asm_operand_new_val(NULL, offset));
+					asm_operand_new_val(offset));
 		}
 
 		gen_stmt(d->func_code);
@@ -60,7 +60,7 @@ void gen_asm_global(decl *d)
 		if(offset)
 			asm_output_new(asm_out_type_add,
 					asm_operand_new_reg(NULL, ASM_REG_SP),
-					asm_operand_new_val(NULL, offset));
+					asm_operand_new_val(offset));
 
 		asm_out_str(cc_out[SECTION_TEXT], "leave");
 		asm_out_str(cc_out[SECTION_TEXT], "ret");

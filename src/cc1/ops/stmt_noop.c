@@ -14,5 +14,5 @@ void fold_stmt_noop(stmt *s)
 void gen_stmt_noop(stmt *s)
 {
 	(void)s;
-	asm_temp(1, "; noop");
+	asm_comment("noop");
 }

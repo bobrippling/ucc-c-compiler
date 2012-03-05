@@ -38,11 +38,14 @@ void gen_expr_if(expr *e, symtable *stab)
 	lblelse = asm_label_code("ifexpb");
 
 	gen_expr(e->expr, stab);
-	asm_temp(1, "pop rax");
-	asm_temp(1, "test rax, rax");
-	asm_temp(1, "jz %s", lblelse);
+	asm_pop(ASM_REG_A);
+	ASM_TEST(e->expr->tree_type, ASM_REG_A);
+	asm_jmp_if_zero(0, lblelse);
+
 	gen_expr(e->lhs ? e->lhs : e->expr, stab);
-	asm_temp(1, "jmp %s", lblfin);
+
+	asm_jmp(lblfin);
+
 	asm_label(lblelse);
 	gen_expr(e->rhs, stab);
 	asm_label(lblfin);

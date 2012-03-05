@@ -22,5 +22,5 @@ void fold_stmt_goto(stmt *s)
 
 void gen_stmt_goto(stmt *s)
 {
-	asm_temp(1, "jmp %s", s->expr->spel);
+	asm_jmp(s->expr->spel);
 }

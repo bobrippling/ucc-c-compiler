@@ -143,9 +143,9 @@ invalid:
 		if(str[i])
 			goto invalid;
 
-		asm_temp(0, "; start manual __asm__");
+		asm_comment("start manual __asm__");
 		fprintf(cc_out[SECTION_TEXT], "%s\n", arg1->array_store->data.str);
-		asm_temp(0, "; end manual __asm__");
+		asm_comment("end manual __asm__");
 	}else{
 		/* continue with normal funcall */
 
@@ -160,20 +160,28 @@ invalid:
 
 		if(e->sym && !e->sym->decl->decl_ptr && e->sym->decl->spel){
 			/* simple */
-			asm_temp(1, "call %s", e->sym->decl->spel);
+			asm_output_new(asm_out_type_call,
+					asm_operand_new_label(NULL, e->sym->decl->spel),
+					NULL);
 		}else{
 			gen_expr(e->expr, stab);
-			asm_temp(1, "pop rax  ; function address");
-			asm_temp(1, "call rax ; duh");
+
+			asm_pop(ASM_REG_A);
+
+			asm_output_new(asm_out_type_call,
+					asm_operand_new_reg(NULL, ASM_REG_A),
+					NULL);
 		}
 
-		if(nargs)
-			asm_temp(1, "add rsp, %d ; %d arg%s",
-					nargs * platform_word_size(),
-					nargs,
-					nargs == 1 ? "" : "s");
+		if(nargs){
+			asm_output_new(asm_out_type_add,
+					asm_operand_new_reg(NULL, ASM_REG_SP),
+					asm_operand_new_val(nargs * platform_word_size())
+				);
+			asm_comment("%d arg%s", nargs, nargs == 1 ? "" : "s");
+		}
 
-		asm_temp(1, "push rax ; ret");
+		asm_push(ASM_REG_A);
 	}
 }
 

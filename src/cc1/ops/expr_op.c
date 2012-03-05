@@ -3,8 +3,10 @@
 #include "ops.h"
 #include "../struct.h"
 
-#define ASM_XOR(reg) \
-	asm_output_new(asm_out_type_xor, asm_operand_new_reg(ASM_REG_ ## reg), asm_operand_new_reg(ASM_REG_ ## reg))
+#define ASM_XOR(tt, reg)                        \
+	asm_output_new(asm_out_type_xor,              \
+			asm_operand_new_reg(tt, ASM_REG_ ## reg), \
+			asm_operand_new_reg(tt, ASM_REG_ ## reg))
 
 const char *str_expr_op()
 {
@@ -365,10 +367,10 @@ static void asm_idiv(expr *e, symtable *tab)
 	push r%cx, e->op == op_divide ? 'a' : 'd'
 	*/
 
-	ASM_XOR(D);
+	ASM_XOR(e->tree_type, D);
 	asm_pop(ASM_REG_B);
 	asm_pop(ASM_REG_A);
-	asm_output_new(asm_out_type_idiv, asm_operand_reg(ASM_REG_A), NULL);
+	asm_output_new(asm_out_type_idiv, asm_operand_new_reg(e->tree_type, ASM_REG_A), NULL);
 	asm_push(e->op == op_divide ? ASM_REG_A : ASM_REG_D);
 }
 
@@ -388,10 +390,10 @@ static void asm_compare(expr *e, symtable *tab)
 
 	asm_pop(ASM_REG_B);
 	asm_pop(ASM_REG_A);
-	ASM_XOR(C);
+	ASM_XOR(e->tree_type, C);
 	asm_output_new(asm_out_type_cmp,
-			asm_operand_new_reg(ASM_REG_A),
-			asm_operand_new_reg(ASM_REG_B));
+			asm_operand_new_reg(e->tree_type, ASM_REG_A),
+			asm_operand_new_reg(e->tree_type, ASM_REG_B));
 
 	/* check for unsigned, since signed isn't explicitly set */
 #define SIGNED(s, u) e->tree_type->type->spec & spec_unsigned ? u : s
@@ -420,18 +422,14 @@ static void asm_shortcircuit(expr *e, symtable *tab)
 
 	asm_output_new(
 			asm_out_type_mov,
-			asm_operand_new_reg(ASM_REG_A),
-			asm_operand_new_deref(asm_operand_new_reg(ASM_REG_SP))
+			asm_operand_new_reg(  e->lhs->tree_type, ASM_REG_A),
+			asm_operand_new_deref(e->lhs->tree_type, asm_operand_new_reg(NULL, ASM_REG_SP), 0)
 		);
 
-	asm_output_new(
-			asm_out_type_test,
-			asm_operand_new_reg(ASM_REG_A),
-			asm_operand_new_reg(ASM_REG_A)
-		);
+	ASM_TEST(e->lhs->tree_type, ASM_REG_A);
 
 	/* leave the result on the stack (if false) and bail */
-	asm_jmp_if_zero(e->op == op_andsc ? "" : "n", baillabel);
+	asm_jmp_if_zero(e->op != op_andsc, baillabel);
 
 	asm_pop(ASM_REG_A);
 	gen_expr(e->rhs, tab);
@@ -454,7 +452,7 @@ void asm_operate_struct(expr *e, symtable *tab)
 
 	asm_output_new(
 			asm_out_type_add,
-			asm_operand_new_reg(ASM_REG_A),
+			asm_operand_new_reg(e->rhs->tree_type, ASM_REG_A),
 			asm_operand_new_val(e->rhs->tree_type->struct_offset)
 		);
 
@@ -462,8 +460,8 @@ void asm_operate_struct(expr *e, symtable *tab)
 
 	asm_output_new(
 			asm_out_type_mov,
-			asm_operand_new_reg(ASM_REG_A),
-			asm_operand_new_deref(asm_operand_new_reg(ASM_REG_A))
+			asm_operand_new_reg(  e->rhs->tree_type, ASM_REG_A),
+			asm_operand_new_deref(e->rhs->tree_type, asm_operand_new_reg(e->rhs->tree_type, ASM_REG_A), 0)
 		);
 
 	asm_comment("val from struct");
@@ -473,47 +471,51 @@ void asm_operate_struct(expr *e, symtable *tab)
 
 void gen_expr_op(expr *e, symtable *tab)
 {
-	const char *instruct = NULL;
-	const char *rhs = "rcx";
+	asm_out_func *instruct = NULL;
 
 	switch(e->op){
 		/* normal mafs */
-		case op_multiply: instruct = "imul"; break;
-		case op_plus:     instruct = "add";  break;
-		case op_xor:      instruct = "xor";  break;
-		case op_or:       instruct = "or";   break;
-		case op_and:      instruct = "and";  break;
+		case op_multiply: instruct = asm_out_type_imul; break;
+		case op_plus:     instruct = asm_out_type_add;  break;
+		case op_xor:      instruct = asm_out_type_xor;  break;
+		case op_or:       instruct = asm_out_type_or;   break;
+		case op_and:      instruct = asm_out_type_and;  break;
 
 		/* single register op */
-		case op_minus: instruct = e->rhs ? "sub" : "neg"; break;
-		case op_bnot:  instruct = "not";                  break;
+		case op_minus: instruct = e->rhs ? asm_out_type_sub : asm_out_type_neg; break;
+		case op_bnot:  instruct = asm_out_type_not;                  break;
 
 #define SHIFT(side) \
-		case op_shift ## side: instruct = "sh" # side; rhs = "cl"; break
+		case op_shift ## side: instruct = asm_out_type_sh ## side; break
 
+		/*rnote - sh[lr] needs rhs to be cl */
 		SHIFT(l);
 		SHIFT(r);
 
 		case op_not:
 			/* compare with 0 */
 			gen_expr(e->lhs, tab);
-			asm_temp(1, "xor rbx,rbx");
-			asm_temp(1, "pop rax");
-			asm_temp(1, "test rax,rax");
-			asm_temp(1, "setz bl");
-			asm_temp(1, "push rbx");
+			ASM_XOR(NULL, B);
+			asm_pop(ASM_REG_B);
+			ASM_TEST(NULL, ASM_REG_A);
+			asm_set("z", ASM_REG_B); /* setz bl */
+			asm_push(ASM_REG_B);
 			return;
 
 		case op_deref:
 			gen_expr(e->lhs, tab);
-			asm_temp(1, "pop rax");
+			asm_pop(ASM_REG_A);
 
 			/* e.g. "movzx rax, byte [rax]" */
-			asm_temp(1, "mov %sax, %s [rax]",
+			asm_output_new(
+					asm_out_type_mov,
+					asm_operand_new_reg(  e->tree_type, ASM_REG_A),
+					asm_operand_new_deref(e->tree_type, ASM_REG_A, 0));
+			/* "mov %sax, %s [rax]",
 					asm_reg_name(e->tree_type),
-					asm_type_str(e->tree_type));
+					asm_type_str(e->tree_type) */
 
-			asm_temp(1, "push rax");
+			asm_push(ASM_REG_A);
 			return;
 
 		case op_struct_dot:
@@ -552,72 +554,78 @@ void gen_expr_op(expr *e, symtable *tab)
 	gen_expr(e->lhs, tab);
 	if(e->rhs){
 		gen_expr(e->rhs, tab);
-		asm_temp(1, "pop rcx");
-		asm_temp(1, "pop rax");
-		asm_temp(1, "%s rax, %s", instruct, rhs);
+		asm_pop(ASM_REG_C);
+		asm_pop(ASM_REG_A);
+		asm_output_new(
+				instruct,
+				asm_operand_new_reg(e->lhs->tree_type, ASM_REG_A),
+				asm_operand_new_reg(e->rhs->tree_type, ASM_REG_C)
+			);
+		/*asm_temp(1, "%s rax, %s", instruct, rhs);*/
 	}else{
-		asm_temp(1, "pop rax");
-		asm_temp(1, "%s rax", instruct);
+		asm_pop(ASM_REG_A);
+		asm_output_new(
+				instruct,
+				asm_operand_new_reg(e->tree_type, ASM_REG_A),
+				NULL);
 	}
 
-	asm_temp(1, "push rax");
+	asm_push(ASM_REG_A);
 }
 
-void gen_expr_op_store(expr *e, symtable *stab)
+void gen_expr_op_store(expr *store, symtable *stab)
 {
-	switch(e->op){
+	switch(store->op){
 		case op_deref:
 			/* a dereference */
-			asm_push(store->tree_type, 'a');
+			asm_push(ASM_REG_A);
 			asm_comment("value to save");
 
-			gen_expr(e->lhs, stab); /* skip over the *() bit */
+			gen_expr(store->lhs, stab); /* skip over the *() bit */
 			asm_comment("pointer on stack");
 
 			/* move `pop` into `pop` */
-			asm_pop(store->tree_type, 'a');
+			asm_pop(ASM_REG_A);
 			asm_comment("address");
 
 
-			asm_pop(store->tree_type, 'b');
+			asm_pop(ASM_REG_B);
 			asm_comment("value");
-
-			asm_mov(store->tree_type, asm_o HERE
 
 			asm_output_new(
 						asm_out_type_mov,
-						asm_operand_new_deref(store->tree_type, asm_operand_new_reg(store->tree_type, 'a'), 0),
-						asm_operand_new_reg(  store->lhs->tree_type, 'b')
+						asm_operand_new_deref(store->tree_type, asm_operand_new_reg(store->tree_type, ASM_REG_A), 0),
+						asm_operand_new_reg(  store->lhs->tree_type, ASM_REG_B)
 					);
 			return;
 
 		case op_struct_ptr:
-			gen_expr(e->lhs, stab);
+			gen_expr(store->lhs, stab);
 
 			asm_pop('b');
 			asm_comment("struct addr");
 
 			asm_output_new(
 					asm_out_type_add,
-					asm_operand_new_reg(store->tree_type, 'b'),
-					asm_operand_new_val(store->tree_type, store->rhs->tree_type->struct_offset)
+					asm_operand_new_reg(store->tree_type, ASM_REG_B),
+					asm_operand_new_val(store->rhs->tree_type->struct_offset)
 				);
 			asm_comment("offset of member %s", store->rhs->spel);
 
 			asm_output_new(
 						asm_out_type_mov,
-						asm_operand_new_reg(store->tree_type, 'a'),
-						asm_operand_new_deref(store->tree_type, "rsp", 0)
+						asm_operand_new_reg(  store->tree_type, ASM_REG_A),
+						asm_operand_new_deref(store->tree_type, asm_operand_new_reg(NULL, ASM_REG_SP), 0)
 					);
+			/*asm_temp(1, "mov rax, [rsp] ; saved val");*/
 
 			asm_output_new(
 					asm_out_type_mov,
-					asm_operand_new_reg('a'),
-					/* TODO */
-					1);
+					asm_operand_new_deref(store->tree_type, asm_operand_new_reg(store->tree_type, ASM_REG_B), 0),
+					asm_operand_new_reg(  store->tree_type, ASM_REG_A)
+				);
 
-			asm_temp(1, "mov rax, [rsp] ; saved val");
-			asm_temp(1, "mov [rbx], rax");
+			/*asm_temp(1, "mov [rbx], rax");*/
 			return;
 
 		case op_struct_dot:
@@ -627,7 +635,7 @@ void gen_expr_op_store(expr *e, symtable *stab)
 		default:
 			break;
 	}
-	ICE("invalid store-op %s", op_to_str(e->op));
+	ICE("invalid store-op %s", op_to_str(store->op));
 }
 
 expr *expr_new_op(enum op_type op)

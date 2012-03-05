@@ -87,7 +87,8 @@ void gen_stmt_switch(stmt *s)
 	tdefault = NULL;
 
 	gen_expr(s->expr, s->symtab);
-	asm_temp(1, "pop rax ; switch on this");
+	asm_pop(ASM_REG_A);
+	asm_comment("switch on this");
 
 	for(titer = s->codes; titer && *titer; titer++){
 		stmt *cse = *titer;
@@ -96,25 +97,31 @@ void gen_stmt_switch(stmt *s)
 
 		if(stmt_kind(cse, case_range)){
 			char *skip = asm_label_code("range_skip");
-			asm_temp(1, "cmp rax, %d", cse->expr->val.iv.val);
-			asm_temp(1, "j%s %s", is_unsigned ? "b" : "l", skip);
-			asm_temp(1, "cmp rax, %d", cse->expr2->val.iv.val);
-			asm_temp(1, "j%se %s", is_unsigned ? "b" : "l", cse->expr->spel);
+
+			asm_output_new(asm_out_type_cmp,
+					asm_operand_new_reg(s->expr->tree_type, ASM_REG_A),
+					asm_operand_new_val(cse->expr->val.iv.val));
+			asm_jmp_custom(is_unsigned ? "b" : "l", skip);
+
+			asm_output_new(asm_out_type_cmp,
+					asm_operand_new_reg(s->expr->expr->tree_type, ASM_REG_A),
+					asm_operand_new_val(cse->expr2->val.iv.val));
+			asm_jmp_custom(is_unsigned ? "b" : "l", cse->expr->spel);
+
 			asm_label(skip);
 			free(skip);
 		}else if(cse->expr->expr_is_default){
 			tdefault = cse;
 		}else{
 			/* FIXME: address-of, etc? */
-			asm_temp(1, "cmp rax, %d", cse->expr->val.iv.val);
-			asm_temp(1, "je %s", cse->expr->spel);
+			asm_output_new(asm_out_type_cmp,
+					asm_operand_new_reg(s->expr->tree_type, ASM_REG_A),
+					asm_operand_new_val(cse->expr->val.iv.val));
+			asm_jmp_custom("e", cse->expr->spel);
 		}
 	}
 
-	if(tdefault)
-		asm_temp(1, "jmp %s", tdefault->expr->spel);
-	else
-		asm_temp(1, "jmp %s", s->lblfin);
+	asm_jmp(tdefault ? tdefault->expr->spel : s->lblfin);
 
 	gen_stmt(s->lhs); /* the actual code inside the switch */
 

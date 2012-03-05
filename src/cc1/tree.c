@@ -450,3 +450,10 @@ const char *decl_to_str(decl *d)
 
 	return buf;
 }
+
+intval *intval_new(long v)
+{
+	intval *r = umalloc(sizeof *r);
+	r->val = v;
+	return r;
+}

@@ -22,6 +22,8 @@ int         asm_type_size(decl *);
 
 void asm_label(const char *);
 
+void asm_out_intval(FILE *f, intval *iv);
+
 void asm_sym(enum asm_sym_type, sym *, asm_operand *reg);
 
 void asm_declare_array(enum section_type output, const char *lbl, array_decl *ad);

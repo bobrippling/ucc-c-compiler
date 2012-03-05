@@ -33,11 +33,15 @@ void gen_stmt_while(stmt *s)
 
 	asm_label(lbl_start);
 	gen_expr(s->expr, s->symtab);
-	asm_temp(1, "pop rax");
-	asm_temp(1, "test rax, rax");
-	asm_temp(1, "jz %s", s->lblfin);
+
+	asm_pop(ASM_REG_A);
+	ASM_TEST(s->expr->tree_type, ASM_REG_A);
+
+	asm_jmp_if_zero(0, s->lblfin);
+
 	gen_stmt(s->lhs);
-	asm_temp(1, "jmp %s", lbl_start);
+
+	asm_jmp(lbl_start);
 	asm_label(s->lblfin);
 
 	free(lbl_start);

@@ -33,7 +33,8 @@ void gen_expr_stmt(expr *e, symtable *stab)
 {
 	(void)stab;
 	gen_stmt(e->code);
-	asm_temp(1, "push rax ; end of ({...})");
+	asm_push(ASM_REG_A);
+	asm_comment("end of ({...})");
 }
 
 void gen_expr_str_stmt(expr *e, symtable *stab)

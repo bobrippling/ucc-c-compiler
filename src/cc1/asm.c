@@ -263,29 +263,3 @@ void asm_declare_array(enum section_type output, const char *lbl, array_decl *ad
 
 	fputc('\n', cc_out[output]);
 }
-
-void asm_tempfv(FILE *f, int indent, const char *fmt, va_list l)
-{
-	if(indent)
-		fputc('\t', f);
-
-	vfprintf(f, fmt, l);
-
-	fputc('\n', f);
-}
-
-void asm_temp(int indent, const char *fmt, ...)
-{
-	va_list l;
-	va_start(l, fmt);
-	asm_tempfv(cc_out[SECTION_TEXT], indent, fmt, l);
-	va_end(l);
-}
-
-void asm_tempf(FILE *f, int indent, const char *fmt, ...)
-{
-	va_list l;
-	va_start(l, fmt);
-	asm_tempfv(f, indent, fmt, l);
-	va_end(l);
-}
