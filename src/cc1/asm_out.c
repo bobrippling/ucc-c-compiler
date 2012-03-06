@@ -7,24 +7,28 @@
 #include "data_structs.h"
 #include "asm_out.h"
 #include "cc1.h"
+#include "asm.h"
 
 #define TODO() ICE("TODO: %s", __func__)
 
-static asm_output **asm_prog;
+//static asm_output **asm_prog;
 
-const char *reg_str(decl *d, enum asm_reg r)
+static const char *asm_reg_str(decl *d, enum asm_reg r)
 {
-	static const char *names[] = {
-		"rax",
-		"rbx",
-		"rcx",
-		"rdx",
-		"rbp",
-		"rsp",
-	};
+	static char buf[8];
+	const char *pre, *post;
 
-	UCC_ASSERT(!d, "todo");
-	return names[r];
+	asm_reg_name(d, &pre, &post);
+
+	if(r == ASM_REG_BP || r == ASM_REG_SP)
+		post = "p";
+
+	snprintf(buf, sizeof buf, "%s%c%s",
+			pre,
+			"abcdbs"[r],
+			post);
+
+	return buf;
 }
 
 void asm_out_generic(const char *opc, asm_output *out, int n_ops)
@@ -32,16 +36,19 @@ void asm_out_generic(const char *opc, asm_output *out, int n_ops)
 	/* for now, just output text, rather than analysis, etc */
 	FILE *f = cc_out[SECTION_TEXT];
 
-	fprintf(f, "%s%s", opc, n_ops ? " " : "");
+	fprintf(f, "\t%s%s", opc, n_ops ? " " : "");
 
 	if(n_ops > 0){
-		out->lhs->impl(out->lhs);
+		fprintf(f, "%s", out->lhs->impl(out->lhs));
 
 		if(n_ops > 1){
-			fputs(", ", f);
-			out->rhs->impl(out->rhs);
+			fprintf(f, ", %s", out->rhs->impl(out->rhs));
+		}else{
+			UCC_ASSERT(!out->rhs, "asm rhs operand found when not expected");
 		}
 	}
+
+	fputc('\n', f);
 }
 
 #define ASM_WRAP(t, nops)                   \
@@ -68,45 +75,49 @@ ASM_WRAP(jmp,      1)
 ASM_WRAP(call,     1)
 ASM_WRAP(leave,    0)
 ASM_WRAP(ret,      0)
+ASM_WRAP(lea,      2)
 
 void asm_out_type_set(asm_output *out)
 {
-	TODO();
-}
-
-void asm_out_type_lea(asm_output *out)
-{
+	(void)out;
 	TODO();
 }
 
 void asm_out_type_idiv(asm_output *out)
 {
+	(void)out;
 	TODO();
 }
 
 void asm_out_type_not(asm_output *out)
 {
+	(void)out;
 	TODO();
 }
 
 static const char *asm_operand_reg(asm_operand *op)
 {
-	TODO();
+	return asm_reg_str(op->tt, op->reg);
 }
 
 static const char *asm_operand_label(asm_operand *op)
 {
-	TODO();
+	return op->label;
 }
 
 static const char *asm_operand_deref(asm_operand *op)
 {
-	TODO();
+	static char buf[32];
+	snprintf(buf, sizeof buf, "[%s + %d]",
+			/*asm_type_str(op->tt),*/
+			op->deref_base->impl(op->deref_base),
+			op->deref_offset);
+	return buf;
 }
 
 static const char *asm_operand_val(asm_operand *op)
 {
-	TODO();
+	return asm_intval_str(op->iv);
 }
 
 asm_operand *asm_operand_new(decl *tt)
@@ -155,53 +166,77 @@ void asm_output_new(asm_out_func *impl, asm_operand *lhs, asm_operand *rhs)
 	out->impl = impl;
 	out->lhs = lhs;
 	out->rhs = rhs;
+#ifdef ASM_CACHE
 	dynarray_add((void ***)&asm_prog, out);
+#else
+	impl(out);
+	//asm_output_free(out);
+#endif
 }
 
 void asm_set(const char *cmd, enum asm_reg reg)
 {
+	(void)cmd;
+	(void)reg;
 	TODO();
 }
 
 void asm_jmp_custom(const char *test, const char *lbl)
 {
+	(void)test;
+	(void)lbl;
 	TODO();
 }
 
 void asm_jmp(const char *lbl)
 {
-	TODO();
+	asm_output_new(
+			asm_out_type_jmp,
+			asm_operand_new_label(NULL, lbl),
+			NULL);
 }
 
 void asm_jmp_if_zero(int invert, const char *lbl)
 {
-	TODO();
+	(void)invert;
+	(void)lbl;
+	TODO(); // asm_output_new, but set with invert, etc
 }
 
-void asm_comment(const char *fmt, ...)
+void asm_out_strv(FILE *f, const char *fmt, va_list l)
 {
-	va_list l;
-	fprintf(cc_out[SECTION_TEXT], "\t;");
-	va_start(l, fmt);
-	vfprintf(cc_out[SECTION_TEXT], fmt, l);
-	va_end(l);
-}
-
-/* wrappers for asm_output_new */
-void asm_push(enum asm_reg reg)
-{
-	asm_out_str(cc_out[SECTION_TEXT], "push %s", reg_str(NULL, reg));
-}
-
-void asm_pop(enum asm_reg reg)
-{
-	asm_out_str(cc_out[SECTION_TEXT], "pop %s", reg_str(NULL, reg));
+	vfprintf(f, fmt, l);
+	fputc('\n', f);
 }
 
 void asm_out_str(FILE *f, const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
-	vfprintf(f, fmt, l);
+	asm_out_strv(f, fmt, l);
 	va_end(l);
+}
+
+void asm_comment(const char *fmt, ...)
+{
+	FILE *f = cc_out[SECTION_TEXT];
+	va_list l;
+
+	// FIXME: ordering, for when flushing is added
+	fprintf(f, "\t; ");
+
+	va_start(l, fmt);
+	asm_out_strv(f, fmt, l);
+	va_end(l);
+}
+
+/* wrappers for asm_output_new */
+void asm_push(enum asm_reg reg)
+{
+	asm_out_str(cc_out[SECTION_TEXT], "\tpush %s", asm_reg_str(NULL, reg));
+}
+
+void asm_pop(enum asm_reg reg)
+{
+	asm_out_str(cc_out[SECTION_TEXT], "\tpop %s", asm_reg_str(NULL, reg));
 }

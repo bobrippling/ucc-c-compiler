@@ -7,7 +7,7 @@ const char *str_expr_val()
 
 void gen_expr_val_1(expr *e, FILE *f)
 {
-	asm_out_intval(f, &e->val.iv);
+	fprintf(f, "%s", asm_intval_str(&e->val.iv));
 }
 
 void fold_expr_val(expr *e, symtable *stab)

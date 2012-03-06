@@ -18,12 +18,14 @@ static int label_last = 1, str_last = 1, switch_last = 1, flow_last = 1;
 static const struct
 {
 	int sz;
-	char ch, *str, *regname;
+	char ch;
+	const char *str;
+	const char *regpre, *regpost;
 } asm_type_table[] = {
-	{ 1,  'b', "byte" , "al"  },
-	{ 2,  'w', "word" , "ax"  },
-	{ 4,  'd', "dword", "eax" },
-	{ 8,  'q', "qword", "rax" },
+	{ 1,  'b', "byte" , "",  "l"  },
+	{ 2,  'w', "word" , "",  "x"  },
+	{ 4,  'd', "dword", "e", "x" },
+	{ 8,  'q', "qword", "r", "x" },
 };
 
 char *asm_label_code(const char *fmt)
@@ -116,13 +118,13 @@ void asm_sym(enum asm_sym_type t, sym *s, asm_operand *reg)
 		}else{
 			/* get warnings for "lea rax, [qword tim]", just do "lea rax, [tim]" */
 			brackets = asm_operand_new_deref(
-					s->decl,
+					NULL, /* pointer */
 					asm_operand_new_label(NULL, dsp),
 					0);
 		}
 	}else{
 		brackets = asm_operand_new_deref(
-				s->decl,
+				NULL, /* pointer */
 				asm_operand_new_reg(NULL, ASM_REG_BP),
 				((is_auto ? -1 : 2) * platform_word_size()) + s->offset);
 	}
@@ -150,8 +152,9 @@ void asm_label(const char *lbl)
 	asm_out_str(cc_out[SECTION_TEXT], "%s:", lbl);
 }
 
-void asm_out_intval(FILE *f, intval *iv)
+const char *asm_intval_str(intval *iv)
 {
+	static char buf[32];
 	char fmt[4];
 	char *p = fmt;
 
@@ -161,7 +164,8 @@ void asm_out_intval(FILE *f, intval *iv)
 
 	strcpy(p, iv->suffix & VAL_UNSIGNED ? "u" : "d");
 
-	fprintf(f, fmt, iv->val);
+	snprintf(buf, sizeof buf, fmt, iv->val);
+	return buf;
 }
 
 void asm_declare_single_part(FILE *f, expr *e)
@@ -183,7 +187,7 @@ int asm_table_lookup(decl *d)
 		INDEX_LONG  = 3
 	};
 
-	if(decl_ptr_depth(d)){
+	if(!d || decl_ptr_depth(d)){
 		return INDEX_PTR;
 	}else{
 		switch(d->type->primitive){
@@ -226,9 +230,11 @@ const char *asm_type_str(decl *d)
 	return asm_type_table[asm_table_lookup(d)].str;
 }
 
-const char *asm_reg_name(decl *d)
+void asm_reg_name(decl *d, const char **regpre, const char **regpost)
 {
-	return asm_type_table[asm_table_lookup(d)].regname;
+	const int i = asm_table_lookup(d);
+	*regpre  = asm_type_table[i].regpre;
+	*regpost = asm_type_table[i].regpost;
 }
 
 int asm_type_size(decl *d)

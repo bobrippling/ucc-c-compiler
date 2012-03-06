@@ -17,12 +17,12 @@ enum asm_sym_type
 
 char        asm_type_ch(decl *);
 const char *asm_type_str(decl *);
-const char *asm_reg_name(decl *);
+void        asm_reg_name(decl *d, const char **regpre, const char **regpost);
 int         asm_type_size(decl *);
 
 void asm_label(const char *);
 
-void asm_out_intval(FILE *f, intval *iv);
+const char *asm_intval_str(intval *iv);
 
 void asm_sym(enum asm_sym_type, sym *, asm_operand *reg);
 

@@ -510,7 +510,7 @@ void gen_expr_op(expr *e, symtable *tab)
 			asm_output_new(
 					asm_out_type_mov,
 					asm_operand_new_reg(  e->tree_type, ASM_REG_A),
-					asm_operand_new_deref(e->tree_type, ASM_REG_A, 0));
+					asm_operand_new_deref(NULL /* pointer */, ASM_REG_A, 0));
 			/* "mov %sax, %s [rax]",
 					asm_reg_name(e->tree_type),
 					asm_type_str(e->tree_type) */
@@ -594,7 +594,7 @@ void gen_expr_op_store(expr *store, symtable *stab)
 
 			asm_output_new(
 						asm_out_type_mov,
-						asm_operand_new_deref(store->tree_type, asm_operand_new_reg(store->tree_type, ASM_REG_A), 0),
+						asm_operand_new_deref(store->tree_type, asm_operand_new_reg(NULL, ASM_REG_A), 0),
 						asm_operand_new_reg(  store->lhs->tree_type, ASM_REG_B)
 					);
 			return;

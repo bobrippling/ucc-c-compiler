@@ -62,8 +62,9 @@ void gen_asm_global(decl *d)
 					asm_operand_new_reg(NULL, ASM_REG_SP),
 					asm_operand_new_val(offset));
 
-		asm_out_str(cc_out[SECTION_TEXT], "leave");
-		asm_out_str(cc_out[SECTION_TEXT], "ret");
+		asm_output_new(asm_out_type_leave, NULL, NULL);
+		asm_output_new(asm_out_type_ret,   NULL, NULL);
+
 		free(curfunc_lblfin);
 
 	}else if(d->arrayinit){
@@ -91,4 +92,6 @@ void gen_asm(symtable *globs)
 
 		gen_asm_global(d);
 	}
+
+	//asm_out_flush();
 }

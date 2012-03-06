@@ -74,7 +74,7 @@ void gen_expr_str_identifier(expr *e, symtable *stab)
 
 void gen_expr_identifier_1(expr *e, FILE *f)
 {
-	asm_out_intval(f, &e->val.iv);
+	fprintf(f, "%s", asm_intval_str(&e->val.iv));
 }
 
 void gen_expr_identifier(expr *e, symtable *stab)
@@ -87,10 +87,14 @@ void gen_expr_identifier(expr *e, symtable *stab)
 			* note that array-leas load the bottom address (smallest value)
 			* since arrays grow upwards... duh
 			*/
-		asm_sym(decl_has_array(e->sym->decl) ? ASM_LEA : ASM_LOAD, e->sym, ASM_REG_A);
+		asm_sym(
+				decl_has_array(e->sym->decl) ? ASM_LEA : ASM_LOAD,
+				e->sym,
+				asm_operand_new_reg(e->sym->decl, ASM_REG_A));
+
 	}else{
 		asm_output_new(asm_out_type_mov,
-				asm_operand_new_reg(e->tree_type,   ASM_REG_A),
+				asm_operand_new_reg(  e->tree_type, ASM_REG_A),
 				asm_operand_new_label(e->tree_type, e->spel));
 		/*asm_temp(1, "mov rax, %s", e->spel);*/
 	}
@@ -101,7 +105,7 @@ void gen_expr_identifier(expr *e, symtable *stab)
 void gen_expr_identifier_store(expr *e, symtable *stab)
 {
 	(void)stab;
-	asm_sym(ASM_STORE, e->sym, ASM_REG_A);
+	asm_sym(ASM_STORE, e->sym, asm_operand_new_reg(e->sym->decl, ASM_REG_A));
 }
 
 expr *expr_new_identifier(char *sp)
