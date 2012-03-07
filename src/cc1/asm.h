@@ -20,8 +20,6 @@ const char *asm_type_str(decl *);
 void        asm_reg_name(decl *d, const char **regpre, const char **regpost);
 int         asm_type_size(decl *);
 
-void asm_label(const char *);
-
 const char *asm_intval_str(intval *iv);
 
 void asm_sym(enum asm_sym_type, sym *, asm_operand *reg);

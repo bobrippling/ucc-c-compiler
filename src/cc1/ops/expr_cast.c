@@ -64,7 +64,7 @@ void gen_expr_cast(expr *e, symtable *stab)
 
 		asm_pop(ASM_REG_A);
 		asm_comment("TODO: convert");
-		warn_at(&e->where, "TODO: type conversion (cast %c to %c ?)", from, to);
+		warn_at(&e->where, "TODO: type conversion (cast %c to %c ?) (%s:%d)", from, to, __FILE__, __LINE__);
 		//asm_temp(1, "c%c%c ; convert %s to %s", from, to, asm_type_str(drhs), asm_type_str(dlhs));
 		asm_push(ASM_REG_A);
 	}

@@ -18,6 +18,7 @@
 #include "gen_str.h"
 #include "sym.h"
 #include "fold_sym.h"
+#include "asm_out.h"
 
 struct
 {
@@ -328,6 +329,7 @@ usage:
 		fold(globs);
 		symtab_fold(globs, 0);
 		gf(globs);
+		asm_flush();
 	}
 
 	io_fin(gf == gen_asm);

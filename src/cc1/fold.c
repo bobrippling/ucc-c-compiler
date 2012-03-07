@@ -113,9 +113,6 @@ void fold_typecheck_sign(expr *lhs, expr *rhs, symtable *stab, where *where)
 	if(rhs_signed != lhs_signed){
 #define SIGN_CONVERT(hs)                              \
 		if(expr_kind(hs, val) && hs->val.iv.val >= 0){    \
-			UCC_ASSERT(hs ## _signed == UNSIGNED,           \
-					"signed-unsigned assumption failure");      \
-																											\
 			hs->tree_type->type->spec |= spec_unsigned;     \
 			goto noproblem;                                 \
 		}

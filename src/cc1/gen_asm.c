@@ -33,7 +33,7 @@ void gen_asm_global(decl *d)
 {
 	if(d->type->spec & spec_extern){
 		/* should be fine... */
-		asm_out_str(cc_out[SECTION_BSS], "extern %s", d->spel);
+		asm_out_section(SECTION_BSS, "extern %s", d->spel);
 		return;
 	}
 
@@ -74,7 +74,7 @@ void gen_asm_global(decl *d)
 		asm_declare_single(cc_out[SECTION_DATA], d);
 
 	}else{
-		asm_out_str(cc_out[SECTION_BSS], "%s res%c %d", d->spel, asm_type_ch(d), decl_size(d));
+		asm_out_section(SECTION_BSS, "%s res%c %d", d->spel, asm_type_ch(d), decl_size(d));
 	}
 }
 
@@ -88,7 +88,7 @@ void gen_asm(symtable *globs)
 			continue;
 
 		if(!(d->type->spec & spec_static) && !(d->type->spec & spec_extern))
-			asm_out_str(cc_out[SECTION_TEXT], "global %s", d->spel);
+			asm_out_section(SECTION_TEXT, "global %s", d->spel);
 
 		gen_asm_global(d);
 	}

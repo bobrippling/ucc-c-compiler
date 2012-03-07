@@ -3,10 +3,11 @@
 #include "ops.h"
 #include "../struct.h"
 
-#define ASM_XOR(tt, reg)                        \
-	asm_output_new(asm_out_type_xor,              \
-			asm_operand_new_reg(tt, ASM_REG_ ## reg), \
-			asm_operand_new_reg(tt, ASM_REG_ ## reg))
+/* no tt, since we want to clean the whole register */
+#define ASM_XOR(reg)                              \
+	asm_output_new(asm_out_type_xor,                \
+			asm_operand_new_reg(NULL, ASM_REG_ ## reg), \
+			asm_operand_new_reg(NULL, ASM_REG_ ## reg))
 
 const char *str_expr_op()
 {
@@ -367,7 +368,7 @@ static void asm_idiv(expr *e, symtable *tab)
 	push r%cx, e->op == op_divide ? 'a' : 'd'
 	*/
 
-	ASM_XOR(e->tree_type, D);
+	ASM_XOR(D);
 	asm_pop(ASM_REG_B);
 	asm_pop(ASM_REG_A);
 	asm_output_new(asm_out_type_idiv, asm_operand_new_reg(e->tree_type, ASM_REG_A), NULL);
@@ -390,7 +391,7 @@ static void asm_compare(expr *e, symtable *tab)
 
 	asm_pop(ASM_REG_B);
 	asm_pop(ASM_REG_A);
-	ASM_XOR(e->tree_type, C);
+	ASM_XOR(C);
 	asm_output_new(asm_out_type_cmp,
 			asm_operand_new_reg(e->tree_type, ASM_REG_A),
 			asm_operand_new_reg(e->tree_type, ASM_REG_B));
@@ -410,6 +411,8 @@ static void asm_compare(expr *e, symtable *tab)
 		default:
 			ICE("asm_compare: unhandled comparison");
 	}
+
+	UCC_ASSERT(cmp, "no compare for op %s", op_to_str(e->op));
 
 	asm_set(cmp, ASM_REG_C);
 	asm_push(ASM_REG_C);
@@ -495,7 +498,7 @@ void gen_expr_op(expr *e, symtable *tab)
 		case op_not:
 			/* compare with 0 */
 			gen_expr(e->lhs, tab);
-			ASM_XOR(NULL, B);
+			ASM_XOR(B);
 			asm_pop(ASM_REG_B);
 			ASM_TEST(NULL, ASM_REG_A);
 			asm_set("z", ASM_REG_B); /* setz bl */
@@ -510,7 +513,7 @@ void gen_expr_op(expr *e, symtable *tab)
 			asm_output_new(
 					asm_out_type_mov,
 					asm_operand_new_reg(  e->tree_type, ASM_REG_A),
-					asm_operand_new_deref(NULL /* pointer */, ASM_REG_A, 0));
+					asm_operand_new_deref(NULL /* pointer */, asm_operand_new_reg(NULL, ASM_REG_A), 0));
 			/* "mov %sax, %s [rax]",
 					asm_reg_name(e->tree_type),
 					asm_type_str(e->tree_type) */

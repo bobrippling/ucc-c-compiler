@@ -147,11 +147,6 @@ void asm_sym(enum asm_sym_type t, sym *s, asm_operand *reg)
 	asm_comment("%s%s", t == ASM_LEA ? "&" : "", dsp);
 }
 
-void asm_label(const char *lbl)
-{
-	asm_out_str(cc_out[SECTION_TEXT], "%s:", lbl);
-}
-
 const char *asm_intval_str(intval *iv)
 {
 	static char buf[32];

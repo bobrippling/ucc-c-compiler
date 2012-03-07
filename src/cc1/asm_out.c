@@ -5,13 +5,11 @@
 #include "../util/dynarray.h"
 #include "../util/alloc.h"
 #include "data_structs.h"
-#include "asm_out.h"
 #include "cc1.h"
+#include "asm_out.h"
 #include "asm.h"
 
-#define TODO() ICE("TODO: %s", __func__)
-
-//static asm_output **asm_prog;
+static asm_output **asm_prog;
 
 static const char *asm_reg_str(decl *d, enum asm_reg r)
 {
@@ -31,7 +29,7 @@ static const char *asm_reg_str(decl *d, enum asm_reg r)
 	return buf;
 }
 
-void asm_out_generic(const char *opc, asm_output *out, int n_ops)
+static void asm_out_generic(const char *opc, asm_output *out, int n_ops)
 {
 	/* for now, just output text, rather than analysis, etc */
 	FILE *f = cc_out[SECTION_TEXT];
@@ -46,6 +44,8 @@ void asm_out_generic(const char *opc, asm_output *out, int n_ops)
 		}else{
 			UCC_ASSERT(!out->rhs, "asm rhs operand found when not expected");
 		}
+	}else{
+		UCC_ASSERT(!out->lhs, "asm lhs operand found when not expected");
 	}
 
 	fputc('\n', f);
@@ -61,6 +61,7 @@ ASM_WRAP(add,      2)
 ASM_WRAP(sub,      2)
 ASM_WRAP(imul,     2)
 ASM_WRAP(neg,      1)
+ASM_WRAP(not,      1)
 ASM_WRAP(and,      2)
 ASM_WRAP(or,       2)
 ASM_WRAP(xor,      2)
@@ -71,28 +72,40 @@ ASM_WRAP(pop,      1)
 ASM_WRAP(push,     1)
 ASM_WRAP(shl,      2)
 ASM_WRAP(shr,      2)
-ASM_WRAP(jmp,      1)
 ASM_WRAP(call,     1)
 ASM_WRAP(leave,    0)
 ASM_WRAP(ret,      0)
 ASM_WRAP(lea,      2)
+ASM_WRAP(idiv,     1)
+
+static void asm_out_type_comment(asm_output *out)
+{
+	fprintf(cc_out[SECTION_TEXT], "\t; %s\n", out->extra);
+}
+
+void asm_out_type_label(asm_output *out)
+{
+	UCC_ASSERT(out->extra && *out->extra, "no label");
+	fprintf(cc_out[SECTION_TEXT], "%s:\n", out->extra);
+}
+
+void asm_out_type_jmp(asm_output *out)
+{
+	if(out->extra){
+		/* jz %s, etc */
+		fprintf(cc_out[SECTION_TEXT], "\tj%s %s\n", out->extra, out->lhs->label);
+	}else{
+		asm_out_generic("jmp", out, 1);
+	}
+}
 
 void asm_out_type_set(asm_output *out)
 {
-	(void)out;
-	TODO();
-}
+	FILE *f = cc_out[SECTION_TEXT];
 
-void asm_out_type_idiv(asm_output *out)
-{
-	(void)out;
-	TODO();
-}
+	fprintf(f, "\tset%s %s\n", out->extra, out->lhs->impl(out->lhs));
 
-void asm_out_type_not(asm_output *out)
-{
-	(void)out;
-	TODO();
+	UCC_ASSERT(!out->rhs, "asm rhs operand found when not expected");
 }
 
 static const char *asm_operand_reg(asm_operand *op)
@@ -107,11 +120,17 @@ static const char *asm_operand_label(asm_operand *op)
 
 static const char *asm_operand_deref(asm_operand *op)
 {
-	static char buf[32];
-	snprintf(buf, sizeof buf, "[%s + %d]",
+	static char buf[128];
+	unsigned int n;
+
+	n = snprintf(buf, sizeof buf, "[%s + %d]",
 			/*asm_type_str(op->tt),*/
 			op->deref_base->impl(op->deref_base),
 			op->deref_offset);
+
+	if(n >= sizeof buf)
+		ICE("buffer too small for deref-asm operand");
+
 	return buf;
 }
 
@@ -155,88 +174,117 @@ asm_operand *asm_operand_new_deref(decl *tt, asm_operand *deref_base, int offset
 {
 	asm_operand *new  = asm_operand_new(tt);
 	new->impl         = asm_operand_deref;
+	UCC_ASSERT(deref_base, "no deref");
 	new->deref_base   = deref_base;
 	new->deref_offset = offset;
 	return new;
 }
 
-void asm_output_new(asm_out_func *impl, asm_operand *lhs, asm_operand *rhs)
+asm_output *asm_output_new(asm_out_func *impl, asm_operand *lhs, asm_operand *rhs)
 {
 	asm_output *out = umalloc(sizeof *out);
 	out->impl = impl;
 	out->lhs = lhs;
 	out->rhs = rhs;
-#ifdef ASM_CACHE
 	dynarray_add((void ***)&asm_prog, out);
-#else
-	impl(out);
-	//asm_output_free(out);
-#endif
+	return out;
 }
 
 void asm_set(const char *cmd, enum asm_reg reg)
 {
-	(void)cmd;
-	(void)reg;
-	TODO();
+	decl *d;
+	asm_operand *op;
+	asm_output *o;
+
+	d = decl_new();
+	d->type->primitive = type_char; /* force "sete al" rather than "sete rax" */
+	op = asm_operand_new_reg(d, reg);
+	o = asm_output_new(asm_out_type_set, op, NULL);
+
+	o->extra = ustrdup(cmd);
+}
+
+void asm_label(const char *lbl)
+{
+	asm_output *o = asm_output_new(
+			asm_out_type_label,
+			NULL, NULL);
+
+	UCC_ASSERT(lbl && *lbl, "no label");
+
+	o->extra = ustrdup(lbl);
 }
 
 void asm_jmp_custom(const char *test, const char *lbl)
 {
-	(void)test;
-	(void)lbl;
-	TODO();
+	asm_output *o = asm_output_new(
+			asm_out_type_jmp,
+			asm_operand_new_label(NULL, ustrdup(lbl)),
+			NULL);
+
+	if(test)
+		o->extra = ustrdup(test);
 }
 
 void asm_jmp(const char *lbl)
 {
-	asm_output_new(
-			asm_out_type_jmp,
-			asm_operand_new_label(NULL, lbl),
-			NULL);
+	asm_jmp_custom(NULL, lbl);
 }
 
 void asm_jmp_if_zero(int invert, const char *lbl)
 {
-	(void)invert;
-	(void)lbl;
-	TODO(); // asm_output_new, but set with invert, etc
-}
-
-void asm_out_strv(FILE *f, const char *fmt, va_list l)
-{
-	vfprintf(f, fmt, l);
-	fputc('\n', f);
-}
-
-void asm_out_str(FILE *f, const char *fmt, ...)
-{
-	va_list l;
-	va_start(l, fmt);
-	asm_out_strv(f, fmt, l);
-	va_end(l);
+	char buf[4];
+	snprintf(buf, sizeof buf, "%sz", invert ? "n" : "");
+	asm_jmp_custom(buf, lbl);
 }
 
 void asm_comment(const char *fmt, ...)
 {
-	FILE *f = cc_out[SECTION_TEXT];
+	char buf[32];
 	va_list l;
 
-	// FIXME: ordering, for when flushing is added
-	fprintf(f, "\t; ");
+	asm_output *o = asm_output_new(
+			asm_out_type_comment,
+			NULL, NULL);
 
 	va_start(l, fmt);
-	asm_out_strv(f, fmt, l);
+	vsnprintf(buf, sizeof buf, fmt, l);
 	va_end(l);
+
+	o->extra = ustrdup(buf);
 }
 
 /* wrappers for asm_output_new */
 void asm_push(enum asm_reg reg)
 {
-	asm_out_str(cc_out[SECTION_TEXT], "\tpush %s", asm_reg_str(NULL, reg));
+	asm_output_new(
+			asm_out_type_push,
+			asm_operand_new_reg(NULL, reg),
+			NULL);
 }
 
 void asm_pop(enum asm_reg reg)
 {
-	asm_out_str(cc_out[SECTION_TEXT], "\tpop %s", asm_reg_str(NULL, reg));
+	asm_output_new(
+			asm_out_type_pop,
+			asm_operand_new_reg(NULL, reg),
+			NULL);
+}
+
+void asm_out_section(enum section_type t, const char *fmt, ...)
+{
+	va_list l;
+	va_start(l, fmt);
+	vfprintf(cc_out[t], fmt, l);
+	va_end(l);
+	fputc('\n', cc_out[t]);
+}
+
+void asm_flush()
+{
+	asm_output **i;
+	for(i = asm_prog; i && *i; i++){
+		(*i)->impl(*i);
+		// TODO: free
+	}
 }
