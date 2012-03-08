@@ -289,6 +289,7 @@ norm_tt:
 	}
 
 	if(e->rhs){
+
 		/* need to do this check _after_ we get the correct tree type */
 		if((e->op == op_plus || e->op == op_minus) &&
 				decl_ptr_depth(e->tree_type) &&
@@ -308,6 +309,12 @@ norm_tt:
 			}else{
 				cc1_warn_at(&e->tree_type->type->where, 0, WARN_VOID_ARITH, "arithmetic with void pointer");
 			}
+		}
+
+		if(e->op == op_shiftl || e->op == op_shiftr){
+			if(decl_ptr_depth(e->rhs->tree_type))
+				die_at(&e->rhs->where, "invalid argument to shift");
+			e->rhs->tree_type->type->primitive = type_char; /* force "shl ..., al" */
 		}
 
 		/* check types */
@@ -559,6 +566,7 @@ void gen_expr_op(expr *e, symtable *tab)
 		gen_expr(e->rhs, tab);
 		asm_pop(ASM_REG_C);
 		asm_pop(ASM_REG_A);
+
 		asm_output_new(
 				instruct,
 				asm_operand_new_reg(e->lhs->tree_type, ASM_REG_A),
@@ -605,7 +613,7 @@ void gen_expr_op_store(expr *store, symtable *stab)
 		case op_struct_ptr:
 			gen_expr(store->lhs, stab);
 
-			asm_pop('b');
+			asm_pop(ASM_REG_B);
 			asm_comment("struct addr");
 
 			asm_output_new(

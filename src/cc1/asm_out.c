@@ -67,7 +67,6 @@ ASM_WRAP(or,       2)
 ASM_WRAP(xor,      2)
 ASM_WRAP(cmp,      2)
 ASM_WRAP(test,     2)
-ASM_WRAP(mov,      2)
 ASM_WRAP(pop,      1)
 ASM_WRAP(push,     1)
 ASM_WRAP(shl,      2)
@@ -77,6 +76,15 @@ ASM_WRAP(leave,    0)
 ASM_WRAP(ret,      0)
 ASM_WRAP(lea,      2)
 ASM_WRAP(idiv,     1)
+
+void asm_out_type_mov(asm_output *out)
+{
+	char buf[8];
+
+	snprintf(buf, sizeof buf, "mov%s", out->extra ? out->extra : "");
+
+	asm_out_generic(buf, out, 2);
+}
 
 static void asm_out_type_comment(asm_output *out)
 {
@@ -122,9 +130,17 @@ static const char *asm_operand_deref(asm_operand *op)
 {
 	static char buf[128];
 	unsigned int n;
+	const char *tstr;
 
-	n = snprintf(buf, sizeof buf, "[%s + %d]",
-			/*asm_type_str(op->tt),*/
+	/* if it's rsp or rbp, don't add "qword" and pals on */
+	if(op->deref_base->impl == asm_operand_reg){
+		tstr = "";
+	}else{
+		tstr = asm_type_str(op->tt);
+	}
+
+	n = snprintf(buf, sizeof buf, "[%s %s + %d]",
+			tstr,
 			op->deref_base->impl(op->deref_base),
 			op->deref_offset);
 
@@ -154,12 +170,17 @@ asm_operand *asm_operand_new_reg(decl *tt, enum asm_reg reg)
 	return new;
 }
 
-asm_operand *asm_operand_new_val(int i)
+asm_operand *asm_operand_new_intval(intval *iv)
 {
 	asm_operand *new = asm_operand_new(NULL);
 	new->impl = asm_operand_val;
-	new->iv = intval_new(i);
+	new->iv = iv;
 	return new;
+}
+
+asm_operand *asm_operand_new_val(int i)
+{
+	return asm_operand_new_intval(intval_new(i));
 }
 
 asm_operand *asm_operand_new_label(decl *tt, const char *lbl)

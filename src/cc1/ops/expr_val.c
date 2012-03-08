@@ -22,13 +22,10 @@ void gen_expr_val(expr *e, symtable *stab)
 {
 	(void)stab;
 
-	if(e->val.iv.suffix)
-		ICE("TODO: output with asm intval suffix");
-
 	asm_output_new(
 			asm_out_type_mov,
 			asm_operand_new_reg(e->tree_type, ASM_REG_A),
-			asm_operand_new_val(e->val.iv.val)
+			asm_operand_new_intval(&e->val.iv)
 		);
 
 	/*

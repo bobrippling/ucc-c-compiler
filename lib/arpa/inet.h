@@ -1,3 +1,4 @@
+#include "../sys/types.h"
 typedef unsigned short int sa_family_t;
 typedef uint16_t           in_port_t;
 typedef uint32_t           in_addr_t;

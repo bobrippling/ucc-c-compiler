@@ -140,7 +140,7 @@ void fold_typecheck_primitive(expr **plhs, expr **prhs)
 	lhs = *plhs;
 	rhs = *prhs;
 
-	if(lhs->tree_type->type->primitive != rhs->tree_type->type->primitive){
+	if(!decl_equal(lhs->tree_type, rhs->tree_type, 1)){
 		/* insert a cast: rhs -> lhs */
 		expr *cast = *prhs = expr_new_cast(lhs->tree_type);
 		cast->expr = rhs;
@@ -199,22 +199,14 @@ void fold_decl_ptr(decl_ptr *dp, symtable *stab, decl *root)
 void fold_decl(decl *d, symtable *stab)
 {
 	switch(d->type->primitive){
-		int incomplete;
-
 		case type_void:
 			if(!decl_ptr_depth(d) && !d->funcargs)
 				die_at(&d->type->where, "can't have a void variable (%s)", decl_to_str(d));
 			break;
 
 		case type_enum:
-			st_en_lookup((void **)&d->type->enu,   &incomplete, d, stab, (void *(*)(struct symtable *, const char *))enum_find,   0);
-			goto incomp_check;
-
 		case type_struct:
-			st_en_lookup((void **)&d->type->struc, &incomplete, d, stab, (void *(*)(struct symtable *, const char *))struct_find, 1);
-incomp_check:
-			if(incomplete && !decl_ptr_depth(d))
-				die_at(&d->where, "use of incomplete type \"%s\"", d->spel);
+			st_en_lookup_chk(d, stab);
 			break;
 
 		default:
@@ -280,7 +272,7 @@ void fold_decl_global(decl *d, symtable *stab)
 	fold_decl(d, stab);
 }
 
-int fold_struct(struct_st *st)
+int fold_struct(struct_st *st, symtable *stab)
 {
 	int offset;
 	decl **i;
@@ -288,11 +280,11 @@ int fold_struct(struct_st *st)
 	for(offset = 0, i = st->members; i && *i; i++){
 		decl *d = *i;
 		if(d->type->primitive == type_struct && !d->type->struc)
-			ICE("TODO: struct lookup");
+			st_en_lookup_chk(d, stab);
 
 		if(d->type->struc){
 			d->struct_offset = offset;
-			offset += fold_struct(d->type->struc);
+			offset += fold_struct(d->type->struc, stab);
 		}else{
 			d->struct_offset = offset;
 			offset += decl_size(d);
@@ -330,7 +322,7 @@ void fold_symtab_scope(symtable *stab)
 
 	/* fold structs, then enums, then decls - decls may rely on enums */
 	for(sit = stab->structs; sit && *sit; sit++)
-		fold_struct(*sit);
+		fold_struct(*sit, stab);
 
 	for(eit = stab->enums; eit && *eit; eit++)
 		fold_enum(*eit, stab);

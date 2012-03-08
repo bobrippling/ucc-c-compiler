@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../../util/alloc.h"
 #include "ops.h"
 
 const char *str_expr_cast()
@@ -41,6 +42,7 @@ void gen_expr_cast(expr *e, symtable *stab)
 	/* FIXME: size changing? */
 	char buf[DECL_STATIC_BUFSIZ];
 	decl *dlhs, *drhs;
+	int size_lhs, size_rhs;
 
 	gen_expr(e->expr, stab);
 
@@ -49,24 +51,42 @@ void gen_expr_cast(expr *e, symtable *stab)
 
 	/* type convert */
 	strcpy(buf, decl_to_str(drhs));
-	asm_comment("cast %s to %s", decl_to_str(dlhs), buf);
+	asm_comment("cast %s to %s", buf, decl_to_str(dlhs));
 
 	/* check float <--> int conversion */
 	if(decl_is_float(dlhs) != decl_is_float(drhs))
 		ICE("TODO: float <-> int casting");
 
 	/* decide if casting to a larger or smaller type */
-	if(asm_type_size(dlhs) != asm_type_size(drhs)){
-		char from, to;
+	if((size_lhs = asm_type_size(dlhs)) != (size_rhs = asm_type_size(drhs))){
+		asm_output *o;
 
-		from = asm_type_ch(drhs);
-		to   = asm_type_ch(dlhs);
+		if(size_rhs > size_lhs){
+			char buf[DECL_STATIC_BUFSIZ];
+			strcpy(buf, decl_to_str(drhs));
+			warn_at(&e->lhs->where, "possible loss of precision %s, size %d <-- %s, size %d",
+					decl_to_str(dlhs), size_lhs, buf, size_rhs);
+		}else{
+			asm_pop(ASM_REG_A);
+			/*
+			* movsx -> mov sign extend
+			* movsx rax, eax ; long <- int, etc
+			* or
+			* cbw  (ax  <- al)
+			* cwde (eax <- ax)
+			* cdqe (rax <- eax)
+			*/
+			/*o->extra = ustrprintf("c%c%s", ..) */
 
-		asm_pop(ASM_REG_A);
-		asm_comment("TODO: convert");
-		warn_at(&e->where, "TODO: type conversion (cast %c to %c ?) (%s:%d)", from, to, __FILE__, __LINE__);
-		//asm_temp(1, "c%c%c ; convert %s to %s", from, to, asm_type_str(drhs), asm_type_str(dlhs));
-		asm_push(ASM_REG_A);
+			/* movsx a..., a... */
+			o = asm_output_new(asm_out_type_mov,
+					asm_operand_new_reg(dlhs, ASM_REG_A),
+					asm_operand_new_reg(drhs, ASM_REG_A));
+
+			o->extra = ustrdup("sx");
+
+			asm_push(ASM_REG_A);
+		}
 	}
 }
 

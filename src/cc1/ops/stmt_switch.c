@@ -104,8 +104,9 @@ void gen_stmt_switch(stmt *s)
 			asm_jmp_custom(is_unsigned ? "b" : "l", skip);
 
 			asm_output_new(asm_out_type_cmp,
-					asm_operand_new_reg(s->expr->expr->tree_type, ASM_REG_A),
+					asm_operand_new_reg(s->expr->tree_type, ASM_REG_A),
 					asm_operand_new_val(cse->expr2->val.iv.val));
+
 			asm_jmp_custom(is_unsigned ? "b" : "l", cse->expr->spel);
 
 			asm_label(skip);
