@@ -462,7 +462,7 @@ void asm_operate_struct(expr *e, symtable *tab)
 
 	asm_output_new(
 			asm_out_type_add,
-			asm_operand_new_reg(e->rhs->tree_type, ASM_REG_A),
+			asm_operand_new_reg(NULL, ASM_REG_A), /* pointer to struct */
 			asm_operand_new_val(e->rhs->tree_type->struct_offset)
 		);
 
@@ -471,7 +471,7 @@ void asm_operate_struct(expr *e, symtable *tab)
 	asm_output_new(
 			asm_out_type_mov,
 			asm_operand_new_reg(  e->rhs->tree_type, ASM_REG_A),
-			asm_operand_new_deref(e->rhs->tree_type, asm_operand_new_reg(e->rhs->tree_type, ASM_REG_A), 0)
+			asm_operand_new_deref(e->rhs->tree_type, asm_operand_new_reg(NULL, ASM_REG_A), 0)
 		);
 
 	asm_comment("val from struct");
