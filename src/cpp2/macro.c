@@ -165,8 +165,14 @@ relook:
 
 			/* replace #x with the quote of arg x */
 			for(s = strchr(replace, '#'); s; s = strchr(last, '#')){
-				char *arg_target = word_dup(s + 1);
+				char *arg_target;
 
+				if(s[1] == '#'){
+					/* x ## y */
+					ICE("TODO: pasting");
+				}
+
+				arg_target = word_dup(s + 1);
 				last = s;
 
 				for(i = 0; m->args[i]; i++){

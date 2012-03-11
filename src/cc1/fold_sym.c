@@ -24,11 +24,12 @@ int symtab_fold(symtable *tab, int current)
 
 		for(diter--; diter >= tab->decls; diter--){
 			sym *s = (*diter)->sym;
+			/*enum type_primitive last = type_int; TODO: packing */
 
 			if(s->type == sym_local && (s->decl->type->spec & (spec_extern | spec_static)) == 0){
 				int siz = decl_size(s->decl);
 
-				if(decl_size(s->decl) <= word_size)
+				if(siz <= word_size)
 					s->offset = current;
 				else
 					s->offset = current + siz - word_size; /* an array and structs start at the bottom */

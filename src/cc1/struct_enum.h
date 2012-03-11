@@ -10,4 +10,6 @@ void st_en_lookup(void **save_to,
 		void *(*lookup)(symtable *, const char *),
 		int is_struct);
 
+void st_en_lookup_chk(decl *d, symtable *stab);
+
 #endif

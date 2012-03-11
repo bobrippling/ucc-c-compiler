@@ -33,3 +33,17 @@ void st_en_lookup(void **save_to, int *incomplete, decl *d, symtable *stab, void
 		d->type->spel = is_struct ? d->type->struc->spel : d->type->enu->spel;
 	}
 }
+
+
+void st_en_lookup_chk(decl *d, symtable *stab)
+{
+	int incomplete;
+
+	if(d->type->primitive == type_enum)
+		st_en_lookup((void **)&d->type->enu,   &incomplete, d, stab, (void *(*)(struct symtable *, const char *))enum_find,   0);
+	else
+		st_en_lookup((void **)&d->type->struc, &incomplete, d, stab, (void *(*)(struct symtable *, const char *))struct_find, 1);
+
+	if(incomplete && !decl_ptr_depth(d))
+		die_at(&d->where, "use of incomplete type \"%s\"", d->spel);
+}
