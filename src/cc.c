@@ -34,7 +34,8 @@
 		"ucc",          \
 		"sys/fcntl",    \
 		"sys/wait",     \
-		"sys/mman",
+		"sys/mman",     \
+		"sys/socket",
 
 enum mode
 {

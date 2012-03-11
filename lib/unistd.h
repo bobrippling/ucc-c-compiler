@@ -9,8 +9,10 @@ int read( int fd, void *p, int size);
 int write(int fd, void *p, int size);
 int close(int fd);
 
+#ifndef __DARWIN__
 int   brk(void *);
 void *sbrk(int inc);
+#endif
 
 pid_t fork(void);
 pid_t getpid(void);

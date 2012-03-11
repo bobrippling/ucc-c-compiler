@@ -47,7 +47,7 @@ int main(int argc, char **argv);
 		' > lib/string_strerrs.h
 
 		if [ $1 = Darwin ]
-		then perl lib/syscalls_darwin.pl < lib/syscalls_32.h > lib/syscalls_darwin.h
+		then perl lib/syscalls_darwin.pl < lib/syscalls_darwin_unix.h > lib/syscalls_darwin.h
 		fi
 	fi
 

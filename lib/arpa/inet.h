@@ -1,3 +1,4 @@
+#ifdef TYPE_PARSING_TODO
 #include "../sys/types.h"
 typedef unsigned short int sa_family_t;
 typedef uint16_t           in_port_t;
@@ -23,3 +24,13 @@ struct sockaddr_in
 
 	unsigned char sin_zero[8]; /* 16 - sizeof above members */
 };
+
+/*
+uint32_t htonl(uint32_t hostlong);
+uint32_t ntohl(uint32_t netlong);
+*/
+uint16_t htons(uint16_t hostshort);
+/*
+uint16_t ntohs(uint16_t netshort);
+*/
+#endif
