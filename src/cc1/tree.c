@@ -230,37 +230,6 @@ void function_empty_args(funcargs *func)
 	func->args_void = 0;
 }
 
-const char *op_to_str(const enum op_type o)
-{
-	switch(o){
-		CASE_STR_PREFIX(op, multiply);
-		CASE_STR_PREFIX(op, divide);
-		CASE_STR_PREFIX(op, plus);
-		CASE_STR_PREFIX(op, minus);
-		CASE_STR_PREFIX(op, modulus);
-		CASE_STR_PREFIX(op, deref);
-		CASE_STR_PREFIX(op, eq);
-		CASE_STR_PREFIX(op, ne);
-		CASE_STR_PREFIX(op, le);
-		CASE_STR_PREFIX(op, lt);
-		CASE_STR_PREFIX(op, ge);
-		CASE_STR_PREFIX(op, gt);
-		CASE_STR_PREFIX(op, or);
-		CASE_STR_PREFIX(op, xor);
-		CASE_STR_PREFIX(op, and);
-		CASE_STR_PREFIX(op, orsc);
-		CASE_STR_PREFIX(op, andsc);
-		CASE_STR_PREFIX(op, not);
-		CASE_STR_PREFIX(op, bnot);
-		CASE_STR_PREFIX(op, shiftl);
-		CASE_STR_PREFIX(op, shiftr);
-		CASE_STR_PREFIX(op, struct_ptr);
-		CASE_STR_PREFIX(op, struct_dot);
-		CASE_STR_PREFIX(op, unknown);
-	}
-	return NULL;
-}
-
 const char *spec_to_str(const enum type_spec s)
 {
 	switch(s){
@@ -289,22 +258,6 @@ const char *spec_to_str_full(const enum type_spec s)
 			bufp += snprintf(bufp, sizeof buf - (bufp - buf), "%s ", spec_to_str(1 << i));
 
 	return buf;
-}
-
-int op_is_cmp(enum op_type o)
-{
-	switch(o){
-		case op_eq:
-		case op_ne:
-		case op_le:
-		case op_lt:
-		case op_ge:
-		case op_gt:
-			return 1;
-		default:
-			break;
-	}
-	return 0;
 }
 
 int decl_ptr_depth(decl *d)

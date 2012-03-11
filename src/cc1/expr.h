@@ -6,7 +6,6 @@ typedef void         func_gen(      expr *, symtable *);
 typedef void         func_gen_store(expr *, symtable *);
 typedef void         func_gen_1(    expr *, FILE *);
 typedef int          func_const(    expr *);
-typedef const char  *func_str(void);
 
 struct expr
 {
@@ -23,12 +22,11 @@ struct expr
 
 	int freestanding; /* e.g. 1; needs use, whereas x(); doesn't - freestanding */
 
-
-	enum op_type op;
-
 	int assign_is_post; /* do we return the altered value or the old one? */
 #define expr_is_default assign_is_post
 #define expr_is_sizeof  assign_is_post
+
+	expr_op *op;
 
 	expr *lhs, *rhs;
 
@@ -86,7 +84,7 @@ expr *expr_assignment(expr *to, expr *from);
 expr *expr_new_identifier(char *sp);
 expr *expr_new_cast(decl *cast_to);
 expr *expr_new_val(int val);
-expr *expr_new_op(enum op_type o);
+expr *expr_new_op(expr_op *);
 expr *expr_new_if(expr *test);
 expr *expr_new_addr(void);
 expr *expr_new_assign(void);

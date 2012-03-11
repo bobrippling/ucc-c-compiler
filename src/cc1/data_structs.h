@@ -10,30 +10,7 @@ struct intval
 	} suffix;
 };
 
-enum op_type
-{
-	op_multiply,
-	op_divide,
-	op_plus,
-	op_minus,
-	op_modulus,
-	op_deref,
-
-	op_eq, op_ne,
-	op_le, op_lt,
-	op_ge, op_gt,
-
-	op_xor,
-	op_or,   op_and,
-	op_orsc, op_andsc,
-	op_not,  op_bnot,
-
-	op_shiftl, op_shiftr,
-
-	op_struct_ptr, op_struct_dot,
-
-	op_unknown
-};
+typedef const char *func_str(void);
 
 #include "tree.h"
 #include "expr.h"

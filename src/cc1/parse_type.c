@@ -512,13 +512,13 @@ decl **parse_decls(const int can_default, const int accept_field_width)
 
 			if(!d->spel){
 				/*
-				 * int; - error
-				 * struct A; - fine
+				 * int;
+				 * struct A; - no warning: prototype
 				 */
 				decl_free_notype(d);
-				if(t->primitive == type_struct)
-					goto next;
-				die_at(&d->where, "identifier expected after decl");
+				if(t->primitive != type_struct)
+					warn_at(&d->where, "useless type name in empty declaration");
+				goto next;
 			}
 
 			dynarray_add(are_tdefs

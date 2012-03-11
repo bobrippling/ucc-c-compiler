@@ -4,6 +4,7 @@
 typedef struct expr expr;
 typedef struct stmt stmt;
 typedef struct stmt_flow stmt_flow;
+typedef struct expr_op   expr_op;
 
 typedef struct sym         sym;
 typedef struct symtable    symtable;
@@ -149,12 +150,9 @@ type      *type_copy(type *);
 decl      *decl_copy(decl *);
 decl_desc *decl_desc_copy(decl_desc *);
 
-const char *op_to_str(  const enum op_type   o);
 const char *decl_to_str(decl          *d);
 const char *type_to_str(const type          *t);
 const char *spec_to_str(const enum type_spec s);
-
-int op_is_cmp(enum op_type o);
 
 enum decl_cmp
 {
