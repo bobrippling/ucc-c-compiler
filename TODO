@@ -38,6 +38,7 @@ get rid of __asm__ hacks (mainly in gen_asm.c)
 
 stabs/dwarf debugging annotations
 
+fastcall - ecx, edx, stack, etc (__attribute__)
 
 ---------------------------------------------------- cpp
 
