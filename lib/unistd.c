@@ -1,6 +1,7 @@
 #include "unistd.h"
 #include "syscalls.h"
 
+#ifdef SYS_brk
 static void *ucc_brk(void *p)
 {
 	return __syscall(SYS_brk, p);
@@ -35,6 +36,9 @@ void *sbrk(int inc)
 
 	return new;
 }
+#else
+#  warning no brk() on darwin
+#endif
 
 pid_t getpid()
 {
