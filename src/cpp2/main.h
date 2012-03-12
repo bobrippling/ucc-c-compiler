@@ -6,4 +6,6 @@ char *dirname_pop(void);
 
 extern const char *current_fname;
 
+extern char cpp_time[16], cpp_date[16];
+
 #endif

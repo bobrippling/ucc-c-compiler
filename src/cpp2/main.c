@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <stdarg.h>
+#include <time.h>
 
 #include "macro.h"
 #include "preproc.h"
@@ -15,15 +16,25 @@ static const struct
 {
 	const char *nam, *val;
 } initial_defs[] = {
+	/* standard */
 	{ "__unix__",       "1"  },
+
+	/* custom */
+	{ "__UCC__",        "1"  },
+
+	/* magic */
 	{ "__FILE__",       NULL },
 	{ "__LINE__",       NULL },
 	{ "__COUNTER__",    NULL },
-	{ "__UCC__",        "1"  },
+	{ "__DATE__",       NULL },
+	{ "__TIME__",       NULL },
+
 	{ NULL,             NULL }
 };
 
 const char *current_fname;
+
+char cpp_time[16], cpp_date[16];
 
 char **dirnames = NULL;
 int debug = 0;
@@ -42,6 +53,26 @@ char *dirname_pop()
 	return r; TODO - free*/
 	return NULL;
 }
+
+void calctime(void)
+{
+	time_t t;
+	struct tm *now;
+
+	t = time(NULL);
+	now = localtime(&t);
+
+	if(!now)
+		die("localtime():");
+
+#define FTIME(s, fmt) \
+	if(!strftime(s, sizeof s, fmt, now)) \
+		die("strftime():");
+
+	FTIME(cpp_time, "%H:%M:%S");
+	FTIME(cpp_date, "%b %d %G");
+}
+
 
 int main(int argc, char **argv)
 {
@@ -66,6 +97,8 @@ int main(int argc, char **argv)
 		MAP(PLATFORM_DARWIN,  "__DARWIN__");
 #undef MAP
 	}
+
+	calctime();
 
 	for(i = 1; i < argc && *argv[i] == '-'; i++){
 		if(!strcmp(argv[i]+1, "-"))
