@@ -163,32 +163,37 @@ expr *parse_expr_unary_op()
 			return parse_expr();
 
 		case token_minus:
-			e = expr_new_op(curtok_to_op());
 			EAT(token_minus);
-			e->lhs = parse_expr_binary_op();
+			e = expr_new_op(op_new_minus(parse_expr_binary_op(), NULL));
 			return e;
 
 		case token_not:
 		case token_bnot:
-			e = expr_new_op(curtok_to_op());
+		{
+			const int not = curtok == token_not;
+			expr *notthis;
 
 			EAT(curtok);
-			e->lhs = parse_expr_binary_op();
-			return e;
+			notthis = parse_expr_binary_op();
+
+			return expr_new_op(not ? op_new_not(notthis) : op_new_bnot(notthis));
+		}
 
 		case token_increment:
 		case token_decrement:
 		{
 			const int inc = curtok == token_increment;
+			expr *assign_to, *assign_from;
+
 			/* this is a normal increment, i.e. ++x, simply translate it to x = x + 1 */
 			e = expr_new_assign();
 			EAT(curtok);
 
 			/* assign to... */
-			e->lhs = parse_expr_array();
-			e->rhs = expr_new_op(inc ? op_plus : op_minus);
-			e->rhs->lhs = e->lhs;
-			e->rhs->rhs = expr_new_val(1);
+			assign_to = parse_expr_array();
+
+			assign_from = expr_new_op((inc ? op_new_plus : op_new_minus)(assign_to, expr_new_val(1)));
+
 			/*
 			 * looks like this:
 			 *
@@ -209,6 +214,10 @@ expr *parse_expr_unary_op()
 			 *   }
 			 * }
 			 */
+
+			e->lhs = assign_to;
+			e->rhs = assign_from;
+
 			return e;
 		}
 
@@ -230,17 +239,18 @@ expr *parse_expr_join(expr *(*above)(), enum token accept, ...)
 	for(;;){
 		va_start(l, accept);
 		if(curtok == accept || curtok_in_list(l)){
-			expr *join;
+			enum token op_tok;
+			expr *lhs, *rhs;
 
 			va_end(l);
 
-			join       = expr_new_op(curtok_to_op());
-			join->lhs  = e;
-
+			op_tok = curtok;
 			EAT(curtok);
-			join->rhs = above();
 
-			e = join;
+			lhs = e;
+			rhs = above();
+
+			e = expr_new_op(op_from_token(op_tok, lhs, rhs));
 		}else{
 			va_end(l);
 			break;

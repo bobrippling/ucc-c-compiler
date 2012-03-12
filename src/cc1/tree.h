@@ -4,7 +4,7 @@
 typedef struct expr expr;
 typedef struct stmt stmt;
 typedef struct stmt_flow stmt_flow;
-typedef struct expr_op   expr_op;
+typedef struct op op;
 
 typedef struct sym         sym;
 typedef struct symtable    symtable;
@@ -16,9 +16,8 @@ typedef struct enum_st     enum_st;
 
 typedef struct type        type;
 typedef struct decl        decl;
-typedef struct decl_desc   decl_desc;
+typedef struct decl_ptr    decl_ptr;
 typedef struct array_decl  array_decl;
-typedef struct funcargs    funcargs;
 
 
 enum type_primitive
@@ -64,22 +63,15 @@ struct type
 	char *spel; /* spel for struct/enum lookup */
 };
 
-struct decl_desc
+struct decl_ptr
 {
 	where where;
 
-	enum decl_desc_type
-	{
-		decl_desc_ptr,
-		decl_desc_fptr,
-		decl_desc_array
-	} type;
-
 	int is_const;     /* int *const x */
-	decl_desc *child;  /* int (*const (*x)()) - *[x] is child */
+	decl_ptr *child;  /* int (*const (*x)()) - *[x] is child */
 
+	/* either a func OR an array_size, not both */
 	funcargs *fptrargs;    /* int (*x)() - args to function */
-
 	expr *array_size;      /* int (x[5][2])[2] */
 };
 
@@ -92,15 +84,17 @@ struct decl
 
 	expr *init; /* NULL except for global variables */
 	array_decl *arrayinit;
+	funcargs *funcargs; /* int x() - args to function, distinct from fptr */
 
 	int ignore; /* ignore during code-gen, for example ignoring overridden externs */
 #define struct_offset ignore
 
 	sym *sym;
+
 	char *spel;
 
 	/* recursive */
-	decl_desc *desc;
+	decl_ptr *decl_ptr;
 
 	stmt *func_code;
 };
@@ -136,19 +130,16 @@ struct funcargs
 stmt        *tree_new(symtable *stab);
 type        *type_new(void);
 decl        *decl_new(void);
+decl_ptr    *decl_ptr_new(void);
 decl        *decl_new_where(where *);
 array_decl  *array_decl_new(void);
 funcargs    *funcargs_new(void);
-
-decl_desc   *decl_desc_new(enum decl_desc_type t);
-decl_desc   *decl_desc_ptr_new(void);
-decl_desc   *decl_desc_array_new(void);
 
 void where_new(struct where *w);
 
 type      *type_copy(type *);
 decl      *decl_copy(decl *);
-decl_desc *decl_desc_copy(decl_desc *);
+decl_ptr  *decl_ptr_copy(decl_ptr *);
 
 const char *decl_to_str(decl          *d);
 const char *type_to_str(const type          *t);
@@ -170,22 +161,22 @@ int   decl_is_callable(decl *);
 int   decl_is_const(   decl *);
 int   decl_ptr_depth(  decl *);
 int   decl_is_func_ptr(decl *);
-#define decl_is_void(d) ((d)->type->primitive == type_void && !(d)->decl_desc)
+#define decl_is_void(d) ((d)->type->primitive == type_void && !(d)->decl_ptr)
 
 funcargs *decl_funcargs(decl *d);
 
-decl_desc **decl_leaf(decl *d);
-decl_desc  *decl_first_func(decl *d);
+decl_ptr **decl_leaf(decl *d);
+decl_ptr  *decl_first_func(decl *d);
 
-decl *decl_desc_depth_inc(decl *d);
-decl *decl_desc_depth_dec(decl *d);
+decl *decl_ptr_depth_inc(decl *d);
+decl *decl_ptr_depth_dec(decl *d);
 decl *decl_func_deref(   decl *d);
 
 void function_empty_args(funcargs *);
 
 #define SPEC_STATIC_BUFSIZ 64
 #define TYPE_STATIC_BUFSIZ (SPEC_STATIC_BUFSIZ + 64)
-#define DECL_STATIC_BUFSIZ (256 + TYPE_STATIC_BUFSIZ)
+#define DECL_STATIC_BUFSIZ (128 + TYPE_STATIC_BUFSIZ)
 
 #define type_free(x) free(x)
 #define decl_free_notype(x) do{free(x);}while(0)

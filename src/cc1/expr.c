@@ -7,9 +7,6 @@
 #include "../util/alloc.h"
 #include "data_structs.h"
 
-/* needed for expr_assignment() */
-#include "ops/expr_assign.h"
-
 void expr_mutate(expr *e, func_fold *f_fold, func_str *f_str, func_gen *f_gen, func_gen *f_gen_str)
 {
 	extern int backend_str;
@@ -70,7 +67,7 @@ expr *expr_ptr_multiply(expr *e, decl *d)
 	if(sz == 1)
 		return e;
 
-	ret = expr_new_op(op_new_2(multiply, e, expr_new_val(sz)));
+	ret = expr_new_op(op_new_multiply(e, expr_new_val(sz)));
 	memcpy(&ret->where, &e->where, sizeof e->where);
 
 	if(ret->tree_type)

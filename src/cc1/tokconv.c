@@ -36,43 +36,6 @@ enum type_spec curtok_to_type_specifier()
 	return spec_none;
 }
 
-enum op_type curtok_to_op()
-{
-	switch(curtok){
-		/* multiply - op_deref is handled by the parser */
-		case token_multiply: return op_multiply;
-
-		case token_divide: return op_divide;
-		case token_plus: return op_plus;
-		case token_minus: return op_minus;
-		case token_modulus: return op_modulus;
-
-		case token_eq: return op_eq;
-		case token_ne: return op_ne;
-		case token_le: return op_le;
-		case token_lt: return op_lt;
-		case token_ge: return op_ge;
-		case token_gt: return op_gt;
-
-		case token_xor: return op_xor;
-		case token_or: return op_or;
-		case token_and: return op_and;
-		case token_orsc: return op_orsc;
-		case token_andsc: return op_andsc;
-		case token_not: return op_not;
-		case token_bnot: return op_bnot;
-
-		case token_shiftl: return op_shiftl;
-		case token_shiftr: return op_shiftr;
-
-		case token_ptr: return op_struct_ptr;
-		case token_dot: return op_struct_dot;
-
-		default: break;
-	}
-	return op_unknown;
-}
-
 int curtok_is_type()
 {
 	return curtok_to_type_primitive() != type_unknown;
@@ -83,32 +46,26 @@ int curtok_is_type_specifier()
 	return curtok_to_type_specifier() != spec_none;
 }
 
-enum op_type curtok_to_augmented_op()
+int curtok_is_augmented_assignment()
 {
-#define CASE(x) case token_ ## x ## _assign: return op_ ## x
 	switch(curtok){
-		CASE(plus);
-		CASE(minus);
-		CASE(multiply);
-		CASE(divide);
-		CASE(modulus);
-		CASE(not);
-		CASE(bnot);
-		CASE(and);
-		CASE(or);
-		CASE(xor);
-		CASE(shiftl);
-		CASE(shiftr);
+		case token_plus:
+		case token_minus:
+		case token_multiply:
+		case token_divide:
+		case token_modulus:
+		case token_not:
+		case token_bnot:
+		case token_and:
+		case token_or:
+		case token_xor:
+		case token_shiftl:
+		case token_shiftr:
+			return 1;
 		default:
 			break;
 	}
-	return op_unknown;
-#undef CASE
-}
-
-int curtok_is_augmented_assignment()
-{
-	return curtok_to_augmented_op() != op_unknown;
+	return 0;
 }
 
 const char *token_to_str(enum token t)

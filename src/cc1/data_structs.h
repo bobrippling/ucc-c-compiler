@@ -1,3 +1,6 @@
+typedef struct funcargs    funcargs;
+typedef struct tree_flow   tree_flow;
+
 typedef struct intval intval;
 
 struct intval
@@ -15,4 +18,5 @@ typedef const char *func_str(void);
 #include "tree.h"
 #include "expr.h"
 #include "stmt.h"
+#include "op.h"
 #include "sym.h"
