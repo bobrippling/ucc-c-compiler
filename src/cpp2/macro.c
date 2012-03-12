@@ -9,7 +9,7 @@
 #include "../util/dynarray.h"
 #include "../util/util.h"
 #include "str.h"
-
+#include "main.h"
 
 macro **macros = NULL;
 char **lib_dirs = NULL;
@@ -231,14 +231,21 @@ relook:
 
 				fval = 1;
 
-				if(!strcmp(m->nam, "__FILE__"))
+				if(!strcmp(m->nam, "__FILE__")){
 					val = ustrprintf("\"%s\"", current_fname);
-				else if(!strcmp(m->nam, "__LINE__"))
+				}else if(!strcmp(m->nam, "__LINE__")){
 					val = ustrprintf("%d", current_line);
-				else if((is_counter = !strcmp(m->nam, "__COUNTER__")))
+				}else if((is_counter = !strcmp(m->nam, "__COUNTER__"))){
 					val = ustrprintf("%d", counter);
-				else
+				}else if(!strcmp(m->nam, "__DATE__")){
+					fval = 0;
+					val = cpp_date;
+				}else if(!strcmp(m->nam, "__TIME__")){
+					fval = 0;
+					val = cpp_time;
+				}else{
 					ICE("invalid macro");
+				}
 			}
 
 			did_replace = word_replace_g(pline, m->nam, val);
