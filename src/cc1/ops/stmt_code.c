@@ -18,7 +18,7 @@ void fold_stmt_code(stmt *s)
 		decl *d = *iter;
 
 		if(d->func_code)
-			die_at(&d->func_code->where, "can's nest functions");
+			die_at(&d->func_code->where, "can't nest functions");
 
 		fold_decl(d, s->symtab);
 
@@ -27,8 +27,26 @@ void fold_stmt_code(stmt *s)
 
 	if(s->codes){
 		stmt **iter;
-		for(iter = s->codes; *iter; iter++)
-			fold_stmt(*iter);
+		int warned = 0;
+
+		for(iter = s->codes; *iter; iter++){
+			stmt *st = *iter;
+			fold_stmt(st);
+
+			/*
+			 * check for dead code
+			 */
+			if(!warned
+			&& st->kills_below_code
+			&& iter[1]
+			&& !stmt_kind(iter[1], label)
+			&& !stmt_kind(iter[1], case)
+			&& !stmt_kind(iter[1], default)
+			){
+				cc1_warn_at(&iter[1]->where, 0, WARN_DEAD_CODE, "dead code after %s (%s)", st->f_str(), iter[1]->f_str());
+				warned = 1;
+			}
+		}
 	}
 
 	/* static folding */
@@ -38,12 +56,12 @@ void fold_stmt_code(stmt *s)
 		for(iter = s->decls; *iter; iter++){
 			decl *d = *iter;
 			/*
-				* check static decls - after we fold,
-				* so we've linked the syms and can change ->spel
-				*/
+			 * check static decls - after we fold,
+			 * so we've linked the syms and can change ->spel
+			 */
 			if(d->type->spec & spec_static){
 				char *save = d->spel;
-				d->spel = asm_label_stmtic_local(curdecl_func_sp, d->spel);
+				d->spel = asm_label_static_local(curdecl_func_sp, d->spel);
 				free(save);
 			}
 		}
