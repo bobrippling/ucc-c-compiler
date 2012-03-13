@@ -261,7 +261,6 @@ void asm_jmp_if_zero(int invert, const char *lbl)
 
 void asm_comment(const char *fmt, ...)
 {
-	char buf[32];
 	va_list l;
 
 	asm_output *o = asm_output_new(
@@ -269,10 +268,8 @@ void asm_comment(const char *fmt, ...)
 			NULL, NULL);
 
 	va_start(l, fmt);
-	vsnprintf(buf, sizeof buf, fmt, l);
+	o->extra = ustrvprintf(fmt, l);
 	va_end(l);
-
-	o->extra = ustrdup(buf);
 }
 
 /* wrappers for asm_output_new */

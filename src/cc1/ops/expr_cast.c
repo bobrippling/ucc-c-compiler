@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 
 #include "../../util/alloc.h"
 #include "ops.h"
@@ -16,8 +17,12 @@ int fold_const_expr_cast(expr *e)
 
 void fold_expr_cast(expr *e, symtable *stab)
 {
+	int size_lhs, size_rhs;
+	decl *dlhs, *drhs;
+
 	fold_expr(e->expr, stab);
 
+#ifdef FLATTEN_CASTS
 	if(expr_kind(e->expr, cast)){
 		/* get rid of e->expr, replace with e->expr->rhs */
 		expr *del = e->expr;
@@ -29,17 +34,29 @@ void fold_expr_cast(expr *e, symtable *stab)
 
 		fold_expr_cast(e, stab);
 	}
+#endif
+
+	dlhs = e->tree_type;
+	drhs = e->expr->tree_type;
+
+	if((size_lhs = asm_type_size(dlhs)) < (size_rhs = asm_type_size(drhs))){
+		char buf[DECL_STATIC_BUFSIZ];
+
+		strcpy(buf, decl_to_str(drhs));
+
+		warn_at(&e->where, "possible loss of precision %s, size %d <-- %s, size %d",
+				decl_to_str(dlhs), size_lhs,
+				buf, size_rhs);
+	}
 }
 
 void gen_expr_cast_1(expr *e, FILE *f)
 {
-	asm_declare_single_part(f, e->expr);
+	e->expr->f_gen_1(e, f);
 }
 
 void gen_expr_cast(expr *e, symtable *stab)
 {
-	/* ignore the lhs, it's just a type spec */
-	/* FIXME: size changing? */
 	char buf[DECL_STATIC_BUFSIZ];
 	decl *dlhs, *drhs;
 	int size_lhs, size_rhs;
@@ -62,10 +79,8 @@ void gen_expr_cast(expr *e, symtable *stab)
 		asm_output *o;
 
 		if(size_rhs > size_lhs){
-			char buf[DECL_STATIC_BUFSIZ];
-			strcpy(buf, decl_to_str(drhs));
-			warn_at(&e->lhs->where, "possible loss of precision %s, size %d <-- %s, size %d",
-					decl_to_str(dlhs), size_lhs, buf, size_rhs);
+			/* loss of precision, touch crabcakes */
+			asm_comment("loss of precision, noop cast");
 		}else{
 			asm_pop(ASM_REG_A);
 			/*
@@ -86,7 +101,11 @@ void gen_expr_cast(expr *e, symtable *stab)
 			o->extra = ustrdup("sx");
 
 			asm_push(ASM_REG_A);
+
+			asm_comment("cast finish");
 		}
+	}else{
+		asm_comment("cast - asm type sizes match (%d)", asm_type_size(dlhs));
 	}
 }
 

@@ -133,7 +133,7 @@ noproblem:
 	return;
 }
 
-void fold_typecheck_primitive(expr **plhs, expr **prhs)
+void fold_typecheck_primitive(expr **plhs, expr **prhs, symtable *stab)
 {
 	expr *lhs, *rhs;
 
@@ -142,16 +142,20 @@ void fold_typecheck_primitive(expr **plhs, expr **prhs)
 
 	if(!decl_equal(lhs->tree_type, rhs->tree_type, 1)){
 		/* insert a cast: rhs -> lhs */
-		expr *cast = *prhs = expr_new_cast(lhs->tree_type);
+		expr *cast = expr_new_cast(lhs->tree_type);
 		cast->expr = rhs;
+		*prhs = cast;
 		memcpy(&cast->where, &lhs->where, sizeof cast->where);
+
+		/* need to fold the cast again - mainly for "loss of precision" warning */
+		fold_expr(cast, stab);
 	}
 }
 
 void fold_typecheck(expr **lhs, expr **rhs, symtable *stab, where *where)
 {
 	fold_typecheck_sign(*lhs, *rhs, stab, where);
-	fold_typecheck_primitive(lhs, rhs);
+	fold_typecheck_primitive(lhs, rhs, stab);
 }
 
 int fold_get_sym(expr *e, symtable *stab)

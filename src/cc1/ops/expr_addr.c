@@ -15,7 +15,9 @@ void fold_expr_addr(expr *e, symtable *stab)
 	if(e->array_store){
 		sym *array_sym;
 
-		UCC_ASSERT(!e->sym, "symbol found when looking for array store");
+		if(e->sym)
+			return; /* already folded */
+
 		UCC_ASSERT(!e->expr, "expression found in array store address-of");
 
 		/* static const char * */
