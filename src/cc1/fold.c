@@ -18,16 +18,16 @@
 #include "struct_enum.h"
 
 char *curdecl_func_sp;       /* for funcargs-local labels */
-stmt *curstat_flow;          /* for break */
-stmt *curstat_switch;        /* for case + default */
+stmt *curstmt_flow;          /* for break */
+stmt *curstmt_switch;        /* for case + default */
 
 
 void fold_stmt_and_add_to_curswitch(stmt *t)
 {
 	fold_stmt(t->lhs); /* compound */
-	if(!curstat_switch)
+	if(!curstmt_switch)
 		die_at(&t->expr->where, "not inside a switch stmtement");
-	dynarray_add((void ***)&curstat_switch->codes, t);
+	dynarray_add((void ***)&curstmt_switch->codes, t);
 }
 
 void fold_funcargs_equal(funcargs *args_a, funcargs *args_b, int check_vari, where *w, const char *warn_pre, const char *func_spel)
@@ -144,6 +144,7 @@ void fold_typecheck_primitive(expr **plhs, expr **prhs)
 		/* insert a cast: rhs -> lhs */
 		expr *cast = *prhs = expr_new_cast(lhs->tree_type);
 		cast->expr = rhs;
+		memcpy(&cast->where, &lhs->where, sizeof cast->where);
 	}
 }
 

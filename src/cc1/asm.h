@@ -30,10 +30,9 @@ void asm_declare_single(     FILE *f, decl *d);
 
 char *asm_label_code(const char *fmt);
 char *asm_label_array(int str);
-char *asm_label_stmtic_local(const char *funcsp, const char *spel);
+char *asm_label_static_local(const char *funcsp, const char *spel);
 char *asm_label_goto(char *lbl);
 char *asm_label_case(enum asm_label_type, int val);
-char *asm_label_flowfin(void);
-#define asm_label_break(flow_t) flow_t->lblfin
+char *asm_label_flow(const char *fmt);
 
 #endif

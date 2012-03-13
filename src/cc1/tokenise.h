@@ -11,6 +11,7 @@ enum token
 	token_while,
 	token_for,
 	token_break,
+	token_continue,
 	token_return,
 
 	token_switch,

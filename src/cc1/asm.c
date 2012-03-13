@@ -48,14 +48,14 @@ char *asm_label_array(int str)
 	return ret;
 }
 
-char *asm_label_stmtic_local(const char *funcsp, const char *spel)
+char *asm_label_static_local(const char *funcsp, const char *spel)
 {
 	char *ret;
 
 	UCC_ASSERT(funcsp, "no spel for %s", __func__);
 
 	ret = umalloc(strlen(funcsp) + strlen(spel) + 9);
-	sprintf(ret, "%s.stmtic_%s", funcsp, spel);
+	sprintf(ret, "%s.static_%s", funcsp, spel);
 	return ret;
 }
 
@@ -91,10 +91,10 @@ char *asm_label_case(enum asm_label_type lbltype, int val)
 
 }
 
-char *asm_label_flowfin()
+char *asm_label_flow(const char *fmt)
 {
-	char *ret = umalloc(16);
-	sprintf(ret, ".flowfin_%d", flow_last++);
+	char *ret = umalloc(16 + strlen(fmt));
+	sprintf(ret, ".flow_%s_%d", fmt, flow_last++);
 	return ret;
 }
 

@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "ops.h"
 #include "stmt_default.h"
 
@@ -12,7 +14,9 @@ void fold_stmt_default(stmt *s)
 		s->expr->spel = asm_label_case(CASE_CASE, s->expr->val.iv.val);
 	}else{
 		s->expr = expr_new_identifier(NULL);
-		s->expr->spel = asm_label_case(CASE_CASE, s->expr->val.iv.val);
+		memcpy(&s->expr->where, &s->where, sizeof s->expr->where);
+
+		s->expr->spel = asm_label_case(CASE_DEF, s->expr->val.iv.val);
 		s->expr->expr_is_default = 1;
 	}
 

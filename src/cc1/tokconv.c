@@ -131,10 +131,22 @@ const char *token_to_str(enum token t)
 		CASE_STR_PREFIX(token,  switch);
 		CASE_STR_PREFIX(token,  case);
 		CASE_STR_PREFIX(token,  default);
+		CASE_STR_PREFIX(token,  continue);
+		CASE_STR_PREFIX(token,  goto);
 
 		CASE_STR_PREFIX(token,  sizeof);
-		CASE_STR_PREFIX(token,  extern);
 
+		/* storage */
+		CASE_STR_PREFIX(token,  extern);
+		CASE_STR_PREFIX(token,  static);
+		CASE_STR_PREFIX(token,  auto);
+		/*CASE_STR_PREFIX(token,  register);*/
+
+		/* type-qual */
+		CASE_STR_PREFIX(token,  const);
+		/*CASE_STR_PREFIX(token,  volatile);*/
+
+		/* type */
 		CASE_STR_PREFIX(token,  void);
 		CASE_STR_PREFIX(token,  char);
 		CASE_STR_PREFIX(token,  short);
@@ -142,13 +154,9 @@ const char *token_to_str(enum token t)
 		CASE_STR_PREFIX(token,  long);
 		CASE_STR_PREFIX(token,  float);
 		CASE_STR_PREFIX(token,  double);
-
-		CASE_STR_PREFIX(token,  const);
-		CASE_STR_PREFIX(token,  static);
-		CASE_STR_PREFIX(token,  goto);
 		CASE_STR_PREFIX(token,  signed);
 		CASE_STR_PREFIX(token,  unsigned);
-		CASE_STR_PREFIX(token,  auto);
+
 		CASE_STR_PREFIX(token,  typedef);
 		CASE_STR_PREFIX(token,  struct);
 		CASE_STR_PREFIX(token,  enum);

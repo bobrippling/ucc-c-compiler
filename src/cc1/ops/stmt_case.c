@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "ops.h"
 #include "stmt_case.h"
 
@@ -19,8 +21,9 @@ void fold_stmt_case(stmt *t)
 		t->expr->spel = asm_label_case(CASE_CASE, t->expr->val.iv.val);
 	}else{
 		t->expr = expr_new_identifier(NULL);
+		memcpy(&t->expr->where, &t->where, sizeof t->expr->where);
+
 		t->expr->spel = asm_label_case(CASE_CASE, t->expr->val.iv.val);
-		t->expr->expr_is_default = 1;
 	}
 
 

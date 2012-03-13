@@ -27,20 +27,22 @@ struct stmtement
 	{ "perhaps",           token_case    },
 	{ "on_the_off_chance", token_default },
 
-	{ "splendid", token_break   },
-	{ "goodday",  token_return  },
+	{ "splendid",    token_break    },
+	{ "goodday",     token_return   },
+	{ "as_you_were", token_continue },
 
-	{ "tallyho", token_goto    },
+	{ "tallyho",     token_goto     },
 #else
-	{ "if",      token_if      },
-	{ "else",    token_else    },
+	{ "if",        token_if         },
+	{ "else",      token_else       },
 
-	{ "switch",  token_switch  },
-	{ "case",    token_case    },
-	{ "default", token_default },
+	{ "switch",    token_switch     },
+	{ "case",      token_case       },
+	{ "default",   token_default    },
 
-	{ "break",   token_break   },
-	{ "return",  token_return  },
+	{ "break",     token_break      },
+	{ "return",    token_return     },
+	{ "continue",  token_continue   },
 
 	{ "goto",    token_goto    },
 #endif

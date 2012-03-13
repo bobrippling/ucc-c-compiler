@@ -211,6 +211,7 @@ void fold_op_struct(expr *e, symtable *stab)
 	 */
 	if(ptr_depth_exp == 0){
 		expr *new = expr_new_addr();
+		memcpy(&new->where, &e->where, sizeof new->where);
 
 		new->expr = e->lhs;
 		e->lhs = new;
