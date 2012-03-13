@@ -26,77 +26,78 @@ static int is_lvalue(expr *e)
 	 */
 
 	if(expr_kind(e, identifier))
-		return !e->tree_type->func_code;
+		return decl_is_callable(e->tree_type) ? decl_is_func_ptr(e->tree_type) : 1;
 
-	if(expr_kind(e, op))
-		switch(e->op){
+	if(expr_kind(e, op) && e->op->f_store)
+		return 1;
+		/*switch(e->op){
 			case op_deref:
 			case op_struct_ptr:
 			case op_struct_dot:
 				return 1;
 			default:
 				break;
-		}
+		}*/
 
 	return 0;
 }
 
 void fold_expr_assign(expr *e, symtable *stab)
 {
-	fold_inc_writes_if_sym(e->lhs, stab);
+	fold_inc_writes_if_sym(e->assign_to, stab);
 
-	fold_expr(e->lhs, stab);
-	fold_expr(e->rhs, stab);
+	fold_expr(e->assign_to, stab);
+	fold_expr(e->expr, stab);
 
 	/* wait until we get the tree types, etc */
-	if(!is_lvalue(e->lhs))
-		die_at(&e->lhs->where, "not an lvalue (%s%s%s)",
-				e->lhs->f_str(),
-				expr_kind(e->lhs, op) ? " - " : "",
-				expr_kind(e->lhs, op) ? op_to_str(e->lhs->op) : ""
+	if(!is_lvalue(e->assign_to))
+		die_at(&e->assign_to->where, "not an lvalue (%s%s%s)",
+				e->assign_to->f_str(),
+				expr_kind(e->assign_to, op) ? " - " : "",
+				expr_kind(e->assign_to, op) ? e->assign_to->op->f_str() : ""
 			);
 
-	if(decl_is_const(e->lhs->tree_type)){
+	if(decl_is_const(e->assign_to->tree_type)){
 		/* allow const init: */
-		if(e->lhs->sym->decl->init != e->rhs)
+		if(e->assign_to->sym->decl->init != e->expr)
 			die_at(&e->where, "can't modify const expression");
 	}
 
 
-	if(e->lhs->sym)
+	if(e->assign_to->sym)
 		/* read the tree_type from what we're assigning to, not the expr */
-		e->tree_type = decl_copy(e->lhs->sym->decl);
+		e->tree_type = decl_copy(e->assign_to->sym->decl);
 	else
-		e->tree_type = decl_copy(e->lhs->tree_type);
+		e->tree_type = decl_copy(e->assign_to->tree_type);
 
-	fold_typecheck(e->lhs, e->rhs, stab, &e->where);
+	fold_typecheck(e->assign_to, e->expr, stab, &e->where);
 
 	/* type check */
-	fold_decl_equal(e->lhs->tree_type, e->rhs->tree_type,
+	fold_decl_equal(e->assign_to->tree_type, e->expr->tree_type,
 		&e->where, WARN_ASSIGN_MISMATCH,
 				"assignment type mismatch%s%s%s",
-				e->lhs->spel ? " (" : "",
-				e->lhs->spel ? e->lhs->spel : "",
-				e->lhs->spel ? ")" : "");
+				e->assign_to->spel ? " (" : "",
+				e->assign_to->spel ? e->assign_to->spel : "",
+				e->assign_to->spel ? ")" : "");
 }
 
 void gen_expr_assign(expr *e, symtable *stab)
 {
 	if(e->assign_is_post){
-		/* if this is the case, ->rhs->lhs is ->lhs, and ->rhs is an addition/subtraction of 1 * something */
-		gen_expr(e->lhs, stab);
+		/* if this is the case, ->expr->expr is ->assign_to, and ->expr->expr2 is an addition/subtraction of 1 * something */
+		gen_expr(e->assign_to, stab);
 		asm_temp(1, "; save previous for post assignment");
 	}
 
-	gen_expr(e->rhs, stab);
+	gen_expr(e->expr, stab);
 #ifdef USE_MOVE_RAX_RSP
 	asm_temp(1, "mov rax, [rsp]");
 #endif
 
-	UCC_ASSERT(e->lhs->f_store, "invalid store expression %s (no f_store())", e->lhs->f_str());
+	UCC_ASSERT(e->assign_to->f_store, "invalid store expression %s (no f_store())", e->assign_to->f_str());
 
 	/* store back to the sym's home */
-	e->lhs->f_store(e->lhs, stab);
+	e->assign_to->f_store(e->assign_to, stab);
 
 	if(e->assign_is_post){
 		asm_temp(1, "pop rax ; the value from ++/--");
@@ -110,18 +111,23 @@ void gen_expr_str_assign(expr *e, symtable *stab)
 	idt_printf("%sassignment, expr:\n", e->assign_is_post ? "post-inc/dec " : "");
 	idt_printf("assign to:\n");
 	gen_str_indent++;
-	print_expr(e->lhs);
+	print_expr(e->assign_to);
 	gen_str_indent--;
 	idt_printf("assign from:\n");
 	gen_str_indent++;
-	print_expr(e->rhs);
+	print_expr(e->expr);
 	gen_str_indent--;
 }
 
-expr *expr_new_assign()
+expr *expr_new_assign(expr *to, expr *from)
 {
 	expr *e = expr_new_wrapper(assign);
+
+	e->assign_to = to;
+	e->expr = from;
+
 	e->f_const_fold = fold_const_expr_assign;
 	e->freestanding = 1;
+
 	return e;
 }

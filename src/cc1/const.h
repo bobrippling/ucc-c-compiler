@@ -12,7 +12,7 @@ int const_expr_val(expr *e);
 			s,                                           \
 			e->f_str(),                                  \
 			expr_kind(e, op) ? " - " : "",             \
-			expr_kind(e, op) ? op_to_str(e->op) : "")
+			expr_kind(e, op) ? e->op->f_str() : "")
 
 
 #define OPT_CHECK(e, s) \

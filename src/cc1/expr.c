@@ -76,13 +76,3 @@ expr *expr_ptr_multiply(expr *e, decl *d)
 
 	return ret;
 }
-
-expr *expr_assignment(expr *to, expr *from)
-{
-	expr *ass = expr_new_assign();
-
-	ass->lhs = to;
-	ass->rhs = from;
-
-	return ass;
-}

@@ -91,8 +91,6 @@ int operate(expr *lhs, expr *rhs, enum op_type op, int *bad)
 
 void operate_optimise(expr *e)
 {
-	/* TODO */
-
 	switch(e->op){
 		case op_orsc:
 		case op_andsc:

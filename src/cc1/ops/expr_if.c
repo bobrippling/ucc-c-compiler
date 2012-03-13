@@ -8,10 +8,10 @@ const char *str_expr_if()
 
 int fold_const_expr_if(expr *e)
 {
-	if(!const_fold(e->expr) && (e->lhs ? !const_fold(e->lhs) : 1) && !const_fold(e->rhs)){
+	if(!const_fold(e->expr) && (e->expr2 ? !const_fold(e->expr2) : 1) && !const_fold(e->expr3)){
 		expr_mutate_wrapper(e, val);
 
-		e->val.iv.val = e->expr->val.iv.val ? (e->lhs ? e->lhs->val.iv.val : e->expr->val.iv.val) : e->rhs->val.iv.val;
+		e->val.iv.val = e->expr->val.iv.val ? (e->expr2 ? e->expr2->val.iv.val : e->expr->val.iv.val) : e->expr3->val.iv.val;
 		return 0;
 	}
 	return 1;
@@ -22,12 +22,12 @@ void fold_expr_if(expr *e, symtable *stab)
 	fold_expr(e->expr, stab);
 	if(const_expr_is_const(e->expr))
 		POSSIBLE_OPT(e->expr, "constant ?: expression");
-	if(e->lhs)
-		fold_expr(e->lhs, stab);
-	fold_expr(e->rhs, stab);
-	e->tree_type = decl_copy(e->rhs->tree_type); /* TODO: check they're the same */
+	if(e->expr2)
+		fold_expr(e->expr2, stab);
+	fold_expr(e->expr3, stab);
+	e->tree_type = decl_copy(e->expr3->tree_type); /* TODO: check they're the same */
 
-	e->freestanding = e->lhs->freestanding || e->rhs->freestanding;
+	e->freestanding = e->expr2->freestanding || e->expr3->freestanding;
 }
 
 
@@ -41,10 +41,10 @@ void gen_expr_if(expr *e, symtable *stab)
 	asm_temp(1, "pop rax");
 	asm_temp(1, "test rax, rax");
 	asm_temp(1, "jz %s", lblelse);
-	gen_expr(e->lhs ? e->lhs : e->expr, stab);
+	gen_expr(e->expr2 ? e->expr2 : e->expr, stab);
 	asm_temp(1, "jmp %s", lblfin);
 	asm_label(lblelse);
-	gen_expr(e->rhs, stab);
+	gen_expr(e->expr3, stab);
 	asm_label(lblfin);
 
 	free(lblfin);
@@ -65,18 +65,20 @@ void gen_expr_str_if(expr *e, symtable *stab)
 	}while(0)
 
 	SUB_PRINT(expr);
-	if(e->lhs)
-		SUB_PRINT(lhs);
+	if(e->expr2)
+		SUB_PRINT(expr2);
 	else
 		idt_printf("?: syntactic sugar\n");
 
-	SUB_PRINT(rhs);
+	SUB_PRINT(expr3);
 #undef SUB_PRINT
 }
 
-expr *expr_new_if(expr *test)
+expr *expr_new_if(expr *test, expr *a, expr *b)
 {
 	expr *e = expr_new_wrapper(if);
 	e->expr = test;
+	e->expr2 = a;
+	e->expr3 = b;
 	return e;
 }

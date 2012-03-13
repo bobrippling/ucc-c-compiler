@@ -54,7 +54,7 @@ void fold_expr_funcall(expr *e, symtable *stab)
 		 */
 		if(decl_is_func_ptr(e->expr->tree_type)){
 			/* XXX: memleak */
-			e->expr = e->expr->lhs;
+			e->expr = e->expr->expr;
 			fprintf(stderr, "FUNCPTR\n");
 		}else{
 			fprintf(stderr, "decl %s\n", decl_to_str(e->expr->tree_type));

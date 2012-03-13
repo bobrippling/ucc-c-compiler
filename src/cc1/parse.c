@@ -186,12 +186,10 @@ expr *parse_expr_unary_op()
 			expr *assign_to, *assign_from;
 
 			/* this is a normal increment, i.e. ++x, simply translate it to x = x + 1 */
-			e = expr_new_assign();
 			EAT(curtok);
 
 			/* assign to... */
 			assign_to = parse_expr_array();
-
 			assign_from = expr_new_op((inc ? op_new_plus : op_new_minus)(assign_to, expr_new_val(1)));
 
 			/*
@@ -215,10 +213,7 @@ expr *parse_expr_unary_op()
 			 * }
 			 */
 
-			e->lhs = assign_to;
-			e->rhs = assign_from;
-
-			return e;
+			return expr_new_assign(assign_to, assign_from);
 		}
 
 		case token_identifier:
@@ -274,16 +269,11 @@ expr *parse_expr_array()
 	while(accept(token_open_square)){
 		expr *sum, *deref;
 
-		sum = expr_new_op(op_plus);
-
-		sum->lhs  = base;
-		sum->rhs  = parse_expr();
+		sum = expr_new_op(op_new_plus(base, parse_expr()));
 
 		EAT(token_close_square);
 
-		deref = expr_new_op(op_deref);
-		deref->lhs  = sum;
-
+		deref = expr_new_op(op_new_deref(sum));
 
 		base = deref;
 	}
@@ -297,14 +287,8 @@ expr *parse_expr_inc_dec()
 	int flag = 0;
 
 	if((flag = accept(token_increment)) || accept(token_decrement)){
-		expr *inc = expr_new_assign();
-		inc->assign_is_post = 1;
-
-		inc->lhs = e;
-		inc->rhs = expr_new_op(flag ? op_plus : op_minus);
-		inc->rhs->lhs = e;
-		inc->rhs->rhs = expr_new_val(1);
-		e = inc;
+		e = expr_new_assign(e, expr_new_op((flag ? op_new_plus : op_new_minus)(e, expr_new_val(1))));
+		e->assign_is_post = 1;
 	}
 
 	return e;
@@ -327,11 +311,8 @@ expr *parse_expr_funcall()
 
 expr *parse_expr_deref()
 {
-	if(accept(token_multiply)){
-		expr *e = expr_new_op(op_deref);
-		e->lhs  = parse_expr_deref();
-		return e;
-	}
+	if(accept(token_multiply))
+		return expr_new_op(op_new_deref(parse_expr_deref()));
 
 	return parse_expr_funcall();
 }
@@ -347,16 +328,9 @@ expr *parse_expr_assign()
 		e = expr_assignment(e, above());
 	}else if(curtok_is_augmented_assignment()){
 		/* +=, ... */
-		expr *ass = expr_new_assign();
-
-		ass->lhs = e;
-		ass->rhs = expr_new_op(curtok_to_augmented_op());
-		EAT(curtok);
-
-		ass->rhs->lhs = e;
-		ass->rhs->rhs = above();
-
-		e = ass;
+		enum token tok = curtok;
+		EAT(tok);
+		e = expr_new_assign(e, expr_new_op(op_from_token(tok, e, above())));
 	}
 
 	return e;
@@ -413,17 +387,19 @@ expr *parse_expr_if()
 {
 	expr *e = parse_expr_logical_op();
 	if(accept(token_question)){
-		expr *q = expr_new_if(e);
+		expr *test, *a, *b;
+
+		test = e;
 
 		if(accept(token_colon)){
-			q->lhs = NULL; /* sentinel */
+			a = NULL; /* sentinel */
 		}else{
-			q->lhs = parse_expr();
+			a = parse_expr();
 			EAT(token_colon);
 		}
-		q->rhs = parse_expr_funcallarg();
+		b = parse_expr_funcallarg();
 
-		return q;
+		return expr_new_if(test, a, b);
 	}else{
 		return e;
 	}
@@ -435,12 +411,9 @@ expr *parse_expr_comma()
 
 	e = parse_expr_funcallarg();
 
-	if(accept(token_comma)){
-		expr *ret = expr_new_comma();
-		ret->lhs = e;
-		ret->rhs = parse_expr_comma();
-		return ret;
-	}
+	if(accept(token_comma))
+		return expr_new_comma(e, parse_expr_comma());
+
 	return e;
 }
 

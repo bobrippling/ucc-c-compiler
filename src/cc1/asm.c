@@ -135,43 +135,6 @@ void asm_sym(enum asm_sym_type t, sym *s, const char *reg)
 		free(brackets);
 }
 
-void asm_new(enum asm_type t, void *p)
-{
-	switch(t){
-		case asm_assign:
-			asm_temp(1, "pop rax");
-			break;
-
-		case asm_call:
-			asm_temp(1, "call %s", (const char *)p);
-			break;
-
-		case asm_load_ident:
-			asm_temp(1, "load %s", (const char *)p);
-			break;
-
-		case asm_load_val:
-			asm_temp(1, "load val %d", *(int *)p);
-			break;
-
-		case asm_op:
-			asm_temp(1, "%s", op_to_str(*(enum op_type *)p));
-			break;
-
-		case asm_pop:
-			asm_temp(1, "pop");
-			break;
-
-		case asm_push:
-			asm_temp(1, "push");
-			break;
-
-		case asm_addrof:
-			fprintf(stderr, "BUH?? (addrof)\n");
-			break;
-	}
-}
-
 void asm_label(const char *lbl)
 {
 	asm_temp(0, "%s:", lbl);

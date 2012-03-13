@@ -54,13 +54,33 @@ void  op_mutate(op *e,             op_exec *f_exec, op_fold *f_fold, op_gen *f_g
 #define op_new_wrapper(type, l, r)  op_new(l, r, exec_op_ ## type, fold_op_ ## type, gen_op_ ## type, gen_str_op_ ## type, str_op_ ## type)
 #define op_mutate_wrapper(e, type)  op_mutate(e, exec_op_ ## type, fold_op_ ## type, gen_op_ ## type, gen_str_op_ ## type, str_op_ ## type)
 
-op *op_new_multiply  (expr *l, expr *r);
-op *op_new_not       (expr *n);
-op *op_new_bnot      (expr *n);
-
-op *op_new_deref     (expr *l, expr *r);
-
-op *op_from_token(enum token, expr *, expr *);
+#define OP_NEW(x) op *op_new_ ## x(expr *l, expr *r)
+OP_NEW(divide);
+OP_NEW(eq);
+OP_NEW(ge);
+OP_NEW(le);
+OP_NEW(minus);
+OP_NEW(modulus);
+OP_NEW(multiply);
+OP_NEW(or);
+OP_NEW(orsc);
+OP_NEW(plus);
+OP_NEW(shiftl);
+OP_NEW(struct_ptr);
+OP_NEW(xor);
+OP_NEW(and);
+OP_NEW(andsc);
+OP_NEW(gt);
+OP_NEW(lt);
+OP_NEW(ne);
+OP_NEW(shiftr);
+OP_NEW(struct_dot);
+#undef OP_NEW
+#define OP_NEW(x) op *op_new_ ## x(expr *)
+OP_NEW(not);
+OP_NEW(bnot);
+OP_NEW(deref);
+#undef OP_NEW
 
 #if 0
 enum op_type curtok_to_augmented_op()

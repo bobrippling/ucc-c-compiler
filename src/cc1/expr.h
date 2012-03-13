@@ -28,8 +28,6 @@ struct expr
 
 	op *op;
 
-	expr *lhs, *rhs;
-
 	union
 	{
 		intval iv;
@@ -41,6 +39,10 @@ struct expr
 
 	char *spel;
 	expr *expr; /* x = 5; expr is the 5 */
+	expr *expr2; /* (a ? b : c) = (expr ? expr2 : expr3) */
+	expr *assign_to;
+#define expr3 assign_to
+
 	expr **funcargs;
 	stmt *code; /* ({ ... }) */
 
@@ -85,10 +87,10 @@ expr *expr_new_identifier(char *sp);
 expr *expr_new_cast(decl *cast_to);
 expr *expr_new_val(int val);
 expr *expr_new_op(op *);
-expr *expr_new_if(expr *test);
+expr *expr_new_if(expr *test, expr *a, expr *b);
 expr *expr_new_addr(void);
-expr *expr_new_assign(void);
-expr *expr_new_comma(void);
+expr *expr_new_assign(expr *to, expr *from);
+expr *expr_new_comma(expr *a, expr *b);
 expr *expr_new_funcall(void);
 expr *expr_new_stmt(stmt *code);
 

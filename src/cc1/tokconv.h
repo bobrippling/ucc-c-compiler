@@ -21,4 +21,6 @@ int curtok_is_augmented_assignment(void);
 
 const char *token_to_str(enum token t);
 
+op *op_from_token(enum token, expr *, expr *);
+
 #endif
