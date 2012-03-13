@@ -33,7 +33,7 @@ void fold_stmt(stmt *t);
 void fold(symtable *);
 
 extern char *curdecl_func_sp;
-extern stmt *curstat_flow;
-extern stmt *curstat_switch;
+extern stmt *curstmt_flow;
+extern stmt *curstmt_switch;
 
 #endif

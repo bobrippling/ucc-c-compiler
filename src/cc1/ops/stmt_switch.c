@@ -50,14 +50,14 @@ ret:
 
 void fold_stmt_switch(stmt *s)
 {
-	stmt *oldswstat = curstat_switch;
-	stmt *oldflowstat = curstat_flow;
+	stmt *oldswstmt = curstmt_switch;
+	stmt *oldflowstmt = curstmt_flow;
 	type *typ;
 
-	curstat_switch = s;
-	curstat_flow   = s;
+	curstmt_switch = s;
+	curstmt_flow   = s;
 
-	s->lblfin = asm_label_flowfin();
+	s->lbl_break = asm_label_flow("switch");
 
 	fold_expr(s->expr, s->symtab);
 
@@ -75,8 +75,8 @@ void fold_stmt_switch(stmt *s)
 		fold_switch_enum(s, typ);
 	}
 
-	curstat_switch = oldswstat;
-	curstat_flow   = oldflowstat;
+	curstmt_switch = oldswstmt;
+	curstmt_flow   = oldflowstmt;
 }
 
 void gen_stmt_switch(stmt *s)
@@ -114,9 +114,9 @@ void gen_stmt_switch(stmt *s)
 	if(tdefault)
 		asm_temp(1, "jmp %s", tdefault->expr->spel);
 	else
-		asm_temp(1, "jmp %s", s->lblfin);
+		asm_temp(1, "jmp %s", s->lbl_break);
 
 	gen_stmt(s->lhs); /* the actual code inside the switch */
 
-	asm_label(s->lblfin);
+	asm_label(s->lbl_break);
 }
