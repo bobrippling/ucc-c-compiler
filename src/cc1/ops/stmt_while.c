@@ -10,10 +10,11 @@ const char *str_stmt_while()
 
 void fold_stmt_while(stmt *s)
 {
-	stmt *oldflowstat = curstat_flow;
-	curstat_flow = s;
+	stmt *oldflowstat = curstmt_flow;
+	curstmt_flow = s;
 
-	s->lblfin = asm_label_flowfin();
+	s->lbl_break    = asm_label_flow("while_break");
+	s->lbl_continue = asm_label_flow("while_cont");
 
 	fold_expr(s->expr, s->symtab);
 	fold_test_expr(s->expr, s->f_str());
@@ -22,23 +23,17 @@ void fold_stmt_while(stmt *s)
 
 	fold_stmt(s->lhs);
 
-	curstat_flow = oldflowstat;
+	curstmt_flow = oldflowstat;
 }
 
 void gen_stmt_while(stmt *s)
 {
-	char *lbl_start;
-
-	lbl_start = asm_label_code("while");
-
-	asm_label(lbl_start);
+	asm_label(s->lbl_continue);
 	gen_expr(s->expr, s->symtab);
 	asm_temp(1, "pop rax");
 	asm_temp(1, "test rax, rax");
-	asm_temp(1, "jz %s", s->lblfin);
+	asm_temp(1, "jz %s", s->lbl_break);
 	gen_stmt(s->lhs);
-	asm_temp(1, "jmp %s", lbl_start);
-	asm_label(s->lblfin);
-
-	free(lbl_start);
+	asm_temp(1, "jmp %s", s->lbl_continue);
+	asm_label(s->lbl_break);
 }

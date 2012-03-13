@@ -634,12 +634,17 @@ stmt *parse_code()
 			return t;
 
 		case token_break:
-		case token_return:
+		case token_continue:
 		case token_goto:
-			if(accept(token_break)){
-				t = STAT_NEW(break);
+		case token_return:
+		{
+			int flag;
+			if((flag = accept(token_break)) || accept(token_continue)){
+				t = flag ? STAT_NEW(break) : STAT_NEW(continue);
+
 			}else if(accept(token_return)){
 				t = STAT_NEW(return);
+
 				if(curtok != token_semicolon)
 					t->expr = parse_expr();
 			}else{
@@ -650,6 +655,7 @@ stmt *parse_code()
 			}
 			EAT(token_semicolon);
 			return t;
+		}
 
 		case token_if:     return parse_if();
 		case token_while:  return parse_while();

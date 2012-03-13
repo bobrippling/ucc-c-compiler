@@ -10,10 +10,11 @@ const char *str_stmt_for()
 
 void fold_stmt_for(stmt *s)
 {
-	stmt *oldflowstat = curstat_flow;
-	curstat_flow = s;
+	stmt *oldflowstmt = curstmt_flow;
+	curstmt_flow = s;
 
-	s->lblfin = asm_label_flowfin();
+	s->lbl_break    = asm_label_flow("for_start");
+	s->lbl_continue = asm_label_flow("for_contiune");
 
 #define FOLD_IF(x) if(x) fold_expr(x, s->symtab)
 	FOLD_IF(s->flow->for_init);
@@ -28,38 +29,37 @@ void fold_stmt_for(stmt *s)
 
 	fold_stmt(s->lhs);
 
-	curstat_flow = oldflowstat;
+	curstmt_flow = oldflowstmt;
 }
 
 void gen_stmt_for(stmt *s)
 {
-	char *lbl_for;
-
-	lbl_for = asm_label_code("for");
+	char *lbl_test = asm_label_flow("for_test");
 
 	if(s->flow->for_init){
 		gen_expr(s->flow->for_init, s->symtab);
 		asm_temp(1, "pop rax ; unused for init");
 	}
 
-	asm_label(lbl_for);
+	asm_label(lbl_test);
 	if(s->flow->for_while){
 		gen_expr(s->flow->for_while, s->symtab);
 
 		asm_temp(1, "pop rax");
 		asm_temp(1, "test rax, rax");
-		asm_temp(1, "jz %s", s->lblfin);
+		asm_temp(1, "jz %s", s->lbl_break);
 	}
 
 	gen_stmt(s->lhs);
+	asm_label(s->lbl_continue);
 	if(s->flow->for_inc){
 		gen_expr(s->flow->for_inc, s->symtab);
 		asm_temp(1, "pop rax ; unused for inc");
 	}
 
-	asm_temp(1, "jmp %s", lbl_for);
+	asm_temp(1, "jmp %s", lbl_test);
 
-	asm_label(s->lblfin);
+	asm_label(s->lbl_break);
 
-	free(lbl_for);
+	free(lbl_test);
 }

@@ -49,6 +49,7 @@ struct
 
 	{ 0,  "test-in-assign",  WARN_TEST_ASSIGN                       },
 
+	{ 0,  "dead-code",       WARN_DEAD_CODE                         },
 
 	/* TODO */
 	{ 0,  "unused-parameter", WARN_UNUSED_PARAM },
