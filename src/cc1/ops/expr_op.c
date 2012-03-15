@@ -8,86 +8,53 @@ const char *str_expr_op()
 	return "op";
 }
 
-int operate(expr *lhs, expr *rhs, enum op_type op, int *bad)
+/* FIXME: assumed to be signed long */
+#define OP_EXEC(t, operator)        \
+int exec_op_ ## t(op *op, int *bad) \
+{                                   \
+	(void)bad;                        \
+	return op->lhs->val.iv.val operator op->rhs->val.iv.val;  \
+}
+
+OP_EXEC(multiply,   *)
+OP_EXEC(modulus,    %)
+OP_EXEC(eq,         ==)
+OP_EXEC(ne,         !=)
+OP_EXEC(le,         <=)
+OP_EXEC(lt,         <)
+OP_EXEC(ge,         >=)
+OP_EXEC(gt,         >)
+OP_EXEC(xor,        ^)
+OP_EXEC(or,         |)
+OP_EXEC(and,        &)
+OP_EXEC(orsc,       ||)
+OP_EXEC(andsc,      &&)
+OP_EXEC(shiftl,     <<)
+OP_EXEC(shiftr,     >>)
+#undef OP_EXEC
+
+#define OP_EXEC(t, operator)           \
+int exec_op_ ## t(op *op, int *bad)    \
+{                                      \
+	(void)bad;                           \
+	return operator op->lhs->val.iv.val; \
+}
+
+OP_EXEC(not,  !)
+OP_EXEC(bnot, ~)
+
+#undef OP_EXEC
+
+int op_exec(op *op, int *bad)
 {
-#define OP(a, b) case a: return lhs->val.iv.val b rhs->val.iv.val
-	if(op != op_deref && !expr_kind(lhs, val)){
+	if(expr_kind(op->lhs, val) && expr_kind(op->rhs, val)){
+		return op->f_exec(op, bad);
+	}else{
 		*bad = 1;
 		return 0;
 	}
-
-	switch(op){
-		OP(op_multiply,   *);
-		OP(op_modulus,    %);
-		OP(op_eq,         ==);
-		OP(op_ne,         !=);
-		OP(op_le,         <=);
-		OP(op_lt,         <);
-		OP(op_ge,         >=);
-		OP(op_gt,         >);
-		OP(op_xor,        ^);
-		OP(op_or,         |);
-		OP(op_and,        &);
-		OP(op_orsc,       ||);
-		OP(op_andsc,      &&);
-		OP(op_shiftl,     <<);
-		OP(op_shiftr,     >>);
-
-		case op_divide:
-			if(rhs->val.iv.val)
-				return lhs->val.iv.val / rhs->val.iv.val;
-			warn_at(&rhs->where, "division by zero");
-			*bad = 1;
-			return 0;
-
-		case op_plus:
-			if(rhs)
-				return lhs->val.iv.val + rhs->val.iv.val;
-			return lhs->val.iv.val;
-
-		case op_minus:
-			if(rhs)
-				return lhs->val.iv.val - rhs->val.iv.val;
-			return -lhs->val.iv.val;
-
-		case op_not:  return !lhs->val.iv.val;
-		case op_bnot: return ~lhs->val.iv.val;
-
-		case op_deref:
-			/*
-			 * potential for major ICE here
-			 * I mean, we might not even be dereferencing the right size pointer
-			 */
-			/*
-			switch(lhs->vartype->primitive){
-				case type_int:  return *(int *)lhs->val.s;
-				case type_char: return *       lhs->val.s;
-				default:
-					break;
-			}
-
-			ignore for now, just deal with simple stuff
-			*/
-			if(lhs->ptr_safe && expr_kind(lhs, addr)){
-				if(lhs->array_store->type == array_str)
-					return *lhs->val.s;
-				/*return lhs->val.exprs[0]->val.i;*/
-			}
-			*bad = 1;
-			return 0;
-
-		case op_struct_ptr:
-		case op_struct_dot:
-			*bad = 1;
-			return 0;
-
-		case op_unknown:
-			break;
-	}
-
-	ICE("unhandled asm operate type");
-	return 0;
 }
+
 
 void operate_optimise(expr *e)
 {
@@ -131,7 +98,7 @@ int fold_const_expr_op(expr *e)
 	if(!l && !r && expr_kind(e->lhs, val) && (e->rhs ? expr_kind(e->rhs, val) : 1)){
 		int bad = 0;
 
-		e->val.iv.val = operate(e->lhs, e->rhs, e->op, &bad);
+		e->val.iv.val = e->op->f_exec(e->op, e->lhs, e->rhs, &bad);
 
 		if(!bad)
 			expr_mutate_wrapper(e, val);
@@ -143,7 +110,7 @@ int fold_const_expr_op(expr *e)
 
 		return bad;
 	}else{
-		operate_optimise(e);
+		e->op->f_optimise(e->op, e->lhs, e->rhs);
 	}
 #undef VAL
 
@@ -342,14 +309,10 @@ norm_tt:
 
 void gen_expr_str_op(expr *e, symtable *stab)
 {
+	e->op->f_gen_str(e->op);
 	(void)stab;
 	idt_printf("op: %s\n", op_to_str(e->op));
 	gen_str_indent++;
-
-	if(e->op == op_deref){
-		idt_printf("deref size: %s ", decl_to_str(e->tree_type));
-		fputc('\n', cc1_out);
-	}
 
 #define PRINT_IF(hs) if(e->hs) print_expr(e->hs)
 	PRINT_IF(lhs);
@@ -357,33 +320,6 @@ void gen_expr_str_op(expr *e, symtable *stab)
 #undef PRINT_IF
 
 	gen_str_indent--;
-}
-
-static void asm_idiv(expr *e, symtable *tab)
-{
-	/*
-	 * idiv — Integer Division
-	 * The idiv asm_temp divides the contents of the 64 bit integer EDX:EAX (constructed by viewing EDX as the most significant four bytes and EAX as the least significant four bytes) by the specified operand value. The quotient result of the division is stored into EAX, while the remainder is placed in EDX.
-	 * Syntax
-	 * idiv <reg32>
-	 * idiv <mem>
-	 *
-	 * Examples
-	 *
-	 * idiv ebx — divide the contents of EDX:EAX by the contents of EBX. Place the quotient in EAX and the remainder in EDX.
-	 * idiv DWORD PTR [var] — divide the contents of EDX:EAS by the 32-bit value stored at memory location var. Place the quotient in EAX and the remainder in EDX.
-	 */
-
-	gen_expr(e->lhs, tab);
-	gen_expr(e->rhs, tab);
-	/* pop top stack (rhs) into b, and next top into a */
-
-	asm_temp(1, "xor rdx,rdx");
-	asm_temp(1, "pop rbx");
-	asm_temp(1, "pop rax");
-	asm_temp(1, "idiv rbx");
-
-	asm_temp(1, "push r%cx", e->op == op_divide ? 'a' : 'd');
 }
 
 static void asm_compare(expr *e, symtable *tab)

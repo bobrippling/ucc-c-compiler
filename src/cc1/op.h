@@ -1,22 +1,22 @@
 #ifndef OP_H
 #define OP_H
 
-typedef int         op_exec(expr *lhs, expr *rhs, int *bad);
-typedef int         op_optimise(expr *lhs, expr *rhs);
-typedef void        op_compare(expr *lhs, expr *rhs);
-typedef void        op_fold(     expr *e);
-typedef void        op_gen(      expr *e);
-typedef void        op_gen_store(expr *e);
+typedef int         func_op_exec(op *, int *bad);
+typedef int         func_op_optimise(op *);
+typedef void        func_op_compare(op *);
+typedef void        func_op_fold(op *);
+typedef void        func_op_gen(op *);
+typedef void        func_op_gen_store(op *);
 
 struct op
 {
-	op_exec       *f_exec;
-	op_optimise   *f_optimise; /* optional */
+	func_op_exec       *f_exec;
+	func_op_optimise   *f_optimise; /* optional */
 
-	op_fold       *f_fold;
-	op_gen        *f_gen, *f_gen_str;
-	op_gen_store  *f_store;   /* optional */
-	op_compare    *f_compare; /* optional */
+	func_op_fold       *f_fold;
+	func_op_gen        *f_gen, *f_gen_str;
+	func_op_gen_store  *f_store;   /* optional */
+	func_op_compare    *f_compare; /* optional */
 
 	func_str      *f_str;
 
@@ -24,8 +24,8 @@ struct op
 };
 
 
-op   *op_new(expr *lhs, expr *rhs, op_exec *f_exec, op_fold *f_fold, op_gen *f_gen, op_gen *f_gen_str, func_str *f_str);
-void  op_mutate(op *e,             op_exec *f_exec, op_fold *f_fold, op_gen *f_gen, op_gen *f_gen_str, func_str *f_str);
+op   *op_new(expr *lhs, expr *rhs, func_op_exec *f_exec, func_op_fold *f_fold, func_op_gen *f_gen, func_op_gen *f_gen_str, func_str *f_str);
+void  op_mutate(op *e,             func_op_exec *f_exec, func_op_fold *f_fold, func_op_gen *f_gen, func_op_gen *f_gen_str, func_str *f_str);
 
 #include "ops/op_deref.h"
 #include "ops/op_divide.h"
