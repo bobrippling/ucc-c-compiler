@@ -27,3 +27,15 @@ uint16_t ntohs(uint16_t netshort)
 {
 }
 */
+
+#ifdef DONT_DEFINE
+uint16_t swap16(uint16_t x)
+{
+	return (((x << 8) & 0xFF00) | ((x >> 8) & 0xFF));
+}
+
+uint32_t swap32(uint32_t x)
+{
+	return ((x & 0xFF) << 24) | ((x & 0xFF00) << 8) | ((x >> 8) & 0xFF00) | ((x >> 24) & 0xFF);
+}
+#endif
