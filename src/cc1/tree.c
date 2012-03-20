@@ -16,6 +16,10 @@ void where_new(struct where *w)
 {
 	extern int current_line, current_chr;
 	extern const char *current_fname;
+	extern int buffereof;
+
+	/*if(buffereof)
+		ICW("where_new() after buffereof");*/
 
 	w->line  = current_line;
 	w->chr   = current_chr;
