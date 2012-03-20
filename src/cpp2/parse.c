@@ -132,6 +132,8 @@ word:
 	if(*p){
 		t = umalloc(sizeof *t);
 		dynarray_add((void ***)&tokens, t);
+		if(isspace(*p))
+			t->had_whitespace = 1;
 		t->tok = TOKEN_OTHER;
 		t->w = ustrdup(p);
 	}
@@ -180,9 +182,9 @@ char *tokens_join(token **tokens)
 	val = umalloc(len);
 	*val = '\0';
 	for(i = 0; tokens[i]; i++){
-		strcat(val, token_str(tokens[i]));
-		if(tokens[i+1] && tokens[i]->had_whitespace)
+		if(tokens[i]->had_whitespace)
 			strcat(val, " ");
+		strcat(val, token_str(tokens[i]));
 	}
 
 	return val;
@@ -450,8 +452,6 @@ void handle_macro(char *line)
 
 	DEBUG(DEBUG_NORM, "macro %s\n", tokens[0]->w);
 
-	putchar('\n'); /* keep line-no.s in sync */
-
 	/* check for '# [0-9]+ "..."' */
 	if(sscanf(tokens[0]->w, "%d \"", &i) == 1){
 		/* output, and ignore */
@@ -459,10 +459,13 @@ void handle_macro(char *line)
 		return;
 	}
 
+	MAP("include", handle_include)
+
+	putchar('\n');
+	/* keep line-no.s in sync, except for includes  */
+
 	MAP("define",  handle_define)
 	MAP("undef",   handle_undef)
-
-	MAP("include", handle_include)
 
 	MAP("ifdef",   handle_ifdef)
 	MAP("ifndef",  handle_ifndef)
