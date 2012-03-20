@@ -223,15 +223,20 @@ void eat(enum token t, const char *fnam, int line)
 {
 	if(t != curtok){
 		const int ident = curtok == token_identifier;
-		die_at(NULL, "expecting token %s, got %s %s%s%s(%s:%d)",
+		parse_had_error = 1;
+
+		warn_at(NULL,
+				"expecting token %s, got %s %s%s%s(%s:%d)",
 				token_to_str(t), token_to_str(curtok),
 				ident ? "\"" : "",
 				ident ? token_current_spel_peek() : "",
 				ident ? "\" " : "",
 				fnam, line);
-	}
 
-	nexttoken();
+		/* XXX: we continue here, assuming we had the token anyway */
+	}else{
+		nexttoken();
+	}
 }
 
 int curtok_in_list(va_list l)
