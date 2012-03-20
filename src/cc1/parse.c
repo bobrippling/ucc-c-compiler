@@ -43,6 +43,10 @@ expr *parse_expr_inc_dec(void);
 symtable *current_scope;
 
 
+/* sometimes we can carry on after an error, but we don't want to go through to compilation etc */
+int parse_had_error = 0;
+
+
 expr *parse_lone_identifier()
 {
 	expr *e;
@@ -696,6 +700,9 @@ symtable *parse()
 
 	decls = parse_decls(1, 0);
 	EAT(token_eof);
+
+	if(parse_had_error)
+		exit(1);
 
 	if(decls)
 		for(i = 0; decls[i]; i++)

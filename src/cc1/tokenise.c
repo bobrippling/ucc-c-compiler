@@ -69,9 +69,9 @@ struct stmtement
 
 static FILE *infile;
 char *current_fname;
+int buffereof = 0;
 
 static char *buffer, *bufferpos;
-static int buffereof = 0;
 static int ungetch = EOF;
 
 /* -- */
