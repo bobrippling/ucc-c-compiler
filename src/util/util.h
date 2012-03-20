@@ -13,10 +13,8 @@ void warn_at(struct where *, const char *, ...);
 void die_at( struct where *, const char *, ...);
 void vwarn(  struct where *, const char *, va_list);
 void vdie(   struct where *, const char *, va_list);
-
 void die(const char *fmt, ...);
 
-void die_ice(const char *, int);
 char *fline(FILE *f);
 char *udirname(const char *);
 char *ext_replace(const char *str, const char *ext);
