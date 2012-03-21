@@ -70,6 +70,7 @@ struct stmtement
 static FILE *infile;
 char *current_fname;
 int buffereof = 0;
+int current_fname_used;
 
 static char *buffer, *bufferpos;
 static int ungetch = EOF;
@@ -128,8 +129,11 @@ static void tokenise_read_line()
 				fin++;
 			}
 
-			free(current_fname);
+			if(!current_fname_used)
+				free(current_fname); /* else it's been taken by one or more where_new()s */
+
 			current_fname = ustrdup2(p + 1, fin);
+			current_fname_used = 0;
 
 			current_line = lno - 1; /* inc'd below */
 
@@ -148,6 +152,7 @@ void tokenise_set_file(FILE *f, const char *nam)
 {
 	infile = f;
 	current_fname = ustrdup(nam);
+	current_fname_used = 0;
 	current_line = 0;
 	buffereof = 0;
 	nexttoken();

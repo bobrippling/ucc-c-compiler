@@ -22,6 +22,7 @@ char *curdecl_func_sp;       /* for funcargs-local labels */
 stmt *curstmt_flow;          /* for break */
 stmt *curstmt_switch;        /* for case + default */
 
+static where asm_struct_enum_where;
 
 void fold_stmt_and_add_to_curswitch(stmt *t)
 {
@@ -126,11 +127,16 @@ void fold_inc_writes_if_sym(expr *e, symtable *stab)
 
 void fold_expr(expr *e, symtable *stab)
 {
+	where *old_w;
+
 	fold_get_sym(e, stab);
 
 	const_fold(e);
 
+	old_w = eof_where;
+	eof_where = &e->where;
 	e->f_fold(e, stab);
+	eof_where = old_w;
 
 	UCC_ASSERT(e->tree_type, "no tree_type after fold (%s)", e->f_str());
 	UCC_ASSERT(e->tree_type->type->primitive != type_unknown, "unknown type after folding expr %s", e->f_str());
@@ -259,9 +265,14 @@ void fold_enum(enum_st *en, symtable *stab)
 		enum_member *m = *i;
 		expr *e = m->val;
 
+		/* -1 because we can't do dynarray_add(..., 0) */
 		if(e == (expr *)-1){
+
 			/*expr_free(e); XXX: memleak */
+			where *old_w = eof_where;
+			eof_where = &asm_struct_enum_where;
 			m->val = expr_new_val(defval++);
+			eof_where = old_w;
 		}else{
 			fold_expr(e, stab);
 			if(!const_expr_is_const(e))
@@ -356,9 +367,19 @@ void fold(symtable *globs)
 #define D(x) globs->decls[x]
 	int i;
 
+	{
+		extern const char *current_fname;
+		memset(&asm_struct_enum_where, 0, sizeof asm_struct_enum_where);
+		asm_struct_enum_where.fname = current_fname;
+	}
+
 	if(fopt_mode & FOPT_ENABLE_ASM){
 		decl *df;
 		funcargs *fargs;
+		where *old_w;
+
+		old_w = eof_where;
+		eof_where = &asm_struct_enum_where;
 
 		df = decl_new();
 		fargs = df->funcargs = funcargs_new();
@@ -374,6 +395,8 @@ void fold(symtable *globs)
 		fargs->arglist[0]->decl_ptr        = decl_ptr_new();
 
 		symtab_add(globs, df, sym_global, SYMTAB_NO_SYM, SYMTAB_PREPEND);
+
+		eof_where = old_w;
 	}
 
 	fold_symtab_scope(globs);
