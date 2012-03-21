@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "ops.h"
 
 const char *str_expr_addr()

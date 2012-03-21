@@ -36,4 +36,6 @@ extern char *curdecl_func_sp;
 extern stmt *curstmt_flow;
 extern stmt *curstmt_switch;
 
+extern where *eof_where;
+
 #endif

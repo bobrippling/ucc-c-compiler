@@ -340,6 +340,12 @@ void handle_include(token **tokens)
 	fname[len-1] = '\0';
 	fname++;
 
+	if(*fname == '/'){
+		/* absolute path */
+		path = ustrdup(fname);
+		goto abs_path;
+	}
+
 	i = dynarray_count((void **)dirnames);
 	dname = dirnames[i - 1];
 
@@ -361,6 +367,7 @@ void handle_include(token **tokens)
 			fprintf(stderr, ">>> include lib: %s\n", path);
 	}else{
 		path = ustrprintf("%s/%s", dname, fname);
+abs_path:
 		f = fopen(path, "r");
 		if(!f)
 			die("open %s (%s): %s", fname, path, strerror(errno));
