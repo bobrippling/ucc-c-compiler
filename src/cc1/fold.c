@@ -29,6 +29,10 @@ void fold_stmt_and_add_to_curswitch(stmt *t)
 	if(!curstmt_switch)
 		die_at(&t->expr->where, "not inside a switch stmtement");
 	dynarray_add((void ***)&curstmt_switch->codes, t);
+
+	/* we are compound, copy some attributes */
+	t->kills_below_code = t->lhs->kills_below_code;
+	/* TODO: copy ->freestanding? */
 }
 
 void fold_funcargs_equal(funcargs *args_a, funcargs *args_b, int check_vari, where *w, const char *warn_pre, const char *func_spel)
