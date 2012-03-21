@@ -8,6 +8,7 @@
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
 #include "macro.h"
+#include "parse.h"
 #include "main.h"
 
 #define ARRAY_LEN(x) (sizeof(x) / sizeof(x[0]))
@@ -137,6 +138,7 @@ re_read:
 			line[len - 1] = '\0';
 			join = 1;
 			last = line;
+			current_line++; /* FIXME: correct line increment for split lines */
 		}else{
 			return line;
 		}

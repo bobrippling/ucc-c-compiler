@@ -56,7 +56,6 @@ struct stmt_flow
 
 #define stmt_new_wrapper(type, stab) stmt_new(fold_stmt_ ## type, gen_stmt_ ## type, str_stmt_ ## type, stab)
 #define stmt_mutate_wrapper(s, type)    stmt_mutate(s, fold_stmt_ ## type, gen_stmt_ ## type, str_stmt_ ## type)
-#define stmt_new_kills_dead(t, stab) stmt_new_set_kills_dead(stmt_new_wrapper(t, stab))
 
 #define stmt_kind(st, kind) ((st)->f_fold == fold_stmt_ ## kind)
 

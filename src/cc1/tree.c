@@ -12,18 +12,28 @@
 #include "struct.h"
 #include "enum.h"
 
+where *eof_where = NULL;
+
 void where_new(struct where *w)
 {
 	extern int current_line, current_chr;
 	extern const char *current_fname;
 	extern int buffereof;
 
-	/*if(buffereof)
-		ICW("where_new() after buffereof");*/
+	if(buffereof){
+		if(eof_where)
+			memcpy(w, eof_where, sizeof *w);
+		else
+			ICE("where_new() after buffer eof");
+	}else{
+		extern int current_fname_used;
 
-	w->line  = current_line;
-	w->chr   = current_chr;
-	w->fname = current_fname;
+		w->line  = current_line;
+		w->chr   = current_chr;
+		w->fname = current_fname;
+
+		current_fname_used = 1;
+	}
 }
 
 decl_desc *decl_desc_new(enum decl_desc_type t)
@@ -49,14 +59,6 @@ decl *decl_new()
 	decl *d = umalloc(sizeof *d);
 	where_new(&d->where);
 	d->type = type_new();
-	return d;
-}
-
-decl *decl_new_where(where *w)
-{
-	decl *d = decl_new();
-	memcpy(&d->where,       w, sizeof w);
-	memcpy(&d->type->where, w, sizeof w);
 	return d;
 }
 

@@ -135,7 +135,7 @@ struct funcargs
 stmt        *tree_new(symtable *stab);
 type        *type_new(void);
 decl        *decl_new(void);
-decl        *decl_new_where(where *);
+decl_ptr    *decl_ptr_new(void);
 array_decl  *array_decl_new(void);
 funcargs    *funcargs_new(void);
 
