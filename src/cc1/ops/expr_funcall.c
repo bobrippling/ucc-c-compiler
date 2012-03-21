@@ -25,7 +25,7 @@ void fold_expr_funcall(expr *e, symtable *stab)
 
 		e->sym = symtab_search(stab, sp);
 		if(!e->sym){
-			df = decl_new_where(&e->where);
+			df = decl_new();
 
 			df->type->primitive = type_int;
 			df->type->spec     |= spec_extern;

@@ -1,5 +1,3 @@
-#include <string.h>
-
 #include "ops.h"
 
 const char *str_expr_val()
@@ -16,9 +14,10 @@ void fold_expr_val(expr *e, symtable *stab)
 {
 	(void)e;
 	(void)stab;
+	eof_where = &e->where;
 	e->tree_type = decl_new();
 	e->tree_type->type->primitive = type_int;
-	memcpy(&e->tree_type->where, &e->where, sizeof e->where);
+	eof_where = NULL;
 }
 
 void gen_expr_val(expr *e, symtable *stab)
