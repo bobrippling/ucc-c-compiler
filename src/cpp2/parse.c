@@ -466,10 +466,9 @@ void handle_macro(char *line)
 		return;
 	}
 
-	MAP("include", handle_include)
+	putchar('\n'); /* keep line-no.s in sync */
 
-	putchar('\n');
-	/* keep line-no.s in sync, except for includes  */
+	MAP("include", handle_include)
 
 	MAP("define",  handle_define)
 	MAP("undef",   handle_undef)
