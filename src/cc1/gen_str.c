@@ -161,6 +161,11 @@ void print_decl(decl *d, enum pdeclargs mode)
 	}else{
 		fputs(type_to_str(d->type), cc1_out);
 
+		if(d->type->typeof){
+			idt_printf("typeof expr:\n");
+			print_expr(d->type->typeof);
+		}
+
 		if(fopt_mode & FOPT_DECL_PTR_STAT){
 			const int idt_orig = gen_str_indent;
 			decl_ptr *dpi;
@@ -303,7 +308,7 @@ void print_stmt_flow(stmt_flow *t)
 
 void print_stmt(stmt *t)
 {
-	idt_printf("stmtement: %s\n", t->f_str());
+	idt_printf("statement: %s\n", t->f_str());
 
 	if(t->flow){
 		gen_str_indent++;

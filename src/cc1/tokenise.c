@@ -64,7 +64,8 @@ struct stmtement
 	{ "struct",  token_struct  },
 	{ "enum",    token_enum    },
 
-	{ "sizeof",  token_sizeof  }
+	{ "sizeof",    token_sizeof },
+	{ "__typeof",  token_typeof }
 };
 
 static FILE *infile;

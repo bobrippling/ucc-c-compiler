@@ -21,6 +21,8 @@
 #include "parse.h"
 #include "parse_type.h"
 
+#include "expr.h"
+
 type *parse_type_struct(void);
 type *parse_type_enum(void);
 decl_ptr *parse_decl_ptr_array(enum decl_mode mode, char **decl_sp, funcargs **decl_args);
@@ -115,6 +117,13 @@ type *parse_type()
 	spec = 0;
 	t = NULL;
 
+	if(accept(token_typeof)){
+		t = type_new();
+		t->typeof = parse_expr_sizeof_typeof();
+		t->typeof->expr_is_typeof = 1;
+		return t;
+	}
+
 	/* read "const", "unsigned", ... and "int"/"long" ... in any order */
 	while(td = NULL,
 			((flag = curtok_is_type_specifier())
@@ -133,7 +142,7 @@ type *parse_type()
 
 			UCC_ASSERT(this != spec_none, "spec none where spec expected");
 
-			/* we can't check in fold, since 1 & 1 & 1 is still just 1 */
+			/* we can't check in fold, since 1 | 1 | 1 is still just 1 */
 			if(this & spec)
 				die_at(NULL, "duplicate type specifier \"%s\"", spec_to_str(spec));
 
@@ -150,7 +159,7 @@ type *parse_type()
 
 			t = type_new();
 			t->primitive = type_typedef;
-			t->tdef = td;
+			t->typeof = expr_new_sizeof_decl(td);
 
 			EAT(token_identifier);
 			break;
@@ -168,9 +177,15 @@ type *parse_type()
 		}
 	}
 
-	if(!t && spec)
-		/* unsigned x; */
-		INT_TYPE(t);
+
+	if(spec){
+		if(!t)
+			/* unsigned x; */
+			INT_TYPE(t);
+		else if(t->typeof)
+			die_at(NULL, "type-spec not allowed with tyoedef"); /* FIXME: disallow long/short + signed/unsigned */
+	}
+
 
 	if(t)
 		t->spec = spec;
@@ -425,19 +440,10 @@ decl *parse_decl(type *t, enum decl_mode mode)
 
 	dp = parse_decl_ptr_array(mode, &spel, &args);
 
-	if(t->tdef){
-		/* get the typedef stuff now */
-		d = decl_copy(t->tdef);
-
-		d->type->tdef = NULL;
-		d->type->spec |= t->spec;
-
-		*decl_leaf(d) = dp;
-	}else{
-		d = decl_new();
-		d->decl_ptr = dp;
-		d->type = type_copy(t);
-	}
+	/* don't fold typedefs until later (for __typeof) */
+	d = decl_new();
+	d->decl_ptr = dp;
+	d->type = type_copy(t);
 
 	d->spel     = spel;
 	d->funcargs = args;

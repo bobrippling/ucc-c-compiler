@@ -175,6 +175,29 @@ void fold_decl(decl *d, symtable *stab)
 			break;
 	}
 
+
+	/* typedef / __typeof folding */
+	if(d->type->typeof){
+		/* get the typedef decl from t->typeof->tree_type */
+		const enum type_spec old_spec = d->type->spec;
+		decl *tdef;
+
+		fold_expr(d->type->typeof, stab);
+
+		tdef = d->type->typeof->tree_type;
+
+		/* type */
+		memcpy(d->type, d->type->typeof->tree_type->type, sizeof *d->type);
+		UCC_ASSERT(!d->type->typeof,
+				"nested typedefs are probably broken (%s)",
+				d->type->typeof->tree_type->spel);
+		d->type->spec |= old_spec;
+
+		/* decl */
+		if(tdef->decl_ptr)
+			*decl_leaf(d) = decl_ptr_copy(tdef->decl_ptr);
+	}
+
 	if(d->funcargs)
 		fold_funcargs(d->funcargs, stab, d->spel);
 

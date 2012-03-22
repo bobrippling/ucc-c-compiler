@@ -124,7 +124,7 @@ int type_size(const type *t)
 			return platform_word_size();
 
 		case type_typedef:
-			return decl_size(t->tdef);
+			return decl_size(t->typeof->tree_type);
 
 		case type_struct:
 			return struct_size(t->struc);
@@ -386,8 +386,7 @@ const char *type_to_str(const type *t)
 	static char buf[TYPE_STATIC_BUFSIZ];
 	char *bufp = buf;
 
-	if(t->tdef)
-		return type_to_str(t->tdef->type);
+	UCC_ASSERT(!t->typeof, "->typeof should've been folded by now");
 
 	if(t->spec)
 		bufp += snprintf(bufp, BUF_SIZE, "%s", spec_to_str_full(t->spec));

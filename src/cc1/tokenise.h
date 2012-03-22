@@ -20,6 +20,7 @@ enum token
 	token_goto,
 
 	token_sizeof,
+	token_typeof,
 
 	token_identifier,
 	token_integer,     /* aka [1-9] */

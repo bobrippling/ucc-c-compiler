@@ -56,8 +56,8 @@ struct type
 	struct_st *struc;
 	/* NULL unless this is an enum */
 	enum_st *enu;
-	/* NULL unless.. a typedef.. duh */
-	decl  *tdef;
+	/* NULL unless from typedef or __typeof() */
+	expr *typeof;
 
 	char *spel; /* spel for struct/enum lookup */
 };
