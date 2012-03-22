@@ -207,7 +207,7 @@ void gen_expr_str_funcall(expr *e, symtable *stab)
 
 expr *expr_new_funcall()
 {
-	expr *e = expr_new_wrapper(funcall);
+	expr *e = expr_mutate_wrapper(funcall);
 	e->freestanding = 1;
 	return e;
 }

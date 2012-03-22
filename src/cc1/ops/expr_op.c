@@ -204,7 +204,7 @@ void fold_op_struct(expr *e, symtable *stab)
 	 * e = { lhs = { expr = "a", type = addr }, rhs = "b", type = ptr }
 	 */
 	if(ptr_depth_exp == 0){
-		expr *new = expr_new_addr();
+		expr *new = expr_mutate_addr();
 
 		new->expr = e->lhs;
 		e->lhs = new;
@@ -581,10 +581,12 @@ void gen_expr_op_store(expr *e, symtable *stab)
 	ICE("invalid store-op %s", op_to_str(e->op));
 }
 
-expr *expr_new_op(enum op_type op)
+expr *expr_mutate_op(enum op_type op)
 {
-	expr *e = expr_new_wrapper(op);
+	expr *e = expr_mutate_wrapper(op);
 	e->f_store = gen_expr_op_store;
+	e->f_fold = fold_expr_op;
+	e->f_const_fold = fold_const_expr_op; /* FIXME */
 	e->op = op;
 	return e;
 }

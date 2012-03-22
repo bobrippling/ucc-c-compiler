@@ -126,9 +126,7 @@ void gen_expr_str_addr(expr *e, symtable *stab)
 	}
 }
 
-expr *expr_new_addr()
+void mutate_expr_addr(expr *e)
 {
-	expr *e = expr_new_wrapper(addr);
 	e->f_gen_1 = gen_expr_addr_1;
-	return e;
 }

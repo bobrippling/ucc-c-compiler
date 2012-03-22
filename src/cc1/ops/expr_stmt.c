@@ -45,9 +45,9 @@ void gen_expr_str_stmt(expr *e, symtable *stab)
 	gen_str_indent--;
 }
 
-expr *expr_new_stmt(stmt *code)
+expr *expr_mutate_stmt(stmt *code)
 {
-	expr *e = expr_new_wrapper(stmt);
+	expr *e = expr_mutate_wrapper(stmt);
 	e->code = code;
 	return e;
 }

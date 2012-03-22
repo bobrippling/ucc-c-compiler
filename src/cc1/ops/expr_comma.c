@@ -38,9 +38,13 @@ void gen_expr_str_comma(expr *e, symtable *stab)
 	gen_str_indent--;
 }
 
+void expr_mutate_comma(expr *e)
+{
+	e->f_const_fold = fold_const_expr_comma;
+}
+
 expr *expr_new_comma()
 {
 	expr *e = expr_new_wrapper(comma);
-	e->f_const_fold = fold_const_expr_comma;
 	return e;
 }

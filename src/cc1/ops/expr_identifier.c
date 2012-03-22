@@ -100,9 +100,9 @@ void gen_expr_identifier_store(expr *e, symtable *stab)
 	asm_sym(ASM_SET, e->sym, "rax");
 }
 
-expr *expr_new_identifier(char *sp)
+expr *expr_mutate_identifier(char *sp)
 {
-	expr *e = expr_new_wrapper(identifier);
+	expr *e = expr_mutate_wrapper(identifier);
 	e->spel = sp;
 
 	e->f_store      = gen_expr_identifier_store;

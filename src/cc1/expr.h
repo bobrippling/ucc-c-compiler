@@ -7,6 +7,7 @@ typedef void         func_gen_store(expr *, symtable *);
 typedef void         func_gen_1(    expr *, FILE *);
 typedef int          func_const(    expr *);
 typedef const char  *func_str(void);
+typedef void         func_mutate_expr(expr *);
 
 struct expr
 {
@@ -54,8 +55,8 @@ struct expr
 };
 
 
-expr *expr_new(            func_fold *f_fold, func_str *f_str, func_gen *f_gen, func_gen *f_gen_str);
-void  expr_mutate(expr *e, func_fold *f_fold, func_str *f_str, func_gen *f_gen, func_gen *f_gen_str);
+expr *expr_new(func_mutate_expr *);
+void  expr_mutate(expr *e, func_mutate_expr *);
 
 expr *expr_new_intval(intval *);
 
@@ -74,8 +75,7 @@ expr *expr_assignment(expr *to, expr *from);
 #include "ops/expr_val.h"
 #include "ops/expr_stmt.h"
 
-#define expr_new_wrapper(type)       expr_new(      fold_expr_ ## type, str_expr_ ## type, gen_expr_ ## type, gen_expr_str_ ## type)
-#define expr_mutate_wrapper(e, type) expr_mutate(e, fold_expr_ ## type, str_expr_ ## type, gen_expr_ ## type, gen_expr_str_ ## type)
+#define expr_new_wrapper(type)       expr_new(mutate_expr_ ## type)
 
 #define expr_free(x) do{decl_free((x)->tree_type); free(x);}while(0)
 
