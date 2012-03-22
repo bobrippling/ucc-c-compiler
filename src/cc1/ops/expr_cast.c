@@ -82,7 +82,7 @@ void gen_expr_cast(expr *e, symtable *stab)
 			/* loss of precision, touch crabcakes */
 			asm_comment("loss of precision, noop cast");
 		}else{
-			asm_pop(ASM_REG_A);
+			asm_pop(NULL, ASM_REG_A);
 			/*
 			* movsx -> mov sign extend
 			* movsx rax, eax ; long <- int, etc

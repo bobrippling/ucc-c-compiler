@@ -166,7 +166,7 @@ invalid:
 		}else{
 			gen_expr(e->expr, stab);
 
-			asm_pop(ASM_REG_A);
+			asm_pop(NULL, ASM_REG_A);
 
 			asm_output_new(asm_out_type_call,
 					asm_operand_new_reg(NULL, ASM_REG_A),

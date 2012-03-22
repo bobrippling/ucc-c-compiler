@@ -259,7 +259,8 @@ void fold_expr_op(expr *e, symtable *stab)
 	if(e->rhs){
 		fold_expr(e->rhs, stab);
 
-		fold_typecheck(&e->lhs, &e->rhs, stab, &e->where);
+		/* check here? */
+		fold_typecheck(e->lhs, &e->rhs, stab, &e->where);
 	}
 
 	if(e->op == op_deref){
@@ -377,8 +378,8 @@ static void asm_idiv(expr *e, symtable *tab)
 	*/
 
 	ASM_XOR(D);
-	asm_pop(ASM_REG_B);
-	asm_pop(ASM_REG_A);
+	asm_pop(e->lhs->tree_type, ASM_REG_B);
+	asm_pop(e->rhs->tree_type, ASM_REG_A);
 	asm_output_new(asm_out_type_idiv, asm_operand_new_reg(e->tree_type, ASM_REG_A), NULL);
 	asm_push(e->op == op_divide ? ASM_REG_A : ASM_REG_D);
 }
@@ -397,8 +398,8 @@ static void asm_compare(expr *e, symtable *tab)
 	asm_temp(1, "cmp rax,rbx");
 	*/
 
-	asm_pop(ASM_REG_B);
-	asm_pop(ASM_REG_A);
+	asm_pop(e->tree_type, ASM_REG_B); /* assume they've been converted by now */
+	asm_pop(e->tree_type, ASM_REG_A);
 	ASM_XOR(C);
 	asm_output_new(asm_out_type_cmp,
 			asm_operand_new_reg(e->tree_type, ASM_REG_A),
@@ -442,7 +443,7 @@ static void asm_shortcircuit(expr *e, symtable *tab)
 	/* leave the result on the stack (if false) and bail */
 	asm_jmp_if_zero(e->op != op_andsc, baillabel);
 
-	asm_pop(ASM_REG_A);
+	asm_pop(NULL, ASM_REG_A); /* ignore result */
 	gen_expr(e->rhs, tab);
 
 	asm_label(baillabel);
@@ -458,7 +459,7 @@ void asm_operate_struct(expr *e, symtable *tab)
 	gen_expr(e->lhs, tab);
 
 	/* pointer to the struct is on the stack, get from the offset */
-	asm_pop(ASM_REG_A);
+	asm_pop(NULL, ASM_REG_A);
 	asm_comment("struct ptr");
 
 	asm_output_new(
@@ -506,8 +507,8 @@ void gen_expr_op(expr *e, symtable *tab)
 		case op_not:
 			/* compare with 0 */
 			gen_expr(e->lhs, tab);
-			ASM_XOR(B);
-			asm_pop(ASM_REG_B);
+			/*ASM_XOR(B); don't know why this was here */
+			asm_pop(e->lhs->tree_type, ASM_REG_B);
 			ASM_TEST(NULL, ASM_REG_A);
 			asm_set("z", ASM_REG_B); /* setz bl */
 			asm_push(ASM_REG_B);
@@ -515,7 +516,7 @@ void gen_expr_op(expr *e, symtable *tab)
 
 		case op_deref:
 			gen_expr(e->lhs, tab);
-			asm_pop(ASM_REG_A);
+			asm_pop(NULL, ASM_REG_A);
 
 			/* e.g. "movzx rax, byte [rax]" */
 			asm_output_new(
@@ -565,8 +566,9 @@ void gen_expr_op(expr *e, symtable *tab)
 	gen_expr(e->lhs, tab);
 	if(e->rhs){
 		gen_expr(e->rhs, tab);
-		asm_pop(ASM_REG_C);
-		asm_pop(ASM_REG_A);
+
+		asm_pop(e->lhs->tree_type, ASM_REG_A);
+		asm_pop(e->rhs->tree_type, ASM_REG_C);
 
 		asm_output_new(
 				instruct,
@@ -575,7 +577,7 @@ void gen_expr_op(expr *e, symtable *tab)
 			);
 		/*asm_temp(1, "%s rax, %s", instruct, rhs);*/
 	}else{
-		asm_pop(ASM_REG_A);
+		asm_pop(e->tree_type, ASM_REG_A);
 		asm_output_new(
 				instruct,
 				asm_operand_new_reg(e->tree_type, ASM_REG_A),
@@ -597,11 +599,11 @@ void gen_expr_op_store(expr *store, symtable *stab)
 			asm_comment("pointer on stack");
 
 			/* move `pop` into `pop` */
-			asm_pop(ASM_REG_A);
+			asm_pop(NULL, ASM_REG_A);
 			asm_comment("address");
 
 
-			asm_pop(ASM_REG_B);
+			asm_pop(store->tree_type, ASM_REG_B);
 			asm_comment("value");
 
 			asm_output_new(
@@ -614,7 +616,7 @@ void gen_expr_op_store(expr *store, symtable *stab)
 		case op_struct_ptr:
 			gen_expr(store->lhs, stab);
 
-			asm_pop(ASM_REG_B);
+			asm_pop(NULL, ASM_REG_B);
 			asm_comment("struct addr");
 
 			asm_output_new(
@@ -654,6 +656,7 @@ expr *expr_new_op(enum op_type op)
 {
 	expr *e = expr_new_wrapper(op);
 	e->f_store = gen_expr_op_store;
+	e->f_const_fold = fold_const_expr_op;
 	e->op = op;
 	return e;
 }

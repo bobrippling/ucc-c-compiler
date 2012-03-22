@@ -126,7 +126,8 @@ void asm_sym(enum asm_sym_type t, sym *s, asm_operand *reg)
 		brackets = asm_operand_new_deref(
 				NULL, /* pointer */
 				asm_operand_new_reg(NULL, ASM_REG_BP),
-				((is_auto ? -1 : 2) * platform_word_size()) + s->offset);
+				/*((is_auto ? -1 : 2) * platform_word_size()) + s->offset); - broken? */
+				(is_auto ? -1 : 1) * (((is_auto ? 1 : 2) * platform_word_size()) + s->offset));
 	}
 
 #if 0

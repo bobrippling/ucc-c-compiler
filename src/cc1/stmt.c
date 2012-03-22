@@ -32,7 +32,7 @@ stmt *stmt_new(func_fold_stmt *f_fold, func_gen_stmt *f_gen, func_str_stmt *f_st
 
 	stmt_mutate(s, f_fold, f_gen, f_str);
 
-	UCC_ASSERT(stab, "no symtable for stmtement");
+	UCC_ASSERT(stab, "no symtable for statement");
 	s->symtab = stab;
 
 	return s;

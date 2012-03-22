@@ -42,3 +42,5 @@ enum op_type
 #include "expr.h"
 #include "stmt.h"
 #include "sym.h"
+
+extern where *eof_where;

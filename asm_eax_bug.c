@@ -1,18 +1,14 @@
-#include <stdarg.h>
-
-int r = 5;
-
-pf(int i, ...)
+second(int i, ...)
 {
-	va_list l;
+	void *l;
+	int r;
 
-	va_start(l, i);
-	r = va_arg(l, int);
-	va_end(l);
+	l = (void *)&i;
+	r = (*(int *)(l += 8));
 	return r;
 }
 
 main()
 {
-	return pf(1, 2);
+	return second(9, 3);
 }

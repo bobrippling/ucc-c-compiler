@@ -621,8 +621,8 @@ stmt *parse_label_next(stmt *lbl)
 	 *   lbl:
 	 *   printf("yo\n");
 	 *
-	 * both the label and the printf stmtements are in the if
-	 * as a compound stmtement
+	 * both the label and the printf statements are in the if
+	 * as a compound statement
 	 */
 	return lbl;
 }

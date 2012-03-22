@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdarg.h>
+#include <string.h>
 
 #include "../util/util.h"
 #include "../util/dynarray.h"
@@ -67,8 +68,6 @@ ASM_WRAP(or,       2)
 ASM_WRAP(xor,      2)
 ASM_WRAP(cmp,      2)
 ASM_WRAP(test,     2)
-ASM_WRAP(pop,      1)
-ASM_WRAP(push,     1)
 ASM_WRAP(shl,      2)
 ASM_WRAP(shr,      2)
 ASM_WRAP(call,     1)
@@ -76,6 +75,18 @@ ASM_WRAP(leave,    0)
 ASM_WRAP(ret,      0)
 ASM_WRAP(lea,      2)
 ASM_WRAP(idiv,     1)
+
+ASM_WRAP(push,     1)
+
+void asm_out_type_pop(asm_output *out)
+{
+	asm_out_generic("pop", out, 1);
+
+	/* TODO: optimise for poping a full word
+	 * if(out->lhs->tt)*/
+	fprintf(cc_out[SECTION_TEXT], "; TODO: truncate ^\n");
+	ICE("TODO: truncate pop");
+}
 
 void asm_out_type_mov(asm_output *out)
 {
@@ -213,11 +224,18 @@ asm_output *asm_output_new(asm_out_func *impl, asm_operand *lhs, asm_operand *rh
 
 void asm_set(const char *cmd, enum asm_reg reg)
 {
+	where *old_w = eof_where;
+	where w;
+
 	decl *d;
 	asm_operand *op;
 	asm_output *o;
 
+	eof_where = &w;
+	memset(eof_where, 0, sizeof w);
 	d = decl_new();
+	eof_where = old_w;
+
 	d->type->primitive = type_char; /* force "sete al" rather than "sete rax" */
 	op = asm_operand_new_reg(d, reg);
 	o = asm_output_new(asm_out_type_set, op, NULL);
@@ -281,11 +299,11 @@ void asm_push(enum asm_reg reg)
 			NULL);
 }
 
-void asm_pop(enum asm_reg reg)
+void asm_pop(decl *d, enum asm_reg reg)
 {
 	asm_output_new(
 			asm_out_type_pop,
-			asm_operand_new_reg(NULL, reg),
+			asm_operand_new_reg(d, reg),
 			NULL);
 }
 

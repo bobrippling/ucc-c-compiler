@@ -75,7 +75,7 @@ void asm_comment(const char *, ...);
 
 /* wrappers for asm_output_new */
 void asm_push(enum asm_reg);
-void asm_pop( enum asm_reg);
+void asm_pop(decl *d, enum asm_reg); /* if decl isn't machine-word, truncations are done */
 
 /* nothing to do with code */
 void asm_out_section(enum section_type, const char *fmt, ...);

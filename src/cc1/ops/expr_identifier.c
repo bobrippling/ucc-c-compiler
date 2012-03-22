@@ -29,9 +29,9 @@ void fold_expr_identifier(expr *e, symtable *stab)
 
 			e->array_store = array_decl_new();
 
-			UCC_ASSERT(curdecl_func_sp, "no spel for current func");
-			e->array_store->data.str = curdecl_func_sp;
-			e->array_store->len = strlen(curdecl_func_sp) + 1; /* +1 - take the null byte */
+			UCC_ASSERT(curdecl_func, "no current func");
+			e->array_store->data.str = curdecl_func->spel;
+			e->array_store->len = strlen(curdecl_func->spel) + 1; /* +1 - take the null byte */
 
 			e->array_store->type = array_str;
 
@@ -72,21 +72,16 @@ void gen_expr_str_identifier(expr *e, symtable *stab)
 	idt_printf("identifier: \"%s\" (sym %p)\n", e->spel, e->sym);
 }
 
-void gen_expr_identifier_1(expr *e, FILE *f)
-{
-	fprintf(f, "%s", asm_intval_str(&e->val.iv));
-}
-
 void gen_expr_identifier(expr *e, symtable *stab)
 {
 	(void)stab;
 
 	if(e->sym){
 		/*
-			* if it's an array, lea, else, load
-			* note that array-leas load the bottom address (smallest value)
-			* since arrays grow upwards... duh
-			*/
+		 * if it's an array, lea, else, load
+		 * note that array-leas load the bottom address (smallest value)
+		 * since arrays grow upwards... duh
+		 */
 		asm_sym(
 				decl_has_array(e->sym->decl) ? ASM_LEA : ASM_LOAD,
 				e->sym,
@@ -114,7 +109,7 @@ expr *expr_new_identifier(char *sp)
 	e->spel = sp;
 
 	e->f_store      = gen_expr_identifier_store;
-	e->f_gen_1      = gen_expr_identifier_1;
+	/*e->f_gen_1      = gen_expr_identifier_1;*/
 	e->f_const_fold = fold_const_expr_identifier;
 
 	return e;

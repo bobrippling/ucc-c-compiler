@@ -87,7 +87,7 @@ void gen_stmt_switch(stmt *s)
 	tdefault = NULL;
 
 	gen_expr(s->expr, s->symtab);
-	asm_pop(ASM_REG_A);
+	asm_pop(s->expr->tree_type, ASM_REG_A);
 	asm_comment("switch on this");
 
 	for(titer = s->codes; titer && *titer; titer++){

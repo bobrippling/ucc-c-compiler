@@ -38,7 +38,7 @@ void gen_stmt_for(stmt *s)
 
 	if(s->flow->for_init){
 		gen_expr(s->flow->for_init, s->symtab);
-		asm_pop(ASM_REG_A);
+		asm_pop(NULL, ASM_REG_A);
 		asm_comment("unused for init");
 	}
 
@@ -46,7 +46,7 @@ void gen_stmt_for(stmt *s)
 	if(s->flow->for_while){
 		gen_expr(s->flow->for_while, s->symtab);
 
-		asm_pop(ASM_REG_A);
+		asm_pop( s->flow->for_while->tree_type, ASM_REG_A);
 		ASM_TEST(s->flow->for_while->tree_type, ASM_REG_A);
 		asm_jmp_if_zero(0, s->lbl_break);
 	}
@@ -55,7 +55,7 @@ void gen_stmt_for(stmt *s)
 	asm_label(s->lbl_continue);
 	if(s->flow->for_inc){
 		gen_expr(s->flow->for_inc, s->symtab);
-		asm_pop(ASM_REG_A);
+		asm_pop(NULL, ASM_REG_A);
 		asm_comment("unused for inc");
 	}
 

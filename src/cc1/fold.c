@@ -17,7 +17,7 @@
 #include "enum.h"
 #include "struct_enum.h"
 
-char *curdecl_func_sp;       /* for funcargs-local labels */
+decl *curdecl_func;          /* for funcargs-local labels */
 stmt *curstmt_flow;          /* for break */
 stmt *curstmt_switch;        /* for case + default */
 
@@ -27,7 +27,7 @@ void fold_stmt_and_add_to_curswitch(stmt *t)
 {
 	fold_stmt(t->lhs); /* compound */
 	if(!curstmt_switch)
-		die_at(&t->expr->where, "not inside a switch stmtement");
+		die_at(&t->expr->where, "not inside a switch statement");
 	dynarray_add((void ***)&curstmt_switch->codes, t);
 
 	/* we are compound, copy some attributes */
@@ -138,36 +138,39 @@ noproblem:
 	return;
 }
 
-void fold_typecheck_primitive(expr **plhs, expr **prhs, symtable *stab)
+void fold_typecheck_primitive(decl *dlhs, expr **prhs, symtable *stab)
 {
-	expr *lhs, *rhs;
+	expr *rhs = *prhs;
 
-	lhs = *plhs;
-	rhs = *prhs;
-
-	if(!decl_equal(lhs->tree_type, rhs->tree_type, 1)){
+	if(!decl_equal(dlhs, rhs->tree_type, 1)){
 		/* insert a cast: rhs -> lhs */
-		expr *cast = expr_new_cast(lhs->tree_type);
+		where *old_w = eof_where;
+		expr *cast;
+
+		eof_where = &rhs->where;
+
+		cast = expr_new_cast(dlhs);
 		cast->expr = rhs;
 		*prhs = cast;
-		memcpy(&cast->where, &lhs->where, sizeof cast->where);
+
+		eof_where = old_w;
 
 		/* need to fold the cast again - mainly for "loss of precision" warning */
 		fold_expr(cast, stab);
 	}
 }
 
-void fold_typecheck(expr **lhs, expr **rhs, symtable *stab, where *where)
+void fold_typecheck(expr *lhs, expr **prhs, symtable *stab, where *where)
 {
-	fold_typecheck_sign(*lhs, *rhs, stab, where);
-	fold_typecheck_primitive(lhs, rhs, stab);
+	fold_typecheck_sign(lhs, *prhs, stab, where);
+	fold_typecheck_primitive(lhs->tree_type, prhs, stab);
 }
 
 int fold_get_sym(expr *e, symtable *stab)
 {
 	if(!e->sym && e->spel){
 		e->sym = symtab_search(stab, e->spel);
-		return 1;
+		return !!e->sym;
 	}
 	return 0;
 }
@@ -391,7 +394,7 @@ void fold_funcargs(funcargs *fargs, symtable *stab, char *context)
 
 void fold_func(decl *func_decl, symtable *globs)
 {
-	curdecl_func_sp = func_decl->spel;
+	curdecl_func = func_decl;
 
 	if(func_decl->func_code){
 		int nargs, i;
@@ -411,7 +414,7 @@ void fold_func(decl *func_decl, symtable *globs)
 
 		fold_stmt(func_decl->func_code);
 
-		curdecl_func_sp = NULL;
+		curdecl_func = NULL;
 	}
 }
 

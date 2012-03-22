@@ -69,8 +69,6 @@ void fold_expr_assign(expr *e, symtable *stab)
 	else
 		e->tree_type = decl_copy(e->lhs->tree_type);
 
-	fold_typecheck(&e->lhs, &e->rhs, stab, &e->where);
-
 	/* type check */
 	fold_decl_equal(e->lhs->tree_type, e->rhs->tree_type,
 		&e->where, WARN_ASSIGN_MISMATCH,
@@ -78,6 +76,9 @@ void fold_expr_assign(expr *e, symtable *stab)
 				e->lhs->spel ? " (" : "",
 				e->lhs->spel ? e->lhs->spel : "",
 				e->lhs->spel ? ")" : "");
+
+	/* do the typecheck after the equal-check, since the typecheck inserts casts */
+	fold_typecheck(e->lhs, &e->rhs, stab, &e->where);
 }
 
 void gen_expr_assign(expr *e, symtable *stab)
@@ -99,7 +100,7 @@ void gen_expr_assign(expr *e, symtable *stab)
 	e->lhs->f_store(e->lhs, stab);
 
 	if(e->assign_is_post){
-		asm_pop(ASM_REG_A);
+		asm_pop(e->tree_type, ASM_REG_A);
 		asm_comment("the value from ++/--");
 
 		asm_output_new(

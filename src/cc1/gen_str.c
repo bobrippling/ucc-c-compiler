@@ -303,7 +303,7 @@ void print_stmt_flow(stmt_flow *t)
 
 void print_stmt(stmt *t)
 {
-	idt_printf("stmtement: %s\n", t->f_str());
+	idt_printf("statement: %s\n", t->f_str());
 
 	if(t->flow){
 		gen_str_indent++;

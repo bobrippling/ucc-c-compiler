@@ -3,7 +3,7 @@
 
 const char *str_expr_stmt()
 {
-	return "stmtement";
+	return "statement";
 }
 
 void fold_expr_stmt(expr *e, symtable *stab)
@@ -40,7 +40,7 @@ void gen_expr_stmt(expr *e, symtable *stab)
 void gen_expr_str_stmt(expr *e, symtable *stab)
 {
 	(void)stab;
-	idt_printf("stmtement:\n");
+	idt_printf("statement:\n");
 	gen_str_indent++;
 	print_stmt(e->code);
 	gen_str_indent--;

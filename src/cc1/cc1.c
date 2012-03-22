@@ -31,7 +31,7 @@ struct
 
 	{ 0,  "mismatch-arg",    WARN_ARG_MISMATCH                      },
 	{ 0,  "array-comma",     WARN_ARRAY_COMMA                       },
-	{ 0,  "mismatch-assign", WARN_ASSIGN_MISMATCH | WARN_COMPARE_MISMATCH },
+	{ 0,  "mismatch-assign", WARN_ASSIGN_MISMATCH | WARN_COMPARE_MISMATCH | WARN_RET_MISMATCH },
 	{ 0,  "return-type",     WARN_RETURN_TYPE                       },
 
 	{ 0,  "sign-compare",    WARN_SIGN_COMPARE                      },
@@ -51,6 +51,8 @@ struct
 	{ 0,  "test-in-assign",  WARN_TEST_ASSIGN                       },
 
 	{ 0,  "dead-code",       WARN_DEAD_CODE                         },
+
+	{ 0,  "mismatch-return", WARN_RET_MISMATCH                      },
 
 	/* TODO */
 	{ 0,  "unused-parameter", WARN_UNUSED_PARAM },

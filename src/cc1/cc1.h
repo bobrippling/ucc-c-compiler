@@ -33,6 +33,7 @@ enum warning
 	WARN_READ_BEFORE_WRITE        = 1 << 26,
 	WARN_SYM_NEVER_WRITTEN        = 1 << 26,
 	WARN_DEAD_CODE                = 1 << 27,
+	WARN_RET_MISMATCH             = 1 << 28,
 
 	/* TODO */
 	WARN_FORMAT                   = 1 << 10,

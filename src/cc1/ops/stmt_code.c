@@ -65,7 +65,7 @@ void fold_stmt_code(stmt *s)
 			 */
 			if(d->type->spec & spec_static){
 				char *save = d->spel;
-				d->spel = asm_label_static_local(curdecl_func_sp, d->spel);
+				d->spel = asm_label_static_local(curdecl_func->spel, d->spel);
 				free(save);
 			}
 		}

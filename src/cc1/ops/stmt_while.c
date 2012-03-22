@@ -32,7 +32,7 @@ void gen_stmt_while(stmt *s)
 
 	gen_expr(s->expr, s->symtab);
 
-	asm_pop(ASM_REG_A);
+	asm_pop( s->expr->tree_type, ASM_REG_A);
 	ASM_TEST(s->expr->tree_type, ASM_REG_A);
 	asm_jmp_if_zero(0, s->lbl_break);
 
