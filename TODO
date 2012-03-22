@@ -36,6 +36,8 @@ __attribute__((pure))
 
 get rid of __asm__ hacks (mainly in gen_asm.c)
 
+alloca
+
 stabs/dwarf debugging annotations
 
 fastcall - ecx, edx, stack, etc (__attribute__)
@@ -52,6 +54,12 @@ cc -MM *.c
 
 push current_line when descending into #include/# [0-9] for cc1
 
+macros over multiple lines
+	#define a(x, y) x + y
+	a(
+		1,
+		2
+	)
 
 ---------------------------------------------------- cc
 
