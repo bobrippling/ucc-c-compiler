@@ -91,8 +91,14 @@ void preproc_pop(void)
 
 char *splice_line(void)
 {
+	static int n_nls;
 	char *last;
 	int join;
+
+	if(n_nls){
+		n_nls--;
+		return ustrdup("");
+	}
 
 	last = NULL;
 	join = 0;
@@ -138,7 +144,7 @@ re_read:
 			line[len - 1] = '\0';
 			join = 1;
 			last = line;
-			current_line++; /* FIXME: correct line increment for split lines */
+			n_nls++;
 		}else{
 			return line;
 		}
