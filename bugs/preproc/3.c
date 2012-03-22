@@ -1,8 +1,8 @@
-#define abc
+#define abc  \
+           1 \
+           2 \
+           3
 #include "/dev/null"
-#undef abc
-#ifdef abc
-#endif
 soc();
 main()
 {
