@@ -4,7 +4,7 @@
 typedef int         func_op_exec(op *, int *bad);
 typedef int         func_op_optimise(op *);
 typedef void        func_op_compare(op *);
-typedef void        func_op_fold(op *);
+typedef void        func_op_fold(op *, symtable *);
 typedef void        func_op_gen(op *);
 typedef void        func_op_gen_store(op *);
 
@@ -81,6 +81,8 @@ OP_NEW(not);
 OP_NEW(bnot);
 OP_NEW(deref);
 #undef OP_NEW
+
+#define op_kind(o, kind) ((o)->f_fold == fold_op_ ## kind)
 
 #if 0
 enum op_type curtok_to_augmented_op()

@@ -26,3 +26,8 @@ int exec_op_divide(op)
 	*bad = 1;
 	return 0;
 }
+
+optimise_op_divide(op *o)
+{
+	return optimise_op_multiply(o);
+}
