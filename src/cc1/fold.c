@@ -28,7 +28,7 @@ void fold_stmt_and_add_to_curswitch(stmt *t)
 {
 	fold_stmt(t->lhs); /* compound */
 	if(!curstmt_switch)
-		die_at(&t->expr->where, "not inside a switch stmtement");
+		die_at(&t->expr->where, "not inside a switch statement");
 	dynarray_add((void ***)&curstmt_switch->codes, t);
 
 	/* we are compound, copy some attributes */
@@ -112,10 +112,8 @@ void fold_typecheck(expr *lhs, expr *rhs, symtable *stab, where *where)
 
 int fold_get_sym(expr *e, symtable *stab)
 {
-	if(!e->sym && e->spel){
-		e->sym = symtab_search(stab, e->spel);
-		return 1;
-	}
+	if(!e->sym && e->spel)
+		return !!(e->sym = symtab_search(stab, e->spel));
 	return 0;
 }
 
@@ -200,6 +198,11 @@ void fold_decl(decl *d, symtable *stab)
 
 	if(d->decl_ptr)
 		fold_decl_ptr(d->decl_ptr, stab, d);
+
+	/*
+	 * no need to fold ->init, since these are removed for all but global-decls
+	 * (kept in the cast of const-init)
+	 */
 
 #undef SPEC
 }

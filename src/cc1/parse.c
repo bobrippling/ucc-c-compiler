@@ -440,7 +440,7 @@ expr *parse_expr_comma()
 
 stmt *parse_if()
 {
-	stmt *t = STAT_NEW_NEST(if);
+	stmt *t = STAT_NEW(if);
 	EAT(token_if);
 	EAT(token_open_paren);
 
@@ -474,7 +474,6 @@ expr **parse_funcargs()
 	return args;
 }
 
-
 stmt *expr_to_stmt(expr *e)
 {
 	stmt *t = STAT_NEW(expr);
@@ -484,7 +483,7 @@ stmt *expr_to_stmt(expr *e)
 
 stmt *parse_switch()
 {
-	stmt *t = STAT_NEW_NEST(switch);
+	stmt *t = STAT_NEW(switch);
 
 	EAT(token_switch);
 	EAT(token_open_paren);
@@ -500,7 +499,7 @@ stmt *parse_switch()
 
 stmt *parse_do()
 {
-	stmt *t = STAT_NEW_NEST(do);
+	stmt *t = STAT_NEW(do);
 
 	EAT(token_do);
 
@@ -517,7 +516,7 @@ stmt *parse_do()
 
 stmt *parse_while()
 {
-	stmt *t = STAT_NEW_NEST(while);
+	stmt *t = STAT_NEW(while);
 
 	EAT(token_while);
 	EAT(token_open_paren);
@@ -531,13 +530,15 @@ stmt *parse_while()
 
 stmt *parse_for()
 {
-	stmt *s = STAT_NEW_NEST(for);
+	stmt *s = STAT_NEW(for);
 	stmt_flow *sf;
 
 	EAT(token_for);
 	EAT(token_open_paren);
 
-	sf = s->flow = stmt_flow_new();
+	sf = s->flow = stmt_flow_new(symtab_new(s->symtab));
+
+	current_scope = sf->for_init_symtab;
 
 #define SEMI_WRAP(code) \
 	if(!accept(token_semicolon)){ \
@@ -545,7 +546,14 @@ stmt *parse_for()
 		EAT(token_semicolon); \
 	}
 
-	SEMI_WRAP(sf->for_init  = parse_expr());
+	SEMI_WRAP(
+			decl **c99inits = parse_decls_one_type();
+			if(c99inits)
+				sf->for_init_decls = c99inits;
+			else
+				sf->for_init = parse_expr()
+	);
+
 	SEMI_WRAP(sf->for_while = parse_expr());
 
 #undef SEMI_WRAP
@@ -556,6 +564,8 @@ stmt *parse_for()
 	}
 
 	s->lhs = parse_code();
+
+	current_scope = current_scope->parent;
 
 	return s;
 }
@@ -577,12 +587,7 @@ stmt *parse_code_block()
 	for(diter = t->decls; diter && *diter; diter++)
 		/* only extract the init if it's not static */
 		if((*diter)->init && ((*diter)->type->spec & spec_static) == 0){
-			expr *e;
-
-			e = expr_new_identifier((*diter)->spel);
-
-			dynarray_add((void ***)&t->codes, expr_to_stmt(expr_assignment(e, (*diter)->init)));
-
+			dynarray_add((void ***)&t->codes, expr_to_stmt(expr_new_decl_init(*diter)));
 			/*
 			 *(*diter)->init = NULL;
 			 * leave it set, so we can check later in, say, fold.c for const init
@@ -621,8 +626,8 @@ stmt *parse_label_next(stmt *lbl)
 	 *   lbl:
 	 *   printf("yo\n");
 	 *
-	 * both the label and the printf stmtements are in the if
-	 * as a compound stmtement
+	 * both the label and the printf statements are in the if
+	 * as a compound statement
 	 */
 	return lbl;
 }
@@ -715,7 +720,7 @@ symtable *parse()
 
 	current_scope = globals = symtab_new(NULL);
 
-	decls = parse_decls(1, 0);
+	decls = parse_decls_multi_type(1, 0);
 	EAT(token_eof);
 
 	if(parse_had_error)
