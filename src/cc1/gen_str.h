@@ -9,6 +9,7 @@ enum pdeclargs
 	PDECL_SYM_OFFSET    = 1 << 2,
 	PDECL_FUNC_DESCEND  = 1 << 3,
 	PDECL_PIGNORE       = 1 << 4,
+	PDECL_PINIT         = 1 << 5,
 };
 
 void idt_printf(const char *fmt, ...);

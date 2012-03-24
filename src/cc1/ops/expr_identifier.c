@@ -61,6 +61,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 			cc1_warn_at(&e->where, 0, WARN_READ_BEFORE_WRITE, "\"%s\" uninitialised on read", e->sym->decl->spel);
 		}
 
+		/* this is cancelled by expr_assign in the case we fold for an assignment to us */
 		e->sym->nreads++;
 	}
 }

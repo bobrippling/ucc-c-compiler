@@ -135,12 +135,10 @@ struct funcargs
 stmt        *tree_new(symtable *stab);
 type        *type_new(void);
 decl        *decl_new(void);
-decl_ptr    *decl_ptr_new(void);
 array_decl  *array_decl_new(void);
 funcargs    *funcargs_new(void);
 
 decl_desc   *decl_desc_new(enum decl_desc_type t);
-decl_desc   *decl_desc_ptr_new(void);
 decl_desc   *decl_desc_array_new(void);
 
 void where_new(struct where *w);
