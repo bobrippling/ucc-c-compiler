@@ -11,6 +11,11 @@ struct access tree type propagation
 
 static analysis for labels - flag unused labels
 
+bitfields: must be ints,
+can't be addressed,
+nor sizeof()'d
+also: struct x { int i : 1; : 3; } is valid (but not for the first field)
+
 const:
 	const char *s; - *s is not writable, s is
 	const char *a = "hi";
