@@ -168,10 +168,8 @@ void fold_typecheck(expr *lhs, expr **prhs, symtable *stab, where *where)
 
 int fold_get_sym(expr *e, symtable *stab)
 {
-	if(!e->sym && e->spel){
-		e->sym = symtab_search(stab, e->spel);
-		return !!e->sym;
-	}
+	if(!e->sym && e->spel)
+		return !!(e->sym = symtab_search(stab, e->spel));
 	return 0;
 }
 
@@ -256,6 +254,11 @@ void fold_decl(decl *d, symtable *stab)
 
 	if(d->decl_ptr)
 		fold_decl_ptr(d->decl_ptr, stab, d);
+
+	/*
+	 * no need to fold ->init, since these are removed for all but global-decls
+	 * (kept in the cast of const-init)
+	 */
 
 #undef SPEC
 }

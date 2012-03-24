@@ -6,9 +6,10 @@
 #include "data_structs.h"
 #include "stmt.h"
 
-stmt_flow *stmt_flow_new()
+stmt_flow *stmt_flow_new(symtable *parent)
 {
 	stmt_flow *t = umalloc(sizeof *t);
+	t->for_init_symtab = parent;
 	return t;
 }
 

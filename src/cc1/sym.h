@@ -32,6 +32,7 @@ sym *sym_new(decl *d, enum sym_type t);
 
 symtable *symtab_new(symtable *parent);
 void      symtab_set_parent(symtable *child, symtable *parent);
+void      symtab_rm_parent( symtable *child);
 
 symtable *symtab_root(symtable *child);
 
