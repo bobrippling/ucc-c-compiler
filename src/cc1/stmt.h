@@ -35,6 +35,9 @@ struct stmt
 struct stmt_flow
 {
 	expr *for_init, *for_while, *for_inc;
+
+	decl    **for_init_decls;     /* c99 for initialisation */
+	symtable *for_init_symtab; /* for(int b;;){} - symtab for b */
 };
 
 #include "ops/stmt_break.h"
@@ -60,7 +63,7 @@ struct stmt_flow
 #define stmt_kind(st, kind) ((st)->f_fold == fold_stmt_ ## kind)
 
 stmt *stmt_new(func_fold_stmt *, func_gen_stmt *, func_str_stmt *, symtable *stab);
-stmt_flow *stmt_flow_new(void);
+stmt_flow *stmt_flow_new(symtable *parent);
 void stmt_mutate(stmt *, func_fold_stmt *, func_gen_stmt *, func_str_stmt *);
 
 #endif
