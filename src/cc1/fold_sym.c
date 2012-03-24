@@ -40,9 +40,18 @@ int symtab_fold(symtable *tab, int current)
 				current += siz;
 
 				/* static analysis on sym (only auto-vars) */
-				if(s->nwrites == 0 && !decl_has_array(s->decl)){
-					cc1_warn_at(&s->decl->where, 0, WARN_SYM_NEVER_WRITTEN, "\"%s\" never written to", s->decl->spel);
-					s->nwrites++; /* only warn once */
+				if(!decl_has_array(s->decl)){
+#define RW_WARN(w, var, str)                 \
+					if(s->var == 0){                   \
+						cc1_warn_at(&s->decl->where, 0,  \
+								WARN_SYM_NEVER_ ## w,        \
+								"\"%s\" never " str,         \
+								s->decl->spel);              \
+						s->var++;                        \
+					}
+
+					RW_WARN(WRITTEN, nwrites, "written to");
+					RW_WARN(READ,    nreads,  "read");
 				}
 
 			}else if(s->type == sym_arg){

@@ -76,3 +76,9 @@ expr *expr_ptr_multiply(expr *e, decl *d)
 
 	return ret;
 }
+
+expr *expr_new_decl_init(decl *d)
+{
+	UCC_ASSERT(d->init, "no init in %s", __func__);
+	return expr_assignment(expr_new_identifier(d->spel), d->init);
+}

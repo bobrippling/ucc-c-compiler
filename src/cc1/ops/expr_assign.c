@@ -49,6 +49,11 @@ void fold_expr_assign(expr *e, symtable *stab)
 	fold_expr(e->assign_to, stab);
 	fold_expr(e->expr, stab);
 
+
+	if(expr_kind(e->lhs, identifier))
+		e->lhs->sym->nreads--; /* cancel the read that fold_ident thinks it got */
+
+
 	/* wait until we get the tree types, etc */
 	if(!is_lvalue(e->assign_to))
 		die_at(&e->assign_to->where, "not an lvalue (%s%s%s)",

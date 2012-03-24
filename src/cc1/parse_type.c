@@ -24,6 +24,7 @@
 type *parse_type_struct(void);
 type *parse_type_enum(void);
 decl_ptr *parse_decl_ptr_array(enum decl_mode mode, char **decl_sp, funcargs **decl_args);
+decl  *parse_decl(type *t, enum decl_mode mode);
 
 #define INT_TYPE(t) do{ t = type_new(); t->primitive = type_int; }while(0)
 
@@ -53,7 +54,7 @@ type *parse_type_struct()
 	parse_type_preamble(&t, &spel, type_struct);
 
 	if(accept(token_open_block)){
-		decl **members = parse_decls(DECL_CAN_DEFAULT | DECL_SPEL_NEED, 1);
+		decl **members = parse_decls_multi_type(DECL_CAN_DEFAULT | DECL_SPEL_NEED, 1);
 		EAT(token_close_block);
 		t->struc = struct_add(current_scope, spel, members);
 	}else if(!spel){
@@ -442,7 +443,7 @@ decl *parse_decl(type *t, enum decl_mode mode)
 	d->spel     = spel;
 	d->funcargs = args;
 
-	if(accept(token_assign))
+	if(spel && accept(token_assign))
 		d->init = parse_expr_funcallarg(); /* int x = 5, j; - don't grab the comma expr */
 	else if(d->funcargs && curtok == token_open_block)
 		d->func_code = parse_code();
@@ -469,7 +470,30 @@ decl *parse_decl_single(enum decl_mode mode)
 	return parse_decl(t, mode);
 }
 
-decl **parse_decls(const int can_default, const int accept_field_width)
+decl **parse_decls_one_type()
+{
+	type *t = parse_type();
+	decl **decls = NULL;
+
+	if(!t)
+		return NULL;
+
+	if(t->spec & spec_typedef)
+		die_at(&t->where, "typedef unexpected");
+
+	do{
+		decl *d = parse_decl(t, DECL_SPEL_NEED);
+
+		if(!d)
+			die_at(&t->where, "decl expected");
+
+		dynarray_add((void ***)&decls, d);
+	}while(accept(token_comma));
+
+	return decls;
+}
+
+decl **parse_decls_multi_type(const int can_default, const int accept_field_width)
 {
 	const enum decl_mode parse_flag = can_default ? DECL_CAN_DEFAULT : 0;
 	decl **decls = NULL;
@@ -508,7 +532,7 @@ decl **parse_decls(const int can_default, const int accept_field_width)
 
 			if(!d->spel){
 				/*
-				 * int;
+				 * int; - error (actually no..) FIXME: fine for "int;", but "int i,;" needs to fail
 				 * struct A; - no warning: prototype
 				 */
 				decl_free_notype(d);

@@ -21,8 +21,16 @@ sym *sym_new(decl *d, enum sym_type t)
 	return s;
 }
 
+void symtab_rm_parent(symtable *child)
+{
+	dynarray_rm((void **)child->parent->children, child);
+	child->parent = NULL;
+}
+
 void symtab_set_parent(symtable *child, symtable *parent)
 {
+	if(child->parent)
+		symtab_rm_parent(child);
 	child->parent = parent;
 	dynarray_add((void ***)&parent->children, child);
 }
