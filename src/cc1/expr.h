@@ -59,8 +59,10 @@ void  expr_mutate(expr *e, func_fold *f_fold, func_str *f_str, func_gen *f_gen, 
 
 expr *expr_new_intval(intval *);
 
+/* simple wrappers */
 expr *expr_ptr_multiply(expr *, decl *);
 expr *expr_assignment(expr *to, expr *from);
+expr *expr_new_decl_init(decl *d);
 
 #include "ops/expr_addr.h"
 #include "ops/expr_assign.h"

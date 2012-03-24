@@ -15,5 +15,5 @@ void fold_stmt_label(stmt *s)
 void gen_stmt_label(stmt *s)
 {
 	asm_label(s->expr->spel);
-	gen_stmt(s->lhs); /* the code-part of the compound stmtement */
+	gen_stmt(s->lhs); /* the code-part of the compound statement */
 }

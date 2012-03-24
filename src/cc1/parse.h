@@ -9,18 +9,15 @@ enum decl_mode
 };
 
 extern enum token curtok;
-#define PARSE_DECLS() parse_decls(0, 0)
+
+#define PARSE_DECLS() parse_decls_multi_type(0, 0)
 
 #define parse_expr() parse_expr_comma()
 #define parse_expr_funcallarg() parse_expr_if()
 #define parse_possible_decl() (curtok == token_identifier || curtok == token_multiply || curtok == token_open_paren)
 expr *parse_expr();
 
-decl *parse_decl_single(enum decl_mode);
-
 stmt  *parse_code(void);
-decl **parse_decls(const int can_default, const int accept_field_width);
-type *parse_type(void);
 
 expr **parse_funcargs(void);
 expr *parse_expr_binary_op(void); /* needed to limit [+-] parsing */

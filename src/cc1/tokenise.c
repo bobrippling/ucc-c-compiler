@@ -14,11 +14,11 @@
 
 #define isoct(x) ('0' <= (x) && (x) < '8')
 
-struct stmtement
+struct statement
 {
 	const char *str;
 	enum token tok;
-} stmtements[] = {
+} statements[] = {
 #ifdef BRITISH
 	{ "perchance", token_if      },
 	{ "otherwise", token_else    },
@@ -409,10 +409,10 @@ void nexttoken()
 				break;
 		}while(1);
 
-		/* check for a built in stmtement - while, if, etc */
-		for(i = 0; i < sizeof(stmtements) / sizeof(stmtements[0]); i++)
-			if(strlen(stmtements[i].str) == len && !strncmp(stmtements[i].str, start, len)){
-				curtok = stmtements[i].tok;
+		/* check for a built in statement - while, if, etc */
+		for(i = 0; i < sizeof(statements) / sizeof(statements[0]); i++)
+			if(strlen(statements[i].str) == len && !strncmp(statements[i].str, start, len)){
+				curtok = statements[i].tok;
 				return;
 			}
 

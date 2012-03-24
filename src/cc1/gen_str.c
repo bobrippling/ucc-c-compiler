@@ -211,6 +211,12 @@ void print_decl(decl *d, enum pdeclargs mode)
 	if(mode & PDECL_NEWLINE)
 		fputc('\n', cc1_out);
 
+	if(mode & PDECL_PINIT){
+		gen_str_indent++;
+		print_expr(d->init);
+		gen_str_indent--;
+	}
+
 	if((mode & PDECL_FUNC_DESCEND) && d->func_code){
 		decl **iter;
 
@@ -242,7 +248,9 @@ void print_expr(expr *e)
 		print_decl(e->tree_type, PDECL_NEWLINE);
 		gen_str_indent--;
 	}
+	gen_str_indent++;
 	e->f_gen(e, NULL);
+	gen_str_indent--;
 }
 
 void print_struct(struct_st *st)
@@ -299,10 +307,26 @@ void print_st_en_tdef(symtable *stab)
 void print_stmt_flow(stmt_flow *t)
 {
 	idt_printf("flow:\n");
+	if(t->for_init_decls){
+		idt_printf("inits:\n");
+		decl **i;
+		gen_str_indent++;
+
+		for(i = t->for_init_decls; *i; i++)
+			print_decl(*i, PDECL_INDENT
+					| PDECL_NEWLINE
+					| PDECL_SYM_OFFSET
+					| PDECL_PIGNORE
+					| PDECL_PINIT);
+
+		gen_str_indent--;
+	}
+
+	idt_printf("for parts:\n");
 	gen_str_indent++;
-	PRINT_IF(t, for_init,  print_expr);
-	PRINT_IF(t, for_while, print_expr);
-	PRINT_IF(t, for_inc,   print_expr);
+	PRINT_IF(t, for_init,      print_expr);
+	PRINT_IF(t, for_while,     print_expr);
+	PRINT_IF(t, for_inc,       print_expr);
 	gen_str_indent--;
 }
 
