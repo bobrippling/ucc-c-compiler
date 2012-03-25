@@ -86,7 +86,7 @@ char *asm_label_flow(const char *fmt)
 
 void asm_sym(enum asm_sym_type t, sym *s, const char *reg)
 {
-	const int is_global = s->type == sym_global || (s->decl->type->spec & (spec_extern | spec_static));
+	const int is_global = s->type == sym_global || type_store_static_or_extern(s->decl->type->store);
 	char *const dsp = s->decl->spel;
 	int is_auto = s->type == sym_local;
 	char  stackbrackets[16];
@@ -204,6 +204,9 @@ enum asm_size asm_type_size(decl *d)
 	if(decl_ptr_depth(d)){
 		return ASM_SIZE_WORD;
 	}else{
+		if(d->type->typeof)
+			ICE("typedefs should've been folded by now");
+
 		switch(d->type->primitive){
 			case type_enum:
 			case type_int:
@@ -214,9 +217,6 @@ enum asm_size asm_type_size(decl *d)
 
 			case type_void:
 				ICE("type primitive is void");
-
-			case type_typedef:
-				ICE("typedefs should've been folded by now");
 
 			case type_struct:
 				ICE("asm_type_size of a struct - can't be word nor byte");

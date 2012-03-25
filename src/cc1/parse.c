@@ -590,7 +590,7 @@ stmt *parse_code_block()
 
 	for(diter = t->decls; diter && *diter; diter++)
 		/* only extract the init if it's not static */
-		if((*diter)->init && ((*diter)->type->spec & spec_static) == 0){
+		if((*diter)->init && (*diter)->type->store != store_static){
 			dynarray_add((void ***)&t->codes, expr_to_stmt(expr_new_decl_init(*diter)));
 			/*
 			 *(*diter)->init = NULL;

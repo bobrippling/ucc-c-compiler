@@ -26,7 +26,7 @@ int symtab_fold(symtable *tab, int current)
 			sym *s = (*diter)->sym;
 			/*enum type_primitive last = type_int; TODO: packing */
 
-			if(s->type == sym_local && (s->decl->type->spec & (spec_extern | spec_static)) == 0){
+			if(s->type == sym_local && s->decl->type->store == store_auto){
 				int siz = decl_size(s->decl);
 
 				if(siz <= word_size)

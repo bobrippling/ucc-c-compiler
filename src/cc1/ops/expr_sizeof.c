@@ -23,7 +23,7 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 
 			/* size_t */
 			e->tree_type->type->primitive = type_int;
-			e->tree_type->type->spec     |= spec_unsigned;
+			e->tree_type->type->is_signed = 0;
 		}
 	}
 }

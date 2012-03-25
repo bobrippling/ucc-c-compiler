@@ -1,7 +1,9 @@
 main()
 {
 	typedef int tdef_int;
-	tdef_int x;
+	typedef tdef_int tdef_int2;
+
+	tdef_int2 x;
 	x = 3;
 	return x;
 }
