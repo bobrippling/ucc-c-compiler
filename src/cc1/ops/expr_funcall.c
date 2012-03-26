@@ -28,7 +28,7 @@ void fold_expr_funcall(expr *e, symtable *stab)
 			df = decl_new();
 
 			df->type->primitive = type_int;
-			df->type->spec     |= spec_extern;
+			df->type->store     = store_extern;
 
 			cc1_warn_at(&e->where, 0, WARN_IMPLICIT_FUNC, "implicit declaration of function \"%s\"", sp);
 

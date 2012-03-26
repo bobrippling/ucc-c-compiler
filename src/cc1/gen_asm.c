@@ -30,7 +30,7 @@ void gen_stmt(stmt *t)
 
 void gen_asm_global(decl *d)
 {
-	if(d->type->spec & spec_extern){
+	if(d->type->store == store_extern){
 		/* should be fine... */
 		asm_tempf(cc_out[SECTION_BSS], 0, "extern %s", d->spel);
 		return;
@@ -78,7 +78,7 @@ void gen_asm(symtable *globs)
 		if(d->ignore)
 			continue;
 
-		if(!(d->type->spec & spec_static) && !(d->type->spec & spec_extern))
+		if(!type_store_static_or_extern(d->type->store))
 			asm_temp(0, "global %s", d->spel);
 
 		gen_asm_global(d);

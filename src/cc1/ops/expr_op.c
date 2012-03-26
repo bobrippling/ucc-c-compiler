@@ -243,10 +243,6 @@ void fold_expr_op(expr *e, symtable *stab)
 #define RHS e->rhs
 #define LHS e->lhs
 
-	enum {
-		SIGNED, UNSIGNED
-	} rhs_su, lhs_su;
-
 	if(e->op == op_struct_ptr || e->op == op_struct_dot){
 		fold_op_struct(e, stab);
 		return;
@@ -259,21 +255,19 @@ void fold_expr_op(expr *e, symtable *stab)
 
 		fold_typecheck(e->lhs, e->rhs, stab, &e->where);
 
-		lhs_su = e->lhs->tree_type->type->spec & spec_unsigned ? UNSIGNED : SIGNED;
-		rhs_su = e->rhs->tree_type->type->spec & spec_unsigned ? UNSIGNED : SIGNED;
+		if(op_is_cmp(e->op) && e->lhs->tree_type->type->is_signed != e->rhs->tree_type->type->is_signed){
 
-		if(op_is_cmp(e->op) && rhs_su != lhs_su){
 			/*
 			* assert(LHS == UNSIGNED);
 			* vals default to signed, change to unsigned
 			*/
 
 			if(expr_kind(RHS, val) && RHS->val.iv.val >= 0){
-				UCC_ASSERT(lhs_su == UNSIGNED, "signed-unsigned assumption failure");
-				RHS->tree_type->type->spec |= spec_unsigned;
+				UCC_ASSERT(!e->lhs->tree_type->type->is_signed, "signed-unsigned assumption failure");
+				RHS->tree_type->type->is_signed = 0;
 			}else if(expr_kind(LHS, val) && LHS->val.iv.val >= 0){
-				UCC_ASSERT(rhs_su == UNSIGNED, "signed-unsigned assumption failure");
-				LHS->tree_type->type->spec |= spec_unsigned;
+				UCC_ASSERT(!e->rhs->tree_type->type->is_signed, "signed-unsigned assumption failure");
+				LHS->tree_type->type->is_signed = 0;
 			}else{
 					cc1_warn_at(&e->where, 0, WARN_SIGN_COMPARE, "comparison between signed and unsigned%s%s%s%s%s%s",
 							SPEL_IF_IDENT(LHS), SPEL_IF_IDENT(RHS));
@@ -400,7 +394,7 @@ static void asm_compare(expr *e, symtable *tab)
 	asm_temp(1, "cmp rax,rbx");
 
 	/* check for unsigned, since signed isn't explicitly set */
-#define SIGNED(s, u) e->tree_type->type->spec & spec_unsigned ? u : s
+#define SIGNED(s, u) e->tree_type->type->is_signed ? s : u
 
 	switch(e->op){
 		case op_eq: cmp = "e";  break;

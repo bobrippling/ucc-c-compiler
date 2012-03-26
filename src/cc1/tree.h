@@ -25,39 +25,45 @@ enum type_primitive
 	type_char,
 	type_void,
 
-	type_typedef,
 	type_struct,
 	type_enum,
 
 	type_unknown
 };
 
-enum type_spec
+enum type_qualifier
 {
-	spec_none     = 0,
-	spec_const    = 1 << 0,
-	spec_extern   = 1 << 1,
-	spec_static   = 1 << 2,
-	spec_signed   = 1 << 3,
-	spec_unsigned = 1 << 4,
-	spec_auto     = 1 << 5,
-	spec_typedef  = 1 << 6,
-#define SPEC_MAX 7
+	qual_none,
+	qual_const,
+	qual_volatile /* unused */
 };
+
+enum type_storage
+{
+	store_auto,
+	store_static,
+	store_extern,
+	store_register, /* unused */
+	store_typedef
+};
+
+#define type_store_static_or_extern(x) ((x) == store_static || (x) == store_extern)
 
 struct type
 {
 	where where;
 
 	enum type_primitive primitive;
-	enum type_spec      spec;
+	enum type_qualifier qual;
+	enum type_storage   store;
+	int is_signed;
 
 	/* NULL unless this is a structure */
 	struct_st *struc;
 	/* NULL unless this is an enum */
 	enum_st *enu;
-	/* NULL unless.. a typedef.. duh */
-	decl  *tdef;
+	/* NULL unless from typedef or __typeof() */
+	expr *typeof;
 
 	char *spel; /* spel for struct/enum lookup */
 };
@@ -139,10 +145,13 @@ type      *type_copy(type *);
 decl      *decl_copy(decl *);
 decl_ptr  *decl_ptr_copy(decl_ptr *);
 
-const char *op_to_str(  const enum op_type   o);
-const char *decl_to_str(decl          *d);
-const char *type_to_str(const type          *t);
-const char *spec_to_str(const enum type_spec s);
+const char *op_to_str(  const enum op_type o);
+const char *decl_to_str(decl *d);
+const char *type_to_str(const type *t);
+
+const char *type_primitive_to_str(const enum type_primitive);
+const char *type_qual_to_str(     const enum type_qualifier);
+const char *type_store_to_str(    const enum type_storage);
 
 int op_is_cmp(enum op_type o);
 

@@ -20,6 +20,7 @@ enum token
 	token_goto,
 
 	token_sizeof,
+	token_typeof,
 
 	token_identifier,
 	token_integer,     /* aka [1-9] */
@@ -31,11 +32,16 @@ enum token
 	token_string,      /* aka \"...\" */
 
 	token_const,
-	token_static,
+	token_volatile,
+	/**/
 	token_signed,
 	token_unsigned,
-	token_extern,
+	/**/
 	token_auto,
+	token_static,
+	token_extern,
+	token_register,
+	/**/
 	token_typedef,
 	token_struct,
 	token_enum,

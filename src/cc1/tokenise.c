@@ -14,6 +14,8 @@
 
 #define isoct(x) ('0' <= (x) && (x) < '8')
 
+#define KEYWORD(x) { #x, token_ ## x }
+
 struct statement
 {
 	const char *str;
@@ -33,38 +35,46 @@ struct statement
 
 	{ "tallyho",     token_goto     },
 #else
-	{ "if",        token_if         },
-	{ "else",      token_else       },
+	KEYWORD(if),
+	KEYWORD(else),
 
-	{ "switch",    token_switch     },
-	{ "case",      token_case       },
-	{ "default",   token_default    },
+	KEYWORD(switch),
+	KEYWORD(case),
+	KEYWORD(default),
 
-	{ "break",     token_break      },
-	{ "return",    token_return     },
-	{ "continue",  token_continue   },
+	KEYWORD(break),
+	KEYWORD(return),
+	KEYWORD(continue),
 
-	{ "goto",    token_goto    },
+	KEYWORD(goto),
 #endif
 
-	{ "do",      token_do      },
-	{ "while",   token_while   },
-	{ "for",     token_for     },
+	KEYWORD(do),
+	KEYWORD(while),
+	KEYWORD(for),
 
-	{ "char",    token_char    },
-	{ "int",     token_int     },
-	{ "void",    token_void    },
-	{ "extern",  token_extern  },
-	{ "const",   token_const   },
-	{ "static",  token_static  },
-	{ "signed",  token_signed  },
-	{ "unsigned",token_unsigned},
-	{ "auto",    token_auto    },
-	{ "typedef", token_typedef },
-	{ "struct",  token_struct  },
-	{ "enum",    token_enum    },
+	KEYWORD(char),
+	KEYWORD(int),
+	KEYWORD(void),
 
-	{ "sizeof",  token_sizeof  }
+	KEYWORD(auto),
+	KEYWORD(static),
+	KEYWORD(extern),
+	KEYWORD(register),
+
+	KEYWORD(const),
+	KEYWORD(volatile),
+
+	KEYWORD(signed),
+	KEYWORD(unsigned),
+
+	KEYWORD(typedef),
+	KEYWORD(struct),
+	KEYWORD(enum),
+
+	KEYWORD(sizeof),
+
+	{ "__typeof",  token_typeof }
 };
 
 static FILE *infile;
