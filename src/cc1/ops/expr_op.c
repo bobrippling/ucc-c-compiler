@@ -406,7 +406,7 @@ static void asm_compare(expr *e, symtable *tab)
 			asm_operand_new_reg(e->tree_type, ASM_REG_B));
 
 	/* check for unsigned, since signed isn't explicitly set */
-#define SIGNED(s, u) e->tree_type->type->spec & spec_unsigned ? u : s
+#define SIGNED(s, u) e->tree_type->type->is_signed ? s : u
 
 	switch(e->op){
 		case op_eq: cmp = "e";  break;

@@ -26,7 +26,9 @@ void fold_expr_addr(expr *e, symtable *stab)
 		e->tree_type = decl_new();
 		*decl_leaf(e->tree_type) = decl_ptr_new();
 
-		e->tree_type->type->spec |= spec_static | spec_const;
+		e->tree_type->type->store = store_static;
+		e->tree_type->type->qual  = qual_const;
+
 		e->tree_type->type->primitive = type_char;
 
 		e->spel = e->array_store->label = asm_label_array(e->array_store->type == array_str);

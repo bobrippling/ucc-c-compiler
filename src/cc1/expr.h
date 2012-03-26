@@ -27,8 +27,8 @@ struct expr
 	enum op_type op;
 
 	int assign_is_post; /* do we return the altered value or the old one? */
-#define expr_is_default assign_is_post
-#define expr_is_sizeof  assign_is_post
+#define expr_is_default  assign_is_post
+#define expr_is_typeof   assign_is_post
 
 	expr *lhs, *rhs;
 
@@ -83,8 +83,6 @@ expr *expr_new_decl_init(decl *d);
 
 #define expr_kind(exp, kind) ((exp)->f_fold == fold_expr_ ## kind)
 
-#define expr_new_sizeof()       expr_new_wrapper(sizeof)
-
 expr *expr_new_identifier(char *sp);
 expr *expr_new_cast(decl *cast_to);
 expr *expr_new_val(int val);
@@ -95,5 +93,8 @@ expr *expr_new_assign(void);
 expr *expr_new_comma(void);
 expr *expr_new_funcall(void);
 expr *expr_new_stmt(stmt *code);
+expr *expr_new_sizeof_decl(decl *);
+expr *expr_new_sizeof_expr(expr *);
+
 
 #endif

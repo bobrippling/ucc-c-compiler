@@ -82,7 +82,7 @@ void fold_stmt_switch(stmt *s)
 void gen_stmt_switch(stmt *s)
 {
 	stmt **titer, *tdefault;
-	int is_unsigned = s->expr->tree_type->type->spec & spec_unsigned;
+	int is_unsigned = !s->expr->tree_type->type->is_signed;
 
 	tdefault = NULL;
 

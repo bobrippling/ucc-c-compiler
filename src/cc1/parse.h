@@ -24,6 +24,7 @@ expr *parse_expr_binary_op(void); /* needed to limit [+-] parsing */
 expr *parse_expr_array(void);
 expr *parse_expr_if(void);
 expr *parse_expr_deref(void);
+expr *parse_expr_sizeof_typeof(void);
 
 symtable *parse(void);
 

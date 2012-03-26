@@ -60,6 +60,29 @@ expr *parse_lone_identifier()
 	return e;
 }
 
+expr *parse_expr_sizeof_typeof()
+{
+	expr *e;
+
+	if(accept(token_open_paren)){
+		decl *d = parse_decl_single(DECL_SPEL_NO);
+
+		if(d){
+			e = expr_new_sizeof_decl(d);
+		}else{
+			/* parse a full one, since we're in brackets */
+			e = expr_new_sizeof_expr(parse_expr());
+		}
+
+		EAT(token_close_paren);
+	}else{
+		e = expr_new_sizeof_expr(parse_expr_deref());
+		/* don't go any higher, sizeof a - 1, means sizeof(a) - 1 */
+	}
+
+	return e;
+}
+
 expr *parse_expr_unary_op()
 {
 	expr *e;
@@ -67,26 +90,7 @@ expr *parse_expr_unary_op()
 	switch(curtok){
 		case token_sizeof:
 			EAT(token_sizeof);
-			e = expr_new_sizeof();
-
-			if(accept(token_open_paren)){
-				decl *d = parse_decl_single(DECL_SPEL_NO);
-
-				if(d){
-					e->tree_type = d;
-				}else{
-					/* parse a full one, since we're in brackets */
-					e->expr = parse_expr();
-				}
-
-				e->expr->expr_is_sizeof = !!d;
-
-				EAT(token_close_paren);
-			}else{
-				e->expr = parse_expr_deref();
-				/* don't go any higher, sizeof a - 1, means sizeof(a) - 1 */
-			}
-			return e;
+			return parse_expr_sizeof_typeof();
 
 		case token_integer:
 		case token_character:
@@ -586,7 +590,7 @@ stmt *parse_code_block()
 
 	for(diter = t->decls; diter && *diter; diter++)
 		/* only extract the init if it's not static */
-		if((*diter)->init && ((*diter)->type->spec & spec_static) == 0){
+		if((*diter)->init && (*diter)->type->store != store_static){
 			dynarray_add((void ***)&t->codes, expr_to_stmt(expr_new_decl_init(*diter)));
 			/*
 			 *(*diter)->init = NULL;

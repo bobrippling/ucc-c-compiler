@@ -10,7 +10,7 @@ const char *str_expr_identifier()
 
 int fold_const_expr_identifier(expr *e)
 {
-	if(e->sym && e->sym->decl->type->spec & spec_const){
+	if(e->sym && e->sym->decl->type->qual == qual_const){
 		/*
 			* TODO
 			* fold. need to hunt for assignment tree
@@ -55,7 +55,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 		e->tree_type = decl_copy(e->sym->decl);
 
 		if(e->sym->type == sym_local
-		&& (e->sym->decl->type->spec & (spec_extern | spec_static)) == 0
+		&& !type_store_static_or_extern(e->sym->decl->type->store)
 		&& !decl_has_array(e->sym->decl)
 		&& e->sym->nwrites == 0)
 		{

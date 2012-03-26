@@ -22,6 +22,16 @@ void fold_expr_cast(expr *e, symtable *stab)
 
 	fold_expr(e->expr, stab);
 
+	/*
+	 * if we don't have a valid tree_type, get one
+	 * this is only the case where we're involving a tdef or typeof
+	 */
+
+	if(e->tree_type->type->primitive == type_unknown){
+		decl_free(e->tree_type);
+		e->tree_type = decl_copy(e->expr->tree_type);
+	}
+
 #ifdef FLATTEN_CASTS
 	if(expr_kind(e->expr, cast)){
 		/* get rid of e->expr, replace with e->expr->rhs */

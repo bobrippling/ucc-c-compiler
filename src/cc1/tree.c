@@ -32,6 +32,8 @@ void where_new(struct where *w)
 		w->chr   = current_chr;
 		w->fname = current_fname;
 
+		UCC_ASSERT(current_fname, "no current fname");
+
 		current_fname_used = 1;
 	}
 }
@@ -61,7 +63,7 @@ type *type_new()
 {
 	type *t = umalloc(sizeof *t);
 	where_new(&t->where);
-	t->spec = spec_none;
+	t->is_signed = 1;
 	t->primitive = type_unknown;
 	return t;
 }
@@ -113,6 +115,9 @@ void funcargs_free(funcargs *args, int free_decls)
 
 int type_size(const type *t)
 {
+	if(t->typeof)
+		return decl_size(t->typeof->tree_type);
+
 	switch(t->primitive){
 		case type_char:
 		case type_void:
@@ -129,9 +134,6 @@ int type_size(const type *t)
 		case type_long:
 		case type_double:
 			return 8; /* FIXME: 4 on 32-bit */
-
-		case type_typedef:
-			return decl_size(t->tdef);
 
 		case type_struct:
 			return struct_size(t->struc);
@@ -178,7 +180,7 @@ int type_equal(const type *a, const type *b, int strict)
 	 * basic const checking, doesn't work with
 	 * const char *const x, etc..
 	 */
-	if(strict && (b->spec & spec_const) && (a->spec & spec_const) == 0)
+	if(strict && (b->qual & qual_const) && (a->qual & qual_const) == 0)
 		return 0; /* we can assign from const to non-const, but not vice versa - FIXME should be elsewhere? */
 
 	return strict ? a->primitive == b->primitive : 1; /* int == char */
@@ -263,34 +265,41 @@ const char *op_to_str(const enum op_type o)
 	return NULL;
 }
 
-const char *spec_to_str(const enum type_spec s)
+const char *type_primitive_to_str(const enum type_primitive p)
 {
-	switch(s){
-		CASE_STR_PREFIX(spec, const);
-		CASE_STR_PREFIX(spec, extern);
-		CASE_STR_PREFIX(spec, static);
-		CASE_STR_PREFIX(spec, signed);
-		CASE_STR_PREFIX(spec, unsigned);
-		CASE_STR_PREFIX(spec, auto);
-		CASE_STR_PREFIX(spec, typedef);
-		case spec_none: return "";
+	switch(p){
+		CASE_STR_PREFIX(type, int);
+		CASE_STR_PREFIX(type, char);
+		CASE_STR_PREFIX(type, void);
+
+		CASE_STR_PREFIX(type, struct);
+		CASE_STR_PREFIX(type, enum);
+
+		CASE_STR_PREFIX(type, unknown);
 	}
 	return NULL;
 }
 
-const char *spec_to_str_full(const enum type_spec s)
+const char *type_qual_to_str(const enum type_qualifier q)
 {
-	static char buf[SPEC_STATIC_BUFSIZ];
-	char *bufp = buf;
-	int i;
+	switch(q){
+		CASE_STR_PREFIX(qual, const);
+		CASE_STR_PREFIX(qual, volatile);
+		case qual_none: break;
+	}
+	return "";
+}
 
-	*buf = '\0';
-
-	for(i = 0; i < SPEC_MAX; i++)
-		if(s & (1 << i))
-			bufp += snprintf(bufp, sizeof buf - (bufp - buf), "%s ", spec_to_str(1 << i));
-
-	return buf;
+const char *type_store_to_str(const enum type_storage s)
+{
+	switch(s){
+		CASE_STR_PREFIX(store, auto);
+		CASE_STR_PREFIX(store, static);
+		CASE_STR_PREFIX(store, extern);
+		CASE_STR_PREFIX(store, register);
+		CASE_STR_PREFIX(store, typedef);
+	}
+	return NULL;
 }
 
 int op_is_cmp(enum op_type o)
@@ -393,11 +402,10 @@ const char *type_to_str(const type *t)
 	static char buf[TYPE_STATIC_BUFSIZ];
 	char *bufp = buf;
 
-	if(t->tdef)
-		return type_to_str(t->tdef->type);
-
-	if(t->spec)
-		bufp += snprintf(bufp, BUF_SIZE, "%s", spec_to_str_full(t->spec));
+	if(t->typeof)     bufp += snprintf(bufp, BUF_SIZE, "typedef ");
+	if(t->qual)       bufp += snprintf(bufp, BUF_SIZE, "%s ", type_qual_to_str( t->qual));
+	if(t->store)      bufp += snprintf(bufp, BUF_SIZE, "%s ", type_store_to_str(t->store));
+	if(!t->is_signed) bufp += snprintf(bufp, BUF_SIZE, "unsigned ");
 
 	if(t->struc){
 		snprintf(bufp, BUF_SIZE, "struct %s", t->struc->spel);
@@ -416,8 +424,6 @@ const char *type_to_str(const type *t)
 
 			case type_unknown:
 				ICE("unknown type primitive (%s)", where_str(&t->where));
-			case type_typedef:
-				ICE("typedef without ->tdef");
 			case type_enum:
 				ICE("enum without ->enu");
 			case type_struct:

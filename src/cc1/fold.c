@@ -86,10 +86,6 @@ void fold_decl_equal(decl *a, decl *b, where *w, enum warning warn,
 
 void fold_typecheck_sign(expr *lhs, expr *rhs, symtable *stab, where *where)
 {
-	enum
-	{
-		SIGNED, UNSIGNED
-	} rhs_signed, lhs_signed;
 	decl *decl_l, *decl_r;
 
 	(void)stab;
@@ -112,13 +108,13 @@ void fold_typecheck_sign(expr *lhs, expr *rhs, symtable *stab, where *where)
 		cc1_warn_at(where, 0, WARN_ENUM_CMP, "expression with enum %s and enum %s", decl_l->type->spel, decl_r->spel);
 	}
 
-	lhs_signed = decl_l->type->spec & spec_unsigned ? UNSIGNED : SIGNED;
-	rhs_signed = decl_r->type->spec & spec_unsigned ? UNSIGNED : SIGNED;
+#define lhs_signed decl_l->type->is_signed
+#define rhs_signed decl_r->type->is_signed
 
 	if(rhs_signed != lhs_signed){
 #define SIGN_CONVERT(hs)                              \
 		if(expr_kind(hs, val) && hs->val.iv.val >= 0){    \
-			hs->tree_type->type->spec |= spec_unsigned;     \
+			hs->tree_type->type->is_signed = 0;             \
 			goto noproblem;                                 \
 		}
 
@@ -214,10 +210,31 @@ void fold_decl_ptr(decl_ptr *dp, symtable *stab, decl *root)
 
 void fold_decl(decl *d, symtable *stab)
 {
+	/* typedef / __typeof folding */
+	while(d->type->typeof){
+		/* get the typedef decl from t->typeof->tree_type */
+		const enum type_qualifier old_qual  = d->type->qual;
+		const enum type_storage   old_store = d->type->store;
+		decl *tdef;
+
+		fold_expr(d->type->typeof, stab);
+
+		tdef = d->type->typeof->tree_type;
+
+		/* type */
+		memcpy(d->type, d->type->typeof->tree_type->type, sizeof *d->type);
+		d->type->qual  = old_qual;
+		d->type->store = old_store;
+
+		/* decl */
+		if(tdef->decl_ptr)
+			*decl_leaf(d) = decl_ptr_copy(tdef->decl_ptr);
+	}
+
 	switch(d->type->primitive){
 		case type_void:
 			if(!decl_ptr_depth(d) && !d->funcargs)
-				die_at(&d->type->where, "can't have a void variable (%s)", decl_to_str(d));
+				die_at(&d->where, "can't have a void variable - %s (%s)", d->spel, decl_to_str(d));
 			break;
 
 		case type_enum:
@@ -229,28 +246,9 @@ void fold_decl(decl *d, symtable *stab)
 			break;
 	}
 
+
 	if(d->funcargs)
 		fold_funcargs(d->funcargs, stab, d->spel);
-
-#define SPEC(x) (d->type->spec & (x))
-
-	/* type spec checks */
-	if(SPEC(spec_extern) && SPEC(spec_static))
-		die_at(&d->type->where, "can't have static extern");
-
-	if(SPEC(spec_signed) && SPEC(spec_unsigned))
-		die_at(&d->type->where, "can't have signed unsigned");
-
-	if(SPEC(spec_auto)){
-#define CANT_HAVE(sp) \
-		if(SPEC(sp)) \
-			die_at(&d->type->where, "can't have auto %s", spec_to_str(sp))
-
-		CANT_HAVE(spec_static);
-		CANT_HAVE(spec_extern);
-
-#undef CANT_HAVE
-	}
 
 	if(d->decl_ptr)
 		fold_decl_ptr(d->decl_ptr, stab, d);
@@ -266,7 +264,7 @@ void fold_decl(decl *d, symtable *stab)
 void fold_decl_global(decl *d, symtable *stab)
 {
 	if(d->init){
-		if(d->type->spec & spec_extern)
+		if(d->type->store == store_extern)
 			/* only need this check for globals, since block-decls aren't initalised */
 			die_at(&d->where, "externs can't be initalised");
 
@@ -275,14 +273,14 @@ void fold_decl_global(decl *d, symtable *stab)
 		if(const_fold(d->init))
 			die_at(&d->init->where, "not a constant expression (initialiser is %s)", d->init->f_str());
 
-	}else if(d->type->spec & spec_extern){
+	}else if(d->type->store == store_extern){
 		/* we have an extern, check if it's overridden */
 		char *const spel = d->spel;
 		decl **dit;
 
 		for(dit = stab->decls; dit && *dit; dit++){
 			decl *d2 = *dit;
-			if(!strcmp(d2->spel, spel) && (d2->type->spec & spec_extern) == 0){
+			if(!strcmp(d2->spel, spel) && d2->type->store != store_extern){
 				/* found an override */
 				d->ignore = 1;
 				break;
@@ -382,7 +380,7 @@ void fold_funcargs(funcargs *fargs, symtable *stab, char *context)
 		int i;
 
 		for(i = 0; fargs->arglist[i]; i++){
-			if(fargs->arglist[i]->type->spec & (spec_static | spec_extern)){
+			if(type_store_static_or_extern(fargs->arglist[i]->type->store)){
 				const char *sp = fargs->arglist[i]->spel;
 				die_at(&fargs->where, "argument %d %s%s%sin function \"%s\" is static or extern",
 						i + 1,
@@ -450,7 +448,7 @@ void fold(symtable *globs)
 		fargs->arglist[0] = decl_new();
 		fargs->arglist[1] = NULL;
 		fargs->arglist[0]->type->primitive = type_char;
-		fargs->arglist[0]->type->spec     |= spec_const;
+		fargs->arglist[0]->type->qual      = qual_const;
 		fargs->arglist[0]->decl_ptr        = decl_ptr_new();
 
 		symtab_add(globs, df, sym_global, SYMTAB_NO_SYM, SYMTAB_PREPEND);
@@ -517,7 +515,7 @@ void fold(symtable *globs)
 			}
 
 			if(!found){
-				D(i)->type->spec |= spec_extern;
+				D(i)->type->store = store_extern;
 				/*cc1_warn_at(&f->where, 0, WARN_EXTERN_ASSUME, "assuming \"%s\" is extern", func_decl->spel);*/
 			}
 		}
