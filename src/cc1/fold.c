@@ -158,22 +158,6 @@ void fold_decl_ptr(decl_ptr *dp, symtable *stab, decl *root)
 
 void fold_decl(decl *d, symtable *stab)
 {
-	switch(d->type->primitive){
-		case type_void:
-			if(!decl_ptr_depth(d) && !d->funcargs)
-				die_at(&d->type->where, "can't have a void variable (%s)", decl_to_str(d));
-			break;
-
-		case type_enum:
-		case type_struct:
-			st_en_lookup_chk(d, stab);
-			break;
-
-		default:
-			break;
-	}
-
-
 	/* typedef / __typeof folding */
 	while(d->type->typeof){
 		/* get the typedef decl from t->typeof->tree_type */
@@ -194,6 +178,22 @@ void fold_decl(decl *d, symtable *stab)
 		if(tdef->decl_ptr)
 			*decl_leaf(d) = decl_ptr_copy(tdef->decl_ptr);
 	}
+
+	switch(d->type->primitive){
+		case type_void:
+			if(!decl_ptr_depth(d) && !d->funcargs)
+				die_at(&d->where, "can't have a void variable - %s (%s)", d->spel, decl_to_str(d));
+			break;
+
+		case type_enum:
+		case type_struct:
+			st_en_lookup_chk(d, stab);
+			break;
+
+		default:
+			break;
+	}
+
 
 	if(d->funcargs)
 		fold_funcargs(d->funcargs, stab, d->spel);
