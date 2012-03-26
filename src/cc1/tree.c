@@ -395,11 +395,10 @@ const char *type_to_str(const type *t)
 	static char buf[TYPE_STATIC_BUFSIZ];
 	char *bufp = buf;
 
-	UCC_ASSERT(!t->typeof, "->typeof should've been folded by now");
-
-	if(t->qual)       bufp += snprintf(bufp, BUF_SIZE, "%s", type_qual_to_str( t->qual));
-	if(t->store)      bufp += snprintf(bufp, BUF_SIZE, "%s", type_store_to_str(t->store));
-	if(!t->is_signed) bufp += snprintf(bufp, BUF_SIZE, "unsigned");
+	if(t->typeof)     bufp += snprintf(bufp, BUF_SIZE, "typedef ");
+	if(t->qual)       bufp += snprintf(bufp, BUF_SIZE, "%s ", type_qual_to_str( t->qual));
+	if(t->store)      bufp += snprintf(bufp, BUF_SIZE, "%s ", type_store_to_str(t->store));
+	if(!t->is_signed) bufp += snprintf(bufp, BUF_SIZE, "unsigned ");
 
 	if(t->struc){
 		snprintf(bufp, BUF_SIZE, "struct %s", t->struc->spel);

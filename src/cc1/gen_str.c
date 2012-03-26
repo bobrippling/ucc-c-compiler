@@ -162,6 +162,7 @@ void print_decl(decl *d, enum pdeclargs mode)
 		fputs(type_to_str(d->type), cc1_out);
 
 		if(d->type->typeof){
+			fputc('\n', cc1_out);
 			idt_printf("typeof expr:\n");
 			print_expr(d->type->typeof);
 		}

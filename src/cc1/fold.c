@@ -175,7 +175,7 @@ void fold_decl(decl *d, symtable *stab)
 
 
 	/* typedef / __typeof folding */
-	if(d->type->typeof){
+	while(d->type->typeof){
 		/* get the typedef decl from t->typeof->tree_type */
 		const enum type_qualifier old_qual  = d->type->qual;
 		const enum type_storage   old_store = d->type->store;
@@ -189,10 +189,6 @@ void fold_decl(decl *d, symtable *stab)
 		memcpy(d->type, d->type->typeof->tree_type->type, sizeof *d->type);
 		d->type->qual  = old_qual;
 		d->type->store = old_store;
-
-		UCC_ASSERT(!d->type->typeof,
-				"nested typedefs are probably broken (%s)",
-				d->type->typeof->tree_type->spel);
 
 		/* decl */
 		if(tdef->decl_ptr)

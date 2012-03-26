@@ -162,9 +162,11 @@ type *parse_type()
 			EAT(curtok);
 
 		}else if(curtok == token_struct){
+			EAT(token_struct);
 			return parse_type_struct();
 
 		}else if(curtok == token_enum){
+			EAT(token_enum);
 			return parse_type_enum();
 
 		}else if(curtok == token_identifier && (td = typedef_find(current_scope, token_current_spel_peek()))){
