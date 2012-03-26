@@ -40,6 +40,7 @@ struct expr
 
 	int ptr_safe; /* does val point to a string we know about? */
 	int in_parens; /* for if((x = 5)) testing */
+	int op_no_ptr_mul; /* for &(a.b) -> (&a) + offsetof(a, b) - don't multiply the op */
 
 	char *spel;
 	expr *expr; /* x = 5; expr is the 5 */

@@ -249,7 +249,10 @@ int fold_struct(struct_st *st, symtable *stab)
 		if(d->type->primitive == type_struct && !d->type->struc)
 			st_en_lookup_chk(d, stab);
 
-		if(d->type->struc){
+		if(d->type->struc && decl_ptr_depth(d) == 0){
+			if(d->type->struc == st)
+				die_at(&d->where, "nested struct");
+
 			d->struct_offset = offset;
 			offset += fold_struct(d->type->struc, stab);
 		}else{

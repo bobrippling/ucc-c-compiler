@@ -160,7 +160,6 @@ void fold_op_struct(expr *e, symtable *stab)
 	 */
 	const int ptr_depth_exp = e->op == op_struct_ptr ? 1 : 0;
 	struct_st *st;
-	decl *d, **i;
 	char *spel;
 
 	fold_expr(e->lhs, stab);
@@ -172,31 +171,24 @@ void fold_op_struct(expr *e, symtable *stab)
 
 	/* we access a struct, of the right ptr depth */
 	if(e->lhs->tree_type->type->primitive != type_struct
-			|| decl_ptr_depth(e->lhs->tree_type) != ptr_depth_exp)
-		die_at(&e->lhs->where, "%s is not a %sstruct",
+	|| decl_ptr_depth(e->lhs->tree_type) != ptr_depth_exp)
+	{
+		die_at(&e->lhs->where, "%s is not a %sstruct (%s)",
 				decl_to_str(e->lhs->tree_type),
-				ptr_depth_exp == 1 ? "pointer-to-" : "");
+				ptr_depth_exp == 1 ? "pointer-to-" : "",
+				spel);
+	}
 
 	st = e->lhs->tree_type->type->struc;
 
 	if(!st)
 		die_at(&e->lhs->where, "%s incomplete type",
-				ptr_depth_exp == 1 /* this should always be true.. */
+				ptr_depth_exp == 1
 				? "dereferencing pointer to"
 				: "use of");
 
 	/* found the struct, find the member */
-	d = NULL;
-	for(i = st->members; i && *i; i++)
-		if(!strcmp((*i)->spel, spel)){
-			d = *i;
-			break;
-		}
-
-	if(!d)
-		die_at(&e->rhs->where, "struct %s has no member named \"%s\"", st->spel, spel);
-
-	e->rhs->tree_type = d;
+	e->rhs->tree_type = struct_member_find(st, spel, &e->where);
 
 	/*
 	 * if it's a.b, convert to (&a)->b for asm gen
@@ -213,10 +205,9 @@ void fold_op_struct(expr *e, symtable *stab)
 		e->op   = op_struct_ptr;
 
 		fold_expr(e->lhs, stab);
-		e->tree_type = decl_copy(e->lhs->tree_type);
-	}else{
-		e->tree_type = decl_copy(d);
 	}
+
+	e->tree_type = decl_copy(e->rhs->tree_type);
 }
 
 void fold_deref(expr *e)
@@ -304,10 +295,11 @@ norm_tt:
 
 	if(e->rhs){
 		/* need to do this check _after_ we get the correct tree type */
-		if((e->op == op_plus || e->op == op_minus) &&
-				decl_ptr_depth(e->tree_type) &&
-				e->rhs){
-
+		if((e->op == op_plus || e->op == op_minus)
+		&& decl_ptr_depth(e->tree_type)
+		&& e->rhs
+		&& !e->op_no_ptr_mul)
+		{
 			/* 2 + (void *)5 is 7, not 2 + 8*5 */
 			if(e->tree_type->type->primitive != type_void){
 				/* we're dealing with pointers, adjust the amount we add by */

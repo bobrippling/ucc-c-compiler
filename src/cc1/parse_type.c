@@ -556,13 +556,16 @@ decl **parse_decls_multi_type(const int can_default, const int accept_field_widt
 
 			if(!d->spel){
 				/*
-				 * int; - error (actually no..) FIXME: fine for "int;", but "int i,;" needs to fail
+				 * int; - fine for "int;", but "int i,;" needs to fail
 				 * struct A; - fine
 				 */
 				decl_free_notype(d);
-				if(t->primitive == type_struct)
+				if(!last){
+					if(t->primitive == type_struct ? !t->struc->anon : 1)
+						warn_at(&d->where, "declaration doesn't declare anything");
 					goto next;
-				die_at(&t->where, "identifier expected after type");
+				}
+				die_at(&d->where, "identifier expected after decl");
 			}
 
 			dynarray_add(are_tdefs
