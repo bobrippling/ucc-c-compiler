@@ -21,6 +21,8 @@
 #include "parse.h"
 #include "parse_type.h"
 
+#include "expr.h"
+
 type *parse_type_struct(void);
 type *parse_type_enum(void);
 decl_desc *parse_decl_desc_array(enum decl_mode mode, char **decl_sp, funcargs **decl_args);
@@ -107,75 +109,106 @@ type *parse_type_enum()
 
 type *parse_type()
 {
-	enum type_spec spec;
-	type *t;
-	decl *td;
-	int flag;
+	expr *tdef_typeof = NULL;
+	enum type_qualifier qual = qual_none;
+	enum type_storage   store = store_auto;
+	enum type_primitive primitive = type_int;
+	int is_signed = 1;
+	int store_set = 0, primitive_set = 0, signed_set = 0;
 
-	spec = 0;
-	t = NULL;
+	if(accept(token_typeof)){
+		type *t = type_new();
+		t->typeof = parse_expr_sizeof_typeof();
+		t->typeof->expr_is_typeof = 1;
+		return t;
+	}
 
-	/* read "const", "unsigned", ... and "int"/"long" ... in any order */
-	while(td = NULL,
-			((flag = curtok_is_type_specifier())
-			 || curtok_is_type()
-			 || curtok == token_struct
-			 || curtok == token_enum
-			 || (curtok == token_identifier && (td = typedef_find(current_scope, token_current_spel_peek())))
-			 )){
+	for(;;){
+		decl *td;
 
-		if(accept(token_struct)){
-			return parse_type_struct();
-		}else if(accept(token_enum)){
-			return parse_type_enum();
-		}else if(flag){
-			const enum type_spec this = curtok_to_type_specifier();
+		if(curtok_is_type_qual()){
+			if(qual != qual_none)
+				die_at(NULL, "second type qualification %s", type_qual_to_str(qual));
 
-			UCC_ASSERT(this != spec_none, "spec none where spec expected");
-
-			/* we can't check in fold, since 1 & 1 & 1 is still just 1 */
-			if(this & spec)
-				die_at(NULL, "duplicate type specifier \"%s\"", spec_to_str(spec));
-
-			spec |= this;
+			qual = curtok_to_type_qualifier();
 			EAT(curtok);
-		}else if(td){
+
+		}else if(curtok_is_type_store()){
+			store = curtok_to_type_storage();
+
+			if(store_set)
+				die_at(NULL, "second type store %s", type_store_to_str(store));
+
+			store_set = 1;
+			EAT(curtok);
+
+		}else if(curtok_is_type_primitive()){
+			primitive = curtok_to_type_primitive();
+
+			if(primitive_set)
+				die_at(NULL, "second type primitive %s", type_primitive_to_str(primitive));
+
+			primitive_set = 1;
+			EAT(curtok);
+
+		}else if(curtok == token_signed || curtok == token_unsigned){
+			is_signed = curtok == token_signed;
+
+			if(signed_set)
+				die_at(NULL, "unwanted second \"%ssigned\"", is_signed ? "" : "un");
+
+			signed_set = 1;
+			EAT(curtok);
+
+		}else if(curtok == token_struct){
+			EAT(token_struct);
+			return parse_type_struct();
+
+		}else if(curtok == token_enum){
+			EAT(token_enum);
+			return parse_type_enum();
+
+		}else if(curtok == token_identifier && (td = typedef_find(current_scope, token_current_spel_peek()))){
 			/* typedef name */
 
-			if(t){
+			if(primitive_set){
 				/* "int x" - we are at x, which is also a typedef somewhere */
 				cc1_warn_at(NULL, 0, WARN_IDENT_TYPEDEF, "identifier is a typedef name");
 				break;
 			}
 
-			t = type_new();
-			t->primitive = type_typedef;
-			t->tdef = td;
+			tdef_typeof = expr_new_sizeof_decl(td);
 
 			EAT(token_identifier);
 			break;
-
 		}else{
-			/* curtok_is_type */
-			if(t){
-				die_at(NULL, "second type name unexpected");
-			}else{
-				t = type_new();
-				t->primitive = curtok_to_type_primitive();
-				UCC_ASSERT(t->primitive != type_unknown, "unknown type where type expected");
-				EAT(curtok);
-			}
+			break;
 		}
 	}
 
-	if(!t && spec)
-		/* unsigned x; */
-		INT_TYPE(t);
 
-	if(t)
-		t->spec = spec;
+	if(qual != qual_none || store_set || primitive_set || signed_set || tdef_typeof){
+		type *t = type_new();
 
-	return t;
+		/* signed size_t x; */
+		if(tdef_typeof && signed_set)
+			die_at(NULL, "signed/unsigned not allowed with typedef instance");
+
+
+		if(!primitive_set)
+			INT_TYPE(t); /* unsigned x; */
+		else
+			t->primitive = primitive;
+
+		t->qual  = qual;
+		t->store = store;
+		t->typeof = tdef_typeof;
+		t->is_signed = is_signed;
+
+		return t;
+	}else{
+		return NULL;
+	}
 }
 
 funcargs *parse_func_arglist()
@@ -429,19 +462,10 @@ decl *parse_decl(type *t, enum decl_mode mode)
 
 	dp = parse_decl_desc_array(mode, &spel, &args);
 
-	if(t->tdef){
-		/* get the typedef stuff now */
-		d = decl_copy(t->tdef);
-
-		d->type->tdef = NULL;
-		d->type->spec |= t->spec;
-
-		*decl_leaf(d) = dp;
-	}else{
-		d = decl_new();
-		d->desc = dp;
-		d->type = type_copy(t);
-	}
+	/* don't fold typedefs until later (for __typeof) */
+	d = decl_new();
+	d->desc = dp;
+	d->type = type_copy(t);
 
 	d->spel     = spel;
 	d->funcargs = args;
@@ -467,7 +491,7 @@ decl *parse_decl_single(enum decl_mode mode)
 		}
 	}
 
-	if(t->spec & spec_typedef)
+	if(t->store == store_typedef)
 		die_at(&t->where, "typedef unexpected");
 
 	return parse_decl(t, mode);
@@ -481,7 +505,7 @@ decl **parse_decls_one_type()
 	if(!t)
 		return NULL;
 
-	if(t->spec & spec_typedef)
+	if(t->store == store_typedef)
 		die_at(&t->where, "typedef unexpected");
 
 	do{
@@ -522,7 +546,7 @@ decl **parse_decls_multi_type(const int can_default, const int accept_field_widt
 			}
 		}
 
-		if(t->spec & spec_typedef)
+		if(t->store == store_typedef)
 			are_tdefs = 1;
 		else if((t->struc || t->enu) && !parse_possible_decl())
 			goto next; /* struct { int i; }; - continue to next one */
@@ -541,7 +565,7 @@ decl **parse_decls_multi_type(const int can_default, const int accept_field_widt
 				decl_free_notype(d);
 				if(t->primitive == type_struct)
 					goto next;
-				die_at(&d->where, "identifier expected after decl");
+				die_at(&t->where, "identifier expected after type");
 			}
 
 			dynarray_add(are_tdefs

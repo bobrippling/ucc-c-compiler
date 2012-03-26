@@ -63,7 +63,7 @@ void fold_stmt_code(stmt *s)
 			 * check static decls - after we fold,
 			 * so we've linked the syms and can change ->spel
 			 */
-			if(d->type->spec & spec_static){
+			if(d->type->store == store_static){
 				char *save = d->spel;
 				d->spel = asm_label_static_local(curdecl_func_sp, d->spel);
 				free(save);
@@ -81,7 +81,7 @@ void gen_stmt_code(stmt *s)
 		/* declare stmtics */
 		for(diter = s->decls; diter && *diter; diter++){
 			decl *d = *diter;
-			if(d->type->spec & (spec_static | spec_extern))
+			if(type_store_static_or_extern(d->type->store))
 				gen_asm_global(d);
 		}
 

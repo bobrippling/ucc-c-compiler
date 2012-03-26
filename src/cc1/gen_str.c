@@ -161,6 +161,12 @@ void print_decl(decl *d, enum pdeclargs mode)
 	}else{
 		fputs(type_to_str(d->type), cc1_out);
 
+		if(d->type->typeof){
+			fputc('\n', cc1_out);
+			idt_printf("typeof expr:\n");
+			print_expr(d->type->typeof);
+		}
+
 		if(fopt_mode & FOPT_DECL_PTR_STAT){
 			const int idt_orig = gen_str_indent;
 			decl_ptr *dpi;
