@@ -11,7 +11,7 @@ const char *where_str(const struct where *w);
 
 void warn_at(struct where *, const char *, ...);
 void die_at( struct where *, const char *, ...);
-void vwarn(  struct where *, const char *, va_list);
+void vwarn(struct where *w, int err, const char *fmt, va_list l);
 void vdie(   struct where *, const char *, va_list);
 void die(const char *fmt, ...);
 
