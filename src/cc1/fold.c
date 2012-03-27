@@ -42,10 +42,13 @@ void fold_funcargs_equal(funcargs *args_a, funcargs *args_b, int check_vari, whe
 	const int count_b = dynarray_count((void **)args_b->arglist);
 	int i;
 
-	if(!(check_vari && args_a->variadic ? count_a <= count_b : count_a == count_b)){
+	if(count_a == 0 && !args_a->args_void){
+		/* a() */
+	}else if(!(check_vari && args_a->variadic ? count_a <= count_b : count_a == count_b)){
 		char wbuf[WHERE_BUF_SIZ];
 		strcpy(wbuf, where_str(&args_a->where));
-		die_at(w, "mismatching argument counts for function %s (%s)", func_spel, wbuf);
+		die_at(w, "mismatching argument counts (%d vs %d) for %s (%s)",
+				count_a, count_b, func_spel, wbuf);
 	}
 
 	if(!count_a)
@@ -194,6 +197,16 @@ void fold_decl(decl *d, symtable *stab)
 			break;
 	}
 
+	if(d->init){
+		if(d->type->store == store_extern)
+			die_at(&d->where, "error: externs can't be initalised");
+
+		if(d->type->store == store_static)
+			fold_expr(d->init, stab); /* else it's done as part of the stmt code */
+
+		if(!stab->parent && const_fold(d->init)) /* global + not constant */
+			die_at(&d->init->where, "error: not a constant expression (initialiser is %s)", d->init->f_str());
+	}
 
 	if(d->funcargs)
 		fold_funcargs(d->funcargs, stab, d->spel);
@@ -211,17 +224,7 @@ void fold_decl(decl *d, symtable *stab)
 
 void fold_decl_global(decl *d, symtable *stab)
 {
-	if(d->init){
-		if(d->type->store == store_extern)
-			/* only need this check for globals, since block-decls aren't initalised */
-			die_at(&d->where, "externs can't be initalised");
-
-		fold_expr(d->init, stab);
-
-		if(const_fold(d->init))
-			die_at(&d->init->where, "not a constant expression (initialiser is %s)", d->init->f_str());
-
-	}else if(d->type->store == store_extern){
+	if(d->type->store == store_extern){
 		/* we have an extern, check if it's overridden */
 		char *const spel = d->spel;
 		decl **dit;
