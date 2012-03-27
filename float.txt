@@ -1,0 +1,27 @@
+void f(double *a,  double *b,  void  *c)
+{
+  a[0]*abs(3);
+}
+
+generates following object code:
+
+   0:   55                      push   %rbp
+   1:   48 89 e5                mov    %rsp,%rbp
+   4:   48 81 ec 20 00 00 00    sub    $0x20,%rsp
+   b:   48 89 7d f8             mov    %rdi,-0x8(%rbp)
+   f:   48 89 75 f0             mov    %rsi,-0x10(%rbp)
+  13:   48 89 55 e8             mov    %rdx,-0x18(%rbp)
+  17:   48 8b 45 f8             mov    -0x8(%rbp),%rax
+  1b:   48 89 45 e0             mov    %rax,-0x20(%rbp)
+  1f:   b8 03 00 00 00          mov    $0x3,%eax
+  24:   48 89 c7                mov    %rax,%rdi
+  27:   b8 00 00 00 00          mov    $0x0,%eax
+  2c:   e8 fc ff ff ff          callq  2d <f+0x2d>
+  31:   f2 0f 2a c0             cvtsi2sd %eax,%xmm0
+  35:   8b 45 e0                mov    -0x20(%rbp),%eax
+  38:   f3 0f 7e c8             movq   %xmm0,%xmm1
+  3c:   48 8b 5d e0             mov    -0x20(%rbp),%rbx
+  40:   f3 0f 7e 03             movq   (%rbx),%xmm0
+  44:   f2 0f 59 c1             mulsd  %xmm1,%xmm0
+  48:   c9                      leaveq
+  49:   c3                      retq
