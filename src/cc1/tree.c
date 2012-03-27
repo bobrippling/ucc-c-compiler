@@ -397,6 +397,8 @@ decl *decl_ptr_depth_dec(decl *d)
 
 decl *decl_func_deref(decl *d)
 {
+	ICE("TODO: function call fix");
+	d->funcargs = NULL; /* FIXME */
 	return d;
 }
 
