@@ -202,7 +202,7 @@ int vfprintf(FILE *file, char *fmt, va_list ap)
 						fputs("0x", file);
 						printx(fd, p, 0);
 					}else{
-						fputs(file, "(nil)");
+						fputs("(nil)", file);
 					}
 					break;
 				}
