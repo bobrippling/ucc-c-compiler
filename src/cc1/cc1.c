@@ -144,7 +144,7 @@ void cc1_warn_atv(struct where *where, int die, enum warning w, const char *fmt,
 	if(!die && (w & warn_mode) == 0)
 		return;
 
-	vwarn(where, fmt, l);
+	vwarn(where, 0, fmt, l);
 
 	if(die)
 		exit(1);

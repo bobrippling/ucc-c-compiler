@@ -34,11 +34,11 @@ struct where *default_where(struct where *w)
 	return w;
 }
 
-void vwarn(struct where *w, const char *fmt, va_list l)
+void vwarn(struct where *w, int err, const char *fmt, va_list l)
 {
 	w = default_where(w);
 
-	fprintf(stderr, "%s: ", where_str(w));
+	fprintf(stderr, "%s: %s: ", where_str(w), err ? "error" : "warning");
 	vfprintf(stderr, fmt, l);
 
 	if(fmt[strlen(fmt)-1] == ':'){
@@ -51,7 +51,7 @@ void vwarn(struct where *w, const char *fmt, va_list l)
 
 void vdie(struct where *w, const char *fmt, va_list l)
 {
-	vwarn(w, fmt, l);
+	vwarn(w, 1, fmt, l);
 	exit(1);
 }
 
@@ -59,8 +59,8 @@ void warn_at(struct where *w, const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
-	vwarn(w, fmt, l);
-	/* unreachable */
+	vwarn(w, 0, fmt, l);
+	va_end(l);
 }
 
 void die_at(struct where *w, const char *fmt, ...)
@@ -68,6 +68,7 @@ void die_at(struct where *w, const char *fmt, ...)
 	va_list l;
 	va_start(l, fmt);
 	vdie(w, fmt, l);
+	va_end(l);
 	/* unreachable */
 }
 
@@ -76,6 +77,7 @@ void die(const char *fmt, ...)
 	va_list l;
 	va_start(l, fmt);
 	vdie(NULL, fmt, l); /* FIXME: this is called before current_fname etc is init'd */
+	va_end(l);
 	/* unreachable */
 }
 
