@@ -78,7 +78,9 @@ struct statement
 
 	KEYWORD(sizeof),
 
-	{ "__typeof",  token_typeof }
+	{ "__typeof",  token_typeof },
+
+	{ "__attribute__", token_attribute }
 };
 
 static FILE *infile;

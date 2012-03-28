@@ -227,6 +227,8 @@ const char *token_to_str(enum token t)
 		CASE_STR_PREFIX(token,  shiftl_assign);
 		CASE_STR_PREFIX(token,  shiftr_assign);
 		CASE_STR_PREFIX(token,  ptr);
+
+		CASE_STR_PREFIX(token,  attribute);
 	}
 	return NULL;
 }
