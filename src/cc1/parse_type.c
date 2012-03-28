@@ -161,13 +161,20 @@ type *parse_type()
 			signed_set = 1;
 			EAT(curtok);
 
-		}else if(curtok == token_struct){
-			EAT(token_struct);
-			return parse_type_struct();
+		}else if(curtok == token_struct || curtok == token_enum){
+			const int en = curtok == token_enum;
+			type *t;
 
-		}else if(curtok == token_enum){
-			EAT(token_enum);
-			return parse_type_enum();
+			EAT(curtok);
+			t = en ? parse_type_enum() : parse_type_struct();
+
+			if(signed_set || primitive_set)
+				die_at(&t->where, "primitive/signed/unsigned with %s", en ? "enum" : "struct");
+
+			t->qual  = qual;
+			t->store = store;
+
+			return t;
 
 		}else if(curtok == token_identifier && (td = typedef_find(current_scope, token_current_spel_peek()))){
 			/* typedef name */
@@ -179,6 +186,7 @@ type *parse_type()
 			}
 
 			tdef_typeof = expr_new_sizeof_decl(td);
+			primitive_set = 1;
 
 			EAT(token_identifier);
 			break;
@@ -186,7 +194,6 @@ type *parse_type()
 			break;
 		}
 	}
-
 
 	if(qual != qual_none || store_set || primitive_set || signed_set || tdef_typeof){
 		type *t = type_new();
@@ -201,10 +208,10 @@ type *parse_type()
 		else
 			t->primitive = primitive;
 
-		t->qual  = qual;
-		t->store = store;
 		t->typeof = tdef_typeof;
 		t->is_signed = is_signed;
+		t->qual  = qual;
+		t->store = store;
 
 		return t;
 	}else{
