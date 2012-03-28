@@ -175,6 +175,9 @@ int decl_size(decl *d)
 	if(d->field_width)
 		return d->field_width;
 
+	if(d->type->struc)
+		return struct_size(d->type->struc);
+
 	return type_size(d->type);
 }
 
@@ -187,7 +190,10 @@ int type_equal(const type *a, const type *b, int strict)
 	if(strict && (b->qual & qual_const) && (a->qual & qual_const) == 0)
 		return 0; /* we can assign from const to non-const, but not vice versa - FIXME should be elsewhere? */
 
-	return strict ? a->primitive == b->primitive : 1; /* int == char */
+	if(a->struc != b->struc || a->enu != b->enu)
+		return 0;
+
+	return strict ? a->primitive == b->primitive : 1;
 }
 
 int decl_desc_equal(decl_desc *dpa, decl_desc *dpb)
@@ -360,6 +366,11 @@ int decl_is_callable(decl *d)
 	return !!decl_funcargs(d);
 }
 
+int decl_is_struct(decl *d)
+{
+	return !!d->type->struc;
+}
+
 int decl_has_array(decl *d)
 {
 	decl_desc *dp;
@@ -494,7 +505,13 @@ const char *decl_to_str(decl *d)
 	static char buf[DECL_STATIC_BUFSIZ];
 	int n;
 
-	n = snprintf(buf, sizeof buf, "%s", type_to_str(d->type));
+	for(dp = d->decl_ptr; dp; dp = dp->child)
+		BUF_ADD(" %s*%s%s%s%s",
+				dp->fptrargs   ? "("  : "",
+				dp->is_const   ? "K"  : "",
+				dp->fptrargs   ? "()" : "",
+				dp->array_size ? "[]" : "",
+				dp->fptrargs   ? ")"  : "");
 
 	if(d->desc)
 		decl_desc_add_str(buf + n, sizeof(buf) - n, d->desc);

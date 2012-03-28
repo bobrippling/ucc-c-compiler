@@ -175,6 +175,7 @@ int   decl_size( decl *);
 int   decl_equal(decl *, decl *, enum decl_cmp mode);
 
 int   decl_has_array(  decl *);
+int   decl_is_struct(  decl *);
 int   decl_is_callable(decl *);
 int   decl_is_const(   decl *);
 int   decl_ptr_depth(  decl *);

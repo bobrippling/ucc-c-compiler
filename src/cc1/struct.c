@@ -53,6 +53,8 @@ struct_st *struct_add(symtable *const stab, char *spel, decl **members)
 			die_at(&d->init->where, "struct member %s is initialised", d->spel);
 	}
 
+	struct_st->anon = !spel;
+
 	st_en_set_spel(&struct_st->spel, spel, "struct");
 
 	struct_st->members = members;
@@ -60,4 +62,16 @@ struct_st *struct_add(symtable *const stab, char *spel, decl **members)
 	dynarray_add((void ***)&stab->structs, struct_st);
 
 	return struct_st;
+}
+
+decl *struct_member_find(struct_st *st, const char *spel, where *die_where)
+{
+	decl **i;
+
+	for(i = st->members; i && *i; i++)
+		if(!strcmp((*i)->spel, spel))
+			return *i;
+
+	die_at(die_where, "struct %s has no member named \"%s\"", st->spel, spel);
+	return NULL;
 }

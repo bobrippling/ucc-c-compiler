@@ -1,6 +1,8 @@
 #include <string.h>
+#include <stdlib.h>
 
 #include "ops.h"
+#include "../struct.h"
 
 const char *str_expr_addr()
 {
@@ -64,6 +66,49 @@ void fold_expr_addr(expr *e, symtable *stab)
 		fold_inc_writes_if_sym(e->expr, stab);
 
 		fold_expr(e->expr, stab);
+
+		if(expr_kind(e->expr, op) && (e->expr->op == op_struct_dot || e->expr->op == op_struct_ptr)){
+			/*
+			 * convert &(a.b) to &a + offsetof(a, b)
+			 * i.e.:
+			 * (__typeof(a->b) *)((void *)(&a) + __offsetof(__typeof(a), b))
+			 */
+			expr *struc, *member, *addr;
+			struct_st *st;
+			decl *member_decl;
+
+			/* pull out the various bits */
+			struc = e->expr->lhs;
+			member = e->expr->rhs;
+			addr = e->expr; /* FIXME: leaked */
+			st = struc->tree_type->type->struc;
+
+			/* forget about the old structure */
+			e->expr = e->expr->lhs = e->expr->rhs = NULL;
+
+			/* lookup the member decl (for tree type later on) */
+			member_decl = struct_member_find(st, member->spel, &e->where);
+
+			/* e is now the op */
+			expr_mutate_wrapper(e, op);
+			e->op = op_plus;
+			e->op_no_ptr_mul = 1;
+
+			/* add the struct addr and the member offset */
+			e->lhs = struc;
+			e->rhs = expr_new_val(member_decl->struct_offset);
+
+			/* sort yourself out */
+			fold_expr(e, stab);
+
+			/* replace the decl */
+			decl_free(e->tree_type);
+			e->tree_type = decl_ptr_depth_inc(decl_copy(member_decl));
+
+			expr_free(addr);
+			return;
+		}
+
 		if(!fold_expr_is_addressable(e->expr))
 			die_at(&e->expr->where, "can't take the address of %s", e->expr->f_str());
 

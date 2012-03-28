@@ -12,8 +12,6 @@
 #define PAGE_SIZE 4096
 // getpagesize()
 
-#define MALLOC_MMAP
-
 #ifdef __DARWIN__
 # define MAP_ANONYMOUS MAP_ANON
 #endif
@@ -67,8 +65,13 @@ void *malloc(size_t size)
 	return sbrk(size);
 # else
 # warning malloc static buf implementation
-	static malloc_buf[PAGE_SIZE];
-	return ...; // TODO
+	static char malloc_buf[PAGE_SIZE];
+	static void *ptr = malloc_buf;
+	void *ret = ptr;
+
+	ptr += size;
+
+	return ret; // TODO
 # endif
 #endif
 }
