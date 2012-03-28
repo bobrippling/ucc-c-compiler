@@ -24,7 +24,7 @@ void where_new(struct where *w)
 		if(eof_where)
 			memcpy(w, eof_where, sizeof *w);
 		else
-			ICE("where_new() after buffer eof");
+			memset(w, 0, sizeof *w); /*ICE("where_new() after buffer eof");*/
 	}else{
 		extern int current_fname_used;
 
