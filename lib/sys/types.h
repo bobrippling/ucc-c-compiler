@@ -28,4 +28,6 @@ typedef   signed int ssize_t;
 //typedef unsigned long off_t;
 typedef unsigned int off_t;
 
+#define __offsetof(type, field) ((__typeof(sizeof(int)))(&((type *)0)->field))
+
 #endif

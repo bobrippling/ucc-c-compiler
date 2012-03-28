@@ -9,8 +9,10 @@
 #include "cc1.h"
 #include "asm_out.h"
 #include "asm.h"
+#include "../util/platform.h"
 
-static asm_output **asm_prog;
+static asm_output **asm_prog = NULL;
+static int asm_flushing = 0;
 
 static const char *asm_reg_str(decl *d, enum asm_reg r)
 {
@@ -80,13 +82,44 @@ ASM_WRAP(push,     1)
 
 void asm_out_type_pop(asm_output *out)
 {
+	const int word = platform_word_size();
+	decl *const tt = out->lhs->tt;
+	int   const sz = tt ? asm_type_size(tt) : word;
+	FILE *f = cc_out[SECTION_TEXT];
+
+	out->lhs->tt = NULL; /* force pop rax */
+
 	asm_out_generic("pop", out, 1);
 
-	/* TODO: optimise for poping a full word
-	 * if(out->lhs->tt)*/
-	fprintf(cc_out[SECTION_TEXT], "; TODO: truncate ^\n");
-	ICE("TODO: truncate pop");
+	if(!tt || sz == word){
+		fprintf(f, "\t; not truncating - machine word size\n");
+	}else{
+		char buf[32];
+		int i;
+
+#define TRUNCATE(n)             \
+		case n:                     \
+		for(i = 0; i < 2 * n; i++)  \
+			buf[i] = '0';             \
+		for(; i < 4 * n; i++)       \
+			buf[i] = 'f';             \
+		buf[i] = '\0';              \
+		break;
+
+		switch(sz){
+			TRUNCATE(4);
+			TRUNCATE(2);
+			TRUNCATE(1);
+			default:
+				ICE("can't truncate to length %d", sz);
+		}
+
+		fprintf(f, "\tand rax, 0x%s\n", buf);
+	}
+
+	out->lhs->tt = tt;
 }
+#undef TRUNCATE
 
 void asm_out_type_mov(asm_output *out)
 {
@@ -214,7 +247,9 @@ asm_operand *asm_operand_new_deref(decl *tt, asm_operand *deref_base, int offset
 
 asm_output *asm_output_new(asm_out_func *impl, asm_operand *lhs, asm_operand *rhs)
 {
-	asm_output *out = umalloc(sizeof *out);
+	asm_output *out;
+	UCC_ASSERT(asm_flushing == 0, "adding while flushing");
+	out = umalloc(sizeof *out);
 	out->impl = impl;
 	out->lhs = lhs;
 	out->rhs = rhs;
@@ -319,6 +354,7 @@ void asm_out_section(enum section_type t, const char *fmt, ...)
 void asm_flush()
 {
 	asm_output **i;
+	asm_flushing = 1;
 	for(i = asm_prog; i && *i; i++){
 		(*i)->impl(*i);
 		// TODO: free

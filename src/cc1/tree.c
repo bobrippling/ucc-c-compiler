@@ -171,6 +171,9 @@ int decl_size(decl *d)
 	if(d->field_width)
 		return d->field_width;
 
+	if(d->type->struc)
+		return struct_size(d->type->struc);
+
 	return type_size(d->type);
 }
 
@@ -183,7 +186,10 @@ int type_equal(const type *a, const type *b, int strict)
 	if(strict && (b->qual & qual_const) && (a->qual & qual_const) == 0)
 		return 0; /* we can assign from const to non-const, but not vice versa - FIXME should be elsewhere? */
 
-	return strict ? a->primitive == b->primitive : 1; /* int == char */
+	if(a->struc != b->struc || a->enu != b->enu)
+		return 0;
+
+	return strict ? a->primitive == b->primitive : 1;
 }
 
 int decl_ptr_equal(decl_ptr *dpa, decl_ptr *dpb)
@@ -268,9 +274,13 @@ const char *op_to_str(const enum op_type o)
 const char *type_primitive_to_str(const enum type_primitive p)
 {
 	switch(p){
-		CASE_STR_PREFIX(type, int);
-		CASE_STR_PREFIX(type, char);
 		CASE_STR_PREFIX(type, void);
+		CASE_STR_PREFIX(type, char);
+		CASE_STR_PREFIX(type, short);
+		CASE_STR_PREFIX(type, int);
+		CASE_STR_PREFIX(type, long);
+		CASE_STR_PREFIX(type, float);
+		CASE_STR_PREFIX(type, double);
 
 		CASE_STR_PREFIX(type, struct);
 		CASE_STR_PREFIX(type, enum);
@@ -356,6 +366,11 @@ int decl_is_callable(decl *d)
 	return !!decl_funcargs(d);
 }
 
+int decl_is_struct(decl *d)
+{
+	return !!d->type->struc;
+}
+
 int decl_has_array(decl *d)
 {
 	decl_ptr *dp;
@@ -393,6 +408,12 @@ decl *decl_ptr_depth_dec(decl *d)
 
 decl *decl_func_deref(decl *d)
 {
+	static int warned = 0;
+	if(!warned && decl_ptr_depth(d)){
+		ICW("funcall type propagation (for funcs returning pointers) is broken");
+		warned = 1;
+	}
+	/*d->funcargs = NULL;*/
 	return d;
 }
 
@@ -448,7 +469,7 @@ const char *decl_to_str(decl *d)
 	BUF_ADD("%s", type_to_str(d->type));
 
 	for(dp = d->decl_ptr; dp; dp = dp->child)
-		BUF_ADD("%s*%s%s%s%s",
+		BUF_ADD(" %s*%s%s%s%s",
 				dp->fptrargs   ? "("  : "",
 				dp->is_const   ? "K"  : "",
 				dp->fptrargs   ? "()" : "",

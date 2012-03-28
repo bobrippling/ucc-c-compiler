@@ -57,6 +57,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 		if(e->sym->type == sym_local
 		&& !type_store_static_or_extern(e->sym->decl->type->store)
 		&& !decl_has_array(e->sym->decl)
+		&& !decl_is_struct(e->sym->decl)
 		&& e->sym->nwrites == 0)
 		{
 			cc1_warn_at(&e->where, 0, WARN_READ_BEFORE_WRITE, "\"%s\" uninitialised on read", e->sym->decl->spel);

@@ -28,9 +28,13 @@ void st_en_lookup(void **save_to, int *incomplete, decl *d, symtable *stab, void
 		UCC_ASSERT(d->type->spel, "%s lookup: no %s spel (decl %s)", mode, mode, d->spel);
 		if((*incomplete = !(*save_to = lookup(stab, d->type->spel))))
 			cc1_warn_at(&d->type->where, 0, WARN_INCOMPLETE_USE, "using incomplete type %s %s", mode, d->type->spel);
-	}else if(!d->type->spel){
-		/* get the anon enum name */
-		d->type->spel = is_struct ? d->type->struc->spel : d->type->enu->spel;
+	}else{
+		*incomplete = 0;
+
+		if(!d->type->spel){
+			/* get the anon enum name */
+			d->type->spel = is_struct ? d->type->struc->spel : d->type->enu->spel;
+		}
 	}
 }
 
