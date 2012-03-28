@@ -22,6 +22,8 @@ enum token
 	token_sizeof,
 	token_typeof,
 
+	token_attribute,
+
 	token_identifier,
 	token_integer,     /* aka [1-9] */
 	token_character,   /* aka 'f' */

@@ -17,6 +17,7 @@ typedef struct type        type;
 typedef struct decl        decl;
 typedef struct decl_desc   decl_desc;
 typedef struct array_decl  array_decl;
+typedef struct decl_attr   decl_attr;
 typedef struct funcargs    funcargs;
 
 
@@ -88,6 +89,24 @@ struct decl_desc
 	expr *array_size;      /* int (x[5][2])[2] */
 };
 
+struct decl_attr
+{
+	where where;
+
+	enum decl_attr_type
+	{
+		attr_format
+	} type;
+
+	union
+	{
+		struct
+		{
+			int fmt_arg, var_arg;
+		} format;
+	} attr_extra;
+};
+
 struct decl
 {
 	where where;
@@ -102,6 +121,7 @@ struct decl
 #define struct_offset ignore
 
 	sym *sym;
+	decl_attr *attr;
 	char *spel;
 
 	/* recursive */
