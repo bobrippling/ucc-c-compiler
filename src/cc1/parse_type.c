@@ -457,6 +457,34 @@ decl_ptr *parse_decl_ptr_array(enum decl_mode mode, char **decl_sp, funcargs **d
 	return dp;
 }
 
+decl_attr *parse_attr(void)
+{
+	decl_attr *attr = NULL;
+
+	for(;;){
+		char *ident;
+
+		if(curtok != token_identifier)
+			die_at(NULL, "identifier expected for attribute");
+
+		ident = token_current_spel();
+
+		if(!strcmp(ident, "__format__")){
+			/* printf-like */
+			EAT(token_open_paren);
+			ICE("TODO");
+			/*
+         #define __printflike(fmtarg, firstvararg) \
+          __attribute__((__format__ (__printf__, fmtarg, firstvararg)))
+			*/
+
+		}else{
+			warn_at(&attr->where, "ignoring unrecognised attribute \"%s\"\n", ident);
+			free(ident);
+		}
+	}
+}
+
 decl *parse_decl(type *t, enum decl_mode mode)
 {
 	char *spel = NULL;
@@ -473,6 +501,16 @@ decl *parse_decl(type *t, enum decl_mode mode)
 
 	d->spel     = spel;
 	d->funcargs = args;
+
+	if(accept(token_attribute)){
+		EAT(token_open_paren);
+		EAT(token_open_paren);
+
+		d->attr = parse_attr();
+
+		EAT(token_close_paren);
+		EAT(token_close_paren);
+	}
 
 	if(spel && accept(token_assign))
 		d->init = parse_expr_funcallarg(); /* int x = 5, j; - don't grab the comma expr */
