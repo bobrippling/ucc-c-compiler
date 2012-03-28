@@ -25,6 +25,8 @@ void fold_expr_cast(expr *e, symtable *stab)
 		e->tree_type = decl_copy(e->expr->tree_type);
 	}
 
+	fold_decl(e->tree_type, stab); /* struct lookup, etc */
+
 	if(expr_kind(e->expr, cast)){
 		/* get rid of e->expr, replace with e->expr->rhs */
 		expr *del = e->expr;

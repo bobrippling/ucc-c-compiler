@@ -39,8 +39,6 @@ int symtab_fold(symtable *tab, int current)
 					siz += word_size - siz % word_size;
 				current += siz;
 
-				/* static analysis on sym (only auto-vars) */
-				if(!decl_has_array(s->decl)){
 #define RW_WARN(w, var, str)                 \
 					if(s->var == 0){                   \
 						cc1_warn_at(&s->decl->where, 0,  \
@@ -50,9 +48,13 @@ int symtab_fold(symtable *tab, int current)
 						s->var++;                        \
 					}
 
+
+				/* static analysis on sym (only auto-vars) */
+				if(!decl_has_array(s->decl) && !decl_is_struct(s->decl)){
 					RW_WARN(WRITTEN, nwrites, "written to");
-					RW_WARN(READ,    nreads,  "read");
 				}
+
+				RW_WARN(READ, nreads, "read");
 
 			}else if(s->type == sym_arg){
 				s->offset = arg_offset;

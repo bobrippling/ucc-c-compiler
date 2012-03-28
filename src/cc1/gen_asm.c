@@ -65,7 +65,8 @@ void gen_asm_global(decl *d)
 		asm_declare_single(cc_out[SECTION_DATA], d);
 
 	}else{
-		asm_tempf(cc_out[SECTION_BSS], 0, "%s res%c %d", d->spel, asm_type_ch(d), decl_size(d));
+		/* always resb, since we use decl_size() */
+		asm_tempf(cc_out[SECTION_BSS], 0, "%s resb %d", d->spel, decl_size(d));
 	}
 }
 
