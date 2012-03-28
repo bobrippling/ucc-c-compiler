@@ -108,7 +108,7 @@ void asm_sym(enum asm_sym_type t, sym *s, const char *reg)
 			t = ASM_LOAD;
 		}else{
 			const char *type_s = "";
-			enum asm_type ts = asm_type_size(s->decl);
+			enum asm_size ts = asm_type_size(s->decl);
 
 			if(ts == ASM_SIZE_WORD)
 				type_s = "qword ";
