@@ -1,9 +1,30 @@
+extern int printf(const char *, ...);
+
+#define MALLOC2(x) (void *)malloc2(x)
 struct list
 {
 	int i, init;
 	struct list *next;
 };
 
+#ifdef __UCC__
+# warning long -> int
+# define long int
+#endif
+
+long malloc2(unsigned sz)
+{
+	static char buf[256];
+	static char *pos;
+	char *ret;
+
+	if(!pos)
+		pos = buf;
+
+	ret = pos;
+	pos += sz;
+	return (long)ret;
+}
 
 list_add(struct list *h, int v)
 {
@@ -11,7 +32,7 @@ list_add(struct list *h, int v)
 		h = h->next;
 	h->i = v;
 	h->init = 1;
-	h->next = malloc(16);
+	h->next = MALLOC2(16);
 }
 
 list_print(struct list *h)
@@ -24,7 +45,7 @@ list_print(struct list *h)
 
 main()
 {
-	struct list *head = malloc(16); //sizeof(struct list)); //sizeof *head);
+	struct list *head = MALLOC2(16); //sizeof(struct list)); //sizeof *head);
 
 	printf("head = %p\n", head);
 

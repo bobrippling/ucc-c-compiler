@@ -108,9 +108,12 @@ void asm_sym(enum asm_sym_type t, sym *s, const char *reg)
 			t = ASM_LOAD;
 		}else{
 			const char *type_s = "";
+			enum asm_type ts = asm_type_size(s->decl);
 
-			if(asm_type_size(s->decl) == ASM_SIZE_WORD)
+			if(ts == ASM_SIZE_WORD)
 				type_s = "qword ";
+			else if(ts == ASM_SIZE_STRUCT)
+				ICE("operation on full struct");
 
 			/* get warnings for "lea rax, [qword tim]", just do "lea rax, [tim]" */
 			snprintf(brackets, bracket_len, "[%s%s]",
@@ -219,7 +222,7 @@ enum asm_size asm_type_size(decl *d)
 				ICE("type primitive is void");
 
 			case type_struct:
-				ICE("asm_type_size of a struct - can't be word nor byte");
+				return ASM_SIZE_STRUCT;
 
 			case type_unknown:
 				ICE("type primitive not set");
@@ -237,6 +240,9 @@ char asm_type_ch(decl *d)
 
 void asm_declare_single(FILE *f, decl *d)
 {
+	if(asm_type_size(d) == ASM_SIZE_STRUCT)
+		ICE("trying to declare + init struct");
+
 	fprintf(f, "%s d%c ", d->spel, asm_type_ch(d));
 
 	asm_declare_single_part(f, d->init);

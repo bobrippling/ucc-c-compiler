@@ -397,8 +397,12 @@ decl *decl_ptr_depth_dec(decl *d)
 
 decl *decl_func_deref(decl *d)
 {
-	ICE("TODO: function call fix");
-	d->funcargs = NULL; /* FIXME */
+	static int warned = 0;
+	if(!warned && decl_ptr_depth(d)){
+		ICW("funcall type propagation (for funcs returning pointers) is broken");
+		warned = 1;
+	}
+	/*d->funcargs = NULL;*/
 	return d;
 }
 

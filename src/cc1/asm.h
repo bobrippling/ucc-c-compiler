@@ -34,7 +34,8 @@ enum asm_label_type
 enum asm_size
 {
 	ASM_SIZE_WORD,
-	ASM_SIZE_1
+	ASM_SIZE_1,
+	ASM_SIZE_STRUCT /* special case */
 };
 
 void asm_new(enum asm_type, void *);
