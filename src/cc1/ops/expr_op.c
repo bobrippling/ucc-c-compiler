@@ -652,7 +652,7 @@ void mutate_expr_op(expr *e)
 {
 	e->f_store = gen_expr_op_store;
 	e->f_fold = fold_expr_op;
-	e->f_const_fold = fold_const_expr_op; /* FIXME */
+	e->f_const_fold = fold_const_expr_op;
 }
 
 expr *expr_new_op(enum op_type op)
