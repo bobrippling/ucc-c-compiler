@@ -86,16 +86,21 @@ struct decl_attr
 
 	enum decl_attr_type
 	{
-		attr_format
+		attr_format,
+		attr_unused,
+		attr_warn_unused
 	} type;
 
 	union
 	{
 		struct
 		{
+			enum { attr_fmt_printf, attr_fmt_scanf } fmt_func;
 			int fmt_arg, var_arg;
 		} format;
 	} attr_extra;
+
+	decl_attr *next;
 };
 
 struct decl
@@ -156,6 +161,7 @@ decl        *decl_new(void);
 decl_ptr    *decl_ptr_new(void);
 array_decl  *array_decl_new(void);
 funcargs    *funcargs_new(void);
+decl_attr   *decl_attr_new(enum decl_attr_type);
 
 void where_new(struct where *w);
 
@@ -200,6 +206,8 @@ decl_ptr  *decl_first_func(decl *d);
 decl *decl_ptr_depth_inc(decl *d);
 decl *decl_ptr_depth_dec(decl *d);
 decl *decl_func_deref(   decl *d);
+
+int decl_attr_present(decl_attr *, enum decl_attr_type);
 
 void function_empty_args(funcargs *);
 

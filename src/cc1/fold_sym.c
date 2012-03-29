@@ -54,12 +54,21 @@ int symtab_fold(symtable *tab, int current)
 					RW_WARN(WRITTEN, nwrites, "written to");
 				}
 
-				RW_WARN(READ, nreads, "read");
-
 			}else if(s->type == sym_arg){
 				s->offset = arg_offset;
 				arg_offset += word_size;
 
+			}
+
+			switch(s->type){
+				case sym_arg:
+				case sym_local:
+					/* warn on unused args and locals */
+					if(!decl_attr_present(s->decl->attr, attr_unused))
+						RW_WARN(READ, nreads, "read");
+
+				case sym_global:
+					break;
 			}
 		}
 	}

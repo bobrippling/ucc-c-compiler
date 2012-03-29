@@ -103,6 +103,22 @@ funcargs *funcargs_new()
 	return f;
 }
 
+decl_attr *decl_attr_new(enum decl_attr_type t)
+{
+	decl_attr *da = umalloc(sizeof *da);
+	where_new(&da->where);
+	da->type = t;
+	return da;
+}
+
+int decl_attr_present(decl_attr *da, enum decl_attr_type t)
+{
+	for(; da; da = da->next)
+		if(da->type == t)
+			return 1;
+	return 0;
+}
+
 void funcargs_free(funcargs *args, int free_decls)
 {
 	if(free_decls){
