@@ -414,7 +414,8 @@ decl *decl_func_deref(decl *d)
 {
 	static int warned = 0;
 	if(!warned && decl_ptr_depth(d)){
-		ICW("funcall type propagation (for funcs returning pointers) is broken");
+		extern char *curdecl_func_sp;
+		ICW("funcall type propagation (for funcs returning pointers) is broken (in %s())", curdecl_func_sp);
 		warned = 1;
 	}
 	/*d->funcargs = NULL;*/
