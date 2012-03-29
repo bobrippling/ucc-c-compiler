@@ -25,7 +25,7 @@ void enum_vals_add(enum_st *en, char *sp, expr *e)
 
 enum_st *enum_add( enum_st ***ens, char *spel, enum_st *en)
 {
-	st_en_set_spel(&en->spel, spel, "enum");
+	st_en_un_set_spel(&en->spel, spel, "enum");
 
 	dynarray_add((void ***)ens, en);
 	return en;

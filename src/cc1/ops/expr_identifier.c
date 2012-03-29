@@ -56,7 +56,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 		if(e->sym->type == sym_local
 		&& !type_store_static_or_extern(e->sym->decl->type->store)
 		&& !decl_has_array(e->sym->decl)
-		&& !decl_is_struct(e->sym->decl)
+		&& !decl_is_struct_or_union(e->sym->decl)
 		&& e->sym->nwrites == 0)
 		{
 			cc1_warn_at(&e->where, 0, WARN_READ_BEFORE_WRITE, "\"%s\" uninitialised on read", e->sym->decl->spel);
@@ -102,14 +102,16 @@ void gen_expr_identifier_store(expr *e, symtable *stab)
 	asm_sym(ASM_SET, e->sym, "rax");
 }
 
+void mutate_expr_identifier(expr *e)
+{
+	e->f_store      = gen_expr_identifier_store;
+	e->f_gen_1      = gen_expr_identifier_1;
+	e->f_const_fold = fold_const_expr_identifier;
+}
+
 expr *expr_new_identifier(char *sp)
 {
 	expr *e = expr_new_wrapper(identifier);
 	e->spel = sp;
-
-	e->f_store      = gen_expr_identifier_store;
-	e->f_gen_1      = gen_expr_identifier_1;
-	e->f_const_fold = fold_const_expr_identifier;
-
 	return e;
 }

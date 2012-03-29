@@ -70,6 +70,7 @@ struct statement
 
 	KEYWORD(typedef),
 	KEYWORD(struct),
+	KEYWORD(union),
 	KEYWORD(enum),
 
 	KEYWORD(sizeof),

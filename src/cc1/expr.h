@@ -7,6 +7,7 @@ typedef void         func_gen_store(expr *, symtable *);
 typedef void         func_gen_1(    expr *, FILE *);
 typedef int          func_const(    expr *);
 typedef const char  *func_str(void);
+typedef void         func_mutate_expr(expr *);
 
 struct expr
 {
@@ -55,8 +56,21 @@ struct expr
 };
 
 
-expr *expr_new(            func_fold *f_fold, func_str *f_str, func_gen *f_gen, func_gen *f_gen_str);
-void  expr_mutate(expr *e, func_fold *f_fold, func_str *f_str, func_gen *f_gen, func_gen *f_gen_str);
+expr *expr_new(          func_mutate_expr *, func_fold *, func_gen *, func_gen *, func_str *);
+void expr_mutate(expr *, func_mutate_expr *, func_fold *, func_gen *, func_gen *, func_str *);
+
+#define expr_mutate_wrapper(e, type) expr_mutate(e,           \
+                                        mutate_expr_ ## type, \
+                                        fold_expr_   ## type, \
+                                        gen_expr_    ## type, \
+                                        gen_expr_str_## type, \
+                                        str_expr_    ## type)
+
+#define expr_new_wrapper(type) expr_new(mutate_expr_ ## type, \
+                                        fold_expr_   ## type, \
+                                        gen_expr_    ## type, \
+                                        gen_expr_str_## type, \
+                                        str_expr_    ## type)
 
 expr *expr_new_intval(intval *);
 
@@ -77,9 +91,6 @@ expr *expr_new_decl_init(decl *d);
 #include "ops/expr_val.h"
 #include "ops/expr_stmt.h"
 
-#define expr_new_wrapper(type)       expr_new(      fold_expr_ ## type, str_expr_ ## type, gen_expr_ ## type, gen_expr_str_ ## type)
-#define expr_mutate_wrapper(e, type) expr_mutate(e, fold_expr_ ## type, str_expr_ ## type, gen_expr_ ## type, gen_expr_str_ ## type)
-
 #define expr_free(x) do{decl_free((x)->tree_type); free(x);}while(0)
 
 #define expr_kind(exp, kind) ((exp)->f_fold == fold_expr_ ## kind)
@@ -89,13 +100,13 @@ expr *expr_new_cast(decl *cast_to);
 expr *expr_new_val(int val);
 expr *expr_new_op(enum op_type o);
 expr *expr_new_if(expr *test);
-expr *expr_new_addr(void);
-expr *expr_new_assign(void);
-expr *expr_new_comma(void);
-expr *expr_new_funcall(void);
 expr *expr_new_stmt(stmt *code);
 expr *expr_new_sizeof_decl(decl *);
 expr *expr_new_sizeof_expr(expr *);
+expr *expr_new_funcall(void);
 
+#define expr_new_assign()  expr_new_wrapper(assign)
+#define expr_new_addr()    expr_new_wrapper(addr)
+#define expr_new_comma()   expr_new_wrapper(comma)
 
 #endif

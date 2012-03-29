@@ -46,6 +46,7 @@ enum token
 	/**/
 	token_typedef,
 	token_struct,
+	token_union,
 	token_enum,
 
 	token_open_paren,

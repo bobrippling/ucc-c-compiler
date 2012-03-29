@@ -114,6 +114,22 @@ funcargs *funcargs_new()
 	return f;
 }
 
+decl_attr *decl_attr_new(enum decl_attr_type t)
+{
+	decl_attr *da = umalloc(sizeof *da);
+	where_new(&da->where);
+	da->type = t;
+	return da;
+}
+
+int decl_attr_present(decl_attr *da, enum decl_attr_type t)
+{
+	for(; da; da = da->next)
+		if(da->type == t)
+			return 1;
+	return 0;
+}
+
 void funcargs_free(funcargs *args, int free_decls)
 {
 	if(free_decls){
@@ -139,8 +155,9 @@ int type_size(const type *t)
 			/* FIXME: 4 for int */
 			return platform_word_size();
 
+		case type_union:
 		case type_struct:
-			return struct_size(t->struc);
+			return struct_union_size(t->struct_union);
 
 		case type_unknown:
 			break;
@@ -175,9 +192,6 @@ int decl_size(decl *d)
 	if(d->field_width)
 		return d->field_width;
 
-	if(d->type->struc)
-		return struct_size(d->type->struc);
-
 	return type_size(d->type);
 }
 
@@ -190,7 +204,7 @@ int type_equal(const type *a, const type *b, int strict)
 	if(strict && (b->qual & qual_const) && (a->qual & qual_const) == 0)
 		return 0; /* we can assign from const to non-const, but not vice versa - FIXME should be elsewhere? */
 
-	if(a->struc != b->struc || a->enu != b->enu)
+	if(a->struct_union != b->struct_union || a->enu != b->enu)
 		return 0;
 
 	return strict ? a->primitive == b->primitive : 1;
@@ -283,6 +297,7 @@ const char *type_primitive_to_str(const enum type_primitive p)
 		CASE_STR_PREFIX(type, void);
 
 		CASE_STR_PREFIX(type, struct);
+		CASE_STR_PREFIX(type, union);
 		CASE_STR_PREFIX(type, enum);
 
 		CASE_STR_PREFIX(type, unknown);
@@ -366,9 +381,9 @@ int decl_is_callable(decl *d)
 	return !!decl_funcargs(d);
 }
 
-int decl_is_struct(decl *d)
+int decl_is_struct_or_union(decl *d)
 {
-	return !!d->type->struc;
+	return d->type->primitive == type_struct || d->type->primitive == type_union;
 }
 
 int decl_has_array(decl *d)
@@ -452,8 +467,11 @@ const char *type_to_str(const type *t)
 	if(t->store)      bufp += snprintf(bufp, BUF_SIZE, "%s ", type_store_to_str(t->store));
 	if(!t->is_signed) bufp += snprintf(bufp, BUF_SIZE, "unsigned ");
 
-	if(t->struc){
-		snprintf(bufp, BUF_SIZE, "struct %s", t->struc->spel);
+	if(t->struct_union){
+		snprintf(bufp, BUF_SIZE, "%s %s",
+				t->struct_union->is_union ? "union" : "struct",
+				t->struct_union->spel);
+
 	}else if(t->enu){
 		snprintf(bufp, BUF_SIZE, "enum %s", t->enu->spel);
 	}else{
@@ -467,8 +485,10 @@ const char *type_to_str(const type *t)
 			case type_enum:
 				ICE("enum without ->enu");
 			case type_struct:
-				snprintf(bufp, BUF_SIZE, "incomplete-struct %s", t->spel);
-				/*ICE("struct without ->struc");*/
+			case type_union:
+				snprintf(bufp, BUF_SIZE, "incomplete-%s %s",
+						t->primitive == type_struct ? "struct" : "union",
+						t->spel);
 				break;
 #undef APPEND
 		}
@@ -504,9 +524,10 @@ const char *decl_to_str(decl *d)
 {
 	static char buf[DECL_STATIC_BUFSIZ];
 	int n;
+	BUF_ADD("%s%s", type_to_str(d->type), d->decl_ptr ? " " : "");
 
 	for(dp = d->decl_ptr; dp; dp = dp->child)
-		BUF_ADD(" %s*%s%s%s%s",
+		BUF_ADD("%s*%s%s%s%s",
 				dp->fptrargs   ? "("  : "",
 				dp->is_const   ? "K"  : "",
 				dp->fptrargs   ? "()" : "",

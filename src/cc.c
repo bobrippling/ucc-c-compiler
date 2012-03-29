@@ -32,6 +32,7 @@
 		"assert",       \
 		"ctype",        \
 		"ucc",          \
+		"alloca",       \
 		"sys/fcntl",    \
 		"sys/wait",     \
 		"sys/mman",     \

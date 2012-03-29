@@ -159,7 +159,7 @@ void fold_op_struct(expr *e, symtable *stab)
 	 * rhs = struct member ident
 	 */
 	const int ptr_depth_exp = e->op == op_struct_ptr ? 1 : 0;
-	struct_st *st;
+	struct_union_st *st;
 	char *spel;
 
 	fold_expr(e->lhs, stab);
@@ -170,16 +170,17 @@ void fold_op_struct(expr *e, symtable *stab)
 	spel = e->rhs->spel;
 
 	/* we access a struct, of the right ptr depth */
-	if(e->lhs->tree_type->type->primitive != type_struct
+	if(!decl_is_struct_or_union(e->lhs->tree_type)
 	|| decl_ptr_depth(e->lhs->tree_type) != ptr_depth_exp)
 	{
-		die_at(&e->lhs->where, "%s is not a %sstruct (%s)",
+		die_at(&e->lhs->where, "%s is not a %s%s (member %s)",
 				decl_to_str(e->lhs->tree_type),
 				ptr_depth_exp == 1 ? "pointer-to-" : "",
+				struct_union_str(e->lhs->tree_type->type->struct_union),
 				spel);
 	}
 
-	st = e->lhs->tree_type->type->struc;
+	st = e->lhs->tree_type->type->struct_union;
 
 	if(!st)
 		die_at(&e->lhs->where, "%s incomplete type",
@@ -188,7 +189,7 @@ void fold_op_struct(expr *e, symtable *stab)
 				: "use of");
 
 	/* found the struct, find the member */
-	e->rhs->tree_type = struct_member_find(st, spel, &e->where);
+	e->rhs->tree_type = struct_union_member_find(st, spel, &e->where);
 
 	/*
 	 * if it's a.b, convert to (&a)->b for asm gen
@@ -196,7 +197,7 @@ void fold_op_struct(expr *e, symtable *stab)
 	 * e = { lhs = { expr = "a", type = addr }, rhs = "b", type = ptr }
 	 */
 	if(ptr_depth_exp == 0){
-		expr *new = expr_new_addr();
+		expr *new = expr_new_wrapper(addr);
 
 		new->expr = e->lhs;
 		e->lhs = new;
@@ -567,10 +568,16 @@ void gen_expr_op_store(expr *e, symtable *stab)
 	ICE("invalid store-op %s", op_to_str(e->op));
 }
 
+void mutate_expr_op(expr *e)
+{
+	e->f_store = gen_expr_op_store;
+	e->f_fold = fold_expr_op;
+	e->f_const_fold = fold_const_expr_op;
+}
+
 expr *expr_new_op(enum op_type op)
 {
 	expr *e = expr_new_wrapper(op);
-	e->f_store = gen_expr_op_store;
 	e->op = op;
 	return e;
 }
