@@ -37,12 +37,14 @@ void gen_expr_str_val(expr *e, symtable *stab)
 	idt_printf("val: %d\n", e->val);
 }
 
-expr *expr_mutate_val(int val)
+void mutate_expr_val(expr *e)
 {
-	expr *e = expr_mutate_wrapper(val);
-
 	e->f_gen_1 = gen_expr_val_1;
-	e->val.iv.val = val;
+}
 
+expr *expr_new_val(int val)
+{
+	expr *e = expr_new_wrapper(val);
+	e->val.iv.val = val;
 	return e;
 }
