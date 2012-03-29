@@ -102,14 +102,16 @@ void gen_expr_identifier_store(expr *e, symtable *stab)
 	asm_sym(ASM_SET, e->sym, "rax");
 }
 
+void mutate_expr_identifier(expr *e)
+{
+	e->f_store      = gen_expr_identifier_store;
+	e->f_gen_1      = gen_expr_identifier_1;
+	e->f_const_fold = fold_const_expr_identifier;
+}
+
 expr *expr_new_identifier(char *sp)
 {
 	expr *e = expr_new_wrapper(identifier);
 	e->spel = sp;
-
-	e->f_store      = gen_expr_identifier_store;
-	e->f_gen_1      = gen_expr_identifier_1;
-	e->f_const_fold = fold_const_expr_identifier;
-
 	return e;
 }

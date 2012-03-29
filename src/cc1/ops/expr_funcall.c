@@ -211,6 +211,11 @@ void gen_expr_str_funcall(expr *e, symtable *stab)
 	}
 }
 
+void mutate_expr_funcall(expr *e)
+{
+	(void)e;
+}
+
 expr *expr_new_funcall()
 {
 	expr *e = expr_new_wrapper(funcall);
