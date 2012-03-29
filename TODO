@@ -5,8 +5,6 @@ long + short
 
 link function prototypes with the function instance + arg check
 
-struct access tree type propagation
-
 &x[y]
 
 static analysis for labels - flag unused labels
@@ -37,8 +35,6 @@ __attribute__((pure))
 - function with no side effects (e.g. strlen())
 
 get rid of __asm__ hacks (mainly in gen_asm.c)
-
-alloca
 
 stabs/dwarf debugging annotations
 
