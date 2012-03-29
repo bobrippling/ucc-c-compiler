@@ -10,7 +10,7 @@ typedef struct symtable    symtable;
 
 typedef struct tdef        tdef;
 typedef struct tdeftable   tdeftable;
-typedef struct struct_st   struct_st;
+typedef struct struct_union_st   struct_union_st;
 typedef struct enum_st     enum_st;
 
 typedef struct type        type;
@@ -26,6 +26,7 @@ enum type_primitive
 	type_void,
 
 	type_struct,
+	type_union,
 	type_enum,
 
 	type_unknown
@@ -59,7 +60,7 @@ struct type
 	int is_signed;
 
 	/* NULL unless this is a structure */
-	struct_st *struc;
+	struct_union_st *struct_union;
 	/* NULL unless this is an enum */
 	enum_st *enu;
 	/* NULL unless from typedef or __typeof() */
@@ -120,6 +121,8 @@ struct decl
 	sym *sym;
 	decl_attr *attr;
 	char *spel;
+
+	int internal; /* interal string or array decl */
 
 	/* recursive */
 	decl_ptr *decl_ptr;
@@ -191,7 +194,7 @@ int   decl_size( decl *);
 int   decl_equal(decl *, decl *, enum decl_cmp mode);
 
 int   decl_has_array(  decl *);
-int   decl_is_struct(  decl *);
+int   decl_is_struct_or_union(decl *);
 int   decl_is_callable(decl *);
 int   decl_is_const(   decl *);
 int   decl_ptr_depth(  decl *);

@@ -10,7 +10,7 @@
 #include "struct_enum.h"
 #include "cc1.h"
 
-void st_en_set_spel(char **dest, char *spel, const char *desc)
+void st_en_un_set_spel(char **dest, char *spel, const char *desc)
 {
 	if(spel){
 		*dest = spel;
@@ -20,7 +20,10 @@ void st_en_set_spel(char **dest, char *spel, const char *desc)
 	}
 }
 
-void st_en_lookup(void **save_to, int *incomplete, decl *d, symtable *stab, void *(*lookup)(symtable *, const char *), int is_struct)
+void st_en_lookup(void **save_to, int *incomplete,
+		decl *d, symtable *stab,
+		void *(*lookup)(symtable *, const char *),
+		int is_struct)
 {
 	const char *const mode = is_struct ? "struct" : "enum";
 
@@ -33,7 +36,7 @@ void st_en_lookup(void **save_to, int *incomplete, decl *d, symtable *stab, void
 
 		if(!d->type->spel){
 			/* get the anon enum name */
-			d->type->spel = is_struct ? d->type->struc->spel : d->type->enu->spel;
+			d->type->spel = is_struct ? d->type->struct_union->spel : d->type->enu->spel;
 		}
 	}
 }
@@ -43,10 +46,17 @@ void st_en_lookup_chk(decl *d, symtable *stab)
 {
 	int incomplete;
 
-	if(d->type->primitive == type_enum)
-		st_en_lookup((void **)&d->type->enu,   &incomplete, d, stab, (void *(*)(struct symtable *, const char *))enum_find,   0);
-	else
-		st_en_lookup((void **)&d->type->struc, &incomplete, d, stab, (void *(*)(struct symtable *, const char *))struct_find, 1);
+	if(d->type->primitive == type_enum){
+		st_en_lookup((void **)&d->type->enu,
+				&incomplete, d, stab,
+				(void *(*)(struct symtable *, const char *))enum_find,
+				0);
+	}else{
+		st_en_lookup((void **)&d->type->struct_union,
+				&incomplete, d, stab,
+				(void *(*)(struct symtable *, const char *))struct_union_find,
+				1);
+	}
 
 	if(incomplete && !decl_ptr_depth(d))
 		die_at(&d->where, "use of incomplete type \"%s\"", d->spel);

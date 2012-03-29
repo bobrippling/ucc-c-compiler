@@ -48,17 +48,17 @@ void parse_type_preamble(type **tp, char **psp, enum type_primitive primitive)
 	*tp = t;
 }
 
-type *parse_type_struct()
+type *parse_type_struct_union(enum type_primitive st_un)
 {
 	type *t;
 	char *spel;
 
-	parse_type_preamble(&t, &spel, type_struct);
+	parse_type_preamble(&t, &spel, st_un);
 
 	if(accept(token_open_block)){
 		decl **members = parse_decls_multi_type(DECL_CAN_DEFAULT | DECL_SPEL_NEED, 1);
 		EAT(token_close_block);
-		t->struc = struct_add(current_scope, spel, members);
+		t->struct_union = struct_union_add(current_scope, spel, members, st_un == type_union);
 	}else if(!spel){
 		die_at(NULL, "expected: struct definition or name");
 	}
@@ -161,15 +161,34 @@ type *parse_type()
 			signed_set = 1;
 			EAT(curtok);
 
-		}else if(curtok == token_struct || curtok == token_enum){
-			const int en = curtok == token_enum;
+		}else if(curtok == token_struct || curtok == token_union || curtok == token_enum){
+			const enum token tok = curtok;
+			const char *str;
 			type *t;
 
 			EAT(curtok);
-			t = en ? parse_type_enum() : parse_type_struct();
+
+			switch(tok){
+				case token_enum:
+					t = parse_type_enum();
+					str = "enum";
+					break;
+
+#define CASE(a, b)                                 \
+				case token_ ## a:                          \
+					t = parse_type_struct_union(type_ ## a); \
+					str = #a;                                \
+					break
+
+				CASE(struct, struct_union);
+				CASE(union,  struct_union);
+
+				default:
+					ICE("wat");
+			}
 
 			if(signed_set || primitive_set)
-				die_at(&t->where, "primitive/signed/unsigned with %s", en ? "enum" : "struct");
+				die_at(&t->where, "primitive/signed/unsigned with %s", str);
 
 			t->qual  = qual;
 			t->store = store;
@@ -564,8 +583,11 @@ decl **parse_decls_multi_type(const int can_default, const int accept_field_widt
 
 		if(t->store == store_typedef)
 			are_tdefs = 1;
-		else if((t->struc || t->enu) && !parse_possible_decl())
-			goto next; /* struct { int i; }; - continue to next one */
+		else if((t->struct_union || t->enu) && !parse_possible_decl())
+			goto next; /*
+									* struct { int i; }; - continue to next one
+									* we check the actual ->struct/enum because we don't allow "enum x;"
+									*/
 
 		do{
 			decl *d = parse_decl(t, parse_flag);
@@ -580,7 +602,7 @@ decl **parse_decls_multi_type(const int can_default, const int accept_field_widt
 				 */
 				decl_free_notype(d);
 				if(!last){
-					if(t->primitive == type_struct ? !t->struc->anon : 1)
+					if(t->primitive == type_struct ? !t->struct_union->anon : 1)
 						warn_at(&d->where, "declaration doesn't declare anything");
 					goto next;
 				}

@@ -254,11 +254,11 @@ void print_expr(expr *e)
 	gen_str_indent--;
 }
 
-void print_struct(struct_st *st)
+void print_struct(struct_union_st *st)
 {
 	decl **iter;
 
-	idt_printf("struct %s (size %d):\n", st->spel, struct_size(st));
+	idt_printf("struct %s (size %d):\n", st->spel, struct_union_size(st));
 
 	gen_str_indent++;
 	for(iter = st->members; iter && *iter; iter++){
@@ -285,7 +285,7 @@ void print_enum(enum_st *et)
 
 void print_st_en_tdef(symtable *stab)
 {
-	struct_st **sit;
+	struct_union_st **sit;
 	enum_st   **eit;
 	decl      **tit;
 

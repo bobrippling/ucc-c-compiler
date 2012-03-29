@@ -23,7 +23,7 @@ struct symtable
 	symtable *parent, **children;
 
 	decl      **decls;
-	struct_st **structs;
+	struct_union_st **structs;
 	enum_st   **enums;
 	decl      **typedefs;
 };
