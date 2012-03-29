@@ -115,6 +115,12 @@ void fold_expr_funcall(expr *e, symtable *stab)
 			funcargs_free(argument_decls, 0);
 		}
 	}
+
+	if(decl_attr_present(e->tree_type->attr, attr_format))
+		ICW("TODO: format checks on funcall at %s", where_str(&e->where));
+
+	if(decl_attr_present(e->tree_type->attr, attr_warn_unused))
+		e->freestanding = 0; /* needs use */
 }
 
 void gen_expr_funcall(expr *e, symtable *stab)
@@ -211,6 +217,11 @@ void gen_expr_str_funcall(expr *e, symtable *stab)
 	}else{
 		idt_printf("no args\n");
 	}
+}
+
+void mutate_expr_funcall(expr *e)
+{
+	(void)e;
 }
 
 expr *expr_new_funcall()

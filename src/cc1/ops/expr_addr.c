@@ -40,6 +40,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 		array_sym = SYMTAB_ADD(symtab_root(stab), e->tree_type, stab->parent ? sym_local : sym_global);
 
 		array_sym->decl->arrayinit = e->array_store;
+		array_sym->decl->internal = 1;
 
 
 		switch(e->array_store->type){
@@ -76,20 +77,20 @@ void fold_expr_addr(expr *e, symtable *stab)
 			 * (__typeof(a->b) *)((void *)(&a) + __offsetof(__typeof(a), b))
 			 */
 			expr *struc, *member, *addr;
-			struct_st *st;
+			struct_union_st *st;
 			decl *member_decl;
 
 			/* pull out the various bits */
 			struc = e->expr->lhs;
 			member = e->expr->rhs;
 			addr = e->expr; /* FIXME: leaked */
-			st = struc->tree_type->type->struc;
+			st = struc->tree_type->type->struct_union;
 
 			/* forget about the old structure */
 			e->expr = e->expr->lhs = e->expr->rhs = NULL;
 
 			/* lookup the member decl (for tree type later on) */
-			member_decl = struct_member_find(st, member->spel, &e->where);
+			member_decl = struct_union_member_find(st, member->spel, &e->where);
 
 			/* e is now the op */
 			expr_mutate_wrapper(e, op);
@@ -182,9 +183,7 @@ void gen_expr_str_addr(expr *e, symtable *stab)
 	}
 }
 
-expr *expr_new_addr()
+void mutate_expr_addr(expr *e)
 {
-	expr *e = expr_new_wrapper(addr);
 	e->f_gen_1 = gen_expr_addr_1;
-	return e;
 }

@@ -59,6 +59,11 @@ void gen_expr_str_sizeof(expr *e, symtable *stab)
 	}
 }
 
+void mutate_expr_sizeof(expr *e)
+{
+	(void)e;
+}
+
 expr *expr_new_sizeof_decl(decl *d)
 {
 	expr *e = expr_new_wrapper(sizeof);

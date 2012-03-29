@@ -2,7 +2,7 @@ UCC_CC = ../src/cc
 OBJ    = crt.o syscall.o                                \
          stdio.o stdlib.o string.o unistd.o signal.o    \
 				 assert.o ctype.o                               \
-				 ucc.o                                          \
+				 ucc.o alloca.o                                 \
          sys/fcntl.o sys/wait.o sys/mman.o sys/socket.o \
          arpa/inet.o
 
@@ -35,6 +35,9 @@ assert.o: assert.c
 	${BUILD_CMD}
 ctype.o: ctype.c
 	${BUILD_CMD}
+alloca.o: alloca.s
+	${BUILD_CMD}
+
 ucc.o: ucc.c
 	${UCC_CC} -fenable-asm -Wno-optimisation -c -o $@ $<
 

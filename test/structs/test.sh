@@ -3,7 +3,7 @@
 set -e
 cd `dirname $0`
 
-cc=../src/cc
+cc=../../src/cc
 
 for f in *.c
 do

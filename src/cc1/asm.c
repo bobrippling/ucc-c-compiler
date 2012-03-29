@@ -206,6 +206,7 @@ int asm_table_lookup(decl *d)
 				return INDEX_LONG;
 
 			case type_struct:
+			case type_union:
 				die_at(&d->where, "invalid use of struct (%s:%d)", __FILE__, __LINE__);
 
 			case type_unknown:
@@ -235,15 +236,15 @@ void asm_reg_name(decl *d, const char **regpre, const char **regpost)
 
 int asm_type_size(decl *d)
 {
-	struct_st *st = d->type->struc;
+	struct_union_st *st = d->type->struct_union;
 	if(st && !decl_ptr_depth(d))
-		return struct_size(st);
+		return struct_union_size(st);
 	return asm_type_table[asm_table_lookup(d)].sz;
 }
 
 void asm_declare_single(FILE *f, decl *d)
 {
-	if(!decl_ptr_depth(d) && d->type->struc)
+	if(!decl_ptr_depth(d) && d->type->struct_union)
 		ICE("trying to declare + init struct");
 
 	fprintf(f, "%s d%c ", d->spel, asm_type_ch(d));

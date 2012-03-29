@@ -10,20 +10,25 @@
 /* needed for expr_assignment() */
 #include "ops/expr_assign.h"
 
-void expr_mutate(expr *e, func_fold *f_fold, func_str *f_str, func_gen *f_gen, func_gen *f_gen_str)
+void expr_mutate(expr *e, func_mutate_expr *f,
+		func_fold *f_fold,
+		func_gen *f_gen,
+		func_gen *f_gen_str,
+		func_str *f_str)
 {
 	extern int backend_str;
 
 	e->f_fold = f_fold;
-	e->f_str  = f_str;
 	e->f_gen  = backend_str ? f_gen_str : f_gen;
+	e->f_str  = f_str;
+	f(e);
 }
 
-expr *expr_new(func_fold *f_fold, func_str *f_str, func_gen *f_gen, func_gen *f_gen_str)
+expr *expr_new(func_mutate_expr *f, func_fold *f_fold, func_gen *f_gen, func_gen *f_gen_str, func_str *f_str)
 {
 	expr *e = umalloc(sizeof *e);
 	where_new(&e->where);
-	expr_mutate(e, f_fold, f_str, f_gen, f_gen_str);
+	expr_mutate(e, f, f_fold, f_gen, f_gen_str, f_str);
 	return e;
 }
 

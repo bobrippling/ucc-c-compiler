@@ -58,7 +58,8 @@ asm_out.o: asm_out.c ../util/util.h ../util/dynarray.h ../util/alloc.h \
  ops/stmt_case_range.h ops/stmt_code.h ops/stmt_default.h ops/stmt_do.h \
  ops/stmt_expr.h ops/stmt_for.h ops/stmt_goto.h ops/stmt_if.h \
  ops/stmt_label.h ops/stmt_noop.h ops/stmt_return.h ops/stmt_switch.h \
- ops/stmt_while.h ops/stmt_continue.h sym.h cc1.h asm_out.h asm.h
+ ops/stmt_while.h ops/stmt_continue.h sym.h cc1.h asm_out.h asm.h \
+ ../util/platform.h
 cc1.o: cc1.c ../util/util.h data_structs.h tree.h expr.h ops/expr_addr.h \
  ops/expr_assign.h ops/expr_cast.h ops/expr_comma.h ops/expr_funcall.h \
  ops/expr_identifier.h ops/expr_if.h ops/expr_op.h ops/expr_sizeof.h \
@@ -133,6 +134,7 @@ gen_str.o: gen_str.c ../util/util.h data_structs.h tree.h expr.h \
  ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h ops/stmt_return.h \
  ops/stmt_switch.h ops/stmt_while.h ops/stmt_continue.h sym.h macros.h \
  cc1.h struct.h enum.h gen_str.h
+parse_attr.o: parse_attr.c
 parse.o: parse.c ../util/util.h data_structs.h tree.h expr.h \
  ops/expr_addr.h ops/expr_assign.h ops/expr_cast.h ops/expr_comma.h \
  ops/expr_funcall.h ops/expr_identifier.h ops/expr_if.h ops/expr_op.h \
@@ -152,7 +154,7 @@ parse_type.o: parse_type.c ../util/util.h ../util/alloc.h \
  ops/stmt_expr.h ops/stmt_for.h ops/stmt_goto.h ops/stmt_if.h \
  ops/stmt_label.h ops/stmt_noop.h ops/stmt_return.h ops/stmt_switch.h \
  ops/stmt_while.h ops/stmt_continue.h sym.h typedef.h tokenise.h \
- tokconv.h struct.h enum.h cc1.h parse.h parse_type.h
+ tokconv.h struct.h enum.h cc1.h parse.h parse_type.h parse_attr.c
 stmt.o: stmt.c ../util/util.h ../util/alloc.h data_structs.h tree.h \
  expr.h ops/expr_addr.h ops/expr_assign.h ops/expr_cast.h \
  ops/expr_comma.h ops/expr_funcall.h ops/expr_identifier.h ops/expr_if.h \
@@ -247,7 +249,7 @@ ops/expr_addr.o: ops/expr_addr.c ops/ops.h ops/../../util/util.h \
  ops/stmt_for.h ops/stmt_goto.h ops/stmt_if.h ops/stmt_label.h \
  ops/stmt_noop.h ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h \
  ops/../cc1.h ops/../asm_out.h ops/../asm.h ops/../fold.h ops/../const.h \
- ops/../gen_str.h ops/../gen_asm.h
+ ops/../gen_str.h ops/../gen_asm.h ops/../struct.h
 ops/expr_assign.o: ops/expr_assign.c ops/ops.h ops/../../util/util.h \
  ops/../data_structs.h ops/../tree.h ops/../expr.h ops/../ops/expr_addr.h \
  ops/../ops/expr_assign.h ops/../ops/expr_cast.h ops/../ops/expr_comma.h \

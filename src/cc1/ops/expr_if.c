@@ -77,6 +77,11 @@ void gen_expr_str_if(expr *e, symtable *stab)
 #undef SUB_PRINT
 }
 
+void mutate_expr_if(expr *e)
+{
+	(void)e;
+}
+
 expr *expr_new_if(expr *test)
 {
 	expr *e = expr_new_wrapper(if);

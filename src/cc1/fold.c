@@ -294,24 +294,27 @@ void fold_decl_global(decl *d, symtable *stab)
 	fold_decl(d, stab);
 }
 
-int fold_struct(struct_st *st, symtable *stab)
+int fold_struct_union(struct_union_st *st_un, symtable *stab)
 {
 	int offset;
 	decl **i;
 
-	for(offset = 0, i = st->members; i && *i; i++){
+	for(offset = 0, i = st_un->members; i && *i; i++){
 		decl *d = *i;
-		if(d->type->primitive == type_struct && !d->type->struc)
+
+		if(!d->type->struct_union && decl_is_struct_or_union(d))
 			st_en_lookup_chk(d, stab);
 
-		if(d->type->struc && decl_ptr_depth(d) == 0){
-			if(d->type->struc == st)
-				die_at(&d->where, "nested struct");
+		if(!st_un->is_union)
+			d->struct_offset = offset;
+		/* else - union, all offsets are the same */
 
-			d->struct_offset = offset;
-			offset += fold_struct(d->type->struc, stab);
+		if(d->type->struct_union && decl_ptr_depth(d) == 0){
+			if(d->type->struct_union == st_un)
+				die_at(&d->where, "nested %s", struct_union_str(st_un));
+
+			offset += fold_struct_union(d->type->struct_union, stab);
 		}else{
-			d->struct_offset = offset;
 			offset += decl_size(d);
 		}
 	}
@@ -347,12 +350,12 @@ void fold_enum(enum_st *en, symtable *stab)
 
 void fold_symtab_scope(symtable *stab)
 {
-	struct_st **sit;
+	struct_union_st **sit;
 	enum_st   **eit;
 
 	/* fold structs, then enums, then decls - decls may rely on enums */
 	for(sit = stab->structs; sit && *sit; sit++)
-		fold_struct(*sit, stab);
+		fold_struct_union(*sit, stab);
 
 	for(eit = stab->enums; eit && *eit; eit++)
 		fold_enum(*eit, stab);

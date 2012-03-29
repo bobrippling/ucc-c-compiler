@@ -5,12 +5,15 @@
 #include "string.h"
 #include "assert.h"
 #include "errno.h"
+#include "ucc_attr.h"
 
 #include "sys/types.h"
 #include "sys/mman.h"
 
+#define MALLOC_SBRK
+
 #define PAGE_SIZE 4096
-// getpagesize()
+/* getpagesize() */
 
 #ifdef __DARWIN__
 # define MAP_ANONYMOUS MAP_ANON
@@ -88,14 +91,14 @@ void *calloc(size_t count, size_t len)
 	return p;
 }
 
-void *realloc(void *p, size_t l)
+void *realloc(void *p __unused, size_t l __unused)
 {
 	const char *s = "realloc() not implemented\n";
 	write(2, s, strlen(s));
 	abort();
 }
 
-void free(void *p)
+void free(void *p __unused)
 {
 	/* no op... :C */
 }

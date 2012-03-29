@@ -32,10 +32,7 @@ All programs compiled by ucc are staticly linked.
 Major C-Features Todo
 =============
 
-nested struct support (parsing works, no code generation)
-unions
-floating point numbers
-long + short types
+floating point numbers, long + short types (asm_backend_recode branch)
 
 
 Examples

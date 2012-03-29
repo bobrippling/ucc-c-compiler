@@ -130,12 +130,15 @@ void gen_expr_str_cast(expr *e, symtable *stab)
 	gen_str_indent--;
 }
 
+void mutate_expr_cast(expr *e)
+{
+	e->f_const_fold = fold_const_expr_cast;
+	e->f_gen_1      = gen_expr_cast_1;
+}
+
 expr *expr_new_cast(decl *to)
 {
 	expr *e = expr_new_wrapper(cast);
 	e->tree_type = to;
-
-	e->f_const_fold = fold_const_expr_cast;
-	e->f_gen_1      = gen_expr_cast_1;
 	return e;
 }

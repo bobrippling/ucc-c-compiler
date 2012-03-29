@@ -131,10 +131,8 @@ void gen_expr_str_assign(expr *e, symtable *stab)
 	gen_str_indent--;
 }
 
-expr *expr_new_assign()
+void mutate_expr_assign(expr *e)
 {
-	expr *e = expr_new_wrapper(assign);
 	e->f_const_fold = fold_const_expr_assign;
 	e->freestanding = 1;
-	return e;
 }
