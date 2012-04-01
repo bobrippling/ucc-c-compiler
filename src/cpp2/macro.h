@@ -22,6 +22,7 @@ typedef struct
 	char *nam, *val;
 	enum { MACRO, FUNC, VARIADIC } type;
 	char **args;
+	int used;
 } macro;
 
 macro *macro_add(     const char *nam, const char *val);
