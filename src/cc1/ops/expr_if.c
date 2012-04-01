@@ -22,6 +22,9 @@ void fold_expr_if(expr *e, symtable *stab)
 	fold_expr(e->expr, stab);
 	if(const_expr_is_const(e->expr))
 		POSSIBLE_OPT(e->expr, "constant ?: expression");
+
+	fold_test_expr(e->expr, "?: expr");
+
 	if(e->lhs)
 		fold_expr(e->lhs, stab);
 	fold_expr(e->rhs, stab);

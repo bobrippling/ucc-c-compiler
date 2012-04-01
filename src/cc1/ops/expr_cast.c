@@ -15,6 +15,8 @@ void fold_expr_cast(expr *e, symtable *stab)
 {
 	fold_expr(e->expr, stab);
 
+	fold_disallow_st_un(e->expr, "cast-expr");
+
 	/*
 	 * if we don't have a valid tree_type, get one
 	 * this is only the case where we're involving a tdef or typeof
@@ -26,6 +28,8 @@ void fold_expr_cast(expr *e, symtable *stab)
 	}
 
 	fold_decl(e->tree_type, stab); /* struct lookup, etc */
+
+	fold_disallow_st_un(e, "cast-target");
 
 	if(expr_kind(e->expr, cast)){
 		/* get rid of e->expr, replace with e->expr->rhs */

@@ -241,9 +241,12 @@ void fold_expr_op(expr *e, symtable *stab)
 	}
 
 	fold_expr(e->lhs, stab);
+	fold_disallow_st_un(e->lhs, "op-lhs");
+
 	if(e->rhs){
 
 		fold_expr(e->rhs, stab);
+		fold_disallow_st_un(e->rhs, "op-rhs");
 
 		fold_typecheck(e->lhs, e->rhs, stab, &e->where);
 
