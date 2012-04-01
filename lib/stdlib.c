@@ -10,13 +10,13 @@
 #include "sys/types.h"
 #include "sys/mman.h"
 
-#define MALLOC_SBRK
-
 #define PAGE_SIZE 4096
 /* getpagesize() */
 
 #ifdef __DARWIN__
-# define MAP_ANONYMOUS MAP_ANON
+#  define MAP_ANONYMOUS MAP_ANON
+#else
+#  define MALLOC_SBRK
 #endif
 
 int atoi(char *s)
@@ -45,6 +45,8 @@ void *malloc(size_t size)
 
 	need_new = !last_page || last_page_use + size > PAGE_SIZE;
 
+	// TODO: split this logic into malloc_chunk() and there is where we use sbrk() etc
+
 	if(need_new){
 		last_page_use = 0;
 
@@ -65,6 +67,11 @@ void *malloc(size_t size)
 	return p;
 #else
 # ifdef MALLOC_SBRK
+
+#ifdef __DARWIN__
+# error sbrk not implemented on darwin
+#endif
+
 	return sbrk(size);
 # else
 # warning malloc static buf implementation

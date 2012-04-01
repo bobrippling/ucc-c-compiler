@@ -13,7 +13,11 @@ int fold_const_expr_comma(expr *e)
 void fold_expr_comma(expr *e, symtable *stab)
 {
 	fold_expr(e->lhs, stab);
+	fold_disallow_st_un(e->lhs, "comma-expr");
+
 	fold_expr(e->rhs, stab);
+	fold_disallow_st_un(e->lhs, "comma-expr");
+
 	e->tree_type = decl_copy(e->rhs->tree_type);
 }
 

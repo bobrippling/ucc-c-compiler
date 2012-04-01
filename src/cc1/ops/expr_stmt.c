@@ -23,6 +23,7 @@ void fold_expr_stmt(expr *e, symtable *stab)
 
 	if(last && stmt_kind(last_stmt, expr)){
 		e->tree_type = decl_copy(last_stmt->expr->tree_type);
+		fold_disallow_st_un(e, "({ ... }) statement");
 	}else{
 		e->tree_type = decl_new();
 		e->tree_type->type->primitive = type_void; /* void expr */

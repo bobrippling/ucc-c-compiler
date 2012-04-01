@@ -368,6 +368,17 @@ void fold_test_expr(expr *e, const char *stmt_desc)
 
 	if(!e->in_parens && expr_kind(e, assign))
 		cc1_warn_at(&e->where, 0, WARN_TEST_ASSIGN, "testing an assignment in %s", stmt_desc);
+
+	fold_disallow_st_un(e, "test");
+}
+
+void fold_disallow_st_un(expr *e, const char *desc)
+{
+	if(!decl_ptr_depth(e->tree_type) && decl_is_struct_or_union(e->tree_type)){
+		die_at(&e->where, "%s involved in %s",
+				struct_union_str(e->tree_type->type->struct_union),
+				desc);
+	}
 }
 
 void fold_stmt(stmt *t)

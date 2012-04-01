@@ -94,6 +94,9 @@ void gen_expr_assign(expr *e, symtable *stab)
 		asm_comment("save previous for post assignment");
 	}
 
+	//if(decl_is_struct_or_union(e->tree_type))
+	fold_disallow_st_un(e, "copy (TODO)");
+
 	gen_expr(e->rhs, stab);
 #ifdef USE_MOVE_RAX_RSP
 	asm_temp(1, "mov rax, [rsp]");
