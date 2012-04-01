@@ -40,6 +40,10 @@ stabs/dwarf debugging annotations
 
 fastcall - ecx, edx, stack, etc (__attribute__)
 
+extensions:
+	if(char *p = x()) ...
+	namespace [str] { ... }
+
 ---------------------------------------------------- cpp
 
 fix dir-relative file opening:
