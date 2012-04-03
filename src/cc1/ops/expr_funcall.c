@@ -80,8 +80,13 @@ void fold_expr_funcall(expr *e, symtable *stab)
 
 	if(e->funcargs){
 		expr **iter;
-		for(iter = e->funcargs; *iter; iter++)
-			fold_expr(*iter, stab);
+		for(iter = e->funcargs; *iter; iter++){
+			expr *arg = *iter;
+
+			fold_expr(arg, stab);
+
+			fold_disallow_st_un(arg, "function argument");
+		}
 	}
 
 	/* func count comparison, only if the func has arg-decls, or the func is f(void) */
@@ -115,6 +120,8 @@ void fold_expr_funcall(expr *e, symtable *stab)
 			funcargs_free(argument_decls, 0);
 		}
 	}
+
+	fold_disallow_st_un(e, "return");
 
 	if(decl_attr_present(e->tree_type->attr, attr_format))
 		ICW("TODO: format checks on funcall at %s", where_str(&e->where));

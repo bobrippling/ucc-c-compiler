@@ -445,10 +445,21 @@ expr *parse_expr_comma()
 stmt *parse_if()
 {
 	stmt *t = STAT_NEW(if);
+	decl **c99_ucc_inits;
+
 	EAT(token_if);
 	EAT(token_open_paren);
 
-	t->expr = parse_expr();
+	c99_ucc_inits = parse_decls_one_type();
+	if(c99_ucc_inits){
+		t->flow = stmt_flow_new(symtab_new(t->symtab));
+
+		current_scope = t->flow->for_init_symtab;
+
+		t->flow->for_init_decls = c99_ucc_inits;
+	}else{
+		t->expr = parse_expr();
+	}
 
 	EAT(token_close_paren);
 
@@ -456,6 +467,9 @@ stmt *parse_if()
 
 	if(accept(token_else))
 		t->rhs = parse_code();
+
+	if(t->flow)
+		current_scope = current_scope->parent;
 
 	return t;
 }

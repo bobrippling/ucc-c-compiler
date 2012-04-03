@@ -82,9 +82,15 @@ void filter_macro(char **pline)
 	if(!**pline)
 		return; /* optimise for empty lines also */
 
+	for(iter = macros; iter && *iter; iter++)
+		(*iter)->used_in_loop = 0;
+
 	for(iter = macros; iter && *iter; iter++){
 		macro *m = *iter;
 		int did_replace = 0;
+
+		if(m->used_in_loop)
+			continue;
 
 		if(m->type != MACRO){
 			char *s, *last;
@@ -257,7 +263,9 @@ relook:
 				free(val);
 		}
 
-		if(did_replace)
+		if(did_replace){
+			m->used_in_loop = 1;
 			iter = macros;
+		}
 	}
 }

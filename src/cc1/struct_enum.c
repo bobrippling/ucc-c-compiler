@@ -59,5 +59,5 @@ void st_en_lookup_chk(decl *d, symtable *stab)
 	}
 
 	if(incomplete && !decl_ptr_depth(d))
-		die_at(&d->where, "use of incomplete type \"%s\"", d->spel);
+		die_at(&d->where, "use of %s %s", type_to_str(d->type), d->spel);
 }

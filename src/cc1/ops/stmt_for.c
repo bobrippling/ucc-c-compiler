@@ -24,6 +24,36 @@ void print_stab(symtable *st)
 }
 #endif
 
+expr *fold_for_if_init_decls(stmt *s)
+{
+	decl **i;
+	expr *init_exp = NULL;
+
+	for(i = s->flow->for_init_decls; *i; i++){
+		decl *const d = *i;
+
+		fold_decl(d, s->flow->for_init_symtab);
+
+		SYMTAB_ADD(s->flow->for_init_symtab, d, sym_local);
+
+		/* make the for-init a comma-exp with all our inits */
+		if(d->init){
+			expr *dinit = expr_new_decl_init(d);
+
+			if(init_exp){
+				expr *comma = expr_new_comma(); /* change this to an &&-op for if(char *x = .., *y = ..) anding */
+				comma->lhs = init_exp;
+				comma->rhs = dinit;
+				init_exp = comma;
+			}else{
+				init_exp = dinit;
+			}
+		}
+	}
+
+	return init_exp;
+}
+
 void fold_stmt_for(stmt *s)
 {
 	stmt *oldflowstmt = curstmt_flow;
@@ -33,33 +63,10 @@ void fold_stmt_for(stmt *s)
 	s->lbl_continue = asm_label_flow("for_contiune");
 
 	if(s->flow->for_init_decls){
-		decl **i;
-		expr *init_exp = NULL;
+		expr *init_exp = fold_for_if_init_decls(s);
 
-		for(i = s->flow->for_init_decls; *i; i++){
-			decl *const d = *i;
-			expr *dinit;
+		UCC_ASSERT(!s->flow->for_init, "for init in c99 for-decl mode");
 
-			fold_decl(d, s->flow->for_init_symtab);
-
-			SYMTAB_ADD(s->flow->for_init_symtab, d, sym_local);
-
-			/* make the for-init a comma-exp with all our inits */
-			if(d->init){
-				dinit = expr_new_decl_init(d);
-
-				if(init_exp){
-					expr *comma = expr_new_comma();
-					comma->lhs = init_exp;
-					comma->rhs = dinit;
-					init_exp = comma;
-				}else{
-					init_exp = dinit;
-				}
-			}
-		}
-
-		UCC_ASSERT(! s->flow->for_init, "for init in c99 for-decl mode");
 		s->flow->for_init = init_exp;
 	}
 
