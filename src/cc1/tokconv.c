@@ -25,7 +25,7 @@ enum type_qualifier curtok_to_type_qualifier()
 {
 	switch(curtok){
 		case token_const:    return qual_const;
-		case token_volatile: ICE("TODO: volatile"); return qual_volatile;
+		case token_volatile: return qual_volatile;
 		default:             return qual_none;
 	}
 }
@@ -37,7 +37,7 @@ enum type_storage curtok_to_type_storage()
 		case token_extern:   return store_extern;
 		case token_static:   return store_static;
 		case token_typedef:  return store_typedef;
-		case token_register: ICE("TODO: register"); return store_register;
+		case token_register: return store_register;
 		default:             return -1;
 	}
 }

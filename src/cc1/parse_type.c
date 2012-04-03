@@ -127,10 +127,7 @@ type *parse_type()
 		decl *td;
 
 		if(curtok_is_type_qual()){
-			if(qual != qual_none)
-				die_at(NULL, "second type qualification %s", type_qual_to_str(qual));
-
-			qual = curtok_to_type_qualifier();
+			qual |= curtok_to_type_qualifier();
 			EAT(curtok);
 
 		}else if(curtok_is_type_store()){

@@ -36,9 +36,9 @@ enum type_primitive
 
 enum type_qualifier
 {
-	qual_none,
-	qual_const,
-	qual_volatile /* unused */
+	qual_none     = 0,
+	qual_const    = 1 << 0,
+	qual_volatile = 1 << 1,
 };
 
 enum type_storage
@@ -46,7 +46,7 @@ enum type_storage
 	store_auto,
 	store_static,
 	store_extern,
-	store_register, /* unused */
+	store_register,
 	store_typedef
 };
 
