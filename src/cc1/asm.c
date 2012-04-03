@@ -167,7 +167,7 @@ const char *asm_intval_str(intval *iv)
 void asm_declare_single_part(FILE *f, expr *e)
 {
 	if(!e->f_gen_1)
-		ICE("unexpected global initaliser %s (no gen_1())", e->f_str());
+		ICE("unexpected global initaliser, expr %s (no gen_1())", e->f_str());
 
 	e->f_gen_1(e, f);
 }

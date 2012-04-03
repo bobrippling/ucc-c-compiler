@@ -94,27 +94,18 @@ void asm_out_type_pop(asm_output *out)
 	if(!tt || sz == word){
 		fprintf(f, "\t; not truncating - machine word size\n");
 	}else{
-		char buf[32];
-		int i;
+		/*movzbl?*/
 
-#define TRUNCATE(n)             \
-		case n:                     \
-		for(i = 0; i < 2 * n; i++)  \
-			buf[i] = '0';             \
-		for(; i < 4 * n; i++)       \
-			buf[i] = 'f';             \
-		buf[i] = '\0';              \
-		break;
+#define TRUNCATE(n, s) case n: fputs("\t" s "\n", f)
 
 		switch(sz){
-			TRUNCATE(4);
-			TRUNCATE(2);
-			TRUNCATE(1);
+			TRUNCATE(1, "cbw");  /*  al -> ax */
+			TRUNCATE(2, "cwde"); /*  ax -> eax */
+			TRUNCATE(4, "cltq"); /* eax -> rax FIXME */
+			break;
 			default:
 				ICE("can't truncate to length %d", sz);
 		}
-
-		fprintf(f, "\tand rax, 0x%s\n", buf);
 	}
 
 	out->lhs->tt = tt;

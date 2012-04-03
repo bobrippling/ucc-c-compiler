@@ -1,3 +1,7 @@
+asm_recode branch:
+
+check that "*(char *)0" generates "movzx rax, byte [rax]" or similar
+
 ---------------------------------------------------- cc1
 
 floats
