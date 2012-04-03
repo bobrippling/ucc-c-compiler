@@ -174,8 +174,8 @@ void fold_decl(decl *d, symtable *stab)
 
 		/* type */
 		memcpy(d->type, d->type->typeof->tree_type->type, sizeof *d->type);
-		d->type->qual  = old_qual;
-		d->type->store = old_store;
+		d->type->qual  |= old_qual;
+		d->type->store  = old_store;
 
 		/* decl */
 		if(tdef->decl_ptr)

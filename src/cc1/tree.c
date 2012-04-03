@@ -294,16 +294,6 @@ const char *type_primitive_to_str(const enum type_primitive p)
 	return NULL;
 }
 
-const char *type_qual_to_str(const enum type_qualifier q)
-{
-	switch(q){
-		CASE_STR_PREFIX(qual, const);
-		CASE_STR_PREFIX(qual, volatile);
-		case qual_none: break;
-	}
-	return "";
-}
-
 const char *type_store_to_str(const enum type_storage s)
 {
 	switch(s){
@@ -430,7 +420,10 @@ const char *type_to_str(const type *t)
 	char *bufp = buf;
 
 	if(t->typeof)     bufp += snprintf(bufp, BUF_SIZE, "typedef ");
-	if(t->qual)       bufp += snprintf(bufp, BUF_SIZE, "%s ", type_qual_to_str( t->qual));
+	if(t->qual)       bufp += snprintf(bufp, BUF_SIZE, "%s%s",
+		                          t->qual & qual_const    ? "const "    : "",
+		                          t->qual & qual_volatile ? "volatile " : "");
+
 	if(t->store)      bufp += snprintf(bufp, BUF_SIZE, "%s ", type_store_to_str(t->store));
 	if(!t->is_signed) bufp += snprintf(bufp, BUF_SIZE, "unsigned ");
 
