@@ -2,6 +2,7 @@
 
 #include "ops.h"
 #include "stmt_if.h"
+#include "stmt_for.h"
 
 const char *str_stmt_if()
 {
@@ -10,9 +11,28 @@ const char *str_stmt_if()
 
 void fold_stmt_if(stmt *s)
 {
-	fold_expr(s->expr, s->symtab);
-	fold_test_expr(s->expr, s->f_str());
+	symtable *test_symtab;
 
+	if(s->flow){
+		/* if(char *x = ...) */
+		expr *dinit;
+
+		dinit = fold_for_if_init_decls(s);
+
+		if(!dinit)
+			die_at(&s->where, "no initialiser to test in if");
+
+		UCC_ASSERT(!s->expr, "if-expr in c99_ucc if-init mode");
+
+		s->expr = dinit;
+		test_symtab = s->flow->for_init_symtab;
+	}else{
+		test_symtab = s->symtab;
+	}
+
+	fold_expr(s->expr, test_symtab);
+
+	fold_test_expr(s->expr, s->f_str());
 	OPT_CHECK(s->expr, "constant expression in if/while");
 
 	fold_stmt(s->lhs);
@@ -30,6 +50,7 @@ void gen_stmt_if(stmt *s)
 	asm_pop( s->expr->tree_type, ASM_REG_A);
 	ASM_TEST(s->expr->tree_type, ASM_REG_A);
 	asm_jmp_if_zero(0, lbl_else);
+
 	gen_stmt(s->lhs);
 	asm_jmp(lbl_fi);
 	asm_label(lbl_else);

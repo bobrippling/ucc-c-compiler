@@ -9,11 +9,6 @@ const char *str_expr_addr()
 	return "addr";
 }
 
-static int fold_expr_is_addressable(expr *e)
-{
-	return expr_kind(e, identifier);
-}
-
 void fold_expr_addr(expr *e, symtable *stab)
 {
 	if(e->array_store){
@@ -112,8 +107,11 @@ void fold_expr_addr(expr *e, symtable *stab)
 			return;
 		}
 
-		if(!fold_expr_is_addressable(e->expr))
+		if(!expr_kind(e->expr, identifier))
 			die_at(&e->expr->where, "can't take the address of %s", e->expr->f_str());
+
+		if(e->expr->tree_type->type->store == store_register)
+			die_at(&e->expr->where, "can't take the address of register variable %s", e->expr->spel);
 
 		e->tree_type = decl_ptr_depth_inc(decl_copy(e->expr->sym ? e->expr->sym->decl : e->expr->tree_type));
 	}

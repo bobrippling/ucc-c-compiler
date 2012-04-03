@@ -83,13 +83,13 @@ void filter_macro(char **pline)
 		return; /* optimise for empty lines also */
 
 	for(iter = macros; iter && *iter; iter++)
-		(*iter)->used = 0;
+		(*iter)->used_in_loop = 0;
 
 	for(iter = macros; iter && *iter; iter++){
 		macro *m = *iter;
 		int did_replace = 0;
 
-		if(m->used)
+		if(m->used_in_loop)
 			continue;
 
 		if(m->type != MACRO){
@@ -264,7 +264,7 @@ relook:
 		}
 
 		if(did_replace){
-			m->used = 1;
+			m->used_in_loop = 1;
 			iter = macros;
 		}
 	}
