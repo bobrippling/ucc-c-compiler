@@ -60,7 +60,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 		&& !decl_is_struct_or_union(e->sym->decl)
 		&& e->sym->nwrites == 0)
 		{
-			cc1_warn_at(&e->where, 0, WARN_READ_BEFORE_WRITE, "\"%s\" uninitialised on read", e->sym->decl->spel);
+			cc1_warn_at(&e->where, 0, WARN_READ_BEFORE_WRITE, "\"%s\" uninitialised on read", e->spel);
 		}
 
 		/* this is cancelled by expr_assign in the case we fold for an assignment to us */
@@ -97,6 +97,17 @@ void gen_expr_identifier(expr *e, symtable *stab)
 	}
 
 	asm_push(ASM_REG_A);
+}
+
+void gen_expr_identifier_1(expr *e, FILE *f)
+{
+	fprintf(f, "%s", e->sym->decl->spel);
+	/*
+	 * don't use e->spel
+	 * static int i;
+	 * int x;
+	 * x = i; // e->spel is "i". e->sym->decl->spel is "func_name.static_i"
+	 */
 }
 
 void gen_expr_identifier_store(expr *e, symtable *stab)
