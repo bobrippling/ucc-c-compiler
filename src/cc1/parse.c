@@ -442,12 +442,10 @@ expr *parse_expr_comma()
 	return e;
 }
 
-stmt *parse_if()
+void parse_test_init_expr(stmt *t)
 {
-	stmt *t = STAT_NEW(if);
 	decl **c99_ucc_inits;
 
-	EAT(token_if);
 	EAT(token_open_paren);
 
 	c99_ucc_inits = parse_decls_one_type();
@@ -462,6 +460,15 @@ stmt *parse_if()
 	}
 
 	EAT(token_close_paren);
+}
+
+stmt *parse_if()
+{
+	stmt *t = STAT_NEW(if);
+
+	EAT(token_if);
+
+	parse_test_init_expr(t);
 
 	t->lhs = parse_code();
 
@@ -504,11 +511,8 @@ stmt *parse_switch()
 	stmt *t = STAT_NEW(switch);
 
 	EAT(token_switch);
-	EAT(token_open_paren);
 
-	t->expr = parse_expr();
-
-	EAT(token_close_paren);
+	parse_test_init_expr(t);
 
 	t->lhs = parse_code();
 
@@ -537,10 +541,9 @@ stmt *parse_while()
 	stmt *t = STAT_NEW(while);
 
 	EAT(token_while);
-	EAT(token_open_paren);
 
-	t->expr = parse_expr();
-	EAT(token_close_paren);
+	parse_test_init_expr(t);
+
 	t->lhs = parse_code();
 
 	return t;
