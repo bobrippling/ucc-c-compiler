@@ -120,7 +120,7 @@ char *fline(FILE *f)
 			if(errno == EINTR)
 				continue;
 			if(pos)
-				return line; TODO("eol");
+				return line;
 			free(line);
 			return NULL;
 		}
