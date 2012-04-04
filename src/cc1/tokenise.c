@@ -201,10 +201,11 @@ static int peeknextchar()
 	return *bufferpos;
 }
 
-int readnumber(char c)
+void readnumber(char c)
 {
 	enum { DEC, HEX, OCT, BIN } mode = c == '0' ? OCT : DEC;
 	unsigned long lval;
+	int read_suffix = 1;
 
 	lval = c - '0';
 	c = peeknextchar();
@@ -262,11 +263,8 @@ int readnumber(char c)
 				charsread++;
 			}while(1);
 
-			if(charsread < 1){
-				warn_at(NULL, "need proper hex number!");
-				curtok = token_unknown;
-				return 1;
-			}
+			if(charsread < 1)
+				die_at(NULL, "need proper hex number!");
 			break;
 		}
 	}
@@ -274,7 +272,7 @@ int readnumber(char c)
 	currentval.val = lval;
 	currentval.suffix = 0;
 
-	while(1)
+	while(read_suffix)
 		switch(peeknextchar()){
 			case 'U':
 				currentval.suffix = VAL_UNSIGNED;
@@ -286,7 +284,7 @@ int readnumber(char c)
 				ICE("TODO: long integer suffix");
 				break;
 			default:
-				return 0;
+				read_suffix = 0;
 		}
 }
 
@@ -368,10 +366,7 @@ void nexttoken()
 	}
 
 	if(isdigit(c)){
-		if(readnumber(c)){
-			curtok = token_unknown;
-			return;
-		}
+		readnumber(c);
 
 		if(tolower(peeknextchar()) == 'e'){
 			int n = currentval.val;
@@ -379,10 +374,11 @@ void nexttoken()
 			/* 5e2 */
 			nextchar();
 
-			if(!isdigit(c = nextchar()) || readnumber(c)){
+			if(!isdigit(c = nextchar())){
 				curtok = token_unknown;
 				return;
 			}
+			readnumber(c);
 
 			currentval.val = n * pow(10, currentval.val);
 			/* cv = n * 10 ^ cv */
@@ -492,14 +488,23 @@ recheck:
 
 				case '\\':
 				{
-					int save;
+					char esc = nextchar();
 
-					/* special parsing */
-					c = escapechar((save = nextchar()));
+					if(esc == 'x' || (isdigit(esc) && esc != '0')){
+						ICE("TODO: '\\x[hex]' and '\\[0-9]' (got '\\%c...')", esc);
+						readnumber(esc); /* FIXME */
+						if(currentval.suffix)
+							die_at(NULL, "invalid character sequence");
 
-					if(c == -1){
-						warn_at(NULL, "warning: ignoring escape character before '%c'", save);
-						c = save;
+						c = currentval.val;
+					}else{
+						/* special parsing */
+						c = escapechar(esc);
+
+						if(c == -1){
+							warn_at(NULL, "warning: ignoring escape character before '%c'", esc);
+							c = esc;
+						}
 					}
 					break;
 				}

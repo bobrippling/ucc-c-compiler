@@ -9,10 +9,8 @@ const char *str_stmt_if()
 	return "if";
 }
 
-void fold_stmt_if(stmt *s)
+symtable *fold_stmt_test_init_expr(stmt *s, const char *which)
 {
-	symtable *test_symtab;
-
 	if(s->flow){
 		/* if(char *x = ...) */
 		expr *dinit;
@@ -20,15 +18,20 @@ void fold_stmt_if(stmt *s)
 		dinit = fold_for_if_init_decls(s);
 
 		if(!dinit)
-			die_at(&s->where, "no initialiser to test in if");
+			die_at(&s->where, "no initialiser to test in %s", which);
 
-		UCC_ASSERT(!s->expr, "if-expr in c99_ucc if-init mode");
+		UCC_ASSERT(!s->expr, "%s-expr in c99_ucc %s-init mode", which, which);
 
 		s->expr = dinit;
-		test_symtab = s->flow->for_init_symtab;
-	}else{
-		test_symtab = s->symtab;
+		return s->flow->for_init_symtab;
 	}
+
+	return s->symtab;
+}
+
+void fold_stmt_if(stmt *s)
+{
+	symtable *test_symtab = fold_stmt_test_init_expr(s, "if");
 
 	fold_expr(s->expr, test_symtab);
 
