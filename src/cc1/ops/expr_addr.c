@@ -69,7 +69,10 @@ void fold_expr_addr(expr *e, symtable *stab)
 			/*
 			 * convert &(a.b) to &a + offsetof(a, b)
 			 * i.e.:
-			 * (__typeof(a->b) *)((void *)(&a) + __offsetof(__typeof(a), b))
+			 * (__typeof(a.b) *)((void *)(&a) + __offsetof(__typeof(a), b))
+			 *
+			 * also converts &a->b to:
+			 * (__typeof(a->b) *)((void *)a + __offsetof(__typeof(a), b))
 			 */
 			expr *struc, *member, *addr;
 			struct_union_st *st;
@@ -78,7 +81,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 			/* pull out the various bits */
 			struc = e->expr->lhs;
 			member = e->expr->rhs;
-			addr = e->expr; /* FIXME: leaked */
+			addr = e->expr;
 			st = struc->tree_type->type->struct_union;
 
 			/* forget about the old structure */
