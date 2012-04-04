@@ -104,15 +104,23 @@ void icw(const char *f, int line, const char *fn, const char *fmt, ...)
 
 char *fline(FILE *f)
 {
-#ifdef FLINE_UNLIMITED
-	int c, pos = 0, len = 10;
-	char *line = umalloc(len);
+	int c, pos, len;
+	char *line;
+
+	if(feof(f) || ferror(f))
+		return NULL;
+
+	pos = 0;
+	len = 10;
+	line = umalloc(len);
 
 	do{
 		errno = 0;
 		if((c = fgetc(f)) == EOF){
 			if(errno == EINTR)
 				continue;
+			if(pos)
+				return line; TODO("eol");
 			free(line);
 			return NULL;
 		}
@@ -129,21 +137,6 @@ char *fline(FILE *f)
 			return line;
 		}
 	}while(1);
-#else
-	char line[256];
-
-retry:
-	if(fgets(line, sizeof line, f)){
-		char *nl = strchr(line, '\n');
-		if(!nl)
-			die("line too long");
-		*nl = '\0';
-		return ustrdup(line);
-	}
-	if(ferror(f) && errno == EINTR)
-		goto retry;
-	return NULL;
-#endif
 }
 
 char *udirname(const char *f)
