@@ -16,9 +16,9 @@ typedef struct enum_st     enum_st;
 typedef struct type        type;
 typedef struct decl        decl;
 typedef struct decl_desc   decl_desc;
+typedef struct funcargs    funcargs;
 typedef struct array_decl  array_decl;
 typedef struct decl_attr   decl_attr;
-typedef struct funcargs    funcargs;
 
 
 enum type_primitive
@@ -71,25 +71,6 @@ struct type
 	char *spel; /* spel for struct/enum lookup */
 };
 
-struct decl_desc
-{
-	where where;
-
-	enum decl_desc_type
-	{
-		decl_desc_ptr,
-		decl_desc_fptr,
-		decl_desc_array
-	} type;
-
-	int is_const;     /* int *const x */
-	decl_desc *child;  /* int (*const (*x)()) - *[x] is child */
-
-	funcargs *fptrargs;    /* int (*x)() - args to function */
-
-	expr *array_size;      /* int (x[5][2])[2] */
-};
-
 struct decl_attr
 {
 	where where;
@@ -111,6 +92,61 @@ struct decl_attr
 	} attr_extra;
 
 	decl_attr *next;
+};
+
+/*
+ * int *p; // decl -> { desc -> ptr }
+ *
+ * int  f();   // decl -> { desc -> func }
+ * int *f();   // decl -> { desc -> ptr,  child -> func }
+ * int (*f)(); // decl -> { desc -> func, child -> ptr }
+ *
+ * int *(*f)(); // decl -> { desc -> ptr, child -> { func, child -> ptr } }
+ *
+ * int *(*(*f)())();
+ * decl -> {
+
+			desc -> ptr, child -> {
+				ptr, child -> {
+					func, child -> {
+						ptr, child -> {
+							func
+						}
+					}
+				}
+			}
+			???????????????????????????????????????
+ */
+
+struct decl_desc
+{
+	where where;
+
+	enum decl_desc_type
+	{
+		decl_desc_ptr,
+		decl_desc_func,
+		decl_desc_array
+	} type;
+
+	union
+	{
+		struct
+		{
+			int is_const;
+			decl_desc *child;
+		} ptr;
+		struct funcargs
+		{
+			int args_void; /* true if "spel(void);" otherwise if !args, then we have "spel();" */
+			decl **arglist;
+			int variadic;
+		} func;
+		struct
+		{
+			expr *size;      /* int (x[5][2])[2] */
+		} array;
+	} bits;
 };
 
 struct decl
@@ -140,29 +176,20 @@ struct decl
 
 struct array_decl
 {
-	union
-	{
-		char *str;
-		expr **exprs;
-	} data;
-
-	char *label;
-	int len;
-
 	enum
 	{
 		array_exprs,
 		array_str
 	} type;
-};
 
-struct funcargs
-{
-	where where;
+	union
+	{
+		expr **exprs;
+		char *str;
+	} data;
 
-	int args_void; /* true if "spel(void);" otherwise if !args, then we have "spel();" */
-	decl **arglist;
-	int variadic;
+	char *label;
+	int len;
 };
 
 
@@ -170,7 +197,6 @@ stmt        *tree_new(symtable *stab);
 type        *type_new(void);
 decl        *decl_new(void);
 array_decl  *array_decl_new(void);
-funcargs    *funcargs_new(void);
 decl_attr   *decl_attr_new(enum decl_attr_type);
 
 decl_desc   *decl_desc_new(enum decl_desc_type t);
@@ -211,8 +237,6 @@ int   decl_ptr_depth(  decl *);
 int   decl_is_func_ptr(decl *);
 #define decl_is_void(d) ((d)->type->primitive == type_void && !(d)->decl_desc)
 
-funcargs *decl_funcargs(decl *d);
-
 decl_desc **decl_leaf(decl *d);
 decl_desc  *decl_first_func(decl *d);
 
@@ -222,8 +246,6 @@ decl *decl_func_deref(   decl *d);
 
 int decl_attr_present(decl_attr *, enum decl_attr_type);
 
-void function_empty_args(funcargs *);
-
 #define SPEC_STATIC_BUFSIZ 64
 #define TYPE_STATIC_BUFSIZ (SPEC_STATIC_BUFSIZ + 64)
 #define DECL_STATIC_BUFSIZ (256 + TYPE_STATIC_BUFSIZ)
@@ -231,6 +253,5 @@ void function_empty_args(funcargs *);
 #define type_free(x) free(x)
 #define decl_free_notype(x) do{free(x);}while(0)
 #define decl_free(x) do{type_free((x)->type); decl_free_notype(x);}while(0)
-void funcargs_free(funcargs *args, int free_decls);
 
 #endif

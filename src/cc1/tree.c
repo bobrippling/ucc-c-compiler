@@ -90,9 +90,13 @@ decl_desc *decl_desc_copy(decl_desc *dp)
 {
 	decl_desc *ret = umalloc(sizeof *ret);
 	memcpy(ret, dp, sizeof *ret);
-	if(dp->child)
-		ret->child = decl_desc_copy(dp->child);
-	/* leave func and spel, tis fine */
+	switch(dp->type){
+		case decl_desc_ptr:
+			if(dp->bits.ptr.child)
+				ret->bits.ptr.child = decl_desc_copy(dp->bits.ptr.child);
+		default:
+			break;
+	}
 	return ret;
 }
 
@@ -105,13 +109,6 @@ decl *decl_copy(decl *d)
 		ret->desc = decl_desc_copy(d->desc);
 	/*ret->spel = NULL;*/
 	return ret;
-}
-
-funcargs *funcargs_new()
-{
-	funcargs *f = umalloc(sizeof *f);
-	where_new(&f->where);
-	return f;
 }
 
 decl_attr *decl_attr_new(enum decl_attr_type t)
@@ -167,27 +164,39 @@ int type_size(const type *t)
 	return -1;
 }
 
+int decl_desc_size(decl_desc *dp)
+{
+	switch(dp->type){
+		case decl_desc_ptr:
+			return platform_word_size();
+
+		case decl_desc_func:
+			ICE("can't return decl size for function");
+
+		case decl_desc_array:
+		{
+			const int siz = type_size(d->type);
+			decl_desc *dp;
+			int ret = 0;
+
+			for(dp = d->desc; dp; dp = dp->child)
+				if(dp->array_size){
+					/* should've been folded fully */
+					long v = dp->array_size->val.iv.val;
+					if(!v)
+						v = platform_word_size(); /* int x[0] - the 0 is a sentinel */
+					ret += v * siz;
+				}
+
+			return ret;
+		}
+	}
+}
+
 int decl_size(decl *d)
 {
-	if(decl_has_array(d)){
-		const int siz = type_size(d->type);
-		decl_desc *dp;
-		int ret = 0;
-
-		for(dp = d->desc; dp; dp = dp->child)
-			if(dp->array_size){
-				/* should've been folded fully */
-				long v = dp->array_size->val.iv.val;
-				if(!v)
-					v = platform_word_size(); /* int x[0] - the 0 is a sentinel */
-				ret += v * siz;
-			}
-
-		return ret;
-	}
-
 	if(d->desc) /* pointer */
-		return platform_word_size();
+		return decl_desc_size(d->desc);
 
 	if(d->field_width)
 		return d->field_width;
