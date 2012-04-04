@@ -2,6 +2,7 @@
 
 #include "ops.h"
 #include "stmt_while.h"
+#include "stmt_if.h"
 
 const char *str_stmt_while()
 {
@@ -10,13 +11,17 @@ const char *str_stmt_while()
 
 void fold_stmt_while(stmt *s)
 {
+	symtable *test_symtab;
 	stmt *oldflowstat = curstmt_flow;
+
 	curstmt_flow = s;
+
+	test_symtab = fold_stmt_test_init_expr(s, "which");
 
 	s->lbl_break    = asm_label_flow("while_break");
 	s->lbl_continue = asm_label_flow("while_cont");
 
-	fold_expr(s->expr, s->symtab);
+	fold_expr(s->expr, test_symtab);
 	fold_test_expr(s->expr, s->f_str());
 
 	OPT_CHECK(s->expr, "constant expression in if/while");
