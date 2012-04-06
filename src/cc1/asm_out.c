@@ -24,7 +24,7 @@ static const char *asm_reg_str(decl *d, enum asm_reg r)
 	if(r == ASM_REG_BP || r == ASM_REG_SP)
 		post = "p";
 
-	snprintf(buf, sizeof buf, "%s%c%s",
+	snprintf(buf, sizeof buf, "%%%s%c%s",
 			pre,
 			"abcdbs"[r],
 			post);
@@ -36,17 +36,26 @@ static void asm_out_generic(const char *opc, asm_output *out, int n_ops)
 {
 	/* for now, just output text, rather than analysis, etc */
 	FILE *f = cc_out[SECTION_TEXT];
+	char mode[2];
 
-	fprintf(f, "\t%s%s", opc, n_ops ? " " : "");
+	if(n_ops > 0 && out->lhs){
+		mode[0] = asm_type_ch(out->lhs->tt);
+		mode[1] = '\0';
+	}else{
+		mode[0] = '\0';
+	}
+
+	fprintf(f, "\t%s%s%s", opc, mode, n_ops ? " " : "");
 
 	if(n_ops > 0){
-		fprintf(f, "%s", out->lhs->impl(out->lhs));
-
+		/* reversed order for at&t syntax */
 		if(n_ops > 1){
-			fprintf(f, ", %s", out->rhs->impl(out->rhs));
+			fprintf(f, "%s, ", out->rhs->impl(out->rhs));
 		}else{
 			UCC_ASSERT(!out->rhs, "asm rhs operand found when not expected");
 		}
+
+		fprintf(f, "%s", out->lhs->impl(out->lhs));
 	}else{
 		UCC_ASSERT(!out->lhs, "asm lhs operand found when not expected");
 	}

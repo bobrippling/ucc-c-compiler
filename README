@@ -6,7 +6,7 @@ It doesn't use system include files nor libraries yet, just some simple ones in 
 Requirements
 ========================
 
-nasm (I have version 2.09.10, not sure what the lowest required is)
+as (I use gnu as, but any should be fine)
 ld (any form should be fine)
 
 Obviously you need a compiler to compiler this compiler with.
@@ -15,7 +15,7 @@ Obviously you need a compiler to compiler this compiler with.
 Compiling (the compiler)
 ========================
 
-./configure [--nasm=path/to/nasm]
+./configure [--as=path/to/as]
 make
 
 

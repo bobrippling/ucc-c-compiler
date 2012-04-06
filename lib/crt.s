@@ -1,45 +1,46 @@
-section .text
-	extern main
-	extern exit
-
-	global _start
+.text
+.globl _start
 _start:
-	; need to set up stack base pointer
-	mov rbp, rsp
+	# need to set up stack base pointer
+	movq %rsp, %rbp
 
-	; rdi = argc
-	; rsi = argv
-	; rdx = env
-	; rcx = __progname
-	; rax - used for assigning to bss
+	# rdi = argc
+	# rsi = argv
+	# rdx = env
+	# rcx = __progname
+	# rax - used for assigning to bss
 
-	mov rdi, [rsp]     ; argc
-	lea rsi, [rsp + 8] ; argv (before the stackp is altered)
+	movq (%rsp), %rdi   # argc
+	leaq 8(%rsp), %rsi  # argv (before the stackp is altered)
 
-	; __progname = argv[0]
-	mov rcx, [rsi]
+	# __progname = argv[0]
+	movq (%rsi), %rcx
 
-	mov rax, rcx
-	mov [qword __progname], rax
+	movq %rcx, %rax
+	movq %rax, __progname
 
-	; find the first env variable
-	lea rax, [rdi + 1]       ; argc + 1
-	lea rax, [rsi + rax * 8] ; rax = argv + (argc + 1) * 8
-	mov [qword environ], rax
+	# find the first env variable
+	leaq 1(%rdi), %rax   # argc + 1
 
-	push rax ; environ
-	push rsi ; argv
-	push rdi ; argc
+	# rax = argv + (argc + 1) * 8
+	leaq (%rsi,8), %rax  # [%rsi + rax * 8]
+
+	movq %rax, (environ)
+
+	push %rax # environ
+	push %rsi # argv
+	push %rdi # argc
 
 	call main
-	push rax
+	push %rax
 	call exit
 	hlt
 
-section .bss
-	; other things we sort out at startup
-	global environ
-	environ resq 1
+.bss
+	# other things we sort out at startup
+.globl environ
+#environ resq 1
+.comm environ,4,4 # ARF??????????
 
-	global __progname
-	__progname resq 1
+.globl __progname
+.comm __progname,4,4 # ARF??????????

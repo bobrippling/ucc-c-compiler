@@ -31,7 +31,7 @@ test: test.o ../../lib/*.o
 	${LD} ${UCC_LDFLAGS} -o $@ $^
 
 test.o: test.s
-	${UCC_NASM} -f ${UCC_ARCH} -o test.o test.s
+	${UCC_AS} -f ${UCC_ARCH} -o test.o test.s
 
 test.s: TEST.c cc1
 	./cc1 TEST.c > test.s
