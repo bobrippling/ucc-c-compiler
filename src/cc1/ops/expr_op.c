@@ -584,3 +584,6 @@ expr *expr_new_op(enum op_type op)
 	e->op = op;
 	return e;
 }
+
+void gen_expr_style_op(expr *e, symtable *stab)
+{ (void)e; (void)stab; /* TODO */ }

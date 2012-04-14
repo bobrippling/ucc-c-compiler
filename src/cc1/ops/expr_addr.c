@@ -179,3 +179,6 @@ void mutate_expr_addr(expr *e)
 {
 	e->f_gen_1 = gen_expr_addr_1;
 }
+
+void gen_expr_style_addr(expr *e, symtable *stab)
+{ (void)e; (void)stab; /* TODO */ }

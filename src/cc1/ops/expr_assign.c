@@ -131,3 +131,6 @@ void mutate_expr_assign(expr *e)
 	e->f_const_fold = fold_const_expr_assign;
 	e->freestanding = 1;
 }
+
+void gen_expr_style_assign(expr *e, symtable *stab)
+{ (void)e; (void)stab; /* TODO */ }

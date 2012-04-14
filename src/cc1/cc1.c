@@ -16,6 +16,7 @@
 #include "fold.h"
 #include "gen_asm.h"
 #include "gen_str.h"
+#include "gen_style.h"
 #include "sym.h"
 #include "fold_sym.h"
 
@@ -94,10 +95,9 @@ FILE *cc1_out;                  /* final output */
 
 enum warning warn_mode = ~(WARN_VOID_ARITH | WARN_COMPARE_MISMATCH | WARN_IMPLICIT_INT | WARN_INCOMPLETE_USE);
 enum fopt    fopt_mode = FOPT_CONST_FOLD;
+enum cc1_backend cc1_backend = BACKEND_ASM;
 
 int caught_sig = 0;
-
-int backend_str = 0;
 
 const char *section_names[NUM_SECTIONS] = {
 	"text", "data", "bss"
@@ -244,9 +244,11 @@ int main(int argc, char **argv)
 				goto usage;
 
 			if(!strcmp(argv[i], "print"))
-				gf = gen_str;
+				cc1_backend = BACKEND_PRINT;
 			else if(!strcmp(argv[i], "asm"))
-				gf = gen_asm;
+				cc1_backend = BACKEND_ASM;
+			else if(!strcmp(argv[i], "style"))
+				cc1_backend = BACKEND_STYLE;
 			else
 				goto usage;
 
@@ -316,7 +318,11 @@ usage:
 		fname = "-";
 	}
 
-	backend_str = gf == gen_str;
+	switch(cc1_backend){
+		case BACKEND_ASM:   gf = gen_asm;   break;
+		case BACKEND_STYLE: gf = gen_style; break;
+		case BACKEND_PRINT: gf = gen_str;   break;
+	}
 
 	io_setup();
 

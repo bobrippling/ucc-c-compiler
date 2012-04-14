@@ -77,3 +77,6 @@ expr *expr_new_cast(decl *to)
 	e->tree_type = to;
 	return e;
 }
+
+void gen_expr_style_cast(expr *e, symtable *stab)
+{ (void)e; (void)stab; /* TODO */ }

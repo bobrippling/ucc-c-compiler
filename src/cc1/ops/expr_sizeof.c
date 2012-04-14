@@ -73,3 +73,6 @@ expr *expr_new_sizeof_expr(expr *sizeof_this)
 	e->expr = sizeof_this;
 	return e;
 }
+
+void gen_expr_style_sizeof(expr *e, symtable *stab)
+{ (void)e; (void)stab; /* TODO */ }
