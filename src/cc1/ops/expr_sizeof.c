@@ -1,5 +1,7 @@
 #include "ops.h"
 
+#define SIZEOF_WHAT(e) ((e)->expr ? (e)->expr->tree_type : (e)->decl)
+
 const char *str_expr_sizeof()
 {
 	return "sizeof";
@@ -11,21 +13,17 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 		fold_expr(e->expr, stab);
 
 	if(e->expr_is_typeof){
-		/* take the type, unless we have one */
-		if(!e->tree_type)
-			e->tree_type = e->expr->tree_type;
+		/* take the type from the expression or decl */
+		e->tree_type = decl_copy(SIZEOF_WHAT(e));
 
 	}else{
-		if(!e->tree_type){
-			/* sizeof the tree_type */
-			/* sizeof expression */
-			e->tree_type = decl_new();
-
-			/* size_t */
-			e->tree_type->type->primitive = type_int;
-			e->tree_type->type->is_signed = 0;
-		}
+		e->tree_type = decl_new();
+		/* size_t */
+		e->tree_type->type->primitive = type_int;
+		e->tree_type->type->is_signed = 0;
 	}
+
+	fold_decl(SIZEOF_WHAT(e), stab); /* sizeof(struct A) - needs lookup */
 }
 
 void gen_expr_sizeof_1(expr *e)
@@ -35,7 +33,7 @@ void gen_expr_sizeof_1(expr *e)
 
 void gen_expr_sizeof(expr *e, symtable *stab)
 {
-	decl *d = e->tree_type;
+	decl *d = SIZEOF_WHAT(e);
 	(void)stab;
 
 	asm_temp(1, "push %d ; sizeof %s%s",
@@ -46,12 +44,13 @@ void gen_expr_sizeof(expr *e, symtable *stab)
 
 void gen_expr_str_sizeof(expr *e, symtable *stab)
 {
+	const char *name = e->expr_is_typeof ? "typeof" : "sizeof";
 	(void)stab;
 	if(e->expr){
-		idt_printf("sizeof expr:\n");
+		idt_printf("%s expr:\n", name);
 		print_expr(e->expr);
 	}else{
-		idt_printf("sizeof %s\n", decl_to_str(e->tree_type));
+		idt_printf("%s %s\n", name, decl_to_str(e->decl));
 	}
 }
 
@@ -63,7 +62,7 @@ void mutate_expr_sizeof(expr *e)
 expr *expr_new_sizeof_decl(decl *d)
 {
 	expr *e = expr_new_wrapper(sizeof);
-	e->tree_type = d;
+	e->decl = d;
 	return e;
 }
 

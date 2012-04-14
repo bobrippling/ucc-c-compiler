@@ -289,7 +289,6 @@ void print_st_en_tdef(symtable *stab)
 	enum_st   **eit;
 	decl      **tit;
 
-	/* fold structs, then enums, then decls - decls may rely on enums */
 	for(sit = stab->structs; sit && *sit; sit++)
 		print_struct(*sit);
 
@@ -361,10 +360,13 @@ void print_stmt(stmt *t)
 		}
 	}
 
-	print_st_en_tdef(t->symtab);
-
 	if(t->codes){
 		stmt **iter;
+
+		idt_printf("structs, enums and tdefs in this block:\n");
+		gen_str_indent++;
+		print_st_en_tdef(t->symtab);
+		gen_str_indent--;
 
 		idt_printf("code(s):\n");
 		for(iter = t->codes; *iter; iter++){

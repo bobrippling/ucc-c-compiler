@@ -323,7 +323,7 @@ void fold_test_expr(expr *e, const char *stmt_desc)
 	if(!e->in_parens && expr_kind(e, assign))
 		cc1_warn_at(&e->where, 0, WARN_TEST_ASSIGN, "testing an assignment in %s", stmt_desc);
 
-	fold_disallow_st_un(e, "test");
+	fold_disallow_st_un(e, stmt_desc);
 }
 
 void fold_disallow_st_un(expr *e, const char *desc)
