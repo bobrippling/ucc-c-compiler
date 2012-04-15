@@ -183,10 +183,11 @@ void fold_op_struct(expr *e, symtable *stab)
 	st = e->lhs->tree_type->type->struct_union;
 
 	if(!st)
-		die_at(&e->lhs->where, "%s incomplete type",
+		die_at(&e->lhs->where, "%s incomplete type (%s)",
 				ptr_depth_exp == 1
 				? "dereferencing pointer to"
-				: "use of");
+				: "use of",
+				type_to_str(e->lhs->tree_type->type));
 
 	/* found the struct, find the member */
 	e->rhs->tree_type = struct_union_member_find(st, spel, &e->where);

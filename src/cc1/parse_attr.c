@@ -53,6 +53,17 @@ static struct
 	{ NULL, NULL },
 };
 
+void parse_attr_bracket_chomp(void)
+{
+	if(accept(token_open_paren)){
+		parse_attr_bracket_chomp(); /* nest */
+
+		accept(token_comma);
+		accept(token_identifier); /* optional */
+
+		EAT(token_close_paren);
+	}
+}
 
 decl_attr *parse_attr_single(char *ident)
 {
@@ -63,6 +74,11 @@ decl_attr *parse_attr_single(char *ident)
 			return attrs[i].parser();
 
 	warn_at(NULL, "ignoring unrecognised attribute \"%s\"", ident);
+
+	/* if there are brackets, eat them all */
+
+	parse_attr_bracket_chomp();
+
 	return NULL;
 }
 
@@ -78,7 +94,7 @@ decl_attr *parse_attr(void)
 
 		ident = token_current_spel();
 		EAT(token_identifier);
-		
+
 		if((*next = parse_attr_single(ident)))
 			next = &(*next)->next;
 

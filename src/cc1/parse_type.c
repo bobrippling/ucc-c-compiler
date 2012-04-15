@@ -171,14 +171,14 @@ type *parse_type()
 					str = "enum";
 					break;
 
-#define CASE(a, b)                                 \
+#define CASE(a)                                    \
 				case token_ ## a:                          \
 					t = parse_type_struct_union(type_ ## a); \
 					str = #a;                                \
 					break
 
-				CASE(struct, struct_union);
-				CASE(union,  struct_union);
+				CASE(struct);
+				CASE(union);
 
 				default:
 					ICE("wat");
@@ -562,8 +562,20 @@ decl **parse_decls_multi_type(const int can_default, const int accept_field_widt
 				 */
 				decl_free_notype(d);
 				if(!last){
-					if(t->primitive == type_struct ? !t->struct_union->anon : 1)
+					int warn = 0;
+
+					switch(t->primitive){
+						case type_struct:
+						case type_union:
+							warn = t->struct_union && !t->struct_union->anon;
+							break;
+						default:
+							warn = 1;
+					}
+
+					if(warn)
 						warn_at(&d->where, "declaration doesn't declare anything");
+
 					goto next;
 				}
 				die_at(&d->where, "identifier expected after decl");
