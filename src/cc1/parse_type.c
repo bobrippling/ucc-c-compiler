@@ -237,38 +237,6 @@ type *parse_type()
 
 funcargs *parse_func_arglist()
 {
-	/*
-	 * either:
-	 *
-	 * [<type>] <name>( [<type> [<name>]]... )
-	 * {
-	 * }
-	 *
-	 * with optional {}
-	 *
-	 * or
-	 *
-	 * [<type>] <name>( [<name>...] )
-	 *   <type> <name>, ...;
-	 *   <type> <name>, ...;
-	 * {
-	 * }
-	 *
-	 * non-optional code
-	 *
-	 * i.e.
-	 *
-	 * int x(int y);
-	 * int x(int y){}
-	 *
-	 * or
-	 *
-	 * int x(y)
-	 *   int y;
-	 * {
-	 * }
-	 *
-	 */
 	funcargs *args;
 	decl *argdecl;
 
@@ -277,7 +245,7 @@ funcargs *parse_func_arglist()
 	if(curtok == token_close_paren)
 		goto empty_func;
 
-	argdecl = parse_decl_single(DECL_CAN_DEFAULT);
+	argdecl = parse_decl_single(0);
 
 	if(argdecl){
 		for(;;){
@@ -308,75 +276,23 @@ funcargs *parse_func_arglist()
 		}
 
 	}else{
-		int i, n_spels, n_decls;
-		char **spells;
-		decl **argar;
-
-		spells = NULL;
-
-		ICE("TODO: old functions (on %s%s%s)",
-				token_to_str(curtok),
-				curtok == token_identifier ? ": " : "",
-				curtok == token_identifier ? token_current_spel_peek() : ""
-				);
-
 		do{
+			decl *d = decl_new();
+
 			if(curtok != token_identifier)
 				EAT(token_identifier); /* error */
 
-			dynarray_add((void ***)&spells, token_current_spel());
+			d->type->primitive = type_int;
+			d->spel = token_current_spel();
+			dynarray_add((void ***)&args->arglist, d);
+
 			EAT(token_identifier);
 
-			if(accept(token_close_paren))
+			if(curtok == token_close_paren)
 				break;
 			EAT(token_comma);
-
 		}while(1);
-
-		/* parse decls, then check they correspond */
-		argar = PARSE_DECLS();
-
-		n_decls = dynarray_count((void *)argar);
-		n_spels = dynarray_count((void *)spells);
-
-		if(n_decls > n_spels)
-			die_at(argar ? &argar[0]->where : &args->where, "old-style function decl: mismatching argument counts");
-
-		for(i = 0; i < n_spels; i++){
-			int j, found;
-
-			found = 0;
-			for(j = 0; j < n_decls; j++)
-				if(!strcmp(spells[i], argar[j]->spel)){
-					if(argar[j]->init)
-						die_at(&argar[j]->where, "parameter \"%s\" is initialised", argar[j]->spel);
-
-					found = 1;
-					break;
-				}
-
-			if(!found){
-				/*
-					* void f(x){ ... }
-					* - x is implicitly int
-					*/
-				decl *d = decl_new();
-				d->type->primitive = type_int;
-				d->spel = spells[i];
-				spells[i] = NULL; /* prevent free */
-				dynarray_add((void ***)&argar, d);
-			}
-		}
-
-		/* no need to check the other way around, since the counts are equal */
-		if(spells)
-			dynarray_free((void ***)&spells, free);
-
-		args->arglist = argar;
-
-		if(curtok != token_open_block)
-			die_at(&args->where, "no code for old-style function");
-		//args->code = parse_code();
+		args->args_old_proto = 1;
 	}
 
 empty_func:
@@ -502,10 +418,57 @@ decl *parse_decl(type *t, enum decl_mode mode)
 		EAT(token_close_paren);
 	}
 
-	if(spel && accept(token_assign))
+	if(spel && accept(token_assign)){
 		d->init = parse_expr_funcallarg(); /* int x = 5, j; - don't grab the comma expr */
-	else if(d->funcargs && curtok == token_open_block)
+	}else if(d->funcargs && curtok != token_semicolon){
+		/* optionally check for old func decl */
+		decl **old_args = PARSE_DECLS();
+
+		if(old_args){
+			/* check then replace old args */
+			int n_proto_decls, n_old_args;
+			int i;
+
+			if(!d->funcargs->args_old_proto)
+				die_at(&d->where, "unexpected old-style decls - new style proto used");
+
+			n_proto_decls = dynarray_count((void **)d->funcargs->arglist);
+			n_old_args = dynarray_count((void **)old_args);
+
+			if(n_old_args > n_proto_decls)
+				die_at(&d->where, "old-style function decl: too many decls");
+
+			for(i = 0; i < n_old_args; i++)
+				if(old_args[i]->init)
+					die_at(&old_args[i]->where, "parameter \"%s\" is initialised", old_args[i]->spel);
+
+			for(i = 0; i < n_old_args; i++){
+				int j;
+				for(j = 0; j < n_proto_decls; j++){
+					if(!strcmp(old_args[i]->spel, d->funcargs->arglist[j]->spel)){
+						decl **replace_this;
+						decl *free_this;
+
+						/* replace the old implicit int arg */
+						replace_this = &d->funcargs->arglist[j];
+
+						free_this = *replace_this;
+						*replace_this = old_args[i];
+
+						decl_free(free_this);
+						break;
+					}
+				}
+			}
+
+			free(old_args);
+
+			if(curtok != token_open_block)
+				die_at(&args->where, "no code for old-style function");
+		}
+
 		d->func_code = parse_code();
+	}
 
 	return d;
 }
