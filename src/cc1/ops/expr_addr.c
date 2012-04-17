@@ -110,8 +110,15 @@ void fold_expr_addr(expr *e, symtable *stab)
 			return;
 		}
 
-		if(!expr_kind(e->expr, identifier))
+		if(!expr_is_lvalue(e->expr))
 			die_at(&e->expr->where, "can't take the address of %s", e->expr->f_str());
+
+		/* lvalues are identifier, struct-exp or deref */
+
+		if(expr_kind(e->expr, op)){
+			/* deref, i.e. "&*(int *)0", remove so we just have the (int *)0 */
+			ICE("TODO: address of deref");
+		}
 
 		if(e->expr->tree_type->type->store == store_register)
 			die_at(&e->expr->where, "can't take the address of register variable %s", e->expr->spel);
@@ -188,3 +195,6 @@ void mutate_expr_addr(expr *e)
 {
 	e->f_gen_1 = gen_expr_addr_1;
 }
+
+void gen_expr_style_addr(expr *e, symtable *stab)
+{ (void)e; (void)stab; /* TODO */ }

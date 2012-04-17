@@ -129,3 +129,6 @@ expr *expr_new_identifier(char *sp)
 	e->spel = sp;
 	return e;
 }
+
+void gen_expr_style_identifier(expr *e, symtable *stab)
+{ (void)e; (void)stab; /* TODO */ }

@@ -258,7 +258,7 @@ expr *parse_expr_join(expr *(*above)(), enum token accept, ...)
 	return e;
 }
 
-expr *parse_str_expruct()
+expr *parse_expr_struct()
 {
 	return parse_expr_join(parse_expr_unary_op,
 				token_ptr, token_dot,
@@ -267,7 +267,7 @@ expr *parse_str_expruct()
 
 expr *parse_expr_array()
 {
-	expr *base = parse_str_expruct();
+	expr *base = parse_expr_struct();
 
 	while(accept(token_open_square)){
 		expr *sum, *deref;

@@ -179,20 +179,24 @@ void fold_op_struct(expr *e, symtable *stab)
 	if(!decl_is_struct_or_union(e->lhs->tree_type)
 	|| decl_ptr_depth(e->lhs->tree_type) != ptr_depth_exp)
 	{
-		die_at(&e->lhs->where, "%s is not a %s%s (member %s)",
+		const int ident = expr_kind(e->lhs, identifier);
+
+		die_at(&e->lhs->where, "%s%s%s is not a %sstruct or union (member %s)",
 				decl_to_str(e->lhs->tree_type),
+				ident ? " " : "",
+				ident ? e->lhs->spel : "",
 				ptr_depth_exp == 1 ? "pointer-to-" : "",
-				struct_union_str(e->lhs->tree_type->type->struct_union),
 				spel);
 	}
 
 	st = e->lhs->tree_type->type->struct_union;
 
 	if(!st)
-		die_at(&e->lhs->where, "%s incomplete type",
+		die_at(&e->lhs->where, "%s incomplete type (%s)",
 				ptr_depth_exp == 1
 				? "dereferencing pointer to"
-				: "use of");
+				: "use of",
+				type_to_str(e->lhs->tree_type->type));
 
 	/* found the struct, find the member */
 	e->rhs->tree_type = struct_union_member_find(st, spel, &e->where);
@@ -664,3 +668,6 @@ expr *expr_new_op(enum op_type op)
 	e->op = op;
 	return e;
 }
+
+void gen_expr_style_op(expr *e, symtable *stab)
+{ (void)e; (void)stab; /* TODO */ }

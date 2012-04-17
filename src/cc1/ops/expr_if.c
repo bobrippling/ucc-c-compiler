@@ -91,3 +91,6 @@ expr *expr_new_if(expr *test)
 	e->expr = test;
 	return e;
 }
+
+void gen_expr_style_if(expr *e, symtable *stab)
+{ (void)e; (void)stab; /* TODO */ }

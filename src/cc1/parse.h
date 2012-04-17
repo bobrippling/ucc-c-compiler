@@ -3,7 +3,7 @@
 
 enum decl_mode
 {
-	DECL_SPEL_NEED    = 1,
+	DECL_SPEL_NEED    = 1 << 0,
 	DECL_SPEL_NO      = 1 << 1,
 	DECL_CAN_DEFAULT  = 1 << 2,
 };

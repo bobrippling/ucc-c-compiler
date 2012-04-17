@@ -237,3 +237,6 @@ expr *expr_new_funcall()
 	e->freestanding = 1;
 	return e;
 }
+
+void gen_expr_style_funcall(expr *e, symtable *stab)
+{ (void)e; (void)stab; /* TODO */ }

@@ -17,6 +17,8 @@
 #include "enum.h"
 #include "struct_enum.h"
 
+#define DECL_IS_VOID(d) (d->type->primitive == type_void && !decl_ptr_depth(d))
+
 decl *curdecl_func;          /* for funcargs-local labels */
 stmt *curstmt_flow;          /* for break */
 stmt *curstmt_switch;        /* for case + default */
@@ -82,7 +84,7 @@ void fold_decl_equal(decl *a, decl *b, where *w, enum warning warn,
 		cc1_warn_at(w, 0, warn, "%s vs. %s for...", decl_to_str(a), buf);
 
 		va_start(l, errfmt);
-		cc1_warn_atv(w, a->type->primitive == type_void && !decl_ptr_depth(a), warn, errfmt, l);
+		cc1_warn_atv(w, DECL_IS_VOID(a), warn, errfmt, l);
 		va_end(l);
 	}
 }
@@ -99,8 +101,7 @@ void fold_typecheck_sign(expr *lhs, expr *rhs, symtable *stab, where *where)
 	decl_l = lhs->tree_type;
 	decl_r = rhs->tree_type;
 
-#define IS_VOID(d) (d->type->primitive == type_void && !decl_ptr_depth(d))
-	if(IS_VOID(decl_l) || IS_VOID(decl_r))
+	if(DECL_IS_VOID(decl_l) || DECL_IS_VOID(decl_r))
 		die_at(where, "use of void expression");
 
 
@@ -242,11 +243,20 @@ void fold_decl(decl *d, symtable *stab)
 
 		case type_enum:
 		case type_struct:
+		case type_union:
 			st_en_lookup_chk(d, stab);
 			break;
 
-		default:
-			break;
+		case type_int:
+		case type_char:
+		case type_short:
+		case type_long:
+		case type_float:
+		case type_double:
+				break;
+
+		case type_unknown:
+				ICE("unknown type");
 	}
 
 	if(d->init){
@@ -369,7 +379,7 @@ void fold_test_expr(expr *e, const char *stmt_desc)
 	if(!e->in_parens && expr_kind(e, assign))
 		cc1_warn_at(&e->where, 0, WARN_TEST_ASSIGN, "testing an assignment in %s", stmt_desc);
 
-	fold_disallow_st_un(e, "test");
+	fold_disallow_st_un(e, stmt_desc);
 }
 
 void fold_disallow_st_un(expr *e, const char *desc)

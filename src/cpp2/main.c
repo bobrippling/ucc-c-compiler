@@ -69,8 +69,8 @@ void calctime(void)
 	if(!strftime(s, sizeof s, fmt, now)) \
 		die("strftime():");
 
-	FTIME(cpp_time, "%H:%M:%S");
-	FTIME(cpp_date, "%b %d %G");
+	FTIME(cpp_time, "\"%H:%M:%S\"");
+	FTIME(cpp_date, "\"%b %d %G\"");
 }
 
 

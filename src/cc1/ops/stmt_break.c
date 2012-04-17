@@ -17,7 +17,7 @@ void fold_stmt_break_continue(stmt *t, const char *desc, char *lbl)
 	memcpy(&t->expr->where, &t->where, sizeof t->expr->where);
 
 	t->expr->tree_type = decl_new();
-	t->expr->tree_type->type->primitive = type_int;
+	t->expr->tree_type->type->primitive = type_void;
 }
 
 void fold_stmt_break(stmt *t)

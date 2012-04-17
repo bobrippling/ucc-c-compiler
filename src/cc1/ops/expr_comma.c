@@ -47,3 +47,6 @@ void mutate_expr_comma(expr *e)
 {
 	e->f_const_fold = fold_const_expr_comma;
 }
+
+void gen_expr_style_comma(expr *e, symtable *stab)
+{ (void)e; (void)stab; /* TODO */ }

@@ -10,7 +10,7 @@ OBJ = ../util/alloc.o ../util/util.o ../util/platform.o ../util/dynarray.o \
 	parse.o parse_type.o typedef.o \
 	fold.o fold_sym.o const.o \
 	sym.o struct.o enum.o struct_enum.o \
-	gen_asm.o gen_str.o asm.o asm_out.o \
+	gen_asm.o gen_str.o asm.o asm_out.o gen_style.o \
 	ops/expr_addr.o ops/expr_assign.o ops/expr_cast.o ops/expr_comma.o \
 	ops/expr_funcall.o ops/expr_identifier.o ops/expr_if.o ops/expr_op.o \
 	ops/expr_sizeof.o ops/expr_val.o ops/expr_stmt.o \
@@ -68,7 +68,7 @@ cc1.o: cc1.c ../util/util.h data_structs.h tree.h expr.h ops/expr_addr.h \
  ops/stmt_expr.h ops/stmt_for.h ops/stmt_goto.h ops/stmt_if.h \
  ops/stmt_label.h ops/stmt_noop.h ops/stmt_return.h ops/stmt_switch.h \
  ops/stmt_while.h ops/stmt_continue.h sym.h tokenise.h parse.h cc1.h \
- fold.h gen_asm.h gen_str.h fold_sym.h asm_out.h
+ fold.h gen_asm.h gen_str.h gen_style.h fold_sym.h asm_out.h
 const.o: const.c ../util/util.h data_structs.h tree.h expr.h \
  ops/expr_addr.h ops/expr_assign.h ops/expr_cast.h ops/expr_comma.h \
  ops/expr_funcall.h ops/expr_identifier.h ops/expr_if.h ops/expr_op.h \
@@ -95,7 +95,7 @@ expr.o: expr.c ../util/util.h ../util/alloc.h data_structs.h tree.h \
  ops/stmt_default.h ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h \
  ops/stmt_goto.h ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h \
  ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h ops/stmt_continue.h \
- sym.h
+ sym.h cc1.h
 fold.o: fold.c ../util/util.h data_structs.h tree.h expr.h \
  ops/expr_addr.h ops/expr_assign.h ops/expr_cast.h ops/expr_comma.h \
  ops/expr_funcall.h ops/expr_identifier.h ops/expr_if.h ops/expr_op.h \
@@ -134,6 +134,15 @@ gen_str.o: gen_str.c ../util/util.h data_structs.h tree.h expr.h \
  ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h ops/stmt_return.h \
  ops/stmt_switch.h ops/stmt_while.h ops/stmt_continue.h sym.h macros.h \
  cc1.h struct.h enum.h gen_str.h
+gen_style.o: gen_style.c ../util/util.h data_structs.h tree.h expr.h \
+ ops/expr_addr.h ops/expr_assign.h ops/expr_cast.h ops/expr_comma.h \
+ ops/expr_funcall.h ops/expr_identifier.h ops/expr_if.h ops/expr_op.h \
+ ops/expr_sizeof.h ops/expr_val.h ops/expr_stmt.h stmt.h ops/stmt_break.h \
+ ops/stmt_case.h ops/stmt_case_range.h ops/stmt_code.h ops/stmt_default.h \
+ ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h ops/stmt_goto.h \
+ ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h ops/stmt_return.h \
+ ops/stmt_switch.h ops/stmt_while.h ops/stmt_continue.h sym.h cc1.h \
+ gen_style.h
 parse_attr.o: parse_attr.c
 parse.o: parse.c ../util/util.h data_structs.h tree.h expr.h \
  ops/expr_addr.h ops/expr_assign.h ops/expr_cast.h ops/expr_comma.h \
