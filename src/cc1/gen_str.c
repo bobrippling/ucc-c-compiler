@@ -345,6 +345,13 @@ void print_stmt(stmt *t)
 	PRINT_IF(t, rhs,  print_stmt);
 	PRINT_IF(t, rhs,  print_stmt);
 
+	if(t->symtab){
+		idt_printf("structs, enums and tdefs in this block:\n");
+		gen_str_indent++;
+		print_st_en_tdef(t->symtab);
+		gen_str_indent--;
+	}
+
 	if(t->decls){
 		decl **iter;
 
@@ -362,11 +369,6 @@ void print_stmt(stmt *t)
 
 	if(t->codes){
 		stmt **iter;
-
-		idt_printf("structs, enums and tdefs in this block:\n");
-		gen_str_indent++;
-		print_st_en_tdef(t->symtab);
-		gen_str_indent--;
 
 		idt_printf("code(s):\n");
 		for(iter = t->codes; *iter; iter++){
