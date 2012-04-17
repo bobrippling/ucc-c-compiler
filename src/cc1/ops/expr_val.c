@@ -48,3 +48,6 @@ expr *expr_new_val(int val)
 	e->val.iv.val = val;
 	return e;
 }
+
+void gen_expr_style_val(expr *e, symtable *stab)
+{ (void)e; (void)stab; /* TODO */ }

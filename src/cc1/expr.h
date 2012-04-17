@@ -47,6 +47,7 @@ struct expr
 	expr *expr; /* x = 5; expr is the 5 */
 	expr **funcargs;
 	stmt *code; /* ({ ... }) */
+	decl *decl; /* for sizeof(decl) */
 
 	sym *sym;
 
@@ -56,21 +57,23 @@ struct expr
 };
 
 
-expr *expr_new(          func_mutate_expr *, func_fold *, func_gen *, func_gen *, func_str *);
-void expr_mutate(expr *, func_mutate_expr *, func_fold *, func_gen *, func_gen *, func_str *);
+expr *expr_new(          func_mutate_expr *, func_fold *, func_str *, func_gen *, func_gen *, func_gen *);
+void expr_mutate(expr *, func_mutate_expr *, func_fold *, func_str *, func_gen *, func_gen *, func_gen *);
 
-#define expr_mutate_wrapper(e, type) expr_mutate(e,           \
-                                        mutate_expr_ ## type, \
-                                        fold_expr_   ## type, \
-                                        gen_expr_    ## type, \
-                                        gen_expr_str_## type, \
-                                        str_expr_    ## type)
+#define expr_mutate_wrapper(e, type) expr_mutate(e,               \
+                                        mutate_expr_     ## type, \
+                                        fold_expr_       ## type, \
+                                        str_expr_        ## type, \
+                                        gen_expr_        ## type, \
+                                        gen_expr_str_    ## type, \
+                                        gen_expr_style_  ## type)
 
-#define expr_new_wrapper(type) expr_new(mutate_expr_ ## type, \
-                                        fold_expr_   ## type, \
-                                        gen_expr_    ## type, \
-                                        gen_expr_str_## type, \
-                                        str_expr_    ## type)
+#define expr_new_wrapper(type) expr_new(mutate_expr_     ## type, \
+                                        fold_expr_       ## type, \
+                                        str_expr_        ## type, \
+                                        gen_expr_        ## type, \
+                                        gen_expr_str_    ## type, \
+                                        gen_expr_style_  ## type)
 
 expr *expr_new_intval(intval *);
 

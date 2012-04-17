@@ -5,3 +5,4 @@ func_const   const_expr_identifier;
 func_str     str_expr_identifier;
 func_gen     gen_expr_str_identifier;
 func_mutate_expr mutate_expr_identifier;
+func_gen     gen_expr_style_identifier;

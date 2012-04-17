@@ -20,12 +20,12 @@ void st_en_un_set_spel(char **dest, char *spel, const char *desc)
 	}
 }
 
-void st_en_lookup(void **save_to, int *incomplete,
+static void st_en_lookup(void **save_to, int *incomplete,
 		decl *d, symtable *stab,
 		void *(*lookup)(symtable *, const char *),
-		int is_struct)
+		int is_struct_or_union)
 {
-	const char *const mode = is_struct ? "struct" : "enum";
+	const char *const mode = is_struct_or_union ? "struct" : "enum";
 
 	if(!*save_to){
 		UCC_ASSERT(d->type->spel, "%s lookup: no %s spel (decl %s)", mode, mode, d->spel);
@@ -36,7 +36,7 @@ void st_en_lookup(void **save_to, int *incomplete,
 
 		if(!d->type->spel){
 			/* get the anon enum name */
-			d->type->spel = is_struct ? d->type->struct_union->spel : d->type->enu->spel;
+			d->type->spel = is_struct_or_union ? d->type->struct_union->spel : d->type->enu->spel;
 		}
 	}
 }
@@ -56,8 +56,16 @@ void st_en_lookup_chk(decl *d, symtable *stab)
 				&incomplete, d, stab,
 				(void *(*)(struct symtable *, const char *))struct_union_find,
 				1);
+
+		/* only do this check if we actually found something */
+		/*                                         not-not, since the bit-field is :1 */
+		if(d->type->struct_union && !!(d->type->primitive == type_union) != !!d->type->struct_union->is_union)
+			die_at(&d->where, "unions are not structs");
 	}
 
 	if(incomplete && !decl_ptr_depth(d))
-		die_at(&d->where, "use of %s %s", type_to_str(d->type), d->spel);
+		die_at(&d->where, "use of %s%s%s",
+				type_to_str(d->type),
+				d->spel ? " " : "",
+				d->spel ? d->spel : "");
 }

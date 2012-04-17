@@ -140,7 +140,7 @@ void funcargs_free(funcargs *args, int free_decls)
 int type_size(const type *t)
 {
 	if(t->typeof)
-		return decl_size(t->typeof->tree_type);
+		return decl_size(t->typeof->decl);
 
 	switch(t->primitive){
 		case type_char:

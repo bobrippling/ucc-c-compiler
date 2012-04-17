@@ -190,6 +190,11 @@ struct array_decl
 
 	char *label;
 	int len;
+
+	int args_void; /* true if "spel(void);" otherwise if !args, then we have "spel();" */
+	int args_old_proto; /* true if f(a, b); where a and b are identifiers */
+	decl **arglist;
+	int variadic;
 };
 
 

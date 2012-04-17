@@ -6,29 +6,42 @@
 #include "../util/util.h"
 #include "../util/alloc.h"
 #include "data_structs.h"
+#include "cc1.h"
 
 /* needed for expr_assignment() */
 #include "ops/expr_assign.h"
 
 void expr_mutate(expr *e, func_mutate_expr *f,
 		func_fold *f_fold,
+		func_str *f_str,
 		func_gen *f_gen,
 		func_gen *f_gen_str,
-		func_str *f_str)
+		func_gen *f_gen_style
+		)
 {
-	extern int backend_str;
-
 	e->f_fold = f_fold;
-	e->f_gen  = backend_str ? f_gen_str : f_gen;
 	e->f_str  = f_str;
+
+	switch(cc1_backend){
+		case BACKEND_ASM:   e->f_gen = f_gen;       break;
+		case BACKEND_PRINT: e->f_gen = f_gen_str;   break;
+		case BACKEND_STYLE: e->f_gen = f_gen_style; break;
+		default: ICE("bad backend");
+	}
+
 	f(e);
 }
 
-expr *expr_new(func_mutate_expr *f, func_fold *f_fold, func_gen *f_gen, func_gen *f_gen_str, func_str *f_str)
+expr *expr_new(func_mutate_expr *f,
+		func_fold *f_fold,
+		func_str *f_str,
+		func_gen *f_gen,
+		func_gen *f_gen_str,
+		func_gen *f_gen_style)
 {
 	expr *e = umalloc(sizeof *e);
 	where_new(&e->where);
-	expr_mutate(e, f, f_fold, f_gen, f_gen_str, f_str);
+	expr_mutate(e, f, f_fold, f_str, f_gen, f_gen_str, f_gen_style);
 	return e;
 }
 
