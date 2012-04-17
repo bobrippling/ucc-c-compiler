@@ -173,8 +173,12 @@ void fold_op_struct(expr *e, symtable *stab)
 	if(!decl_is_struct_or_union(e->lhs->tree_type)
 	|| decl_ptr_depth(e->lhs->tree_type) != ptr_depth_exp)
 	{
-		die_at(&e->lhs->where, "%s is not a %sstruct or union (member %s)",
+		const int ident = expr_kind(e->lhs, identifier);
+
+		die_at(&e->lhs->where, "%s%s%s is not a %sstruct or union (member %s)",
 				decl_to_str(e->lhs->tree_type),
+				ident ? " " : "",
+				ident ? e->lhs->spel : "",
 				ptr_depth_exp == 1 ? "pointer-to-" : "",
 				spel);
 	}
