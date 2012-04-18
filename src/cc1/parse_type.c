@@ -195,6 +195,15 @@ type *parse_type()
 		}else if(curtok == token_identifier && (td = typedef_find(current_scope, token_current_spel_peek()))){
 			/* typedef name */
 
+			/*
+			 * FIXME
+			 * check for a following colon, in the case of
+			 * typedef int x;
+			 * x:;
+			 *
+			 * x is a valid label
+			 */
+
 			if(primitive_set){
 				/* "int x" - we are at x, which is also a typedef somewhere */
 				cc1_warn_at(NULL, 0, WARN_IDENT_TYPEDEF, "identifier is a typedef name");
@@ -560,7 +569,6 @@ decl **parse_decls_multi_type(const int can_default, const int accept_field_widt
 				 * int; - fine for "int;", but "int i,;" needs to fail
 				 * struct A; - fine
 				 */
-				decl_free_notype(d);
 				if(!last){
 					int warn = 0;
 
@@ -576,6 +584,7 @@ decl **parse_decls_multi_type(const int can_default, const int accept_field_widt
 					if(warn)
 						warn_at(&d->where, "declaration doesn't declare anything");
 
+					decl_free_notype(d);
 					goto next;
 				}
 				die_at(&d->where, "identifier expected after decl");
