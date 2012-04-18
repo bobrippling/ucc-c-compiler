@@ -104,17 +104,17 @@ void filter_macro(char **pline)
 			nest = 0;
 			line = *pline;
 
-relook:
 			if(!(pos = word_find(line, m->nam)))
 				continue;
 
+relook:
 			open_b  = strchr(pos, '(');
-			close_b = nest_close_paren(open_b + 1);
 			if(!open_b){
 				/* ignore the macro */
 				pos++;
 				goto relook;
 			}
+			close_b = nest_close_paren(open_b + 1);
 			if(!close_b)
 				die("no close paren for function-macro");
 
