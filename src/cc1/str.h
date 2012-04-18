@@ -1,7 +1,16 @@
 #ifndef STR_H
 #define STR_H
 
-int  escapechar(int c);
-void escapestring(char *str, int *len);
+int  escape_char(int c);
+void escape_string(char *str, int *len);
+
+enum base
+{
+	BIN, OCT, DEC, HEX
+};
+
+void char_seq_to_iv(char *s, intval *iv, int *plen, enum base mode);
+
+#define isoct(x) ('0' <= (x) && (x) < '8')
 
 #endif
