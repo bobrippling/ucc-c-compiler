@@ -164,17 +164,17 @@ void fold_decl(decl *d, symtable *stab)
 {
 	/* typedef / __typeof folding */
 	while(d->type->typeof){
-		/* get the typedef decl from t->typeof->tree_type */
+		/* get the typedef decl from t->decl->tree_type */
 		const enum type_qualifier old_qual  = d->type->qual;
 		const enum type_storage   old_store = d->type->store;
 		decl *tdef;
 
 		fold_expr(d->type->typeof, stab);
 
-		tdef = d->type->typeof->tree_type;
+		tdef = d->type->typeof->decl;
 
 		/* type */
-		memcpy(d->type, d->type->typeof->tree_type->type, sizeof *d->type);
+		memcpy(d->type, d->type->typeof->decl->type, sizeof *d->type);
 		d->type->qual  |= old_qual;
 		d->type->store  = old_store;
 
