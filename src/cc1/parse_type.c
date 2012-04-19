@@ -595,9 +595,12 @@ decl **parse_decls_multi_type(const int can_default, const int accept_field_widt
 					:  (void ***)&decls,
 					d);
 
-			if(are_tdefs)
+			if(are_tdefs){
 				if(d->funcargs)
 					die_at(&d->where, "can't have a typedef function");
+				else if(d->init)
+					die_at(&d->where, "can't init a typedef");
+			}
 
 			if(accept_field_width && accept(token_colon)){
 				/* normal decl, check field spec */
