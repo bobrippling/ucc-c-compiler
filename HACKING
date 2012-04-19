@@ -16,21 +16,21 @@ Overview
 
 The compiler (cc1) runs in three main stages.
 
-It operates on data structures described in tree.h
+It operates on data structures described in tree.h, expr.h, stmt.h and data_structs.h
 
 these are mainly:
 	expressions: 5 + 2, f("hello"), x = y
 	and
 	statements:  if(...){...}, while, do, for
 
-statements are of type "tree", expressions are of type "expr"
+statements are of type "stmt", expressions are of type "expr"
 
 
 Parsing (parse{,_type}.c)
 -------------------------
 
 Parsing simply constructs a syntax tree (tree.h + struct.h + typedef.h).
-There are expressions and statements, shown in tree.h
+There are expressions and statements, shown in tree.h/expr.h/stmt.h
 
 The parser for expressions is a recursive descent. It uses the tokeniser to convert the input into tokens.
 This makes it easier to parse.
