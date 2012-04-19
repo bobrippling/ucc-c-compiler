@@ -53,13 +53,14 @@ void fold_stmt_switch(stmt *s)
 	stmt *oldswstmt = curstmt_switch;
 	stmt *oldflowstmt = curstmt_flow;
 	type *typ;
+	symtable *test_symtab = fold_stmt_test_init_expr(s, "switch");
 
 	curstmt_switch = s;
 	curstmt_flow   = s;
 
 	s->lbl_break = asm_label_flow("switch");
 
-	fold_expr(s->expr, s->symtab);
+	fold_expr(s->expr, test_symtab);
 
 	fold_test_expr(s->expr, "switch");
 

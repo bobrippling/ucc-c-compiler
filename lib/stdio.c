@@ -49,6 +49,10 @@ static void printx(int fd, int n, int is_signed)
 	printn(fd, n, 16, is_signed);
 }
 
+static void printo(int fd, int n, int is_signed)
+{
+	printn(fd, n, 8, is_signed);
+}
 
 /* Public */
 FILE *fopen(const char *path, char *smode)
@@ -208,6 +212,9 @@ int vfprintf(FILE *file, char *fmt, va_list ap)
 				}
 				case 'x':
 					printx(fd, va_arg(ap, int), 1);
+					break;
+				case 'o':
+					printo(fd, va_arg(ap, int), 1);
 					break;
 
 				default:

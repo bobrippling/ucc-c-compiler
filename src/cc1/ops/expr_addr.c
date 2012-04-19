@@ -3,6 +3,7 @@
 
 #include "ops.h"
 #include "../struct.h"
+#include "../str.h"
 
 const char *str_expr_addr()
 {
@@ -170,7 +171,9 @@ void gen_expr_str_addr(expr *e, symtable *stab)
 
 	if(e->array_store){
 		if(e->array_store->type == array_str){
-			idt_printf("label: %s, \"%s\" (length=%d)\n", e->array_store->label, e->array_store->data.str, e->array_store->len);
+			idt_printf("label: %s, \"", e->array_store->label);
+			literal_print(cc1_out, e->array_store->data.str, e->array_store->len);
+			fprintf(cc1_out, "\" (length=%d)\n", e->array_store->len);
 		}else{
 			int i;
 			idt_printf("array: %s:\n", e->array_store->label);

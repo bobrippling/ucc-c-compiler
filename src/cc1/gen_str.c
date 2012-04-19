@@ -283,6 +283,11 @@ void print_enum(enum_st *et)
 	gen_str_indent--;
 }
 
+int has_st_en_tdef(symtable *stab)
+{
+	return stab->structs || stab->enums || stab->typedefs;
+}
+
 void print_st_en_tdef(symtable *stab)
 {
 	struct_union_st **sit;
@@ -345,7 +350,7 @@ void print_stmt(stmt *t)
 	PRINT_IF(t, rhs,  print_stmt);
 	PRINT_IF(t, rhs,  print_stmt);
 
-	if(t->symtab){
+	if(t->symtab && has_st_en_tdef(t->symtab)){
 		idt_printf("structs, enums and tdefs in this block:\n");
 		gen_str_indent++;
 		print_st_en_tdef(t->symtab);

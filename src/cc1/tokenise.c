@@ -12,8 +12,6 @@
 #include "../util/util.h"
 #include "str.h"
 
-#define isoct(x) ('0' <= (x) && (x) < '8')
-
 #define KEYWORD(x) { #x, token_ ## x }
 
 struct statement
@@ -202,78 +200,23 @@ static int nextchar()
 static int peeknextchar()
 {
 	/* doesn't ignore isspace() */
+	if(!bufferpos)
+		tokenise_read_line();
+
+	if(buffereof)
+		return EOF;
+
 	return *bufferpos;
 }
 
-void readnumber(char c)
+void read_number(enum base mode)
 {
-	enum { DEC, HEX, OCT, BIN } mode = c == '0' ? OCT : DEC;
-	unsigned long lval;
 	int read_suffix = 1;
+	int nlen;
 
-	lval = c - '0';
-	c = peeknextchar();
+	char_seq_to_iv(bufferpos, &currentval, &nlen, mode);
 
-	if((c == 'x' || c == 'b') && mode == OCT){
-		mode = c == 'x' ? HEX : BIN;
-		nextchar();
-		c = peeknextchar();
-	}
-
-#define READ_NUM(test, base) \
-			do{ \
-				while(c == '_'){ \
-					nextchar(); \
-					c = peeknextchar(); \
-				} \
-				if(test){ \
-					lval = base * lval + c - '0'; \
-					nextchar(); \
-				}else{ \
-					break; \
-				} \
-				c = peeknextchar(); \
-			}while(1);
-
-	switch(mode){
-		case BIN:
-			READ_NUM(c == '0' || c == '1', 2);
-			break;
-
-		case DEC:
-			READ_NUM(isdigit(c), 10);
-			break;
-
-		case OCT:
-			READ_NUM(isoct(c), 010);
-			break;
-
-		case HEX:
-		{
-			int charsread = 0;
-			do{
-				if(isxdigit(c)){
-					c = tolower(c);
-					lval = 0x10 * lval + (isdigit(c) ? c - '0' : 10 + c - 'a');
-					nextchar();
-				}else{
-					break;
-				}
-				c = peeknextchar();
-				while(c == '_'){
-					nextchar();
-					c = peeknextchar();
-				}
-				charsread++;
-			}while(1);
-
-			if(charsread < 1)
-				die_at(NULL, "need proper hex number!");
-			break;
-		}
-	}
-
-	currentval.val = lval;
+	bufferpos += nlen;
 	currentval.suffix = 0;
 
 	while(read_suffix)
@@ -343,7 +286,7 @@ void read_string(char **sptr, int *plen)
 	strncpy(*sptr, start, size);
 	(*sptr)[size-1] = '\0';
 
-	escapestring(*sptr, plen);
+	escape_string(*sptr, plen);
 
 	bufferpos += size;
 }
@@ -361,32 +304,54 @@ void nexttoken()
 		c = ungetch;
 		ungetch = EOF;
 	}else{
-		c = nextchar();
-	}
-
-	if(c == EOF){
-		curtok = token_eof;
-		return;
+		c = nextchar(); /* no numbers, no more peeking */
+		if(c == EOF){
+			curtok = token_eof;
+			return;
+		}
 	}
 
 	if(isdigit(c)){
-		readnumber(c);
+		enum base mode;
 
+		if(c == '0'){
+			switch((c = nextchar())){
+				case 'x':
+					mode = HEX;
+					break;
+				case 'b':
+					mode = BIN;
+					break;
+				default:
+					if(isoct(c))
+						mode = OCT;
+					else
+						goto dec; /* '0' by itself */
+					break;
+			}
+		}else{
+dec:
+			mode = DEC;
+			bufferpos--; /* rewind */
+		}
+
+		read_number(mode);
+
+#if 0
 		if(tolower(peeknextchar()) == 'e'){
+			/* 5e2 */
 			int n = currentval.val;
 
-			/* 5e2 */
-			nextchar();
-
-			if(!isdigit(c = nextchar())){
+			if(!isdigit(peeknextchar())){
 				curtok = token_unknown;
 				return;
 			}
-			readnumber(c);
+			read_number();
 
 			currentval.val = n * pow(10, currentval.val);
 			/* cv = n * 10 ^ cv */
 		}
+#endif
 
 		curtok = token_integer;
 		return;
@@ -399,7 +364,7 @@ void nexttoken()
 				nextchar();
 				curtok = token_elipsis;
 			}else{
-				curtok = token_unknown;
+				die_at(NULL, "unknown token \"..\"\n");
 			}
 			return;
 		}else{
@@ -484,46 +449,46 @@ recheck:
 		case '\'':
 		{
 			c = rawnextchar();
-			switch(c){
-				case EOF:
-					warn_at(NULL, "Invalid character");
-					curtok = token_unknown;
-					return;
 
-				case '\\':
-				{
-					char esc = nextchar();
+			if(c == EOF){
+				die_at(NULL, "Invalid character");
+			}else if(c == '\\'){
+				char esc = peeknextchar();
 
-					if(esc == 'x' || (isdigit(esc) && esc != '0')){
-						ICE("TODO: '\\x[hex]' and '\\[0-9]' (got '\\%c...')", esc);
-						readnumber(esc); /* FIXME */
-						if(currentval.suffix)
-							die_at(NULL, "invalid character sequence");
+				if(esc == 'x' || esc == 'b' || isoct(esc)){
 
-						c = currentval.val;
-					}else{
-						/* special parsing */
-						c = escapechar(esc);
+					if(esc == 'x' || esc == 'b')
+						nextchar();
 
-						if(c == -1){
-							warn_at(NULL, "warning: ignoring escape character before '%c'", esc);
-							c = esc;
-						}
-					}
-					break;
+					read_number(esc == 'x' ? HEX : esc == 'b' ? BIN : OCT);
+
+					if(currentval.suffix)
+						die_at(NULL, "invalid character sequence: suffix given");
+
+					if(currentval.val > 0xff)
+						warn_at(NULL, "invalid character sequence: too large (parsed 0x%x)", currentval.val);
+
+					c = currentval.val;
+				}else{
+					/* special parsing */
+					c = escape_char(esc);
+
+					if(c == -1)
+						die_at(NULL, "invalid escape character '%c'", esc);
+
+					nextchar();
 				}
 			}
 
 			currentval.val = c;
 			currentval.suffix = 0;
-			if((c = nextchar()) == '\'')
+
+			if((c = nextchar()) == '\''){
 				curtok = token_character;
-			else{
-				die_at(NULL, "Invalid character token\n"
-						"(expected single quote, not '%c')", c);
-				curtok = token_unknown;
-				return;
+			}else{
+				die_at(NULL, "no terminating \"'\" for character (got '%c')", c);
 			}
+
 			break;
 		}
 
@@ -681,6 +646,7 @@ recheck:
 			break;
 
 		default:
+			die_at(NULL, "unknown character %c 0x%x %d", c, c, buffereof);
 			curtok = token_unknown;
 	}
 
