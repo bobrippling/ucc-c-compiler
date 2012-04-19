@@ -451,7 +451,7 @@ recheck:
 			}else if(c == '\\'){
 				char esc = peeknextchar();
 
-				if(esc == 'x' || esc == 'b' || (isdigit(esc) && esc != '0' && esc < '8')){
+				if(esc == 'x' || esc == 'b' || isoct(esc)){
 
 					if(esc == 'x' || esc == 'b')
 						nextchar();
