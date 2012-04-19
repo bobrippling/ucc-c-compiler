@@ -150,7 +150,8 @@ void gen_expr_funcall(expr *e, symtable *stab)
 			char ch = str[i];
 			if(!isprint(ch) && !isspace(ch))
 invalid:
-				die_at(&arg1->where, "invalid __asm__ string (character %d)", ch);
+				die_at(&arg1->where, "invalid __asm__ string (character 0x%x at index %d, %d / %d)",
+						ch, i, i + 1, arg1->array_store->len);
 		}
 
 		if(str[i])
