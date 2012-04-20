@@ -13,7 +13,7 @@
 #include "sym.h"
 #include "cc1.h"
 #include "../util/dynarray.h"
-#include "struct.h"
+#include "sue.h"
 #include "parse_type.h"
 
 #define STAT_NEW(type)      stmt_new_wrapper(type, current_scope)

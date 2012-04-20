@@ -10,8 +10,7 @@ typedef struct symtable    symtable;
 
 typedef struct tdef        tdef;
 typedef struct tdeftable   tdeftable;
-typedef struct struct_union_st   struct_union_st;
-typedef struct enum_st     enum_st;
+typedef struct struct_union_enum_st struct_union_enum_st;
 
 typedef struct type        type;
 typedef struct decl        decl;
@@ -61,14 +60,11 @@ struct type
 	enum type_storage   store;
 	int is_signed;
 
-	/* NULL unless this is a structure */
-	struct_union_st *struct_union;
-	/* NULL unless this is an enum */
-	enum_st *enu;
+	/* NULL unless this is a struct, union or enum */
+	struct_union_enum_st *sue;
+
 	/* NULL unless from typedef or __typeof() */
 	expr *typeof;
-
-	char *spel; /* spel for struct/enum lookup */
 };
 
 struct decl_attr

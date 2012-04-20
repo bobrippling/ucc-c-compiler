@@ -91,8 +91,6 @@ expr *expr_ptr_multiply(expr *e, decl *d)
 	ret = expr_new_op(op_multiply);
 	memcpy(&ret->where, &e->where, sizeof e->where);
 
-	if(ret->tree_type)
-		decl_free(ret->tree_type);
 	ret->tree_type = decl_copy(e->tree_type);
 
 	ret->lhs  = e;

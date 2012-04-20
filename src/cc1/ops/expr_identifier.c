@@ -1,6 +1,6 @@
 #include <string.h>
 #include "ops.h"
-#include "../enum.h"
+#include "../sue.h"
 
 const char *str_expr_identifier()
 {
@@ -38,7 +38,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 
 		}else{
 			/* check for an enum */
-			enum_member *m = enum_find_member(stab, e->spel);
+			enum_member *m = enum_member_search(stab, e->spel);
 
 			if(!m)
 				die_at(&e->where, "undeclared identifier \"%s\"", e->spel);

@@ -1,7 +1,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "ops.h"
-#include "../struct.h"
+#include "../sue.h"
 
 const char *str_expr_op()
 {
@@ -159,7 +159,7 @@ void fold_op_struct(expr *e, symtable *stab)
 	 * rhs = struct member ident
 	 */
 	const int ptr_depth_exp = e->op == op_struct_ptr ? 1 : 0;
-	struct_union_st *st;
+	struct_union_enum_st *st;
 	char *spel;
 
 	fold_expr(e->lhs, stab);
@@ -183,9 +183,9 @@ void fold_op_struct(expr *e, symtable *stab)
 				spel);
 	}
 
-	st = e->lhs->tree_type->type->struct_union;
+	st = e->lhs->tree_type->type->sue;
 
-	if(!st)
+	if(sue_incomplete(st))
 		die_at(&e->lhs->where, "%s incomplete type (%s)",
 				ptr_depth_exp == 1
 				? "dereferencing pointer to"
@@ -285,12 +285,8 @@ void fold_expr_op(expr *e, symtable *stab)
 		 * TODO: checks for pointer + pointer (invalid), etc etc
 		 */
 
-
 		if(e->rhs){
-			if(e->op == op_minus && IS_PTR(e->lhs) && IS_PTR(e->rhs)){
-				e->tree_type = decl_new();
-				e->tree_type->type->primitive = type_int;
-			}else if(IS_PTR(e->rhs)){
+			if(IS_PTR(e->rhs)){
 				e->tree_type = decl_copy(e->rhs->tree_type);
 			}else{
 				goto norm_tt;
@@ -312,16 +308,43 @@ norm_tt:
 			if(e->tree_type->type->primitive != type_void){
 				/* we're dealing with pointers, adjust the amount we add by */
 
-				if(decl_ptr_depth(e->lhs->tree_type))
-					/* lhs is the pointer, we're adding on rhs, hence multiply rhs by lhs's ptr size */
-					e->rhs = expr_ptr_multiply(e->rhs, e->lhs->tree_type);
-				else
-					e->lhs = expr_ptr_multiply(e->lhs, e->rhs->tree_type);
+				if(e->op == op_minus){
+					/* need to apply the divide to the current 'e' */
+					expr *sub = expr_new_op(e->op);
+
+					memcpy(&sub->where, &e->where, sizeof sub->where);
+
+					sub->lhs = e->lhs;
+					sub->rhs = e->rhs;
+					sub->tree_type = e->tree_type;
+
+					e->op = op_divide;
+
+					e->lhs = sub;
+					e->rhs = expr_new_val(decl_size(e->tree_type));
+					fold_expr(e->rhs, stab);
+
+					e->tree_type = decl_new();
+					e->tree_type->type->primitive = type_int;
+
+				}else{
+					if(decl_ptr_depth(e->lhs->tree_type))
+						/* lhs is the pointer, we're adding on rhs, hence multiply rhs by lhs's ptr size */
+						e->rhs = expr_ptr_multiply(e->rhs, e->lhs->tree_type);
+					else
+						e->lhs = expr_ptr_multiply(e->lhs, e->rhs->tree_type);
+				}
 
 				const_fold(e);
 			}else{
 				cc1_warn_at(&e->tree_type->type->where, 0, WARN_VOID_ARITH, "arithmetic with void pointer");
 			}
+		}
+
+		if(e->op == op_minus && IS_PTR(e->lhs) && IS_PTR(e->rhs)){
+			/* ptr - ptr = int */
+			/* FIXME: ptrdiff_t */
+			e->tree_type->type->primitive = type_int;
 		}
 
 		/* check types */

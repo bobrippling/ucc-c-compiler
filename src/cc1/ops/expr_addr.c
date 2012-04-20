@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 #include "ops.h"
-#include "../struct.h"
+#include "../sue.h"
 #include "../str.h"
 
 const char *str_expr_addr()
@@ -74,14 +74,14 @@ void fold_expr_addr(expr *e, symtable *stab)
 			 * (__typeof(a->b) *)((void *)a + __offsetof(__typeof(a), b))
 			 */
 			expr *struc, *member, *addr;
-			struct_union_st *st;
+			struct_union_enum_st *st;
 			decl *member_decl;
 
 			/* pull out the various bits */
 			struc = e->expr->lhs;
 			member = e->expr->rhs;
 			addr = e->expr;
-			st = struc->tree_type->type->struct_union;
+			st = struc->tree_type->type->sue;
 
 			/* forget about the old structure */
 			e->expr = e->expr->lhs = e->expr->rhs = NULL;
