@@ -75,6 +75,7 @@ void macro_remove(const char *nam)
 void filter_macro(char **pline)
 {
 	macro **iter;
+	char *substitute_here;
 
 	if(should_noop())
 		**pline = '\0';
@@ -84,6 +85,8 @@ void filter_macro(char **pline)
 
 	for(iter = macros; iter && *iter; iter++)
 		(*iter)->used_in_loop = 0;
+
+	substitute_here = *pline;
 
 	for(iter = macros; iter && *iter; iter++){
 		macro *m = *iter;
@@ -97,14 +100,12 @@ void filter_macro(char **pline)
 			char **args;
 			char *open_b, *close_b;
 			char *replace;
-			char *line;
 			char *pos;
 			int i, nest;
 
 			nest = 0;
-			line = *pline;
 
-			if(!(pos = word_find(line, m->nam)))
+			if(!(pos = word_find(substitute_here, m->nam)))
 				continue;
 
 relook:
@@ -157,7 +158,7 @@ relook:
 					die("wrong number of args to function macro \"%s\", got %d, expected %d%s%s%s",
 							m->nam, got, exp,
 							debug ? " (" : "",
-							debug ? line : "",
+							debug ? *pline : "",
 							debug ? ")"  : ""
 							);
 				}
@@ -218,7 +219,13 @@ relook:
 				dynarray_free((void ***)&args, free);
 			}
 
-			*pline = str_replace(*pline, pos, close_b + 1, replace);
+			{
+				int diff = close_b - *pline + 1;
+
+				*pline = str_replace(*pline, pos, close_b + 1, replace);
+
+				substitute_here = *pline + diff;
+			}
 
 			free(replace);
 
@@ -256,6 +263,9 @@ relook:
 
 			did_replace = word_replace_g(pline, m->nam, val);
 
+			if(did_replace)
+				m->used_in_loop = 1;
+
 			if(is_counter && did_replace)
 				counter++;
 
@@ -263,9 +273,7 @@ relook:
 				free(val);
 		}
 
-		if(did_replace){
-			m->used_in_loop = 1;
+		if(did_replace)
 			iter = macros;
-		}
 	}
 }
