@@ -10,7 +10,7 @@
 #include "asm.h"
 #include "../util/platform.h"
 #include "../util/alloc.h"
-#include "struct.h"
+#include "sue.h"
 
 static int label_last = 1, str_last = 1, switch_last = 1, flow_last = 1;
 
@@ -113,7 +113,7 @@ void asm_sym(enum asm_sym_type t, sym *s, const char *reg)
 			if(ts == ASM_SIZE_WORD)
 				type_s = "qword ";
 			else if(ts == ASM_SIZE_STRUCT_UNION)
-				ICE("operation on full %s", struct_union_str(s->decl->type->struct_union));
+				ICE("operation on full %s", sue_str(s->decl->type->sue));
 
 			/* get warnings for "lea rax, [qword tim]", just do "lea rax, [tim]" */
 			snprintf(brackets, bracket_len, "[%s%s]",
@@ -242,7 +242,7 @@ char asm_type_ch(decl *d)
 void asm_declare_single(FILE *f, decl *d)
 {
 	if(asm_type_size(d) == ASM_SIZE_STRUCT_UNION)
-		ICE("trying to declare + init %s", struct_union_str(d->type->struct_union));
+		ICE("trying to declare + init %s", sue_str(d->type->sue));
 
 	fprintf(f, "%s d%c ", d->spel, asm_type_ch(d));
 

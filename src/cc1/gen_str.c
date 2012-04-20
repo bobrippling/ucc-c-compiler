@@ -7,8 +7,7 @@
 #include "macros.h"
 #include "sym.h"
 #include "cc1.h"
-#include "struct.h"
-#include "enum.h"
+#include "sue.h"
 #include "gen_str.h"
 
 #define ENGLISH_PRINT_ARGLIST
@@ -254,30 +253,31 @@ void print_expr(expr *e)
 	gen_str_indent--;
 }
 
-void print_struct(struct_union_st *st)
+void print_struct(struct_union_enum_st *sue)
 {
-	decl **iter;
+	sue_member **iter;
 
-	idt_printf("struct %s (size %d):\n", st->spel, struct_union_size(st));
+	idt_printf("%s %s (size %d):\n", sue_str(sue), sue->spel, struct_union_size(sue));
 
 	gen_str_indent++;
-	for(iter = st->members; iter && *iter; iter++){
-		decl *d = *iter;
+	for(iter = sue->members; iter && *iter; iter++){
+		decl *d = &(*iter)->struct_member;
 		print_decl(d, PDECL_INDENT | PDECL_NEWLINE);
 		idt_printf("offset %d\n", d->struct_offset);
 	}
 	gen_str_indent--;
 }
 
-void print_enum(enum_st *et)
+void print_enum(struct_union_enum_st *et)
 {
-	enum_member **mi;
+	sue_member **mi;
 
 	idt_printf("enum %s:\n", et->spel);
 
 	gen_str_indent++;
 	for(mi = et->members; *mi; mi++){
-		enum_member *m = *mi;
+		enum_member *m = &(*mi)->enum_member;
+
 		idt_printf("member %s = %d\n", m->spel, m->val->val.iv.val);
 	}
 	gen_str_indent--;
@@ -285,22 +285,21 @@ void print_enum(enum_st *et)
 
 int has_st_en_tdef(symtable *stab)
 {
-	return stab->structs || stab->enums || stab->typedefs;
+	return stab->sues || stab->typedefs;
 }
 
 void print_st_en_tdef(symtable *stab)
 {
-	struct_union_st **sit;
-	enum_st   **eit;
-	decl      **tit;
+	struct_union_enum_st **sit;
 
-	for(sit = stab->structs; sit && *sit; sit++)
-		print_struct(*sit);
-
-	for(eit = stab->enums; eit && *eit; eit++)
-		print_enum(*eit);
+	for(sit = stab->sues; sit && *sit; sit++){
+		struct_union_enum_st *sue = *sit;
+		(sue->primitive == type_enum ? print_enum : print_struct)(sue);
+	}
 
 	if(stab->typedefs){
+		decl **tit;
+
 		idt_printf("typedefs:\n");
 		gen_str_indent++;
 		for(tit = stab->typedefs; tit && *tit; tit++)

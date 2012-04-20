@@ -9,8 +9,7 @@
 #include "macros.h"
 #include "sym.h"
 #include "../util/platform.h"
-#include "struct.h"
-#include "enum.h"
+#include "sue.h"
 
 where *eof_where = NULL;
 
@@ -146,7 +145,7 @@ int type_size(const type *t)
 
 		case type_union:
 		case type_struct:
-			return struct_union_size(t->struct_union);
+			return struct_union_size(t->sue);
 
 		case type_unknown:
 			break;
@@ -193,7 +192,7 @@ int type_equal(const type *a, const type *b, int strict)
 	if(strict && (b->qual & qual_const) && (a->qual & qual_const) == 0)
 		return 0; /* we can assign from const to non-const, but not vice versa - FIXME should be elsewhere? */
 
-	if(a->struct_union != b->struct_union || a->enu != b->enu)
+	if(a->sue != b->sue)
 		return 0;
 
 	return strict ? a->primitive == b->primitive : 1;
@@ -427,13 +426,12 @@ const char *type_to_str(const type *t)
 	if(t->store)      bufp += snprintf(bufp, BUF_SIZE, "%s ", type_store_to_str(t->store));
 	if(!t->is_signed) bufp += snprintf(bufp, BUF_SIZE, "unsigned ");
 
-	if(t->struct_union){
-		snprintf(bufp, BUF_SIZE, "%s %s",
-				t->struct_union->is_union ? "union" : "struct",
-				t->struct_union->spel);
+	if(t->sue){
+		snprintf(bufp, BUF_SIZE, "%s%s %s",
+				sue_incomplete(t->sue) ? "incomplete-" : "",
+				sue_str(t->sue),
+				t->sue->spel);
 
-	}else if(t->enu){
-		snprintf(bufp, BUF_SIZE, "enum %s", t->enu->spel);
 	}else{
 		switch(t->primitive){
 #define APPEND(t) case type_ ## t: snprintf(bufp, BUF_SIZE, "%s", #t); break
@@ -446,10 +444,7 @@ const char *type_to_str(const type *t)
 				ICE("enum without ->enu");
 			case type_struct:
 			case type_union:
-				snprintf(bufp, BUF_SIZE, "incomplete-%s %s",
-						t->primitive == type_struct ? "struct" : "union",
-						t->spel);
-				break;
+				ICE("struct/union without ->struct_union");
 #undef APPEND
 		}
 	}
