@@ -11,7 +11,7 @@
 #include "asm.h"
 #include "../util/platform.h"
 #include "../util/alloc.h"
-#include "struct.h"
+#include "sue.h"
 
 static int label_last = 1, str_last = 1, switch_last = 1, flow_last = 1;
 
@@ -236,16 +236,18 @@ void asm_reg_name(decl *d, const char **regpre, const char **regpost)
 
 int asm_type_size(decl *d)
 {
-	struct_union_st *st = d->type->struct_union;
-	if(st && !decl_ptr_depth(d))
+	struct_union_enum_st *st = d->type->sue;
+
+	if(st && !decl_ptr_depth(d) && st->primitive != type_enum)
 		return struct_union_size(st);
+
 	return asm_type_table[asm_table_lookup(d)].sz;
 }
 
 void asm_declare_single(FILE *f, decl *d)
 {
-	if(!decl_ptr_depth(d) && d->type->struct_union)
-		ICE("trying to declare + init struct");
+	if(!decl_ptr_depth(d) && d->type->sue && d->type->sue->primitive != type_enum)
+		ICE("trying to declare + init %s", sue_str(d->type->sue));
 
 	fprintf(f, "%s d%c ", d->spel, asm_type_ch(d));
 

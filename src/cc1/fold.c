@@ -13,9 +13,7 @@
 #include "const.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
-#include "struct.h"
-#include "enum.h"
-#include "struct_enum.h"
+#include "sue.h"
 
 #define DECL_IS_VOID(d) (d->type->primitive == type_void && !decl_ptr_depth(d))
 
@@ -107,9 +105,10 @@ void fold_typecheck_sign(expr *lhs, expr *rhs, symtable *stab, where *where)
 
 	if(    decl_l->type->primitive == type_enum
 			&& decl_r->type->primitive == type_enum
-			&& decl_l->type->enu != decl_r->type->enu){
+			&& decl_l->type->sue != decl_r->type->sue){
 
-		cc1_warn_at(where, 0, WARN_ENUM_CMP, "expression with enum %s and enum %s", decl_l->type->spel, decl_r->spel);
+		cc1_warn_at(where, 0, WARN_ENUM_CMP, "expression with enum %s and enum %s",
+				decl_l->type->sue->spel, decl_r->type->sue->spel);
 	}
 
 #define lhs_signed decl_l->type->is_signed
@@ -252,7 +251,7 @@ void fold_decl(decl *d, symtable *stab)
 		case type_enum:
 		case type_struct:
 		case type_union:
-			st_en_lookup_chk(d, stab);
+			sue_fold(d, stab);
 			break;
 
 		case type_int:
@@ -312,26 +311,26 @@ void fold_decl_global(decl *d, symtable *stab)
 	fold_decl(d, stab);
 }
 
-int fold_struct_union(struct_union_st *st_un, symtable *stab)
+int fold_struct_union(struct_union_enum_st *sue, symtable *stab)
 {
 	int offset;
-	decl **i;
+	sue_member **i;
 
-	for(offset = 0, i = st_un->members; i && *i; i++){
-		decl *d = *i;
+	for(offset = 0, i = sue->members; i && *i; i++){
+		decl *d = &(*i)->struct_member;
 
-		if(!d->type->struct_union && decl_is_struct_or_union(d))
-			st_en_lookup_chk(d, stab);
+		if(decl_is_struct_or_union(d))
+			sue_fold(d, stab);
 
-		if(!st_un->is_union)
+		if(sue->primitive == type_struct)
 			d->struct_offset = offset;
 		/* else - union, all offsets are the same */
 
-		if(d->type->struct_union && decl_ptr_depth(d) == 0){
-			if(d->type->struct_union == st_un)
-				die_at(&d->where, "nested %s", struct_union_str(st_un));
+		if(d->type->sue && decl_ptr_depth(d) == 0){
+			if(d->type->sue == sue)
+				die_at(&d->where, "nested %s", sue_str(sue));
 
-			offset += fold_struct_union(d->type->struct_union, stab);
+			offset += fold_struct_union(d->type->sue, stab);
 		}else{
 			offset += decl_size(d);
 		}
@@ -340,13 +339,13 @@ int fold_struct_union(struct_union_st *st_un, symtable *stab)
 	return offset;
 }
 
-void fold_enum(enum_st *en, symtable *stab)
+void fold_enum(struct_union_enum_st *en, symtable *stab)
 {
-	enum_member **i;
+	sue_member **i;
 	int defval = 0;
 
 	for(i = en->members; *i; i++){
-		enum_member *m = *i;
+		enum_member *m = &(*i)->enum_member;
 		expr *e = m->val;
 
 		/* -1 because we can't do dynarray_add(..., 0) */
@@ -368,15 +367,17 @@ void fold_enum(enum_st *en, symtable *stab)
 
 void fold_symtab_scope(symtable *stab)
 {
-	struct_union_st **sit;
-	enum_st   **eit;
+	struct_union_enum_st **sit;
 
 	/* fold structs, then enums, then decls - decls may rely on enums */
-	for(sit = stab->structs; sit && *sit; sit++)
-		fold_struct_union(*sit, stab);
+	for(sit = stab->sues; sit && *sit; sit++){
+		struct_union_enum_st *sue = *sit;
 
-	for(eit = stab->enums; eit && *eit; eit++)
-		fold_enum(*eit, stab);
+		if(sue->primitive == type_enum)
+			fold_enum(sue, stab);
+		else
+			fold_struct_union(sue, stab);
+	}
 }
 
 void fold_test_expr(expr *e, const char *stmt_desc)
@@ -394,7 +395,7 @@ void fold_disallow_st_un(expr *e, const char *desc)
 {
 	if(!decl_ptr_depth(e->tree_type) && decl_is_struct_or_union(e->tree_type)){
 		die_at(&e->where, "%s involved in %s",
-				struct_union_str(e->tree_type->type->struct_union),
+				sue_str(e->tree_type->type->sue),
 				desc);
 	}
 }

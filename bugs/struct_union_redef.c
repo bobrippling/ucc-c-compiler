@@ -1,4 +1,6 @@
-union Hello;
+struct Hello;
+
+//enum Hello { X };
 
 struct Hello
 {
@@ -7,6 +9,9 @@ struct Hello
 
 main()
 {
-	union Hello;
 	struct Hello x;
+
+	x.j = 5;
+
+	return (&x)->j;
 }

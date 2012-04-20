@@ -12,8 +12,7 @@
 #include "tokenise.h"
 #include "tokconv.h"
 
-#include "struct.h"
-#include "enum.h"
+#include "sue.h"
 #include "sym.h"
 
 #include "cc1.h"
@@ -24,7 +23,6 @@
 #include "expr.h"
 
 type *parse_type_struct(void);
-type *parse_type_enum(void);
 decl_ptr *parse_decl_ptr_array(enum decl_mode mode, char **decl_sp, funcargs **decl_args);
 decl  *parse_decl(type *t, enum decl_mode mode);
 
@@ -48,62 +46,47 @@ void parse_type_preamble(type **tp, char **psp, enum type_primitive primitive)
 	*tp = t;
 }
 
-type *parse_type_struct_union(enum type_primitive st_un)
+type *parse_type_struct_union(enum type_primitive prim)
 {
 	type *t;
 	char *spel;
+	sue_member **members;
 
-	parse_type_preamble(&t, &spel, st_un);
+	parse_type_preamble(&t, &spel, prim);
+
+	members = NULL;
 
 	if(accept(token_open_block)){
-		decl **members = parse_decls_multi_type(DECL_CAN_DEFAULT | DECL_SPEL_NEED, 1);
-		EAT(token_close_block);
-		t->struct_union = struct_union_add(current_scope, spel, members, st_un == type_union);
+		if(prim == type_enum){
+			do{
+				expr *e;
+				char *sp;
+
+				sp = token_current_spel();
+				EAT(token_identifier);
+
+				if(accept(token_assign))
+					e = parse_expr_funcallarg(); /* no commas */
+				else
+					e = NULL;
+
+				enum_vals_add(&members, sp, e);
+
+				if(!accept(token_comma))
+					break;
+			}while(curtok == token_identifier);
+
+			EAT(token_close_block);
+		}else{
+			members = (sue_member **)parse_decls_multi_type(DECL_CAN_DEFAULT | DECL_SPEL_NEED, 1);
+			EAT(token_close_block);
+		}
+
 	}else if(!spel){
 		die_at(NULL, "expected: struct definition or name");
 	}
 
-	t->spel = spel; /* save for lookup */
-
-	return t;
-}
-
-type *parse_type_enum()
-{
-	type *t;
-	char *spel;
-
-	parse_type_preamble(&t, &spel, type_enum);
-
-	if(accept(token_open_block)){
-		enum_st *en = enum_st_new();
-
-		do{
-			expr *e;
-			char *sp;
-
-			sp = token_current_spel();
-			EAT(token_identifier);
-
-			if(accept(token_assign))
-				e = parse_expr_funcallarg(); /* no commas */
-			else
-				e = NULL;
-
-			enum_vals_add(en, sp, e);
-
-			if(!accept(token_comma))
-				break;
-		}while(curtok == token_identifier);
-
-		EAT(token_close_block);
-
-		t->enu = enum_add(&current_scope->enums, spel, en);
-	}else if(!spel){
-		die_at(NULL, "expected: enum definition or name");
-	}
-
-	t->spel = spel; /* save for lookup */
+	t->sue = sue_add(current_scope, spel, members, prim);
 
 	return t;
 }
@@ -180,17 +163,13 @@ type *parse_type()
 			EAT(curtok);
 
 			switch(tok){
-				case token_enum:
-					t = parse_type_enum();
-					str = "enum";
-					break;
-
 #define CASE(a)                                    \
 				case token_ ## a:                          \
 					t = parse_type_struct_union(type_ ## a); \
 					str = #a;                                \
 					break
 
+				CASE(enum);
 				CASE(struct);
 				CASE(union);
 
@@ -239,7 +218,7 @@ type *parse_type()
 
 		/* signed size_t x; */
 		if(tdef_typeof && signed_set)
-			die_at(NULL, "signed/unsigned not allowed with typedef instance");
+			die_at(NULL, "signed/unsigned not allowed with typedef instance (%s)", tdef_typeof->decl->spel);
 
 
 		if(!primitive_set)
@@ -566,7 +545,7 @@ decl **parse_decls_multi_type(const int can_default, const int accept_field_widt
 
 		if(t->store == store_typedef)
 			are_tdefs = 1;
-		else if((t->struct_union || t->enu) && !parse_possible_decl())
+		else if(t->sue && !parse_possible_decl())
 			goto next; /*
 									* struct { int i; }; - continue to next one
 									* we check the actual ->struct/enum because we don't allow "enum x;"
@@ -589,7 +568,8 @@ decl **parse_decls_multi_type(const int can_default, const int accept_field_widt
 					switch(t->primitive){
 						case type_struct:
 						case type_union:
-							warn = t->struct_union && !t->struct_union->anon;
+						case type_enum:
+							warn = t->sue && !t->sue->anon;
 							break;
 						default:
 							warn = 1;

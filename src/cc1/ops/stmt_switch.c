@@ -2,7 +2,7 @@
 
 #include "ops.h"
 #include "stmt_switch.h"
-#include "../enum.h"
+#include "../sue.h"
 #include "../../util/alloc.h"
 
 const char *str_stmt_switch()
@@ -12,7 +12,7 @@ const char *str_stmt_switch()
 
 void fold_switch_enum(stmt *sw, type *enum_type)
 {
-	const int nents = enum_nentries(enum_type->enu);
+	const int nents = enum_nentries(enum_type->sue);
 	stmt **titer;
 	char *marks = umalloc(nents * sizeof *marks);
 	int midx;
@@ -33,16 +33,20 @@ void fold_switch_enum(stmt *sw, type *enum_type)
 			w = v;
 
 		for(; v <= w; v++){
-			enum_member **mi;
-			for(midx = 0, mi = enum_type->enu->members; *mi; midx++, mi++)
-				if(v == (*mi)->val->val.iv.val)
+			sue_member **mi;
+			for(midx = 0, mi = enum_type->sue->members; *mi; midx++, mi++){
+				enum_member *m = &(*mi)->enum_member;
+
+				if(v == m->val->val.iv.val)
 					marks[midx]++;
+			}
 		}
 	}
 
 	for(midx = 0; midx < nents; midx++)
 		if(!marks[midx])
-			cc1_warn_at(&sw->where, 0, WARN_SWITCH_ENUM, "enum %s not handled in switch", enum_type->enu->members[midx]->spel);
+			cc1_warn_at(&sw->where, 0, WARN_SWITCH_ENUM, "enum %s not handled in switch",
+					enum_type->sue->members[midx]->enum_member.spel);
 
 ret:
 	free(marks);
@@ -72,7 +76,7 @@ void fold_stmt_switch(stmt *s)
 	/* check for an enum */
 	typ = s->expr->tree_type->type;
 	if(typ->primitive == type_enum){
-		UCC_ASSERT(typ->enu, "no enum for enum type");
+		UCC_ASSERT(typ->sue, "no enum for enum type");
 		fold_switch_enum(s, typ);
 	}
 

@@ -22,10 +22,9 @@ struct symtable
 	int auto_total_size;
 	symtable *parent, **children;
 
-	decl      **decls;
-	struct_union_st **structs;
-	enum_st   **enums;
-	decl      **typedefs;
+	decl                 **decls;
+	struct_union_enum_st **sues;
+	decl                 **typedefs;
 };
 
 sym *sym_new(decl *d, enum sym_type t);
