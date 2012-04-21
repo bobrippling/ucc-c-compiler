@@ -52,6 +52,8 @@ struct
 
 	{ 0,  "dead-code",       WARN_DEAD_CODE                         },
 
+	{ 0,  "predecl-enum",    WARN_PREDECL_ENUM,                     },
+
 	/* TODO */
 	{ 0,  "unused-parameter", WARN_UNUSED_PARAM },
 	{ 0,  "unused-variable",  WARN_UNUSED_VAR   },
