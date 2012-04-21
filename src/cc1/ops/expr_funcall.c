@@ -176,11 +176,20 @@ invalid:
 			/* simple */
 			asm_temp(1, "call %s", e->sym->decl->spel);
 		}else{
+			if(expr_kind(e->expr, identifier)){
+				asm_temp(1, "call %s", e->expr->spel);
+				goto fin;
+			}
+
+			if((fopt_mode & FOPT_ALLOW_FPTR_CALL) == 0)
+				die_at(&e->expr->where, "funcall via pointers disabled [broken] (%s)", e->f_str());
+
 			gen_expr(e->expr, stab);
 			asm_temp(1, "pop rax  ; function address");
 			asm_temp(1, "call rax ; duh");
 		}
 
+fin:
 		if(nargs)
 			asm_temp(1, "add rsp, %d ; %d arg%s",
 					nargs * platform_word_size(),
