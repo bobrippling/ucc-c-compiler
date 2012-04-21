@@ -162,8 +162,12 @@ void print_decl(decl *d, enum pdeclargs mode)
 
 		if(d->type->typeof){
 			fputc('\n', cc1_out);
+			gen_str_indent++;
 			idt_printf("typeof expr:\n");
+			gen_str_indent++;
 			print_expr(d->type->typeof);
+			gen_str_indent -= 2;
+			idt_print();
 		}
 
 		if(fopt_mode & FOPT_DECL_PTR_STAT){
@@ -262,8 +266,10 @@ void print_struct(struct_union_enum_st *sue)
 	gen_str_indent++;
 	for(iter = sue->members; iter && *iter; iter++){
 		decl *d = &(*iter)->struct_member;
+		idt_printf("offset %d:\n", d->struct_offset);
+		gen_str_indent++;
 		print_decl(d, PDECL_INDENT | PDECL_NEWLINE);
-		idt_printf("offset %d\n", d->struct_offset);
+		gen_str_indent--;
 	}
 	gen_str_indent--;
 }

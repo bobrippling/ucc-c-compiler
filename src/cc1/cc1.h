@@ -34,6 +34,7 @@ enum warning
 	WARN_SYM_NEVER_WRITTEN        = 1 << 26,
 	WARN_SYM_NEVER_READ           = 1 << 28,
 	WARN_DEAD_CODE                = 1 << 27,
+	WARN_PREDECL_ENUM             = 1 << 28,
 
 	/* TODO */
 	WARN_FORMAT                   = 1 << 10,
@@ -56,6 +57,7 @@ enum fopt
 	FOPT_CONST_FOLD      = 1 << 2,
 	FOPT_ENGLISH         = 1 << 3,
 	FOPT_DECL_PTR_STAT   = 1 << 4,
+	FOPT_ALLOW_FPTR_CALL = 1 << 5,
 };
 
 enum cc1_backend

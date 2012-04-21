@@ -52,6 +52,8 @@ struct
 
 	{ 0,  "dead-code",       WARN_DEAD_CODE                         },
 
+	{ 0,  "predecl-enum",    WARN_PREDECL_ENUM,                     },
+
 	/* TODO */
 	{ 0,  "unused-parameter", WARN_UNUSED_PARAM },
 	{ 0,  "unused-variable",  WARN_UNUSED_VAR   },
@@ -84,6 +86,7 @@ struct
 	{ 1,  "const-fold",    FOPT_CONST_FOLD      },
 	{ 1,  "english",       FOPT_ENGLISH         },
 	{ 1,  "dptr-tree",     FOPT_DECL_PTR_STAT   },
+	{ 1,  "fptr-call",     FOPT_ALLOW_FPTR_CALL },
 
 	{ 0,  NULL, 0 }
 };

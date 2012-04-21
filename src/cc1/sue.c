@@ -12,6 +12,7 @@
 
 void st_en_un_set_spel(char **dest, char *spel, const char *desc)
 {
+	free(*dest);
 	if(spel){
 		*dest = spel;
 	}else{
@@ -92,6 +93,7 @@ struct_union_enum_st *sue_add(symtable *const stab, char *spel, sue_member **mem
 {
 	struct_union_enum_st *sue;
 	sue_member **iter;
+	int new = 0;
 
 	if(spel && (sue = sue_find(stab, spel))){
 		char buf[DECL_STATIC_BUFSIZ];
@@ -113,11 +115,13 @@ struct_union_enum_st *sue_add(symtable *const stab, char *spel, sue_member **mem
 		sue = umalloc(sizeof *sue);
 		sue->primitive = prim;
 
+		new = 1;
+
 		where_new(&sue->where);
 	}
 
-	if(prim != type_enum)
-		for(iter = members; iter && *iter; iter++){
+	if(members && prim != type_enum)
+		for(iter = members; *iter; iter++){
 			decl *d = &(*iter)->struct_member;
 			if(d->init)
 				die_at(&d->init->where, "%s member %s is initialised", sue_str(sue), d->spel);
@@ -127,10 +131,13 @@ struct_union_enum_st *sue_add(symtable *const stab, char *spel, sue_member **mem
 
 	st_en_un_set_spel(&sue->spel, spel, sue_str(sue));
 
-	if(members)
+	if(members){
+		UCC_ASSERT(!sue->members, "redef of struct should've been caught");
 		sue->members = members;
+	}
 
-	dynarray_add((void ***)&stab->sues, sue);
+	if(new)
+		dynarray_add((void ***)&stab->sues, sue);
 
 	return sue;
 }

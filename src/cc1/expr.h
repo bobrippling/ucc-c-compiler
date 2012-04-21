@@ -29,7 +29,6 @@ struct expr
 
 	int assign_is_post; /* do we return the altered value or the old one? */
 #define expr_is_default  assign_is_post
-#define expr_is_typeof   assign_is_post
 
 	expr *lhs, *rhs;
 
