@@ -112,7 +112,6 @@ type *parse_type()
 	if(accept(token_typeof)){
 		type *t = type_new();
 		t->typeof = parse_expr_sizeof_typeof();
-		t->typeof->expr_is_typeof = 1;
 		return t;
 	}
 
