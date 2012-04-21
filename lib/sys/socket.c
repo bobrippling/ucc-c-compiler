@@ -2,6 +2,7 @@
 #include "../syscalls.h"
 
 #ifndef SYS_socket
+#  warning "socketcall code doesn't work yet - requires long types"
 #  include "socketcall.h"
 
 int socketcall(int call, unsigned long *args)
