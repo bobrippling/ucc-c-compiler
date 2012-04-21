@@ -219,18 +219,24 @@ void fold_decl(decl *d, symtable *stab)
 		const enum type_qualifier old_qual  = d->type->qual;
 		const enum type_storage   old_store = d->type->store;
 		decl *from;
+		expr *type_exp;
 
-		fold_expr(d->type->typeof, stab);
+		type_exp = d->type->typeof;
 
-		if(!(from = d->type->typeof->decl))
-			if(!(from = d->type->typeof->tree_type))
-				from = d->type->typeof->expr->tree_type;
+		fold_expr(type_exp, stab);
+		decl_free(type_exp->tree_type);
+
+		/* either get the typeof() from the decl or the expr type */
+		from = d->type->typeof->decl;
+		if(!from)
+			from = d->type->typeof->expr->tree_type;
 
 		UCC_ASSERT(from, "no decl for typeof/typedef fold: "
-				".decl = %p, .tree_type = %p, .expr->tt = %p",
+				".decl = %p, .expr->tt = %p",
 				d->type->typeof->decl,
-				d->type->typeof->tree_type,
 				d->type->typeof->expr->tree_type);
+
+		type_exp->tree_type = decl_copy(from);
 
 		/* type */
 		memcpy(d->type, from->type, sizeof *d->type);
@@ -241,6 +247,8 @@ void fold_decl(decl *d, symtable *stab)
 		if(from->decl_ptr)
 			*decl_leaf(d) = decl_ptr_copy(from->decl_ptr);
 	}
+
+	UCC_ASSERT(d->type->store != store_typedef, "typedef store after tdef folding");
 
 	switch(d->type->primitive){
 		case type_void:
@@ -318,6 +326,8 @@ int fold_struct_union(struct_union_enum_st *sue, symtable *stab)
 
 	for(offset = 0, i = sue->members; i && *i; i++){
 		decl *d = &(*i)->struct_member;
+
+		fold_decl(d, stab);
 
 		if(decl_is_struct_or_union(d))
 			sue_fold(d, stab);

@@ -12,18 +12,10 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 	if(e->expr)
 		fold_expr(e->expr, stab);
 
-	if(e->expr_is_typeof){
-		/* take the type from the expression or decl */
-		e->tree_type = decl_copy(SIZEOF_WHAT(e));
-
-	}else{
-		e->tree_type = decl_new();
-		/* size_t */
-		e->tree_type->type->primitive = type_int;
-		e->tree_type->type->is_signed = 0;
-	}
-
-	fold_decl(SIZEOF_WHAT(e), stab); /* sizeof(struct A) - needs lookup */
+	e->tree_type = decl_new();
+	/* size_t */
+	e->tree_type->type->primitive = type_int;
+	e->tree_type->type->is_signed = 0;
 }
 
 void gen_expr_sizeof_1(expr *e)
@@ -48,13 +40,12 @@ void gen_expr_sizeof(expr *e, symtable *stab)
 
 void gen_expr_str_sizeof(expr *e, symtable *stab)
 {
-	const char *name = e->expr_is_typeof ? "typeof" : "sizeof";
 	(void)stab;
 	if(e->expr){
-		idt_printf("%s expr:\n", name);
+		idt_printf("sizeof expr:\n");
 		print_expr(e->expr);
 	}else{
-		idt_printf("%s %s\n", name, decl_to_str(e->decl));
+		idt_printf("sizeof %s\n", decl_to_str(e->decl));
 	}
 }
 

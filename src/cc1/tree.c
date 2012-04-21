@@ -412,6 +412,7 @@ decl *decl_ptr_depth_dec(decl *d)
 
 decl *decl_func_deref(decl *d)
 {
+#if 0
 	static int warned = 0;
 	if(!warned && decl_ptr_depth(d)){
 		extern decl *curdecl_func;
@@ -419,6 +420,7 @@ decl *decl_func_deref(decl *d)
 				curdecl_func->spel, d->spel);
 		warned = 1;
 	}
+#endif
 	/*d->funcargs = NULL;*/
 	return d;
 }

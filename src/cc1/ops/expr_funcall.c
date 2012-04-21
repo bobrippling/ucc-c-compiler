@@ -178,6 +178,16 @@ invalid:
 					asm_operand_new_label(NULL, e->sym->decl->spel),
 					NULL);
 		}else{
+			if(expr_kind(e->expr, identifier)){
+				asm_output_new(asm_out_type_call,
+						asm_operand_new_label(NULL, e->sym->decl->spel),
+						NULL);
+				goto fin;
+			}
+
+			if((fopt_mode & FOPT_ALLOW_FPTR_CALL) == 0)
+				die_at(&e->expr->where, "funcall via pointers disabled [broken] (%s)", e->f_str());
+
 			gen_expr(e->expr, stab);
 
 			asm_pop(NULL, ASM_REG_A);
@@ -187,6 +197,7 @@ invalid:
 					NULL);
 		}
 
+fin:
 		if(nargs){
 			asm_output_new(asm_out_type_add,
 					asm_operand_new_reg(NULL, ASM_REG_SP),

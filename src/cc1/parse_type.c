@@ -46,7 +46,8 @@ void parse_type_preamble(type **tp, char **psp, enum type_primitive primitive)
 	*tp = t;
 }
 
-type *parse_type_struct_union(enum type_primitive prim)
+/* sue = struct/union/enum */
+type *parse_type_sue(enum type_primitive prim)
 {
 	type *t;
 	char *spel;
@@ -84,7 +85,15 @@ type *parse_type_struct_union(enum type_primitive prim)
 
 	}else if(!spel){
 		die_at(NULL, "expected: struct definition or name");
+
+	}else{
+		/* predeclaring */
+		if(prim == type_enum){
+			if(!sue_find(current_scope, spel))
+				cc1_warn_at(NULL, 0, WARN_PREDECL_ENUM, "predeclaration of enums is not c99");
+		}
 	}
+
 
 	t->sue = sue_add(current_scope, spel, members, prim);
 
@@ -103,7 +112,6 @@ type *parse_type()
 	if(accept(token_typeof)){
 		type *t = type_new();
 		t->typeof = parse_expr_sizeof_typeof();
-		t->typeof->expr_is_typeof = 1;
 		return t;
 	}
 
@@ -163,10 +171,10 @@ type *parse_type()
 			EAT(curtok);
 
 			switch(tok){
-#define CASE(a)                                    \
-				case token_ ## a:                          \
-					t = parse_type_struct_union(type_ ## a); \
-					str = #a;                                \
+#define CASE(a)                           \
+				case token_ ## a:                 \
+					t = parse_type_sue(type_ ## a); \
+					str = #a;                       \
 					break
 
 				CASE(enum);
