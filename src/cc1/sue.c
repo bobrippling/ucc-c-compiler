@@ -21,21 +21,6 @@ void st_en_un_set_spel(char **dest, char *spel, const char *desc)
 	}
 }
 
-void sue_fold(decl *d, symtable *stab)
-{
-	(void)stab;
-
-	if(d->type->primitive == type_enum){
-		/* hi */
-	}else{
-		if(sue_incomplete(d->type->sue) && !decl_ptr_depth(d))
-			die_at(&d->where, "use of %s%s%s",
-					type_to_str(d->type),
-					d->spel ?     " " : "",
-					d->spel ? d->spel : "");
-	}
-}
-
 void enum_vals_add(sue_member ***pmembers, char *sp, expr *e)
 {
 	sue_member *mem = umalloc(sizeof *mem);
@@ -168,7 +153,7 @@ sue_member *sue_member_find(struct_union_enum_st *sue, const char *spel, where *
 }
 
 
-enum_member *enum_member_search(symtable *stab, const char *spel)
+void enum_member_search(enum_member **pm, struct_union_enum_st **psue, symtable *stab, const char *spel)
 {
 	for(; stab; stab = stab->parent){
 		struct_union_enum_st **i;
@@ -178,13 +163,15 @@ enum_member *enum_member_search(symtable *stab, const char *spel)
 
 			if(e->primitive == type_enum){
 				enum_member *memb = (enum_member *)sue_member_find(e, spel, NULL);
-				if(memb)
-					return memb;
+				*pm = memb;
+				*psue = e;
+				return;
 			}
 		}
 	}
 
-	return NULL;
+	*pm = NULL;
+	*psue = NULL;
 }
 
 decl *struct_union_member_find(struct_union_enum_st *sue, const char *spel, where *die_where)

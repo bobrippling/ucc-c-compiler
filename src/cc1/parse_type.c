@@ -606,6 +606,15 @@ decl **parse_decls_multi_type(const int can_default, const int accept_field_widt
 
 		if(last && !last->func_code){
 next:
+			/* end of type, if we have an identifier, '(' or '*', it's an unknown type name */
+			switch(curtok){
+				case token_identifier:
+				case token_open_paren:
+				case token_multiply:
+					die_at(NULL, "unknown type name '%s'", last->spel);
+				default:
+					break;
+			}
 			EAT(token_semicolon);
 		}
 	}

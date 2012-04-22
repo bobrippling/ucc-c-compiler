@@ -159,6 +159,64 @@ void fold_decl_ptr(decl_ptr *dp, symtable *stab, decl *root)
 		fold_decl_ptr(dp->child, stab, root);
 }
 
+void fold_enum(struct_union_enum_st *en, symtable *stab)
+{
+	sue_member **i;
+	int defval = 0;
+
+	for(i = en->members; *i; i++){
+		enum_member *m = &(*i)->enum_member;
+		expr *e = m->val;
+
+		/* -1 because we can't do dynarray_add(..., 0) */
+		if(e == (expr *)-1){
+
+			/*expr_free(e); XXX: memleak */
+			where *old_w = eof_where;
+			eof_where = &asm_struct_enum_where;
+			m->val = expr_new_val(defval++);
+			eof_where = old_w;
+		}else{
+			fold_expr(e, stab);
+			if(!const_expr_is_const(e))
+				die_at(&e->where, "enum value not constant");
+			defval = const_expr_val(e) + 1;
+		}
+	}
+}
+
+int fold_sue(struct_union_enum_st *sue, symtable *stab)
+{
+	int offset;
+	sue_member **i;
+
+	if(sue->primitive == type_enum){
+		fold_enum(sue, stab);
+		offset = platform_word_size(); /* XXX: assumes enums are 64-bit */
+	}else{
+		for(offset = 0, i = sue->members; i && *i; i++){
+			decl *d = &(*i)->struct_member;
+
+			fold_decl(d, stab);
+
+			if(sue->primitive == type_struct)
+				d->struct_offset = offset;
+			/* else - union, all offsets are the same */
+
+			if(d->type->sue && decl_ptr_depth(d) == 0){
+				if(d->type->sue == sue)
+					die_at(&d->where, "nested %s", sue_str(sue));
+
+				offset += fold_sue(d->type->sue, stab);
+			}else{
+				offset += decl_size(d);
+			}
+		}
+	}
+
+	return offset;
+}
+
 void fold_decl(decl *d, symtable *stab)
 {
 	/* typedef / __typeof folding */
@@ -196,7 +254,7 @@ void fold_decl(decl *d, symtable *stab)
 			*decl_leaf(d) = decl_ptr_copy(from->decl_ptr);
 	}
 
-	UCC_ASSERT(d->type->store != store_typedef, "typedef store after tdef folding");
+	UCC_ASSERT(d->type && d->type->store != store_typedef, "typedef store after tdef folding");
 
 	switch(d->type->primitive){
 		case type_void:
@@ -207,7 +265,11 @@ void fold_decl(decl *d, symtable *stab)
 		case type_enum:
 		case type_struct:
 		case type_union:
-			sue_fold(d, stab);
+			if(sue_incomplete(d->type->sue) && !decl_ptr_depth(d))
+				die_at(&d->where, "use of %s%s%s",
+						type_to_str(d->type),
+						d->spel ?     " " : "",
+						d->spel ? d->spel : "");
 			break;
 
 		case type_int:
@@ -263,75 +325,12 @@ void fold_decl_global(decl *d, symtable *stab)
 	fold_decl(d, stab);
 }
 
-int fold_struct_union(struct_union_enum_st *sue, symtable *stab)
-{
-	int offset;
-	sue_member **i;
-
-	for(offset = 0, i = sue->members; i && *i; i++){
-		decl *d = &(*i)->struct_member;
-
-		fold_decl(d, stab);
-
-		if(decl_is_struct_or_union(d))
-			sue_fold(d, stab);
-
-		if(sue->primitive == type_struct)
-			d->struct_offset = offset;
-		/* else - union, all offsets are the same */
-
-		if(d->type->sue && decl_ptr_depth(d) == 0){
-			if(d->type->sue == sue)
-				die_at(&d->where, "nested %s", sue_str(sue));
-
-			offset += fold_struct_union(d->type->sue, stab);
-		}else{
-			offset += decl_size(d);
-		}
-	}
-
-	return offset;
-}
-
-void fold_enum(struct_union_enum_st *en, symtable *stab)
-{
-	sue_member **i;
-	int defval = 0;
-
-	for(i = en->members; *i; i++){
-		enum_member *m = &(*i)->enum_member;
-		expr *e = m->val;
-
-		/* -1 because we can't do dynarray_add(..., 0) */
-		if(e == (expr *)-1){
-
-			/*expr_free(e); XXX: memleak */
-			where *old_w = eof_where;
-			eof_where = &asm_struct_enum_where;
-			m->val = expr_new_val(defval++);
-			eof_where = old_w;
-		}else{
-			fold_expr(e, stab);
-			if(!const_expr_is_const(e))
-				die_at(&e->where, "enum value not constant");
-			defval = const_expr_val(e) + 1;
-		}
-	}
-}
-
 void fold_symtab_scope(symtable *stab)
 {
 	struct_union_enum_st **sit;
 
-	/* fold structs, then enums, then decls - decls may rely on enums */
-	for(sit = stab->sues; sit && *sit; sit++){
-		struct_union_enum_st *sue = *sit;
-
-		if(sue->primitive == type_enum)
-			fold_enum(sue, stab);
-		else
-			fold_struct_union(sue, stab);
-	}
+	for(sit = stab->sues; sit && *sit; sit++)
+		fold_sue(*sit, stab);
 }
 
 void fold_test_expr(expr *e, const char *stmt_desc)
