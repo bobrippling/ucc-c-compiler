@@ -141,6 +141,9 @@ int vfprintf(FILE *file, char *fmt, va_list ap)
 # warning printf unoptimised
 #endif
 
+	if(!fmt)
+		return;
+
 	while(*fmt){
 		if(*fmt == '%'){
 			int pad = 0;

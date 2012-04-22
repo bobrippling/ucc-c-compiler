@@ -39,7 +39,10 @@ void fold_expr_identifier(expr *e, symtable *stab)
 
 		}else{
 			/* check for an enum */
-			enum_member *m = enum_member_search(stab, e->spel);
+			struct_union_enum_st *sue;
+			enum_member *m;
+
+			enum_member_search(&m, &sue, stab, e->spel);
 
 			if(!m)
 				die_at(&e->where, "undeclared identifier \"%s\"", e->spel);
@@ -49,6 +52,8 @@ void fold_expr_identifier(expr *e, symtable *stab)
 			e->val = m->val->val;
 			fold_expr(e, stab);
 
+			e->tree_type->type->primitive = type_enum;
+			e->tree_type->type->sue = sue;
 			return;
 		}
 	}else{
