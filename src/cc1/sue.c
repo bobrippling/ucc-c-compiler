@@ -21,21 +21,6 @@ void st_en_un_set_spel(char **dest, char *spel, const char *desc)
 	}
 }
 
-void sue_fold(decl *d, symtable *stab)
-{
-	(void)stab;
-
-	if(d->type->primitive == type_enum){
-		/* hi */
-	}else{
-		if(sue_incomplete(d->type->sue) && !decl_ptr_depth(d))
-			die_at(&d->where, "use of %s%s%s",
-					type_to_str(d->type),
-					d->spel ?     " " : "",
-					d->spel ? d->spel : "");
-	}
-}
-
 void enum_vals_add(sue_member ***pmembers, char *sp, expr *e)
 {
 	sue_member *mem = umalloc(sizeof *mem);
