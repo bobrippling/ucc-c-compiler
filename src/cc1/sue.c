@@ -168,7 +168,7 @@ sue_member *sue_member_find(struct_union_enum_st *sue, const char *spel, where *
 }
 
 
-enum_member *enum_member_search(symtable *stab, const char *spel)
+void enum_member_search(enum_member **pm, struct_union_enum_st **psue, symtable *stab, const char *spel)
 {
 	for(; stab; stab = stab->parent){
 		struct_union_enum_st **i;
@@ -178,13 +178,15 @@ enum_member *enum_member_search(symtable *stab, const char *spel)
 
 			if(e->primitive == type_enum){
 				enum_member *memb = (enum_member *)sue_member_find(e, spel, NULL);
-				if(memb)
-					return memb;
+				*pm = memb;
+				*psue = e;
+				return;
 			}
 		}
 	}
 
-	return NULL;
+	*pm = NULL;
+	*psue = NULL;
 }
 
 decl *struct_union_member_find(struct_union_enum_st *sue, const char *spel, where *die_where)

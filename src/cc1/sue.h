@@ -45,7 +45,7 @@ void sue_fold(decl *d, symtable *stab);
 void enum_vals_add(sue_member ***, char *, expr *);
 int  enum_nentries(struct_union_enum_st *);
 
-enum_member *enum_member_search(symtable *, const char *spel);
+void enum_member_search(enum_member **, struct_union_enum_st **, symtable *, const char *spel);
 
 /* struct/union specific */
 int struct_union_size(struct_union_enum_st *);
