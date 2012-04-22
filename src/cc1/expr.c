@@ -29,6 +29,10 @@ void expr_mutate(expr *e, func_mutate_expr *f,
 		default: ICE("bad backend");
 	}
 
+	e->f_const_fold = NULL;
+	e->f_gen_1 = NULL;
+	e->f_store = NULL;
+
 	f(e);
 }
 
