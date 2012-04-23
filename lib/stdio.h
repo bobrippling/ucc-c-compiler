@@ -1,8 +1,6 @@
 #ifndef __STDIO_H
 #define __STDIO_H
 
-#define __STDIO_FILE_SIMPLE
-
 #ifdef __STDIO_FILE_SIMPLE
 typedef int FILE;
 #else

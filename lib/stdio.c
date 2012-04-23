@@ -93,6 +93,10 @@ FILE *fopen(const char *path, char *smode)
 	got_primary = 1
 
 	got_primary = mode = 0;
+
+	if(!*smode)
+		goto inval;
+
 	while(*smode)
 		switch(*smode++){
 			case 'b':
@@ -120,8 +124,6 @@ inval:
 				errno = EINVAL;
 				return NULL;
 		}
-	if(!mode)
-		goto inval;
 
 #undef PRIMARY_CHECK
 
