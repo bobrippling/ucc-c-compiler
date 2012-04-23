@@ -136,7 +136,6 @@ expr *parse_expr_unary_op()
 				}
 
 				e->array_store->len = dynarray_count((void *)e->array_store->data.exprs);
-
 				e->array_store->type = array_exprs;
 			}
 			return e;

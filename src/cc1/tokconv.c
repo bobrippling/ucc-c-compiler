@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdlib.h>
 
 #include "../util/util.h"
 #include "data_structs.h"
@@ -26,6 +27,7 @@ enum type_qualifier curtok_to_type_qualifier()
 	switch(curtok){
 		case token_const:    return qual_const;
 		case token_volatile: return qual_volatile;
+		case token_restrict: return qual_restrict;
 		default:             return qual_none;
 	}
 }
@@ -146,6 +148,7 @@ const char *token_to_str(enum token t)
 		CASE_STR_PREFIX(token,  shiftl_assign);    CASE_STR_PREFIX(token,  shiftr_assign);  CASE_STR_PREFIX(token,  typedef);         CASE_STR_PREFIX(token,  struct);
 		CASE_STR_PREFIX(token,  enum);             CASE_STR_PREFIX(token,  ptr);            CASE_STR_PREFIX(token,  continue);        CASE_STR_PREFIX(token,  typeof);
 		CASE_STR_PREFIX(token,  volatile);         CASE_STR_PREFIX(token,  register);       CASE_STR_PREFIX(token,  attribute);       CASE_STR_PREFIX(token,  union);
+		CASE_STR_PREFIX(token,  restrict);
 	}
 	return NULL;
 }
@@ -158,7 +161,7 @@ void warn_at_print_error(const char *fmt, ...)
 	va_end(l);
 }
 
-void eat(enum token t, const char *fnam, int line)
+void eat2(enum token t, const char *fnam, int line, int die)
 {
 	if(t != curtok){
 		const int ident = curtok == token_identifier;
@@ -172,10 +175,18 @@ void eat(enum token t, const char *fnam, int line)
 				ident ? "\" " : "",
 				fnam, line);
 
+		if(die || --cc1_max_errors <= 0)
+			exit(1);
+
 		/* XXX: we continue here, assuming we had the token anyway */
 	}else{
 		nexttoken();
 	}
+}
+
+void eat(enum token t, const char *fnam, int line)
+{
+	eat2(t, fnam, line, 0);
 }
 
 int curtok_in_list(va_list l)

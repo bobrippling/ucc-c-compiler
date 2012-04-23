@@ -36,6 +36,8 @@ enum token
 	token_const,
 	token_volatile,
 	/**/
+	token_restrict, /* sort of a type-qual */
+	/**/
 	token_signed,
 	token_unsigned,
 	/**/
