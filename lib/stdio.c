@@ -9,9 +9,17 @@
 
 #define PRINTF_OPTIMISE
 
-static int _stdin  = 0;
-static int _stdout = 1;
-static int _stderr = 2;
+#define __unused __attribute__((__unused__))
+
+#ifdef __STDIO_FILE_SIMPLE
+static FILE _stdin  = 0;
+static FILE _stdout = 1;
+static FILE _stderr = 2;
+#else
+static FILE _stdin  = { 0, 0 };
+static FILE _stdout = { 1, 0 };
+static FILE _stderr = { 2, 0 };
+#endif
 
 FILE *stdin  = &_stdin;
 FILE *stdout = &_stdout;
@@ -55,6 +63,24 @@ static void printo(int fd, int n, int is_signed)
 }
 
 /* Public */
+int feof(FILE *f __unused)
+{
+#ifdef __STDIO_FILE_SIMPLE
+	return 0; // :C
+#else
+	return f->status == __FILE_eof;
+#endif
+}
+
+int ferror(FILE *f __unused)
+{
+#ifdef __STDIO_FILE_SIMPLE
+	return 0; // :C
+#else
+	return f->status == __FILE_err;
+#endif
+}
+
 FILE *fopen(const char *path, char *smode)
 {
 	FILE *f;
@@ -109,21 +135,25 @@ inval:
 		return NULL;
 	}
 
-	*f = fd;
+	fileno(f) = fd;
+
+#ifndef __STDIO_FILE_SIMPLE
+	f->status = __FILE_fine;
+#endif
 
 	return f;
 }
 
 int fclose(FILE *f)
 {
-	int r = close(*f) == 0 ? 0 : EOF;
+	int r = close(fileno(f)) == 0 ? 0 : EOF;
 	free(f);
 	return r;
 }
 
 int fputc(int c, FILE *f)
 {
-	return write(*f, &c, 1) == 1 ? c : EOF;
+	return write(fileno(f), &c, 1) == 1 ? c : EOF;
 }
 
 int putchar(int c)
@@ -133,7 +163,7 @@ int putchar(int c)
 
 int vfprintf(FILE *file, char *fmt, va_list ap)
 {
-	int fd = *file;
+	int fd = fileno(file);
 #ifdef PRINTF_OPTIMISE
 	char *buf  = fmt;
 	int buflen = 0;
@@ -150,7 +180,7 @@ int vfprintf(FILE *file, char *fmt, va_list ap)
 
 #ifdef PRINTF_OPTIMISE
 			if(buflen)
-				write(fd, buf, buflen);
+				write(fd, buf, buflen); // TODO: errors
 #endif
 
 			fmt++;
@@ -248,9 +278,17 @@ int dprintf(int fd, const char *fmt, ...)
 {
 	va_list l;
 	int r;
+	FILE f;
+
+#ifndef __STDIO_FILE_SIMPLE
+	f.fd = fd;
+	f.status = __FILE_fine;
+#else
+	f = fd;
+#endif
 
 	va_start(l, fmt);
-	r = vfprintf(&fd, fmt, l);
+	r = vfprintf(&f, fmt, l);
 	va_end(l);
 
 	return r;
@@ -282,7 +320,7 @@ int printf(const char *fmt, ...)
 
 int fputs(const char *s, FILE *f)
 {
-	return write(*f, s, strlen(s)) > 0 ? 1 : EOF;
+	return write(fileno(f), s, strlen(s)) > 0 ? 1 : EOF;
 }
 
 int puts(const char *s)
@@ -298,18 +336,25 @@ int getchar()
 int fgetc(FILE *f)
 {
 	int ch;
-	return read(*f, &ch, 1) == 1 ? ch : EOF;
+	return read(fileno(f), &ch, 1) == 1 ? ch : EOF;
 }
 
 char *fgets(char *s, int l, FILE *f)
 {
 	int r;
 
-	r = read(*f, s, l - 1);
+	r = read(fileno(f), s, l - 1);
 
 	switch(r){
 		case  0: /* EOF */
+#ifndef __STDIO_FILE_SIMPLE
+			f->status = __FILE_eof;
+#endif
+			return NULL;
 		case -1: /* error */
+#ifndef __STDIO_FILE_SIMPLE
+			f->status = __FILE_err;
+#endif
 			return NULL;
 	}
 
@@ -339,4 +384,14 @@ int remove(const char *f)
 		return -1;
 	}
 	return 0;
+}
+
+#undef fileno
+int fileno(FILE *f)
+{
+#ifdef __STDIO_FILE_SIMPLE
+	return *f;
+#else
+	return f->fd;
+#endif
 }

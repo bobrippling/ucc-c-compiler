@@ -1,7 +1,17 @@
 #ifndef __STDIO_H
 #define __STDIO_H
 
+#define __STDIO_FILE_SIMPLE
+
+#ifdef __STDIO_FILE_SIMPLE
 typedef int FILE;
+#else
+typedef struct __FILE
+{
+	int fd;
+	enum { __FILE_fine, __FILE_eof, __FILE_err } status;
+} FILE;
+#endif
 
 extern FILE *stdin, *stdout, *stderr;
 
@@ -28,6 +38,10 @@ FILE	*funopen(
 		int    (*)(void *)
 	);
 
+
+/* status */
+int   feof(FILE *);
+int   ferror(FILE *);
 
 /* writing */
 int fprintf(FILE *, const char *, ...);
@@ -59,5 +73,12 @@ char *fgets(char *, int, FILE *);
 
 /* file system */
 int remove(const char *);
+
+int fileno(FILE *);
+#ifdef __STDIO_FILE_SIMPLE
+#  define fileno(f) (*(f))
+#else
+#  define fileno(f) ((f)->fd)
+#endif
 
 #endif

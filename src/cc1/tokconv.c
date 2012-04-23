@@ -8,6 +8,7 @@
 #include "tokconv.h"
 #include "../util/util.h"
 #include "macros.h"
+#include "cc1.h"
 
 extern enum token curtok;
 
