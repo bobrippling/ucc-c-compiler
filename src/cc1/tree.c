@@ -208,7 +208,7 @@ int type_equal(const type *a, const type *b, int strict)
 int decl_ptr_equal(decl_ptr *dpa, decl_ptr *dpb)
 {
 	/* if we are assigning from const, target must be const */
-	if(dpb->is_const ? dpa->is_const : 0)
+	if(dpb->qual & qual_const ? dpa->qual & qual_const : 0)
 		return 0;
 
 	if(dpa->child)
@@ -316,6 +316,15 @@ const char *type_store_to_str(const enum type_storage s)
 	return NULL;
 }
 
+const char *type_qual_to_str(const enum type_qualifier qual)
+{
+	static char buf[32];
+	snprintf(buf, sizeof buf, "%s%s",
+		qual & qual_const    ? "const "    : "",
+		qual & qual_volatile ? "volatile " : "");
+	return buf;
+}
+
 int op_is_cmp(enum op_type o)
 {
 	switch(o){
@@ -389,7 +398,7 @@ int decl_is_const(decl *d)
 {
 	decl_ptr *dp = *decl_leaf(d);
 	if(dp)
-		return dp->is_const;
+		return dp->qual & qual_const;
 	return 0;/*d->type->spec & spec_const; TODO */
 }
 
@@ -432,9 +441,11 @@ const char *type_to_str(const type *t)
 	char *bufp = buf;
 
 	if(t->typeof)     bufp += snprintf(bufp, BUF_SIZE, "typedef ");
-	if(t->qual)       bufp += snprintf(bufp, BUF_SIZE, "%s%s",
-		                          t->qual & qual_const    ? "const "    : "",
-		                          t->qual & qual_volatile ? "volatile " : "");
+
+	{
+		const char *tmp = type_qual_to_str(t->qual);
+		bufp += snprintf(bufp, BUF_SIZE, "%s", tmp);
+	}
 
 	if(t->store)      bufp += snprintf(bufp, BUF_SIZE, "%s ", type_store_to_str(t->store));
 	if(!t->is_signed) bufp += snprintf(bufp, BUF_SIZE, "unsigned ");
@@ -483,7 +494,7 @@ const char *decl_to_str(decl *d)
 	for(dp = d->decl_ptr; dp; dp = dp->child)
 		BUF_ADD("%s*%s%s%s%s",
 				dp->fptrargs   ? "("  : "",
-				dp->is_const   ? "K"  : "",
+				type_qual_to_str(dp->qual),
 				dp->fptrargs   ? "()" : "",
 				dp->array_size ? "[]" : "",
 				dp->fptrargs   ? ")"  : "");

@@ -66,6 +66,7 @@ struct statement
 
 	KEYWORD(const),
 	KEYWORD(volatile),
+	KEYWORD(restrict),
 
 	KEYWORD(signed),
 	KEYWORD(unsigned),

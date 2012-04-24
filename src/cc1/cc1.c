@@ -94,6 +94,16 @@ struct
 	{ 0,  NULL, 0 }
 };
 
+struct
+{
+	const char *arg;
+	int *pval;
+} val_args[] = {
+	{ "max-errors",   &cc1_max_errors },
+	{ NULL, NULL }
+};
+
+
 
 FILE *cc_out[NUM_SECTIONS];     /* temporary section files */
 char  fnames[NUM_SECTIONS][32]; /* duh */
@@ -102,6 +112,8 @@ FILE *cc1_out;                  /* final output */
 enum warning warn_mode = ~(WARN_VOID_ARITH | WARN_COMPARE_MISMATCH | WARN_IMPLICIT_INT | WARN_INCOMPLETE_USE);
 enum fopt    fopt_mode = FOPT_CONST_FOLD;
 enum cc1_backend cc1_backend = BACKEND_ASM;
+
+int cc1_max_errors = 16;
 
 int caught_sig = 0;
 
@@ -137,6 +149,8 @@ void ccdie(int verbose, const char *fmt, ...)
 		fputs("warnings + options:\n", stderr);
 		for(i = 0; args[i].arg; i++)
 			fprintf(stderr, "  -%c%s\n", args[i].is_opt["Wf"], args[i].arg);
+		for(i = 0; val_args[i].arg; i++)
+			fprintf(stderr, "  -f%s=value\n", args[i].arg);
 	}
 
 	exit(1);
@@ -147,7 +161,7 @@ void cc1_warn_atv(struct where *where, int die, enum warning w, const char *fmt,
 	if(!die && (w & warn_mode) == 0)
 		return;
 
-	vwarn(where, 0, fmt, l);
+	vwarn(where, die, fmt, l);
 
 	if(die)
 		exit(1);
@@ -274,6 +288,7 @@ int main(int argc, char **argv)
 			warn_mode = WARN_NONE;
 
 		}else if(argv[i][0] == '-' && (argv[i][1] == 'W' || argv[i][1] == 'f')){
+			const int fopt = argv[i][1] == 'f';
 			char *arg = argv[i] + 2;
 			int *mask;
 			int j, found, rev;
@@ -285,7 +300,35 @@ int main(int argc, char **argv)
 				rev = 1;
 			}
 
-			if(argv[i][1] == 'f'){
+			if(fopt){
+				char *equal = strchr(arg, '=');
+
+				if(equal){
+					int new_val;
+
+					if(rev){
+						fprintf(stderr, "\"no-\" unexpected for value-argument\n");
+						goto usage;
+					}
+
+					*equal = '\0';
+					if(sscanf(equal + 1, "%d", &new_val) != 1){
+						fprintf(stderr, "need number for %s\n", arg);
+						goto usage;
+					}
+
+					for(j = 0; val_args[j].arg; j++)
+						if(!strcmp(arg, val_args[j].arg)){
+							*val_args[j].pval = new_val;
+							found = 1;
+							break;
+						}
+
+					if(!found)
+						goto unrecognised;
+					continue;
+				}
+
 				mask = (int *)&fopt_mode;
 				for(; !args[j].is_opt; j++);
 			}else{
@@ -303,6 +346,7 @@ int main(int argc, char **argv)
 				}
 
 			if(!found){
+unrecognised:
 				fprintf(stderr, "\"%s\" unrecognised\n", argv[i]);
 				goto usage;
 			}

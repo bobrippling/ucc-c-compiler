@@ -40,6 +40,7 @@ enum type_qualifier
 	qual_none     = 0,
 	qual_const    = 1 << 0,
 	qual_volatile = 1 << 1,
+	qual_restrict = 1 << 2,
 };
 
 enum type_storage
@@ -73,8 +74,8 @@ struct decl_ptr
 {
 	where where;
 
-	int is_const;     /* int *const x */
-	decl_ptr *child;  /* int (*const (*x)()) - *[x] is child */
+	enum type_qualifier qual; /* int *const x */
+	decl_ptr *child;          /* int (*const (*x)()) - *[x] is child */
 
 	/* either a func OR an array_size, not both */
 	funcargs *fptrargs;    /* int (*x)() - args to function */

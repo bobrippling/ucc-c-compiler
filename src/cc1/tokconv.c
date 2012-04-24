@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdlib.h>
 
 #include "../util/util.h"
 #include "data_structs.h"
@@ -7,6 +8,7 @@
 #include "tokconv.h"
 #include "../util/util.h"
 #include "macros.h"
+#include "cc1.h"
 
 extern enum token curtok;
 
@@ -33,6 +35,7 @@ enum type_qualifier curtok_to_type_qualifier()
 	switch(curtok){
 		case token_const:    return qual_const;
 		case token_volatile: return qual_volatile;
+		case token_restrict: return qual_restrict;
 		default:             return qual_none;
 	}
 }
@@ -157,6 +160,7 @@ const char *token_to_str(enum token t)
 		/* type-qual */
 		CASE_STR_PREFIX(token,  const);
 		CASE_STR_PREFIX(token,  volatile);
+		CASE_STR_PREFIX(token,  restrict);
 
 		/* type */
 		CASE_STR_PREFIX(token,  void);
@@ -242,7 +246,7 @@ void warn_at_print_error(const char *fmt, ...)
 	va_end(l);
 }
 
-void eat(enum token t, const char *fnam, int line)
+void eat2(enum token t, const char *fnam, int line, int die)
 {
 	if(t != curtok){
 		const int ident = curtok == token_identifier;
@@ -256,10 +260,18 @@ void eat(enum token t, const char *fnam, int line)
 				ident ? "\" " : "",
 				fnam, line);
 
+		if(die || --cc1_max_errors <= 0)
+			exit(1);
+
 		/* XXX: we continue here, assuming we had the token anyway */
 	}else{
 		nexttoken();
 	}
+}
+
+void eat(enum token t, const char *fnam, int line)
+{
+	eat2(t, fnam, line, 0);
 }
 
 int curtok_in_list(va_list l)

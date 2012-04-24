@@ -2,6 +2,7 @@
 #define __UNISTD_H
 
 #include "macros.h"
+#include "sys/types.h"
 
 typedef int pid_t;
 
@@ -19,6 +20,10 @@ pid_t getpid(void);
 
 int unlink(const char *);
 int rmdir( const char *);
+
+ssize_t readlink(const char *restrict path, char *restrict buf, size_t bufsize);
+int link(const char *from, const char *new);
+int symlink(const char *link, const char *new);
 
 int pipe(int [2]);
 
