@@ -221,7 +221,7 @@ void fold_deref(expr *e)
 	if(expr_kind(e->lhs, addr))
 		warn_at(&e->lhs->where, "possible optimisation for *& expression");
 
-	e->tree_type = decl_ptr_depth_dec(decl_copy(e->lhs->tree_type));
+	e->tree_type = decl_desc_depth_dec(decl_copy(e->lhs->tree_type));
 
 	if(decl_ptr_depth(e->tree_type) == 0 && e->lhs->tree_type->type->primitive == type_void)
 		die_at(&e->where, "can't dereference void pointer");

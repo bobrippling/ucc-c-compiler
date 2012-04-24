@@ -15,6 +15,7 @@
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
 #include "sue.h"
+#include "decl.h"
 
 #define DECL_IS_VOID(d) (d->type->primitive == type_void && !decl_ptr_depth(d))
 
@@ -143,16 +144,24 @@ void fold_expr(expr *e, symtable *stab)
 	UCC_ASSERT(e->tree_type->type->primitive != type_unknown, "unknown type after folding expr %s", e->f_str());
 }
 
-void fold_decl_ptr(decl_ptr *dp, symtable *stab, decl *root)
+void fold_decl_ptr(decl_desc *dp, symtable *stab, decl *root)
 {
-	if(dp->fptrargs)
-		fold_funcargs(dp->fptrargs, stab, root->spel);
+	switch(dp->type){
+		case decl_desc_func:
+			fold_funcargs(dp->bits.func, stab, root->spel);
+			break;
 
-	if(dp->array_size){
-		long v;
-		fold_expr(dp->array_size, stab);
-		if((v = dp->array_size->val.iv.val) < 0)
-			die_at(&dp->where, "negative array length");
+		case decl_desc_array:
+		{
+			long v;
+			fold_expr(dp->bits.array.size, stab);
+			if((v = dp->bits.array.size->val.iv.val) < 0)
+				die_at(&dp->where, "negative array length");
+		}
+
+		case decl_desc_ptr:
+			/* TODO: check qual */
+			break;
 	}
 
 	if(dp->child)
@@ -250,8 +259,8 @@ void fold_decl(decl *d, symtable *stab)
 		d->type->store  = old_store;
 
 		/* decl */
-		if(from->decl_ptr)
-			*decl_leaf(d) = decl_ptr_copy(from->decl_ptr);
+		if(from->desc)
+			*decl_leaf(d) = decl_desc_copy(from->desc);
 	}
 
 	UCC_ASSERT(d->type && d->type->store != store_typedef, "typedef store after tdef folding");
@@ -294,8 +303,8 @@ void fold_decl(decl *d, symtable *stab)
 	if(d->funcargs)
 		fold_funcargs(d->funcargs, stab, d->spel);
 
-	if(d->decl_ptr)
-		fold_decl_ptr(d->decl_ptr, stab, d);
+	if(d->desc)
+		fold_decl_ptr(d->desc, stab, d);
 
 	/*
 	 * no need to fold ->init, since these are removed for all but global-decls
@@ -441,7 +450,7 @@ void fold(symtable *globs)
 		fargs->arglist[1] = NULL;
 		fargs->arglist[0]->type->primitive = type_char;
 		fargs->arglist[0]->type->qual      = qual_const;
-		fargs->arglist[0]->decl_ptr        = decl_ptr_new();
+		fargs->arglist[0]->desc            = decl_desc_ptr_new();
 
 		symtab_add(globs, df, sym_global, SYMTAB_NO_SYM, SYMTAB_PREPEND);
 

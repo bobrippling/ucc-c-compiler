@@ -52,14 +52,6 @@ void fold_expr_funcall(expr *e, symtable *stab)
 		/*
 		 * convert int (*)() to remove the deref
 		 */
-		if(decl_is_func_ptr(e->expr->tree_type)){
-			/* XXX: memleak */
-			e->expr = e->expr->lhs;
-			fprintf(stderr, "FUNCPTR\n");
-		}else{
-			fprintf(stderr, "decl %s\n", decl_to_str(e->expr->tree_type));
-		}
-
 		df = e->expr->tree_type;
 
 		if(!decl_is_callable(df)){
@@ -69,14 +61,13 @@ void fold_expr_funcall(expr *e, symtable *stab)
 		}
 	}
 
-	e->tree_type = decl_copy(df);
 	/*
 	 * int (*x)();
 	 * (*x)();
 	 * evaluates to tree_type = int;
 	 */
-	decl_func_deref(e->tree_type);
-
+	e->tree_type = decl_copy(df);
+	decl_func_deref(e->tree_type, &args_exp);
 
 	if(e->funcargs){
 		expr **iter;
@@ -90,8 +81,6 @@ void fold_expr_funcall(expr *e, symtable *stab)
 	}
 
 	/* func count comparison, only if the func has arg-decls, or the func is f(void) */
-	args_exp = decl_funcargs(e->tree_type);
-
 	UCC_ASSERT(args_exp, "no funcargs for decl %s", df->spel);
 
 	if(args_exp->arglist || args_exp->args_void){
@@ -119,6 +108,8 @@ void fold_expr_funcall(expr *e, symtable *stab)
 			fold_funcargs_equal(args_exp, argument_decls, 1, &e->where, "argument", df->spel);
 			funcargs_free(argument_decls, 0);
 		}
+
+		funcargs_free(args_exp, 1);
 	}
 
 	fold_disallow_st_un(e, "return");
@@ -172,7 +163,7 @@ invalid:
 			}
 		}
 
-		if(e->sym && !e->sym->decl->decl_ptr && e->sym->decl->spel){
+		if(e->sym && !e->sym->decl->desc && e->sym->decl->spel){
 			/* simple */
 			asm_temp(1, "call %s", e->sym->decl->spel);
 		}else{

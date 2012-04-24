@@ -39,3 +39,4 @@ enum op_type
 #include "expr.h"
 #include "stmt.h"
 #include "sym.h"
+#include "decl.h"

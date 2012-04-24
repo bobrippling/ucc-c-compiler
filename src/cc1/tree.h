@@ -106,12 +106,13 @@ struct decl_attr
 				ptr, child -> {
 					func, child -> {
 						ptr, child -> {
-							func
+							func, child -> {
+								ptr
+							}
 						}
 					}
 				}
 			}
-			???????????????????????????????????????
  */
 
 struct decl_desc
@@ -129,20 +130,24 @@ struct decl_desc
 	{
 		struct
 		{
-			int is_const;
-			decl_desc *child;
+			enum type_qualifier qual;
 		} ptr;
 		struct funcargs
 		{
+			where where;
+
 			int args_void; /* true if "spel(void);" otherwise if !args, then we have "spel();" */
+			int args_old_proto; /* true if f(a, b); where a and b are identifiers */
 			decl **arglist;
 			int variadic;
-		} func;
+		} *func;
 		struct
 		{
 			expr *size;      /* int (x[5][2])[2] */
 		} array;
 	} bits;
+
+	decl_desc *child;
 };
 
 struct decl
@@ -164,7 +169,7 @@ struct decl
 
 	int internal; /* interal string or array decl */
 
-	/* recursive */
+	funcargs *funcargs;
 	decl_desc *desc;
 
 	stmt *func_code;
@@ -172,42 +177,28 @@ struct decl
 
 struct array_decl
 {
-	enum
-	{
-		array_exprs,
-		array_str
-	} type;
-
 	union
 	{
-		expr **exprs;
 		char *str;
+		expr **exprs;
 	} data;
 
 	char *label;
 	int len;
 
-	int args_void; /* true if "spel(void);" otherwise if !args, then we have "spel();" */
-	int args_old_proto; /* true if f(a, b); where a and b are identifiers */
-	decl **arglist;
-	int variadic;
+	enum
+	{
+		array_exprs,
+		array_str
+	} type;
 };
 
 
 stmt        *tree_new(symtable *stab);
 type        *type_new(void);
-decl        *decl_new(void);
-array_decl  *array_decl_new(void);
-decl_attr   *decl_attr_new(enum decl_attr_type);
-
-decl_desc   *decl_desc_new(enum decl_desc_type t);
-decl_desc   *decl_desc_array_new(void);
-
 void where_new(struct where *w);
 
 type      *type_copy(type *);
-decl      *decl_copy(decl *);
-decl_desc *decl_desc_copy(decl_desc *);
 
 const char *op_to_str(  const enum op_type o);
 const char *decl_to_str(decl *d);
@@ -227,32 +218,15 @@ enum decl_cmp
 
 int   type_equal(const type *a, const type *b, int strict);
 int   type_size( const type *);
-int   decl_size( decl *);
-int   decl_equal(decl *, decl *, enum decl_cmp mode);
+funcargs *funcargs_new(void);
+void function_empty_args(funcargs *func);
 
-int   decl_has_array(  decl *);
-int   decl_is_struct_or_union(decl *);
-int   decl_is_callable(decl *);
-int   decl_is_const(   decl *);
-int   decl_ptr_depth(  decl *);
-int   decl_is_func_ptr(decl *);
-#define decl_is_void(d) ((d)->type->primitive == type_void && !(d)->decl_desc)
-
-decl_desc **decl_leaf(decl *d);
-decl_desc  *decl_first_func(decl *d);
-
-decl *decl_desc_depth_inc(decl *d);
-decl *decl_desc_depth_dec(decl *d);
-decl *decl_func_deref(   decl *d);
-
-int decl_attr_present(decl_attr *, enum decl_attr_type);
+void funcargs_free(funcargs *args, int free_decls);
 
 #define SPEC_STATIC_BUFSIZ 64
 #define TYPE_STATIC_BUFSIZ (SPEC_STATIC_BUFSIZ + 64)
 #define DECL_STATIC_BUFSIZ (256 + TYPE_STATIC_BUFSIZ)
 
 #define type_free(x) free(x)
-#define decl_free_notype(x) do{free(x);}while(0)
-#define decl_free(x) do{type_free((x)->type); decl_free_notype(x);}while(0)
 
 #endif

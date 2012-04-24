@@ -48,6 +48,7 @@ void print_expr_val(expr *e)
 	fprintf(cc1_out, "%ld", e->val.iv.val);
 }
 
+#if 0
 void print_decl_ptr_eng(decl_ptr *dp)
 {
 	if(dp->child){
@@ -146,6 +147,7 @@ void print_decl_ptr(decl_ptr *dp, decl *parent)
 		fputc(']', cc1_out);
 	}
 }
+#endif
 
 void print_decl(decl *d, enum pdeclargs mode)
 {
@@ -156,7 +158,7 @@ void print_decl(decl *d, enum pdeclargs mode)
 		fprintf(cc1_out, "(ignored) ");
 
 	if(fopt_mode & FOPT_ENGLISH){
-		print_decl_eng(d);
+		//print_decl_eng(d);
 	}else{
 		fputs(type_to_str(d->type), cc1_out);
 
@@ -170,9 +172,10 @@ void print_decl(decl *d, enum pdeclargs mode)
 			idt_print();
 		}
 
+#if 0
 		if(fopt_mode & FOPT_DECL_PTR_STAT){
 			const int idt_orig = gen_str_indent;
-			decl_ptr *dpi;
+			decl_desc *dpi;
 
 			fputc('\n', cc1_out);
 			for(dpi = d->decl_ptr; dpi; dpi = dpi->child){
@@ -203,6 +206,7 @@ void print_decl(decl *d, enum pdeclargs mode)
 
 		if(d->funcargs)
 			print_funcargs(d->funcargs);
+#endif
 	}
 
 	if(mode & PDECL_SYM_OFFSET){

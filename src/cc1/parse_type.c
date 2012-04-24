@@ -304,16 +304,16 @@ decl_desc *parse_decl_desc_func(void)
 		 *         ^
 		 */
 
-		if(ret->fptrargs)
-			goto func_ret_func;
+		decl_desc *dp = decl_desc_func_new();
 
-		ret->fptrargs = parse_func_arglist();
+		dp->bits.func = parse_func_arglist();
+
 		EAT(token_close_paren);
 
-		if(accept(token_open_paren))
-func_ret_func:
-			die_at(&ret->where, "can't have function returning function");
+		return dp;
 	}
+
+	return NULL;
 }
 
 decl_desc *parse_decl_desc_rec(enum decl_mode mode, char **decl_sp, funcargs **decl_args)
@@ -327,12 +327,15 @@ decl_desc *parse_decl_desc_rec(enum decl_mode mode, char **decl_sp, funcargs **d
 	}else if(accept(token_multiply)){
 		ret = decl_desc_ptr_new();
 
-		if(accept(token_const))
-			ret->is_const = 1;
+		/* TODO: qualifier */
 
-		ret->child = parse_decl_desc_func();
-
+		ret->child = parse_decl_desc_array(mode, decl_sp, decl_args);
 	}else{
+		/*
+		 * here is the end of the line, from now on,
+		 * we are coming out of the recursion
+		 * so we check for the initial decl func parms
+		 */
 		if(curtok == token_identifier){
 			if(mode & DECL_SPEL_NO)
 				die_at(NULL, "identifier unexpected");
@@ -370,6 +373,7 @@ decl_desc *parse_decl_desc_array(enum decl_mode mode, char **decl_sp, funcargs *
 		if(accept(token_close_square)){
 			/* take size as zero */
 			size = expr_new_val(0);
+			/* TODO: break */
 		}else{
 			/* fold.c checks for const-ness */
 			size = parse_expr();
@@ -378,9 +382,10 @@ decl_desc *parse_decl_desc_array(enum decl_mode mode, char **decl_sp, funcargs *
 
 		dp_new = decl_desc_array_new();
 
+		dp_new->bits.array.size = size;
+
 		/* is this right? t'other way around? append to leaf? */
-		dp_new->child = dp;
-		dp_new->array_size = size;
+		dp->child = dp_new;
 
 		dp = dp_new;
 	}
@@ -611,7 +616,9 @@ next:
 				case token_identifier:
 				case token_open_paren:
 				case token_multiply:
-					die_at(NULL, "unknown type name '%s'", last->spel);
+					if(last)
+						die_at(NULL, "unknown type name '%s'", last->spel);
+					/* else die below */
 				default:
 					break;
 			}
