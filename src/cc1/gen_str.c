@@ -56,7 +56,7 @@ void print_decl_ptr_eng(decl_ptr *dp)
 
 		fprintf(cc1_out, "%s%s",
 				dp->array_size ? "" : "pointer to ",
-				dp->is_const    ? "const " : "");
+				type_qual_to_str(dp->qual));
 	}
 
 	if(dp->fptrargs){
@@ -124,7 +124,7 @@ void print_funcargs(funcargs *fargs)
 
 void print_decl_ptr(decl_ptr *dp, decl *parent)
 {
-	fprintf(cc1_out, "*%s%s", dp->is_const ? "const " : "", dp->array_size ? "[]" : "");
+	fprintf(cc1_out, "*%s%s", type_qual_to_str(dp->qual), dp->array_size ? "[]" : "");
 
 	if(dp->child){
 		if(dp->fptrargs)
@@ -181,7 +181,7 @@ void print_decl(decl *d, enum pdeclargs mode)
 			for(dpi = d->decl_ptr; dpi; dpi = dpi->child){
 				gen_str_indent++;
 				idt_printf("decl_ptr: %s%s",
-						dpi->is_const ? "const" : "",
+						type_qual_to_str(dpi->qual),
 						dpi->fptrargs ? "(#)" : "");
 
 				if(dpi->array_size){

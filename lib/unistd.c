@@ -74,3 +74,18 @@ int pipe(int fd[2])
 {
 	return __syscall(SYS_pipe, fd);
 }
+
+ssize_t readlink(const char *restrict path, char *restrict buf, size_t bufsize)
+{
+	return __syscall(SYS_readlink, path, buf, bufsize);
+}
+
+int link(const char *from, const char *new)
+{
+	return __syscall(SYS_link, from, new);
+}
+
+int symlink(const char *link, const char *new)
+{
+	return __syscall(SYS_symlink, link, new);
+}

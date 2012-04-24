@@ -196,11 +196,12 @@ type *parse_type()
 				break;
 			}
 
+			/*if(tdef_typeof) - can't reach due to primitive_set */
+
 			tdef_typeof = expr_new_sizeof_decl(td);
 			primitive_set = 1;
 
 			EAT(token_identifier);
-			break;
 		}else{
 			break;
 		}
@@ -249,7 +250,7 @@ funcargs *parse_func_arglist()
 			if(curtok == token_close_paren)
 				break;
 
-			EAT(token_comma);
+			EAT_OR_DIE(token_comma);
 
 			if(accept(token_elipsis)){
 				args->variadic = 1;
@@ -285,7 +286,8 @@ funcargs *parse_func_arglist()
 
 			if(curtok == token_close_paren)
 				break;
-			EAT(token_comma);
+
+			EAT_OR_DIE(token_comma);
 		}while(1);
 		args->args_old_proto = 1;
 	}
@@ -325,11 +327,19 @@ decl_desc *parse_decl_desc_rec(enum decl_mode mode, char **decl_sp, funcargs **d
 		EAT(token_close_paren);
 
 	}else if(accept(token_multiply)){
+		enum type_qualifier qual = qual_none;
+
 		ret = decl_desc_ptr_new();
 
-		/* TODO: qualifier */
+		while(curtok_is_type_qual()){
+			qual |= curtok_to_type_qualifier();
+			EAT(curtok);
+		}
 
-		ret->child = parse_decl_desc_array(mode, decl_sp, decl_args);
+		ret->bits.ptr.qual = qual;
+
+		ret->child = parse_decl_desc_array(mode, decl_sp, decl_args); /* check if we have anything else */
+
 	}else{
 		/*
 		 * here is the end of the line, from now on,

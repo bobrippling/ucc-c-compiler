@@ -1,8 +1,10 @@
 #include <string.h>
 #include <ctype.h>
+#include <stdlib.h>
 #include "ops.h"
 #include "../../util/dynarray.h"
 #include "../../util/platform.h"
+#include "../../util/alloc.h"
 
 const char *str_expr_funcall()
 {
@@ -72,11 +74,17 @@ void fold_expr_funcall(expr *e, symtable *stab)
 	if(e->funcargs){
 		expr **iter;
 		for(iter = e->funcargs; *iter; iter++){
+			char *desc;
 			expr *arg = *iter;
 
 			fold_expr(arg, stab);
 
-			fold_disallow_st_un(arg, "function argument");
+			desc = umalloc(strlen(df->spel) + 25);
+			sprintf(desc, "function argument to %s", df->spel);
+
+			fold_disallow_st_un(arg, desc);
+
+			free(desc);
 		}
 	}
 

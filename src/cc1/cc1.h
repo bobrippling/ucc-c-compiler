@@ -76,4 +76,6 @@ void cc1_warn_at( struct where *where, int die, enum warning w, const char *fmt,
 extern FILE *cc_out[NUM_SECTIONS];
 extern FILE *cc1_out;
 
+extern int cc1_max_errors;
+
 #endif

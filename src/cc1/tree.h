@@ -38,6 +38,7 @@ enum type_qualifier
 	qual_none     = 0,
 	qual_const    = 1 << 0,
 	qual_volatile = 1 << 1,
+	qual_restrict = 1 << 2,
 };
 
 enum type_storage

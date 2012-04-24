@@ -68,7 +68,15 @@ const.o: const.c ../util/util.h data_structs.h tree.h expr.h \
  ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h ops/stmt_return.h \
  ops/stmt_switch.h ops/stmt_while.h ops/stmt_continue.h sym.h decl.h \
  const.h cc1.h
-decl.o: decl.c tree.h decl.h
+decl.o: decl.c ../util/util.h ../util/alloc.h ../util/platform.h \
+ data_structs.h tree.h expr.h ops/expr_addr.h ops/expr_assign.h \
+ ops/expr_cast.h ops/expr_comma.h ops/expr_funcall.h \
+ ops/expr_identifier.h ops/expr_if.h ops/expr_op.h ops/expr_sizeof.h \
+ ops/expr_val.h ops/expr_stmt.h stmt.h ops/stmt_break.h ops/stmt_case.h \
+ ops/stmt_case_range.h ops/stmt_code.h ops/stmt_default.h ops/stmt_do.h \
+ ops/stmt_expr.h ops/stmt_for.h ops/stmt_goto.h ops/stmt_if.h \
+ ops/stmt_label.h ops/stmt_noop.h ops/stmt_return.h ops/stmt_switch.h \
+ ops/stmt_while.h ops/stmt_continue.h sym.h decl.h
 expr.o: expr.c ../util/util.h ../util/alloc.h data_structs.h tree.h \
  expr.h ops/expr_addr.h ops/expr_assign.h ops/expr_cast.h \
  ops/expr_comma.h ops/expr_funcall.h ops/expr_identifier.h ops/expr_if.h \
@@ -190,7 +198,7 @@ tokconv.o: tokconv.c ../util/util.h data_structs.h tree.h expr.h \
  ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h ops/stmt_goto.h \
  ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h ops/stmt_return.h \
  ops/stmt_switch.h ops/stmt_while.h ops/stmt_continue.h sym.h decl.h \
- tokenise.h tokconv.h macros.h
+ tokenise.h tokconv.h macros.h cc1.h
 tokenise.o: tokenise.c ../util/util.h data_structs.h tree.h expr.h \
  ops/expr_addr.h ops/expr_assign.h ops/expr_cast.h ops/expr_comma.h \
  ops/expr_funcall.h ops/expr_identifier.h ops/expr_if.h ops/expr_op.h \
@@ -322,7 +330,8 @@ ops/expr_funcall.o: ops/expr_funcall.c ops/ops.h ops/../../util/util.h \
  ops/stmt_for.h ops/stmt_goto.h ops/stmt_if.h ops/stmt_label.h \
  ops/stmt_noop.h ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h \
  ops/../cc1.h ops/../asm.h ops/../fold.h ops/../const.h ops/../gen_str.h \
- ops/../gen_asm.h ops/../../util/dynarray.h ops/../../util/platform.h
+ ops/../gen_asm.h ops/../../util/dynarray.h ops/../../util/platform.h \
+ ops/../../util/alloc.h
 ops/expr_identifier.o: ops/expr_identifier.c ops/ops.h ops/../../util/util.h \
  ops/../data_structs.h ops/../tree.h ops/../expr.h ops/../ops/expr_addr.h \
  ops/../ops/expr_assign.h ops/../ops/expr_cast.h ops/../ops/expr_comma.h \

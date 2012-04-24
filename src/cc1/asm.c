@@ -241,12 +241,28 @@ char asm_type_ch(decl *d)
 
 void asm_declare_single(FILE *f, decl *d)
 {
-	if(asm_type_size(d) == ASM_SIZE_STRUCT_UNION)
-		ICE("trying to declare + init %s", sue_str(d->type->sue));
+	if(asm_type_size(d) == ASM_SIZE_STRUCT_UNION){
+		/* struct init */
+		int i;
 
-	fprintf(f, "%s d%c ", d->spel, asm_type_ch(d));
+		ICW("attempting to declare+init a struct, very buggy");
 
-	asm_declare_single_part(f, d->init);
+		UCC_ASSERT(d->init->array_store, "no array store for struct init (TODO?)");
+		UCC_ASSERT(d->init->array_store->type == array_exprs, "array store of strings for struct");
+
+		fprintf(f, "%s dq ", d->spel); /* XXX: assumes all struct members are word-size */
+
+		for(i = 0; i < d->init->array_store->len; i++)
+			fprintf(f, "%ld%s",
+					d->init->array_store->data.exprs[i]->val.iv.val,
+					i == d->init->array_store->len - 1 ? "" : ", "
+					);
+
+	}else{
+		fprintf(f, "%s d%c ", d->spel, asm_type_ch(d));
+
+		asm_declare_single_part(f, d->init);
+	}
 
 	fputc('\n', f);
 }

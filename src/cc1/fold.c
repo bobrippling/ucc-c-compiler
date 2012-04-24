@@ -76,6 +76,7 @@ void fold_decl_equal(decl *a, decl *b, where *w, enum warning warn,
 		const char *errfmt, ...)
 {
 	if(!decl_equal(a, b, DECL_CMP_ALLOW_VOID_PTR | (fopt_mode & FOPT_STRICT_TYPES ? DECL_CMP_STRICT_PRIMITIVE : 0))){
+		int one_struct;
 		char buf[DECL_STATIC_BUFSIZ];
 		va_list l;
 
@@ -83,8 +84,11 @@ void fold_decl_equal(decl *a, decl *b, where *w, enum warning warn,
 
 		cc1_warn_at(w, 0, warn, "%s vs. %s for...", decl_to_str(a), buf);
 
+		one_struct = (!a->desc && a->type->sue && a->type->sue->primitive != type_enum)
+			        || (!b->desc && b->type->sue && b->type->sue->primitive != type_enum);
+
 		va_start(l, errfmt);
-		cc1_warn_atv(w, DECL_IS_VOID(a), warn, errfmt, l);
+		cc1_warn_atv(w, one_struct || DECL_IS_VOID(a), warn, errfmt, l);
 		va_end(l);
 	}
 }
@@ -289,12 +293,34 @@ void fold_decl(decl *d, symtable *stab)
 				ICE("unknown type");
 	}
 
+	/*
+	 * now we've folded, check for restrict
+	 * since typedef int *intptr; intptr restrict a; is valid
+	 */
+	if(!d->desc && d->type->qual & qual_restrict)
+		die_at(&d->where, "restrict on non-pointer type %s%s%s",
+				type_to_str(d->type),
+				d->spel ? " " : "",
+				d->spel ? d->spel : "");
+
 	if(d->init){
 		if(d->type->store == store_extern)
 			die_at(&d->where, "error: externs can't be initalised");
 
-		if(d->type->store == store_static)
+		if(d->type->store == store_static || (d->sym && d->sym->type == sym_global)){
 			fold_expr(d->init, stab); /* else it's done as part of the stmt code */
+
+			if(!d->init->array_store || d->init->array_store->type != array_exprs){
+				char buf_a[DECL_STATIC_BUFSIZ], buf_b[DECL_STATIC_BUFSIZ];
+
+				strcpy(buf_a, decl_to_str(d));
+				strcpy(buf_b, decl_to_str(d->init->tree_type));
+
+				fold_decl_equal(d, d->init->tree_type, &d->where, WARN_ASSIGN_MISMATCH,
+						"mismatching initialisation for %s (%s vs. %s)",
+						d->spel, buf_a, buf_b);
+			}
+		}
 
 		if(!stab->parent && const_fold(d->init)) /* global + not constant */
 			die_at(&d->init->where, "error: not a constant expression (initialiser is %s)", d->init->f_str());

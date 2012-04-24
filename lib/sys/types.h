@@ -8,6 +8,7 @@
 #endif
 
 #ifdef __TYPES_WITH_MACROS
+# warning types defined using macros
 # define int8_t     signed char
 # define uint8_t  unsigned char
 # define int32_t    signed int

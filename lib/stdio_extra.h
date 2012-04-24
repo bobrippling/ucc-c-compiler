@@ -8,8 +8,6 @@ int   fseek(FILE *, long, int);
 void  rewind(FILE *);
 
 long  ftell(FILE *);
-int   feof(FILE *);
-int   ferror(FILE *);
 int   fflush(FILE *);
 
 int   getchar(void);

@@ -184,6 +184,15 @@ const char *type_store_to_str(const enum type_storage s)
 	return NULL;
 }
 
+const char *type_qual_to_str(const enum type_qualifier qual)
+{
+	static char buf[32];
+	snprintf(buf, sizeof buf, "%s%s",
+		qual & qual_const    ? "const "    : "",
+		qual & qual_volatile ? "volatile " : "");
+	return buf;
+}
+
 int op_is_cmp(enum op_type o)
 {
 	switch(o){
@@ -207,9 +216,11 @@ const char *type_to_str(const type *t)
 	char *bufp = buf;
 
 	if(t->typeof)     bufp += snprintf(bufp, BUF_SIZE, "typedef ");
-	if(t->qual)       bufp += snprintf(bufp, BUF_SIZE, "%s%s",
-		                          t->qual & qual_const    ? "const "    : "",
-		                          t->qual & qual_volatile ? "volatile " : "");
+
+	{
+		const char *tmp = type_qual_to_str(t->qual);
+		bufp += snprintf(bufp, BUF_SIZE, "%s", tmp);
+	}
 
 	if(t->store)      bufp += snprintf(bufp, BUF_SIZE, "%s ", type_store_to_str(t->store));
 	if(!t->is_signed) bufp += snprintf(bufp, BUF_SIZE, "unsigned ");
