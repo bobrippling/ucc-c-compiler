@@ -49,7 +49,7 @@ int symtab_fold(symtable *tab, int current)
 						cc1_warn_at(&s->decl->where, 0,     \
 								WARN_SYM_NEVER_ ## w,           \
 								"\"%s\" never " str,            \
-								s->decl->spel);                 \
+								decl_spel(s->decl));            \
 						s->var++;                           \
 					}                                     \
 				}while(0)

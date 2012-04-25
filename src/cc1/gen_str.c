@@ -96,13 +96,14 @@ void print_decl_ptr_eng(decl_ptr *dp)
 
 void print_decl_eng(decl *d)
 {
-	if(d->spel)
-		fprintf(cc1_out, "\"%s\": ", d->spel);
+	if(decl_spel(d))
+		fprintf(cc1_out, "\"%s\": ", decl_spel(d));
 
 	print_decl_ptr_eng(d->decl_ptr);
 
 	fprintf(cc1_out, "%s", type_to_str(d->type));
 }
+#endif
 
 void print_funcargs(funcargs *fargs)
 {
@@ -122,32 +123,49 @@ void print_funcargs(funcargs *fargs)
 	fprintf(cc1_out, "%s)", fargs->variadic ? ", ..." : "");
 }
 
-void print_decl_ptr(decl_ptr *dp, decl *parent)
+void print_decl_desc(decl_desc *dp)
 {
-	fprintf(cc1_out, "*%s%s", type_qual_to_str(dp->qual), dp->array_size ? "[]" : "");
+	switch(dp->type){
+		case decl_desc_ptr:
+			fprintf(cc1_out, "*%s", type_qual_to_str(dp->bits.qual));
+			break;
 
-	if(dp->child){
-		if(dp->fptrargs)
-			fputc('(', cc1_out);
+		case decl_desc_spel:
+		case decl_desc_array:
+			/* done below */
+			break;
 
-		print_decl_ptr(dp->child, parent);
-	}else if(parent->spel){
-		fputs(parent->spel, cc1_out);
+		case decl_desc_func:
+			if(dp->child)
+				fputc('(', cc1_out);
+			break;
 	}
 
-	if(dp->fptrargs){
-		if(dp->child)
-			fputc(')', cc1_out);
+	if(dp->child)
+		print_decl_desc(dp->child);
 
-		print_funcargs(dp->fptrargs);
-	}
-	if(dp->array_size){
-		fputc('[', cc1_out);
-		print_expr_val(dp->array_size);
-		fputc(']', cc1_out);
+	switch(dp->type){
+		case decl_desc_func:
+			if(dp->child)
+				fputc(')', cc1_out);
+
+			print_funcargs(dp->bits.func);
+			break;
+
+		case decl_desc_spel:
+			fputs(dp->bits.spel, cc1_out);
+			break;
+
+		case decl_desc_array:
+			fputc('[', cc1_out);
+			print_expr_val(dp->bits.array_size);
+			fputc(']', cc1_out);
+			break;
+
+		case decl_desc_ptr:
+			break;
 	}
 }
-#endif
 
 void print_decl(decl *d, enum pdeclargs mode)
 {
@@ -195,17 +213,13 @@ void print_decl(decl *d, enum pdeclargs mode)
 
 			gen_str_indent = idt_orig;
 		}else{
-			if(d->spel)
+#endif
+			if(d->desc){
 				fputc(' ', cc1_out);
-
-			if(d->decl_ptr)
-				print_decl_ptr(d->decl_ptr, d); /* handles spel */
-			else if(d->spel)
-				fputs(d->spel, cc1_out);
+				print_decl_desc(d->desc);
+			}
+#if 0
 		}
-
-		if(d->funcargs)
-			print_funcargs(d->funcargs);
 #endif
 	}
 
@@ -231,7 +245,7 @@ void print_decl(decl *d, enum pdeclargs mode)
 		gen_str_indent++;
 
 		for(iter = d->func_code->symtab->decls; iter && *iter; iter++)
-			idt_printf("offset of %s = %d\n", (*iter)->spel, (*iter)->sym->offset);
+			idt_printf("offset of %s = %d\n", decl_spel(*iter), (*iter)->sym->offset);
 
 		idt_printf("function stack space %d\n", d->func_code->symtab->auto_total_size);
 

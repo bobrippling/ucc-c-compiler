@@ -124,15 +124,13 @@ struct decl_desc
 	{
 		decl_desc_ptr,
 		decl_desc_func,
-		decl_desc_array
+		decl_desc_array,
+		decl_desc_spel
 	} type;
 
 	union
 	{
-		struct
-		{
-			enum type_qualifier qual;
-		} ptr;
+		enum type_qualifier qual;
 		struct funcargs
 		{
 			where where;
@@ -142,10 +140,8 @@ struct decl_desc
 			decl **arglist;
 			int variadic;
 		} *func;
-		struct
-		{
-			expr *size;      /* int (x[5][2])[2] */
-		} array;
+		expr *array_size;      /* int (x[5][2])[2] */
+		char *spel;
 	} bits;
 
 	decl_desc *child;
@@ -166,11 +162,10 @@ struct decl
 
 	sym *sym;
 	decl_attr *attr;
-	char *spel;
 
 	int internal; /* interal string or array decl */
 
-	funcargs *funcargs;
+	/* no funcargs on the decl - on a desc if it's a decl_desc_func */
 	decl_desc *desc;
 
 	stmt *func_code;

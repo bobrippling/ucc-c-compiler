@@ -34,13 +34,14 @@ void fold_expr_funcall(expr *e, symtable *stab)
 
 			cc1_warn_at(&e->where, 0, WARN_IMPLICIT_FUNC, "implicit declaration of function \"%s\"", sp);
 
-			df->spel = sp;
+			decl_set_spel(df, sp);
 
-			df->funcargs = funcargs_new();
+			df->desc = decl_desc_func_new();
+			df->desc->bits.func = funcargs_new();
 
 			if(e->funcargs)
 				/* set up the funcargs as if it's "x()" - i.e. any args */
-				function_empty_args(df->funcargs);
+				function_empty_args(df->desc->bits.func);
 
 			e->sym = symtab_add(symtab_root(stab), df, sym_global, SYMTAB_WITH_SYM, SYMTAB_PREPEND);
 		}else{
@@ -79,8 +80,8 @@ void fold_expr_funcall(expr *e, symtable *stab)
 
 			fold_expr(arg, stab);
 
-			desc = umalloc(strlen(df->spel) + 25);
-			sprintf(desc, "function argument to %s", df->spel);
+			desc = umalloc(strlen(decl_spel(df)) + 25);
+			sprintf(desc, "function argument to %s", decl_spel(df));
 
 			fold_disallow_st_un(arg, desc);
 
@@ -89,7 +90,7 @@ void fold_expr_funcall(expr *e, symtable *stab)
 	}
 
 	/* func count comparison, only if the func has arg-decls, or the func is f(void) */
-	UCC_ASSERT(args_exp, "no funcargs for decl %s", df->spel);
+	UCC_ASSERT(args_exp, "no funcargs for decl %s", decl_spel(df));
 
 	if(args_exp->arglist || args_exp->args_void){
 		expr **iter_arg;
@@ -104,7 +105,7 @@ void fold_expr_funcall(expr *e, symtable *stab)
 		if(count_decl != count_arg && (args_exp->variadic ? count_arg < count_decl : 1)){
 			die_at(&e->where, "too %s arguments to function %s (got %d, need %d)",
 					count_arg > count_decl ? "many" : "few",
-					df->spel, count_arg, count_decl);
+					decl_spel(df), count_arg, count_decl);
 		}
 
 		if(e->funcargs){
@@ -113,7 +114,7 @@ void fold_expr_funcall(expr *e, symtable *stab)
 			for(iter_arg = e->funcargs; *iter_arg; iter_arg++)
 				dynarray_add((void ***)&argument_decls->arglist, (*iter_arg)->tree_type);
 
-			fold_funcargs_equal(args_exp, argument_decls, 1, &e->where, "argument", df->spel);
+			fold_funcargs_equal(args_exp, argument_decls, 1, &e->where, "argument", decl_spel(df));
 			funcargs_free(argument_decls, 0);
 		}
 
@@ -171,9 +172,9 @@ invalid:
 			}
 		}
 
-		if(e->sym && !e->sym->decl->desc && e->sym->decl->spel){
+		if(e->sym && !e->sym->decl->desc && decl_spel(e->sym->decl)){
 			/* simple */
-			asm_temp(1, "call %s", e->sym->decl->spel);
+			asm_temp(1, "call %s", decl_spel(e->sym->decl));
 		}else{
 			if(expr_kind(e->expr, identifier)){
 				asm_temp(1, "call %s", e->expr->spel);

@@ -7,6 +7,7 @@
 #include "../util/alloc.h"
 #include "../util/platform.h"
 #include "data_structs.h"
+#include "macros.h"
 
 decl_desc *decl_desc_new(enum decl_desc_type t)
 {
@@ -37,6 +38,13 @@ decl_desc *decl_desc_func_new()
 decl_desc *decl_desc_array_new()
 {
 	return decl_desc_new(decl_desc_array);
+}
+
+decl_desc *decl_desc_spel_new(char *sp)
+{
+	decl_desc *dp = decl_desc_new(decl_desc_spel);
+	dp->bits.spel = sp;
+	return dp;
 }
 
 decl *decl_new()
@@ -97,6 +105,9 @@ decl *decl_copy(decl *d)
 int decl_desc_size(decl_desc *dp)
 {
 	switch(dp->type){
+		case decl_desc_spel:
+			ICE("can't do decl size for a spel");
+
 		case decl_desc_ptr:
 			return platform_word_size();
 
@@ -125,14 +136,16 @@ int decl_desc_size(decl_desc *dp)
 		}
 	}
 
-	ICE("hi");
+	ICE("shouldn't get here");
 	return 0;
 }
 
 int decl_size(decl *d)
 {
-	if(d->desc) /* pointer */
+	if(d->desc && d->desc->type != decl_desc_spel){
+		/* pointer */
 		return decl_desc_size(d->desc);
+	}
 
 	if(d->field_width)
 		return d->field_width;
@@ -142,12 +155,17 @@ int decl_size(decl *d)
 
 int decl_desc_equal(decl_desc *dpa, decl_desc *dpb)
 {
+	if(!dpa && dpb->type == decl_desc_spel)
+		return 1;
+	if(!dpb && dpa->type == decl_desc_spel)
+		return 1;
+
 	/* if we are assigning from const, target must be const */
 	if(dpb->type != dpb->type)
 		return 0;
 
 	if(dpb->type == decl_desc_ptr){
-		if(dpb->bits.ptr.qual & qual_const ? dpa->bits.ptr.qual & qual_const : 0)
+		if(dpb->bits.qual & qual_const ? dpa->bits.qual & qual_const : 0)
 			return 0;
 	}
 
@@ -171,14 +189,7 @@ int decl_equal(decl *a, decl *b, enum decl_cmp mode)
 	if(!type_equal(a->type, b->type, mode & DECL_CMP_STRICT_PRIMITIVE))
 		return 0;
 
-	if(a->desc){
-		if(b->desc)
-			return decl_desc_equal(a->desc, b->desc);
-	}else if(!b->desc){
-		return 1;
-	}
-
-	return 0;
+	return decl_desc_equal(a->desc, b->desc);
 }
 
 int decl_ptr_depth(decl *d)
@@ -192,11 +203,31 @@ int decl_ptr_depth(decl *d)
 	return i;
 }
 
-decl_desc **decl_leaf(decl *d)
+void decl_leaf_pre(decl *d, decl_desc **pdp, decl_desc ***pppre)
 {
-	decl_desc **dp;
-	UCC_ASSERT(d, "null decl param");
-	for(dp = &d->desc; *dp; dp = &(*dp)->child);
+	decl_desc *dp, **prev;
+
+	if(!d->desc){
+		*pdp = NULL;
+		*pppre = NULL;
+		return;
+	}
+
+	for(prev = &d->desc, dp = d->desc; dp->child; prev = &dp->child, dp = dp->child);
+
+	*pdp = dp;
+	*pppre = prev;
+}
+
+decl_desc *decl_leaf(decl *d)
+{
+	decl_desc *dp;
+
+	if(!d->desc)
+		return NULL;
+
+	for(dp = d->desc; dp->child; dp = dp->child);
+
 	return dp;
 }
 
@@ -208,15 +239,20 @@ int decl_is_struct_or_union(decl *d)
 int decl_is_const(decl *d)
 {
 	/* const char *x is not const. char *const x is */
-	decl_desc *dp = *decl_leaf(d);
+	decl_desc *dp = decl_leaf(d);
 	if(dp)
-		return dp->type == decl_desc_ptr && dp->bits.ptr.qual & qual_const;
+		return dp->type == decl_desc_ptr && dp->bits.qual & qual_const;
 	return d->type->qual & qual_const;
 }
 
 decl *decl_desc_depth_inc(decl *d)
 {
-	*decl_leaf(d) = decl_desc_ptr_new();
+	decl_desc **p;
+
+	for(p = &d->desc; *p; p = &(*p)->child);
+
+	*p = decl_desc_ptr_new();
+
 	return d;
 }
 
@@ -228,7 +264,7 @@ decl *decl_desc_depth_dec(decl *d)
 	/*desc_desc_last_two(d, &penultimate, &ultimate);*/
 	for(ultimate = d->desc, prev = NULL; ultimate->child; prev = ultimate, ultimate = ultimate->child);
 
-	UCC_ASSERT(ultimate && ultimate->type == decl_desc_ptr, "trying to deref non-ptr");
+	UCC_ASSERT(ultimate && ultimate->type == decl_desc_ptr, "trying to deref non-ptr (%s)", decl_desc_str(ultimate));
 
 	if(prev)
 		prev->child = NULL;
@@ -258,6 +294,11 @@ int decl_is_callable(decl *d)
 	return 0;
 }
 
+int decl_is_func(decl *d)
+{
+	return d->desc && d->desc->type == decl_desc_func;
+}
+
 int decl_has_array(decl *d)
 {
 	decl_desc *dp;
@@ -269,14 +310,15 @@ int decl_has_array(decl *d)
 
 void decl_func_deref(decl *d, funcargs **pfuncargs)
 {
-	decl_desc **pdp = decl_leaf(d);
-	decl_desc *dp;
+	decl_desc *dp, **ppre;
 
-	dp = *pdp;
-	UCC_ASSERT(dp, "can't call nil decl desc");
+	decl_leaf_pre(d, &dp, &ppre);
+
+	/* should've been caught by is_callable() */
+	UCC_ASSERT(dp, "can't call non-function");
 
 	if(dp->type == decl_desc_func){
-		*pdp = NULL;
+		*ppre = NULL;
 
 		*pfuncargs = dp->bits.func;
 
@@ -305,6 +347,51 @@ cant:
 	}
 }
 
+char *decl_spel(decl *d)
+{
+	decl_desc *dp;
+
+	if(!d->desc)
+		return NULL;
+
+	for(dp = d->desc; dp->child; dp = dp->child);
+
+	return dp->type == decl_desc_spel ? dp->bits.spel : NULL;
+}
+
+void decl_set_spel(decl *d, char *sp)
+{
+	decl_desc **new;
+
+	if(d->desc){
+		decl_desc *p;
+		for(p = d->desc; p->child; p = p->child);
+
+		if(p->type == decl_desc_spel){
+			free(p->bits.spel);
+			p->bits.spel = sp;
+			return;
+		}
+
+		new = &p->child;
+	}else{
+		new = &d->desc;
+	}
+
+	*new = decl_desc_spel_new(sp);
+}
+
+const char *decl_desc_str(decl_desc *dp)
+{
+	switch(dp->type){
+		CASE_STR_PREFIX(decl_desc, ptr);
+		CASE_STR_PREFIX(decl_desc, array);
+		CASE_STR_PREFIX(decl_desc, spel);
+		CASE_STR_PREFIX(decl_desc, func);
+	}
+	return NULL;
+}
+
 const char *decl_to_str(decl *d)
 {
 	static char buf[DECL_STATIC_BUFSIZ];
@@ -314,11 +401,23 @@ const char *decl_to_str(decl *d)
 #define BUF_ADD(...) \
 	bufp += snprintf(bufp, sizeof(buf) - (bufp - buf), __VA_ARGS__)
 
-
 	BUF_ADD("%s%s", type_to_str(d->type), d->desc ? " " : "");
 
 	for(dp = d->desc; dp; dp = dp->child)
-		BUF_ADD("TODO");
+		switch(dp->type){
+			case decl_desc_ptr:
+				BUF_ADD("*%s", dp->bits.qual ? "abc " : "");
+				break;
+			case decl_desc_func:
+				BUF_ADD("()");
+				break;
+			case decl_desc_spel:
+				BUF_ADD("%s", dp->bits.spel);
+				break;
+			case decl_desc_array:
+				BUF_ADD("[]");
+				break;
+		}
 
 	return buf;
 }
