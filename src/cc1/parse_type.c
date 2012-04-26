@@ -23,7 +23,7 @@
 #include "expr.h"
 
 type *parse_type_struct(void);
-decl_desc *parse_decl_desc_array(enum decl_mode mode);
+decl_desc *parse_decl_desc_array(enum decl_mode mode, char **sp);
 
 #define INT_TYPE(t) do{ t = type_new(); t->primitive = type_int; }while(0)
 
@@ -297,39 +297,13 @@ empty_func:
 	return args;
 }
 
-decl_desc *parse_decl_desc_ident(enum decl_mode mode)
+decl_desc *parse_decl_desc_ptr(enum decl_mode mode, char **sp)
 {
-	char *spel = NULL;
-
-	if(accept(token_open_paren)){
-		decl_desc *ret = parse_decl_desc_array(mode);
-		EAT(token_close_paren);
-
-		return ret;
-	}
-
-	if(curtok == token_identifier){
-		if(mode & DECL_SPEL_NO)
-			die_at(NULL, "identifier unexpected");
-
-		spel = token_current_spel();
-
-		EAT(token_identifier);
-
-	}else if(mode & DECL_SPEL_NEED){
-		die_at(NULL, "need identifier for decl");
-	}
-
-	return decl_desc_spel_new(spel);
-}
-
-decl_desc *parse_decl_desc_ptr(enum decl_mode mode)
-{
-	decl_desc *ret = NULL, *sp;
+	decl_desc *ret = NULL;
 
 	while(accept(token_multiply)){
 		enum type_qualifier qual = qual_none;
-		decl_desc *ptr = decl_desc_ptr_new();
+		decl_desc *ptr = decl_desc_ptr_new(NULL, NULL);
 
 		while(curtok_is_type_qual()){
 			qual |= curtok_to_type_qualifier();
@@ -343,23 +317,39 @@ decl_desc *parse_decl_desc_ptr(enum decl_mode mode)
 		ret = ptr;
 	}
 
-	if((sp = parse_decl_desc_ident(mode))){
+	if(accept(token_open_paren)){
+		decl_desc *inside = parse_decl_desc_array(mode, sp);
+		decl_desc *i;
+
+		EAT(token_close_paren);
+
+		/* tag on the bottom */
 		if(ret){
-			/* tag on the bottom */
-			decl_desc *i;
 			for(i = ret; i->child; i = i->child);
-			i->child = sp;
+			i->child = inside;
 		}else{
-			ret = sp;
+			ret = inside;
 		}
+	}
+
+	if(curtok == token_identifier){
+		if(mode & DECL_SPEL_NO)
+			die_at(NULL, "identifier unexpected");
+
+		*sp = token_current_spel();
+
+		EAT(token_identifier);
+
+	}else if(mode & DECL_SPEL_NEED){
+		die_at(NULL, "need identifier for decl");
 	}
 
 	return ret;
 }
 
-decl_desc *parse_decl_desc_func(enum decl_mode mode)
+decl_desc *parse_decl_desc_func(enum decl_mode mode, char **sp)
 {
-	decl_desc *ret = parse_decl_desc_ptr(mode);
+	decl_desc *ret = parse_decl_desc_ptr(mode, sp);
 
 	while(accept(token_open_paren)){
 		/*
@@ -367,13 +357,14 @@ decl_desc *parse_decl_desc_func(enum decl_mode mode)
 		 * int (*x)(
 		 *         ^
 		 */
-		decl_desc *dp = decl_desc_func_new();
+		decl_desc *dp = decl_desc_func_new(NULL, NULL);
 
 		dp->bits.func = parse_func_arglist();
 
 		EAT(token_close_paren);
 
-		dp->child = ret;
+		if(dp)
+			dp->child = ret;
 
 		ret = dp;
 	}
@@ -381,9 +372,9 @@ decl_desc *parse_decl_desc_func(enum decl_mode mode)
 	return ret;
 }
 
-decl_desc *parse_decl_desc_array(enum decl_mode mode)
+decl_desc *parse_decl_desc_array(enum decl_mode mode, char **sp)
 {
-	decl_desc *dp = parse_decl_desc_func(mode);
+	decl_desc *dp = parse_decl_desc_func(mode, sp);
 
 	while(accept(token_open_square)){
 		decl_desc *dp_new;
@@ -399,12 +390,12 @@ decl_desc *parse_decl_desc_array(enum decl_mode mode)
 			EAT(token_close_square);
 		}
 
-		dp_new = decl_desc_array_new();
+		dp_new = decl_desc_array_new(NULL, NULL);
 
 		dp_new->bits.array_size = size;
 
-		/* is this right? t'other way around? append to leaf? */
-		dp->child = dp_new;
+		if(dp)
+			dp->child = dp_new;
 
 		dp = dp_new;
 	}
@@ -418,22 +409,17 @@ decl *parse_decl(type *t, enum decl_mode mode)
 {
 	decl_desc *dp;
 	decl *d;
+	char *spel = NULL;
 
-	dp = parse_decl_desc_array(mode);
-
-	{
-		decl_desc *i;
-
-		fprintf(stderr, "parsing decl for type \"%s\", at %s\n", type_to_str(t), token_to_str(curtok));
-
-		for(i = dp; i; i = i->child)
-			fprintf(stderr, "\tdp %s\n", decl_desc_str(i));
-	}
+	dp = parse_decl_desc_array(mode, &spel);
 
 	/* don't fold typedefs until later (for __typeof) */
 	d = decl_new();
 	d->desc = dp;
 	d->type = type_copy(t);
+	d->spel = spel;
+
+	decl_desc_link(d);
 
 	if(accept(token_attribute)){
 		EAT(token_open_paren);
@@ -447,7 +433,7 @@ decl *parse_decl(type *t, enum decl_mode mode)
 
 	if(decl_spel(d) && accept(token_assign)){
 		d->init = parse_expr_funcallarg(); /* int x = 5, j; - don't grab the comma expr */
-	}else if(d->desc && d->desc->type == decl_desc_func && curtok != token_semicolon){
+	}else if(decl_is_func(d) && curtok != token_semicolon){
 		/* optionally check for old func decl */
 		decl **old_args = PARSE_DECLS();
 
@@ -611,8 +597,8 @@ decl **parse_decls_multi_type(const int can_default, const int accept_field_widt
 					d);
 
 			if(are_tdefs){
-				if(d->desc && d->desc->type == decl_desc_func)
-					die_at(&d->where, "can't have a typedef function");
+				if(decl_is_func(d) && d->func_code)
+					die_at(&d->where, "can't have a typedef function with code");
 				else if(d->init)
 					die_at(&d->where, "can't init a typedef");
 			}

@@ -9,42 +9,34 @@
 #include "data_structs.h"
 #include "macros.h"
 
-decl_desc *decl_desc_new(enum decl_desc_type t)
+decl_desc *decl_desc_new(enum decl_desc_type t, decl *dparent, decl_desc *parent)
 {
 	decl_desc *dp = umalloc(sizeof *dp);
 	where_new(&dp->where);
 	dp->type = t;
+	dp->parent_decl = dparent;
+	dp->parent_desc = parent;
 	return dp;
 }
 
 void decl_desc_free(decl_desc *dp)
 {
-	if(dp->type == decl_desc_func){
-		funcargs_free(dp->bits.func, 1);
-	}
 	free(dp);
 }
 
-decl_desc *decl_desc_ptr_new()
+decl_desc *decl_desc_ptr_new(decl *dparent, decl_desc *parent)
 {
-	return decl_desc_new(decl_desc_ptr);
+	return decl_desc_new(decl_desc_ptr, dparent, parent);
 }
 
-decl_desc *decl_desc_func_new()
+decl_desc *decl_desc_func_new(decl *dparent, decl_desc *parent)
 {
-	return decl_desc_new(decl_desc_func);
+	return decl_desc_new(decl_desc_func, dparent, parent);
 }
 
-decl_desc *decl_desc_array_new()
+decl_desc *decl_desc_array_new(decl *dparent, decl_desc *parent)
 {
-	return decl_desc_new(decl_desc_array);
-}
-
-decl_desc *decl_desc_spel_new(char *sp)
-{
-	decl_desc *dp = decl_desc_new(decl_desc_spel);
-	dp->bits.spel = sp;
-	return dp;
+	return decl_desc_new(decl_desc_array, dparent, parent);
 }
 
 decl *decl_new()
@@ -83,8 +75,10 @@ decl_desc *decl_desc_copy(decl_desc *dp)
 	memcpy(ret, dp, sizeof *ret);
 	switch(dp->type){
 		case decl_desc_ptr:
-			if(dp->child)
+			if(dp->child){
 				ret->child = decl_desc_copy(dp->child);
+				ret->child->parent_desc = ret;
+			}
 		default:
 			break;
 	}
@@ -96,18 +90,19 @@ decl *decl_copy(decl *d)
 	decl *ret = umalloc(sizeof *ret);
 	memcpy(ret, d, sizeof *ret);
 	ret->type = type_copy(d->type);
-	if(d->desc)
+	if(d->desc){
 		ret->desc = decl_desc_copy(d->desc);
-	/*ret->spel = NULL;*/
+		ret->desc->parent_decl = ret;
+	}
 	return ret;
 }
 
 int decl_desc_size(decl_desc *dp)
 {
-	switch(dp->type){
-		case decl_desc_spel:
-			ICE("can't do decl size for a spel");
+	if(dp->child)
+		return decl_desc_size(dp->child);
 
+	switch(dp->type){
 		case decl_desc_ptr:
 			return platform_word_size();
 
@@ -142,7 +137,7 @@ int decl_desc_size(decl_desc *dp)
 
 int decl_size(decl *d)
 {
-	if(d->desc && d->desc->type != decl_desc_spel){
+	if(d->desc){
 		/* pointer */
 		return decl_desc_size(d->desc);
 	}
@@ -153,26 +148,21 @@ int decl_size(decl *d)
 	return type_size(d->type);
 }
 
-int decl_desc_equal(decl_desc *dpa, decl_desc *dpb)
+int decl_desc_equal(decl_desc *a, decl_desc *b)
 {
-	if(!dpa && dpb->type == decl_desc_spel)
-		return 1;
-	if(!dpb && dpa->type == decl_desc_spel)
-		return 1;
-
 	/* if we are assigning from const, target must be const */
-	if(dpb->type != dpb->type)
+	if(a->type != b->type)
 		return 0;
 
-	if(dpb->type == decl_desc_ptr){
-		if(dpb->bits.qual & qual_const ? dpa->bits.qual & qual_const : 0)
+	if(b->type == decl_desc_ptr){
+		if(b->bits.qual & qual_const ? a->bits.qual & qual_const : 0)
 			return 0;
 	}
 
-	if(dpa->child)
-		return dpb->child && decl_desc_equal(dpa->child, dpb->child);
+	if(a->child)
+		return b->child && decl_desc_equal(a->child, b->child);
 
-	return !dpb->child;
+	return !b->child;
 }
 
 int decl_equal(decl *a, decl *b, enum decl_cmp mode)
@@ -189,7 +179,7 @@ int decl_equal(decl *a, decl *b, enum decl_cmp mode)
 	if(!type_equal(a->type, b->type, mode & DECL_CMP_STRICT_PRIMITIVE))
 		return 0;
 
-	return decl_desc_equal(a->desc, b->desc);
+	return a->desc ? b->desc && decl_desc_equal(a->desc, b->desc) : !b->desc;
 }
 
 int decl_ptr_depth(decl *d)
@@ -247,11 +237,11 @@ int decl_is_const(decl *d)
 
 decl *decl_desc_depth_inc(decl *d)
 {
-	decl_desc **p;
+	decl_desc **p, *prev;
 
-	for(p = &d->desc; *p; p = &(*p)->child);
+	for(prev = NULL, p = &d->desc; *p; prev = *p, p = &(*p)->child);
 
-	*p = decl_desc_ptr_new();
+	*p = decl_desc_ptr_new(d, prev);
 
 	return d;
 }
@@ -259,19 +249,23 @@ decl *decl_desc_depth_inc(decl *d)
 decl *decl_desc_depth_dec(decl *d)
 {
 	/* if we are derefing a function pointer, move its func args up to the decl */
-	decl_desc *ultimate, *prev;
+	decl_desc *last;
 
-	/*desc_desc_last_two(d, &penultimate, &ultimate);*/
-	for(ultimate = d->desc, prev = NULL; ultimate->child; prev = ultimate, ultimate = ultimate->child);
+	fprintf(stderr, "pre  deref: %s\n", decl_to_str(d));
 
-	UCC_ASSERT(ultimate && ultimate->type == decl_desc_ptr, "trying to deref non-ptr (%s)", decl_desc_str(ultimate));
+	for(last = d->desc; last && last->child; last = last->child);
 
-	if(prev)
-		prev->child = NULL;
+	UCC_ASSERT(last && last->type == decl_desc_ptr,
+			"trying to deref non-ptr (%s)", decl_desc_str(last));
+
+	if(last->parent_desc)
+		last->parent_desc->child = NULL;
 	else
-		d->desc = NULL;
+		last->parent_decl->desc = NULL;
 
-	decl_desc_free(ultimate);
+	decl_desc_free(last);
+
+	fprintf(stderr, "post deref: %s\n", decl_to_str(d));
 
 	return d;
 }
@@ -349,6 +343,7 @@ cant:
 
 char *decl_spel(decl *d)
 {
+#if 0
 	decl_desc *dp;
 
 	if(!d->desc)
@@ -356,12 +351,15 @@ char *decl_spel(decl *d)
 
 	for(dp = d->desc; dp->child; dp = dp->child);
 
-	return dp->type == decl_desc_spel ? dp->bits.spel : NULL;
+	return NULL;
+#endif
+	return d->spel;
 }
 
 void decl_set_spel(decl *d, char *sp)
 {
-	decl_desc **new;
+#if 0
+	decl_desc **new, *prev;
 
 	if(d->desc){
 		decl_desc *p;
@@ -373,12 +371,27 @@ void decl_set_spel(decl *d, char *sp)
 			return;
 		}
 
+		prev = p;
 		new = &p->child;
 	}else{
+		prev = NULL;
 		new = &d->desc;
 	}
 
-	*new = decl_desc_spel_new(sp);
+	*new = decl_desc_spel_new(d, prev, sp);
+#endif
+	free(d->spel);
+	d->spel = sp;
+}
+
+void decl_desc_link(decl *d)
+{
+	decl_desc *dp, *prev;
+
+	for(dp = d->desc, prev = NULL; dp; prev = dp, dp = dp->child){
+		dp->parent_decl = d;
+		dp->parent_desc = prev;
+	}
 }
 
 const char *decl_desc_str(decl_desc *dp)
@@ -386,10 +399,19 @@ const char *decl_desc_str(decl_desc *dp)
 	switch(dp->type){
 		CASE_STR_PREFIX(decl_desc, ptr);
 		CASE_STR_PREFIX(decl_desc, array);
-		CASE_STR_PREFIX(decl_desc, spel);
 		CASE_STR_PREFIX(decl_desc, func);
 	}
 	return NULL;
+}
+
+void decl_debug(decl *d)
+{
+	decl_desc *i;
+
+	fprintf(stderr, "decl %s:\n", d->spel);
+
+	for(i = d->desc; i; i = i->child)
+		fprintf(stderr, "\t%s\n", decl_desc_str(i));
 }
 
 const char *decl_to_str(decl *d)
@@ -406,14 +428,16 @@ const char *decl_to_str(decl *d)
 	for(dp = d->desc; dp; dp = dp->child)
 		switch(dp->type){
 			case decl_desc_ptr:
-				BUF_ADD("*%s", dp->bits.qual ? "abc " : "");
+				BUF_ADD("*%s", type_qual_to_str(dp->bits.qual));
 				break;
 			case decl_desc_func:
 				BUF_ADD("()");
 				break;
+#if 0
 			case decl_desc_spel:
 				BUF_ADD("%s", dp->bits.spel);
 				break;
+#endif
 			case decl_desc_array:
 				BUF_ADD("[]");
 				break;

@@ -36,7 +36,7 @@ void fold_expr_funcall(expr *e, symtable *stab)
 
 			decl_set_spel(df, sp);
 
-			df->desc = decl_desc_func_new();
+			df->desc = decl_desc_func_new(df, NULL);
 			df->desc->bits.func = funcargs_new();
 
 			if(e->funcargs)

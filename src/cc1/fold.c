@@ -166,9 +166,6 @@ void fold_decl_ptr(decl_desc *dp, symtable *stab, decl *root)
 		case decl_desc_ptr:
 			/* TODO: check qual */
 			break;
-
-		case decl_desc_spel:
-			break;
 	}
 
 	if(dp->child)
@@ -274,7 +271,7 @@ void fold_decl(decl *d, symtable *stab)
 
 	switch(d->type->primitive){
 		case type_void:
-			if(!decl_ptr_depth(d) && !(d->desc && d->desc->type == decl_desc_func))
+			if(!decl_ptr_depth(d) && !decl_is_callable(d))
 				die_at(&d->where, "can't have a void variable - %s (%s)", decl_spel(d), decl_to_str(d));
 			break;
 
@@ -479,9 +476,9 @@ void fold(symtable *globs)
 		fargs->arglist[1] = NULL;
 		fargs->arglist[0]->type->primitive = type_char;
 		fargs->arglist[0]->type->qual      = qual_const;
-		fargs->arglist[0]->desc            = decl_desc_ptr_new();
+		fargs->arglist[0]->desc            = decl_desc_ptr_new(fargs->arglist[0], NULL);
 
-		df->desc = decl_desc_func_new();
+		df->desc = decl_desc_func_new(df, NULL);
 		df->desc->bits.func = fargs;
 
 		symtab_add(globs, df, sym_global, SYMTAB_NO_SYM, SYMTAB_PREPEND);

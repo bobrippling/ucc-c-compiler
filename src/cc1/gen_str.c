@@ -123,14 +123,13 @@ void print_funcargs(funcargs *fargs)
 	fprintf(cc1_out, "%s)", fargs->variadic ? ", ..." : "");
 }
 
-void print_decl_desc(decl_desc *dp)
+void print_decl_desc(decl_desc *dp, decl *d)
 {
 	switch(dp->type){
 		case decl_desc_ptr:
 			fprintf(cc1_out, "*%s", type_qual_to_str(dp->bits.qual));
 			break;
 
-		case decl_desc_spel:
 		case decl_desc_array:
 			/* done below */
 			break;
@@ -142,7 +141,9 @@ void print_decl_desc(decl_desc *dp)
 	}
 
 	if(dp->child)
-		print_decl_desc(dp->child);
+		print_decl_desc(dp->child, d);
+	else if(d->spel)
+		fputs(d->spel, cc1_out);
 
 	switch(dp->type){
 		case decl_desc_func:
@@ -150,10 +151,6 @@ void print_decl_desc(decl_desc *dp)
 				fputc(')', cc1_out);
 
 			print_funcargs(dp->bits.func);
-			break;
-
-		case decl_desc_spel:
-			fputs(dp->bits.spel, cc1_out);
 			break;
 
 		case decl_desc_array:
@@ -216,7 +213,7 @@ void print_decl(decl *d, enum pdeclargs mode)
 #endif
 			if(d->desc){
 				fputc(' ', cc1_out);
-				print_decl_desc(d->desc);
+				print_decl_desc(d->desc, d);
 			}
 #if 0
 		}

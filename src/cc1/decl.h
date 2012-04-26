@@ -1,18 +1,143 @@
 #ifndef DECL_H
 #define DECL_H
 
+struct decl_attr
+{
+	where where;
+
+	enum decl_attr_type
+	{
+		attr_format,
+		attr_unused,
+		attr_warn_unused
+	} type;
+
+	union
+	{
+		struct
+		{
+			enum { attr_fmt_printf, attr_fmt_scanf } fmt_func;
+			int fmt_arg, var_arg;
+		} format;
+	} attr_extra;
+
+	decl_attr *next;
+};
+
+/*
+ * int *p; // decl -> { desc -> ptr }
+ *
+ * int  f();   // decl -> { desc -> func }
+ * int *f();   // decl -> { desc -> ptr,  child -> func }
+ * int (*f)(); // decl -> { desc -> func, child -> ptr }
+ *
+ * int *(*f)(); // decl -> { desc -> ptr, child -> { func, child -> ptr } }
+ *
+ * int *(*(*f)())();
+ * decl -> {
+
+			desc -> ptr, child -> {
+				ptr, child -> {
+					func, child -> {
+						ptr, child -> {
+							func, child -> {
+								ptr
+							}
+						}
+					}
+				}
+			}
+ */
+
+struct decl_desc
+{
+	where where;
+
+	enum decl_desc_type
+	{
+		decl_desc_ptr,
+		decl_desc_func,
+		decl_desc_array,
+	} type;
+
+	union
+	{
+		enum type_qualifier qual;
+		struct funcargs
+		{
+			where where;
+
+			int args_void; /* true if "spel(void);" otherwise if !args, then we have "spel();" */
+			int args_old_proto; /* true if f(a, b); where a and b are identifiers */
+			decl **arglist;
+			int variadic;
+		} *func;
+		expr *array_size;      /* int (x[5][2])[2] */
+	} bits;
+
+	decl_desc *child;
+
+	decl_desc *parent_desc;
+	decl      *parent_decl;
+};
+
+struct decl
+{
+	where where;
+
+	int field_width;
+	type *type;
+
+	expr *init; /* NULL except for global variables */
+	array_decl *arrayinit;
+
+	int ignore; /* ignore during code-gen, for example ignoring overridden externs */
+#define struct_offset ignore
+
+	sym *sym;
+	decl_attr *attr;
+
+	char *spel;
+	int internal; /* interal string or array decl */
+
+	/* no funcargs on the decl - on a desc if it's a decl_desc_func */
+	decl_desc *desc;
+
+	stmt *func_code;
+};
+
+struct array_decl
+{
+	union
+	{
+		char *str;
+		expr **exprs;
+	} data;
+
+	char *label;
+	int len;
+
+	enum
+	{
+		array_exprs,
+		array_str
+	} type;
+};
+
+
 decl        *decl_new(void);
 array_decl  *array_decl_new(void);
 decl_attr   *decl_attr_new(enum decl_attr_type);
 
-decl_desc   *decl_desc_new(enum decl_desc_type t);
-decl_desc   *decl_desc_spel_new(char *sp);
-decl_desc   *decl_desc_ptr_new(void);
-decl_desc   *decl_desc_func_new(void);
-decl_desc   *decl_desc_array_new(void);
+decl_desc   *decl_desc_new(enum decl_desc_type t, decl *dparent, decl_desc *parent);
+decl_desc   *decl_desc_ptr_new(  decl *dparent, decl_desc *parent);
+decl_desc   *decl_desc_func_new( decl *dparent, decl_desc *parent);
+decl_desc   *decl_desc_array_new(decl *dparent, decl_desc *parent);
 
 decl      *decl_copy(decl *);
 decl_desc *decl_desc_copy(decl_desc *);
+
+void decl_desc_link(decl *);
 
 int   decl_size( decl *);
 int   decl_equal(decl *, decl *, enum decl_cmp mode);

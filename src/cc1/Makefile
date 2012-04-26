@@ -76,7 +76,7 @@ decl.o: decl.c ../util/util.h ../util/alloc.h ../util/platform.h \
  ops/stmt_case_range.h ops/stmt_code.h ops/stmt_default.h ops/stmt_do.h \
  ops/stmt_expr.h ops/stmt_for.h ops/stmt_goto.h ops/stmt_if.h \
  ops/stmt_label.h ops/stmt_noop.h ops/stmt_return.h ops/stmt_switch.h \
- ops/stmt_while.h ops/stmt_continue.h sym.h decl.h
+ ops/stmt_while.h ops/stmt_continue.h sym.h decl.h macros.h
 expr.o: expr.c ../util/util.h ../util/alloc.h data_structs.h tree.h \
  expr.h ops/expr_addr.h ops/expr_assign.h ops/expr_cast.h \
  ops/expr_comma.h ops/expr_funcall.h ops/expr_identifier.h ops/expr_if.h \
