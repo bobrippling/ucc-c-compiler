@@ -23,10 +23,10 @@ void fold_expr_funcall(expr *e, symtable *stab)
 	funcargs *args_exp;
 
 	if(expr_kind(e->expr, identifier) && e->expr->spel){
+		/* check for implicit function */
 		char *const sp = e->expr->spel;
 
-		e->sym = symtab_search(stab, sp);
-		if(!e->sym){
+		if(!(e->expr->sym = symtab_search(stab, sp))){
 			df = decl_new();
 
 			df->type->primitive = type_int;
@@ -43,34 +43,31 @@ void fold_expr_funcall(expr *e, symtable *stab)
 				/* set up the funcargs as if it's "x()" - i.e. any args */
 				function_empty_args(df->desc->bits.func);
 
-			e->sym = symtab_add(symtab_root(stab), df, sym_global, SYMTAB_WITH_SYM, SYMTAB_PREPEND);
-		}else{
-			df = e->sym->decl;
-		}
-
-		fold_expr(e->expr, stab);
-	}else{
-		fold_expr(e->expr, stab);
-
-		/*
-		 * convert int (*)() to remove the deref
-		 */
-		df = e->expr->tree_type;
-
-		if(!decl_is_callable(df)){
-			die_at(&e->expr->where, "expression %s (%s) not callable",
-					e->expr->f_str(),
-					decl_to_str(df));
+			e->expr->sym = symtab_add(symtab_root(stab), df, sym_global, SYMTAB_WITH_SYM, SYMTAB_PREPEND);
 		}
 	}
 
-	/*
-	 * int (*x)();
-	 * (*x)();
-	 * evaluates to tree_type = int;
-	 */
-	e->tree_type = decl_copy(df);
-	decl_func_deref(e->tree_type, &args_exp);
+	fold_expr(e->expr, stab);
+	df = e->expr->tree_type;
+
+	if(!decl_is_callable(df)){
+		die_at(&e->expr->where, "expression %s (%s) not callable",
+				e->expr->f_str(),
+				decl_to_str(df));
+	}
+
+	if(expr_kind(e->expr, op)
+	&& e->expr->op == op_deref
+	&& decl_is_fptr(op_deref_expr(e->expr)->tree_type)){
+		/* XXX: memleak */
+		/* (*f)() - dereffing to a function, then calling - remove the deref */
+		e->expr = op_deref_expr(e->expr);
+	}
+
+	df = e->tree_type = decl_func_deref(decl_copy(df), &args_exp);
+
+	/* func count comparison, only if the func has arg-decls, or the func is f(void) */
+	UCC_ASSERT(args_exp, "no funcargs for decl %s", decl_spel(df));
 
 	if(e->funcargs){
 		expr **iter;
@@ -88,9 +85,6 @@ void fold_expr_funcall(expr *e, symtable *stab)
 			free(desc);
 		}
 	}
-
-	/* func count comparison, only if the func has arg-decls, or the func is f(void) */
-	UCC_ASSERT(args_exp, "no funcargs for decl %s", decl_spel(df));
 
 	if(args_exp->arglist || args_exp->args_void){
 		expr **iter_arg;
@@ -118,7 +112,7 @@ void fold_expr_funcall(expr *e, symtable *stab)
 			funcargs_free(argument_decls, 0);
 		}
 
-		funcargs_free(args_exp, 1);
+		/*funcargs_free(args_exp, 1); XXX memleak*/
 	}
 
 	fold_disallow_st_un(e, "return");
@@ -162,6 +156,7 @@ invalid:
 		asm_temp(0, "; end manual __asm__");
 	}else{
 		/* continue with normal funcall */
+		sym *const sym = e->expr->sym;
 
 		if(e->funcargs){
 			/* need to push on in reverse order */
@@ -172,24 +167,15 @@ invalid:
 			}
 		}
 
-		if(e->sym && !e->sym->decl->desc && decl_spel(e->sym->decl)){
+		if(sym && !decl_is_fptr(sym->decl)){
 			/* simple */
-			asm_temp(1, "call %s", decl_spel(e->sym->decl));
+			asm_temp(1, "call %s", decl_spel(sym->decl));
 		}else{
-			if(expr_kind(e->expr, identifier)){
-				asm_temp(1, "call %s", e->expr->spel);
-				goto fin;
-			}
-
-			if((fopt_mode & FOPT_ALLOW_FPTR_CALL) == 0)
-				die_at(&e->expr->where, "funcall via pointers disabled [broken] (%s)", e->f_str());
-
 			gen_expr(e->expr, stab);
 			asm_temp(1, "pop rax  ; function address");
 			asm_temp(1, "call rax ; duh");
 		}
 
-fin:
 		if(nargs)
 			asm_temp(1, "add rsp, %d ; %d arg%s",
 					nargs * platform_word_size(),

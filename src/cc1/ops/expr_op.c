@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include "ops.h"
 #include "../sue.h"
+#include "expr_op.h"
 
 const char *str_expr_op()
 {
@@ -218,13 +219,13 @@ void fold_op_struct(expr *e, symtable *stab)
 void fold_deref(expr *e)
 {
 	/* check for *&x */
-	if(expr_kind(e->lhs, addr))
-		warn_at(&e->lhs->where, "possible optimisation for *& expression");
+	if(expr_kind(op_deref_expr(e), addr))
+		warn_at(&op_deref_expr(e)->where, "possible optimisation for *& expression");
 
-	e->tree_type = decl_desc_depth_dec(decl_copy(e->lhs->tree_type));
+	e->tree_type = decl_ptr_depth_dec(decl_copy(op_deref_expr(e)->tree_type), &e->where);
 
-	if(decl_ptr_depth(e->tree_type) == 0 && e->lhs->tree_type->type->primitive == type_void)
-		die_at(&e->where, "can't dereference void pointer");
+	if(decl_desc_depth(e->tree_type) == 0 && e->tree_type->type->primitive == type_void)
+		die_at(&e->where, "can't dereference void pointer (%s)", decl_to_str(e->tree_type));
 }
 
 void fold_expr_op(expr *e, symtable *stab)

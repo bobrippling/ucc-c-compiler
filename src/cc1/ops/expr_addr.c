@@ -19,7 +19,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 		UCC_ASSERT(!e->expr, "expression found in array store address-of");
 
 		/* static const char * */
-		e->tree_type = decl_desc_depth_inc(decl_new());
+		e->tree_type = decl_ptr_depth_inc(decl_new());
 
 		e->tree_type->type->store = store_static;
 		e->tree_type->type->qual  = qual_const;
@@ -102,7 +102,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 
 			/* replace the decl */
 			decl_free(e->tree_type);
-			e->tree_type = decl_desc_depth_inc(decl_copy(member_decl));
+			e->tree_type = decl_ptr_depth_inc(decl_copy(member_decl));
 
 			expr_free(addr);
 			return;
@@ -121,7 +121,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 		if(e->expr->tree_type->type->store == store_register)
 			die_at(&e->expr->where, "can't take the address of register variable %s", e->expr->spel);
 
-		e->tree_type = decl_desc_depth_inc(decl_copy(e->expr->sym ? e->expr->sym->decl : e->expr->tree_type));
+		e->tree_type = decl_ptr_depth_inc(decl_copy(e->expr->sym ? e->expr->sym->decl : e->expr->tree_type));
 	}
 }
 

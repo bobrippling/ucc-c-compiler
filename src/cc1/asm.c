@@ -204,7 +204,7 @@ void asm_declare_single_part(FILE *f, expr *e)
 
 enum asm_size asm_type_size(decl *d)
 {
-	if(decl_ptr_depth(d)){
+	if(decl_desc_depth(d)){
 		return ASM_SIZE_WORD;
 	}else{
 		if(d->type->typeof)

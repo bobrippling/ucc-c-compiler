@@ -73,14 +73,9 @@ decl_desc *decl_desc_copy(decl_desc *dp)
 {
 	decl_desc *ret = umalloc(sizeof *ret);
 	memcpy(ret, dp, sizeof *ret);
-	switch(dp->type){
-		case decl_desc_ptr:
-			if(dp->child){
-				ret->child = decl_desc_copy(dp->child);
-				ret->child->parent_desc = ret;
-			}
-		default:
-			break;
+	if(dp->child){
+		ret->child = decl_desc_copy(dp->child);
+		ret->child->parent_desc = ret;
 	}
 	return ret;
 }
@@ -188,25 +183,19 @@ int decl_ptr_depth(decl *d)
 	int i = 0;
 
 	for(dp = d->desc; dp; dp = dp->child)
-		i++;
+		if(dp->type == decl_desc_ptr)
+			i++;
 
 	return i;
 }
 
-void decl_leaf_pre(decl *d, decl_desc **pdp, decl_desc ***pppre)
+int decl_desc_depth(decl *d)
 {
-	decl_desc *dp, **prev;
-
-	if(!d->desc){
-		*pdp = NULL;
-		*pppre = NULL;
-		return;
-	}
-
-	for(prev = &d->desc, dp = d->desc; dp->child; prev = &dp->child, dp = dp->child);
-
-	*pdp = dp;
-	*pppre = prev;
+	decl_desc *dp;
+	int i = 0;
+	for(dp = d->desc; dp; dp = dp->child)
+		i++;
+	return i;
 }
 
 decl_desc *decl_leaf(decl *d)
@@ -235,7 +224,7 @@ int decl_is_const(decl *d)
 	return d->type->qual & qual_const;
 }
 
-decl *decl_desc_depth_inc(decl *d)
+decl *decl_ptr_depth_inc(decl *d)
 {
 	decl_desc **p, *prev;
 
@@ -246,17 +235,20 @@ decl *decl_desc_depth_inc(decl *d)
 	return d;
 }
 
-decl *decl_desc_depth_dec(decl *d)
+decl *decl_ptr_depth_dec(decl *d, where *from)
 {
 	/* if we are derefing a function pointer, move its func args up to the decl */
 	decl_desc *last;
 
-	fprintf(stderr, "pre  deref: %s\n", decl_to_str(d));
-
 	for(last = d->desc; last && last->child; last = last->child);
 
-	UCC_ASSERT(last && last->type == decl_desc_ptr,
-			"trying to deref non-ptr (%s)", decl_desc_str(last));
+	if(!last || last->type != decl_desc_ptr){
+		die_at(from,
+			"trying to dereference non-pointer%s%s%s",
+			last ? " (" : "",
+			last ? decl_desc_str(last) : "",
+			last ? ")"  : "");
+	}
 
 	if(last->parent_desc)
 		last->parent_desc->child = NULL;
@@ -264,8 +256,6 @@ decl *decl_desc_depth_dec(decl *d)
 		last->parent_decl->desc = NULL;
 
 	decl_desc_free(last);
-
-	fprintf(stderr, "post deref: %s\n", decl_to_str(d));
 
 	return d;
 }
@@ -290,7 +280,20 @@ int decl_is_callable(decl *d)
 
 int decl_is_func(decl *d)
 {
-	return d->desc && d->desc->type == decl_desc_func;
+	decl_desc *dp;
+	for(dp = d->desc; dp && dp->child; dp = dp->child);
+	return dp && dp->type == decl_desc_func;
+}
+
+int decl_is_fptr(decl *d)
+{
+	decl_desc *dp, *prev;
+
+	for(prev = NULL, dp = d->desc;
+			dp && dp->child;
+			prev = dp, dp = dp->child);
+
+	return dp && prev && dp->type == decl_desc_ptr && prev->type == decl_desc_func;
 }
 
 int decl_has_array(decl *d)
@@ -302,36 +305,40 @@ int decl_has_array(decl *d)
 	return 0;
 }
 
-void decl_func_deref(decl *d, funcargs **pfuncargs)
+void decl_desc_cut_loose(decl_desc *dp)
 {
-	decl_desc *dp, **ppre;
+	if(dp->parent_desc)
+		dp->parent_desc->child = NULL;
+	else
+		dp->parent_decl->desc = NULL;
+}
 
-	decl_leaf_pre(d, &dp, &ppre);
+decl *decl_func_deref(decl *d, funcargs **pfuncargs)
+{
+	decl_desc *dp;
+
+	for(dp = d->desc; dp->child; dp = dp->child);
 
 	/* should've been caught by is_callable() */
 	UCC_ASSERT(dp, "can't call non-function");
 
 	if(dp->type == decl_desc_func){
-		*ppre = NULL;
-
 		*pfuncargs = dp->bits.func;
+
+		decl_desc_cut_loose(dp);
 
 		decl_desc_free(dp);
 	}else if(dp->type == decl_desc_ptr){
-		/* look one up for func ptr */
-		decl_desc *pre, **before;
+		decl_desc *const func = dp->parent_desc;
+		UCC_ASSERT(func, "no parent desc for func-ptr call");
 
-		for(before = &d->desc, pre = d->desc;
-				pre->child != dp;
-				before = &pre->child, pre = pre->child);
+		if(func->type == decl_desc_func){
+			*pfuncargs = func->bits.func;
 
-		if(pre->type == decl_desc_func){
-			*before = NULL; /* snip */
-
-			*pfuncargs = dp->bits.func;
+			decl_desc_cut_loose(func);
 
 			decl_desc_free(dp);
-			decl_desc_free(pre);
+			decl_desc_free(func);
 		}else{
 			goto cant;
 		}
@@ -339,6 +346,8 @@ void decl_func_deref(decl *d, funcargs **pfuncargs)
 cant:
 		ICE("can't func-deref non func decl desc");
 	}
+
+	return d;
 }
 
 char *decl_spel(decl *d)
@@ -414,34 +423,51 @@ void decl_debug(decl *d)
 		fprintf(stderr, "\t%s\n", decl_desc_str(i));
 }
 
+void decl_desc_add_str(decl_desc *dp, char **bufp, int sz)
+{
+#define BUF_ADD(...) \
+	do{ int n = snprintf(*bufp, sz, __VA_ARGS__); *bufp += n, sz -= n; }while(0)
+
+	switch(dp->type){
+		case decl_desc_ptr:
+			BUF_ADD("%s*%s",
+					dp->parent_desc ? "(" : "",
+					type_qual_to_str(dp->bits.qual));
+		default:
+			break;
+	}
+
+	if(dp->child)
+		decl_desc_add_str(dp->child, bufp, sz);
+
+	switch(dp->type){
+		case decl_desc_ptr:
+			if(dp->parent_desc)
+				BUF_ADD(")");
+			break;
+		case decl_desc_func:
+			BUF_ADD("()");
+			break;
+		case decl_desc_array:
+			BUF_ADD("[]");
+			break;
+	}
+#undef BUF_ADD
+}
+
 const char *decl_to_str(decl *d)
 {
 	static char buf[DECL_STATIC_BUFSIZ];
 	char *bufp = buf;
-	decl_desc *dp;
 
 #define BUF_ADD(...) \
 	bufp += snprintf(bufp, sizeof(buf) - (bufp - buf), __VA_ARGS__)
 
 	BUF_ADD("%s%s", type_to_str(d->type), d->desc ? " " : "");
 
-	for(dp = d->desc; dp; dp = dp->child)
-		switch(dp->type){
-			case decl_desc_ptr:
-				BUF_ADD("*%s", type_qual_to_str(dp->bits.qual));
-				break;
-			case decl_desc_func:
-				BUF_ADD("()");
-				break;
-#if 0
-			case decl_desc_spel:
-				BUF_ADD("%s", dp->bits.spel);
-				break;
-#endif
-			case decl_desc_array:
-				BUF_ADD("[]");
-				break;
-		}
+	if(d->desc)
+		decl_desc_add_str(d->desc, &bufp, sizeof(buf) - (bufp - buf));
 
 	return buf;
+#undef BUF_ADD
 }

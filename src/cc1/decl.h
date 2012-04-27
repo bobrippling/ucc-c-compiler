@@ -146,15 +146,18 @@ int     decl_is_struct_or_union(decl *);
 int     decl_is_callable(       decl *);
 int     decl_is_func(           decl *); /* different from _callable - fptrs are also callable */
 int     decl_is_const(          decl *);
+int     decl_is_fptr(           decl *);
+
 int     decl_ptr_depth(         decl *);
+int     decl_desc_depth(        decl *);
 #define decl_is_void(d) ((d)->type->primitive == type_void && !(d)->desc)
 
 decl_desc  *decl_first_func(decl *d);
 decl_desc  *decl_leaf(decl *d);
 
-decl *decl_desc_depth_inc(decl *d);
-decl *decl_desc_depth_dec(decl *d);
-void  decl_func_deref(decl *d, funcargs **pfuncargs);
+decl *decl_ptr_depth_inc(decl *d);
+decl *decl_ptr_depth_dec(decl *d, where *from);
+decl *decl_func_deref(decl *d, funcargs **pfuncargs);
 
 int decl_attr_present(decl_attr *, enum decl_attr_type);
 

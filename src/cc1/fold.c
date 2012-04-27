@@ -17,7 +17,7 @@
 #include "sue.h"
 #include "decl.h"
 
-#define DECL_IS_VOID(d) (d->type->primitive == type_void && !decl_ptr_depth(d))
+#define DECL_IS_VOID(d) (d->type->primitive == type_void && !decl_desc_depth(d))
 
 char *curdecl_func_sp;       /* for funcargs-local labels */
 stmt *curstmt_flow;          /* for break */

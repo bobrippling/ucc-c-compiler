@@ -85,7 +85,7 @@ expr *expr_ptr_multiply(expr *e, decl *d)
 
 	dtmp = decl_copy(d);
 
-	sz = decl_size(decl_desc_depth_dec(dtmp));
+	sz = decl_size(decl_ptr_depth_dec(dtmp, NULL));
 
 	decl_free(dtmp);
 
