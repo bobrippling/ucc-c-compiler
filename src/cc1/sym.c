@@ -92,11 +92,16 @@ sym *symtab_add(symtable *tab, decl *d, enum sym_type t, int with_sym, int prepe
 {
 	sym *new;
 
-	if((new = symtab_search2(tab, d, spel_cmp, 0)))
+	if((new = symtab_search2(tab, d->spel, spel_cmp, 0))){
+		char buf[DECL_STATIC_BUFSIZ];
+		if(new->decl)
+			strcpy(buf, where_str(&new->decl->where));
+		else
+			*buf = '\0';
+
 		die_at(&d->where, "\"%s\" already declared%s%s",
-				decl_spel(d),
-				new->decl ? " at " : "",
-				new->decl ? where_str(&new->decl->where) : "");
+				d->spel, new->decl ? " at " : "", buf);
+	}
 
 	if(with_sym)
 		new = sym_new(d, t);
@@ -111,9 +116,9 @@ sym *symtab_add(symtable *tab, decl *d, enum sym_type t, int with_sym, int prepe
 const char *sym_to_str(enum sym_type t)
 {
 	switch(t){
-		CASE_STR(sym_local);
-		CASE_STR(sym_arg);
-		CASE_STR(sym_global);
+		CASE_STR_PREFIX(sym, local);
+		CASE_STR_PREFIX(sym, arg);
+		CASE_STR_PREFIX(sym, global);
 	}
 	return NULL;
 }

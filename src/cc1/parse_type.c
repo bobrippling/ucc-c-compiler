@@ -108,12 +108,6 @@ type *parse_type()
 	int is_signed = 1;
 	int store_set = 0, primitive_set = 0, signed_set = 0;
 
-	if(accept(token_typeof)){
-		type *t = type_new();
-		t->typeof = parse_expr_sizeof_typeof();
-		return t;
-	}
-
 	for(;;){
 		decl *td;
 
@@ -177,6 +171,13 @@ type *parse_type()
 			t->store = store;
 
 			return t;
+
+		}else if(accept(token_typeof)){
+			if(primitive_set)
+				die_at(NULL, "duplicate typeof specifier");
+
+			tdef_typeof = parse_expr_sizeof_typeof();
+			primitive_set = 1;
 
 		}else if(curtok == token_identifier && (td = typedef_find(current_scope, token_current_spel_peek()))){
 			/* typedef name */
@@ -425,7 +426,8 @@ decl *parse_decl(type *t, enum decl_mode mode)
 		EAT(token_open_paren);
 		EAT(token_open_paren);
 
-		d->attr = parse_attr();
+		if(curtok != token_close_paren)
+			d->attr = parse_attr();
 
 		EAT(token_close_paren);
 		EAT(token_close_paren);
