@@ -415,7 +415,8 @@ decl *parse_decl(type *t, enum decl_mode mode)
 		EAT(token_open_paren);
 		EAT(token_open_paren);
 
-		d->attr = parse_attr();
+		if(curtok != token_close_paren)
+			d->attr = parse_attr();
 
 		EAT(token_close_paren);
 		EAT(token_close_paren);
