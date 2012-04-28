@@ -9,7 +9,8 @@ struct decl_attr
 	{
 		attr_format,
 		attr_unused,
-		attr_warn_unused
+		attr_warn_unused,
+		attr_section
 	} type;
 
 	union
@@ -19,6 +20,7 @@ struct decl_attr
 			enum { attr_fmt_printf, attr_fmt_scanf } fmt_func;
 			int fmt_arg, var_arg;
 		} format;
+		char *section;
 	} attr_extra;
 
 	decl_attr *next;
@@ -124,6 +126,11 @@ struct array_decl
 	} type;
 };
 
+enum decl_cmp
+{
+	DECL_CMP_STRICT_PRIMITIVE = 1 << 0,
+	DECL_CMP_ALLOW_VOID_PTR   = 1 << 1,
+};
 
 decl        *decl_new(void);
 array_decl  *array_decl_new(void);
@@ -168,6 +175,8 @@ const char *decl_desc_str(decl_desc *dp);
 
 char *decl_spel(decl *);
 void  decl_set_spel(decl *, char *);
+
+const char *decl_to_str(decl *d);
 
 void decl_desc_free(decl_desc *);
 #define decl_free_notype(x) do{free(x);}while(0)
