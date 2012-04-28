@@ -33,6 +33,37 @@ decl_attr *parse_attr_format()
 	return da;
 }
 
+decl_attr *parse_attr_section()
+{
+	/* __attribute__((__section__ ("sectionname"))) */
+	decl_attr *da;
+	char *func;
+	int len, i;
+
+	EAT(token_open_paren);
+
+	if(curtok != token_string)
+		die_at(NULL, "string expected for section");
+
+	token_get_current_str(&func, &len);
+	EAT(token_string);
+
+	for(i = 0; i < len; i++)
+		if(!isprint(func[i])){
+			if(i < len - 1 || func[i] != '\0')
+				warn_at(NULL, "character 0x%x detected in section", func[i]);
+			break;
+		}
+
+	da = decl_attr_new(attr_section);
+
+	da->attr_extra.section = func;
+
+	EAT(token_close_paren);
+
+	return da;
+}
+
 #define EMPTY(t)                      \
 decl_attr *parse_ ## t()              \
 {                                     \
@@ -50,6 +81,7 @@ static struct
 	{ "__format__",         parse_attr_format },
 	{ "__unused__",         parse_attr_unused },
 	{ "__warn_unused__",    parse_attr_warn_unused },
+	{ "__section__",        parse_attr_section },
 	{ NULL, NULL },
 };
 

@@ -86,7 +86,8 @@ struct decl_attr
 	{
 		attr_format,
 		attr_unused,
-		attr_warn_unused
+		attr_warn_unused,
+		attr_section
 	} type;
 
 	union
@@ -96,6 +97,7 @@ struct decl_attr
 			enum { attr_fmt_printf, attr_fmt_scanf } fmt_func;
 			int fmt_arg, var_arg;
 		} format;
+		char *section;
 	} attr_extra;
 
 	decl_attr *next;
