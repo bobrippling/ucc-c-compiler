@@ -1,11 +1,10 @@
 ---------------------------------------------------- cc1
 
-floats
-long + short
+floats, long + short (in a branch)
 
-link function prototypes with the function instance + arg check
+link function prototypes with the function instance + arg check (done?)
 
-&x[y]
+&x[y] (?)
 
 static analysis for labels - flag unused labels
 
@@ -29,8 +28,6 @@ general lhs assignment:
 	(x ? a : b)(2); // similarly
 	(x = y) = 2; // assign to x
 
-assembly optimisation - remove asm_temp()
-
 __attribute__((pure))
 - function with no side effects (e.g. strlen())
 
@@ -41,8 +38,10 @@ stabs/dwarf debugging annotations
 fastcall - ecx, edx, stack, etc (__attribute__)
 
 extensions:
-	if(char *p = x()) ...
 	namespace [str] { ... }
+	classes?
+
+replace die{,_at} with cc1_&, and use stored line in tokenise for better errors
 
 ---------------------------------------------------- cpp
 
