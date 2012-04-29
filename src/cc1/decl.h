@@ -136,6 +136,9 @@ decl        *decl_new(void);
 array_decl  *array_decl_new(void);
 decl_attr   *decl_attr_new(enum decl_attr_type);
 
+void         decl_desc_append(decl_desc **parent, decl_desc *child);
+decl_desc   *decl_desc_tail(decl *);
+
 decl_desc   *decl_desc_new(enum decl_desc_type t, decl *dparent, decl_desc *parent);
 decl_desc   *decl_desc_ptr_new(  decl *dparent, decl_desc *parent);
 decl_desc   *decl_desc_func_new( decl *dparent, decl_desc *parent);

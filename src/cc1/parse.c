@@ -223,7 +223,7 @@ expr *parse_expr_unary_op()
 			return parse_lone_identifier();
 
 		default:
-			die_at(NULL, "expected: unary expression, got %s", token_to_str(curtok));
+			die_at(NULL, "expression expected, got %s (%s:%d)", token_to_str(curtok), __FILE__, __LINE__);
 	}
 	return NULL;
 }

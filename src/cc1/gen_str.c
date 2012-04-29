@@ -174,6 +174,7 @@ void print_decl(decl *d, enum pdeclargs mode)
 
 	if(fopt_mode & FOPT_ENGLISH){
 		//print_decl_eng(d);
+		ICE("TODO");
 	}else{
 		fputs(type_to_str(d->type), cc1_out);
 
@@ -214,6 +215,8 @@ void print_decl(decl *d, enum pdeclargs mode)
 			if(d->desc){
 				fputc(' ', cc1_out);
 				print_decl_desc(d->desc, d);
+			}else if(d->spel){
+				fprintf(cc1_out, " %s", d->spel);
 			}
 #if 0
 		}
@@ -312,10 +315,12 @@ int has_st_en_tdef(symtable *stab)
 void print_st_en_tdef(symtable *stab)
 {
 	struct_union_enum_st **sit;
+	int nl = 0;
 
 	for(sit = stab->sues; sit && *sit; sit++){
 		struct_union_enum_st *sue = *sit;
 		(sue->primitive == type_enum ? print_enum : print_struct)(sue);
+		nl = 1;
 	}
 
 	if(stab->typedefs){
@@ -323,10 +328,15 @@ void print_st_en_tdef(symtable *stab)
 
 		idt_printf("typedefs:\n");
 		gen_str_indent++;
-		for(tit = stab->typedefs; tit && *tit; tit++)
+		for(tit = stab->typedefs; tit && *tit; tit++){
 			print_decl(*tit, PDECL_INDENT | PDECL_NEWLINE);
+			nl = 1;
+		}
 		gen_str_indent--;
 	}
+
+	if(nl)
+		fputc('\n', cc1_out);
 }
 
 void print_stmt_flow(stmt_flow *t)

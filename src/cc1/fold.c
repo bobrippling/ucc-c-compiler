@@ -425,7 +425,7 @@ void fold_func(decl *func_decl, symtable *globs)
 		funcargs *fargs;
 		int nargs, i;
 
-		fargs = func_decl->desc->bits.func;
+		fargs = decl_desc_tail(func_decl)->bits.func;
 
 		if(fargs->arglist){
 			for(nargs = 0; fargs->arglist[nargs]; nargs++);

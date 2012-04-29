@@ -39,6 +39,26 @@ decl_desc *decl_desc_array_new(decl *dparent, decl_desc *parent)
 	return decl_desc_new(decl_desc_array, dparent, parent);
 }
 
+void decl_desc_append(decl_desc **pparent, decl_desc *child)
+{
+	decl_desc *parent = *pparent;
+
+	if(!parent){
+		*pparent = child;
+		return;
+	}
+
+	for(; parent->child; parent = parent->child);
+	parent->child = child;
+}
+
+decl_desc *decl_desc_tail(decl *d)
+{
+	decl_desc *i;
+	for(i = d->desc; i->child; i = i->child);
+	return i;
+}
+
 decl *decl_new()
 {
 	decl *d = umalloc(sizeof *d);
