@@ -57,6 +57,7 @@ enum fopt
 	FOPT_CONST_FOLD      = 1 << 2,
 	FOPT_ENGLISH         = 1 << 3,
 	FOPT_DECL_PTR_STAT   = 1 << 4,
+	FOPT_SHOW_LINE       = 1 << 6,
 };
 
 enum cc1_backend
