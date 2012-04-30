@@ -11,7 +11,7 @@ int fold_const_expr_assign(expr *e)
 	return 1; /* could check if the assignment subtree is const */
 }
 
-int expr_is_lvalue(expr *e)
+int expr_is_lvalue(expr *e, int allow_func)
 {
 	/*
 	 * valid lvaluess:
@@ -26,7 +26,7 @@ int expr_is_lvalue(expr *e)
 	 */
 
 	if(expr_kind(e, identifier))
-		return !e->tree_type->func_code;
+		return allow_func || !e->tree_type->func_code;
 
 	if(expr_kind(e, op))
 		switch(e->op){
@@ -54,7 +54,7 @@ void fold_expr_assign(expr *e, symtable *stab)
 
 
 	/* wait until we get the tree types, etc */
-	if(!expr_is_lvalue(e->lhs))
+	if(!expr_is_lvalue(e->lhs, 0))
 		die_at(&e->lhs->where, "not an lvalue (%s%s%s)",
 				e->lhs->f_str(),
 				expr_kind(e->lhs, op) ? " - " : "",
