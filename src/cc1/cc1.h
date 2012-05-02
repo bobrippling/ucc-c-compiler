@@ -59,6 +59,7 @@ enum fopt
 	FOPT_ENGLISH         = 1 << 3,
 	FOPT_DECL_PTR_STAT   = 1 << 4,
 	FOPT_ALLOW_FPTR_CALL = 1 << 5,
+	FOPT_SHOW_LINE       = 1 << 6,
 };
 
 enum cc1_backend

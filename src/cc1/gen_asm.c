@@ -30,6 +30,10 @@ void gen_stmt(stmt *t)
 
 void gen_asm_global(decl *d)
 {
+	if(decl_attr_present(d->attr, attr_section))
+		ICW("%s: TODO: section attribute \"%s\" on %s",
+				where_str(&d->attr->where), d->attr->attr_extra.section, d->spel);
+
 	if(d->type->store == store_extern){
 		/* should be fine... */
 		asm_out_section(SECTION_BSS, "extern %s", d->spel);

@@ -66,6 +66,8 @@ int do_rm   = 1;
 char *backend  = "";
 char *frontend = "";
 
+char *precmd = "";
+
 enum mode out_mode;
 enum mode start_mode;
 char *argv0;
@@ -177,7 +179,7 @@ int gen(const char *input, const char *output)
 		atexit(unlink_files);
 
 #define RUN(local, fmt, ...) \
-		snprintf(cmd, sizeof cmd, "%s" fmt, local ? where : "", __VA_ARGS__); \
+		snprintf(cmd, sizeof cmd, "%s %s" fmt, precmd, local ? where : "", __VA_ARGS__); \
 		run(cmd)
 
 #define SHORTEN_OUTPUT(m, path) \
@@ -271,6 +273,8 @@ int main(int argc, char **argv)
 			goto usage;
 		}else if(!strcmp(argv[i], "-no-rm")){
 			do_rm = 0;
+		}else if(!strncmp(argv[i], "--precmd=", 9)){
+			precmd = argv[i] + 9;
 		}else{
 			if(argv[i][0] == '-'){
 				unsigned int j;

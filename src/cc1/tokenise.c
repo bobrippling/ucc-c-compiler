@@ -11,6 +11,7 @@
 #include "../util/alloc.h"
 #include "../util/util.h"
 #include "str.h"
+#include "cc1.h"
 
 #define KEYWORD(x) { #x, token_ ## x }
 
@@ -91,6 +92,12 @@ int current_fname_used;
 static char *buffer, *bufferpos;
 static int ungetch = EOF;
 
+static struct line_list
+{
+	char *line;
+	struct line_list *next;
+} *store_lines, **store_line_last = &store_lines;
+
 /* -- */
 enum token curtok;
 
@@ -105,6 +112,14 @@ int   currentstringlen = 0;
 int current_line = 0;
 int current_chr  = 0;
 
+static void add_store_line(char *l)
+{
+	struct line_list *new = umalloc(sizeof *new);
+	new->line = l;
+
+	*store_line_last = new;
+	store_line_last = &new->next;
+}
 
 static void tokenise_read_line()
 {
@@ -114,7 +129,8 @@ static void tokenise_read_line()
 		return;
 
 	if(buffer){
-		free(buffer);
+		if((fopt_mode & FOPT_SHOW_LINE) == 0)
+			free(buffer);
 		buffer = NULL;
 	}
 
@@ -127,6 +143,10 @@ static void tokenise_read_line()
 	}else{
 		/* check for preprocessor line info */
 		int lno;
+
+		/* but first - add to store_lines */
+		if(fopt_mode & FOPT_SHOW_LINE)
+			add_store_line(l);
 
 		/* format is # [0-9] "filename" ([0-9])* */
 		if(sscanf(l, "# %d ", &lno) == 1){
