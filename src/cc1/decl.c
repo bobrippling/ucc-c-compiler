@@ -55,7 +55,7 @@ void decl_desc_append(decl_desc **pparent, decl_desc *child)
 decl_desc *decl_desc_tail(decl *d)
 {
 	decl_desc *i;
-	for(i = d->desc; i->child; i = i->child);
+	for(i = d->desc; i && i->child; i = i->child);
 	return i;
 }
 

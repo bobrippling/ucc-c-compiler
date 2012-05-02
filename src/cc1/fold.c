@@ -272,7 +272,7 @@ void fold_decl(decl *d, symtable *stab)
 	UCC_ASSERT(d->type && d->type->store != store_typedef, "typedef store after tdef folding");
 
 	/* check for array of funcs, func returning array */
-	for(dp = decl_desc_tail(d); dp->parent_desc; dp = dp->parent_desc){
+	for(dp = decl_desc_tail(d); dp && dp->parent_desc; dp = dp->parent_desc){
 		if(dp->parent_desc->type == decl_desc_func){
 			if(dp->type == decl_desc_array)
 				die_at(&dp->where, "can't have an array of functions");
