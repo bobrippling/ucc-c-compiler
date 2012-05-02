@@ -156,6 +156,8 @@ int decl_desc_equal(decl_desc *a, decl_desc *b)
 			return 0;
 	}
 
+	/* FIXME: allow a to be "type (*)()" and b to be "type ()" */
+
 	if(b->type == decl_desc_ptr){
 		if(a->type != decl_desc_ptr || (b->bits.qual & qual_const ? a->bits.qual & qual_const : 0))
 			return 0;
