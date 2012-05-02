@@ -10,5 +10,6 @@ inc(int i)
 
 main()
 {
-	return call_for_me(inc, 5);
+	int (*f)(int) = inc;
+	return call_for_me(f, 5);
 }
