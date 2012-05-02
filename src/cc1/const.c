@@ -25,10 +25,18 @@ int const_expr_is_const(expr *e)
 	if(expr_kind(e, val) || expr_kind(e, sizeof) || expr_kind(e, addr))
 		return 1;
 
+	/*
+	 * const int i = 5; is const
+	 * but
+	 * const int i = *p; is not const
+	 */
+	return 0;
+#if 0
 	if(e->sym)
 		return decl_is_const(e->sym->decl);
 
 	return decl_is_const(e->tree_type);
+#endif
 }
 
 int const_expr_val(expr *e)

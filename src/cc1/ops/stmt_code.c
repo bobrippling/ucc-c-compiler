@@ -63,11 +63,8 @@ void fold_stmt_code(stmt *s)
 			 * check static decls - after we fold,
 			 * so we've linked the syms and can change ->spel
 			 */
-			if(d->type->store == store_static){
-				char *save = decl_spel(d);
+			if(d->type->store == store_static)
 				decl_set_spel(d, asm_label_static_local(curdecl_func_sp, decl_spel(d)));
-				free(save);
-			}
 		}
 	}
 }

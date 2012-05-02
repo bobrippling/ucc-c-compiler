@@ -3,6 +3,7 @@
 #include <unistd.h>
 
 #include "../util/util.h"
+#include "../util/platform.h"
 #include "data_structs.h"
 #include "macros.h"
 #include "sym.h"
@@ -230,6 +231,11 @@ void print_decl(decl *d, enum pdeclargs mode)
 			fprintf(cc1_out, " (no sym)");
 	}
 
+	if(mode & PDECL_SIZE && !decl_is_func(d)){
+		const int sz = decl_size(d);
+		fprintf(cc1_out, " size 0x%x, %d words", sz, sz / platform_word_size());
+	}
+
 	if(mode & PDECL_NEWLINE)
 		fputc('\n', cc1_out);
 
@@ -421,7 +427,7 @@ void gen_str(symtable *symtab)
 	print_st_en_tdef(symtab);
 
 	for(diter = symtab->decls; diter && *diter; diter++){
-		print_decl(*diter, PDECL_INDENT | PDECL_NEWLINE | PDECL_PIGNORE | PDECL_FUNC_DESCEND);
+		print_decl(*diter, PDECL_INDENT | PDECL_NEWLINE | PDECL_PIGNORE | PDECL_FUNC_DESCEND | PDECL_SIZE);
 		if((*diter)->init){
 			idt_printf("init:\n");
 			gen_str_indent++;

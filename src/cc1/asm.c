@@ -12,6 +12,9 @@
 #include "../util/alloc.h"
 #include "sue.h"
 
+#define SNPRINTF(s, n, ...) \
+		UCC_ASSERT(snprintf(s, n, __VA_ARGS__) != n, "snprintf buffer too small")
+
 static int label_last = 1, str_last = 1, switch_last = 1, flow_last = 1;
 
 char *asm_label_code(const char *fmt)
@@ -22,7 +25,7 @@ char *asm_label_code(const char *fmt)
 	len = strlen(fmt) + 10;
 	ret = umalloc(len + 1);
 
-	snprintf(ret, len, ".%s.%d", fmt, label_last++);
+	SNPRINTF(ret, len, ".%s.%d", fmt, label_last++);
 
 	return ret;
 }
@@ -30,34 +33,38 @@ char *asm_label_code(const char *fmt)
 char *asm_label_array(int str)
 {
 	char *ret = umalloc(16);
-	snprintf(ret, 16, "%s.%d", str ? "str" : "array", str_last++);
+	SNPRINTF(ret, 16, "%s.%d", str ? "str" : "array", str_last++);
 	return ret;
 }
 
 char *asm_label_static_local(const char *funcsp, const char *spel)
 {
 	char *ret;
+	int len;
 
 	UCC_ASSERT(funcsp, "no spel for %s", __func__);
 
-	ret = umalloc(strlen(funcsp) + strlen(spel) + 9);
-	sprintf(ret, "%s.static_%s", funcsp, spel);
+	len = strlen(funcsp) + strlen(spel) + 9;
+	ret = umalloc(len);
+	SNPRINTF(ret, len, "%s.static_%s", funcsp, spel);
 	return ret;
 }
 
 char *asm_label_goto(char *lbl)
 {
-	char *ret = umalloc(strlen(lbl) + 6);
-	sprintf(ret, ".lbl_%s", lbl);
+	int len = strlen(lbl) + 6;
+	char *ret = umalloc(len);
+	SNPRINTF(ret, len, ".lbl_%s", lbl);
 	return ret;
 }
 
 char *asm_label_case(enum asm_label_type lbltype, int val)
 {
-	char *ret = umalloc(15 + 32);
+	int len;
+	char *ret = umalloc(len = 15 + 32);
 	switch(lbltype){
 		case CASE_DEF:
-			sprintf(ret, ".case_%d_default", switch_last);
+			SNPRINTF(ret, len, ".case_%d_default", switch_last);
 			break;
 
 		case CASE_CASE:
@@ -68,7 +75,7 @@ char *asm_label_case(enum asm_label_type lbltype, int val)
 				val = -val;
 				extra = "m";
 			}
-			sprintf(ret, ".case%s_%d_%s%d", lbltype == CASE_RANGE ? "_rng" : "", switch_last, extra, val);
+			SNPRINTF(ret, len, ".case%s_%d_%s%d", lbltype == CASE_RANGE ? "_rng" : "", switch_last, extra, val);
 			break;
 		}
 	}
@@ -79,8 +86,9 @@ char *asm_label_case(enum asm_label_type lbltype, int val)
 
 char *asm_label_flow(const char *fmt)
 {
-	char *ret = umalloc(16 + strlen(fmt));
-	sprintf(ret, ".flow_%s_%d", fmt, flow_last++);
+	int len = 16 + strlen(fmt);
+	char *ret = umalloc(len);
+	SNPRINTF(ret, len, ".flow_%s_%d", fmt, flow_last++);
 	return ret;
 }
 
@@ -98,7 +106,7 @@ void asm_sym(enum asm_sym_type t, sym *s, const char *reg)
 		brackets = umalloc(bracket_len + 1);
 
 		if(t == ASM_LEA || s->decl->func_code){
-			snprintf(brackets, bracket_len, "%s", dsp); /* int (*p)() = printf; for example */
+			SNPRINTF(brackets, bracket_len, "%s", dsp); /* int (*p)() = printf; for example */
 			/*
 			 * either:
 			 *   we want             lea rax, [a]
@@ -116,12 +124,12 @@ void asm_sym(enum asm_sym_type t, sym *s, const char *reg)
 				ICE("operation on full %s", sue_str(s->decl->type->sue));
 
 			/* get warnings for "lea rax, [qword tim]", just do "lea rax, [tim]" */
-			snprintf(brackets, bracket_len, "[%s%s]",
+			SNPRINTF(brackets, bracket_len, "[%s%s]",
 					t == ASM_LEA ? "" : type_s, dsp);
 		}
 	}else{
 		brackets = stackbrackets;
-		snprintf(brackets, sizeof stackbrackets, "[rbp %c %d]",
+		SNPRINTF(brackets, sizeof stackbrackets, "[rbp %c %d]",
 				is_auto ? '-' : '+',
 				((is_auto ? 1 : 2) * platform_word_size()) + s->offset);
 	}

@@ -23,7 +23,7 @@
 
 #include "expr.h"
 
-#define PARSE_DECL_VERBOSE
+/*#define PARSE_DECL_VERBOSE*/
 
 decl_desc *parse_decl_desc(enum decl_mode mode, char **sp);
 
@@ -331,9 +331,9 @@ decl_desc *parse_decl_desc_ptr(enum decl_mode mode, char **sp)
 
 		ptr->bits.qual = qual;
 
-		ret = parse_decl_desc(mode, sp);
+		ptr->child = parse_decl_desc(mode, sp);
 
-		decl_desc_append(&ret, ptr);
+		return ptr;
 
 	}else if(accept(token_open_paren)){
 		ret = parse_decl_desc(mode, sp);
@@ -358,7 +358,7 @@ decl_desc *parse_decl_desc_array(enum decl_mode mode, char **sp)
 {
 	decl_desc *dp = parse_decl_desc_ptr(mode, sp);
 
-	if(accept(token_open_square)){
+	while(accept(token_open_square)){
 		decl_desc *dp_new;
 		expr *size;
 
@@ -376,8 +376,9 @@ decl_desc *parse_decl_desc_array(enum decl_mode mode, char **sp)
 
 		dp_new->bits.array_size = size;
 
-		/* FIXME: check */
-		decl_desc_append(&dp, dp_new);
+		dp_new->child = dp;
+
+		dp = dp_new;
 	}
 
 	return dp;
@@ -387,14 +388,13 @@ decl_desc *parse_decl_desc(enum decl_mode mode, char **sp)
 {
 	decl_desc *dp = parse_decl_desc_array(mode, sp);
 
-	if(accept(token_open_paren)){
+	while(accept(token_open_paren)){
 		decl_desc *dp_new = decl_desc_func_new(NULL, NULL);
 
 		dp_new->bits.func = parse_func_arglist();
 
 		EAT(token_close_paren);
 
-		/*decl_desc_append(&dp, dp_new);*/
 		dp_new->child = dp;
 
 		dp = dp_new;

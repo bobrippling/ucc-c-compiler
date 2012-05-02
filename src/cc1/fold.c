@@ -232,6 +232,8 @@ int fold_sue(struct_union_enum_st *sue, symtable *stab)
 
 void fold_decl(decl *d, symtable *stab)
 {
+	decl_desc *dp;
+
 	/* typedef / __typeof folding */
 	while(d->type->typeof){
 		/* get the typedef decl from t->decl->tree_type */
@@ -264,10 +266,20 @@ void fold_decl(decl *d, symtable *stab)
 
 		/* decl */
 		if(from->desc)
-			decl_leaf(d)->child = decl_desc_copy(from->desc);
+			decl_desc_append(&d->desc, decl_desc_copy(from->desc)); /* append? */
 	}
 
 	UCC_ASSERT(d->type && d->type->store != store_typedef, "typedef store after tdef folding");
+
+	/* check for array of funcs, func returning array */
+	for(dp = decl_desc_tail(d); dp->parent_desc; dp = dp->parent_desc){
+		if(dp->parent_desc->type == decl_desc_func){
+			if(dp->type == decl_desc_array)
+				die_at(&dp->where, "can't have an array of functions");
+			else if(dp->type == decl_desc_func)
+				die_at(&dp->where, "can't have a function returning a function");
+		}
+	}
 
 	switch(d->type->primitive){
 		case type_void:
@@ -528,7 +540,8 @@ void fold(symtable *globs)
 			for(j = 0; D(j); j++){
 				if(j != i && !strcmp(spel_i, decl_spel(D(j)))){
 					/* D(i) is a prototype, check the args match D(j) */
-					fold_funcargs_equal(D(i)->desc->bits.func, D(j)->desc->bits.func, 0, &D(j)->where, "type", decl_spel(D(j)));
+					fold_funcargs_equal(decl_funcargs(D(i)), decl_funcargs(D(j)),
+							0, &D(j)->where, "type", decl_spel(D(j)));
 
 					if(!decl_equal(D(i), D(j), DECL_CMP_STRICT_PRIMITIVE)){
 						char wbuf[WHERE_BUF_SIZ];

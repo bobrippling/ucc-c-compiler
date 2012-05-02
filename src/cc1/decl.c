@@ -112,65 +112,52 @@ decl *decl_copy(decl *d)
 	return ret;
 }
 
-int decl_desc_size(decl_desc *dp)
-{
-	if(dp->child)
-		return decl_desc_size(dp->child);
-
-	switch(dp->type){
-		case decl_desc_ptr:
-			return platform_word_size();
-
-		case decl_desc_func:
-			ICE("can't return decl size for function");
-
-		case decl_desc_array:
-		{
-			ICE("TODO: array size");
-#if 0
-			const int siz = type_size(dp->type);
-			decl_desc *dp;
-			int ret = 0;
-
-			for(dp = d->desc; dp; dp = dp->child)
-				if(dp->array_size){
-					/* should've been folded fully */
-					long v = dp->array_size->val.iv.val;
-					if(!v)
-						v = platform_word_size(); /* int x[0] - the 0 is a sentinel */
-					ret += v * siz;
-				}
-
-			return ret;
-#endif
-		}
-	}
-
-	ICE("shouldn't get here");
-	return 0;
-}
-
 int decl_size(decl *d)
 {
-	if(d->desc){
-		/* pointer */
-		return decl_desc_size(d->desc);
-	}
+	int mul = 1;
 
 	if(d->field_width)
 		return d->field_width;
 
-	return type_size(d->type);
+	if(d->desc){
+		/* find the lowest, start working our way up */
+		decl_desc *dp;
+		int had_ptr = 0;
+
+		for(dp = decl_desc_tail(d); dp; dp = dp->parent_desc)
+			switch(dp->type){
+				case decl_desc_ptr:
+					had_ptr = 1;
+					break;
+
+				case decl_desc_func:
+					break;
+
+				case decl_desc_array:
+					UCC_ASSERT(expr_kind(dp->bits.array_size, val), "decl array size not constant");
+					mul *= dp->bits.array_size->val.iv.val;
+					break;
+			}
+
+		/* pointer to a type, the size is the size of a pointer, not the type */
+		if(had_ptr)
+			return mul * platform_word_size();
+	}
+
+	return mul * type_size(d->type);
 }
 
 int decl_desc_equal(decl_desc *a, decl_desc *b)
 {
 	/* if we are assigning from const, target must be const */
-	if(a->type != b->type)
-		return 0;
+	if(a->type != b->type){
+		/* can assign to int * from int [] */
+		if(a->type != decl_desc_ptr || b->type != decl_desc_array)
+			return 0;
+	}
 
 	if(b->type == decl_desc_ptr){
-		if(b->bits.qual & qual_const ? a->bits.qual & qual_const : 0)
+		if(a->type != decl_desc_ptr || (b->bits.qual & qual_const ? a->bits.qual & qual_const : 0))
 			return 0;
 	}
 
@@ -230,6 +217,13 @@ decl_desc *decl_leaf(decl *d)
 	return dp;
 }
 
+funcargs *decl_funcargs(decl *d)
+{
+	decl_desc *dp;
+	for(dp = d->desc; dp->type != decl_desc_func && dp->child; dp = dp->child);
+	return dp->bits.func;
+}
+
 int decl_is_struct_or_union(decl *d)
 {
 	return d->type->primitive == type_struct || d->type->primitive == type_union;
@@ -262,7 +256,7 @@ decl *decl_ptr_depth_dec(decl *d, where *from)
 
 	for(last = d->desc; last && last->child; last = last->child);
 
-	if(!last || last->type != decl_desc_ptr){
+	if(!last || (last->type != decl_desc_ptr && last->type != decl_desc_array)){
 		die_at(from,
 			"trying to dereference non-pointer%s%s%s",
 			last ? " (" : "",

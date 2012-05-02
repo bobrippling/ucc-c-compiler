@@ -172,7 +172,7 @@ decl *decl_func_deref(decl *d, funcargs **pfuncargs);
 int decl_attr_present(decl_attr *, enum decl_attr_type);
 
 int decl_has_array(decl *);
-funcargs *decl_funcargs(void);
+funcargs *decl_funcargs(decl *);
 
 const char *decl_desc_str(decl_desc *dp);
 
