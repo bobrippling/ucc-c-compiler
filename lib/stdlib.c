@@ -139,52 +139,27 @@ char *getenv(const char *key)
 	return NULL;
 }
 
-//#define ATEXIT_SINGLE
-
-#ifdef ATEXIT_SINGLE
-static void (*exit_func)(void);
-
-#else
 #define N_EXITS 32
-#warning broken atexit()?
 
 static void (*exit_funcs[N_EXITS])(void);
 static int    exit_fidx;
-#endif
 
 int atexit(void (*f)(void))
 {
-#ifdef ATEXIT_SINGLE
-	if(exit_func){
-		errno = ENOMEM;
-		return -1;
-	}
-	exit_func = f;
-	return 0;
-#else
 	if(exit_fidx == N_EXITS){
 		errno = ENOMEM;
 		return -1;
 	}
 
 	exit_funcs[exit_fidx++] = f;
-	printf("exit_funcs[%d] = %p = %p\n", exit_fidx - 1, f, exit_funcs[exit_fidx - 1]);
 	return 0;
-#endif
 }
 
 void exit(int code)
 {
 	/* call exit funcs */
-#ifdef ATEXIT_SINGLE
-	if(exit_func)
-		exit_func();
-#else
-	while(exit_fidx > 0){
-		printf("exit_funcs[%d] = %p\n", exit_fidx - 1, exit_funcs[exit_fidx - 1]);
+	while(exit_fidx > 0)
 		exit_funcs[--exit_fidx]();
-	}
-#endif
 
 	__syscall(SYS_exit, code);
 }
