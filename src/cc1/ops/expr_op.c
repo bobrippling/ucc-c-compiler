@@ -306,7 +306,9 @@ norm_tt:
 		&& !e->op_no_ptr_mul)
 		{
 			/* 2 + (void *)5 is 7, not 2 + 8*5 */
-			if(e->tree_type->type->primitive != type_void){
+			if(decl_is_void_ptr(e->tree_type)){
+				cc1_warn_at(&e->tree_type->type->where, 0, WARN_VOID_ARITH, "arithmetic with void pointer");
+			}else{
 				/* we're dealing with pointers, adjust the amount we add by */
 
 				if(e->op == op_minus){
@@ -337,8 +339,6 @@ norm_tt:
 				}
 
 				const_fold(e);
-			}else{
-				cc1_warn_at(&e->tree_type->type->where, 0, WARN_VOID_ARITH, "arithmetic with void pointer");
 			}
 		}
 

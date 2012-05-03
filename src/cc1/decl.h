@@ -158,6 +158,7 @@ int     decl_is_func(           decl *); /* different from _callable - fptrs are
 int     decl_is_const(          decl *);
 int     decl_is_fptr(           decl *);
 
+int     decl_is_void_ptr(       decl *);
 int     decl_ptr_depth(         decl *);
 int     decl_desc_depth(        decl *);
 #define decl_is_void(d) ((d)->type->primitive == type_void && !(d)->desc)

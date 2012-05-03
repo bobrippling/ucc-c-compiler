@@ -156,7 +156,14 @@ int decl_desc_equal(decl_desc *a, decl_desc *b)
 			return 0;
 	}
 
-	/* FIXME: allow a to be "type (*)()" and b to be "type ()" */
+	/* allow a to be "type (*)()" and b to be "type ()" */
+	if(a->type == decl_desc_func && a->child && a->child->type == decl_desc_ptr){
+		if(b->type == decl_desc_func){
+			if(a->child->child && b->child)
+				return decl_desc_equal(a->child->child, b->child);
+			return 1;
+		}
+	}
 
 	if(b->type == decl_desc_ptr){
 		if(a->type != decl_desc_ptr || (b->bits.qual & qual_const ? a->bits.qual & qual_const : 0))
@@ -169,15 +176,17 @@ int decl_desc_equal(decl_desc *a, decl_desc *b)
 	return !b->child;
 }
 
+int decl_is_void_ptr(decl *d)
+{
+	return d->type->primitive == type_void
+		&& d->desc
+		&& d->desc->type == decl_desc_ptr
+		&& !d->desc->child;
+}
+
 int decl_equal(decl *a, decl *b, enum decl_cmp mode)
 {
-#define VOID_PTR(d) (                   \
-			d->type->primitive == type_void   \
-			&&  d->desc                   \
-			&& !d->desc->child            \
-		)
-
-	if((mode & DECL_CMP_ALLOW_VOID_PTR) && (VOID_PTR(a) || VOID_PTR(b)))
+	if((mode & DECL_CMP_ALLOW_VOID_PTR) && (decl_is_void_ptr(a) || decl_is_void_ptr(b)))
 		return 1; /* one side is void * */
 
 	if(!type_equal(a->type, b->type, mode & DECL_CMP_STRICT_PRIMITIVE))

@@ -49,49 +49,55 @@ void print_expr_val(expr *e)
 	fprintf(cc1_out, "%ld", e->val.iv.val);
 }
 
-#if 0
-void print_decl_ptr_eng(decl_ptr *dp)
+void print_decl_desc_eng(decl_desc *dp)
 {
-	if(dp->child){
-		print_decl_ptr_eng(dp->child);
+	if(dp->child)
+		print_decl_desc_eng(dp->child);
 
-		fprintf(cc1_out, "%s%s",
-				dp->array_size ? "" : "pointer to ",
-				type_qual_to_str(dp->qual));
-	}
+	switch(dp->type){
+		case decl_desc_ptr:
+			fprintf(cc1_out, "pointer to ");
+			break;
 
-	if(dp->fptrargs){
+		case decl_desc_func:
+		{
 #ifdef ENGLISH_PRINT_ARGLIST
-		funcargs *fargs = dp->fptrargs;
-		decl **iter;
+			funcargs *fargs = dp->bits.func;
+			decl **iter;
 #endif
 
-		fputs("function", cc1_out);
+			fputs("function", cc1_out);
 
 #ifdef ENGLISH_PRINT_ARGLIST
-		fputc('(', cc1_out);
-		if(fargs->arglist){
+			fputc('(', cc1_out);
+			if(fargs->arglist){
 
-			for(iter = fargs->arglist; iter && *iter; iter++){
-				print_decl(*iter, PDECL_NONE);
-				if(iter[1])
-					fputs(", ", cc1_out);
+				for(iter = fargs->arglist; iter && *iter; iter++){
+					print_decl(*iter, PDECL_NONE);
+					if(iter[1])
+						fputs(", ", cc1_out);
+				}
+
+				if(fargs->variadic)
+					fputs("variadic", cc1_out);
+
+			}else{
+				fprintf(cc1_out, "taking %s arguments", fargs->args_void ? "no" : "unspecified");
 			}
-
-			if(fargs->variadic)
-				fputs("variadic", cc1_out);
-
-		}else{
-			fprintf(cc1_out, "taking %s arguments", fargs->args_void ? "no" : "unspecified");
-		}
-		fputc(')', cc1_out);
+			fputc(')', cc1_out);
 #endif
-		fputs(" returning ", cc1_out);
-	}
-	if(dp->array_size){
-		fputs("array[", cc1_out);
-		print_expr_val(dp->array_size);
-		fputs("] of ", cc1_out);
+			fputs(" returning ", cc1_out);
+
+			break;
+		}
+
+		case decl_desc_array:
+			if(dp->bits.array_size){
+				fputs("array[", cc1_out);
+				print_expr_val(dp->bits.array_size);
+				fputs("] of ", cc1_out);
+			}
+			break;
 	}
 }
 
@@ -100,11 +106,11 @@ void print_decl_eng(decl *d)
 	if(decl_spel(d))
 		fprintf(cc1_out, "\"%s\": ", decl_spel(d));
 
-	print_decl_ptr_eng(d->decl_ptr);
+	if(d->desc)
+		print_decl_desc_eng(d->desc);
 
 	fprintf(cc1_out, "%s", type_to_str(d->type));
 }
-#endif
 
 void print_funcargs(funcargs *fargs)
 {
@@ -173,55 +179,27 @@ void print_decl(decl *d, enum pdeclargs mode)
 	if((mode & PDECL_PIGNORE) && d->ignore)
 		fprintf(cc1_out, "(ignored) ");
 
+	if(d->type->typeof){
+		fputc('\n', cc1_out);
+		gen_str_indent++;
+		idt_printf("typeof expr:\n");
+		gen_str_indent++;
+		print_expr(d->type->typeof);
+		gen_str_indent -= 2;
+		idt_print();
+	}
+
 	if(fopt_mode & FOPT_ENGLISH){
-		//print_decl_eng(d);
-		ICE("TODO");
+		print_decl_eng(d);
 	}else{
 		fputs(type_to_str(d->type), cc1_out);
 
-		if(d->type->typeof){
-			fputc('\n', cc1_out);
-			gen_str_indent++;
-			idt_printf("typeof expr:\n");
-			gen_str_indent++;
-			print_expr(d->type->typeof);
-			gen_str_indent -= 2;
-			idt_print();
+		if(d->desc){
+			fputc(' ', cc1_out);
+			print_decl_desc(d->desc, d);
+		}else if(d->spel){
+			fprintf(cc1_out, " %s", d->spel);
 		}
-
-#if 0
-		if(fopt_mode & FOPT_DECL_PTR_STAT){
-			const int idt_orig = gen_str_indent;
-			decl_desc *dpi;
-
-			fputc('\n', cc1_out);
-			for(dpi = d->decl_ptr; dpi; dpi = dpi->child){
-				gen_str_indent++;
-				idt_printf("decl_ptr: %s%s",
-						type_qual_to_str(dpi->qual),
-						dpi->fptrargs ? "(#)" : "");
-
-				if(dpi->array_size){
-					fputs("\n", cc1_out);
-					idt_printf("array size:\n");
-					gen_str_indent++;
-					print_expr(dpi->array_size);
-					gen_str_indent--;
-				}
-			}
-
-			gen_str_indent = idt_orig;
-		}else{
-#endif
-			if(d->desc){
-				fputc(' ', cc1_out);
-				print_decl_desc(d->desc, d);
-			}else if(d->spel){
-				fprintf(cc1_out, " %s", d->spel);
-			}
-#if 0
-		}
-#endif
 	}
 
 	if(mode & PDECL_SYM_OFFSET){
