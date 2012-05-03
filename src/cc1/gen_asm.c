@@ -49,7 +49,7 @@ void gen_asm_global(decl *d)
 				asm_operand_new_reg(NULL, ASM_REG_BP),
 				asm_operand_new_reg(NULL, ASM_REG_SP));
 
-		curfunc_lblfin = asm_label_code(d->spel);
+		curfunc_lblfin = asm_label_code(decl_spel(d));
 
 		if((offset = d->func_code->symtab->auto_total_size)){
 			asm_output_new(asm_out_type_sub,

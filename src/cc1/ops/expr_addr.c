@@ -21,8 +21,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 		UCC_ASSERT(!e->expr, "expression found in array store address-of");
 
 		/* static const char * */
-		e->tree_type = decl_new();
-		*decl_leaf(e->tree_type) = decl_ptr_new();
+		e->tree_type = decl_ptr_depth_inc(decl_new());
 
 		e->tree_type->type->store = store_static;
 		e->tree_type->type->qual  = qual_const;
@@ -31,7 +30,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 
 		e->spel = e->array_store->label = asm_label_array(e->array_store->type == array_str);
 
-		e->tree_type->spel = e->spel;
+		decl_set_spel(e->tree_type, e->spel);
 
 		array_sym = SYMTAB_ADD(symtab_root(stab), e->tree_type, stab->parent ? sym_local : sym_global);
 

@@ -85,7 +85,7 @@ expr *expr_ptr_multiply(expr *e, decl *d)
 
 	dtmp = decl_copy(d);
 
-	sz = decl_size(decl_ptr_depth_dec(dtmp));
+	sz = decl_size(decl_ptr_depth_dec(dtmp, NULL));
 
 	decl_free(dtmp);
 
@@ -116,5 +116,5 @@ expr *expr_assignment(expr *to, expr *from)
 expr *expr_new_decl_init(decl *d)
 {
 	UCC_ASSERT(d->init, "no init in %s", __func__);
-	return expr_assignment(expr_new_identifier(d->spel), d->init);
+	return expr_assignment(expr_new_identifier(decl_spel(d)), d->init);
 }

@@ -13,6 +13,9 @@
 #include "../util/alloc.h"
 #include "sue.h"
 
+#define SNPRINTF(s, n, ...) \
+		UCC_ASSERT(snprintf(s, n, __VA_ARGS__) != n, "snprintf buffer too small")
+
 static int label_last = 1, str_last = 1, switch_last = 1, flow_last = 1;
 
 static const struct
@@ -36,7 +39,7 @@ char *asm_label_code(const char *fmt)
 	len = strlen(fmt) + 10;
 	ret = umalloc(len + 1);
 
-	snprintf(ret, len, ".%s.%d", fmt, label_last++);
+	SNPRINTF(ret, len, ".%s.%d", fmt, label_last++);
 
 	return ret;
 }
@@ -44,34 +47,38 @@ char *asm_label_code(const char *fmt)
 char *asm_label_array(int str)
 {
 	char *ret = umalloc(16);
-	snprintf(ret, 16, "%s.%d", str ? "str" : "array", str_last++);
+	SNPRINTF(ret, 16, "%s.%d", str ? "str" : "array", str_last++);
 	return ret;
 }
 
 char *asm_label_static_local(const char *funcsp, const char *spel)
 {
 	char *ret;
+	int len;
 
 	UCC_ASSERT(funcsp, "no spel for %s", __func__);
 
-	ret = umalloc(strlen(funcsp) + strlen(spel) + 9);
-	sprintf(ret, "%s.static_%s", funcsp, spel);
+	len = strlen(funcsp) + strlen(spel) + 9;
+	ret = umalloc(len);
+	SNPRINTF(ret, len, "%s.static_%s", funcsp, spel);
 	return ret;
 }
 
 char *asm_label_goto(char *lbl)
 {
-	char *ret = umalloc(strlen(lbl) + 6);
-	sprintf(ret, ".lbl_%s", lbl);
+	int len = strlen(lbl) + 6;
+	char *ret = umalloc(len);
+	SNPRINTF(ret, len, ".lbl_%s", lbl);
 	return ret;
 }
 
 char *asm_label_case(enum asm_label_type lbltype, int val)
 {
-	char *ret = umalloc(15 + 32);
+	int len;
+	char *ret = umalloc(len = 15 + 32);
 	switch(lbltype){
 		case CASE_DEF:
-			sprintf(ret, ".case_%d_default", switch_last);
+			SNPRINTF(ret, len, ".case_%d_default", switch_last);
 			break;
 
 		case CASE_CASE:
@@ -82,7 +89,7 @@ char *asm_label_case(enum asm_label_type lbltype, int val)
 				val = -val;
 				extra = "m";
 			}
-			sprintf(ret, ".case%s_%d_%s%d", lbltype == CASE_RANGE ? "_rng" : "", switch_last, extra, val);
+			SNPRINTF(ret, len, ".case%s_%d_%s%d", lbltype == CASE_RANGE ? "_rng" : "", switch_last, extra, val);
 			break;
 		}
 	}
@@ -93,15 +100,16 @@ char *asm_label_case(enum asm_label_type lbltype, int val)
 
 char *asm_label_flow(const char *fmt)
 {
-	char *ret = umalloc(16 + strlen(fmt));
-	sprintf(ret, ".flow_%s_%d", fmt, flow_last++);
+	int len = 16 + strlen(fmt);
+	char *ret = umalloc(len);
+	SNPRINTF(ret, len, ".flow_%s_%d", fmt, flow_last++);
 	return ret;
 }
 
 void asm_sym(enum asm_sym_type t, sym *s, asm_operand *reg)
 {
 	const int is_global = s->type == sym_global || type_store_static_or_extern(s->decl->type->store);
-	char *const dsp = s->decl->spel;
+	char *const dsp = decl_spel(s->decl);
 	int is_auto = s->type == sym_local;
 	asm_operand *brackets;
 
@@ -255,7 +263,7 @@ void asm_declare_single(FILE *f, decl *d)
 		UCC_ASSERT(d->init->array_store, "no array store for struct init (TODO?)");
 		UCC_ASSERT(d->init->array_store->type == array_exprs, "array store of strings for struct");
 
-		fprintf(f, "%s dq ", d->spel); /* XXX: assumes all struct members are word-size */
+		fprintf(f, "%s dq ", decl_spel(d)); /* XXX: assumes all struct members are word-size */
 
 		for(i = 0; i < d->init->array_store->len; i++)
 			fprintf(f, "%ld%s",
@@ -264,7 +272,7 @@ void asm_declare_single(FILE *f, decl *d)
 					);
 
 	}else{
-		fprintf(f, "%s d%c ", d->spel, asm_type_ch(d));
+		fprintf(f, "%s d%c ", decl_spel(d), asm_type_ch(d));
 
 		asm_declare_single_part(f, d->init);
 	}

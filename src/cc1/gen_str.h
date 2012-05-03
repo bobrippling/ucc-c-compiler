@@ -10,6 +10,7 @@ enum pdeclargs
 	PDECL_FUNC_DESCEND  = 1 << 3,
 	PDECL_PIGNORE       = 1 << 4,
 	PDECL_PINIT         = 1 << 5,
+	PDECL_SIZE          = 1 << 6,
 };
 
 void idt_printf(const char *fmt, ...);

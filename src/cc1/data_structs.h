@@ -1,6 +1,3 @@
-typedef struct funcargs    funcargs;
-typedef struct tree_flow   tree_flow;
-
 typedef struct intval intval;
 
 struct intval
@@ -42,5 +39,4 @@ enum op_type
 #include "expr.h"
 #include "stmt.h"
 #include "sym.h"
-
-extern where *eof_where;
+#include "decl.h"

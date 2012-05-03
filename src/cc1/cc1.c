@@ -88,8 +88,6 @@ struct
 	{ 1,  "strict-types",  FOPT_STRICT_TYPES    },
 	{ 1,  "const-fold",    FOPT_CONST_FOLD      },
 	{ 1,  "english",       FOPT_ENGLISH         },
-	{ 1,  "dptr-tree",     FOPT_DECL_PTR_STAT   },
-	{ 1,  "fptr-call",     FOPT_ALLOW_FPTR_CALL },
 	{ 1,  "show-line",     FOPT_SHOW_LINE       },
 
 	{ 0,  NULL, 0 }
@@ -151,7 +149,7 @@ void ccdie(int verbose, const char *fmt, ...)
 		for(i = 0; args[i].arg; i++)
 			fprintf(stderr, "  -%c%s\n", args[i].is_opt["Wf"], args[i].arg);
 		for(i = 0; val_args[i].arg; i++)
-			fprintf(stderr, "  -f%s=value\n", args[i].arg);
+			fprintf(stderr, "  -f%s=value\n", val_args[i].arg);
 	}
 
 	exit(1);
