@@ -14,6 +14,14 @@
 
 where *eof_where = NULL;
 
+intval *intval_new(long v)
+{
+	intval *iv = umalloc(sizeof *iv);
+	iv->val = v;
+	return iv;
+}
+
+
 void where_new(struct where *w)
 {
 	extern int current_line, current_chr;

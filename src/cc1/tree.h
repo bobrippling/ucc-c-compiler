@@ -102,4 +102,6 @@ void funcargs_free(funcargs *args, int free_decls);
 
 intval *intval_new(long v);
 
+extern where *eof_where;
+
 #endif

@@ -487,7 +487,7 @@ void fold_funcargs(funcargs *fargs, symtable *stab, char *context)
 
 void fold_func(decl *func_decl, symtable *globs)
 {
-	curdecl_func_sp = decl_spel(func_decl);
+	curdecl_func = func_decl;
 
 	if(func_decl->func_code){
 		funcargs *fargs;
@@ -500,7 +500,7 @@ void fold_func(decl *func_decl, symtable *globs)
 			/* add args backwards, since we push them onto the stack backwards - still need to do this here? */
 			for(i = nargs - 1; i >= 0; i--){
 				if(!decl_spel(fargs->arglist[i]))
-					die_at(&fargs->where, "function \"%s\" has unnamed arguments", curdecl_func_sp);
+					die_at(&fargs->where, "function \"%s\" has unnamed arguments", curdecl_func->spel);
 				else
 					SYMTAB_ADD(func_decl->func_code->symtab, fargs->arglist[i], sym_arg);
 			}
