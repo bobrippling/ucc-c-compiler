@@ -231,7 +231,7 @@ relook:
 
 			did_replace = 1;
 		}else{
-			int is_counter;
+			int is_counter = 0;
 			static int counter = 0; /* __COUNTER__ */
 			char *val;
 			int fval = 0;
