@@ -8,9 +8,16 @@ enum decl_mode
 	DECL_CAN_DEFAULT  = 1 << 2,
 };
 
+enum decl_multi_mode
+{
+	DECL_MULTI_CAN_DEFAULT        = 1 << 0,
+	DECL_MULTI_ACCEPT_FIELD_WIDTH = 1 << 1,
+	DECL_MULTI_ACCEPT_FUNCTIONS   = 1 << 2,
+};
+
 extern enum token curtok;
 
-#define PARSE_DECLS() parse_decls_multi_type(0, 0)
+#define PARSE_DECLS() parse_decls_multi_type(0)
 
 #define parse_expr() parse_expr_comma()
 #define parse_expr_funcallarg() parse_expr_if()

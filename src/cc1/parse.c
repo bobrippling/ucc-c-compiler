@@ -740,7 +740,7 @@ symtable *parse()
 
 	current_scope = globals = symtab_new(NULL);
 
-	decls = parse_decls_multi_type(1, 0);
+	decls = parse_decls_multi_type(DECL_MULTI_CAN_DEFAULT | DECL_MULTI_ACCEPT_FUNCTIONS);
 	EAT(token_eof);
 
 	if(parse_had_error)

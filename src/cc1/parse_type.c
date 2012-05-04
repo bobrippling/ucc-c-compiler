@@ -80,7 +80,7 @@ type *parse_type_sue(enum type_primitive prim)
 
 			EAT(token_close_block);
 		}else{
-			members = (sue_member **)parse_decls_multi_type(DECL_CAN_DEFAULT | DECL_SPEL_NEED, 1);
+			members = (sue_member **)parse_decls_multi_type(DECL_MULTI_CAN_DEFAULT | DECL_MULTI_ACCEPT_FIELD_WIDTH);
 			EAT(token_close_block);
 		}
 
@@ -482,9 +482,9 @@ decl **parse_decls_one_type()
 	return decls;
 }
 
-decl **parse_decls_multi_type(const int can_default, const int accept_field_width)
+decl **parse_decls_multi_type(enum decl_multi_mode mode)
 {
-	const enum decl_mode parse_flag = can_default ? DECL_CAN_DEFAULT : 0;
+	const enum decl_mode parse_flag = mode & DECL_MULTI_CAN_DEFAULT ? DECL_CAN_DEFAULT : 0;
 	decl **decls = NULL;
 	decl *last;
 	int are_tdefs;
@@ -500,7 +500,7 @@ decl **parse_decls_multi_type(const int can_default, const int accept_field_widt
 
 		if(!t){
 			/* can_default makes sure we don't parse { int *p; *p = 5; } the latter as a decl */
-			if(parse_possible_decl() && can_default){
+			if(parse_possible_decl() && (mode & DECL_MULTI_CAN_DEFAULT)){
 				INT_TYPE(t);
 				cc1_warn_at(&t->where, 0, WARN_IMPLICIT_INT, "defaulting type to int");
 			}else{
@@ -603,6 +603,10 @@ decl **parse_decls_multi_type(const int can_default, const int accept_field_widt
 					:  (void ***)&decls,
 					d);
 
+			/* FIXME: check later for functions, not here - typedefs */
+			if(decl_is_func(d) && (mode & DECL_MULTI_ACCEPT_FUNCTIONS) == 0)
+				die_at(&d->where, "function not wanted");
+
 			if(are_tdefs){
 				if(decl_is_func(d) && d->func_code)
 					die_at(&d->where, "can't have a typedef function with code");
@@ -610,7 +614,7 @@ decl **parse_decls_multi_type(const int can_default, const int accept_field_widt
 					die_at(&d->where, "can't init a typedef");
 			}
 
-			if(accept_field_width && accept(token_colon)){
+			if((mode & DECL_MULTI_ACCEPT_FIELD_WIDTH) && accept(token_colon)){
 				/* normal decl, check field spec */
 				d->field_width = currentval.val;
 				if(d->field_width <= 0)
