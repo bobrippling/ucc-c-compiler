@@ -201,8 +201,13 @@ int decl_ptr_depth(decl *d)
 	int i = 0;
 
 	for(dp = d->desc; dp; dp = dp->child)
-		if(dp->type == decl_desc_ptr)
-			i++;
+		switch(dp->type){
+			case decl_desc_ptr:
+			case decl_desc_array:
+				i++;
+			case decl_desc_func:
+				break;
+		}
 
 	return i;
 }
@@ -319,6 +324,13 @@ int decl_is_fptr(decl *d)
 			prev = dp, dp = dp->child);
 
 	return dp && prev && dp->type == decl_desc_ptr && prev->type == decl_desc_func;
+}
+
+int decl_is_array(decl *d)
+{
+	decl_desc *dp;
+	for(dp = d->desc; dp && dp->child; dp = dp->child);
+	return dp ? dp->type == decl_desc_array : 0;
 }
 
 int decl_has_array(decl *d)

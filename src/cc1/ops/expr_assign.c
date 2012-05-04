@@ -25,6 +25,9 @@ int expr_is_lvalue(expr *e, int allow_func)
 	 * also can't be const, checked in fold_assign (since we allow const inits)
 	 */
 
+	if(decl_is_array(e->tree_type))
+		return 0;
+
 	if(expr_kind(e, identifier))
 		return allow_func || !e->tree_type->func_code;
 

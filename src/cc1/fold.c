@@ -71,7 +71,6 @@ void fold_funcargs_equal(funcargs *args_a, funcargs *args_b, int check_vari, whe
 	}
 }
 
-
 void fold_decl_equal(decl *a, decl *b, where *w, enum warning warn,
 		const char *errfmt, ...)
 {
@@ -265,9 +264,14 @@ void fold_decl(decl *d, symtable *stab)
 		d->type->store  = old_store;
 
 		/* decl */
-		if(from->desc)
-			decl_desc_append(&d->desc, decl_desc_copy(from->desc)); /* append? */
+		if(from->desc){
+			decl_desc *ins = decl_desc_copy(from->desc);
+
+			decl_desc_append(&ins, d->desc);
+			d->desc = ins;
+		}
 	}
+	decl_desc_link(d);
 
 	UCC_ASSERT(d->type && d->type->store != store_typedef, "typedef store after tdef folding");
 

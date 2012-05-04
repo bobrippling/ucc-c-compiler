@@ -466,7 +466,10 @@ void asm_operate_struct(expr *e, symtable *tab)
 	asm_temp(1, "add rax, %d ; offset of member %s",
 			e->rhs->tree_type->struct_offset,
 			e->rhs->spel);
-	asm_temp(1, "mov rax, [rax] ; val from struct");
+	if(decl_is_array(e->rhs->tree_type))
+		asm_temp(1, "; array - got address");
+	else
+		asm_temp(1, "mov rax, [rax] ; val from struct");
 	asm_temp(1, "push rax");
 }
 
