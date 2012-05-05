@@ -147,6 +147,8 @@ decl_desc   *decl_desc_array_new(decl *dparent, decl_desc *parent);
 decl      *decl_copy(decl *);
 decl_desc *decl_desc_copy(decl_desc *);
 
+void decl_conv_array_ptr(decl *d);
+
 void decl_desc_link(decl *);
 
 int   decl_size( decl *);

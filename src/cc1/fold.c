@@ -410,18 +410,20 @@ void fold_stmt(stmt *t)
 
 void fold_funcargs(funcargs *fargs, symtable *stab, char *context)
 {
-	decl **diter;
-
-	for(diter = fargs->arglist; diter && *diter; diter++)
-		fold_decl(*diter, stab);
-
 	if(fargs->arglist){
 		/* check for unnamed params and extern/static specs */
 		int i;
 
 		for(i = 0; fargs->arglist[i]; i++){
-			if(type_store_static_or_extern(fargs->arglist[i]->type->store)){
-				const char *sp = decl_spel(fargs->arglist[i]);
+			decl *const d = fargs->arglist[i];
+
+			fold_decl(d, stab);
+
+			/* convert any array definitions to pointers */
+			decl_conv_array_ptr(d);
+
+			if(type_store_static_or_extern(d->type->store)){
+				const char *sp = decl_spel(d);
 				die_at(&fargs->where, "argument %d %s%s%sin function \"%s\" is static or extern",
 						i + 1,
 						sp ? "(" : "",

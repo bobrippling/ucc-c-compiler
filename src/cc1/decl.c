@@ -387,6 +387,19 @@ cant:
 	return d;
 }
 
+void decl_conv_array_ptr(decl *d)
+{
+	decl_desc *dp;
+
+	for(dp = d->desc; dp; dp = dp->child){
+		if(dp->type == decl_desc_array){
+			expr_free(dp->bits.array_size);
+			dp->type = decl_desc_ptr;
+			dp->bits.qual = qual_none;
+		}
+	}
+}
+
 char *decl_spel(decl *d)
 {
 #if 0
