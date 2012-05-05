@@ -340,14 +340,19 @@ void nexttoken()
 					mode = BIN;
 					break;
 				default:
-					if(isoct(c))
+					if(!isoct(c)){
+						if(isdigit(c))
+							die_at(NULL, "invalid oct character '%c'", c);
+						else
+							mode = DEC; /* just zero */
+					}else{
 						mode = OCT;
-					else
-						goto dec; /* '0' by itself */
+					}
+
+					bufferpos--; /* rewind over c */
 					break;
 			}
 		}else{
-dec:
 			mode = DEC;
 			bufferpos--; /* rewind */
 		}
