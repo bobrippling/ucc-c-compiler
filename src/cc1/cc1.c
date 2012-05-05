@@ -105,7 +105,14 @@ FILE *cc_out[NUM_SECTIONS];     /* temporary section files */
 char  fnames[NUM_SECTIONS][32]; /* duh */
 FILE *cc1_out;                  /* final output */
 
-enum warning warn_mode = ~(WARN_VOID_ARITH | WARN_COMPARE_MISMATCH | WARN_IMPLICIT_INT | WARN_INCOMPLETE_USE);
+enum warning warn_mode = ~(
+		WARN_VOID_ARITH |
+		WARN_COMPARE_MISMATCH |
+		WARN_IMPLICIT_INT |
+		WARN_INCOMPLETE_USE |
+		WARN_OPT_POSSIBLE
+		);
+
 enum fopt    fopt_mode = FOPT_CONST_FOLD;
 enum cc1_backend cc1_backend = BACKEND_ASM;
 
