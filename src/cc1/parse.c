@@ -20,24 +20,9 @@
 #define STAT_NEW_NEST(type) stmt_new_wrapper(type, symtab_new(current_scope))
 
 stmt *parse_code_block(void);
-expr *parse_expr_funcall(void);
-expr *parse_expr_inc_dec(void);
 
-/*
- * order goes:
- *
- * parse_expr_unary_op   [-+!~]`parse_expr_single`
- * parse_expr_binary_op  above [/%*]    above
- * parse_expr_sum        above [+-]     above
- * parse_expr_shift      above [<<|>>]  above
- * parse_expr_bit_op     above [&|^]    above
- * parse_expr_cmp_op     above [><==!=] above
- * parse_expr_logical_op above [&&||]   above
- *
- * yeah yeah this has changed since i started
- * grep '^expr \+\*' $f
- * will do the trick
- */
+expr *parse_expr_unary(void);
+#define parse_expr_cast() parse_expr_unary()
 
 /* parse_type uses this for structs, tdefs and enums */
 symtable *current_scope;
@@ -46,19 +31,6 @@ symtable *current_scope;
 /* sometimes we can carry on after an error, but we don't want to go through to compilation etc */
 int parse_had_error = 0;
 
-
-expr *parse_lone_identifier()
-{
-	expr *e;
-
-	if(curtok != token_identifier)
-		EAT(token_identifier); /* raise error */
-
-	e = expr_new_identifier(token_current_spel());
-	EAT(token_identifier);
-
-	return e;
-}
 
 expr *parse_expr_sizeof_typeof()
 {
@@ -71,42 +43,46 @@ expr *parse_expr_sizeof_typeof()
 			e = expr_new_sizeof_decl(d);
 		}else{
 			/* parse a full one, since we're in brackets */
-			e = expr_new_sizeof_expr(parse_expr());
+			e = expr_new_sizeof_expr(parse_expr_exp());
 		}
 
 		EAT(token_close_paren);
 	}else{
-		e = expr_new_sizeof_expr(parse_expr_deref());
+		e = expr_new_sizeof_expr(parse_expr_unary());
 		/* don't go any higher, sizeof a - 1, means sizeof(a) - 1 */
 	}
 
 	return e;
 }
 
-expr *parse_expr_unary_op()
+expr *parse_expr_identifier()
 {
 	expr *e;
 
-	switch(curtok){
-		case token_sizeof:
-			EAT(token_sizeof);
-			return parse_expr_sizeof_typeof();
+	if(curtok != token_identifier)
+		die_at(NULL, "identifier expected, got %s (%s:%d)",
+				token_to_str(curtok), __FILE__, __LINE__);
 
+	e = expr_new_identifier(token_current_spel());
+	EAT(token_identifier);
+	return e;
+}
+
+expr *parse_expr_primary()
+{
+	switch(curtok){
 		case token_integer:
 		case token_character:
-			e = expr_new_intval(&currentval);
+		{
+			expr *e = expr_new_intval(&currentval);
 			EAT(curtok);
 			return e;
-
-		case token_and:
-			EAT(token_and);
-			e = expr_new_addr();
-			e->expr = parse_expr_array();
-			return e;
+		}
 
 		case token_string:
-		case token_open_block: /* array */
-			e = expr_new_addr();
+		case token_open_block:
+		{
+			expr *e = expr_new_addr();
 
 			e->array_store = array_decl_new();
 
@@ -124,7 +100,7 @@ expr *parse_expr_unary_op()
 			}else{
 				EAT(token_open_block);
 				for(;;){
-					dynarray_add((void ***)&e->array_store->data.exprs, parse_expr_funcallarg());
+					dynarray_add((void ***)&e->array_store->data.exprs, parse_expr_no_comma());
 					if(accept(token_comma)){
 						if(accept(token_close_block)) /* { 1, } */
 							break;
@@ -139,117 +115,88 @@ expr *parse_expr_unary_op()
 				e->array_store->type = array_exprs;
 			}
 			return e;
-
-		case token_open_paren:
-		{
-			decl *d;
-
-			EAT(token_open_paren);
-
-			if((d = parse_decl_single(DECL_SPEL_NO))){
-				e = expr_new_cast(d);
-				EAT(token_close_paren);
-				e->expr = parse_expr_funcall(); /* grab only the closest */
-				return e;
-			}
-
-			if(curtok == token_open_block){
-				/* ({ ... }) */
-				e = expr_new_stmt(parse_code_block());
-			}else{
-				e = parse_expr();
-				e->in_parens = 1;
-				/* mark as being inside parens, for if((x = 5)) checking */
-			}
-			EAT(token_close_paren);
-			return e;
 		}
-
-		case token_plus:
-			EAT(token_plus);
-			return parse_expr();
-
-		case token_minus:
-			e = expr_new_op(curtok_to_op());
-			EAT(token_minus);
-			e->lhs = parse_expr_binary_op();
-			return e;
-
-		case token_not:
-		case token_bnot:
-			e = expr_new_op(curtok_to_op());
-
-			EAT(curtok);
-			e->lhs = parse_expr_binary_op();
-			return e;
-
-		case token_increment:
-		case token_decrement:
-		{
-			const int inc = curtok == token_increment;
-			/* this is a normal increment, i.e. ++x, simply translate it to x = x + 1 */
-			e = expr_new_assign();
-			EAT(curtok);
-
-			/* assign to... */
-			e->lhs = parse_expr_array();
-			e->rhs = expr_new_op(inc ? op_plus : op_minus);
-			e->rhs->lhs = e->lhs;
-			e->rhs->rhs = expr_new_val(1);
-			/*
-			 * looks like this:
-			 *
-			 * e {
-			 *   type = assign
-			 *   lhs {
-			 *     "varname"
-			 *   }
-			 *   rhs {
-			 *     type = assign
-			 *     op   = op_plus
-			 *     lhs {
-			 *       "varname"
-			 *     }
-			 *     rhs {
-			 *       1
-			 *     }
-			 *   }
-			 * }
-			 */
-			return e;
-		}
-
-		case token_identifier:
-			return parse_lone_identifier();
 
 		default:
-			die_at(NULL, "expression expected, got %s (%s:%d)", token_to_str(curtok), __FILE__, __LINE__);
+			if(accept(token_open_paren)){
+				decl *d;
+				expr *e;
+
+				if((d = parse_decl_single(DECL_SPEL_NO))){
+					e = expr_new_cast(d);
+					EAT(token_close_paren);
+					e->expr = parse_expr_cast(); /* another cast */
+					return e;
+
+				}else if(curtok == token_open_block){
+					/* ({ ... }) */
+					e = expr_new_stmt(parse_code_block());
+				}else{
+					/* mark as being inside parens, for if((x = 5)) checking */
+					e = parse_expr_exp();
+					e->in_parens = 1;
+				}
+
+				EAT(token_close_paren);
+				return e;
+			}else{
+				return parse_expr_identifier();
+			}
+			break;
 	}
-	return NULL;
 }
 
-/* generalised recursive descent */
-expr *parse_expr_join(expr *(*above)(), enum token accept, ...)
+expr *parse_expr_postfix()
 {
-	va_list l;
-	expr *e = above();
+	expr *e;
+	int flag;
+
+	e = parse_expr_primary();
 
 	for(;;){
-		va_start(l, accept);
-		if(curtok == accept || curtok_in_list(l)){
-			expr *join;
+		if(accept(token_open_square)){
+			expr *sum, *deref;
 
-			va_end(l);
+			sum = expr_new_op(op_plus);
 
-			join       = expr_new_op(curtok_to_op());
-			join->lhs  = e;
+			sum->lhs  = e;
+			sum->rhs  = parse_expr_exp();
 
-			EAT(curtok);
-			join->rhs = above();
+			EAT(token_close_square);
 
-			e = join;
+			deref = expr_new_op(op_deref);
+			deref->lhs  = sum;
+
+			e = deref;
+
+		}else if(accept(token_open_paren)){
+			expr *fcall = expr_new_funcall();
+
+			fcall->funcargs = parse_funcargs();
+			fcall->expr = e;
+			EAT(token_close_paren);
+
+			e = fcall;
+
+		}else if((flag = accept(token_dot)) || accept(token_ptr)){
+			expr *st_op = expr_new_op(flag ? op_struct_dot : op_struct_ptr);
+
+			st_op->lhs = e;
+			st_op->rhs = parse_expr_identifier();
+
+			e = st_op;
+
+		}else if((flag = accept(token_increment)) || accept(token_decrement)){
+			expr *inc = expr_new_assign();
+			inc->assign_is_post = 1;
+
+			inc->lhs = e;
+			inc->rhs = expr_new_op(flag ? op_plus : op_minus);
+			inc->rhs->lhs = e;
+			inc->rhs->rhs = expr_new_val(1);
+
+			e = inc;
 		}else{
-			va_end(l);
 			break;
 		}
 	}
@@ -257,91 +204,149 @@ expr *parse_expr_join(expr *(*above)(), enum token accept, ...)
 	return e;
 }
 
-expr *parse_expr_struct()
+expr *parse_expr_unary()
 {
-	return parse_expr_join(parse_expr_unary_op,
-				token_ptr, token_dot,
-				token_unknown);
-}
-
-expr *parse_expr_array()
-{
-	expr *base = parse_expr_struct();
-
-	while(accept(token_open_square)){
-		expr *sum, *deref;
-
-		sum = expr_new_op(op_plus);
-
-		sum->lhs  = base;
-		sum->rhs  = parse_expr();
-
-		EAT(token_close_square);
-
-		deref = expr_new_op(op_deref);
-		deref->lhs  = sum;
-
-
-		base = deref;
-	}
-
-	return base;
-}
-
-expr *parse_expr_inc_dec()
-{
-	expr *e = parse_expr_array();
-	int flag = 0;
+	expr *e;
+	int flag;
 
 	if((flag = accept(token_increment)) || accept(token_decrement)){
-		expr *inc = expr_new_assign();
-		inc->assign_is_post = 1;
+		/* this is a normal increment, i.e. ++x, simply translate it to x = x + 1 */
+		e = expr_new_assign();
 
-		inc->lhs = e;
-		inc->rhs = expr_new_op(flag ? op_plus : op_minus);
-		inc->rhs->lhs = e;
-		inc->rhs->rhs = expr_new_val(1);
-		e = inc;
+		/* assign to... */
+		e->lhs = parse_expr_unary();
+		e->rhs = expr_new_op(flag ? op_plus : op_minus);
+		e->rhs->lhs = e->lhs;
+		e->rhs->rhs = expr_new_val(1);
+		/*
+		 * looks like this:
+		 *
+		 * e {
+		 *   type = assign
+		 *   lhs {
+		 *     "varname"
+		 *   }
+		 *   rhs {
+		 *     type = assign
+		 *     op   = op_plus
+		 *     lhs {
+		 *       "varname"
+		 *     }
+		 *     rhs {
+		 *       1
+		 *     }
+		 *   }
+		 * }
+		 */
+	}else{
+		switch(curtok){
+			case token_and:
+				e = expr_new_addr();
+				goto do_parse;
+
+			case token_multiply:
+				e = expr_new_op(op_deref);
+				goto do_parse;
+
+			case token_plus:
+			case token_minus:
+			case token_bnot:
+			case token_not:
+				e = expr_new_op(curtok_to_op());
+do_parse:
+				EAT(curtok);
+				e->lhs = parse_expr_cast();
+				break;
+
+			case token_sizeof:
+				EAT(token_sizeof);
+				e = parse_expr_sizeof_typeof();
+				break;
+
+			default:
+				e = parse_expr_postfix();
+		}
 	}
 
 	return e;
 }
 
-expr *parse_expr_funcall()
+expr *parse_expr_generic(
+		expr *(*this)(), expr *(*above)(),
+		enum token t, ...)
 {
-	expr *e = parse_expr_inc_dec();
+	expr *e = above();
+	va_list l;
 
-	while(accept(token_open_paren)){
-		expr *sub = e;
-		e = expr_new_funcall();
-		e->funcargs = parse_funcargs();
-		e->expr = sub;
-		EAT(token_close_paren);
+	va_start(l, t);
+	if(curtok == t || curtok_in_list(l)){
+		expr *join = expr_new_op(curtok_to_op());
+		EAT(curtok);
+		join->lhs = e;
+		join->rhs = this();
+		e = join;
 	}
 
+	va_end(l);
 	return e;
 }
 
-expr *parse_expr_deref()
-{
-	if(accept(token_multiply)){
-		expr *e = expr_new_op(op_deref);
-		e->lhs  = parse_expr_deref();
-		return e;
-	}
-
-	return parse_expr_funcall();
+#define PARSE_DEFINE(this, above, ...) \
+expr *parse_expr_ ## this()            \
+{                                      \
+	return parse_expr_generic(           \
+			parse_expr_ ## this,             \
+			parse_expr_ ## above,            \
+			__VA_ARGS__, token_unknown);     \
 }
 
-expr *parse_expr_assign()
+/* cast is handled in unary instead */
+PARSE_DEFINE(multi,     /*cast,*/unary,  token_multiply, token_divide, token_modulus)
+PARSE_DEFINE(additive,    multi,         token_plus, token_minus)
+PARSE_DEFINE(shift,       additive,      token_shiftl, token_shiftr)
+PARSE_DEFINE(relational,  shift,         token_lt, token_gt, token_le, token_ge)
+PARSE_DEFINE(equality,    relational,    token_eq, token_ne)
+PARSE_DEFINE(binary_and,  equality,      token_and)
+PARSE_DEFINE(binary_xor,  binary_and,    token_xor)
+PARSE_DEFINE(binary_or,   binary_xor,    token_or)
+PARSE_DEFINE(logical_and, binary_or,     token_andsc)
+PARSE_DEFINE(logical_or,  logical_and,   token_orsc)
+
+expr *parse_expr_conditional()
 {
-#define above parse_expr
+	expr *e = parse_expr_logical_or();
+
+	if(accept(token_question)){
+		expr *q = expr_new_if(e);
+
+		if(accept(token_colon)){
+			q->lhs = NULL; /* sentinel */
+		}else{
+			q->lhs = parse_expr_exp();
+			EAT(token_colon);
+		}
+		q->rhs = parse_expr_conditional();
+
+		return q;
+	}
+	return e;
+}
+
+expr *parse_expr_assignment()
+{
 	expr *e;
 
-	e = parse_expr_deref();
+	e = parse_expr_conditional();
 
 	if(accept(token_assign)){
-		e = expr_assignment(e, above());
+		expr *from = parse_expr_assignment();
+		expr *ret  = expr_new_assign();
+
+		ret->lhs = e;
+		ret->rhs = from;
+
+		return ret;
+
 	}else if(curtok_is_augmented_assignment()){
 		/* +=, ... */
 		expr *ass = expr_new_assign();
@@ -351,94 +356,45 @@ expr *parse_expr_assign()
 		EAT(curtok);
 
 		ass->rhs->lhs = e;
-		ass->rhs->rhs = above();
+		ass->rhs->rhs = parse_expr_assignment();
 
 		e = ass;
 	}
 
 	return e;
-#undef above
 }
 
-expr *parse_expr_binary_op()
-{
-	/* above [/%*] above */
-	return parse_expr_join(parse_expr_assign,
-				token_multiply, token_divide, token_modulus,
-				token_unknown);
-}
-
-expr *parse_expr_sum()
-{
-	/* above [+-] above */
-	return parse_expr_join(parse_expr_binary_op,
-			token_plus, token_minus, token_unknown);
-}
-
-expr *parse_expr_shift()
-{
-	/* above *shift* above */
-	return parse_expr_join(parse_expr_sum,
-				token_shiftl, token_shiftr, token_unknown);
-}
-
-expr *parse_expr_bit_op()
-{
-	/* above [&|^] above */
-	return parse_expr_join(parse_expr_shift,
-				token_and, token_or, token_xor, token_unknown);
-}
-
-expr *parse_expr_cmp_op()
-{
-	/* above [><==!=] above */
-	return parse_expr_join(parse_expr_bit_op,
-				token_eq, token_ne,
-				token_le, token_lt,
-				token_ge, token_gt,
-				token_unknown);
-}
-
-expr *parse_expr_logical_op()
-{
-	/* above [&&||] above */
-	return parse_expr_join(parse_expr_cmp_op,
-			token_orsc, token_andsc, token_unknown);
-}
-
-expr *parse_expr_if()
-{
-	expr *e = parse_expr_logical_op();
-	if(accept(token_question)){
-		expr *q = expr_new_if(e);
-
-		if(accept(token_colon)){
-			q->lhs = NULL; /* sentinel */
-		}else{
-			q->lhs = parse_expr();
-			EAT(token_colon);
-		}
-		q->rhs = parse_expr_funcallarg();
-
-		return q;
-	}else{
-		return e;
-	}
-}
-
-expr *parse_expr_comma()
+expr *parse_expr_exp()
 {
 	expr *e;
 
-	e = parse_expr_funcallarg();
+	e = parse_expr_assignment();
 
 	if(accept(token_comma)){
 		expr *ret = expr_new_comma();
 		ret->lhs = e;
-		ret->rhs = parse_expr_comma();
+		ret->rhs = parse_expr_exp();
 		return ret;
 	}
 	return e;
+}
+
+expr **parse_funcargs()
+{
+	expr **args = NULL;
+
+	while(curtok != token_close_paren){
+		expr *arg = parse_expr_no_comma();
+		if(!arg)
+			die_at(&arg->where, "expected: funcall arg");
+		dynarray_add((void ***)&args, arg);
+
+		if(curtok == token_close_paren)
+			break;
+		EAT(token_comma);
+	}
+
+	return args;
 }
 
 void parse_test_init_expr(stmt *t)
@@ -455,7 +411,7 @@ void parse_test_init_expr(stmt *t)
 
 		t->flow->for_init_decls = c99_ucc_inits;
 	}else{
-		t->expr = parse_expr();
+		t->expr = parse_expr_exp();
 	}
 
 	EAT(token_close_paren);
@@ -478,24 +434,6 @@ stmt *parse_if()
 		current_scope = current_scope->parent;
 
 	return t;
-}
-
-expr **parse_funcargs()
-{
-	expr **args = NULL;
-
-	while(curtok != token_close_paren){
-		expr *arg = parse_expr_funcallarg();
-		if(!arg)
-			die_at(&arg->where, "expected: funcall arg");
-		dynarray_add((void ***)&args, arg);
-
-		if(curtok == token_close_paren)
-			break;
-		EAT(token_comma);
-	}
-
-	return args;
 }
 
 stmt *expr_to_stmt(expr *e)
@@ -528,7 +466,7 @@ stmt *parse_do()
 
 	EAT(token_while);
 	EAT(token_open_paren);
-	t->expr = parse_expr();
+	t->expr = parse_expr_exp();
 	EAT(token_close_paren);
 	EAT(token_semicolon);
 
@@ -560,10 +498,10 @@ stmt *parse_for()
 
 	current_scope = sf->for_init_symtab;
 
-#define SEMI_WRAP(code) \
+#define SEMI_WRAP(code)         \
 	if(!accept(token_semicolon)){ \
-		code; \
-		EAT(token_semicolon); \
+		code;                       \
+		EAT(token_semicolon);       \
 	}
 
 	SEMI_WRAP(
@@ -571,15 +509,15 @@ stmt *parse_for()
 			if(c99inits)
 				sf->for_init_decls = c99inits;
 			else
-				sf->for_init = parse_expr()
+				sf->for_init = parse_expr_exp()
 	);
 
-	SEMI_WRAP(sf->for_while = parse_expr());
+	SEMI_WRAP(sf->for_while = parse_expr_exp());
 
 #undef SEMI_WRAP
 
 	if(!accept(token_close_paren)){
-		sf->for_inc   = parse_expr();
+		sf->for_inc   = parse_expr_exp();
 		EAT(token_close_paren);
 	}
 
@@ -675,12 +613,12 @@ stmt *parse_code()
 				t = STAT_NEW(return);
 
 				if(curtok != token_semicolon)
-					t->expr = parse_expr();
+					t->expr = parse_expr_exp();
 			}else{
 				EAT(token_goto);
 
 				t = STAT_NEW(goto);
-				t->expr = parse_lone_identifier();
+				t->expr = parse_expr_identifier();
 			}
 			EAT(token_semicolon);
 			return t;
@@ -704,11 +642,11 @@ stmt *parse_code()
 		{
 			expr *a;
 			EAT(token_case);
-			a = parse_expr();
+			a = parse_expr_exp();
 			if(accept(token_elipsis)){
 				t = STAT_NEW(case_range);
 				t->expr  = a;
-				t->expr2 = parse_expr();
+				t->expr2 = parse_expr_exp();
 			}else{
 				t = expr_to_stmt(a);
 				stmt_mutate_wrapper(t, case);
@@ -718,7 +656,7 @@ stmt *parse_code()
 		}
 
 		default:
-			t = expr_to_stmt(parse_expr());
+			t = expr_to_stmt(parse_expr_exp());
 
 			if(expr_kind(t->expr, identifier) && accept(token_colon)){
 				stmt_mutate_wrapper(t, label);

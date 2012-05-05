@@ -68,7 +68,7 @@ type *parse_type_sue(enum type_primitive prim)
 				EAT(token_identifier);
 
 				if(accept(token_assign))
-					e = parse_expr_funcallarg(); /* no commas */
+					e = parse_expr_no_comma(); /* no commas */
 				else
 					e = NULL;
 
@@ -368,7 +368,7 @@ decl_desc *parse_decl_desc_array(enum decl_mode mode, char **sp)
 			/* FIXME - incomplete, not zero */
 		}else{
 			/* fold.c checks for const-ness */
-			size = parse_expr();
+			size = parse_expr_exp();
 			EAT(token_close_square);
 		}
 
@@ -439,7 +439,7 @@ decl *parse_decl(type *t, enum decl_mode mode)
 #endif
 
 	if(decl_spel(d) && accept(token_assign))
-		d->init = parse_expr_funcallarg(); /* int x = 5, j; - don't grab the comma expr */
+		d->init = parse_expr_no_comma(); /* int x = 5, j; - don't grab the comma expr */
 
 	return d;
 }

@@ -19,10 +19,10 @@ extern enum token curtok;
 
 #define PARSE_DECLS() parse_decls_multi_type(0)
 
-#define parse_expr() parse_expr_comma()
-#define parse_expr_funcallarg() parse_expr_if()
 #define parse_possible_decl() (curtok == token_identifier || curtok == token_multiply || curtok == token_open_paren)
-expr *parse_expr();
+#define parse_expr_no_comma() parse_expr_assignment()
+expr *parse_expr_assignment(void);
+expr *parse_expr_exp(void);
 
 stmt  *parse_code(void);
 

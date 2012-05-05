@@ -31,6 +31,7 @@ void fold_expr_cast(expr *e, symtable *stab)
 
 	fold_disallow_st_un(e, "cast-target");
 
+#ifdef CAST_COLLAPSE
 	if(expr_kind(e->expr, cast)){
 		/* get rid of e->expr, replace with e->expr->rhs */
 		expr *del = e->expr;
@@ -42,6 +43,7 @@ void fold_expr_cast(expr *e, symtable *stab)
 
 		fold_expr_cast(e, stab);
 	}
+#endif
 }
 
 void gen_expr_cast_1(expr *e, FILE *f)
