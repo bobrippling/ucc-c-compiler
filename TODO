@@ -1,10 +1,15 @@
+updated bugs/ and test/
+
 ---------------------------------------------------- cc1
 
 floats, long + short (in a branch)
 
-link function prototypes with the function instance + arg check (done?)
-
-&x[y] (?)
+initialisers
+	arrays and structs:
+		{ { 0 }, 5, {{{2}}} }
+		e.g. int a[] = { ... };
+	c99 struct/union init
+		{ .a = 5 }
 
 static analysis for labels - flag unused labels
 
@@ -65,3 +70,7 @@ macros over multiple lines
 ---------------------------------------------------- cc
 
 accept multiple input source files
+
+---------------------------------------------------- lib
+
+stdio - buffers, etc
