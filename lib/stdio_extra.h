@@ -57,3 +57,5 @@ int sprintf(char *, const char *, ...);
 int vsprintf(char *, const char *, va_list);
 void setbuf(FILE *, char *);
 int setvbuf(FILE *, char *, int, size_t);
+
+flock();

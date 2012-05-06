@@ -38,7 +38,7 @@ alloca.o: alloca.s
 	${BUILD_CMD}
 
 ucc.o: ucc.c
-	${UCC_CC} -fenable-asm -Wno-optimisation -c -o $@ $<
+	${UCC_CC} -fenable-asm -c -o $@ $<
 
 sys/fcntl.o: sys/fcntl.c
 	${BUILD_CMD}
