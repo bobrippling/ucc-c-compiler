@@ -108,15 +108,10 @@ void fold_expr_addr(expr *e, symtable *stab)
 			return;
 		}
 
+		/* lvalues are identifier, struct-exp or deref */
 		if(!expr_is_lvalue(e->lhs, 1))
 			die_at(&e->lhs->where, "can't take the address of %s", e->lhs->f_str());
 
-		/* lvalues are identifier, struct-exp or deref */
-
-		if(expr_kind(e->lhs, op)){
-			/* deref, i.e. "&*(int *)0", remove so we just have the (int *)0 */
-			ICE("TODO: address of deref");
-		}
 
 		if(e->lhs->tree_type->type->store == store_register)
 			die_at(&e->lhs->where, "can't take the address of register variable %s", e->lhs->spel);
@@ -135,6 +130,9 @@ void gen_expr_addr(expr *e, symtable *stab)
 		/* address of possibly an ident "(&a)->b" or a struct expr "&a->b" */
 		if(expr_kind(e->lhs, identifier)){
 			asm_sym(ASM_LEA, e->lhs->sym, "rax");
+		}else if(expr_kind(e->lhs, op)){
+			/* skip the address (e->lhs) and the deref */
+			gen_expr(op_deref_expr(e->lhs), stab);
 		}else{
 			ICE("TODO: address of %s", e->lhs->f_str());
 		}
