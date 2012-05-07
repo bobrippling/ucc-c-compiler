@@ -56,27 +56,6 @@ expr *expr_new_intval(intval *iv)
 	return e;
 }
 
-#if 0
-expr *expr_copy(expr *e)
-{
-	expr *ret;
-
-	if(!e)
-		return NULL;
-
-	ret = umalloc(sizeof *ret);
-
-	ret->lhs  = expr_copy(e->lhs);
-	ret->rhs  = expr_copy(e->rhs);
-	ret->spel = ustrdup(  e->spel);
-	ret->expr = expr_copy(e->expr);
-	ret->funcargs = NULL;
-	ret->tree_type = decl_copy(e->tree_type);
-
-	return ret;
-}
-#endif
-
 expr *expr_ptr_multiply(expr *e, decl *d)
 {
 	decl *dtmp;

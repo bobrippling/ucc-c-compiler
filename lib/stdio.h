@@ -1,15 +1,11 @@
 #ifndef __STDIO_H
 #define __STDIO_H
 
-#ifdef __STDIO_FILE_SIMPLE
-typedef int FILE;
-#else
 typedef struct __FILE
 {
 	int fd;
 	enum { __FILE_fine, __FILE_eof, __FILE_err } status;
 } FILE;
-#endif
 
 extern FILE *stdin, *stdout, *stderr;
 
@@ -23,18 +19,26 @@ extern FILE *stdin, *stdout, *stderr;
 /* io */
 FILE *fopen(const char *path, const char *mode);
 int   fclose(FILE *);
-/* TODO: freopen */
+int   fflush(FILE *f);
+FILE *freopen(const char *path, const char *mode, FILE *stream);
 
-/* TODO: func interface */
+size_t fread(       void *ptr, size_t size, size_t nmemb, FILE *stream);
+size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream);
+
 
 typedef size_t fpos_t;
-FILE	*funopen(
-		const void *,
-		int    (*)(void *, char *, int),
-		int    (*)(void *, const char *, int),
-		fpos_t (*)(void *, fpos_t, int),
-		int    (*)(void *)
-	);
+
+/* TODO: func interface */
+FILE *funopen(
+		const void *cookie,
+		int      (*readfn)(void *,       char *, int),
+		int     (*writefn)(void *, const char *, int),
+		fpos_t   (*seekfn)(void *,       fpos_t, int),
+		int     (*closefn)(void *)
+		);
+
+FILE *fropen(void *cookie, int (*readfn )(void *,       char *, int));
+FILE *fwopen(void *cookie, int (*writefn)(void *, const char *, int));
 
 
 /* status */
@@ -73,10 +77,6 @@ char *fgets(char *, int, FILE *);
 int remove(const char *);
 
 int fileno(FILE *);
-#ifdef __STDIO_FILE_SIMPLE
-#  define fileno(f) (*(f))
-#else
 #  define fileno(f) ((f)->fd)
-#endif
 
 #endif

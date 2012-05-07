@@ -214,7 +214,7 @@ void fold_op_struct(expr *e, symtable *stab)
 		new = expr_new_wrapper(addr);
 		eof_where = NULL;
 
-		new->expr = e->lhs;
+		new->lhs = e->lhs;
 		e->lhs = new;
 
 		expr_mutate_wrapper(e, op);
@@ -242,13 +242,16 @@ void fold_expr_op(expr *e, symtable *stab)
 {
 #define IS_PTR(x) decl_ptr_depth(x->tree_type)
 
-#define SPEL_IF_IDENT(hs)                              \
+#define SPEL_IF_IDENT(hs)                            \
 					expr_kind(hs, identifier) ? " ("     : "", \
 					expr_kind(hs, identifier) ? hs->spel : "", \
 					expr_kind(hs, identifier) ? ")"      : ""  \
 
 #define RHS e->rhs
 #define LHS e->lhs
+
+	UCC_ASSERT(e->op != op_unknown, "unknown op in expression at %s",
+			where_str(&e->where));
 
 	if(e->op == op_struct_ptr || e->op == op_struct_dot){
 		fold_op_struct(e, stab);
@@ -498,11 +501,15 @@ void asm_operate_struct(expr *e, symtable *tab)
 
 	asm_comment("offset of member %s", e->rhs->spel);
 
-	asm_output_new(
-			asm_out_type_mov,
-			asm_operand_new_reg(  e->rhs->tree_type, ASM_REG_A),
-			asm_operand_new_deref(e->rhs->tree_type, asm_operand_new_reg(NULL, ASM_REG_A), 0)
-		);
+	if(decl_is_array(e->rhs->tree_type)){
+		asm_comment("array - got address");
+	}else{
+		asm_output_new(
+				asm_out_type_mov,
+				asm_operand_new_reg(  e->rhs->tree_type, ASM_REG_A),
+				asm_operand_new_deref(e->rhs->tree_type, asm_operand_new_reg(NULL, ASM_REG_A), 0)
+			);
+	}
 
 	asm_comment("val from struct");
 

@@ -10,6 +10,6 @@ decl  *parse_decl_single(enum decl_mode mode);
 decl **parse_decls_one_type(void);
 
 /* type ident...; type ident...; */
-decl **parse_decls_multi_type(const int can_default, const int accept_field_width);
+decl **parse_decls_multi_type(enum decl_multi_mode mode);
 
 #endif

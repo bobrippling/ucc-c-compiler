@@ -136,12 +136,15 @@ char *word_strstr(char *haystack, char *needle)
 	const int nlen = strlen(needle);
 	char *i;
 
+	if(!strstr(haystack, needle))
+		return NULL;
+
 	for(i = haystack; *i; i++)
 		if(*i == '"'){
 refind:
 			i = strchr(i + 1, '"');
 			if(!i)
-				ICE("terminating quote not found\nhaystack = \"%s\"\nneedle = \"%s\"",
+				ICE("terminating quote not found\nhaystack = >>%s<<\nneedle = >>%s<<",
 						haystack, needle);
 			else if(i[-1] == '\\')
 				goto refind;

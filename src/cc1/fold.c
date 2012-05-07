@@ -70,7 +70,6 @@ void fold_funcargs_equal(funcargs *args_a, funcargs *args_b, int check_vari, whe
 	}
 }
 
-
 void fold_decl_equal(decl *a, decl *b, where *w, enum warning warn,
 		const char *errfmt, ...)
 {
@@ -317,9 +316,14 @@ void fold_decl(decl *d, symtable *stab)
 		d->type->store  = old_store;
 
 		/* decl */
-		if(from->desc)
-			decl_desc_append(&d->desc, decl_desc_copy(from->desc)); /* append? */
+		if(from->desc){
+			decl_desc *ins = decl_desc_copy(from->desc);
+
+			decl_desc_append(&ins, d->desc);
+			d->desc = ins;
+		}
 	}
+	decl_desc_link(d);
 
 	UCC_ASSERT(d->type && d->type->store != store_typedef, "typedef store after tdef folding");
 
@@ -462,18 +466,20 @@ void fold_stmt(stmt *t)
 
 void fold_funcargs(funcargs *fargs, symtable *stab, char *context)
 {
-	decl **diter;
-
-	for(diter = fargs->arglist; diter && *diter; diter++)
-		fold_decl(*diter, stab);
-
 	if(fargs->arglist){
 		/* check for unnamed params and extern/static specs */
 		int i;
 
 		for(i = 0; fargs->arglist[i]; i++){
-			if(type_store_static_or_extern(fargs->arglist[i]->type->store)){
-				const char *sp = decl_spel(fargs->arglist[i]);
+			decl *const d = fargs->arglist[i];
+
+			fold_decl(d, stab);
+
+			/* convert any array definitions to pointers */
+			decl_conv_array_ptr(d);
+
+			if(type_store_static_or_extern(d->type->store)){
+				const char *sp = decl_spel(d);
 				die_at(&fargs->where, "argument %d %s%s%sin function \"%s\" is static or extern",
 						i + 1,
 						sp ? "(" : "",

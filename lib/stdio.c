@@ -7,19 +7,13 @@
 #include "assert.h"
 #include "ctype.h"
 
+#include "ucc_attr.h"
+
 #define PRINTF_OPTIMISE
 
-#define __unused __attribute__((__unused__))
-
-#ifdef __STDIO_FILE_SIMPLE
-static FILE _stdin  = 0;
-static FILE _stdout = 1;
-static FILE _stderr = 2;
-#else
 static FILE _stdin  = { 0, 0 };
 static FILE _stdout = { 1, 0 };
 static FILE _stderr = { 2, 0 };
-#endif
 
 FILE *stdin  = &_stdin;
 FILE *stdout = &_stdout;
@@ -65,25 +59,16 @@ static void printo(int fd, int n, int is_signed)
 /* Public */
 int feof(FILE *f __unused)
 {
-#ifdef __STDIO_FILE_SIMPLE
-	return 0; // :C
-#else
 	return f->status == __FILE_eof;
-#endif
 }
 
 int ferror(FILE *f __unused)
 {
-#ifdef __STDIO_FILE_SIMPLE
-	return 0; // :C
-#else
 	return f->status == __FILE_err;
-#endif
 }
 
-FILE *fopen(const char *path, char *smode)
+static int fopen2(FILE *f, const char *path, char *smode)
 {
-	FILE *f;
 	int fd, mode;
 	int got_primary;
 
@@ -122,35 +107,64 @@ FILE *fopen(const char *path, char *smode)
 			default:
 inval:
 				errno = EINVAL;
-				return NULL;
+				return 1;
 		}
 
 #undef PRIMARY_CHECK
 
-	f = malloc(sizeof *f);
-	if(!f)
-		return NULL;
-
 	fd = open(path, mode, 0644);
-	if(fd == -1){
-		free(f);
-		return NULL;
-	}
+	if(fd == -1)
+		return 1;
 
 	fileno(f) = fd;
 
-#ifndef __STDIO_FILE_SIMPLE
 	f->status = __FILE_fine;
-#endif
 
+	return 0;
+}
+
+static int fclose2(FILE *f)
+{
+	if(fflush(f))
+		return EOF;
+	return close(fileno(f)) == 0 ? 0 : EOF;
+}
+
+FILE *fopen(const char *path, const char *mode)
+{
+	FILE *f = malloc(sizeof *f);
+	if(!f)
+		return NULL;
+
+	if(fopen2(f, path, mode)){
+		free(f);
+		return NULL;
+	}
+	return f;
+}
+
+FILE *freopen(const char *path, const char *mode, FILE *f)
+{
+	if(fclose2(f))
+		return NULL;
+
+	if(fopen2(f, path, mode)){
+		free(f);
+		return NULL;
+	}
 	return f;
 }
 
 int fclose(FILE *f)
 {
-	int r = close(fileno(f)) == 0 ? 0 : EOF;
+	int r = fclose2(f);
 	free(f);
 	return r;
+}
+
+int fflush(FILE *f)
+{
+	return 0;
 }
 
 int fputc(int c, FILE *f)
@@ -161,6 +175,27 @@ int fputc(int c, FILE *f)
 int putchar(int c)
 {
 	return fputc(c, stdout);
+}
+
+size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream)
+{
+	int n;
+	n = read(fileno(stream), ptr, size * nmemb);
+	if(n == 0){
+		stream->status = __FILE_eof;
+	}else if(n < 0){
+		stream->status = __FILE_err;
+	}else{
+		return n;
+	}
+	return 0;
+}
+
+size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream)
+{
+	int n;
+	n = write(fileno(stream), ptr, size * nmemb);
+	return n > 0 ? n : 0;
 }
 
 int vfprintf(FILE *file, char *fmt, va_list ap)
@@ -282,12 +317,8 @@ int dprintf(int fd, const char *fmt, ...)
 	int r;
 	FILE f;
 
-#ifndef __STDIO_FILE_SIMPLE
 	f.fd = fd;
 	f.status = __FILE_fine;
-#else
-	f = fd;
-#endif
 
 	va_start(l, fmt);
 	r = vfprintf(&f, fmt, l);
@@ -349,14 +380,10 @@ char *fgets(char *s, int l, FILE *f)
 
 	switch(r){
 		case  0: /* EOF */
-#ifndef __STDIO_FILE_SIMPLE
 			f->status = __FILE_eof;
-#endif
 			return NULL;
 		case -1: /* error */
-#ifndef __STDIO_FILE_SIMPLE
 			f->status = __FILE_err;
-#endif
 			return NULL;
 	}
 
@@ -391,9 +418,5 @@ int remove(const char *f)
 #undef fileno
 int fileno(FILE *f)
 {
-#ifdef __STDIO_FILE_SIMPLE
-	return *f;
-#else
 	return f->fd;
-#endif
 }

@@ -15,10 +15,8 @@ void fold_expr_addr(expr *e, symtable *stab)
 	if(e->array_store){
 		sym *array_sym;
 
-		if(e->sym)
-			return; /* already folded */
-
-		UCC_ASSERT(!e->expr, "expression found in array store address-of");
+		UCC_ASSERT(!e->sym, "symbol found when looking for array store");
+		UCC_ASSERT(!e->lhs, "expression found in array store address-of");
 
 		/* static const char * */
 		e->tree_type = decl_ptr_depth_inc(decl_new());
@@ -61,11 +59,11 @@ void fold_expr_addr(expr *e, symtable *stab)
 		}
 
 	}else{
-		fold_inc_writes_if_sym(e->expr, stab);
+		fold_inc_writes_if_sym(e->lhs, stab);
 
-		fold_expr(e->expr, stab);
+		fold_expr(e->lhs, stab);
 
-		if(expr_kind(e->expr, op) && (e->expr->op == op_struct_dot || e->expr->op == op_struct_ptr)){
+		if(expr_kind(e->lhs, op) && (e->lhs->op == op_struct_dot || e->lhs->op == op_struct_ptr)){
 			/*
 			 * convert &(a.b) to &a + offsetof(a, b)
 			 * i.e.:
@@ -79,13 +77,13 @@ void fold_expr_addr(expr *e, symtable *stab)
 			decl *member_decl;
 
 			/* pull out the various bits */
-			struc = e->expr->lhs;
-			member = e->expr->rhs;
-			addr = e->expr;
+			struc = e->lhs->lhs;
+			member = e->lhs->rhs;
+			addr = e->lhs;
 			st = struc->tree_type->type->sue;
 
 			/* forget about the old structure */
-			e->expr = e->expr->lhs = e->expr->rhs = NULL;
+			e->lhs = e->lhs->lhs = e->lhs->rhs = NULL;
 
 			/* lookup the member decl (for tree type later on) */
 			member_decl = struct_union_member_find(st, member->spel, &e->where);
@@ -110,20 +108,15 @@ void fold_expr_addr(expr *e, symtable *stab)
 			return;
 		}
 
-		if(!expr_is_lvalue(e->expr, 1))
-			die_at(&e->expr->where, "can't take the address of %s", e->expr->f_str());
-
 		/* lvalues are identifier, struct-exp or deref */
+		if(!expr_is_lvalue(e->lhs, 1))
+			die_at(&e->lhs->where, "can't take the address of %s", e->lhs->f_str());
 
-		if(expr_kind(e->expr, op)){
-			/* deref, i.e. "&*(int *)0", remove so we just have the (int *)0 */
-			ICE("TODO: address of deref");
-		}
 
-		if(e->expr->tree_type->type->store == store_register)
-			die_at(&e->expr->where, "can't take the address of register variable %s", e->expr->spel);
+		if(e->lhs->tree_type->type->store == store_register)
+			die_at(&e->lhs->where, "can't take the address of register variable %s", e->lhs->spel);
 
-		e->tree_type = decl_ptr_depth_inc(decl_copy(e->expr->sym ? e->expr->sym->decl : e->expr->tree_type));
+		e->tree_type = decl_ptr_depth_inc(decl_copy(e->lhs->sym ? e->lhs->sym->decl : e->lhs->tree_type));
 	}
 }
 
@@ -142,10 +135,13 @@ void gen_expr_addr(expr *e, symtable *stab)
 
 	}else{
 		/* address of possibly an ident "(&a)->b" or a struct expr "&a->b" */
-		if(expr_kind(e->expr, identifier)){
-			asm_sym(ASM_LEA, e->expr->sym, asm_operand_new_reg(NULL /* pointer */, ASM_REG_A));
+		if(expr_kind(e->lhs, identifier)){
+			asm_sym(ASM_LEA, e->lhs->sym, asm_operand_new_reg(NULL /* pointer */, ASM_REG_A));
+		}else if(expr_kind(e->lhs, op)){
+			/* skip the address (e->lhs) and the deref */
+			gen_expr(op_deref_expr(e->lhs), stab);
 		}else{
-			ICE("TODO: address of %s", e->expr->f_str());
+			ICE("TODO: address of %s", e->lhs->f_str());
 		}
 	}
 
@@ -159,8 +155,8 @@ void gen_expr_addr_1(expr *e, FILE *f)
 		/* address of an array store */
 		fprintf(f, "%s", e->array_store->label);
 	}else{
-		UCC_ASSERT(expr_kind(e->expr, identifier), "globals addr-of can only be identifier for now");
-		fprintf(f, "%s", e->expr->spel);
+		UCC_ASSERT(expr_kind(e->lhs, identifier), "globals addr-of can only be identifier for now");
+		fprintf(f, "%s", e->lhs->spel);
 	}
 }
 
@@ -188,7 +184,7 @@ void gen_expr_str_addr(expr *e, symtable *stab)
 	}else{
 		idt_printf("address of expr:\n");
 		gen_str_indent++;
-		print_expr(e->expr);
+		print_expr(e->lhs);
 		gen_str_indent--;
 	}
 }

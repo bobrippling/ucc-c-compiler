@@ -3,12 +3,13 @@
 
 #include "sys/types.h"
 #include "macros.h"
+#include "ucc_attr.h"
 
 int atoi(const char *);
 
-void *malloc(size_t);
-void *calloc(size_t count, size_t);
-void *realloc(void *, size_t);
+void *malloc(size_t) __warn_unused;
+void *calloc(size_t count, size_t) __warn_unused;
+void *realloc(void *, size_t) __warn_unused;
 void  free(   void *);
 
 void exit(int);

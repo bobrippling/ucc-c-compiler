@@ -147,6 +147,8 @@ decl_desc   *decl_desc_array_new(decl *dparent, decl_desc *parent);
 decl      *decl_copy(decl *);
 decl_desc *decl_desc_copy(decl_desc *);
 
+void decl_conv_array_ptr(decl *d);
+
 void decl_desc_link(decl *);
 
 int   decl_size( decl *);
@@ -174,6 +176,7 @@ decl *decl_func_deref(decl *d, funcargs **pfuncargs);
 int decl_attr_present(decl_attr *, enum decl_attr_type);
 
 int decl_has_array(decl *);
+int decl_is_array( decl *);
 funcargs *decl_funcargs(decl *);
 
 const char *decl_desc_str(decl_desc *dp);

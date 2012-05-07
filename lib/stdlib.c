@@ -34,6 +34,9 @@ int atoi(char *s)
 
 void *malloc(size_t size)
 {
+	/*
+	 * TODO: linked list of free blocks, etc
+	 */
 #ifdef MALLOC_MMAP
 	static void   *last_page     = NULL;
 	static size_t  last_page_use = 0;
