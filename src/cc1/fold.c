@@ -147,7 +147,7 @@ void fold_expr(expr *e, symtable *stab)
 	UCC_ASSERT(e->tree_type->type->primitive != type_unknown, "unknown type after folding expr %s", e->f_str());
 }
 
-void fold_decl_ptr(decl_desc *dp, symtable *stab, decl *root)
+void fold_decl_desc(decl_desc *dp, symtable *stab, decl *root)
 {
 	switch(dp->type){
 		case decl_desc_func:
@@ -159,7 +159,10 @@ void fold_decl_ptr(decl_desc *dp, symtable *stab, decl *root)
 			long v;
 			fold_expr(dp->bits.array_size, stab);
 			if((v = dp->bits.array_size->val.iv.val) < 0)
-				die_at(&dp->where, "negative array length");
+				die_at(&dp->where, "negative array length %ld", v);
+
+			if(v == 0 && !root->init)
+				die_at(&dp->where, "incomplete array");
 		}
 
 		case decl_desc_ptr:
@@ -168,7 +171,7 @@ void fold_decl_ptr(decl_desc *dp, symtable *stab, decl *root)
 	}
 
 	if(dp->child)
-		fold_decl_ptr(dp->child, stab, root);
+		fold_decl_desc(dp->child, stab, root);
 }
 
 void fold_enum(struct_union_enum_st *en, symtable *stab)
@@ -303,25 +306,28 @@ void fold_decl(decl *d, symtable *stab)
 
 		case type_int:
 		case type_char:
-				break;
+			break;
 
 		case type_unknown:
-				ICE("unknown type");
+			ICE("unknown type");
 	}
 
 	/*
 	 * now we've folded, check for restrict
 	 * since typedef int *intptr; intptr restrict a; is valid
 	 */
-	if(!d->desc && d->type->qual & qual_restrict)
+	if(d->desc){
+		fold_decl_desc(d->desc, stab, d);
+	}else if(d->type->qual & qual_restrict){
 		die_at(&d->where, "restrict on non-pointer type %s%s%s",
 				type_to_str(d->type),
 				decl_spel(d) ? " " : "",
 				decl_spel(d) ? decl_spel(d) : "");
+	}
 
 	if(d->init){
 		if(d->type->store == store_extern)
-			die_at(&d->where, "error: externs can't be initalised");
+			die_at(&d->where, "externs can't be initalised");
 
 		if(d->type->store == store_static || (d->sym && d->sym->type == sym_global)){
 			fold_expr(d->init, stab); /* else it's done as part of the stmt code */
@@ -339,18 +345,13 @@ void fold_decl(decl *d, symtable *stab)
 		}
 
 		if(!stab->parent && const_fold(d->init)) /* global + not constant */
-			die_at(&d->init->where, "error: not a constant expression (initialiser is %s)", d->init->f_str());
+			die_at(&d->init->where, "not a constant expression (initialiser is %s)", d->init->f_str());
 	}
-
-	if(d->desc)
-		fold_decl_ptr(d->desc, stab, d);
 
 	/*
 	 * no need to fold ->init, since these are removed for all but global-decls
 	 * (kept in the cast of const-init)
 	 */
-
-#undef SPEC
 }
 
 void fold_decl_global(decl *d, symtable *stab)
@@ -417,10 +418,10 @@ void fold_funcargs(funcargs *fargs, symtable *stab, char *context)
 		for(i = 0; fargs->arglist[i]; i++){
 			decl *const d = fargs->arglist[i];
 
-			fold_decl(d, stab);
-
 			/* convert any array definitions to pointers */
-			decl_conv_array_ptr(d);
+			decl_conv_array_ptr(d); /* must be before the decl is folded */
+
+			fold_decl(d, stab);
 
 			if(type_store_static_or_extern(d->type->store)){
 				const char *sp = decl_spel(d);

@@ -27,6 +27,40 @@ void gen_stmt(stmt *t)
 	t->f_gen(t);
 }
 
+#ifdef FANCY_STACK_INIT
+void gen_func_stack(decl *df, const int offset)
+{
+#define ITER_DECLS() \
+		for(iter = df->func_code->symtab->decls; iter && *iter; iter++)
+
+	int use_sub = 1;
+	decl **iter;
+
+	ITER_DECLS(){
+		decl *d = *iter;
+		if(decl_is_array(d) && d->init){
+			use_sub = 0;
+			break;
+		}
+	}
+
+	if(use_sub){
+		asm_temp(1, "sub rsp, %d", offset);
+	}else{
+		for(iter = df->func_code->symtab->decls; iter && *iter; iter++){
+			decl *d = *iter;
+			if(decl_is_array(d) && d->init){
+				use_sub = 0;
+			}else{
+
+			}
+		}
+	}
+}
+#else
+#  define gen_func_stack(df, offset) asm_temp(1, "sub rsp, %d", offset)
+#endif
+
 void gen_asm_global(decl *d)
 {
 	if(decl_attr_present(d->attr, attr_section))
@@ -40,7 +74,7 @@ void gen_asm_global(decl *d)
 	}
 
 	if(d->func_code){
-		int offset;
+		const int offset = d->func_code->symtab->auto_total_size;
 
 		asm_label(decl_spel(d));
 		asm_temp(1, "push rbp");
@@ -48,8 +82,8 @@ void gen_asm_global(decl *d)
 
 		curfunc_lblfin = asm_label_code(decl_spel(d));
 
-		if((offset = d->func_code->symtab->auto_total_size))
-			asm_temp(1, "sub rsp, %d", offset);
+		if(offset)
+			gen_func_stack(d, offset);
 
 		gen_stmt(d->func_code);
 

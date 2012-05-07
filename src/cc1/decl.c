@@ -134,9 +134,14 @@ int decl_size(decl *d)
 					break;
 
 				case decl_desc_array:
+				{
+					int sz;
 					UCC_ASSERT(expr_kind(dp->bits.array_size, val), "decl array size not constant");
-					mul *= dp->bits.array_size->val.iv.val;
+					sz = dp->bits.array_size->val.iv.val;
+					UCC_ASSERT(sz, "incomplete array size attempt");
+					mul *= sz;
 					break;
+				}
 			}
 
 		/* pointer to a type, the size is the size of a pointer, not the type */
@@ -340,6 +345,15 @@ int decl_has_array(decl *d)
 		if(dp->type == decl_desc_array)
 			return 1;
 	return 0;
+}
+
+int decl_has_incomplete_array(decl *d)
+{
+	decl_desc *tail = decl_desc_tail(d);
+
+	return tail
+	&& tail->type == decl_desc_array
+	&& tail->bits.array_size->val.iv.val == 0;
 }
 
 void decl_desc_cut_loose(decl_desc *dp)

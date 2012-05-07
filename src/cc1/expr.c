@@ -82,18 +82,25 @@ expr *expr_ptr_multiply(expr *e, decl *d)
 	return ret;
 }
 
-expr *expr_assignment(expr *to, expr *from)
-{
-	expr *ass = expr_new_assign();
-
-	ass->lhs = to;
-	ass->rhs = from;
-
-	return ass;
-}
-
 expr *expr_new_decl_init(decl *d)
 {
-	UCC_ASSERT(d->init, "no init in %s", __func__);
-	return expr_assignment(expr_new_identifier(decl_spel(d)), d->init);
+	UCC_ASSERT(d->init, "no init");
+	return expr_new_assign(expr_new_identifier(decl_spel(d)), d->init);
+}
+
+expr *expr_new_array_decl_init(decl *d, int ival, int idx)
+{
+	expr *deref;
+	expr *sum;
+
+	UCC_ASSERT(d->init, "no init");
+
+	deref = expr_new_op(op_deref);
+
+	sum = op_deref_expr(deref) = expr_new_op(op_plus);
+
+	sum->lhs = expr_new_identifier(decl_spel(d));
+	sum->rhs = expr_new_val(idx); /* fold will multiply this */
+
+	return expr_new_assign(deref, expr_new_val(ival));
 }

@@ -12,19 +12,24 @@ const char *str_expr_addr()
 
 void fold_expr_addr(expr *e, symtable *stab)
 {
+#define TT e->tree_type
+
 	if(e->array_store){
 		sym *array_sym;
 
 		UCC_ASSERT(!e->sym, "symbol found when looking for array store");
 		UCC_ASSERT(!e->lhs, "expression found in array store address-of");
 
-		/* static const char * */
-		e->tree_type = decl_ptr_depth_inc(decl_new());
+		/* static const char [] */
+		TT = decl_new();
 
-		e->tree_type->type->store = store_static;
-		e->tree_type->type->qual  = qual_const;
+		TT->desc = decl_desc_array_new(e->tree_type, NULL);
+		TT->desc->bits.array_size = expr_new_val(TT->init ? TT->init->array_store->len : 0);
 
-		e->tree_type->type->primitive = type_char;
+		TT->type->store = store_static;
+		TT->type->qual  = qual_const;
+
+		TT->type->primitive = type_char;
 
 		e->spel = e->array_store->label = asm_label_array(e->array_store->type == array_str);
 

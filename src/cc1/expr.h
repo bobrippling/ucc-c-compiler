@@ -78,8 +78,8 @@ expr *expr_new_intval(intval *);
 
 /* simple wrappers */
 expr *expr_ptr_multiply(expr *, decl *);
-expr *expr_assignment(expr *to, expr *from);
 expr *expr_new_decl_init(decl *d);
+expr *expr_new_array_decl_init(decl *d, int ival, int idx);
 
 #include "ops/expr_addr.h"
 #include "ops/expr_assign.h"
@@ -93,7 +93,7 @@ expr *expr_new_decl_init(decl *d);
 #include "ops/expr_val.h"
 #include "ops/expr_stmt.h"
 
-#define expr_free(x) do{decl_free((x)->tree_type); free(x);}while(0)
+#define expr_free(x) do{if((x)->tree_type) decl_free((x)->tree_type); free(x);}while(0)
 
 #define expr_kind(exp, kind) ((exp)->f_fold == fold_expr_ ## kind)
 
@@ -106,8 +106,8 @@ expr *expr_new_stmt(stmt *code);
 expr *expr_new_sizeof_decl(decl *);
 expr *expr_new_sizeof_expr(expr *);
 expr *expr_new_funcall(void);
+expr *expr_new_assign(expr *to, expr *from);
 
-#define expr_new_assign()  expr_new_wrapper(assign)
 #define expr_new_addr()    expr_new_wrapper(addr)
 #define expr_new_comma()   expr_new_wrapper(comma)
 

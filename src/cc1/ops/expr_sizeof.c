@@ -9,8 +9,15 @@ const char *str_expr_sizeof()
 
 void fold_expr_sizeof(expr *e, symtable *stab)
 {
+	decl *chosen;
+
 	if(e->expr)
 		fold_expr(e->expr, stab);
+
+	chosen = SIZEOF_WHAT(e);
+
+	if(decl_has_incomplete_array(chosen))
+		die_at(&e->where, "sizeof incomplete array");
 
 	e->tree_type = decl_new();
 	/* size_t */

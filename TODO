@@ -2,6 +2,8 @@ updated bugs/ and test/
 
 ---------------------------------------------------- cc1
 
+int x[] -> NULL init, not 0
+
 floats, long + short (in a branch)
 
 initialisers
