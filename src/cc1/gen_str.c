@@ -56,7 +56,7 @@ void print_decl_desc_eng(decl_desc *dp)
 
 	switch(dp->type){
 		case decl_desc_ptr:
-			fprintf(cc1_out, "pointer to ");
+			fprintf(cc1_out, "%spointer to ", type_qual_to_str(dp->bits.qual));
 			break;
 
 		case decl_desc_func:
