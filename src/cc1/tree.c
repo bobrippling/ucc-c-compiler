@@ -206,9 +206,11 @@ const char *type_store_to_str(const enum type_storage s)
 const char *type_qual_to_str(const enum type_qualifier qual)
 {
 	static char buf[32];
-	snprintf(buf, sizeof buf, "%s%s",
+	/* trailing space is purposeful */
+	snprintf(buf, sizeof buf, "%s%s%s",
 		qual & qual_const    ? "const "    : "",
-		qual & qual_volatile ? "volatile " : "");
+		qual & qual_volatile ? "volatile " : "",
+		qual & qual_restrict ? "restrict " : "");
 	return buf;
 }
 

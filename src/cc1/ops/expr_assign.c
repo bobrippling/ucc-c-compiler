@@ -46,6 +46,8 @@ int expr_is_lvalue(expr *e, int allow_func)
 
 void fold_expr_assign(expr *e, symtable *stab)
 {
+	int check_lvalue = 1;
+
 	fold_inc_writes_if_sym(e->lhs, stab);
 
 	fold_expr(e->lhs, stab);
@@ -57,7 +59,17 @@ void fold_expr_assign(expr *e, symtable *stab)
 
 
 	/* wait until we get the tree types, etc */
-	if(!expr_is_lvalue(e->lhs, 0))
+
+	/* only allow assignments to type[] if it's an init */
+	if(e->lhs->sym){
+		decl *d = e->lhs->sym->decl;
+
+		if(decl_is_array(d) && d->init == e->rhs){
+			check_lvalue = 0;
+		}
+	}
+
+	if(check_lvalue && !expr_is_lvalue(e->lhs, 0))
 		die_at(&e->lhs->where, "not an lvalue (%s%s%s)",
 				e->lhs->f_str(),
 				expr_kind(e->lhs, op) ? " - " : "",
@@ -141,6 +153,16 @@ void mutate_expr_assign(expr *e)
 {
 	e->f_const_fold = fold_const_expr_assign;
 	e->freestanding = 1;
+}
+
+expr *expr_new_assign(expr *to, expr *from)
+{
+	expr *ass = expr_new_wrapper(assign);
+
+	ass->lhs = to;
+	ass->rhs = from;
+
+	return ass;
 }
 
 void gen_expr_style_assign(expr *e, symtable *stab)

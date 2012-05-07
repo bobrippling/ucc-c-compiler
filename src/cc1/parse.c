@@ -187,13 +187,13 @@ expr *parse_expr_postfix()
 			e = st_op;
 
 		}else if((flag = accept(token_increment)) || accept(token_decrement)){
-			expr *inc = expr_new_assign();
+			expr *op = expr_new_op(flag ? op_plus : op_minus);
+			expr *inc = expr_new_assign(e, op);
+
 			inc->assign_is_post = 1;
 
-			inc->lhs = e;
-			inc->rhs = expr_new_op(flag ? op_plus : op_minus);
-			inc->rhs->lhs = e;
-			inc->rhs->rhs = expr_new_val(1);
+			op->lhs = e;
+			op->rhs = expr_new_val(1);
 
 			e = inc;
 		}else{
@@ -211,13 +211,15 @@ expr *parse_expr_unary()
 
 	if((flag = accept(token_increment)) || accept(token_decrement)){
 		/* this is a normal increment, i.e. ++x, simply translate it to x = x + 1 */
-		e = expr_new_assign();
+		expr *op, *to;
+
+		to = parse_expr_unary();
+		op = expr_new_op(flag ? op_plus : op_minus);
+		e = expr_new_assign(to, op);
 
 		/* assign to... */
-		e->lhs = parse_expr_unary();
-		e->rhs = expr_new_op(flag ? op_plus : op_minus);
-		e->rhs->lhs = e->lhs;
-		e->rhs->rhs = expr_new_val(1);
+		op->lhs = e->lhs;
+		op->rhs = expr_new_val(1);
 		/*
 		 * looks like this:
 		 *
@@ -337,23 +339,22 @@ expr *parse_expr_assignment()
 
 	if(accept(token_assign)){
 		expr *from = parse_expr_assignment();
-		expr *ret  = expr_new_assign();
-
-		ret->lhs = e;
-		ret->rhs = from;
+		expr *ret  = expr_new_assign(e, from);
 
 		return ret;
 
 	}else if(curtok_is_augmented_assignment()){
 		/* +=, ... */
-		expr *ass = expr_new_assign();
+		expr *added;
+		expr *ass;
 
-		ass->lhs = e;
-		ass->rhs = expr_new_op(curtok_to_augmented_op());
+		added = expr_new_op(curtok_to_augmented_op());
+		ass = expr_new_assign(e, added);
+
 		EAT(curtok);
 
-		ass->rhs->lhs = e;
-		ass->rhs->rhs = parse_expr_assignment();
+		added->lhs = e;
+		added->rhs = parse_expr_assignment();
 
 		e = ass;
 	}
@@ -539,15 +540,46 @@ stmt *parse_code_block()
 
 	t->decls = PARSE_DECLS();
 
-	for(diter = t->decls; diter && *diter; diter++)
+	for(diter = t->decls; diter && *diter; diter++){
 		/* only extract the init if it's not static */
-		if((*diter)->init && (*diter)->type->store != store_static){
-			dynarray_add((void ***)&t->codes, expr_to_stmt(expr_new_decl_init(*diter)));
-			/*
-			 *(*diter)->init = NULL;
-			 * leave it set, so we can check later in, say, fold.c for const init
-			 */
+		decl *d = *diter;
+		if(decl_is_array(d)){
+			if(d->init){
+#ifndef FANCY_STACK_INIT
+				/* assignment expr for each init */
+				array_decl *dinit = d->init->array_store;
+				int i;
+				expr *comma_init = NULL;
+
+				for(i = 0; i < dinit->len; i++){
+					int init_val;
+					expr *init;
+
+					if(dinit->type == array_exprs)
+						init_val = dinit->data.exprs[i]->val.iv.val;
+					else
+						init_val = dinit->data.str[i];
+
+					init = expr_new_array_decl_init(d, init_val, i);
+
+					if(comma_init){
+						expr *new = expr_new_comma();
+						new->lhs = comma_init;
+						new->rhs = init;
+						comma_init = new;
+					}else{
+						comma_init = init;
+					}
+				}
+
+				dynarray_add((void ***)&t->codes, expr_to_stmt(comma_init));
+#endif
+			}
+		}else if(d->init && d->type->store != store_static){
+			dynarray_add((void ***)&t->codes, expr_to_stmt(expr_new_decl_init(d)));
 		}
+		/* don't change init - used for checks for assign-to-const */
+	}
 
 	if(curtok != token_close_block){
 		/* main read loop */

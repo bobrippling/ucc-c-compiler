@@ -10,6 +10,7 @@
 #include "cc1.h"
 #include "sue.h"
 #include "gen_str.h"
+#include "str.h"
 
 #define ENGLISH_PRINT_ARGLIST
 
@@ -56,7 +57,7 @@ void print_decl_desc_eng(decl_desc *dp)
 
 	switch(dp->type){
 		case decl_desc_ptr:
-			fprintf(cc1_out, "pointer to ");
+			fprintf(cc1_out, "%spointer to ", type_qual_to_str(dp->bits.qual));
 			break;
 
 		case decl_desc_func:
@@ -161,10 +162,14 @@ void print_decl_desc(decl_desc *dp, decl *d)
 			break;
 
 		case decl_desc_array:
-			fputc('[', cc1_out);
-			print_expr_val(dp->bits.array_size);
-			fputc(']', cc1_out);
+		{
+			int sz = dp->bits.array_size->val.iv.val;
+			if(sz)
+				fprintf(cc1_out, "[%d]", sz);
+			else
+				fprintf(cc1_out, "[]");
 			break;
+		}
 
 		case decl_desc_ptr:
 			break;
@@ -354,6 +359,27 @@ void print_stmt_flow(stmt_flow *t)
 	gen_str_indent--;
 }
 
+void print_decl_array_init(decl *d)
+{
+	array_decl *init = d->init->array_store;
+
+	switch(init->type){
+		case array_str:
+			idt_printf("\"");
+			literal_print(cc1_out, init->data.str, init->len);
+			fputs("\"\n", cc1_out);
+			break;
+
+		case array_exprs:
+		{
+			int i;
+			for(i = 0; i < init->len; i++)
+				idt_printf("[%d] = %d\n", i, init->data.exprs[i]->val.iv.val);
+			break;
+		}
+	}
+}
+
 void print_stmt(stmt *t)
 {
 	idt_printf("statement: %s\n", t->f_str());
@@ -387,6 +413,11 @@ void print_stmt(stmt *t)
 
 			gen_str_indent++;
 			print_decl(d, PDECL_INDENT | PDECL_NEWLINE | PDECL_SYM_OFFSET | PDECL_PIGNORE);
+			if(decl_is_array(d) && d->init){
+				gen_str_indent++;
+				print_decl_array_init(d);
+				gen_str_indent--;
+			}
 			gen_str_indent--;
 		}
 	}
