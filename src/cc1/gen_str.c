@@ -263,6 +263,11 @@ void print_struct(struct_union_enum_st *sue)
 {
 	sue_member **iter;
 
+	if(sue_incomplete(sue)){
+		idt_printf("incomplete %s %s\n", sue_str(sue), sue->spel);
+		return;
+	}
+
 	idt_printf("%s %s (size %d):\n", sue_str(sue), sue->spel, struct_union_size(sue));
 
 	gen_str_indent++;
