@@ -31,6 +31,7 @@
 		"signal",       \
 		"assert",       \
 		"ctype",        \
+		"dirent",       \
 		"ucc",          \
 		"alloca",       \
 		"sys/fcntl",    \
