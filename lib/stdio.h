@@ -26,15 +26,19 @@ size_t fread(       void *ptr, size_t size, size_t nmemb, FILE *stream);
 size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream);
 
 
-/* TODO: func interface */
 typedef size_t fpos_t;
-FILE	*funopen(
-		const void *,
-		int    (*)(void *, char *, int),
-		int    (*)(void *, const char *, int),
-		fpos_t (*)(void *, fpos_t, int),
-		int    (*)(void *)
-	);
+
+/* TODO: func interface */
+FILE *funopen(
+		const void *cookie,
+		int      (*readfn)(void *,       char *, int),
+		int     (*writefn)(void *, const char *, int),
+		fpos_t   (*seekfn)(void *,       fpos_t, int),
+		int     (*closefn)(void *)
+		);
+
+FILE *fropen(void *cookie, int (*readfn )(void *,       char *, int));
+FILE *fwopen(void *cookie, int (*writefn)(void *, const char *, int));
 
 
 /* status */
