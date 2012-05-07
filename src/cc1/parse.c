@@ -271,19 +271,17 @@ do_parse:
 	return e;
 }
 
-expr *parse_expr_generic(
-		expr *(*this)(), expr *(*above)(),
-		enum token t, ...)
+expr *parse_expr_generic(expr *(*above)(), enum token t, ...)
 {
 	expr *e = above();
 	va_list l;
 
 	va_start(l, t);
-	if(curtok == t || curtok_in_list(l)){
+	while(curtok == t || curtok_in_list(l)){
 		expr *join = expr_new_op(curtok_to_op());
 		EAT(curtok);
 		join->lhs = e;
-		join->rhs = this();
+		join->rhs = above();
 		e = join;
 	}
 
@@ -295,7 +293,6 @@ expr *parse_expr_generic(
 expr *parse_expr_ ## this()            \
 {                                      \
 	return parse_expr_generic(           \
-			parse_expr_ ## this,             \
 			parse_expr_ ## above,            \
 			__VA_ARGS__, token_unknown);     \
 }
