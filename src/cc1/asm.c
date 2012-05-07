@@ -253,7 +253,7 @@ void asm_declare_single(FILE *f, decl *d)
 		/* struct init */
 		int i;
 
-		ICW("attempting to declare+init a struct, very buggy");
+		ICW("attempting to declare+init a struct, untested for nesting and arrays");
 
 		UCC_ASSERT(d->init->array_store, "no array store for struct init (TODO?)");
 		UCC_ASSERT(d->init->array_store->type == array_exprs, "array store of strings for struct");
