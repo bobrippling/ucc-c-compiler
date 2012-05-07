@@ -7,9 +7,9 @@
 #include "assert.h"
 #include "ctype.h"
 
-#define PRINTF_OPTIMISE
+#include "ucc_attr.h"
 
-#define __unused __attribute__((__unused__))
+#define PRINTF_OPTIMISE
 
 static FILE _stdin  = { 0, 0 };
 static FILE _stdout = { 1, 0 };
