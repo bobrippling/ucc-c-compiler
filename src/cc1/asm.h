@@ -38,11 +38,19 @@ enum asm_size
 	ASM_SIZE_STRUCT_UNION /* special case */
 };
 
+enum asm_indir
+{
+	ASM_INDIR_GET,
+	ASM_INDIR_SET
+};
+
 void asm_new(enum asm_type, void *);
 
 void asm_temp(          int indent, const char *, ...);
 void asm_tempf(FILE *f, int indent, const char *, ...);
 void asm_out_intval(FILE *f, intval *iv);
+
+void asm_indir(enum asm_indir mode, decl *tt, char rto, char rfrom, const char *comment);
 
 void asm_label(const char *);
 void asm_sym(enum asm_sym_type, sym *, const char *);

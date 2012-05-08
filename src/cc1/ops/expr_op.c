@@ -469,10 +469,12 @@ void asm_operate_struct(expr *e, symtable *tab)
 	asm_temp(1, "add rax, %d ; offset of member %s",
 			e->rhs->tree_type->struct_offset,
 			e->rhs->spel);
+
 	if(decl_is_array(e->rhs->tree_type))
 		asm_temp(1, "; array - got address");
 	else
-		asm_temp(1, "mov rax, [rax] ; val from struct");
+		asm_indir(ASM_INDIR_GET, e->tree_type, 'a', 'a', "val from struct");
+
 	asm_temp(1, "push rax");
 }
 
@@ -513,10 +515,7 @@ void gen_expr_op(expr *e, symtable *tab)
 			gen_expr(e->lhs, tab);
 			asm_temp(1, "pop rax");
 
-			if(asm_type_size(e->tree_type) == ASM_SIZE_WORD)
-				asm_temp(1, "mov rax, [rax]");
-			else
-				asm_temp(1, "movzx rax, byte [rax]");
+			asm_indir(ASM_INDIR_GET, e->tree_type, 'a', 'a', NULL);
 
 			asm_temp(1, "push rax");
 			return;
@@ -581,7 +580,8 @@ void gen_expr_op_store(expr *e, symtable *stab)
 			/* move `pop` into `pop` */
 			asm_temp(1, "pop rax ; ptr");
 			asm_temp(1, "pop rbx ; val");
-			asm_temp(1, "mov [rax], rbx");
+
+			asm_indir(ASM_INDIR_SET, e->tree_type, 'a', 'b', NULL);
 			return;
 
 		case op_struct_ptr:
@@ -592,7 +592,9 @@ void gen_expr_op_store(expr *e, symtable *stab)
 					e->rhs->tree_type->struct_offset,
 					e->rhs->spel);
 			asm_temp(1, "mov rax, [rsp] ; saved val");
-			asm_temp(1, "mov [rbx], rax");
+
+			asm_indir(ASM_INDIR_SET, e->tree_type, 'b', 'a', NULL);
+
 			return;
 
 		case op_struct_dot:

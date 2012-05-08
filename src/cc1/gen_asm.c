@@ -40,19 +40,16 @@ void gen_func_stack(decl *df, const int offset)
 		decl *d = *iter;
 		if(decl_is_array(d) && d->init){
 			use_sub = 0;
-			break;
 		}
 	}
 
 	if(use_sub){
 		asm_temp(1, "sub rsp, %d", offset);
 	}else{
-		for(iter = df->func_code->symtab->decls; iter && *iter; iter++){
+		ITER_DECLS(){
 			decl *d = *iter;
 			if(decl_is_array(d) && d->init){
-				use_sub = 0;
 			}else{
-
 			}
 		}
 	}

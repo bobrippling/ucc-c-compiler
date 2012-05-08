@@ -146,6 +146,26 @@ void asm_sym(enum asm_sym_type t, sym *s, const char *reg)
 		free(brackets);
 }
 
+void asm_indir(enum asm_indir mode, decl *tt, char rto, char rfrom, const char *comment)
+{
+	const int full_word = asm_type_size(tt) == ASM_SIZE_WORD;
+
+	if(mode == ASM_INDIR_GET){
+		if(full_word)
+			asm_temp(1, "mov r%cx, [r%cx]", rto, rfrom);
+		else
+			asm_temp(1, "movzx r%cx, byte [r%cx]", rto, rfrom);
+	}else{
+ 		if(full_word)
+			asm_temp(1, "mov [r%cx], r%cx", rto, rfrom);
+		else
+			asm_temp(1, "mov byte [r%cx], %cl", rto, rfrom); 
+	}
+
+	if(comment)
+		asm_temp(1, "; %s", comment);
+}
+
 void asm_new(enum asm_type t, void *p)
 {
 	switch(t){
