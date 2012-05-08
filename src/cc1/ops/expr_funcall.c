@@ -71,14 +71,19 @@ void fold_expr_funcall(expr *e, symtable *stab)
 
 	if(e->funcargs){
 		expr **iter;
+		char *sp = decl_spel(df);
+
+		if(!sp)
+			sp = "<anon func>";
+
 		for(iter = e->funcargs; *iter; iter++){
 			char *desc;
 			expr *arg = *iter;
 
 			fold_expr(arg, stab);
 
-			desc = umalloc(strlen(decl_spel(df)) + 25);
-			sprintf(desc, "function argument to %s", decl_spel(df));
+			desc = umalloc(strlen(sp) + 25);
+			sprintf(desc, "function argument to %s", sp);
 
 			fold_disallow_st_un(arg, desc);
 

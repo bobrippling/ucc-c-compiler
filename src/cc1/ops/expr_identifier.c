@@ -83,11 +83,13 @@ void gen_expr_identifier(expr *e, symtable *stab)
 {
 	(void)stab;
 
-	if(e->sym){
+	if(e->sym && !decl_is_func(e->sym->decl)){
 		/*
 		 * if it's an array, lea, else, load
 		 * note that array-leas load the bottom address (smallest value)
 		 * since arrays grow upwards... duh
+		 *
+		 * also never do this for functions
 		 */
 		asm_sym(
 				decl_has_array(e->sym->decl) ? ASM_LEA : ASM_LOAD,

@@ -10,4 +10,6 @@ main()
 	char s[] = "hi there\n";
 
 	print_ar(x, sizeof x / sizeof *x);
+
+	printf("'%s'\n", s);
 }

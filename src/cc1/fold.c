@@ -398,10 +398,30 @@ void fold_decl(decl *d, symtable *stab)
 						"mismatching initialisation for %s (%s vs. %s)",
 						decl_spel(d), buf_a, buf_b);
 			}
+
+			if(const_fold(d->init)){
+				/* global/static + not constant */
+				/* allow identifiers if the identifier is also static */
+
+				if(!expr_kind(d->init, identifier) || d->init->tree_type->type->store != store_static){
+					die_at(&d->init->where, "not a constant expression for %s init - %s", d->spel, d->init->f_str());
+				}
+			}
 		}
 
-		if(!stab->parent && const_fold(d->init)) /* global + not constant */
-			die_at(&d->init->where, "not a constant expression (initialiser is %s)", d->init->f_str());
+		if(decl_has_incomplete_array(d) && d->init->array_store){
+			/* complete the decl */
+			decl_desc *dp;
+			for(dp = d->desc; dp; dp = dp->child){
+				if(dp->type == decl_desc_array){
+					long *psz = &dp->bits.array_size->val.iv.val;
+					if(!*psz){
+						*psz = d->init->array_store->len;
+						break;
+					}
+				}
+			}
+		}
 	}
 
 	/*

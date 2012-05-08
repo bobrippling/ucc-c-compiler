@@ -653,5 +653,11 @@ next:
 			}
 			EAT(token_semicolon);
 		}
+
+		if((mode & DECL_MULTI_ACCEPT_FIELD_WIDTH) && accept(token_colon)){
+			/* padding - struct { int i; :3 } */
+			ICE("TODO: struct inter-var padding");
+			/* anon-decl with field width to pad? */
+		}
 	}
 }

@@ -41,7 +41,6 @@ void gen_func_stack(decl *df, const int offset)
 		decl *d = *iter;
 		if(decl_is_array(d) && d->init){
 			use_sub = 0;
-			break;
 		}
 	}
 
@@ -50,12 +49,10 @@ void gen_func_stack(decl *df, const int offset)
 				asm_operand_new_reg(NULL, ASM_REG_SP),
 				asm_operand_new_val(offset));
 	}else{
-		for(iter = df->func_code->symtab->decls; iter && *iter; iter++){
+		ITER_DECLS(){
 			decl *d = *iter;
 			if(decl_is_array(d) && d->init){
-				use_sub = 0;
 			}else{
-
 			}
 		}
 	}
