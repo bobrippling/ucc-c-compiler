@@ -161,6 +161,11 @@ expr *parse_expr_primary()
 				EAT(token_close_paren);
 				return e;
 			}else{
+				if(curtok != token_identifier){
+					die_at(NULL, "expression expected, got %s (%s:%d)",
+							token_to_str(curtok), __FILE__, __LINE__);
+				}
+
 				return parse_expr_identifier();
 			}
 			break;
