@@ -32,6 +32,7 @@ struct struct_union_enum_st
 																	? "union"                      \
 																	: "enum")
 
+/* this is fine - empty structs aren't allowed */
 #define sue_incomplete(x) (!(x)->members)
 
 #define sue_nmembers(x) dynarray_count((void **)(x)->members)
