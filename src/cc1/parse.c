@@ -98,9 +98,30 @@ expr *parse_expr_primary()
 
 				e->array_store->type = array_str;
 			}else{
+				int struct_init;
+
 				EAT(token_open_block);
+
+				struct_init = curtok == token_dot;
+
 				for(;;){
-					dynarray_add((void ***)&e->array_store->data.exprs, parse_expr_no_comma());
+					expr *exp;
+					char *ident;
+
+					if(struct_init){
+						EAT(token_dot);
+						ident = token_current_spel();
+						EAT(token_identifier);
+						EAT(token_assign);
+
+					}
+					exp = parse_expr_no_comma();
+
+					dynarray_add((void ***)&e->array_store->data.exprs, exp);
+
+					if(struct_init)
+						dynarray_add((void ***)&e->array_store->struct_idents, ident);
+
 					if(accept(token_comma)){
 						if(accept(token_close_block)) /* { 1, } */
 							break;

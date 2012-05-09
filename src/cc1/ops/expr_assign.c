@@ -11,7 +11,7 @@ int fold_const_expr_assign(expr *e)
 	return 1; /* could check if the assignment subtree is const */
 }
 
-int expr_is_lvalue(expr *e, int allow_func)
+int expr_is_lvalue(expr *e, enum lvalue_opts opts)
 {
 	/*
 	 * valid lvaluess:
@@ -26,10 +26,10 @@ int expr_is_lvalue(expr *e, int allow_func)
 	 */
 
 	if(decl_is_array(e->tree_type))
-		return 0;
+		return opts & LVAL_ALLOW_ARRAY;
 
 	if(expr_kind(e, identifier))
-		return allow_func || !e->tree_type->func_code;
+		return (opts & LVAL_ALLOW_FUNC) || !e->tree_type->func_code;
 
 	if(expr_kind(e, op))
 		switch(e->op){
@@ -46,40 +46,31 @@ int expr_is_lvalue(expr *e, int allow_func)
 
 void fold_expr_assign(expr *e, symtable *stab)
 {
-	int check_lvalue = 1;
+	int type_ok;
 
 	fold_inc_writes_if_sym(e->lhs, stab);
 
 	fold_expr(e->lhs, stab);
 	fold_expr(e->rhs, stab);
 
-
 	if(expr_kind(e->lhs, identifier))
 		e->lhs->sym->nreads--; /* cancel the read that fold_ident thinks it got */
 
+	fold_coerce_assign(e->lhs->tree_type, e->rhs, &type_ok);
 
-	/* wait until we get the tree types, etc */
-
-	/* only allow assignments to type[] if it's an init */
-	if(e->lhs->sym){
-		decl *d = e->lhs->sym->decl;
-
-		if(decl_is_array(d) && d->init == e->rhs){
-			check_lvalue = 0;
-		}
-	}
-
-	if(check_lvalue && !expr_is_lvalue(e->lhs, 0))
+	if(!expr_is_lvalue(e->lhs, LVAL_ALLOW_ARRAY)){
+		/* only allow assignments to type[] if it's an init */
 		die_at(&e->lhs->where, "not an lvalue (%s%s%s)",
 				e->lhs->f_str(),
 				expr_kind(e->lhs, op) ? " - " : "",
 				expr_kind(e->lhs, op) ? op_to_str(e->lhs->op) : ""
 			);
+	}
 
 	if(decl_is_const(e->lhs->tree_type)){
 		/* allow const init: */
 		if(e->lhs->sym->decl->init != e->rhs)
-			die_at(&e->where, "can't modify const expression");
+			die_at(&e->where, "can't modify const expression %s", e->lhs->f_str());
 	}
 
 
@@ -92,12 +83,14 @@ void fold_expr_assign(expr *e, symtable *stab)
 	fold_typecheck(e->lhs, e->rhs, stab, &e->where);
 
 	/* type check */
-	fold_decl_equal(e->lhs->tree_type, e->rhs->tree_type,
-		&e->where, WARN_ASSIGN_MISMATCH,
+	if(!type_ok){
+		fold_decl_equal(e->lhs->tree_type, e->rhs->tree_type,
+				&e->where, WARN_ASSIGN_MISMATCH,
 				"assignment type mismatch%s%s%s",
 				e->lhs->spel ? " (" : "",
 				e->lhs->spel ? e->lhs->spel : "",
 				e->lhs->spel ? ")" : "");
+	}
 }
 
 void gen_expr_assign(expr *e, symtable *stab)
