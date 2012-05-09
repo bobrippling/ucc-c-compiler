@@ -24,12 +24,10 @@ void fold_expr_addr(expr *e, symtable *stab)
 		TT = decl_new();
 
 		TT->desc = decl_desc_array_new(e->tree_type, NULL);
-		TT->desc->bits.array_size = expr_new_val(TT->init ? TT->init->array_store->len : 0);
+		TT->desc->bits.array_size = expr_new_val(e->array_store->len);
 
 		TT->type->store = store_static;
 		TT->type->qual  = qual_const;
-
-		TT->type->primitive = type_char;
 
 		e->spel = e->array_store->label = asm_label_array(e->array_store->type == array_str);
 
@@ -44,6 +42,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 		switch(e->array_store->type){
 			case array_str:
 				e->tree_type->type->primitive = type_char;
+				TT->type->primitive = type_char;
 				break;
 
 			case array_exprs:
@@ -51,7 +50,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 				expr **inits;
 				int i;
 
-				e->tree_type->type->primitive = type_int;
+				TT->type->primitive = type_int;
 
 				inits = e->array_store->data.exprs;
 

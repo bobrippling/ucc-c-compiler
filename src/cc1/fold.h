@@ -29,6 +29,8 @@ void fold_disallow_st_un(expr *e, const char *desc);
 int  fold_get_sym(          expr *e, symtable *stab);
 void fold_inc_writes_if_sym(expr *e, symtable *stab);
 
+void fold_coerce_assign(decl *d, expr *assign, int *ok);
+
 void fold_expr(expr *e, symtable *stab);
 void fold_stmt(stmt *t);
 

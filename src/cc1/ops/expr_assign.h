@@ -1,3 +1,6 @@
+#ifndef EXPR_ASSIGN_H
+#define EXPR_ASSIGN_H
+
 func_fold    fold_expr_assign;
 func_gen     gen_expr_assign;
 func_const   const_expr_assign;
@@ -6,4 +9,12 @@ func_gen     gen_expr_str_assign;
 func_mutate_expr mutate_expr_assign;
 func_gen     gen_expr_style_assign;
 
-int expr_is_lvalue(expr *e, int allow_func);
+enum lvalue_opts
+{
+	LVAL_ALLOW_FUNC,
+	LVAL_ALLOW_ARRAY
+};
+
+int expr_is_lvalue(expr *e, enum lvalue_opts);
+
+#endif

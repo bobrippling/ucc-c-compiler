@@ -118,7 +118,10 @@ void run(const char *cmd)
 		char *arg0 = ustrdup(cmd);
 		char *p;
 
-		*strchr(arg0, ' ') = '\0';
+		for(p = arg0; isspace(*p); p++);
+
+		*strchr(p, ' ') = '\0';
+
 		if((p = strrchr(arg0, '/')))
 			p++;
 		else

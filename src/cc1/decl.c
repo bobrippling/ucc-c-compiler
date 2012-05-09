@@ -9,6 +9,10 @@
 #include "data_structs.h"
 #include "macros.h"
 
+#define ITER_DESC_TYPE(d, dp, typ)     \
+	for(dp = d->desc; dp; dp = dp->child) \
+		if(dp->type == typ)            
+
 decl_desc *decl_desc_new(enum decl_desc_type t, decl *dparent, decl_desc *parent)
 {
 	decl_desc *dp = umalloc(sizeof *dp);
@@ -341,10 +345,32 @@ int decl_is_array(decl *d)
 int decl_has_array(decl *d)
 {
 	decl_desc *dp;
-	for(dp = d->desc; dp; dp = dp->child)
-		if(dp->type == decl_desc_array)
-			return 1;
+
+	ITER_DESC_TYPE(d, dp, decl_desc_array)
+		return 1;
+
 	return 0;
+}
+
+decl_desc *decl_array_first_incomplete(decl *d)
+{
+	decl_desc *dp;
+
+	ITER_DESC_TYPE(d, dp, decl_desc_array)
+		if(!dp->bits.array_size->val.iv.val)
+			return dp;
+
+	return NULL;
+}
+
+decl_desc *decl_array_first(decl *d)
+{
+	decl_desc *dp;
+
+	ITER_DESC_TYPE(d, dp, decl_desc_array)
+		return dp;
+
+	return NULL;
 }
 
 int decl_has_incomplete_array(decl *d)
@@ -405,12 +431,10 @@ void decl_conv_array_ptr(decl *d)
 {
 	decl_desc *dp;
 
-	for(dp = d->desc; dp; dp = dp->child){
-		if(dp->type == decl_desc_array){
-			expr_free(dp->bits.array_size);
-			dp->type = decl_desc_ptr;
-			dp->bits.qual = qual_none;
-		}
+	ITER_DESC_TYPE(d, dp, decl_desc_array){
+		expr_free(dp->bits.array_size);
+		dp->type = decl_desc_ptr;
+		dp->bits.qual = qual_none;
 	}
 }
 
@@ -513,7 +537,7 @@ void decl_desc_add_str(decl_desc *dp, char **bufp, int sz)
 			BUF_ADD("()");
 			break;
 		case decl_desc_array:
-			BUF_ADD("[]");
+			BUF_ADD("[%ld]", dp->bits.array_size->val.iv.val);
 			break;
 	}
 #undef BUF_ADD
