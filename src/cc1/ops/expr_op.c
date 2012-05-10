@@ -401,9 +401,18 @@ static void asm_idiv(expr *e, symtable *tab)
 	gen_expr(e->rhs, tab);
 	/* pop top stack (rhs) into b, and next top into a */
 
+#define IDIV_SIGN_EXTEND
+
+#ifndef  IDIV_SIGN_EXTEND
+# warning old broken division
 	asm_temp(1, "xor rdx,rdx");
+#endif
+
 	asm_temp(1, "pop rbx");
 	asm_temp(1, "pop rax");
+#ifdef IDIV_SIGN_EXTEND
+	asm_temp(1, "cqo ; rax -> rdx:rax"); /* convert quad to oct - cqto in AT&T */
+#endif
 	asm_temp(1, "idiv rbx");
 
 	asm_temp(1, "push r%cx", e->op == op_divide ? 'a' : 'd');
