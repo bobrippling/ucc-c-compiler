@@ -85,9 +85,15 @@ ASM_WRAP(call,     1)
 ASM_WRAP(leave,    0)
 ASM_WRAP(ret,      0)
 ASM_WRAP(lea,      2)
-ASM_WRAP(idiv,     1)
 
 ASM_WRAP(push,     1)
+
+void asm_out_type_idiv(asm_output *out)
+{
+	ICE("FIXME: cq[t]o");
+	asm_out_generic("cqo",  out, 1); /* cqto for AT&T */
+	asm_out_generic("idiv", out, 1);
+}
 
 void asm_out_type_pop(asm_output *out)
 {

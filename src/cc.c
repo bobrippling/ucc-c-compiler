@@ -8,6 +8,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <stdarg.h>
+#include <ctype.h>
 
 #include "cc.h"
 #include "util/alloc.h"

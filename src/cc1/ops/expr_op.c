@@ -404,6 +404,7 @@ static void asm_idiv(expr *e, symtable *tab)
 	xor rdx,rdx
 	pop rbx
 	pop rax
+	cqo ; rax -> rdx:rax <-- handled in the idiv inst.
 	idiv rbx
 	push r%cx, e->op == op_divide ? 'a' : 'd'
 	*/
