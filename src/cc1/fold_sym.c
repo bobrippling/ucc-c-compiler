@@ -44,6 +44,7 @@ int symtab_fold(symtable *tab, int current)
 					if(s->var == 0                        \
 					&& !s->decl->internal                 \
 					&& !decl_has_array(s->decl)           \
+					&& !decl_is_func(s->decl)             \
 					&& !decl_is_struct_or_union(s->decl)) \
 					{                                     \
 						cc1_warn_at(&s->decl->where, 0,     \
