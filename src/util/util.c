@@ -20,7 +20,7 @@ const char *where_str(const struct where *w)
 struct where *default_where(struct where *w)
 {
 	if(!w){
-		extern const char *current_fname;
+		extern const char *current_fname, *current_line_str;
 		extern int current_line, current_chr;
 		static struct where instead;
 
@@ -29,6 +29,7 @@ struct where *default_where(struct where *w)
 		instead.fname = current_fname;
 		instead.line  = current_line;
 		instead.chr   = current_chr;
+		instead.current_line_str = current_line_str;
 	}
 
 	return w;
@@ -36,6 +37,8 @@ struct where *default_where(struct where *w)
 
 void vwarn(struct where *w, int err, const char *fmt, va_list l)
 {
+	extern int show_current_line;
+
 	w = default_where(w);
 
 	fprintf(stderr, "%s: %s: ", where_str(w), err ? "error" : "warning");
@@ -47,6 +50,9 @@ void vwarn(struct where *w, int err, const char *fmt, va_list l)
 	}else{
 		fputc('\n', stderr);
 	}
+
+	if(show_current_line)
+		fprintf(stderr, "on \"%s\"\n", w->current_line_str);
 }
 
 void vdie(struct where *w, const char *fmt, va_list l)

@@ -32,7 +32,8 @@ static const struct
 	{ NULL,             NULL }
 };
 
-const char *current_fname;
+const char *current_fname, *current_line_str;
+int show_current_line;
 
 char cpp_time[16], cpp_date[16];
 

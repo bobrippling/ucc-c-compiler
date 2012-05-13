@@ -3,7 +3,7 @@
 
 typedef struct where
 {
-	const char *fname;
+	const char *fname, *current_line_str;
 	int line, chr;
 } where;
 

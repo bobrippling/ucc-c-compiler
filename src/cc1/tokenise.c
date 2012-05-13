@@ -107,6 +107,8 @@ int   currentstringlen = 0;
 /* -- */
 int current_line = 0;
 int current_chr  = 0;
+char *current_line_str = NULL;
+int current_line_str_used = 0;
 
 static void add_store_line(char *l)
 {
@@ -170,11 +172,20 @@ static void tokenise_read_line()
 			current_line = lno - 1; /* inc'd below */
 
 			tokenise_read_line();
+
 			return;
 		}
 
 		current_line++;
 		current_chr = -1;
+	}
+
+	if(l){
+		if(!current_line_str_used)
+			free(current_line_str);
+		current_line_str = ustrdup(l);
+		fprintf(stderr, "cur line %s\n", current_line_str);
+		current_line_str_used = 0;
 	}
 
 	bufferpos = buffer = l;
@@ -183,8 +194,17 @@ static void tokenise_read_line()
 void tokenise_set_file(FILE *f, const char *nam)
 {
 	infile = f;
+
+	if(!current_fname_used)
+		free(current_fname);
 	current_fname = ustrdup(nam);
 	current_fname_used = 0;
+
+	if(!current_line_str_used)
+		free(current_line_str);
+	current_line_str = NULL;
+	current_line_str_used = 0;
+
 	current_line = 0;
 	buffereof = 0;
 	nexttoken();

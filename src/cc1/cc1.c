@@ -120,6 +120,8 @@ int cc1_max_errors = 16;
 
 int caught_sig = 0;
 
+int show_current_line;
+
 const char *section_names[NUM_SECTIONS] = {
 	"text", "data", "bss"
 };
@@ -378,6 +380,8 @@ usage:
 	}
 
 	io_setup();
+
+	show_current_line = fopt_mode & FOPT_SHOW_LINE;
 
 	tokenise_set_file(f, fname);
 	globs = parse();
