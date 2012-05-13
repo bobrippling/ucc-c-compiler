@@ -550,7 +550,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 				die_at(&d->where, "identifier expected after decl");
 			}else if(decl_is_func(d) && curtok != token_semicolon){
 				/* optionally check for old func decl */
-				decl **old_args = PARSE_DECLS();
+				decl **old_args = parse_decls_multi_type(0);
 
 				if(old_args){
 					/* check then replace old args */
@@ -602,8 +602,13 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 					d);
 
 			/* FIXME: check later for functions, not here - typedefs */
-			if(decl_is_func(d) && (mode & DECL_MULTI_ACCEPT_FUNCTIONS) == 0)
-				die_at(&d->where, "function not wanted");
+			if(decl_is_func(d)){
+				if(d->func_code && (mode & DECL_MULTI_ACCEPT_FUNC_CODE) == 0)
+						die_at(&d->where, "function code not wanted (%s)", d->spel);
+
+				if((mode & DECL_MULTI_ACCEPT_FUNC_DECL) == 0)
+					die_at(&d->where, "function decl not wanted (%s)", d->spel);
+			}
 
 			if(are_tdefs){
 				if(decl_is_func(d) && d->func_code)
