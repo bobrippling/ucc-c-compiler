@@ -10,13 +10,8 @@
 #include "sys/types.h"
 #include "sys/mman.h"
 
-#define PAGE_SIZE 4096
-/* getpagesize() */
-
 #ifdef __DARWIN__
 #  define MAP_ANONYMOUS MAP_ANON
-#else
-#  define MALLOC_SBRK
 #endif
 
 int atoi(char *s)
@@ -30,63 +25,6 @@ int atoi(char *s)
 			break;
 
 	return i;
-}
-
-void *malloc(size_t size)
-{
-	/*
-	 * TODO: linked list of free blocks, etc
-	 */
-#ifdef MALLOC_MMAP
-	static void   *last_page     = NULL;
-	static size_t  last_page_use = 0;
-
-	void *p;
-	int need_new;
-
-	assert(size <= PAGE_SIZE); // TODO
-
-	need_new = !last_page || last_page_use + size > PAGE_SIZE;
-
-	// TODO: split this logic into malloc_chunk() and there is where we use sbrk() etc
-
-	if(need_new){
-		last_page_use = 0;
-
-		// memleak
-		last_page = p = mmap(NULL, PAGE_SIZE,
-				PROT_READ | PROT_WRITE | PROT_EXEC,
-				MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-
-		if(p == MAP_FAILED)
-			return NULL;
-
-	}else{
-		p = last_page + last_page_use;
-	}
-
-	last_page_use += size;
-
-	return p;
-#else
-# ifdef MALLOC_SBRK
-
-#ifdef __DARWIN__
-# error sbrk not implemented on darwin
-#endif
-
-	return sbrk(size);
-# else
-# warning malloc static buf implementation
-	static char malloc_buf[PAGE_SIZE];
-	static void *ptr = malloc_buf;
-	void *ret = ptr;
-
-	ptr += size;
-
-	return ret; // TODO
-# endif
-#endif
 }
 
 void *calloc(size_t count, size_t len)
@@ -106,11 +44,6 @@ void *realloc(void *p __unused, size_t l __unused)
 	const char *s = "realloc() not implemented\n";
 	write(2, s, strlen(s));
 	abort();
-}
-
-void free(void *p __unused)
-{
-	/* no op... :C */
 }
 
 void abort()

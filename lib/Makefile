@@ -2,7 +2,7 @@ UCC_CC = ../src/cc
 OBJ    = crt.o syscall.o dirent.o                       \
          stdio.o stdlib.o string.o unistd.o signal.o    \
 				 assert.o ctype.o                               \
-				 ucc.o alloca.o                                 \
+				 ucc.o alloca.o malloc.o                        \
          sys/fcntl.o sys/wait.o sys/mman.o sys/socket.o
 
 LIBDEPS = ${UCC_CC} ../src/cc1/cc1 ../src/cpp2/cpp
@@ -37,6 +37,8 @@ ctype.o: ctype.c
 dirent.o: dirent.c
 	${BUILD_CMD}
 
+malloc.o: malloc.c
+	${BUILD_CMD}
 alloca.o: alloca.s
 	${BUILD_CMD}
 

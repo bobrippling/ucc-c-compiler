@@ -35,6 +35,7 @@
 		"dirent",       \
 		"ucc",          \
 		"alloca",       \
+		"malloc",       \
 		"sys/fcntl",    \
 		"sys/wait",     \
 		"sys/mman",     \

@@ -13,11 +13,10 @@ int brk(void *p)
 
 	ret = ucc_brk(p);
 
-	/* linux brk() returns the current break on failure */
 	if(ret == p){
 		return 0;
 	}else{
-		/* failure */
+		/* linux brk() returns the current break on failure */
 		/*errno = ENOMEM;*/
 		return -1;
 	}
@@ -25,19 +24,15 @@ int brk(void *p)
 
 void *sbrk(int inc)
 {
-	void *new;
+	void *new = ucc_brk(NULL);
 
-	new = ucc_brk(NULL) + inc;
-
-	if(brk(new) == -1){
+	if(brk(new + inc) == -1){
 		/*errno = ENOMEM;*/
 		return (void *)-1;
 	}
 
 	return new;
 }
-#else
-#  warning no brk() on darwin
 #endif
 
 pid_t getpid()
