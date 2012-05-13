@@ -2,6 +2,7 @@
 #include "sys/fcntl.h"
 #include "unistd.h"
 #include "stdlib.h"
+#include "errno.h"
 
 #include "ucc_attr.h"
 
@@ -26,6 +27,12 @@ DIR *opendir(const char *name)
 DIR *fdopendir(int fd)
 {
 	DIR *d = malloc(sizeof *d);
+	if(!d){
+		const int e = errno;
+		close(fd);
+		errno = e;
+		return NULL;
+	}
 	d->fd = fd;
 	return d;
 }

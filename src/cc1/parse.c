@@ -20,6 +20,8 @@
 #define STAT_NEW_NEST(type) stmt_new_wrapper(type, symtab_new(current_scope))
 
 stmt *parse_code_block(void);
+stmt *parse_code(void);
+expr **parse_funcargs(void);
 
 expr *parse_expr_unary(void);
 #define parse_expr_cast() parse_expr_unary()
@@ -564,7 +566,7 @@ stmt *parse_code_block()
 	if(accept(token_close_block))
 		goto ret;
 
-	t->decls = PARSE_DECLS();
+	t->decls = parse_decls_multi_type(DECL_MULTI_ACCEPT_FUNC_DECL);
 
 	for(diter = t->decls; diter && *diter; diter++){
 		/* only extract the init if it's not static */
@@ -733,7 +735,7 @@ symtable *parse()
 
 	current_scope = globals = symtab_new(NULL);
 
-	decls = parse_decls_multi_type(DECL_MULTI_CAN_DEFAULT | DECL_MULTI_ACCEPT_FUNCTIONS);
+	decls = parse_decls_multi_type(DECL_MULTI_CAN_DEFAULT | DECL_MULTI_ACCEPT_FUNC_CODE);
 	EAT(token_eof);
 
 	if(parse_had_error)
