@@ -21,17 +21,12 @@ extern enum token curtok;
 
 #define parse_possible_decl() (curtok == token_identifier || curtok == token_multiply || curtok == token_open_paren)
 #define parse_expr_no_comma() parse_expr_assignment()
+
+/* these need to be visible to parse_type.c */
 expr *parse_expr_assignment(void);
-expr *parse_expr_exp(void);
-
-stmt  *parse_code(void);
-
-expr **parse_funcargs(void);
-expr *parse_expr_binary_op(void); /* needed to limit [+-] parsing */
-expr *parse_expr_array(void);
-expr *parse_expr_if(void);
-expr *parse_expr_deref(void);
+stmt *parse_code_block(void);
 expr *parse_expr_sizeof_typeof(void);
+expr *parse_expr_exp(void);
 
 symtable *parse(void);
 

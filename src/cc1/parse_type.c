@@ -593,10 +593,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 					free(old_args);
 				}
 
-				if(curtok != token_open_block)
-					EAT(token_open_block);
-
-				d->func_code = parse_code();
+				d->func_code = parse_code_block();
 			}
 
 			dynarray_add(are_tdefs

@@ -20,6 +20,8 @@
 #define STAT_NEW_NEST(type) stmt_new_wrapper(type, symtab_new(current_scope))
 
 stmt *parse_code_block(void);
+stmt *parse_code(void);
+expr **parse_funcargs(void);
 
 expr *parse_expr_unary(void);
 #define parse_expr_cast() parse_expr_unary()
