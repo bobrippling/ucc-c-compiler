@@ -556,6 +556,7 @@ stmt *parse_for()
 
 stmt *parse_code_block()
 {
+	int carry_on = 1;
 	stmt *t = STAT_NEW_NEST(code);
 	decl **diter;
 
@@ -563,70 +564,87 @@ stmt *parse_code_block()
 
 	EAT(token_open_block);
 
-	if(accept(token_close_block))
-		goto ret;
+	while(curtok != token_close_block && carry_on){
+		stmt *sub = NULL;
+		decl **decls = parse_decls_multi_type(DECL_MULTI_ACCEPT_FUNC_DECL);
 
-	t->decls = parse_decls_multi_type(DECL_MULTI_ACCEPT_FUNC_DECL);
+		if(decls){
+			/*
+			 * create an implicit block for the decl i.e.
+			 *
+			 * int i;              int i;
+			 * i = 5;              i = 5;
+			 *                     {
+			 * int j;   ---->        int j;
+			 * j = 2;                j = 2;
+			 *                     }
+			 */
 
-	for(diter = t->decls; diter && *diter; diter++){
-		/* only extract the init if it's not static */
-		decl *d = *diter;
-		if(decl_is_array(d)){
-			if(d->init){
+			carry_on = 0; /* everything else goes into the sub block */
+
+			sub = parse_code();
+
+			if(!sub){
+				/* decls are useless - { int i; } */
+				dynarray_free((void ***)&decls, (void (*)(void *))decl_free);
+				return NULL;
+			}
+
+			dynarray_add_array((void ***)&sub->decls, (void **)decls);
+
+			for(diter = decls; diter && *diter; diter++){
+				/* only extract the init if it's not static */
+				decl *d = *diter;
+				if(d->init){
+					if(decl_is_array(d)){
 #ifndef FANCY_STACK_INIT
-				/* assignment expr for each init */
-				array_decl *dinit = d->init->array_store;
-				int i;
-				expr *comma_init = NULL;
+						/* assignment expr for each init */
+						array_decl *dinit = d->init->array_store;
+						int i;
+						expr *comma_init = NULL;
 
-				for(i = 0; i < dinit->len; i++){
-					int init_val;
-					expr *init;
+						for(i = 0; i < dinit->len; i++){
+							int init_val;
+							expr *init;
 
-					if(dinit->type == array_exprs)
-						init_val = dinit->data.exprs[i]->val.iv.val;
-					else
-						init_val = dinit->data.str[i];
+							if(dinit->type == array_exprs)
+								init_val = dinit->data.exprs[i]->val.iv.val;
+							else
+								init_val = dinit->data.str[i];
 
-					init = expr_new_array_decl_init(d, init_val, i);
+							init = expr_new_array_decl_init(d, init_val, i);
 
-					if(comma_init){
-						expr *new = expr_new_comma();
-						new->lhs = comma_init;
-						new->rhs = init;
-						comma_init = new;
+							if(comma_init){
+								expr *new = expr_new_comma();
+								new->lhs = comma_init;
+								new->rhs = init;
+								comma_init = new;
+							}else{
+								comma_init = init;
+							}
+						}
+
+						dynarray_add((void ***)&sub->codes, expr_to_stmt(comma_init));
+#else
+						/* arrays handled elsewhere */
+#endif
 					}else{
-						comma_init = init;
+						dynarray_add((void ***)&sub->codes, expr_to_stmt(expr_new_decl_init(d)));
 					}
 				}
-
-				dynarray_add((void ***)&t->codes, expr_to_stmt(comma_init));
-#endif
+				/* don't change init - used for checks for assign-to-const */
 			}
-		}else if(d->init && d->type->store != store_static){
-			dynarray_add((void ***)&t->codes, expr_to_stmt(expr_new_decl_init(d)));
+		}else{
+			sub = parse_code();
 		}
-		/* don't change init - used for checks for assign-to-const */
-	}
 
-	if(curtok != token_close_block){
-		/* main read loop */
-		do{
-			stmt *sub = parse_code();
-
-			if(sub)
-				dynarray_add((void ***)&t->codes, sub);
-			else
-				break;
-		}while(curtok != token_close_block);
+		if(sub)
+			dynarray_add((void ***)&t->codes, sub);
+		else
+			break;
 	}
-	/*
-	 * else:
-	 * { int i; }
-	 */
 
 	EAT(token_close_block);
-ret:
 	current_scope = t->symtab->parent;
 	return t;
 }
