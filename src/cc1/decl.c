@@ -11,7 +11,7 @@
 
 #define ITER_DESC_TYPE(d, dp, typ)     \
 	for(dp = d->desc; dp; dp = dp->child) \
-		if(dp->type == typ)            
+		if(dp->type == typ)
 
 decl_desc *decl_desc_new(enum decl_desc_type t, decl *dparent, decl_desc *parent)
 {
@@ -69,6 +69,12 @@ decl *decl_new()
 	where_new(&d->where);
 	d->type = type_new();
 	return d;
+}
+
+void decl_free(decl *d)
+{
+	type_free(d->type);
+	decl_free_notype(d);
 }
 
 array_decl *array_decl_new()
@@ -516,10 +522,12 @@ void decl_desc_add_str(decl_desc *dp, char **bufp, int sz)
 #define BUF_ADD(...) \
 	do{ int n = snprintf(*bufp, sz, __VA_ARGS__); *bufp += n, sz -= n; }while(0)
 
+	const int need_paren = dp->parent_desc && dp->parent_desc->type != decl_desc_ptr;
+
 	switch(dp->type){
 		case decl_desc_ptr:
 			BUF_ADD("%s*%s",
-					dp->parent_desc ? "(" : "",
+					need_paren ? "(" : "",
 					type_qual_to_str(dp->bits.qual));
 		default:
 			break;
@@ -530,7 +538,7 @@ void decl_desc_add_str(decl_desc *dp, char **bufp, int sz)
 
 	switch(dp->type){
 		case decl_desc_ptr:
-			if(dp->parent_desc)
+			if(need_paren)
 				BUF_ADD(")");
 			break;
 		case decl_desc_func:

@@ -193,6 +193,6 @@ const char *decl_to_str(decl *d);
 
 void decl_desc_free(decl_desc *);
 #define decl_free_notype(x) do{free(x);}while(0)
-#define decl_free(x) do{type_free((x)->type); decl_free_notype(x);}while(0)
+void decl_free(decl *d);
 
 #endif
