@@ -139,7 +139,7 @@ word:
 	}
 
 	/* trim tokens */
-	{
+	if(tokens){
 		int i;
 		for(i = 0; tokens[i]; i++)
 			if(tokens[i]->w)
@@ -326,11 +326,25 @@ void handle_include(token **tokens)
 		len = strlen(fname);
 	}
 
+retry:
 	if(*fname == '<'){
 		if(fname[len-1] != '>')
 			die("invalid include end '%c'", fname[len-1]);
 	}else if(*fname != '"'){
-		die("invalid include start '%c'", *fname);
+		/*
+		 * #define a "hi"
+		 * #include a
+		 * pretty annoying..
+		 */
+		macro *m;
+
+		m = macro_find(fname);
+		if(!m)
+			die("invalid include start \"%s\" (not <xyz>, \"xyz\" or a macro)", fname);
+
+		for(fname = m->val; isspace(*fname); fname++);
+		len = strlen(fname);
+		goto retry;
 	}
 	/* if it's '"' then we've got a finishing '"' */
 
@@ -438,6 +452,11 @@ void handle_endif(token **tokens)
 	ifdef_pop();
 }
 
+void handle_pragma(token **tokens)
+{
+	(void)tokens;
+}
+
 void handle_macro(char *line)
 {
 	token **tokens;
@@ -451,12 +470,6 @@ void handle_macro(char *line)
 	if(tokens[0]->tok != TOKEN_WORD)
 		die("invalid preproc token");
 
-#define MAP(s, f)                \
-	if(!strcmp(tokens[0]->w, s)){  \
-		f(tokens + 1);               \
-		goto fin;                    \
-	}
-
 	DEBUG(DEBUG_NORM, "macro %s\n", tokens[0]->w);
 
 	/* check for '# [0-9]+ "..."' */
@@ -467,6 +480,12 @@ void handle_macro(char *line)
 	}
 
 	putchar('\n'); /* keep line-no.s in sync */
+
+#define MAP(s, f)                \
+	if(!strcmp(tokens[0]->w, s)){  \
+		f(tokens + 1);               \
+		goto fin;                    \
+	}
 
 	MAP("include", handle_include)
 
@@ -480,6 +499,8 @@ void handle_macro(char *line)
 
 	MAP("warning", handle_warning)
 	MAP("error",   handle_error)
+
+	MAP("pragma",  handle_pragma)
 
 	die("unrecognised preproc command \"%s\"", tokens[0]->w);
 fin:
