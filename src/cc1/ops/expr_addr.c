@@ -4,6 +4,7 @@
 #include "ops.h"
 #include "../sue.h"
 #include "../str.h"
+#include "../namespace.h"
 
 const char *str_expr_addr()
 {
@@ -29,9 +30,9 @@ void fold_expr_addr(expr *e, symtable *stab)
 		TT->type->store = store_static;
 		TT->type->qual  = qual_const;
 
-		e->spel = e->array_store->label = asm_label_array(e->array_store->type == array_str);
+		e->array_store->label = asm_label_array(e->array_store->type == array_str);
 
-		decl_set_spel(e->tree_type, e->spel);
+		decl_set_spel(e->tree_type, namespace_spel(e->ns_path));
 
 		array_sym = SYMTAB_ADD(symtab_root(stab), e->tree_type, stab->parent ? sym_local : sym_global);
 
@@ -90,7 +91,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 			e->lhs = e->lhs->lhs = e->lhs->rhs = NULL;
 
 			/* lookup the member decl (for tree type later on) */
-			member_decl = struct_union_member_find(st, member->spel, &e->where);
+			member_decl = struct_union_member_find(st, member->ns_path, &e->where);
 
 			/* e is now the op */
 			expr_mutate_wrapper(e, op);
@@ -118,7 +119,8 @@ void fold_expr_addr(expr *e, symtable *stab)
 
 
 		if(e->lhs->tree_type->type->store == store_register)
-			die_at(&e->lhs->where, "can't take the address of register variable %s", e->lhs->spel);
+			die_at(&e->lhs->where, "can't take the address of register variable %s",
+					namespace_spel(e->lhs->spel));
 
 		e->tree_type = decl_ptr_depth_inc(decl_copy(e->lhs->sym ? e->lhs->sym->decl : e->lhs->tree_type));
 	}

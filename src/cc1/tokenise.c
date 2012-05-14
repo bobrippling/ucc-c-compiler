@@ -68,6 +68,8 @@ struct statement
 	KEYWORD(signed),
 	KEYWORD(unsigned),
 
+	KEYWORD(namespace),
+
 	KEYWORD(typedef),
 	KEYWORD(struct),
 	KEYWORD(union),
@@ -632,7 +634,12 @@ recheck:
 			break;
 
 		case ':':
-			curtok = token_colon;
+			if(peeknextchar() == ':'){
+				nextchar();
+				curtok = token_colon_ns;
+			}else{
+				curtok = token_colon;
+			}
 			break;
 
 		case '?':

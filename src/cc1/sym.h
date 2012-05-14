@@ -44,7 +44,7 @@ symtable *symtab_root(symtable *child);
 #define SYMTAB_ADD(tab, decl, type) symtab_add(tab, decl, type, SYMTAB_WITH_SYM, SYMTAB_APPEND)
 
 sym  *symtab_add(   symtable *, decl *, enum sym_type, int with_sym, int prepend);
-sym  *symtab_search(symtable *, const char *);
+sym  *symtab_search(symtable *, char **ns_path);
 sym  *symtab_has(   symtable *, decl *);
 
 const char *sym_to_str(enum sym_type);

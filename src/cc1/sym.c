@@ -69,7 +69,7 @@ int spel_cmp(const void *test, decl *item)
 	return sp && item->sym && !strcmp(test, sp);
 }
 
-sym *symtab_search(symtable *tab, const char *spel)
+sym *symtab_search(symtable *tab, char **ns_path)
 {
 	if(!spel)
 		ICE("symtab_search() with NULL spel");

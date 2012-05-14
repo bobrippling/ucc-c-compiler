@@ -15,6 +15,7 @@
 #include "../util/dynarray.h"
 #include "sue.h"
 #include "parse_type.h"
+#include "namespace.h"
 
 #define STAT_NEW(type)      stmt_new_wrapper(type, current_scope)
 #define STAT_NEW_NEST(type) stmt_new_wrapper(type, symtab_new(current_scope))
@@ -59,14 +60,34 @@ expr *parse_expr_sizeof_typeof()
 
 expr *parse_expr_identifier()
 {
+	char **namespace_path = NULL;
 	expr *e;
 
-	if(curtok != token_identifier)
-		die_at(NULL, "identifier expected, got %s (%s:%d)",
-				token_to_str(curtok), __FILE__, __LINE__);
+	if(accept(token_colon_ns)){
+		/* ::ident */
+		dynarray_add((void ***)&namespace_path, ustrdup(""));
+	}
 
-	e = expr_new_identifier(token_current_spel());
-	EAT(token_identifier);
+	for(;;){
+		char *sp;
+
+		if(curtok != token_identifier)
+			die_at(NULL, "identifier expected, got %s (%s:%d)",
+					token_to_str(curtok), __FILE__, __LINE__);
+
+		sp = token_current_spel();
+		EAT(token_identifier);
+
+		dynarray_add((void ***)&namespace_path, sp);
+
+		if(!accept(token_colon_ns))
+			break;
+	}
+
+	fprintf(stderr, "parsed ident: %s\n", namespace_spel(namespace_path));
+
+	e = expr_new_identifier(namespace_path);
+
 	return e;
 }
 

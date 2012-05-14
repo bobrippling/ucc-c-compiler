@@ -24,6 +24,9 @@ enum token
 
 	token_attribute,
 
+	token_colon_ns,    /* :: */
+	token_namespace,
+
 	token_identifier,
 	token_integer,     /* aka [1-9] */
 	token_character,   /* aka 'f' */

@@ -122,10 +122,10 @@ void mutate_expr_identifier(expr *e)
 	e->f_const_fold = fold_const_expr_identifier;
 }
 
-expr *expr_new_identifier(char *sp)
+expr *expr_new_identifier(char **ns_path)
 {
 	expr *e = expr_new_wrapper(identifier);
-	e->spel = sp;
+	e->ns_path = ns_path;
 	return e;
 }
 

@@ -119,8 +119,8 @@ void fold_typecheck(expr *lhs, expr *rhs, symtable *stab, where *where)
 
 int fold_get_sym(expr *e, symtable *stab)
 {
-	if(!e->sym && e->spel)
-		return !!(e->sym = symtab_search(stab, e->spel));
+	if(!e->sym && e->ns_path)
+		return !!(e->sym = symtab_search(stab, e->ns_path));
 	return 0;
 }
 
