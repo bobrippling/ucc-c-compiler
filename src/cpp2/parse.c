@@ -326,11 +326,25 @@ void handle_include(token **tokens)
 		len = strlen(fname);
 	}
 
+retry:
 	if(*fname == '<'){
 		if(fname[len-1] != '>')
 			die("invalid include end '%c'", fname[len-1]);
 	}else if(*fname != '"'){
-		die("invalid include start '%c'", *fname);
+		/*
+		 * #define a "hi"
+		 * #include a
+		 * pretty annoying..
+		 */
+		macro *m;
+
+		m = macro_find(fname);
+		if(!m)
+			die("invalid include start \"%s\" (not <xyz>, \"xyz\" or a macro)", fname);
+
+		for(fname = m->val; isspace(*fname); fname++);
+		len = strlen(fname);
+		goto retry;
 	}
 	/* if it's '"' then we've got a finishing '"' */
 
