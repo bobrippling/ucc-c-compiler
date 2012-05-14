@@ -139,7 +139,7 @@ word:
 	}
 
 	/* trim tokens */
-	{
+	if(tokens){
 		int i;
 		for(i = 0; tokens[i]; i++)
 			if(tokens[i]->w)
@@ -452,6 +452,11 @@ void handle_endif(token **tokens)
 	ifdef_pop();
 }
 
+void handle_pragma(token **tokens)
+{
+	(void)tokens;
+}
+
 void handle_macro(char *line)
 {
 	token **tokens;
@@ -465,12 +470,6 @@ void handle_macro(char *line)
 	if(tokens[0]->tok != TOKEN_WORD)
 		die("invalid preproc token");
 
-#define MAP(s, f)                \
-	if(!strcmp(tokens[0]->w, s)){  \
-		f(tokens + 1);               \
-		goto fin;                    \
-	}
-
 	DEBUG(DEBUG_NORM, "macro %s\n", tokens[0]->w);
 
 	/* check for '# [0-9]+ "..."' */
@@ -481,6 +480,12 @@ void handle_macro(char *line)
 	}
 
 	putchar('\n'); /* keep line-no.s in sync */
+
+#define MAP(s, f)                \
+	if(!strcmp(tokens[0]->w, s)){  \
+		f(tokens + 1);               \
+		goto fin;                    \
+	}
 
 	MAP("include", handle_include)
 
@@ -494,6 +499,8 @@ void handle_macro(char *line)
 
 	MAP("warning", handle_warning)
 	MAP("error",   handle_error)
+
+	MAP("pragma",  handle_pragma)
 
 	die("unrecognised preproc command \"%s\"", tokens[0]->w);
 fin:
