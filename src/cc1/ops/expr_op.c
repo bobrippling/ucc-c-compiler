@@ -314,7 +314,12 @@ norm_tt:
 			}else{
 				/* we're dealing with pointers, adjust the amount we add by */
 
-				if(e->op == op_minus){
+				/*
+				 * subtracting two pointers - need to divide by sizeof(void *)
+				 * adding int to a pointer - need to multiply by sizeof(void *)
+				 */
+
+				if(e->op == op_minus && decl_ptr_depth(e->lhs->tree_type) && decl_ptr_depth(e->rhs->tree_type)){
 					/* need to apply the divide to the current 'e' */
 					expr *sub = expr_new_op(e->op);
 
