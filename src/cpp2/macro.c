@@ -263,6 +263,12 @@ relook:
 
 			did_replace = word_replace_g(pline, m->nam, val);
 
+			substitute_here = strstr(*pline, m->nam);
+			if(!substitute_here)
+				substitute_here = *pline;
+			else
+				substitute_here++;
+
 			if(did_replace)
 				m->used_in_loop = 1;
 
