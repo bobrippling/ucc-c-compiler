@@ -24,6 +24,9 @@ include ../../config.mk
 cc1: ${OBJ}
 	${CC} ${CFLAGS} ${LDFLAGS} -o $@ ${OBJ}
 
+.c.o:
+	${CC} ${CFLAGS} -c -o $@ $<
+
 clean:
 	rm -f *.o cc1 ops/*.o
 
