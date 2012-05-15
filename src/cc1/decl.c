@@ -77,12 +77,6 @@ void decl_free(decl *d)
 	decl_free_notype(d);
 }
 
-array_decl *array_decl_new()
-{
-	array_decl *ad = umalloc(sizeof *ad);
-	return ad;
-}
-
 decl_attr *decl_attr_new(enum decl_attr_type t)
 {
 	decl_attr *da = umalloc(sizeof *da);
@@ -148,7 +142,8 @@ int decl_size(decl *d)
 					int sz;
 					UCC_ASSERT(expr_kind(dp->bits.array_size, val), "decl array size not constant");
 					sz = dp->bits.array_size->val.iv.val;
-					UCC_ASSERT(sz, "incomplete array size attempt");
+					if(!sz)
+						die_at(&dp->where, "invalid incomplete array");
 					mul *= sz;
 					break;
 				}

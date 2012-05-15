@@ -441,7 +441,7 @@ decl *parse_decl(type *t, enum decl_mode mode)
 #endif
 
 	if(decl_spel(d) && accept(token_assign))
-		d->init = parse_expr_no_comma(); /* int x = 5, j; - don't grab the comma expr */
+		d->init = parse_initialisation();
 
 	return d;
 }

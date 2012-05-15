@@ -232,67 +232,6 @@ int fold_sue(struct_union_enum_st *sue, symtable *stab)
 	return offset;
 }
 
-void fold_coerce_assign(decl *d, expr *assign, int *ok)
-{
-	/*
-	 * assignment coercion - complete incomplete arrays
-	 * and convert type[] to struct inits for structs
-	 */
-	*ok = 0;
-
-	if(!decl_ptr_depth(d) && d->type->primitive == type_struct){
-		if(assign->array_store){
-			array_decl *store = assign->array_store;
-
-			if(store->struct_idents){
-				int i;
-
-				for(i = 0; store->struct_idents[i]; i++){
-					fprintf(stderr, ".%s = %s\n",
-							store->struct_idents[i],
-							decl_to_str(store->data.exprs[i]->tree_type));
-				}
-
-				ICE("TODO: struct init from ^");
-			}else{
-				decl_desc *dp = decl_array_first(assign->tree_type);
-				int narray, nmembers;
-
-				*ok = 1;
-
-				/*
-				* for now just check the counts - this will break for:
-				* struct { int i; char c; int j } = { 1, 2, 3 };
-				*                   ^
-				* in global scope
-				*/
-				narray = dp->bits.array_size->val.iv.val;
-				nmembers = sue_nmembers(d->type->sue);
-
-				if(narray != nmembers){
-					warn_at(&assign->where,
-							"mismatching member counts for struct init (struct of %d vs array of %d)",
-							nmembers, narray);
-					/* TODO: zero the rest */
-				}else if(!d->sym || d->sym->type == sym_global){
-					sue_member **i;
-
-					for(i = d->type->sue->members; i && *i; i++){
-						decl *d = &(*i)->struct_member;
-						if(!decl_ptr_depth(d) && d->type->primitive == type_char){
-							warn_at(&assign->where, "struct init via { } breaks with char member (%s %s)",
-									decl_to_str(d), d->spel);
-							break;
-						}
-					}
-				}
-			}
-		}else{
-			ICE("struct init from %s", decl_to_str(assign->tree_type));
-		}
-	}
-}
-
 void fold_decl(decl *d, symtable *stab)
 {
 	decl_desc *dp;
@@ -399,20 +338,16 @@ void fold_decl(decl *d, symtable *stab)
 
 		/* type check for statics + globals */
 		if(d->type->store == store_static || (d->sym && d->sym->type == sym_global)){
-			int ok;
+			char buf_a[DECL_STATIC_BUFSIZ], buf_b[DECL_STATIC_BUFSIZ];
 
 			fold_expr(d->init, stab); /* else it's done as part of the stmt code */
-			fold_coerce_assign(d, d->init, &ok); /* also done as stmt code */
 
-			if(!ok){
-				char buf_a[DECL_STATIC_BUFSIZ], buf_b[DECL_STATIC_BUFSIZ];
-				strcpy(buf_a, decl_to_str(d));
-				strcpy(buf_b, decl_to_str(d->init->tree_type));
+			strcpy(buf_a, decl_to_str(d));
+			strcpy(buf_b, decl_to_str(d->init->tree_type));
 
-				fold_decl_equal(d, d->init->tree_type, &d->where, WARN_ASSIGN_MISMATCH,
-						"mismatching initialisation for %s (%s vs. %s)",
-						decl_spel(d), buf_a, buf_b);
-			}
+			fold_decl_equal(d, d->init->tree_type, &d->where, WARN_ASSIGN_MISMATCH,
+					"mismatching initialisation for %s (%s vs. %s)",
+					decl_spel(d), buf_a, buf_b);
 
 			if(const_fold(d->init)){
 				/* global/static + not constant */

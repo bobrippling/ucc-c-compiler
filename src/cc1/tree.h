@@ -16,8 +16,9 @@ typedef struct type        type;
 typedef struct decl        decl;
 typedef struct decl_desc   decl_desc;
 typedef struct funcargs    funcargs;
-typedef struct array_decl  array_decl;
 typedef struct decl_attr   decl_attr;
+typedef struct decl_init   decl_init;
+typedef struct data_store  data_store;
 
 
 enum type_primitive

@@ -193,3 +193,17 @@ void mutate_expr_addr(expr *e)
 
 void gen_expr_style_addr(expr *e, symtable *stab)
 { (void)e; (void)stab; /* TODO */ }
+
+expr *expr_new_addr(expr *of)
+{
+	expr *e = expr_new_wrapper(addr);
+	e->lhs = of;
+	return e;
+}
+
+expr *expr_new_addr_data(data_store *ds)
+{
+	expr *e = expr_new_wrapper(addr);
+	e->data_store = ds;
+	return e;
+}

@@ -90,8 +90,7 @@ struct decl
 	int field_width;
 	type *type;
 
-	expr *init; /* NULL except for global variables */
-	array_decl *arrayinit;
+	decl_init *init; /* initialiser - converted to an assignment for non-globals */
 
 	int ignore; /* ignore during code-gen, for example ignoring overridden externs */
 #define struct_offset ignore
@@ -108,24 +107,45 @@ struct decl
 	stmt *func_code;
 };
 
-struct array_decl
+struct decl_init
 {
+	enum
+	{
+		decl_init_scalar,              /* = [0-9] | basic-expr */
+		decl_init_brace,               /* { `decl_init`, `decl_init`, ... } */
+		decl_init_str,                 /* "abc" */
+		decl_init_struct,              /* { .member1 = `decl_init`, .member2 = `decl_init` } */
+	} type;
+
+	union
+	{
+		expr *expr;
+		decl_init **subs;
+		struct
+		{
+			char *s;
+			int len;
+		} str;
+		struct
+		{
+			char *member;
+			decl_init *init;
+		} **st;
+	} bits;
+};
+
+struct data_store
+{
+	enum
+	{
+		data_store_str
+	} type;
 	union
 	{
 		char *str;
-		expr **exprs;
 	} data;
-
-	char **struct_idents;
-
-	char *label;
 	int len;
-
-	enum
-	{
-		array_exprs,
-		array_str
-	} type;
+	char *sym_spel;
 };
 
 enum decl_cmp
@@ -135,7 +155,6 @@ enum decl_cmp
 };
 
 decl        *decl_new(void);
-array_decl  *array_decl_new(void);
 decl_attr   *decl_attr_new(enum decl_attr_type);
 
 void         decl_desc_append(decl_desc **parent, decl_desc *child);

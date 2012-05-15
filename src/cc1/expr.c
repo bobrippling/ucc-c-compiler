@@ -82,12 +82,17 @@ expr *expr_ptr_multiply(expr *e, decl *d)
 	return ret;
 }
 
-expr *expr_new_decl_init(decl *d)
+expr *expr_new_decl_init(decl *d, decl_init *di)
 {
-	UCC_ASSERT(d->init, "no init");
-	return expr_new_assign(expr_new_identifier(decl_spel(d)), d->init);
+	ICE("TODO");
+	(void)d;
+	(void)di;
+	/*UCC_ASSERT(d->init, "no init");
+	return expr_new_assign_init(expr_new_identifier(decl_spel(d)), d->init);*/
+	return 0;
 }
 
+#if 0
 expr *expr_new_array_decl_init(decl *d, int ival, int idx)
 {
 	expr *deref;
@@ -104,3 +109,4 @@ expr *expr_new_array_decl_init(decl *d, int ival, int idx)
 
 	return expr_new_assign(deref, expr_new_val(ival));
 }
+#endif

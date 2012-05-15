@@ -15,6 +15,7 @@
 #include "../util/dynarray.h"
 #include "sue.h"
 #include "parse_type.h"
+#include "data_store.h"
 
 #define STAT_NEW(type)      stmt_new_wrapper(type, current_scope)
 #define STAT_NEW_NEST(type) stmt_new_wrapper(type, symtab_new(current_scope))
@@ -70,6 +71,48 @@ expr *parse_expr_identifier()
 	return e;
 }
 
+#if 0
+void parse_decl_init()
+{
+	int struct_init;
+
+	EAT(token_open_block);
+
+	struct_init = curtok == token_dot;
+
+	for(;;){
+		expr *exp;
+		char *ident;
+
+		if(struct_init){
+			EAT(token_dot);
+			ident = token_current_spel();
+			EAT(token_identifier);
+			EAT(token_assign);
+
+		}
+		exp = parse_expr_no_comma();
+
+		dynarray_add((void ***)&e->array_store->data.exprs, exp);
+
+		if(struct_init)
+			dynarray_add((void ***)&e->array_store->struct_idents, ident);
+
+		if(accept(token_comma)){
+			if(accept(token_close_block)) /* { 1, } */
+				break;
+			continue;
+		}else{
+			EAT(token_close_block);
+			break;
+		}
+	}
+
+	e->array_store->len = dynarray_count((void *)e->array_store->data.exprs);
+	e->array_store->type = array_exprs;
+}
+#endif
+
 expr *parse_expr_primary()
 {
 	switch(curtok){
@@ -82,61 +125,23 @@ expr *parse_expr_primary()
 		}
 
 		case token_string:
-		case token_open_block:
+		/*case token_open_block: - not allowed here */
 		{
-			expr *e = expr_new_addr();
+			expr *e;
+			data_store *ds;
+			char *s;
+			int l;
 
-			e->array_store = array_decl_new();
+			token_get_current_str(&s, &l);
+			EAT(token_string);
 
-			if(curtok == token_string){
-				char *s;
-				int l;
+			ds = data_store_new();
+			e = expr_new_addr_data(ds);
 
-				token_get_current_str(&s, &l);
-				EAT(token_string);
+			ds->type     = data_store_str;
+			ds->data.str = s;
+			ds->len      = l;
 
-				e->array_store->data.str = s;
-				e->array_store->len      = l;
-
-				e->array_store->type = array_str;
-			}else{
-				int struct_init;
-
-				EAT(token_open_block);
-
-				struct_init = curtok == token_dot;
-
-				for(;;){
-					expr *exp;
-					char *ident;
-
-					if(struct_init){
-						EAT(token_dot);
-						ident = token_current_spel();
-						EAT(token_identifier);
-						EAT(token_assign);
-
-					}
-					exp = parse_expr_no_comma();
-
-					dynarray_add((void ***)&e->array_store->data.exprs, exp);
-
-					if(struct_init)
-						dynarray_add((void ***)&e->array_store->struct_idents, ident);
-
-					if(accept(token_comma)){
-						if(accept(token_close_block)) /* { 1, } */
-							break;
-						continue;
-					}else{
-						EAT(token_close_block);
-						break;
-					}
-				}
-
-				e->array_store->len = dynarray_count((void *)e->array_store->data.exprs);
-				e->array_store->type = array_exprs;
-			}
 			return e;
 		}
 
@@ -571,8 +576,9 @@ stmt *parse_code_block()
 	for(diter = t->decls; diter && *diter; diter++){
 		/* only extract the init if it's not static */
 		decl *d = *diter;
-		if(decl_is_array(d)){
-			if(d->init){
+		if(d->init){
+			if(decl_is_array(d)){
+#if 0
 #ifndef FANCY_STACK_INIT
 				/* assignment expr for each init */
 				array_decl *dinit = d->init->array_store;
@@ -602,9 +608,10 @@ stmt *parse_code_block()
 
 				dynarray_add((void ***)&t->codes, expr_to_stmt(comma_init));
 #endif
+			}else if(d->type->store != store_static){
+				dynarray_add((void ***)&t->codes, expr_to_stmt(expr_new_decl_init(d)));
+#endif
 			}
-		}else if(d->init && d->type->store != store_static){
-			dynarray_add((void ***)&t->codes, expr_to_stmt(expr_new_decl_init(d)));
 		}
 		/* don't change init - used for checks for assign-to-const */
 	}

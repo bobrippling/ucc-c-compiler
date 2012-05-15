@@ -47,12 +47,12 @@ struct expr
 	expr **funcargs;
 	stmt *code; /* ({ ... }) */
 	decl *decl; /* for sizeof(decl) */
+	data_store *data_store; /* for strings + { } */
 
 	sym *sym;
 
 	/* type propagation */
 	decl *tree_type;
-	array_decl *array_store;
 };
 
 
@@ -78,8 +78,7 @@ expr *expr_new_intval(intval *);
 
 /* simple wrappers */
 expr *expr_ptr_multiply(expr *, decl *);
-expr *expr_new_decl_init(decl *d);
-expr *expr_new_array_decl_init(decl *d, int ival, int idx);
+expr *expr_new_decl_init(decl *d, decl_init *di);
 
 #include "ops/expr_addr.h"
 #include "ops/expr_assign.h"
@@ -108,7 +107,9 @@ expr *expr_new_sizeof_expr(expr *);
 expr *expr_new_funcall(void);
 expr *expr_new_assign(expr *to, expr *from);
 
-#define expr_new_addr()    expr_new_wrapper(addr)
-#define expr_new_comma()   expr_new_wrapper(comma)
+expr *expr_new_addr_data(data_store *);
+#define expr_new_addr() expr_new_wrapper(addr)
+
+#define expr_new_comma() expr_new_wrapper(comma)
 
 #endif
