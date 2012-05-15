@@ -1,3 +1,6 @@
+#ifndef INET_H
+#define INET_H
+
 #ifdef TYPE_PARSING_TODO
 typedef unsigned short int sa_family_t;
 typedef uint16_t           in_port_t;
@@ -32,4 +35,6 @@ uint16_t htons(uint16_t hostshort);
 /*
 uint16_t ntohs(uint16_t netshort);
 */
+#endif
+
 #endif

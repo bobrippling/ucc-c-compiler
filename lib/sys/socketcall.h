@@ -1,3 +1,6 @@
+#ifndef __SOCKETCALL_H
+#define __SOCKETCALL_H
+
 #define __socketcall_socket    1
 #define __socketcall_bind      2
 #define __socketcall_connect   3
@@ -6,3 +9,5 @@
 
 /* implemented in socket.c */
 int socketcall(int call, unsigned long *args);
+
+#endif
