@@ -80,8 +80,6 @@ void fold_expr_assign(expr *e, symtable *stab)
 	else
 		e->tree_type = decl_copy(e->lhs->tree_type);
 
-	fold_typecheck(e->lhs, e->rhs, stab, &e->where);
-
 	/* type check */
 	if(!type_ok){
 		fold_decl_equal(e->lhs->tree_type, e->rhs->tree_type,
