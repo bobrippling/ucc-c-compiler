@@ -93,12 +93,8 @@ int type_size(const type *t)
 
 int type_equal(const type *a, const type *b, int strict)
 {
-	/*
-	 * basic const checking, doesn't work with
-	 * const char *const x, etc..
-	 */
 	if(strict && (b->qual & qual_const) && (a->qual & qual_const) == 0)
-		return 0; /* we can assign from const to non-const, but not vice versa - FIXME should be elsewhere? */
+		return 0;
 
 	if(a->sue != b->sue)
 		return 0;

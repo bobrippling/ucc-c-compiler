@@ -145,27 +145,36 @@ static void tokenise_read_line()
 			add_store_line(l);
 
 		/* format is # [0-9] "filename" ([0-9])* */
-		if(sscanf(l, "# %d ", &lno) == 1){
+		if(sscanf(l, "# %d", &lno) == 1){
 			char *p = strchr(l, '"');
 			char *fin;
 
-			fin = p + 1;
-			for(;;){
-				fin = strchr(fin, '"');
+			if(p){
+				fin = p + 1;
+				for(;;){
+					fin = strchr(fin, '"');
 
-				if(!fin)
-					die("no terminating quote for pre-proc info");
+					if(!fin)
+						die("no terminating quote for pre-proc info");
 
-				if(fin[-1] != '\\')
-					break;
-				fin++;
+					if(fin[-1] != '\\')
+						break;
+					fin++;
+				}
+
+				if(!current_fname_used)
+					free(current_fname); /* else it's been taken by one or more where_new()s */
+
+				current_fname = ustrdup2(p + 1, fin);
+				current_fname_used = 0;
+			}else{
+				/* check there's nothing left */
+				for(p = l + 2; isdigit(*p); p++);
+				for(; isspace(*p); p++);
+
+				if(*p != '\0')
+					die("extra text after # 0-9: \"%s\"", p);
 			}
-
-			if(!current_fname_used)
-				free(current_fname); /* else it's been taken by one or more where_new()s */
-
-			current_fname = ustrdup2(p + 1, fin);
-			current_fname_used = 0;
 
 			current_line = lno - 1; /* inc'd below */
 

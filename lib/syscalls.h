@@ -1,3 +1,6 @@
+#ifndef SYSCALLS_H
+#define SYSCALLS_H
+
 #ifdef __FreeBSD__
 #  include "syscalls_32.h"
 #else
@@ -13,3 +16,5 @@
 #endif
 
 extern int __syscall(int, ...);
+
+#endif
