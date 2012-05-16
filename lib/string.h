@@ -7,10 +7,10 @@
 int strlen(const char *);
 const char *strerror(int eno);
 
-int strcmp( char *, char *);
-int strncmp(char *, char *, size_t);
+int strcmp( const char *, const char *);
+int strncmp(const char *, const char *, size_t);
 
-char *strchr(char *s, char c);
+char *strchr(const char *s, char c);
 
 void *memset(void *, unsigned char c, size_t len);
 void *memcpy(void *dest, const void *src, size_t n);
