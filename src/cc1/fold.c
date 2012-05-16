@@ -309,7 +309,11 @@ void fold_decl_init(decl_init *di, symtable *stab, decl *for_decl)
 					d = decl_ptr_depth_dec(decl_copy(for_decl), &for_decl->where);
 					fprintf(stderr, "implicit for_decl %s\n", decl_to_str(d));
 				}
+
 				fold_decl_init(s->init, stab, d);
+
+				if(d != s->member)
+					decl_free(d);
 			}
 			break;
 		}
