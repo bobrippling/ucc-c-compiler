@@ -176,6 +176,7 @@ int decl_desc_equal(decl_desc *a, decl_desc *b)
 	}
 
 	if(b->type == decl_desc_ptr){
+		/* check const qualifiers */
 		if(a->type != decl_desc_ptr || (b->bits.qual & qual_const ? a->bits.qual & qual_const : 0))
 			return 0;
 	}
@@ -196,10 +197,20 @@ int decl_is_void_ptr(decl *d)
 
 int decl_equal(decl *a, decl *b, enum decl_cmp mode)
 {
-	if((mode & DECL_CMP_ALLOW_VOID_PTR) && (decl_is_void_ptr(a) || decl_is_void_ptr(b)))
-		return 1; /* one side is void * */
+	int strict;
 
-	if(!type_equal(a->type, b->type, mode & DECL_CMP_STRICT_PRIMITIVE))
+	if((mode & DECL_CMP_ALLOW_VOID_PTR)){
+		/* one side is void * */
+		if(decl_is_void_ptr(a) && decl_ptr_depth(b))
+			return 1;
+		if(decl_is_void_ptr(b) && decl_ptr_depth(a))
+			return 1;
+	}
+
+	/* we are strict if told, or if either are a pointer - types must be equal */
+	strict = (mode & DECL_CMP_STRICT_PRIMITIVE) || a->desc || b->desc;
+
+	if(!type_equal(a->type, b->type, strict))
 		return 0;
 
 	return a->desc ? b->desc && decl_desc_equal(a->desc, b->desc) : !b->desc;
