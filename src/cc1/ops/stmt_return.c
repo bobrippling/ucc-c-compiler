@@ -18,7 +18,7 @@ void fold_stmt_return(stmt *s)
 			"type mismatch in return (%s)",
 			curdecl_func->spel);
 
-		fold_typecheck_primitive(curdecl_func, &s->expr, s->symtab);
+		fold_insert_casts(curdecl_func, &s->expr, s->symtab, &s->expr->where);
 	}
 }
 

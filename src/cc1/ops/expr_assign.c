@@ -91,7 +91,7 @@ void fold_expr_assign(expr *e, symtable *stab)
 	}
 
 	/* do the typecheck after the equal-check, since the typecheck inserts casts */
-	fold_typecheck(e->lhs, &e->rhs, stab, &e->where);
+	fold_insert_casts(e->lhs->tree_type, &e->rhs, stab, &e->where);
 }
 
 void gen_expr_assign(expr *e, symtable *stab)

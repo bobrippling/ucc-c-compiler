@@ -67,7 +67,7 @@ int ferror(FILE *f __unused)
 	return f->status == __FILE_err;
 }
 
-static int fopen2(FILE *f, const char *path, char *smode)
+static int fopen2(FILE *f, const char *path, const char *smode)
 {
 	int fd, mode;
 	int got_primary;
@@ -198,11 +198,11 @@ size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream)
 	return n > 0 ? n : 0;
 }
 
-int vfprintf(FILE *file, char *fmt, va_list ap)
+int vfprintf(FILE *file, const char *fmt, va_list ap)
 {
 	int fd = fileno(file);
 #ifdef PRINTF_OPTIMISE
-	char *buf  = fmt;
+	const char *buf  = fmt;
 	int buflen = 0;
 #else
 # warning printf unoptimised
@@ -235,7 +235,7 @@ int vfprintf(FILE *file, char *fmt, va_list ap)
 			switch(*fmt){
 				case 's':
 				{
-					char *s = va_arg(ap, char *);
+					const char *s = va_arg(ap, const char *);
 					if(!s)
 						s = "(null)";
 					write(fd, s, strlen(s));
@@ -273,8 +273,10 @@ int vfprintf(FILE *file, char *fmt, va_list ap)
 				{
 					void *p = va_arg(ap, void *);
 					if(p){
+						/* TODO - intptr_t */
+						typedef int long;
 						fputs("0x", file);
-						printx(fd, p, 0);
+						printx(fd, (long)p, 0);
 					}else{
 						fputs("(nil)", file);
 					}

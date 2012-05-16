@@ -20,8 +20,7 @@ void fold_symtab_scope(symtable *stab);
 
 void fold_stmt_and_add_to_curswitch(stmt *);
 
-void fold_typecheck(expr *lhs, expr **prhs, symtable *stab, where *where);
-void fold_typecheck_primitive(decl *dlhs, expr **prhs, symtable *stab);
+void fold_insert_casts(decl *dlhs, expr **prhs, symtable *stab, where *where);
 
 void fold_test_expr(expr *e, const char *stmt_desc);
 void fold_disallow_st_un(expr *e, const char *desc);

@@ -16,7 +16,6 @@
 #include "sue.h"
 #include "decl.h"
 
-#define DECL_IS_VOID(d) (d->type->primitive == type_void && !decl_desc_depth(d))
 
 decl *curdecl_func;          /* for funcargs-local labels */
 stmt *curstmt_flow;          /* for break */
@@ -65,7 +64,7 @@ void fold_funcargs_equal(funcargs *args_a, funcargs *args_b, int check_vari, whe
 		strcpy(buf_b, decl_to_str(b));
 
 		fold_decl_equal(a, b, w, WARN_ARG_MISMATCH,
-				"mismatching %s for arg %d in %s (%s vs. %s)",
+				"mismatching %s for arg %d in %s (arg %s vs. expr %s)",
 				warn_pre, i + 1, func_spel, buf_a, buf_b);
 	}
 }
@@ -86,62 +85,12 @@ void fold_decl_equal(decl *a, decl *b, where *w, enum warning warn,
 			        || (!b->desc && b->type->sue && b->type->sue->primitive != type_enum);
 
 		va_start(l, errfmt);
-		cc1_warn_atv(w, one_struct || DECL_IS_VOID(a), warn, errfmt, l);
+		cc1_warn_atv(w, one_struct || decl_is_void(a) || decl_is_void(b), warn, errfmt, l);
 		va_end(l);
 	}
 }
 
-void fold_typecheck_sign(expr *lhs, expr *rhs, symtable *stab, where *where)
-{
-	decl *decl_l, *decl_r;
-
-	(void)stab;
-
-	if(!rhs)
-		return;
-
-	decl_l = lhs->tree_type;
-	decl_r = rhs->tree_type;
-
-	if(DECL_IS_VOID(decl_l) || DECL_IS_VOID(decl_r))
-		die_at(where, "use of void expression");
-
-
-	if(    decl_l->type->primitive == type_enum
-			&& decl_r->type->primitive == type_enum
-			&& decl_l->type->sue != decl_r->type->sue){
-
-		cc1_warn_at(where, 0, WARN_ENUM_CMP, "expression with enum %s and enum %s",
-				decl_l->type->sue->spel, decl_r->type->sue->spel);
-	}
-
-#define lhs_signed decl_l->type->is_signed
-#define rhs_signed decl_r->type->is_signed
-
-	if(rhs_signed != lhs_signed){
-#define SIGN_CONVERT(hs)                              \
-		if(expr_kind(hs, val) && hs->val.iv.val >= 0){    \
-			hs->tree_type->type->is_signed = 0;             \
-			goto noproblem;                                 \
-		}
-
-		SIGN_CONVERT(rhs)
-		SIGN_CONVERT(lhs)
-
-#define SPEL_IF_IDENT(hs)                          \
-				expr_kind(hs, identifier) ? " ("     : "", \
-				expr_kind(hs, identifier) ? hs->spel : "", \
-				expr_kind(hs, identifier) ? ")"      : ""  \
-
-		cc1_warn_at(where, 0, WARN_SIGN_COMPARE, "comparison between signed and unsigned%s%s%s%s%s%s",
-				SPEL_IF_IDENT(lhs), SPEL_IF_IDENT(rhs));
-	}
-
-noproblem:
-	return;
-}
-
-void fold_typecheck_primitive(decl *dlhs, expr **prhs, symtable *stab)
+void fold_insert_casts(decl *dlhs, expr **prhs, symtable *stab, where *w)
 {
 	expr *rhs = *prhs;
 
@@ -150,7 +99,7 @@ void fold_typecheck_primitive(decl *dlhs, expr **prhs, symtable *stab)
 		where *old_w = eof_where;
 		expr *cast;
 
-		eof_where = &rhs->where;
+		eof_where = w;
 
 		cast = expr_new_cast(dlhs);
 		cast->expr = rhs;
@@ -161,12 +110,23 @@ void fold_typecheck_primitive(decl *dlhs, expr **prhs, symtable *stab)
 		/* need to fold the cast again - mainly for "loss of precision" warning */
 		fold_expr(cast, stab);
 	}
-}
 
-void fold_typecheck(expr *lhs, expr **prhs, symtable *stab, where *where)
-{
-	fold_typecheck_sign(lhs, *prhs, stab, where);
-	fold_typecheck_primitive(lhs->tree_type, prhs, stab);
+#define lhs_signed dlhs->type->is_signed
+#define rhs_signed rhs->tree_type->type->is_signed
+
+	if(rhs_signed != lhs_signed){
+		if(expr_kind(rhs, val) && rhs->val.iv.val >= 0){
+			rhs->tree_type->type->is_signed = 0;
+		}else{
+#define SPEL_IF_IDENT(hs)                          \
+				expr_kind(hs, identifier) ? " ("     : "", \
+				expr_kind(hs, identifier) ? hs->spel : "", \
+				expr_kind(hs, identifier) ? ")"      : ""
+
+			cc1_warn_at(w, 0, WARN_SIGN_COMPARE, "comparison between signed and unsigned%s%s%s",
+					SPEL_IF_IDENT(rhs));
+		}
+	}
 }
 
 int fold_get_sym(expr *e, symtable *stab)
@@ -403,7 +363,7 @@ void fold_decl(decl *d, symtable *stab)
 
 	switch(d->type->primitive){
 		case type_void:
-			if(!decl_ptr_depth(d) && !decl_is_callable(d))
+			if(!decl_ptr_depth(d) && !decl_is_callable(d) && d->spel)
 				die_at(&d->where, "can't have a void variable - %s (%s)", decl_spel(d), decl_to_str(d));
 			break;
 

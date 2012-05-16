@@ -265,8 +265,34 @@ void fold_expr_op(expr *e, symtable *stab)
 		fold_expr(e->rhs, stab);
 		fold_disallow_st_un(e->rhs, "op-rhs");
 
-		/* check here? */
-		fold_typecheck(e->lhs, &e->rhs, stab, &e->where);
+		fold_insert_casts(e->lhs->tree_type, &e->rhs, stab, &e->where);
+
+		if(decl_is_void(e->lhs->tree_type) || decl_is_void(e->rhs->tree_type))
+			die_at(&e->where, "use of void expression");
+
+		fold_decl_equal(e->lhs->tree_type, e->rhs->tree_type,
+				&e->where, WARN_COMPARE_MISMATCH,
+				"operation between mismatching types%s%s%s%s%s%s",
+				SPEL_IF_IDENT(e->lhs), SPEL_IF_IDENT(e->rhs));
+
+		if(op_is_cmp(e->op) && e->lhs->tree_type->type->is_signed != e->rhs->tree_type->type->is_signed){
+
+			/*
+			 * assert(LHS == UNSIGNED);
+			 * vals default to signed, change to unsigned
+			 */
+
+			if(expr_kind(RHS, val) && RHS->val.iv.val >= 0){
+				UCC_ASSERT(!e->lhs->tree_type->type->is_signed, "signed-unsigned assumption failure");
+				RHS->tree_type->type->is_signed = 0;
+			}else if(expr_kind(LHS, val) && LHS->val.iv.val >= 0){
+				UCC_ASSERT(!e->rhs->tree_type->type->is_signed, "signed-unsigned assumption failure");
+				LHS->tree_type->type->is_signed = 0;
+			}else{
+					cc1_warn_at(&e->where, 0, WARN_SIGN_COMPARE, "comparison between signed and unsigned%s%s%s%s%s%s",
+							SPEL_IF_IDENT(LHS), SPEL_IF_IDENT(RHS));
+			}
+		}
 	}
 
 	if(e->op == op_deref){
@@ -353,13 +379,6 @@ norm_tt:
 			/* ptr - ptr = int */
 			/* FIXME: ptrdiff_t */
 			e->tree_type->type->primitive = type_int;
-		}
-
-		/* check types */
-		if(e->rhs){
-			fold_decl_equal(e->lhs->tree_type, e->rhs->tree_type,
-					&e->where, WARN_COMPARE_MISMATCH,
-					"operation between mismatching types");
 		}
 	}
 
