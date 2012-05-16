@@ -136,12 +136,15 @@ void gen_expr_funcall(expr *e, symtable *stab)
 	int nargs = 0;
 
 	if(fopt_mode & FOPT_ENABLE_ASM && fname && !strcmp(fname, ASM_INLINE_FNAME)){
+		ICE("TODO: __asm__ with store, etc etc");
+#if 0
 		const char *str;
 		expr *arg1;
 		int i;
 
 		if(!e->funcargs || e->funcargs[1] || !expr_kind(e->funcargs[0], addr))
 			die_at(&e->where, "invalid __asm__ arguments");
+
 
 		arg1 = e->funcargs[0];
 		str = arg1->array_store->data.str;
@@ -159,6 +162,7 @@ invalid:
 		asm_temp(0, "; start manual __asm__");
 		fprintf(cc_out[SECTION_TEXT], "%s\n", arg1->array_store->data.str);
 		asm_temp(0, "; end manual __asm__");
+#endif
 	}else{
 		/* continue with normal funcall */
 		sym *const sym = e->expr->sym;

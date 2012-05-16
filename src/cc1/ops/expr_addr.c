@@ -14,7 +14,9 @@ void fold_expr_addr(expr *e, symtable *stab)
 {
 #define TT e->tree_type
 
-	if(e->array_store){
+	if(e->data_store){
+		ICE("TODO");
+#if 0
 		sym *array_sym;
 
 		UCC_ASSERT(!e->sym, "symbol found when looking for array store");
@@ -62,6 +64,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 			}
 		}
 
+#endif
 	}else{
 		fold_inc_writes_if_sym(e->lhs, stab);
 
@@ -128,8 +131,9 @@ void gen_expr_addr(expr *e, symtable *stab)
 {
 	(void)stab;
 
-	if(e->array_store){
-		asm_temp(1, "mov rax, %s", e->array_store->label);
+	if(e->data_store){
+		ICE("TODO");
+		//asm_temp(1, "mov rax, %s", e->data_store->label);
 	}else{
 		/* address of possibly an ident "(&a)->b" or a struct expr "&a->b" */
 		if(expr_kind(e->lhs, identifier)){
@@ -148,9 +152,10 @@ void gen_expr_addr(expr *e, symtable *stab)
 void gen_expr_addr_1(expr *e, FILE *f)
 {
 	/* TODO: merge tis code with gen_addr / walk_expr with expr_addr */
-	if(e->array_store){
+	if(e->data_store){
 		/* address of an array store */
-		fprintf(f, "%s", e->array_store->label);
+		ICE("TODO");
+		//fprintf(f, "%s", e->array_store->label);
 	}else{
 		UCC_ASSERT(expr_kind(e->lhs, identifier), "globals addr-of can only be identifier for now");
 		fprintf(f, "%s", e->lhs->spel);
@@ -161,7 +166,9 @@ void gen_expr_str_addr(expr *e, symtable *stab)
 {
 	(void)stab;
 
-	if(e->array_store){
+	if(e->data_store){
+		ICE("TODO");
+#if 0
 		if(e->array_store->type == array_str){
 			idt_printf("label: %s, \"", e->array_store->label);
 			literal_print(cc1_out, e->array_store->data.str, e->array_store->len);
@@ -178,6 +185,7 @@ void gen_expr_str_addr(expr *e, symtable *stab)
 			}
 			gen_str_indent--;
 		}
+#endif
 	}else{
 		idt_printf("address of expr:\n");
 		gen_str_indent++;
@@ -193,13 +201,6 @@ void mutate_expr_addr(expr *e)
 
 void gen_expr_style_addr(expr *e, symtable *stab)
 { (void)e; (void)stab; /* TODO */ }
-
-expr *expr_new_addr(expr *of)
-{
-	expr *e = expr_new_wrapper(addr);
-	e->lhs = of;
-	return e;
-}
 
 expr *expr_new_addr_data(data_store *ds)
 {

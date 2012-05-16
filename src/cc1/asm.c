@@ -222,49 +222,27 @@ void asm_out_intval(FILE *f, intval *iv)
 	fprintf(f, fmt, iv->val);
 }
 
-void asm_declare_single_part(FILE *f, expr *e)
+void asm_declare(FILE *f, decl *d)
 {
-	if(!e->f_gen_1)
-		ICE("unexpected global initaliser %s (no gen_1())", e->f_str());
-
-	e->f_gen_1(e, f);
+	(void)f;
+	(void)d;
 }
-
-enum asm_size asm_type_size(decl *d)
+#if 0
 {
-	if(decl_desc_depth(d)){
-		return ASM_SIZE_WORD;
-	}else{
-		if(d->type->typeof)
-			ICE("typedefs should've been folded by now");
+		int need_zero = 1;
 
-		switch(d->type->primitive){
-			case type_enum:
-			case type_int:
-				return ASM_SIZE_WORD;
+		if(d->init){
+			ICE("TODO: decl init");
 
-			case type_char:
-				return ASM_SIZE_1;
-
-			case type_void:
-				ICE("type primitive is void");
-
-			case type_struct:
-			case type_union:
-				return ASM_SIZE_STRUCT_UNION;
-
-			case type_unknown:
-				ICE("type primitive not set");
+			if(!const_expr_is_zero(d->init)){
+				need_zero = 0;
+			}
 		}
-	}
 
-	ICE("asm_type_size switch error");
-	return ASM_SIZE_WORD;
-}
-
-char asm_type_ch(decl *d)
-{
-	return asm_type_size(d) == ASM_SIZE_WORD ? 'q' : 'b';
+		if(need_zero){
+			/* always resb, since we use decl_size() */
+			asm_tempf(cc_out[SECTION_BSS], 0, "%s resb %d", decl_spel(d), decl_size(d));
+		}
 }
 
 void asm_declare_single(FILE *f, decl *d)
@@ -272,8 +250,6 @@ void asm_declare_single(FILE *f, decl *d)
 	if(asm_type_size(d) == ASM_SIZE_STRUCT_UNION){
 		/* struct init */
 		int i;
-
-		ICW("attempting to declare+init a struct, untested for nesting and arrays");
 
 		UCC_ASSERT(d->init->array_store, "no array store for struct init (TODO?)");
 		UCC_ASSERT(d->init->array_store->type == array_exprs, "array store of strings for struct");
@@ -312,6 +288,53 @@ void asm_declare_array(enum section_type output, const char *lbl, array_decl *ad
 	}
 
 	fputc('\n', cc_out[output]);
+}
+
+void asm_declare_single_part(FILE *f, expr *e)
+{
+	if(!e->f_gen_1)
+		ICE("unexpected global initaliser %s (no gen_1())", e->f_str());
+
+	e->f_gen_1(e, f);
+}
+
+#endif
+
+enum asm_size asm_type_size(decl *d)
+{
+	if(decl_desc_depth(d)){
+		return ASM_SIZE_WORD;
+	}else{
+		if(d->type->typeof)
+			ICE("typedefs should've been folded by now");
+
+		switch(d->type->primitive){
+			case type_enum:
+			case type_int:
+				return ASM_SIZE_WORD;
+
+			case type_char:
+				return ASM_SIZE_1;
+
+			case type_void:
+				ICE("type primitive is void");
+
+			case type_struct:
+			case type_union:
+				return ASM_SIZE_STRUCT_UNION;
+
+			case type_unknown:
+				ICE("type primitive not set");
+		}
+	}
+
+	ICE("asm_type_size switch error");
+	return ASM_SIZE_WORD;
+}
+
+char asm_type_ch(decl *d)
+{
+	return asm_type_size(d) == ASM_SIZE_WORD ? 'q' : 'b';
 }
 
 void asm_tempfv(FILE *f, int indent, const char *fmt, va_list l)

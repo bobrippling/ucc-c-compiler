@@ -38,7 +38,7 @@ expr *fold_for_if_init_decls(stmt *s)
 
 		/* make the for-init a comma-exp with all our inits */
 		if(d->init){
-			expr *dinit = expr_new_decl_init(d);
+			expr *dinit = expr_new_decl_init(d, d->init);
 
 			if(init_exp){
 				expr *comma = expr_new_comma(); /* change this to an &&-op for if(char *x = .., *y = ..) anding */

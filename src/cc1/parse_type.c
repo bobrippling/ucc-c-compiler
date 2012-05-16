@@ -406,6 +406,7 @@ decl_desc *parse_decl_desc(enum decl_mode mode, char **sp)
 }
 
 #include "parse_attr.c"
+#include "parse_init.c"
 
 decl *parse_decl(type *t, enum decl_mode mode)
 {
@@ -434,14 +435,17 @@ decl *parse_decl(type *t, enum decl_mode mode)
 		EAT(token_close_paren);
 	}
 
+	if(decl_spel(d) && accept(token_assign))
+		d->init = parse_initialisation();
+
 #ifdef PARSE_DECL_VERBOSE
-	fprintf(stderr, "parsed decl %s, is_func %d, at %s\n", d->spel, decl_is_func(d), token_to_str(curtok));
+	fprintf(stderr, "parsed decl %s, is_func %d, at %s init=%p\n",
+			d->spel, decl_is_func(d),
+			token_to_str(curtok), d->init);
+
 	for(decl_desc *dp = d->desc; dp; dp = dp->child)
 		fprintf(stderr, "\tdesc %s\n", decl_desc_str(dp));
 #endif
-
-	if(decl_spel(d) && accept(token_assign))
-		d->init = parse_initialisation();
 
 	return d;
 }

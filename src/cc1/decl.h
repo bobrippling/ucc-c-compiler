@@ -109,7 +109,7 @@ struct decl
 
 struct decl_init
 {
-	enum
+	enum decl_init_type
 	{
 		decl_init_scalar,              /* = [0-9] | basic-expr */
 		decl_init_brace,               /* { `decl_init`, `decl_init`, ... } */
@@ -120,17 +120,19 @@ struct decl_init
 	union
 	{
 		expr *expr;
-		decl_init **subs;
+
 		struct
 		{
 			char *s;
 			int len;
 		} str;
-		struct
+
+		struct decl_init_sub
 		{
-			char *member;
+			char *spel;
+			decl *member;
 			decl_init *init;
-		} **st;
+		} **subs;
 	} bits;
 };
 
@@ -168,6 +170,10 @@ decl_desc   *decl_desc_array_new(decl *dparent, decl_desc *parent);
 decl      *decl_copy(decl *);
 decl_desc *decl_desc_copy(decl_desc *);
 
+decl_init *decl_init_new(enum decl_init_type);
+int        decl_init_len(decl_init *);
+#define decl_init_is_brace(di) ((di)->type == decl_init_brace || (di)->type == decl_init_struct)
+
 void decl_conv_array_ptr(decl *d);
 
 void decl_desc_link(decl *);
@@ -193,7 +199,7 @@ decl *decl_ptr_depth_inc(decl *d);
 decl *decl_ptr_depth_dec(decl *d, where *from);
 decl *decl_func_deref(decl *d, funcargs **pfuncargs);
 
-decl_desc *decl_array_first_incomplete(decl *d);
+decl_desc *decl_array_incomplete(decl *d);
 decl_desc *decl_array_first(decl *d);
 
 int decl_attr_present(decl_attr *, enum decl_attr_type);

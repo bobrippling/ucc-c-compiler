@@ -6,6 +6,7 @@
 #include "../util/util.h"
 #include "../util/alloc.h"
 #include "../util/platform.h"
+#include "../util/dynarray.h"
 #include "data_structs.h"
 #include "macros.h"
 
@@ -364,7 +365,7 @@ int decl_has_array(decl *d)
 	return 0;
 }
 
-decl_desc *decl_array_first_incomplete(decl *d)
+decl_desc *decl_array_incomplete(decl *d)
 {
 	decl_desc *dp;
 
@@ -572,4 +573,28 @@ const char *decl_to_str(decl *d)
 
 	return buf;
 #undef BUF_ADD
+}
+
+int decl_init_len(decl_init *di)
+{
+ switch(di->type){
+	 case decl_init_scalar:
+		 return 1;
+
+	 case decl_init_str:
+		 return (di)->bits.str.len;
+
+	 case decl_init_brace:
+	 case decl_init_struct:
+		 return dynarray_count((void **)di->bits.subs);
+ }
+ ICE("decl init bad type");
+ return -1;
+}
+
+decl_init *decl_init_new(enum decl_init_type t)
+{
+	decl_init *di = umalloc(sizeof *di);
+	di->type = t;
+	return di;
 }

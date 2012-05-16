@@ -50,6 +50,48 @@ void print_expr_val(expr *e)
 	fprintf(cc1_out, "%ld", e->val.iv.val);
 }
 
+void print_decl_init(decl_init *di)
+{
+	switch(di->type){
+		case decl_init_scalar:
+			print_expr(di->bits.expr);
+			break;
+
+		case decl_init_str:
+			idt_printf("\"");
+			literal_print(cc1_out, di->bits.str.s, di->bits.str.len);
+			fputs("\"\n", cc1_out);
+			break;
+
+		case decl_init_struct:
+		case decl_init_brace:
+		{
+			decl_init_sub *s;
+			int i;
+
+			for(i = 0; (s = di->bits.subs[i]); i++){
+				const int need_brace = decl_init_is_brace(s->init);
+
+				/* ->member not printed */
+				if(s->spel)
+					idt_printf(".%s", s->spel);
+				else
+					idt_printf("[%d]", i);
+
+				fprintf(cc1_out, " = %s\n", need_brace ? "{" : "");
+
+				gen_str_indent++;
+				print_decl_init(s->init);
+				gen_str_indent--;
+
+				if(need_brace)
+					idt_printf("}\n");
+			}
+			break;
+		}
+	}
+}
+
 void print_decl_desc_eng(decl_desc *dp)
 {
 	if(dp->child)
@@ -226,9 +268,9 @@ void print_decl(decl *d, enum pdeclargs mode)
 	if(mode & PDECL_NEWLINE)
 		fputc('\n', cc1_out);
 
-	if(mode & PDECL_PINIT){
+	if(d->init && mode & PDECL_PINIT){
 		gen_str_indent++;
-		print_expr(d->init);
+		print_decl_init(d->init);
 		gen_str_indent--;
 	}
 
@@ -363,27 +405,6 @@ void print_stmt_flow(stmt_flow *t)
 	gen_str_indent--;
 }
 
-void print_decl_array_init(decl *d)
-{
-	array_decl *init = d->init->array_store;
-
-	switch(init->type){
-		case array_str:
-			idt_printf("\"");
-			literal_print(cc1_out, init->data.str, init->len);
-			fputs("\"\n", cc1_out);
-			break;
-
-		case array_exprs:
-		{
-			int i;
-			for(i = 0; i < init->len; i++)
-				idt_printf("[%d] = %d\n", i, init->data.exprs[i]->val.iv.val);
-			break;
-		}
-	}
-}
-
 void print_stmt(stmt *t)
 {
 	idt_printf("statement: %s\n", t->f_str());
@@ -416,12 +437,7 @@ void print_stmt(stmt *t)
 			decl *d = *iter;
 
 			gen_str_indent++;
-			print_decl(d, PDECL_INDENT | PDECL_NEWLINE | PDECL_SYM_OFFSET | PDECL_PIGNORE);
-			if(decl_is_array(d) && d->init){
-				gen_str_indent++;
-				print_decl_array_init(d);
-				gen_str_indent--;
-			}
+			print_decl(d, PDECL_INDENT | PDECL_NEWLINE | PDECL_SYM_OFFSET | PDECL_PIGNORE | PDECL_PINIT);
 			gen_str_indent--;
 		}
 	}
@@ -444,15 +460,12 @@ void gen_str(symtable *symtab)
 
 	print_st_en_tdef(symtab);
 
-	for(diter = symtab->decls; diter && *diter; diter++){
-		print_decl(*diter, PDECL_INDENT | PDECL_NEWLINE | PDECL_PIGNORE | PDECL_FUNC_DESCEND | PDECL_SIZE);
-		if((*diter)->init){
-			idt_printf("init:\n");
-			gen_str_indent++;
-			print_expr((*diter)->init);
-			gen_str_indent--;
-		}
-
-		fputc('\n', cc1_out);
-	}
+	for(diter = symtab->decls; diter && *diter; diter++)
+		print_decl(*diter,
+				PDECL_INDENT |
+				PDECL_NEWLINE |
+				PDECL_PIGNORE |
+				PDECL_FUNC_DESCEND |
+				PDECL_SIZE |
+				PDECL_PINIT);
 }

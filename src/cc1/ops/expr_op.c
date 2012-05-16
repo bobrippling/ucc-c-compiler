@@ -69,11 +69,13 @@ int operate(expr *lhs, expr *rhs, enum op_type op, int *bad)
 
 			ignore for now, just deal with simple stuff
 			*/
+#if 0
 			if(lhs->ptr_safe && expr_kind(lhs, addr)){
 				if(lhs->array_store->type == array_str)
 					return *lhs->val.s;
 				/*return lhs->val.exprs[0]->val.i;*/
 			}
+#endif
 			*bad = 1;
 			return 0;
 

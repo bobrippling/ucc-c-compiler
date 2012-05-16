@@ -48,7 +48,10 @@ void fold_expr_cast(expr *e, symtable *stab)
 
 void gen_expr_cast_1(expr *e, FILE *f)
 {
-	asm_declare_single_part(f, e->expr);
+	ICE("TODO");
+	(void)e;
+	(void)f;
+	//asm_declare_single_part(f, e->expr);
 }
 
 void gen_expr_cast(expr *e, symtable *stab)

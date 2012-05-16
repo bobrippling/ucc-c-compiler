@@ -26,6 +26,8 @@ void fold_expr_identifier(expr *e, symtable *stab)
 			/* mutate into a string literal */
 			expr_mutate_wrapper(e, addr);
 
+			ICE("TODO: __func__ with store");
+#if 0
 			e->array_store = array_decl_new();
 
 			UCC_ASSERT(curdecl_func_sp, "no spel for current func");
@@ -35,6 +37,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 			e->array_store->type = array_str;
 
 			fold_expr(e, stab);
+#endif
 
 		}else{
 			/* check for an enum */

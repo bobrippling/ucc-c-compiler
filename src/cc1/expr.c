@@ -84,7 +84,7 @@ expr *expr_ptr_multiply(expr *e, decl *d)
 
 expr *expr_new_decl_init(decl *d, decl_init *di)
 {
-	ICE("TODO");
+	ICE("TODO - only allow simple expr inits");
 	(void)d;
 	(void)di;
 	/*UCC_ASSERT(d->init, "no init");

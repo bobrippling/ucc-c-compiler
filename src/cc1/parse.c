@@ -71,47 +71,7 @@ expr *parse_expr_identifier()
 	return e;
 }
 
-#if 0
-void parse_decl_init()
-{
-	int struct_init;
-
-	EAT(token_open_block);
-
-	struct_init = curtok == token_dot;
-
-	for(;;){
-		expr *exp;
-		char *ident;
-
-		if(struct_init){
-			EAT(token_dot);
-			ident = token_current_spel();
-			EAT(token_identifier);
-			EAT(token_assign);
-
-		}
-		exp = parse_expr_no_comma();
-
-		dynarray_add((void ***)&e->array_store->data.exprs, exp);
-
-		if(struct_init)
-			dynarray_add((void ***)&e->array_store->struct_idents, ident);
-
-		if(accept(token_comma)){
-			if(accept(token_close_block)) /* { 1, } */
-				break;
-			continue;
-		}else{
-			EAT(token_close_block);
-			break;
-		}
-	}
-
-	e->array_store->len = dynarray_count((void *)e->array_store->data.exprs);
-	e->array_store->type = array_exprs;
-}
-#endif
+__typeof(data_store_new()) data_store_new(){ICE("TODO: data store"); return 0;}
 
 expr *parse_expr_primary()
 {

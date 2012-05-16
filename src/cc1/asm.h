@@ -58,8 +58,7 @@ void asm_sym(enum asm_sym_type, sym *, const char *);
 char asm_type_ch(decl *d);
 enum asm_size asm_type_size(decl *d);
 
-void asm_declare_single(FILE *f, decl *d);
-void asm_declare_single_part(FILE *f, expr *e);
+void asm_declare(FILE *f, decl *d);
 
 char *asm_label_code(const char *fmt);
 char *asm_label_array(int str);

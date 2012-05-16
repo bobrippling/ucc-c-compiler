@@ -205,6 +205,121 @@ int fold_sue(struct_union_enum_st *sue, symtable *stab)
 	return offset;
 }
 
+void fold_decl_init(decl_init *di, symtable *stab, decl *for_decl)
+{
+	/* fold + type check for statics + globals */
+	if(decl_has_array(for_decl)){ /* FIXME: sufficient for struct A x[] skipping ? */
+		/* don't allow scalar inits */
+		switch(di->type){
+			case decl_init_struct:
+			case decl_init_scalar:
+				die_at(&for_decl->where, "can't initialise array decl with scalar or struct");
+
+			case decl_init_brace:
+			case decl_init_str:
+				if(decl_has_incomplete_array(for_decl)){
+					/* complete the decl */
+					decl_desc *dp = decl_array_incomplete(for_decl);
+					dp->bits.array_size->val.iv.val = decl_init_len(di);
+				}
+		}
+	}else if(for_decl->type->primitive == type_struct && decl_ptr_depth(for_decl) == 0){
+		/* similar to above */
+		const int nmembers = sue_nmembers(for_decl->type->sue);
+
+		switch(di->type){
+			case decl_init_str:
+			case decl_init_scalar:
+				die_at(&for_decl->where, "can't initialise %s with %s",
+						decl_to_str(for_decl), di->type == decl_init_str ? "string" : "expression");
+
+			case decl_init_struct:
+			{
+				const int ninits = dynarray_count((void **)di->bits.subs);
+				int i;
+
+				/* for_decl is a struct - the above else-if */
+
+				for(i = 0; i < ninits; i++){
+					struct decl_init_sub *sub = di->bits.subs[i];
+					sub->member = struct_union_member_find(for_decl->type->sue, sub->spel, &for_decl->where);
+				}
+
+				fprintf(stderr, "checked decl struct init for %s\n", for_decl->spel);
+				break;
+			}
+
+			case decl_init_brace:
+				if(for_decl->type->sue){
+					/* init struct with braces */
+					const int nbraces  = dynarray_count((void **)di->bits.subs);
+
+					if(nbraces > nmembers)
+						die_at(&for_decl->where, "too many initialisers for %s", decl_to_str(for_decl));
+
+					/* folded below */
+
+				}else{
+					die_at(&for_decl->where, "initialisation of incomplete struct");
+				}
+				break;
+		}
+	}
+
+
+	switch(di->type){
+		case decl_init_scalar:
+			if(for_decl->type->store == store_static || (for_decl->sym && for_decl->sym->type == sym_global)){
+				char buf_a[DECL_STATIC_BUFSIZ], buf_b[DECL_STATIC_BUFSIZ];
+				expr *init_exp = di->bits.expr;
+
+				fold_expr(init_exp, stab);
+
+				/* TODO: better error desc - init of subobject, etc */
+				strcpy(buf_a, decl_to_str(for_decl));
+				strcpy(buf_b, decl_to_str(init_exp->tree_type));
+
+				fold_decl_equal(for_decl, init_exp->tree_type, &for_decl->where, WARN_ASSIGN_MISMATCH,
+						"mismatching initialisation for %s (%s vs. %s)",
+						decl_spel(for_decl), buf_a, buf_b);
+
+				if(const_fold(init_exp)){
+					/* global/static + not constant */
+					/* allow identifiers if the identifier is also static */
+
+					if(!expr_kind(init_exp, identifier) || init_exp->tree_type->type->store != store_static){
+						die_at(&init_exp->where, "not a constant expression for %s init - %s",
+								for_decl->spel, init_exp->f_str());
+					}
+				}
+			}
+			break;
+
+		case decl_init_struct:
+		case decl_init_brace:
+		{
+			decl_init_sub *s;
+			int i;
+
+			/* recursively fold */
+			for(i = 0; (s = di->bits.subs[i]); i++){
+				decl *d;
+				if(!(d = s->member)){
+					/* temp decl from the array type */
+					d = decl_ptr_depth_dec(decl_copy(for_decl), &for_decl->where);
+					fprintf(stderr, "implicit for_decl %s\n", decl_to_str(d));
+				}
+				fold_decl_init(s->init, stab, d);
+			}
+			break;
+		}
+
+		case decl_init_str:
+			break;
+	}
+
+}
+
 void fold_decl(decl *d, symtable *stab)
 {
 	decl_desc *dp;
@@ -302,35 +417,7 @@ void fold_decl(decl *d, symtable *stab)
 		if(d->type->store == store_extern)
 			die_at(&d->where, "externs can't be initalised");
 
-		if(decl_has_incomplete_array(d) && d->init->array_store){
-			/* complete the decl */
-			decl_desc *dp = decl_array_first_incomplete(d);
-
-			dp->bits.array_size->val.iv.val = d->init->array_store->len;
-		}
-
-		/* type check for statics + globals */
-		if(d->type->store == store_static || (d->sym && d->sym->type == sym_global)){
-			char buf_a[DECL_STATIC_BUFSIZ], buf_b[DECL_STATIC_BUFSIZ];
-
-			fold_expr(d->init, stab); /* else it's done as part of the stmt code */
-
-			strcpy(buf_a, decl_to_str(d));
-			strcpy(buf_b, decl_to_str(d->init->tree_type));
-
-			fold_decl_equal(d, d->init->tree_type, &d->where, WARN_ASSIGN_MISMATCH,
-					"mismatching initialisation for %s (%s vs. %s)",
-					decl_spel(d), buf_a, buf_b);
-
-			if(const_fold(d->init)){
-				/* global/static + not constant */
-				/* allow identifiers if the identifier is also static */
-
-				if(!expr_kind(d->init, identifier) || d->init->tree_type->type->store != store_static){
-					die_at(&d->init->where, "not a constant expression for %s init - %s", d->spel, d->init->f_str());
-				}
-			}
-		}
+		fold_decl_init(d->init, stab, d);
 	}
 }
 

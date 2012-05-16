@@ -92,15 +92,9 @@ void gen_asm_global(decl *d)
 		asm_temp(1, "ret");
 		free(curfunc_lblfin);
 
-	}else if(d->arrayinit){
-		asm_declare_array(SECTION_DATA, d->arrayinit->label, d->arrayinit);
-
-	}else if(d->init && !const_expr_is_zero(d->init)){
-		asm_declare_single(cc_out[SECTION_DATA], d);
-
 	}else{
-		/* always resb, since we use decl_size() */
-		asm_tempf(cc_out[SECTION_BSS], 0, "%s resb %d", decl_spel(d), decl_size(d));
+		/* takes care of static, extern, etc */
+		asm_declare(cc_out[SECTION_DATA], d);
 	}
 }
 
