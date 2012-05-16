@@ -29,6 +29,12 @@ static const struct
 	{ 2,  'w', "word" , "",  "x"  },
 	{ 4,  'd', "dword", "e", "x" },
 	{ 8,  'q', "qword", "r", "x" },
+
+	/* llong */
+	{ 16,  '\0', "???", "r", "x" },
+
+	/* ldouble */
+	{ 10,  '\0', "???", "r", "x" },
 };
 
 char *asm_label_code(const char *fmt)
@@ -184,11 +190,14 @@ int asm_table_lookup(decl *d)
 {
 	enum
 	{
-		INDEX_PTR   = 3,
-		INDEX_CHAR  = 0,
-		INDEX_SHORT = 1,
-		INDEX_INT   = 2,
-		INDEX_LONG  = 3
+		INDEX_CHAR    = 0,
+		INDEX_SHORT   = 1,
+		INDEX_INT     = 2,
+		INDEX_LONG    = 3,
+		INDEX_LLONG   = 4,
+		INDEX_LDOUBLE = 5,
+
+		INDEX_PTR = INDEX_LONG,
 	};
 
 	if(!d || decl_ptr_depth(d)){
@@ -201,13 +210,24 @@ int asm_table_lookup(decl *d)
 			case type_void:
 				ICE("type primitive is void");
 
-			case type_char:  return INDEX_CHAR;
-			case type_short: return INDEX_SHORT;
+			case type__Bool:
+			case type_char:
+			 	return INDEX_CHAR;
+
+			case type_short:
+				return INDEX_SHORT;
 
 			case type_enum:
 			case type_int:
 			case type_float:
 				return INDEX_INT;
+
+			case type_ldouble:
+				ICE("long double in asm");
+				return INDEX_LDOUBLE;
+			case type_llong:
+				ICE("long long in asm");
+				return INDEX_LLONG;
 
 			case type_double:
 			case type_long:

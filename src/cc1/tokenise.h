@@ -37,6 +37,7 @@ enum token
 	token_long,
 	token_float,
 	token_double,
+	token__Bool,
 
 	token_const,
 	token_volatile,

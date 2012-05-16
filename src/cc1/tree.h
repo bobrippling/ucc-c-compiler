@@ -23,12 +23,15 @@ typedef struct decl_attr   decl_attr;
 enum type_primitive
 {
 	type_void,
+	type__Bool,
 	type_char,
-	type_short,
 	type_int,
+	type_short,
 	type_long,
+	type_llong,
 	type_float,
 	type_double,
+	type_ldouble,
 
 	type_struct,
 	type_union,

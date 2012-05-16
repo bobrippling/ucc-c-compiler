@@ -79,6 +79,7 @@ int type_size(const type *t)
 
 	switch(t->primitive){
 		case type_char:
+		case type__Bool:
 		case type_void:
 			return 1;
 
@@ -93,6 +94,15 @@ int type_size(const type *t)
 		case type_long:
 		case type_double:
 			return 8; /* FIXME: 4 on 32-bit */
+
+		case type_llong:
+			ICW("TODO: long long");
+			return 16;
+
+		case type_ldouble:
+			/* 80-bit float */
+			ICW("TODO: long double");
+			return 10; /* FIXME: 32-bit? */
 
 		case type_union:
 		case type_struct:
@@ -181,6 +191,10 @@ const char *type_primitive_to_str(const enum type_primitive p)
 		CASE_STR_PREFIX(type, long);
 		CASE_STR_PREFIX(type, float);
 		CASE_STR_PREFIX(type, double);
+		CASE_STR_PREFIX(type, _Bool);
+
+		case type_llong:   return "long long";
+		case type_ldouble: return "long double";
 
 		CASE_STR_PREFIX(type, struct);
 		CASE_STR_PREFIX(type, union);
@@ -253,15 +267,20 @@ const char *type_to_str(const type *t)
 				t->sue->spel);
 
 	}else{
-		switch(t->primitive){
-#define APPEND(t) case type_ ## t: snprintf(bufp, BUF_SIZE, "%s", #t); break
+		switch(t->primitive){                 
+#define SAPPEND(s) snprintf(bufp, BUF_SIZE, "%s", s); break
+#define APPEND(t) case type_ ## t: SAPPEND(#t)
 			APPEND(void);
+			APPEND(_Bool);
 			APPEND(char);
 			APPEND(short);
 			APPEND(int);
 			APPEND(long);
 			APPEND(float);
 			APPEND(double);
+
+			case type_llong:   SAPPEND("long long");
+			case type_ldouble: SAPPEND("long double");
 
 			case type_unknown:
 				ICE("unknown type primitive (%s)", where_str(&t->where));

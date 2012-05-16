@@ -419,10 +419,13 @@ void fold_decl(decl *d, symtable *stab)
 
 		case type_int:
 		case type_char:
+		case type__Bool:
 		case type_short:
 		case type_long:
 		case type_float:
 		case type_double:
+		case type_ldouble:
+		case type_llong:
 			break;
 
 		case type_unknown:

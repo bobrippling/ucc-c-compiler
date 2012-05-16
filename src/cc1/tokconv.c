@@ -17,6 +17,7 @@ enum type_primitive curtok_to_type_primitive()
 	switch(curtok){
 		case token_void:  return type_void;
 
+		case token__Bool: return type__Bool;
 		case token_char:  return type_char;
 		case token_short: return type_short;
 		case token_int:   return type_int;
@@ -170,6 +171,7 @@ const char *token_to_str(enum token t)
 		CASE_STR_PREFIX(token,  long);
 		CASE_STR_PREFIX(token,  float);
 		CASE_STR_PREFIX(token,  double);
+		CASE_STR_PREFIX(token,  _Bool);
 		CASE_STR_PREFIX(token,  signed);
 		CASE_STR_PREFIX(token,  unsigned);
 

@@ -59,6 +59,7 @@ struct statement
 	KEYWORD(long),
 	KEYWORD(float),
 	KEYWORD(double),
+	KEYWORD(_Bool),
 
 	KEYWORD(auto),
 	KEYWORD(static),
