@@ -18,6 +18,7 @@ static const struct
 } initial_defs[] = {
 	/* standard */
 	{ "__unix__",       "1"  },
+	/* __STDC__ TODO */
 
 	/* custom */
 	{ "__UCC__",        "1"  },
@@ -95,6 +96,7 @@ int main(int argc, char **argv)
 		MAP(PLATFORM_LINUX,   "__linux__");
 		MAP(PLATFORM_FREEBSD, "__FreeBSD__");
 		MAP(PLATFORM_DARWIN,  "__DARWIN__");
+		MAP(PLATFORM_CYGWIN,  "__CYGWIN__");
 #undef MAP
 	}
 

@@ -108,6 +108,10 @@ case "$(uname -s)" in
 		os_cfg FreeBSD
 		;;
 
+	CYGWIN_NT-*)
+		os_cfg Cygwin
+		;;
+
 	*)
 		echo "unknown OS ($(uname -a))" >&2
 		exit 1
