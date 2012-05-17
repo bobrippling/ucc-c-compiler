@@ -167,25 +167,7 @@ void gen_expr_str_addr(expr *e, symtable *stab)
 	(void)stab;
 
 	if(e->data_store){
-		ICE("TODO");
-#if 0
-		if(e->array_store->type == array_str){
-			idt_printf("label: %s, \"", e->array_store->label);
-			literal_print(cc1_out, e->array_store->data.str, e->array_store->len);
-			fprintf(cc1_out, "\" (length=%d)\n", e->array_store->len);
-		}else{
-			int i;
-			idt_printf("array: %s:\n", e->array_store->label);
-			gen_str_indent++;
-			for(i = 0; e->array_store->data.exprs[i]; i++){
-				idt_printf("array[%d]:\n", i);
-				gen_str_indent++;
-				print_expr(e->array_store->data.exprs[i]);
-				gen_str_indent--;
-			}
-			gen_str_indent--;
-		}
-#endif
+		data_store_out(cc1_out, e->data_store);
 	}else{
 		idt_printf("address of expr:\n");
 		gen_str_indent++;

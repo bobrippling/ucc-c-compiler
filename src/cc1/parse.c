@@ -71,8 +71,6 @@ expr *parse_expr_identifier()
 	return e;
 }
 
-__typeof(data_store_new()) data_store_new(){ICE("TODO: data store"); return 0;}
-
 expr *parse_expr_primary()
 {
 	switch(curtok){
@@ -87,22 +85,13 @@ expr *parse_expr_primary()
 		case token_string:
 		/*case token_open_block: - not allowed here */
 		{
-			expr *e;
-			data_store *ds;
 			char *s;
 			int l;
 
 			token_get_current_str(&s, &l);
 			EAT(token_string);
 
-			ds = data_store_new();
-			e = expr_new_addr_data(ds);
-
-			ds->type     = data_store_str;
-			ds->data.str = s;
-			ds->len      = l;
-
-			return e;
+			return expr_new_addr_data(data_store_new_str(s, l));
 		}
 
 		default:

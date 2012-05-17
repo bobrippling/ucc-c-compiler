@@ -10,6 +10,7 @@ OBJ = ../util/alloc.o ../util/util.o ../util/platform.o ../util/dynarray.o \
 	parse.o parse_type.o typedef.o \
 	fold.o fold_sym.o const.o \
 	sym.o sue.o \
+	data_store.o \
 	gen_asm.o asm.o gen_str.o gen_style.o \
 	ops/expr_addr.o ops/expr_assign.o ops/expr_cast.o ops/expr_comma.o \
 	ops/expr_funcall.o ops/expr_identifier.o ops/expr_if.o ops/expr_op.o \
