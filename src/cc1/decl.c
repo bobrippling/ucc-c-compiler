@@ -533,12 +533,14 @@ void decl_desc_add_str(decl_desc *dp, char **bufp, int sz)
 #define BUF_ADD(...) \
 	do{ int n = snprintf(*bufp, sz, __VA_ARGS__); *bufp += n, sz -= n; }while(0)
 
-	const int need_paren = dp->parent_desc && dp->parent_desc->type != decl_desc_ptr;
+	const int need_paren = dp->parent_desc && dp->parent_desc->type != dp->type;
+
+	if(need_paren)
+		BUF_ADD("(");
 
 	switch(dp->type){
 		case decl_desc_ptr:
-			BUF_ADD("%s*%s",
-					need_paren ? "(" : "",
+			BUF_ADD("*%s",
 					type_qual_to_str(dp->bits.qual));
 		default:
 			break;
@@ -549,8 +551,6 @@ void decl_desc_add_str(decl_desc *dp, char **bufp, int sz)
 
 	switch(dp->type){
 		case decl_desc_ptr:
-			if(need_paren)
-				BUF_ADD(")");
 			break;
 		case decl_desc_func:
 			BUF_ADD("()");
@@ -559,6 +559,9 @@ void decl_desc_add_str(decl_desc *dp, char **bufp, int sz)
 			BUF_ADD("[%ld]", dp->bits.array_size->val.iv.val);
 			break;
 	}
+
+	if(need_paren)
+		BUF_ADD(")");
 #undef BUF_ADD
 }
 
