@@ -11,7 +11,8 @@ enum platform_sys
 {
 	PLATFORM_LINUX,
 	PLATFORM_FREEBSD,
-	PLATFORM_DARWIN
+	PLATFORM_DARWIN,
+	PLATFORM_CYGWIN
 };
 
 enum platform     platform_type(void);

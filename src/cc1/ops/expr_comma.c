@@ -19,6 +19,9 @@ void fold_expr_comma(expr *e, symtable *stab)
 	fold_disallow_st_un(e->lhs, "comma-expr");
 
 	e->tree_type = decl_copy(e->rhs->tree_type);
+
+	/* TODO: warn if either of the sub-exps are not freestanding */
+	e->freestanding = e->lhs->freestanding || e->rhs->freestanding;
 }
 
 void gen_expr_comma(expr *e, symtable *stab)

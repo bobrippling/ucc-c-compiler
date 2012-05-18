@@ -1,6 +1,8 @@
 #ifndef SYSCALLS_H
 #define SYSCALLS_H
 
+/* TODO: cygwin */
+
 #ifdef __FreeBSD__
 #  include "syscalls_32.h"
 #else

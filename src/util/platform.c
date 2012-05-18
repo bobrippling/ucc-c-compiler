@@ -39,6 +39,8 @@ static void platform_init()
 		platform_s = PLATFORM_FREEBSD;
 	}else if(!strcmp(u.sysname, "Darwin")){
 		platform_s = PLATFORM_DARWIN;
+	}else if(!strncmp(u.sysname, "CYGWIN_NT-", 10)){
+		platform_s = PLATFORM_CYGWIN;
 	}else{
 		fprintf(stderr, "unrecognised machine system: \"%s\"\n", u.sysname);
 		exit(1);
