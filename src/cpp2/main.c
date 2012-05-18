@@ -18,6 +18,7 @@ static const struct
 } initial_defs[] = {
 	/* standard */
 	{ "__unix__",       "1"  },
+	/* __STDC__ TODO */
 
 	/* custom */
 	{ "__UCC__",        "1"  },
@@ -37,7 +38,10 @@ const char *current_fname;
 char cpp_time[16], cpp_date[16];
 
 char **dirnames = NULL;
-int debug = 0;
+
+int option_debug     = 0;
+int option_line_info = 1;
+
 
 void dirname_push(char *d)
 {
@@ -95,6 +99,7 @@ int main(int argc, char **argv)
 		MAP(PLATFORM_LINUX,   "__linux__");
 		MAP(PLATFORM_FREEBSD, "__FreeBSD__");
 		MAP(PLATFORM_DARWIN,  "__DARWIN__");
+		MAP(PLATFORM_CYGWIN,  "__CYGWIN__");
 #undef MAP
 	}
 
@@ -122,6 +127,10 @@ int main(int argc, char **argv)
 					outfname = argv[i];
 				else
 					goto usage;
+				break;
+
+			case 'L':
+				option_line_info = 0;
 				break;
 
 			case 'M':
@@ -156,7 +165,7 @@ int main(int argc, char **argv)
 				break;
 
 			case 'd':
-				debug++;
+				option_debug++;
 				break;
 
 			case '\0':
@@ -200,7 +209,7 @@ int main(int argc, char **argv)
 
 	current_fname = infname;
 
-	if(DEBUG_VERB < debug){
+	if(DEBUG_VERB < option_debug){
 		extern macro **macros;
 		for(i = 0; macros[i]; i++)
 			fprintf(stderr, "### macro \"%s\" = \"%s\"\n",
@@ -224,6 +233,8 @@ usage:
 				"  -Dxyz[=abc]: Define xyz (to equal abc)\n"
 				"  -Uxyz: Undefine xyz\n"
 				"  -o output: output file\n"
-				"  -d: increase debug tracing\n", stderr);
+				"  -d: increase debug tracing\n"
+				"  -L: don't add #line directives\n"
+				, stderr);
 	return 1;
 }

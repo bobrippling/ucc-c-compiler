@@ -377,7 +377,7 @@ retry:
 
 		if(!f)
 			die("can't find include file <%s>", fname);
-		if(debug)
+		if(option_debug)
 			fprintf(stderr, ">>> include lib: %s\n", path);
 	}else{
 		path = ustrprintf("%s/%s", dname, fname);
@@ -385,7 +385,7 @@ abs_path:
 		f = fopen(path, "r");
 		if(!f)
 			die("open %s (%s): %s", fname, path, strerror(errno));
-		if(debug)
+		if(option_debug)
 			fprintf(stderr, ">>> include \"%s/%s\"\n", dname, fname);
 	}
 
