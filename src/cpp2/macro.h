@@ -42,8 +42,8 @@ enum
 	DEBUG_NORM = 0,
 	DEBUG_VERB = 1,
 };
-extern int debug;
-#define DEBUG(level, ...) do{ if(level < debug) fprintf(stderr, ">>> " __VA_ARGS__); }while(0)
+extern int option_debug;
+#define DEBUG(level, ...) do{ if(level < option_debug) fprintf(stderr, ">>> " __VA_ARGS__); }while(0)
 
 extern char **lib_dirs;
 

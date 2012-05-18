@@ -284,20 +284,46 @@ int main(int argc, char **argv)
 			if(argv[i][0] == '-'){
 				unsigned int j;
 				int found;
+				char *arg = argv[i];
 
-				switch(argv[i][1]){
-					case 'f':
+				switch(arg[1]){
 					case 'W':
-						args_add(MODE_COMPILE, argv[i]);
+					{
+						/* check for W%c, */
+						char c;
+						if(sscanf(argv[i], "-W%c,", &c) == 1){
+							switch(c){
+#define MAP(c, l) case c: arg += 4; goto arg_ ## l;
+								MAP('p', preproc);
+								MAP('a', assemb);
+								MAP('l', linker);
+#undef MAP
+								default:
+									fprintf(stderr, "argument \"%s\" assumed to be for cc1\n", argv[i]);
+							}
+						}
+						/* else default to -Wsomething - add to cc1 */
+					}
+
+					case 'f':
+						args_add(MODE_COMPILE, arg);
 						continue;
 					case 'D':
 					case 'U':
 					case 'I':
-						args_add(MODE_PREPROCESS, argv[i]);
+arg_preproc:
+						args_add(MODE_PREPROCESS, arg);
 						continue;
+
+						/* no cases for as args yet */
+arg_assemb:
+						args_add(MODE_ASSEMBLE, arg);
+						continue;
+
 					case 'l':
 					case 'L':
-						args_add(MODE_LINK, argv[i]);
+arg_linker:
+						args_add(MODE_LINK, arg);
 						continue;
 				}
 
