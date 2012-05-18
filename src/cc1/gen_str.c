@@ -133,6 +133,11 @@ void print_funcargs(funcargs *fargs)
 
 void print_decl_desc(decl_desc *dp, decl *d)
 {
+	const int need_paren = dp->parent_desc && dp->parent_desc->type != dp->type;
+
+	if(need_paren)
+		fputc('(', cc1_out);
+
 	switch(dp->type){
 		case decl_desc_ptr:
 			fprintf(cc1_out, "*%s", type_qual_to_str(dp->bits.qual));
@@ -143,8 +148,6 @@ void print_decl_desc(decl_desc *dp, decl *d)
 			break;
 
 		case decl_desc_func:
-			if(dp->child)
-				fputc('(', cc1_out);
 			break;
 	}
 
@@ -155,9 +158,6 @@ void print_decl_desc(decl_desc *dp, decl *d)
 
 	switch(dp->type){
 		case decl_desc_func:
-			if(dp->child)
-				fputc(')', cc1_out);
-
 			print_funcargs(dp->bits.func);
 			break;
 
@@ -174,6 +174,9 @@ void print_decl_desc(decl_desc *dp, decl *d)
 		case decl_desc_ptr:
 			break;
 	}
+
+	if(need_paren)
+		fputc(')', cc1_out);
 }
 
 void print_decl(decl *d, enum pdeclargs mode)
