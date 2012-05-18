@@ -156,15 +156,15 @@ tok_fin:
 				exp = dynarray_count((void **)m->args);
 
 				if(m->type == VARIADIC ? got <= exp : got != exp){
-					if(debug)
+					if(option_debug)
 						for(i = 0; i < got; i++)
 							fprintf(stderr, "args[%d] = \"%s\"\n", i, args[i]);
 
 					die("wrong number of args to function macro \"%s\", got %d, expected %d%s%s%s",
 							m->nam, got, exp,
-							debug ? " (" : "",
-							debug ? *pline : "",
-							debug ? ")"  : ""
+							option_debug ? " (" : "",
+							option_debug ? *pline : "",
+							option_debug ? ")"  : ""
 							);
 				}
 			}

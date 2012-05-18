@@ -25,11 +25,11 @@ struct
 
 int file_stack_idx = -1;
 
-
 void preproc_out_info(void)
 {
 	/* output PP info */
-	printf("# %d \"%s\"\n", file_stack[file_stack_idx].line_no, file_stack[file_stack_idx].fname);
+	if(option_line_info)
+		printf("# %d \"%s\"\n", file_stack[file_stack_idx].line_no, file_stack[file_stack_idx].fname);
 }
 
 void preproc_push(FILE *f, const char *fname)
