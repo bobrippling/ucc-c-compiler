@@ -123,43 +123,48 @@ relook:
 			*close_b = '\0';
 
 			args = NULL;
-			for(last = s = open_b + 1; *s; s++){
+			for(last = s = open_b + 1; ; s++){
 				switch(*s){
 					case ',':
-						if(nest > 0)
-							break;
-						if(s == last)
-							die("no argument to function macro");
-						*s = '\0';
-						dynarray_add((void ***)&args, ustrdup(last));
-						*s = ',';
-						last = s + 1;
+						if(nest == 0){
+							*s = '\0'; {
+								dynarray_add((void ***)&args, ustrdup(last));
+							} *s = ',';
+							last = s + 1;
+						}
 						break;
+
+					case '\0':
+						if(s > last || (args && s == last)) /* args - otherwise it's () */
+							dynarray_add((void ***)&args, ustrdup(last));
+						goto tok_fin;
+
 					case '(':
 						nest++;
 						break;
+
 					case ')':
 						nest--;
+						break;
 				}
 			}
-			if(last != s)
-				dynarray_add((void ***)&args, ustrdup(last));
 
+tok_fin:
 			{
 				int got, exp;
 				got = dynarray_count((void **)args);
 				exp = dynarray_count((void **)m->args);
 
 				if(m->type == VARIADIC ? got <= exp : got != exp){
-					if(debug)
+					if(option_debug)
 						for(i = 0; i < got; i++)
 							fprintf(stderr, "args[%d] = \"%s\"\n", i, args[i]);
 
 					die("wrong number of args to function macro \"%s\", got %d, expected %d%s%s%s",
 							m->nam, got, exp,
-							debug ? " (" : "",
-							debug ? *pline : "",
-							debug ? ")"  : ""
+							option_debug ? " (" : "",
+							option_debug ? *pline : "",
+							option_debug ? ")"  : ""
 							);
 				}
 			}
