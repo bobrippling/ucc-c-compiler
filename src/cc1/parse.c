@@ -146,6 +146,10 @@ expr *parse_expr_primary()
 				expr *e;
 
 				if((d = parse_decl_single(DECL_SPEL_NO))){
+					if(d->type->store)
+						die_at(&d->where, "invalid cast involving %s",
+								type_store_to_str(d->type->store));
+
 					e = expr_new_cast(d);
 					EAT(token_close_paren);
 					e->expr = parse_expr_cast(); /* another cast */
