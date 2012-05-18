@@ -296,7 +296,8 @@ decl *decl_ptr_depth_dec(decl *d, where *from)
 
 	if(!last || (last->type != decl_desc_ptr && last->type != decl_desc_array)){
 		die_at(from,
-			"trying to dereference non-pointer%s%s%s",
+			"trying to dereference %s%s%s%s",
+			decl_to_str(d),
 			last ? " (" : "",
 			last ? decl_desc_str(last) : "",
 			last ? ")"  : "");
@@ -583,9 +584,6 @@ int decl_init_len(decl_init *di)
  switch(di->type){
 	 case decl_init_scalar:
 		 return 1;
-
-	 case decl_init_str:
-		 return (di)->bits.str.len;
 
 	 case decl_init_brace:
 	 case decl_init_struct:

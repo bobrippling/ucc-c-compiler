@@ -527,8 +527,8 @@ stmt *parse_code_block()
 		decl *d = *diter;
 		if(d->init){
 			if(decl_is_array(d)){
-#if 0
 #ifndef FANCY_STACK_INIT
+				ICE("TODO");
 				/* assignment expr for each init */
 				array_decl *dinit = d->init->array_store;
 				int i;
@@ -557,9 +557,10 @@ stmt *parse_code_block()
 
 				dynarray_add((void ***)&t->codes, expr_to_stmt(comma_init));
 #endif
-			}else if(d->type->store != store_static){
-				dynarray_add((void ***)&t->codes, expr_to_stmt(expr_new_decl_init(d)));
-#endif
+			}else if(d->type->store != store_static && d->init->type == decl_init_scalar){
+				dynarray_add((void ***)&t->codes, expr_to_stmt(d->init->bits.expr));
+			}else{
+				ICW("TODO: init for %s somewhere else", d->spel);
 			}
 		}
 		/* don't change init - used for checks for assign-to-const */

@@ -57,12 +57,6 @@ void print_decl_init(decl_init *di)
 			print_expr(di->bits.expr);
 			break;
 
-		case decl_init_str:
-			idt_printf("\"");
-			literal_print(cc1_out, di->bits.str.s, di->bits.str.len);
-			fputs("\"\n", cc1_out);
-			break;
-
 		case decl_init_struct:
 		case decl_init_brace:
 		{

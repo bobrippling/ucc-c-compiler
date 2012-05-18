@@ -29,7 +29,4 @@ expr *parse_expr_exp(void);
 
 symtable *parse(void);
 
-/* tables local to the current scope */
-extern symtable *current_scope;
-
 #endif

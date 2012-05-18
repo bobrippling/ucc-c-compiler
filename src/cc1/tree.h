@@ -98,4 +98,7 @@ void funcargs_free(funcargs *args, int free_decls);
 
 #define type_free(x) free(x)
 
+/* tables local to the current scope */
+extern symtable *current_scope;
+
 #endif

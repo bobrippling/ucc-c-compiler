@@ -46,14 +46,11 @@ decl_init *parse_initialisation(void)
 
 		EAT(token_close_block);
 
-	}else if(curtok == token_string){
-		di = decl_init_new(decl_init_str);
-		token_get_current_str(&di->bits.str.s, &di->bits.str.len);
-		EAT(token_string);
-
 	}else{
 		di = decl_init_new(decl_init_scalar);
 		di->bits.expr = parse_expr_no_comma();
+
+		/*if(expr_kind(di->bits.expr, addr) && di->bits.expr->data_store)*/
 	}
 
 	return di;

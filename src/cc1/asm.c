@@ -15,7 +15,7 @@
 #define SNPRINTF(s, n, ...) \
 		UCC_ASSERT(snprintf(s, n, __VA_ARGS__) != n, "snprintf buffer too small")
 
-static int label_last = 1, str_last = 1, switch_last = 1, flow_last = 1;
+static int label_last = 1, data_store_last = 1, switch_last = 1, flow_last = 1;
 
 char *asm_label_code(const char *fmt)
 {
@@ -30,10 +30,10 @@ char *asm_label_code(const char *fmt)
 	return ret;
 }
 
-char *asm_label_array(int str)
+char *asm_label_data_store(const char *extra)
 {
-	char *ret = umalloc(16);
-	SNPRINTF(ret, 16, "%s.%d", str ? "str" : "array", str_last++);
+	char *ret = umalloc(strlen(extra) + 8);
+	SNPRINTF(ret, 16, "%s.%d", extra, data_store_last++);
 	return ret;
 }
 

@@ -1,7 +1,7 @@
 #ifndef CC1_H
 #define CC1_H
 
-/*#define FANCY_STACK_INIT 1*/
+#define FANCY_STACK_INIT 1
 #define ASM_INLINE_FNAME "__asm__"
 
 enum section_type

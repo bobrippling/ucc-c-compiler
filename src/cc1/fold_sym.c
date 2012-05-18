@@ -42,7 +42,6 @@ int symtab_fold(symtable *tab, int current)
 #define RW_WARN(w, var, str)                    \
 				do{                                     \
 					if(s->var == 0                        \
-					&& !s->decl->internal                 \
 					&& !decl_has_array(s->decl)           \
 					&& !decl_is_func(s->decl)             \
 					&& !decl_is_struct_or_union(s->decl)) \

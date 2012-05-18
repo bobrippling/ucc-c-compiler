@@ -4,6 +4,7 @@
 #include "ops.h"
 #include "../sue.h"
 #include "../str.h"
+#include "../data_store.h"
 
 const char *str_expr_addr()
 {
@@ -12,59 +13,8 @@ const char *str_expr_addr()
 
 void fold_expr_addr(expr *e, symtable *stab)
 {
-#define TT e->tree_type
-
 	if(e->data_store){
-		ICE("TODO");
-#if 0
-		sym *array_sym;
-
-		UCC_ASSERT(!e->sym, "symbol found when looking for array store");
-		UCC_ASSERT(!e->lhs, "expression found in array store address-of");
-
-		/* static const char [] */
-		TT = decl_new();
-
-		TT->desc = decl_desc_array_new(e->tree_type, NULL);
-		TT->desc->bits.array_size = expr_new_val(e->array_store->len);
-
-		TT->type->store = store_static;
-		TT->type->qual  = qual_const;
-
-		e->spel = e->array_store->label = asm_label_array(e->array_store->type == array_str);
-
-		decl_set_spel(e->tree_type, e->spel);
-
-		array_sym = SYMTAB_ADD(symtab_root(stab), e->tree_type, stab->parent ? sym_local : sym_global);
-
-		array_sym->decl->arrayinit = e->array_store;
-		array_sym->decl->internal = 1;
-
-
-		switch(e->array_store->type){
-			case array_str:
-				e->tree_type->type->primitive = type_char;
-				TT->type->primitive = type_char;
-				break;
-
-			case array_exprs:
-			{
-				expr **inits;
-				int i;
-
-				TT->type->primitive = type_int;
-
-				inits = e->array_store->data.exprs;
-
-				for(i = 0; inits[i]; i++){
-					fold_expr(inits[i], stab);
-					if(const_fold(inits[i]))
-						die_at(&inits[i]->where, "array init not constant (%s)", inits[i]->f_str());
-				}
-			}
-		}
-
-#endif
+		data_store_fold_decl(e->data_store, &e->tree_type);
 	}else{
 		fold_inc_writes_if_sym(e->lhs, stab);
 
@@ -132,8 +82,11 @@ void gen_expr_addr(expr *e, symtable *stab)
 	(void)stab;
 
 	if(e->data_store){
-		ICE("TODO");
-		//asm_temp(1, "mov rax, %s", e->data_store->label);
+		/* create the data store */
+		data_store_out(cc_out[SECTION_DATA], e->data_store);
+
+		/* load it */
+		asm_temp(1, "mov rax, %s", e->data_store->spel);
 	}else{
 		/* address of possibly an ident "(&a)->b" or a struct expr "&a->b" */
 		if(expr_kind(e->lhs, identifier)){
@@ -167,7 +120,8 @@ void gen_expr_str_addr(expr *e, symtable *stab)
 	(void)stab;
 
 	if(e->data_store){
-		data_store_out(cc1_out, e->data_store);
+		ICE("printing datastore");
+		/*asm_temp(1, "mov rax, %s", e->data_store->sym_ident);*/
 	}else{
 		idt_printf("address of expr:\n");
 		gen_str_indent++;

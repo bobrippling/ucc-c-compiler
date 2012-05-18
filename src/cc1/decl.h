@@ -99,7 +99,6 @@ struct decl
 	decl_attr *attr;
 
 	char *spel;
-	int internal; /* interal string or array decl */
 
 	/* no funcargs on the decl - on a desc if it's a decl_desc_func */
 	decl_desc *desc;
@@ -111,21 +110,15 @@ struct decl_init
 {
 	enum decl_init_type
 	{
+		/*decl_init_str - covered by scalar */
 		decl_init_scalar,              /* = [0-9] | basic-expr */
 		decl_init_brace,               /* { `decl_init`, `decl_init`, ... } */
-		decl_init_str,                 /* "abc" */
 		decl_init_struct,              /* { .member1 = `decl_init`, .member2 = `decl_init` } */
 	} type;
 
 	union
 	{
 		expr *expr;
-
-		struct
-		{
-			char *s;
-			int len;
-		} str;
 
 		struct decl_init_sub
 		{
@@ -142,12 +135,14 @@ struct data_store
 	{
 		data_store_str
 	} type;
+
 	union
 	{
 		char *str;
-	} data;
+	} bits;
 	int len;
-	char *sym_spel;
+
+	char *spel; /* asm */
 };
 
 enum decl_cmp

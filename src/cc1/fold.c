@@ -216,7 +216,6 @@ void fold_decl_init(decl_init *di, symtable *stab, decl *for_decl)
 				die_at(&for_decl->where, "can't initialise array decl with scalar or struct");
 
 			case decl_init_brace:
-			case decl_init_str:
 				if(decl_has_incomplete_array(for_decl)){
 					/* complete the decl */
 					decl_desc *dp = decl_array_incomplete(for_decl);
@@ -228,10 +227,9 @@ void fold_decl_init(decl_init *di, symtable *stab, decl *for_decl)
 		const int nmembers = sue_nmembers(for_decl->type->sue);
 
 		switch(di->type){
-			case decl_init_str:
 			case decl_init_scalar:
-				die_at(&for_decl->where, "can't initialise %s with %s",
-						decl_to_str(for_decl), di->type == decl_init_str ? "string" : "expression");
+				die_at(&for_decl->where, "can't initialise %s with expression",
+						decl_to_str(for_decl));
 
 			case decl_init_struct:
 			{
@@ -317,9 +315,6 @@ void fold_decl_init(decl_init *di, symtable *stab, decl *for_decl)
 			}
 			break;
 		}
-
-		case decl_init_str:
-			break;
 	}
 
 }

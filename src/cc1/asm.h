@@ -61,7 +61,7 @@ enum asm_size asm_type_size(decl *d);
 void asm_declare(FILE *f, decl *d);
 
 char *asm_label_code(const char *fmt);
-char *asm_label_array(int str);
+char *asm_label_data_store(const char *);
 char *asm_label_static_local(const char *funcsp, const char *spel);
 char *asm_label_goto(char *lbl);
 char *asm_label_case(enum asm_label_type, int val);
