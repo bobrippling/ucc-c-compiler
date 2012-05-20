@@ -33,6 +33,8 @@ enum token
 	token_elipsis,     /* aka ... */
 	token_string,      /* aka \"...\" */
 
+	token_inline,
+
 	token_const,
 	token_volatile,
 	/**/

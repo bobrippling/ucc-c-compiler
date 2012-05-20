@@ -359,6 +359,16 @@ void fold_decl(decl *d, symtable *stab)
 				decl_spel(d) ? decl_spel(d) : "");
 	}
 
+	if(decl_is_func(d)){
+		if(d->type->store == store_register)
+			die_at(&d->where, "register storage for function");
+	}else{
+		if(d->type->is_inline)
+			warn_at(&d->where, "inline on non-function%s%s",
+					d->spel ? " " : "",
+					d->spel ? d->spel : "");
+	}
+
 	if(d->init){
 		if(d->type->store == store_extern)
 			die_at(&d->where, "externs can't be initalised");

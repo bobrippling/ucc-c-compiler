@@ -61,6 +61,8 @@ struct statement
 	KEYWORD(extern),
 	KEYWORD(register),
 
+	KEYWORD(inline),
+
 	KEYWORD(const),
 	KEYWORD(volatile),
 	KEYWORD(restrict),
