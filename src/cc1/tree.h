@@ -62,7 +62,7 @@ struct type
 	enum type_primitive primitive;
 	enum type_qualifier qual;
 	enum type_storage   store;
-	int is_signed;
+	int is_signed, is_inline;
 
 	/* NULL unless this is a struct, union or enum */
 	struct_union_enum_st *sue;

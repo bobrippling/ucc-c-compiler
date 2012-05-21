@@ -109,7 +109,7 @@ type *parse_type()
 	enum type_qualifier qual = qual_none;
 	enum type_storage   store = store_auto;
 	enum type_primitive primitive = type_int;
-	int is_signed = 1;
+	int is_signed = 1, is_inline = 0;
 	int store_set = 0, primitive_set = 0, signed_set = 0;
 
 	for(;;){
@@ -144,6 +144,10 @@ type *parse_type()
 				die_at(NULL, "unwanted second \"%ssigned\"", is_signed ? "" : "un");
 
 			signed_set = 1;
+			EAT(curtok);
+
+		}else if(curtok == token_inline){
+			is_inline = 1;
 			EAT(curtok);
 
 		}else if(curtok == token_struct || curtok == token_union || curtok == token_enum){
@@ -212,7 +216,7 @@ type *parse_type()
 		}
 	}
 
-	if(qual != qual_none || store_set || primitive_set || signed_set || tdef_typeof){
+	if(qual != qual_none || store_set || primitive_set || signed_set || tdef_typeof || is_inline){
 		type *t = type_new();
 
 		/* signed size_t x; */
@@ -227,6 +231,7 @@ type *parse_type()
 
 		t->typeof = tdef_typeof;
 		t->is_signed = is_signed;
+		t->is_inline = is_inline;
 		t->qual  = qual;
 		t->store = store;
 
@@ -501,6 +506,8 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 
 		last = NULL;
 		are_tdefs = 0;
+
+		parse_static_assert();
 
 		t = parse_type();
 

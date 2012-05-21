@@ -4,7 +4,6 @@
 int const_fold(expr *e);
 int const_expr_is_const(expr *e);
 int const_expr_is_zero( expr *e);
-int const_expr_val(expr *e);
 
 #define POSSIBLE_OPT(e, s) \
 	cc1_warn_at(&e->where, 0, WARN_OPT_POSSIBLE,     \
