@@ -109,12 +109,12 @@ void fold_expr(expr *e, symtable *stab)
 
 	fold_get_sym(e, stab);
 
-	const_fold(e);
-
 	old_w = eof_where;
 	eof_where = &e->where;
 	e->f_fold(e, stab);
 	eof_where = old_w;
+
+	const_fold(e); /* fold, then const-propagate */
 
 	UCC_ASSERT(e->tree_type, "no tree_type after fold (%s)", e->f_str());
 	UCC_ASSERT(e->tree_type->type->primitive != type_unknown, "unknown type after folding expr %s", e->f_str());
@@ -624,6 +624,19 @@ void fold(symtable *globs)
 				D(i)->type->store = store_extern;
 				/*cc1_warn_at(&f->where, 0, WARN_EXTERN_ASSUME, "assuming \"%s\" is extern", func_decl_spel(decl));*/
 			}
+		}
+	}
+
+	/* static assertions */
+	{
+		static_assert **i;
+		for(i = globs->static_asserts; i && *i; i++){
+			static_assert *sa = *i;
+			fold_expr(sa->e, sa->scope);
+			if(const_fold(sa->e))
+				die_at(&sa->e->where, "static assert: not a constant expression (%s)", sa->e->f_str());
+			if(!sa->e->val.iv.val)
+				die_at(&sa->e->where, "static assertion failure: %s", sa->s);
 		}
 	}
 

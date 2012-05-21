@@ -503,6 +503,8 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 		last = NULL;
 		are_tdefs = 0;
 
+		parse_static_assert();
+
 		t = parse_type();
 
 		if(!t){

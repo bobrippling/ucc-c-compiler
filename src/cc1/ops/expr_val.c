@@ -37,9 +37,15 @@ void gen_expr_str_val(expr *e, symtable *stab)
 	idt_printf("val: %d\n", e->val);
 }
 
+int const_expr_val(expr *e)
+{
+	return 0; /* obviously vals are const */
+}
+
 void mutate_expr_val(expr *e)
 {
 	e->f_gen_1 = gen_expr_val_1;
+	e->f_const_fold = const_expr_val;
 }
 
 expr *expr_new_val(int val)
