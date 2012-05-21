@@ -88,8 +88,6 @@ static int fopen2(FILE *f, const char *path, const char *smode)
 				break;
 			case 'r':
 				PRIMARY_CHECK();
-				if(mode & O_CREAT)
-					goto inval;
 				mode |= O_RDONLY;
 				break;
 			case 'w':
@@ -103,6 +101,11 @@ static int fopen2(FILE *f, const char *path, const char *smode)
 			case '+':
 				mode &= ~(O_WRONLY | O_RDONLY);
 				mode |= O_RDWR;
+				break;
+			case 'x':
+				/* C11 exclusive create + open-exclusive */
+				PRIMARY_CHECK();
+				mode |= O_CREAT | O_EXCL;
 				break;
 			default:
 inval:

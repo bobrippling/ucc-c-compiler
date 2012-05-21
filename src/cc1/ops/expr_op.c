@@ -12,10 +12,6 @@ const char *str_expr_op()
 int operate(expr *lhs, expr *rhs, enum op_type op, int *bad)
 {
 #define OP(a, b) case a: return lhs->val.iv.val b rhs->val.iv.val
-	if(op != op_deref && !expr_kind(lhs, val)){
-		*bad = 1;
-		return 0;
-	}
 
 	switch(op){
 		OP(op_multiply,   *);
@@ -131,7 +127,8 @@ int fold_const_expr_op(expr *e)
 	l = const_fold(e->lhs);
 	r = e->rhs ? const_fold(e->rhs) : 0;
 
-	if(!l && !r && expr_kind(e->lhs, val) && (e->rhs ? expr_kind(e->rhs, val) : 1)){
+	/* anything can be const, if it returns 0 from const_fold */
+	if(!l && !r){
 		int bad = 0;
 
 		e->val.iv.val = operate(e->lhs, e->rhs, e->op, &bad);

@@ -13,12 +13,20 @@ void *realloc(void *, size_t) __warn_unused;
 void  free(   void *);
 
 void exit(int);
+int atexit(void (*)(void));
+
 void abort(void);
 
 char *getenv(const char *);
 
 extern char *__progname;
 
-int atexit(void (*)(void));
+/* c99 */
+void _Exit(int);
+
+/* c11 */
+int at_quick_exit(void (*)(void));
+void quick_exit(int);
+
 
 #endif
