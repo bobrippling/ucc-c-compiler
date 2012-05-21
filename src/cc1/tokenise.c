@@ -62,6 +62,7 @@ struct statement
 	KEYWORD(register),
 
 	KEYWORD(inline),
+	KEYWORD(_Generic),
 
 	KEYWORD(const),
 	KEYWORD(volatile),

@@ -19,6 +19,7 @@ enum token
 	token_default,
 	token_goto,
 
+	token__Generic,
 	token_sizeof,
 	token_typeof,
 

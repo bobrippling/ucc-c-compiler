@@ -57,6 +57,46 @@ expr *parse_expr_sizeof_typeof()
 	return e;
 }
 
+expr *parse_expr__Generic()
+{
+	struct generic_lbl **lbls;
+	expr *test;
+
+	EAT(token__Generic);
+	EAT(token_open_paren);
+
+	test = parse_expr_no_comma();
+	lbls = NULL;
+
+	for(;;){
+		decl *d;
+		expr *e;
+		struct generic_lbl *lbl;
+
+		EAT(token_comma);
+
+		if(accept(token_default)){
+			d = NULL;
+		}else{
+			d = parse_decl_single(DECL_SPEL_NO);
+			if(!d)
+				die_at(NULL, "type expected");
+		}
+		EAT(token_colon);
+		e = parse_expr_no_comma();
+
+		lbl = umalloc(sizeof *lbl);
+		lbl->e = e;
+		lbl->d = d;
+		dynarray_add((void ***)&lbls, lbl);
+
+		if(accept(token_close_paren))
+			break;
+	}
+
+	return expr_new__Generic(test, lbls);
+}
+
 expr *parse_expr_identifier()
 {
 	expr *e;
@@ -139,6 +179,9 @@ expr *parse_expr_primary()
 			}
 			return e;
 		}
+
+		case token__Generic:
+			return parse_expr__Generic();
 
 		default:
 			if(accept(token_open_paren)){
