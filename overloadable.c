@@ -1,9 +1,9 @@
-__attribute__((overloadable)) f(void)
+f(void) __attribute__((overloadable))
 {
 	return -1;
 }
 
-__attribute__((overloadable)) f(int i)
+f(int i) __attribute__((overloadable))
 {
 	return i;
 }
