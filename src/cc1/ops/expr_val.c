@@ -39,6 +39,7 @@ void gen_expr_str_val(expr *e, symtable *stab)
 
 int const_expr_val(expr *e)
 {
+	(void)e;
 	return 0; /* obviously vals are const */
 }
 

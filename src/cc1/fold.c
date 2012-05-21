@@ -397,7 +397,7 @@ void fold_decl(decl *d, symtable *stab)
 						decl_spel(d), buf_a, buf_b);
 			}
 
-			if(const_fold(d->init)){
+			if(const_fold(d->init) && !const_expr_is_const(d->init)){
 				/* global/static + not constant */
 				/* allow identifiers if the identifier is also static */
 
