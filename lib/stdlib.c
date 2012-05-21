@@ -77,25 +77,57 @@ char *getenv(const char *key)
 
 #define N_EXITS 32
 
-static void (*exit_funcs[N_EXITS])(void);
-static int    exit_fidx;
-
-int atexit(void (*f)(void))
+static struct exit_func
 {
-	if(exit_fidx == N_EXITS){
+	void (*funcs[N_EXITS])(void);
+	int    fidx;
+} exit_funcs, quick_exit_funcs;
+
+
+static void do_exit_funcs(struct exit_func *fs)
+{
+	/* call exit funcs */
+	while(fs->fidx > 0)
+		fs->funcs[--fs->fidx]();
+}
+
+static int add_exit_func(struct exit_func *to, void (*f)(void))
+{
+	if(to->fidx == N_EXITS){
 		errno = ENOMEM;
 		return -1;
 	}
 
-	exit_funcs[exit_fidx++] = f;
+	to->funcs[to->fidx++] = f;
 	return 0;
+}
+
+int atexit(void (*f)(void))
+{
+	return add_exit_func(&exit_funcs, f);
 }
 
 void exit(int code)
 {
-	/* call exit funcs */
-	while(exit_fidx > 0)
-		exit_funcs[--exit_fidx]();
+	/* XXX: stdio cleanup will go here */
 
+	do_exit_funcs(&exit_funcs);
+	_Exit(code);
+}
+
+void _Exit(int code)
+{
 	__syscall(SYS_exit, code);
+}
+
+int at_quick_exit(void (*f)(void))
+{
+	return add_exit_func(&quick_exit_funcs, f);
+}
+
+void quick_exit(int code)
+{
+	/* XXX: stdio cleanup will go here */
+	do_exit_funcs(&quick_exit_funcs);
+	_Exit(code);
 }

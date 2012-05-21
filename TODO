@@ -43,10 +43,12 @@ get rid of __asm__ hacks (mainly in gen_asm.c)
 stabs/dwarf debugging annotations
 
 fastcall - ecx, edx, stack, etc (__attribute__)
+- see Windows name mangling - https://en.wikipedia.org/wiki/Name_mangling
 
 extensions:
 	namespace [str] { ... }
 	classes?
+	__attribute__((overloadable)) - clang
 
 replace die{,_at} with cc1_&, and use stored line in tokenise for better errors
 
