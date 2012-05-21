@@ -28,6 +28,7 @@ expr *parse_expr_unary(void);
 
 /* parse_type uses this for structs, tdefs and enums */
 symtable *current_scope;
+static_assert **static_asserts;
 
 
 /* sometimes we can carry on after an error, but we don't want to go through to compilation etc */
@@ -55,6 +56,46 @@ expr *parse_expr_sizeof_typeof()
 	}
 
 	return e;
+}
+
+expr *parse_expr__Generic()
+{
+	struct generic_lbl **lbls;
+	expr *test;
+
+	EAT(token__Generic);
+	EAT(token_open_paren);
+
+	test = parse_expr_no_comma();
+	lbls = NULL;
+
+	for(;;){
+		decl *d;
+		expr *e;
+		struct generic_lbl *lbl;
+
+		EAT(token_comma);
+
+		if(accept(token_default)){
+			d = NULL;
+		}else{
+			d = parse_decl_single(DECL_SPEL_NO);
+			if(!d)
+				die_at(NULL, "type expected");
+		}
+		EAT(token_colon);
+		e = parse_expr_no_comma();
+
+		lbl = umalloc(sizeof *lbl);
+		lbl->e = e;
+		lbl->d = d;
+		dynarray_add((void ***)&lbls, lbl);
+
+		if(accept(token_close_paren))
+			break;
+	}
+
+	return expr_new__Generic(test, lbls);
 }
 
 expr *parse_expr_identifier()
@@ -139,6 +180,9 @@ expr *parse_expr_primary()
 			}
 			return e;
 		}
+
+		case token__Generic:
+			return parse_expr__Generic();
 
 		default:
 			if(accept(token_open_paren)){
@@ -558,6 +602,29 @@ stmt *parse_for()
 	return s;
 }
 
+void parse_static_assert(void)
+{
+	while(accept(token__Static_assert)){
+		static_assert *sa = umalloc(sizeof *sa);
+		int l;
+
+		sa->scope = current_scope;
+
+		EAT(token_open_paren);
+		sa->e = parse_expr_no_comma();
+		EAT(token_comma);
+
+		token_get_current_str(&sa->s, &l);
+
+		EAT(token_string);
+		EAT(token_close_paren);
+		EAT(token_semicolon);
+
+		dynarray_add((void ***)&static_asserts, sa);
+	}
+}
+
+
 stmt *parse_code_block()
 {
 	stmt *t = STAT_NEW_NEST(code);
@@ -616,7 +683,11 @@ stmt *parse_code_block()
 	if(curtok != token_close_block){
 		/* main read loop */
 		do{
-			stmt *sub = parse_code();
+			stmt *sub;
+
+			parse_static_assert();
+
+			sub = parse_code();
 
 			if(sub)
 				dynarray_add((void ***)&t->codes, sub);
@@ -748,6 +819,8 @@ symtable *parse()
 	if(decls)
 		for(i = 0; decls[i]; i++)
 			symtab_add(globals, decls[i], sym_global, SYMTAB_NO_SYM, SYMTAB_APPEND);
+
+	globals->static_asserts = static_asserts;
 
 	return globals;
 }
