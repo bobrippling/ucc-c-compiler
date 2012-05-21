@@ -144,11 +144,11 @@ char *getenv(const char *key)
 
 #define N_EXITS 32
 
-struct exit_func
+static struct exit_func
 {
 	void (*funcs[N_EXITS])(void);
 	int    fidx;
-} atexit_funcs, at_quick_exit_funcs;
+} exit_funcs, quick_exit_funcs;
 
 
 static void do_exit_funcs(struct exit_func *fs)
@@ -171,7 +171,7 @@ static int add_exit_func(struct exit_func *to, void (*f)(void))
 
 int atexit(void (*f)(void))
 {
-	return add_exit_func(&atexit_funcs, f);
+	return add_exit_func(&exit_funcs, f);
 }
 
 void exit(int code)
@@ -189,10 +189,10 @@ void _Exit(int code)
 
 int at_quick_exit(void (*f)(void))
 {
-	return add_exit_func(&at_quick_exit_funcs, f);
+	return add_exit_func(&quick_exit_funcs, f);
 }
 
-void at_quick_exit(int code)
+void quick_exit(int code)
 {
 	/* XXX: stdio cleanup will go here */
 	do_exit_funcs(&quick_exit_funcs);
