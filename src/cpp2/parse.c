@@ -364,6 +364,7 @@ retry:
 	dname = dirnames[i - 1];
 
 	if(lib){
+lib:
 		f = NULL;
 
 		for(i = 0; lib_dirs && lib_dirs[i]; i++){
@@ -383,8 +384,10 @@ retry:
 		path = ustrprintf("%s/%s", dname, fname);
 abs_path:
 		f = fopen(path, "r");
-		if(!f)
-			die("open %s (%s): %s", fname, path, strerror(errno));
+		if(!f){
+			/* attempt lib */
+			goto lib;
+		}
 		if(option_debug)
 			fprintf(stderr, ">>> include \"%s/%s\"\n", dname, fname);
 	}
