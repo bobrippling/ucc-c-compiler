@@ -38,6 +38,12 @@ struct expr
 		char *s;
 	} val;
 
+	struct generic_lbl
+	{
+		decl *d; /* NULL -> default */
+		expr *e;
+	} **generics, *generic_chosen;
+
 	int ptr_safe; /* does val point to a string we know about? */
 	int in_parens; /* for if((x = 5)) testing */
 	int op_no_ptr_mul; /* for &(a.b) -> (&a) + offsetof(a, b) - don't multiply the op */
@@ -107,6 +113,7 @@ expr *expr_new_sizeof_decl(decl *);
 expr *expr_new_sizeof_expr(expr *);
 expr *expr_new_funcall(void);
 expr *expr_new_assign(expr *to, expr *from);
+expr *expr_new__Generic(expr *test, struct generic_lbl **lbls);
 
 #define expr_new_addr()    expr_new_wrapper(addr)
 #define expr_new_comma()   expr_new_wrapper(comma)

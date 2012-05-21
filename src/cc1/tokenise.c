@@ -66,6 +66,8 @@ struct statement
 	KEYWORD(extern),
 	KEYWORD(register),
 
+	KEYWORD(inline),
+
 	KEYWORD(const),
 	KEYWORD(volatile),
 	KEYWORD(restrict),
@@ -79,6 +81,8 @@ struct statement
 	KEYWORD(enum),
 
 	KEYWORD(sizeof),
+	KEYWORD(_Generic),
+	KEYWORD(_Static_assert),
 
 	{ "__typeof",  token_typeof },
 

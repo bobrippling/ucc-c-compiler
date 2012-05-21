@@ -152,11 +152,17 @@ const char *token_to_str(enum token t)
 		CASE_STR_PREFIX(token,  sizeof);
 		CASE_STR_PREFIX(token,  typeof);
 
+    CASE_STR_PREFIX(token,  _Generic);
+    CASE_STR_PREFIX(token,  _Static_assert);
+
 		/* storage */
 		CASE_STR_PREFIX(token,  extern);
 		CASE_STR_PREFIX(token,  static);
 		CASE_STR_PREFIX(token,  auto);
 		CASE_STR_PREFIX(token,  register);
+
+		/* sort-of storage */
+		CASE_STR_PREFIX(token,  inline);
 
 		/* type-qual */
 		CASE_STR_PREFIX(token,  const);

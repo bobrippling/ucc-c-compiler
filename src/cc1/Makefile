@@ -13,7 +13,7 @@ OBJ = ../util/alloc.o ../util/util.o ../util/platform.o ../util/dynarray.o \
 	gen_asm.o gen_str.o asm.o asm_out.o gen_style.o \
 	ops/expr_addr.o ops/expr_assign.o ops/expr_cast.o ops/expr_comma.o \
 	ops/expr_funcall.o ops/expr_identifier.o ops/expr_if.o ops/expr_op.o \
-	ops/expr_sizeof.o ops/expr_val.o ops/expr_stmt.o \
+	ops/expr_sizeof.o ops/expr_val.o ops/expr_stmt.o ops/expr__Generic.o \
 	ops/stmt_break.o ops/stmt_case.o ops/stmt_case_range.o ops/stmt_code.o \
 	ops/stmt_default.o ops/stmt_do.o ops/stmt_expr.o ops/stmt_for.o ops/stmt_goto.o \
 	ops/stmt_if.o ops/stmt_label.o ops/stmt_noop.o ops/stmt_return.o \

@@ -148,12 +148,12 @@ void fold_expr(expr *e, symtable *stab)
 
 	fold_get_sym(e, stab);
 
-	const_fold(e);
-
 	old_w = eof_where;
 	eof_where = &e->where;
 	e->f_fold(e, stab);
 	eof_where = old_w;
+
+	const_fold(e); /* fold, then const-propagate */
 
 	UCC_ASSERT(e->tree_type, "no tree_type after fold (%s)", e->f_str());
 	UCC_ASSERT(e->tree_type->type->primitive != type_unknown, "unknown type after folding expr %s", e->f_str());
@@ -405,6 +405,16 @@ void fold_decl(decl *d, symtable *stab)
 				decl_spel(d) ? decl_spel(d) : "");
 	}
 
+	if(decl_is_func(d)){
+		if(d->type->store == store_register)
+			die_at(&d->where, "register storage for function");
+	}else{
+		if(d->type->is_inline)
+			warn_at(&d->where, "inline on non-function%s%s",
+					d->spel ? " " : "",
+					d->spel ? d->spel : "");
+	}
+
 	if(d->init){
 		if(d->type->store == store_extern)
 			die_at(&d->where, "externs can't be initalised");
@@ -433,7 +443,7 @@ void fold_decl(decl *d, symtable *stab)
 						decl_spel(d), buf_a, buf_b);
 			}
 
-			if(const_fold(d->init)){
+			if(const_fold(d->init) && !const_expr_is_const(d->init)){
 				/* global/static + not constant */
 				/* allow identifiers if the identifier is also static */
 
@@ -660,6 +670,19 @@ void fold(symtable *globs)
 				D(i)->type->store = store_extern;
 				/*cc1_warn_at(&f->where, 0, WARN_EXTERN_ASSUME, "assuming \"%s\" is extern", func_decl_spel(decl));*/
 			}
+		}
+	}
+
+	/* static assertions */
+	{
+		static_assert **i;
+		for(i = globs->static_asserts; i && *i; i++){
+			static_assert *sa = *i;
+			fold_expr(sa->e, sa->scope);
+			if(const_fold(sa->e))
+				die_at(&sa->e->where, "static assert: not a constant expression (%s)", sa->e->f_str());
+			if(!sa->e->val.iv.val)
+				die_at(&sa->e->where, "static assertion failure: %s", sa->s);
 		}
 	}
 

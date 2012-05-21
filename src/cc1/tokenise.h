@@ -19,8 +19,10 @@ enum token
 	token_default,
 	token_goto,
 
+	token__Generic,
 	token_sizeof,
 	token_typeof,
+	token__Static_assert,
 
 	token_attribute,
 
@@ -38,6 +40,8 @@ enum token
 	token_float,
 	token_double,
 	token__Bool,
+
+	token_inline,
 
 	token_const,
 	token_volatile,

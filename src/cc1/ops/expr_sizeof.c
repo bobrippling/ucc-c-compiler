@@ -1,6 +1,7 @@
 #include "ops.h"
 
 #define SIZEOF_WHAT(e) ((e)->expr ? (e)->expr->tree_type : (e)->decl)
+#define SIZEOF_SIZE(e)  (e)->val.iv.val
 
 const char *str_expr_sizeof()
 {
@@ -19,10 +20,17 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 	if(decl_has_incomplete_array(chosen))
 		die_at(&e->where, "sizeof incomplete array");
 
+	SIZEOF_SIZE(e) = decl_size(SIZEOF_WHAT(e));
+
 	e->tree_type = decl_new();
 	/* size_t */
 	e->tree_type->type->primitive = type_int;
 	e->tree_type->type->is_signed = 0;
+}
+
+int const_expr_sizeof(expr *e)
+{
+	return e->tree_type ? 0 : 1; /* constant, once folded */
 }
 
 void gen_expr_sizeof_1(expr *e)
@@ -37,7 +45,7 @@ void gen_expr_sizeof(expr *e, symtable *stab)
 
 	asm_output_new(
 		asm_out_type_push,
-		asm_operand_new_val(decl_size(d)),
+		asm_operand_new_val(e->val.iv.val),
 		NULL);
 
 	asm_comment("sizeof %s%s", e->expr ? "" : "type ", decl_to_str(d));
@@ -54,11 +62,12 @@ void gen_expr_str_sizeof(expr *e, symtable *stab)
 	}else{
 		idt_printf("sizeof %s\n", decl_to_str(e->decl));
 	}
+	idt_printf("size = %ld\n", SIZEOF_SIZE(e));
 }
 
 void mutate_expr_sizeof(expr *e)
 {
-	(void)e;
+	e->f_const_fold = const_expr_sizeof;
 }
 
 expr *expr_new_sizeof_decl(decl *d)

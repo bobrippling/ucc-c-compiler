@@ -27,6 +27,8 @@ stmt *parse_code_block(void);
 expr *parse_expr_sizeof_typeof(void);
 expr *parse_expr_exp(void);
 
+void parse_static_assert(void);
+
 symtable *parse(void);
 
 /* tables local to the current scope */
