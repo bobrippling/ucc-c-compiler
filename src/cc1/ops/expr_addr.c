@@ -57,7 +57,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 
 				for(i = 0; inits[i]; i++){
 					fold_expr(inits[i], stab);
-					if(const_fold(inits[i]))
+					if(!const_expr_is_const(inits[i]))
 						die_at(&inits[i]->where, "array init not constant (%s)", inits[i]->f_str());
 				}
 			}

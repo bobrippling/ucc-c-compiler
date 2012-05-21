@@ -17,6 +17,15 @@ struct sym
 	int nreads, nwrites;
 };
 
+typedef struct static_assert static_assert;
+
+struct static_assert
+{
+	expr *e;
+	char *s;
+	symtable *scope;
+};
+
 struct symtable
 {
 	int auto_total_size;
@@ -25,6 +34,8 @@ struct symtable
 	decl                 **decls;
 	struct_union_enum_st **sues;
 	decl                 **typedefs;
+
+	static_assert        **static_asserts;
 };
 
 sym *sym_new(decl *d, enum sym_type t);
