@@ -11,6 +11,7 @@ struct decl_attr
 		attr_unused,
 		attr_warn_unused,
 		attr_section
+		/* TODO: warning, cdecl, stdcall, fastcall, const */
 	} type;
 
 	union

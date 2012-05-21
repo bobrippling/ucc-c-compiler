@@ -6,6 +6,12 @@ updated bugs/ and test/
 
 ---------------------------------------------------- cc1
 
+extern int i;
+extern int i;
+extern int i = 5; // this defines i. similar for functions
+
+inline semantics
+
 int x[] -> NULL init, not 0
 
 floats, long + short (in a branch)
