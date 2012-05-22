@@ -290,8 +290,8 @@ void fold_decl(decl *d, symtable *stab)
 
 		UCC_ASSERT(from, "no decl for typeof/typedef fold: "
 				".decl = %p, .expr->tt = %p",
-				d->type->typeof->decl,
-				d->type->typeof->expr->tree_type);
+				(void *)d->type->typeof->decl,
+				(void *)d->type->typeof->expr->tree_type);
 
 		type_exp->tree_type = decl_copy(from);
 
@@ -564,7 +564,7 @@ void fold(symtable *globs)
 
 	for(i = 0; D(i); i++)
 		if(D(i)->sym)
-			ICE("%s: sym (%p) already set for global \"%s\"", where_str(&D(i)->where), D(i)->sym, decl_spel(D(i)));
+			ICE("%s: sym (%p) already set for global \"%s\"", where_str(&D(i)->where), (void *)D(i)->sym, decl_spel(D(i)));
 
 	for(;;){
 		int i;
