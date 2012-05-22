@@ -39,11 +39,11 @@ void fold_expr_funcall(expr *e, symtable *stab)
 			df->desc = decl_desc_func_new(df, NULL);
 			df->desc->bits.func = funcargs_new();
 
-			if(e->funcargs)
-				/* set up the funcargs as if it's "x()" - i.e. any args */
-				function_empty_args(df->desc->bits.func);
+			/* set up the funcargs as if it's "x()" - i.e. any args */
+			function_empty_args(df->desc->bits.func);
 
-			e->expr->sym = symtab_add(symtab_root(stab), df, sym_global, SYMTAB_WITH_SYM, SYMTAB_PREPEND);
+			/* not declared - generate a sym ourselves */
+			e->expr->sym = SYMTAB_ADD(stab, df, sym_local);
 		}
 	}
 
@@ -113,7 +113,9 @@ void fold_expr_funcall(expr *e, symtable *stab)
 			for(iter_arg = e->funcargs; *iter_arg; iter_arg++)
 				dynarray_add((void ***)&argument_decls->arglist, (*iter_arg)->tree_type);
 
-			fold_funcargs_equal(args_exp, argument_decls, 1, &e->where, "argument", decl_spel(df));
+			if(!funcargs_equal(args_exp, argument_decls, 0))
+				die_at(&e->where, "mismatching argument to function");
+
 			funcargs_free(argument_decls, 0);
 		}
 

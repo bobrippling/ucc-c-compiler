@@ -107,7 +107,7 @@ type *parse_type()
 {
 	expr *tdef_typeof = NULL;
 	enum type_qualifier qual = qual_none;
-	enum type_storage   store = store_auto;
+	enum type_storage   store = store_default;
 	enum type_primitive primitive = type_int;
 	int is_signed = 1, is_inline = 0;
 	int store_set = 0, primitive_set = 0, signed_set = 0;
@@ -555,7 +555,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 					goto next;
 				}
 				die_at(&d->where, "identifier expected after decl");
-			}else if(decl_is_func(d) && curtok != token_semicolon){
+			}else if(decl_is_func(d) && curtok == token_open_block){ /* this is why we can't have __attribute__ on function defs */
 				/* optionally check for old func decl */
 				decl **old_args = parse_decls_multi_type(0);
 

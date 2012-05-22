@@ -6,6 +6,7 @@
 #include "../util/util.h"
 #include "../util/alloc.h"
 #include "../util/platform.h"
+#include "../util/dynarray.h"
 #include "data_structs.h"
 #include "macros.h"
 
@@ -162,6 +163,27 @@ int decl_size(decl *d)
 	return mul * type_size(d->type);
 }
 
+int funcargs_equal(funcargs *args_a, funcargs *args_b, int strict_types)
+{
+	const enum decl_cmp flag = DECL_CMP_ALLOW_VOID_PTR | (strict_types ? DECL_CMP_STRICT_PRIMITIVE : 0);
+	const int count_a = dynarray_count((void **)args_a->arglist);
+	const int count_b = dynarray_count((void **)args_b->arglist);
+	int i;
+
+	if(count_a == 0 && !args_a->args_void){
+		/* a() */
+	}else if(!(args_a->variadic ? count_a <= count_b : count_a == count_b)){
+		return 0;
+	}
+
+	if(count_a)
+		for(i = 0; args_a->arglist[i]; i++)
+			if(!decl_equal(args_a->arglist[i], args_b->arglist[i], flag))
+				return 0;
+
+	return 1;
+}
+
 int decl_desc_equal(decl_desc *a, decl_desc *b)
 {
 	/* if we are assigning from const, target must be const */
@@ -179,6 +201,10 @@ int decl_desc_equal(decl_desc *a, decl_desc *b)
 			return 1;
 		}
 	}
+
+	if(a->type == decl_desc_func && b->type == decl_desc_func)
+		if(!funcargs_equal(a->bits.func, b->bits.func, 1 /* exact match */))
+			return 0;
 
 	if(b->type == decl_desc_ptr){
 		/* check const qualifiers */
@@ -316,6 +342,26 @@ decl *decl_ptr_depth_dec(decl *d, where *from)
 	return d;
 }
 
+int decl_is_integral(decl *d)
+{
+	if(d->desc)
+		return 0;
+
+	switch(d->type->primitive){
+		case type_int:
+		case type_char:
+				return 1;
+
+		case type_unknown:
+		case type_void:
+		case type_struct:
+		case type_union:
+		case type_enum:
+				break;
+	}
+
+	return 0;
+}
 int decl_is_callable(decl *d)
 {
 	decl_desc *dp, *pre;

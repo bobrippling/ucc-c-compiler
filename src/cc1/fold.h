@@ -10,12 +10,6 @@ void fold_decl_equal(
 
 void fold_funcargs(funcargs *fargs, symtable *stab, char *context);
 
-void fold_funcargs_equal(
-		funcargs *args_a, funcargs *args_b,
-		int check_vari,
-		where *w, const char *warn_pre,
-		const char *func_spel);
-
 void fold_symtab_scope(symtable *stab);
 
 void fold_stmt_and_add_to_curswitch(stmt *);
