@@ -48,7 +48,6 @@ enum warning
 	WARN_UNUSED_VAL               = 1 << 16,
 	WARN_UNUSED_VAR               = 1 << 17,
 	WARN_ARRAY_BOUNDS             = 1 << 18,
-	WARN_IDENT_TYPEDEF            = 1 << 19,
 };
 
 enum fopt

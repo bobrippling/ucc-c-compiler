@@ -229,7 +229,7 @@ type *parse_type()
 
 			if(primitive_set){
 				/* "int x" - we are at x, which is also a typedef somewhere */
-				cc1_warn_at(NULL, 0, WARN_IDENT_TYPEDEF, "identifier is a typedef name");
+				die_at(NULL, "redefinition of %s as different symbol", token_current_spel_peek());
 				break;
 			}
 

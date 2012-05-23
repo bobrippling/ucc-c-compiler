@@ -55,12 +55,12 @@ ret:
 void fold_stmt_switch(stmt *s)
 {
 	stmt *oldswstmt = curstmt_switch;
-	stmt *oldflowstmt = curstmt_flow;
 	type *typ;
 	symtable *test_symtab = fold_stmt_test_init_expr(s, "switch");
 
 	curstmt_switch = s;
-	curstmt_flow   = s;
+	curstmt_last_was_switch = 1;
+	/* don't set flow - "continue" doesn't apply to us */
 
 	s->lbl_break = asm_label_flow("switch");
 
@@ -81,7 +81,6 @@ void fold_stmt_switch(stmt *s)
 	}
 
 	curstmt_switch = oldswstmt;
-	curstmt_flow   = oldflowstmt;
 }
 
 void gen_stmt_switch(stmt *s)

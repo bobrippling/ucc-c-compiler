@@ -506,7 +506,7 @@ recheck:
 						die_at(NULL, "invalid character sequence: suffix given");
 
 					if(currentval.val > 0xff)
-						warn_at(NULL, "invalid character sequence: too large (parsed 0x%x)", currentval.val);
+						warn_at(NULL, "invalid character sequence: too large (parsed 0x%lx)", currentval.val);
 
 					c = currentval.val;
 				}else{
