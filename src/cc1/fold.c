@@ -14,6 +14,7 @@
 #include "asm.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
+#include "../util/dynmap.h"
 #include "sue.h"
 #include "decl.h"
 
@@ -505,9 +506,37 @@ void fold_func(decl *func_decl, symtable *globs)
 
 static void fold_link_decl_defs(decl **decls)
 {
-	decl  *d,  *e;
-	decl **i, **j;
+	dynmap *spel_decls = dynmap_new();
+	decl **diter;
+	char **spel_iter;
+	int i;
 
+	ICE("TODO: fold_link_decl_defs()");
+
+	for(diter = decls; diter && *diter; diter++){
+		decl *const d   = *diter;
+		char *const key = d->spel;
+		decl **val;
+
+		val = dynmap_get(spel_decls, key);
+
+		dynarray_add((void ***)&val, d); /* fine if val is null */
+
+		dynmap_set(spel_decls, key, val);
+	}
+
+	for(i = 0, spel_iter = dynmap_key(spel_decls, i); spel_iter; i++){
+		decl **ds = dynmap_get(spel_decls, *spel_iter);
+
+		fprintf(stderr, "decls for %s:\n", *spel_iter);
+
+		while(*ds)
+			fprintf(stderr, "\t%s\n", (*ds++)->spel);
+	}
+
+	dynmap_free(spel_decls);
+
+#if 0
 	/* FIXME: gather all into one array + filter */
 	for(i = decls; i && (d = *i); i++){
 		decl *prev_def, *prev_no_extern;
@@ -557,6 +586,7 @@ static void fold_link_decl_defs(decl **decls)
 
 		prev_def->is_definition = 1;
 	}
+#endif
 }
 
 void fold(symtable *globs)
