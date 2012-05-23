@@ -58,6 +58,7 @@ void fold_stmt_for(stmt *s)
 {
 	stmt *oldflowstmt = curstmt_flow;
 	curstmt_flow = s;
+	curstmt_last_was_switch = 0;
 
 	s->lbl_break    = asm_label_flow("for_start");
 	s->lbl_continue = asm_label_flow("for_contiune");

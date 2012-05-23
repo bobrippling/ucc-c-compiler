@@ -4,6 +4,8 @@
 #if __GNUC__ > 2 || __GNUC__ == 2 && __GNUC_MINOR__ >= 7
 #  define __printflike(fmtarg, firstvararg) \
 			__attribute__((__format__ (__printf__, fmtarg, firstvararg)))
+#else
+#  define __printflike(a, b)
 #endif
 
 typedef struct where
