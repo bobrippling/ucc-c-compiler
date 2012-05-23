@@ -19,7 +19,7 @@ void *urealloc(void *p, size_t l)
 {
 	void *r = realloc(p, l);
 	if(!r)
-		die("realloc %p by %ld bytes:", l);
+		die("realloc %p by %ld bytes:", p, l);
 	return r;
 }
 
