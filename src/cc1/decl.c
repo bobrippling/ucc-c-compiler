@@ -141,7 +141,7 @@ int decl_size(decl *d)
 				case decl_desc_array:
 				{
 					int sz;
-					UCC_ASSERT(expr_kind(dp->bits.array_size, val), "decl array size not constant");
+					/* don't check dp->bits.array_size - it could be any expr */
 					sz = dp->bits.array_size->val.iv.val;
 					if(!sz)
 						die_at(&dp->where, "invalid incomplete array");
