@@ -16,7 +16,7 @@
 
 #define SINGLE_TOKEN(err) \
 	if(dynarray_count((void **)tokens) != 1 || tokens[0]->tok != TOKEN_WORD) \
-		die(err, dynarray_count((void **)tokens))
+		die(err)
 
 #define NO_TOKEN(err) \
 	if(dynarray_count((void **)tokens)) \

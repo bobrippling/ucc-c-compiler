@@ -18,7 +18,15 @@ void fold_stmt_break_continue(stmt *t, const char *desc, char *lbl)
 
 void fold_stmt_break(stmt *t)
 {
-	fold_stmt_break_continue(t, "break", curstmt_flow ? curstmt_flow->lbl_break : NULL);
+	char *lbl;
+
+	/* break out of switch if that was the last statement to be in */
+	if(curstmt_last_was_switch && curstmt_switch)
+		lbl = curstmt_switch->lbl_break;
+	else
+		lbl = curstmt_flow ? curstmt_flow->lbl_break : NULL;
+
+	fold_stmt_break_continue(t, "break", lbl);
 }
 
 func_gen_stmt *gen_stmt_break = gen_stmt_goto;
