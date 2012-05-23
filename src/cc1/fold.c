@@ -18,8 +18,9 @@
 #include "decl.h"
 
 char *curdecl_func_sp;       /* for funcargs-local labels */
-stmt *curstmt_flow;          /* for break */
+stmt *curstmt_flow;          /* for break + continue */
 stmt *curstmt_switch;        /* for case + default */
+int   curstmt_last_was_switch;
 
 static where asm_struct_enum_where;
 
