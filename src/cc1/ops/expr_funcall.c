@@ -20,7 +20,7 @@ int const_fold_expr_funcall(expr *e)
 void fold_expr_funcall(expr *e, symtable *stab)
 {
 	decl *df;
-	funcargs *args_exp;
+	funcargs *args_from_decl;
 
 	if(expr_kind(e->expr, identifier) && e->expr->spel){
 		/* check for implicit function */
@@ -39,11 +39,11 @@ void fold_expr_funcall(expr *e, symtable *stab)
 			df->desc = decl_desc_func_new(df, NULL);
 			df->desc->bits.func = funcargs_new();
 
-			if(e->funcargs)
-				/* set up the funcargs as if it's "x()" - i.e. any args */
-				function_empty_args(df->desc->bits.func);
+			/* set up the funcargs as if it's "x()" - i.e. any args */
+			function_empty_args(df->desc->bits.func);
 
-			e->expr->sym = symtab_add(symtab_root(stab), df, sym_global, SYMTAB_WITH_SYM, SYMTAB_PREPEND);
+			/* not declared - generate a sym ourselves */
+			e->expr->sym = SYMTAB_ADD(stab, df, sym_local);
 		}
 	}
 
@@ -64,10 +64,10 @@ void fold_expr_funcall(expr *e, symtable *stab)
 		e->expr = op_deref_expr(e->expr);
 	}
 
-	df = e->tree_type = decl_func_deref(decl_copy(df), &args_exp);
+	df = e->tree_type = decl_func_deref(decl_copy(df), &args_from_decl);
 
 	/* func count comparison, only if the func has arg-decls, or the func is f(void) */
-	UCC_ASSERT(args_exp, "no funcargs for decl %s", decl_spel(df));
+	UCC_ASSERT(args_from_decl, "no funcargs for decl %s", decl_spel(df));
 
 	if(e->funcargs){
 		expr **iter;
@@ -91,7 +91,7 @@ void fold_expr_funcall(expr *e, symtable *stab)
 		}
 	}
 
-	if(args_exp->arglist || args_exp->args_void){
+	if(args_from_decl->arglist || args_from_decl->args_void){
 		expr **iter_arg;
 		decl **iter_decl;
 		int count_decl, count_arg;
@@ -99,25 +99,38 @@ void fold_expr_funcall(expr *e, symtable *stab)
 		count_decl = count_arg = 0;
 
 		for(iter_arg  = e->funcargs;       iter_arg  && *iter_arg;  iter_arg++,  count_arg++);
-		for(iter_decl = args_exp->arglist; iter_decl && *iter_decl; iter_decl++, count_decl++);
+		for(iter_decl = args_from_decl->arglist; iter_decl && *iter_decl; iter_decl++, count_decl++);
 
-		if(count_decl != count_arg && (args_exp->variadic ? count_arg < count_decl : 1)){
+		if(count_decl != count_arg && (args_from_decl->variadic ? count_arg < count_decl : 1)){
 			die_at(&e->where, "too %s arguments to function %s (got %d, need %d)",
 					count_arg > count_decl ? "many" : "few",
 					decl_spel(df), count_arg, count_decl);
 		}
 
 		if(e->funcargs){
-			funcargs *argument_decls = funcargs_new();
+			funcargs *args_from_expr = funcargs_new();
+			int idx;
 
 			for(iter_arg = e->funcargs; *iter_arg; iter_arg++)
-				dynarray_add((void ***)&argument_decls->arglist, (*iter_arg)->tree_type);
+				dynarray_add((void ***)&args_from_expr->arglist, (*iter_arg)->tree_type);
 
-			fold_funcargs_equal(args_exp, argument_decls, 1, &e->where, "argument", decl_spel(df));
-			funcargs_free(argument_decls, 0);
+			if(!funcargs_equal(args_from_decl, args_from_expr, 0, &idx)){
+				if(idx == -1){
+					die_at(&e->where, "mismatching argument count to %s", df->spel);
+				}else{
+					char buf[DECL_STATIC_BUFSIZ];
+
+					strcpy(buf, decl_to_str(args_from_decl->arglist[idx]));
+
+					cc1_warn_at(&e->where, 0, WARN_ARG_MISMATCH, "mismatching argument %d to %s (%s <-- %s)",
+							idx, df->spel, buf, decl_to_str(args_from_expr->arglist[idx]));
+				}
+			}
+
+			funcargs_free(args_from_expr, 0);
 		}
 
-		/*funcargs_free(args_exp, 1); XXX memleak*/
+		/*funcargs_free(args_from_decl, 1); XXX memleak*/
 	}
 
 	fold_disallow_st_un(e, "return");

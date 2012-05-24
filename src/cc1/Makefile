@@ -2,7 +2,9 @@ include ../src_config.mk
 
 LDFLAGS += -lm
 
-OBJ = ../util/alloc.o ../util/util.o ../util/platform.o ../util/dynarray.o \
+OBJ = \
+	../util/alloc.o ../util/util.o ../util/platform.o \
+	../util/dynarray.o ../util/dynmap.o \
 	str.o \
 	cc1.o \
 	tree.o decl.o expr.o stmt.o \
