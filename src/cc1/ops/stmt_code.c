@@ -71,18 +71,16 @@ void fold_stmt_code(stmt *s)
 
 void gen_stmt_code(stmt *s)
 {
-	if(s->codes){
-		stmt **titer;
-		decl **diter;
+	decl **diter;
+	stmt **titer;
 
-		/* declare stmtics */
-		for(diter = s->decls; diter && *diter; diter++){
-			decl *d = *diter;
-			if(type_store_static_or_extern(d->type->store))
-				gen_asm_global(d);
-		}
-
-		for(titer = s->codes; *titer; titer++)
-			gen_stmt(*titer);
+	/* declare statics */
+	for(diter = s->symtab->decls; diter && *diter; diter++){
+		decl *d = *diter;
+		if(decl_is_func(d) || type_store_static_or_extern(d->type->store))
+			gen_asm_extern(d);
 	}
+
+	for(titer = s->codes; titer && *titer; titer++)
+		gen_stmt(*titer);
 }

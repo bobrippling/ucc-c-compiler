@@ -36,8 +36,8 @@ const.o: const.c ../util/util.h data_structs.h tree.h expr.h \
  ops/stmt_switch.h ops/stmt_while.h ops/stmt_continue.h sym.h decl.h \
  const.h cc1.h
 decl.o: decl.c ../util/util.h ../util/alloc.h ../util/platform.h \
- data_structs.h tree.h expr.h ops/expr_addr.h ops/expr_assign.h \
- ops/expr_cast.h ops/expr_comma.h ops/expr_funcall.h \
+ ../util/dynarray.h data_structs.h tree.h expr.h ops/expr_addr.h \
+ ops/expr_assign.h ops/expr_cast.h ops/expr_comma.h ops/expr_funcall.h \
  ops/expr_identifier.h ops/expr_if.h ops/expr_op.h ops/expr_sizeof.h \
  ops/expr_val.h ops/expr_stmt.h stmt.h ops/stmt_break.h ops/stmt_case.h \
  ops/stmt_case_range.h ops/stmt_code.h ops/stmt_default.h ops/stmt_do.h \
@@ -62,7 +62,7 @@ fold.o: fold.c ../util/util.h data_structs.h tree.h expr.h \
  ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h ops/stmt_return.h \
  ops/stmt_switch.h ops/stmt_while.h ops/stmt_continue.h sym.h decl.h \
  cc1.h fold.h fold_sym.h ../util/platform.h const.h ../util/alloc.h \
- ../util/dynarray.h sue.h
+ ../util/dynarray.h ../util/dynmap.h sue.h
 fold_sym.o: fold_sym.c ../util/util.h data_structs.h tree.h expr.h \
  ops/expr_addr.h ops/expr_assign.h ops/expr_cast.h ops/expr_comma.h \
  ops/expr_funcall.h ops/expr_identifier.h ops/expr_if.h ops/expr_op.h \

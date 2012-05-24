@@ -88,25 +88,26 @@ struct decl
 {
 	where where;
 
-	int field_width;
 	type *type;
-
-	expr *init; /* NULL except for global variables */
-	array_decl *arrayinit;
-
-	int ignore; /* ignore during code-gen, for example ignoring overridden externs */
-#define struct_offset ignore
-
-	sym *sym;
-	decl_attr *attr;
-
 	char *spel;
-	int internal; /* interal string or array decl */
+
+	int field_width;
 
 	/* no funcargs on the decl - on a desc if it's a decl_desc_func */
 	decl_desc *desc;
 
 	stmt *func_code;
+	expr *init; /* NULL except for global variables */
+	array_decl *arrayinit;
+
+	int struct_offset;
+	sym *sym;
+	decl_attr *attr;
+
+	int internal; /* interal string or array decl */
+
+	int is_definition;
+	/* true if this is the definition of the decl - may have init or func_code */
 };
 
 struct array_decl
@@ -166,8 +167,10 @@ int     decl_is_fptr(           decl *);
 int     decl_is_void_ptr(       decl *);
 int     decl_ptr_depth(         decl *);
 int     decl_desc_depth(        decl *);
-#define decl_is_void( d)      ((d)->type->primitive == type_void && !(d)->desc)
+int     decl_is_integral(       decl *);
+#define decl_is_void(d)       ((d)->type->primitive == type_void && !(d)->desc)
 #define decl_is_float(d)      (((d)->type->primitive == type_float || (d)->type->primitive == type_double) && !(d)->desc)
+#define decl_is_definition(d) ((d)->init || (d)->func_code)
 
 decl_desc  *decl_first_func(decl *d);
 decl_desc  *decl_leaf(decl *d);
@@ -185,6 +188,7 @@ int decl_has_array(decl *);
 int decl_has_incomplete_array(decl *);
 int decl_is_array( decl *);
 funcargs *decl_funcargs(decl *);
+int funcargs_equal(funcargs *args_a, funcargs *args_b, int strict_types, int *idx);
 
 const char *decl_desc_str(decl_desc *dp);
 
