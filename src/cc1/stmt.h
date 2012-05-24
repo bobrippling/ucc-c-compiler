@@ -29,7 +29,7 @@ struct stmt
 	decl **decls; /* block definitions, e.g. { int i... } */
 	stmt **codes; /* for a code block */
 
-	symtable *symtab; /* pointer to the containing funcargs's symtab */
+	symtable *symtab;
 };
 
 struct stmt_flow

@@ -88,23 +88,25 @@ struct decl
 {
 	where where;
 
-	int field_width;
 	type *type;
+	char *spel;
+
+	int field_width;
+
+	/* no funcargs on the decl - on a desc if it's a decl_desc_func */
+	decl_desc *desc;
 
 	decl_init *init; /* initialiser - converted to an assignment for non-globals */
+	stmt *func_code;
 
-	int ignore; /* ignore during code-gen, for example ignoring overridden externs */
-#define struct_offset ignore
-
+	int struct_offset;
 	sym *sym;
 	decl_attr *attr;
 
 	char *spel;
 
-	/* no funcargs on the decl - on a desc if it's a decl_desc_func */
-	decl_desc *desc;
-
-	stmt *func_code;
+	int is_definition;
+	/* true if this is the definition of the decl - may have init or func_code */
 };
 
 struct decl_init
@@ -186,7 +188,9 @@ int     decl_is_fptr(           decl *);
 int     decl_is_void_ptr(       decl *);
 int     decl_ptr_depth(         decl *);
 int     decl_desc_depth(        decl *);
+int     decl_is_integral(       decl *);
 #define decl_is_void(d) ((d)->type->primitive == type_void && !(d)->desc)
+#define decl_is_definition(d) ((d)->init || (d)->func_code)
 
 decl_desc  *decl_first_func(decl *d);
 decl_desc  *decl_leaf(decl *d);
@@ -204,6 +208,7 @@ int decl_has_array(decl *);
 int decl_has_incomplete_array(decl *);
 int decl_is_array( decl *);
 funcargs *decl_funcargs(decl *);
+int funcargs_equal(funcargs *args_a, funcargs *args_b, int strict_types, int *idx);
 
 const char *decl_desc_str(decl_desc *dp);
 

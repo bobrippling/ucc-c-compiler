@@ -220,8 +220,8 @@ void print_decl(decl *d, enum pdeclargs mode)
 	if(mode & PDECL_INDENT)
 		idt_print();
 
-	if((mode & PDECL_PIGNORE) && d->ignore)
-		fprintf(cc1_out, "(ignored) ");
+	if((mode & PDECL_PISDEF) && !d->is_definition)
+		fprintf(cc1_out, "(not definition) ");
 
 	if(d->type->typeof){
 		fputc('\n', cc1_out);
@@ -290,7 +290,7 @@ void print_decl(decl *d, enum pdeclargs mode)
 void print_sym(sym *s)
 {
 	idt_printf("sym: type=%s, offset=%d, type: ", sym_to_str(s->type), s->offset);
-	print_decl(s->decl, PDECL_NEWLINE | PDECL_PIGNORE);
+	print_decl(s->decl, PDECL_NEWLINE | PDECL_PISDEF);
 }
 
 void print_expr(expr *e)
@@ -388,7 +388,7 @@ void print_stmt_flow(stmt_flow *t)
 			print_decl(*i, PDECL_INDENT
 					| PDECL_NEWLINE
 					| PDECL_SYM_OFFSET
-					| PDECL_PIGNORE
+					| PDECL_PISDEF
 					| PDECL_PINIT);
 
 		gen_str_indent--;
@@ -430,11 +430,11 @@ void print_stmt(stmt *t)
 		idt_printf("stack space %d\n", t->symtab->auto_total_size);
 		idt_printf("decls:\n");
 
-		for(iter = t->decls; *iter; iter++){
+		for(iter = t->symtab->decls; *iter; iter++){
 			decl *d = *iter;
 
 			gen_str_indent++;
-			print_decl(d, PDECL_INDENT | PDECL_NEWLINE | PDECL_SYM_OFFSET | PDECL_PIGNORE | PDECL_PINIT);
+			print_decl(d, PDECL_INDENT | PDECL_NEWLINE | PDECL_SYM_OFFSET | PDECL_PISDEF | PDECL_PIGNORE | PDECL_PINIT);
 			gen_str_indent--;
 		}
 	}
@@ -464,5 +464,6 @@ void gen_str(symtable *symtab)
 				PDECL_PIGNORE |
 				PDECL_FUNC_DESCEND |
 				PDECL_SIZE |
+				PDECL_PISDEF |
 				PDECL_PINIT);
 }
