@@ -171,6 +171,7 @@ const char *type_primitive_to_str(const enum type_primitive p)
 const char *type_store_to_str(const enum type_storage s)
 {
 	switch(s){
+		CASE_STR_PREFIX(store, default);
 		CASE_STR_PREFIX(store, auto);
 		CASE_STR_PREFIX(store, static);
 		CASE_STR_PREFIX(store, extern);

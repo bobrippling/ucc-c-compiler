@@ -14,6 +14,7 @@
 #include "asm.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
+#include "../util/dynmap.h"
 #include "sue.h"
 #include "decl.h"
 
@@ -34,40 +35,6 @@ void fold_stmt_and_add_to_curswitch(stmt *t)
 	/* we are compound, copy some attributes */
 	t->kills_below_code = t->lhs->kills_below_code;
 	/* TODO: copy ->freestanding? */
-}
-
-void fold_funcargs_equal(funcargs *args_a, funcargs *args_b, int check_vari, where *w, const char *warn_pre, const char *func_spel)
-{
-	const int count_a = dynarray_count((void **)args_a->arglist);
-	const int count_b = dynarray_count((void **)args_b->arglist);
-	int i;
-
-	if(count_a == 0 && !args_a->args_void){
-		/* a() */
-	}else if(!(check_vari && args_a->variadic ? count_a <= count_b : count_a == count_b)){
-		char wbuf[WHERE_BUF_SIZ];
-		strcpy(wbuf, where_str(&args_a->where));
-		die_at(w, "mismatching argument counts (%d vs %d) for %s (%s)",
-				count_a, count_b, func_spel, wbuf);
-	}
-
-	if(!count_a)
-		return;
-
-	for(i = 0; args_a->arglist[i]; i++){
-		char buf_a[DECL_STATIC_BUFSIZ], buf_b[DECL_STATIC_BUFSIZ];
-		decl *a, *b;
-
-		a = args_a->arglist[i];
-		b = args_b->arglist[i];
-
-		strcpy(buf_a, decl_to_str(a));
-		strcpy(buf_b, decl_to_str(b));
-
-		fold_decl_equal(a, b, w, WARN_ARG_MISMATCH,
-				"mismatching %s for arg %d in %s (arg %s vs. expr %s)",
-				warn_pre, i + 1, func_spel, buf_a, buf_b);
-	}
 }
 
 void fold_decl_equal(decl *a, decl *b, where *w, enum warning warn,
@@ -360,9 +327,18 @@ void fold_decl(decl *d, symtable *stab)
 				decl_spel(d) ? decl_spel(d) : "");
 	}
 
+	if(d->field_width && !decl_is_integral(d))
+		die_at(&d->where, "field width on non-integral type %s", decl_to_str(d));
+
+
 	if(decl_is_func(d)){
-		if(d->type->store == store_register)
-			die_at(&d->where, "register storage for function");
+		switch(d->type->store){
+			case store_register:
+			case store_auto:
+				die_at(&d->where, "%s storage for function", type_store_to_str(d->type->store));
+			default:
+				break;
+		}
 	}else{
 		if(d->type->is_inline)
 			warn_at(&d->where, "inline on non-function%s%s",
@@ -371,8 +347,15 @@ void fold_decl(decl *d, symtable *stab)
 	}
 
 	if(d->init){
-		if(d->type->store == store_extern)
-			die_at(&d->where, "externs can't be initalised");
+		if(d->type->store == store_extern){
+			/* allow for globals - remove extern since it's a definition */
+			if(stab->parent){
+				die_at(&d->where, "externs can't be initialised");
+			}else{
+				warn_at(&d->where, "extern initialisation");
+				d->type->store = store_default;
+			}
+		}
 
 		if(decl_has_incomplete_array(d) && d->init->array_store){
 			/* complete the decl */
@@ -412,19 +395,20 @@ void fold_decl(decl *d, symtable *stab)
 
 void fold_decl_global(decl *d, symtable *stab)
 {
-	if(d->type->store == store_extern){
-		/* we have an extern, check if it's overridden */
-		char *const spel = decl_spel(d);
-		decl **dit;
+	switch(d->type->store){
+		case store_extern:
+		case store_default:
+		case store_static:
+			break;
 
-		for(dit = stab->decls; dit && *dit; dit++){
-			decl *d2 = *dit;
-			if(!strcmp(decl_spel(d2), spel) && d2->type->store != store_extern){
-				/* found an override */
-				d->ignore = 1;
-				break;
-			}
-		}
+		case store_typedef:
+			ICE("typedef store");
+
+		case store_auto:
+		case store_register:
+			die_at(&d->where, "invalid storage class %s on global scoped %s",
+					type_store_to_str(d->type->store),
+					decl_is_func(d) ? "function" : "variable");
 	}
 
 	fold_decl(d, stab);
@@ -521,6 +505,91 @@ void fold_func(decl *func_decl, symtable *globs)
 	}
 }
 
+static void fold_link_decl_defs(decl **decls)
+{
+	dynmap *spel_decls = dynmap_new((dynmap_cmp_f *)strcmp);
+	decl **diter;
+	int i;
+
+	for(diter = decls; diter && *diter; diter++){
+		decl *const d   = *diter;
+		char *const key = d->spel;
+		decl **val;
+
+		val = dynmap_get(spel_decls, key);
+
+		dynarray_add((void ***)&val, d); /* fine if val is null */
+
+		dynmap_set(spel_decls, key, val);
+	}
+
+	for(i = 0; ; i++){
+		char *key;
+		char wbuf[WHERE_BUF_SIZ];
+		decl *d, *e, *definition, *first_none_extern;
+		decl **decls_for_this, **decl_iter;
+
+		key = dynmap_key(spel_decls, i);
+		if(!key)
+			break;
+
+		decls_for_this = dynmap_get(spel_decls, key);
+		d = *decls_for_this;
+
+		definition = decl_is_definition(d) ? d : NULL;
+		first_none_extern = d->type->store != store_extern ? d : NULL;
+
+		/*
+		 * check the first is equal to all the rest, strict-types
+		 * check they all have the same static/non-static storage
+		 * if all are extern (and not initialised), the decl is extern
+		 * if all are extern but there is an init, the decl is global
+		 */
+
+		for(decl_iter = decls_for_this + 1; (e = *decl_iter); decl_iter++){
+			/* check they are the same decl */
+			if(!decl_equal(d, e, DECL_CMP_STRICT_PRIMITIVE)){
+				strcpy(wbuf, where_str(&d->where));
+				die_at(&e->where, "mismatching declaration of %s (%s)", d->spel, wbuf);
+			}
+
+			if( d->type->store != e->type->store
+			&& (d->type->store == store_static || e->type->store == store_static))
+			{
+				strcpy(wbuf, where_str(&d->where));
+				die_at(&e->where, "static/non-static mismatch of %s (%s)", d->spel, wbuf);
+			}
+
+			if(decl_is_definition(e)){
+				/* e is the implementation/instantiation */
+
+				if(definition){
+					/* already got one */
+					strcpy(wbuf, where_str(&d->where));
+					die_at(&e->where, "duplicate definition of %s (%s)", d->spel, wbuf);
+				}
+
+				definition = e;
+			}
+
+			if(!first_none_extern && e->type->store != store_extern)
+				first_none_extern = e;
+		}
+
+		if(!definition){
+      /* implicit definition - attempt none extern if we have one */
+      if(first_none_extern)
+        definition = first_none_extern;
+      else
+        definition = d;
+		}
+
+		definition->is_definition = 1;
+	}
+
+	dynmap_free(spel_decls);
+}
+
 void fold(symtable *globs)
 {
 #define D(x) globs->decls[x]
@@ -586,47 +655,8 @@ void fold(symtable *globs)
 			fold_func(D(i), globs);
 	}
 
-	/*
-	 * change int x(); to extern int x();
-	 * if there is no decl->func_code for "x"
-	 *
-	 * otherwise, ignore it (since we have a func code for it elsewhere)
-	 * e.g. int x(); int x(){}
-	 */
-	for(i = 0; D(i); i++){
-		char *const spel_i = decl_spel(D(i));
-
-		if(decl_is_func(D(i)) && !D(i)->func_code){
-			int found = 0;
-			int j;
-
-			for(j = 0; D(j); j++){
-				if(j != i && !strcmp(spel_i, decl_spel(D(j)))){
-					/* D(i) is a prototype, check the args match D(j) */
-					fold_funcargs_equal(decl_funcargs(D(i)), decl_funcargs(D(j)),
-							0, &D(j)->where, "type", decl_spel(D(j)));
-
-					if(!decl_equal(D(i), D(j), DECL_CMP_STRICT_PRIMITIVE)){
-						char wbuf[WHERE_BUF_SIZ];
-						strcpy(wbuf, where_str(&D(j)->where));
-						die_at(&D(i)->where, "mismatching return types for function %s (%s)", decl_spel(D(i)), wbuf);
-					}
-
-					if(D(j)->func_code){
-						/* D(j) is the implementation */
-						D(i)->ignore = 1;
-						found = 1;
-					}
-					break;
-				}
-			}
-
-			if(!found){
-				D(i)->type->store = store_extern;
-				/*cc1_warn_at(&f->where, 0, WARN_EXTERN_ASSUME, "assuming \"%s\" is extern", func_decl_spel(decl));*/
-			}
-		}
-	}
+	/* link declarations with definitions */
+	fold_link_decl_defs(globs->decls);
 
 	/* static assertions */
 	{
