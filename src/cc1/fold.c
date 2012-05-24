@@ -577,7 +577,7 @@ static void fold_link_decl_defs(decl **decls)
 		}
 
 		if(!definition){
-      /* implicit definition - attempt none extern if we have one */
+      /* implicit definition - attempt a not-extern def if we have one */
       if(first_none_extern)
         definition = first_none_extern;
       else
@@ -585,6 +585,21 @@ static void fold_link_decl_defs(decl **decls)
 		}
 
 		definition->is_definition = 1;
+
+		if(decl_is_func(definition) && !definition->func_code){
+			/* prototype - set extern, so we get a symbol generated */
+			switch(definition->type->store){
+				case store_default:
+					definition->type->store = store_extern;
+				case store_extern:
+					break;
+
+				default:
+					warn_at(&definition->where, "%s storage for unimplemented function %s",
+							type_store_to_str(definition->type->store), definition->spel);
+					break;
+			}
+		}
 	}
 
 	dynmap_free(spel_decls);
