@@ -163,23 +163,31 @@ int decl_size(decl *d)
 	return mul * type_size(d->type);
 }
 
-int funcargs_equal(funcargs *args_a, funcargs *args_b, int strict_types)
+int funcargs_equal(funcargs *args_to, funcargs *args_from, int strict_types, int *idx)
 {
 	const enum decl_cmp flag = DECL_CMP_ALLOW_VOID_PTR | (strict_types ? DECL_CMP_STRICT_PRIMITIVE : 0);
-	const int count_a = dynarray_count((void **)args_a->arglist);
-	const int count_b = dynarray_count((void **)args_b->arglist);
+	const int count_to = dynarray_count((void **)args_to->arglist);
+	const int count_from = dynarray_count((void **)args_from->arglist);
 	int i;
 
-	if(count_a == 0 && !args_a->args_void){
+	if(count_to == 0 && !args_to->args_void){
 		/* a() */
-	}else if(!(args_a->variadic ? count_a <= count_b : count_a == count_b)){
+	}else if(!(args_to->variadic ? count_to <= count_from : count_to == count_from)){
+		fprintf(stderr, "variadic %d, count_to %d, count_from %d\n", args_to->variadic, count_to, count_from);
+		for(i = 0; args_to->arglist[i]; i++)
+			fprintf(stderr, "to [%d] = %s\n", i, decl_to_str(args_to->arglist[i]));
+		for(i = 0; args_to->arglist[i]; i++)
+			fprintf(stderr, "fr [%d] = %s\n", i, decl_to_str(args_from->arglist[i]));
+		if(idx) *idx = -1;
 		return 0;
 	}
 
-	if(count_a)
-		for(i = 0; args_a->arglist[i]; i++)
-			if(!decl_equal(args_a->arglist[i], args_b->arglist[i], flag))
+	if(count_to)
+		for(i = 0; args_to->arglist[i]; i++)
+			if(!decl_equal(args_to->arglist[i], args_from->arglist[i], flag)){
+				if(idx) *idx = i;
 				return 0;
+			}
 
 	return 1;
 }
@@ -203,7 +211,7 @@ int decl_desc_equal(decl_desc *a, decl_desc *b)
 	}
 
 	if(a->type == decl_desc_func && b->type == decl_desc_func)
-		if(!funcargs_equal(a->bits.func, b->bits.func, 1 /* exact match */))
+		if(!funcargs_equal(a->bits.func, b->bits.func, 1 /* exact match */, NULL))
 			return 0;
 
 	if(b->type == decl_desc_ptr){

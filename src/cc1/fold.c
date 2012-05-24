@@ -507,12 +507,9 @@ void fold_func(decl *func_decl, symtable *globs)
 
 static void fold_link_decl_defs(decl **decls)
 {
-	dynmap *spel_decls = dynmap_new();
+	dynmap *spel_decls = dynmap_new((dynmap_cmp_f *)strcmp);
 	decl **diter;
-	char **spel_iter;
 	int i;
-
-	ICE("TODO: fold_link_decl_defs()");
 
 	for(diter = decls; diter && *diter; diter++){
 		decl *const d   = *diter;
@@ -526,68 +523,71 @@ static void fold_link_decl_defs(decl **decls)
 		dynmap_set(spel_decls, key, val);
 	}
 
-	for(i = 0, spel_iter = dynmap_key(spel_decls, i); spel_iter; i++){
-		decl **ds = dynmap_get(spel_decls, *spel_iter);
+	for(i = 0; ; i++){
+		char *key;
+		char wbuf[WHERE_BUF_SIZ];
+		decl *d, *e, *definition, *first_none_extern;
+		decl **decls_for_this, **decl_iter;
 
-		fprintf(stderr, "decls for %s:\n", *spel_iter);
+		key = dynmap_key(spel_decls, i);
+		if(!key)
+			break;
 
-		while(*ds)
-			fprintf(stderr, "\t%s\n", (*ds++)->spel);
+		decls_for_this = dynmap_get(spel_decls, key);
+		d = *decls_for_this;
+
+		definition = decl_is_definition(d) ? d : NULL;
+		first_none_extern = d->type->store != store_extern ? d : NULL;
+
+		/*
+		 * check the first is equal to all the rest, strict-types
+		 * check they all have the same static/non-static storage
+		 * if all are extern (and not initialised), the decl is extern
+		 * if all are extern but there is an init, the decl is global
+		 */
+
+		for(decl_iter = decls_for_this + 1; (e = *decl_iter); decl_iter++){
+			/* check they are the same decl */
+			if(!decl_equal(d, e, DECL_CMP_STRICT_PRIMITIVE)){
+				strcpy(wbuf, where_str(&d->where));
+				die_at(&e->where, "mismatching declaration of %s (%s)", d->spel, wbuf);
+			}
+
+			if( d->type->store != e->type->store
+			&& (d->type->store == store_static || e->type->store == store_static))
+			{
+				strcpy(wbuf, where_str(&d->where));
+				die_at(&e->where, "static/non-static mismatch of %s (%s)", d->spel, wbuf);
+			}
+
+			if(decl_is_definition(e)){
+				/* e is the implementation/instantiation */
+
+				if(definition){
+					/* already got one */
+					strcpy(wbuf, where_str(&d->where));
+					die_at(&e->where, "duplicate definition of %s (%s)", d->spel, wbuf);
+				}
+
+				definition = e;
+			}
+
+			if(!first_none_extern && e->type->store != store_extern)
+				first_none_extern = e;
+		}
+
+		if(!definition){
+      /* implicit definition - attempt none extern if we have one */
+      if(first_none_extern)
+        definition = first_none_extern;
+      else
+        definition = d;
+		}
+
+		definition->is_definition = 1;
 	}
 
 	dynmap_free(spel_decls);
-
-#if 0
-	/* FIXME: gather all into one array + filter */
-	for(i = decls; i && (d = *i); i++){
-		decl *prev_def, *prev_no_extern;
-
-		prev_no_extern = NULL;
-		prev_def = decl_is_definition(d) ? d : NULL;
-
-		for(j = i + 1; (e = *j); j++){
-			if(!strcmp(d->spel, e->spel)){
-				/* check they are the same decl */
-
-				char wbuf[WHERE_BUF_SIZ];
-
-				if(!decl_equal(d, e, DECL_CMP_STRICT_PRIMITIVE)){
-					strcpy(wbuf, where_str(&d->where));
-					die_at(&e->where, "mismatching declaration of %s (%s)", d->spel, wbuf);
-				}
-
-				if(d->type->store != e->type->store
-				&& (d->type->store == store_static || e->type->store == store_static))
-				{
-					strcpy(wbuf, where_str(&d->where));
-					die_at(&e->where, "static/non-static mismatch of %s (%s)", d->spel, wbuf);
-				}
-
-				if(decl_is_definition(e)){
-					/* e is the implementation/instantiation */
-
-					if(prev_def){
-						/* already got one */
-						strcpy(wbuf, where_str(&d->where));
-						die_at(&e->where, "duplicate definition of %s (%s)", d->spel, wbuf);
-					}
-
-					prev_def = e;
-				}else if(e->type->store != store_extern){
-					prev_no_extern = e;
-				}
-				break;
-			}
-		}
-
-		if(!prev_def){
-			fprintf(stderr, "%s is implicit def for %s\n", where_str(&d->where), d->spel);
-			prev_def = prev_no_extern ? prev_no_extern : d;
-		}
-
-		prev_def->is_definition = 1;
-	}
-#endif
 }
 
 void fold(symtable *globs)

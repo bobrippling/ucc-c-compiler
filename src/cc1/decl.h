@@ -187,7 +187,7 @@ int decl_has_array(decl *);
 int decl_has_incomplete_array(decl *);
 int decl_is_array( decl *);
 funcargs *decl_funcargs(decl *);
-int funcargs_equal(funcargs *args_a, funcargs *args_b, int strict_types);
+int funcargs_equal(funcargs *args_a, funcargs *args_b, int strict_types, int *idx);
 
 const char *decl_desc_str(decl_desc *dp);
 

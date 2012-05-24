@@ -1,6 +1,4 @@
 #include <stdlib.h>
-#warning remove stdio include
-#include <stdio.h>
 
 #include "dynmap.h"
 #include "alloc.h"
@@ -9,20 +7,25 @@ typedef struct pair pair;
 
 struct dynmap
 {
+	dynmap_cmp_f *cmp;
 	struct pair
 	{
 		void *key, *value;
 		pair *next;
-	} *pairs;
+	} *pairs, *last_pair;
+	/* last_pair keeps the keys in the order they are added */
 };
 
-dynmap *dynmap_new(void)
+dynmap *
+dynmap_new(dynmap_cmp_f cmp)
 {
 	dynmap *m = umalloc(sizeof *m);
+	m->cmp = cmp;
 	return m;
 }
 
-void dynmap_free(dynmap *map)
+void
+dynmap_free(dynmap *map)
 {
 	pair *p, *q;
 
@@ -31,50 +34,71 @@ void dynmap_free(dynmap *map)
 	free(map);
 }
 
-void *dynmap_get(dynmap *map, void *key)
+static pair *
+dynmap_pair(dynmap *map, void *key)
 {
 	pair *i;
 
 	for(i = map->pairs; i; i = i->next)
-		if(i->key == key){
-			fprintf(stderr, "dynmap_get %p key %p (%s) = %p\n", (void *)map, key, (char *)key, i->value);
-
-			return i->value;
-		}
-
-	fprintf(stderr, "dynmap_get %p key %p (%s) = %p\n", (void *)map, key, (char *)key, NULL);
+		if(!map->cmp(i->key, key))
+			return i;
 
 	return NULL;
 }
 
-void dynmap_set(dynmap *map, void *key, void *val)
+void *
+dynmap_get(dynmap *map, void *key)
 {
-	pair *p = dynmap_get(map, key);
+	pair *i;
+
+	i = dynmap_pair(map, key);
+	if(i)
+		return i->value;
+
+	return NULL;
+}
+
+void
+dynmap_set(dynmap *map, void *key, void *val)
+{
+	pair *p = dynmap_pair(map, key);
 
 	if(p){
-		fprintf(stderr, "dynmap_set %p key %p (%s) val %p replace (%p)\n",
-				(void *)map, key, (char *)key, val, p->value);
 		p->value = val;
 	}else{
 		p = umalloc(sizeof *p);
 		p->key   = key;
 		p->value = val;
-		p->next = map->pairs;
-		map->pairs = p;
 
-		fprintf(stderr, "dynmap_set %p key %p (%s) val %p new\n",
-				(void *)map, key, (char *)key, val);
+		if(map->last_pair)
+			map->last_pair->next = p;
+		else
+			map->pairs = p;
+
+		map->last_pair = p;
 	}
 }
 
-void *dynmap_key(dynmap *map, int i)
+static pair *
+dynmap_idx(dynmap *map, int i)
 {
 	pair *p;
 
-	for(p = map->pairs; p && i > 0; p++, i--);
+	for(p = map->pairs; p && i > 0; p = p->next, i--);
 
-	fprintf(stderr, "dynmap_key %p index %d %p (%s)\n",
-			(void *)map, i, (void *)p, p ? (char *)p : "(n/a)");
+	return p;
+}
 
+void *
+dynmap_key(dynmap *map, int i)
+{
+	pair *p = dynmap_idx(map, i);
 	return p ? p->key : NULL;
+}
+
+void *
+dynmap_value(dynmap *map, int i)
+{
+	pair *p = dynmap_idx(map, i);
+	return p ? p->value : NULL;
 }

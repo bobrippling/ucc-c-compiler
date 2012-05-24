@@ -22,12 +22,17 @@ int k = 5;
 static int k = 2; // error
 #endif
 
-#ifdef E
-int l;
-extern int l; // no effect
-#endif
 
 #ifdef F
 extern int m;
 int m; // m is implicit def
+#endif
+
+#ifdef G
+extern int n; // ignored
+int n = 5;
+#endif
+#ifdef E
+int l;
+extern int l; // ignored
 #endif
