@@ -58,19 +58,21 @@ void gen_func_stack(decl *df, const int offset)
 #  define gen_func_stack(df, offset) asm_temp(1, "sub rsp, %d", offset)
 #endif
 
+void gen_asm_extern(decl *d)
+{
+	asm_tempf(cc_out[SECTION_BSS], 0, "extern %s", decl_spel(d));
+}
+
 void gen_asm_global(decl *d)
 {
 	if(decl_attr_present(d->attr, attr_section))
 		ICW("%s: TODO: section attribute \"%s\" on %s",
 				where_str(&d->attr->where), d->attr->attr_extra.section, d->spel);
 
-	if(d->type->store == store_extern){
-		/* should be fine... */
-		asm_tempf(cc_out[SECTION_BSS], 0, "extern %s", decl_spel(d));
-		return;
-	}
+	if((decl_is_func(d) && !d->func_code) || d->type->store == store_extern){
+		gen_asm_extern(d);
 
-	if(d->func_code){
+	}else if(d->func_code){
 		const int offset = d->func_code->symtab->auto_total_size;
 
 		asm_label(decl_spel(d));
@@ -110,7 +112,7 @@ void gen_asm(symtable *globs)
 	for(diter = globs->decls; diter && *diter; diter++){
 		decl *d = *diter;
 
-		if(d->ignore)
+		if(!d->is_definition)
 			continue;
 
 		if(!type_store_static_or_extern(d->type->store))
