@@ -49,7 +49,7 @@ symtable *symtab_root(symtable *child)
 	return child;
 }
 
-sym *symtab_search2(symtable *tab, const void *item, int (*cmp)(const void *, decl *), int descend)
+static sym *symtab_search2(symtable *tab, const void *item, int (*cmp)(const void *, decl *), int descend)
 {
 	decl **diter;
 
@@ -63,7 +63,7 @@ sym *symtab_search2(symtable *tab, const void *item, int (*cmp)(const void *, de
 	return NULL;
 }
 
-int spel_cmp(const void *test, decl *item)
+static int spel_cmp(const void *test, decl *item)
 {
 	char *sp = decl_spel(item);
 	return sp && item->sym && !strcmp(test, sp);
@@ -76,7 +76,7 @@ sym *symtab_search(symtable *tab, const char *spel)
 	return symtab_search2(tab, spel, spel_cmp, 1);
 }
 
-int decl_cmp(const void *test, decl *item)
+static int decl_cmp(const void *test, decl *item)
 {
 	return (decl *)test == item;
 }
