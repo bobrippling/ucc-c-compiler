@@ -28,6 +28,7 @@ void gen_stmt(stmt *t)
 }
 
 #ifdef FANCY_STACK_INIT
+#warning FANCY_STACK_INIT broken
 void gen_func_stack(decl *df, const int offset)
 {
 #define ITER_DECLS() \
@@ -58,11 +59,6 @@ void gen_func_stack(decl *df, const int offset)
 #  define gen_func_stack(df, offset) asm_temp(1, "sub rsp, %d", offset)
 #endif
 
-void gen_asm_extern(decl *d)
-{
-	asm_tempf(cc_out[SECTION_BSS], 0, "extern %s", decl_spel(d));
-}
-
 void gen_asm_global(decl *d)
 {
 	if(!d->is_definition)
@@ -73,7 +69,7 @@ void gen_asm_global(decl *d)
 				where_str(&d->attr->where), d->attr->attr_extra.section, d->spel);
 
 	if(d->type->store == store_extern){
-		gen_asm_extern(d);
+		asm_tempf(cc_out[SECTION_BSS], 0, "extern %s", decl_spel(d));
 
 	}else if(d->func_code){
 		const int offset = d->func_code->symtab->auto_total_size;
