@@ -1,6 +1,6 @@
 decl_attr *parse_attr_format()
 {
-	/* __attribute__((__format__ (__printf__, fmtarg, firstvararg))) */
+	/* __attribute__((format (printf, fmtarg, firstvararg))) */
 	decl_attr *da;
 	char *func;
 
@@ -11,9 +11,11 @@ decl_attr *parse_attr_format()
 
 	da = decl_attr_new(attr_format);
 
-	if(!strcmp(func, "__printf__"))
+#define CHECK(s) !strcmp(func, s) || !strcmp(func, "__" s "__")
+
+	if(CHECK("printf"))
 		da->attr_extra.format.fmt_func = attr_fmt_printf;
-	else if(!strcmp(func, "__scanf__"))
+	else if(CHECK("scanf"))
 		da->attr_extra.format.fmt_func = attr_fmt_scanf;
 	else
 		die_at(&da->where, "unknown format func \"%s\"", func);
@@ -35,7 +37,7 @@ decl_attr *parse_attr_format()
 
 decl_attr *parse_attr_section()
 {
-	/* __attribute__((__section__ ("sectionname"))) */
+	/* __attribute__((section ("sectionname"))) */
 	decl_attr *da;
 	char *func;
 	int len, i;
@@ -78,12 +80,13 @@ static struct
 	const char *ident;
 	decl_attr *(*parser)(void);
 } attrs[] = {
-	{ "__format__",         parse_attr_format },
-	{ "__unused__",         parse_attr_unused },
-	{ "__warn_unused__",    parse_attr_warn_unused },
-	{ "__section__",        parse_attr_section },
+	{ "format",         parse_attr_format },
+	{ "unused",         parse_attr_unused },
+	{ "warn_unused",    parse_attr_warn_unused },
+	{ "section",        parse_attr_section },
 	{ NULL, NULL },
 };
+#define MAX_FMT_LEN 16
 
 void parse_attr_bracket_chomp(void)
 {
@@ -101,9 +104,14 @@ decl_attr *parse_attr_single(char *ident)
 {
 	int i;
 
-	for(i = 0; attrs[i].ident; i++)
-		if(!strcmp(attrs[i].ident, ident))
+	for(i = 0; attrs[i].ident; i++){
+		char buf[MAX_FMT_LEN];
+		if(!strcmp(attrs[i].ident, ident)
+		|| (snprintf(buf, sizeof buf, "__%s__", attrs[i].ident), !strcmp(buf, ident)))
+		{
 			return attrs[i].parser();
+		}
+	}
 
 	warn_at(NULL, "ignoring unrecognised attribute \"%s\"", ident);
 
