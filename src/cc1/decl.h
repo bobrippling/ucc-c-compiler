@@ -103,8 +103,6 @@ struct decl
 	sym *sym;
 	decl_attr *attr;
 
-	char *spel;
-
 	int is_definition;
 	/* true if this is the definition of the decl - may have init or func_code */
 };

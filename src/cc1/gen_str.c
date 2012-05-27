@@ -434,7 +434,7 @@ void print_stmt(stmt *t)
 			decl *d = *iter;
 
 			gen_str_indent++;
-			print_decl(d, PDECL_INDENT | PDECL_NEWLINE | PDECL_SYM_OFFSET | PDECL_PISDEF | PDECL_PIGNORE | PDECL_PINIT);
+			print_decl(d, PDECL_INDENT | PDECL_NEWLINE | PDECL_SYM_OFFSET | PDECL_PISDEF | PDECL_PINIT);
 			gen_str_indent--;
 		}
 	}
@@ -461,7 +461,6 @@ void gen_str(symtable *symtab)
 		print_decl(*diter,
 				PDECL_INDENT |
 				PDECL_NEWLINE |
-				PDECL_PIGNORE |
 				PDECL_FUNC_DESCEND |
 				PDECL_SIZE |
 				PDECL_PISDEF |
