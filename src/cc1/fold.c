@@ -339,6 +339,21 @@ void fold_decl(decl *d, symtable *stab)
 			default:
 				break;
 		}
+
+		if(!d->func_code){
+			/* prototype - set extern, so we get a symbol generated (if needed) */
+			switch(d->type->store){
+				case store_default:
+					d->type->store = store_extern;
+				case store_extern:
+					break;
+
+				default:
+					warn_at(&d->where, "%s storage for unimplemented function %s",
+							type_store_to_str(d->type->store), d->spel);
+					break;
+			}
+		}
 	}else{
 		if(d->type->is_inline)
 			warn_at(&d->where, "inline on non-function%s%s",
@@ -586,20 +601,10 @@ static void fold_link_decl_defs(decl **decls)
 
 		definition->is_definition = 1;
 
-		if(decl_is_func(definition) && !definition->func_code){
-			/* prototype - set extern, so we get a symbol generated */
-			switch(definition->type->store){
-				case store_default:
-					definition->type->store = store_extern;
-				case store_extern:
-					break;
-
-				default:
-					warn_at(&definition->where, "%s storage for unimplemented function %s",
-							type_store_to_str(definition->type->store), definition->spel);
-					break;
-			}
-		}
+		/*
+		 * func -> extern (if no func code) done elsewhere,
+		 * since we need to do it for local decls too
+		 */
 	}
 
 	dynmap_free(spel_decls);
