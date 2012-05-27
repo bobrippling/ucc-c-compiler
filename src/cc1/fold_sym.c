@@ -26,38 +26,47 @@ int symtab_fold(symtable *tab, int current)
 			sym *s = (*diter)->sym;
 			/*enum type_primitive last = type_int; TODO: packing */
 
-			if(s->type == sym_local && s->decl->type->store == store_auto){
-				int siz = decl_size(s->decl);
+			if(s->type == sym_local){
+				switch(s->decl->type->store){
+					case store_auto:
+					case store_default:
+						if(!decl_is_func(s->decl)){
+						int siz = decl_size(s->decl);
 
-				if(siz <= word_size)
-					s->offset = current;
-				else
-					s->offset = current + siz - word_size; /* an array and structs start at the bottom */
+						if(siz <= word_size)
+							s->offset = current;
+						else
+							s->offset = current + siz - word_size; /* an array and structs start at the bottom */
 
-				/* need to increase by a multiple of word_size */
-				if(siz % word_size)
-					siz += word_size - siz % word_size;
-				current += siz;
+						/* need to increase by a multiple of word_size */
+						if(siz % word_size)
+							siz += word_size - siz % word_size;
+						current += siz;
 
-#define RW_WARN(w, var, str)                    \
-				do{                                     \
-					if(s->var == 0                        \
-					&& !s->decl->internal                 \
-					&& !decl_has_array(s->decl)           \
-					&& !decl_is_func(s->decl)             \
-					&& !decl_is_struct_or_union(s->decl)) \
-					{                                     \
-						cc1_warn_at(&s->decl->where, 0,     \
-								WARN_SYM_NEVER_ ## w,           \
-								"\"%s\" never " str,            \
-								decl_spel(s->decl));            \
-						s->var++;                           \
-					}                                     \
-				}while(0)
+#define RW_WARN(w, var, str)                            \
+						do{                                         \
+							if(s->var == 0                            \
+									&& !s->decl->internal                 \
+									&& !decl_has_array(s->decl)           \
+									&& !decl_is_func(s->decl)             \
+									&& !decl_is_struct_or_union(s->decl)) \
+							{                                         \
+								cc1_warn_at(&s->decl->where, 0,         \
+										WARN_SYM_NEVER_ ## w,               \
+										"\"%s\" never " str,                \
+										decl_spel(s->decl));                \
+								s->var++;                               \
+							}                                         \
+						}while(0)
 
 
-				/* static analysis on sym (only auto-vars) */
-				RW_WARN(WRITTEN, nwrites, "written to");
+						/* static analysis on sym (only auto-vars) */
+						RW_WARN(WRITTEN, nwrites, "written to");
+					}
+
+					default:
+						break;
+				}
 
 			}else if(s->type == sym_arg){
 				s->offset = arg_offset;

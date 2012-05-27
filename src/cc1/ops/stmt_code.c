@@ -21,6 +21,7 @@ void fold_stmt_code(stmt *s)
 			die_at(&d->func_code->where, "can't nest functions");
 
 		fold_decl(d, s->symtab);
+		d->is_definition = 1; /* always the def for non-globals */
 
 		SYMTAB_ADD(s->symtab, d, sym_local);
 	}
@@ -78,7 +79,7 @@ void gen_stmt_code(stmt *s)
 	for(diter = s->symtab->decls; diter && *diter; diter++){
 		decl *d = *diter;
 		if(decl_is_func(d) || type_store_static_or_extern(d->type->store))
-			gen_asm_extern(d);
+			gen_asm_global(d);
 	}
 
 	for(titer = s->codes; titer && *titer; titer++)

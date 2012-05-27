@@ -44,6 +44,8 @@ void fold_expr_funcall(expr *e, symtable *stab)
 
 			/* not declared - generate a sym ourselves */
 			e->expr->sym = SYMTAB_ADD(stab, df, sym_local);
+
+			df->is_definition = 1; /* needed since it's a local var */
 		}
 	}
 

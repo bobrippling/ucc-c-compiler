@@ -2,6 +2,10 @@ asm_recode branch:
 
 check that "*(char *)0" generates "movzx rax, byte [rax]" or similar
 
+Fix printf / variadic functions?
+
+_Generic const-ify
+
 updated bugs/ and test/
 
 ---------------------------------------------------- cc1
