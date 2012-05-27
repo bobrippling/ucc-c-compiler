@@ -400,15 +400,17 @@ abs_path:
 		free(fname - 1);
 }
 
-void ifdef_push(int val)
+static void ifdef_push(int new)
 {
-	ifdef_stack[ifdef_idx++] = val;
+	ifdef_stack[ifdef_idx++] = noop;
 
 	if(ifdef_idx == sizeof ifdef_stack)
 		die("ifdef stack exceeded");
+
+	noop = new;
 }
 
-void ifdef_pop(void)
+static void ifdef_pop(void)
 {
 	if(ifdef_idx == 0)
 		ICE("ifdef_idx == 0 on ifdef_pop()");
@@ -420,9 +422,7 @@ void handle_somedef(token **tokens, int rev)
 {
 	SINGLE_TOKEN("invalid ifdef macro");
 
-	ifdef_push(noop);
-
-	noop = rev ^ !macro_find(tokens[0]->w);
+	ifdef_push(rev ^ !macro_find(tokens[0]->w));
 }
 
 void handle_ifdef(token **tokens)
@@ -433,6 +433,22 @@ void handle_ifdef(token **tokens)
 void handle_ifndef(token **tokens)
 {
 	handle_somedef(tokens, 1);
+}
+
+void handle_if(token **tokens)
+{
+	const char *str = tokens[0]->w;
+	int test;
+
+	SINGLE_TOKEN("limited if macro");
+
+	/* currently only check for #if 0 */
+	test = !strcmp(str, "0");
+
+	if(!test)
+		fprintf(stderr, "\"#if %s\" assuming pass\n", str);
+
+	ifdef_push(test);
 }
 
 void handle_else(token **tokens)
@@ -499,6 +515,7 @@ void handle_macro(char *line)
 	MAP("ifndef",  handle_ifndef)
 	MAP("else",    handle_else)
 	MAP("endif",   handle_endif)
+	MAP("if",      handle_if)
 
 	MAP("warning", handle_warning)
 	MAP("error",   handle_error)
