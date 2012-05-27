@@ -19,18 +19,17 @@
 #include "decl.h"
 
 char *curdecl_func_sp;       /* for funcargs-local labels */
-stmt *curstmt_flow;          /* for break + continue */
-stmt *curstmt_switch;        /* for case + default */
-int   curstmt_last_was_switch;
 
 static where asm_struct_enum_where;
 
 void fold_stmt_and_add_to_curswitch(stmt *t)
 {
 	fold_stmt(t->lhs); /* compound */
-	if(!curstmt_switch)
+
+	if(!stmt_kind(t->parent, switch))
 		die_at(&t->expr->where, "not inside a switch statement");
-	dynarray_add((void ***)&curstmt_switch->codes, t);
+
+	dynarray_add((void ***)&t->parent->codes, t);
 
 	/* we are compound, copy some attributes */
 	t->kills_below_code = t->lhs->kills_below_code;

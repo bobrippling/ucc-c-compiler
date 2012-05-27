@@ -30,9 +30,6 @@ void fold_stmt(stmt *t);
 void fold(symtable *);
 
 extern char *curdecl_func_sp;
-extern stmt *curstmt_flow;
-extern stmt *curstmt_switch;
-extern int   curstmt_last_was_switch; /* 1 if our most parently flow-stmt was a switch */
 
 extern where *eof_where;
 
