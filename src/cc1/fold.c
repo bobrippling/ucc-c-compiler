@@ -22,20 +22,6 @@ char *curdecl_func_sp;       /* for funcargs-local labels */
 
 static where asm_struct_enum_where;
 
-void fold_stmt_and_add_to_curswitch(stmt *t)
-{
-	fold_stmt(t->lhs); /* compound */
-
-	if(!stmt_kind(t->parent, switch))
-		die_at(&t->expr->where, "not inside a switch statement");
-
-	dynarray_add((void ***)&t->parent->codes, t);
-
-	/* we are compound, copy some attributes */
-	t->kills_below_code = t->lhs->kills_below_code;
-	/* TODO: copy ->freestanding? */
-}
-
 void fold_decl_equal(decl *a, decl *b, where *w, enum warning warn,
 		const char *errfmt, ...)
 {
@@ -461,6 +447,20 @@ void fold_stmt(stmt *t)
 	UCC_ASSERT(t->symtab->parent, "symtab has no parent");
 
 	t->f_fold(t);
+}
+
+void fold_stmt_and_add_to_curswitch(stmt *t)
+{
+	fold_stmt(t->lhs); /* compound */
+
+	if(!t->parent)
+		die_at(&t->where, "%s not inside switch", t->f_str());
+
+	dynarray_add((void ***)&t->parent->codes, t);
+
+	/* we are compound, copy some attributes */
+	t->kills_below_code = t->lhs->kills_below_code;
+	/* TODO: copy ->freestanding? */
 }
 
 void fold_funcargs(funcargs *fargs, symtable *stab, char *context)

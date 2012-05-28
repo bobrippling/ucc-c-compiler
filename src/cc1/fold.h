@@ -12,8 +12,6 @@ void fold_funcargs(funcargs *fargs, symtable *stab, char *context);
 
 void fold_symtab_scope(symtable *stab);
 
-void fold_stmt_and_add_to_curswitch(stmt *);
-
 void fold_typecheck(expr *lhs, expr *rhs, symtable *stab, where *where);
 
 void fold_test_expr(expr *e, const char *stmt_desc);
@@ -32,5 +30,7 @@ void fold(symtable *);
 extern char *curdecl_func_sp;
 
 extern where *eof_where;
+
+void fold_stmt_and_add_to_curswitch(stmt *);
 
 #endif

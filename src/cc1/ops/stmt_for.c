@@ -56,10 +56,6 @@ expr *fold_for_if_init_decls(stmt *s)
 
 void fold_stmt_for(stmt *s)
 {
-	stmt *oldflowstmt = curstmt_flow;
-	curstmt_flow = s;
-	curstmt_last_was_switch = 0;
-
 	s->lbl_break    = asm_label_flow("for_start");
 	s->lbl_continue = asm_label_flow("for_contiune");
 
@@ -84,8 +80,6 @@ void fold_stmt_for(stmt *s)
 	}
 
 	fold_stmt(s->lhs);
-
-	curstmt_flow = oldflowstmt;
 
 #ifdef SYMTAB_DEBUG
 	fprintf(stderr, "for-code st:\n");
