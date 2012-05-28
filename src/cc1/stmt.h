@@ -30,6 +30,9 @@ struct stmt
 	stmt **codes; /* for a code block */
 
 	symtable *symtab;
+
+	/* parents - applicable for break and continue */
+	stmt *parent;
 };
 
 struct stmt_flow
