@@ -75,7 +75,7 @@ void gen_asm_global(decl *d)
 				where_str(&d->attr->where), d->attr->attr_extra.section, d->spel);
 
 	if(d->type->store == store_extern){
-		asm_tempf(cc_out[SECTION_BSS], 0, "extern %s", decl_spel(d));
+		asm_out_section(SECTION_BSS, "extern %s", decl_spel(d));
 
 	}else if(d->func_code){
 		const int offset = d->func_code->symtab->auto_total_size;

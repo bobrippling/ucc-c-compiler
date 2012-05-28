@@ -15,9 +15,9 @@ void fold_stmt_do(stmt *s)
 
 void gen_stmt_do(stmt *s)
 {
-	asm_label(s->lbl_continue);
 	gen_stmt(s->lhs);
 
+	asm_label(s->lbl_continue);
 	gen_expr(s->expr, s->symtab);
 	asm_pop(s->expr->tree_type, ASM_REG_A);
 	ASM_TEST(s->expr->tree_type, ASM_REG_A);

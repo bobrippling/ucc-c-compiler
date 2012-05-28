@@ -358,6 +358,10 @@ int decl_is_integral(decl *d)
 	switch(d->type->primitive){
 		case type_int:
 		case type_char:
+		case type__Bool:
+		case type_short:
+		case type_long:
+		case type_llong:
 				return 1;
 
 		case type_unknown:
@@ -365,6 +369,9 @@ int decl_is_integral(decl *d)
 		case type_struct:
 		case type_union:
 		case type_enum:
+		case type_float:
+		case type_double:
+		case type_ldouble:
 				break;
 	}
 
