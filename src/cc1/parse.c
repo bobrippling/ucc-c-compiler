@@ -36,6 +36,12 @@ static_assert **static_asserts;
 int parse_had_error = 0;
 
 
+/* switch, for, do and while linkage */
+static stmt *current_continue_target,
+						*current_break_target,
+						*current_switch;
+
+
 expr *parse_expr_sizeof_typeof()
 {
 	expr *e;
@@ -541,6 +547,10 @@ stmt *expr_to_stmt(expr *e)
 stmt *parse_switch()
 {
 	stmt *t = STAT_NEW(switch);
+	stmt *old = current_break_target;
+	stmt *old_sw = current_switch;
+
+	current_switch = current_break_target = t;
 
 	EAT(token_switch);
 
@@ -548,12 +558,17 @@ stmt *parse_switch()
 
 	t->lhs = parse_code();
 
+	current_break_target = old;
+	current_switch = old_sw;
+
 	return t;
 }
 
 stmt *parse_do()
 {
 	stmt *t = STAT_NEW(do);
+
+	current_continue_target = current_break_target = t;
 
 	EAT(token_do);
 
@@ -572,6 +587,8 @@ stmt *parse_while()
 {
 	stmt *t = STAT_NEW(while);
 
+	current_continue_target = current_break_target = t;
+
 	EAT(token_while);
 
 	parse_test_init_expr(t);
@@ -585,6 +602,8 @@ stmt *parse_for()
 {
 	stmt *s = STAT_NEW(for);
 	stmt_flow *sf;
+
+	current_continue_target = current_break_target = s;
 
 	EAT(token_for);
 	EAT(token_open_paren);
@@ -758,9 +777,13 @@ stmt *parse_code()
 		case token_goto:
 		case token_return:
 		{
-			int flag;
-			if((flag = accept(token_break)) || accept(token_continue)){
-				t = flag ? STAT_NEW(break) : STAT_NEW(continue);
+			if(accept(token_break)){
+				t = STAT_NEW(break);
+				t->parent = current_break_target;
+
+			}else if(accept(token_continue)){
+				t = STAT_NEW(continue);
+				t->parent = current_continue_target;
 
 			}else if(accept(token_return)){
 				t = STAT_NEW(return);
@@ -777,19 +800,45 @@ stmt *parse_code()
 			return t;
 		}
 
-		case token_if:     return parse_if();
-		case token_while:  return parse_while();
-		case token_do:     return parse_do();
-		case token_for:    return parse_for();
+		case token_if:
+			return parse_if();
+
+		{
+			stmt *(*parse_f)();
+			stmt *ret, *old[2];
+
+		case token_while: 
+			parse_f = parse_while;
+			goto flow;
+		case token_do:  
+			parse_f = parse_do;
+			goto flow;
+		case token_for:
+			parse_f = parse_for;
+			goto flow;
+
+flow:
+			old[0] = current_continue_target;
+			old[1] = current_break_target;
+
+			ret = parse_f();
+
+			current_continue_target = old[0];
+			current_break_target    = old[1];
+
+			return ret;
+		}
 
 		case token_open_block: return parse_code_block();
 
 		case token_switch:
 			return parse_switch();
+
 		case token_default:
 			EAT(token_default);
 			EAT(token_colon);
 			t = STAT_NEW(default);
+			t->parent = current_switch;
 			return parse_label_next(t);
 		case token_case:
 		{
@@ -798,12 +847,15 @@ stmt *parse_code()
 			a = parse_expr_exp();
 			if(accept(token_elipsis)){
 				t = STAT_NEW(case_range);
+				t->parent = current_switch;
 				t->expr  = a;
 				t->expr2 = parse_expr_exp();
 			}else{
-				t = expr_to_stmt(a);
-				stmt_mutate_wrapper(t, case);
+				t = STAT_NEW(case);
+				t->expr = a;
+				t->parent = current_switch;
 			}
+
 			EAT(token_colon);
 			return parse_label_next(t);
 		}
