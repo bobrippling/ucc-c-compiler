@@ -12,10 +12,6 @@ const char *str_stmt_while()
 void fold_stmt_while(stmt *s)
 {
 	symtable *test_symtab;
-	stmt *oldflowstat = curstmt_flow;
-
-	curstmt_flow = s;
-	curstmt_last_was_switch = 0;
 
 	test_symtab = fold_stmt_test_init_expr(s, "which");
 
@@ -28,8 +24,6 @@ void fold_stmt_while(stmt *s)
 	OPT_CHECK(s->expr, "constant expression in if/while");
 
 	fold_stmt(s->lhs);
-
-	curstmt_flow = oldflowstat;
 }
 
 void gen_stmt_while(stmt *s)
