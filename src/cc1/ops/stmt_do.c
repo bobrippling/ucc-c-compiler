@@ -15,9 +15,9 @@ void fold_stmt_do(stmt *s)
 
 void gen_stmt_do(stmt *s)
 {
-	asm_label(s->lbl_continue);
 	gen_stmt(s->lhs);
 
+	asm_label(s->lbl_continue);
 	gen_expr(s->expr, s->symtab);
 	asm_temp(1, "pop rax");
 	asm_temp(1, "test rax, rax");
