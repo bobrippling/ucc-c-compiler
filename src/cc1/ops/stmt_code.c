@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 
 #include "ops.h"
 #include "stmt_code.h"
@@ -78,8 +79,29 @@ void gen_stmt_code(stmt *s)
 	/* declare statics */
 	for(diter = s->symtab->decls; diter && *diter; diter++){
 		decl *d = *diter;
-		if(decl_is_func(d) || type_store_static_or_extern(d->type->store))
-			gen_asm_global(d);
+		int func;
+
+		if((func = decl_is_func(d)) || type_store_static_or_extern(d->type->store)){
+			int gen = 1;
+
+			if(func){
+				/* check if the func is defined globally */
+				symtable *globs;
+				decl **i;
+
+				for(globs = s->symtab; globs->parent; globs = globs->parent);
+
+				for(i = globs->decls; i && *i; i++){
+					if(!strcmp(d->spel, (*i)->spel)){
+						gen = 0;
+						break;
+					}
+				}
+			}
+
+			if(gen)
+				gen_asm_global(d);
+		}
 	}
 
 	for(titer = s->codes; titer && *titer; titer++)
