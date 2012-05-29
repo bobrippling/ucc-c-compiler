@@ -2,8 +2,8 @@ include src_config.mk
 
 all: cc1 cpp2 cc
 
-cc: cc.c cc.h util/alloc.o
-	${CC} ${CFLAGS} -o $@ cc.c util/alloc.o
+cc: cc.c cc.h util/alloc.o util/dynarray.o
+	${CC} ${CFLAGS} -o $@ cc.c util/alloc.o util/dynarray.o
 
 cc1: util
 	make -C cc1
