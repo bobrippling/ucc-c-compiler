@@ -68,10 +68,8 @@ void gen_asm_global(decl *d)
 		ICW("%s: TODO: section attribute \"%s\" on %s",
 				where_str(&d->attr->where), d->attr->attr_extra.section, d->spel);
 
-	if(d->type->store == store_extern){
-		asm_tempf(cc_out[SECTION_BSS], 0, "extern %s", decl_spel(d));
-
-	}else if(d->func_code){
+	/* order of the if matters */
+	if(d->func_code){
 		const int offset = d->func_code->symtab->auto_total_size;
 
 		asm_label(decl_spel(d));
@@ -102,14 +100,31 @@ void gen_asm_global(decl *d)
 void gen_asm(symtable *globs)
 {
 	decl **diter;
+
 	for(diter = globs->decls; diter && *diter; diter++){
 		decl *d = *diter;
 
-		if(!d->is_definition)
+		/* inline_only aren't currently inlined */
+		if(!d->is_definition || d->inline_only)
 			continue;
 
-		if(!type_store_static_or_extern(d->type->store))
-			asm_temp(0, "global %s", decl_spel(d));
+		switch(d->type->store){
+			case store_auto:
+			case store_register:
+			case store_typedef:
+				ICE("%s storage on global", type_store_to_str(d->type->store));
+
+			case store_static:
+				break;
+
+			case store_extern:
+				if(!decl_is_func(d) || !d->func_code)
+					break;
+				/* else extern func with definition */
+
+			case store_default:
+				asm_temp(0, "global %s", decl_spel(d));
+		}
 
 		gen_asm_global(d);
 	}

@@ -159,7 +159,7 @@ void asm_indir(enum asm_indir mode, decl *tt, char rto, char rfrom, const char *
  		if(full_word)
 			asm_temp(1, "mov [r%cx], r%cx", rto, rfrom);
 		else
-			asm_temp(1, "mov byte [r%cx], %cl", rto, rfrom); 
+			asm_temp(1, "mov byte [r%cx], %cl", rto, rfrom);
 	}
 
 	if(comment)
@@ -226,6 +226,17 @@ void asm_declare(FILE *f, decl *d)
 {
 	(void)f;
 	(void)d;
+#if 0
+	}else if(d->arrayinit){
+		asm_declare_array(SECTION_DATA, d->arrayinit->label, d->arrayinit);
+
+	}else if(d->init && !const_expr_is_zero(d->init)){
+		asm_declare_single(cc_out[SECTION_DATA], d);
+
+	}else if(d->type->store == store_extern){
+		asm_tempf(cc_out[SECTION_BSS], 0, "extern %s", decl_spel(d));
+
+#endif
 }
 #if 0
 {
