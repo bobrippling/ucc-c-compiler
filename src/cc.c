@@ -12,9 +12,16 @@
 
 #include "cc.h"
 #include "util/alloc.h"
+#include "util/dynarray.h"
 
+#define DEFAULT_OUTPUT "a.out"
 #define LIB_PATH "/../lib/"
 #define CPP "cpp2"
+
+#define TMP2(s, sz, pre, post) \
+		snprintf(s, sz, pre "%d." post, getpid())
+
+#define TMP(s, pre, post) TMP2(s, sizeof s, pre, post)
 
 #define MODE_TO_STR(m) \
 	(const char *[]){    \
@@ -82,6 +89,8 @@ const char *f;
 char *stdlib_files;
 
 char *args[4] = { "", "", "", "" };
+
+void (*ice)() = exit;
 
 void die(const char *fmt, ...)
 {
@@ -172,13 +181,10 @@ int gen(const char *input, const char *output)
 {
 	char cmd[4096];
 
-#define TMP(s, pre, post) \
-		snprintf(s, sizeof s, pre "%d." post, getpid())
-
 	TMP(f_e, "/tmp/ucc_", "i");
 	TMP(f_s, "/tmp/ucc_", "s");
 	TMP(f_o, "/tmp/ucc_", "o");
-	f = output ? output : "a.out";
+	f = output ? output : DEFAULT_OUTPUT;
 
 	if(do_rm)
 		atexit(unlink_files);
@@ -235,9 +241,123 @@ start_link:
 	return 0;
 }
 
+void usage(char *prog)
+{
+	fprintf(stderr,
+			"Usage: %s [-Wwarning...] [-foption...] [-[ESc]] [-o output] input\n"
+			"Other options:\n"
+			"  -nost{dlib,artfiles} - don't like with stdlib/crt.o\n"
+			"  -no-rm - don't remove temporary files\n"
+			"  -d - run in debug/verbose mode\n"
+			"  -X backend - specify cc1 backend\n"
+			"  -x frontend - specify starting point (c, cpp-output and asm)\n",
+			prog);
+
+	exit(1);
+}
+
+void wrap_linker(int argc, char **argv)
+{
+	/*
+	 * steal -o a.out argument
+	 * forward everything else to *argv
+	 */
+	int i, nfiles;
+	char *output;
+	char **args, **files;
+	char **tmps;
+	char *args_str;
+
+	args = files = tmps = NULL;
+
+	for(i = 1; i < argc; i++){
+		if(!strncmp(argv[i], "-o", 2)){
+			output = argv[i][2] ? argv[i] + 2 : argv[++i];
+			if(!output)
+				usage(*argv);
+		}else{
+			dynarray_add(*argv[i] == '-' ? (void ***)&args : (void ***)&files, argv[i]);
+		}
+	}
+
+	if(!output)
+		output = DEFAULT_OUTPUT;
+
+	nfiles = dynarray_count((void **)files);
+
+	if(args){
+		int len = 1;
+		char *p;
+
+		for(i = 0; args[i]; i++)
+			len += strlen(args[i]) + 1;
+
+		p = args_str = umalloc(len);
+
+		for(i = 0; args[i]; i++)
+			p += sprintf(p, "%s ", args[i]);
+	}else{
+		args_str = ustrdup("");
+	}
+
+	tmps = umalloc((nfiles + 1) * sizeof *tmps);
+
+	for(i = 0; i < nfiles; i++){
+		char buf[256];
+		int r;
+
+		r = strlen(files[i]);
+
+		if(r >= 3 && !strcmp(files[i] + r - 2, ".o")){
+			tmps[i] = ustrdup(files[i]);
+			continue; /* already in the right form */
+		}
+
+		tmps[i] = umalloc(32);
+		TMP2(tmps[i], 32, "/tmp/ucc_", "f");
+
+		snprintf(buf, sizeof buf, "%s -c -o %s %s %s",
+				*argv,
+				tmps[i],
+				args_str, files[i]);
+
+		run(buf);
+	}
+
+	free(args_str);
+	dynarray_free((void ***)&args, NULL);
+	dynarray_free((void ***)&files, NULL);
+
+	/* link */
+	{
+		const char *pre = "ld -e _start -o";
+		int len;
+		char *link_cmd, *p;
+		char *stdlib = gen_stdlib_files();
+
+		len = 1 + strlen(pre) + 1 + strlen(output) + 1 + strlen(stdlib);
+
+		for(i = 0; tmps[i]; i++)
+			len += strlen(tmps[i]) + 1;
+
+		link_cmd = umalloc(len);
+
+		p = link_cmd + sprintf(link_cmd, "%s %s %s", pre, output, stdlib);
+
+		free(stdlib);
+
+		for(i = 0; tmps[i]; i++)
+			p += sprintf(p, " %s", tmps[i]);
+
+		run(link_cmd);
+	}
+
+	dynarray_free((void ***)&tmps, free);
+}
 
 int main(int argc, char **argv)
 {
+#define USAGE() usage(*argv)
 	int assumed_start_mode = 0;
 	char *input;
 	char *output;
@@ -273,9 +393,9 @@ int main(int argc, char **argv)
 			else if(!strcmp(argv[i] + 5, "dlib"))
 				no_stdlib = 1;
 			else
-				goto usage;
+				USAGE();
 		}else if(!strcmp(argv[i], "--help")){
-			goto usage;
+			USAGE();
 		}else if(!strcmp(argv[i], "-no-rm")){
 			do_rm = 0;
 		}else if(!strncmp(argv[i], "--precmd=", 9)){
@@ -347,7 +467,7 @@ arg_linker:
 							*opts[j].ptr = argv[i] + 2;
 						}else{
 							if(!argv[++i])
-								goto usage;
+								USAGE();
 							*opts[j].ptr = argv[i];
 						}
 						found = 1;
@@ -361,23 +481,14 @@ arg_linker:
 			if(!input){
 				input = argv[i];
 			}else{
-			usage:
-				fprintf(stderr,
-						"Usage: %s [-Wwarning...] [-foption...] [-[ESc]] [-o output] input\n"
-						"Other options:\n"
-						"  -nost{dlib,artfiles} - don't like with stdlib/crt.o\n"
-						"  -no-rm - don't remove temporary files\n"
-						"  -d - run in debug/verbose mode\n"
-						"  -X backend - specify cc1 backend\n"
-						"  -x frontend - specify starting point (c, cpp-output and asm)\n",
-						*argv);
-				return 1;
+				wrap_linker(argc, argv);
+				return 0;
 			}
 		}
 
 
 	if(!input)
-		goto usage;
+		USAGE();
 
 	if(*frontend){
 		if(!strcmp(frontend, "c"))
@@ -387,7 +498,7 @@ arg_linker:
 		else if(!strcmp(frontend, "asm"))
 			start_mode = MODE_ASSEMBLE;
 		else
-			goto usage;
+			USAGE();
 
 		/* "asm-with-cpp", MODE??? */
 
@@ -432,8 +543,14 @@ arg_linker:
 
 	if(out_mode < start_mode){
 		if(assumed_start_mode){
-			fprintf(stderr, "%s: warning: output mode \"%s\" is past start mode \"%s\" - fixing\n",
-					*argv, MODE_TO_STR(out_mode), MODE_TO_STR(start_mode));
+			if(start_mode == MODE_LINK && out_mode == MODE_ASSEMBLE){
+				fprintf(stderr, "%s: linker input files \"%s\" unused because linking not done\n",
+						*argv, input);
+				return 0;
+			}else{
+				fprintf(stderr, "%s: warning: output mode \"%s\" is past start mode \"%s\" - fixing\n",
+						*argv, MODE_TO_STR(out_mode), MODE_TO_STR(start_mode));
+			}
 		}
 
 		start_mode = out_mode;
@@ -443,7 +560,7 @@ arg_linker:
 		if(out_mode == MODE_PREPROCESS){
 			output = "-";
 		}else if(out_mode == MODE_LINK){
-			output = "a.out";
+			output = DEFAULT_OUTPUT;
 		}else{
 			int len = strlen(input);
 
@@ -476,7 +593,6 @@ arg_linker:
 	p = strrchr(where, '/');
 	if(p)
 		*++p = '\0';
-
 
 	stdlib_files = gen_stdlib_files();
 
