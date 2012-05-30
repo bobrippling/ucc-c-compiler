@@ -4,11 +4,13 @@
 #include <unistd.h>
 
 #include "ucc.h"
+#include "ucc_ext.h"
 #include "ucc_lib.h"
+
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
 
-#define LIB_PATH "./../lib/"
+#define LIB_PATH "./../../lib/"
 
 #define LIBS          \
 		"stdio.o",        \
@@ -29,8 +31,7 @@
 
 #define lib_actual_path(lib) actual_path(LIB_PATH, lib)
 
-char **
-objfiles_stdlib(void)
+char **objfiles_stdlib(void)
 {
 	const char *names[] = {
 		LIBS,
@@ -46,8 +47,7 @@ objfiles_stdlib(void)
 	return ret;
 }
 
-char *
-objfiles_start(void)
+char *objfiles_start(void)
 {
 	return lib_actual_path("crt.o");
 }

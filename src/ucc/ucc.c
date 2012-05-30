@@ -124,12 +124,37 @@ void process_files(enum mode mode, char **inputs, char *output, char **args[4], 
 		dynarray_add((void ***)&links, files[i].out);
 	}
 
-	link(links, output, args[mode_link]);
+	link_all(links, output, args[mode_link]);
 
 	dynarray_free((void ***)&links, NULL);
+	/* technically we need to free the ones from objfiles_... */
+
 	for(i = 0; i < ninputs; i++)
 		free_file(&files[i]);
 	free(files);
+}
+
+void die(const char *fmt, ...)
+{
+	const int len = strlen(fmt);
+	const int err = len > 0 && fmt[len - 1] == ':' ;
+	va_list l;
+
+	va_start(l, fmt);
+	vfprintf(stderr, fmt, l);
+	va_end(l);
+
+	if(err)
+		fprintf(stderr, " %s", strerror(errno));
+
+	fputc('\n', stderr);
+
+	exit(1);
+}
+
+void ice(const char *fmt)
+{
+	die("ICE: %s", fmt);
 }
 
 int main(int argc, char **argv)
@@ -240,31 +265,14 @@ arg_ld:
 		}
 	}
 
+	if(!output)
+		output = "a.out";
+
 	/* got arguments, a mode, and files to link */
 	process_files(mode, inputs, output, args, backend);
 
+	for(i = 0; i < 4; i++)
+		dynarray_free((void ***)&args[i], free);
+
 	return 0;
-}
-
-void die(const char *fmt, ...)
-{
-	const int len = strlen(fmt);
-	const int err = len > 0 && fmt[len - 1] == ':' ;
-	va_list l;
-
-	va_start(l, fmt);
-	vfprintf(stderr, fmt, l);
-	va_end(l);
-
-	if(err)
-		fprintf(stderr, ": %s", strerror(errno));
-
-	fputc('\n', stderr);
-
-	exit(1);
-}
-
-void ice(const char *fmt)
-{
-	die("%s", fmt);
 }
