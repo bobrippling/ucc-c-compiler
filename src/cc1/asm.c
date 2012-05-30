@@ -234,8 +234,7 @@ void asm_declare(FILE *f, decl *d)
 		asm_declare_single(cc_out[SECTION_DATA], d);
 
 	}else if(d->type->store == store_extern){
-		asm_tempf(cc_out[SECTION_BSS], 0, "extern %s", decl_spel(d));
-
+		asm_extern(d);
 #endif
 }
 #if 0

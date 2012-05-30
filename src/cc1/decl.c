@@ -168,11 +168,15 @@ int funcargs_equal(funcargs *args_to, funcargs *args_from, int strict_types, int
 	if(count_to == 0 && !args_to->args_void){
 		/* a() */
 	}else if(!(args_to->variadic ? count_to <= count_from : count_to == count_from)){
+
+#ifdef DEBUG_FUNCARGS
 		fprintf(stderr, "variadic %d, count_to %d, count_from %d\n", args_to->variadic, count_to, count_from);
 		for(i = 0; args_to->arglist[i]; i++)
 			fprintf(stderr, "to [%d] = %s\n", i, decl_to_str(args_to->arglist[i]));
 		for(i = 0; args_to->arglist[i]; i++)
 			fprintf(stderr, "fr [%d] = %s\n", i, decl_to_str(args_from->arglist[i]));
+#endif
+
 		if(idx) *idx = -1;
 		return 0;
 	}
