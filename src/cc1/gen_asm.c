@@ -59,6 +59,11 @@ void gen_func_stack(decl *df, const int offset)
 #  define gen_func_stack(df, offset) asm_temp(1, "sub rsp, %d", offset)
 #endif
 
+void asm_extern(decl *d)
+{
+	asm_tempf(cc_out[SECTION_BSS], 0, "extern %s", d->spel);
+}
+
 void gen_asm_global(decl *d)
 {
 	if(!d->is_definition)
@@ -98,7 +103,7 @@ void gen_asm_global(decl *d)
 		asm_declare_single(cc_out[SECTION_DATA], d);
 
 	}else if(d->type->store == store_extern){
-		asm_tempf(cc_out[SECTION_BSS], 0, "extern %s", decl_spel(d));
+		asm_extern(d);
 
 	}else{
 		/* always resb, since we use decl_size() */
@@ -114,8 +119,14 @@ void gen_asm(symtable *globs)
 		decl *d = *diter;
 
 		/* inline_only aren't currently inlined */
-		if(!d->is_definition || d->inline_only)
+		if(!d->is_definition)
 			continue;
+
+		if(d->inline_only){
+			/* emit an extern for it anyway */
+			asm_extern(d);
+			continue;
+		}
 
 		switch(d->type->store){
 			case store_auto:
