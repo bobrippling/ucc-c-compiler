@@ -11,5 +11,3 @@ lib/syscall.s
 lib/syscall_err.s
 lib/syscalls_darwin.h
 lib/string_strerrs.h
-
-test/*/[a-z]*
