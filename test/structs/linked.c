@@ -32,7 +32,7 @@ list_add(struct list *h, int v)
 		h = h->next;
 	h->i = v;
 	h->init = 1;
-	h->next = MALLOC2(16);
+	h->next = MALLOC2(24);
 }
 
 list_print(struct list *h)
@@ -45,7 +45,7 @@ list_print(struct list *h)
 
 main()
 {
-	struct list *head = MALLOC2(16); //sizeof(struct list)); //sizeof *head);
+	struct list *head = MALLOC2(24); //sizeof(struct list)); //sizeof *head);
 
 	printf("head = %p\n", head);
 
