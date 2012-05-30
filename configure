@@ -10,6 +10,9 @@ UCC_ARCH    = ${UCC_ARCH}
 UCC_LDFLAGS = ${UCC_LDFLAGS}
 !
 
+	echo "TODO: cc.h config" >&2
+	exit 1
+
 	cat > src/cc.h <<!
 #define UCC_NASM    "${UCC_NASM}"
 #define UCC_LD      "${UCC_LD}"
@@ -89,7 +92,7 @@ done
 
 if [ $clean -ne 0 ]
 then
-	rm -f config.mk src/cc.h lib/syscall_err.s lib/string_strerrs.h lib/syscalls_darwin.h
+	rm -f config.mk lib/syscall_err.s lib/string_strerrs.h lib/syscalls_darwin.h
 	exit
 fi
 
