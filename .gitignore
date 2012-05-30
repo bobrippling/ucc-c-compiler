@@ -2,10 +2,10 @@
 
 config.mk
 
-src/cc.h
 src/cc
 src/cc1/cc1
 src/cpp2/cpp
+src/ucc/ucc
 
 lib/syscall.s
 lib/syscall_err.s
