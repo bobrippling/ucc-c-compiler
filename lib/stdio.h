@@ -72,6 +72,9 @@ int   fgetc(FILE *);
 /*char *gets( char *);*/
 char *fgets(char *, int, FILE *);
 
+/* bsd extension */
+char *fgetln(FILE *stream, size_t *len); /* valid until next read */
+
 
 /* file system */
 int remove(const char *);
