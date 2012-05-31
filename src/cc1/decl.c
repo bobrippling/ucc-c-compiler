@@ -127,8 +127,11 @@ int decl_size(decl *d)
 {
 	int mul = 1;
 
-	if(d->field_width)
+	if(d->field_width){
+		ICW("use of struct field width - brace for incorrect code (%s)",
+				where_str(&d->where));
 		return d->field_width;
+	}
 
 	if(d->desc){
 		/* find the lowest, start working our way up */
