@@ -31,7 +31,6 @@ struct cc_file
 
 const char *argv0;
 
-
 char *tmpfilenam()
 {
 	char *r = tmpnam(NULL);
@@ -42,21 +41,28 @@ char *tmpfilenam()
 	return ustrdup(r);
 }
 
-void create_file(struct cc_file *file, char *in)
+void create_file(struct cc_file *file, enum mode mode, char *in)
 {
 	char *ext;
 
 	file->in = in;
 
+#define ASSIGN(x)                \
+				file->x = tmpfilenam();  \
+				if(mode == mode_ ## x){  \
+					file->out = file->x;   \
+					return;                \
+				}
+
 	ext = strrchr(in, '.');
 	if(ext && ext[1] && !ext[2]){
 		switch(ext[1]){
 			case 'c':
-				file->preproc = tmpfilenam();
+				ASSIGN(preproc);
 			case 'i':
-				file->compile = tmpfilenam();
+				ASSIGN(compile);
 			case 's':
-				file->assemb = tmpfilenam();
+				ASSIGN(assemb);
 				file->out = file->assemb;
 				break;
 
@@ -73,14 +79,15 @@ assume_obj:
 
 void free_file(struct cc_file *file)
 {
+#define DEL_FREE(fn) remove(fn); free(fn)
 	/*free(file->in);*/
-	free(file->preproc);
-	free(file->compile);
-	free(file->assemb);
+	DEL_FREE(file->preproc);
+	DEL_FREE(file->compile);
+	DEL_FREE(file->assemb);
 	/*free(file->out);*/
 }
 
-void gen_obj_file(struct cc_file *file, char **args[4])
+void gen_obj_file(struct cc_file *file, char **args[4], enum mode mode)
 {
 	if(file->assemb){
 		char *in = file->in;
@@ -88,9 +95,17 @@ void gen_obj_file(struct cc_file *file, char **args[4])
 		if(file->compile){
 			if(file->preproc){
 				preproc(in, file->preproc, args[mode_preproc]);
+
+				if(mode == mode_preproc)
+					return;
+
 				in = file->preproc;
 			}
 			compile(in, file->compile, args[mode_compile]);
+
+			if(mode == mode_compile)
+				return;
+
 			in = file->compile;
 		}
 		assemble(in, file->assemb, args[mode_assemb]);
@@ -104,9 +119,6 @@ void process_files(enum mode mode, char **inputs, char *output, char **args[4], 
 	struct cc_file *files;
 	char **links;
 
-	if(mode != mode_link)
-		die("TODO: mode");
-
 	if(backend)
 		die("TODO: backend");
 
@@ -117,15 +129,19 @@ void process_files(enum mode mode, char **inputs, char *output, char **args[4], 
 
 
 	for(i = 0; i < ninputs; i++){
-		create_file(&files[i], inputs[i]);
+		create_file(&files[i], mode, inputs[i]);
 
-		gen_obj_file(&files[i], args);
+		gen_obj_file(&files[i], args, mode);
 
 		dynarray_add((void ***)&links, files[i].out);
 	}
 
+	if(mode == mode_assemb)
+		goto fin;
+
 	link_all(links, output, args[mode_link]);
 
+fin:
 	dynarray_free((void ***)&links, NULL);
 	/* technically we need to free the ones from objfiles_... */
 
@@ -137,7 +153,7 @@ void process_files(enum mode mode, char **inputs, char *output, char **args[4], 
 void die(const char *fmt, ...)
 {
 	const int len = strlen(fmt);
-	const int err = len > 0 && fmt[len - 1] == ':' ;
+	const int err = len > 0 && fmt[len - 1] == ':';
 	va_list l;
 
 	va_start(l, fmt);
@@ -240,6 +256,12 @@ arg_ld:
 				case 'S': mode = mode_compile; continue;
 				case 'c': mode = mode_assemb;  continue;
 
+				case 'o':
+					output = argv[++i];
+					if(!output)
+						die("output argument needed");
+					continue;
+
 				default:
 					/* TODO: -nostdlib, -nostartfiles */
 					die("TODO: %s", arg);
@@ -265,8 +287,16 @@ arg_ld:
 		}
 	}
 
-	if(!output)
+	if(!output){
 		output = "a.out";
+	}else if(output && dynarray_count((void **)inputs) > 1 && mode != mode_link){
+		char **i;
+
+		for(i = inputs; *i; i++)
+			fprintf(stderr, "(input %s)\n", *i);
+
+		die("too many inputs (with output \"%s\")", output);
+	}
 
 	/* got arguments, a mode, and files to link */
 	process_files(mode, inputs, output, args, backend);
