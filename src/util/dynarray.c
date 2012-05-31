@@ -125,8 +125,9 @@ void dynarray_add_array(void ***par, void **ar2)
 
 	if(!ar){
 		n = dynarray_count(ar2);
-		ar = umalloc(n * sizeof *ar);
+		ar = umalloc((n + 1) * sizeof *ar);
 		memcpy(ar, ar2, n * sizeof *ar2);
+		ar[n] = NULL;
 		*par = ar;
 		return;
 	}
