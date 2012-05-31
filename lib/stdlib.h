@@ -28,5 +28,12 @@ void _Exit(int);
 int at_quick_exit(void (*)(void));
 void quick_exit(int);
 
+typedef struct
+{
+	int quot, rem;
+} div_t;
+
+div_t div(int n, int denom);
+//ldiv_t ldiv(long int n, long int denom);
 
 #endif
