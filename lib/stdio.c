@@ -10,6 +10,7 @@
 #include "ucc_attr.h"
 
 #define PRINTF_OPTIMISE
+//#define PRINTF_ENABLE_PADDING <- currently exposes a while-in-switch bug
 
 static FILE _stdin  = { 0, 0 };
 static FILE _stdout = { 1, 0 };
@@ -216,7 +217,9 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 
 	while(*fmt){
 		if(*fmt == '%'){
+#ifdef PRINTF_ENABLE_PADDING
 			int pad = 0;
+#endif
 
 #ifdef PRINTF_OPTIMISE
 			if(buflen)
@@ -225,6 +228,7 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 
 			fmt++;
 
+#ifdef PRINTF_ENABLE_PADDING
 			if(*fmt == '0'){
 				// %0([0-9]+)d
 				fmt++;
@@ -234,6 +238,7 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 					fmt++;
 				}
 			}
+#endif
 
 			switch(*fmt){
 				case 's':
@@ -252,6 +257,7 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 				{
 					const int n = va_arg(ap, int);
 
+#ifdef PRINTF_ENABLE_PADDING
 					if(pad){
 						if(n){
 							int len = 0, copy = n;
@@ -268,6 +274,7 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 								putchar('0');
 						}
 					}
+#endif
 
 					printd(fd, n, *fmt == 'd');
 					break;

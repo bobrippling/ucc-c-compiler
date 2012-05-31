@@ -54,13 +54,8 @@ ret:
 
 void fold_stmt_switch(stmt *s)
 {
-	stmt *oldswstmt = curstmt_switch;
 	type *typ;
 	symtable *test_symtab = fold_stmt_test_init_expr(s, "switch");
-
-	curstmt_switch = s;
-	curstmt_last_was_switch = 1;
-	/* don't set flow - "continue" doesn't apply to us */
 
 	s->lbl_break = asm_label_flow("switch");
 
@@ -79,8 +74,6 @@ void fold_stmt_switch(stmt *s)
 		UCC_ASSERT(typ->sue, "no enum for enum type");
 		fold_switch_enum(s, typ);
 	}
-
-	curstmt_switch = oldswstmt;
 }
 
 void gen_stmt_switch(stmt *s)
