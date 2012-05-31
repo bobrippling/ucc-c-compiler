@@ -10,6 +10,9 @@
 #include "ucc.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
+#include "cfg.h"
+
+#define DEBUG
 
 static char *
 where()
@@ -78,6 +81,7 @@ static void runner(int local, char *path, char **args)
 			argv[++i] = NULL;
 
 #ifdef DEBUG
+			fprintf(stderr, "%s:\n", *argv);
 			for(i = 0; argv[i]; i++)
 				fprintf(stderr, "  [%d] = \"%s\",\n", i, argv[i]);
 #endif
@@ -127,17 +131,35 @@ void compile(char *in, char *out, char **args)
 
 void assemble(char *in, char *out, char **args)
 {
-	runner_1(0, "nasm", in, out, args);
+	char **copy = NULL;
+
+	if(args)
+		dynarray_add_array((void ***)&copy, (void **)args);
+
+	dynarray_add((void ***)&copy, "-f");
+	dynarray_add((void ***)&copy, UCC_ARCH);
+
+	runner_1(0, UCC_NASM, in, out, copy);
+
+	dynarray_free((void ***)&copy, NULL);
 }
 
 void link_all(char **objs, char *out, char **args)
 {
 	char **all = NULL;
+	char *tok, *dup;
 
 	dynarray_add((void ***)&all, "-o");
 	dynarray_add((void ***)&all, out);
 
-	dynarray_add_array((void ***)&all, (void **)objs); /* TODO: order is important... */
+	dup = ustrdup(UCC_LDFLAGS);
+
+	for(tok = strtok(dup, " "); tok; tok = strtok(NULL, " "))
+		dynarray_add((void ***)&all, tok);
+
+	dynarray_add_array((void ***)&all, (void **)objs);
+
+	/* TODO: order is important - can't just group all objs at the end, etc */
 
 	if(args)
 		dynarray_add_array((void ***)&all, (void **)args);
@@ -145,4 +167,5 @@ void link_all(char **objs, char *out, char **args)
 	runner(0, "ld", all);
 
 	dynarray_free((void ***)&all, NULL);
+	free(dup);
 }
