@@ -3,12 +3,20 @@
 #include <string.h>
 #include <stdarg.h>
 #include <errno.h>
+#include <assert.h>
 
 #include "ucc.h"
 #include "ucc_ext.h"
 #include "ucc_lib.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
+
+struct
+{
+	int assume_c;
+	int nostdlib;
+	int nostartfiles;
+} gopts;
 
 enum mode
 {
@@ -17,6 +25,7 @@ enum mode
 	mode_assemb,
 	mode_link
 };
+#define MODE_ARG_CH(m) ("ESc\0"[m])
 
 struct cc_file
 {
@@ -28,6 +37,11 @@ struct cc_file
 
 	char *out;
 };
+#define FILE_IN_MODE(f)        \
+((f)->preproc ? mode_preproc : \
+ (f)->compile ? mode_compile : \
+ (f)->assemb  ? mode_assemb  : \
+ mode_link)
 
 const char *argv0;
 
@@ -47,6 +61,9 @@ void create_file(struct cc_file *file, enum mode mode, char *in)
 
 	file->in = in;
 
+	if(gopts.assume_c)
+		goto preproc;
+
 #define ASSIGN(x)                \
 				file->x = tmpfilenam();  \
 				if(mode == mode_ ## x){  \
@@ -57,6 +74,7 @@ void create_file(struct cc_file *file, enum mode mode, char *in)
 	ext = strrchr(in, '.');
 	if(ext && ext[1] && !ext[2]){
 		switch(ext[1]){
+preproc:
 			case 'c':
 				ASSIGN(preproc);
 			case 'i':
@@ -66,9 +84,10 @@ void create_file(struct cc_file *file, enum mode mode, char *in)
 				file->out = file->assemb;
 				break;
 
-			case 'o':
 			default:
-assume_obj:
+			assume_obj:
+				fprintf(stderr, "assuming \"%s\" is object-file\n", in);
+			case 'o':
 				/* else assume it's already an object file */
 				file->out = file->in;
 		}
@@ -89,26 +108,83 @@ void free_file(struct cc_file *file)
 
 void gen_obj_file(struct cc_file *file, char **args[4], enum mode mode)
 {
+	char *in = file->in;
+
+	if(file->preproc){
+		preproc(in, file->preproc, args[mode_preproc]);
+
+		if(mode == mode_preproc)
+			return;
+
+		in = file->preproc;
+	}
+
+	if(file->compile){
+		compile(in, file->compile, args[mode_compile]);
+
+		if(mode == mode_compile)
+			return;
+
+		in = file->compile;
+	}
+
 	if(file->assemb){
-		char *in = file->in;
-
-		if(file->compile){
-			if(file->preproc){
-				preproc(in, file->preproc, args[mode_preproc]);
-
-				if(mode == mode_preproc)
-					return;
-
-				in = file->preproc;
-			}
-			compile(in, file->compile, args[mode_compile]);
-
-			if(mode == mode_compile)
-				return;
-
-			in = file->compile;
-		}
 		assemble(in, file->assemb, args[mode_assemb]);
+	}
+}
+
+void rename_files(struct cc_file *files, int nfiles, char *output, enum mode mode)
+{
+	const char mode_ch = MODE_ARG_CH(mode);
+	int i;
+
+	for(i = 0; i < nfiles; i++){
+		/* path/to/input.c -> path/to/input.[os] */
+		char *new;
+
+		if(mode < mode_link && FILE_IN_MODE(&files[i]) == mode_link){
+			fprintf(stderr, "linker input \"%s\" unused with -%c present\n",
+					files[i].in, mode_ch);
+			continue;
+		}
+
+		if(output){
+			if(mode == mode_preproc){
+				/* append to current */
+				if(files[i].preproc)
+					cat(files[i].preproc, output, i);
+				continue;
+			}else if(mode == mode_compile && !strcmp(output, "-")){
+				cat(files[i].compile, NULL, 0);
+				continue;
+			}
+
+			new = ustrdup(output);
+		}else{
+			switch(mode){
+				case mode_link:
+					die("mode_link for multiple files");
+
+				case mode_preproc:
+					if(files[i].preproc)
+						cat(files[i].preproc, NULL, 0);
+					continue;
+
+				case mode_compile:
+				case mode_assemb:
+				{
+					int len;
+					new = ustrdup(files[i].in);
+					len = strlen(new);
+					new[len - 1] = mode == mode_compile ? 's' : 'o';
+					break;
+				}
+			}
+		}
+
+		rename_or_move(files[i].out, new);
+
+		free(new);
 	}
 }
 
@@ -124,8 +200,11 @@ void process_files(enum mode mode, char **inputs, char *output, char **args[4], 
 
 	files = umalloc(ninputs * sizeof *files);
 
-	links = objfiles_stdlib();
-	dynarray_add((void ***)&links, objfiles_start());
+	if(!gopts.nostdlib)
+		links = objfiles_stdlib();
+
+	if(!gopts.nostartfiles)
+		dynarray_add((void ***)&links, objfiles_start());
 
 
 	for(i = 0; i < ninputs; i++){
@@ -136,17 +215,17 @@ void process_files(enum mode mode, char **inputs, char *output, char **args[4], 
 		dynarray_add((void ***)&links, files[i].out);
 	}
 
-	if(mode == mode_assemb)
-		goto fin;
+	if(mode == mode_link)
+		link_all(links, output ? output : "a.out", args[mode_link]);
+	else
+		rename_files(files, ninputs, output, mode);
 
-	link_all(links, output, args[mode_link]);
-
-fin:
 	dynarray_free((void ***)&links, NULL);
 	/* technically we need to free the ones from objfiles_... */
 
 	for(i = 0; i < ninputs; i++)
 		free_file(&files[i]);
+
 	free(files);
 }
 
@@ -227,7 +306,7 @@ int main(int argc, char **argv)
 					/* else default to -Wsomething - add to cc1 */
 				}
 
-#define ADD_ARG(to) dynarray_add((void ***)&args[to], arg)
+#define ADD_ARG(to) dynarray_add((void ***)&args[to], ustrdup(arg))
 
 				case 'w':
 				case 'f':
@@ -252,19 +331,39 @@ arg_ld:
 					ADD_ARG(mode_link);
 					continue;
 
-				case 'E': mode = mode_preproc; continue;
-				case 'S': mode = mode_compile; continue;
-				case 'c': mode = mode_assemb;  continue;
+#define CHECK_1() if(argv[i][2]) goto unrec;
+				case 'E': CHECK_1(); mode = mode_preproc; continue;
+				case 'S': CHECK_1(); mode = mode_compile; continue;
+				case 'c': CHECK_1(); mode = mode_assemb;  continue;
 
 				case 'o':
-					output = argv[++i];
-					if(!output)
-						die("output argument needed");
+					if(argv[i][2]){
+						output = argv[i] + 2;
+					}else{
+						output = argv[++i];
+						if(!output)
+							die("output argument needed");
+					}
+					continue;
+
+				case 'x':
+					/* prevent implicit assumption of source */
+					if(!argv[++i] || strcmp(argv[i], "c"))
+						die("-x only accepts \"c\"");
+					gopts.assume_c = 1;
 					continue;
 
 				default:
-					/* TODO: -nostdlib, -nostartfiles */
-					die("TODO: %s", arg);
+					if(!strcmp(argv[i], "-nostdlib"))
+						gopts.nostdlib = 1;
+					else if(!strcmp(argv[i], "-nostartfiles"))
+						gopts.nostartfiles = 1;
+					else if(!strcmp(argv[i], "-###"))
+						ucc_ext_show_cmds(1);
+					else
+unrec:			die("%s: unrecognised argument: %s", *argv, arg);
+
+					continue;
 			}
 
 			for(j = 0; j < sizeof(opts) / sizeof(opts[0]); j++)
@@ -287,16 +386,14 @@ arg_ld:
 		}
 	}
 
-	if(!output){
-		output = "a.out";
-	}else if(output && dynarray_count((void **)inputs) > 1 && mode != mode_link){
-		char **i;
+	if(output && dynarray_count((void **)inputs) > 1 && (mode == mode_compile || mode == mode_assemb))
+		die("can't specify '-o' with '-%c' and an output", MODE_ARG_CH(mode));
 
-		for(i = inputs; *i; i++)
-			fprintf(stderr, "(input %s)\n", *i);
 
-		die("too many inputs (with output \"%s\")", output);
-	}
+	if(output && mode == mode_preproc && !strcmp(output, "-"))
+		output = NULL;
+	/* other case is -S, which is handled elsewhere */
+
 
 	/* got arguments, a mode, and files to link */
 	process_files(mode, inputs, output, args, backend);

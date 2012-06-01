@@ -12,7 +12,20 @@
 #include "../util/dynarray.h"
 #include "cfg.h"
 
-#define DEBUG
+static int show_cmds;
+
+void ucc_ext_show_cmds(int show)
+{
+	show_cmds = show;
+}
+
+static void
+bname(char *path)
+{
+	char *p = strrchr(path, '/');
+	if(p)
+		p[1] = '\0';
+}
 
 static char *
 where()
@@ -20,18 +33,25 @@ where()
 	static char where[1024];
 
 	if(!where[0]){
-		char *p;
+		char link[1024];
 		ssize_t nb;
 
-		if((nb = readlink(argv0, where, sizeof where)) == -1)
+		if((nb = readlink(argv0, link, sizeof link)) == -1){
 			snprintf(where, sizeof where, "%s", argv0);
-		else
-			where[nb] = '\0';
+		}else{
+			char *argv_dup;
+
+			link[nb] = '\0';
+			/* need to tag argv0's dirname onto the start */
+			argv_dup = ustrdup(argv0);
+
+			bname(argv_dup);
+
+			snprintf(where, sizeof where, "%s/%s", argv_dup, link);
+		}
 
 		/* dirname */
-		p = strrchr(where, '/');
-		if(p)
-			*++p = '\0';
+		bname(where);
 	}
 
 	return where;
@@ -51,8 +71,21 @@ char *actual_path(const char *prefix, const char *path)
 
 static void runner(int local, char *path, char **args)
 {
-	pid_t pid = fork();
+	pid_t pid;
 
+	if(show_cmds){
+		int i;
+
+		printf("%s ", path);
+		for(i = 0; args[i]; i++)
+			printf("%s ", args[i]);
+		putchar('\n');
+
+		return;
+	}
+
+
+	pid = fork();
 	switch(pid){
 		case -1:
 			die("fork():");
@@ -100,6 +133,51 @@ static void runner(int local, char *path, char **args)
 				die("%s returned %d", path, status);
 		}
 	}
+}
+
+void rename_or_move(char *old, char *new)
+{
+	char *args[3] = {
+		old, new, NULL
+	};
+
+	runner(0, "mv", args);
+}
+
+void cat(char *fnin, char *fnout, int append)
+{
+	FILE *in, *out;
+	char buf[1024];
+	size_t n;
+
+	if(show_cmds){
+		printf("cat %s >%s %s\n", fnin, append ? ">" : "", fnout ? fnout : "<stdout>");
+		return;
+	}
+
+	in  = fopen(fnin,  "r");
+	if(!in)
+		die("open %s:", fnin);
+
+	if(fnout){
+		out = fopen(fnout, append ? "a" : "w");
+		if(!out)
+			die("open %s:", fnout);
+	}else{
+		out = stdout;
+	}
+
+	while((n = fread(buf, sizeof *buf, sizeof buf, in)) > 0)
+		if(fwrite(buf, sizeof *buf, n, out) != n)
+			die("write():");
+
+	if(ferror(in))
+		die("read():");
+
+	fclose(in);
+
+	if(fnout && fclose(out) == EOF)
+		die("close():");
 }
 
 static void runner_1(int local, char *path, char *in, char *out, char **args)

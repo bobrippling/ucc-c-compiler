@@ -10,7 +10,7 @@
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
 
-#define LIB_PATH "./../../lib/"
+#define LIB_PATH "../../lib/"
 
 #define LIBS          \
 		"stdio.o",        \
