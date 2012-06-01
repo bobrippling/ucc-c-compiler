@@ -1,0 +1,249 @@
+#define _POSIX_C_SOURCE 200112L
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+
+#include "ucc_ext.h"
+#include "ucc.h"
+#include "../util/alloc.h"
+#include "../util/dynarray.h"
+#include "cfg.h"
+
+static int show_cmds;
+
+void ucc_ext_show_cmds(int show)
+{
+	show_cmds = show;
+}
+
+static void
+bname(char *path)
+{
+	char *p = strrchr(path, '/');
+	if(p)
+		p[1] = '\0';
+}
+
+static char *
+where()
+{
+	static char where[1024];
+
+	if(!where[0]){
+		char link[1024];
+		ssize_t nb;
+
+		if((nb = readlink(argv0, link, sizeof link)) == -1){
+			snprintf(where, sizeof where, "%s", argv0);
+		}else{
+			char *argv_dup;
+
+			link[nb] = '\0';
+			/* need to tag argv0's dirname onto the start */
+			argv_dup = ustrdup(argv0);
+
+			bname(argv_dup);
+
+			snprintf(where, sizeof where, "%s/%s", argv_dup, link);
+		}
+
+		/* dirname */
+		bname(where);
+	}
+
+	return where;
+}
+
+char *actual_path(const char *prefix, const char *path)
+{
+	char *w = where();
+	char *buf;
+
+	buf = umalloc(strlen(w) + strlen(prefix) + strlen(path) + 2);
+
+	sprintf(buf, "%s/%s%s", w, prefix, path);
+
+	return buf;
+}
+
+static void runner(int local, char *path, char **args)
+{
+	pid_t pid;
+
+	if(show_cmds){
+		int i;
+
+		printf("%s ", path);
+		for(i = 0; args[i]; i++)
+			printf("%s ", args[i]);
+		putchar('\n');
+
+		return;
+	}
+
+
+	pid = fork();
+	switch(pid){
+		case -1:
+			die("fork():");
+
+		case 0:
+		{
+			const int nargs = dynarray_count((void **)args);
+			int i;
+			char **argv;
+
+			/*
+			 * path,
+			 * { args }
+			 * NULL-term
+			 */
+			argv = umalloc((2 + nargs) * sizeof *argv);
+
+			if(local)
+				argv[0] = actual_path("../", path);
+			else
+				argv[0] = path;
+
+			for(i = 0; args[i]; i++)
+				argv[i + 1] = args[i];
+
+			argv[++i] = NULL;
+
+#ifdef DEBUG
+			fprintf(stderr, "%s:\n", *argv);
+			for(i = 0; argv[i]; i++)
+				fprintf(stderr, "  [%d] = \"%s\",\n", i, argv[i]);
+#endif
+
+			(local ? execv : execvp)(argv[0], argv);
+			die("execv():");
+		}
+
+		default:
+		{
+			int status;
+			if(wait(&status) == -1)
+				die("wait()");
+
+			if(!WIFEXITED(status) || WEXITSTATUS(status) != 0)
+				die("%s returned %d", path, status);
+		}
+	}
+}
+
+void rename_or_move(char *old, char *new)
+{
+	char *args[3] = {
+		old, new, NULL
+	};
+
+	runner(0, "mv", args);
+}
+
+void cat(char *fnin, char *fnout, int append)
+{
+	FILE *in, *out;
+	char buf[1024];
+	size_t n;
+
+	if(show_cmds){
+		printf("cat %s >%s %s\n", fnin, append ? ">" : "", fnout ? fnout : "<stdout>");
+		return;
+	}
+
+	in  = fopen(fnin,  "r");
+	if(!in)
+		die("open %s:", fnin);
+
+	if(fnout){
+		out = fopen(fnout, append ? "a" : "w");
+		if(!out)
+			die("open %s:", fnout);
+	}else{
+		out = stdout;
+	}
+
+	while((n = fread(buf, sizeof *buf, sizeof buf, in)) > 0)
+		if(fwrite(buf, sizeof *buf, n, out) != n)
+			die("write():");
+
+	if(ferror(in))
+		die("read():");
+
+	fclose(in);
+
+	if(fnout && fclose(out) == EOF)
+		die("close():");
+}
+
+static void runner_1(int local, char *path, char *in, char *out, char **args)
+{
+	char **all = NULL;
+
+	if(args)
+		dynarray_add_array((void ***)&all, (void **)args);
+
+	dynarray_add((void ***)&all, "-o");
+	dynarray_add((void ***)&all, out);
+
+	dynarray_add((void ***)&all, in);
+
+	runner(local, path, all);
+
+	dynarray_free((void ***)&all, NULL);
+}
+
+void preproc(char *in, char *out, char **args)
+{
+	runner_1(1, "cpp2/cpp", in, out, args);
+}
+
+void compile(char *in, char *out, char **args)
+{
+	runner_1(1, "cc1/cc1", in, out, args);
+}
+
+void assemble(char *in, char *out, char **args)
+{
+	char **copy = NULL;
+
+	if(args)
+		dynarray_add_array((void ***)&copy, (void **)args);
+
+	dynarray_add((void ***)&copy, "-f");
+	dynarray_add((void ***)&copy, UCC_ARCH);
+
+	runner_1(0, UCC_NASM, in, out, copy);
+
+	dynarray_free((void ***)&copy, NULL);
+}
+
+void link_all(char **objs, char *out, char **args)
+{
+	char **all = NULL;
+	char *tok, *dup;
+
+	dynarray_add((void ***)&all, "-o");
+	dynarray_add((void ***)&all, out);
+
+	dup = ustrdup(UCC_LDFLAGS);
+
+	for(tok = strtok(dup, " "); tok; tok = strtok(NULL, " "))
+		dynarray_add((void ***)&all, tok);
+
+	dynarray_add_array((void ***)&all, (void **)objs);
+
+	/* TODO: order is important - can't just group all objs at the end, etc */
+
+	if(args)
+		dynarray_add_array((void ***)&all, (void **)args);
+
+	runner(0, "ld", all);
+
+	dynarray_free((void ***)&all, NULL);
+	free(dup);
+}

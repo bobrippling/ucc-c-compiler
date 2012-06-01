@@ -22,9 +22,8 @@ make
 Compiling C files
 =================
 
-Pretty much the standard args, cc is found in src/
-All paths in cc are relative to this, so don't change it.
-I haven't made an install make target yet.
+Pretty much the standard args
+I haven't made an install make target yet, ucc finds libraries + includes locally
 
 All programs compiled by ucc are staticly linked.
 
@@ -38,28 +37,28 @@ floating point numbers, long + short types (asm_backend_recode branch)
 Examples
 ========
 
-./src/cc -o hello hello.c
+./ucc -o hello hello.c
 - preprocess, compile, assemble and link hello.c into hello
 
-./src/cc -o- -S test.c
+./ucc -o- -S test.c
 - output assmebly code for test.c
 
-./src/cc -o- -S -Xprint test.c
+./ucc -o- -S -Xprint test.c
 - show the abstract parse tree with type annotation and stack offsets, etc
 
-./src/cc -c test.c
+./ucc -c test.c
 - (preprocess) compile and assemble test.c -> test.o
 
-./src/cc -c test.s
+./ucc -c test.s
 - assemble test.s -> test.o
 (preprocessing and compilation are skipped)
 
-./src/cc -fenglish -Xprint -o- test.c
+./ucc -fenglish -Xprint -o- test.c
 - (-fenglish) show the abstract parse tree with output decls in english
 e.g.:
 	int *(*const (*x)(void))(int);
 becomes:
 	"x": pointer to function(taking no arguments) returning const pointer to function(int) returning pointer to int
 
-./src/cc -E -o- test.c
+./ucc -E -o- test.c
 - if you need to ask then read some proper compiler documentation
