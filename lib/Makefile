@@ -1,4 +1,4 @@
-UCC_CC = ../ucc
+UCC_CC = ../src/ucc/ucc
 OBJ    = crt.o syscall.o dirent.o                       \
          stdio.o stdlib.o string.o unistd.o signal.o    \
 				 assert.o ctype.o                               \
