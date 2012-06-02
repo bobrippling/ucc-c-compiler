@@ -1,23 +1,25 @@
 include src_config.mk
 
-all: cc1 cpp2 cc
+MAKE_DIR = make -C $@
 
-cc: cc.c cc.h util/alloc.o util/dynarray.o
-	${CC} ${CFLAGS} -o $@ cc.c util/alloc.o util/dynarray.o
+all: cc1 cpp2 ucc
+
+ucc: util
+	${MAKE_DIR}
 
 cc1: util
-	make -C cc1
+	${MAKE_DIR}
 
 cpp2: util
-	make -C cpp2
+	${MAKE_DIR}
 
 util:
-	make -C util
+	${MAKE_DIR}
 
 clean:
-	rm -f cc *.o
 	make -C cc1  clean
 	make -C cpp2 clean
+	make -C ucc  clean
 	make -C util clean
 
-.PHONY: cc1 cpp2 util clean
+.PHONY: cc1 cpp2 ucc util clean

@@ -743,10 +743,10 @@ stmt *parse_code()
 			stmt *(*parse_f)();
 			stmt *ret, *old[2];
 
-		case token_while: 
+		case token_while:
 			parse_f = parse_while;
 			goto flow;
-		case token_do:  
+		case token_do:
 			parse_f = parse_do;
 			goto flow;
 		case token_for:
