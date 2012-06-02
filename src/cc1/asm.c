@@ -156,10 +156,10 @@ void asm_indir(enum asm_indir mode, decl *tt, char rto, char rfrom, const char *
 		else
 			asm_temp(1, "movzx r%cx, byte [r%cx]", rto, rfrom);
 	}else{
- 		if(full_word)
+		if(full_word)
 			asm_temp(1, "mov [r%cx], r%cx", rto, rfrom);
 		else
-			asm_temp(1, "mov byte [r%cx], %cl", rto, rfrom); 
+			asm_temp(1, "mov byte [r%cx], %cl", rto, rfrom);
 	}
 
 	if(comment)
