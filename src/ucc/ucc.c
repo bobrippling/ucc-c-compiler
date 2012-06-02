@@ -43,16 +43,31 @@ struct cc_file
  (f)->assemb  ? mode_assemb  : \
  mode_link)
 
+static char **remove_these;
 const char *argv0;
 
-char *tmpfilenam()
+static void unlink_files(void)
+{
+	int i;
+	for(i = 0; remove_these[i]; i++)
+		remove(remove_these[i]);
+}
+
+static char *tmpfilenam()
 {
 	char *r = tmpnam(NULL);
 
 	if(!r)
 		die("tmpfile():");
 
-	return ustrdup(r);
+	r = ustrdup(r);
+
+	if(!remove_these) /* only register once */
+		atexit(unlink_files);
+
+	dynarray_add((void ***)&remove_these, r);
+
+	return r;
 }
 
 void create_file(struct cc_file *file, enum mode mode, char *in)
@@ -98,11 +113,10 @@ preproc:
 
 void free_file(struct cc_file *file)
 {
-#define DEL_FREE(fn) remove(fn); free(fn)
 	/*free(file->in);*/
-	DEL_FREE(file->preproc);
-	DEL_FREE(file->compile);
-	DEL_FREE(file->assemb);
+	free(file->preproc);
+	free(file->compile);
+	free(file->assemb);
 	/*free(file->out);*/
 }
 
