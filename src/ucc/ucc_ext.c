@@ -130,12 +130,14 @@ static void runner(int local, char *path, char **args)
 
 		default:
 		{
-			int status;
+			int status, i;
 			if(wait(&status) == -1)
 				die("wait()");
 
-			if(!WIFEXITED(status) || WEXITSTATUS(status) != 0)
-				die("%s returned %d", path, status);
+			if(WIFEXITED(status) && (i = WEXITSTATUS(status)) != 0)
+				die("%s returned %d", path, i);
+			else if(WIFSIGNALED(status))
+				die("%s caught signal %d", path, WTERMSIG(status));
 		}
 	}
 }
