@@ -14,7 +14,7 @@ void gen_stmt_style(stmt *s)
 
 void gen_style_global(decl *d)
 {
-	fprintf(cc1_out, "global decl %s\n", decl_spel(d));
+	fprintf(cc1_out, "global decl %s\n", d->spel);
 	if(d->func_code)
 		gen_stmt_style(d->func_code);
 }

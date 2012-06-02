@@ -516,21 +516,6 @@ void decl_conv_array_ptr(decl *d)
 	}
 }
 
-char *decl_spel(decl *d)
-{
-#if 0
-	decl_desc *dp;
-
-	if(!d->desc)
-		return NULL;
-
-	for(dp = d->desc; dp->child; dp = dp->child);
-
-	return NULL;
-#endif
-	return d->spel;
-}
-
 void decl_set_spel(decl *d, char *sp)
 {
 #if 0

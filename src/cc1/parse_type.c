@@ -221,7 +221,7 @@ type *parse_type()
 
 		/* signed size_t x; */
 		if(tdef_typeof && signed_set)
-			die_at(NULL, "signed/unsigned not allowed with typedef instance (%s)", decl_spel(tdef_typeof->decl));
+			die_at(NULL, "signed/unsigned not allowed with typedef instance (%s)", tdef_typeof->decl->spel);
 
 
 		if(!primitive_set)
@@ -275,7 +275,7 @@ funcargs *parse_func_arglist()
 		if(dynarray_count((void *)args->arglist) == 1
 				&& args->arglist[0]->type->primitive == type_void
 				&& !decl_ptr_depth(args->arglist[0])
-				&& !decl_spel(args->arglist[0])){
+				&& !args->arglist[0]->spel){
 			/* x(void); */
 			function_empty_args(args);
 			args->args_void = 1; /* (void) vs () */
@@ -445,7 +445,7 @@ decl *parse_decl(type *t, enum decl_mode mode)
 		fprintf(stderr, "\tdesc %s\n", decl_desc_str(dp));
 #endif
 
-	if(decl_spel(d) && accept(token_assign))
+	if(d->spel && accept(token_assign))
 		d->init = parse_expr_no_comma(); /* int x = 5, j; - don't grab the comma expr */
 
 	return d;
@@ -530,7 +530,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 
 			UCC_ASSERT(d, "null decl after parse");
 
-			if(!decl_spel(d)){
+			if(!d->spel){
 				/*
 				 * int; - fine for "int;", but "int i,;" needs to fail
 				 * struct A; - fine
@@ -576,12 +576,12 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 
 					for(i = 0; i < n_old_args; i++)
 						if(old_args[i]->init)
-							die_at(&old_args[i]->where, "parameter \"%s\" is initialised", decl_spel(old_args[i]));
+							die_at(&old_args[i]->where, "parameter \"%s\" is initialised", old_args[i]->spel);
 
 					for(i = 0; i < n_old_args; i++){
 						int j;
 						for(j = 0; j < n_proto_decls; j++){
-							if(!strcmp(decl_spel(old_args[i]), decl_spel(dfuncargs->arglist[j]))){
+							if(!strcmp(old_args[i]->spel, dfuncargs->arglist[j]->spel)){
 								decl **replace_this;
 								decl *free_this;
 
@@ -643,7 +643,7 @@ next:
 				case token_open_paren:
 				case token_multiply:
 					if(last)
-						die_at(NULL, "unknown type name '%s'", decl_spel(last));
+						die_at(NULL, "unknown type name '%s'", last->spel);
 					/* else die below */
 				default:
 					break;

@@ -77,7 +77,7 @@ void fold_decl_desc(decl_desc *dp, symtable *stab, decl *root)
 {
 	switch(dp->type){
 		case decl_desc_func:
-			fold_funcargs(dp->bits.func, stab, decl_spel(root));
+			fold_funcargs(dp->bits.func, stab, root->spel);
 			break;
 
 		case decl_desc_array:
@@ -278,7 +278,7 @@ void fold_decl(decl *d, symtable *stab)
 	switch(d->type->primitive){
 		case type_void:
 			if(!decl_ptr_depth(d) && !decl_is_callable(d) && d->spel)
-				die_at(&d->where, "can't have a void variable - %s (%s)", decl_spel(d), decl_to_str(d));
+				die_at(&d->where, "can't have a void variable - %s (%s)", d->spel, decl_to_str(d));
 			break;
 
 		case type_enum:
@@ -287,8 +287,8 @@ void fold_decl(decl *d, symtable *stab)
 			if(sue_incomplete(d->type->sue) && !decl_ptr_depth(d))
 				die_at(&d->where, "use of %s%s%s",
 						type_to_str(d->type),
-						decl_spel(d) ?     " " : "",
-						decl_spel(d) ? decl_spel(d) : "");
+						d->spel ?     " " : "",
+						d->spel ? d->spel : "");
 			break;
 
 		case type_int:
@@ -308,8 +308,8 @@ void fold_decl(decl *d, symtable *stab)
 	}else if(d->type->qual & qual_restrict){
 		die_at(&d->where, "restrict on non-pointer type %s%s%s",
 				type_to_str(d->type),
-				decl_spel(d) ? " " : "",
-				decl_spel(d) ? decl_spel(d) : "");
+				d->spel ? " " : "",
+				d->spel ? d->spel : "");
 	}
 
 	if(d->field_width && !decl_is_integral(d))
@@ -378,7 +378,7 @@ void fold_decl(decl *d, symtable *stab)
 
 				fold_decl_equal(d, d->init->tree_type, &d->where, WARN_ASSIGN_MISMATCH,
 						"mismatching initialisation for %s (%s vs. %s)",
-						decl_spel(d), buf_a, buf_b);
+						d->spel, buf_a, buf_b);
 			}
 
 			if(const_fold(d->init) && !const_expr_is_const(d->init)){
@@ -478,7 +478,7 @@ void fold_funcargs(funcargs *fargs, symtable *stab, char *context)
 			fold_decl(d, stab);
 
 			if(type_store_static_or_extern(d->type->store)){
-				const char *sp = decl_spel(d);
+				const char *sp = d->spel;
 				die_at(&fargs->where, "argument %d %s%s%sin function \"%s\" is static or extern",
 						i + 1,
 						sp ? "(" : "",
@@ -492,7 +492,7 @@ void fold_funcargs(funcargs *fargs, symtable *stab, char *context)
 
 void fold_func(decl *func_decl, symtable *globs)
 {
-	curdecl_func_sp = decl_spel(func_decl);
+	curdecl_func_sp = func_decl->spel;
 
 	if(func_decl->func_code){
 		funcargs *fargs;
@@ -504,7 +504,7 @@ void fold_func(decl *func_decl, symtable *globs)
 			for(nargs = 0; fargs->arglist[nargs]; nargs++);
 			/* add args backwards, since we push them onto the stack backwards - still need to do this here? */
 			for(i = nargs - 1; i >= 0; i--){
-				if(!decl_spel(fargs->arglist[i]))
+				if(!fargs->arglist[i]->spel)
 					die_at(&fargs->where, "function \"%s\" has unnamed arguments", curdecl_func_sp);
 				else
 					SYMTAB_ADD(func_decl->func_code->symtab, fargs->arglist[i], sym_arg);
@@ -697,7 +697,7 @@ void fold(symtable *globs)
 
 	for(i = 0; D(i); i++)
 		if(D(i)->sym)
-			ICE("%s: sym (%p) already set for global \"%s\"", where_str(&D(i)->where), (void *)D(i)->sym, decl_spel(D(i)));
+			ICE("%s: sym (%p) already set for global \"%s\"", where_str(&D(i)->where), (void *)D(i)->sym, D(i)->spel);
 
 	for(;;){
 		int i;

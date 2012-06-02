@@ -77,11 +77,11 @@ void gen_asm_global(decl *d)
 	if(d->func_code){
 		const int offset = d->func_code->symtab->auto_total_size;
 
-		asm_label(decl_spel(d));
+		asm_label(d->spel);
 		asm_temp(1, "push rbp");
 		asm_temp(1, "mov rbp, rsp");
 
-		curfunc_lblfin = asm_label_code(decl_spel(d));
+		curfunc_lblfin = asm_label_code(d->spel);
 
 		if(offset)
 			gen_func_stack(d, offset);
@@ -107,7 +107,7 @@ void gen_asm_global(decl *d)
 
 	}else{
 		/* always resb, since we use decl_size() */
-		asm_tempf(cc_out[SECTION_BSS], 0, "%s resb %d", decl_spel(d), decl_size(d));
+		asm_tempf(cc_out[SECTION_BSS], 0, "%s resb %d", d->spel, decl_size(d));
 	}
 }
 
@@ -143,7 +143,7 @@ void gen_asm(symtable *globs)
 				/* else extern func with definition */
 
 			case store_default:
-				asm_temp(0, "global %s", decl_spel(d));
+				asm_temp(0, "global %s", d->spel);
 		}
 
 		gen_asm_global(d);

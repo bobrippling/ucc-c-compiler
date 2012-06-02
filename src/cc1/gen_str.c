@@ -104,8 +104,8 @@ void print_decl_desc_eng(decl_desc *dp)
 
 void print_decl_eng(decl *d)
 {
-	if(decl_spel(d))
-		fprintf(cc1_out, "\"%s\": ", decl_spel(d));
+	if(d->spel)
+		fprintf(cc1_out, "\"%s\": ", d->spel);
 
 	if(d->desc)
 		print_decl_desc_eng(d->desc);
@@ -254,7 +254,7 @@ void print_decl(decl *d, enum pdeclargs mode)
 		gen_str_indent++;
 
 		for(iter = d->func_code->symtab->decls; iter && *iter; iter++)
-			idt_printf("offset of %s = %d\n", decl_spel(*iter), (*iter)->sym->offset);
+			idt_printf("offset of %s = %d\n", (*iter)->spel, (*iter)->sym->offset);
 
 		idt_printf("function stack space %d\n", d->func_code->symtab->auto_total_size);
 

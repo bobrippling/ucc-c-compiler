@@ -193,7 +193,6 @@ int funcargs_equal(funcargs *args_a, funcargs *args_b, int strict_types, int *id
 
 const char *decl_desc_str(decl_desc *dp);
 
-char *decl_spel(decl *);
 void  decl_set_spel(decl *, char *);
 
 const char *decl_to_str(decl *d);
