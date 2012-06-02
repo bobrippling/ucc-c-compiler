@@ -2,6 +2,7 @@
 
 #include "ops.h"
 #include "stmt_for.h"
+#include "stmt_code.h"
 
 const char *str_stmt_for()
 {
@@ -80,6 +81,12 @@ void fold_stmt_for(stmt *s)
 	}
 
 	fold_stmt(s->lhs);
+
+	/*
+	 * need an extra generation for for_init,
+	 * since it's generated unlike other loops (symtab_new() in parse.c)
+	 */
+	gen_code_decls(s->flow->for_init_symtab);
 
 #ifdef SYMTAB_DEBUG
 	fprintf(stderr, "for-code st:\n");
