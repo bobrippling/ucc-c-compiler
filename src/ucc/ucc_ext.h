@@ -10,6 +10,7 @@ void compile( char *in,    char *out, char **args);
 void assemble(char *in,    char *out, char **args);
 void link_all(char **objs, char *out, char **args);
 
-void ucc_ext_show_cmds(int);
+void ucc_ext_cmds_show(int);
+void ucc_ext_cmds_noop(int);
 
 #endif

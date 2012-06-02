@@ -200,8 +200,7 @@ void process_files(enum mode mode, char **inputs, char *output, char **args[4], 
 
 	files = umalloc(ninputs * sizeof *files);
 
-	if(!gopts.nostdlib)
-		links = objfiles_stdlib();
+	links = gopts.nostdlib ? NULL : objfiles_stdlib();
 
 	if(!gopts.nostartfiles)
 		dynarray_add((void ***)&links, objfiles_start());
@@ -359,9 +358,11 @@ arg_ld:
 					else if(!strcmp(argv[i], "-nostartfiles"))
 						gopts.nostartfiles = 1;
 					else if(!strcmp(argv[i], "-###"))
-						ucc_ext_show_cmds(1);
+						ucc_ext_cmds_show(1), ucc_ext_cmds_noop(1);
+					else if(!strcmp(argv[i], "-v"))
+						ucc_ext_cmds_show(1);
 					else
-unrec:			die("%s: unrecognised argument: %s", *argv, arg);
+						break;
 
 					continue;
 			}
@@ -380,7 +381,7 @@ unrec:			die("%s: unrecognised argument: %s", *argv, arg);
 				}
 
 			if(!found)
-				die("unrecognised option \"%s\"", argv[i]);
+unrec:	 die("unrecognised option \"%s\"", argv[i]);
 		}else{
 			dynarray_add((void ***)&inputs, argv[i]);
 		}
@@ -400,6 +401,7 @@ unrec:			die("%s: unrecognised argument: %s", *argv, arg);
 
 	for(i = 0; i < 4; i++)
 		dynarray_free((void ***)&args[i], free);
+	dynarray_free((void ***)&inputs, NULL);
 
 	return 0;
 }

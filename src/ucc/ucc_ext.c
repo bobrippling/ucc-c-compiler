@@ -12,12 +12,14 @@
 #include "../util/dynarray.h"
 #include "cfg.h"
 
-static int show_cmds;
+static int show, noop;
 
-void ucc_ext_show_cmds(int show)
-{
-	show_cmds = show;
-}
+void ucc_ext_cmds_show(int s)
+{ show = s; }
+
+void ucc_ext_cmds_noop(int n)
+{ noop = n; }
+
 
 static void
 bname(char *path)
@@ -48,6 +50,8 @@ where()
 			bname(argv_dup);
 
 			snprintf(where, sizeof where, "%s/%s", argv_dup, link);
+
+			free(argv_dup);
 		}
 
 		/* dirname */
@@ -73,16 +77,17 @@ static void runner(int local, char *path, char **args)
 {
 	pid_t pid;
 
-	if(show_cmds){
+	if(show){
 		int i;
 
 		printf("%s ", path);
 		for(i = 0; args[i]; i++)
 			printf("%s ", args[i]);
 		putchar('\n');
-
-		return;
 	}
+
+	if(noop)
+		return;
 
 
 	pid = fork();
@@ -150,10 +155,10 @@ void cat(char *fnin, char *fnout, int append)
 	char buf[1024];
 	size_t n;
 
-	if(show_cmds){
+	if(show)
 		printf("cat %s >%s %s\n", fnin, append ? ">" : "", fnout ? fnout : "<stdout>");
+	if(noop)
 		return;
-	}
 
 	in  = fopen(fnin,  "r");
 	if(!in)
@@ -199,7 +204,23 @@ static void runner_1(int local, char *path, char *in, char *out, char **args)
 
 void preproc(char *in, char *out, char **args)
 {
-	runner_1(1, "cpp2/cpp", in, out, args);
+	char **all = NULL;
+	char *inc_path;
+	char *inc;
+
+	if(args)
+		dynarray_add_array((void ***)&all, (void **)args);
+
+	inc_path = actual_path("../../lib/", "");
+	inc = ustrprintf("-I%s", inc_path);
+
+	dynarray_add((void ***)&all, inc);
+
+	runner_1(1, "cpp2/cpp", in, out, all);
+
+	free(inc);
+	free(inc_path);
+	dynarray_free((void ***)&all, NULL);
 }
 
 void compile(char *in, char *out, char **args)

@@ -33,21 +33,27 @@
 
 char **objfiles_stdlib(void)
 {
-	const char *names[] = {
-		LIBS,
-		NULL
-	};
+	static char **ret = NULL;
 
-	char **ret = NULL;
-	int i;
+	if(!ret){
+		const char *names[] = {
+			LIBS,
+			NULL
+		};
 
-	for(i = 0; names[i]; i++)
-		dynarray_add((void ***)&ret, lib_actual_path(names[i]));
+		int i;
+
+		for(i = 0; names[i]; i++)
+			dynarray_add((void ***)&ret, lib_actual_path(names[i]));
+	}
 
 	return ret;
 }
 
 char *objfiles_start(void)
 {
-	return lib_actual_path("crt.o");
+	static char *p;
+  if(!p)
+		p = lib_actual_path("crt.o");
+	return p;
 }
