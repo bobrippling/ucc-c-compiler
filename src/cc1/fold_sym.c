@@ -26,6 +26,8 @@ int symtab_fold(symtable *tab, int current)
 			sym *s = (*diter)->sym;
 			/*enum type_primitive last = type_int; TODO: packing */
 
+			DECL_ASM_RENAME(*diter, 0);
+
 			if(s->type == sym_local){
 				switch(s->decl->type->store){
 					case store_auto:

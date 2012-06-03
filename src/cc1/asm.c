@@ -10,12 +10,99 @@
 #include "asm.h"
 #include "../util/platform.h"
 #include "../util/alloc.h"
+#include "../util/dynarray.h"
 #include "sue.h"
 
 #define SNPRINTF(s, n, ...) \
 		UCC_ASSERT(snprintf(s, n, __VA_ARGS__) != n, "snprintf buffer too small")
 
 static int label_last = 1, str_last = 1, switch_last = 1, flow_last = 1;
+
+char *asm_label_func(decl *d, funcargs *fargs)
+{
+	if(decl_overloaded(d)){
+		char *buf;
+		char *p;
+		int len;
+		decl_desc *dp;
+		decl **arg;
+
+		/* +1 for nul, +2 for _Z, +16 for number */
+		len = 19 + strlen(d->spel);
+
+		for(arg = fargs ? fargs->arglist : NULL; arg && *arg; arg++){
+			for(dp = (*arg)->desc; dp; dp = dp->child){
+				len++;
+			}
+
+			switch(d->type->primitive){
+				case type_int:
+				case type_char:
+					len++;
+					break;
+
+				case type_struct:
+				case type_union:
+				case type_enum:
+					len += strlen(d->type->sue->spel);
+					break;
+
+				case type_void:
+				case type_unknown:
+					ICE("%s arg", type_primitive_to_str(d->type->primitive));
+			}
+			len++;
+		}
+
+		p = buf = umalloc(len);
+		strcpy(p, "_Z");
+		p += 2;
+
+#define APPEND_NAME(p, n) sprintf(p, "%ld%s", strlen(n), n)
+		p += APPEND_NAME(p, d->spel);
+
+		for(arg = fargs ? fargs->arglist : NULL; arg && *arg; arg++){
+			decl *const d = *arg;
+			char ch;
+
+			for(dp = d->desc; dp; dp = dp->child){
+				switch(dp->type){
+					case decl_desc_func:
+						ch = 'F';
+						/* TODO: append more func ptr detail */
+						break;
+					case decl_desc_ptr:
+					case decl_desc_array:
+						ch = 'P';
+				}
+
+				p += sprintf(p, "%c", ch);
+			}
+
+			ch = '\0';
+			switch(d->type->primitive){
+#define CLASS(x) case type_ ## x: ch = *#x; break
+				CLASS(int);
+				CLASS(char);
+
+				case type_struct:
+				case type_union:
+				case type_enum:
+					p += APPEND_NAME(p, d->type->sue->spel);
+				case type_void:
+				case type_unknown:
+					break;
+			}
+
+			if(ch)
+				p += sprintf(p, "%c", ch);
+		}
+
+		return buf;
+	}else{
+		return ustrdup(d->spel);
+	}
+}
 
 char *asm_label_code(const char *fmt)
 {
@@ -95,7 +182,7 @@ char *asm_label_flow(const char *fmt)
 void asm_sym(enum asm_sym_type t, sym *s, const char *reg)
 {
 	const int is_global = s->type == sym_global || type_store_static_or_extern(s->decl->type->store);
-	char *const dsp = s->decl->spel;
+	char *const dsp = s->decl->spel_asm;
 	int is_auto = s->type == sym_local;
 	char  stackbrackets[16];
 	char *brackets;
@@ -278,7 +365,7 @@ void asm_declare_single(FILE *f, decl *d)
 		UCC_ASSERT(d->init->array_store, "no array store for struct init (TODO?)");
 		UCC_ASSERT(d->init->array_store->type == array_exprs, "array store of strings for struct");
 
-		fprintf(f, "%s dq ", d->spel); /* XXX: assumes all struct members are word-size */
+		fprintf(f, "%s dq ", d->spel_asm); /* XXX: assumes all struct members are word-size */
 
 		for(i = 0; i < d->init->array_store->len; i++)
 			fprintf(f, "%ld%s",
@@ -287,7 +374,7 @@ void asm_declare_single(FILE *f, decl *d)
 					);
 
 	}else{
-		fprintf(f, "%s d%c ", d->spel, asm_type_ch(d));
+		fprintf(f, "%s d%c ", d->spel_asm, asm_type_ch(d));
 
 		asm_declare_single_part(f, d->init);
 	}

@@ -54,21 +54,6 @@ void fold_stmt_code(stmt *s)
 			}
 		}
 	}
-
-	/* static folding */
-	if(s->decls){
-		decl **iter;
-
-		for(iter = s->decls; *iter; iter++){
-			decl *d = *iter;
-			/*
-			 * check static decls - after we fold,
-			 * so we've linked the syms and can change ->spel
-			 */
-			if(d->type->store == store_static)
-				decl_set_spel(d, asm_label_static_local(curdecl_func_sp, d->spel));
-		}
-	}
 }
 
 void gen_code_decls(symtable *stab)

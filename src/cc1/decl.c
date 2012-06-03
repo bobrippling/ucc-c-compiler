@@ -9,6 +9,9 @@
 #include "../util/dynarray.h"
 #include "data_structs.h"
 #include "macros.h"
+#include "asm.h"
+#include "cc1.h"
+#include "fold.h"
 
 #define ITER_DESC_TYPE(d, dp, typ)     \
 	for(dp = d->desc; dp; dp = dp->child) \
@@ -92,6 +95,19 @@ decl_attr *decl_attr_new(enum decl_attr_type t)
 	return da;
 }
 
+decl_attr *decl_attr_copy(decl_attr *da)
+{
+	decl_attr *ret = decl_attr_new(da->type);
+
+	memcpy(&ret->where, &da->where, sizeof ret->where);
+	memcpy(&ret->attr_extra, &da->attr_extra, sizeof ret->attr_extra);
+
+	if(da->next)
+		ret->next = decl_attr_copy(da->next);
+
+	return ret;
+}
+
 int decl_attr_present(decl_attr *da, enum decl_attr_type t)
 {
 	for(; da; da = da->next)
@@ -120,6 +136,8 @@ decl *decl_copy(decl *d)
 		ret->desc = decl_desc_copy(d->desc);
 		ret->desc->parent_decl = ret;
 	}
+	if(d->attr)
+		ret->attr = decl_attr_copy(d->attr);
 	return ret;
 }
 
@@ -302,9 +320,17 @@ decl_desc *decl_leaf(decl *d)
 
 funcargs *decl_funcargs(decl *d)
 {
-	decl_desc *dp;
-	for(dp = d->desc; dp->type != decl_desc_func && dp->child; dp = dp->child);
-	return dp->bits.func;
+	decl_desc *dp, *last;
+
+	last = NULL;
+
+	/* all the way to the bottom, and ret the last func */
+	for(dp = d->desc; dp; dp = dp->child)
+		if(dp->type == decl_desc_func)
+			last = dp;
+
+
+	return last ? last->bits.func : NULL;
 }
 
 int decl_is_struct_or_union(decl *d)
@@ -518,30 +544,23 @@ void decl_conv_array_ptr(decl *d)
 
 void decl_set_spel(decl *d, char *sp)
 {
-#if 0
-	decl_desc **new, *prev;
-
-	if(d->desc){
-		decl_desc *p;
-		for(p = d->desc; p->child; p = p->child);
-
-		if(p->type == decl_desc_spel){
-			free(p->bits.spel);
-			p->bits.spel = sp;
-			return;
-		}
-
-		prev = p;
-		new = &p->child;
-	}else{
-		prev = NULL;
-		new = &d->desc;
-	}
-
-	*new = decl_desc_spel_new(d, prev, sp);
-#endif
 	free(d->spel);
 	d->spel = sp;
+}
+
+void decl_asm_rename(decl *d, int global, funcargs *fargs)
+{
+	if(d->spel_asm)
+		return;
+
+	if(decl_is_func(d) || fargs)
+		d->spel_asm = asm_label_func(d, fargs);
+	else if(!global && d->type->store == store_static)
+		d->spel_asm = asm_label_static_local(curdecl_func_sp, d->spel);
+	else
+		d->spel_asm = ustrdup(d->spel);
+
+	fprintf(stderr, "%s: %s -> %s, %d\n", __func__, d->spel, d->spel_asm, decl_overloaded(d));
 }
 
 void decl_desc_link(decl *d)

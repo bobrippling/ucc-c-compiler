@@ -1,3 +1,5 @@
+printf();
+
 // _Zret%dfn{args}
 
 f(void) __attribute__((overloadable))

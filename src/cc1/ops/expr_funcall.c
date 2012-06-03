@@ -19,6 +19,7 @@ int const_fold_expr_funcall(expr *e)
 
 void fold_expr_funcall(expr *e, symtable *stab)
 {
+	int overloaded;
 	decl *df;
 	funcargs *args_from_decl;
 
@@ -66,7 +67,7 @@ void fold_expr_funcall(expr *e, symtable *stab)
 		e->expr = op_deref_expr(e->expr);
 	}
 
-	df = e->tree_type = decl_func_deref(decl_copy(df), &args_from_decl);
+	df = decl_func_deref(decl_copy(df), &args_from_decl);
 
 	/* func count comparison, only if the func has arg-decls, or the func is f(void) */
 	UCC_ASSERT(args_from_decl, "no funcargs for decl %s", df->spel);
@@ -93,6 +94,8 @@ void fold_expr_funcall(expr *e, symtable *stab)
 		}
 	}
 
+	overloaded = decl_overloaded(df);
+
 	if(args_from_decl->arglist || args_from_decl->args_void){
 		expr **iter_arg;
 		decl **iter_decl;
@@ -100,23 +103,32 @@ void fold_expr_funcall(expr *e, symtable *stab)
 
 		count_decl = count_arg = 0;
 
-		for(iter_arg  = e->funcargs;       iter_arg  && *iter_arg;  iter_arg++,  count_arg++);
+		for(iter_arg  = e->funcargs;             iter_arg  && *iter_arg;  iter_arg++,  count_arg++);
 		for(iter_decl = args_from_decl->arglist; iter_decl && *iter_decl; iter_decl++, count_decl++);
 
-		if(count_decl != count_arg && (args_from_decl->variadic ? count_arg < count_decl : 1)){
+		if(overloaded){
+			static int warned = 0;
+
+			if(!warned){
+				warned = 1;
+				warn_at(&df->where, "leaving overloadaded function check to link-time");
+			}
+
+		}else if(count_decl != count_arg && (args_from_decl->variadic ? count_arg < count_decl : 1)){
 			die_at(&e->where, "too %s arguments to function %s (got %d, need %d)",
 					count_arg > count_decl ? "many" : "few",
 					df->spel, count_arg, count_decl);
 		}
 
 		if(e->funcargs){
-			funcargs *args_from_expr = funcargs_new();
 			int idx;
 
-			for(iter_arg = e->funcargs; *iter_arg; iter_arg++)
-				dynarray_add((void ***)&args_from_expr->arglist, (*iter_arg)->tree_type);
+			e->fcall_funcargs = funcargs_new();
 
-			if(!funcargs_equal(args_from_decl, args_from_expr, 0, &idx)){
+			for(iter_arg = e->funcargs; *iter_arg; iter_arg++)
+				dynarray_add((void ***)&e->fcall_funcargs->arglist, (*iter_arg)->tree_type);
+
+			if(!overloaded && !funcargs_equal(args_from_decl, e->fcall_funcargs, 0, &idx)){
 				if(idx == -1){
 					die_at(&e->where, "mismatching argument count to %s", df->spel);
 				}else{
@@ -125,15 +137,25 @@ void fold_expr_funcall(expr *e, symtable *stab)
 					strcpy(buf, decl_to_str(args_from_decl->arglist[idx]));
 
 					cc1_warn_at(&e->where, 0, WARN_ARG_MISMATCH, "mismatching argument %d to %s (%s <-- %s)",
-							idx, df->spel, buf, decl_to_str(args_from_expr->arglist[idx]));
+							idx, df->spel, buf, decl_to_str(e->fcall_funcargs->arglist[idx]));
 				}
 			}
-
-			funcargs_free(args_from_expr, 0);
 		}
 
 		/*funcargs_free(args_from_decl, 1); XXX memleak*/
 	}
+
+	/*
+	if(overloaded){
+		df->spel_asm = NULL;
+		decl_asm_rename(df, 0, e->fcall_funcargs);
+		fprintf(stderr, "overload rename from %s to %s, df = %p\n",
+				df->spel, df->spel_asm, df);
+	}
+	*/
+
+	if(!e->tree_type)
+		e->tree_type = df;
 
 	fold_disallow_st_un(e, "return");
 
@@ -189,7 +211,9 @@ invalid:
 
 		if(sym && !decl_is_fptr(sym->decl)){
 			/* simple */
-			asm_temp(1, "call %s", sym->decl->spel);
+			/*fprintf(stderr, "sym call %p (%s)\n", sym->decl, sym->decl->spel_asm);*/
+			/*asm_temp(1, "call %s", sym->decl->spel_asm);*/
+			asm_temp(1, "call %s", e->tree_type->spel_asm);
 		}else{
 			gen_expr(e->expr, stab);
 			asm_temp(1, "pop rax  ; function address");

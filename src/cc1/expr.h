@@ -50,9 +50,11 @@ struct expr
 
 	char *spel;
 	expr *expr; /* x = 5; expr is the 5 */
-	expr **funcargs;
 	stmt *code; /* ({ ... }) */
 	decl *decl; /* for sizeof(decl) */
+
+	expr **funcargs;
+	funcargs *fcall_funcargs;
 
 	sym *sym;
 

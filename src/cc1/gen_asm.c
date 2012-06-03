@@ -61,7 +61,7 @@ void gen_func_stack(decl *df, const int offset)
 
 void asm_extern(decl *d)
 {
-	asm_tempf(cc_out[SECTION_BSS], 0, "extern %s", d->spel);
+	asm_tempf(cc_out[SECTION_BSS], 0, "extern %s", d->spel_asm);
 }
 
 void gen_asm_global(decl *d)
@@ -71,17 +71,17 @@ void gen_asm_global(decl *d)
 
 	if(decl_attr_present(d->attr, attr_section))
 		ICW("%s: TODO: section attribute \"%s\" on %s",
-				where_str(&d->attr->where), d->attr->attr_extra.section, d->spel);
+				where_str(&d->attr->where), d->attr->attr_extra.section, d->spel_asm);
 
 	/* order of the if matters */
 	if(d->func_code){
 		const int offset = d->func_code->symtab->auto_total_size;
 
-		asm_label(d->spel);
+		asm_label(d->spel_asm);
 		asm_temp(1, "push rbp");
 		asm_temp(1, "mov rbp, rsp");
 
-		curfunc_lblfin = asm_label_code(d->spel);
+		curfunc_lblfin = asm_label_code(d->spel_asm);
 
 		if(offset)
 			gen_func_stack(d, offset);
@@ -107,7 +107,7 @@ void gen_asm_global(decl *d)
 
 	}else{
 		/* always resb, since we use decl_size() */
-		asm_tempf(cc_out[SECTION_BSS], 0, "%s resb %d", d->spel, decl_size(d));
+		asm_tempf(cc_out[SECTION_BSS], 0, "%s resb %d", d->spel_asm, decl_size(d));
 	}
 }
 
@@ -143,7 +143,7 @@ void gen_asm(symtable *globs)
 				/* else extern func with definition */
 
 			case store_default:
-				asm_temp(0, "global %s", d->spel);
+				asm_temp(0, "global %s", d->spel_asm);
 		}
 
 		gen_asm_global(d);

@@ -58,7 +58,9 @@ void asm_sym(enum asm_sym_type, sym *, const char *);
 char asm_type_ch(decl *d);
 enum asm_size asm_type_size(decl *d);
 
+#ifdef CC1_H
 void asm_declare_array(enum section_type output, const char *lbl, array_decl *ad);
+#endif
 void asm_declare_single(FILE *f, decl *d);
 void asm_declare_single_part(FILE *f, expr *e);
 
@@ -68,5 +70,6 @@ char *asm_label_static_local(const char *funcsp, const char *spel);
 char *asm_label_goto(char *lbl);
 char *asm_label_case(enum asm_label_type, int val);
 char *asm_label_flow(const char *fmt);
+char *asm_label_func(decl *d, funcargs *fargs);
 
 #endif

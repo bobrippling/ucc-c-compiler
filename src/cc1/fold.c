@@ -539,11 +539,11 @@ static void fold_link_decl_defs(decl **decls)
 
 	for(i = 0; ; i++){
 		char *key;
-		char wbuf[WHERE_BUF_SIZ];
 		decl *d, *e, *definition, *first_none_extern;
 		decl **decls_for_this, **decl_iter;
 		int have_extern;
 		int inline_count;
+		int overloaded;
 
 		key = dynmap_key(spel_decls, i);
 		if(!key)
@@ -562,6 +562,7 @@ static void fold_link_decl_defs(decl **decls)
 		}
 
 		inline_count = d->type->is_inline;
+		overloaded = decl_overloaded(d);
 
 		/*
 		 * check the first is equal to all the rest, strict-types
@@ -571,17 +572,28 @@ static void fold_link_decl_defs(decl **decls)
 		 */
 
 		for(decl_iter = decls_for_this + 1; (e = *decl_iter); decl_iter++){
+			char wbuf[WHERE_BUF_SIZ];
+
 			/* check they are the same decl */
-			if(!decl_equal(d, e, DECL_CMP_STRICT_PRIMITIVE)){
-				strcpy(wbuf, where_str(&d->where));
-				die_at(&e->where, "mismatching declaration of %s (%s)", d->spel, wbuf);
+#define MISMATCH(str)                          \
+				strcpy(wbuf, where_str(&d->where));    \
+				die_at(&e->where, str, d->spel, wbuf)
+
+			if(decl_overloaded(e) != overloaded){
+				MISMATCH("overload/non-overload mismatch of %s (%s)");
+			}
+
+			if(!overloaded
+			&& !decl_attr_present(d->attr, attr_overloadable)
+			&& !decl_equal(d, e, DECL_CMP_STRICT_PRIMITIVE))
+			{
+				MISMATCH("mismatching declaration of %s (%s)");
 			}
 
 			if( d->type->store != e->type->store
 			&& (d->type->store == store_static || e->type->store == store_static))
 			{
-				strcpy(wbuf, where_str(&d->where));
-				die_at(&e->where, "static/non-static mismatch of %s (%s)", d->spel, wbuf);
+				MISMATCH("static/non-static mismatch of %s (%s)");
 			}
 
 			if(decl_is_definition(e)){
@@ -589,8 +601,12 @@ static void fold_link_decl_defs(decl **decls)
 
 				if(definition){
 					/* already got one */
-					strcpy(wbuf, where_str(&d->where));
-					die_at(&e->where, "duplicate definition of %s (%s)", d->spel, wbuf);
+					if(overloaded){
+						definition->is_definition = 1; /* gen + continue */
+					}else{
+						strcpy(wbuf, where_str(&d->where));
+						die_at(&e->where, "duplicate definition of %s (%s)", d->spel, wbuf);
+					}
 				}
 
 				definition = e;

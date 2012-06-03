@@ -93,7 +93,7 @@ void gen_expr_identifier(expr *e, symtable *stab)
 		 */
 		asm_sym(decl_has_array(e->sym->decl) ? ASM_LEA : ASM_LOAD, e->sym, "rax");
 	}else{
-		asm_temp(1, "mov rax, %s", e->spel);
+		asm_temp(1, "mov rax, %s", e->sym->decl->spel_asm);
 	}
 
 	asm_temp(1, "push rax");
@@ -101,7 +101,7 @@ void gen_expr_identifier(expr *e, symtable *stab)
 
 void gen_expr_identifier_1(expr *e, FILE *f)
 {
-	fprintf(f, "%s", e->sym->decl->spel);
+	fprintf(f, "%s", e->sym->decl->spel_asm);
 	/*
 	 * don't use e->spel
 	 * static int i;

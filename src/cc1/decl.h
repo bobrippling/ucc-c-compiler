@@ -10,7 +10,8 @@ struct decl_attr
 		attr_format,
 		attr_unused,
 		attr_warn_unused,
-		attr_section
+		attr_section,
+		attr_overloadable
 		/* TODO: warning, cdecl, stdcall, fastcall, const */
 	} type;
 
@@ -26,6 +27,8 @@ struct decl_attr
 
 	decl_attr *next;
 };
+
+#define decl_overloaded(d) decl_attr_present((d)->attr, attr_overloadable)
 
 /*
  * int *p; // decl -> { desc -> ptr }
@@ -89,7 +92,7 @@ struct decl
 	where where;
 
 	type *type;
-	char *spel;
+	char *spel, *spel_asm;
 
 	int field_width;
 
@@ -194,6 +197,8 @@ int funcargs_equal(funcargs *args_a, funcargs *args_b, int strict_types, int *id
 const char *decl_desc_str(decl_desc *dp);
 
 void  decl_set_spel(decl *, char *);
+void decl_asm_rename(decl *d, int global, funcargs *fargs);
+#define DECL_ASM_RENAME(d, g) decl_asm_rename(d, g, decl_funcargs(d))
 
 const char *decl_to_str(decl *d);
 
@@ -201,4 +206,5 @@ void decl_desc_free(decl_desc *);
 #define decl_free_notype(x) do{free(x);}while(0)
 void decl_free(decl *d);
 
+#define decl_spel(x) ((x)->spel)
 #endif

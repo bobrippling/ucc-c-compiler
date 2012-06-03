@@ -74,6 +74,7 @@ decl_attr *parse_ ## t()              \
 
 EMPTY(attr_unused)
 EMPTY(attr_warn_unused)
+EMPTY(attr_overloadable)
 
 static struct
 {
@@ -84,9 +85,10 @@ static struct
 	{ "unused",         parse_attr_unused },
 	{ "warn_unused",    parse_attr_warn_unused },
 	{ "section",        parse_attr_section },
+	{ "overloadable",   parse_attr_overloadable },
+#define MAX_FMT_LEN 32
 	{ NULL, NULL },
 };
-#define MAX_FMT_LEN 16
 
 void parse_attr_bracket_chomp(void)
 {
