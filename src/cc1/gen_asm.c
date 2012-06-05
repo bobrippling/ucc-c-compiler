@@ -81,6 +81,7 @@ void gen_asm_global(decl *d)
 		asm_temp(1, "push rbp");
 		asm_temp(1, "mov rbp, rsp");
 
+		UCC_ASSERT(!curfunc_lblfin, "somehow you've nested a function");
 		curfunc_lblfin = asm_label_code(d->spel_asm);
 
 		if(offset)
@@ -95,6 +96,7 @@ void gen_asm_global(decl *d)
 		asm_temp(1, "leave");
 		asm_temp(1, "ret");
 		free(curfunc_lblfin);
+		curfunc_lblfin = NULL;
 
 	}else if(d->arrayinit){
 		asm_declare_array(SECTION_DATA, d->arrayinit->label, d->arrayinit);

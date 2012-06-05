@@ -559,8 +559,6 @@ void decl_asm_rename(decl *d, int global, funcargs *fargs)
 		d->spel_asm = asm_label_static_local(curdecl_func_sp, d->spel);
 	else
 		d->spel_asm = ustrdup(d->spel);
-
-	fprintf(stderr, "%s: %s -> %s, %d\n", __func__, d->spel, d->spel_asm, decl_overloaded(d));
 }
 
 void decl_desc_link(decl *d)

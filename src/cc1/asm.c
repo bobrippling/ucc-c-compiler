@@ -18,9 +18,9 @@
 
 static int label_last = 1, str_last = 1, switch_last = 1, flow_last = 1;
 
-char *asm_label_func(decl *d, funcargs *fargs)
+char *asm_label_func(decl *df, funcargs *fargs)
 {
-	if(decl_overloaded(d)){
+	if(decl_overloaded(df)){
 		char *buf;
 		char *p;
 		int len;
@@ -28,12 +28,13 @@ char *asm_label_func(decl *d, funcargs *fargs)
 		decl **arg;
 
 		/* +1 for nul, +2 for _Z, +16 for number */
-		len = 19 + strlen(d->spel);
+		len = 19 + strlen(df->spel);
 
 		for(arg = fargs ? fargs->arglist : NULL; arg && *arg; arg++){
-			for(dp = (*arg)->desc; dp; dp = dp->child){
+			decl *const d = *arg;
+
+			for(dp = d->desc; dp; dp = dp->child)
 				len++;
-			}
 
 			switch(d->type->primitive){
 				case type_int:
@@ -59,7 +60,7 @@ char *asm_label_func(decl *d, funcargs *fargs)
 		p += 2;
 
 #define APPEND_NAME(p, n) sprintf(p, "%ld%s", strlen(n), n)
-		p += APPEND_NAME(p, d->spel);
+		p += APPEND_NAME(p, df->spel);
 
 		for(arg = fargs ? fargs->arglist : NULL; arg && *arg; arg++){
 			decl *const d = *arg;
@@ -100,7 +101,7 @@ char *asm_label_func(decl *d, funcargs *fargs)
 
 		return buf;
 	}else{
-		return ustrdup(d->spel);
+		return ustrdup(df->spel);
 	}
 }
 

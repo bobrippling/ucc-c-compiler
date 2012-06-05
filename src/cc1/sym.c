@@ -92,7 +92,7 @@ sym *symtab_add(symtable *tab, decl *d, enum sym_type t, int with_sym, int prepe
 {
 	sym *new;
 
-	if((new = symtab_search2(tab, d->spel, spel_cmp, 0))){
+	if(!decl_attr_present(d->attr, attr_overloadable) && (new = symtab_search2(tab, d->spel, spel_cmp, 0))){
 		char buf[DECL_STATIC_BUFSIZ];
 		if(new->decl)
 			strcpy(buf, where_str(&new->decl->where));

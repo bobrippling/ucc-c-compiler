@@ -145,14 +145,20 @@ void fold_expr_funcall(expr *e, symtable *stab)
 		/*funcargs_free(args_from_decl, 1); XXX memleak*/
 	}
 
-	/*
 	if(overloaded){
-		df->spel_asm = NULL;
-		decl_asm_rename(df, 0, e->fcall_funcargs);
-		fprintf(stderr, "overload rename from %s to %s, df = %p\n",
-				df->spel, df->spel_asm, df);
+		/* change the sym to what we are aiming for */
+		decl *overloaded_decl = decl_copy(e->expr->tree_type);
+
+		overloaded_decl->func_code = NULL;
+		overloaded_decl->type->store = store_extern;
+
+		overloaded_decl->spel_asm = NULL;
+
+		decl_asm_rename(overloaded_decl, 0, e->fcall_funcargs);
+
+		/* add to the global symtable, so we can check if it's defined later */
+		e->expr->sym = SYMTAB_ADD(stab, overloaded_decl, sym_local);
 	}
-	*/
 
 	if(!e->tree_type)
 		e->tree_type = df;
@@ -213,7 +219,7 @@ invalid:
 			/* simple */
 			/*fprintf(stderr, "sym call %p (%s)\n", sym->decl, sym->decl->spel_asm);*/
 			/*asm_temp(1, "call %s", sym->decl->spel_asm);*/
-			asm_temp(1, "call %s", e->tree_type->spel_asm);
+			asm_temp(1, "call %s", sym->decl->spel_asm);
 		}else{
 			gen_expr(e->expr, stab);
 			asm_temp(1, "pop rax  ; function address");

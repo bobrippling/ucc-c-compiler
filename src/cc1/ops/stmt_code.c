@@ -70,21 +70,24 @@ void gen_code_decls(symtable *stab)
 
 			if(func){
 				/* check if the func is defined globally */
-				symtable *globs;
+				symtable *globs = symtab_root(stab);
 				decl **i;
 
-				for(globs = stab; globs->parent; globs = globs->parent);
-
 				for(i = globs->decls; i && *i; i++){
-					if(!strcmp(d->spel, (*i)->spel)){
+					if(!strcmp(d->spel_asm, (*i)->spel)){
 						gen = 0;
 						break;
 					}
 				}
 			}
 
-			if(gen)
+			if(gen){
+				d->is_definition = 1;
 				gen_asm_global(d);
+			}
+
+			fprintf(stderr, "DECL %s (%s) gen %d (%s) isdef %d\n",
+					d->spel, d->spel_asm, gen, decl_to_str(d), d->is_definition);
 		}
 	}
 }
