@@ -209,9 +209,6 @@ void process_files(enum mode mode, char **inputs, char *output, char **args[4], 
 	struct cc_file *files;
 	char **links;
 
-	if(backend)
-		die("TODO: backend");
-
 	files = umalloc(ninputs * sizeof *files);
 
 	links = gopts.nostdlib ? NULL : objfiles_stdlib();
@@ -219,6 +216,10 @@ void process_files(enum mode mode, char **inputs, char *output, char **args[4], 
 	if(!gopts.nostartfiles)
 		dynarray_add((void ***)&links, objfiles_start());
 
+	if(backend){
+		dynarray_add((void ***)&args[mode_compile], ustrdup("-X"));
+		dynarray_add((void ***)&args[mode_compile], ustrdup(backend));
+	}
 
 	for(i = 0; i < ninputs; i++){
 		create_file(&files[i], mode, inputs[i]);
@@ -407,8 +408,14 @@ unrec:	 die("unrecognised option \"%s\"", argv[i]);
 
 	if(output && mode == mode_preproc && !strcmp(output, "-"))
 		output = NULL;
-	/* other case is -S, which is handled elsewhere */
+	/* other case is -S, which is handled in rename_files */
 
+	if(backend){
+		/* -Xprint stops early */
+		mode = mode_compile;
+		if(!output)
+			output = "-";
+	}
 
 	/* got arguments, a mode, and files to link */
 	process_files(mode, inputs, output, args, backend);
