@@ -441,7 +441,12 @@ void print_stmt(stmt *t)
 			decl *d = *iter;
 
 			gen_str_indent++;
-			print_decl(d, PDECL_INDENT | PDECL_NEWLINE | PDECL_SYM_OFFSET | PDECL_PISDEF);
+			print_decl(d, PDECL_INDENT
+					| PDECL_NEWLINE
+					| PDECL_SYM_OFFSET
+					| PDECL_PISDEF
+					| PDECL_ATTR);
+
 			if(decl_is_array(d) && d->init){
 				gen_str_indent++;
 				print_decl_array_init(d);

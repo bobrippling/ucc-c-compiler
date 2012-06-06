@@ -260,6 +260,9 @@ void fold_decl(decl *d, symtable *stab)
 			decl_desc_append(&ins, d->desc);
 			d->desc = ins;
 		}
+
+		/* attr */
+		decl_attr_append(&d->attr, from->attr);
 	}
 	decl_desc_link(d);
 
