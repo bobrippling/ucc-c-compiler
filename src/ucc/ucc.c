@@ -76,7 +76,7 @@ void create_file(struct cc_file *file, enum mode mode, char *in)
 
 	file->in = in;
 
-	if(gopts.assume_c)
+	if(gopts.assume_c || !strcmp(in, "-"))
 		goto preproc;
 
 #define ASSIGN(x)                \
@@ -367,6 +367,10 @@ arg_ld:
 					gopts.assume_c = 1;
 					continue;
 
+				case '\0':
+					/* "-" aka stdin */
+					goto input;
+
 				default:
 					if(!strcmp(argv[i], "-nostdlib"))
 						gopts.nostdlib = 1;
@@ -396,9 +400,9 @@ arg_ld:
 				}
 
 			if(!found)
-unrec:	 die("unrecognised option \"%s\"", argv[i]);
+unrec:	die("unrecognised option \"%s\"", argv[i]);
 		}else{
-			dynarray_add((void ***)&inputs, argv[i]);
+input:	dynarray_add((void ***)&inputs, argv[i]);
 		}
 	}
 
