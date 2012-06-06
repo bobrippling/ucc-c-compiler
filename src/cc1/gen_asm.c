@@ -134,7 +134,9 @@ void gen_asm(symtable *globs)
 			case store_auto:
 			case store_register:
 			case store_typedef:
-				ICE("%s storage on global", type_store_to_str(d->type->store));
+				ICE("%s storage on global %s",
+						type_store_to_str(d->type->store),
+						decl_to_str(d));
 
 			case store_static:
 				break;

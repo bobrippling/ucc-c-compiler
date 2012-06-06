@@ -248,6 +248,14 @@ void print_decl(decl *d, enum pdeclargs mode)
 		gen_str_indent--;
 	}
 
+	if((mode & PDECL_ATTR) && d->attr){
+		decl_attr *da = d->attr;
+		gen_str_indent++;
+		for(; da; da = da->next)
+			idt_printf("__attribute__((%s))\n", decl_attr_to_str(da->type));
+		gen_str_indent--;
+	}
+
 	if((mode & PDECL_FUNC_DESCEND) && d->func_code){
 		decl **iter;
 
@@ -300,7 +308,7 @@ void print_struct(struct_union_enum_st *sue)
 		decl *d = &(*iter)->struct_member;
 		idt_printf("offset %d:\n", d->struct_offset);
 		gen_str_indent++;
-		print_decl(d, PDECL_INDENT | PDECL_NEWLINE);
+		print_decl(d, PDECL_INDENT | PDECL_NEWLINE | PDECL_ATTR);
 		gen_str_indent--;
 	}
 	gen_str_indent--;
@@ -343,7 +351,7 @@ void print_st_en_tdef(symtable *stab)
 		idt_printf("typedefs:\n");
 		gen_str_indent++;
 		for(tit = stab->typedefs; tit && *tit; tit++){
-			print_decl(*tit, PDECL_INDENT | PDECL_NEWLINE);
+			print_decl(*tit, PDECL_INDENT | PDECL_NEWLINE | PDECL_ATTR);
 			nl = 1;
 		}
 		gen_str_indent--;
@@ -366,7 +374,8 @@ void print_stmt_flow(stmt_flow *t)
 					| PDECL_NEWLINE
 					| PDECL_SYM_OFFSET
 					| PDECL_PISDEF
-					| PDECL_PINIT);
+					| PDECL_PINIT
+					| PDECL_ATTR);
 
 		gen_str_indent--;
 	}
@@ -432,7 +441,12 @@ void print_stmt(stmt *t)
 			decl *d = *iter;
 
 			gen_str_indent++;
-			print_decl(d, PDECL_INDENT | PDECL_NEWLINE | PDECL_SYM_OFFSET | PDECL_PISDEF);
+			print_decl(d, PDECL_INDENT
+					| PDECL_NEWLINE
+					| PDECL_SYM_OFFSET
+					| PDECL_PISDEF
+					| PDECL_ATTR);
+
 			if(decl_is_array(d) && d->init){
 				gen_str_indent++;
 				print_decl_array_init(d);
@@ -461,7 +475,13 @@ void gen_str(symtable *symtab)
 	print_st_en_tdef(symtab);
 
 	for(diter = symtab->decls; diter && *diter; diter++){
-		print_decl(*diter, PDECL_INDENT | PDECL_NEWLINE | PDECL_PISDEF | PDECL_FUNC_DESCEND | PDECL_SIZE);
+		print_decl(*diter, PDECL_INDENT
+				| PDECL_NEWLINE
+				| PDECL_PISDEF
+				| PDECL_FUNC_DESCEND
+				| PDECL_SIZE
+				| PDECL_ATTR);
+
 		if((*diter)->init){
 			idt_printf("init:\n");
 			gen_str_indent++;

@@ -76,7 +76,7 @@ void create_file(struct cc_file *file, enum mode mode, char *in)
 
 	file->in = in;
 
-	if(gopts.assume_c)
+	if(gopts.assume_c || !strcmp(in, "-"))
 		goto preproc;
 
 #define ASSIGN(x)                \
@@ -209,9 +209,6 @@ void process_files(enum mode mode, char **inputs, char *output, char **args[4], 
 	struct cc_file *files;
 	char **links;
 
-	if(backend)
-		die("TODO: backend");
-
 	files = umalloc(ninputs * sizeof *files);
 
 	links = gopts.nostdlib ? NULL : objfiles_stdlib();
@@ -219,6 +216,10 @@ void process_files(enum mode mode, char **inputs, char *output, char **args[4], 
 	if(!gopts.nostartfiles)
 		dynarray_add((void ***)&links, objfiles_start());
 
+	if(backend){
+		dynarray_add((void ***)&args[mode_compile], ustrdup("-X"));
+		dynarray_add((void ***)&args[mode_compile], ustrdup(backend));
+	}
 
 	for(i = 0; i < ninputs; i++){
 		create_file(&files[i], mode, inputs[i]);
@@ -366,6 +367,10 @@ arg_ld:
 					gopts.assume_c = 1;
 					continue;
 
+				case '\0':
+					/* "-" aka stdin */
+					goto input;
+
 				default:
 					if(!strcmp(argv[i], "-nostdlib"))
 						gopts.nostdlib = 1;
@@ -395,9 +400,9 @@ arg_ld:
 				}
 
 			if(!found)
-unrec:	 die("unrecognised option \"%s\"", argv[i]);
+unrec:	die("unrecognised option \"%s\"", argv[i]);
 		}else{
-			dynarray_add((void ***)&inputs, argv[i]);
+input:	dynarray_add((void ***)&inputs, argv[i]);
 		}
 	}
 
@@ -407,8 +412,14 @@ unrec:	 die("unrecognised option \"%s\"", argv[i]);
 
 	if(output && mode == mode_preproc && !strcmp(output, "-"))
 		output = NULL;
-	/* other case is -S, which is handled elsewhere */
+	/* other case is -S, which is handled in rename_files */
 
+	if(backend){
+		/* -Xprint stops early */
+		mode = mode_compile;
+		if(!output)
+			output = "-";
+	}
 
 	/* got arguments, a mode, and files to link */
 	process_files(mode, inputs, output, args, backend);
