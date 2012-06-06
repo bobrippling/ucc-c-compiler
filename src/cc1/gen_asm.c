@@ -67,7 +67,7 @@ void gen_func_stack(decl *df, const int offset)
 
 void asm_extern(decl *d)
 {
-	asm_out_section(SECTION_BSS, "extern %s", decl_spel(d));
+	asm_out_section(SECTION_BSS, "extern %s", d->spel);
 }
 
 void gen_asm_global(decl *d)
@@ -89,7 +89,7 @@ void gen_asm_global(decl *d)
 				asm_operand_new_reg(NULL, ASM_REG_BP),
 				asm_operand_new_reg(NULL, ASM_REG_SP));
 
-		curfunc_lblfin = asm_label_code(decl_spel(d));
+		curfunc_lblfin = asm_label_code(d->spel);
 
 		if(offset)
 			gen_func_stack(d, offset);
@@ -143,7 +143,9 @@ void gen_asm(symtable *globs)
 			case store_auto:
 			case store_register:
 			case store_typedef:
-				ICE("%s storage on global", type_store_to_str(d->type->store));
+				ICE("%s storage on global %s",
+						type_store_to_str(d->type->store),
+						decl_to_str(d));
 
 			case store_static:
 				break;

@@ -11,11 +11,11 @@
 #include <ctype.h>
 
 #include "cc.h"
-#include "util/alloc.h"
-#include "util/dynarray.h"
+#include "../util/alloc.h"
+#include "../util/dynarray.h"
 
 #define DEFAULT_OUTPUT "a.out"
-#define LIB_PATH "/../lib/"
+#define LIB_PATH "/../../lib/"
 #define CPP "cpp2"
 
 #define TMP2(s, sz, pre, post) \
@@ -587,6 +587,7 @@ arg_linker:
 	return 0;
 #endif
 
+	/* XXX: this will want stealing */
 	if(readlink(argv[0], where, sizeof where) == -1)
 		snprintf(where, sizeof where, "%s", argv[0]);
 	/* dirname */

@@ -66,18 +66,17 @@ void fold_stmt_code(stmt *s)
 			 * so we've linked the syms and can change ->spel
 			 */
 			if(d->type->store == store_static)
-				decl_set_spel(d, asm_label_static_local(curdecl_func->spel, decl_spel(d)));
+				decl_set_spel(d, asm_label_static_local(curdecl_func->spel, d->spel));
 		}
 	}
 }
 
-void gen_stmt_code(stmt *s)
+void gen_code_decls(symtable *stab)
 {
 	decl **diter;
-	stmt **titer;
 
 	/* declare statics */
-	for(diter = s->symtab->decls; diter && *diter; diter++){
+	for(diter = stab->decls; diter && *diter; diter++){
 		decl *d = *diter;
 		int func;
 
@@ -89,7 +88,7 @@ void gen_stmt_code(stmt *s)
 				symtable *globs;
 				decl **i;
 
-				for(globs = s->symtab; globs->parent; globs = globs->parent);
+				for(globs = stab; globs->parent; globs = globs->parent);
 
 				for(i = globs->decls; i && *i; i++){
 					if(!strcmp(d->spel, (*i)->spel)){
@@ -103,6 +102,14 @@ void gen_stmt_code(stmt *s)
 				gen_asm_global(d);
 		}
 	}
+}
+
+void gen_stmt_code(stmt *s)
+{
+	stmt **titer;
+
+	/* stmt_for needs to do this too */
+	gen_code_decls(s->symtab);
 
 	for(titer = s->codes; titer && *titer; titer++)
 		gen_stmt(*titer);

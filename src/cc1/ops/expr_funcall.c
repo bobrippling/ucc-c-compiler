@@ -69,11 +69,11 @@ void fold_expr_funcall(expr *e, symtable *stab)
 	df = e->tree_type = decl_func_deref(decl_copy(df), &args_from_decl);
 
 	/* func count comparison, only if the func has arg-decls, or the func is f(void) */
-	UCC_ASSERT(args_from_decl, "no funcargs for decl %s", decl_spel(df));
+	UCC_ASSERT(args_from_decl, "no funcargs for decl %s", df->spel);
 
 	if(e->funcargs){
 		expr **iter;
-		char *sp = decl_spel(df);
+		char *sp = df->spel;
 
 		if(!sp)
 			sp = "<anon func>";
@@ -106,7 +106,7 @@ void fold_expr_funcall(expr *e, symtable *stab)
 		if(count_decl != count_arg && (args_from_decl->variadic ? count_arg < count_decl : 1)){
 			die_at(&e->where, "too %s arguments to function %s (got %d, need %d)",
 					count_arg > count_decl ? "many" : "few",
-					decl_spel(df), count_arg, count_decl);
+					df->spel, count_arg, count_decl);
 		}
 
 		if(e->funcargs){
@@ -190,7 +190,7 @@ invalid:
 		if(sym && !decl_is_fptr(sym->decl)){
 			/* simple */
 			asm_output_new(asm_out_type_call,
-					asm_operand_new_label(NULL, e->sym->decl->spel),
+					asm_operand_new_label(NULL, sym->decl->spel),
 					NULL);
 		}else{
 			gen_expr(e->expr, stab);

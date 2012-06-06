@@ -103,6 +103,22 @@ type *parse_type_sue(enum type_primitive prim)
 	return t;
 }
 
+#include "parse_attr.c"
+
+static void parse_add_attr(decl_attr **append)
+{
+	while(accept(token_attribute)){
+		EAT(token_open_paren);
+		EAT(token_open_paren);
+
+		if(curtok != token_close_paren)
+			decl_attr_append(append, parse_attr());
+
+		EAT(token_close_paren);
+		EAT(token_close_paren);
+	}
+}
+
 type *parse_type()
 {
 #define PRIMITIVE_NO_MORE 2
@@ -249,7 +265,7 @@ type *parse_type()
 
 		/* signed size_t x; */
 		if(tdef_typeof && signed_set)
-			die_at(NULL, "signed/unsigned not allowed with typedef instance (%s)", decl_spel(tdef_typeof->decl));
+			die_at(NULL, "signed/unsigned not allowed with typedef instance (%s)", tdef_typeof->decl->spel);
 
 
 		if(!primitive_set)
@@ -262,6 +278,8 @@ type *parse_type()
 		t->is_inline = is_inline;
 		t->qual  = qual;
 		t->store = store;
+
+		parse_add_attr(&t->attr);
 
 		return t;
 	}else{
@@ -303,7 +321,7 @@ funcargs *parse_func_arglist()
 		if(dynarray_count((void *)args->arglist) == 1
 				&& args->arglist[0]->type->primitive == type_void
 				&& !decl_ptr_depth(args->arglist[0])
-				&& !decl_spel(args->arglist[0])){
+				&& !args->arglist[0]->spel){
 			/* x(void); */
 			function_empty_args(args);
 			args->args_void = 1; /* (void) vs () */
@@ -438,8 +456,6 @@ decl_desc *parse_decl_desc(enum decl_mode mode, char **sp)
 	return dp;
 }
 
-#include "parse_attr.c"
-
 decl *parse_decl(type *t, enum decl_mode mode)
 {
 	decl_desc *dp;
@@ -456,16 +472,7 @@ decl *parse_decl(type *t, enum decl_mode mode)
 
 	decl_desc_link(d);
 
-	if(accept(token_attribute)){
-		EAT(token_open_paren);
-		EAT(token_open_paren);
-
-		if(curtok != token_close_paren)
-			d->attr = parse_attr();
-
-		EAT(token_close_paren);
-		EAT(token_close_paren);
-	}
+	parse_add_attr(&d->attr);
 
 #ifdef PARSE_DECL_VERBOSE
 	fprintf(stderr, "parsed decl %s, is_func %d, at %s\n", d->spel, decl_is_func(d), token_to_str(curtok));
@@ -473,7 +480,7 @@ decl *parse_decl(type *t, enum decl_mode mode)
 		fprintf(stderr, "\tdesc %s\n", decl_desc_str(dp));
 #endif
 
-	if(decl_spel(d) && accept(token_assign))
+	if(d->spel && accept(token_assign))
 		d->init = parse_expr_no_comma(); /* int x = 5, j; - don't grab the comma expr */
 
 	return d;
@@ -484,12 +491,11 @@ decl *parse_decl_single(enum decl_mode mode)
 	type *t = parse_type();
 
 	if(!t){
-		if(mode & DECL_CAN_DEFAULT){
-			INT_TYPE(t);
-			cc1_warn_at(&t->where, 0, WARN_IMPLICIT_INT, "defaulting type to int");
-		}else{
+		if((mode & DECL_CAN_DEFAULT) == 0)
 			return NULL;
-		}
+
+		INT_TYPE(t);
+		cc1_warn_at(&t->where, 0, WARN_IMPLICIT_INT, "defaulting type to int");
 	}
 
 	if(t->store == store_typedef)
@@ -558,7 +564,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 
 			UCC_ASSERT(d, "null decl after parse");
 
-			if(!decl_spel(d)){
+			if(!d->spel){
 				/*
 				 * int; - fine for "int;", but "int i,;" needs to fail
 				 * struct A; - fine
@@ -604,12 +610,12 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 
 					for(i = 0; i < n_old_args; i++)
 						if(old_args[i]->init)
-							die_at(&old_args[i]->where, "parameter \"%s\" is initialised", decl_spel(old_args[i]));
+							die_at(&old_args[i]->where, "parameter \"%s\" is initialised", old_args[i]->spel);
 
 					for(i = 0; i < n_old_args; i++){
 						int j;
 						for(j = 0; j < n_proto_decls; j++){
-							if(!strcmp(decl_spel(old_args[i]), decl_spel(dfuncargs->arglist[j]))){
+							if(!strcmp(old_args[i]->spel, dfuncargs->arglist[j]->spel)){
 								decl **replace_this;
 								decl *free_this;
 
@@ -671,7 +677,7 @@ next:
 				case token_open_paren:
 				case token_multiply:
 					if(last)
-						die_at(NULL, "unknown type name '%s'", decl_spel(last));
+						die_at(NULL, "unknown type name '%s'", last->spel);
 					/* else die below */
 				default:
 					break;

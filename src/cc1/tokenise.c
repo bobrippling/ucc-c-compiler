@@ -84,8 +84,10 @@ struct statement
 	KEYWORD(_Generic),
 	KEYWORD(_Static_assert),
 
-	{ "__typeof",  token_typeof },
+	{ "__typeof",    token_typeof },
+	{ "__typeof__",  token_typeof },
 
+	{ "__attribute",   token_attribute },
 	{ "__attribute__", token_attribute }
 };
 

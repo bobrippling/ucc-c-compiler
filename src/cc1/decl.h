@@ -141,6 +141,8 @@ enum decl_cmp
 decl        *decl_new(void);
 array_decl  *array_decl_new(void);
 decl_attr   *decl_attr_new(enum decl_attr_type);
+void         decl_attr_append(decl_attr **loc, decl_attr *new);
+const char  *decl_attr_to_str(enum decl_attr_type);
 
 void         decl_desc_append(decl_desc **parent, decl_desc *child);
 decl_desc   *decl_desc_tail(decl *);
@@ -194,7 +196,6 @@ int funcargs_equal(funcargs *args_a, funcargs *args_b, int strict_types, int *id
 
 const char *decl_desc_str(decl_desc *dp);
 
-char *decl_spel(decl *);
 void  decl_set_spel(decl *, char *);
 
 const char *decl_to_str(decl *d);

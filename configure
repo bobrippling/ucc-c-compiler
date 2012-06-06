@@ -10,12 +10,11 @@ UCC_ARCH    = ${UCC_ARCH}
 UCC_LDFLAGS = ${UCC_LDFLAGS}
 !
 
-	cat > src/cc.h <<!
+	cat > src/ucc/cfg.h <<!
 #define UCC_AS      "${UCC_AS}"
 #define UCC_LD      "${UCC_LD}"
 #define UCC_ARCH    "${UCC_ARCH}"
 #define UCC_LDFLAGS "${UCC_LDFLAGS}"
-int main(int argc, char **argv);
 !
 
 	if [ $1 = Linux ]
@@ -89,7 +88,7 @@ done
 
 if [ $clean -ne 0 ]
 then
-	rm -f config.mk src/cc.h lib/syscall_err.s lib/string_strerrs.h lib/syscalls_darwin.h
+	rm -f config.mk lib/syscall_err.s lib/string_strerrs.h lib/syscalls_darwin.h
 	exit
 fi
 

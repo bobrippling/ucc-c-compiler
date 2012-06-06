@@ -116,7 +116,7 @@ void fold_decl_desc(decl_desc *dp, symtable *stab, decl *root)
 {
 	switch(dp->type){
 		case decl_desc_func:
-			fold_funcargs(dp->bits.func, stab, decl_spel(root));
+			fold_funcargs(dp->bits.func, stab, root->spel);
 			break;
 
 		case decl_desc_array:
@@ -299,6 +299,9 @@ void fold_decl(decl *d, symtable *stab)
 			decl_desc_append(&ins, d->desc);
 			d->desc = ins;
 		}
+
+		/* attr */
+		decl_attr_append(&d->attr, from->attr);
 	}
 	decl_desc_link(d);
 
@@ -314,10 +317,13 @@ void fold_decl(decl *d, symtable *stab)
 		}
 	}
 
+	/* append type's attr into the decl */
+	decl_attr_append(&d->attr, d->type->attr);
+
 	switch(d->type->primitive){
 		case type_void:
 			if(!decl_ptr_depth(d) && !decl_is_callable(d) && d->spel)
-				die_at(&d->where, "can't have a void variable - %s (%s)", decl_spel(d), decl_to_str(d));
+				die_at(&d->where, "can't have a void variable - %s (%s)", d->spel, decl_to_str(d));
 			break;
 
 		case type_enum:
@@ -326,8 +332,8 @@ void fold_decl(decl *d, symtable *stab)
 			if(sue_incomplete(d->type->sue) && !decl_ptr_depth(d))
 				die_at(&d->where, "use of %s%s%s",
 						type_to_str(d->type),
-						decl_spel(d) ?     " " : "",
-						decl_spel(d) ? decl_spel(d) : "");
+						d->spel ?     " " : "",
+						d->spel ? d->spel : "");
 			break;
 
 		case type_int:
@@ -354,8 +360,8 @@ void fold_decl(decl *d, symtable *stab)
 	}else if(d->type->qual & qual_restrict){
 		die_at(&d->where, "restrict on non-pointer type %s%s%s",
 				type_to_str(d->type),
-				decl_spel(d) ? " " : "",
-				decl_spel(d) ? decl_spel(d) : "");
+				d->spel ? " " : "",
+				d->spel ? d->spel : "");
 	}
 
 	if(d->field_width && !decl_is_integral(d))
@@ -377,11 +383,7 @@ void fold_decl(decl *d, symtable *stab)
 				case store_default:
 					d->type->store = store_extern;
 				case store_extern:
-					break;
-
 				default:
-					warn_at(&d->where, "%s storage for unimplemented function %s",
-							type_store_to_str(d->type->store), d->spel);
 					break;
 			}
 		}
@@ -424,7 +426,7 @@ void fold_decl(decl *d, symtable *stab)
 
 				fold_decl_equal(d, d->init->tree_type, &d->where, WARN_ASSIGN_MISMATCH,
 						"mismatching initialisation for %s (%s vs. %s)",
-						decl_spel(d), buf_a, buf_b);
+						d->spel, buf_a, buf_b);
 			}
 
 			if(const_fold(d->init) && !const_expr_is_const(d->init)){
@@ -524,7 +526,7 @@ void fold_funcargs(funcargs *fargs, symtable *stab, char *context)
 			fold_decl(d, stab);
 
 			if(type_store_static_or_extern(d->type->store)){
-				const char *sp = decl_spel(d);
+				const char *sp = d->spel;
 				die_at(&fargs->where, "argument %d %s%s%sin function \"%s\" is static or extern",
 						i + 1,
 						sp ? "(" : "",
@@ -550,7 +552,7 @@ void fold_func(decl *func_decl, symtable *globs)
 			for(nargs = 0; fargs->arglist[nargs]; nargs++);
 			/* add args backwards, since we push them onto the stack backwards - still need to do this here? */
 			for(i = nargs - 1; i >= 0; i--){
-				if(!decl_spel(fargs->arglist[i]))
+				if(!fargs->arglist[i]->spel)
 					die_at(&fargs->where, "function \"%s\" has unnamed arguments", curdecl_func->spel);
 				else
 					SYMTAB_ADD(func_decl->func_code->symtab, fargs->arglist[i], sym_arg);
@@ -588,8 +590,7 @@ static void fold_link_decl_defs(decl **decls)
 		char wbuf[WHERE_BUF_SIZ];
 		decl *d, *e, *definition, *first_none_extern;
 		decl **decls_for_this, **decl_iter;
-		int have_extern;
-		int inline_count;
+		int count_inline, count_extern, count_static, count_total;
 
 		key = dynmap_key(spel_decls, i);
 		if(!key)
@@ -599,15 +600,23 @@ static void fold_link_decl_defs(decl **decls)
 		d = *decls_for_this;
 
 		definition = decl_is_definition(d) ? d : NULL;
-		if(d->type->store == store_extern){
-			first_none_extern = NULL;
-			have_extern = 1;
-		}else{
-			first_none_extern = d;
-			have_extern = 0;
-		}
 
-		inline_count = d->type->is_inline;
+		count_inline = d->type->is_inline;
+		count_extern = count_static = 0;
+		first_none_extern = NULL;
+
+		switch(d->type->store){
+			case store_extern:
+				count_extern++;
+				break;
+
+			case store_static:
+				count_static++;
+				/* fall */
+			default:
+				first_none_extern = d;
+				break;
+		}
 
 		/*
 		 * check the first is equal to all the rest, strict-types
@@ -623,13 +632,6 @@ static void fold_link_decl_defs(decl **decls)
 				die_at(&e->where, "mismatching declaration of %s (%s)", d->spel, wbuf);
 			}
 
-			if( d->type->store != e->type->store
-			&& (d->type->store == store_static || e->type->store == store_static))
-			{
-				strcpy(wbuf, where_str(&d->where));
-				die_at(&e->where, "static/non-static mismatch of %s (%s)", d->spel, wbuf);
-			}
-
 			if(decl_is_definition(e)){
 				/* e is the implementation/instantiation */
 
@@ -642,13 +644,20 @@ static void fold_link_decl_defs(decl **decls)
 				definition = e;
 			}
 
-			inline_count += e->type->is_inline;
+			count_inline += e->type->is_inline;
 
-			if(e->type->store != store_extern){
-				if(!first_none_extern)
-					first_none_extern = e;
-			}else{
-				have_extern = 1;
+			switch(e->type->store){
+				case store_extern:
+					count_extern++;
+					break;
+
+				case store_static:
+					count_static++;
+					/* fall */
+				default:
+					if(!first_none_extern)
+						first_none_extern = e;
+					break;
 			}
 		}
 
@@ -660,6 +669,9 @@ static void fold_link_decl_defs(decl **decls)
         definition = d;
 		}
 
+
+		count_total = dynarray_count((void **)decls_for_this);
+
 		if(decl_is_func(definition)){
 			/*
 			 * inline semantics
@@ -668,24 +680,39 @@ static void fold_link_decl_defs(decl **decls)
 			 * "static inline" = code emitted, decl is static
 			 * one "inline", and "extern" mentioned, or "inline" not mentioned = code emitted, decl is extern
 			 */
-			int const total_count = dynarray_count((void **)decls_for_this);
+			definition->type->is_inline = count_inline > 0;
 
-			definition->type->is_inline = inline_count > 0;
+
+			/* all defs must be static, except the def, which is allowed to be non-static */
+			if(count_static > 0){
+				definition->type->store = store_static;
+
+				if(count_static != count_total && (definition->func_code ? count_static != count_total - 1 : 0)){
+					die_at(&definition->where,
+							"static/non-static mismatch of function %s (%d static defs vs %d total)",
+							definition->spel, count_static, count_total);
+				}
+			}
+
 
 			if(definition->type->store == store_static){
 				/* static inline */
 
-			}else if(inline_count == total_count && !have_extern){
+			}else if(count_inline == count_total && count_extern == 0){
 				/* inline only */
 				definition->inline_only = 1;
 				warn_at(&definition->where, "definition is inline-only (ucc doesn't inline currently)");
-			}else if(inline_count > 0 && (have_extern || inline_count < total_count)){
+			}else if(count_inline > 0 && (count_extern > 0 || count_inline < count_total)){
 				/* extern inline */
 				definition->type->store = store_extern;
 			}
 
 			if(definition->type->is_inline && !definition->func_code)
 				warn_at(&definition->where, "inline function missing implementation");
+
+		}else if(count_static && count_static != count_total){
+			/* TODO: iter through decls, printing them out */
+			die_at(&definition->where, "static/non-static mismatch of %s", definition->spel);
 		}
 
 		definition->is_definition = 1;
@@ -743,7 +770,7 @@ void fold(symtable *globs)
 
 	for(i = 0; D(i); i++)
 		if(D(i)->sym)
-			ICE("%s: sym (%p) already set for global \"%s\"", where_str(&D(i)->where), (void *)D(i)->sym, decl_spel(D(i)));
+			ICE("%s: sym (%p) already set for global \"%s\"", where_str(&D(i)->where), (void *)D(i)->sym, D(i)->spel);
 
 	for(;;){
 		int i;
