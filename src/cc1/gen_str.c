@@ -140,8 +140,8 @@ void print_decl_desc_eng(decl_desc *dp)
 
 void print_decl_eng(decl *d)
 {
-	if(decl_spel(d))
-		fprintf(cc1_out, "\"%s\": ", decl_spel(d));
+	if(d->spel)
+		fprintf(cc1_out, "\"%s\": ", d->spel);
 
 	if(d->desc)
 		print_decl_desc_eng(d->desc);
@@ -284,13 +284,21 @@ void print_decl(decl *d, enum pdeclargs mode)
 		gen_str_indent--;
 	}
 
+	if((mode & PDECL_ATTR) && d->attr){
+		decl_attr *da = d->attr;
+		gen_str_indent++;
+		for(; da; da = da->next)
+			idt_printf("__attribute__((%s))\n", decl_attr_to_str(da->type));
+		gen_str_indent--;
+	}
+
 	if((mode & PDECL_FUNC_DESCEND) && d->func_code){
 		decl **iter;
 
 		gen_str_indent++;
 
 		for(iter = d->func_code->symtab->decls; iter && *iter; iter++)
-			idt_printf("offset of %s = %d\n", decl_spel(*iter), (*iter)->sym->offset);
+			idt_printf("offset of %s = %d\n", (*iter)->spel, (*iter)->sym->offset);
 
 		idt_printf("function stack space %d\n", d->func_code->symtab->auto_total_size);
 
@@ -336,7 +344,7 @@ void print_struct(struct_union_enum_st *sue)
 		decl *d = &(*iter)->struct_member;
 		idt_printf("offset %d:\n", d->struct_offset);
 		gen_str_indent++;
-		print_decl(d, PDECL_INDENT | PDECL_NEWLINE);
+		print_decl(d, PDECL_INDENT | PDECL_NEWLINE | PDECL_ATTR);
 		gen_str_indent--;
 	}
 	gen_str_indent--;
@@ -379,7 +387,7 @@ void print_st_en_tdef(symtable *stab)
 		idt_printf("typedefs:\n");
 		gen_str_indent++;
 		for(tit = stab->typedefs; tit && *tit; tit++){
-			print_decl(*tit, PDECL_INDENT | PDECL_NEWLINE);
+			print_decl(*tit, PDECL_INDENT | PDECL_NEWLINE | PDECL_ATTR);
 			nl = 1;
 		}
 		gen_str_indent--;
@@ -402,7 +410,8 @@ void print_stmt_flow(stmt_flow *t)
 					| PDECL_NEWLINE
 					| PDECL_SYM_OFFSET
 					| PDECL_PISDEF
-					| PDECL_PINIT);
+					| PDECL_PINIT
+					| PDECL_ATTR);
 
 		gen_str_indent--;
 	}
@@ -447,7 +456,12 @@ void print_stmt(stmt *t)
 			decl *d = *iter;
 
 			gen_str_indent++;
-			print_decl(d, PDECL_INDENT | PDECL_NEWLINE | PDECL_SYM_OFFSET | PDECL_PISDEF | PDECL_PINIT);
+			print_decl(d, PDECL_INDENT
+					| PDECL_NEWLINE
+					| PDECL_SYM_OFFSET
+					| PDECL_PISDEF
+					| PDECL_ATTR
+					| PDECL_PINIT);
 			gen_str_indent--;
 		}
 	}
@@ -471,11 +485,11 @@ void gen_str(symtable *symtab)
 	print_st_en_tdef(symtab);
 
 	for(diter = symtab->decls; diter && *diter; diter++)
-		print_decl(*diter,
-				PDECL_INDENT |
-				PDECL_NEWLINE |
-				PDECL_FUNC_DESCEND |
-				PDECL_SIZE |
-				PDECL_PISDEF |
-				PDECL_PINIT);
+		print_decl(*diter, PDECL_INDENT
+				| PDECL_NEWLINE
+				| PDECL_PISDEF
+				| PDECL_FUNC_DESCEND
+				| PDECL_SIZE
+				| PDECL_PINIT
+				| PDECL_ATTR);
 }

@@ -95,7 +95,7 @@ char *asm_label_flow(const char *fmt)
 void asm_sym(enum asm_sym_type t, sym *s, const char *reg)
 {
 	const int is_global = s->type == sym_global || type_store_static_or_extern(s->decl->type->store);
-	char *const dsp = decl_spel(s->decl);
+	char *const dsp = s->decl->spel;
 	int is_auto = s->type == sym_local;
 	char  stackbrackets[16];
 	char *brackets;
@@ -156,7 +156,7 @@ void asm_indir(enum asm_indir mode, decl *tt, char rto, char rfrom, const char *
 		else
 			asm_temp(1, "movzx r%cx, byte [r%cx]", rto, rfrom);
 	}else{
- 		if(full_word)
+		if(full_word)
 			asm_temp(1, "mov [r%cx], r%cx", rto, rfrom);
 		else
 			asm_temp(1, "mov byte [r%cx], %cl", rto, rfrom);
@@ -264,7 +264,7 @@ void asm_declare_single(FILE *f, decl *d)
 		UCC_ASSERT(d->init->array_store, "no array store for struct init (TODO?)");
 		UCC_ASSERT(d->init->array_store->type == array_exprs, "array store of strings for struct");
 
-		fprintf(f, "%s dq ", decl_spel(d)); /* XXX: assumes all struct members are word-size */
+		fprintf(f, "%s dq ", d->spel); /* XXX: assumes all struct members are word-size */
 
 		for(i = 0; i < d->init->array_store->len; i++)
 			fprintf(f, "%ld%s",
@@ -273,7 +273,7 @@ void asm_declare_single(FILE *f, decl *d)
 					);
 
 	}else{
-		fprintf(f, "%s d%c ", decl_spel(d), asm_type_ch(d));
+		fprintf(f, "%s d%c ", d->spel, asm_type_ch(d));
 
 		asm_declare_single_part(f, d->init);
 	}

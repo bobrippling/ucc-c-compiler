@@ -43,7 +43,7 @@ int symtab_fold(symtable *tab, int current)
 							siz += word_size - siz % word_size;
 						current += siz;
 
-#define RW_WARN(w, var, str)                    \
+#define RW_WARN(w, var, str)                        \
 						do{                                     \
 							if(s->var == 0                        \
 							&& !decl_has_array(s->decl)           \
@@ -53,7 +53,7 @@ int symtab_fold(symtable *tab, int current)
 								cc1_warn_at(&s->decl->where, 0,     \
 										WARN_SYM_NEVER_ ## w,           \
 										"\"%s\" never " str,            \
-										decl_spel(s->decl));            \
+										s->decl->spel);                 \
 								s->var++;                           \
 							}                                     \
 						}while(0)

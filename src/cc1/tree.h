@@ -70,6 +70,9 @@ struct type
 
 	/* NULL unless from typedef or __typeof() */
 	expr *typeof;
+
+	/* attr applied to all decls whose type is this type */
+	decl_attr *attr;
 };
 
 type *type_new(void);

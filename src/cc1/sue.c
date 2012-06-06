@@ -109,7 +109,7 @@ struct_union_enum_st *sue_add(symtable *const stab, char *spel, sue_member **mem
 		for(iter = members; *iter; iter++){
 			decl *d = &(*iter)->struct_member;
 			if(d->init)
-				die_at(&d->where, "%s member %s is initialised", sue_str(sue), decl_spel(d));
+				die_at(&d->where, "%s member %s is initialised", sue_str(sue), d->spel);
 		}
 
 	sue->anon = !spel;
@@ -139,7 +139,7 @@ sue_member *sue_member_find(struct_union_enum_st *sue, const char *spel, where *
 			sp = m->spel;
 		}else{
 			decl *d = &(*mi)->struct_member;
-			sp = decl_spel(d);
+			sp = d->spel;
 		}
 
 		if(!strcmp(spel, sp))

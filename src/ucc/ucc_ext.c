@@ -90,7 +90,9 @@ static void runner(int local, char *path, char **args)
 		return;
 
 
+	/* if this were to be vfork, all the code in case-0 would need to be done in the parent */
 	pid = fork();
+
 	switch(pid){
 		case -1:
 			die("fork():");
@@ -130,12 +132,14 @@ static void runner(int local, char *path, char **args)
 
 		default:
 		{
-			int status;
+			int status, i;
 			if(wait(&status) == -1)
 				die("wait()");
 
-			if(!WIFEXITED(status) || WEXITSTATUS(status) != 0)
-				die("%s returned %d", path, status);
+			if(WIFEXITED(status) && (i = WEXITSTATUS(status)) != 0)
+				die("%s returned %d", path, i);
+			else if(WIFSIGNALED(status))
+				die("%s caught signal %d", path, WTERMSIG(status));
 		}
 	}
 }
