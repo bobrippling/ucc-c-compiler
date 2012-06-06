@@ -85,7 +85,7 @@ expr *expr_ptr_multiply(expr *e, decl *d)
 expr *expr_new_decl_init(decl *d)
 {
 	UCC_ASSERT(d->init, "no init");
-	return expr_new_assign(expr_new_identifier(decl_spel(d)), d->init);
+	return expr_new_assign(expr_new_identifier(d->spel), d->init);
 }
 
 expr *expr_new_array_decl_init(decl *d, int ival, int idx)
@@ -99,7 +99,7 @@ expr *expr_new_array_decl_init(decl *d, int ival, int idx)
 
 	sum = op_deref_expr(deref) = expr_new_op(op_plus);
 
-	sum->lhs = expr_new_identifier(decl_spel(d));
+	sum->lhs = expr_new_identifier(d->spel);
 	sum->rhs = expr_new_val(idx); /* fold will multiply this */
 
 	return expr_new_assign(deref, expr_new_val(ival));

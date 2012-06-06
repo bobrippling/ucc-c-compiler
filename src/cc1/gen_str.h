@@ -11,6 +11,7 @@ enum pdeclargs
 	PDECL_PISDEF        = 1 << 4,
 	PDECL_PINIT         = 1 << 5,
 	PDECL_SIZE          = 1 << 6,
+	PDECL_ATTR          = 1 << 7
 };
 
 void idt_printf(const char *fmt, ...);
