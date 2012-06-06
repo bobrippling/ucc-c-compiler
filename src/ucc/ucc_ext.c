@@ -90,7 +90,9 @@ static void runner(int local, char *path, char **args)
 		return;
 
 
+	/* if this were to be vfork, all the code in case-0 would need to be done in the parent */
 	pid = fork();
+
 	switch(pid){
 		case -1:
 			die("fork():");
