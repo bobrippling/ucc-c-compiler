@@ -103,6 +103,22 @@ type *parse_type_sue(enum type_primitive prim)
 	return t;
 }
 
+#include "parse_attr.c"
+
+static void parse_add_attr(decl_attr **append)
+{
+	while(accept(token_attribute)){
+		EAT(token_open_paren);
+		EAT(token_open_paren);
+
+		if(curtok != token_close_paren)
+			decl_attr_append(append, parse_attr());
+
+		EAT(token_close_paren);
+		EAT(token_close_paren);
+	}
+}
+
 type *parse_type()
 {
 	expr *tdef_typeof = NULL;
@@ -234,6 +250,8 @@ type *parse_type()
 		t->is_inline = is_inline;
 		t->qual  = qual;
 		t->store = store;
+
+		parse_add_attr(&t->attr);
 
 		return t;
 	}else{
@@ -410,8 +428,6 @@ decl_desc *parse_decl_desc(enum decl_mode mode, char **sp)
 	return dp;
 }
 
-#include "parse_attr.c"
-
 decl *parse_decl(type *t, enum decl_mode mode)
 {
 	decl_desc *dp;
@@ -428,16 +444,7 @@ decl *parse_decl(type *t, enum decl_mode mode)
 
 	decl_desc_link(d);
 
-	if(accept(token_attribute)){
-		EAT(token_open_paren);
-		EAT(token_open_paren);
-
-		if(curtok != token_close_paren)
-			d->attr = parse_attr();
-
-		EAT(token_close_paren);
-		EAT(token_close_paren);
-	}
+	parse_add_attr(&d->attr);
 
 #ifdef PARSE_DECL_VERBOSE
 	fprintf(stderr, "parsed decl %s, is_func %d, at %s\n", d->spel, decl_is_func(d), token_to_str(curtok));
@@ -456,12 +463,11 @@ decl *parse_decl_single(enum decl_mode mode)
 	type *t = parse_type();
 
 	if(!t){
-		if(mode & DECL_CAN_DEFAULT){
-			INT_TYPE(t);
-			cc1_warn_at(&t->where, 0, WARN_IMPLICIT_INT, "defaulting type to int");
-		}else{
+		if((mode & DECL_CAN_DEFAULT) == 0)
 			return NULL;
-		}
+
+		INT_TYPE(t);
+		cc1_warn_at(&t->where, 0, WARN_IMPLICIT_INT, "defaulting type to int");
 	}
 
 	if(t->store == store_typedef)

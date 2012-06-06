@@ -275,6 +275,9 @@ void fold_decl(decl *d, symtable *stab)
 		}
 	}
 
+	/* append type's attr into the decl */
+	decl_attr_append(&d->attr, d->type->attr);
+
 	switch(d->type->primitive){
 		case type_void:
 			if(!decl_ptr_depth(d) && !decl_is_callable(d) && d->spel)

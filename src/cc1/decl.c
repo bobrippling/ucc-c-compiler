@@ -92,12 +92,30 @@ decl_attr *decl_attr_new(enum decl_attr_type t)
 	return da;
 }
 
+void decl_attr_append(decl_attr **loc, decl_attr *new)
+{
+	while((*loc))
+		loc = &(*loc)->next;
+	*loc = new;
+}
+
 int decl_attr_present(decl_attr *da, enum decl_attr_type t)
 {
 	for(; da; da = da->next)
 		if(da->type == t)
 			return 1;
 	return 0;
+}
+
+const char *decl_attr_to_str(enum decl_attr_type t)
+{
+	switch(t){
+		CASE_STR_PREFIX(attr, format);
+		CASE_STR_PREFIX(attr, unused);
+		CASE_STR_PREFIX(attr, warn_unused);
+		CASE_STR_PREFIX(attr, section);
+	}
+	return NULL;
 }
 
 decl_desc *decl_desc_copy(decl_desc *dp)
