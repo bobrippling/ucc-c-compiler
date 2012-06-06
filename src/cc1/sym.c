@@ -65,7 +65,7 @@ static sym *symtab_search2(symtable *tab, const void *item, int (*cmp)(const voi
 
 static int spel_cmp(const void *test, decl *item)
 {
-	char *sp = decl_spel(item);
+	char *sp = item->spel;
 	return sp && item->sym && !strcmp(test, sp);
 }
 

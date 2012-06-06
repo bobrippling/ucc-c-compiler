@@ -101,12 +101,12 @@ void gen_expr_identifier(expr *e, symtable *stab)
 
 void gen_expr_identifier_1(expr *e, FILE *f)
 {
-	fprintf(f, "%s", decl_spel(e->sym->decl));
+	fprintf(f, "%s", e->sym->decl->spel);
 	/*
 	 * don't use e->spel
 	 * static int i;
 	 * int x;
-	 * x = i; // e->spel is "i". e->sym->decl_spel(decl) is "func_name.static_i"
+	 * x = i; // e->spel is "i". e->sym->decl->spel is "func_name.static_i"
 	 */
 }
 

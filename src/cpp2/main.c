@@ -20,6 +20,9 @@ static const struct
 	{ "__unix__",       "1"  },
 	/* __STDC__ TODO */
 
+	{ "__SIZE_TYPE__",    "unsigned int"  },
+	{ "__PTRDIFF_TYPE__", "unsigned int"  },
+
 	/* custom */
 	{ "__UCC__",        "1"  },
 
