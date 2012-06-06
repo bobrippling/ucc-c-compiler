@@ -331,11 +331,7 @@ void fold_decl(decl *d, symtable *stab)
 				case store_default:
 					d->type->store = store_extern;
 				case store_extern:
-					break;
-
 				default:
-					warn_at(&d->where, "%s storage for unimplemented function %s",
-							type_store_to_str(d->type->store), d->spel);
 					break;
 			}
 		}
@@ -542,8 +538,7 @@ static void fold_link_decl_defs(decl **decls)
 		char wbuf[WHERE_BUF_SIZ];
 		decl *d, *e, *definition, *first_none_extern;
 		decl **decls_for_this, **decl_iter;
-		int have_extern;
-		int inline_count;
+		int count_inline, count_extern, count_static, count_total;
 
 		key = dynmap_key(spel_decls, i);
 		if(!key)
@@ -553,15 +548,23 @@ static void fold_link_decl_defs(decl **decls)
 		d = *decls_for_this;
 
 		definition = decl_is_definition(d) ? d : NULL;
-		if(d->type->store == store_extern){
-			first_none_extern = NULL;
-			have_extern = 1;
-		}else{
-			first_none_extern = d;
-			have_extern = 0;
-		}
 
-		inline_count = d->type->is_inline;
+		count_inline = d->type->is_inline;
+		count_extern = count_static = 0;
+		first_none_extern = NULL;
+
+		switch(d->type->store){
+			case store_extern:
+				count_extern++;
+				break;
+
+			case store_static:
+				count_static++;
+				/* fall */
+			default:
+				first_none_extern = d;
+				break;
+		}
 
 		/*
 		 * check the first is equal to all the rest, strict-types
@@ -577,13 +580,6 @@ static void fold_link_decl_defs(decl **decls)
 				die_at(&e->where, "mismatching declaration of %s (%s)", d->spel, wbuf);
 			}
 
-			if( d->type->store != e->type->store
-			&& (d->type->store == store_static || e->type->store == store_static))
-			{
-				strcpy(wbuf, where_str(&d->where));
-				die_at(&e->where, "static/non-static mismatch of %s (%s)", d->spel, wbuf);
-			}
-
 			if(decl_is_definition(e)){
 				/* e is the implementation/instantiation */
 
@@ -596,13 +592,20 @@ static void fold_link_decl_defs(decl **decls)
 				definition = e;
 			}
 
-			inline_count += e->type->is_inline;
+			count_inline += e->type->is_inline;
 
-			if(e->type->store != store_extern){
-				if(!first_none_extern)
-					first_none_extern = e;
-			}else{
-				have_extern = 1;
+			switch(e->type->store){
+				case store_extern:
+					count_extern++;
+					break;
+
+				case store_static:
+					count_static++;
+					/* fall */
+				default:
+					if(!first_none_extern)
+						first_none_extern = e;
+					break;
 			}
 		}
 
@@ -614,6 +617,9 @@ static void fold_link_decl_defs(decl **decls)
         definition = d;
 		}
 
+
+		count_total = dynarray_count((void **)decls_for_this);
+
 		if(decl_is_func(definition)){
 			/*
 			 * inline semantics
@@ -622,24 +628,39 @@ static void fold_link_decl_defs(decl **decls)
 			 * "static inline" = code emitted, decl is static
 			 * one "inline", and "extern" mentioned, or "inline" not mentioned = code emitted, decl is extern
 			 */
-			int const total_count = dynarray_count((void **)decls_for_this);
+			definition->type->is_inline = count_inline > 0;
 
-			definition->type->is_inline = inline_count > 0;
+
+			/* all defs must be static, except the def, which is allowed to be non-static */
+			if(count_static > 0){
+				definition->type->store = store_static;
+
+				if(count_static != count_total && (definition->func_code ? count_static != count_total - 1 : 0)){
+					die_at(&definition->where,
+							"static/non-static mismatch of function %s (%d static defs vs %d total)",
+							definition->spel, count_static, count_total);
+				}
+			}
+
 
 			if(definition->type->store == store_static){
 				/* static inline */
 
-			}else if(inline_count == total_count && !have_extern){
+			}else if(count_inline == count_total && count_extern == 0){
 				/* inline only */
 				definition->inline_only = 1;
 				warn_at(&definition->where, "definition is inline-only (ucc doesn't inline currently)");
-			}else if(inline_count > 0 && (have_extern || inline_count < total_count)){
+			}else if(count_inline > 0 && (count_extern > 0 || count_inline < count_total)){
 				/* extern inline */
 				definition->type->store = store_extern;
 			}
 
 			if(definition->type->is_inline && !definition->func_code)
 				warn_at(&definition->where, "inline function missing implementation");
+
+		}else if(count_static && count_static != count_total){
+			/* TODO: iter through decls, printing them out */
+			die_at(&definition->where, "static/non-static mismatch of %s", definition->spel);
 		}
 
 		definition->is_definition = 1;
