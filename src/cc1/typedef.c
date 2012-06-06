@@ -15,7 +15,7 @@ decl *typedef_find(symtable *stab, const char *spel)
 		decl **di;
 		for(di = stab->typedefs; di && *di; di++){
 			decl *d = *di;
-			if(!strcmp(decl_spel(d), spel))
+			if(!strcmp(d->spel, spel))
 				return d;
 		}
 	}

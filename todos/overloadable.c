@@ -1,3 +1,5 @@
+// _Zret%dfn{args}
+
 f(void) __attribute__((overloadable))
 {
 	return -1;
