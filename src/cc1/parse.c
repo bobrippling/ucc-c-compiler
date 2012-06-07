@@ -117,6 +117,18 @@ expr *parse_expr_identifier()
 	return e;
 }
 
+expr *parse_block()
+{
+	funcargs *args = funcargs_new();
+
+	EAT(token_xor);
+
+	if(accept(token_open_paren))
+		ICE("TODO: blocks with args");
+
+	return expr_new_block(args, parse_code_block());
+}
+
 expr *parse_expr_primary()
 {
 	switch(curtok){
@@ -189,6 +201,9 @@ expr *parse_expr_primary()
 
 		case token__Generic:
 			return parse_expr__Generic();
+
+		case token_xor:
+			return parse_block();
 
 		default:
 			if(accept(token_open_paren)){

@@ -91,6 +91,8 @@ void fold_decl_desc(decl_desc *dp, symtable *stab, decl *root)
 				die_at(&dp->where, "incomplete array");
 		}
 
+		case decl_desc_block:
+			/* TODO? */
 		case decl_desc_ptr:
 			/* TODO: check qual */
 			break;
