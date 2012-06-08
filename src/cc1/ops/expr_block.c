@@ -54,7 +54,7 @@ void fold_expr_block(expr *e, symtable *stab)
 	func->bits.func = e->block_args;
 
 	/* add the function to the global scope */
-	e->tree_type->spel = asm_label_block(curdecl_func_sp);
+	e->tree_type->spel = asm_label_block(curdecl_func->spel);
 	e->sym = SYMTAB_ADD(symtab_root(stab), e->tree_type, sym_global);
 
 	e->tree_type->func_code = e->code;

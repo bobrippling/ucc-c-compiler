@@ -18,7 +18,7 @@
 #include "sue.h"
 #include "decl.h"
 
-char *curdecl_func_sp;       /* for funcargs-local labels */
+decl *curdecl_func; /* for funcargs-local labels and return type-checking */
 
 static where asm_struct_enum_where;
 
@@ -504,16 +504,16 @@ void fold_funcargs(funcargs *fargs, symtable *stab, char *context)
 void fold_func(decl *func_decl)
 {
 	if(func_decl->func_code){
-		curdecl_func_sp = func_decl->spel;
+		curdecl_func = func_decl;
 
 		symtab_add_args(
 				func_decl->func_code->symtab,
 				decl_desc_tail(func_decl)->bits.func,
-				curdecl_func_sp);
+				curdecl_func->spel);
 
 		fold_stmt(func_decl->func_code);
 
-		curdecl_func_sp = NULL;
+		curdecl_func = NULL;
 	}
 }
 
