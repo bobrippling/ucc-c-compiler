@@ -69,4 +69,6 @@ stmt *stmt_new(func_fold_stmt *, func_gen_stmt *, func_str_stmt *, symtable *sta
 stmt_flow *stmt_flow_new(symtable *parent);
 void stmt_mutate(stmt *, func_fold_stmt *, func_gen_stmt *, func_str_stmt *);
 
+void stmt_walk(stmt *base, void (*f)(stmt *current, int *stop, void *), void *data);
+
 #endif
