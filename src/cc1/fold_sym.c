@@ -70,6 +70,7 @@ int symtab_fold(symtable *tab, int current)
 			}else if(s->type == sym_arg){
 				s->offset = arg_offset;
 				arg_offset += word_size;
+				s->decl->is_definition = 1; /* just for completeness */
 
 			}
 

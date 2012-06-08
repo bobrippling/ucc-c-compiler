@@ -213,7 +213,7 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 #endif
 
 	if(!fmt)
-		return;
+		return 0;
 
 	while(*fmt){
 		if(*fmt == '%'){

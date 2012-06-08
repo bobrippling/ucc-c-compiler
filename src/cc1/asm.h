@@ -66,5 +66,6 @@ char *asm_label_static_local(const char *funcsp, const char *spel);
 char *asm_label_goto(char *lbl);
 char *asm_label_case(enum asm_label_type, int val);
 char *asm_label_flow(const char *fmt);
+char *asm_label_block(const char *funcsp);
 
 #endif

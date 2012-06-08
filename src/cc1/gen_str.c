@@ -96,6 +96,10 @@ void print_decl_desc_eng(decl_desc *dp)
 			fprintf(cc1_out, "%spointer to ", type_qual_to_str(dp->bits.qual));
 			break;
 
+		case decl_desc_block:
+			fprintf(cc1_out, "block returning ");
+			break;
+
 		case decl_desc_func:
 		{
 #ifdef ENGLISH_PRINT_ARGLIST
@@ -179,6 +183,10 @@ void print_decl_desc(decl_desc *dp, decl *d)
 			fprintf(cc1_out, "*%s", type_qual_to_str(dp->bits.qual));
 			break;
 
+		case decl_desc_block:
+			fputc('^', cc1_out);
+			break;
+
 		case decl_desc_array:
 			/* done below */
 			break;
@@ -208,6 +216,7 @@ void print_decl_desc(decl_desc *dp, decl *d)
 		}
 
 		case decl_desc_ptr:
+		case decl_desc_block:
 			break;
 	}
 
@@ -261,7 +270,7 @@ void print_decl(decl *d, enum pdeclargs mode)
 
 	if(mode & PDECL_SYM_OFFSET){
 		if(d->sym)
-			fprintf(cc1_out, " (sym offset = %d)", d->sym->offset);
+			fprintf(cc1_out, " (sym %s, offset = %d)", sym_to_str(d->sym->type), d->sym->offset);
 		else
 			fprintf(cc1_out, " (no sym)");
 	}

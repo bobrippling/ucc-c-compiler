@@ -256,6 +256,27 @@ ops/expr_assign.o: ops/expr_assign.c ops/ops.h ops/../../util/util.h \
  ops/stmt_noop.h ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h \
  ops/../cc1.h ops/../asm.h ops/../fold.h ops/../const.h ops/../gen_str.h \
  ops/../gen_asm.h
+ops/expr_block.o: ops/expr_block.c ops/ops.h ops/../../util/util.h \
+ ops/../data_structs.h ops/../tree.h ops/../expr.h ops/../ops/expr_addr.h \
+ ops/../ops/expr_assign.h ops/../ops/expr_cast.h ops/../ops/expr_comma.h \
+ ops/../ops/expr_funcall.h ops/../ops/expr_identifier.h \
+ ops/../ops/expr_if.h ops/../ops/expr_op.h ops/../ops/expr_sizeof.h \
+ ops/../ops/expr_val.h ops/../ops/expr_stmt.h ops/../stmt.h \
+ ops/../ops/stmt_break.h ops/../ops/stmt_case.h \
+ ops/../ops/stmt_case_range.h ops/../ops/stmt_code.h \
+ ops/../ops/stmt_default.h ops/../ops/stmt_do.h ops/../ops/stmt_expr.h \
+ ops/../ops/stmt_for.h ops/../ops/stmt_goto.h ops/../ops/stmt_if.h \
+ ops/../ops/stmt_label.h ops/../ops/stmt_noop.h ops/../ops/stmt_return.h \
+ ops/../ops/stmt_switch.h ops/../ops/stmt_while.h \
+ ops/../ops/stmt_continue.h ops/../sym.h ops/../decl.h ops/expr_addr.h \
+ ops/expr_assign.h ops/expr_cast.h ops/expr_comma.h ops/expr_funcall.h \
+ ops/expr_identifier.h ops/expr_if.h ops/expr_op.h ops/expr_sizeof.h \
+ ops/expr_val.h ops/stmt_break.h ops/stmt_case.h ops/stmt_case_range.h \
+ ops/stmt_code.h ops/stmt_default.h ops/stmt_do.h ops/stmt_expr.h \
+ ops/stmt_for.h ops/stmt_goto.h ops/stmt_if.h ops/stmt_label.h \
+ ops/stmt_noop.h ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h \
+ ops/../cc1.h ops/../asm.h ops/../fold.h ops/../const.h ops/../gen_str.h \
+ ops/../gen_asm.h ops/expr_stmt.h
 ops/expr_cast.o: ops/expr_cast.c ops/ops.h ops/../../util/util.h \
  ops/../data_structs.h ops/../tree.h ops/../expr.h ops/../ops/expr_addr.h \
  ops/../ops/expr_assign.h ops/../ops/expr_cast.h ops/../ops/expr_comma.h \

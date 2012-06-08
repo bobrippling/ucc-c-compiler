@@ -59,6 +59,7 @@ struct decl_desc
 	enum decl_desc_type
 	{
 		decl_desc_ptr,
+		decl_desc_block,
 		decl_desc_func,
 		decl_desc_array,
 	} type;
@@ -164,10 +165,12 @@ decl_desc   *decl_desc_tail(decl *);
 
 decl_desc   *decl_desc_new(enum decl_desc_type t, decl *dparent, decl_desc *parent);
 decl_desc   *decl_desc_ptr_new(  decl *dparent, decl_desc *parent);
+decl_desc   *decl_desc_block_new(decl *dparent, decl_desc *parent);
 decl_desc   *decl_desc_func_new( decl *dparent, decl_desc *parent);
 decl_desc   *decl_desc_array_new(decl *dparent, decl_desc *parent);
 
 decl      *decl_copy(decl *);
+void       decl_copy_primitive(decl *to, decl *from);
 decl_desc *decl_desc_copy(decl_desc *);
 
 decl_init *decl_init_new(enum decl_init_type);
@@ -217,6 +220,7 @@ const char *decl_desc_str(decl_desc *dp);
 void  decl_set_spel(decl *, char *);
 
 const char *decl_to_str(decl *d);
+const char *decl_to_str_r(char buf[DECL_STATIC_BUFSIZ], decl *);
 
 void decl_desc_free(decl_desc *);
 #define decl_free_notype(x) do{free(x);}while(0)

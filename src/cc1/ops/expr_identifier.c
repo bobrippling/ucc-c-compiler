@@ -30,9 +30,9 @@ void fold_expr_identifier(expr *e, symtable *stab)
 #if 0
 			e->array_store = array_decl_new();
 
-			UCC_ASSERT(curdecl_func_sp, "no spel for current func");
-			e->array_store->data.str = curdecl_func_sp;
-			e->array_store->len = strlen(curdecl_func_sp) + 1; /* +1 - take the null byte */
+			UCC_ASSERT(curdecl_func, "no spel for current func");
+			e->array_store->data.str = curdecl_func->spel;
+			e->array_store->len = strlen(curdecl_func->spel) + 1; /* +1 - take the null byte */
 
 			e->array_store->type = array_str;
 

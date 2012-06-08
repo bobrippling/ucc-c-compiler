@@ -34,6 +34,11 @@ decl_desc *decl_desc_ptr_new(decl *dparent, decl_desc *parent)
 	return decl_desc_new(decl_desc_ptr, dparent, parent);
 }
 
+decl_desc *decl_desc_block_new(decl *dparent, decl_desc *parent)
+{
+	return decl_desc_new(decl_desc_block, dparent, parent);
+}
+
 decl_desc *decl_desc_func_new(decl *dparent, decl_desc *parent)
 {
 	return decl_desc_new(decl_desc_func, dparent, parent);
@@ -42,6 +47,13 @@ decl_desc *decl_desc_func_new(decl *dparent, decl_desc *parent)
 decl_desc *decl_desc_array_new(decl *dparent, decl_desc *parent)
 {
 	return decl_desc_new(decl_desc_array, dparent, parent);
+}
+
+void decl_desc_insert(decl *d, decl_desc *new)
+{
+	UCC_ASSERT(!new->child, "child on insert");
+	new->child = d->desc;
+	d->desc = new;
 }
 
 void decl_desc_append(decl_desc **pparent, decl_desc *child)
@@ -123,16 +135,35 @@ decl_desc *decl_desc_copy(decl_desc *dp)
 	return ret;
 }
 
+static void decl_copy_desc_if(decl *to, decl *from)
+{
+	UCC_ASSERT(!to->desc, "desc for target copy: %s", decl_to_str(to));
+
+	if(from->desc){
+		to->desc = decl_desc_copy(from->desc);
+		to->desc->parent_decl = to;
+	}
+}
+
 decl *decl_copy(decl *d)
 {
 	decl *ret = umalloc(sizeof *ret);
 	memcpy(ret, d, sizeof *ret);
 	ret->type = type_copy(d->type);
-	if(d->desc){
-		ret->desc = decl_desc_copy(d->desc);
-		ret->desc->parent_decl = ret;
-	}
+	ret->desc = NULL;
+	decl_copy_desc_if(ret, d);
 	return ret;
+}
+
+void decl_copy_primitive(decl *dto, decl *dfrom)
+{
+	type *const to = dto->type, *const from = dfrom->type;
+
+	to->primitive = from->primitive;
+	to->sue       = from->sue;
+	to->typeof    = from->typeof;
+
+	decl_copy_desc_if(dto, dfrom);
 }
 
 int decl_size(decl *d)
@@ -153,6 +184,7 @@ int decl_size(decl *d)
 		for(dp = decl_desc_tail(d); dp; dp = dp->parent_desc)
 			switch(dp->type){
 				case decl_desc_ptr:
+				case decl_desc_block:
 					had_ptr = 1;
 					break;
 
@@ -286,6 +318,7 @@ int decl_ptr_depth(decl *d)
 			case decl_desc_array:
 				i++;
 			case decl_desc_func:
+			case decl_desc_block:
 				break;
 		}
 
@@ -391,6 +424,7 @@ int decl_is_integral(decl *d)
 
 	return 0;
 }
+
 int decl_is_callable(decl *d)
 {
 	decl_desc *dp, *pre;
@@ -400,11 +434,17 @@ int decl_is_callable(decl *d)
 	if(!dp)
 		return 0;
 
-	if(dp->type == decl_desc_func)
-		return 1;
+	switch(dp->type){
+		case decl_desc_block:
+		case decl_desc_ptr:
+			return pre && pre->type == decl_desc_func; /* ptr to func */
 
-	if(dp->type == decl_desc_ptr)
-		return pre && pre->type == decl_desc_func; /* ptr to func */
+		case decl_desc_func:
+			return 1;
+
+		default:
+			break;
+	}
 
 	return 0;
 }
@@ -424,7 +464,10 @@ int decl_is_fptr(decl *d)
 			dp && dp->child;
 			prev = dp, dp = dp->child);
 
-	return dp && prev && dp->type == decl_desc_ptr && prev->type == decl_desc_func;
+	return dp
+		&& prev
+		&& prev->type == decl_desc_func
+		&& (dp->type == decl_desc_ptr || dp->type == decl_desc_block);
 }
 
 int decl_is_array(decl *d)
@@ -485,36 +528,49 @@ void decl_desc_cut_loose(decl_desc *dp)
 decl *decl_func_deref(decl *d, funcargs **pfuncargs)
 {
 	decl_desc *dp;
+	funcargs *args;
 
 	for(dp = d->desc; dp->child; dp = dp->child);
 
 	/* should've been caught by is_callable() */
 	UCC_ASSERT(dp, "can't call non-function");
 
-	if(dp->type == decl_desc_func){
-		*pfuncargs = dp->bits.func;
+	switch(dp->type){
+		case decl_desc_func:
+			args = dp->bits.func;
 
-		decl_desc_cut_loose(dp);
-
-		decl_desc_free(dp);
-	}else if(dp->type == decl_desc_ptr){
-		decl_desc *const func = dp->parent_desc;
-		UCC_ASSERT(func, "no parent desc for func-ptr call");
-
-		if(func->type == decl_desc_func){
-			*pfuncargs = func->bits.func;
-
-			decl_desc_cut_loose(func);
+			decl_desc_cut_loose(dp);
 
 			decl_desc_free(dp);
-			decl_desc_free(func);
-		}else{
-			goto cant;
+			break;
+
+		case decl_desc_ptr:
+		case decl_desc_block:
+		{
+			decl_desc *const func = dp->parent_desc;
+
+			UCC_ASSERT(func, "no parent desc for func-ptr call");
+
+			if(func->type == decl_desc_func){
+				args = func->bits.func;
+
+				decl_desc_cut_loose(func);
+
+				decl_desc_free(dp);
+				decl_desc_free(func);
+			}else{
+				goto cant;
+			}
+			break;
 		}
-	}else{
+
+		default:
 cant:
-		ICE("can't func-deref non func decl desc");
+			ICE("can't func-deref non func decl desc");
 	}
+
+	if(pfuncargs)
+		*pfuncargs = args;
 
 	return d;
 }
@@ -572,6 +628,7 @@ const char *decl_desc_str(decl_desc *dp)
 {
 	switch(dp->type){
 		CASE_STR_PREFIX(decl_desc, ptr);
+		CASE_STR_PREFIX(decl_desc, block);
 		CASE_STR_PREFIX(decl_desc, array);
 		CASE_STR_PREFIX(decl_desc, func);
 	}
@@ -602,6 +659,10 @@ void decl_desc_add_str(decl_desc *dp, char **bufp, int sz)
 		case decl_desc_ptr:
 			BUF_ADD("*%s",
 					type_qual_to_str(dp->bits.qual));
+			break;
+		case decl_desc_block:
+			BUF_ADD("^");
+			break;
 		default:
 			break;
 	}
@@ -610,11 +671,20 @@ void decl_desc_add_str(decl_desc *dp, char **bufp, int sz)
 		decl_desc_add_str(dp->child, bufp, sz);
 
 	switch(dp->type){
+		case decl_desc_block:
 		case decl_desc_ptr:
 			break;
 		case decl_desc_func:
-			BUF_ADD("()");
+		{
+			decl **i;
+			BUF_ADD("(");
+			for(i = dp->bits.func->arglist; i && *i; i++){
+				char tmp_buf[DECL_STATIC_BUFSIZ];
+				BUF_ADD("%s", decl_to_str_r(tmp_buf, *i)); /* NOT RE-ENTRANT :C */
+			}
+			BUF_ADD(")");
 			break;
+		}
 		case decl_desc_array:
 			BUF_ADD("[%ld]", dp->bits.array_size->val.iv.val);
 			break;
@@ -625,21 +695,26 @@ void decl_desc_add_str(decl_desc *dp, char **bufp, int sz)
 #undef BUF_ADD
 }
 
-const char *decl_to_str(decl *d)
+const char *decl_to_str_r(char buf[DECL_STATIC_BUFSIZ], decl *d)
 {
-	static char buf[DECL_STATIC_BUFSIZ];
 	char *bufp = buf;
 
 #define BUF_ADD(...) \
-	bufp += snprintf(bufp, sizeof(buf) - (bufp - buf), __VA_ARGS__)
+	bufp += snprintf(bufp, DECL_STATIC_BUFSIZ - (bufp - buf), __VA_ARGS__)
 
 	BUF_ADD("%s%s", type_to_str(d->type), d->desc ? " " : "");
 
 	if(d->desc)
-		decl_desc_add_str(d->desc, &bufp, sizeof(buf) - (bufp - buf));
+		decl_desc_add_str(d->desc, &bufp, DECL_STATIC_BUFSIZ - (bufp - buf));
 
 	return buf;
 #undef BUF_ADD
+}
+
+const char *decl_to_str(decl *d)
+{
+	static char buf[DECL_STATIC_BUFSIZ];
+	return decl_to_str_r(buf, d);
 }
 
 int decl_init_len(decl_init *di)

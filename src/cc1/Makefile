@@ -20,7 +20,7 @@ OBJ = \
 	ops/stmt_break.o ops/stmt_case.o ops/stmt_case_range.o ops/stmt_code.o \
 	ops/stmt_default.o ops/stmt_do.o ops/stmt_expr.o ops/stmt_for.o ops/stmt_goto.o \
 	ops/stmt_if.o ops/stmt_label.o ops/stmt_noop.o ops/stmt_return.o \
-	ops/stmt_switch.o ops/stmt_while.o ops/stmt_continue.o
+	ops/stmt_switch.o ops/stmt_while.o ops/stmt_continue.o ops/expr_block.o
 
 include ../../config.mk
 

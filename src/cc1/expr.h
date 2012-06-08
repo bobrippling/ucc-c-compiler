@@ -55,6 +55,8 @@ struct expr
 	decl *decl; /* for sizeof(decl) */
 	data_store *data_store; /* for strings + { } */
 
+	funcargs *block_args;
+
 	sym *sym;
 
 	/* type propagation */
@@ -113,6 +115,7 @@ expr *expr_new_sizeof_expr(expr *);
 expr *expr_new_funcall(void);
 expr *expr_new_assign(expr *to, expr *from);
 expr *expr_new__Generic(expr *test, struct generic_lbl **lbls);
+expr *expr_new_block(funcargs *args, stmt *code);
 
 expr *expr_new_addr_data(data_store *);
 #define expr_new_addr() expr_new_wrapper(addr)
