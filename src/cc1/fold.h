@@ -27,7 +27,7 @@ void fold_stmt(stmt *t);
 
 void fold(symtable *);
 
-extern decl *curdecl_func;
+extern decl *curdecl_func, *curdecl_func_called;
 
 extern where *eof_where;
 

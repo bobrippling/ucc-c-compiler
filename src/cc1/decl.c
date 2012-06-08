@@ -532,6 +532,7 @@ void decl_desc_cut_loose(decl_desc *dp)
 decl *decl_func_deref(decl *d, funcargs **pfuncargs)
 {
 	decl_desc *dp;
+	funcargs *args;
 
 	for(dp = d->desc; dp->child; dp = dp->child);
 
@@ -540,7 +541,7 @@ decl *decl_func_deref(decl *d, funcargs **pfuncargs)
 
 	switch(dp->type){
 		case decl_desc_func:
-			*pfuncargs = dp->bits.func;
+			args = dp->bits.func;
 
 			decl_desc_cut_loose(dp);
 
@@ -555,7 +556,7 @@ decl *decl_func_deref(decl *d, funcargs **pfuncargs)
 			UCC_ASSERT(func, "no parent desc for func-ptr call");
 
 			if(func->type == decl_desc_func){
-				*pfuncargs = func->bits.func;
+				args = func->bits.func;
 
 				decl_desc_cut_loose(func);
 
@@ -571,6 +572,9 @@ decl *decl_func_deref(decl *d, funcargs **pfuncargs)
 cant:
 			ICE("can't func-deref non func decl desc");
 	}
+
+	if(pfuncargs)
+		*pfuncargs = args;
 
 	return d;
 }
