@@ -17,7 +17,8 @@ void fold_stmt_return(stmt *s)
 				"mismatching return type for %s", curdecl_func->spel);
 
 	}else if(!decl_is_void(curdecl_func)){
-		cc1_warn_at(&s->where, 0, WARN_RETURN_TYPE, "empty return in non-void function");
+		cc1_warn_at(&s->where, 0, WARN_RETURN_TYPE,
+				"empty return in non-void function %s", curdecl_func->spel);
 	}
 }
 
