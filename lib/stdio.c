@@ -10,7 +10,7 @@
 #include "ucc_attr.h"
 
 #define PRINTF_OPTIMISE
-//#define PRINTF_ENABLE_PADDING <- currently exposes a while-in-switch bug
+#define PRINTF_ENABLE_PADDING
 
 static FILE _stdin  = { 0, 0 };
 static FILE _stdout = { 1, 0 };
