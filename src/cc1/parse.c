@@ -138,6 +138,28 @@ expr *parse_expr_identifier()
 	return e;
 }
 
+expr *parse_block()
+{
+	stmt *code;
+	funcargs *args;
+
+	EAT(token_xor);
+
+	if(accept(token_open_paren)){
+		args = parse_func_arglist();
+		EAT(token_close_paren);
+	}else{
+		args = funcargs_new();
+	}
+
+	code = parse_code_block();
+
+	/* prevent access to nested vars */
+	code->symtab->parent = symtab_root(code->symtab);
+
+	return expr_new_block(args, code);
+}
+
 expr *parse_expr_primary()
 {
 	switch(curtok){
@@ -210,6 +232,9 @@ expr *parse_expr_primary()
 
 		case token__Generic:
 			return parse_expr__Generic();
+
+		case token_xor:
+			return parse_block();
 
 		default:
 			if(accept(token_open_paren)){

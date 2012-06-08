@@ -57,6 +57,7 @@ symtable *symtab_root(symtable *child);
 sym  *symtab_add(   symtable *, decl *, enum sym_type, int with_sym, int prepend);
 sym  *symtab_search(symtable *, char **ns_path);
 sym  *symtab_has(   symtable *, decl *);
+void  symtab_add_args(symtable *stab, funcargs *fargs, char *funcsp);
 
 const char *sym_to_str(enum sym_type);
 
