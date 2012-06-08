@@ -4,7 +4,7 @@
 #ifdef SYS_brk
 static void *ucc_brk(void *p)
 {
-	return __syscall(SYS_brk, p);
+	return (void *)__syscall(SYS_brk, p);
 }
 
 int brk(void *p)
