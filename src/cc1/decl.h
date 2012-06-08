@@ -143,7 +143,6 @@ decl        *decl_new(void);
 array_decl  *array_decl_new(void);
 decl_attr   *decl_attr_new(enum decl_attr_type);
 void         decl_attr_append(decl_attr **loc, decl_attr *new);
-void         decl_desc_insert(decl *d, decl_desc *new);
 const char  *decl_attr_to_str(enum decl_attr_type);
 
 void         decl_desc_append(decl_desc **parent, decl_desc *child);
@@ -156,6 +155,7 @@ decl_desc   *decl_desc_func_new( decl *dparent, decl_desc *parent);
 decl_desc   *decl_desc_array_new(decl *dparent, decl_desc *parent);
 
 decl      *decl_copy(decl *);
+void       decl_copy_primitive(decl *to, decl *from);
 decl_desc *decl_desc_copy(decl_desc *);
 
 void decl_conv_array_ptr(decl *d);

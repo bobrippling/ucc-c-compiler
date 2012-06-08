@@ -119,14 +119,24 @@ expr *parse_expr_identifier()
 
 expr *parse_block()
 {
-	funcargs *args = funcargs_new();
+	stmt *code;
+	funcargs *args;
 
 	EAT(token_xor);
 
-	if(accept(token_open_paren))
-		ICE("TODO: blocks with args");
+	if(accept(token_open_paren)){
+		args = parse_func_arglist();
+		EAT(token_close_paren);
+	}else{
+		args = funcargs_new();
+	}
 
-	return expr_new_block(args, parse_code_block());
+	code = parse_code_block();
+
+	/* prevent access to nested vars */
+	code->symtab->parent = symtab_root(code->symtab);
+
+	return expr_new_block(args, code);
 }
 
 expr *parse_expr_primary()

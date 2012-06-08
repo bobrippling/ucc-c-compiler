@@ -234,7 +234,7 @@ void print_decl(decl *d, enum pdeclargs mode)
 
 	if(mode & PDECL_SYM_OFFSET){
 		if(d->sym)
-			fprintf(cc1_out, " (sym offset = %d)", d->sym->offset);
+			fprintf(cc1_out, " (sym %s, offset = %d)", sym_to_str(d->sym->type), d->sym->offset);
 		else
 			fprintf(cc1_out, " (no sym)");
 	}

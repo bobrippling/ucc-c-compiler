@@ -141,16 +141,35 @@ decl_desc *decl_desc_copy(decl_desc *dp)
 	return ret;
 }
 
+static void decl_copy_desc_if(decl *to, decl *from)
+{
+	UCC_ASSERT(!to->desc, "desc for target copy: %s", decl_to_str(to));
+
+	if(from->desc){
+		to->desc = decl_desc_copy(from->desc);
+		to->desc->parent_decl = to;
+	}
+}
+
 decl *decl_copy(decl *d)
 {
 	decl *ret = umalloc(sizeof *ret);
 	memcpy(ret, d, sizeof *ret);
 	ret->type = type_copy(d->type);
-	if(d->desc){
-		ret->desc = decl_desc_copy(d->desc);
-		ret->desc->parent_decl = ret;
-	}
+	ret->desc = NULL;
+	decl_copy_desc_if(ret, d);
 	return ret;
+}
+
+void decl_copy_primitive(decl *dto, decl *dfrom)
+{
+	type *const to = dto->type, *const from = dfrom->type;
+
+	to->primitive = from->primitive;
+	to->sue       = from->sue;
+	to->typeof    = from->typeof;
+
+	decl_copy_desc_if(dto, dfrom);
 }
 
 int decl_size(decl *d)
@@ -449,7 +468,10 @@ int decl_is_fptr(decl *d)
 			dp && dp->child;
 			prev = dp, dp = dp->child);
 
-	return dp && prev && dp->type == decl_desc_ptr && prev->type == decl_desc_func;
+	return dp
+		&& prev
+		&& prev->type == decl_desc_func
+		&& (dp->type == decl_desc_ptr || dp->type == decl_desc_block);
 }
 
 int decl_is_array(decl *d)
