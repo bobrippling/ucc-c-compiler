@@ -113,6 +113,22 @@ sym *symtab_add(symtable *tab, decl *d, enum sym_type t, int with_sym, int prepe
 	return new;
 }
 
+void symtab_add_args(symtable *stab, funcargs *fargs, char *funcsp)
+{
+	int nargs, i;
+
+	if(fargs->arglist){
+		for(nargs = 0; fargs->arglist[nargs]; nargs++);
+		/* add args backwards, since we push them onto the stack backwards - still need to do this here? */
+		for(i = nargs - 1; i >= 0; i--){
+			if(!fargs->arglist[i]->spel)
+				die_at(&fargs->where, "function \"%s\" has unnamed arguments", funcsp);
+			else
+				SYMTAB_ADD(stab, fargs->arglist[i], sym_arg);
+		}
+	}
+}
+
 const char *sym_to_str(enum sym_type t)
 {
 	switch(t){

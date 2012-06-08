@@ -27,7 +27,7 @@
 
 decl_desc *parse_decl_desc(enum decl_mode mode, char **sp);
 
-#define INT_TYPE(t) do{ t = type_new(); t->primitive = type_int; }while(0)
+#define INT_TYPE(t) do{ UCC_ASSERT(!t, "got type"); t = type_new(); t->primitive = type_int; }while(0)
 
 void parse_type_preamble(type **tp, char **psp, enum type_primitive primitive)
 {
@@ -241,7 +241,7 @@ type *parse_type()
 
 
 		if(!primitive_set)
-			INT_TYPE(t); /* unsigned x; */
+			t->primitive = type_int;
 		else
 			t->primitive = primitive;
 
@@ -345,7 +345,15 @@ decl_desc *parse_decl_desc_ptr(enum decl_mode mode, char **sp)
 {
 	decl_desc *ret = NULL;
 
-	if(accept(token_multiply)){
+	if(accept(token_xor)){
+		/* block */
+		decl_desc *block = decl_desc_block_new(NULL, NULL);
+
+		block->child = parse_decl_desc(mode, sp);
+
+		return block;
+
+	}else if(accept(token_multiply)){
 		enum type_qualifier qual = qual_none;
 		decl_desc *ptr = decl_desc_ptr_new(NULL, NULL);
 

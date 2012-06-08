@@ -16,7 +16,24 @@
 #define SNPRINTF(s, n, ...) \
 		UCC_ASSERT(snprintf(s, n, __VA_ARGS__) != n, "snprintf buffer too small")
 
-static int label_last = 1, str_last = 1, switch_last = 1, flow_last = 1;
+static int label_last    = 1,
+					 str_last      = 1,
+					 switch_last   = 1,
+					 flow_last     = 1,
+					 block_last    = 1;
+
+char *asm_label_block(const char *funcsp)
+{
+	int len;
+	char *ret;
+
+	len = strlen(funcsp) + 16;
+	ret = umalloc(len);
+
+	SNPRINTF(ret, len, "%s.block_%d", funcsp, block_last++);
+
+	return ret;
+}
 
 char *asm_label_func(decl *df, funcargs *fargs)
 {
@@ -68,6 +85,9 @@ char *asm_label_func(decl *df, funcargs *fargs)
 
 			for(dp = d->desc; dp; dp = dp->child){
 				switch(dp->type){
+					case decl_desc_block:
+						ch = '_';
+						break;
 					case decl_desc_func:
 						ch = 'F';
 						/* TODO: append more func ptr detail */

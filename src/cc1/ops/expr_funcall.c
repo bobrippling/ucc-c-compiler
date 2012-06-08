@@ -79,7 +79,7 @@ void fold_expr_funcall(expr *e, symtable *stab)
 		if(!sp)
 			sp = "<anon func>";
 
-		for(iter = e->funcargs; *iter; iter++){
+		for(iter = e->funcargs_exprs; *iter; iter++){
 			char *desc;
 			expr *arg = *iter;
 
@@ -103,7 +103,7 @@ void fold_expr_funcall(expr *e, symtable *stab)
 
 		count_decl = count_arg = 0;
 
-		for(iter_arg  = e->funcargs;             iter_arg  && *iter_arg;  iter_arg++,  count_arg++);
+		for(iter_arg  = e->funcargs_exprs;       iter_arg  && *iter_arg;  iter_arg++,  count_arg++);
 		for(iter_decl = args_from_decl->arglist; iter_decl && *iter_decl; iter_decl++, count_decl++);
 
 		if(overloaded){
@@ -123,12 +123,12 @@ void fold_expr_funcall(expr *e, symtable *stab)
 		if(e->funcargs){
 			int idx;
 
-			e->fcall_funcargs = funcargs_new();
+			e->funcargs = funcargs_new();
 
-			for(iter_arg = e->funcargs; *iter_arg; iter_arg++)
-				dynarray_add((void ***)&e->fcall_funcargs->arglist, (*iter_arg)->tree_type);
+			for(iter_arg = e->funcargs_exprs; *iter_arg; iter_arg++)
+				dynarray_add((void ***)&e->funcargs->arglist, (*iter_arg)->tree_type);
 
-			if(!overloaded && !funcargs_equal(args_from_decl, e->fcall_funcargs, 0, &idx)){
+			if(!overloaded && !funcargs_equal(args_from_decl, e->funcargs, 0, &idx)){
 				if(idx == -1){
 					die_at(&e->where, "mismatching argument count to %s", df->spel);
 				}else{
@@ -137,7 +137,7 @@ void fold_expr_funcall(expr *e, symtable *stab)
 					strcpy(buf, decl_to_str(args_from_decl->arglist[idx]));
 
 					cc1_warn_at(&e->where, 0, WARN_ARG_MISMATCH, "mismatching argument %d to %s (%s <-- %s)",
-							idx, df->spel, buf, decl_to_str(e->fcall_funcargs->arglist[idx]));
+							idx, df->spel, buf, decl_to_str(e->funcargs->arglist[idx]));
 				}
 			}
 		}
@@ -154,7 +154,7 @@ void fold_expr_funcall(expr *e, symtable *stab)
 
 		overloaded_decl->spel_asm = NULL;
 
-		decl_asm_rename(overloaded_decl, 0, e->fcall_funcargs);
+		decl_asm_rename(overloaded_decl, 0, e->funcargs);
 
 		/* add to the global symtable, so we can check if it's defined later */
 		e->expr->sym = SYMTAB_ADD(stab, overloaded_decl, sym_local);
@@ -183,10 +183,10 @@ void gen_expr_funcall(expr *e, symtable *stab)
 		expr *arg1;
 		int i;
 
-		if(!e->funcargs || e->funcargs[1] || !expr_kind(e->funcargs[0], addr))
+		if(!e->funcargs_exprs || e->funcargs_exprs[1] || !expr_kind(e->funcargs_exprs[0], addr))
 			die_at(&e->where, "invalid __asm__ arguments");
 
-		arg1 = e->funcargs[0];
+		arg1 = e->funcargs_exprs[0];
 		str = arg1->array_store->data.str;
 		for(i = 0; i < arg1->array_store->len - 1; i++){
 			char ch = str[i];
@@ -208,8 +208,8 @@ invalid:
 
 		if(e->funcargs){
 			/* need to push on in reverse order */
-			for(iter = e->funcargs; *iter; iter++);
-			for(iter--; iter >= e->funcargs; iter--){
+			for(iter = e->funcargs_exprs; *iter; iter++);
+			for(iter--; iter >= e->funcargs_exprs; iter--){
 				gen_expr(*iter, stab);
 				nargs++;
 			}
@@ -252,7 +252,7 @@ void gen_expr_str_funcall(expr *e, symtable *stab)
 		int i;
 		idt_printf("args:\n");
 		gen_str_indent++;
-		for(i = 1, iter = e->funcargs; *iter; iter++, i++){
+		for(i = 1, iter = e->funcargs_exprs; *iter; iter++, i++){
 			idt_printf("arg %d:\n", i);
 			gen_str_indent++;
 			print_expr(*iter);

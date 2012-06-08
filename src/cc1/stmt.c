@@ -38,3 +38,32 @@ stmt *stmt_new(func_fold_stmt *f_fold, func_gen_stmt *f_gen, func_str_stmt *f_st
 
 	return s;
 }
+
+static void stmt_walk2(stmt *base, void (*f)(stmt *current, int *stop, void *), void *data, int *stop)
+{
+	f(base, stop, data);
+
+	if(*stop)
+		return;
+
+#define WALK_IF(sub) if(sub){ f(sub, stop, data); if(*stop) return; }
+
+	WALK_IF(base->lhs);
+	WALK_IF(base->rhs);
+
+	if(base->codes){
+		int i;
+		for(i = 0; base->codes[i]; i++){
+			stmt_walk2(base->codes[i], f, data, stop);
+			if(*stop)
+				break;
+		}
+	}
+}
+
+void stmt_walk(stmt *base, void (*f)(stmt *current, int *stop, void *), void *data)
+{
+	int stop = 0;
+
+	stmt_walk2(base, f, data, &stop);
+}
