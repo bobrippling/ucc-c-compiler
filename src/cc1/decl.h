@@ -201,6 +201,7 @@ const char *decl_desc_str(decl_desc *dp);
 void  decl_set_spel(decl *, char *);
 
 const char *decl_to_str(decl *d);
+const char *decl_to_str_r(char buf[DECL_STATIC_BUFSIZ], decl *);
 
 void decl_desc_free(decl_desc *);
 #define decl_free_notype(x) do{free(x);}while(0)

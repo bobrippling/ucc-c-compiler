@@ -1,6 +1,6 @@
 int the_i;
 
-int (^makeadder(int i))()
+int (^makeadder(int i))(int)
 {
 	the_i = i;
 	return ^(int a){return a + the_i;};

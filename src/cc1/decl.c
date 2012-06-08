@@ -675,8 +675,16 @@ void decl_desc_add_str(decl_desc *dp, char **bufp, int sz)
 		case decl_desc_ptr:
 			break;
 		case decl_desc_func:
-			BUF_ADD("()");
+		{
+			decl **i;
+			BUF_ADD("(");
+			for(i = dp->bits.func->arglist; i && *i; i++){
+				char tmp_buf[DECL_STATIC_BUFSIZ];
+				BUF_ADD("%s", decl_to_str_r(tmp_buf, *i)); /* NOT RE-ENTRANT :C */
+			}
+			BUF_ADD(")");
 			break;
+		}
 		case decl_desc_array:
 			BUF_ADD("[%ld]", dp->bits.array_size->val.iv.val);
 			break;
@@ -687,19 +695,24 @@ void decl_desc_add_str(decl_desc *dp, char **bufp, int sz)
 #undef BUF_ADD
 }
 
-const char *decl_to_str(decl *d)
+const char *decl_to_str_r(char buf[DECL_STATIC_BUFSIZ], decl *d)
 {
-	static char buf[DECL_STATIC_BUFSIZ];
 	char *bufp = buf;
 
 #define BUF_ADD(...) \
-	bufp += snprintf(bufp, sizeof(buf) - (bufp - buf), __VA_ARGS__)
+	bufp += snprintf(bufp, DECL_STATIC_BUFSIZ - (bufp - buf), __VA_ARGS__)
 
 	BUF_ADD("%s%s", type_to_str(d->type), d->desc ? " " : "");
 
 	if(d->desc)
-		decl_desc_add_str(d->desc, &bufp, sizeof(buf) - (bufp - buf));
+		decl_desc_add_str(d->desc, &bufp, DECL_STATIC_BUFSIZ - (bufp - buf));
 
 	return buf;
 #undef BUF_ADD
+}
+
+const char *decl_to_str(decl *d)
+{
+	static char buf[DECL_STATIC_BUFSIZ];
+	return decl_to_str_r(buf, d);
 }
