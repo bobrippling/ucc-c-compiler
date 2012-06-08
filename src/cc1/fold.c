@@ -17,8 +17,7 @@
 #include "sue.h"
 #include "decl.h"
 
-
-decl *curdecl_func;          /* for funcargs-local labels */
+decl *curdecl_func, *curdecl_func_called; /* for funcargs-local labels and return type-checking */
 
 static where asm_struct_enum_where;
 
@@ -130,6 +129,8 @@ void fold_decl_desc(decl_desc *dp, symtable *stab, decl *root)
 				die_at(&dp->where, "incomplete array");
 		}
 
+		case decl_desc_block:
+			/* TODO? */
 		case decl_desc_ptr:
 			/* TODO: check qual */
 			break;
@@ -308,12 +309,19 @@ void fold_decl(decl *d, symtable *stab)
 	UCC_ASSERT(d->type && d->type->store != store_typedef, "typedef store after tdef folding");
 
 	/* check for array of funcs, func returning array */
-	for(dp = decl_desc_tail(d); dp && dp->parent_desc; dp = dp->parent_desc){
-		if(dp->parent_desc->type == decl_desc_func){
+	for(dp = decl_desc_tail(d); dp; dp = dp->parent_desc){
+
+		if(dp->parent_desc && dp->parent_desc->type == decl_desc_func){
 			if(dp->type == decl_desc_array)
 				die_at(&dp->where, "can't have an array of functions");
 			else if(dp->type == decl_desc_func)
 				die_at(&dp->where, "can't have a function returning a function");
+		}
+
+		if(dp->type == decl_desc_block
+		&& (!dp->parent_desc || dp->parent_desc->type != decl_desc_func))
+		{
+			die_at(&dp->where, "invalid block pointer - function required");
 		}
 	}
 
@@ -538,31 +546,21 @@ void fold_funcargs(funcargs *fargs, symtable *stab, char *context)
 	}
 }
 
-void fold_func(decl *func_decl, symtable *globs)
+void fold_func(decl *func_decl)
 {
-	curdecl_func = func_decl;
-
 	if(func_decl->func_code){
-		funcargs *fargs;
-		int nargs, i;
+		curdecl_func = func_decl;
+		curdecl_func_called = decl_func_deref(decl_copy(curdecl_func), NULL);
 
-		fargs = decl_desc_tail(func_decl)->bits.func;
-
-		if(fargs->arglist){
-			for(nargs = 0; fargs->arglist[nargs]; nargs++);
-			/* add args backwards, since we push them onto the stack backwards - still need to do this here? */
-			for(i = nargs - 1; i >= 0; i--){
-				if(!fargs->arglist[i]->spel)
-					die_at(&fargs->where, "function \"%s\" has unnamed arguments", curdecl_func->spel);
-				else
-					SYMTAB_ADD(func_decl->func_code->symtab, fargs->arglist[i], sym_arg);
-			}
-		}
-
-		symtab_set_parent(func_decl->func_code->symtab, globs);
+		symtab_add_args(
+				func_decl->func_code->symtab,
+				decl_desc_tail(func_decl)->bits.func,
+				curdecl_func->spel);
 
 		fold_stmt(func_decl->func_code);
 
+		free(curdecl_func_called);
+		curdecl_func_called = NULL;
 		curdecl_func = NULL;
 	}
 }
@@ -788,7 +786,7 @@ void fold(symtable *globs)
 		fold_decl_global(D(i), globs);
 
 		if(decl_is_func(D(i)))
-			fold_func(D(i), globs);
+			fold_func(D(i));
 	}
 
 	/* link declarations with definitions */

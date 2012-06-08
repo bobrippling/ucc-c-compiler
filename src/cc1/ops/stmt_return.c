@@ -13,12 +13,15 @@ void fold_stmt_return(stmt *s)
 
 		fold_test_expr(s->expr, "return");
 
-		fold_decl_equal(curdecl_func, s->expr->tree_type,
-			&s->where, WARN_RET_MISMATCH,
-			"type mismatch in return (%s)",
-			curdecl_func->spel);
+		fold_decl_equal(s->expr->tree_type, curdecl_func_called,
+				&s->where, WARN_RETURN_TYPE,
+				"mismatching return type for %s", curdecl_func->spel);
 
 		fold_insert_casts(curdecl_func, &s->expr, s->symtab, &s->expr->where);
+
+	}else if(!decl_is_void(curdecl_func)){
+		cc1_warn_at(&s->where, 0, WARN_RETURN_TYPE,
+				"empty return in non-void function %s", curdecl_func->spel);
 	}
 }
 

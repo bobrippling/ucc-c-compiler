@@ -54,7 +54,7 @@ void rewinddir(DIR *dirp __unused)
 	// TODO
 }
 
-#ifdef GOT_LONG
+#ifdef __GOT_SHORT_LONG
 void seekdir(DIR *dirp, long pos)
 {
 	// TODO

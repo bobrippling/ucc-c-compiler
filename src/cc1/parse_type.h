@@ -12,4 +12,6 @@ decl **parse_decls_one_type(void);
 /* type ident...; type ident...; */
 decl **parse_decls_multi_type(enum decl_multi_mode mode);
 
+funcargs *parse_func_arglist(void);
+
 #endif

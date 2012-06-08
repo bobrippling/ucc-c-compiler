@@ -17,6 +17,10 @@
 #endif
 #endif
 
-extern int __syscall(int, ...);
+#ifndef __GOT_SHORT_LONG
+# define long int
+#endif
+
+extern long __syscall(int, ...);
 
 #endif
