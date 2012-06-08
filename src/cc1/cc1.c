@@ -31,7 +31,7 @@ struct
 
 	{ 0,  "mismatch-arg",    WARN_ARG_MISMATCH                      },
 	{ 0,  "array-comma",     WARN_ARRAY_COMMA                       },
-	{ 0,  "mismatch-assign", WARN_ASSIGN_MISMATCH | WARN_COMPARE_MISMATCH },
+	{ 0,  "mismatch-assign", WARN_ASSIGN_MISMATCH | WARN_COMPARE_MISMATCH | WARN_RETURN_TYPE },
 	{ 0,  "return-type",     WARN_RETURN_TYPE                       },
 
 	{ 0,  "sign-compare",    WARN_SIGN_COMPARE                      },

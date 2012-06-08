@@ -300,7 +300,14 @@ void fold_expr_op(expr *e, symtable *stab)
 			}
 		}else{
 norm_tt:
-			e->tree_type = decl_copy(e->lhs->tree_type);
+			/* if we have a _comparison_ (e.g. between enums), convert to int */
+
+			if(op_is_cmp(e->op)){
+				e->tree_type = decl_new();
+				e->tree_type->type->primitive = type_int;
+			}else{
+				e->tree_type = decl_copy(e->lhs->tree_type);
+			}
 		}
 	}
 
