@@ -323,6 +323,11 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 #endif
 }
 
+int vprintf(const char *fmt, va_list l)
+{
+	return vfprintf(stdout, fmt, l);
+}
+
 int dprintf(int fd, const char *fmt, ...)
 {
 	va_list l;
