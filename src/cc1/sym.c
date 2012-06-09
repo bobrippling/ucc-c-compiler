@@ -93,9 +93,9 @@ sym *symtab_add(symtable *tab, decl *d, enum sym_type t, int with_sym, int prepe
 	sym *new;
 
 	if((new = symtab_search2(tab, d->spel, spel_cmp, 0))){
-		char buf[DECL_STATIC_BUFSIZ];
+		char buf[WHERE_BUF_SIZ];
 		if(new->decl)
-			strcpy(buf, where_str(&new->decl->where));
+			snprintf(buf, sizeof buf, "%s", where_str(&new->decl->where));
 		else
 			*buf = '\0';
 

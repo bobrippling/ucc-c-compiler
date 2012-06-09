@@ -23,9 +23,13 @@ void fold_expr__Generic(expr *e, symtable *stab)
 
 		fold_expr(l->e, stab);
 
-		for(j = i + 1; *j; j++)
-			if(decl_equal((*j)->d, l->d, DECL_CMP_ARGS))
-				die_at(&(*j)->d->where, "duplicate type in _Generic: %s", decl_to_str(l->d));
+		for(j = i + 1; *j; j++){
+			decl *m = (*j)->d;
+
+			/* duplicate default checked below */
+			if(m && decl_equal(m, l->d, DECL_CMP_ARGS))
+				die_at(&m->where, "duplicate type in _Generic: %s", decl_to_str(l->d));
+		}
 
 
 		if(l->d){

@@ -30,9 +30,8 @@ void fold_decl_equal(decl *a, decl *b, where *w, enum warning warn,
 		char buf[DECL_STATIC_BUFSIZ];
 		va_list l;
 
-		strcpy(buf, decl_to_str(b));
+		cc1_warn_at(w, 0, warn, "%s vs. %s for...", decl_to_str(a), decl_to_str_r(buf, b));
 
-		cc1_warn_at(w, 0, warn, "%s vs. %s for...", decl_to_str(a), buf);
 
 		one_struct = (!a->desc && a->type->sue && a->type->sue->primitive != type_enum)
 			        || (!b->desc && b->type->sue && b->type->sue->primitive != type_enum);
@@ -384,12 +383,12 @@ void fold_decl(decl *d, symtable *stab)
 
 			if(!ok){
 				char buf_a[DECL_STATIC_BUFSIZ], buf_b[DECL_STATIC_BUFSIZ];
-				strcpy(buf_a, decl_to_str(d));
-				strcpy(buf_b, decl_to_str(d->init->tree_type));
 
 				fold_decl_equal(d, d->init->tree_type, &d->where, WARN_ASSIGN_MISMATCH,
 						"mismatching initialisation for %s (%s vs. %s)",
-						d->spel, buf_a, buf_b);
+						d->spel,
+						decl_to_str_r(buf_a, d),
+						decl_to_str_r(buf_b, d->init->tree_type));
 			}
 
 			if(const_fold(d->init) && !const_expr_is_const(d->init)){

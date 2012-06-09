@@ -122,10 +122,8 @@ void fold_expr_funcall(expr *e, symtable *stab)
 				}else{
 					char buf[DECL_STATIC_BUFSIZ];
 
-					strcpy(buf, decl_to_str(args_from_decl->arglist[idx]));
-
 					cc1_warn_at(&e->where, 0, WARN_ARG_MISMATCH, "mismatching argument %d to %s (%s <-- %s)",
-							idx, df->spel, buf, decl_to_str(args_from_expr->arglist[idx]));
+							idx, df->spel, decl_to_str_r(buf, args_from_decl->arglist[idx]), decl_to_str(args_from_expr->arglist[idx]));
 				}
 			}
 
