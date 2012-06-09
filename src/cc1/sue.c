@@ -81,9 +81,9 @@ struct_union_enum_st *sue_add(symtable *const stab, char *spel, sue_member **mem
 	int new = 0;
 
 	if(spel && (sue = sue_find(stab, spel))){
-		char buf[DECL_STATIC_BUFSIZ];
+		char buf[WHERE_BUF_SIZ];
 
-		strcpy(buf, where_str(&sue->where));
+		snprintf(buf, sizeof buf, "%s", where_str(&sue->where));
 
 		/* redef checks */
 		if(sue->primitive != prim)
