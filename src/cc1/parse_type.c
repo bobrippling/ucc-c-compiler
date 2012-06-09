@@ -568,7 +568,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 					decl_free_notype(d);
 					goto next;
 				}
-				die_at(&d->where, "identifier expected after decl");
+				die_at(&d->where, "identifier expected after decl (got %s)", token_to_str(curtok));
 			}else if(decl_is_func(d) && curtok == token_open_block){ /* this is why we can't have __attribute__ on function defs */
 				/* optionally check for old func decl */
 				decl **old_args = parse_decls_multi_type(0);
