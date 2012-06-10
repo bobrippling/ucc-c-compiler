@@ -49,8 +49,11 @@ const char *argv0;
 static void unlink_files(void)
 {
 	int i;
-	for(i = 0; remove_these[i]; i++)
+	for(i = 0; remove_these[i]; i++){
 		remove(remove_these[i]);
+		free(remove_these[i]);
+	}
+	free(remove_these);
 }
 
 static char *tmpfilenam()
@@ -109,15 +112,6 @@ preproc:
 	}else{
 		goto assume_obj;
 	}
-}
-
-void free_file(struct cc_file *file)
-{
-	/*free(file->in);*/
-	free(file->preproc);
-	free(file->compile);
-	free(file->assemb);
-	/*free(file->out);*/
 }
 
 void gen_obj_file(struct cc_file *file, char **args[4], enum mode mode)
@@ -226,7 +220,7 @@ void process_files(enum mode mode, char **inputs, char *output, char **args[4], 
 
 		gen_obj_file(&files[i], args, mode);
 
-		dynarray_add((void ***)&links, files[i].out);
+		dynarray_add((void ***)&links, ustrdup(files[i].out));
 	}
 
 	if(mode == mode_link)
@@ -234,11 +228,10 @@ void process_files(enum mode mode, char **inputs, char *output, char **args[4], 
 	else
 		rename_files(files, ninputs, output, mode);
 
-	dynarray_free((void ***)&links, NULL);
-	/* technically we need to free the ones from objfiles_... */
+	dynarray_free((void ***)&links, free);
 
-	for(i = 0; i < ninputs; i++)
-		free_file(&files[i]);
+	/*for(i = 0; i < ninputs; i++)
+		free_file(&files[i]);*/
 
 	free(files);
 }
