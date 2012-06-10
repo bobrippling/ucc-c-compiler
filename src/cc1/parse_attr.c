@@ -18,7 +18,7 @@ decl_attr *parse_attr_format()
 	else if(CHECK("scanf"))
 		da->attr_extra.format.fmt_func = attr_fmt_scanf;
 	else
-		die_at(&da->where, "unknown format func \"%s\"", func);
+		DIE_AT(&da->where, "unknown format func \"%s\"", func);
 
 	EAT(token_comma);
 
@@ -45,7 +45,7 @@ decl_attr *parse_attr_section()
 	EAT(token_open_paren);
 
 	if(curtok != token_string)
-		die_at(NULL, "string expected for section");
+		DIE_AT(NULL, "string expected for section");
 
 	token_get_current_str(&func, &len);
 	EAT(token_string);
@@ -53,7 +53,7 @@ decl_attr *parse_attr_section()
 	for(i = 0; i < len; i++)
 		if(!isprint(func[i])){
 			if(i < len - 1 || func[i] != '\0')
-				warn_at(NULL, "character 0x%x detected in section", func[i]);
+				warn_at(NULL, 1, "character 0x%x detected in section", func[i]);
 			break;
 		}
 
@@ -115,7 +115,7 @@ decl_attr *parse_attr_single(char *ident)
 		}
 	}
 
-	warn_at(NULL, "ignoring unrecognised attribute \"%s\"", ident);
+	warn_at(NULL, 1, "ignoring unrecognised attribute \"%s\"", ident);
 
 	/* if there are brackets, eat them all */
 
@@ -132,7 +132,7 @@ decl_attr *parse_attr(void)
 		char *ident;
 
 		if(curtok != token_identifier)
-			die_at(NULL, "identifier expected for attribute");
+			DIE_AT(NULL, "identifier expected for attribute");
 
 		ident = token_current_spel();
 		EAT(token_identifier);

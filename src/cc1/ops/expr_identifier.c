@@ -44,7 +44,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 			enum_member_search(&m, &sue, stab, e->spel);
 
 			if(!m)
-				die_at(&e->where, "undeclared identifier \"%s\"", e->spel);
+				DIE_AT(&e->where, "undeclared identifier \"%s\"", e->spel);
 
 			expr_mutate_wrapper(e, val);
 
@@ -65,7 +65,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 		&& !decl_is_func(e->sym->decl)
 		&& e->sym->nwrites == 0)
 		{
-			cc1_warn_at(&e->where, 0, WARN_READ_BEFORE_WRITE, "\"%s\" uninitialised on read", e->spel);
+			cc1_warn_at(&e->where, 0, 1, WARN_READ_BEFORE_WRITE, "\"%s\" uninitialised on read", e->spel);
 		}
 
 		/* this is cancelled by expr_assign in the case we fold for an assignment to us */

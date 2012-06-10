@@ -53,10 +53,10 @@ int symtab_fold(symtable *tab, int current)
 									&& !decl_is_func(s->decl)             \
 									&& !decl_is_struct_or_union(s->decl)) \
 							{                                         \
-								cc1_warn_at(&s->decl->where, 0,         \
+								cc1_warn_at(&s->decl->where, 0, 1,      \
 										WARN_SYM_NEVER_ ## w,               \
 										"\"%s\" never " str,                \
-										s->decl->spel);                \
+										s->decl->spel);                     \
 								s->var++;                               \
 							}                                         \
 						}while(0)

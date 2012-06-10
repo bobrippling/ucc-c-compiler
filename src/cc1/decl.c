@@ -418,7 +418,7 @@ decl *decl_ptr_depth_dec(decl *d, where *from)
 	for(last = d->desc; last && last->child; last = last->child);
 
 	if(!last || (last->type != decl_desc_ptr && last->type != decl_desc_array)){
-		die_at(from,
+		DIE_AT(from,
 			"trying to dereference non-pointer%s%s%s",
 			last ? " (" : "",
 			last ? decl_desc_str(last) : "",
@@ -630,7 +630,7 @@ void decl_asm_rename(decl *d, int global, funcargs *fargs)
 
 	if(decl_is_func(d) || fargs)
 		d->spel_asm = asm_label_func(d, fargs);
-	else if(!global && d->type->store == store_static)
+	else if(!global && d->type->store == store_static && curdecl_func) /* don't renaming global vars */
 		d->spel_asm = asm_label_static_local(curdecl_func->spel, d->spel);
 	else
 		d->spel_asm = ustrdup(d->spel);
@@ -699,12 +699,14 @@ void decl_desc_add_str(decl_desc *dp, char **bufp, int sz)
 		case decl_desc_func:
 		{
 			decl **i;
+			funcargs *args = dp->bits.func;
+
 			BUF_ADD("(");
-			for(i = dp->bits.func->arglist; i && *i; i++){
+			for(i = args->arglist; i && *i; i++){
 				char tmp_buf[DECL_STATIC_BUFSIZ];
-				BUF_ADD("%s", decl_to_str_r(tmp_buf, *i)); /* NOT RE-ENTRANT :C */
+				BUF_ADD("%s", decl_to_str_r(tmp_buf, *i));
 			}
-			BUF_ADD(")");
+			BUF_ADD("%s)", args->variadic ? ", ..." : args->args_void ? "void" : "");
 			break;
 		}
 		case decl_desc_array:

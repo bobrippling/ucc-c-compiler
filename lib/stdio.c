@@ -10,7 +10,7 @@
 #include "ucc_attr.h"
 
 #define PRINTF_OPTIMISE
-//#define PRINTF_ENABLE_PADDING <- currently exposes a while-in-switch bug
+#define PRINTF_ENABLE_PADDING
 
 static FILE _stdin  = { 0, 0 };
 static FILE _stdout = { 1, 0 };
@@ -321,6 +321,11 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 	if(buflen)
 		write(fd, buf, buflen);
 #endif
+}
+
+int vprintf(const char *fmt, va_list l)
+{
+	return vfprintf(stdout, fmt, l);
 }
 
 int dprintf(int fd, const char *fmt, ...)

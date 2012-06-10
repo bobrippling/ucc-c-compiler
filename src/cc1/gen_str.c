@@ -456,7 +456,7 @@ void print_stmt(stmt *t)
 					| PDECL_PISDEF
 					| PDECL_ATTR);
 
-			if(decl_is_array(d) && d->init){
+			if(decl_is_array(d) && d->init && d->init->array_store){
 				gen_str_indent++;
 				print_decl_array_init(d);
 				gen_str_indent--;
