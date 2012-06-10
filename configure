@@ -108,6 +108,7 @@ case "$(uname -s)" in
 		;;
 
 	CYGWIN_NT-*)
+		UCC_ARCH=win32
 		os_cfg Cygwin
 		;;
 

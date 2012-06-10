@@ -60,7 +60,7 @@ void fold_expr_assign(expr *e, symtable *stab)
 
 	if(!expr_is_lvalue(e->lhs, LVAL_ALLOW_ARRAY)){
 		/* only allow assignments to type[] if it's an init */
-		die_at(&e->lhs->where, "not an lvalue (%s%s%s)",
+		DIE_AT(&e->lhs->where, "not an lvalue (%s%s%s)",
 				e->lhs->f_str(),
 				expr_kind(e->lhs, op) ? " - " : "",
 				expr_kind(e->lhs, op) ? op_to_str(e->lhs->op) : ""
@@ -70,7 +70,7 @@ void fold_expr_assign(expr *e, symtable *stab)
 	if(decl_is_const(e->lhs->tree_type)){
 		/* allow const init: */
 		if(e->lhs->sym->decl->init != e->rhs)
-			die_at(&e->where, "can't modify const expression %s", e->lhs->f_str());
+			DIE_AT(&e->where, "can't modify const expression %s", e->lhs->f_str());
 	}
 
 

@@ -82,18 +82,18 @@ type *parse_type_sue(enum type_primitive prim)
 		}else{
 			members = (sue_member **)parse_decls_multi_type(DECL_MULTI_CAN_DEFAULT | DECL_MULTI_ACCEPT_FIELD_WIDTH);
 			if(!members)
-				die_at(NULL, "no members in struct");
+				DIE_AT(NULL, "no members in struct");
 			EAT(token_close_block);
 		}
 
 	}else if(!spel){
-		die_at(NULL, "expected: struct definition or name");
+		DIE_AT(NULL, "expected: struct definition or name");
 
 	}else{
 		/* predeclaring */
 		if(prim == type_enum){
 			if(!sue_find(current_scope, spel))
-				cc1_warn_at(NULL, 0, WARN_PREDECL_ENUM, "predeclaration of enums is not c99");
+				cc1_warn_at(NULL, 0, 1, WARN_PREDECL_ENUM, "predeclaration of enums is not c99");
 		}
 	}
 
@@ -139,7 +139,7 @@ type *parse_type()
 			store = curtok_to_type_storage();
 
 			if(store_set)
-				die_at(NULL, "second type store %s", type_store_to_str(store));
+				DIE_AT(NULL, "second type store %s", type_store_to_str(store));
 
 			store_set = 1;
 			EAT(curtok);
@@ -148,7 +148,7 @@ type *parse_type()
 			primitive = curtok_to_type_primitive();
 
 			if(primitive_set)
-				die_at(NULL, "second type primitive %s", type_primitive_to_str(primitive));
+				DIE_AT(NULL, "second type primitive %s", type_primitive_to_str(primitive));
 
 			primitive_set = 1;
 			EAT(curtok);
@@ -157,7 +157,7 @@ type *parse_type()
 			is_signed = curtok == token_signed;
 
 			if(signed_set)
-				die_at(NULL, "unwanted second \"%ssigned\"", is_signed ? "" : "un");
+				DIE_AT(NULL, "unwanted second \"%ssigned\"", is_signed ? "" : "un");
 
 			signed_set = 1;
 			EAT(curtok);
@@ -189,7 +189,7 @@ type *parse_type()
 			}
 
 			if(signed_set || primitive_set)
-				die_at(&t->where, "primitive/signed/unsigned with %s", str);
+				DIE_AT(&t->where, "primitive/signed/unsigned with %s", str);
 
 			t->qual  = qual;
 			t->store = store;
@@ -198,7 +198,7 @@ type *parse_type()
 
 		}else if(accept(token_typeof)){
 			if(primitive_set)
-				die_at(NULL, "duplicate typeof specifier");
+				DIE_AT(NULL, "duplicate typeof specifier");
 
 			tdef_typeof = parse_expr_sizeof_typeof();
 			primitive_set = 1;
@@ -217,7 +217,7 @@ type *parse_type()
 
 			if(primitive_set){
 				/* "int x" - we are at x, which is also a typedef somewhere */
-				die_at(NULL, "redefinition of %s as different symbol", token_current_spel_peek());
+				DIE_AT(NULL, "redefinition of %s as different symbol", token_current_spel_peek());
 				break;
 			}
 
@@ -237,7 +237,7 @@ type *parse_type()
 
 		/* signed size_t x; */
 		if(tdef_typeof && signed_set)
-			die_at(NULL, "signed/unsigned not allowed with typedef instance (%s)", tdef_typeof->decl->spel);
+			DIE_AT(NULL, "signed/unsigned not allowed with typedef instance (%s)", tdef_typeof->decl->spel);
 
 
 		if(!primitive_set)
@@ -374,14 +374,14 @@ decl_desc *parse_decl_desc_ptr(enum decl_mode mode, char **sp)
 
 	}else if(curtok == token_identifier){
 		if(mode & DECL_SPEL_NO)
-			die_at(NULL, "identifier unexpected");
+			DIE_AT(NULL, "identifier unexpected");
 
 		*sp = token_current_spel();
 
 		EAT(token_identifier);
 
 	}else if(mode & DECL_SPEL_NEED){
-		die_at(NULL, "need identifier for decl");
+		DIE_AT(NULL, "need identifier for decl");
 	}
 
 	return ret;
@@ -475,11 +475,11 @@ decl *parse_decl_single(enum decl_mode mode)
 			return NULL;
 
 		INT_TYPE(t);
-		cc1_warn_at(&t->where, 0, WARN_IMPLICIT_INT, "defaulting type to int");
+		cc1_warn_at(&t->where, 0, 1, WARN_IMPLICIT_INT, "defaulting type to int");
 	}
 
 	if(t->store == store_typedef)
-		die_at(&t->where, "typedef unexpected");
+		DIE_AT(&t->where, "typedef unexpected");
 
 	return parse_decl(t, mode);
 }
@@ -493,7 +493,7 @@ decl **parse_decls_one_type()
 		return NULL;
 
 	if(t->store == store_typedef)
-		die_at(&t->where, "typedef unexpected");
+		DIE_AT(&t->where, "typedef unexpected");
 
 	do{
 		decl *d = parse_decl(t, DECL_SPEL_NEED);
@@ -525,7 +525,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 			/* can_default makes sure we don't parse { int *p; *p = 5; } the latter as a decl */
 			if(parse_possible_decl() && (mode & DECL_MULTI_CAN_DEFAULT)){
 				INT_TYPE(t);
-				cc1_warn_at(&t->where, 0, WARN_IMPLICIT_INT, "defaulting type to int");
+				cc1_warn_at(&t->where, 0, 1, WARN_IMPLICIT_INT, "defaulting type to int");
 			}else{
 				return decls;
 			}
@@ -563,12 +563,12 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 					}
 
 					if(warn)
-						warn_at(&d->where, "declaration doesn't declare anything");
+						warn_at(&d->where, 1, "declaration doesn't declare anything");
 
 					decl_free_notype(d);
 					goto next;
 				}
-				die_at(&d->where, "identifier expected after decl");
+				DIE_AT(&d->where, "identifier expected after decl (got %s)", token_to_str(curtok));
 			}else if(decl_is_func(d) && curtok == token_open_block){ /* this is why we can't have __attribute__ on function defs */
 				/* optionally check for old func decl */
 				decl **old_args = parse_decls_multi_type(0);
@@ -580,17 +580,17 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 					funcargs *dfuncargs = d->desc->bits.func;
 
 					if(!dfuncargs->args_old_proto)
-						die_at(&d->where, "unexpected old-style decls - new style proto used");
+						DIE_AT(&d->where, "unexpected old-style decls - new style proto used");
 
 					n_proto_decls = dynarray_count((void **)dfuncargs->arglist);
 					n_old_args = dynarray_count((void **)old_args);
 
 					if(n_old_args > n_proto_decls)
-						die_at(&d->where, "old-style function decl: too many decls");
+						DIE_AT(&d->where, "old-style function decl: too many decls");
 
 					for(i = 0; i < n_old_args; i++)
 						if(old_args[i]->init)
-							die_at(&old_args[i]->where, "parameter \"%s\" is initialised", old_args[i]->spel);
+							DIE_AT(&old_args[i]->where, "parameter \"%s\" is initialised", old_args[i]->spel);
 
 					for(i = 0; i < n_old_args; i++){
 						int j;
@@ -625,24 +625,24 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 			/* FIXME: check later for functions, not here - typedefs */
 			if(decl_is_func(d)){
 				if(d->func_code && (mode & DECL_MULTI_ACCEPT_FUNC_CODE) == 0)
-						die_at(&d->where, "function code not wanted (%s)", d->spel);
+						DIE_AT(&d->where, "function code not wanted (%s)", d->spel);
 
 				if((mode & DECL_MULTI_ACCEPT_FUNC_DECL) == 0)
-					die_at(&d->where, "function decl not wanted (%s)", d->spel);
+					DIE_AT(&d->where, "function decl not wanted (%s)", d->spel);
 			}
 
 			if(are_tdefs){
 				if(decl_is_func(d) && d->func_code)
-					die_at(&d->where, "can't have a typedef function with code");
+					DIE_AT(&d->where, "can't have a typedef function with code");
 				else if(d->init)
-					die_at(&d->where, "can't init a typedef");
+					DIE_AT(&d->where, "can't init a typedef");
 			}
 
 			if((mode & DECL_MULTI_ACCEPT_FIELD_WIDTH) && accept(token_colon)){
 				/* normal decl, check field spec */
 				d->field_width = currentval.val;
 				if(d->field_width <= 0)
-					die_at(&d->where, "field width must be positive");
+					DIE_AT(&d->where, "field width must be positive");
 				EAT(token_integer);
 			}
 
@@ -657,7 +657,7 @@ next:
 				case token_open_paren:
 				case token_multiply:
 					if(last)
-						die_at(NULL, "unknown type name '%s'", last->spel);
+						DIE_AT(NULL, "unknown type name '%s'", last->spel);
 					/* else die below */
 				default:
 					break;

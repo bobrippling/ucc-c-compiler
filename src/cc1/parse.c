@@ -87,7 +87,7 @@ expr *parse_expr__Generic()
 		}else{
 			d = parse_decl_single(DECL_SPEL_NO);
 			if(!d)
-				die_at(NULL, "type expected");
+				DIE_AT(NULL, "type expected");
 		}
 		EAT(token_colon);
 		e = parse_expr_no_comma();
@@ -109,7 +109,7 @@ expr *parse_expr_identifier()
 	expr *e;
 
 	if(curtok != token_identifier)
-		die_at(NULL, "identifier expected, got %s (%s:%d)",
+		DIE_AT(NULL, "identifier expected, got %s (%s:%d)",
 				token_to_str(curtok), __FILE__, __LINE__);
 
 	e = expr_new_identifier(token_current_spel());
@@ -222,7 +222,7 @@ expr *parse_expr_primary()
 
 				if((d = parse_decl_single(DECL_SPEL_NO))){
 					if(d->type->store)
-						die_at(&d->where, "invalid cast involving %s",
+						DIE_AT(&d->where, "invalid cast involving %s",
 								type_store_to_str(d->type->store));
 
 					e = expr_new_cast(d);
@@ -243,7 +243,7 @@ expr *parse_expr_primary()
 				return e;
 			}else{
 				if(curtok != token_identifier){
-					die_at(NULL, "expression expected, got %s (%s:%d)",
+					DIE_AT(NULL, "expression expected, got %s (%s:%d)",
 							token_to_str(curtok), __FILE__, __LINE__);
 				}
 
@@ -491,7 +491,7 @@ expr **parse_funcargs()
 	while(curtok != token_close_paren){
 		expr *arg = parse_expr_no_comma();
 		if(!arg)
-			die_at(&arg->where, "expected: funcall arg");
+			DIE_AT(&arg->where, "expected: funcall arg");
 		dynarray_add((void ***)&args, arg);
 
 		if(curtok == token_close_paren)
