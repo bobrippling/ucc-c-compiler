@@ -16,8 +16,6 @@ where *eof_where = NULL;
 
 void where_new(struct where *w)
 {
-	extern int current_line, current_chr;
-	extern const char *current_fname;
 	extern int buffereof;
 
 	if(buffereof){
@@ -26,15 +24,20 @@ void where_new(struct where *w)
 		else
 			memset(w, 0, sizeof *w); /*ICE("where_new() after buffer eof");*/
 	}else{
-		extern int current_fname_used;
+		extern int current_line, current_chr;
+		extern const char *current_fname, *current_line_str;
+		extern int current_fname_used, current_line_str_used;
 
 		w->line  = current_line;
 		w->chr   = current_chr;
 		w->fname = current_fname;
+		w->line_str = current_line_str;
 
 		UCC_ASSERT(current_fname, "no current fname");
+		UCC_ASSERT(current_line_str, "no current line");
 
 		current_fname_used = 1;
+		current_line_str_used = 1;
 	}
 }
 

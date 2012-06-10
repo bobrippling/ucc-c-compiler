@@ -80,7 +80,7 @@ void char_seq_to_iv(char *s, intval *iv, int *plen, enum base mode)
 			}while(1);
 
 			if(charsread < 1)
-				die_at(NULL, "invalid hex char (read 0 chars, at \"%s\")", s);
+				DIE_AT(NULL, "invalid hex char (read 0 chars, at \"%s\")", s);
 			break;
 		}
 	}
@@ -145,7 +145,7 @@ void escape_string(char *old_str, int *plen)
 				add = escape_char(old_str[i]);
 
 				if(add == -1)
-					die_at(NULL, "unknown escape char '\\%c'", add);
+					DIE_AT(NULL, "unknown escape char '\\%c'", add);
 			}
 		}else{
 			add = old_str[i];
