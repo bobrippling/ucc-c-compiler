@@ -87,13 +87,13 @@ struct_union_enum_st *sue_add(symtable *const stab, char *spel, sue_member **mem
 
 		/* redef checks */
 		if(sue->primitive != prim)
-			die_at(NULL, "trying to redefine %s as %s (from %s)",
+			DIE_AT(NULL, "trying to redefine %s as %s (from %s)",
 					sue_str(sue),
 					type_primitive_to_str(prim),
 					buf);
 
 		if(members && !sue_incomplete(sue))
-			die_at(NULL, "can't redefine %s %s's members (defined at %s)",
+			DIE_AT(NULL, "can't redefine %s %s's members (defined at %s)",
 					sue_str(sue), sue->spel, buf);
 
 	}else{
@@ -109,7 +109,7 @@ struct_union_enum_st *sue_add(symtable *const stab, char *spel, sue_member **mem
 		for(iter = members; *iter; iter++){
 			decl *d = &(*iter)->struct_member;
 			if(d->init)
-				die_at(&d->init->where, "%s member %s is initialised", sue_str(sue), d->spel);
+				DIE_AT(&d->init->where, "%s member %s is initialised", sue_str(sue), d->spel);
 		}
 
 	sue->anon = !spel;
@@ -147,7 +147,7 @@ sue_member *sue_member_find(struct_union_enum_st *sue, const char *spel, where *
 	}
 
 	if(die_where)
-		die_at(die_where, "%s %s has no member named \"%s\"", sue_str(sue), sue->spel, spel);
+		DIE_AT(die_where, "%s %s has no member named \"%s\"", sue_str(sue), sue->spel, spel);
 
 	return NULL;
 }

@@ -113,7 +113,7 @@ enum warning warn_mode = ~(
 		WARN_OPT_POSSIBLE
 		);
 
-enum fopt    fopt_mode = FOPT_CONST_FOLD;
+enum fopt    fopt_mode = FOPT_CONST_FOLD | FOPT_SHOW_LINE;
 enum cc1_backend cc1_backend = BACKEND_ASM;
 
 int cc1_max_errors = 16;
@@ -161,23 +161,23 @@ void ccdie(int verbose, const char *fmt, ...)
 	exit(1);
 }
 
-void cc1_warn_atv(struct where *where, int die, enum warning w, const char *fmt, va_list l)
+void cc1_warn_atv(struct where *where, int die, int show_line, enum warning w, const char *fmt, va_list l)
 {
 	if(!die && (w & warn_mode) == 0)
 		return;
 
-	vwarn(where, die, fmt, l);
+	vwarn(where, die, show_line, fmt, l);
 
 	if(die)
 		exit(1);
 }
 
-void cc1_warn_at(struct where *where, int die, enum warning w, const char *fmt, ...)
+void cc1_warn_at(struct where *where, int die, int show_line, enum warning w, const char *fmt, ...)
 {
 	va_list l;
 
 	va_start(l, fmt);
-	cc1_warn_atv(where, die, w, fmt, l);
+	cc1_warn_atv(where, die, show_line, w, fmt, l);
 	va_end(l);
 }
 

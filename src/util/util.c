@@ -26,16 +26,45 @@ struct where *default_where(struct where *w)
 
 		w = &instead;
 
-		instead.fname = current_fname;
-		instead.line  = current_line;
-		instead.chr   = current_chr;
-		instead.current_line_str = current_line_str;
+		instead.fname    = current_fname;
+		instead.line     = current_line;
+		instead.chr      = current_chr;
+		instead.line_str = current_line_str;
 	}
 
 	return w;
 }
 
-void vwarn(struct where *w, int err, const char *fmt, va_list l)
+static void warn_show_line(struct where *w)
+{
+	extern int show_current_line;
+
+	if(show_current_line){
+		static int buffed = 0;
+		char *line = ustrdup(w->line_str);
+		char *p;
+		int i;
+
+		if(!buffed){
+			setvbuf(stderr, NULL, _IOLBF, 0);
+			buffed = 1;
+		}
+
+		for(p = line; *p; p++)
+			if(*p == '\t')
+				*p = ' ';
+
+		fprintf(stderr, "  \"%s\"\n", line);
+
+		for(i = w->chr + 2; i > 0; i--)
+			fputc(' ', stderr);
+		fputs("^\n", stderr);
+
+		free(line);
+	}
+}
+
+void vwarn(struct where *w, int err, int show_line, const char *fmt, va_list l)
 {
 	extern int show_current_line;
 
@@ -51,29 +80,29 @@ void vwarn(struct where *w, int err, const char *fmt, va_list l)
 		fputc('\n', stderr);
 	}
 
-	if(show_current_line)
-		fprintf(stderr, "on \"%s\"\n", w->current_line_str);
+	if(show_line)
+		warn_show_line(w);
 }
 
-void vdie(struct where *w, const char *fmt, va_list l)
+void vdie(struct where *w, int show_line, const char *fmt, va_list l)
 {
-	vwarn(w, 1, fmt, l);
+	vwarn(w, 1, show_line, fmt, l);
 	exit(1);
 }
 
-void warn_at(struct where *w, const char *fmt, ...)
+void warn_at(struct where *w, int show_line, const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
-	vwarn(w, 0, fmt, l);
+	vwarn(w, 0, show_line, fmt, l);
 	va_end(l);
 }
 
-void die_at(struct where *w, const char *fmt, ...)
+void die_at(struct where *w, int show_line, const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
-	vdie(w, fmt, l);
+	vdie(w, show_line, fmt, l);
 	va_end(l);
 	/* unreachable */
 }
@@ -82,7 +111,7 @@ void die(const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
-	vdie(NULL, fmt, l); /* FIXME: this is called before current_fname etc is init'd */
+	vdie(NULL, 0, fmt, l); /* FIXME: this is called before current_fname etc is init'd */
 	va_end(l);
 	/* unreachable */
 }

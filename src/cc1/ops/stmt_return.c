@@ -19,11 +19,11 @@ void fold_stmt_return(stmt *s)
 				"mismatching return type for %s", curdecl_func->spel);
 
 		if(void_func)
-			cc1_warn_at(&s->where, 0, WARN_RETURN_TYPE,
+			cc1_warn_at(&s->where, 0, 1, WARN_RETURN_TYPE,
 					"return with a value in void function %s", curdecl_func->spel);
 
 	}else if(!void_func){
-		cc1_warn_at(&s->where, 0, WARN_RETURN_TYPE,
+		cc1_warn_at(&s->where, 0, 1, WARN_RETURN_TYPE,
 				"empty return in non-void function %s", curdecl_func->spel);
 
 	}

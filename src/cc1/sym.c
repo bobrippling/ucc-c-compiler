@@ -99,7 +99,7 @@ sym *symtab_add(symtable *tab, decl *d, enum sym_type t, int with_sym, int prepe
 		else
 			*buf = '\0';
 
-		die_at(&d->where, "\"%s\" already declared%s%s",
+		DIE_AT(&d->where, "\"%s\" already declared%s%s",
 				d->spel, new->decl ? " at " : "", buf);
 	}
 
@@ -122,7 +122,7 @@ void symtab_add_args(symtable *stab, funcargs *fargs, char *funcsp)
 		/* add args backwards, since we push them onto the stack backwards - still need to do this here? */
 		for(i = nargs - 1; i >= 0; i--){
 			if(!fargs->arglist[i]->spel)
-				die_at(&fargs->where, "function \"%s\" has unnamed arguments", funcsp);
+				DIE_AT(&fargs->where, "function \"%s\" has unnamed arguments", funcsp);
 			else
 				SYMTAB_ADD(stab, fargs->arglist[i], sym_arg);
 		}

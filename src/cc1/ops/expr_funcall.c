@@ -32,7 +32,7 @@ void fold_expr_funcall(expr *e, symtable *stab)
 			df->type->primitive = type_int;
 			df->type->store     = store_extern;
 
-			cc1_warn_at(&e->where, 0, WARN_IMPLICIT_FUNC, "implicit declaration of function \"%s\"", sp);
+			cc1_warn_at(&e->where, 0, 1, WARN_IMPLICIT_FUNC, "implicit declaration of function \"%s\"", sp);
 
 			decl_set_spel(df, sp);
 
@@ -53,7 +53,7 @@ void fold_expr_funcall(expr *e, symtable *stab)
 	df = e->expr->tree_type;
 
 	if(!decl_is_callable(df)){
-		die_at(&e->expr->where, "expression %s (%s) not callable",
+		DIE_AT(&e->expr->where, "expression %s (%s) not callable",
 				e->expr->f_str(),
 				decl_to_str(df));
 	}
@@ -104,7 +104,7 @@ void fold_expr_funcall(expr *e, symtable *stab)
 		for(iter_decl = args_from_decl->arglist; iter_decl && *iter_decl; iter_decl++, count_decl++);
 
 		if(count_decl != count_arg && (args_from_decl->variadic ? count_arg < count_decl : 1)){
-			die_at(&e->where, "too %s arguments to function %s (got %d, need %d)",
+			DIE_AT(&e->where, "too %s arguments to function %s (got %d, need %d)",
 					count_arg > count_decl ? "many" : "few",
 					df->spel, count_arg, count_decl);
 		}
@@ -118,11 +118,11 @@ void fold_expr_funcall(expr *e, symtable *stab)
 
 			if(!funcargs_equal(args_from_decl, args_from_expr, 0, &idx)){
 				if(idx == -1){
-					die_at(&e->where, "mismatching argument count to %s", df->spel);
+					DIE_AT(&e->where, "mismatching argument count to %s", df->spel);
 				}else{
 					char buf[DECL_STATIC_BUFSIZ];
 
-					cc1_warn_at(&e->where, 0, WARN_ARG_MISMATCH, "mismatching argument %d to %s (%s <-- %s)",
+					cc1_warn_at(&e->where, 0, 1, WARN_ARG_MISMATCH, "mismatching argument %d to %s (%s <-- %s)",
 							idx, df->spel, decl_to_str_r(buf, args_from_decl->arglist[idx]), decl_to_str(args_from_expr->arglist[idx]));
 				}
 			}
@@ -154,7 +154,7 @@ void gen_expr_funcall(expr *e, symtable *stab)
 		int i;
 
 		if(!e->funcargs || e->funcargs[1] || !expr_kind(e->funcargs[0], addr))
-			die_at(&e->where, "invalid __asm__ arguments");
+			DIE_AT(&e->where, "invalid __asm__ arguments");
 
 		arg1 = e->funcargs[0];
 		str = arg1->array_store->data.str;
@@ -162,7 +162,7 @@ void gen_expr_funcall(expr *e, symtable *stab)
 			char ch = str[i];
 			if(!isprint(ch) && !isspace(ch))
 invalid:
-				die_at(&arg1->where, "invalid __asm__ string (character 0x%x at index %d, %d / %d)",
+				DIE_AT(&arg1->where, "invalid __asm__ string (character 0x%x at index %d, %d / %d)",
 						ch, i, i + 1, arg1->array_store->len);
 		}
 

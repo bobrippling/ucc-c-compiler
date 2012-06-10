@@ -391,7 +391,7 @@ decl *decl_ptr_depth_dec(decl *d, where *from)
 	for(last = d->desc; last && last->child; last = last->child);
 
 	if(!last || (last->type != decl_desc_ptr && last->type != decl_desc_array)){
-		die_at(from,
+		DIE_AT(from,
 			"trying to dereference non-pointer%s%s%s",
 			last ? " (" : "",
 			last ? decl_desc_str(last) : "",

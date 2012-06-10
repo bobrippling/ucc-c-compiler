@@ -14,7 +14,7 @@ void fold_stmt_case_range(stmt *s)
 	fold_expr(s->expr2, s->symtab);
 
 	if(const_fold(s->expr) || const_fold(s->expr2))
-		die_at(&s->where, "case range not constant");
+		DIE_AT(&s->where, "case range not constant");
 
 	fold_test_expr(s->expr,  "case");
 	fold_test_expr(s->expr2, "case");
@@ -23,7 +23,7 @@ void fold_stmt_case_range(stmt *s)
 	r = s->expr2->val.iv.val;
 
 	if(l >= r)
-		die_at(&s->where, "case range equal or inverse");
+		DIE_AT(&s->where, "case range equal or inverse");
 
 	s->expr->spel = asm_label_case(CASE_RANGE, l);
 
