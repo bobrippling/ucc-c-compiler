@@ -380,6 +380,7 @@ arg_ld:
 						ucc_ext_cmds_show(1), ucc_ext_cmds_noop(1);
 					else if(!strcmp(argv[i], "-v"))
 						ucc_ext_cmds_show(1);
+					/* TODO: -wrapper echo,-n etc */
 					else
 						break;
 

@@ -18,7 +18,7 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 	chosen = SIZEOF_WHAT(e);
 
 	if(decl_has_incomplete_array(chosen))
-		die_at(&e->where, "sizeof incomplete array");
+		DIE_AT(&e->where, "sizeof incomplete array");
 
 	SIZEOF_SIZE(e) = decl_size(SIZEOF_WHAT(e));
 
