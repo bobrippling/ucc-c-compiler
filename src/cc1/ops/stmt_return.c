@@ -8,6 +8,8 @@ const char *str_stmt_return()
 
 void fold_stmt_return(stmt *s)
 {
+	const int void_func = decl_is_void(curdecl_func_called);
+
 	if(s->expr){
 		fold_expr(s->expr, s->symtab);
 
@@ -17,11 +19,17 @@ void fold_stmt_return(stmt *s)
 				&s->where, WARN_RETURN_TYPE,
 				"mismatching return type for %s", curdecl_func->spel);
 
-		fold_insert_casts(curdecl_func, &s->expr, s->symtab, &s->expr->where);
+		if(void_func){
+			cc1_warn_at(&s->where, 0, 1, WARN_RETURN_TYPE,
+					"return with a value in void function %s", curdecl_func->spel);
+		}else{
+			fold_insert_casts(curdecl_func, &s->expr, s->symtab, &s->expr->where);
+		}
 
-	}else if(!decl_is_void(curdecl_func)){
-		cc1_warn_at(&s->where, 0, WARN_RETURN_TYPE,
+	}else if(!void_func){
+		cc1_warn_at(&s->where, 0, 1, WARN_RETURN_TYPE,
 				"empty return in non-void function %s", curdecl_func->spel);
+
 	}
 }
 

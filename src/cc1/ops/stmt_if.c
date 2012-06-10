@@ -18,7 +18,7 @@ symtable *fold_stmt_test_init_expr(stmt *s, const char *which)
 		dinit = fold_for_if_init_decls(s);
 
 		if(!dinit)
-			die_at(&s->where, "no initialiser to test in %s", which);
+			DIE_AT(&s->where, "no initialiser to test in %s", which);
 
 		UCC_ASSERT(!s->expr, "%s-expr in c99_ucc %s-init mode", which, which);
 

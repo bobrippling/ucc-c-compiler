@@ -23,9 +23,13 @@ void fold_expr__Generic(expr *e, symtable *stab)
 
 		fold_expr(l->e, stab);
 
-		for(j = i + 1; *j; j++)
-			if(decl_equal((*j)->d, l->d, DECL_CMP_ARGS))
-				die_at(&(*j)->d->where, "duplicate type in _Generic: %s", decl_to_str(l->d));
+		for(j = i + 1; *j; j++){
+			decl *m = (*j)->d;
+
+			/* duplicate default checked below */
+			if(m && decl_equal(m, l->d, DECL_CMP_ARGS))
+				DIE_AT(&m->where, "duplicate type in _Generic: %s", decl_to_str(l->d));
+		}
 
 
 		if(l->d){
@@ -37,7 +41,7 @@ void fold_expr__Generic(expr *e, symtable *stab)
 			}
 		}else{
 			if(def)
-				die_at(&def->e->where, "second default for _Generic");
+				DIE_AT(&def->e->where, "second default for _Generic");
 			def = l;
 		}
 	}
@@ -47,7 +51,7 @@ void fold_expr__Generic(expr *e, symtable *stab)
 		if(def)
 			e->generic_chosen = def;
 		else
-			die_at(&e->where, "no type satisfying %s", decl_to_str(e->expr->tree_type));
+			DIE_AT(&e->where, "no type satisfying %s", decl_to_str(e->expr->tree_type));
 	}
 
 	e->tree_type = decl_copy(e->generic_chosen->e->tree_type);

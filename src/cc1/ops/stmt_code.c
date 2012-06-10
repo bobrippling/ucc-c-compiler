@@ -19,7 +19,7 @@ void fold_stmt_code(stmt *s)
 		decl *d = *iter;
 
 		if(d->func_code)
-			die_at(&d->func_code->where, "can't nest functions");
+			DIE_AT(&d->func_code->where, "can't nest functions");
 
 		fold_decl(d, s->symtab);
 		d->is_definition = 1; /* always the def for non-globals */
@@ -49,7 +49,7 @@ void fold_stmt_code(stmt *s)
 			&& !stmt_kind(iter[1], case)
 			&& !stmt_kind(iter[1], default)
 			){
-				cc1_warn_at(&iter[1]->where, 0, WARN_DEAD_CODE, "dead code after %s (%s)", st->f_str(), iter[1]->f_str());
+				cc1_warn_at(&iter[1]->where, 0, 1, WARN_DEAD_CODE, "dead code after %s (%s)", st->f_str(), iter[1]->f_str());
 				warned = 1;
 			}
 		}

@@ -12,7 +12,7 @@ void fold_stmt_expr(stmt *s)
 {
 	fold_expr(s->expr, s->symtab);
 	if(!s->freestanding && !s->expr->freestanding && !decl_is_void(s->expr->tree_type))
-		cc1_warn_at(&s->expr->where, 0, WARN_UNUSED_EXPR, "unused expression");
+		cc1_warn_at(&s->expr->where, 0, 1, WARN_UNUSED_EXPR, "unused expression");
 }
 
 void gen_stmt_expr(stmt *s)

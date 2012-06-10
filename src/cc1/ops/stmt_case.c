@@ -15,7 +15,7 @@ void fold_stmt_case(stmt *t)
 	fold_test_expr(t->expr, "case");
 
 	if(const_fold(t->expr) && const_expr_is_const(t->expr))
-		die_at(&t->expr->where, "case expression not constant (%s)", t->expr->f_str());
+		DIE_AT(&t->expr->where, "case expression not constant (%s)", t->expr->f_str());
 
 	if(t->expr){
 		t->expr->spel = asm_label_case(CASE_CASE, t->expr->val.iv.val);

@@ -118,6 +118,8 @@ int   currentstringlen = 0;
 /* -- */
 int current_line = 0;
 int current_chr  = 0;
+char *current_line_str = NULL;
+int current_line_str_used = 0;
 
 static void add_store_line(char *l)
 {
@@ -190,11 +192,19 @@ static void tokenise_read_line()
 			current_line = lno - 1; /* inc'd below */
 
 			tokenise_read_line();
+
 			return;
 		}
 
 		current_line++;
 		current_chr = -1;
+	}
+
+	if(l){
+		if(!current_line_str_used)
+			free(current_line_str);
+		current_line_str = ustrdup(l);
+		current_line_str_used = 0;
 	}
 
 	bufferpos = buffer = l;
@@ -203,8 +213,17 @@ static void tokenise_read_line()
 void tokenise_set_file(FILE *f, const char *nam)
 {
 	infile = f;
+
+	if(!current_fname_used)
+		free(current_fname);
 	current_fname = ustrdup(nam);
 	current_fname_used = 0;
+
+	if(!current_line_str_used)
+		free(current_line_str);
+	current_line_str = NULL;
+	current_line_str_used = 0;
+
 	current_line = 0;
 	buffereof = 0;
 	nexttoken();
@@ -308,7 +327,7 @@ void read_string(char **sptr, int *plen)
 	if(!end){
 		if((end = strchr(bufferpos, '\n')))
 			*end = '\0';
-		die_at(NULL, "Couldn't find terminating quote to \"%s\"", bufferpos);
+		DIE_AT(NULL, "Couldn't find terminating quote to \"%s\"", bufferpos);
 	}
 
 	if(end > bufferpos)
@@ -362,7 +381,7 @@ void nexttoken()
 				default:
 					if(!isoct(c)){
 						if(isdigit(c))
-							die_at(NULL, "invalid oct character '%c'", c);
+							DIE_AT(NULL, "invalid oct character '%c'", c);
 						else
 							mode = DEC; /* just zero */
 					}else{
@@ -406,7 +425,7 @@ void nexttoken()
 				nextchar();
 				curtok = token_elipsis;
 			}else{
-				die_at(NULL, "unknown token \"..\"\n");
+				DIE_AT(NULL, "unknown token \"..\"\n");
 			}
 			return;
 		}else{
@@ -493,7 +512,7 @@ recheck:
 			c = rawnextchar();
 
 			if(c == EOF){
-				die_at(NULL, "Invalid character");
+				DIE_AT(NULL, "Invalid character");
 			}else if(c == '\\'){
 				char esc = peeknextchar();
 
@@ -505,10 +524,10 @@ recheck:
 					read_number(esc == 'x' ? HEX : esc == 'b' ? BIN : OCT);
 
 					if(currentval.suffix)
-						die_at(NULL, "invalid character sequence: suffix given");
+						DIE_AT(NULL, "invalid character sequence: suffix given");
 
 					if(currentval.val > 0xff)
-						warn_at(NULL, "invalid character sequence: too large (parsed 0x%lx)", currentval.val);
+						warn_at(NULL, 1, "invalid character sequence: too large (parsed 0x%lx)", currentval.val);
 
 					c = currentval.val;
 				}else{
@@ -516,7 +535,7 @@ recheck:
 					c = escape_char(esc);
 
 					if(c == -1)
-						die_at(NULL, "invalid escape character '%c'", esc);
+						DIE_AT(NULL, "invalid escape character '%c'", esc);
 
 					nextchar();
 				}
@@ -528,7 +547,7 @@ recheck:
 			if((c = nextchar()) == '\''){
 				curtok = token_character;
 			}else{
-				die_at(NULL, "no terminating \"'\" for character (got '%c')", c);
+				DIE_AT(NULL, "no terminating \"'\" for character (got '%c')", c);
 			}
 
 			break;
@@ -578,7 +597,7 @@ recheck:
 						return;
 					}
 				}
-				die_at(NULL, "No end to comment");
+				DIE_AT(NULL, "No end to comment");
 				return;
 			}else if(peeknextchar() == '/'){
 				tokenise_read_line();
@@ -688,7 +707,7 @@ recheck:
 			break;
 
 		default:
-			die_at(NULL, "unknown character %c 0x%x %d", c, c, buffereof);
+			DIE_AT(NULL, "unknown character %c 0x%x %d", c, c, buffereof);
 			curtok = token_unknown;
 	}
 

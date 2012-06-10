@@ -60,7 +60,7 @@ void fold_expr_cast(expr *e, symtable *stab)
 
 		strcpy(buf, decl_to_str(drhs));
 
-		warn_at(&e->where, "possible loss of precision %s, size %d <-- %s, size %d",
+		WARN_AT(&e->where, "possible loss of precision %s, size %d <-- %s, size %d",
 				decl_to_str(dlhs), size_lhs,
 				buf, size_rhs);
 	}

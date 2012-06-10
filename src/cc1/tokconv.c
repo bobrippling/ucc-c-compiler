@@ -250,7 +250,7 @@ void warn_at_print_error(const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
-	vwarn(NULL, 1, fmt, l);
+	vwarn(NULL, 1, 1, fmt, l);
 	va_end(l);
 }
 

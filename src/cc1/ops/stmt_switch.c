@@ -45,7 +45,7 @@ void fold_switch_enum(stmt *sw, type *enum_type)
 
 	for(midx = 0; midx < nents; midx++)
 		if(!marks[midx])
-			cc1_warn_at(&sw->where, 0, WARN_SWITCH_ENUM, "enum %s not handled in switch",
+			cc1_warn_at(&sw->where, 0, 1, WARN_SWITCH_ENUM, "enum %s not handled in switch",
 					enum_type->sue->members[midx]->enum_member.spel);
 
 ret:
