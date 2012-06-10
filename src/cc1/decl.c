@@ -197,7 +197,7 @@ int decl_size(decl *d)
 					/* don't check dp->bits.array_size - it could be any expr */
 					sz = dp->bits.array_size->val.iv.val;
 					if(!sz)
-						die_at(&dp->where, "invalid incomplete array");
+						DIE_AT(&dp->where, "invalid incomplete array");
 					mul *= sz;
 					break;
 				}
@@ -386,7 +386,7 @@ decl *decl_ptr_depth_dec(decl *d, where *from)
 	for(last = d->desc; last && last->child; last = last->child);
 
 	if(!last || (last->type != decl_desc_ptr && last->type != decl_desc_array)){
-		die_at(from,
+		DIE_AT(from,
 			"trying to dereference %s%s%s%s",
 			decl_to_str(d),
 			last ? " (" : "",
@@ -677,12 +677,14 @@ void decl_desc_add_str(decl_desc *dp, char **bufp, int sz)
 		case decl_desc_func:
 		{
 			decl **i;
+			funcargs *args = dp->bits.func;
+
 			BUF_ADD("(");
-			for(i = dp->bits.func->arglist; i && *i; i++){
+			for(i = args->arglist; i && *i; i++){
 				char tmp_buf[DECL_STATIC_BUFSIZ];
-				BUF_ADD("%s", decl_to_str_r(tmp_buf, *i)); /* NOT RE-ENTRANT :C */
+				BUF_ADD("%s", decl_to_str_r(tmp_buf, *i));
 			}
-			BUF_ADD(")");
+			BUF_ADD("%s)", args->variadic ? ", ..." : args->args_void ? "void" : "");
 			break;
 		}
 		case decl_desc_array:

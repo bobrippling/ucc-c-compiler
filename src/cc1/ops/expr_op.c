@@ -33,7 +33,7 @@ int operate(expr *lhs, expr *rhs, enum op_type op, int *bad)
 		case op_divide:
 			if(rhs->val.iv.val)
 				return lhs->val.iv.val / rhs->val.iv.val;
-			warn_at(&rhs->where, "division by zero");
+			warn_at(&rhs->where, 1, "division by zero");
 			*bad = 1;
 			return 0;
 
@@ -166,7 +166,7 @@ void fold_op_struct(expr *e, symtable *stab)
 	/* don't fold the rhs - just a member name */
 
 	if(!expr_kind(e->rhs, identifier))
-		die_at(&e->rhs->where, "struct member must be an identifier (got %s)", e->rhs->f_str());
+		DIE_AT(&e->rhs->where, "struct member must be an identifier (got %s)", e->rhs->f_str());
 	spel = e->rhs->spel;
 
 	/* we access a struct, of the right ptr depth */
@@ -175,7 +175,7 @@ void fold_op_struct(expr *e, symtable *stab)
 	{
 		const int ident = expr_kind(e->lhs, identifier);
 
-		die_at(&e->lhs->where, "%s%s%s is not a %sstruct or union (member %s)",
+		DIE_AT(&e->lhs->where, "%s%s%s is not a %sstruct or union (member %s)",
 				decl_to_str(e->lhs->tree_type),
 				ident ? " " : "",
 				ident ? e->lhs->spel : "",
@@ -186,7 +186,7 @@ void fold_op_struct(expr *e, symtable *stab)
 	st = e->lhs->tree_type->type->sue;
 
 	if(sue_incomplete(st))
-		die_at(&e->lhs->where, "%s incomplete type (%s)",
+		DIE_AT(&e->lhs->where, "%s incomplete type (%s)",
 				ptr_depth_exp == 1
 				? "dereferencing pointer to"
 				: "use of",
@@ -219,12 +219,12 @@ void fold_deref(expr *e)
 {
 	/* check for *&x */
 	if(expr_kind(op_deref_expr(e), addr))
-		warn_at(&op_deref_expr(e)->where, "possible optimisation for *& expression");
+		WARN_AT(&op_deref_expr(e)->where, "possible optimisation for *& expression");
 
 	e->tree_type = decl_ptr_depth_dec(decl_copy(op_deref_expr(e)->tree_type), &e->where);
 
 	if(decl_desc_depth(e->tree_type) == 0 && e->tree_type->type->primitive == type_void)
-		die_at(&e->where, "can't dereference void pointer (%s)", decl_to_str(e->tree_type));
+		DIE_AT(&e->where, "can't dereference void pointer (%s)", decl_to_str(e->tree_type));
 }
 
 void fold_expr_op(expr *e, symtable *stab)
@@ -256,7 +256,7 @@ void fold_expr_op(expr *e, symtable *stab)
 		fold_disallow_st_un(e->rhs, "op-rhs");
 
 		if(decl_is_void(e->lhs->tree_type) || decl_is_void(e->rhs->tree_type))
-			die_at(&e->where, "use of void expression");
+			DIE_AT(&e->where, "use of void expression");
 
 		fold_decl_equal(e->lhs->tree_type, e->rhs->tree_type,
 				&e->where, WARN_COMPARE_MISMATCH,
@@ -277,7 +277,7 @@ void fold_expr_op(expr *e, symtable *stab)
 				UCC_ASSERT(!e->rhs->tree_type->type->is_signed, "signed-unsigned assumption failure");
 				LHS->tree_type->type->is_signed = 0;
 			}else{
-					cc1_warn_at(&e->where, 0, WARN_SIGN_COMPARE, "comparison between signed and unsigned%s%s%s%s%s%s",
+					cc1_warn_at(&e->where, 0, 1, WARN_SIGN_COMPARE, "comparison between signed and unsigned%s%s%s%s%s%s",
 							SPEL_IF_IDENT(LHS), SPEL_IF_IDENT(RHS));
 			}
 		}
@@ -322,7 +322,7 @@ norm_tt:
 		{
 			/* 2 + (void *)5 is 7, not 2 + 8*5 */
 			if(decl_is_void_ptr(e->tree_type)){
-				cc1_warn_at(&e->tree_type->type->where, 0, WARN_VOID_ARITH, "arithmetic with void pointer");
+				cc1_warn_at(&e->tree_type->type->where, 0, 1, WARN_VOID_ARITH, "arithmetic with void pointer");
 			}else{
 				/* we're dealing with pointers, adjust the amount we add by */
 

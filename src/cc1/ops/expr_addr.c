@@ -67,11 +67,11 @@ void fold_expr_addr(expr *e, symtable *stab)
 
 		/* lvalues are identifier, struct-exp or deref */
 		if(!expr_is_lvalue(e->lhs, 1))
-			die_at(&e->lhs->where, "can't take the address of %s", e->lhs->f_str());
+			DIE_AT(&e->lhs->where, "can't take the address of %s", e->lhs->f_str());
 
 
 		if(e->lhs->tree_type->type->store == store_register)
-			die_at(&e->lhs->where, "can't take the address of register variable %s", e->lhs->spel);
+			DIE_AT(&e->lhs->where, "can't take the address of register variable %s", e->lhs->spel);
 
 		e->tree_type = decl_ptr_depth_inc(decl_copy(e->lhs->sym ? e->lhs->sym->decl : e->lhs->tree_type));
 	}

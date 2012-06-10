@@ -30,15 +30,14 @@ void fold_decl_equal(decl *a, decl *b, where *w, enum warning warn,
 		char buf[DECL_STATIC_BUFSIZ];
 		va_list l;
 
-		strcpy(buf, decl_to_str(b));
+		cc1_warn_at(w, 0, 0, warn, "%s vs. %s for...", decl_to_str(a), decl_to_str_r(buf, b));
 
-		cc1_warn_at(w, 0, warn, "%s vs. %s for...", decl_to_str(a), buf);
 
 		one_struct = (!a->desc && a->type->sue && a->type->sue->primitive != type_enum)
 			        || (!b->desc && b->type->sue && b->type->sue->primitive != type_enum);
 
 		va_start(l, errfmt);
-		cc1_warn_atv(w, one_struct || decl_is_void(a) || decl_is_void(b), warn, errfmt, l);
+		cc1_warn_atv(w, one_struct || decl_is_void(a) || decl_is_void(b), 1, warn, errfmt, l);
 		va_end(l);
 	}
 }
@@ -85,10 +84,10 @@ void fold_decl_desc(decl_desc *dp, symtable *stab, decl *root)
 			long v;
 			fold_expr(dp->bits.array_size, stab);
 			if((v = dp->bits.array_size->val.iv.val) < 0)
-				die_at(&dp->where, "negative array length %ld", v);
+				DIE_AT(&dp->where, "negative array length %ld", v);
 
 			if(v == 0 && !root->init)
-				die_at(&dp->where, "incomplete array");
+				DIE_AT(&dp->where, "incomplete array");
 		}
 
 		case decl_desc_block:
@@ -122,7 +121,7 @@ void fold_enum(struct_union_enum_st *en, symtable *stab)
 		}else{
 			fold_expr(e, stab);
 			if(!const_expr_is_const(e))
-				die_at(&e->where, "enum value not constant");
+				DIE_AT(&e->where, "enum value not constant");
 			defval = const_expr_val(e) + 1;
 		}
 	}
@@ -148,7 +147,7 @@ int fold_sue(struct_union_enum_st *sue, symtable *stab)
 
 			if(d->type->sue && decl_ptr_depth(d) == 0){
 				if(d->type->sue == sue)
-					die_at(&d->where, "nested %s", sue_str(sue));
+					DIE_AT(&d->where, "nested %s", sue_str(sue));
 
 				offset += fold_sue(d->type->sue, stab);
 			}else{
@@ -168,7 +167,7 @@ void fold_decl_init(decl_init *di, symtable *stab, decl *for_decl)
 		switch(di->type){
 			case decl_init_struct:
 			case decl_init_scalar:
-				die_at(&for_decl->where, "can't initialise array decl with scalar or struct");
+				DIE_AT(&for_decl->where, "can't initialise array decl with scalar or struct");
 
 			case decl_init_brace:
 				if(decl_has_incomplete_array(for_decl)){
@@ -183,7 +182,7 @@ void fold_decl_init(decl_init *di, symtable *stab, decl *for_decl)
 
 		switch(di->type){
 			case decl_init_scalar:
-				die_at(&for_decl->where, "can't initialise %s with expression",
+				DIE_AT(&for_decl->where, "can't initialise %s with expression",
 						decl_to_str(for_decl));
 
 			case decl_init_struct:
@@ -208,17 +207,16 @@ void fold_decl_init(decl_init *di, symtable *stab, decl *for_decl)
 					const int nbraces  = dynarray_count((void **)di->bits.subs);
 
 					if(nbraces > nmembers)
-						die_at(&for_decl->where, "too many initialisers for %s", decl_to_str(for_decl));
+						DIE_AT(&for_decl->where, "too many initialisers for %s", decl_to_str(for_decl));
 
 					/* folded below */
 
 				}else{
-					die_at(&for_decl->where, "initialisation of incomplete struct");
+					DIE_AT(&for_decl->where, "initialisation of incomplete struct");
 				}
 				break;
 		}
 	}
-
 
 	switch(di->type){
 		case decl_init_scalar:
@@ -241,7 +239,7 @@ void fold_decl_init(decl_init *di, symtable *stab, decl *for_decl)
 					/* allow identifiers if the identifier is also static */
 
 					if(!expr_kind(init_exp, identifier) || init_exp->tree_type->type->store != store_static){
-						die_at(&init_exp->where, "not a constant expression for %s init - %s",
+						DIE_AT(&init_exp->where, "not a constant expression for %s init - %s",
 								for_decl->spel, init_exp->f_str());
 					}
 				}
@@ -328,15 +326,15 @@ void fold_decl(decl *d, symtable *stab)
 
 		if(dp->parent_desc && dp->parent_desc->type == decl_desc_func){
 			if(dp->type == decl_desc_array)
-				die_at(&dp->where, "can't have an array of functions");
+				DIE_AT(&dp->where, "can't have an array of functions");
 			else if(dp->type == decl_desc_func)
-				die_at(&dp->where, "can't have a function returning a function");
+				DIE_AT(&dp->where, "can't have a function returning a function");
 		}
 
 		if(dp->type == decl_desc_block
 		&& (!dp->parent_desc || dp->parent_desc->type != decl_desc_func))
 		{
-			die_at(&dp->where, "invalid block pointer - function required");
+			DIE_AT(&dp->where, "invalid block pointer - function required");
 		}
 	}
 
@@ -346,14 +344,14 @@ void fold_decl(decl *d, symtable *stab)
 	switch(d->type->primitive){
 		case type_void:
 			if(!decl_ptr_depth(d) && !decl_is_callable(d) && d->spel)
-				die_at(&d->where, "can't have a void variable - %s (%s)", d->spel, decl_to_str(d));
+				DIE_AT(&d->where, "can't have a void variable - %s (%s)", d->spel, decl_to_str(d));
 			break;
 
 		case type_enum:
 		case type_struct:
 		case type_union:
 			if(sue_incomplete(d->type->sue) && !decl_ptr_depth(d))
-				die_at(&d->where, "use of %s%s%s",
+				DIE_AT(&d->where, "use of %s%s%s",
 						type_to_str(d->type),
 						d->spel ?     " " : "",
 						d->spel ? d->spel : "");
@@ -374,21 +372,21 @@ void fold_decl(decl *d, symtable *stab)
 	if(d->desc){
 		fold_decl_desc(d->desc, stab, d);
 	}else if(d->type->qual & qual_restrict){
-		die_at(&d->where, "restrict on non-pointer type %s%s%s",
+		DIE_AT(&d->where, "restrict on non-pointer type %s%s%s",
 				type_to_str(d->type),
 				d->spel ? " " : "",
 				d->spel ? d->spel : "");
 	}
 
 	if(d->field_width && !decl_is_integral(d))
-		die_at(&d->where, "field width on non-integral type %s", decl_to_str(d));
+		DIE_AT(&d->where, "field width on non-integral type %s", decl_to_str(d));
 
 
 	if(decl_is_func(d)){
 		switch(d->type->store){
 			case store_register:
 			case store_auto:
-				die_at(&d->where, "%s storage for function", type_store_to_str(d->type->store));
+				DIE_AT(&d->where, "%s storage for function", type_store_to_str(d->type->store));
 			default:
 				break;
 		}
@@ -405,7 +403,7 @@ void fold_decl(decl *d, symtable *stab)
 		}
 	}else{
 		if(d->type->is_inline)
-			warn_at(&d->where, "inline on non-function%s%s",
+			WARN_AT(&d->where, "inline on non-function%s%s",
 					d->spel ? " " : "",
 					d->spel ? d->spel : "");
 	}
@@ -414,9 +412,9 @@ void fold_decl(decl *d, symtable *stab)
 		if(d->type->store == store_extern){
 			/* allow for globals - remove extern since it's a definition */
 			if(stab->parent){
-				die_at(&d->where, "externs can't be initialised");
+				DIE_AT(&d->where, "externs can't be initialised");
 			}else{
-				warn_at(&d->where, "extern initialisation");
+				WARN_AT(&d->where, "extern initialisation");
 				d->type->store = store_default;
 			}
 		}
@@ -438,7 +436,7 @@ void fold_decl_global(decl *d, symtable *stab)
 
 		case store_auto:
 		case store_register:
-			die_at(&d->where, "invalid storage class %s on global scoped %s",
+			DIE_AT(&d->where, "invalid storage class %s on global scoped %s",
 					type_store_to_str(d->type->store),
 					decl_is_func(d) ? "function" : "variable");
 	}
@@ -457,10 +455,10 @@ void fold_symtab_scope(symtable *stab)
 void fold_test_expr(expr *e, const char *stmt_desc)
 {
 	if(!decl_ptr_depth(e->tree_type) && e->tree_type->type->primitive == type_void)
-		die_at(&e->where, "%s requires non-void expression", stmt_desc);
+		DIE_AT(&e->where, "%s requires non-void expression", stmt_desc);
 
 	if(!e->in_parens && expr_kind(e, assign))
-		cc1_warn_at(&e->where, 0, WARN_TEST_ASSIGN, "testing an assignment in %s", stmt_desc);
+		cc1_warn_at(&e->where, 0, 1, WARN_TEST_ASSIGN, "testing an assignment in %s", stmt_desc);
 
 	fold_disallow_st_un(e, stmt_desc);
 }
@@ -468,7 +466,7 @@ void fold_test_expr(expr *e, const char *stmt_desc)
 void fold_disallow_st_un(expr *e, const char *desc)
 {
 	if(!decl_ptr_depth(e->tree_type) && decl_is_struct_or_union(e->tree_type)){
-		die_at(&e->where, "%s involved in %s",
+		DIE_AT(&e->where, "%s involved in %s",
 				sue_str(e->tree_type->type->sue),
 				desc);
 	}
@@ -486,7 +484,7 @@ void fold_stmt_and_add_to_curswitch(stmt *t)
 	fold_stmt(t->lhs); /* compound */
 
 	if(!t->parent)
-		die_at(&t->where, "%s not inside switch", t->f_str());
+		DIE_AT(&t->where, "%s not inside switch", t->f_str());
 
 	dynarray_add((void ***)&t->parent->codes, t);
 
@@ -511,7 +509,7 @@ void fold_funcargs(funcargs *fargs, symtable *stab, char *context)
 
 			if(type_store_static_or_extern(d->type->store)){
 				const char *sp = d->spel;
-				die_at(&fargs->where, "argument %d %s%s%sin function \"%s\" is static or extern",
+				DIE_AT(&fargs->where, "argument %d %s%s%sin function \"%s\" is static or extern",
 						i + 1,
 						sp ? "(" : "",
 						sp ? sp  : "",
@@ -603,7 +601,7 @@ static void fold_link_decl_defs(decl **decls)
 			/* check they are the same decl */
 			if(!decl_equal(d, e, DECL_CMP_STRICT_PRIMITIVE)){
 				strcpy(wbuf, where_str(&d->where));
-				die_at(&e->where, "mismatching declaration of %s (%s)", d->spel, wbuf);
+				DIE_AT(&e->where, "mismatching declaration of %s (%s)", d->spel, wbuf);
 			}
 
 			if(decl_is_definition(e)){
@@ -612,7 +610,7 @@ static void fold_link_decl_defs(decl **decls)
 				if(definition){
 					/* already got one */
 					strcpy(wbuf, where_str(&d->where));
-					die_at(&e->where, "duplicate definition of %s (%s)", d->spel, wbuf);
+					DIE_AT(&e->where, "duplicate definition of %s (%s)", d->spel, wbuf);
 				}
 
 				definition = e;
@@ -662,7 +660,7 @@ static void fold_link_decl_defs(decl **decls)
 				definition->type->store = store_static;
 
 				if(count_static != count_total && (definition->func_code ? count_static != count_total - 1 : 0)){
-					die_at(&definition->where,
+					DIE_AT(&definition->where,
 							"static/non-static mismatch of function %s (%d static defs vs %d total)",
 							definition->spel, count_static, count_total);
 				}
@@ -675,18 +673,18 @@ static void fold_link_decl_defs(decl **decls)
 			}else if(count_inline == count_total && count_extern == 0){
 				/* inline only */
 				definition->inline_only = 1;
-				warn_at(&definition->where, "definition is inline-only (ucc doesn't inline currently)");
+				WARN_AT(&definition->where, "definition is inline-only (ucc doesn't inline currently)");
 			}else if(count_inline > 0 && (count_extern > 0 || count_inline < count_total)){
 				/* extern inline */
 				definition->type->store = store_extern;
 			}
 
 			if(definition->type->is_inline && !definition->func_code)
-				warn_at(&definition->where, "inline function missing implementation");
+				WARN_AT(&definition->where, "inline function missing implementation");
 
 		}else if(count_static && count_static != count_total){
 			/* TODO: iter through decls, printing them out */
-			die_at(&definition->where, "static/non-static mismatch of %s", definition->spel);
+			DIE_AT(&definition->where, "static/non-static mismatch of %s", definition->spel);
 		}
 
 		definition->is_definition = 1;
@@ -775,9 +773,9 @@ void fold(symtable *globs)
 			static_assert *sa = *i;
 			fold_expr(sa->e, sa->scope);
 			if(const_fold(sa->e))
-				die_at(&sa->e->where, "static assert: not a constant expression (%s)", sa->e->f_str());
+				DIE_AT(&sa->e->where, "static assert: not a constant expression (%s)", sa->e->f_str());
 			if(!sa->e->val.iv.val)
-				die_at(&sa->e->where, "static assertion failure: %s", sa->s);
+				DIE_AT(&sa->e->where, "static assertion failure: %s", sa->s);
 		}
 	}
 

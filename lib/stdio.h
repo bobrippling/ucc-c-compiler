@@ -62,6 +62,7 @@ int  putchar(int);
 void perror(const char *);
 
 /* writing, variadic */
+int vprintf(const char *, va_list);
 int vfprintf(FILE *, const char *, va_list);
 
 
