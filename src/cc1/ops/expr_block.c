@@ -24,7 +24,7 @@ void fold_expr_block(expr *e, symtable *stab)
 
 	symtab_add_args(e->code->symtab, e->block_args, "block-function");
 
-	fold_stmt(e->code); /* symtab set by parse */
+	fold_stmt(e->code); /* symtab set to root by parse */
 
 	UCC_ASSERT(stmt_kind(e->code, code), "!code for block");
 
@@ -58,6 +58,8 @@ void fold_expr_block(expr *e, symtable *stab)
 	e->sym = SYMTAB_ADD(symtab_root(stab), e->tree_type, sym_global);
 
 	e->tree_type->func_code = e->code;
+
+	fold_decl(e->tree_type, stab); /* funcarg folding + typedef/struct lookup, etc */
 }
 
 void gen_expr_block(expr *e, symtable *stab)
