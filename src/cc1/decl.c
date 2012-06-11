@@ -645,7 +645,7 @@ void decl_debug(decl *d)
 		fprintf(stderr, "\t%s\n", decl_desc_str(i));
 }
 
-void decl_desc_add_str(decl_desc *dp, char **bufp, int sz)
+void decl_desc_add_str(decl_desc *dp, int show_spel, char **bufp, int sz)
 {
 #define BUF_ADD(...) \
 	do{ int n = snprintf(*bufp, sz, __VA_ARGS__); *bufp += n, sz -= n; }while(0)
@@ -668,7 +668,9 @@ void decl_desc_add_str(decl_desc *dp, char **bufp, int sz)
 	}
 
 	if(dp->child)
-		decl_desc_add_str(dp->child, bufp, sz);
+		decl_desc_add_str(dp->child, show_spel, bufp, sz);
+	else if(show_spel)
+		BUF_ADD("%s", dp->parent_decl->spel);
 
 	switch(dp->type){
 		case decl_desc_block:
@@ -699,7 +701,7 @@ void decl_desc_add_str(decl_desc *dp, char **bufp, int sz)
 #undef BUF_ADD
 }
 
-const char *decl_to_str_r(char buf[DECL_STATIC_BUFSIZ], decl *d)
+const char *decl_to_str_r_spel(char buf[DECL_STATIC_BUFSIZ], int show_spel, decl *d)
 {
 	char *bufp = buf;
 
@@ -709,16 +711,23 @@ const char *decl_to_str_r(char buf[DECL_STATIC_BUFSIZ], decl *d)
 	BUF_ADD("%s%s", type_to_str(d->type), d->desc ? " " : "");
 
 	if(d->desc)
-		decl_desc_add_str(d->desc, &bufp, DECL_STATIC_BUFSIZ - (bufp - buf));
+		decl_desc_add_str(d->desc, show_spel, &bufp, DECL_STATIC_BUFSIZ - (bufp - buf));
+	else if(show_spel && d->spel)
+		BUF_ADD(" %s", d->spel);
 
 	return buf;
 #undef BUF_ADD
 }
 
+const char *decl_to_str_r(char buf[DECL_STATIC_BUFSIZ], decl *d)
+{
+	return decl_to_str_r_spel(buf, 0, d);
+}
+
 const char *decl_to_str(decl *d)
 {
 	static char buf[DECL_STATIC_BUFSIZ];
-	return decl_to_str_r(buf, d);
+	return decl_to_str_r_spel(buf, 0, d);
 }
 
 int decl_init_len(decl_init *di)
@@ -740,4 +749,11 @@ decl_init *decl_init_new(enum decl_init_type t)
 	decl_init *di = umalloc(sizeof *di);
 	di->type = t;
 	return di;
+}
+
+decl_init_sub *decl_init_sub_new(void)
+{
+	decl_init_sub *s = umalloc(sizeof *s);
+	where_new(&s->where);
+	return s;
 }

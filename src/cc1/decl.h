@@ -112,7 +112,7 @@ struct decl
 
 struct decl_init
 {
-	enum decl_init_type
+	enum decl_init_type /* TODO: ops/init_... */
 	{
 		/*decl_init_str - covered by scalar */
 		decl_init_scalar,              /* = [0-9] | basic-expr */
@@ -126,9 +126,15 @@ struct decl_init
 
 		struct decl_init_sub
 		{
+			where where;
+
 			char *spel;
-			decl *member;
 			decl_init *init;
+
+			decl *for_decl;
+			/* the decl this is for - may be a struct, struct member, or:
+			 * int x[] = { 1, 2, 3 }; - a copy of x's decl, dereferenced
+			 */
 		} **subs;
 	} bits;
 };
@@ -174,6 +180,7 @@ void       decl_copy_primitive(decl *to, decl *from);
 decl_desc *decl_desc_copy(decl_desc *);
 
 decl_init *decl_init_new(enum decl_init_type);
+decl_init_sub *decl_init_sub_new(void);
 int        decl_init_len(decl_init *);
 #define decl_init_is_brace(di) ((di)->type == decl_init_brace || (di)->type == decl_init_struct)
 

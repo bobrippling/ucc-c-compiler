@@ -180,3 +180,16 @@ decl *struct_union_member_find(struct_union_enum_st *sue, const char *spel, wher
 {
 	return (decl *)sue_member_find(sue, spel, die_where);
 }
+
+decl *struct_union_member_idx(struct_union_enum_st *sue, int idx)
+{
+	sue_member **mi;
+
+	for(mi = sue->members; mi && *mi; mi++){
+		if(--idx <= 0){
+			return &(*mi)->struct_member;
+		}
+	}
+
+	return NULL;
+}

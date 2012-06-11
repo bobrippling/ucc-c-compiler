@@ -60,7 +60,8 @@ int symtab_fold(symtable *tab, int current)
 
 
 						/* static analysis on sym (only auto-vars) */
-						RW_WARN(WRITTEN, nwrites, "written to");
+						if(!s->decl->init)
+							RW_WARN(WRITTEN, nwrites, "written to");
 						break;
 					}
 

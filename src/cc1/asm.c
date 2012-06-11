@@ -10,7 +10,10 @@
 #include "asm.h"
 #include "../util/platform.h"
 #include "../util/alloc.h"
+#include "../util/dynarray.h"
 #include "sue.h"
+#include "const.h"
+#include "gen_asm.h"
 
 #define SNPRINTF(s, n, ...) \
 		UCC_ASSERT(snprintf(s, n, __VA_ARGS__) != n, "snprintf buffer too small")
@@ -239,84 +242,6 @@ void asm_out_intval(FILE *f, intval *iv)
 	fprintf(f, fmt, iv->val);
 }
 
-void asm_declare(FILE *f, decl *d)
-{
-	(void)f;
-	(void)d;
-#if 0
-	}else if(d->arrayinit){
-		asm_declare_array(SECTION_DATA, d->arrayinit->label, d->arrayinit);
-
-	}else if(d->init && !const_expr_is_zero(d->init)){
-		asm_declare_single(cc_out[SECTION_DATA], d);
-
-	}else if(d->type->store == store_extern){
-		asm_extern(d);
-#endif
-}
-#if 0
-{
-		int need_zero = 1;
-
-		if(d->init){
-			ICE("TODO: decl init");
-
-			if(!const_expr_is_zero(d->init)){
-				need_zero = 0;
-			}
-		}
-
-		if(need_zero){
-			/* always resb, since we use decl_size() */
-			asm_tempf(cc_out[SECTION_BSS], 0, "%s resb %d", decl_spel(d), decl_size(d));
-		}
-}
-
-void asm_declare_single(FILE *f, decl *d)
-{
-	if(asm_type_size(d) == ASM_SIZE_STRUCT_UNION){
-		/* struct init */
-		int i;
-
-		UCC_ASSERT(d->init->array_store, "no array store for struct init (TODO?)");
-		UCC_ASSERT(d->init->array_store->type == array_exprs, "array store of strings for struct");
-
-		fprintf(f, "%s dq ", d->spel); /* XXX: assumes all struct members are word-size */
-
-		for(i = 0; i < d->init->array_store->len; i++)
-			fprintf(f, "%ld%s",
-					d->init->array_store->data.exprs[i]->val.iv.val,
-					i == d->init->array_store->len - 1 ? "" : ", "
-					);
-
-	}else{
-		fprintf(f, "%s d%c ", d->spel, asm_type_ch(d));
-
-		asm_declare_single_part(f, d->init);
-	}
-
-	fputc('\n', f);
-}
-
-void asm_declare_array(enum section_type output, const char *lbl, array_decl *ad)
-{
-	int i;
-
-	fprintf(cc_out[output], "%s d%c ", lbl, ad->type == array_str ? 'b' : 'q');
-
-	for(i = 0; i < ad->len; i++){
-		if(ad->type == array_str)
-			fprintf(cc_out[output], "%d", ad->data.str[i]);
-		else
-			asm_declare_single_part(cc_out[output], ad->data.exprs[i]);
-
-		if(i < ad->len - 1)
-			fputs(", ", cc_out[output]);
-	}
-
-	fputc('\n', cc_out[output]);
-}
-
 void asm_declare_single_part(FILE *f, expr *e)
 {
 	if(!e->f_gen_1)
@@ -325,7 +250,53 @@ void asm_declare_single_part(FILE *f, expr *e)
 	e->f_gen_1(e, f);
 }
 
-#endif
+static void asm_declare_sub(FILE *f, decl_init *init)
+{
+	switch(init->type){
+		case decl_init_brace:
+		case decl_init_struct:
+		{
+			struct decl_init_sub **const inits = init->bits.subs;
+			const int len = dynarray_count((void **)inits);;
+			decl *this;
+			int i;
+
+			for(i = 0; i < len; i++){
+				asm_declare_sub(f, inits[i]->init);
+				fputc('\n', f);
+			}
+			break;
+		}
+
+		case decl_init_scalar:
+		{
+			expr *const exp = init->bits.expr;
+
+			/*if(!const_expr_is_zero(exp)){*/
+			fprintf(f, "d%c ", asm_type_ch(init->for_decl));
+			asm_declare_single_part(f, exp);
+			/*}*/
+			break;
+		}
+	}
+}
+
+void asm_declare(FILE *f, decl *d)
+{
+	if(d->init){
+		fprintf(f, "%s:\n", d->spel);
+		asm_declare_sub(f, d->init);
+		fputc('\n', f);
+
+	}else if(d->type->store == store_extern){
+		gen_asm_extern(d);
+
+	}else{
+		/* always resB, since we use decl_size() */
+		asm_tempf(cc_out[SECTION_BSS], 0, "%s resb %d", d->spel, decl_size(d));
+
+	}
+}
 
 enum asm_size asm_type_size(decl *d)
 {

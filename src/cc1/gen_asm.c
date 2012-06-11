@@ -47,6 +47,7 @@ void gen_func_stack(decl *df, const int offset)
 	if(use_sub){
 		asm_temp(1, "sub rsp, %d", offset);
 	}else{
+		ICE("fancy stack init TODO");
 		ITER_DECLS(){
 			decl *d = *iter;
 			if(decl_is_array(d) && d->init){
@@ -59,7 +60,7 @@ void gen_func_stack(decl *df, const int offset)
 #  define gen_func_stack(df, offset) asm_temp(1, "sub rsp, %d", offset)
 #endif
 
-void asm_extern(decl *d)
+void gen_asm_extern(decl *d)
 {
 	asm_tempf(cc_out[SECTION_BSS], 0, "extern %s", d->spel);
 }
@@ -115,7 +116,7 @@ void gen_asm(symtable *globs)
 
 		if(d->inline_only){
 			/* emit an extern for it anyway */
-			asm_extern(d);
+			gen_asm_extern(d);
 			continue;
 		}
 

@@ -194,7 +194,7 @@ void fold_decl_init(decl_init *di, symtable *stab, decl *for_decl)
 
 				for(i = 0; i < ninits; i++){
 					struct decl_init_sub *sub = di->bits.subs[i];
-					sub->member = struct_union_member_find(for_decl->type->sue, sub->spel, &for_decl->where);
+					sub->struct_member = struct_union_member_find(for_decl->type->sue, sub->spel, &for_decl->where);
 				}
 
 				fprintf(stderr, "checked decl struct init for %s\n", for_decl->spel);
@@ -220,19 +220,20 @@ void fold_decl_init(decl_init *di, symtable *stab, decl *for_decl)
 
 	switch(di->type){
 		case decl_init_scalar:
-			if(for_decl->type->store == store_static || (for_decl->sym && for_decl->sym->type == sym_global)){
+		{
+			expr *init_exp = di->bits.expr;
+
+			if(for_decl->type->store == store_static || !stab->parent){
 				char buf_a[DECL_STATIC_BUFSIZ], buf_b[DECL_STATIC_BUFSIZ];
-				expr *init_exp = di->bits.expr;
 
 				fold_expr(init_exp, stab);
 
 				/* TODO: better error desc - init of subobject, etc */
-				strcpy(buf_a, decl_to_str(for_decl));
-				strcpy(buf_b, decl_to_str(init_exp->tree_type));
-
 				fold_decl_equal(for_decl, init_exp->tree_type, &for_decl->where, WARN_ASSIGN_MISMATCH,
 						"mismatching initialisation for %s (%s vs. %s)",
-						for_decl->spel, buf_a, buf_b);
+						for_decl->spel,
+						decl_to_str_r(buf_a, for_decl),
+						decl_to_str_r(buf_b, init_exp->tree_type));
 
 				if(const_fold(init_exp) && !const_expr_is_const(init_exp)){
 					/* global/static + not constant */
@@ -243,27 +244,54 @@ void fold_decl_init(decl_init *di, symtable *stab, decl *for_decl)
 								for_decl->spel, init_exp->f_str());
 					}
 				}
+			}else{
+				/* else it's done as an expr - prevent unused warnings */
+				init_exp->freestanding = 1;
 			}
 			break;
+		}
 
-		case decl_init_struct:
 		case decl_init_brace:
+		case decl_init_struct:
 		{
 			decl_init_sub *s;
 			int i;
+			int struct_index = 0;
 
 			/* recursively fold */
-			for(i = 0; (s = di->bits.subs[i]); i++){
-				decl *d;
-				if(!(d = s->member)){
-					/* temp decl from the array type */
-					d = decl_ptr_depth_dec(decl_copy(for_decl), &for_decl->where);
-					fprintf(stderr, "implicit for_decl %s\n", decl_to_str(d));
+			for(i = 0; (s = di->bits.subs[i]); i++, struct_index++){
+				decl *d = s->struct_member;
+				int free_decl = 0;
+
+				if(d){
+					if(di->type != decl_init_struct)
+						DIE_AT(&s->where, "can't initialise array with struct-style init");
+
+					ICE("TODO: struct specified init");
+
+					/* update where we are in the struct - TODO: duplicate checks */
+					/*struct_index = struct_member_index(for_decl->type->sue, d);*/
+
+				}else{
+					if(decl_is_struct_or_union(for_decl)){
+						/* var = { 5 } - var isn't a pointer */
+						d = struct_union_member_idx(for_decl->type->sue, struct_index);
+
+						/* this should be caught above */
+						if(!d)
+							DIE_AT(&s->where, "excess element for %s initialisation", decl_to_str(for_decl));
+
+					}else{
+						/* temp decl from the array type */
+						d = decl_ptr_depth_dec(decl_copy(for_decl), &for_decl->where);
+						fprintf(stderr, "implicit for_decl %s\n", decl_to_str(d));
+						free_decl = 1;
+					}
 				}
 
 				fold_decl_init(s->init, stab, d);
 
-				if(d != s->member)
+				if(free_decl)
 					decl_free(d);
 			}
 			break;

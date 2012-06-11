@@ -5,13 +5,12 @@ decl_init *parse_initialisation(void)
 	if(accept(token_open_block)){
 		struct decl_init_sub **subs;
 
-		di = decl_init_new(decl_init_brace);
 		subs = NULL;
 
 		di = decl_init_new(decl_init_brace); /* subject to change */
 
 		while(curtok != token_close_block){
-			struct decl_init_sub *sub = umalloc(sizeof *sub);
+			struct decl_init_sub *sub = decl_init_sub_new();
 			int struct_init = 0;
 			char *ident;
 
