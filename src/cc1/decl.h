@@ -112,6 +112,8 @@ struct decl
 
 struct decl_init
 {
+	where where;
+
 	enum decl_init_type /* TODO: ops/init_... */
 	{
 		/*decl_init_str - covered by scalar */
@@ -127,16 +129,15 @@ struct decl_init
 		struct decl_init_sub
 		{
 			where where;
-
-			char *spel;
+			char *spel; /* only for struct inits */
 			decl_init *init;
-
-			decl *for_decl;
-			/* the decl this is for - may be a struct, struct member, or:
-			 * int x[] = { 1, 2, 3 }; - a copy of x's decl, dereferenced
-			 */
 		} **subs;
 	} bits;
+
+	decl *for_decl;
+	/* the decl this is for - may be a struct, struct member, or:
+	 * int x[] = { 1, 2, 3 }; - a copy of x's decl, dereferenced
+	 */
 };
 
 struct data_store
@@ -182,6 +183,7 @@ decl_desc *decl_desc_copy(decl_desc *);
 decl_init *decl_init_new(enum decl_init_type);
 decl_init_sub *decl_init_sub_new(void);
 int        decl_init_len(decl_init *);
+const char *decl_init_to_str(enum decl_init_type);
 #define decl_init_is_brace(di) ((di)->type == decl_init_brace || (di)->type == decl_init_struct)
 
 void decl_conv_array_ptr(decl *d);
@@ -192,6 +194,7 @@ int   decl_size( decl *);
 int   decl_equal(decl *, decl *, enum decl_cmp mode);
 
 int     decl_is_struct_or_union(decl *);
+int     decl_is_struct_or_union_possible_ptr(decl *);
 int     decl_is_callable(       decl *);
 int     decl_is_func(           decl *); /* different from _callable - fptrs are also callable */
 int     decl_is_const(          decl *);

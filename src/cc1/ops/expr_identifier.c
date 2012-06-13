@@ -64,7 +64,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 		if(e->sym->type == sym_local
 		&& !type_store_static_or_extern(e->sym->decl->type->store)
 		&& !decl_has_array(e->sym->decl)
-		&& !decl_is_struct_or_union(e->sym->decl)
+		&& !decl_is_struct_or_union_possible_ptr(e->sym->decl)
 		&& !decl_is_func(e->sym->decl)
 		&& e->sym->nwrites == 0
 		&& !e->sym->decl->init)

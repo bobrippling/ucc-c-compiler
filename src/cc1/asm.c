@@ -258,7 +258,6 @@ static void asm_declare_sub(FILE *f, decl_init *init)
 		{
 			struct decl_init_sub **const inits = init->bits.subs;
 			const int len = dynarray_count((void **)inits);;
-			decl *this;
 			int i;
 
 			for(i = 0; i < len; i++){

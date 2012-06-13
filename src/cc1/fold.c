@@ -159,8 +159,11 @@ int fold_sue(struct_union_enum_st *sue, symtable *stab)
 	return offset;
 }
 
-void fold_decl_init(decl_init *di, symtable *stab, decl *for_decl)
+void fold_decl_init(decl *for_decl, decl_init *di, symtable *stab)
 {
+	UCC_ASSERT(for_decl, "no decl-for for initialisation");
+	di->for_decl = for_decl;
+
 	/* fold + type check for statics + globals */
 	if(decl_has_array(for_decl)){ /* FIXME: sufficient for struct A x[] skipping ? */
 		/* don't allow scalar inits */
@@ -182,11 +185,14 @@ void fold_decl_init(decl_init *di, symtable *stab, decl *for_decl)
 
 		switch(di->type){
 			case decl_init_scalar:
-				DIE_AT(&for_decl->where, "can't initialise %s with expression",
+				ICE("TODO: struct init with scalar");
+				DIE_AT(&di->where, "can't initialise %s with expression",
 						decl_to_str(for_decl));
 
 			case decl_init_struct:
 			{
+				ICE("TODO");
+#if 0
 				const int ninits = dynarray_count((void **)di->bits.subs);
 				int i;
 
@@ -194,8 +200,9 @@ void fold_decl_init(decl_init *di, symtable *stab, decl *for_decl)
 
 				for(i = 0; i < ninits; i++){
 					struct decl_init_sub *sub = di->bits.subs[i];
-					sub->struct_member = struct_union_member_find(for_decl->type->sue, sub->spel, &for_decl->where);
+					sub->for_decl = struct_union_member_find(for_decl->type->sue, sub->spel, &for_decl->where);
 				}
+#endif
 
 				fprintf(stderr, "checked decl struct init for %s\n", for_decl->spel);
 				break;
@@ -260,44 +267,39 @@ void fold_decl_init(decl_init *di, symtable *stab, decl *for_decl)
 
 			/* recursively fold */
 			for(i = 0; (s = di->bits.subs[i]); i++, struct_index++){
-				decl *d = s->struct_member;
-				int free_decl = 0;
+				decl *new_for_decl;
 
-				if(d){
+				if(s->spel){
 					if(di->type != decl_init_struct)
 						DIE_AT(&s->where, "can't initialise array with struct-style init");
 
 					ICE("TODO: struct specified init");
-
-					/* update where we are in the struct - TODO: duplicate checks */
-					/*struct_index = struct_member_index(for_decl->type->sue, d);*/
-
-				}else{
-					if(decl_is_struct_or_union(for_decl)){
-						/* var = { 5 } - var isn't a pointer */
-						d = struct_union_member_idx(for_decl->type->sue, struct_index);
-
-						/* this should be caught above */
-						if(!d)
-							DIE_AT(&s->where, "excess element for %s initialisation", decl_to_str(for_decl));
-
-					}else{
-						/* temp decl from the array type */
-						d = decl_ptr_depth_dec(decl_copy(for_decl), &for_decl->where);
-						fprintf(stderr, "implicit for_decl %s\n", decl_to_str(d));
-						free_decl = 1;
-					}
 				}
 
-				fold_decl_init(s->init, stab, d);
+				/* update where we are in the struct - TODO: duplicate checks */
+				/*struct_index = struct_member_index(for_decl->type->sue, d);*/
 
-				if(free_decl)
-					decl_free(d);
+				if(decl_is_struct_or_union(for_decl)){
+					/* var = { 5 } - var isn't a pointer */
+					new_for_decl = struct_union_member_idx(for_decl->type->sue, struct_index);
+
+					/* this should be caught above */
+					if(!new_for_decl)
+						DIE_AT(&s->where, "excess element for %s initialisation", decl_to_str(for_decl));
+
+					fprintf(stderr, "struct init member %s with expr %s\n",
+							decl_to_str(new_for_decl), decl_init_to_str(s->init->type));
+
+				}else{
+					/* decl from the array type */
+					new_for_decl = decl_ptr_depth_dec(decl_copy(for_decl), &for_decl->where);
+				}
+
+				fold_decl_init(new_for_decl, s->init, stab);
 			}
-			break;
 		}
+		break;
 	}
-
 }
 
 void fold_decl(decl *d, symtable *stab)
@@ -447,7 +449,7 @@ void fold_decl(decl *d, symtable *stab)
 			}
 		}
 
-		fold_decl_init(d->init, stab, d);
+		fold_decl_init(d, d->init, stab);
 	}
 }
 
@@ -493,7 +495,7 @@ void fold_test_expr(expr *e, const char *stmt_desc)
 
 void fold_disallow_st_un(expr *e, const char *desc)
 {
-	if(!decl_ptr_depth(e->tree_type) && decl_is_struct_or_union(e->tree_type)){
+	if(decl_is_struct_or_union(e->tree_type)){
 		DIE_AT(&e->where, "%s involved in %s",
 				sue_str(e->tree_type->type->sue),
 				desc);

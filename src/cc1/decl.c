@@ -353,9 +353,14 @@ funcargs *decl_funcargs(decl *d)
 	return dp->bits.func;
 }
 
+int decl_is_struct_or_union_possible_ptr(decl *d)
+{
+	return (d->type->primitive == type_struct || d->type->primitive == type_union);
+}
+
 int decl_is_struct_or_union(decl *d)
 {
-	return d->type->primitive == type_struct || d->type->primitive == type_union;
+	return decl_is_struct_or_union_possible_ptr(d) && decl_ptr_depth(d) == 0;
 }
 
 int decl_is_const(decl *d)
@@ -747,8 +752,19 @@ int decl_init_len(decl_init *di)
 decl_init *decl_init_new(enum decl_init_type t)
 {
 	decl_init *di = umalloc(sizeof *di);
+	where_new(&di->where);
 	di->type = t;
 	return di;
+}
+
+const char *decl_init_to_str(enum decl_init_type t)
+{
+	switch(t){
+		CASE_STR_PREFIX(decl_init, scalar);
+		CASE_STR_PREFIX(decl_init, brace);
+		CASE_STR_PREFIX(decl_init, struct);
+	}
+	return NULL;
 }
 
 decl_init_sub *decl_init_sub_new(void)
