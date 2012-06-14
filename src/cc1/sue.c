@@ -77,7 +77,6 @@ struct_union_enum_st *sue_find(symtable *stab, const char *spel)
 struct_union_enum_st *sue_add(symtable *const stab, char *spel, sue_member **members, enum type_primitive prim)
 {
 	struct_union_enum_st *sue;
-	sue_member **iter;
 	int new = 0;
 
 	if(spel && (sue = sue_find(stab, spel))){
@@ -105,12 +104,25 @@ struct_union_enum_st *sue_add(symtable *const stab, char *spel, sue_member **mem
 		where_new(&sue->where);
 	}
 
-	if(members && prim != type_enum)
-		for(iter = members; *iter; iter++){
-			decl *d = &(*iter)->struct_member;
+	if(members && prim != type_enum){
+		int i;
+
+		for(i = 0; members[i]; i++){
+			decl *d = &members[i]->struct_member;
+			int j;
+
 			if(d->init)
-				DIE_AT(&d->where, "%s member %s is initialised", sue_str(sue), d->spel);
+				DIE_AT(&d->init->where, "%s member %s is initialised", sue_str(sue), d->spel>
+
+			for(j = i + 1; members[j]; j++){
+				if(!strcmp(d->spel, members[j]->struct_member.spel)){
+					char buf[WHERE_BUF_SIZ];
+					DIE_AT(&d->where, "duplicate member %s (from %s)",
+							d->spel, where_str_r(buf, &members[j]->struct_member.where));
+				}
+			}
 		}
+	}
 
 	sue->anon = !spel;
 

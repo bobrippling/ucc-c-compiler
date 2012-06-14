@@ -535,13 +535,19 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 			}
 		}
 
-		if(t->store == store_typedef)
+		if(t->store == store_typedef){
 			are_tdefs = 1;
-		else if(t->sue && !parse_possible_decl())
-			goto next; /*
-									* struct { int i; }; - continue to next one
-									* we check the actual ->struct/enum because we don't allow "enum x;"
-									*/
+		}else if(t->sue && !parse_possible_decl()){
+			/*
+			 * struct { int i; }; - continue to next one
+			 * we check the actual ->struct/enum because we don't allow "enum x;"
+			 */
+
+			if(t->primitive != type_enum && t->sue->anon)
+				warn_at(&t->where, 1, "anonymous struct with no instances");
+
+			goto next;
+		}
 
 		do{
 			decl *d = parse_decl(t, parse_flag);
@@ -552,6 +558,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 				/*
 				 * int; - fine for "int;", but "int i,;" needs to fail
 				 * struct A; - fine
+				 * struct { int i; }; - warn
 				 */
 				if(!last){
 					int warn = 0;
@@ -623,7 +630,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 
 			dynarray_add(are_tdefs
 					? (void ***)&current_scope->typedefs
-					:  (void ***)&decls,
+					: (void ***)&decls,
 					d);
 
 			/* FIXME: check later for functions, not here - typedefs */
