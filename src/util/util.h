@@ -14,7 +14,9 @@ typedef struct where
 	int line, chr;
 } where;
 
+#define WHERE_BUF_SIZ 128
 const char *where_str(const struct where *w);
+const char *where_str_r(char buf[WHERE_BUF_SIZ], const struct where *w);
 
 void warn_at(struct where *, int show_line, const char *, ...) __printflike(3, 4);
 void die_at( struct where *, int show_line, const char *, ...) __printflike(3, 4);
@@ -34,7 +36,5 @@ void icw(const char *f, int line, const char *fn, const char *fmt, ...) __printf
 #define UCC_ASSERT(b, ...) do if(!(b)) ICE(__VA_ARGS__); while(0)
 #define ICE(...) ice(__FILE__, __LINE__, __func__, __VA_ARGS__)
 #define ICW(...) icw(__FILE__, __LINE__, __func__, __VA_ARGS__)
-
-#define WHERE_BUF_SIZ 128
 
 #endif
