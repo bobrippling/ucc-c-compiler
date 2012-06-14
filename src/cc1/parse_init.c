@@ -48,8 +48,6 @@ decl_init *parse_initialisation(void)
 	}else{
 		di = decl_init_new(decl_init_scalar);
 		di->bits.expr = parse_expr_no_comma();
-
-		/*if(expr_kind(di->bits.expr, addr) && di->bits.expr->data_store)*/
 	}
 
 	return di;

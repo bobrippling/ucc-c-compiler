@@ -56,9 +56,6 @@ void data_store_fold_decl(data_store *ds, decl **ptree_type)
 			sym_spel = "str";
 			tree_type->type->primitive = type_char;
 			break;
-
-		/*case data_store_ints:
-			tree_type->type->primitive = type_int;*/
 	}
 
 	ds->spel = asm_label_data_store(sym_spel);

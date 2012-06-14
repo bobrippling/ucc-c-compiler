@@ -22,7 +22,6 @@ typedef struct decl_init   decl_init;
 typedef struct decl_init_sub decl_init_sub;
 typedef struct data_store  data_store;
 
-
 enum type_primitive
 {
 	type_int,

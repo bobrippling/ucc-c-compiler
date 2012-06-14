@@ -262,6 +262,7 @@ static void asm_declare_sub(FILE *f, decl_init *init)
 
 			for(i = 0; i < len; i++){
 				asm_declare_sub(f, inits[i]->init);
+				/* TODO: struct padding for next member */
 				fputc('\n', f);
 			}
 			break;

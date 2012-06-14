@@ -9,6 +9,7 @@
 #include "../util/dynarray.h"
 #include "data_structs.h"
 #include "macros.h"
+#include "sue.h"
 
 #define ITER_DESC_TYPE(d, dp, typ)     \
 	for(dp = d->desc; dp; dp = dp->child) \
@@ -771,5 +772,33 @@ decl_init_sub *decl_init_sub_new(void)
 {
 	decl_init_sub *s = umalloc(sizeof *s);
 	where_new(&s->where);
+	return s;
+}
+
+decl_init_sub *decl_init_sub_zero_for_decl(decl *d)
+{
+	decl_init_sub *s = umalloc(sizeof *s);
+	memcpy(&s->where, &d->where, sizeof s->where);
+
+	if(decl_is_struct_or_union(d)){
+		sue_member **m;
+
+		s->init = decl_init_new(decl_init_struct);
+
+		for(m = d->type->sue->members; m && *m; m++){
+			decl_init_sub *sub = decl_init_sub_zero_for_decl(&(*m)->struct_member);
+			dynarray_add((void ***)&s->init->bits.subs, sub);
+		}
+
+	}else if(decl_is_array(d)){
+		ICE("TODO: zero init array");
+	}else{
+		s->init = decl_init_new(decl_init_scalar);
+
+		s->init->bits.expr = expr_new_val(0);
+	}
+
+	s->init->for_decl = d;
+
 	return s;
 }

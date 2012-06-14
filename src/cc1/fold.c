@@ -185,7 +185,7 @@ void fold_decl_init(decl *for_decl, decl_init *di, symtable *stab)
 
 		switch(di->type){
 			case decl_init_scalar:
-				ICE("TODO: struct init with scalar");
+				/*ICE("TODO: struct init with scalar");*/
 				DIE_AT(&di->where, "can't initialise %s with expression",
 						decl_to_str(for_decl));
 
@@ -261,6 +261,7 @@ void fold_decl_init(decl *for_decl, decl_init *di, symtable *stab)
 		case decl_init_brace:
 		case decl_init_struct:
 		{
+			struct_union_enum_st *const sue = for_decl->type->sue;
 			decl_init_sub *s;
 			int i;
 			int struct_index = 0;
@@ -270,25 +271,33 @@ void fold_decl_init(decl *for_decl, decl_init *di, symtable *stab)
 				decl *new_for_decl;
 
 				if(s->spel){
-					if(di->type != decl_init_struct)
-						DIE_AT(&s->where, "can't initialise array with struct-style init");
+					decl *member;
+					int old_idx;
 
-					ICE("TODO: struct specified init");
+					if(di->type != decl_init_struct)
+						DIE_AT(&di->where, "can't initialise array with struct-style init");
+
+					ICE(".x struct init");
+
+					member = struct_union_member_find(sue, s->spel, &di->where);
+
+					old_idx = struct_index;
+					struct_index = struct_union_member_idx(sue, member);
+
+					/* update where we are in the struct - FIXME: duplicate checks */
+					if(struct_index <= old_idx){
+						DIE_AT(&di->where, "duplicate initialisation of %s %s member %s",
+								decl_to_str(for_decl), sue->spel, member->spel);
+					}
 				}
 
-				/* update where we are in the struct - TODO: duplicate checks */
-				/*struct_index = struct_member_index(for_decl->type->sue, d);*/
-
 				if(decl_is_struct_or_union(for_decl)){
-					/* var = { 5 } - var isn't a pointer */
-					new_for_decl = struct_union_member_idx(for_decl->type->sue, struct_index);
+					/* take the struct member type */
+					new_for_decl = struct_union_member_at_idx(sue, struct_index);
 
 					/* this should be caught above */
 					if(!new_for_decl)
 						DIE_AT(&s->where, "excess element for %s initialisation", decl_to_str(for_decl));
-
-					fprintf(stderr, "struct init member %s with expr %s\n",
-							decl_to_str(new_for_decl), decl_init_to_str(s->init->type));
 
 				}else{
 					/* decl from the array type */
@@ -296,6 +305,19 @@ void fold_decl_init(decl *for_decl, decl_init *di, symtable *stab)
 				}
 
 				fold_decl_init(new_for_decl, s->init, stab);
+			}
+
+			if(decl_is_struct_or_union(for_decl)){
+				const int nmembers = sue_nmembers(sue);
+
+				fprintf(stderr, "end fold for %s, did %d vs %d\n",
+						decl_to_str(for_decl), i, nmembers);
+
+				/* add to the end - since .x = y isn't available, don't have to worry about middle ones */
+				for(; i < nmembers; i++){
+					decl_init_sub *sub = decl_init_sub_zero_for_decl(struct_union_member_at_idx(sue, i));
+					dynarray_add((void ***)&di->bits.subs, sub);
+				}
 			}
 		}
 		break;

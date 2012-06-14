@@ -12,9 +12,9 @@
 #define PRINTF_OPTIMISE
 #define PRINTF_ENABLE_PADDING
 
-static FILE _stdin  = { 0, 0 };
-static FILE _stdout = { 1, 0 };
-static FILE _stderr = { 2, 0 };
+static FILE _stdin  = { 0, __FILE_fine };
+static FILE _stdout = { 1, __FILE_fine };
+static FILE _stderr = { 2, __FILE_fine };
 
 FILE *stdin  = &_stdin;
 FILE *stdout = &_stdout;

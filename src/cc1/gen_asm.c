@@ -14,6 +14,7 @@
 #include "gen_asm.h"
 #include "../util/util.h"
 #include "const.h"
+#include "data_store.h"
 
 char *curfunc_lblfin; /* extern */
 
@@ -105,6 +106,7 @@ void gen_asm_global(decl *d)
 
 void gen_asm(symtable *globs)
 {
+	data_store **ds;
 	decl **diter;
 
 	for(diter = globs->decls; diter && *diter; diter++){
@@ -142,4 +144,7 @@ void gen_asm(symtable *globs)
 
 		gen_asm_global(d);
 	}
+
+	for(ds = globs->strings; ds && *ds; ds++)
+		data_store_out(cc_out[SECTION_DATA], *ds);
 }

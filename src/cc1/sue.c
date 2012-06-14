@@ -112,7 +112,7 @@ struct_union_enum_st *sue_add(symtable *const stab, char *spel, sue_member **mem
 			int j;
 
 			if(d->init)
-				DIE_AT(&d->init->where, "%s member %s is initialised", sue_str(sue), d->spel>
+				DIE_AT(&d->init->where, "%s member %s is initialised", sue_str(sue), d->spel);
 
 			for(j = i + 1; members[j]; j++){
 				if(!strcmp(d->spel, members[j]->struct_member.spel)){
@@ -193,15 +193,24 @@ decl *struct_union_member_find(struct_union_enum_st *sue, const char *spel, wher
 	return (decl *)sue_member_find(sue, spel, die_where);
 }
 
-decl *struct_union_member_idx(struct_union_enum_st *sue, int idx)
+decl *struct_union_member_at_idx(struct_union_enum_st *sue, int idx)
 {
-	sue_member **mi;
+	int n = sue_nmembers(sue);
+	/*
+	 * not needed since there are checks in decl init code,
+	 * but in case this is used elsewhere...
+	 */
+	if(idx >= n)
+		return NULL;
 
-	for(mi = sue->members; mi && *mi; mi++){
-		if(--idx <= 0){
-			return &(*mi)->struct_member;
-		}
-	}
+	return &sue->members[idx]->struct_member;
+}
 
-	return NULL;
+int struct_union_member_idx(struct_union_enum_st *sue, decl *member)
+{
+	int i;
+	for(i = 0; sue->members[i]; i++)
+		if(&sue->members[i]->struct_member == member)
+			return i;
+	return -1;
 }

@@ -35,6 +35,8 @@ struct symtable
 	struct_union_enum_st **sues;
 	decl                 **typedefs;
 
+	data_store           **strings;
+
 	static_assert        **static_asserts;
 };
 

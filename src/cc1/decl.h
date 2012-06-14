@@ -129,8 +129,9 @@ struct decl_init
 		struct decl_init_sub
 		{
 			where where;
-			char *spel; /* only for struct inits */
 			decl_init *init;
+			/* only for struct inits */
+			char *spel;
 		} **subs;
 	} bits;
 
@@ -182,6 +183,7 @@ decl_desc *decl_desc_copy(decl_desc *);
 
 decl_init *decl_init_new(enum decl_init_type);
 decl_init_sub *decl_init_sub_new(void);
+decl_init_sub *decl_init_sub_zero_for_decl(decl *);
 int        decl_init_len(decl_init *);
 const char *decl_init_to_str(enum decl_init_type);
 #define decl_init_is_brace(di) ((di)->type == decl_init_brace || (di)->type == decl_init_struct)
