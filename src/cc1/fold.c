@@ -485,7 +485,7 @@ void fold_test_expr(expr *e, const char *stmt_desc)
 
 void fold_disallow_st_un(expr *e, const char *desc)
 {
-	if(!decl_ptr_depth(e->tree_type) && decl_is_struct_or_union(e->tree_type)){
+	if(decl_is_struct_or_union(e->tree_type)){
 		DIE_AT(&e->where, "%s involved in %s",
 				sue_str(e->tree_type->type->sue),
 				desc);
