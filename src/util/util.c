@@ -10,11 +10,16 @@
 #define WHERE_FMT "%s:%d:%d"
 #define WHERE_ARGS w->fname, w->line, w->chr + 1
 
+const char *where_str_r(char buf[WHERE_BUF_SIZ], const struct where *w)
+{
+	snprintf(buf, WHERE_BUF_SIZ, WHERE_FMT, WHERE_ARGS);
+	return buf;
+}
+
 const char *where_str(const struct where *w)
 {
 	static char buf[WHERE_BUF_SIZ];
-	snprintf(buf, sizeof buf, WHERE_FMT, WHERE_ARGS);
-	return buf;
+	return where_str_r(buf, w);
 }
 
 struct where *default_where(struct where *w)

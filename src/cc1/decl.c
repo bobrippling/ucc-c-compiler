@@ -385,9 +385,14 @@ funcargs *decl_funcargs(decl *d)
 	return last ? last->bits.func : NULL;
 }
 
-int decl_is_struct_or_union(decl *d)
+int decl_is_struct_or_union_possible_ptr(decl *d)
 {
 	return d->type->primitive == type_struct || d->type->primitive == type_union;
+}
+
+int decl_is_struct_or_union(decl *d)
+{
+	return decl_is_struct_or_union_possible_ptr(d) && !decl_ptr_depth(d);
 }
 
 int decl_is_const(decl *d)
@@ -698,13 +703,15 @@ void decl_desc_add_str(decl_desc *dp, char **bufp, int sz)
 			break;
 		case decl_desc_func:
 		{
+			const char *comma = "";
 			decl **i;
 			funcargs *args = dp->bits.func;
 
 			BUF_ADD("(");
 			for(i = args->arglist; i && *i; i++){
 				char tmp_buf[DECL_STATIC_BUFSIZ];
-				BUF_ADD("%s", decl_to_str_r(tmp_buf, *i));
+				BUF_ADD("%s%s", comma, decl_to_str_r(tmp_buf, *i));
+				comma = ", ";
 			}
 			BUF_ADD("%s)", args->variadic ? ", ..." : args->args_void ? "void" : "");
 			break;

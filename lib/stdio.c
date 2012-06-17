@@ -9,12 +9,32 @@
 
 #include "ucc_attr.h"
 
+#define FILE_FUN(f) ((f)->f_read || (f)->f_write)
+
 #define PRINTF_OPTIMISE
 #define PRINTF_ENABLE_PADDING
 
-static FILE _stdin  = { 0, 0 };
-static FILE _stdout = { 1, 0 };
-static FILE _stderr = { 2, 0 };
+struct __FILE
+{
+	int fd;
+	enum
+	{
+		file_status_fine,
+		file_status_eof,
+		file_status_err
+	} status;
+
+	void *cookie;
+	__stdio_read  *f_read;
+	__stdio_write *f_write;
+	__stdio_seek  *f_seek;
+	__stdio_close *f_close;
+};
+#define FILE_INIT(fd) { fd, file_status_fine, NULL, NULL, NULL, NULL, NULL }
+
+static FILE _stdin  = FILE_INIT(0);
+static FILE _stdout = FILE_INIT(1);
+static FILE _stderr = FILE_INIT(2);
 
 FILE *stdin  = &_stdin;
 FILE *stdout = &_stdout;
@@ -23,49 +43,49 @@ FILE *stderr = &_stderr;
 static const char *nums = "0123456789abcdef";
 
 /* Private */
-static void printd_rec(int fd, int n, int base)
+static void fprintd_rec(FILE *f, int n, int base)
 {
 	int d;
 	d = n / base;
 	if(d)
-		printd_rec(fd, d, base);
-	write(fd, nums + n % base, 1);
+		fprintd_rec(f, d, base);
+	fwrite(nums + n % base, 1, 1, f);
 }
 
-static void printn(int fd, int n, int base, int is_signed)
+static void fprintn(FILE *f, int n, int base, int is_signed)
 {
 	if(is_signed && n < 0){
-		write(fd, "-", 1);
+		fwrite("-", 1, 1, f);
 		n = -n;
 	}
 
-	printd_rec(fd, n, base);
+	fprintd_rec(f, n, base);
 }
 
-static void printd(int fd, int n, int is_signed)
+static void fprintd(FILE *f, int n, int is_signed)
 {
-	printn(fd, n, 10, is_signed);
+	fprintn(f, n, 10, is_signed);
 }
 
-static void printx(int fd, int n, int is_signed)
+static void fprintx(FILE *f, int n, int is_signed)
 {
-	printn(fd, n, 16, is_signed);
+	fprintn(f, n, 16, is_signed);
 }
 
-static void printo(int fd, int n, int is_signed)
+static void fprinto(FILE *f, int n, int is_signed)
 {
-	printn(fd, n, 8, is_signed);
+	fprintn(f, n, 8, is_signed);
 }
 
 /* Public */
-int feof(FILE *f __unused)
+int feof(FILE *f)
 {
-	return f->status == __FILE_eof;
+	return f->status == file_status_eof;
 }
 
-int ferror(FILE *f __unused)
+int ferror(FILE *f)
 {
-	return f->status == __FILE_err;
+	return f->status == file_status_err;
 }
 
 static int fopen2(FILE *f, const char *path, const char *smode)
@@ -120,9 +140,9 @@ inval:
 	if(fd == -1)
 		return 1;
 
-	fileno(f) = fd;
+	f->fd = fd;
 
-	f->status = __FILE_fine;
+	f->status = file_status_fine;
 
 	return 0;
 }
@@ -131,7 +151,48 @@ static int fclose2(FILE *f)
 {
 	if(fflush(f))
 		return EOF;
+
+	if(FILE_FUN(f)){
+		__stdio_close *c = f->f_close;
+		return c ? c(f->cookie) : 0;
+	}
+
 	return close(fileno(f)) == 0 ? 0 : EOF;
+}
+
+FILE *funopen(const void *cookie, __stdio_read *r, __stdio_write *w, __stdio_seek *s, __stdio_close *c)
+{
+	FILE *f;
+
+	if(!r && !w){
+		errno = EINVAL;
+		return NULL;
+	}
+
+	f = malloc(sizeof *f);
+	if(!f)
+		return NULL;
+
+	f->fd = -1;
+	f->status = file_status_fine;
+
+	f->cookie = cookie;
+	f->f_read = r;
+	f->f_write = w;
+	f->f_seek = s;
+	f->f_close = c;
+
+	return f;
+}
+
+FILE *fropen(void *cookie, __stdio_read *rfn)
+{
+	return funopen(cookie, rfn, NULL, NULL, NULL);
+}
+
+FILE *fwopen(void *cookie, __stdio_write *wfn)
+{
+	return funopen(cookie, NULL, wfn, NULL, NULL);
 }
 
 FILE *fopen(const char *path, const char *mode)
@@ -166,14 +227,53 @@ int fclose(FILE *f)
 	return r;
 }
 
-int fflush(FILE *f)
+int fseek(FILE *stream, long offset, int whence)
+{
+	if(FILE_FUN(stream)){
+		__stdio_seek *s = stream->f_seek;
+		if(s)
+			return s(stream->cookie, offset, whence);
+		errno = EINVAL;
+		return -1;
+	}
+
+	return lseek(fileno(stream), offset, whence);
+}
+
+long ftell(FILE *stream)
+{
+	return fseek(stream, 0, SEEK_CUR);
+}
+
+void rewind(FILE *stream)
+{
+	fseek(stream, 0, SEEK_SET);
+}
+
+int fgetpos(FILE *stream, fpos_t *pos)
+{
+	fpos_t p = ftell(stream);
+
+	if(p == (fpos_t)-1)
+		return -1;
+
+	*pos = p;
+	return 0;
+}
+
+int fsetpos(FILE *stream, fpos_t *pos)
+{
+	return fseek(stream, *pos, SEEK_SET);
+}
+
+int fflush(FILE *f __unused)
 {
 	return 0;
 }
 
 int fputc(int c, FILE *f)
 {
-	return write(fileno(f), &c, 1) == 1 ? c : EOF;
+	return fwrite(&c, 1, 1, f) == 1 ? c : EOF;
 }
 
 int putchar(int c)
@@ -184,11 +284,20 @@ int putchar(int c)
 size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream)
 {
 	int n;
+
+	if(FILE_FUN(stream)){
+		if(stream->f_read)
+			return stream->f_read(stream->cookie, ptr, size * nmemb);
+
+		errno = EINVAL;
+		return 0;
+	}
+
 	n = read(fileno(stream), ptr, size * nmemb);
 	if(n == 0){
-		stream->status = __FILE_eof;
+		stream->status = file_status_eof;
 	}else if(n < 0){
-		stream->status = __FILE_err;
+		stream->status = file_status_err;
 	}else{
 		return n;
 	}
@@ -198,19 +307,23 @@ size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream)
 size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream)
 {
 	int n;
+
+	if(FILE_FUN(stream)){
+		if(stream->f_write)
+			return stream->f_write(stream->cookie, ptr, size * nmemb);
+
+		errno = EINVAL;
+		return 0;
+	}
+
 	n = write(fileno(stream), ptr, size * nmemb);
 	return n > 0 ? n : 0;
 }
 
 int vfprintf(FILE *file, const char *fmt, va_list ap)
 {
-	int fd = fileno(file);
-#ifdef PRINTF_OPTIMISE
 	const char *buf  = fmt;
 	int buflen = 0;
-#else
-# warning printf unoptimised
-#endif
 
 	if(!fmt)
 		return 0;
@@ -221,10 +334,8 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 			int pad = 0;
 #endif
 
-#ifdef PRINTF_OPTIMISE
 			if(buflen)
-				write(fd, buf, buflen); // TODO: errors
-#endif
+				fwrite(buf, buflen, 1, file); // TODO: errors
 
 			fmt++;
 
@@ -246,7 +357,7 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 					const char *s = va_arg(ap, const char *);
 					if(!s)
 						s = "(null)";
-					write(fd, s, strlen(s));
+					fwrite(s, strlen(s), 1, file);
 					break;
 				}
 				case 'c':
@@ -276,7 +387,7 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 					}
 #endif
 
-					printd(fd, n, *fmt == 'd');
+					fprintd(file, n, *fmt == 'd');
 					break;
 				}
 				case 'p':
@@ -284,43 +395,34 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 					void *p = va_arg(ap, void *);
 					if(p){
 						/* TODO - intptr_t */
-						typedef int long;
 						fputs("0x", file);
-						printx(fd, (long)p, 0);
+						fprintx(file, (long)p, 0);
 					}else{
 						fputs("(nil)", file);
 					}
 					break;
 				}
 				case 'x':
-					printx(fd, va_arg(ap, int), 1);
+					fprintx(file, va_arg(ap, int), 1);
 					break;
 				case 'o':
-					printo(fd, va_arg(ap, int), 1);
+					fprinto(file, va_arg(ap, int), 1);
 					break;
 
 				default:
-					write(fd, fmt, 1); /* default to just printing the char */
+					fwrite(fmt, 1, 1, file); /* default to just printing the char */
 			}
 
-#ifdef PRINTF_OPTIMISE
 			buf = fmt + 1;
 			buflen = 0;
-#endif
 		}else{
-#ifdef PRINTF_OPTIMISE
 			buflen++;
-#else
-			write(fd, fmt, 1);
-#endif
 		}
 		fmt++;
 	}
 
-#ifdef PRINTF_OPTIMISE
 	if(buflen)
-		write(fd, buf, buflen);
-#endif
+		fwrite(buf, buflen, 1, file);
 }
 
 int vprintf(const char *fmt, va_list l)
@@ -334,8 +436,9 @@ int dprintf(int fd, const char *fmt, ...)
 	int r;
 	FILE f;
 
+	memset(&f, 0, sizeof f);
 	f.fd = fd;
-	f.status = __FILE_fine;
+	f.status = file_status_fine;
 
 	va_start(l, fmt);
 	r = vfprintf(&f, fmt, l);
@@ -370,7 +473,8 @@ int printf(const char *fmt, ...)
 
 int fputs(const char *s, FILE *f)
 {
-	return write(fileno(f), s, strlen(s)) > 0 ? 1 : EOF;
+	const size_t len = strlen(s);
+	return fwrite(s, len, 1, f) == len ? 1 : EOF;
 }
 
 int puts(const char *s)
@@ -386,27 +490,21 @@ int getchar()
 int fgetc(FILE *f)
 {
 	int ch;
-	return read(fileno(f), &ch, 1) == 1 ? ch : EOF;
+	return fread(&ch, 1, 1, f) == 1 ? ch : EOF;
 }
 
 char *fgets(char *s, int l, FILE *f)
 {
 	int r;
 
-	r = read(fileno(f), s, l - 1);
+	r = fread(s, l - 1, 1, f);
 
-	switch(r){
-		case  0: /* EOF */
-			f->status = __FILE_eof;
-			return NULL;
-		case -1: /* error */
-			f->status = __FILE_err;
-			return NULL;
-	}
+	if(r == 0)
+		return NULL;
 
 	/* FIXME: read only one line at a time */
 
-	s[l] = '\0';
+	s[MIN(l, r)] = '\0';
 
 	return s;
 }
@@ -432,7 +530,6 @@ int remove(const char *f)
 	return 0;
 }
 
-#undef fileno
 int fileno(FILE *f)
 {
 	return f->fd;
