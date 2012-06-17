@@ -15,6 +15,7 @@ void fold_stmt_code(stmt *s)
 
 	fold_symtab_scope(s->symtab);
 
+	/* NOTE: this only folds + adds decls, not args */
 	for(iter = s->decls; iter && *iter; iter++){
 		decl *d = *iter;
 
