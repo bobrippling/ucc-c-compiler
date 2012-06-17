@@ -1,11 +1,7 @@
 #ifndef __STDIO_H
 #define __STDIO_H
 
-typedef struct __FILE
-{
-	int fd;
-	enum { __FILE_fine, __FILE_eof, __FILE_err } status;
-} FILE;
+typedef struct __FILE FILE;
 
 extern FILE *stdin, *stdout, *stderr;
 
@@ -28,17 +24,15 @@ size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream);
 
 typedef size_t fpos_t;
 
-/* TODO: func interface */
-FILE *funopen(
-		const void *cookie,
-		int      (*readfn)(void *,       char *, int),
-		int     (*writefn)(void *, const char *, int),
-		fpos_t   (*seekfn)(void *,       fpos_t, int),
-		int     (*closefn)(void *)
-		);
+typedef size_t   __stdio_read(void *,       char *, int);
+typedef size_t  __stdio_write(void *, const char *, int);
+typedef fpos_t   __stdio_seek(void *,       fpos_t, int);
+typedef int     __stdio_close(void *);
 
-FILE *fropen(void *cookie, int (*readfn )(void *,       char *, int));
-FILE *fwopen(void *cookie, int (*writefn)(void *, const char *, int));
+/* func interface */
+FILE *funopen(const void *cookie, __stdio_read *, __stdio_write *, __stdio_seek *, __stdio_close *);
+FILE *fropen(void *cookie, __stdio_read  *);
+FILE *fwopen(void *cookie, __stdio_write *);
 
 
 /* status */
@@ -81,6 +75,5 @@ char *fgetln(FILE *stream, size_t *len); /* valid until next read */
 int remove(const char *);
 
 int fileno(FILE *);
-#  define fileno(f) ((f)->fd)
 
 #endif
