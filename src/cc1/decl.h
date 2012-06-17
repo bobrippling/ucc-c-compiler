@@ -166,6 +166,7 @@ int   decl_size( decl *);
 int   decl_equal(decl *, decl *, enum decl_cmp mode);
 
 int     decl_is_struct_or_union(decl *);
+int     decl_is_struct_or_union_possible_ptr(decl *);
 int     decl_is_callable(       decl *);
 int     decl_is_func(           decl *); /* different from _callable - fptrs are also callable */
 int     decl_is_const(          decl *);

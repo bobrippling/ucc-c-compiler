@@ -114,7 +114,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 		}
 
 		/* lvalues are identifier, struct-exp or deref */
-		if(!expr_is_lvalue(e->lhs, 1))
+		if(!expr_is_lvalue(e->lhs, LVAL_ALLOW_FUNC))
 			DIE_AT(&e->lhs->where, "can't take the address of %s", e->lhs->f_str());
 
 

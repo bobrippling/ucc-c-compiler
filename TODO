@@ -4,6 +4,8 @@ _Generic const-ify
 
 updated bugs/ and test/
 
+-fms-extensions - MS unnamed struct members
+
 ---------------------------------------------------- cc1
 
 extern int i;
