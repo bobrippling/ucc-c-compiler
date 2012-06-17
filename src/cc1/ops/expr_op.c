@@ -168,7 +168,7 @@ void fold_op_struct(expr *e, symtable *stab)
 	spel = e->rhs->spel;
 
 	/* we access a struct, of the right ptr depth */
-	if(!decl_is_struct_or_union(e->lhs->tree_type)
+	if(!decl_is_struct_or_union_possible_ptr(e->lhs->tree_type)
 	|| decl_ptr_depth(e->lhs->tree_type) != ptr_depth_exp)
 	{
 		const int ident = expr_kind(e->lhs, identifier);
@@ -315,38 +315,38 @@ norm_tt:
 		/* need to do this check _after_ we get the correct tree type */
 		if((e->op == op_plus || e->op == op_minus)
 		&& decl_ptr_depth(e->tree_type)
-		&& e->rhs
 		&& !e->op_no_ptr_mul)
 		{
 			/* 2 + (void *)5 is 7, not 2 + 8*5 */
 			if(decl_is_void_ptr(e->tree_type)){
 				cc1_warn_at(&e->tree_type->type->where, 0, 1, WARN_VOID_ARITH, "arithmetic with void pointer");
 			}else{
-				/* we're dealing with pointers, adjust the amount we add by */
-
 				/*
-				 * subtracting two pointers - need to divide by sizeof(void *)
-				 * adding int to a pointer - need to multiply by sizeof(void *)
+				 * subtracting two pointers - need to divide by sizeof(typeof(*expr))
+				 * adding int to a pointer - need to multiply by sizeof(typeof(*expr))
 				 */
 
-				if(e->op == op_minus && decl_ptr_depth(e->lhs->tree_type) && decl_ptr_depth(e->rhs->tree_type)){
+				if(e->op == op_minus){
 					/* need to apply the divide to the current 'e' */
 					expr *sub = expr_new_op(e->op);
+					decl *const cpy = decl_ptr_depth_dec(decl_copy(e->tree_type), &e->where);
 
 					memcpy(&sub->where, &e->where, sizeof sub->where);
 
 					sub->lhs = e->lhs;
 					sub->rhs = e->rhs;
+
 					sub->tree_type = e->tree_type;
+					e->tree_type = decl_new();
+					e->tree_type->type->primitive = type_int;
 
 					e->op = op_divide;
 
 					e->lhs = sub;
-					e->rhs = expr_new_val(decl_size(e->tree_type));
+					e->rhs = expr_new_val(decl_size(cpy));
 					fold_expr(e->rhs, stab);
 
-					e->tree_type = decl_new();
-					e->tree_type->type->primitive = type_int;
+					decl_free(cpy);
 
 				}else{
 					if(decl_ptr_depth(e->lhs->tree_type))

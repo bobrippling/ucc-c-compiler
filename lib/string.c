@@ -1,12 +1,13 @@
 #include "string.h"
 #include "limits.h"
+#include "stdlib.h" // MIN
 
 static const char *_errs[] = {
 #include "string_strerrs.h"
 };
 
 
-int strlen(char *s)
+size_t strlen(char *s)
 {
 	int i = 0;
 	while(*s++)
@@ -73,6 +74,7 @@ void *memset(void *p, unsigned char c, size_t len)
 
 void *memcpy(char *to, const char *from, size_t count)
 {
+	/* TODO: repnz movsb */
 	/* thank you duff */
 	char *const ret = to;
 	size_t n = (count + 7) / 8;
@@ -89,4 +91,15 @@ void *memcpy(char *to, const char *from, size_t count)
 		}while(--n>0);
 	}
 	return ret;
+}
+
+char *strcpy(char *dest, const char *src)
+{
+	memcpy(dest, src, strlen(src));
+}
+
+char *strncpy(char *dest, const char *src, size_t n)
+{
+	const size_t len = strlen(src);
+	memcpy(dest, src, MIN(n, len));
 }
