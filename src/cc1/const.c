@@ -19,6 +19,10 @@ int const_fold(expr *e)
 
 int const_expr_is_const(expr *e)
 {
+	/* TODO: move this to the expr ops */
+	if(expr_kind(e, cast))
+		return const_expr_is_const(e->expr);
+
 	if(expr_kind(e, val) || expr_kind(e, sizeof) || expr_kind(e, addr))
 		return 1;
 

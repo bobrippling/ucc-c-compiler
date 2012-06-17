@@ -8,6 +8,27 @@
 #include "fold_sym.h"
 #include "../util/platform.h"
 
+
+#define RW_TEST(var)                              \
+						s->var == 0                           \
+						&& !decl_has_array(s->decl)           \
+						&& !decl_is_func(s->decl)             \
+						&& !decl_is_struct_or_union(s->decl)
+
+#define RW_SHOW(w, str)                           \
+					cc1_warn_at(&s->decl->where, 0, 1,      \
+							WARN_SYM_NEVER_ ## w,               \
+							"\"%s\" never " str,                \
+							s->decl->spel);                     \
+
+#define RW_WARN(w, var, str)                            \
+						do{                                         \
+							if(RW_TEST(var)){                         \
+								RW_SHOW(w, str)                         \
+								s->var++;                               \
+							}                                         \
+						}while(0)
+
 int symtab_fold(symtable *tab, int current)
 {
 	const int this_start = current;
@@ -43,22 +64,6 @@ int symtab_fold(symtable *tab, int current)
 							siz += word_size - siz % word_size;
 						current += siz;
 
-#define RW_WARN(w, var, str)                        \
-						do{                                     \
-							if(s->var == 0                        \
-							&& !decl_has_array(s->decl)           \
-							&& !decl_is_func(s->decl)             \
-							&& !decl_is_struct_or_union_possible_ptr(s->decl)) \
-							{                                     \
-								cc1_warn_at(&s->decl->where, 0, 1,  \
-										WARN_SYM_NEVER_ ## w,           \
-										"\"%s\" never " str,            \
-										s->decl->spel);                 \
-								s->var++;                           \
-							}                                     \
-						}while(0)
-
-
 						/* static analysis on sym (only auto-vars) */
 						if(!s->decl->init)
 							RW_WARN(WRITTEN, nwrites, "written to");
@@ -77,10 +82,21 @@ int symtab_fold(symtable *tab, int current)
 
 			switch(s->type){
 				case sym_arg:
-				case sym_local:
-					/* warn on unused args and locals */
-					if(!decl_attr_present(s->decl->attr, attr_unused))
-						RW_WARN(READ, nreads, "read");
+				case sym_local: /* warn on unused args and locals */
+				{
+					const int has_attr = decl_attr_present(s->decl->attr, attr_unused);
+					const int unused = RW_TEST(nreads);
+
+					if(unused){
+						if(!has_attr)
+							RW_SHOW(READ, "read");
+					}else if(has_attr){
+						warn_at(&s->decl->where, 1,
+								"\"%s\" declared unused, but is used", s->decl->spel);
+					}
+
+					break;
+				}
 
 				case sym_global:
 					break;

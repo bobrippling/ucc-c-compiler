@@ -1,12 +1,13 @@
 #include "string.h"
 #include "limits.h"
+#include "stdlib.h" // MIN
 
 static const char *_errs[] = {
 #include "string_strerrs.h"
 };
 
 
-int strlen(char *s)
+size_t strlen(char *s)
 {
 	int i = 0;
 	while(*s++)
@@ -95,4 +96,10 @@ void *memcpy(char *to, const char *from, size_t count)
 char *strcpy(char *dest, const char *src)
 {
 	memcpy(dest, src, strlen(src));
+}
+
+char *strncpy(char *dest, const char *src, size_t n)
+{
+	const size_t len = strlen(src);
+	memcpy(dest, src, MIN(n, len));
 }
