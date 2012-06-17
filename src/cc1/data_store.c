@@ -8,11 +8,6 @@
 #include "asm.h"
 #include "str.h"
 
-static const char *ds_nams[] = { "str" };
-
-#define data_store_to_str(x) ds_nams[x->type]
-
-
 data_store *data_store_new_str(char *s, int l)
 {
 	data_store *ds = umalloc(sizeof *ds);
@@ -24,15 +19,17 @@ data_store *data_store_new_str(char *s, int l)
 	return ds;
 }
 
-void data_store_out(FILE *f, data_store *ds)
+void data_store_declare(data_store *ds, FILE *f)
+{
+	fprintf(f, "%s:\ndb ", ds->spel);
+}
+
+void data_store_out(data_store *ds, FILE *f)
 {
 	int i;
 
-	fprintf(f, "; data store for %s\n", data_store_to_str(ds));
-
 	switch(ds->type){
 		case data_store_str:
-			fprintf(f, "%s db ", ds->spel);
 			for(i = 0; i < ds->len; i++)
 				fprintf(f, "%d%s", ds->bits.str[i], i == ds->len - 1 ? "" : ", ");
 			fputc('\n', f);

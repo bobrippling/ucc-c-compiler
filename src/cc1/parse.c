@@ -671,9 +671,18 @@ stmt *parse_code_block()
 				}
 
 				dynarray_add((void ***)&t->codes, expr_to_stmt(comma_init));
+#else
+				ICW("array init");
 #endif
 			}else if(d->type->store != store_static && d->init->type == decl_init_scalar){
-				dynarray_add((void ***)&t->codes, expr_to_stmt(d->init->bits.expr));
+				dynarray_add((void ***)&t->codes,
+						expr_to_stmt(
+							expr_new_assign(
+								expr_new_identifier(d->spel),
+								d->init->bits.expr
+							)
+						)
+					);
 			}else{
 				ICW("TODO: init for %s somewhere else", d->spel);
 			}

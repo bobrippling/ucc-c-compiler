@@ -149,8 +149,6 @@ void gen_expr_funcall(expr *e, symtable *stab)
 	int nargs = 0;
 
 	if(fopt_mode & FOPT_ENABLE_ASM && fname && !strcmp(fname, ASM_INLINE_FNAME)){
-		ICE("TODO: __asm__ with store, etc etc");
-#if 0
 		const char *str;
 		expr *arg1;
 		int i;
@@ -160,22 +158,21 @@ void gen_expr_funcall(expr *e, symtable *stab)
 
 
 		arg1 = e->funcargs[0];
-		str = arg1->array_store->data.str;
-		for(i = 0; i < arg1->array_store->len - 1; i++){
+		str = arg1->data_store->bits.str;
+		for(i = 0; i < arg1->data_store->len - 1; i++){
 			char ch = str[i];
 			if(!isprint(ch) && !isspace(ch))
 invalid:
 				DIE_AT(&arg1->where, "invalid __asm__ string (character 0x%x at index %d, %d / %d)",
-						ch, i, i + 1, arg1->array_store->len);
+						ch, i, i + 1, arg1->data_store->len);
 		}
 
 		if(str[i])
 			goto invalid;
 
 		asm_temp(0, "; start manual __asm__");
-		fprintf(cc_out[SECTION_TEXT], "%s\n", arg1->array_store->data.str);
+		fprintf(cc_out[SECTION_TEXT], "%s\n", arg1->data_store->bits.str);
 		asm_temp(0, "; end manual __asm__");
-#endif
 	}else{
 		/* continue with normal funcall */
 		sym *const sym = e->expr->sym;

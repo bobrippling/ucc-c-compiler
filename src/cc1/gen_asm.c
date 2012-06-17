@@ -29,33 +29,33 @@ void gen_stmt(stmt *t)
 }
 
 #ifdef FANCY_STACK_INIT
-#warning FANCY_STACK_INIT broken
-void gen_func_stack(decl *df, const int offset)
+void gen_func_stack(decl *df, int offset)
 {
-#define ITER_DECLS() \
-		for(iter = df->func_code->symtab->decls; iter && *iter; iter++)
+#define ITER_DECLS(i) \
+		for(i = df->func_code->symtab->decls; i && *i; i++)
 
-	int use_sub = 1;
+	int clever = 0;
 	decl **iter;
 
-	ITER_DECLS(){
-		decl *d = *iter;
-		if(decl_is_array(d) && d->init){
-			use_sub = 0;
+	ITER_DECLS(iter)
+		if((*iter)->init){
+			clever = 1;
+			break;
 		}
-	}
 
-	if(use_sub){
-		asm_temp(1, "sub rsp, %d", offset);
-	}else{
-		ICE("fancy stack init TODO");
-		ITER_DECLS(){
+	if(clever){
+		/*const int old_offset = offset;
+		offset = 0;*/
+
+		ITER_DECLS(iter){
 			decl *d = *iter;
-			if(decl_is_array(d) && d->init){
-			}else{
+			if(d->init && d->init->type != decl_init_scalar){
+				ICW("TODO: stack gen or expr for %s init", decl_to_str(d));
 			}
 		}
 	}
+
+	asm_temp(1, "sub rsp, %d", offset);
 }
 #else
 #  define gen_func_stack(df, offset) asm_temp(1, "sub rsp, %d", offset)
@@ -106,7 +106,6 @@ void gen_asm_global(decl *d)
 
 void gen_asm(symtable *globs)
 {
-	data_store **ds;
 	decl **diter;
 
 	for(diter = globs->decls; diter && *diter; diter++){
@@ -144,7 +143,4 @@ void gen_asm(symtable *globs)
 
 		gen_asm_global(d);
 	}
-
-	for(ds = globs->strings; ds && *ds; ds++)
-		data_store_out(cc_out[SECTION_DATA], *ds);
 }

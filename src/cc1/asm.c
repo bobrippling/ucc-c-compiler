@@ -272,10 +272,11 @@ static void asm_declare_sub(FILE *f, decl_init *init)
 		{
 			expr *const exp = init->bits.expr;
 
-			/*if(!const_expr_is_zero(exp)){*/
-			fprintf(f, "d%c ", asm_type_ch(init->for_decl));
+			if(!exp->data_store)
+				fprintf(f, "d%c ", asm_type_ch(init->for_decl));
+
+			/*if(!const_expr_is_zero(exp))...*/
 			asm_declare_single_part(f, exp);
-			/*}*/
 			break;
 		}
 	}

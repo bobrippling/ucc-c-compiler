@@ -16,8 +16,6 @@ void fold_expr_addr(expr *e, symtable *stab)
 {
 	if(e->data_store){
 		data_store_fold_decl(e->data_store, &e->tree_type);
-
-		dynarray_add((void ***)&symtab_root(stab)->strings, e->data_store);
 	}else{
 		fold_inc_writes_if_sym(e->lhs, stab);
 
@@ -86,6 +84,9 @@ void gen_expr_addr(expr *e, symtable *stab)
 
 	if(e->data_store){
 		asm_temp(1, "mov rax, %s", e->data_store->spel);
+
+		data_store_declare(e->data_store, cc_out[SECTION_DATA]);
+		data_store_out(    e->data_store, cc_out[SECTION_DATA]);
 	}else{
 		/* address of possibly an ident "(&a)->b" or a struct expr "&a->b" */
 		if(expr_kind(e->lhs, identifier)){
@@ -104,8 +105,9 @@ void gen_expr_addr(expr *e, symtable *stab)
 void gen_expr_addr_1(expr *e, FILE *f)
 {
 	if(e->data_store){
-		/* address of an array store */
-		fprintf(f, "%s", e->data_store->spel);
+		/*fprintf(f, "%s", e->data_store->spel);*/
+		data_store_declare(e->data_store, f);
+		data_store_out(    e->data_store, f);
 	}else{
 		UCC_ASSERT(expr_kind(e->lhs, identifier), "globals addr-of can only be identifier for now");
 		fprintf(f, "%s", e->lhs->spel);

@@ -252,7 +252,7 @@ void fold_decl_init(decl *for_decl, decl_init *di, symtable *stab)
 					}
 				}
 			}else{
-				/* else it's done as an expr - prevent unused warnings */
+				/* else it's done as an expr - prevent unused warning */
 				init_exp->freestanding = 1;
 			}
 			break;
@@ -309,9 +309,6 @@ void fold_decl_init(decl *for_decl, decl_init *di, symtable *stab)
 
 			if(decl_is_struct_or_union(for_decl)){
 				const int nmembers = sue_nmembers(sue);
-
-				fprintf(stderr, "end fold for %s, did %d vs %d\n",
-						decl_to_str(for_decl), i, nmembers);
 
 				/* add to the end - since .x = y isn't available, don't have to worry about middle ones */
 				for(; i < nmembers; i++){
