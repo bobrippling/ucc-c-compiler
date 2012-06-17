@@ -1,6 +1,10 @@
 #ifndef __STDIO_H
 #define __STDIO_H
 
+#ifndef __GOT_SHORT_LONG
+# define long int
+#endif
+
 typedef struct __FILE FILE;
 
 extern FILE *stdin, *stdout, *stderr;
@@ -34,6 +38,20 @@ FILE *funopen(const void *cookie, __stdio_read *, __stdio_write *, __stdio_seek 
 FILE *fropen(void *cookie, __stdio_read  *);
 FILE *fwopen(void *cookie, __stdio_write *);
 
+/* seeking */
+#ifndef SEEK_SET
+# define SEEK_SET  0
+# define SEEK_CUR  1
+# define SEEK_END  2
+#endif
+int fseek(FILE *stream, long offset, int whence);
+
+long ftell(FILE *stream);
+
+void rewind(FILE *stream);
+
+int fgetpos(FILE *stream, fpos_t *pos);
+int fsetpos(FILE *stream, fpos_t *pos);
 
 /* status */
 int   feof(FILE *);

@@ -162,7 +162,14 @@ static int fclose2(FILE *f)
 
 FILE *funopen(const void *cookie, __stdio_read *r, __stdio_write *w, __stdio_seek *s, __stdio_close *c)
 {
-	FILE *f = malloc(sizeof *f);
+	FILE *f;
+
+	if(!r && !w){
+		errno = EINVAL;
+		return NULL;
+	}
+
+	f = malloc(sizeof *f);
 	if(!f)
 		return NULL;
 
@@ -220,7 +227,46 @@ int fclose(FILE *f)
 	return r;
 }
 
-int fflush(FILE *f)
+int fseek(FILE *stream, long offset, int whence)
+{
+	if(FILE_FUN(stream)){
+		__stdio_seek *s = stream->f_seek;
+		if(s)
+			return s(stream->cookie, offset, whence);
+		errno = EINVAL;
+		return -1;
+	}
+
+	return lseek(fileno(stream), offset, whence);
+}
+
+long ftell(FILE *stream)
+{
+	return fseek(stream, 0, SEEK_CUR);
+}
+
+void rewind(FILE *stream)
+{
+	fseek(stream, 0, SEEK_SET);
+}
+
+int fgetpos(FILE *stream, fpos_t *pos)
+{
+	fpos_t p = ftell(stream);
+
+	if(p == (fpos_t)-1)
+		return -1;
+
+	*pos = p;
+	return 0;
+}
+
+int fsetpos(FILE *stream, fpos_t *pos)
+{
+	return fseek(stream, *pos, SEEK_SET);
+}
+
+int fflush(FILE *f __unused)
 {
 	return 0;
 }
