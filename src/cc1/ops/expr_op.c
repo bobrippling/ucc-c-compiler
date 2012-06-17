@@ -168,7 +168,7 @@ void fold_op_struct(expr *e, symtable *stab)
 	spel = e->rhs->spel;
 
 	/* we access a struct, of the right ptr depth */
-	if(!decl_is_struct_or_union(e->lhs->tree_type)
+	if(!decl_is_struct_or_union_possible_ptr(e->lhs->tree_type)
 	|| decl_ptr_depth(e->lhs->tree_type) != ptr_depth_exp)
 	{
 		const int ident = expr_kind(e->lhs, identifier);

@@ -358,9 +358,14 @@ funcargs *decl_funcargs(decl *d)
 	return dp->bits.func;
 }
 
-int decl_is_struct_or_union(decl *d)
+int decl_is_struct_or_union_possible_ptr(decl *d)
 {
 	return d->type->primitive == type_struct || d->type->primitive == type_union;
+}
+
+int decl_is_struct_or_union(decl *d)
+{
+	return decl_is_struct_or_union_possible_ptr(d) && !decl_ptr_depth(d);
 }
 
 int decl_is_const(decl *d)

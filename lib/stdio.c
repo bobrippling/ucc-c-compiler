@@ -78,12 +78,12 @@ static void fprinto(FILE *f, int n, int is_signed)
 }
 
 /* Public */
-int feof(FILE *f __unused)
+int feof(FILE *f)
 {
 	return f->status == file_status_eof;
 }
 
-int ferror(FILE *f __unused)
+int ferror(FILE *f)
 {
 	return f->status == file_status_err;
 }
@@ -349,7 +349,6 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 					void *p = va_arg(ap, void *);
 					if(p){
 						/* TODO - intptr_t */
-						typedef int long;
 						fputs("0x", file);
 						fprintx(file, (long)p, 0);
 					}else{
