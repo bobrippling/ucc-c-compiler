@@ -5,6 +5,19 @@ typedef void        func_fold_stmt(stmt *);
 typedef void        func_gen_stmt( stmt *);
 typedef const char *func_str_stmt(void);
 
+typedef struct
+{
+	expr *exp;
+	char *constraints;
+} asm_inout;
+
+typedef struct
+{
+	asm_inout **inputs, **outputs;
+	char *cmd;
+	int cmd_len;
+} asm_args;
+
 struct stmt
 {
 	where where;
@@ -28,6 +41,8 @@ struct stmt
 
 	decl **decls; /* block definitions, e.g. { int i... } */
 	stmt **codes; /* for a code block */
+
+	asm_args *asm_bits;
 
 	symtable *symtab;
 
@@ -59,6 +74,7 @@ struct stmt_flow
 #include "ops/stmt_switch.h"
 #include "ops/stmt_while.h"
 #include "ops/stmt_continue.h"
+#include "ops/stmt_asm.h"
 
 #define stmt_new_wrapper(type, stab) stmt_new(fold_stmt_ ## type, gen_stmt_ ## type, str_stmt_ ## type, stab)
 #define stmt_mutate_wrapper(s, type)    stmt_mutate(s, fold_stmt_ ## type, gen_stmt_ ## type, str_stmt_ ## type)

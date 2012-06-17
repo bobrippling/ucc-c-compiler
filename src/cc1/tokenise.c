@@ -51,6 +51,7 @@ struct statement
 	KEYWORD(do),
 	KEYWORD(while),
 	KEYWORD(for),
+	KEYWORD(asm),
 
 	KEYWORD(char),
 	KEYWORD(int),
@@ -78,6 +79,9 @@ struct statement
 	KEYWORD(sizeof),
 	KEYWORD(_Generic),
 	KEYWORD(_Static_assert),
+
+	{ "__asm",   token_asm },
+	{ "__asm__", token_asm },
 
 	{ "__typeof",    token_typeof },
 	{ "__typeof__",  token_typeof },

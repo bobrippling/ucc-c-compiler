@@ -668,6 +668,58 @@ void parse_static_assert(void)
 	}
 }
 
+asm_inout **parse_asm_inout()
+{
+	asm_inout **inouts;
+
+	if(curtok != token_string)
+		return NULL;
+
+	inouts = NULL;
+
+	do{
+		asm_inout *io = umalloc(sizeof *io);
+		int n;
+
+		token_get_current_str(&io->constraints, &n);
+		EAT(token_string);
+
+		EAT(token_open_paren);
+		io->exp = parse_expr_exp();
+		EAT(token_close_paren);
+
+		dynarray_add((void ***)&inouts, io);
+	}while(accept(token_comma));
+
+	return inouts;
+}
+
+stmt *parse_asm(void)
+{
+	stmt *asm_st;
+	asm_args *bits;
+
+	asm_st = STAT_NEW(asm);
+	bits = asm_st->asm_bits = umalloc(sizeof *asm_st->asm_bits);
+
+	EAT(token_asm);
+	EAT(token_open_paren);
+
+	token_get_current_str(&bits->cmd, &bits->cmd_len);
+	EAT(token_string);
+
+	/* input operands */
+	if(accept(token_colon))
+		bits->inputs = parse_asm_inout();
+
+	/* output operands */
+	if(accept(token_colon))
+		bits->outputs = parse_asm_inout();
+
+	EAT(token_close_paren);
+
+	return asm_st;
+}
 
 stmt *parse_code_block()
 {
@@ -837,6 +889,9 @@ flow:
 
 		case token_switch:
 			return parse_switch();
+
+		case token_asm:
+			return parse_asm();
 
 		case token_default:
 			EAT(token_default);

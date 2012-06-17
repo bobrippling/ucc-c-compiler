@@ -39,11 +39,8 @@ static const char *regnames[] = {
 
 void __dump_regs()
 {
-#define get_reg(r)            \
-	__asm__(                    \
-			"\tmov rax, " r "\n"    \
-			"\tpush rax\n"          \
-	)
+#define GET_REG(dest, src) \
+	asm("mov %0, " src : : "" (dest))
 
 	unsigned int regs[10];
 	unsigned int *rp; // arraysizes workaround
@@ -53,20 +50,19 @@ void __dump_regs()
 
 	rp = regs;
 
-	rp[RAX] = get_reg("rax");
-	rp[RBX] = get_reg("rbx");
-	rp[RCX] = get_reg("rcx");
+	GET_REG(rp[RAX], "a");
+	GET_REG(rp[RBX], "b");
+	GET_REG(rp[RCX], "c");
+	GET_REG(rp[RDX], "d");
+
+	GET_REG(rp[RDI], "D");
+	GET_REG(rp[RSI], "S");
+
 #ifdef FULL
-	// seems to segfault if this code is included
-	rp[RDX] = get_reg("rdx");
-
-	rp[RDI] = get_reg("rdi");
-	rp[RSI] = get_reg("rsi");
-
-	rp[R8 ] = get_reg("r8 ");
-	rp[R9 ] = get_reg("r9 ");
-	rp[R10] = get_reg("r10");
-	rp[R11] = get_reg("r11");
+	GET_REG(rp[R8 ], "8" );
+	GET_REG(rp[R9 ], "9" );
+	GET_REG(rp[R10], "10");
+	GET_REG(rp[R11], "11");
 #endif
 
 	for(i = 0; i < 10; i++)
