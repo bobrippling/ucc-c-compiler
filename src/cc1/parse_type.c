@@ -306,7 +306,7 @@ funcargs *parse_func_arglist()
 			if(curtok != token_identifier)
 				EAT(token_identifier); /* error */
 
-			d->type->primitive = type_int;
+			/* leave type as unknown until we get another definition or implementation (in which case - int) */
 			decl_set_spel(d, token_current_spel());
 			dynarray_add((void ***)&args->arglist, d);
 
@@ -576,52 +576,60 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 					goto next;
 				}
 				DIE_AT(&d->where, "identifier expected after decl (got %s)", token_to_str(curtok));
-			}else if(decl_is_func(d) && curtok == token_open_block){ /* this is why we can't have __attribute__ on function defs */
-				/* optionally check for old func decl */
-				decl **old_args = parse_decls_multi_type(0);
+			}else if(decl_is_func(d)){
+				/*
+				 * if we have a type or an open block, parse a (possibly old) function
+				 * old-function decls is is why we can't have __attribute__ on function defs
+				 */
+				decl **old_args;
 
-				if(old_args){
-					/* check then replace old args */
-					int n_proto_decls, n_old_args;
-					int i;
-					funcargs *dfuncargs = d->desc->bits.func;
+				if(curtok == token_open_block || (old_args = parse_decls_multi_type(0))){
+					/* optionally check for old func decl */
+					if(old_args){
+						/* check then replace old args */
+						int n_proto_decls, n_old_args;
+						int i;
+						funcargs *dfuncargs = d->desc->bits.func;
 
-					if(!dfuncargs->args_old_proto)
-						DIE_AT(&d->where, "unexpected old-style decls - new style proto used");
+						if(!dfuncargs->args_old_proto)
+							DIE_AT(&d->where, "unexpected old-style decls - new style proto used");
 
-					n_proto_decls = dynarray_count((void **)dfuncargs->arglist);
-					n_old_args = dynarray_count((void **)old_args);
+						n_proto_decls = dynarray_count((void **)dfuncargs->arglist);
+						n_old_args = dynarray_count((void **)old_args);
 
-					if(n_old_args > n_proto_decls)
-						DIE_AT(&d->where, "old-style function decl: too many decls");
+						if(n_old_args > n_proto_decls)
+							DIE_AT(&d->where, "old-style function decl: too many decls");
 
-					for(i = 0; i < n_old_args; i++)
-						if(old_args[i]->init)
-							DIE_AT(&old_args[i]->where, "parameter \"%s\" is initialised", old_args[i]->spel);
+						for(i = 0; i < n_old_args; i++)
+							if(old_args[i]->init)
+								DIE_AT(&old_args[i]->where, "parameter \"%s\" is initialised", old_args[i]->spel);
 
-					for(i = 0; i < n_old_args; i++){
-						int j;
-						for(j = 0; j < n_proto_decls; j++){
-							if(!strcmp(old_args[i]->spel, dfuncargs->arglist[j]->spel)){
-								decl **replace_this;
-								decl *free_this;
+						for(i = 0; i < n_old_args; i++){
+							int j;
+							for(j = 0; j < n_proto_decls; j++){
+								if(!strcmp(old_args[i]->spel, dfuncargs->arglist[j]->spel)){
+									decl **replace_this;
+									decl *free_this;
 
-								/* replace the old implicit int arg */
-								replace_this = &dfuncargs->arglist[j];
+									/* replace the old implicit int arg */
+									replace_this = &dfuncargs->arglist[j];
 
-								free_this = *replace_this;
-								*replace_this = old_args[i];
+									free_this = *replace_this;
+									*replace_this = old_args[i];
 
-								decl_free(free_this);
-								break;
+									decl_free(free_this);
+									break;
+								}
 							}
 						}
+
+						free(old_args);
 					}
 
-					free(old_args);
+					d->func_code = parse_code_block();
+				}else{
+					cc1_warn_at(NULL, 0, 1, WARN_OMITTED_PARAM_TYPES, "parameter names without types");
 				}
-
-				d->func_code = parse_code_block();
 			}
 
 			dynarray_add(are_tdefs

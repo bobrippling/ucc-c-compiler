@@ -223,8 +223,9 @@ int funcargs_equal(funcargs *args_to, funcargs *args_from, int strict_types, int
 	const int count_from = dynarray_count((void **)args_from->arglist);
 	int i;
 
-	if(count_to == 0 && !args_to->args_void){
-		/* a() */
+	if((count_to == 0 && !args_to->args_void) || (count_from == 0 && !args_from->args_void)){
+		/* a() or b() */
+		return 1;
 	}else if(!(args_to->variadic ? count_to <= count_from : count_to == count_from)){
 
 #ifdef DEBUG_FUNCARGS
