@@ -451,7 +451,7 @@ expr *parse_expr_assignment()
 		return ret;
 
 	}else if(curtok_is_augmented_assignment()){
-		/* +=, ... */
+		/* +=, ... - only evaluate the lhs once*/
 		expr *added;
 		expr *ass;
 
