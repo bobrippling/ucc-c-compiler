@@ -144,64 +144,35 @@ void fold_expr_funcall(expr *e, symtable *stab)
 
 void gen_expr_funcall(expr *e, symtable *stab)
 {
-	const char *const fname = e->expr->spel;
+	sym *const sym = e->expr->sym;
 	expr **iter;
 	int nargs = 0;
 
-	if(fopt_mode & FOPT_ENABLE_ASM && fname && !strcmp(fname, ASM_INLINE_FNAME)){
-		const char *str;
-		expr *arg1;
-		int i;
-
-		if(!e->funcargs || e->funcargs[1] || !expr_kind(e->funcargs[0], addr))
-			DIE_AT(&e->where, "invalid __asm__ arguments");
-
-		arg1 = e->funcargs[0];
-		str = arg1->array_store->data.str;
-		for(i = 0; i < arg1->array_store->len - 1; i++){
-			char ch = str[i];
-			if(!isprint(ch) && !isspace(ch))
-invalid:
-				DIE_AT(&arg1->where, "invalid __asm__ string (character 0x%x at index %d, %d / %d)",
-						ch, i, i + 1, arg1->array_store->len);
+	if(e->funcargs){
+		/* need to push on in reverse order */
+		for(iter = e->funcargs; *iter; iter++);
+		for(iter--; iter >= e->funcargs; iter--){
+			gen_expr(*iter, stab);
+			nargs++;
 		}
-
-		if(str[i])
-			goto invalid;
-
-		asm_temp(0, "; start manual __asm__");
-		fprintf(cc_out[SECTION_TEXT], "%s\n", arg1->array_store->data.str);
-		asm_temp(0, "; end manual __asm__");
-	}else{
-		/* continue with normal funcall */
-		sym *const sym = e->expr->sym;
-
-		if(e->funcargs){
-			/* need to push on in reverse order */
-			for(iter = e->funcargs; *iter; iter++);
-			for(iter--; iter >= e->funcargs; iter--){
-				gen_expr(*iter, stab);
-				nargs++;
-			}
-		}
-
-		if(sym && !decl_is_fptr(sym->decl)){
-			/* simple */
-			asm_temp(1, "call %s", sym->decl->spel);
-		}else{
-			gen_expr(e->expr, stab);
-			asm_temp(1, "pop rax  ; function address");
-			asm_temp(1, "call rax ; duh");
-		}
-
-		if(nargs)
-			asm_temp(1, "add rsp, %d ; %d arg%s",
-					nargs * platform_word_size(),
-					nargs,
-					nargs == 1 ? "" : "s");
-
-		asm_temp(1, "push rax ; ret");
 	}
+
+	if(sym && !decl_is_fptr(sym->decl)){
+		/* simple */
+		asm_temp(1, "call %s", sym->decl->spel);
+	}else{
+		gen_expr(e->expr, stab);
+		asm_temp(1, "pop rax  ; function address");
+		asm_temp(1, "call rax ; duh");
+	}
+
+	if(nargs)
+		asm_temp(1, "add rsp, %d ; %d arg%s",
+				nargs * platform_word_size(),
+				nargs,
+				nargs == 1 ? "" : "s");
+
+	asm_temp(1, "push rax ; ret");
 }
 
 void gen_expr_str_funcall(expr *e, symtable *stab)

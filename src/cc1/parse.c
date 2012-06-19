@@ -710,13 +710,14 @@ stmt *parse_asm(void)
 
 	/* input operands */
 	if(accept(token_colon))
-		bits->inputs = parse_asm_inout();
+		bits->outputs = parse_asm_inout();
 
 	/* output operands */
 	if(accept(token_colon))
-		bits->outputs = parse_asm_inout();
+		bits->inputs = parse_asm_inout();
 
 	EAT(token_close_paren);
+	EAT(token_semicolon);
 
 	return asm_st;
 }

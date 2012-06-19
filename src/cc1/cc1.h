@@ -2,7 +2,6 @@
 #define CC1_H
 
 /*#define FANCY_STACK_INIT 1*/
-#define ASM_INLINE_FNAME "__asm__"
 
 enum section_type
 {
@@ -52,11 +51,10 @@ enum warning
 enum fopt
 {
 	FOPT_NONE            = 0,
-	FOPT_ENABLE_ASM      = 1 << 0,
-	FOPT_STRICT_TYPES    = 1 << 1,
-	FOPT_CONST_FOLD      = 1 << 2,
-	FOPT_ENGLISH         = 1 << 3,
-	FOPT_SHOW_LINE       = 1 << 4,
+	FOPT_STRICT_TYPES    = 1 << 0,
+	FOPT_CONST_FOLD      = 1 << 1,
+	FOPT_ENGLISH         = 1 << 2,
+	FOPT_SHOW_LINE       = 1 << 3,
 };
 
 enum cc1_backend

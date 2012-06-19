@@ -697,35 +697,6 @@ void fold(symtable *globs)
 		asm_struct_enum_where.fname = current_fname;
 	}
 
-	if(fopt_mode & FOPT_ENABLE_ASM){
-		decl *df;
-		funcargs *fargs;
-		where *old_w;
-
-		old_w = eof_where;
-		eof_where = &asm_struct_enum_where;
-
-		df = decl_new();
-		decl_set_spel(df, ustrdup(ASM_INLINE_FNAME));
-
-		df->type->primitive = type_int;
-
-		fargs = funcargs_new();
-		fargs->arglist    = umalloc(2 * sizeof *fargs->arglist);
-		fargs->arglist[0] = decl_new();
-		fargs->arglist[1] = NULL;
-		fargs->arglist[0]->type->primitive = type_char;
-		fargs->arglist[0]->type->qual      = qual_const;
-		fargs->arglist[0]->desc            = decl_desc_ptr_new(fargs->arglist[0], NULL);
-
-		df->desc = decl_desc_func_new(df, NULL);
-		df->desc->bits.func = fargs;
-
-		symtab_add(globs, df, sym_global, SYMTAB_NO_SYM, SYMTAB_PREPEND);
-
-		eof_where = old_w;
-	}
-
 	fold_symtab_scope(globs);
 
 	for(i = 0; D(i); i++)

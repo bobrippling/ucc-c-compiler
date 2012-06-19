@@ -18,12 +18,5 @@ void fold_stmt_expr(stmt *s)
 void gen_stmt_expr(stmt *s)
 {
 	gen_expr(s->expr, s->symtab);
-	if((fopt_mode & FOPT_ENABLE_ASM) == 0
-	|| !s->expr
-	|| expr_kind(s->expr, funcall)
-	|| !s->expr->spel
-	|| strcmp(s->expr->spel, ASM_INLINE_FNAME))
-	{
-		asm_temp(1, "pop rax ; unused expr");
-	}
+	asm_temp(1, "pop rax ; unused expr");
 }
