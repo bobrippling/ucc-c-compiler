@@ -65,11 +65,15 @@ void fold_expr_assign(expr *e, symtable *stab)
 
 	if(decl_is_const(e->lhs->tree_type)){
 		/* allow const init... */
-		decl_init *di = e->lhs->sym->decl->init;
+		sym *const sym = e->lhs->sym;
 		int valid = 0;
 
-		if(di->type == decl_init_scalar && di->bits.expr == e->rhs)
-			valid = 1;
+		if(sym){
+			decl_init *di = e->lhs->sym->decl->init;
+
+			if(di->type == decl_init_scalar && di->bits.expr == e->rhs)
+				valid = 1;
+		}
 
 		if(!valid)
 			DIE_AT(&e->where, "can't modify const expression %s", e->lhs->f_str());
