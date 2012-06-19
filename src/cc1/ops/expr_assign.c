@@ -69,7 +69,8 @@ void fold_expr_assign(expr *e, symtable *stab)
 
 	if(decl_is_const(e->lhs->tree_type)){
 		/* allow const init: */
-		if(e->lhs->sym->decl->init != e->rhs)
+		sym *const sym = e->lhs->sym;
+		if(!sym || sym->decl->init != e->rhs)
 			DIE_AT(&e->where, "can't modify const expression %s", e->lhs->f_str());
 	}
 
