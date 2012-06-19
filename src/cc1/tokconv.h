@@ -24,8 +24,8 @@ char *token_current_spel(void);
 char *token_current_spel_peek(void);
 void token_get_current_str(char **ps, int *pl);
 
-enum op_type curtok_to_augmented_op(void);
-int          curtok_is_augmented_assignment(void);
+enum op_type curtok_to_compound_op(void);
+int          curtok_is_compound_assignment(void);
 
 const char *token_to_str(enum token t);
 

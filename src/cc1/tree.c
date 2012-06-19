@@ -195,6 +195,28 @@ const char *type_qual_to_str(const enum type_qualifier qual)
 	return buf;
 }
 
+int op_can_compound(enum op_type o)
+{
+	switch(o){
+		case op_plus:
+		case op_minus:
+		case op_multiply:
+		case op_divide:
+		case op_modulus:
+		case op_not:
+		case op_bnot:
+		case op_and:
+		case op_or:
+		case op_xor:
+		case op_shiftl:
+		case op_shiftr:
+			return 1;
+		default:
+			break;
+	}
+	return 0;
+}
+
 int op_is_cmp(enum op_type o)
 {
 	switch(o){

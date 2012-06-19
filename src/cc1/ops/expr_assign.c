@@ -69,7 +69,8 @@ void fold_expr_assign(expr *e, symtable *stab)
 
 	if(decl_is_const(e->lhs->tree_type)){
 		/* allow const init: */
-		if(e->lhs->sym->decl->init != e->rhs)
+		sym *const sym = e->lhs->sym;
+		if(!sym || sym->decl->init != e->rhs)
 			DIE_AT(&e->where, "can't modify const expression %s", e->lhs->f_str());
 	}
 
@@ -93,35 +94,24 @@ void fold_expr_assign(expr *e, symtable *stab)
 
 void gen_expr_assign(expr *e, symtable *stab)
 {
-	if(e->assign_is_post){
-		/* if this is the case, ->rhs->lhs is ->lhs, and ->rhs is an addition/subtraction of 1 * something */
-		gen_expr(e->lhs, stab);
-		asm_temp(1, "; save previous for post assignment");
-	}
-
 	/*if(decl_is_struct_or_union(e->tree_type))*/
-	fold_disallow_st_un(e, "copy (TODO)");
+	fold_disallow_st_un(e, "copy (TODO)"); /* yes this is meant to be in gen */
+
+
+	UCC_ASSERT(!e->assign_is_post, "assign_is_post set for non-compound assign");
 
 	gen_expr(e->rhs, stab);
-#ifdef USE_MOVE_RAX_RSP
-	asm_temp(1, "mov rax, [rsp]");
-#endif
 
 	UCC_ASSERT(e->lhs->f_store, "invalid store expression %s (no f_store())", e->lhs->f_str());
 
 	/* store back to the sym's home */
 	e->lhs->f_store(e->lhs, stab);
-
-	if(e->assign_is_post){
-		asm_temp(1, "pop rax ; the value from ++/--");
-		asm_temp(1, "mov rax, [rsp] ; the value we saved");
-	}
 }
 
 void gen_expr_str_assign(expr *e, symtable *stab)
 {
 	(void)stab;
-	idt_printf("%sassignment, expr:\n", e->assign_is_post ? "post-inc/dec " : "");
+	idt_printf("assignment, expr:\n");
 	idt_printf("assign to:\n");
 	gen_str_indent++;
 	print_expr(e->lhs);

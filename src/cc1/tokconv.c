@@ -97,7 +97,7 @@ int curtok_is_type_store()
 	return curtok_to_type_storage() != (enum type_storage)-1;
 }
 
-enum op_type curtok_to_augmented_op()
+enum op_type curtok_to_compound_op()
 {
 #define CASE(x) case token_ ## x ## _assign: return op_ ## x
 	switch(curtok){
@@ -120,9 +120,9 @@ enum op_type curtok_to_augmented_op()
 #undef CASE
 }
 
-int curtok_is_augmented_assignment()
+int curtok_is_compound_assignment()
 {
-	return curtok_to_augmented_op() != op_unknown;
+	return curtok_to_compound_op() != op_unknown;
 }
 
 const char *token_to_str(enum token t)

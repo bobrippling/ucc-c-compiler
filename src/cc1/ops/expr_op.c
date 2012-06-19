@@ -495,18 +495,23 @@ void asm_operate_struct(expr *e, symtable *tab)
 	asm_temp(1, "push rax");
 }
 
-void gen_expr_op(expr *e, symtable *tab)
+void op_get_asm(enum op_type op, char **pinstruct, char **prhs)
 {
 	const char *instruct = NULL;
-	const char *rhs = "rcx";
+	const char *rhs = *prhs;
 
-	switch(e->op){
+	switch(op){
 		/* normal mafs */
 		case op_multiply: instruct = "imul"; break;
 		case op_plus:     instruct = "add";  break;
 		case op_xor:      instruct = "xor";  break;
 		case op_or:       instruct = "or";   break;
 		case op_and:      instruct = "and";  break;
+
+		case op_divide:
+		case op_modulus:
+			asm_idiv(e, tab);
+			return;
 
 		/* single register op */
 		case op_minus: instruct = e->rhs ? "sub" : "neg"; break;
@@ -558,14 +563,16 @@ void gen_expr_op(expr *e, symtable *tab)
 			asm_shortcircuit(e, tab);
 			return;
 
-		case op_divide:
-		case op_modulus:
-			asm_idiv(e, tab);
-			return;
-
 		case op_unknown:
 			ICE("asm_operate: unknown operator got through");
 	}
+
+	*pinstruct = instruct;
+	*prhs = rhs;
+}
+
+void gen_expr_op(expr *e, symtable *tab)
+{
 
 	/* asm_temp(1, "%s rax", incr ? "inc" : "dec"); TODO: optimise */
 
