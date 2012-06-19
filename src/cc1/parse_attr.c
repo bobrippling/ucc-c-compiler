@@ -75,6 +75,7 @@ decl_attr *parse_ ## t()              \
 EMPTY(attr_unused)
 EMPTY(attr_warn_unused)
 EMPTY(attr_overloadable)
+EMPTY(attr_enum_bitmask)
 
 static struct
 {
@@ -86,9 +87,10 @@ static struct
 	{ "warn_unused",    parse_attr_warn_unused },
 	{ "section",        parse_attr_section },
 	{ "overloadable",   parse_attr_overloadable },
-#define MAX_FMT_LEN 32
+	{ "bitmask",        parse_attr_enum_bitmask },
 	{ NULL, NULL },
 };
+#define MAX_FMT_LEN 32
 
 void parse_attr_bracket_chomp(void)
 {

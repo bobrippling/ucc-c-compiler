@@ -103,8 +103,9 @@ void fold_decl_desc(decl_desc *dp, symtable *stab, decl *root)
 
 void fold_enum(struct_union_enum_st *en, symtable *stab)
 {
+	const int bitmask = decl_attr_present(en->attr, attr_enum_bitmask);
 	sue_member **i;
-	int defval = 0;
+	int defval = bitmask;
 
 	for(i = en->members; *i; i++){
 		enum_member *m = &(*i)->enum_member;
@@ -116,13 +117,25 @@ void fold_enum(struct_union_enum_st *en, symtable *stab)
 			/*expr_free(e); XXX: memleak */
 			where *old_w = eof_where;
 			eof_where = &asm_struct_enum_where;
-			m->val = expr_new_val(defval++);
+			m->val = expr_new_val(defval);
 			eof_where = old_w;
+
+			if(bitmask)
+				defval <<= 1;
+			else
+				defval++;
+
 		}else{
 			fold_expr(e, stab);
-			if(!const_expr_is_const(e))
-				DIE_AT(&e->where, "enum value not constant");
-			defval = const_expr_val(e) + 1;
+
+
+			if(/*!const_expr_is_const(e)*/ !expr_kind(e, val))
+				DIE_AT(&e->where, "enum value not constant value");
+
+			if(bitmask)
+				defval = const_expr_value(e) << 1;
+			else
+				defval = const_expr_value(e) + 1;
 		}
 	}
 }

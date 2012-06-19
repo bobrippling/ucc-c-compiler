@@ -11,7 +11,8 @@ struct decl_attr
 		attr_unused,
 		attr_warn_unused,
 		attr_section,
-		attr_overloadable
+		attr_overloadable,
+		attr_enum_bitmask
 		/* TODO: warning, cdecl, stdcall, fastcall, const */
 	} type;
 
