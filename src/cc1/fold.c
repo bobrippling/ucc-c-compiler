@@ -346,9 +346,19 @@ void fold_decl(decl *d, symtable *stab)
 				DIE_AT(&d->where, "can't have a void variable - %s (%s)", d->spel, decl_to_str(d));
 			break;
 
-		case type_enum:
 		case type_struct:
 		case type_union:
+			/* apply qualifiers to sub-decls */
+			if(d->type->qual){
+				sue_member **i;
+				const enum type_qualifier qual = d->type->qual;
+
+				for(i = d->type->sue->members; i && *i; i++){
+					decl *m = &(*i)->struct_member;
+					m->type->qual |= qual;
+				}
+			}
+		case type_enum:
 			if(sue_incomplete(d->type->sue) && !decl_ptr_depth(d))
 				DIE_AT(&d->where, "use of %s%s%s",
 						type_to_str(d->type),

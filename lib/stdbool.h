@@ -3,7 +3,8 @@
 
 #define __bool_true_false_are_defined 1
 
-#define bool _Bool
+typedef _Bool bool;
+#define bool bool
 
 #define false 0
 #define true  1
