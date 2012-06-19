@@ -84,8 +84,11 @@ type *parse_type_sue(enum type_primitive prim)
 			EAT(token_close_block);
 		}else{
 			members = (sue_member **)parse_decls_multi_type(DECL_MULTI_CAN_DEFAULT | DECL_MULTI_ACCEPT_FIELD_WIDTH);
-			if(!members)
+			if(!members){
+				if(curtok == token_colon)
+					DIE_AT(NULL, "can't have initial struct padding");
 				DIE_AT(NULL, "no members in struct");
+			}
 			EAT(token_close_block);
 		}
 
@@ -99,7 +102,6 @@ type *parse_type_sue(enum type_primitive prim)
 				cc1_warn_at(NULL, 0, 1, WARN_PREDECL_ENUM, "predeclaration of enums is not c99");
 		}
 	}
-
 
 	t->sue = sue_add(current_scope, spel, members, prim);
 
@@ -195,6 +197,15 @@ type *parse_type()
 
 			if(signed_set || primitive_set)
 				DIE_AT(&t->where, "primitive/signed/unsigned with %s", str);
+
+			/*
+			 * struct A { ... } const x;
+			 * accept qualifiers for the type, not decl
+			 */
+			while(curtok_is_type_qual()){
+				qual |= curtok_to_type_qualifier();
+				EAT(curtok);
+			}
 
 			t->qual  = qual;
 			t->store = store;
