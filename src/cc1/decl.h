@@ -10,7 +10,8 @@ struct decl_attr
 		attr_format,
 		attr_unused,
 		attr_warn_unused,
-		attr_section
+		attr_section,
+		attr_enum_bitmask
 		/* TODO: warning, cdecl, stdcall, fastcall, const */
 	} type;
 

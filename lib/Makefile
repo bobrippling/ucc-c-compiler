@@ -3,7 +3,8 @@ OBJ    = crt.o syscall.o dirent.o                       \
          stdio.o stdlib.o string.o unistd.o signal.o    \
 				 assert.o ctype.o                               \
 				 ucc.o alloca.o malloc.o                        \
-         sys/fcntl.o sys/wait.o sys/mman.o sys/socket.o
+         sys/fcntl.o sys/wait.o sys/mman.o sys/socket.o \
+				 sys/utsname.o
 
 LIBDEPS = ${UCC_CC} ../src/cc1/cc1 ../src/cpp2/cpp
 
@@ -52,6 +53,8 @@ sys/wait.o: sys/wait.c
 sys/mman.o: sys/mman.c
 	${BUILD_CMD}
 sys/socket.o: sys/socket.c
+	${BUILD_CMD}
+sys/utsname.o: sys/utsname.c
 	${BUILD_CMD}
 
 arpa/inet.o: arpa/inet.c
