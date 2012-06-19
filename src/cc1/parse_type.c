@@ -26,6 +26,7 @@
 /*#define PARSE_DECL_VERBOSE*/
 
 decl_desc *parse_decl_desc(enum decl_mode mode, char **sp);
+static void parse_add_attr(decl_attr **append);
 
 #define INT_TYPE(t) do{ UCC_ASSERT(!t, "got type"); t = type_new(); t->primitive = type_int; }while(0)
 
@@ -42,6 +43,8 @@ void parse_type_preamble(type **tp, char **psp, enum type_primitive primitive)
 		spel = token_current_spel();
 		EAT(token_identifier);
 	}
+
+	parse_add_attr(&t->attr);
 
 	*psp = spel;
 	*tp = t;
@@ -99,6 +102,8 @@ type *parse_type_sue(enum type_primitive prim)
 
 
 	t->sue = sue_add(current_scope, spel, members, prim);
+
+	parse_add_attr(&t->sue->attr);
 
 	return t;
 }

@@ -18,6 +18,7 @@ struct struct_union_enum_st
 {
 	where where;
 	enum type_primitive primitive;
+	decl_attr *attr;
 
 	char *spel; /* "<anon ...>" if anon */
 	int anon : 1;

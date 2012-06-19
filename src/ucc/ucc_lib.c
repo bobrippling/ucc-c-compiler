@@ -27,7 +27,8 @@
 		"sys/fcntl.o",    \
 		"sys/wait.o",     \
 		"sys/mman.o",     \
-		"sys/socket.o"
+		"sys/socket.o",   \
+		"sys/utsname.o"
 
 #define lib_actual_path(lib) actual_path(LIB_PATH, lib)
 
