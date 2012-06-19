@@ -198,6 +198,15 @@ type *parse_type()
 			if(signed_set || primitive_set)
 				DIE_AT(&t->where, "primitive/signed/unsigned with %s", str);
 
+			/*
+			 * struct A { ... } const x;
+			 * accept qualifiers for the type, not decl
+			 */
+			while(curtok_is_type_qual()){
+				qual |= curtok_to_type_qualifier();
+				EAT(curtok);
+			}
+
 			t->qual  = qual;
 			t->store = store;
 
