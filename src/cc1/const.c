@@ -47,3 +47,9 @@ int const_expr_is_zero(expr *e)
 
 	return const_expr_is_const(e) && (expr_kind(e, val) ? e->val.iv.val == 0 : 0);
 }
+
+int const_expr_value(expr *e)
+{
+	UCC_ASSERT(expr_kind(e, val), "%s: not a value (%s)", __func__, e->f_str());
+	return e->val.iv.val;
+}
