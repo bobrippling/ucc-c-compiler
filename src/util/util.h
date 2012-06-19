@@ -24,8 +24,8 @@ void vwarn(struct where *w, int err, int show_line, const char *fmt, va_list l);
 void vdie(   struct where *, int show_line, const char *, va_list);
 void die(const char *fmt, ...) __printflike(1, 2);
 
-#define DIE_AT( w, ...) die_at(w, 1, __VA_ARGS__)
-#define WARN_AT(w, ...) die_at(w, 1, __VA_ARGS__)
+#define DIE_AT( w, ...) die_at( w, 1, __VA_ARGS__)
+#define WARN_AT(w, ...) warn_at(w, 1, __VA_ARGS__)
 
 char *fline(FILE *f);
 char *udirname(const char *);
