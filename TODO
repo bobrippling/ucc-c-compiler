@@ -1,14 +1,9 @@
 asm_recode branch:
-
-check that "*(char *)0" generates "movzx rax, byte [rax]" or similar
-
-Fix printf / variadic functions?
+	check that "*(char *)0" generates "movzx rax, byte [rax]" or similar
 
 _Generic const-ify
 
 updated bugs/ and test/
-
--fms-extensions - MS unnamed struct members
 
 ---------------------------------------------------- cc1
 
@@ -31,6 +26,8 @@ initialisers
 
 static analysis for labels - flag unused labels
 
+reachability checking - non-void function returns
+
 bitfields: must be ints,
 can't be addressed,
 nor sizeof()'d
@@ -44,6 +41,8 @@ const:
 	// same for assignments
 
 32-bit code gen
+
+-fms-extensions - MS unnamed struct members
 
 general lhs assignment:
 	(b ? x : y) = 5;
@@ -88,10 +87,6 @@ macros over multiple lines
 		1,
 		2
 	)
-
----------------------------------------------------- cc
-
-accept multiple input source files
 
 ---------------------------------------------------- lib
 
