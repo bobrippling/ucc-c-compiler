@@ -1,8 +1,9 @@
 main()
 {
 	int i = 2;
+	int j;
 
-	i += 3;
+	j = (i += 3);
 
-	return i; // 5
+	printf("i=%d (5) j=%d (5)\n", i, j);
 }

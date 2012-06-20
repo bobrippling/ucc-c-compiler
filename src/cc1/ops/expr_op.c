@@ -390,42 +390,6 @@ void gen_expr_str_op(expr *e, symtable *stab)
 	gen_str_indent--;
 }
 
-static void asm_idiv(expr *e, symtable *tab)
-{
-	/*
-	 * idiv — Integer Division
-	 * The idiv asm_temp divides the contents of the 64 bit integer EDX:EAX (constructed by viewing EDX as the most significant four bytes and EAX as the least significant four bytes) by the specified operand value. The quotient result of the division is stored into EAX, while the remainder is placed in EDX.
-	 * Syntax
-	 * idiv <reg32>
-	 * idiv <mem>
-	 *
-	 * Examples
-	 *
-	 * idiv ebx — divide the contents of EDX:EAX by the contents of EBX. Place the quotient in EAX and the remainder in EDX.
-	 * idiv DWORD PTR [var] — divide the contents of EDX:EAS by the 32-bit value stored at memory location var. Place the quotient in EAX and the remainder in EDX.
-	 */
-
-	gen_expr(e->lhs, tab);
-	gen_expr(e->rhs, tab);
-	/* pop top stack (rhs) into b, and next top into a */
-
-#define IDIV_SIGN_EXTEND
-
-#ifndef  IDIV_SIGN_EXTEND
-# warning old broken division
-	asm_temp(1, "xor rdx,rdx");
-#endif
-
-	asm_temp(1, "pop rbx");
-	asm_temp(1, "pop rax");
-#ifdef IDIV_SIGN_EXTEND
-	asm_temp(1, "cqo ; rax -> rdx:rax"); /* convert quad to oct - cqto in AT&T */
-#endif
-	asm_temp(1, "idiv rbx");
-
-	asm_temp(1, "push r%cx", e->op == op_divide ? 'a' : 'd');
-}
-
 static void asm_compare(expr *e, symtable *tab)
 {
 	const char *cmp = NULL;
@@ -495,10 +459,20 @@ void asm_operate_struct(expr *e, symtable *tab)
 	asm_temp(1, "push rax");
 }
 
-void op_get_asm(enum op_type op, char **pinstruct, char **prhs)
+void op_get_asm(enum op_type op,
+		const char **pinstruct,
+		const char **plhs, const char **prhs,
+		const char **ppre,
+		const char **pret)
 {
-	const char *instruct = NULL;
-	const char *rhs = *prhs;
+	const char *instruct;
+	const char *lhs, *rhs;
+	const char *pre, *ret;
+
+	instruct = pre = ret = NULL;
+
+	lhs = *plhs;
+	rhs = *prhs;
 
 	switch(op){
 		/* normal mafs */
@@ -510,11 +484,21 @@ void op_get_asm(enum op_type op, char **pinstruct, char **prhs)
 
 		case op_divide:
 		case op_modulus:
-			asm_idiv(e, tab);
-			return;
+			/*
+			 * the idiv asm_temp divides the 64 bit integer EDX:EAX by the operand
+			 * quotient -> EAX, remainder -> EDX
+			 */
+
+			/* pop top stack (rhs) into b, and next top into a */
+
+			pre = "cqo ; rax -> rdx:rax"; /* convert quad to oct - cqto in AT&T */
+			instruct = "idiv"; // asm_temp(1, "idiv rbx");
+
+			ret = op == op_divide ? "rax" : "rdx";
+			break;
 
 		/* single register op */
-		case op_minus: instruct = e->rhs ? "sub" : "neg"; break;
+		case op_minus: instruct = rhs ? "sub" : "neg"; break;
 		case op_bnot:  instruct = "not";                  break;
 
 #define SHIFT(side) \
@@ -523,6 +507,24 @@ void op_get_asm(enum op_type op, char **pinstruct, char **prhs)
 		SHIFT(l);
 		SHIFT(r);
 
+		default:
+		case op_unknown:
+			ICE("asm_operate: unknown operator got through");
+	}
+
+	if(!ret)
+		ret = lhs;
+
+	*pinstruct = instruct;
+	*plhs = lhs;
+	*prhs = rhs;
+	*pret = ret;
+	*ppre = pre;
+}
+
+void gen_expr_op(expr *e, symtable *tab)
+{
+	switch(e->op){
 		case op_not:
 			/* compare with 0 */
 			gen_expr(e->lhs, tab);
@@ -563,32 +565,35 @@ void op_get_asm(enum op_type op, char **pinstruct, char **prhs)
 			asm_shortcircuit(e, tab);
 			return;
 
-		case op_unknown:
-			ICE("asm_operate: unknown operator got through");
+		default:
+		{
+			const char *instruct, *lhs, *rhs, *pre, *ret;
+
+			lhs = "rax", rhs = e->rhs ? "rbx" : NULL;
+
+			op_get_asm(e->op, &instruct, &lhs, &rhs, &pre, &ret);
+
+			/* asm_temp(1, "%s rax", incr ? "inc" : "dec"); TODO: optimise */
+
+			/* get here if op is *, +, - or ~ */
+			gen_expr(e->lhs, tab);
+			if(e->rhs){
+				gen_expr(e->rhs, tab);
+
+				if(pre)
+					asm_temp(1, "%s", pre);
+
+				asm_temp(1, "pop %s", rhs);
+				asm_temp(1, "pop %s", lhs);
+				asm_temp(1, "%s %s, %s", instruct, lhs, rhs);
+			}else{
+				asm_temp(1, "pop %s", lhs);
+				asm_temp(1, "%s %s", instruct, lhs);
+			}
+
+			asm_temp(1, "push %s", ret);
+		}
 	}
-
-	*pinstruct = instruct;
-	*prhs = rhs;
-}
-
-void gen_expr_op(expr *e, symtable *tab)
-{
-
-	/* asm_temp(1, "%s rax", incr ? "inc" : "dec"); TODO: optimise */
-
-	/* get here if op is *, +, - or ~ */
-	gen_expr(e->lhs, tab);
-	if(e->rhs){
-		gen_expr(e->rhs, tab);
-		asm_temp(1, "pop rcx");
-		asm_temp(1, "pop rax");
-		asm_temp(1, "%s rax, %s", instruct, rhs);
-	}else{
-		asm_temp(1, "pop rax");
-		asm_temp(1, "%s rax", instruct);
-	}
-
-	asm_temp(1, "push rax");
 }
 
 void gen_expr_op_store(expr *e, symtable *stab)

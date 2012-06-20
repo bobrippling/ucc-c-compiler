@@ -25,7 +25,8 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 
 	fold_coerce_assign(e->lhs->tree_type, e->rhs, &type_ok);
 
-	if(!expr_is_lvalue(e->lhs, 0)){
+	/* skip the addr we inserted */
+	if(!expr_is_lvalue(e->lhs->lhs, 0)){
 		DIE_AT(&e->lhs->where, "compound target not an lvalue (%s)",
 				e->lhs->f_str());
 	}
@@ -35,37 +36,50 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 
 	UCC_ASSERT(op_can_compound(e->op), "non-compound op in compound expr");
 
-	e->tree_type = decl_copy(e->lhs->tree_type);
+	e->tree_type = decl_copy(e->lhs->lhs->tree_type);
 }
 
 void gen_expr_assign_compound(expr *e, symtable *stab)
 {
+	const char *inst, *lhs, *rhs, *pre, *ret;
+
 	/*if(decl_is_struct_or_union(e->tree_type))*/
 	fold_disallow_st_un(e, "copy (TODO)"); /* yes this is meant to be in gen */
+
+	lhs = "rax", rhs = "rbx";
+	op_get_asm(e->op, &inst, &lhs, &rhs, &pre, &ret);
 
 	gen_expr(e->rhs, stab);
 	asm_temp(1, "; saved for compound op");
 
 	gen_expr(e->lhs, stab);
-	asm_temp(1, "; address of value");
 
-	if(e->assign_is_post){
-		ICE("TODO");
+	asm_temp(1, "pop rsi ; compound lval addr");
+	asm_temp(1, "mov %s, [rsi]", lhs);
+	asm_temp(1, "mov %s, [rsp]", rhs);
+	if(e->assign_is_post)
+		asm_temp(1, "mov [rsp], %s ; post-inc -> pre value", lhs);
+
+	if(pre)
+		asm_temp(1, "%s", pre);
+
+	{
+		/* XXX: HACK */
+		const int div = e->op == op_divide || e->op == op_modulus;
+
+		if(div){
+			asm_temp(1, "%s %s", inst, rhs);
+		}else{
+			asm_temp(1, "%s %s, %s", inst, lhs, rhs);
+		}
 	}
 
-	asm_temp(1, "pop rsi ; compound addr");
-	asm_temp(1, "mov rax, [rsi]");
-	asm_temp(1, "pop rbx");
-	asm_temp(1, "%s rax, rbx", );
-
-	UCC_ASSERT(e->lhs->f_store, "invalid store expression %s (no f_store())", e->lhs->f_str());
 	/* store back to the sym's home */
-	e->lhs->f_store(e->lhs, stab);
+	asm_temp(1, "mov [rsi], %s ; compound store", ret);
 
-	if(e->assign_is_post){
-		asm_temp(1, "pop rax ; the value from ++/--");
-		asm_temp(1, "mov rax, [rsp] ; the value we saved");
-	} 
+	/* need to update the value on the stack */
+	if(!e->assign_is_post)
+		asm_temp(1, "mov [rsp], %s ; pre-assignment, update stack", lhs);
 }
 
 void gen_expr_str_assign_compound(expr *e, symtable *stab)
@@ -74,7 +88,7 @@ void gen_expr_str_assign_compound(expr *e, symtable *stab)
 	idt_printf("compound assignment, expr:\n", e->assign_is_post ? "post-inc/dec " : "");
 	idt_printf("assign to:\n");
 	gen_str_indent++;
-	print_expr(e->lhs);
+	print_expr(e->lhs->lhs); /* skip our addr */
 	gen_str_indent--;
 	idt_printf("assign from:\n");
 	gen_str_indent++;
