@@ -12,10 +12,10 @@ void *calloc(size_t count, size_t) __warn_unused;
 void *realloc(void *, size_t) __warn_unused;
 void  free(   void *);
 
-void exit(int);
+void exit(int) __dead;
 int atexit(void (*)(void));
 
-void abort(void);
+void abort(void) __dead;
 
 char *getenv(const char *);
 
