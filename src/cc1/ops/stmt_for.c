@@ -132,3 +132,37 @@ void gen_stmt_for(stmt *s)
 
 	free(lbl_test);
 }
+
+static void stmt_walk_first_break_goto_return(stmt *current, int *stop, void *extra)
+{
+	if(stmt_kind(current, return) || stmt_kind(current, break) || stmt_kind(current, goto)){
+		stmt **store = extra;
+		*store = current;
+		*stop = 1;
+	}
+}
+
+int fold_code_escapable(stmt *s)
+{
+	stmt *escape;
+
+	/* we only return if we find a break, goto or return statement */
+	escape = NULL;
+	stmt_walk(s->lhs, stmt_walk_first_break_goto_return, &escape);
+
+	return !!escape;
+}
+
+static int for_passable(stmt *s)
+{
+	/* if we don't have a condition, check for breaks, etc etc */
+	if(s->flow->for_while)
+		return 1;
+
+	return fold_code_escapable(s);
+}
+
+void mutate_stmt_for(stmt *s)
+{
+	s->f_passable = for_passable;
+}

@@ -117,3 +117,13 @@ void gen_stmt_switch(stmt *s)
 
 	asm_label(s->lbl_break);
 }
+
+int switch_passable(stmt *s)
+{
+	return fold_passable(s->lhs);
+}
+
+void mutate_stmt_switch(stmt *s)
+{
+	s->f_passable = switch_passable;
+}

@@ -24,3 +24,14 @@ void gen_stmt_goto(stmt *s)
 {
 	asm_temp(1, "jmp %s", s->expr->spel);
 }
+
+static int goto_passable(stmt *s)
+{
+	(void)s;
+	return 0;
+}
+
+void mutate_stmt_goto(stmt *s)
+{
+	s->f_passable = goto_passable;
+}

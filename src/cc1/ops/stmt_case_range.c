@@ -30,4 +30,9 @@ void fold_stmt_case_range(stmt *s)
 	fold_stmt_and_add_to_curswitch(s);
 }
 
+void mutate_stmt_case_range(stmt *s)
+{
+	(void)s;
+}
+
 func_gen_stmt (*gen_stmt_case_range) = gen_stmt_label;

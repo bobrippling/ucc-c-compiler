@@ -21,4 +21,9 @@ void fold_stmt_break(stmt *t)
 	fold_stmt_break_continue(t, t->parent ? t->parent->lbl_break : NULL);
 }
 
+void mutate_stmt_break(stmt *s)
+{
+	(void)s;
+}
+
 func_gen_stmt *gen_stmt_break = gen_stmt_goto;

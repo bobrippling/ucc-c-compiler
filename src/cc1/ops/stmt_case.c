@@ -27,4 +27,9 @@ void fold_stmt_case(stmt *t)
 	fold_stmt_and_add_to_curswitch(t);
 }
 
+void mutate_stmt_case(stmt *s)
+{
+	(void)s;
+}
+
 func_gen_stmt *gen_stmt_case = gen_stmt_label;

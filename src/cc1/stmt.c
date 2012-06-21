@@ -13,7 +13,9 @@ stmt_flow *stmt_flow_new(symtable *parent)
 	return t;
 }
 
-void stmt_mutate(stmt *s, func_fold_stmt *f_fold, func_gen_stmt *f_gen, func_str_stmt *f_str)
+void stmt_mutate(stmt *s,
+		func_fold_stmt *f_fold, func_gen_stmt *f_gen, func_str_stmt *f_str,
+		func_mutate_stmt *f_mutate)
 {
 	s->f_fold = f_fold;
 	s->f_gen  = f_gen;
@@ -24,17 +26,20 @@ void stmt_mutate(stmt *s, func_fold_stmt *f_fold, func_gen_stmt *f_gen, func_str
 		|| stmt_kind(s, return)
 		|| stmt_kind(s, goto)
 		|| stmt_kind(s, continue);
+
+	f_mutate(s);
 }
 
-stmt *stmt_new(func_fold_stmt *f_fold, func_gen_stmt *f_gen, func_str_stmt *f_str, symtable *stab)
+stmt *stmt_new(func_fold_stmt *f_fold, func_gen_stmt *f_gen, func_str_stmt *f_str,
+		func_mutate_stmt *f_mutate, symtable *stab)
 {
 	stmt *s = umalloc(sizeof *s);
 	where_new(&s->where);
 
-	stmt_mutate(s, f_fold, f_gen, f_str);
-
 	UCC_ASSERT(stab, "no symtable for statement");
 	s->symtab = stab;
+
+	stmt_mutate(s, f_fold, f_gen, f_str, f_mutate);
 
 	return s;
 }
@@ -58,6 +63,15 @@ static void stmt_walk2(stmt *base, void (*f)(stmt *current, int *stop, void *), 
 			if(*stop)
 				break;
 		}
+	}
+}
+
+void stmt_walk_first_return(stmt *current, int *stop, void *extra)
+{
+	if(stmt_kind(current, return)){
+		stmt **store = extra;
+		*store = current;
+		*stop = 1;
 	}
 }
 

@@ -75,6 +75,7 @@ decl_attr *parse_ ## t()              \
 EMPTY(attr_unused)
 EMPTY(attr_warn_unused)
 EMPTY(attr_enum_bitmask)
+EMPTY(attr_noreturn)
 
 static struct
 {
@@ -86,6 +87,7 @@ static struct
 	{ "warn_unused",    parse_attr_warn_unused },
 	{ "section",        parse_attr_section },
 	{ "bitmask",        parse_attr_enum_bitmask },
+	{ "noreturn",       parse_attr_noreturn },
 	{ NULL, NULL },
 };
 #define MAX_FMT_LEN 16

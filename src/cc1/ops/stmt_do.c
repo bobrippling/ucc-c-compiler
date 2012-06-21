@@ -25,3 +25,13 @@ void gen_stmt_do(stmt *s)
 
 	asm_label(s->lbl_break);
 }
+
+static int do_passable(stmt *s)
+{
+	return fold_passable(s->lhs);
+}
+
+void mutate_stmt_do(stmt *s)
+{
+	s->f_passable = do_passable;
+}

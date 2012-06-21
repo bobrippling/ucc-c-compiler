@@ -518,6 +518,17 @@ void fold_funcargs(funcargs *fargs, symtable *stab, char *context)
 	}
 }
 
+int fold_passable_yes(stmt *s)
+{ (void)s; return 1; }
+
+int fold_passable_no(stmt *s)
+{ (void)s; return 0; }
+
+int fold_passable(stmt *s)
+{
+	return s->f_passable(s);
+}
+
 void fold_func(decl *func_decl)
 {
 	if(func_decl->func_code){
@@ -530,6 +541,32 @@ void fold_func(decl *func_decl)
 				curdecl_func->spel);
 
 		fold_stmt(func_decl->func_code);
+
+		if(decl_attr_present(curdecl_func->attr, attr_noreturn)){
+			if(fold_passable(func_decl->func_code)){
+				/* if we reach the end, it's bad */
+				cc1_warn_at(&func_decl->func_code->where, 0, 1, WARN_RETURN_UNDEF,
+						"function marked no-return implicitly returns");
+			}else{
+				stmt *ret = NULL;
+
+				stmt_walk(func_decl->func_code, stmt_walk_first_return, &ret);
+
+				if(ret){
+					/* obviously returns */
+					cc1_warn_at(&ret->where, 0, 1, WARN_RETURN_UNDEF,
+							"function marked no-return returns");
+				}
+			}
+
+		}else if(!decl_is_void(curdecl_func_called)){
+			/* non-void func - check it doesn't return */
+			if(fold_passable(func_decl->func_code)){
+				cc1_warn_at(&func_decl->where, 0, 1, WARN_RETURN_UNDEF,
+						"control reaches end of non-void function %s",
+						func_decl->spel);
+			}
+		}
 
 		free(curdecl_func_called);
 		curdecl_func_called = NULL;

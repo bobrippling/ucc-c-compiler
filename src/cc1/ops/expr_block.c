@@ -6,15 +6,6 @@ const char *str_expr_block(void)
 	return "block";
 }
 
-static void got_stmt(stmt *current, int *stop, void *extra)
-{
-	if(stmt_kind(current, return)){
-		stmt **store = extra;
-		*store = current;
-		*stop = 1;
-	}
-}
-
 void fold_expr_block(expr *e, symtable *stab)
 {
 	decl_desc *func;
@@ -38,7 +29,7 @@ void fold_expr_block(expr *e, symtable *stab)
 	e->tree_type->type->store = store_static;
 
 	r = NULL;
-	stmt_walk(e->code, got_stmt, &r);
+	stmt_walk(e->code, stmt_walk_first_return, &r);
 	if(r && r->expr)
 		decl_copy_primitive(e->tree_type, r->expr->tree_type);
 	else
