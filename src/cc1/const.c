@@ -26,6 +26,10 @@ int const_expr_is_const(expr *e)
 	if(expr_kind(e, val) || expr_kind(e, sizeof) || expr_kind(e, addr))
 		return 1;
 
+	/* function names are */
+	if(expr_kind(e, identifier) && decl_is_func(e->tree_type))
+		return 1;
+
 	/*
 	 * const int i = 5; is const
 	 * but
