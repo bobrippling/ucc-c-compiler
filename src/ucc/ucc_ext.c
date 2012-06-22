@@ -147,11 +147,29 @@ static void runner(int local, char *path, char **args)
 
 void rename_or_move(char *old, char *new)
 {
-	char *args[3] = {
-		old, new, NULL
+	/* don't move, cat instead, since we can't move to /dev/null, for e.g. */
+	int len, i;
+	char *cmd, *p;
+	char *args[] = {
+		"cat", old, ">", new, NULL
 	};
+	char *fixed[3];
 
-	runner(0, "mv", args);
+	for(i = 0, len = 1; args[i]; i++)
+		len += strlen(args[i]) + 1; /* space */
+
+	p = cmd = umalloc(len);
+
+	for(i = 0; args[i]; i++)
+		p += sprintf(p, "%s ", args[i]);
+
+	fixed[0] = "-c";
+	fixed[1] = cmd;
+	fixed[2] = NULL;
+
+	runner(0, "sh", fixed);
+
+	free(cmd);
 }
 
 void cat(char *fnin, char *fnout, int append)

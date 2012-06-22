@@ -82,8 +82,12 @@ void fold_insert_casts(decl *dlhs, expr **prhs, symtable *stab, where *w)
 
 int fold_get_sym(expr *e, symtable *stab)
 {
-	if(!e->sym && e->spel)
+	if(e->sym)
+		return 1;
+
+	if(e->spel)
 		return !!(e->sym = symtab_search(stab, e->spel));
+
 	return 0;
 }
 
@@ -545,8 +549,8 @@ void fold_funcargs(funcargs *fargs, symtable *stab, char *context)
 		for(i = 0; fargs->arglist[i]; i++){
 			decl *const d = fargs->arglist[i];
 
-			/* convert any array definitions to pointers */
-			decl_conv_array_ptr(d); /* must be before the decl is folded */
+			/* convert any array definitions and functions to pointers */
+			decl_conv_array_func_to_ptr(d); /* must be before the decl is folded (since fold checks this) */
 
 			fold_decl(d, stab);
 
