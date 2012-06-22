@@ -44,8 +44,12 @@ void fold_decl_equal(decl *a, decl *b, where *w, enum warning warn,
 
 int fold_get_sym(expr *e, symtable *stab)
 {
-	if(!e->sym && e->spel)
+	if(e->sym)
+		return 1;
+
+	if(e->spel)
 		return !!(e->sym = symtab_search(stab, e->spel));
+
 	return 0;
 }
 
