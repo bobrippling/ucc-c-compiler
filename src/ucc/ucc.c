@@ -11,13 +11,6 @@
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
 
-struct
-{
-	int assume_c;
-	int nostdlib;
-	int nostartfiles;
-} gopts;
-
 enum mode
 {
 	mode_preproc,
@@ -26,6 +19,14 @@ enum mode
 	mode_link
 };
 #define MODE_ARG_CH(m) ("ESc\0"[m])
+
+struct
+{
+	enum mode assume;
+	int nostdlib;
+	int nostartfiles;
+} gopts;
+
 
 struct cc_file
 {
@@ -79,8 +80,19 @@ void create_file(struct cc_file *file, enum mode mode, char *in)
 
 	file->in = in;
 
-	if(gopts.assume_c || !strcmp(in, "-"))
+	if(!strcmp(in, "-"))
 		goto preproc;
+
+	switch(gopts.assume){
+		case mode_preproc:
+			goto preproc;
+		case mode_compile:
+			goto compile;
+		case mode_assemb:
+			goto assemb;
+		case mode_link:
+			goto assume_obj;
+	}
 
 #define ASSIGN(x)                \
 				file->x = tmpfilenam();  \
@@ -95,8 +107,10 @@ void create_file(struct cc_file *file, enum mode mode, char *in)
 preproc:
 			case 'c':
 				ASSIGN(preproc);
+compile:
 			case 'i':
 				ASSIGN(compile);
+assemb:
 			case 's':
 				ASSIGN(assemb);
 				file->out = file->assemb;
@@ -276,6 +290,7 @@ int main(int argc, char **argv)
 		{ 'X', &backend  },
 	};
 
+	gopts.assume = -1;
 	argv0 = argv[0];
 
 	if(argc <= 1){
@@ -355,9 +370,19 @@ arg_ld:
 
 				case 'x':
 					/* prevent implicit assumption of source */
-					if(!argv[++i] || strcmp(argv[i], "c"))
-						die("-x only accepts \"c\"");
-					gopts.assume_c = 1;
+					if(!argv[++i])
+						die("-x needs an argument");
+
+					/* TODO: "asm-with-cpp"? */
+					/* TODO: order-sensitive -x */
+					if(!strcmp(argv[i], "c"))
+						gopts.assume = mode_preproc;
+					else if(!strcmp(argv[i], "cpp"))
+						gopts.assume = mode_compile;
+					else if(!strcmp(argv[i], "asm"))
+						gopts.assume = mode_assemb;
+					else
+						die("-x accepts \"c\", \"cpp\", or \"asm\", not \"%s\"", argv[i]);
 					continue;
 
 				case '\0':
