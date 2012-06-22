@@ -44,8 +44,12 @@ void fold_decl_equal(decl *a, decl *b, where *w, enum warning warn,
 
 int fold_get_sym(expr *e, symtable *stab)
 {
-	if(!e->sym && e->spel)
+	if(e->sym)
+		return 1;
+
+	if(e->spel)
 		return !!(e->sym = symtab_search(stab, e->spel));
+
 	return 0;
 }
 
@@ -501,8 +505,8 @@ void fold_funcargs(funcargs *fargs, symtable *stab, char *context)
 			decl *const d = fargs->arglist[i];
 			int unknown;
 
-			/* convert any array definitions to pointers */
-			decl_conv_array_ptr(d); /* must be before the decl is folded */
+			/* convert any array definitions and functions to pointers */
+			decl_conv_array_func_to_ptr(d); /* must be before the decl is folded (since fold checks this) */
 
 			/* if we have an unknown, save it */
 			unknown = d->type->primitive == type_unknown;
