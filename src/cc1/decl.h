@@ -189,7 +189,7 @@ int        decl_init_len(decl_init *);
 const char *decl_init_to_str(enum decl_init_type);
 #define decl_init_is_brace(di) ((di)->type == decl_init_brace || (di)->type == decl_init_struct)
 
-void decl_conv_array_ptr(decl *d);
+void decl_conv_array_func_to_ptr(decl *d);
 
 void decl_desc_link(decl *);
 
