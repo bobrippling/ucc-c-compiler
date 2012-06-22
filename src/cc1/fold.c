@@ -504,8 +504,8 @@ void fold_funcargs(funcargs *fargs, symtable *stab, char *context)
 		for(i = 0; fargs->arglist[i]; i++){
 			decl *const d = fargs->arglist[i];
 
-			/* convert any array definitions to pointers */
-			decl_conv_array_ptr(d); /* must be before the decl is folded */
+			/* convert any array definitions and functions to pointers */
+			decl_conv_array_func_to_ptr(d); /* must be before the decl is folded (since fold checks this) */
 
 			fold_decl(d, stab);
 

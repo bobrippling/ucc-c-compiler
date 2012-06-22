@@ -585,14 +585,31 @@ cant:
 	return d;
 }
 
-void decl_conv_array_ptr(decl *d)
+void decl_conv_array_func_to_ptr(decl *d)
 {
 	decl_desc *dp;
 
-	ITER_DESC_TYPE(d, dp, decl_desc_array){
-		expr_free(dp->bits.array_size);
-		dp->type = decl_desc_ptr;
-		dp->bits.qual = qual_none;
+	for(dp = d->desc; dp; dp = dp->child){
+		switch(dp->type){
+			case decl_desc_array:
+				expr_free(dp->bits.array_size);
+				dp->type = decl_desc_ptr;
+				dp->bits.qual = qual_none;
+				break;
+
+			case decl_desc_func:
+				if(!dp->child || dp->child != decl_desc_ptr){
+					decl_desc *ins = decl_desc_ptr_new(dp->parent_decl, dp);
+
+					ins->child = dp->child;
+					dp->child = ins;
+				}
+				break;
+
+			case decl_desc_ptr:
+			case decl_desc_block:
+				break;
+		}
 	}
 }
 
