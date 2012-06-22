@@ -532,6 +532,8 @@ int fold_passable(stmt *s)
 void fold_func(decl *func_decl)
 {
 	if(func_decl->func_code){
+		char *returns = NULL;
+
 		curdecl_func = func_decl;
 		curdecl_func_called = decl_func_deref(decl_copy(curdecl_func), NULL);
 
@@ -543,10 +545,16 @@ void fold_func(decl *func_decl)
 		fold_stmt(func_decl->func_code);
 
 		if(decl_attr_present(curdecl_func->attr, attr_noreturn)){
+			if(!decl_is_void(curdecl_func_called)){
+				cc1_warn_at(&func_decl->where, 0, 1, WARN_RETURN_UNDEF,
+						"function \"%s\" marked no-return has a non-void return value",
+						func_decl->spel);
+			}
+
+
 			if(fold_passable(func_decl->func_code)){
 				/* if we reach the end, it's bad */
-				cc1_warn_at(&func_decl->func_code->where, 0, 1, WARN_RETURN_UNDEF,
-						"function marked no-return implicitly returns");
+				returns = "implicitly ";
 			}else{
 				stmt *ret = NULL;
 
@@ -554,9 +562,14 @@ void fold_func(decl *func_decl)
 
 				if(ret){
 					/* obviously returns */
-					cc1_warn_at(&ret->where, 0, 1, WARN_RETURN_UNDEF,
-							"function marked no-return returns");
+					returns = "";
 				}
+			}
+
+			if(returns){
+				cc1_warn_at(&func_decl->where, 0, 1, WARN_RETURN_UNDEF,
+						"function \"%s\" marked no-return %sreturns",
+						func_decl->spel, returns);
 			}
 
 		}else if(!decl_is_void(curdecl_func_called)){

@@ -1,5 +1,7 @@
-extern void exit() __attribute__((noreturn));
+extern int printf();
+extern void __attribute__((noreturn)) exit(), abort();
 
+void
 f() __attribute__((noreturn))
 {
 	exit(1);
@@ -11,26 +13,23 @@ g()
 		printf("hi\n");
 }
 
-h() __attribute__((noreturn))
+_Noreturn void h()
 {
 	while(1)
-		break;
+		switch(1){
+			break;
+		}
 }
 
-/*
-_Noreturn h()
+void _Noreturn i()
 {
-
+	abort();
 }
-
-noreturn i()
-{
-}
-*/
 
 main()
 {
 	h();
+	printf("shouldn't see this\n");
 	//f();
 	//g();
 }

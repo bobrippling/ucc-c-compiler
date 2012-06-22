@@ -12,15 +12,9 @@ void fold_stmt_continue(stmt *t)
 	fold_stmt_break_continue(t, t->parent ? t->parent->lbl_continue : NULL);
 }
 
-static int continue_passable(stmt *s)
-{
-	(void)s;
-	return 0;
-}
-
 void mutate_stmt_continue(stmt *s)
 {
-	s->f_passable = continue_passable;
+	s->f_passable = fold_passable_no;
 }
 
 func_gen_stmt *gen_stmt_continue = gen_stmt_goto;

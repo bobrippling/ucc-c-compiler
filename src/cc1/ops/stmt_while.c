@@ -44,7 +44,7 @@ int while_passable(stmt *s)
 	if(const_expr_is_const(s->expr) && const_expr_value(s->expr))
 		return fold_code_escapable(s); /* while(1) */
 
-	return fold_passable(s->lhs);
+	return 1; /* fold_passable(s->lhs) - doesn't depend on this */
 }
 
 void mutate_stmt_while(stmt *s)

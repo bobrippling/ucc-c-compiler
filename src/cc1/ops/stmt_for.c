@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 
 #include "ops.h"
 #include "stmt_for.h"
@@ -133,24 +134,54 @@ void gen_stmt_for(stmt *s)
 	free(lbl_test);
 }
 
-static void stmt_walk_first_break_goto_return(stmt *current, int *stop, void *extra)
+struct walk_info
 {
-	if(stmt_kind(current, return) || stmt_kind(current, break) || stmt_kind(current, goto)){
-		stmt **store = extra;
-		*store = current;
+	stmt *escape;
+	int in_switch;
+};
+
+/* ??? change this so we set properties in fold() instead? */
+static void
+stmt_walk_first_break_goto_return(stmt *current, int *stop, int *descend, void *extra)
+{
+	struct walk_info *wi;
+	int found, is_switch, in_switch_before;
+
+	(void)descend;
+
+	wi = extra;
+	is_switch = found = 0;
+
+	if(stmt_kind(current, break)){
+		found = !wi->in_switch;
+	}else if(stmt_kind(current, return) || stmt_kind(current, goto)){
+		found = 1;
+	}else if(stmt_kind(current, switch)){
+		in_switch_before = wi->in_switch;
+		wi->in_switch = is_switch = 1;
+	}
+
+	if(found){
+		wi->escape = current;
 		*stop = 1;
+	}
+
+	if(is_switch){
+		/* coming out */
+		wi->in_switch = in_switch_before;
 	}
 }
 
 int fold_code_escapable(stmt *s)
 {
-	stmt *escape;
+	struct walk_info wi;
+
+	memset(&wi, 0, sizeof wi);
+
+	stmt_walk(s->lhs, stmt_walk_first_break_goto_return, &wi);
 
 	/* we only return if we find a break, goto or return statement */
-	escape = NULL;
-	stmt_walk(s->lhs, stmt_walk_first_break_goto_return, &escape);
-
-	return !!escape;
+	return !!wi.escape;
 }
 
 static int for_passable(stmt *s)

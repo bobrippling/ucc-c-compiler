@@ -44,14 +44,19 @@ stmt *stmt_new(func_fold_stmt *f_fold, func_gen_stmt *f_gen, func_str_stmt *f_st
 	return s;
 }
 
-static void stmt_walk2(stmt *base, void (*f)(stmt *current, int *stop, void *), void *data, int *stop)
+static void stmt_walk2(stmt *base, stmt_walk_func f, void *data, int *stop)
 {
-	f(base, stop, data);
+	int descend = 1;
+
+	f(base, stop, &descend, data);
 
 	if(*stop)
 		return;
 
-#define WALK_IF(sub) if(sub){ f(sub, stop, data); if(*stop) return; }
+#define WALK_IF(sub) if(sub){ stmt_walk2(sub, f, data, stop); if(*stop) return; }
+
+	if(!descend)
+		return;
 
 	WALK_IF(base->lhs);
 	WALK_IF(base->rhs);
@@ -66,8 +71,10 @@ static void stmt_walk2(stmt *base, void (*f)(stmt *current, int *stop, void *), 
 	}
 }
 
-void stmt_walk_first_return(stmt *current, int *stop, void *extra)
+void stmt_walk_first_return(stmt *current, int *stop, int *descend, void *extra)
 {
+	(void)descend;
+
 	if(stmt_kind(current, return)){
 		stmt **store = extra;
 		*store = current;
@@ -75,7 +82,7 @@ void stmt_walk_first_return(stmt *current, int *stop, void *extra)
 	}
 }
 
-void stmt_walk(stmt *base, void (*f)(stmt *current, int *stop, void *), void *data)
+void stmt_walk(stmt *base, stmt_walk_func f, void *data)
 {
 	int stop = 0;
 

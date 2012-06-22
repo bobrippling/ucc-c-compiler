@@ -32,7 +32,7 @@ void fold_stmt_case_range(stmt *s)
 
 void mutate_stmt_case_range(stmt *s)
 {
-	(void)s;
+	s->f_passable = fold_passable_yes;
 }
 
 func_gen_stmt (*gen_stmt_case_range) = gen_stmt_label;

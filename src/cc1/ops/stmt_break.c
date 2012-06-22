@@ -23,7 +23,7 @@ void fold_stmt_break(stmt *t)
 
 void mutate_stmt_break(stmt *s)
 {
-	(void)s;
+	s->f_passable = fold_passable_yes;
 }
 
 func_gen_stmt *gen_stmt_break = gen_stmt_goto;
