@@ -162,7 +162,7 @@ decl      *decl_copy(decl *);
 void       decl_copy_primitive(decl *to, decl *from);
 decl_desc *decl_desc_copy(decl_desc *);
 
-void decl_conv_array_ptr(decl *d);
+void decl_conv_array_func_to_ptr(decl *d);
 
 void decl_desc_link(decl *);
 
