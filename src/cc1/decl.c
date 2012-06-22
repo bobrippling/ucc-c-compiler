@@ -598,7 +598,7 @@ void decl_conv_array_func_to_ptr(decl *d)
 				break;
 
 			case decl_desc_func:
-				if(!dp->child || dp->child != decl_desc_ptr){
+				if(!dp->child || dp->child->type != decl_desc_ptr){
 					decl_desc *ins = decl_desc_ptr_new(dp->parent_decl, dp);
 
 					ins->child = dp->child;
