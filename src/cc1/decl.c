@@ -14,6 +14,8 @@
 	for(dp = d->desc; dp; dp = dp->child) \
 		if(dp->type == typ)
 
+void decl_debug(decl *d);
+
 decl_desc *decl_desc_new(enum decl_desc_type t, decl *dparent, decl_desc *parent)
 {
 	decl_desc *dp = umalloc(sizeof *dp);
@@ -224,18 +226,13 @@ int funcargs_equal(funcargs *args_to, funcargs *args_from, int strict_types, int
 	const int count_from = dynarray_count((void **)args_from->arglist);
 	int i;
 
-	if(count_to == 0 && !args_to->args_void){
-		/* a() */
-	}else if(!(args_to->variadic ? count_to <= count_from : count_to == count_from)){
+	if((count_to   == 0 && !args_to->args_void)
+	|| (count_from == 0 && !args_from->args_void)){
+		/* a() or b() */
+		return 1;
+	}
 
-#ifdef DEBUG_FUNCARGS
-		fprintf(stderr, "variadic %d, count_to %d, count_from %d\n", args_to->variadic, count_to, count_from);
-		for(i = 0; args_to->arglist[i]; i++)
-			fprintf(stderr, "to [%d] = %s\n", i, decl_to_str(args_to->arglist[i]));
-		for(i = 0; args_to->arglist[i]; i++)
-			fprintf(stderr, "fr [%d] = %s\n", i, decl_to_str(args_from->arglist[i]));
-#endif
-
+	if(!(args_to->variadic ? count_to <= count_from : count_to == count_from)){
 		if(idx) *idx = -1;
 		return 0;
 	}
@@ -259,18 +256,24 @@ int decl_desc_equal(decl_desc *a, decl_desc *b)
 			return 0;
 	}
 
+	/* XXX: this must be before the auto-cast check below */
+	if(a->type == decl_desc_func && b->type == decl_desc_func)
+		if(!funcargs_equal(a->bits.func, b->bits.func, 1 /* exact match */, NULL))
+			return 0;
+
 	/* allow a to be "type (*)()" and b to be "type ()" */
 	if(a->type == decl_desc_func && a->child && a->child->type == decl_desc_ptr){
-		if(b->type == decl_desc_func){
-			if(a->child->child && b->child)
+		/* a is ptr-to-func */
+
+		if(b->type == decl_desc_func && (!b->child || b->child->type != decl_desc_ptr)){
+			/* b is func, and not a ptr to it */
+
+			/* attempt to compare children, otherwise assume equal */
+			if(a->child->child)
 				return decl_desc_equal(a->child->child, b->child);
 			return 1;
 		}
 	}
-
-	if(a->type == decl_desc_func && b->type == decl_desc_func)
-		if(!funcargs_equal(a->bits.func, b->bits.func, 1 /* exact match */, NULL))
-			return 0;
 
 	if(b->type == decl_desc_ptr){
 		/* check const qualifiers */
@@ -305,7 +308,7 @@ int decl_equal(decl *a, decl *b, enum decl_cmp mode)
 	}
 
 	/* we are strict if told, or if either are a pointer - types must be equal */
-	strict = (mode & DECL_CMP_STRICT_PRIMITIVE) || a->desc || b->desc;
+	strict = (mode & DECL_CMP_STRICT_PRIMITIVE) || decl_ptr_depth(a) || decl_ptr_depth(b);
 
 	if(!type_equal(a->type, b->type, strict))
 		return 0;
@@ -391,7 +394,6 @@ decl *decl_ptr_depth_inc(decl *d)
 
 decl *decl_ptr_depth_dec(decl *d, where *from)
 {
-	/* if we are derefing a function pointer, move its func args up to the decl */
 	decl_desc *last;
 
 	for(last = d->desc; last && last->child; last = last->child);
@@ -585,14 +587,31 @@ cant:
 	return d;
 }
 
-void decl_conv_array_ptr(decl *d)
+void decl_conv_array_func_to_ptr(decl *d)
 {
 	decl_desc *dp;
 
-	ITER_DESC_TYPE(d, dp, decl_desc_array){
-		expr_free(dp->bits.array_size);
-		dp->type = decl_desc_ptr;
-		dp->bits.qual = qual_none;
+	for(dp = d->desc; dp; dp = dp->child){
+		switch(dp->type){
+			case decl_desc_array:
+				expr_free(dp->bits.array_size);
+				dp->type = decl_desc_ptr;
+				dp->bits.qual = qual_none;
+				break;
+
+			case decl_desc_func:
+				if(!dp->child || dp->child->type != decl_desc_ptr){
+					decl_desc *ins = decl_desc_ptr_new(dp->parent_decl, dp);
+
+					ins->child = dp->child;
+					dp->child = ins;
+				}
+				break;
+
+			case decl_desc_ptr:
+			case decl_desc_block:
+				break;
+		}
 	}
 }
 
@@ -660,7 +679,7 @@ void decl_desc_add_str(decl_desc *dp, char **bufp, int sz)
 #define BUF_ADD(...) \
 	do{ int n = snprintf(*bufp, sz, __VA_ARGS__); *bufp += n, sz -= n; }while(0)
 
-	const int need_paren = dp->parent_desc && dp->parent_desc->type != dp->type;
+	const int need_paren = !!dp->parent_desc;
 
 	if(need_paren)
 		BUF_ADD("(");
