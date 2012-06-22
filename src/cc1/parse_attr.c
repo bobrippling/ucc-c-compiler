@@ -134,7 +134,7 @@ decl_attr *parse_attr(void)
 		char *ident;
 
 		if(curtok != token_identifier)
-			DIE_AT(NULL, "identifier expected for attribute");
+			DIE_AT(NULL, "identifier expected for attribute (got %s)", token_to_str(curtok));
 
 		ident = token_current_spel();
 		EAT(token_identifier);

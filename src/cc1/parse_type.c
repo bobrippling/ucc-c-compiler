@@ -132,7 +132,7 @@ type *parse_type()
 	enum type_qualifier qual = qual_none;
 	enum type_storage   store = store_default;
 	enum type_primitive primitive = type_int;
-	int is_signed = 1, is_inline = 0;
+	int is_signed = 1, is_inline = 0, is_noreturn = 0;
 	int store_set = 0, primitive_set = 0, signed_set = 0;
 
 	for(;;){
@@ -171,6 +171,10 @@ type *parse_type()
 
 		}else if(curtok == token_inline){
 			is_inline = 1;
+			EAT(curtok);
+
+		}else if(curtok == token__Noreturn){
+			is_noreturn = 1;
 			EAT(curtok);
 
 		}else if(curtok == token_struct || curtok == token_union || curtok == token_enum){
@@ -248,7 +252,7 @@ type *parse_type()
 		}
 	}
 
-	if(qual != qual_none || store_set || primitive_set || signed_set || tdef_typeof || is_inline){
+	if(qual != qual_none || store_set || primitive_set || signed_set || tdef_typeof || is_inline || is_noreturn){
 		type *t = type_new();
 
 		/* signed size_t x; */
@@ -268,6 +272,9 @@ type *parse_type()
 		t->store = store;
 
 		parse_add_attr(&t->attr);
+
+		if(is_noreturn)
+			decl_attr_append(&t->attr, decl_attr_new(attr_noreturn));
 
 		return t;
 	}else{
