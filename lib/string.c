@@ -7,7 +7,7 @@ static const char *_errs[] = {
 };
 
 
-size_t strlen(char *s)
+size_t strlen(const char *s)
 {
 	int i = 0;
 	while(*s++)
@@ -21,7 +21,7 @@ const char *strerror(int eno)
 	return _errs[eno - 1];
 }
 
-int strncmp(char *a, char *b, size_t n)
+int strncmp(const char *a, const char *b, size_t n)
 {
 	while(n > 0){
 		int diff;
@@ -48,12 +48,12 @@ int strncmp(char *a, char *b, size_t n)
 	return 0;
 }
 
-int strcmp(char *a, char *b)
+int strcmp(const char *a, const char *b)
 {
 	return strncmp(a, b, UINT_MAX);
 }
 
-char *strchr(char *s, char c)
+char *strchr(const char *s, char c)
 {
 	while(*s)
 		if(*s == c)
