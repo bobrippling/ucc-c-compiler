@@ -96,7 +96,7 @@ int type_size(const type *t)
 
 int type_equal(const type *a, const type *b, int strict)
 {
-	if(strict && (b->qual & qual_const) && (a->qual & qual_const) == 0)
+	if(strict && b->qual != a->qual)
 		return 0;
 
 	if(a->sue != b->sue)
