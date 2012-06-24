@@ -4,10 +4,7 @@ main()
 {
 	char *buf = "Text";
 
-	_MessageBoxA(0,
-			buf,
-			"Caption",
-			MB_OK);
+	MessageBoxA(0, buf, "Caption", MB_OK);
 
 	return 5;
 }

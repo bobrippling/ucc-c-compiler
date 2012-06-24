@@ -51,12 +51,13 @@ enum warning
 
 enum fopt
 {
-	FOPT_NONE            = 0,
-	FOPT_ENABLE_ASM      = 1 << 0,
-	FOPT_STRICT_TYPES    = 1 << 1,
-	FOPT_CONST_FOLD      = 1 << 2,
-	FOPT_ENGLISH         = 1 << 3,
-	FOPT_SHOW_LINE       = 1 << 4,
+	FOPT_NONE                    = 0,
+	FOPT_ENABLE_ASM              = 1 << 0,
+	FOPT_STRICT_TYPES            = 1 << 1,
+	FOPT_CONST_FOLD              = 1 << 2,
+	FOPT_ENGLISH                 = 1 << 3,
+	FOPT_SHOW_LINE               = 1 << 4,
+	FOPT_LEADING_UNDERSCORE      = 1 << 5,
 };
 
 enum cc1_backend

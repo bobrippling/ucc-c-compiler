@@ -11,9 +11,10 @@ tim.s_32: tim.s
 	./nasm_64_to_32 < $< > $@
 
 tim.s: tim.c
-	../ucc -S -o $@ $<
+	../ucc -fleading-underscore -S -o $@ $<
 
 clean:
 	rm -f tim tim.obj tim.s tim.s_32
+	make -Clib clean
 
 .PHONY: clean
