@@ -19,6 +19,7 @@ void fold_expr__Generic(expr *e, symtable *stab)
 	fold_expr(e->expr, stab);
 
 	for(i = e->generics; i && *i; i++){
+		const int flags= DECL_CMP_ARGS | DECL_CMP_CONST_MATCH;
 		struct generic_lbl **j, *l = *i;
 
 		fold_expr(l->e, stab);
@@ -27,7 +28,7 @@ void fold_expr__Generic(expr *e, symtable *stab)
 			decl *m = (*j)->d;
 
 			/* duplicate default checked below */
-			if(m && decl_equal(m, l->d, DECL_CMP_ARGS))
+			if(m && decl_equal(m, l->d, flags))
 				DIE_AT(&m->where, "duplicate type in _Generic: %s", decl_to_str(l->d));
 		}
 
@@ -35,7 +36,7 @@ void fold_expr__Generic(expr *e, symtable *stab)
 		if(l->d){
 			fold_decl(l->d, stab);
 
-			if(decl_equal(e->expr->tree_type, l->d, DECL_CMP_ARGS)){
+			if(decl_equal(e->expr->tree_type, l->d, flags)){
 				UCC_ASSERT(!e->generic_chosen, "already chosen expr for _Generic");
 				e->generic_chosen = l;
 			}

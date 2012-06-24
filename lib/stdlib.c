@@ -124,10 +124,10 @@ void abort()
 char *getenv(const char *key)
 {
 	const int keylen = strlen(key);
-	char **i;
+	const char **i;
 
 	for(i = environ; *i; i++){
-		char *equ, *e;
+		const char *equ, *e;
 
 		e = *i;
 

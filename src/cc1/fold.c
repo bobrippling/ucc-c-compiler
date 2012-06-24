@@ -22,10 +22,16 @@ decl *curdecl_func, *curdecl_func_called; /* for funcargs-local labels and retur
 
 static where asm_struct_enum_where;
 
-void fold_decl_equal(decl *a, decl *b, where *w, enum warning warn,
+void fold_decl_equal(
+		decl *a, decl *b, int allow_const_lhs, where *w, enum warning warn,
 		const char *errfmt, ...)
 {
-	if(!decl_equal(a, b, DECL_CMP_ALLOW_VOID_PTR | (fopt_mode & FOPT_STRICT_TYPES ? DECL_CMP_STRICT_PRIMITIVE : 0))){
+	const int flags =
+		DECL_CMP_ALLOW_VOID_PTR |
+		(allow_const_lhs ? 0 : DECL_CMP_CONST_MATCH) |
+		(fopt_mode & FOPT_STRICT_TYPES ? DECL_CMP_STRICT_PRIMITIVE : 0);
+
+	if(!decl_equal(a, b, flags)){
 		int one_struct;
 		char buf[DECL_STATIC_BUFSIZ];
 		va_list l;
@@ -409,7 +415,7 @@ void fold_decl(decl *d, symtable *stab)
 			fold_coerce_assign(d, d->init, &ok); /* also done as stmt code */
 
 			if(!ok){
-				fold_decl_equal(d, d->init->tree_type, &d->where, WARN_ASSIGN_MISMATCH,
+				fold_decl_equal(d, d->init->tree_type, 1, &d->where, WARN_ASSIGN_MISMATCH,
 						"mismatching initialisation for %s", d->spel);
 			}
 
@@ -601,7 +607,7 @@ static void fold_link_decl_defs(decl **decls)
 
 		for(decl_iter = decls_for_this + 1; (e = *decl_iter); decl_iter++){
 			/* check they are the same decl */
-			if(!decl_equal(d, e, DECL_CMP_STRICT_PRIMITIVE)){
+			if(!decl_equal(d, e, DECL_CMP_STRICT_PRIMITIVE | DECL_CMP_CONST_MATCH)){
 				strcpy(wbuf, where_str(&d->where));
 				DIE_AT(&e->where, "mismatching declaration of %s (%s)", d->spel, wbuf);
 			}

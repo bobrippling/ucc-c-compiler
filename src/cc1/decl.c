@@ -221,7 +221,9 @@ int decl_size(decl *d)
 
 int funcargs_equal(funcargs *args_to, funcargs *args_from, int strict_types, int *idx)
 {
-	const enum decl_cmp flag = DECL_CMP_ALLOW_VOID_PTR | (strict_types ? DECL_CMP_STRICT_PRIMITIVE : 0);
+	const enum decl_cmp flag =
+		DECL_CMP_ALLOW_VOID_PTR | DECL_CMP_CONST_MATCH |
+		(strict_types ? DECL_CMP_STRICT_PRIMITIVE : 0);
 	const int count_to = dynarray_count((void **)args_to->arglist);
 	const int count_from = dynarray_count((void **)args_from->arglist);
 	int i;
@@ -247,7 +249,7 @@ int funcargs_equal(funcargs *args_to, funcargs *args_from, int strict_types, int
 	return 1;
 }
 
-int decl_desc_equal(decl_desc *a, decl_desc *b)
+int decl_desc_equal(decl_desc *a, decl_desc *b, int konst)
 {
 	/* if we are assigning from const, target must be const */
 	if(a->type != b->type){
@@ -270,19 +272,21 @@ int decl_desc_equal(decl_desc *a, decl_desc *b)
 
 			/* attempt to compare children, otherwise assume equal */
 			if(a->child->child)
-				return decl_desc_equal(a->child->child, b->child);
+				return decl_desc_equal(a->child->child, b->child, konst);
 			return 1;
 		}
 	}
 
 	if(b->type == decl_desc_ptr){
 		/* check qualifiers */
-		if(a->type != decl_desc_ptr || b->bits.qual != a->bits.qual)
-			return 0;
+		if(a->type != decl_desc_ptr || b->bits.qual != a->bits.qual){
+			if(!konst || !(a->bits.qual == (b->bits.qual & qual_const)))
+				return 0;
+		}
 	}
 
 	if(a->child)
-		return b->child && decl_desc_equal(a->child, b->child);
+		return b->child && decl_desc_equal(a->child, b->child, konst);
 
 	return !b->child;
 }
@@ -298,6 +302,7 @@ int decl_is_void_ptr(decl *d)
 int decl_equal(decl *a, decl *b, enum decl_cmp mode)
 {
 	int strict;
+	int konst;
 
 	if((mode & DECL_CMP_ALLOW_VOID_PTR)){
 		/* one side is void * */
@@ -309,11 +314,12 @@ int decl_equal(decl *a, decl *b, enum decl_cmp mode)
 
 	/* we are strict if told, or if either are a pointer - types must be equal */
 	strict = (mode & DECL_CMP_STRICT_PRIMITIVE) || decl_ptr_depth(a) || decl_ptr_depth(b);
+	konst = mode & DECL_CMP_CONST_MATCH;
 
-	if(!type_equal(a->type, b->type, strict))
+	if(!type_equal(a->type, b->type, strict, konst))
 		return 0;
 
-	return a->desc ? b->desc && decl_desc_equal(a->desc, b->desc) : !b->desc;
+	return a->desc ? b->desc && decl_desc_equal(a->desc, b->desc, konst) : !b->desc;
 }
 
 int decl_ptr_depth(decl *d)

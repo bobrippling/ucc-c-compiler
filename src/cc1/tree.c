@@ -94,10 +94,15 @@ int type_size(const type *t)
 	return -1;
 }
 
-int type_equal(const type *a, const type *b, int strict)
+int type_equal(const type *a, const type *b, int strict, int allow_lhs_const)
 {
-	if(strict && b->qual != a->qual)
+	if(strict && b->qual != a->qual){
+		if(allow_lhs_const && (a->qual == (b->qual & qual_const)))
+			goto cont;
 		return 0;
+	}
+
+cont:
 
 	if(a->sue != b->sue)
 		return 0;

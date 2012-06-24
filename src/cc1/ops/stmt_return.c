@@ -14,7 +14,7 @@ void fold_stmt_return(stmt *s)
 		fold_expr(s->expr, s->symtab);
 		fold_test_expr(s->expr, "return");
 
-		fold_decl_equal(s->expr->tree_type, curdecl_func_called,
+		fold_decl_equal(s->expr->tree_type, curdecl_func_called, 1,
 				&s->where, WARN_RETURN_TYPE,
 				"mismatching return type for %s", curdecl_func->spel);
 

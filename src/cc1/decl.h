@@ -138,6 +138,7 @@ enum decl_cmp
 {
 	DECL_CMP_STRICT_PRIMITIVE = 1 << 0,
 	DECL_CMP_ALLOW_VOID_PTR   = 1 << 1,
+	DECL_CMP_CONST_MATCH      = 1 << 2,
 };
 
 decl        *decl_new(void);

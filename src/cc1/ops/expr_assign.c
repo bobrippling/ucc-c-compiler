@@ -83,7 +83,7 @@ void fold_expr_assign(expr *e, symtable *stab)
 
 	/* type check */
 	if(!type_ok){
-		fold_decl_equal(e->lhs->tree_type, e->rhs->tree_type,
+		fold_decl_equal(e->lhs->tree_type, e->rhs->tree_type, 1,
 				&e->where, WARN_ASSIGN_MISMATCH,
 				"assignment type mismatch%s%s%s",
 				e->lhs->spel ? " (" : "",

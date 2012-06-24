@@ -86,7 +86,7 @@ const char *type_store_to_str(    const enum type_storage);
 
 int op_is_cmp(enum op_type o);
 
-int   type_equal(const type *a, const type *b, int strict);
+int   type_equal(const type *a, const type *b, int strict, int allow_lhs_const);
 int   type_size( const type *);
 funcargs *funcargs_new(void);
 void function_empty_args(funcargs *func);
