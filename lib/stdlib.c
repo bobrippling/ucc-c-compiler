@@ -19,7 +19,7 @@
 #  define MALLOC_SBRK
 #endif
 
-int atoi(char *s)
+int atoi(const char *s)
 {
 	int i = 0;
 
