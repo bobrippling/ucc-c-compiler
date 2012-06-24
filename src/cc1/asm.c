@@ -16,6 +16,12 @@
 #define SNPRINTF(s, n, ...) \
 		UCC_ASSERT(snprintf(s, n, __VA_ARGS__) != n, "snprintf buffer too small")
 
+
+#define MANGLE_CHAR_CONST 'K'
+#define MANGLE_CHAR_FUNC  'F'
+#define MANGLE_CHAR_BLOCK '_'
+#define MANGLE_CHAR_PTR   'P'
+
 static int label_last    = 1,
 					 str_last      = 1,
 					 switch_last   = 1,
@@ -50,8 +56,12 @@ char *asm_label_func(decl *df, funcargs *fargs)
 		for(arg = fargs ? fargs->arglist : NULL; arg && *arg; arg++){
 			decl *const d = *arg;
 
-			for(dp = d->desc; dp; dp = dp->child)
-				len++;
+			for(dp = d->desc; dp; dp = dp->child){
+				len += 1;
+
+				if(dp->type == decl_desc_ptr)
+					len += !!dp->bits.qual;
+			}
 
 			switch(d->type->primitive){
 				case type_int:
@@ -69,6 +79,9 @@ char *asm_label_func(decl *df, funcargs *fargs)
 				case type_unknown:
 					ICE("%s arg", type_primitive_to_str(d->type->primitive));
 			}
+
+			len += !!d->type->qual;
+
 			len++;
 		}
 
@@ -86,21 +99,26 @@ char *asm_label_func(decl *df, funcargs *fargs)
 			for(dp = d->desc; dp; dp = dp->child){
 				switch(dp->type){
 					case decl_desc_block:
-						ch = '_';
+						ch = MANGLE_CHAR_BLOCK;
 						break;
 					case decl_desc_func:
-						ch = 'F';
+						ch = MANGLE_CHAR_FUNC;
 						/* TODO: append more func ptr detail */
 						break;
 					case decl_desc_ptr:
+						if(dp->bits.qual & qual_const)
+							p += sprintf(p, "%c", MANGLE_CHAR_CONST);
+
 					case decl_desc_array:
-						ch = 'P';
+						ch = MANGLE_CHAR_PTR;
 				}
 
 				p += sprintf(p, "%c", ch);
 			}
 
-			ch = '\0';
+			if(d->type->qual & qual_const)
+				p += sprintf(p, "%c", MANGLE_CHAR_CONST);
+
 			switch(d->type->primitive){
 #define CLASS(x) case type_ ## x: ch = *#x; break
 				CLASS(int);
@@ -110,13 +128,14 @@ char *asm_label_func(decl *df, funcargs *fargs)
 				case type_union:
 				case type_enum:
 					p += APPEND_NAME(p, d->type->sue->spel);
+					break;
+
 				case type_void:
 				case type_unknown:
-					break;
+					ICE("buh");
 			}
 
-			if(ch)
-				p += sprintf(p, "%c", ch);
+			p += sprintf(p, "%c", ch);
 		}
 
 		return buf;
