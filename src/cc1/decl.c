@@ -272,8 +272,8 @@ int decl_desc_equal(decl_desc *a, decl_desc *b)
 	}
 
 	if(b->type == decl_desc_ptr){
-		/* check const qualifiers */
-		if(a->type != decl_desc_ptr || (b->bits.qual & qual_const ? a->bits.qual & qual_const : 0))
+		/* check qualifiers */
+		if(a->type != decl_desc_ptr || b->bits.qual != a->bits.qual)
 			return 0;
 	}
 
