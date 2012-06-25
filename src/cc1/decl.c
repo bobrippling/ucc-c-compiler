@@ -373,7 +373,14 @@ int decl_is_const(decl *d)
 	/* const char *x is not const. char *const x is */
 	decl_desc *dp = decl_leaf(d);
 	if(dp)
-		return dp->type == decl_desc_ptr && dp->bits.qual & qual_const;
+		switch(dp->type){
+			case decl_desc_ptr:
+			case decl_desc_block:
+				return dp->bits.qual & qual_const;
+			default:
+				break;
+		}
+
 	return d->type->qual & qual_const;
 }
 
