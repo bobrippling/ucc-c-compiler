@@ -29,6 +29,9 @@ struct __FILE
 	__stdio_write *f_write;
 	__stdio_seek  *f_seek;
 	__stdio_close *f_close;
+
+	char buf_write[256];
+	char *buf_write_p;
 };
 #define FILE_INIT(fd) { fd, file_status_fine, NULL, NULL, NULL, NULL, NULL }
 
