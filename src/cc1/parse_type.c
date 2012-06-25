@@ -359,34 +359,29 @@ declarator:
 
 decl_desc *parse_decl_desc_ptr(enum decl_mode mode, char **sp)
 {
-	decl_desc *ret = NULL;
+	int ptr;
 
-	if(accept(token_xor)){
-		/* block */
-		decl_desc *block = decl_desc_block_new(NULL, NULL);
-
-		block->child = parse_decl_desc(mode, sp);
-
-		return block;
-
-	}else if(accept(token_multiply)){
+	if((ptr = accept(token_multiply)) || accept(token_xor)){
+		decl_desc *desc;
 		enum type_qualifier qual = qual_none;
-		decl_desc *ptr = decl_desc_ptr_new(NULL, NULL);
+
+		desc = (ptr ? decl_desc_ptr_new : decl_desc_block_new)(NULL, NULL);
 
 		while(curtok_is_type_qual()){
 			qual |= curtok_to_type_qualifier();
 			EAT(curtok);
 		}
 
-		ptr->bits.qual = qual;
+		desc->bits.qual = qual;
 
-		ptr->child = parse_decl_desc(mode, sp);
+		desc->child   = parse_decl_desc(mode, sp);
 
-		return ptr;
+		return desc;
 
 	}else if(accept(token_open_paren)){
-		ret = parse_decl_desc(mode, sp);
+		decl_desc *ret = parse_decl_desc(mode, sp);
 		EAT(token_close_paren);
+		return ret;
 
 	}else if(curtok == token_identifier){
 		if(mode & DECL_SPEL_NO)
@@ -400,7 +395,7 @@ decl_desc *parse_decl_desc_ptr(enum decl_mode mode, char **sp)
 		DIE_AT(NULL, "need identifier for decl");
 	}
 
-	return ret;
+	return NULL;
 }
 
 decl_desc *parse_decl_desc_array(enum decl_mode mode, char **sp)
