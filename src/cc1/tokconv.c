@@ -185,6 +185,11 @@ void eat2(enum token t, const char *fnam, int line, int die)
 	}
 }
 
+void uneat(enum token t)
+{
+	ICE("TODO"); hi
+}
+
 void eat(enum token t, const char *fnam, int line)
 {
 	eat2(t, fnam, line, 0);

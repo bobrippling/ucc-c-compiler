@@ -121,8 +121,13 @@ expr *parse_block()
 {
 	stmt *code;
 	funcargs *args;
+	decl *rt;
 
 	EAT(token_xor);
+
+	rt = parse_decl_single(DECL_SPEL_NO);
+
+	fprintf(stderr, "rt=%s\n", rt ? decl_to_str(rt) : "TIM");
 
 	if(accept(token_open_paren)){
 		args = parse_func_arglist();
@@ -136,7 +141,7 @@ expr *parse_block()
 	/* prevent access to nested vars */
 	code->symtab->parent = symtab_root(code->symtab);
 
-	return expr_new_block(args, code);
+	return expr_new_block(rt, args, code);
 }
 
 expr *parse_expr_primary()

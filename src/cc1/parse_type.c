@@ -275,6 +275,27 @@ type *parse_type()
 	}
 }
 
+int parse_curtok_is_type(void)
+{
+	if(curtok_is_type_qual() || curtok_is_type_store() || curtok_is_type_primitive())
+		return 1;
+
+	switch(curtok){
+		case token_signed:
+		case token_unsigned:
+		case token_struct:
+		case token_union:
+		case token_enum:
+		case token_typeof:
+			return 1;
+
+		case token_identifier:
+			return !!typedef_find(current_scope, token_current_spel_peek());
+	}
+
+	return 0;
+}
+
 funcargs *parse_func_arglist()
 {
 	funcargs *args;
@@ -379,7 +400,19 @@ decl_desc *parse_decl_desc_ptr(enum decl_mode mode, char **sp)
 		return desc;
 
 	}else if(accept(token_open_paren)){
-		decl_desc *ret = parse_decl_desc(mode, sp);
+		decl_desc *ret;
+
+		/*
+		 * we could be here:
+		 * int (int a) - from either "^int(int...)" or "void f(int (int));"
+		 * in which case, we've read the first "int", stop early, and unget the open paren
+		 */
+		if(parse_curtok_is_type()){
+			uneat(token_open_paren);
+			return NULL;
+		}
+
+		ret = parse_decl_desc(mode, sp);
 		EAT(token_close_paren);
 		return ret;
 
