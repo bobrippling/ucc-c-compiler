@@ -14,6 +14,12 @@
 	for(dp = d->desc; dp; dp = dp->child) \
 		if(dp->type == typ)
 
+
+#define QUAL_EQUAL(lhs, rhs, mode)                   \
+((mode & DECL_CMP_CONST_MATCH)                       \
+	? ((lhs) == (rhs))                                 \
+	: (((lhs) & ~qual_const) == ((rhs) & ~qual_const)))
+
 void decl_debug(decl *d);
 
 decl_desc *decl_desc_new(enum decl_desc_type t, decl *dparent, decl_desc *parent)
@@ -249,7 +255,7 @@ int funcargs_equal(funcargs *args_to, funcargs *args_from, int strict_types, int
 	return 1;
 }
 
-int decl_desc_equal(decl_desc *a, decl_desc *b, int konst)
+int decl_desc_equal(decl_desc *a, decl_desc *b, enum decl_cmp mode)
 {
 	/* if we are assigning from const, target must be const */
 	if(a->type != b->type){
@@ -272,21 +278,21 @@ int decl_desc_equal(decl_desc *a, decl_desc *b, int konst)
 
 			/* attempt to compare children, otherwise assume equal */
 			if(a->child->child)
-				return decl_desc_equal(a->child->child, b->child, konst);
+				return decl_desc_equal(a->child->child, b->child, mode);
 			return 1;
 		}
 	}
 
-	if(b->type == decl_desc_ptr){
+	if(a->type == decl_desc_ptr){ /* (a == ptr) -> (b == ptr || b == array) */
 		/* check qualifiers */
-		if(a->type != decl_desc_ptr || b->bits.qual != a->bits.qual){
-			if(!konst || !(a->bits.qual == (b->bits.qual & qual_const)))
-				return 0;
+		if(b->type == decl_desc_ptr && !QUAL_EQUAL(a->bits.qual, b->bits.qual, mode)){
+			return 0;
 		}
+		/* else b is an array */
 	}
 
 	if(a->child)
-		return b->child && decl_desc_equal(a->child, b->child, konst);
+		return b->child && decl_desc_equal(a->child, b->child, mode);
 
 	return !b->child;
 }
@@ -301,25 +307,25 @@ int decl_is_void_ptr(decl *d)
 
 int decl_equal(decl *a, decl *b, enum decl_cmp mode)
 {
+	const int a_ptr = decl_ptr_depth(a);
+	const int b_ptr = decl_ptr_depth(b);
 	int strict;
-	int konst;
 
 	if((mode & DECL_CMP_ALLOW_VOID_PTR)){
 		/* one side is void * */
-		if(decl_is_void_ptr(a) && decl_ptr_depth(b))
+		if(decl_is_void_ptr(a) && b_ptr)
 			return 1;
-		if(decl_is_void_ptr(b) && decl_ptr_depth(a))
+		if(decl_is_void_ptr(b) && a_ptr)
 			return 1;
 	}
 
 	/* we are strict if told, or if either are a pointer - types must be equal */
-	strict = (mode & DECL_CMP_STRICT_PRIMITIVE) || decl_ptr_depth(a) || decl_ptr_depth(b);
-	konst = mode & DECL_CMP_CONST_MATCH;
+	strict = (mode & DECL_CMP_STRICT_PRIMITIVE) || a_ptr || b_ptr;
 
-	if(!type_equal(a->type, b->type, strict, konst))
+	if(!type_equal(a->type, b->type, strict))
 		return 0;
 
-	return a->desc ? b->desc && decl_desc_equal(a->desc, b->desc, konst) : !b->desc;
+	return a->desc ? b->desc && decl_desc_equal(a->desc, b->desc, mode) : !b->desc;
 }
 
 int decl_ptr_depth(decl *d)
@@ -331,9 +337,9 @@ int decl_ptr_depth(decl *d)
 		switch(dp->type){
 			case decl_desc_ptr:
 			case decl_desc_array:
+			case decl_desc_block:
 				i++;
 			case decl_desc_func:
-			case decl_desc_block:
 				break;
 		}
 

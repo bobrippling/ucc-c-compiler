@@ -94,15 +94,13 @@ int type_size(const type *t)
 	return -1;
 }
 
-int type_equal(const type *a, const type *b, int strict, int allow_lhs_const)
+int type_equal(const type *a, const type *b, enum type_cmp mode)
 {
-	if(strict && b->qual != a->qual){
-		if(allow_lhs_const && (a->qual == (b->qual & qual_const)))
-			goto cont;
-		return 0;
-	}
+	int strict = mode & TYPE_CMP_STRICT;
 
-cont:
+	if(strict && b->qual != a->qual)
+		if(mode & TYPE_CMP_CONST_MATCH)
+			return 0;
 
 	if(a->sue != b->sue)
 		return 0;
