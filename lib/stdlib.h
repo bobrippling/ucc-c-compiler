@@ -14,6 +14,7 @@ void  free(   void *);
 
 void exit(int) __dead;
 int atexit(void (*)(void));
+int atexit_b(void (^)(void));
 
 void abort(void) __dead;
 

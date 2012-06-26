@@ -315,7 +315,7 @@ funcargs *parse_func_arglist()
 
 		if(dynarray_count((void *)args->arglist) == 1
 				&& args->arglist[0]->type->primitive == type_void
-				&& !decl_ptr_depth(args->arglist[0])
+				&& !args->arglist[0]->desc
 				&& !args->arglist[0]->spel){
 			/* x(void); */
 			function_empty_args(args);
@@ -381,7 +381,7 @@ decl_desc *parse_decl_desc_ptr(enum decl_mode mode, char **sp)
 
 		desc->bits.qual = qual;
 
-		desc->child   = parse_decl_desc(mode, sp);
+		desc->child = parse_decl_desc(mode, sp);
 
 		return desc;
 
@@ -465,7 +465,7 @@ decl *parse_decl(type *t, enum decl_mode mode)
 	/* don't fold typedefs until later (for __typeof) */
 	d = decl_new();
 	d->desc = dp;
-	d->type = type_copy(t);
+	d->type = type_copy(t); /* FIXME: t leaks */
 	d->spel = spel;
 
 	decl_desc_link(d);
@@ -473,9 +473,12 @@ decl *parse_decl(type *t, enum decl_mode mode)
 	parse_add_attr(&d->attr);
 
 #ifdef PARSE_DECL_VERBOSE
-	fprintf(stderr, "parsed decl %s, is_func %d, at %s\n", d->spel, decl_is_func(d), token_to_str(curtok));
+	fprintf(stderr, "parsed decl %s, is_func %d: %s\nat %s\n",
+			d->spel, decl_is_func(d), decl_to_str(d),
+			token_to_str(curtok));
+
 	for(decl_desc *dp = d->desc; dp; dp = dp->child)
-		fprintf(stderr, "\tdesc %s\n", decl_desc_str(dp));
+		fprintf(stderr, "\tdesc %s\n", decl_desc_to_str(dp->type));
 #endif
 
 	if(d->spel && accept(token_assign))
@@ -677,16 +680,9 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 		if(last && !last->func_code){
 next:
 			/* end of type, if we have an identifier, '(' or '*', it's an unknown type name */
-			switch(curtok){
-				case token_identifier:
-				case token_open_paren:
-				case token_multiply:
-					if(last)
-						DIE_AT(NULL, "unknown type name '%s'", last->spel);
-					/* else die below */
-				default:
-					break;
-			}
+			if(parse_possible_decl() && last)
+				DIE_AT(NULL, "unknown type name '%s'", last->spel);
+			/* else die here: */
 			EAT(token_semicolon);
 		}
 
