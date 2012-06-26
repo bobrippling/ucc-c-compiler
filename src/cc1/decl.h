@@ -198,7 +198,7 @@ int decl_is_array( decl *);
 funcargs *decl_funcargs(decl *);
 int funcargs_equal(funcargs *args_a, funcargs *args_b, int strict_types, int *idx);
 
-const char *decl_desc_str(decl_desc *dp);
+const char *decl_desc_to_str(enum decl_desc_type t);
 
 void  decl_set_spel(decl *, char *);
 
