@@ -23,6 +23,9 @@ static const struct
 	{ "__SIZE_TYPE__",    "unsigned int"  },
 	{ "__PTRDIFF_TYPE__", "unsigned int"  },
 
+	/* non-standard */
+	{ "__BLOCKS__",     "1"  },
+
 	/* custom */
 	{ "__UCC__",        "1"  },
 

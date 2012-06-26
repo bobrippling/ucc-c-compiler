@@ -107,6 +107,11 @@ int atexit(void (*f)(void))
 	return add_exit_func(&exit_funcs, f);
 }
 
+int atexit_b(void (^f)(void))
+{
+	return atexit(f);
+}
+
 void exit(int code)
 {
 	/* XXX: stdio cleanup will go here */
