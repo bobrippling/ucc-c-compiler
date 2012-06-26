@@ -299,7 +299,8 @@ void fold_decl(decl *d, symtable *stab)
 		if(dp->type == decl_desc_block
 		&& (!dp->parent_desc || dp->parent_desc->type != decl_desc_func))
 		{
-			DIE_AT(&dp->where, "invalid block pointer - function required");
+			DIE_AT(&dp->where, "invalid block pointer - function required (got %s)",
+					decl_desc_to_str(dp->parent_desc->type));
 		}
 	}
 
