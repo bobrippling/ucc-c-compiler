@@ -349,6 +349,14 @@ expr *parse_expr_unary()
 		 */
 	}else{
 		switch(curtok){
+			case token_andsc:
+				/* GNU &&label */
+				EAT(curtok);
+				e = expr_new_addr();
+				e->spel = token_current_spel();
+				EAT(token_identifier);
+				break;
+
 			case token_and:
 				e = expr_new_addr();
 				goto do_parse;
@@ -798,7 +806,14 @@ stmt *parse_code()
 				EAT(token_goto);
 
 				t = STAT_NEW(goto);
-				t->expr = parse_expr_identifier();
+
+				if(accept(token_multiply)){
+					/* computed goto */
+					t->expr = parse_expr_exp();
+					t->expr->expr_computed_goto = 1;
+				}else{
+					t->expr = parse_expr_identifier();
+				}
 			}
 			EAT(token_semicolon);
 			return t;
