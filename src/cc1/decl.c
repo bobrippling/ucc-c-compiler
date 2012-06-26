@@ -406,7 +406,7 @@ decl *decl_ptr_depth_dec(decl *d, where *from)
 			"trying to dereference %s%s%s%s",
 			decl_to_str(d),
 			last ? " (" : "",
-			last ? decl_desc_str(last) : "",
+			last ? decl_desc_to_str(last->type) : "",
 			last ? ")"  : "");
 	}
 
@@ -604,11 +604,24 @@ void decl_conv_array_func_to_ptr(decl *d)
 				break;
 
 			case decl_desc_func:
-				if(!dp->child || dp->child->type != decl_desc_ptr){
-					decl_desc *ins = decl_desc_ptr_new(dp->parent_decl, dp);
+				if(!dp->child)
+					goto ins_ptr;
+				
+				switch(dp->child->type){
+					case decl_desc_ptr:
+					case decl_desc_block:
+						/* no need for these types */
+						break;
 
-					ins->child = dp->child;
-					dp->child = ins;
+					default:
+ins_ptr:
+					{
+						decl_desc *ins = decl_desc_ptr_new(dp->parent_decl, dp);
+
+						ins->child = dp->child;
+						dp->child = ins;
+					}
+					break;
 				}
 				break;
 
@@ -657,9 +670,9 @@ void decl_desc_link(decl *d)
 	}
 }
 
-const char *decl_desc_str(decl_desc *dp)
+const char *decl_desc_to_str(enum decl_desc_type t)
 {
-	switch(dp->type){
+	switch(t){
 		CASE_STR_PREFIX(decl_desc, ptr);
 		CASE_STR_PREFIX(decl_desc, block);
 		CASE_STR_PREFIX(decl_desc, array);
@@ -675,7 +688,7 @@ void decl_debug(decl *d)
 	fprintf(stderr, "decl %s:\n", d->spel);
 
 	for(i = d->desc; i; i = i->child)
-		fprintf(stderr, "\t%s\n", decl_desc_str(i));
+		fprintf(stderr, "\t%s\n", decl_desc_to_str(i->type));
 }
 
 void decl_desc_add_str(decl_desc *dp, int show_spel, char **bufp, int sz)

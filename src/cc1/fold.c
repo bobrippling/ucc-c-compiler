@@ -400,7 +400,8 @@ void fold_decl(decl *d, symtable *stab)
 		if(dp->type == decl_desc_block
 		&& (!dp->parent_desc || dp->parent_desc->type != decl_desc_func))
 		{
-			DIE_AT(&dp->where, "invalid block pointer - function required");
+			DIE_AT(&dp->where, "invalid block pointer - function required (got %s)",
+					decl_desc_to_str(dp->parent_desc->type));
 		}
 	}
 
@@ -675,18 +676,15 @@ static void fold_link_decl_defs(decl **decls)
 
 		for(decl_iter = decls_for_this + 1; (e = *decl_iter); decl_iter++){
 			/* check they are the same decl */
-			if(!decl_equal(d, e, DECL_CMP_STRICT_PRIMITIVE)){
-				strcpy(wbuf, where_str(&d->where));
-				DIE_AT(&e->where, "mismatching declaration of %s (%s)", d->spel, wbuf);
-			}
+			if(!decl_equal(d, e, DECL_CMP_STRICT_PRIMITIVE))
+				DIE_AT(&e->where, "mismatching declaration of %s (%s)", d->spel, where_str_r(wbuf, &d->where));
 
 			if(decl_is_definition(e)){
 				/* e is the implementation/instantiation */
 
 				if(definition){
 					/* already got one */
-					strcpy(wbuf, where_str(&d->where));
-					DIE_AT(&e->where, "duplicate definition of %s (%s)", d->spel, wbuf);
+					DIE_AT(&e->where, "duplicate definition of %s (%s)", d->spel, where_str_r(wbuf, &d->where));
 				}
 
 				definition = e;
