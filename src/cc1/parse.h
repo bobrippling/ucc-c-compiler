@@ -6,6 +6,7 @@ enum decl_mode
 	DECL_SPEL_NEED    = 1 << 0,
 	DECL_SPEL_NO      = 1 << 1,
 	DECL_CAN_DEFAULT  = 1 << 2,
+	DECL_NO_BARE_FUNC = 1 << 3, /* accept "int (char)" as func? (for block ret-type parsing) */
 };
 
 enum decl_multi_mode

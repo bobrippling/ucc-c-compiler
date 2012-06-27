@@ -12,15 +12,27 @@ main()
 
 */
 
-int p(int(int));
+int p(int(char));
+
+int p(int x(char))
+{
+	x('B');
+}
+
+q(char c)
+{
+	printf("%c\n", c);
+}
 
 main()
 {
-	int (^x)(char);
-	void (^z)(void);
+	int (^x)(char) = ^int(char tim){printf("%c\n", tim);};
 	int (^(*y))(char) = &x;
+	//void (^z)(void) = 0;
 
 	x('a');
 	(*y)('a');
-	(1 ? x : *y)('a');
+	(0 ? x : *y)('a');
+
+	p(q);
 }

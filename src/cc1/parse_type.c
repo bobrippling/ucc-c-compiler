@@ -291,6 +291,9 @@ int parse_curtok_is_type(void)
 
 		case token_identifier:
 			return !!typedef_find(current_scope, token_current_spel_peek());
+
+		default:
+			break;
 	}
 
 	return 0;
@@ -407,8 +410,10 @@ decl_desc *parse_decl_desc_ptr(enum decl_mode mode, char **sp)
 		 * int (int a) - from either "^int(int...)" or "void f(int (int));"
 		 * in which case, we've read the first "int", stop early, and unget the open paren
 		 */
-		if(parse_curtok_is_type()){
+		TODO();
+		if((mode & DECL_NO_BARE_FUNC) && parse_curtok_is_type()){
 			uneat(token_open_paren);
+			/* parse_...func will grab this as funcargs instead */
 			return NULL;
 		}
 
@@ -552,7 +557,7 @@ decl **parse_decls_one_type()
 
 decl **parse_decls_multi_type(enum decl_multi_mode mode)
 {
-	const enum decl_mode parse_flag = mode & DECL_MULTI_CAN_DEFAULT ? DECL_CAN_DEFAULT : 0;
+	const enum decl_mode parse_flag = (mode & DECL_MULTI_CAN_DEFAULT ? DECL_CAN_DEFAULT : 0);
 	decl **decls = NULL;
 	decl *last;
 	int are_tdefs;

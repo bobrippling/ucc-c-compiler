@@ -125,9 +125,8 @@ expr *parse_block()
 
 	EAT(token_xor);
 
-	rt = parse_decl_single(DECL_SPEL_NO);
-
-	fprintf(stderr, "rt=%s\n", rt ? decl_to_str(rt) : "TIM");
+	/* optional: ^int (args...) */
+	rt = parse_decl_single(DECL_SPEL_NO | DECL_NO_BARE_FUNC);
 
 	if(accept(token_open_paren)){
 		args = parse_func_arglist();

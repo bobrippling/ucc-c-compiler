@@ -10,10 +10,10 @@ enum type_storage   curtok_to_type_storage(void);
 void eat( enum token t, const char *fnam, int line);
 void eat2(enum token t, const char *fnam, int line, int die);
 void uneat(enum token t);
+int accept(enum token t);
 
 #define EAT(t)         eat( (t), __FILE__, __LINE__)
 #define EAT_OR_DIE(t)  eat2((t), __FILE__, __LINE__, 1)
-#define accept(tok)    ((tok) == curtok ? (EAT(tok), 1) : 0)
 
 int curtok_is_type_primitive(void);
 int curtok_is_type_qual(void);

@@ -262,6 +262,7 @@ int decl_desc_equal(decl_desc *a, decl_desc *b)
 			return 0;
 
 	/* allow a to be "type (*)()" and b to be "type ()" */
+	/* note: we don't accept blocks to be assign from type () */
 	if(a->type == decl_desc_func && a->child && a->child->type == decl_desc_ptr){
 		/* a is ptr-to-func */
 
