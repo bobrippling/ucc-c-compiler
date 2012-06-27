@@ -1,10 +1,14 @@
 int main(int argc, char **argv)
 {
-	void *where[] = {
+	void *where[3]/*= {
 		&&a, &&b, &&c
-	};
+	}*/;
 	void *fin = &&last;
 	void *p;
+
+	where[0] = &&a;
+	where[1] = &&b;
+	where[2] = &&c;
 
 	p = where[argc - 1];
 	printf("p = %p (argc=%d), a=%p b=%p c=%p\n", p, argc, &&a, &&b, &&c);
