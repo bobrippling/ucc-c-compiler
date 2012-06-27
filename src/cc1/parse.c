@@ -899,10 +899,25 @@ symtable *parse()
 	symtable *globals;
 	decl **decls = NULL;
 	int i;
+	int warned = 0;
 
 	current_scope = globals = symtab_new(NULL);
 
-	decls = parse_decls_multi_type(DECL_MULTI_CAN_DEFAULT | DECL_MULTI_ACCEPT_FUNC_CODE);
+	for(;;){
+		decl **new = parse_decls_multi_type(DECL_MULTI_CAN_DEFAULT | DECL_MULTI_ACCEPT_FUNC_CODE);
+		dynarray_add_array((void ***)&decls, (void **)new);
+		free(new);
+
+		if(accept(token_semicolon)){
+			if(!warned){
+				WARN_AT(NULL, "extra semi-colon after global decl");
+				warned = 1;
+			}
+			continue;
+		}
+		break;
+	}
+
 	EAT(token_eof);
 
 	if(parse_had_error)
