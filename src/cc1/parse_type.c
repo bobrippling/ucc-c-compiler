@@ -410,8 +410,7 @@ decl_desc *parse_decl_desc_ptr(enum decl_mode mode, char **sp)
 		 * int (int a) - from either "^int(int...)" or "void f(int (int));"
 		 * in which case, we've read the first "int", stop early, and unget the open paren
 		 */
-		TODO();
-		if((mode & DECL_NO_BARE_FUNC) && parse_curtok_is_type()){
+		if(parse_curtok_is_type()){
 			uneat(token_open_paren);
 			/* parse_...func will grab this as funcargs instead */
 			return NULL;

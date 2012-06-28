@@ -591,6 +591,7 @@ cant:
 
 	if(pfuncargs)
 		*pfuncargs = args;
+	/* else: XXX: memleak */
 
 	return d;
 }

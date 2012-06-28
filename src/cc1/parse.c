@@ -125,13 +125,18 @@ expr *parse_block()
 
 	EAT(token_xor);
 
-	/* optional: ^int (args...) */
-	rt = parse_decl_single(DECL_SPEL_NO | DECL_NO_BARE_FUNC);
+	rt = parse_decl_single(DECL_SPEL_NO);
 
-	if(accept(token_open_paren)){
+	if(decl_is_func(rt)){
+		/* got ^int (args...) */
+		rt = decl_func_deref(rt, &args);
+
+	}else if(accept(token_open_paren)){
+		/* ^(args...) */
 		args = parse_func_arglist();
 		EAT(token_close_paren);
 	}else{
+		/* ^{...} */
 		args = funcargs_new();
 	}
 
