@@ -18,7 +18,6 @@ static void got_stmt(stmt *current, int *stop, void *extra)
 void fold_expr_block(expr *e, symtable *stab)
 {
 	decl_desc *func;
-	stmt *r;
 
 	/* add e->block_args to symtable */
 
@@ -38,16 +37,18 @@ void fold_expr_block(expr *e, symtable *stab)
 		e->tree_type = e->decl;
 
 	}else{
-		e->tree_type = decl_new();
-		e->tree_type->type->store = store_static;
+		stmt *r = NULL;
 
-		r = NULL;
 		stmt_walk(e->code, got_stmt, &r);
-		if(r && r->expr)
-			decl_copy_primitive(e->tree_type, r->expr->tree_type);
-		else
+
+		if(r && r->expr){
+			e->tree_type = decl_copy(r->expr->tree_type);
+		}else{
+			e->tree_type = decl_new();
 			e->tree_type->type->primitive = type_void;
+		}
 	}
+	e->tree_type->type->store = store_static;
 
 	/* copied the type, now make it a function */
 	func = decl_desc_func_new(NULL, NULL);
