@@ -299,7 +299,7 @@ int decl_equal(decl *a, decl *b, enum decl_cmp mode)
 {
 	const int a_ptr = decl_ptr_depth(a);
 	const int b_ptr = decl_ptr_depth(b);
-	int strict;
+	enum type_cmp tmode;
 
 	if((mode & DECL_CMP_ALLOW_VOID_PTR)){
 		/* one side is void * */
@@ -310,9 +310,14 @@ int decl_equal(decl *a, decl *b, enum decl_cmp mode)
 	}
 
 	/* we are strict if told, or if either are a pointer - types must be equal */
-	strict = (mode & DECL_CMP_STRICT_PRIMITIVE) || a_ptr || b_ptr;
+	tmode = 0;
+	if(mode & DECL_CMP_STRICT_PRIMITIVE)
+		tmode |= TYPE_CMP_STRICT;
 
-	if(!type_equal(a->type, b->type, strict))
+	if(a_ptr || b_ptr)
+		tmode |= TYPE_CMP_CONST_MATCH;
+
+	if(!type_equal(a->type, b->type, tmode))
 		return 0;
 
 	return a->desc ? b->desc && decl_desc_equal(a->desc, b->desc, mode) : !b->desc;
