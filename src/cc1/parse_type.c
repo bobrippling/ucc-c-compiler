@@ -423,7 +423,8 @@ decl_desc *parse_decl_desc_ptr(enum decl_mode mode, char **sp)
 		 * int (int a) - from either "^int(int...)" or "void f(int (int));"
 		 * in which case, we've read the first "int", stop early, and unget the open paren
 		 */
-		if(parse_curtok_is_type()){
+		if(parse_curtok_is_type() || curtok == token_close_paren){
+			/* int() - func decl */
 			uneat(token_open_paren);
 			/* parse_...func will grab this as funcargs instead */
 			return NULL;
