@@ -44,7 +44,7 @@ void parse_type_preamble(type **tp, char **psp, enum type_primitive primitive)
 		EAT(token_identifier);
 	}
 
-	parse_add_attr(&t->attr);
+	parse_add_attr(&t->attr); /* int/struct-A __attr__ */
 
 	*psp = spel;
 	*tp = t;
@@ -105,7 +105,7 @@ type *parse_type_sue(enum type_primitive prim)
 
 	t->sue = sue_add(current_scope, spel, members, prim);
 
-	parse_add_attr(&t->sue->attr);
+	parse_add_attr(&t->sue->attr); /* struct A {} __attr__ */
 
 	return t;
 }
@@ -129,10 +129,11 @@ static void parse_add_attr(decl_attr **append)
 type *parse_type()
 {
 	expr *tdef_typeof = NULL;
+	decl_attr *attr = NULL;
 	enum type_qualifier qual = qual_none;
 	enum type_storage   store = store_default;
 	enum type_primitive primitive = type_int;
-	int is_signed = 1, is_inline = 0, is_noreturn = 0;
+	int is_signed = 1, is_inline = 0, had_attr = 0, is_noreturn = 0;
 	int store_set = 0, primitive_set = 0, signed_set = 0;
 
 	for(;;){
@@ -247,12 +248,29 @@ type *parse_type()
 			primitive_set = 1;
 
 			EAT(token_identifier);
+
+		}else if(curtok == token_attribute){
+			parse_add_attr(&attr); /* __attr__ int ... */
+			had_attr = 1;
+			/*
+			 * can't depend on !!attr, since it is null when:
+			 * __attribute__(());
+			 */
+
 		}else{
 			break;
 		}
 	}
 
-	if(qual != qual_none || store_set || primitive_set || signed_set || tdef_typeof || is_inline || is_noreturn){
+	if(qual != qual_none
+	|| store_set
+	|| primitive_set
+	|| signed_set
+	|| tdef_typeof
+	|| is_inline
+	|| had_attr
+	|| is_noreturn)
+	{
 		type *t = type_new();
 
 		/* signed size_t x; */
@@ -271,7 +289,8 @@ type *parse_type()
 		t->qual  = qual;
 		t->store = store;
 
-		parse_add_attr(&t->attr);
+		t->attr = attr;
+		parse_add_attr(&t->attr); /* int/struct-A __attr__ */
 
 		if(is_noreturn)
 			decl_attr_append(&t->attr, decl_attr_new(attr_noreturn));
@@ -280,6 +299,31 @@ type *parse_type()
 	}else{
 		return NULL;
 	}
+}
+
+int parse_curtok_is_type(void)
+{
+	if(curtok_is_type_qual() || curtok_is_type_store() || curtok_is_type_primitive())
+		return 1;
+
+	switch(curtok){
+		case token_signed:
+		case token_unsigned:
+		case token_struct:
+		case token_union:
+		case token_enum:
+		case token_typeof:
+		case token_attribute:
+			return 1;
+
+		case token_identifier:
+			return !!typedef_find(current_scope, token_current_spel_peek());
+
+		default:
+			break;
+	}
+
+	return 0;
 }
 
 funcargs *parse_func_arglist()
@@ -386,7 +430,20 @@ decl_desc *parse_decl_desc_ptr(enum decl_mode mode, char **sp)
 		return desc;
 
 	}else if(accept(token_open_paren)){
-		decl_desc *ret = parse_decl_desc(mode, sp);
+		decl_desc *ret;
+
+		/*
+		 * we could be here:
+		 * int (int a) - from either "^int(int...)" or "void f(int (int));"
+		 * in which case, we've read the first "int", stop early, and unget the open paren
+		 */
+		if(parse_curtok_is_type()){
+			uneat(token_open_paren);
+			/* parse_...func will grab this as funcargs instead */
+			return NULL;
+		}
+
+		ret = parse_decl_desc(mode, sp);
 		EAT(token_close_paren);
 		return ret;
 
@@ -470,7 +527,7 @@ decl *parse_decl(type *t, enum decl_mode mode)
 
 	decl_desc_link(d);
 
-	parse_add_attr(&d->attr);
+	parse_add_attr(&d->attr); /* int spel __attr__ */
 
 #ifdef PARSE_DECL_VERBOSE
 	fprintf(stderr, "parsed decl %s, is_func %d: %s\nat %s\n",
@@ -526,7 +583,7 @@ decl **parse_decls_one_type()
 
 decl **parse_decls_multi_type(enum decl_multi_mode mode)
 {
-	const enum decl_mode parse_flag = mode & DECL_MULTI_CAN_DEFAULT ? DECL_CAN_DEFAULT : 0;
+	const enum decl_mode parse_flag = (mode & DECL_MULTI_CAN_DEFAULT ? DECL_CAN_DEFAULT : 0);
 	decl **decls = NULL;
 	decl *last;
 	int are_tdefs;

@@ -165,17 +165,6 @@ decl *decl_copy(decl *d)
 	return ret;
 }
 
-void decl_copy_primitive(decl *dto, decl *dfrom)
-{
-	type *const to = dto->type, *const from = dfrom->type;
-
-	to->primitive = from->primitive;
-	to->sue       = from->sue;
-	to->typeof    = from->typeof;
-
-	decl_copy_desc_if(dto, dfrom);
-}
-
 int decl_size(decl *d)
 {
 	int mul = 1;
@@ -263,6 +252,7 @@ int decl_desc_equal(decl_desc *a, decl_desc *b)
 			return 0;
 
 	/* allow a to be "type (*)()" and b to be "type ()" */
+	/* note: we don't accept blocks to be assign from type () */
 	if(a->type == decl_desc_func && a->child && a->child->type == decl_desc_ptr){
 		/* a is ptr-to-func */
 
@@ -591,6 +581,7 @@ cant:
 
 	if(pfuncargs)
 		*pfuncargs = args;
+	/* else: XXX: memleak */
 
 	return d;
 }
@@ -610,7 +601,7 @@ void decl_conv_array_func_to_ptr(decl *d)
 			case decl_desc_func:
 				if(!dp->child)
 					goto ins_ptr;
-				
+
 				switch(dp->child->type){
 					case decl_desc_ptr:
 					case decl_desc_block:

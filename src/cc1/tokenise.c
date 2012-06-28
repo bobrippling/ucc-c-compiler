@@ -102,7 +102,7 @@ static struct line_list
 } *store_lines, **store_line_last = &store_lines;
 
 /* -- */
-enum token curtok;
+enum token curtok, curtok_uneat;
 
 intval currentval = { 0, 0 }; /* an integer literal */
 

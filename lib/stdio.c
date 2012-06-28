@@ -30,8 +30,10 @@ struct __FILE
 	__stdio_seek  *f_seek;
 	__stdio_close *f_close;
 
-	char buf_write[256];
-	char *buf_write_p;
+	/*
+	char buf_write[256], buf_read[256];
+	char *buf_write_p, *buf_read_p;
+	*/
 };
 #define FILE_INIT(fd) { fd, file_status_fine, NULL, NULL, NULL, NULL, NULL }
 
@@ -91,6 +93,12 @@ int ferror(FILE *f)
 	return f->status == file_status_err;
 }
 
+static void fopen_init(FILE *f, int fd)
+{
+	f->fd = fd;
+	f->status = file_status_fine;
+}
+
 static int fopen2(FILE *f, const char *path, const char *smode)
 {
 	int fd, mode;
@@ -143,9 +151,7 @@ inval:
 	if(fd == -1)
 		return 1;
 
-	f->fd = fd;
-
-	f->status = file_status_fine;
+	fopen_init(f, fd);
 
 	return 0;
 }
@@ -220,6 +226,16 @@ FILE *freopen(const char *path, const char *mode, FILE *f)
 		free(f);
 		return NULL;
 	}
+	return f;
+}
+
+FILE *fdopen(int fd, const char *mode)
+{
+	FILE *f = malloc(sizeof *f);
+	(void)mode;
+	if(!f)
+		return NULL;
+	fopen_init(f, fd);
 	return f;
 }
 

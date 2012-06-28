@@ -25,15 +25,18 @@ void fold_expr_block(expr *e, symtable *stab)
 	 * else the type of the first one we find
 	 */
 
-	e->tree_type = decl_new();
-	e->tree_type->type->store = store_static;
+	if(e->decl){
+		e->tree_type = e->decl;
 
-	r = NULL;
-	stmt_walk(e->code, stmt_walk_first_return, &r);
-	if(r && r->expr)
-		decl_copy_primitive(e->tree_type, r->expr->tree_type);
-	else
-		e->tree_type->type->primitive = type_void;
+	}else{
+		stmt_walk(e->code, stmt_walk_first_return, &r);
+		if(r && r->expr)
+			e->tree_type = decl_copy(r->expr->tree_type);
+		else
+			e->tree_type->type->primitive = type_void;
+	}
+
+	e->tree_type->type->store = store_static;
 
 	/* copied the type, now make it a function */
 	func = decl_desc_func_new(NULL, NULL);
@@ -83,10 +86,11 @@ void mutate_expr_block(expr *e)
 	(void)e;
 }
 
-expr *expr_new_block(funcargs *args, stmt *code)
+expr *expr_new_block(decl *rt, funcargs *args, stmt *code)
 {
 	expr *e = expr_new_wrapper(block);
 	e->block_args = args;
 	e->code = code;
+	e->decl = rt; /* return type if not null */
 	return e;
 }
