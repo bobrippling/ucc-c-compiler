@@ -12,8 +12,7 @@ void dynarray_add(void ***par, void *new)
 	void **ar = *par;
 	int idx = 0;
 
-	if(!new)
-		die("dynarray_add(): adding NULL");
+	UCC_ASSERT(new, "dynarray_add(): adding NULL");
 
 	if(!ar){
 		ar = umalloc(2 * sizeof *ar);
@@ -38,8 +37,7 @@ void *dynarray_pop(void ***par)
 	r = ar[i];
 	ar[i] = NULL;
 
-	if(!r)
-		die("dynarray_pop(): empty array");
+	UCC_ASSERT(r, "dynarray_pop(): empty array");
 
 	if(i == 0){
 		free(ar);
@@ -77,8 +75,7 @@ void dynarray_rm(void **ar, void *x)
 
 	n = dynarray_count(ar);
 
-	if(!n)
-		die("dynarray_rm(): empty array");
+	UCC_ASSERT(n, "dynarray_rm(): empty array");
 
 	for(i = 0; ar[i]; i++)
 		if(ar[i] == x){
@@ -120,8 +117,7 @@ void dynarray_add_array(void ***par, void **ar2)
 	void **ar = *par;
 	int n, n2, total;
 
-	if(!ar2)
-		die("dynarray_add_array(): empty array");
+	UCC_ASSERT(ar2, "dynarray_add_array(): empty array");
 
 	if(!ar){
 		n = dynarray_count(ar2);
