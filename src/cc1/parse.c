@@ -914,8 +914,11 @@ symtable *parse()
 
 	for(;;){
 		decl **new = parse_decls_multi_type(DECL_MULTI_CAN_DEFAULT | DECL_MULTI_ACCEPT_FUNC_CODE);
-		dynarray_add_array((void ***)&decls, (void **)new);
-		free(new);
+
+		if(new){
+			dynarray_add_array((void ***)&decls, (void **)new);
+			free(new);
+		}
 
 		if(accept(token_semicolon)){
 			if(!warned){
