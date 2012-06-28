@@ -44,7 +44,7 @@ void parse_type_preamble(type **tp, char **psp, enum type_primitive primitive)
 		EAT(token_identifier);
 	}
 
-	parse_add_attr(&t->attr);
+	parse_add_attr(&t->attr); /* int/struct-A __attr__ */
 
 	*psp = spel;
 	*tp = t;
@@ -105,7 +105,7 @@ type *parse_type_sue(enum type_primitive prim)
 
 	t->sue = sue_add(current_scope, spel, members, prim);
 
-	parse_add_attr(&t->sue->attr);
+	parse_add_attr(&t->sue->attr); /* struct A {} __attr__ */
 
 	return t;
 }
@@ -129,10 +129,11 @@ static void parse_add_attr(decl_attr **append)
 type *parse_type()
 {
 	expr *tdef_typeof = NULL;
+	decl_attr *attr = NULL;
 	enum type_qualifier qual = qual_none;
 	enum type_storage   store = store_default;
 	enum type_primitive primitive = type_int;
-	int is_signed = 1, is_inline = 0;
+	int is_signed = 1, is_inline = 0, had_attr = 0;
 	int store_set = 0, primitive_set = 0, signed_set = 0;
 
 	for(;;){
@@ -243,12 +244,21 @@ type *parse_type()
 			primitive_set = 1;
 
 			EAT(token_identifier);
+
+		}else if(curtok == token_attribute){
+			parse_add_attr(&attr); /* __attr__ int ... */
+			had_attr = 1;
+			/*
+			 * can't depend on !!attr, since it is null when:
+			 * __attribute__(());
+			 */
+
 		}else{
 			break;
 		}
 	}
 
-	if(qual != qual_none || store_set || primitive_set || signed_set || tdef_typeof || is_inline){
+	if(qual != qual_none || store_set || primitive_set || signed_set || tdef_typeof || is_inline || had_attr){
 		type *t = type_new();
 
 		/* signed size_t x; */
@@ -267,7 +277,8 @@ type *parse_type()
 		t->qual  = qual;
 		t->store = store;
 
-		parse_add_attr(&t->attr);
+		t->attr = attr;
+		parse_add_attr(&t->attr); /* int/struct-A __attr__ */
 
 		return t;
 	}else{
@@ -287,6 +298,7 @@ int parse_curtok_is_type(void)
 		case token_union:
 		case token_enum:
 		case token_typeof:
+		case token_attribute:
 			return 1;
 
 		case token_identifier:
@@ -500,7 +512,7 @@ decl *parse_decl(type *t, enum decl_mode mode)
 
 	decl_desc_link(d);
 
-	parse_add_attr(&d->attr);
+	parse_add_attr(&d->attr); /* int spel __attr__ */
 
 #ifdef PARSE_DECL_VERBOSE
 	fprintf(stderr, "parsed decl %s, is_func %d: %s\nat %s\n",
