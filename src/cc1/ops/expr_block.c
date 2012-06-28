@@ -9,7 +9,6 @@ const char *str_expr_block(void)
 void fold_expr_block(expr *e, symtable *stab)
 {
 	decl_desc *func;
-	stmt *r;
 
 	/* add e->block_args to symtable */
 
@@ -29,13 +28,17 @@ void fold_expr_block(expr *e, symtable *stab)
 		e->tree_type = e->decl;
 
 	}else{
-		stmt_walk(e->code, stmt_walk_first_return, &r);
-		if(r && r->expr)
-			e->tree_type = decl_copy(r->expr->tree_type);
-		else
-			e->tree_type->type->primitive = type_void;
-	}
+		stmt *r = NULL;
 
+		stmt_walk(e->code, stmt_walk_first_return, &r);
+
+		if(r && r->expr){
+			e->tree_type = decl_copy(r->expr->tree_type);
+		}else{
+			e->tree_type = decl_new();
+			e->tree_type->type->primitive = type_void;
+		}
+	}
 	e->tree_type->type->store = store_static;
 
 	/* copied the type, now make it a function */

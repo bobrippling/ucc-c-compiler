@@ -159,7 +159,6 @@ decl_desc   *decl_desc_array_new(decl *dparent, decl_desc *parent);
 #define decl_desc_ptr_or_block(d) ((d)->type == decl_desc_ptr || (d)->type == decl_desc_block)
 
 decl      *decl_copy(decl *);
-void       decl_copy_primitive(decl *to, decl *from);
 decl_desc *decl_desc_copy(decl_desc *);
 
 void decl_conv_array_func_to_ptr(decl *d);
