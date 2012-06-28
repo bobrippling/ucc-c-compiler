@@ -11,6 +11,7 @@
 #include "cc1.h"
 
 extern enum token curtok;
+static enum token curtok_save = token_unknown;
 
 enum type_primitive curtok_to_type_primitive()
 {
@@ -273,8 +274,29 @@ void eat2(enum token t, const char *fnam, int line, int die)
 
 		/* XXX: we continue here, assuming we had the token anyway */
 	}else{
-		nexttoken();
+		if(curtok_save != token_unknown){
+			curtok = curtok_save;
+			curtok_save = token_unknown;
+		}else{
+			nexttoken();
+		}
 	}
+}
+
+int accept(enum token t)
+{
+	if(t == curtok){
+		eat(t, NULL, 0); /* can't fail */
+		return 1;
+	}
+	return 0;
+}
+
+void uneat(enum token t)
+{
+	UCC_ASSERT(curtok_save == token_unknown, "curtok regurgitate buffer full");
+	curtok_save = curtok;
+	curtok = t;
 }
 
 void eat(enum token t, const char *fnam, int line)

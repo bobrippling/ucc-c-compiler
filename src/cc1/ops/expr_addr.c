@@ -62,6 +62,17 @@ void fold_expr_addr(expr *e, symtable *stab)
 			}
 		}
 
+	}else if(e->spel){
+		char *save;
+
+		/* address of label - void * */
+		e->tree_type = decl_ptr_depth_inc(decl_new());
+		e->tree_type->type->primitive = type_void;
+
+		save = e->spel;
+		e->spel = asm_label_goto(e->spel);
+		free(save);
+
 	}else{
 		fold_inc_writes_if_sym(e->lhs, stab);
 
@@ -136,7 +147,12 @@ void gen_expr_addr(expr *e, symtable *stab)
 				asm_operand_new_reg(  e->tree_type, ASM_REG_A), /* TODO: tt right here? */
 				asm_operand_new_label(NULL, e->array_store->label)
 			);
-
+	}else if(e->spel){
+		asm_output_new(
+				asm_out_type_mov,
+				asm_operand_new_reg(  NULL, ASM_REG_A),
+				asm_operand_new_label(NULL, e->array_store->label)
+			);
 	}else{
 		/* address of possibly an ident "(&a)->b" or a struct expr "&a->b" */
 		if(expr_kind(e->lhs, identifier)){
@@ -158,6 +174,8 @@ void gen_expr_addr_1(expr *e, FILE *f)
 	if(e->array_store){
 		/* address of an array store */
 		fprintf(f, "%s", e->array_store->label);
+	}else if(e->spel){
+		fprintf(f, "%s", e->spel);
 	}else{
 		UCC_ASSERT(expr_kind(e->lhs, identifier), "globals addr-of can only be identifier for now");
 		fprintf(f, "%s", e->lhs->spel);
@@ -185,6 +203,8 @@ void gen_expr_str_addr(expr *e, symtable *stab)
 			}
 			gen_str_indent--;
 		}
+	}else if(e->spel){
+		idt_printf("address of label \"%s\"\n", e->spel);
 	}else{
 		idt_printf("address of expr:\n");
 		gen_str_indent++;

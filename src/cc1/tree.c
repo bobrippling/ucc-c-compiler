@@ -30,12 +30,15 @@ void where_new(struct where *w)
 		if(eof_where)
 			memcpy(w, eof_where, sizeof *w);
 		else
-			memset(w, 0, sizeof *w); /*ICE("where_new() after buffer eof");*/
+			/*ICE("where_new() after buffer eof");*/
+			/* go for last line of file*/
+			goto final;
 	}else{
 		extern int current_line, current_chr;
 		extern const char *current_fname, *current_line_str;
 		extern int current_fname_used, current_line_str_used;
 
+final:
 		w->line  = current_line;
 		w->chr   = current_chr;
 		w->fname = current_fname;
