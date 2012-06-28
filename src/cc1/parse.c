@@ -127,9 +127,13 @@ expr *parse_block()
 
 	rt = parse_decl_single(DECL_SPEL_NO);
 
-	if(decl_is_func(rt)){
-		/* got ^int (args...) */
-		rt = decl_func_deref(rt, &args);
+	if(rt){
+		if(decl_is_func(rt)){
+			/* got ^int (args...) */
+			rt = decl_func_deref(rt, &args);
+		}else{
+			DIE_AT(NULL, "function decl expected for block (got %s)", decl_to_str(rt));
+		}
 
 	}else if(accept(token_open_paren)){
 		/* ^(args...) */
