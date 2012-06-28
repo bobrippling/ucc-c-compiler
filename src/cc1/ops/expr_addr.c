@@ -16,6 +16,18 @@ void fold_expr_addr(expr *e, symtable *stab)
 {
 	if(e->data_store){
 		data_store_fold_decl(e->data_store, &e->tree_type);
+
+	}else if(e->spel){
+		char *save;
+
+		/* address of label - void * */
+		e->tree_type = decl_ptr_depth_inc(decl_new());
+		e->tree_type->type->primitive = type_void;
+
+		save = e->spel;
+		e->spel = asm_label_goto(e->spel);
+		free(save);
+
 	}else{
 		fold_inc_writes_if_sym(e->lhs, stab);
 
@@ -87,6 +99,9 @@ void gen_expr_addr(expr *e, symtable *stab)
 
 		data_store_declare(e->data_store, cc_out[SECTION_DATA]);
 		data_store_out(    e->data_store, cc_out[SECTION_DATA]);
+
+	}else if(e->spel){
+		asm_temp(1, "mov rax, %s", e->spel);
 	}else{
 		/* address of possibly an ident "(&a)->b" or a struct expr "&a->b" */
 		if(expr_kind(e->lhs, identifier)){
@@ -108,6 +123,8 @@ void gen_expr_addr_1(expr *e, FILE *f)
 		/*fprintf(f, "%s", e->data_store->spel);*/
 		data_store_declare(e->data_store, f);
 		data_store_out(    e->data_store, f);
+	}else if(e->spel){
+		fprintf(f, "%s", e->spel);
 	}else{
 		UCC_ASSERT(expr_kind(e->lhs, identifier), "globals addr-of can only be identifier for now");
 		fprintf(f, "%s", e->lhs->spel);
@@ -126,6 +143,8 @@ void gen_expr_str_addr(expr *e, symtable *stab)
 		literal_print(cc1_out, e->data_store->bits.str, e->data_store->len);
 		gen_str_indent--;
 		fputc('\n', cc1_out);
+	}else if(e->spel){
+		idt_printf("address of label \"%s\"\n", e->spel);
 	}else{
 		idt_printf("address of expr:\n");
 		gen_str_indent++;

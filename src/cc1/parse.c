@@ -122,13 +122,22 @@ expr *parse_block()
 {
 	stmt *code;
 	funcargs *args;
+	decl *rt;
 
 	EAT(token_xor);
 
-	if(accept(token_open_paren)){
+	rt = parse_decl_single(DECL_SPEL_NO);
+
+	if(decl_is_func(rt)){
+		/* got ^int (args...) */
+		rt = decl_func_deref(rt, &args);
+
+	}else if(accept(token_open_paren)){
+		/* ^(args...) */
 		args = parse_func_arglist();
 		EAT(token_close_paren);
 	}else{
+		/* ^{...} */
 		args = funcargs_new();
 	}
 
@@ -137,7 +146,7 @@ expr *parse_block()
 	/* prevent access to nested vars */
 	code->symtab->parent = symtab_root(code->symtab);
 
-	return expr_new_block(args, code);
+	return expr_new_block(rt, args, code);
 }
 
 expr *parse_expr_primary()
@@ -303,6 +312,14 @@ expr *parse_expr_unary()
 		 */
 	}else{
 		switch(curtok){
+			case token_andsc:
+				/* GNU &&label */
+				EAT(curtok);
+				e = expr_new_addr();
+				e->spel = token_current_spel();
+				EAT(token_identifier);
+				break;
+
 			case token_and:
 				e = expr_new_addr();
 				goto do_parse;
@@ -764,7 +781,14 @@ stmt *parse_code()
 				EAT(token_goto);
 
 				t = STAT_NEW(goto);
-				t->expr = parse_expr_identifier();
+
+				if(accept(token_multiply)){
+					/* computed goto */
+					t->expr = parse_expr_exp();
+					t->expr->expr_computed_goto = 1;
+				}else{
+					t->expr = parse_expr_identifier();
+				}
 			}
 			EAT(token_semicolon);
 			return t;
@@ -850,10 +874,28 @@ symtable *parse()
 	symtable *globals;
 	decl **decls = NULL;
 	int i;
+	int warned = 0;
 
 	current_scope = globals = symtab_new(NULL);
 
-	decls = parse_decls_multi_type(DECL_MULTI_CAN_DEFAULT | DECL_MULTI_ACCEPT_FUNC_CODE);
+	for(;;){
+		decl **new = parse_decls_multi_type(DECL_MULTI_CAN_DEFAULT | DECL_MULTI_ACCEPT_FUNC_CODE);
+
+		if(new){
+			dynarray_add_array((void ***)&decls, (void **)new);
+			free(new);
+		}
+
+		if(accept(token_semicolon)){
+			if(!warned){
+				WARN_AT(NULL, "extra semi-colon after global decl");
+				warned = 1;
+			}
+			continue;
+		}
+		break;
+	}
+
 	EAT(token_eof);
 
 	if(parse_had_error)
