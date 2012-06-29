@@ -17,6 +17,7 @@
 #include "../util/dynmap.h"
 #include "sue.h"
 #include "decl.h"
+#include "ops/__builtin.h"
 
 decl *curdecl_func, *curdecl_func_called; /* for funcargs-local labels and return type-checking */
 
@@ -523,9 +524,26 @@ void fold_funcargs(funcargs *fargs, symtable *stab, char *context)
 	}
 }
 
+int fold_passable_yes(stmt *s)
+{ (void)s; return 1; }
+
+int fold_passable_no(stmt *s)
+{ (void)s; return 0; }
+
+int fold_passable(stmt *s)
+{
+	return s->f_passable(s);
+}
+
 void fold_func(decl *func_decl)
 {
 	if(func_decl->func_code){
+		struct
+		{
+			char *extra;
+			where *where;
+		} the_return = { NULL, NULL };
+
 		curdecl_func = func_decl;
 		curdecl_func_called = decl_func_deref(decl_copy(curdecl_func), NULL);
 
@@ -535,6 +553,45 @@ void fold_func(decl *func_decl)
 				curdecl_func->spel);
 
 		fold_stmt(func_decl->func_code);
+
+		if(decl_attr_present(curdecl_func->attr, attr_noreturn)){
+			if(!decl_is_void(curdecl_func_called)){
+				cc1_warn_at(&func_decl->where, 0, 1, WARN_RETURN_UNDEF,
+						"function \"%s\" marked no-return has a non-void return value",
+						func_decl->spel);
+			}
+
+
+			if(fold_passable(func_decl->func_code)){
+				/* if we reach the end, it's bad */
+				the_return.extra = "implicitly ";
+				the_return.where = &func_decl->where;
+			}else{
+				stmt *ret = NULL;
+
+				stmt_walk(func_decl->func_code, stmt_walk_first_return, NULL, &ret);
+
+				if(ret){
+					/* obviously returns */
+					the_return.extra = "";
+					the_return.where = &ret->where;
+				}
+			}
+
+			if(the_return.extra){
+				cc1_warn_at(the_return.where, 0, 1, WARN_RETURN_UNDEF,
+						"function \"%s\" marked no-return %sreturns",
+						func_decl->spel, the_return.extra);
+			}
+
+		}else if(!decl_is_void(curdecl_func_called)){
+			/* non-void func - check it doesn't return */
+			if(fold_passable(func_decl->func_code)){
+				cc1_warn_at(&func_decl->where, 0, 1, WARN_RETURN_UNDEF,
+						"control reaches end of non-void function %s",
+						func_decl->spel);
+			}
+		}
 
 		free(curdecl_func_called);
 		curdecl_func_called = NULL;
@@ -681,6 +738,19 @@ static void fold_link_decl_defs(dynmap *spel_decls)
 	}
 }
 
+static void add_builtins(symtable *globs)
+{
+	decl **i, **start;
+
+	for(start = i = builtin_funcs(); i && *i; i++){
+		decl *d = *i;
+
+		symtab_add(globs, d, sym_global, SYMTAB_NO_SYM, SYMTAB_PREPEND);
+	}
+
+	dynarray_free((void ***)&start, NULL);
+}
+
 void fold(symtable *globs)
 {
 #define D(x) globs->decls[x]
@@ -690,6 +760,8 @@ void fold(symtable *globs)
 
 	memset(&asm_struct_enum_where, 0, sizeof asm_struct_enum_where);
 	asm_struct_enum_where.fname = current_fname;
+
+	add_builtins(globs);
 
 	if(fopt_mode & FOPT_ENABLE_ASM){
 		decl *df;

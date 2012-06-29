@@ -25,3 +25,8 @@ void gen_stmt_do(stmt *s)
 
 	asm_label(s->lbl_break);
 }
+
+void mutate_stmt_do(stmt *s)
+{
+	s->f_passable = while_passable;
+}
