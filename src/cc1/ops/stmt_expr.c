@@ -18,5 +18,29 @@ void fold_stmt_expr(stmt *s)
 void gen_stmt_expr(stmt *s)
 {
 	gen_expr(s->expr, s->symtab);
+
+	if(s->expr->tree_type->builtin)
+		return;
+
 	asm_temp(1, "pop rax ; unused expr");
+}
+
+static int expr_passable(stmt *s)
+{
+	/*
+	 * TODO: ({}) - return inside?
+	 * if we have a funcall marked noreturn, we're not passable
+	 */
+	if(expr_kind(s->expr, funcall))
+		return !decl_attr_present(s->expr->tree_type->attr, attr_noreturn);
+
+	if(expr_kind(s->expr, stmt))
+		return fold_passable(s->expr->code);
+
+	return 1;
+}
+
+void mutate_stmt_expr(stmt *s)
+{
+	s->f_passable = expr_passable;
 }

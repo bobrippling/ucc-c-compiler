@@ -151,7 +151,7 @@ const char *token_to_str(enum token t)
 		CASE_STR_PREFIX(token,  enum);             CASE_STR_PREFIX(token,  ptr);            CASE_STR_PREFIX(token,  continue);        CASE_STR_PREFIX(token,  typeof);
 		CASE_STR_PREFIX(token,  volatile);         CASE_STR_PREFIX(token,  register);       CASE_STR_PREFIX(token,  attribute);       CASE_STR_PREFIX(token,  union);
 		CASE_STR_PREFIX(token,  restrict);         CASE_STR_PREFIX(token,  inline);         CASE_STR_PREFIX(token,  _Generic);        CASE_STR_PREFIX(token,  _Static_assert);
-		CASE_STR_PREFIX(token,  asm);
+		CASE_STR_PREFIX(token,  asm);              CASE_STR_PREFIX(token,  _Noreturn);
 	}
 	return NULL;
 }

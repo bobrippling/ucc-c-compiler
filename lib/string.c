@@ -98,10 +98,12 @@ void *memcpy(char *to, const char *from, size_t count)
 char *strcpy(char *dest, const char *src)
 {
 	memcpy(dest, src, strlen(src));
+	return dest;
 }
 
 char *strncpy(char *dest, const char *src, size_t n)
 {
 	const size_t len = strlen(src);
 	memcpy(dest, src, MIN(n, len));
+	return dest;
 }

@@ -4,6 +4,10 @@
 typedef void        func_fold_stmt(stmt *);
 typedef void        func_gen_stmt( stmt *);
 typedef const char *func_str_stmt(void);
+typedef void        func_mutate_stmt(stmt *);
+
+/* non-critical */
+typedef int         func_passable_stmt(stmt *);
 
 typedef struct
 {
@@ -22,9 +26,11 @@ struct stmt
 {
 	where where;
 
-	func_fold_stmt *f_fold;
-	func_gen_stmt  *f_gen;
-	func_str_stmt  *f_str;
+	func_fold_stmt     *f_fold;
+	func_gen_stmt      *f_gen;
+	func_str_stmt      *f_str;
+	func_passable_stmt *f_passable; /* can code get past this statement:
+	                                   no for return + things containing return, etc */
 
 	stmt *lhs, *rhs;
 	expr *expr; /* test expr for if and do, etc */
@@ -76,15 +82,20 @@ struct stmt_flow
 #include "ops/stmt_continue.h"
 #include "ops/stmt_asm.h"
 
-#define stmt_new_wrapper(type, stab) stmt_new(fold_stmt_ ## type, gen_stmt_ ## type, str_stmt_ ## type, stab)
-#define stmt_mutate_wrapper(s, type)    stmt_mutate(s, fold_stmt_ ## type, gen_stmt_ ## type, str_stmt_ ## type)
+#define stmt_new_wrapper(type, stab) stmt_new(fold_stmt_ ## type, gen_stmt_ ## type, str_stmt_ ## type, mutate_stmt_ ## type, stab)
+#define stmt_mutate_wrapper(s, type)    stmt_mutate(s, fold_stmt_ ## type, gen_stmt_ ## type, str_stmt_ ## type, mutate_stmt_ ## type)
 
 #define stmt_kind(st, kind) ((st)->f_fold == fold_stmt_ ## kind)
 
-stmt *stmt_new(func_fold_stmt *, func_gen_stmt *, func_str_stmt *, symtable *stab);
+stmt *stmt_new(func_fold_stmt *, func_gen_stmt *, func_str_stmt *, func_mutate_stmt *, symtable *stab);
 stmt_flow *stmt_flow_new(symtable *parent);
-void stmt_mutate(stmt *, func_fold_stmt *, func_gen_stmt *, func_str_stmt *);
+void stmt_mutate(stmt *, func_fold_stmt *, func_gen_stmt *, func_str_stmt *, func_mutate_stmt *);
 
-void stmt_walk(stmt *base, void (*f)(stmt *current, int *stop, void *), void *data);
+typedef void stmt_walk_enter(stmt *current, int *stop, int *descend, void *);
+typedef void stmt_walk_leave(stmt *current, void *);
+
+stmt_walk_enter stmt_walk_first_return; /* completes after the first return statement is found */
+
+void stmt_walk(stmt *base, stmt_walk_enter, stmt_walk_leave, void *data);
 
 #endif
