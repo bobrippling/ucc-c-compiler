@@ -23,7 +23,7 @@ char *getenv(const char *);
 extern char *__progname;
 
 /* c99 */
-void _Exit(int);
+void _Exit(int) __dead;
 
 /* c11 */
 int at_quick_exit(void (*)(void));

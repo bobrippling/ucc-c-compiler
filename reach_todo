@@ -1,4 +1,4 @@
-copy decl attr from function prototypes to their function implementations
 dead code/kills_after on statements that don't return
 
-add for(;;) and while(1) optimisation to do-while
+done:
+copy decl attr from function prototypes to their function implementations

@@ -108,6 +108,7 @@ struct decl
 	decl_attr *attr;
 
 	int internal; /* interal string or array decl */
+	int builtin; /* __builtin_* */
 
 	int is_definition;
 	/* true if this is the definition of the decl - may have init or func_code */
