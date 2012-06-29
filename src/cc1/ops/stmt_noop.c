@@ -16,3 +16,8 @@ void gen_stmt_noop(stmt *s)
 	(void)s;
 	asm_temp(1, "; noop");
 }
+
+void mutate_stmt_noop(stmt *s)
+{
+	s->f_passable = fold_passable_yes;
+}

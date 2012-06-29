@@ -36,6 +36,7 @@ enum warning
 	WARN_SYM_NEVER_READ           = 1 << 28,
 	WARN_DEAD_CODE                = 1 << 29,
 	WARN_PREDECL_ENUM             = 1 << 30,
+	WARN_RETURN_UNDEF             = 1 << 31,
 
 	/* TODO */
 	WARN_FORMAT                   = 1 << 10,

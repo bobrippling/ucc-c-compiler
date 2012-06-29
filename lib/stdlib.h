@@ -12,18 +12,18 @@ void *calloc(size_t count, size_t) __warn_unused;
 void *realloc(void *, size_t) __warn_unused;
 void  free(   void *);
 
-void exit(int);
+void exit(int) __dead;
 int atexit(void (*)(void));
 int atexit_b(void (^)(void));
 
-void abort(void);
+void abort(void) __dead;
 
 char *getenv(const char *);
 
 extern char *__progname;
 
 /* c99 */
-void _Exit(int);
+void _Exit(int) __dead;
 
 /* c11 */
 int at_quick_exit(void (*)(void));
