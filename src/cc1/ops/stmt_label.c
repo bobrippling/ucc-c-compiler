@@ -17,3 +17,8 @@ void gen_stmt_label(stmt *s)
 	asm_label(s->expr->spel);
 	gen_stmt(s->lhs); /* the code-part of the compound statement */
 }
+
+void mutate_stmt_label(stmt *s)
+{
+	s->f_passable = fold_passable_yes;
+}

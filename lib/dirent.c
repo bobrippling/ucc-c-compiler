@@ -47,6 +47,7 @@ int closedir(DIR *d)
 struct dirent *readdir(DIR *dirp __unused)
 {
 	// TODO
+	return NULL;
 }
 
 void rewinddir(DIR *dirp __unused)
@@ -72,4 +73,5 @@ int scandir(const char *restrict dir __unused,
 						int (*cmp)(const struct dirent **, const struct dirent **) __unused)
 {
 	// TODO
+	return 0;
 }
