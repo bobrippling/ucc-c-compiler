@@ -39,6 +39,7 @@ enum token
 	token_string,      /* aka \"...\" */
 
 	token_inline,
+	token__Noreturn,
 
 	token_const,
 	token_volatile,
