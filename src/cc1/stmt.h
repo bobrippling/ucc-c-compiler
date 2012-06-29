@@ -75,9 +75,11 @@ stmt *stmt_new(func_fold_stmt *, func_gen_stmt *, func_str_stmt *, func_mutate_s
 stmt_flow *stmt_flow_new(symtable *parent);
 void stmt_mutate(stmt *, func_fold_stmt *, func_gen_stmt *, func_str_stmt *, func_mutate_stmt *);
 
-typedef void stmt_walk_func(stmt *current, int *stop, int *descend, void *);
-stmt_walk_func stmt_walk_first_return; /* completes after the first return statement is found */
+typedef void stmt_walk_enter(stmt *current, int *stop, int *descend, void *);
+typedef void stmt_walk_leave(stmt *current, void *);
 
-void stmt_walk(stmt *base, stmt_walk_func, void *data);
+stmt_walk_enter stmt_walk_first_return; /* completes after the first return statement is found */
+
+void stmt_walk(stmt *base, stmt_walk_enter, stmt_walk_leave, void *data);
 
 #endif

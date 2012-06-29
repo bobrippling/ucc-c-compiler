@@ -30,7 +30,7 @@ void fold_expr_block(expr *e, symtable *stab)
 	}else{
 		stmt *r = NULL;
 
-		stmt_walk(e->code, stmt_walk_first_return, &r);
+		stmt_walk(e->code, stmt_walk_first_return, NULL, &r);
 
 		if(r && r->expr){
 			e->tree_type = decl_copy(r->expr->tree_type);
