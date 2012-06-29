@@ -64,3 +64,13 @@ void gen_stmt_if(stmt *s)
 	free(lbl_else);
 	free(lbl_fi);
 }
+
+static int if_passable(stmt *s)
+{
+	return fold_passable(s->lhs) || (s->rhs ? fold_passable(s->rhs) : 0);
+}
+
+void mutate_stmt_if(stmt *s)
+{
+	s->f_passable = if_passable;
+}

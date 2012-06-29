@@ -3,6 +3,7 @@
 #include "ops.h"
 #include "stmt_while.h"
 #include "stmt_if.h"
+#include "stmt_for.h"
 
 const char *str_stmt_while()
 {
@@ -32,7 +33,6 @@ void gen_stmt_while(stmt *s)
 
 	gen_expr(s->expr, s->symtab);
 
-	asm_pop( s->expr->tree_type, ASM_REG_A);
 	ASM_TEST(s->expr->tree_type, ASM_REG_A);
 	asm_jmp_if_zero(0, s->lbl_break);
 
@@ -40,4 +40,17 @@ void gen_stmt_while(stmt *s)
 
 	asm_jmp(s->lbl_continue);
 	asm_label(s->lbl_break);
+}
+
+int while_passable(stmt *s)
+{
+	if(const_expr_is_const(s->expr) && const_expr_value(s->expr))
+		return fold_code_escapable(s); /* while(1) */
+
+	return 1; /* fold_passable(s->lhs) - doesn't depend on this */
+}
+
+void mutate_stmt_while(stmt *s)
+{
+	s->f_passable = while_passable;
 }

@@ -30,31 +30,48 @@ void fold_expr_if(expr *e, symtable *stab)
 	fold_expr(e->rhs, stab);
 	e->tree_type = decl_copy(e->rhs->tree_type); /* TODO: check they're the same */
 
-	e->freestanding = e->lhs->freestanding || e->rhs->freestanding;
+	e->freestanding = (e->lhs ? e->lhs : e->expr)->freestanding || e->rhs->freestanding;
 }
 
 
 void gen_expr_if(expr *e, symtable *stab)
 {
 	char *lblfin, *lblelse;
-	lblfin  = asm_label_code("ifexpa");
-	lblelse = asm_label_code("ifexpb");
+
+	lblfin = asm_label_code("ifexpa");
 
 	gen_expr(e->expr, stab);
-	asm_pop( e->expr->tree_type, ASM_REG_A);
-	ASM_TEST(e->expr->tree_type, ASM_REG_A);
-	asm_jmp_if_zero(0, lblelse);
 
-	gen_expr(e->lhs ? e->lhs : e->expr, stab);
+	if(e->lhs){
+		lblelse = asm_label_code("ifexpb");
 
-	asm_jmp(lblfin);
+		asm_pop(e->expr->tree_type, ASM_REG_A);
+		ASM_TEST(e->expr->tree_type, ASM_REG_A);
+		asm_jmp_if_zero(0, lblelse);
+		gen_expr(e->lhs, stab);
+		asm_jmp(lblfin);
+		asm_label(lblelse);
+	}else{
+		asm_output_new(
+				asm_out_type_mov,
+				asm_operand_new_reg(e->expr->tree_type, ASM_REG_A),
+				asm_operand_new_deref(e->expr->tree_type, asm_operand_new_reg(NULL, ASM_REG_SP), 0)
+			);
+		asm_comment("save for ?:");
 
-	asm_label(lblelse);
+		ASM_TEST(e->expr->tree_type, ASM_REG_A);
+		asm_jmp_if_zero(1, lblfin);
+		asm_pop(e->expr->tree_type, ASM_REG_A);
+		asm_comment("discard lhs");
+	}
+
 	gen_expr(e->rhs, stab);
 	asm_label(lblfin);
 
+	if(e->lhs)
+		free(lblelse);
+
 	free(lblfin);
-	free(lblelse);
 }
 
 void gen_expr_str_if(expr *e, symtable *stab)
@@ -82,7 +99,7 @@ void gen_expr_str_if(expr *e, symtable *stab)
 
 void mutate_expr_if(expr *e)
 {
-	(void)e;
+	e->f_const_fold = fold_const_expr_if;
 }
 
 expr *expr_new_if(expr *test)

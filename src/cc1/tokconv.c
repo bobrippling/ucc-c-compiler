@@ -164,6 +164,7 @@ const char *token_to_str(enum token t)
 
 		/* sort-of storage */
 		CASE_STR_PREFIX(token,  inline);
+		CASE_STR_PREFIX(token,  _Noreturn);
 
 		/* type-qual */
 		CASE_STR_PREFIX(token,  const);

@@ -42,6 +42,7 @@ enum token
 	token__Bool,
 
 	token_inline,
+	token__Noreturn,
 
 	token_const,
 	token_volatile,

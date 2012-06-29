@@ -37,3 +37,8 @@ void gen_stmt_goto(stmt *s)
 		asm_jmp(s->expr->spel);
 	}
 }
+
+void mutate_stmt_goto(stmt *s)
+{
+	s->f_passable = fold_passable_no;
+}

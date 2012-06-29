@@ -42,3 +42,8 @@ void gen_stmt_return(stmt *s)
 	}
 	asm_jmp(curfunc_lblfin);
 }
+
+void mutate_stmt_return(stmt *s)
+{
+	s->f_passable = fold_passable_no;
+}
