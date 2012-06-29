@@ -37,21 +37,34 @@ void fold_expr_if(expr *e, symtable *stab)
 void gen_expr_if(expr *e, symtable *stab)
 {
 	char *lblfin, *lblelse;
-	lblfin  = asm_label_code("ifexpa");
-	lblelse = asm_label_code("ifexpb");
+
+	lblfin = asm_label_code("ifexpa");
 
 	gen_expr(e->expr, stab);
-	asm_temp(1, "pop rax");
-	asm_temp(1, "test rax, rax");
-	asm_temp(1, "jz %s", lblelse);
-	gen_expr(e->lhs ? e->lhs : e->expr, stab);
-	asm_temp(1, "jmp %s", lblfin);
-	asm_label(lblelse);
+
+	if(e->lhs){
+		lblelse = asm_label_code("ifexpb");
+
+		asm_temp(1, "pop rax");
+		asm_temp(1, "test rax, rax");
+		asm_temp(1, "jz %s", lblelse);
+		gen_expr(e->lhs, stab);
+		asm_temp(1, "jmp %s", lblfin);
+		asm_label(lblelse);
+	}else{
+		asm_temp(1, "mov rax, [rsp] ; save for ?:");
+		asm_temp(1, "test rax, rax");
+		asm_temp(1, "jnz %s", lblfin);
+		asm_temp(1, "pop rax ; discard lhs");
+	}
+
 	gen_expr(e->rhs, stab);
 	asm_label(lblfin);
 
+	if(e->lhs)
+		free(lblelse);
+
 	free(lblfin);
-	free(lblelse);
 }
 
 void gen_expr_str_if(expr *e, symtable *stab)
