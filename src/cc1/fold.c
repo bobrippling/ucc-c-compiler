@@ -542,23 +542,9 @@ void fold_func(decl *func_decl)
 	}
 }
 
-static void fold_link_decl_defs(decl **decls)
+static void fold_link_decl_defs(dynmap *spel_decls)
 {
-	dynmap *spel_decls = dynmap_new((dynmap_cmp_f *)strcmp);
-	decl **diter;
 	int i;
-
-	for(diter = decls; diter && *diter; diter++){
-		decl *const d   = *diter;
-		char *const key = d->spel;
-		decl **val;
-
-		val = dynmap_get(spel_decls, key);
-
-		dynarray_add((void ***)&val, d); /* fine if val is null */
-
-		dynmap_set(spel_decls, key, val);
-	}
 
 	for(i = 0; ; i++){
 		char *key;
@@ -641,7 +627,6 @@ static void fold_link_decl_defs(decl **decls)
         definition = d;
 		}
 
-
 		count_total = dynarray_count((void **)decls_for_this);
 
 		if(decl_is_func(definition)){
@@ -694,20 +679,17 @@ static void fold_link_decl_defs(decl **decls)
 		 * since we need to do it for local decls too
 		 */
 	}
-
-	dynmap_free(spel_decls);
 }
 
 void fold(symtable *globs)
 {
 #define D(x) globs->decls[x]
+	extern const char *current_fname;
+	dynmap *spel_decls;
 	int i;
 
-	{
-		extern const char *current_fname;
-		memset(&asm_struct_enum_where, 0, sizeof asm_struct_enum_where);
-		asm_struct_enum_where.fname = current_fname;
-	}
+	memset(&asm_struct_enum_where, 0, sizeof asm_struct_enum_where);
+	asm_struct_enum_where.fname = current_fname;
 
 	if(fopt_mode & FOPT_ENABLE_ASM){
 		decl *df;
@@ -744,6 +726,8 @@ void fold(symtable *globs)
 		if(D(i)->sym)
 			ICE("%s: sym (%p) already set for global \"%s\"", where_str(&D(i)->where), (void *)D(i)->sym, D(i)->spel);
 
+	spel_decls = dynmap_new((dynmap_cmp_f *)strcmp);
+
 	for(;;){
 		int i;
 
@@ -755,16 +739,41 @@ void fold(symtable *globs)
 		if(!D(i))
 			break; /* finished */
 
+		{
+			char *key = D(i)->spel;
+			decl **val = dynmap_get(spel_decls, key);
+
+			dynarray_add((void ***)&val, D(i)); /* fine if val is null */
+
+			dynmap_set(spel_decls, key, val);
+		}
+
 		D(i)->sym = sym_new(D(i), sym_global);
 
 		fold_decl_global(D(i), globs);
 
-		if(decl_is_func(D(i)))
+		if(decl_is_func(D(i))){
+			if(decl_is_definition(D(i))){
+				/* gather round, attributes */
+				decl **protos;
+
+				for(protos = dynmap_get(spel_decls, D(i)->spel); *protos; protos++){
+					decl *d = *protos;
+
+					if(!decl_is_definition(d)){
+						decl_attr_append(&D(i)->attr, d->attr);
+					}
+				}
+			}
+
 			fold_func(D(i));
+		}
 	}
 
 	/* link declarations with definitions */
-	fold_link_decl_defs(globs->decls);
+	fold_link_decl_defs(spel_decls);
+
+	dynmap_free(spel_decls);
 
 	/* static assertions */
 	{

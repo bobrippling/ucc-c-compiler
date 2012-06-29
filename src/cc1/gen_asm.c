@@ -66,7 +66,7 @@ void asm_extern(decl *d)
 
 void gen_asm_global(decl *d)
 {
-	if(!d->is_definition)
+	if(!d->internal && !d->is_definition)
 		return;
 
 	if(decl_attr_present(d->attr, attr_section))
@@ -119,7 +119,7 @@ void gen_asm(symtable *globs)
 		decl *d = *diter;
 
 		/* inline_only aren't currently inlined */
-		if(!d->is_definition)
+		if(!d->internal && !d->is_definition)
 			continue;
 
 		if(d->inline_only){
