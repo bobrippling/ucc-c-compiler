@@ -30,7 +30,7 @@ void fold_expr_if(expr *e, symtable *stab)
 	fold_expr(e->rhs, stab);
 	e->tree_type = decl_copy(e->rhs->tree_type); /* TODO: check they're the same */
 
-	e->freestanding = e->lhs->freestanding || e->rhs->freestanding;
+	e->freestanding = (e->lhs ? e->lhs : e->expr)->freestanding || e->rhs->freestanding;
 }
 
 
@@ -79,7 +79,7 @@ void gen_expr_str_if(expr *e, symtable *stab)
 
 void mutate_expr_if(expr *e)
 {
-	(void)e;
+	e->f_const_fold = fold_const_expr_if;
 }
 
 expr *expr_new_if(expr *test)
