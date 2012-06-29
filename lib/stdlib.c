@@ -52,6 +52,8 @@ void abort()
 	raise(SIGABRT);
 
 	// TODO: restore + unblock SIGABRT and re-raise
+
+	__builtin_unreachable();
 }
 
 char *getenv(const char *key)
@@ -123,6 +125,7 @@ void exit(int code)
 void _Exit(int code)
 {
 	__syscall(SYS_exit, code);
+	__builtin_unreachable();
 }
 
 int at_quick_exit(void (*f)(void))
