@@ -1,4 +1,0 @@
-dead code/kills_after on statements that don't return
-
-done:
-copy decl attr from function prototypes to their function implementations
