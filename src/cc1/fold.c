@@ -537,7 +537,11 @@ int fold_passable(stmt *s)
 void fold_func(decl *func_decl)
 {
 	if(func_decl->func_code){
-		char *returns = NULL;
+		struct
+		{
+			char *extra;
+			where *where;
+		} the_return = { NULL, NULL };
 
 		curdecl_func = func_decl;
 		curdecl_func_called = decl_func_deref(decl_copy(curdecl_func), NULL);
@@ -559,22 +563,24 @@ void fold_func(decl *func_decl)
 
 			if(fold_passable(func_decl->func_code)){
 				/* if we reach the end, it's bad */
-				returns = "implicitly ";
+				the_return.extra = "implicitly ";
+				the_return.where = &func_decl->where;
 			}else{
 				stmt *ret = NULL;
 
-				stmt_walk(func_decl->func_code, stmt_walk_first_return, &ret);
+				stmt_walk(func_decl->func_code, stmt_walk_first_return, NULL, &ret);
 
 				if(ret){
 					/* obviously returns */
-					returns = "";
+					the_return.extra = "";
+					the_return.where = &ret->where;
 				}
 			}
 
-			if(returns){
-				cc1_warn_at(&func_decl->where, 0, 1, WARN_RETURN_UNDEF,
+			if(the_return.extra){
+				cc1_warn_at(the_return.where, 0, 1, WARN_RETURN_UNDEF,
 						"function \"%s\" marked no-return %sreturns",
-						func_decl->spel, returns);
+						func_decl->spel, the_return.extra);
 			}
 
 		}else if(!decl_is_void(curdecl_func_called)){
