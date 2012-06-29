@@ -44,9 +44,10 @@ decl **builtin_funcs(void)
 void builtin_fold(expr *e)
 {
 	/* funcall */
+	(void)e;
 }
 
 void builtin_gen(expr *e)
 {
-
+	(void)e;
 }
