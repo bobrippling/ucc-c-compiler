@@ -37,17 +37,18 @@ enum warning
 	WARN_DEAD_CODE                = 1 << 19,
 	WARN_PREDECL_ENUM             = 1 << 20,
 	WARN_OMITTED_PARAM_TYPES      = 1 << 21,
+	WARN_RETURN_UNDEF             = 1 << 22,
 
 	/* TODO */
-	WARN_FORMAT                   = 1 << 22,
-	WARN_INT_TO_PTR               = 1 << 23,
-	WARN_PTR_ARITH                = 1 << 24,
-	WARN_SHADOW                   = 1 << 25,
-	WARN_UNINITIALISED            = 1 << 26,
-	WARN_UNUSED_PARAM             = 1 << 27,
-	WARN_UNUSED_VAL               = 1 << 28,
-	WARN_UNUSED_VAR               = 1 << 29,
-	WARN_ARRAY_BOUNDS             = 1 << 30,
+	WARN_FORMAT                   = 1 << 23,
+	WARN_INT_TO_PTR               = 1 << 24,
+	WARN_PTR_ARITH                = 1 << 25,
+	WARN_SHADOW                   = 1 << 26,
+	WARN_UNINITIALISED            = 1 << 27,
+	WARN_UNUSED_PARAM             = 1 << 28,
+	WARN_UNUSED_VAL               = 1 << 29,
+	WARN_UNUSED_VAR               = 1 << 30,
+	WARN_ARRAY_BOUNDS             = 1 << 31,
 };
 
 enum fopt

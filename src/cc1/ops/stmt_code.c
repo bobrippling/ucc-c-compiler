@@ -115,3 +115,23 @@ void gen_stmt_code(stmt *s)
 	for(titer = s->codes; titer && *titer; titer++)
 		gen_stmt(*titer);
 }
+
+static int code_passable(stmt *s)
+{
+	stmt **i;
+
+	/* REACH TODO */
+
+	for(i = s->codes; i && *i; i++){
+		stmt *sub = *i;
+		if(!fold_passable(sub))
+			return 0;
+	}
+
+	return 1;
+}
+
+void mutate_stmt_code(stmt *s)
+{
+	s->f_passable = code_passable;
+}
