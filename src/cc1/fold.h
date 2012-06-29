@@ -23,6 +23,10 @@ void fold_inc_writes_if_sym(expr *e, symtable *stab);
 void fold_expr(expr *e, symtable *stab);
 void fold_stmt(stmt *t);
 
+int fold_passable(stmt *s);
+int fold_passable_yes(stmt *s);
+int fold_passable_no( stmt *s);
+
 void fold(symtable *);
 
 extern decl *curdecl_func, *curdecl_func_called;

@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 
 #include "ops.h"
 #include "stmt_for.h"
@@ -131,4 +132,68 @@ void gen_stmt_for(stmt *s)
 	asm_label(s->lbl_break);
 
 	free(lbl_test);
+}
+
+struct walk_info
+{
+	stmt *escape;
+	int switch_depth;
+};
+
+/* ??? change this so we set properties in fold() instead? */
+static void
+stmt_walk_first_break_goto_return(stmt *current, int *stop, int *descend, void *extra)
+{
+	struct walk_info *wi = extra;
+	int found = 0;
+
+	(void)descend;
+
+	if(stmt_kind(current, break)){
+		found = wi->switch_depth == 0;
+	}else if(stmt_kind(current, return) || stmt_kind(current, goto)){
+		found = 1;
+	}else if(stmt_kind(current, switch)){
+		wi->switch_depth++;
+	}
+
+	if(found){
+		wi->escape = current;
+		*stop = 1;
+	}
+}
+
+static void
+stmt_walk_switch_leave(stmt *current, void *extra)
+{
+	if(stmt_kind(current, switch)){
+		struct walk_info *wi = extra;
+		wi->switch_depth--;
+	}
+}
+
+int fold_code_escapable(stmt *s)
+{
+	struct walk_info wi;
+
+	memset(&wi, 0, sizeof wi);
+
+	stmt_walk(s->lhs, stmt_walk_first_break_goto_return, stmt_walk_switch_leave, &wi);
+
+	/* we only return if we find a break, goto or return statement */
+	return !!wi.escape;
+}
+
+static int for_passable(stmt *s)
+{
+	/* if we don't have a condition, check for breaks, etc etc */
+	if(s->flow->for_while)
+		return 1;
+
+	return fold_code_escapable(s);
+}
+
+void mutate_stmt_for(stmt *s)
+{
+	s->f_passable = for_passable;
 }

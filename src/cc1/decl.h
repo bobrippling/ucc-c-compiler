@@ -11,7 +11,8 @@ struct decl_attr
 		attr_unused,
 		attr_warn_unused,
 		attr_section,
-		attr_enum_bitmask
+		attr_enum_bitmask,
+		attr_noreturn
 		/* TODO: warning, cdecl, stdcall, fastcall, const */
 	} type;
 
@@ -104,6 +105,8 @@ struct decl
 	int struct_offset;
 	sym *sym;
 	decl_attr *attr;
+
+	int builtin; /* __builtin_* */
 
 	int is_definition;
 	/* true if this is the definition of the decl - may have init or func_code */
