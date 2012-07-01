@@ -3,6 +3,10 @@ asm_recode branch:
 
 _Generic const-ify
 
+-Wmissing-prototypes - increase statics
+  redundant-decls
+	nested-externs
+
 updated bugs/ and test/
 
 ---------------------------------------------------- cc1
