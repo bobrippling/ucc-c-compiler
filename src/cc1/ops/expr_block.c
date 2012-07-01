@@ -40,6 +40,7 @@ void fold_expr_block(expr *e, symtable *stab)
 		}
 	}
 	e->tree_type->type->store = store_static;
+	e->tree_type->is_definition = 1;
 
 	/* copied the type, now make it a function */
 	func = decl_desc_func_new(NULL, NULL);
