@@ -20,6 +20,7 @@
 #  define MAP_ANON      0x1000
 #else
 #  define MAP_ANONYMOUS 0x20
+#  define MAP_ANON      MAP_ANONYMOUS
 #endif
 
 void *mmap(void *addr, size_t len,
