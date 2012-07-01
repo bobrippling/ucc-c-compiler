@@ -21,7 +21,6 @@ int operate(expr *lhs, expr *rhs, enum op_type op, int *bad)
 
 	switch(op){
 		OP(op_multiply,   *);
-		OP(op_modulus,    %);
 		OP(op_eq,         ==);
 		OP(op_ne,         !=);
 		OP(op_le,         <=);
@@ -36,12 +35,18 @@ int operate(expr *lhs, expr *rhs, enum op_type op, int *bad)
 		OP(op_shiftl,     <<);
 		OP(op_shiftr,     >>);
 
+		case op_modulus:
 		case op_divide:
-			if(rhs->val.iv.val)
-				return lhs->val.iv.val / rhs->val.iv.val;
+		{
+			long l = lhs->val.iv.val, r = rhs->val.iv.val;
+
+			if(r){
+				return op == op_divide ? l / r : l % r;
+			}
 			warn_at(&rhs->where, 1, "division by zero");
 			*bad = 1;
 			return 0;
+		}
 
 		case op_plus:
 			if(rhs)
