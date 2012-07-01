@@ -289,7 +289,7 @@ void read_number(enum base mode)
 		}
 }
 
-enum token curtok_to_xequal()
+static enum token curtok_to_xequal()
 {
 #define MAP(x) case x: return x ## _assign
 	switch(curtok){
@@ -302,6 +302,7 @@ enum token curtok_to_xequal()
 		MAP(token_bnot);
 		MAP(token_and);
 		MAP(token_or);
+		MAP(token_xor);
 		MAP(token_shiftl);
 		MAP(token_shiftr);
 #undef MAP
@@ -312,7 +313,7 @@ enum token curtok_to_xequal()
 	return token_unknown;
 }
 
-int curtok_is_xequal()
+static int curtok_is_xequal()
 {
 	return curtok_to_xequal(curtok) != token_unknown;
 }
