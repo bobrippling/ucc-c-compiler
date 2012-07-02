@@ -1,0 +1,2 @@
+fail: array.c
+exit=5: tim.c

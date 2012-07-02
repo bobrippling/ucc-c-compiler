@@ -1,0 +1,16 @@
+blocks_args: blocks_args.c
+	../../ucc -o $@ $<
+nest: nest.c
+	../../ucc -o $@ $<
+block_ret: block_ret.c
+	../../ucc -o $@ $<
+block_const: block_const.c
+	../../ucc -o $@ $<
+blocks_simple: blocks_simple.c
+	../../ucc -o $@ $<
+full_decl: full_decl.c
+	../../ucc -o $@ $<
+blocks_state: blocks_state.c
+	../../ucc -o $@ $<
+folding: folding.c
+	../../ucc -o $@ $<

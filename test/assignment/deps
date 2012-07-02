@@ -1,0 +1,4 @@
+assign_check: assign_check.c
+	../../ucc -o $@ $<
+valid1: valid1.c
+	../../ucc -o $@ $<

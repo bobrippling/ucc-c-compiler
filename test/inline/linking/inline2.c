@@ -7,4 +7,6 @@ int main()
 	x();
 	y(); // undef
 	z();
+
+	return 0;
 }

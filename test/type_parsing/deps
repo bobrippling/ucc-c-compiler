@@ -1,0 +1,33 @@
+func_ret_func: func_ret_func.c
+	../../ucc -o $@ $<
+	./$@
+call_deref: call_deref.c
+	../../ucc -o $@ $<
+	./$@
+tim: tim.c
+	../../ucc -o $@ $<
+	./$@; [ $? -eq 5 ]
+array: array.c
+	../../ucc -o $@ $<
+	./$@
+ALL: ALL.c
+	../../ucc -o $@ $<
+	./$@
+expr_unused_func: expr_unused_func.c
+	../../ucc -o $@ $<
+	./$@
+fptr_arg: fptr_arg.c
+	../../ucc -o $@ $<
+	./$@
+recursive: recursive.c
+	../../ucc -o $@ $<
+	./$@
+decl: decl.c
+	../../ucc -o $@ $<
+	./$@
+fptr_impl: fptr_impl.c
+	../../ucc -o $@ $<
+	./$@
+funcall_cast: funcall_cast.c
+	../../ucc -o $@ $<
+	./$@

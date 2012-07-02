@@ -1,0 +1,22 @@
+parse_test: parse_test.c
+	../../ucc -o $@ $<
+ar: ar.c
+	../../ucc -o $@ $<
+fptr_get: fptr_get.c
+	../../ucc -o $@ $<
+arg: arg.c
+	../../ucc -o $@ $<
+fptr_arg: fptr_arg.c
+	../../ucc -o $@ $<
+add_or_sub: add_or_sub.c
+	../../ucc -o $@ $<
+func_array: func_array.c
+	../../ucc -o $@ $<
+st_fn: st_fn.c
+	../../ucc -o $@ $<
+ptr: ptr.c
+	../../ucc -o $@ $<
+fptr: fptr.c
+	../../ucc -o $@ $<
+simple: simple.c
+	../../ucc -o $@ $<
