@@ -9,13 +9,21 @@ kfunc_p(const char *i __unused) { }
 
 main()
 {
-	char *a __unused2= "hi"; // WARN
-	char *b __unused = (const char *)0; // WARN
-	char  c __unused2= 'a';
+	char *a __unused2;
+	char *b __unused;
+	char  c __unused2;
 
-	const char *d __unused2= "yo";
-	const char *e __unused = (char *)0;
-	const char  f __unused = 2;
+	const char *d __unused2;
+	const char *e __unused;
+	const char  f __unused;
+
+	a = "hi"; // WARN
+	b = (const char *)0; // WARN
+	c = 'a';
+
+	d= "yo";
+	e = (char *)0;
+	//f = 2;
 
 	func(c);
 	kfunc(c);

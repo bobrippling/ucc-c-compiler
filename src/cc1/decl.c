@@ -15,11 +15,6 @@
 		if(dp->type == typ)
 
 
-#define QUAL_EQUAL(lhs, rhs, mode)                   \
-((mode & DECL_CMP_CONST_MATCH)                       \
-	? ((lhs) == (rhs))                                 \
-	: (((lhs) & ~qual_const) == ((rhs) & ~qual_const)))
-
 void decl_debug(decl *d);
 
 decl_desc *decl_desc_new(enum decl_desc_type t, decl *dparent, decl_desc *parent)
@@ -218,8 +213,7 @@ int decl_size(decl *d)
 int funcargs_equal(funcargs *args_to, funcargs *args_from, int strict_types, int *idx)
 {
 	const enum decl_cmp flag =
-		DECL_CMP_ALLOW_VOID_PTR | DECL_CMP_CONST_MATCH |
-		(strict_types ? DECL_CMP_STRICT_PRIMITIVE : 0);
+		DECL_CMP_ALLOW_VOID_PTR | (strict_types ? DECL_CMP_EXACT_MATCH : 0);
 	const int count_to = dynarray_count((void **)args_to->arglist);
 	const int count_from = dynarray_count((void **)args_from->arglist);
 	int i;
@@ -276,8 +270,20 @@ int decl_desc_equal(decl_desc *a, decl_desc *b, enum decl_cmp mode)
 
 	if(a->type == decl_desc_ptr){ /* (a == ptr) -> (b == ptr || b == array) */
 		/* check qualifiers */
-		if(b->type == decl_desc_ptr && !QUAL_EQUAL(a->bits.qual, b->bits.qual, mode)){
-			return 0;
+		enum type_qualifier qa, qb;
+
+		qa = a->bits.qual;
+		qb = b->bits.qual;
+
+		if(b->type == decl_desc_ptr){
+			if(mode & DECL_CMP_EXACT_MATCH){
+				if(qa != qb)
+					return 0;
+			}else{
+				/* if qb is const and qa isn't, error */
+				if((qb & qual_const) && !(qa & qual_const))
+					return 0;
+			}
 		}
 		/* else b is an array */
 	}
@@ -310,13 +316,15 @@ int decl_equal(decl *a, decl *b, enum decl_cmp mode)
 			return 1;
 	}
 
-	/* we are strict if told, or if either are a pointer - types must be equal */
+	/* we are exact if told, or if either are a pointer - types must be equal */
 	tmode = 0;
-	if(mode & DECL_CMP_STRICT_PRIMITIVE)
-		tmode |= TYPE_CMP_STRICT;
 
+	if((mode & DECL_CMP_EXACT_MATCH))
+		tmode |= TYPE_CMP_EXACT;
+
+	TODO;
 	if(a_ptr || b_ptr)
-		tmode |= TYPE_CMP_CONST_MATCH;
+		tmode |= TYPE_CMP_CONST;
 
 	if(!type_equal(a->type, b->type, tmode))
 		return 0;

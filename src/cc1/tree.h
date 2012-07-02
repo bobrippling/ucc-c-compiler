@@ -74,8 +74,7 @@ struct type
 
 enum type_cmp
 {
-	TYPE_CMP_STRICT        = 1 << 0,
-	TYPE_CMP_CONST_MATCH   = 1 << 1,
+	TYPE_CMP_EXACT         = 1 << 0,
 };
 
 

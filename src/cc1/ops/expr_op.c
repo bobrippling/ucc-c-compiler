@@ -261,7 +261,7 @@ void fold_expr_op(expr *e, symtable *stab)
 		if(decl_is_void(e->lhs->tree_type) || decl_is_void(e->rhs->tree_type))
 			DIE_AT(&e->where, "use of void expression");
 
-		fold_decl_equal(e->lhs->tree_type, e->rhs->tree_type, 0,
+		fold_decl_equal(e->lhs->tree_type, e->rhs->tree_type,
 				&e->where, WARN_COMPARE_MISMATCH,
 				"operation between mismatching types%s%s%s%s%s%s",
 				SPEL_IF_IDENT(e->lhs), SPEL_IF_IDENT(e->rhs));

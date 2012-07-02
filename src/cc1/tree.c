@@ -100,21 +100,22 @@ int type_size(const type *t)
 int type_equal(const type *a, const type *b, enum type_cmp mode)
 {
 	if(a->qual != b->qual){
-		if(mode & TYPE_CMP_CONST_MATCH) /* must match exactly */
+		if(mode & TYPE_CMP_EXACT){
+			fprintf(stderr, "EXACT :C\n");
 			return 0;
-
-		/* otherwise we allow 'a' to be const and 'b' to be not so */
-		if((a->qual & ~qual_const) == (b->qual & ~qual_const)){
-			/* equal except const */
-			return a->qual & qual_const ? 1 : 0;
 		}
-		return 0;
+
+		/* if b is const, a must be */
+		if((b->qual & qual_const) && !(a->qual & qual_const)){
+			fprintf(stderr, "char <-- const char :C\n");
+			return 0;
+		}
 	}
 
 	if(a->sue != b->sue)
 		return 0;
 
-	return mode & TYPE_CMP_STRICT ? a->primitive == b->primitive : 1;
+	return mode & TYPE_CMP_EXACT ? a->primitive == b->primitive : 1;
 }
 
 void function_empty_args(funcargs *func)

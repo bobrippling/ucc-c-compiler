@@ -1,8 +1,6 @@
 #include "ops.h"
 #include "expr__Generic.h"
 
-#define DECL_CMP_ARGS DECL_CMP_STRICT_PRIMITIVE
-
 const char *str_expr__Generic()
 {
 	return "_Generic";
@@ -19,7 +17,7 @@ void fold_expr__Generic(expr *e, symtable *stab)
 	fold_expr(e->expr, stab);
 
 	for(i = e->generics; i && *i; i++){
-		const int flags= DECL_CMP_ARGS | DECL_CMP_CONST_MATCH;
+		const int flags= DECL_CMP_EXACT_MATCH;
 		struct generic_lbl **j, *l = *i;
 
 		fold_expr(l->e, stab);

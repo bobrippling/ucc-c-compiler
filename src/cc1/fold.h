@@ -5,7 +5,7 @@ void fold_decl(decl *d, symtable *stab);
 
 void fold_decl_equal(
 		decl *a, decl *b,
-		int allow_const_lhs, where *w,
+		where *w,
 		enum warning warn, const char *errfmt, ...);
 
 void fold_funcargs(funcargs *fargs, symtable *stab, char *context);
