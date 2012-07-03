@@ -2,6 +2,8 @@ DIRS = assignment/ blocks/ decl_parsing/ inline/ lib/ structs/ type_parsing/
 MAKEFILES = ${DIRS:/=/Makefile}
 
 test: makefiles ${DIRS:/=/test}
+	@echo All Tests + Purposeful Failures Succeeded
+
 makefiles: ${MAKEFILES}
 clean: ${DIRS:/=/clean}
 
