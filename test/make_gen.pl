@@ -21,7 +21,13 @@ usage() if @ARGV;
 
 %rules = rules_exclude(rules_gendeps(rules_assume(rules_parse())));
 
-print "EXES = " . join(' ', map { $rules{$_}->{target} } keys %rules) . "\n";
+print "EXES = " . join(' ', map {
+		my $t = $rules{$_}->{target};
+
+		$t . ($rules{$_}->{exit} ? ' ' . $t . '_TEST' : '')
+
+	} keys %rules) . "\n";
+
 print "test: \${EXES}\n";
 
 print "clean:\n";
