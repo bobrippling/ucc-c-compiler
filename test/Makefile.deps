@@ -1,6 +1,0 @@
-all: deps test
-
-deps:
-	../make_gen.pl > $@
-
-include deps

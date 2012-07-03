@@ -11,4 +11,5 @@ int (*f(void))()
 main()
 {
 	f()();
+	return 0;
 }

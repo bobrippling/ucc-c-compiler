@@ -1,2 +1,1 @@
-fail: array.c
-exit=5: tim.c
+compile-error: array.c
