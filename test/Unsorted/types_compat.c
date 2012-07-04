@@ -18,6 +18,8 @@ int main()
   char char_arr[1];
   const char const_char_arr[1];
 
+	printf("TODO: assert\n");
+
   TEST(char*, char*);
   TEST(char*, const char*);
   TEST(const char*, char*);

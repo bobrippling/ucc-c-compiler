@@ -16,5 +16,5 @@ main()
 
 	__typeof(int_t3) d = 10;
 
-	return i + i2 + i3 + i4 + i5 + i6 + a + b + c + d;
+	assert(i + i2 + i3 + i4 + i5 + i6 + a + b + c + d == 55);
 }

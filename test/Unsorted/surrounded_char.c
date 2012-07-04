@@ -1,3 +1,5 @@
+#include <assert.h>
+
 typedef struct
 {
 	int i;
@@ -8,10 +10,18 @@ typedef struct
 main()
 {
 	A a;
+	void *p;
 
 	a.i = 123456;
 	a.c = 2;
-	a.j = 123456;
+	a.j = 654321;
 
-	printf("%d %d %d\n", a.i, a.c, a.j);
+	// assuming standard struct layout...
+	p = &a;
+
+	assert(*(int *)p == 123456);
+	p += sizeof(int);
+	assert(*(char *)p == 2);
+	p += sizeof(int); /* ? */
+	assert(*(int *)p == 654321);
 }

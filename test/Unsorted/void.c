@@ -1,7 +1,6 @@
-//void x(){}
-int x(){}
+void x(){}
 
 main()
 {
-	return x();
+	return x(); // fail
 }

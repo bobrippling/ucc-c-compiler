@@ -113,11 +113,7 @@ main(argc, argv)
     } else {
         /* why not using a function pointer ? */
         f = &fact;
-#ifdef UCC_TEMP
-        print_num(fact(n), base);
-#else
         print_num((*(int (*)())f)(n), base);
-#endif
     }
     printf("\n");
     return 0;

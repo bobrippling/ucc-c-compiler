@@ -12,7 +12,7 @@ main()
 		case B ... D:;
 	}
 
-	b == a;
+	b == a; // warn
 
 	return Z;
 }

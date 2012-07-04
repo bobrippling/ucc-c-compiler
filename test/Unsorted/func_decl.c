@@ -6,6 +6,11 @@ old(argc, argv)
 {
 }
 
+old_int(a, b)
+{
+	return a + b;
+}
+
 old_with_tdef(x)
 	size_t x;
 {

@@ -5,5 +5,5 @@ main()
 
 	i = (__typeof(int))x;
 
-	return i;
+	assert(i == 2);
 }

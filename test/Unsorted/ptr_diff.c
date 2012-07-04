@@ -1,3 +1,6 @@
+#define abs(x) \
+	({ int i = (x); i < 0 ? -i : i; })
+
 main()
 {
 	int a, b;
@@ -6,5 +9,5 @@ main()
 	pa = &a;
 	pb = &b;
 
-	assert(pb - pa == 1);
+	assert(abs(pb - pa) == 1);
 }

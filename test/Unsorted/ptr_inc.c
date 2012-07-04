@@ -9,5 +9,9 @@ int main()
 
 	j = ++i + 1;
 
-	return i;
+	assert(j == 7);
+	assert(p == &i + 3);
+	assert(p == ((void *)&i) + 3 * sizeof(void *));
+
+	return 0;
 }

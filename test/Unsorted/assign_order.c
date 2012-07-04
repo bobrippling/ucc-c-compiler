@@ -9,8 +9,7 @@ main()
 	i = f() > 2;
 
 	if(i != 1){
-		dprintf(2, "error in assign order\n");
-		return 1;
+		abort();
 	}
 
 	return 0;

@@ -4,10 +4,10 @@ main()
 	{
 		int b;
 		{
-			int c;
+			int c, b; // shares stack space with d & a
 		}
 		{
-			int d;
+			int d, a;
 		}
 	}
 }

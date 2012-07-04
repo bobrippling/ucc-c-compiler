@@ -1,8 +1,8 @@
-int main(int argc, char **argv)
+main()
 {
-	if(argc > 2)
+	if(1 > 2)
 		x:
-		printf("yo\n");
+	printf("yo\n");
 
 	printf("yo shouldn't have been printed\n");
 }

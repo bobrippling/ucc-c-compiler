@@ -1,4 +1,5 @@
-#define assert(x) if(!(x)){printf("assertion %s failed\n", #x); return 1;}
+#include <assert.h>
+
 main()
 {
 	assert('\xa' == 10);

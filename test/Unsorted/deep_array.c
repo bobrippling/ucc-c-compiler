@@ -1,7 +1,7 @@
 int printf();
 int strlen();
 
-int main(int argc, char **argv)
+int f(int argc, char **argv)
 {
 	int i;
 
@@ -14,4 +14,15 @@ int main(int argc, char **argv)
 		printf("argv[1][%d] = %c (%d)\n", i, argv[1][i], argv[1][i]);
 
 	return 0;
+}
+
+main()
+{
+	const char *ps[3];
+
+	ps[0] = "hi";
+	ps[1] = "there";
+	ps[2] = 0;
+
+	f(2, ps);
 }

@@ -1,7 +1,7 @@
 #include <stdio.h>
 
-#define printf_1(     fmt, ...) printf(fmt, __VA_ARGS__)
-#define printf_proper(...)      printf(__VA_ARGS__)
+#define printf_1(fmt, ...) printf(fmt, __VA_ARGS__)
+#define printf_proper(...) printf(__VA_ARGS__)
 
 main()
 {

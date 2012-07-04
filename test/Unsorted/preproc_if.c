@@ -1,11 +1,14 @@
+main()
+{
 #if 0
-SHOULDN'T SEE THIS
+	abort();
 #else
-should see this
+	printf("hi\n");
 #endif
 
 #if 1
-should see this
+	printf("hi\n");
 #else
-SHOULDN'T SEE THIS
+	abort();
 #endif
+}

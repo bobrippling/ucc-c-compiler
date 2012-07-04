@@ -4,5 +4,5 @@ main()
 	{
 	} a;
 
-	printf("%d\n", sizeof a);
+	assert(0 == sizeof a);
 }

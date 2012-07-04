@@ -26,7 +26,7 @@ _Noreturn void h()
 
 void _Noreturn i()
 {
-	abort();
+	exit(0);
 }
 
 _Noreturn void j()
@@ -36,12 +36,9 @@ _Noreturn void j()
 
 main()
 {
-	h();
 	i();
 	j();
-	printf("shouldn't see this\n");
-	//f();
-	//g();
+	abort(); //printf("shouldn't see this\n");
 }
 
 /*

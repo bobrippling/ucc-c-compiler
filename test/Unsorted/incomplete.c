@@ -2,14 +2,9 @@ struct A;
 
 struct A
 {
-	int i;
+	struct A x;
 };
 
 main()
 {
-	struct A *p;
-
-	p = (struct A *)2;
-
-	p->i = 5;
 }

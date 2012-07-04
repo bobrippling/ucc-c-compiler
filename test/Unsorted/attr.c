@@ -1,12 +1,12 @@
-int f() __attribute__((__unused__, tim, __format__(__printf__, 5, 2), crab))
+int f() __attribute__((unused, tim, format(printf, 5, 2), crab))
 {
 }
 
-x(int i __attribute__((__unused__)))
+x(int i __attribute__((unused)))
 {
 }
 
-int use_me() __attribute__((__warn_unused__))
+int use_me() __attribute__((warn_unused))
 {
 }
 

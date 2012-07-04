@@ -1,18 +1,18 @@
-main(int argc, char **argv)
+main()
 {
-	switch(argc){
+	switch(2){
 		case 2:
-			printf("argc is 2\n");
-			switch(strlen(argv[1])){
-				case 0:
-					printf("strlen(argv[1]) is 0\n");
-				case 1:
-					printf("strlen(argv[1]) is 1\n");
-				default:
-					printf("strlen(argv[1]) = %d\n", strlen(argv[1]));
+			switch(5 - 2){
+				case 3:
+					break;
+				case 10:
+					abort();
 			}
+			break;
+
 		case 1:
-			printf("argc 2 or 1\n");
+		default:
+			abort();
 	}
 	return 0;
 }

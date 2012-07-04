@@ -10,7 +10,7 @@ int main()
 
 	if(!p){
 		perror("malloc()");
-		return 1;
+		abort();
 	}
 
 	*p = 4;

@@ -5,7 +5,7 @@ test: makefiles ${DIRS:/=/test}
 	@echo All Tests + Purposeful Failures Succeeded
 
 makefiles: ${MAKEFILES}
-clean: ${DIRS:/=/clean}
+clean: makefiles ${DIRS:/=/clean}
 
 ${MAKEFILES}: make_gen.pl
 

@@ -16,5 +16,5 @@
 
 int main()
 {
-	return MIN(6, 5);
+	assert(MIN(6, 5) == 5);
 }

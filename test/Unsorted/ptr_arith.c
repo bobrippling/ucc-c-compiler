@@ -11,8 +11,7 @@ main(int argc, char **argv)
 		}
 		write(1, "\n", 1);
 
-		//arg++;
-		arg = arg + 1;
+		++arg;
 	}
 
 	return 0;

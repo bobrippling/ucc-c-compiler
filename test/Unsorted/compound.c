@@ -2,7 +2,7 @@
 
 #define SUM(a, b) ({           \
 			int i, r = 0;            \
-			for(i = 1; i <= 5; i++)  \
+			for(i = a; i <= b; i++)  \
 				r += i;                \
 			r;                       \
 		})
@@ -18,5 +18,10 @@ main()
 
 	({(void)printf("hello\n");});
 
-	return i - 15;
+	({
+	 int i;
+	 i = 2;
+	});
+
+	assert(i - 15 == 0);
 }

@@ -1,15 +1,25 @@
-main(int argc, char **argv)
+map(int i)
 {
-	printf("argc = %d. ", argc);
-	switch(argc){
+	switch(i){
 		case 1 ... 3:
-			puts("1 to 3 args");
-			break;
+			return 1;
+
 		case 4:
-			puts("4 args");
-			break;
+			return 2;
+
 		default:
-			printf("%d args - default\n");
-			break;
+			return 3;
 	}
+}
+
+main()
+{
+	assert(map(1) == 1);
+	assert(map(2) == 1);
+	assert(map(3) == 1);
+	assert(map(4) == 2);
+
+	assert(map(5) == 3);
+	assert(map(50) == 3);
+	assert(map(-2) == 3);
 }

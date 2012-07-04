@@ -1,6 +1,6 @@
-struct Tim{int i,j;}*p()
+struct Tim { int i, j; } *p()
 {
-	__typeof(*p()) *r = malloc(sizeof *r);
+	__typeof *p() *r = malloc(sizeof *r);
 	r->i = 5;
 	r->j = 2;
 	return r;
@@ -8,5 +8,5 @@ struct Tim{int i,j;}*p()
 
 main()
 {
-	printf("%d y halo thar %d %s\n", p()->j, 5, "yo yo");
+	assert(p()->j == 2);
 }

@@ -50,7 +50,7 @@ main()
 	animals[1] = animal_new_crab();
 
 	for(int i = 0; i < 2; i++){
-		(animals[i])->walk(animals[i]); // parser problem
-		(animals[i])->run( animals[i]);
+		animals[i]->walk(animals[i]); // parser problem
+		animals[i]->run( animals[i]);
 	}
 }

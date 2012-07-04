@@ -1,10 +1,4 @@
-//#include <assert.h>
-
-assert(x)
-{
-	if(!(x))
-		exit(1);
-}
+#include <assert.h>
 
 main()
 {

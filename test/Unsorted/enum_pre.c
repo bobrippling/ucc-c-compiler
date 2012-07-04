@@ -4,7 +4,7 @@ main()
 {
 	enum X a = 0;
 
-	a = HI;
+	a = HI; // error
 
 	return a;
 }

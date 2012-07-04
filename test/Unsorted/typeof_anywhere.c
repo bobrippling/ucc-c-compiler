@@ -6,5 +6,5 @@ main()
 	pone p = &i;
 	printf("%s\n", str);
 	*p = 2;
-	return i;
+	assert(i == 2);
 }
