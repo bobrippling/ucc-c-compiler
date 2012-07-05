@@ -8,6 +8,8 @@
 #include "../data_structs.h"
 #include "__builtin.h"
 
+/* TODO: constant_p, types_compatible_p */
+
 static decl *
 builtin_unreachable()
 {

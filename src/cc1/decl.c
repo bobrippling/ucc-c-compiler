@@ -163,6 +163,12 @@ decl *decl_copy(decl *d)
 	ret->type = type_copy(d->type);
 	ret->desc = NULL;
 	decl_copy_desc_if(ret, d);
+
+	/* null-out what we don't want to pass on */
+	ret->init = NULL;
+	ret->arrayinit = NULL;
+	ret->spel = NULL;
+
 	return ret;
 }
 

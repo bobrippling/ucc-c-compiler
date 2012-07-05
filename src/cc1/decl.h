@@ -100,7 +100,7 @@ struct decl
 	decl_desc *desc;
 
 	stmt *func_code;
-	expr *init; /* NULL except for global variables */
+	expr *init;
 	array_decl *arrayinit;
 
 	int struct_offset;
