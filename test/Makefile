@@ -1,4 +1,4 @@
-DIRS = assignment/ blocks/ decl_parsing/ inline/ lib/ structs/ type_parsing/
+DIRS = assignment/ blocks/ decl_parsing/ inline/ lib/ structs/ type_parsing/ other/
 MAKEFILES = ${DIRS:/=/Makefile}
 
 test: makefiles ${DIRS:/=/test}
