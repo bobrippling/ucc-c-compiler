@@ -256,6 +256,7 @@ expr *parse_expr_primary()
 				return e;
 			}else{
 				if(curtok != token_identifier){
+					/* TODO? cc1_error = 1, return expr_new_val(0) */
 					DIE_AT(NULL, "expression expected, got %s (%s:%d)",
 							token_to_str(curtok), __FILE__, __LINE__);
 				}
