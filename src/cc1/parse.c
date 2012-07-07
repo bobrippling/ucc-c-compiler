@@ -119,7 +119,6 @@ expr *parse_expr_identifier()
 
 expr *parse_block()
 {
-	stmt *code;
 	funcargs *args;
 	decl *rt;
 
@@ -132,7 +131,8 @@ expr *parse_block()
 			/* got ^int (args...) */
 			rt = decl_func_deref(rt, &args);
 		}else{
-			DIE_AT(NULL, "function decl expected for block (got %s)", decl_to_str(rt));
+			/* ^int {...} */
+			goto def_args;
 		}
 
 	}else if(accept(token_open_paren)){
@@ -141,15 +141,12 @@ expr *parse_block()
 		EAT(token_close_paren);
 	}else{
 		/* ^{...} */
+def_args:
 		args = funcargs_new();
+		args->args_void = 1;
 	}
 
-	code = parse_code_block();
-
-	/* prevent access to nested vars */
-	code->symtab->parent = symtab_root(code->symtab);
-
-	return expr_new_block(rt, args, code);
+	return expr_new_block(rt, args, parse_code_block());
 }
 
 expr *parse_expr_primary()
