@@ -29,7 +29,7 @@ void fold_stmt_case(stmt *t)
 
 void mutate_stmt_case(stmt *s)
 {
-	s->f_passable = fold_passable_yes;
+	s->f_passable = label_passable;
 }
 
 func_gen_stmt *gen_stmt_case = gen_stmt_label;
