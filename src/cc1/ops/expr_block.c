@@ -14,7 +14,7 @@ void fold_expr_block(expr *e, symtable *stab)
 	symtab_add_args(e->code->symtab, e->block_args, "block-function");
 
 	/* prevent access to nested vars */
-	code->symtab->parent = symtab_root(code->symtab);
+	e->code->symtab->parent = symtab_root(e->code->symtab);
 
 	UCC_ASSERT(stmt_kind(e->code, code), "!code for block");
 	fold_stmt(e->code);
