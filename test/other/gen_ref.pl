@@ -67,6 +67,7 @@ die if @ARGV;
 for my $f (glob '*.c'){
 	my $out = "$f.out";
 
+	# TODO: make-esque checks
 	compile($f, "-o", $out);
 
 	my $ret = system_timeout("./$out > $f.ref");
