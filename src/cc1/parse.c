@@ -19,8 +19,8 @@
 #define STAT_NEW(type)      stmt_new_wrapper(type, current_scope)
 #define STAT_NEW_NEST(type) stmt_new_wrapper(type, symtab_new(current_scope))
 
-stmt *parse_code_block(void);
-stmt *parse_code(void);
+stmt *parse_stmt_block(void);
+stmt *parse_stmt(void);
 expr **parse_funcargs(void);
 
 expr *parse_expr_unary(void);
@@ -146,7 +146,7 @@ def_args:
 		args->args_void = 1;
 	}
 
-	return expr_new_block(rt, args, parse_code_block());
+	return expr_new_block(rt, args, parse_stmt_block());
 }
 
 expr *parse_expr_primary()
@@ -242,7 +242,7 @@ expr *parse_expr_primary()
 
 				}else if(curtok == token_open_block){
 					/* ({ ... }) */
-					e = expr_new_stmt(parse_code_block());
+					e = expr_new_stmt(parse_stmt_block());
 				}else{
 					/* mark as being inside parens, for if((x = 5)) checking */
 					e = parse_expr_exp();
@@ -549,10 +549,10 @@ stmt *parse_if()
 
 	parse_test_init_expr(t);
 
-	t->lhs = parse_code();
+	t->lhs = parse_stmt();
 
 	if(accept(token_else))
-		t->rhs = parse_code();
+		t->rhs = parse_stmt();
 
 	if(t->flow)
 		current_scope = current_scope->parent;
@@ -579,7 +579,7 @@ stmt *parse_switch()
 
 	parse_test_init_expr(t);
 
-	t->lhs = parse_code();
+	t->lhs = parse_stmt();
 
 	current_break_target = old;
 	current_switch = old_sw;
@@ -595,7 +595,7 @@ stmt *parse_do()
 
 	EAT(token_do);
 
-	t->lhs = parse_code();
+	t->lhs = parse_stmt();
 
 	EAT(token_while);
 	EAT(token_open_paren);
@@ -616,7 +616,7 @@ stmt *parse_while()
 
 	parse_test_init_expr(t);
 
-	t->lhs = parse_code();
+	t->lhs = parse_stmt();
 
 	return t;
 }
@@ -658,7 +658,7 @@ stmt *parse_for()
 		EAT(token_close_paren);
 	}
 
-	s->lhs = parse_code();
+	s->lhs = parse_stmt();
 
 	current_scope = current_scope->parent;
 
@@ -687,24 +687,69 @@ void parse_static_assert(void)
 	}
 }
 
-
-stmt *parse_code_block()
+void parse_got_decls(decl **decls, stmt *codes_init)
 {
-	int carry_on = 1;
-	stmt *t = STAT_NEW_NEST(code);
 	decl **diter;
 
-	current_scope = t->symtab;
+	/* backwards walk, since we prepend to codes_init->codes */
+	for(diter = decls; diter && *diter; diter++);
 
-	EAT(token_open_block);
+	for(diter--; diter >= decls; diter--){
+		/* only extract the init if it's not static */
+		decl *d = *diter;
+		if(d->init){
+			if(decl_is_array(d)){
+#ifndef FANCY_STACK_INIT
+				/* assignment expr for each init */
+				array_decl *dinit = d->init->array_store;
+				int i;
+				expr *comma_init = NULL;
 
-	while(curtok != token_close_block && carry_on){
-		stmt *sub;
-		decl **decls;
+				for(i = 0; i < dinit->len; i++){
+					int init_val;
+					expr *init;
 
-		parse_static_assert();
+					if(dinit->type == array_exprs)
+						init_val = dinit->data.exprs[i]->val.iv.val;
+					else
+						init_val = dinit->data.str[i];
 
-		sub = NULL;
+					init = expr_new_array_decl_init(d, init_val, i);
+
+					if(comma_init){
+						expr *new = expr_new_comma();
+						new->lhs = comma_init;
+						new->rhs = init;
+						comma_init = new;
+					}else{
+						comma_init = init;
+					}
+				}
+
+				dynarray_prepend((void ***)&codes_init->codes, expr_to_stmt(comma_init));
+#else
+				/* arrays handled elsewhere */
+#endif
+			}else{
+				dynarray_prepend((void ***)&codes_init->codes, expr_to_stmt(expr_new_decl_init(d)));
+			}
+		}
+		/* don't change init - used for checks for assign-to-const */
+	}
+}
+
+stmt *parse_stmt_and_decls()
+{
+	stmt *codes = STAT_NEW_NEST(code);
+	decl **decls;
+	stmt *sub;
+	int last;
+
+	current_scope = codes->symtab;
+
+	parse_static_assert();
+
+	for(last = 0; !last; ){
 		decls = parse_decls_multi_type(DECL_MULTI_ACCEPT_FUNC_DECL);
 
 		if(decls){
@@ -719,78 +764,60 @@ stmt *parse_code_block()
 			 *                     }
 			 */
 
-			carry_on = 0; /* everything else goes into the sub block */
+			/* need a new sub block */
+			sub = parse_stmt_and_decls();
 
-			sub = parse_code();
+			fprintf(stderr, "parsed sub:\n");
+			for(stmt **i = sub->codes; i && *i; i++)
+				fprintf(stderr, "  %s\n", (*i)->f_str());
+			fprintf(stderr, "for decls:\n");
+			for(decl **i = decls; i && *i; i++)
+				fprintf(stderr, "  %s\n", (*i)->spel);
+			fprintf(stderr, "at %s\n", token_to_str(curtok));
 
-			if(!sub){
+			if(sub){
+				parse_got_decls(decls, sub);
+				dynarray_add_array((void ***)&sub->decls, (void **)decls);
+			}else{
+				ICW("FIXME: decl inits ignored"); /* FIXME */
 				/* decls are useless - { int i; } */
 				dynarray_free((void ***)&decls, (void (*)(void *))decl_free);
-				return NULL;
 			}
 
-			dynarray_add_array((void ***)&sub->decls, (void **)decls);
-
-			for(diter = decls; diter && *diter; diter++){
-				/* only extract the init if it's not static */
-				decl *d = *diter;
-				if(d->init){
-					if(decl_is_array(d)){
-#ifndef FANCY_STACK_INIT
-						/* assignment expr for each init */
-						array_decl *dinit = d->init->array_store;
-						int i;
-						expr *comma_init = NULL;
-
-						for(i = 0; i < dinit->len; i++){
-							int init_val;
-							expr *init;
-
-							if(dinit->type == array_exprs)
-								init_val = dinit->data.exprs[i]->val.iv.val;
-							else
-								init_val = dinit->data.str[i];
-
-							init = expr_new_array_decl_init(d, init_val, i);
-
-							if(comma_init){
-								expr *new = expr_new_comma();
-								new->lhs = comma_init;
-								new->rhs = init;
-								comma_init = new;
-							}else{
-								comma_init = init;
-							}
-						}
-
-						dynarray_add((void ***)&sub->codes, expr_to_stmt(comma_init));
-#else
-						/* arrays handled elsewhere */
-#endif
-					}else{
-						dynarray_add((void ***)&sub->codes, expr_to_stmt(expr_new_decl_init(d)));
-					}
-				}
-				/* don't change init - used for checks for assign-to-const */
-			}
+			last = 1;
+		}else if(curtok != token_close_block){
+			/* fine with a normal statement */
+			sub = parse_stmt();
 		}else{
-			sub = parse_code();
+			break;
 		}
 
-		if(sub)
-			dynarray_add((void ***)&t->codes, sub);
-		else
-			break;
+		if(sub){
+			dynarray_add((void ***)&codes->codes, sub);
+		}
 	}
 
+	current_scope = codes->symtab->parent;
+
+	return codes;
+}
+
+stmt *parse_stmt_block()
+{
+	stmt *t;
+
+	EAT(token_open_block);
+
+	t = parse_stmt_and_decls();
+
 	EAT(token_close_block);
-	current_scope = t->symtab->parent;
+
 	return t;
 }
 
 stmt *parse_label_next(stmt *lbl)
 {
-	lbl->lhs = parse_code();
+	lbl->lhs = parse_stmt();
 	/*
 	 * a label must have a block of code after it:
 	 *
@@ -804,7 +831,7 @@ stmt *parse_label_next(stmt *lbl)
 	return lbl;
 }
 
-stmt *parse_code()
+stmt *parse_stmt()
 {
 	stmt *t;
 
@@ -878,7 +905,7 @@ flow:
 			return ret;
 		}
 
-		case token_open_block: return parse_code_block();
+		case token_open_block: return parse_stmt_block();
 
 		case token_switch:
 			return parse_switch();
