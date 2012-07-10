@@ -138,6 +138,13 @@ decl_desc *decl_desc_copy(decl_desc *dp)
 {
 	decl_desc *ret = umalloc(sizeof *ret);
 	memcpy(ret, dp, sizeof *ret);
+
+	if(ret->type == decl_desc_array){
+		/* convert to ptr */
+		ret->type = decl_desc_ptr;
+		ret->bits.qual = qual_none;
+	}
+
 	if(dp->child){
 		ret->child = decl_desc_copy(dp->child);
 		ret->child->parent_desc = ret;

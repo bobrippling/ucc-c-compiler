@@ -13,7 +13,11 @@ struct decl_attr
 		attr_section,
 		attr_enum_bitmask,
 		attr_noreturn
-		/* TODO: warning, cdecl, stdcall, fastcall, const */
+		/*
+		 * TODO: warning, cdecl, stdcall, fastcall
+		 * pure - no globals
+		 * const - pure + no pointers
+		 */
 	} type;
 
 	union

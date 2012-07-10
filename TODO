@@ -6,6 +6,12 @@ _Generic const-ify
 
 updated bugs/ and test/
 
+__alignof__/_Alignof, _Alignas(type/const-expr):
+	same as sizeof except:
+		doubles: { linux32 => 4, win32 => 8, linux64 => 8 }
+		longs + doubles + ptrs change as their sizeof changes (x86 vs x64)
+	for structs/unions, it is the alignment of the largest type
+
 ---------------------------------------------------- cc1
 
 extern int i;
