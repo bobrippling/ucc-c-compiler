@@ -192,19 +192,22 @@ int decl_size(decl *d)
 		/* find the lowest, start working our way up */
 		const int word_size = platform_word_size();
 		decl_desc *dp;
-		int is_ptr = 0;
-		int first = 1;
 
-		for(dp = decl_desc_tail(d); dp; dp = dp->parent_desc)
+		dp = decl_desc_tail(d);
+		switch(dp->type){
+			case decl_desc_ptr:
+			case decl_desc_block:
+				/* pointer to something, e.g. int (*x)[5] */
+				return word_size;
+
+			default:
+				break;
+		}
+
+		for(; dp; dp = dp->parent_desc)
 			switch(dp->type){
 				case decl_desc_ptr:
 				case decl_desc_block:
-					if(first)
-						is_ptr = 1;
-					else
-						mul *= word_size;
-					break;
-
 				case decl_desc_func:
 					break;
 
@@ -218,10 +221,6 @@ int decl_size(decl *d)
 					break;
 				}
 			}
-
-		/* pointer to a type, the size is the size of a pointer, not the type */
-		if(is_ptr)
-			return mul * platform_word_size();
 	}
 
 	return mul * type_size(d->type);

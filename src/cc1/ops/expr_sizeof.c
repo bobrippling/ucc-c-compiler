@@ -12,8 +12,10 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 {
 	decl *chosen;
 
-	if(e->expr)
+	if(e->expr){
 		fold_expr(e->expr, stab);
+		ICW("FIXME: specify not to convert decls (%s)", decl_to_str(e->expr->tree_type));
+	}
 
 	chosen = SIZEOF_WHAT(e);
 
