@@ -560,9 +560,9 @@ stmt *parse_if()
 	return t;
 }
 
-stmt *expr_to_stmt(expr *e)
+stmt *expr_to_stmt(expr *e, symtable *scope)
 {
-	stmt *t = STAT_NEW(expr);
+	stmt *t = stmt_new_wrapper(expr, scope);
 	t->expr = e;
 	return t;
 }
@@ -689,7 +689,10 @@ void parse_static_assert(void)
 
 void parse_got_decls(decl **decls, stmt *codes_init)
 {
+	symtable *const scope = codes_init->symtab;
 	decl **diter;
+
+	dynarray_add_array((void ***)&codes_init->decls, (void **)decls);
 
 	/* backwards walk, since we prepend to codes_init->codes */
 	for(diter = decls; diter && *diter; diter++);
@@ -697,6 +700,7 @@ void parse_got_decls(decl **decls, stmt *codes_init)
 	for(diter--; diter >= decls; diter--){
 		/* only extract the init if it's not static */
 		decl *d = *diter;
+
 		if(d->init){
 			if(decl_is_array(d)){
 #ifndef FANCY_STACK_INIT
@@ -726,12 +730,14 @@ void parse_got_decls(decl **decls, stmt *codes_init)
 					}
 				}
 
-				dynarray_prepend((void ***)&codes_init->codes, expr_to_stmt(comma_init));
+				dynarray_prepend((void ***)&codes_init->codes,
+						expr_to_stmt(comma_init, scope));
 #else
 				/* arrays handled elsewhere */
 #endif
 			}else{
-				dynarray_prepend((void ***)&codes_init->codes, expr_to_stmt(expr_new_decl_init(d)));
+				dynarray_prepend((void ***)&codes_init->codes,
+						expr_to_stmt(expr_new_decl_init(d), scope));
 			}
 		}
 		/* don't change init - used for checks for assign-to-const */
@@ -741,15 +747,17 @@ void parse_got_decls(decl **decls, stmt *codes_init)
 stmt *parse_stmt_and_decls()
 {
 	stmt *codes = STAT_NEW_NEST(code);
-	decl **decls;
-	stmt *sub;
 	int last;
 
 	current_scope = codes->symtab;
 
-	parse_static_assert();
+	last = 0;
+	do{
+		decl **decls;
+		stmt *sub;
 
-	for(last = 0; !last; ){
+		parse_static_assert();
+
 		decls = parse_decls_multi_type(DECL_MULTI_ACCEPT_FUNC_DECL);
 
 		if(decls){
@@ -764,43 +772,89 @@ stmt *parse_stmt_and_decls()
 			 *                     }
 			 */
 
-			/* need a new sub block */
-			sub = parse_stmt_and_decls();
-
-			fprintf(stderr, "parsed sub:\n");
-			for(stmt **i = sub->codes; i && *i; i++)
-				fprintf(stderr, "  %s\n", (*i)->f_str());
-			fprintf(stderr, "for decls:\n");
-			for(decl **i = decls; i && *i; i++)
-				fprintf(stderr, "  %s\n", (*i)->spel);
-			fprintf(stderr, "at %s\n", token_to_str(curtok));
-
-			if(sub){
-				parse_got_decls(decls, sub);
-				dynarray_add_array((void ***)&sub->decls, (void **)decls);
-			}else{
-				ICW("FIXME: decl inits ignored"); /* FIXME */
-				/* decls are useless - { int i; } */
-				dynarray_free((void ***)&decls, (void (*)(void *))decl_free);
+			/* optimise - initial-block-decls doesn't need a sub-block */
+			if(!codes->codes){
+				parse_got_decls(decls, codes);
+				goto normal;
 			}
+
+			/* new sub block */
+			sub = parse_stmt_and_decls();
+			if(!sub){
+				/* decls aren't useless - { int i = f(); } - f called */
+				sub = STAT_NEW(code);
+			}
+
+			parse_got_decls(decls, sub);
 
 			last = 1;
 		}else if(curtok != token_close_block){
+normal:
 			/* fine with a normal statement */
 			sub = parse_stmt();
 		}else{
 			break;
 		}
 
-		if(sub){
+		if(decls)
+			dynarray_free((void ***)&decls, NULL);
+
+		if(sub)
 			dynarray_add((void ***)&codes->codes, sub);
-		}
-	}
+	}while(!last);
+
 
 	current_scope = codes->symtab->parent;
 
 	return codes;
 }
+
+#ifdef SYMTAB_DEBUG
+static int print_indent = 0;
+
+#define INDENT(...) indent(), fprintf(stderr, __VA_ARGS__)
+
+void indent()
+{
+	for(int c = print_indent; c; c--)
+		fputc('\t', stderr);
+}
+
+void print_stmt_and_decls(stmt *t)
+{
+	INDENT("decls: (symtab %p, parent %p)\n", t->symtab, t->symtab->parent);
+
+	print_indent++;
+	for(decl **i = t->decls; i && *i; i++)
+		INDENT("%s\n", (*i)->spel);
+	print_indent--;
+
+	if(!t->decls)
+		print_indent++, INDENT("NONE\n"), print_indent--;
+
+	INDENT("codes:\n");
+	for(stmt **i = t->codes; i && *i; i++){
+		stmt *s = *i;
+		if(stmt_kind(s, code)){
+			print_indent++;
+			INDENT("more-codes:\n");
+			print_indent++;
+			print_stmt_and_decls(s);
+			print_indent -= 2;
+		}else{
+			print_indent++;
+			INDENT("%s%s%s (symtab %p)\n",
+					s->f_str(),
+					stmt_kind(s, expr) ? ": " : "",
+					stmt_kind(s, expr) ? s->expr->f_str() : "",
+					s->symtab);
+			print_indent--;
+		}
+	}
+	if(!t->codes)
+		print_indent++, INDENT("NONE\n"), print_indent--;
+}
+#endif
 
 stmt *parse_stmt_block()
 {
@@ -811,6 +865,11 @@ stmt *parse_stmt_block()
 	t = parse_stmt_and_decls();
 
 	EAT(token_close_block);
+
+#ifdef SYMTAB_DEBUG
+	fprintf(stderr, "Parsed statement block:\n");
+	print_stmt_and_decls(t);
+#endif
 
 	return t;
 }
@@ -937,7 +996,7 @@ flow:
 		}
 
 		default:
-			t = expr_to_stmt(parse_expr_exp());
+			t = expr_to_stmt(parse_expr_exp(), current_scope);
 
 			if(expr_kind(t->expr, identifier) && accept(token_colon)){
 				stmt_mutate_wrapper(t, label);
