@@ -776,6 +776,13 @@ stmt *parse_stmt_and_decls()
 			if(!codes->codes){
 				parse_got_decls(decls, codes);
 				goto normal;
+			}else{
+				static int warned = 0;
+				if(!warned){
+					warned = 1;
+					cc1_warn_at(&decls[0]->where, 0, 1, WARN_MIXED_CODE_DECLS,
+							"mixing code and declarations");
+				}
 			}
 
 			/* new sub block */
