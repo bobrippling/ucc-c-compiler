@@ -785,6 +785,9 @@ stmt *parse_stmt_and_decls()
 				sub = STAT_NEW(code);
 			}
 
+			/* mark as internal - for duplicate checks */
+			sub->symtab->internal_nest = 1;
+
 			parse_got_decls(decls, sub);
 
 			last = 1;
