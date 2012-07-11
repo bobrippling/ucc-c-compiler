@@ -781,7 +781,7 @@ stmt *parse_stmt_and_decls()
 				if(!warned){
 					warned = 1;
 					cc1_warn_at(&decls[0]->where, 0, 1, WARN_MIXED_CODE_DECLS,
-							"mixing code and declarations");
+							"mixed code and declarations");
 				}
 			}
 
