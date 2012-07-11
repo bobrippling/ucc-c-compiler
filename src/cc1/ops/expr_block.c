@@ -48,8 +48,7 @@ void fold_expr_block(expr *e, symtable *stab)
 		if(r && r->expr){
 			e->tree_type = decl_copy(r->expr->tree_type);
 		}else{
-			e->tree_type = decl_new();
-			e->tree_type->type->primitive = type_void;
+			e->tree_type = decl_new_void();
 		}
 	}
 	e->tree_type->type->store = store_static;

@@ -66,8 +66,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 		char *save;
 
 		/* address of label - void * */
-		e->tree_type = decl_ptr_depth_inc(decl_new());
-		e->tree_type->type->primitive = type_void;
+		e->tree_type = decl_ptr_depth_inc(decl_new_void());
 
 		save = e->spel;
 		e->spel = asm_label_goto(e->spel);
