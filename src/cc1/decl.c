@@ -383,6 +383,11 @@ int decl_is_struct_or_union(decl *d)
 	return decl_is_struct_or_union_possible_ptr(d) && !decl_ptr_depth(d);
 }
 
+int decl_is_struct_or_union_ptr(decl *d)
+{
+	return decl_is_struct_or_union_possible_ptr(d) && decl_ptr_depth(d);
+}
+
 int decl_is_const(decl *d)
 {
 	/* const char *x is not const. char *const x is */
