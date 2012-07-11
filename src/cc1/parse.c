@@ -759,6 +759,7 @@ stmt *parse_stmt_and_decls()
 		parse_static_assert();
 
 		decls = parse_decls_multi_type(DECL_MULTI_ACCEPT_FUNC_DECL);
+		sub = NULL;
 
 		if(decls){
 			/*
@@ -786,7 +787,9 @@ stmt *parse_stmt_and_decls()
 			}
 
 			/* new sub block */
-			sub = parse_stmt_and_decls();
+			if(curtok != token_close_block)
+				sub = parse_stmt_and_decls();
+
 			if(!sub){
 				/* decls aren't useless - { int i = f(); } - f called */
 				sub = STAT_NEW(code);
@@ -798,12 +801,14 @@ stmt *parse_stmt_and_decls()
 			parse_got_decls(decls, sub);
 
 			last = 1;
-		}else if(curtok != token_close_block){
-normal:
-			/* fine with a normal statement */
-			sub = parse_stmt();
 		}else{
-			break;
+normal:
+			if(curtok != token_close_block){
+				/* fine with a normal statement */
+				sub = parse_stmt();
+			}else{
+				last = 1;
+			}
 		}
 
 		if(decls)
