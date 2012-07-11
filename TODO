@@ -1,10 +1,18 @@
+updated bugs/ and test/
+
+---------------------------------------------------- cc1
+
+const-fold: change interface and checking of ->val.iv.val to more explicit code
+
 _Generic const-ify
 
--Wmissing-prototypes - increase statics
-  redundant-decls
-	nested-externs
+extern int i;
+extern int i;
+extern int i = 5; // this defines i. similar for functions - probably in now...?
 
-updated bugs/ and test/
+inline semantics - probably in now...?
+
+reachability checking - non-void function returns - probably in now...?
 
 __alignof__/_Alignof, _Alignas(type/const-expr):
 	same as sizeof except:
@@ -12,13 +20,9 @@ __alignof__/_Alignof, _Alignas(type/const-expr):
 		longs + doubles + ptrs change as their sizeof changes (x86 vs x64)
 	for structs/unions, it is the alignment of the largest type
 
----------------------------------------------------- cc1
-
-extern int i;
-extern int i;
-extern int i = 5; // this defines i. similar for functions
-
-inline semantics
+-Wmissing-prototypes - increase statics (in Makefile)
+  redundant-decls
+	nested-externs
 
 int x[] -> NULL init, not 0
 
@@ -33,12 +37,10 @@ initialisers
 
 static analysis for labels - flag unused labels
 
-reachability checking - non-void function returns
-
 bitfields: must be ints,
-can't be addressed,
-nor sizeof()'d
-also: struct x { int i : 1; : 3; } is valid (but not for the first field)
+	can't be addressed,
+	nor sizeof()'d
+	also: struct x { int i : 1; : 3; } is valid (but not for the first field)
 
 const:
 	const char *s; - *s is not writable, s is
@@ -71,8 +73,6 @@ extensions:
 	namespace [str] { ... }
 	classes?
 	__attribute__((overloadable)) - clang
-
-replace die{,_at} with cc1_&, and use stored line in tokenise for better errors
 
 ---------------------------------------------------- cpp
 
