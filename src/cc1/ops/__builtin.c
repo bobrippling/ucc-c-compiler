@@ -13,10 +13,8 @@
 static decl *
 builtin_unreachable()
 {
-	decl *d = decl_new();
+	decl *d = decl_new_void();
 	funcargs *fargs;
-
-	d->type->primitive = type_void;
 
 	d->desc = decl_desc_func_new(d, NULL);
 	fargs = funcargs_new();

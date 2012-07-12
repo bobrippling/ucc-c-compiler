@@ -86,6 +86,13 @@ decl *decl_new()
 	return d;
 }
 
+decl *decl_new_void()
+{
+	decl *d = decl_new();
+	d->type->primitive = type_void;
+	return d;
+}
+
 void decl_free(decl *d)
 {
 	type_free(d->type);
