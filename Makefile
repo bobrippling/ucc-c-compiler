@@ -12,4 +12,7 @@ clean:
 cleanall: clean
 	./configure clean
 
+test: all
+	make -Ctest test
+
 .PHONY: all clean cleanall configure

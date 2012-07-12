@@ -99,8 +99,8 @@ void parse_attr_bracket_chomp(void)
 	if(accept(token_open_paren)){
 		parse_attr_bracket_chomp(); /* nest */
 
-		accept(token_comma);
-		accept(token_identifier); /* optional */
+		while(curtok != token_close_paren)
+			EAT(curtok);
 
 		EAT(token_close_paren);
 	}

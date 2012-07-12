@@ -419,8 +419,13 @@ void fold_decl(decl *d, symtable *stab)
 				/* global/static + not constant */
 				/* allow identifiers if the identifier is also static */
 
-				if(!expr_kind(d->init, identifier) || d->init->tree_type->type->store != store_static){
-					DIE_AT(&d->init->where, "not a constant expression for %s init - %s", d->spel, d->init->f_str());
+				if(!expr_kind(d->init, identifier)
+				|| d->init->tree_type->type->store != store_static)
+				{
+					DIE_AT(&d->init->where,
+							"not a constant expression for %s %s initialisation - %s",
+							d->type->store == store_static ? "static" : "global",
+							d->spel, d->init->f_str());
 				}
 			}
 		}
@@ -476,9 +481,43 @@ void fold_disallow_st_un(expr *e, const char *desc)
 	}
 }
 
+#ifdef SYMTAB_DEBUG
+void print_stab(symtable *st, int current, where *w)
+{
+	decl **i;
+
+	if(st->parent)
+		print_stab(st->parent, 0, NULL);
+
+	if(current)
+		fprintf(stderr, "[34m");
+
+	fprintf(stderr, "\ttable %p, children %d, vars %d, parent: %p",
+			(void *)st,
+			dynarray_count((void **)st->children),
+			dynarray_count((void **)st->decls),
+			(void *)st->parent);
+
+	if(current)
+		fprintf(stderr, "[m%s%s", w ? " at " : "", w ? where_str(w) : "");
+
+	fputc('\n', stderr);
+
+	for(i = st->decls; i && *i; i++)
+		fprintf(stderr, "\t\tdecl %s\n", (*i)->spel);
+}
+#endif
+
 void fold_stmt(stmt *t)
 {
 	UCC_ASSERT(t->symtab->parent, "symtab has no parent");
+
+#ifdef SYMTAB_DEBUG
+	if(stmt_kind(t, code)){
+		fprintf(stderr, "fold-code, symtab:\n");
+		PRINT_STAB(t, 1);
+	}
+#endif
 
 	t->f_fold(t);
 }

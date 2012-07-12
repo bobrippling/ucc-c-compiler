@@ -11,12 +11,25 @@ void fold_expr_block(expr *e, symtable *stab)
 	decl_desc *func;
 
 	/* add e->block_args to symtable */
-
 	symtab_add_args(e->code->symtab, e->funcargs, "block-function");
 
-	fold_stmt(e->code); /* symtab set to root by parse */
+	/* prevent access to nested vars */
+	e->code->symtab->parent = symtab_root(e->code->symtab);
 
 	UCC_ASSERT(stmt_kind(e->code, code), "!code for block");
+	fold_stmt(e->code);
+
+	/*
+	 * TODO:
+	 * search e->code for expr_identifier,
+	 * and it it's not in e->code->symtab or lower,
+	 * add it as a block argument
+	 *
+	 * int i;
+	 * ^{
+	 *   i = 5;
+	 * }();
+	 */
 
 	/*
 	 * search for a return
@@ -35,8 +48,7 @@ void fold_expr_block(expr *e, symtable *stab)
 		if(r && r->expr){
 			e->tree_type = decl_copy(r->expr->tree_type);
 		}else{
-			e->tree_type = decl_new();
-			e->tree_type->type->primitive = type_void;
+			e->tree_type = decl_new_void();
 		}
 	}
 	e->tree_type->type->store = store_static;
