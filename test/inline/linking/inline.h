@@ -3,12 +3,12 @@
 #define HI() \
 	printf("hi from %s\n", __func__)
 
-static inline int x()
+static inline void x()
 {
 	HI();
 }
 
-int a();
+void a();
 
-extern int /*inline*/ z();
-extern int   inline   y();
+extern void /*inline*/ z();
+extern void   inline   y();

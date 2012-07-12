@@ -200,7 +200,17 @@
 <initializer-list> ::= <initializer>
                      | <initializer-list> , <initializer>
 
+#ifdef C99
+
+<compound-statement> ::= { <block-statement>* }
+
+<block-statement> ::= <declaration>
+                    | <statement>
+#else
+
 <compound-statement> ::= { {<declaration>}* {<statement>}* }
+
+#endif
 
 <statement> ::= <labeled-statement>
               | <expression-statement>
@@ -221,7 +231,14 @@
 
 <iteration-statement> ::= while ( <expression> ) <statement>
                         | do <statement> while ( <expression> ) ;
-                        | for ( {<expression>}? ; {<expression>}? ; {<expression>}? ) <statement>
+                        | for ( {<for-init>}? ; {<expression>}? ; {<expression>}? ) <statement>
+
+#ifdef C99
+<for-init> ::= <expression>
+            | <declaration>
+#else
+<for-init> ::= <expression>
+#endif
 
 <jump-statement> ::= goto <identifier> ;
                    | continue ;

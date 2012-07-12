@@ -87,6 +87,13 @@ decl *decl_new()
 	return d;
 }
 
+decl *decl_new_void()
+{
+	decl *d = decl_new();
+	d->type->primitive = type_void;
+	return d;
+}
+
 void decl_free(decl *d)
 {
 	type_free(d->type);
@@ -139,6 +146,13 @@ decl_desc *decl_desc_copy(decl_desc *dp)
 {
 	decl_desc *ret = umalloc(sizeof *ret);
 	memcpy(ret, dp, sizeof *ret);
+
+	if(ret->type == decl_desc_array){
+		/* convert to ptr */
+		ret->type = decl_desc_ptr;
+		ret->bits.qual = qual_none;
+	}
+
 	if(dp->child){
 		ret->child = decl_desc_copy(dp->child);
 		ret->child->parent_desc = ret;

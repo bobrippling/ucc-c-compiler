@@ -36,7 +36,7 @@ typedef unsigned long  uint64_t;
 #endif
 
 
-typedef unsigned int  size_t;
+typedef unsigned int  size_t; // TODO: depend on __SIZE_TYPE__ ? same for PTRDIFF_TYPE ?
 typedef   signed int ssize_t;
 
 //typedef unsigned long off_t;

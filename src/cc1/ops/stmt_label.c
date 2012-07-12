@@ -18,7 +18,12 @@ void gen_stmt_label(stmt *s)
 	gen_stmt(s->lhs); /* the code-part of the compound statement */
 }
 
+int label_passable(stmt *s)
+{
+	return fold_passable(s->lhs);
+}
+
 void mutate_stmt_label(stmt *s)
 {
-	s->f_passable = fold_passable_yes;
+	s->f_passable = label_passable;
 }

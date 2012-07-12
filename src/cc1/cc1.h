@@ -25,6 +25,8 @@ enum warning
 	WARN_IMPLICIT_FUNC            = 1 << 7,
 	WARN_IMPLICIT_INT             = 1 << 8,
 	WARN_VOID_ARITH               = 1 << 9,
+	WARN_MIXED_CODE_DECLS         = 1 << 10,
+
 	WARN_OPT_POSSIBLE             = 1 << 20,
 	WARN_SWITCH_ENUM              = 1 << 21,
 	WARN_ENUM_CMP                 = 1 << 22,
@@ -39,6 +41,7 @@ enum warning
 	WARN_RETURN_UNDEF             = 1 << 31,
 
 	/* TODO */
+	/*
 	WARN_FORMAT                   = 1 << 10,
 	WARN_INT_TO_PTR               = 1 << 11,
 	WARN_PTR_ARITH                = 1 << 12,
@@ -48,15 +51,16 @@ enum warning
 	WARN_UNUSED_VAL               = 1 << 16,
 	WARN_UNUSED_VAR               = 1 << 17,
 	WARN_ARRAY_BOUNDS             = 1 << 18,
+	*/
 };
 
 enum fopt
 {
-	FOPT_NONE            = 0,
-	FOPT_ENABLE_ASM      = 1 << 0,
-	FOPT_CONST_FOLD      = 1 << 1,
-	FOPT_ENGLISH         = 1 << 2,
-	FOPT_SHOW_LINE       = 1 << 3,
+	FOPT_NONE                  = 0,
+	FOPT_ENABLE_ASM            = 1 << 0,
+	FOPT_CONST_FOLD            = 1 << 1,
+	FOPT_ENGLISH               = 1 << 2,
+	FOPT_SHOW_LINE             = 1 << 3,
 };
 
 enum cc1_backend
