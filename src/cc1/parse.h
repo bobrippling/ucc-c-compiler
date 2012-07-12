@@ -28,7 +28,7 @@ extern enum token curtok;
 
 /* these need to be visible to parse_type.c */
 expr *parse_expr_assignment(void);
-stmt *parse_code_block(void);
+stmt *parse_stmt_block(void);
 expr *parse_expr_sizeof_typeof(void);
 expr *parse_expr_exp(void);
 

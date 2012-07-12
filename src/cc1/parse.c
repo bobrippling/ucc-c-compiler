@@ -20,8 +20,8 @@
 #define STAT_NEW(type)      stmt_new_wrapper(type, current_scope)
 #define STAT_NEW_NEST(type) stmt_new_wrapper(type, symtab_new(current_scope))
 
-stmt *parse_code_block(void);
-stmt *parse_code(void);
+stmt *parse_stmt_block(void);
+stmt *parse_stmt(void);
 expr **parse_funcargs(void);
 
 expr *parse_expr_unary(void);
@@ -120,7 +120,6 @@ expr *parse_expr_identifier()
 
 expr *parse_block()
 {
-	stmt *code;
 	funcargs *args;
 	decl *rt;
 
@@ -133,7 +132,8 @@ expr *parse_block()
 			/* got ^int (args...) */
 			rt = decl_func_deref(rt, &args);
 		}else{
-			DIE_AT(NULL, "function decl expected for block (got %s)", decl_to_str(rt));
+			/* ^int {...} */
+			goto def_args;
 		}
 
 	}else if(accept(token_open_paren)){
@@ -142,15 +142,12 @@ expr *parse_block()
 		EAT(token_close_paren);
 	}else{
 		/* ^{...} */
+def_args:
 		args = funcargs_new();
+		args->args_void = 1;
 	}
 
-	code = parse_code_block();
-
-	/* prevent access to nested vars */
-	code->symtab->parent = symtab_root(code->symtab);
-
-	return expr_new_block(rt, args, code);
+	return expr_new_block(rt, args, parse_stmt_block());
 }
 
 expr *parse_expr_primary()
@@ -199,7 +196,7 @@ expr *parse_expr_primary()
 
 				}else if(curtok == token_open_block){
 					/* ({ ... }) */
-					e = expr_new_stmt(parse_code_block());
+					e = expr_new_stmt(parse_stmt_block());
 				}else{
 					/* mark as being inside parens, for if((x = 5)) checking */
 					e = parse_expr_exp();
@@ -210,6 +207,7 @@ expr *parse_expr_primary()
 				return e;
 			}else{
 				if(curtok != token_identifier){
+					/* TODO? cc1_error = 1, return expr_new_val(0) */
 					DIE_AT(NULL, "expression expected, got %s (%s:%d)",
 							token_to_str(curtok), __FILE__, __LINE__);
 				}
@@ -505,10 +503,10 @@ stmt *parse_if()
 
 	parse_test_init_expr(t);
 
-	t->lhs = parse_code();
+	t->lhs = parse_stmt();
 
 	if(accept(token_else))
-		t->rhs = parse_code();
+		t->rhs = parse_stmt();
 
 	if(t->flow)
 		current_scope = current_scope->parent;
@@ -516,9 +514,9 @@ stmt *parse_if()
 	return t;
 }
 
-stmt *expr_to_stmt(expr *e)
+stmt *expr_to_stmt(expr *e, symtable *scope)
 {
-	stmt *t = STAT_NEW(expr);
+	stmt *t = stmt_new_wrapper(expr, scope);
 	t->expr = e;
 	return t;
 }
@@ -535,7 +533,7 @@ stmt *parse_switch()
 
 	parse_test_init_expr(t);
 
-	t->lhs = parse_code();
+	t->lhs = parse_stmt();
 
 	current_break_target = old;
 	current_switch = old_sw;
@@ -551,7 +549,7 @@ stmt *parse_do()
 
 	EAT(token_do);
 
-	t->lhs = parse_code();
+	t->lhs = parse_stmt();
 
 	EAT(token_while);
 	EAT(token_open_paren);
@@ -572,7 +570,7 @@ stmt *parse_while()
 
 	parse_test_init_expr(t);
 
-	t->lhs = parse_code();
+	t->lhs = parse_stmt();
 
 	return t;
 }
@@ -614,7 +612,7 @@ stmt *parse_for()
 		EAT(token_close_paren);
 	}
 
-	s->lhs = parse_code();
+	s->lhs = parse_stmt();
 
 	current_scope = current_scope->parent;
 
@@ -643,24 +641,20 @@ void parse_static_assert(void)
 	}
 }
 
-
-stmt *parse_code_block()
+void parse_got_decls(decl **decls, stmt *codes_init)
 {
-	stmt *t = STAT_NEW_NEST(code);
+	symtable *const scope = codes_init->symtab;
 	decl **diter;
 
-	current_scope = t->symtab;
+	dynarray_add_array((void ***)&codes_init->decls, (void **)decls);
 
-	EAT(token_open_block);
+	/* backwards walk, since we prepend to codes_init->codes */
+	for(diter = decls; diter && *diter; diter++);
 
-	if(accept(token_close_block))
-		goto ret;
-
-	t->decls = parse_decls_multi_type(DECL_MULTI_ACCEPT_FUNC_DECL);
-
-	for(diter = t->decls; diter && *diter; diter++){
+	for(diter--; diter >= decls; diter--){
 		/* only extract the init if it's not static */
 		decl *d = *diter;
+
 		if(d->init){
 			if(decl_is_array(d)){
 #ifndef FANCY_STACK_INIT
@@ -691,55 +685,173 @@ stmt *parse_code_block()
 					}
 				}
 
-				dynarray_add((void ***)&t->codes, expr_to_stmt(comma_init));
+				dynarray_prepend((void ***)&codes_init->codes,
+						expr_to_stmt(comma_init, scope));
 #else
 				ICW("array init");
 #endif
 			}else if(d->type->store != store_static && d->init->type == decl_init_scalar){
-				dynarray_add((void ***)&t->codes,
+				dynarray_prepend((void ***)&codes_init->codes,
 						expr_to_stmt(
 							expr_new_assign(
 								expr_new_identifier(d->spel),
-								d->init->bits.expr
-							)
-						)
-					);
+									d->init->bits.expr), scope));
 			}else{
 				ICW("TODO: init for %s somewhere else", d->spel);
 			}
 		}
 		/* don't change init - used for checks for assign-to-const */
 	}
+}
 
-	if(curtok != token_close_block){
-		/* main read loop */
-		do{
-			stmt *sub;
+stmt *parse_stmt_and_decls()
+{
+	stmt *codes = STAT_NEW_NEST(code);
+	int last;
 
-			parse_static_assert();
+	current_scope = codes->symtab;
 
-			sub = parse_code();
+	last = 0;
+	do{
+		decl **decls;
+		stmt *sub;
 
-			if(sub)
-				dynarray_add((void ***)&t->codes, sub);
-			else
-				break;
-		}while(curtok != token_close_block);
+		parse_static_assert();
+
+		decls = parse_decls_multi_type(DECL_MULTI_ACCEPT_FUNC_DECL);
+		sub = NULL;
+
+		if(decls){
+			/*
+			 * create an implicit block for the decl i.e.
+			 *
+			 * int i;              int i;
+			 * i = 5;              i = 5;
+			 *                     {
+			 * int j;   ---->        int j;
+			 * j = 2;                j = 2;
+			 *                     }
+			 */
+
+			/* optimise - initial-block-decls doesn't need a sub-block */
+			if(!codes->codes){
+				parse_got_decls(decls, codes);
+				goto normal;
+			}else{
+				static int warned = 0;
+				if(!warned){
+					warned = 1;
+					cc1_warn_at(&decls[0]->where, 0, 1, WARN_MIXED_CODE_DECLS,
+							"mixed code and declarations");
+				}
+			}
+
+			/* new sub block */
+			if(curtok != token_close_block)
+				sub = parse_stmt_and_decls();
+
+			if(!sub){
+				/* decls aren't useless - { int i = f(); } - f called */
+				sub = STAT_NEW(code);
+			}
+
+			/* mark as internal - for duplicate checks */
+			sub->symtab->internal_nest = 1;
+
+			parse_got_decls(decls, sub);
+
+			last = 1;
+		}else{
+normal:
+			if(curtok != token_close_block){
+				/* fine with a normal statement */
+				sub = parse_stmt();
+			}else{
+				last = 1;
+			}
+		}
+
+		if(decls)
+			dynarray_free((void ***)&decls, NULL);
+
+		if(sub)
+			dynarray_add((void ***)&codes->codes, sub);
+	}while(!last);
+
+
+	current_scope = codes->symtab->parent;
+
+	return codes;
+}
+
+#ifdef SYMTAB_DEBUG
+static int print_indent = 0;
+
+#define INDENT(...) indent(), fprintf(stderr, __VA_ARGS__)
+
+void indent()
+{
+	for(int c = print_indent; c; c--)
+		fputc('\t', stderr);
+}
+
+void print_stmt_and_decls(stmt *t)
+{
+	INDENT("decls: (symtab %p, parent %p)\n", t->symtab, t->symtab->parent);
+
+	print_indent++;
+	for(decl **i = t->decls; i && *i; i++)
+		INDENT("%s\n", (*i)->spel);
+	print_indent--;
+
+	if(!t->decls)
+		print_indent++, INDENT("NONE\n"), print_indent--;
+
+	INDENT("codes:\n");
+	for(stmt **i = t->codes; i && *i; i++){
+		stmt *s = *i;
+		if(stmt_kind(s, code)){
+			print_indent++;
+			INDENT("more-codes:\n");
+			print_indent++;
+			print_stmt_and_decls(s);
+			print_indent -= 2;
+		}else{
+			print_indent++;
+			INDENT("%s%s%s (symtab %p)\n",
+					s->f_str(),
+					stmt_kind(s, expr) ? ": " : "",
+					stmt_kind(s, expr) ? s->expr->f_str() : "",
+					s->symtab);
+			print_indent--;
+		}
 	}
-	/*
-	 * else:
-	 * { int i; }
-	 */
+	if(!t->codes)
+		print_indent++, INDENT("NONE\n"), print_indent--;
+}
+#endif
+
+stmt *parse_stmt_block()
+{
+	stmt *t;
+
+	EAT(token_open_block);
+
+	t = parse_stmt_and_decls();
 
 	EAT(token_close_block);
-ret:
-	current_scope = t->symtab->parent;
+
+#ifdef SYMTAB_DEBUG
+	fprintf(stderr, "Parsed statement block:\n");
+	print_stmt_and_decls(t);
+#endif
+
 	return t;
 }
 
 stmt *parse_label_next(stmt *lbl)
 {
-	lbl->lhs = parse_code();
+	lbl->lhs = parse_stmt();
 	/*
 	 * a label must have a block of code after it:
 	 *
@@ -753,7 +865,7 @@ stmt *parse_label_next(stmt *lbl)
 	return lbl;
 }
 
-stmt *parse_code()
+stmt *parse_stmt()
 {
 	stmt *t;
 
@@ -827,7 +939,7 @@ flow:
 			return ret;
 		}
 
-		case token_open_block: return parse_code_block();
+		case token_open_block: return parse_stmt_block();
 
 		case token_switch:
 			return parse_switch();
@@ -859,7 +971,7 @@ flow:
 		}
 
 		default:
-			t = expr_to_stmt(parse_expr_exp());
+			t = expr_to_stmt(parse_expr_exp(), current_scope);
 
 			if(expr_kind(t->expr, identifier) && accept(token_colon)){
 				stmt_mutate_wrapper(t, label);

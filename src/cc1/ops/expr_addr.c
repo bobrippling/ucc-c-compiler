@@ -21,8 +21,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 		char *save;
 
 		/* address of label - void * */
-		e->tree_type = decl_ptr_depth_inc(decl_new());
-		e->tree_type->type->primitive = type_void;
+		e->tree_type = decl_ptr_depth_inc(decl_new_void());
 
 		save = e->spel;
 		e->spel = asm_label_goto(e->spel);
@@ -79,7 +78,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 		}
 
 		/* lvalues are identifier, struct-exp or deref */
-		if(!expr_is_lvalue(e->lhs, LVAL_ALLOW_FUNC))
+		if(!expr_is_lvalue(e->lhs, LVAL_ALLOW_FUNC | LVAL_ALLOW_ARRAY))
 			DIE_AT(&e->lhs->where, "can't take the address of %s", e->lhs->f_str());
 
 
@@ -92,6 +91,8 @@ void fold_expr_addr(expr *e, symtable *stab)
 
 void gen_expr_addr(expr *e, symtable *stab)
 {
+	int push = 1;
+
 	(void)stab;
 
 	if(e->data_store){
@@ -108,13 +109,16 @@ void gen_expr_addr(expr *e, symtable *stab)
 			asm_sym(ASM_LEA, e->lhs->sym, "rax");
 		}else if(expr_kind(e->lhs, op)){
 			/* skip the address (e->lhs) and the deref */
+			UCC_ASSERT(e->lhs->op == op_deref, "deref expected for addr");
 			gen_expr(op_deref_expr(e->lhs), stab);
+			push = 0;
 		}else{
 			ICE("address of %s", e->lhs->f_str());
 		}
 	}
 
-	asm_temp(1, "push rax");
+	if(push)
+		asm_temp(1, "push rax");
 }
 
 void gen_expr_addr_1(expr *e, FILE *f)

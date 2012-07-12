@@ -13,7 +13,11 @@ struct decl_attr
 		attr_section,
 		attr_enum_bitmask,
 		attr_noreturn
-		/* TODO: warning, cdecl, stdcall, fastcall, const */
+		/*
+		 * TODO: warning, cdecl, stdcall, fastcall
+		 * pure - no globals
+		 * const - pure + no pointers
+		 */
 	} type;
 
 	union
@@ -168,6 +172,7 @@ enum decl_cmp
 };
 
 decl        *decl_new(void);
+decl        *decl_new_void(void);
 decl_attr   *decl_attr_new(enum decl_attr_type);
 void         decl_attr_append(decl_attr **loc, decl_attr *new);
 const char  *decl_attr_to_str(enum decl_attr_type);

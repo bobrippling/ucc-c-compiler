@@ -493,12 +493,18 @@ void gen_str(symtable *symtab)
 
 	print_st_en_tdef(symtab);
 
-	for(diter = symtab->decls; diter && *diter; diter++)
-		print_decl(*diter, PDECL_INDENT
+	for(diter = symtab->decls; diter && *diter; diter++){
+		decl *const d = *diter;
+
+		if(d->builtin)
+			continue;
+
+		print_decl(d, PDECL_INDENT
 				| PDECL_NEWLINE
 				| PDECL_PISDEF
 				| PDECL_FUNC_DESCEND
 				| PDECL_SIZE
 				| PDECL_PINIT
 				| PDECL_ATTR);
+	}
 }

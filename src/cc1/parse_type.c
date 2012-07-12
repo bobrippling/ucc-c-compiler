@@ -701,7 +701,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 					free(old_args);
 				}
 
-				d->func_code = parse_code_block();
+				d->func_code = parse_stmt_block();
 			}
 
 			dynarray_add(are_tdefs
