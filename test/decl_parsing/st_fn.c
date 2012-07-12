@@ -11,4 +11,6 @@ main()
 	f.f = p1;
 
 	f.f();
+
+	return 0;
 }

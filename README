@@ -60,5 +60,8 @@ e.g.:
 becomes:
 	"x": pointer to function(taking no arguments) returning const pointer to function(int) returning pointer to int
 
-./ucc -E -o- test.c
-- if you need to ask then read some proper compiler documentation
+./ucc test.c a.o -o out b.a
+- preprocess + compile test.c, and link with a.o and b.a to form the executable out
+
+./ucc a.o b.c -E
+- preprocess b.c - a.o is ignored since it's not linked with
