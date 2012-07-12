@@ -705,7 +705,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 						free(old_args);
 					}
 
-					d->func_code = parse_code_block();
+					d->func_code = parse_stmt_block();
 				}else{
 					cc1_warn_at(NULL, 0, 1, WARN_OMITTED_PARAM_TYPES, "parameter names without types");
 				}

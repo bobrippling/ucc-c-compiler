@@ -438,9 +438,9 @@ static void asm_compare(expr *e, symtable *tab)
 	gen_expr(e->lhs, tab);
 	gen_expr(e->rhs, tab);
 	asm_temp(1, "pop rbx");
-	asm_temp(1, "pop rax");
-	asm_temp(1, "xor rcx,rcx"); /* must be before cmp */
-	asm_temp(1, "cmp rax,rbx");
+	asm_temp(1, "pop rcx");
+	asm_temp(1, "xor rax,rax"); /* must be before cmp */
+	asm_temp(1, "cmp rcx,rbx");
 
 	/* check for unsigned, since signed isn't explicitly set */
 #define SIGNED(s, u) e->tree_type->type->is_signed ? s : u
@@ -455,11 +455,11 @@ static void asm_compare(expr *e, symtable *tab)
 		case op_gt: cmp = SIGNED("g",  "a");  break;
 
 		default:
-			ICE("asm_compare: unhandled comparison");
+			ICE("%s: unhandled comparison", __func__);
 	}
 
-	asm_temp(1, "set%s cl", cmp);
-	asm_temp(1, "push rcx");
+	asm_temp(1, "set%s al", cmp);
+	asm_temp(1, "push rax");
 }
 
 static void asm_shortcircuit(expr *e, symtable *tab)
@@ -474,7 +474,15 @@ static void asm_shortcircuit(expr *e, symtable *tab)
 	asm_temp(1, "pop rax");
 	gen_expr(e->rhs, tab);
 
+	/* must convert to 1 or 0 */
+	asm_temp(1, "pop rcx");
+	asm_temp(1, "xor rax, rax");
+	asm_temp(1, "test rcx, rcx");
+	asm_temp(1, "setnz al");
+	asm_temp(1, "push rax");
+
 	asm_label(baillabel);
+
 	free(baillabel);
 }
 
