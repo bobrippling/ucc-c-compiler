@@ -181,6 +181,7 @@ decl *decl_copy(decl *d)
 	ret->init = NULL;
 	ret->arrayinit = NULL;
 	ret->spel = NULL;
+	ret->func_code = NULL;
 
 	return ret;
 }
