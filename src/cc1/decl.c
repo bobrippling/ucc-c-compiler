@@ -175,6 +175,7 @@ decl *decl_copy(decl *d)
 	/* null-out what we don't want to pass on */
 	ret->init = NULL;
 	ret->spel = NULL;
+	ret->func_code = NULL;
 
 	return ret;
 }
