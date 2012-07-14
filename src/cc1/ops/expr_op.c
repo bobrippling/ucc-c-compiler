@@ -220,6 +220,9 @@ void fold_op_struct(expr *e, symtable *stab)
 
 void fold_deref(expr *e)
 {
+	if(decl_attr_present(op_deref_expr(e)->tree_type->attr, attr_noderef))
+		WARN_AT(&op_deref_expr(e)->where, "dereference of noderef expression");
+
 	/* check for *&x */
 	if(expr_kind(op_deref_expr(e), addr))
 		WARN_AT(&op_deref_expr(e)->where, "possible optimisation for *& expression");
