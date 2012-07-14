@@ -200,8 +200,8 @@ type *parse_type()
 					ICE("wat");
 			}
 
-			if(signed_set || primitive_set)
-				DIE_AT(&t->where, "primitive/signed/unsigned with %s", str);
+			if(signed_set || primitive_set || is_noreturn || is_inline)
+				DIE_AT(&t->where, "primitive/signed/unsigned/noreturn/inline with %s", str);
 
 			/*
 			 * struct A { ... } const x;
@@ -613,13 +613,24 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 		if(t->store == store_typedef){
 			are_tdefs = 1;
 		}else if(t->sue && !parse_possible_decl()){
+			/* FIXME: can't this be caught below anyway? */
+
 			/*
 			 * struct { int i; }; - continue to next one
 			 * we check the actual ->struct/enum because we don't allow "enum x;"
 			 */
 
 			if(t->primitive != type_enum && t->sue->anon)
-				warn_at(&t->where, 1, "anonymous struct with no instances");
+				WARN_AT(&t->where, "anonymous struct with no instances");
+
+			/* check for storage/qual on no-instance */
+			if(t->sue && (t->qual || t->store)){
+				WARN_AT(&t->where, "ignoring %s%s%son no-instance %s",
+						t->store ? type_store_to_str(t->store) : "",
+						t->store ? " " : "",
+						type_qual_to_str(t->qual),
+						sue_str(t->sue));
+			}
 
 			goto next;
 		}
@@ -638,18 +649,20 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 				if(!last){
 					int warn = 0;
 
+					/* check for no-fwd and anon */
 					switch(t->primitive){
+						case type_enum:
 						case type_struct:
 						case type_union:
-						case type_enum:
+							/* if it doesn't have a ->sue, it's a forward decl */
 							warn = t->sue && !t->sue->anon;
 							break;
+
 						default:
 							warn = 1;
 					}
-
 					if(warn)
-						warn_at(&d->where, 1, "declaration doesn't declare anything");
+						WARN_AT(&d->where, "declaration doesn't declare anything");
 
 					decl_free_notype(d);
 					goto next;
