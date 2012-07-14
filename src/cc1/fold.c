@@ -316,16 +316,7 @@ void fold_decl(decl *d, symtable *stab)
 
 		case type_struct:
 		case type_union:
-			/* apply qualifiers to sub-decls */
-			if(d->type->qual){
-				sue_member **i;
-				const enum type_qualifier qual = d->type->qual;
-
-				for(i = d->type->sue->members; i && *i; i++){
-					decl *m = &(*i)->struct_member;
-					m->type->qual |= qual;
-				}
-			}
+			/* don't apply qualifiers to the sue */
 		case type_enum:
 			if(sue_incomplete(d->type->sue) && !decl_ptr_depth(d))
 				DIE_AT(&d->where, "use of %s%s%s",
