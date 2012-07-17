@@ -57,7 +57,7 @@ static sym *symtab_search2(symtable *tab, const void *item, int (*cmp)(const voi
 		if(cmp(item, *diter))
 			return (*diter)->sym;
 
-	if(tab->parent && descend)
+	if(tab->parent && (descend || tab->internal_nest))
 		return symtab_search2(tab->parent, item, cmp, descend);
 
 	return NULL;

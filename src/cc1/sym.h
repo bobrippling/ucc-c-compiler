@@ -29,6 +29,15 @@ struct static_assert
 struct symtable
 {
 	int auto_total_size;
+	int internal_nest;
+	/*
+	 * { int i; 5; int j; }
+	 * j's symtab is internally represented like:
+	 * { int i; 5; { int j; } }
+	 *
+	 * this marks if it is so, for duplicate checking
+	 */
+
 	symtable *parent, **children;
 
 	decl                 **decls;

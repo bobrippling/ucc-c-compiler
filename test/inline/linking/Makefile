@@ -2,9 +2,9 @@ CFLAGS_GCC = -std=c99
 CFLAGS_UCC =
 
 GCC = gcc
-UCC = ../../../src/cc
+UCC = ../../../ucc
 
-all: inline_gcc inline_ucc
+all: inline_ucc # inline_gcc
 
 inline_gcc: inline_gcc.o inline2_gcc.o
 	${GCC} -o $@ $^
