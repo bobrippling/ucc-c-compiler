@@ -316,16 +316,7 @@ void fold_decl(decl *d, symtable *stab)
 
 		case type_struct:
 		case type_union:
-			/* apply qualifiers to sub-decls */
-			if(d->type->qual){
-				sue_member **i;
-				const enum type_qualifier qual = d->type->qual;
-
-				for(i = d->type->sue->members; i && *i; i++){
-					decl *m = &(*i)->struct_member;
-					m->type->qual |= qual;
-				}
-			}
+			/* don't apply qualifiers to the sue */
 		case type_enum:
 			if(sue_incomplete(d->type->sue) && !decl_ptr_depth(d))
 				DIE_AT(&d->where, "use of %s%s%s",
@@ -355,8 +346,13 @@ void fold_decl(decl *d, symtable *stab)
 				d->spel ? d->spel : "");
 	}
 
-	if(d->field_width && !decl_is_integral(d))
-		DIE_AT(&d->where, "field width on non-integral type %s", decl_to_str(d));
+	if(d->field_width){
+		if(!decl_is_integral(d))
+			DIE_AT(&d->where, "field width on non-integral type %s", decl_to_str(d));
+
+		if(d->field_width == 1 && d->type->is_signed)
+			WARN_AT(&d->where, "%s 1-bit field width is signed (-1 and 0)", decl_to_str(d));
+	}
 
 
 	if(decl_is_func(d)){

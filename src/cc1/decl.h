@@ -13,7 +13,8 @@ struct decl_attr
 		attr_section,
 		attr_overloadable,
 		attr_enum_bitmask,
-		attr_noreturn
+		attr_noreturn,
+		attr_noderef,
 		/*
 		 * TODO: warning, cdecl, stdcall, fastcall
 		 * pure - no globals

@@ -32,6 +32,9 @@ typedef unsigned int   uint32_t;
 # ifdef __GOT_SHORT_LONG
 typedef signed   long   int64_t;
 typedef unsigned long  uint64_t;
+#else
+typedef signed   int    int64_t;
+typedef unsigned int   uint64_t;
 # endif
 #endif
 

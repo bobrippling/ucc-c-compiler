@@ -77,6 +77,7 @@ EMPTY(attr_warn_unused)
 EMPTY(attr_overloadable)
 EMPTY(attr_enum_bitmask)
 EMPTY(attr_noreturn)
+EMPTY(attr_noderef)
 
 static struct
 {
@@ -90,6 +91,7 @@ static struct
 	{ "overloadable",   parse_attr_overloadable },
 	{ "bitmask",        parse_attr_enum_bitmask },
 	{ "noreturn",       parse_attr_noreturn },
+	{ "noderef",        parse_attr_noderef },
 	{ NULL, NULL },
 };
 #define MAX_FMT_LEN 32

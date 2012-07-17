@@ -20,14 +20,16 @@ int const_fold_expr_funcall(expr *e)
 
 void fold_expr_funcall(expr *e, symtable *stab)
 {
+	const char *sp = e->expr->spel;
 	int overloaded;
 	decl *df;
 	funcargs *args_from_decl;
 
+	if(!sp)
+		sp = "<anon func>";
+
 	if(expr_kind(e->expr, identifier) && e->expr->spel){
 		/* check for implicit function */
-		char *const sp = e->expr->spel;
-
 		if(!(e->expr->sym = symtab_search(stab, sp))){
 			df = decl_new();
 
@@ -36,7 +38,7 @@ void fold_expr_funcall(expr *e, symtable *stab)
 
 			cc1_warn_at(&e->where, 0, 1, WARN_IMPLICIT_FUNC, "implicit declaration of function \"%s\"", sp);
 
-			decl_set_spel(df, sp);
+			decl_set_spel(df, e->expr->spel);
 
 			df->desc = decl_desc_func_new(df, NULL);
 			df->desc->bits.func = funcargs_new();
@@ -75,10 +77,6 @@ void fold_expr_funcall(expr *e, symtable *stab)
 
 	if(e->funcargs){
 		expr **iter;
-		char *sp = df->spel;
-
-		if(!sp)
-			sp = "<anon func>";
 
 		for(iter = e->funcargs_exprs; *iter; iter++){
 			char *desc;
@@ -118,12 +116,13 @@ void fold_expr_funcall(expr *e, symtable *stab)
 		}else if(count_decl != count_arg && (args_from_decl->variadic ? count_arg < count_decl : 1)){
 			DIE_AT(&e->where, "too %s arguments to function %s (got %d, need %d)",
 					count_arg > count_decl ? "many" : "few",
-					df->spel, count_arg, count_decl);
+					sp, count_arg, count_decl);
 		}
 
 		if(e->funcargs){
 			int idx;
 
+#warning overwriting something here?
 			e->funcargs = funcargs_new();
 
 			for(iter_arg = e->funcargs_exprs; *iter_arg; iter_arg++)
@@ -131,14 +130,14 @@ void fold_expr_funcall(expr *e, symtable *stab)
 
 			if(!overloaded && !funcargs_equal(args_from_decl, e->funcargs, 0, &idx)){
 				if(idx == -1){
-					DIE_AT(&e->where, "mismatching argument count to %s", df->spel);
+					DIE_AT(&e->where, "mismatching argument count to %s", sp);
 				}else{
 					char buf[DECL_STATIC_BUFSIZ];
 
 					strcpy(buf, decl_to_str(args_from_decl->arglist[idx]));
 
 					cc1_warn_at(&e->where, 0, 1, WARN_ARG_MISMATCH, "mismatching argument %d to %s (%s <-- %s)",
-							idx, df->spel, buf, decl_to_str(e->funcargs->arglist[idx]));
+							idx, sp, decl_to_str_r(buf, args_from_decl->arglist[idx]), decl_to_str(e->funcargs->arglist[idx]));
 				}
 			}
 		}
