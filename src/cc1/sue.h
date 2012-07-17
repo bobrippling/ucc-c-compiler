@@ -17,8 +17,8 @@ typedef union sue_member
 struct struct_union_enum_st
 {
 	where where;
-	enum type_primitive primitive;
 	decl_attr *attr;
+	enum type_primitive primitive; /* struct or enum or union */
 
 	char *spel; /* "<anon ...>" if anon */
 	int anon : 1;
