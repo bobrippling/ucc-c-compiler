@@ -1,6 +1,7 @@
 #include "unistd.h"
 #include "syscalls.h"
 #include "sys/time.h"
+#include "sys/select.h"
 
 #ifdef SYS_brk
 static void *ucc_brk(void *p)
