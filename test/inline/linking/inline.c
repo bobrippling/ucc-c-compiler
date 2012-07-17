@@ -1,18 +1,18 @@
 #include "inline.h"
 
-int a()
+void a()
 {
 	HI();
 }
 
-extern int inline z()
+extern void inline z()
 {
 	HI();
 	printf("z calling x\n");
 	x();
 }
 
-extern int inline y()
+extern void inline y()
 {
 	HI();
 }

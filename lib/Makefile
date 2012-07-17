@@ -4,7 +4,7 @@ OBJ    = crt.o syscall.o dirent.o                       \
 				 assert.o ctype.o                               \
 				 ucc.o alloca.o                                 \
          sys/fcntl.o sys/wait.o sys/mman.o sys/socket.o \
-				 sys/utsname.o                                  \
+				 sys/utsname.o sys/select.o sys/time.o          \
          arpa/inet.o
 
 LIBDEPS = ${UCC_CC} ../src/cc1/cc1 ../src/cpp2/cpp
@@ -54,6 +54,10 @@ sys/mman.o: sys/mman.c
 sys/socket.o: sys/socket.c
 	${BUILD_CMD}
 sys/utsname.o: sys/utsname.c
+	${BUILD_CMD}
+sys/select.o: sys/select.c
+	${BUILD_CMD}
+sys/time.o: sys/time.c
 	${BUILD_CMD}
 
 arpa/inet.o: arpa/inet.c

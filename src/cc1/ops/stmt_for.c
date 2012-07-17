@@ -10,22 +10,6 @@ const char *str_stmt_for()
 	return "for";
 }
 
-#ifdef SYMTAB_DEBUG
-void print_stab(symtable *st)
-{
-	decl **i;
-
-	if(st->parent)
-		print_stab(st->parent);
-
-	fprintf(stderr, "\ttable %p, children %d, vars %d, parent: %p\n",
-			st, dynarray_count(st->children), dynarray_count(st->decls), st->parent);
-
-	for(i = st->decls; i && *i; i++)
-		fprintf(stderr, "\t\tdecl %s\n", (*i)->spel);
-}
-#endif
-
 expr *fold_for_if_init_decls(stmt *s)
 {
 	decl **i;
@@ -91,13 +75,13 @@ void fold_stmt_for(stmt *s)
 
 #ifdef SYMTAB_DEBUG
 	fprintf(stderr, "for-code st:\n");
-	print_stab(s->lhs->symtab);
+	PRINT_STAB(s->lhs, 1);
 
 	fprintf(stderr, "for-init st:\n");
-	print_stab(s->flow->for_init_symtab);
+	print_stab(s->flow->for_init_symtab, 0, NULL);
 
 	fprintf(stderr, "for enclosing scope st:\n");
-	print_stab(s->symtab);
+	PRINT_STAB(s, 0);
 #endif
 }
 

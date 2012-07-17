@@ -2,19 +2,19 @@
 
 cvGetSize()
 {
-printf("size()\n");
+	printf("size()\n");
 }
 
 cvCreateImage()
 {
-printf("create()\n");
+	printf("create()\n");
 }
 
 main()
 {
 	void *img;
 
-	int s = ((int (*)(IplImage*))cvGetSize)(img);
+	int s = ((int (*)(IplImage *))cvGetSize)(img);
 	IplImage *gray = ((IplImage *(*)(int, int, int))cvCreateImage)(s, 8, 1);
 
 	return 0;

@@ -55,6 +55,11 @@ struct
 
 	{ 0,  "predecl-enum",    WARN_PREDECL_ENUM,                     },
 
+
+	{ 0, "mixed-code-decls", WARN_MIXED_CODE_DECLS                  },
+
+
+#if 0
 	/* TODO */
 	{ 0,  "unused-parameter", WARN_UNUSED_PARAM },
 	{ 0,  "unused-variable",  WARN_UNUSED_VAR   },
@@ -76,6 +81,7 @@ struct
 	/* TODO */
 	{ 0,  "pointer-arith",    WARN_PTR_ARITH  }, /* void *x; x++; */
 	{ 0,  "int-ptr-cast",     WARN_INT_TO_PTR },
+#endif
 
 	{ 0,  "optimisation",     WARN_OPT_POSSIBLE },
 
@@ -107,11 +113,11 @@ char  fnames[NUM_SECTIONS][32]; /* duh */
 FILE *cc1_out;                  /* final output */
 
 enum warning warn_mode = ~(
-		WARN_VOID_ARITH |
-		WARN_COMPARE_MISMATCH |
-		WARN_IMPLICIT_INT |
-		WARN_INCOMPLETE_USE |
-		WARN_OPT_POSSIBLE
+		  WARN_VOID_ARITH
+		| WARN_COMPARE_MISMATCH
+		| WARN_IMPLICIT_INT
+		| WARN_INCOMPLETE_USE
+		| WARN_OPT_POSSIBLE
 		);
 
 enum fopt    fopt_mode = FOPT_CONST_FOLD | FOPT_SHOW_LINE;

@@ -484,17 +484,22 @@ void gen_str(symtable *symtab)
 	print_st_en_tdef(symtab);
 
 	for(diter = symtab->decls; diter && *diter; diter++){
-		print_decl(*diter, PDECL_INDENT
+		decl *const d = *diter;
+
+		if(d->builtin)
+			continue;
+
+		print_decl(d, PDECL_INDENT
 				| PDECL_NEWLINE
 				| PDECL_PISDEF
 				| PDECL_FUNC_DESCEND
 				| PDECL_SIZE
 				| PDECL_ATTR);
 
-		if((*diter)->init){
+		if(d->init){
 			idt_printf("init:\n");
 			gen_str_indent++;
-			print_expr((*diter)->init);
+			print_expr(d->init);
 			gen_str_indent--;
 		}
 

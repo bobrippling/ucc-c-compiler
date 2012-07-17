@@ -25,7 +25,7 @@ void fold_stmt_default(stmt *s)
 
 void mutate_stmt_default(stmt *s)
 {
-	s->f_passable = fold_passable_yes;
+	s->f_passable = label_passable;
 }
 
 func_gen_stmt (*gen_stmt_default) = gen_stmt_label;
