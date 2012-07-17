@@ -1,5 +1,7 @@
 #include "unistd.h"
 #include "syscalls.h"
+#include "sys/time.h"
+#include "sys/select.h"
 
 #ifdef SYS_brk
 static void *ucc_brk(void *p)
@@ -34,6 +36,29 @@ void *sbrk(int inc)
 	return new;
 }
 #endif
+
+unsigned int sleep(unsigned int sec)
+{
+	struct timespec tsp, rem;
+
+	tsp.tv_sec = sec;
+	tsp.tv_nsec = 0;
+
+	nanosleep(&tsp, &rem);
+
+	/* seconds left */
+	return rem.tv_sec;
+}
+
+int usleep(useconds_t usec)
+{
+	struct timeval tv;
+
+	tv.tv_sec = 0;
+	tv.tv_usec = usec;
+
+	return select(0, NULL, NULL, NULL, &tv);
+}
 
 pid_t getpid()
 {

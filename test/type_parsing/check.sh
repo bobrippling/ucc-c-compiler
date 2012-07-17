@@ -11,6 +11,7 @@ cmd=comp_and_run
 check(){
 	i=0
 	$@ > $log 2>&1
+
 	if [ $? -ne 0 ]
 	then
 		printf '\e[1;31mbroke: %s:\e[m\n' "$f"
@@ -22,7 +23,7 @@ check(){
 }
 
 comp_and_run(){
-	check $d/../../src/cc -o $b $f && check $b -
+	check $d/../../ucc -o $b $f && check $b -
 }
 
 clean(){

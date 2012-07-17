@@ -25,9 +25,10 @@ void fold_expr_stmt(expr *e, symtable *stab)
 		e->tree_type = decl_copy(last_stmt->expr->tree_type);
 		fold_disallow_st_un(e, "({ ... }) statement");
 	}else{
-		e->tree_type = decl_new();
-		e->tree_type->type->primitive = type_void; /* void expr */
+		e->tree_type = decl_new_void(); /* void expr */
 	}
+
+	e->freestanding = 1; /* ({ ... }) on its own is freestanding */
 }
 
 void gen_expr_stmt(expr *e, symtable *stab)

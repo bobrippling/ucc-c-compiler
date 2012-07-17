@@ -162,7 +162,7 @@ void fold_op_struct(expr *e, symtable *stab)
 	 * rhs = struct member ident
 	 */
 	const int ptr_depth_exp = e->op == op_struct_ptr ? 1 : 0;
-	struct_union_enum_st *st;
+	struct_union_enum_st *sue;
 	char *spel;
 
 	fold_expr(e->lhs, stab);
@@ -186,9 +186,9 @@ void fold_op_struct(expr *e, symtable *stab)
 				spel);
 	}
 
-	st = e->lhs->tree_type->type->sue;
+	sue = e->lhs->tree_type->type->sue;
 
-	if(sue_incomplete(st))
+	if(sue_incomplete(sue))
 		DIE_AT(&e->lhs->where, "%s incomplete type (%s)",
 				ptr_depth_exp == 1
 				? "dereferencing pointer to"
@@ -196,7 +196,7 @@ void fold_op_struct(expr *e, symtable *stab)
 				type_to_str(e->lhs->tree_type->type));
 
 	/* found the struct, find the member */
-	e->rhs->tree_type = struct_union_member_find(st, spel, &e->where);
+	e->rhs->tree_type = struct_union_member_find(sue, spel, &e->where);
 
 	/*
 	 * if it's a.b, convert to (&a)->b for asm gen
@@ -216,10 +216,15 @@ void fold_op_struct(expr *e, symtable *stab)
 	}
 
 	e->tree_type = decl_copy(e->rhs->tree_type);
+	/* pull qualifiers from the struct to the member */
+	e->tree_type->type->qual |= e->lhs->tree_type->type->qual;
 }
 
 void fold_deref(expr *e)
 {
+	if(decl_attr_present(op_deref_expr(e)->tree_type->attr, attr_noderef))
+		WARN_AT(&op_deref_expr(e)->where, "dereference of noderef expression");
+
 	/* check for *&x */
 	if(expr_kind(op_deref_expr(e), addr))
 		WARN_AT(&op_deref_expr(e)->where, "possible optimisation for *& expression");
@@ -438,9 +443,9 @@ static void asm_compare(expr *e, symtable *tab)
 	gen_expr(e->lhs, tab);
 	gen_expr(e->rhs, tab);
 	asm_temp(1, "pop rbx");
-	asm_temp(1, "pop rax");
-	asm_temp(1, "xor rcx,rcx"); /* must be before cmp */
-	asm_temp(1, "cmp rax,rbx");
+	asm_temp(1, "pop rcx");
+	asm_temp(1, "xor rax,rax"); /* must be before cmp */
+	asm_temp(1, "cmp rcx,rbx");
 
 	/* check for unsigned, since signed isn't explicitly set */
 #define SIGNED(s, u) e->tree_type->type->is_signed ? s : u
@@ -455,11 +460,11 @@ static void asm_compare(expr *e, symtable *tab)
 		case op_gt: cmp = SIGNED("g",  "a");  break;
 
 		default:
-			ICE("asm_compare: unhandled comparison");
+			ICE("%s: unhandled comparison", __func__);
 	}
 
-	asm_temp(1, "set%s cl", cmp);
-	asm_temp(1, "push rcx");
+	asm_temp(1, "set%s al", cmp);
+	asm_temp(1, "push rax");
 }
 
 static void asm_shortcircuit(expr *e, symtable *tab)
@@ -474,7 +479,15 @@ static void asm_shortcircuit(expr *e, symtable *tab)
 	asm_temp(1, "pop rax");
 	gen_expr(e->rhs, tab);
 
+	/* must convert to 1 or 0 */
+	asm_temp(1, "pop rcx");
+	asm_temp(1, "xor rax, rax");
+	asm_temp(1, "test rcx, rcx");
+	asm_temp(1, "setnz al");
+	asm_temp(1, "push rax");
+
 	asm_label(baillabel);
+
 	free(baillabel);
 }
 

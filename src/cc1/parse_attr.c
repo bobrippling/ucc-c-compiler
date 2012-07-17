@@ -76,6 +76,7 @@ EMPTY(attr_unused)
 EMPTY(attr_warn_unused)
 EMPTY(attr_enum_bitmask)
 EMPTY(attr_noreturn)
+EMPTY(attr_noderef)
 
 static struct
 {
@@ -88,6 +89,7 @@ static struct
 	{ "section",        parse_attr_section },
 	{ "bitmask",        parse_attr_enum_bitmask },
 	{ "noreturn",       parse_attr_noreturn },
+	{ "noderef",        parse_attr_noderef },
 	{ NULL, NULL },
 };
 #define MAX_FMT_LEN 16
@@ -97,8 +99,8 @@ void parse_attr_bracket_chomp(void)
 	if(accept(token_open_paren)){
 		parse_attr_bracket_chomp(); /* nest */
 
-		accept(token_comma);
-		accept(token_identifier); /* optional */
+		while(curtok != token_close_paren)
+			EAT(curtok);
 
 		EAT(token_close_paren);
 	}

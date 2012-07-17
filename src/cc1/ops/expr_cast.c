@@ -8,7 +8,10 @@ const char *str_expr_cast()
 
 int fold_const_expr_cast(expr *e)
 {
-	return const_fold(e->expr);
+	int r = const_fold(e->expr);
+	if(r == 0)
+		e->val.iv.val = e->expr->val.iv.val;
+	return r;
 }
 
 void fold_expr_cast(expr *e, symtable *stab)

@@ -12,8 +12,13 @@ struct decl_attr
 		attr_warn_unused,
 		attr_section,
 		attr_enum_bitmask,
-		attr_noreturn
-		/* TODO: warning, cdecl, stdcall, fastcall, const */
+		attr_noreturn,
+		attr_noderef,
+		/*
+		 * TODO: warning, cdecl, stdcall, fastcall
+		 * pure - no globals
+		 * const - pure + no pointers
+		 */
 	} type;
 
 	union
@@ -100,7 +105,7 @@ struct decl
 	decl_desc *desc;
 
 	stmt *func_code;
-	expr *init; /* NULL except for global variables */
+	expr *init;
 	array_decl *arrayinit;
 
 	int struct_offset;
@@ -143,6 +148,7 @@ enum decl_cmp
 };
 
 decl        *decl_new(void);
+decl        *decl_new_void(void);
 array_decl  *array_decl_new(void);
 decl_attr   *decl_attr_new(enum decl_attr_type);
 void         decl_attr_append(decl_attr **loc, decl_attr *new);

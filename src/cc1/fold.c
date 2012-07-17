@@ -316,16 +316,7 @@ void fold_decl(decl *d, symtable *stab)
 
 		case type_struct:
 		case type_union:
-			/* apply qualifiers to sub-decls */
-			if(d->type->qual){
-				sue_member **i;
-				const enum type_qualifier qual = d->type->qual;
-
-				for(i = d->type->sue->members; i && *i; i++){
-					decl *m = &(*i)->struct_member;
-					m->type->qual |= qual;
-				}
-			}
+			/* don't apply qualifiers to the sue */
 		case type_enum:
 			if(sue_incomplete(d->type->sue) && !decl_ptr_depth(d))
 				DIE_AT(&d->where, "use of %s%s%s",
@@ -355,8 +346,13 @@ void fold_decl(decl *d, symtable *stab)
 				d->spel ? d->spel : "");
 	}
 
-	if(d->field_width && !decl_is_integral(d))
-		DIE_AT(&d->where, "field width on non-integral type %s", decl_to_str(d));
+	if(d->field_width){
+		if(!decl_is_integral(d))
+			DIE_AT(&d->where, "field width on non-integral type %s", decl_to_str(d));
+
+		if(d->field_width == 1 && d->type->is_signed)
+			WARN_AT(&d->where, "%s 1-bit field width is signed (-1 and 0)", decl_to_str(d));
+	}
 
 
 	if(decl_is_func(d)){
@@ -419,8 +415,13 @@ void fold_decl(decl *d, symtable *stab)
 				/* global/static + not constant */
 				/* allow identifiers if the identifier is also static */
 
-				if(!expr_kind(d->init, identifier) || d->init->tree_type->type->store != store_static){
-					DIE_AT(&d->init->where, "not a constant expression for %s init - %s", d->spel, d->init->f_str());
+				if(!expr_kind(d->init, identifier)
+				|| d->init->tree_type->type->store != store_static)
+				{
+					DIE_AT(&d->init->where,
+							"not a constant expression for %s %s initialisation - %s",
+							d->type->store == store_static ? "static" : "global",
+							d->spel, d->init->f_str());
 				}
 			}
 		}
@@ -476,9 +477,43 @@ void fold_disallow_st_un(expr *e, const char *desc)
 	}
 }
 
+#ifdef SYMTAB_DEBUG
+void print_stab(symtable *st, int current, where *w)
+{
+	decl **i;
+
+	if(st->parent)
+		print_stab(st->parent, 0, NULL);
+
+	if(current)
+		fprintf(stderr, "[34m");
+
+	fprintf(stderr, "\ttable %p, children %d, vars %d, parent: %p",
+			(void *)st,
+			dynarray_count((void **)st->children),
+			dynarray_count((void **)st->decls),
+			(void *)st->parent);
+
+	if(current)
+		fprintf(stderr, "[m%s%s", w ? " at " : "", w ? where_str(w) : "");
+
+	fputc('\n', stderr);
+
+	for(i = st->decls; i && *i; i++)
+		fprintf(stderr, "\t\tdecl %s\n", (*i)->spel);
+}
+#endif
+
 void fold_stmt(stmt *t)
 {
 	UCC_ASSERT(t->symtab->parent, "symtab has no parent");
+
+#ifdef SYMTAB_DEBUG
+	if(stmt_kind(t, code)){
+		fprintf(stderr, "fold-code, symtab:\n");
+		PRINT_STAB(t, 1);
+	}
+#endif
 
 	t->f_fold(t);
 }
