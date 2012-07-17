@@ -137,6 +137,7 @@ const char *decl_attr_to_str(enum decl_attr_type t)
 		CASE_STR_PREFIX(attr, section);
 		CASE_STR_PREFIX(attr, enum_bitmask);
 		CASE_STR_PREFIX(attr, noreturn);
+		CASE_STR_PREFIX(attr, noderef);
 	}
 	return NULL;
 }
