@@ -45,7 +45,7 @@ enum type_qualifier
 
 enum type_storage
 {
-	store_default, /* auto or external-linkage depending on scope */
+	store_default, /* auto or external-linkage depending on scope + other defs */
 	store_auto,
 	store_static,
 	store_extern,

@@ -3,12 +3,39 @@
 #include <stdarg.h>
 #include <string.h>
 #include <errno.h>
+#include <unistd.h>
 
 #include "util.h"
 #include "alloc.h"
 
 #define WHERE_FMT "%s:%d:%d"
 #define WHERE_ARGS w->fname, w->line, w->chr + 1
+
+enum
+{
+	colour_black,
+	colour_red,
+	colour_green,
+	colour_orange,
+	colour_blue,
+	colour_magenta,
+	colour_cyan,
+	colour_white,
+
+	colour_err  = colour_red,
+	colour_warn = colour_orange
+};
+
+static const char *const colour_strs[] = {
+	"\033[30m",
+	"\033[31m",
+	"\033[32m",
+	"\033[33m",
+	"\033[34m",
+	"\033[35m",
+	"\033[36m",
+	"\033[37m",
+};
 
 const char *where_str_r(char buf[WHERE_BUF_SIZ], const struct where *w)
 {
@@ -71,7 +98,13 @@ static void warn_show_line(struct where *w)
 
 void vwarn(struct where *w, int err, int show_line, const char *fmt, va_list l)
 {
-	extern int show_current_line;
+	static enum { f = 0, t = 1, need_init = 2 } is_tty = need_init;
+
+	if(is_tty == need_init)
+		is_tty = isatty(2);
+
+	if(is_tty)
+		fputs(colour_strs[err ? colour_err : colour_warn], stderr);
 
 	w = default_where(w);
 
@@ -84,6 +117,9 @@ void vwarn(struct where *w, int err, int show_line, const char *fmt, va_list l)
 	}else{
 		fputc('\n', stderr);
 	}
+
+	if(is_tty)
+		fprintf(stderr, "\033[m");
 
 	if(show_line)
 		warn_show_line(w);
