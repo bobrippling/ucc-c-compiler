@@ -159,7 +159,7 @@ void gen_asm(symtable *globs)
 				/* else extern func with definition */
 
 			case store_default:
-				asm_out_section(SECTION_TEXT, "global %s", d->spel);
+				asm_out_section(SECTION_TEXT, ".globl %s", d->spel);
 		}
 
 		gen_asm_global(d);

@@ -1,6 +1,8 @@
 #ifndef ASM_OUT_H
 #define ASM_OUT_H
 
+#define ASM_COMMENT "#"
+
 typedef struct asm_output asm_output;
 typedef struct asm_operand asm_operand;
 

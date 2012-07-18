@@ -44,7 +44,7 @@ static const struct
 } asm_type_table[] = {
 	{ 1,  'b', "byte" , "",  "l"  },
 	{ 2,  'w', "word" , "",  "x"  },
-	{ 4,  'd', "dword", "e", "x" },
+	{ 4,  'l', "dword", "e", "x" },
 	{ 8,  'q', "qword", "r", "x" },
 
 	/* llong */
@@ -138,7 +138,7 @@ void asm_sym(enum asm_sym_type t, sym *s, asm_operand *reg)
 
 	if(is_global){
 		if(t == ASM_LEA || s->decl->func_code){
-			brackets = asm_operand_new_label(NULL, dsp);
+			brackets = asm_operand_new_label(s->decl, dsp);
 			/*
 			 * either:
 			 *   we want             lea rax, [a]
@@ -149,13 +149,13 @@ void asm_sym(enum asm_sym_type t, sym *s, asm_operand *reg)
 		}else{
 			/* get warnings for "lea rax, [qword tim]", just do "lea rax, [tim]" */
 			brackets = asm_operand_new_deref(
-					NULL, /* pointer */
+					s->decl,
 					asm_operand_new_label(NULL, dsp),
 					0);
 		}
 	}else{
 		brackets = asm_operand_new_deref(
-				NULL, /* pointer */
+				s->decl,
 				asm_operand_new_reg(NULL, ASM_REG_BP),
 				/*((is_auto ? -1 : 2) * platform_word_size()) + s->offset); - broken? */
 				(is_auto ? -1 : 1) * (((is_auto ? 1 : 2) * platform_word_size()) + s->offset));

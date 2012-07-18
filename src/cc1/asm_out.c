@@ -107,7 +107,7 @@ void asm_out_type_pop(asm_output *out)
 	asm_out_generic("pop", out, 1);
 
 	if(!tt || sz == word){
-		fprintf(f, "\t; not truncating - machine word size\n");
+		fprintf(f, "\t%s not truncating - machine word size\n", ASM_COMMENT);
 	}else{
 		/*movzbl?*/
 
@@ -138,7 +138,7 @@ void asm_out_type_mov(asm_output *out)
 
 static void asm_out_type_comment(asm_output *out)
 {
-	fprintf(cc_out[SECTION_TEXT], "\t; %s\n", out->extra);
+	fprintf(cc_out[SECTION_TEXT], "\t%s %s\n", ASM_COMMENT, out->extra);
 }
 
 void asm_out_type_label(asm_output *out)
@@ -149,12 +149,10 @@ void asm_out_type_label(asm_output *out)
 
 void asm_out_type_jmp(asm_output *out)
 {
-	if(out->extra){
-		/* jz %s, etc */
-		fprintf(cc_out[SECTION_TEXT], "\tj%s %s\n", out->extra, out->lhs->label);
-	}else{
-		asm_out_generic("jmp", out, 1);
-	}
+	/* jz %s, etc */
+	fprintf(cc_out[SECTION_TEXT], "\tj%s %s\n",
+			out->extra ? out->extra : "mp",
+			out->lhs->impl(out->lhs));
 }
 
 void asm_out_type_set(asm_output *out)
@@ -183,16 +181,32 @@ static const char *asm_operand_deref(asm_operand *op)
 	const char *tstr;
 
 	/* if it's rsp or rbp, don't add "qword" and pals on */
+#if 0
 	if(op->deref_base->impl == asm_operand_reg){
 		tstr = "";
 	}else{
 		tstr = asm_type_str(op->tt);
 	}
+#else
+	tstr = "";
+#endif
 
-	n = snprintf(buf, sizeof buf, "[%s %s + %d]",
+	/*
+displacement(base register, offset register, scalar multiplier)
+aka
+[base register + displacement + offset register * scalar multiplier]
+
+movl    -4(%ebp, %edx, 4), %eax  # Full example: load *(ebp - 4 + (edx * 4)) into eax
+movl    -4(%ebp), %eax           # Typical example: load a stack variable into eax
+movl    (%ecx), %edx             # No offset: copy the target of a pointer into a register
+leal    8(,%eax,4), %eax         # Arithmetic: multiply eax by 4 and add 8
+leal    (%eax,%eax,2), %eax      # Arithmetic: multiply eax by 2 and add eax (i.e. multiply by 3)
+	 */
+
+	n = snprintf(buf, sizeof buf, "%d(%s%s)",
+			op->deref_offset,
 			tstr,
-			op->deref_base->impl(op->deref_base),
-			op->deref_offset);
+			op->deref_base->impl(op->deref_base));
 
 	if(n >= sizeof buf)
 		ICE("buffer too small for deref-asm operand");

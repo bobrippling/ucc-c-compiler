@@ -123,7 +123,7 @@ void gen_expr_assign(expr *e, symtable *stab)
 		asm_output_new(
 				asm_out_type_mov,
 				asm_operand_new_reg(e->tree_type, ASM_REG_A),
-				asm_operand_new_deref(NULL, asm_operand_new_reg(NULL, ASM_REG_SP), 0)
+				asm_operand_new_deref(e->tree_type, asm_operand_new_reg(NULL, ASM_REG_SP), 0)
 			);
 		asm_comment("the value we saved");
 	}
