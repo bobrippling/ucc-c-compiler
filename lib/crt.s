@@ -23,7 +23,7 @@ _start:
 	leaq 1(%rdi), %rax   # argc + 1
 
 	# rax = argv + (argc + 1) * 8
-	leaq (%rsi,8), %rax  # [%rsi + rax * 8]
+	leaq (,%rsi,8), %rax  # [%rsi + rax * 8]
 
 	movq %rax, (environ)
 
