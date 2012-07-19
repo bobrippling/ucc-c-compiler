@@ -32,13 +32,14 @@ static const char *asm_reg_str(decl *d, enum asm_reg r)
 	return buf;
 }
 
-static void asm_out_generic(const char *opc, asm_output *out, int n_ops)
+#define ASM_OUT_GENERIC(opc, out, n_ops) asm_out_generic(opc, out, n_ops, 1)
+static void asm_out_generic(const char *opc, asm_output *out, int n_ops, int auto_ext)
 {
 	/* for now, just output text, rather than analysis, etc */
 	FILE *f = cc_out[SECTION_TEXT];
 	char mode[2];
 
-	if(n_ops > 0 && out->lhs){
+	if(auto_ext && n_ops > 0 && out->lhs){
 		mode[0] = asm_type_ch(out->lhs->tt);
 		mode[1] = '\0';
 	}else{
@@ -66,7 +67,7 @@ static void asm_out_generic(const char *opc, asm_output *out, int n_ops)
 #define ASM_WRAP(t, nops)                   \
 void asm_out_type_ ## t(asm_output *out)    \
 {                                           \
-	asm_out_generic(#t, out, nops);           \
+	ASM_OUT_GENERIC(#t, out, nops);           \
 }
 
 ASM_WRAP(add,      2)
@@ -91,8 +92,8 @@ ASM_WRAP(push,     1)
 void asm_out_type_idiv(asm_output *out)
 {
 	ICE("FIXME: cq[t]o");
-	asm_out_generic("cqo",  out, 1); /* cqto for AT&T */
-	asm_out_generic("idiv", out, 1);
+	ASM_OUT_GENERIC("cqo",  out, 1); /* cqto for AT&T */
+	ASM_OUT_GENERIC("idiv", out, 1);
 }
 
 void asm_out_type_pop(asm_output *out)
@@ -104,7 +105,7 @@ void asm_out_type_pop(asm_output *out)
 
 	out->lhs->tt = NULL; /* force pop rax */
 
-	asm_out_generic("pop", out, 1);
+	ASM_OUT_GENERIC("pop", out, 1);
 
 	if(!tt || sz == word){
 		fprintf(f, "\t%s not truncating - machine word size\n", ASM_COMMENT);
@@ -133,7 +134,7 @@ void asm_out_type_mov(asm_output *out)
 
 	snprintf(buf, sizeof buf, "mov%s", out->extra ? out->extra : "");
 
-	asm_out_generic(buf, out, 2);
+	asm_out_generic(buf, out, 2, !out->extra /* no extention if we add something */);
 }
 
 static void asm_out_type_comment(asm_output *out)
