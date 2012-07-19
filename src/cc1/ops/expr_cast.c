@@ -58,7 +58,7 @@ void fold_expr_cast(expr *e, symtable *stab)
 	dlhs = e->tree_type;
 	drhs = e->expr->tree_type;
 
-	if((size_lhs = asm_type_size(dlhs)) < (size_rhs = asm_type_size(drhs))){
+	if(!decl_is_void(dlhs) && (size_lhs = asm_type_size(dlhs)) < (size_rhs = asm_type_size(drhs))){
 		char buf[DECL_STATIC_BUFSIZ];
 
 		strcpy(buf, decl_to_str(drhs));
@@ -84,6 +84,12 @@ void gen_expr_cast(expr *e, symtable *stab)
 
 	dlhs = e->tree_type;
 	drhs = e->expr->tree_type;
+
+	/* return if cast-to-void */
+	if(decl_is_void(dlhs)){
+		asm_comment("cast to void");
+		return;
+	}
 
 	/* type convert */
 	strcpy(buf, decl_to_str(drhs));
