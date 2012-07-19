@@ -67,7 +67,8 @@ void gen_func_stack(decl *df, const int offset)
 
 void asm_extern(decl *d)
 {
-	asm_out_section(SECTION_BSS, "extern %s", d->spel);
+	asm_comment("extern %s", d->spel);
+	/*asm_out_section(SECTION_BSS, "extern %s", d->spel);*/
 }
 
 void gen_asm_global(decl *d)
