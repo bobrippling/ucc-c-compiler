@@ -20,14 +20,14 @@ UCC_LDFLAGS = ${UCC_LDFLAGS}
 	if [ $1 = Linux ]
 	then
 		cat <<!
-	cmp rax, -1
+	cmpq \$-1, %rax
 	jg .fin
-	neg rax ; get positive errno
+	negq %rax # get positive errno
 !
 	else
 		cat <<!
 	jnc .fin
-	; else, carry - err is in rax
+	# else, carry - err is in rax
 !
 	fi > lib/syscall_err.s
 

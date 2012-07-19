@@ -103,13 +103,13 @@ void gen_expr_cast(expr *e, symtable *stab)
 		}else{
 			asm_pop(NULL, ASM_REG_A);
 			/*
-			* movsx -> mov sign extend
-			* movsx rax, eax ; long <- int, etc
-			* or
-			* cbw  (ax  <- al)
-			* cwde (eax <- ax)
-			* cdqe (rax <- eax)
-			*/
+			 * movsx -> mov sign extend
+			 * movsx rax, eax ; long <- int, etc
+			 * or
+			 * cbw  (ax  <- al)
+			 * cwde (eax <- ax)
+			 * cdqe (rax <- eax)
+			 */
 			/*o->extra = ustrprintf("c%c%s", ..) */
 
 			/* movsx a..., a... */

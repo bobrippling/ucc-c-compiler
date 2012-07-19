@@ -181,10 +181,11 @@ void asm_sym(enum asm_sym_type t, sym *s, asm_operand *reg)
 
 const char *asm_intval_str(intval *iv)
 {
-	static char buf[32];
-	char fmt[4];
+	static char buf[64];
+	char fmt[8];
 	char *p = fmt;
 
+	*p++ = '$'; /* $53 */
 	*p++ = '%';
 	if(iv->suffix & VAL_LONG)
 		*p++ = 'l';

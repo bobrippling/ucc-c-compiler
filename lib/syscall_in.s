@@ -1,28 +1,29 @@
-section .bss
-	global errno
-	errno resq 1
+	.section .bss
+	.globl errno
+errno:
+	.long 0
 
-section .text
-	global __syscall
+.section .text
+	.globl __syscall
 __syscall:
-	push rbp
-	mov rbp, rsp
+	pushq %rbp
+	movq  %rsp, %rbp
 
-	; x64 convention: rdi, rsi, rdx, rcx, r8, r9
-	; linux kernel:   rdi, rsi, rdx, r10, r8, r9
-	; rcx and r11 are destroyed - should save...
+	// x64 convention: %rdi, %rsi, %rdx, %rcx, %r8, %r9
+	// linux kernel:   %rdi, %rsi, %rdx, %r10, %r8, %r9
+	// %rcx and %r11 are destroyed - should save... eh
 
-	mov rax, [rbp + 16] ; eax
-	mov rdi, [rbp + 24] ; ebx
-	mov rsi, [rbp + 32] ; ecx
-	mov rdx, [rbp + 40] ; edx
-	mov r10, [rbp + 48] ; edi
-	mov r8,  [rbp + 56] ; esi
-	mov r9,  [rbp + 64] ; e8?
+	movq %rax, 16(%rbp) # eax
+	movq %rdi, 24(%rbp) # ebx
+	movq %rsi, 32(%rbp) # ecx
+	movq %rdx, 40(%rbp) # edx
+	movq %r10, 48(%rbp) # edi
+	movq %r8,  56(%rbp) # esi
+	movq %r9,  64(%rbp) # e8?
 	syscall
 #include "syscall_err.s"
-	mov [qword errno], rax
-	mov rax, -1
+	movl %eax, (errno)
+	movq %rax, -1
 .fin:
-	leave
-	ret
+	leaveq
+	retq
