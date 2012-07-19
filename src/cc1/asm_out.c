@@ -10,6 +10,7 @@
 #include "asm_out.h"
 #include "asm.h"
 #include "../util/platform.h"
+#include "sue.h"
 
 static asm_output **asm_prog = NULL;
 static int asm_flushing = 0;
@@ -91,7 +92,6 @@ ASM_WRAP(push,     1)
 
 void asm_out_type_idiv(asm_output *out)
 {
-	ICE("FIXME: cq[t]o");
 	ASM_OUT_GENERIC("cqo",  out, 1); /* cqto for AT&T */
 	ASM_OUT_GENERIC("idiv", out, 1);
 }
@@ -268,8 +268,18 @@ asm_operand *asm_operand_new_deref(decl *tt, asm_operand *deref_base, int offset
 
 asm_output *asm_output_new(asm_out_func *impl, asm_operand *lhs, asm_operand *rhs)
 {
+#define PREVENT_STRUCT(side)                                  \
+	if(side && side->tt)                                        \
+		UCC_ASSERT(!decl_is_struct_or_union(side->tt),            \
+				"%s in asm generation", sue_str(side->tt->type->sue))
+
 	asm_output *out;
+
 	UCC_ASSERT(asm_flushing == 0, "adding while flushing");
+
+	PREVENT_STRUCT(lhs);
+	PREVENT_STRUCT(rhs);
+
 	out = umalloc(sizeof *out);
 	out->impl = impl;
 	out->lhs = lhs;

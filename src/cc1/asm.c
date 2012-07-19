@@ -243,7 +243,8 @@ int asm_table_lookup(decl *d)
 
 			case type_struct:
 			case type_union:
-				DIE_AT(&d->where, "invalid use of struct (%s:%d)", __FILE__, __LINE__);
+				ICE("%s of %s", __func__, sue_str(d->type->sue));
+				/*DIE_AT(&d->where, "invalid use of struct (%s:%d)", __FILE__, __LINE__);*/
 
 			case type_unknown:
 				ICE("type primitive not set");
