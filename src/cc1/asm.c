@@ -137,21 +137,11 @@ void asm_sym(enum asm_sym_type t, sym *s, asm_operand *reg)
 	asm_operand *brackets;
 
 	if(is_global){
+		brackets = asm_operand_new_label(s->decl, dsp);
+
 		if(t == ASM_LEA || s->decl->func_code){
-			brackets = asm_operand_new_label(s->decl, dsp);
-			/*
-			 * either:
-			 *   we want             lea rax, [a]
-			 *   and convert this to mov rax, a   // this is because Macho-64 is an awful binary format
-			 * force a mov for funcs (i.e. &func == func)
-			 */
-			t = ASM_LOAD;
-		}else{
-			/* get warnings for "lea rax, [qword tim]", just do "lea rax, [tim]" */
-			brackets = asm_operand_new_deref(
-					s->decl,
-					asm_operand_new_label(NULL, dsp),
-					0);
+			/* force a lea, for the label */
+			t = ASM_LEA;
 		}
 	}else{
 		brackets = asm_operand_new_deref(
@@ -226,11 +216,11 @@ int asm_table_lookup(decl *d)
 
 		switch(d->type->primitive){
 			case type_void:
-				ICE("type primitive is void");
+				ICE("type primitive is void (\"%s\")", decl_to_str(d));
 
 			case type__Bool:
 			case type_char:
-			 	return INDEX_CHAR;
+				return INDEX_CHAR;
 
 			case type_short:
 				return INDEX_SHORT;
