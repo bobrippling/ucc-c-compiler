@@ -135,17 +135,24 @@ void asm_sym(enum asm_sym_type t, sym *s, asm_operand *reg)
 	char *const dsp = s->decl->spel;
 	int is_auto = s->type == sym_local;
 	asm_operand *brackets;
+	decl *resolved_type;
+
+	if(is_global && (t == ASM_LEA || s->decl->func_code))
+		t = ASM_LEA; /* force a lea, for the label */
+
+	if(t == ASM_LEA){
+		/* decl is the ptr_depth_inc of s->decl, not s->decl */
+		resolved_type = decl_ptr_depth_inc(decl_copy(s->decl));
+	}else{
+		resolved_type = s->decl;
+	}
 
 	if(is_global){
-		brackets = asm_operand_new_label(s->decl, dsp);
+		brackets = asm_operand_new_label(resolved_type, dsp);
 
-		if(t == ASM_LEA || s->decl->func_code){
-			/* force a lea, for the label */
-			t = ASM_LEA;
-		}
 	}else{
 		brackets = asm_operand_new_deref(
-				s->decl,
+				resolved_type,
 				asm_operand_new_reg(NULL, ASM_REG_BP),
 				/*((is_auto ? -1 : 2) * platform_word_size()) + s->offset); - broken? */
 				(is_auto ? -1 : 1) * (((is_auto ? 1 : 2) * platform_word_size()) + s->offset));
@@ -167,6 +174,8 @@ void asm_sym(enum asm_sym_type t, sym *s, asm_operand *reg)
 			t == ASM_STORE ? reg              : brackets);
 
 	asm_comment("%s%s", t == ASM_LEA ? "&" : "", dsp);
+
+	/* don't free resolved_type - it's needed by the asm_operand */
 }
 
 const char *asm_intval_str(intval *iv)
