@@ -67,7 +67,7 @@ void *memset(void *p, unsigned char c, size_t len)
 {
 	void *const start = p;
 	// TODO: asm / duff's device
-	while(len > 0)
+	while(len-- > 0)
 		*(char *)p++ = c;
 	return start;
 }
