@@ -97,9 +97,17 @@ void gen_expr_str__Generic(expr *e, symtable *stab)
 	gen_str_indent--;
 }
 
+void const_expr__Generic(expr *e, intval *piv, enum constyness *pconst_type)
+{
+	/* we're const if our chosen expr is */
+	UCC_ASSERT(e->generic_chosen, "_Generic const check before fold");
+
+	const_fold(e->generic_chosen->e, piv, pconst_type);
+}
+
 void mutate_expr__Generic(expr *e)
 {
-	(void)e;
+	e->f_const_fold = const_expr__Generic;
 }
 
 expr *expr_new__Generic(expr *test, struct generic_lbl **lbls)
