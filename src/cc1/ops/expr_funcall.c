@@ -196,7 +196,7 @@ invalid:
 		if(sym && !decl_is_fptr(sym->decl)){
 			/* simple */
 			asm_output_new(asm_out_type_call,
-					asm_operand_new_label(NULL, sym->decl->spel),
+					asm_operand_new_label(NULL, sym->decl->spel, 0),
 					NULL);
 		}else{
 			gen_expr(e->expr, stab);

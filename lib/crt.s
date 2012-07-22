@@ -17,7 +17,7 @@ _start:
 	movq (%rsi), %rcx
 
 	movq %rcx, %rax
-	movq %rax, __progname#(%rip)
+	movq %rax, __progname(%rip)
 
 	# find the first env variable
 	leaq 1(%rdi), %rax   # argc + 1
@@ -25,7 +25,7 @@ _start:
 	# rax = argv + (argc + 1) * 8
 	leaq (,%rsi,8), %rax  # [%rsi + rax * 8]
 
-	movq %rax, environ#(%rip)
+	movq %rax, environ(%rip)
 
 	push %rax # environ
 	push %rsi # argv
@@ -36,7 +36,7 @@ _start:
 	call exit
 	hlt
 
-.section .bss
+.section .bss,
 # other things we sort out at startup
 
 .globl environ

@@ -146,13 +146,13 @@ void gen_expr_addr(expr *e, symtable *stab)
 		asm_output_new(
 				asm_out_type_mov,
 				asm_operand_new_reg(  e->tree_type, ASM_REG_A), /* TODO: tt right here? */
-				asm_operand_new_label(NULL, e->array_store->label)
+				asm_operand_new_label(NULL, e->array_store->label, 1)
 			);
 	}else if(e->spel){
 		asm_output_new(
 				asm_out_type_mov,
 				asm_operand_new_reg(  NULL, ASM_REG_A),
-				asm_operand_new_label(NULL, e->array_store->label)
+				asm_operand_new_label(NULL, e->array_store->label, 1)
 			);
 	}else{
 		/* address of possibly an ident "(&a)->b" or a struct expr "&a->b" */

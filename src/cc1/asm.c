@@ -148,7 +148,7 @@ void asm_sym(enum asm_sym_type t, sym *s, asm_operand *reg)
 	}
 
 	if(is_global){
-		brackets = asm_operand_new_label(resolved_type, dsp);
+		brackets = asm_operand_new_label(resolved_type, dsp, 1);
 
 	}else{
 		brackets = asm_operand_new_deref(

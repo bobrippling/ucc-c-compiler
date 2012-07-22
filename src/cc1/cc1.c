@@ -120,7 +120,7 @@ enum warning warn_mode = ~(
 		| WARN_OPT_POSSIBLE
 		);
 
-enum fopt    fopt_mode = FOPT_CONST_FOLD | FOPT_SHOW_LINE;
+enum fopt    fopt_mode = FOPT_CONST_FOLD | FOPT_SHOW_LINE | FOPT_PIC;
 enum cc1_backend cc1_backend = BACKEND_ASM;
 
 int cc1_max_errors = 16;

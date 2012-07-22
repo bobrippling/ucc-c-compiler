@@ -168,12 +168,35 @@ void asm_out_type_set(asm_output *out)
 
 static const char *asm_operand_reg(asm_operand *op)
 {
-	return asm_reg_str(op->tt, op->reg);
+	return asm_reg_str(op->tt, op->bits.reg);
 }
 
 static const char *asm_operand_label(asm_operand *op)
 {
-	return op->label;
+#define PIC
+#ifdef PIC
+	static char *buf;
+	static int bufl;
+	int len;
+	int pcrel = 1; /* TODO */
+
+	if((fopt_mode & FOPT_PIC) == 0 || !op->bits.label.pic)
+		return op->bits.label.str;
+
+	len = strlen(op->bits.label.str) + 32;
+
+	if(bufl < len){
+		buf = urealloc(buf, len);
+		bufl = len;
+	}
+
+	snprintf(buf, bufl, "%s%s(%%rip)", op->bits.label.str, pcrel ? "@GOTPCREL" : "");
+
+	return buf;
+#else
+#warning "no pic, darwin 'as' will fail"
+	return op->bits.label;
+#endif
 }
 
 static const char *asm_operand_deref(asm_operand *op)
@@ -184,7 +207,7 @@ static const char *asm_operand_deref(asm_operand *op)
 
 	/* if it's rsp or rbp, don't add "qword" and pals on */
 #if 0
-	if(op->deref_base->impl == asm_operand_reg){
+	if(op->bits.deref_base->impl == asm_operand_reg){
 		tstr = "";
 	}else{
 		tstr = asm_type_str(op->tt);
@@ -206,9 +229,9 @@ leal    (%eax,%eax,2), %eax      # Arithmetic: multiply eax by 2 and add eax (i.
 	 */
 
 	n = snprintf(buf, sizeof buf, "%d(%s%s)",
-			op->deref_offset,
+			op->bits.deref.offset,
 			tstr,
-			op->deref_base->impl(op->deref_base));
+			op->bits.deref.base->impl(op->bits.deref.base));
 
 	if(n >= sizeof buf)
 		ICE("buffer too small for deref-asm operand");
@@ -218,7 +241,7 @@ leal    (%eax,%eax,2), %eax      # Arithmetic: multiply eax by 2 and add eax (i.
 
 static const char *asm_operand_val(asm_operand *op)
 {
-	return asm_intval_str(op->iv);
+	return asm_intval_str(op->bits.iv);
 }
 
 asm_operand *asm_operand_new(decl *tt)
@@ -232,7 +255,7 @@ asm_operand *asm_operand_new_reg(decl *tt, enum asm_reg reg)
 {
 	asm_operand *new = asm_operand_new(tt);
 	new->impl = asm_operand_reg;
-	new->reg  = reg;
+	new->bits.reg = reg;
 	return new;
 }
 
@@ -240,7 +263,7 @@ asm_operand *asm_operand_new_intval(intval *iv)
 {
 	asm_operand *new = asm_operand_new(NULL);
 	new->impl = asm_operand_val;
-	new->iv = iv;
+	new->bits.iv = iv;
 	return new;
 }
 
@@ -249,11 +272,12 @@ asm_operand *asm_operand_new_val(int i)
 	return asm_operand_new_intval(intval_new(i));
 }
 
-asm_operand *asm_operand_new_label(decl *tt, const char *lbl)
+asm_operand *asm_operand_new_label(decl *tt, const char *lbl, int pic)
 {
 	asm_operand *new = asm_operand_new(tt);
 	new->impl = asm_operand_label;
-	new->label = lbl;
+	new->bits.label.str = lbl;
+	new->bits.label.pic = pic;
 	return new;
 }
 
@@ -262,8 +286,8 @@ asm_operand *asm_operand_new_deref(decl *tt, asm_operand *deref_base, int offset
 	asm_operand *new  = asm_operand_new(tt);
 	new->impl         = asm_operand_deref;
 	UCC_ASSERT(deref_base, "no deref");
-	new->deref_base   = deref_base;
-	new->deref_offset = offset;
+	new->bits.deref.base   = deref_base;
+	new->bits.deref.offset = offset;
 	return new;
 }
 
@@ -325,7 +349,7 @@ void asm_jmp_custom(const char *test, const char *lbl)
 {
 	asm_output *o = asm_output_new(
 			asm_out_type_jmp,
-			asm_operand_new_label(NULL, ustrdup(lbl)),
+			asm_operand_new_label(NULL, ustrdup(lbl), 0 /* no pic */),
 			NULL);
 
 	if(test)

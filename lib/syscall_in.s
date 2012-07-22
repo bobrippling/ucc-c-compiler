@@ -1,9 +1,9 @@
-	.section .bss
+.section .bss,
 	.globl errno
 errno:
 	.long 0
 
-.section .text
+.section .text,
 	.globl __syscall
 __syscall:
 	pushq %rbp
@@ -22,7 +22,7 @@ __syscall:
 	movq %r9,  64(%rbp) # e8?
 	syscall
 #include "syscall_err.s"
-	movl %eax, (errno)
+	movl %eax, errno(%rip)
 	movq %rax, -1
 .fin:
 	leaveq

@@ -99,9 +99,10 @@ void gen_expr_identifier(expr *e, symtable *stab)
 				asm_operand_new_reg(e->sym->decl, ASM_REG_A));
 
 	}else{
+		/* no symbol, or a function */
 		asm_output_new(asm_out_type_mov,
 				asm_operand_new_reg(  e->tree_type, ASM_REG_A),
-				asm_operand_new_label(e->tree_type, e->spel));
+				asm_operand_new_label(e->tree_type, e->spel, 0));
 		/*asm_temp(1, "mov rax, %s", e->spel);*/
 	}
 

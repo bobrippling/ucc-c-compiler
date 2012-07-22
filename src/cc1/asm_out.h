@@ -37,27 +37,35 @@ struct asm_operand
 	decl *tt;
 
 	/* reg */
-	enum asm_reg
+	union
 	{
-		ASM_REG_A,  ASM_REG_B, ASM_REG_C, ASM_REG_D,
-		ASM_REG_BP, ASM_REG_SP,
-	} reg;
+		enum asm_reg
+		{
+			ASM_REG_A,  ASM_REG_B, ASM_REG_C, ASM_REG_D,
+			ASM_REG_BP, ASM_REG_SP,
+		} reg;
 
-	/* label */
-	const char *label;
+		struct /* label */
+		{
+			const char *str;
+			int pic;
+		} label;
 
-	/* deref aka brackets */
-	asm_operand *deref_base;
-	int          deref_offset;
+		struct /* deref aka brackets */
+		{
+			asm_operand *base;
+			int          offset;
+		} deref;
 
-	/* immediate val */
-	intval *iv;
+		/* immediate val */
+		intval *iv;
+	} bits;
 };
 
 asm_operand *asm_operand_new_reg(  decl *tree_type, enum asm_reg);
 asm_operand *asm_operand_new_val(  int);
 asm_operand *asm_operand_new_intval(intval *);
-asm_operand *asm_operand_new_label(decl *tree_type, const char *lbl);
+asm_operand *asm_operand_new_label(decl *tree_type, const char *lbl, int pic);
 asm_operand *asm_operand_new_deref(decl *tree_type, asm_operand *deref_base, int offset);
 
 asm_output *asm_output_new(
