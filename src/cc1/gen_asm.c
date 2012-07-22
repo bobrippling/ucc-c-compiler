@@ -121,8 +121,33 @@ void gen_asm_global(decl *d)
 		asm_extern(d);
 
 	}else{
-		/* always resb, since we use decl_size() */
-		asm_out_section(SECTION_BSS, "%s resb %d", d->spel, decl_size(d));
+		/* always reserve in bytes, since we use decl_size() */
+		/*asm_out_section(SECTION_BSS, "%s resb %d", d->spel, decl_size(d));*/
+		int sz = decl_size(d);
+		struct
+		{
+			int sz;
+			const char *directive;
+		} sizes[] = {
+			{ 8, "quad" },
+			{ 4, "long" },
+			{ 2, "word" },
+			{ 1, "byte" },
+			{ 0,  NULL  }
+		};
+
+		asm_out_section(SECTION_BSS, "%s:", d->spel);
+		while(sz > 0){
+			int i;
+
+			for(i = 0; sizes[i].sz; i++){
+				if(sz >= sizes[i].sz){
+					asm_out_section(SECTION_BSS, ".%s 0", sizes[i].directive);
+					sz -= sizes[i].sz;
+					break;
+				}
+			}
+		}
 	}
 }
 

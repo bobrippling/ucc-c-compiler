@@ -108,7 +108,8 @@ void asm_out_type_pop(asm_output *out)
 	ASM_OUT_GENERIC("pop", out, 1);
 
 	if(!tt || sz == word){
-		fprintf(f, "\t%s not truncating - machine word size\n", ASM_COMMENT);
+		if(tt)
+			fprintf(f, "\t%s not truncating - machine word size\n", ASM_COMMENT);
 	}else{
 		/*movzbl?*/
 
