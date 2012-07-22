@@ -53,7 +53,7 @@ void fold_insert_casts(decl *dlhs, expr **prhs, symtable *stab, where *w)
 
 		eof_where = w;
 
-		cast = expr_new_cast(dlhs);
+		cast = expr_new_cast(decl_copy(dlhs));
 		cast->expr = rhs;
 		*prhs = cast;
 
@@ -673,7 +673,7 @@ void fold_func(decl *func_decl)
 			}
 		}
 
-		free(curdecl_func_called);
+		decl_free(curdecl_func_called);
 		curdecl_func_called = NULL;
 		curdecl_func = NULL;
 	}
