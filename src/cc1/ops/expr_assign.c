@@ -5,12 +5,6 @@ const char *str_expr_assign()
 	return "assign";
 }
 
-int fold_const_expr_assign(expr *e)
-{
-	(void)e;
-	return 1; /* could check if the assignment subtree is const */
-}
-
 int expr_is_lvalue(expr *e, enum lvalue_opts opts)
 {
 	/*
@@ -124,7 +118,6 @@ void gen_expr_str_assign(expr *e, symtable *stab)
 
 void mutate_expr_assign(expr *e)
 {
-	e->f_const_fold = fold_const_expr_assign;
 	e->freestanding = 1;
 }
 

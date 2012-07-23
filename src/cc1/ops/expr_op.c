@@ -9,10 +9,9 @@ const char *str_expr_op()
 	return "op";
 }
 
-int operate(expr *lhs, expr *rhs, enum op_type op, int *bad)
+void operate(expr *lhs, expr *rhs, enum op_type op, intval *piv, enum constyness *pconst_type)
 {
-#define OP(a, b) case a: return lhs->val.iv.val b rhs->val.iv.val
-
+#define OP(a, b) case a: piv->val = lhs->val.iv.val b rhs->val.iv.val; return
 	switch(op){
 		OP(op_multiply,   *);
 		OP(op_eq,         ==);
@@ -35,25 +34,24 @@ int operate(expr *lhs, expr *rhs, enum op_type op, int *bad)
 			long l = lhs->val.iv.val, r = rhs->val.iv.val;
 
 			if(r){
-				return op == op_divide ? l / r : l % r;
+				piv->val = op == op_divide ? l / r : l % r;
+				return;
 			}
 			warn_at(&rhs->where, 1, "division by zero");
-			*bad = 1;
-			return 0;
+			*pconst_type = CONST_NO;
+			return;
 		}
 
 		case op_plus:
-			if(rhs)
-				return lhs->val.iv.val + rhs->val.iv.val;
-			return lhs->val.iv.val;
+			piv->val = lhs->val.iv.val + (rhs ? rhs->val.iv.val : 0);
+			return;
 
 		case op_minus:
-			if(rhs)
-				return lhs->val.iv.val - rhs->val.iv.val;
-			return -lhs->val.iv.val;
+			piv->val = rhs ? lhs->val.iv.val - rhs->val.iv.val : -lhs->val.iv.val;
+			return;
 
-		case op_not:  return !lhs->val.iv.val;
-		case op_bnot: return ~lhs->val.iv.val;
+		case op_not:  piv->val = !lhs->val.iv.val; return;
+		case op_bnot: piv->val = ~lhs->val.iv.val; return;
 
 		case op_deref:
 			/*
@@ -71,24 +69,25 @@ int operate(expr *lhs, expr *rhs, enum op_type op, int *bad)
 			ignore for now, just deal with simple stuff
 			*/
 			if(lhs->ptr_safe && expr_kind(lhs, addr)){
-				if(lhs->array_store->type == array_str)
-					return *lhs->val.s;
-				/*return lhs->val.exprs[0]->val.i;*/
+				if(lhs->array_store->type == array_str){
+					/*piv->val = lhs->val.exprs[0]->val.i;*/
+					piv->val = *lhs->val.s;
+					return;
+				}
 			}
-			*bad = 1;
-			return 0;
+			*pconst_type = CONST_NO;
+			return;
 
 		case op_struct_ptr:
 		case op_struct_dot:
-			*bad = 1;
-			return 0;
+			*pconst_type = CONST_NO;
+			return;
 
 		case op_unknown:
 			break;
 	}
 
 	ICE("unhandled asm operate type");
-	return 0;
 }
 
 void operate_optimise(expr *e)
@@ -126,33 +125,25 @@ void operate_optimise(expr *e)
 	}
 }
 
-int fold_const_expr_op(expr *e)
+void fold_const_expr_op(expr *e, intval *piv, enum constyness *pconst_type)
 {
-	int l, r;
-	l = const_fold(e->lhs);
-	r = e->rhs ? const_fold(e->rhs) : 0;
+	intval lhs, rhs;
+	enum constyness l_const, r_const;
 
-	/* anything can be const, if it returns 0 from const_fold */
-	if(!l && !r){
-		int bad = 0;
-
-		e->val.iv.val = operate(e->lhs, e->rhs, e->op, &bad);
-
-		if(!bad)
-			expr_mutate_wrapper(e, val);
-
-		/*
-		 * TODO: else free e->[lr]hs
-		 * currently not a leak, just ignored
-		 */
-
-		return bad;
+	const_fold(e->lhs, &lhs, &l_const);
+	if(e->rhs){
+		const_fold(e->rhs, &rhs, &r_const);
 	}else{
+		r_const = CONST_WITH_VAL;
+	}
+
+	if(l_const == CONST_WITH_VAL && r_const == CONST_WITH_VAL){
+		*pconst_type = CONST_WITH_VAL;
+		operate(e->lhs, e->rhs, e->op, piv, pconst_type);
+	}else{
+		*pconst_type = CONST_WITHOUT_VAL;
 		operate_optimise(e);
 	}
-#undef VAL
-
-	return 1;
 }
 
 void fold_op_struct(expr *e, symtable *stab)
@@ -366,7 +357,11 @@ norm_tt:
 						e->lhs = expr_ptr_multiply(e->lhs, e->rhs->tree_type);
 				}
 
-				const_fold(e);
+				{
+					intval dummy;
+					enum constyness d;
+					const_fold(e, &dummy, &d);
+				}
 			}
 		}
 
