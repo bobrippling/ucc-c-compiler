@@ -284,7 +284,7 @@ static void asm_declare_sub(FILE *f, decl_init *init)
 
 void asm_declare(FILE *f, decl *d)
 {
-	if(d->init){
+	if(d->init /* should also check for non-zero... */){
 		fprintf(f, "%s:\n", d->spel);
 		asm_declare_sub(f, d->init);
 		fputc('\n', f);

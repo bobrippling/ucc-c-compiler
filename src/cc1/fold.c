@@ -62,6 +62,9 @@ void fold_inc_writes_if_sym(expr *e, symtable *stab)
 
 void fold_expr(expr *e, symtable *stab)
 {
+	intval dummy;
+	enum constyness dum;
+
 	where *old_w;
 
 	fold_get_sym(e, stab);
@@ -71,7 +74,7 @@ void fold_expr(expr *e, symtable *stab)
 	e->f_fold(e, stab);
 	eof_where = old_w;
 
-	const_fold(e); /* fold, then const-propagate */
+	const_fold(e, &dummy, &dum); /* fold, then const-propagate */
 
 	UCC_ASSERT(e->tree_type, "no tree_type after fold (%s)", e->f_str());
 	UCC_ASSERT(e->tree_type->type->primitive != type_unknown, "unknown type after folding expr %s", e->f_str());
@@ -131,16 +134,16 @@ void fold_enum(struct_union_enum_st *en, symtable *stab)
 				defval++;
 
 		}else{
+			enum constyness type;
+			intval iv;
+
 			fold_expr(e, stab);
+			const_fold(e, &iv, &type);
 
+			if(type != CONST_WITH_VAL)
+				DIE_AT(&e->where, "enum value not a constant integer");
 
-			if(/*!const_expr_is_const(e)*/ !expr_kind(e, val))
-				DIE_AT(&e->where, "enum value not constant value");
-
-			if(bitmask)
-				defval = const_expr_value(e) << 1;
-			else
-				defval = const_expr_value(e) + 1;
+			defval = bitmask ? iv.val << 1 : iv.val + 1;
 		}
 	}
 }
@@ -250,6 +253,8 @@ void fold_decl_init(decl *for_decl, decl_init *di, symtable *stab)
 
 			if(for_decl->type->store == store_static || !stab->parent){
 				char buf_a[DECL_STATIC_BUFSIZ], buf_b[DECL_STATIC_BUFSIZ];
+				enum constyness type;
+				intval dummy;
 
 				fold_expr(init_exp, stab);
 
@@ -260,11 +265,15 @@ void fold_decl_init(decl *for_decl, decl_init *di, symtable *stab)
 						decl_to_str_r(buf_a, for_decl),
 						decl_to_str_r(buf_b, init_exp->tree_type));
 
-				if(const_fold(init_exp) && !const_expr_is_const(init_exp)){
+				const_fold(init_exp, &dummy, &type);
+
+				if(type == CONST_NO){
 					/* global/static + not constant */
 					/* allow identifiers if the identifier is also static */
 
-					if(!expr_kind(init_exp, identifier) || init_exp->tree_type->type->store != store_static){
+					if(!expr_kind(init_exp, identifier)
+					|| init_exp->tree_type->type->store != store_static)
+					{
 						DIE_AT(&init_exp->where, "not a constant expression for %s init - %s",
 								for_decl->spel, init_exp->f_str());
 					}
@@ -956,10 +965,19 @@ void fold(symtable *globs)
 		static_assert **i;
 		for(i = globs->static_asserts; i && *i; i++){
 			static_assert *sa = *i;
+			intval val;
+			enum constyness const_type;
+
 			fold_expr(sa->e, sa->scope);
-			if(const_fold(sa->e))
+			if(!decl_is_integral(sa->e->tree_type))
+				DIE_AT(&sa->e->where, "static assert: not an integral expression (%s)", sa->e->f_str());
+
+			const_fold(sa->e, &val, &const_type);
+
+			if(const_type == CONST_NO)
 				DIE_AT(&sa->e->where, "static assert: not a constant expression (%s)", sa->e->f_str());
-			if(!sa->e->val.iv.val)
+
+			if(!val.val)
 				DIE_AT(&sa->e->where, "static assertion failure: %s", sa->s);
 		}
 	}
