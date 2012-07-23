@@ -41,11 +41,17 @@ int const_expr_is_const(expr *e)
 }
 #endif
 
-int const_expr_is_zero(expr *e)
+int const_expr_and_zero(expr *e)
 {
-	return const_expr_value(e) == 0;
+	enum constyness k;
+	intval val;
+
+	const_fold(e, &val, &k);
+
+	return k == CONST_WITH_VAL && val.val == 0;
 }
 
+/*
 long const_expr_value(expr *e)
 {
 	enum constyness k;
@@ -56,3 +62,4 @@ long const_expr_value(expr *e)
 
 	return val.val;
 }
+*/

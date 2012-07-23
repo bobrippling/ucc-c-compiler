@@ -134,16 +134,16 @@ void fold_enum(struct_union_enum_st *en, symtable *stab)
 				defval++;
 
 		}else{
+			enum constyness type;
+			intval iv;
+
 			fold_expr(e, stab);
+			const_fold(e, &iv, &type);
 
+			if(type != CONST_WITH_VAL)
+				DIE_AT(&e->where, "enum value not a constant integer");
 
-			if(/*!const_expr_is_const(e)*/ !expr_kind(e, val))
-				DIE_AT(&e->where, "enum value not constant value");
-
-			if(bitmask)
-				defval = const_expr_value(e) << 1;
-			else
-				defval = const_expr_value(e) + 1;
+			defval = bitmask ? iv.val << 1 : iv.val + 1;
 		}
 	}
 }

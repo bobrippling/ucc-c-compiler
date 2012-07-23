@@ -212,9 +212,17 @@ void gen_expr_str_addr(expr *e, symtable *stab)
 	}
 }
 
+void const_expr_addr(expr *e, intval *iv, enum constyness *ptype)
+{
+	(void)e;
+	(void)iv;
+	*ptype = CONST_WITHOUT_VAL;
+}
+
 void mutate_expr_addr(expr *e)
 {
 	e->f_gen_1 = gen_expr_addr_1;
+	e->f_const_fold = const_expr_addr;
 }
 
 void gen_expr_style_addr(expr *e, symtable *stab)

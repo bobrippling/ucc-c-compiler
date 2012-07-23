@@ -3,8 +3,8 @@
 
 void const_fold(expr *e, intval *iv, enum constyness *success);
 /*int const_expr_is_const(expr *e);*/
-int const_expr_is_zero(expr *e);
-long const_expr_value(expr *e);
+int const_expr_and_zero(expr *e);
+/*long const_expr_value(expr *e);*/
 
 #define POSSIBLE_OPT(e, s) \
 	cc1_warn_at(&e->where, 0, 1, WARN_OPT_POSSIBLE,  \
