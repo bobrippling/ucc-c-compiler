@@ -8,24 +8,25 @@ const char *str_stmt_case_range()
 
 void fold_stmt_case_range(stmt *s)
 {
-	int l, r;
+	intval lval, rval;
+	enum constyness lk, rk;
 
 	fold_expr(s->expr,  s->symtab);
 	fold_expr(s->expr2, s->symtab);
 
-	if(const_fold(s->expr) || const_fold(s->expr2))
+	const_fold(s->expr,  &lval, &lk);
+	const_fold(s->expr2, &rval, &rk);
+
+	if(lk == CONST_NO || rk == CONST_NO)
 		DIE_AT(&s->where, "case range not constant");
 
 	fold_test_expr(s->expr,  "case");
 	fold_test_expr(s->expr2, "case");
 
-	l = s->expr->val.iv.val;
-	r = s->expr2->val.iv.val;
-
-	if(l >= r)
+	if(lval.val >= rval.val)
 		DIE_AT(&s->where, "case range equal or inverse");
 
-	s->expr->spel = asm_label_case(CASE_RANGE, l);
+	s->expr->spel = asm_label_case(CASE_RANGE, lval.val);
 
 	fold_stmt_and_add_to_curswitch(s);
 }

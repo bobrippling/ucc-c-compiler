@@ -1,11 +1,18 @@
 #ifndef EXPR_H
 #define EXPR_H
 
+enum constyness
+{
+	CONST_NO          = 0, /* f() */
+	CONST_WITH_VAL,        /* 5 + 2 */
+	CONST_WITHOUT_VAL,     /* &f where f is global */
+};
+
 typedef void         func_fold(     expr *, symtable *);
 typedef void         func_gen(      expr *, symtable *);
 typedef void         func_gen_store(expr *, symtable *);
 typedef void         func_gen_1(    expr *, FILE *);
-typedef int          func_const(    expr *);
+typedef void         func_const(    expr *, intval *val, enum constyness *success);
 typedef const char  *func_str(void);
 typedef void         func_mutate_expr(expr *);
 

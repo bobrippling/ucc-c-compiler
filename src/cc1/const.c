@@ -8,15 +8,13 @@
 #include "../util/util.h"
 #include "cc1.h"
 
-/* returns 0 if successfully folded */
-int const_fold(expr *e)
+void const_fold(expr *e, intval *iv, enum constyness *success)
 {
 	if(fopt_mode & FOPT_CONST_FOLD && e->f_const_fold)
-		return e->f_const_fold(e);
-
-	return 1;
+		e->f_const_fold(e, iv, success);
 }
 
+#if 0
 int const_expr_is_const(expr *e)
 {
 	/* TODO: move this to the expr ops */
@@ -36,24 +34,32 @@ int const_expr_is_const(expr *e)
 	 * const int i = *p; is not const
 	 */
 	return 0;
-#if 0
 	if(e->sym)
 		return decl_is_const(e->sym->decl);
 
 	return decl_is_const(e->tree_type);
+}
 #endif
-}
 
-int const_expr_is_zero(expr *e)
+int const_expr_and_zero(expr *e)
 {
-	if(expr_kind(e, cast))
-		return const_expr_is_zero(e->expr);
+	enum constyness k;
+	intval val;
 
-	return const_expr_is_const(e) && (expr_kind(e, val) ? e->val.iv.val == 0 : 0);
+	const_fold(e, &val, &k);
+
+	return k == CONST_WITH_VAL && val.val == 0;
 }
 
-int const_expr_value(expr *e)
+/*
+long const_expr_value(expr *e)
 {
-	UCC_ASSERT(expr_kind(e, val), "%s: not a value (%s)", __func__, e->f_str());
-	return e->val.iv.val;
+	enum constyness k;
+	intval val;
+
+	const_fold(e, &val, &k);
+	UCC_ASSERT(k == CONST_WITH_VAL, "not a constant");
+
+	return val.val;
 }
+*/
