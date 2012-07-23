@@ -56,8 +56,13 @@ void fold_expr_addr(expr *e, symtable *stab)
 				inits = e->array_store->data.exprs;
 
 				for(i = 0; inits[i]; i++){
+					enum constyness const_type;
+					intval val;
+
 					fold_expr(inits[i], stab);
-					if(!const_expr_is_const(inits[i]))
+					const_fold(inits[i], &val, &const_type);
+
+					if(const_type == CONST_NO)
 						DIE_AT(&inits[i]->where, "array init not constant (%s)", inits[i]->f_str());
 				}
 			}
@@ -209,9 +214,17 @@ void gen_expr_str_addr(expr *e, symtable *stab)
 	}
 }
 
+void const_expr_addr(expr *e, intval *iv, enum constyness *ptype)
+{
+	(void)e;
+	(void)iv;
+	*ptype = CONST_WITHOUT_VAL;
+}
+
 void mutate_expr_addr(expr *e)
 {
 	e->f_gen_1 = gen_expr_addr_1;
+	e->f_const_fold = const_expr_addr;
 }
 
 void gen_expr_style_addr(expr *e, symtable *stab)
