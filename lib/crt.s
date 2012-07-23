@@ -36,7 +36,7 @@ _start:
 	call exit
 	hlt
 
-.section .bss,
+.section .bss,""
 # other things we sort out at startup
 
 .globl environ

@@ -25,9 +25,6 @@ typedef signed   short  int16_t;
 typedef unsigned short uint16_t;
 # endif
 
-typedef signed   short  int16_t;
-typedef unsigned short uint16_t;
-
 typedef signed   int    int32_t;
 typedef unsigned int   uint32_t;
 
@@ -42,11 +39,19 @@ typedef unsigned int   uint64_t;
 #endif
 
 
+#ifdef __GOT_SHORT_LONG
+typedef unsigned long  size_t; // TODO: depend on __SIZE_TYPE__ ? same for PTRDIFF_TYPE ?
+typedef   signed long ssize_t;
+#else
 typedef unsigned int  size_t; // TODO: depend on __SIZE_TYPE__ ? same for PTRDIFF_TYPE ?
 typedef   signed int ssize_t;
+#endif
 
-//typedef unsigned long off_t;
+#ifdef __GOT_SHORT_LONG
+typedef unsigned long off_t;
+#else
 typedef unsigned int off_t;
+#endif
 
 typedef unsigned int ino_t;
 #endif

@@ -1,9 +1,9 @@
-.section .bss,
+.section .bss,""
 	.globl errno
 errno:
 	.long 0
 
-.section .text,
+.section .text,""
 	.globl __syscall
 __syscall:
 	pushq %rbp
