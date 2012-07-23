@@ -598,13 +598,15 @@ void gen_expr_op(expr *e, symtable *tab)
 
 		case op_deref:
 			gen_expr(e->lhs, tab);
-			asm_pop(NULL, ASM_REG_A);
+			asm_pop(e->lhs->tree_type, ASM_REG_A);
 
 			/* e.g. "movzx rax, byte [rax]" */
 			asm_output_new(
 					asm_out_type_mov,
 					asm_operand_new_reg(  e->tree_type, ASM_REG_A),
-					asm_operand_new_deref(NULL /* pointer */, asm_operand_new_reg(NULL, ASM_REG_A), 0));
+					asm_operand_new_deref(e->tree_type,
+						asm_operand_new_reg(NULL, ASM_REG_A), 0));
+
 			/* "mov %sax, %s [rax]",
 					asm_reg_name(e->tree_type),
 					asm_type_str(e->tree_type) */
@@ -675,9 +677,9 @@ void gen_expr_op_store(expr *store, symtable *stab)
 		case op_deref:
 			/* a dereference */
 			asm_push(ASM_REG_A);
-			asm_comment("value to save");
+			asm_comment("expr to save");
 
-			gen_expr(store->lhs, stab); /* skip over the *() bit */
+			gen_expr(op_deref_expr(store), stab); /* skip over the *() bit */
 			asm_comment("pointer on stack");
 
 			/* move `pop` into `pop` */
@@ -690,8 +692,9 @@ void gen_expr_op_store(expr *store, symtable *stab)
 
 			asm_output_new(
 						asm_out_type_mov,
-						asm_operand_new_deref(store->tree_type, asm_operand_new_reg(NULL, ASM_REG_A), 0),
-						asm_operand_new_reg(  store->lhs->tree_type, ASM_REG_B)
+						asm_operand_new_deref(store->tree_type,
+							asm_operand_new_reg(NULL, ASM_REG_A), 0),
+						asm_operand_new_reg(store->tree_type, ASM_REG_B)
 					);
 			return;
 
