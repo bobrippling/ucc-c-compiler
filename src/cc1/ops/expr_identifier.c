@@ -7,8 +7,9 @@ const char *str_expr_identifier()
 	return "identifier";
 }
 
-int fold_const_expr_identifier(expr *e)
+void fold_const_expr_identifier(expr *e, intval *piv, enum constyness *pconst_type)
 {
+	(void)piv;
 	if(e->sym && e->sym->decl->type->qual == qual_const){
 		/*
 			* TODO
@@ -16,7 +17,8 @@ int fold_const_expr_identifier(expr *e)
 			*/
 		//fprintf(stderr, "TODO: fold expression with const identifier %s\n", e->spel);
 	}
-	return 1;
+
+	*pconst_type = CONST_NO;
 }
 
 void fold_expr_identifier(expr *e, symtable *stab)
