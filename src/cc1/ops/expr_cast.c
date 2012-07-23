@@ -10,12 +10,9 @@ const char *str_expr_cast()
 	return "cast";
 }
 
-int fold_const_expr_cast(expr *e)
+void fold_const_expr_cast(expr *e, intval *piv, enum constyness *type)
 {
-	int r = const_fold(e->expr);
-	if(r == 0)
-		e->val.iv.val = e->expr->val.iv.val;
-	return r;
+	const_fold(e->expr, piv, type);
 }
 
 void fold_expr_cast(expr *e, symtable *stab)

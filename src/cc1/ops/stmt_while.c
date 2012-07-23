@@ -44,7 +44,12 @@ void gen_stmt_while(stmt *s)
 
 int while_passable(stmt *s)
 {
-	if(const_expr_is_const(s->expr) && const_expr_value(s->expr))
+	intval val;
+	enum constyness k;
+
+	const_fold(s->expr, &val, &k);
+
+	if(k == CONST_WITH_VAL && val.val)
 		return fold_code_escapable(s); /* while(1) */
 
 	return 1; /* fold_passable(s->lhs) - doesn't depend on this */

@@ -114,7 +114,7 @@ void gen_asm_global(decl *d)
 	}else if(d->arrayinit){
 		asm_declare_array(SECTION_DATA, d->arrayinit->label, d->arrayinit);
 
-	}else if(d->init && !const_expr_is_zero(d->init)){
+	}else if(d->init && !const_expr_and_zero(d->init)){
 		asm_declare_single(cc_out[SECTION_DATA], d);
 
 	}else if(d->type->store == store_extern){

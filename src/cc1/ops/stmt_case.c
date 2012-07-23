@@ -10,11 +10,15 @@ const char *str_stmt_case()
 
 void fold_stmt_case(stmt *t)
 {
+	intval val;
+	enum constyness const_type;
+
 	fold_expr(t->expr, t->symtab);
 
 	fold_test_expr(t->expr, "case");
 
-	if(const_fold(t->expr) && const_expr_is_const(t->expr))
+	const_fold(t->expr, &val, &const_type);
+	if(const_type == CONST_NO)
 		DIE_AT(&t->expr->where, "case expression not constant (%s)", t->expr->f_str());
 
 	if(t->expr){

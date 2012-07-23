@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "ops.h"
 
 const char *str_expr_val()
@@ -45,10 +47,10 @@ void gen_expr_str_val(expr *e, symtable *stab)
 	idt_printf("val: %d\n", e->val);
 }
 
-int const_expr_val(expr *e)
+void const_expr_val(expr *e, intval *piv, enum constyness *pconst_type)
 {
-	(void)e;
-	return 0; /* obviously vals are const */
+	memcpy(piv, &e->val, sizeof *piv);
+	*pconst_type = CONST_WITH_VAL; /* obviously vals are const */
 }
 
 void mutate_expr_val(expr *e)

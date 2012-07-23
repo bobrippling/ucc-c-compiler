@@ -1,4 +1,6 @@
 #include <stdlib.h>
+#include <string.h>
+
 #include "ops.h"
 
 const char *str_expr_if()
@@ -6,21 +8,42 @@ const char *str_expr_if()
 	return "if";
 }
 
-int fold_const_expr_if(expr *e)
+void fold_const_expr_if(expr *e, intval *piv, enum constyness *pconst_type)
 {
-	if(!const_fold(e->expr) && (e->lhs ? !const_fold(e->lhs) : 1) && !const_fold(e->rhs)){
-		expr_mutate_wrapper(e, val);
+	intval vals[3];
+	enum constyness consts[3];
 
-		e->val.iv.val = e->expr->val.iv.val ? (e->lhs ? e->lhs->val.iv.val : e->expr->val.iv.val) : e->rhs->val.iv.val;
-		return 0;
+	const_fold(e->expr, &vals[0], &consts[0]);
+	const_fold(e->rhs,  &vals[2], &consts[2]);
+
+	if(e->lhs){
+		const_fold(e->lhs, &vals[1], &consts[1]);
+	}else{
+		consts[1] = consts[0];
+		vals[1]   = vals[0];
 	}
-	return 1;
+
+	*pconst_type = CONST_NO;
+
+	if(consts[0] == CONST_WITH_VAL){
+		const int idx_from = vals[0].val ? 1 : 2;
+
+		if(consts[idx_from] == CONST_WITH_VAL){
+			memcpy(piv, &vals[idx_from], sizeof *piv);
+			*pconst_type = CONST_WITH_VAL;
+		}
+	}
 }
 
 void fold_expr_if(expr *e, symtable *stab)
 {
+	enum constyness is_const;
+	intval dummy;
+
 	fold_expr(e->expr, stab);
-	if(const_expr_is_const(e->expr))
+	const_fold(e->expr, &dummy, &is_const);
+
+	if(is_const != CONST_NO)
 		POSSIBLE_OPT(e->expr, "constant ?: expression");
 
 	fold_test_expr(e->expr, "?: expr");
