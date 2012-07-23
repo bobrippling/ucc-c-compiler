@@ -12,12 +12,16 @@
 #include "../util/platform.h"
 #include "sue.h"
 
+#define asm_operand_kind(o, t) ((o)->impl == asm_operand_ ##t)
+
+static const char *asm_operand_reg(asm_operand *op);
+
 static asm_output **asm_prog = NULL;
 static int asm_flushing = 0;
 
-static const char *asm_reg_str(decl *d, enum asm_reg r)
+#define ASM_REG_STR_SZ 8
+static const char *asm_reg_str_r(char buf[ASM_REG_STR_SZ], decl *d, enum asm_reg r)
 {
-	static char buf[8];
 	const char *pre, *post;
 
 	asm_reg_name(d, &pre, &post);
@@ -31,6 +35,12 @@ static const char *asm_reg_str(decl *d, enum asm_reg r)
 			post);
 
 	return buf;
+}
+
+static const char *asm_reg_str(decl *d, enum asm_reg r)
+{
+	static char buf[8];
+	return asm_reg_str_r(buf, d, r);
 }
 
 #define ASM_OUT_GENERIC(opc, out, n_ops) asm_out_generic(opc, out, n_ops, 1)
@@ -83,7 +93,6 @@ ASM_WRAP(cmp,      2)
 ASM_WRAP(test,     2)
 ASM_WRAP(shl,      2)
 ASM_WRAP(shr,      2)
-ASM_WRAP(call,     1)
 ASM_WRAP(leave,    0)
 ASM_WRAP(ret,      0)
 ASM_WRAP(lea,      2)
@@ -92,7 +101,12 @@ ASM_WRAP(push,     1)
 
 void asm_out_type_idiv(asm_output *out)
 {
-	ASM_OUT_GENERIC("cqo",  out, 1); /* cqto for AT&T */
+	asm_operand *save = out->lhs;
+
+	out->lhs = NULL;
+	ASM_OUT_GENERIC("cqto", out, 0); /* sign extend rax to rdx:rax */
+	out->lhs = save;
+
 	ASM_OUT_GENERIC("idiv", out, 1);
 }
 
@@ -103,7 +117,7 @@ void asm_out_type_pop(asm_output *out)
 	int   const sz = tt ? asm_type_size(tt) : word;
 	FILE *f = cc_out[SECTION_TEXT];
 
-	out->lhs->tt = NULL; /* force pop rax */
+	out->lhs->tt = NULL; /* force popq %rax */
 
 	ASM_OUT_GENERIC("pop", out, 1);
 
@@ -111,23 +125,37 @@ void asm_out_type_pop(asm_output *out)
 		if(tt)
 			fprintf(f, "\t%s not truncating - machine word size\n", ASM_COMMENT);
 	}else{
-		/*movzbl?*/
+		/* need to zero the extra bits of the register */
+		char reg_ch;
+		char buf[ASM_REG_STR_SZ];
 
-#define TRUNCATE(n, s) case n: fputs("\t" s "\n", f)
+		UCC_ASSERT(asm_operand_kind(out->lhs, reg), "not a register pop");
 
-		switch(sz){
-			TRUNCATE(1, "cbw");  /*  al -> ax */
-			TRUNCATE(2, "cwde"); /*  ax -> eax */
-			TRUNCATE(4, "cltq"); /* eax -> rax FIXME */
-			break;
-			default:
-				ICE("can't truncate to length %d", sz);
-		}
+		reg_ch = out->lhs->bits.reg;
+
+		fprintf(f, "\tmovs%cq %s, %s\n",
+				asm_type_ch(tt),
+				asm_reg_str_r(buf, tt,   reg_ch),
+				asm_reg_str(       NULL, reg_ch));
 	}
 
 	out->lhs->tt = tt;
 }
 #undef TRUNCATE
+
+void asm_out_type_call(asm_output *out)
+{
+	const char *arg;
+
+	UCC_ASSERT(out->lhs && !out->rhs, "invalid call");
+
+	arg = out->lhs->impl(out->lhs);
+
+	fprintf(cc_out[SECTION_TEXT],
+			"\tcallq %s%s\n",
+			asm_operand_kind(out->lhs, reg) ? "*" : "",
+			arg);
+}
 
 void asm_out_type_mov(asm_output *out)
 {
