@@ -9,6 +9,7 @@
 #include "../util/dynarray.h"
 #include "data_structs.h"
 #include "macros.h"
+#include "const.h"
 
 #define ITER_DESC_TYPE(d, dp, typ)     \
 	for(dp = d->desc; dp; dp = dp->child) \
@@ -214,11 +215,16 @@ int decl_size(decl *d)
 
 				case decl_desc_array:
 				{
-					int sz;
+					enum constyness ktype;
+					intval sz;
 					/* don't check dp->bits.array_size - it could be any expr */
-					sz = dp->bits.array_size->val.iv.val;
-					UCC_ASSERT(sz, "incomplete array size attempt");
-					mul *= sz;
+
+					const_fold(dp->bits.array_size, &sz, &ktype);
+
+					UCC_ASSERT(ktype == CONST_WITH_VAL && sz.val,
+							"incomplete array size attempt");
+
+					mul *= sz.val;
 					break;
 				}
 			}

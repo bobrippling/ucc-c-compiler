@@ -89,12 +89,19 @@ void fold_decl_desc(decl_desc *dp, symtable *stab, decl *root)
 
 		case decl_desc_array:
 		{
-			long v;
-			fold_expr(dp->bits.array_size, stab);
-			if((v = dp->bits.array_size->val.iv.val) < 0)
-				DIE_AT(&dp->where, "negative array length %ld", v);
+			enum constyness ktype;
+			intval sz;
 
-			if(v == 0 && !root->init)
+			fold_expr(dp->bits.array_size, stab);
+			const_fold(dp->bits.array_size, &sz, &ktype);
+
+			if(ktype != CONST_WITH_VAL)
+				DIE_AT(&dp->where, "array size not constant");
+
+			if(sz.val < 0)
+				DIE_AT(&dp->where, "negative array length %ld", sz.val);
+
+			if(sz.val == 0 && !root->init)
 				DIE_AT(&dp->where, "incomplete array");
 		}
 
