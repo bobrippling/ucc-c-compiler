@@ -5,9 +5,15 @@ const char *str_expr_comma()
 	return "comma";
 }
 
-int fold_const_expr_comma(expr *e)
+void fold_const_expr_comma(expr *e, intval *piv, enum constyness *type)
 {
-	return !const_fold(e->lhs) && !const_fold(e->rhs);
+	enum constyness ok[2];
+
+	const_fold(e->lhs, piv, &ok[0]); /* piv should be overwritten */
+	const_fold(e->rhs, piv, &ok[1]);
+
+	if(ok[0] != CONST_NO && ok[1] == CONST_WITH_VAL)
+		*type = CONST_WITH_VAL;
 }
 
 void fold_expr_comma(expr *e, symtable *stab)
