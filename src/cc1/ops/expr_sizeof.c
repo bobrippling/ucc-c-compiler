@@ -30,9 +30,11 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 	e->tree_type->type->is_signed = 0;
 }
 
-int const_expr_sizeof(expr *e)
+void const_expr_sizeof(expr *e, intval *piv, enum constyness *pconst_type)
 {
-	return e->tree_type ? 0 : 1; /* constant, once folded */
+	UCC_ASSERT(e->tree_type, "const_fold on sizeof before fold");
+	piv->val = SIZEOF_SIZE(e);
+	*pconst_type = CONST_WITH_VAL;
 }
 
 void gen_expr_sizeof_1(expr *e)
@@ -46,7 +48,7 @@ void gen_expr_sizeof(expr *e, symtable *stab)
 	(void)stab;
 
 	asm_temp(1, "push %d ; sizeof %s%s",
-			e->val.iv.val,
+			SIZEOF_SIZE(e),
 			e->expr ? "" : "type ",
 			decl_to_str(d));
 }
