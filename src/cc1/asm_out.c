@@ -231,35 +231,15 @@ static const char *asm_operand_deref(asm_operand *op)
 {
 	static char buf[128];
 	unsigned int n;
-	const char *tstr;
 
-	/* if it's rsp or rbp, don't add "qword" and pals on */
-#if 0
-	if(op->bits.deref_base->impl == asm_operand_reg){
-		tstr = "";
+	if(op->bits.deref.offset == 0){
+		n = snprintf(buf, sizeof buf, "(%s)",
+				op->bits.deref.base->impl(op->bits.deref.base));
 	}else{
-		tstr = asm_type_str(op->tt);
+		n = snprintf(buf, sizeof buf, "%d(%s)",
+				op->bits.deref.offset,
+				op->bits.deref.base->impl(op->bits.deref.base));
 	}
-#else
-	tstr = "";
-#endif
-
-	/*
-displacement(base register, offset register, scalar multiplier)
-aka
-[base register + displacement + offset register * scalar multiplier]
-
-movl    -4(%ebp, %edx, 4), %eax  # Full example: load *(ebp - 4 + (edx * 4)) into eax
-movl    -4(%ebp), %eax           # Typical example: load a stack variable into eax
-movl    (%ecx), %edx             # No offset: copy the target of a pointer into a register
-leal    8(,%eax,4), %eax         # Arithmetic: multiply eax by 4 and add 8
-leal    (%eax,%eax,2), %eax      # Arithmetic: multiply eax by 2 and add eax (i.e. multiply by 3)
-	 */
-
-	n = snprintf(buf, sizeof buf, "%d(%s%s)",
-			op->bits.deref.offset,
-			tstr,
-			op->bits.deref.base->impl(op->bits.deref.base));
 
 	if(n >= sizeof buf)
 		ICE("buffer too small for deref-asm operand");
