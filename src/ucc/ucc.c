@@ -45,13 +45,15 @@ struct cc_file
  mode_link)
 
 static char **remove_these;
+static int unlink_tmps = 1;
 const char *argv0;
 
 static void unlink_files(void)
 {
 	int i;
 	for(i = 0; remove_these[i]; i++){
-		remove(remove_these[i]);
+		if(unlink_tmps)
+			remove(remove_these[i]);
 		free(remove_these[i]);
 	}
 	free(remove_these);
@@ -368,6 +370,14 @@ arg_ld:
 					}
 					continue;
 
+				case 'g':
+					/* debug */
+					if(argv[i][2])
+						die("-g... unexpected");
+					/*ADD_ARG(mode_compile); TODO */
+					ADD_ARG(mode_assemb);
+					continue;
+
 				case 'x':
 					/* prevent implicit assumption of source */
 					if(!argv[++i])
@@ -398,6 +408,8 @@ arg_ld:
 						ucc_ext_cmds_show(1), ucc_ext_cmds_noop(1);
 					else if(!strcmp(argv[i], "-v"))
 						ucc_ext_cmds_show(1);
+					else if(!strcmp(argv[i], "--no-rm"))
+						unlink_tmps = 0;
 					/* TODO: -wrapper echo,-n etc */
 					else
 						break;
