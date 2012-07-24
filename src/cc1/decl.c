@@ -210,12 +210,11 @@ int decl_size(decl *d)
 				case decl_desc_array:
 				{
 					intval sz;
-					/* don't check dp->bits.array_size - it could be any expr */
 
 					const_fold_need_val(dp->bits.array_size, &sz);
 
-					if(!sz.val)
-						DIE_AT(&dp->where, "invalid incomplete array");
+					if(sz.val == 0)
+							DIE_AT(&dp->bits.array_size->where, "incomplete array size attempt");
 
 					mul *= sz.val;
 					break;
