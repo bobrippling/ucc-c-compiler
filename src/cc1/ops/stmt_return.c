@@ -12,7 +12,7 @@ void fold_stmt_return(stmt *s)
 
 	if(s->expr){
 		fold_expr(s->expr, s->symtab);
-		fold_test_expr(s->expr, "return");
+		fold_need_expr(s->expr, "return", 0);
 
 		fold_decl_equal(s->expr->tree_type, curdecl_func_called,
 				&s->where, WARN_RETURN_TYPE,

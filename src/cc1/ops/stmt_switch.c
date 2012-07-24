@@ -62,7 +62,7 @@ void fold_stmt_switch(stmt *s)
 
 	fold_expr(s->expr, test_symtab);
 
-	fold_test_expr(s->expr, "switch");
+	fold_need_expr(s->expr, "switch", 0);
 
 	OPT_CHECK(s->expr, "constant expression in switch");
 

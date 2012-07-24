@@ -13,7 +13,7 @@ void fold_stmt_case(stmt *t)
 
 	fold_expr(t->expr, t->symtab);
 
-	fold_test_expr(t->expr, "case");
+	fold_need_expr(t->expr, "case", 0);
 
 	const_fold(t->expr, &val, &const_type);
 	if(const_type == CONST_NO)

@@ -470,13 +470,17 @@ void fold_symtab_scope(symtable *stab)
 		fold_sue(*sit, stab);
 }
 
-void fold_test_expr(expr *e, const char *stmt_desc)
+void fold_need_expr(expr *e, const char *stmt_desc, int is_test)
 {
 	if(!decl_ptr_depth(e->tree_type) && e->tree_type->type->primitive == type_void)
 		DIE_AT(&e->where, "%s requires non-void expression", stmt_desc);
 
 	if(!e->in_parens && expr_kind(e, assign))
 		cc1_warn_at(&e->where, 0, 1, WARN_TEST_ASSIGN, "testing an assignment in %s", stmt_desc);
+
+	if(is_test && !decl_is_bool(e->tree_type))
+		cc1_warn_at(&e->where, 0, 1, WARN_TEST_BOOL, "testing a non-boolean expression, %s, in %s",
+				decl_to_str(e->tree_type), stmt_desc);
 
 	fold_disallow_st_un(e, stmt_desc);
 }
