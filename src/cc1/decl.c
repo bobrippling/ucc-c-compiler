@@ -219,6 +219,9 @@ int decl_size(decl *d)
 
 					const_fold_need_val(dp->bits.array_size, &sz);
 
+					if(sz.val == 0)
+							DIE_AT(&dp->bits.array_size->where, "incomplete array size attempt");
+
 					mul *= sz.val;
 					break;
 				}
