@@ -602,7 +602,23 @@ void gen_expr_op_store(expr *e, symtable *stab)
 	switch(e->op){
 		case op_deref:
 			/* a dereference */
-			asm_temp(1, "push rax ; save val");
+			asm_temp(1, "push rax ; save val to store");
+
+#ifdef FAST_ARRAY_DEREF
+			/* check for a[n] aka *(a + n) */
+			if(expr_kind(e->lhs, op)
+			&& e->lhs->op == op_plus
+			&& expr_kind(e->lhs->rhs, val))
+			{
+				gen_expr(e->lhs->lhs, stab);
+				asm_temp(1, "pop rcx");
+				asm_temp(1, "mov rbx, [rcx + %d]",
+						e->lhs->rhs->val.iv.val);
+				/* TODO */
+				asm_indir(ASM_INDIR_...);
+				return;
+			}
+#endif
 
 			gen_expr(e->lhs, stab); /* skip over the *() bit */
 			/* pointer on stack */
