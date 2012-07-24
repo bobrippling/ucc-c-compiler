@@ -1,0 +1,22 @@
+src/cc1/asm.c:302:					d->init->array_store->data.exprs[i]->val.iv.val,
+src/cc1/decl.c:533:		if(!dp->bits.array_size->val.iv.val)
+src/cc1/decl.c:555:	&& tail->bits.array_size->val.iv.val == 0;
+src/cc1/decl.c:762:			BUF_ADD("[%ld]", dp->bits.array_size->val.iv.val);
+src/cc1/fold.c:224:				narray = dp->bits.array_size->val.iv.val;
+src/cc1/fold.c:409:			dp->bits.array_size->val.iv.val = d->init->array_store->len;
+src/cc1/gen_str.c:50:	fprintf(cc1_out, "%ld", e->val.iv.val);
+src/cc1/gen_str.c:174:			int sz = dp->bits.array_size->val.iv.val;
+src/cc1/gen_str.c:336:		idt_printf("member %s = %d\n", m->spel, m->val->val.iv.val);
+src/cc1/gen_str.c:415:				idt_printf("[%d] = %d\n", i, init->data.exprs[i]->val.iv.val);
+src/cc1/ops/stmt_switch.c:28:		v = cse->expr->val.iv.val;
+src/cc1/ops/stmt_switch.c:31:			w = cse->expr2->val.iv.val;
+src/cc1/ops/stmt_switch.c:40:				if(v == m->val->val.iv.val)
+src/cc1/ops/stmt_switch.c:97:			asm_temp(1, "cmp rax, %d", cse->expr->val.iv.val);
+src/cc1/ops/stmt_switch.c:99:			asm_temp(1, "cmp rax, %d", cse->expr2->val.iv.val);
+src/cc1/ops/stmt_switch.c:107:			asm_temp(1, "cmp rax, %d", cse->expr->val.iv.val);
+src/cc1/ops/stmt_case.c:23:		t->expr->spel = asm_label_case(CASE_CASE, t->expr->val.iv.val);
+src/cc1/ops/stmt_case.c:26:		t->expr->spel = asm_label_case(CASE_CASE, t->expr->val.iv.val);
+src/cc1/ops/stmt_default.c:12:		s->expr->spel = asm_label_case(CASE_CASE, s->expr->val.iv.val);
+src/cc1/ops/stmt_default.c:15:		s->expr->spel = asm_label_case(CASE_CASE, s->expr->val.iv.val);
+src/cc1/ops/expr_sizeof.c:4:#define SIZEOF_SIZE(e)  (e)->val.iv.val
+src/cc1/parse.c:717:						init_val = dinit->data.exprs[i]->val.iv.val;

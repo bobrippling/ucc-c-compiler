@@ -35,8 +35,8 @@ void fold_stmt_if(stmt *s)
 
 	fold_expr(s->expr, test_symtab);
 
-	fold_test_expr(s->expr, s->f_str());
-	OPT_CHECK(s->expr, "constant expression in if/while");
+	fold_need_expr(s->expr, s->f_str(), 1);
+	OPT_CHECK(s->expr, "constant expression in if");
 
 	fold_stmt(s->lhs);
 	if(s->rhs)
