@@ -16,6 +16,7 @@
 #include "sue.h"
 #include "parse_type.h"
 #include "data_store.h"
+#include "const.h"
 
 #define STAT_NEW(type)      stmt_new_wrapper(type, current_scope)
 #define STAT_NEW_NEST(type) stmt_new_wrapper(type, symtab_new(current_scope))
@@ -665,13 +666,16 @@ void parse_got_decls(decl **decls, stmt *codes_init)
 				expr *comma_init = NULL;
 
 				for(i = 0; i < dinit->len; i++){
-					int init_val;
+					long init_val;
 					expr *init;
 
-					if(dinit->type == array_exprs)
-						init_val = dinit->data.exprs[i]->val.iv.val;
-					else
+					if(dinit->type == array_exprs){
+						intval iv;
+						const_fold_need_val(dinit->data.exprs[i], &iv);
+						init_val = iv.val;
+					}else{
 						init_val = dinit->data.str[i];
+					}
 
 					init = expr_new_array_decl_init(d, init_val, i);
 
