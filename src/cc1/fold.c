@@ -211,23 +211,26 @@ void fold_coerce_assign(decl *d, expr *assign, int *ok)
 				ICE("TODO: struct init from ^");
 			}else{
 				decl_desc *dp = decl_array_first(assign->tree_type);
-				int narray, nmembers;
+				int nmembers;
+				enum constyness check;
+				intval iv;
+
+				const_fold(dp->bits.array_size, &iv, &check);
 
 				*ok = 1;
 
 				/*
-				* for now just check the counts - this will break for:
-				* struct { int i; char c; int j } = { 1, 2, 3 };
-				*                   ^
-				* in global scope
-				*/
-				narray = dp->bits.array_size->val.iv.val;
+				 * for now just check the counts - this will break for:
+				 * struct { int i; char c; int j } = { 1, 2, 3 };
+				 *                   ^
+				 * in global scope
+				 */
 				nmembers = sue_nmembers(d->type->sue);
 
-				if(narray != nmembers){
+				if(iv.val != nmembers){
 					WARN_AT(&assign->where,
-							"mismatching member counts for struct init (struct of %d vs array of %d)",
-							nmembers, narray);
+							"mismatching member counts for struct init (struct of %d vs array of %ld)",
+							nmembers, iv.val);
 					/* TODO: zero the rest */
 				}else if(!d->sym || d->sym->type == sym_global){
 					sue_member **i;
