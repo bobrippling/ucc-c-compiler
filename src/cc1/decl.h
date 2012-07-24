@@ -186,8 +186,11 @@ int     decl_is_void_ptr(       decl *);
 int     decl_ptr_depth(         decl *);
 int     decl_desc_depth(        decl *);
 int     decl_is_integral(       decl *);
-#define decl_is_void(d)       ((d)->type->primitive == type_void && !(d)->desc)
+#define decl_non_ptr_type(d, t) (!(d)->desc && (d)->type->primitive == t)
+
 #define decl_is_float(d)      (((d)->type->primitive == type_float || (d)->type->primitive == type_double) && !(d)->desc)
+#define decl_is_void(d) decl_non_ptr_type(d, type_void)
+#define decl_is_bool(d) (decl_ptr_depth(d) || decl_is_integral(d))
 #define decl_is_definition(d) ((d)->init || (d)->func_code)
 
 decl_desc  *decl_first_func(decl *d);

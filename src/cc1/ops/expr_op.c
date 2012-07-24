@@ -674,6 +674,22 @@ void gen_expr_op_store(expr *store, symtable *stab)
 			asm_push(ASM_REG_A);
 			asm_comment("expr to save");
 
+#ifdef FAST_ARRAY_DEREF
+			/* check for a[n] aka *(a + n) */
+			if(expr_kind(e->lhs, op)
+			&& e->lhs->op == op_plus
+			&& expr_kind(e->lhs->rhs, val))
+			{
+				gen_expr(e->lhs->lhs, stab);
+				asm_temp(1, "pop rcx");
+				asm_temp(1, "mov rbx, [rcx + %d]",
+						e->lhs->rhs->val.iv.val);
+				/* TODO */
+				asm_indir(ASM_INDIR_...);
+				return;
+			}
+#endif
+
 			gen_expr(op_deref_expr(store), stab); /* skip over the *() bit */
 			asm_comment("pointer on stack");
 

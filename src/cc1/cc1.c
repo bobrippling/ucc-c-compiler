@@ -50,6 +50,7 @@ struct
 	{ 0,  "unused-expr",     WARN_UNUSED_EXPR                       },
 
 	{ 0,  "test-in-assign",  WARN_TEST_ASSIGN                       },
+	{ 0,  "test-bool",       WARN_TEST_BOOL                         },
 
 	{ 0,  "dead-code",       WARN_DEAD_CODE                         },
 

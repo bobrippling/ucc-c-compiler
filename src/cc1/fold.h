@@ -15,7 +15,7 @@ void fold_symtab_scope(symtable *stab);
 void fold_insert_casts(decl *dlhs, expr **prhs, symtable *stab, where *where);
 void fold_typecheck(expr *lhs, expr *rhs, symtable *stab, where *where);
 
-void fold_test_expr(expr *e, const char *stmt_desc);
+void fold_need_expr(expr *e, const char *stmt_desc, int is_test);
 void fold_disallow_st_un(expr *e, const char *desc);
 
 int  fold_get_sym(          expr *e, symtable *stab);

@@ -58,7 +58,7 @@ struct asm_operand
 		} deref;
 
 		/* immediate val */
-		intval *iv;
+		intval iv;
 	} bits;
 };
 

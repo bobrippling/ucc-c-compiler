@@ -249,7 +249,7 @@ static const char *asm_operand_deref(asm_operand *op)
 
 static const char *asm_operand_val(asm_operand *op)
 {
-	return asm_intval_str(op->bits.iv);
+	return asm_intval_str(&op->bits.iv);
 }
 
 asm_operand *asm_operand_new(decl *tt)
@@ -271,13 +271,17 @@ asm_operand *asm_operand_new_intval(intval *iv)
 {
 	asm_operand *new = asm_operand_new(NULL);
 	new->impl = asm_operand_val;
-	new->bits.iv = iv;
+	memcpy(&new->bits.iv, iv, sizeof *iv);
 	return new;
 }
 
 asm_operand *asm_operand_new_val(int i)
 {
-	return asm_operand_new_intval(intval_new(i));
+	intval iv = {
+		.val = i,
+		.suffix = 0
+	};
+	return asm_operand_new_intval(&iv);
 }
 
 asm_operand *asm_operand_new_label(decl *tt, const char *lbl, int pic)

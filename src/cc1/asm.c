@@ -12,6 +12,7 @@
 #include "../util/platform.h"
 #include "../util/alloc.h"
 #include "sue.h"
+#include "const.h"
 
 #define SNPRINTF(s, n, ...) \
 		UCC_ASSERT(snprintf(s, n, __VA_ARGS__) != n, "snprintf buffer too small")
@@ -303,11 +304,15 @@ void asm_declare_single(FILE *f, decl *d)
 
 		fprintf(f, "%s dq ", d->spel); /* XXX: assumes all struct members are word-size */
 
-		for(i = 0; i < d->init->array_store->len; i++)
+		for(i = 0; i < d->init->array_store->len; i++){
+			intval iv;
+
+			const_fold_need_val(d->init->array_store->data.exprs[i], &iv);
+
 			fprintf(f, "%ld%s",
-					d->init->array_store->data.exprs[i]->val.iv.val,
-					i == d->init->array_store->len - 1 ? "" : ", "
-					);
+					iv.val,
+					i == d->init->array_store->len - 1 ? "" : ", ");
+		}
 
 	}else{
 		fprintf(f, "%s d%c ", d->spel, asm_type_ch(d));
