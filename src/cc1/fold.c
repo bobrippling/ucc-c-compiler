@@ -90,14 +90,10 @@ void fold_decl_desc(decl_desc *dp, symtable *stab, decl *root)
 
 		case decl_desc_array:
 		{
-			enum constyness ktype;
 			intval sz;
 
 			fold_expr(dp->bits.array_size, stab);
-			const_fold(dp->bits.array_size, &sz, &ktype);
-
-			if(ktype != CONST_WITH_VAL)
-				DIE_AT(&dp->where, "array size not constant");
+			const_fold_need_val(dp->bits.array_size, &sz);
 
 			if(sz.val < 0)
 				DIE_AT(&dp->where, "negative array length %ld", sz.val);
@@ -142,14 +138,10 @@ void fold_enum(struct_union_enum_st *en, symtable *stab)
 				defval++;
 
 		}else{
-			enum constyness type;
 			intval iv;
 
 			fold_expr(e, stab);
-			const_fold(e, &iv, &type);
-
-			if(type != CONST_WITH_VAL)
-				DIE_AT(&e->where, "enum value not a constant integer");
+			const_fold_need_val(e, &iv);
 
 			defval = bitmask ? iv.val << 1 : iv.val + 1;
 		}
@@ -213,10 +205,9 @@ void fold_coerce_assign(decl *d, expr *assign, int *ok)
 			}else{
 				decl_desc *dp = decl_array_first(assign->tree_type);
 				int nmembers;
-				enum constyness check;
 				intval iv;
 
-				const_fold(dp->bits.array_size, &iv, &check);
+				const_fold_need_val(dp->bits.array_size, &iv);
 
 				*ok = 1;
 

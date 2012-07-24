@@ -216,14 +216,9 @@ int decl_size(decl *d)
 
 				case decl_desc_array:
 				{
-					enum constyness ktype;
 					intval sz;
-					/* don't check dp->bits.array_size - it could be any expr */
 
-					const_fold(dp->bits.array_size, &sz, &ktype);
-
-					UCC_ASSERT(ktype == CONST_WITH_VAL && sz.val,
-							"incomplete array size attempt");
+					const_fold_need_val(dp->bits.array_size, &sz);
 
 					mul *= sz.val;
 					break;
