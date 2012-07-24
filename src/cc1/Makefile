@@ -1,6 +1,5 @@
 include ../src_config.mk
 
-CFLAGS += -Werror
 LDFLAGS += -lm
 
 OBJ = \
