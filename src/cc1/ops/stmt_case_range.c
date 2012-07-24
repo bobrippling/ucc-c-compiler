@@ -20,8 +20,8 @@ void fold_stmt_case_range(stmt *s)
 	if(lk == CONST_NO || rk == CONST_NO)
 		DIE_AT(&s->where, "case range not constant");
 
-	fold_test_expr(s->expr,  "case");
-	fold_test_expr(s->expr2, "case");
+	fold_need_expr(s->expr,  "case", 0);
+	fold_need_expr(s->expr2, "case", 0);
 
 	if(lval.val >= rval.val)
 		DIE_AT(&s->where, "case range equal or inverse");
