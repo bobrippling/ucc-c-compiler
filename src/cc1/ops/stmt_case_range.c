@@ -9,19 +9,15 @@ const char *str_stmt_case_range()
 void fold_stmt_case_range(stmt *s)
 {
 	intval lval, rval;
-	enum constyness lk, rk;
 
 	fold_expr(s->expr,  s->symtab);
 	fold_expr(s->expr2, s->symtab);
 
-	const_fold(s->expr,  &lval, &lk);
-	const_fold(s->expr2, &rval, &rk);
+	const_fold_need_val(s->expr,  &lval);
+	const_fold_need_val(s->expr2, &rval);
 
-	if(lk == CONST_NO || rk == CONST_NO)
-		DIE_AT(&s->where, "case range not constant");
-
-	fold_test_expr(s->expr,  "case");
-	fold_test_expr(s->expr2, "case");
+	fold_need_expr(s->expr,  "case", 0);
+	fold_need_expr(s->expr2, "case", 0);
 
 	if(lval.val >= rval.val)
 		DIE_AT(&s->where, "case range equal or inverse");

@@ -11,6 +11,7 @@
 #include "sue.h"
 #include "gen_str.h"
 #include "str.h"
+#include "const.h"
 
 #define ENGLISH_PRINT_ARGLIST
 
@@ -45,9 +46,13 @@ void idt_printf(const char *fmt, ...)
 
 void print_expr_val(expr *e)
 {
-	UCC_ASSERT(expr_kind(e, val), "%s: not a value expression", __func__);
-	UCC_ASSERT((e->val.iv.suffix & VAL_UNSIGNED) == 0, "TODO: unsigned");
-	fprintf(cc1_out, "%ld", e->val.iv.val);
+	intval iv;
+
+	const_fold_need_val(e, &iv);
+
+	UCC_ASSERT((iv.suffix & VAL_UNSIGNED) == 0, "TODO: unsigned");
+
+	fprintf(cc1_out, "%ld", iv.val);
 }
 
 void print_decl_desc_eng(decl_desc *dp)
@@ -171,9 +176,12 @@ void print_decl_desc(decl_desc *dp, decl *d)
 
 		case decl_desc_array:
 		{
-			int sz = dp->bits.array_size->val.iv.val;
-			if(sz)
-				fprintf(cc1_out, "[%d]", sz);
+			intval sz;
+
+			const_fold_need_val(dp->bits.array_size, &sz);
+
+			if(sz.val)
+				fprintf(cc1_out, "[%ld]", sz.val);
 			else
 				fprintf(cc1_out, "[]");
 			break;

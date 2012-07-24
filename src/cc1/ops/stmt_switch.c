@@ -21,23 +21,29 @@ void fold_switch_enum(stmt *sw, type *enum_type)
 	for(titer = sw->codes; titer && *titer; titer++){
 		stmt *cse = *titer;
 		int v, w;
+		intval iv;
 
 		if(cse->expr->expr_is_default)
 			goto ret;
 
-		v = cse->expr->val.iv.val;
+		const_fold_need_val(cse->expr, &iv);
+		v = iv.val;
 
-		if(stmt_kind(cse, case_range))
-			w = cse->expr2->val.iv.val;
-		else
+		if(stmt_kind(cse, case_range)){
+			const_fold_need_val(cse->expr2, &iv);
+			w = iv.val;
+		}else{
 			w = v;
+		}
 
 		for(; v <= w; v++){
 			sue_member **mi;
 			for(midx = 0, mi = enum_type->sue->members; *mi; midx++, mi++){
 				enum_member *m = &(*mi)->enum_member;
 
-				if(v == m->val->val.iv.val)
+				const_fold_need_val(m->val, &iv);
+
+				if(v == iv.val)
 					marks[midx]++;
 			}
 		}
@@ -62,7 +68,7 @@ void fold_stmt_switch(stmt *s)
 
 	fold_expr(s->expr, test_symtab);
 
-	fold_test_expr(s->expr, "switch");
+	fold_need_expr(s->expr, "switch", 0);
 
 	OPT_CHECK(s->expr, "constant expression in switch");
 
@@ -94,9 +100,15 @@ void gen_stmt_switch(stmt *s)
 
 		if(stmt_kind(cse, case_range)){
 			char *skip = asm_label_code("range_skip");
-			asm_temp(1, "cmp rax, %d", cse->expr->val.iv.val);
+			intval min, max;
+
+			const_fold_need_val(cse->expr,  &min);
+			const_fold_need_val(cse->expr2, &max);
+
+			/* TODO: proper signed/unsiged format */
+			asm_temp(1, "cmp rax, %ld", min.val);
 			asm_temp(1, "j%s %s", is_unsigned ? "b" : "l", skip);
-			asm_temp(1, "cmp rax, %d", cse->expr2->val.iv.val);
+			asm_temp(1, "cmp rax, %ld", max.val);
 			asm_temp(1, "j%se %s", is_unsigned ? "b" : "l", cse->expr->spel);
 			asm_label(skip);
 			free(skip);
@@ -104,7 +116,11 @@ void gen_stmt_switch(stmt *s)
 			tdefault = cse;
 		}else{
 			/* FIXME: address-of, etc? */
-			asm_temp(1, "cmp rax, %d", cse->expr->val.iv.val);
+			intval iv;
+
+			const_fold_need_val(cse->expr, &iv);
+
+			asm_temp(1, "cmp rax, %ld", iv.val);
 			asm_temp(1, "je %s", cse->expr->spel);
 		}
 	}
