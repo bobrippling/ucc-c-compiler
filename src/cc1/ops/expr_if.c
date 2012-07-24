@@ -47,7 +47,7 @@ void fold_expr_if(expr *e, symtable *stab)
 	if(is_const != CONST_NO)
 		POSSIBLE_OPT(e->expr, "constant ?: expression");
 
-	fold_test_expr(e->expr, "?: expr");
+	fold_need_expr(e->expr, "?: expr", 1);
 
 	if(e->lhs)
 		fold_expr(e->lhs, stab);

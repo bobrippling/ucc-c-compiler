@@ -9,6 +9,7 @@
 #include "../util/dynarray.h"
 #include "data_structs.h"
 #include "macros.h"
+#include "const.h"
 
 #define ITER_DESC_TYPE(d, dp, typ)     \
 	for(dp = d->desc; dp; dp = dp->child) \
@@ -214,11 +215,14 @@ int decl_size(decl *d)
 
 				case decl_desc_array:
 				{
-					int sz;
-					/* don't check dp->bits.array_size - it could be any expr */
-					sz = dp->bits.array_size->val.iv.val;
-					UCC_ASSERT(sz, "incomplete array size attempt");
-					mul *= sz;
+					intval sz;
+
+					const_fold_need_val(dp->bits.array_size, &sz);
+
+					if(sz.val == 0)
+							DIE_AT(&dp->bits.array_size->where, "incomplete array size attempt");
+
+					mul *= sz.val;
 					break;
 				}
 			}
@@ -528,9 +532,14 @@ decl_desc *decl_array_first_incomplete(decl *d)
 {
 	decl_desc *dp;
 
-	ITER_DESC_TYPE(d, dp, decl_desc_array)
-		if(!dp->bits.array_size->val.iv.val)
+	ITER_DESC_TYPE(d, dp, decl_desc_array){
+		intval iv;
+
+		const_fold_need_val(dp->bits.array_size, &iv);
+
+		if(!iv.val)
 			return dp;
+	}
 
 	return NULL;
 }
@@ -549,9 +558,14 @@ int decl_has_incomplete_array(decl *d)
 {
 	decl_desc *tail = decl_desc_tail(d);
 
-	return tail
-	&& tail->type == decl_desc_array
-	&& tail->bits.array_size->val.iv.val == 0;
+	if(tail && tail->type == decl_desc_array){
+		intval iv;
+
+		const_fold_need_val(tail->bits.array_size, &iv);
+
+		return iv.val == 0;
+	}
+	return 0;
 }
 
 void decl_desc_cut_loose(decl_desc *dp)
@@ -758,8 +772,14 @@ void decl_desc_add_str(decl_desc *dp, char **bufp, int sz)
 			break;
 		}
 		case decl_desc_array:
-			BUF_ADD("[%ld]", dp->bits.array_size->val.iv.val);
+		{
+			intval iv;
+
+			const_fold_need_val(dp->bits.array_size, &iv);
+
+			BUF_ADD("[%ld]", iv.val);
 			break;
+		}
 	}
 
 	if(need_paren)
