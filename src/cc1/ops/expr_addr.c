@@ -17,7 +17,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 	if(e->array_store){
 		sym *array_sym;
 
-		UCC_ASSERT(!e->sym, "symbol found when looking for array store");
+		/*UCC_ASSERT(!e->sym, "symbol found when looking for array store");*/
 		UCC_ASSERT(!e->lhs, "expression found in array store address-of");
 
 		/* static const char [] */
@@ -143,21 +143,19 @@ void gen_expr_addr(expr *e, symtable *stab)
 {
 	int push = 1;
 
-	(void)stab;
-
 	if(e->array_store){
 		/*decl *d = e->array_store->data.exprs[0];*/
 
 		asm_output_new(
 				asm_out_type_mov,
-				asm_operand_new_reg(  e->tree_type, ASM_REG_A), /* TODO: tt right here? */
+				asm_operand_new_reg(  e->tree_type, ASM_REG_A),
 				asm_operand_new_label(NULL, e->array_store->label, 1)
 			);
 	}else if(e->spel){
 		asm_output_new(
 				asm_out_type_mov,
 				asm_operand_new_reg(  NULL, ASM_REG_A),
-				asm_operand_new_label(NULL, e->array_store->label, 1)
+				asm_operand_new_label(NULL, e->spel, 1)
 			);
 	}else{
 		/* address of possibly an ident "(&a)->b" or a struct expr "&a->b" */
