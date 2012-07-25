@@ -23,6 +23,39 @@ static int label_last    = 1,
 					 flow_last     = 1,
 					 block_last    = 1;
 
+static const struct
+{
+	int sz;
+	char ch;
+	const char *directive;
+	const char *regpre, *regpost;
+} asm_type_table[] = {
+	{ 1,  'b', "byte", "",  "l"  },
+	{ 2,  'w', "word", "",  "x"  },
+	{ 4,  'l', "long", "e", "x" },
+	{ 8,  'q', "quad", "r", "x" },
+
+	/* llong */
+	{ 16,  '\0', "???", "r", "x" },
+
+	/* ldouble */
+	{ 10,  '\0', "???", "r", "x" },
+};
+#define ASM_TABLE_MAX 4
+
+enum
+{
+	ASM_INDEX_CHAR    = 0,
+	ASM_INDEX_SHORT   = 1,
+	ASM_INDEX_INT     = 2,
+	ASM_INDEX_LONG    = 3,
+	ASM_INDEX_LLONG   = 4,
+	ASM_INDEX_LDOUBLE = 5,
+
+	ASM_INDEX_PTR = ASM_INDEX_LONG,
+};
+
+
 char *asm_label_block(const char *funcsp)
 {
 	int len;
@@ -35,25 +68,6 @@ char *asm_label_block(const char *funcsp)
 
 	return ret;
 }
-
-static const struct
-{
-	int sz;
-	char ch;
-	const char *str;
-	const char *regpre, *regpost;
-} asm_type_table[] = {
-	{ 1,  'b', "byte" , "",  "l"  },
-	{ 2,  'w', "word" , "",  "x"  },
-	{ 4,  'l', "dword", "e", "x" },
-	{ 8,  'q', "qword", "r", "x" },
-
-	/* llong */
-	{ 16,  '\0', "???", "r", "x" },
-
-	/* ldouble */
-	{ 10,  '\0', "???", "r", "x" },
-};
 
 char *asm_label_code(const char *fmt)
 {
@@ -196,30 +210,18 @@ const char *asm_intval_str(intval *iv)
 	return buf;
 }
 
-void asm_declare_single_part(FILE *f, expr *e)
+void asm_declare_single_part(expr *e)
 {
 	if(!e->f_gen_1)
-		ICE("unexpected global initaliser, expr %s (no gen_1())", e->f_str());
+		ICE("no gen_1() for expr %s (%s)", e->f_str(), decl_to_str(e->tree_type));
 
-	e->f_gen_1(e, f);
+	e->f_gen_1(e, cc_out[SECTION_DATA]);
 }
 
 int asm_table_lookup(decl *d)
 {
-	enum
-	{
-		INDEX_CHAR    = 0,
-		INDEX_SHORT   = 1,
-		INDEX_INT     = 2,
-		INDEX_LONG    = 3,
-		INDEX_LLONG   = 4,
-		INDEX_LDOUBLE = 5,
-
-		INDEX_PTR = INDEX_LONG,
-	};
-
-	if(!d || decl_ptr_depth(d)){
-		return INDEX_PTR;
+	if(!d || decl_ptr_or_block(d)){
+		return ASM_INDEX_PTR;
 	}else{
 		if(d->type->typeof)
 			ICE("typedefs should've been folded by now");
@@ -230,26 +232,26 @@ int asm_table_lookup(decl *d)
 
 			case type__Bool:
 			case type_char:
-				return INDEX_CHAR;
+				return ASM_INDEX_CHAR;
 
 			case type_short:
-				return INDEX_SHORT;
+				return ASM_INDEX_SHORT;
 
 			case type_enum:
 			case type_int:
 			case type_float:
-				return INDEX_INT;
+				return ASM_INDEX_INT;
 
 			case type_ldouble:
 				ICE("long double in asm");
-				return INDEX_LDOUBLE;
+				return ASM_INDEX_LDOUBLE;
 			case type_llong:
 				ICE("long long in asm");
-				return INDEX_LLONG;
+				return ASM_INDEX_LLONG;
 
 			case type_double:
 			case type_long:
-				return INDEX_LONG;
+				return ASM_INDEX_LONG;
 
 			case type_struct:
 			case type_union:
@@ -269,9 +271,9 @@ char asm_type_ch(decl *d)
 	return asm_type_table[asm_table_lookup(d)].ch;
 }
 
-const char *asm_type_str(decl *d)
+const char *asm_type_directive(decl *d)
 {
-	return asm_type_table[asm_table_lookup(d)].str;
+	return asm_type_table[asm_table_lookup(d)].directive;
 }
 
 void asm_reg_name(decl *d, const char **regpre, const char **regpost)
@@ -291,53 +293,91 @@ int asm_type_size(decl *d)
 	return asm_type_table[asm_table_lookup(d)].sz;
 }
 
-void asm_declare_single(FILE *f, decl *d)
+void asm_declare_out(FILE *f, decl *d, const char *fmt, ...)
+{
+	va_list l;
+
+	fprintf(f, ".%s ", asm_type_directive(d));
+
+	va_start(l, fmt);
+	vfprintf(f, fmt, l);
+	va_end(l);
+
+	fputc('\n', f);
+}
+
+void asm_declare_single(decl *d)
 {
 	if(!decl_ptr_depth(d) && d->type->sue && d->type->sue->primitive != type_enum){
 		/* struct init */
 		int i;
+		const char *type_directive;
 
 		ICW("attempting to declare+init a struct, untested for nesting and arrays");
 
 		UCC_ASSERT(d->init->array_store, "no array store for struct init (TODO?)");
 		UCC_ASSERT(d->init->array_store->type == array_exprs, "array store of strings for struct");
 
-		fprintf(f, "%s dq ", d->spel); /* XXX: assumes all struct members are word-size */
+		asm_out_section(SECTION_DATA, "%s:", d->spel);
+
+		/* XXX: assumes all struct members are word-size */
+		type_directive = asm_type_table[asm_table_lookup(NULL)].directive;
 
 		for(i = 0; i < d->init->array_store->len; i++){
 			intval iv;
 
 			const_fold_need_val(d->init->array_store->data.exprs[i], &iv);
 
-			fprintf(f, "%ld%s",
-					iv.val,
-					i == d->init->array_store->len - 1 ? "" : ", ");
+			asm_out_section(SECTION_DATA, ".%s %ld", type_directive, iv.val);
 		}
-
 	}else{
-		fprintf(f, "%s d%c ", d->spel, asm_type_ch(d));
-
-		asm_declare_single_part(f, d->init);
+		asm_out_section(SECTION_DATA, "%s:", d->spel);
+		asm_declare_single_part(d->init);
 	}
-
-	fputc('\n', f);
 }
 
-void asm_declare_array(enum section_type output, const char *lbl, array_decl *ad)
+void asm_declare_array(const char *lbl, array_decl *ad)
 {
+	int tbl_idx;
 	int i;
 
-	fprintf(cc_out[output], "%s d%c ", lbl, ad->type == array_str ? 'b' : 'q');
-
-	for(i = 0; i < ad->len; i++){
-		if(ad->type == array_str)
-			fprintf(cc_out[output], "%d", ad->data.str[i]);
-		else
-			asm_declare_single_part(cc_out[output], ad->data.exprs[i]);
-
-		if(i < ad->len - 1)
-			fputs(", ", cc_out[output]);
+	switch(ad->type){
+		case array_str:
+			tbl_idx = ASM_INDEX_CHAR;
+			break;
+		case array_exprs:
+			tbl_idx = asm_table_lookup(NULL);
+			break;
 	}
 
-	fputc('\n', cc_out[output]);
+	asm_out_section(SECTION_DATA, "%s:", lbl);
+
+	for(i = 0; i < ad->len; i++){
+		if(ad->type == array_str){
+			asm_out_section(SECTION_DATA, ".%s %d",
+					asm_type_table[tbl_idx].directive,
+					ad->data.str[i]);
+		}else{
+			asm_declare_single_part(ad->data.exprs[i]);
+		}
+	}
+}
+
+void asm_reserve_bytes(const char *lbl, int nbytes)
+{
+	asm_out_section(SECTION_BSS, "%s:", lbl);
+
+	while(nbytes > 0){
+		int i;
+
+		for(i = ASM_TABLE_MAX; i >= 0; i--){
+			const int sz = asm_type_table[i].sz;
+
+			if(nbytes >= sz){
+				asm_out_section(SECTION_BSS, ".%s 0", asm_type_table[i].directive);
+				nbytes -= sz;
+				break;
+			}
+		}
+	}
 }

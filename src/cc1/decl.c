@@ -494,8 +494,7 @@ int decl_is_callable(decl *d)
 
 int decl_is_func(decl *d)
 {
-	decl_desc *dp;
-	for(dp = d->desc; dp && dp->child; dp = dp->child);
+	decl_desc *dp = decl_leaf(d);
 	return dp && dp->type == decl_desc_func;
 }
 
@@ -527,6 +526,21 @@ int decl_has_array(decl *d)
 	ITER_DESC_TYPE(d, dp, decl_desc_array)
 		return 1;
 
+	return 0;
+}
+
+int decl_ptr_or_block(decl *d)
+{
+	decl_desc *dp;
+	for(dp = d->desc; dp; dp = dp->child)
+		switch(dp->type){
+			case decl_desc_ptr:
+			case decl_desc_block:
+				return 1;
+			case decl_desc_func:
+			case decl_desc_array:
+				break;
+		}
 	return 0;
 }
 

@@ -602,10 +602,6 @@ void gen_expr_op(expr *e, symtable *tab)
 					asm_operand_new_deref(e->tree_type,
 						asm_operand_new_reg(NULL, ASM_REG_A), 0));
 
-			/* "mov %sax, %s [rax]",
-					asm_reg_name(e->tree_type),
-					asm_type_str(e->tree_type) */
-
 			asm_push(ASM_REG_A);
 			return;
 

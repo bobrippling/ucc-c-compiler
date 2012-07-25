@@ -55,6 +55,7 @@ void fold_insert_casts(decl *dlhs, expr **prhs, symtable *stab, where *w)
 
 		cast = expr_new_cast(decl_copy(dlhs));
 		cast->expr = rhs;
+		cast->expr_cast_implicit = 1;
 		*prhs = cast;
 
 		eof_where = old_w;
@@ -75,7 +76,7 @@ void fold_insert_casts(decl *dlhs, expr **prhs, symtable *stab, where *w)
 				expr_kind(hs, identifier) ? hs->spel : "", \
 				expr_kind(hs, identifier) ? ")"      : ""
 
-			cc1_warn_at(w, 0, 1, WARN_SIGN_COMPARE, "comparison between signed and unsigned%s%s%s",
+			cc1_warn_at(w, 0, 1, WARN_SIGN_COMPARE, "operation between signed and unsigned%s%s%s",
 					SPEL_IF_IDENT(rhs));
 		}
 	}
@@ -460,6 +461,8 @@ void fold_decl(decl *d, symtable *stab)
 			if(!ok){
 				fold_decl_equal(d, d->init->tree_type, &d->where, WARN_ASSIGN_MISMATCH,
 						"mismatching initialisation for %s", d->spel);
+
+				fold_insert_casts(d, &d->init, stab, &d->init->where);
 			}
 
 			const_fold(d->init, &dummy, &type);

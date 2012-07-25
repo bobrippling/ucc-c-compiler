@@ -9,7 +9,7 @@ const char *str_expr_val()
 
 void gen_expr_val_1(expr *e, FILE *f)
 {
-	fprintf(f, "%s", asm_intval_str(&e->val.iv));
+	asm_declare_out(f, e->tree_type, "%ld", e->val.iv.val);
 }
 
 void fold_expr_val(expr *e, symtable *stab)

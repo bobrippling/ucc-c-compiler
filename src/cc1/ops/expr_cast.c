@@ -68,7 +68,33 @@ void fold_expr_cast(expr *e, symtable *stab)
 
 void gen_expr_cast_1(expr *e, FILE *f)
 {
-	e->expr->f_gen_1(e, f);
+	enum constyness type;
+	intval iv;
+
+	const_fold(e, &iv, &type);
+
+	switch(type){
+		case CONST_NO:
+			ICE("bad cast static init");
+
+		case CONST_WITH_VAL:
+			/* output with possible truncation (truncate?) */
+			asm_declare_out(f, e->tree_type, "%ld", iv.val);
+			break;
+
+		case CONST_WITHOUT_VAL:
+			/* only possible if the cast-to and cast-from are the same size */
+
+			if(decl_size(e->tree_type) != decl_size(e->expr->tree_type)){
+				WARN_AT(&e->where,
+						"%scast changes type size (not a load-time constant)",
+						e->expr_cast_implicit ? "implicit " : ""
+						);
+			}
+
+			e->expr->f_gen_1(e->expr, f);
+			break;
+	}
 }
 
 void gen_expr_cast(expr *e, symtable *stab)

@@ -186,6 +186,7 @@ int     decl_is_void_ptr(       decl *);
 int     decl_ptr_depth(         decl *);
 int     decl_desc_depth(        decl *);
 int     decl_is_integral(       decl *);
+int     decl_ptr_or_block(      decl *);
 #define decl_non_ptr_type(d, t) (!(d)->desc && (d)->type->primitive == t)
 
 #define decl_is_float(d)      (((d)->type->primitive == type_float || (d)->type->primitive == type_double) && !(d)->desc)

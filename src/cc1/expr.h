@@ -37,6 +37,7 @@ struct expr
 	int assign_is_post; /* do we return the altered value or the old one? */
 #define expr_is_default  assign_is_post
 #define expr_computed_goto assign_is_post
+#define expr_cast_implicit assign_is_post
 
 	expr *lhs, *rhs;
 
