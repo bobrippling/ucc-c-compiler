@@ -41,7 +41,7 @@ static const struct
 	/* ldouble */
 	{ 10,  '\0', "???", "r", "x" },
 };
-#define ASM_TABLE_MAX 4
+#define ASM_TABLE_MAX 3
 
 enum
 {
