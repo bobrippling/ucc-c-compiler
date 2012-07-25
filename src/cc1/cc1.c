@@ -95,6 +95,7 @@ struct
 	{ 1,  "english",       FOPT_ENGLISH         },
 	{ 1,  "show-line",     FOPT_SHOW_LINE       },
 	{ 1,  "pic",           FOPT_PIC             },
+	{ 1,  "pic-pcrel",     FOPT_PIC_PCREL       },
 
 	{ 0,  NULL, 0 }
 };

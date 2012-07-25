@@ -206,10 +206,12 @@ static const char *asm_operand_label(asm_operand *op)
 	static char *buf;
 	static int bufl;
 	int len;
-	int pcrel = 1; /* TODO */
+	int pcrel;
 
-	if((fopt_mode & FOPT_PIC) == 0 || !op->bits.label.pic)
+	if((fopt_mode & (FOPT_PIC | FOPT_PIC_PCREL)) == 0 || !op->bits.label.pic)
 		return op->bits.label.str;
+
+	pcrel = !!(fopt_mode & FOPT_PIC_PCREL);
 
 	len = strlen(op->bits.label.str) + 32;
 
