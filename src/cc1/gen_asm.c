@@ -112,7 +112,8 @@ void gen_asm_global(decl *d)
 		free(curfunc_lblfin);
 
 	}else if(d->arrayinit){
-		asm_declare_array(d->arrayinit->label, d->arrayinit);
+		/*asm_declare_array(d->arrayinit->label, d->arrayinit);*/
+		asm_declare_array(d->spel, d->arrayinit);
 
 	}else if(d->init && !const_expr_and_zero(d->init)){
 		asm_declare_single(d);
