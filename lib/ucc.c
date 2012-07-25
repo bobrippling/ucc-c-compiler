@@ -41,8 +41,8 @@ void __dump_regs()
 {
 #define get_reg(r)            \
 	__asm__(                    \
-			"\tmov rax, " r "\n"    \
-			"\tpush rax\n"          \
+			"\tmovq %rax, %" r "\n"    \
+			"\tpushq %rax\n"          \
 	)
 
 	unsigned int regs[10];
