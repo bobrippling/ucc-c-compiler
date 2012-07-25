@@ -12,7 +12,7 @@ alloca:
 	popq %rdi # return addr
 	popq %rsi # amount to alloc
 
-	subq %rsp, %rsi
-	movq %rax, %rsp # return
+	subq %rsi, %rsp
+	movq %rsp, %rax # return
 
 	jmp *%rdi

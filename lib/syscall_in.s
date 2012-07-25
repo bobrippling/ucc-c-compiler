@@ -13,17 +13,17 @@ __syscall:
 	// linux kernel:   %rdi, %rsi, %rdx, %r10, %r8, %r9
 	// %rcx and %r11 are destroyed - should save... eh
 
-	movq %rax, 16(%rbp) # eax
-	movq %rdi, 24(%rbp) # ebx
-	movq %rsi, 32(%rbp) # ecx
-	movq %rdx, 40(%rbp) # edx
-	movq %r10, 48(%rbp) # edi
-	movq %r8,  56(%rbp) # esi
-	movq %r9,  64(%rbp) # e8?
+	movq 16(%rbp), %rax # eax
+	movq 24(%rbp), %rdi # ebx
+	movq 32(%rbp), %rsi # ecx
+	movq 40(%rbp), %rdx # edx
+	movq 48(%rbp), %r10 # edi
+	movq 56(%rbp), %r8  # esi
+	movq 64(%rbp), %r9  # e8?
 	syscall
 #include "syscall_err.s"
 	movl %eax, errno(%rip)
-	movq %rax, -1
+	movq $-1, %rax
 .fin:
 	leaveq
 	retq
