@@ -468,16 +468,10 @@ void fold_decl(decl *d, symtable *stab)
 			const_fold(d->init, &dummy, &type);
 			if(type == CONST_NO){
 				/* global/static + not constant */
-				/* allow identifiers if the identifier is also static */
-
-				if(!expr_kind(d->init, identifier)
-				|| d->init->tree_type->type->store != store_static)
-				{
-					DIE_AT(&d->init->where,
-							"not a constant expression for %s %s initialisation - %s",
-							d->type->store == store_static ? "static" : "global",
-							d->spel, d->init->f_str());
-				}
+				DIE_AT(&d->init->where,
+						"not a constant expression for %s %s initialisation - %s (%s)",
+						d->type->store == store_static ? "static" : "global",
+						d->spel, d->init->f_str(), decl_to_str(d->init->tree_type));
 			}
 		}
 	}
