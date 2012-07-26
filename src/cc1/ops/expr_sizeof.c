@@ -1,4 +1,5 @@
 #include "ops.h"
+#include "../sue.h"
 
 #define SIZEOF_WHAT(e) ((e)->expr ? (e)->expr->tree_type : (e)->decl)
 #define SIZEOF_SIZE(e)  (e)->val.iv.val
@@ -19,6 +20,8 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 
 	if(decl_has_incomplete_array(chosen))
 		DIE_AT(&e->where, "sizeof incomplete array");
+	else if(!e->expr_is_typeof && decl_is_struct_or_union(chosen) && sue_incomplete(chosen->type->sue))
+		DIE_AT(&e->where, "sizeof %s", type_to_str(chosen->type));
 
 	SIZEOF_SIZE(e) = decl_size(SIZEOF_WHAT(e));
 
@@ -79,17 +82,19 @@ void mutate_expr_sizeof(expr *e)
 	e->f_gen_1 = gen_expr_sizeof_1;
 }
 
-expr *expr_new_sizeof_decl(decl *d)
+expr *expr_new_sizeof_decl(decl *d, int is_typeof)
 {
 	expr *e = expr_new_wrapper(sizeof);
 	e->decl = d;
+	e->expr_is_typeof = is_typeof;
 	return e;
 }
 
-expr *expr_new_sizeof_expr(expr *sizeof_this)
+expr *expr_new_sizeof_expr(expr *sizeof_this, int is_typeof)
 {
 	expr *e = expr_new_wrapper(sizeof);
 	e->expr = sizeof_this;
+	e->expr_is_typeof = is_typeof;
 	return e;
 }
 
