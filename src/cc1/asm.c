@@ -190,6 +190,8 @@ void asm_sym(enum asm_sym_type t, sym *s, asm_operand *reg)
 
 	asm_comment("%s%s", t == ASM_LEA ? "&" : "", dsp);
 
+	UCC_ASSERT(t != ASM_LEA || !reg->tt, "tree type for lea");
+
 	/* don't free resolved_type - it's needed by the asm_operand */
 }
 
