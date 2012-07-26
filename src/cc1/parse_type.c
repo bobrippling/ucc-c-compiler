@@ -249,7 +249,7 @@ type *parse_type()
 			if(primitive_set)
 				DIE_AT(NULL, "duplicate typeof specifier");
 
-			tdef_typeof = parse_expr_sizeof_typeof();
+			tdef_typeof = parse_expr_sizeof_typeof(1);
 			primitive_set = 1;
 
 		}else if(curtok == token_identifier && (td = typedef_find(current_scope, token_current_spel_peek()))){
@@ -272,7 +272,7 @@ type *parse_type()
 
 			/*if(tdef_typeof) - can't reach due to primitive_set */
 
-			tdef_typeof = expr_new_sizeof_decl(td);
+			tdef_typeof = expr_new_sizeof_decl(td, 1);
 			primitive_set = PRIMITIVE_NO_MORE;
 
 			EAT(token_identifier);
