@@ -98,7 +98,7 @@ void gen_expr_identifier(expr *e, symtable *stab)
 		asm_sym(
 				decl_has_array(e->sym->decl) ? ASM_LEA : ASM_LOAD,
 				e->sym,
-				asm_operand_new_reg(e->sym->decl, ASM_REG_A));
+				asm_operand_new_reg(NULL, ASM_REG_A));
 
 	}else{
 		/* no symbol, or a function */
