@@ -35,7 +35,7 @@ void gen_expr_stmt(expr *e, symtable *stab)
 {
 	(void)stab;
 	gen_stmt(e->code);
-	asm_push(ASM_REG_A);
+	asm_push(e->tree_type, ASM_REG_A);
 	asm_comment("end of ({...})");
 }
 

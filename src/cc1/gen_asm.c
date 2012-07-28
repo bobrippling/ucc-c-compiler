@@ -88,7 +88,7 @@ void gen_asm_global(decl *d)
 		const int offset = d->func_code->symtab->auto_total_size;
 
 		asm_label(d->spel);
-		asm_push(ASM_REG_BP);
+		asm_push(NULL, ASM_REG_BP);
 		asm_output_new(asm_out_type_mov,
 				asm_operand_new_reg(NULL, ASM_REG_BP),
 				asm_operand_new_reg(NULL, ASM_REG_SP));

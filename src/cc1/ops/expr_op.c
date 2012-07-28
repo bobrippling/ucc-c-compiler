@@ -445,8 +445,11 @@ static void asm_idiv(expr *e, symtable *tab)
 	ASM_XOR(D);
 	asm_pop(e->lhs->tree_type, ASM_REG_B);
 	asm_pop(e->rhs->tree_type, ASM_REG_A);
-	asm_output_new(asm_out_type_idiv, asm_operand_new_reg(e->tree_type, ASM_REG_A), NULL);
-	asm_push(e->op == op_divide ? ASM_REG_A : ASM_REG_D);
+	asm_output_new(asm_out_type_idiv,
+			asm_operand_new_reg(e->tree_type, ASM_REG_A),
+			NULL);
+
+	asm_push(e->tree_type, e->op == op_divide ? ASM_REG_A : ASM_REG_D);
 }
 
 static void asm_compare(expr *e, symtable *tab)
@@ -489,7 +492,7 @@ static void asm_compare(expr *e, symtable *tab)
 	UCC_ASSERT(cmp, "no compare for op %s", op_to_str(e->op));
 
 	asm_set(cmp, ASM_REG_A);
-	asm_push(ASM_REG_A);
+	asm_push(decl_new_char(), ASM_REG_A);
 }
 
 static void asm_shortcircuit(expr *e, symtable *tab)
@@ -516,7 +519,7 @@ static void asm_shortcircuit(expr *e, symtable *tab)
 	ASM_XOR(A);
 	ASM_TEST(NULL, ASM_REG_C);
 	asm_set("nz", ASM_REG_A); /* setnz al */
-	asm_push(ASM_REG_A);
+	asm_push(decl_new_char(), ASM_REG_A);
 
 	asm_label(baillabel);
 
@@ -555,7 +558,7 @@ void asm_operate_struct(expr *e, symtable *tab)
 
 	asm_comment("val from struct");
 
-	asm_push(ASM_REG_A);
+	asm_push(e->tree_type, ASM_REG_A);
 }
 
 void gen_expr_op(expr *e, symtable *tab)
@@ -588,7 +591,7 @@ void gen_expr_op(expr *e, symtable *tab)
 			asm_pop(e->lhs->tree_type, ASM_REG_B);
 			ASM_TEST(NULL, ASM_REG_A);
 			asm_set("z", ASM_REG_B); /* setz bl */
-			asm_push(ASM_REG_B);
+			asm_push(decl_new_char(), ASM_REG_B);
 			return;
 
 		case op_deref:
@@ -602,7 +605,7 @@ void gen_expr_op(expr *e, symtable *tab)
 					asm_operand_new_deref(e->tree_type,
 						asm_operand_new_reg(NULL, ASM_REG_A), 0));
 
-			asm_push(ASM_REG_A);
+			asm_push(e->tree_type, ASM_REG_A);
 			return;
 
 		case op_struct_dot:
@@ -659,7 +662,7 @@ void gen_expr_op(expr *e, symtable *tab)
 				NULL);
 	}
 
-	asm_push(ASM_REG_A);
+	asm_push(e->tree_type, ASM_REG_A);
 }
 
 void gen_expr_op_store(expr *store, symtable *stab)
@@ -667,7 +670,7 @@ void gen_expr_op_store(expr *store, symtable *stab)
 	switch(store->op){
 		case op_deref:
 			/* a dereference */
-			asm_push(ASM_REG_A);
+			asm_push(store->tree_type, ASM_REG_A);
 			asm_comment("expr to save");
 
 #ifdef FAST_ARRAY_DEREF

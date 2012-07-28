@@ -124,7 +124,7 @@ void gen_expr_cast(expr *e, symtable *stab)
 
 	/* decide if casting to a larger or smaller type */
 	if((size_lhs = asm_type_size(dlhs)) != (size_rhs = asm_type_size(drhs))){
-		asm_output *o;
+		/*asm_output *o;*/
 
 		if(size_rhs > size_lhs){
 			/* loss of precision, touch crabcakes */
@@ -132,7 +132,8 @@ void gen_expr_cast(expr *e, symtable *stab)
 		}else{
 			char buf[DECL_STATIC_BUFSIZ];
 
-			asm_pop(NULL, ASM_REG_A);
+			asm_pop(dlhs, ASM_REG_A);
+#if 0 /* asm_pop/push take care of it */
 			/*
 			 * movsx -> mov sign extend
 			 * movsx rax, eax ; long <- int, etc
@@ -149,8 +150,9 @@ void gen_expr_cast(expr *e, symtable *stab)
 					asm_operand_new_reg(drhs, ASM_REG_A));
 
 			o->extra = ustrdup("sx");
+#endif
 
-			asm_push(ASM_REG_A);
+			asm_push(drhs, ASM_REG_A);
 
 			asm_comment("cast finish - sign extend %s -> %s",
 					decl_to_str(drhs), decl_to_str_r(buf, dlhs));

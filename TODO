@@ -1,8 +1,3 @@
-asm_recode branch:
-	check that "*(char *)0" generates "movzx rax, byte [rax]" or similar
-	asm_pop shouldn't be the only one to movslq, it should be whenever we get something from the stack
-	int i = "hi"; - this is (int) <-- (char[]) - asm-cast is incorrect, should be ptr-type, is char-type
-
 updated bugs/ and test/
 
 ---------------------------------------------------- cc1

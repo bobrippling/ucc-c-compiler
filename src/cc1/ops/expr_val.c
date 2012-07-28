@@ -38,7 +38,7 @@ void gen_expr_val(expr *e, symtable *stab)
 	fputc('\n', cc_out[SECTION_TEXT]);
 	*/
 
-	asm_push(ASM_REG_A);
+	asm_push(e->tree_type, ASM_REG_A);
 }
 
 void gen_expr_str_val(expr *e, symtable *stab)

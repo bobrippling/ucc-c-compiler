@@ -98,8 +98,6 @@ ASM_WRAP(leave,    0)
 ASM_WRAP(ret,      0)
 ASM_WRAP(lea,      2)
 
-ASM_WRAP(push,     1)
-
 void asm_out_type_idiv(asm_output *out)
 {
 	asm_operand *save = out->lhs;
@@ -111,7 +109,7 @@ void asm_out_type_idiv(asm_output *out)
 	ASM_OUT_GENERIC("idiv", out, 1);
 }
 
-void asm_out_type_pop(asm_output *out)
+void asm_out_type_push_pop(asm_output *out, int is_pop)
 {
 	const int word = platform_word_size();
 	decl *const tt = out->lhs->tt;
@@ -120,7 +118,8 @@ void asm_out_type_pop(asm_output *out)
 
 	out->lhs->tt = NULL; /* force popq %rax */
 
-	ASM_OUT_GENERIC("pop", out, 1);
+	if(is_pop)
+		ASM_OUT_GENERIC("pop", out, 1);
 
 	if(!tt || sz == word){
 		if(tt)
@@ -140,9 +139,22 @@ void asm_out_type_pop(asm_output *out)
 				asm_reg_str(       NULL, reg_ch));
 	}
 
+	if(!is_pop)
+		ASM_OUT_GENERIC("push", out, 1);
+
 	out->lhs->tt = tt;
 }
 #undef TRUNCATE
+
+void asm_out_type_pop(asm_output *out)
+{
+	asm_out_type_push_pop(out, 1);
+}
+
+void asm_out_type_push(asm_output *out)
+{
+	asm_out_type_push_pop(out, 0);
+}
 
 void asm_out_type_call(asm_output *out)
 {
@@ -342,10 +354,9 @@ void asm_set(const char *cmd, enum asm_reg reg)
 
 	eof_where = &w;
 	memset(eof_where, 0, sizeof w);
-	d = decl_new();
+	d = decl_new_char();
 	eof_where = old_w;
 
-	d->type->primitive = type_char; /* force "sete al" rather than "sete rax" */
 	op = asm_operand_new_reg(d, reg);
 	o = asm_output_new(asm_out_type_set, op, NULL);
 
@@ -400,16 +411,22 @@ void asm_comment(const char *fmt, ...)
 }
 
 /* wrappers for asm_output_new */
-void asm_push(enum asm_reg reg)
+void asm_push(decl *d, enum asm_reg reg)
 {
+	if(d && decl_is_void(d))
+		return;
+
 	asm_output_new(
 			asm_out_type_push,
-			asm_operand_new_reg(NULL, reg),
+			asm_operand_new_reg(d, reg),
 			NULL);
 }
 
 void asm_pop(decl *d, enum asm_reg reg)
 {
+	if(d && decl_is_void(d))
+		return;
+
 	asm_output_new(
 			asm_out_type_pop,
 			asm_operand_new_reg(d, reg),

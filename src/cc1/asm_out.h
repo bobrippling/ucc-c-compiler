@@ -84,8 +84,9 @@ void asm_label(const char *);
 void asm_comment(const char *, ...);
 
 /* wrappers for asm_output_new */
-void asm_push(enum asm_reg);
-void asm_pop(decl *d, enum asm_reg); /* if decl isn't machine-word, truncations are done */
+/* if decl isn't machine-word, truncations are done */
+void asm_push(decl *d, enum asm_reg);
+void asm_pop( decl *d, enum asm_reg);
 
 /* nothing to do with code */
 void asm_out_section(enum section_type, const char *fmt, ...);

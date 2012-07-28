@@ -108,7 +108,7 @@ void gen_expr_identifier(expr *e, symtable *stab)
 		/*asm_temp(1, "mov rax, %s", e->spel);*/
 	}
 
-	asm_push(ASM_REG_A);
+	asm_push(e->tree_type, ASM_REG_A);
 }
 
 void gen_expr_identifier_1(expr *e, FILE *f)

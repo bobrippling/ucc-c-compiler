@@ -94,6 +94,13 @@ decl *decl_new_void()
 	return d;
 }
 
+decl *decl_new_char()
+{
+	decl *d = decl_new();
+	d->type->primitive = type_char; /* force "sete al" rather than "sete rax" */
+	return d;
+}
+
 void decl_free(decl *d)
 {
 	type_free(d->type);

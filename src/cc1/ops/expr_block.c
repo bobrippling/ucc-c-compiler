@@ -82,7 +82,7 @@ void gen_expr_block(expr *e, symtable *stab)
 			asm_operand_new_reg(e->sym->decl, ASM_REG_A),
 			asm_operand_new_label(e->sym->decl, e->sym->decl->spel, 0));
 
-	asm_push(ASM_REG_A);
+	asm_push(e->sym->decl, ASM_REG_A);
 }
 
 void gen_expr_str_block(expr *e, symtable *stab)

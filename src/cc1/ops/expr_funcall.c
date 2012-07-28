@@ -216,7 +216,7 @@ invalid:
 			asm_comment("%d arg%s", nargs, nargs == 1 ? "" : "s");
 		}
 
-		asm_push(ASM_REG_A);
+		asm_push(e->tree_type, ASM_REG_A);
 	}
 }
 

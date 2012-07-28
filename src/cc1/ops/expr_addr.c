@@ -147,13 +147,13 @@ void gen_expr_addr(expr *e, symtable *stab)
 		/*decl *d = e->array_store->data.exprs[0];*/
 
 		asm_output_new(
-				asm_out_type_mov,
+				asm_out_type_lea,
 				asm_operand_new_reg(NULL, ASM_REG_A),
 				asm_operand_new_label(NULL, e->array_store->label, 1)
 			);
 	}else if(e->spel){
 		asm_output_new(
-				asm_out_type_mov,
+				asm_out_type_lea,
 				asm_operand_new_reg(NULL, ASM_REG_A),
 				asm_operand_new_label(NULL, e->spel, 1)
 			);
@@ -172,7 +172,7 @@ void gen_expr_addr(expr *e, symtable *stab)
 	}
 
 	if(push)
-		asm_push(ASM_REG_A);
+		asm_push(e->tree_type, ASM_REG_A);
 }
 
 void gen_expr_addr_1(expr *e, FILE *f)
