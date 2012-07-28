@@ -17,9 +17,9 @@ libs: ${OBJ}
 
 ${OBJ}: ${LIBDEPS}
 
-crt.o: crt.s
+crt.o: crt.S
 	${BUILD_CMD}
-syscall.o: syscall.s
+syscall.o: syscall_in.S syscall_err.s ../src/as_cfg.h
 	${BUILD_CMD}
 
 stdio.o: stdio.c
@@ -39,7 +39,7 @@ ctype.o: ctype.c
 dirent.o: dirent.c
 	${BUILD_CMD}
 
-alloca.o: alloca.s
+alloca.o: alloca.S
 	${BUILD_CMD}
 
 ucc.o: ucc.c
@@ -62,9 +62,6 @@ sys/time.o: sys/time.c
 
 arpa/inet.o: arpa/inet.c
 	${BUILD_CMD}
-
-syscall.s: syscall_in.s syscall_err.s
-	${UCC_CC} -x c -E -o $@ syscall_in.s
 
 clean:
 	rm -f *.o sys/*.o

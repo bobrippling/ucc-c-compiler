@@ -31,6 +31,23 @@ UCC_LDFLAGS = ${UCC_LDFLAGS}
 !
 	fi > lib/syscall_err.s
 
+	if [ $1 = Darwin ]
+	then
+		SECTION_TEXT="__TEXT,__text"
+		SECTION_DATA="__DATA,__data"
+		SECTION_BSS="__BSS,__bss"
+	else
+		SECTION_TEXT=".text"
+		SECTION_DATA=".data"
+		SECTION_BSS=".bss"
+	fi
+
+	cat > src/as_cfg.h <<!
+#define SECTION_TEXT $SECTION_TEXT
+#define SECTION_DATA $SECTION_DATA
+#define SECTION_BSS  $SECTION_BSS
+!
+
 	if ! which perl > /dev/null
 	then
 		if [ $1 = Darwin ]

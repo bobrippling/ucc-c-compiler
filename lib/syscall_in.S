@@ -1,9 +1,10 @@
-.section .bss,""
+#include "../src/as_cfg.h"
+.section SECTION_BSS
 	.globl errno
 errno:
 	.long 0
 
-.section .text,""
+.section SECTION_TEXT
 	.globl __syscall
 __syscall:
 	pushq %rbp
