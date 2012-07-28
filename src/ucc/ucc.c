@@ -97,11 +97,13 @@ void create_file(struct cc_file *file, enum mode mode, char *in)
 	}
 
 #define ASSIGN(x)                \
+			if(!file->x){              \
 				file->x = tmpfilenam();  \
 				if(mode == mode_ ## x){  \
 					file->out = file->x;   \
 					return;                \
-				}
+				}                        \
+			}
 
 	ext = strrchr(in, '.');
 	if(ext && ext[1] && !ext[2]){
@@ -113,6 +115,8 @@ compile:
 			case 'i':
 				ASSIGN(compile);
 assemb:
+			case 'S':
+				ASSIGN(preproc); /* preprocess .S assembly files by default */
 			case 's':
 				ASSIGN(assemb);
 				file->out = file->assemb;
