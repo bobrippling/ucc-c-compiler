@@ -77,7 +77,7 @@ char *asm_label_code(const char *fmt)
 	len = strlen(fmt) + 10;
 	ret = umalloc(len + 1);
 
-	SNPRINTF(ret, len, ".%s.%d", fmt, label_last++);
+	SNPRINTF(ret, len, ".L%s.%d", fmt, label_last++);
 
 	return ret;
 }
@@ -106,7 +106,7 @@ char *asm_label_goto(char *lbl)
 {
 	int len = strlen(lbl) + 6;
 	char *ret = umalloc(len);
-	SNPRINTF(ret, len, ".lbl_%s", lbl);
+	SNPRINTF(ret, len, ".L%s", lbl);
 	return ret;
 }
 
@@ -116,7 +116,7 @@ char *asm_label_case(enum asm_label_type lbltype, int val)
 	char *ret = umalloc(len = 15 + 32);
 	switch(lbltype){
 		case CASE_DEF:
-			SNPRINTF(ret, len, ".case_%d_default", switch_last);
+			SNPRINTF(ret, len, ".Lcase_%d_default", switch_last);
 			break;
 
 		case CASE_CASE:
@@ -127,7 +127,7 @@ char *asm_label_case(enum asm_label_type lbltype, int val)
 				val = -val;
 				extra = "m";
 			}
-			SNPRINTF(ret, len, ".case%s_%d_%s%d", lbltype == CASE_RANGE ? "_rng" : "", switch_last, extra, val);
+			SNPRINTF(ret, len, ".Lcase%s_%d_%s%d", lbltype == CASE_RANGE ? "_rng" : "", switch_last, extra, val);
 			break;
 		}
 	}
@@ -140,7 +140,7 @@ char *asm_label_flow(const char *fmt)
 {
 	int len = 16 + strlen(fmt);
 	char *ret = umalloc(len);
-	SNPRINTF(ret, len, ".flow_%s_%d", fmt, flow_last++);
+	SNPRINTF(ret, len, ".Lflow_%s_%d", fmt, flow_last++);
 	return ret;
 }
 
