@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "../util/util.h"
 #include "../util/dynarray.h"
@@ -238,8 +239,11 @@ static const char *asm_operand_deref(asm_operand *op)
 		n = snprintf(buf, sizeof buf, "(%s)",
 				op->bits.deref.base->impl(op->bits.deref.base));
 	}else{
-		n = snprintf(buf, sizeof buf, "%d(%s)",
-				op->bits.deref.offset,
+		const int off = op->bits.deref.offset;
+
+		n = snprintf(buf, sizeof buf, "%s0x%x(%s)",
+				off < 0 ? "-" : "",
+				abs(off),
 				op->bits.deref.base->impl(op->bits.deref.base));
 	}
 
