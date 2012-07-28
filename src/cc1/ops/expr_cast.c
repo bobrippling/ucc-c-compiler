@@ -130,6 +130,8 @@ void gen_expr_cast(expr *e, symtable *stab)
 			/* loss of precision, touch crabcakes */
 			asm_comment("loss of precision, noop cast");
 		}else{
+			char buf[DECL_STATIC_BUFSIZ];
+
 			asm_pop(NULL, ASM_REG_A);
 			/*
 			 * movsx -> mov sign extend
@@ -150,7 +152,8 @@ void gen_expr_cast(expr *e, symtable *stab)
 
 			asm_push(ASM_REG_A);
 
-			asm_comment("cast finish");
+			asm_comment("cast finish - sign extend %s -> %s",
+					decl_to_str(drhs), decl_to_str_r(buf, dlhs));
 		}
 	}else{
 		asm_comment("cast - asm type sizes match (%d)", asm_type_size(dlhs));

@@ -536,9 +536,9 @@ int decl_ptr_or_block(decl *d)
 		switch(dp->type){
 			case decl_desc_ptr:
 			case decl_desc_block:
+			case decl_desc_array:
 				return 1;
 			case decl_desc_func:
-			case decl_desc_array:
 				break;
 		}
 	return 0;
