@@ -226,9 +226,18 @@ void io_setup(void)
 	atexit(io_cleanup);
 }
 
-void io_fin(int do_sections)
+void io_fin(int do_sections, const char *fname)
 {
 	int i;
+
+#if 0
+	if(do_sections){
+		if(fprintf(cc1_out, "\t.file \"%s\"\n", fname) < 0)
+			ccdie(0, "write to cc1_out:");
+	}
+#else
+	(void)fname;
+#endif
 
 	for(i = 0; i < NUM_SECTIONS; i++){
 		/* cat cc_out[i] to cc1_out, with section headers */
@@ -411,7 +420,7 @@ usage:
 		asm_flush();
 	}
 
-	io_fin(gf == gen_asm);
+	io_fin(gf == gen_asm, fname);
 
 	return 0;
 }
