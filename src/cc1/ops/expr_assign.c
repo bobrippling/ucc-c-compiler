@@ -101,9 +101,6 @@ void gen_expr_assign(expr *e, symtable *stab)
 	fold_disallow_st_un(e, "copy (TODO)");
 
 	gen_expr(e->rhs, stab);
-#ifdef USE_MOVE_RAX_RSP
-	asm_temp(1, "mov rax, [rsp]");
-#endif
 
 	UCC_ASSERT(e->lhs->f_store, "invalid store expression %s (no f_store())", e->lhs->f_str());
 

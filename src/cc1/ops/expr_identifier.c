@@ -95,10 +95,12 @@ void gen_expr_identifier(expr *e, symtable *stab)
 		 *
 		 * also never do this for functions
 		 */
+		const int array = decl_has_array(e->sym->decl);
+
 		asm_sym(
-				decl_has_array(e->sym->decl) ? ASM_LEA : ASM_LOAD,
+				array ? ASM_LEA : ASM_LOAD,
 				e->sym,
-				asm_operand_new_reg(NULL, ASM_REG_A));
+				asm_operand_new_reg(array ? NULL : e->sym->decl, ASM_REG_A));
 
 	}else{
 		/* no symbol, or a function */
@@ -125,6 +127,11 @@ void gen_expr_identifier_1(expr *e, FILE *f)
 void gen_expr_identifier_store(expr *e, symtable *stab)
 {
 	(void)stab;
+	asm_output_new(asm_out_type_mov,
+			asm_operand_new_reg(e->tree_type, ASM_REG_A),
+			asm_operand_new_deref(e->tree_type,
+				asm_operand_new_reg(NULL, ASM_REG_SP), 0));
+
 	asm_sym(ASM_STORE, e->sym, asm_operand_new_reg(e->sym->decl, ASM_REG_A));
 }
 

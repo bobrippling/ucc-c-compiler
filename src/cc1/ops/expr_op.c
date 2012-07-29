@@ -468,7 +468,7 @@ static void asm_compare(expr *e, symtable *tab)
 
 	asm_pop(e->tree_type, ASM_REG_B); /* assume they've been converted by now */
 	asm_pop(e->tree_type, ASM_REG_A);
-	ASM_XOR(C);
+	/*ASM_XOR(C);*/
 	asm_output_new(asm_out_type_cmp,
 			asm_operand_new_reg(e->tree_type, ASM_REG_A),
 			asm_operand_new_reg(e->tree_type, ASM_REG_B));
@@ -516,7 +516,7 @@ static void asm_shortcircuit(expr *e, symtable *tab)
 
 	/* must convert to 1 or 0 */
 	asm_pop(NULL, ASM_REG_C);
-	ASM_XOR(A);
+	/*ASM_XOR(A);*/
 	ASM_TEST(NULL, ASM_REG_C);
 	asm_set("nz", ASM_REG_A); /* setnz al */
 	asm_push(decl_new_char(), ASM_REG_A);
@@ -587,7 +587,7 @@ void gen_expr_op(expr *e, symtable *tab)
 		case op_not:
 			/* compare with 0 */
 			gen_expr(e->lhs, tab);
-			/*ASM_XOR(B); don't know why this was here */
+			/*ASM_XOR(B); don't xor B - set is different now */
 			asm_pop(e->lhs->tree_type, ASM_REG_B);
 			ASM_TEST(NULL, ASM_REG_A);
 			asm_set("z", ASM_REG_B); /* setz bl */
@@ -670,9 +670,6 @@ void gen_expr_op_store(expr *store, symtable *stab)
 	switch(store->op){
 		case op_deref:
 			/* a dereference */
-			asm_push(store->tree_type, ASM_REG_A);
-			asm_comment("expr to save");
-
 #ifdef FAST_ARRAY_DEREF
 			/* check for a[n] aka *(a + n) */
 			if(expr_kind(e->lhs, op)
@@ -697,7 +694,11 @@ void gen_expr_op_store(expr *store, symtable *stab)
 			asm_comment("address");
 
 
-			asm_pop(store->tree_type, ASM_REG_B);
+			asm_output_new(
+					asm_out_type_mov,
+					asm_operand_new_reg(store->tree_type, ASM_REG_B),
+					asm_operand_new_deref(store->tree_type,
+						asm_operand_new_reg(NULL, ASM_REG_SP), 0));
 			asm_comment("value");
 
 			asm_output_new(
@@ -724,21 +725,21 @@ void gen_expr_op_store(expr *store, symtable *stab)
 			asm_output_new(
 						asm_out_type_mov,
 						asm_operand_new_reg(  store->tree_type, ASM_REG_A),
-						asm_operand_new_deref(store->tree_type, asm_operand_new_reg(NULL, ASM_REG_SP), 0)
+						asm_operand_new_deref(store->tree_type,
+							asm_operand_new_reg(NULL, ASM_REG_SP), 0)
 					);
-			/*asm_temp(1, "mov rax, [rsp] ; saved val");*/
 
 			asm_output_new(
 					asm_out_type_mov,
-					asm_operand_new_deref(store->tree_type, asm_operand_new_reg(store->tree_type, ASM_REG_B), 0),
+					asm_operand_new_deref(store->tree_type,
+						asm_operand_new_reg(store->tree_type, ASM_REG_B), 0),
 					asm_operand_new_reg(  store->tree_type, ASM_REG_A)
 				);
 
-			/*asm_temp(1, "mov [rbx], rax");*/
 			return;
 
 		case op_struct_dot:
-			ICE("TODO: a.b");
+			ICE("a.b missed");
 			break;
 
 		default:
