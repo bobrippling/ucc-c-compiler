@@ -123,20 +123,35 @@ void asm_out_type_push_pop(asm_output *out, int is_pop)
 
 	if(!tt || sz == word){
 		if(tt)
-			fprintf(f, "\t%s not truncating - machine word size\n", ASM_COMMENT);
+			fprintf(f, "\t%s not truncating %s\n", ASM_COMMENT, decl_to_str(tt));
 	}else{
 		/* need to zero the extra bits of the register */
-		char reg_ch;
 		char buf[ASM_REG_STR_SZ];
+
+		char reg_ch = out->lhs->bits.reg;
+		const char *regs[2] = {
+			asm_reg_str_r(buf, tt, reg_ch),
+			asm_reg_str(NULL, reg_ch)
+		};
+
+		int sign_extend;
+		char type_ch;
 
 		UCC_ASSERT(asm_operand_kind(out->lhs, reg), "not a register pop");
 
-		reg_ch = out->lhs->bits.reg;
+		type_ch = asm_type_ch(tt);
+		sign_extend = !decl_ptr_or_block(tt) && tt->type->is_signed;
 
-		fprintf(f, "\tmovs%cq %s, %s\n",
-				asm_type_ch(tt),
-				asm_reg_str_r(buf, tt,   reg_ch),
-				asm_reg_str(       NULL, reg_ch));
+		/* movzlq doesn't exist - use movl %reg, %reg to zero higher dword */
+
+		if(!sign_extend && type_ch == 'l'){
+			/* regs[1] ignored */
+			fprintf(f, "\tmovl %s, %s\n", regs[0], regs[0]);
+		}else{
+			fprintf(f, "\tmov%c%cq %s, %s\n",
+					sign_extend ? 's' : 'z',
+					type_ch, regs[0], regs[1]);
+		}
 	}
 
 	if(!is_pop)
@@ -154,6 +169,13 @@ void asm_out_type_pop(asm_output *out)
 void asm_out_type_push(asm_output *out)
 {
 	asm_out_type_push_pop(out, 0);
+
+#if 0
+	decl *save = out->lhs->tt;
+	out->lhs->tt = NULL;
+	ASM_OUT_GENERIC("push", out, 1);
+	out->lhs->tt = save;
+#endif
 }
 
 void asm_out_type_call(asm_output *out)
