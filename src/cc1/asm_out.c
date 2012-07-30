@@ -163,19 +163,20 @@ void asm_out_type_push_pop(asm_output *out, int is_pop)
 
 void asm_out_type_pop(asm_output *out)
 {
+/*#define ASM_POP_EXTEND*/
+#ifdef ASM_POP_EXTEND
 	asm_out_type_push_pop(out, 1);
+#else
+	decl *save = out->lhs->tt;
+	out->lhs->tt = NULL;
+	ASM_OUT_GENERIC("pop", out, 1);
+	out->lhs->tt = save;
+#endif
 }
 
 void asm_out_type_push(asm_output *out)
 {
 	asm_out_type_push_pop(out, 0);
-
-#if 0
-	decl *save = out->lhs->tt;
-	out->lhs->tt = NULL;
-	ASM_OUT_GENERIC("push", out, 1);
-	out->lhs->tt = save;
-#endif
 }
 
 void asm_out_type_call(asm_output *out)
