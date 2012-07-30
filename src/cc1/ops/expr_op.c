@@ -417,16 +417,10 @@ void gen_expr_str_op(expr *e, symtable *stab)
 static void asm_idiv(expr *e, symtable *tab)
 {
 	/*
-	 * idiv — Integer Division
-	 * The idiv asm_temp divides the contents of the 64 bit integer EDX:EAX (constructed by viewing EDX as the most significant four bytes and EAX as the least significant four bytes) by the specified operand value. The quotient result of the division is stored into EAX, while the remainder is placed in EDX.
-	 * Syntax
-	 * idiv <reg32>
-	 * idiv <mem>
-	 *
-	 * Examples
-	 *
-	 * idiv ebx — divide the contents of EDX:EAX by the contents of EBX. Place the quotient in EAX and the remainder in EDX.
-	 * idiv DWORD PTR [var] — divide the contents of EDX:EAS by the 32-bit value stored at memory location var. Place the quotient in EAX and the remainder in EDX.
+	 * divides the 64 bit integer EDX:EAX
+	 * by the operand
+	 * quotient  -> eax
+	 * remainder -> edx
 	 */
 
 	gen_expr(e->lhs, tab);
@@ -434,7 +428,6 @@ static void asm_idiv(expr *e, symtable *tab)
 	/* pop top stack (rhs) into b, and next top into a */
 
 	/*
-	xor rdx,rdx
 	pop rbx
 	pop rax
 	cqo ; rax -> rdx:rax <-- handled in the idiv inst.
@@ -442,11 +435,10 @@ static void asm_idiv(expr *e, symtable *tab)
 	push r%cx, e->op == op_divide ? 'a' : 'd'
 	*/
 
-	ASM_XOR(D);
 	asm_pop(e->lhs->tree_type, ASM_REG_B);
 	asm_pop(e->rhs->tree_type, ASM_REG_A);
 	asm_output_new(asm_out_type_idiv,
-			asm_operand_new_reg(e->tree_type, ASM_REG_A),
+			asm_operand_new_reg(e->tree_type, ASM_REG_B),
 			NULL);
 
 	asm_push(e->tree_type, e->op == op_divide ? ASM_REG_A : ASM_REG_D);
