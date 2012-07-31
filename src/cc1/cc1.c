@@ -59,6 +59,8 @@ struct
 
 	{ 0, "mixed-code-decls", WARN_MIXED_CODE_DECLS                  },
 
+	{ 0, "loss-of-precision", WARN_LOSS_PRECISION                   },
+
 
 #if 0
 	/* TODO */
@@ -121,6 +123,7 @@ enum warning warn_mode = ~(
 		| WARN_IMPLICIT_INT
 		| WARN_INCOMPLETE_USE
 		| WARN_OPT_POSSIBLE
+		| WARN_LOSS_PRECISION
 		);
 
 enum fopt    fopt_mode = FOPT_CONST_FOLD | FOPT_SHOW_LINE | FOPT_PIC;

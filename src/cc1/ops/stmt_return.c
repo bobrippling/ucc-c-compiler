@@ -22,7 +22,7 @@ void fold_stmt_return(stmt *s)
 			cc1_warn_at(&s->where, 0, 1, WARN_RETURN_TYPE,
 					"return with a value in void function %s", curdecl_func->spel);
 		}else{
-			fold_insert_casts(curdecl_func_called, &s->expr, s->symtab, &s->expr->where);
+			fold_insert_casts(curdecl_func_called, &s->expr, s->symtab, &s->expr->where, "return");
 		}
 
 	}else if(!void_func){

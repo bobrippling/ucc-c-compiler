@@ -263,7 +263,7 @@ void fold_expr_op(expr *e, symtable *stab)
 		fold_expr(e->rhs, stab);
 		fold_disallow_st_un(e->rhs, "op-rhs");
 
-		fold_insert_casts(e->lhs->tree_type, &e->rhs, stab, &e->where);
+		fold_insert_casts(e->lhs->tree_type, &e->rhs, stab, &e->where, "operation");
 
 		if(decl_is_void(e->lhs->tree_type) || decl_is_void(e->rhs->tree_type))
 			DIE_AT(&e->where, "use of void expression");

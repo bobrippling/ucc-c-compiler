@@ -69,11 +69,7 @@ void fold_expr_assign(expr *e, symtable *stab)
 	}
 
 
-	if(e->lhs->sym)
-		/* read the tree_type from what we're assigning to, not the expr */
-		e->tree_type = decl_copy(e->lhs->sym->decl);
-	else
-		e->tree_type = decl_copy(e->lhs->tree_type);
+	e->tree_type = decl_copy(e->lhs->tree_type);
 
 	/* type check */
 	if(!type_ok){
@@ -86,7 +82,7 @@ void fold_expr_assign(expr *e, symtable *stab)
 	}
 
 	/* do the typecheck after the equal-check, since the typecheck inserts casts */
-	fold_insert_casts(e->lhs->tree_type, &e->rhs, stab, &e->where);
+	fold_insert_casts(e->lhs->tree_type, &e->rhs, stab, &e->where, "assignment");
 }
 
 void gen_expr_assign(expr *e, symtable *stab)

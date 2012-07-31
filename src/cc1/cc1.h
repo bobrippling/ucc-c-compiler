@@ -27,6 +27,7 @@ enum warning
 	WARN_VOID_ARITH               = 1 << 9,
 	WARN_MIXED_CODE_DECLS         = 1 << 10,
 	WARN_TEST_BOOL                = 1 << 11,
+	WARN_LOSS_PRECISION           = 1 << 12,
 
 	WARN_OPT_POSSIBLE             = 1 << 20,
 	WARN_SWITCH_ENUM              = 1 << 21,

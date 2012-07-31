@@ -42,7 +42,7 @@ void fold_decl_equal(decl *a, decl *b, where *w, enum warning warn,
 	}
 }
 
-void fold_insert_casts(decl *dlhs, expr **prhs, symtable *stab, where *w)
+void fold_insert_casts(decl *dlhs, expr **prhs, symtable *stab, where *w, const char *desc)
 {
 	expr *rhs = *prhs;
 
@@ -76,8 +76,9 @@ void fold_insert_casts(decl *dlhs, expr **prhs, symtable *stab, where *w)
 				expr_kind(hs, identifier) ? hs->spel : "", \
 				expr_kind(hs, identifier) ? ")"      : ""
 
-			cc1_warn_at(w, 0, 1, WARN_SIGN_COMPARE, "operation between signed and unsigned%s%s%s",
-					SPEL_IF_IDENT(rhs));
+			cc1_warn_at(w, 0, 1, WARN_SIGN_COMPARE,
+					"operation between signed and unsigned%s%s%s in %s",
+					SPEL_IF_IDENT(rhs), desc);
 		}
 	}
 }
@@ -462,7 +463,7 @@ void fold_decl(decl *d, symtable *stab)
 				fold_decl_equal(d, d->init->tree_type, &d->where, WARN_ASSIGN_MISMATCH,
 						"mismatching initialisation for %s", d->spel);
 
-				fold_insert_casts(d, &d->init, stab, &d->init->where);
+				fold_insert_casts(d, &d->init, stab, &d->init->where, "initialisation");
 			}
 
 			const_fold(d->init, &dummy, &type);
