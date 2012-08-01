@@ -177,9 +177,9 @@ invalid:
 		if(str[i])
 			goto invalid;
 
-		asm_comment("start manual __asm__");
+		out_comment("start manual __asm__");
 		fprintf(cc_out[SECTION_TEXT], "%s\n", arg1->array_store->data.str);
-		asm_comment("end manual __asm__");
+		out_comment("end manual __asm__");
 	}else{
 		/* continue with normal funcall */
 		sym *const sym = e->expr->sym;
@@ -193,30 +193,13 @@ invalid:
 			}
 		}
 
-		if(sym && !decl_is_fptr(sym->decl)){
-			/* simple */
-			asm_output_new(asm_out_type_call,
-					asm_operand_new_label(NULL, sym->decl->spel, 0),
-					NULL);
-		}else{
+		if(sym && !decl_is_fptr(sym->decl))
+			out_push_lbl(sym->decl->spel);
+		else
 			gen_expr(e->expr, stab);
 
-			asm_pop(NULL, ASM_REG_A);
-
-			asm_output_new(asm_out_type_call,
-					asm_operand_new_reg(NULL, ASM_REG_A),
-					NULL);
-		}
-
-		if(nargs){
-			asm_output_new(asm_out_type_add,
-					asm_operand_new_reg(NULL, ASM_REG_SP),
-					asm_operand_new_val(nargs * platform_word_size())
-				);
-			asm_comment("%d arg%s", nargs, nargs == 1 ? "" : "s");
-		}
-
-		asm_push(e->tree_type, ASM_REG_A);
+		out_call();
+		out_call_fin(nargs);
 	}
 }
 

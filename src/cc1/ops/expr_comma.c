@@ -33,8 +33,8 @@ void fold_expr_comma(expr *e, symtable *stab)
 void gen_expr_comma(expr *e, symtable *stab)
 {
 	gen_expr(e->lhs, stab);
-	asm_pop(e->lhs->tree_type, ASM_REG_A);
-	asm_comment("unused comma expr");
+	out_pop(e->lhs->tree_type);
+	out_comment("unused comma expr");
 	gen_expr(e->rhs, stab);
 }
 

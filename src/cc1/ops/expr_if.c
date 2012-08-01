@@ -62,40 +62,35 @@ void fold_expr_if(expr *e, symtable *stab)
 
 void gen_expr_if(expr *e, symtable *stab)
 {
-	char *lblfin, *lblelse;
+	char *lblfin;
 
-	lblfin = asm_label_code("ifexpa");
+	lblfin = out_label_code("ifexpa");
 
 	gen_expr(e->expr, stab);
 
 	if(e->lhs){
-		lblelse = asm_label_code("ifexpb");
+		char *lblelse = out_label_code("ifexpb");
 
-		asm_pop(e->expr->tree_type, ASM_REG_A);
-		ASM_TEST(e->expr->tree_type, ASM_REG_A);
-		asm_jmp_if_zero(0, lblelse);
+		out_jz(lblelse);
+
 		gen_expr(e->lhs, stab);
-		asm_jmp(lblfin);
-		asm_label(lblelse);
-	}else{
-		asm_output_new(
-				asm_out_type_mov,
-				asm_operand_new_reg(e->expr->tree_type, ASM_REG_A),
-				asm_operand_new_deref(e->expr->tree_type, asm_operand_new_reg(NULL, ASM_REG_SP), 0)
-			);
-		asm_comment("save for ?:");
 
-		ASM_TEST(e->expr->tree_type, ASM_REG_A);
-		asm_jmp_if_zero(1, lblfin);
-		asm_pop(e->expr->tree_type, ASM_REG_A);
-		asm_comment("discard lhs");
+		out_push_lbl(lblfin);
+		out_jmp();
+
+		out_label(lblelse);
+		free(lblelse);
+
+	}else{
+		out_dup();
+
+		out_jnz(lblfin);
+
+		out_pop(); /* discard the dup */
 	}
 
 	gen_expr(e->rhs, stab);
-	asm_label(lblfin);
-
-	if(e->lhs)
-		free(lblelse);
+	out_label(lblfin);
 
 	free(lblfin);
 }

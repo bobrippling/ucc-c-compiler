@@ -29,7 +29,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 		TT->type->store = store_static;
 		TT->type->qual  = qual_const;
 
-		e->spel = e->array_store->label = asm_label_array(e->array_store->type == array_str);
+		e->spel = e->array_store->label = out_label_array(e->array_store->type == array_str);
 
 		decl_set_spel(e->tree_type, e->spel);
 
@@ -74,7 +74,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 		e->tree_type = decl_ptr_depth_inc(decl_new_void());
 
 		save = e->spel;
-		e->spel = asm_label_goto(e->spel);
+		e->spel = out_label_goto(e->spel);
 		free(save);
 
 	}else{
@@ -141,43 +141,32 @@ void fold_expr_addr(expr *e, symtable *stab)
 
 void gen_expr_addr(expr *e, symtable *stab)
 {
-	int push = 1;
-
 	if(e->array_store){
 		/*decl *d = e->array_store->data.exprs[0];*/
+		out_push_lbl(e->array_store->label);
 
-		asm_output_new(
-				asm_out_type_lea,
-				asm_operand_new_reg(NULL, ASM_REG_A),
-				asm_operand_new_label(NULL, e->array_store->label, 1)
-			);
 	}else if(e->spel){
-		asm_output_new(
-				asm_out_type_lea,
-				asm_operand_new_reg(NULL, ASM_REG_A),
-				asm_operand_new_label(NULL, e->spel, 1)
-			);
+		out_push_lbl(e->spel);
+
 	}else{
 		/* address of possibly an ident "(&a)->b" or a struct expr "&a->b" */
 		if(expr_kind(e->lhs, identifier)){
-			asm_sym(ASM_LEA, e->lhs->sym, asm_operand_new_reg(NULL /* pointer */, ASM_REG_A));
+			out_push_sym_addr(e->lhs->sym);
+
 		}else if(expr_kind(e->lhs, op)){
 			/* skip the address (e->lhs) and the deref */
 			UCC_ASSERT(e->lhs->op == op_deref, "deref expected for addr");
 			gen_expr(op_deref_expr(e->lhs), stab);
-			push = 0;
+
 		}else{
 			ICE("TODO: address of %s", e->lhs->f_str());
 		}
 	}
-
-	if(push)
-		asm_push(e->tree_type, ASM_REG_A);
 }
 
 void gen_expr_addr_1(expr *e, FILE *f)
 {
-	/* TODO: merge tis code with gen_addr / walk_expr with expr_addr */
+	/* TODO: merge this code with gen_addr / walk_expr with expr_addr */
 	if(e->array_store){
 		/* address of an array store */
 		asm_declare_out(f, NULL, "%s", e->array_store->label);

@@ -8,13 +8,13 @@
 #include "data_structs.h"
 #include "cc1.h"
 #include "macros.h"
-#include "asm_out.h"
-#include "asm.h"
 #include "../util/platform.h"
 #include "sym.h"
 #include "gen_asm.h"
 #include "../util/util.h"
 #include "const.h"
+#include "tree.h"
+#include "out/out.h"
 
 char *curfunc_lblfin; /* extern */
 
@@ -29,12 +29,12 @@ void gen_stmt(stmt *t)
 }
 
 #ifdef FANCY_STACK_INIT
-#warning FANCY_STACK_INIT broken
-void gen_func_stack(decl *df, const int offset)
-{
-#define ITER_DECLS() \
+#  warning FANCY_STACK_INIT broken
+#  define ITER_DECLS() \
 		for(iter = df->func_code->symtab->decls; iter && *iter; iter++)
 
+void gen_func_stack(decl *df, const int offset)
+{
 	int use_sub = 1;
 	decl **iter;
 
@@ -59,15 +59,12 @@ void gen_func_stack(decl *df, const int offset)
 	}
 }
 #else
-#  define gen_func_stack(df, offset)             \
-			asm_output_new(asm_out_type_sub,           \
-					asm_operand_new_reg(NULL, ASM_REG_SP), \
-					asm_operand_new_val(offset))
 #endif
 
 void asm_extern(decl *d)
 {
-	asm_comment("extern %s", d->spel);
+	(void)d;
+	/*asm_comment("extern %s", d->spel);*/
 	/*asm_out_section(SECTION_BSS, "extern %s", d->spel);*/
 }
 
@@ -87,32 +84,21 @@ void gen_asm_global(decl *d)
 	if(d->func_code){
 		const int offset = d->func_code->symtab->auto_total_size;
 
-		asm_label(d->spel);
-		asm_push(NULL, ASM_REG_BP);
-		asm_output_new(asm_out_type_mov,
-				asm_operand_new_reg(NULL, ASM_REG_BP),
-				asm_operand_new_reg(NULL, ASM_REG_SP));
+		out_label(d->spel);
+		out_func_prologue(offset);
 
-		curfunc_lblfin = asm_label_code(d->spel);
-
-		if(offset)
-			gen_func_stack(d, offset);
+		curfunc_lblfin = out_label_code(d->spel);
 
 		gen_stmt(d->func_code);
 
-		asm_label(curfunc_lblfin);
-		if(offset)
-			asm_output_new(asm_out_type_add,
-					asm_operand_new_reg(NULL, ASM_REG_SP),
-					asm_operand_new_val(offset));
+		out_label(curfunc_lblfin);
 
-		asm_output_new(asm_out_type_leave, NULL, NULL);
-		asm_output_new(asm_out_type_ret,   NULL, NULL);
+		out_func_epilogue();
 
 		free(curfunc_lblfin);
 
 	}else if(d->arrayinit){
-		/*asm_declare_array(d->arrayinit->label, d->arrayinit);*/
+		/*out_declare_array(d->arrayinit->label, d->arrayinit);*/
 		asm_declare_array(d->spel, d->arrayinit);
 
 	}else if(d->init && !const_expr_and_zero(d->init)){

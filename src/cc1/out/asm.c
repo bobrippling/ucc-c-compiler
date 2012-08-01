@@ -383,3 +383,12 @@ void asm_reserve_bytes(const char *lbl, int nbytes)
 		}
 	}
 }
+
+void asm_out_section(enum section_type t, const char *fmt, ...)
+{
+	va_list l;
+	va_start(l, fmt);
+	vfprintf(cc_out[t], fmt, l);
+	va_end(l);
+	fputc('\n', cc_out[t]);
+}

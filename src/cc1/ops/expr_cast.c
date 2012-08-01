@@ -4,6 +4,7 @@
 
 #include "../../util/alloc.h"
 #include "ops.h"
+#include "../out/asm.h"
 
 const char *str_expr_cast()
 {
@@ -111,13 +112,13 @@ void gen_expr_cast(expr *e, symtable *stab)
 
 	/* return if cast-to-void */
 	if(decl_is_void(dlhs)){
-		asm_comment("cast to void");
+		out_comment("cast to void");
 		return;
 	}
 
 	/* type convert */
 	strcpy(buf, decl_to_str(drhs));
-	asm_comment("cast %s to %s", buf, decl_to_str(dlhs));
+	out_comment("cast %s to %s", buf, decl_to_str(dlhs));
 
 	/* check float <--> int conversion */
 	if(decl_is_float(dlhs) != decl_is_float(drhs))
@@ -129,37 +130,17 @@ void gen_expr_cast(expr *e, symtable *stab)
 
 		if(size_rhs > size_lhs){
 			/* loss of precision, touch crabcakes */
-			asm_comment("loss of precision, noop cast");
+			out_comment("loss of precision, noop cast");
 		}else{
 			char buf[DECL_STATIC_BUFSIZ];
 
-			asm_pop(dlhs, ASM_REG_A);
-#if 0 /* asm_pop/push take care of it */
-			/*
-			 * movsx -> mov sign extend
-			 * movsx rax, eax ; long <- int, etc
-			 * or
-			 * cbw  (ax  <- al)
-			 * cwde (eax <- ax)
-			 * cdqe (rax <- eax)
-			 */
-			/*o->extra = ustrprintf("c%c%s", ..) */
+			out_cast(dlhs, drhs);
 
-			/* movsx a..., a... */
-			o = asm_output_new(asm_out_type_mov,
-					asm_operand_new_reg(dlhs, ASM_REG_A),
-					asm_operand_new_reg(drhs, ASM_REG_A));
-
-			o->extra = ustrdup("sx");
-#endif
-
-			asm_push(drhs, ASM_REG_A);
-
-			asm_comment("cast finish - sign extend %s -> %s",
+			out_comment("cast finish - sign extend %s -> %s",
 					decl_to_str(drhs), decl_to_str_r(buf, dlhs));
 		}
 	}else{
-		asm_comment("cast - asm type sizes match (%d)", asm_type_size(dlhs));
+		out_comment("cast - asm type sizes match (%d)", asm_type_size(dlhs));
 	}
 }
 

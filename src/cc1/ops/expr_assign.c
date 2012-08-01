@@ -90,7 +90,7 @@ void gen_expr_assign(expr *e, symtable *stab)
 	if(e->assign_is_post){
 		/* if this is the case, ->rhs->lhs is ->lhs, and ->rhs is an addition/subtraction of 1 * something */
 		gen_expr(e->lhs, stab);
-		asm_comment("save previous for post assignment");
+		out_comment("save previous for post assignment");
 	}
 
 	/*if(decl_is_struct_or_union(e->tree_type))*/
@@ -103,17 +103,7 @@ void gen_expr_assign(expr *e, symtable *stab)
 	/* store back to the sym's home */
 	e->lhs->f_store(e->lhs, stab);
 
-	if(e->assign_is_post){
-		asm_pop(e->tree_type, ASM_REG_A);
-		asm_comment("the value from ++/--");
-
-		asm_output_new(
-				asm_out_type_mov,
-				asm_operand_new_reg(e->tree_type, ASM_REG_A),
-				asm_operand_new_deref(e->tree_type, asm_operand_new_reg(NULL, ASM_REG_SP), 0)
-			);
-		asm_comment("the value we saved");
-	}
+	/* if e->assign_is_post, the stack now just has the old value on */
 }
 
 void gen_expr_str_assign(expr *e, symtable *stab)
