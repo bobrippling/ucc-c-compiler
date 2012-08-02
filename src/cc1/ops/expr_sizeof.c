@@ -1,5 +1,6 @@
 #include "ops.h"
 #include "../sue.h"
+#include "../out/asm.h"
 
 #define SIZEOF_WHAT(e) ((e)->expr ? (e)->expr->tree_type : (e)->decl)
 #define SIZEOF_SIZE(e)  (e)->val.iv.val
@@ -49,19 +50,9 @@ void gen_expr_sizeof(expr *e, symtable *stab)
 	decl *d = SIZEOF_WHAT(e);
 	(void)stab;
 
-	asm_output_new(
-		asm_out_type_push,
-		asm_operand_new_val(SIZEOF_SIZE(e)),
-		NULL);
+	out_push_i(e->tree_type, SIZEOF_SIZE(e));
 
-	asm_comment("sizeof %s%s", e->expr ? "" : "type ", decl_to_str(d));
-
-	/*
-	asm_temp(1, "push %d ; sizeof %s%s",
-			SIZEOF_SIZE(e),
-			e->expr ? "" : "type ",
-			decl_to_str(d));
-	*/
+	out_comment("sizeof %s%s", e->expr ? "" : "type ", decl_to_str(d));
 }
 
 void gen_expr_str_sizeof(expr *e, symtable *stab)

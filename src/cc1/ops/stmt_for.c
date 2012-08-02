@@ -42,8 +42,8 @@ expr *fold_for_if_init_decls(stmt *s)
 
 void fold_stmt_for(stmt *s)
 {
-	s->lbl_break    = asm_label_flow("for_start");
-	s->lbl_continue = asm_label_flow("for_contiune");
+	s->lbl_break    = out_label_flow("for_start");
+	s->lbl_continue = out_label_flow("for_contiune");
 
 	if(s->flow->for_init_decls){
 		expr *init_exp = fold_for_if_init_decls(s);
@@ -87,35 +87,34 @@ void fold_stmt_for(stmt *s)
 
 void gen_stmt_for(stmt *s)
 {
-	char *lbl_test = asm_label_flow("for_test");
+	char *lbl_test = out_label_flow("for_test");
 
 	/* don't else-if, possible to have both (comma-exp for init) */
 	if(s->flow->for_init){
 		gen_expr(s->flow->for_init, s->flow->for_init_symtab);
-		asm_pop(NULL, ASM_REG_A);
-		asm_comment("unused for init");
+		out_pop();
+		out_comment("unused for init");
 	}
 
-	asm_label(lbl_test);
+	out_label(lbl_test);
 	if(s->flow->for_while){
 		gen_expr(s->flow->for_while, s->flow->for_init_symtab);
-
-		asm_pop( s->flow->for_while->tree_type, ASM_REG_A);
-		ASM_TEST(s->flow->for_while->tree_type, ASM_REG_A);
-		asm_jmp_if_zero(0, s->lbl_break);
+		out_jz(s->lbl_break);
 	}
 
 	gen_stmt(s->lhs);
-	asm_label(s->lbl_continue);
+	out_label(s->lbl_continue);
 	if(s->flow->for_inc){
 		gen_expr(s->flow->for_inc, s->flow->for_init_symtab);
-		asm_pop(NULL, ASM_REG_A);
-		asm_comment("unused for inc");
+
+		out_pop();
+		out_comment("unused for inc");
 	}
 
-	asm_jmp(lbl_test);
+	out_push_lbl(lbl_test);
+	out_jmp();
 
-	asm_label(s->lbl_break);
+	out_label(s->lbl_break);
 
 	free(lbl_test);
 }

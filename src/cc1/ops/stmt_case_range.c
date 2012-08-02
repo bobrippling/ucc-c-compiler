@@ -22,7 +22,7 @@ void fold_stmt_case_range(stmt *s)
 	if(lval.val >= rval.val)
 		DIE_AT(&s->where, "case range equal or inverse");
 
-	s->expr->spel = asm_label_case(CASE_RANGE, lval.val);
+	s->expr->spel = out_label_case(CASE_RANGE, lval.val);
 
 	fold_stmt_and_add_to_curswitch(s);
 }

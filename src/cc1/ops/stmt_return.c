@@ -36,10 +36,11 @@ void gen_stmt_return(stmt *s)
 {
 	if(s->expr){
 		gen_expr(s->expr, s->symtab);
-		asm_pop(s->expr->tree_type, ASM_REG_A);
-		asm_comment("return");
+		out_pop_func_ret(s->expr->tree_type);
+		out_comment("return");
 	}
-	asm_jmp(curfunc_lblfin);
+	out_push_lbl(curfunc_lblfin);
+	out_jmp();
 }
 
 void mutate_stmt_return(stmt *s)

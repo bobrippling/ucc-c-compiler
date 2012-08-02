@@ -4,6 +4,7 @@
 #include "ops.h"
 #include "../sue.h"
 #include "../str.h"
+#include "../out/asm.h"
 
 const char *str_expr_addr()
 {

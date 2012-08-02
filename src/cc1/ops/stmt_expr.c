@@ -28,8 +28,10 @@ void gen_stmt_expr(stmt *s)
 	|| !s->expr->spel
 	|| strcmp(s->expr->spel, ASM_INLINE_FNAME))
 	{
-		asm_pop(NULL, ASM_REG_A);
-		asm_comment("unused expr");
+		if(!s->expr_no_pop){
+			out_pop();
+			out_comment("unused expr");
+		}
 	}
 }
 

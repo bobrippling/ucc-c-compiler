@@ -420,7 +420,6 @@ usage:
 		fold(globs);
 		symtab_fold(globs, 0);
 		gf(globs);
-		out_flush();
 	}
 
 	io_fin(gf == gen_asm, fname);

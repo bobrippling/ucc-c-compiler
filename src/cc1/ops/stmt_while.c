@@ -16,8 +16,8 @@ void fold_stmt_while(stmt *s)
 
 	test_symtab = fold_stmt_test_init_expr(s, "which");
 
-	s->lbl_break    = asm_label_flow("while_break");
-	s->lbl_continue = asm_label_flow("while_cont");
+	s->lbl_break    = out_label_flow("while_break");
+	s->lbl_continue = out_label_flow("while_cont");
 
 	fold_expr(s->expr, test_symtab);
 	fold_need_expr(s->expr, s->f_str(), 1);
@@ -29,17 +29,18 @@ void fold_stmt_while(stmt *s)
 
 void gen_stmt_while(stmt *s)
 {
-	asm_label(s->lbl_continue);
+	out_label(s->lbl_continue);
 
 	gen_expr(s->expr, s->symtab);
 
-	ASM_TEST(s->expr->tree_type, ASM_REG_A);
-	asm_jmp_if_zero(0, s->lbl_break);
+	out_jz(s->lbl_break);
 
 	gen_stmt(s->lhs);
 
-	asm_jmp(s->lbl_continue);
-	asm_label(s->lbl_break);
+	out_push_lbl(s->lbl_continue);
+	out_jmp();
+
+	out_label(s->lbl_break);
 }
 
 int while_passable(stmt *s)

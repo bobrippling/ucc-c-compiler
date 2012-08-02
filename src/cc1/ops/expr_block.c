@@ -64,7 +64,7 @@ void fold_expr_block(expr *e, symtable *stab)
 	func->bits.func = e->block_args;
 
 	/* add the function to the global scope */
-	e->tree_type->spel = asm_label_block(curdecl_func->spel);
+	e->tree_type->spel = out_label_block(curdecl_func->spel);
 	e->sym = SYMTAB_ADD(symtab_root(stab), e->tree_type, sym_global);
 
 	e->tree_type->func_code = e->code;
@@ -76,13 +76,7 @@ void gen_expr_block(expr *e, symtable *stab)
 {
 	(void)stab;
 
-	/* load the function pointer */
-	asm_output_new(
-			asm_out_type_mov,
-			asm_operand_new_reg(e->sym->decl, ASM_REG_A),
-			asm_operand_new_label(e->sym->decl, e->sym->decl->spel, 0));
-
-	asm_push(e->sym->decl, ASM_REG_A);
+	out_push_lbl(e->sym->decl->spel);
 }
 
 void gen_expr_str_block(expr *e, symtable *stab)

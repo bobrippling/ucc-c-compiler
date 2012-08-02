@@ -64,7 +64,7 @@ void fold_stmt_switch(stmt *s)
 	type *typ;
 	symtable *test_symtab = fold_stmt_test_init_expr(s, "switch");
 
-	s->lbl_break = asm_label_flow("switch");
+	s->lbl_break = out_label_flow("switch");
 
 	fold_expr(s->expr, test_symtab);
 
@@ -86,62 +86,68 @@ void fold_stmt_switch(stmt *s)
 void gen_stmt_switch(stmt *s)
 {
 	stmt **titer, *tdefault;
-	int is_unsigned = !s->expr->tree_type->type->is_signed;
 
 	tdefault = NULL;
 
 	gen_expr(s->expr, s->symtab);
-	asm_pop(s->expr->tree_type, ASM_REG_A);
-	asm_comment("switch on this");
+
+	out_comment("switch on this");
 
 	for(titer = s->codes; titer && *titer; titer++){
 		stmt *cse = *titer;
+		intval iv;
 
-		UCC_ASSERT(cse->expr->expr_is_default || !(cse->expr->val.iv.suffix & VAL_UNSIGNED), "don's handle unsigned yet");
+		const_fold_need_val(cse->expr, &iv);
+
+		UCC_ASSERT(cse->expr->expr_is_default || !(iv.suffix & VAL_UNSIGNED),
+				"don't handle unsigned yet");
 
 		if(stmt_kind(cse, case_range)){
-			char *skip = asm_label_code("range_skip");
-			intval min, max;
+			char *skip = out_label_code("range_skip");
+			intval max;
 
-			const_fold_need_val(cse->expr,  &min);
+			/* TODO: proper signed/unsiged format - out_op() */
 			const_fold_need_val(cse->expr2, &max);
 
-			/* TODO: proper signed/unsiged format */
-			asm_output_new(asm_out_type_cmp,
-					asm_operand_new_reg(s->expr->tree_type, ASM_REG_A),
-					asm_operand_new_intval(&min));
 
-			asm_jmp_custom(is_unsigned ? "b" : "l", skip);
+			out_dup();
+			out_push_iv(cse->expr->tree_type, &iv);
 
+			out_op(op_lt, cse->expr->tree_type);
+			out_jnz(skip);
 
-			asm_output_new(asm_out_type_cmp,
-					asm_operand_new_reg(s->expr->tree_type, ASM_REG_A),
-					asm_operand_new_intval(&max));
+			out_dup();
+			out_push_iv(cse->expr2->tree_type, &max);
+			out_op(op_gt, cse->expr2->tree_type);
 
-			asm_jmp_custom(is_unsigned ? "b" : "l", cse->expr->spel);
+			out_jz(cse->expr->spel);
 
-			asm_label(skip);
+			out_label(skip);
 			free(skip);
+
 		}else if(cse->expr->expr_is_default){
 			tdefault = cse;
+
 		}else{
 			/* FIXME: address-of, etc? */
-			intval iv;
 
-			const_fold_need_val(cse->expr, &iv);
+			out_dup();
+			out_push_iv(cse->expr->tree_type, &iv);
 
-			asm_output_new(asm_out_type_cmp,
-					asm_operand_new_reg(s->expr->tree_type, ASM_REG_A),
-					asm_operand_new_intval(&iv));
-			asm_jmp_custom("e", cse->expr->spel);
+			out_op(op_eq, cse->expr->tree_type);
+
+			out_jnz(cse->expr->spel);
 		}
 	}
 
-	asm_jmp(tdefault ? tdefault->expr->spel : s->lbl_break);
+	out_push_lbl(tdefault ? tdefault->expr->spel : s->lbl_break);
+	out_jmp();
 
 	gen_stmt(s->lhs); /* the actual code inside the switch */
 
-	asm_label(s->lbl_break);
+	out_label(s->lbl_break);
+
+	out_pop(); /* val switched on: TODO: do this earlier, free the register */
 }
 
 int switch_passable(stmt *s)
