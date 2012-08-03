@@ -27,8 +27,10 @@ void out_op_unary(enum op_type, decl *d); /* unary ops */
 
 void out_cast(decl *from, decl *to);
 
+void out_call_start(void);
 void out_call(void); /* call *pop(), push result */
 void out_call_fin(int); /* remove args from stack */
+
 void out_jmp( void); /* jmp to *pop() */
 void out_jz( const char *);
 void out_jnz(const char *);
@@ -38,11 +40,6 @@ void out_func_epilogue(void); /* mov rsp, rbp; ret */
 void out_label(const char *);
 
 void out_comment(const char *, ...);
-
-void out_flush(void);
-
-/* nothing to do with code */
-void asm_out_section(enum section_type, const char *fmt, ...);
 
 char *out_label_code(const char *fmt);
 char *out_label_array(int str);

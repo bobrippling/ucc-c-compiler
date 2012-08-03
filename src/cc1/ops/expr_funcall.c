@@ -184,14 +184,10 @@ invalid:
 		/* continue with normal funcall */
 		sym *const sym = e->expr->sym;
 
-		if(e->funcargs){
-			/* need to push on in reverse order */
-			for(iter = e->funcargs; *iter; iter++);
-			for(iter--; iter >= e->funcargs; iter--){
-				gen_expr(*iter, stab);
-				nargs++;
-			}
-		}
+		out_call_start();
+
+		for(iter = e->funcargs; iter && *iter; iter++, nargs++)
+			gen_expr(*iter, stab);
 
 		if(sym && !decl_is_fptr(sym->decl))
 			out_push_lbl(sym->decl->spel);

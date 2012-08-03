@@ -14,4 +14,6 @@ void asm_declare_single_part(expr *e);
 void asm_declare_single(     decl *d);
 void asm_reserve_bytes(const char *lbl, int nbytes);
 
+void asm_out_section(enum section_type, const char *fmt, ...);
+
 #endif
