@@ -29,5 +29,6 @@ extern struct vstack *vtop;
 void vpop(void);
 void vswap(void);
 int  vfreereg(void);
+int  v_to_reg(struct vstack *conv);
 
 #endif

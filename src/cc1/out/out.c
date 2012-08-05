@@ -94,19 +94,18 @@ int vfreereg(void)
 	}
 }
 
-void v_to_reg(struct vstack *conv)
+int v_to_reg(struct vstack *conv)
 {
-	int reg;
+	if(conv->type != REG){
+		int reg = vfreereg();
 
-	if(conv->type == REG)
-		return;
+		impl_load(conv, reg);
 
-	reg = vfreereg();
+		conv->type = REG;
+		conv->bits.reg = reg;
+	}
 
-	impl_load(conv, reg);
-
-	conv->type = REG;
-	conv->bits.reg = reg;
+	return conv->bits.reg;
 }
 
 void out_pop(void)
@@ -168,6 +167,12 @@ void out_normalise(void)
 
 void out_push_sym_addr(sym *s)
 {
+	(void)s;
+	TODO();
+}
+
+void out_push_sym(sym *s)
+{
 	vpush();
 
 	switch(s->type){
@@ -188,12 +193,6 @@ void out_push_sym_addr(sym *s)
 	}
 
 	vtop->d = s->decl;
-}
-
-void out_push_sym(sym *s)
-{
-	out_push_sym_addr(s);
-	out_op_unary(op_deref, s->decl);
 }
 
 void out_op(enum op_type op, decl *d)
@@ -218,9 +217,8 @@ void out_op(enum op_type op, decl *d)
 
 void out_op_unary(enum op_type op, decl *d)
 {
-	(void)op;
 	(void)d;
-	TODO();
+	impl_op_unary(op);
 }
 
 void out_cast(decl *from, decl *to)

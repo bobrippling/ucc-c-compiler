@@ -11,6 +11,7 @@
 #include "../cc1.h"
 #include "asm.h"
 #include "common.h"
+#include "out.h"
 
 #define RET_REG 0
 #define REG_STR_SZ 8
@@ -157,6 +158,7 @@ impl_op(enum op_type op)
 		OP(plus,     "add");
 		OP(minus,    "sub");
 		OP(modulus,  "mod");
+#undef OP
 
 		case op_divide:
 
@@ -192,4 +194,41 @@ impl_op(enum op_type op)
 
 		return vtop[-1].bits.reg;
 	}
+}
+
+int impl_op_unary(enum op_type op)
+{
+	const char *opc;
+	const int reg = v_to_reg(vtop);
+
+	switch(op){
+		default:
+			ICE("invalid unary op %s", op_to_str(op));
+
+		case op_plus:
+			/* noop */
+			return reg;
+
+#define OP(t, s) case op_ ## t: opc = s; break
+		OP(minus, "neg");
+		OP(bnot,  "not");
+		OP(not,   "not");
+#undef OP
+
+		case op_deref:
+		{
+			const char *rs = reg_str(reg);
+
+			out_asm("mov_ (%%%s), %%%s", rs, rs);
+
+			return reg;
+		}
+	}
+
+	out_asm("%s %s", opc, reg_str(reg));
+
+	if(op == op_not)
+		out_normalise();
+
+	return reg;
 }
