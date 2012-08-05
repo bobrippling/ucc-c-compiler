@@ -447,13 +447,14 @@ void op_operate_struct(expr *e, symtable *tab)
 	out_comment("struct ptr");
 
 	out_push_i(e->rhs->tree_type, e->rhs->tree_type->struct_offset);
+	out_op(op_plus, e->rhs->tree_type);
 
 	out_comment("offset of member %s", e->rhs->spel);
 
 	if(decl_is_array(e->rhs->tree_type)){
 		out_comment("array - got address");
 	}else{
-		out_op(op_deref, e->rhs->tree_type);
+		out_op_unary(op_deref, e->rhs->tree_type);
 	}
 
 	out_comment("val from struct");
