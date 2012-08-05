@@ -137,6 +137,7 @@ void decl_attr_append(decl_attr **loc, decl_attr *new)
 	/*
 	 * don't link it up, make copies,
 	 * so when we adjust others,
+	 * things don't get tangled with links
 	 */
 
 	if(new)
