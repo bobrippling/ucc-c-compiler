@@ -1,5 +1,6 @@
 #include "ops.h"
 #include "expr_stmt.h"
+#include "../out/lbl.h"
 
 const char *str_expr_block(void)
 {

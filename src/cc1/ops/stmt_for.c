@@ -4,6 +4,7 @@
 #include "ops.h"
 #include "stmt_for.h"
 #include "stmt_code.h"
+#include "../out/lbl.h"
 
 const char *str_stmt_for()
 {

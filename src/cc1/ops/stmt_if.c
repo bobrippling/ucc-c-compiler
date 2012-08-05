@@ -3,6 +3,7 @@
 #include "ops.h"
 #include "stmt_if.h"
 #include "stmt_for.h"
+#include "../out/lbl.h"
 
 const char *str_stmt_if()
 {

@@ -2,6 +2,7 @@
 
 #include "ops.h"
 #include "stmt_case.h"
+#include "../out/lbl.h"
 
 const char *str_stmt_case()
 {

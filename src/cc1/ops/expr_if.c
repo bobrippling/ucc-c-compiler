@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "ops.h"
+#include "../out/lbl.h"
 
 const char *str_expr_if()
 {

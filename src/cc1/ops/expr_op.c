@@ -3,6 +3,7 @@
 #include "ops.h"
 #include "../sue.h"
 #include "expr_op.h"
+#include "../out/lbl.h"
 
 const char *str_expr_op()
 {
@@ -495,7 +496,7 @@ void gen_expr_op_store(expr *store, symtable *stab)
 			out_comment("pointer on stack");
 
 			/* move `pop` into `pop` */
-			out_store(store->tree_type);
+			out_store();
 			return;
 
 		case op_struct_ptr:
@@ -504,7 +505,7 @@ void gen_expr_op_store(expr *store, symtable *stab)
 			out_push_i(NULL, store->rhs->tree_type->struct_offset);
 			out_comment("offset of member %s", store->rhs->spel);
 
-			out_store(store->tree_type);
+			out_store();
 			return;
 
 		case op_struct_dot:

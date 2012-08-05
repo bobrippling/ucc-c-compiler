@@ -5,6 +5,7 @@
 #include "../sue.h"
 #include "../str.h"
 #include "../out/asm.h"
+#include "../out/lbl.h"
 
 const char *str_expr_addr()
 {

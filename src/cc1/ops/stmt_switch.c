@@ -4,6 +4,7 @@
 #include "stmt_switch.h"
 #include "../sue.h"
 #include "../../util/alloc.h"
+#include "../out/lbl.h"
 
 const char *str_stmt_switch()
 {

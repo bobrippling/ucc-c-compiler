@@ -124,7 +124,7 @@ void gen_expr_identifier_store(expr *e, symtable *stab)
 
 	out_push_sym_addr(e->sym);
 
-	out_store(e->sym->decl);
+	out_store();
 }
 
 void mutate_expr_identifier(expr *e)

@@ -15,7 +15,7 @@
 #include "const.h"
 #include "tree.h"
 #include "out/out.h"
-#include "out/out_lbl.h"
+#include "out/lbl.h"
 #include "out/asm.h"
 
 char *curfunc_lblfin; /* extern */
