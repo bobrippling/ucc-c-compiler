@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "../../util/util.h"
 #include "../../util/alloc.h"
@@ -10,63 +11,93 @@
 #define SNPRINTF(s, n, ...) \
 		UCC_ASSERT(snprintf(s, n, __VA_ARGS__) != n, "snprintf buffer too small")
 
+#define TODO() tmp_asm("// TODO: %s", __func__)
+
 #include "out_lbl.c"
 #include "x86_64.c"
 
-#define TODO() tmp_asm("// TODO: %s", __func__)
-
 struct vstack
 {
-	enum
+	enum vstore
 	{
 		/* current store */
 		CONST,
 		REG,
+		STACK,
 		FLAG,
-		LBL
+		LBL,
 	} type;
-
-	char *comment;
 
 	decl *d;
 	union
 	{
+		int val;
 		int reg;
+		int off_from_bp;
+		/* nothing for flag */
 		char *lbl;
 	} bits;
 };
 
-struct vstack vstack[1024];
-struct vstack *vtop = vstack;
+static struct vstack vstack[1024];
+static struct vstack *vtop = vstack;
 
-void tmp_asm(const char *fmt, ...)
+static void tmp_asmv(const char *fmt, va_list l, const char *pre)
+{
+	printf("\t%s", pre ? pre : "");
+	vprintf(fmt, l);
+	printf("\n");
+}
+
+static void tmp_asm(const char *fmt, ...)
 {
 	va_list l;
 
-	printf("\t");
 	va_start(l, fmt);
-	vprintf(fmt, l);
+	tmp_asmv(fmt, l, NULL);
 	va_end(l);
-	printf("\n");
+}
+
+static void reg_free(int r)
+{
+	(void)r;
+}
+
+static int reg_req(void)
+{
+	return 0;
+}
+
+static void reg_save(void)
+{
+}
+
+static void vpush(void)
+{
+	if(vtop >= ((vstack + sizeof(vstack)/sizeof(*vstack)) - 1))
+		abort();
+	vtop++;
+	memset(vtop, 0, sizeof *vtop);
+}
+
+static void vpop(void)
+{
+	if(vtop == vstack)
+		abort();
+	vtop--;
 }
 
 void out_pop(void)
 {
-	tmp_asm("popq %rax");
+	vpop();
 }
-
-void out_pop_func_ret(decl *d)
-{
-	(void)d;
-	tmp_asm("popq %rax");
-}
-
 
 void out_push_iv(decl *d, intval *iv)
 {
 	vpush();
-	vtop->
-	tmp_asm("pushq %ld", iv->val);
+	vtop->type = CONST;
+	vtop->bits.val = iv->val; /* TODO: unsigned */
+	vtop->d = d;
 }
 
 void out_push_i(decl *d, int i)
@@ -79,18 +110,17 @@ void out_push_i(decl *d, int i)
 	out_push_iv(d, &iv);
 }
 
-void out_push_lbl(const char *s)
+void out_push_lbl(char *s)
 {
-	tmp_asm("leaq %rax, %s", s);
-	tmp_asm("pushq %rax", s);
+	vpush();
+	vtop->type = LBL;
+	vtop->bits.lbl = s;
 }
-
 
 void out_dup(void)
 {
-	tmp_asm("popq %rax");
-	tmp_asm("pushq %rax");
-	tmp_asm("pushq %rax");
+	vpush();
+	memcpy(&vtop[0], &vtop[-1], sizeof *vtop);
 }
 
 void out_normalise(void)
@@ -98,22 +128,17 @@ void out_normalise(void)
 	TODO();
 }
 
-
 void out_push_sym_addr(sym *s)
 {
-	(void)s;
-	TODO();
+	vpush();
+	vtop->type = STACK;
+	vtop->d = s->decl;
+	vtop->bits.off_from_bp = s->offset;
 }
 
 void out_push_sym(sym *s)
 {
 	(void)s;
-	TODO();
-}
-
-void out_store(decl *d)
-{
-	(void)d;
 	TODO();
 }
 
@@ -167,22 +192,20 @@ void out_jz(const char *lbl)
 
 void out_jnz(const char *lbl)
 {
-
+	(void)lbl;
+	TODO();
 }
 
 void out_label(const char *lbl)
 {
+	printf("%s:\n", lbl);
 }
 
 void out_comment(const char *fmt, ...)
 {
 	va_list l;
-	char *cmt;
 
 	va_start(l, fmt);
-  cmt = ustrvprintf(fmt, l);
+	tmp_asmv(fmt, l, "// ");
 	va_end(l);
-
-	free(vtop->comment);
-	vtop->comment = cmt;
 }

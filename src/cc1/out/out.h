@@ -13,14 +13,14 @@ void out_pop_func_ret(decl *d);
 
 void out_push_iv(decl *d, intval *iv);
 void out_push_i( decl *d, int i);
-void out_push_lbl(const char *); /* implicitly pointer */
+void out_push_lbl(char *); /* implicitly pointer */
 
 void out_dup(void); /* duplicate top of stack */
 void out_normalise(void); /* change to 0 or 1 */
 
 void out_push_sym_addr(sym *);
 void out_push_sym(sym *);
-void out_store(decl *d); /* store stack[1] into *stack[0] */
+void out_store(void); /* store stack[1] into *stack[0] */
 
 void out_op(      enum op_type, decl *d); /* binary ops and comparisons */
 void out_op_unary(enum op_type, decl *d); /* unary ops */
