@@ -1,9 +1,13 @@
 #ifndef X86_64_H
 #define X86_64_H
 
-void impl_store(int reg, struct vstack *where);
-int  impl_load(struct vstack *value); /* returns register index */
-
 void impl_comment(const char *, va_list);
+
+void impl_store(int reg, struct vstack *where);
+void impl_load(struct vstack *from, int reg);
+
+int  impl_op(enum op_type); /* returns reg that the result is in */
+
+#define N_REGS 4
 
 #endif

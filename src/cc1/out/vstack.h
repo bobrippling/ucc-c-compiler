@@ -27,5 +27,7 @@ struct vstack
 extern struct vstack *vtop;
 
 void vpop(void);
+void vswap(void);
+int  vfreereg(void);
 
 #endif
