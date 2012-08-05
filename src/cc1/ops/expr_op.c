@@ -258,6 +258,7 @@ void fold_expr_op(expr *e, symtable *stab)
 		fold_expr(e->rhs, stab);
 		fold_disallow_st_un(e->rhs, "op-rhs");
 
+		/* FIXME: don't case *(p + 2) - the '2' to p's pointer type */
 		fold_insert_casts(e->lhs->tree_type, &e->rhs, stab, &e->where, "operation");
 
 		if(decl_is_void(e->lhs->tree_type) || decl_is_void(e->rhs->tree_type))
