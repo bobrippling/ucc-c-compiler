@@ -7,83 +7,28 @@
 #include "../../util/alloc.h"
 #include "../data_structs.h"
 #include "out.h"
+#include "vstack.h"
+#include "x86_64.h"
 
-#define SNPRINTF(s, n, ...) \
-		UCC_ASSERT(snprintf(s, n, __VA_ARGS__) != n, "snprintf buffer too small")
+#define TODO() printf("// TODO: %s\n", __func__)
 
-#define TODO() tmp_asm("// TODO: %s", __func__)
+struct vstack vstack[1024];
+struct vstack *vtop = vstack;
 
-#include "out_lbl.c"
-#include "x86_64.c"
-
-struct vstack
+void vpush(void)
 {
-	enum vstore
-	{
-		/* current store */
-		CONST,
-		REG,
-		STACK,
-		FLAG,
-		LBL,
-	} type;
+	UCC_ASSERT(vtop < ((vstack + sizeof(vstack)/sizeof(*vstack)) - 1),
+			"vstack overflow");
 
-	decl *d;
-	union
-	{
-		int val;
-		int reg;
-		int off_from_bp;
-		/* nothing for flag */
-		char *lbl;
-	} bits;
-};
-
-static struct vstack vstack[1024];
-static struct vstack *vtop = vstack;
-
-static void tmp_asmv(const char *fmt, va_list l, const char *pre)
-{
-	printf("\t%s", pre ? pre : "");
-	vprintf(fmt, l);
-	printf("\n");
-}
-
-static void tmp_asm(const char *fmt, ...)
-{
-	va_list l;
-
-	va_start(l, fmt);
-	tmp_asmv(fmt, l, NULL);
-	va_end(l);
-}
-
-static void reg_free(int r)
-{
-	(void)r;
-}
-
-static int reg_req(void)
-{
-	return 0;
-}
-
-static void reg_save(void)
-{
-}
-
-static void vpush(void)
-{
-	if(vtop >= ((vstack + sizeof(vstack)/sizeof(*vstack)) - 1))
-		abort();
 	vtop++;
 	memset(vtop, 0, sizeof *vtop);
 }
 
-static void vpop(void)
+void vpop(void)
 {
-	if(vtop == vstack)
-		abort();
+	UCC_ASSERT(vtop != ((vstack + sizeof(vstack)/sizeof(*vstack)) - 1),
+			"vstack underflow");
+
 	vtop--;
 }
 
@@ -123,6 +68,21 @@ void out_dup(void)
 	memcpy(&vtop[0], &vtop[-1], sizeof *vtop);
 }
 
+void out_store()
+{
+	struct vstack *store, *val;
+	int reg;
+
+	store = &vtop[0];
+	val   = &vtop[-1];
+
+	reg = impl_load(val);
+	impl_store(reg, store);
+
+	/* pop the store, but not the value */
+	vpop();
+}
+
 void out_normalise(void)
 {
 	TODO();
@@ -131,15 +91,31 @@ void out_normalise(void)
 void out_push_sym_addr(sym *s)
 {
 	vpush();
-	vtop->type = STACK;
+
+	switch(s->type){
+		case sym_local:
+			vtop->type = STACK;
+			vtop->bits.off_from_bp = s->offset;
+			break;
+
+		case sym_arg:
+			vtop->type = STACK;
+			vtop->bits.off_from_bp = -s->offset;
+			break;
+
+		case sym_global:
+			vtop->type = LBL;
+			vtop->bits.lbl = s->decl->spel;
+			break;
+	}
+
 	vtop->d = s->decl;
-	vtop->bits.off_from_bp = s->offset;
 }
 
 void out_push_sym(sym *s)
 {
-	(void)s;
-	TODO();
+	out_push_sym_addr(s);
+	out_op(op_deref, s->decl);
 }
 
 void out_op(enum op_type op, decl *d)
@@ -206,6 +182,6 @@ void out_comment(const char *fmt, ...)
 	va_list l;
 
 	va_start(l, fmt);
-	tmp_asmv(fmt, l, "// ");
+	impl_comment(fmt, l);
 	va_end(l);
 }

@@ -1,3 +1,14 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdarg.h>
+
+#include "../../util/alloc.h"
+#include "../../util/util.h"
+#include "out_lbl.h"
+
+#define SNPRINTF(s, n, ...) \
+		UCC_ASSERT(snprintf(s, n, __VA_ARGS__) != n, "snprintf buffer too small")
+
 static int label_last    = 1,
 					 str_last      = 1,
 					 switch_last   = 1,

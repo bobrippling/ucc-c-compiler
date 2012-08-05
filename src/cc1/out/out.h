@@ -1,13 +1,6 @@
 #ifndef OUT_H
 #define OUT_H
 
-enum out_label_type
-{
-	CASE_CASE,
-	CASE_DEF,
-	CASE_RANGE
-};
-
 void out_pop(void);
 void out_pop_func_ret(decl *d);
 
@@ -40,13 +33,5 @@ void out_func_epilogue(void); /* mov rsp, rbp; ret */
 void out_label(const char *);
 
 void out_comment(const char *, ...);
-
-char *out_label_code(const char *fmt);
-char *out_label_array(int str);
-char *out_label_static_local(const char *funcsp, const char *spel);
-char *out_label_goto(char *lbl);
-char *out_label_case(enum out_label_type, int val);
-char *out_label_flow(const char *fmt);
-char *out_label_block(const char *funcsp);
 
 #endif
