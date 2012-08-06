@@ -102,7 +102,7 @@ void gen_expr_identifier(expr *e, symtable *stab)
 	}else{
 		/* no symbol, or a function */
 
-		out_push_lbl(e->spel);
+		out_push_lbl(e->spel, 1);
 		out_op_unary(op_deref, e->tree_type);
 	}
 }

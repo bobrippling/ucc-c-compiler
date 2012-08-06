@@ -141,7 +141,7 @@ void gen_stmt_switch(stmt *s)
 		}
 	}
 
-	out_push_lbl(tdefault ? tdefault->expr->spel : s->lbl_break);
+	out_push_lbl(tdefault ? tdefault->expr->spel : s->lbl_break, 0);
 	out_jmp();
 
 	gen_stmt(s->lhs); /* the actual code inside the switch */

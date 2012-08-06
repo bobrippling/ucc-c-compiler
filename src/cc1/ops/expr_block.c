@@ -77,7 +77,7 @@ void gen_expr_block(expr *e, symtable *stab)
 {
 	(void)stab;
 
-	out_push_lbl(e->sym->decl->spel);
+	out_push_lbl(e->sym->decl->spel, 0);
 }
 
 void gen_expr_str_block(expr *e, symtable *stab)

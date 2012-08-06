@@ -22,17 +22,19 @@
  * is slightly better optimised, etc
  */
 
-struct vstack vstack[1024];
+#define N_VSTACK 1024
+struct vstack vstack[N_VSTACK];
 struct vstack *vtop = NULL;
 
 void vpush(void)
 {
-	UCC_ASSERT(vtop < ((vstack + sizeof(vstack)/sizeof(*vstack)) - 1),
-			"vstack overflow");
-
 	if(!vtop){
 		vtop = vstack;
 	}else{
+		UCC_ASSERT(vtop < vstack + N_VSTACK - 1,
+				"vstack overflow, vtop=%p, vstack=%p, diff %ld",
+				(void *)vtop, (void *)vstack, vtop - vstack);
+
 		vtop++;
 		memset(vtop, 0, sizeof *vtop);
 	}
@@ -40,13 +42,14 @@ void vpush(void)
 
 void vpop(void)
 {
-	UCC_ASSERT(vtop != ((vstack + sizeof(vstack)/sizeof(*vstack)) - 1),
-			"vstack underflow");
+	UCC_ASSERT(vtop, "NULL vtop for vpop");
 
-	if(vtop == vstack)
+	if(vtop == vstack){
 		vtop = NULL;
-	else
+	}else{
+		UCC_ASSERT(vtop < vstack + N_VSTACK - 1, "vstack underflow");
 		vtop--;
+	}
 }
 
 void vswap(void)
@@ -85,6 +88,8 @@ int vfreereg(void)
 			.d = first->d,
 			.bits.off_from_bp = 23 /* TODO */
 		};
+
+		ICW("TODO: stack offset");
 
 		impl_store(first->bits.reg, &store);
 
@@ -131,11 +136,12 @@ void out_push_i(decl *d, int i)
 	out_push_iv(d, &iv);
 }
 
-void out_push_lbl(char *s)
+void out_push_lbl(char *s, int pic)
 {
 	vpush();
 	vtop->type = LBL;
-	vtop->bits.lbl = s;
+	vtop->bits.lbl.str = s;
+	vtop->bits.lbl.pic = pic;
 }
 
 void out_dup(void)
@@ -167,8 +173,8 @@ void out_normalise(void)
 
 void out_push_sym_addr(sym *s)
 {
-	(void)s;
-	TODO();
+	out_push_sym(s);
+	vtop->is_addr = 1;
 }
 
 void out_push_sym(sym *s)
@@ -178,7 +184,7 @@ void out_push_sym(sym *s)
 	switch(s->type){
 		case sym_local:
 			vtop->type = STACK;
-			vtop->bits.off_from_bp = -s->offset;
+			vtop->bits.off_from_bp = -s->offset - platform_word_size();
 			break;
 
 		case sym_arg:
@@ -188,7 +194,8 @@ void out_push_sym(sym *s)
 
 		case sym_global:
 			vtop->type = LBL;
-			vtop->bits.lbl = s->decl->spel;
+			vtop->bits.lbl.str = s->decl->spel;
+			vtop->bits.lbl.pic = 1;
 			break;
 	}
 
@@ -246,7 +253,9 @@ void out_call_fin(int i)
 
 void out_jmp(void)
 {
-	TODO();
+	impl_jmp();
+
+	vpop();
 }
 
 void out_jz(const char *lbl)

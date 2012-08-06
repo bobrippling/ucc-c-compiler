@@ -145,10 +145,10 @@ void gen_expr_addr(expr *e, symtable *stab)
 {
 	if(e->array_store){
 		/*decl *d = e->array_store->data.exprs[0];*/
-		out_push_lbl(e->array_store->label);
+		out_push_lbl(e->array_store->label, 1);
 
 	}else if(e->spel){
-		out_push_lbl(e->spel);
+		out_push_lbl(e->spel, 1);
 
 	}else{
 		/* address of possibly an ident "(&a)->b" or a struct expr "&a->b" */

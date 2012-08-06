@@ -190,7 +190,7 @@ invalid:
 			gen_expr(*iter, stab);
 
 		if(sym && !decl_is_fptr(sym->decl))
-			out_push_lbl(sym->decl->spel);
+			out_push_lbl(sym->decl->spel, 0);
 		else
 			gen_expr(e->expr, stab);
 

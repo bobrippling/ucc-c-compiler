@@ -46,7 +46,8 @@ vstack_str_r(char buf[VSTACK_STR_SZ], struct vstack *vs)
 			break;
 
 		case LBL:
-			SNPRINTF(buf, VSTACK_STR_SZ, "%s(%%rip)", vs->bits.lbl);
+			SNPRINTF(buf, VSTACK_STR_SZ, "%s%s",
+					vs->bits.lbl.str, vs->bits.lbl.pic ? "(%%rip)" : "");
 			break;
 
 		case REG:
@@ -129,7 +130,10 @@ impl_load(struct vstack *from, int reg)
 
 		strcpy(buf, reg_str(reg));
 
-		out_asm("mov_ %s, %%%s", vstack_str(from), buf);
+		out_asm("%s_ %s, %%%s",
+				from->is_addr ? "lea" : "mov",
+				vstack_str(from),
+				buf);
 	}
 }
 
@@ -231,4 +235,14 @@ int impl_op_unary(enum op_type op)
 		out_normalise();
 
 	return reg;
+}
+
+void impl_jmp()
+{
+	if(vtop->type == LBL){
+		out_asm("jmp %s", vtop->bits.lbl);
+	}else{
+		int r = v_to_reg(vtop);
+		out_asm("jmp *%s", reg_str(r));
+	}
 }

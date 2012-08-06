@@ -76,7 +76,7 @@ void gen_expr_if(expr *e, symtable *stab)
 
 		gen_expr(e->lhs, stab);
 
-		out_push_lbl(lblfin);
+		out_push_lbl(lblfin, 0);
 		out_jmp();
 
 		out_label(lblelse);

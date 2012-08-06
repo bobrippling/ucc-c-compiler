@@ -20,8 +20,14 @@ struct vstack
 		int reg;
 		int off_from_bp;
 		/* nothing for flag */
-		char *lbl;
+		struct
+		{
+			char *str;
+			int pic;
+		} lbl;
 	} bits;
+
+	int is_addr; /* lea vs mov */
 };
 
 extern struct vstack *vtop;
