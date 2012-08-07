@@ -154,14 +154,11 @@ void out_dup(void)
 void out_store()
 {
 	struct vstack *store, *val;
-	int reg;
 
 	store = &vtop[0];
 	val   = &vtop[-1];
 
-	reg = vfreereg();
-	impl_load(val, reg);
-	impl_store(reg, store);
+	impl_store(v_to_reg(val), store);
 
 	/* pop the store, but not the value */
 	vpop();
