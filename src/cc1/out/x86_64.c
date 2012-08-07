@@ -243,6 +243,6 @@ void impl_jmp()
 		out_asm("jmp %s", vtop->bits.lbl);
 	}else{
 		int r = v_to_reg(vtop);
-		out_asm("jmp *%s", reg_str(r));
+		out_asm("jmp *%%%s", reg_str(r));
 	}
 }

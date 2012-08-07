@@ -142,6 +142,7 @@ void out_push_lbl(char *s, int pic)
 	vtop->type = LBL;
 	vtop->bits.lbl.str = s;
 	vtop->bits.lbl.pic = pic;
+	vtop->is_addr = 1;
 }
 
 void out_dup(void)
@@ -225,7 +226,11 @@ void out_op(enum op_type op, decl *d)
 void out_op_unary(enum op_type op, decl *d)
 {
 	(void)d;
-	impl_op_unary(op);
+
+	if(op == op_deref && vtop->is_addr)
+		vtop->is_addr = 0;
+	else
+		impl_op_unary(op);
 }
 
 void out_cast(decl *from, decl *to)
