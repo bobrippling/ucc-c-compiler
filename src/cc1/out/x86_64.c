@@ -162,9 +162,18 @@ impl_op(enum op_type op)
 		OP(plus,     "add");
 		OP(minus,    "sub");
 		OP(modulus,  "mod");
+		OP(xor,      "xor");
+		OP(or,       "or");
+		OP(and,      "and");
+		OP(not,      "not");
 #undef OP
 
+		case op_bnot:
+
 		case op_divide:
+
+		case op_orsc:
+		case op_andsc:
 
 		case op_eq:
 		case op_ne:
@@ -172,14 +181,6 @@ impl_op(enum op_type op)
 		case op_lt:
 		case op_ge:
 		case op_gt:
-
-		case op_xor:
-		case op_or:
-		case op_and:
-		case op_orsc:
-		case op_andsc:
-		case op_not:
-		case op_bnot:
 
 		case op_shiftl:
 		case op_shiftr:
