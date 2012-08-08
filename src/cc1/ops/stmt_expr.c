@@ -30,7 +30,7 @@ void gen_stmt_expr(stmt *s)
 	{
 		if(!s->expr_no_pop){
 			out_pop();
-			out_comment("unused expr");
+			out_comment("end of %s-stmt", s->f_str());
 		}
 	}
 }
