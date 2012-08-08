@@ -61,7 +61,7 @@ void vswap(void)
 	memcpy(&vtop[-1], &tmp, sizeof tmp);
 }
 
-int vfreereg(void)
+int v_unused_reg(int stack_as_backup)
 {
 	struct vstack *it, *first;
 	int used[N_REGS];
@@ -81,28 +81,19 @@ int vfreereg(void)
 		if(!used[i])
 			return i;
 
-	/* no free regs, move `first` to the stack and claim its reg */
-	{
-		struct vstack store = {
-			.type = STACK,
-			.d = first->d,
-			.bits.off_from_bp = 23 /* TODO */
-		};
-
-		ICW("TODO: stack offset");
-
-		impl_store(first->bits.reg, &store);
-
-		memcpy(first, &store, sizeof store);
+	if(stack_as_backup){
+		/* no free regs, move `first` to the stack and claim its reg */
+		v_save_reg(first);
 
 		return first->bits.reg;
 	}
+	return -1;
 }
 
 int v_to_reg(struct vstack *conv)
 {
 	if(conv->type != REG){
-		int reg = vfreereg();
+		int reg = v_unused_reg(1);
 
 		impl_load(conv, reg);
 
@@ -111,6 +102,62 @@ int v_to_reg(struct vstack *conv)
 	}
 
 	return conv->bits.reg;
+}
+
+struct vstack *v_find_reg(int reg)
+{
+	struct vstack *vp;
+	if(!vtop)
+		return NULL;
+
+	for(vp = vstack; vp <= vtop; vp++)
+		if(vp->type == REG && vp->bits.reg == reg)
+			return vp;
+
+	return NULL;
+}
+
+void v_save_reg(struct vstack *vp)
+{
+	switch(vp->type){
+		case CONST:
+		case STACK:
+		case LBL:
+			break;
+
+		case REG:
+		case FLAG:
+		{
+			struct vstack store;
+			int r;
+
+			/* attempt to save to a register first */
+			r = v_unused_reg(0);
+
+			if(r >= 0){
+				store.type = REG;
+				store.d = NULL; /* TODO */
+				store.bits.reg = r;
+			}else{
+				store.type = STACK;
+				store.d = vp->d;
+				store.bits.off_from_bp = 23; /* TODO */
+				ICW("TODO: stack offset");
+			}
+
+			impl_store(vp->bits.reg, &store);
+
+			memcpy(vp, &store, sizeof store);
+		}
+	}
+}
+
+void v_freeup_reg(int r, int allowable_stack)
+{
+	struct vstack *vp = v_find_reg(r);
+
+	if(vp && vp < &vtop[-allowable_stack + 1])
+		v_save_reg(vp);
 }
 
 void out_pop(void)
@@ -158,6 +205,15 @@ void out_store()
 	store = &vtop[0];
 	val   = &vtop[-1];
 
+	/*
+	 * TODO: don't force val to be in a reg
+	 * currently i = 5:
+	 *   mov $5, eax
+	 *   mov eax, 0x8(%rbp)
+	 * could do:
+	 *   mov $5, 0x8(%rbp)
+	 */
+
 	impl_store(v_to_reg(val), store);
 
 	/* pop the store, but not the value */
@@ -203,14 +259,6 @@ void out_push_sym(sym *s)
 void out_op(enum op_type op, decl *d)
 {
 	int r;
-
-	/* vtop[-1] must be a reg - try to swap first */
-	if(vtop[-1].type != REG){
-		if(vtop->type == REG)
-			vswap();
-		else
-			v_to_reg(&vtop[-1]);
-	}
 
 	r = impl_op(op);
 

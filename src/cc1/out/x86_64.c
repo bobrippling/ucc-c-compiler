@@ -16,6 +16,9 @@
 #define RET_REG 0
 #define REG_STR_SZ 8
 
+#define REG_A 0
+#define REG_D 3
+
 #define VSTACK_STR_SZ 128
 
 const char regs[] = "abcd";
@@ -25,6 +28,8 @@ reg_str(int reg)
 {
 	const char *regpre, *regpost;
 	static char regstr[REG_STR_SZ];
+
+	UCC_ASSERT((unsigned)reg < N_REGS, "invalid x86 reg %d", reg);
 
 	asm_reg_name(NULL, &regpre, &regpost);
 
@@ -161,16 +166,52 @@ impl_op(enum op_type op)
 		OP(multiply, "imul");
 		OP(plus,     "add");
 		OP(minus,    "sub");
-		OP(modulus,  "mod");
 		OP(xor,      "xor");
 		OP(or,       "or");
 		OP(and,      "and");
 		OP(not,      "not");
 #undef OP
 
-		case op_bnot:
-
+		case op_modulus:
 		case op_divide:
+		{
+			/*
+			 * divides the 64 bit integer EDX:EAX
+			 * by the operand
+			 * quotient  -> eax
+			 * remainder -> edx
+			 */
+			int r_div;
+
+			/*
+			 * if we are using reg_[ad] elsewhere
+			 * and they aren't queued for this idiv
+			 * then save them, so we can use them
+			 * for idiv
+			 */
+			v_freeup_reg(REG_A, 2);
+			v_freeup_reg(REG_D, 2);
+
+			r_div = v_to_reg(&vtop[-1]);
+			UCC_ASSERT(r_div == REG_A, "register A not chosen for idiv");
+
+			out_asm("cqto");
+
+			/* idiv takes either a reg or memory address */
+			switch(vtop->type){
+				default:
+					v_to_reg(vtop);
+					/* fall */
+
+				case REG:
+				case STACK:
+					out_asm("idiv %s", vstack_str(vtop));
+			}
+
+			return op == op_modulus ? REG_D : REG_A;
+		}
+
+		case op_bnot:
 
 		case op_orsc:
 		case op_andsc:
@@ -192,6 +233,15 @@ impl_op(enum op_type op)
 
 	{
 		char buf[VSTACK_STR_SZ];
+
+		/* vtop[-1] must be a reg - try to swap first */
+		if(vtop[-1].type != REG){
+			if(vtop->type == REG)
+				vswap();
+			else
+				v_to_reg(&vtop[-1]);
+		}
+
 
 		out_asm("%s %s, %s", opc,
 				vstack_str_r(buf, &vtop[ 0]),
