@@ -333,12 +333,40 @@ int impl_op_unary(enum op_type op)
 	return reg;
 }
 
+static const char *x86_call_jmp_target(struct vstack *vp)
+{
+	static char buf[VSTACK_STR_SZ + 2];
+
+	if(vp->type == LBL)
+		return vp->bits.lbl.str;
+
+	SNPRINTF(buf, sizeof buf, "*%%%s", reg_str(v_to_reg(vp)));
+
+	return buf;
+}
+
 void impl_jmp()
 {
-	if(vtop->type == LBL){
-		out_asm("jmp %s", vtop->bits.lbl);
-	}else{
-		int r = v_to_reg(vtop);
-		out_asm("jmp *%%%s", reg_str(r));
+	out_asm("jmp %s", x86_call_jmp_target(vtop));
+}
+
+void impl_call(const int nargs)
+{
+	const char *call_regs[] = {
+		"rdi",
+		"rsi",
+		"rdx",
+		"rcx",
+		"r8",
+		"r9",
+	};
+	int i;
+
+	for(i = 0; i < nargs; i++){
+		/*out_store(vtop, call_regs[i]); * something like this... */
 	}
+
+	out_asm("call %s", x86_call_jmp_target(vtop));
+
+	out_asm("// TODO: stack clean (%d)", nargs);
 }

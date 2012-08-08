@@ -13,6 +13,9 @@ void impl_jmp(void);
 
 void impl_make_addr(void);
 
+void impl_call(int nargs);
+void impl_call_fin(int nargs);
+
 #define N_REGS 4
 
 #endif

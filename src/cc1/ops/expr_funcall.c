@@ -148,8 +148,6 @@ void fold_expr_funcall(expr *e, symtable *stab)
 void gen_expr_funcall(expr *e, symtable *stab)
 {
 	const char *const fname = e->expr->spel;
-	expr **iter;
-	int nargs = 0;
 
 	if(e->tree_type->builtin){
 		builtin_gen(e);
@@ -183,19 +181,17 @@ invalid:
 	}else{
 		/* continue with normal funcall */
 		sym *const sym = e->expr->sym;
+		int nargs = 0;
 
-		out_call_start();
-
-		for(iter = e->funcargs; iter && *iter; iter++, nargs++)
-			gen_expr(*iter, stab);
+		for(nargs = 0; e->funcargs && e->funcargs[nargs]; nargs++)
+			gen_expr(e->funcargs[nargs], stab);
 
 		if(sym && !decl_is_fptr(sym->decl))
 			out_push_lbl(sym->decl->spel, 0);
 		else
 			gen_expr(e->expr, stab);
 
-		out_call();
-		out_call_fin(nargs);
+		out_call(nargs);
 	}
 }
 

@@ -283,20 +283,14 @@ void out_cast(decl *from, decl *to)
 	TODO();
 }
 
-void out_call_start(void)
+void out_call(int nargs)
 {
-	TODO();
-}
+	impl_call(nargs);
 
-void out_call(void)
-{
-	TODO();
-}
-
-void out_call_fin(int i)
-{
-	(void)i;
-	TODO();
+	while(nargs --> 0){
+		printf("popping %d %d\n", vtop->type, vtop->bits.reg);
+		vpop();
+	}
 }
 
 void out_jmp(void)
