@@ -72,7 +72,8 @@ int v_unused_reg(int stack_as_backup)
 
 	for(it = vstack; it <= vtop; it++){
 		if(it->type == REG){
-			first = it;
+			if(!first)
+				first = it;
 			used[it->bits.reg] = 1;
 		}
 	}
