@@ -19,7 +19,7 @@ struct vstack
 		int val;
 		int reg;
 		int off_from_bp;
-		/* nothing for flag */
+		enum op_type cmp;
 		struct
 		{
 			char *str;

@@ -15,11 +15,6 @@
 
 /*
  * This entire stack-output idea was inspired by tinycc, and improved slightly,
- *
- * e.g.
- *
- * f(a){return a + 1;}
- * is slightly better optimised, etc
  */
 
 #define N_VSTACK 1024
@@ -34,6 +29,9 @@ void vpush(void)
 		UCC_ASSERT(vtop < vstack + N_VSTACK - 1,
 				"vstack overflow, vtop=%p, vstack=%p, diff %ld",
 				(void *)vtop, (void *)vstack, vtop - vstack);
+
+		if(vtop->type == FLAG)
+			ICW("volatile flag data on vstack, need to save");
 
 		vtop++;
 		memset(vtop, 0, sizeof *vtop);
@@ -137,7 +135,7 @@ void v_save_reg(struct vstack *vp)
 
 			if(r >= 0){
 				store.type = REG;
-				store.d = NULL; /* TODO */
+				store.d = vp->d;
 				store.bits.reg = r;
 			}else{
 				store.type = STACK;
@@ -259,14 +257,13 @@ void out_push_sym(sym *s)
 
 void out_op(enum op_type op, decl *d)
 {
-	int r;
-
-	r = impl_op(op);
-
-	vpop();
-	vtop->type = REG;
-	vtop->bits.reg = r;
-	vtop->d = d;
+	/*
+	 * the implementation does a vpop() and
+	 * sets vtop sufficiently to describe how
+	 * the result is returned
+	 */
+	impl_op(op);
+	(void)d;
 }
 
 void out_op_unary(enum op_type op, decl *d)

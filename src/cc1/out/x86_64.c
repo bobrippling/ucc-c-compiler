@@ -47,8 +47,7 @@ vstack_str_r(char buf[VSTACK_STR_SZ], struct vstack *vs)
 			break;
 
 		case FLAG:
-			ICE("TODO: %s flag", __func__);
-			break;
+			ICE("%s shouldn't be called with cmp-flag data", __func__);
 
 		case LBL:
 			SNPRINTF(buf, VSTACK_STR_SZ, "%s%s",
@@ -123,13 +122,36 @@ out_pop_func_ret(decl *d)
 	vpop();
 }
 
+static const char *x86_cmp(enum op_type cmp, int is_signed)
+{
+	switch(cmp){
+#define OP(e, s, u) case op_ ## e: return is_signed ? s : u
+		OP(eq, "e" , "e");
+		OP(ne, "ne", "ne");
+		OP(le, "le", "be");
+		OP(lt, "lt", "b");
+		OP(ge, "ge", "ae");
+		OP(gt, "gt", "a");
+#undef OP
+
+		default:
+			ICE("invalid x86 comparison");
+	}
+	return NULL;
+}
+
 void
 impl_load(struct vstack *from, int reg)
 {
 	if(from->type == FLAG){
-		out_asm("setnz %%%s", reg_str(reg));
-	}else if(from->type == REG && from->bits.reg == reg){
-		/* noop */
+		int is_signed = from->d ? from->d->type->is_signed : 1;
+
+		if(!from->d)
+			ICW("TODO: decl for signed-cmp");
+
+		out_asm("set%s %%%s",
+				x86_cmp(from->bits.cmp, is_signed),
+				reg_str(reg));
 	}else{
 		char buf[REG_STR_SZ];
 
@@ -156,10 +178,11 @@ impl_store(int reg, struct vstack *where)
 	out_asm("mov_ %%%s, %s", regstr, vstack_str(where));
 }
 
-int
+void
 impl_op(enum op_type op)
 {
 	const char *opc;
+	int normalise = 0;
 
 	switch(op){
 #define OP(e, s) case op_ ## e: opc = s; break
@@ -169,8 +192,12 @@ impl_op(enum op_type op)
 		OP(xor,      "xor");
 		OP(or,       "or");
 		OP(and,      "and");
-		OP(not,      "not");
+
+		case op_not:
+			normalise = 1;
+		OP(bnot,     "not");
 #undef OP
+
 
 		case op_modulus:
 		case op_divide:
@@ -208,13 +235,12 @@ impl_op(enum op_type op)
 					out_asm("idiv %s", vstack_str(vtop));
 			}
 
-			return op == op_modulus ? REG_D : REG_A;
+			vpop();
+
+			vtop->type = REG;
+			vtop->bits.reg = op == op_modulus ? REG_D : REG_A;
+			return;
 		}
-
-		case op_bnot:
-
-		case op_orsc:
-		case op_andsc:
 
 		case op_eq:
 		case op_ne:
@@ -222,6 +248,22 @@ impl_op(enum op_type op)
 		case op_lt:
 		case op_ge:
 		case op_gt:
+		{
+			char buf[VSTACK_STR_SZ];
+
+			out_asm("cmp_ %s, %s",
+					vstack_str(&vtop[-1]),
+					vstack_str_r(buf, vtop));
+
+			vpop();
+			vtop->type = FLAG;
+			vtop->bits.cmp = op;
+
+			return;
+		}
+
+		case op_orsc:
+		case op_andsc:
 
 		case op_shiftl:
 		case op_shiftr:
@@ -242,12 +284,15 @@ impl_op(enum op_type op)
 				v_to_reg(&vtop[-1]);
 		}
 
-
 		out_asm("%s %s, %s", opc,
 				vstack_str_r(buf, &vtop[ 0]),
 				vstack_str(       &vtop[-1]));
 
-		return vtop[-1].bits.reg;
+		/* remove first operand - result is then in vtop (already in a reg) */
+		vpop();
+
+		if(normalise)
+			out_normalise();
 	}
 }
 
