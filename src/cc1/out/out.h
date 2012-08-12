@@ -15,8 +15,8 @@ void out_push_sym_addr(sym *);
 void out_push_sym(sym *);
 void out_store(void); /* store stack[1] into *stack[0] */
 
-void out_op(      enum op_type, decl *d); /* binary ops and comparisons */
-void out_op_unary(enum op_type, decl *d); /* unary ops */
+void out_op(      enum op_type); /* binary ops and comparisons */
+void out_op_unary(enum op_type); /* unary ops */
 
 void out_cast(decl *from, decl *to);
 
@@ -24,8 +24,8 @@ void out_call(int nargs); /* call *pop(), push result */
 void out_call_fin(int nargs); /* remove args from stack */
 
 void out_jmp( void); /* jmp to *pop() */
-void out_jz( const char *);
-void out_jnz(const char *);
+void out_jtrue( const char *);
+void out_jfalse(const char *);
 
 void out_func_prologue(int stack_res, int nargs); /* push rbp, sub rsp, ... */
 void out_func_epilogue(void); /* mov rsp, rbp; ret */

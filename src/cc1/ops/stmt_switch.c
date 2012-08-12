@@ -114,14 +114,14 @@ void gen_stmt_switch(stmt *s)
 			out_dup();
 			out_push_iv(cse->expr->tree_type, &iv);
 
-			out_op(op_lt, cse->expr->tree_type);
-			out_jnz(skip);
+			out_op(op_lt);
+			out_jtrue(skip);
 
 			out_dup();
 			out_push_iv(cse->expr2->tree_type, &max);
-			out_op(op_gt, cse->expr2->tree_type);
+			out_op(op_gt);
 
-			out_jz(cse->expr->spel);
+			out_jfalse(cse->expr->spel);
 
 			out_label(skip);
 			free(skip);
@@ -135,9 +135,9 @@ void gen_stmt_switch(stmt *s)
 			out_dup();
 			out_push_iv(cse->expr->tree_type, &iv);
 
-			out_op(op_eq, cse->expr->tree_type);
+			out_op(op_eq);
 
-			out_jnz(cse->expr->spel);
+			out_jtrue(cse->expr->spel);
 		}
 	}
 

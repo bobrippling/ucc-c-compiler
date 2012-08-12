@@ -100,7 +100,7 @@ void gen_stmt_for(stmt *s)
 	out_label(lbl_test);
 	if(s->flow->for_while){
 		gen_expr(s->flow->for_while, s->flow->for_init_symtab);
-		out_jz(s->lbl_break);
+		out_jfalse(s->lbl_break);
 	}
 
 	gen_stmt(s->lhs);

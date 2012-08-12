@@ -19,7 +19,13 @@ struct vstack
 		int val;
 		int reg;
 		int off_from_bp;
-		enum op_type cmp;
+		enum flag_cmp
+		{
+			flag_eq, flag_ne,
+			flag_le, flag_lt,
+			flag_ge, flag_gt,
+			flag_z,  flag_nz,
+		} flag;
 		struct
 		{
 			char *str;
@@ -36,6 +42,7 @@ void vpop(void);
 void vtop_clear(void);
 void vswap(void);
 int  v_unused_reg(int stack_as_backup);
+void vtop2_prepare_op(void);
 
 struct vstack *v_find_reg(int reg);
 int  v_to_reg(struct vstack *conv);

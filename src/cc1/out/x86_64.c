@@ -150,10 +150,12 @@ void out_pop_func_ret(decl *d)
 	vpop();
 }
 
-static const char *x86_cmp(enum op_type cmp, int is_signed)
+static const char *x86_cmp(enum flag_cmp cmp, decl *d)
 {
+	int is_signed = d ? d->type->is_signed : 1; /* TODO */
+
 	switch(cmp){
-#define OP(e, s, u) case op_ ## e: return is_signed ? s : u
+#define OP(e, s, u) case flag_ ## e: return is_signed ? s : u
 		OP(eq, "e" , "e");
 		OP(ne, "ne", "ne");
 		OP(le, "le", "be");
@@ -162,22 +164,37 @@ static const char *x86_cmp(enum op_type cmp, int is_signed)
 		OP(gt, "gt", "a");
 #undef OP
 
-		default:
-			ICE("invalid x86 comparison");
+		case flag_z:  return "z";
+		case flag_nz: return "nz";
 	}
 	return NULL;
+}
+
+static enum flag_cmp op_to_flag(enum op_type op)
+{
+	switch(op){
+#define OP(x) case op_ ## x: return flag_ ## x
+		OP(eq);
+		OP(ne);
+		OP(le);
+		OP(lt);
+		OP(ge);
+		OP(gt);
+#undef OP
+
+		default:
+			break;
+	}
+
+	ICE("invalid op");
+	return -1;
 }
 
 static void x86_load(struct vstack *from, const char *regstr)
 {
 	if(from->type == FLAG){
-		int is_signed = from->d ? from->d->type->is_signed : 1;
-
-		if(!from->d)
-			ICW("TODO: decl for signed-cmp");
-
 		out_asm("set%s %%%s",
-				x86_cmp(from->bits.cmp, is_signed),
+				x86_cmp(from->bits.flag, from->d),
 				regstr);
 	}else{
 		out_asm("%s_ %s, %%%s",
@@ -225,7 +242,8 @@ void impl_op(enum op_type op)
 		OP(and,      "and");
 
 		case op_not:
-			normalise = 1;
+		normalise = 1;
+
 		OP(bnot,     "not");
 #undef OP
 
@@ -283,6 +301,8 @@ void impl_op(enum op_type op)
 		{
 			char buf[VSTACK_STR_SZ];
 
+			vtop2_prepare_op();
+
 			out_asm("cmp_ %s, %s",
 					vstack_str(&vtop[-1]),
 					vstack_str_r(buf, vtop));
@@ -290,7 +310,7 @@ void impl_op(enum op_type op)
 			vpop();
 			vtop_clear();
 			vtop->type = FLAG;
-			vtop->bits.cmp = op;
+			vtop->bits.flag = op_to_flag(op);
 
 			return;
 		}
@@ -309,15 +329,7 @@ void impl_op(enum op_type op)
 	{
 		char buf[VSTACK_STR_SZ];
 
-		/* vtop[-1] must be a reg - try to swap first */
-		if(vtop[-1].type != REG){
-			if(vtop->type == REG){
-				ICW("vswapping - broken for subtract/div");
-				vswap();
-			}else{
-				v_to_reg(&vtop[-1]);
-			}
-		}
+		vtop2_prepare_op();
 
 		out_asm("%s %s, %s", opc,
 				vstack_str_r(buf, &vtop[ 0]),
@@ -331,10 +343,9 @@ void impl_op(enum op_type op)
 	}
 }
 
-int impl_op_unary(enum op_type op)
+void impl_op_unary(enum op_type op)
 {
 	const char *opc;
-	const int reg = v_to_reg(vtop);
 
 	switch(op){
 		default:
@@ -342,30 +353,29 @@ int impl_op_unary(enum op_type op)
 
 		case op_plus:
 			/* noop */
-			return reg;
-
-#define OP(t, s) case op_ ## t: opc = s; break
-		OP(minus, "neg");
-		OP(bnot,  "not");
-		OP(not,   "not");
-#undef OP
+			return;
 
 		case op_deref:
 		{
+			const int reg = v_to_reg(vtop);
 			const char *rs = reg_str(reg);
 
 			out_asm("mov_ (%%%s), %%%s", rs, rs);
 
-			return reg;
+			return;
 		}
+
+#define OP(o, s) case op_ ## o: opc = #s; break
+		OP(not, not);
+		OP(minus, neg);
+		OP(bnot, not);
+#undef OP
 	}
 
-	out_asm("%s %s", opc, reg_str(reg));
+	out_asm("%s %s", opc, vstack_str(vtop));
 
 	if(op == op_not)
 		out_normalise();
-
-	return reg;
 }
 
 static const char *x86_call_jmp_target(struct vstack *vp)
@@ -383,6 +393,29 @@ static const char *x86_call_jmp_target(struct vstack *vp)
 void impl_jmp()
 {
 	out_asm("jmp %s", x86_call_jmp_target(vtop));
+}
+
+void impl_jtrue(const char *lbl)
+{
+	switch(vtop->type){
+		case FLAG:
+			out_asm("j%s %s",
+					x86_cmp(vtop->bits.flag, vtop->d),
+					lbl);
+			break;
+
+		case CONST:
+			if(vtop->bits.val)
+				out_asm("jmp %s // constant jmp condition %d", lbl, vtop->bits.val);
+			break;
+
+		case REG:
+		case STACK:
+		case LBL:
+			out_asm("jnz %s", vstack_str(vtop));
+	}
+
+	vpop();
 }
 
 void impl_call(const int nargs)

@@ -30,7 +30,7 @@ void gen_stmt_goto(stmt *s)
 {
 	if(s->expr->expr_computed_goto){
 		gen_expr(s->expr, s->symtab);
-		out_op_unary(op_deref, NULL);
+		out_op_unary(op_deref);
 	}else{
 		out_push_lbl(s->expr->spel, 0);
 	}

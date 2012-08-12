@@ -420,7 +420,8 @@ static void op_shortcircuit(expr *e, symtable *tab)
 	gen_expr(e->lhs, tab);
 
 	out_dup();
-	out_jz(bail);
+	out_jfalse(bail);
+	out_pop();
 
 	gen_expr(e->rhs, tab);
 
@@ -447,14 +448,14 @@ void op_operate_struct(expr *e, symtable *tab)
 	out_comment("struct ptr");
 
 	out_push_i(e->rhs->tree_type, e->rhs->tree_type->struct_offset);
-	out_op(op_plus, e->rhs->tree_type);
+	out_op(op_plus);
 
 	out_comment("offset of member %s", e->rhs->spel);
 
 	if(decl_is_array(e->rhs->tree_type)){
 		out_comment("array - got address");
 	}else{
-		out_op_unary(op_deref, e->rhs->tree_type);
+		out_op_unary(op_deref);
 	}
 
 	out_comment("val from struct");
@@ -482,9 +483,9 @@ void gen_expr_op(expr *e, symtable *tab)
 			if(e->rhs){
 				gen_expr(e->rhs, tab);
 
-				out_op(e->op, e->tree_type);
+				out_op(e->op);
 			}else{
-				out_op_unary(e->op, e->tree_type);
+				out_op_unary(e->op);
 			}
 	}
 }
@@ -496,9 +497,6 @@ void gen_expr_op_store(expr *store, symtable *stab)
 			/* a dereference */
 			gen_expr(op_deref_expr(store), stab); /* skip over the *() bit */
 			out_comment("pointer on stack");
-
-			/* move `pop` into `pop` */
-			out_store();
 			return;
 
 		case op_struct_ptr:
@@ -506,8 +504,6 @@ void gen_expr_op_store(expr *store, symtable *stab)
 
 			out_push_i(NULL, store->rhs->tree_type->struct_offset);
 			out_comment("offset of member %s", store->rhs->spel);
-
-			out_store();
 			return;
 
 		case op_struct_dot:

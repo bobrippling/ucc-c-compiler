@@ -72,7 +72,7 @@ void gen_expr_if(expr *e, symtable *stab)
 	if(e->lhs){
 		char *lblelse = out_label_code("ifexpb");
 
-		out_jz(lblelse);
+		out_jfalse(lblelse);
 
 		gen_expr(e->lhs, stab);
 
@@ -85,9 +85,7 @@ void gen_expr_if(expr *e, symtable *stab)
 	}else{
 		out_dup();
 
-		out_jnz(lblfin);
-
-		out_pop(); /* discard the dup */
+		out_jtrue(lblfin);
 	}
 
 	gen_expr(e->rhs, stab);

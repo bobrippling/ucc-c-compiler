@@ -106,7 +106,7 @@ void gen_expr_identifier(expr *e, symtable *stab)
 		/* no symbol, or a function */
 
 		out_push_lbl(e->spel, 1);
-		out_op_unary(op_deref, e->tree_type);
+		out_op_unary(op_deref);
 	}
 }
 
@@ -126,8 +126,6 @@ void gen_expr_identifier_store(expr *e, symtable *stab)
 	(void)stab;
 
 	out_push_sym_addr(e->sym);
-
-	out_store();
 }
 
 void mutate_expr_identifier(expr *e)

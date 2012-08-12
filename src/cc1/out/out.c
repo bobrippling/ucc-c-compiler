@@ -31,7 +31,7 @@ void vpush(void)
 				(void *)vtop, (void *)vstack, vtop - vstack);
 
 		if(vtop->type == FLAG)
-			ICW("volatile flag data on vstack, need to save");
+			v_save_reg(vtop);
 
 		vtop++;
 	}
@@ -71,6 +71,15 @@ void vswap(void)
 	memcpy(&tmp, vtop, sizeof tmp);
 	memcpy(vtop, &vtop[-1], sizeof tmp);
 	memcpy(&vtop[-1], &tmp, sizeof tmp);
+}
+
+void vtop2_prepare_op(void)
+{
+	/* both can't be const, memory, or flags */
+	if(vtop->type == vtop[-1].type && vtop->type != REG){
+		/* prefer putting vtop[-1] in a reg, since that's returned after */
+		v_to_reg(&vtop[-1]);
+	}
 }
 
 int v_unused_reg(int stack_as_backup)
@@ -139,8 +148,11 @@ void v_save_reg(struct vstack *vp)
 		case LBL:
 			break;
 
-		case REG:
 		case FLAG:
+			v_to_reg(vp);
+			/* fall */
+
+		case REG:
 		{
 			struct vstack store;
 			int r;
@@ -172,6 +184,26 @@ void v_freeup_reg(int r, int allowable_stack)
 
 	if(vp && vp < &vtop[-allowable_stack + 1])
 		v_save_reg(vp);
+}
+
+static void v_inv_cmp(struct vstack *vp)
+{
+	switch(vp->bits.flag){
+#define OPPOSITE(from, to) case flag_ ## from: vp->bits.flag = flag_ ## to; return
+		OPPOSITE(eq, ne);
+		OPPOSITE(ne, eq);
+
+		OPPOSITE(le, gt);
+		OPPOSITE(gt, le);
+
+		OPPOSITE(lt, ge);
+		OPPOSITE(ge, lt);
+
+		OPPOSITE(z, nz);
+		OPPOSITE(nz, z);
+#undef OPPOSITE
+	}
+	ICE("invalid op");
 }
 
 void out_pop(void)
@@ -216,8 +248,8 @@ void out_store()
 {
 	struct vstack *store, *val;
 
-	store = &vtop[0];
-	val   = &vtop[-1];
+	val   = &vtop[0];
+	store = &vtop[-1];
 
 	/*
 	 * TODO: don't force val to be in a reg
@@ -276,7 +308,7 @@ void out_push_sym(sym *s)
 	vtop->d = s->decl;
 }
 
-void out_op(enum op_type op, decl *d)
+void out_op(enum op_type op)
 {
 	/*
 	 * the implementation does a vpop() and
@@ -284,17 +316,52 @@ void out_op(enum op_type op, decl *d)
 	 * the result is returned
 	 */
 	impl_op(op);
-	(void)d;
 }
 
-void out_op_unary(enum op_type op, decl *d)
+void out_op_unary(enum op_type op)
 {
-	(void)d;
+	switch(op){
+		case op_deref:
+			if(vtop->is_addr){
+				vtop->is_addr = 0;
+				return;
+			}
+			break;
 
-	if(op == op_deref && vtop->is_addr)
-		vtop->is_addr = 0;
-	else
-		impl_op_unary(op);
+		case op_plus:
+			return;
+
+		default:
+			/* special case - reverse the flag if possible */
+			switch(vtop->type){
+				case FLAG:
+					if(op == op_not){
+						v_inv_cmp(vtop);
+						return;
+					}
+					break;
+
+				case CONST:
+					switch(op){
+#define OP(t, o) case op_ ## t: vtop->bits.val = o vtop->bits.val; return
+						OP(not, !);
+						OP(minus, -);
+						OP(bnot, ~);
+#undef OP
+
+						default:
+							ICE("invalid unary op");
+					}
+					break;
+
+				case REG:
+				case STACK:
+				case LBL:
+					break;
+			}
+	}
+
+	impl_op_unary(op);
 }
 
 void out_cast(decl *from, decl *to)
@@ -316,16 +383,15 @@ void out_jmp(void)
 	vpop();
 }
 
-void out_jz(const char *lbl)
+void out_jtrue(const char *lbl)
 {
-	(void)lbl;
-	TODO();
+	impl_jtrue(lbl);
 }
 
-void out_jnz(const char *lbl)
+void out_jfalse(const char *lbl)
 {
-	(void)lbl;
-	TODO();
+	out_op_unary(op_not);
+	out_jtrue(lbl);
 }
 
 void out_label(const char *lbl)

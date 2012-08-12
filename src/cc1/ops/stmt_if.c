@@ -51,7 +51,7 @@ void gen_stmt_if(stmt *s)
 
 	gen_expr(s->expr, s->symtab);
 
-	out_jz(lbl_else);
+	out_jfalse(lbl_else);
 
 	gen_stmt(s->lhs);
 	out_push_lbl(lbl_fi, 0);

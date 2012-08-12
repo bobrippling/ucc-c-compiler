@@ -24,7 +24,7 @@ void gen_stmt_do(stmt *s)
 	out_label(s->lbl_continue);
 	gen_expr(s->expr, s->symtab);
 
-	out_jz(begin);
+	out_jtrue(begin);
 
 	out_label(s->lbl_break);
 

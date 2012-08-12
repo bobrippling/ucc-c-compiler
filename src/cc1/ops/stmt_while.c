@@ -34,7 +34,8 @@ void gen_stmt_while(stmt *s)
 
 	gen_expr(s->expr, s->symtab);
 
-	out_jz(s->lbl_break);
+	out_op_unary(op_not);
+	out_jtrue(s->lbl_break);
 
 	gen_stmt(s->lhs);
 

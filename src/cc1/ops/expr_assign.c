@@ -96,12 +96,14 @@ void gen_expr_assign(expr *e, symtable *stab)
 	/*if(decl_is_struct_or_union(e->tree_type))*/
 	fold_disallow_st_un(e, "copy (TODO)");
 
-	gen_expr(e->rhs, stab);
-
 	UCC_ASSERT(e->lhs->f_store, "invalid store expression %s (no f_store())", e->lhs->f_str());
 
-	/* store back to the sym's home */
+	/* store to the sym's home */
 	e->lhs->f_store(e->lhs, stab);
+
+	gen_expr(e->rhs, stab);
+
+	out_store();
 
 	/* if e->assign_is_post, the stack now just has the old value on */
 }
