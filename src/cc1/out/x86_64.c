@@ -116,13 +116,15 @@ void impl_comment(const char *fmt, va_list l)
 
 void out_func_prologue(int stack_res, int nargs)
 {
+	(void)nargs;
+
 	out_asm("push %%rbp");
 	out_asm("movq %%rsp, %%rbp");
 
-	if(stack_res || nargs){
+	if(stack_res){
 		int i, n_reg_args;
 
-		out_asm("subq $%d, %%rsp", stack_res + nargs * platform_word_size());
+		out_asm("subq $0x%x, %%rsp", stack_res);
 
 		n_reg_args = MIN(nargs, N_CALL_REGS);
 
@@ -387,11 +389,8 @@ void impl_call(const int nargs)
 {
 	int i, ncleanup;
 
-	for(i = 0; i < nargs; i++){
+	for(i = 0; i < MIN(nargs, N_CALL_REGS); i++){
 		int ri;
-
-		if(!call_regs[i].name)
-			break;
 
 		ri = call_regs[i].idx;
 		if(ri != -1)
@@ -410,7 +409,7 @@ void impl_call(const int nargs)
 	out_asm("callq %s", x86_call_jmp_target(vtop));
 
 	if(ncleanup)
-		out_asm("addq $%d, %%rsp", ncleanup * platform_word_size());
+		out_asm("addq $0x%x, %%rsp", ncleanup * platform_word_size());
 
 	/* return type */
 	vtop_clear();

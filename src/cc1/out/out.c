@@ -261,8 +261,8 @@ void out_push_sym(sym *s)
 			 * if it's less than N_CALL_ARGS, it's below rbp, otherwise it's above
 			 */
 			vtop->bits.off_from_bp = (s->offset < N_CALL_REGS
-				?  s->offset + 1
-				: -s->offset + 2)
+				? -(s->offset + 1)
+				:   s->offset - N_CALL_REGS + 2)
 				* platform_word_size();
 			break;
 
