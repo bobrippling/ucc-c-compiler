@@ -183,13 +183,19 @@ invalid:
 		sym *const sym = e->expr->sym;
 		int nargs = 0;
 
-		for(nargs = 0; e->funcargs && e->funcargs[nargs]; nargs++)
-			gen_expr(e->funcargs[nargs], stab);
-
 		if(sym && !decl_is_fptr(sym->decl))
 			out_push_lbl(sym->decl->spel, 0);
 		else
 			gen_expr(e->expr, stab);
+
+		if(e->funcargs){
+			expr **aiter;
+
+			for(aiter = e->funcargs; *aiter; aiter++, nargs++);
+
+			for(aiter--; aiter >= e->funcargs; aiter--)
+				gen_expr(*aiter, stab);
+		}
 
 		out_call(nargs);
 	}

@@ -34,8 +34,18 @@ void vpush(void)
 			ICW("volatile flag data on vstack, need to save");
 
 		vtop++;
-		memset(vtop, 0, sizeof *vtop);
+		vtop_clear();
 	}
+}
+
+void v_clear(struct vstack *vp)
+{
+	memset(vp, 0, sizeof *vp);
+}
+
+void vtop_clear(void)
+{
+	v_clear(vtop);
 }
 
 void vpop(void)
@@ -50,10 +60,14 @@ void vpop(void)
 	}
 }
 
+void out_assert_vtop_null(void)
+{
+	UCC_ASSERT(!vtop, "vtop not null");
+}
+
 void vswap(void)
 {
 	struct vstack tmp;
-
 	memcpy(&tmp, vtop, sizeof tmp);
 	memcpy(vtop, &vtop[-1], sizeof tmp);
 	memcpy(&vtop[-1], &tmp, sizeof tmp);
@@ -96,6 +110,7 @@ int v_to_reg(struct vstack *conv)
 
 		impl_load(conv, reg);
 
+		v_clear(conv);
 		conv->type = REG;
 		conv->bits.reg = reg;
 	}
@@ -242,7 +257,13 @@ void out_push_sym(sym *s)
 
 		case sym_arg:
 			vtop->type = STACK;
-			vtop->bits.off_from_bp = s->offset + 2 * platform_word_size();
+			/*
+			 * if it's less than N_CALL_ARGS, it's below rbp, otherwise it's above
+			 */
+			vtop->bits.off_from_bp = (s->offset < N_CALL_REGS
+				?  s->offset + 1
+				: -s->offset + 2)
+				* platform_word_size();
 			break;
 
 		case sym_global:
@@ -286,11 +307,6 @@ void out_cast(decl *from, decl *to)
 void out_call(int nargs)
 {
 	impl_call(nargs);
-
-	while(nargs --> 0){
-		printf("popping %d %d\n", vtop->type, vtop->bits.reg);
-		vpop();
-	}
 }
 
 void out_jmp(void)

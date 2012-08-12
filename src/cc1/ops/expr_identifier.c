@@ -87,7 +87,7 @@ void gen_expr_identifier(expr *e, symtable *stab)
 {
 	(void)stab;
 
-	if(e->sym && !decl_is_func(e->sym->decl)){
+	if(e->sym){
 		/*
 		 * if it's an array, lea, else, load
 		 * note that array-leas load the bottom address (smallest value)
@@ -95,9 +95,12 @@ void gen_expr_identifier(expr *e, symtable *stab)
 		 *
 		 * also never do this for functions
 		 */
-		const int array = decl_has_array(e->sym->decl);
 
-		(array ? out_push_sym_addr : out_push_sym)(e->sym);
+		if(decl_has_array(e->sym->decl) || decl_is_func(e->sym->decl)){
+			out_push_sym_addr(e->sym);
+		}else{
+			out_push_sym(e->sym);
+		}
 
 	}else{
 		/* no symbol, or a function */

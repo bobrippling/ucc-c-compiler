@@ -5,6 +5,7 @@
 
 #include "../../util/util.h"
 #include "../../util/alloc.h"
+#include "../../util/platform.h"
 #include "../data_structs.h"
 #include "vstack.h"
 #include "x86_64.h"
@@ -13,18 +14,38 @@
 #include "common.h"
 #include "out.h"
 
+#ifndef MIN
+#  define MIN(x, y) ((x) < (y) ? (x) : (y))
+#endif
+
 #define RET_REG 0
 #define REG_STR_SZ 8
 
 #define REG_A 0
+#define REG_B 1
+#define REG_C 2
 #define REG_D 3
 
 #define VSTACK_STR_SZ 128
 
-const char regs[] = "abcd";
+#define MOV_OR_LEA(vp) ((vp)->is_addr ? "lea" : "mov")
 
-static const char *
-reg_str(int reg)
+
+static const char regs[] = "abcd";
+static const struct
+{
+	const char *name;
+	int idx;
+} call_regs[] = {
+	{ "rdi", -1 },
+	{ "rsi", -1 },
+	{ "rdx", REG_D },
+	{ "rcx", REG_C },
+	{ "r8",  -1 },
+	{ "r9",  -1 },
+};
+
+static const char *reg_str(int reg)
 {
 	const char *regpre, *regpost;
 	static char regstr[REG_STR_SZ];
@@ -38,8 +59,7 @@ reg_str(int reg)
 	return regstr;
 }
 
-static const char *
-vstack_str_r(char buf[VSTACK_STR_SZ], struct vstack *vs)
+static const char *vstack_str_r(char buf[VSTACK_STR_SZ], struct vstack *vs)
 {
 	switch(vs->type){
 		case CONST:
@@ -69,15 +89,15 @@ vstack_str_r(char buf[VSTACK_STR_SZ], struct vstack *vs)
 	return buf;
 }
 
-static const char *
-vstack_str(struct vstack *vs)
+static const char *vstack_str(struct vstack *vs)
 {
 	static char buf[VSTACK_STR_SZ];
 	return vstack_str_r(buf, vs);
 }
 
-static void
-out_asm(const char *fmt, ...)
+static void out_asm(const char *fmt, ...) __printflike(1, 2);
+
+static void out_asm(const char *fmt, ...)
 {
 	va_list l;
 	putchar('\t');
@@ -87,38 +107,44 @@ out_asm(const char *fmt, ...)
 	putchar('\n');
 }
 
-void
-impl_comment(const char *fmt, va_list l)
+void impl_comment(const char *fmt, va_list l)
 {
 	printf("\t// ");
 	vprintf(fmt, l);
 	printf("\n");
 }
 
-void
-out_func_prologue(int offset)
+void out_func_prologue(int stack_res, int nargs)
 {
 	out_asm("push %%rbp");
 	out_asm("movq %%rsp, %%rbp");
-	if(offset)
-		out_asm("subq $%d, %%rsp", offset);
+
+	if(stack_res || nargs){
+		int i, n_reg_args;
+
+		out_asm("subq $%d, %%rsp", stack_res + nargs * platform_word_size());
+
+		n_reg_args = MIN(nargs, N_CALL_REGS);
+
+		for(i = 0; i < n_reg_args; i++){
+			out_asm("mov_ %%%s, -0x%x(%%rbp)",
+					call_regs[i].name,
+					platform_word_size() * (i + 1));
+		}
+	}
 }
 
-void
-out_func_epilogue(void)
+void out_func_epilogue(void)
 {
 	out_asm("leaveq");
 	out_asm("retq");
 }
 
-void
-out_pop_func_ret(decl *d)
+void out_pop_func_ret(decl *d)
 {
-	const int r = RET_REG;
-
 	(void)d;
 
-	impl_load(vtop, r);
+	impl_load(vtop, RET_REG);
 	vpop();
 }
 
@@ -140,8 +166,7 @@ static const char *x86_cmp(enum op_type cmp, int is_signed)
 	return NULL;
 }
 
-void
-impl_load(struct vstack *from, int reg)
+static void x86_load(struct vstack *from, const char *regstr)
 {
 	if(from->type == FLAG){
 		int is_signed = from->d ? from->d->type->is_signed : 1;
@@ -151,21 +176,24 @@ impl_load(struct vstack *from, int reg)
 
 		out_asm("set%s %%%s",
 				x86_cmp(from->bits.cmp, is_signed),
-				reg_str(reg));
+				regstr);
 	}else{
-		char buf[REG_STR_SZ];
-
-		strcpy(buf, reg_str(reg));
-
 		out_asm("%s_ %s, %%%s",
-				from->is_addr ? "lea" : "mov",
+				MOV_OR_LEA(from),
 				vstack_str(from),
-				buf);
+				regstr);
 	}
 }
 
-void
-impl_store(int reg, struct vstack *where)
+void impl_load(struct vstack *from, int reg)
+{
+	if(from->type == REG && reg == from->bits.reg)
+		return;
+
+	x86_load(from, reg_str(reg));
+}
+
+void impl_store(int reg, struct vstack *where)
 {
 	char regstr[REG_STR_SZ];
 
@@ -175,11 +203,12 @@ impl_store(int reg, struct vstack *where)
 	UCC_ASSERT(where->type != CONST && where->type != FLAG, "invalid store");
 
 	strcpy(regstr, reg_str(reg));
-	out_asm("mov_ %%%s, %s", regstr, vstack_str(where));
+	out_asm("mov_ %%%s, %s",
+			regstr,
+			vstack_str(where));
 }
 
-void
-impl_op(enum op_type op)
+void impl_op(enum op_type op)
 {
 	const char *opc;
 	int normalise = 0;
@@ -237,6 +266,7 @@ impl_op(enum op_type op)
 
 			vpop();
 
+			vtop_clear();
 			vtop->type = REG;
 			vtop->bits.reg = op == op_modulus ? REG_D : REG_A;
 			return;
@@ -256,6 +286,7 @@ impl_op(enum op_type op)
 					vstack_str_r(buf, vtop));
 
 			vpop();
+			vtop_clear();
 			vtop->type = FLAG;
 			vtop->bits.cmp = op;
 
@@ -278,10 +309,12 @@ impl_op(enum op_type op)
 
 		/* vtop[-1] must be a reg - try to swap first */
 		if(vtop[-1].type != REG){
-			if(vtop->type == REG)
+			if(vtop->type == REG){
+				ICW("vswapping - broken for subtract/div");
 				vswap();
-			else
+			}else{
 				v_to_reg(&vtop[-1]);
+			}
 		}
 
 		out_asm("%s %s, %s", opc,
@@ -352,21 +385,36 @@ void impl_jmp()
 
 void impl_call(const int nargs)
 {
-	const char *call_regs[] = {
-		"rdi",
-		"rsi",
-		"rdx",
-		"rcx",
-		"r8",
-		"r9",
-	};
-	int i;
+	int i, ncleanup;
 
 	for(i = 0; i < nargs; i++){
-		/*out_store(vtop, call_regs[i]); * something like this... */
+		int ri;
+
+		if(!call_regs[i].name)
+			break;
+
+		ri = call_regs[i].idx;
+		if(ri != -1)
+			v_freeup_reg(ri, 1);
+
+		x86_load(vtop, call_regs[i].name);
+		vpop();
+	}
+	/* push remaining args onto the stack */
+	ncleanup = nargs - i;
+	for(; i < nargs; i++){
+		out_asm("pushq %s", vstack_str(vtop));
+		vpop();
 	}
 
-	out_asm("call %s", x86_call_jmp_target(vtop));
+	out_asm("callq %s", x86_call_jmp_target(vtop));
 
-	out_asm("// TODO: stack clean (%d)", nargs);
+	if(ncleanup)
+		out_asm("addq $%d, %%rsp", ncleanup * platform_word_size());
+
+	/* return type */
+	vtop_clear();
+	vtop->type = REG;
+	vtop->bits.reg = REG_A;
+	vtop->d = NULL; /* TODO */
 }

@@ -33,6 +33,7 @@ struct vstack
 extern struct vstack *vtop;
 
 void vpop(void);
+void vtop_clear(void);
 void vswap(void);
 int  v_unused_reg(int stack_as_backup);
 

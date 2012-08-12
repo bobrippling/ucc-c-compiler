@@ -27,10 +27,12 @@ void out_jmp( void); /* jmp to *pop() */
 void out_jz( const char *);
 void out_jnz(const char *);
 
-void out_func_prologue(int offset); /* push rbp, sub rsp, ... */
+void out_func_prologue(int stack_res, int nargs); /* push rbp, sub rsp, ... */
 void out_func_epilogue(void); /* mov rsp, rbp; ret */
 void out_label(const char *);
 
 void out_comment(const char *, ...);
+
+void out_assert_vtop_null(void);
 
 #endif

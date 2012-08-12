@@ -5,6 +5,7 @@
 #include <ctype.h>
 
 #include "../util/util.h"
+#include "../util/dynarray.h"
 #include "data_structs.h"
 #include "cc1.h"
 #include "macros.h"
@@ -84,10 +85,18 @@ void gen_asm_global(decl *d)
 
 	/* order of the if matters */
 	if(d->func_code){
-		const int offset = d->func_code->symtab->auto_total_size;
+		int nargs = 0;
+		decl **aiter;
+
+		for(aiter = d->func_code->symtab->decls; aiter && *aiter; aiter++)
+			if((*aiter)->sym->type == sym_arg)
+				nargs++;
 
 		out_label(d->spel);
-		out_func_prologue(offset);
+
+		out_func_prologue(
+				d->func_code->symtab->auto_total_size,
+				nargs);
 
 		curfunc_lblfin = out_label_code(d->spel);
 

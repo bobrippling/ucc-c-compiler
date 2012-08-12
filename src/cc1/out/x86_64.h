@@ -17,5 +17,6 @@ void impl_call(int nargs);
 void impl_call_fin(int nargs);
 
 #define N_REGS 4
+#define N_CALL_REGS 6
 
 #endif
