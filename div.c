@@ -1,5 +1,0 @@
-int main()
-{
-	int a = 2;
-	return 8 / a;
-}
