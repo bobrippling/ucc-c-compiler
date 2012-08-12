@@ -34,8 +34,8 @@ void vpush(void)
 			ICW("volatile flag data on vstack, need to save");
 
 		vtop++;
-		vtop_clear();
 	}
+	vtop_clear();
 }
 
 void v_clear(struct vstack *vp)
