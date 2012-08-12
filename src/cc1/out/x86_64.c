@@ -303,7 +303,7 @@ void impl_op(enum op_type op)
 			ICE("TODO: %s", op_to_str(op));
 
 		default:
-			ICW("invalid op %s", op_to_str(op));
+			ICE("invalid op %s", op_to_str(op));
 	}
 
 	{
