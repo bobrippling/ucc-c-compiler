@@ -436,7 +436,7 @@ static void op_shortcircuit(expr *e, symtable *tab)
 #endif
 }
 
-void op_operate_struct(expr *e, symtable *tab)
+static void op_struct(expr *e, symtable *tab)
 {
 	(void)tab;
 
@@ -466,7 +466,7 @@ void gen_expr_op(expr *e, symtable *tab)
 	switch(e->op){
 		case op_struct_dot:
 		case op_struct_ptr:
-			op_operate_struct(e, tab);
+			op_struct(e, tab);
 			break;
 
 		case op_orsc:
@@ -503,6 +503,7 @@ void gen_expr_op_store(expr *store, symtable *stab)
 			gen_expr(store->lhs, stab);
 
 			out_push_i(NULL, store->rhs->tree_type->struct_offset);
+			out_op(op_plus);
 			out_comment("offset of member %s", store->rhs->spel);
 			return;
 
