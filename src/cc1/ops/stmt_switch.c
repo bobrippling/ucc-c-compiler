@@ -98,6 +98,11 @@ void gen_stmt_switch(stmt *s)
 		stmt *cse = *titer;
 		intval iv;
 
+		if(cse->expr->expr_is_default){
+			tdefault = cse;
+			continue;
+		}
+
 		const_fold_need_val(cse->expr, &iv);
 
 		UCC_ASSERT(cse->expr->expr_is_default || !(iv.suffix & VAL_UNSIGNED),
@@ -109,7 +114,6 @@ void gen_stmt_switch(stmt *s)
 
 			/* TODO: proper signed/unsiged format - out_op() */
 			const_fold_need_val(cse->expr2, &max);
-
 
 			out_dup();
 			out_push_iv(cse->expr->tree_type, &iv);
@@ -126,12 +130,7 @@ void gen_stmt_switch(stmt *s)
 			out_label(skip);
 			free(skip);
 
-		}else if(cse->expr->expr_is_default){
-			tdefault = cse;
-
 		}else{
-			/* FIXME: address-of, etc? */
-
 			out_dup();
 			out_push_iv(cse->expr->tree_type, &iv);
 
