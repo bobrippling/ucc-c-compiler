@@ -61,6 +61,16 @@ void vpop(void)
 	}
 }
 
+enum vstore v_deref_type(enum vstore store)
+{
+	switch(store){
+		case STACK_ADDR: return STACK;
+		case LBL_ADDR:   return LBL;
+		default: break;
+	}
+	return -1;
+}
+
 void out_assert_vtop_null(void)
 {
 	UCC_ASSERT(!vtop, "vtop not null");
@@ -74,9 +84,22 @@ void vswap(void)
 	memcpy(&vtop[-1], &tmp, sizeof tmp);
 }
 
+void v_to_reg_if_needed(struct vstack *vp)
+{
+	switch(vp->type){
+		case STACK_ADDR:
+		case LBL_ADDR:
+			v_to_reg(vp);
+		default:
+			break;
+	}
+}
+
 void vtop2_prepare_op(void)
 {
-	/* both can't be const, memory, or flags */
+	v_to_reg_if_needed(vtop);
+	v_to_reg_if_needed(&vtop[-1]);
+
 	if(vtop->type == vtop[-1].type && vtop->type != REG){
 		/* prefer putting vtop[-1] in a reg, since that's returned after */
 		v_to_reg(&vtop[-1]);
@@ -143,10 +166,13 @@ struct vstack *v_find_reg(int reg)
 
 void v_save_reg(struct vstack *vp)
 {
+	/* freeup this reg */
 	switch(vp->type){
 		case CONST:
+		case STACK_ADDR:
 		case STACK:
 		case LBL:
+		case LBL_ADDR:
 			break;
 
 		case FLAG:
@@ -155,26 +181,29 @@ void v_save_reg(struct vstack *vp)
 
 		case REG:
 		{
-			struct vstack store;
 			int r;
 
 			/* attempt to save to a register first */
 			r = v_unused_reg(0);
 
 			if(r >= 0){
-				store.type = REG;
-				store.d = vp->d;
-				store.bits.reg = r;
+				impl_reg_cp(vp, r);
+
+				v_clear(vp);
+				vp->type = REG;
+				vp->bits.reg = r;
+
 			}else{
-				store.type = STACK;
+				struct vstack store;
+
+				store.type = STACK_ADDR;
 				store.d = vp->d;
 				store.bits.off_from_bp = 23; /* TODO */
 				ICW("TODO: stack offset");
+
+				impl_store(vp, &store);
+				memcpy(vp, &store, sizeof store);
 			}
-
-			impl_store(vp->bits.reg, &store);
-
-			memcpy(vp, &store, sizeof store);
 		}
 	}
 }
@@ -200,8 +229,8 @@ static void v_inv_cmp(struct vstack *vp)
 		OPPOSITE(lt, ge);
 		OPPOSITE(ge, lt);
 
-		OPPOSITE(z, nz);
-		OPPOSITE(nz, z);
+		/*OPPOSITE(z, nz);
+		OPPOSITE(nz, z);*/
 #undef OPPOSITE
 	}
 	ICE("invalid op");
@@ -233,10 +262,9 @@ void out_push_i(decl *d, int i)
 void out_push_lbl(char *s, int pic)
 {
 	vpush();
-	vtop->type = LBL;
+	vtop->type = LBL_ADDR;
 	vtop->bits.lbl.str = s;
 	vtop->bits.lbl.pic = pic;
-	vtop->is_addr = 1;
 }
 
 void out_dup(void)
@@ -252,16 +280,7 @@ void out_store()
 	val   = &vtop[0];
 	store = &vtop[-1];
 
-	/*
-	 * TODO: don't force val to be in a reg
-	 * currently i = 5:
-	 *   mov $5, eax
-	 *   mov eax, 0x8(%rbp)
-	 * could do:
-	 *   mov $5, 0x8(%rbp)
-	 */
-
-	impl_store(v_to_reg(val), store);
+	impl_store(val, store);
 
 	/* pop the store, but not the value */
 	vpop();
@@ -275,7 +294,17 @@ void out_normalise(void)
 void out_push_sym_addr(sym *s)
 {
 	out_push_sym(s);
-	vtop->is_addr = 1;
+
+	switch(vtop->type){
+		case STACK:
+			vtop->type = STACK_ADDR;
+			break;
+		case LBL:
+			vtop->type = LBL_ADDR;
+			break;
+		default:
+			ICE("invalid sym addr");
+	}
 }
 
 void out_push_sym(sym *s)
@@ -323,11 +352,14 @@ void out_op_unary(enum op_type op)
 {
 	switch(op){
 		case op_deref:
-			if(vtop->is_addr){
-				vtop->is_addr = 0;
+		{
+			enum vstore derefed = v_deref_type(vtop->type);
+			if((signed)derefed != -1){
+				vtop->type = derefed;
 				return;
 			}
 			break;
+		}
 
 		case op_plus:
 			return;
@@ -357,7 +389,9 @@ void out_op_unary(enum op_type op)
 
 				case REG:
 				case STACK:
+				case STACK_ADDR:
 				case LBL:
+				case LBL_ADDR:
 					break;
 			}
 	}

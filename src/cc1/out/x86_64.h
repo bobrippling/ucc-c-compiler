@@ -3,8 +3,10 @@
 
 void impl_comment(const char *, va_list);
 
-void impl_store(int reg, struct vstack *where);
+void impl_store(struct vstack *from, struct vstack *to);
 void impl_load(struct vstack *from, int reg);
+
+void impl_reg_cp(struct vstack *from, int r);
 
 void impl_op(enum op_type);
 void impl_op_unary(enum op_type); /* returns reg that the result is in */

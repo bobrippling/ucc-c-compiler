@@ -28,8 +28,6 @@
 
 #define VSTACK_STR_SZ 128
 
-#define MOV_OR_LEA(vp) ((vp)->is_addr ? "lea" : "mov")
-
 
 static const char regs[] = "abcd";
 static const struct
@@ -69,6 +67,7 @@ static const char *vstack_str_r(char buf[VSTACK_STR_SZ], struct vstack *vs)
 		case FLAG:
 			ICE("%s shouldn't be called with cmp-flag data", __func__);
 
+		case LBL_ADDR: /* we trust that the caller decides on deref/lea */
 		case LBL:
 			SNPRINTF(buf, VSTACK_STR_SZ, "%s%s",
 					vs->bits.lbl.str, vs->bits.lbl.pic ? "(%%rip)" : "");
@@ -78,6 +77,7 @@ static const char *vstack_str_r(char buf[VSTACK_STR_SZ], struct vstack *vs)
 			SNPRINTF(buf, VSTACK_STR_SZ, "%%%s", reg_str(vs->bits.reg));
 			break;
 
+		case STACK_ADDR: /* similar trust to above */
 		case STACK:
 		{
 			int n = vs->bits.off_from_bp;
@@ -169,8 +169,8 @@ static const char *x86_cmp(enum flag_cmp cmp, decl *d)
 		OP(gt, "gt", "a");
 #undef OP
 
-		case flag_z:  return "z";
-		case flag_nz: return "nz";
+		/*case flag_z:  return "z";
+		case flag_nz: return "nz";*/
 	}
 	return NULL;
 }
@@ -197,16 +197,28 @@ static enum flag_cmp op_to_flag(enum op_type op)
 
 static void x86_load(struct vstack *from, const char *regstr)
 {
-	if(from->type == FLAG){
-		out_asm("set%s %%%s",
-				x86_cmp(from->bits.flag, from->d),
-				regstr);
-	}else{
-		out_asm("%s_ %s, %%%s",
-				MOV_OR_LEA(from),
-				vstack_str(from),
-				regstr);
+	int lea = 0;
+
+	switch(from->type){
+		case FLAG:
+			out_asm("set%s %%%s",
+					x86_cmp(from->bits.flag, from->d),
+					regstr);
+			return;
+
+		case LBL_ADDR:
+		case STACK_ADDR:
+			lea = 1;
+			from->type = v_deref_type(from->type);
+
+		default:
+			break;
 	}
+
+	out_asm("%s_ %s, %%%s",
+			lea ? "lea" : "mov",
+			vstack_str(from),
+			regstr);
 }
 
 void impl_load(struct vstack *from, int reg)
@@ -217,19 +229,60 @@ void impl_load(struct vstack *from, int reg)
 	x86_load(from, reg_str(reg));
 }
 
-void impl_store(int reg, struct vstack *where)
+void impl_store(struct vstack *from, struct vstack *to)
 {
-	char regstr[REG_STR_SZ];
+	/* move from to *to, using registers if necessary */
+	int deref = 0;
 
-	if(where->type == REG && reg == where->bits.reg)
-		return;
+	/* from must be either a reg, value or flag */
+	switch(from->type){
+		case CONST:
+		case REG:
+		case FLAG:
+			break;
 
-	UCC_ASSERT(where->type != CONST && where->type != FLAG, "invalid store");
+		case STACK_ADDR:
+		case LBL_ADDR:
+		case STACK:
+		case LBL:
+			v_to_reg(from);
+	}
 
-	strcpy(regstr, reg_str(reg));
-	out_asm("mov_ %%%s, %s",
-			regstr,
-			vstack_str(where));
+	switch(to->type){
+		case CONST:
+		case FLAG:
+			ICE("invalid store %d", to->type);
+
+		case STACK: /* storing to a value pointed to by the stack/a label */
+		case LBL:
+			v_to_reg(to);
+			/* fall */
+		case REG: /* storing into an address pointed to by reg */
+			deref = 1;
+			/* fall */
+
+		case STACK_ADDR: /* storing onto the stack/into a label */
+		case LBL_ADDR:
+		{
+			char buf[VSTACK_STR_SZ];
+
+			out_asm("mov_ %s, %s%s%s",
+					vstack_str_r(buf, from),
+					deref ? "(" : "",
+					vstack_str(to),
+					deref ? ")" : ""
+				);
+		}
+	}
+}
+
+void impl_reg_cp(struct vstack *from, int r)
+{
+	char buf[VSTACK_STR_SZ];
+
+	out_asm("mov_ %s, %%%s",
+			vstack_str_r(buf, from),
+			reg_str(r));
 }
 
 void impl_op(enum op_type op)
@@ -387,7 +440,7 @@ static const char *x86_call_jmp_target(struct vstack *vp)
 {
 	static char buf[VSTACK_STR_SZ + 2];
 
-	if(vp->type == LBL)
+	if(vp->type == LBL_ADDR)
 		return vp->bits.lbl.str;
 
 	SNPRINTF(buf, sizeof buf, "*%%%s", reg_str(v_to_reg(vp)));
@@ -414,10 +467,14 @@ void impl_jtrue(const char *lbl)
 				out_asm("jmp %s // constant jmp condition %d", lbl, vtop->bits.val);
 			break;
 
-		case REG:
 		case STACK:
 		case LBL:
-			out_asm("jnz %s", vstack_str(vtop));
+		case LBL_ADDR:
+		case STACK_ADDR:
+			v_to_reg(vtop);
+
+		case REG:
+			out_asm("jnz %s", x86_call_jmp_target(vtop));
 	}
 
 	vpop();
