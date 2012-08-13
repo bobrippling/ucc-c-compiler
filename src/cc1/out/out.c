@@ -10,8 +10,9 @@
 #include "vstack.h"
 #include "x86_64.h"
 #include "../../util/platform.h"
+#include "../cc1.h"
 
-#define TODO() printf("// TODO: %s\n", __func__)
+#define TODO() fprintf(cc1_out, "// TODO: %s\n", __func__)
 
 /*
  * This entire stack-output idea was inspired by tinycc, and improved slightly,
@@ -396,7 +397,7 @@ void out_jfalse(const char *lbl)
 
 void out_label(const char *lbl)
 {
-	printf("%s:\n", lbl);
+	fprintf(cc1_out, "%s:\n", lbl);
 }
 
 void out_comment(const char *fmt, ...)

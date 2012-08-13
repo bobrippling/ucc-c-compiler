@@ -97,21 +97,26 @@ static const char *vstack_str(struct vstack *vs)
 
 static void out_asm(const char *fmt, ...) __printflike(1, 2);
 
+static void out_asmv(const char *fmt, va_list l)
+{
+	fputc('\t', cc1_out);
+	vfprintf(cc1_out, fmt, l);
+	fputc('\n', cc1_out);
+}
+
 static void out_asm(const char *fmt, ...)
 {
 	va_list l;
-	putchar('\t');
 	va_start(l, fmt);
-	vprintf(fmt, l);
+	out_asmv(fmt, l);
 	va_end(l);
-	putchar('\n');
 }
 
 void impl_comment(const char *fmt, va_list l)
 {
-	printf("\t// ");
-	vprintf(fmt, l);
-	printf("\n");
+	fprintf(cc1_out, "\t// ");
+	vfprintf(cc1_out, fmt, l);
+	fputc('\n', cc1_out);
 }
 
 void out_func_prologue(int stack_res, int nargs)
