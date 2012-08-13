@@ -140,14 +140,16 @@ void gen_stmt_switch(stmt *s)
 		}
 	}
 
+	out_pop(); /* free the value we switched on asap */
+
 	out_push_lbl(tdefault ? tdefault->expr->spel : s->lbl_break, 0);
 	out_jmp();
+
+	/* out-stack must be empty from here on */
 
 	gen_stmt(s->lhs); /* the actual code inside the switch */
 
 	out_label(s->lbl_break);
-
-	out_pop(); /* val switched on: TODO: do this earlier, free the register */
 }
 
 int switch_passable(stmt *s)
