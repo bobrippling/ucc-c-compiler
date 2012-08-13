@@ -282,7 +282,8 @@ void out_store()
 
 	impl_store(val, store);
 
-	/* pop the store, but not the value */
+	/* swap, popping the store, but not the value */
+	vswap();
 	vpop();
 }
 
