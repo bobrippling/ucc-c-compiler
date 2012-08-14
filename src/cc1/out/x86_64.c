@@ -43,18 +43,17 @@ static const struct
 	{ "r9",  -1 },
 };
 
-static const char *reg_str(int reg)
+static const char *reg_str_r(char buf[REG_STR_SZ], int reg)
 {
 	const char *regpre, *regpost;
-	static char regstr[REG_STR_SZ];
 
 	UCC_ASSERT((unsigned)reg < N_REGS, "invalid x86 reg %d", reg);
 
 	asm_reg_name(NULL, &regpre, &regpost);
 
-	snprintf(regstr, sizeof regstr, "%s%c%s", regpre, regs[reg], regpost);
+	snprintf(buf, REG_STR_SZ, "%s%c%s", regpre, regs[reg], regpost);
 
-	return regstr;
+	return buf;
 }
 
 static const char *vstack_str_r(char buf[VSTACK_STR_SZ], struct vstack *vs)
@@ -74,7 +73,8 @@ static const char *vstack_str_r(char buf[VSTACK_STR_SZ], struct vstack *vs)
 			break;
 
 		case REG:
-			SNPRINTF(buf, VSTACK_STR_SZ, "%%%s", reg_str(vs->bits.reg));
+			*buf = '%';
+			reg_str_r(buf + 1, vs->bits.reg);
 			break;
 
 		case STACK_ADDR: /* similar trust to above */
@@ -223,10 +223,16 @@ static void x86_load(struct vstack *from, const char *regstr)
 
 void impl_load(struct vstack *from, int reg)
 {
+	char buf[REG_STR_SZ];
+
 	if(from->type == REG && reg == from->bits.reg)
 		return;
 
-	x86_load(from, reg_str(reg));
+	x86_load(from, reg_str_r(buf, reg));
+
+	v_clear(from);
+	from->type = REG;
+	from->bits.reg = reg;
 }
 
 void impl_store(struct vstack *from, struct vstack *to)
@@ -238,8 +244,16 @@ void impl_store(struct vstack *from, struct vstack *to)
 	switch(from->type){
 		case CONST:
 		case REG:
-		case FLAG:
 			break;
+
+		case FLAG:
+			if(to->type == REG){
+				/* setting a register from a flag - easy */
+				impl_load(from, to->bits.reg);
+				return;
+			}
+			/* else flag needs loading to a reg */
+			/* fall */
 
 		case STACK_ADDR:
 		case LBL_ADDR:
@@ -278,17 +292,25 @@ void impl_store(struct vstack *from, struct vstack *to)
 
 void impl_reg_cp(struct vstack *from, int r)
 {
-	char buf[VSTACK_STR_SZ];
+	char buf_v[VSTACK_STR_SZ];
+	char buf_r[REG_STR_SZ];
+
+	if(from->type == REG && from->bits.reg == r)
+		return;
+
+	reg_str_r(buf_r, r);
 
 	out_asm("mov_ %s, %%%s",
-			vstack_str_r(buf, from),
-			reg_str(r));
+			vstack_str_r(buf_v, from),
+			buf_r);
 }
 
 void impl_op(enum op_type op)
 {
 	const char *opc;
 	int normalise = 0;
+
+	vtop2_prepare_op();
 
 	switch(op){
 #define OP(e, s) case op_ ## e: opc = s; break
@@ -359,8 +381,6 @@ void impl_op(enum op_type op)
 		{
 			char buf[VSTACK_STR_SZ];
 
-			vtop2_prepare_op();
-
 			out_asm("cmp_ %s, %s",
 					vstack_str(&vtop[-1]),
 					vstack_str_r(buf, vtop));
@@ -387,8 +407,6 @@ void impl_op(enum op_type op)
 	{
 		char buf[VSTACK_STR_SZ];
 
-		vtop2_prepare_op();
-
 		out_asm("%s %s, %s", opc,
 				vstack_str_r(buf, &vtop[ 0]),
 				vstack_str(       &vtop[-1]));
@@ -405,6 +423,8 @@ void impl_op_unary(enum op_type op)
 {
 	const char *opc;
 
+	v_prepare_op(vtop);
+
 	switch(op){
 		default:
 			ICE("invalid unary op %s", op_to_str(op));
@@ -416,10 +436,11 @@ void impl_op_unary(enum op_type op)
 		case op_deref:
 		{
 			const int reg = v_to_reg(vtop);
-			const char *rs = reg_str(reg);
+			char rs[REG_STR_SZ];
+
+			reg_str_r(rs, reg);
 
 			out_asm("mov_ (%%%s), %%%s", rs, rs);
-
 			return;
 		}
 
@@ -436,6 +457,17 @@ void impl_op_unary(enum op_type op)
 		out_normalise();
 }
 
+void impl_normalise(void)
+{
+	char buf[REG_STR_SZ];
+
+	if(vtop->type != REG)
+		v_to_reg(vtop);
+
+	out_asm("and_ 0x1, %%%s // normalise",
+			reg_str_r(buf, vtop->bits.reg));
+}
+
 static const char *x86_call_jmp_target(struct vstack *vp)
 {
 	static char buf[VSTACK_STR_SZ + 2];
@@ -443,7 +475,8 @@ static const char *x86_call_jmp_target(struct vstack *vp)
 	if(vp->type == LBL_ADDR)
 		return vp->bits.lbl.str;
 
-	SNPRINTF(buf, sizeof buf, "*%%%s", reg_str(v_to_reg(vp)));
+	strcpy(buf, "*%");
+	reg_str_r(buf + 2, v_to_reg(vp));
 
 	return buf;
 }
@@ -468,13 +501,20 @@ void impl_jtrue(const char *lbl)
 			break;
 
 		case STACK:
+		case STACK_ADDR:
 		case LBL:
 		case LBL_ADDR:
-		case STACK_ADDR:
 			v_to_reg(vtop);
 
 		case REG:
-			out_asm("jnz %s", x86_call_jmp_target(vtop));
+		{
+			char buf[REG_STR_SZ];
+
+			reg_str_r(buf, vtop->bits.reg);
+
+			out_asm("test %s, %s", buf, buf);
+			out_asm("jnz %s", lbl);
+		}
 	}
 
 	vpop();

@@ -32,7 +32,7 @@ void vpush(void)
 				(void *)vtop, (void *)vstack, vtop - vstack);
 
 		if(vtop->type == FLAG)
-			v_save_reg(vtop);
+			v_to_reg(vtop);
 
 		vtop++;
 	}
@@ -84,12 +84,22 @@ void vswap(void)
 	memcpy(&vtop[-1], &tmp, sizeof tmp);
 }
 
-void v_to_reg_if_needed(struct vstack *vp)
+void v_prepare_op(struct vstack *vp)
 {
 	switch(vp->type){
 		case STACK_ADDR:
 		case LBL_ADDR:
+			/* need to load their address into a reg for dereffing */
+
+		case STACK:
+		case LBL:
+			/* need to pull the values from the stack */
+
+		case FLAG:
+			/* obviously can't have a flag in cmp/mov code */
+
 			v_to_reg(vp);
+
 		default:
 			break;
 	}
@@ -97,8 +107,8 @@ void v_to_reg_if_needed(struct vstack *vp)
 
 void vtop2_prepare_op(void)
 {
-	v_to_reg_if_needed(vtop);
-	v_to_reg_if_needed(&vtop[-1]);
+	v_prepare_op(vtop);
+	v_prepare_op(&vtop[-1]);
 
 	if(vtop->type == vtop[-1].type && vtop->type != REG){
 		/* prefer putting vtop[-1] in a reg, since that's returned after */
@@ -138,15 +148,8 @@ int v_unused_reg(int stack_as_backup)
 
 int v_to_reg(struct vstack *conv)
 {
-	if(conv->type != REG){
-		int reg = v_unused_reg(1);
-
-		impl_load(conv, reg);
-
-		v_clear(conv);
-		conv->type = REG;
-		conv->bits.reg = reg;
-	}
+	if(conv->type != REG)
+		impl_load(conv, v_unused_reg(1));
 
 	return conv->bits.reg;
 }
@@ -167,43 +170,29 @@ struct vstack *v_find_reg(int reg)
 void v_save_reg(struct vstack *vp)
 {
 	/* freeup this reg */
-	switch(vp->type){
-		case CONST:
-		case STACK_ADDR:
-		case STACK:
-		case LBL:
-		case LBL_ADDR:
-			break;
+	if(vp->type == REG){
+		int r;
 
-		case FLAG:
-			v_to_reg(vp);
-			/* fall */
+		/* attempt to save to a register first */
+		r = v_unused_reg(0);
 
-		case REG:
-		{
-			int r;
+		if(r >= 0){
+			impl_reg_cp(vp, r);
 
-			/* attempt to save to a register first */
-			r = v_unused_reg(0);
+			v_clear(vp);
+			vp->type = REG;
+			vp->bits.reg = r;
 
-			if(r >= 0){
-				impl_reg_cp(vp, r);
+		}else{
+			struct vstack store;
 
-				v_clear(vp);
-				vp->type = REG;
-				vp->bits.reg = r;
+			store.type = STACK_ADDR;
+			store.d = vp->d;
+			store.bits.off_from_bp = 23; /* TODO */
+			ICW("TODO: stack offset");
 
-			}else{
-				struct vstack store;
-
-				store.type = STACK_ADDR;
-				store.d = vp->d;
-				store.bits.off_from_bp = 23; /* TODO */
-				ICW("TODO: stack offset");
-
-				impl_store(vp, &store);
-				memcpy(vp, &store, sizeof store);
-			}
+			impl_store(vp, &store);
+			memcpy(vp, &store, sizeof store);
 		}
 	}
 }
@@ -269,8 +258,12 @@ void out_push_lbl(char *s, int pic)
 
 void out_dup(void)
 {
+	/* regs and flags need special handling, flags are handled in vpush() */
 	vpush();
 	memcpy(&vtop[0], &vtop[-1], sizeof *vtop);
+
+	if(vtop->type == REG)
+		vtop->bits.reg = v_unused_reg(1);
 }
 
 void out_store()
@@ -289,7 +282,10 @@ void out_store()
 
 void out_normalise(void)
 {
-	TODO();
+	if(vtop->type == CONST)
+		vtop->bits.val = !!vtop->bits.val;
+	else
+		impl_normalise();
 }
 
 void out_push_sym_addr(sym *s)

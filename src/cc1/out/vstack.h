@@ -41,6 +41,7 @@ void vtop_clear(void);
 void vswap(void);
 int  v_unused_reg(int stack_as_backup);
 void vtop2_prepare_op(void);
+void v_prepare_op(struct vstack *vp);
 void v_clear(struct vstack *vp);
 
 struct vstack *v_find_reg(int reg);

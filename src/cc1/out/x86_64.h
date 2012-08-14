@@ -10,6 +10,7 @@ void impl_reg_cp(struct vstack *from, int r);
 
 void impl_op(enum op_type);
 void impl_op_unary(enum op_type); /* returns reg that the result is in */
+void impl_normalise(void);
 
 void impl_jmp(void);
 void impl_jtrue(const char *lbl);

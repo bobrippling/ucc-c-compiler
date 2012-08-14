@@ -417,9 +417,8 @@ void gen_expr_str_op(expr *e, symtable *stab)
 static void op_shortcircuit(expr *e, symtable *tab)
 {
 	char *bail = out_label_code("shortcircuit_bail");
-#ifdef SC_OPTIMISE
-	char *bail_nonormalise = out_label_code("shortcircuit_bail_nonorm");
-#endif
+
+	ICE("TODO: short circuit op code");
 
 	gen_expr(e->lhs, tab);
 
@@ -433,11 +432,6 @@ static void op_shortcircuit(expr *e, symtable *tab)
 	free(bail);
 
 	out_normalise();
-
-#ifdef SC_OPTIMISE
-	out_label(bail_nonormalise);
-	free(bail_nonormalise);
-#endif
 }
 
 static void op_struct(expr *e, symtable *tab)
