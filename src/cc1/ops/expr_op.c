@@ -10,9 +10,13 @@ const char *str_expr_op()
 	return "op";
 }
 
-void operate(expr *lhs, expr *rhs, enum op_type op, intval *piv, enum constyness *pconst_type)
+static void operate(
+		intval *lval, intval *rval,
+		enum op_type op,
+		intval *piv, enum constyness *pconst_type,
+		where *where)
 {
-#define OP(a, b) case a: piv->val = lhs->val.iv.val b rhs->val.iv.val; return
+#define OP(a, b) case a: piv->val = lval->val b rval->val; return
 	switch(op){
 		OP(op_multiply,   *);
 		OP(op_eq,         ==);
@@ -32,27 +36,27 @@ void operate(expr *lhs, expr *rhs, enum op_type op, intval *piv, enum constyness
 		case op_modulus:
 		case op_divide:
 		{
-			long l = lhs->val.iv.val, r = rhs->val.iv.val;
+			long l = lval->val, r = rval->val;
 
 			if(r){
 				piv->val = op == op_divide ? l / r : l % r;
 				return;
 			}
-			warn_at(&rhs->where, 1, "division by zero");
+			warn_at(where, 1, "division by zero");
 			*pconst_type = CONST_NO;
 			return;
 		}
 
 		case op_plus:
-			piv->val = lhs->val.iv.val + (rhs ? rhs->val.iv.val : 0);
+			piv->val = lval->val + (rval ? rval->val : 0);
 			return;
 
 		case op_minus:
-			piv->val = rhs ? lhs->val.iv.val - rhs->val.iv.val : -lhs->val.iv.val;
+			piv->val = (rval ? rval->val : 0) - lval->val;
 			return;
 
-		case op_not:  piv->val = !lhs->val.iv.val; return;
-		case op_bnot: piv->val = ~lhs->val.iv.val; return;
+		case op_not:  piv->val = !lval->val; return;
+		case op_bnot: piv->val = ~lval->val; return;
 
 		case op_deref:
 			/*
@@ -69,13 +73,13 @@ void operate(expr *lhs, expr *rhs, enum op_type op, intval *piv, enum constyness
 
 			ignore for now, just deal with simple stuff
 			*/
-			if(lhs->ptr_safe && expr_kind(lhs, addr)){
+			/*if(lhs->ptr_safe && expr_kind(lhs, addr)){
 				if(lhs->array_store->type == array_str){
-					/*piv->val = lhs->val.exprs[0]->val.i;*/
+					/piv->val = lhs->val.exprs[0]->val.i;/
 					piv->val = *lhs->val.s;
 					return;
 				}
-			}
+			}*/
 			*pconst_type = CONST_NO;
 			return;
 
@@ -88,7 +92,7 @@ void operate(expr *lhs, expr *rhs, enum op_type op, intval *piv, enum constyness
 			break;
 	}
 
-	ICE("unhandled operate type");
+	ICE("unhandled type");
 }
 
 void operate_optimise(expr *e)
@@ -140,7 +144,7 @@ void fold_const_expr_op(expr *e, intval *piv, enum constyness *pconst_type)
 
 	if(l_const == CONST_WITH_VAL && r_const == CONST_WITH_VAL){
 		*pconst_type = CONST_WITH_VAL;
-		operate(e->lhs, e->rhs, e->op, piv, pconst_type);
+		operate(&lhs, e->rhs ? &rhs : NULL, e->op, piv, pconst_type, &e->where);
 	}else{
 		*pconst_type = CONST_WITHOUT_VAL;
 		operate_optimise(e);
