@@ -19,7 +19,15 @@ char *curfunc_lblfin; /* extern */
 
 void gen_expr(expr *e, symtable *stab)
 {
-	e->f_gen(e, stab);
+	intval iv;
+	enum constyness type;
+
+	const_fold(e, &iv, &type);
+
+	if(type == CONST_WITH_VAL)
+		out_push_iv(e->tree_type, &iv);
+	else
+		e->f_gen(e, stab);
 }
 
 void gen_stmt(stmt *t)
