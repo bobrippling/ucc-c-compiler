@@ -510,17 +510,19 @@ void impl_jmp()
 	out_asm("jmp %s", x86_call_jmp_target(vtop));
 }
 
-void impl_jtrue(const char *lbl)
+void impl_jcond(int true, const char *lbl)
 {
 	switch(vtop->type){
 		case FLAG:
+			UCC_ASSERT(true, "jcond(false) for flag - should've been inverted");
+
 			out_asm("j%s %s",
 					x86_cmp(vtop->bits.flag, vtop->d),
 					lbl);
 			break;
 
 		case CONST:
-			if(vtop->bits.val)
+			if(true == !!vtop->bits.val)
 				out_asm("jmp %s // constant jmp condition %d", lbl, vtop->bits.val);
 			break;
 
@@ -537,7 +539,7 @@ void impl_jtrue(const char *lbl)
 			reg_str_r(buf, vtop->bits.reg);
 
 			out_asm("test %s, %s", buf, buf);
-			out_asm("jnz %s", lbl);
+			out_asm("j%sz %s", true ? "n" : "", lbl);
 		}
 	}
 

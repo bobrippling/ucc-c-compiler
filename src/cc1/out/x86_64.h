@@ -13,7 +13,7 @@ void impl_op_unary(enum op_type); /* returns reg that the result is in */
 void impl_normalise(void);
 
 void impl_jmp(void);
-void impl_jtrue(const char *lbl);
+void impl_jcond(int true, const char *lbl);
 
 void impl_make_addr(void);
 

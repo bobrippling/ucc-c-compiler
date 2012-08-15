@@ -415,13 +415,19 @@ void out_jmp(void)
 
 void out_jtrue(const char *lbl)
 {
-	impl_jtrue(lbl);
+	impl_jcond(1, lbl);
 }
 
 void out_jfalse(const char *lbl)
 {
-	out_op_unary(op_not);
-	out_jtrue(lbl);
+	int cond = 0;
+
+	if(vtop->type == FLAG){
+		v_inv_cmp(vtop);
+		cond = 1;
+	}
+
+	impl_jcond(cond, lbl);
 }
 
 void out_label(const char *lbl)
