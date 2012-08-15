@@ -105,8 +105,12 @@ void v_prepare_op(struct vstack *vp)
 
 void vtop2_prepare_op(void)
 {
-	v_prepare_op(vtop);
+	/* attempt to give this a higher reg,
+	 * since it'll be used more,
+	 * e.g. return and idiv */
 	v_prepare_op(&vtop[-1]);
+
+	v_prepare_op(vtop);
 
 	if(vtop->type == vtop[-1].type && vtop->type != REG){
 		/* prefer putting vtop[-1] in a reg, since that's returned after */

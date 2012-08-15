@@ -314,6 +314,22 @@ void impl_store(struct vstack *from, struct vstack *to)
 	}
 }
 
+void impl_reg_swp(struct vstack *a, struct vstack *b)
+{
+	char bufa[REG_STR_SZ], bufb[REG_STR_SZ];
+	int tmp;
+
+	UCC_ASSERT(a->type == b->type && a->type == REG, "%s without regs", __func__);
+
+	out_asm("xchg %s, %s",
+			reg_str_r(bufa, a->bits.reg),
+			reg_str_r(bufb, b->bits.reg));
+
+	tmp = a->bits.reg;
+	a->bits.reg = b->bits.reg;
+	b->bits.reg = tmp;
+}
+
 void impl_reg_cp(struct vstack *from, int r)
 {
 	char buf_v[VSTACK_STR_SZ];
@@ -373,6 +389,14 @@ void impl_op(enum op_type op)
 			v_freeup_reg(REG_D, 2);
 
 			r_div = v_to_reg(&vtop[-1]);
+
+			if(r_div != REG_A){
+				/* we already have rax in use by vtop, swap the values */
+				impl_reg_swp(vtop, &vtop[-1]);
+
+				r_div = vtop[-1].bits.reg;
+			}
+
 			UCC_ASSERT(r_div == REG_A, "register A not chosen for idiv");
 
 			out_asm("cqto");
