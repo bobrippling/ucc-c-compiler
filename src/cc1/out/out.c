@@ -141,9 +141,11 @@ int v_unused_reg(int stack_as_backup)
 
 	if(stack_as_backup){
 		/* no free regs, move `first` to the stack and claim its reg */
-		v_save_reg(first);
+		int reg = first->bits.reg;
 
-		return first->bits.reg;
+		v_freeup_regp(first);
+
+		return reg;
 	}
 	return -1;
 }
@@ -169,33 +171,34 @@ struct vstack *v_find_reg(int reg)
 	return NULL;
 }
 
-void v_save_reg(struct vstack *vp)
+void v_freeup_regp(struct vstack *vp)
 {
 	/* freeup this reg */
-	if(vp->type == REG){
-		int r;
+	int r;
 
-		/* attempt to save to a register first */
-		r = v_unused_reg(0);
+	/* attempt to save to a register first */
+	r = v_unused_reg(0);
 
-		if(r >= 0){
-			impl_reg_cp(vp, r);
+	if(r >= 0){
+		impl_reg_cp(vp, r);
 
-			v_clear(vp);
-			vp->type = REG;
-			vp->bits.reg = r;
+		v_clear(vp);
+		vp->type = REG;
+		vp->bits.reg = r;
 
-		}else{
-			struct vstack store;
+	}else{
+		struct vstack store;
+		int sz;
 
-			store.type = STACK_ADDR;
-			store.d = vp->d;
-			store.bits.off_from_bp = 23; /* TODO */
-			ICW("TODO: stack offset");
+		store.type = STACK_ADDR;
+		store.d = vp->d;
 
-			impl_store(vp, &store);
-			memcpy(vp, &store, sizeof store);
-		}
+		/* TODO: remove ?: */
+		sz = store.d ? decl_size(store.d) : platform_word_size();
+		store.bits.off_from_bp = impl_alloc_stack(sz);
+
+		impl_store(vp, &store);
+		memcpy(vp, &store, sizeof store);
 	}
 }
 
@@ -204,7 +207,7 @@ void v_freeup_reg(int r, int allowable_stack)
 	struct vstack *vp = v_find_reg(r);
 
 	if(vp && vp < &vtop[-allowable_stack + 1])
-		v_save_reg(vp);
+		v_freeup_regp(vp);
 }
 
 static void v_inv_cmp(struct vstack *vp)

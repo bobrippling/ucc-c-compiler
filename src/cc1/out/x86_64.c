@@ -48,6 +48,10 @@ static const struct
 	{ "r9",  -1 },
 };
 
+
+static int stack_sz;
+
+
 static void out_asm( const char *fmt, ...) __printflike(1, 2);
 static void out_asm2(enum p_opts opts, const char *fmt, ...) __printflike(2, 3);
 
@@ -143,6 +147,13 @@ static const char *vstack_str(struct vstack *vs)
 	return vstack_str_r(buf, vs);
 }
 
+int impl_alloc_stack(int sz)
+{
+	out_asm("subq $0x%x, %%rsp", sz);
+
+	return sz + stack_sz;
+}
+
 void out_func_prologue(int stack_res, int nargs)
 {
 	(void)nargs;
@@ -153,7 +164,8 @@ void out_func_prologue(int stack_res, int nargs)
 	if(stack_res){
 		int i, n_reg_args;
 
-		out_asm("subq $0x%x, %%rsp", stack_res);
+		UCC_ASSERT(stack_sz == 0, "non-empty x86 stack for new func");
+		stack_sz = impl_alloc_stack(stack_res);
 
 		n_reg_args = MIN(nargs, N_CALL_REGS);
 
@@ -168,6 +180,7 @@ void out_func_prologue(int stack_res, int nargs)
 void out_func_epilogue(void)
 {
 	out_asm("leaveq");
+	stack_sz = 0;
 	out_asm("retq");
 }
 

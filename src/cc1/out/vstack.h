@@ -37,16 +37,18 @@ struct vstack
 extern struct vstack *vtop;
 
 void vpop(void);
-void vtop_clear(void);
 void vswap(void);
-int  v_unused_reg(int stack_as_backup);
+
+void v_clear(struct vstack *vp);
+void vtop_clear(void);
+
 void vtop2_prepare_op(void);
 void v_prepare_op(struct vstack *vp);
-void v_clear(struct vstack *vp);
 
-struct vstack *v_find_reg(int reg);
 int  v_to_reg(struct vstack *conv);
-void v_save_reg(struct vstack *);
+
+int  v_unused_reg(int stack_as_backup);
+void v_freeup_regp(struct vstack *);
 void v_freeup_reg(int r, int allowable_stack);
 
 enum vstore v_deref_type(enum vstore store);
