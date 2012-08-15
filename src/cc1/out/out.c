@@ -59,6 +59,12 @@ void vpop(void)
 	}
 }
 
+void v_flush_volatile(void)
+{
+	if(vtop)
+		v_to_reg(vtop);
+}
+
 enum vstore v_deref_type(enum vstore store)
 {
 	switch(store){
@@ -415,6 +421,11 @@ void out_call(int nargs)
 
 void out_jmp(void)
 {
+	/* flush the stack-val we need to generate before the jump */
+	vtop--;
+	v_flush_volatile();
+	vtop++;
+
 	impl_jmp();
 
 	vpop();
@@ -437,13 +448,14 @@ void out_jfalse(const char *lbl)
 	}
 
 	impl_jcond(cond, lbl);
+
+	vpop();
 }
 
 void out_label(const char *lbl)
 {
 	/* if we have volatile data, ensure it's in a register */
-	if(vtop)
-		v_to_reg(vtop);
+	v_flush_volatile();
 
 	impl_lbl(lbl);
 }
