@@ -566,8 +566,6 @@ void impl_jcond(int true, const char *lbl)
 			out_asm("j%sz %s", true ? "n" : "", lbl);
 		}
 	}
-
-	vpop();
 }
 
 void impl_call(const int nargs)

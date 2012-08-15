@@ -420,6 +420,8 @@ void out_jmp(void)
 void out_jtrue(const char *lbl)
 {
 	impl_jcond(1, lbl);
+
+	vpop();
 }
 
 void out_jfalse(const char *lbl)
