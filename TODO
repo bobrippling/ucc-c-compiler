@@ -1,5 +1,8 @@
 updated bugs/ and test/
 
+asm_backend_recode:
+	save registers on function call
+
 ---------------------------------------------------- cc1
 
 const-fold: change interface and checking of ->val.iv.val to more explicit code
