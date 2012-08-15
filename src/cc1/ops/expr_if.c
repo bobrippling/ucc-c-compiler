@@ -88,6 +88,8 @@ void gen_expr_if(expr *e, symtable *stab)
 		out_jtrue(lblfin);
 	}
 
+	out_pop();
+
 	gen_expr(e->rhs, stab);
 	out_label(lblfin);
 
