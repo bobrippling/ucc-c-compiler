@@ -105,7 +105,10 @@ void gen_expr_assign(expr *e, symtable *stab)
 
 	out_store();
 
-	/* if e->assign_is_post, the stack now just has the old value on */
+	if(e->assign_is_post){
+		out_pop(); /* discard the new value, leave the old on */
+		out_comment("pre-inc/dec value");
+	}
 }
 
 void gen_expr_str_assign(expr *e, symtable *stab)
