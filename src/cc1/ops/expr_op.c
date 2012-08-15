@@ -418,12 +418,10 @@ static void op_shortcircuit(expr *e, symtable *tab)
 {
 	char *bail = out_label_code("shortcircuit_bail");
 
-	ICE("TODO: short circuit op code");
-
 	gen_expr(e->lhs, tab);
 
 	out_dup();
-	out_jfalse(bail);
+	(e->op == op_andsc ? out_jfalse : out_jtrue)(bail);
 	out_pop();
 
 	gen_expr(e->rhs, tab);
