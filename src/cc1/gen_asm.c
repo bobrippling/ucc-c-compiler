@@ -171,5 +171,6 @@ void gen_asm(symtable *globs)
 		gen_asm_global(d);
 	}
 
+	out_assert_vtop_null();
 	//asm_out_flush();
 }
