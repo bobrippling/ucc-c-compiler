@@ -421,10 +421,12 @@ void out_call(int nargs)
 
 void out_jmp(void)
 {
-	/* flush the stack-val we need to generate before the jump */
-	vtop--;
-	v_flush_volatile();
-	vtop++;
+	if(vtop > vstack){
+		/* flush the stack-val we need to generate before the jump */
+		vtop--;
+		v_flush_volatile();
+		vtop++;
+	}
 
 	impl_jmp();
 
