@@ -428,7 +428,11 @@ void out_jfalse(const char *lbl)
 
 void out_label(const char *lbl)
 {
-	fprintf(cc1_out, "%s:\n", lbl);
+	/* if we have volatile data, ensure it's in a register */
+	if(vtop)
+		v_to_reg(vtop);
+
+	impl_lbl(lbl);
 }
 
 void out_comment(const char *fmt, ...)

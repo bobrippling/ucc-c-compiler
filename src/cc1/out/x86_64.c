@@ -28,6 +28,11 @@
 
 #define VSTACK_STR_SZ 128
 
+enum p_opts
+{
+	P_NO_INDENT = 1 << 0,
+	P_NO_NL     = 1 << 1
+};
 
 static const char regs[] = "abcd";
 static const struct
@@ -42,6 +47,49 @@ static const struct
 	{ "r8",  -1 },
 	{ "r9",  -1 },
 };
+
+static void out_asm( const char *fmt, ...) __printflike(1, 2);
+static void out_asm2(enum p_opts opts, const char *fmt, ...) __printflike(2, 3);
+
+static void out_asmv(enum p_opts opts, const char *fmt, va_list l)
+{
+	FILE *f = cc_out[SECTION_TEXT];
+
+	if((opts & P_NO_INDENT) == 0)
+		fputc('\t', f);
+
+	vfprintf(f, fmt, l);
+
+	if((opts & P_NO_NL) == 0)
+		fputc('\n', f);
+}
+
+static void out_asm(const char *fmt, ...)
+{
+	va_list l;
+	va_start(l, fmt);
+	out_asmv(0, fmt, l);
+	va_end(l);
+}
+
+static void out_asm2(enum p_opts opts, const char *fmt, ...)
+{
+	va_list l;
+	va_start(l, fmt);
+	out_asmv(opts, fmt, l);
+	va_end(l);
+}
+
+void impl_comment(const char *fmt, va_list l)
+{
+	out_asm2(P_NO_NL, "// ");
+	out_asmv(P_NO_INDENT, fmt, l);
+}
+
+void impl_lbl(const char *lbl)
+{
+	out_asm2(P_NO_INDENT, "%s:", lbl);
+}
 
 static const char *reg_str_r(char buf[REG_STR_SZ], int reg)
 {
@@ -93,30 +141,6 @@ static const char *vstack_str(struct vstack *vs)
 {
 	static char buf[VSTACK_STR_SZ];
 	return vstack_str_r(buf, vs);
-}
-
-static void out_asm(const char *fmt, ...) __printflike(1, 2);
-
-static void out_asmv(const char *fmt, va_list l)
-{
-	fputc('\t', cc1_out);
-	vfprintf(cc1_out, fmt, l);
-	fputc('\n', cc1_out);
-}
-
-static void out_asm(const char *fmt, ...)
-{
-	va_list l;
-	va_start(l, fmt);
-	out_asmv(fmt, l);
-	va_end(l);
-}
-
-void impl_comment(const char *fmt, va_list l)
-{
-	fprintf(cc1_out, "\t// ");
-	vfprintf(cc1_out, fmt, l);
-	fputc('\n', cc1_out);
 }
 
 void out_func_prologue(int stack_res, int nargs)

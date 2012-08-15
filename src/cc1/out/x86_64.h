@@ -20,6 +20,8 @@ void impl_make_addr(void);
 void impl_call(int nargs);
 void impl_call_fin(int nargs);
 
+void impl_lbl(const char *);
+
 #define N_REGS 4
 #define N_CALL_REGS 6
 
