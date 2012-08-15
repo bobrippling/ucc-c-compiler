@@ -575,7 +575,7 @@ void impl_jcond(int true, const char *lbl)
 
 			reg_str_r(buf, vtop->bits.reg);
 
-			out_asm("test %s, %s", buf, buf);
+			out_asm("test %%%s, %%%s", buf, buf);
 			out_asm("j%sz %s", true ? "n" : "", lbl);
 		}
 	}
