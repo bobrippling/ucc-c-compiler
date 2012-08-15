@@ -12,8 +12,6 @@
 #include "../../util/platform.h"
 #include "../cc1.h"
 
-#define TODO() fprintf(cc1_out, "// TODO: %s\n", __func__)
-
 /*
  * This entire stack-output idea was inspired by tinycc, and improved slightly,
  */
@@ -400,7 +398,7 @@ void out_cast(decl *from, decl *to)
 {
 	(void)to;
 	(void)from;
-	TODO();
+	out_comment("TODO: cast");
 }
 
 void out_call(int nargs)
