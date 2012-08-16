@@ -40,7 +40,7 @@ void char_seq_to_iv(char *s, intval *iv, int *plen, enum base mode)
 {
 #define READ_NUM(test, base)             \
 			do{                                \
-				if(!test)                        \
+				if(!(test))                      \
 					break;                         \
 				lval = base * lval + *s - '0';   \
 				s++;                             \
