@@ -87,17 +87,10 @@ decl *decl_new()
 	return d;
 }
 
-decl *decl_new_void()
+decl *decl_new_type(enum type_primitive p)
 {
 	decl *d = decl_new();
-	d->type->primitive = type_void;
-	return d;
-}
-
-decl *decl_new_char()
-{
-	decl *d = decl_new();
-	d->type->primitive = type_char; /* force "sete al" rather than "sete rax" */
+	d->type->primitive = p;
 	return d;
 }
 
