@@ -35,8 +35,9 @@ struct expr
 	enum op_type op;
 
 	int assign_is_post; /* do we return the altered value or the old one? */
-#define expr_is_default  assign_is_post
+#define expr_is_default    assign_is_post
 #define expr_computed_goto assign_is_post
+#define expr_is_typeof     assign_is_post
 
 	expr *lhs, *rhs;
 
@@ -119,8 +120,8 @@ expr *expr_new_val(int val);
 expr *expr_new_op(enum op_type o);
 expr *expr_new_if(expr *test);
 expr *expr_new_stmt(stmt *code);
-expr *expr_new_sizeof_decl(decl *);
-expr *expr_new_sizeof_expr(expr *);
+expr *expr_new_sizeof_decl(decl *, int is_typeof);
+expr *expr_new_sizeof_expr(expr *, int is_typeof);
 expr *expr_new_funcall(void);
 expr *expr_new_assign(expr *to, expr *from);
 expr *expr_new__Generic(expr *test, struct generic_lbl **lbls);
