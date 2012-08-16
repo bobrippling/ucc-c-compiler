@@ -43,7 +43,7 @@ static stmt *current_continue_target,
 						*current_switch;
 
 
-expr *parse_expr_sizeof_typeof()
+expr *parse_expr_sizeof_typeof(int is_typeof)
 {
 	expr *e;
 
@@ -51,15 +51,19 @@ expr *parse_expr_sizeof_typeof()
 		decl *d = parse_decl_single(DECL_SPEL_NO);
 
 		if(d){
-			e = expr_new_sizeof_decl(d);
+			e = expr_new_sizeof_decl(d, is_typeof);
 		}else{
 			/* parse a full one, since we're in brackets */
-			e = expr_new_sizeof_expr(parse_expr_exp());
+			e = expr_new_sizeof_expr(parse_expr_exp(), is_typeof);
 		}
 
 		EAT(token_close_paren);
 	}else{
-		e = expr_new_sizeof_expr(parse_expr_unary());
+		if(is_typeof)
+			/* TODO? cc1_error = 1, return expr_new_val(0) */
+			DIE_AT(NULL, "open paren expected after typeof");
+
+		e = expr_new_sizeof_expr(parse_expr_unary(), is_typeof);
 		/* don't go any higher, sizeof a - 1, means sizeof(a) - 1 */
 	}
 
@@ -343,7 +347,7 @@ do_parse:
 
 			case token_sizeof:
 				EAT(token_sizeof);
-				e = parse_expr_sizeof_typeof();
+				e = parse_expr_sizeof_typeof(0);
 				break;
 
 			default:

@@ -88,7 +88,7 @@ int symtab_fold(symtable *tab, int current)
 					const int unused = RW_TEST(nreads);
 
 					if(unused){
-						if(!has_attr)
+						if(!has_attr && s->decl->type->store != store_extern)
 							RW_SHOW(READ, "read");
 					}else if(has_attr){
 						warn_at(&s->decl->where, 1,

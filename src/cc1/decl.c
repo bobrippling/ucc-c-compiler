@@ -88,10 +88,10 @@ decl *decl_new()
 	return d;
 }
 
-decl *decl_new_void()
+decl *decl_new_type(enum type_primitive p)
 {
 	decl *d = decl_new();
-	d->type->primitive = type_void;
+	d->type->primitive = p;
 	return d;
 }
 
