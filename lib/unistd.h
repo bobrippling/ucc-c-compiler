@@ -4,6 +4,7 @@
 #include "macros.h"
 #include "sys/types.h"
 #include "sys/time.h"
+#include "ucc_attr.h"
 
 typedef int pid_t;
 
@@ -41,5 +42,7 @@ off_t lseek(int fd, off_t offset, int whence);
 // FIXME: nanosleep, usleep
 unsigned int sleep(unsigned int);
 int usleep(useconds_t usec);
+
+void _exit(int) __dead;
 
 #endif
