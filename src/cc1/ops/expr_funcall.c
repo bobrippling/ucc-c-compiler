@@ -184,7 +184,7 @@ invalid:
 		int nargs = 0;
 
 		if(sym && !decl_is_fptr(sym->decl))
-			out_push_lbl(sym->decl->spel, 0);
+			out_push_lbl(sym->decl->spel, 0, NULL);
 		else
 			gen_expr(e->expr, stab);
 
@@ -197,7 +197,7 @@ invalid:
 				gen_expr(*aiter, stab);
 		}
 
-		out_call(nargs);
+		out_call(nargs, e->tree_type);
 	}
 }
 

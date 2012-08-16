@@ -78,12 +78,9 @@ void funcargs_free(funcargs *args, int free_decls)
 	free(args);
 }
 
-int type_size(const type *t)
+int type_primitive_size(enum type_primitive p)
 {
-	if(t->typeof)
-		return decl_size(t->typeof->decl);
-
-	switch(t->primitive){
+	switch(p){
 		case type_char:
 		case type__Bool:
 		case type_void:
@@ -112,14 +109,25 @@ int type_size(const type *t)
 
 		case type_union:
 		case type_struct:
-			return struct_union_size(t->sue);
+			ICE("struct size");
 
 		case type_unknown:
 			break;
 	}
 
-	ICE("type %s in type_size()", type_to_str(t));
+	ICE("type %s in type_size()", type_primitive_to_str(p));
 	return -1;
+}
+
+int type_size(const type *t)
+{
+	if(t->typeof)
+		return decl_size(t->typeof->decl);
+
+	if(t->sue)
+		return struct_union_size(t->sue);
+
+	return type_primitive_size(t->primitive);
 }
 
 int type_equal(const type *a, const type *b, int strict)
@@ -271,7 +279,7 @@ const char *type_to_str(const type *t)
 				t->sue->spel);
 
 	}else{
-		switch(t->primitive){                 
+		switch(t->primitive){
 #define SAPPEND(s) snprintf(bufp, BUF_SIZE, "%s", s); break
 #define APPEND(t) case type_ ## t: SAPPEND(#t)
 			APPEND(void);

@@ -15,6 +15,7 @@ struct vstack
 	} type;
 
 	decl *d;
+
 	union
 	{
 		int val;
@@ -39,8 +40,8 @@ extern struct vstack *vtop;
 void vpop(void);
 void vswap(void);
 
-void v_clear(struct vstack *vp);
-void vtop_clear(void);
+void v_clear(struct vstack *vp, decl *);
+void vtop_clear(decl *);
 
 void vtop2_prepare_op(void);
 void v_prepare_op(struct vstack *vp);

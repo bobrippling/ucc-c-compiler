@@ -96,17 +96,23 @@ void impl_lbl(const char *lbl)
 	out_asm2(P_NO_INDENT, "%s:", lbl);
 }
 
-static const char *reg_str_r(char buf[REG_STR_SZ], int reg)
+static const char *x86_reg_str_r(char buf[REG_STR_SZ], int reg, decl *d)
 {
 	const char *regpre, *regpost;
 
 	UCC_ASSERT((unsigned)reg < N_REGS, "invalid x86 reg %d", reg);
 
-	asm_reg_name(NULL, &regpre, &regpost);
+	asm_reg_name(d, &regpre, &regpost);
 
 	snprintf(buf, REG_STR_SZ, "%s%c%s", regpre, regs[reg], regpost);
 
 	return buf;
+}
+
+static const char *reg_str_r(char buf[REG_STR_SZ], struct vstack *reg)
+{
+	UCC_ASSERT(reg->type == REG, "non-reg %d", reg->type);
+	return x86_reg_str_r(buf, reg->bits.reg, reg->d);
 }
 
 static const char *vstack_str_r(char buf[VSTACK_STR_SZ], struct vstack *vs)
@@ -127,7 +133,7 @@ static const char *vstack_str_r(char buf[VSTACK_STR_SZ], struct vstack *vs)
 
 		case REG:
 			*buf = '%';
-			reg_str_r(buf + 1, vs->bits.reg);
+			reg_str_r(buf + 1, vs);
 			break;
 
 		case STACK_ADDR: /* similar trust to above */
@@ -266,9 +272,9 @@ void impl_load(struct vstack *from, int reg)
 	if(from->type == REG && reg == from->bits.reg)
 		return;
 
-	x86_load(from, reg_str_r(buf, reg));
+	x86_load(from, x86_reg_str_r(buf, reg, from->d));
 
-	v_clear(from);
+	v_clear(from, from->d);
 	from->type = REG;
 	from->bits.reg = reg;
 }
@@ -336,8 +342,8 @@ void impl_reg_swp(struct vstack *a, struct vstack *b)
 	UCC_ASSERT(a->type == b->type && a->type == REG, "%s without regs", __func__);
 
 	out_asm("xchg %s, %s",
-			reg_str_r(bufa, a->bits.reg),
-			reg_str_r(bufb, b->bits.reg));
+			reg_str_r(bufa, a),
+			reg_str_r(bufb, b));
 
 	tmp = a->bits.reg;
 	a->bits.reg = b->bits.reg;
@@ -352,7 +358,7 @@ void impl_reg_cp(struct vstack *from, int r)
 	if(from->type == REG && from->bits.reg == r)
 		return;
 
-	reg_str_r(buf_r, r);
+	x86_reg_str_r(buf_r, r, from->d);
 
 	out_asm("mov_ %s, %%%s",
 			vstack_str_r(buf_v, from),
@@ -458,7 +464,7 @@ void impl_op(enum op_type op)
 
 			vpop();
 
-			vtop_clear();
+			vtop_clear(vtop->d);
 			vtop->type = REG;
 			vtop->bits.reg = op == op_modulus ? REG_D : REG_A;
 			return;
@@ -480,7 +486,7 @@ void impl_op(enum op_type op)
 					vstack_str_r(buf, vtop));
 
 			vpop();
-			vtop_clear();
+			vtop_clear(decl_new_type(type_int)); /* cmp creates an int */
 			vtop->type = FLAG;
 			vtop->bits.flag = op_to_flag(op);
 
@@ -528,12 +534,16 @@ void impl_op_unary(enum op_type op)
 
 		case op_deref:
 		{
-			const int reg = v_to_reg(vtop);
-			char rs[REG_STR_SZ];
+			char ptr[REG_STR_SZ], dst[REG_STR_SZ];
 
-			reg_str_r(rs, reg);
+			v_to_reg(vtop);
+			x86_reg_str_r(ptr, vtop->bits.reg, NULL);
+			reg_str_r(dst, vtop);
 
-			out_asm("mov_ (%%%s), %%%s", rs, rs);
+			out_asm("mov%c (%%%s), %%%s ; decl %s",
+					asm_type_ch(vtop->d),
+					ptr, dst,
+					vtop->d ? decl_to_str(vtop->d) : "nil");
 			return;
 		}
 
@@ -558,7 +568,7 @@ void impl_normalise(void)
 		v_to_reg(vtop);
 
 	out_asm("and_ 0x1, %%%s // normalise",
-			reg_str_r(buf, vtop->bits.reg));
+			reg_str_r(buf, vtop));
 }
 
 static const char *x86_call_jmp_target(struct vstack *vp)
@@ -569,7 +579,8 @@ static const char *x86_call_jmp_target(struct vstack *vp)
 		return vp->bits.lbl.str;
 
 	strcpy(buf, "*%");
-	reg_str_r(buf + 2, v_to_reg(vp));
+	v_to_reg(vp);
+	reg_str_r(buf + 2, vp);
 
 	return buf;
 }
@@ -605,7 +616,7 @@ void impl_jcond(int true, const char *lbl)
 		{
 			char buf[REG_STR_SZ];
 
-			reg_str_r(buf, vtop->bits.reg);
+			reg_str_r(buf, vtop);
 
 			out_asm("test %%%s, %%%s", buf, buf);
 			out_asm("j%sz %s", true ? "n" : "", lbl);
@@ -613,7 +624,7 @@ void impl_jcond(int true, const char *lbl)
 	}
 }
 
-void impl_call(const int nargs)
+void impl_call(const int nargs, decl *d)
 {
 	int i, ncleanup;
 
@@ -640,8 +651,7 @@ void impl_call(const int nargs)
 		out_asm("addq $0x%x, %%rsp", ncleanup * platform_word_size());
 
 	/* return type */
-	vtop_clear();
+	vtop_clear(d);
 	vtop->type = REG;
 	vtop->bits.reg = REG_RET;
-	vtop->d = NULL; /* TODO */
 }

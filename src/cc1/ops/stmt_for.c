@@ -112,7 +112,7 @@ void gen_stmt_for(stmt *s)
 		out_comment("unused for inc");
 	}
 
-	out_push_lbl(lbl_test, 0);
+	out_push_lbl(lbl_test, 0, NULL);
 	out_jmp();
 
 	out_label(s->lbl_break);

@@ -20,7 +20,7 @@
 struct vstack vstack[N_VSTACK];
 struct vstack *vtop = NULL;
 
-void vpush(void)
+void vpush(decl *d)
 {
 	if(!vtop){
 		vtop = vstack;
@@ -34,17 +34,19 @@ void vpush(void)
 
 		vtop++;
 	}
-	vtop_clear();
+
+	vtop_clear(d);
 }
 
-void v_clear(struct vstack *vp)
+void v_clear(struct vstack *vp, decl *d)
 {
 	memset(vp, 0, sizeof *vp);
+	vp->d = d;
 }
 
-void vtop_clear(void)
+void vtop_clear(decl *d)
 {
-	v_clear(vtop);
+	v_clear(vtop, d);
 }
 
 void vpop(void)
@@ -197,20 +199,17 @@ void v_freeup_regp(struct vstack *vp)
 	if(r >= 0){
 		impl_reg_cp(vp, r);
 
-		v_clear(vp);
+		v_clear(vp, NULL);
 		vp->type = REG;
 		vp->bits.reg = r;
 
 	}else{
 		struct vstack store;
-		int sz;
 
 		store.type = STACK_ADDR;
 		store.d = vp->d;
 
-		/* TODO: remove ?: */
-		sz = store.d ? decl_size(store.d) : platform_word_size();
-		store.bits.off_from_bp = impl_alloc_stack(sz);
+		store.bits.off_from_bp = impl_alloc_stack(decl_size(store.d));
 
 		impl_store(vp, &store);
 		memcpy(vp, &store, sizeof store);
@@ -252,10 +251,10 @@ void out_pop(void)
 
 void out_push_iv(decl *d, intval *iv)
 {
-	vpush();
+	vpush(d);
+
 	vtop->type = CONST;
 	vtop->bits.val = iv->val; /* TODO: unsigned */
-	vtop->d = d;
 }
 
 void out_push_i(decl *d, int i)
@@ -268,9 +267,10 @@ void out_push_i(decl *d, int i)
 	out_push_iv(d, &iv);
 }
 
-void out_push_lbl(char *s, int pic)
+void out_push_lbl(char *s, int pic, decl *d)
 {
-	vpush();
+	vpush(d);
+
 	vtop->type = LBL_ADDR;
 	vtop->bits.lbl.str = s;
 	vtop->bits.lbl.pic = pic;
@@ -278,7 +278,7 @@ void out_push_lbl(char *s, int pic)
 
 void out_dup(void)
 {
-	vpush();
+	vpush(NULL);
 	memcpy(&vtop[0], &vtop[-1], sizeof *vtop);
 }
 
@@ -322,7 +322,7 @@ void out_push_sym_addr(sym *s)
 
 void out_push_sym(sym *s)
 {
-	vpush();
+	vpush(s->decl);
 
 	switch(s->type){
 		case sym_local:
@@ -347,8 +347,6 @@ void out_push_sym(sym *s)
 			vtop->bits.lbl.pic = 1;
 			break;
 	}
-
-	vtop->d = s->decl;
 }
 
 void out_op(enum op_type op)
@@ -367,6 +365,10 @@ void out_op_unary(enum op_type op)
 		case op_deref:
 		{
 			enum vstore derefed = v_deref_type(vtop->type);
+
+			/* XXX: memleak */
+			vtop->d = decl_ptr_depth_dec(decl_copy(vtop->d), NULL);
+
 			if((signed)derefed != -1){
 				vtop->type = derefed;
 				return;
@@ -419,9 +421,9 @@ void out_cast(decl *from, decl *to)
 	out_comment("TODO: cast");
 }
 
-void out_call(int nargs)
+void out_call(int nargs, decl *rt)
 {
-	impl_call(nargs);
+	impl_call(nargs, rt);
 }
 
 void out_jmp(void)

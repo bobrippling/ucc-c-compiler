@@ -38,7 +38,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 			e->array_store->type = array_str;
 
 			fold_expr(e, stab);
-
+			return;
 		}else{
 			/* check for an enum */
 			struct_union_enum_st *sue;
@@ -87,26 +87,16 @@ void gen_expr_identifier(expr *e, symtable *stab)
 {
 	(void)stab;
 
-	if(e->sym){
-		/*
-		 * if it's an array, lea, else, load
-		 * note that array-leas load the bottom address (smallest value)
-		 * since arrays grow upwards... duh
-		 *
-		 * also never do this for functions
-		 */
+	/*
+	 * if it's an array, lea, else, load
+	 * note that array-leas load the bottom address (smallest value)
+	 * since arrays grow upwards... duh
+	 */
 
-		if(decl_has_array(e->sym->decl) || decl_is_func(e->sym->decl)){
-			out_push_sym_addr(e->sym);
-		}else{
-			out_push_sym(e->sym);
-		}
-
+	if(decl_has_array(e->sym->decl) || decl_is_func(e->sym->decl)){
+		out_push_sym_addr(e->sym);
 	}else{
-		/* no symbol, or a function */
-
-		out_push_lbl(e->spel, 1);
-		out_op_unary(op_deref);
+		out_push_sym(e->sym);
 	}
 }
 

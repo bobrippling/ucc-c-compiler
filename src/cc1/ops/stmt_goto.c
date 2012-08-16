@@ -32,7 +32,7 @@ void gen_stmt_goto(stmt *s)
 		gen_expr(s->expr, s->symtab);
 		out_op_unary(op_deref);
 	}else{
-		out_push_lbl(s->expr->spel, 0);
+		out_push_lbl(s->expr->spel, 0, NULL);
 	}
 
 	out_jmp();

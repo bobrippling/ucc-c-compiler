@@ -142,7 +142,7 @@ void gen_stmt_switch(stmt *s)
 
 	out_pop(); /* free the value we switched on asap */
 
-	out_push_lbl(tdefault ? tdefault->expr->spel : s->lbl_break, 0);
+	out_push_lbl(tdefault ? tdefault->expr->spel : s->lbl_break, 0, NULL);
 	out_jmp();
 
 	/* out-stack must be empty from here on */

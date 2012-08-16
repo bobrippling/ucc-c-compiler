@@ -17,7 +17,7 @@ void impl_jcond(int true, const char *lbl);
 
 void impl_make_addr(void);
 
-void impl_call(int nargs);
+void impl_call(const int nargs, decl *d);
 void impl_call_fin(int nargs);
 
 void impl_lbl(const char *);
