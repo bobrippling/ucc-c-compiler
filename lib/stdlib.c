@@ -124,8 +124,7 @@ void exit(int code)
 
 void _Exit(int code)
 {
-	__syscall(SYS_exit, code);
-	__builtin_unreachable();
+	_exit(code);
 }
 
 int at_quick_exit(void (*f)(void))
