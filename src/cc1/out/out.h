@@ -34,5 +34,6 @@ void out_label(const char *);
 void out_comment(const char *, ...);
 
 void out_assert_vtop_null(void);
+void out_dump(void);
 
 #endif

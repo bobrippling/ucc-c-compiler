@@ -80,6 +80,15 @@ void out_assert_vtop_null(void)
 	UCC_ASSERT(!vtop, "vtop not null");
 }
 
+void out_dump(void)
+{
+	int i;
+
+	for(i = 0; &vstack[i] <= vtop; i++)
+		fprintf(stderr, "vstack[%d] = { %d, %d }\n",
+				i, vstack[i].type, vstack[i].bits.reg);
+}
+
 void vswap(void)
 {
 	struct vstack tmp;
@@ -269,12 +278,8 @@ void out_push_lbl(char *s, int pic)
 
 void out_dup(void)
 {
-	/* regs and flags need special handling, flags are handled in vpush() */
 	vpush();
 	memcpy(&vtop[0], &vtop[-1], sizeof *vtop);
-
-	if(vtop->type == REG)
-		vtop->bits.reg = v_unused_reg(1);
 }
 
 void out_store()
