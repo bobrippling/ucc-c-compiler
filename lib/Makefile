@@ -9,7 +9,7 @@ OBJ    = crt.o syscall.o dirent.o                       \
 
 LIBDEPS = ${UCC_CC} ../src/cc1/cc1 ../src/cpp2/cpp
 
-BUILD_CMD = ${UCC_CC} -c -o $@ $<
+BUILD_CMD = ${UCC_CC} -S -o $@ $<
 
 include ../config.mk
 

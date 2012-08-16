@@ -364,8 +364,6 @@ void impl_op(enum op_type op)
 	const char *opc;
 	int normalise = 0;
 
-	vtop2_prepare_op();
-
 	switch(op){
 #define OP(e, s) case op_ ## e: opc = s; break
 		OP(multiply, "imul");
@@ -381,6 +379,36 @@ void impl_op(enum op_type op)
 		OP(bnot,     "not");
 #undef OP
 
+		case op_shiftl:
+		case op_shiftr:
+		{
+			char bufa[VSTACK_STR_SZ], bufs[VSTACK_STR_SZ];
+
+			/* value to shift must be a register */
+			v_to_reg(&vtop[-1]);
+
+			switch(vtop->type){
+				default:
+					v_to_reg(vtop);
+
+				case REG:
+					/* TODO: force al */
+					break;
+
+				case CONST:
+					break;
+			}
+
+			vstack_str_r(bufs, vtop);
+			vstack_str_r(bufa, &vtop[-1]);
+
+			out_asm("%s %s, %s",
+					op == op_shiftl ? "shl" : "shr",
+					bufa, bufs);
+
+			vpop();
+			return;
+		}
 
 		case op_modulus:
 		case op_divide:
@@ -392,6 +420,8 @@ void impl_op(enum op_type op)
 			 * remainder -> edx
 			 */
 			int r_div;
+
+			vtop2_prepare_op();
 
 			/*
 			 * if we are using reg_[ad] elsewhere
@@ -443,6 +473,8 @@ void impl_op(enum op_type op)
 		{
 			char buf[VSTACK_STR_SZ];
 
+			vtop2_prepare_op();
+
 			out_asm("cmp_ %s, %s",
 					vstack_str(&vtop[-1]),
 					vstack_str_r(buf, vtop));
@@ -457,10 +489,7 @@ void impl_op(enum op_type op)
 
 		case op_orsc:
 		case op_andsc:
-
-		case op_shiftl:
-		case op_shiftr:
-			ICE("TODO: %s", op_to_str(op));
+			ICE("%s shouldn't get here", op_to_str(op));
 
 		default:
 			ICE("invalid op %s", op_to_str(op));
@@ -468,6 +497,8 @@ void impl_op(enum op_type op)
 
 	{
 		char buf[VSTACK_STR_SZ];
+
+		vtop2_prepare_op();
 
 		out_asm("%s %s, %s", opc,
 				vstack_str_r(buf, &vtop[ 0]),

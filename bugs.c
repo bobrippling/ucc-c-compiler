@@ -1,8 +1,3 @@
-f(a)
-{
-	x() || y(); // checks rbx instead of rax for func ret
-}
-
 g(a)
 {
 	switch(a){
