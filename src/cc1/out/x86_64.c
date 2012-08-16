@@ -18,13 +18,14 @@
 #  define MIN(x, y) ((x) < (y) ? (x) : (y))
 #endif
 
-#define RET_REG 0
 #define REG_STR_SZ 8
 
 #define REG_A 0
 #define REG_B 1
 #define REG_C 2
 #define REG_D 3
+
+#define REG_RET REG_A
 
 #define VSTACK_STR_SZ 128
 
@@ -188,7 +189,7 @@ void out_pop_func_ret(decl *d)
 {
 	(void)d;
 
-	impl_load(vtop, RET_REG);
+	impl_load(vtop, REG_RET);
 	vpop();
 }
 
@@ -610,6 +611,6 @@ void impl_call(const int nargs)
 	/* return type */
 	vtop_clear();
 	vtop->type = REG;
-	vtop->bits.reg = REG_A;
+	vtop->bits.reg = REG_RET;
 	vtop->d = NULL; /* TODO */
 }
