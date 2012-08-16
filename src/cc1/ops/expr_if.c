@@ -47,14 +47,17 @@ void fold_expr_if(expr *e, symtable *stab)
 		POSSIBLE_OPT(e->expr, "constant ?: expression");
 
 	fold_need_expr(e->expr, "?: expr", 1);
+	fold_disallow_st_un(e->expr, "?: expr");
 
-	if(e->lhs)
+	if(e->lhs){
 		fold_expr(e->lhs, stab);
-	fold_expr(e->rhs, stab);
-	e->tree_type = decl_copy(e->rhs->tree_type); /* TODO: check they're the same */
+		fold_disallow_st_un(e->lhs, "?: lhs");
+	}
 
-	fold_disallow_st_un(e->lhs, "?: lhs");
-	fold_disallow_st_un(e->lhs, "?: rhs");
+	fold_expr(e->rhs, stab);
+	fold_disallow_st_un(e->rhs, "?: rhs");
+
+	e->tree_type = decl_copy(e->rhs->tree_type); /* TODO: check they're the same */
 
 	e->freestanding = (e->lhs ? e->lhs : e->expr)->freestanding || e->rhs->freestanding;
 }
