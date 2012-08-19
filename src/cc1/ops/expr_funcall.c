@@ -7,6 +7,13 @@
 #include "../../util/alloc.h"
 #include "__builtin.h"
 
+static int func_is_asm(const char *sp)
+{
+	return fopt_mode & FOPT_ENABLE_ASM
+		&& sp
+		&& !strcmp(sp, ASM_INLINE_FNAME);
+}
+
 const char *str_expr_funcall()
 {
 	return "funcall";
@@ -23,6 +30,33 @@ void fold_expr_funcall(expr *e, symtable *stab)
 	const char *sp = e->expr->spel;
 	decl *df;
 	funcargs *args_from_decl;
+
+	if(func_is_asm(sp)){
+		expr *arg1;
+		const char *str;
+		int i;
+
+		if(!e->funcargs || e->funcargs[1] || !expr_kind(e->funcargs[0], addr))
+			DIE_AT(&e->where, "invalid __asm__ arguments");
+
+		arg1 = e->funcargs[0];
+		str = arg1->array_store->data.str;
+		for(i = 0; i < arg1->array_store->len - 1; i++){
+			char ch = str[i];
+			if(!isprint(ch) && !isspace(ch))
+invalid:
+				DIE_AT(&arg1->where, "invalid __asm__ string (character 0x%x at index %d, %d / %d)",
+						ch, i, i + 1, arg1->array_store->len);
+		}
+
+		if(str[i])
+			goto invalid;
+
+		/* TODO: allow a long return, e.g. __asm__(("movq $5, %rax")) */
+		e->tree_type = decl_new_void();
+		return;
+	}
+
 
 	if(!sp)
 		sp = "<anon func>";
@@ -154,29 +188,9 @@ void gen_expr_funcall(expr *e, symtable *stab)
 		return;
 	}
 
-	if(fopt_mode & FOPT_ENABLE_ASM && fname && !strcmp(fname, ASM_INLINE_FNAME)){
-		const char *str;
-		expr *arg1;
-		int i;
-
-		if(!e->funcargs || e->funcargs[1] || !expr_kind(e->funcargs[0], addr))
-			DIE_AT(&e->where, "invalid __asm__ arguments");
-
-		arg1 = e->funcargs[0];
-		str = arg1->array_store->data.str;
-		for(i = 0; i < arg1->array_store->len - 1; i++){
-			char ch = str[i];
-			if(!isprint(ch) && !isspace(ch))
-invalid:
-				DIE_AT(&arg1->where, "invalid __asm__ string (character 0x%x at index %d, %d / %d)",
-						ch, i, i + 1, arg1->array_store->len);
-		}
-
-		if(str[i])
-			goto invalid;
-
+	if(func_is_asm(fname)){
 		out_comment("start manual __asm__");
-		fprintf(cc_out[SECTION_TEXT], "%s\n", arg1->array_store->data.str);
+		fprintf(cc_out[SECTION_TEXT], "%s\n", e->funcargs[0]->array_store->data.str);
 		out_comment("end manual __asm__");
 	}else{
 		/* continue with normal funcall */
