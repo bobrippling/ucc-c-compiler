@@ -142,7 +142,6 @@ int asm_table_lookup(decl *d)
 			case type_short:
 				return ASM_INDEX_SHORT;
 
-			case type_enum:
 			case type_int:
 			case type_float:
 				return ASM_INDEX_INT;
@@ -158,6 +157,7 @@ int asm_table_lookup(decl *d)
 			case type_long:
 				return ASM_INDEX_LONG;
 
+			case type_enum:
 			case type_struct:
 			case type_union:
 				ICE("%s of %s", __func__, sue_str(d->type->sue));
@@ -190,10 +190,10 @@ void asm_reg_name(decl *d, const char **regpre, const char **regpost)
 
 int asm_type_size(decl *d)
 {
-	struct_union_enum_st *st = d->type->sue;
+	struct_union_enum_st *sue = d->type->sue;
 
-	if(st && !decl_ptr_depth(d) && st->primitive != type_enum)
-		return struct_union_size(st);
+	if(sue && !decl_ptr_depth(d))
+		return sue_size(sue);
 
 	return asm_type_table[asm_table_lookup(d)].sz;
 }
