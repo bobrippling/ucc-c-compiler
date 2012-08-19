@@ -440,7 +440,8 @@ decl *decl_ptr_depth_dec(decl *d, where *from)
 
 	if(!last || (last->type != decl_desc_ptr && last->type != decl_desc_array)){
 		DIE_AT(from,
-			"trying to dereference non-pointer%s%s%s",
+			"trying to dereference non-pointer type %s%s%s%s",
+			decl_to_str(d),
 			last ? " (" : "",
 			last ? decl_desc_to_str(last->type) : "",
 			last ? ")"  : "");
