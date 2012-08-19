@@ -35,7 +35,7 @@ struct vstack
 	} bits;
 };
 
-extern struct vstack *vtop;
+extern struct vstack *vtop, vstack[];
 
 void vpop(void);
 void vswap(void);
@@ -53,6 +53,7 @@ int  v_to_reg(struct vstack *conv);
 int  v_unused_reg(int stack_as_backup);
 void v_freeup_regp(struct vstack *);
 void v_freeup_reg(int r, int allowable_stack);
+void v_save_reg(struct vstack *vp);
 
 enum vstore v_deref_type(enum vstore store);
 

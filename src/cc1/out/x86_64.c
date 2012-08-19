@@ -748,6 +748,11 @@ void impl_call(const int nargs, decl *d)
 		vpop();
 	}
 
+	/* save all registers */
+	for(i = 0; &vstack[i] < vtop; i++)
+		if(vstack[i].type == REG)
+			v_save_reg(&vstack[i]);
+
 	out_asm("callq %s", x86_call_jmp_target(vtop));
 
 	if(ncleanup)

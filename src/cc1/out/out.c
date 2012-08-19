@@ -210,6 +210,8 @@ void v_freeup_regp(struct vstack *vp)
 	/* freeup this reg */
 	int r;
 
+	UCC_ASSERT(vp->type == REG, "not reg");
+
 	/* attempt to save to a register first */
 	r = v_unused_reg(0);
 
@@ -221,17 +223,24 @@ void v_freeup_regp(struct vstack *vp)
 		vp->bits.reg = r;
 
 	}else{
-		struct vstack store;
-
-		store.d = vp->d;
-		store.type = STACK;
-		v_make_addr(&store);
-
-		store.bits.off_from_bp = impl_alloc_stack(decl_size(store.d));
-
-		impl_store(vp, &store);
-		memcpy(vp, &store, sizeof store);
+		v_save_reg(vp);
 	}
+}
+
+void v_save_reg(struct vstack *vp)
+{
+	struct vstack store;
+
+	UCC_ASSERT(vp->type == REG, "not reg");
+
+	store.d = vp->d;
+	store.type = STACK;
+	v_make_addr(&store);
+
+	store.bits.off_from_bp = impl_alloc_stack(decl_size(store.d));
+
+	impl_store(vp, &store);
+	memcpy(vp, &store, sizeof store);
 }
 
 void v_freeup_reg(int r, int allowable_stack)
