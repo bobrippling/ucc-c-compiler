@@ -542,13 +542,18 @@ void impl_op_unary(enum op_type op)
 			char ptr[REG_STR_SZ], dst[REG_STR_SZ];
 
 			v_to_reg(vtop);
+
+			/* loaded the pointer, now we apply the deref change */
+
+			/* XXX: memleak */
+			vtop->d = decl_ptr_depth_dec(decl_copy(vtop->d), NULL);
+
 			x86_reg_str_r(ptr, vtop->bits.reg, NULL);
 			reg_str_r(dst, vtop);
 
-			out_asm("mov%c (%%%s), %%%s ; decl %s",
+			out_asm("mov%c (%%%s), %%%s",
 					asm_type_ch(vtop->d),
-					ptr, dst,
-					vtop->d ? decl_to_str(vtop->d) : "nil");
+					ptr, dst);
 			return;
 		}
 

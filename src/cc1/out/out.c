@@ -366,9 +366,6 @@ void out_op_unary(enum op_type op)
 		{
 			enum vstore derefed = v_deref_type(vtop->type);
 
-			/* XXX: memleak */
-			vtop->d = decl_ptr_depth_dec(decl_copy(vtop->d), NULL);
-
 			if((signed)derefed != -1){
 				vtop->type = derefed;
 				return;
