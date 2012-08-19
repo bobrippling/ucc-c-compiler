@@ -177,7 +177,8 @@ void out_func_prologue(int stack_res, int nargs)
 		n_reg_args = MIN(nargs, N_CALL_REGS);
 
 		for(i = 0; i < n_reg_args; i++){
-			out_asm("mov_ %%%s, -0x%x(%%rbp)",
+			out_asm("mov%c %%%s, -0x%x(%%rbp)",
+					asm_type_ch(NULL),
 					call_regs[i].name,
 					platform_word_size() * (i + 1));
 		}
@@ -259,8 +260,9 @@ static void x86_load(struct vstack *from, const char *regstr)
 			break;
 	}
 
-	out_asm("%s_ %s, %%%s",
+	out_asm("%s%c %s, %%%s",
 			lea ? "lea" : "mov",
+			asm_type_ch(from->d),
 			vstack_str(from),
 			regstr);
 }
@@ -324,7 +326,8 @@ void impl_store(struct vstack *from, struct vstack *to)
 		{
 			char buf[VSTACK_STR_SZ];
 
-			out_asm("mov_ %s, %s%s%s",
+			out_asm("mov%c %s, %s%s%s",
+					asm_type_ch(from->d),
 					vstack_str_r(buf, from),
 					deref ? "(" : "",
 					vstack_str(to),
@@ -360,7 +363,8 @@ void impl_reg_cp(struct vstack *from, int r)
 
 	x86_reg_str_r(buf_r, r, from->d);
 
-	out_asm("mov_ %s, %%%s",
+	out_asm("mov%c %s, %%%s",
+			asm_type_ch(from->d),
 			vstack_str_r(buf_v, from),
 			buf_r);
 }
@@ -481,7 +485,8 @@ void impl_op(enum op_type op)
 
 			vtop2_prepare_op();
 
-			out_asm("cmp_ %s, %s",
+			out_asm("cmp%c %s, %s",
+					asm_type_ch(vtop->d),
 					vstack_str(&vtop[-1]),
 					vstack_str_r(buf, vtop));
 
@@ -567,7 +572,8 @@ void impl_normalise(void)
 	if(vtop->type != REG)
 		v_to_reg(vtop);
 
-	out_asm("and_ 0x1, %%%s // normalise",
+	out_asm("and%c 0x1, %%%s // normalise",
+			asm_type_ch(vtop->d),
 			reg_str_r(buf, vtop));
 }
 

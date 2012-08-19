@@ -46,57 +46,6 @@ enum
 };
 
 #if 0
-void asm_sym(enum asm_sym_type t, sym *s, asm_operand *reg)
-{
-	const int is_global = s->type == sym_global || type_store_static_or_extern(s->decl->type->store);
-	char *const dsp = s->decl->spel;
-	int is_auto = s->type == sym_local;
-	asm_operand *brackets;
-	decl *resolved_type;
-
-	if(is_global && (t == ASM_LEA || s->decl->func_code))
-		t = ASM_LEA; /* force a lea, for the label */
-
-	if(t == ASM_LEA){
-		/* decl is the ptr_depth_inc of s->decl, not s->decl */
-		resolved_type = decl_ptr_depth_inc(decl_copy(s->decl));
-	}else{
-		resolved_type = s->decl;
-	}
-
-	if(is_global){
-		brackets = asm_operand_new_label(resolved_type, dsp, 1);
-
-	}else{
-		brackets = asm_operand_new_deref(
-				resolved_type,
-				asm_operand_new_reg(NULL, ASM_REG_BP),
-				/*((is_auto ? -1 : 2) * platform_word_size()) + s->offset); - broken? */
-				(is_auto ? -1 : 1) * (((is_auto ? 1 : 2) * platform_word_size()) + s->offset));
-	}
-
-#if 0
-	asm_temp(1, "%s %s, %s ; %s%s",
-			t == ASM_LEA ? "lea"    : "mov",
-			t == ASM_SET ? brackets : reg,
-			t == ASM_SET ? reg      : brackets,
-			t == ASM_LEA ? "&"      : "",
-			dsp
-			);
-#endif
-
-	asm_output_new(
-			t == ASM_LEA   ? asm_out_type_lea : asm_out_type_mov,
-			t == ASM_STORE ? brackets         : reg,
-			t == ASM_STORE ? reg              : brackets);
-
-	asm_comment("%s%s", t == ASM_LEA ? "&" : "", dsp);
-
-	UCC_ASSERT(t != ASM_LEA || !reg->tt, "tree type for lea");
-
-	/* don't free resolved_type - it's needed by the asm_operand */
-}
-
 const char *asm_intval_str(intval *iv)
 {
 	static char buf[64];
@@ -160,7 +109,10 @@ int asm_table_lookup(decl *d)
 			case type_enum:
 			case type_struct:
 			case type_union:
-				ICE("%s of %s", __func__, sue_str(d->type->sue));
+				ICE("%s of %s (%s)",
+						__func__,
+						sue_str(d->type->sue),
+						decl_to_str(d));
 				/*DIE_AT(&d->where, "invalid use of struct (%s:%d)", __FILE__, __LINE__);*/
 
 			case type_unknown:

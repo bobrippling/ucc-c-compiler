@@ -13,7 +13,7 @@
 #include "../cc1.h"
 
 /*
- * This entire stack-output idea was inspired by tinycc, and improved slightly,
+ * This entire stack-output idea was inspired by tinycc, and improved somewhat
  */
 
 #define N_VSTACK 1024
