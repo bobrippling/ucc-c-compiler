@@ -52,7 +52,7 @@ static void operate(
 			return;
 
 		case op_minus:
-			piv->val = (rval ? rval->val : 0) - lval->val;
+			piv->val = rval ? lval->val - rval->val : -lval->val;
 			return;
 
 		case op_not:  piv->val = !lval->val; return;
