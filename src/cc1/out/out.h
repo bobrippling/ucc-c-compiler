@@ -21,8 +21,7 @@ void out_op_unary(enum op_type); /* unary ops */
 void out_cast(decl *from, decl *to);
 void out_change_decl(decl *);
 
-void out_call(int nargs, decl *rt); /* pop args, call *pop(), push result */
-void out_call_fin(int nargs); /* remove args from stack */
+void out_call(int nargs, int variadic, decl *rt);
 
 void out_jmp(void); /* jmp to *pop() */
 void out_jtrue( const char *);

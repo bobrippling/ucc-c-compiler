@@ -727,25 +727,32 @@ void impl_jcond(int true, const char *lbl)
 	}
 }
 
-void impl_call(const int nargs, decl *d)
+void impl_call(const int nargs, int variadic, decl *d)
 {
 	int i, ncleanup;
 
-	for(i = 0; i < MIN(nargs, N_CALL_REGS); i++){
-		int ri;
+	if(variadic){
+		for(i = nargs - 1; i >=0; i--)
+			out_asm("pushq %s", vstack_str(&vtop[-i]));
+		for(i = 0; i < nargs; i++)
+			vpop();
+	}else{
+		for(i = 0; i < MIN(nargs, N_CALL_REGS); i++){
+			int ri;
 
-		ri = call_regs[i].idx;
-		if(ri != -1)
-			v_freeup_reg(ri, 1);
+			ri = call_regs[i].idx;
+			if(ri != -1)
+				v_freeup_reg(ri, 1);
 
-		x86_load(vtop, call_reg_str(i, vtop->d));
-		vpop();
-	}
-	/* push remaining args onto the stack */
-	ncleanup = nargs - i;
-	for(; i < nargs; i++){
-		out_asm("pushq %s", vstack_str(vtop));
-		vpop();
+			x86_load(vtop, call_reg_str(i, vtop->d));
+			vpop();
+		}
+		/* push remaining args onto the stack */
+		ncleanup = nargs - i;
+		for(; i < nargs; i++){
+			out_asm("pushq %s", vstack_str(vtop));
+			vpop();
+		}
 	}
 
 	/* save all registers */

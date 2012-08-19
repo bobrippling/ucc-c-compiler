@@ -16,7 +16,9 @@ __syscall:
 	pushq %rcx
 	pushq %r11
 
+#define OLD_CONV
 #ifdef OLD_CONV
+
 	movq 16(%rbp), %rax # eax
 	movq 24(%rbp), %rdi # ebx
 	movq 32(%rbp), %rsi # ecx
@@ -24,6 +26,7 @@ __syscall:
 	movq 48(%rbp), %r10 # edi
 	movq 56(%rbp), %r8  # esi
 	movq 64(%rbp), %r9  # e8?
+
 #else
 
 	// x64 convention: %rdi, %rsi, %rdx, %rcx, %r8, %r9

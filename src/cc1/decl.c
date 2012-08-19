@@ -391,8 +391,12 @@ decl_desc *decl_leaf(decl *d)
 funcargs *decl_funcargs(decl *d)
 {
 	decl_desc *dp;
-	for(dp = d->desc; dp->type != decl_desc_func && dp->child; dp = dp->child);
-	return dp->bits.func;
+
+	for(dp = decl_desc_tail(d); dp; dp = dp->parent_desc)
+		if(dp->type == decl_desc_func)
+			return dp->bits.func;
+
+	return NULL;
 }
 
 int decl_is_struct_or_union_possible_ptr(decl *d)

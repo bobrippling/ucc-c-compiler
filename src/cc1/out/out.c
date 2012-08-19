@@ -448,9 +448,9 @@ void out_change_decl(decl *d)
 	vtop->d = d;
 }
 
-void out_call(int nargs, decl *rt)
+void out_call(int nargs, int variadic, decl *rt)
 {
-	impl_call(nargs, rt);
+	impl_call(nargs, variadic, rt);
 }
 
 void out_jmp(void)
