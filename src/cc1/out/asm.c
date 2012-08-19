@@ -91,6 +91,9 @@ int asm_table_lookup(decl *d)
 			case type_short:
 				return ASM_INDEX_SHORT;
 
+			case type_enum:
+				UCC_ASSERT(sue_size(d->type->sue) == asm_type_table[ASM_INDEX_INT].sz,
+						"mismatching enum size");
 			case type_int:
 			case type_float:
 				return ASM_INDEX_INT;
@@ -106,7 +109,6 @@ int asm_table_lookup(decl *d)
 			case type_long:
 				return ASM_INDEX_LONG;
 
-			case type_enum:
 			case type_struct:
 			case type_union:
 				ICE("%s of %s (%s)",
