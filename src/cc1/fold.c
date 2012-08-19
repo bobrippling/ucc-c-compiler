@@ -159,7 +159,7 @@ void fold_enum(struct_union_enum_st *en, symtable *stab)
 	int defval = bitmask;
 
 	for(i = en->members; *i; i++){
-		enum_member *m = &(*i)->enum_member;
+		enum_member *m = (*i)->enum_member;
 		expr *e = m->val;
 
 		/* -1 because we can't do dynarray_add(..., 0) */
@@ -197,7 +197,7 @@ int fold_sue(struct_union_enum_st *sue, symtable *stab)
 		offset = platform_word_size(); /* XXX: assumes enums are 64-bit */
 	}else{
 		for(offset = 0, i = sue->members; i && *i; i++){
-			decl *d = &(*i)->struct_member;
+			decl *d = (*i)->struct_member;
 
 			fold_decl(d, stab);
 
@@ -267,7 +267,7 @@ void fold_coerce_assign(decl *d, expr *assign, int *ok)
 					sue_member **i;
 
 					for(i = d->type->sue->members; i && *i; i++){
-						decl *d = &(*i)->struct_member;
+						decl *d = (*i)->struct_member;
 						if(!decl_ptr_depth(d) && d->type->primitive == type_char){
 							WARN_AT(&assign->where, "struct init via { } breaks with char member (%s %s)",
 									decl_to_str(d), d->spel);

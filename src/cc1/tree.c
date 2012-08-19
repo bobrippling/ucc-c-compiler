@@ -89,7 +89,6 @@ int type_primitive_size(enum type_primitive p)
 		case type_short:
 			return 2;
 
-		case type_enum:
 		case type_int:
 		case type_float:
 			return 4;
@@ -109,7 +108,8 @@ int type_primitive_size(enum type_primitive p)
 
 		case type_union:
 		case type_struct:
-			ICE("struct size");
+		case type_enum:
+			ICE("sue size");
 
 		case type_unknown:
 			break;
@@ -125,7 +125,7 @@ int type_size(const type *t)
 		return decl_size(t->typeof->decl);
 
 	if(t->sue)
-		return struct_union_size(t->sue);
+		return sue_size(t->sue);
 
 	return type_primitive_size(t->primitive);
 }
