@@ -582,6 +582,33 @@ void impl_normalise(void)
 			reg_str_r(buf, vtop));
 }
 
+void impl_cast(decl *from, decl *to)
+{
+	int szfrom, szto;
+
+	szfrom = asm_type_size(from);
+	szto   = asm_type_size(to);
+
+	if(szfrom != szto){
+		if(szfrom < szto){
+			char buf_from[REG_STR_SZ], buf_to[REG_STR_SZ];
+
+			v_to_reg(vtop);
+
+			x86_reg_str_r(buf_from, vtop->bits.reg, from);
+			x86_reg_str_r(buf_to,   vtop->bits.reg, to);
+
+			out_asm("mov%cx %s, %s", "zs"[from->type->is_signed], buf_from, buf_to);
+		}else{
+			char buf[DECL_STATIC_BUFSIZ];
+
+			out_comment("truncate cast from %s to %s, size %d -> %d",
+					decl_to_str_r(buf, from), decl_to_str(to),
+					szfrom, szto);
+		}
+	}
+}
+
 static const char *x86_call_jmp_target(struct vstack *vp)
 {
 	static char buf[VSTACK_STR_SZ + 2];

@@ -1,4 +1,4 @@
-f(short *p)
+long f(int i, long l)
 {
-	return *p;
+	return i + l;
 }

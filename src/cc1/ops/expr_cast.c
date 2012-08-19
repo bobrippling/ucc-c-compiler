@@ -101,47 +101,25 @@ void gen_expr_cast_1(expr *e, FILE *f)
 
 void gen_expr_cast(expr *e, symtable *stab)
 {
-	char buf[DECL_STATIC_BUFSIZ];
-	decl *dlhs, *drhs;
-	int size_lhs, size_rhs;
+	decl *dto, *dfrom;
 
 	gen_expr(e->expr, stab);
 
-	dlhs = e->tree_type;
-	drhs = e->expr->tree_type;
+	dto = e->tree_type;
+	dfrom = e->expr->tree_type;
 
 	/* return if cast-to-void */
-	if(decl_is_void(dlhs)){
+	if(decl_is_void(dto)){
+		out_change_decl(dto);
 		out_comment("cast to void");
 		return;
 	}
 
-	/* type convert */
-	strcpy(buf, decl_to_str(drhs));
-	out_comment("cast %s to %s", buf, decl_to_str(dlhs));
-
 	/* check float <--> int conversion */
-	if(decl_is_float(dlhs) != decl_is_float(drhs))
+	if(decl_is_float(dto) != decl_is_float(dfrom))
 		ICE("TODO: float <-> int casting");
 
-	/* decide if casting to a larger or smaller type */
-	if((size_lhs = asm_type_size(dlhs)) != (size_rhs = asm_type_size(drhs))){
-		/*asm_output *o;*/
-
-		if(size_rhs > size_lhs){
-			/* loss of precision, touch crabcakes */
-			out_comment("loss of precision, noop cast");
-		}else{
-			char buf[DECL_STATIC_BUFSIZ];
-
-			out_cast(dlhs, drhs);
-
-			out_comment("cast finish - sign extend %s -> %s",
-					decl_to_str(drhs), decl_to_str_r(buf, dlhs));
-		}
-	}else{
-		out_comment("cast - asm type sizes match (%d)", asm_type_size(dlhs));
-	}
+	out_cast(dfrom, dto);
 }
 
 void gen_expr_str_cast(expr *e, symtable *stab)

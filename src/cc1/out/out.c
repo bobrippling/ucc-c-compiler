@@ -188,6 +188,22 @@ struct vstack *v_find_reg(int reg)
 	return NULL;
 }
 
+void v_make_addr(struct vstack *vp)
+{
+	switch(vp->type){
+		case STACK:
+			vtop->type = STACK_ADDR;
+			break;
+		case LBL:
+			vtop->type = LBL_ADDR;
+			break;
+		default:
+			ICE("invalid sym addr");
+	}
+
+	vtop->d = decl_ptr_depth_inc(decl_copy(vtop->d));
+}
+
 void v_freeup_regp(struct vstack *vp)
 {
 	/* freeup this reg */
@@ -206,8 +222,9 @@ void v_freeup_regp(struct vstack *vp)
 	}else{
 		struct vstack store;
 
-		store.type = STACK_ADDR;
 		store.d = vp->d;
+		store.type = STACK;
+		v_make_addr(&store);
 
 		store.bits.off_from_bp = impl_alloc_stack(decl_size(store.d));
 
@@ -271,9 +288,12 @@ void out_push_lbl(char *s, int pic, decl *d)
 {
 	vpush(d);
 
-	vtop->type = LBL_ADDR;
 	vtop->bits.lbl.str = s;
 	vtop->bits.lbl.pic = pic;
+
+	vtop->type = LBL;
+	if(d)
+		v_make_addr(vtop);
 }
 
 void out_dup(void)
@@ -308,16 +328,7 @@ void out_push_sym_addr(sym *s)
 {
 	out_push_sym(s);
 
-	switch(vtop->type){
-		case STACK:
-			vtop->type = STACK_ADDR;
-			break;
-		case LBL:
-			vtop->type = LBL_ADDR;
-			break;
-		default:
-			ICE("invalid sym addr");
-	}
+	v_make_addr(vtop);
 }
 
 void out_push_sym(sym *s)
@@ -351,6 +362,8 @@ void out_push_sym(sym *s)
 
 void out_op(enum op_type op)
 {
+	/* TODO: checks for adding or removing zero? */
+
 	/*
 	 * the implementation does a vpop() and
 	 * sets vtop sufficiently to describe how
@@ -413,9 +426,13 @@ void out_op_unary(enum op_type op)
 
 void out_cast(decl *from, decl *to)
 {
-	(void)to;
-	(void)from;
-	out_comment("TODO: cast");
+	impl_cast(from, to);
+	out_change_decl(to);
+}
+
+void out_change_decl(decl *d)
+{
+	vtop->d = d;
 }
 
 void out_call(int nargs, decl *rt)

@@ -19,6 +19,7 @@ void out_op(      enum op_type); /* binary ops and comparisons */
 void out_op_unary(enum op_type); /* unary ops */
 
 void out_cast(decl *from, decl *to);
+void out_change_decl(decl *);
 
 void out_call(int nargs, decl *rt); /* pop args, call *pop(), push result */
 void out_call_fin(int nargs); /* remove args from stack */
