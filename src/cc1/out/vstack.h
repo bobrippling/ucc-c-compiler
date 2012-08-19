@@ -46,6 +46,8 @@ void vtop_clear(decl *);
 void vtop2_prepare_op(void);
 void v_prepare_op(struct vstack *vp);
 
+void v_inv_cmp(struct vstack *vp);
+
 int  v_to_reg(struct vstack *conv);
 
 int  v_unused_reg(int stack_as_backup);

@@ -241,7 +241,7 @@ void v_freeup_reg(int r, int allowable_stack)
 		v_freeup_regp(vp);
 }
 
-static void v_inv_cmp(struct vstack *vp)
+void v_inv_cmp(struct vstack *vp)
 {
 	switch(vp->bits.flag){
 #define OPPOSITE(from, to) case flag_ ## from: vp->bits.flag = flag_ ## to; return

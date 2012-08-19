@@ -38,15 +38,15 @@ enum p_opts
 static const char regs[] = "abcd";
 static const struct
 {
-	const char *name;
+	char reg, suffix;
 	int idx;
 } call_regs[] = {
-	{ "rdi", -1 },
-	{ "rsi", -1 },
-	{ "rdx", REG_D },
-	{ "rcx", REG_C },
-	{ "r8",  -1 },
-	{ "r9",  -1 },
+	{ 'd', 'i',  -1 },
+	{ 's', 'i',  -1 },
+	{ 'd', 'x',  REG_D },
+	{ 'c', 'x',  REG_C },
+	{ '8', '\0', -1 },
+	{ '9', '\0', -1 },
 };
 
 
@@ -161,6 +161,21 @@ int impl_alloc_stack(int sz)
 	return sz + stack_sz;
 }
 
+const char *call_reg_str(int i, decl *d)
+{
+	const char suff[] = { call_regs[i].suffix, '\0' };
+	const char *pre, *post;
+	static char buf[REG_STR_SZ];
+
+	asm_reg_name(d, &pre, &post);
+
+	snprintf(buf, sizeof buf,
+			"%s%c%s", pre, call_regs[i].reg,
+			*suff == *post ? post : suff);
+
+	return buf;
+}
+
 void out_func_prologue(int stack_res, int nargs)
 {
 	(void)nargs;
@@ -179,7 +194,7 @@ void out_func_prologue(int stack_res, int nargs)
 		for(i = 0; i < n_reg_args; i++){
 			out_asm("mov%c %%%s, -0x%x(%%rbp)",
 					asm_type_ch(NULL),
-					call_regs[i].name,
+					call_reg_str(i, NULL),
 					platform_word_size() * (i + 1));
 		}
 	}
@@ -482,8 +497,15 @@ void impl_op(enum op_type op)
 		case op_gt:
 		{
 			char buf[VSTACK_STR_SZ];
+			int inverse = 0;
 
 			vtop2_prepare_op();
+
+			if(vtop->type == CONST){
+				/* if we have a const, it must be the first arg */
+				inverse = op != op_eq && op != op_ne;
+				vswap();
+			}
 
 			out_asm("cmp%c %s, %s",
 					asm_type_ch(vtop->d),
@@ -494,6 +516,9 @@ void impl_op(enum op_type op)
 			vtop_clear(decl_new_type(type_int)); /* cmp creates an int */
 			vtop->type = FLAG;
 			vtop->bits.flag = op_to_flag(op);
+
+			if(inverse)
+				v_inv_cmp(vtop);
 
 			return;
 		}
@@ -577,7 +602,9 @@ void impl_normalise(void)
 	if(vtop->type != REG)
 		v_to_reg(vtop);
 
-	out_asm("and%c 0x1, %%%s // normalise",
+	out_comment("normalise");
+
+	out_asm("and%c 0x1, %%%s",
 			asm_type_ch(vtop->d),
 			reg_str_r(buf, vtop));
 }
@@ -673,7 +700,7 @@ void impl_call(const int nargs, decl *d)
 		if(ri != -1)
 			v_freeup_reg(ri, 1);
 
-		x86_load(vtop, call_regs[i].name);
+		x86_load(vtop, call_reg_str(i, vtop->d));
 		vpop();
 	}
 	/* push remaining args onto the stack */
