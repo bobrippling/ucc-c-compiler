@@ -624,7 +624,7 @@ void impl_normalise(void)
 
 	out_comment("normalise");
 
-	out_asm("and%c 0x1, %%%s",
+	out_asm("and%c $0x1, %%%s",
 			asm_type_ch(vtop->d),
 			reg_str_r(buf, vtop));
 }
