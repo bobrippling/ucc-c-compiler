@@ -625,14 +625,32 @@ void impl_cast(decl *from, decl *to)
 
 	if(szfrom != szto){
 		if(szfrom < szto){
+			const int is_signed = from->type->is_signed;
+			const int int_sz = type_primitive_size(type_int);
+
 			char buf_from[REG_STR_SZ], buf_to[REG_STR_SZ];
 
 			v_to_reg(vtop);
 
 			x86_reg_str_r(buf_from, vtop->bits.reg, from);
-			x86_reg_str_r(buf_to,   vtop->bits.reg, to);
 
-			out_asm("mov%cx %%%s, %%%s", "zs"[from->type->is_signed], buf_from, buf_to);
+			if(!is_signed && decl_size(to) > int_sz){
+				/*
+				 * movzx %eax, %rax is invalid
+				 * since movl %eax, %eax automatically zeros the top half of rax
+				 * in x64 mode
+				 */
+				if(decl_size(from) == int_sz){
+					out_asm("movl %%%s, %%%s", buf_from, buf_from);
+					return;
+				}else{
+					ICE("TODO: cast from short/char to long");
+				}
+			}else{
+				x86_reg_str_r(buf_to,   vtop->bits.reg, to);
+			}
+
+			out_asm("mov%cx %%%s, %%%s", "zs"[is_signed], buf_from, buf_to);
 		}else{
 			char buf[DECL_STATIC_BUFSIZ];
 
