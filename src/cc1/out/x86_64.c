@@ -295,10 +295,17 @@ void impl_load(struct vstack *from, int reg)
 	if(from->type == REG && reg == from->bits.reg)
 		return;
 
-	if(from->type == FLAG)
-		from->d = decl_new_char(); /* force set%s to set the low byte */
+	x86_reg_str_r(buf, reg, from->d);
 
-	x86_load(from, x86_reg_str_r(buf, reg, from->d));
+	if(from->type == FLAG){
+		out_asm("mov%c $0, %%%s", asm_type_ch(from->d), buf);
+
+		from->d = decl_new_char(); /* force set%s to set the low byte */
+		/* decl changed, reload the register name */
+		x86_reg_str_r(buf, reg, from->d);
+	}
+
+	x86_load(from, buf);
 
 	if(from->d != save)
 		decl_free(from->d);
@@ -513,15 +520,16 @@ void impl_op(enum op_type op)
 		case op_gt:
 		{
 			char buf[VSTACK_STR_SZ];
-			int inverse = 0;
 
 			vtop2_prepare_op();
 
-			if(vtop->type == CONST){
-				/* if we have a const, it must be the first arg */
-				inverse = op != op_eq && op != op_ne;
+			/*
+			 * if we have a const, it must be the first arg
+			 * not sure why this works without having to
+			 * invert the comparison
+			 */
+			if(vtop->type == CONST)
 				vswap();
-			}
 
 			out_asm("cmp%c %s, %s",
 					asm_type_ch(vtop->d),
@@ -532,10 +540,6 @@ void impl_op(enum op_type op)
 			vtop_clear(decl_new_type(type_int)); /* cmp creates an int */
 			vtop->type = FLAG;
 			vtop->bits.flag = op_to_flag(op);
-
-			if(inverse)
-				v_inv_cmp(vtop);
-
 			return;
 		}
 
