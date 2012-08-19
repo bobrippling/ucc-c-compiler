@@ -292,9 +292,12 @@ void out_push_lbl(char *s, int pic, decl *d)
 	vtop->bits.lbl.str = s;
 	vtop->bits.lbl.pic = pic;
 
-	vtop->type = LBL;
-	if(d)
+	if(d){
+		vtop->type = LBL;
 		v_make_addr(vtop);
+	}else{
+		vtop->type = LBL_ADDR;
+	}
 }
 
 void out_dup(void)
