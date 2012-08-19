@@ -163,15 +163,20 @@ int impl_alloc_stack(int sz)
 
 const char *call_reg_str(int i, decl *d)
 {
+	static char buf[REG_STR_SZ];
 	const char suff[] = { call_regs[i].suffix, '\0' };
 	const char *pre, *post;
-	static char buf[REG_STR_SZ];
 
 	asm_reg_name(d, &pre, &post);
 
-	snprintf(buf, sizeof buf,
-			"%s%c%s", pre, call_regs[i].reg,
-			*suff == *post ? post : suff);
+	if(!call_regs[i].suffix && d && decl_size(d)< type_primitive_size(type_long)){
+		/* r9d, etc */
+		snprintf(buf, sizeof buf, "r%cd", call_regs[i].reg);
+	}else{
+		snprintf(buf, sizeof buf,
+				"%s%c%s", pre, call_regs[i].reg,
+				*suff == *post ? post : suff);
+	}
 
 	return buf;
 }
@@ -217,7 +222,7 @@ void out_pop_func_ret(decl *d)
 
 static const char *x86_cmp(enum flag_cmp cmp, decl *d)
 {
-	int is_signed = d ? d->type->is_signed : 1; /* TODO */
+	const int is_signed = d->type->is_signed;
 
 	switch(cmp){
 #define OP(e, s, u) case flag_ ## e: return is_signed ? s : u
