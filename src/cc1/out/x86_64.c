@@ -419,7 +419,8 @@ void impl_op(enum op_type op)
 		case op_shiftl:
 		case op_shiftr:
 		{
-			char bufa[VSTACK_STR_SZ], bufs[VSTACK_STR_SZ];
+			char bufv[VSTACK_STR_SZ], bufs[VSTACK_STR_SZ];
+			decl *free_this = NULL;
 
 			/* value to shift must be a register */
 			v_to_reg(&vtop[-1]);
@@ -429,7 +430,7 @@ void impl_op(enum op_type op)
 					v_to_reg(vtop);
 
 				case REG:
-					/* TODO: force al */
+					free_this = vtop->d = decl_new_char();
 					break;
 
 				case CONST:
@@ -437,13 +438,16 @@ void impl_op(enum op_type op)
 			}
 
 			vstack_str_r(bufs, vtop);
-			vstack_str_r(bufa, &vtop[-1]);
+			vstack_str_r(bufv, &vtop[-1]);
 
 			out_asm("%s %s, %s",
 					op == op_shiftl ? "shl" : "shr",
-					bufa, bufs);
+					bufs, bufv);
 
 			vpop();
+
+			if(free_this)
+				decl_free(free_this);
 			return;
 		}
 
