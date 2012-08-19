@@ -193,16 +193,16 @@ void v_make_addr(struct vstack *vp)
 {
 	switch(vp->type){
 		case STACK:
-			vtop->type = STACK_ADDR;
+			vp->type = STACK_ADDR;
 			break;
 		case LBL:
-			vtop->type = LBL_ADDR;
+			vp->type = LBL_ADDR;
 			break;
 		default:
 			ICE("invalid sym addr");
 	}
 
-	vtop->d = decl_ptr_depth_inc(decl_copy(vtop->d));
+	vp->d = decl_ptr_depth_inc(decl_copy(vp->d));
 }
 
 void v_freeup_regp(struct vstack *vp)
