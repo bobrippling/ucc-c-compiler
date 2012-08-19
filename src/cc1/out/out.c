@@ -115,7 +115,8 @@ void v_prepare_op(struct vstack *vp)
 
 			v_to_reg(vp);
 
-		default:
+		case REG:
+		case CONST:
 			break;
 	}
 }
@@ -129,7 +130,7 @@ void vtop2_prepare_op(void)
 
 	v_prepare_op(vtop);
 
-	if(vtop->type == vtop[-1].type && vtop->type != REG){
+	if((vtop->type == vtop[-1].type && vtop->type != REG) || vtop[-1].type != REG){
 		/* prefer putting vtop[-1] in a reg, since that's returned after */
 		v_to_reg(&vtop[-1]);
 	}
