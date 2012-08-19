@@ -625,7 +625,7 @@ void impl_cast(decl *from, decl *to)
 			x86_reg_str_r(buf_from, vtop->bits.reg, from);
 			x86_reg_str_r(buf_to,   vtop->bits.reg, to);
 
-			out_asm("mov%cx %s, %s", "zs"[from->type->is_signed], buf_from, buf_to);
+			out_asm("mov%cx %%%s, %%%s", "zs"[from->type->is_signed], buf_from, buf_to);
 		}else{
 			char buf[DECL_STATIC_BUFSIZ];
 
