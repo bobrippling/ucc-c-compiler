@@ -33,7 +33,7 @@ _start:
 	push %rdi // argc
 
 	call main
-	push %rax
+	movl %eax, %edi
 	call exit
 	hlt
 
