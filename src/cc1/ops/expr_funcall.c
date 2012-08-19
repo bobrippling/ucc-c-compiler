@@ -203,12 +203,21 @@ void gen_expr_funcall(expr *e, symtable *stab)
 			gen_expr(e->expr, stab);
 
 		if(e->funcargs){
+			decl *dint = decl_new_type(type_int);
+			const int int_sz = decl_size(dint);
 			expr **aiter;
 
 			for(aiter = e->funcargs; *aiter; aiter++, nargs++);
 
-			for(aiter--; aiter >= e->funcargs; aiter--)
-				gen_expr(*aiter, stab);
+			for(aiter--; aiter >= e->funcargs; aiter--){
+				expr *earg = *aiter;
+
+				gen_expr(earg, stab);
+
+				/* each arg needs casting up to int size, if smaller */
+				if(decl_size(earg->tree_type) < int_sz)
+					out_cast(earg->tree_type, dint);
+			}
 		}
 
 		out_call(nargs, e->tree_type);
