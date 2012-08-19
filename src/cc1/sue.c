@@ -51,7 +51,7 @@ int sue_size(struct_union_enum_st *st)
 	int total, max;
 
 	if(st->primitive == type_enum)
-		return 4;
+		return type_primitive_size(type_int);
 
 	total = max = 0;
 
