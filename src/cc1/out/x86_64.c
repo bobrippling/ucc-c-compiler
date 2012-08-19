@@ -224,9 +224,9 @@ static const char *x86_cmp(enum flag_cmp cmp, decl *d)
 		OP(eq, "e" , "e");
 		OP(ne, "ne", "ne");
 		OP(le, "le", "be");
-		OP(lt, "lt", "b");
+		OP(lt, "l",  "b");
 		OP(ge, "ge", "ae");
-		OP(gt, "gt", "a");
+		OP(gt, "g",  "a");
 #undef OP
 
 		/*case flag_z:  return "z";
@@ -285,13 +285,20 @@ static void x86_load(struct vstack *from, const char *regstr)
 void impl_load(struct vstack *from, int reg)
 {
 	char buf[REG_STR_SZ];
+	decl *const save = from->d;
 
 	if(from->type == REG && reg == from->bits.reg)
 		return;
 
+	if(from->type == FLAG)
+		from->d = decl_new_char(); /* force set%s to set the low byte */
+
 	x86_load(from, x86_reg_str_r(buf, reg, from->d));
 
-	v_clear(from, from->d);
+	if(from->d != save)
+		decl_free(from->d);
+
+	v_clear(from, save);
 	from->type = REG;
 	from->bits.reg = reg;
 }
