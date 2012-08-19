@@ -21,5 +21,6 @@ int divideby3 (int num) {
 }
 main()
 {
-	printf("%d\n", divideby3(6));
+	//printf("%d\n", divideby3(6));
+	return divideby3(6);
 }
