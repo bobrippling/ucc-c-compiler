@@ -237,7 +237,7 @@ void v_save_reg(struct vstack *vp)
 	store.type = STACK;
 	v_make_addr(&store);
 
-	store.bits.off_from_bp = impl_alloc_stack(decl_size(store.d));
+	store.bits.off_from_bp = -impl_alloc_stack(decl_size(store.d));
 
 	impl_store(vp, &store);
 	memcpy(vp, &store, sizeof store);
