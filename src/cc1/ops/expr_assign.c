@@ -90,12 +90,6 @@ void fold_expr_assign(expr *e, symtable *stab)
 
 void gen_expr_assign(expr *e, symtable *stab)
 {
-	if(e->assign_is_post){
-		/* if this is the case, ->rhs->lhs is ->lhs, and ->rhs is an addition/subtraction of 1 * something */
-		gen_expr(e->lhs, stab);
-		out_comment("save previous for post assignment");
-	}
-
 	/*if(decl_is_struct_or_union(e->tree_type))*/
 	fold_disallow_st_un(e, "copy (TODO)");
 
@@ -104,7 +98,21 @@ void gen_expr_assign(expr *e, symtable *stab)
 	/* store to the sym's home */
 	e->lhs->f_store(e->lhs, stab);
 
+	if(e->assign_is_post){
+		/* FIXME */
+		char buf[WHERE_BUF_SIZ];
+		ICW("post-increment operators are broken (%s)", where_str_r(buf, &e->where));
+		out_flush_volatile();
+		out_dup();
+		out_op_unary(op_deref);
+		out_flush_volatile();
+		out_swap();
+		out_comment("save previous for post assignment");
+	}
+
 	gen_expr(e->rhs, stab);
+
+	out_dump();
 
 	out_store();
 

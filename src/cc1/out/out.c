@@ -61,7 +61,7 @@ void vpop(void)
 	}
 }
 
-void v_flush_volatile(void)
+void out_flush_volatile(void)
 {
 	if(vtop)
 		v_to_reg(vtop);
@@ -97,6 +97,11 @@ void vswap(void)
 	memcpy(&tmp, vtop, sizeof tmp);
 	memcpy(vtop, &vtop[-1], sizeof tmp);
 	memcpy(&vtop[-1], &tmp, sizeof tmp);
+}
+
+void out_swap(void)
+{
+	vswap();
 }
 
 void v_prepare_op(struct vstack *vp)
@@ -465,7 +470,7 @@ void out_jmp(void)
 	if(vtop > vstack){
 		/* flush the stack-val we need to generate before the jump */
 		vtop--;
-		v_flush_volatile();
+		out_flush_volatile();
 		vtop++;
 	}
 
@@ -498,7 +503,7 @@ void out_jfalse(const char *lbl)
 void out_label(const char *lbl)
 {
 	/* if we have volatile data, ensure it's in a register */
-	v_flush_volatile();
+	out_flush_volatile();
 
 	impl_lbl(lbl);
 }
