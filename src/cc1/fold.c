@@ -639,7 +639,7 @@ void fold_func(decl *func_decl)
 		symtab_add_args(
 				func_decl->func_code->symtab,
 				decl_desc_tail(func_decl)->bits.func,
-				curdecl_func->spel);
+				func_decl->spel);
 
 		fold_stmt(func_decl->func_code);
 

@@ -181,7 +181,7 @@ const char *call_reg_str(int i, decl *d)
 	return buf;
 }
 
-void out_func_prologue(int stack_res, int nargs)
+void out_func_prologue(int stack_res, int nargs, int variadic)
 {
 	(void)nargs;
 
@@ -192,15 +192,18 @@ void out_func_prologue(int stack_res, int nargs)
 		int i, n_reg_args;
 
 		UCC_ASSERT(stack_sz == 0, "non-empty x86 stack for new func");
+
 		stack_sz = impl_alloc_stack(stack_res);
 
-		n_reg_args = MIN(nargs, N_CALL_REGS);
+		if(!variadic){
+			n_reg_args = MIN(nargs, N_CALL_REGS);
 
-		for(i = 0; i < n_reg_args; i++){
-			out_asm("mov%c %%%s, -0x%x(%%rbp)",
-					asm_type_ch(NULL),
-					call_reg_str(i, NULL),
-					platform_word_size() * (i + 1));
+			for(i = 0; i < n_reg_args; i++){
+				out_asm("mov%c %%%s, -0x%x(%%rbp)",
+						asm_type_ch(NULL),
+						call_reg_str(i, NULL),
+						platform_word_size() * (i + 1));
+			}
 		}
 	}
 }
@@ -736,6 +739,7 @@ void impl_call(const int nargs, int variadic, decl *d)
 			out_asm("pushq %s", vstack_str(&vtop[-i]));
 		for(i = 0; i < nargs; i++)
 			vpop();
+		ncleanup = nargs;
 	}else{
 		for(i = 0; i < MIN(nargs, N_CALL_REGS); i++){
 			int ri;
