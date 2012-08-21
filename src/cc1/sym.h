@@ -4,6 +4,8 @@
 struct sym
 {
 	int offset; /* stack offset */
+	int variadic;
+
 	enum sym_type
 	{
 		sym_global,
@@ -66,7 +68,7 @@ symtable *symtab_root(symtable *child);
 sym  *symtab_add(   symtable *, decl *, enum sym_type, int with_sym, int prepend);
 sym  *symtab_search(symtable *, const char *);
 sym  *symtab_has(   symtable *, decl *);
-void  symtab_add_args(symtable *stab, funcargs *fargs, char *funcsp);
+void  symtab_add_args(symtable *stab, funcargs *fargs, const char *func_spel);
 
 const char *sym_to_str(enum sym_type);
 

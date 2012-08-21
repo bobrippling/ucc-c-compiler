@@ -1,6 +1,7 @@
 #include <string.h>
 
 #include "ops.h"
+#include "../out/asm.h"
 
 const char *str_expr_val()
 {
@@ -9,7 +10,7 @@ const char *str_expr_val()
 
 void gen_expr_val_1(expr *e, FILE *f)
 {
-	asm_out_intval(f, &e->val.iv);
+	asm_declare_out(f, e->tree_type, "%ld", e->val.iv.val);
 }
 
 void fold_expr_val(expr *e, symtable *stab)
@@ -26,11 +27,7 @@ void gen_expr_val(expr *e, symtable *stab)
 {
 	(void)stab;
 
-	fputs("\tmov rax, ", cc_out[SECTION_TEXT]);
-	e->f_gen_1(e, cc_out[SECTION_TEXT]);
-	fputc('\n', cc_out[SECTION_TEXT]);
-
-	asm_temp(1, "push rax");
+	out_push_iv(e->tree_type, &e->val.iv);
 }
 
 void gen_expr_str_val(expr *e, symtable *stab)

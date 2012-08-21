@@ -139,6 +139,8 @@ static void parse_add_attr(decl_attr **append)
 
 type *parse_type()
 {
+#define PRIMITIVE_NO_MORE 2
+
 	expr *tdef_typeof = NULL;
 	decl_attr *attr = NULL;
 	enum type_qualifier qual = qual_none;
@@ -164,12 +166,38 @@ type *parse_type()
 			EAT(curtok);
 
 		}else if(curtok_is_type_primitive()){
-			primitive = curtok_to_type_primitive();
+			const enum type_primitive got = curtok_to_type_primitive();
 
-			if(primitive_set)
-				DIE_AT(NULL, "second type primitive %s", type_primitive_to_str(primitive));
+			if(primitive_set){
+				/* allow "long int" and "short int" */
+#define INT(x)   x == type_int
+#define SHORT(x) x == type_short
+#define LONG(x)  x == type_long
+#define DBL(x)   x == type_double
 
-			primitive_set = 1;
+				if(      INT(got) && (SHORT(primitive) || LONG(primitive))){
+					/* fine, ignore the int */
+				}else if(INT(primitive) && (SHORT(got) || LONG(got))){
+					primitive = got;
+				}else{
+					int die = 1;
+
+					if(primitive_set < PRIMITIVE_NO_MORE){
+						/* special case for long long and long double */
+						if(LONG(primitive) && LONG(got))
+							primitive = type_llong, die = 0;
+						else if((LONG(primitive) && DBL(got)) || (DBL(primitive) && LONG(got)))
+							primitive = type_ldouble, die = 0;
+					}
+
+					if(die)
+						DIE_AT(NULL, "second type primitive %s", type_primitive_to_str(got));
+				}
+			}else{
+				primitive = got;
+			}
+
+			primitive_set++;
 			EAT(curtok);
 
 		}else if(curtok == token_signed || curtok == token_unsigned){
@@ -256,7 +284,7 @@ type *parse_type()
 			/*if(tdef_typeof) - can't reach due to primitive_set */
 
 			tdef_typeof = expr_new_sizeof_decl(td, 1);
-			primitive_set = 1;
+			primitive_set = PRIMITIVE_NO_MORE;
 
 			EAT(token_identifier);
 

@@ -27,6 +27,7 @@ enum warning
 	WARN_VOID_ARITH               = 1 << 9,
 	WARN_MIXED_CODE_DECLS         = 1 << 10,
 	WARN_TEST_BOOL                = 1 << 11,
+	WARN_LOSS_PRECISION           = 1 << 12,
 
 	WARN_OPT_POSSIBLE             = 1 << 20,
 	WARN_SWITCH_ENUM              = 1 << 21,
@@ -63,6 +64,8 @@ enum fopt
 	FOPT_CONST_FOLD            = 1 << 2,
 	FOPT_ENGLISH               = 1 << 3,
 	FOPT_SHOW_LINE             = 1 << 4,
+	FOPT_PIC                   = 1 << 5,
+	FOPT_PIC_PCREL             = 1 << 6,
 };
 
 enum cc1_backend

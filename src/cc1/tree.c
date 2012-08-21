@@ -14,6 +14,14 @@
 
 where *eof_where = NULL;
 
+intval *intval_new(long v)
+{
+	intval *iv = umalloc(sizeof *iv);
+	iv->val = v;
+	return iv;
+}
+
+
 void where_new(struct where *w)
 {
 	extern int buffereof;
@@ -70,22 +78,33 @@ void funcargs_free(funcargs *args, int free_decls)
 	free(args);
 }
 
-int type_size(const type *t)
+int type_primitive_size(enum type_primitive p)
 {
-	if(t->typeof)
-		return decl_size(t->typeof->decl);
-
-	if(t->sue)
-		return sue_size(t->sue);
-
-	switch(t->primitive){
+	switch(p){
 		case type_char:
+		case type__Bool:
 		case type_void:
 			return 1;
 
+		case type_short:
+			return 2;
+
 		case type_int:
-			/* FIXME: 4 for int */
-			return platform_word_size();
+		case type_float:
+			return 4;
+
+		case type_long:
+		case type_double:
+			return 8; /* FIXME: 4 on 32-bit */
+
+		case type_llong:
+			ICW("TODO: long long");
+			return 16;
+
+		case type_ldouble:
+			/* 80-bit float */
+			ICW("TODO: long double");
+			return 10; /* FIXME: 32-bit? */
 
 		case type_union:
 		case type_struct:
@@ -96,8 +115,19 @@ int type_size(const type *t)
 			break;
 	}
 
-	ICE("type %s in type_size()", type_to_str(t));
+	ICE("type %s in type_size()", type_primitive_to_str(p));
 	return -1;
+}
+
+int type_size(const type *t)
+{
+	if(t->typeof)
+		return decl_size(t->typeof->decl);
+
+	if(t->sue)
+		return sue_size(t->sue);
+
+	return type_primitive_size(t->primitive);
 }
 
 int type_equal(const type *a, const type *b, int strict)
@@ -164,9 +194,17 @@ const char *op_to_str(const enum op_type o)
 const char *type_primitive_to_str(const enum type_primitive p)
 {
 	switch(p){
-		CASE_STR_PREFIX(type, int);
-		CASE_STR_PREFIX(type, char);
 		CASE_STR_PREFIX(type, void);
+		CASE_STR_PREFIX(type, char);
+		CASE_STR_PREFIX(type, short);
+		CASE_STR_PREFIX(type, int);
+		CASE_STR_PREFIX(type, long);
+		CASE_STR_PREFIX(type, float);
+		CASE_STR_PREFIX(type, double);
+		CASE_STR_PREFIX(type, _Bool);
+
+		case type_llong:   return "long long";
+		case type_ldouble: return "long double";
 
 		CASE_STR_PREFIX(type, struct);
 		CASE_STR_PREFIX(type, union);
@@ -264,10 +302,20 @@ const char *type_to_str(const type *t)
 
 	}else{
 		switch(t->primitive){
-#define APPEND(t) case type_ ## t: snprintf(bufp, BUF_SIZE, "%s", #t); break
-			APPEND(int);
-			APPEND(char);
+#define SAPPEND(s) snprintf(bufp, BUF_SIZE, "%s", s); break
+#define APPEND(t) case type_ ## t: SAPPEND(#t)
 			APPEND(void);
+			APPEND(_Bool);
+			APPEND(char);
+			APPEND(short);
+			APPEND(int);
+			APPEND(long);
+			APPEND(float);
+			APPEND(double);
+
+			case type_llong:   SAPPEND("long long");
+			case type_ldouble: SAPPEND("long double");
+
 			case type_unknown:
 				ICE("unknown type primitive (%s)", where_str(&t->where));
 			case type_enum:

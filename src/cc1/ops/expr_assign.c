@@ -72,11 +72,7 @@ void fold_expr_assign(expr *e, symtable *stab)
 	}
 
 
-	if(e->lhs->sym)
-		/* read the tree_type from what we're assigning to, not the expr */
-		e->tree_type = decl_copy(e->lhs->sym->decl);
-	else
-		e->tree_type = decl_copy(e->lhs->tree_type);
+	e->tree_type = decl_copy(e->lhs->tree_type);
 
 	/* type check */
 	if(!type_ok){
@@ -87,6 +83,9 @@ void fold_expr_assign(expr *e, symtable *stab)
 				e->lhs->spel ? e->lhs->spel : "",
 				e->lhs->spel ? ")" : "");
 	}
+
+	/* do the typecheck after the equal-check, since the typecheck inserts casts */
+	fold_insert_casts(e->lhs->tree_type, &e->rhs, stab, &e->where, "assignment");
 }
 
 void gen_expr_assign(expr *e, symtable *stab)
@@ -97,12 +96,33 @@ void gen_expr_assign(expr *e, symtable *stab)
 
 	UCC_ASSERT(!e->assign_is_post, "assign_is_post set for non-compound assign");
 
-	gen_expr(e->rhs, stab);
-
 	UCC_ASSERT(e->lhs->f_store, "invalid store expression %s (no f_store())", e->lhs->f_str());
 
-	/* store back to the sym's home */
+	/* store to the sym's home */
 	e->lhs->f_store(e->lhs, stab);
+
+	if(e->assign_is_post){
+		/* FIXME */
+		char buf[WHERE_BUF_SIZ];
+		ICW("post-increment operators are broken (%s)", where_str_r(buf, &e->where));
+		out_flush_volatile();
+		out_dup();
+		out_op_unary(op_deref);
+		out_flush_volatile();
+		out_swap();
+		out_comment("save previous for post assignment");
+	}
+
+	gen_expr(e->rhs, stab);
+
+	out_dump();
+
+	out_store();
+
+	if(e->assign_is_post){
+		out_pop(); /* discard the new value, leave the old on */
+		out_comment("pre-inc/dec value");
+	}
 }
 
 void gen_expr_str_assign(expr *e, symtable *stab)

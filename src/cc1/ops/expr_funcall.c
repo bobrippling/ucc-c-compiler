@@ -7,6 +7,13 @@
 #include "../../util/alloc.h"
 #include "__builtin.h"
 
+static int func_is_asm(const char *sp)
+{
+	return fopt_mode & FOPT_ENABLE_ASM
+		&& sp
+		&& !strcmp(sp, ASM_INLINE_FNAME);
+}
+
 const char *str_expr_funcall()
 {
 	return "funcall";
@@ -23,6 +30,33 @@ void fold_expr_funcall(expr *e, symtable *stab)
 	const char *sp = e->expr->spel;
 	decl *df;
 	funcargs *args_from_decl;
+
+	if(func_is_asm(sp)){
+		expr *arg1;
+		const char *str;
+		int i;
+
+		if(!e->funcargs || e->funcargs[1] || !expr_kind(e->funcargs[0], addr))
+			DIE_AT(&e->where, "invalid __asm__ arguments");
+
+		arg1 = e->funcargs[0];
+		str = arg1->array_store->data.str;
+		for(i = 0; i < arg1->array_store->len - 1; i++){
+			char ch = str[i];
+			if(!isprint(ch) && !isspace(ch))
+invalid:
+				DIE_AT(&arg1->where, "invalid __asm__ string (character 0x%x at index %d, %d / %d)",
+						ch, i, i + 1, arg1->array_store->len);
+		}
+
+		if(str[i])
+			goto invalid;
+
+		/* TODO: allow a long return, e.g. __asm__(("movq $5, %rax")) */
+		e->tree_type = decl_new_void();
+		return;
+	}
+
 
 	if(!sp)
 		sp = "<anon func>";
@@ -148,67 +182,46 @@ void fold_expr_funcall(expr *e, symtable *stab)
 void gen_expr_funcall(expr *e, symtable *stab)
 {
 	const char *const fname = e->expr->spel;
-	expr **iter;
-	int nargs = 0;
 
 	if(e->tree_type->builtin){
 		builtin_gen(e);
 		return;
 	}
 
-	if(fopt_mode & FOPT_ENABLE_ASM && fname && !strcmp(fname, ASM_INLINE_FNAME)){
-		const char *str;
-		expr *arg1;
-		int i;
-
-		if(!e->funcargs || e->funcargs[1] || !expr_kind(e->funcargs[0], addr))
-			DIE_AT(&e->where, "invalid __asm__ arguments");
-
-		arg1 = e->funcargs[0];
-		str = arg1->array_store->data.str;
-		for(i = 0; i < arg1->array_store->len - 1; i++){
-			char ch = str[i];
-			if(!isprint(ch) && !isspace(ch))
-invalid:
-				DIE_AT(&arg1->where, "invalid __asm__ string (character 0x%x at index %d, %d / %d)",
-						ch, i, i + 1, arg1->array_store->len);
-		}
-
-		if(str[i])
-			goto invalid;
-
-		asm_temp(0, "; start manual __asm__");
-		fprintf(cc_out[SECTION_TEXT], "%s\n", arg1->array_store->data.str);
-		asm_temp(0, "; end manual __asm__");
+	if(func_is_asm(fname)){
+		out_comment("start manual __asm__");
+		fprintf(cc_out[SECTION_TEXT], "%s\n", e->funcargs[0]->array_store->data.str);
+		out_comment("end manual __asm__");
 	}else{
 		/* continue with normal funcall */
+		const int variadic = decl_funcargs(e->expr->tree_type)->variadic;
 		sym *const sym = e->expr->sym;
+		int nargs = 0;
+
+		if(sym && !decl_is_fptr(sym->decl))
+			out_push_lbl(sym->decl->spel, 0, NULL);
+		else
+			gen_expr(e->expr, stab);
 
 		if(e->funcargs){
-			/* need to push on in reverse order */
-			for(iter = e->funcargs; *iter; iter++);
-			for(iter--; iter >= e->funcargs; iter--){
-				gen_expr(*iter, stab);
-				nargs++;
+			decl *dint = decl_new_type(type_int);
+			const int int_sz = decl_size(dint);
+			expr **aiter;
+
+			for(aiter = e->funcargs; *aiter; aiter++, nargs++);
+
+			for(aiter--; aiter >= e->funcargs; aiter--){
+				expr *earg = *aiter;
+
+				gen_expr(earg, stab);
+
+				/* each arg needs casting up to int size, if smaller */
+				if(decl_size(earg->tree_type) < int_sz)
+					out_cast(earg->tree_type, dint);
 			}
 		}
 
-		if(sym && !decl_is_fptr(sym->decl)){
-			/* simple */
-			asm_temp(1, "call %s", sym->decl->spel);
-		}else{
-			gen_expr(e->expr, stab);
-			asm_temp(1, "pop rax  ; function address");
-			asm_temp(1, "call rax ; duh");
-		}
-
-		if(nargs)
-			asm_temp(1, "add rsp, %d ; %d arg%s",
-					nargs * platform_word_size(),
-					nargs,
-					nargs == 1 ? "" : "s");
-
-		asm_temp(1, "push rax ; ret");
+		out_call(nargs, variadic, e->tree_type);
 	}
 }
 

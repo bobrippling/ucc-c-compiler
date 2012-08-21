@@ -12,6 +12,7 @@ void fold_funcargs(funcargs *fargs, symtable *stab, char *context);
 
 void fold_symtab_scope(symtable *stab);
 
+void fold_insert_casts(decl *dlhs, expr **prhs, symtable *stab, where *w, const char *desc);
 void fold_typecheck(expr *lhs, expr *rhs, symtable *stab, where *where);
 
 void fold_need_expr(expr *e, const char *stmt_desc, int is_test);

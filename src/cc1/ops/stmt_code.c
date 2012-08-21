@@ -3,6 +3,7 @@
 
 #include "ops.h"
 #include "stmt_code.h"
+#include "../out/lbl.h"
 
 const char *str_stmt_code()
 {
@@ -67,7 +68,7 @@ void fold_stmt_code(stmt *s)
 			 * so we've linked the syms and can change ->spel
 			 */
 			if(d->type->store == store_static)
-				decl_set_spel(d, asm_label_static_local(curdecl_func->spel, d->spel));
+				decl_set_spel(d, out_label_static_local(curdecl_func->spel, d->spel));
 		}
 	}
 }
