@@ -48,6 +48,9 @@ void fold_expr_assign(expr *e, symtable *stab)
 	if(expr_kind(e->lhs, identifier))
 		e->lhs->sym->nreads--; /* cancel the read that fold_ident thinks it got */
 
+	if(decl_is_void(e->rhs->tree_type))
+		DIE_AT(&e->where, "assignment from void expression");
+
 	if(!expr_is_lvalue(e->lhs, LVAL_ALLOW_ARRAY)){
 		/* only allow assignments to type[] if it's an init */
 		DIE_AT(&e->lhs->where, "not an lvalue (%s%s%s)",

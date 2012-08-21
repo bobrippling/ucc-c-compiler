@@ -39,7 +39,7 @@ void fold_switch_enum(stmt *sw, type *enum_type)
 		for(; v <= w; v++){
 			sue_member **mi;
 			for(midx = 0, mi = enum_type->sue->members; *mi; midx++, mi++){
-				enum_member *m = &(*mi)->enum_member;
+				enum_member *m = (*mi)->enum_member;
 
 				const_fold_need_val(m->val, &iv);
 
@@ -53,7 +53,7 @@ void fold_switch_enum(stmt *sw, type *enum_type)
 		if(!marks[midx])
 			cc1_warn_at(&sw->where, 0, 1, WARN_SWITCH_ENUM, "enum %s::%s not handled in switch",
 					enum_type->sue->anon ? "" : enum_type->sue->spel,
-					enum_type->sue->members[midx]->enum_member.spel);
+					enum_type->sue->members[midx]->enum_member->spel);
 
 ret:
 	free(marks);

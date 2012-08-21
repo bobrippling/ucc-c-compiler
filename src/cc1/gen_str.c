@@ -354,11 +354,11 @@ void print_struct(struct_union_enum_st *sue)
 		return;
 	}
 
-	idt_printf("%s %s (size %d):\n", sue_str(sue), sue->spel, struct_union_size(sue));
+	idt_printf("%s %s (size %d):\n", sue_str(sue), sue->spel, sue_size(sue));
 
 	gen_str_indent++;
 	for(iter = sue->members; iter && *iter; iter++){
-		decl *d = &(*iter)->struct_member;
+		decl *d = (*iter)->struct_member;
 		idt_printf("offset %d:\n", d->struct_offset);
 		gen_str_indent++;
 		print_decl(d, PDECL_INDENT | PDECL_NEWLINE | PDECL_ATTR);
@@ -375,7 +375,7 @@ void print_enum(struct_union_enum_st *et)
 
 	gen_str_indent++;
 	for(mi = et->members; *mi; mi++){
-		enum_member *m = &(*mi)->enum_member;
+		enum_member *m = (*mi)->enum_member;
 
 		idt_printf("member %s = %d\n", m->spel, m->val->val.iv.val);
 	}

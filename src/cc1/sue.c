@@ -23,15 +23,18 @@ void st_en_un_set_spel(char **dest, char *spel, const char *desc)
 
 void enum_vals_add(sue_member ***pmembers, char *sp, expr *e)
 {
+	enum_member *emem = umalloc(sizeof *emem);
 	sue_member *mem = umalloc(sizeof *mem);
-	enum_member *emem = &mem->enum_member;
+
 	if(!e)
 		e = (expr *)-1;
 
 	emem->spel = sp;
 	emem->val  = e;
 
-	dynarray_add((void ***)pmembers, emem);
+	mem->enum_member = emem;
+
+	dynarray_add((void ***)pmembers, mem);
 }
 
 int enum_nentries(struct_union_enum_st *e)
@@ -42,15 +45,19 @@ int enum_nentries(struct_union_enum_st *e)
 	return n;
 }
 
-int struct_union_size(struct_union_enum_st *st)
+int sue_size(struct_union_enum_st *st)
 {
 	sue_member **i;
 	int total, max;
 
+	if(st->primitive == type_enum)
+		return type_primitive_size(type_int);
+
 	total = max = 0;
 
 	for(i = st->members; i && *i; i++){
-		const int sz = decl_size(&(*i)->struct_member);
+		const int sz = decl_size((*i)->struct_member);
+
 		total += sz;
 		if(sz > max)
 			max = sz;
@@ -108,17 +115,17 @@ struct_union_enum_st *sue_add(symtable *const stab, char *spel, sue_member **mem
 		int i;
 
 		for(i = 0; members[i]; i++){
-			decl *d = &members[i]->struct_member;
+			decl *d = members[i]->struct_member;
 			int j;
 
 			if(d->init)
 				DIE_AT(&d->init->where, "%s member %s is initialised", sue_str(sue), d->spel);
 
 			for(j = i + 1; members[j]; j++){
-				if(!strcmp(d->spel, members[j]->struct_member.spel)){
+				if(!strcmp(d->spel, members[j]->struct_member->spel)){
 					char buf[WHERE_BUF_SIZ];
 					DIE_AT(&d->where, "duplicate member %s (from %s)",
-							d->spel, where_str_r(buf, &members[j]->struct_member.where));
+							d->spel, where_str_r(buf, &members[j]->struct_member->where));
 				}
 			}
 		}
@@ -147,10 +154,10 @@ sue_member *sue_member_find(struct_union_enum_st *sue, const char *spel, where *
 		char *sp;
 
 		if(sue->primitive == type_enum){
-			enum_member *m = &(*mi)->enum_member;
+			enum_member *m = (*mi)->enum_member;
 			sp = m->spel;
 		}else{
-			decl *d = &(*mi)->struct_member;
+			decl *d = (*mi)->struct_member;
 			sp = d->spel;
 		}
 
@@ -174,7 +181,7 @@ void enum_member_search(enum_member **pm, struct_union_enum_st **psue, symtable 
 			struct_union_enum_st *e = *i;
 
 			if(e->primitive == type_enum){
-				enum_member *memb = (enum_member *)sue_member_find(e, spel, NULL);
+				enum_member *memb = sue_member_find(e, spel, NULL)->enum_member;
 				if(memb){
 					*pm = memb;
 					*psue = e;
@@ -190,7 +197,7 @@ void enum_member_search(enum_member **pm, struct_union_enum_st **psue, symtable 
 
 decl *struct_union_member_find(struct_union_enum_st *sue, const char *spel, where *die_where)
 {
-	return (decl *)sue_member_find(sue, spel, die_where);
+	return sue_member_find(sue, spel, die_where)->struct_member;
 }
 
 decl *struct_union_member_at_idx(struct_union_enum_st *sue, int idx)

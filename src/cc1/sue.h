@@ -10,8 +10,8 @@ typedef struct enum_member
 
 typedef union sue_member
 {
-	decl        struct_member;
-	enum_member enum_member;
+	decl        *struct_member;
+	enum_member *enum_member;
 } sue_member;
 
 struct struct_union_enum_st
@@ -51,7 +51,7 @@ int  enum_nentries(struct_union_enum_st *);
 void enum_member_search(enum_member **, struct_union_enum_st **, symtable *, const char *spel);
 
 /* struct/union specific */
-int struct_union_size(struct_union_enum_st *);
+int sue_size(struct_union_enum_st *);
 
 decl *struct_union_member_find(struct_union_enum_st *, const char *spel, where *die_where);
 
