@@ -83,12 +83,23 @@ type *parse_type_sue(enum type_primitive prim)
 
 			EAT(token_close_block);
 		}else{
-			members = (sue_member **)parse_decls_multi_type(DECL_MULTI_CAN_DEFAULT | DECL_MULTI_ACCEPT_FIELD_WIDTH);
-			if(!members){
+			decl **dmembers = parse_decls_multi_type(DECL_MULTI_CAN_DEFAULT | DECL_MULTI_ACCEPT_FIELD_WIDTH);
+			decl **i;
+
+			if(!dmembers){
 				if(curtok == token_colon)
 					DIE_AT(NULL, "can't have initial struct padding");
 				DIE_AT(NULL, "no members in struct");
 			}
+
+			for(i = dmembers; *i; i++){
+				sue_member *sm = umalloc(sizeof *sm);
+				sm->struct_member = *i;
+				dynarray_add((void ***)&members, sm);
+			}
+
+			dynarray_free((void ***)&dmembers, NULL);
+
 			EAT(token_close_block);
 		}
 
@@ -99,7 +110,7 @@ type *parse_type_sue(enum type_primitive prim)
 		/* predeclaring */
 		if(prim == type_enum){
 			if(!sue_find(current_scope, spel))
-				cc1_warn_at(NULL, 0, 1, WARN_PREDECL_ENUM, "predeclaration of enums is not c99");
+				cc1_warn_at(NULL, 0, 1, WARN_PREDECL_ENUM, "predeclaration of enums is not C99");
 		}
 	}
 
