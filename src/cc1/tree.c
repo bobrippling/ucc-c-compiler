@@ -75,19 +75,22 @@ int type_size(const type *t)
 	if(t->typeof)
 		return decl_size(t->typeof->decl);
 
+	if(t->sue)
+		return sue_size(t->sue);
+
 	switch(t->primitive){
 		case type_char:
 		case type_void:
 			return 1;
 
-		case type_enum:
 		case type_int:
 			/* FIXME: 4 for int */
 			return platform_word_size();
 
 		case type_union:
 		case type_struct:
-			return struct_union_size(t->sue);
+		case type_enum:
+			ICE("sue size");
 
 		case type_unknown:
 			break;
