@@ -1,7 +1,7 @@
 updated bugs/ and test/
 
 asm_backend_recode:
-	save registers on function call
+	local static variables
 
 ---------------------------------------------------- cc1
 
