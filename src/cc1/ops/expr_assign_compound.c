@@ -41,45 +41,29 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 
 void gen_expr_assign_compound(expr *e, symtable *stab)
 {
-	const char *inst, *lhs, *rhs, *pre, *ret;
-
-	/*if(decl_is_struct_or_union(e->tree_type))*/
 	fold_disallow_st_un(e, "copy (TODO)"); /* yes this is meant to be in gen */
-
-	lhs = "rax", rhs = "rbx";
-	op_get_asm(e->op, &inst, &lhs, &rhs, &pre, &ret);
-
-	gen_expr(e->rhs, stab);
-	asm_temp(1, "; saved for compound op");
 
 	gen_expr(e->lhs, stab);
 
-	asm_temp(1, "pop rsi ; compound lval addr");
-	asm_temp(1, "mov %s, [rsi]", lhs);
-	asm_temp(1, "mov %s, [rsp]", rhs);
-	if(e->assign_is_post)
-		asm_temp(1, "mov [rsp], %s ; post-inc -> pre value", lhs);
-
-	if(pre)
-		asm_temp(1, "%s", pre);
-
-	{
-		/* XXX: HACK */
-		const int div = e->op == op_divide || e->op == op_modulus;
-
-		if(div){
-			asm_temp(1, "%s %s", inst, rhs);
-		}else{
-			asm_temp(1, "%s %s, %s", inst, lhs, rhs);
-		}
+	if(e->assign_is_post){
+		out_dup();
+		out_op_unary(op_deref);
+		out_flush_volatile();
+		out_swap();
+		out_comment("saved for compound op");
 	}
 
-	/* store back to the sym's home */
-	asm_temp(1, "mov [rsi], %s ; compound store", ret);
+	out_dup();
+	out_op_unary(op_deref);
 
-	/* need to update the value on the stack */
-	if(!e->assign_is_post)
-		asm_temp(1, "mov [rsp], %s ; pre-assignment, update stack", lhs);
+	gen_expr(e->rhs, stab);
+
+	out_op(op_plus);
+
+	out_store();
+
+	if(e->assign_is_post)
+		out_pop();
 }
 
 void gen_expr_str_assign_compound(expr *e, symtable *stab)

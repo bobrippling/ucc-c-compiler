@@ -93,36 +93,12 @@ void gen_expr_assign(expr *e, symtable *stab)
 	/*if(decl_is_struct_or_union(e->tree_type))*/
 	fold_disallow_st_un(e, "copy (TODO)"); /* yes this is meant to be in gen */
 
-
 	UCC_ASSERT(!e->assign_is_post, "assign_is_post set for non-compound assign");
-
 	UCC_ASSERT(e->lhs->f_store, "invalid store expression %s (no f_store())", e->lhs->f_str());
 
-	/* store to the sym's home */
 	e->lhs->f_store(e->lhs, stab);
-
-	if(e->assign_is_post){
-		/* FIXME */
-		char buf[WHERE_BUF_SIZ];
-		ICW("post-increment operators are broken (%s)", where_str_r(buf, &e->where));
-		out_flush_volatile();
-		out_dup();
-		out_op_unary(op_deref);
-		out_flush_volatile();
-		out_swap();
-		out_comment("save previous for post assignment");
-	}
-
 	gen_expr(e->rhs, stab);
-
-	out_dump();
-
 	out_store();
-
-	if(e->assign_is_post){
-		out_pop(); /* discard the new value, leave the old on */
-		out_comment("pre-inc/dec value");
-	}
 }
 
 void gen_expr_str_assign(expr *e, symtable *stab)

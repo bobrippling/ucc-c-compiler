@@ -458,11 +458,7 @@ static void op_struct(expr *e, symtable *tab)
 	out_comment("val from struct");
 }
 
-void op_get_asm(enum op_type op,
-		const char **pinstruct,
-		const char **plhs, const char **prhs,
-		const char **ppre,
-		const char **pret)
+void gen_expr_op(expr *e, symtable *tab)
 {
 	switch(e->op){
 		case op_struct_dot:

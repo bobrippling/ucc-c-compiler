@@ -588,20 +588,25 @@ void impl_op_unary(enum op_type op)
 		case op_deref:
 		{
 			char ptr[REG_STR_SZ], dst[REG_STR_SZ];
+			decl *dereffed;
+			int r;
 
 			v_to_reg(vtop);
+			r = v_unused_reg(1);
 
 			/* loaded the pointer, now we apply the deref change */
-
-			/* XXX: memleak */
-			vtop->d = decl_ptr_depth_dec(decl_copy(vtop->d), NULL);
+			dereffed = decl_ptr_depth_dec(decl_copy(vtop->d), NULL);
 
 			x86_reg_str_r(ptr, vtop->bits.reg, NULL);
-			reg_str_r(dst, vtop);
+			x86_reg_str_r(dst, r, dereffed);
 
 			out_asm("mov%c (%%%s), %%%s",
-					asm_type_ch(vtop->d),
+					asm_type_ch(dereffed),
 					ptr, dst);
+
+			/* XXX: memleak */
+			vtop->d = dereffed;
+			vtop->bits.reg = r;
 			return;
 		}
 
@@ -760,7 +765,11 @@ void impl_call(const int nargs, int variadic, decl *d)
 	}
 
 	/* save all registers */
-	for(i = 0; &vstack[i] < vtop; i++)
+#define vcond (&vstack[i] < vtop)
+	i = 0;
+	if(vcond)
+		out_comment("pre-call reg-save");
+	for(; vcond; i++)
 		if(vstack[i].type == REG)
 			v_save_reg(&vstack[i]);
 

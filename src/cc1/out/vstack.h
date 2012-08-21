@@ -39,6 +39,7 @@ extern struct vstack *vtop, vstack[];
 
 void vpop(void);
 void vswap(void);
+void vdup(void);
 
 void v_clear(struct vstack *vp, decl *);
 void vtop_clear(decl *);

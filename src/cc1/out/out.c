@@ -314,10 +314,15 @@ void out_push_lbl(char *s, int pic, decl *d)
 	}
 }
 
-void out_dup(void)
+void vdup(void)
 {
 	vpush(NULL);
 	memcpy(&vtop[0], &vtop[-1], sizeof *vtop);
+}
+
+void out_dup(void)
+{
+	vdup();
 }
 
 void out_store()
