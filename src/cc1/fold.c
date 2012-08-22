@@ -61,7 +61,7 @@ void fold_insert_casts(decl *dlhs, expr **prhs, symtable *stab, where *w, const 
 		eof_where = old_w;
 
 		/* need to fold the cast again - mainly for "loss of precision" warning */
-		fold_expr(cast, stab);
+		fold_expr_cast_descend(cast, stab, 0);
 	}
 
 #define lhs_signed dlhs->type->is_signed

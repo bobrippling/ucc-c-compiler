@@ -16,27 +16,18 @@ void fold_const_expr_cast(expr *e, intval *piv, enum constyness *type)
 	const_fold(e->expr, piv, type);
 }
 
-void fold_expr_cast(expr *e, symtable *stab)
+void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 {
 	int size_lhs, size_rhs;
 	decl *dlhs, *drhs;
 
-	fold_expr(e->expr, stab);
+	if(descend)
+		fold_expr(e->expr, stab);
 
-	fold_disallow_st_un(e->expr, "cast-expr");
-
-	/*
-	 * if we don't have a valid tree_type, get one
-	 * this is only the case where we're involving a tdef or typeof
-	 */
-
-	if(e->tree_type->type->primitive == type_unknown){
-		decl_free(e->tree_type);
-		e->tree_type = decl_copy(e->expr->tree_type);
-	}
-
+	e->tree_type = e->decl;
 	fold_decl(e->tree_type, stab); /* struct lookup, etc */
 
+	fold_disallow_st_un(e->expr, "cast-expr");
 	fold_disallow_st_un(e, "cast-target");
 
 #ifdef CAST_COLLAPSE
@@ -66,6 +57,11 @@ void fold_expr_cast(expr *e, symtable *stab)
 				decl_to_str(dlhs), size_lhs,
 				buf, size_rhs);
 	}
+}
+
+void fold_expr_cast(expr *e, symtable *stab)
+{
+	fold_expr_cast_descend(e, stab, 1);
 }
 
 void gen_expr_cast_1(expr *e, FILE *f)
@@ -140,7 +136,7 @@ void mutate_expr_cast(expr *e)
 expr *expr_new_cast(decl *to)
 {
 	expr *e = expr_new_wrapper(cast);
-	e->tree_type = to;
+	e->decl = to;
 	return e;
 }
 
