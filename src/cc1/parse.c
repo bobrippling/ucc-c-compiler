@@ -310,15 +310,9 @@ expr *parse_expr_postfix()
 			e = st_op;
 
 		}else if((flag = accept(token_increment)) || accept(token_decrement)){
-			expr *op = expr_new_op(flag ? op_plus : op_minus);
-			expr *inc = expr_new_assign(e, op);
+			e = expr_new_assign_compound(e, expr_new_val(1), flag ? op_plus : op_minus);
+			e->assign_is_post = 1;
 
-			inc->assign_is_post = 1;
-
-			op->lhs = e;
-			op->rhs = expr_new_val(1);
-
-			e = inc;
 		}else{
 			break;
 		}
@@ -333,36 +327,13 @@ expr *parse_expr_unary()
 	int flag;
 
 	if((flag = accept(token_increment)) || accept(token_decrement)){
-		/* this is a normal increment, i.e. ++x, simply translate it to x = x + 1 */
-		expr *op, *to;
+		/* this is a normal increment, i.e. ++x, simply translate it to x += 1 */
 
-		to = parse_expr_unary();
-		op = expr_new_op(flag ? op_plus : op_minus);
-		e = expr_new_assign(to, op);
+		e = expr_new_assign_compound(
+				parse_expr_unary(), /* lval */
+				expr_new_val(1),
+				flag ? op_plus : op_minus);
 
-		/* assign to... */
-		op->lhs = e->lhs;
-		op->rhs = expr_new_val(1);
-		/*
-		 * looks like this:
-		 *
-		 * e {
-		 *   type = assign
-		 *   lhs {
-		 *     "varname"
-		 *   }
-		 *   rhs {
-		 *     type = assign
-		 *     op   = op_plus
-		 *     lhs {
-		 *       "varname"
-		 *     }
-		 *     rhs {
-		 *       1
-		 *     }
-		 *   }
-		 * }
-		 */
 	}else{
 		switch(curtok){
 			case token_andsc:
@@ -469,25 +440,15 @@ expr *parse_expr_assignment()
 	e = parse_expr_conditional();
 
 	if(accept(token_assign)){
-		expr *from = parse_expr_assignment();
-		expr *ret  = expr_new_assign(e, from);
+		return expr_new_assign(e, parse_expr_assignment());
 
-		return ret;
-
-	}else if(curtok_is_augmented_assignment()){
-		/* +=, ... */
-		expr *added;
-		expr *ass;
-
-		added = expr_new_op(curtok_to_augmented_op());
-		ass = expr_new_assign(e, added);
+	}else if(curtok_is_compound_assignment()){
+		/* +=, ... - only evaluate the lhs once*/
+		enum op_type op = curtok_to_compound_op();
 
 		EAT(curtok);
 
-		added->lhs = e;
-		added->rhs = parse_expr_assignment();
-
-		e = ass;
+		return expr_new_assign_compound(e, parse_expr_assignment(), op);
 	}
 
 	return e;

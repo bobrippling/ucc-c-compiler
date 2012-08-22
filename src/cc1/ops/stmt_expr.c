@@ -28,7 +28,11 @@ void gen_stmt_expr(stmt *s)
 	|| !s->expr->spel
 	|| strcmp(s->expr->spel, ASM_INLINE_FNAME))
 	{
-		asm_temp(1, "pop rax ; unused expr");
+		if(!s->expr_no_pop){
+			out_pop();
+			out_comment("end of %s-stmt", s->f_str());
+			out_assert_vtop_null();
+		}
 	}
 }
 

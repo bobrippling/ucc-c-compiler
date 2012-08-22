@@ -33,8 +33,9 @@
 #include "stmt_while.h"
 
 #include "../cc1.h"
-#include "../asm.h"
+#include "../out/out.h"
 #include "../fold.h"
 #include "../const.h"
 #include "../gen_str.h"
 #include "../gen_asm.h"
+#include "../out/out.h"

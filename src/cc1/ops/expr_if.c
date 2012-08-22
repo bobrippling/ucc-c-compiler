@@ -3,6 +3,7 @@
 
 #include "ops.h"
 #include "../sue.h"
+#include "../out/lbl.h"
 
 const char *str_expr_if()
 {
@@ -68,10 +69,11 @@ void fold_expr_if(expr *e, symtable *stab)
 	Pointer to object or incomplete type   Pointer to void                      Pointer to void with all the qualifiers specified for the type
 	*/
 
-	tt_l = e->lhs->tree_type;
-	tt_r = e->rhs->tree_type;
+#define tt_l (e->lhs->tree_type)
+#define tt_r (e->rhs->tree_type)
 
 	if(decl_is_integral(tt_l) && decl_is_integral(tt_r)){
+		ICW("TODO: arithmetic promotions in if_expr");
 		/* TODO: arithmetic promotions (with asm_backend_recode) */
 		e->tree_type = decl_copy(e->rhs->tree_type);
 
@@ -86,8 +88,8 @@ void fold_expr_if(expr *e, symtable *stab)
 		int l_ptr_st_un = decl_is_struct_or_union_ptr(tt_l);
 		int r_ptr_st_un = decl_is_struct_or_union_ptr(tt_r);
 
-		int l_ptr_null = decl_ptr_depth(tt_l) && const_expr_is_zero(e->lhs);
-		int r_ptr_null = decl_ptr_depth(tt_r) && const_expr_is_zero(e->rhs);
+		int l_ptr_null = decl_ptr_depth(tt_l) && const_expr_and_zero(e->lhs);
+		int r_ptr_null = decl_ptr_depth(tt_r) && const_expr_and_zero(e->rhs);
 
 		int l_complete = !l_ptr_null && (!l_ptr_st_un || !sue_incomplete(tt_l->type->sue));
 		int r_complete = !r_ptr_null && (!r_ptr_st_un || !sue_incomplete(tt_r->type->sue));
@@ -114,41 +116,41 @@ void fold_expr_if(expr *e, symtable *stab)
 		}
 	}
 
-	e->tree_type = decl_copy(e->rhs->tree_type); /* TODO: check they're the same */
-
 	e->freestanding = (e->lhs ? e->lhs : e->expr)->freestanding || e->rhs->freestanding;
 }
 
 
 void gen_expr_if(expr *e, symtable *stab)
 {
-	char *lblfin, *lblelse;
+	char *lblfin;
 
-	lblfin = asm_label_code("ifexpa");
+	lblfin = out_label_code("ifexpa");
 
 	gen_expr(e->expr, stab);
 
 	if(e->lhs){
-		lblelse = asm_label_code("ifexpb");
+		char *lblelse = out_label_code("ifexpb");
 
-		asm_temp(1, "pop rax");
-		asm_temp(1, "test rax, rax");
-		asm_temp(1, "jz %s", lblelse);
+		out_jfalse(lblelse);
+
 		gen_expr(e->lhs, stab);
-		asm_temp(1, "jmp %s", lblfin);
-		asm_label(lblelse);
+
+		out_push_lbl(lblfin, 0, NULL);
+		out_jmp();
+
+		out_label(lblelse);
+		free(lblelse);
+
 	}else{
-		asm_temp(1, "mov rax, [rsp] ; save for ?:");
-		asm_temp(1, "test rax, rax");
-		asm_temp(1, "jnz %s", lblfin);
-		asm_temp(1, "pop rax ; discard lhs");
+		out_dup();
+
+		out_jtrue(lblfin);
 	}
 
-	gen_expr(e->rhs, stab);
-	asm_label(lblfin);
+	out_pop();
 
-	if(e->lhs)
-		free(lblelse);
+	gen_expr(e->rhs, stab);
+	out_label(lblfin);
 
 	free(lblfin);
 }

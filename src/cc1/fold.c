@@ -11,7 +11,6 @@
 #include "sym.h"
 #include "../util/platform.h"
 #include "const.h"
-#include "asm.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
 #include "../util/dynmap.h"
@@ -43,6 +42,47 @@ void fold_decl_equal(decl *a, decl *b, where *w, enum warning warn,
 	}
 }
 
+void fold_insert_casts(decl *dlhs, expr **prhs, symtable *stab, where *w, const char *desc)
+{
+	expr *rhs = *prhs;
+
+	if(!decl_equal(dlhs, rhs->tree_type, 1)){
+		/* insert a cast: rhs -> lhs */
+		where *old_w = eof_where;
+		expr *cast;
+
+		eof_where = w;
+
+		cast = expr_new_cast(decl_copy(dlhs));
+		cast->expr = rhs;
+		cast->expr_cast_implicit = 1;
+		*prhs = cast;
+
+		eof_where = old_w;
+
+		/* need to fold the cast again - mainly for "loss of precision" warning */
+		fold_expr_cast_descend(cast, stab, 0);
+	}
+
+#define lhs_signed dlhs->type->is_signed
+#define rhs_signed rhs->tree_type->type->is_signed
+
+	if(rhs_signed != lhs_signed){
+		if(expr_kind(rhs, val) && rhs->val.iv.val >= 0){
+			rhs->tree_type->type->is_signed = 0;
+		}else{
+#define SPEL_IF_IDENT(hs)                          \
+				expr_kind(hs, identifier) ? " ("     : "", \
+				expr_kind(hs, identifier) ? hs->spel : "", \
+				expr_kind(hs, identifier) ? ")"      : ""
+
+			cc1_warn_at(w, 0, 1, WARN_SIGN_COMPARE,
+					"operation between signed and unsigned%s%s%s in %s",
+					SPEL_IF_IDENT(rhs), desc);
+		}
+	}
+}
+
 int fold_get_sym(expr *e, symtable *stab)
 {
 	if(e->sym)
@@ -64,8 +104,10 @@ void fold_expr(expr *e, symtable *stab)
 {
 	intval dummy;
 	enum constyness dum;
-
 	where *old_w;
+
+	if(e->tree_type)
+		return;
 
 	fold_get_sym(e, stab);
 
@@ -257,7 +299,6 @@ void fold_decl(decl *d, symtable *stab)
 		type_exp = d->type->typeof;
 
 		fold_expr(type_exp, stab);
-		decl_free(type_exp->tree_type);
 
 		/* either get the typeof() from the decl or the expr type */
 		from = d->type->typeof->decl;
@@ -269,6 +310,7 @@ void fold_decl(decl *d, symtable *stab)
 				(void *)d->type->typeof->decl,
 				(void *)d->type->typeof->expr->tree_type);
 
+		decl_free(type_exp->tree_type);
 		type_exp->tree_type = decl_copy(from);
 
 		/* type */
@@ -331,6 +373,13 @@ void fold_decl(decl *d, symtable *stab)
 
 		case type_int:
 		case type_char:
+		case type__Bool:
+		case type_short:
+		case type_long:
+		case type_float:
+		case type_double:
+		case type_ldouble:
+		case type_llong:
 			break;
 
 		case type_unknown:
@@ -415,21 +464,17 @@ void fold_decl(decl *d, symtable *stab)
 			if(!ok){
 				fold_decl_equal(d, d->init->tree_type, &d->where, WARN_ASSIGN_MISMATCH,
 						"mismatching initialisation for %s", d->spel);
+
+				fold_insert_casts(d, &d->init, stab, &d->init->where, "initialisation");
 			}
 
 			const_fold(d->init, &dummy, &type);
 			if(type == CONST_NO){
 				/* global/static + not constant */
-				/* allow identifiers if the identifier is also static */
-
-				if(!expr_kind(d->init, identifier)
-				|| d->init->tree_type->type->store != store_static)
-				{
-					DIE_AT(&d->init->where,
-							"not a constant expression for %s %s initialisation - %s",
-							d->type->store == store_static ? "static" : "global",
-							d->spel, d->init->f_str());
-				}
+				DIE_AT(&d->init->where,
+						"not a constant expression for %s %s initialisation - %s (%s)",
+						d->type->store == store_static ? "static" : "global",
+						d->spel, d->init->f_str(), decl_to_str(d->init->tree_type));
 			}
 		}
 	}
@@ -596,7 +641,7 @@ void fold_func(decl *func_decl)
 		symtab_add_args(
 				func_decl->func_code->symtab,
 				decl_desc_tail(func_decl)->bits.func,
-				curdecl_func->spel);
+				func_decl->spel);
 
 		fold_stmt(func_decl->func_code);
 
@@ -639,7 +684,7 @@ void fold_func(decl *func_decl)
 			}
 		}
 
-		free(curdecl_func_called);
+		decl_free(curdecl_func_called);
 		curdecl_func_called = NULL;
 		curdecl_func = NULL;
 	}

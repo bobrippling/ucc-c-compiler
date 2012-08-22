@@ -37,6 +37,7 @@ struct expr
 	int assign_is_post; /* do we return the altered value or the old one? */
 #define expr_is_default    assign_is_post
 #define expr_computed_goto assign_is_post
+#define expr_cast_implicit assign_is_post
 #define expr_is_typeof     assign_is_post
 
 	expr *lhs, *rhs;
@@ -100,6 +101,7 @@ expr *expr_new_array_decl_init(decl *d, int ival, int idx);
 
 #include "ops/expr_addr.h"
 #include "ops/expr_assign.h"
+#include "ops/expr_assign_compound.h"
 #include "ops/expr_cast.h"
 #include "ops/expr_comma.h"
 #include "ops/expr_funcall.h"
@@ -123,7 +125,8 @@ expr *expr_new_stmt(stmt *code);
 expr *expr_new_sizeof_decl(decl *, int is_typeof);
 expr *expr_new_sizeof_expr(expr *, int is_typeof);
 expr *expr_new_funcall(void);
-expr *expr_new_assign(expr *to, expr *from);
+expr *expr_new_assign(         expr *to, expr *from);
+expr *expr_new_assign_compound(expr *to, expr *from, enum op_type);
 expr *expr_new__Generic(expr *test, struct generic_lbl **lbls);
 expr *expr_new_block(decl *rt, funcargs *args, stmt *code);
 

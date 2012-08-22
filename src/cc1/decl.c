@@ -114,11 +114,27 @@ decl_attr *decl_attr_new(enum decl_attr_type t)
 	return da;
 }
 
+decl_attr *decl_attr_copy(decl_attr *da)
+{
+	decl_attr *ret = decl_attr_new(da->type);
+
+	memcpy(ret, da, sizeof *ret);
+
+	ret->next = da->next ? decl_attr_copy(da->next) : NULL;
+
+	return ret;
+}
+
 void decl_attr_append(decl_attr **loc, decl_attr *new)
 {
-	while((*loc))
-		loc = &(*loc)->next;
-	*loc = new;
+	/*
+	 * don't link it up, make copies,
+	 * so when we adjust others,
+	 * things don't get tangled with links
+	 */
+
+	if(new)
+		*loc = decl_attr_copy(new);
 }
 
 int decl_attr_present(decl_attr *da, enum decl_attr_type t)
@@ -375,8 +391,12 @@ decl_desc *decl_leaf(decl *d)
 funcargs *decl_funcargs(decl *d)
 {
 	decl_desc *dp;
-	for(dp = d->desc; dp->type != decl_desc_func && dp->child; dp = dp->child);
-	return dp->bits.func;
+
+	for(dp = decl_desc_tail(d); dp; dp = dp->parent_desc)
+		if(dp->type == decl_desc_func)
+			return dp->bits.func;
+
+	return NULL;
 }
 
 int decl_is_struct_or_union_possible_ptr(decl *d)
@@ -429,7 +449,8 @@ decl *decl_ptr_depth_dec(decl *d, where *from)
 
 	if(!last || (last->type != decl_desc_ptr && last->type != decl_desc_array)){
 		DIE_AT(from,
-			"trying to dereference non-pointer%s%s%s",
+			"trying to dereference non-pointer type %s%s%s%s",
+			decl_to_str(d),
 			last ? " (" : "",
 			last ? decl_desc_to_str(last->type) : "",
 			last ? ")"  : "");
@@ -453,6 +474,10 @@ int decl_is_integral(decl *d)
 	switch(d->type->primitive){
 		case type_int:
 		case type_char:
+		case type__Bool:
+		case type_short:
+		case type_long:
+		case type_llong:
 				return 1;
 
 		case type_unknown:
@@ -460,6 +485,9 @@ int decl_is_integral(decl *d)
 		case type_struct:
 		case type_union:
 		case type_enum:
+		case type_float:
+		case type_double:
+		case type_ldouble:
 				break;
 	}
 
@@ -492,8 +520,7 @@ int decl_is_callable(decl *d)
 
 int decl_is_func(decl *d)
 {
-	decl_desc *dp;
-	for(dp = d->desc; dp && dp->child; dp = dp->child);
+	decl_desc *dp = decl_leaf(d);
 	return dp && dp->type == decl_desc_func;
 }
 
@@ -525,6 +552,21 @@ int decl_has_array(decl *d)
 	ITER_DESC_TYPE(d, dp, decl_desc_array)
 		return 1;
 
+	return 0;
+}
+
+int decl_ptr_or_block(decl *d)
+{
+	decl_desc *dp;
+	for(dp = d->desc; dp; dp = dp->child)
+		switch(dp->type){
+			case decl_desc_ptr:
+			case decl_desc_block:
+			case decl_desc_array:
+				return 1;
+			case decl_desc_func:
+				break;
+		}
 	return 0;
 }
 

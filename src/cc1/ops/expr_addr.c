@@ -4,6 +4,8 @@
 #include "ops.h"
 #include "../sue.h"
 #include "../str.h"
+#include "../out/asm.h"
+#include "../out/lbl.h"
 
 const char *str_expr_addr()
 {
@@ -17,7 +19,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 	if(e->array_store){
 		sym *array_sym;
 
-		UCC_ASSERT(!e->sym, "symbol found when looking for array store");
+		/*UCC_ASSERT(!e->sym, "symbol found when looking for array store");*/
 		UCC_ASSERT(!e->lhs, "expression found in array store address-of");
 
 		/* static const char [] */
@@ -29,7 +31,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 		TT->type->store = store_static;
 		TT->type->qual  = qual_const;
 
-		e->spel = e->array_store->label = asm_label_array(e->array_store->type == array_str);
+		e->spel = e->array_store->label = out_label_array(e->array_store->type == array_str);
 
 		decl_set_spel(e->tree_type, e->spel);
 
@@ -74,7 +76,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 		e->tree_type = decl_ptr_depth_inc(decl_new_void());
 
 		save = e->spel;
-		e->spel = asm_label_goto(e->spel);
+		e->spel = out_label_goto(e->spel);
 		free(save);
 
 	}else{
@@ -129,7 +131,8 @@ void fold_expr_addr(expr *e, symtable *stab)
 
 		/* lvalues are identifier, struct-exp or deref */
 		if(!expr_is_lvalue(e->lhs, LVAL_ALLOW_FUNC | LVAL_ALLOW_ARRAY))
-			DIE_AT(&e->lhs->where, "can't take the address of %s", e->lhs->f_str());
+			DIE_AT(&e->lhs->where, "can't take the address of %s (%s)",
+					e->lhs->f_str(), decl_to_str(e->lhs->tree_type));
 
 
 		if(e->lhs->tree_type->type->store == store_register)
@@ -141,43 +144,40 @@ void fold_expr_addr(expr *e, symtable *stab)
 
 void gen_expr_addr(expr *e, symtable *stab)
 {
-	int push = 1;
-
-	(void)stab;
-
 	if(e->array_store){
-		asm_temp(1, "mov rax, %s", e->array_store->label);
+		/*decl *d = e->array_store->data.exprs[0];*/
+		out_push_lbl(e->array_store->label, 1, e->tree_type);
+
 	}else if(e->spel){
-		asm_temp(1, "mov rax, %s", e->spel);
+		out_push_lbl(e->spel, 0, decl_new_void()); /* GNU &&lbl */
+
 	}else{
 		/* address of possibly an ident "(&a)->b" or a struct expr "&a->b" */
 		if(expr_kind(e->lhs, identifier)){
-			asm_sym(ASM_LEA, e->lhs->sym, "rax");
+			out_push_sym_addr(e->lhs->sym);
+
 		}else if(expr_kind(e->lhs, op)){
 			/* skip the address (e->lhs) and the deref */
 			UCC_ASSERT(e->lhs->op == op_deref, "deref expected for addr");
 			gen_expr(op_deref_expr(e->lhs), stab);
-			push = 0;
+
 		}else{
 			ICE("TODO: address of %s", e->lhs->f_str());
 		}
 	}
-
-	if(push)
-		asm_temp(1, "push rax");
 }
 
 void gen_expr_addr_1(expr *e, FILE *f)
 {
-	/* TODO: merge tis code with gen_addr / walk_expr with expr_addr */
+	/* TODO: merge this code with gen_addr / walk_expr with expr_addr */
 	if(e->array_store){
 		/* address of an array store */
-		fprintf(f, "%s", e->array_store->label);
+		asm_declare_out(f, NULL, "%s", e->array_store->label);
 	}else if(e->spel){
-		fprintf(f, "%s", e->spel);
+		asm_declare_out(f, NULL, "%s", e->spel);
 	}else{
 		UCC_ASSERT(expr_kind(e->lhs, identifier), "globals addr-of can only be identifier for now");
-		fprintf(f, "%s", e->lhs->spel);
+		asm_declare_out(f, NULL, "%s", e->lhs->spel);
 	}
 }
 

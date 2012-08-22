@@ -40,19 +40,33 @@ char *ustrdup2(const char *a, const char *b)
 	return ret;
 }
 
-char *ustrprintf(const char *fmt, ...)
+char *ustrvprintf(const char *fmt, va_list l)
 {
-	va_list l;
 	char *buf = NULL;
 	int len = 8, ret;
 
 	do{
+		va_list lcp;
+
 		len *= 2;
 		buf = urealloc(buf, len);
-		va_start(l, fmt);
-		ret = vsnprintf(buf, len, fmt, l);
-		va_end(l);
+
+		va_copy(lcp, l);
+		ret = vsnprintf(buf, len, fmt, lcp);
+		va_end(lcp);
+
 	}while(ret >= len);
 
 	return buf;
+
+}
+
+char *ustrprintf(const char *fmt, ...)
+{
+	va_list l;
+	char *r;
+	va_start(l, fmt);
+	r = ustrvprintf(fmt, l);
+	va_end(l);
+	return r;
 }

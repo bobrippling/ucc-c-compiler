@@ -4,14 +4,14 @@ set -e
 
 os_cfg(){
 	cat > config.mk <<!
-UCC_NASM    = ${UCC_NASM}
+UCC_AS      = ${UCC_AS}
 UCC_LD      = ${UCC_LD}
 UCC_ARCH    = ${UCC_ARCH}
 UCC_LDFLAGS = ${UCC_LDFLAGS}
 !
 
 	cat > src/ucc/cfg.h <<!
-#define UCC_NASM    "${UCC_NASM}"
+#define UCC_AS      "${UCC_AS}"
 #define UCC_LD      "${UCC_LD}"
 #define UCC_ARCH    "${UCC_ARCH}"
 #define UCC_LDFLAGS "${UCC_LDFLAGS}"
@@ -20,16 +20,33 @@ UCC_LDFLAGS = ${UCC_LDFLAGS}
 	if [ $1 = Linux ]
 	then
 		cat <<!
-	cmp rax, -1
+	cmpq \$-1, %rax
 	jg .fin
-	neg rax ; get positive errno
+	negq %rax # get positive errno
 !
 	else
 		cat <<!
 	jnc .fin
-	; else, carry - err is in rax
+	# else, carry - err is in rax
 !
 	fi > lib/syscall_err.s
+
+	if [ $1 = Darwin ]
+	then
+		SECTION_TEXT="__TEXT,__text"
+		SECTION_DATA="__DATA,__data"
+		SECTION_BSS="__BSS,__bss"
+	else
+		SECTION_TEXT=".text"
+		SECTION_DATA=".data"
+		SECTION_BSS=".bss"
+	fi
+
+	cat > src/as_cfg.h <<!
+#define SECTION_TEXT $SECTION_TEXT
+#define SECTION_DATA $SECTION_DATA
+#define SECTION_BSS  $SECTION_BSS
+!
 
 	if ! which perl > /dev/null
 	then
@@ -56,13 +73,13 @@ UCC_LDFLAGS = ${UCC_LDFLAGS}
 
 usage(){
 	cat >&2 <<!
-Usage: $0 [--nasm=path/to/nasm] [clean]
+Usage: $0 [--as=path/to/as] [clean]
 !
 	exit 1
 }
 
 
-UCC_NASM=nasm
+UCC_AS=as
 UCC_LD=ld
 
 UCC_ARCH=elf64
@@ -74,9 +91,9 @@ i=1
 while [ $i -le $# ]
 do
 	arg=`eval echo '$'"$i"`
-	if echo "$arg" | grep -- '^--nasm=' > /dev/null
+	if echo "$arg" | grep -- '^--as=' > /dev/null
 	then
-		UCC_NASM="$(echo "$arg" | sed 's/^--nasm=//')"
+		UCC_AS="$(echo "$arg" | sed 's/^--as=//')"
 	elif [ "$arg" = clean ]
 	then
 		clean=1

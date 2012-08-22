@@ -2,6 +2,7 @@
 
 #include "ops.h"
 #include "stmt_do.h"
+#include "../out/lbl.h"
 
 const char *str_stmt_do()
 {
@@ -15,19 +16,17 @@ void fold_stmt_do(stmt *s)
 
 void gen_stmt_do(stmt *s)
 {
-	char *begin = asm_label_flow("do_start");
+	char *begin = out_label_flow("do_start");
 
-	asm_label(begin);
+	out_label(begin);
 	gen_stmt(s->lhs);
 
-	asm_label(s->lbl_continue);
+	out_label(s->lbl_continue);
 	gen_expr(s->expr, s->symtab);
 
-	asm_temp(1, "pop rax");
-	asm_temp(1, "test rax, rax");
-	asm_temp(1, "jnz %s", begin);
+	out_jtrue(begin);
 
-	asm_label(s->lbl_break);
+	out_label(s->lbl_break);
 
 	free(begin);
 }

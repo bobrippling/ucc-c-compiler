@@ -17,6 +17,7 @@ void fold_expr_stmt(expr *e, symtable *stab)
 	if(last){
 		last_stmt = e->code->codes[last - 1];
 		last_stmt->freestanding = 1; /* allow the final to be freestanding */
+		last_stmt->expr_no_pop = 1;
 	}
 
 	fold_stmt(e->code); /* symtab should've been set by parse */
@@ -34,8 +35,11 @@ void fold_expr_stmt(expr *e, symtable *stab)
 void gen_expr_stmt(expr *e, symtable *stab)
 {
 	(void)stab;
+
 	gen_stmt(e->code);
-	asm_temp(1, "push rax ; end of ({...})");
+	/* last stmt is told to leave its result on the stack */
+
+	out_comment("end of ({...})");
 }
 
 void gen_expr_str_stmt(expr *e, symtable *stab)

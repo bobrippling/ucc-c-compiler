@@ -3,6 +3,7 @@
 #include "ops.h"
 #include "../sue.h"
 #include "expr_op.h"
+#include "../out/lbl.h"
 
 const char *str_expr_op()
 {
@@ -199,7 +200,11 @@ void fold_op_struct(expr *e, symtable *stab)
 	 * e = { lhs = { expr = "a", type = addr }, rhs = "b", type = ptr }
 	 */
 	if(ptr_depth_exp == 0){
-		expr *new = expr_new_wrapper(addr);
+		expr *new;
+
+		eof_where = &e->where;
+		new = expr_new_wrapper(addr);
+		eof_where = NULL;
 
 		new->lhs = e->lhs;
 		e->lhs = new;
@@ -254,9 +259,11 @@ void fold_expr_op(expr *e, symtable *stab)
 	fold_disallow_st_un(e->lhs, "op-lhs");
 
 	if(e->rhs){
-
 		fold_expr(e->rhs, stab);
 		fold_disallow_st_un(e->rhs, "op-rhs");
+
+		/* FIXME: don't case *(p + 2) - the '2' to p's pointer type */
+		fold_insert_casts(e->lhs->tree_type, &e->rhs, stab, &e->where, "operation");
 
 		if(decl_is_void(e->lhs->tree_type) || decl_is_void(e->rhs->tree_type))
 			DIE_AT(&e->where, "use of void expression");
@@ -317,6 +324,7 @@ norm_tt:
 	}
 
 	if(e->rhs){
+
 		/* need to do this check _after_ we get the correct tree type */
 		if((e->op == op_plus || e->op == op_minus)
 		&& decl_ptr_depth(e->tree_type)
@@ -369,6 +377,13 @@ norm_tt:
 			}
 		}
 
+
+		if(e->op == op_shiftl || e->op == op_shiftr){
+			if(decl_ptr_depth(e->rhs->tree_type))
+				DIE_AT(&e->rhs->where, "invalid argument to shift");
+			e->rhs->tree_type->type->primitive = type_char; /* force "shl ..., al" */
+		}
+
 		if(e->op == op_minus && IS_PTR(e->lhs) && IS_PTR(e->rhs)){
 			/* ptr - ptr = int */
 			/* FIXME: ptrdiff_t */
@@ -399,98 +414,25 @@ void gen_expr_str_op(expr *e, symtable *stab)
 	gen_str_indent--;
 }
 
-static void asm_idiv(expr *e, symtable *tab)
+static void op_shortcircuit(expr *e, symtable *tab)
 {
-	/*
-	 * idiv — Integer Division
-	 * The idiv asm_temp divides the contents of the 64 bit integer EDX:EAX (constructed by viewing EDX as the most significant four bytes and EAX as the least significant four bytes) by the specified operand value. The quotient result of the division is stored into EAX, while the remainder is placed in EDX.
-	 * Syntax
-	 * idiv <reg32>
-	 * idiv <mem>
-	 *
-	 * Examples
-	 *
-	 * idiv ebx — divide the contents of EDX:EAX by the contents of EBX. Place the quotient in EAX and the remainder in EDX.
-	 * idiv DWORD PTR [var] — divide the contents of EDX:EAS by the 32-bit value stored at memory location var. Place the quotient in EAX and the remainder in EDX.
-	 */
+	char *bail = out_label_code("shortcircuit_bail");
 
 	gen_expr(e->lhs, tab);
-	gen_expr(e->rhs, tab);
-	/* pop top stack (rhs) into b, and next top into a */
 
-#define IDIV_SIGN_EXTEND
+	out_dup();
+	(e->op == op_andsc ? out_jfalse : out_jtrue)(bail);
+	out_pop();
 
-#ifndef  IDIV_SIGN_EXTEND
-# warning old broken division
-	asm_temp(1, "xor rdx,rdx");
-#endif
-
-	asm_temp(1, "pop rbx");
-	asm_temp(1, "pop rax");
-#ifdef IDIV_SIGN_EXTEND
-	asm_temp(1, "cqo ; rax -> rdx:rax"); /* convert quad to oct - cqto in AT&T */
-#endif
-	asm_temp(1, "idiv rbx");
-
-	asm_temp(1, "push r%cx", e->op == op_divide ? 'a' : 'd');
-}
-
-static void asm_compare(expr *e, symtable *tab)
-{
-	const char *cmp = NULL;
-
-	gen_expr(e->lhs, tab);
-	gen_expr(e->rhs, tab);
-	asm_temp(1, "pop rbx");
-	asm_temp(1, "pop rcx");
-	asm_temp(1, "xor rax,rax"); /* must be before cmp */
-	asm_temp(1, "cmp rcx,rbx");
-
-	/* check for unsigned, since signed isn't explicitly set */
-#define SIGNED(s, u) e->tree_type->type->is_signed ? s : u
-
-	switch(e->op){
-		case op_eq: cmp = "e";  break;
-		case op_ne: cmp = "ne"; break;
-
-		case op_le: cmp = SIGNED("le", "be"); break;
-		case op_lt: cmp = SIGNED("l",  "b");  break;
-		case op_ge: cmp = SIGNED("ge", "ae"); break;
-		case op_gt: cmp = SIGNED("g",  "a");  break;
-
-		default:
-			ICE("%s: unhandled comparison", __func__);
-	}
-
-	asm_temp(1, "set%s al", cmp);
-	asm_temp(1, "push rax");
-}
-
-static void asm_shortcircuit(expr *e, symtable *tab)
-{
-	char *baillabel = asm_label_code("shortcircuit_bail");
-	gen_expr(e->lhs, tab);
-
-	asm_temp(1, "mov rax,[rsp]");
-	asm_temp(1, "test rax,rax");
-	/* leave the result on the stack (if false) and bail */
-	asm_temp(1, "j%sz %s", e->op == op_andsc ? "" : "n", baillabel);
-	asm_temp(1, "pop rax");
 	gen_expr(e->rhs, tab);
 
-	/* must convert to 1 or 0 */
-	asm_temp(1, "pop rcx");
-	asm_temp(1, "xor rax, rax");
-	asm_temp(1, "test rcx, rcx");
-	asm_temp(1, "setnz al");
-	asm_temp(1, "push rax");
+	out_label(bail);
+	free(bail);
 
-	asm_label(baillabel);
-
-	free(baillabel);
+	out_normalise();
 }
 
-void asm_operate_struct(expr *e, symtable *tab)
+static void op_struct(expr *e, symtable *tab)
 {
 	(void)tab;
 
@@ -499,162 +441,77 @@ void asm_operate_struct(expr *e, symtable *tab)
 	gen_expr(e->lhs, tab);
 
 	/* pointer to the struct is on the stack, get from the offset */
-	asm_temp(1, "pop rax ; struct ptr");
-	asm_temp(1, "add rax, %d ; offset of member %s",
-			e->rhs->tree_type->struct_offset,
-			e->rhs->spel);
+	out_comment("struct ptr");
 
-	if(decl_is_array(e->rhs->tree_type))
-		asm_temp(1, "; array - got address");
-	else
-		asm_indir(ASM_INDIR_GET, e->tree_type, 'a', 'a', "val from struct");
+	out_push_i(NULL, e->rhs->tree_type->struct_offset);
+	out_op(op_plus);
 
-	asm_temp(1, "push rax");
+	out_change_decl(decl_ptr_depth_inc(decl_copy(e->rhs->tree_type)));
+	out_comment("offset of member %s", e->rhs->spel);
+
+	if(decl_is_array(e->rhs->tree_type)){
+		out_comment("array - got address");
+	}else{
+		out_op_unary(op_deref);
+	}
+
+	out_comment("val from struct");
 }
 
 void gen_expr_op(expr *e, symtable *tab)
 {
-	const char *instruct = NULL;
-	const char *rhs = "rcx";
-
 	switch(e->op){
-		/* normal mafs */
-		case op_multiply: instruct = "imul"; break;
-		case op_plus:     instruct = "add";  break;
-		case op_xor:      instruct = "xor";  break;
-		case op_or:       instruct = "or";   break;
-		case op_and:      instruct = "and";  break;
-
-		/* single register op */
-		case op_minus: instruct = e->rhs ? "sub" : "neg"; break;
-		case op_bnot:  instruct = "not";                  break;
-
-#define SHIFT(side) \
-		case op_shift ## side: instruct = "sh" # side; rhs = "cl"; break
-
-		SHIFT(l);
-		SHIFT(r);
-
-		case op_not:
-			/* compare with 0 */
-			gen_expr(e->lhs, tab);
-			asm_temp(1, "xor rbx,rbx");
-			asm_temp(1, "pop rax");
-			asm_temp(1, "test rax,rax");
-			asm_temp(1, "setz bl");
-			asm_temp(1, "push rbx");
-			return;
-
-		case op_deref:
-			gen_expr(e->lhs, tab);
-			asm_temp(1, "pop rax");
-
-			asm_indir(ASM_INDIR_GET, e->tree_type, 'a', 'a', NULL);
-
-			asm_temp(1, "push rax");
-			return;
-
 		case op_struct_dot:
 		case op_struct_ptr:
-			asm_operate_struct(e, tab);
-			return;
+			op_struct(e, tab);
+			break;
 
-		/* comparison */
-		case op_eq:
-		case op_ne:
-		case op_le:
-		case op_lt:
-		case op_ge:
-		case op_gt:
-			asm_compare(e, tab);
-			return;
-
-		/* shortcircuit */
 		case op_orsc:
 		case op_andsc:
-			asm_shortcircuit(e, tab);
-			return;
-
-		case op_divide:
-		case op_modulus:
-			asm_idiv(e, tab);
-			return;
+			op_shortcircuit(e, tab);
+			break;
 
 		case op_unknown:
 			ICE("asm_operate: unknown operator got through");
+
+		default:
+			gen_expr(e->lhs, tab);
+
+			if(e->rhs){
+				gen_expr(e->rhs, tab);
+
+				out_op(e->op);
+			}else{
+				out_op_unary(e->op);
+			}
 	}
-
-	/* asm_temp(1, "%s rax", incr ? "inc" : "dec"); TODO: optimise */
-
-	/* get here if op is *, +, - or ~ */
-	gen_expr(e->lhs, tab);
-	if(e->rhs){
-		gen_expr(e->rhs, tab);
-		asm_temp(1, "pop rcx");
-		asm_temp(1, "pop rax");
-		asm_temp(1, "%s rax, %s", instruct, rhs);
-	}else{
-		asm_temp(1, "pop rax");
-		asm_temp(1, "%s rax", instruct);
-	}
-
-	asm_temp(1, "push rax");
 }
 
-void gen_expr_op_store(expr *e, symtable *stab)
+void gen_expr_op_store(expr *store, symtable *stab)
 {
-	switch(e->op){
+	switch(store->op){
 		case op_deref:
 			/* a dereference */
-			asm_temp(1, "push rax ; save val to store");
-
-#ifdef FAST_ARRAY_DEREF
-			/* check for a[n] aka *(a + n) */
-			if(expr_kind(e->lhs, op)
-			&& e->lhs->op == op_plus
-			&& expr_kind(e->lhs->rhs, val))
-			{
-				gen_expr(e->lhs->lhs, stab);
-				asm_temp(1, "pop rcx");
-				asm_temp(1, "mov rbx, [rcx + %d]",
-						e->lhs->rhs->val.iv.val);
-				/* TODO */
-				asm_indir(ASM_INDIR_...);
-				return;
-			}
-#endif
-
-			gen_expr(e->lhs, stab); /* skip over the *() bit */
-			/* pointer on stack */
-
-			/* move `pop` into `pop` */
-			asm_temp(1, "pop rax ; ptr");
-			asm_temp(1, "pop rbx ; val");
-
-			asm_indir(ASM_INDIR_SET, e->tree_type, 'a', 'b', NULL);
+			gen_expr(op_deref_expr(store), stab); /* skip over the *() bit */
+			out_comment("pointer on stack");
 			return;
 
 		case op_struct_ptr:
-			gen_expr(e->lhs, stab);
+			gen_expr(store->lhs, stab);
 
-			asm_temp(1, "pop rbx ; struct addr");
-			asm_temp(1, "add rbx, %d ; offset of member %s",
-					e->rhs->tree_type->struct_offset,
-					e->rhs->spel);
-			asm_temp(1, "mov rax, [rsp] ; saved val");
-
-			asm_indir(ASM_INDIR_SET, e->tree_type, 'b', 'a', NULL);
-
+			out_push_i(NULL, store->rhs->tree_type->struct_offset);
+			out_op(op_plus);
+			out_comment("offset of member %s", store->rhs->spel);
 			return;
 
 		case op_struct_dot:
-			ICE("TODO: a.b");
+			ICE("a.b missed");
 			break;
 
 		default:
 			break;
 	}
-	ICE("invalid store-op %s", op_to_str(e->op));
+	ICE("invalid store-op %s", op_to_str(store->op));
 }
 
 void mutate_expr_op(expr *e)
