@@ -235,8 +235,6 @@ void fold_deref(expr *e)
 		DIE_AT(&e->where, "can't dereference void pointer (%s)", decl_to_str(e->tree_type));
 }
 
-void fold_expr_op(expr *e, symtable *stab)
-{
 #define IS_PTR(x) decl_ptr_depth(x->tree_type)
 
 #define SPEL_IF_IDENT(hs)                            \
@@ -247,49 +245,35 @@ void fold_expr_op(expr *e, symtable *stab)
 #define RHS e->rhs
 #define LHS e->lhs
 
-	UCC_ASSERT(e->op != op_unknown, "unknown op in expression at %s",
-			where_str(&e->where));
+static void fold_promote_types()
+{
+	/* FIXME: don't case *(p + 2) - the '2' to p's pointer type */
+	fold_insert_casts(e->lhs->tree_type, &e->rhs, stab, &e->where, "operation");
 
-	if(e->op == op_struct_ptr || e->op == op_struct_dot){
-		fold_op_struct(e, stab);
-		return;
-	}
+	if(decl_is_void(e->lhs->tree_type) || decl_is_void(e->rhs->tree_type))
+		DIE_AT(&e->where, "use of void expression");
 
-	fold_expr(e->lhs, stab);
-	fold_disallow_st_un(e->lhs, "op-lhs");
+	fold_decl_equal(e->lhs->tree_type, e->rhs->tree_type,
+			&e->where, WARN_COMPARE_MISMATCH,
+			"operation between mismatching types%s%s%s%s%s%s",
+			SPEL_IF_IDENT(e->lhs), SPEL_IF_IDENT(e->rhs));
 
-	if(e->rhs){
-		fold_expr(e->rhs, stab);
-		fold_disallow_st_un(e->rhs, "op-rhs");
+	if(op_is_cmp(e->op) && e->lhs->tree_type->type->is_signed != e->rhs->tree_type->type->is_signed){
 
-		/* FIXME: don't case *(p + 2) - the '2' to p's pointer type */
-		fold_insert_casts(e->lhs->tree_type, &e->rhs, stab, &e->where, "operation");
+		/*
+		 * assert(LHS == UNSIGNED);
+		 * vals default to signed, change to unsigned
+		 */
 
-		if(decl_is_void(e->lhs->tree_type) || decl_is_void(e->rhs->tree_type))
-			DIE_AT(&e->where, "use of void expression");
-
-		fold_decl_equal(e->lhs->tree_type, e->rhs->tree_type,
-				&e->where, WARN_COMPARE_MISMATCH,
-				"operation between mismatching types%s%s%s%s%s%s",
-				SPEL_IF_IDENT(e->lhs), SPEL_IF_IDENT(e->rhs));
-
-		if(op_is_cmp(e->op) && e->lhs->tree_type->type->is_signed != e->rhs->tree_type->type->is_signed){
-
-			/*
-			 * assert(LHS == UNSIGNED);
-			 * vals default to signed, change to unsigned
-			 */
-
-			if(expr_kind(RHS, val) && RHS->val.iv.val >= 0){
-				UCC_ASSERT(!e->lhs->tree_type->type->is_signed, "signed-unsigned assumption failure");
-				RHS->tree_type->type->is_signed = 0;
-			}else if(expr_kind(LHS, val) && LHS->val.iv.val >= 0){
-				UCC_ASSERT(!e->rhs->tree_type->type->is_signed, "signed-unsigned assumption failure");
-				LHS->tree_type->type->is_signed = 0;
-			}else{
-					cc1_warn_at(&e->where, 0, 1, WARN_SIGN_COMPARE, "comparison between signed and unsigned%s%s%s%s%s%s",
-							SPEL_IF_IDENT(LHS), SPEL_IF_IDENT(RHS));
-			}
+		if(expr_kind(RHS, val) && RHS->val.iv.val >= 0){
+			UCC_ASSERT(!e->lhs->tree_type->type->is_signed, "signed-unsigned assumption failure");
+			RHS->tree_type->type->is_signed = 0;
+		}else if(expr_kind(LHS, val) && LHS->val.iv.val >= 0){
+			UCC_ASSERT(!e->rhs->tree_type->type->is_signed, "signed-unsigned assumption failure");
+			LHS->tree_type->type->is_signed = 0;
+		}else{
+			cc1_warn_at(&e->where, 0, 1, WARN_SIGN_COMPARE, "comparison between signed and unsigned%s%s%s%s%s%s",
+					SPEL_IF_IDENT(LHS), SPEL_IF_IDENT(RHS));
 		}
 	}
 
@@ -375,7 +359,6 @@ norm_tt:
 		if(e->op == op_shiftl || e->op == op_shiftr){
 			if(decl_ptr_depth(e->rhs->tree_type))
 				DIE_AT(&e->rhs->where, "invalid argument to shift");
-			e->rhs->tree_type->type->primitive = type_char; /* force "shl ..., al" */
 		}
 
 		if(e->op == op_minus && IS_PTR(e->lhs) && IS_PTR(e->rhs)){
@@ -384,9 +367,29 @@ norm_tt:
 			e->tree_type->type->primitive = type_int;
 		}
 	}
-
+}
 #undef SPEL_IF_IDENT
 #undef IS_PTR
+
+void fold_expr_op(expr *e, symtable *stab)
+{
+	UCC_ASSERT(e->op != op_unknown, "unknown op in expression at %s",
+			where_str(&e->where));
+
+	if(e->op == op_struct_ptr || e->op == op_struct_dot){
+		fold_op_struct(e, stab);
+		return;
+	}
+
+	fold_expr(e->lhs, stab);
+	fold_disallow_st_un(e->lhs, "op-lhs");
+
+	if(e->rhs){
+		fold_expr(e->rhs, stab);
+		fold_disallow_st_un(e->rhs, "op-rhs");
+
+		fold_promote_types(e->lhs, e->rhs);
+	}
 }
 
 void gen_expr_str_op(expr *e, symtable *stab)
