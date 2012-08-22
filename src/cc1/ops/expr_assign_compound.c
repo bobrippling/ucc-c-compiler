@@ -58,7 +58,7 @@ void gen_expr_assign_compound(expr *e, symtable *stab)
 
 	gen_expr(e->rhs, stab);
 
-	out_op(op_plus);
+	out_op(e->op);
 
 	out_store();
 
