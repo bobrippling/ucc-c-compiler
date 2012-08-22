@@ -70,15 +70,9 @@ void funcargs_free(funcargs *args, int free_decls)
 	free(args);
 }
 
-int type_size(const type *t)
+int type_primitive_size(enum type_primitive tp)
 {
-	if(t->typeof)
-		return decl_size(t->typeof->decl);
-
-	if(t->sue)
-		return sue_size(t->sue);
-
-	switch(t->primitive){
+	switch(tp){
 		case type_char:
 		case type_void:
 			return 1;
@@ -96,8 +90,19 @@ int type_size(const type *t)
 			break;
 	}
 
-	ICE("type %s in type_size()", type_to_str(t));
+	ICE("type %s in type_size()", type_primitive_to_str(tp));
 	return -1;
+}
+
+int type_size(const type *t)
+{
+	if(t->typeof)
+		return decl_size(t->typeof->decl);
+
+	if(t->sue)
+		return sue_size(t->sue);
+
+	return type_primitive_size(t->primitive);
 }
 
 int type_equal(const type *a, const type *b, enum type_cmp mode)
