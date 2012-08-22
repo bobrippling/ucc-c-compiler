@@ -7,9 +7,8 @@ const char *str_expr_assign_compound()
 
 void fold_expr_assign_compound(expr *e, symtable *stab)
 {
+	expr *const lvalue = e->lhs;
 	int type_ok;
-
-	fold_inc_writes_if_sym(e->lhs, stab);
 
 	{
 		expr *addr = expr_new_addr();
@@ -20,23 +19,25 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 		/* take the address of where we're assigning to - only eval once */
 	}
 
+	fold_inc_writes_if_sym(lvalue, stab);
+
 	fold_expr(e->lhs, stab);
 	fold_expr(e->rhs, stab);
 
-	fold_coerce_assign(e->lhs->tree_type, e->rhs, &type_ok);
+	fold_coerce_assign(lvalue->tree_type, e->rhs, &type_ok);
 
 	/* skip the addr we inserted */
-	if(!expr_is_lvalue(e->lhs->lhs, 0)){
-		DIE_AT(&e->lhs->where, "compound target not an lvalue (%s)",
-				e->lhs->f_str());
+	if(!expr_is_lvalue(lvalue, 0)){
+		DIE_AT(&lvalue->where, "compound target not an lvalue (%s)",
+				lvalue->f_str());
 	}
 
-	if(decl_is_const(e->lhs->tree_type))
-		DIE_AT(&e->where, "can't modify const expression %s", e->lhs->f_str());
+	if(decl_is_const(lvalue->tree_type))
+		DIE_AT(&e->where, "can't modify const expression %s", lvalue->f_str());
 
 	UCC_ASSERT(op_can_compound(e->op), "non-compound op in compound expr");
 
-	e->tree_type = decl_copy(e->lhs->lhs->tree_type);
+	e->tree_type = decl_copy(lvalue->tree_type);
 }
 
 void gen_expr_assign_compound(expr *e, symtable *stab)
