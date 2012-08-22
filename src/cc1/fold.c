@@ -74,8 +74,6 @@ void fold_expr(expr *e, symtable *stab)
 	e->f_fold(e, stab);
 	eof_where = old_w;
 
-	const_fold(e, &dummy, &dum); /* fold, then const-propagate */
-
 	UCC_ASSERT(e->tree_type, "no tree_type after fold (%s)", e->f_str());
 	UCC_ASSERT(e->tree_type->type->primitive != type_unknown, "unknown type after folding expr %s", e->f_str());
 }
