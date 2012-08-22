@@ -181,6 +181,7 @@ void fold_enum(struct_union_enum_st *en, symtable *stab)
 		}else{
 			intval iv;
 
+			fold_expr(e, stab);
 			const_fold_need_val(e, &iv);
 
 			defval = bitmask ? iv.val << 1 : iv.val + 1;
