@@ -368,12 +368,6 @@ norm_tt:
 					else
 						e->lhs = expr_ptr_multiply(e->lhs, e->rhs->tree_type);
 				}
-
-				{
-					intval dummy;
-					enum constyness d;
-					const_fold(e, &dummy, &d);
-				}
 			}
 		}
 
