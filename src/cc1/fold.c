@@ -102,8 +102,6 @@ void fold_inc_writes_if_sym(expr *e, symtable *stab)
 
 void fold_expr(expr *e, symtable *stab)
 {
-	intval dummy;
-	enum constyness dum;
 	where *old_w;
 
 	if(e->tree_type)

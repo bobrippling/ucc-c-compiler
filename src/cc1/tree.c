@@ -78,9 +78,9 @@ void funcargs_free(funcargs *args, int free_decls)
 	free(args);
 }
 
-int type_primitive_size(enum type_primitive p)
+int type_primitive_size(enum type_primitive tp)
 {
-	switch(p){
+	switch(tp){
 		case type_char:
 		case type__Bool:
 		case type_void:
@@ -115,7 +115,7 @@ int type_primitive_size(enum type_primitive p)
 			break;
 	}
 
-	ICE("type %s in type_size()", type_primitive_to_str(p));
+	ICE("type %s in type_size()", type_primitive_to_str(tp));
 	return -1;
 }
 

@@ -96,8 +96,7 @@ int op_can_compound(enum op_type o);
 
 int   type_equal(const type *a, const type *b, int strict);
 int   type_size( const type *);
-int   type_primitive_size(enum type_primitive);
-
+int   type_primitive_size(enum type_primitive tp);
 funcargs *funcargs_new(void);
 void function_empty_args(funcargs *func);
 
