@@ -104,8 +104,10 @@ void fold_expr(expr *e, symtable *stab)
 {
 	intval dummy;
 	enum constyness dum;
-
 	where *old_w;
+
+	if(e->tree_type)
+		return;
 
 	fold_get_sym(e, stab);
 
@@ -179,7 +181,6 @@ void fold_enum(struct_union_enum_st *en, symtable *stab)
 		}else{
 			intval iv;
 
-			fold_expr(e, stab);
 			const_fold_need_val(e, &iv);
 
 			defval = bitmask ? iv.val << 1 : iv.val + 1;
@@ -297,7 +298,6 @@ void fold_decl(decl *d, symtable *stab)
 		type_exp = d->type->typeof;
 
 		fold_expr(type_exp, stab);
-		decl_free(type_exp->tree_type);
 
 		/* either get the typeof() from the decl or the expr type */
 		from = d->type->typeof->decl;
@@ -309,6 +309,7 @@ void fold_decl(decl *d, symtable *stab)
 				(void *)d->type->typeof->decl,
 				(void *)d->type->typeof->expr->tree_type);
 
+		decl_free(type_exp->tree_type);
 		type_exp->tree_type = decl_copy(from);
 
 		/* type */
