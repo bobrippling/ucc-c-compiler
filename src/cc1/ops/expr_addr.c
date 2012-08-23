@@ -149,7 +149,7 @@ void gen_expr_addr(expr *e, symtable *stab)
 		out_push_lbl(e->array_store->label, 1, e->tree_type);
 
 	}else if(e->spel){
-		out_push_lbl(e->spel, 0, decl_new_void()); /* GNU &&lbl */
+		out_push_lbl(e->spel, 1, NULL); /* GNU &&lbl */
 
 	}else{
 		/* address of possibly an ident "(&a)->b" or a struct expr "&a->b" */
