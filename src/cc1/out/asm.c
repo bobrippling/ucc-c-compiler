@@ -146,7 +146,7 @@ int asm_type_size(decl *d)
 {
 	struct_union_enum_st *sue = d->type->sue;
 
-	if(sue && !decl_ptr_depth(d))
+	if(sue && !decl_is_ptr(d))
 		return sue_size(sue);
 
 	return asm_type_table[asm_table_lookup(d)].sz;
@@ -167,7 +167,7 @@ void asm_declare_out(FILE *f, decl *d, const char *fmt, ...)
 
 void asm_declare_single(decl *d)
 {
-	if(!decl_ptr_depth(d) && d->type->sue && d->type->sue->primitive != type_enum){
+	if(!decl_is_ptr(d) && d->type->sue && d->type->sue->primitive != type_enum){
 		/* struct init */
 		int i;
 		const char *type_directive;

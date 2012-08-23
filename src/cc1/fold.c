@@ -203,7 +203,7 @@ int fold_sue(struct_union_enum_st *sue, symtable *stab)
 				d->struct_offset = offset;
 			/* else - union, all offsets are the same */
 
-			if(d->type->sue && decl_ptr_depth(d) == 0){
+			if(d->type->sue && !decl_is_ptr(d)){
 				if(d->type->sue == sue)
 					DIE_AT(&d->where, "nested %s", sue_str(sue));
 
@@ -225,7 +225,7 @@ void fold_coerce_assign(decl *d, expr *assign, int *ok)
 	 */
 	*ok = 0;
 
-	if(!decl_ptr_depth(d) && d->type->primitive == type_struct){
+	if(!decl_is_ptr(d) && d->type->primitive == type_struct){
 		if(assign->array_store){
 			array_decl *store = assign->array_store;
 
@@ -266,7 +266,7 @@ void fold_coerce_assign(decl *d, expr *assign, int *ok)
 
 					for(i = d->type->sue->members; i && *i; i++){
 						decl *d = (*i)->struct_member;
-						if(!decl_ptr_depth(d) && d->type->primitive == type_char){
+						if(!decl_is_ptr(d) && d->type->primitive == type_char){
 							WARN_AT(&assign->where, "struct init via { } breaks with char member (%s %s)",
 									decl_to_str(d), d->spel);
 							break;
@@ -352,7 +352,7 @@ void fold_decl(decl *d, symtable *stab)
 
 	switch(d->type->primitive){
 		case type_void:
-			if(!decl_ptr_depth(d) && !decl_is_callable(d) && d->spel)
+			if(!decl_is_ptr(d) && !decl_is_callable(d) && d->spel)
 				DIE_AT(&d->where, "can't have a void variable - %s (%s)", d->spel, decl_to_str(d));
 			break;
 
@@ -360,7 +360,7 @@ void fold_decl(decl *d, symtable *stab)
 		case type_union:
 			/* don't apply qualifiers to the sue */
 		case type_enum:
-			if(sue_incomplete(d->type->sue) && !decl_ptr_depth(d))
+			if(sue_incomplete(d->type->sue) && !decl_is_ptr(d))
 				DIE_AT(&d->where, "use of %s%s%s",
 						type_to_str(d->type),
 						d->spel ?     " " : "",
@@ -507,7 +507,7 @@ void fold_symtab_scope(symtable *stab)
 
 void fold_need_expr(expr *e, const char *stmt_desc, int is_test)
 {
-	if(!decl_ptr_depth(e->tree_type) && e->tree_type->type->primitive == type_void)
+	if(!decl_is_ptr(e->tree_type) && e->tree_type->type->primitive == type_void)
 		DIE_AT(&e->where, "%s requires non-void expression", stmt_desc);
 
 	if(!e->in_parens && expr_kind(e, assign))

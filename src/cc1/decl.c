@@ -334,14 +334,14 @@ int decl_equal(decl *a, decl *b, enum decl_cmp mode)
 
 	if((mode & DECL_CMP_ALLOW_VOID_PTR)){
 		/* one side is void * */
-		if(decl_is_void_ptr(a) && decl_ptr_depth(b))
+		if(decl_is_void_ptr(a) && decl_is_ptr(b))
 			return 1;
-		if(decl_is_void_ptr(b) && decl_ptr_depth(a))
+		if(decl_is_void_ptr(b) && decl_is_ptr(a))
 			return 1;
 	}
 
 	/* we are strict if told, or if either are a pointer - types must be equal */
-	strict = (mode & DECL_CMP_STRICT_PRIMITIVE) || decl_ptr_depth(a) || decl_ptr_depth(b);
+	strict = (mode & DECL_CMP_STRICT_PRIMITIVE) || decl_is_ptr(a) || decl_is_ptr(b);
 
 	if(!type_equal(a->type, b->type, strict))
 		return 0;
@@ -349,22 +349,21 @@ int decl_equal(decl *a, decl *b, enum decl_cmp mode)
 	return a->desc ? b->desc && decl_desc_equal(a->desc, b->desc) : !b->desc;
 }
 
-int decl_ptr_depth(decl *d)
+int decl_is_ptr(decl *d)
 {
 	decl_desc *dp;
-	int i = 0;
 
 	for(dp = d->desc; dp; dp = dp->child)
 		switch(dp->type){
 			case decl_desc_ptr:
 			case decl_desc_array:
-				i++;
+				return 1;
 			case decl_desc_func:
 			case decl_desc_block:
 				break;
 		}
 
-	return i;
+	return 0;
 }
 
 int decl_desc_depth(decl *d)
@@ -406,12 +405,12 @@ int decl_is_struct_or_union_possible_ptr(decl *d)
 
 int decl_is_struct_or_union(decl *d)
 {
-	return decl_is_struct_or_union_possible_ptr(d) && !decl_ptr_depth(d);
+	return decl_is_struct_or_union_possible_ptr(d) && !decl_is_ptr(d);
 }
 
 int decl_is_struct_or_union_ptr(decl *d)
 {
-	return decl_is_struct_or_union_possible_ptr(d) && decl_ptr_depth(d);
+	return decl_is_struct_or_union_possible_ptr(d) && decl_is_ptr(d);
 }
 
 int decl_is_const(decl *d)

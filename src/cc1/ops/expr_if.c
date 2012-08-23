@@ -88,8 +88,8 @@ void fold_expr_if(expr *e, symtable *stab)
 		int l_ptr_st_un = decl_is_struct_or_union_ptr(tt_l);
 		int r_ptr_st_un = decl_is_struct_or_union_ptr(tt_r);
 
-		int l_ptr_null = decl_ptr_depth(tt_l) && const_expr_and_zero(e->lhs);
-		int r_ptr_null = decl_ptr_depth(tt_r) && const_expr_and_zero(e->rhs);
+		int l_ptr_null = decl_is_ptr(tt_l) && const_expr_and_zero(e->lhs);
+		int r_ptr_null = decl_is_ptr(tt_r) && const_expr_and_zero(e->rhs);
 
 		int l_complete = !l_ptr_null && (!l_ptr_st_un || !sue_incomplete(tt_l->type->sue));
 		int r_complete = !r_ptr_null && (!r_ptr_st_un || !sue_incomplete(tt_r->type->sue));
