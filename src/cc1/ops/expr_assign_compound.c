@@ -24,6 +24,8 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 	fold_expr(e->lhs, stab);
 	fold_expr(e->rhs, stab);
 
+	op_promote_types(e->lhs, e->rhs);
+
 	fold_coerce_assign(lvalue->tree_type, e->rhs, &type_ok);
 
 	/* skip the addr we inserted */

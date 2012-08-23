@@ -242,67 +242,100 @@ void fold_deref(expr *e)
 #define RHS e->rhs
 #define LHS e->lhs
 
-static void fold_promote_types()
+void op_promote_types(enum op_type op, expr *lhs, expr *rhs, where *w)
 {
+#if 0
+	If either operand is a pointer:
+		relation: both must be pointers
+
+	if both operands are pointers:
+		must be '-'
+
+	exactly one pointer:
+		must be + or -
+#endif
+
+	if(decl_is_void(lhs->tree_type) || decl_is_void(rhs->tree_type))
+		DIE_AT(w, "use of void expression");
+
+	{
+		const int l_ptr = decl_is_ptr(lhs->tree_type);
+		const int r_ptr = decl_is_ptr(rhs->tree_type);
+
+		if(l_ptr && r_ptr){
+			/* relation */
+			if(!op_is_relational(op))
+				DIE_AT(w, "operation between pointers must be relational");
+
+		}else if(l_ptr ^ r_ptr){
+			/* + or - */
+			if(op != op_plus && op != op_minus)
+				DIE_AT(w, "operation between pointer and integer must be + or -");
+
+		}else{
+			UCC_ASSERT(!(l_ptr || r_ptr), "logic error");
+
+		}
+	}
+
+#if 0
+	If both operands have the same type, then no further conversion is needed.
+
+	Otherwise, if both operands have signed integer types or both have unsigned
+	integer types, the operand with the type of lesser integer conversion rank
+	is converted to the type of the operand with greater rank.
+
+	Otherwise, if the operand that has unsigned integer type has rank greater
+	or equal to the rank of the type of the other operand, then the operand
+	with signed integer type is converted to the type of the operand with
+	unsigned integer type.
+
+	Otherwise, if the type of the operand with signed integer type can
+	represent all of the values of the type of the operand with unsigned
+	integer type, then the operand with unsigned integer type is converted to
+	the type of the operand with signed integer type.
+
+	Otherwise, both operands are converted to the unsigned integer type
+	corresponding to the type of the operand with signed integer type.
+#endif
+std_op:
+
+	// TODO
+
 	/* FIXME: don't case *(p + 2) - the '2' to p's pointer type */
 	fold_insert_casts(e->lhs->tree_type, &e->rhs, stab, &e->where, "operation");
-
-	if(decl_is_void(e->lhs->tree_type) || decl_is_void(e->rhs->tree_type))
-		DIE_AT(&e->where, "use of void expression");
 
 	fold_decl_equal(e->lhs->tree_type, e->rhs->tree_type,
 			&e->where, WARN_COMPARE_MISMATCH,
 			"operation between mismatching types%s%s%s%s%s%s",
 			SPEL_IF_IDENT(e->lhs), SPEL_IF_IDENT(e->rhs));
 
-	if(op_is_cmp(e->op) && e->lhs->tree_type->type->is_signed != e->rhs->tree_type->type->is_signed){
+	/*
+	 * look either side - if either is a pointer, take that as the tree_type
+	 *
+	 * operation between two values of any type
+	 *
+	 * TODO: checks for pointer + pointer (invalid), etc etc
+	 */
 
-		/*
-		 * assert(LHS == UNSIGNED);
-		 * vals default to signed, change to unsigned
-		 */
-
-		if(expr_kind(RHS, val) && RHS->val.iv.val >= 0){
-			UCC_ASSERT(!e->lhs->tree_type->type->is_signed, "signed-unsigned assumption failure");
-			RHS->tree_type->type->is_signed = 0;
-		}else if(expr_kind(LHS, val) && LHS->val.iv.val >= 0){
-			UCC_ASSERT(!e->rhs->tree_type->type->is_signed, "signed-unsigned assumption failure");
-			LHS->tree_type->type->is_signed = 0;
+	if(e->rhs){
+		if(IS_PTR(e->rhs)){
+			e->tree_type = decl_copy(e->rhs->tree_type);
 		}else{
-			cc1_warn_at(&e->where, 0, 1, WARN_SIGN_COMPARE, "comparison between signed and unsigned%s%s%s%s%s%s",
-					SPEL_IF_IDENT(LHS), SPEL_IF_IDENT(RHS));
+			goto norm_tt;
 		}
-	}
-
-	if(e->op == op_deref){
-		fold_deref(e);
 	}else{
-		/*
-		 * look either side - if either is a pointer, take that as the tree_type
-		 *
-		 * operation between two values of any type
-		 *
-		 * TODO: checks for pointer + pointer (invalid), etc etc
-		 */
-
-		if(e->rhs){
-			if(IS_PTR(e->rhs)){
-				e->tree_type = decl_copy(e->rhs->tree_type);
-			}else{
-				goto norm_tt;
-			}
-		}else{
 norm_tt:
-			/* if we have a _comparison_ (e.g. between enums), convert to int */
+		/* if we have a _comparison_ (e.g. between enums), convert to int */
 
-			if(op_is_cmp(e->op)){
-				e->tree_type = decl_new();
-				e->tree_type->type->primitive = type_int;
-			}else{
-				e->tree_type = decl_copy(e->lhs->tree_type);
-			}
+		if(op_is_relational(e->op)){
+			e->tree_type = decl_new();
+			e->tree_type->type->primitive = type_int;
+		}else{
+			e->tree_type = decl_copy(e->lhs->tree_type);
 		}
 	}
+}
 
 	if(e->rhs){
 
@@ -381,7 +414,10 @@ void fold_expr_op(expr *e, symtable *stab)
 	fold_expr(e->lhs, stab);
 	fold_disallow_st_un(e->lhs, "op-lhs");
 
-	if(e->rhs){
+	if(e->op == op_deref){
+		fold_deref(e);
+
+	}else if(e->rhs){
 		fold_expr(e->rhs, stab);
 		fold_disallow_st_un(e->rhs, "op-rhs");
 
