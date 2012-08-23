@@ -230,9 +230,6 @@ void fold_deref(expr *e)
 		WARN_AT(&op_deref_expr(e)->where, "possible optimisation for *& expression");
 
 	e->tree_type = decl_ptr_depth_dec(decl_copy(op_deref_expr(e)->tree_type), &e->where);
-
-	if(decl_desc_depth(e->tree_type) == 0 && e->tree_type->type->primitive == type_void)
-		DIE_AT(&e->where, "can't dereference void pointer (%s)", decl_to_str(e->tree_type));
 }
 
 #define IS_PTR(x) decl_ptr_depth(x->tree_type)
