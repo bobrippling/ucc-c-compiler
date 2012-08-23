@@ -157,7 +157,7 @@ void fold_op_struct(expr *e, symtable *stab)
 	 * lhs = any ptr-to-struct expr
 	 * rhs = struct member ident
 	 */
-	const int ptr_depth_exp = e->op == op_struct_ptr ? 1 : 0;
+	const int ptr_expect = e->op == op_struct_ptr;
 	struct_union_enum_st *sue;
 	char *spel;
 
@@ -170,7 +170,7 @@ void fold_op_struct(expr *e, symtable *stab)
 
 	/* we access a struct, of the right ptr depth */
 	if(!decl_is_struct_or_union_possible_ptr(e->lhs->tree_type)
-	|| decl_ptr_depth(e->lhs->tree_type) != ptr_depth_exp)
+	|| decl_is_ptr(e->lhs->tree_type) != ptr_expect)
 	{
 		const int ident = expr_kind(e->lhs, identifier);
 
@@ -232,8 +232,6 @@ void fold_deref(expr *e)
 	e->tree_type = decl_ptr_depth_dec(decl_copy(op_deref_expr(e)->tree_type), &e->where);
 }
 
-#define IS_PTR(x) decl_ptr_depth(x->tree_type)
-
 #define SPEL_IF_IDENT(hs)                            \
 					expr_kind(hs, identifier) ? " ("     : "", \
 					expr_kind(hs, identifier) ? hs->spel : "", \
@@ -242,8 +240,10 @@ void fold_deref(expr *e)
 #define RHS e->rhs
 #define LHS e->lhs
 
-void op_promote_types(enum op_type op, expr *lhs, expr *rhs, where *w)
+decl *op_promote_types(enum op_type op, expr *lhs, expr *rhs, where *w)
 {
+	decl *resolved = NULL;
+
 #if 0
 	If either operand is a pointer:
 		relation: both must be pointers
@@ -265,12 +265,16 @@ void op_promote_types(enum op_type op, expr *lhs, expr *rhs, where *w)
 		if(l_ptr && r_ptr){
 			/* relation */
 			if(!op_is_relational(op))
-				DIE_AT(w, "operation between pointers must be relational");
+				DIE_AT(w, "operation between two pointers must be relational");
+
+			resolved = decl_new_type(type_int);
 
 		}else if(l_ptr ^ r_ptr){
 			/* + or - */
 			if(op != op_plus && op != op_minus)
 				DIE_AT(w, "operation between pointer and integer must be + or -");
+
+			resolved = decl_copy((l_ptr ? lhs : rhs)->tree_type);
 
 		}else{
 			UCC_ASSERT(!(l_ptr || r_ptr), "logic error");
@@ -298,8 +302,6 @@ void op_promote_types(enum op_type op, expr *lhs, expr *rhs, where *w)
 	Otherwise, both operands are converted to the unsigned integer type
 	corresponding to the type of the operand with signed integer type.
 #endif
-std_op:
-
 	// TODO
 
 	/* FIXME: don't case *(p + 2) - the '2' to p's pointer type */
@@ -335,7 +337,6 @@ norm_tt:
 			e->tree_type = decl_copy(e->lhs->tree_type);
 		}
 	}
-}
 
 	if(e->rhs){
 
@@ -397,6 +398,10 @@ norm_tt:
 			e->tree_type->type->primitive = type_int;
 		}
 	}
+
+	UCC_ASSERT(resolved, "no decl from type promotion");
+
+	return resolved;
 }
 #undef SPEL_IF_IDENT
 #undef IS_PTR

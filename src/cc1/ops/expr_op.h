@@ -8,4 +8,10 @@ func_gen     gen_expr_style_op;
 
 #define op_deref_expr(e) ((e)->lhs)
 
-void op_promote_types(enum op_type op, expr *lhs, expr *rhs, where *w);
+#if defined(__GNUC__) && (__GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 4))
+#  define ucc_wur __attribute__((warn_unused_result))
+#else
+#  define ucc_wur
+#endif
+
+decl *op_promote_types(enum op_type op, expr *lhs, expr *rhs, where *w) ucc_wur;
