@@ -419,8 +419,16 @@ decl *decl_ptr_depth_inc(decl *d)
 decl *decl_ptr_depth_dec(decl *d, where *from)
 {
 	decl_desc *last;
+	int depth = 0;
 
-	for(last = d->desc; last && last->child; last = last->child);
+	for(last = d->desc; last && last->child; last = last->child)
+		switch(last->type){
+			case decl_desc_ptr:
+			case decl_desc_array:
+				depth++;
+			default:
+				break;
+		}
 
 	if(!last || (last->type != decl_desc_ptr && last->type != decl_desc_array)){
 		DIE_AT(from,
@@ -429,6 +437,9 @@ decl *decl_ptr_depth_dec(decl *d, where *from)
 			last ? decl_desc_to_str(last->type) : "",
 			last ? ")"  : "");
 	}
+
+	if(depth == 0 && d->type->primitive == type_void)
+		DIE_AT(from, "can't dereference %s pointer", decl_to_str(d));
 
 	if(last->parent_desc)
 		last->parent_desc->child = NULL;
