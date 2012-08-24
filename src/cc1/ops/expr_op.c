@@ -178,7 +178,7 @@ void fold_op_struct(expr *e, symtable *stab)
 				decl_to_str(e->lhs->tree_type),
 				ident ? " " : "",
 				ident ? e->lhs->spel : "",
-				ptr_depth_exp == 1 ? "pointer-to-" : "",
+				ptr_expect ? "pointer to " : "",
 				spel);
 	}
 
@@ -186,7 +186,7 @@ void fold_op_struct(expr *e, symtable *stab)
 
 	if(sue_incomplete(sue))
 		DIE_AT(&e->lhs->where, "%s incomplete type (%s)",
-				ptr_depth_exp == 1
+				ptr_expect
 				? "dereferencing pointer to"
 				: "use of",
 				type_to_str(e->lhs->tree_type->type));
@@ -199,7 +199,7 @@ void fold_op_struct(expr *e, symtable *stab)
 	 * e = { lhs = "a", rhs = "b", type = dot }
 	 * e = { lhs = { expr = "a", type = addr }, rhs = "b", type = ptr }
 	 */
-	if(ptr_depth_exp == 0){
+	if(!ptr_expect){
 		expr *new;
 
 		eof_where = &e->where;
@@ -237,12 +237,28 @@ void fold_deref(expr *e)
 					expr_kind(hs, identifier) ? hs->spel : "", \
 					expr_kind(hs, identifier) ? ")"      : ""  \
 
-#define RHS e->rhs
-#define LHS e->lhs
+static void promote_expr_int(expr **pe, enum type_primitive to, symtable *stab)
+{
+	expr *const e = *pe;
+	expr *cast;
 
-decl *op_promote_types(enum op_type op, expr *lhs, expr *rhs, where *w)
+	if(type_primitive_size(e->tree_type->type->primitive) >= type_primitive_size(to))
+		return;
+
+  cast = expr_new_cast(decl_new_type(to));
+
+	cast->expr = e;
+
+	fold_expr_cast_descend(cast, stab, 0);
+
+	*pe = cast;
+}
+
+decl *op_promote_types(enum op_type op, expr **plhs, expr **prhs, where *w, symtable *stab)
 {
 	decl *resolved = NULL;
+	expr *lhs = *plhs, *rhs = *prhs;
+	decl *const dlhs = lhs->tree_type, *const drhs = rhs->tree_type;
 
 #if 0
 	If either operand is a pointer:
@@ -255,26 +271,89 @@ decl *op_promote_types(enum op_type op, expr *lhs, expr *rhs, where *w)
 		must be + or -
 #endif
 
-	if(decl_is_void(lhs->tree_type) || decl_is_void(rhs->tree_type))
+	if(decl_is_void(dlhs) || decl_is_void(drhs))
 		DIE_AT(w, "use of void expression");
 
 	{
-		const int l_ptr = decl_is_ptr(lhs->tree_type);
-		const int r_ptr = decl_is_ptr(rhs->tree_type);
+		const int l_ptr = decl_is_ptr(dlhs);
+		const int r_ptr = decl_is_ptr(drhs);
 
 		if(l_ptr && r_ptr){
-			/* relation */
-			if(!op_is_relational(op))
-				DIE_AT(w, "operation between two pointers must be relational");
+			if(op == op_minus){
+				resolved = decl_copy(l_ptr ? dlhs : drhs);
 
-			resolved = decl_new_type(type_int);
+			}else{
+				if(!op_is_relational(op))
+					DIE_AT(w, "operation between two pointers must be relational or subtraction");
+
+				resolved = decl_new_type(type_int);
+			}
+
+			goto fin;
 
 		}else if(l_ptr ^ r_ptr){
 			/* + or - */
 			if(op != op_plus && op != op_minus)
 				DIE_AT(w, "operation between pointer and integer must be + or -");
 
-			resolved = decl_copy((l_ptr ? lhs : rhs)->tree_type);
+			resolved = decl_copy((l_ptr ^ (op == op_minus) ? lhs : rhs)->tree_type);
+
+			promote_expr_int(
+					l_ptr ? &rhs : &lhs,
+					op == op_plus ? type_intptr : type_ptrdiff,
+					stab);
+
+			/* TODO */
+#if 0
+			/* need to do this check _after_ we get the correct tree type */
+			if((e->op == op_plus || e->op == op_minus)
+					&& decl_ptr_depth(e->tree_type)
+					&& !e->op_no_ptr_mul)
+			{
+				/* 2 + (void *)5 is 7, not 2 + 8*5 */
+				if(decl_is_void_ptr(e->tree_type)){
+					cc1_warn_at(&e->tree_type->type->where, 0, 1, WARN_VOID_ARITH, "arithmetic with void pointer");
+				}else{
+					/*
+					 * subtracting two pointers - need to divide by sizeof(typeof(*expr))
+					 * adding int to a pointer - need to multiply by sizeof(typeof(*expr))
+					 */
+
+					if(e->op == op_minus){
+						/* need to apply the divide to the current 'e' */
+						expr *sub = expr_new_op(e->op);
+						decl *const cpy = decl_ptr_depth_dec(decl_copy(e->tree_type), &e->where);
+
+						memcpy(&sub->where, &e->where, sizeof sub->where);
+
+						sub->lhs = e->lhs;
+						sub->rhs = e->rhs;
+
+						sub->tree_type = e->tree_type;
+						e->tree_type = decl_new();
+						e->tree_type->type->primitive = type_int;
+
+						e->op = op_divide;
+
+						e->lhs = sub;
+						e->rhs = expr_new_val(decl_size(cpy));
+						fold_expr(e->rhs, stab);
+
+						decl_free(cpy);
+
+					}else{
+						if(decl_ptr_depth(e->dlhs))
+							/* lhs is the pointer, we're adding on rhs, hence multiply rhs by lhs's ptr size */
+							e->rhs = expr_ptr_multiply(e->rhs, e->dlhs);
+						else
+							e->lhs = expr_ptr_multiply(e->lhs, e->drhs);
+					}
+				}
+			}
+#endif
+
+
+			goto fin;
 
 		}else{
 			UCC_ASSERT(!(l_ptr || r_ptr), "logic error");
@@ -302,104 +381,38 @@ decl *op_promote_types(enum op_type op, expr *lhs, expr *rhs, where *w)
 	Otherwise, both operands are converted to the unsigned integer type
 	corresponding to the type of the operand with signed integer type.
 #endif
-	// TODO
 
-	/* FIXME: don't case *(p + 2) - the '2' to p's pointer type */
-	fold_insert_casts(e->lhs->tree_type, &e->rhs, stab, &e->where, "operation");
+	{
+		decl *dlarger = dlhs;
 
-	fold_decl_equal(e->lhs->tree_type, e->rhs->tree_type,
-			&e->where, WARN_COMPARE_MISMATCH,
-			"operation between mismatching types%s%s%s%s%s%s",
-			SPEL_IF_IDENT(e->lhs), SPEL_IF_IDENT(e->rhs));
+		if(dlhs->type->primitive != drhs->type->primitive){
+			const int l_larger = decl_size(dlhs) > decl_size(drhs);
 
-	/*
-	 * look either side - if either is a pointer, take that as the tree_type
-	 *
-	 * operation between two values of any type
-	 *
-	 * TODO: checks for pointer + pointer (invalid), etc etc
-	 */
+			/* TODO: needed? */
+			fold_decl_equal(dlhs, drhs,
+					w, WARN_COMPARE_MISMATCH,
+					"operation between mismatching types%s%s%s%s%s%s",
+					SPEL_IF_IDENT(lhs), SPEL_IF_IDENT(rhs));
 
-	if(e->rhs){
-		if(IS_PTR(e->rhs)){
-			e->tree_type = decl_copy(e->rhs->tree_type);
-		}else{
-			goto norm_tt;
+			promote_expr_int(
+					 l_larger ? &rhs : &lhs,
+					(l_larger ? dlhs : drhs)->type->primitive,
+					stab);
+
+			dlarger = l_larger ? dlhs : drhs;
 		}
-	}else{
-norm_tt:
+
 		/* if we have a _comparison_ (e.g. between enums), convert to int */
-
-		if(op_is_relational(e->op)){
-			e->tree_type = decl_new();
-			e->tree_type->type->primitive = type_int;
-		}else{
-			e->tree_type = decl_copy(e->lhs->tree_type);
-		}
+		resolved = op_is_relational(op)
+			? decl_new_type(type_int)
+			: decl_copy(dlarger);
 	}
 
-	if(e->rhs){
-
-		/* need to do this check _after_ we get the correct tree type */
-		if((e->op == op_plus || e->op == op_minus)
-		&& decl_ptr_depth(e->tree_type)
-		&& !e->op_no_ptr_mul)
-		{
-			/* 2 + (void *)5 is 7, not 2 + 8*5 */
-			if(decl_is_void_ptr(e->tree_type)){
-				cc1_warn_at(&e->tree_type->type->where, 0, 1, WARN_VOID_ARITH, "arithmetic with void pointer");
-			}else{
-				/*
-				 * subtracting two pointers - need to divide by sizeof(typeof(*expr))
-				 * adding int to a pointer - need to multiply by sizeof(typeof(*expr))
-				 */
-
-				if(e->op == op_minus){
-					/* need to apply the divide to the current 'e' */
-					expr *sub = expr_new_op(e->op);
-					decl *const cpy = decl_ptr_depth_dec(decl_copy(e->tree_type), &e->where);
-
-					memcpy(&sub->where, &e->where, sizeof sub->where);
-
-					sub->lhs = e->lhs;
-					sub->rhs = e->rhs;
-
-					sub->tree_type = e->tree_type;
-					e->tree_type = decl_new();
-					e->tree_type->type->primitive = type_int;
-
-					e->op = op_divide;
-
-					e->lhs = sub;
-					e->rhs = expr_new_val(decl_size(cpy));
-					fold_expr(e->rhs, stab);
-
-					decl_free(cpy);
-
-				}else{
-					if(decl_ptr_depth(e->lhs->tree_type))
-						/* lhs is the pointer, we're adding on rhs, hence multiply rhs by lhs's ptr size */
-						e->rhs = expr_ptr_multiply(e->rhs, e->lhs->tree_type);
-					else
-						e->lhs = expr_ptr_multiply(e->lhs, e->rhs->tree_type);
-				}
-			}
-		}
-
-
-		if(e->op == op_shiftl || e->op == op_shiftr){
-			if(decl_ptr_depth(e->rhs->tree_type))
-				DIE_AT(&e->rhs->where, "invalid argument to shift");
-		}
-
-		if(e->op == op_minus && IS_PTR(e->lhs) && IS_PTR(e->rhs)){
-			/* ptr - ptr = int */
-			/* FIXME: ptrdiff_t */
-			e->tree_type->type->primitive = type_int;
-		}
-	}
-
+fin:
 	UCC_ASSERT(resolved, "no decl from type promotion");
+
+	*plhs = lhs;
+	*prhs = rhs;
 
 	return resolved;
 }
@@ -426,7 +439,7 @@ void fold_expr_op(expr *e, symtable *stab)
 		fold_expr(e->rhs, stab);
 		fold_disallow_st_un(e->rhs, "op-rhs");
 
-		fold_promote_types(e->lhs, e->rhs);
+		e->tree_type = op_promote_types(e->op, &e->lhs, &e->rhs, &e->where, stab);
 	}
 }
 

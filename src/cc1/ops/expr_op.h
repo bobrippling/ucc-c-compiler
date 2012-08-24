@@ -14,4 +14,4 @@ func_gen     gen_expr_style_op;
 #  define ucc_wur
 #endif
 
-decl *op_promote_types(enum op_type op, expr *lhs, expr *rhs, where *w) ucc_wur;
+decl *op_promote_types(enum op_type op, expr **plhs, expr **prhs, where *w, symtable *stab);

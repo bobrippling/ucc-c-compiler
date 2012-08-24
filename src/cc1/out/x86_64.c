@@ -559,7 +559,8 @@ void impl_op(enum op_type op)
 
 		vtop2_prepare_op();
 
-		out_asm("%s %s, %s", opc, /* TODO: asm_type_ch(vtop->d), when op_tree_type branch is done */
+		out_asm("%s%c %s, %s", opc,
+				asm_type_ch(vtop->d),
 				vstack_str_r(buf, &vtop[ 0]),
 				vstack_str(       &vtop[-1]));
 

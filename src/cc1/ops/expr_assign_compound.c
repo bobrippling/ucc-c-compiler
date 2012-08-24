@@ -24,10 +24,6 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 	fold_expr(e->lhs, stab);
 	fold_expr(e->rhs, stab);
 
-	op_promote_types(e->lhs, e->rhs);
-
-	fold_coerce_assign(lvalue->tree_type, e->rhs, &type_ok);
-
 	/* skip the addr we inserted */
 	if(!expr_is_lvalue(lvalue, 0)){
 		DIE_AT(&lvalue->where, "compound target not an lvalue (%s)",
@@ -39,7 +35,9 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 
 	UCC_ASSERT(op_can_compound(e->op), "non-compound op in compound expr");
 
-	e->tree_type = decl_copy(lvalue->tree_type);
+	fold_coerce_assign(lvalue->tree_type, e->rhs, &type_ok);
+
+	e->tree_type = op_promote_types(e->op, &e->lhs, &e->rhs, &e->where, stab);
 }
 
 void gen_expr_assign_compound(expr *e, symtable *stab)
