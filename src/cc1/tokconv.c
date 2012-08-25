@@ -83,9 +83,6 @@ enum op_type curtok_to_op()
 		case token_shiftl: return op_shiftl;
 		case token_shiftr: return op_shiftr;
 
-		case token_ptr: return op_struct_ptr;
-		case token_dot: return op_struct_dot;
-
 		default: break;
 	}
 	return op_unknown;

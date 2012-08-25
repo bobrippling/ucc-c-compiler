@@ -39,6 +39,7 @@ struct expr
 #define expr_computed_goto assign_is_post
 #define expr_cast_implicit assign_is_post
 #define expr_is_typeof     assign_is_post
+#define expr_is_st_dot     assign_is_post
 
 	expr *lhs, *rhs;
 
@@ -56,7 +57,6 @@ struct expr
 
 	int ptr_safe; /* does val point to a string we know about? */
 	int in_parens; /* for if((x = 5)) testing */
-	int op_no_ptr_mul; /* for &(a.b) -> (&a) + offsetof(a, b) - don't multiply the op */
 
 	char *spel;
 	expr *expr; /* x = 5; expr is the 5 */
@@ -111,6 +111,7 @@ expr *expr_new_array_decl_init(decl *d, int ival, int idx);
 #include "ops/expr_val.h"
 #include "ops/expr_stmt.h"
 #include "ops/expr_deref.h"
+#include "ops/expr_struct.h"
 
 #define expr_free(x) do{if((x)->tree_type) decl_free((x)->tree_type); free(x);}while(0)
 
@@ -130,6 +131,7 @@ expr *expr_new_assign_compound(expr *to, expr *from, enum op_type);
 expr *expr_new__Generic(expr *test, struct generic_lbl **lbls);
 expr *expr_new_block(decl *rt, funcargs *args, stmt *code);
 expr *expr_new_deref(expr *);
+expr *expr_new_struct(expr *sub, int dot, expr *ident);
 
 #define expr_new_addr()    expr_new_wrapper(addr)
 #define expr_new_comma()   expr_new_wrapper(comma)

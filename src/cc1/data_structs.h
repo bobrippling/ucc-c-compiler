@@ -33,8 +33,6 @@ enum op_type
 	op_le, op_lt,
 	op_ge, op_gt,
 
-	op_struct_ptr, op_struct_dot,
-
 	op_unknown
 };
 

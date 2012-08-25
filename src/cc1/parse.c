@@ -299,12 +299,7 @@ expr *parse_expr_postfix()
 			e = fcall;
 
 		}else if((flag = accept(token_dot)) || accept(token_ptr)){
-			expr *st_op = expr_new_op(flag ? op_struct_dot : op_struct_ptr);
-
-			st_op->lhs = e;
-			st_op->rhs = parse_expr_identifier();
-
-			e = st_op;
+			e = expr_new_struct(e, flag, parse_expr_identifier());
 
 		}else if((flag = accept(token_increment)) || accept(token_decrement)){
 			e = expr_new_assign_compound(e, expr_new_val(1), flag ? op_plus : op_minus);

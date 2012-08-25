@@ -28,14 +28,8 @@ int expr_is_lvalue(expr *e, enum lvalue_opts opts)
 	if(expr_kind(e, deref))
 		return 1;
 
-	if(expr_kind(e, op))
-		switch(e->op){
-			case op_struct_ptr:
-			case op_struct_dot:
-				return 1;
-			default:
-				break;
-		}
+	if(expr_kind(e, struct))
+		return 1;
 
 	return 0;
 }
@@ -96,9 +90,8 @@ void gen_expr_assign(expr *e, symtable *stab)
 	fold_disallow_st_un(e, "copy (TODO)"); /* yes this is meant to be in gen */
 
 	UCC_ASSERT(!e->assign_is_post, "assign_is_post set for non-compound assign");
-	UCC_ASSERT(e->lhs->f_store, "invalid store expression %s (no f_store())", e->lhs->f_str());
 
-	e->lhs->f_store(e->lhs, stab);
+	lea_expr(e->lhs, stab);
 	gen_expr(e->rhs, stab);
 	out_store();
 }

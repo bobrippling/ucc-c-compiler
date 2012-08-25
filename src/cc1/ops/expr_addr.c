@@ -84,51 +84,6 @@ void fold_expr_addr(expr *e, symtable *stab)
 
 		fold_expr(e->lhs, stab);
 
-		if(expr_kind(e->lhs, op) && (e->lhs->op == op_struct_dot || e->lhs->op == op_struct_ptr)){
-			/*
-			 * convert &(a.b) to &a + offsetof(a, b)
-			 * i.e.:
-			 * (__typeof(a.b) *)((void *)(&a) + __offsetof(__typeof(a), b))
-			 *
-			 * also converts &a->b to:
-			 * (__typeof(a->b) *)((void *)a + __offsetof(__typeof(a), b))
-			 */
-			expr *struc, *member, *addr;
-			struct_union_enum_st *st;
-			decl *member_decl;
-
-			/* pull out the various bits */
-			struc = e->lhs->lhs;
-			member = e->lhs->rhs;
-			addr = e->lhs;
-			st = struc->tree_type->type->sue;
-
-			/* forget about the old structure */
-			e->lhs = e->lhs->lhs = e->lhs->rhs = NULL;
-
-			/* lookup the member decl (for tree type later on) */
-			member_decl = struct_union_member_find(st, member->spel, &e->where);
-
-			/* e is now the op */
-			expr_mutate_wrapper(e, op);
-			e->op = op_plus;
-			e->op_no_ptr_mul = 1;
-
-			/* add the struct addr and the member offset */
-			e->lhs = struc;
-			e->rhs = expr_new_val(member_decl->struct_offset);
-
-			/* sort yourself out */
-			fold_expr(e, stab);
-
-			/* replace the decl */
-			decl_free(e->tree_type);
-			e->tree_type = decl_ptr_depth_inc(decl_copy(member_decl));
-
-			expr_free(addr);
-			return;
-		}
-
 		/* lvalues are identifier, struct-exp or deref */
 		if(!expr_is_lvalue(e->lhs, LVAL_ALLOW_FUNC | LVAL_ALLOW_ARRAY))
 			DIE_AT(&e->lhs->where, "can't take the address of %s (%s)",
@@ -153,16 +108,13 @@ void gen_expr_addr(expr *e, symtable *stab)
 
 	}else{
 		/* address of possibly an ident "(&a)->b" or a struct expr "&a->b" */
-		if(expr_kind(e->lhs, identifier)){
-			out_push_sym_addr(e->lhs->sym);
+		if(expr_kind(e->lhs, struct))
+			UCC_ASSERT(!e->lhs->expr_is_st_dot, "not &x->y");
+		else
+			UCC_ASSERT(expr_kind(e->lhs, identifier) || expr_kind(e->lhs, deref),
+					"invalid addr");
 
-		}else if(expr_kind(e->lhs, deref)){
-			/* skip the address (e->expr->lhs) and the deref */
-			gen_expr(expr_deref_what(e->lhs), stab);
-
-		}else{
-			ICE("TODO: address of %s", e->lhs->f_str());
-		}
+		lea_expr(e->lhs, stab);
 	}
 }
 
