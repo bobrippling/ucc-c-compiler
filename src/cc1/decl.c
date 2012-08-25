@@ -349,6 +349,25 @@ int decl_equal(decl *a, decl *b, enum decl_cmp mode)
 	return a->desc ? b->desc && decl_desc_equal(a->desc, b->desc) : !b->desc;
 }
 
+int decl_ptr_depth(decl *d)
+{
+	int depth = 0;
+	decl_desc *dp;
+
+	for(dp = d->desc; dp; dp = dp->child)
+		switch(dp->type){
+			case decl_desc_ptr:
+			case decl_desc_array:
+				depth++;
+				break;
+			case decl_desc_func:
+			case decl_desc_block:
+				break;
+		}
+
+	return depth;
+}
+
 int decl_is_ptr(decl *d)
 {
 	decl_desc *dp;

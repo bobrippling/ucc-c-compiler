@@ -95,7 +95,6 @@ void expr_mutate(expr *, func_mutate_expr *, func_fold *, func_str *, func_gen *
 expr *expr_new_intval(intval *);
 
 /* simple wrappers */
-expr *expr_ptr_multiply(expr *, decl *);
 expr *expr_new_decl_init(decl *d);
 expr *expr_new_array_decl_init(decl *d, int ival, int idx);
 

@@ -56,32 +56,6 @@ expr *expr_new_intval(intval *iv)
 	return e;
 }
 
-expr *expr_ptr_multiply(expr *e, decl *d)
-{
-	decl *dtmp;
-	expr *ret;
-	int sz;
-
-	dtmp = decl_copy(d);
-
-	sz = decl_size(decl_ptr_depth_dec(dtmp, NULL));
-
-	decl_free(dtmp);
-
-	if(sz == 1)
-		return e;
-
-	ret = expr_new_op(op_multiply);
-	memcpy(&ret->where, &e->where, sizeof e->where);
-
-	ret->tree_type = decl_copy(e->tree_type);
-
-	ret->lhs  = e;
-	ret->rhs  = expr_new_val(sz);
-
-	return ret;
-}
-
 expr *expr_new_decl_init(decl *d)
 {
 	UCC_ASSERT(d->init, "no init");

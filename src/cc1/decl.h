@@ -203,6 +203,7 @@ decl_desc  *decl_leaf(decl *d);
 
 decl *decl_ptr_depth_inc(decl *d);
 decl *decl_ptr_depth_dec(decl *d, where *from);
+int   decl_ptr_depth(    decl *d);
 decl *decl_func_deref(decl *d, funcargs **pfuncargs);
 
 decl_desc *decl_array_first_incomplete(decl *d);
