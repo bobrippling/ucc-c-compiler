@@ -25,9 +25,11 @@ int expr_is_lvalue(expr *e, enum lvalue_opts opts)
 	if(expr_kind(e, identifier))
 		return (opts & LVAL_ALLOW_FUNC) || !e->tree_type->func_code;
 
+	if(expr_kind(e, deref))
+		return 1;
+
 	if(expr_kind(e, op))
 		switch(e->op){
-			case op_deref:
 			case op_struct_ptr:
 			case op_struct_dot:
 				return 1;

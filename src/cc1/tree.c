@@ -168,7 +168,6 @@ const char *op_to_str(const enum op_type o)
 		CASE_STR_PREFIX(op, plus);
 		CASE_STR_PREFIX(op, minus);
 		CASE_STR_PREFIX(op, modulus);
-		CASE_STR_PREFIX(op, deref);
 		CASE_STR_PREFIX(op, eq);
 		CASE_STR_PREFIX(op, ne);
 		CASE_STR_PREFIX(op, le);

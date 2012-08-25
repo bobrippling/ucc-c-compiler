@@ -58,31 +58,6 @@ static void operate(
 		case op_not:  piv->val = !lval->val; return;
 		case op_bnot: piv->val = ~lval->val; return;
 
-		case op_deref:
-			/*
-			 * potential for major ICE here
-			 * I mean, we might not even be dereferencing the right size pointer
-			 */
-			/*
-			switch(lhs->vartype->primitive){
-				case type_int:  return *(int *)lhs->val.s;
-				case type_char: return *       lhs->val.s;
-				default:
-					break;
-			}
-
-			ignore for now, just deal with simple stuff
-			*/
-			/*if(lhs->ptr_safe && expr_kind(lhs, addr)){
-				if(lhs->array_store->type == array_str){
-					/piv->val = lhs->val.exprs[0]->val.i;/
-					piv->val = *lhs->val.s;
-					return;
-				}
-			}*/
-			*pconst_type = CONST_NO;
-			return;
-
 		case op_struct_ptr:
 		case op_struct_dot:
 			*pconst_type = CONST_NO;
@@ -218,18 +193,6 @@ void fold_op_struct(expr *e, symtable *stab)
 	e->tree_type = decl_copy(e->rhs->tree_type);
 	/* pull qualifiers from the struct to the member */
 	e->tree_type->type->qual |= e->lhs->tree_type->type->qual;
-}
-
-void fold_deref(expr *e)
-{
-	if(decl_attr_present(op_deref_expr(e)->tree_type->attr, attr_noderef))
-		WARN_AT(&op_deref_expr(e)->where, "dereference of noderef expression");
-
-	/* check for *&x */
-	if(expr_kind(op_deref_expr(e), addr))
-		WARN_AT(&op_deref_expr(e)->where, "possible optimisation for *& expression");
-
-	e->tree_type = decl_ptr_depth_dec(decl_copy(op_deref_expr(e)->tree_type), &e->where);
 }
 
 #define SPEL_IF_IDENT(hs)                            \
@@ -381,14 +344,13 @@ void fold_expr_op(expr *e, symtable *stab)
 	fold_expr(e->lhs, stab);
 	fold_disallow_st_un(e->lhs, "op-lhs");
 
-	if(e->op == op_deref){
-		fold_deref(e);
-
-	}else if(e->rhs){
+	if(e->rhs){
 		fold_expr(e->rhs, stab);
 		fold_disallow_st_un(e->rhs, "op-rhs");
 
 		e->tree_type = op_promote_types(e->op, &e->lhs, &e->rhs, &e->where, stab);
+	}else{
+		e->tree_type = decl_copy(e->lhs->tree_type);
 	}
 }
 
@@ -397,11 +359,6 @@ void gen_expr_str_op(expr *e, symtable *stab)
 	(void)stab;
 	idt_printf("op: %s\n", op_to_str(e->op));
 	gen_str_indent++;
-
-	if(e->op == op_deref){
-		idt_printf("deref size: %s ", decl_to_str(e->tree_type));
-		fputc('\n', cc1_out);
-	}
 
 #define PRINT_IF(hs) if(e->hs) print_expr(e->hs)
 	PRINT_IF(lhs);
@@ -449,7 +406,7 @@ static void op_struct(expr *e, symtable *tab)
 	if(decl_is_array(e->rhs->tree_type)){
 		out_comment("array - got address");
 	}else{
-		out_op_unary(op_deref);
+		out_deref();
 	}
 
 	out_comment("val from struct");
@@ -487,12 +444,6 @@ void gen_expr_op(expr *e, symtable *tab)
 void gen_expr_op_store(expr *store, symtable *stab)
 {
 	switch(store->op){
-		case op_deref:
-			/* a dereference */
-			gen_expr(op_deref_expr(store), stab); /* skip over the *() bit */
-			out_comment("pointer on stack");
-			return;
-
 		case op_struct_ptr:
 			gen_expr(store->lhs, stab);
 
@@ -514,7 +465,6 @@ void gen_expr_op_store(expr *store, symtable *stab)
 void mutate_expr_op(expr *e)
 {
 	e->f_store = gen_expr_op_store;
-	e->f_fold = fold_expr_op;
 	e->f_const_fold = fold_const_expr_op;
 }
 

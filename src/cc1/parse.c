@@ -278,7 +278,7 @@ expr *parse_expr_postfix()
 
 	for(;;){
 		if(accept(token_open_square)){
-			expr *sum, *deref;
+			expr *sum;
 
 			sum = expr_new_op(op_plus);
 
@@ -287,10 +287,7 @@ expr *parse_expr_postfix()
 
 			EAT(token_close_square);
 
-			deref = expr_new_op(op_deref);
-			deref->lhs  = sum;
-
-			e = deref;
+			e = expr_new_deref(sum);
 
 		}else if(accept(token_open_paren)){
 			expr *fcall = expr_new_funcall();
@@ -349,8 +346,9 @@ expr *parse_expr_unary()
 				goto do_parse;
 
 			case token_multiply:
-				e = expr_new_op(op_deref);
-				goto do_parse;
+				EAT(curtok);
+				e = expr_new_deref(parse_expr_cast());
+				break;
 
 			case token_plus:
 			case token_minus:

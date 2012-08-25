@@ -110,6 +110,7 @@ expr *expr_new_array_decl_init(decl *d, int ival, int idx);
 #include "ops/expr_sizeof.h"
 #include "ops/expr_val.h"
 #include "ops/expr_stmt.h"
+#include "ops/expr_deref.h"
 
 #define expr_free(x) do{if((x)->tree_type) decl_free((x)->tree_type); free(x);}while(0)
 
@@ -128,6 +129,7 @@ expr *expr_new_assign(         expr *to, expr *from);
 expr *expr_new_assign_compound(expr *to, expr *from, enum op_type);
 expr *expr_new__Generic(expr *test, struct generic_lbl **lbls);
 expr *expr_new_block(decl *rt, funcargs *args, stmt *code);
+expr *expr_new_deref(expr *);
 
 #define expr_new_addr()    expr_new_wrapper(addr)
 #define expr_new_comma()   expr_new_wrapper(comma)

@@ -95,12 +95,11 @@ invalid:
 				decl_to_str(df));
 	}
 
-	if(expr_kind(e->expr, op)
-	&& e->expr->op == op_deref
-	&& decl_is_fptr(op_deref_expr(e->expr)->tree_type)){
+	if(expr_kind(e->expr, deref)
+	&& decl_is_fptr(expr_deref_what(e->expr)->tree_type)){
 		/* XXX: memleak */
 		/* (*f)() - dereffing to a function, then calling - remove the deref */
-		e->expr = op_deref_expr(e->expr);
+		e->expr = expr_deref_what(e->expr);
 	}
 
 	df = e->tree_type = decl_func_deref(decl_copy(df), &args_from_decl);

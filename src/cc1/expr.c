@@ -64,17 +64,14 @@ expr *expr_new_decl_init(decl *d)
 
 expr *expr_new_array_decl_init(decl *d, int ival, int idx)
 {
-	expr *deref;
 	expr *sum;
 
 	UCC_ASSERT(d->init, "no init");
 
-	deref = expr_new_op(op_deref);
-
-	sum = op_deref_expr(deref) = expr_new_op(op_plus);
+	sum = expr_new_op(op_plus);
 
 	sum->lhs = expr_new_identifier(d->spel);
-	sum->rhs = expr_new_val(idx); /* fold will multiply this */
+	sum->rhs = expr_new_val(idx);
 
-	return expr_new_assign(deref, expr_new_val(ival));
+	return expr_new_assign(expr_new_deref(sum), expr_new_val(ival));
 }

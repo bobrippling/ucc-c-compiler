@@ -156,10 +156,9 @@ void gen_expr_addr(expr *e, symtable *stab)
 		if(expr_kind(e->lhs, identifier)){
 			out_push_sym_addr(e->lhs->sym);
 
-		}else if(expr_kind(e->lhs, op)){
-			/* skip the address (e->lhs) and the deref */
-			UCC_ASSERT(e->lhs->op == op_deref, "deref expected for addr");
-			gen_expr(op_deref_expr(e->lhs), stab);
+		}else if(expr_kind(e->lhs, deref)){
+			/* skip the address (e->expr->lhs) and the deref */
+			gen_expr(expr_deref_what(e->lhs), stab);
 
 		}else{
 			ICE("TODO: address of %s", e->lhs->f_str());

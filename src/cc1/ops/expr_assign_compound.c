@@ -48,14 +48,14 @@ void gen_expr_assign_compound(expr *e, symtable *stab)
 
 	if(e->assign_is_post){
 		out_dup();
-		out_op_unary(op_deref);
+		out_deref();
 		out_flush_volatile();
 		out_swap();
 		out_comment("saved for compound op");
 	}
 
 	out_dup();
-	out_op_unary(op_deref);
+	out_deref();
 
 	gen_expr(e->rhs, stab);
 

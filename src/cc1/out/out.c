@@ -400,22 +400,23 @@ void out_op(enum op_type op)
 	impl_op(op);
 }
 
+void out_deref()
+{
+	enum vstore derefed = v_deref_type(vtop->type);
+
+	if((signed)derefed != -1){
+		vtop->type = derefed;
+		/* XXX: memleak */
+		vtop->d = decl_ptr_depth_dec(decl_copy(vtop->d), NULL);
+	}else{
+		impl_deref();
+	}
+}
+
+
 void out_op_unary(enum op_type op)
 {
 	switch(op){
-		case op_deref:
-		{
-			enum vstore derefed = v_deref_type(vtop->type);
-
-			if((signed)derefed != -1){
-				vtop->type = derefed;
-				/* XXX: memleak */
-				vtop->d = decl_ptr_depth_dec(decl_copy(vtop->d), NULL);
-				return;
-			}
-			break;
-		}
-
 		case op_plus:
 			return;
 

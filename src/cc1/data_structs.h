@@ -33,11 +33,7 @@ enum op_type
 	op_le, op_lt,
 	op_ge, op_gt,
 
-	/* struct/union */
 	op_struct_ptr, op_struct_dot,
-
-	/* deref */
-	op_deref,
 
 	op_unknown
 };

@@ -572,6 +572,30 @@ void impl_op(enum op_type op)
 	}
 }
 
+void impl_deref()
+{
+	char ptr[REG_STR_SZ], dst[REG_STR_SZ];
+	decl *dereffed;
+	int r;
+
+	v_to_reg(vtop);
+	r = v_unused_reg(1);
+
+	/* loaded the pointer, now we apply the deref change */
+	dereffed = decl_ptr_depth_dec(decl_copy(vtop->d), NULL);
+
+	x86_reg_str_r(ptr, vtop->bits.reg, NULL);
+	x86_reg_str_r(dst, r, dereffed);
+
+	out_asm("mov%c (%%%s), %%%s",
+			asm_type_ch(dereffed),
+			ptr, dst);
+
+	/* XXX: memleak */
+	vtop->d = dereffed;
+	vtop->bits.reg = r;
+}
+
 void impl_op_unary(enum op_type op)
 {
 	const char *opc;
@@ -585,31 +609,6 @@ void impl_op_unary(enum op_type op)
 		case op_plus:
 			/* noop */
 			return;
-
-		case op_deref:
-		{
-			char ptr[REG_STR_SZ], dst[REG_STR_SZ];
-			decl *dereffed;
-			int r;
-
-			v_to_reg(vtop);
-			r = v_unused_reg(1);
-
-			/* loaded the pointer, now we apply the deref change */
-			dereffed = decl_ptr_depth_dec(decl_copy(vtop->d), NULL);
-
-			x86_reg_str_r(ptr, vtop->bits.reg, NULL);
-			x86_reg_str_r(dst, r, dereffed);
-
-			out_asm("mov%c (%%%s), %%%s",
-					asm_type_ch(dereffed),
-					ptr, dst);
-
-			/* XXX: memleak */
-			vtop->d = dereffed;
-			vtop->bits.reg = r;
-			return;
-		}
 
 #define OP(o, s) case op_ ## o: opc = #s; break
 		OP(not, not);

@@ -17,6 +17,7 @@ void out_store(void); /* store stack[1] into *stack[0] */
 
 void out_op(      enum op_type); /* binary ops and comparisons */
 void out_op_unary(enum op_type); /* unary ops */
+void out_deref(void);
 void out_swap(void);
 void out_flush_volatile(void);
 
