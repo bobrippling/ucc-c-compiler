@@ -63,7 +63,7 @@ void fold_expr_struct(expr *e, symtable *stab)
 	if(!ptr_expect){
 		expr *cast, *addr;
 
-		cast = expr_new_cast(decl_ptr_depth_inc(decl_new_void()));
+		cast = expr_new_cast(decl_ptr_depth_inc(decl_new_void()), 1);
 		cast->expr = addr = expr_new_addr();
 
 		addr->lhs = e->lhs;
@@ -86,6 +86,8 @@ void gen_expr_struct_store(expr *e, symtable *stab)
 	out_push_i(NULL, struct_offset(e->rhs));
 	out_op(op_plus);
 	out_comment("offset of member %s", e->rhs->spel);
+
+	out_change_decl(decl_ptr_depth_inc(decl_copy(e->rhs->tree_type)));
 }
 
 void gen_expr_struct(expr *e, symtable *stab)
@@ -94,16 +96,7 @@ void gen_expr_struct(expr *e, symtable *stab)
 
 	UCC_ASSERT(!e->expr_is_st_dot, "a.b should have been handled by now");
 
-	gen_expr(e->lhs, stab);
-
-	/* pointer to the struct is on the stack, get from the offset */
-	out_comment("struct ptr");
-
-	out_push_i(NULL, struct_offset(e->rhs));
-	out_op(op_plus);
-
-	out_change_decl(decl_ptr_depth_inc(decl_copy(e->rhs->tree_type)));
-	out_comment("offset of member %s", e->rhs->spel);
+	gen_expr_struct_store(e, stab);
 
 	if(decl_is_array(e->rhs->tree_type)){
 		out_comment("array - got address");
