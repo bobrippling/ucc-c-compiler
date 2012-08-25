@@ -124,11 +124,22 @@ void gen_expr_addr_1(expr *e, FILE *f)
 	if(e->array_store){
 		/* address of an array store */
 		asm_declare_out(f, NULL, "%s", e->array_store->label);
+
 	}else if(e->spel){
 		asm_declare_out(f, NULL, "%s", e->spel);
-	}else{
-		UCC_ASSERT(expr_kind(e->lhs, identifier), "globals addr-of can only be identifier for now");
+
+	}else if(expr_kind(e->lhs, identifier)){
 		asm_declare_out(f, NULL, "%s", e->lhs->spel);
+
+	}else{
+		intval iv;
+		enum constyness type;
+
+		const_fold(e->lhs, &iv, &type);
+
+		UCC_ASSERT(type == CONST_WITH_VAL, "invalid constant expression");
+
+		asm_declare_out(f, NULL, "%ld", iv.val);
 	}
 }
 

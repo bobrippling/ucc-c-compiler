@@ -2,8 +2,6 @@
 #include "expr_struct.h"
 #include "../sue.h"
 
-#define struct_offset(rhs) rhs->tree_type->struct_offset
-
 const char *str_expr_struct()
 {
 	return "struct";
