@@ -71,7 +71,10 @@ void gen_expr_assign_compound(expr *e, symtable *stab)
 void gen_expr_str_assign_compound(expr *e, symtable *stab)
 {
 	(void)stab;
-	idt_printf("compound assignment, expr:\n", e->assign_is_post ? "post-inc/dec " : "");
+	idt_printf("compound %s%s-assignment expr:\n",
+			e->assign_is_post ? "post-" : "",
+			op_to_str(e->op));
+
 	idt_printf("assign to:\n");
 	gen_str_indent++;
 	print_expr(e->lhs->lhs); /* skip our addr */
