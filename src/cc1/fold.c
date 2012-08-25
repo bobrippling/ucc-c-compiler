@@ -53,9 +53,8 @@ void fold_insert_casts(decl *dlhs, expr **prhs, symtable *stab, where *w, const 
 
 		eof_where = w;
 
-		cast = expr_new_cast(decl_copy(dlhs));
+		cast = expr_new_cast(decl_copy(dlhs), 1);
 		cast->expr = rhs;
-		cast->expr_cast_implicit = 1;
 		*prhs = cast;
 
 		eof_where = old_w;

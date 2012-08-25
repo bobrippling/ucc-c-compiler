@@ -132,7 +132,7 @@ static void expr_promote_int(expr **pe, enum type_primitive to, symtable *stab)
 	if(type_primitive_size(e->tree_type->type->primitive) >= type_primitive_size(to))
 		return;
 
-  cast = expr_new_cast(decl_new_type(to));
+  cast = expr_new_cast(decl_new_type(to), 1);
 
 	cast->expr = e;
 

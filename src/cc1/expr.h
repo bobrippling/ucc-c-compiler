@@ -118,7 +118,7 @@ expr *expr_new_array_decl_init(decl *d, int ival, int idx);
 #define expr_kind(exp, kind) ((exp)->f_fold == fold_expr_ ## kind)
 
 expr *expr_new_identifier(char *sp);
-expr *expr_new_cast(decl *cast_to);
+expr *expr_new_cast(decl *cast_to, int implicit);
 expr *expr_new_val(int val);
 expr *expr_new_op(enum op_type o);
 expr *expr_new_if(expr *test);

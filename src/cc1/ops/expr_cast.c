@@ -81,17 +81,23 @@ void gen_expr_cast_1(expr *e, FILE *f)
 			break;
 
 		case CONST_WITHOUT_VAL:
+		{
+			int from_sz, to_sz;
 			/* only possible if the cast-to and cast-from are the same size */
 
-			if(decl_size(e->tree_type) != decl_size(e->expr->tree_type)){
+			from_sz = decl_size(e->expr->tree_type);
+			to_sz = decl_size(e->tree_type);
+
+			if(to_sz != from_sz){
 				WARN_AT(&e->where,
-						"%scast changes type size (not a load-time constant)",
-						e->expr_cast_implicit ? "implicit " : ""
-						);
+						"%scast changes type size %d -> %d (not a load-time constant)",
+						e->expr_cast_implicit ? "implicit " : "",
+						from_sz, to_sz);
 			}
 
 			e->expr->f_gen_1(e->expr, f);
 			break;
+		}
 	}
 }
 
@@ -133,10 +139,11 @@ void mutate_expr_cast(expr *e)
 	e->f_gen_1      = gen_expr_cast_1;
 }
 
-expr *expr_new_cast(decl *to)
+expr *expr_new_cast(decl *to, int implicit)
 {
 	expr *e = expr_new_wrapper(cast);
 	e->decl = to;
+	e->expr_cast_implicit = implicit;
 	return e;
 }
 

@@ -240,7 +240,7 @@ expr *parse_expr_primary()
 						DIE_AT(&d->where, "invalid cast involving %s",
 								type_store_to_str(d->type->store));
 
-					e = expr_new_cast(d);
+					e = expr_new_cast(d, 0);
 					EAT(token_close_paren);
 					e->expr = parse_expr_cast(); /* another cast */
 					return e;
