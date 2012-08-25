@@ -37,7 +37,8 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 
 	fold_coerce_assign(lvalue->tree_type, e->rhs, &type_ok);
 
-	e->tree_type = op_promote_types(e->op, &e->lhs, &e->rhs, &e->where, stab);
+	/* pass the addr's target to promote_types */
+	e->tree_type = op_promote_types(e->op, &e->lhs->lhs, &e->rhs, &e->where, stab);
 }
 
 void gen_expr_assign_compound(expr *e, symtable *stab)
