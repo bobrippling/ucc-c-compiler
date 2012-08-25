@@ -388,16 +388,43 @@ void out_push_sym(sym *s)
 	}
 }
 
+static void v_top2_are(
+		enum vstore a, enum vstore b,
+		struct vstack **pa, struct vstack **pb)
+{
+	if(vtop->type == a && vtop[-1].type == b){
+		*pa = vtop, *pb = &vtop[-1];
+
+	}else if(vtop->type == b && vtop[-1].type == a){
+		*pb = vtop, *pa = &vtop[-1];
+
+	}else{
+		*pa = *pb = NULL;
+	}
+}
+
 void out_op(enum op_type op)
 {
-	/* TODO: checks for adding or removing zero? */
-
 	/*
 	 * the implementation does a vpop() and
 	 * sets vtop sufficiently to describe how
 	 * the result is returned
 	 */
-	impl_op(op);
+
+	/* TODO: checks for adding or removing zero */
+	struct vstack *t_const, *t_stack;
+
+	/* check for adding or subtracting to stack */
+	v_top2_are(CONST, STACK_ADDR, &t_const, &t_stack);
+
+	if(t_const){
+		/* t_const == vtop... should be */
+		out_comment("adjusting off_from_bp");
+		t_stack->bits.off_from_bp += t_const->bits.val;
+		vpop();
+	}else{
+		impl_op(op);
+	}
 }
 
 void out_deref()
