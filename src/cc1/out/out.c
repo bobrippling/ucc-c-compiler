@@ -388,19 +388,23 @@ void out_push_sym(sym *s)
 	}
 }
 
-static void v_top2_are(
+static void vtop2_are(
 		enum vstore a, enum vstore b,
 		struct vstack **pa, struct vstack **pb)
 {
-	if(vtop->type == a && vtop[-1].type == b){
-		*pa = vtop, *pb = &vtop[-1];
+	if(vtop->type == a)
+		*pa = vtop;
+	else if(vtop[-1].type == a)
+		*pa = &vtop[-1];
+	else
+		*pa = NULL;
 
-	}else if(vtop->type == b && vtop[-1].type == a){
-		*pb = vtop, *pa = &vtop[-1];
-
-	}else{
-		*pa = *pb = NULL;
-	}
+	if(vtop->type == b)
+		*pb = vtop;
+	else if(vtop[-1].type == b)
+		*pb = &vtop[-1];
+	else
+		*pb = NULL;
 }
 
 void out_op(enum op_type op)
@@ -415,14 +419,36 @@ void out_op(enum op_type op)
 	struct vstack *t_const, *t_stack;
 
 	/* check for adding or subtracting to stack */
-	v_top2_are(CONST, STACK_ADDR, &t_const, &t_stack);
+	vtop2_are(CONST, STACK_ADDR, &t_const, &t_stack);
 
-	if(t_const){
+	if(t_const && t_stack){
 		/* t_const == vtop... should be */
 		out_comment("adjusting off_from_bp");
 		t_stack->bits.off_from_bp += t_const->bits.val;
+
+		goto fin;
+
+	}else if(t_const){
+		switch(op){
+			case op_plus:
+			case op_minus:
+				if(t_const->bits.val == 0)
+					goto fin;
+			default:
+				break;
+
+			case op_multiply:
+			case op_divide:
+				if(t_const->bits.val == 1)
+					goto fin;
+		}
+
+		goto def;
+fin:
 		vpop();
+
 	}else{
+def:
 		impl_op(op);
 	}
 }
