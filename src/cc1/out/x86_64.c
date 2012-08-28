@@ -450,8 +450,9 @@ void impl_op(enum op_type op)
 			vstack_str_r(bufs, vtop);
 			vstack_str_r(bufv, &vtop[-1]);
 
-			out_asm("%s %s, %s",
+			out_asm("%s%c %s, %s",
 					op == op_shiftl ? "shl" : "shr",
+					asm_type_ch(vtop->d), 
 					bufs, bufv);
 
 			vpop();
@@ -504,7 +505,7 @@ void impl_op(enum op_type op)
 
 				case REG:
 				case STACK:
-					out_asm("idiv %s", vstack_str(vtop));
+					out_asm("idiv%c %s", asm_type_ch(vtop->d), vstack_str(vtop));
 			}
 
 			vpop();
