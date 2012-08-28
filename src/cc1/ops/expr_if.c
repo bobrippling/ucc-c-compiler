@@ -61,21 +61,23 @@ void fold_expr_if(expr *e, symtable *stab)
 
 
 	/*
+	 * TODO: check these are right
+
 	Arithmetic                             Arithmetic                           Arithmetic type after usual arithmetic conversions
 	// Structure or union type                Compatible structure or union type   Structure or union type with all the qualifiers on both operands
 	void                                   void                                 void
 	Pointer to compatible type             Pointer to compatible type           Pointer to type with all the qualifiers specified for the type
 	Pointer to type                        NULL pointer (the constant 0)        Pointer to type
 	Pointer to object or incomplete type   Pointer to void                      Pointer to void with all the qualifiers specified for the type
+
+	GCC and Clang seem to change the last rule to resolve to a pointer to the incomplete-type
 	*/
 
 #define tt_l (e->lhs->tree_type)
 #define tt_r (e->rhs->tree_type)
 
 	if(decl_is_integral(tt_l) && decl_is_integral(tt_r)){
-		ICW("TODO: arithmetic promotions in if_expr");
-		/* TODO: arithmetic promotions (with asm_backend_recode) */
-		e->tree_type = decl_copy(e->rhs->tree_type);
+		e->tree_type = op_promote_types(op_unknown, &e->lhs, &e->rhs, &e->where, stab);
 
 	}else if(decl_is_void(tt_l) || decl_is_void(tt_r)){
 		e->tree_type = decl_new_void();
@@ -83,13 +85,15 @@ void fold_expr_if(expr *e, symtable *stab)
 	}else if(decl_equal(tt_l, tt_r, DECL_CMP_STRICT_PRIMITIVE)){
 		e->tree_type = decl_copy(tt_l);
 
+		e->tree_type->type->qual |= tt_r->type->qual;
+
 	}else{
 		/* brace yourself. */
 		int l_ptr_st_un = decl_is_struct_or_union_ptr(tt_l);
 		int r_ptr_st_un = decl_is_struct_or_union_ptr(tt_r);
 
-		int l_ptr_null = decl_is_ptr(tt_l) && const_expr_and_zero(e->lhs);
-		int r_ptr_null = decl_is_ptr(tt_r) && const_expr_and_zero(e->rhs);
+		int l_ptr_null = expr_is_null_ptr(e->lhs);
+		int r_ptr_null = expr_is_null_ptr(e->rhs);
 
 		int l_complete = !l_ptr_null && (!l_ptr_st_un || !sue_incomplete(tt_l->type->sue));
 		int r_complete = !r_ptr_null && (!r_ptr_st_un || !sue_incomplete(tt_r->type->sue));
@@ -97,20 +101,24 @@ void fold_expr_if(expr *e, symtable *stab)
 		if((l_complete && r_ptr_null) || (r_complete && l_ptr_null)){
 			e->tree_type = decl_copy(l_ptr_null ? tt_r : tt_l);
 
-			fprintf(stderr, "l_complete=%d && r_null=%d, r_complete=%d && l_null=%d\n",
-				l_complete, r_ptr_null, r_complete, l_ptr_null);
-
 		}else{
-			int l_ptr_void = decl_is_void_ptr(tt_l);
-			int r_ptr_void = decl_is_void_ptr(tt_r);
+			int l_ptr_void = decl_is_void_ptr(tt_l) || l_ptr_null;
+			int r_ptr_void = decl_is_void_ptr(tt_r) || r_ptr_null;
 
 			if(l_ptr_void || r_ptr_void){
 				e->tree_type = decl_copy(l_ptr_void ? tt_r : tt_l);
+
+				e->tree_type->type->qual |= (l_ptr_void ? tt_l : tt_r)->type->qual;
+
+				/* the other side must have pointer-size */
+				expr_promote_int(l_ptr_void ? &e->lhs : &e->rhs, type_intptr, stab);
+
 			}else{
 				char buf[DECL_STATIC_BUFSIZ];
 
 				WARN_AT(&e->where, "conditional type mismatch (%s vs %s)",
 						decl_to_str(tt_l), decl_to_str_r(buf, tt_r));
+
 				e->tree_type = decl_new_void();
 			}
 		}
@@ -124,12 +132,12 @@ void gen_expr_if(expr *e, symtable *stab)
 {
 	char *lblfin;
 
-	lblfin = out_label_code("ifexpa");
+	lblfin = out_label_code("ifexp_fi");
 
 	gen_expr(e->expr, stab);
 
 	if(e->lhs){
-		char *lblelse = out_label_code("ifexpb");
+		char *lblelse = out_label_code("ifexp_else");
 
 		out_jfalse(lblelse);
 

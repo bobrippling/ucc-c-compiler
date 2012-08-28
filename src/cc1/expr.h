@@ -136,4 +136,6 @@ expr *expr_new_struct(expr *sub, int dot, expr *ident);
 #define expr_new_addr()    expr_new_wrapper(addr)
 #define expr_new_comma()   expr_new_wrapper(comma)
 
+int expr_is_null_ptr(expr *);
+
 #endif

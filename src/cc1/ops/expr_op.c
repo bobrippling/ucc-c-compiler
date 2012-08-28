@@ -124,10 +124,17 @@ void fold_const_expr_op(expr *e, intval *piv, enum constyness *pconst_type)
 					expr_kind(hs, identifier) ? hs->spel : "", \
 					expr_kind(hs, identifier) ? ")"      : ""  \
 
-static void expr_promote_int(expr **pe, enum type_primitive to, symtable *stab)
+void expr_promote_int(expr **pe, enum type_primitive to, symtable *stab)
 {
 	expr *const e = *pe;
 	expr *cast;
+
+	if(decl_is_ptr(e->tree_type)){
+		UCC_ASSERT(to == type_intptr, "invalid promotion for pointer");
+		return;
+	}
+
+	UCC_ASSERT(!e->tree_type->desc, "invalid type to promote");
 
 	if(type_primitive_size(e->tree_type->type->primitive) >= type_primitive_size(to))
 		return;

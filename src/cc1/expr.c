@@ -7,6 +7,7 @@
 #include "../util/alloc.h"
 #include "data_structs.h"
 #include "cc1.h"
+#include "const.h"
 
 /* needed for expr_assignment() */
 #include "ops/expr_assign.h"
@@ -74,4 +75,10 @@ expr *expr_new_array_decl_init(decl *d, int ival, int idx)
 	sum->rhs = expr_new_val(idx);
 
 	return expr_new_assign(expr_new_deref(sum), expr_new_val(ival));
+}
+
+int expr_is_null_ptr(expr *e)
+{
+	return const_expr_and_zero(e)
+		&& (decl_is_void_ptr(e->tree_type) || decl_is_integral(e->tree_type));
 }
