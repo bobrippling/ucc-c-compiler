@@ -78,7 +78,7 @@ sym *symtab_search(symtable *tab, const char *spel)
 
 static int decl_cmp(const void *test, decl *item)
 {
-	return (decl *)test == item;
+	return (const decl *)test == item;
 }
 
 sym *symtab_has(symtable *tab, decl *d)
