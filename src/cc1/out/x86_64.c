@@ -656,18 +656,14 @@ void impl_cast(decl *from, decl *to)
 
 			x86_reg_str_r(buf_from, vtop->bits.reg, from);
 
-			if(!is_signed && decl_size(to) > int_sz){
+			if(!is_signed && decl_size(to) > int_sz && decl_size(from) == int_sz){
 				/*
 				 * movzx %eax, %rax is invalid
 				 * since movl %eax, %eax automatically zeros the top half of rax
 				 * in x64 mode
 				 */
-				if(decl_size(from) == int_sz){
-					out_asm("movl %%%s, %%%s", buf_from, buf_from);
-					return;
-				}else{
-					ICE("TODO: cast from short/char to long");
-				}
+				out_asm("movl %%%s, %%%s", buf_from, buf_from);
+				return;
 			}else{
 				x86_reg_str_r(buf_to,   vtop->bits.reg, to);
 			}
