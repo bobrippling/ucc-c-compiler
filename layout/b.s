@@ -1,6 +1,6 @@
-section .data
-global _a
-_a:
-dd 5
-db 'a', 0, 0, 0 ; pad
-dd 3
+.section .data
+.globl a
+a:
+.long 5
+.byte 'a', 0, 0, 0
+.long 3
