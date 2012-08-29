@@ -869,7 +869,7 @@ decl_init_sub *decl_init_sub_zero_for_decl(decl *d)
 		s->init = decl_init_new(decl_init_struct);
 
 		for(m = d->type->sue->members; m && *m; m++){
-			decl_init_sub *sub = decl_init_sub_zero_for_decl(&(*m)->struct_member);
+			decl_init_sub *sub = decl_init_sub_zero_for_decl((*m)->struct_member);
 			dynarray_add((void ***)&s->init->bits.subs, sub);
 		}
 
