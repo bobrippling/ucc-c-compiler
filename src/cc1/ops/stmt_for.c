@@ -4,6 +4,7 @@
 #include "ops.h"
 #include "stmt_for.h"
 #include "stmt_code.h"
+#include "../out/lbl.h"
 
 const char *str_stmt_for()
 {
@@ -52,8 +53,8 @@ expr *fold_for_if_init_decls(stmt *s)
 
 void fold_stmt_for(stmt *s)
 {
-	s->lbl_break    = asm_label_flow("for_start");
-	s->lbl_continue = asm_label_flow("for_contiune");
+	s->lbl_break    = out_label_flow("for_start");
+	s->lbl_continue = out_label_flow("for_contiune");
 
 	if(s->flow->for_init_decls){
 		expr *init_exp = fold_for_if_init_decls(s);
@@ -97,33 +98,34 @@ void fold_stmt_for(stmt *s)
 
 void gen_stmt_for(stmt *s)
 {
-	char *lbl_test = asm_label_flow("for_test");
+	char *lbl_test = out_label_flow("for_test");
 
 	/* don't else-if, possible to have both (comma-exp for init) */
 	if(s->flow->for_init){
 		gen_expr(s->flow->for_init, s->flow->for_init_symtab);
-		asm_temp(1, "pop rax ; unused for init");
+		out_pop();
+		out_comment("unused for init");
 	}
 
-	asm_label(lbl_test);
+	out_label(lbl_test);
 	if(s->flow->for_while){
 		gen_expr(s->flow->for_while, s->flow->for_init_symtab);
-
-		asm_temp(1, "pop rax");
-		asm_temp(1, "test rax, rax");
-		asm_temp(1, "jz %s", s->lbl_break);
+		out_jfalse(s->lbl_break);
 	}
 
 	gen_stmt(s->lhs);
-	asm_label(s->lbl_continue);
+	out_label(s->lbl_continue);
 	if(s->flow->for_inc){
 		gen_expr(s->flow->for_inc, s->flow->for_init_symtab);
-		asm_temp(1, "pop rax ; unused for inc");
+
+		out_pop();
+		out_comment("unused for inc");
 	}
 
-	asm_temp(1, "jmp %s", lbl_test);
+	out_push_lbl(lbl_test, 0, NULL);
+	out_jmp();
 
-	asm_label(s->lbl_break);
+	out_label(s->lbl_break);
 
 	free(lbl_test);
 }

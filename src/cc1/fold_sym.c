@@ -36,16 +36,26 @@ int symtab_fold(symtable *tab, int current)
 	if(tab->decls){
 		const int word_size = platform_word_size();
 		decl **diter;
-		int arg_offset;
+		int arg_idx;
 
-		arg_offset = 0;
+		arg_idx = 0;
 
 		/* need to walk backwards for args */
 		for(diter = tab->decls; *diter; diter++);
 
 		for(diter--; diter >= tab->decls; diter--){
 			sym *s = (*diter)->sym;
-			/*enum type_primitive last = type_int; TODO: packing */
+
+			if(s->type == sym_arg){
+				s->offset = arg_idx++;
+				s->decl->is_definition = 1; /* just for completeness */
+			}
+		}
+
+		current += arg_idx * platform_word_size();
+
+		for(diter = tab->decls; *diter; diter++){
+			sym *s = (*diter)->sym;
 
 			if(s->type == sym_local){
 				switch(s->decl->type->store){
@@ -73,11 +83,6 @@ int symtab_fold(symtable *tab, int current)
 					default:
 						break;
 				}
-			}else if(s->type == sym_arg){
-				s->offset = arg_offset;
-				arg_offset += word_size;
-				s->decl->is_definition = 1; /* just for completeness */
-
 			}
 
 			switch(s->type){

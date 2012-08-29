@@ -1,5 +1,6 @@
 #include <string.h>
 #include "ops.h"
+#include "../out/asm.h"
 #include "../sue.h"
 
 const char *str_expr_identifier()
@@ -10,15 +11,15 @@ const char *str_expr_identifier()
 void fold_const_expr_identifier(expr *e, intval *piv, enum constyness *pconst_type)
 {
 	(void)piv;
-	if(e->sym && e->sym->decl->type->qual == qual_const){
-		/*
-			* TODO
-			* fold. need to hunt for assignment tree
-			*/
-		//fprintf(stderr, "TODO: fold expression with const identifier %s\n", e->spel);
-	}
 
-	*pconst_type = CONST_NO;
+	/*
+	 * if we are an array identifier, we are constant:
+	 * int x[];
+	 */
+
+	/* may not have e->sym if we're the struct-member-identifier */
+
+	*pconst_type = e->sym && e->sym->decl && decl_has_array(e->sym->decl) ? CONST_WITHOUT_VAL : CONST_NO;
 }
 
 void fold_expr_identifier(expr *e, symtable *stab)
@@ -40,7 +41,6 @@ void fold_expr_identifier(expr *e, symtable *stab)
 
 			fold_expr(e, stab);
 #endif
-
 		}else{
 			/* check for an enum */
 			struct_union_enum_st *sue;
@@ -90,25 +90,22 @@ void gen_expr_identifier(expr *e, symtable *stab)
 {
 	(void)stab;
 
-	if(e->sym && !decl_is_func(e->sym->decl)){
-		/*
-		 * if it's an array, lea, else, load
-		 * note that array-leas load the bottom address (smallest value)
-		 * since arrays grow upwards... duh
-		 *
-		 * also never do this for functions
-		 */
-		asm_sym(decl_has_array(e->sym->decl) ? ASM_LEA : ASM_LOAD, e->sym, "rax");
-	}else{
-		asm_temp(1, "mov rax, %s", e->spel);
-	}
+	/*
+	 * if it's an array, lea, else, load
+	 * note that array-leas load the bottom address (smallest value)
+	 * since arrays grow upwards... duh
+	 */
 
-	asm_temp(1, "push rax");
+	if(decl_has_array(e->sym->decl) || decl_is_func(e->sym->decl)){
+		out_push_sym_addr(e->sym);
+	}else{
+		out_push_sym(e->sym);
+	}
 }
 
-void gen_expr_identifier_1(expr *e, FILE *f)
+void static_expr_identifier_store(expr *e)
 {
-	fprintf(f, "%s", e->sym->decl->spel);
+	asm_declare_partial("%s", e->sym->decl->spel);
 	/*
 	 * don't use e->spel
 	 * static int i;
@@ -120,14 +117,15 @@ void gen_expr_identifier_1(expr *e, FILE *f)
 void gen_expr_identifier_store(expr *e, symtable *stab)
 {
 	(void)stab;
-	asm_sym(ASM_SET, e->sym, "rax");
+
+	out_push_sym_addr(e->sym);
 }
 
 void mutate_expr_identifier(expr *e)
 {
-	e->f_store      = gen_expr_identifier_store;
-	e->f_gen_1      = gen_expr_identifier_1;
-	e->f_const_fold = fold_const_expr_identifier;
+	e->f_store       = gen_expr_identifier_store;
+	e->f_static_addr = static_expr_identifier_store;
+	e->f_const_fold  = fold_const_expr_identifier;
 }
 
 expr *expr_new_identifier(char *sp)

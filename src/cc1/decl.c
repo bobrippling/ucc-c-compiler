@@ -109,11 +109,27 @@ decl_attr *decl_attr_new(enum decl_attr_type t)
 	return da;
 }
 
+decl_attr *decl_attr_copy(decl_attr *da)
+{
+	decl_attr *ret = decl_attr_new(da->type);
+
+	memcpy(ret, da, sizeof *ret);
+
+	ret->next = da->next ? decl_attr_copy(da->next) : NULL;
+
+	return ret;
+}
+
 void decl_attr_append(decl_attr **loc, decl_attr *new)
 {
-	while((*loc))
-		loc = &(*loc)->next;
-	*loc = new;
+	/*
+	 * don't link it up, make copies,
+	 * so when we adjust others,
+	 * things don't get tangled with links
+	 */
+
+	if(new)
+		*loc = decl_attr_copy(new);
 }
 
 int decl_attr_present(decl_attr *da, enum decl_attr_type t)
@@ -312,14 +328,14 @@ int decl_equal(decl *a, decl *b, enum decl_cmp mode)
 
 	if((mode & DECL_CMP_ALLOW_VOID_PTR)){
 		/* one side is void * */
-		if(decl_is_void_ptr(a) && decl_ptr_depth(b))
+		if(decl_is_void_ptr(a) && decl_is_ptr(b))
 			return 1;
-		if(decl_is_void_ptr(b) && decl_ptr_depth(a))
+		if(decl_is_void_ptr(b) && decl_is_ptr(a))
 			return 1;
 	}
 
 	/* we are strict if told, or if either are a pointer - types must be equal */
-	strict = (mode & DECL_CMP_STRICT_PRIMITIVE) || decl_ptr_depth(a) || decl_ptr_depth(b);
+	strict = (mode & DECL_CMP_STRICT_PRIMITIVE) || decl_is_ptr(a) || decl_is_ptr(b);
 
 	if(!type_equal(a->type, b->type, strict))
 		return 0;
@@ -329,20 +345,38 @@ int decl_equal(decl *a, decl *b, enum decl_cmp mode)
 
 int decl_ptr_depth(decl *d)
 {
+	int depth = 0;
 	decl_desc *dp;
-	int i = 0;
 
 	for(dp = d->desc; dp; dp = dp->child)
 		switch(dp->type){
 			case decl_desc_ptr:
 			case decl_desc_array:
-				i++;
+				depth++;
+				break;
 			case decl_desc_func:
 			case decl_desc_block:
 				break;
 		}
 
-	return i;
+	return depth;
+}
+
+int decl_is_ptr(decl *d)
+{
+	decl_desc *dp;
+
+	for(dp = d->desc; dp; dp = dp->child)
+		switch(dp->type){
+			case decl_desc_ptr:
+			case decl_desc_array:
+				return 1;
+			case decl_desc_func:
+			case decl_desc_block:
+				break;
+		}
+
+	return 0;
 }
 
 int decl_desc_depth(decl *d)
@@ -369,8 +403,12 @@ decl_desc *decl_leaf(decl *d)
 funcargs *decl_funcargs(decl *d)
 {
 	decl_desc *dp;
-	for(dp = d->desc; dp->type != decl_desc_func && dp->child; dp = dp->child);
-	return dp->bits.func;
+
+	for(dp = decl_desc_tail(d); dp; dp = dp->parent_desc)
+		if(dp->type == decl_desc_func)
+			return dp->bits.func;
+
+	return NULL;
 }
 
 int decl_is_struct_or_union_possible_ptr(decl *d)
@@ -380,7 +418,12 @@ int decl_is_struct_or_union_possible_ptr(decl *d)
 
 int decl_is_struct_or_union(decl *d)
 {
-	return decl_is_struct_or_union_possible_ptr(d) && decl_ptr_depth(d) == 0;
+	return decl_is_struct_or_union_possible_ptr(d) && !decl_is_ptr(d);
+}
+
+int decl_is_struct_or_union_ptr(decl *d)
+{
+	return decl_is_struct_or_union_possible_ptr(d) && decl_is_ptr(d);
 }
 
 int decl_is_const(decl *d)
@@ -454,6 +497,10 @@ int decl_is_integral(decl *d)
 	switch(d->type->primitive){
 		case type_int:
 		case type_char:
+		case type__Bool:
+		case type_short:
+		case type_long:
+		case type_llong:
 				return 1;
 
 		case type_unknown:
@@ -461,6 +508,9 @@ int decl_is_integral(decl *d)
 		case type_struct:
 		case type_union:
 		case type_enum:
+		case type_float:
+		case type_double:
+		case type_ldouble:
 				break;
 	}
 
@@ -493,8 +543,7 @@ int decl_is_callable(decl *d)
 
 int decl_is_func(decl *d)
 {
-	decl_desc *dp;
-	for(dp = d->desc; dp && dp->child; dp = dp->child);
+	decl_desc *dp = decl_leaf(d);
 	return dp && dp->type == decl_desc_func;
 }
 
@@ -529,7 +578,22 @@ int decl_has_array(decl *d)
 	return 0;
 }
 
-decl_desc *decl_array_incomplete(decl *d)
+int decl_ptr_or_block(decl *d)
+{
+	decl_desc *dp;
+	for(dp = d->desc; dp; dp = dp->child)
+		switch(dp->type){
+			case decl_desc_ptr:
+			case decl_desc_block:
+			case decl_desc_array:
+				return 1;
+			case decl_desc_func:
+				break;
+		}
+	return 0;
+}
+
+decl_desc *decl_array_first_incomplete(decl *d)
 {
 	decl_desc *dp;
 

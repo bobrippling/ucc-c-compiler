@@ -1,5 +1,6 @@
 #include "ops.h"
 #include "expr_stmt.h"
+#include "../out/lbl.h"
 
 const char *str_expr_block(void)
 {
@@ -64,7 +65,7 @@ void fold_expr_block(expr *e, symtable *stab)
 	func->bits.func = e->block_args;
 
 	/* add the function to the global scope */
-	e->tree_type->spel = asm_label_block(curdecl_func->spel);
+	e->tree_type->spel = out_label_block(curdecl_func->spel);
 	e->sym = SYMTAB_ADD(symtab_root(stab), e->tree_type, sym_global);
 
 	e->tree_type->func_code = e->code;
@@ -76,9 +77,7 @@ void gen_expr_block(expr *e, symtable *stab)
 {
 	(void)stab;
 
-	/* load the function pointer */
-	asm_temp(1, "mov rax, %s", e->sym->decl->spel);
-	asm_temp(1, "push rax");
+	out_push_lbl(e->sym->decl->spel, 0, NULL);
 }
 
 void gen_expr_str_block(expr *e, symtable *stab)

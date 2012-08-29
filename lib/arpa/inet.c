@@ -1,3 +1,4 @@
+#define TYPE_PARSING_TODO
 #include "inet.h"
 
 /*

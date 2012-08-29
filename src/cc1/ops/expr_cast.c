@@ -1,5 +1,10 @@
 #include <stdlib.h>
+#include <string.h>
+#include <stdarg.h>
+
+#include "../../util/alloc.h"
 #include "ops.h"
+#include "../out/asm.h"
 
 const char *str_expr_cast()
 {
@@ -11,24 +16,18 @@ void fold_const_expr_cast(expr *e, intval *piv, enum constyness *type)
 	const_fold(e->expr, piv, type);
 }
 
-void fold_expr_cast(expr *e, symtable *stab)
+void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 {
-	fold_expr(e->expr, stab);
+	int size_lhs, size_rhs;
+	decl *dlhs, *drhs;
 
-	fold_disallow_st_un(e->expr, "cast-expr");
+	if(descend)
+		fold_expr(e->expr, stab);
 
-	/*
-	 * if we don't have a valid tree_type, get one
-	 * this is only the case where we're involving a tdef or typeof
-	 */
-
-	if(e->tree_type->type->primitive == type_unknown){
-		decl_free(e->tree_type);
-		e->tree_type = decl_copy(e->expr->tree_type);
-	}
-
+	e->tree_type = e->decl;
 	fold_decl(e->tree_type, stab); /* struct lookup, etc */
 
+	fold_disallow_st_un(e->expr, "cast-expr");
 	fold_disallow_st_un(e, "cast-target");
 
 #ifdef CAST_COLLAPSE
@@ -44,21 +43,85 @@ void fold_expr_cast(expr *e, symtable *stab)
 		fold_expr_cast(e, stab);
 	}
 #endif
+
+	dlhs = e->tree_type;
+	drhs = e->expr->tree_type;
+
+	if(!decl_is_void(dlhs) && (size_lhs = asm_type_size(dlhs)) < (size_rhs = asm_type_size(drhs))){
+		char buf[DECL_STATIC_BUFSIZ];
+
+		strcpy(buf, decl_to_str(drhs));
+
+		cc1_warn_at(&e->where, 0, 1, WARN_LOSS_PRECISION,
+				"possible loss of precision %s, size %d <-- %s, size %d",
+				decl_to_str(dlhs), size_lhs,
+				buf, size_rhs);
+	}
 }
 
-void gen_expr_cast_1(expr *e, FILE *f)
+void fold_expr_cast(expr *e, symtable *stab)
 {
-	ICE("TODO");
-	(void)e;
-	(void)f;
-	//asm_declare_single_part(f, e->expr);
+	fold_expr_cast_descend(e, stab, 1);
+}
+
+void static_expr_cast_store(expr *e)
+{
+	enum constyness type;
+	intval iv;
+
+	const_fold(e, &iv, &type);
+
+	switch(type){
+		case CONST_NO:
+			ICE("bad cast static init");
+
+		case CONST_WITH_VAL:
+			/* output with possible truncation (truncate?) */
+			asm_declare_partial("%ld", iv.val);
+			break;
+
+		case CONST_WITHOUT_VAL:
+		{
+			int from_sz, to_sz;
+			/* only possible if the cast-to and cast-from are the same size */
+
+			from_sz = decl_size(e->expr->tree_type);
+			to_sz = decl_size(e->tree_type);
+
+			if(to_sz != from_sz){
+				WARN_AT(&e->where,
+						"%scast changes type size %d -> %d (not a load-time constant)",
+						e->expr_cast_implicit ? "implicit " : "",
+						from_sz, to_sz);
+			}
+
+			static_store(e->expr);
+			break;
+		}
+	}
 }
 
 void gen_expr_cast(expr *e, symtable *stab)
 {
-	/* ignore the lhs, it's just a type spec */
-	/* FIXME: size changing? */
+	decl *dto, *dfrom;
+
 	gen_expr(e->expr, stab);
+
+	dto = e->tree_type;
+	dfrom = e->expr->tree_type;
+
+	/* return if cast-to-void */
+	if(decl_is_void(dto)){
+		out_change_decl(dto);
+		out_comment("cast to void");
+		return;
+	}
+
+	/* check float <--> int conversion */
+	if(decl_is_float(dto) != decl_is_float(dfrom))
+		ICE("TODO: float <-> int casting");
+
+	out_cast(dfrom, dto);
 }
 
 void gen_expr_str_cast(expr *e, symtable *stab)
@@ -73,13 +136,14 @@ void gen_expr_str_cast(expr *e, symtable *stab)
 void mutate_expr_cast(expr *e)
 {
 	e->f_const_fold = fold_const_expr_cast;
-	e->f_gen_1      = gen_expr_cast_1;
+	e->f_static_addr = static_expr_cast_store;
 }
 
-expr *expr_new_cast(decl *to)
+expr *expr_new_cast(decl *to, int implicit)
 {
 	expr *e = expr_new_wrapper(cast);
-	e->tree_type = to;
+	e->decl = to;
+	e->expr_cast_implicit = implicit;
 	return e;
 }
 

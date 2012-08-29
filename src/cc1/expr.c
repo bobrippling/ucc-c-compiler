@@ -7,6 +7,7 @@
 #include "../util/alloc.h"
 #include "data_structs.h"
 #include "cc1.h"
+#include "const.h"
 
 /* needed for expr_assignment() */
 #include "ops/expr_assign.h"
@@ -30,7 +31,7 @@ void expr_mutate(expr *e, func_mutate_expr *f,
 	}
 
 	e->f_const_fold = NULL;
-	e->f_gen_1 = NULL;
+	e->f_static_addr = NULL;
 	e->f_store = NULL;
 
 	f(e);
@@ -56,32 +57,6 @@ expr *expr_new_intval(intval *iv)
 	return e;
 }
 
-expr *expr_ptr_multiply(expr *e, decl *d)
-{
-	decl *dtmp;
-	expr *ret;
-	int sz;
-
-	dtmp = decl_copy(d);
-
-	sz = decl_size(decl_ptr_depth_dec(dtmp, NULL));
-
-	decl_free(dtmp);
-
-	if(sz == 1)
-		return e;
-
-	ret = expr_new_op(op_multiply);
-	memcpy(&ret->where, &e->where, sizeof e->where);
-
-	ret->tree_type = decl_copy(e->tree_type);
-
-	ret->lhs  = e;
-	ret->rhs  = expr_new_val(sz);
-
-	return ret;
-}
-
 expr *expr_new_decl_init(decl *d, decl_init *di)
 {
 	ICE("TODO - only allow simple expr inits");
@@ -95,18 +70,21 @@ expr *expr_new_decl_init(decl *d, decl_init *di)
 #if 0
 expr *expr_new_array_decl_init(decl *d, int ival, int idx)
 {
-	expr *deref;
 	expr *sum;
 
 	UCC_ASSERT(d->init, "no init");
 
-	deref = expr_new_op(op_deref);
-
-	sum = op_deref_expr(deref) = expr_new_op(op_plus);
+	sum = expr_new_op(op_plus);
 
 	sum->lhs = expr_new_identifier(d->spel);
-	sum->rhs = expr_new_val(idx); /* fold will multiply this */
+	sum->rhs = expr_new_val(idx);
 
-	return expr_new_assign(deref, expr_new_val(ival));
+	return expr_new_assign(expr_new_deref(sum), expr_new_val(ival));
+}
+
+int expr_is_null_ptr(expr *e)
+{
+	return const_expr_and_zero(e)
+		&& (decl_is_void_ptr(e->tree_type) || decl_is_integral(e->tree_type));
 }
 #endif

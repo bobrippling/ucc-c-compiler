@@ -6,6 +6,7 @@ src/cc1/cc1
 src/cpp2/cpp
 src/ucc/ucc
 src/ucc/cfg.h
+src/as_cfg.h
 
 lib/syscall.s
 lib/syscall_err.s

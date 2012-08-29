@@ -175,6 +175,7 @@ enum decl_cmp
 decl        *decl_new(void);
 decl        *decl_new_type(enum type_primitive p);
 #define      decl_new_void() decl_new_type(type_void)
+
 decl_attr   *decl_attr_new(enum decl_attr_type);
 void         decl_attr_append(decl_attr **loc, decl_attr *new);
 const char  *decl_attr_to_str(enum decl_attr_type);
@@ -209,18 +210,22 @@ int   decl_equal(decl *, decl *, enum decl_cmp mode);
 
 int     decl_is_struct_or_union(decl *);
 int     decl_is_struct_or_union_possible_ptr(decl *);
+int     decl_is_struct_or_union_ptr(decl *d);
 int     decl_is_callable(       decl *);
 int     decl_is_func(           decl *); /* different from _callable - fptrs are also callable */
 int     decl_is_const(          decl *);
 int     decl_is_fptr(           decl *);
 
 int     decl_is_void_ptr(       decl *);
-int     decl_ptr_depth(         decl *);
+int     decl_is_ptr(            decl *);
 int     decl_desc_depth(        decl *);
 int     decl_is_integral(       decl *);
+int     decl_ptr_or_block(      decl *);
 #define decl_non_ptr_type(d, t) (!(d)->desc && (d)->type->primitive == t)
+
+#define decl_is_float(d)      (((d)->type->primitive == type_float || (d)->type->primitive == type_double) && !(d)->desc)
 #define decl_is_void(d) decl_non_ptr_type(d, type_void)
-#define decl_is_bool(d) (decl_ptr_depth(d) || decl_is_integral(d))
+#define decl_is_bool(d) (decl_is_ptr(d) || decl_is_integral(d))
 #define decl_is_definition(d) ((d)->init || (d)->func_code)
 
 decl_desc  *decl_first_func(decl *d);
@@ -228,6 +233,7 @@ decl_desc  *decl_leaf(decl *d);
 
 decl *decl_ptr_depth_inc(decl *d);
 decl *decl_ptr_depth_dec(decl *d, where *from);
+int   decl_ptr_depth(    decl *d);
 decl *decl_func_deref(decl *d, funcargs **pfuncargs);
 
 decl_desc *decl_array_incomplete(decl *d);

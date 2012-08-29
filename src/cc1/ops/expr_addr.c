@@ -4,8 +4,8 @@
 #include "ops.h"
 #include "../sue.h"
 #include "../str.h"
-#include "../data_store.h"
-#include "../../util/dynarray.h"
+#include "../out/asm.h"
+#include "../out/lbl.h"
 
 const char *str_expr_addr()
 {
@@ -24,7 +24,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 		e->tree_type = decl_ptr_depth_inc(decl_new_void());
 
 		save = e->spel;
-		e->spel = asm_label_goto(e->spel);
+		e->spel = out_label_goto(e->spel);
 		free(save);
 
 	}else{
@@ -32,54 +32,10 @@ void fold_expr_addr(expr *e, symtable *stab)
 
 		fold_expr(e->lhs, stab);
 
-		if(expr_kind(e->lhs, op) && (e->lhs->op == op_struct_dot || e->lhs->op == op_struct_ptr)){
-			/*
-			 * convert &(a.b) to &a + offsetof(a, b)
-			 * i.e.:
-			 * (__typeof(a.b) *)((void *)(&a) + __offsetof(__typeof(a), b))
-			 *
-			 * also converts &a->b to:
-			 * (__typeof(a->b) *)((void *)a + __offsetof(__typeof(a), b))
-			 */
-			expr *struc, *member, *addr;
-			struct_union_enum_st *st;
-			decl *member_decl;
-
-			/* pull out the various bits */
-			struc = e->lhs->lhs;
-			member = e->lhs->rhs;
-			addr = e->lhs;
-			st = struc->tree_type->type->sue;
-
-			/* forget about the old structure */
-			e->lhs = e->lhs->lhs = e->lhs->rhs = NULL;
-
-			/* lookup the member decl (for tree type later on) */
-			member_decl = struct_union_member_find(st, member->spel, &e->where);
-
-			/* e is now the op */
-			expr_mutate_wrapper(e, op);
-			e->op = op_plus;
-			e->op_no_ptr_mul = 1;
-
-			/* add the struct addr and the member offset */
-			e->lhs = struc;
-			e->rhs = expr_new_val(member_decl->struct_offset);
-
-			/* sort yourself out */
-			fold_expr(e, stab);
-
-			/* replace the decl */
-			decl_free(e->tree_type);
-			e->tree_type = decl_ptr_depth_inc(decl_copy(member_decl));
-
-			expr_free(addr);
-			return;
-		}
-
 		/* lvalues are identifier, struct-exp or deref */
 		if(!expr_is_lvalue(e->lhs, LVAL_ALLOW_FUNC | LVAL_ALLOW_ARRAY))
-			DIE_AT(&e->lhs->where, "can't take the address of %s", e->lhs->f_str());
+			DIE_AT(&e->lhs->where, "can't take the address of %s (%s)",
+					e->lhs->f_str(), decl_to_str(e->lhs->tree_type));
 
 
 		if(e->lhs->tree_type->type->store == store_register)
@@ -91,47 +47,37 @@ void fold_expr_addr(expr *e, symtable *stab)
 
 void gen_expr_addr(expr *e, symtable *stab)
 {
-	int push = 1;
-
-	(void)stab;
-
-	if(e->data_store){
-		asm_temp(1, "mov rax, %s", e->data_store->spel);
-
-		data_store_declare(e->data_store, cc_out[SECTION_DATA]);
-		data_store_out(    e->data_store, cc_out[SECTION_DATA]);
+	if(e->array_store){
+		/*decl *d = e->array_store->data.exprs[0];*/
+		out_push_lbl(e->array_store->label, 1, e->tree_type);
 
 	}else if(e->spel){
-		asm_temp(1, "mov rax, %s", e->spel);
+		out_push_lbl(e->spel, 1, NULL); /* GNU &&lbl */
+
 	}else{
 		/* address of possibly an ident "(&a)->b" or a struct expr "&a->b" */
-		if(expr_kind(e->lhs, identifier)){
-			asm_sym(ASM_LEA, e->lhs->sym, "rax");
-		}else if(expr_kind(e->lhs, op)){
-			/* skip the address (e->lhs) and the deref */
-			UCC_ASSERT(e->lhs->op == op_deref, "deref expected for addr");
-			gen_expr(op_deref_expr(e->lhs), stab);
-			push = 0;
-		}else{
-			ICE("address of %s", e->lhs->f_str());
-		}
-	}
+		if(expr_kind(e->lhs, struct))
+			UCC_ASSERT(!e->lhs->expr_is_st_dot, "not &x->y");
+		else
+			UCC_ASSERT(expr_kind(e->lhs, identifier) || expr_kind(e->lhs, deref),
+					"invalid addr");
 
-	if(push)
-		asm_temp(1, "push rax");
+		lea_expr(e->lhs, stab);
+	}
 }
 
-void gen_expr_addr_1(expr *e, FILE *f)
+void static_expr_addr_addr(expr *e)
 {
-	if(e->data_store){
-		/*fprintf(f, "%s", e->data_store->spel);*/
-		data_store_declare(e->data_store, f);
-		data_store_out(    e->data_store, f);
+	if(e->array_store){
+		/* address of an array store */
+		asm_declare_partial("%s", e->array_store->label);
+
 	}else if(e->spel){
-		fprintf(f, "%s", e->spel);
+		asm_declare_partial("%s", e->spel);
+
 	}else{
-		UCC_ASSERT(expr_kind(e->lhs, identifier), "globals addr-of can only be identifier for now");
-		fprintf(f, "%s", e->lhs->spel);
+		static_store(e->lhs);
+
 	}
 }
 
@@ -161,12 +107,12 @@ void const_expr_addr(expr *e, intval *iv, enum constyness *ptype)
 {
 	(void)e;
 	(void)iv;
-	*ptype = CONST_WITHOUT_VAL;
+	*ptype = CONST_WITHOUT_VAL; /* addr is const but with no value */
 }
 
 void mutate_expr_addr(expr *e)
 {
-	e->f_gen_1 = gen_expr_addr_1;
+	e->f_static_addr = static_expr_addr_addr;
 	e->f_const_fold = const_expr_addr;
 }
 

@@ -24,13 +24,24 @@ typedef struct data_store  data_store;
 
 enum type_primitive
 {
-	type_int,
-	type_char,
 	type_void,
+	type__Bool,
+	type_char,
+	type_int,
+	type_short,
+	type_long,
+	type_llong,
+	type_float,
+	type_double,
+	type_ldouble,
 
 	type_struct,
 	type_union,
 	type_enum,
+
+	/* x64 specific */
+#define type_intptr type_long
+#define type_ptrdiff type_long
 
 	type_unknown
 };
@@ -86,7 +97,8 @@ const char *type_primitive_to_str(const enum type_primitive);
 const char *type_qual_to_str(     const enum type_qualifier);
 const char *type_store_to_str(    const enum type_storage);
 
-int op_is_cmp(enum op_type o);
+int op_is_relational(enum op_type o);
+int op_can_compound(enum op_type o);
 
 int   type_equal(const type *a, const type *b, int strict);
 int   type_size( const type *);
@@ -104,5 +116,8 @@ void funcargs_free(funcargs *args, int free_decls);
 
 /* tables local to the current scope */
 extern symtable *current_scope;
+intval *intval_new(long v);
+
+extern where *eof_where;
 
 #endif
