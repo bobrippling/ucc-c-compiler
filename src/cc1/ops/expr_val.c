@@ -8,11 +8,6 @@ const char *str_expr_val()
 	return "val";
 }
 
-void gen_expr_val_1(expr *e, FILE *f)
-{
-	asm_declare_out(f, e->tree_type, "%ld", e->val.iv.val);
-}
-
 void fold_expr_val(expr *e, symtable *stab)
 {
 	(void)e;
@@ -44,7 +39,6 @@ void const_expr_val(expr *e, intval *piv, enum constyness *pconst_type)
 
 void mutate_expr_val(expr *e)
 {
-	e->f_gen_1 = gen_expr_val_1;
 	e->f_const_fold = const_expr_val;
 }
 

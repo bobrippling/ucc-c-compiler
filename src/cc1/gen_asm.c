@@ -28,7 +28,7 @@ void gen_expr(expr *e, symtable *stab)
 
 	const_fold(e, &iv, &type);
 
-	if(type == CONST_WITH_VAL)
+	if(type == CONST_WITH_VAL) /* TODO: -O0 skips this */
 		out_push_iv(e->tree_type, &iv);
 	else
 		e->f_gen(e, stab);
@@ -44,6 +44,12 @@ void lea_expr(expr *e, symtable *stab)
 void gen_stmt(stmt *t)
 {
 	t->f_gen(t);
+}
+
+void static_store(expr *e)
+{
+	UCC_ASSERT(e->f_static_addr, "no static store for %s", e->f_str());
+	e->f_static_addr(e);
 }
 
 #ifdef FANCY_STACK_INIT
@@ -128,7 +134,10 @@ void gen_asm_global(decl *d)
 		asm_declare_array(d->spel, d->arrayinit);
 
 	}else if(d->init && !const_expr_and_zero(d->init)){
-		asm_declare_single(d);
+
+		asm_out_section(SECTION_DATA, "%s:\n.%s ", d->spel, asm_type_directive(d));
+		static_store(d->init);
+		asm_out_section(SECTION_DATA, "\n");
 
 	}else if(d->type->store == store_extern){
 		asm_extern(d);
@@ -172,12 +181,11 @@ void gen_asm(symtable *globs)
 				/* else extern func with definition */
 
 			case store_default:
-				asm_out_section(SECTION_TEXT, ".globl %s", d->spel);
+				asm_out_section(SECTION_TEXT, ".globl %s\n", d->spel);
 		}
 
 		gen_asm_global(d);
 	}
 
 	out_assert_vtop_null();
-	//asm_out_flush();
 }

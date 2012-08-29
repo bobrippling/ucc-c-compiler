@@ -64,7 +64,7 @@ void fold_expr_cast(expr *e, symtable *stab)
 	fold_expr_cast_descend(e, stab, 1);
 }
 
-void gen_expr_cast_1(expr *e, FILE *f)
+void static_expr_cast_store(expr *e)
 {
 	enum constyness type;
 	intval iv;
@@ -77,7 +77,7 @@ void gen_expr_cast_1(expr *e, FILE *f)
 
 		case CONST_WITH_VAL:
 			/* output with possible truncation (truncate?) */
-			asm_declare_out(f, e->tree_type, "%ld", iv.val);
+			asm_declare_partial("%ld", iv.val);
 			break;
 
 		case CONST_WITHOUT_VAL:
@@ -95,7 +95,7 @@ void gen_expr_cast_1(expr *e, FILE *f)
 						from_sz, to_sz);
 			}
 
-			e->expr->f_gen_1(e->expr, f);
+			static_store(e->expr);
 			break;
 		}
 	}
@@ -136,7 +136,7 @@ void gen_expr_str_cast(expr *e, symtable *stab)
 void mutate_expr_cast(expr *e)
 {
 	e->f_const_fold = fold_const_expr_cast;
-	e->f_gen_1      = gen_expr_cast_1;
+	e->f_static_addr = static_expr_cast_store;
 }
 
 expr *expr_new_cast(decl *to, int implicit)

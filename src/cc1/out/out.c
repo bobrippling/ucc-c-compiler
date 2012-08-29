@@ -415,7 +415,6 @@ void out_op(enum op_type op)
 	 * the result is returned
 	 */
 
-	/* TODO: checks for adding or removing zero */
 	struct vstack *t_const, *t_stack;
 
 	/* check for adding or subtracting to stack */
@@ -429,6 +428,8 @@ void out_op(enum op_type op)
 		goto fin;
 
 	}else if(t_const){
+		/* TODO: -O1, constant folding here */
+
 		switch(op){
 			case op_plus:
 			case op_minus:
@@ -510,7 +511,10 @@ void out_op_unary(enum op_type op)
 
 void out_cast(decl *from, decl *to)
 {
-	impl_cast(from, to);
+	/* casting vtop - don't bother if it's a constant, just change the size */
+	if(vtop->type != CONST)
+		impl_cast(from, to);
+
 	out_change_decl(to);
 }
 

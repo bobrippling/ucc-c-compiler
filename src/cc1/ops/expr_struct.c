@@ -1,6 +1,9 @@
 #include "ops.h"
 #include "expr_struct.h"
 #include "../sue.h"
+#include "../out/asm.h"
+
+#define ASSERT_NOT_DOT() UCC_ASSERT(!e->expr_is_st_dot, "a.b should have been handled by now");
 
 const char *str_expr_struct()
 {
@@ -81,11 +84,12 @@ void fold_expr_struct(expr *e, symtable *stab)
 
 void gen_expr_struct_store(expr *e, symtable *stab)
 {
+	ASSERT_NOT_DOT();
+
 	gen_expr(e->lhs, stab);
 
 	out_push_i(NULL, struct_offset(e->rhs));
 	out_op(op_plus);
-	out_comment("offset of member %s", e->rhs->spel);
 
 	out_change_decl(decl_ptr_depth_inc(decl_copy(e->rhs->tree_type)));
 }
@@ -94,7 +98,7 @@ void gen_expr_struct(expr *e, symtable *stab)
 {
 	(void)stab;
 
-	UCC_ASSERT(!e->expr_is_st_dot, "a.b should have been handled by now");
+	ASSERT_NOT_DOT();
 
 	gen_expr_struct_store(e, stab);
 
@@ -121,7 +125,9 @@ void gen_expr_str_struct(expr *e, symtable *stab)
 
 void fold_const_expr_struct(expr *e, intval *val, enum constyness *success)
 {
-	/* TODO: if lhs is NULL, const fold to struct offset, (obv. if !dot) */
+	/* if lhs is NULL, const fold to struct offset, (obv. if !dot, which is taken care of in fold) */
+	ASSERT_NOT_DOT();
+
 	const_fold(e->lhs, val, success);
 
 	if(*success == CONST_WITH_VAL)
@@ -130,10 +136,16 @@ void fold_const_expr_struct(expr *e, intval *val, enum constyness *success)
 		*success = CONST_WITHOUT_VAL;
 }
 
+void static_expr_struct_addr(expr *e)
+{
+	static_store(e->lhs);
+	asm_declare_partial(" + %ld", struct_offset(e->rhs));
+}
+
 void mutate_expr_struct(expr *e)
 {
 	e->f_store = gen_expr_struct_store;
-	e->f_const_fold = fold_const_expr_struct;
+	e->f_static_addr = static_expr_struct_addr;
 }
 
 expr *expr_new_struct(expr *sub, int dot, expr *ident)

@@ -119,6 +119,7 @@ invalid:
 			desc = umalloc(strlen(sp) + 25);
 			sprintf(desc, "function argument to %s", sp);
 
+			fold_need_expr(arg, desc, 0);
 			fold_disallow_st_un(arg, desc);
 
 			free(desc);

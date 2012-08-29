@@ -43,9 +43,9 @@ void const_expr_sizeof(expr *e, intval *piv, enum constyness *pconst_type)
 	*pconst_type = CONST_WITH_VAL;
 }
 
-void gen_expr_sizeof_1(expr *e, FILE *f)
+void static_expr_sizeof_store(expr *e)
 {
-	asm_declare_out(f, e->tree_type, "%ld", SIZEOF_SIZE(e));
+	asm_declare_partial("%ld", SIZEOF_SIZE(e));
 }
 
 void gen_expr_sizeof(expr *e, symtable *stab)
@@ -73,7 +73,7 @@ void gen_expr_str_sizeof(expr *e, symtable *stab)
 void mutate_expr_sizeof(expr *e)
 {
 	e->f_const_fold = const_expr_sizeof;
-	e->f_gen_1 = gen_expr_sizeof_1;
+	e->f_static_addr = static_expr_sizeof_store;
 }
 
 expr *expr_new_sizeof_decl(decl *d, int is_typeof)

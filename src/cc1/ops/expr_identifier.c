@@ -100,9 +100,9 @@ void gen_expr_identifier(expr *e, symtable *stab)
 	}
 }
 
-void gen_expr_identifier_1(expr *e, FILE *f)
+void static_expr_identifier_store(expr *e)
 {
-	asm_declare_out(f, e->tree_type, "%s", e->sym->decl->spel);
+	asm_declare_partial("%s", e->sym->decl->spel);
 	/*
 	 * don't use e->spel
 	 * static int i;
@@ -120,9 +120,9 @@ void gen_expr_identifier_store(expr *e, symtable *stab)
 
 void mutate_expr_identifier(expr *e)
 {
-	e->f_store      = gen_expr_identifier_store;
-	e->f_gen_1      = gen_expr_identifier_1;
-	e->f_const_fold = fold_const_expr_identifier;
+	e->f_store       = gen_expr_identifier_store;
+	e->f_static_addr = static_expr_identifier_store;
+	e->f_const_fold  = fold_const_expr_identifier;
 }
 
 expr *expr_new_identifier(char *sp)

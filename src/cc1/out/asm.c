@@ -12,6 +12,7 @@
 #include "../../util/alloc.h"
 #include "../sue.h"
 #include "../const.h"
+#include "../gen_asm.h"
 
 static const struct
 {
@@ -63,14 +64,6 @@ const char *asm_intval_str(intval *iv)
 	return buf;
 }
 #endif
-
-void asm_declare_single_part(expr *e)
-{
-	if(!e->f_gen_1)
-		ICE("no gen_1() for expr %s (%s)", e->f_str(), decl_to_str(e->tree_type));
-
-	e->f_gen_1(e, cc_out[SECTION_DATA]);
-}
 
 int asm_table_lookup(decl *d)
 {
@@ -152,21 +145,19 @@ int asm_type_size(decl *d)
 	return asm_type_table[asm_table_lookup(d)].sz;
 }
 
-void asm_declare_out(FILE *f, decl *d, const char *fmt, ...)
+void asm_declare_partial(const char *fmt, ...)
 {
 	va_list l;
 
-	fprintf(f, ".%s ", asm_type_directive(d));
-
 	va_start(l, fmt);
-	vfprintf(f, fmt, l);
+	vfprintf(cc_out[SECTION_DATA], fmt, l);
 	va_end(l);
-
-	fputc('\n', f);
 }
 
 void asm_declare_single(decl *d)
 {
+	asm_out_section(SECTION_DATA, "%s:\n", d->spel);
+
 	if(!decl_is_ptr(d) && d->type->sue && d->type->sue->primitive != type_enum){
 		/* struct init */
 		int i;
@@ -176,8 +167,6 @@ void asm_declare_single(decl *d)
 
 		UCC_ASSERT(d->init->array_store, "no array store for struct init (TODO?)");
 		UCC_ASSERT(d->init->array_store->type == array_exprs, "array store of strings for struct");
-
-		asm_out_section(SECTION_DATA, "%s:", d->spel);
 
 		/* XXX: assumes all struct members are word-size */
 		type_directive = asm_type_table[asm_table_lookup(NULL)].directive;
@@ -190,8 +179,9 @@ void asm_declare_single(decl *d)
 			asm_out_section(SECTION_DATA, ".%s %ld", type_directive, iv.val);
 		}
 	}else{
-		asm_out_section(SECTION_DATA, "%s:", d->spel);
-		asm_declare_single_part(d->init);
+		static_store(d->init);
+
+		asm_out_section(SECTION_DATA, "\n");
 	}
 }
 
@@ -209,22 +199,26 @@ void asm_declare_array(const char *lbl, array_decl *ad)
 			break;
 	}
 
-	asm_out_section(SECTION_DATA, "%s:", lbl);
+	asm_out_section(SECTION_DATA, "%s:\n", lbl);
 
 	for(i = 0; i < ad->len; i++){
 		if(ad->type == array_str){
-			asm_out_section(SECTION_DATA, ".%s %d",
+			asm_out_section(SECTION_DATA, ".%s %d\n",
 					asm_type_table[tbl_idx].directive,
 					ad->data.str[i]);
 		}else{
-			asm_declare_single_part(ad->data.exprs[i]);
+			static_store(ad->data.exprs[i]);
 		}
 	}
 }
 
 void asm_reserve_bytes(const char *lbl, int nbytes)
 {
-	asm_out_section(SECTION_BSS, "%s:", lbl);
+	/*
+	 * TODO: .comm buf,512,5
+	 * or    .zerofill SECTION_NAME,_buf,512,5
+	 */
+	asm_out_section(SECTION_BSS, "%s:\n", lbl);
 
 	while(nbytes > 0){
 		int i;
@@ -233,7 +227,7 @@ void asm_reserve_bytes(const char *lbl, int nbytes)
 			const int sz = asm_type_table[i].sz;
 
 			if(nbytes >= sz){
-				asm_out_section(SECTION_BSS, ".%s 0", asm_type_table[i].directive);
+				asm_out_section(SECTION_BSS, ".%s 0\n", asm_type_table[i].directive);
 				nbytes -= sz;
 				break;
 			}
@@ -247,5 +241,4 @@ void asm_out_section(enum section_type t, const char *fmt, ...)
 	va_start(l, fmt);
 	vfprintf(cc_out[t], fmt, l);
 	va_end(l);
-	fputc('\n', cc_out[t]);
 }

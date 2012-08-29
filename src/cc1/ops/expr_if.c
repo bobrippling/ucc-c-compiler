@@ -70,7 +70,9 @@ void fold_expr_if(expr *e, symtable *stab)
 	Pointer to type                        NULL pointer (the constant 0)        Pointer to type
 	Pointer to object or incomplete type   Pointer to void                      Pointer to void with all the qualifiers specified for the type
 
-	GCC and Clang seem to change the last rule to resolve to a pointer to the incomplete-type
+	GCC and Clang seem to relax the last rule:
+		a) resolve if either is any pointer, not just (void *)
+	  b) resolve to a pointer to the incomplete-type
 	*/
 
 #define tt_l (e->lhs->tree_type)
@@ -102,16 +104,17 @@ void fold_expr_if(expr *e, symtable *stab)
 			e->tree_type = decl_copy(l_ptr_null ? tt_r : tt_l);
 
 		}else{
-			int l_ptr_void = decl_is_void_ptr(tt_l) || l_ptr_null;
-			int r_ptr_void = decl_is_void_ptr(tt_r) || r_ptr_null;
+			int l_ptr = decl_is_ptr(tt_l) || l_ptr_null;
+			int r_ptr = decl_is_ptr(tt_r) || r_ptr_null;
 
-			if(l_ptr_void || r_ptr_void){
-				e->tree_type = decl_copy(l_ptr_void ? tt_r : tt_l);
+			if(l_ptr || r_ptr){
+				fold_decl_equal(tt_l, tt_r, &e->where,
+						WARN_COMPARE_MISMATCH, /* FIXME: "mismatch" */
+						"pointer type mismatch");
 
-				e->tree_type->type->qual |= (l_ptr_void ? tt_l : tt_r)->type->qual;
+				e->tree_type = decl_ptr_depth_inc(decl_new_void());
 
-				/* the other side must have pointer-size */
-				expr_promote_int(l_ptr_void ? &e->lhs : &e->rhs, type_intptr, stab);
+				e->tree_type->type->qual = tt_l->type->qual | tt_r->type->qual;
 
 			}else{
 				char buf[DECL_STATIC_BUFSIZ];

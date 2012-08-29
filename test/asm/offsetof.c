@@ -4,8 +4,10 @@ struct A
         int y, x;
 };
 
-typedef long unsigned size_t;
-
-#define offsetof(type, member) ((size_t)&((type *)0)->member)
-
+#ifdef TEST_OO
+#define offsetof(type, member) ((int)&((type *)0)->member)
 const int static i = offsetof(struct A, x);
+#endif
+
+struct A a;
+int *p = &a.x;

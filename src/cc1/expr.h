@@ -8,11 +8,11 @@ enum constyness
 	CONST_WITHOUT_VAL,     /* &f where f is global */
 };
 
-typedef void         func_fold(     expr *, symtable *);
-typedef void         func_gen(      expr *, symtable *);
-typedef void         func_gen_store(expr *, symtable *);
-typedef void         func_gen_1(    expr *, FILE *);
-typedef void         func_const(    expr *, intval *val, enum constyness *success);
+typedef void         func_fold(          expr *, symtable *);
+typedef void         func_gen(           expr *, symtable *);
+typedef void         func_gen_store(     expr *, symtable *);
+typedef void         func_static_addr(   expr *);
+typedef void         func_const(         expr *, intval *val, enum constyness *success);
 typedef const char  *func_str(void);
 typedef void         func_mutate_expr(expr *);
 
@@ -20,14 +20,14 @@ struct expr
 {
 	where where;
 
-	func_fold      *f_fold;
-	func_const     *f_const_fold; /* optional */
+	func_fold        *f_fold;
+	func_const       *f_const_fold; /* optional */
 
-	func_gen       *f_gen;
-	func_gen_1     *f_gen_1; /* optional */
-	func_gen_store *f_store; /* optional */
+	func_gen         *f_gen;
+	func_static_addr *f_static_addr; /* optional */
+	func_gen_store   *f_store;       /* optional */
 
-	func_str       *f_str;
+	func_str         *f_str;
 
 	int freestanding; /* e.g. 1; needs use, whereas x(); doesn't - freestanding */
 

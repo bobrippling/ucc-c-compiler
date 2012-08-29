@@ -118,28 +118,18 @@ void gen_expr_addr(expr *e, symtable *stab)
 	}
 }
 
-void gen_expr_addr_1(expr *e, FILE *f)
+void static_expr_addr_addr(expr *e)
 {
-	/* TODO: merge this code with gen_addr / walk_expr with expr_addr */
 	if(e->array_store){
 		/* address of an array store */
-		asm_declare_out(f, NULL, "%s", e->array_store->label);
+		asm_declare_partial("%s", e->array_store->label);
 
 	}else if(e->spel){
-		asm_declare_out(f, NULL, "%s", e->spel);
-
-	}else if(expr_kind(e->lhs, identifier)){
-		asm_declare_out(f, NULL, "%s", e->lhs->spel);
+		asm_declare_partial("%s", e->spel);
 
 	}else{
-		intval iv;
-		enum constyness type;
+		static_store(e->lhs);
 
-		const_fold(e->lhs, &iv, &type);
-
-		UCC_ASSERT(type == CONST_WITH_VAL, "invalid constant expression");
-
-		asm_declare_out(f, NULL, "%ld", iv.val);
 	}
 }
 
@@ -178,12 +168,12 @@ void const_expr_addr(expr *e, intval *iv, enum constyness *ptype)
 {
 	(void)e;
 	(void)iv;
-	*ptype = CONST_WITHOUT_VAL;
+	*ptype = CONST_WITHOUT_VAL; /* addr is const but with no value */
 }
 
 void mutate_expr_addr(expr *e)
 {
-	e->f_gen_1 = gen_expr_addr_1;
+	e->f_static_addr = static_expr_addr_addr;
 	e->f_const_fold = const_expr_addr;
 }
 
