@@ -32,6 +32,7 @@ void fold_expr_funcall(expr *e, symtable *stab)
 	funcargs *args_from_decl;
 
 	if(func_is_asm(sp)){
+#if 0
 		expr *arg1;
 		const char *str;
 		int i;
@@ -40,7 +41,7 @@ void fold_expr_funcall(expr *e, symtable *stab)
 			DIE_AT(&e->where, "invalid __asm__ arguments");
 
 		arg1 = e->funcargs[0];
-		str = arg1->array_store->data.str;
+		str = arg1->data_store->data.str;
 		for(i = 0; i < arg1->array_store->len - 1; i++){
 			char ch = str[i];
 			if(!isprint(ch) && !isspace(ch))
@@ -55,6 +56,9 @@ invalid:
 		/* TODO: allow a long return, e.g. __asm__(("movq $5, %rax")) */
 		e->tree_type = decl_new_void();
 		return;
+#else
+		ICE("TODO: __asm__");
+#endif
 	}
 
 
@@ -190,7 +194,10 @@ void gen_expr_funcall(expr *e, symtable *stab)
 
 	if(func_is_asm(fname)){
 		out_comment("start manual __asm__");
-		fprintf(cc_out[SECTION_TEXT], "%s\n", e->funcargs[0]->array_store->data.str);
+		ICE("same");
+#if 0
+		fprintf(cc_out[SECTION_TEXT], "%s\n", e->funcargs[0]->data_store->data.str);
+#endif
 		out_comment("end manual __asm__");
 	}else{
 		/* continue with normal funcall */

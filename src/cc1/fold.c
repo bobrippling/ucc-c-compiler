@@ -232,7 +232,7 @@ void fold_decl_init(decl *for_decl, decl_init *di, symtable *stab)
 			case decl_init_brace:
 				if(decl_has_incomplete_array(for_decl)){
 					/* complete the decl */
-					decl_desc *dp = decl_array_incomplete(for_decl);
+					decl_desc *dp = decl_array_first_incomplete(for_decl);
 					dp->bits.array_size->val.iv.val = decl_init_len(di);
 				}
 		}

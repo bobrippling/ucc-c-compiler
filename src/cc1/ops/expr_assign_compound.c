@@ -8,7 +8,6 @@ const char *str_expr_assign_compound()
 void fold_expr_assign_compound(expr *e, symtable *stab)
 {
 	expr *const lvalue = e->lhs;
-	int type_ok;
 
 	{
 		expr *addr = expr_new_addr();
@@ -35,10 +34,15 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 
 	UCC_ASSERT(op_can_compound(e->op), "non-compound op in compound expr");
 
-	fold_coerce_assign(lvalue->tree_type, e->rhs, &type_ok);
-
 	/* pass the addr's target to promote_types */
 	e->tree_type = op_promote_types(e->op, &e->lhs->lhs, &e->rhs, &e->where, stab);
+
+	/* type check */
+	fold_decl_equal(e->lhs->lhs->tree_type, e->rhs->tree_type,
+			&e->where, WARN_ASSIGN_MISMATCH,
+			"compound-assignment type mismatch");
+
+	/* FIXME: insert cast to lhs? */
 }
 
 void gen_expr_assign_compound(expr *e, symtable *stab)

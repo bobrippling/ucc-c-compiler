@@ -10,7 +10,7 @@ OBJ = \
 	tree.o decl.o expr.o stmt.o \
 	tokconv.o tokenise.o \
 	parse.o parse_type.o typedef.o \
-	fold.o fold_sym.o const.o \
+	fold.o fold_sym.o const.o data_store.o \
 	sym.o sue.o ops/__builtin.o \
 	gen_asm.o gen_str.o gen_style.o \
 	out/out.o out/asm.o out/lbl.o out/x86_64.o \

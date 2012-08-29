@@ -10,13 +10,7 @@ const char *asm_intval_str(intval *iv);
 
 void asm_out_section(enum section_type, const char *fmt, ...);
 
-/* declare 'd' */
-void asm_declare_partial(const char *, ...);
-
-/* declare array */
-void asm_declare_array(const char *lbl, array_decl *ad);
-
-/* .bss */
-void asm_reserve_bytes(const char *lbl, int nbytes);
+void asm_declare(FILE *f, decl *d); /* x: .qword ... */
+void asm_declare_partial(const char *, ...); /* .qword ... */
 
 #endif

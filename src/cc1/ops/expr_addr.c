@@ -6,6 +6,7 @@
 #include "../str.h"
 #include "../out/asm.h"
 #include "../out/lbl.h"
+#include "../data_store.h"
 
 const char *str_expr_addr()
 {
@@ -47,9 +48,11 @@ void fold_expr_addr(expr *e, symtable *stab)
 
 void gen_expr_addr(expr *e, symtable *stab)
 {
-	if(e->array_store){
-		/*decl *d = e->array_store->data.exprs[0];*/
-		out_push_lbl(e->array_store->label, 1, e->tree_type);
+	if(e->data_store){
+		out_push_lbl(e->data_store->spel, 1, e->tree_type);
+
+		data_store_declare(e->data_store);
+		data_store_out(    e->data_store);
 
 	}else if(e->spel){
 		out_push_lbl(e->spel, 1, NULL); /* GNU &&lbl */
@@ -68,9 +71,9 @@ void gen_expr_addr(expr *e, symtable *stab)
 
 void static_expr_addr_addr(expr *e)
 {
-	if(e->array_store){
+	if(e->data_store){
 		/* address of an array store */
-		asm_declare_partial("%s", e->array_store->label);
+		asm_declare_partial("%s", e->data_store->spel);
 
 	}else if(e->spel){
 		asm_declare_partial("%s", e->spel);

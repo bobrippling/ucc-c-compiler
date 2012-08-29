@@ -615,11 +615,20 @@ void parse_got_decls(decl **decls, stmt *codes_init)
 		decl *d = *diter;
 
 		if(d->init){
-			if(decl_is_array(d)){
+			if(d->type->store != store_static && d->init->type == decl_init_scalar){
+				dynarray_prepend((void ***)&codes_init->codes,
+						expr_to_stmt(
+							expr_new_assign(
+								expr_new_identifier(d->spel),
+									d->init->bits.expr), scope));
+
+			}else{
 #ifndef FANCY_STACK_INIT
-				ICE("TODO");
 				/* assignment expr for each init */
-				array_decl *dinit = d->init->array_store;
+
+				ICE("TODO: stack init");
+#  if 0
+				data_store *dinit = d->init;
 				int i;
 				expr *comma_init = NULL;
 
@@ -649,17 +658,10 @@ void parse_got_decls(decl **decls, stmt *codes_init)
 
 				dynarray_prepend((void ***)&codes_init->codes,
 						expr_to_stmt(comma_init, scope));
+#  endif
 #else
-				ICW("array init");
-#endif
-			}else if(d->type->store != store_static && d->init->type == decl_init_scalar){
-				dynarray_prepend((void ***)&codes_init->codes,
-						expr_to_stmt(
-							expr_new_assign(
-								expr_new_identifier(d->spel),
-									d->init->bits.expr), scope));
-			}else{
 				ICW("TODO: init for %s somewhere else", d->spel);
+#endif
 			}
 		}
 		/* don't change init - used for checks for assign-to-const */

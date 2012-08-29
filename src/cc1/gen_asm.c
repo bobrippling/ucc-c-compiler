@@ -53,9 +53,11 @@ void static_store(expr *e)
 }
 
 #ifdef FANCY_STACK_INIT
+#define ITER_DECLS(i) for(i = df->func_code->symtab->decls; i && *i; i++)
+
 void gen_func_stack(decl *df, const int offset)
 {
-	int use_sub = 1;
+	int use_sub = 1, clever = 0;
 	decl **iter;
 
 	ITER_DECLS(iter)
@@ -69,15 +71,13 @@ void gen_func_stack(decl *df, const int offset)
 				asm_operand_new_reg(NULL, ASM_REG_SP),
 				asm_operand_new_val(offset));
 	}else{
-		ITER_DECLS(){
+		ITER_DECLS(iter){
 			decl *d = *iter;
 			if(d->init && d->init->type != decl_init_scalar){
 				ICW("TODO: stack gen or expr for %s init", decl_to_str(d));
 			}
 		}
 	}
-
-	asm_temp(1, "sub rsp, %d", offset);
 }
 #else
 #endif

@@ -10,6 +10,7 @@
 #include "asm.h"
 #include "../../util/platform.h"
 #include "../../util/alloc.h"
+#include "../../util/dynarray.h"
 #include "../sue.h"
 #include "../const.h"
 #include "../gen_asm.h"
@@ -154,38 +155,8 @@ void asm_declare_partial(const char *fmt, ...)
 	va_end(l);
 }
 
-void asm_declare_single(decl *d)
-{
-	asm_out_section(SECTION_DATA, "%s:\n", d->spel);
-
-	if(!decl_is_ptr(d) && d->type->sue && d->type->sue->primitive != type_enum){
-		/* struct init */
-		int i;
-		const char *type_directive;
-
-		ICW("attempting to declare+init a struct, untested for nesting and arrays");
-
-		UCC_ASSERT(d->init->array_store, "no array store for struct init (TODO?)");
-		UCC_ASSERT(d->init->array_store->type == array_exprs, "array store of strings for struct");
-
-		/* XXX: assumes all struct members are word-size */
-		type_directive = asm_type_table[asm_table_lookup(NULL)].directive;
-
-		for(i = 0; i < d->init->array_store->len; i++){
-			intval iv;
-
-			const_fold_need_val(d->init->array_store->data.exprs[i], &iv);
-
-			asm_out_section(SECTION_DATA, ".%s %ld", type_directive, iv.val);
-		}
-	}else{
-		static_store(d->init);
-
-		asm_out_section(SECTION_DATA, "\n");
-	}
-}
-
-void asm_declare_array(const char *lbl, array_decl *ad)
+#if 0
+static void asm_declare_array(const char *lbl, array_decl *ad)
 {
 	int tbl_idx;
 	int i;
@@ -211,8 +182,41 @@ void asm_declare_array(const char *lbl, array_decl *ad)
 		}
 	}
 }
+#endif
 
-void asm_reserve_bytes(const char *lbl, int nbytes)
+static void asm_declare_sub(FILE *f, decl_init *init)
+{
+	switch(init->type){
+		case decl_init_brace:
+		case decl_init_struct:
+		{
+			struct decl_init_sub **const inits = init->bits.subs;
+			const int len = dynarray_count((void **)inits);;
+			int i;
+
+			for(i = 0; i < len; i++){
+				asm_declare_sub(f, inits[i]->init);
+				/* TODO: struct padding for next member */
+				fputc('\n', f);
+			}
+			break;
+		}
+
+		case decl_init_scalar:
+		{
+			expr *const exp = init->bits.expr;
+
+			if(!exp->data_store)
+				fprintf(f, ".%s ", asm_type_directive(init->for_decl));
+
+			/*if(!const_expr_is_zero(exp))...*/
+			static_store(exp);
+			break;
+		}
+	}
+}
+
+static void asm_reserve_bytes(const char *lbl, int nbytes)
 {
 	/*
 	 * TODO: .comm buf,512,5
@@ -232,6 +236,23 @@ void asm_reserve_bytes(const char *lbl, int nbytes)
 				break;
 			}
 		}
+	}
+}
+
+void asm_declare(FILE *f, decl *d)
+{
+	if(d->init /* should also check for non-zero... */){
+		fprintf(f, "%s:\n", d->spel);
+		asm_declare_sub(f, d->init);
+		fputc('\n', f);
+
+	}else if(d->type->store == store_extern){
+		gen_asm_extern(d);
+
+	}else{
+		/* always resB, since we use decl_size() */
+		asm_reserve_bytes(d->spel, decl_size(d));
+
 	}
 }
 

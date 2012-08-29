@@ -452,7 +452,7 @@ void impl_op(enum op_type op)
 
 			out_asm("%s%c %s, %s",
 					op == op_shiftl ? "shl" : "shr",
-					asm_type_ch(vtop->d), 
+					asm_type_ch(vtop->d),
 					bufs, bufv);
 
 			vpop();
