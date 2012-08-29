@@ -449,8 +449,70 @@ fin:
 		vpop();
 
 	}else{
+		int div = 0;
+
 def:
+		switch(op){
+			case op_plus:
+			case op_minus:
+			{
+				int l_ptr, r_ptr;
+
+				l_ptr = decl_is_ptr(vtop->d);
+				r_ptr = decl_is_ptr(vtop[-1].d);
+
+				if(l_ptr || r_ptr){
+					decl *const ptr_d = l_ptr ? vtop->d : vtop[-1].d;
+
+					const int ptr_step = type_primitive_size(
+							decl_ptr_depth(ptr_d) > 1
+							? type_ptrdiff
+							: ptr_d->type->primitive);
+
+					if(l_ptr ^ r_ptr){
+						/* ptr +/- int, adjust the non-ptr by sizeof *ptr */
+						struct vstack *val = &vtop[l_ptr ? -1 : 0];
+
+						switch(val->type){
+							case CONST:
+								val->bits.val *= ptr_step;
+								break;
+
+							default:
+								v_to_reg(val);
+
+							case REG:
+							{
+								int swap;
+								if((swap = (val != vtop)))
+									vswap();
+
+								out_push_i(NULL, ptr_step);
+								out_op(op_multiply);
+
+								if(swap)
+									vswap();
+							}
+						}
+
+					}else if(l_ptr && r_ptr){
+						/* difference - divide afterwards */
+						div = ptr_step;
+					}
+				}
+				break;
+			}
+
+			default:
+				break;
+		}
+
 		impl_op(op);
+
+		if(div){
+			out_push_i(NULL, div);
+			out_op(op_divide);
+		}
 	}
 }
 
