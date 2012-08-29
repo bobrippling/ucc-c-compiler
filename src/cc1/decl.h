@@ -175,6 +175,7 @@ enum decl_cmp
 decl        *decl_new(void);
 decl        *decl_new_type(enum type_primitive p);
 #define      decl_new_void() decl_new_type(type_void)
+#define      decl_new_char() decl_new_type(type_char)
 
 decl_attr   *decl_attr_new(enum decl_attr_type);
 void         decl_attr_append(decl_attr **loc, decl_attr *new);
@@ -236,7 +237,7 @@ decl *decl_ptr_depth_dec(decl *d, where *from);
 int   decl_ptr_depth(    decl *d);
 decl *decl_func_deref(decl *d, funcargs **pfuncargs);
 
-decl_desc *decl_array_incomplete(decl *d);
+decl_desc *decl_array_first_incomplete(decl *d);
 decl_desc *decl_array_first(decl *d);
 
 int decl_attr_present(decl_attr *, enum decl_attr_type);

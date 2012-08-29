@@ -1,14 +1,3 @@
-asm.o: asm.c ../util/util.h data_structs.h tree.h expr.h ops/expr_addr.h \
- ops/expr_assign.h ops/expr_assign_compound.h ops/expr_cast.h \
- ops/expr_comma.h ops/expr_funcall.h ops/expr_identifier.h ops/expr_if.h \
- ops/expr_op.h ops/expr_sizeof.h ops/expr_val.h ops/expr_stmt.h \
- ops/expr_deref.h ops/expr_struct.h stmt.h ops/stmt_break.h \
- ops/stmt_case.h ops/stmt_case_range.h ops/stmt_code.h ops/stmt_default.h \
- ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h ops/stmt_goto.h \
- ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h ops/stmt_return.h \
- ops/stmt_switch.h ops/stmt_while.h ops/stmt_continue.h sym.h decl.h \
- cc1.h asm.h ../util/platform.h ../util/alloc.h ../util/dynarray.h sue.h \
- const.h gen_asm.h
 cc1.o: cc1.c ../util/util.h data_structs.h tree.h expr.h ops/expr_addr.h \
  ops/expr_assign.h ops/expr_assign_compound.h ops/expr_cast.h \
  ops/expr_comma.h ops/expr_funcall.h ops/expr_identifier.h ops/expr_if.h \
@@ -39,8 +28,8 @@ data_store.o: data_store.c ../util/util.h ../util/alloc.h data_structs.h \
  ops/stmt_case_range.h ops/stmt_code.h ops/stmt_default.h ops/stmt_do.h \
  ops/stmt_expr.h ops/stmt_for.h ops/stmt_goto.h ops/stmt_if.h \
  ops/stmt_label.h ops/stmt_noop.h ops/stmt_return.h ops/stmt_switch.h \
- ops/stmt_while.h ops/stmt_continue.h sym.h decl.h data_store.h asm.h \
- str.h
+ ops/stmt_while.h ops/stmt_continue.h sym.h decl.h data_store.h str.h \
+ cc1.h out/asm.h out/lbl.h
 decl.o: decl.c ../util/util.h ../util/alloc.h ../util/platform.h \
  ../util/dynarray.h data_structs.h tree.h expr.h ops/expr_addr.h \
  ops/expr_assign.h ops/expr_assign_compound.h ops/expr_cast.h \
@@ -281,7 +270,7 @@ ops/expr_addr.o: ops/expr_addr.c ops/ops.h ops/../../util/util.h \
  ops/stmt_noop.h ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h \
  ops/../cc1.h ops/../out/out.h ops/../fold.h ops/../const.h \
  ops/../gen_str.h ops/../gen_asm.h ops/../sue.h ops/../str.h \
- ops/../out/asm.h ops/../out/lbl.h
+ ops/../out/asm.h ops/../out/lbl.h ops/../data_store.h
 ops/expr_assign.o: ops/expr_assign.c ops/ops.h ops/../../util/util.h \
  ops/../data_structs.h ops/../tree.h ops/../expr.h ops/../ops/expr_addr.h \
  ops/../ops/expr_assign.h ops/../ops/expr_assign_compound.h \
@@ -962,7 +951,7 @@ out/asm.o: out/asm.c out/../../util/util.h out/../data_structs.h \
  out/../ops/stmt_switch.h out/../ops/stmt_while.h \
  out/../ops/stmt_continue.h out/../sym.h out/../decl.h out/../cc1.h \
  out/../sym.h out/asm.h out/../../util/platform.h out/../../util/alloc.h \
- out/../sue.h out/../const.h out/../gen_asm.h
+ out/../../util/dynarray.h out/../sue.h out/../const.h out/../gen_asm.h
 out/lbl.o: out/lbl.c out/../../util/alloc.h out/../../util/util.h \
  out/common.h out/lbl.h
 out/out.o: out/out.c out/../../util/util.h out/../../util/alloc.h \
