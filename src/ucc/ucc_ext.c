@@ -13,6 +13,10 @@
 #include "../util/dynarray.h"
 #include "cfg.h"
 
+#ifndef UCC_AS
+# error "ucc needs reconfiguring"
+#endif
+
 static int show, noop;
 
 void ucc_ext_cmds_show(int s)
@@ -258,15 +262,7 @@ void assemble(char *in, char *out, char **args)
 	if(args)
 		dynarray_add_array((void ***)&copy, (void **)args);
 
-#ifdef UCC_NASM
-#  error need to reconfigure ucc
-	dynarray_add((void ***)&copy, "-f");
-	dynarray_add((void ***)&copy, UCC_ARCH);
-
-	runner_1(0, UCC_NASM, in, out, copy);
-#else
 	runner_1(0, UCC_AS, in, out, copy);
-#endif
 
 	dynarray_free((void ***)&copy, NULL);
 }

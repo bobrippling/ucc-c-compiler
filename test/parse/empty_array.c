@@ -1,4 +1,4 @@
-char (*(*x)[])();
+extern char (*(*x)[])();
 
 main()
 {
