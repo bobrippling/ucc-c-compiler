@@ -641,3 +641,18 @@ void out_comment(const char *fmt, ...)
 	impl_comment(fmt, l);
 	va_end(l);
 }
+
+void out_func_prologue(int stack_res, int nargs, int variadic)
+{
+	impl_func_prologue(stack_res, nargs, variadic);
+}
+
+void out_func_epilogue()
+{
+	impl_func_epilogue();
+}
+
+void out_pop_func_ret(decl *d)
+{
+	impl_pop_func_ret(d);
+}

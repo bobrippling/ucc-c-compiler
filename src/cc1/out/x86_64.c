@@ -181,7 +181,7 @@ const char *call_reg_str(int i, decl *d)
 	return buf;
 }
 
-void out_func_prologue(int stack_res, int nargs, int variadic)
+void impl_func_prologue(int stack_res, int nargs, int variadic)
 {
 	(void)nargs;
 
@@ -208,14 +208,14 @@ void out_func_prologue(int stack_res, int nargs, int variadic)
 	}
 }
 
-void out_func_epilogue(void)
+void impl_func_epilogue(void)
 {
 	out_asm("leaveq");
 	stack_sz = 0;
 	out_asm("retq");
 }
 
-void out_pop_func_ret(decl *d)
+void impl_pop_func_ret(decl *d)
 {
 	(void)d;
 
