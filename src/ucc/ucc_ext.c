@@ -12,6 +12,10 @@
 #include "../util/dynarray.h"
 #include "cfg.h"
 
+#ifndef UCC_NASM
+# error "ucc needs reconfiguring (for nasm)"
+#endif
+
 static int show, noop;
 
 void ucc_ext_cmds_show(int s)
