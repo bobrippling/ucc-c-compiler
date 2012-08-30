@@ -683,14 +683,30 @@ static const char *x86_call_jmp_target(struct vstack *vp)
 {
 	static char buf[VSTACK_STR_SZ + 2];
 
-	if(vp->type == LBL_ADDR)
-		return vp->bits.lbl.str;
+	switch(vp->type){
+		case LBL_ADDR:
+			return vp->bits.lbl.str;
 
-	strcpy(buf, "*%");
-	v_to_reg(vp);
-	reg_str_r(buf + 2, vp);
+		case STACK:
+		case LBL:
+			/* jmp *-8(%rbp) */
+			*buf = '*';
+			vstack_str_r(buf + 1, vp);
+			return buf;
 
-	return buf;
+		case STACK_ADDR:
+		case FLAG:
+		case REG:
+		case CONST:
+			strcpy(buf, "*%");
+			v_to_reg(vp);
+			reg_str_r(buf + 2, vp);
+
+			return buf;
+	}
+
+	ICE("invalid jmp target");
+	return NULL;
 }
 
 void impl_jmp()
