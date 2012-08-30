@@ -128,6 +128,17 @@ void v_prepare_op(struct vstack *vp)
 
 void vtop2_prepare_op(void)
 {
+#if 0
+	/* this assume we're assigning back */
+	/* special case - const and stack/lbl is fine */
+	if((vtop->type == CONST && vtop[-1].type == STACK)
+	|| (vtop->type == STACK && vtop[-1].type == CONST))
+	{
+		return;
+	}
+#endif
+
+
 	/* attempt to give this a higher reg,
 	 * since it'll be used more,
 	 * e.g. return and idiv */
@@ -410,6 +421,11 @@ static void vtop2_are(
 		*pb = NULL;
 }
 
+static int calc_ptr_step(decl *d)
+{
+	return type_primitive_size(decl_ptr_depth(d) > 1 ? type_ptrdiff : d->type->primitive);
+}
+
 void out_op(enum op_type op)
 {
 	/*
@@ -425,8 +441,7 @@ void out_op(enum op_type op)
 
 	if(t_const && t_stack){
 		/* t_const == vtop... should be */
-		out_comment("adjusting off_from_bp");
-		t_stack->bits.off_from_bp += t_const->bits.val;
+		t_stack->bits.off_from_bp += t_const->bits.val * calc_ptr_step(t_stack->d);
 
 		goto fin;
 
@@ -465,12 +480,7 @@ def:
 				r_ptr = decl_is_ptr(vtop[-1].d);
 
 				if(l_ptr || r_ptr){
-					decl *const ptr_d = l_ptr ? vtop->d : vtop[-1].d;
-
-					const int ptr_step = type_primitive_size(
-							decl_ptr_depth(ptr_d) > 1
-							? type_ptrdiff
-							: ptr_d->type->primitive);
+					const int ptr_step = calc_ptr_step(l_ptr ? vtop->d : vtop[-1].d);
 
 					if(l_ptr ^ r_ptr){
 						/* ptr +/- int, adjust the non-ptr by sizeof *ptr */
