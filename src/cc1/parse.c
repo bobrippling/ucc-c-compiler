@@ -614,54 +614,65 @@ void parse_got_decls(decl **decls, stmt *codes_init)
 		/* only extract the init if it's not static */
 		decl *d = *diter;
 
-		if(d->init){
-			if(d->type->store != store_static && d->init->type == decl_init_scalar){
-				dynarray_prepend((void ***)&codes_init->codes,
-						expr_to_stmt(
-							expr_new_assign(
-								expr_new_identifier(d->spel),
-									d->init->bits.expr), scope));
+		if(d->type->store != store_static && d->init){
+			decl_init *const dinit = d->init;
 
-			}else{
+			switch(dinit->type){
+				case decl_init_scalar:
+					/* easy */
+					dynarray_prepend((void ***)&codes_init->codes,
+							expr_to_stmt(
+								expr_new_assign(
+									expr_new_identifier(d->spel),
+										dinit->bits.expr), scope));
+					break;
+
+				case decl_init_struct:
+					ICE("TODO: struct init");
+
+				case decl_init_brace:
+				{
 #ifndef FANCY_STACK_INIT
-				/* assignment expr for each init */
+					/* assignment expr for each init */
+					int index;
+					expr *comma_init = NULL;
+					decl_init_sub *sub;
 
-				ICE("TODO: stack init");
-#  if 0
-				data_store *dinit = d->init;
-				int i;
-				expr *comma_init = NULL;
+					for(index = 0; (sub = dinit->bits.subs[index]); index++){
+            expr *target = expr_new_op(op_plus);
+						expr *init;
 
-				for(i = 0; i < dinit->len; i++){
-					long init_val;
-					expr *init;
+						target->lhs = expr_new_identifier(d->spel);
+						target->rhs = expr_new_val(index);
 
-					if(dinit->type == array_exprs){
-						intval iv;
-						const_fold_need_val(dinit->data.exprs[i], &iv);
-						init_val = iv.val;
-					}else{
-						init_val = dinit->data.str[i];
+						UCC_ASSERT(sub->init->type == decl_init_scalar,
+								"can't do nested/complex inits yet");
+
+						/*fprintf(stderr, "%s[%d] = %s %ld\n",
+								d->spel, index,
+								sub->init->bits.expr->f_str(),
+								sub->init->bits.expr->val.iv.val);*/
+
+						init = expr_new_assign(expr_new_deref(target), sub->init->bits.expr);
+
+						/*init = expr_new_array_decl_init(d, init_val, i);*/
+
+						if(comma_init){
+							expr *new = expr_new_comma();
+							new->lhs = comma_init;
+							new->rhs = init;
+							comma_init = new;
+						}else{
+							comma_init = init;
+						}
 					}
 
-					init = expr_new_array_decl_init(d, init_val, i);
-
-					if(comma_init){
-						expr *new = expr_new_comma();
-						new->lhs = comma_init;
-						new->rhs = init;
-						comma_init = new;
-					}else{
-						comma_init = init;
-					}
-				}
-
-				dynarray_prepend((void ***)&codes_init->codes,
-						expr_to_stmt(comma_init, scope));
-#  endif
+					dynarray_prepend((void ***)&codes_init->codes,
+							expr_to_stmt(comma_init, scope));
 #else
-				ICW("TODO: init for %s somewhere else", d->spel);
+					ICW("TODO: init for %s somewhere else", d->spel);
 #endif
+				}
 			}
 		}
 		/* don't change init - used for checks for assign-to-const */
