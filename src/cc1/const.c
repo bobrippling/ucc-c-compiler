@@ -10,10 +10,10 @@
 
 void const_fold(expr *e, intval *iv, enum constyness *success)
 {
+	*success = CONST_NO;
+
 	if(fopt_mode & FOPT_CONST_FOLD && e->f_const_fold)
 		e->f_const_fold(e, iv, success);
-	else
-		*success = CONST_NO;
 }
 
 #if 0
