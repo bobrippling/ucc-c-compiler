@@ -207,7 +207,10 @@ void v_make_addr(struct vstack *vp)
 			ICE("invalid sym addr");
 	}
 
-	vp->d = decl_ptr_depth_inc(decl_copy(vp->d));
+	/* if we're making an address from an array,
+	 * don't change the decl - it's already of [] type */
+	if(!decl_is_array(vp->d))
+		vp->d = decl_ptr_depth_inc(decl_copy(vp->d));
 }
 
 void v_freeup_regp(struct vstack *vp)
