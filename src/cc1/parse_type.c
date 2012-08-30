@@ -108,10 +108,8 @@ type *parse_type_sue(enum type_primitive prim)
 
 	}else{
 		/* predeclaring */
-		if(prim == type_enum){
-			if(!sue_find(current_scope, spel))
-				cc1_warn_at(NULL, 0, 1, WARN_PREDECL_ENUM, "predeclaration of enums is not C99");
-		}
+		if(prim == type_enum && !sue_find(current_scope, spel))
+			cc1_warn_at(NULL, 0, 1, WARN_PREDECL_ENUM, "predeclaration of enums is not C99");
 	}
 
 	t->sue = sue_add(current_scope, spel, members, prim);
@@ -672,8 +670,19 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 						default:
 							warn = 1;
 					}
-					if(warn)
-						WARN_AT(&d->where, "declaration doesn't declare anything");
+					if(warn){
+						/*
+						 * die if it's a complex decl,
+						 * e.g. int (const *a)
+						 * [function with int argument, not a pointer to const int
+						 */
+#define err_nodecl "declaration doesn't declare anything"
+						if(d->desc)
+							DIE_AT(&d->where, err_nodecl);
+						else
+							WARN_AT(&d->where, err_nodecl);
+#undef err_nodecl
+					}
 
 					decl_free_notype(d);
 					goto next;
