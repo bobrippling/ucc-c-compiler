@@ -23,7 +23,8 @@ data_store *data_store_new_str(char *s, int l)
 
 void data_store_declare(data_store *ds)
 {
-	asm_out_section(SECTION_DATA, "%s:\ndb ", ds->spel);
+	/* only chars for the moment */
+	asm_out_section(SECTION_DATA, "%s:\n.byte ", ds->spel);
 }
 
 void data_store_out(data_store *ds)
