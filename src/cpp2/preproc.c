@@ -166,14 +166,9 @@ char *strip_comment(char *line)
 			}
 		}else if(*s == '"'){
 			/* read until the end of the string */
-keep_going:
-			s++;
-			while(*s && *s != '"')
-				s++;
-			if(!*s)
+			s = terminating_quote(s + 1);
+			if(!s)
 				die("no terminating quote to comment");
-			if(s[-1] == '\\')
-				goto keep_going;
 			/* finish of string */
 		}else if(*s == '/'){
 			if(s[1] == '/'){
