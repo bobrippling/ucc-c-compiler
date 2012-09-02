@@ -322,18 +322,16 @@ static int curtok_is_xequal()
 
 void read_string(char **sptr, int *plen)
 {
-	char *end = strchr(bufferpos, '"'), *const start = bufferpos;
+	char *const start = bufferpos;
+	char *const end = terminating_quote(start);
 	int size;
 
 	if(!end){
-		if((end = strchr(bufferpos, '\n')))
-			*end = '\0';
+		char *p;
+		if((p = strchr(bufferpos, '\n')))
+			*p = '\0';
 		DIE_AT(NULL, "Couldn't find terminating quote to \"%s\"", bufferpos);
 	}
-
-	if(end > bufferpos)
-		while(end && end[-1] == '\\') /* FIXME: "hi\\" */
-			end = strchr(end + 1, '"');
 
 	size = end - start + 1;
 
