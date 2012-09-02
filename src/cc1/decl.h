@@ -237,14 +237,11 @@ decl *decl_ptr_depth_dec(decl *d, where *from);
 int   decl_ptr_depth(    decl *d);
 decl *decl_func_deref(decl *d, funcargs **pfuncargs);
 
-decl_desc *decl_array_first_incomplete(decl *d);
-decl_desc *decl_array_first(decl *d);
-
 int decl_attr_present(decl_attr *, enum decl_attr_type);
 
+int decl_is_array( decl *);
 int decl_has_array(decl *);
 int decl_has_incomplete_array(decl *);
-int decl_is_array( decl *);
 funcargs *decl_funcargs(decl *);
 int funcargs_equal(funcargs *args_a, funcargs *args_b, int strict_types, int *idx);
 

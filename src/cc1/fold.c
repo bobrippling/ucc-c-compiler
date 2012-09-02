@@ -222,7 +222,7 @@ void fold_decl_init(decl *for_decl, decl_init *di, symtable *stab)
 	di->for_decl = for_decl;
 
 	/* fold + type check for statics + globals */
-	if(decl_has_array(for_decl)){ /* FIXME: sufficient for struct A x[] skipping ? */
+	if(decl_is_array(for_decl)){
 		/* don't allow scalar inits */
 		switch(di->type){
 			case decl_init_struct:
@@ -230,11 +230,21 @@ void fold_decl_init(decl *for_decl, decl_init *di, symtable *stab)
 				DIE_AT(&for_decl->where, "can't initialise array decl with scalar or struct");
 
 			case decl_init_brace:
-				if(decl_has_incomplete_array(for_decl)){
+			{
+				decl_desc *dp = decl_desc_tail(for_decl);
+				intval sz;
+
+				UCC_ASSERT(dp->type == decl_desc_array, "not array");
+
+				const_fold_need_val(dp->bits.array_size, &sz);
+
+				if(sz.val == 0){
 					/* complete the decl */
-					decl_desc *dp = decl_array_first_incomplete(for_decl);
-					dp->bits.array_size->val.iv.val = decl_init_len(di);
+					expr *expr_sz = dp->bits.array_size;
+					expr_mutate_wrapper(expr_sz, val);
+					expr_sz->val.iv.val = decl_init_len(di);
 				}
+			}
 		}
 	}else if(for_decl->type->primitive == type_struct && decl_ptr_depth(for_decl) == 0){
 		/* similar to above */

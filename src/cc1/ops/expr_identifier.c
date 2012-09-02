@@ -19,7 +19,7 @@ void fold_const_expr_identifier(expr *e, intval *piv, enum constyness *pconst_ty
 
 	/* may not have e->sym if we're the struct-member-identifier */
 
-	*pconst_type = e->sym && e->sym->decl && decl_has_array(e->sym->decl) ? CONST_WITHOUT_VAL : CONST_NO;
+	*pconst_type = e->sym && e->sym->decl && decl_is_array(e->sym->decl) ? CONST_WITHOUT_VAL : CONST_NO;
 }
 
 void fold_expr_identifier(expr *e, symtable *stab)

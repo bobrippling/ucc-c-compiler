@@ -563,8 +563,7 @@ int decl_is_fptr(decl *d)
 
 int decl_is_array(decl *d)
 {
-	decl_desc *dp;
-	for(dp = d->desc; dp && dp->child; dp = dp->child);
+	decl_desc *dp = decl_desc_tail(d);
 	return dp ? dp->type == decl_desc_array : 0;
 }
 
@@ -575,6 +574,20 @@ int decl_has_array(decl *d)
 	ITER_DESC_TYPE(d, dp, decl_desc_array)
 		return 1;
 
+	return 0;
+}
+
+int decl_has_incomplete_array(decl *d)
+{
+	decl_desc *tail = decl_desc_tail(d);
+
+	if(tail && tail->type == decl_desc_array){
+		intval iv;
+
+		const_fold_need_val(tail->bits.array_size, &iv);
+
+		return iv.val == 0;
+	}
 	return 0;
 }
 
@@ -590,46 +603,6 @@ int decl_ptr_or_block(decl *d)
 			case decl_desc_func:
 				break;
 		}
-	return 0;
-}
-
-decl_desc *decl_array_first_incomplete(decl *d)
-{
-	decl_desc *dp;
-
-	ITER_DESC_TYPE(d, dp, decl_desc_array){
-		intval iv;
-
-		const_fold_need_val(dp->bits.array_size, &iv);
-
-		if(!iv.val)
-			return dp;
-	}
-
-	return NULL;
-}
-
-decl_desc *decl_array_first(decl *d)
-{
-	decl_desc *dp;
-
-	ITER_DESC_TYPE(d, dp, decl_desc_array)
-		return dp;
-
-	return NULL;
-}
-
-int decl_has_incomplete_array(decl *d)
-{
-	decl_desc *tail = decl_desc_tail(d);
-
-	if(tail && tail->type == decl_desc_array){
-		intval iv;
-
-		const_fold_need_val(tail->bits.array_size, &iv);
-
-		return iv.val == 0;
-	}
 	return 0;
 }
 
