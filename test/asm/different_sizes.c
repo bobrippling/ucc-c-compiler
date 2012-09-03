@@ -18,7 +18,7 @@ long a(char c)
 	return c - 1;
 }
 
-short g(short a, char b)
+short q(short a, char b)
 {
 	return a + b;
 }
