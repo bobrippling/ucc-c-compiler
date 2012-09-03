@@ -34,15 +34,28 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 
 	UCC_ASSERT(op_can_compound(e->op), "non-compound op in compound expr");
 
-	/* pass the addr's target to promote_types */
-	e->tree_type = op_promote_types(e->op, &e->lhs->lhs, &e->rhs, &e->where, stab);
+	{
+		decl *dlhs, *drhs;
+		decl *resolved = op_required_promotion(e->op, lvalue, e->rhs, &e->where, &dlhs, &drhs);
 
-	/* type check */
-	fold_decl_equal(e->lhs->lhs->tree_type, e->rhs->tree_type,
-			&e->where, WARN_ASSIGN_MISMATCH,
-			"compound-assignment type mismatch");
+		if(dlhs){
+			/* can't cast the lvalue - we must cast the rhs to the correct size  */
 
-	/* FIXME: insert cast to lhs? */
+			if(dlhs != lvalue->tree_type)
+				decl_free(dlhs);
+
+			fold_insert_casts(lvalue->tree_type, &e->rhs, stab, &e->where, op_to_str(e->op));
+
+		}else if(drhs){
+			fold_insert_casts(drhs, &e->rhs, stab, &e->where, op_to_str(e->op));
+		}
+
+		e->tree_type = decl_copy(lvalue->tree_type);
+
+		decl_free(resolved);
+	}
+
+	/* type check is done in op_required_promotion() */
 }
 
 void gen_expr_assign_compound(expr *e, symtable *stab)

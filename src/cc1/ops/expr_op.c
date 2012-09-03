@@ -119,11 +119,6 @@ void fold_const_expr_op(expr *e, intval *piv, enum constyness *pconst_type)
 	}
 }
 
-#define SPEL_IF_IDENT(hs)                            \
-					expr_kind(hs, identifier) ? " ("     : "", \
-					expr_kind(hs, identifier) ? hs->spel : "", \
-					expr_kind(hs, identifier) ? ")"      : ""  \
-
 void expr_promote_int(expr **pe, enum type_primitive to, symtable *stab)
 {
 	expr *const e = *pe;
@@ -136,8 +131,11 @@ void expr_promote_int(expr **pe, enum type_primitive to, symtable *stab)
 
 	UCC_ASSERT(!e->tree_type->desc, "invalid type to promote");
 
-	if(type_primitive_size(e->tree_type->type->primitive) >= type_primitive_size(to))
-		return;
+	/* if(type_primitive_size(e->tree_type->type->primitive) >= type_primitive_size(to))
+	 *   return;
+	 *
+	 * insert down-casts too - the tree_type of the expression is still important
+	 */
 
   cast = expr_new_cast(decl_new_type(to), 1);
 
@@ -148,14 +146,16 @@ void expr_promote_int(expr **pe, enum type_primitive to, symtable *stab)
 	*pe = cast;
 }
 
-decl *op_promote_types(
+decl *op_required_promotion(
 		enum op_type op,
-		expr **plhs, expr **prhs,
-		where *w, symtable *stab)
+		expr *lhs, expr *rhs,
+		where *w,
+		decl **plhs, decl **prhs)
 {
 	decl *resolved = NULL;
-	expr *lhs = *plhs, *rhs = *prhs;
 	decl *const dlhs = lhs->tree_type, *const drhs = rhs->tree_type;
+
+	*plhs = *prhs = NULL;
 
 #if 0
 	If either operand is a pointer:
@@ -183,7 +183,7 @@ decl *op_promote_types(
 
 			goto fin;
 
-		}else if(l_ptr ^ r_ptr){
+		}else if(l_ptr){
 			/* + or - */
 			if(op != op_plus && op != op_minus)
 				DIE_AT(w, "operation between pointer and integer must be + or -");
@@ -191,15 +191,12 @@ decl *op_promote_types(
 			resolved = decl_copy(l_ptr ? dlhs : drhs);
 
 			/* FIXME: promote to unsigned */
-			expr_promote_int(
-					l_ptr ? &rhs : &lhs,
-					op == op_plus ? type_intptr : type_ptrdiff,
-					stab);
+			*(l_ptr ? prhs : plhs) = decl_new_type(op == op_plus ? type_intptr : type_ptrdiff);
 
 			goto fin;
 
-		}else{
-			UCC_ASSERT(!(l_ptr || r_ptr), "logic error");
+		}else if(r_ptr){
+			DIE_AT(w, "invalid %s between integer and pointer", op_to_str(op));
 
 		}
 	}
@@ -234,13 +231,9 @@ decl *op_promote_types(
 			/* TODO: needed? */
 			fold_decl_equal(dlhs, drhs,
 					w, WARN_COMPARE_MISMATCH,
-					"operation between mismatching types%s%s%s%s%s%s",
-					SPEL_IF_IDENT(lhs), SPEL_IF_IDENT(rhs));
+					"operation between mismatching types");
 
-			expr_promote_int(
-					 l_larger ? &rhs : &lhs,
-					(l_larger ? dlhs : drhs)->type->primitive,
-					stab);
+			*(l_larger ? prhs : plhs) = (l_larger ? dlhs : drhs);
 
 			dlarger = l_larger ? dlhs : drhs;
 		}
@@ -254,13 +247,28 @@ decl *op_promote_types(
 fin:
 	UCC_ASSERT(resolved, "no decl from type promotion");
 
-	*plhs = lhs;
-	*prhs = rhs;
+	UCC_ASSERT(!!*plhs + !!*prhs < 2, "can't cast both expressions");
 
 	return resolved;
 }
-#undef SPEL_IF_IDENT
-#undef IS_PTR
+
+decl *op_promote_types(
+		enum op_type op,
+		expr **plhs, expr **prhs,
+		where *w, symtable *stab)
+{
+	decl *dlhs, *drhs;
+	decl *resolved;
+
+	resolved = op_required_promotion(op, *plhs, *prhs, w, &dlhs, &drhs);
+
+	if(dlhs)
+		fold_insert_casts(dlhs, plhs, stab, w, op_to_str(op));
+	else if(drhs)
+		fold_insert_casts(drhs, prhs, stab, w, op_to_str(op));
+
+	return resolved;
+}
 
 void fold_expr_op(expr *e, symtable *stab)
 {
