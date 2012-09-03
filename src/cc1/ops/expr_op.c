@@ -223,9 +223,13 @@ decl *op_required_promotion(
 #endif
 
 	{
-		decl *dlarger = dlhs;
+		decl *dlarger = NULL;
 
-		if(dlhs->type->primitive != drhs->type->primitive){
+		if(op == op_shiftl || op == op_shiftr){
+			/* fine with any parameter sizes - don't need to match. resolves to lhs */
+			dlarger = dlhs;
+
+		}else if(dlhs->type->primitive != drhs->type->primitive){
 			const int l_larger = decl_size(dlhs) > decl_size(drhs);
 
 			/* TODO: needed? */
@@ -236,6 +240,10 @@ decl *op_required_promotion(
 			*(l_larger ? prhs : plhs) = (l_larger ? dlhs : drhs);
 
 			dlarger = l_larger ? dlhs : drhs;
+
+		}else{
+			/* default to either */
+			dlarger = dlhs;
 		}
 
 		/* if we have a _comparison_ (e.g. between enums), convert to int */
