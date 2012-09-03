@@ -76,6 +76,8 @@ stmt *stmt_new(func_fold_stmt *, func_gen_stmt *, func_str_stmt *, func_mutate_s
 stmt_flow *stmt_flow_new(symtable *parent);
 void stmt_mutate(stmt *, func_fold_stmt *, func_gen_stmt *, func_str_stmt *, func_mutate_stmt *);
 
+stmt *expr_to_stmt(expr *e, symtable *scope);
+
 typedef void stmt_walk_enter(stmt *current, int *stop, int *descend, void *);
 typedef void stmt_walk_leave(stmt *current, void *);
 

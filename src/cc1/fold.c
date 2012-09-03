@@ -216,10 +216,88 @@ int fold_sue(struct_union_enum_st *sue, symtable *stab)
 	return offset;
 }
 
+void fold_gen_init_assignment2(expr *base, decl *dfor, decl_init *init_from, stmt *codes)
+{
+	/* assignment expr for each init */
+	const int ninits = decl_init_len(init_from);
+
+	if(decl_has_incomplete_array(dfor)){
+		/* case 1: int x[][2] = { 0, 1, 2, 3 } - complete to 2
+		 * case 2: int x[][2] = { {1}, {2} } - complete to 2
+		 */
+		int complete_to;
+
+		UCC_ASSERT(init_from->type == decl_init_brace, "not a brace initialiser");
+
+		/* decide based on the first sub */
+		switch(init_from->bits.subs[0]->init->type){
+			default:
+				ICE("invalid initialiser");
+
+			case decl_init_scalar:
+			{
+				decl *dtmp = decl_ptr_depth_dec(decl_copy(dfor), &dfor->where);
+				/* (int[2] size = 8) / type_size = 2 */
+				complete_to = ninits / (decl_size(dtmp) / type_size(dtmp->type));
+				decl_free(dtmp);
+
+				WARN_AT(&init_from->where, "missing braces around initialiser");
+				break;
+			}
+
+			case decl_init_brace:
+				complete_to = ninits;
+				break;
+		}
+
+		decl_complete_array(dfor, complete_to);
+	}
+
+	if(decl_is_array(dfor)){
+		int i, array_count;
+		decl *array_deref;
+
+		array_count = decl_inner_array_count(dfor);
+		if(ninits > array_count)
+			DIE_AT(&dfor->where, "excess initialisers for decl");
+
+		array_deref = decl_ptr_depth_dec(decl_copy(dfor), &dfor->where);
+
+		for(i = 0; i < ninits; i++){
+			expr *target;
+
+			target = expr_new_op(op_plus);
+			target->lhs = base;
+			target->rhs = expr_new_val(i); /* access the i'th element of base */
+
+			fold_gen_init_assignment2(target, array_deref, init_from->bits.subs[i]->init, codes);
+		}
+
+		decl_free(array_deref);
+	}else{
+		/* scalar init */
+		expr *assign_init;
+
+		UCC_ASSERT(init_from->type == decl_init_scalar, "scalar init expected");
+
+		assign_init = expr_new_assign(expr_new_deref(base), init_from->bits.expr);
+
+		dynarray_prepend((void ***)&codes->codes,
+				expr_to_stmt(assign_init, codes->symtab));
+	}
+}
+
+void fold_gen_init_assignment(decl *dfor, stmt *code)
+{
+	expr *base = expr_new_identifier(dfor->spel);
+
+	fold_gen_init_assignment2(base, dfor, dfor->init, code);
+}
+
+#if 0
 void fold_decl_init(decl *for_decl, decl_init *di, symtable *stab)
 {
-	UCC_ASSERT(for_decl, "no decl-for for initialisation");
-	di->for_decl = for_decl;
+	fold_gen_init_assignment(for_decl, codes);
 
 	/* fold + type check for statics + globals */
 	if(decl_is_array(for_decl)){
@@ -291,46 +369,10 @@ void fold_decl_init(decl *for_decl, decl_init *di, symtable *stab)
 				break;
 		}
 	}
+#endif
 
+#if 0
 	switch(di->type){
-		case decl_init_scalar:
-		{
-			expr *init_exp = di->bits.expr;
-
-			if(for_decl->type->store == store_static || !stab->parent){
-				char buf_a[DECL_STATIC_BUFSIZ], buf_b[DECL_STATIC_BUFSIZ];
-				enum constyness type;
-				intval dummy;
-
-				fold_expr(init_exp, stab);
-
-				/* TODO: better error desc - init of subobject, etc */
-				fold_decl_equal(for_decl, init_exp->tree_type, &for_decl->where, WARN_ASSIGN_MISMATCH,
-						"mismatching initialisation for %s (%s vs. %s)",
-						for_decl->spel,
-						decl_to_str_r(buf_a, for_decl),
-						decl_to_str_r(buf_b, init_exp->tree_type));
-
-				const_fold(init_exp, &dummy, &type);
-
-				if(type == CONST_NO){
-					/* global/static + not constant */
-					/* allow identifiers if the identifier is also static */
-
-					if(!expr_kind(init_exp, identifier)
-					|| init_exp->tree_type->type->store != store_static)
-					{
-						DIE_AT(&init_exp->where, "not a constant expression for %s init - %s",
-								for_decl->spel, init_exp->f_str());
-					}
-				}
-			}else{
-				/* else it's done as an expr - prevent unused warning */
-				init_exp->freestanding = 1;
-			}
-			break;
-		}
-
 		case decl_init_brace:
 		case decl_init_struct:
 		{
@@ -393,6 +435,7 @@ void fold_decl_init(decl *for_decl, decl_init *di, symtable *stab)
 		break;
 	}
 }
+#endif
 
 void fold_decl(decl *d, symtable *stab)
 {
@@ -554,8 +597,6 @@ void fold_decl(decl *d, symtable *stab)
 				d->type->store = store_default;
 			}
 		}
-
-		fold_decl_init(d, d->init, stab);
 	}
 }
 

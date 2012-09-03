@@ -591,6 +591,30 @@ int decl_has_incomplete_array(decl *d)
 	return 0;
 }
 
+void decl_complete_array(decl *d, int n)
+{
+	decl_desc *ar_desc = decl_desc_tail(d);
+	expr *expr_sz;
+
+	UCC_ASSERT(ar_desc->type == decl_desc_array, "invalid array completion");
+
+	expr_sz = ar_desc->bits.array_size;
+	expr_mutate_wrapper(expr_sz, val);
+	expr_sz->val.iv.val = n;
+}
+
+int decl_inner_array_count(decl *d)
+{
+	decl_desc *ar_desc = decl_desc_tail(d);
+	intval iv;
+
+	UCC_ASSERT(ar_desc->type == decl_desc_array, "%s: not array", __func__);
+
+	const_fold_need_val(ar_desc->bits.array_size, &iv);
+
+	return iv.val;
+}
+
 int decl_ptr_or_block(decl *d)
 {
 	decl_desc *dp;
@@ -895,6 +919,7 @@ decl_init_sub *decl_init_sub_new(void)
 	return s;
 }
 
+/*
 decl_init_sub *decl_init_sub_zero_for_decl(decl *d)
 {
 	decl_init_sub *s = umalloc(sizeof *s);
@@ -918,7 +943,6 @@ decl_init_sub *decl_init_sub_zero_for_decl(decl *d)
 		s->init->bits.expr = expr_new_val(0);
 	}
 
-	s->init->for_decl = d;
-
 	return s;
 }
+*/

@@ -143,11 +143,6 @@ struct decl_init
 			char *spel;
 		} **subs;
 	} bits;
-
-	decl *for_decl;
-	/* the decl this is for - may be a struct, struct member, or:
-	 * int x[] = { 1, 2, 3 }; - a copy of x's decl, dereferenced
-	 */
 };
 
 struct data_store
@@ -242,6 +237,8 @@ int decl_attr_present(decl_attr *, enum decl_attr_type);
 int decl_is_array( decl *);
 int decl_has_array(decl *);
 int decl_has_incomplete_array(decl *);
+void decl_complete_array(decl *d, int n);
+int decl_inner_array_count(decl *d);
 funcargs *decl_funcargs(decl *);
 int funcargs_equal(funcargs *args_a, funcargs *args_b, int strict_types, int *idx);
 

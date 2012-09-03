@@ -207,7 +207,7 @@ static void asm_declare_sub(FILE *f, decl_init *init)
 			expr *const exp = init->bits.expr;
 
 			if(!exp->data_store)
-				fprintf(f, ".%s ", asm_type_directive(init->for_decl));
+				fprintf(f, ".%s ", "TODO"/*asm_type_directive(init->for_decl)*/);
 
 			/*if(!const_expr_is_zero(exp))...*/
 			static_store(exp);
