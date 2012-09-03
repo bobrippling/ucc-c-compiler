@@ -435,12 +435,19 @@ void impl_op(enum op_type op)
 			/* value to shift must be a register */
 			v_to_reg(&vtop[-1]);
 
+			v_freeup_reg(REG_C, 2); /* shift by rcx... x86 sigh */
+
 			switch(vtop->type){
 				default:
-					v_to_reg(vtop);
+					v_to_reg(vtop); /* TODO: v_to_reg_preferred(vtop, REG_C) */
 
 				case REG:
 					free_this = vtop->d = decl_new_char();
+
+					if(vtop->bits.reg != REG_C){
+						impl_reg_cp(vtop, REG_C);
+						vtop->bits.reg = REG_C;
+					}
 					break;
 
 				case CONST:
@@ -452,7 +459,7 @@ void impl_op(enum op_type op)
 
 			out_asm("%s%c %s, %s",
 					op == op_shiftl ? "shl" : "shr",
-					asm_type_ch(vtop->d),
+					asm_type_ch(vtop[-1].d),
 					bufs, bufv);
 
 			vpop();
@@ -484,7 +491,7 @@ void impl_op(enum op_type op)
 			v_freeup_reg(REG_A, 2);
 			v_freeup_reg(REG_D, 2);
 
-			r_div = v_to_reg(&vtop[-1]);
+			r_div = v_to_reg(&vtop[-1]); /* TODO: similar to above - v_to_reg_preferred */
 
 			if(r_div != REG_A){
 				/* we already have rax in use by vtop, swap the values */
