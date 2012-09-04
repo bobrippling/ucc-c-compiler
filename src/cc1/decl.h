@@ -128,20 +128,13 @@ struct decl_init
 		/*decl_init_str - covered by scalar */
 		decl_init_scalar,              /* = [0-9] | basic-expr */
 		decl_init_brace,               /* { `decl_init`, `decl_init`, ... } */
-		decl_init_struct,              /* { .member1 = `decl_init`, .member2 = `decl_init` } */
+		/*decl_init_struct,             * { .member1 = `decl_init`, .member2 = `decl_init` } */
 	} type;
 
 	union
 	{
 		expr *expr;
-
-		struct decl_init_sub
-		{
-			where where;
-			decl_init *init;
-			/* only for struct inits */
-			char *spel;
-		} **subs;
+		decl_init **inits;
 	} bits;
 };
 
@@ -188,14 +181,13 @@ decl_desc   *decl_desc_array_new(decl *dparent, decl_desc *parent);
 #define decl_desc_ptr_or_block(d) ((d)->type == decl_desc_ptr || (d)->type == decl_desc_block)
 
 decl      *decl_copy(decl *);
-decl_desc *decl_desc_copy(decl_desc *);
+decl      *decl_copy_keep_array(decl *d);
+decl_desc *decl_desc_copy(decl_desc *, int conv_array);
 
 decl_init *decl_init_new(enum decl_init_type);
-decl_init_sub *decl_init_sub_new(void);
-decl_init_sub *decl_init_sub_zero_for_decl(decl *);
 int        decl_init_len(decl_init *);
 const char *decl_init_to_str(enum decl_init_type);
-#define decl_init_is_brace(di) ((di)->type == decl_init_brace || (di)->type == decl_init_struct)
+#define decl_init_is_brace(di) ((di)->type == decl_init_brace)
 
 void decl_conv_array_func_to_ptr(decl *d);
 

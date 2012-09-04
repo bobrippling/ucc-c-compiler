@@ -188,14 +188,13 @@ static void asm_declare_sub(FILE *f, decl_init *init)
 {
 	switch(init->type){
 		case decl_init_brace:
-		case decl_init_struct:
 		{
-			struct decl_init_sub **const inits = init->bits.subs;
-			const int len = dynarray_count((void **)inits);;
+			decl_init **const inits = init->bits.inits;
+			const int len = dynarray_count((void **)inits);
 			int i;
 
 			for(i = 0; i < len; i++){
-				asm_declare_sub(f, inits[i]->init);
+				asm_declare_sub(f, inits[i]);
 				/* TODO: struct padding for next member */
 				fputc('\n', f);
 			}

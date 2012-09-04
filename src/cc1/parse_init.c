@@ -3,14 +3,13 @@ decl_init *parse_initialisation(void)
 	decl_init *di;
 
 	if(accept(token_open_block)){
-		struct decl_init_sub **subs;
+		decl_init **exps = NULL;
 
-		subs = NULL;
-
-		di = decl_init_new(decl_init_brace); /* subject to change */
+		di = decl_init_new(decl_init_brace);
 
 		while(curtok != token_close_block){
-			struct decl_init_sub *sub = decl_init_sub_new();
+			decl_init *sub;
+#ifdef DINIT_WITH_STRUCT
 			int struct_init = 0;
 			char *ident;
 
@@ -29,19 +28,22 @@ decl_init *parse_initialisation(void)
 				EAT(token_assign);
 				struct_init = 1;
 			}
+#endif
 
-			sub->init = parse_initialisation();
+			sub = parse_initialisation();
 
+#ifdef DINIT_WITH_STRUCT
 			if(struct_init)
 				sub->spel = ident;
+#endif
 
-			dynarray_add((void ***)&subs, sub);
+			dynarray_add((void ***)&exps, sub);
 
 			if(!accept(token_comma))
 				break;
 		}
 
-		di->bits.subs = subs;
+		di->bits.inits = exps;
 
 		EAT(token_close_block);
 

@@ -62,25 +62,26 @@ void print_decl_init(decl_init *di)
 			print_expr(di->bits.expr);
 			break;
 
-		case decl_init_struct:
 		case decl_init_brace:
 		{
-			decl_init_sub *s;
+			decl_init *s;
 			int i;
 
-			for(i = 0; (s = di->bits.subs[i]); i++){
-				const int need_brace = decl_init_is_brace(s->init);
+			for(i = 0; (s = di->bits.inits[i]); i++){
+				const int need_brace = decl_init_is_brace(s);
 
 				/* ->member not printed */
+#ifdef DINIT_WITH_STRUCT
 				if(s->spel)
 					idt_printf(".%s", s->spel);
 				else
+#endif
 					idt_printf("[%d]", i);
 
 				fprintf(cc1_out, " = %s\n", need_brace ? "{" : "");
 
 				gen_str_indent++;
-				print_decl_init(s->init);
+				print_decl_init(s);
 				gen_str_indent--;
 
 				if(need_brace)

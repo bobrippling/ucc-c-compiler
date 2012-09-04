@@ -19,7 +19,6 @@ typedef struct funcargs    funcargs;
 typedef struct decl_attr   decl_attr;
 
 typedef struct decl_init   decl_init;
-typedef struct decl_init_sub decl_init_sub;
 typedef struct data_store  data_store;
 
 enum type_primitive

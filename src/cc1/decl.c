@@ -154,41 +154,47 @@ const char *decl_attr_to_str(enum decl_attr_type t)
 	return NULL;
 }
 
-decl_desc *decl_desc_copy(decl_desc *dp)
+decl_desc *decl_desc_copy(decl_desc *dp, int conv_array)
 {
 	decl_desc *ret = umalloc(sizeof *ret);
 	memcpy(ret, dp, sizeof *ret);
 
 	if(ret->type == decl_desc_array){
-		/* convert to ptr */
-		ret->type = decl_desc_ptr;
-		ret->bits.qual = qual_none;
+		if(conv_array){
+			/* convert to ptr */
+			ret->type = decl_desc_ptr;
+			ret->bits.qual = qual_none;
+		}else{
+			intval iv;
+			const_fold_need_val(dp->bits.array_size, &iv);
+			ret->bits.array_size = expr_new_val(iv.val);
+		}
 	}
 
 	if(dp->child){
-		ret->child = decl_desc_copy(dp->child);
+		ret->child = decl_desc_copy(dp->child, conv_array);
 		ret->child->parent_desc = ret;
 	}
 	return ret;
 }
 
-static void decl_copy_desc_if(decl *to, decl *from)
+static void decl_copy_desc_if(decl *to, decl *from, int conv_array)
 {
 	UCC_ASSERT(!to->desc, "desc for target copy: %s", decl_to_str(to));
 
 	if(from->desc){
-		to->desc = decl_desc_copy(from->desc);
+		to->desc = decl_desc_copy(from->desc, conv_array);
 		to->desc->parent_decl = to;
 	}
 }
 
-decl *decl_copy(decl *d)
+static decl *decl_copy_array(decl *d, int conv_array)
 {
 	decl *ret = umalloc(sizeof *ret);
 	memcpy(ret, d, sizeof *ret);
 	ret->type = type_copy(d->type);
 	ret->desc = NULL;
-	decl_copy_desc_if(ret, d);
+	decl_copy_desc_if(ret, d, conv_array);
 
 	/* null-out what we don't want to pass on */
 	ret->init = NULL;
@@ -196,6 +202,16 @@ decl *decl_copy(decl *d)
 	ret->func_code = NULL;
 
 	return ret;
+}
+
+decl *decl_copy_keep_array(decl *d)
+{
+	return decl_copy_array(d, 0);
+}
+
+decl *decl_copy(decl *d)
+{
+	return decl_copy_array(d, 1);
 }
 
 int decl_size(decl *d)
@@ -887,8 +903,7 @@ int decl_init_len(decl_init *di)
 		 return 1;
 
 	 case decl_init_brace:
-	 case decl_init_struct:
-		 return dynarray_count((void **)di->bits.subs);
+		 return dynarray_count((void **)di->bits.inits);
  }
  ICE("decl init bad type");
  return -1;
@@ -907,16 +922,8 @@ const char *decl_init_to_str(enum decl_init_type t)
 	switch(t){
 		CASE_STR_PREFIX(decl_init, scalar);
 		CASE_STR_PREFIX(decl_init, brace);
-		CASE_STR_PREFIX(decl_init, struct);
 	}
 	return NULL;
-}
-
-decl_init_sub *decl_init_sub_new(void)
-{
-	decl_init_sub *s = umalloc(sizeof *s);
-	where_new(&s->where);
-	return s;
 }
 
 /*

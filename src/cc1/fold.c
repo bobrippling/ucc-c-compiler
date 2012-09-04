@@ -230,15 +230,19 @@ void fold_gen_init_assignment2(expr *base, decl *dfor, decl_init *init_from, stm
 		UCC_ASSERT(init_from->type == decl_init_brace, "not a brace initialiser");
 
 		/* decide based on the first sub */
-		switch(init_from->bits.subs[0]->init->type){
+		switch(init_from->bits.inits[0]->type){
 			default:
 				ICE("invalid initialiser");
 
 			case decl_init_scalar:
 			{
-				decl *dtmp = decl_ptr_depth_dec(decl_copy(dfor), &dfor->where);
+				decl *dtmp = decl_ptr_depth_dec(decl_copy_keep_array(dfor), &dfor->where);
 				/* (int[2] size = 8) / type_size = 2 */
 				complete_to = ninits / (decl_size(dtmp) / type_size(dtmp->type));
+
+				fprintf(stderr, "completing array (subtype %s) to %d\n",
+						decl_to_str(dtmp), complete_to);
+
 				decl_free(dtmp);
 
 				WARN_AT(&init_from->where, "missing braces around initialiser");
@@ -254,36 +258,79 @@ void fold_gen_init_assignment2(expr *base, decl *dfor, decl_init *init_from, stm
 	}
 
 	if(decl_is_array(dfor)){
-		int i, array_count;
-		decl *array_deref;
+		const int pull_from_this_init = init_from->bits.inits[0]->type == decl_init_scalar;
+		const int this_array_count = decl_inner_array_count(dfor);
+		const int stride = ninits / this_array_count;
+		int i;
+		decl *darray_deref;
 
-		array_count = decl_inner_array_count(dfor);
-		if(ninits > array_count)
-			DIE_AT(&dfor->where, "excess initialisers for decl");
+		darray_deref = decl_ptr_depth_dec(decl_copy_keep_array(dfor), &dfor->where);
 
-		array_deref = decl_ptr_depth_dec(decl_copy(dfor), &dfor->where);
+		fprintf(stderr, "stride %d (ninits = %d / this_array = %d) for %s\n",
+				stride, ninits, this_array_count, decl_to_str(darray_deref));
 
-		for(i = 0; i < ninits; i++){
+		for(i = 0; i < this_array_count; i++){
 			expr *target;
+			decl_init *elem_init;
 
 			target = expr_new_op(op_plus);
 			target->lhs = base;
 			target->rhs = expr_new_val(i); /* access the i'th element of base */
 
-			fold_gen_init_assignment2(target, array_deref, init_from->bits.subs[i]->init, codes);
+			if(pull_from_this_init){
+				int sub_idx;
+
+				elem_init = decl_init_new(decl_init_brace);
+
+				fprintf(stderr, "for sub_idx = %d, < %d\n", i * stride, stride);
+
+				for(sub_idx = i * stride; sub_idx < stride; sub_idx++){
+					decl_init *new = decl_init_new(decl_init_scalar);
+					decl_init *indexed_expr;
+
+					memcpy(&new->where, &elem_init->where, sizeof new->where);
+
+					dynarray_add((void ***)&elem_init->bits.inits, new);
+
+					indexed_expr = init_from->bits.inits[sub_idx];
+
+					/* this will abort for e.g. int x[] = { 0, { 1, 2 } }; */
+					UCC_ASSERT(indexed_expr->type == decl_init_scalar, "not scalar subinit");
+
+					new->bits.expr = indexed_expr->bits.expr;
+				}
+			}else{
+				elem_init = init_from->bits.inits[i];
+			}
+
+			fprintf(stderr, "next level init from %s\n", decl_init_to_str(init_from->type));
+			fold_gen_init_assignment2(target, darray_deref, elem_init, codes);
+
+			if(pull_from_this_init){
+				ICW("need to free elem_init");
+			}
 		}
 
-		decl_free(array_deref);
+		decl_free(darray_deref);
 	}else{
 		/* scalar init */
 		expr *assign_init;
 
-		UCC_ASSERT(init_from->type == decl_init_scalar, "scalar init expected");
+		switch(init_from->type){
+			case decl_init_scalar:
+				assign_init = expr_new_assign(expr_new_deref(base), init_from->bits.expr);
 
-		assign_init = expr_new_assign(expr_new_deref(base), init_from->bits.expr);
+				dynarray_prepend((void ***)&codes->codes,
+						expr_to_stmt(assign_init, codes->symtab));
+				break;
 
-		dynarray_prepend((void ***)&codes->codes,
-				expr_to_stmt(assign_init, codes->symtab));
+			case decl_init_brace:
+				if(ninits > 1)
+					WARN_AT(&init_from->where, "excess initialisers for scalar");
+
+				fold_gen_init_assignment2(base, dfor, init_from->bits.inits[0], codes);
+				break;
+		}
 	}
 }
 
@@ -473,7 +520,7 @@ void fold_decl(decl *d, symtable *stab)
 
 		/* decl */
 		if(from->desc){
-			decl_desc *ins = decl_desc_copy(from->desc);
+			decl_desc *ins = decl_desc_copy(from->desc, 0);
 
 			decl_desc_append(&ins, d->desc);
 			d->desc = ins;
