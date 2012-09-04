@@ -162,7 +162,7 @@ int main(int argc, char **argv)
 					*eq++ = '\0';
 					macro_add(argv[i] + 2, eq);
 				}else{
-					macro_add(argv[i] + 2, "");
+					macro_add(argv[i] + 2, "1"); /* -Dhello means #define hello 1 */
 				}
 				break;
 			}
