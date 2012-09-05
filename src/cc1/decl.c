@@ -154,47 +154,59 @@ const char *decl_attr_to_str(enum decl_attr_type t)
 	return NULL;
 }
 
-decl_desc *decl_desc_copy(decl_desc *dp, int conv_array)
+decl_desc *decl_desc_copy(decl_desc *dp)
 {
 	decl_desc *ret = umalloc(sizeof *ret);
 	memcpy(ret, dp, sizeof *ret);
 
-	if(ret->type == decl_desc_array){
-		if(conv_array){
-			/* convert to ptr */
-			ret->type = decl_desc_ptr;
-			ret->bits.qual = qual_none;
-		}else{
-			intval iv;
-			const_fold_need_val(dp->bits.array_size, &iv);
-			ret->bits.array_size = expr_new_val(iv.val);
-		}
+	if(dp->type == decl_desc_array){
+		intval iv;
+		const_fold_need_val(dp->bits.array_size, &iv);
+		ret->bits.array_size = expr_new_val(iv.val);
 	}
 
 	if(dp->child){
-		ret->child = decl_desc_copy(dp->child, conv_array);
+		ret->child = decl_desc_copy(dp->child);
 		ret->child->parent_desc = ret;
 	}
+
 	return ret;
 }
 
-static void decl_copy_desc_if(decl *to, decl *from, int conv_array)
+static void decl_copy_desc_if(decl *to, decl *from, int decay_first_array)
 {
 	UCC_ASSERT(!to->desc, "desc for target copy: %s", decl_to_str(to));
 
 	if(from->desc){
-		to->desc = decl_desc_copy(from->desc, conv_array);
-		to->desc->parent_decl = to;
+		decl_desc *first = from->desc;
+
+		if(decay_first_array && first->type == decl_desc_array){
+			/* convert to ptr */
+			decl_desc *new = decl_desc_new(decl_desc_ptr, to, NULL);
+
+			new->type = decl_desc_ptr;
+			new->bits.qual = qual_none;
+
+			if(first->child)
+				new->child = decl_desc_copy(first->child);
+		}else{
+			to->desc = decl_desc_copy(from->desc);
+		}
+
+		decl_desc_link(to);
 	}
 }
 
-static decl *decl_copy_array(decl *d, int conv_array)
+static decl *decl_copy_array(decl *d, int decay_first_array)
 {
 	decl *ret = umalloc(sizeof *ret);
+
 	memcpy(ret, d, sizeof *ret);
+
 	ret->type = type_copy(d->type);
+
 	ret->desc = NULL;
-	decl_copy_desc_if(ret, d, conv_array);
+	decl_copy_desc_if(ret, d, decay_first_array);
 
 	/* null-out what we don't want to pass on */
 	ret->init = NULL;

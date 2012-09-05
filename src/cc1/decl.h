@@ -182,7 +182,7 @@ decl_desc   *decl_desc_array_new(decl *dparent, decl_desc *parent);
 
 decl      *decl_copy(decl *);
 decl      *decl_copy_keep_array(decl *d);
-decl_desc *decl_desc_copy(decl_desc *, int conv_array);
+decl_desc *decl_desc_copy(decl_desc *dp);
 
 decl_init *decl_init_new(enum decl_init_type);
 int        decl_init_len(decl_init *);

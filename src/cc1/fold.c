@@ -519,7 +519,7 @@ void fold_decl(decl *d, symtable *stab)
 
 		/* decl */
 		if(from->desc){
-			decl_desc *ins = decl_desc_copy(from->desc, 0);
+			decl_desc *ins = decl_desc_copy(from->desc);
 
 			decl_desc_append(&ins, d->desc);
 			d->desc = ins;
