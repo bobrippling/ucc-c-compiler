@@ -221,7 +221,7 @@ int fold_sue(struct_union_enum_st *sue, symtable *stab)
 void fold_gen_init_assignment2(expr *base, decl *dfor, decl_init *init_from, stmt *codes)
 {
 	/* assignment expr for each init */
-	const int ninits = decl_init_len(init_from);
+	const int n_inits = decl_init_len(init_from);
 
 	if(decl_has_incomplete_array(dfor)){
 		/* case 1: int x[][2] = { 0, 1, 2, 3 } - complete to 2
@@ -240,7 +240,7 @@ void fold_gen_init_assignment2(expr *base, decl *dfor, decl_init *init_from, stm
 			{
 				decl *dtmp = decl_ptr_depth_dec(decl_copy_keep_array(dfor), &dfor->where);
 				/* (int[2] size = 8) / type_size = 2 */
-				complete_to = ninits / (decl_size(dtmp) / type_size(dtmp->type));
+				complete_to = n_inits / (decl_size(dtmp) / type_size(dtmp->type));
 
 				fprintf(stderr, "completing array (subtype %s) to %d\n",
 						decl_to_str(dtmp), complete_to);
@@ -252,7 +252,7 @@ void fold_gen_init_assignment2(expr *base, decl *dfor, decl_init *init_from, stm
 			}
 
 			case decl_init_brace:
-				complete_to = ninits;
+				complete_to = n_inits;
 				break;
 		}
 
@@ -261,73 +261,70 @@ void fold_gen_init_assignment2(expr *base, decl *dfor, decl_init *init_from, stm
 
 	if(decl_is_array(dfor)){
 		const int pull_from_this_init = init_from->bits.inits[0]->type == decl_init_scalar;
-		const int this_array_count = decl_inner_array_count(dfor);
-		const int stride = ninits / this_array_count;
-		int i;
+		const int n_assignments = decl_inner_array_count(dfor);
+		int i_assignment;
 		decl *darray_deref;
 
 		darray_deref = decl_ptr_depth_dec(decl_copy_keep_array(dfor), &dfor->where);
 
-		fprintf(stderr, "stride %d (ninits = %d / this_array = %d) for %s\n",
-				stride, ninits, this_array_count, decl_to_str(darray_deref));
+		for(i_assignment = 0; i_assignment < n_assignments; i_assignment++){
+			expr *target = expr_new_op(op_plus);
+			decl_init *sub_init;
 
-		for(i = 0; i < this_array_count; i++){
-			expr *target;
-			decl_init *elem_init;
-
-			target = expr_new_op(op_plus);
+			/* access the i_assignment'th element of base */
 			target->lhs = base;
-			target->rhs = expr_new_val(i); /* access the i'th element of base */
+			target->rhs = expr_new_val(i_assignment);
+
+			if(expr_kind(base, op))
+				target = expr_new_deref(target);
+
+			/*fprintf(stderr, "for array %s, sub %s\n",
+					decl_to_str(dfor),
+					decl_to_str_r((char[DECL_STATIC_BUFSIZ]){}, darray_deref));*/
 
 			if(pull_from_this_init){
-				int sub_idx;
+				const int inner_count = decl_is_array(darray_deref)
+					? decl_inner_array_count(darray_deref)
+					: 1;
+				int i_sub;
 
-				elem_init = decl_init_new(decl_init_brace);
+				//fprintf(stderr, "from this init, inner_count %d\n", inner_count);
 
-				fprintf(stderr, "for sub_idx = %d, < %d\n", i * stride, stride);
+				sub_init = decl_init_new(decl_init_brace);
 
-				for(sub_idx = i * stride; sub_idx < stride; sub_idx++){
-					decl_init *new = decl_init_new(decl_init_scalar);
-					decl_init *indexed_expr;
-
-					memcpy(&new->where, &elem_init->where, sizeof new->where);
-
-					dynarray_add((void ***)&elem_init->bits.inits, new);
-
-					indexed_expr = init_from->bits.inits[sub_idx];
-
-					/* this will abort for e.g. int x[] = { 0, { 1, 2 } }; */
-					UCC_ASSERT(indexed_expr->type == decl_init_scalar, "not scalar subinit");
-
-					new->bits.expr = indexed_expr->bits.expr;
+				for(i_sub = 0; i_sub < inner_count; i_sub++){
+					dynarray_add((void ***)&sub_init->bits.inits,
+							init_from->bits.inits[i_assignment * inner_count]);
 				}
+
 			}else{
-				elem_init = init_from->bits.inits[i];
+				sub_init = init_from->bits.inits[i_assignment];
 			}
 
-			fprintf(stderr, "next level init from %s\n", decl_init_to_str(init_from->type));
-			fold_gen_init_assignment2(target, darray_deref, elem_init, codes);
+			fold_gen_init_assignment2(target, darray_deref, sub_init, codes);
 
 			if(pull_from_this_init){
-				ICW("need to free elem_init");
+				//ICW("need to free sub_init");
 			}
 		}
 
 		decl_free(darray_deref);
 	}else{
 		/* scalar init */
-		expr *assign_init;
-
 		switch(init_from->type){
 			case decl_init_scalar:
+			{
+				expr *assign_init;
+
 				assign_init = expr_new_assign(expr_new_deref(base), init_from->bits.expr);
 
 				dynarray_prepend((void ***)&codes->codes,
 						expr_to_stmt(assign_init, codes->symtab));
 				break;
+			}
 
 			case decl_init_brace:
-				if(ninits > 1)
+				if(n_inits > 1)
 					WARN_AT(&init_from->where, "excess initialisers for scalar");
 
 				fold_gen_init_assignment2(base, dfor, init_from->bits.inits[0], codes);
