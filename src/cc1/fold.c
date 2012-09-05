@@ -48,14 +48,21 @@ void fold_insert_casts(decl *dlhs, expr **prhs, symtable *stab, where *w, const 
 
 	if(!decl_equal(dlhs, rhs->tree_type, 1)){
 		/* insert a cast: rhs -> lhs */
-		expr *cast;
+		if(expr_kind(rhs, val) && decl_is_integral(rhs->tree_type)){
+			/* don't cast - just change the tree_type */
+			rhs->tree_type->type->primitive = dlhs->type->primitive;
+			rhs->tree_type->type->is_signed = dlhs->type->is_signed;
+			rhs->tree_type->type->qual      = dlhs->type->qual;
+		}else{
+			expr *cast;
 
-		cast = expr_new_cast(decl_copy(dlhs), 1);
-		cast->expr = rhs;
-		*prhs = cast;
+			cast = expr_new_cast(decl_copy_keep_array(dlhs), 1);
+			cast->expr = rhs;
+			*prhs = cast;
 
-		/* need to fold the cast again - mainly for "loss of precision" warning */
-		fold_expr_cast_descend(cast, stab, 0);
+			/* need to fold the cast again - mainly for "loss of precision" warning */
+			fold_expr_cast_descend(cast, stab, 0);
+		}
 	}
 
 #define lhs_signed dlhs->type->is_signed
