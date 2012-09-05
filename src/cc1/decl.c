@@ -799,7 +799,7 @@ void decl_desc_add_str(decl_desc *dp, int show_spel, char **bufp, int sz)
 #define BUF_ADD(...) \
 	do{ int n = snprintf(*bufp, sz, __VA_ARGS__); *bufp += n, sz -= n; }while(0)
 
-	const int need_paren = !!dp->parent_desc;
+	const int need_paren = dp->child ? dp->type != dp->child->type : 0;
 
 	if(need_paren)
 		BUF_ADD("(");
