@@ -178,17 +178,19 @@ static void decl_copy_desc_if(decl *to, decl *from, int decay_first_array)
 	UCC_ASSERT(!to->desc, "desc for target copy: %s", decl_to_str(to));
 
 	if(from->desc){
-		decl_desc *first = from->desc;
+		decl_desc *inner = decl_desc_tail(from);
 
-		if(decay_first_array && first->type == decl_desc_array){
+		if(decay_first_array && inner->type == decl_desc_array){
 			/* convert to ptr */
 			decl_desc *new = decl_desc_new(decl_desc_ptr, to, NULL);
 
 			new->type = decl_desc_ptr;
 			new->bits.qual = qual_none;
 
-			if(first->child)
-				new->child = decl_desc_copy(first->child);
+			if(inner->child)
+				new->child = decl_desc_copy(inner->child);
+
+			decl_desc_append(&to->desc, inner);
 		}else{
 			to->desc = decl_desc_copy(from->desc);
 		}
