@@ -707,9 +707,11 @@ cant:
 
 void decl_conv_array_func_to_ptr(decl *d)
 {
-	decl_desc *dp;
+	decl_desc *dp = decl_desc_tail(d);
 
-	for(dp = d->desc; dp; dp = dp->child){
+	/* f(int x[][5]) decays to f(int (*x)[5]), not f(int **x) */
+
+	if(dp){
 		switch(dp->type){
 			case decl_desc_array:
 				expr_free(dp->bits.array_size);
@@ -718,26 +720,13 @@ void decl_conv_array_func_to_ptr(decl *d)
 				break;
 
 			case decl_desc_func:
-				if(!dp->child)
-					goto ins_ptr;
+			{
+				decl_desc *ins = decl_desc_ptr_new(dp->parent_decl, dp);
 
-				switch(dp->child->type){
-					case decl_desc_ptr:
-					case decl_desc_block:
-						/* no need for these types */
-						break;
-
-					default:
-ins_ptr:
-					{
-						decl_desc *ins = decl_desc_ptr_new(dp->parent_decl, dp);
-
-						ins->child = dp->child;
-						dp->child = ins;
-					}
-					break;
-				}
+				ins->child = dp->child;
+				dp->child = ins;
 				break;
+			}
 
 			case decl_desc_ptr:
 			case decl_desc_block:
