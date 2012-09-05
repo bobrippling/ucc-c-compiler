@@ -53,8 +53,8 @@ static const struct
 static int stack_sz;
 
 
-static void out_asm( const char *fmt, ...) __printflike(1, 2);
-static void out_asm2(enum p_opts opts, const char *fmt, ...) __printflike(2, 3);
+static void out_asm( const char *fmt, ...) ucc_printflike(1, 2);
+static void out_asm2(enum p_opts opts, const char *fmt, ...) ucc_printflike(2, 3);
 
 static void out_asmv(enum p_opts opts, const char *fmt, va_list l)
 {

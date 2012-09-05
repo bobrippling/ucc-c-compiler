@@ -48,16 +48,11 @@ void fold_insert_casts(decl *dlhs, expr **prhs, symtable *stab, where *w, const 
 
 	if(!decl_equal(dlhs, rhs->tree_type, 1)){
 		/* insert a cast: rhs -> lhs */
-		where *old_w = eof_where;
 		expr *cast;
-
-		eof_where = w;
 
 		cast = expr_new_cast(decl_copy(dlhs), 1);
 		cast->expr = rhs;
 		*prhs = cast;
-
-		eof_where = old_w;
 
 		/* need to fold the cast again - mainly for "loss of precision" warning */
 		fold_expr_cast_descend(cast, stab, 0);
