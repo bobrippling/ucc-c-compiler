@@ -969,6 +969,21 @@ out/out.o: out/out.c out/../../util/util.h out/../../util/alloc.h \
  out/../ops/stmt_switch.h out/../ops/stmt_while.h \
  out/../ops/stmt_continue.h out/../sym.h out/../decl.h out/out.h \
  out/vstack.h out/x86_64.h out/../../util/platform.h out/../cc1.h
+out/vm.o: out/vm.c out/../../util/util.h out/../data_structs.h out/../tree.h \
+ out/../expr.h out/../ops/expr_addr.h out/../ops/expr_assign.h \
+ out/../ops/expr_assign_compound.h out/../ops/expr_cast.h \
+ out/../ops/expr_comma.h out/../ops/expr_funcall.h \
+ out/../ops/expr_identifier.h out/../ops/expr_if.h out/../ops/expr_op.h \
+ out/../ops/expr_sizeof.h out/../ops/expr_val.h out/../ops/expr_stmt.h \
+ out/../ops/expr_deref.h out/../ops/expr_struct.h out/../stmt.h \
+ out/../ops/stmt_break.h out/../ops/stmt_case.h \
+ out/../ops/stmt_case_range.h out/../ops/stmt_code.h \
+ out/../ops/stmt_default.h out/../ops/stmt_do.h out/../ops/stmt_expr.h \
+ out/../ops/stmt_for.h out/../ops/stmt_goto.h out/../ops/stmt_if.h \
+ out/../ops/stmt_label.h out/../ops/stmt_noop.h out/../ops/stmt_return.h \
+ out/../ops/stmt_switch.h out/../ops/stmt_while.h \
+ out/../ops/stmt_continue.h out/../sym.h out/../decl.h out/vstack.h \
+ out/x86_64.h out/../cc1.h
 out/x86_64.o: out/x86_64.c out/../../util/util.h out/../../util/alloc.h \
  out/../../util/platform.h out/../data_structs.h out/../tree.h \
  out/../expr.h out/../ops/expr_addr.h out/../ops/expr_assign.h \
