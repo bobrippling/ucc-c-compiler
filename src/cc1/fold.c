@@ -373,7 +373,7 @@ void fold_decl_init(decl *for_decl, decl_init *di, symtable *stab)
 				}
 			}
 		}
-	}else if(for_decl->type->primitive == type_struct && decl_ptr_depth(for_decl) == 0){
+	}else if(for_decl->type->primitive == type_struct && !decl_is_ptr(for_decl)){
 		/* similar to above */
 		const int nmembers = sue_nmembers(for_decl->type->sue);
 
