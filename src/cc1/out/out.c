@@ -77,6 +77,11 @@ enum vstore v_deref_type(enum vstore store)
 	return -1;
 }
 
+decl *v_deref(struct vstack *vp)
+{
+	return decl_ptr_depth_dec(decl_copy(vp->d), NULL);
+}
+
 void out_assert_vtop_null(void)
 {
 	UCC_ASSERT(!vtop, "vtop not null");
@@ -536,7 +541,7 @@ void out_deref()
 	if((signed)derefed != -1){
 		vtop->type = derefed;
 		/* XXX: memleak */
-		vtop->d = decl_ptr_depth_dec(decl_copy(vtop->d), NULL);
+		vtop->d = v_deref(vtop);
 	}else{
 		impl_deref();
 	}

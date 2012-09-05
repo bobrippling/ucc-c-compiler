@@ -57,5 +57,6 @@ void v_freeup_reg(int r, int allowable_stack);
 void v_save_reg(struct vstack *vp);
 
 enum vstore v_deref_type(enum vstore store);
+decl *v_deref(struct vstack *vp);
 
 #endif

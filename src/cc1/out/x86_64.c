@@ -590,7 +590,7 @@ void impl_deref()
 	r = v_unused_reg(1);
 
 	/* loaded the pointer, now we apply the deref change */
-	dereffed = decl_ptr_depth_dec(decl_copy(vtop->d), NULL);
+	dereffed = v_deref(vtop);
 
 	x86_reg_str_r(ptr, vtop->bits.reg, NULL);
 	x86_reg_str_r(dst, r, dereffed);
