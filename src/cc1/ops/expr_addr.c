@@ -34,7 +34,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 		fold_expr(e->lhs, stab);
 
 		/* lvalues are identifier, struct-exp or deref */
-		if(!expr_is_lvalue(e->lhs, LVAL_ALLOW_FUNC | LVAL_ALLOW_ARRAY))
+		if(!decl_is_array(e->lhs->tree_type) && !expr_is_lvalue(e->lhs, LVAL_ALLOW_FUNC))
 			DIE_AT(&e->lhs->where, "can't take the address of %s (%s)",
 					e->lhs->f_str(), decl_to_str(e->lhs->tree_type));
 

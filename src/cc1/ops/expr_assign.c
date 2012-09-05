@@ -20,7 +20,7 @@ int expr_is_lvalue(expr *e, enum lvalue_opts opts)
 	 */
 
 	if(decl_is_array(e->tree_type))
-		return opts & LVAL_ALLOW_ARRAY;
+		return 0;
 
 	if(expr_kind(e, identifier))
 		return (opts & LVAL_ALLOW_FUNC) || !e->tree_type->func_code;
@@ -47,8 +47,7 @@ void fold_expr_assign(expr *e, symtable *stab)
 	if(decl_is_void(e->rhs->tree_type))
 		DIE_AT(&e->where, "assignment from void expression");
 
-	if(!expr_is_lvalue(e->lhs, LVAL_ALLOW_ARRAY)){
-		/* only allow assignments to type[] if it's an init */
+	if(!expr_is_lvalue(e->lhs, 0)){
 		DIE_AT(&e->lhs->where, "not an lvalue (%s%s%s)",
 				e->lhs->f_str(),
 				expr_kind(e->lhs, op) ? " - " : "",

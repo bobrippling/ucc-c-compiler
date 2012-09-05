@@ -11,7 +11,6 @@ func_gen     gen_expr_style_assign;
 enum lvalue_opts
 {
 	LVAL_ALLOW_FUNC  = 1 << 0,
-	LVAL_ALLOW_ARRAY = 1 << 1
 };
 
 int expr_is_lvalue(expr *e, enum lvalue_opts);
