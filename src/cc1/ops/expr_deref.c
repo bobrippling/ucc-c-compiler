@@ -30,7 +30,18 @@ void gen_expr_deref_store(expr *e, symtable *stab)
 void gen_expr_deref(expr *e, symtable *stab)
 {
 	gen_expr(expr_deref_what(e), stab);
-	out_deref();
+
+	if(decl_is_array(e->tree_type) && decl_is_array(expr_deref_what(e)->tree_type)){
+		/*char buf[DECL_STATIC_BUFSIZ];
+
+		out_comment("array access - no deref (%s -> %s)",
+				decl_to_str(expr_deref_what(e)->tree_type),
+				decl_to_str_r(buf, e->tree_type));*/
+
+		out_change_decl(e->tree_type);
+	}else{
+		out_deref();
+	}
 }
 
 void gen_expr_str_deref(expr *e, symtable *stab)
