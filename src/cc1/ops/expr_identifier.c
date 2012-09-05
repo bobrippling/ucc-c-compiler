@@ -96,7 +96,7 @@ void gen_expr_identifier(expr *e, symtable *stab)
 	 * since arrays grow upwards... duh
 	 */
 
-	if(decl_has_array(e->sym->decl) || decl_is_func(e->sym->decl)){
+	if(decl_is_array(e->sym->decl) || decl_is_func(e->sym->decl)){
 		out_push_sym_addr(e->sym);
 	}else{
 		out_push_sym(e->sym);
