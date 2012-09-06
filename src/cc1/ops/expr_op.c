@@ -231,11 +231,15 @@ decl *op_required_promotion(
 
 		}else if(dlhs->type->primitive != drhs->type->primitive){
 			const int l_larger = decl_size(dlhs) > decl_size(drhs);
+			char bufa[DECL_STATIC_BUFSIZ], bufb[DECL_STATIC_BUFSIZ];
 
 			/* TODO: needed? */
 			fold_decl_equal(dlhs, drhs,
 					w, WARN_COMPARE_MISMATCH,
-					"operation between mismatching types");
+					"mismatching types in %s (%s and %s)",
+					op_to_str(op),
+					decl_to_str_r(bufa, dlhs),
+					decl_to_str_r(bufb, drhs));
 
 			*(l_larger ? prhs : plhs) = (l_larger ? dlhs : drhs);
 
