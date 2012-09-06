@@ -28,10 +28,9 @@ void fold_decl_equal(decl *a, decl *b, where *w, enum warning warn,
 {
 	if(!decl_equal(a, b, DECL_CMP_ALLOW_VOID_PTR | (fopt_mode & FOPT_STRICT_TYPES ? DECL_CMP_STRICT_PRIMITIVE : 0))){
 		int one_struct;
-		char buf[DECL_STATIC_BUFSIZ];
 		va_list l;
 
-		cc1_warn_at(w, 0, 0, warn, "%s vs. %s for...", decl_to_str(a), decl_to_str_r(buf, b));
+		/*cc1_warn_at(w, 0, 0, warn, "%s vs. %s for...", decl_to_str(a), decl_to_str_r(buf, b));*/
 
 
 		one_struct = (!a->desc && a->type->sue && a->type->sue->primitive != type_enum)
@@ -121,10 +120,9 @@ void fold_enum(struct_union_enum_st *en, symtable *stab)
 		if(e == (expr *)-1){
 
 			/*expr_free(e); XXX: memleak */
-			where *old_w = eof_where;
-			eof_where = &asm_struct_enum_where;
-			m->val = expr_new_val(defval);
-			eof_where = old_w;
+			EOF_WHERE(&asm_struct_enum_where,
+				m->val = expr_new_val(defval)
+			);
 
 			if(bitmask)
 				defval <<= 1;
@@ -802,7 +800,7 @@ void fold(symtable *globs)
 	memset(&asm_struct_enum_where, 0, sizeof asm_struct_enum_where);
 	asm_struct_enum_where.fname = current_fname;
 
-	add_builtins(globs);
+	EOF_WHERE(&asm_struct_enum_where, add_builtins(globs));
 
 	if(fopt_mode & FOPT_ENABLE_ASM){
 		decl *df;
