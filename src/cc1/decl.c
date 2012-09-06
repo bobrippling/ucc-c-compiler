@@ -9,6 +9,7 @@
 #include "../util/dynarray.h"
 #include "data_structs.h"
 #include "macros.h"
+#include "sue.h"
 #include "const.h"
 
 #define ITER_DESC_TYPE(d, dp, typ)     \
@@ -100,12 +101,6 @@ void decl_free(decl *d)
 	decl_free_notype(d);
 }
 
-array_decl *array_decl_new()
-{
-	array_decl *ad = umalloc(sizeof *ad);
-	return ad;
-}
-
 decl_attr *decl_attr_new(enum decl_attr_type t)
 {
 	decl_attr *da = umalloc(sizeof *da);
@@ -114,11 +109,27 @@ decl_attr *decl_attr_new(enum decl_attr_type t)
 	return da;
 }
 
+decl_attr *decl_attr_copy(decl_attr *da)
+{
+	decl_attr *ret = decl_attr_new(da->type);
+
+	memcpy(ret, da, sizeof *ret);
+
+	ret->next = da->next ? decl_attr_copy(da->next) : NULL;
+
+	return ret;
+}
+
 void decl_attr_append(decl_attr **loc, decl_attr *new)
 {
-	while((*loc))
-		loc = &(*loc)->next;
-	*loc = new;
+	/*
+	 * don't link it up, make copies,
+	 * so when we adjust others,
+	 * things don't get tangled with links
+	 */
+
+	if(new)
+		*loc = decl_attr_copy(new);
 }
 
 int decl_attr_present(decl_attr *da, enum decl_attr_type t)
@@ -148,44 +159,73 @@ decl_desc *decl_desc_copy(decl_desc *dp)
 	decl_desc *ret = umalloc(sizeof *ret);
 	memcpy(ret, dp, sizeof *ret);
 
-	if(ret->type == decl_desc_array){
-		/* convert to ptr */
-		ret->type = decl_desc_ptr;
-		ret->bits.qual = qual_none;
+	if(dp->type == decl_desc_array){
+		intval iv;
+		const_fold_need_val(dp->bits.array_size, &iv);
+		ret->bits.array_size = expr_new_val(iv.val);
 	}
 
 	if(dp->child){
 		ret->child = decl_desc_copy(dp->child);
 		ret->child->parent_desc = ret;
 	}
+
 	return ret;
 }
 
-static void decl_copy_desc_if(decl *to, decl *from)
+static void decl_copy_desc_if(decl *to, decl *from, int decay_first_array)
 {
 	UCC_ASSERT(!to->desc, "desc for target copy: %s", decl_to_str(to));
 
 	if(from->desc){
-		to->desc = decl_desc_copy(from->desc);
-		to->desc->parent_decl = to;
+		decl_desc *inner = decl_desc_tail(from);
+
+		if(decay_first_array && inner->type == decl_desc_array){
+			/* convert to ptr */
+			decl_desc *new = decl_desc_new(decl_desc_ptr, to, NULL);
+
+			new->type = decl_desc_ptr;
+			new->bits.qual = qual_none;
+
+			if(inner->child)
+				new->child = decl_desc_copy(inner->child);
+
+			decl_desc_append(&to->desc, inner);
+		}else{
+			to->desc = decl_desc_copy(from->desc);
+		}
+
+		decl_desc_link(to);
 	}
 }
 
-decl *decl_copy(decl *d)
+static decl *decl_copy_array(decl *d, int decay_first_array)
 {
 	decl *ret = umalloc(sizeof *ret);
+
 	memcpy(ret, d, sizeof *ret);
+
 	ret->type = type_copy(d->type);
+
 	ret->desc = NULL;
-	decl_copy_desc_if(ret, d);
+	decl_copy_desc_if(ret, d, decay_first_array);
 
 	/* null-out what we don't want to pass on */
 	ret->init = NULL;
-	ret->arrayinit = NULL;
 	ret->spel = NULL;
 	ret->func_code = NULL;
 
 	return ret;
+}
+
+decl *decl_copy_keep_array(decl *d)
+{
+	return decl_copy_array(d, 0);
+}
+
+decl *decl_copy(decl *d)
+{
+	return decl_copy_array(d, 1);
 }
 
 int decl_size(decl *d)
@@ -318,14 +358,14 @@ int decl_equal(decl *a, decl *b, enum decl_cmp mode)
 
 	if((mode & DECL_CMP_ALLOW_VOID_PTR)){
 		/* one side is void * */
-		if(decl_is_void_ptr(a) && decl_ptr_depth(b))
+		if(decl_is_void_ptr(a) && decl_is_ptr(b))
 			return 1;
-		if(decl_is_void_ptr(b) && decl_ptr_depth(a))
+		if(decl_is_void_ptr(b) && decl_is_ptr(a))
 			return 1;
 	}
 
 	/* we are strict if told, or if either are a pointer - types must be equal */
-	strict = (mode & DECL_CMP_STRICT_PRIMITIVE) || decl_ptr_depth(a) || decl_ptr_depth(b);
+	strict = (mode & DECL_CMP_STRICT_PRIMITIVE) || decl_is_ptr(a) || decl_is_ptr(b);
 
 	if(!type_equal(a->type, b->type, strict))
 		return 0;
@@ -335,20 +375,38 @@ int decl_equal(decl *a, decl *b, enum decl_cmp mode)
 
 int decl_ptr_depth(decl *d)
 {
+	int depth = 0;
 	decl_desc *dp;
-	int i = 0;
 
 	for(dp = d->desc; dp; dp = dp->child)
 		switch(dp->type){
 			case decl_desc_ptr:
+				depth++;
+				break;
 			case decl_desc_array:
-				i++;
 			case decl_desc_func:
 			case decl_desc_block:
 				break;
 		}
 
-	return i;
+	return depth;
+}
+
+int decl_is_ptr(decl *d)
+{
+	decl_desc *dp;
+
+	for(dp = d->desc; dp; dp = dp->child)
+		switch(dp->type){
+			case decl_desc_ptr:
+			case decl_desc_array:
+				return 1;
+			case decl_desc_func:
+			case decl_desc_block:
+				break;
+		}
+
+	return 0;
 }
 
 int decl_desc_depth(decl *d)
@@ -375,18 +433,27 @@ decl_desc *decl_leaf(decl *d)
 funcargs *decl_funcargs(decl *d)
 {
 	decl_desc *dp;
-	for(dp = d->desc; dp->type != decl_desc_func && dp->child; dp = dp->child);
-	return dp->bits.func;
+
+	for(dp = decl_desc_tail(d); dp; dp = dp->parent_desc)
+		if(dp->type == decl_desc_func)
+			return dp->bits.func;
+
+	return NULL;
 }
 
 int decl_is_struct_or_union_possible_ptr(decl *d)
 {
-	return d->type->primitive == type_struct || d->type->primitive == type_union;
+	return (d->type->primitive == type_struct || d->type->primitive == type_union);
 }
 
 int decl_is_struct_or_union(decl *d)
 {
-	return decl_is_struct_or_union_possible_ptr(d) && !decl_ptr_depth(d);
+	return decl_is_struct_or_union_possible_ptr(d) && !decl_is_ptr(d);
+}
+
+int decl_is_struct_or_union_ptr(decl *d)
+{
+	return decl_is_struct_or_union_possible_ptr(d) && decl_is_ptr(d);
 }
 
 int decl_is_const(decl *d)
@@ -432,7 +499,8 @@ decl *decl_ptr_depth_dec(decl *d, where *from)
 
 	if(!last || (last->type != decl_desc_ptr && last->type != decl_desc_array)){
 		DIE_AT(from,
-			"trying to dereference non-pointer%s%s%s",
+			"trying to dereference %s%s%s%s",
+			decl_to_str(d),
 			last ? " (" : "",
 			last ? decl_desc_to_str(last->type) : "",
 			last ? ")"  : "");
@@ -459,6 +527,10 @@ int decl_is_integral(decl *d)
 	switch(d->type->primitive){
 		case type_int:
 		case type_char:
+		case type__Bool:
+		case type_short:
+		case type_long:
+		case type_llong:
 				return 1;
 
 		case type_unknown:
@@ -466,6 +538,9 @@ int decl_is_integral(decl *d)
 		case type_struct:
 		case type_union:
 		case type_enum:
+		case type_float:
+		case type_double:
+		case type_ldouble:
 				break;
 	}
 
@@ -498,8 +573,7 @@ int decl_is_callable(decl *d)
 
 int decl_is_func(decl *d)
 {
-	decl_desc *dp;
-	for(dp = d->desc; dp && dp->child; dp = dp->child);
+	decl_desc *dp = decl_leaf(d);
 	return dp && dp->type == decl_desc_func;
 }
 
@@ -519,8 +593,7 @@ int decl_is_fptr(decl *d)
 
 int decl_is_array(decl *d)
 {
-	decl_desc *dp;
-	for(dp = d->desc; dp && dp->child; dp = dp->child);
+	decl_desc *dp = decl_desc_tail(d);
 	return dp ? dp->type == decl_desc_array : 0;
 }
 
@@ -534,32 +607,6 @@ int decl_has_array(decl *d)
 	return 0;
 }
 
-decl_desc *decl_array_first_incomplete(decl *d)
-{
-	decl_desc *dp;
-
-	ITER_DESC_TYPE(d, dp, decl_desc_array){
-		intval iv;
-
-		const_fold_need_val(dp->bits.array_size, &iv);
-
-		if(!iv.val)
-			return dp;
-	}
-
-	return NULL;
-}
-
-decl_desc *decl_array_first(decl *d)
-{
-	decl_desc *dp;
-
-	ITER_DESC_TYPE(d, dp, decl_desc_array)
-		return dp;
-
-	return NULL;
-}
-
 int decl_has_incomplete_array(decl *d)
 {
 	decl_desc *tail = decl_desc_tail(d);
@@ -571,6 +618,45 @@ int decl_has_incomplete_array(decl *d)
 
 		return iv.val == 0;
 	}
+	return 0;
+}
+
+void decl_complete_array(decl *d, int n)
+{
+	decl_desc *ar_desc = decl_desc_tail(d);
+	expr *expr_sz;
+
+	UCC_ASSERT(ar_desc->type == decl_desc_array, "invalid array completion");
+
+	expr_sz = ar_desc->bits.array_size;
+	expr_mutate_wrapper(expr_sz, val);
+	expr_sz->val.iv.val = n;
+}
+
+int decl_inner_array_count(decl *d)
+{
+	decl_desc *ar_desc = decl_desc_tail(d);
+	intval iv;
+
+	UCC_ASSERT(ar_desc->type == decl_desc_array, "%s: not array", __func__);
+
+	const_fold_need_val(ar_desc->bits.array_size, &iv);
+
+	return iv.val;
+}
+
+int decl_ptr_or_block(decl *d)
+{
+	decl_desc *dp;
+	for(dp = d->desc; dp; dp = dp->child)
+		switch(dp->type){
+			case decl_desc_ptr:
+			case decl_desc_block:
+			case decl_desc_array:
+				return 1;
+			case decl_desc_func:
+				break;
+		}
 	return 0;
 }
 
@@ -635,9 +721,11 @@ cant:
 
 void decl_conv_array_func_to_ptr(decl *d)
 {
-	decl_desc *dp;
+	decl_desc *dp = decl_desc_tail(d);
 
-	for(dp = d->desc; dp; dp = dp->child){
+	/* f(int x[][5]) decays to f(int (*x)[5]), not f(int **x) */
+
+	if(dp){
 		switch(dp->type){
 			case decl_desc_array:
 				expr_free(dp->bits.array_size);
@@ -646,26 +734,13 @@ void decl_conv_array_func_to_ptr(decl *d)
 				break;
 
 			case decl_desc_func:
-				if(!dp->child)
-					goto ins_ptr;
+			{
+				decl_desc *ins = decl_desc_ptr_new(dp->parent_decl, dp);
 
-				switch(dp->child->type){
-					case decl_desc_ptr:
-					case decl_desc_block:
-						/* no need for these types */
-						break;
-
-					default:
-ins_ptr:
-					{
-						decl_desc *ins = decl_desc_ptr_new(dp->parent_decl, dp);
-
-						ins->child = dp->child;
-						dp->child = ins;
-					}
-					break;
-				}
+				ins->child = dp->child;
+				dp->child = ins;
 				break;
+			}
 
 			case decl_desc_ptr:
 			case decl_desc_block:
@@ -733,12 +808,12 @@ void decl_debug(decl *d)
 		fprintf(stderr, "\t%s\n", decl_desc_to_str(i->type));
 }
 
-void decl_desc_add_str(decl_desc *dp, char **bufp, int sz)
+void decl_desc_add_str(decl_desc *dp, int show_spel, char **bufp, int sz)
 {
 #define BUF_ADD(...) \
 	do{ int n = snprintf(*bufp, sz, __VA_ARGS__); *bufp += n, sz -= n; }while(0)
 
-	const int need_paren = !!dp->parent_desc;
+	const int need_paren = dp->child ? dp->type != dp->child->type : 0;
 
 	if(need_paren)
 		BUF_ADD("(");
@@ -756,7 +831,9 @@ void decl_desc_add_str(decl_desc *dp, char **bufp, int sz)
 	}
 
 	if(dp->child)
-		decl_desc_add_str(dp->child, bufp, sz);
+		decl_desc_add_str(dp->child, show_spel, bufp, sz);
+	else if(show_spel)
+		BUF_ADD("%s", dp->parent_decl->spel);
 
 	switch(dp->type){
 		case decl_desc_block:
@@ -793,7 +870,7 @@ void decl_desc_add_str(decl_desc *dp, char **bufp, int sz)
 #undef BUF_ADD
 }
 
-const char *decl_to_str_r(char buf[DECL_STATIC_BUFSIZ], decl *d)
+const char *decl_to_str_r_spel(char buf[DECL_STATIC_BUFSIZ], int show_spel, decl *d)
 {
 	char *bufp = buf;
 
@@ -803,14 +880,79 @@ const char *decl_to_str_r(char buf[DECL_STATIC_BUFSIZ], decl *d)
 	BUF_ADD("%s%s", type_to_str(d->type), d->desc ? " " : "");
 
 	if(d->desc)
-		decl_desc_add_str(d->desc, &bufp, DECL_STATIC_BUFSIZ - (bufp - buf));
+		decl_desc_add_str(d->desc, show_spel, &bufp, DECL_STATIC_BUFSIZ - (bufp - buf));
+	else if(show_spel && d->spel)
+		BUF_ADD(" %s", d->spel);
 
 	return buf;
 #undef BUF_ADD
 }
 
+const char *decl_to_str_r(char buf[DECL_STATIC_BUFSIZ], decl *d)
+{
+	return decl_to_str_r_spel(buf, 0, d);
+}
+
 const char *decl_to_str(decl *d)
 {
 	static char buf[DECL_STATIC_BUFSIZ];
-	return decl_to_str_r(buf, d);
+	return decl_to_str_r_spel(buf, 0, d);
 }
+
+int decl_init_len(decl_init *di)
+{
+ switch(di->type){
+	 case decl_init_scalar:
+		 return 1;
+
+	 case decl_init_brace:
+		 return dynarray_count((void **)di->bits.inits);
+ }
+ ICE("decl init bad type");
+ return -1;
+}
+
+decl_init *decl_init_new(enum decl_init_type t)
+{
+	decl_init *di = umalloc(sizeof *di);
+	where_new(&di->where);
+	di->type = t;
+	return di;
+}
+
+const char *decl_init_to_str(enum decl_init_type t)
+{
+	switch(t){
+		CASE_STR_PREFIX(decl_init, scalar);
+		CASE_STR_PREFIX(decl_init, brace);
+	}
+	return NULL;
+}
+
+/*
+decl_init_sub *decl_init_sub_zero_for_decl(decl *d)
+{
+	decl_init_sub *s = umalloc(sizeof *s);
+	memcpy(&s->where, &d->where, sizeof s->where);
+
+	if(decl_is_struct_or_union(d)){
+		sue_member **m;
+
+		s->init = decl_init_new(decl_init_struct);
+
+		for(m = d->type->sue->members; m && *m; m++){
+			decl_init_sub *sub = decl_init_sub_zero_for_decl((*m)->struct_member);
+			dynarray_add((void ***)&s->init->bits.subs, sub);
+		}
+
+	}else if(decl_is_array(d)){
+		ICE("TODO: zero init array");
+	}else{
+		s->init = decl_init_new(decl_init_scalar);
+
+		s->init->bits.expr = expr_new_val(0);
+	}
+
+	return s;
+}
+*/

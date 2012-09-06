@@ -44,6 +44,13 @@ stmt *stmt_new(func_fold_stmt *f_fold, func_gen_stmt *f_gen, func_str_stmt *f_st
 	return s;
 }
 
+stmt *expr_to_stmt(expr *e, symtable *scope)
+{
+	stmt *t = stmt_new_wrapper(expr, scope);
+	t->expr = e;
+	return t;
+}
+
 static void stmt_walk2(stmt *base, stmt_walk_enter enter, stmt_walk_leave leave, void *data, int *stop)
 {
 	int descend = 1;

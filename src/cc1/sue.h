@@ -55,4 +55,7 @@ int sue_size(struct_union_enum_st *);
 
 decl *struct_union_member_find(struct_union_enum_st *, const char *spel, where *die_where);
 
+decl *struct_union_member_at_idx(struct_union_enum_st *, int idx); /* NULL if out of bounds */
+int   struct_union_member_idx(struct_union_enum_st *, decl *);
+
 #endif

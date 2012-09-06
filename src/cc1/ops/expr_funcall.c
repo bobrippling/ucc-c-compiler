@@ -61,12 +61,11 @@ void fold_expr_funcall(expr *e, symtable *stab)
 				decl_to_str(df));
 	}
 
-	if(expr_kind(e->expr, op)
-	&& e->expr->op == op_deref
-	&& decl_is_fptr(op_deref_expr(e->expr)->tree_type)){
+	if(expr_kind(e->expr, deref)
+	&& decl_is_fptr(expr_deref_what(e->expr)->tree_type)){
 		/* XXX: memleak */
 		/* (*f)() - dereffing to a function, then calling - remove the deref */
-		e->expr = op_deref_expr(e->expr);
+		e->expr = expr_deref_what(e->expr);
 	}
 
 	df = e->tree_type = decl_func_deref(decl_copy(df), &args_from_decl);
@@ -86,6 +85,7 @@ void fold_expr_funcall(expr *e, symtable *stab)
 			desc = umalloc(strlen(sp) + 25);
 			sprintf(desc, "function argument to %s", sp);
 
+			fold_need_expr(arg, desc, 0);
 			fold_disallow_st_un(arg, desc);
 
 			free(desc);
@@ -147,40 +147,40 @@ void fold_expr_funcall(expr *e, symtable *stab)
 
 void gen_expr_funcall(expr *e, symtable *stab)
 {
-	sym *const sym = e->expr->sym;
-	expr **iter;
-	int nargs = 0;
-
 	if(e->tree_type->builtin){
 		builtin_gen(e);
 		return;
 	}
 
+	/* continue with normal funcall */
+	const int variadic = decl_funcargs(e->expr->tree_type)->variadic;
+	sym *const sym = e->expr->sym;
+	int nargs = 0;
+
+	if(sym && !decl_is_fptr(sym->decl))
+		out_push_lbl(sym->decl->spel, 0, NULL);
+	else
+		gen_expr(e->expr, stab);
+
 	if(e->funcargs){
-		/* need to push on in reverse order */
-		for(iter = e->funcargs; *iter; iter++);
-		for(iter--; iter >= e->funcargs; iter--){
-			gen_expr(*iter, stab);
-			nargs++;
+		decl *dint = decl_new_type(type_int);
+		const int int_sz = decl_size(dint);
+		expr **aiter;
+
+		for(aiter = e->funcargs; *aiter; aiter++, nargs++);
+
+		for(aiter--; aiter >= e->funcargs; aiter--){
+			expr *earg = *aiter;
+
+			gen_expr(earg, stab);
+
+			/* each arg needs casting up to int size, if smaller */
+			if(decl_size(earg->tree_type) < int_sz)
+				out_cast(earg->tree_type, dint);
 		}
 	}
 
-	if(sym && !decl_is_fptr(sym->decl)){
-		/* simple */
-		asm_temp(1, "call %s", sym->decl->spel);
-	}else{
-		gen_expr(e->expr, stab);
-		asm_temp(1, "pop rax  ; function address");
-		asm_temp(1, "call rax ; duh");
-	}
-
-	if(nargs)
-		asm_temp(1, "add rsp, %d ; %d arg%s",
-				nargs * platform_word_size(),
-				nargs,
-				nargs == 1 ? "" : "s");
-
-	asm_temp(1, "push rax ; ret");
+	out_call(nargs, variadic, e->tree_type);
 }
 
 void gen_expr_str_funcall(expr *e, symtable *stab)

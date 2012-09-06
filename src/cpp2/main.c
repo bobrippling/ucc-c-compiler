@@ -20,8 +20,10 @@ static const struct
 	{ "__unix__",       "1"  },
 	/* __STDC__ TODO */
 
-	{ "__SIZE_TYPE__",    "unsigned int"  },
-	{ "__PTRDIFF_TYPE__", "unsigned int"  },
+	{ "__SIZE_TYPE__",    "unsigned long"  },
+	{ "__PTRDIFF_TYPE__", "unsigned long"  },
+
+	{ "__GOT_SHORT_LONG", "1"  },
 
 	/* non-standard */
 	{ "__BLOCKS__",     "1"  },
@@ -160,7 +162,7 @@ int main(int argc, char **argv)
 					*eq++ = '\0';
 					macro_add(argv[i] + 2, eq);
 				}else{
-					macro_add(argv[i] + 2, "");
+					macro_add(argv[i] + 2, "1"); /* -Dhello means #define hello 1 */
 				}
 				break;
 			}

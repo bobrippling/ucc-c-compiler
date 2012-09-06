@@ -11,7 +11,6 @@
 
 #define RW_TEST(var)                              \
 						s->var == 0                           \
-						&& !s->decl->internal                 \
 						&& !decl_has_array(s->decl)           \
 						&& !decl_is_func(s->decl)             \
 						&& !decl_is_struct_or_union(s->decl)
@@ -37,22 +36,32 @@ int symtab_fold(symtable *tab, int current)
 	if(tab->decls){
 		const int word_size = platform_word_size();
 		decl **diter;
-		int arg_offset;
+		int arg_idx;
 
-		arg_offset = 0;
+		arg_idx = 0;
 
 		/* need to walk backwards for args */
 		for(diter = tab->decls; *diter; diter++);
 
 		for(diter--; diter >= tab->decls; diter--){
 			sym *s = (*diter)->sym;
-			/*enum type_primitive last = type_int; TODO: packing */
+
+			if(s->type == sym_arg){
+				s->offset = arg_idx++;
+				s->decl->is_definition = 1; /* just for completeness */
+			}
+		}
+
+		current += arg_idx * platform_word_size();
+
+		for(diter = tab->decls; *diter; diter++){
+			sym *s = (*diter)->sym;
 
 			if(s->type == sym_local){
 				switch(s->decl->type->store){
-					case store_auto:
 					case store_default:
-						if(!decl_is_func(s->decl)){
+					case store_auto:
+					{
 						int siz = decl_size(s->decl);
 
 						if(siz <= word_size)
@@ -65,20 +74,15 @@ int symtab_fold(symtable *tab, int current)
 							siz += word_size - siz % word_size;
 						current += siz;
 
-
 						/* static analysis on sym (only auto-vars) */
-						RW_WARN(WRITTEN, nwrites, "written to");
+						if(!s->decl->init)
+							RW_WARN(WRITTEN, nwrites, "written to");
+						break;
 					}
 
 					default:
 						break;
 				}
-
-			}else if(s->type == sym_arg){
-				s->offset = arg_offset;
-				arg_offset += word_size;
-				s->decl->is_definition = 1; /* just for completeness */
-
 			}
 
 			switch(s->type){

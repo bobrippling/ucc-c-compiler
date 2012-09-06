@@ -36,7 +36,4 @@ void parse_static_assert(void);
 
 symtable *parse(void);
 
-/* tables local to the current scope */
-extern symtable *current_scope;
-
 #endif

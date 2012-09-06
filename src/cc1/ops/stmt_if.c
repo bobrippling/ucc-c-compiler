@@ -3,6 +3,7 @@
 #include "ops.h"
 #include "stmt_if.h"
 #include "stmt_for.h"
+#include "../out/lbl.h"
 
 const char *str_stmt_if()
 {
@@ -45,20 +46,21 @@ void fold_stmt_if(stmt *s)
 
 void gen_stmt_if(stmt *s)
 {
-	char *lbl_else = asm_label_code("else");
-	char *lbl_fi   = asm_label_code("fi");
+	char *lbl_else = out_label_code("else");
+	char *lbl_fi   = out_label_code("fi");
 
 	gen_expr(s->expr, s->symtab);
-	asm_temp(1, "pop rax");
 
-	asm_temp(1, "test rax, rax");
-	asm_temp(1, "jz %s", lbl_else);
+	out_jfalse(lbl_else);
+
 	gen_stmt(s->lhs);
-	asm_temp(1, "jmp %s", lbl_fi);
-	asm_label(lbl_else);
+	out_push_lbl(lbl_fi, 0, NULL);
+	out_jmp();
+
+	out_label(lbl_else);
 	if(s->rhs)
 		gen_stmt(s->rhs);
-	asm_label(lbl_fi);
+	out_label(lbl_fi);
 
 	free(lbl_else);
 	free(lbl_fi);
