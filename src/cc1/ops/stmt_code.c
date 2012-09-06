@@ -25,8 +25,11 @@ void fold_stmt_code(stmt *s)
 
 		fold_decl(d, s->symtab);
 
-		if(d->init)
-			fold_gen_init_assignment(d, s);
+		if(d->init){
+			EOF_WHERE(&d->where,
+					fold_gen_init_assignment(d, s)
+				);
+		}
 
 		d->is_definition = 1; /* always the def for non-globals */
 

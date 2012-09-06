@@ -108,9 +108,13 @@ void fold_expr_if(expr *e, symtable *stab)
 			int r_ptr = decl_is_ptr(tt_r) || r_ptr_null;
 
 			if(l_ptr || r_ptr){
+				char bufa[DECL_STATIC_BUFSIZ], bufb[DECL_STATIC_BUFSIZ];
+
 				fold_decl_equal(tt_l, tt_r, &e->where,
-						WARN_COMPARE_MISMATCH, /* FIXME: "mismatch" */
-						"pointer type mismatch");
+						WARN_COMPARE_MISMATCH, /* FIXME: enum "mismatch" */
+						"pointer type mismatch: %s and %s",
+						decl_to_str_r(bufa, tt_l),
+						decl_to_str_r(bufb, tt_r));
 
 				e->tree_type = decl_ptr_depth_inc(decl_new_void());
 

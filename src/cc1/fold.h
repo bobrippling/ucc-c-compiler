@@ -34,8 +34,6 @@ void fold(symtable *);
 
 extern decl *curdecl_func, *curdecl_func_called;
 
-extern where *eof_where;
-
 void fold_stmt_and_add_to_curswitch(stmt *);
 
 #ifdef SYMTAB_DEBUG

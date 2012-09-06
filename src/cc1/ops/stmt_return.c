@@ -16,7 +16,9 @@ void fold_stmt_return(stmt *s)
 
 		fold_decl_equal(s->expr->tree_type, curdecl_func_called,
 				&s->where, WARN_RETURN_TYPE,
-				"mismatching return type for %s", curdecl_func->spel);
+				"mismatching return type for %s (%s)",
+				curdecl_func->spel,
+				decl_to_str(s->expr->tree_type));
 
 		if(void_func){
 			cc1_warn_at(&s->where, 0, 1, WARN_RETURN_TYPE,

@@ -11,6 +11,8 @@
 #include "macros.h"
 #include "sue.h"
 #include "const.h"
+#include "cc1.h"
+#include "fold.h"
 
 #define ITER_DESC_TYPE(d, dp, typ)     \
 	for(dp = d->desc; dp; dp = dp->child) \
@@ -180,22 +182,24 @@ static void decl_copy_desc_if(decl *to, decl *from, int decay_first_array)
 	if(from->desc){
 		decl_desc *inner = decl_desc_tail(from);
 
-		if(decay_first_array && inner->type == decl_desc_array){
-			/* convert to ptr */
-			decl_desc *new = decl_desc_new(decl_desc_ptr, to, NULL);
+		EOF_WHERE(&inner->where,
+			if(decay_first_array && inner->type == decl_desc_array){
+				/* convert to ptr */
+				decl_desc *new;
 
-			new->type = decl_desc_ptr;
-			new->bits.qual = qual_none;
+				new = decl_desc_new(decl_desc_ptr, to, NULL);
 
-			if(inner->child)
-				new->child = decl_desc_copy(inner->child);
+				new->type = decl_desc_ptr;
+				new->bits.qual = qual_none;
 
-			decl_desc_append(&to->desc, inner);
-		}else{
-			to->desc = decl_desc_copy(from->desc);
-		}
+				if(inner->child)
+					new->child = decl_desc_copy(inner->child);
 
-		decl_desc_link(to);
+				decl_desc_append(&to->desc, inner);
+			}else{
+				to->desc = decl_desc_copy(from->desc);
+			}
+		);
 	}
 }
 
@@ -478,7 +482,9 @@ decl *decl_ptr_depth_inc(decl *d)
 
 	for(prev = NULL, p = &d->desc; *p; prev = *p, p = &(*p)->child);
 
-	*p = decl_desc_ptr_new(d, prev);
+	EOF_WHERE(&d->where,
+		*p = decl_desc_ptr_new(d, prev)
+	);
 
 	return d;
 }
