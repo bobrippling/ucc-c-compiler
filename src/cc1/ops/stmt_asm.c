@@ -3,6 +3,32 @@
 #include "ops.h"
 #include "stmt_asm.h"
 
+#if 0
++---+--------------------+
+| r |    Register(s)     |
++---+--------------------+
+| a |   %eax, %ax, %al   |
+| b |   %ebx, %bx, %bl   |
+| c |   %ecx, %cx, %cl   |
+| d |   %edx, %dx, %dl   |
+| S |   %esi, %si        |
+| D |   %edi, %di        |
++---+--------------------+
+
+ m  |   memory
+ i  |   integral
+ r  |   any reg
+ q  |   reg [abcd]
+ f  |   fp reg
+ &  |   pre-clobber
+
+
+ =  | write-only - needed in output
+
+http://www.ibiblio.org/gferg/ldp/GCC-Inline-Assembly-HOWTO.html#s4
+
+#endif
+
 const char *str_stmt_asm()
 {
 	return "asm";
