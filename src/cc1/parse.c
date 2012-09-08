@@ -604,6 +604,13 @@ asm_inout **parse_asm_inout()
 	do{
 		asm_inout *io = umalloc(sizeof *io);
 
+		if(accept(token_open_square)){
+			/* : [name] "constraints"(expr) */
+			ICE("TODO: [] named constraint expression");
+
+			EAT(token_close_square);
+		}
+
 		token_get_current_str(&io->constraints, NULL);
 		EAT(token_string);
 

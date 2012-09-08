@@ -69,7 +69,7 @@ void out_constraint_check(where *w, const char *constraint, int output)
 					mem_chosen = 1;
 					break;
 
-				case 'i':
+				case 'n':
 					const_chosen = 1;
 					break;
 
@@ -111,92 +111,104 @@ void out_constraint_check(where *w, const char *constraint, int output)
 	}
 }
 
-void out_constrain(asm_inout *io)
+typedef struct
 {
-	/* pop into a register/memory if needed */
-	const char *constraint = io->constraints;
+	enum constraint_type
+	{
+		C_REG,
+		C_MEM,
+		C_CONST,
+	} type;
+
+	int reg;
+} constraint_t;
+
+static void constraint_type(const char *constraint, constraint_t *con)
+{
 	int reg = -1, mem = 0, is_const = 0;
 
 	while(*constraint)
 		switch(*constraint++){
 #define CHOOSE(c, i) case c: reg = i; break
-				CHOOSE('a', REG_A);
-				CHOOSE('b', REG_B);
-				CHOOSE('c', REG_C);
-				CHOOSE('d', REG_D);
+			CHOOSE('a', REG_A);
+			CHOOSE('b', REG_B);
+			CHOOSE('c', REG_C);
+			CHOOSE('d', REG_D);
 #undef CHOOSE
 
-				case 'f': ICE("TODO: fp reg constraint");
+			case 'f': ICE("TODO: fp reg constraint");
 
-				case 'S': reg = REG_LAST + 1; break;
-				case 'D': reg = REG_LAST + 2; break;
+			case 'S': reg = REG_LAST + 1; break;
+			case 'D': reg = REG_LAST + 2; break;
 
-				case 'q': /* currently the same as 'r' */
-				case 'r':
-					reg = v_unused_reg(1);
-					break;
+			case 'q': /* currently the same as 'r' */
+			case 'r':
+				reg = v_unused_reg(1);
+				break;
 
-				case 'm':
-					mem = 1;
-					break;
-				case 'i':
-					is_const = 1;
-					break;
+			case 'm':
+				mem = 1;
+				break;
+			case 'n':
+				is_const = 1;
+				break;
+
+			default:
+			{
+				const char c = constraint[-1];
+				if('0' <= c && c <= '9')
+					ICE("TODO: digit/match constraint");
+			}
 		}
 
 	if(mem){
-		/* vtop into memory */
-		v_to_mem(vtop);
+		con->type = C_MEM;
 
 	}else if(is_const){
-		if(vtop->type != CONST)
-			DIE_AT(&io->exp->where, "invalid operand for const-constraint");
+		con->type = C_CONST;
 
 	}else{
-		const int r = reg != -1 && reg <= REG_LAST ? reg : v_unused_reg(1);
-
-		v_freeup_reg(r, 1);
-		v_to_reg(vtop);
-
-		if(reg > REG_LAST)
-			ICE("TODO: register %d for constraint", reg);
-
-		if(vtop->bits.reg != r){
-			impl_reg_cp(vtop, r);
-			vtop->bits.reg = r;
-		}
+		con->type = C_REG;
+		con->reg = reg;
 	}
 }
 
-void out_push_constrained(asm_inout *io)
+void out_constrain(asm_inout *io)
 {
-	/* look for a reg or mem */
-#if 0
-	char *p;
-	for(p = io->constraints; *p; p++)
-		switch(*p){
-				CHOOSE('a', REG_A);
-				CHOOSE('b', REG_B);
-				CHOOSE('c', REG_C);
-				CHOOSE('d', REG_D);
+	/* pop into a register/memory if needed */
+	constraint_t con;
 
-				/* TODO */
-				case 'S': reg = REG_LAST + 1; break;
-				case 'D': reg = REG_LAST + 2; break;
+	constraint_type(io->constraints, &con);
 
-				case 'q': /* currently the same as 'r' */
-				case 'r':
-					reg = v_unused_reg(1);
-					break;
+	switch(con.type){
+		case C_MEM:
+			/* vtop into memory */
+			v_to_mem(vtop);
+			break;
 
-				case 'f': ICE("TODO: fp reg constraint");
+		case C_CONST:
+			if(vtop->type != CONST)
+				DIE_AT(&io->exp->where, "invalid operand for const-constraint");
+			break;
 
-				case 'm':
-					ICE("TODO: memory output constraint");
+		case C_REG:
+		{
+			const int reg = con.reg;
+			const int r = reg != -1 && reg <= REG_LAST ? reg : v_unused_reg(1);
+
+			v_freeup_reg(r, 1);
+			v_to_reg(vtop); /* TODO: v_to_reg_preferred */
+
+			if(reg > REG_LAST)
+				ICE("TODO: register %d for constraint", reg);
+
+			if(vtop->bits.reg != r){
+				impl_reg_cp(vtop, r);
+				vtop->bits.reg = r;
+			}
+			break;
 		}
-#endif
-
-	ICE("TODO: output constraint rvalue push");
+	}
 }
 
 void out_asm_inline(asm_args *cmd)
@@ -213,6 +225,10 @@ void out_asm_inline(asm_args *cmd)
 
 				if(*++p == '%')
 					goto normal;
+
+				if(*p == '['){
+					ICE("TODO: named constraint");
+				}
 
 				if(sscanf(p, "%d", &index) != 1)
 					ICE("not an int - should've been caught");
@@ -232,8 +248,4 @@ void out_asm_inline(asm_args *cmd)
 	}else{
 		fprintf(out, "%s\n", cmd->cmd);
 	}
-
-	/* pop inputs, outputs are done by store-pops */
-	for(i = dynarray_count((void **)cmd->inputs); i > 0; i--)
-		vpop();
 }

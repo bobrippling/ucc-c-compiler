@@ -36,7 +36,7 @@ void fold_stmt_asm(stmt *s)
 			DIE_AT(&io->exp->where, "asm output not an lvalue");
 	}
 
-	/* validate asm string - s->asm_bits->cmd{,_len} */
+	/* validate asm string - s->asm_bits->cmd */
 	if(s->asm_bits->extended){
 		char *str;
 
@@ -44,6 +44,10 @@ void fold_stmt_asm(stmt *s)
 			if(*str == '%'){
 				if(str[1] == '%'){
 					str++;
+
+				}else if(str[1] == '['){
+					ICE("TODO: named constraint");
+
 				}else{
 					int pos;
 
@@ -59,11 +63,18 @@ void fold_stmt_asm(stmt *s)
 
 void gen_stmt_asm(stmt *s)
 {
-	asm_inout **ios = s->asm_bits->inputs;
+	asm_inout **ios;
 	int i;
 
-	if(ios){
-		for(i = 0; ios[i]; i++)
+	for(ios = s->asm_bits->outputs, i = 0; ios[i]; i++){
+		asm_inout *const io = ios[i];
+
+		lea_expr(io->exp, s->symtab);
+		out_do_something();
+	}
+
+	if((ios = s->asm_bits->inputs)){
+		for(i = 0; ios && ios[i]; i++)
 			gen_expr(ios[i]->exp, s->symtab);
 
 		/* move into the registers or wherever necessary */
@@ -78,17 +89,6 @@ void gen_stmt_asm(stmt *s)
 	out_asm_inline(s->asm_bits);
 
 	out_comment("### end asm()");
-
-	ios = s->asm_bits->outputs;
-	if(ios){
-		for(i = 0; ios[i]; i++){
-			asm_inout *const io = ios[i];
-
-			lea_expr(io->exp, s->symtab);
-			out_push_constrained(io);
-			out_store();
-		}
-	}
 }
 
 void mutate_stmt_asm(stmt *s)
