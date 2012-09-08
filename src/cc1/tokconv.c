@@ -245,10 +245,14 @@ void token_get_current_str(char **ps, int *pl)
 
 	*ps = currentstring;
 
-	if(pl)
+	if(pl){
 		*pl = currentstringlen;
-	else if(memchr(currentstring, '\0', currentstringlen))
-		WARN_AT(NULL, "nul-character terminates string");
+	}else{
+		char *p = memchr(currentstring, '\0', currentstringlen);
+
+		if(p && p < currentstring + currentstringlen - 1)
+			WARN_AT(NULL, "nul-character terminates string early (%s)", p + 1);
+	}
 
 	currentstring = NULL;
 }
