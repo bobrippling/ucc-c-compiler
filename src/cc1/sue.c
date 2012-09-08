@@ -111,21 +111,41 @@ struct_union_enum_st *sue_add(symtable *const stab, char *spel, sue_member **mem
 		where_new(&sue->where);
 	}
 
-	if(members && prim != type_enum){
-		int i;
+	if(members){
+		if(prim == type_enum){
+			/* check for duplicates */
+			int i;
 
-		for(i = 0; members[i]; i++){
-			decl *d = members[i]->struct_member;
-			int j;
+			for(i = 0; members[i]; i++){
+				const char *const spel = members[i]->enum_member->spel;
 
-			if(d->init)
-				DIE_AT(&d->where, "%s member %s is initialised", sue_str(sue), d->spel);
+				struct_union_enum_st *e_sue;
+				enum_member *e_mem;
 
-			for(j = i + 1; members[j]; j++){
-				if(!strcmp(d->spel, members[j]->struct_member->spel)){
+				enum_member_search(&e_mem, &e_sue, stab, spel);
+
+				if(e_mem){
 					char buf[WHERE_BUF_SIZ];
-					DIE_AT(&d->where, "duplicate member %s (from %s)",
-							d->spel, where_str_r(buf, &members[j]->struct_member->where));
+					DIE_AT(NULL, "redeclaration of enumerator %s (from %s)", spel, where_str_r(buf, &e_sue->where));
+				}
+			}
+
+		}else{
+			int i;
+
+			for(i = 0; members[i]; i++){
+				decl *d = members[i]->struct_member;
+				int j;
+
+				if(d->init)
+					DIE_AT(&d->where, "%s member %s is initialised", sue_str(sue), d->spel);
+
+				for(j = i + 1; members[j]; j++){
+					if(!strcmp(d->spel, members[j]->struct_member->spel)){
+						char buf[WHERE_BUF_SIZ];
+						DIE_AT(&d->where, "duplicate member %s (from %s)",
+								d->spel, where_str_r(buf, &members[j]->struct_member->where));
+					}
 				}
 			}
 		}
@@ -181,9 +201,10 @@ void enum_member_search(enum_member **pm, struct_union_enum_st **psue, symtable 
 			struct_union_enum_st *e = *i;
 
 			if(e->primitive == type_enum){
-				enum_member *memb = sue_member_find(e, spel, NULL)->enum_member;
-				if(memb){
-					*pm = memb;
+				sue_member *smemb = sue_member_find(e, spel, NULL);
+
+				if(smemb){
+					*pm = smemb->enum_member;
 					*psue = e;
 					return;
 				}
