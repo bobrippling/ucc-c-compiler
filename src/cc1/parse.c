@@ -617,6 +617,23 @@ asm_inout **parse_asm_inout()
 	return inouts;
 }
 
+char **parse_asm_clobbers(void)
+{
+	char **ret = NULL;
+
+	while(curtok == token_string){
+		char *s;
+		int n;
+
+		token_get_current_str(&s, NULL);
+		EAT(token_string);
+
+		dynarray_add((void ***)&ret, s);
+	}
+
+	return ret;
+}
+
 stmt *parse_asm(void)
 {
 	stmt *asm_st;
@@ -628,16 +645,21 @@ stmt *parse_asm(void)
 	EAT(token_asm);
 	EAT(token_open_paren);
 
-	token_get_current_str(&bits->cmd, &bits->cmd_len);
+	token_get_current_str(&bits->cmd, NULL);
 	EAT(token_string);
 
 	/* input operands */
-	if(accept(token_colon))
+	if((bits->extended = accept(token_colon))){
 		bits->outputs = parse_asm_inout();
 
-	/* output operands */
-	if(accept(token_colon))
-		bits->inputs = parse_asm_inout();
+		/* output operands */
+		if(accept(token_colon))
+			bits->inputs = parse_asm_inout();
+
+		/* clobber list */
+		if(accept(token_colon))
+			bits->clobbers = parse_asm_clobbers();
+	}
 
 	EAT(token_close_paren);
 	EAT(token_semicolon);

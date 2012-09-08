@@ -17,9 +17,10 @@ typedef struct
 
 typedef struct
 {
-	asm_inout **inputs, **outputs;
+	asm_inout **outputs, **inputs;
+	char **clobbers;
 	char *cmd;
-	int cmd_len;
+	int extended; /* is it asm("") or asm("":::) */
 } asm_args;
 
 struct stmt

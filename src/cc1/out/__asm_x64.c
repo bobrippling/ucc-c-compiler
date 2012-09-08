@@ -197,30 +197,36 @@ void out_push_constrained(asm_inout *io)
 void out_asm_inline(asm_args *cmd)
 {
 	FILE *const out = cc_out[SECTION_TEXT];
-	char *p;
 	int i;
 
-	for(p = cmd->cmd; *p; p++){
-		if(*p == '%'){
-			int index;
+	if(cmd->extended){
+		char *p;
 
-			if(*++p == '%')
-				goto normal;
+		for(p = cmd->cmd; *p; p++){
+			if(*p == '%'){
+				int index;
 
-			if(sscanf(p, "%d", &index) != 1)
-				ICE("not an int - should've been caught");
+				if(*++p == '%')
+					goto normal;
 
-			/* bounds check is already done in stmt_asm.c */
-			fprintf(out, "%s", vstack_str(&vtop[-index]));
-		}else{
-normal:
-			fputc(*p, out);
+				if(sscanf(p, "%d", &index) != 1)
+					ICE("not an int - should've been caught");
+
+				/* bounds check is already done in stmt_asm.c */
+				fprintf(out, "%s", vstack_str(&vtop[-index]));
+			}else{
+	normal:
+				fputc(*p, out);
+			}
 		}
-	}
 
-	while(*p)
-		fputc(*p, out);
-	fputc('\n', out);
+		while(*p)
+			fputc(*p, out);
+		fputc('\n', out);
+
+	}else{
+		fprintf(out, "%s\n", cmd->cmd);
+	}
 
 	/* pop inputs, outputs are done by store-pops */
 	for(i = dynarray_count((void **)cmd->inputs); i > 0; i--)

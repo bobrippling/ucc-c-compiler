@@ -18,9 +18,7 @@ static void check_constraint(asm_inout *io, symtable *stab, int output)
 
 void fold_stmt_asm(stmt *s)
 {
-	char *const str = s->asm_bits->cmd;
 	asm_inout **it;
-	int i;
 	int n_inouts;
 
 	n_inouts = 0;
@@ -36,18 +34,23 @@ void fold_stmt_asm(stmt *s)
 	}
 
 	/* validate asm string - s->asm_bits->cmd{,_len} */
-	for(i = 0; i < s->asm_bits->cmd_len; i++){
-		if(str[i] == '%'){
-			if(str[i + 1] == '%'){
-				i++;
-			}else{
-				int pos;
-				if(sscanf(str + i + 1, "%d", &pos) != 1)
-					DIE_AT(&s->where, "invalid register character '%c', number expected", str[i + 1]);
-				if(pos >= n_inouts)
-					DIE_AT(&s->where, "invalid register index %d / %d", pos, n_inouts);
+	if(s->asm_bits->extended){
+		char *str;
+
+		for(str = s->asm_bits->cmd; *str; str++)
+			if(*str == '%'){
+				if(str[1] == '%'){
+					str++;
+				}else{
+					int pos;
+
+					if(sscanf(str + 1, "%d", &pos) != 1)
+						DIE_AT(&s->where, "invalid register character '%c', number expected", str[1]);
+
+					if(pos >= n_inouts)
+						DIE_AT(&s->where, "invalid register index %d / %d", pos, n_inouts);
+				}
 			}
-		}
 	}
 }
 
@@ -65,7 +68,9 @@ void gen_stmt_asm(stmt *s)
 			out_constrain(ios[i]);
 	}
 
-	out_comment("### asm() from %s", where_str(&s->where));
+	out_comment("### %sasm() from %s",
+			s->asm_bits->extended ? "extended-" : "",
+			where_str(&s->where));
 
 	out_asm_inline(s->asm_bits);
 
