@@ -13,6 +13,8 @@
 #include "cc1.h"
 #include "fold.h"
 #include "const.h"
+#include "cc1.h"
+#include "fold.h"
 
 #define ITER_DESC_TYPE(d, dp, typ)     \
 	for(dp = d->desc; dp; dp = dp->child) \
@@ -183,8 +185,10 @@ static void decl_copy_desc_if(decl *to, decl *from)
 	UCC_ASSERT(!to->desc, "desc for target copy: %s", decl_to_str(to));
 
 	if(from->desc){
-		to->desc = decl_desc_copy(from->desc);
-		to->desc->parent_decl = to;
+		EOF_WHERE(&from->desc->where,
+			to->desc = decl_desc_copy(from->desc);
+			to->desc->parent_decl = to
+		);
 	}
 }
 
@@ -439,7 +443,9 @@ decl *decl_ptr_depth_inc(decl *d)
 
 	for(prev = NULL, p = &d->desc; *p; prev = *p, p = &(*p)->child);
 
-	*p = decl_desc_ptr_new(d, prev);
+	EOF_WHERE(&d->where,
+		*p = decl_desc_ptr_new(d, prev)
+	);
 
 	return d;
 }
