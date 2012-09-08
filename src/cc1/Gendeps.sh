@@ -2,6 +2,7 @@
 
 [ $# -ne 0 ] && exit 1
 
-cc -MM *.c ops/*.c | \
-sed 's#^\(stmt\|expr\)\(_[^:]\+\)#ops/\1\2#' \
-> Makefile.dep
+d=Makefile.dep
+
+cc -MM *.c > $d
+cc -MM ops/*.c | sed 's#^\([^ ]\)#ops/\1#' >> $d
