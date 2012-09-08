@@ -102,17 +102,12 @@ void fold_inc_writes_if_sym(expr *e, symtable *stab)
 
 void fold_expr(expr *e, symtable *stab)
 {
-	where *old_w;
-
 	if(e->tree_type)
 		return;
 
 	fold_get_sym(e, stab);
 
-	old_w = eof_where;
-	eof_where = &e->where;
-	e->f_fold(e, stab);
-	eof_where = old_w;
+	EOF_WHERE(&e->where, e->f_fold(e, stab));
 
 	UCC_ASSERT(e->tree_type, "no tree_type after fold (%s)", e->f_str());
 	UCC_ASSERT(e->tree_type->type->primitive != type_unknown, "unknown type after folding expr %s", e->f_str());

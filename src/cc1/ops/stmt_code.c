@@ -42,11 +42,8 @@ void fold_stmt_code(stmt *s)
 
 		for(iter = s->codes; *iter; iter++){
 			stmt  *const st = *iter;
-			where *const old_w = eof_where;
 
-			eof_where = &st->where;
-			fold_stmt(st);
-			eof_where = old_w;
+			EOF_WHERE(&st->where, fold_stmt(st));
 
 			/*
 			 * check for dead code

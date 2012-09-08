@@ -75,7 +75,7 @@ void decl_desc_append(decl_desc **pparent, decl_desc *child)
 	parent->child = child;
 }
 
-decl_desc *decl_desc_tail(decl *d)
+decl_desc *decl_desc_tail(const decl *d)
 {
 	decl_desc *i;
 	for(i = d->desc; i && i->child; i = i->child);
@@ -156,7 +156,7 @@ const char *decl_attr_to_str(enum decl_attr_type t)
 	return NULL;
 }
 
-decl_desc *decl_desc_copy(decl_desc *dp)
+decl_desc *decl_desc_copy(const decl_desc *dp)
 {
 	decl_desc *ret = umalloc(sizeof *ret);
 	memcpy(ret, dp, sizeof *ret);
@@ -175,59 +175,48 @@ decl_desc *decl_desc_copy(decl_desc *dp)
 	return ret;
 }
 
-static void decl_copy_desc_if(decl *to, decl *from, int decay_first_array)
-{
-	UCC_ASSERT(!to->desc, "desc for target copy: %s", decl_to_str(to));
-
-	if(from->desc){
-		decl_desc *inner = decl_desc_tail(from);
-
-		EOF_WHERE(&inner->where,
-			if(decay_first_array && inner->type == decl_desc_array){
-				/* convert to ptr */
-				decl_desc *new;
-
-				new = decl_desc_new(decl_desc_ptr, to, NULL);
-
-				new->type = decl_desc_ptr;
-				new->bits.qual = qual_none;
-
-				if(inner->child)
-					new->child = decl_desc_copy(inner->child);
-
-				decl_desc_append(&to->desc, inner);
-			}else{
-				to->desc = decl_desc_copy(from->desc);
-			}
-		);
-	}
-}
-
-static decl *decl_copy_array(decl *d, int decay_first_array)
+static decl *decl_copy_array(const decl *d, int decay_first_array)
 {
 	decl *ret = umalloc(sizeof *ret);
 
 	memcpy(ret, d, sizeof *ret);
-
-	ret->type = type_copy(d->type);
-
-	ret->desc = NULL;
-	decl_copy_desc_if(ret, d, decay_first_array);
 
 	/* null-out what we don't want to pass on */
 	ret->init = NULL;
 	ret->spel = NULL;
 	ret->func_code = NULL;
 
+	ret->type = type_copy(d->type);
+
+	if(d->desc){
+		EOF_WHERE(&d->where,
+				decl_desc *inner;
+
+				ret->desc = decl_desc_copy(d->desc);
+				decl_desc_link(ret);
+				inner = decl_desc_tail(ret);
+
+				if(decay_first_array && inner->type == decl_desc_array){
+					/* convert to ptr */
+					expr_free(inner->bits.array_size);
+
+					inner->type = decl_desc_ptr;
+					inner->bits.qual = qual_none;
+				}
+		);
+	}else{
+		ret->desc = NULL;
+	}
+
 	return ret;
 }
 
-decl *decl_copy_keep_array(decl *d)
+decl *decl_copy_keep_array(const decl *d)
 {
 	return decl_copy_array(d, 0);
 }
 
-decl *decl_copy(decl *d)
+decl *decl_copy(const decl *d)
 {
 	return decl_copy_array(d, 1);
 }
