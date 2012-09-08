@@ -267,7 +267,6 @@ int main(int argc, char **argv)
 	signal(SIGABRT, sigh);
 	signal(SIGSEGV, sigh);
 
-	gf = gen_asm;
 	fname = NULL;
 
 	for(i = 1; i < argc; i++){

@@ -168,7 +168,7 @@ char *strip_comment(char *line)
 			/* read until the end of the string */
 			s = terminating_quote(s + 1);
 			if(!s)
-				die("no terminating quote to comment");
+				die("no terminating quote to string");
 			/* finish of string */
 		}else if(*s == '/'){
 			if(s[1] == '/'){
