@@ -184,7 +184,7 @@ typedef.o: typedef.c ../util/util.h data_structs.h tree.h expr.h \
  ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h ops/stmt_return.h \
  ops/stmt_switch.h ops/stmt_while.h ops/stmt_continue.h sym.h decl.h \
  ../util/alloc.h typedef.h
-__builtin.o: ops/__builtin.c ops/../../util/util.h \
+ops/__builtin.o: ops/__builtin.c ops/../../util/util.h \
  ops/../../util/dynarray.h ops/../../util/alloc.h ops/../data_structs.h \
  ops/../tree.h ops/../expr.h ops/../ops/expr_addr.h \
  ops/../ops/expr_assign.h ops/../ops/expr_cast.h ops/../ops/expr_comma.h \
