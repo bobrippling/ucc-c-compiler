@@ -41,7 +41,7 @@ void out_constraint_check(where *w, const char *constraint, int output)
 {
 	const char *const orig = constraint;
 	/* currently x86 specific */
-	size_t first_not = strspn(constraint, "abcdSDmirqf&=");
+	size_t first_not = strspn(constraint, "gabcdSDmirqf&=");
 
 	if(first_not != strlen(constraint))
 		DIE_AT(w, "invalid constraint \"%c\"", constraint[first_not]);
@@ -71,6 +71,11 @@ void out_constraint_check(where *w, const char *constraint, int output)
 
 				case 'i':
 					const_chosen = 1;
+					break;
+
+				case 'g':
+					/* any */
+					ICE("TODO: any constraint");
 					break;
 
 				case '=':
