@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "../util/util.h"
 #include "data_structs.h"
@@ -243,7 +244,15 @@ void token_get_current_str(char **ps, int *pl)
 	extern int   currentstringlen;
 
 	*ps = currentstring;
-	*pl = currentstringlen;
+
+	if(pl){
+		*pl = currentstringlen;
+	}else{
+		char *p = memchr(currentstring, '\0', currentstringlen);
+
+		if(p && p < currentstring + currentstringlen - 1)
+			WARN_AT(NULL, "nul-character terminates string early (%s)", p + 1);
+	}
 
 	currentstring = NULL;
 }

@@ -17,13 +17,9 @@ int expr_is_lvalue(expr *e, enum lvalue_opts opts)
 	 * and so on
 	 *
 	 * also can't be const, checked in fold_assign (since we allow const inits)
+	 *
+	 * order is important
 	 */
-
-	if(decl_is_array(e->tree_type))
-		return opts & LVAL_ALLOW_ARRAY;
-
-	if(expr_kind(e, identifier))
-		return (opts & LVAL_ALLOW_FUNC) || !e->tree_type->func_code;
 
 	if(expr_kind(e, op))
 		switch(e->op){
@@ -34,6 +30,12 @@ int expr_is_lvalue(expr *e, enum lvalue_opts opts)
 			default:
 				break;
 		}
+
+	if(decl_is_array(e->tree_type))
+		return opts & LVAL_ALLOW_ARRAY;
+
+	if(expr_kind(e, identifier))
+		return e->tree_type->func_code ? opts & LVAL_ALLOW_FUNC : 1;
 
 	return 0;
 }
@@ -80,12 +82,13 @@ void fold_expr_assign(expr *e, symtable *stab)
 
 	/* type check */
 	if(!type_ok){
+		char bufto[DECL_STATIC_BUFSIZ], buffrom[DECL_STATIC_BUFSIZ];
+
 		fold_decl_equal(e->lhs->tree_type, e->rhs->tree_type,
 				&e->where, WARN_ASSIGN_MISMATCH,
-				"assignment type mismatch%s%s%s",
-				e->lhs->spel ? " (" : "",
-				e->lhs->spel ? e->lhs->spel : "",
-				e->lhs->spel ? ")" : "");
+				"assignment type mismatch: %s <-- %s",
+				decl_to_str_r(bufto,   e->lhs->tree_type),
+				decl_to_str_r(buffrom, e->rhs->tree_type));
 	}
 }
 
