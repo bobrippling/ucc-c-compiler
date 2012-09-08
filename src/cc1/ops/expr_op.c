@@ -251,6 +251,7 @@ void fold_expr_op(expr *e, symtable *stab)
 	fold_disallow_st_un(e->lhs, "op-lhs");
 
 	if(e->rhs){
+		char bufa[DECL_STATIC_BUFSIZ], bufb[DECL_STATIC_BUFSIZ];
 
 		fold_expr(e->rhs, stab);
 		fold_disallow_st_un(e->rhs, "op-rhs");
@@ -260,8 +261,10 @@ void fold_expr_op(expr *e, symtable *stab)
 
 		fold_decl_equal(e->lhs->tree_type, e->rhs->tree_type,
 				&e->where, WARN_COMPARE_MISMATCH,
-				"operation between mismatching types%s%s%s%s%s%s",
-				SPEL_IF_IDENT(e->lhs), SPEL_IF_IDENT(e->rhs));
+				"mismatching types in %s (%s and %s)",
+				op_to_str(e->op),
+				decl_to_str_r(bufa, e->lhs->tree_type),
+				decl_to_str_r(bufb, e->rhs->tree_type));
 
 		if(op_is_cmp(e->op) && e->lhs->tree_type->type->is_signed != e->rhs->tree_type->type->is_signed){
 
