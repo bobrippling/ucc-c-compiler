@@ -12,7 +12,7 @@
 #include "sue.h"
 #include "decl.h"
 
-where *eof_where = NULL;
+const where *eof_where = NULL;
 
 intval *intval_new(long v)
 {

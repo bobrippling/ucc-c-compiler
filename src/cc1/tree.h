@@ -117,12 +117,14 @@ void funcargs_free(funcargs *args, int free_decls);
 extern symtable *current_scope;
 intval *intval_new(long v);
 
-extern where *eof_where;
+extern const where *eof_where;
 
-#define EOF_WHERE(exp, code)         \
-	where *const eof_save = eof_where; \
-	eof_where = (exp);                 \
-	code;                              \
-	eof_where = eof_save
+#define EOF_WHERE(exp, code)                 \
+	do{                                        \
+		const where *const eof_save = eof_where; \
+		eof_where = (exp);                       \
+		{ code; }                                \
+		eof_where = eof_save;                    \
+	}while(0)
 
 #endif
