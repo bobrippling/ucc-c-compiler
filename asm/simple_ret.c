@@ -1,5 +1,6 @@
 main()
 {
-	int i = 5;
-	asm("mov %0, eax" : : "b" (i));
+	int i;
+	i = 5;
+	asm("movl %0, %%eax" : : "b" (i));
 }

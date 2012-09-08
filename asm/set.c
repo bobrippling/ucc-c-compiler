@@ -1,6 +1,8 @@
 main()
 {
-	int a = 5, b = 2, c;
+	int a, b, c;
+
+	a = 5, b = 2;
 
 	asm(
 			"cmpl %2, %1;"

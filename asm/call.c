@@ -7,7 +7,9 @@ f()
 main()
 {
 	int r;
-	register int q asm("ebx") = 3;
+	register int q asm("ebx");
+
+	q = 3;
 
 	asm(
 			"call f;"
