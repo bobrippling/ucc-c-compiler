@@ -106,4 +106,10 @@ void funcargs_free(funcargs *args, int free_decls);
 
 #define type_free(x) free(x)
 
+#define EOF_WHERE(exp, code)         \
+	where *const eof_save = eof_where; \
+	eof_where = (exp);                 \
+	code;                              \
+	eof_where = eof_save
+
 #endif

@@ -29,10 +29,9 @@ void fold_decl_equal(
 {
 	if(!decl_equal(a, b, DECL_CMP_ALLOW_VOID_PTR)){
 		int one_struct;
-		char buf[DECL_STATIC_BUFSIZ];
 		va_list l;
 
-		cc1_warn_at(w, 0, 0, warn, "%s vs. %s for...", decl_to_str(a), decl_to_str_r(buf, b));
+		/*cc1_warn_at(w, 0, 0, warn, "%s vs. %s for...", decl_to_str(a), decl_to_str_r(buf, b));*/
 
 
 		one_struct = (!a->desc && a->type->sue && a->type->sue->primitive != type_enum)
@@ -122,10 +121,9 @@ void fold_enum(struct_union_enum_st *en, symtable *stab)
 		if(e == (expr *)-1){
 
 			/*expr_free(e); XXX: memleak */
-			where *old_w = eof_where;
-			eof_where = &asm_struct_enum_where;
-			m->val = expr_new_val(defval);
-			eof_where = old_w;
+			EOF_WHERE(&asm_struct_enum_where,
+				m->val = expr_new_val(defval)
+			);
 
 			if(bitmask)
 				defval <<= 1;
@@ -468,9 +466,17 @@ void fold_need_expr(expr *e, const char *stmt_desc, int is_test)
 	if(!e->in_parens && expr_kind(e, assign))
 		cc1_warn_at(&e->where, 0, 1, WARN_TEST_ASSIGN, "testing an assignment in %s", stmt_desc);
 
-	if(is_test && !decl_is_bool(e->tree_type))
-		cc1_warn_at(&e->where, 0, 1, WARN_TEST_BOOL, "testing a non-boolean expression, %s, in %s",
-				decl_to_str(e->tree_type), stmt_desc);
+	if(is_test){
+		if(!decl_is_bool(e->tree_type)){
+			cc1_warn_at(&e->where, 0, 1, WARN_TEST_BOOL, "testing a non-boolean expression, %s, in %s",
+					decl_to_str(e->tree_type), stmt_desc);
+		}
+
+		if(expr_kind(e, addr)){
+			cc1_warn_at(&e->where, 0, 1, WARN_TEST_BOOL/*FIXME*/,
+					"testing an address is always true");
+		}
+	}
 
 	fold_disallow_st_un(e, stmt_desc);
 }
@@ -803,7 +809,7 @@ void fold(symtable *globs)
 	memset(&asm_struct_enum_where, 0, sizeof asm_struct_enum_where);
 	asm_struct_enum_where.fname = current_fname;
 
-	add_builtins(globs);
+	EOF_WHERE(&asm_struct_enum_where, add_builtins(globs));
 
 	if(fopt_mode & FOPT_ENABLE_ASM){
 		decl *df;
