@@ -46,8 +46,6 @@ void parse_type_preamble(type **tp, char **psp, enum type_primitive primitive)
 
 	parse_add_attr(&t->attr); /* int/struct-A __attr__ */
 
-	parse_add_attr(&t->attr);
-
 	*psp = spel;
 	*tp = t;
 }
@@ -117,8 +115,6 @@ type *parse_type_sue(enum type_primitive prim)
 	t->sue = sue_add(current_scope, spel, members, prim);
 
 	parse_add_attr(&t->sue->attr); /* struct A {} __attr__ */
-
-	parse_add_attr(&t->sue->attr);
 
 	return t;
 }
