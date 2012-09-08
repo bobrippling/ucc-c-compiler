@@ -181,9 +181,10 @@ void enum_member_search(enum_member **pm, struct_union_enum_st **psue, symtable 
 			struct_union_enum_st *e = *i;
 
 			if(e->primitive == type_enum){
-				enum_member *memb = sue_member_find(e, spel, NULL)->enum_member;
-				if(memb){
-					*pm = memb;
+				sue_member *smemb = sue_member_find(e, spel, NULL);
+
+				if(smemb){
+					*pm = smemb->enum_member;
 					*psue = e;
 					return;
 				}
