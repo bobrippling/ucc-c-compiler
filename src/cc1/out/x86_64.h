@@ -32,4 +32,14 @@ void impl_pop_func_ret(decl *);
 #define N_REGS 4
 #define N_CALL_REGS 6
 
+#define REG_A 0
+#define REG_B 1
+#define REG_C 2
+#define REG_D 3
+#define REG_LAST REG_D
+
+/* shared between x86 and __asm */
+void out_asm(const char *fmt, ...) ucc_printflike(1, 2);
+const char *vstack_str(struct vstack *vs);
+
 #endif

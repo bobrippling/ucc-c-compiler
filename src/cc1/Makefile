@@ -13,7 +13,7 @@ OBJ = \
 	fold.o fold_sym.o const.o data_store.o \
 	sym.o sue.o ops/__builtin.o \
 	gen_asm.o gen_str.o gen_style.o \
-	out/asm.o out/lbl.o out/out.o out/x86_64.o \
+	out/asm.o out/lbl.o out/out.o out/x86_64.o out/__asm_x64.o \
 	ops/expr_addr.o ops/expr_assign_compound.o ops/expr_assign.o ops/expr_block.o ops/expr_cast.o \
 	ops/expr_comma.o ops/expr_deref.o ops/expr_funcall.o ops/expr__Generic.o ops/expr_identifier.o \
 	ops/expr_if.o ops/expr_op.o ops/expr_sizeof.o ops/expr_stmt.o ops/expr_struct.o ops/expr_val.o \

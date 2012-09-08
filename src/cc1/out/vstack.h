@@ -50,6 +50,7 @@ void v_prepare_op(struct vstack *vp);
 void v_inv_cmp(struct vstack *vp);
 
 int  v_to_reg(struct vstack *conv);
+void v_to_mem(struct vstack *conv);
 
 int  v_unused_reg(int stack_as_backup);
 void v_freeup_regp(struct vstack *);

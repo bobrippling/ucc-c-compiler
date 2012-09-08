@@ -620,7 +620,7 @@ ops/stmt_asm.o: ops/stmt_asm.c ops/ops.h ops/../../util/util.h \
  ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h ops/stmt_return.h \
  ops/stmt_switch.h ops/stmt_while.h ops/../cc1.h ops/../out/out.h \
  ops/../fold.h ops/../const.h ops/../gen_str.h ops/../gen_asm.h \
- ops/stmt_asm.h
+ ops/stmt_asm.h ops/../out/__asm.h
 ops/stmt_break.o: ops/stmt_break.c ops/ops.h ops/../../util/util.h \
  ops/../data_structs.h ops/../tree.h ops/../expr.h ops/../ops/expr_addr.h \
  ops/../ops/expr_assign.h ops/../ops/expr_assign_compound.h \
@@ -984,6 +984,23 @@ ops/stmt_while.o: ops/stmt_while.c ops/ops.h ops/../../util/util.h \
  ops/stmt_switch.h ops/stmt_while.h ops/../cc1.h ops/../out/out.h \
  ops/../fold.h ops/../const.h ops/../gen_str.h ops/../gen_asm.h \
  ops/../out/lbl.h
+out/__asm_x64.o: out/__asm_x64.c out/../../util/util.h \
+ out/../../util/dynarray.h out/../data_structs.h out/../tree.h \
+ out/../expr.h out/../ops/expr_addr.h out/../ops/expr_assign.h \
+ out/../ops/expr_assign_compound.h out/../ops/expr_cast.h \
+ out/../ops/expr_comma.h out/../ops/expr_funcall.h \
+ out/../ops/expr_identifier.h out/../ops/expr_if.h out/../ops/expr_op.h \
+ out/../ops/expr_sizeof.h out/../ops/expr_val.h out/../ops/expr_stmt.h \
+ out/../ops/expr_deref.h out/../ops/expr_struct.h out/../stmt.h \
+ out/../ops/stmt_break.h out/../ops/stmt_case.h \
+ out/../ops/stmt_case_range.h out/../ops/stmt_code.h \
+ out/../ops/stmt_default.h out/../ops/stmt_do.h out/../ops/stmt_expr.h \
+ out/../ops/stmt_for.h out/../ops/stmt_goto.h out/../ops/stmt_if.h \
+ out/../ops/stmt_label.h out/../ops/stmt_noop.h out/../ops/stmt_return.h \
+ out/../ops/stmt_switch.h out/../ops/stmt_while.h \
+ out/../ops/stmt_continue.h out/../ops/stmt_asm.h out/../sym.h \
+ out/../decl.h out/vstack.h out/out.h out/x86_64.h out/__asm.h \
+ out/../cc1.h
 out/asm.o: out/asm.c out/../../util/util.h out/../data_structs.h \
  out/../tree.h out/../expr.h out/../ops/expr_addr.h \
  out/../ops/expr_assign.h out/../ops/expr_assign_compound.h \

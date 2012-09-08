@@ -2,63 +2,18 @@
 
 #include "ops.h"
 #include "stmt_asm.h"
-
-#if 0
-+---+--------------------+
-| r |    Register(s)     |
-+---+--------------------+
-| a |   %eax, %ax, %al   |
-| b |   %ebx, %bx, %bl   |
-| c |   %ecx, %cx, %cl   |
-| d |   %edx, %dx, %dl   |
-| S |   %esi, %si        |
-| D |   %edi, %di        |
-+---+--------------------+
-
- m  |   memory
- i  |   integral
- r  |   any reg
- q  |   reg [abcd]
- f  |   fp reg
- &  |   pre-clobber
-
-
- =  | write-only - needed in output
-
-http://www.ibiblio.org/gferg/ldp/GCC-Inline-Assembly-HOWTO.html#s4
-
-#endif
+#include "../out/__asm.h"
 
 const char *str_stmt_asm()
 {
 	return "asm";
 }
 
-static char *constraint_reg(char c)
+static void check_constraint(asm_inout *io, symtable *stab, int output)
 {
-	switch(c){
-#define MAP(c, s) case c: return s
-		MAP('a', "rax");
-		MAP('b', "rbx");
-		MAP('c', "rcx");
-		MAP('d', "rdx");
-		MAP('S', "rsi");
-		MAP('D', "rdi");
-#undef MAP
-	}
-
-	return NULL;
-}
-
-static void check_constraint(asm_inout *io, symtable *stab)
-{
-	char *c = io->constraints;
-
 	fold_expr(io->exp, stab);
 
-	/* constraints current can be empty, or a register name */
-	if(c[1] || !constraint_reg(*c))
-		DIE_AT(&io->exp->where, "invalid constraint \"%c\"", *c);
+	out_constraint_check(&io->exp->where, io->constraints, output);
 }
 
 void fold_stmt_asm(stmt *s)
@@ -71,11 +26,11 @@ void fold_stmt_asm(stmt *s)
 	n_inouts = 0;
 
 	for(it = s->asm_bits->inputs; it && *it; it++, n_inouts++)
-		check_constraint(*it, s->symtab);
+		check_constraint(*it, s->symtab, 0);
 
 	for(it = s->asm_bits->outputs; it && *it; it++, n_inouts++){
 		asm_inout *io = *it;
-		check_constraint(io, s->symtab);
+		check_constraint(io, s->symtab, 1);
 		if(!expr_is_lvalue(io->exp, 0))
 			DIE_AT(&io->exp->where, "asm output not an lvalue");
 	}
@@ -96,56 +51,39 @@ void fold_stmt_asm(stmt *s)
 	}
 }
 
-static void asm_filter(const char *cmd)
-{
-	char *s;
-
-	for(s = strchr(cmd, '%'); s; s = strchr(s + 1, '%')){
-		if(s[1] != '%'){
-			fprintf(stderr, "TODO: %s\n", s);
-		}
-	}
-}
-
 void gen_stmt_asm(stmt *s)
 {
 	asm_inout **ios = s->asm_bits->inputs;
 	int i;
 
 	if(ios){
-		for(i = 0; ios[i]; i++){
-			asm_inout *io = ios[i];
-			char *reg;
+		for(i = 0; ios[i]; i++)
+			gen_expr(ios[i]->exp, s->symtab);
 
-			gen_expr(io->exp, s->symtab);
-
-			reg = constraint_reg(*io->constraints);
-			if(!reg){
-				/* TODO: pick one */
-				ICE("TODO: pick a register for __asm__");
-			}
-		}
-
-		/* move into the registers */
-		for(i--; i >= 0; i--){
-			const char rc = *ios[i]->constraints;
-
-			asm_temp(1, "pop %s ; expr %s -> reg %c",
-					constraint_reg(rc),
-					ios[i]->exp->f_str(),
-					rc);
-		}
+		/* move into the registers or wherever necessary */
+		for(i--; i >= 0; i--)
+			out_constrain(ios[i]);
 	}
 
-	asm_filter(s->asm_bits->cmd, regs);
+	out_comment("### asm() from %s", where_str(&s->where));
+
+	out_asm_inline(s->asm_bits);
+
+	out_comment("### end asm()");
 
 	ios = s->asm_bits->outputs;
 	if(ios){
 		for(i = 0; ios[i]; i++){
-			asm_inout *io = ios[i];
+			asm_inout *const io = ios[i];
 
-			asm_temp(1, "mov rax, %s", constraint_reg(*io->constraints));
-			io->exp->f_store(io->exp, s->symtab);
+			lea_expr(io->exp, s->symtab);
+			out_push_constrained(io);
+			out_store();
 		}
 	}
+}
+
+void mutate_stmt_asm(stmt *s)
+{
+	s->f_passable = fold_passable_yes;
 }

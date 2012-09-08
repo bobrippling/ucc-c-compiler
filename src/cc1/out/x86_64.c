@@ -20,11 +20,6 @@
 
 #define REG_STR_SZ 8
 
-#define REG_A 0
-#define REG_B 1
-#define REG_C 2
-#define REG_D 3
-
 #define REG_RET REG_A
 
 #define VSTACK_STR_SZ 128
@@ -53,7 +48,6 @@ static const struct
 static int stack_sz;
 
 
-static void out_asm( const char *fmt, ...) ucc_printflike(1, 2);
 static void out_asm2(enum p_opts opts, const char *fmt, ...) ucc_printflike(2, 3);
 
 static void out_asmv(enum p_opts opts, const char *fmt, va_list l)
@@ -69,7 +63,7 @@ static void out_asmv(enum p_opts opts, const char *fmt, va_list l)
 		fputc('\n', f);
 }
 
-static void out_asm(const char *fmt, ...)
+void out_asm(const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
@@ -148,7 +142,7 @@ static const char *vstack_str_r(char buf[VSTACK_STR_SZ], struct vstack *vs)
 	return buf;
 }
 
-static const char *vstack_str(struct vstack *vs)
+const char *vstack_str(struct vstack *vs)
 {
 	static char buf[VSTACK_STR_SZ];
 	return vstack_str_r(buf, vs);
@@ -169,7 +163,7 @@ const char *call_reg_str(int i, decl *d)
 
 	asm_reg_name(d, &pre, &post);
 
-	if(!call_regs[i].suffix && d && decl_size(d)< type_primitive_size(type_long)){
+	if(!call_regs[i].suffix && d && decl_size(d) < type_primitive_size(type_long)){
 		/* r9d, etc */
 		snprintf(buf, sizeof buf, "r%cd", call_regs[i].reg);
 	}else{
@@ -395,7 +389,9 @@ void impl_reg_cp(struct vstack *from, int r)
 	char buf_v[VSTACK_STR_SZ];
 	char buf_r[REG_STR_SZ];
 
-	if(from->type == REG && from->bits.reg == r)
+	UCC_ASSERT(from->type == REG, "reg_cp: not a reg");
+
+	if(from->bits.reg == r)
 		return;
 
 	x86_reg_str_r(buf_r, r, from->d);
