@@ -11,6 +11,9 @@ const char *str_stmt_asm()
 
 static void check_constraint(asm_inout *io, symtable *stab, int output)
 {
+	if(output)
+		fold_inc_writes_if_sym(io->exp, stab);
+
 	fold_expr(io->exp, stab);
 
 	out_constraint_check(&io->exp->where, io->constraints, output);
