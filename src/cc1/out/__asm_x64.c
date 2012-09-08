@@ -39,6 +39,7 @@ http://www.ibiblio.org/gferg/ldp/GCC-Inline-Assembly-HOWTO.html#s4
 
 void out_constraint_check(where *w, const char *constraint, int output)
 {
+	const char *const orig = constraint;
 	/* currently x86 specific */
 	size_t first_not = strspn(constraint, "abcdSDmirqf&=");
 
@@ -78,7 +79,7 @@ void out_constraint_check(where *w, const char *constraint, int output)
 			}
 
 #define BAD_CONSTRAINT(err) \
-		DIE_AT(w, "bad constraint \"%s\": " err, constraint)
+		DIE_AT(w, "bad constraint \"%s\": " err, orig)
 
 		if(output != write_only)
 			DIE_AT(w, "%s output constraint", output ? "missing" : "unwanted");
@@ -91,7 +92,9 @@ void out_constraint_check(where *w, const char *constraint, int output)
 
 		switch(reg_chosen + mem_chosen + const_chosen){
 			case 0:
-				BAD_CONSTRAINT("constraint specifies none of memory/register/const");
+				if(output)
+					BAD_CONSTRAINT("constraint specifies none of memory/register/const");
+				/* fall */
 
 			case 1:
 				/* fine - exactly one */
@@ -144,8 +147,8 @@ void out_constrain(asm_inout *io)
 		if(vtop->type != CONST)
 			DIE_AT(&io->exp->where, "invalid operand for const-constraint");
 
-	}else if(reg != -1){
-		const int r = reg <= REG_LAST ? reg : v_unused_reg(1);
+	}else{
+		const int r = reg != -1 && reg <= REG_LAST ? reg : v_unused_reg(1);
 
 		v_freeup_reg(r, 1);
 		v_to_reg(vtop);
@@ -157,9 +160,6 @@ void out_constrain(asm_inout *io)
 			impl_reg_cp(vtop, r);
 			vtop->bits.reg = r;
 		}
-
-	}else{
-		ICE("unhandled constraint");
 	}
 }
 
