@@ -170,7 +170,7 @@ void         decl_attr_append(decl_attr **loc, decl_attr *new);
 const char  *decl_attr_to_str(enum decl_attr_type);
 
 void         decl_desc_append(decl_desc **parent, decl_desc *child);
-decl_desc   *decl_desc_tail(decl *);
+decl_desc   *decl_desc_tail(const decl *d);
 
 decl_desc   *decl_desc_new(enum decl_desc_type t, decl *dparent, decl_desc *parent);
 decl_desc   *decl_desc_ptr_new(  decl *dparent, decl_desc *parent);
@@ -180,9 +180,9 @@ decl_desc   *decl_desc_array_new(decl *dparent, decl_desc *parent);
 
 #define decl_desc_ptr_or_block(d) ((d)->type == decl_desc_ptr || (d)->type == decl_desc_block)
 
-decl      *decl_copy(decl *);
-decl      *decl_copy_keep_array(decl *d);
-decl_desc *decl_desc_copy(decl_desc *dp);
+decl      *decl_copy(const decl *);
+decl      *decl_copy_keep_array(const decl *d);
+decl_desc *decl_desc_copy(const decl_desc *dp);
 
 decl_init *decl_init_new(enum decl_init_type);
 int        decl_init_len(decl_init *);
