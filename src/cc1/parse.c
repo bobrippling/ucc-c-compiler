@@ -623,7 +623,6 @@ char **parse_asm_clobbers(void)
 
 	while(curtok == token_string){
 		char *s;
-		int n;
 
 		token_get_current_str(&s, NULL);
 		EAT(token_string);
