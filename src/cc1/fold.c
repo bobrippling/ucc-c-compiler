@@ -678,9 +678,17 @@ void fold_need_expr(expr *e, const char *stmt_desc, int is_test)
 	if(!e->in_parens && expr_kind(e, assign))
 		cc1_warn_at(&e->where, 0, 1, WARN_TEST_ASSIGN, "testing an assignment in %s", stmt_desc);
 
-	if(is_test && !decl_is_bool(e->tree_type))
-		cc1_warn_at(&e->where, 0, 1, WARN_TEST_BOOL, "testing a non-boolean expression, %s, in %s",
-				decl_to_str(e->tree_type), stmt_desc);
+	if(is_test){
+		if(!decl_is_bool(e->tree_type)){
+			cc1_warn_at(&e->where, 0, 1, WARN_TEST_BOOL, "testing a non-boolean expression, %s, in %s",
+					decl_to_str(e->tree_type), stmt_desc);
+		}
+
+		if(expr_kind(e, addr)){
+			cc1_warn_at(&e->where, 0, 1, WARN_TEST_BOOL/*FIXME*/,
+					"testing an address is always true");
+		}
+	}
 
 	fold_disallow_st_un(e, stmt_desc);
 }

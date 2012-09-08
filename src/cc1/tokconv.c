@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "../util/util.h"
 #include "data_structs.h"
@@ -333,7 +334,11 @@ void token_get_current_str(char **ps, int *pl)
 	extern int   currentstringlen;
 
 	*ps = currentstring;
-	*pl = currentstringlen;
+
+	if(pl)
+		*pl = currentstringlen;
+	else if(memchr(currentstring, '\0', currentstringlen))
+		WARN_AT(NULL, "nul-character terminates string");
 
 	currentstring = NULL;
 }

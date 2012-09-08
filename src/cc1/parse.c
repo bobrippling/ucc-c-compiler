@@ -575,7 +575,6 @@ void parse_static_assert(void)
 {
 	while(accept(token__Static_assert)){
 		static_assert *sa = umalloc(sizeof *sa);
-		int l;
 
 		sa->scope = current_scope;
 
@@ -583,7 +582,7 @@ void parse_static_assert(void)
 		sa->e = parse_expr_no_comma();
 		EAT(token_comma);
 
-		token_get_current_str(&sa->s, &l);
+		token_get_current_str(&sa->s, NULL);
 
 		EAT(token_string);
 		EAT(token_close_paren);
@@ -604,9 +603,8 @@ asm_inout **parse_asm_inout()
 
 	do{
 		asm_inout *io = umalloc(sizeof *io);
-		int n;
 
-		token_get_current_str(&io->constraints, &n);
+		token_get_current_str(&io->constraints, NULL);
 		EAT(token_string);
 
 		EAT(token_open_paren);
