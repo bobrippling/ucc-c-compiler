@@ -127,9 +127,14 @@ static const char *vstack_str_r(char buf[VSTACK_STR_SZ], struct vstack *vs)
 
 		case LBL_ADDR: /* we trust that the caller decides on deref/lea */
 		case LBL:
+		{
+			const int pic = fopt_mode & FOPT_PIC && vs->bits.lbl.pic;
+
 			SNPRINTF(buf, VSTACK_STR_SZ, "%s%s",
-					vs->bits.lbl.str, vs->bits.lbl.pic ? "(%rip)" : "");
+					vs->bits.lbl.str,
+					pic ? "(%rip)" : "");
 			break;
+		}
 
 		case REG:
 			*buf = '%';
