@@ -384,9 +384,10 @@ void impl_reg_swp(struct vstack *a, struct vstack *b)
 	char bufa[REG_STR_SZ], bufb[REG_STR_SZ];
 	int tmp;
 
-	UCC_ASSERT(a->type == b->type && a->type == REG, "%s without regs", __func__);
+	UCC_ASSERT(a->type == b->type && a->type == REG,
+			"%s without regs (%d and %d)", __func__, a->type, b->type);
 
-	out_asm("xchg %s, %s",
+	out_asm("xchg %%%s, %%%s",
 			reg_str_r(bufa, a),
 			reg_str_r(bufb, b));
 
@@ -496,6 +497,7 @@ void impl_op(enum op_type op)
 			v_freeup_reg(REG_A, 2);
 			v_freeup_reg(REG_D, 2);
 
+			v_to_reg(vtop);
 			r_div = v_to_reg(&vtop[-1]); /* TODO: similar to above - v_to_reg_preferred */
 
 			if(r_div != REG_A){
@@ -524,6 +526,12 @@ void impl_op(enum op_type op)
 
 			vtop_clear(vtop->d);
 			vtop->type = REG;
+			/* FIXME */
+			if(vtop->d->type != type_int){
+				ICE("idiv incorrect - need to load ax:al/ax:dx/eax:edx for %s",
+						decl_to_str(vtop->d));
+			}
+
 			vtop->bits.reg = op == op_modulus ? REG_D : REG_A;
 			return;
 		}
