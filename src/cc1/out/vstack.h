@@ -5,6 +5,7 @@ struct vstack
 {
 	enum vstore
 	{
+		/* FIXME: get rid of _ADDR: regs and consts can be pointers too */
 		CONST,          /* vtop is a constant value */
 		REG,            /* vtop is in a register */
 		STACK,          /* vtop is in the stack */
