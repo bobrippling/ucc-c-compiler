@@ -351,9 +351,15 @@ void impl_store(struct vstack *from, struct vstack *to)
 	}
 
 	switch(to->type){
-		case CONST:
 		case FLAG:
 			ICE("invalid store %d", to->type);
+
+		case CONST:
+			out_asm("mov%c %s, 0x%x",
+					asm_type_ch(from->d),
+					vstack_str(from),
+					to->bits.val);
+			break;
 
 		case STACK: /* storing to a value pointed to by the stack/a label */
 		case LBL:
