@@ -31,7 +31,7 @@ void gen_expr(expr *e, symtable *stab)
 	if(type == CONST_WITH_VAL) /* TODO: -O0 skips this */
 		out_push_iv(e->tree_type, &iv);
 	else
-		e->f_gen(e, stab);
+		EOF_WHERE(&e->where, e->f_gen(e, stab));
 }
 
 void lea_expr(expr *e, symtable *stab)
