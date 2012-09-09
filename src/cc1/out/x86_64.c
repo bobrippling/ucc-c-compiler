@@ -527,7 +527,7 @@ void impl_op(enum op_type op)
 			vtop_clear(vtop->d);
 			vtop->type = REG;
 			/* FIXME */
-			if(vtop->d->type != type_int){
+			if(vtop->d->type->primitive != type_int){
 				ICE("idiv incorrect - need to load ax:al/ax:dx/eax:edx for %s",
 						decl_to_str(vtop->d));
 			}
