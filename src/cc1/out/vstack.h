@@ -5,16 +5,14 @@ struct vstack
 {
 	enum vstore
 	{
-		/* FIXME: get rid of _ADDR: regs and consts can be pointers too */
-		CONST,          /* vtop is a constant value */
-		REG,            /* vtop is in a register */
-		STACK,          /* vtop is in the stack */
-		STACK_ADDR,     /* vtop is a pointer to the stack */
-		FLAG,           /* vtop is a cpu flag */
-		LBL,            /* vtop is a label */
-		LBL_ADDR,       /* vtop is a label address */
+		CONST,          /* vtop is a constant value/memory address */
+		REG,            /* vtop is in a register/register pointer */
+		STACK,          /* vtop is in the stack/pointer onto stack */
+		FLAG,           /* vtop is a cpu flag/invalid */
+		LBL,            /* vtop is a label/pointer to label */
 	} type;
 
+	int is_addrof;
 	decl *d;
 
 	union
@@ -58,7 +56,6 @@ void v_freeup_regp(struct vstack *);
 void v_freeup_reg(int r, int allowable_stack);
 void v_save_reg(struct vstack *vp);
 
-enum vstore v_deref_type(enum vstore store);
-decl *v_deref(struct vstack *vp);
+void v_deref_decl(struct vstack *vp);
 
 #endif
