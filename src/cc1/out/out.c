@@ -67,21 +67,6 @@ void out_flush_volatile(void)
 		v_to_reg(vtop);
 }
 
-enum vstore v_deref_type(enum vstore store)
-{
-	switch(store){
-		case STACK_ADDR: return STACK;
-		case LBL_ADDR:   return LBL;
-		default: break;
-	}
-	return -1;
-}
-
-decl *v_deref(struct vstack *vp)
-{
-	return decl_ptr_depth_dec(decl_copy(vp->d), NULL);
-}
-
 void out_assert_vtop_null(void)
 {
 	UCC_ASSERT(!vtop, "vtop not null");
@@ -112,10 +97,6 @@ void out_swap(void)
 void v_prepare_op(struct vstack *vp)
 {
 	switch(vp->type){
-		case STACK_ADDR:
-		case LBL_ADDR:
-			/* need to load their address into a reg for dereffing */
-
 		case STACK:
 		case LBL:
 			/* need to pull the values from the stack */
@@ -123,10 +104,13 @@ void v_prepare_op(struct vstack *vp)
 		case FLAG:
 			/* obviously can't have a flag in cmp/mov code */
 
+v_t_r:
 			v_to_reg(vp);
 
 		case REG:
 		case CONST:
+			if(vp->is_addrof)
+				goto v_t_r;
 			break;
 	}
 }
@@ -212,21 +196,15 @@ struct vstack *v_find_reg(int reg)
 
 void v_make_addr(struct vstack *vp)
 {
-	switch(vp->type){
-		case STACK:
-			vp->type = STACK_ADDR;
-			break;
-		case LBL:
-			vp->type = LBL_ADDR;
-			break;
-		default:
-			ICE("invalid sym addr");
-	}
+	UCC_ASSERT(!vp->is_addrof, "already addr");
+	UCC_ASSERT(vp->type != FLAG, "can't addr flag");
+
+	vp->is_addrof = 1;
 
 	/* if we're making an address from an array,
 	 * don't change the decl - it's already of [] type */
-	if(!decl_is_array(vp->d))
-		vp->d = decl_ptr_depth_inc(decl_copy(vp->d));
+	/*if(!decl_is_array(vp->d)) ???*/
+	vp->d = decl_ptr_depth_inc(decl_copy(vp->d));
 }
 
 void v_freeup_regp(struct vstack *vp)
@@ -306,6 +284,8 @@ void out_push_iv(decl *d, intval *iv)
 
 	vtop->type = CONST;
 	vtop->bits.val = iv->val; /* TODO: unsigned */
+
+	vtop->is_addrof = decl_is_ptr(d);
 }
 
 void out_push_i(decl *d, int i)
@@ -325,12 +305,12 @@ void out_push_lbl(char *s, int pic, decl *d)
 	vtop->bits.lbl.str = s;
 	vtop->bits.lbl.pic = pic;
 
-	if(d){
-		vtop->type = LBL;
+	vtop->type = LBL;
+
+	if(d)
 		v_make_addr(vtop);
-	}else{
-		vtop->type = LBL_ADDR;
-	}
+	else
+		vtop->is_addrof = 1;
 }
 
 void vdup(void)
@@ -408,19 +388,20 @@ void out_push_sym(sym *s)
 }
 
 static void vtop2_are(
-		enum vstore a, enum vstore b,
+		enum vstore a, int a_ptr,
+		enum vstore b, int b_ptr,
 		struct vstack **pa, struct vstack **pb)
 {
-	if(vtop->type == a)
+	if(vtop->type == a && vtop->is_addrof == a_ptr)
 		*pa = vtop;
-	else if(vtop[-1].type == a)
+	else if(vtop[-1].type == a && vtop[-1].is_addrof == a_ptr)
 		*pa = &vtop[-1];
 	else
 		*pa = NULL;
 
-	if(vtop->type == b)
+	if(vtop->type == b && vtop->is_addrof == b_ptr)
 		*pb = vtop;
-	else if(vtop[-1].type == b)
+	else if(vtop[-1].type == b && vtop[-1].is_addrof == b_ptr)
 		*pb = &vtop[-1];
 	else
 		*pb = NULL;
@@ -442,7 +423,7 @@ void out_op(enum op_type op)
 	struct vstack *t_const, *t_stack;
 
 	/* check for adding or subtracting to stack */
-	vtop2_are(CONST, STACK_ADDR, &t_const, &t_stack);
+	vtop2_are(CONST, 0, STACK, 1, &t_const, &t_stack);
 
 	if(t_const && t_stack){
 		/* t_const == vtop... should be */
@@ -534,14 +515,17 @@ def:
 	}
 }
 
+void v_deref_decl(struct vstack *vp)
+{
+	/* XXX: memleak */
+	vp->d = decl_ptr_depth_dec(decl_copy(vp->d), NULL);
+}
+
 void out_deref()
 {
-	enum vstore derefed = v_deref_type(vtop->type);
-
-	if((signed)derefed != -1){
-		vtop->type = derefed;
-		/* XXX: memleak */
-		vtop->d = v_deref(vtop);
+	if(vtop->is_addrof){
+		vtop->is_addrof = 0;
+		v_deref_decl(vtop);
 	}else{
 		impl_deref();
 	}
@@ -565,23 +549,22 @@ void out_op_unary(enum op_type op)
 					break;
 
 				case CONST:
-					switch(op){
+					if(!vtop->is_addrof)
+						switch(op){
 #define OP(t, o) case op_ ## t: vtop->bits.val = o vtop->bits.val; return
-						OP(not, !);
-						OP(minus, -);
-						OP(bnot, ~);
+							OP(not, !);
+							OP(minus, -);
+							OP(bnot, ~);
 #undef OP
 
-						default:
+							default:
 							ICE("invalid unary op");
-					}
+						}
 					break;
 
 				case REG:
 				case STACK:
-				case STACK_ADDR:
 				case LBL:
-				case LBL_ADDR:
 					break;
 			}
 	}
@@ -596,6 +579,9 @@ void out_cast(decl *from, decl *to)
 		impl_cast(from, to);
 
 	out_change_decl(to);
+
+	if(decl_is_ptr(to) && !decl_is_ptr(from))
+		vtop->is_addrof = 1;
 }
 
 void out_change_decl(decl *d)
