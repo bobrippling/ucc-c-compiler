@@ -92,6 +92,7 @@ void out_constraint_check(where *w, const char *constraint, int output)
 		if(output && const_chosen)
 			BAD_CONSTRAINT("can't output to a constant");
 
+		/* TODO below: allow multiple options for a constraint */
 		if(reg_chosen > 1)
 			BAD_CONSTRAINT("too many registers");
 
