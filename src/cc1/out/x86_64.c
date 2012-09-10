@@ -154,9 +154,16 @@ const char *vstack_str(struct vstack *vs)
 
 int impl_alloc_stack(int sz)
 {
-	out_asm("subq $0x%x, %%rsp", sz);
+	if(sz)
+		out_asm("subq $0x%x, %%rsp", sz);
 
 	return sz + stack_sz;
+}
+
+void impl_free_stack(int sz)
+{
+	if(sz)
+		out_asm("addq $0x%x, %%rsp", sz);
 }
 
 const char *call_reg_str(int i, decl *d)
@@ -794,7 +801,7 @@ void impl_call(const int nargs, int variadic, decl *d)
 	out_asm("callq %s", x86_call_jmp_target(vtop));
 
 	if(ncleanup)
-		out_asm("addq $0x%x, %%rsp", ncleanup * platform_word_size());
+		impl_free_stack(ncleanup * platform_word_size());
 
 	/* return type */
 	vtop_clear(d);

@@ -185,9 +185,7 @@ void v_to_mem(struct vstack *conv)
 {
 	switch(conv->type){
 		case CONST:
-		case STACK_ADDR:
 		case FLAG:
-		case LBL_ADDR:
 			v_to_reg(conv);
 
 		case REG:

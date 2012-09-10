@@ -36,6 +36,7 @@ struct vstack
 
 extern struct vstack *vtop, vstack[];
 
+void vpush(decl *d);
 void vpop(void);
 void vswap(void);
 void vdup(void);

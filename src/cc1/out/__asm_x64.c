@@ -4,6 +4,8 @@
 
 #include "../../util/util.h"
 #include "../../util/dynarray.h"
+#include "../../util/dynmap.h"
+#include "../../util/alloc.h"
 #include "../data_structs.h"
 #include "vstack.h"
 #include "out.h"
@@ -212,20 +214,33 @@ void out_constrain(asm_inout *io)
 	}
 }
 
+static void buf_add(char **pbuf, const char *s)
+{
+	char *buf = *pbuf;
+	const int len = (buf ? strlen(buf) : 0);
+
+	*pbuf = buf = urealloc(buf, len + strlen(s) + 1);
+
+	strcpy(buf + len, s);
+}
+
 void out_asm_inline(asm_args *cmd)
 {
+	const int n_outputs = dynarray_count((void **)cmd->outputs);
 	FILE *const out = cc_out[SECTION_TEXT];
-	int i;
 
 	if(cmd->extended){
+		int index;
+		int npops = 0;
+		int stack_res = 0;
+		char *buf = NULL;
 		char *p;
+		struct vstack *const argtop = vtop;
 
 		for(p = cmd->cmd; *p; p++){
-			if(*p == '%'){
-				int index;
-
-				if(*++p == '%')
-					goto normal;
+			if(*p == '%' && *++p != '%'){
+				const char *replace_str = NULL;
+				struct vstack *vp;
 
 				if(*p == '['){
 					ICE("TODO: named constraint");
@@ -235,17 +250,67 @@ void out_asm_inline(asm_args *cmd)
 					ICE("not an int - should've been caught");
 
 				/* bounds check is already done in stmt_asm.c */
-				fprintf(out, "%s", vstack_str(&vtop[-index]));
+				vp = &argtop[-index];
+
+				if(index < n_outputs){
+					/* output - reserve a reg/mem and store after */
+					char *constraint = cmd->outputs[index]->constraints;
+					constraint_t con;
+
+					constraint_type(constraint, &con);
+
+					vpush(vp->d);
+
+					switch(con.type){
+						case C_REG:
+							vtop->type = REG;
+							vtop->bits.reg = v_unused_reg(1);
+							break;
+
+						case C_MEM:
+						{
+							const int sz = decl_size(vtop->d);
+
+							vtop->type = STACK;
+							stack_res += sz;
+							vtop->bits.off_from_bp = impl_alloc_stack(sz);
+							break;
+						}
+
+						case C_CONST:
+							ICE("invalid output const");
+					}
+
+					replace_str = vstack_str(vtop);
+					npops++;
+				}
+
+				if(!replace_str)
+					replace_str = vstack_str(vp);
+
+				buf_add(&buf, replace_str);
 			}else{
-	normal:
-				fputc(*p, out);
+				char to_add[2];
+
+				to_add[0] = *p;
+				to_add[1] = '\0';
+
+				buf_add(&buf, to_add);
 			}
 		}
 
-		while(*p)
-			fputc(*p, out);
-		fputc('\n', out);
+		out_comment("### actual inline");
+		fprintf(out, "\t%s\n", buf);
+		out_comment("### end");
 
+		index = n_outputs;
+		while(npops --> 0){
+			/* assign to the correct store */
+			impl_store(vtop, &argtop[--index]);
+
+			vpop();
+		}
+		impl_free_stack(stack_res);
 	}else{
 		fprintf(out, "%s\n", cmd->cmd);
 	}

@@ -64,17 +64,17 @@ void fold_stmt_asm(stmt *s)
 void gen_stmt_asm(stmt *s)
 {
 	asm_inout **ios;
+	int npops = 0;
 	int i;
 
-	for(ios = s->asm_bits->outputs, i = 0; ios[i]; i++){
+	for(ios = s->asm_bits->outputs, i = 0; ios && ios[i]; i++, npops++){
 		asm_inout *const io = ios[i];
 
 		lea_expr(io->exp, s->symtab);
-		out_do_something();
 	}
 
 	if((ios = s->asm_bits->inputs)){
-		for(i = 0; ios && ios[i]; i++)
+		for(i = 0; ios && ios[i]; i++, npops++)
 			gen_expr(ios[i]->exp, s->symtab);
 
 		/* move into the registers or wherever necessary */
@@ -82,13 +82,16 @@ void gen_stmt_asm(stmt *s)
 			out_constrain(ios[i]);
 	}
 
-	out_comment("### %sasm() from %s",
-			s->asm_bits->extended ? "extended-" : "",
+	out_comment("### begin asm(%s) from %s",
+			s->asm_bits->extended ? ":::" : "",
 			where_str(&s->where));
 
 	out_asm_inline(s->asm_bits);
 
 	out_comment("### end asm()");
+
+	while(npops --> 0)
+		out_pop();
 }
 
 void mutate_stmt_asm(stmt *s)
