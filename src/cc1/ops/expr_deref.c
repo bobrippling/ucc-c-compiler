@@ -8,29 +8,31 @@ const char *str_expr_deref()
 
 void fold_expr_deref(expr *e, symtable *stab)
 {
-	fold_expr(expr_deref_what(e), stab);
+	expr *const ptr = expr_deref_what(e);
 
-	if(decl_attr_present(expr_deref_what(e)->tree_type->attr, attr_noderef))
-		WARN_AT(&expr_deref_what(e)->where, "dereference of noderef expression");
+	fold_expr(ptr, stab);
+
+	if(decl_attr_present(ptr->tree_type->attr, attr_noderef))
+		WARN_AT(&ptr->where, "dereference of noderef expression");
 
 	/* check for *&x */
-	if(expr_kind(expr_deref_what(e), addr))
-		WARN_AT(&expr_deref_what(e)->where, "possible optimisation for *& expression");
+	if(expr_kind(ptr, addr) && !ptr->expr_addr_implicit)
+		WARN_AT(&ptr->where, "possible optimisation for *& expression");
 
-	e->tree_type = decl_ptr_depth_dec(decl_copy(expr_deref_what(e)->tree_type), &e->where);
+	e->tree_type = decl_ptr_depth_dec(decl_copy(ptr->tree_type), &e->where);
 }
 
 void gen_expr_deref_store(expr *e, symtable *stab)
 {
 	/* a dereference */
 	gen_expr(expr_deref_what(e), stab); /* skip over the *() bit */
-	out_comment("pointer on stack");
 }
 
 void gen_expr_deref(expr *e, symtable *stab)
 {
 	gen_expr(expr_deref_what(e), stab);
 
+	/* FIXME: THIS SHOUDL BE IN out/ */
 	if(decl_is_array(e->tree_type) && decl_is_array(expr_deref_what(e)->tree_type)){
 		/*char buf[DECL_STATIC_BUFSIZ];
 

@@ -268,8 +268,7 @@ void fold_gen_init_assignment2(expr *base, decl *dfor, decl_init *init_from, stm
 			target->lhs = base;
 			target->rhs = expr_new_val(i_assignment);
 
-			if(expr_kind(base, op))
-				target = expr_new_deref(target);
+			target = expr_new_deref(target);
 
 			/*fprintf(stderr, "for array %s, sub %s\n",
 					decl_to_str(dfor),
@@ -330,12 +329,16 @@ void fold_gen_init_assignment2(expr *base, decl *dfor, decl_init *init_from, stm
 
 void fold_gen_init_assignment(decl *dfor, stmt *code)
 {
-	expr *base = expr_new_identifier(dfor->spel);
+	expr *base = expr_new_addr();
+
+	base->lhs = expr_new_identifier(dfor->spel);
+	base->expr_addr_implicit = 1;
 
 	fold_gen_init_assignment2(base, dfor, dfor->init, code);
 }
 
 #if 0
+/* see fold_gen_init_assignment2 */
 void fold_decl_init(decl *for_decl, decl_init *di, symtable *stab)
 {
 	fold_gen_init_assignment(for_decl, codes);

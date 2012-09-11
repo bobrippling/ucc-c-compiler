@@ -1,7 +1,5 @@
 CFLAGS = -g -Wall -Wextra -pedantic -std=c99 \
--Wpointer-arith       \
--Wcast-qual           \
--Wcast-align
+         -Wcast-qual
 
 #-Wconversion          \
 #-Wshadow              \
