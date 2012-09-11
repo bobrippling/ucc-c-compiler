@@ -17,6 +17,7 @@
 #include "sue.h"
 #include "decl.h"
 #include "ops/__builtin.h"
+#include "pack.h"
 
 decl *curdecl_func, *curdecl_func_called; /* for funcargs-local labels and return type-checking */
 
@@ -203,7 +204,8 @@ int fold_sue(struct_union_enum_st *sue, symtable *stab)
 
 				offset += fold_sue(d->type->sue, stab);
 			}else{
-				offset += decl_size(d);
+				const int sz = decl_size(d);
+				offset = pack_next(offset, sz, sz);
 			}
 		}
 	}
