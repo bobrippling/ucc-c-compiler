@@ -119,8 +119,8 @@ int type_primitive_size(enum type_primitive tp)
 
 int type_size(const type *t)
 {
-	if(t->typeof)
-		return decl_size(t->typeof->decl);
+	if(t->type_of)
+		return decl_size(t->type_of->decl);
 
 	if(t->sue)
 		return sue_size(t->sue);
@@ -280,7 +280,7 @@ const char *type_to_str(const type *t)
 	static char buf[TYPE_STATIC_BUFSIZ];
 	char *bufp = buf;
 
-	if(t->typeof)     bufp += snprintf(bufp, BUF_SIZE, "typedef ");
+	if(t->type_of)     bufp += snprintf(bufp, BUF_SIZE, "typedef ");
 
 	{
 		const char *tmp = type_qual_to_str(t->qual);

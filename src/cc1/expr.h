@@ -43,6 +43,7 @@ struct expr
 #define expr_cast_implicit assign_is_post
 #define expr_is_typeof     assign_is_post
 #define expr_is_st_dot     assign_is_post
+#define expr_addr_implicit assign_is_post
 
 	expr *lhs, *rhs;
 

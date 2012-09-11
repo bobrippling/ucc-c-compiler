@@ -17,6 +17,7 @@
 #include "sue.h"
 #include "decl.h"
 #include "ops/__builtin.h"
+#include "pack.h"
 
 decl *curdecl_func, *curdecl_func_called; /* for funcargs-local labels and return type-checking */
 
@@ -203,7 +204,8 @@ int fold_sue(struct_union_enum_st *sue, symtable *stab)
 
 				offset += fold_sue(d->type->sue, stab);
 			}else{
-				offset += decl_size(d);
+				const int sz = decl_size(d);
+				offset = pack_next(offset, sz, sz);
 			}
 		}
 	}
@@ -268,8 +270,7 @@ void fold_gen_init_assignment2(expr *base, decl *dfor, decl_init *init_from, stm
 			target->lhs = base;
 			target->rhs = expr_new_val(i_assignment);
 
-			if(expr_kind(base, op))
-				target = expr_new_deref(target);
+			target = expr_new_deref(target);
 
 			/*fprintf(stderr, "for array %s, sub %s\n",
 					decl_to_str(dfor),
@@ -330,12 +331,16 @@ void fold_gen_init_assignment2(expr *base, decl *dfor, decl_init *init_from, stm
 
 void fold_gen_init_assignment(decl *dfor, stmt *code)
 {
-	expr *base = expr_new_identifier(dfor->spel);
+	expr *base = expr_new_addr();
+
+	base->lhs = expr_new_identifier(dfor->spel);
+	base->expr_addr_implicit = 1;
 
 	fold_gen_init_assignment2(base, dfor, dfor->init, code);
 }
 
 #if 0
+/* see fold_gen_init_assignment2 */
 void fold_decl_init(decl *for_decl, decl_init *di, symtable *stab)
 {
 	fold_gen_init_assignment(for_decl, codes);
@@ -483,26 +488,26 @@ void fold_decl(decl *d, symtable *stab)
 	decl_desc *dp;
 
 	/* typedef / __typeof folding */
-	while(d->type->typeof){
+	while(d->type->type_of){
 		/* get the typedef decl from t->decl->tree_type */
 		const enum type_qualifier old_qual  = d->type->qual;
 		const enum type_storage   old_store = d->type->store;
 		decl *from;
 		expr *type_exp;
 
-		type_exp = d->type->typeof;
+		type_exp = d->type->type_of;
 
 		fold_expr(type_exp, stab);
 
 		/* either get the typeof() from the decl or the expr type */
-		from = d->type->typeof->decl;
+		from = d->type->type_of->decl;
 		if(!from)
-			from = d->type->typeof->expr->tree_type;
+			from = d->type->type_of->expr->tree_type;
 
 		UCC_ASSERT(from, "no decl for typeof/typedef fold: "
 				".decl = %p, .expr->tt = %p",
-				(void *)d->type->typeof->decl,
-				(void *)d->type->typeof->expr->tree_type);
+				(void *)d->type->type_of->decl,
+				(void *)d->type->type_of->expr->tree_type);
 
 		decl_free(type_exp->tree_type);
 		type_exp->tree_type = decl_copy(from);

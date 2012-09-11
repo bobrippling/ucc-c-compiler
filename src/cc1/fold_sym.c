@@ -7,6 +7,7 @@
 #include "sym.h"
 #include "fold_sym.h"
 #include "../util/platform.h"
+#include "pack.h"
 
 
 #define RW_TEST(var)                              \
@@ -34,7 +35,6 @@ int symtab_fold(symtable *tab, int current)
 	const int this_start = current;
 
 	if(tab->decls){
-		const int word_size = platform_word_size();
 		decl **diter;
 		int arg_idx;
 
@@ -64,15 +64,8 @@ int symtab_fold(symtable *tab, int current)
 					{
 						int siz = decl_size(s->decl);
 
-						if(siz <= word_size)
-							s->offset = current;
-						else
-							s->offset = current + siz - word_size; /* an array and structs start at the bottom */
-
-						/* need to increase by a multiple of word_size */
-						if(siz % word_size)
-							siz += word_size - siz % word_size;
-						current += siz;
+						/* TODO: alignment */
+						current = s->offset = pack_next(current, siz, siz); /* an array and structs start at the bottom */
 
 						/* static analysis on sym (only auto-vars) */
 						if(!s->decl->init)

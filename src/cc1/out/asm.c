@@ -71,7 +71,7 @@ int asm_table_lookup(decl *d)
 	if(!d || decl_ptr_or_block(d)){
 		return ASM_INDEX_PTR;
 	}else{
-		if(d->type->typeof)
+		if(d->type->type_of)
 			ICE("typedefs should've been folded by now");
 
 		switch(d->type->primitive){

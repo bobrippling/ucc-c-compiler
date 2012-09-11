@@ -102,11 +102,7 @@ void gen_expr_struct(expr *e, symtable *stab)
 
 	gen_expr_struct_store(e, stab);
 
-	if(decl_is_array(e->rhs->tree_type)){
-		out_comment("array - got address");
-	}else{
-		out_deref();
-	}
+	out_deref();
 
 	out_comment("val from struct");
 }
