@@ -64,6 +64,7 @@ int symtab_fold(symtable *tab, int current)
 					{
 						int siz = decl_size(s->decl);
 
+						/* TODO: packing */
 						if(siz <= word_size)
 							s->offset = current;
 						else
