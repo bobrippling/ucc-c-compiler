@@ -483,26 +483,26 @@ void fold_decl(decl *d, symtable *stab)
 	decl_desc *dp;
 
 	/* typedef / __typeof folding */
-	while(d->type->typeof){
+	while(d->type->type_of){
 		/* get the typedef decl from t->decl->tree_type */
 		const enum type_qualifier old_qual  = d->type->qual;
 		const enum type_storage   old_store = d->type->store;
 		decl *from;
 		expr *type_exp;
 
-		type_exp = d->type->typeof;
+		type_exp = d->type->type_of;
 
 		fold_expr(type_exp, stab);
 
 		/* either get the typeof() from the decl or the expr type */
-		from = d->type->typeof->decl;
+		from = d->type->type_of->decl;
 		if(!from)
-			from = d->type->typeof->expr->tree_type;
+			from = d->type->type_of->expr->tree_type;
 
 		UCC_ASSERT(from, "no decl for typeof/typedef fold: "
 				".decl = %p, .expr->tt = %p",
-				(void *)d->type->typeof->decl,
-				(void *)d->type->typeof->expr->tree_type);
+				(void *)d->type->type_of->decl,
+				(void *)d->type->type_of->expr->tree_type);
 
 		decl_free(type_exp->tree_type);
 		type_exp->tree_type = decl_copy(from);
