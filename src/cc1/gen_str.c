@@ -217,12 +217,12 @@ void print_decl(decl *d, enum pdeclargs mode)
 			fputc(')', cc1_out);
 	}
 
-	if(d->type->typeof){
+	if(d->type->type_of){
 		fputc('\n', cc1_out);
 		gen_str_indent++;
 		idt_printf("typeof expr:\n");
 		gen_str_indent++;
-		print_expr(d->type->typeof);
+		print_expr(d->type->type_of);
 		gen_str_indent -= 2;
 		idt_print();
 	}
