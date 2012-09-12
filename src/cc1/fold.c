@@ -785,19 +785,6 @@ static void fold_link_decl_defs(dynmap *spel_decls)
 	}
 }
 
-static void add_builtins(symtable *globs)
-{
-	decl **i, **start;
-
-	for(start = i = builtin_funcs(); i && *i; i++){
-		decl *d = *i;
-
-		symtab_add(globs, d, sym_global, SYMTAB_NO_SYM, SYMTAB_PREPEND);
-	}
-
-	dynarray_free((void ***)&start, NULL);
-}
-
 void fold(symtable *globs)
 {
 #define D(x) globs->decls[x]
@@ -807,8 +794,6 @@ void fold(symtable *globs)
 
 	memset(&asm_struct_enum_where, 0, sizeof asm_struct_enum_where);
 	asm_struct_enum_where.fname = current_fname;
-
-	EOF_WHERE(&asm_struct_enum_where, add_builtins(globs));
 
 	if(fopt_mode & FOPT_ENABLE_ASM){
 		decl *df;

@@ -43,7 +43,7 @@ expr.o: expr.c ../util/util.h ../util/alloc.h data_structs.h tree.h \
  ops/stmt_default.h ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h \
  ops/stmt_goto.h ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h \
  ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h ops/stmt_continue.h \
- sym.h decl.h cc1.h
+ sym.h decl.h cc1.h fold.h
 fold.o: fold.c ../util/util.h data_structs.h tree.h expr.h \
  ops/expr_addr.h ops/expr_assign.h ops/expr_cast.h ops/expr_comma.h \
  ops/expr_funcall.h ops/expr_identifier.h ops/expr_if.h ops/expr_op.h \
@@ -100,7 +100,7 @@ parse.o: parse.c ../util/util.h data_structs.h tree.h expr.h \
  ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h ops/stmt_return.h \
  ops/stmt_switch.h ops/stmt_while.h ops/stmt_continue.h sym.h decl.h \
  tokenise.h parse.h ../util/alloc.h tokconv.h cc1.h ../util/dynarray.h \
- sue.h parse_type.h const.h
+ sue.h parse_type.h const.h ops/__builtin.h
 parse_attr.o: parse_attr.c
 parse_type.o: parse_type.c ../util/util.h ../util/alloc.h \
  ../util/dynarray.h data_structs.h tree.h expr.h ops/expr_addr.h \
@@ -197,7 +197,9 @@ ops/__builtin.o: ops/__builtin.c ops/../../util/util.h \
  ops/../ops/stmt_for.h ops/../ops/stmt_goto.h ops/../ops/stmt_if.h \
  ops/../ops/stmt_label.h ops/../ops/stmt_noop.h ops/../ops/stmt_return.h \
  ops/../ops/stmt_switch.h ops/../ops/stmt_while.h \
- ops/../ops/stmt_continue.h ops/../sym.h ops/../decl.h ops/__builtin.h
+ ops/../ops/stmt_continue.h ops/../sym.h ops/../decl.h ops/__builtin.h \
+ ops/../cc1.h ops/../tokenise.h ops/../parse.h ops/../fold.h \
+ ops/../const.h ops/../asm.h
 ops/expr__Generic.o: ops/expr__Generic.c ops/ops.h ops/../../util/util.h \
  ops/../data_structs.h ops/../tree.h ops/../expr.h ops/../ops/expr_addr.h \
  ops/../ops/expr_assign.h ops/../ops/expr_cast.h ops/../ops/expr_comma.h \

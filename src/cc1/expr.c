@@ -7,6 +7,7 @@
 #include "../util/alloc.h"
 #include "data_structs.h"
 #include "cc1.h"
+#include "fold.h"
 
 /* needed for expr_assignment() */
 #include "ops/expr_assign.h"
