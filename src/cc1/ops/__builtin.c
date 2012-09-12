@@ -106,6 +106,7 @@ static void builtin_gen_undefined(expr *e, symtable *stab)
 	(void)e;
 	(void)stab;
 	out_undefined();
+	out_push_i(NULL, 0);
 }
 
 /* --- unreachable */
