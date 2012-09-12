@@ -285,7 +285,7 @@ void out_push_iv(decl *d, intval *iv)
 	vtop->type = CONST;
 	vtop->bits.val = iv->val; /* TODO: unsigned */
 
-	vtop->is_addrof = decl_is_ptr(d);
+	vtop->is_addrof = d && decl_is_ptr(d);
 }
 
 void out_push_i(decl *d, int i)
