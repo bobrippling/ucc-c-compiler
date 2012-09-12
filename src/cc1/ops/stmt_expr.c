@@ -19,9 +19,6 @@ void gen_stmt_expr(stmt *s)
 {
 	gen_expr(s->expr, s->symtab);
 
-	if(s->expr->tree_type->builtin)
-		return;
-
 	if((fopt_mode & FOPT_ENABLE_ASM) == 0
 	|| !s->expr
 	|| expr_kind(s->expr, funcall)

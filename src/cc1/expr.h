@@ -112,7 +112,7 @@ expr *expr_new_array_decl_init(decl *d, int ival, int idx);
 
 #define expr_free(x) do{if((x)->tree_type) decl_free((x)->tree_type); free(x);}while(0)
 
-#define expr_kind(exp, kind) ((exp)->f_fold == fold_expr_ ## kind)
+#define expr_kind(exp, kind) ((exp)->f_str == str_expr_ ## kind)
 
 expr *expr_new_identifier(char **ns_path);
 expr *expr_new_cast(decl *cast_to);

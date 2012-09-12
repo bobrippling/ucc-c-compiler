@@ -292,7 +292,7 @@ type *parse_type()
 		else
 			t->primitive = primitive;
 
-		t->typeof = tdef_typeof;
+		t->type_of = tdef_typeof;
 		t->is_signed = is_signed;
 		t->is_inline = is_inline;
 		t->qual  = qual;

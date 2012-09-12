@@ -17,7 +17,6 @@
 #include "../util/dynmap.h"
 #include "sue.h"
 #include "decl.h"
-#include "ops/__builtin.h"
 
 decl *curdecl_func, *curdecl_func_called; /* for funcargs-local labels and return type-checking */
 
@@ -240,27 +239,27 @@ void fold_decl(decl *d, symtable *stab)
 	decl_desc *dp;
 
 	/* typedef / __typeof folding */
-	while(d->type->typeof){
+	while(d->type->type_of){
 		/* get the typedef decl from t->decl->tree_type */
 		const enum type_qualifier old_qual  = d->type->qual;
 		const enum type_storage   old_store = d->type->store;
 		decl *from;
 		expr *type_exp;
 
-		type_exp = d->type->typeof;
+		type_exp = d->type->type_of;
 
 		fold_expr(type_exp, stab);
 		decl_free(type_exp->tree_type);
 
 		/* either get the typeof() from the decl or the expr type */
-		from = d->type->typeof->decl;
+		from = d->type->type_of->decl;
 		if(!from)
-			from = d->type->typeof->expr->tree_type;
+			from = d->type->type_of->expr->tree_type;
 
 		UCC_ASSERT(from, "no decl for typeof/typedef fold: "
 				".decl = %p, .expr->tt = %p",
-				(void *)d->type->typeof->decl,
-				(void *)d->type->typeof->expr->tree_type);
+				(void *)d->type->type_of->decl,
+				(void *)d->type->type_of->expr->tree_type);
 
 		type_exp->tree_type = decl_copy(from);
 
@@ -785,19 +784,6 @@ static void fold_link_decl_defs(dynmap *spel_decls)
 	}
 }
 
-static void add_builtins(symtable *globs)
-{
-	decl **i, **start;
-
-	for(start = i = builtin_funcs(); i && *i; i++){
-		decl *d = *i;
-
-		symtab_add(globs, d, sym_global, SYMTAB_NO_SYM, SYMTAB_PREPEND);
-	}
-
-	dynarray_free((void ***)&start, NULL);
-}
-
 void fold(symtable *globs)
 {
 #define D(x) globs->decls[x]
@@ -807,8 +793,6 @@ void fold(symtable *globs)
 
 	memset(&asm_struct_enum_where, 0, sizeof asm_struct_enum_where);
 	asm_struct_enum_where.fname = current_fname;
-
-	EOF_WHERE(&asm_struct_enum_where, add_builtins(globs));
 
 	if(fopt_mode & FOPT_ENABLE_ASM){
 		decl *df;
