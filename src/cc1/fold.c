@@ -17,7 +17,6 @@
 #include "../util/dynmap.h"
 #include "sue.h"
 #include "decl.h"
-#include "ops/__builtin.h"
 
 decl *curdecl_func, *curdecl_func_called; /* for funcargs-local labels and return type-checking */
 

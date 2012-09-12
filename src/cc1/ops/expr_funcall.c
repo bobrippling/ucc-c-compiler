@@ -1,11 +1,11 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
+
 #include "ops.h"
 #include "../../util/dynarray.h"
 #include "../../util/platform.h"
 #include "../../util/alloc.h"
-#include "__builtin.h"
 
 const char *str_expr_funcall()
 {
