@@ -66,7 +66,7 @@ struct type
 	struct_union_enum_st *sue;
 
 	/* NULL unless from typedef or __typeof() */
-	expr *typeof;
+	expr *type_of;
 
 	/* attr applied to all decls whose type is this type */
 	decl_attr *attr;
