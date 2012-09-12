@@ -10,9 +10,12 @@
 
 void const_fold(expr *e, intval *iv, enum constyness *success)
 {
+	/* always const_fold functions, i.e. builtins */
+	const int should_fold = (fopt_mode & FOPT_CONST_FOLD) || expr_kind(e, funcall);
+
 	*success = CONST_NO;
 
-	if(fopt_mode & FOPT_CONST_FOLD && e->f_const_fold)
+	if(should_fold && e->f_const_fold)
 		e->f_const_fold(e, iv, success);
 }
 
