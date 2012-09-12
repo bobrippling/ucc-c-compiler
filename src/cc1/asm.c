@@ -363,7 +363,7 @@ enum asm_size asm_type_size(decl *d)
 	if(decl_desc_depth(d)){
 		return ASM_SIZE_WORD;
 	}else{
-		if(d->type->typeof)
+		if(d->type->type_of)
 			ICE("typedefs should've been folded by now");
 
 		switch(d->type->primitive){
