@@ -111,7 +111,7 @@ struct decl
 	sym *sym;
 	decl_attr *attr;
 
-	int builtin; /* __builtin_* */
+	int internal; /* interal string or array decl */
 
 	int is_definition;
 	/* true if this is the definition of the decl - may have init or func_code */
@@ -164,6 +164,7 @@ decl        *decl_new(void);
 decl        *decl_new_type(enum type_primitive p);
 #define      decl_new_void() decl_new_type(type_void)
 #define      decl_new_char() decl_new_type(type_char)
+#define      decl_new_int()  decl_new_type(type_int)
 
 decl_attr   *decl_attr_new(enum decl_attr_type);
 void         decl_attr_append(decl_attr **loc, decl_attr *new);

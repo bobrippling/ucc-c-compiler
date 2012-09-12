@@ -805,3 +805,8 @@ void impl_call(const int nargs, int variadic, decl *d)
 	vtop->type = REG;
 	vtop->bits.reg = REG_RET;
 }
+
+void impl_undefined(void)
+{
+	out_asm("ud2");
+}

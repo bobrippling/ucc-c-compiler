@@ -177,20 +177,11 @@ invalid:
 
 	if(decl_attr_present(e->tree_type->attr, attr_warn_unused))
 		e->freestanding = 0; /* needs use */
-
-	/* evaluate builtin funcs here, for constant folding (types_compat) */
-	if(e->tree_type->builtin)
-		builtin_fold(e);
 }
 
 void gen_expr_funcall(expr *e, symtable *stab)
 {
 	const char *const fname = e->expr->spel;
-
-	if(e->tree_type->builtin){
-		builtin_gen(e);
-		return;
-	}
 
 	if(func_is_asm(fname)){
 		out_comment("start manual __asm__");
