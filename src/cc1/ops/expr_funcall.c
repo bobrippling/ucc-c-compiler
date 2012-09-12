@@ -1,11 +1,11 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
+
 #include "ops.h"
 #include "../../util/dynarray.h"
 #include "../../util/platform.h"
 #include "../../util/alloc.h"
-#include "__builtin.h"
 
 const char *str_expr_funcall()
 {
@@ -139,19 +139,10 @@ void fold_expr_funcall(expr *e, symtable *stab)
 
 	if(decl_attr_present(e->tree_type->attr, attr_warn_unused))
 		e->freestanding = 0; /* needs use */
-
-	/* evaluate builtin funcs here, for constant folding (types_compat) */
-	if(e->tree_type->builtin)
-		builtin_fold(e);
 }
 
 void gen_expr_funcall(expr *e, symtable *stab)
 {
-	if(e->tree_type->builtin){
-		builtin_gen(e);
-		return;
-	}
-
 	/* continue with normal funcall */
 	const int variadic = decl_funcargs(e->expr->tree_type)->variadic;
 	sym *const sym = e->expr->sym;

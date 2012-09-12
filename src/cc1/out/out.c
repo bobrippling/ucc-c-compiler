@@ -694,3 +694,9 @@ void out_pop_func_ret(decl *d)
 {
 	impl_pop_func_ret(d);
 }
+
+void out_undefined(void)
+{
+	out_flush_volatile();
+	impl_undefined();
+}

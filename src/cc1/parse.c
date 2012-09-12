@@ -17,6 +17,7 @@
 #include "parse_type.h"
 #include "data_store.h"
 #include "const.h"
+#include "ops/__builtin.h"
 
 #define STAT_NEW(type)      stmt_new_wrapper(type, current_scope)
 #define STAT_NEW_NEST(type) stmt_new_wrapper(type, symtab_new(current_scope))
@@ -244,9 +245,17 @@ expr *parse_expr_postfix()
 			e = expr_new_deref(sum);
 
 		}else if(accept(token_open_paren)){
-			expr *fcall = expr_new_funcall();
+			expr *fcall = NULL;
 
-			fcall->funcargs = parse_funcargs();
+			/* check for specialised builtin parsing */
+			if(expr_kind(e, identifier))
+				fcall = builtin_parse(e->spel);
+
+			if(!fcall){
+				fcall = expr_new_funcall();
+				fcall->funcargs = parse_funcargs();
+			}
+
 			fcall->expr = e;
 			EAT(token_close_paren);
 
@@ -414,6 +423,25 @@ expr *parse_expr_exp()
 		return ret;
 	}
 	return e;
+}
+
+decl **parse_type_list()
+{
+	decl **types = NULL;
+
+	if(curtok == token_close_paren)
+		return types;
+
+	do{
+		decl *d = parse_decl_single(DECL_SPEL_NO);
+
+		if(!d)
+			DIE_AT(NULL, "type expected");
+
+		dynarray_add((void ***)&types, d);
+	}while(accept(token_comma));
+
+	return types;
 }
 
 expr **parse_funcargs()

@@ -20,9 +20,6 @@ void gen_stmt_expr(stmt *s)
 {
 	gen_expr(s->expr, s->symtab);
 
-	if(s->expr->tree_type->builtin)
-		return;
-
 	if(!s->expr_no_pop){
 		out_pop();
 		out_comment("end of %s-stmt", s->f_str());

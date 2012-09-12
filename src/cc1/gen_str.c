@@ -505,9 +505,6 @@ void gen_str(symtable *symtab)
 	for(diter = symtab->decls; diter && *diter; diter++){
 		decl *const d = *diter;
 
-		if(d->builtin)
-			continue;
-
 		print_decl(d, PDECL_INDENT
 				| PDECL_NEWLINE
 				| PDECL_PISDEF

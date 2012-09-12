@@ -30,6 +30,8 @@ void impl_func_prologue(int stack_res, int nargs, int variadic);
 void impl_func_epilogue(void);
 void impl_pop_func_ret(decl *);
 
+void impl_undefined(void);
+
 #define N_REGS 4
 #define N_CALL_REGS 6
 
