@@ -82,24 +82,13 @@ expr *builtin_parse(const char *sp)
 	return NULL;
 }
 
-#define expr_mutate_builtin(exp, to)     \
-	exp->f_fold       = fold_ ## to
+#define expr_mutate_builtin(exp, to)  \
+	exp->f_fold = fold_ ## to
 
-#define expr_mutate_builtin_const(exp, to) \
-	expr_mutate_builtin(exp, to),            \
-	exp->f_gen        = builtin_gen_const,   \
+#define expr_mutate_builtin_no_gen(exp, to) \
+	expr_mutate_builtin(exp, to),             \
+	exp->f_gen        = NULL,                 \
 	exp->f_const_fold = const_ ## to
-
-static void builtin_gen_const(expr *e, symtable *stab)
-{
-	intval iv;
-
-	const_fold_need_val(e, &iv);
-
-	(void)stab;
-
-	out_push_i(NULL, iv.val);
-}
 
 static void builtin_gen_undefined(expr *e, symtable *stab)
 {
@@ -156,7 +145,7 @@ static expr *parse_compatible_p(void)
 	fcall->block_args = funcargs_new();
 	fcall->block_args->arglist = parse_type_list();
 
-	expr_mutate_builtin_const(fcall, compatible_p);
+	expr_mutate_builtin_no_gen(fcall, compatible_p);
 
 	return fcall;
 }
@@ -193,7 +182,7 @@ static expr *parse_constant_p(void)
 
 	fcall->funcargs = parse_funcargs();
 
-	expr_mutate_builtin_const(fcall, constant_p);
+	expr_mutate_builtin_no_gen(fcall, constant_p);
 
 	return fcall;
 }
