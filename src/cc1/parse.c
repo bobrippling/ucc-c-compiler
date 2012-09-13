@@ -237,10 +237,6 @@ expr *parse_expr_primary()
 				expr *e;
 
 				if((d = parse_decl_single(DECL_SPEL_NO))){
-					if(d->type->store)
-						DIE_AT(&d->where, "invalid cast involving %s",
-								type_store_to_str(d->type->store));
-
 					e = expr_new_cast(d);
 					EAT(token_close_paren);
 					e->expr = parse_expr_cast(); /* another cast */
@@ -793,7 +789,7 @@ stmt *parse_stmt_and_decls()
 
 		parse_static_assert();
 
-		decls = parse_decls_multi_type(DECL_MULTI_ACCEPT_FUNC_DECL);
+		decls = parse_decls_multi_type(DECL_MULTI_ACCEPT_FUNC_DECL | DECL_MULTI_ALLOW_STORE);
 		sub = NULL;
 
 		if(decls){
@@ -1070,7 +1066,10 @@ symtable *parse()
 	current_scope = globals = symtab_new(NULL);
 
 	for(;;){
-		decl **new = parse_decls_multi_type(DECL_MULTI_CAN_DEFAULT | DECL_MULTI_ACCEPT_FUNC_CODE);
+		decl **new = parse_decls_multi_type(
+				  DECL_MULTI_CAN_DEFAULT
+				| DECL_MULTI_ACCEPT_FUNC_CODE
+				| DECL_MULTI_ALLOW_STORE);
 
 		if(new){
 			dynarray_add_array((void ***)&decls, (void **)new);
