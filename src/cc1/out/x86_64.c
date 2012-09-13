@@ -160,7 +160,13 @@ static const char *vstack_str(struct vstack *vs)
 
 int impl_alloc_stack(int sz)
 {
-	out_asm("subq $0x%x, %%rsp", sz);
+	static int word_size;
+	/* sz must be a multiple of word_size */
+
+	if(!word_size)
+		word_size = platform_word_size();
+
+	out_asm("subq $0x%x, %%rsp", sz + word_size - sz % word_size);
 
 	return sz + stack_sz;
 }
