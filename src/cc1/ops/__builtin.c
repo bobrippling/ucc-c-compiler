@@ -24,12 +24,10 @@
 typedef expr *func_builtin_parse(void);
 
 static func_builtin_parse parse_unreachable,
-													parse_trap,
 													parse_compatible_p,
 													parse_constant_p;
 
 static func_fold fold_unreachable,
-								 fold_trap,
 								 fold_compatible_p,
 								 fold_constant_p;
 
@@ -45,7 +43,7 @@ typedef struct
 
 builtin_table builtins[] = {
 	{ "unreachable", parse_unreachable },
-	{ "trap", parse_trap },
+	{ "trap", parse_unreachable }, /* same */
 
 	{ "types_compatible_p", parse_compatible_p },
 	{ "constant_p", parse_constant_p },
@@ -121,24 +119,8 @@ static void fold_unreachable(expr *e, symtable *stab)
 
 	e->tree_type = decl_new_void();
 	decl_attr_append(&e->tree_type->attr, decl_attr_new(attr_noreturn));
-}
 
-/* --- trap */
-
-static expr *parse_trap(void)
-{
-	expr *fcall = expr_new_funcall();
-
-	expr_mutate_builtin(fcall, trap);
-	fcall->f_gen = builtin_gen_undefined;
-
-	return fcall;
-}
-
-static void fold_trap(expr *e, symtable *stab)
-{
-	(void)stab;
-	e->tree_type = decl_new_void();
+	wur_builtin(e);
 }
 
 /* --- compatible_p */
