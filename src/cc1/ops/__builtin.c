@@ -91,6 +91,11 @@ expr *builtin_parse(const char *sp)
 	exp->f_gen        = NULL,                 \
 	exp->f_const_fold = const_ ## to
 
+static void wur_builtin(expr *e)
+{
+	e->freestanding = 0; /* needs use */
+}
+
 static void builtin_gen_undefined(expr *e, symtable *stab)
 {
 	(void)e;
@@ -163,6 +168,7 @@ static void fold_compatible_p(expr *e, symtable *stab)
 	fold_decl(types[1], stab);
 
 	e->tree_type = decl_new_int();
+	wur_builtin(e);
 }
 
 static void const_compatible_p(expr *e, intval *val, enum constyness *success)
@@ -197,6 +203,7 @@ static void fold_constant_p(expr *e, symtable *stab)
 	fold_expr(e->funcargs[0], stab);
 
 	e->tree_type = decl_new_int();
+	wur_builtin(e);
 }
 
 static void const_constant_p(expr *e, intval *val, enum constyness *success)
