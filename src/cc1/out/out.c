@@ -175,7 +175,7 @@ int v_unused_reg(int stack_as_backup)
 
 int v_to_reg(struct vstack *conv)
 {
-	if(conv->type != REG)
+	if(conv->type != REG || conv->is_addrof)
 		impl_load(conv, v_unused_reg(1));
 
 	return conv->bits.reg;

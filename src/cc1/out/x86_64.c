@@ -154,8 +154,14 @@ const char *vstack_str(struct vstack *vs)
 
 int impl_alloc_stack(int sz)
 {
+	static int word_size;
+	/* sz must be a multiple of word_size */
+
+	if(!word_size)
+		word_size = platform_word_size();
+
 	if(sz)
-		out_asm("subq $0x%x, %%rsp", sz);
+		out_asm("subq $0x%x, %%rsp", sz + word_size - sz % word_size);
 
 	return sz + stack_sz;
 }
@@ -281,20 +287,26 @@ static void x86_load(struct vstack *from, const char *regstr)
 			break;
 	}
 
-	out_asm("%s%c %s, %%%s",
-			from->is_addrof ? "lea" : "mov",
-			asm_type_ch(from->d),
-			vstack_str(from),
-			regstr);
+	if(from->is_addrof && from->type == REG){
+		out_asm("mov%c (%s), %%%s",
+				asm_type_ch(from->d),
+				vstack_str(from),
+				regstr);
+	}else{
+		out_asm("%s%c %s, %%%s",
+				from->is_addrof ? "lea" : "mov",
+				asm_type_ch(from->d),
+				vstack_str(from),
+				regstr);
+	}
 }
 
 void impl_load(struct vstack *from, int reg)
 {
 	char buf[REG_STR_SZ];
 	decl *const save = from->d;
-	const int was_addr = from->is_addrof;
 
-	if(from->type == REG && reg == from->bits.reg)
+	if(!from->is_addrof && from->type == REG && reg == from->bits.reg)
 		return;
 
 	x86_reg_str_r(buf, reg, from->d);
@@ -314,7 +326,6 @@ void impl_load(struct vstack *from, int reg)
 
 	v_clear(from, save);
 	from->type = REG;
-	from->is_addrof = was_addr;
 	from->bits.reg = reg;
 }
 

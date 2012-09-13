@@ -49,8 +49,14 @@ void gen_stmt(stmt *t)
 
 void static_store(expr *e)
 {
-	UCC_ASSERT(e->f_static_addr, "no static store for %s", e->f_str());
-	e->f_static_addr(e);
+	if(e->f_static_addr){
+		e->f_static_addr(e);
+	}else{
+		intval iv;
+
+		const_fold_need_val(e, &iv);
+		asm_declare_partial("%d", iv.val);
+	}
 }
 
 #ifdef FANCY_STACK_INIT

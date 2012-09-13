@@ -6,6 +6,7 @@ enum decl_mode
 	DECL_SPEL_NEED    = 1 << 0,
 	DECL_SPEL_NO      = 1 << 1,
 	DECL_CAN_DEFAULT  = 1 << 2,
+	DECL_ALLOW_STORE  = 1 << 3
 };
 
 enum decl_multi_mode
@@ -14,6 +15,7 @@ enum decl_multi_mode
 	DECL_MULTI_ACCEPT_FIELD_WIDTH = 1 << 1,
 	DECL_MULTI_ACCEPT_FUNC_DECL   = 1 << 2,
 	DECL_MULTI_ACCEPT_FUNC_CODE   = 1 << 3 | DECL_MULTI_ACCEPT_FUNC_DECL,
+	DECL_MULTI_ALLOW_STORE        = 1 << 4
 };
 
 extern enum token curtok;
