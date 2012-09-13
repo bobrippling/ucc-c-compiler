@@ -136,7 +136,7 @@ static void parse_add_attr(decl_attr **append)
 	}
 }
 
-type *parse_type()
+type *parse_type(int with_store)
 {
 #define PRIMITIVE_NO_MORE 2
 
@@ -157,6 +157,9 @@ type *parse_type()
 
 		}else if(curtok_is_type_store()){
 			store = curtok_to_type_storage();
+
+			if(!with_store)
+				DIE_AT(NULL, "type storage unwanted (%s)", type_store_to_str(store));
 
 			if(store_set)
 				DIE_AT(NULL, "second type store %s", type_store_to_str(store));
@@ -585,7 +588,7 @@ decl *parse_decl(type *t, enum decl_mode mode)
 
 decl *parse_decl_single(enum decl_mode mode)
 {
-	type *t = parse_type();
+	type *t = parse_type(mode & DECL_ALLOW_STORE);
 
 	if(!t){
 		if((mode & DECL_CAN_DEFAULT) == 0)
@@ -603,7 +606,7 @@ decl *parse_decl_single(enum decl_mode mode)
 
 decl **parse_decls_one_type()
 {
-	type *t = parse_type();
+	type *t = parse_type(0);
 	decl **decls = NULL;
 
 	if(!t)
@@ -636,7 +639,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 
 		parse_static_assert();
 
-		t = parse_type();
+		t = parse_type(mode & DECL_MULTI_ALLOW_STORE);
 
 		if(!t){
 			/* can_default makes sure we don't parse { int *p; *p = 5; } the latter as a decl */
