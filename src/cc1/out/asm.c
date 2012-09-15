@@ -43,8 +43,6 @@ enum
 	ASM_INDEX_LONG    = 3,
 	ASM_INDEX_LLONG   = 4,
 	ASM_INDEX_LDOUBLE = 5,
-
-	ASM_INDEX_PTR = ASM_INDEX_LONG,
 };
 
 #if 0
@@ -69,7 +67,7 @@ const char *asm_intval_str(intval *iv)
 int asm_table_lookup(decl *d)
 {
 	if(!d || decl_ptr_or_block(d)){
-		return ASM_INDEX_PTR;
+		goto do_long;
 	}else{
 		if(d->type->type_of)
 			ICE("typedefs should've been folded by now");
@@ -101,7 +99,8 @@ int asm_table_lookup(decl *d)
 
 			case type_double:
 			case type_long:
-				return ASM_INDEX_LONG;
+do_long:
+				return m32 ? ASM_INDEX_INT : ASM_INDEX_LONG;
 
 			case type_struct:
 			case type_union:
