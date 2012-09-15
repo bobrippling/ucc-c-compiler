@@ -218,14 +218,11 @@ static void fold_frame_address(expr *e, symtable *stab)
 
 static void builtin_gen_frame_pointer(expr *e, symtable *stab)
 {
-	int depth = e->val.iv.val;
+	const int depth = e->val.iv.val;
 
 	(void)stab;
 
-	asm_temp(1, "mov rax, rbp");
-	while(--depth > 0)
-		asm_temp(1, "mov rax, [rax]");
-	asm_temp(1, "push rax");
+	out_push_frame_ptr(depth + 1);
 }
 
 static expr *parse_frame_address(void)
