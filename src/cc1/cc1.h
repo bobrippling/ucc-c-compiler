@@ -85,4 +85,6 @@ extern FILE *cc1_out;
 
 extern int cc1_max_errors;
 
+extern int m32; /* 32bit mode or 64? */
+
 #endif

@@ -824,3 +824,17 @@ void impl_undefined(void)
 {
 	out_asm("ud2");
 }
+
+int impl_frame_ptr_to_reg(int nframes)
+{
+	char buf[REG_STR_SZ];
+	int r = v_unused_reg(1);
+
+	x86_reg_str_r(buf, r, NULL);
+
+	out_asm("movq %%rbp, %%%s", buf);
+	while(--nframes > 0)
+		out_asm("movq (%%%s), %%%s", buf, buf);
+
+	return r;
+}

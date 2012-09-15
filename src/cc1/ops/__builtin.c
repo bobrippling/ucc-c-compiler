@@ -24,15 +24,8 @@ typedef expr *func_builtin_parse(void);
 
 static func_builtin_parse parse_unreachable,
 													parse_compatible_p,
-													parse_constant_p;
-
-static func_fold fold_unreachable,
-								 fold_compatible_p,
-								 fold_constant_p;
-
-static func_const const_compatible_p,
-									const_constant_p;
-
+													parse_constant_p,
+													parse_frame_address;
 
 typedef struct
 {
@@ -46,6 +39,8 @@ builtin_table builtins[] = {
 
 	{ "types_compatible_p", parse_compatible_p },
 	{ "constant_p", parse_constant_p },
+
+	{ "frame_address", parse_frame_address },
 
 	{ NULL, NULL }
 };
@@ -101,17 +96,14 @@ static void builtin_gen_undefined(expr *e, symtable *stab)
 	out_push_i(NULL, 0);
 }
 
-/* --- unreachable */
-
-static expr *parse_unreachable(void)
+static expr *parse_any_args(void)
 {
 	expr *fcall = expr_new_funcall();
-
-	expr_mutate_builtin(fcall, unreachable);
-	fcall->f_gen = builtin_gen_undefined;
-
+	fcall->funcargs = parse_funcargs();
 	return fcall;
 }
+
+/* --- unreachable */
 
 static void fold_unreachable(expr *e, symtable *stab)
 {
@@ -123,25 +115,21 @@ static void fold_unreachable(expr *e, symtable *stab)
 	wur_builtin(e);
 }
 
-/* --- compatible_p */
-
-static expr *parse_compatible_p(void)
+static expr *parse_unreachable(void)
 {
 	expr *fcall = expr_new_funcall();
 
-	fcall->block_args = funcargs_new();
-	fcall->block_args->arglist = parse_type_list();
-
-	expr_mutate_builtin_no_gen(fcall, compatible_p);
+	expr_mutate_builtin(fcall, unreachable);
+	fcall->f_gen = builtin_gen_undefined;
 
 	return fcall;
 }
 
+/* --- compatible_p */
+
 static void fold_compatible_p(expr *e, symtable *stab)
 {
 	decl **types = e->block_args->arglist;
-
-	(void)stab;
 
 	if(dynarray_count((void **)types) != 2)
 		DIE_AT(&e->where, "need two arguments for %s", e->expr->spel);
@@ -162,23 +150,22 @@ static void const_compatible_p(expr *e, intval *val, enum constyness *success)
 	val->val = decl_equal(types[0], types[1], DECL_CMP_STRICT_PRIMITIVE);
 }
 
-/* --- constant */
-
-static expr *parse_constant_p(void)
+static expr *parse_compatible_p(void)
 {
 	expr *fcall = expr_new_funcall();
 
-	fcall->funcargs = parse_funcargs();
+	fcall->block_args = funcargs_new();
+	fcall->block_args->arglist = parse_type_list();
 
-	expr_mutate_builtin_no_gen(fcall, constant_p);
+	expr_mutate_builtin_no_gen(fcall, compatible_p);
 
 	return fcall;
 }
 
+/* --- constant */
+
 static void fold_constant_p(expr *e, symtable *stab)
 {
-	(void)stab;
-
 	if(dynarray_count((void **)e->funcargs) != 1)
 		DIE_AT(&e->where, "%s takes a single argument", e->expr->spel);
 
@@ -198,4 +185,50 @@ static void const_constant_p(expr *e, intval *val, enum constyness *success)
 
 	*success = CONST_WITH_VAL;
 	val->val = type != CONST_NO;
+}
+
+static expr *parse_constant_p(void)
+{
+	expr *fcall = parse_any_args();
+	expr_mutate_builtin_no_gen(fcall, constant_p);
+	return fcall;
+}
+
+/* --- frame_address */
+
+static void fold_frame_address(expr *e, symtable *stab)
+{
+	enum constyness type;
+	intval iv;
+
+	if(dynarray_count((void **)e->funcargs) != 1)
+		DIE_AT(&e->where, "%s takes a single argument", e->expr->spel);
+
+	fold_expr(e->funcargs[0], stab);
+
+	const_fold(e->funcargs[0], &iv, &type);
+	if(type != CONST_WITH_VAL || iv.val < 0)
+		DIE_AT(&e->where, "%s needs a positive constant value argument", e->expr->spel);
+
+	memcpy(&e->val.iv, &iv, sizeof iv);
+
+	e->tree_type = decl_ptr_depth_inc(decl_new_void());
+	wur_builtin(e);
+}
+
+static void builtin_gen_frame_pointer(expr *e, symtable *stab)
+{
+	const int depth = e->val.iv.val;
+
+	(void)stab;
+
+	out_push_frame_ptr(depth + 1);
+}
+
+static expr *parse_frame_address(void)
+{
+	expr *fcall = parse_any_args();
+	expr_mutate_builtin(fcall, frame_address);
+	fcall->f_gen = builtin_gen_frame_pointer;
+	return fcall;
 }

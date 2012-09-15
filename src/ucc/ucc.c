@@ -262,6 +262,8 @@ void die(const char *fmt, ...)
 	const int err = len > 0 && fmt[len - 1] == ':';
 	va_list l;
 
+	fprintf(stderr, "%s: ", argv0);
+
 	va_start(l, fmt);
 	vfprintf(stderr, fmt, l);
 	va_end(l);
@@ -338,6 +340,7 @@ int main(int argc, char **argv)
 
 				case 'w':
 				case 'f':
+				case 'm':
 /*arg_cc1:*/
 					ADD_ARG(mode_compile);
 					continue;

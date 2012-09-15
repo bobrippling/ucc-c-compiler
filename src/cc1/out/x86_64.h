@@ -31,6 +31,7 @@ void impl_func_epilogue(void);
 void impl_pop_func_ret(decl *);
 
 void impl_undefined(void);
+int impl_frame_ptr_to_reg(int nframes);
 
 #define N_REGS 4
 #define N_CALL_REGS 6

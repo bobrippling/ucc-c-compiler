@@ -128,6 +128,8 @@ enum warning warn_mode = ~(
 enum fopt    fopt_mode = FOPT_CONST_FOLD | FOPT_SHOW_LINE | FOPT_PIC;
 enum cc1_backend cc1_backend = BACKEND_ASM;
 
+int m32 = 0;
+
 int cc1_max_errors = 16;
 
 int caught_sig = 0;
@@ -318,6 +320,16 @@ int main(int argc, char **argv)
 		}else if(!strcmp(argv[i], "-w")){
 			warn_mode = WARN_NONE;
 
+		}else if(!strncmp(argv[i], "-m", 2)){
+			int n;
+
+			if(sscanf(argv[i] + 2, "%d", &n) != 1 || (n != 32 && n != 64)){
+				fprintf(stderr, "-m needs either 32 or 64\n");
+				goto usage;
+			}
+
+			m32 = n == 32;
+
 		}else if(argv[i][0] == '-' && (argv[i][1] == 'W' || argv[i][1] == 'f')){
 			const int fopt = argv[i][1] == 'f';
 			char *arg = argv[i] + 2;
@@ -386,7 +398,7 @@ unrecognised:
 			fname = argv[i];
 		}else{
 usage:
-			ccdie(1, "Usage: %s [-W[no-]warning] [-f[no-]option] [-X backend] [-o output] file", *argv);
+			ccdie(1, "Usage: %s [-W[no-]warning] [-f[no-]option] [-X backend] [-m[32|64]] [-o output] file", *argv);
 		}
 	}
 
