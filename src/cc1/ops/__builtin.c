@@ -25,7 +25,8 @@ typedef expr *func_builtin_parse(void);
 
 static func_builtin_parse parse_unreachable,
 													parse_compatible_p,
-													parse_constant_p;
+													parse_constant_p,
+													parse_frame_address;
 
 typedef struct
 {
@@ -39,6 +40,8 @@ builtin_table builtins[] = {
 
 	{ "types_compatible_p", parse_compatible_p },
 	{ "constant_p", parse_constant_p },
+
+	{ "frame_address", parse_frame_address },
 
 	{ NULL, NULL }
 };
@@ -188,5 +191,47 @@ static expr *parse_constant_p(void)
 {
 	expr *fcall = parse_any_args();
 	expr_mutate_builtin_no_gen(fcall, constant_p);
+	return fcall;
+}
+
+/* --- frame_address */
+
+static void fold_frame_address(expr *e, symtable *stab)
+{
+	enum constyness type;
+	intval iv;
+
+	if(dynarray_count((void **)e->funcargs) != 1)
+		DIE_AT(&e->where, "%s takes a single argument", e->expr->spel);
+
+	fold_expr(e->funcargs[0], stab);
+
+	const_fold(e->funcargs[0], &iv, &type);
+	if(type != CONST_WITH_VAL || iv.val < 0)
+		DIE_AT(&e->where, "%s needs a positive constant value argument", e->expr->spel);
+
+	memcpy(&e->val.iv, &iv, sizeof iv);
+
+	e->tree_type = decl_ptr_depth_inc(decl_new_void());
+	wur_builtin(e);
+}
+
+static void builtin_gen_frame_pointer(expr *e, symtable *stab)
+{
+	int depth = e->val.iv.val;
+
+	(void)stab;
+
+	asm_temp(1, "mov rax, rbp");
+	while(--depth > 0)
+		asm_temp(1, "mov rax, [rax]");
+	asm_temp(1, "push rax");
+}
+
+static expr *parse_frame_address(void)
+{
+	expr *fcall = parse_any_args();
+	expr_mutate_builtin(fcall, frame_address);
+	fcall->f_gen = builtin_gen_frame_pointer;
 	return fcall;
 }
