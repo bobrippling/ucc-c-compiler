@@ -3,7 +3,7 @@
 #include "../sue.h"
 #include "../out/asm.h"
 
-#define ASSERT_NOT_DOT() UCC_ASSERT(!e->expr_is_st_dot, "a.b should have been handled by now");
+#define ASSERT_NOT_DOT() UCC_ASSERT(!e->expr_is_st_dot, "a.b should have been handled by now")
 
 const char *str_expr_struct()
 {
@@ -88,6 +88,7 @@ void gen_expr_struct_store(expr *e, symtable *stab)
 
 	gen_expr(e->lhs, stab);
 
+	out_change_decl(NULL);
 	out_push_i(NULL, struct_offset(e->rhs));
 	out_op(op_plus);
 
