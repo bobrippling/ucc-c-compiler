@@ -103,14 +103,10 @@ void v_prepare_op(struct vstack *vp)
 
 		case FLAG:
 			/* obviously can't have a flag in cmp/mov code */
-
-v_t_r:
 			v_to_reg(vp);
 
 		case REG:
 		case CONST:
-			if(vp->is_addrof)
-				goto v_t_r;
 			break;
 	}
 }
@@ -235,6 +231,7 @@ void v_save_reg(struct vstack *vp)
 
 	UCC_ASSERT(vp->type == REG, "not reg");
 
+	memset(&store, 0, sizeof store);
 	store.d = vp->d;
 	store.type = STACK;
 	v_make_addr(&store);
@@ -409,6 +406,9 @@ static void vtop2_are(
 
 static int calc_ptr_step(decl *d)
 {
+	if(!d)
+		return 1;
+
 	return type_primitive_size(decl_ptr_depth(d) > 1 ? type_ptrdiff : d->type->primitive);
 }
 
@@ -462,8 +462,8 @@ def:
 			{
 				int l_ptr, r_ptr;
 
-				l_ptr = decl_is_ptr(vtop->d);
-				r_ptr = decl_is_ptr(vtop[-1].d);
+				l_ptr = !vtop->d    || decl_is_ptr(vtop->d);
+				r_ptr = !vtop[-1].d || decl_is_ptr(vtop[-1].d);
 
 				if(l_ptr || r_ptr){
 					const int ptr_step = calc_ptr_step(l_ptr ? vtop->d : vtop[-1].d);
@@ -597,14 +597,14 @@ void out_cast(decl *from, decl *to)
 		impl_cast(from, to);
 
 	out_change_decl(to);
-
-	if(decl_is_ptr(to) && !decl_is_ptr(from))
-		vtop->is_addrof = 1;
 }
 
 void out_change_decl(decl *d)
 {
 	vtop->d = d;
+
+	if(d && decl_is_ptr(d))
+		vtop->is_addrof = 1;
 }
 
 void out_call(int nargs, int variadic, decl *rt)
