@@ -179,37 +179,36 @@ void fold_enum(struct_union_enum_st *en, symtable *stab)
 	}
 }
 
-int fold_sue(struct_union_enum_st *sue, symtable *stab)
+void fold_sue(struct_union_enum_st *sue, symtable *stab, int *poffset, int *pthis)
 {
-	int offset;
-	sue_member **i;
-
 	if(sue->primitive == type_enum){
+		int sz;
 		fold_enum(sue, stab);
-		offset = platform_word_size(); /* XXX: assumes enums are 64-bit */
+		sz = sue_size(sue);
+		pack_next(poffset, pthis, sz, sz);
 	}else{
-		for(offset = 0, i = sue->members; i && *i; i++){
+		sue_member **i;
+
+		for(i = sue->members; i && *i; i++){
 			decl *d = (*i)->struct_member;
 
 			fold_decl(d, stab);
-
-			if(sue->primitive == type_struct)
-				d->struct_offset = offset;
-			/* else - union, all offsets are the same */
 
 			if(d->type->sue && !decl_is_ptr(d)){
 				if(d->type->sue == sue)
 					DIE_AT(&d->where, "nested %s", sue_str(sue));
 
-				offset += fold_sue(d->type->sue, stab);
+				fold_sue(d->type->sue, stab, poffset, pthis);
 			}else{
 				const int sz = decl_size(d);
-				offset = pack_next(offset, sz, sz);
+				pack_next(poffset, pthis, sz, sz);
 			}
+
+			if(sue->primitive == type_struct)
+				d->struct_offset = *pthis;
+			/* else - union, all offsets are the same */
 		}
 	}
-
-	return offset;
 }
 
 void fold_gen_init_assignment2(expr *base, decl *dfor, decl_init *init_from, stmt *codes)
@@ -670,8 +669,10 @@ void fold_symtab_scope(symtable *stab)
 {
 	struct_union_enum_st **sit;
 
-	for(sit = stab->sues; sit && *sit; sit++)
-		fold_sue(*sit, stab);
+	for(sit = stab->sues; sit && *sit; sit++){
+		int this, offset = 0;
+		fold_sue(*sit, stab, &offset, &this);
+	}
 }
 
 void fold_need_expr(expr *e, const char *stmt_desc, int is_test)

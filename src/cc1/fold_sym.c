@@ -63,9 +63,12 @@ int symtab_fold(symtable *tab, int current)
 					case store_auto:
 					{
 						int siz = decl_size(s->decl);
+						int this;
 
 						/* TODO: alignment */
-						current = s->offset = pack_next(current, siz, siz); /* an array and structs start at the bottom */
+						pack_next(&current, &this, siz, siz); /* an array and structs start at the bottom */
+
+						s->offset = this;
 
 						/* static analysis on sym (only auto-vars) */
 						if(!s->decl->init)

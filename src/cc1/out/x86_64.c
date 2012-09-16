@@ -160,8 +160,10 @@ int impl_alloc_stack(int sz)
 	if(!word_size)
 		word_size = platform_word_size();
 
-	if(sz)
-		out_asm("subq $0x%x, %%rsp", sz + word_size - sz % word_size);
+	if(sz){
+		const int extra = sz % word_size ? sz - sz % word_size : 0;
+		out_asm("subq $0x%x, %%rsp", sz + extra);
+	}
 
 	return sz + stack_sz;
 }
@@ -533,8 +535,8 @@ void impl_op(enum op_type op)
 			vtop_clear(vtop->d);
 			vtop->type = REG;
 			/* FIXME */
-			if(vtop->d->type->primitive != type_int){
-				ICE("idiv incorrect - need to load ax:al/ax:dx/eax:edx for %s",
+			if(!vtop->d || vtop->d->type->primitive != type_int){
+				ICW("idiv incorrect - need to load ax:al/ax:dx/eax:edx for %s",
 						decl_to_str(vtop->d));
 			}
 

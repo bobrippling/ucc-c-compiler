@@ -100,8 +100,11 @@ void gen_expr_assign(expr *e, symtable *stab)
 
 	UCC_ASSERT(!e->assign_is_post, "assign_is_post set for non-compound assign");
 
-	lea_expr(e->lhs, stab);
+	/* optimisation: do this first, since rhs might also be a store */
 	gen_expr(e->rhs, stab);
+	lea_expr(e->lhs, stab);
+	out_swap();
+
 	out_store();
 }
 

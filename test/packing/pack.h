@@ -1,4 +1,4 @@
-struct
+struct A
 {
 	// position indicates packing
 	int a, b;
@@ -8,15 +8,4 @@ struct
 	short s5; /**/ int i2;
 };
 
-main()
-{
-	long l;
-	char c2;
-	int i;
-	short s;
-	char c;
-
-	c = 1, s = 2, i = 3, l = 4;
-
-	c2 = 10;
-}
+void f(struct A *);
