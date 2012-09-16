@@ -40,4 +40,6 @@ void out_assert_vtop_null(void);
 void out_dump(void);
 void out_undefined(void);
 
+void out_push_frame_ptr(int nframes);
+
 #endif

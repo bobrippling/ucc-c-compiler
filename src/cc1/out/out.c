@@ -684,3 +684,12 @@ void out_undefined(void)
 	out_flush_volatile();
 	impl_undefined();
 }
+
+void out_push_frame_ptr(int nframes)
+{
+	out_flush_volatile();
+
+	vpush(NULL);
+	vtop->type = REG;
+	vtop->bits.reg = impl_frame_ptr_to_reg(nframes);
+}
