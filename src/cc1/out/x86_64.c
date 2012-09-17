@@ -167,7 +167,7 @@ int impl_alloc_stack(int sz)
 		word_size = platform_word_size();
 
 	if(sz){
-		const int extra = sz % word_size ? sz - sz % word_size : 0;
+		const int extra = sz % word_size ? word_size - sz % word_size : 0;
 		out_asm("subq $0x%x, %%rsp", sz + extra);
 	}
 
