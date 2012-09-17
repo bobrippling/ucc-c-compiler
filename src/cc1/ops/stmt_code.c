@@ -5,6 +5,20 @@
 #include "stmt_code.h"
 #include "../out/lbl.h"
 
+
+#define FOR_BOTH(i, s, dcodes, code) \
+	dcodes = 0,                        \
+	i = s->inits;                      \
+restart:                             \
+	for(; i && *i; i++){               \
+		code;                            \
+	}                                  \
+	if(!dcodes){                       \
+		dcodes = 1,                      \
+		i = s->codes;                    \
+		goto restart;                    \
+	}
+
 const char *str_stmt_code()
 {
 	return "code";
@@ -12,13 +26,15 @@ const char *str_stmt_code()
 
 void fold_stmt_code(stmt *s)
 {
-	decl **iter;
+	decl **diter;
+	stmt **siter;
+	int warned = 0;
 
 	fold_symtab_scope(s->symtab);
 
 	/* NOTE: this only folds + adds decls, not args */
-	for(iter = s->decls; iter && *iter; iter++){
-		decl *d = *iter;
+	for(diter = s->decls; diter && *diter; diter++){
+		decl *d = *diter;
 
 		if(d->func_code)
 			DIE_AT(&d->func_code->where, "can't nest functions");
@@ -38,37 +54,37 @@ void fold_stmt_code(stmt *s)
 		SYMTAB_ADD(s->symtab, d, sym_local);
 	}
 
-	if(s->codes){
-		stmt **iter;
-		int warned = 0;
+	for(siter = s->inits; siter && *siter; siter++){
+		stmt *const st = *siter;
+		EOF_WHERE(&st->where, fold_stmt(st));
+	}
 
-		for(iter = s->codes; *iter; iter++){
-			stmt  *const st = *iter;
+	for(siter = s->codes; siter && *siter; siter++){
+		stmt  *const st = *siter;
 
-			EOF_WHERE(&st->where, fold_stmt(st));
+		EOF_WHERE(&st->where, fold_stmt(st));
 
-			/*
-			 * check for dead code
-			 */
-			if(!warned
-			&& st->kills_below_code
-			&& iter[1]
-			&& !stmt_kind(iter[1], label)
-			&& !stmt_kind(iter[1], case)
-			&& !stmt_kind(iter[1], default)
-			){
-				cc1_warn_at(&iter[1]->where, 0, 1, WARN_DEAD_CODE, "dead code after %s (%s)", st->f_str(), iter[1]->f_str());
-				warned = 1;
-			}
+		/*
+		 * check for dead code
+		 */
+		if(!warned
+		&& st->kills_below_code
+		&& siter[1]
+		&& !stmt_kind(siter[1], label)
+		&& !stmt_kind(siter[1], case)
+		&& !stmt_kind(siter[1], default)
+		){
+			cc1_warn_at(&siter[1]->where, 0, 1, WARN_DEAD_CODE, "dead code after %s (%s)", st->f_str(), siter[1]->f_str());
+			warned = 1;
 		}
 	}
 
 	/* static folding */
 	if(s->decls){
-		decl **iter;
+		decl **siter;
 
-		for(iter = s->decls; *iter; iter++){
-			decl *d = *iter;
+		for(siter = s->decls; *siter; siter++){
+			decl *d = *siter;
 			/*
 			 * check static decls - after we fold,
 			 * so we've linked the syms and can change ->spel
@@ -115,25 +131,28 @@ void gen_code_decls(symtable *stab)
 void gen_stmt_code(stmt *s)
 {
 	stmt **titer;
+	int done_inits;
 
 	/* stmt_for needs to do this too */
 	gen_code_decls(s->symtab);
 
-	for(titer = s->codes; titer && *titer; titer++)
+	FOR_BOTH(titer, s, done_inits,
 		gen_stmt(*titer);
+	)
 }
 
 static int code_passable(stmt *s)
 {
 	stmt **i;
+	int done_inits;
 
-	/* REACH TODO */
+	/* note: check for inits which call noreturn funcs */
 
-	for(i = s->codes; i && *i; i++){
+	FOR_BOTH(i, s, done_inits,
 		stmt *sub = *i;
 		if(!fold_passable(sub))
 			return 0;
-	}
+	)
 
 	return 1;
 }

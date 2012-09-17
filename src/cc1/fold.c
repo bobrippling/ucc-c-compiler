@@ -312,7 +312,7 @@ void fold_gen_init_assignment2(expr *base, decl *dfor, decl_init *init_from, stm
 
 				assign_init->assign_is_init = 1;
 
-				dynarray_prepend((void ***)&codes->codes,
+				dynarray_add((void ***)&codes->inits,
 						expr_to_stmt(assign_init, codes->symtab));
 				break;
 			}
