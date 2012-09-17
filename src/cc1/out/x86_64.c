@@ -314,7 +314,8 @@ void impl_load(struct vstack *from, int reg)
 	x86_reg_str_r(buf, reg, from->d);
 
 	if(from->type == FLAG){
-		out_asm("mov%c $0, %%%s // zero for cmp", asm_type_ch(from->d), buf);
+		out_comment("// zero for cmp");
+		out_asm("mov%c $0, %%%s", asm_type_ch(from->d), buf);
 
 		from->d = decl_new_char(); /* force set%s to set the low byte */
 		/* decl changed, reload the register name */
