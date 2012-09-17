@@ -161,7 +161,7 @@ int impl_alloc_stack(int sz)
 		word_size = platform_word_size();
 
 	if(sz){
-		const int extra = sz % word_size ? sz - sz % word_size : 0;
+		const int extra = sz % word_size ? word_size - sz % word_size : 0;
 		out_asm("subq $0x%x, %%rsp", sz + extra);
 	}
 
@@ -314,7 +314,8 @@ void impl_load(struct vstack *from, int reg)
 	x86_reg_str_r(buf, reg, from->d);
 
 	if(from->type == FLAG){
-		out_asm("mov%c $0, %%%s // zero for cmp", asm_type_ch(from->d), buf);
+		out_comment("// zero for cmp");
+		out_asm("mov%c $0, %%%s", asm_type_ch(from->d), buf);
 
 		from->d = decl_new_char(); /* force set%s to set the low byte */
 		/* decl changed, reload the register name */

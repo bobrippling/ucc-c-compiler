@@ -1,22 +1,36 @@
-all: gcc ucc
+SRC = pack.c pack2.c
+OBJ_UCC = pack_ucc.o pack2_ucc.o
+OBJ_GCC = pack_gcc.o pack2_gcc.o
 
-#ucc_gcc gcc_ucc
+UCC = ../../ucc
 
-gcc: pack_g.o pack2_g.o
+all: gcc ucc gcc_ucc ucc_gcc
+
+gcc: ${OBJ_GCC}
+	cc -o $@ ${OBJ_GCC}
+
+ucc: ${OBJ_UCC}
+	${UCC} -o $@ ${OBJ_UCC}
+
+gcc_ucc: pack_gcc.o pack2_ucc.o
 	cc -o $@ $^
 
-ucc: pack_u.o pack2_u.o
-	../ucc -o $@ $^
+ucc_gcc: pack_ucc.o pack2_gcc.o
+	cc -o $@ $^
 
-pack_g.o: pack.c
+
+pack_gcc.o: pack.c
 	cc -c -o $@ $<
-pack2_g.o: pack2.c
+pack2_gcc.o: pack2.c
 	cc -c -o $@ $<
 
-pack_u.o: pack.c
-	../ucc -c -o $@ $<
-pack2_u.o: pack2.c
-	../ucc -c -o $@ $<
+pack_ucc.o: pack.c
+	${UCC} -c -o $@ $<
+pack2_ucc.o: pack2.c
+	${UCC} -c -o $@ $<
 
 clean:
-	rm -f *.o gcc ucc
+	rm -f gcc ucc gcc_ucc ucc_gcc *.o
+
+pack.o: pack.c pack.h
+pack2.o: pack2.c pack.h
