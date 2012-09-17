@@ -15,6 +15,7 @@
 #include "../fold.h"
 
 #include "../const.h"
+#include "../gen_asm.h"
 
 #include "../out/out.h"
 
@@ -25,7 +26,8 @@ typedef expr *func_builtin_parse(void);
 static func_builtin_parse parse_unreachable,
 													parse_compatible_p,
 													parse_constant_p,
-													parse_frame_address;
+													parse_frame_address,
+													parse_expect;
 
 typedef struct
 {
@@ -41,6 +43,8 @@ builtin_table builtins[] = {
 	{ "constant_p", parse_constant_p },
 
 	{ "frame_address", parse_frame_address },
+
+	{ "expect", parse_expect },
 
 	{ NULL, NULL }
 };
@@ -78,7 +82,7 @@ expr *builtin_parse(const char *sp)
 #define expr_mutate_builtin(exp, to)  \
 	exp->f_fold = fold_ ## to
 
-#define expr_mutate_builtin_no_gen(exp, to) \
+#define expr_mutate_builtin_const(exp, to) \
 	expr_mutate_builtin(exp, to),             \
 	exp->f_gen        = NULL,                 \
 	exp->f_const_fold = const_ ## to
@@ -157,7 +161,7 @@ static expr *parse_compatible_p(void)
 	fcall->block_args = funcargs_new();
 	fcall->block_args->arglist = parse_type_list();
 
-	expr_mutate_builtin_no_gen(fcall, compatible_p);
+	expr_mutate_builtin_const(fcall, compatible_p);
 
 	return fcall;
 }
@@ -190,7 +194,7 @@ static void const_constant_p(expr *e, intval *val, enum constyness *success)
 static expr *parse_constant_p(void)
 {
 	expr *fcall = parse_any_args();
-	expr_mutate_builtin_no_gen(fcall, constant_p);
+	expr_mutate_builtin_const(fcall, constant_p);
 	return fcall;
 }
 
@@ -230,5 +234,47 @@ static expr *parse_frame_address(void)
 	expr *fcall = parse_any_args();
 	expr_mutate_builtin(fcall, frame_address);
 	fcall->f_gen = builtin_gen_frame_pointer;
+	return fcall;
+}
+
+/* --- expect */
+
+static void fold_expect(expr *e, symtable *stab)
+{
+	enum constyness type;
+	intval iv;
+	int i;
+
+	if(dynarray_count((void **)e->funcargs) != 2)
+		DIE_AT(&e->where, "%s takes two arguments", e->expr->spel);
+
+	for(i = 0; i < 2; i++)
+		fold_expr(e->funcargs[i], stab);
+
+	const_fold(e->funcargs[1], &iv, &type);
+	if(type != CONST_WITH_VAL)
+		WARN_AT(&e->where, "%s second argument isn't a constant value", e->expr->spel);
+
+	e->tree_type = decl_copy(e->funcargs[0]->tree_type);
+	wur_builtin(e);
+}
+
+static void builtin_gen_expect(expr *e, symtable *stab)
+{
+	gen_expr(e->funcargs[1], stab); /* not needed if it's const, but gcc and clang do this */
+	out_pop();
+	gen_expr(e->funcargs[0], stab);
+}
+
+static void const_expect(expr *e, intval *val, enum constyness *success)
+{
+	const_fold(e->funcargs[0], val, success);
+}
+
+static expr *parse_expect(void)
+{
+	expr *fcall = parse_any_args();
+	expr_mutate_builtin_const(fcall, expect);
+	fcall->f_gen = builtin_gen_expect;
 	return fcall;
 }
