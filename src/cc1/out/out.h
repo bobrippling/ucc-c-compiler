@@ -11,8 +11,8 @@ void out_push_lbl(char *s, int pic, decl *d);
 void out_dup(void); /* duplicate top of stack */
 void out_normalise(void); /* change to 0 or 1 */
 
-void out_push_sym_addr(sym *);
 void out_push_sym(sym *);
+void out_push_sym_val(sym *);
 void out_store(void); /* store stack[1] into *stack[0] */
 
 void out_op(      enum op_type); /* binary ops and comparisons */
