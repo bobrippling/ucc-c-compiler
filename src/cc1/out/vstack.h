@@ -12,7 +12,6 @@ struct vstack
 		LBL,            /* vtop is a label/pointer to label */
 	} type;
 
-	int is_addrof;
 	decl *d;
 
 	union

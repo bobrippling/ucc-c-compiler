@@ -1,7 +1,15 @@
-i;
+int glob;
 
 main()
 {
-	int j = 2;
-	i = j;
+	int local;
+	int *p;
+
+	local = 2;
+
+	glob = local;
+
+	*(short *)5 = 3;
+
+	*p = 7;
 }

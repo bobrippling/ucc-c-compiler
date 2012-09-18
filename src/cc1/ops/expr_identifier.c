@@ -97,9 +97,9 @@ void gen_expr_identifier(expr *e, symtable *stab)
 	 */
 
 	if(decl_is_array(e->sym->decl) || decl_is_func(e->sym->decl)){
-		out_push_sym_addr(e->sym);
-	}else{
 		out_push_sym(e->sym);
+	}else{
+		out_push_sym_val(e->sym);
 	}
 }
 
@@ -118,7 +118,7 @@ void gen_expr_identifier_store(expr *e, symtable *stab)
 {
 	(void)stab;
 
-	out_push_sym_addr(e->sym);
+	out_push_sym(e->sym);
 }
 
 void mutate_expr_identifier(expr *e)

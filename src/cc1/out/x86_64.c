@@ -115,12 +115,11 @@ static const char *reg_str_r(char buf[REG_STR_SZ], struct vstack *reg)
 	return x86_reg_str_r(buf, reg->bits.reg, reg->d);
 }
 
-static const char *vstack_str_r(char buf[VSTACK_STR_SZ], struct vstack *vs)
+static const char *vstack_str_r_ptr(char buf[VSTACK_STR_SZ], struct vstack *vs, int ptr)
 {
 	switch(vs->type){
 		case CONST:
-			SNPRINTF(buf, VSTACK_STR_SZ, "%s%d",
-					vs->is_addrof ? "" : "$", vs->bits.val);
+			SNPRINTF(buf, VSTACK_STR_SZ, "%s%d", ptr ? "" : "$", vs->bits.val);
 			break;
 
 		case FLAG:
@@ -137,8 +136,10 @@ static const char *vstack_str_r(char buf[VSTACK_STR_SZ], struct vstack *vs)
 		}
 
 		case REG:
-			*buf = '%';
-			reg_str_r(buf + 1, vs);
+			snprintf(buf, VSTACK_STR_SZ, "%s%%%s%s",
+					ptr ? "(" : "",
+					reg_str_r(buf + 1 + ptr, vs),
+					ptr ? ")" : "");
 			break;
 
 		case STACK:
@@ -152,10 +153,21 @@ static const char *vstack_str_r(char buf[VSTACK_STR_SZ], struct vstack *vs)
 	return buf;
 }
 
+static const char *vstack_str_r(char buf[VSTACK_STR_SZ], struct vstack *vs)
+{
+	return vstack_str_r_ptr(buf, vs, 0);
+}
+
 static const char *vstack_str(struct vstack *vs)
 {
 	static char buf[VSTACK_STR_SZ];
 	return vstack_str_r(buf, vs);
+}
+
+static const char *vstack_str_ptr(struct vstack *vs, int ptr)
+{
+	static char buf[VSTACK_STR_SZ];
+	return vstack_str_r_ptr(buf, vs, ptr);
 }
 
 int impl_alloc_stack(int sz)
@@ -284,23 +296,14 @@ static void x86_load(struct vstack *from, const char *regstr)
 					x86_cmp(from->bits.flag, from->d),
 					regstr);
 			return;
-
 		default:
 			break;
 	}
 
-	if(from->is_addrof && from->type == REG){
-		out_asm("mov%c (%s), %%%s",
-				asm_type_ch(from->d),
-				vstack_str(from),
-				regstr);
-	}else{
-		out_asm("%s%c %s, %%%s",
-				from->is_addrof ? "lea" : "mov",
-				asm_type_ch(from->d),
-				vstack_str(from),
-				regstr);
-	}
+	out_asm("mov%c %s, %%%s",
+			asm_type_ch(from->d),
+			vstack_str(from),
+			regstr);
 }
 
 void impl_load(struct vstack *from, int reg)
@@ -308,7 +311,7 @@ void impl_load(struct vstack *from, int reg)
 	char buf[REG_STR_SZ];
 	decl *const save = from->d;
 
-	if(!from->is_addrof && from->type == REG && reg == from->bits.reg)
+	if(from->type == REG && reg == from->bits.reg)
 		return;
 
 	x86_reg_str_r(buf, reg, from->d);
@@ -343,8 +346,7 @@ void impl_store(struct vstack *from, struct vstack *to)
 		return;
 	}
 
-	/* try not to pull into a reg if at all possible */
-	if(to->is_addrof && from->type != REG && from->is_addrof)
+	if(from->type != CONST)
 		v_to_reg(from);
 
 	/* if to a register, we can assign straight to it */
@@ -353,36 +355,14 @@ void impl_store(struct vstack *from, struct vstack *to)
 			ICE("invalid store FLAG");
 
 		case REG:
-reg_store:
-			out_asm("mov%c %s, %s%s%s",
-					asm_type_ch(from->d),
-					vstack_str_r(buf, from),
-					to->is_addrof ? "(" : "",
-					vstack_str(to),
-					to->is_addrof ? ")" : ""
-					);
-			break;
-
 		case CONST:
-			UCC_ASSERT(to->is_addrof, "can't store to a value");
-
+		case STACK:
+		case LBL:
 			out_asm("mov%c %s, %s",
 					asm_type_ch(from->d),
 					vstack_str_r(buf, from),
-					vstack_str(to));
+					vstack_str_ptr(to, 1));
 			break;
-
-		case STACK:
-		case LBL:
-			if(to->is_addrof){
-				/* storing to that stack location - apply the change here for store */
-				to->is_addrof = 0;
-			}else{
-				/* storing to a value pointed to by the stack/a label, load it in */
-				v_to_reg(to);
-				to->is_addrof = 1;
-			}
-			goto reg_store;
 	}
 }
 
@@ -608,12 +588,13 @@ void impl_deref()
 	v_to_reg(vtop);
 	r = v_unused_reg(1);
 
-	x86_reg_str_r(ptr, vtop->bits.reg, NULL);
+	vstack_str_r_ptr(ptr, vtop, 1);
+
 	/* loaded the pointer, now we apply the deref change */
 	v_deref_decl(vtop);
 	x86_reg_str_r(dst, r, vtop->d);
 
-	out_asm("mov%c (%%%s), %%%s",
+	out_asm("mov%c %s, %%%s",
 			asm_type_ch(vtop->d),
 			ptr, dst);
 
@@ -708,18 +689,13 @@ static const char *x86_call_jmp_target(struct vstack *vp)
 
 	switch(vp->type){
 		case LBL:
-			if(vp->is_addrof)
-				return vp->bits.lbl.str;
-			/* fall */
+			return vp->bits.lbl.str;
 
 		case STACK:
 			/* jmp *-8(%rbp) */
-			if(!vp->is_addrof){
-				*buf = '*';
-				vstack_str_r(buf + 1, vp);
-				return buf;
-			}
-			/* fall */
+			*buf = '*';
+			vstack_str_r(buf + 1, vp);
+			return buf;
 
 		case FLAG:
 		case REG:
