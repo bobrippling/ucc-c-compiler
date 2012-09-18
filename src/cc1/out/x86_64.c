@@ -290,17 +290,25 @@ static enum flag_cmp op_to_flag(enum op_type op)
 
 static void x86_load(struct vstack *from, const char *regstr)
 {
+	int lea = 0;
+
 	switch(from->type){
 		case FLAG:
 			out_asm("set%s %%%s",
 					x86_cmp(from->bits.flag, from->d),
 					regstr);
 			return;
-		default:
+
+		case STACK:
+		case LBL:
+			lea = 1;
+		case CONST:
+		case REG:
 			break;
 	}
 
-	out_asm("mov%c %s, %%%s",
+	out_asm("%s%c %s, %%%s",
+			lea ? "lea" : "mov",
 			asm_type_ch(from->d),
 			vstack_str(from),
 			regstr);
@@ -582,22 +590,36 @@ void impl_op(enum op_type op)
 
 void impl_deref()
 {
+	const int r = v_unused_reg(1); /* allocate a reg here first, since it'll be used later too */
 	char ptr[REG_STR_SZ], dst[REG_STR_SZ];
-	int r;
 
-	v_to_reg(vtop);
-	r = v_unused_reg(1);
+	/* optimisation: if we're dereffing a pointer to stack/lbl, just do a mov */
+	switch(vtop->type){
+		case LBL:
+		case STACK:
+			v_deref_decl(vtop);
+			out_asm("mov%c %s, %%%s",
+					asm_type_ch(vtop->d),
+					vstack_str_r(ptr, vtop),
+					x86_reg_str_r(dst, r, vtop->d));
+			break;
 
-	vstack_str_r_ptr(ptr, vtop, 1);
+		default:
+			v_to_reg(vtop);
 
-	/* loaded the pointer, now we apply the deref change */
-	v_deref_decl(vtop);
-	x86_reg_str_r(dst, r, vtop->d);
+			vstack_str_r_ptr(ptr, vtop, 1);
 
-	out_asm("mov%c %s, %%%s",
-			asm_type_ch(vtop->d),
-			ptr, dst);
+			/* loaded the pointer, now we apply the deref change */
+			v_deref_decl(vtop);
+			x86_reg_str_r(dst, r, vtop->d);
 
+			out_asm("mov%c %s, %%%s",
+					asm_type_ch(vtop->d),
+					ptr, dst);
+			break;
+	}
+
+	vtop->type = REG;
 	vtop->bits.reg = r;
 }
 

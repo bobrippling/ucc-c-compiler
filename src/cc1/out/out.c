@@ -532,14 +532,9 @@ void out_deref()
 
 		case CONST:
 		case REG:
-			impl_deref();
-			break;
-
 		case STACK:
 		case LBL:
-			/* XXX: memleak */
-			vtop->d = decl_ptr_depth_dec(decl_copy(vtop->d), NULL);
-			v_to_reg(vtop);
+			impl_deref();
 			break;
 	}
 }
