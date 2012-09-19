@@ -591,7 +591,7 @@ void impl_op(enum op_type op)
 void impl_deref()
 {
 	const int r = v_unused_reg(1); /* allocate a reg here first, since it'll be used later too */
-	char ptr[REG_STR_SZ], dst[REG_STR_SZ];
+	char ptr[VSTACK_STR_SZ], dst[REG_STR_SZ];
 
 	/* optimisation: if we're dereffing a pointer to stack/lbl, just do a mov */
 	switch(vtop->type){
