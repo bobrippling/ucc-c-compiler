@@ -954,7 +954,8 @@ out/asm.o: out/asm.c out/../../util/util.h out/../data_structs.h \
  out/../ops/stmt_switch.h out/../ops/stmt_while.h \
  out/../ops/stmt_continue.h out/../sym.h out/../decl.h out/../cc1.h \
  out/../sym.h out/asm.h out/../../util/platform.h out/../../util/alloc.h \
- out/../../util/dynarray.h out/../sue.h out/../const.h out/../gen_asm.h
+ out/../../util/dynarray.h out/../sue.h out/../const.h out/../gen_asm.h \
+ out/../data_store.h
 out/lbl.o: out/lbl.c out/../../util/alloc.h out/../../util/util.h \
  out/common.h out/lbl.h
 out/out.o: out/out.c out/../../util/util.h out/../../util/alloc.h \

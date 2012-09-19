@@ -14,6 +14,7 @@
 #include "../sue.h"
 #include "../const.h"
 #include "../gen_asm.h"
+#include "../data_store.h"
 
 static const struct
 {
@@ -206,11 +207,13 @@ static void asm_declare_sub(FILE *f, decl_init *init)
 		{
 			expr *const exp = init->bits.expr;
 
-			if(!exp->data_store)
-				fprintf(f, ".%s ", asm_type_directive(exp->tree_type));
+			fprintf(f, ".%s ", asm_type_directive(exp->tree_type));
 
-			/*if(!const_expr_is_zero(exp))...*/
-			static_store(exp);
+			if(exp->data_store)
+				data_store_out(exp->data_store, 0);
+			else
+				static_store(exp); /*if(!const_expr_is_zero(exp))...*/
+
 			break;
 		}
 	}

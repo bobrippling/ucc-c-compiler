@@ -27,16 +27,26 @@ void data_store_declare(data_store *ds)
 	asm_out_section(SECTION_DATA, "%s:\n.byte ", ds->spel);
 }
 
-void data_store_out(data_store *ds)
+void data_store_out(data_store *ds, int newline)
 {
 	int i;
 
 	switch(ds->type){
 		case data_store_str:
-			for(i = 0; i < ds->len; i++)
-				asm_out_section(SECTION_DATA, "%d%s", ds->bits.str[i], i == ds->len - 1 ? "" : ", ");
-			asm_out_section(SECTION_DATA, "\n");
+		{
+			const char *pre = "";
+
+			for(i = 0; i < ds->len; i++){
+				asm_out_section(SECTION_DATA,
+						"%s%d", pre, ds->bits.str[i]);
+				pre = ", ";
+			}
+
+			if(newline)
+				asm_out_section(SECTION_DATA, "\n");
+
 			break;
+		}
 	}
 }
 
