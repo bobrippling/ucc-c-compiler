@@ -481,28 +481,37 @@ void impl_op(enum op_type op)
 			 */
 			int r_div;
 
-			vtop2_prepare_op();
-
 			/*
 			 * if we are using reg_[ad] elsewhere
 			 * and they aren't queued for this idiv
 			 * then save them, so we can use them
 			 * for idiv
 			 */
-			v_freeup_reg(REG_A, 2);
+
+			/*
+			 * need to use it as soon as we free it up,
+			 * otherwise it gets reclaimed
+			 */
 			v_freeup_reg(REG_D, 2);
+			v_freeup_reg(REG_A, 2);
 
 			v_to_reg(vtop);
 			r_div = v_to_reg(&vtop[-1]); /* TODO: similar to above - v_to_reg_preferred */
 
 			if(r_div != REG_A){
 				/* we already have rax in use by vtop, swap the values */
-				impl_reg_swp(vtop, &vtop[-1]);
+				if(vtop->type == REG && vtop->bits.reg == REG_A){
+					impl_reg_swp(vtop, &vtop[-1]);
+				}else{
+					v_freeup_reg(REG_A, 2);
+					impl_reg_cp(&vtop[-1], REG_A);
+					vtop[-1].bits.reg = REG_A;
+				}
 
 				r_div = vtop[-1].bits.reg;
 			}
 
-			UCC_ASSERT(r_div == REG_A, "register A not chosen for idiv");
+			UCC_ASSERT(r_div == REG_A, "register A not chosen for idiv (%c)", regs[r_div]);
 
 			out_asm("cqto");
 
