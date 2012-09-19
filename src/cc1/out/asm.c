@@ -137,10 +137,12 @@ void asm_reg_name(decl *d, const char **regpre, const char **regpost)
 
 int asm_type_size(decl *d)
 {
-	struct_union_enum_st *sue = d->type->sue;
+	if(d){
+		struct_union_enum_st *sue = d->type->sue;
 
-	if(sue && !decl_is_ptr(d))
-		return sue_size(sue);
+		if(sue && !decl_is_ptr(d))
+			return sue_size(sue);
+	}
 
 	return asm_type_table[asm_table_lookup(d)].sz;
 }

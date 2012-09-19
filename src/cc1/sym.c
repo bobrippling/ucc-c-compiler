@@ -115,7 +115,6 @@ sym *symtab_add(symtable *tab, decl *d, enum sym_type t, int with_sym, int prepe
 
 void symtab_add_args(symtable *stab, funcargs *fargs, const char *func_spel)
 {
-	const int variadic = fargs->variadic;
 	int nargs, i;
 
 	if(fargs->arglist){
@@ -126,8 +125,7 @@ void symtab_add_args(symtable *stab, funcargs *fargs, const char *func_spel)
 			if(!fargs->arglist[i]->spel){
 				DIE_AT(&fargs->where, "function \"%s\" has unnamed arguments", func_spel);
 			}else{
-				sym *s = SYMTAB_ADD(stab, fargs->arglist[i], sym_arg);
-				s->variadic = variadic;
+				SYMTAB_ADD(stab, fargs->arglist[i], sym_arg);
 			}
 		}
 	}

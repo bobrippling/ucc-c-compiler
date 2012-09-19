@@ -682,7 +682,7 @@ void impl_cast(decl *from, decl *to)
 
 	if(szfrom != szto){
 		if(szfrom < szto){
-			const int is_signed = from->type->is_signed;
+			const int is_signed = from && from->type->is_signed;
 			const int int_sz = type_primitive_size(type_int);
 
 			char buf_from[REG_STR_SZ], buf_to[REG_STR_SZ];
@@ -691,7 +691,10 @@ void impl_cast(decl *from, decl *to)
 
 			x86_reg_str_r(buf_from, vtop->bits.reg, from);
 
-			if(!is_signed && decl_size(to) > int_sz && decl_size(from) == int_sz){
+			if(!is_signed
+			&& (to   ? decl_size(to)   : type_primitive_size(type_intptr)) > int_sz
+			&& (from ? decl_size(from) : type_primitive_size(type_intptr)) == int_sz)
+			{
 				/*
 				 * movzx %eax, %rax is invalid
 				 * since movl %eax, %eax automatically zeros the top half of rax
@@ -700,7 +703,7 @@ void impl_cast(decl *from, decl *to)
 				out_asm("movl %%%s, %%%s", buf_from, buf_from);
 				return;
 			}else{
-				x86_reg_str_r(buf_to,   vtop->bits.reg, to);
+				x86_reg_str_r(buf_to, vtop->bits.reg, to);
 			}
 
 			out_asm("mov%cx %%%s, %%%s", "zs"[is_signed], buf_from, buf_to);
@@ -708,7 +711,8 @@ void impl_cast(decl *from, decl *to)
 			char buf[DECL_STATIC_BUFSIZ];
 
 			out_comment("truncate cast from %s to %s, size %d -> %d",
-					decl_to_str_r(buf, from), decl_to_str(to),
+					from ? decl_to_str_r(buf, from) : "",
+					to ? decl_to_str(to) : "",
 					szfrom, szto);
 		}
 	}
@@ -779,33 +783,29 @@ void impl_jcond(int true, const char *lbl)
 	}
 }
 
-void impl_call(const int nargs, int variadic, decl *d)
+void impl_call(const int nargs, decl *d)
 {
 	int i, ncleanup;
 
-	if(variadic){
-		for(i = nargs - 1; i >=0; i--)
-			out_asm("pushq %s", vstack_str(&vtop[-i]));
-		for(i = 0; i < nargs; i++)
-			vpop();
-		ncleanup = nargs;
-	}else{
-		for(i = 0; i < MIN(nargs, N_CALL_REGS); i++){
-			int ri;
+	for(i = 0; i < MIN(nargs, N_CALL_REGS); i++){
+		int ri;
 
-			ri = call_regs[i].idx;
-			if(ri != -1)
-				v_freeup_reg(ri, 1);
+		ri = call_regs[i].idx;
+		if(ri != -1)
+			v_freeup_reg(ri, 1);
 
-			x86_load(vtop, call_reg_str(i, vtop->d));
-			vpop();
-		}
-		/* push remaining args onto the stack */
-		ncleanup = nargs - i;
-		for(; i < nargs; i++){
-			out_asm("pushq %s", vstack_str(vtop));
-			vpop();
-		}
+		x86_load(vtop, call_reg_str(i, vtop->d));
+		vpop();
+	}
+	/* push remaining args onto the stack */
+	ncleanup = nargs - i;
+	for(; i < nargs; i++){
+		/* can't push non-word sized vtops */
+		if(vtop->d && decl_size(vtop->d) != platform_word_size())
+			out_cast(vtop->d, NULL);
+
+		out_asm("pushq %s", vstack_str(vtop));
+		vpop();
 	}
 
 	/* save all registers */

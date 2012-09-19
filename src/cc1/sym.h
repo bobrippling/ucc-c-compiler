@@ -4,7 +4,6 @@
 struct sym
 {
 	int offset; /* stack offset */
-	int variadic;
 
 	enum sym_type
 	{

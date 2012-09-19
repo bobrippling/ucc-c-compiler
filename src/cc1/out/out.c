@@ -346,14 +346,10 @@ void out_push_sym(sym *s)
 			 * if it's less than N_CALL_ARGS, it's below rbp, otherwise it's above
 			 * unless variadic, in which case it's always above
 			 */
-			if(s->variadic){
-				vtop->bits.off_from_bp = (s->offset + 2) * platform_word_size();
-			}else{
-				vtop->bits.off_from_bp = (s->offset < N_CALL_REGS
+			vtop->bits.off_from_bp = (s->offset < N_CALL_REGS
 					? -(s->offset + 1)
 					:   s->offset - N_CALL_REGS + 2)
-					* platform_word_size();
-			}
+				* platform_word_size();
 			break;
 
 		case sym_global:
@@ -594,9 +590,9 @@ void out_change_decl(decl *d)
 	vtop->d = d;
 }
 
-void out_call(int nargs, int variadic, decl *rt)
+void out_call(int nargs, decl *rt)
 {
-	impl_call(nargs, variadic, rt);
+	impl_call(nargs, rt);
 }
 
 void out_jmp(void)

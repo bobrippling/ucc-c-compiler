@@ -192,7 +192,6 @@ void gen_expr_funcall(expr *e, symtable *stab)
 		out_comment("end manual __asm__");
 	}else{
 		/* continue with normal funcall */
-		const int variadic = decl_funcargs(e->expr->tree_type)->variadic;
 		sym *const sym = e->expr->sym;
 		int nargs = 0;
 
@@ -219,7 +218,7 @@ void gen_expr_funcall(expr *e, symtable *stab)
 			}
 		}
 
-		out_call(nargs, variadic, e->tree_type);
+		out_call(nargs, e->tree_type);
 	}
 }
 
