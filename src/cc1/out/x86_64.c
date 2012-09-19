@@ -143,6 +143,7 @@ static const char *vstack_str_r_ptr(char buf[VSTACK_STR_SZ], struct vstack *vs, 
 			break;
 
 		case STACK:
+		case STACK_SAVE:
 		{
 			int n = vs->bits.off_from_bp;
 			SNPRINTF(buf, VSTACK_STR_SZ, "%s0x%x(%%rbp)", n < 0 ? "-" : "", abs(n));
@@ -302,6 +303,7 @@ static void x86_load(struct vstack *from, const char *regstr)
 		case STACK:
 		case LBL:
 			lea = 1;
+		case STACK_SAVE: /* voila */
 		case CONST:
 		case REG:
 			break;
@@ -357,10 +359,10 @@ void impl_store(struct vstack *from, struct vstack *to)
 	if(from->type != CONST)
 		v_to_reg(from);
 
-	/* if to a register, we can assign straight to it */
 	switch(to->type){
 		case FLAG:
-			ICE("invalid store FLAG");
+		case STACK_SAVE:
+			ICE("invalid store %d", to->type);
 
 		case REG:
 		case CONST:
@@ -489,11 +491,9 @@ void impl_op(enum op_type op)
 			 */
 
 			/*
-			 * need to use it as soon as we free it up,
-			 * otherwise it gets reclaimed
+			 * Must freeup the lower
 			 */
-			v_freeup_reg(REG_D, 2);
-			v_freeup_reg(REG_A, 2);
+			v_freeup_regs(REG_A, REG_D);
 
 			v_to_reg(vtop);
 			r_div = v_to_reg(&vtop[-1]); /* TODO: similar to above - v_to_reg_preferred */
@@ -732,6 +732,7 @@ static const char *x86_call_jmp_target(struct vstack *vp)
 			vstack_str_r(buf + 1, vp);
 			return buf;
 
+		case STACK_SAVE:
 		case FLAG:
 		case REG:
 		case CONST:
@@ -768,6 +769,7 @@ void impl_jcond(int true, const char *lbl)
 			break;
 
 		case STACK:
+		case STACK_SAVE:
 		case LBL:
 			v_to_reg(vtop);
 
