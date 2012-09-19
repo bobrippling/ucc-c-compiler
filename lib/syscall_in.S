@@ -16,7 +16,6 @@ __syscall:
 	pushq %rcx
 	pushq %r11
 
-#define OLD_CONV
 #ifdef OLD_CONV
 
 	movq 16(%rbp), %rax # eax
@@ -36,7 +35,7 @@ __syscall:
 	movq %rsi, %rdi
 	movq %rdx, %rsi
 	movq %rcx, %rdx
-	movq %r8 , %rcx
+	movq %r8 , %rcx # r10?
 	movq %r9 , %r8
 	movq 0x8(%rbp), %r9
 
