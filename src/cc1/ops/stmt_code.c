@@ -56,7 +56,8 @@ void fold_stmt_code(stmt *s)
 
 		d->is_definition = 1; /* always the def for non-globals */
 
-		SYMTAB_ADD(s->symtab, d, sym_local);
+		SYMTAB_ADD(s->symtab, d,
+				type_store_static_or_extern(d->type->store) ? sym_global : sym_local);
 	}
 
 	for(siter = s->inits; siter && *siter; siter++){
