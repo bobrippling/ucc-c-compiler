@@ -197,7 +197,7 @@ static void asm_declare_sub(FILE *f, decl_init *init)
 			for(i = 0; i < len; i++){
 				asm_declare_sub(f, inits[i]);
 				/* TODO: struct padding for next member */
-				fputc('\n', f);
+				fputs("\n// TODO: struct padding for next\n", f);
 			}
 			break;
 		}
@@ -207,7 +207,7 @@ static void asm_declare_sub(FILE *f, decl_init *init)
 			expr *const exp = init->bits.expr;
 
 			if(!exp->data_store)
-				fprintf(f, ".%s ", "TODO"/*asm_type_directive(init->for_decl)*/);
+				fprintf(f, ".%s ", asm_type_directive(exp->tree_type));
 
 			/*if(!const_expr_is_zero(exp))...*/
 			static_store(exp);
