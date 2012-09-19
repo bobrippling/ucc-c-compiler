@@ -412,7 +412,6 @@ void impl_reg_cp(struct vstack *from, int r)
 void impl_op(enum op_type op)
 {
 	const char *opc;
-	int normalise = 0;
 
 	switch(op){
 #define OP(e, s) case op_ ## e: opc = s; break
@@ -422,12 +421,11 @@ void impl_op(enum op_type op)
 		OP(xor,      "xor");
 		OP(or,       "or");
 		OP(and,      "and");
-
-		case op_not:
-		normalise = 1;
-
-		OP(bnot,     "not");
 #undef OP
+
+		case op_bnot:
+		case op_not:
+			ICE("unary op in binary");
 
 		case op_shiftl:
 		case op_shiftr:
@@ -591,9 +589,6 @@ void impl_op(enum op_type op)
 
 		/* remove first operand - result is then in vtop (already in a reg) */
 		vpop();
-
-		if(normalise)
-			out_normalise();
 	}
 }
 
@@ -647,16 +642,17 @@ void impl_op_unary(enum op_type op)
 			return;
 
 #define OP(o, s) case op_ ## o: opc = #s; break
-		OP(not, not);
 		OP(minus, neg);
 		OP(bnot, not);
 #undef OP
+
+		case op_not:
+			out_push_i(vtop->d, 0);
+			out_op(op_eq);
+			return;
 	}
 
 	out_asm("%s %s", opc, vstack_str(vtop));
-
-	if(op == op_not)
-		out_normalise();
 }
 
 void impl_normalise(void)
