@@ -4,11 +4,10 @@
 struct sym
 {
 	int offset; /* stack offset */
-	int variadic;
 
 	enum sym_type
 	{
-		sym_global,
+		sym_global, /* externs are sym_global */
 		sym_local,
 		sym_arg
 	} type;

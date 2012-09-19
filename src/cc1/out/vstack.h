@@ -5,11 +5,12 @@ struct vstack
 {
 	enum vstore
 	{
-		CONST,          /* vtop is a constant value/memory address */
-		REG,            /* vtop is in a register/register pointer */
-		STACK,          /* vtop is in the stack/pointer onto stack */
-		FLAG,           /* vtop is a cpu flag/invalid */
-		LBL,            /* vtop is a label/pointer to label */
+		CONST,          /* vtop is a constant value */
+		REG,            /* vtop is in a register */
+		STACK,          /* vtop pointer onto stack */
+		STACK_SAVE,     /* saved register/flag */
+		FLAG,           /* vtop is a cpu flag */
+		LBL,            /* vtop is a pointer to label */
 	} type;
 
 	decl *d;
@@ -54,6 +55,7 @@ void v_to_mem(struct vstack *conv);
 int  v_unused_reg(int stack_as_backup);
 void v_freeup_regp(struct vstack *);
 void v_freeup_reg(int r, int allowable_stack);
+void v_freeup_regs(int a, int b);
 void v_save_reg(struct vstack *vp);
 
 void v_deref_decl(struct vstack *vp);

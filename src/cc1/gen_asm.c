@@ -43,7 +43,7 @@ void lea_expr(expr *e, symtable *stab)
 
 void gen_stmt(stmt *t)
 {
-	t->f_gen(t);
+	EOF_WHERE(&t->where, t->f_gen(t));
 	/* can't assert vtop != null here, since ({}) depend on this */
 }
 

@@ -137,6 +137,7 @@ static const char *vstack_str_r_ptr(char buf[VSTACK_STR_SZ], struct vstack *vs, 
 			break;
 
 		case STACK:
+		case STACK_SAVE:
 		{
 			int n = vs->bits.off_from_bp;
 			SNPRINTF(buf, VSTACK_STR_SZ, "%s0x%x(%%rbp)", n < 0 ? "-" : "", abs(n));
@@ -302,6 +303,7 @@ static void x86_load(struct vstack *from, const char *regstr)
 		case STACK:
 		case LBL:
 			lea = 1;
+		case STACK_SAVE: /* voila */
 		case CONST:
 		case REG:
 			break;
@@ -357,10 +359,10 @@ void impl_store(struct vstack *from, struct vstack *to)
 	if(from->type != CONST)
 		v_to_reg(from);
 
-	/* if to a register, we can assign straight to it */
 	switch(to->type){
 		case FLAG:
-			ICE("invalid store FLAG");
+		case STACK_SAVE:
+			ICE("invalid store %d", to->type);
 
 		case REG:
 		case CONST:
@@ -412,7 +414,6 @@ void impl_reg_cp(struct vstack *from, int r)
 void impl_op(enum op_type op)
 {
 	const char *opc;
-	int normalise = 0;
 
 	switch(op){
 #define OP(e, s) case op_ ## e: opc = s; break
@@ -422,12 +423,11 @@ void impl_op(enum op_type op)
 		OP(xor,      "xor");
 		OP(or,       "or");
 		OP(and,      "and");
-
-		case op_not:
-		normalise = 1;
-
-		OP(bnot,     "not");
 #undef OP
+
+		case op_bnot:
+		case op_not:
+			ICE("unary op in binary");
 
 		case op_shiftl:
 		case op_shiftr:
@@ -483,28 +483,35 @@ void impl_op(enum op_type op)
 			 */
 			int r_div;
 
-			vtop2_prepare_op();
-
 			/*
 			 * if we are using reg_[ad] elsewhere
 			 * and they aren't queued for this idiv
 			 * then save them, so we can use them
 			 * for idiv
 			 */
-			v_freeup_reg(REG_A, 2);
-			v_freeup_reg(REG_D, 2);
+
+			/*
+			 * Must freeup the lower
+			 */
+			v_freeup_regs(REG_A, REG_D);
 
 			v_to_reg(vtop);
 			r_div = v_to_reg(&vtop[-1]); /* TODO: similar to above - v_to_reg_preferred */
 
 			if(r_div != REG_A){
 				/* we already have rax in use by vtop, swap the values */
-				impl_reg_swp(vtop, &vtop[-1]);
+				if(vtop->type == REG && vtop->bits.reg == REG_A){
+					impl_reg_swp(vtop, &vtop[-1]);
+				}else{
+					v_freeup_reg(REG_A, 2);
+					impl_reg_cp(&vtop[-1], REG_A);
+					vtop[-1].bits.reg = REG_A;
+				}
 
 				r_div = vtop[-1].bits.reg;
 			}
 
-			UCC_ASSERT(r_div == REG_A, "register A not chosen for idiv");
+			UCC_ASSERT(r_div == REG_A, "register A not chosen for idiv (%c)", regs[r_div]);
 
 			out_asm("cqto");
 
@@ -584,16 +591,13 @@ void impl_op(enum op_type op)
 
 		/* remove first operand - result is then in vtop (already in a reg) */
 		vpop();
-
-		if(normalise)
-			out_normalise();
 	}
 }
 
 void impl_deref()
 {
 	const int r = v_unused_reg(1); /* allocate a reg here first, since it'll be used later too */
-	char ptr[REG_STR_SZ], dst[REG_STR_SZ];
+	char ptr[VSTACK_STR_SZ], dst[REG_STR_SZ];
 
 	/* optimisation: if we're dereffing a pointer to stack/lbl, just do a mov */
 	switch(vtop->type){
@@ -640,16 +644,17 @@ void impl_op_unary(enum op_type op)
 			return;
 
 #define OP(o, s) case op_ ## o: opc = #s; break
-		OP(not, not);
 		OP(minus, neg);
 		OP(bnot, not);
 #undef OP
+
+		case op_not:
+			out_push_i(vtop->d, 0);
+			out_op(op_eq);
+			return;
 	}
 
 	out_asm("%s %s", opc, vstack_str(vtop));
-
-	if(op == op_not)
-		out_normalise();
 }
 
 void impl_normalise(void)
@@ -675,7 +680,7 @@ void impl_cast(decl *from, decl *to)
 
 	if(szfrom != szto){
 		if(szfrom < szto){
-			const int is_signed = from->type->is_signed;
+			const int is_signed = from && from->type->is_signed;
 			const int int_sz = type_primitive_size(type_int);
 
 			char buf_from[REG_STR_SZ], buf_to[REG_STR_SZ];
@@ -684,7 +689,10 @@ void impl_cast(decl *from, decl *to)
 
 			x86_reg_str_r(buf_from, vtop->bits.reg, from);
 
-			if(!is_signed && decl_size(to) > int_sz && decl_size(from) == int_sz){
+			if(!is_signed
+			&& (to   ? decl_size(to)   : type_primitive_size(type_intptr)) > int_sz
+			&& (from ? decl_size(from) : type_primitive_size(type_intptr)) == int_sz)
+			{
 				/*
 				 * movzx %eax, %rax is invalid
 				 * since movl %eax, %eax automatically zeros the top half of rax
@@ -693,7 +701,7 @@ void impl_cast(decl *from, decl *to)
 				out_asm("movl %%%s, %%%s", buf_from, buf_from);
 				return;
 			}else{
-				x86_reg_str_r(buf_to,   vtop->bits.reg, to);
+				x86_reg_str_r(buf_to, vtop->bits.reg, to);
 			}
 
 			out_asm("mov%cx %%%s, %%%s", "zs"[is_signed], buf_from, buf_to);
@@ -701,7 +709,8 @@ void impl_cast(decl *from, decl *to)
 			char buf[DECL_STATIC_BUFSIZ];
 
 			out_comment("truncate cast from %s to %s, size %d -> %d",
-					decl_to_str_r(buf, from), decl_to_str(to),
+					from ? decl_to_str_r(buf, from) : "",
+					to ? decl_to_str(to) : "",
 					szfrom, szto);
 		}
 	}
@@ -721,6 +730,7 @@ static const char *x86_call_jmp_target(struct vstack *vp)
 			vstack_str_r(buf + 1, vp);
 			return buf;
 
+		case STACK_SAVE:
 		case FLAG:
 		case REG:
 		case CONST:
@@ -757,6 +767,7 @@ void impl_jcond(int true, const char *lbl)
 			break;
 
 		case STACK:
+		case STACK_SAVE:
 		case LBL:
 			v_to_reg(vtop);
 
@@ -772,33 +783,29 @@ void impl_jcond(int true, const char *lbl)
 	}
 }
 
-void impl_call(const int nargs, int variadic, decl *d)
+void impl_call(const int nargs, decl *d)
 {
 	int i, ncleanup;
 
-	if(variadic){
-		for(i = nargs - 1; i >=0; i--)
-			out_asm("pushq %s", vstack_str(&vtop[-i]));
-		for(i = 0; i < nargs; i++)
-			vpop();
-		ncleanup = nargs;
-	}else{
-		for(i = 0; i < MIN(nargs, N_CALL_REGS); i++){
-			int ri;
+	for(i = 0; i < MIN(nargs, N_CALL_REGS); i++){
+		int ri;
 
-			ri = call_regs[i].idx;
-			if(ri != -1)
-				v_freeup_reg(ri, 1);
+		ri = call_regs[i].idx;
+		if(ri != -1)
+			v_freeup_reg(ri, 1);
 
-			x86_load(vtop, call_reg_str(i, vtop->d));
-			vpop();
-		}
-		/* push remaining args onto the stack */
-		ncleanup = nargs - i;
-		for(; i < nargs; i++){
-			out_asm("pushq %s", vstack_str(vtop));
-			vpop();
-		}
+		x86_load(vtop, call_reg_str(i, vtop->d));
+		vpop();
+	}
+	/* push remaining args onto the stack */
+	ncleanup = nargs - i;
+	for(; i < nargs; i++){
+		/* can't push non-word sized vtops */
+		if(vtop->d && decl_size(vtop->d) != platform_word_size())
+			out_cast(vtop->d, NULL);
+
+		out_asm("pushq %s", vstack_str(vtop));
+		vpop();
 	}
 
 	/* save all registers */

@@ -230,7 +230,8 @@ ops/__builtin.o: ops/__builtin.c ops/../../util/util.h \
  ops/../ops/stmt_switch.h ops/../ops/stmt_while.h \
  ops/../ops/stmt_continue.h ops/../ops/stmt_asm.h ops/../sym.h \
  ops/../decl.h ops/__builtin.h ops/../cc1.h ops/../tokenise.h \
- ops/../parse.h ops/../fold.h ops/../const.h ops/../out/out.h
+ ops/../parse.h ops/../fold.h ops/../const.h ops/../gen_asm.h \
+ ops/../out/out.h
 ops/expr__Generic.o: ops/expr__Generic.c ops/ops.h ops/../../util/util.h \
  ops/../data_structs.h ops/../tree.h ops/../expr.h ops/../ops/expr_addr.h \
  ops/../ops/expr_assign.h ops/../ops/expr_assign_compound.h \
@@ -1019,7 +1020,8 @@ out/asm.o: out/asm.c out/../../util/util.h out/../data_structs.h \
  out/../ops/stmt_continue.h out/../ops/stmt_asm.h out/../sym.h \
  out/../decl.h out/../cc1.h out/../sym.h out/asm.h \
  out/../../util/platform.h out/../../util/alloc.h \
- out/../../util/dynarray.h out/../sue.h out/../const.h out/../gen_asm.h
+ out/../../util/dynarray.h out/../sue.h out/../const.h out/../gen_asm.h \
+ out/../data_store.h
 out/lbl.o: out/lbl.c out/../../util/alloc.h out/../../util/util.h \
  out/common.h out/lbl.h
 out/out.o: out/out.c out/../../util/util.h out/../../util/alloc.h \

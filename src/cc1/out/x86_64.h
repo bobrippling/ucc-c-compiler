@@ -18,7 +18,7 @@ void impl_jcond(int true, const char *lbl);
 
 void impl_cast(decl *from, decl *to);
 
-void impl_call(const int nargs, int variadic, decl *d);
+void impl_call(const int nargs, decl *d);
 void impl_call_fin(int nargs);
 
 void impl_lbl(const char *);

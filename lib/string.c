@@ -74,6 +74,7 @@ void *memset(void *p, unsigned char c, size_t len)
 
 void *memcpy(char *to, const char *from, size_t count)
 {
+#define DUFF
 #ifdef DUFF
 	char *const ret = to;
 	size_t n = (count + 7) / 8;
@@ -91,7 +92,7 @@ void *memcpy(char *to, const char *from, size_t count)
 	}
 	return ret;
 #else
-	asm("TODO");//TODO
+	//asm("lib/string/todo");//TODO
 #endif
 }
 
