@@ -644,6 +644,38 @@ void fold_decl(decl *d, symtable *stab)
 	}
 }
 
+void fold_decl_global_init(decl_init *dinit, symtable *stab)
+{
+	switch(dinit->type){
+		case decl_init_scalar:
+		{
+			expr *const e = dinit->bits.expr;
+			intval iv;
+			enum constyness type;
+
+			fold_expr(e, stab);
+
+			const_fold(e, &iv, &type);
+
+			if(type == CONST_NO)
+				DIE_AT(&e->where, "%s initialiser not constant (%s)",
+						stab->parent ? "static" : "global", e->f_str());
+
+			break;
+		}
+
+		case decl_init_brace:
+		{
+			decl_init **i;
+
+			for(i = dinit->bits.inits; i && *i; i++)
+				fold_decl_global_init(*i, stab);
+
+			break;
+		}
+	}
+}
+
 void fold_decl_global(decl *d, symtable *stab)
 {
 	switch(d->type->store){
@@ -663,6 +695,12 @@ void fold_decl_global(decl *d, symtable *stab)
 	}
 
 	fold_decl(d, stab);
+
+	/* inits are normally handled in stmt_code,
+	 * but this is global, handle here
+	 */
+	if(d->init)
+		fold_decl_global_init(d->init, stab);
 }
 
 void fold_symtab_scope(symtable *stab)
@@ -1083,7 +1121,8 @@ void fold(symtable *globs)
 					decl *d = *protos;
 
 					if(!decl_is_definition(d)){
-						decl_attr_append(&D(i)->attr, d->attr);
+						EOF_WHERE(&D(i)->where,
+								decl_attr_append(&D(i)->attr, d->attr));
 					}
 				}
 			}
