@@ -715,7 +715,7 @@ void fold_symtab_scope(symtable *stab)
 
 void fold_need_expr(expr *e, const char *stmt_desc, int is_test)
 {
-	if(!decl_is_ptr(e->tree_type) && e->tree_type->type->primitive == type_void)
+	if(decl_is_void(e->tree_type))
 		DIE_AT(&e->where, "%s requires non-void expression", stmt_desc);
 
 	if(!e->in_parens && expr_kind(e, assign))
