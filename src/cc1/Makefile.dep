@@ -71,7 +71,7 @@ fold_sym.o: fold_sym.c ../util/util.h data_structs.h tree.h expr.h \
  ops/stmt_default.h ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h \
  ops/stmt_goto.h ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h \
  ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h ops/stmt_continue.h \
- sym.h decl.h cc1.h fold_sym.h ../util/platform.h pack.h
+ sym.h decl.h cc1.h fold_sym.h ../util/platform.h pack.h sue.h
 gen_asm.o: gen_asm.c ../util/util.h ../util/dynarray.h data_structs.h \
  tree.h expr.h ops/expr_addr.h ops/expr_assign.h \
  ops/expr_assign_compound.h ops/expr_cast.h ops/expr_comma.h \

@@ -187,10 +187,12 @@ void fold_sue(struct_union_enum_st *sue, symtable *stab, int *poffset, int *pthi
 		sz = sue_size(sue);
 		pack_next(poffset, pthis, sz, sz);
 	}else{
+		int align_max = 1;
 		sue_member **i;
 
 		for(i = sue->members; i && *i; i++){
 			decl *d = (*i)->struct_member;
+			int align;
 
 			fold_decl(d, stab);
 
@@ -199,15 +201,24 @@ void fold_sue(struct_union_enum_st *sue, symtable *stab, int *poffset, int *pthi
 					DIE_AT(&d->where, "nested %s", sue_str(sue));
 
 				fold_sue(d->type->sue, stab, poffset, pthis);
+
+				align = d->type->sue->align;
 			}else{
 				const int sz = decl_size(d);
 				pack_next(poffset, pthis, sz, sz);
+				align = sz; /* for now */
 			}
+
 
 			if(sue->primitive == type_struct)
 				d->struct_offset = *pthis;
 			/* else - union, all offsets are the same */
+
+			if(align > align_max)
+				align_max = align;
 		}
+
+		sue->align = align_max;
 	}
 }
 

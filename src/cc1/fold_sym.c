@@ -8,6 +8,7 @@
 #include "fold_sym.h"
 #include "../util/platform.h"
 #include "pack.h"
+#include "sue.h"
 
 
 #define RW_TEST(var)                              \
@@ -63,10 +64,16 @@ int symtab_fold(symtable *tab, int current)
 					case store_auto:
 					{
 						int siz = decl_size(s->decl);
+						int align;
 						int this;
 
-						/* TODO: alignment */
-						pack_next(&current, &this, siz, siz); /* an array and structs start at the bottom */
+						if(decl_is_struct_or_union(s->decl))
+							/* safe - can't have an instance without a ->sue */
+							align = s->decl->type->sue->align;
+						else
+							align = siz;
+
+						pack_next(&current, &this, siz, align); /* an array and structs start at the bottom */
 
 						s->offset = this;
 
