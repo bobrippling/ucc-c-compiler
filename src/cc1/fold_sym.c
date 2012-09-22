@@ -34,6 +34,7 @@
 int symtab_fold(symtable *tab, int current)
 {
 	const int this_start = current;
+	int arg_space = 0;
 
 	if(tab->decls){
 		decl **diter;
@@ -53,7 +54,8 @@ int symtab_fold(symtable *tab, int current)
 			}
 		}
 
-		current += arg_idx * platform_word_size();
+		arg_space = arg_idx * platform_word_size();
+		current += arg_space;
 
 		for(diter = tab->decls; *diter; diter++){
 			sym *s = (*diter)->sym;
@@ -122,7 +124,10 @@ int symtab_fold(symtable *tab, int current)
 				subtab_max = this;
 		}
 
-		tab->auto_total_size = current - this_start + subtab_max;
+		/* don't account the args in the space,
+		 * just use for offsetting them
+		 */
+		tab->auto_total_size = current - this_start + subtab_max - arg_space;
 	}
 
 	return tab->auto_total_size;

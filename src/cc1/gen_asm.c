@@ -117,7 +117,7 @@ void gen_asm_global(decl *d)
 
 		out_func_prologue(
 				d->func_code->symtab->auto_total_size,
-				nargs, decl_funcargs(d)->variadic);
+				nargs);
 
 		curfunc_lblfin = out_label_code(d->spel);
 
