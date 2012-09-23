@@ -278,7 +278,7 @@ enum funcargs_cmp funcargs_equal(funcargs *args_to, funcargs *args_from,
 	if((count_to   == 0 && !args_to->args_void)
 	|| (count_from == 0 && !args_from->args_void)){
 		/* a() or b() */
-		return 1;
+		return funcargs_cmp_equal;
 	}
 
 	if(!(args_to->variadic ? count_to <= count_from : count_to == count_from))
