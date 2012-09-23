@@ -437,8 +437,15 @@ input:	dynarray_add((void ***)&inputs, argv[i]);
 		}
 	}
 
-	if(output && dynarray_count((void **)inputs) > 1 && (mode == mode_compile || mode == mode_assemb))
-		die("can't specify '-o' with '-%c' and an output", MODE_ARG_CH(mode));
+	{
+		const int ninputs = dynarray_count((void **)inputs);
+
+		if(output && ninputs > 1 && (mode == mode_compile || mode == mode_assemb))
+			die("can't specify '-o' with '-%c' and an output", MODE_ARG_CH(mode));
+
+		if(ninputs == 0)
+			die("no inputs");
+	}
 
 
 	if(output && mode == mode_preproc && !strcmp(output, "-"))
