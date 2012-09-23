@@ -348,7 +348,7 @@ retry:
 	}
 	/* if it's '"' then we've got a finishing '"' */
 
-	NOOP_RET();
+	NOOP_RET(); /* should be higher up? */
 
 	lib = *fname == '<';
 	fname[len-1] = '\0';
@@ -377,7 +377,9 @@ lib:
 		}
 
 		if(!f)
-			die("can't find include file <%s>", fname);
+			die("can't find include file %c%s%c",
+					"\"<"[lib], fname, "\">"[lib]);
+
 		if(option_debug)
 			fprintf(stderr, ">>> include lib: %s\n", path);
 	}else{
@@ -500,27 +502,27 @@ void handle_macro(char *line)
 
 	putchar('\n'); /* keep line-no.s in sync */
 
-#define MAP(s, f)                \
-	if(!strcmp(tokens[0]->w, s)){  \
-		f(tokens + 1);               \
+#define HANDLE(s)                \
+	if(!strcmp(tokens[0]->w, #s)){ \
+		handle_ ## s(tokens + 1);    \
 		goto fin;                    \
 	}
 
-	MAP("include", handle_include)
+	HANDLE(include)
 
-	MAP("define",  handle_define)
-	MAP("undef",   handle_undef)
+	HANDLE(define)
+	HANDLE(undef)
 
-	MAP("ifdef",   handle_ifdef)
-	MAP("ifndef",  handle_ifndef)
-	MAP("else",    handle_else)
-	MAP("endif",   handle_endif)
-	MAP("if",      handle_if)
+	HANDLE(ifdef)
+	HANDLE(ifndef)
+	HANDLE(else)
+	HANDLE(endif)
+	HANDLE(if)
 
-	MAP("warning", handle_warning)
-	MAP("error",   handle_error)
+	HANDLE(warning)
+	HANDLE(error)
 
-	MAP("pragma",  handle_pragma)
+	HANDLE(pragma)
 
 	die("unrecognised preproc command \"%s\"", tokens[0]->w);
 fin:
