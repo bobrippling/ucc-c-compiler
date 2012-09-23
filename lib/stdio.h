@@ -31,7 +31,7 @@ typedef size_t fpos_t;
 
 typedef size_t   __stdio_read(void *,       char *, int);
 typedef size_t  __stdio_write(void *, const char *, int);
-typedef fpos_t   __stdio_seek(void *,       fpos_t, int);
+typedef int      __stdio_seek(void *,       fpos_t, int);
 typedef int     __stdio_close(void *);
 
 /* func interface */

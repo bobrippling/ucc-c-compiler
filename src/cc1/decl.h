@@ -104,9 +104,8 @@ struct decl
 	/* no funcargs on the decl - on a desc if it's a decl_desc_func */
 	decl_desc *desc;
 
+	decl_init *init; /* initialiser - converted to an assignment for non-globals */
 	stmt *func_code;
-	expr *init;
-	array_decl *arrayinit;
 
 	int struct_offset;
 	sym *sym;
@@ -120,24 +119,39 @@ struct decl
 	/* only inline code - no standalone obj-code generated */
 };
 
-struct array_decl
+struct decl_init
 {
+	where where;
+
+	enum decl_init_type /* TODO: ops/init_... */
+	{
+		/*decl_init_str - covered by scalar */
+		decl_init_scalar,              /* = [0-9] | basic-expr */
+		decl_init_brace,               /* { `decl_init`, `decl_init`, ... } */
+		/*decl_init_struct,             * { .member1 = `decl_init`, .member2 = `decl_init` } */
+	} type;
+
+	union
+	{
+		expr *expr;
+		decl_init **inits;
+	} bits;
+};
+
+struct data_store
+{
+	enum
+	{
+		data_store_str
+	} type;
+
 	union
 	{
 		char *str;
-		expr **exprs;
-	} data;
-
-	char **struct_idents;
-
-	char *label;
+	} bits;
 	int len;
 
-	enum
-	{
-		array_exprs,
-		array_str
-	} type;
+	char *spel; /* asm */
 };
 
 enum decl_cmp
@@ -149,14 +163,15 @@ enum decl_cmp
 decl        *decl_new(void);
 decl        *decl_new_type(enum type_primitive p);
 #define      decl_new_void() decl_new_type(type_void)
+#define      decl_new_char() decl_new_type(type_char)
 #define      decl_new_int()  decl_new_type(type_int)
-array_decl  *array_decl_new(void);
+
 decl_attr   *decl_attr_new(enum decl_attr_type);
 void         decl_attr_append(decl_attr **loc, decl_attr *new);
 const char  *decl_attr_to_str(enum decl_attr_type);
 
 void         decl_desc_append(decl_desc **parent, decl_desc *child);
-decl_desc   *decl_desc_tail(decl *);
+decl_desc   *decl_desc_tail(const decl *d);
 
 decl_desc   *decl_desc_new(enum decl_desc_type t, decl *dparent, decl_desc *parent);
 decl_desc   *decl_desc_ptr_new(  decl *dparent, decl_desc *parent);
@@ -166,8 +181,14 @@ decl_desc   *decl_desc_array_new(decl *dparent, decl_desc *parent);
 
 #define decl_desc_ptr_or_block(d) ((d)->type == decl_desc_ptr || (d)->type == decl_desc_block)
 
-decl      *decl_copy(decl *);
-decl_desc *decl_desc_copy(decl_desc *);
+decl      *decl_copy(const decl *);
+decl      *decl_copy_keep_array(const decl *d);
+decl_desc *decl_desc_copy(const decl_desc *dp);
+
+decl_init *decl_init_new(enum decl_init_type);
+int        decl_init_len(decl_init *);
+const char *decl_init_to_str(enum decl_init_type);
+#define decl_init_is_brace(di) ((di)->type == decl_init_brace)
 
 void decl_conv_array_func_to_ptr(decl *d);
 
@@ -178,18 +199,22 @@ int   decl_equal(decl *, decl *, enum decl_cmp mode);
 
 int     decl_is_struct_or_union(decl *);
 int     decl_is_struct_or_union_possible_ptr(decl *);
+int     decl_is_struct_or_union_ptr(decl *d);
 int     decl_is_callable(       decl *);
 int     decl_is_func(           decl *); /* different from _callable - fptrs are also callable */
 int     decl_is_const(          decl *);
 int     decl_is_fptr(           decl *);
 
 int     decl_is_void_ptr(       decl *);
-int     decl_ptr_depth(         decl *);
+int     decl_is_ptr(            decl *);
 int     decl_desc_depth(        decl *);
 int     decl_is_integral(       decl *);
+int     decl_ptr_or_block(      decl *);
 #define decl_non_ptr_type(d, t) (!(d)->desc && (d)->type->primitive == t)
+
+#define decl_is_float(d)      (((d)->type->primitive == type_float || (d)->type->primitive == type_double) && !(d)->desc)
 #define decl_is_void(d) decl_non_ptr_type(d, type_void)
-#define decl_is_bool(d) (decl_ptr_depth(d) || decl_is_integral(d))
+#define decl_is_bool(d) (decl_is_ptr(d) || decl_is_integral(d))
 #define decl_is_definition(d) ((d)->init || (d)->func_code)
 
 decl_desc  *decl_first_func(decl *d);
@@ -197,16 +222,16 @@ decl_desc  *decl_leaf(decl *d);
 
 decl *decl_ptr_depth_inc(decl *d);
 decl *decl_ptr_depth_dec(decl *d, where *from);
+int   decl_ptr_depth(    decl *d);
 decl *decl_func_deref(decl *d, funcargs **pfuncargs);
-
-decl_desc *decl_array_first_incomplete(decl *d);
-decl_desc *decl_array_first(decl *d);
 
 int decl_attr_present(decl_attr *, enum decl_attr_type);
 
+int decl_is_array( decl *);
 int decl_has_array(decl *);
 int decl_has_incomplete_array(decl *);
-int decl_is_array( decl *);
+void decl_complete_array(decl *d, int n);
+int decl_inner_array_count(decl *d);
 funcargs *decl_funcargs(decl *);
 int funcargs_equal(funcargs *args_a, funcargs *args_b, int strict_types, int *idx);
 

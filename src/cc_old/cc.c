@@ -227,7 +227,7 @@ start_compile:
 
 start_assemble:
 	SHORTEN_OUTPUT(MODE_ASSEMBLE, f_o);
-	RUN(0, UCC_NASM " -f " UCC_ARCH " %s %s -o %s %s", args[MODE_ASSEMBLE], DEBUG_STR, f_o, f_s);
+	RUN(0, UCC_AS " %s %s -o %s %s", args[MODE_ASSEMBLE], DEBUG_STR, f_o, f_s);
 	if(out_mode == MODE_ASSEMBLE)
 		return 0;
 

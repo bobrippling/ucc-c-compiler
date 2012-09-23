@@ -78,7 +78,7 @@ sym *symtab_search(symtable *tab, const char *spel)
 
 static int decl_cmp(const void *test, decl *item)
 {
-	return (decl *)test == item;
+	return (const decl *)test == item;
 }
 
 sym *symtab_has(symtable *tab, decl *d)
@@ -92,8 +92,8 @@ sym *symtab_add(symtable *tab, decl *d, enum sym_type t, int with_sym, int prepe
 {
 	sym *new;
 
-	if((new = symtab_search2(tab, d->spel, spel_cmp, 0))){
-		char buf[WHERE_BUF_SIZ];
+	if(d->spel && (new = symtab_search2(tab, d->spel, spel_cmp, 0))){
+		char buf[DECL_STATIC_BUFSIZ];
 		if(new->decl)
 			snprintf(buf, sizeof buf, "%s", where_str(&new->decl->where));
 		else
@@ -113,18 +113,20 @@ sym *symtab_add(symtable *tab, decl *d, enum sym_type t, int with_sym, int prepe
 	return new;
 }
 
-void symtab_add_args(symtable *stab, funcargs *fargs, char *funcsp)
+void symtab_add_args(symtable *stab, funcargs *fargs, const char *func_spel)
 {
 	int nargs, i;
 
 	if(fargs->arglist){
 		for(nargs = 0; fargs->arglist[nargs]; nargs++);
+
 		/* add args backwards, since we push them onto the stack backwards - still need to do this here? */
 		for(i = nargs - 1; i >= 0; i--){
-			if(!fargs->arglist[i]->spel)
-				DIE_AT(&fargs->where, "function \"%s\" has unnamed arguments", funcsp);
-			else
+			if(!fargs->arglist[i]->spel){
+				DIE_AT(&fargs->where, "function \"%s\" has unnamed arguments", func_spel);
+			}else{
 				SYMTAB_ADD(stab, fargs->arglist[i], sym_arg);
+			}
 		}
 	}
 }

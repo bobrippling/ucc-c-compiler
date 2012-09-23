@@ -7,11 +7,12 @@
 #include "sym.h"
 #include "fold_sym.h"
 #include "../util/platform.h"
+#include "pack.h"
+#include "sue.h"
 
 
 #define RW_TEST(var)                              \
 						s->var == 0                           \
-						&& !s->decl->internal                 \
 						&& !decl_has_array(s->decl)           \
 						&& !decl_is_func(s->decl)             \
 						&& !decl_is_struct_or_union(s->decl)
@@ -33,52 +34,60 @@
 int symtab_fold(symtable *tab, int current)
 {
 	const int this_start = current;
+	int arg_space = 0;
 
 	if(tab->decls){
-		const int word_size = platform_word_size();
 		decl **diter;
-		int arg_offset;
+		int arg_idx;
 
-		arg_offset = 0;
+		arg_idx = 0;
 
 		/* need to walk backwards for args */
 		for(diter = tab->decls; *diter; diter++);
 
 		for(diter--; diter >= tab->decls; diter--){
 			sym *s = (*diter)->sym;
-			/*enum type_primitive last = type_int; TODO: packing */
+
+			if(s->type == sym_arg){
+				s->offset = arg_idx++;
+				s->decl->is_definition = 1; /* just for completeness */
+			}
+		}
+
+		arg_space = arg_idx * platform_word_size();
+		current += arg_space;
+
+		for(diter = tab->decls; *diter; diter++){
+			sym *s = (*diter)->sym;
 
 			if(s->type == sym_local){
 				switch(s->decl->type->store){
-					case store_auto:
 					case store_default:
-						if(!decl_is_func(s->decl)){
+					case store_auto:
+					{
 						int siz = decl_size(s->decl);
+						int align;
+						int this;
 
-						if(siz <= word_size)
-							s->offset = current;
+						if(decl_is_struct_or_union(s->decl))
+							/* safe - can't have an instance without a ->sue */
+							align = s->decl->type->sue->align;
 						else
-							s->offset = current + siz - word_size; /* an array and structs start at the bottom */
+							align = siz;
 
-						/* need to increase by a multiple of word_size */
-						if(siz % word_size)
-							siz += word_size - siz % word_size;
-						current += siz;
+						pack_next(&current, &this, siz, align); /* an array and structs start at the bottom */
 
+						s->offset = this;
 
 						/* static analysis on sym (only auto-vars) */
-						RW_WARN(WRITTEN, nwrites, "written to");
+						if(!s->decl->init)
+							RW_WARN(WRITTEN, nwrites, "written to");
+						break;
 					}
 
 					default:
 						break;
 				}
-
-			}else if(s->type == sym_arg){
-				s->offset = arg_offset;
-				arg_offset += word_size;
-				s->decl->is_definition = 1; /* just for completeness */
-
 			}
 
 			switch(s->type){
@@ -115,7 +124,10 @@ int symtab_fold(symtable *tab, int current)
 				subtab_max = this;
 		}
 
-		tab->auto_total_size = current - this_start + subtab_max;
+		/* don't account the args in the space,
+		 * just use for offsetting them
+		 */
+		tab->auto_total_size = current - this_start + subtab_max - arg_space;
 	}
 
 	return tab->auto_total_size;

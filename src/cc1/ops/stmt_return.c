@@ -20,9 +20,12 @@ void fold_stmt_return(stmt *s)
 				curdecl_func->spel,
 				decl_to_str(s->expr->tree_type));
 
-		if(void_func)
+		if(void_func){
 			cc1_warn_at(&s->where, 0, 1, WARN_RETURN_TYPE,
 					"return with a value in void function %s", curdecl_func->spel);
+		}else{
+			fold_insert_casts(curdecl_func_called, &s->expr, s->symtab, &s->expr->where, "return");
+		}
 
 	}else if(!void_func){
 		cc1_warn_at(&s->where, 0, 1, WARN_RETURN_TYPE,
@@ -35,9 +38,11 @@ void gen_stmt_return(stmt *s)
 {
 	if(s->expr){
 		gen_expr(s->expr, s->symtab);
-		asm_temp(1, "pop rax ; return");
+		out_pop_func_ret(s->expr->tree_type);
+		out_comment("return");
 	}
-	asm_temp(1, "jmp %s", curfunc_lblfin);
+	out_push_lbl(curfunc_lblfin, 0, NULL);
+	out_jmp();
 }
 
 void mutate_stmt_return(stmt *s)

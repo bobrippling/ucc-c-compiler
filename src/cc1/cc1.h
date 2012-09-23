@@ -27,6 +27,7 @@ enum warning
 	WARN_VOID_ARITH               = 1 << 9,
 	WARN_MIXED_CODE_DECLS         = 1 << 10,
 	WARN_TEST_BOOL                = 1 << 11,
+	WARN_LOSS_PRECISION           = 1 << 12,
 
 	WARN_OPT_POSSIBLE             = 1 << 20,
 	WARN_SWITCH_ENUM              = 1 << 21,
@@ -62,6 +63,8 @@ enum fopt
 	FOPT_CONST_FOLD            = 1 << 1,
 	FOPT_ENGLISH               = 1 << 2,
 	FOPT_SHOW_LINE             = 1 << 3,
+	FOPT_PIC                   = 1 << 4,
+	FOPT_PIC_PCREL             = 1 << 5,
 };
 
 enum cc1_backend
@@ -81,5 +84,7 @@ extern FILE *cc_out[NUM_SECTIONS];
 extern FILE *cc1_out;
 
 extern int cc1_max_errors;
+
+extern int m32; /* 32bit mode or 64? */
 
 #endif

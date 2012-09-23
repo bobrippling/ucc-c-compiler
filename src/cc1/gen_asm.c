@@ -5,15 +5,19 @@
 #include <ctype.h>
 
 #include "../util/util.h"
+#include "../util/dynarray.h"
 #include "data_structs.h"
 #include "cc1.h"
 #include "macros.h"
-#include "asm.h"
 #include "../util/platform.h"
 #include "sym.h"
 #include "gen_asm.h"
 #include "../util/util.h"
 #include "const.h"
+#include "tree.h"
+#include "out/out.h"
+#include "out/lbl.h"
+#include "out/asm.h"
 
 char *curfunc_lblfin; /* extern */
 
@@ -24,59 +28,76 @@ void gen_expr(expr *e, symtable *stab)
 
 	const_fold(e, &iv, &type);
 
-	if(type == CONST_WITH_VAL){
-		asm_temp(1, "mov rax, %d", iv.val);
-		asm_temp(1, "push rax");
-	}else{
-		e->f_gen(e, stab);
-	}
+	if(type == CONST_WITH_VAL) /* TODO: -O0 skips this */
+		out_push_iv(e->tree_type, &iv);
+	else
+		EOF_WHERE(&e->where, e->f_gen(e, stab));
+}
+
+void lea_expr(expr *e, symtable *stab)
+{
+	UCC_ASSERT(e->f_store, "invalid store expression %s (no f_store())", e->f_str());
+
+	e->f_store(e, stab);
 }
 
 void gen_stmt(stmt *t)
 {
-	t->f_gen(t);
+	EOF_WHERE(&t->where, t->f_gen(t));
+}
+
+void static_store(expr *e)
+{
+	if(e->f_static_addr){
+		e->f_static_addr(e);
+	}else{
+		intval iv;
+
+		const_fold_need_val(e, &iv);
+		asm_declare_partial("%d", iv.val);
+	}
 }
 
 #ifdef FANCY_STACK_INIT
-#warning FANCY_STACK_INIT broken
+#define ITER_DECLS(i) for(i = df->func_code->symtab->decls; i && *i; i++)
+
 void gen_func_stack(decl *df, const int offset)
 {
-#define ITER_DECLS() \
-		for(iter = df->func_code->symtab->decls; iter && *iter; iter++)
-
-	int use_sub = 1;
+	int use_sub = 1, clever = 0;
 	decl **iter;
 
-	ITER_DECLS(){
-		decl *d = *iter;
-		if(decl_is_array(d) && d->init){
-			use_sub = 0;
+	ITER_DECLS(iter)
+		if((*iter)->init){
+			clever = 1;
+			break;
 		}
-	}
 
 	if(use_sub){
-		asm_temp(1, "sub rsp, %d", offset);
+		asm_output_new(asm_out_type_sub,
+				asm_operand_new_reg(NULL, ASM_REG_SP),
+				asm_operand_new_val(offset));
 	}else{
-		ITER_DECLS(){
+		ITER_DECLS(iter){
 			decl *d = *iter;
-			if(decl_is_array(d) && d->init){
-			}else{
+			if(d->init && d->init->type != decl_init_scalar){
+				ICW("TODO: stack gen or expr for %s init", decl_to_str(d));
 			}
 		}
 	}
 }
 #else
-#  define gen_func_stack(df, offset) asm_temp(1, "sub rsp, %d", offset)
 #endif
 
-void asm_extern(decl *d)
+void gen_asm_extern(decl *d)
 {
-	asm_tempf(cc_out[SECTION_BSS], 0, "extern %s", d->spel);
+	(void)d;
+	/*asm_comment("extern %s", d->spel);*/
+	/*asm_out_section(SECTION_BSS, "extern %s", d->spel);*/
 }
 
 void gen_asm_global(decl *d)
 {
-	if(!d->internal && !d->is_definition)
+	if(!d->is_definition)
 		return;
 
 	if(decl_attr_present(d->attr, attr_section))
@@ -85,39 +106,32 @@ void gen_asm_global(decl *d)
 
 	/* order of the if matters */
 	if(d->func_code){
-		const int offset = d->func_code->symtab->auto_total_size;
+		int nargs = 0;
+		decl **aiter;
 
-		asm_label(d->spel);
-		asm_temp(1, "push rbp");
-		asm_temp(1, "mov rbp, rsp");
+		for(aiter = d->func_code->symtab->decls; aiter && *aiter; aiter++)
+			if((*aiter)->sym->type == sym_arg)
+				nargs++;
 
-		curfunc_lblfin = asm_label_code(d->spel);
+		out_label(d->spel);
 
-		if(offset)
-			gen_func_stack(d, offset);
+		out_func_prologue(
+				d->func_code->symtab->auto_total_size,
+				nargs);
+
+		curfunc_lblfin = out_label_code(d->spel);
 
 		gen_stmt(d->func_code);
 
-		asm_label(curfunc_lblfin);
-		if(offset)
-			asm_temp(1, "add rsp, %d", offset);
+		out_label(curfunc_lblfin);
 
-		asm_temp(1, "leave");
-		asm_temp(1, "ret");
+		out_func_epilogue();
+
 		free(curfunc_lblfin);
 
-	}else if(d->arrayinit){
-		asm_declare_array(SECTION_DATA, d->arrayinit->label, d->arrayinit);
-
-	}else if(d->init && !const_expr_and_zero(d->init)){
-		asm_declare_single(cc_out[SECTION_DATA], d);
-
-	}else if(d->type->store == store_extern){
-		asm_extern(d);
-
 	}else{
-		/* always resb, since we use decl_size() */
-		asm_tempf(cc_out[SECTION_BSS], 0, "%s resb %d", d->spel, decl_size(d));
+		/* takes care of static, extern, etc */
+		asm_declare(cc_out[SECTION_DATA], d);
 	}
 }
 
@@ -129,12 +143,12 @@ void gen_asm(symtable *globs)
 		decl *d = *diter;
 
 		/* inline_only aren't currently inlined */
-		if(!d->internal && !d->is_definition)
+		if(!d->is_definition)
 			continue;
 
 		if(d->inline_only){
 			/* emit an extern for it anyway */
-			asm_extern(d);
+			gen_asm_extern(d);
 			continue;
 		}
 
@@ -155,9 +169,11 @@ void gen_asm(symtable *globs)
 				/* else extern func with definition */
 
 			case store_default:
-				asm_temp(0, "global %s", d->spel);
+				asm_out_section(SECTION_TEXT, ".globl %s\n", d->spel);
 		}
 
 		gen_asm_global(d);
 	}
+
+	out_assert_vtop_null();
 }

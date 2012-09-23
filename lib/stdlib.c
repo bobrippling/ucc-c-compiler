@@ -125,7 +125,7 @@ void abort()
 
 char *getenv(const char *key)
 {
-	const int keylen = strlen(key);
+	const size_t keylen = strlen(key);
 	const char **i;
 
 	for(i = environ; *i; i++){
@@ -134,7 +134,7 @@ char *getenv(const char *key)
 		e = *i;
 
 		if((equ = strchr(e, '='))){
-			const int len = equ - e;
+			const size_t len = equ - e;
 
 			if(len == keylen && !strncmp(key, e, len))
 				return equ + 1;

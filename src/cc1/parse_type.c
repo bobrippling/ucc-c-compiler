@@ -120,6 +120,7 @@ type *parse_type_sue(enum type_primitive prim)
 }
 
 #include "parse_attr.c"
+#include "parse_init.c"
 
 static void parse_add_attr(decl_attr **append)
 {
@@ -137,6 +138,8 @@ static void parse_add_attr(decl_attr **append)
 
 type *parse_type(int with_store)
 {
+#define PRIMITIVE_NO_MORE 2
+
 	expr *tdef_typeof = NULL;
 	decl_attr *attr = NULL;
 	enum type_qualifier qual = qual_none;
@@ -165,12 +168,38 @@ type *parse_type(int with_store)
 			EAT(curtok);
 
 		}else if(curtok_is_type_primitive()){
-			primitive = curtok_to_type_primitive();
+			const enum type_primitive got = curtok_to_type_primitive();
 
-			if(primitive_set)
-				DIE_AT(NULL, "second type primitive %s", type_primitive_to_str(primitive));
+			if(primitive_set){
+				/* allow "long int" and "short int" */
+#define INT(x)   x == type_int
+#define SHORT(x) x == type_short
+#define LONG(x)  x == type_long
+#define DBL(x)   x == type_double
 
-			primitive_set = 1;
+				if(      INT(got) && (SHORT(primitive) || LONG(primitive))){
+					/* fine, ignore the int */
+				}else if(INT(primitive) && (SHORT(got) || LONG(got))){
+					primitive = got;
+				}else{
+					int die = 1;
+
+					if(primitive_set < PRIMITIVE_NO_MORE){
+						/* special case for long long and long double */
+						if(LONG(primitive) && LONG(got))
+							primitive = type_llong, die = 0;
+						else if((LONG(primitive) && DBL(got)) || (DBL(primitive) && LONG(got)))
+							primitive = type_ldouble, die = 0;
+					}
+
+					if(die)
+						DIE_AT(NULL, "second type primitive %s", type_primitive_to_str(got));
+				}
+			}else{
+				primitive = got;
+			}
+
+			primitive_set++;
 			EAT(curtok);
 
 		}else if(curtok == token_signed || curtok == token_unsigned){
@@ -257,7 +286,7 @@ type *parse_type(int with_store)
 			/*if(tdef_typeof) - can't reach due to primitive_set */
 
 			tdef_typeof = expr_new_sizeof_decl(td, 1);
-			primitive_set = 1;
+			primitive_set = PRIMITIVE_NO_MORE;
 
 			EAT(token_identifier);
 
@@ -542,17 +571,17 @@ decl *parse_decl(type *t, enum decl_mode mode)
 
 	parse_add_attr(&d->attr); /* int spel __attr__ */
 
+	if(d->spel && accept(token_assign))
+		d->init = parse_initialisation();
+
 #ifdef PARSE_DECL_VERBOSE
-	fprintf(stderr, "parsed decl %s, is_func %d: %s\nat %s\n",
-			d->spel, decl_is_func(d), decl_to_str(d),
-			token_to_str(curtok));
+	fprintf(stderr, "parsed decl %s, is_func %d, at %s init=%p\n",
+			d->spel, decl_is_func(d),
+			token_to_str(curtok), d->init);
 
 	for(decl_desc *dp = d->desc; dp; dp = dp->child)
 		fprintf(stderr, "\tdesc %s\n", decl_desc_to_str(dp->type));
 #endif
-
-	if(d->spel && accept(token_assign))
-		d->init = parse_expr_no_comma(); /* int x = 5, j; - don't grab the comma expr */
 
 	return d;
 }
