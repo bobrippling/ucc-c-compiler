@@ -22,10 +22,11 @@ decl *curdecl_func, *curdecl_func_called; /* for funcargs-local labels and retur
 
 static where asm_struct_enum_where;
 
-void fold_decl_equal(decl *a, decl *b, where *w, enum warning warn,
+void fold_decl_equal(
+		decl *a, decl *b, where *w, enum warning warn,
 		const char *errfmt, ...)
 {
-	if(!decl_equal(a, b, DECL_CMP_ALLOW_VOID_PTR | (fopt_mode & FOPT_STRICT_TYPES ? DECL_CMP_STRICT_PRIMITIVE : 0))){
+	if(!decl_equal(a, b, DECL_CMP_ALLOW_VOID_PTR)){
 		int one_struct;
 		va_list l;
 
@@ -187,10 +188,12 @@ void fold_sue(struct_union_enum_st *sue, symtable *stab, int *poffset, int *pthi
 		sz = sue_size(sue);
 		pack_next(poffset, pthis, sz, sz);
 	}else{
+		int align_max = 1;
 		sue_member **i;
 
 		for(i = sue->members; i && *i; i++){
 			decl *d = (*i)->struct_member;
+			int align;
 
 			fold_decl(d, stab);
 
@@ -199,15 +202,24 @@ void fold_sue(struct_union_enum_st *sue, symtable *stab, int *poffset, int *pthi
 					DIE_AT(&d->where, "nested %s", sue_str(sue));
 
 				fold_sue(d->type->sue, stab, poffset, pthis);
+
+				align = d->type->sue->align;
 			}else{
 				const int sz = decl_size(d);
 				pack_next(poffset, pthis, sz, sz);
+				align = sz; /* for now */
 			}
+
 
 			if(sue->primitive == type_struct)
 				d->struct_offset = *pthis;
 			/* else - union, all offsets are the same */
+
+			if(align > align_max)
+				align_max = align;
 		}
+
+		sue->align = align_max;
 	}
 }
 
@@ -948,7 +960,7 @@ static void fold_link_decl_defs(dynmap *spel_decls)
 
 		for(decl_iter = decls_for_this + 1; (e = *decl_iter); decl_iter++){
 			/* check they are the same decl */
-			if(!decl_equal(d, e, DECL_CMP_STRICT_PRIMITIVE))
+			if(!decl_equal(d, e, DECL_CMP_EXACT_MATCH))
 				DIE_AT(&e->where, "mismatching declaration of %s (%s)", d->spel, where_str_r(wbuf, &d->where));
 
 			if(decl_is_definition(e)){

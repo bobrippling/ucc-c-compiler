@@ -8,6 +8,7 @@
 #include "fold_sym.h"
 #include "../util/platform.h"
 #include "pack.h"
+#include "sue.h"
 
 
 #define RW_TEST(var)                              \
@@ -33,6 +34,7 @@
 int symtab_fold(symtable *tab, int current)
 {
 	const int this_start = current;
+	int arg_space = 0;
 
 	if(tab->decls){
 		decl **diter;
@@ -52,10 +54,12 @@ int symtab_fold(symtable *tab, int current)
 			}
 		}
 
-		current += arg_idx * platform_word_size();
+		arg_space = arg_idx * platform_word_size();
+		current += arg_space;
 
 		for(diter = tab->decls; *diter; diter++){
 			sym *s = (*diter)->sym;
+			const int has_unused_attr = decl_attr_present(s->decl->attr, attr_unused);
 
 			if(s->type == sym_local){
 				switch(s->decl->type->store){
@@ -63,15 +67,21 @@ int symtab_fold(symtable *tab, int current)
 					case store_auto:
 					{
 						int siz = decl_size(s->decl);
+						int align;
 						int this;
 
-						/* TODO: alignment */
-						pack_next(&current, &this, siz, siz); /* an array and structs start at the bottom */
+						if(decl_is_struct_or_union(s->decl))
+							/* safe - can't have an instance without a ->sue */
+							align = s->decl->type->sue->align;
+						else
+							align = siz;
+
+						pack_next(&current, &this, siz, align); /* an array and structs start at the bottom */
 
 						s->offset = this;
 
 						/* static analysis on sym (only auto-vars) */
-						if(!s->decl->init)
+						if(!has_unused_attr && !s->decl->init)
 							RW_WARN(WRITTEN, nwrites, "written to");
 						break;
 					}
@@ -85,13 +95,12 @@ int symtab_fold(symtable *tab, int current)
 				case sym_arg:
 				case sym_local: /* warn on unused args and locals */
 				{
-					const int has_attr = decl_attr_present(s->decl->attr, attr_unused);
 					const int unused = RW_TEST(nreads);
 
 					if(unused){
-						if(!has_attr && s->decl->type->store != store_extern)
+						if(!has_unused_attr && s->decl->type->store != store_extern)
 							RW_SHOW(READ, "read");
-					}else if(has_attr){
+					}else if(has_unused_attr){
 						warn_at(&s->decl->where, 1,
 								"\"%s\" declared unused, but is used", s->decl->spel);
 					}
@@ -115,7 +124,10 @@ int symtab_fold(symtable *tab, int current)
 				subtab_max = this;
 		}
 
-		tab->auto_total_size = current - this_start + subtab_max;
+		/* don't account the args in the space,
+		 * just use for offsetting them
+		 */
+		tab->auto_total_size = current - this_start + subtab_max - arg_space;
 	}
 
 	return tab->auto_total_size;

@@ -14,6 +14,7 @@ static void operate(
 		intval *piv, enum constyness *pconst_type,
 		where *where)
 {
+	/* FIXME: casts based on lval.type */
 #define OP(a, b) case a: piv->val = lval->val b rval->val; return
 	switch(op){
 		OP(op_multiply,   *);

@@ -57,7 +57,7 @@ char *strchr(const char *s, char c)
 {
 	while(*s)
 		if(*s == c)
-			return s;
+			return (char *)s; /* the arg becomes non-const */
 		else
 			s++;
 	return NULL;

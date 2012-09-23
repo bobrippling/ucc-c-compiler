@@ -679,9 +679,9 @@ void out_comment(const char *fmt, ...)
 	va_end(l);
 }
 
-void out_func_prologue(int stack_res, int nargs, int variadic)
+void out_func_prologue(int stack_res, int nargs)
 {
-	impl_func_prologue(stack_res, nargs, variadic);
+	impl_func_prologue(stack_res, nargs);
 }
 
 void out_func_epilogue()

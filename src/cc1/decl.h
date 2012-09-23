@@ -156,7 +156,7 @@ struct data_store
 
 enum decl_cmp
 {
-	DECL_CMP_STRICT_PRIMITIVE = 1 << 0,
+	DECL_CMP_EXACT_MATCH      = 1 << 0,
 	DECL_CMP_ALLOW_VOID_PTR   = 1 << 1,
 };
 

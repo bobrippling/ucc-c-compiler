@@ -207,30 +207,35 @@ const char *call_reg_str(int i, decl *d)
 	return buf;
 }
 
-void impl_func_prologue(int stack_res, int nargs, int variadic)
+void impl_func_prologue(int stack_res, int nargs)
 {
-	(void)nargs;
-
 	out_asm("pushq %%rbp");
 	out_asm("movq %%rsp, %%rbp");
 
-	if(stack_res){
+	if(nargs){
 		int i, n_reg_args;
 
-		UCC_ASSERT(stack_sz == 0, "non-empty x86 stack for new func");
+		n_reg_args = MIN(nargs, N_CALL_REGS);
 
-		stack_sz = impl_alloc_stack(stack_res);
+		for(i = 0; i < n_reg_args; i++){
+#define ARGS_PUSH
 
-		if(!variadic){
-			n_reg_args = MIN(nargs, N_CALL_REGS);
+#ifdef ARGS_PUSH
+			out_asm("push%c %%%s", asm_type_ch(NULL), call_reg_str(i, NULL));
+#else
+			stack_res += nargs * platform_word_size();
 
-			for(i = 0; i < n_reg_args; i++){
-				out_asm("mov%c %%%s, -0x%x(%%rbp)",
-						asm_type_ch(NULL),
-						call_reg_str(i, NULL),
-						platform_word_size() * (i + 1));
-			}
+			out_asm("mov%c %%%s, -0x%x(%%rbp)",
+					asm_type_ch(NULL),
+					call_reg_str(i, NULL),
+					platform_word_size() * (i + 1));
+#endif
 		}
+	}
+
+	if(stack_res){
+		UCC_ASSERT(stack_sz == 0, "non-empty x86 stack for new func");
+		stack_sz = impl_alloc_stack(stack_res);
 	}
 }
 

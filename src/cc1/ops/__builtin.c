@@ -151,7 +151,7 @@ static void const_compatible_p(expr *e, intval *val, enum constyness *success)
 
 	*success = CONST_WITH_VAL;
 
-	val->val = decl_equal(types[0], types[1], DECL_CMP_STRICT_PRIMITIVE);
+	val->val = decl_equal(types[0], types[1], DECL_CMP_EXACT_MATCH);
 }
 
 static expr *parse_compatible_p(void)

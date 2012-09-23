@@ -11,13 +11,16 @@ void fold_stmt_return(stmt *s)
 	const int void_func = decl_is_void(curdecl_func_called);
 
 	if(s->expr){
+		char buf[DECL_STATIC_BUFSIZ];
+
 		fold_expr(s->expr, s->symtab);
 		fold_need_expr(s->expr, "return", 0);
 
-		fold_decl_equal(s->expr->tree_type, curdecl_func_called,
+		fold_decl_equal(curdecl_func_called, s->expr->tree_type,
 				&s->where, WARN_RETURN_TYPE,
-				"mismatching return type for %s (%s)",
+				"mismatching return type for %s (%s <-- %s)",
 				curdecl_func->spel,
+				decl_to_str_r(buf, curdecl_func_called),
 				decl_to_str(s->expr->tree_type));
 
 		if(void_func){
