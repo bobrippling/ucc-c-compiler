@@ -267,6 +267,7 @@ fin:
 
 decl *op_promote_types(
 		enum op_type op,
+		const char *desc,
 		expr **plhs, expr **prhs,
 		where *w, symtable *stab)
 {
@@ -276,9 +277,9 @@ decl *op_promote_types(
 	resolved = op_required_promotion(op, *plhs, *prhs, w, &dlhs, &drhs);
 
 	if(dlhs)
-		fold_insert_casts(dlhs, plhs, stab, w, op_to_str(op));
+		fold_insert_casts(dlhs, plhs, stab, w, desc);
 	else if(drhs)
-		fold_insert_casts(drhs, prhs, stab, w, op_to_str(op));
+		fold_insert_casts(drhs, prhs, stab, w, desc);
 
 	return resolved;
 }
@@ -295,7 +296,8 @@ void fold_expr_op(expr *e, symtable *stab)
 		fold_expr(e->rhs, stab);
 		fold_disallow_st_un(e->rhs, "op-rhs");
 
-		e->tree_type = op_promote_types(e->op, &e->lhs, &e->rhs, &e->where, stab);
+		e->tree_type = op_promote_types(e->op, op_to_str(e->op),
+				&e->lhs, &e->rhs, &e->where, stab);
 	}else{
 		/* (except unary-not) can only have operations on integers,
 		 * promote to signed int

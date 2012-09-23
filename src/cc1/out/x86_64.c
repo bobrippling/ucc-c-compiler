@@ -13,6 +13,7 @@
 #include "asm.h"
 #include "common.h"
 #include "out.h"
+#include "lbl.h"
 
 #ifndef MIN
 #  define MIN(x, y) ((x) < (y) ? (x) : (y))
@@ -207,28 +208,30 @@ const char *call_reg_str(int i, decl *d)
 	return buf;
 }
 
-void impl_func_prologue(int stack_res, int nargs)
+void impl_func_prologue(int stack_res, int nargs, int variadic)
 {
+	int arg_idx;
+
 	out_asm("pushq %%rbp");
 	out_asm("movq %%rsp, %%rbp");
 
 	if(nargs){
-		int i, n_reg_args;
+		int n_reg_args;
 
 		n_reg_args = MIN(nargs, N_CALL_REGS);
 
-		for(i = 0; i < n_reg_args; i++){
+		for(arg_idx = 0; arg_idx < n_reg_args; arg_idx++){
 #define ARGS_PUSH
 
 #ifdef ARGS_PUSH
-			out_asm("push%c %%%s", asm_type_ch(NULL), call_reg_str(i, NULL));
+			out_asm("push%c %%%s", asm_type_ch(NULL), call_reg_str(arg_idx, NULL));
 #else
 			stack_res += nargs * platform_word_size();
 
 			out_asm("mov%c %%%s, -0x%x(%%rbp)",
 					asm_type_ch(NULL),
-					call_reg_str(i, NULL),
-					platform_word_size() * (i + 1));
+					call_reg_str(arg_idx, NULL),
+					platform_word_size() * (arg_idx + 1));
 #endif
 		}
 	}
@@ -236,6 +239,26 @@ void impl_func_prologue(int stack_res, int nargs)
 	if(stack_res){
 		UCC_ASSERT(stack_sz == 0, "non-empty x86 stack for new func");
 		stack_sz = impl_alloc_stack(stack_res);
+	}
+
+	if(variadic){
+		/* play catchup, pushing any remaining reg args
+		 * this is _after_ args and stack alloc,
+		 * to simplify other offsetting code
+		 */
+		char *vfin = out_label_code("fin_...");
+
+		for(; arg_idx < N_CALL_REGS; arg_idx++)
+			out_asm("push%c %%%s", asm_type_ch(NULL), call_reg_str(arg_idx, NULL));
+
+		out_asm("testb %%al, %%al");
+		out_asm("jz %s", vfin);
+
+		out_asm("// pushq %%xmm0 TODO");
+
+		out_label(vfin);
+		free(vfin);
+
 	}
 }
 
@@ -786,9 +809,10 @@ void impl_jcond(int true, const char *lbl)
 	}
 }
 
-void impl_call(const int nargs, decl *d)
+void impl_call(const int nargs, decl *d_ret, decl *d_func)
 {
 	int i, ncleanup;
+	int nfloats = 0;
 
 	for(i = 0; i < MIN(nargs, N_CALL_REGS); i++){
 		int ri;
@@ -797,12 +821,18 @@ void impl_call(const int nargs, decl *d)
 		if(ri != -1)
 			v_freeup_reg(ri, 1);
 
+		if(decl_is_floating(vtop->d))
+			++nfloats;
+
 		x86_load(vtop, call_reg_str(i, vtop->d));
 		vpop();
 	}
 	/* push remaining args onto the stack */
 	ncleanup = nargs - i;
 	for(; i < nargs; i++){
+		if(decl_is_floating(vtop->d))
+			++nfloats;
+
 		/* can't push non-word sized vtops */
 		if(vtop->d && decl_size(vtop->d) != platform_word_size())
 			out_cast(vtop->d, NULL);
@@ -820,13 +850,21 @@ void impl_call(const int nargs, decl *d)
 		if(vstack[i].type == REG)
 			v_save_reg(&vstack[i]);
 
+	{
+		funcargs *args = decl_funcargs(d_func);
+
+		/* if x(...) or x() */
+		if(args->variadic || (!args->arglist && !args->args_void))
+			out_asm("movb $%d, %%al", nfloats);
+	}
+
 	out_asm("callq %s", x86_call_jmp_target(vtop));
 
 	if(ncleanup)
 		out_asm("addq $0x%x, %%rsp", ncleanup * platform_word_size());
 
 	/* return type */
-	vtop_clear(d);
+	vtop_clear(d_ret);
 	vtop->type = REG;
 	vtop->bits.reg = REG_RET;
 }
