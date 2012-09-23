@@ -79,7 +79,7 @@ void fold_expr_if(expr *e, symtable *stab)
 #define tt_r (e->rhs->tree_type)
 
 	if(decl_is_integral(tt_l) && decl_is_integral(tt_r)){
-		e->tree_type = op_promote_types(op_unknown, &e->lhs, &e->rhs, &e->where, stab);
+		e->tree_type = op_promote_types(op_unknown, "?:", &e->lhs, &e->rhs, &e->where, stab);
 
 	}else if(decl_is_void(tt_l) || decl_is_void(tt_r)){
 		e->tree_type = decl_new_void();

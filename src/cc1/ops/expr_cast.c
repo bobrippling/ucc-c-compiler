@@ -118,7 +118,7 @@ void gen_expr_cast(expr *e, symtable *stab)
 	}
 
 	/* check float <--> int conversion */
-	if(decl_is_float(dto) != decl_is_float(dfrom))
+	if(decl_is_floating(dto) != decl_is_floating(dfrom))
 		ICE("TODO: float <-> int casting");
 
 	out_cast(dfrom, dto);
