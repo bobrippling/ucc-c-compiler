@@ -59,6 +59,7 @@ int symtab_fold(symtable *tab, int current)
 
 		for(diter = tab->decls; *diter; diter++){
 			sym *s = (*diter)->sym;
+			const int has_unused_attr = decl_attr_present(s->decl->attr, attr_unused);
 
 			if(s->type == sym_local){
 				switch(s->decl->type->store){
@@ -80,7 +81,7 @@ int symtab_fold(symtable *tab, int current)
 						s->offset = this;
 
 						/* static analysis on sym (only auto-vars) */
-						if(!s->decl->init)
+						if(!has_unused_attr && !s->decl->init)
 							RW_WARN(WRITTEN, nwrites, "written to");
 						break;
 					}
@@ -94,13 +95,12 @@ int symtab_fold(symtable *tab, int current)
 				case sym_arg:
 				case sym_local: /* warn on unused args and locals */
 				{
-					const int has_attr = decl_attr_present(s->decl->attr, attr_unused);
 					const int unused = RW_TEST(nreads);
 
 					if(unused){
-						if(!has_attr && s->decl->type->store != store_extern)
+						if(!has_unused_attr && s->decl->type->store != store_extern)
 							RW_SHOW(READ, "read");
-					}else if(has_attr){
+					}else if(has_unused_attr){
 						warn_at(&s->decl->where, 1,
 								"\"%s\" declared unused, but is used", s->decl->spel);
 					}

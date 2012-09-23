@@ -1,13 +1,13 @@
 #define __unused __attribute__((unused))
 #define __unused2
 
-func(       int i __unused) { }
-kfunc(const int i __unused) { }
+void func(       int i __unused) { }
+void kfunc(const int i __unused) { }
 
-func_p(       char *i __unused) { }
-kfunc_p(const char *i __unused) { }
+void func_p(       char *i __unused) { }
+void kfunc_p(const char *i __unused) { }
 
-main()
+void main()
 {
 	char *a __unused2;
 	char *b __unused;
@@ -21,7 +21,7 @@ main()
 	b = (const char *)0; // WARN
 	c = 'a';
 
-	d= "yo";
+	d = "yo";
 	e = (char *)0;
 	//f = 2;
 
