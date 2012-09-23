@@ -33,4 +33,10 @@ void main()
 
 	func_p(d); // WARN
 	kfunc_p(d);
+
+	const int i = 2;
+	int j __unused;
+
+	j = i;
+	func(i);
 }
