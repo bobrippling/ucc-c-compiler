@@ -20,6 +20,8 @@
 struct vstack vstack[N_VSTACK];
 struct vstack *vtop = NULL;
 
+static int reserved_regs[N_REGS];
+
 void vpush(decl *d)
 {
 	if(!vtop){
@@ -101,6 +103,9 @@ void v_prepare_op(struct vstack *vp)
 		case LBL:
 			/* need to pull the values from the stack */
 
+		case STACK_SAVE:
+			/* ditto, impl handles pulling from stack */
+
 		case FLAG:
 			/* obviously can't have a flag in cmp/mov code */
 			v_to_reg(vp);
@@ -143,7 +148,7 @@ int v_unused_reg(int stack_as_backup)
 	int used[N_REGS];
 	int i;
 
-	memset(used, 0, sizeof used);
+	memcpy(used, reserved_regs, sizeof used);
 	first = NULL;
 
 	for(it = vstack; it <= vtop; it++){
@@ -182,6 +187,8 @@ void v_to_mem(struct vstack *conv)
 	switch(conv->type){
 		case CONST:
 		case FLAG:
+		case STACK_SAVE: /* pull from stack, save to stack,
+												-O3, replace current stack */
 			v_to_reg(conv);
 
 		case REG:
@@ -204,13 +211,6 @@ struct vstack *v_find_reg(int reg)
 			return vp;
 
 	return NULL;
-}
-
-void v_make_addr(struct vstack *vp)
-{
-	UCC_ASSERT(vp->type != FLAG, "can't addr flag");
-
-	vp->d = decl_ptr_depth_inc(decl_copy(vp->d));
 }
 
 void v_freeup_regp(struct vstack *vp)
@@ -242,13 +242,15 @@ void v_save_reg(struct vstack *vp)
 	UCC_ASSERT(vp->type == REG, "not reg");
 
 	memset(&store, 0, sizeof store);
-	store.d = vp->d;
-	store.type = STACK;
-	v_make_addr(&store);
 
+	store.type = STACK;
+	store.d = decl_ptr_depth_inc(decl_copy(vp->d));
 	store.bits.off_from_bp = -impl_alloc_stack(decl_size(store.d));
 
 	impl_store(vp, &store);
+
+	store.type = STACK_SAVE;
+
 	memcpy(vp, &store, sizeof store);
 }
 
@@ -258,6 +260,18 @@ void v_freeup_reg(int r, int allowable_stack)
 
 	if(vp && vp < &vtop[-allowable_stack + 1])
 		v_freeup_regp(vp);
+}
+
+void v_freeup_regs(int a, int b)
+{
+	reserved_regs[a] = 1;
+	reserved_regs[b] = 1;
+
+	v_freeup_reg(a, 2);
+	v_freeup_reg(b, 2);
+
+	reserved_regs[a] = 0;
+	reserved_regs[b] = 0;
 }
 
 void v_inv_cmp(struct vstack *vp)
@@ -362,14 +376,10 @@ void out_push_sym(sym *s)
 			 * if it's less than N_CALL_ARGS, it's below rbp, otherwise it's above
 			 * unless variadic, in which case it's always above
 			 */
-			if(s->variadic){
-				vtop->bits.off_from_bp = (s->offset + 2) * platform_word_size();
-			}else{
-				vtop->bits.off_from_bp = (s->offset < N_CALL_REGS
+			vtop->bits.off_from_bp = (s->offset < N_CALL_REGS
 					? -(s->offset + 1)
 					:   s->offset - N_CALL_REGS + 2)
-					* platform_word_size();
-			}
+				* platform_word_size();
 			break;
 
 		case sym_global:
@@ -550,6 +560,7 @@ void out_deref()
 		case REG:
 		case STACK:
 		case LBL:
+		case STACK_SAVE:
 			impl_deref();
 			break;
 	}
@@ -587,6 +598,7 @@ void out_op_unary(enum op_type op)
 
 				case REG:
 				case STACK:
+				case STACK_SAVE:
 				case LBL:
 					break;
 			}
@@ -610,9 +622,9 @@ void out_change_decl(decl *d)
 	vtop->d = d;
 }
 
-void out_call(int nargs, int variadic, decl *rt)
+void out_call(int nargs, decl *rt)
 {
-	impl_call(nargs, variadic, rt);
+	impl_call(nargs, rt);
 }
 
 void out_jmp(void)
@@ -667,9 +679,9 @@ void out_comment(const char *fmt, ...)
 	va_end(l);
 }
 
-void out_func_prologue(int stack_res, int nargs, int variadic)
+void out_func_prologue(int stack_res, int nargs)
 {
-	impl_func_prologue(stack_res, nargs, variadic);
+	impl_func_prologue(stack_res, nargs);
 }
 
 void out_func_epilogue()

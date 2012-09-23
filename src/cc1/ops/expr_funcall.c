@@ -74,16 +74,24 @@ void fold_expr_funcall(expr *e, symtable *stab)
 	UCC_ASSERT(args_from_decl, "no funcargs for decl %s", df->spel);
 
 	if(e->funcargs){
-		expr **iter;
+		int i;
+		expr *arg;
 
-		for(iter = e->funcargs; *iter; iter++){
+		for(i = 0; (arg = e->funcargs[i]); i++){
 			char *desc;
-			expr *arg = *iter;
 
 			fold_expr(arg, stab);
 
-			desc = umalloc(strlen(sp) + 25);
-			sprintf(desc, "function argument to %s", sp);
+			desc = ustrprintf("function argument to %s", sp);
+
+			/* promote to pointer, if array */
+			if(decl_is_array(arg->tree_type)){
+				fold_insert_casts(
+						decl_copy(arg->tree_type), /* the copy removes the array */
+						&arg, stab, &arg->where, desc);
+
+				e->funcargs[i] = arg;
+			}
 
 			fold_need_expr(arg, desc, 0);
 			fold_disallow_st_un(arg, desc);
@@ -110,21 +118,12 @@ void fold_expr_funcall(expr *e, symtable *stab)
 
 		if(e->funcargs){
 			funcargs *args_from_expr = funcargs_new();
-			int idx;
 
 			for(iter_arg = e->funcargs; *iter_arg; iter_arg++)
 				dynarray_add((void ***)&args_from_expr->arglist, (*iter_arg)->tree_type);
 
-			if(!funcargs_equal(args_from_decl, args_from_expr, 0, &idx)){
-				if(idx == -1){
-					DIE_AT(&e->where, "mismatching argument count to %s", sp);
-				}else{
-					char buf[DECL_STATIC_BUFSIZ];
-
-					cc1_warn_at(&e->where, 0, 1, WARN_ARG_MISMATCH, "mismatching argument %d to %s (%s <-- %s)",
-							idx, sp, decl_to_str_r(buf, args_from_decl->arglist[idx]), decl_to_str(args_from_expr->arglist[idx]));
-				}
-			}
+			if(funcargs_equal(args_from_decl, args_from_expr, 0, sp) == funcargs_cmp_mismatch_count)
+				DIE_AT(&e->where, "mismatching argument count to %s", sp);
 
 			funcargs_free(args_from_expr, 0);
 		}
@@ -144,7 +143,6 @@ void fold_expr_funcall(expr *e, symtable *stab)
 void gen_expr_funcall(expr *e, symtable *stab)
 {
 	/* continue with normal funcall */
-	const int variadic = decl_funcargs(e->expr->tree_type)->variadic;
 	sym *const sym = e->expr->sym;
 	int nargs = 0;
 
@@ -171,7 +169,7 @@ void gen_expr_funcall(expr *e, symtable *stab)
 		}
 	}
 
-	out_call(nargs, variadic, e->tree_type);
+	out_call(nargs, e->tree_type);
 }
 
 void gen_expr_str_funcall(expr *e, symtable *stab)

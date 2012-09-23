@@ -11,6 +11,7 @@
 #include "macros.h"
 #include "../util/dynarray.h"
 #include "typedef.h"
+#include "sue.h"
 
 sym *sym_new(decl *d, enum sym_type t)
 {
@@ -91,16 +92,25 @@ sym *symtab_has(symtable *tab, decl *d)
 sym *symtab_add(symtable *tab, decl *d, enum sym_type t, int with_sym, int prepend)
 {
 	sym *new;
+	char buf[WHERE_BUF_SIZ + 4];
 
 	if(d->spel && (new = symtab_search2(tab, d->spel, spel_cmp, 0))){
-		char buf[DECL_STATIC_BUFSIZ];
 		if(new->decl)
-			snprintf(buf, sizeof buf, "%s", where_str(&new->decl->where));
+			snprintf(buf, sizeof buf, " at %s", where_str(&new->decl->where));
 		else
 			*buf = '\0';
 
-		DIE_AT(&d->where, "\"%s\" already declared%s%s",
-				d->spel, new->decl ? " at " : "", buf);
+		DIE_AT(&d->where, "\"%s\" already declared%s", d->spel, buf);
+
+	}else{
+		struct_union_enum_st *sue;
+		enum_member *m;
+
+		enum_member_search(&m, &sue, tab, d->spel);
+
+		if(m)
+			DIE_AT(&d->where, "redeclaring %s\n%s",
+					d->spel, where_str_r(buf, &sue->where));
 	}
 
 	if(with_sym)
@@ -115,7 +125,6 @@ sym *symtab_add(symtable *tab, decl *d, enum sym_type t, int with_sym, int prepe
 
 void symtab_add_args(symtable *stab, funcargs *fargs, const char *func_spel)
 {
-	const int variadic = fargs->variadic;
 	int nargs, i;
 
 	if(fargs->arglist){
@@ -126,8 +135,7 @@ void symtab_add_args(symtable *stab, funcargs *fargs, const char *func_spel)
 			if(!fargs->arglist[i]->spel){
 				DIE_AT(&fargs->where, "function \"%s\" has unnamed arguments", func_spel);
 			}else{
-				sym *s = SYMTAB_ADD(stab, fargs->arglist[i], sym_arg);
-				s->variadic = variadic;
+				SYMTAB_ADD(stab, fargs->arglist[i], sym_arg);
 			}
 		}
 	}

@@ -84,7 +84,7 @@ void fold_expr_if(expr *e, symtable *stab)
 	}else if(decl_is_void(tt_l) || decl_is_void(tt_r)){
 		e->tree_type = decl_new_void();
 
-	}else if(decl_equal(tt_l, tt_r, DECL_CMP_STRICT_PRIMITIVE)){
+	}else if(decl_equal(tt_l, tt_r, DECL_CMP_EXACT_MATCH)){
 		e->tree_type = decl_copy(tt_l);
 
 		e->tree_type->type->qual |= tt_r->type->qual;

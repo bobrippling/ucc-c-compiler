@@ -18,6 +18,7 @@
 	for(dp = d->desc; dp; dp = dp->child) \
 		if(dp->type == typ)
 
+
 void decl_debug(decl *d);
 
 decl_desc *decl_desc_new(enum decl_desc_type t, decl *dparent, decl_desc *parent)
@@ -268,46 +269,61 @@ int decl_size(decl *d)
 	return mul * type_size(d->type);
 }
 
-int funcargs_equal(funcargs *args_to, funcargs *args_from, int strict_types, int *idx)
+enum funcargs_cmp funcargs_equal(funcargs *args_to, funcargs *args_from,
+		int strict_types, const char *fspel)
 {
-	const enum decl_cmp flag = DECL_CMP_ALLOW_VOID_PTR | (strict_types ? DECL_CMP_STRICT_PRIMITIVE : 0);
 	const int count_to = dynarray_count((void **)args_to->arglist);
 	const int count_from = dynarray_count((void **)args_from->arglist);
-	int i;
 
 	if((count_to   == 0 && !args_to->args_void)
 	|| (count_from == 0 && !args_from->args_void)){
 		/* a() or b() */
-		return 1;
+		return funcargs_cmp_equal;
 	}
 
-	if(!(args_to->variadic ? count_to <= count_from : count_to == count_from)){
-		if(idx) *idx = -1;
-		return 0;
-	}
+	if(!(args_to->variadic ? count_to <= count_from : count_to == count_from))
+		return funcargs_cmp_mismatch_count;
 
-	if(count_to)
+	if(count_to){
+		const enum decl_cmp flag =
+			DECL_CMP_ALLOW_VOID_PTR | (strict_types ? DECL_CMP_EXACT_MATCH : 0);
+		int i;
+
 		for(i = 0; args_to->arglist[i]; i++)
 			if(!decl_equal(args_to->arglist[i], args_from->arglist[i], flag)){
-				if(idx) *idx = i;
-				return 0;
-			}
+				if(fspel){
+					char buf[DECL_STATIC_BUFSIZ];
 
-	return 1;
+					cc1_warn_at(&args_from->where, 0, 1, WARN_ARG_MISMATCH,
+							"mismatching argument %d to %s (%s <-- %s)",
+							i, fspel,
+							decl_to_str_r(buf,   args_to->arglist[i]),
+							decl_to_str(       args_from->arglist[i]));
+				}
+
+				return funcargs_cmp_mismatch_types;
+			}
+	}
+
+	return funcargs_cmp_equal;
 }
 
-int decl_desc_equal(decl_desc *a, decl_desc *b)
+int decl_desc_equal(decl_desc *a, decl_desc *b, enum decl_cmp mode)
 {
 	/* if we are assigning from const, target must be const */
 	if(a->type != b->type){
 		/* can assign to int * from int [] */
-		if(a->type != decl_desc_ptr || b->type != decl_desc_array)
+		if((mode & DECL_CMP_NO_ARRAY)
+		|| a->type != decl_desc_ptr
+		|| b->type != decl_desc_array)
+		{
 			return 0;
+		}
 	}
 
 	/* XXX: this must be before the auto-cast check below */
 	if(a->type == decl_desc_func && b->type == decl_desc_func)
-		if(!funcargs_equal(a->bits.func, b->bits.func, 1 /* exact match */, NULL))
+		if(funcargs_cmp_equal != funcargs_equal(a->bits.func, b->bits.func, 1 /* exact match */, NULL))
 			return 0;
 
 	/* allow a to be "type (*)()" and b to be "type ()" */
@@ -320,19 +336,33 @@ int decl_desc_equal(decl_desc *a, decl_desc *b)
 
 			/* attempt to compare children, otherwise assume equal */
 			if(a->child->child)
-				return decl_desc_equal(a->child->child, b->child);
+				return decl_desc_equal(a->child->child, b->child, mode);
 			return 1;
 		}
 	}
 
-	if(b->type == decl_desc_ptr){
+	if(a->type == decl_desc_ptr){ /* (a == ptr) -> (b == ptr || b == array) */
 		/* check qualifiers */
-		if(a->type != decl_desc_ptr || b->bits.qual != a->bits.qual)
-			return 0;
+		enum type_qualifier qa, qb;
+
+		qa = a->bits.qual;
+		qb = b->bits.qual;
+
+		if(b->type == decl_desc_ptr){
+			if(mode & DECL_CMP_EXACT_MATCH){
+				if(qa != qb)
+					return 0;
+			}else{
+				/* if qb is const and qa isn't, error */
+				if((qb & qual_const) && !(qa & qual_const))
+					return 0;
+			}
+		}
+		/* else b is an array */
 	}
 
 	if(a->child)
-		return b->child && decl_desc_equal(a->child, b->child);
+		return b->child && decl_desc_equal(a->child, b->child, mode);
 
 	return !b->child;
 }
@@ -347,23 +377,31 @@ int decl_is_void_ptr(decl *d)
 
 int decl_equal(decl *a, decl *b, enum decl_cmp mode)
 {
-	int strict;
+	const int a_ptr = decl_is_ptr(a);
+	const int b_ptr = decl_is_ptr(b);
+	enum type_cmp tmode;
 
-	if((mode & DECL_CMP_ALLOW_VOID_PTR)){
+	if(mode & DECL_CMP_ALLOW_VOID_PTR){
 		/* one side is void * */
-		if(decl_is_void_ptr(a) && decl_is_ptr(b))
+		if(decl_is_void_ptr(a) && b_ptr)
 			return 1;
-		if(decl_is_void_ptr(b) && decl_is_ptr(a))
+		if(decl_is_void_ptr(b) && a_ptr)
 			return 1;
 	}
 
-	/* we are strict if told, or if either are a pointer - types must be equal */
-	strict = (mode & DECL_CMP_STRICT_PRIMITIVE) || decl_is_ptr(a) || decl_is_ptr(b);
+	/* we are exact if told, or if either are a pointer - types must be equal */
+	tmode = 0;
 
-	if(!type_equal(a->type, b->type, strict))
+	if((mode & DECL_CMP_EXACT_MATCH))
+		tmode |= TYPE_CMP_EXACT;
+
+	if(a_ptr || b_ptr)
+		tmode |= TYPE_CMP_QUAL;
+
+	if(!type_equal(a->type, b->type, tmode))
 		return 0;
 
-	return a->desc ? b->desc && decl_desc_equal(a->desc, b->desc) : !b->desc;
+	return a->desc ? b->desc && decl_desc_equal(a->desc, b->desc, mode) : !b->desc;
 }
 
 int decl_ptr_depth(decl *d)
@@ -374,11 +412,11 @@ int decl_ptr_depth(decl *d)
 	for(dp = d->desc; dp; dp = dp->child)
 		switch(dp->type){
 			case decl_desc_ptr:
+			case decl_desc_array:
 				depth++;
 				break;
-			case decl_desc_array:
-			case decl_desc_func:
 			case decl_desc_block:
+			case decl_desc_func:
 				break;
 		}
 
@@ -481,16 +519,11 @@ decl *decl_ptr_depth_inc(decl *d)
 decl *decl_ptr_depth_dec(decl *d, where *from)
 {
 	decl_desc *last;
-	int depth = 0;
 
-	for(last = d->desc; last && last->child; last = last->child)
-		switch(last->type){
-			case decl_desc_ptr:
-			case decl_desc_array:
-				depth++;
-			default:
-				break;
-		}
+	if(decl_is_void_ptr(d))
+		DIE_AT(from, "can't dereference %s pointer", decl_to_str(d));
+
+	for(last = d->desc; last && last->child; last = last->child);
 
 	if(!last || (last->type != decl_desc_ptr && last->type != decl_desc_array)){
 		DIE_AT(from,
@@ -500,9 +533,6 @@ decl *decl_ptr_depth_dec(decl *d, where *from)
 			last ? decl_desc_to_str(last->type) : "",
 			last ? ")"  : "");
 	}
-
-	if(depth == 0 && d->type->primitive == type_void)
-		DIE_AT(from, "can't dereference %s pointer", decl_to_str(d));
 
 	if(last->parent_desc)
 		last->parent_desc->child = NULL;
@@ -526,19 +556,35 @@ int decl_is_integral(decl *d)
 		case type_short:
 		case type_long:
 		case type_llong:
+		case type_enum:
 				return 1;
 
 		case type_unknown:
 		case type_void:
 		case type_struct:
 		case type_union:
-		case type_enum:
 		case type_float:
 		case type_double:
 		case type_ldouble:
 				break;
 	}
 
+	return 0;
+}
+
+int decl_is_floating(decl *d)
+{
+	if(d->desc)
+		return 0;
+
+	switch(d->type->primitive){
+		case type_float:
+		case type_double:
+		case type_ldouble:
+			return 1;
+		default:
+			break;
+	}
 	return 0;
 }
 

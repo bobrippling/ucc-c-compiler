@@ -24,13 +24,13 @@ void out_flush_volatile(void);
 void out_cast(decl *from, decl *to);
 void out_change_decl(decl *);
 
-void out_call(int nargs, int variadic, decl *rt);
+void out_call(int nargs, decl *rt);
 
 void out_jmp(void); /* jmp to *pop() */
 void out_jtrue( const char *);
 void out_jfalse(const char *);
 
-void out_func_prologue(int stack_res, int nargs, int variadic); /* push rbp, sub rsp, ... */
+void out_func_prologue(int stack_res, int nargs); /* push rbp, sub rsp, ... */
 void out_func_epilogue(void); /* mov rsp, rbp; ret */
 void out_label(const char *);
 
