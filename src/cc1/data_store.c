@@ -62,7 +62,6 @@ void data_store_fold_decl(data_store *ds, decl **ptree_type, symtable *stab)
 	tree_type->desc->bits.array_size = sz;
 
 	tree_type->type->store = store_static;
-	/*tree_type->type->qual  = qual_const; - no thanks*/
 
 	switch(ds->type){
 		case data_store_str:

@@ -46,7 +46,12 @@ void fold_insert_casts(decl *dlhs, expr **prhs, symtable *stab, where *w, const 
 {
 	expr *rhs = *prhs;
 
-	if(!decl_equal(dlhs, rhs->tree_type, 1)){
+	if(!decl_equal(dlhs, rhs->tree_type,
+				DECL_CMP_ALLOW_VOID_PTR |
+				DECL_CMP_EXACT_MATCH |
+				DECL_CMP_NO_ARRAY
+				))
+	{
 		/* insert a cast: rhs -> lhs */
 		if(expr_kind(rhs, val) && decl_is_integral(rhs->tree_type)){
 			/* don't cast - just change the tree_type */
@@ -960,8 +965,15 @@ static void fold_link_decl_defs(dynmap *spel_decls)
 
 		for(decl_iter = decls_for_this + 1; (e = *decl_iter); decl_iter++){
 			/* check they are the same decl */
-			if(!decl_equal(d, e, DECL_CMP_EXACT_MATCH))
-				DIE_AT(&e->where, "mismatching declaration of %s (%s)", d->spel, where_str_r(wbuf, &d->where));
+			if(!decl_equal(d, e, DECL_CMP_EXACT_MATCH)){
+				char buf[DECL_STATIC_BUFSIZ];
+
+				DIE_AT(&e->where, "mismatching declaration of %s\n%s\n%s vs %s",
+						d->spel,
+						where_str_r(wbuf, &d->where),
+						decl_to_str_r(buf, d),
+						decl_to_str(       e));
+			}
 
 			if(decl_is_definition(e)){
 				/* e is the implementation/instantiation */
@@ -1098,16 +1110,26 @@ void fold(symtable *globs)
 		if(decl_is_func(D(i))){
 			if(decl_is_definition(D(i))){
 				/* gather round, attributes */
-				decl **protos;
+				decl **const protos = dynmap_get(spel_decls, D(i)->spel);
+				decl **proto_i;
+				int is_void = 0;
 
-				for(protos = dynmap_get(spel_decls, D(i)->spel); *protos; protos++){
-					decl *d = *protos;
+				for(proto_i = protos; *proto_i; proto_i++){
+					decl *proto = *proto_i;
 
-					if(!decl_is_definition(d)){
+					if(decl_desc_tail(proto)->bits.func->args_void)
+						is_void = 1;
+
+					if(!decl_is_definition(proto)){
 						EOF_WHERE(&D(i)->where,
-								decl_attr_append(&D(i)->attr, d->attr));
+								decl_attr_append(&D(i)->attr, proto->attr));
 					}
 				}
+
+				/* if "type ()", and a proto is "type (void)", take the void */
+				if(is_void)
+					for(proto_i = protos; *proto_i; proto_i++)
+						decl_desc_tail((*proto_i))->bits.func->args_void = 1;
 			}
 
 			fold_func(D(i));
