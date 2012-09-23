@@ -126,10 +126,10 @@ void abort()
 char *getenv(const char *key)
 {
 	const size_t keylen = strlen(key);
-	const char **i;
+	char **i;
 
 	for(i = environ; *i; i++){
-		const char *equ, *e;
+		char *equ, *e;
 
 		e = *i;
 
