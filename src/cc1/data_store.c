@@ -9,6 +9,7 @@
 #include "cc1.h"
 #include "out/asm.h"
 #include "out/lbl.h"
+#include "fold.h"
 
 data_store *data_store_new_str(char *s, int l)
 {
@@ -50,12 +51,15 @@ void data_store_out(data_store *ds, int newline)
 	}
 }
 
-void data_store_fold_decl(data_store *ds, decl **ptree_type)
+void data_store_fold_decl(data_store *ds, decl **ptree_type, symtable *stab)
 {
 	decl *tree_type = decl_new();
+	expr *sz = expr_new_val(ds->len);
+
+	fold_expr(sz, stab);
 
 	tree_type->desc = decl_desc_array_new(tree_type, NULL);
-	tree_type->desc->bits.array_size = expr_new_val(ds->len);
+	tree_type->desc->bits.array_size = sz;
 
 	tree_type->type->store = store_static;
 	/*tree_type->type->qual  = qual_const; - no thanks*/
@@ -63,6 +67,7 @@ void data_store_fold_decl(data_store *ds, decl **ptree_type)
 	switch(ds->type){
 		case data_store_str:
 			tree_type->type->primitive = type_char;
+			tree_type->type->qual |= qual_const; /* "" is a string constant */
 			break;
 	}
 

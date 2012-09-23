@@ -16,7 +16,7 @@ const char *str_expr_addr()
 void fold_expr_addr(expr *e, symtable *stab)
 {
 	if(e->data_store){
-		data_store_fold_decl(e->data_store, &e->tree_type);
+		data_store_fold_decl(e->data_store, &e->tree_type, stab);
 
 	}else if(e->spel){
 		char *save;
