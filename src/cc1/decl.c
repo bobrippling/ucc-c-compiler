@@ -472,6 +472,11 @@ funcargs *decl_funcargs(decl *d)
 	return NULL;
 }
 
+int decl_variadic_func(decl *d)
+{
+	return decl_funcargs(d)->variadic;
+}
+
 int decl_is_struct_or_union_possible_ptr(decl *d)
 {
 	return (d->type->primitive == type_struct || d->type->primitive == type_union);

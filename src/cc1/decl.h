@@ -214,7 +214,6 @@ int     decl_is_floating(       decl *);
 int     decl_ptr_or_block(      decl *);
 #define decl_non_ptr_type(d, t) (!(d)->desc && (d)->type->primitive == t)
 
-#define decl_is_float(d)      (((d)->type->primitive == type_float || (d)->type->primitive == type_double) && !(d)->desc)
 #define decl_is_void(d) decl_non_ptr_type(d, type_void)
 #define decl_is_bool(d) (decl_is_ptr(d) || decl_is_integral(d))
 #define decl_is_definition(d) ((d)->init || (d)->func_code)
@@ -235,6 +234,7 @@ int decl_has_incomplete_array(decl *);
 void decl_complete_array(decl *d, int n);
 int decl_inner_array_count(decl *d);
 funcargs *decl_funcargs(decl *);
+int decl_variadic_func(decl *);
 
 enum funcargs_cmp
 {

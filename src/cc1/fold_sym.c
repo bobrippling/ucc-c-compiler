@@ -9,6 +9,7 @@
 #include "../util/platform.h"
 #include "pack.h"
 #include "sue.h"
+#include "out/out.h"
 
 
 #define RW_TEST(var)                              \
