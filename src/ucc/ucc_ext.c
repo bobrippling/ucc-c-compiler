@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <stdarg.h>
 
 #include "ucc_ext.h"
 #include "ucc.h"
@@ -12,8 +13,8 @@
 #include "../util/dynarray.h"
 #include "cfg.h"
 
-#ifndef UCC_NASM
-# error "ucc needs reconfiguring (for nasm)"
+#ifndef UCC_AS
+# error "ucc needs reconfiguring"
 #endif
 
 static int show, noop;
@@ -261,10 +262,7 @@ void assemble(char *in, char *out, char **args)
 	if(args)
 		dynarray_add_array((void ***)&copy, (void **)args);
 
-	dynarray_add((void ***)&copy, "-f");
-	dynarray_add((void ***)&copy, UCC_ARCH);
-
-	runner_1(0, UCC_NASM, in, out, copy);
+	runner_1(0, UCC_AS, in, out, copy);
 
 	dynarray_free((void ***)&copy, NULL);
 }

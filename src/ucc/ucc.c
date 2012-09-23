@@ -97,11 +97,13 @@ void create_file(struct cc_file *file, enum mode mode, char *in)
 	}
 
 #define ASSIGN(x)                \
+			if(!file->x){              \
 				file->x = tmpfilenam();  \
 				if(mode == mode_ ## x){  \
 					file->out = file->x;   \
 					return;                \
-				}
+				}                        \
+			}
 
 	ext = strrchr(in, '.');
 	if(ext && ext[1] && !ext[2]){
@@ -113,6 +115,8 @@ compile:
 			case 'i':
 				ASSIGN(compile);
 assemb:
+			case 'S':
+				ASSIGN(preproc); /* preprocess .S assembly files by default */
 			case 's':
 				ASSIGN(assemb);
 				file->out = file->assemb;
@@ -258,6 +262,8 @@ void die(const char *fmt, ...)
 	const int err = len > 0 && fmt[len - 1] == ':';
 	va_list l;
 
+	fprintf(stderr, "%s: ", argv0);
+
 	va_start(l, fmt);
 	vfprintf(stderr, fmt, l);
 	va_end(l);
@@ -334,6 +340,7 @@ int main(int argc, char **argv)
 
 				case 'w':
 				case 'f':
+				case 'm':
 /*arg_cc1:*/
 					ADD_ARG(mode_compile);
 					continue;
@@ -437,8 +444,15 @@ input:	dynarray_add((void ***)&inputs, argv[i]);
 		}
 	}
 
-	if(output && dynarray_count((void **)inputs) > 1 && (mode == mode_compile || mode == mode_assemb))
-		die("can't specify '-o' with '-%c' and an output", MODE_ARG_CH(mode));
+	{
+		const int ninputs = dynarray_count((void **)inputs);
+
+		if(output && ninputs > 1 && (mode == mode_compile || mode == mode_assemb))
+			die("can't specify '-o' with '-%c' and an output", MODE_ARG_CH(mode));
+
+		if(ninputs == 0)
+			die("no inputs");
+	}
 
 
 	if(output && mode == mode_preproc && !strcmp(output, "-"))

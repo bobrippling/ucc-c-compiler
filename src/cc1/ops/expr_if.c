@@ -2,6 +2,8 @@
 #include <string.h>
 
 #include "ops.h"
+#include "../sue.h"
+#include "../out/lbl.h"
 
 const char *str_expr_if()
 {
@@ -57,7 +59,77 @@ void fold_expr_if(expr *e, symtable *stab)
 	fold_expr(e->rhs, stab);
 	fold_disallow_st_un(e->rhs, "?: rhs");
 
-	e->tree_type = decl_copy(e->rhs->tree_type); /* TODO: check they're the same */
+
+	/*
+	 * TODO: check these are right
+
+	Arithmetic                             Arithmetic                           Arithmetic type after usual arithmetic conversions
+	// Structure or union type                Compatible structure or union type   Structure or union type with all the qualifiers on both operands
+	void                                   void                                 void
+	Pointer to compatible type             Pointer to compatible type           Pointer to type with all the qualifiers specified for the type
+	Pointer to type                        NULL pointer (the constant 0)        Pointer to type
+	Pointer to object or incomplete type   Pointer to void                      Pointer to void with all the qualifiers specified for the type
+
+	GCC and Clang seem to relax the last rule:
+		a) resolve if either is any pointer, not just (void *)
+	  b) resolve to a pointer to the incomplete-type
+	*/
+
+#define tt_l (e->lhs->tree_type)
+#define tt_r (e->rhs->tree_type)
+
+	if(decl_is_integral(tt_l) && decl_is_integral(tt_r)){
+		e->tree_type = op_promote_types(op_unknown, &e->lhs, &e->rhs, &e->where, stab);
+
+	}else if(decl_is_void(tt_l) || decl_is_void(tt_r)){
+		e->tree_type = decl_new_void();
+
+	}else if(decl_equal(tt_l, tt_r, DECL_CMP_EXACT_MATCH)){
+		e->tree_type = decl_copy(tt_l);
+
+		e->tree_type->type->qual |= tt_r->type->qual;
+
+	}else{
+		/* brace yourself. */
+		int l_ptr_st_un = decl_is_struct_or_union_ptr(tt_l);
+		int r_ptr_st_un = decl_is_struct_or_union_ptr(tt_r);
+
+		int l_ptr_null = expr_is_null_ptr(e->lhs);
+		int r_ptr_null = expr_is_null_ptr(e->rhs);
+
+		int l_complete = !l_ptr_null && (!l_ptr_st_un || !sue_incomplete(tt_l->type->sue));
+		int r_complete = !r_ptr_null && (!r_ptr_st_un || !sue_incomplete(tt_r->type->sue));
+
+		if((l_complete && r_ptr_null) || (r_complete && l_ptr_null)){
+			e->tree_type = decl_copy(l_ptr_null ? tt_r : tt_l);
+
+		}else{
+			int l_ptr = decl_is_ptr(tt_l) || l_ptr_null;
+			int r_ptr = decl_is_ptr(tt_r) || r_ptr_null;
+
+			if(l_ptr || r_ptr){
+				char bufa[DECL_STATIC_BUFSIZ], bufb[DECL_STATIC_BUFSIZ];
+
+				fold_decl_equal(tt_l, tt_r, &e->where,
+						WARN_COMPARE_MISMATCH, /* FIXME: enum "mismatch" */
+						"pointer type mismatch: %s and %s",
+						decl_to_str_r(bufa, tt_l),
+						decl_to_str_r(bufb, tt_r));
+
+				e->tree_type = decl_ptr_depth_inc(decl_new_void());
+
+				e->tree_type->type->qual = tt_l->type->qual | tt_r->type->qual;
+
+			}else{
+				char buf[DECL_STATIC_BUFSIZ];
+
+				WARN_AT(&e->where, "conditional type mismatch (%s vs %s)",
+						decl_to_str(tt_l), decl_to_str_r(buf, tt_r));
+
+				e->tree_type = decl_new_void();
+			}
+		}
+	}
 
 	e->freestanding = (e->lhs ? e->lhs : e->expr)->freestanding || e->rhs->freestanding;
 }
@@ -65,33 +137,35 @@ void fold_expr_if(expr *e, symtable *stab)
 
 void gen_expr_if(expr *e, symtable *stab)
 {
-	char *lblfin, *lblelse;
+	char *lblfin;
 
-	lblfin = asm_label_code("ifexpa");
+	lblfin = out_label_code("ifexp_fi");
 
 	gen_expr(e->expr, stab);
 
 	if(e->lhs){
-		lblelse = asm_label_code("ifexpb");
+		char *lblelse = out_label_code("ifexp_else");
 
-		asm_temp(1, "pop rax");
-		asm_temp(1, "test rax, rax");
-		asm_temp(1, "jz %s", lblelse);
+		out_jfalse(lblelse);
+
 		gen_expr(e->lhs, stab);
-		asm_temp(1, "jmp %s", lblfin);
-		asm_label(lblelse);
+
+		out_push_lbl(lblfin, 0, NULL);
+		out_jmp();
+
+		out_label(lblelse);
+		free(lblelse);
+
 	}else{
-		asm_temp(1, "mov rax, [rsp] ; save for ?:");
-		asm_temp(1, "test rax, rax");
-		asm_temp(1, "jnz %s", lblfin);
-		asm_temp(1, "pop rax ; discard lhs");
+		out_dup();
+
+		out_jtrue(lblfin);
 	}
 
-	gen_expr(e->rhs, stab);
-	asm_label(lblfin);
+	out_pop();
 
-	if(e->lhs)
-		free(lblelse);
+	gen_expr(e->rhs, stab);
+	out_label(lblfin);
 
 	free(lblfin);
 }

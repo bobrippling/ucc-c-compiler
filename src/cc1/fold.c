@@ -11,12 +11,12 @@
 #include "sym.h"
 #include "../util/platform.h"
 #include "const.h"
-#include "asm.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
 #include "../util/dynmap.h"
 #include "sue.h"
 #include "decl.h"
+#include "pack.h"
 
 decl *curdecl_func, *curdecl_func_called; /* for funcargs-local labels and return type-checking */
 
@@ -42,6 +42,48 @@ void fold_decl_equal(
 	}
 }
 
+void fold_insert_casts(decl *dlhs, expr **prhs, symtable *stab, where *w, const char *desc)
+{
+	expr *rhs = *prhs;
+
+	if(!decl_equal(dlhs, rhs->tree_type, 1)){
+		/* insert a cast: rhs -> lhs */
+		if(expr_kind(rhs, val) && decl_is_integral(rhs->tree_type)){
+			/* don't cast - just change the tree_type */
+			rhs->tree_type->type->primitive = dlhs->type->primitive;
+			rhs->tree_type->type->is_signed = dlhs->type->is_signed;
+			rhs->tree_type->type->qual      = dlhs->type->qual;
+		}else{
+			expr *cast;
+
+			cast = expr_new_cast(decl_copy_keep_array(dlhs), 1);
+			cast->expr = rhs;
+			*prhs = cast;
+
+			/* need to fold the cast again - mainly for "loss of precision" warning */
+			fold_expr_cast_descend(cast, stab, 0);
+		}
+	}
+
+#define lhs_signed dlhs->type->is_signed
+#define rhs_signed rhs->tree_type->type->is_signed
+
+	if(rhs_signed != lhs_signed){
+		if(expr_kind(rhs, val) && rhs->val.iv.val >= 0){
+			rhs->tree_type->type->is_signed = 0;
+		}else{
+#define SPEL_IF_IDENT(hs)                          \
+				expr_kind(hs, identifier) ? " ("     : "", \
+				expr_kind(hs, identifier) ? hs->spel : "", \
+				expr_kind(hs, identifier) ? ")"      : ""
+
+			cc1_warn_at(w, 0, 1, WARN_SIGN_COMPARE,
+					"operation between signed and unsigned%s%s%s in %s",
+					SPEL_IF_IDENT(rhs), desc);
+		}
+	}
+}
+
 int fold_get_sym(expr *e, symtable *stab)
 {
 	if(e->sym)
@@ -61,14 +103,12 @@ void fold_inc_writes_if_sym(expr *e, symtable *stab)
 
 void fold_expr(expr *e, symtable *stab)
 {
-	where *old_w;
+	if(e->tree_type)
+		return;
 
 	fold_get_sym(e, stab);
 
-	old_w = eof_where;
-	eof_where = &e->where;
-	e->f_fold(e, stab);
-	eof_where = old_w;
+	EOF_WHERE(&e->where, e->f_fold(e, stab));
 
 	UCC_ASSERT(e->tree_type, "no tree_type after fold (%s)", e->f_str());
 	UCC_ASSERT(e->tree_type->type->primitive != type_unknown, "unknown type after folding expr %s", e->f_str());
@@ -140,100 +180,318 @@ void fold_enum(struct_union_enum_st *en, symtable *stab)
 	}
 }
 
-int fold_sue(struct_union_enum_st *sue, symtable *stab)
+void fold_sue(struct_union_enum_st *sue, symtable *stab, int *poffset, int *pthis)
 {
-	int offset;
-	sue_member **i;
-
 	if(sue->primitive == type_enum){
+		int sz;
 		fold_enum(sue, stab);
-		offset = platform_word_size(); /* XXX: assumes enums are 64-bit */
+		sz = sue_size(sue);
+		pack_next(poffset, pthis, sz, sz);
 	}else{
-		for(offset = 0, i = sue->members; i && *i; i++){
+		int align_max = 1;
+		sue_member **i;
+
+		for(i = sue->members; i && *i; i++){
 			decl *d = (*i)->struct_member;
+			int align;
 
 			fold_decl(d, stab);
 
-			if(sue->primitive == type_struct)
-				d->struct_offset = offset;
-			/* else - union, all offsets are the same */
-
-			if(d->type->sue && decl_ptr_depth(d) == 0){
+			if(d->type->sue && !decl_is_ptr(d)){
 				if(d->type->sue == sue)
 					DIE_AT(&d->where, "nested %s", sue_str(sue));
 
-				offset += fold_sue(d->type->sue, stab);
-			}else{
-				offset += decl_size(d);
-			}
-		}
-	}
+				fold_sue(d->type->sue, stab, poffset, pthis);
 
-	return offset;
+				align = d->type->sue->align;
+			}else{
+				const int sz = decl_size(d);
+				pack_next(poffset, pthis, sz, sz);
+				align = sz; /* for now */
+			}
+
+
+			if(sue->primitive == type_struct)
+				d->struct_offset = *pthis;
+			/* else - union, all offsets are the same */
+
+			if(align > align_max)
+				align_max = align;
+		}
+
+		sue->align = align_max;
+	}
 }
 
-void fold_coerce_assign(decl *d, expr *assign, int *ok)
+void fold_gen_init_assignment2(expr *base, decl *dfor, decl_init *init_from, stmt *codes)
 {
-	/*
-	 * assignment coercion - complete incomplete arrays
-	 * and convert type[] to struct inits for structs
-	 */
-	*ok = 0;
+	/* assignment expr for each init */
+	const int n_inits = decl_init_len(init_from);
 
-	if(!decl_ptr_depth(d) && d->type->primitive == type_struct){
-		if(assign->array_store){
-			array_decl *store = assign->array_store;
+	if(decl_has_incomplete_array(dfor)){
+		/* case 1: int x[][2] = { 0, 1, 2, 3 } - complete to 2
+		 * case 2: int x[][2] = { {1}, {2} } - complete to 2
+		 */
+		int complete_to;
 
-			if(store->struct_idents){
+		UCC_ASSERT(init_from->type == decl_init_brace, "not a brace initialiser");
+
+		/* decide based on the first sub */
+		switch(init_from->bits.inits[0]->type){
+			default:
+				ICE("invalid initialiser");
+
+			case decl_init_scalar:
+			{
+				decl *dtmp = decl_ptr_depth_dec(decl_copy_keep_array(dfor), &dfor->where);
+				/* (int[2] size = 8) / type_size = 2 */
+				complete_to = n_inits / (decl_size(dtmp) / type_size(dtmp->type));
+
+				fprintf(stderr, "completing array (subtype %s) to %d\n",
+						decl_to_str(dtmp), complete_to);
+
+				decl_free(dtmp);
+
+				WARN_AT(&init_from->where, "missing braces around initialiser");
+				break;
+			}
+
+			case decl_init_brace:
+				complete_to = n_inits;
+				break;
+		}
+
+		decl_complete_array(dfor, complete_to);
+	}
+
+	if(decl_is_array(dfor)){
+		const int pull_from_this_init = init_from->bits.inits[0]->type == decl_init_scalar;
+		const int n_assignments = decl_inner_array_count(dfor);
+		int i_assignment;
+		decl *darray_deref;
+
+		darray_deref = decl_ptr_depth_dec(decl_copy_keep_array(dfor), &dfor->where);
+
+		for(i_assignment = 0; i_assignment < n_assignments; i_assignment++){
+			expr *target = expr_new_op(op_plus);
+			decl_init *sub_init;
+
+			/* access the i_assignment'th element of base */
+			target->lhs = base;
+			target->rhs = expr_new_val(i_assignment);
+
+			target = expr_new_deref(target);
+
+			/*fprintf(stderr, "for array %s, sub %s\n",
+					decl_to_str(dfor),
+					decl_to_str_r((char[DECL_STATIC_BUFSIZ]){}, darray_deref));*/
+
+			if(pull_from_this_init){
+				const int inner_count = decl_is_array(darray_deref)
+					? decl_inner_array_count(darray_deref)
+					: 1;
+				int i_sub;
+
+				//fprintf(stderr, "from this init, inner_count %d\n", inner_count);
+
+				sub_init = decl_init_new(decl_init_brace);
+
+				for(i_sub = 0; i_sub < inner_count; i_sub++){
+					dynarray_add((void ***)&sub_init->bits.inits,
+							init_from->bits.inits[i_assignment * inner_count]);
+				}
+
+			}else{
+				sub_init = init_from->bits.inits[i_assignment];
+			}
+
+			fold_gen_init_assignment2(target, darray_deref, sub_init, codes);
+
+			if(pull_from_this_init){
+				//ICW("need to free sub_init");
+			}
+		}
+
+		decl_free(darray_deref);
+	}else{
+		/* scalar init */
+		switch(init_from->type){
+			case decl_init_scalar:
+			{
+				expr *assign_init;
+
+				assign_init = expr_new_assign(expr_new_deref(base), init_from->bits.expr);
+
+				assign_init->assign_is_init = 1;
+
+				dynarray_add((void ***)&codes->inits,
+						expr_to_stmt(assign_init, codes->symtab));
+				break;
+			}
+
+			case decl_init_brace:
+				if(n_inits > 1)
+					WARN_AT(&init_from->where, "excess initialisers for scalar");
+
+				fold_gen_init_assignment2(base, dfor, init_from->bits.inits[0], codes);
+				break;
+		}
+	}
+}
+
+void fold_gen_init_assignment(decl *dfor, stmt *code)
+{
+	expr *base = expr_new_addr();
+
+	base->lhs = expr_new_identifier(dfor->spel);
+	base->expr_addr_implicit = 1;
+
+	fold_gen_init_assignment2(base, dfor, dfor->init, code);
+}
+
+#if 0
+/* see fold_gen_init_assignment2 */
+void fold_decl_init(decl *for_decl, decl_init *di, symtable *stab)
+{
+	fold_gen_init_assignment(for_decl, codes);
+
+	/* fold + type check for statics + globals */
+	if(decl_is_array(for_decl)){
+		/* don't allow scalar inits */
+		switch(di->type){
+			case decl_init_struct:
+			case decl_init_scalar:
+				DIE_AT(&for_decl->where, "can't initialise array decl with scalar or struct");
+
+			case decl_init_brace:
+			{
+				decl_desc *dp = decl_desc_tail(for_decl);
+				intval sz;
+
+				UCC_ASSERT(dp->type == decl_desc_array, "not array");
+
+				const_fold_need_val(dp->bits.array_size, &sz);
+
+				if(sz.val == 0){
+					/* complete the decl */
+					expr *expr_sz = dp->bits.array_size;
+					expr_mutate_wrapper(expr_sz, val);
+					expr_sz->val.iv.val = decl_init_len(di);
+				}
+			}
+		}
+	}else if(for_decl->type->primitive == type_struct && !decl_is_ptr(for_decl)){
+		/* similar to above */
+		const int nmembers = sue_nmembers(for_decl->type->sue);
+
+		switch(di->type){
+			case decl_init_scalar:
+				/*ICE("TODO: struct init with scalar");*/
+				DIE_AT(&di->where, "can't initialise %s with expression",
+						decl_to_str(for_decl));
+
+			case decl_init_struct:
+			{
+				ICE("TODO");
+#if 0
+				const int ninits = dynarray_count((void **)di->bits.subs);
 				int i;
 
-				for(i = 0; store->struct_idents[i]; i++){
-					fprintf(stderr, ".%s = %s\n",
-							store->struct_idents[i],
-							decl_to_str(store->data.exprs[i]->tree_type));
+				/* for_decl is a struct - the above else-if */
+
+				for(i = 0; i < ninits; i++){
+					struct decl_init_sub *sub = di->bits.subs[i];
+					sub->for_decl = struct_union_member_find(for_decl->type->sue, sub->spel, &for_decl->where);
 				}
+#endif
 
-				ICE("TODO: struct init from ^");
-			}else{
-				decl_desc *dp = decl_array_first(assign->tree_type);
-				int nmembers;
-				intval iv;
-
-				const_fold_need_val(dp->bits.array_size, &iv);
-
-				*ok = 1;
-
-				/*
-				 * for now just check the counts - this will break for:
-				 * struct { int i; char c; int j } = { 1, 2, 3 };
-				 *                   ^
-				 * in global scope
-				 */
-				nmembers = sue_nmembers(d->type->sue);
-
-				if(iv.val != nmembers){
-					WARN_AT(&assign->where,
-							"mismatching member counts for struct init (struct of %d vs array of %ld)",
-							nmembers, iv.val);
-					/* TODO: zero the rest */
-				}else if(!d->sym || d->sym->type == sym_global){
-					sue_member **i;
-
-					for(i = d->type->sue->members; i && *i; i++){
-						decl *d = (*i)->struct_member;
-						if(!decl_ptr_depth(d) && d->type->primitive == type_char){
-							WARN_AT(&assign->where, "struct init via { } breaks with char member (%s %s)",
-									decl_to_str(d), d->spel);
-							break;
-						}
-					}
-				}
+				fprintf(stderr, "checked decl struct init for %s\n", for_decl->spel);
+				break;
 			}
-		}else{
-			ICE("struct init from %s", decl_to_str(assign->tree_type));
+
+			case decl_init_brace:
+				if(for_decl->type->sue){
+					/* init struct with braces */
+					const int nbraces  = dynarray_count((void **)di->bits.subs);
+
+					if(nbraces > nmembers)
+						DIE_AT(&for_decl->where, "too many initialisers for %s", decl_to_str(for_decl));
+
+					/* folded below */
+
+				}else{
+					DIE_AT(&for_decl->where, "initialisation of incomplete struct");
+				}
+				break;
 		}
 	}
+#endif
+
+#if 0
+	switch(di->type){
+		case decl_init_brace:
+		case decl_init_struct:
+		{
+			struct_union_enum_st *const sue = for_decl->type->sue;
+			decl_init_sub *s;
+			int i;
+			int struct_index = 0;
+
+			/* recursively fold */
+			for(i = 0; (s = di->bits.subs[i]); i++, struct_index++){
+				decl *new_for_decl;
+
+				if(s->spel){
+					decl *member;
+					int old_idx;
+
+					if(di->type != decl_init_struct)
+						DIE_AT(&di->where, "can't initialise array with struct-style init");
+
+					ICE(".x struct init");
+
+					member = struct_union_member_find(sue, s->spel, &di->where);
+
+					old_idx = struct_index;
+					struct_index = struct_union_member_idx(sue, member);
+
+					/* update where we are in the struct - FIXME: duplicate checks */
+					if(struct_index <= old_idx){
+						DIE_AT(&di->where, "duplicate initialisation of %s %s member %s",
+								decl_to_str(for_decl), sue->spel, member->spel);
+					}
+				}
+
+				if(decl_is_struct_or_union(for_decl)){
+					/* take the struct member type */
+					new_for_decl = struct_union_member_at_idx(sue, struct_index);
+
+					/* this should be caught above */
+					if(!new_for_decl)
+						DIE_AT(&s->where, "excess element for %s initialisation", decl_to_str(for_decl));
+
+				}else{
+					/* decl from the array type */
+					new_for_decl = decl_ptr_depth_dec(decl_copy(for_decl), &for_decl->where);
+				}
+
+				fold_decl_init(new_for_decl, s->init, stab);
+			}
+
+			if(decl_is_struct_or_union(for_decl)){
+				const int nmembers = sue_nmembers(sue);
+
+				/* add to the end - since .x = y isn't available, don't have to worry about middle ones */
+				for(; i < nmembers; i++){
+					decl_init_sub *sub = decl_init_sub_zero_for_decl(struct_union_member_at_idx(sue, i));
+					dynarray_add((void ***)&di->bits.subs, sub);
+				}
+			}
+		}
+		break;
+	}
 }
+#endif
 
 void fold_decl(decl *d, symtable *stab)
 {
@@ -250,7 +508,6 @@ void fold_decl(decl *d, symtable *stab)
 		type_exp = d->type->type_of;
 
 		fold_expr(type_exp, stab);
-		decl_free(type_exp->tree_type);
 
 		/* either get the typeof() from the decl or the expr type */
 		from = d->type->type_of->decl;
@@ -262,6 +519,7 @@ void fold_decl(decl *d, symtable *stab)
 				(void *)d->type->type_of->decl,
 				(void *)d->type->type_of->expr->tree_type);
 
+		decl_free(type_exp->tree_type);
 		type_exp->tree_type = decl_copy(from);
 
 		/* type */
@@ -307,7 +565,7 @@ void fold_decl(decl *d, symtable *stab)
 
 	switch(d->type->primitive){
 		case type_void:
-			if(!decl_ptr_depth(d) && !decl_is_callable(d) && d->spel)
+			if(!decl_is_ptr(d) && !decl_is_callable(d) && d->spel)
 				DIE_AT(&d->where, "can't have a void variable - %s (%s)", d->spel, decl_to_str(d));
 			break;
 
@@ -315,7 +573,7 @@ void fold_decl(decl *d, symtable *stab)
 		case type_union:
 			/* don't apply qualifiers to the sue */
 		case type_enum:
-			if(sue_incomplete(d->type->sue) && !decl_ptr_depth(d))
+			if(sue_incomplete(d->type->sue) && !decl_is_ptr(d))
 				DIE_AT(&d->where, "use of %s%s%s",
 						type_to_str(d->type),
 						d->spel ?     " " : "",
@@ -324,6 +582,13 @@ void fold_decl(decl *d, symtable *stab)
 
 		case type_int:
 		case type_char:
+		case type__Bool:
+		case type_short:
+		case type_long:
+		case type_float:
+		case type_double:
+		case type_ldouble:
+		case type_llong:
 			break;
 
 		case type_unknown:
@@ -388,42 +653,37 @@ void fold_decl(decl *d, symtable *stab)
 				d->type->store = store_default;
 			}
 		}
+	}
+}
 
-		if(decl_has_incomplete_array(d) && d->init->array_store){
-			/* complete the decl */
-			decl_desc *dp = decl_array_first_incomplete(d);
+void fold_decl_global_init(decl_init *dinit, symtable *stab)
+{
+	switch(dinit->type){
+		case decl_init_scalar:
+		{
+			expr *const e = dinit->bits.expr;
+			intval iv;
+			enum constyness type;
 
-			dp->bits.array_size->val.iv.val = d->init->array_store->len;
+			fold_expr(e, stab);
+
+			const_fold(e, &iv, &type);
+
+			if(type == CONST_NO)
+				DIE_AT(&e->where, "%s initialiser not constant (%s)",
+						stab->parent ? "static" : "global", e->f_str());
+
+			break;
 		}
 
-		/* type check for statics + globals */
-		if(d->type->store == store_static || (d->sym && d->sym->type == sym_global)){
-			int ok;
-			enum constyness type;
-			intval dummy;
+		case decl_init_brace:
+		{
+			decl_init **i;
 
-			fold_expr(d->init, stab); /* else it's done as part of the stmt code */
-			fold_coerce_assign(d, d->init, &ok); /* also done as stmt code */
+			for(i = dinit->bits.inits; i && *i; i++)
+				fold_decl_global_init(*i, stab);
 
-			if(!ok){
-				fold_decl_equal(d, d->init->tree_type, &d->where, WARN_ASSIGN_MISMATCH,
-						"mismatching initialisation for %s", d->spel);
-			}
-
-			const_fold(d->init, &dummy, &type);
-			if(type == CONST_NO){
-				/* global/static + not constant */
-				/* allow identifiers if the identifier is also static */
-
-				if(!expr_kind(d->init, identifier)
-				|| d->init->tree_type->type->store != store_static)
-				{
-					DIE_AT(&d->init->where,
-							"not a constant expression for %s %s initialisation - %s",
-							d->type->store == store_static ? "static" : "global",
-							d->spel, d->init->f_str());
-				}
-			}
+			break;
 		}
 	}
 }
@@ -447,19 +707,27 @@ void fold_decl_global(decl *d, symtable *stab)
 	}
 
 	fold_decl(d, stab);
+
+	/* inits are normally handled in stmt_code,
+	 * but this is global, handle here
+	 */
+	if(d->init)
+		fold_decl_global_init(d->init, stab);
 }
 
 void fold_symtab_scope(symtable *stab)
 {
 	struct_union_enum_st **sit;
 
-	for(sit = stab->sues; sit && *sit; sit++)
-		fold_sue(*sit, stab);
+	for(sit = stab->sues; sit && *sit; sit++){
+		int this, offset = 0;
+		fold_sue(*sit, stab, &offset, &this);
+	}
 }
 
 void fold_need_expr(expr *e, const char *stmt_desc, int is_test)
 {
-	if(!decl_ptr_depth(e->tree_type) && e->tree_type->type->primitive == type_void)
+	if(decl_is_void(e->tree_type))
 		DIE_AT(&e->where, "%s requires non-void expression", stmt_desc);
 
 	if(!e->in_parens && expr_kind(e, assign))
@@ -597,7 +865,7 @@ void fold_func(decl *func_decl)
 		symtab_add_args(
 				func_decl->func_code->symtab,
 				decl_desc_tail(func_decl)->bits.func,
-				curdecl_func->spel);
+				func_decl->spel);
 
 		fold_stmt(func_decl->func_code);
 
@@ -640,7 +908,7 @@ void fold_func(decl *func_decl)
 			}
 		}
 
-		free(curdecl_func_called);
+		decl_free(curdecl_func_called);
 		curdecl_func_called = NULL;
 		curdecl_func = NULL;
 	}
@@ -798,7 +1066,7 @@ void fold(symtable *globs)
 	if(fopt_mode & FOPT_ENABLE_ASM){
 		decl *df;
 		funcargs *fargs;
-		where *old_w;
+		const where *old_w;
 
 		old_w = eof_where;
 		eof_where = &asm_struct_enum_where;
@@ -865,7 +1133,8 @@ void fold(symtable *globs)
 					decl *d = *protos;
 
 					if(!decl_is_definition(d)){
-						decl_attr_append(&D(i)->attr, d->attr);
+						EOF_WHERE(&D(i)->where,
+								decl_attr_append(&D(i)->attr, d->attr));
 					}
 				}
 			}

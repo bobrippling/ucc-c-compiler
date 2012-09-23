@@ -12,7 +12,15 @@
 #include "sue.h"
 #include "decl.h"
 
-where *eof_where = NULL;
+const where *eof_where = NULL;
+
+intval *intval_new(long v)
+{
+	intval *iv = umalloc(sizeof *iv);
+	iv->val = v;
+	return iv;
+}
+
 
 void where_new(struct where *w)
 {
@@ -72,12 +80,29 @@ int type_primitive_size(enum type_primitive tp)
 {
 	switch(tp){
 		case type_char:
+		case type__Bool:
 		case type_void:
 			return 1;
 
+		case type_short:
+			return 2;
+
 		case type_int:
-			/* FIXME: 4 for int */
-			return platform_word_size();
+		case type_float:
+			return 4;
+
+		case type_long:
+		case type_double:
+			return 8; /* FIXME: 4 on 32-bit */
+
+		case type_llong:
+			ICW("TODO: long long");
+			return 16;
+
+		case type_ldouble:
+			/* 80-bit float */
+			ICW("TODO: long double");
+			return 10; /* FIXME: 32-bit? */
 
 		case type_union:
 		case type_struct:
@@ -106,14 +131,14 @@ int type_size(const type *t)
 int type_equal(const type *a, const type *b, enum type_cmp mode)
 {
 	if(a->qual != b->qual){
-		if(mode & TYPE_CMP_EXACT){
-			fprintf(stderr, "EXACT :C\n");
+		if(mode & TYPE_CMP_EXACT)
 			return 0;
-		}
 
 		/* if b is const, a must be */
-		if((b->qual & qual_const) && !(a->qual & qual_const)){
-			fprintf(stderr, "char <-- const char :C\n");
+		if((mode & TYPE_CMP_QUAL)
+		&& (b->qual & qual_const)
+		&& !(a->qual & qual_const))
+		{
 			return 0;
 		}
 	}
@@ -151,7 +176,6 @@ const char *op_to_str(const enum op_type o)
 		CASE_STR_PREFIX(op, plus);
 		CASE_STR_PREFIX(op, minus);
 		CASE_STR_PREFIX(op, modulus);
-		CASE_STR_PREFIX(op, deref);
 		CASE_STR_PREFIX(op, eq);
 		CASE_STR_PREFIX(op, ne);
 		CASE_STR_PREFIX(op, le);
@@ -167,8 +191,6 @@ const char *op_to_str(const enum op_type o)
 		CASE_STR_PREFIX(op, bnot);
 		CASE_STR_PREFIX(op, shiftl);
 		CASE_STR_PREFIX(op, shiftr);
-		CASE_STR_PREFIX(op, struct_ptr);
-		CASE_STR_PREFIX(op, struct_dot);
 		CASE_STR_PREFIX(op, unknown);
 	}
 	return NULL;
@@ -177,9 +199,17 @@ const char *op_to_str(const enum op_type o)
 const char *type_primitive_to_str(const enum type_primitive p)
 {
 	switch(p){
-		CASE_STR_PREFIX(type, int);
-		CASE_STR_PREFIX(type, char);
 		CASE_STR_PREFIX(type, void);
+		CASE_STR_PREFIX(type, char);
+		CASE_STR_PREFIX(type, short);
+		CASE_STR_PREFIX(type, int);
+		CASE_STR_PREFIX(type, long);
+		CASE_STR_PREFIX(type, float);
+		CASE_STR_PREFIX(type, double);
+		CASE_STR_PREFIX(type, _Bool);
+
+		case type_llong:   return "long long";
+		case type_ldouble: return "long double";
 
 		CASE_STR_PREFIX(type, struct);
 		CASE_STR_PREFIX(type, union);
@@ -214,7 +244,29 @@ const char *type_qual_to_str(const enum type_qualifier qual)
 	return buf;
 }
 
-int op_is_cmp(enum op_type o)
+int op_can_compound(enum op_type o)
+{
+	switch(o){
+		case op_plus:
+		case op_minus:
+		case op_multiply:
+		case op_divide:
+		case op_modulus:
+		case op_not:
+		case op_bnot:
+		case op_and:
+		case op_or:
+		case op_xor:
+		case op_shiftl:
+		case op_shiftr:
+			return 1;
+		default:
+			break;
+	}
+	return 0;
+}
+
+int op_is_relational(enum op_type o)
 {
 	switch(o){
 		case op_eq:
@@ -223,6 +275,8 @@ int op_is_cmp(enum op_type o)
 		case op_lt:
 		case op_ge:
 		case op_gt:
+		case op_andsc:
+		case op_orsc:
 			return 1;
 		default:
 			break;
@@ -255,10 +309,20 @@ const char *type_to_str(const type *t)
 
 	}else{
 		switch(t->primitive){
-#define APPEND(t) case type_ ## t: snprintf(bufp, BUF_SIZE, "%s", #t); break
-			APPEND(int);
-			APPEND(char);
+#define SAPPEND(s) snprintf(bufp, BUF_SIZE, "%s", s); break
+#define APPEND(t) case type_ ## t: SAPPEND(#t)
 			APPEND(void);
+			APPEND(_Bool);
+			APPEND(char);
+			APPEND(short);
+			APPEND(int);
+			APPEND(long);
+			APPEND(float);
+			APPEND(double);
+
+			case type_llong:   SAPPEND("long long");
+			case type_ldouble: SAPPEND("long double");
+
 			case type_unknown:
 				ICE("unknown type primitive (%s)", where_str(&t->where));
 			case type_enum:

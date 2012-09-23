@@ -220,3 +220,25 @@ decl *struct_union_member_find(struct_union_enum_st *sue, const char *spel, wher
 {
 	return sue_member_find(sue, spel, die_where)->struct_member;
 }
+
+decl *struct_union_member_at_idx(struct_union_enum_st *sue, int idx)
+{
+	int n = sue_nmembers(sue);
+	/*
+	 * not needed since there are checks in decl init code,
+	 * but in case this is used elsewhere...
+	 */
+	if(idx >= n)
+		return NULL;
+
+	return sue->members[idx]->struct_member;
+}
+
+int struct_union_member_idx(struct_union_enum_st *sue, decl *member)
+{
+	int i;
+	for(i = 0; sue->members[i]; i++)
+		if(sue->members[i]->struct_member == member)
+			return i;
+	return -1;
+}
