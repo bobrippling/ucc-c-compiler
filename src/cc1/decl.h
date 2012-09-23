@@ -158,6 +158,7 @@ enum decl_cmp
 {
 	DECL_CMP_EXACT_MATCH      = 1 << 0,
 	DECL_CMP_ALLOW_VOID_PTR   = 1 << 1,
+	DECL_CMP_NO_ARRAY         = 1 << 2,
 };
 
 decl        *decl_new(void);
@@ -234,7 +235,17 @@ int decl_has_incomplete_array(decl *);
 void decl_complete_array(decl *d, int n);
 int decl_inner_array_count(decl *d);
 funcargs *decl_funcargs(decl *);
-int funcargs_equal(funcargs *args_a, funcargs *args_b, int strict_types, int *idx);
+
+enum funcargs_cmp
+{
+	funcargs_cmp_equal,
+	funcargs_cmp_mismatch_types,
+	funcargs_cmp_mismatch_count
+};
+
+/* if fspel ! NULL, print warnings */
+enum funcargs_cmp funcargs_equal(funcargs *args_a, funcargs *args_b,
+		int strict_types, const char *fspel);
 
 const char *decl_desc_to_str(enum decl_desc_type t);
 

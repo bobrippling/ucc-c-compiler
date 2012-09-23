@@ -46,7 +46,12 @@ void fold_insert_casts(decl *dlhs, expr **prhs, symtable *stab, where *w, const 
 {
 	expr *rhs = *prhs;
 
-	if(!decl_equal(dlhs, rhs->tree_type, 1)){
+	if(!decl_equal(dlhs, rhs->tree_type,
+				DECL_CMP_ALLOW_VOID_PTR |
+				DECL_CMP_EXACT_MATCH |
+				DECL_CMP_NO_ARRAY
+				))
+	{
 		/* insert a cast: rhs -> lhs */
 		if(expr_kind(rhs, val) && decl_is_integral(rhs->tree_type)){
 			/* don't cast - just change the tree_type */
