@@ -965,8 +965,15 @@ static void fold_link_decl_defs(dynmap *spel_decls)
 
 		for(decl_iter = decls_for_this + 1; (e = *decl_iter); decl_iter++){
 			/* check they are the same decl */
-			if(!decl_equal(d, e, DECL_CMP_EXACT_MATCH))
-				DIE_AT(&e->where, "mismatching declaration of %s (%s)", d->spel, where_str_r(wbuf, &d->where));
+			if(!decl_equal(d, e, DECL_CMP_EXACT_MATCH)){
+				char buf[DECL_STATIC_BUFSIZ];
+
+				DIE_AT(&e->where, "mismatching declaration of %s\n%s\n%s vs %s",
+						d->spel,
+						where_str_r(wbuf, &d->where),
+						decl_to_str_r(buf, d),
+						decl_to_str(       e));
+			}
 
 			if(decl_is_definition(e)){
 				/* e is the implementation/instantiation */
