@@ -542,19 +542,35 @@ int decl_is_integral(decl *d)
 		case type_short:
 		case type_long:
 		case type_llong:
+		case type_enum:
 				return 1;
 
 		case type_unknown:
 		case type_void:
 		case type_struct:
 		case type_union:
-		case type_enum:
 		case type_float:
 		case type_double:
 		case type_ldouble:
 				break;
 	}
 
+	return 0;
+}
+
+int decl_is_floating(decl *d)
+{
+	if(d->desc)
+		return 0;
+
+	switch(d->type->primitive){
+		case type_float:
+		case type_double:
+		case type_ldouble:
+			return 1;
+		default:
+			break;
+	}
 	return 0;
 }
 
