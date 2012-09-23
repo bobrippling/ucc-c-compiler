@@ -135,8 +135,12 @@ int type_equal(const type *a, const type *b, enum type_cmp mode)
 			return 0;
 
 		/* if b is const, a must be */
-		if((b->qual & qual_const) && !(a->qual & qual_const))
+		if((mode & TYPE_CMP_QUAL)
+		&& (b->qual & qual_const)
+		&& !(a->qual & qual_const))
+		{
 			return 0;
+		}
 	}
 
 	if(a->sue != b->sue)

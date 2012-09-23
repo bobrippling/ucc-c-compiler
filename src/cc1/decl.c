@@ -367,7 +367,7 @@ int decl_equal(decl *a, decl *b, enum decl_cmp mode)
 	const int b_ptr = decl_is_ptr(b);
 	enum type_cmp tmode;
 
-	if((mode & DECL_CMP_ALLOW_VOID_PTR)){
+	if(mode & DECL_CMP_ALLOW_VOID_PTR){
 		/* one side is void * */
 		if(decl_is_void_ptr(a) && b_ptr)
 			return 1;
@@ -382,7 +382,7 @@ int decl_equal(decl *a, decl *b, enum decl_cmp mode)
 		tmode |= TYPE_CMP_EXACT;
 
 	if(a_ptr || b_ptr)
-		tmode |= TYPE_CMP_CONST;
+		tmode |= TYPE_CMP_QUAL;
 
 	if(!type_equal(a->type, b->type, tmode))
 		return 0;
