@@ -323,7 +323,7 @@ int decl_desc_equal(decl_desc *a, decl_desc *b, enum decl_cmp mode)
 
 	/* XXX: this must be before the auto-cast check below */
 	if(a->type == decl_desc_func && b->type == decl_desc_func)
-		if(!funcargs_equal(a->bits.func, b->bits.func, 1 /* exact match */, 0))
+		if(funcargs_cmp_equal != funcargs_equal(a->bits.func, b->bits.func, 1 /* exact match */, NULL))
 			return 0;
 
 	/* allow a to be "type (*)()" and b to be "type ()" */
