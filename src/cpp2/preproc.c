@@ -83,7 +83,7 @@ void preproc_pop(void)
 #endif
 
 	/* restore state */
-	current_line  = file_stack[file_stack_idx].line_no - 1;
+	current_line  = file_stack[file_stack_idx].line_no;
 	current_fname = file_stack[file_stack_idx].fname;
 
 	preproc_out_info();
