@@ -37,6 +37,7 @@ typedef struct
 div_t div(int n, int denom);
 //ldiv_t ldiv(long int n, long int denom);
 
+// ({...}) ?
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
