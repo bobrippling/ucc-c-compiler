@@ -1139,16 +1139,26 @@ void fold(symtable *globs)
 		if(decl_is_func(D(i))){
 			if(decl_is_definition(D(i))){
 				/* gather round, attributes */
-				decl **protos;
+				decl **const protos = dynmap_get(spel_decls, D(i)->spel);
+				decl **proto_i;
+				int is_void = 0;
 
-				for(protos = dynmap_get(spel_decls, D(i)->spel); *protos; protos++){
-					decl *d = *protos;
+				for(proto_i = protos; *proto_i; proto_i++){
+					decl *proto = *proto_i;
 
-					if(!decl_is_definition(d)){
+					if(decl_desc_tail(proto)->bits.func->args_void)
+						is_void = 1;
+
+					if(!decl_is_definition(proto)){
 						EOF_WHERE(&D(i)->where,
-								decl_attr_append(&D(i)->attr, d->attr));
+								decl_attr_append(&D(i)->attr, proto->attr));
 					}
 				}
+
+				/* if "type ()", and a proto is "type (void)", take the void */
+				if(is_void)
+					for(proto_i = protos; *proto_i; proto_i++)
+						decl_desc_tail((*proto_i))->bits.func->args_void = 1;
 			}
 
 			fold_func(D(i));
