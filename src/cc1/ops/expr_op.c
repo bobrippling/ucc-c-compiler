@@ -297,20 +297,28 @@ void fold_expr_op(expr *e, symtable *stab)
 
 		e->tree_type = op_promote_types(e->op, &e->lhs, &e->rhs, &e->where, stab);
 	}else{
-		/* can only have operations on integers, promote to signed int */
-		decl *d_unary = e->lhs->tree_type;
+		/* (except unary-not) can only have operations on integers,
+		 * promote to signed int
+		 */
 
-		if(!decl_is_integral(d_unary) && !decl_is_floating(d_unary))
-			DIE_AT(&e->where, "type '%s' to unary %s",
-					decl_to_str(d_unary), op_to_str(e->op));
+		if(e->op == op_not){
+			e->tree_type = decl_new_int();
 
-		/* extend to int if smaller */
-		if(decl_size(d_unary) < type_primitive_size(type_int)){
-			expr_promote_int(&e->lhs, type_int, stab);
-			d_unary = e->lhs->tree_type;
+		}else{
+			decl *d_unary = e->lhs->tree_type;
+
+			if(!decl_is_integral(d_unary) && !decl_is_floating(d_unary))
+				DIE_AT(&e->where, "type '%s' to unary %s",
+						decl_to_str(d_unary), op_to_str(e->op));
+
+			/* extend to int if smaller */
+			if(decl_size(d_unary) < type_primitive_size(type_int)){
+				expr_promote_int(&e->lhs, type_int, stab);
+				d_unary = e->lhs->tree_type;
+			}
+
+			e->tree_type = decl_copy(d_unary);
 		}
-
-		e->tree_type = decl_copy(d_unary);
 	}
 }
 
