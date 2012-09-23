@@ -11,7 +11,8 @@ static int label_last    = 1,
 					 str_last      = 1,
 					 switch_last   = 1,
 					 flow_last     = 1,
-					 block_last    = 1;
+					 block_last    = 1,
+					 static_last   = 1;
 
 char *out_label_block(const char *funcsp)
 {
@@ -53,9 +54,9 @@ char *out_label_static_local(const char *funcsp, const char *spel)
 
 	UCC_ASSERT(funcsp, "no spel for %s", __func__);
 
-	len = strlen(funcsp) + strlen(spel) + 9;
+	len = strlen(funcsp) + strlen(spel) + 16;
 	ret = umalloc(len);
-	SNPRINTF(ret, len, "%s.static_%s", funcsp, spel);
+	SNPRINTF(ret, len, "%s.static%d_%s", funcsp, static_last++, spel);
 	return ret;
 }
 

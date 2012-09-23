@@ -169,7 +169,7 @@ void gen_expr_funcall(expr *e, symtable *stab)
 		}
 	}
 
-	out_call(nargs, e->tree_type);
+	out_call(nargs, e->tree_type, e->expr->tree_type);
 }
 
 void gen_expr_str_funcall(expr *e, symtable *stab)

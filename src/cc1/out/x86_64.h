@@ -18,7 +18,7 @@ void impl_jcond(int true, const char *lbl);
 
 void impl_cast(decl *from, decl *to);
 
-void impl_call(const int nargs, decl *d);
+void impl_call(const int nargs, decl *d_ret, decl *d_func);
 void impl_call_fin(int nargs);
 
 void impl_lbl(const char *);
@@ -26,7 +26,7 @@ void impl_lbl(const char *);
 int  impl_alloc_stack(int sz);
 void impl_free_stack( int sz);
 
-void impl_func_prologue(int stack_res, int nargs);
+void impl_func_prologue(int stack_res, int nargs, int variadic);
 void impl_func_epilogue(void);
 void impl_pop_func_ret(decl *);
 

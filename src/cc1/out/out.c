@@ -374,7 +374,6 @@ void out_push_sym(sym *s)
 			vtop->type = STACK;
 			/*
 			 * if it's less than N_CALL_ARGS, it's below rbp, otherwise it's above
-			 * unless variadic, in which case it's always above
 			 */
 			vtop->bits.off_from_bp = (s->offset < N_CALL_REGS
 					? -(s->offset + 1)
@@ -622,9 +621,9 @@ void out_change_decl(decl *d)
 	vtop->d = d;
 }
 
-void out_call(int nargs, decl *rt)
+void out_call(int nargs, decl *rt, decl *call)
 {
-	impl_call(nargs, rt);
+	impl_call(nargs, rt, call);
 }
 
 void out_jmp(void)
@@ -679,9 +678,9 @@ void out_comment(const char *fmt, ...)
 	va_end(l);
 }
 
-void out_func_prologue(int stack_res, int nargs)
+void out_func_prologue(int stack_res, int nargs, int variadic)
 {
-	impl_func_prologue(stack_res, nargs);
+	impl_func_prologue(stack_res, nargs, variadic);
 }
 
 void out_func_epilogue()
@@ -707,4 +706,9 @@ void out_push_frame_ptr(int nframes)
 	vpush(NULL);
 	vtop->type = REG;
 	vtop->bits.reg = impl_frame_ptr_to_reg(nframes);
+}
+
+int out_n_call_regs(void)
+{
+	return N_CALL_REGS;
 }
