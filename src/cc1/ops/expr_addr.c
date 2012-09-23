@@ -16,7 +16,7 @@ const char *str_expr_addr()
 void fold_expr_addr(expr *e, symtable *stab)
 {
 	if(e->data_store){
-		data_store_fold_decl(e->data_store, &e->tree_type);
+		data_store_fold_decl(e->data_store, &e->tree_type, stab);
 
 	}else if(e->spel){
 		char *save;
@@ -53,7 +53,7 @@ void gen_expr_addr(expr *e, symtable *stab)
 		out_push_lbl(e->data_store->spel, 1, e->tree_type);
 
 		data_store_declare(e->data_store);
-		data_store_out(    e->data_store);
+		data_store_out(    e->data_store, 1);
 
 	}else if(e->spel){
 		out_push_lbl(e->spel, 1, NULL); /* GNU &&lbl */

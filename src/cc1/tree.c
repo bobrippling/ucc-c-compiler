@@ -128,15 +128,25 @@ int type_size(const type *t)
 	return type_primitive_size(t->primitive);
 }
 
-int type_equal(const type *a, const type *b, int strict)
+int type_equal(const type *a, const type *b, enum type_cmp mode)
 {
-	if(strict && b->qual != a->qual)
-		return 0;
+	if(a->qual != b->qual){
+		if(mode & TYPE_CMP_EXACT)
+			return 0;
+
+		/* if b is const, a must be */
+		if((mode & TYPE_CMP_QUAL)
+		&& (b->qual & qual_const)
+		&& !(a->qual & qual_const))
+		{
+			return 0;
+		}
+	}
 
 	if(a->sue != b->sue)
 		return 0;
 
-	return strict ? a->primitive == b->primitive : 1;
+	return mode & TYPE_CMP_EXACT ? a->primitive == b->primitive : 1;
 }
 
 void function_empty_args(funcargs *func)

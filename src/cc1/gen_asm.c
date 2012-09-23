@@ -43,7 +43,7 @@ void lea_expr(expr *e, symtable *stab)
 
 void gen_stmt(stmt *t)
 {
-	t->f_gen(t);
+	EOF_WHERE(&t->where, t->f_gen(t));
 }
 
 void static_store(expr *e)
@@ -117,7 +117,7 @@ void gen_asm_global(decl *d)
 
 		out_func_prologue(
 				d->func_code->symtab->auto_total_size,
-				nargs, decl_funcargs(d)->variadic);
+				nargs);
 
 		curfunc_lblfin = out_label_code(d->spel);
 

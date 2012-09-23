@@ -2,6 +2,7 @@
 #define FOLD_H
 
 void fold_decl(decl *d, symtable *stab);
+void fold_decl_global_init(decl_init *dinit, symtable *stab);
 
 void fold_decl_equal(
 		decl *a, decl *b,

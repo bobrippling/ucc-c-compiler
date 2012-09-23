@@ -11,7 +11,6 @@
 
 #define FILE_FUN(f) ((f)->f_read || (f)->f_write)
 
-#define PRINTF_OPTIMISE
 #define PRINTF_ENABLE_PADDING
 
 struct __FILE

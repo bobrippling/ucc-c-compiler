@@ -9,6 +9,7 @@
 #include "cc1.h"
 #include "out/asm.h"
 #include "out/lbl.h"
+#include "fold.h"
 
 data_store *data_store_new_str(char *s, int l)
 {
@@ -27,32 +28,45 @@ void data_store_declare(data_store *ds)
 	asm_out_section(SECTION_DATA, "%s:\n.byte ", ds->spel);
 }
 
-void data_store_out(data_store *ds)
+void data_store_out(data_store *ds, int newline)
 {
 	int i;
 
 	switch(ds->type){
 		case data_store_str:
-			for(i = 0; i < ds->len; i++)
-				asm_out_section(SECTION_DATA, "%d%s", ds->bits.str[i], i == ds->len - 1 ? "" : ", ");
-			asm_out_section(SECTION_DATA, "\n");
+		{
+			const char *pre = "";
+
+			for(i = 0; i < ds->len; i++){
+				asm_out_section(SECTION_DATA,
+						"%s%d", pre, ds->bits.str[i]);
+				pre = ", ";
+			}
+
+			if(newline)
+				asm_out_section(SECTION_DATA, "\n");
+
 			break;
+		}
 	}
 }
 
-void data_store_fold_decl(data_store *ds, decl **ptree_type)
+void data_store_fold_decl(data_store *ds, decl **ptree_type, symtable *stab)
 {
 	decl *tree_type = decl_new();
+	expr *sz = expr_new_val(ds->len);
+
+	fold_expr(sz, stab);
 
 	tree_type->desc = decl_desc_array_new(tree_type, NULL);
-	tree_type->desc->bits.array_size = expr_new_val(ds->len);
+	tree_type->desc->bits.array_size = sz;
 
 	tree_type->type->store = store_static;
-	/*tree_type->type->qual  = qual_const; - no thanks*/
 
 	switch(ds->type){
 		case data_store_str:
 			tree_type->type->primitive = type_char;
+			tree_type->type->qual |= qual_const; /* "" is a string constant */
 			break;
 	}
 

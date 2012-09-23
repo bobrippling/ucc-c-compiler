@@ -22,10 +22,11 @@ decl *curdecl_func, *curdecl_func_called; /* for funcargs-local labels and retur
 
 static where asm_struct_enum_where;
 
-void fold_decl_equal(decl *a, decl *b, where *w, enum warning warn,
+void fold_decl_equal(
+		decl *a, decl *b, where *w, enum warning warn,
 		const char *errfmt, ...)
 {
-	if(!decl_equal(a, b, DECL_CMP_ALLOW_VOID_PTR | (fopt_mode & FOPT_STRICT_TYPES ? DECL_CMP_STRICT_PRIMITIVE : 0))){
+	if(!decl_equal(a, b, DECL_CMP_ALLOW_VOID_PTR)){
 		int one_struct;
 		va_list l;
 
@@ -45,7 +46,12 @@ void fold_insert_casts(decl *dlhs, expr **prhs, symtable *stab, where *w, const 
 {
 	expr *rhs = *prhs;
 
-	if(!decl_equal(dlhs, rhs->tree_type, 1)){
+	if(!decl_equal(dlhs, rhs->tree_type,
+				DECL_CMP_ALLOW_VOID_PTR |
+				DECL_CMP_EXACT_MATCH |
+				DECL_CMP_NO_ARRAY
+				))
+	{
 		/* insert a cast: rhs -> lhs */
 		if(expr_kind(rhs, val) && decl_is_integral(rhs->tree_type)){
 			/* don't cast - just change the tree_type */
@@ -187,10 +193,12 @@ void fold_sue(struct_union_enum_st *sue, symtable *stab, int *poffset, int *pthi
 		sz = sue_size(sue);
 		pack_next(poffset, pthis, sz, sz);
 	}else{
+		int align_max = 1;
 		sue_member **i;
 
 		for(i = sue->members; i && *i; i++){
 			decl *d = (*i)->struct_member;
+			int align;
 
 			fold_decl(d, stab);
 
@@ -199,15 +207,24 @@ void fold_sue(struct_union_enum_st *sue, symtable *stab, int *poffset, int *pthi
 					DIE_AT(&d->where, "nested %s", sue_str(sue));
 
 				fold_sue(d->type->sue, stab, poffset, pthis);
+
+				align = d->type->sue->align;
 			}else{
 				const int sz = decl_size(d);
 				pack_next(poffset, pthis, sz, sz);
+				align = sz; /* for now */
 			}
+
 
 			if(sue->primitive == type_struct)
 				d->struct_offset = *pthis;
 			/* else - union, all offsets are the same */
+
+			if(align > align_max)
+				align_max = align;
 		}
+
+		sue->align = align_max;
 	}
 }
 
@@ -644,6 +661,38 @@ void fold_decl(decl *d, symtable *stab)
 	}
 }
 
+void fold_decl_global_init(decl_init *dinit, symtable *stab)
+{
+	switch(dinit->type){
+		case decl_init_scalar:
+		{
+			expr *const e = dinit->bits.expr;
+			intval iv;
+			enum constyness type;
+
+			fold_expr(e, stab);
+
+			const_fold(e, &iv, &type);
+
+			if(type == CONST_NO)
+				DIE_AT(&e->where, "%s initialiser not constant (%s)",
+						stab->parent ? "static" : "global", e->f_str());
+
+			break;
+		}
+
+		case decl_init_brace:
+		{
+			decl_init **i;
+
+			for(i = dinit->bits.inits; i && *i; i++)
+				fold_decl_global_init(*i, stab);
+
+			break;
+		}
+	}
+}
+
 void fold_decl_global(decl *d, symtable *stab)
 {
 	switch(d->type->store){
@@ -663,6 +712,12 @@ void fold_decl_global(decl *d, symtable *stab)
 	}
 
 	fold_decl(d, stab);
+
+	/* inits are normally handled in stmt_code,
+	 * but this is global, handle here
+	 */
+	if(d->init)
+		fold_decl_global_init(d->init, stab);
 }
 
 void fold_symtab_scope(symtable *stab)
@@ -677,7 +732,7 @@ void fold_symtab_scope(symtable *stab)
 
 void fold_need_expr(expr *e, const char *stmt_desc, int is_test)
 {
-	if(!decl_is_ptr(e->tree_type) && e->tree_type->type->primitive == type_void)
+	if(decl_is_void(e->tree_type))
 		DIE_AT(&e->where, "%s requires non-void expression", stmt_desc);
 
 	if(!e->in_parens && expr_kind(e, assign))
@@ -910,8 +965,15 @@ static void fold_link_decl_defs(dynmap *spel_decls)
 
 		for(decl_iter = decls_for_this + 1; (e = *decl_iter); decl_iter++){
 			/* check they are the same decl */
-			if(!decl_equal(d, e, DECL_CMP_STRICT_PRIMITIVE))
-				DIE_AT(&e->where, "mismatching declaration of %s (%s)", d->spel, where_str_r(wbuf, &d->where));
+			if(!decl_equal(d, e, DECL_CMP_EXACT_MATCH)){
+				char buf[DECL_STATIC_BUFSIZ];
+
+				DIE_AT(&e->where, "mismatching declaration of %s\n%s\n%s vs %s",
+						d->spel,
+						where_str_r(wbuf, &d->where),
+						decl_to_str_r(buf, d),
+						decl_to_str(       e));
+			}
 
 			if(decl_is_definition(e)){
 				/* e is the implementation/instantiation */
@@ -1077,15 +1139,26 @@ void fold(symtable *globs)
 		if(decl_is_func(D(i))){
 			if(decl_is_definition(D(i))){
 				/* gather round, attributes */
-				decl **protos;
+				decl **const protos = dynmap_get(spel_decls, D(i)->spel);
+				decl **proto_i;
+				int is_void = 0;
 
-				for(protos = dynmap_get(spel_decls, D(i)->spel); *protos; protos++){
-					decl *d = *protos;
+				for(proto_i = protos; *proto_i; proto_i++){
+					decl *proto = *proto_i;
 
-					if(!decl_is_definition(d)){
-						decl_attr_append(&D(i)->attr, d->attr);
+					if(decl_desc_tail(proto)->bits.func->args_void)
+						is_void = 1;
+
+					if(!decl_is_definition(proto)){
+						EOF_WHERE(&D(i)->where,
+								decl_attr_append(&D(i)->attr, proto->attr));
 					}
 				}
+
+				/* if "type ()", and a proto is "type (void)", take the void */
+				if(is_void)
+					for(proto_i = protos; *proto_i; proto_i++)
+						decl_desc_tail((*proto_i))->bits.func->args_void = 1;
 			}
 
 			fold_func(D(i));

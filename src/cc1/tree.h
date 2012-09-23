@@ -84,6 +84,13 @@ struct type
 	decl_attr *attr;
 };
 
+enum type_cmp
+{
+	TYPE_CMP_EXACT         = 1 << 0,
+	TYPE_CMP_QUAL          = 1 << 1,
+};
+
+
 type *type_new(void);
 type *type_copy(type *);
 
@@ -99,7 +106,7 @@ const char *type_store_to_str(    const enum type_storage);
 int op_is_relational(enum op_type o);
 int op_can_compound(enum op_type o);
 
-int   type_equal(const type *a, const type *b, int strict);
+int type_equal(const type *a, const type *b, enum type_cmp mode);
 int   type_size( const type *);
 int   type_primitive_size(enum type_primitive tp);
 funcargs *funcargs_new(void);
