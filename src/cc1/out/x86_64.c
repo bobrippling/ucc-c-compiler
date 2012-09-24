@@ -811,6 +811,8 @@ void impl_jcond(int true, const char *lbl)
 
 void impl_call(const int nargs, decl *d_ret, decl *d_func)
 {
+#define INC_NFLOATS(d) if(d && decl_is_floating(d)) ++nfloats
+
 	int i, ncleanup;
 	int nfloats = 0;
 
@@ -821,8 +823,7 @@ void impl_call(const int nargs, decl *d_ret, decl *d_func)
 		if(ri != -1)
 			v_freeup_reg(ri, 1);
 
-		if(decl_is_floating(vtop->d))
-			++nfloats;
+		INC_NFLOATS(vtop->d);
 
 		x86_load(vtop, call_reg_str(i, vtop->d));
 		vpop();
@@ -830,8 +831,7 @@ void impl_call(const int nargs, decl *d_ret, decl *d_func)
 	/* push remaining args onto the stack */
 	ncleanup = nargs - i;
 	for(; i < nargs; i++){
-		if(decl_is_floating(vtop->d))
-			++nfloats;
+		INC_NFLOATS(vtop->d);
 
 		/* can't push non-word sized vtops */
 		if(vtop->d && decl_size(vtop->d) != platform_word_size())
