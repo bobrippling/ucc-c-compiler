@@ -9,7 +9,7 @@ static const char *_errs[] = {
 
 size_t strlen(const char *s)
 {
-	int i = 0;
+	size_t i = 0;
 	while(*s++)
 		i++;
 	return i;
@@ -57,7 +57,7 @@ char *strchr(const char *s, char c)
 {
 	while(*s)
 		if(*s == c)
-			return s;
+			return (char *)s; /* the arg becomes non-const */
 		else
 			s++;
 	return NULL;
@@ -68,7 +68,7 @@ void *memset(void *p, unsigned char c, size_t len)
 	void *const start = p;
 	// TODO: asm / duff's device
 	while(len-- > 0)
-		*(char *)p++ = c;
+		*(unsigned char *)p++ = c;
 	return start;
 }
 

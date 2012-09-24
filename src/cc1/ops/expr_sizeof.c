@@ -1,5 +1,6 @@
 #include "ops.h"
 #include "../sue.h"
+#include "../out/asm.h"
 
 #define SIZEOF_WHAT(e) ((e)->expr ? (e)->expr->tree_type : (e)->decl)
 #define SIZEOF_SIZE(e)  (e)->val.iv.val
@@ -44,9 +45,9 @@ void const_expr_sizeof(expr *e, intval *piv, enum constyness *pconst_type)
 	*pconst_type = CONST_WITH_VAL;
 }
 
-void gen_expr_sizeof_1(expr *e)
+void static_expr_sizeof_store(expr *e)
 {
-	ICE("TODO: init with %s", e->f_str());
+	asm_declare_partial("%ld", SIZEOF_SIZE(e));
 }
 
 void gen_expr_sizeof(expr *e, symtable *stab)
@@ -54,10 +55,9 @@ void gen_expr_sizeof(expr *e, symtable *stab)
 	decl *d = SIZEOF_WHAT(e);
 	(void)stab;
 
-	asm_temp(1, "push %d ; sizeof %s%s",
-			SIZEOF_SIZE(e),
-			e->expr ? "" : "type ",
-			decl_to_str(d));
+	out_push_i(e->tree_type, SIZEOF_SIZE(e));
+
+	out_comment("sizeof %s%s", e->expr ? "" : "type ", decl_to_str(d));
 }
 
 void gen_expr_str_sizeof(expr *e, symtable *stab)
@@ -75,6 +75,7 @@ void gen_expr_str_sizeof(expr *e, symtable *stab)
 void mutate_expr_sizeof(expr *e)
 {
 	e->f_const_fold = const_expr_sizeof;
+	e->f_static_addr = static_expr_sizeof_store;
 }
 
 expr *expr_new_sizeof_decl(decl *d, int is_typeof)

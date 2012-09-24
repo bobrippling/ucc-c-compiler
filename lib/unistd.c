@@ -117,7 +117,7 @@ int symlink(const char *link, const char *new)
 
 off_t lseek(int fd, off_t offset, int whence)
 {
-	return __syscall(SYS_lseek, fd, offset, whence);
+	return (unsigned)__syscall(SYS_lseek, fd, offset, whence);
 }
 
 void _exit(int code)

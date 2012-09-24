@@ -22,6 +22,7 @@ struct struct_union_enum_st
 
 	char *spel; /* "<anon ...>" if anon */
 	int anon : 1;
+	int align;
 
 	sue_member **members;
 };
@@ -54,5 +55,8 @@ void enum_member_search(enum_member **, struct_union_enum_st **, symtable *, con
 int sue_size(struct_union_enum_st *);
 
 decl *struct_union_member_find(struct_union_enum_st *, const char *spel, where *die_where);
+
+decl *struct_union_member_at_idx(struct_union_enum_st *, int idx); /* NULL if out of bounds */
+int   struct_union_member_idx(struct_union_enum_st *, decl *);
 
 #endif

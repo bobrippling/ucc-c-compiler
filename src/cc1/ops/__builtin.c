@@ -17,8 +17,7 @@
 #include "../const.h"
 #include "../gen_asm.h"
 
-/* for asm_temp() */
-#include "../asm.h"
+#include "../out/out.h"
 
 #define PREFIX "__builtin_"
 
@@ -97,7 +96,8 @@ static void builtin_gen_undefined(expr *e, symtable *stab)
 {
 	(void)e;
 	(void)stab;
-	asm_temp(1, "ud2 ; undefined");
+	out_undefined();
+	out_push_i(NULL, 0);
 }
 
 static expr *parse_any_args(void)
@@ -151,7 +151,7 @@ static void const_compatible_p(expr *e, intval *val, enum constyness *success)
 
 	*success = CONST_WITH_VAL;
 
-	val->val = decl_equal(types[0], types[1], DECL_CMP_STRICT_PRIMITIVE);
+	val->val = decl_equal(types[0], types[1], DECL_CMP_EXACT_MATCH);
 }
 
 static expr *parse_compatible_p(void)
@@ -222,14 +222,11 @@ static void fold_frame_address(expr *e, symtable *stab)
 
 static void builtin_gen_frame_pointer(expr *e, symtable *stab)
 {
-	int depth = e->val.iv.val;
+	const int depth = e->val.iv.val;
 
 	(void)stab;
 
-	asm_temp(1, "mov rax, rbp");
-	while(--depth > 0)
-		asm_temp(1, "mov rax, [rax]");
-	asm_temp(1, "push rax");
+	out_push_frame_ptr(depth + 1);
 }
 
 static expr *parse_frame_address(void)
@@ -265,7 +262,7 @@ static void fold_expect(expr *e, symtable *stab)
 static void builtin_gen_expect(expr *e, symtable *stab)
 {
 	gen_expr(e->funcargs[1], stab); /* not needed if it's const, but gcc and clang do this */
-	asm_temp(1, "pop rax ; unused __builtin_expect()");
+	out_pop();
 	gen_expr(e->funcargs[0], stab);
 }
 

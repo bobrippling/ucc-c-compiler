@@ -40,7 +40,4 @@ expr **parse_funcargs(void);
 
 symtable *parse(void);
 
-/* tables local to the current scope */
-extern symtable *current_scope;
-
 #endif
