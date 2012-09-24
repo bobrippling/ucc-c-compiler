@@ -74,7 +74,12 @@ void fold_insert_casts(decl *dlhs, expr **prhs, symtable *stab, where *w, const 
 #define rhs_signed rhs->tree_type->type->is_signed
 
 	if(rhs_signed != lhs_signed){
-		if(expr_kind(rhs, val) && rhs->val.iv.val >= 0){
+		enum constyness type;
+		intval iv;
+
+		const_fold(rhs, &iv, &type);
+
+		if(type == CONST_WITH_VAL && iv.val >= 0){
 			rhs->tree_type->type->is_signed = 0;
 		}else{
 #define SPEL_IF_IDENT(hs)                          \
@@ -585,6 +590,9 @@ void fold_decl(decl *d, symtable *stab)
 						d->spel ? d->spel : "");
 			break;
 
+		case type_intptr_t:
+		case type_ptrdiff_t:
+			/* check for unsigned? */
 		case type_int:
 		case type_char:
 		case type__Bool:

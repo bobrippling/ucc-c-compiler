@@ -95,6 +95,15 @@ decl *decl_new_type(enum type_primitive p)
 {
 	decl *d = decl_new();
 	d->type->primitive = p;
+
+	switch(p){
+		case type_ptrdiff_t:
+		case type_intptr_t:
+			d->type->is_signed = 0;
+		default:
+			break;
+	}
+
 	return d;
 }
 
@@ -562,6 +571,8 @@ int decl_is_integral(decl *d)
 		case type_long:
 		case type_llong:
 		case type_enum:
+		case type_intptr_t:
+		case type_ptrdiff_t:
 				return 1;
 
 		case type_unknown:

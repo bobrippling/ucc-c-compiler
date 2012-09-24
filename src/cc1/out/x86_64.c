@@ -716,8 +716,8 @@ void impl_cast(decl *from, decl *to)
 			x86_reg_str_r(buf_from, vtop->bits.reg, from);
 
 			if(!is_signed
-			&& (to   ? decl_size(to)   : type_primitive_size(type_intptr)) > int_sz
-			&& (from ? decl_size(from) : type_primitive_size(type_intptr)) == int_sz)
+			&& (to   ? decl_size(to)   : type_primitive_size(type_intptr_t)) > int_sz
+			&& (from ? decl_size(from) : type_primitive_size(type_intptr_t)) == int_sz)
 			{
 				/*
 				 * movzx %eax, %rax is invalid

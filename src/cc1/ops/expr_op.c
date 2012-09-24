@@ -126,7 +126,7 @@ void expr_promote_int(expr **pe, enum type_primitive to, symtable *stab)
 	expr *cast;
 
 	if(decl_is_ptr(e->tree_type)){
-		UCC_ASSERT(to == type_intptr, "invalid promotion for pointer");
+		UCC_ASSERT(to == type_intptr_t, "invalid promotion for pointer");
 		return;
 	}
 
@@ -177,10 +177,13 @@ decl *op_required_promotion(
 		const int r_ptr = decl_is_ptr(drhs);
 
 		if(l_ptr && r_ptr){
-			if(op != op_minus && !op_is_relational(op))
+			if(op == op_minus){
+				resolved = decl_new_type(type_ptrdiff_t);
+			}else if(op_is_relational(op)){
+				resolved = decl_new_type(type_int);
+			}else{
 				DIE_AT(w, "operation between two pointers must be relational or subtraction");
-
-			resolved = decl_new_type(type_int);
+			}
 
 			goto fin;
 
@@ -192,7 +195,7 @@ decl *op_required_promotion(
 			resolved = decl_copy(l_ptr ? dlhs : drhs);
 
 			/* FIXME: promote to unsigned */
-			*(l_ptr ? prhs : plhs) = decl_new_type(op == op_plus ? type_intptr : type_ptrdiff);
+			*(l_ptr ? prhs : plhs) = decl_new_type(op == op_plus ? type_intptr_t : type_ptrdiff_t);
 
 			goto fin;
 

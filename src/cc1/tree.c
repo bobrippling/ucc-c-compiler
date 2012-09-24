@@ -91,6 +91,8 @@ int type_primitive_size(enum type_primitive tp)
 		case type_float:
 			return 4;
 
+		case type_intptr_t:
+		case type_ptrdiff_t:
 		case type_long:
 		case type_double:
 			return 8; /* FIXME: 4 on 32-bit */
@@ -207,6 +209,8 @@ const char *type_primitive_to_str(const enum type_primitive p)
 		CASE_STR_PREFIX(type, float);
 		CASE_STR_PREFIX(type, double);
 		CASE_STR_PREFIX(type, _Bool);
+		CASE_STR_PREFIX(type, intptr_t);
+		CASE_STR_PREFIX(type, ptrdiff_t);
 
 		case type_llong:   return "long long";
 		case type_ldouble: return "long double";
@@ -319,6 +323,8 @@ const char *type_to_str(const type *t)
 			APPEND(long);
 			APPEND(float);
 			APPEND(double);
+			APPEND(intptr_t);
+			APPEND(ptrdiff_t);
 
 			case type_llong:   SAPPEND("long long");
 			case type_ldouble: SAPPEND("long double");

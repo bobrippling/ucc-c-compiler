@@ -100,6 +100,8 @@ int asm_table_lookup(decl *d)
 
 			case type_double:
 			case type_long:
+			case type_intptr_t:
+			case type_ptrdiff_t:
 do_long:
 				return m32 ? ASM_INDEX_INT : ASM_INDEX_LONG;
 

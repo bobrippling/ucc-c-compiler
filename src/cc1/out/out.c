@@ -402,7 +402,7 @@ static int calc_ptr_step(decl *d)
 	if(!d)
 		return 1;
 
-	return type_primitive_size(decl_ptr_depth(d) > 1 ? type_ptrdiff : d->type->primitive);
+	return type_primitive_size(decl_ptr_depth(d) > 1 ? type_ptrdiff_t : d->type->primitive);
 }
 
 void out_op(enum op_type op)

@@ -38,9 +38,9 @@ enum type_primitive
 	type_union,
 	type_enum,
 
-	/* x64 specific */
-#define type_intptr type_long
-#define type_ptrdiff type_long
+	/* implicitly unsigned */
+	type_intptr_t,
+	type_ptrdiff_t,
 
 	type_unknown
 };
