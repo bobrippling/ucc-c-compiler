@@ -761,7 +761,12 @@ static const char *x86_call_jmp_target(struct vstack *vp)
 		case REG:
 		case CONST:
 			strcpy(buf, "*%");
-			v_to_reg(vp);
+			v_to_reg(vp); /* again, v_to_reg_preferred(), except that we don't want a reg */
+			if(vp->bits.reg == REG_A){
+				int r = v_unused_reg(1);
+				impl_reg_cp(vp, r);
+				vp->bits.reg = r;
+			}
 			reg_str_r(buf + 2, vp);
 
 			return buf;
@@ -851,14 +856,16 @@ void impl_call(const int nargs, decl *d_ret, decl *d_func)
 			v_save_reg(&vstack[i]);
 
 	{
+		const char *jtarget = x86_call_jmp_target(vtop);
+
 		funcargs *args = decl_funcargs(d_func);
 
 		/* if x(...) or x() */
 		if(args->variadic || (!args->arglist && !args->args_void))
-			out_asm("movb $%d, %%al", nfloats);
-	}
+			out_asm("movb $%d, %%al", nfloats); /* we can never have a funcptr in rax, so we're fine */
 
-	out_asm("callq %s", x86_call_jmp_target(vtop));
+		out_asm("callq %s", jtarget);
+	}
 
 	if(ncleanup)
 		out_asm("addq $0x%x, %%rsp", ncleanup * platform_word_size());
