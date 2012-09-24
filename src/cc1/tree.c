@@ -237,7 +237,7 @@ const char *type_store_to_str(const enum type_storage s)
 	return NULL;
 }
 
-const char *type_qual_to_str(const enum type_qualifier qual)
+char *type_qual_to_str(const enum type_qualifier qual)
 {
 	static char buf[32];
 	/* trailing space is purposeful */
