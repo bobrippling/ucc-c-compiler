@@ -718,8 +718,8 @@ void impl_cast(decl *from, decl *to)
 			x86_reg_str_r(buf_from, vtop->bits.reg, from);
 
 			if(!is_signed
-			&& (to   ? decl_size(to)   : type_primitive_size(type_intptr)) > int_sz
-			&& (from ? decl_size(from) : type_primitive_size(type_intptr)) == int_sz)
+			&& (to   ? decl_size(to)   : type_primitive_size(type_intptr_t)) > int_sz
+			&& (from ? decl_size(from) : type_primitive_size(type_intptr_t)) == int_sz)
 			{
 				/*
 				 * movzx %eax, %rax is invalid
@@ -763,7 +763,12 @@ static const char *x86_call_jmp_target(struct vstack *vp)
 		case REG:
 		case CONST:
 			strcpy(buf, "*%");
-			v_to_reg(vp);
+			v_to_reg(vp); /* again, v_to_reg_preferred(), except that we don't want a reg */
+			if(vp->bits.reg == REG_A){
+				int r = v_unused_reg(1);
+				impl_reg_cp(vp, r);
+				vp->bits.reg = r;
+			}
 			reg_str_r(buf + 2, vp);
 
 			return buf;
@@ -813,6 +818,8 @@ void impl_jcond(int true, const char *lbl)
 
 void impl_call(const int nargs, decl *d_ret, decl *d_func)
 {
+#define INC_NFLOATS(d) if(d && decl_is_floating(d)) ++nfloats
+
 	int i, ncleanup;
 	int nfloats = 0;
 
@@ -823,8 +830,7 @@ void impl_call(const int nargs, decl *d_ret, decl *d_func)
 		if(ri != -1)
 			v_freeup_reg(ri, 1);
 
-		if(decl_is_floating(vtop->d))
-			++nfloats;
+		INC_NFLOATS(vtop->d);
 
 		x86_load(vtop, call_reg_str(i, vtop->d));
 		vpop();
@@ -832,8 +838,7 @@ void impl_call(const int nargs, decl *d_ret, decl *d_func)
 	/* push remaining args onto the stack */
 	ncleanup = nargs - i;
 	for(; i < nargs; i++){
-		if(decl_is_floating(vtop->d))
-			++nfloats;
+		INC_NFLOATS(vtop->d);
 
 		/* can't push non-word sized vtops */
 		if(vtop->d && decl_size(vtop->d) != platform_word_size())
@@ -853,14 +858,16 @@ void impl_call(const int nargs, decl *d_ret, decl *d_func)
 			v_save_reg(&vstack[i]);
 
 	{
+		const char *jtarget = x86_call_jmp_target(vtop);
+
 		funcargs *args = decl_funcargs(d_func);
 
 		/* if x(...) or x() */
 		if(args->variadic || (!args->arglist && !args->args_void))
-			out_asm("movb $%d, %%al", nfloats);
-	}
+			out_asm("movb $%d, %%al", nfloats); /* we can never have a funcptr in rax, so we're fine */
 
-	out_asm("callq %s", x86_call_jmp_target(vtop));
+		out_asm("callq %s", jtarget);
+	}
 
 	if(ncleanup)
 		impl_free_stack(ncleanup * platform_word_size());

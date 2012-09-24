@@ -61,6 +61,7 @@ struct
 
 	{ 0, "loss-of-precision", WARN_LOSS_PRECISION                   },
 
+	/* TODO: W_QUAL (ops/expr_cast) */
 
 #if 0
 	/* TODO */

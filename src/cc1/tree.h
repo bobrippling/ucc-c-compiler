@@ -38,9 +38,9 @@ enum type_primitive
 	type_union,
 	type_enum,
 
-	/* x64 specific */
-#define type_intptr type_long
-#define type_ptrdiff type_long
+	/* implicitly unsigned */
+	type_intptr_t,
+	type_ptrdiff_t,
 
 	type_unknown
 };
@@ -100,8 +100,8 @@ const char *op_to_str(  const enum op_type o);
 const char *type_to_str(const type *t);
 
 const char *type_primitive_to_str(const enum type_primitive);
-const char *type_qual_to_str(     const enum type_qualifier);
 const char *type_store_to_str(    const enum type_storage);
+      char *type_qual_to_str(     const enum type_qualifier);
 
 int op_is_relational(enum op_type o);
 int op_can_compound(enum op_type o);

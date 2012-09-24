@@ -57,6 +57,20 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 				decl_to_str(dlhs), size_lhs,
 				buf, size_rhs);
 	}
+
+#ifdef W_QUAL
+	if(decl_is_ptr(dlhs) && decl_is_ptr(drhs) && (dlhs->type->qual | drhs->type->qual) != dlhs->type->qual){
+		const enum type_qualifier away = drhs->type->qual & ~dlhs->type->qual;
+		char *buf = type_qual_to_str(away);
+		char *p;
+
+		p = &buf[strlen(buf)-1];
+		if(p >= buf && *p == ' ')
+			*p = '\0';
+
+		WARN_AT(&e->where, "casting away qualifiers (%s)", buf);
+	}
+#endif
 }
 
 void fold_expr_cast(expr *e, symtable *stab)
