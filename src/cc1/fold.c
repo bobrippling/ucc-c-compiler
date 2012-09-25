@@ -554,7 +554,9 @@ void fold_funcargs(funcargs *fargs, symtable *stab, char *context)
 			int unknown;
 
 			/* convert any array definitions and functions to pointers */
-			decl_conv_array_func_to_ptr(d); /* must be before the decl is folded (since fold checks this) */
+			EOF_WHERE(&d->where,
+				decl_conv_array_func_to_ptr(d) /* must be before the decl is folded (since fold checks this) */
+			);
 
 			/* if we have an unknown, save it */
 			unknown = d->type->primitive == type_unknown;
