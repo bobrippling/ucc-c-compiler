@@ -1,8 +1,11 @@
 DIRS = assignment/ blocks/ decl_parsing/ inline/ lib/ structs/ type_parsing/ other/
 MAKEFILES = ${DIRS:/=/Makefile}
 
-test: makefiles ${DIRS:/=/test}
+test: ucc makefiles ${DIRS:/=/test}
 	@echo All Tests + Purposeful Failures Succeeded
+
+ucc:
+	@cd ../src && make
 
 makefiles: ${MAKEFILES}
 clean: makefiles ${DIRS:/=/clean}
@@ -22,4 +25,4 @@ ${MAKEFILES}: make_gen.pl
 %/clean:
 	make -C$* clean
 
-.PHONY: all clean test gen
+.PHONY: all clean test gen ucc
