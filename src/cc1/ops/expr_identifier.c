@@ -63,6 +63,14 @@ void fold_expr_identifier(expr *e, symtable *stab)
 	}else{
 		e->tree_type = decl_copy(e->sym->decl);
 
+#if 0
+Except when it is the operand of the sizeof operator or the unary
+& operator, or is a string literal used to initialize an array, an
+expression that has type `array of type` is converted to an expression
+with type `pointer to type` that points to the initial element of the
+array object and is not an lvalue.
+#endif
+
 		if(e->sym->type == sym_local
 		&& !type_store_static_or_extern(e->sym->decl->type->store)
 		&& !decl_has_array(e->sym->decl)
