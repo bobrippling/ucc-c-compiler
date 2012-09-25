@@ -2,6 +2,8 @@
 #include "ops.h"
 #include "../out/asm.h"
 #include "../sue.h"
+#include "expr_addr.h"
+#include "../data_store.h"
 
 const char *str_expr_identifier()
 {
@@ -26,21 +28,25 @@ void fold_expr_identifier(expr *e, symtable *stab)
 {
 	if(!e->sym){
 		if(!strcmp(e->spel, "__func__")){
+			char *sp;
+			int len;
+
 			/* mutate into a string literal */
 			expr_mutate_wrapper(e, addr);
 
-			ICE("TODO: __func__ with store");
-#if 0
-			e->array_store = array_decl_new();
+			if(!curdecl_func){
+				WARN_AT(&e->where, "__func__ is not defined outside of functions");
+				sp = "";
+				len = 0;
+			}else{
+				sp = curdecl_func->spel;
+				len = strlen(curdecl_func->spel);
+			}
 
-			UCC_ASSERT(curdecl_func, "no spel for current func");
-			e->array_store->data.str = curdecl_func->spel;
-			e->array_store->len = strlen(curdecl_func->spel) + 1; /* +1 - take the null byte */
-
-			e->array_store->type = array_str;
+			expr_mutate_addr_data(e, sp, len + 1);
+			/* +1 - take the null byte */
 
 			fold_expr(e, stab);
-#endif
 		}else{
 			/* check for an enum */
 			struct_union_enum_st *sue;
@@ -58,10 +64,17 @@ void fold_expr_identifier(expr *e, symtable *stab)
 
 			e->tree_type->type->primitive = type_enum;
 			e->tree_type->type->sue = sue;
-			return;
 		}
 	}else{
 		e->tree_type = decl_copy(e->sym->decl);
+
+#if 0
+Except when it is the operand of the sizeof operator or the unary
+& operator, or is a string literal used to initialize an array, an
+expression that has type `array of type` is converted to an expression
+with type `pointer to type` that points to the initial element of the
+array object and is not an lvalue.
+#endif
 
 		if(e->sym->type == sym_local
 		&& !type_store_static_or_extern(e->sym->decl->type->store)

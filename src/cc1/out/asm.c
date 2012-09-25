@@ -145,6 +145,10 @@ int asm_type_size(decl *d)
 
 		if(sue && !decl_is_ptr(d))
 			return sue_size(sue);
+
+		/* func ptr */
+		if(decl_is_fptr(d) || decl_is_func(d))
+			d = NULL; /* continue */
 	}
 
 	return asm_type_table[asm_table_lookup(d)].sz;

@@ -137,7 +137,7 @@ expr *expr_new_block(decl *rt, funcargs *args, stmt *code);
 expr *expr_new_deref(expr *);
 expr *expr_new_struct(expr *sub, int dot, expr *ident);
 
-expr *expr_new_addr_data(data_store *);
+expr *expr_new_addr_str(char *s, int len);
 #define expr_new_addr() expr_new_wrapper(addr)
 
 #define expr_new_comma() expr_new_wrapper(comma)

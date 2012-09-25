@@ -544,12 +544,16 @@ void out_deref()
 				decl_to_str(expr_deref_what(e)->tree_type),
 				decl_to_str_r(buf, e->tree_type));*/
 
+change_decl:
 			out_change_decl(indir);
 			return;
 		}
 
 		decl_free(indir);
 	}
+
+	if(decl_is_fptr(vtop->d)) /* noop */
+		goto change_decl;
 
 	switch(vtop->type){
 		case FLAG:
