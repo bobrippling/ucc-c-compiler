@@ -28,12 +28,22 @@ void fold_expr_identifier(expr *e, symtable *stab)
 {
 	if(!e->sym){
 		if(!strcmp(e->spel, "__func__")){
+			char *sp;
+			int len;
+
 			/* mutate into a string literal */
 			expr_mutate_wrapper(e, addr);
 
-			UCC_ASSERT(curdecl_func, "no spel for current func");
+			if(!curdecl_func){
+				WARN_AT(&e->where, "__func__ is not defined outside of functions");
+				sp = "";
+				len = 0;
+			}else{
+				sp = curdecl_func->spel;
+				len = strlen(curdecl_func->spel);
+			}
 
-			expr_mutate_addr_data(e, curdecl_func->spel, strlen(curdecl_func->spel) + 1);
+			expr_mutate_addr_data(e, sp, len + 1);
 			/* +1 - take the null byte */
 
 			fold_expr(e, stab);
