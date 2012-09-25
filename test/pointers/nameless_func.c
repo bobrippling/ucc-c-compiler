@@ -2,12 +2,15 @@ f(int(int*));
 
 f(int x(int *))
 {
-        return x(5);
+	return x(5);
 }
 
-g(int *);
+g(int *p)
+{
+	return 3;
+}
 
 main()
 {
-        f(g);
+	return f(g);
 }
