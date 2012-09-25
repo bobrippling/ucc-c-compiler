@@ -1,11 +1,9 @@
 DIRS = assignment/ blocks/ decl_parsing/ inline/ lib/ structs/ type_parsing/ other/
 MAKEFILES = ${DIRS:/=/Makefile}
 
-test: ucc makefiles ${DIRS:/=/test}
+# we assume ucc/cc1/cpp are up to date
+test: makefiles ${DIRS:/=/test}
 	@echo All Tests + Purposeful Failures Succeeded
-
-ucc:
-	@cd ../src && make
 
 makefiles: ${MAKEFILES}
 clean: makefiles ${DIRS:/=/clean}
