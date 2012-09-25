@@ -55,6 +55,43 @@ void print_expr_val(expr *e)
 	fprintf(cc1_out, "%ld", iv.val);
 }
 
+void print_decl_init(decl_init *di)
+{
+	switch(di->type){
+		case decl_init_scalar:
+			print_expr(di->bits.expr);
+			break;
+
+		case decl_init_brace:
+		{
+			decl_init *s;
+			int i;
+
+			for(i = 0; (s = di->bits.inits[i]); i++){
+				const int need_brace = decl_init_is_brace(s);
+
+				/* ->member not printed */
+#ifdef DINIT_WITH_STRUCT
+				if(s->spel)
+					idt_printf(".%s", s->spel);
+				else
+#endif
+					idt_printf("[%d]", i);
+
+				fprintf(cc1_out, " = %s\n", need_brace ? "{" : "");
+
+				gen_str_indent++;
+				print_decl_init(s);
+				gen_str_indent--;
+
+				if(need_brace)
+					idt_printf("}\n");
+			}
+			break;
+		}
+	}
+}
+
 void print_decl_desc_eng(decl_desc *dp)
 {
 	if(dp->child)
@@ -252,16 +289,16 @@ void print_decl(decl *d, enum pdeclargs mode)
 			fprintf(cc1_out, " incomplete array in decl");
 		}else{
 			const int sz = decl_size(d);
-			fprintf(cc1_out, " size 0x%x, %d words", sz, sz / platform_word_size());
+			fprintf(cc1_out, " size %d bytes. %d platform-word(s)", sz, sz / platform_word_size());
 		}
 	}
 
 	if(mode & PDECL_NEWLINE)
 		fputc('\n', cc1_out);
 
-	if(mode & PDECL_PINIT){
+	if(d->init && mode & PDECL_PINIT){
 		gen_str_indent++;
-		print_expr(d->init);
+		print_decl_init(d->init);
 		gen_str_indent--;
 	}
 
@@ -405,27 +442,6 @@ void print_stmt_flow(stmt_flow *t)
 	gen_str_indent--;
 }
 
-void print_decl_array_init(decl *d)
-{
-	array_decl *init = d->init->array_store;
-
-	switch(init->type){
-		case array_str:
-			idt_printf("\"");
-			literal_print(cc1_out, init->data.str, init->len);
-			fputs("\"\n", cc1_out);
-			break;
-
-		case array_exprs:
-		{
-			int i;
-			for(i = 0; i < init->len; i++)
-				idt_printf("[%d] = %d\n", i, init->data.exprs[i]->val.iv.val);
-			break;
-		}
-	}
-}
-
 void print_stmt(stmt *t)
 {
 	idt_printf("statement: %s\n", t->f_str());
@@ -441,7 +457,7 @@ void print_stmt(stmt *t)
 	PRINT_IF(t, rhs,  print_stmt);
 	PRINT_IF(t, rhs,  print_stmt);
 
-	if(t->symtab && has_st_en_tdef(t->symtab)){
+	if(stmt_kind(t, code) && t->symtab && has_st_en_tdef(t->symtab)){
 		idt_printf("structs, enums and tdefs in this block:\n");
 		gen_str_indent++;
 		print_st_en_tdef(t->symtab);
@@ -462,13 +478,8 @@ void print_stmt(stmt *t)
 					| PDECL_NEWLINE
 					| PDECL_SYM_OFFSET
 					| PDECL_PISDEF
-					| PDECL_ATTR);
-
-			if(decl_is_array(d) && d->init && d->init->array_store){
-				gen_str_indent++;
-				print_decl_array_init(d);
-				gen_str_indent--;
-			}
+					| PDECL_ATTR
+					| PDECL_PINIT);
 			gen_str_indent--;
 		}
 	}
@@ -499,15 +510,7 @@ void gen_str(symtable *symtab)
 				| PDECL_PISDEF
 				| PDECL_FUNC_DESCEND
 				| PDECL_SIZE
+				| PDECL_PINIT
 				| PDECL_ATTR);
-
-		if(d->init){
-			idt_printf("init:\n");
-			gen_str_indent++;
-			print_expr(d->init);
-			gen_str_indent--;
-		}
-
-		fputc('\n', cc1_out);
 	}
 }

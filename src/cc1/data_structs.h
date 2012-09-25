@@ -12,25 +12,26 @@ struct intval
 
 enum op_type
 {
+	/* maths */
 	op_multiply,
 	op_divide,
 	op_plus,
 	op_minus,
 	op_modulus,
-	op_deref,
 
-	op_eq, op_ne,
-	op_le, op_lt,
-	op_ge, op_gt,
-
+	/* binary */
 	op_xor,
 	op_or,   op_and,
 	op_orsc, op_andsc,
 	op_not,  op_bnot,
 
+	/* shift */
 	op_shiftl, op_shiftr,
 
-	op_struct_ptr, op_struct_dot,
+	/* comparison */
+	op_eq, op_ne,
+	op_le, op_lt,
+	op_ge, op_gt,
 
 	op_unknown
 };

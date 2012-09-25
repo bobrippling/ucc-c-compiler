@@ -1,8 +1,13 @@
 updated bugs/ and test/
 
+asm_backend_recode:
+	local static variables
+	op_struct_* and op_deref into their own expressions
+
 ---------------------------------------------------- cc1
 
 const-fold: change interface and checking of ->val.iv.val to more explicit code
+            also need type casts for overflows, etc
 
 _Generic const-ify
 

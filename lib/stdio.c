@@ -11,7 +11,6 @@
 
 #define FILE_FUN(f) ((f)->f_read || (f)->f_write)
 
-#define PRINTF_OPTIMISE
 #define PRINTF_ENABLE_PADDING
 
 struct __FILE
@@ -256,7 +255,7 @@ int fseek(FILE *stream, long offset, int whence)
 		return -1;
 	}
 
-	return lseek(fileno(stream), offset, whence);
+	return (int)lseek(fileno(stream), offset, whence);
 }
 
 long ftell(FILE *stream)
@@ -271,7 +270,7 @@ void rewind(FILE *stream)
 
 int fgetpos(FILE *stream, fpos_t *pos)
 {
-	fpos_t p = ftell(stream);
+	fpos_t p = (fpos_t)ftell(stream);
 
 	if(p == (fpos_t)-1)
 		return -1;
@@ -302,7 +301,7 @@ int putchar(int c)
 
 size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream)
 {
-	int n;
+	ssize_t n;
 
 	if(FILE_FUN(stream)){
 		if(stream->f_read)
@@ -318,14 +317,14 @@ size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream)
 	}else if(n < 0){
 		stream->status = file_status_err;
 	}else{
-		return n;
+		return (size_t)n;
 	}
 	return 0;
 }
 
 size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream)
 {
-	int n;
+	ssize_t n;
 
 	if(FILE_FUN(stream)){
 		if(stream->f_write)
@@ -336,7 +335,7 @@ size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream)
 	}
 
 	n = write(fileno(stream), ptr, size * nmemb);
-	return n > 0 ? n : 0;
+	return n > 0 ? (size_t)n : 0;
 }
 
 int vfprintf(FILE *file, const char *fmt, va_list ap)
@@ -514,7 +513,7 @@ int fgetc(FILE *f)
 
 char *fgets(char *s, int l, FILE *f)
 {
-	int r;
+	size_t r;
 
 	r = fread(s, l - 1, 1, f);
 

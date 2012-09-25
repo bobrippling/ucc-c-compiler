@@ -19,6 +19,7 @@
 #include "gen_style.h"
 #include "sym.h"
 #include "fold_sym.h"
+#include "out/out.h"
 
 struct
 {
@@ -58,6 +59,9 @@ struct
 
 	{ 0, "mixed-code-decls", WARN_MIXED_CODE_DECLS                  },
 
+	{ 0, "loss-of-precision", WARN_LOSS_PRECISION                   },
+
+	/* TODO: W_QUAL (ops/expr_cast) */
 
 #if 0
 	/* TODO */
@@ -89,10 +93,11 @@ struct
 /* --- options --- */
 
 	{ 1,  "enable-asm",    FOPT_ENABLE_ASM      },
-	{ 1,  "strict-types",  FOPT_STRICT_TYPES    },
 	{ 1,  "const-fold",    FOPT_CONST_FOLD      },
 	{ 1,  "english",       FOPT_ENGLISH         },
 	{ 1,  "show-line",     FOPT_SHOW_LINE       },
+	{ 1,  "pic",           FOPT_PIC             },
+	{ 1,  "pic-pcrel",     FOPT_PIC_PCREL       },
 
 	{ 0,  NULL, 0 }
 };
@@ -118,10 +123,13 @@ enum warning warn_mode = ~(
 		| WARN_IMPLICIT_INT
 		| WARN_INCOMPLETE_USE
 		| WARN_OPT_POSSIBLE
+		| WARN_LOSS_PRECISION
 		);
 
-enum fopt    fopt_mode = FOPT_CONST_FOLD | FOPT_SHOW_LINE;
+enum fopt    fopt_mode = FOPT_CONST_FOLD | FOPT_SHOW_LINE | FOPT_PIC;
 enum cc1_backend cc1_backend = BACKEND_ASM;
+
+int m32 = 0;
 
 int cc1_max_errors = 16;
 
@@ -129,8 +137,14 @@ int caught_sig = 0;
 
 int show_current_line;
 
+#include "../as_cfg.h"
+#define QUOTE(...) #__VA_ARGS__
+#define EXPAND_QUOTE(y) QUOTE(y)
+
 const char *section_names[NUM_SECTIONS] = {
-	"text", "data", "bss"
+	EXPAND_QUOTE(SECTION_TEXT),
+	EXPAND_QUOTE(SECTION_DATA),
+	EXPAND_QUOTE(SECTION_BSS),
 };
 
 
@@ -217,9 +231,18 @@ void io_setup(void)
 	atexit(io_cleanup);
 }
 
-void io_fin(int do_sections)
+void io_fin(int do_sections, const char *fname)
 {
 	int i;
+
+#if 0
+	if(do_sections){
+		if(fprintf(cc1_out, "\t.file \"%s\"\n", fname) < 0)
+			ccdie(0, "write to cc1_out:");
+	}
+#else
+	(void)fname;
+#endif
 
 	for(i = 0; i < NUM_SECTIONS; i++){
 		/* cat cc_out[i] to cc1_out, with section headers */
@@ -230,7 +253,7 @@ void io_fin(int do_sections)
 			if(last == -1 || fseek(cc_out[i], 0, SEEK_SET) == -1)
 				ccdie(0, "seeking on section file %d:", i);
 
-			if(fprintf(cc1_out, "section .%s\n", section_names[i]) < 0)
+			if(fprintf(cc1_out, ".section %s\n", section_names[i]) < 0)
 				ccdie(0, "write to cc1 output:");
 
 			while(fgets(buf, sizeof buf, cc_out[i]))
@@ -297,6 +320,16 @@ int main(int argc, char **argv)
 
 		}else if(!strcmp(argv[i], "-w")){
 			warn_mode = WARN_NONE;
+
+		}else if(!strncmp(argv[i], "-m", 2)){
+			int n;
+
+			if(sscanf(argv[i] + 2, "%d", &n) != 1 || (n != 32 && n != 64)){
+				fprintf(stderr, "-m needs either 32 or 64\n");
+				goto usage;
+			}
+
+			m32 = n == 32;
 
 		}else if(argv[i][0] == '-' && (argv[i][1] == 'W' || argv[i][1] == 'f')){
 			const int fopt = argv[i][1] == 'f';
@@ -366,7 +399,7 @@ unrecognised:
 			fname = argv[i];
 		}else{
 usage:
-			ccdie(1, "Usage: %s [-W[no-]warning] [-f[no-]option] [-X backend] [-o output] file", *argv);
+			ccdie(1, "Usage: %s [-W[no-]warning] [-f[no-]option] [-X backend] [-m[32|64]] [-o output] file", *argv);
 		}
 	}
 
@@ -400,7 +433,7 @@ usage:
 		gf(globs);
 	}
 
-	io_fin(gf == gen_asm);
+	io_fin(gf == gen_asm, fname);
 
 	return 0;
 }

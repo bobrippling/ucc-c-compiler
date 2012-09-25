@@ -16,19 +16,31 @@ typedef struct type        type;
 typedef struct decl        decl;
 typedef struct decl_desc   decl_desc;
 typedef struct funcargs    funcargs;
-typedef struct array_decl  array_decl;
 typedef struct decl_attr   decl_attr;
 
+typedef struct decl_init   decl_init;
+typedef struct data_store  data_store;
 
 enum type_primitive
 {
-	type_int,
-	type_char,
 	type_void,
+	type__Bool,
+	type_char,
+	type_int,
+	type_short,
+	type_long,
+	type_llong,
+	type_float,
+	type_double,
+	type_ldouble,
 
 	type_struct,
 	type_union,
 	type_enum,
+
+	/* implicitly unsigned */
+	type_intptr_t,
+	type_ptrdiff_t,
 
 	type_unknown
 };
@@ -72,6 +84,13 @@ struct type
 	decl_attr *attr;
 };
 
+enum type_cmp
+{
+	TYPE_CMP_EXACT         = 1 << 0,
+	TYPE_CMP_QUAL          = 1 << 1,
+};
+
+
 type *type_new(void);
 type *type_copy(type *);
 
@@ -81,12 +100,13 @@ const char *op_to_str(  const enum op_type o);
 const char *type_to_str(const type *t);
 
 const char *type_primitive_to_str(const enum type_primitive);
-const char *type_qual_to_str(     const enum type_qualifier);
 const char *type_store_to_str(    const enum type_storage);
+      char *type_qual_to_str(     const enum type_qualifier);
 
-int op_is_cmp(enum op_type o);
+int op_is_relational(enum op_type o);
+int op_can_compound(enum op_type o);
 
-int   type_equal(const type *a, const type *b, int strict);
+int type_equal(const type *a, const type *b, enum type_cmp mode);
 int   type_size( const type *);
 int   type_primitive_size(enum type_primitive tp);
 funcargs *funcargs_new(void);
@@ -100,10 +120,18 @@ void funcargs_free(funcargs *args, int free_decls);
 
 #define type_free(x) free(x)
 
-#define EOF_WHERE(exp, code)         \
-	where *const eof_save = eof_where; \
-	eof_where = (exp);                 \
-	code;                              \
-	eof_where = eof_save
+/* tables local to the current scope */
+extern symtable *current_scope;
+intval *intval_new(long v);
+
+extern const where *eof_where;
+
+#define EOF_WHERE(exp, code)                 \
+	do{                                        \
+		const where *const eof_save = eof_where; \
+		eof_where = (exp);                       \
+		{ code; }                                \
+		eof_where = eof_save;                    \
+	}while(0)
 
 #endif

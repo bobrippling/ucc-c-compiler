@@ -52,9 +52,14 @@ struct statement
 	KEYWORD(while),
 	KEYWORD(for),
 
+	KEYWORD(void),
 	KEYWORD(char),
 	KEYWORD(int),
-	KEYWORD(void),
+	KEYWORD(short),
+	KEYWORD(long),
+	KEYWORD(float),
+	KEYWORD(double),
+	KEYWORD(_Bool),
 
 	KEYWORD(auto),
 	KEYWORD(static),
@@ -410,7 +415,28 @@ void nexttoken()
 		}
 #endif
 
-		curtok = token_integer;
+		if(peeknextchar() == '.'){
+			/* double or float */
+			int parts[2];
+			nextchar();
+
+			parts[0] = currentval.val;
+			read_number(DEC);
+			parts[1] = currentval.val;
+
+			if(peeknextchar() == 'f'){
+				nextchar();
+				/* FIXME: set currentval.suffix instead of token_{int,float,double} ? */
+				curtok = token_float;
+			}else{
+				curtok = token_double;
+			}
+
+			ICE("TODO: float/double repr (%d.%d)", parts[0], parts[1]);
+		}else{
+			curtok = token_integer;
+		}
+
 		return;
 	}
 

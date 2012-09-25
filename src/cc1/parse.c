@@ -167,62 +167,15 @@ expr *parse_expr_primary()
 		}
 
 		case token_string:
-		case token_open_block:
+		/*case token_open_block: - not allowed here */
 		{
-			expr *e = expr_new_addr();
+			char *s;
+			int l;
 
-			e->array_store = array_decl_new();
+			token_get_current_str(&s, &l);
+			EAT(token_string);
 
-			if(curtok == token_string){
-				char *s;
-				int l;
-
-				token_get_current_str(&s, &l);
-				EAT(token_string);
-
-				e->array_store->data.str = s;
-				e->array_store->len      = l;
-
-				e->array_store->type = array_str;
-			}else{
-				int struct_init;
-
-				EAT(token_open_block);
-
-				struct_init = curtok == token_dot;
-
-				for(;;){
-					expr *exp;
-					char *ident;
-
-					if(struct_init){
-						EAT(token_dot);
-						ident = token_current_spel();
-						EAT(token_identifier);
-						EAT(token_assign);
-
-					}
-					exp = parse_expr_no_comma();
-
-					dynarray_add((void ***)&e->array_store->data.exprs, exp);
-
-					if(struct_init)
-						dynarray_add((void ***)&e->array_store->struct_idents, ident);
-
-					if(accept(token_comma)){
-						if(accept(token_close_block)) /* { 1, } */
-							break;
-						continue;
-					}else{
-						EAT(token_close_block);
-						break;
-					}
-				}
-
-				e->array_store->len = dynarray_count((void *)e->array_store->data.exprs);
-				e->array_store->type = array_exprs;
-			}
-			return e;
+			return expr_new_addr_str(s, l);
 		}
 
 		case token__Generic:
@@ -237,7 +190,7 @@ expr *parse_expr_primary()
 				expr *e;
 
 				if((d = parse_decl_single(DECL_SPEL_NO))){
-					e = expr_new_cast(d);
+					e = expr_new_cast(d, 0);
 					EAT(token_close_paren);
 					e->expr = parse_expr_cast(); /* another cast */
 					return e;
@@ -275,7 +228,7 @@ expr *parse_expr_postfix()
 
 	for(;;){
 		if(accept(token_open_square)){
-			expr *sum, *deref;
+			expr *sum;
 
 			sum = expr_new_op(op_plus);
 
@@ -284,10 +237,7 @@ expr *parse_expr_postfix()
 
 			EAT(token_close_square);
 
-			deref = expr_new_op(op_deref);
-			deref->lhs  = sum;
-
-			e = deref;
+			e = expr_new_deref(sum);
 
 		}else if(accept(token_open_paren)){
 			expr *fcall = NULL;
@@ -307,23 +257,12 @@ expr *parse_expr_postfix()
 			e = fcall;
 
 		}else if((flag = accept(token_dot)) || accept(token_ptr)){
-			expr *st_op = expr_new_op(flag ? op_struct_dot : op_struct_ptr);
-
-			st_op->lhs = e;
-			st_op->rhs = parse_expr_identifier();
-
-			e = st_op;
+			e = expr_new_struct(e, flag, parse_expr_identifier());
 
 		}else if((flag = accept(token_increment)) || accept(token_decrement)){
-			expr *op = expr_new_op(flag ? op_plus : op_minus);
-			expr *inc = expr_new_assign(e, op);
+			e = expr_new_assign_compound(e, expr_new_val(1), flag ? op_plus : op_minus);
+			e->assign_is_post = 1;
 
-			inc->assign_is_post = 1;
-
-			op->lhs = e;
-			op->rhs = expr_new_val(1);
-
-			e = inc;
 		}else{
 			break;
 		}
@@ -338,36 +277,13 @@ expr *parse_expr_unary()
 	int flag;
 
 	if((flag = accept(token_increment)) || accept(token_decrement)){
-		/* this is a normal increment, i.e. ++x, simply translate it to x = x + 1 */
-		expr *op, *to;
+		/* this is a normal increment, i.e. ++x, simply translate it to x += 1 */
 
-		to = parse_expr_unary();
-		op = expr_new_op(flag ? op_plus : op_minus);
-		e = expr_new_assign(to, op);
+		e = expr_new_assign_compound(
+				parse_expr_unary(), /* lval */
+				expr_new_val(1),
+				flag ? op_plus : op_minus);
 
-		/* assign to... */
-		op->lhs = e->lhs;
-		op->rhs = expr_new_val(1);
-		/*
-		 * looks like this:
-		 *
-		 * e {
-		 *   type = assign
-		 *   lhs {
-		 *     "varname"
-		 *   }
-		 *   rhs {
-		 *     type = assign
-		 *     op   = op_plus
-		 *     lhs {
-		 *       "varname"
-		 *     }
-		 *     rhs {
-		 *       1
-		 *     }
-		 *   }
-		 * }
-		 */
 	}else{
 		switch(curtok){
 			case token_andsc:
@@ -383,8 +299,9 @@ expr *parse_expr_unary()
 				goto do_parse;
 
 			case token_multiply:
-				e = expr_new_op(op_deref);
-				goto do_parse;
+				EAT(curtok);
+				e = expr_new_deref(parse_expr_cast());
+				break;
 
 			case token_plus:
 			case token_minus:
@@ -474,25 +391,15 @@ expr *parse_expr_assignment()
 	e = parse_expr_conditional();
 
 	if(accept(token_assign)){
-		expr *from = parse_expr_assignment();
-		expr *ret  = expr_new_assign(e, from);
+		return expr_new_assign(e, parse_expr_assignment());
 
-		return ret;
-
-	}else if(curtok_is_augmented_assignment()){
-		/* +=, ... */
-		expr *added;
-		expr *ass;
-
-		added = expr_new_op(curtok_to_augmented_op());
-		ass = expr_new_assign(e, added);
+	}else if(curtok_is_compound_assignment()){
+		/* +=, ... - only evaluate the lhs once*/
+		enum op_type op = curtok_to_compound_op();
 
 		EAT(curtok);
 
-		added->lhs = e;
-		added->rhs = parse_expr_assignment();
-
-		e = ass;
+		return expr_new_assign_compound(e, parse_expr_assignment(), op);
 	}
 
 	return e;
@@ -586,13 +493,6 @@ stmt *parse_if()
 	if(t->flow)
 		current_scope = current_scope->parent;
 
-	return t;
-}
-
-stmt *expr_to_stmt(expr *e, symtable *scope)
-{
-	stmt *t = stmt_new_wrapper(expr, scope);
-	t->expr = e;
 	return t;
 }
 
@@ -717,62 +617,7 @@ void parse_static_assert(void)
 
 void parse_got_decls(decl **decls, stmt *codes_init)
 {
-	symtable *const scope = codes_init->symtab;
-	decl **diter;
-
 	dynarray_add_array((void ***)&codes_init->decls, (void **)decls);
-
-	/* backwards walk, since we prepend to codes_init->codes */
-	for(diter = decls; diter && *diter; diter++);
-
-	for(diter--; diter >= decls; diter--){
-		/* only extract the init if it's not static */
-		decl *d = *diter;
-
-		if(d->init){
-			if(decl_is_array(d)){
-#ifndef FANCY_STACK_INIT
-				/* assignment expr for each init */
-				array_decl *dinit = d->init->array_store;
-				int i;
-				expr *comma_init = NULL;
-
-				for(i = 0; i < dinit->len; i++){
-					long init_val;
-					expr *init;
-
-					if(dinit->type == array_exprs){
-						intval iv;
-						const_fold_need_val(dinit->data.exprs[i], &iv);
-						init_val = iv.val;
-					}else{
-						init_val = dinit->data.str[i];
-					}
-
-					init = expr_new_array_decl_init(d, init_val, i);
-
-					if(comma_init){
-						expr *new = expr_new_comma();
-						new->lhs = comma_init;
-						new->rhs = init;
-						comma_init = new;
-					}else{
-						comma_init = init;
-					}
-				}
-
-				dynarray_prepend((void ***)&codes_init->codes,
-						expr_to_stmt(comma_init, scope));
-#else
-				/* arrays handled elsewhere */
-#endif
-			}else{
-				dynarray_prepend((void ***)&codes_init->codes,
-						expr_to_stmt(expr_new_decl_init(d), scope));
-			}
-		}
-		/* don't change init - used for checks for assign-to-const */
-	}
 }
 
 stmt *parse_stmt_and_decls()
