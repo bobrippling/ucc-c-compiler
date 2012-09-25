@@ -561,10 +561,6 @@ decl *decl_ptr_depth_dec(decl *d, where *from)
 			last ? ")"  : "");
 	}
 
-	if(last->parent_desc && last->parent_desc->type == decl_desc_func)
-		/* dereferencing a function pointer - no change */
-		goto out;
-
 	if(last->parent_desc)
 		last->parent_desc->child = NULL;
 	else
@@ -572,7 +568,6 @@ decl *decl_ptr_depth_dec(decl *d, where *from)
 
 	decl_desc_free(last);
 
-out:
 	return d;
 }
 
