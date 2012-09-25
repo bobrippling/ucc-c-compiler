@@ -35,6 +35,18 @@ expr *fold_for_if_init_decls(stmt *s)
 
 		/* make the for-init a comma-exp with all our inits */
 		if(d->init){
+#define NEW_INIT_CODE
+
+#ifdef NEW_INIT_CODE
+			stmt *init_code;
+
+			ICW("C99-for-inits incomplete, prepare for crash...");
+
+			init_code = stmt_new_wrapper(code, s->flow->for_init_symtab);
+			fold_gen_init_assignment(d, init_code);
+
+			init_exp = expr_new_stmt(init_code);
+#else
 			expr *dinit = expr_new_decl_init(d, d->init);
 
 			if(init_exp){
@@ -45,6 +57,7 @@ expr *fold_for_if_init_decls(stmt *s)
 			}else{
 				init_exp = dinit;
 			}
+#endif
 		}
 	}
 
