@@ -444,6 +444,10 @@ decl *decl_ptr_depth_dec(decl *d, where *from)
 			last ? ")"  : "");
 	}
 
+	if(last->parent_desc && last->parent_desc->type == decl_desc_func)
+		/* dereferencing a function pointer - no change */
+		goto out;
+
 	if(depth == 0 && d->type->primitive == type_void)
 		DIE_AT(from, "can't dereference %s pointer", decl_to_str(d));
 
@@ -454,6 +458,7 @@ decl *decl_ptr_depth_dec(decl *d, where *from)
 
 	decl_desc_free(last);
 
+out:
 	return d;
 }
 
