@@ -1,0 +1,2 @@
+compile-error: fptr_assign.c
+compiles: nameless_func.c, fptr_parse.c
