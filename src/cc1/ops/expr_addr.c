@@ -123,9 +123,14 @@ void mutate_expr_addr(expr *e)
 void gen_expr_style_addr(expr *e, symtable *stab)
 { (void)e; (void)stab; /* TODO */ }
 
-expr *expr_new_addr_data(data_store *ds)
+void expr_mutate_addr_data(expr *e, char *s, int len)
+{
+	e->data_store = data_store_new_str(s, len);
+}
+
+expr *expr_new_addr_str(char *s, int len)
 {
 	expr *e = expr_new_wrapper(addr);
-	e->data_store = ds;
+	expr_mutate_addr_data(e, s, len);
 	return e;
 }

@@ -15,7 +15,6 @@
 #include "../util/dynarray.h"
 #include "sue.h"
 #include "parse_type.h"
-#include "data_store.h"
 #include "const.h"
 #include "ops/__builtin.h"
 
@@ -176,7 +175,7 @@ expr *parse_expr_primary()
 			token_get_current_str(&s, &l);
 			EAT(token_string);
 
-			return expr_new_addr_data(data_store_new_str(s, l));
+			return expr_new_addr_str(s, l);
 		}
 
 		case token__Generic:
