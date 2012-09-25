@@ -12,6 +12,9 @@ clean:
 cleanall: clean
 	./configure clean
 
+cleantest:
+	make -Ctest clean
+
 test: all
 	make -Ctest test
 
