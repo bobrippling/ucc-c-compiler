@@ -661,6 +661,10 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 				if(!last){
 					int warn = 0;
 
+					/* allow "int : 5;" */
+					if(curtok == token_colon)
+						goto got_field_width;
+
 					/* check for no-fwd and anon */
 					switch(t->primitive){
 						case type_enum:
@@ -747,6 +751,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 				}
 			}
 
+got_field_width:
 			dynarray_add(are_tdefs
 					? (void ***)&current_scope->typedefs
 					: (void ***)&decls,
@@ -770,10 +775,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 
 			if((mode & DECL_MULTI_ACCEPT_FIELD_WIDTH) && accept(token_colon)){
 				/* normal decl, check field spec */
-				d->field_width = currentval.val;
-				if(d->field_width <= 0)
-					DIE_AT(&d->where, "field width must be positive");
-				EAT(token_integer);
+				d->field_width = parse_expr_exp();
 			}
 
 			last = d;
