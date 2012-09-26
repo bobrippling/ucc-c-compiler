@@ -1,6 +1,6 @@
 DIRS = anywhere_decl/ assignment/ blocks/ builtin/ cil/ decl_parsing/ \
 	hai/ inline/ input/ lib/ messing around/ misc/ other/ parse/ pointers/ structs/ \
-	type_parsing/ Unsorted/
+	type_parsing/ Unsorted/ types/
 
 MAKEFILES = ${DIRS:/=/Makefile}
 
