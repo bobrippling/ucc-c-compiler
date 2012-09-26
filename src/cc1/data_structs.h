@@ -3,10 +3,12 @@ typedef struct intval intval;
 struct intval
 {
 	long val;
+	double dval;
 	enum
 	{
 		VAL_UNSIGNED = 1 << 0,
-		VAL_LONG     = 1 << 1
+		VAL_LONG     = 1 << 1,
+		VAL_DOUBLE   = 1 << 2
 	} suffix;
 };
 

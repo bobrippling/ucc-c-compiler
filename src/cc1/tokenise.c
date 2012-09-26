@@ -110,7 +110,7 @@ static struct line_list
 /* -- */
 enum token curtok, curtok_uneat;
 
-intval currentval = { 0, 0 }; /* an integer literal */
+intval currentval = { 0 }; /* an integer literal */
 
 char *currentspelling = NULL; /* e.g. name of a variable */
 
@@ -418,9 +418,15 @@ void nexttoken()
 		if(peeknextchar() == '.'){
 			/* double or float */
 			int parts[2];
+			int dec_padding = 0;
+
 			nextchar();
 
 			parts[0] = currentval.val;
+
+			while(*bufferpos == '0')
+				bufferpos++, dec_padding++;
+
 			read_number(DEC);
 			parts[1] = currentval.val;
 
@@ -432,7 +438,22 @@ void nexttoken()
 				curtok = token_double;
 			}
 
-			ICE("TODO: float/double repr (%d.%d)", parts[0], parts[1]);
+			/* e.g.
+			 * 12.34
+			 *
+			 * 12 + 34 * 10 ^ -2
+			 *
+			 * p0 + p1 * exp(10, strlen(sprintf(p1))
+			 */
+
+			{
+				char buf[32];
+
+				snprintf(buf, sizeof buf, "%d.%0*d", parts[0], dec_padding, parts[1]);
+				UCC_ASSERT(sscanf(buf, "%lf", &currentval.dval) == 1, "invalid float (%s)", buf);
+			}
+
+			ICE("TODO: float/double repr %d.%d = %f", parts[0], parts[1], currentval.dval);
 		}else{
 			curtok = token_integer;
 		}
