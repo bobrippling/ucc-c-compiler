@@ -622,10 +622,25 @@ void fold_decl(decl *d, symtable *stab)
 	}
 
 	if(d->field_width){
+		enum constyness type;
+		intval iv;
+		int width;
+
+		fold_expr(d->field_width, stab);
+		const_fold(d->field_width, &iv, &type);
+
+		width = iv.val;
+
+		if(type != CONST_WITH_VAL)
+			DIE_AT(&d->where, "constant expression required for field width");
+
+		if(width <= 0)
+			DIE_AT(&d->where, "field width must be positive");
+
 		if(!decl_is_integral(d))
 			DIE_AT(&d->where, "field width on non-integral type %s", decl_to_str(d));
 
-		if(d->field_width == 1 && d->type->is_signed)
+		if(width == 1 && d->type->is_signed)
 			WARN_AT(&d->where, "%s 1-bit field width is signed (-1 and 0)", decl_to_str(d));
 	}
 
