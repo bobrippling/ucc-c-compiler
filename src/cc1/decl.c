@@ -197,9 +197,14 @@ int decl_size(decl *d)
 	int mul = 1;
 
 	if(d->field_width){
+		intval iv;
+
 		ICW("use of struct field width - brace for incorrect code (%s)",
 				where_str(&d->where));
-		return d->field_width;
+
+		const_fold_need_val(d->field_width, &iv);
+
+		return iv.val;
 	}
 
 	if(d->desc){
