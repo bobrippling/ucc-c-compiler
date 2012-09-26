@@ -1,4 +1,4 @@
-DIRS = assignment/ blocks/ decl_parsing/ inline/ lib/ structs/ type_parsing/ other/ pointers/
+DIRS = assignment/ blocks/ decl_parsing/ inline/ lib/ structs/ type_parsing/ other/ pointers/ types/
 MAKEFILES = ${DIRS:/=/Makefile}
 
 # we assume ucc/cc1/cpp are up to date
