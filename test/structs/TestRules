@@ -1,1 +1,1 @@
-noop: monolith.c, just_pad.c
+noop: monolith.c
