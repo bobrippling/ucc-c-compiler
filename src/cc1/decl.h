@@ -102,7 +102,7 @@ struct decl
 	type *type;
 	char *spel, *spel_asm;
 
-	int field_width;
+	expr *field_width;
 
 	/* no funcargs on the decl - on a desc if it's a decl_desc_func */
 	decl_desc *desc;
