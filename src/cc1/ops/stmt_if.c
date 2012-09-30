@@ -21,7 +21,7 @@ symtable *fold_stmt_test_init_expr(stmt *s, const char *which)
 		if(!dinit)
 			DIE_AT(&s->where, "no initialiser to test in %s", which);
 
-		UCC_ASSERT(!s->expr, "%s-expr in c99_ucc %s-init mode", which, which);
+		UCC_ASSERT(!s->expr, "%s-expr in C99_ucc %s-init mode", which, which);
 
 		s->expr = dinit;
 		return s->flow->for_init_symtab;
