@@ -46,7 +46,7 @@ struct stmt_flow
 {
 	expr *for_init, *for_while, *for_inc;
 
-	decl    **for_init_decls;  /* c99 for initialisation (and ucc if-init) */
+	decl    **for_init_decls;  /* C99 for initialisation (and ucc if-init) */
 	symtable *for_init_symtab; /* for(int b;;){} - symtab for b */
 };
 

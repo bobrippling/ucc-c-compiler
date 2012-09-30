@@ -261,8 +261,6 @@ void fold_gen_init_assignment2(expr *base, decl *dfor, decl_init *init_from, stm
 						decl_to_str(dtmp), complete_to);
 
 				decl_free(dtmp);
-
-				WARN_AT(&init_from->where, "missing braces around initialiser");
 				break;
 			}
 
@@ -279,6 +277,9 @@ void fold_gen_init_assignment2(expr *base, decl *dfor, decl_init *init_from, stm
 		const int n_assignments = decl_inner_array_count(dfor);
 		int i_assignment;
 		decl *darray_deref;
+
+		/*if(pull_from_this_init)
+			WARN_AT(&init_from->where, "missing braces around initialiser");*/
 
 		darray_deref = decl_ptr_depth_dec(decl_copy_keep_array(dfor), &dfor->where);
 
@@ -303,7 +304,6 @@ void fold_gen_init_assignment2(expr *base, decl *dfor, decl_init *init_from, stm
 				int i_sub;
 
 				//fprintf(stderr, "from this init, inner_count %d\n", inner_count);
-
 				sub_init = decl_init_new(decl_init_brace);
 
 				for(i_sub = 0; i_sub < inner_count; i_sub++){

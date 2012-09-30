@@ -6,19 +6,6 @@
 #include "../out/lbl.h"
 
 
-#define FOR_BOTH(i, s, dcodes, code) \
-	dcodes = 0,                        \
-	i = s->inits;                      \
-restart:                             \
-	for(; i && *i; i++){               \
-		code;                            \
-	}                                  \
-	if(!dcodes){                       \
-		dcodes = 1,                      \
-		i = s->codes;                    \
-		goto restart;                    \
-	}
-
 const char *str_stmt_code()
 {
 	return "code";
@@ -51,6 +38,8 @@ void fold_stmt_code(stmt *s)
 				EOF_WHERE(&d->where,
 						fold_gen_init_assignment(d, s)
 					);
+
+				/* folded below */
 			}
 		}
 
@@ -142,7 +131,7 @@ void gen_stmt_code(stmt *s)
 	/* stmt_for needs to do this too */
 	gen_code_decls(s->symtab);
 
-	FOR_BOTH(titer, s, done_inits,
+	FOR_INIT_AND_CODE(titer, s, done_inits,
 		gen_stmt(*titer);
 	)
 }
@@ -154,7 +143,7 @@ static int code_passable(stmt *s)
 
 	/* note: check for inits which call noreturn funcs */
 
-	FOR_BOTH(i, s, done_inits,
+	FOR_INIT_AND_CODE(i, s, done_inits,
 		stmt *sub = *i;
 		if(!fold_passable(sub))
 			return 0;
