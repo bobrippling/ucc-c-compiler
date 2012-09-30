@@ -51,6 +51,8 @@ void fold_stmt_code(stmt *s)
 				EOF_WHERE(&d->where,
 						fold_gen_init_assignment(d, s)
 					);
+
+				/* folded below */
 			}
 		}
 

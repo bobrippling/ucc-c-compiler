@@ -33,12 +33,10 @@ expr *fold_for_if_init_decls(stmt *s)
 
 		SYMTAB_ADD(s->flow->for_init_symtab, d, sym_local);
 
-		/* make the for-init a comma-exp with all our inits */
+		/* make the for-init a expr-stmt with all our inits */
 		if(d->init){
-#define NEW_INIT_CODE
-
-#ifdef NEW_INIT_CODE
 			stmt *init_code;
+			stmt **inits;
 
 			ICW("C99-for-inits incomplete, prepare for crash...");
 
@@ -46,18 +44,12 @@ expr *fold_for_if_init_decls(stmt *s)
 			fold_gen_init_assignment(d, init_code);
 
 			init_exp = expr_new_stmt(init_code);
-#else
-			expr *dinit = expr_new_decl_init(d, d->init);
 
-			if(init_exp){
-				expr *comma = expr_new_comma(); /* change this to an &&-op for if(char *x = .., *y = ..) anding */
-				comma->lhs = init_exp;
-				comma->rhs = dinit;
-				init_exp = comma;
-			}else{
-				init_exp = dinit;
+			for(inits = init_code->inits; inits && *inits; inits++){
+				stmt *s = *inits;
+				fold_stmt(s);
+				s->expr_no_pop = 1; /* we need the value for the test */
 			}
-#endif
 		}
 	}
 
@@ -72,7 +64,7 @@ void fold_stmt_for(stmt *s)
 	if(s->flow->for_init_decls){
 		expr *init_exp = fold_for_if_init_decls(s);
 
-		UCC_ASSERT(!s->flow->for_init, "for init in c99 for-decl mode");
+		UCC_ASSERT(!s->flow->for_init, "for init in C99 for-decl mode");
 
 		s->flow->for_init = init_exp;
 	}
