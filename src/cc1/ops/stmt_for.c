@@ -38,8 +38,6 @@ expr *fold_for_if_init_decls(stmt *s)
 			stmt *init_code;
 			stmt **inits;
 
-			ICW("C99-for-inits incomplete, prepare for crash...");
-
 			init_code = stmt_new_wrapper(code, s->flow->for_init_symtab);
 			fold_gen_init_assignment(d, init_code);
 
@@ -48,7 +46,6 @@ expr *fold_for_if_init_decls(stmt *s)
 			for(inits = init_code->inits; inits && *inits; inits++){
 				stmt *s = *inits;
 				fold_stmt(s);
-				s->expr_no_pop = 1; /* we need the value for the test */
 			}
 		}
 	}
@@ -108,8 +105,12 @@ void gen_stmt_for(stmt *s)
 	/* don't else-if, possible to have both (comma-exp for init) */
 	if(s->flow->for_init){
 		gen_expr(s->flow->for_init, s->flow->for_init_symtab);
-		out_pop();
-		out_comment("unused for init");
+
+		/* only pop if it's an expression (i.e. not a C99 init) */
+		if(!s->flow->for_init_decls){
+			out_pop();
+			out_comment("unused for init");
+		}
 	}
 
 	out_label(lbl_test);
