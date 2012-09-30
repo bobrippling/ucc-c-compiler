@@ -449,9 +449,11 @@ fin:
 		vpop();
 
 	}else{
-		int div = 0;
+		int div;
 
 def:
+		div = 0;
+
 		switch(op){
 			case op_plus:
 			case op_minus:
