@@ -400,9 +400,12 @@ static void vtop2_are(
 static int calc_ptr_step(decl *d)
 {
 	if(!d)
-		return 1;
+		return 1; /* void * */
 
-	return type_primitive_size(decl_ptr_depth(d) > 1 ? type_ptrdiff_t : d->type->primitive);
+	if(decl_ptr_depth(d) > 1)
+		return decl_size(d);
+
+	return type_primitive_size(type_ptrdiff_t);
 }
 
 void out_op(enum op_type op)
