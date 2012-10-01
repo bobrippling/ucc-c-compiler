@@ -228,7 +228,7 @@ decl *decl_copy_keep_array(const decl *d)
 
 decl *decl_copy(const decl *d)
 {
-	return decl_copy_array(d, 1);
+	return decl_copy_array(d, 0);
 }
 
 int decl_size(decl *d)

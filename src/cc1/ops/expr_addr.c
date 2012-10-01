@@ -42,8 +42,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 		if(e->lhs->tree_type->type->store == store_register)
 			DIE_AT(&e->lhs->where, "can't take the address of register");
 
-		e->tree_type = decl_ptr_depth_inc(decl_copy(
-					e->lhs->sym ? e->lhs->sym->decl : e->lhs->tree_type));
+		e->tree_type = decl_ptr_depth_inc(decl_copy(e->lhs->tree_type));
 	}
 }
 
