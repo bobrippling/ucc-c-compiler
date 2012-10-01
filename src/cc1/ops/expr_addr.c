@@ -42,8 +42,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 		if(e->lhs->tree_type->type->store == store_register)
 			DIE_AT(&e->lhs->where, "can't take the address of register");
 
-		e->tree_type = decl_ptr_depth_inc(decl_copy(
-					e->lhs->sym ? e->lhs->sym->decl : e->lhs->tree_type));
+		e->tree_type = decl_ptr_depth_inc(decl_copy(e->lhs->tree_type));
 	}
 }
 
@@ -60,11 +59,7 @@ void gen_expr_addr(expr *e, symtable *stab)
 
 	}else{
 		/* address of possibly an ident "(&a)->b" or a struct expr "&a->b" */
-		if(expr_kind(e->lhs, struct))
-			UCC_ASSERT(!e->lhs->expr_is_st_dot, "not &x->y");
-		else
-			UCC_ASSERT(expr_kind(e->lhs, identifier) || expr_kind(e->lhs, deref),
-					"invalid addr");
+		UCC_ASSERT(expr_kind(e->lhs, identifier) || expr_kind(e->lhs, deref), "invalid addr");
 
 		lea_expr(e->lhs, stab);
 	}

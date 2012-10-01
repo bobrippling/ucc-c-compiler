@@ -539,22 +539,14 @@ void v_deref_decl(struct vstack *vp)
 
 void out_deref()
 {
+	out_comment("deref %s", decl_to_str(vtop->d));
 	if(decl_is_array(vtop->d)){
-		decl *indir = decl_ptr_depth_dec(decl_copy(vtop->d), NULL);
-
-		if(decl_is_array(indir)){
-			/*char buf[DECL_STATIC_BUFSIZ];
-
-				out_comment("array access - no deref (%s -> %s)",
-				decl_to_str(expr_deref_what(e)->tree_type),
-				decl_to_str_r(buf, e->tree_type));*/
+		decl *indir;
 
 change_decl:
-			out_change_decl(indir);
-			return;
-		}
-
-		decl_free(indir);
+		indir = decl_ptr_depth_dec(decl_copy(vtop->d), NULL);
+		out_change_decl(indir);
+		return;
 	}
 
 	if(decl_is_fptr(vtop->d)) /* noop */
