@@ -488,8 +488,12 @@ void handle_macro(char *line)
 	if(!tokens)
 		return;
 
-	if(tokens[0]->tok != TOKEN_WORD)
+	if(tokens[0]->tok != TOKEN_WORD){
+		if(should_noop())
+			return;
+
 		die("invalid preproc token");
+	}
 
 	DEBUG(DEBUG_NORM, "macro %s\n", tokens[0]->w);
 
@@ -508,16 +512,19 @@ void handle_macro(char *line)
 		goto fin;                    \
 	}
 
+	HANDLE(ifdef)
+	HANDLE(ifndef)
+	HANDLE(if)
+	HANDLE(else)
+	HANDLE(endif)
+
+	if(should_noop())
+		return; /* checked for flow control, nothing else so noop */
+
 	HANDLE(include)
 
 	HANDLE(define)
 	HANDLE(undef)
-
-	HANDLE(ifdef)
-	HANDLE(ifndef)
-	HANDLE(else)
-	HANDLE(endif)
-	HANDLE(if)
 
 	HANDLE(warning)
 	HANDLE(error)
