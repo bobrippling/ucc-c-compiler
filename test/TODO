@@ -9,3 +9,4 @@ misc/
 parse/
 Unsorted/
 structs/just_pad.c
+clang/*

@@ -11,26 +11,24 @@
 
 static void vm_show_v(struct vstack *vs)
 {
+#define BP_TO_STR(bp) bp < 0 ? "-" : "", abs(bp)
 	switch(vs->type){
 		case CONST:
-			fprintf(cc1_out, "%d\n", vs->bits.val);
+			fprintf(cc1_out, "val %d\n", vs->bits.val);
 			break;
 		case REG:
 			fprintf(cc1_out, "reg %d\n", vs->bits.reg);
 			break;
-		case STACK:
-			fprintf(cc1_out, "on stack, at 0x%x\n", vs->bits.off_from_bp);
+		case STACK_SAVE:
+			fprintf(cc1_out, "stack save %s0x%x\n", BP_TO_STR(vs->bits.off_from_bp));
 			break;
-		case STACK_ADDR:
-			fprintf(cc1_out, "&stack 0x%x\n", vs->bits.off_from_bp);
+		case STACK:
+			fprintf(cc1_out, "&stack %s0x%x\n", BP_TO_STR(vs->bits.off_from_bp));
 			break;
 		case FLAG:
 			fprintf(cc1_out, "flag %d\n", vs->bits.flag);
 			break;
 		case LBL:
-			fprintf(cc1_out, "lbl %s\n", vs->bits.lbl.str);
-			break;
-		case LBL_ADDR:
 			fprintf(cc1_out, "&lbl %s\n", vs->bits.lbl.str);
 			break;
 	}
@@ -45,17 +43,17 @@ void impl_comment(const char *fmt, va_list l)
 
 void impl_store(struct vstack *from, struct vstack *to)
 {
-	fprintf(cc1_out, "store:\n");
-	vm_show_v(to);
-	fprintf(cc1_out, "in:\n");
+	fprintf(cc1_out, "store:\n\t");
 	vm_show_v(from);
+	fprintf(cc1_out, "to:\n\t");
+	vm_show_v(to);
 }
 
 void impl_load(struct vstack *from, int reg)
 {
-	fprintf(cc1_out, "store:\n");
+	fprintf(cc1_out, "store:\n\t");
 	vm_show_v(from);
-	fprintf(cc1_out, "in reg %d\n", reg);
+	fprintf(cc1_out, "... in reg %d\n", reg);
 }
 
 void impl_reg_cp(struct vstack *from, int r)
@@ -94,11 +92,11 @@ static const char *jmp_target(void)
 {
 	static char buf[16];
 
-	if(vtop->type == LBL_ADDR)
+	if(vtop->type == LBL)
 		return vtop->bits.lbl.str;
 
 	v_to_reg(vtop);
-	snprintf(buf, sizeof buf, "*%d", vtop->bits.reg);
+	snprintf(buf, sizeof buf, "*reg_%d", vtop->bits.reg);
 
 	return buf;
 }
@@ -122,11 +120,10 @@ void impl_cast(decl *from, decl *to)
 			decl_to_str_r(buf, to), decl_to_str(from));
 }
 
-void impl_call(int nargs, int variadic, decl *d)
+void impl_call(int nargs, decl *d_ret, decl *d_func)
 {
-	(void)variadic;
-	(void)d;
-
+	(void)d_ret;
+	(void)d_func;
 	fprintf(cc1_out, "%d args\n", nargs);
 	while(nargs --> 0)
 		vpop();
@@ -141,7 +138,7 @@ void impl_call_fin(int nargs)
 
 void impl_lbl(const char *lbl)
 {
-	fprintf(cc1_out, "%s:\n", lbl);
+	fprintf(cc1_out, "label %s\n", lbl);
 }
 
 int impl_alloc_stack(int sz)
@@ -169,4 +166,16 @@ void impl_pop_func_ret(decl *d)
 	(void)d;
 	fprintf(cc1_out, "func ret\n");
 	vpop();
+}
+
+void impl_undefined(void)
+{
+	fprintf(cc1_out, "<undefined trap>\n");
+}
+
+int impl_frame_ptr_to_reg(int nframes)
+{
+	int r = v_unused_reg(1);
+	fprintf(cc1_out, "frame ptr %d to reg %d\n", nframes, r);
+	return r;
 }
