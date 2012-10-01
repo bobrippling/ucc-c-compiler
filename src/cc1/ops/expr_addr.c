@@ -60,11 +60,7 @@ void gen_expr_addr(expr *e, symtable *stab)
 
 	}else{
 		/* address of possibly an ident "(&a)->b" or a struct expr "&a->b" */
-		if(expr_kind(e->lhs, struct))
-			UCC_ASSERT(!e->lhs->expr_is_st_dot, "not &x->y");
-		else
-			UCC_ASSERT(expr_kind(e->lhs, identifier) || expr_kind(e->lhs, deref),
-					"invalid addr");
+		UCC_ASSERT(expr_kind(e->lhs, identifier) || expr_kind(e->lhs, deref), "invalid addr");
 
 		lea_expr(e->lhs, stab);
 	}
