@@ -26,6 +26,9 @@
 #define REG_C 2
 #define REG_D 3
 
+#define N_REGS 4
+#define N_CALL_REGS 6
+
 #define REG_RET REG_A
 
 #define VSTACK_STR_SZ 128
@@ -86,13 +89,13 @@ static void out_asm2(enum p_opts opts, const char *fmt, ...)
 	va_end(l);
 }
 
-void impl_comment(const char *fmt, va_list l)
+static void comment(const char *fmt, va_list l)
 {
 	out_asm2(P_NO_NL, "// ");
 	out_asmv(P_NO_INDENT, fmt, l);
 }
 
-void impl_lbl(const char *lbl)
+static void lbl(const char *lbl)
 {
 	out_asm2(P_NO_INDENT, "%s:", lbl);
 }
@@ -172,7 +175,7 @@ static const char *vstack_str_ptr(struct vstack *vs, int ptr)
 	return vstack_str_r_ptr(buf, vs, ptr);
 }
 
-int impl_alloc_stack(int sz)
+static int alloc_stack(int sz)
 {
 	static int word_size;
 	/* sz must be a multiple of word_size */
@@ -208,7 +211,7 @@ const char *call_reg_str(int i, decl *d)
 	return buf;
 }
 
-void impl_func_prologue(int stack_res, int nargs, int variadic)
+static void func_prologue(int stack_res, int nargs, int variadic)
 {
 	int arg_idx;
 
@@ -262,14 +265,14 @@ void impl_func_prologue(int stack_res, int nargs, int variadic)
 	}
 }
 
-void impl_func_epilogue(void)
+static void func_epilogue(void)
 {
 	out_asm("leaveq");
 	stack_sz = 0;
 	out_asm("retq");
 }
 
-void impl_pop_func_ret(decl *d)
+static void pop_func_ret(decl *d)
 {
 	(void)d;
 
@@ -344,7 +347,7 @@ static void x86_load(struct vstack *from, const char *regstr)
 			regstr);
 }
 
-void impl_load(struct vstack *from, int reg)
+static void load(struct vstack *from, int reg)
 {
 	char buf[REG_STR_SZ];
 	decl *const save = from->d;
@@ -373,7 +376,7 @@ void impl_load(struct vstack *from, int reg)
 	from->bits.reg = reg;
 }
 
-void impl_store(struct vstack *from, struct vstack *to)
+static void store(struct vstack *from, struct vstack *to)
 {
 	char buf[VSTACK_STR_SZ];
 
@@ -404,7 +407,7 @@ void impl_store(struct vstack *from, struct vstack *to)
 	}
 }
 
-void impl_reg_swp(struct vstack *a, struct vstack *b)
+static void reg_swp(struct vstack *a, struct vstack *b)
 {
 	char bufa[REG_STR_SZ], bufb[REG_STR_SZ];
 	int tmp;
@@ -421,7 +424,7 @@ void impl_reg_swp(struct vstack *a, struct vstack *b)
 	b->bits.reg = tmp;
 }
 
-void impl_reg_cp(struct vstack *from, int r)
+static void reg_cp(struct vstack *from, int r)
 {
 	char buf_v[VSTACK_STR_SZ];
 	char buf_r[REG_STR_SZ];
@@ -437,7 +440,7 @@ void impl_reg_cp(struct vstack *from, int r)
 			buf_r);
 }
 
-void impl_op(enum op_type op)
+static void op(enum op_type op)
 {
 	const char *opc;
 
@@ -620,7 +623,7 @@ void impl_op(enum op_type op)
 	}
 }
 
-void impl_deref()
+static void deref()
 {
 	const int r = v_unused_reg(1); /* allocate a reg here first, since it'll be used later too */
 	char ptr[VSTACK_STR_SZ], dst[REG_STR_SZ];
@@ -655,7 +658,7 @@ void impl_deref()
 	vtop->bits.reg = r;
 }
 
-void impl_op_unary(enum op_type op)
+static void op_unary(enum op_type op)
 {
 	const char *opc;
 
@@ -683,7 +686,7 @@ void impl_op_unary(enum op_type op)
 	out_asm("%s %s", opc, vstack_str(vtop));
 }
 
-void impl_normalise(void)
+static void normalise(void)
 {
 	char buf[REG_STR_SZ];
 
@@ -697,7 +700,7 @@ void impl_normalise(void)
 			reg_str_r(buf, vtop));
 }
 
-void impl_cast(decl *from, decl *to)
+static void cast(decl *from, decl *to)
 {
 	int szfrom, szto;
 
@@ -776,12 +779,12 @@ static const char *x86_call_jmp_target(struct vstack *vp)
 	return NULL;
 }
 
-void impl_jmp()
+static void jmp()
 {
 	out_asm("jmp %s", x86_call_jmp_target(vtop));
 }
 
-void impl_jcond(int true, const char *lbl)
+static void jcond(int true, const char *lbl)
 {
 	switch(vtop->type){
 		case FLAG:
@@ -816,7 +819,7 @@ void impl_jcond(int true, const char *lbl)
 	}
 }
 
-void impl_call(const int nargs, decl *d_ret, decl *d_func)
+static void call(const int nargs, decl *d_ret, decl *d_func)
 {
 #define INC_NFLOATS(d) if(d && decl_is_floating(d)) ++nfloats
 
@@ -878,12 +881,12 @@ void impl_call(const int nargs, decl *d_ret, decl *d_func)
 	vtop->bits.reg = REG_RET;
 }
 
-void impl_undefined(void)
+static void undefined(void)
 {
 	out_asm("ud2");
 }
 
-int impl_frame_ptr_to_reg(int nframes)
+static int frame_ptr_to_reg(int nframes)
 {
 	char buf[REG_STR_SZ];
 	int r = v_unused_reg(1);
@@ -895,4 +898,20 @@ int impl_frame_ptr_to_reg(int nframes)
 		out_asm("movq (%%%s), %%%s", buf, buf);
 
 	return r;
+}
+
+static int n_regs()
+{
+	return N_REGS;
+}
+
+static int n_call_regs()
+{
+	return N_CALL_REGS;
+}
+
+void impl_x86_64()
+{
+	/*impl.a = a,
+		etc;*/
 }

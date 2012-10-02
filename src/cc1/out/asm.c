@@ -103,7 +103,7 @@ int asm_table_lookup(decl *d)
 			case type_intptr_t:
 			case type_ptrdiff_t:
 do_long:
-				return m32 ? ASM_INDEX_INT : ASM_INDEX_LONG;
+				return cc1_machine == MACHINE_x86 ? ASM_INDEX_INT : ASM_INDEX_LONG;
 
 			case type_struct:
 			case type_union:

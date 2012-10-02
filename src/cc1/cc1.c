@@ -129,7 +129,7 @@ enum warning warn_mode = ~(
 enum fopt    fopt_mode = FOPT_CONST_FOLD | FOPT_SHOW_LINE | FOPT_PIC;
 enum cc1_backend cc1_backend = BACKEND_ASM;
 
-int m32 = 0;
+enum cc1_machine cc1_machine = MACHINE_x64;
 
 int cc1_max_errors = 16;
 
@@ -324,12 +324,19 @@ int main(int argc, char **argv)
 		}else if(!strncmp(argv[i], "-m", 2)){
 			int n;
 
-			if(sscanf(argv[i] + 2, "%d", &n) != 1 || (n != 32 && n != 64)){
-				fprintf(stderr, "-m needs either 32 or 64\n");
+			if(!strcmp(argv[i] + 2, "vm")){
+				cc1_machine = MACHINE_VM;
+
+			}else if(sscanf(argv[i] + 2, "%d", &n) == 1){
+				if(n != 32 && n != 64){
+					fprintf(stderr, "-mnumber needs either 32 or 64\n");
+					goto usage;
+				}
+
+				cc1_machine = n == 32 ? MACHINE_x86 : MACHINE_x64;
+			}else{
 				goto usage;
 			}
-
-			m32 = n == 32;
 
 		}else if(argv[i][0] == '-' && (argv[i][1] == 'W' || argv[i][1] == 'f')){
 			const int fopt = argv[i][1] == 'f';

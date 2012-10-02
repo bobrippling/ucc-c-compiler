@@ -8,7 +8,7 @@
 #include "../data_structs.h"
 #include "out.h"
 #include "vstack.h"
-#include "x86_64.h"
+#include "impl.h"
 #include "../../util/platform.h"
 #include "../cc1.h"
 
@@ -177,7 +177,7 @@ int v_unused_reg(int stack_as_backup)
 int v_to_reg(struct vstack *conv)
 {
 	if(conv->type != REG)
-		impl_load(conv, v_unused_reg(1));
+		impl.load(conv, v_unused_reg(1));
 
 	return conv->bits.reg;
 }
@@ -206,7 +206,7 @@ void v_freeup_regp(struct vstack *vp)
 	r = v_unused_reg(0);
 
 	if(r >= 0){
-		impl_reg_cp(vp, r);
+		impl.reg_cp(vp, r);
 
 		v_clear(vp, NULL);
 		vp->type = REG;
@@ -227,9 +227,9 @@ void v_save_reg(struct vstack *vp)
 
 	store.type = STACK;
 	store.d = decl_ptr_depth_inc(decl_copy(vp->d));
-	store.bits.off_from_bp = -impl_alloc_stack(decl_size(store.d));
+	store.bits.off_from_bp = -impl.alloc_stack(decl_size(store.d));
 
-	impl_store(vp, &store);
+	impl.store(vp, &store);
 
 	store.type = STACK_SAVE;
 
@@ -327,7 +327,7 @@ void out_store()
 	val   = &vtop[0];
 	store = &vtop[-1];
 
-	impl_store(val, store);
+	impl.store(val, store);
 
 	/* swap, popping the store, but not the value */
 	vswap();
@@ -339,7 +339,7 @@ void out_normalise(void)
 	if(vtop->type == CONST)
 		vtop->bits.val = !!vtop->bits.val;
 	else
-		impl_normalise();
+		impl.normalise();
 }
 
 void out_push_sym(sym *s)
@@ -357,7 +357,7 @@ void out_push_sym(sym *s)
 			/*
 			 * if it's less than N_CALL_ARGS, it's below rbp, otherwise it's above
 			 */
-			vtop->bits.off_from_bp = (s->offset < N_CALL_REGS
+			vtop->bits.off_from_bp = (s->offset < impl.n_call_regs()
 					? -(s->offset + 1)
 					:   s->offset - N_CALL_REGS + 2)
 				* platform_word_size();
@@ -504,7 +504,7 @@ def:
 				break;
 		}
 
-		impl_op(op);
+		impl.op(op);
 
 		if(div){
 			out_push_i(NULL, div);
@@ -543,7 +543,7 @@ change_decl:
 		case STACK:
 		case LBL:
 		case STACK_SAVE:
-			impl_deref();
+			impl.deref();
 			break;
 	}
 }
@@ -586,14 +586,14 @@ void out_op_unary(enum op_type op)
 			}
 	}
 
-	impl_op_unary(op);
+	impl.op_unary(op);
 }
 
 void out_cast(decl *from, decl *to)
 {
 	/* casting vtop - don't bother if it's a constant, just change the size */
 	if(vtop->type != CONST)
-		impl_cast(from, to);
+		impl.cast(from, to);
 
 	out_change_decl(to);
 }
@@ -606,7 +606,7 @@ void out_change_decl(decl *d)
 
 void out_call(int nargs, decl *rt, decl *call)
 {
-	impl_call(nargs, rt, call);
+	impl.call(nargs, rt, call);
 }
 
 void out_jmp(void)
@@ -618,14 +618,14 @@ void out_jmp(void)
 		vtop++;
 	}
 
-	impl_jmp();
+	impl.jmp();
 
 	vpop();
 }
 
 void out_jtrue(const char *lbl)
 {
-	impl_jcond(1, lbl);
+	impl.jcond(1, lbl);
 
 	vpop();
 }
@@ -639,7 +639,7 @@ void out_jfalse(const char *lbl)
 		cond = 1;
 	}
 
-	impl_jcond(cond, lbl);
+	impl.jcond(cond, lbl);
 
 	vpop();
 }
@@ -649,7 +649,7 @@ void out_label(const char *lbl)
 	/* if we have volatile data, ensure it's in a register */
 	out_flush_volatile();
 
-	impl_lbl(lbl);
+	impl.lbl(lbl);
 }
 
 void out_comment(const char *fmt, ...)
@@ -657,29 +657,29 @@ void out_comment(const char *fmt, ...)
 	va_list l;
 
 	va_start(l, fmt);
-	impl_comment(fmt, l);
+	impl.comment(fmt, l);
 	va_end(l);
 }
 
 void out_func_prologue(int stack_res, int nargs, int variadic)
 {
-	impl_func_prologue(stack_res, nargs, variadic);
+	impl.func_prologue(stack_res, nargs, variadic);
 }
 
 void out_func_epilogue()
 {
-	impl_func_epilogue();
+	impl.func_epilogue();
 }
 
 void out_pop_func_ret(decl *d)
 {
-	impl_pop_func_ret(d);
+	impl.pop_func_ret(d);
 }
 
 void out_undefined(void)
 {
 	out_flush_volatile();
-	impl_undefined();
+	impl.undefined();
 }
 
 void out_push_frame_ptr(int nframes)
@@ -688,7 +688,7 @@ void out_push_frame_ptr(int nframes)
 
 	vpush(NULL);
 	vtop->type = REG;
-	vtop->bits.reg = impl_frame_ptr_to_reg(nframes);
+	vtop->bits.reg = impl.frame_ptr_to_reg(nframes);
 }
 
 int out_n_call_regs(void)
