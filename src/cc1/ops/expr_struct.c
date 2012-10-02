@@ -135,6 +135,8 @@ void fold_const_expr_struct(expr *e, intval *val, enum constyness *success)
 
 void static_expr_struct_addr(expr *e)
 {
+	ASSERT_NOT_DOT();
+
 	static_store(e->lhs);
 	asm_declare_partial(" + %ld", struct_offset(e->rhs));
 }

@@ -228,7 +228,7 @@ decl *decl_copy_keep_array(const decl *d)
 
 decl *decl_copy(const decl *d)
 {
-	return decl_copy_array(d, 1);
+	return decl_copy_array(d, 0);
 }
 
 int decl_size(decl *d)
@@ -943,7 +943,10 @@ void decl_desc_add_str(decl_desc *dp, int show_spel, char **bufp, int sz)
 
 			const_fold_need_val(dp->bits.array_size, &iv);
 
-			BUF_ADD("[%ld]", iv.val);
+			if(iv.val == 0)
+				BUF_ADD("[]");
+			else
+				BUF_ADD("[%ld]", iv.val);
 			break;
 		}
 	}
