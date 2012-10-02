@@ -467,6 +467,12 @@ int decl_is_ptr(decl *d)
 	return 0;
 }
 
+int decl_is_block(decl *d)
+{
+	decl_desc *dp = decl_desc_tail(d);
+	return dp && dp->type == decl_desc_block;
+}
+
 int decl_desc_depth(decl *d)
 {
 	decl_desc *dp;

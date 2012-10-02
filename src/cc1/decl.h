@@ -212,6 +212,7 @@ int     decl_desc_depth(        decl *);
 int     decl_is_integral(       decl *);
 int     decl_is_floating(       decl *);
 int     decl_ptr_or_block(      decl *);
+int     decl_is_block(          decl *);
 #define decl_non_ptr_type(d, t) (!(d)->desc && (d)->type->primitive == t)
 
 #define decl_is_void(d) decl_non_ptr_type(d, type_void)
