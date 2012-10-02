@@ -26,7 +26,13 @@ void fold_decl_equal(
 		decl *a, decl *b, where *w, enum warning warn,
 		const char *errfmt, ...)
 {
-	if(!decl_equal(a, b, DECL_CMP_ALLOW_VOID_PTR)){
+	int flags = DECL_CMP_ALLOW_VOID_PTR;
+
+	/* stronger checks for blocks */
+	if(decl_is_block(a) || decl_is_block(b))
+		flags |= DECL_CMP_EXACT_MATCH;
+
+	if(!decl_equal(a, b, flags)){
 		int one_struct;
 		va_list l;
 
