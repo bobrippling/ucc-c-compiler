@@ -895,11 +895,10 @@ void decl_desc_add_str(decl_desc *dp, int show_spel, char **bufp, int sz)
 
 	switch(dp->type){
 		case decl_desc_ptr:
-			BUF_ADD("*%s",
-					type_qual_to_str(dp->bits.qual));
-			break;
 		case decl_desc_block:
-			BUF_ADD("^");
+			BUF_ADD("%c%s",
+					dp->type == decl_desc_ptr ? '*' : '^',
+					type_qual_to_str(dp->bits.qual));
 			break;
 		default:
 			break;
@@ -909,6 +908,9 @@ void decl_desc_add_str(decl_desc *dp, int show_spel, char **bufp, int sz)
 		decl_desc_add_str(dp->child, show_spel, bufp, sz);
 	else if(show_spel)
 		BUF_ADD("%s", dp->parent_decl->spel);
+
+	if(need_paren)
+		BUF_ADD(")");
 
 	switch(dp->type){
 		case decl_desc_block:
@@ -939,9 +941,6 @@ void decl_desc_add_str(decl_desc *dp, int show_spel, char **bufp, int sz)
 			break;
 		}
 	}
-
-	if(need_paren)
-		BUF_ADD(")");
 #undef BUF_ADD
 }
 
