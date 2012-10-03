@@ -539,6 +539,7 @@ void out_deref()
 
 	out_comment("deref %s", decl_to_str(vtop->d));
 
+	/* FIXME: this should check if vtop->d is an lvalue */
 	indir = decl_ptr_depth_dec(decl_copy(vtop->d), NULL);
 
 	if(decl_is_array(indir) || decl_is_fptr(vtop->d)){
