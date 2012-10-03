@@ -399,13 +399,22 @@ static void vtop2_are(
 
 static int calc_ptr_step(decl *d)
 {
+	int sz;
+
 	if(!d)
 		return 1; /* void * */
 
 	if(decl_ptr_depth(d) > 1)
 		return decl_size(d);
 
-	return type_size(d->type);
+	sz = type_size(d->type);
+
+	/* array? if so, sizeof the array */
+	fprintf(stderr, "calc_ptr_step(%s)\n", decl_to_str(d));
+	if(decl_is_array(d))
+		sz *= decl_inner_array_count(d);
+
+	return sz;
 }
 
 void out_op(enum op_type op)
