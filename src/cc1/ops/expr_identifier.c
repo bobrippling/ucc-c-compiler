@@ -103,17 +103,10 @@ void gen_expr_identifier(expr *e, symtable *stab)
 {
 	(void)stab;
 
-	/*
-	 * if it's an array, lea, else, load
-	 * note that array-leas load the bottom address (smallest value)
-	 * since arrays grow upwards... duh
-	 */
-
-	if(decl_is_array(e->sym->decl) || decl_is_func(e->sym->decl)){
+	if(decl_is_func(e->sym->decl))
 		out_push_sym(e->sym);
-	}else{
+	else
 		out_push_sym_val(e->sym);
-	}
 }
 
 void static_expr_identifier_store(expr *e)
