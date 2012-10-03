@@ -22,7 +22,7 @@ void fold_expr_deref(expr *e, symtable *stab)
 	e->tree_type = decl_ptr_depth_dec(decl_copy(ptr->tree_type), &e->where);
 }
 
-void gen_expr_deref_store(expr *e, symtable *stab)
+void gen_expr_deref_lea(expr *e, symtable *stab)
 {
 	/* a dereference */
 	gen_expr(expr_deref_what(e), stab); /* skip over the *() bit */
@@ -45,7 +45,7 @@ void gen_expr_str_deref(expr *e, symtable *stab)
 
 void mutate_expr_deref(expr *e)
 {
-	e->f_store = gen_expr_deref_store;
+	e->f_lea = gen_expr_deref_lea;
 }
 
 expr *expr_new_deref(expr *of)

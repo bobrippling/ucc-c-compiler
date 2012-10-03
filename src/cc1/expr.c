@@ -32,7 +32,7 @@ void expr_mutate(expr *e, func_mutate_expr *f,
 
 	e->f_const_fold = NULL;
 	e->f_static_addr = NULL;
-	e->f_store = NULL;
+	e->f_lea = NULL;
 
 	f(e);
 }
