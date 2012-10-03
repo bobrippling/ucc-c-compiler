@@ -718,10 +718,14 @@ int decl_inner_array_count(decl *d)
 {
 	decl_desc *ar_desc = decl_desc_tail(d);
 	intval iv;
+	enum constyness type;
 
 	UCC_ASSERT(ar_desc->type == decl_desc_array, "%s: not array", __func__);
 
-	const_fold_need_val(ar_desc->bits.array_size, &iv);
+	const_fold(ar_desc->bits.array_size, &iv, &type);
+
+	if(type != CONST_WITH_VAL)
+		DIE_AT(&d->where, "use of array with unspecified bounds");
 
 	return iv.val;
 }
