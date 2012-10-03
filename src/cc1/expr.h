@@ -10,7 +10,7 @@ enum constyness
 
 typedef void         func_fold(          expr *, symtable *);
 typedef void         func_gen(           expr *, symtable *);
-typedef void         func_gen_store(     expr *, symtable *);
+typedef void         func_gen_lea(       expr *, symtable *);
 typedef void         func_static_addr(   expr *);
 typedef void         func_const(         expr *, intval *val, enum constyness *success);
 typedef const char  *func_str(void);
@@ -25,7 +25,7 @@ struct expr
 
 	func_gen         *f_gen;
 	func_static_addr *f_static_addr; /* optional */
-	func_gen_store   *f_store;       /* optional */
+	func_gen_lea     *f_lea;         /* optional */
 
 	func_str         *f_str;
 
