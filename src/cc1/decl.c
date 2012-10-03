@@ -439,9 +439,9 @@ int decl_ptr_depth(decl *d)
 	for(dp = d->desc; dp; dp = dp->child)
 		switch(dp->type){
 			case decl_desc_ptr:
-			case decl_desc_array:
 				depth++;
 				break;
+			case decl_desc_array:
 			case decl_desc_block:
 			case decl_desc_func:
 				break;

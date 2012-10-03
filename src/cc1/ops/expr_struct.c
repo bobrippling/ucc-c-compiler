@@ -82,7 +82,7 @@ void fold_expr_struct(expr *e, symtable *stab)
 	e->tree_type->type->qual |= e->lhs->tree_type->type->qual;
 }
 
-void gen_expr_struct_store(expr *e, symtable *stab)
+void gen_expr_struct_lea(expr *e, symtable *stab)
 {
 	ASSERT_NOT_DOT();
 
@@ -101,7 +101,7 @@ void gen_expr_struct(expr *e, symtable *stab)
 
 	ASSERT_NOT_DOT();
 
-	gen_expr_struct_store(e, stab);
+	gen_expr_struct_lea(e, stab);
 
 	out_deref();
 
@@ -143,7 +143,7 @@ void static_expr_struct_addr(expr *e)
 
 void mutate_expr_struct(expr *e)
 {
-	e->f_store = gen_expr_struct_store;
+	e->f_lea = gen_expr_struct_lea;
 	e->f_static_addr = static_expr_struct_addr;
 }
 
