@@ -147,8 +147,9 @@ void fold_decl_desc(decl_desc *dp, symtable *stab, decl *root)
 			if(sz.val < 0)
 				DIE_AT(&dp->where, "negative array length %ld", sz.val);
 
-			if(sz.val == 0 && !root->init && root->type->store != store_extern)
-				DIE_AT(&dp->where, "incomplete array");
+			/* allow incomplete arrays here */
+			/*if(sz.val == 0 && !root->init && root->type->store != store_extern)
+				DIE_AT(&dp->where, "incomplete array");*/
 		}
 
 		case decl_desc_block:

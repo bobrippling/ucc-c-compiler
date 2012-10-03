@@ -127,7 +127,7 @@ void static_expr_identifier_store(expr *e)
 	 */
 }
 
-void gen_expr_identifier_store(expr *e, symtable *stab)
+void gen_expr_identifier_lea(expr *e, symtable *stab)
 {
 	(void)stab;
 
@@ -136,7 +136,7 @@ void gen_expr_identifier_store(expr *e, symtable *stab)
 
 void mutate_expr_identifier(expr *e)
 {
-	e->f_store       = gen_expr_identifier_store;
+	e->f_lea         = gen_expr_identifier_lea;
 	e->f_static_addr = static_expr_identifier_store;
 	e->f_const_fold  = fold_const_expr_identifier;
 }

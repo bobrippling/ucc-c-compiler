@@ -423,7 +423,7 @@ static int calc_ptr_step(decl *d)
 	if(decl_ptr_depth(d) > 1)
 		return decl_size(d);
 
-	return type_primitive_size(type_ptrdiff_t);
+	return type_size(d->type);
 }
 
 void out_op(enum op_type op)
@@ -539,18 +539,21 @@ void v_deref_decl(struct vstack *vp)
 
 void out_deref()
 {
+	decl *indir;
+	/*
+	 >   *((int (*)[])exp
+	 is a no-op
+	 i.e. if the pointed-to object is array-type, don't deref
+	 */
+
 	out_comment("deref %s", decl_to_str(vtop->d));
-	if(decl_is_array(vtop->d)){
-		decl *indir;
 
-change_decl:
-		indir = decl_ptr_depth_dec(decl_copy(vtop->d), NULL);
+	indir = decl_ptr_depth_dec(decl_copy(vtop->d), NULL);
+
+	if(decl_is_array(indir) || decl_is_fptr(vtop->d)){
 		out_change_decl(indir);
-		return;
+		return; /* noop */
 	}
-
-	if(decl_is_fptr(vtop->d)) /* noop */
-		goto change_decl;
 
 	switch(vtop->type){
 		case FLAG:
