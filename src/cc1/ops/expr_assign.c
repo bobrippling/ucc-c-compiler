@@ -10,11 +10,10 @@ int expr_is_lvalue(expr *e, enum lvalue_opts opts)
 	/*
 	 * valid lvaluess:
 	 *
-	 *   x              = 5;
-	 *   *(expr)        = 5;
-	 *   struct.member  = 5;
-	 *   struct->member = 5;
-	 * and so on
+	 *   x              = 5; // non-func identifier
+	 *   *(expr)        = 5; // dereference
+	 *   struct.member  = 5; // struct
+	 *   struct->member = 5; // struct
 	 *
 	 * also can't be const, checked in fold_assign (since we allow const inits)
 	 *
