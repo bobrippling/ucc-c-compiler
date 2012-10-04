@@ -854,7 +854,8 @@ void impl_call(const int nargs, decl *d_ret, decl *d_func)
 	if(vcond)
 		out_comment("pre-call reg-save");
 	for(; vcond; i++)
-		if(vstack[i].type == REG)
+		/* TODO: v_to_mem (__asm__ branch) */
+		if(vstack[i].type == REG || vstack[i].type == FLAG)
 			v_save_reg(&vstack[i]);
 
 	{
