@@ -719,20 +719,26 @@ void decl_complete_array(decl *d, int n)
 	expr_sz->val.iv.val = n;
 }
 
-int decl_inner_array_count(decl *d)
+int decl_desc_array_count(decl_desc *dp)
 {
-	decl_desc *ar_desc = decl_desc_tail(d);
 	intval iv;
 	enum constyness type;
 
-	UCC_ASSERT(ar_desc->type == decl_desc_array, "%s: not array", __func__);
-
-	const_fold(ar_desc->bits.array_size, &iv, &type);
+	const_fold(dp->bits.array_size, &iv, &type);
 
 	if(type != CONST_WITH_VAL)
-		DIE_AT(&d->where, "use of array with unspecified bounds");
+		DIE_AT(&dp->where, "use of array with unspecified bounds");
 
 	return iv.val;
+}
+
+int decl_inner_array_count(decl *d)
+{
+	decl_desc *ar_desc = decl_desc_tail(d);
+
+	UCC_ASSERT(ar_desc->type == decl_desc_array, "%s: not array", __func__);
+
+	return decl_desc_array_count(ar_desc);
 }
 
 int decl_ptr_or_block(decl *d)

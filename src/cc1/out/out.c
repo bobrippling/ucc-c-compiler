@@ -407,12 +407,18 @@ static int calc_ptr_step(decl *d)
 	if(decl_ptr_depth(d) > 1)
 		return decl_size(d);
 
-	sz = type_size(d->type);
+	int tsz = sz = type_size(d->type);
 
-	/* array? if so, sizeof the array */
-	fprintf(stderr, "calc_ptr_step(%s)\n", decl_to_str(d));
-	if(decl_is_array(d))
-		sz *= decl_inner_array_count(d);
+	{
+		decl_desc *dp = decl_desc_tail(d);
+
+		/* FIXME: may be incorrect for nested sub-arrays */
+		if(dp && dp->parent_desc && dp->parent_desc->type == decl_desc_array)
+			sz *= decl_desc_array_count(dp->parent_desc);
+	}
+
+	fprintf(stderr, "calc_ptr_step(%s), array %d, type size %d = %d\n",
+			decl_to_str(d), decl_is_array(d), tsz, sz);
 
 	return sz;
 }
