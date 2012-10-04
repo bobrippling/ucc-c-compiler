@@ -742,7 +742,7 @@ void impl_cast(decl *from, decl *to)
 	}
 }
 
-static const char *x86_call_jmp_target(struct vstack *vp)
+static const char *x86_call_jmp_target(struct vstack *vp, int no_rax)
 {
 	static char buf[VSTACK_STR_SZ + 2];
 
@@ -760,13 +760,15 @@ static const char *x86_call_jmp_target(struct vstack *vp)
 		case FLAG:
 		case REG:
 		case CONST:
-			strcpy(buf, "*%");
 			v_to_reg(vp); /* again, v_to_reg_preferred(), except that we don't want a reg */
-			if(vp->bits.reg == REG_A){
+
+			if(no_rax && vp->bits.reg == REG_A){
 				int r = v_unused_reg(1);
 				impl_reg_cp(vp, r);
 				vp->bits.reg = r;
 			}
+
+			strcpy(buf, "*%");
 			reg_str_r(buf + 2, vp);
 
 			return buf;
@@ -778,7 +780,7 @@ static const char *x86_call_jmp_target(struct vstack *vp)
 
 void impl_jmp()
 {
-	out_asm("jmp %s", x86_call_jmp_target(vtop));
+	out_asm("jmp %s", x86_call_jmp_target(vtop, 0));
 }
 
 void impl_jcond(int true, const char *lbl)
@@ -859,7 +861,7 @@ void impl_call(const int nargs, decl *d_ret, decl *d_func)
 			v_save_reg(&vstack[i]);
 
 	{
-		const char *jtarget = x86_call_jmp_target(vtop);
+		const char *jtarget = x86_call_jmp_target(vtop, 1);
 
 		funcargs *args = decl_funcargs(d_func);
 
