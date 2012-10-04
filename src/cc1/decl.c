@@ -572,6 +572,10 @@ decl *decl_ptr_depth_dec(decl *d, where *from)
 			last ? ")"  : "");
 	}
 
+	/* *(void (*)()) does nothing */
+	if(decl_is_fptr(d))
+		goto fin;
+
 	if(last->parent_desc)
 		last->parent_desc->child = NULL;
 	else
@@ -579,6 +583,7 @@ decl *decl_ptr_depth_dec(decl *d, where *from)
 
 	decl_desc_free(last);
 
+fin:
 	return d;
 }
 

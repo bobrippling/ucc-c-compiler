@@ -531,15 +531,8 @@ void v_deref_decl(struct vstack *vp)
 void out_deref()
 {
 	decl *indir;
-	/*
-	 >   *((int (*)[])exp
-	 is a no-op
-	 i.e. if the pointed-to object is array-type, don't deref
-	 */
+	/* if the pointed-to object is not an lvalue, don't deref */
 
-	out_comment("deref %s", decl_to_str(vtop->d));
-
-	/* FIXME: this should check if vtop->d is an lvalue */
 	indir = decl_ptr_depth_dec(decl_copy(vtop->d), NULL);
 
 	if(decl_is_array(indir) || decl_is_fptr(vtop->d)){
@@ -619,6 +612,9 @@ void out_change_decl(decl *d)
 
 void out_call(int nargs, decl *rt, decl *call)
 {
+	if(decl_is_fptr(call))
+		impl_deref(); /* out_deref ignores fptrs */
+
 	impl_call(nargs, rt, call);
 }
 
