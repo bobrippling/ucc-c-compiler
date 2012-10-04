@@ -15,6 +15,16 @@ struct vstack
 
 	decl *d;
 
+	/*
+	 * TODO: offset to optimise multiple adds
+	 * i.e. movq x+63(%rip), %rax
+	 * instead of
+	 *      leaq x(%rip), %rax
+	 *      addq 60, %rax
+	 *      addq  3, %rax
+	 *      movq (%rax), %rax
+	 */
+
 	union
 	{
 		int val;
