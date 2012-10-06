@@ -20,9 +20,6 @@ int expr_is_lvalue(expr *e, enum lvalue_opts opts)
 	 * order is important
 	 */
 
-	if(decl_is_func(e->tree_type))
-		return 0;
-
 	if(expr_kind(e, deref))
 		return 1;
 
