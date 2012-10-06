@@ -1,8 +1,9 @@
 #!/usr/bin/perl
-use warnings;
+#use warnings;
 
 # rules:
 # "compiles"
+# "assembles" - compiles = links, assembles = -c
 # "compile-error"
 # "exit=[0-9]+"
 # "noop" - ignore
@@ -44,7 +45,9 @@ for(keys %rules){
 		print "! ";
 	}
 
-	print "../../ucc -w -o \$@ \$<\n";
+	my $args = $rules{$_}->{args} or '';
+
+	print "../../ucc -w $args -o \$@ \$<\n";
 
 	unless($fail_compile){
 		my $ec = $rules{$_}->{exit};
@@ -56,9 +59,8 @@ for(keys %rules){
 			if($ec){
 				print "; [ \$\$? -eq $ec ]";
 			}
+			print "\n";
 		}
-
-		print "\n";
 	}
 }
 
@@ -80,6 +82,9 @@ sub rule_new
 
 	if($mode eq 'compiles'){
 		return { };
+
+	}elsif($mode eq 'assembles'){
+		return { args => '-c' };
 
 	}elsif($mode eq 'compile-error'){
 		return { fail => 1 }

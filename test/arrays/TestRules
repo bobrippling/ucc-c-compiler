@@ -1,2 +1,2 @@
 compile-error: invalid_inc.c
-compiles: ptr.c, stride_nx2x4.c, stride_nx3.c
+assembles: ptr.c, stride_nx3.c, stride_nx2x4.c
