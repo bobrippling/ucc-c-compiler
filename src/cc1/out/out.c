@@ -403,7 +403,7 @@ static int calc_ptr_step(decl *d)
 	decl *ref;
 	int sz;
 
-	if(!d)
+	if(!d || decl_is_void_ptr(d))
 		return type_primitive_size(type_void);
 
 	ref = decl_ptr_depth_dec(decl_copy_keep_array(d), NULL);
