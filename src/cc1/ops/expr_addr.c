@@ -58,8 +58,9 @@ void gen_expr_addr(expr *e, symtable *stab)
 		out_push_lbl(e->spel, 1, NULL); /* GNU &&lbl */
 
 	}else{
-		/* address of possibly an ident "(&a)->b" or a struct expr "&a->b" */
-		UCC_ASSERT(expr_kind(e->lhs, identifier) || expr_kind(e->lhs, deref), "invalid addr");
+		/* address of possibly an ident "(&a)->b" or a struct expr "&a->b"
+		 * let lea_expr catch it
+		 */
 
 		lea_expr(e->lhs, stab);
 	}
