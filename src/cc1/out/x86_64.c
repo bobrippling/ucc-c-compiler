@@ -861,12 +861,12 @@ void impl_call(const int nargs, decl *d_ret, decl *d_func)
 			v_save_reg(&vstack[i]);
 
 	{
-		const char *jtarget = x86_call_jmp_target(vtop, nfloats ? 1 : 0);
-
 		funcargs *args = decl_funcargs(d_func);
+		int need_float_count = args->variadic || (!args->arglist && !args->args_void);
+		const char *jtarget = x86_call_jmp_target(vtop, need_float_count);
 
 		/* if x(...) or x() */
-		if(args->variadic || (!args->arglist && !args->args_void))
+		if(need_float_count)
 			out_asm("movb $%d, %%al", nfloats); /* we can never have a funcptr in rax, so we're fine */
 
 		out_asm("callq %s", jtarget);
