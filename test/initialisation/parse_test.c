@@ -4,5 +4,5 @@ main()
 		{ 0, 0 },
 		{ 1, 2 },
 		{ "hi", { .a = { 5, 2 } } }, // this bit should fail
-	}; // complete to x[2][2]
+	}; // complete to x[3][2]
 }
