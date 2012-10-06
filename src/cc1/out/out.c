@@ -399,26 +399,11 @@ static void vtop2_are(
 
 static int calc_ptr_step(decl *d)
 {
-	int sz;
+	/* we are calculating the sizeof *d */
+	decl *ref = decl_ptr_depth_dec(decl_copy_keep_array(d), NULL);
+	int sz = decl_size(ref);
 
-	if(!d)
-		return 1; /* void * */
-
-	if(decl_ptr_depth(d) > 1)
-		return decl_size(d);
-
-	int tsz = sz = type_size(d->type);
-
-	{
-		decl_desc *dp = decl_desc_tail(d);
-
-		/* FIXME: may be incorrect for nested sub-arrays */
-		if(dp && dp->parent_desc && dp->parent_desc->type == decl_desc_array)
-			sz *= decl_desc_array_count(dp->parent_desc);
-	}
-
-	fprintf(stderr, "calc_ptr_step(%s), array %d, type size %d = %d\n",
-			decl_to_str(d), decl_is_array(d), tsz, sz);
+	decl_free(ref);
 
 	return sz;
 }
