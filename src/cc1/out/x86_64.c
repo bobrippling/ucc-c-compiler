@@ -861,7 +861,7 @@ void impl_call(const int nargs, decl *d_ret, decl *d_func)
 			v_save_reg(&vstack[i]);
 
 	{
-		const char *jtarget = x86_call_jmp_target(vtop, 1);
+		const char *jtarget = x86_call_jmp_target(vtop, nfloats ? 1 : 0);
 
 		funcargs *args = decl_funcargs(d_func);
 
