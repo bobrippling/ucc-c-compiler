@@ -609,9 +609,6 @@ void out_change_decl(decl *d)
 
 void out_call(int nargs, decl *rt, decl *call)
 {
-	if(decl_is_fptr(call))
-		impl_deref(); /* out_deref ignores fptrs */
-
 	impl_call(nargs, rt, call);
 }
 
