@@ -400,8 +400,14 @@ static void vtop2_are(
 static int calc_ptr_step(decl *d)
 {
 	/* we are calculating the sizeof *d */
-	decl *ref = decl_ptr_depth_dec(decl_copy_keep_array(d), NULL);
-	int sz = decl_size(ref);
+	decl *ref;
+	int sz;
+
+	if(!d)
+		return type_primitive_size(type_void);
+
+	ref = decl_ptr_depth_dec(decl_copy_keep_array(d), NULL);
+	sz = decl_size(ref);
 
 	decl_free(ref);
 
