@@ -1,1 +1,1 @@
-assembles: global.c
+no-link: global.c

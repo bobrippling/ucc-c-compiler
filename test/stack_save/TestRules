@@ -1,1 +1,1 @@
-assembles: simple.c, type.c
+no-link: simple.c, type.c

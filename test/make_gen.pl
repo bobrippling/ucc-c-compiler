@@ -3,7 +3,7 @@
 
 # rules:
 # "compiles"
-# "assembles" - compiles = links, assembles = -c
+# "no-link"
 # "compile-error"
 # "exit=[0-9]+"
 # "noop" - ignore
@@ -93,7 +93,7 @@ sub rule_new
 	if($mode eq 'compiles'){
 		return { };
 
-	}elsif($mode eq 'assembles'){
+	}elsif($mode eq 'no-link'){
 		return { args => '-c' };
 
 	}elsif($mode eq 'compile-error'){
