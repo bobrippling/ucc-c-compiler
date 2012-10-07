@@ -21,7 +21,7 @@ help:
 	make -C$* test
 
 %/Makefile: %/TestRules
-	cd $*; perl ../make_gen.pl > Makefile
+	perl ./make_gen.pl $* > $*/Makefile
 
 %/clean: %/TestRules
 	make -C$* clean
