@@ -226,7 +226,8 @@ void v_save_reg(struct vstack *vp)
 	memset(&store, 0, sizeof store);
 
 	store.type = STACK;
-	store.d = decl_ptr_depth_inc(decl_copy(vp->d));
+	store.d = decl_ptr_depth_inc(decl_copy(
+				vp->d ? vp->d : decl_ptr_depth_inc(decl_new_void())));
 
 	/* the following gen two instructions - subq and movq
 	 * instead/TODO: impl_save_reg(vp) -> "pushq %%rax"
