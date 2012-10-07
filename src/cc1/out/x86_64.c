@@ -612,6 +612,11 @@ void impl_op(enum op_type op)
 
 		vtop2_prepare_op();
 
+		/* TODO: -O1
+		 * if the op is commutative and we have REG_RET,
+		 * make it the result reg
+		 */
+
 		out_asm("%s%c %s, %s", opc,
 				asm_type_ch(vtop->d),
 				vstack_str_r(buf, &vtop[ 0]),

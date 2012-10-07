@@ -227,8 +227,12 @@ void v_save_reg(struct vstack *vp)
 
 	store.type = STACK;
 	store.d = decl_ptr_depth_inc(decl_copy(vp->d));
-	store.bits.off_from_bp = -impl_alloc_stack(decl_size(store.d));
 
+	/* the following gen two instructions - subq and movq
+	 * instead/TODO: impl_save_reg(vp) -> "pushq %%rax"
+	 * -O1?
+	 */
+	store.bits.off_from_bp = -impl_alloc_stack(decl_size(store.d));
 	impl_store(vp, &store);
 
 	store.type = STACK_SAVE;
