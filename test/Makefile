@@ -1,6 +1,7 @@
 DIRS = assignment/ blocks/ decl_parsing/ inline/ lib/ structs/ type_parsing/ \
 			 other/ pointers/ types/ arrays/ stack_save/ lvalue/                   \
-			 initialisation/array/ initialisation/scalar/ initialisation/structs/
+			 initialisation/array/ initialisation/scalar/ initialisation/structs/  \
+			 builtin/
 
 MAKEFILES = ${DIRS:/=/Makefile}
 
@@ -32,3 +33,20 @@ help:
 	make -C$* clean
 
 .PHONY: all clean test gen ucc help
+
+# TODO:
+# anywhere_decl/
+# apply/
+# asm/
+# C99/
+# cil/
+# clang/
+# hai/
+# input/
+# messing around/
+# misc/
+# packing/
+# parse/
+# programs/
+# promotion/
+# Unsorted/

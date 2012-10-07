@@ -1,8 +1,14 @@
+not_builtin()
+{
+}
+
 main()
 {
 	typedef int *intp;
 
+	goto next;
 	__builtin_trap();
+next:
 
 	not_builtin();
 
