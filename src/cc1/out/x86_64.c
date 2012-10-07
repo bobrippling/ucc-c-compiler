@@ -636,10 +636,11 @@ void impl_deref()
 	switch(vtop->type){
 		case LBL:
 		case STACK:
+		case CONST:
 			v_deref_decl(vtop);
 			out_asm("mov%c %s, %%%s",
 					asm_type_ch(vtop->d),
-					vstack_str_r(ptr, vtop),
+					vstack_str_r_ptr(ptr, vtop, 1),
 					x86_reg_str_r(dst, r, vtop->d));
 			break;
 
