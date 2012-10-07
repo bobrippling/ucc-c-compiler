@@ -238,6 +238,9 @@ void v_save_reg(struct vstack *vp)
 	store.type = STACK_SAVE;
 
 	memcpy(vp, &store, sizeof store);
+
+	/* no need for copy */
+	vp->d = decl_ptr_depth_dec(vp->d, NULL);
 }
 
 void v_freeup_reg(int r, int allowable_stack)
