@@ -558,9 +558,18 @@ void impl_op(enum op_type op)
 
 			vtop_clear(vtop->d);
 			vtop->type = REG;
-			/* FIXME */
-			if(!vtop->d || vtop->d->type->primitive != type_int){
-				ICW("idiv incorrect - need to load ax:al/ax:dx/eax:edx for %s",
+
+			if(!vtop->d || type_primitive_size(vtop->d->type->primitive) != type_primitive_size(type_int)){
+#if 0
+Operand-Size         Dividend  Divisor  Quotient  Remainder
+8                    AX        r/m8     AL        AH
+16                   DX:AX     r/m16    AX        DX
+32                   EDX:EAX   r/m32    EAX       EDX
+64                   RDX:RAX   r/m64    RAX       RDX
+
+but gcc and clang promote to ints anyway...
+#endif
+				ICW("idiv incorrect - need to load al:ah/dx:ax/edx:eax for %s",
 						decl_to_str(vtop->d));
 			}
 
