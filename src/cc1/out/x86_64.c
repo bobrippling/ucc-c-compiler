@@ -182,10 +182,10 @@ int impl_alloc_stack(int sz)
 
 	if(sz){
 		const int extra = sz % word_size ? word_size - sz % word_size : 0;
-		out_asm("subq $0x%x, %%rsp", sz + extra);
+		out_asm("subq $0x%x, %%rsp", sz += extra);
 	}
 
-	return sz + stack_sz;
+	return stack_sz + sz;
 }
 
 const char *call_reg_str(int i, decl *d)
@@ -215,6 +215,8 @@ void impl_func_prologue(int stack_res, int nargs, int variadic)
 	out_asm("pushq %%rbp");
 	out_asm("movq %%rsp, %%rbp");
 
+	UCC_ASSERT(stack_sz == 0, "non-empty x86 stack for new func");
+
 	if(nargs){
 		int n_reg_args;
 
@@ -236,10 +238,9 @@ void impl_func_prologue(int stack_res, int nargs, int variadic)
 		}
 	}
 
-	if(stack_res){
-		UCC_ASSERT(stack_sz == 0, "non-empty x86 stack for new func");
-		stack_sz = impl_alloc_stack(stack_res);
-	}
+	stack_sz = impl_alloc_stack(stack_res)
+		/* make room for saved args too */
+		+ nargs * platform_word_size();
 
 	if(variadic){
 		/* play catchup, pushing any remaining reg args
@@ -259,6 +260,7 @@ void impl_func_prologue(int stack_res, int nargs, int variadic)
 		out_label(vfin);
 		free(vfin);
 
+		ICW("need to adjust stack_sz for variadics");
 	}
 }
 
