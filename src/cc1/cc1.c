@@ -124,6 +124,7 @@ enum warning warn_mode = ~(
 		| WARN_INCOMPLETE_USE
 		| WARN_OPT_POSSIBLE
 		| WARN_LOSS_PRECISION
+		| WARN_SIGN_COMPARE
 		);
 
 enum fopt    fopt_mode = FOPT_CONST_FOLD | FOPT_SHOW_LINE | FOPT_PIC;
