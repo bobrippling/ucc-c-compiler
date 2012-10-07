@@ -20,6 +20,10 @@ int expr_is_lvalue(expr *e, enum lvalue_opts opts)
 	 * order is important
 	 */
 
+	/* _lvalue_ addressing makes an exception for this */
+	if(decl_is_func(e->tree_type))
+		return 0;
+
 	if(expr_kind(e, deref))
 		return 1;
 

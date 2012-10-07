@@ -1,5 +1,5 @@
 DIRS = assignment/ blocks/ decl_parsing/ inline/ lib/ structs/ type_parsing/ \
-			 other/ pointers/ types/ arrays/ stack_save/
+			 other/ pointers/ types/ arrays/ stack_save/ lvalue/
 
 MAKEFILES = ${DIRS:/=/Makefile}
 
