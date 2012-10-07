@@ -202,9 +202,14 @@ static void asm_declare_sub(FILE *f, decl_init *init)
 			int i;
 
 			for(i = 0; i < len; i++){
+				static int warned;
+
 				asm_declare_sub(f, inits[i]);
 				/* TODO: struct padding for next member */
 				fputs("\n// TODO: struct padding for next\n", f);
+
+				if(!warned)
+					ICW("global struct padding TODO"), warned = 1;
 			}
 			break;
 		}
