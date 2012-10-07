@@ -196,6 +196,7 @@ void decl_conv_array_func_to_ptr(decl *d);
 void decl_desc_link(decl *);
 
 int   decl_size( decl *);
+int   decl_pointed_size(decl *);
 int   decl_equal(decl *, decl *, enum decl_cmp mode);
 
 int     decl_is_struct_or_union(decl *);

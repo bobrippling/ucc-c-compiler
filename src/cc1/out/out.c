@@ -357,7 +357,8 @@ void out_push_sym(sym *s)
 	switch(s->type){
 		case sym_local:
 			vtop->type = STACK;
-			vtop->bits.off_from_bp = -s->offset - platform_word_size();
+			/* since the stack grows upwards, we set the offset to the end of the sym */
+			vtop->bits.off_from_bp = -s->offset - platform_word_size() + decl_pointed_size(vtop->d);
 			break;
 
 		case sym_arg:
@@ -405,23 +406,6 @@ static void vtop2_are(
 		*pb = NULL;
 }
 
-static int calc_ptr_step(decl *d)
-{
-	/* we are calculating the sizeof *d */
-	decl *ref;
-	int sz;
-
-	if(!d || decl_is_void_ptr(d))
-		return type_primitive_size(type_void);
-
-	ref = decl_ptr_depth_dec(decl_copy_keep_array(d), NULL);
-	sz = decl_size(ref);
-
-	decl_free(ref);
-
-	return sz;
-}
-
 void out_op(enum op_type op)
 {
 	/*
@@ -437,7 +421,7 @@ void out_op(enum op_type op)
 
 	if(t_const && t_stack){
 		/* t_const == vtop... should be */
-		t_stack->bits.off_from_bp += t_const->bits.val * calc_ptr_step(t_stack->d);
+		t_stack->bits.off_from_bp += t_const->bits.val * decl_pointed_size(t_stack->d);
 
 		goto fin;
 
@@ -478,7 +462,7 @@ def:
 				r_ptr = !vtop[-1].d || decl_is_ptr(vtop[-1].d);
 
 				if(l_ptr || r_ptr){
-					const int ptr_step = calc_ptr_step(l_ptr ? vtop->d : vtop[-1].d);
+					const int ptr_step = decl_pointed_size(l_ptr ? vtop->d : vtop[-1].d);
 
 					if(l_ptr ^ r_ptr){
 						/* ptr +/- int, adjust the non-ptr by sizeof *ptr */

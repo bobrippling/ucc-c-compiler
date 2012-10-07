@@ -296,6 +296,23 @@ int decl_size(decl *d)
 	return mul * type_size(d->type);
 }
 
+int decl_pointed_size(decl *d)
+{
+	/* we are calculating the sizeof *d */
+	decl *ref;
+	int sz;
+
+	if(!d || decl_is_void_ptr(d))
+		return type_primitive_size(type_void);
+
+	ref = decl_ptr_depth_dec(decl_copy_keep_array(d), NULL);
+	sz = decl_size(ref);
+
+	decl_free(ref);
+
+	return sz;
+}
+
 enum funcargs_cmp funcargs_equal(funcargs *args_to, funcargs *args_from,
 		int strict_types, const char *fspel)
 {
