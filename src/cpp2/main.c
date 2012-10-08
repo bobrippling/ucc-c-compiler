@@ -40,7 +40,7 @@ static const struct
 };
 
 const char *current_fname, *current_line_str;
-int show_current_line;
+int show_current_line = 1;
 
 char cpp_time[16], cpp_date[16];
 

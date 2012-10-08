@@ -71,7 +71,7 @@ static void warn_show_line(struct where *w)
 {
 	extern int show_current_line;
 
-	if(show_current_line){
+	if(show_current_line && w->line_str){
 		static int buffed = 0;
 		char *line = ustrdup(w->line_str);
 		char *p;

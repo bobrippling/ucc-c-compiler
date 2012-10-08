@@ -16,11 +16,11 @@
 
 #define SINGLE_TOKEN(err) \
 	if(dynarray_count((void **)tokens) != 1 || tokens[0]->tok != TOKEN_WORD) \
-		die(err)
+		CPP_DIE(err)
 
 #define NO_TOKEN(err) \
 	if(dynarray_count((void **)tokens)) \
-		die(err)
+		CPP_DIE(err)
 
 #define NOOP_RET() if(should_noop()) return
 
@@ -195,7 +195,7 @@ void handle_define(token **tokens)
 	char *name;
 
 	if(tokens[0]->tok != TOKEN_WORD)
-		die("word expected");
+		CPP_DIE("word expected");
 
 	NOOP_RET();
 
@@ -220,7 +220,7 @@ void handle_define(token **tokens)
 					variadic = 1;
 					i++;
 					if(tokens[i]->tok != TOKEN_CLOSE_PAREN)
-						die("expected: close paren");
+						CPP_DIE("expected: close paren");
 					i++;
 					goto for_fin;
 
@@ -235,11 +235,11 @@ void handle_define(token **tokens)
 							i++;
 							goto for_fin;
 						default:
-							die("expected: comma or close paren");
+							CPP_DIE("expected: comma or close paren");
 					}
 
 				default:
-					die("unexpected token %s", token_str(tokens[i]));
+					CPP_DIE("unexpected token %s", token_str(tokens[i]));
 			}
 		}
 for_fin:
@@ -276,7 +276,9 @@ void handle_error_warning(token **tokens, const char *pre)
 	char *s;
 
 	s = tokens_join(tokens);
-	fprintf(stderr, "#%s: %s\n", pre, s);
+
+	CPP_WARN("#%s: %s\n", pre, s);
+
 	free(s);
 }
 
@@ -329,7 +331,7 @@ void handle_include(token **tokens)
 retry:
 	if(*fname == '<'){
 		if(fname[len-1] != '>')
-			die("invalid include end '%c'", fname[len-1]);
+			CPP_DIE("invalid include end '%c'", fname[len-1]);
 	}else if(*fname != '"'){
 		/*
 		 * #define a "hi"
@@ -340,7 +342,7 @@ retry:
 
 		m = macro_find(fname);
 		if(!m)
-			die("invalid include start \"%s\" (not <xyz>, \"xyz\" or a macro)", fname);
+			CPP_DIE("invalid include start \"%s\" (not <xyz>, \"xyz\" or a macro)", fname);
 
 		for(fname = m->val; isspace(*fname); fname++);
 		len = strlen(fname);
@@ -377,7 +379,7 @@ lib:
 		}
 
 		if(!f)
-			die("can't find include file %c%s%c",
+			CPP_DIE("can't find include file %c%s%c",
 					"\"<"[lib], fname, "\">"[lib]);
 
 		if(option_debug)
@@ -458,7 +460,7 @@ void handle_else(token **tokens)
 	NO_TOKEN("invalid else macro");
 
 	if(ifdef_idx == 0)
-		die("else unexpected");
+		CPP_DIE("else unexpected");
 
 	noop = !noop;
 }
@@ -468,7 +470,7 @@ void handle_endif(token **tokens)
 	NO_TOKEN("invalid endif macro");
 
 	if(ifdef_idx == 0)
-		die("endif unexpected");
+		CPP_DIE("endif unexpected");
 
 	ifdef_pop();
 }
@@ -492,7 +494,7 @@ void handle_macro(char *line)
 		if(should_noop())
 			return;
 
-		die("invalid preproc token");
+		CPP_DIE("invalid preproc token");
 	}
 
 	DEBUG(DEBUG_NORM, "macro %s\n", tokens[0]->w);
@@ -531,7 +533,7 @@ void handle_macro(char *line)
 
 	HANDLE(pragma)
 
-	die("unrecognised preproc command \"%s\"", tokens[0]->w);
+	CPP_DIE("unrecognised preproc command \"%s\"", tokens[0]->w);
 fin:
 	for(i = 0; tokens[i]; i++){
 		free(tokens[i]->w);
@@ -543,5 +545,5 @@ fin:
 void macro_finish()
 {
 	if(ifdef_idx)
-		die("endif expected");
+		CPP_DIE("endif expected");
 }
