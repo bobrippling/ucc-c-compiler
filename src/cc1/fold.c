@@ -243,13 +243,16 @@ void fold_sue(struct_union_enum_st *sue, symtable *stab, int *poffset, int *pthi
 void fold_gen_init_assignment2(expr *base, decl *dfor, decl_init *init_from, stmt *codes)
 {
 	/* assignment expr for each init */
-	const int n_inits = decl_init_len(init_from);
+	const int n_inits = init_from ? decl_init_len(init_from) : 0;
 
 	if(decl_has_incomplete_array(dfor)){
 		/* case 1: int x[][2] = { 0, 1, 2, 3 } - complete to 2
 		 * case 2: int x[][2] = { {1}, {2} } - complete to 2
 		 */
 		int complete_to;
+
+		if(!init_from)
+			DIE_AT(&dfor->where, "can't complete array - no initialiser");
 
 		UCC_ASSERT(init_from->type == decl_init_brace, "not a brace initialiser");
 
@@ -280,9 +283,13 @@ void fold_gen_init_assignment2(expr *base, decl *dfor, decl_init *init_from, stm
 	}
 
 	if(decl_is_array(dfor)){
-		const int pull_from_this_init = init_from->bits.inits[0]->type == decl_init_scalar;
-		const int n_assignments = decl_inner_array_count(dfor);
-		int i_assignment;
+		const int pull_from_this_init =
+			init_from
+		&& init_from->bits.inits
+		&& init_from->bits.inits[0]->type == decl_init_scalar;
+
+		const int array_n = decl_inner_array_count(dfor);
+		int array_i;
 		decl *darray_deref;
 
 		/*if(pull_from_this_init)
@@ -290,13 +297,14 @@ void fold_gen_init_assignment2(expr *base, decl *dfor, decl_init *init_from, stm
 
 		darray_deref = decl_ptr_depth_dec(decl_copy_keep_array(dfor), &dfor->where);
 
-		for(i_assignment = 0; i_assignment < n_assignments; i_assignment++){
+		/* generate array_n assignments */
+		for(array_i = 0; array_i < array_n; array_i++){
 			expr *target = expr_new_op(op_plus);
 			decl_init *sub_init;
 
-			/* access the i_assignment'th element of base */
+			/* access the array_i'th element of base */
 			target->lhs = base;
-			target->rhs = expr_new_val(i_assignment);
+			target->rhs = expr_new_val(array_i);
 
 			target = expr_new_deref(target);
 
@@ -313,13 +321,25 @@ void fold_gen_init_assignment2(expr *base, decl *dfor, decl_init *init_from, stm
 				//fprintf(stderr, "from this init, inner_count %d\n", inner_count);
 				sub_init = decl_init_new(decl_init_brace);
 
+				/* pull until we get to the end, i.e.
+				 * int x[10] = { 1 }; - index 1 is the end
+				 */
 				for(i_sub = 0; i_sub < inner_count; i_sub++){
+					int i = array_i * inner_count + i_sub;
+
+					if(i >= n_inits)
+						/* fill the rest with zero */
+						break;
+
 					dynarray_add((void ***)&sub_init->bits.inits,
-							init_from->bits.inits[i_assignment * inner_count]);
+							init_from->bits.inits[i]);
 				}
 
 			}else{
-				sub_init = init_from->bits.inits[i_assignment];
+				if(!init_from || array_i >= n_inits)
+					sub_init = NULL; /* initialise with zero */
+				else
+					sub_init = init_from->bits.inits[array_i];
 			}
 
 			fold_gen_init_assignment2(target, darray_deref, sub_init, codes);
@@ -332,12 +352,16 @@ void fold_gen_init_assignment2(expr *base, decl *dfor, decl_init *init_from, stm
 		decl_free(darray_deref);
 	}else{
 		/* scalar init */
-		switch(init_from->type){
+		switch(init_from ? init_from->type : decl_init_scalar){
 			case decl_init_scalar:
 			{
 				expr *assign_init;
 
-				assign_init = expr_new_assign(expr_new_deref(base), init_from->bits.expr);
+				assign_init = expr_new_assign(
+						base,
+						init_from ? init_from->bits.expr : expr_new_val(0)
+						/* 0 = default value for initialising */
+						);
 
 				assign_init->assign_is_init = 1;
 
@@ -350,7 +374,9 @@ void fold_gen_init_assignment2(expr *base, decl *dfor, decl_init *init_from, stm
 				if(n_inits > 1)
 					WARN_AT(&init_from->where, "excess initialisers for scalar");
 
-				fold_gen_init_assignment2(base, dfor, init_from->bits.inits[0], codes);
+				fold_gen_init_assignment2(base, dfor,
+						init_from->bits.inits ? init_from->bits.inits[0] : NULL,
+						codes);
 				break;
 		}
 	}
@@ -358,10 +384,7 @@ void fold_gen_init_assignment2(expr *base, decl *dfor, decl_init *init_from, stm
 
 void fold_gen_init_assignment(decl *dfor, stmt *code)
 {
-	expr *base = expr_new_addr();
-
-	base->lhs = expr_new_identifier(dfor->spel);
-	base->expr_addr_implicit = 1;
+	expr *base = expr_new_identifier(dfor->spel);
 
 	fold_gen_init_assignment2(base, dfor, dfor->init, code);
 }

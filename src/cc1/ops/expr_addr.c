@@ -33,8 +33,11 @@ void fold_expr_addr(expr *e, symtable *stab)
 
 		fold_expr(e->lhs, stab);
 
-		/* lvalues are identifier, struct-exp or deref */
-		if(!expr_is_lvalue(e->lhs, LVAL_ALLOW_FUNC) && !decl_is_array(e->lhs->tree_type)){
+		/* can address: lvalues, arrays and functions */
+		if(!expr_is_lvalue(e->lhs, LVAL_ALLOW_FUNC)
+		&& !decl_is_array(e->lhs->tree_type)
+		&& !decl_is_func(e->lhs->tree_type))
+		{
 			DIE_AT(&e->lhs->where, "can't take the address of %s (%s)",
 					e->lhs->f_str(), decl_to_str(e->lhs->tree_type));
 		}
@@ -58,8 +61,9 @@ void gen_expr_addr(expr *e, symtable *stab)
 		out_push_lbl(e->spel, 1, NULL); /* GNU &&lbl */
 
 	}else{
-		/* address of possibly an ident "(&a)->b" or a struct expr "&a->b" */
-		UCC_ASSERT(expr_kind(e->lhs, identifier) || expr_kind(e->lhs, deref), "invalid addr");
+		/* address of possibly an ident "(&a)->b" or a struct expr "&a->b"
+		 * let lea_expr catch it
+		 */
 
 		lea_expr(e->lhs, stab);
 	}

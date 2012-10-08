@@ -10,11 +10,17 @@ src/: Compiler source files
 lib/: Include files and library object location
 	Contains partial C standard lib
 
+cc1 File Layout
+---------------
+
+ops/: expression/statment class specifics
+out/: stack -> asm code generator
+
 
 Overview
 ---------
 
-The compiler (cc1) runs in three main stages.
+The compiler (cc1) runs in three main stages - parse, fold and gen.
 
 It operates on data structures described in tree.h, expr.h, stmt.h and data_structs.h
 
@@ -61,7 +67,7 @@ discarding the current one, if it is a character. Otherwise an error is raised a
 accept() is similar, but doesn't abort the program. It returns true if the token was stepped over.
 
 
-Folding (fold*.c)
+Folding (fold*.c, ops/)
 ----------------
 
 Folding links up symbols, checks for [in]valid code (such as *(void *)0 = 5)
@@ -78,17 +84,28 @@ is parsed to:
 
 	plus(deref(plus(a, multiply(5, 8))), 2)
 
-a[5] -> *(a + 5) -> *(a + 5 * 8)
-the multiplication by 8 is because an int has a width of eight (should be four, I've yet to sort this)
+a[5] -> *(a + 5) -> *(a + 5)
 
+pointer stepping is done during code gen, e.g. *(a + 5 * sizeof(int))
+
+implicit casts are also inserted for type-correct code gen
+(i.e. movq %eax, -8(%rbp) is incorrect - an up-cast is needed)
 
 thus when the folding is complete, we get this:
 
-	<int *>plus(<int *>deref(<int **>plus(<int **>a, <int>multiply(<int>5, <int>8))), <int>2)
+<int *>plus(
+		<int *>deref(
+			<int **>plus(
+				<int **>a,
+				<intptr_t>cast(intptr_t, <int>5))),
+		<intptr_t>cast(intptr_t, <int>2))
 
-for example:
-  adding an <int *> and an <int> gives an <int *>
-  dereferencing an <int **> gives an <int *>
+
+thus:
+	- adding an <int *> and an <int> gives an <int *>,
+	  but the int is cast to intptr_t, so it's the right size for addition to (int *)
+
+	- dereferencing an <int **> gives an <int *>
 
 this helps for type checking, etc
 
@@ -97,7 +114,9 @@ Code Generation (gen_asm.c / gen_str.c)
 ---------------------------------------
 
 Code generation walks the tree, outputting a visual representation (gen_str) or
-the x64 assembly (gen_asm.c - highly suboptimal) of the program.
+the x64 assembly (gen_asm).
+gen_asm is highly suboptimal, see the asm_backend_recode/decl_init branches for
+vast improvements.
 
 This walks the statement and expression trees, generating code for each.
 For example,
@@ -121,7 +140,7 @@ if:
       )
     }
 
-a depth-first walk is done on the tree, generating the following (pseudo) assembly code
+a depth-first walk is done on the tree, generating the following stack code:
 
   push 5
   push 2
@@ -142,6 +161,49 @@ a depth-first walk is done on the tree, generating the following (pseudo) assemb
 Of course, the compiler does constant folding, so expressions like plus(5, 2) are evaluated
 at compile time.
 
+
+This stack code is then taken by the code generator (out/*),
+and turned into somewhat efficient assembly
+
+e.g.
+
+f() + a + 2;
+
+|
+|
+v
+
+call f // result implicitly on the stack
+push a
+plus
+push 2
+plus
+
+|
+|
+v
+
+callq f       // result in eax
+addl a, %eax
+addl 2, %eax
+
+
+This is done by keeping the stack in memory as long as possible,
+and only committing to generating instructions when needed, for example,
+when an operation (+) is generated.
+
+There is plenty of room for improvement, for example, storing offsets from symbols,
+such as:
+
+i = 10;
+a[2 * i - 3] = 4;
+
+can be the assembly:
+
+movl $10, %ecx
+movl $4, -0x3(%rdi, %rcx, 2)
+
+assuming `a' is in rdi.
 
 
 Data Structures
@@ -176,28 +238,28 @@ e.g.
 	int (*f)();
 is represented as
 	decl { .spel = "y", .type = { .primitive = int } }
-		.decl_ptr { .funcargs = { } }
+		.decl_func { .funcargs = { } }
+			.decl_ptr
 
 e.g.
 	int *(*g)(int, char);
 is represented as
 	decl { .spel = "y", .type = { .primitive = int } }
 		.decl_ptr
-			.decl_ptr { .funcargs = { int, char } }
+			.decl_func { .funcargs = { int, char } }
+				.decl_ptr
 
 
 dereferencing a decl removes its lowest decl_ptr/leaf node.
 in the case that we have:
 
-int (*x)();
+int **x;
 *x;
 
 *x's decl looks like this:
 
-decl { .spel = "x", .type = { .primitive = int }, .funcargs = { } }
-
-specifically, the .funcargs are moved to the decl.
-(this has yet to be coded in the code)
+decl { .spel = "x", .type = { .primitive = int } }
+	.decl_ptr
 
 
 int ***(*func_returning_lots)();
@@ -205,16 +267,15 @@ int ***(*func_returning_lots)();
 		.decl_ptr
 			.decl_ptr
 				.decl_ptr
-					.decl_ptr { .funcargs = {} }
-dereferenced, becomes:
-	decl { .spel = "func_returning_lots", .type = { .primitive = int }, .funcargs = {} }
+					.decl_func { .funcargs = {} }
+						.decl_ptr
+
+dereferenced and called [ (*func_returning_lots)() ], becomes:
+int ***;
+	decl { .spel = "func_returning_lots", .type = { .primitive = int } }
 		.decl_ptr
 			.decl_ptr
 				.decl_ptr
-
-aka
-int ***func_returning_lots();
-
 
 
 finally:
@@ -222,16 +283,7 @@ finally:
 int *(*(*func_returning_fptr)(int))(char);
 	decl { .spel = "func_returning_fptr", .type = { .primitive = int } }
 		.decl_ptr
-			.decl_ptr { .funcargs = { int } }
-				.decl_ptr { .funcargs = { char } }
-
-dereferenced, becomes:
-	decl { .spel = "func_returning_fptr", .type = { .primitive = int }, .funcargs = { int } }
-		.decl_ptr
-			.decl_ptr
-				.decl_ptr { .funcargs = { char } }
-
-aka
-int *(*func_returning_fptr(int))(char)
-
-not sure this is right.. shall check in the morning
+			.decl_func { .funcargs = { char } }
+				.decl_ptr
+					.decl_func { .funcargs = { int } }
+						.decl_ptr

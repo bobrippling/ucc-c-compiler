@@ -226,14 +226,22 @@ void v_save_reg(struct vstack *vp)
 	memset(&store, 0, sizeof store);
 
 	store.type = STACK;
-	store.d = decl_ptr_depth_inc(decl_copy(vp->d));
-	store.bits.off_from_bp = -impl_alloc_stack(decl_size(store.d));
+	store.d = decl_ptr_depth_inc(decl_copy(
+				vp->d ? vp->d : decl_ptr_depth_inc(decl_new_void())));
 
+	/* the following gen two instructions - subq and movq
+	 * instead/TODO: impl_save_reg(vp) -> "pushq %%rax"
+	 * -O1?
+	 */
+	store.bits.off_from_bp = -impl_alloc_stack(decl_size(store.d));
 	impl_store(vp, &store);
 
 	store.type = STACK_SAVE;
 
 	memcpy(vp, &store, sizeof store);
+
+	/* no need for copy */
+	vp->d = decl_ptr_depth_dec(vp->d, NULL);
 }
 
 void v_freeup_reg(int r, int allowable_stack)
@@ -399,20 +407,17 @@ static void vtop2_are(
 
 static int calc_ptr_step(decl *d)
 {
+	/* we are calculating the sizeof *d */
+	decl *ref;
 	int sz;
 
-	if(!d)
-		return 1; /* void * */
+	if(!d || decl_is_void_ptr(d))
+		return type_primitive_size(type_void);
 
-	if(decl_ptr_depth(d) > 1)
-		return decl_size(d);
+	ref = decl_ptr_depth_dec(decl_copy_keep_array(d), NULL);
+	sz = decl_size(ref);
 
-	sz = type_size(d->type);
-
-	/* array? if so, sizeof the array */
-	fprintf(stderr, "calc_ptr_step(%s)\n", decl_to_str(d));
-	if(decl_is_array(d))
-		sz *= decl_inner_array_count(d);
+	decl_free(ref);
 
 	return sz;
 }
@@ -531,13 +536,7 @@ void v_deref_decl(struct vstack *vp)
 void out_deref()
 {
 	decl *indir;
-	/*
-	 >   *((int (*)[])exp
-	 is a no-op
-	 i.e. if the pointed-to object is array-type, don't deref
-	 */
-
-	out_comment("deref %s", decl_to_str(vtop->d));
+	/* if the pointed-to object is not an lvalue, don't deref */
 
 	indir = decl_ptr_depth_dec(decl_copy(vtop->d), NULL);
 

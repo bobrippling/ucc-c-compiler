@@ -1,8 +1,9 @@
 #!/usr/bin/perl
-use warnings;
+#use warnings;
 
 # rules:
 # "compiles"
+# "no-link"
 # "compile-error"
 # "exit=[0-9]+"
 # "noop" - ignore
@@ -14,10 +15,20 @@ sub rules_assume;
 sub rules_exclude;
 sub usage()
 {
-	die "Usage: $0\n";
+	die "Usage: $0 dir\n";
 }
 
+my $dir = shift;
+
 usage() if @ARGV;
+
+chdir $dir or die;
+
+my $dir_nest = do{
+	my $slashes = ((my $tmp = $dir) =~ s#/##g);
+
+	"../" x $slashes;
+};
 
 %rules = rules_exclude(rules_gendeps(rules_assume(rules_parse())));
 
@@ -44,7 +55,9 @@ for(keys %rules){
 		print "! ";
 	}
 
-	print "../../ucc -w -o \$@ \$<\n";
+	my $args = $rules{$_}->{args} or '';
+
+	print "$dir_nest../../ucc -w $args -o \$@ \$<\n";
 
 	unless($fail_compile){
 		my $ec = $rules{$_}->{exit};
@@ -56,9 +69,8 @@ for(keys %rules){
 			if($ec){
 				print "; [ \$\$? -eq $ec ]";
 			}
+			print "\n";
 		}
-
-		print "\n";
 	}
 }
 
@@ -80,6 +92,9 @@ sub rule_new
 
 	if($mode eq 'compiles'){
 		return { };
+
+	}elsif($mode eq 'no-link'){
+		return { args => '-c' };
 
 	}elsif($mode eq 'compile-error'){
 		return { fail => 1 }

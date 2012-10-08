@@ -1,5 +1,5 @@
-//#define OPEN  {
-//#define CLOSE }
+#define OPEN  //{
+#define CLOSE //}
 
 main()
 {
@@ -14,5 +14,5 @@ main()
 		CLOSE,
 	};
 
-	return x[1][2][0]; // 5
+	return x[1][1][2]; // 3
 }

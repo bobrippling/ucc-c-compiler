@@ -182,10 +182,10 @@ int impl_alloc_stack(int sz)
 
 	if(sz){
 		const int extra = sz % word_size ? word_size - sz % word_size : 0;
-		out_asm("subq $0x%x, %%rsp", sz + extra);
+		out_asm("subq $0x%x, %%rsp", sz += extra);
 	}
 
-	return sz + stack_sz;
+	return stack_sz + sz;
 }
 
 const char *call_reg_str(int i, decl *d)
@@ -215,6 +215,8 @@ void impl_func_prologue(int stack_res, int nargs, int variadic)
 	out_asm("pushq %%rbp");
 	out_asm("movq %%rsp, %%rbp");
 
+	UCC_ASSERT(stack_sz == 0, "non-empty x86 stack for new func");
+
 	if(nargs){
 		int n_reg_args;
 
@@ -236,10 +238,9 @@ void impl_func_prologue(int stack_res, int nargs, int variadic)
 		}
 	}
 
-	if(stack_res){
-		UCC_ASSERT(stack_sz == 0, "non-empty x86 stack for new func");
-		stack_sz = impl_alloc_stack(stack_res);
-	}
+	stack_sz = impl_alloc_stack(stack_res)
+		/* make room for saved args too */
+		+ nargs * platform_word_size();
 
 	if(variadic){
 		/* play catchup, pushing any remaining reg args
@@ -259,6 +260,7 @@ void impl_func_prologue(int stack_res, int nargs, int variadic)
 		out_label(vfin);
 		free(vfin);
 
+		ICW("need to adjust stack_sz for variadics");
 	}
 }
 
@@ -556,9 +558,18 @@ void impl_op(enum op_type op)
 
 			vtop_clear(vtop->d);
 			vtop->type = REG;
-			/* FIXME */
-			if(!vtop->d || vtop->d->type->primitive != type_int){
-				ICW("idiv incorrect - need to load ax:al/ax:dx/eax:edx for %s",
+
+			if(!vtop->d || type_primitive_size(vtop->d->type->primitive) != type_primitive_size(type_int)){
+#if 0
+Operand-Size         Dividend  Divisor  Quotient  Remainder
+8                    AX        r/m8     AL        AH
+16                   DX:AX     r/m16    AX        DX
+32                   EDX:EAX   r/m32    EAX       EDX
+64                   RDX:RAX   r/m64    RAX       RDX
+
+but gcc and clang promote to ints anyway...
+#endif
+				ICW("idiv incorrect - need to load al:ah/dx:ax/edx:eax for %s",
 						decl_to_str(vtop->d));
 			}
 
@@ -610,6 +621,11 @@ void impl_op(enum op_type op)
 
 		vtop2_prepare_op();
 
+		/* TODO: -O1
+		 * if the op is commutative and we have REG_RET,
+		 * make it the result reg
+		 */
+
 		out_asm("%s%c %s, %s", opc,
 				asm_type_ch(vtop->d),
 				vstack_str_r(buf, &vtop[ 0]),
@@ -629,10 +645,11 @@ void impl_deref()
 	switch(vtop->type){
 		case LBL:
 		case STACK:
+		case CONST:
 			v_deref_decl(vtop);
 			out_asm("mov%c %s, %%%s",
 					asm_type_ch(vtop->d),
-					vstack_str_r(ptr, vtop),
+					vstack_str_r_ptr(ptr, vtop, 1),
 					x86_reg_str_r(dst, r, vtop->d));
 			break;
 
@@ -742,7 +759,7 @@ void impl_cast(decl *from, decl *to)
 	}
 }
 
-static const char *x86_call_jmp_target(struct vstack *vp)
+static const char *x86_call_jmp_target(struct vstack *vp, int no_rax)
 {
 	static char buf[VSTACK_STR_SZ + 2];
 
@@ -760,13 +777,15 @@ static const char *x86_call_jmp_target(struct vstack *vp)
 		case FLAG:
 		case REG:
 		case CONST:
-			strcpy(buf, "*%");
 			v_to_reg(vp); /* again, v_to_reg_preferred(), except that we don't want a reg */
-			if(vp->bits.reg == REG_A){
+
+			if(no_rax && vp->bits.reg == REG_A){
 				int r = v_unused_reg(1);
 				impl_reg_cp(vp, r);
 				vp->bits.reg = r;
 			}
+
+			strcpy(buf, "*%");
 			reg_str_r(buf + 2, vp);
 
 			return buf;
@@ -778,7 +797,7 @@ static const char *x86_call_jmp_target(struct vstack *vp)
 
 void impl_jmp()
 {
-	out_asm("jmp %s", x86_call_jmp_target(vtop));
+	out_asm("jmp %s", x86_call_jmp_target(vtop, 0));
 }
 
 void impl_jcond(int true, const char *lbl)
@@ -854,16 +873,17 @@ void impl_call(const int nargs, decl *d_ret, decl *d_func)
 	if(vcond)
 		out_comment("pre-call reg-save");
 	for(; vcond; i++)
-		if(vstack[i].type == REG)
+		/* TODO: v_to_mem (__asm__ branch) */
+		if(vstack[i].type == REG || vstack[i].type == FLAG)
 			v_save_reg(&vstack[i]);
 
 	{
-		const char *jtarget = x86_call_jmp_target(vtop);
-
 		funcargs *args = decl_funcargs(d_func);
+		int need_float_count = args->variadic || (!args->arglist && !args->args_void);
+		const char *jtarget = x86_call_jmp_target(vtop, need_float_count);
 
 		/* if x(...) or x() */
-		if(args->variadic || (!args->arglist && !args->args_void))
+		if(need_float_count)
 			out_asm("movb $%d, %%al", nfloats); /* we can never have a funcptr in rax, so we're fine */
 
 		out_asm("callq %s", jtarget);

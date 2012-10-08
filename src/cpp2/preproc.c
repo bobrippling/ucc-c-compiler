@@ -40,7 +40,7 @@ void preproc_push(FILE *f, const char *fname)
 
 	file_stack_idx++;
 	if(file_stack_idx == ARRAY_LEN(file_stack))
-		die("too many includes");
+		CPP_DIE("too many includes");
 
 #ifdef DO_CHDIR
 	char *wd;
@@ -168,7 +168,7 @@ char *strip_comment(char *line)
 			/* read until the end of the string */
 			s = terminating_quote(s + 1);
 			if(!s)
-				die("no terminating quote to string");
+				CPP_DIE("no terminating quote to string");
 			/* finish of string */
 		}else if(*s == '/'){
 			if(s[1] == '/'){
@@ -207,6 +207,7 @@ void preprocess()
 
 	while((line = splice_line())){
 		char *s = filter_macros(strip_comment(line));
+
 		if(s){
 			puts(s);
 			free(s);
@@ -214,7 +215,7 @@ void preprocess()
 	}
 
 	if(strip_in_block)
-		die("no terminating block comment");
+		CPP_DIE("no terminating block comment");
 
 	macro_finish();
 }
