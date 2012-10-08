@@ -18,4 +18,9 @@ cleantest:
 test: all
 	make -Ctest test
 
+ALL_SRC = $(shell find . -iname '*.[ch]')
+
+tags: ${ALL_SRC}
+	ctags -R .
+
 .PHONY: all clean cleanall configure
