@@ -35,7 +35,7 @@ macro *macro_add(const char *nam, const char *val)
 	m = macro_find(nam);
 
 	if(m){
-		fprintf(stderr, "cpp: warning: redefining \"%s\"\n", nam);
+		CPP_WARN("cpp: warning: redefining \"%s\"", nam);
 		free(m->nam);
 		free(m->val);
 	}else{
@@ -117,7 +117,7 @@ relook:
 			}
 			close_b = nest_close_paren(open_b + 1);
 			if(!close_b)
-				die("no close paren for function-macro");
+				CPP_DIE("no close paren for function-macro");
 
 			*open_b  = '\0';
 			*close_b = '\0';
@@ -160,7 +160,7 @@ tok_fin:
 						for(i = 0; i < got; i++)
 							fprintf(stderr, "args[%d] = \"%s\"\n", i, args[i]);
 
-					die("wrong number of args to function macro \"%s\", got %d, expected %d%s%s%s",
+					CPP_DIE("wrong number of args to function macro \"%s\", got %d, expected %d%s%s%s",
 							m->nam, got, exp,
 							option_debug ? " (" : "",
 							option_debug ? *pline : "",
@@ -244,9 +244,6 @@ tok_fin:
 			if(m->val){
 				val = m->val;
 			}else{
-				extern const char *current_fname;
-				extern int current_line;
-
 				fval = 1;
 
 				if(!strcmp(m->nam, "__FILE__")){
