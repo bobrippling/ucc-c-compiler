@@ -21,7 +21,14 @@ sub lines
 	return @l;
 }
 
-die "Usage: $0 file_with_checks.c\n" unless @ARGV == 1;
+my $verbose = 0;
+
+if(@ARGV and $ARGV[0] eq '-v'){
+	$verbose = 1;
+	shift;
+}
+
+die "Usage: $0 [-v] file_with_checks.c\n" unless @ARGV == 1;
 
 my @lines;
 my $line;
@@ -50,7 +57,7 @@ for(chomp_all(<STDIN>)){
 $line = 1;
 for(chomp_all(lines(shift))){
 	if(m#// *CHECK: *(.*)#){
-		push @{$lines[$line]->{checks}}, { check => $1, line => $line };
+		push @{$lines[$line - 1]->{checks}}, { check => $1, line => $line };
 	}
 	$line++;
 }
@@ -109,10 +116,12 @@ iter_lines(
 		print "  checks:\n" if @checks;
 		print "    " . h2s($_) . "\n" for @checks;
 	}
-);
+) if $verbose;
 
 # ---------------------------
-# compare
+# make sure all checks are fulfilled. don't check all warnings have checks
+
+my $missing_warning = 0;
 
 iter_lines(
 	sub {
@@ -126,28 +135,32 @@ iter_lines(
 
 		if($nchecks != $nwarns){
 			warn "line: $line, warnings ($nwarns) != checks ($nchecks)\n";
+			$missing_warning = 1;
+
 		}elsif($nchecks){
 			# make sure they're equal using $check
-			my @copy = @warns;
-
-			for(@checks){
-				my $check = $_;
+			for my $check (@checks){
 				my $match = $check->{check}; # /regex/
 				die2 "invalid CHECK: '$match'" unless $match =~ m#^/(.*)/$#;
 
 				my $regex = $1;
 				my $found = 0;
 
-				for(@copy){
-					if($_ =~ /$regex/){
+				for(@warns){
+					if($_->{msg} =~ /$regex/){
 						$found = 1;
-						$_ = ''; # silence
+						$_->{msg} = ''; # silence
 						last;
 					}
 				}
 
-				warn "check $match not found in warnings, line $check->{line}\n" unless $found;
+				if(!$found){
+					$missing_warning = 1;
+					warn "check $match not found in warnings on line $check->{line}\n"
+				}
 			}
 		}
 	}
 );
+
+exit $missing_warning;
