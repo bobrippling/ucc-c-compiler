@@ -41,6 +41,7 @@ void fold_expr_if(expr *e, symtable *stab)
 {
 	enum constyness is_const;
 	intval dummy;
+	decl *tt_l, *tt_r;
 
 	fold_expr(e->expr, stab);
 	const_fold(e->expr, &dummy, &is_const);
@@ -61,7 +62,6 @@ void fold_expr_if(expr *e, symtable *stab)
 
 
 	/*
-	 * TODO: check these are right
 
 	Arithmetic                             Arithmetic                           Arithmetic type after usual arithmetic conversions
 	// Structure or union type                Compatible structure or union type   Structure or union type with all the qualifiers on both operands
@@ -75,11 +75,13 @@ void fold_expr_if(expr *e, symtable *stab)
 	  b) resolve to a pointer to the incomplete-type
 	*/
 
-#define tt_l (e->lhs->tree_type)
-#define tt_r (e->rhs->tree_type)
+	tt_l = (e->lhs ? e->lhs : e->expr)->tree_type;
+	tt_r = e->rhs->tree_type;
 
 	if(decl_is_integral(tt_l) && decl_is_integral(tt_r)){
-		e->tree_type = op_promote_types(op_unknown, "?:", &e->lhs, &e->rhs, &e->where, stab);
+		e->tree_type = op_promote_types(op_unknown, "?:",
+				(e->lhs ? &e->lhs : &e->expr), &e->rhs,
+				&e->where, stab);
 
 	}else if(decl_is_void(tt_l) || decl_is_void(tt_r)){
 		e->tree_type = decl_new_void();
@@ -94,7 +96,7 @@ void fold_expr_if(expr *e, symtable *stab)
 		int l_ptr_st_un = decl_is_struct_or_union_ptr(tt_l);
 		int r_ptr_st_un = decl_is_struct_or_union_ptr(tt_r);
 
-		int l_ptr_null = expr_is_null_ptr(e->lhs);
+		int l_ptr_null = expr_is_null_ptr(e->lhs ? e->lhs : e->expr);
 		int r_ptr_null = expr_is_null_ptr(e->rhs);
 
 		int l_complete = !l_ptr_null && (!l_ptr_st_un || !sue_incomplete(tt_l->type->sue));
