@@ -391,8 +391,7 @@ usage:
 
 	tokenise_set_file(f, fname);
 	globs = parse();
-	if(f != stdin)
-		fclose(f);
+	tokenise_close();
 
 	if(globs->decls){
 		fold(globs);
