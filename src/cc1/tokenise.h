@@ -111,6 +111,7 @@ enum token
 };
 
 void tokenise_set_file(FILE *f, const char *nam);
+void tokenise_close(void);
 void nexttoken(void);
 
 #endif
