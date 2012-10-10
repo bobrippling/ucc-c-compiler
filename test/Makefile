@@ -9,7 +9,6 @@ DIRS =                        \
 	initialisation/array/       \
 	initialisation/scalar/      \
 	initialisation/structs/     \
-	hai/                        \
 	inline/                     \
 	input/                      \
 	lib/                        \
@@ -61,7 +60,6 @@ help:
 # asm/
 # C99/
 # clang/
-# hai/
 # input/
 # messing around/
 # misc/
