@@ -1,10 +1,12 @@
-#warning 1
+#warning 1 // CHECK: /warning: +1/
 hi
 #ifdef A
-#  warning 4
+#  warning 4 // CHECK: !/warning/
 #else
-#  warning 6
+#  warning 6 // CHECK: /warning: +6/
 #endif
-#warning 8
+#warning 8 // CHECK: /warning: +8/
 #pragma yo
-#warning 10
+#warning 10 // CHECK: /warning: +10/
+
+// RUN: %ucc -E -o- %s 2>&1 | %check %s
