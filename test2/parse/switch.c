@@ -1,3 +1,5 @@
+// RUN: %ucc -o %t %s && %t
+
 main()
 {
 	switch(0)
@@ -7,4 +9,6 @@ main()
 			;
 		;
 		;
+		;
+		return 0;
 }

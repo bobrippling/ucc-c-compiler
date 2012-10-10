@@ -14,7 +14,6 @@ DIRS =                        \
 	lvalue/                     \
 	messing                     \
 	other/                      \
-	parse/                      \
 	pointers/                   \
 	stack_save/                 \
 	structs/                    \
@@ -60,7 +59,6 @@ help:
 # clang/
 # messing around/
 # packing/
-# parse/
 # programs/
 # promotion/
 # Unsorted/
