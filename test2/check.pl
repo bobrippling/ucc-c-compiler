@@ -134,20 +134,33 @@ iter_lines(
 		my $nwarns  = @warns;
 
 		if($nchecks != $nwarns){
-			warn "line: $line, warnings ($nwarns) != checks ($nchecks)\n";
-			$missing_warning = 1;
+			# if all checks for this line are inverse, it's fine
+			for my $check (@checks){
+				if($check->{check} !~ /^!/){
+					warn "line: $line, warnings ($nwarns) != checks ($nchecks)\n";
+					$missing_warning = 1;
+					last;
+				}
+			}
 
 		}elsif($nchecks){
 			# make sure they're equal using $check
 			for my $check (@checks){
 				my $match = $check->{check}; # /regex/
-				die2 "invalid CHECK: '$match'" unless $match =~ m#^/(.*)/$#;
+				my $rev = 0;
 
-				my $regex = $1;
+				if($match =~ m#^(!)?/(.*)/$#){
+					$rev = defined $1;
+				}else{
+					die2 "invalid CHECK: '$match'"
+				}
+
+
+				my $regex = $2;
 				my $found = 0;
 
 				for(@warns){
-					if($_->{msg} =~ /$regex/){
+					if($rev ^ ($_->{msg} =~ /$regex/)){
 						$found = 1;
 						$_->{msg} = ''; # silence
 						last;
