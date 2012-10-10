@@ -1,6 +1,5 @@
 DIRS =                        \
 	arrays/                     \
-	Unsorted/                   \
 	anywhere_decl/              \
 	assignment/                 \
 	blocks/                     \
@@ -61,4 +60,3 @@ help:
 # packing/
 # programs/
 # promotion/
-# Unsorted/
