@@ -10,7 +10,6 @@ DIRS =                        \
 	initialisation/scalar/      \
 	initialisation/structs/     \
 	inline/                     \
-	input/                      \
 	lib/                        \
 	lvalue/                     \
 	messing                     \
@@ -60,7 +59,6 @@ help:
 # asm/
 # C99/
 # clang/
-# input/
 # messing around/
 # misc/
 # packing/
