@@ -1,3 +1,5 @@
+// stupid.
+
 extern inline foo(void) { return 1; }
 int firstuse(void) { return foo(); }
 

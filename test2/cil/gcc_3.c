@@ -1,3 +1,5 @@
+// RUN: %ucc -o %t %s && %t
+
 static void *jtab[2]; // A jump table
 static int doit(int x){
 

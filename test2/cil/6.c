@@ -1,3 +1,5 @@
+// RUN: %ucc -o %t %s && %t
+
 typedef struct
 {
 	char *key;
@@ -17,8 +19,9 @@ T1 a[] =
 		((char *)&((T3) {1, (char *) 1 }))
 	}
 };
-int main() {
-	T3 *pt3 = (T3*)a[0].value;
-	return pt3->value;
-}
 
+int main()
+{
+	T3 *pt3 = (T3*)a[0].value;
+	return pt3->value == (char *)1 ? 0 : 1;
+}

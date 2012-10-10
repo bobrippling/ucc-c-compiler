@@ -1,3 +1,5 @@
+// RUN: %ucc %s; [ $? -ne 0 ]
+
 int foo() {
 	static bar();
 	static (*pbar)() = bar;

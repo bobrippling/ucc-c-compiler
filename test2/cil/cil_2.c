@@ -1,3 +1,5 @@
+// TEST: %ucc %s -o %t
+
 main()
 {
 	struct {

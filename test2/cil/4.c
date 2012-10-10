@@ -1,3 +1,5 @@
+// RUN: %ucc -c %s
+
 int (*pf)(void);
 int f(void) {
 

@@ -2,11 +2,9 @@ DIRS =                        \
 	arrays/                     \
 	Unsorted/                   \
 	anywhere_decl/              \
-	around/                     \
 	assignment/                 \
 	blocks/                     \
 	builtin/                    \
-	cil/                        \
 	decl_parsing/               \
 	initialisation/array/       \
 	initialisation/scalar/      \
@@ -62,7 +60,6 @@ help:
 # apply/
 # asm/
 # C99/
-# cil/
 # clang/
 # hai/
 # input/
