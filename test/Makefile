@@ -13,7 +13,6 @@ DIRS =                        \
 	lib/                        \
 	lvalue/                     \
 	messing                     \
-	misc/                       \
 	other/                      \
 	parse/                      \
 	pointers/                   \
@@ -60,7 +59,6 @@ help:
 # C99/
 # clang/
 # messing around/
-# misc/
 # packing/
 # parse/
 # programs/
