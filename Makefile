@@ -14,9 +14,11 @@ cleanall: clean
 
 cleantest:
 	make -Ctest clean
+# no need to clean test2
 
 test: all
 	make -Ctest test
+	cd test2; sh all.sh
 
 ALL_SRC = $(shell find . -iname '*.[ch]')
 
