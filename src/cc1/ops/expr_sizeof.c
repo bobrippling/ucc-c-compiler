@@ -21,7 +21,7 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 	chosen = SIZEOF_WHAT(e);
 
 	if(!e->expr_is_typeof){
-		if(decl_has_incomplete_array(chosen))
+		if(decl_is_incomplete_array(chosen))
 			DIE_AT(&e->where, "sizeof incomplete array");
 
 		if(decl_is_struct_or_union(chosen) && sue_incomplete(chosen->type->sue))

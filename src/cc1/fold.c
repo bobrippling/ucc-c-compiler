@@ -245,7 +245,7 @@ void fold_gen_init_assignment2(expr *base, decl *dfor, decl_init *init_from, stm
 	/* assignment expr for each init */
 	const int n_inits = init_from ? decl_init_len(init_from) : 0;
 
-	if(decl_has_incomplete_array(dfor)){
+	if(decl_is_incomplete_array(dfor)){
 		/* case 1: int x[][2] = { 0, 1, 2, 3 } - complete to 2
 		 * case 2: int x[][2] = { {1}, {2} } - complete to 2
 		 */

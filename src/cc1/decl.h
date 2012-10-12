@@ -231,7 +231,7 @@ int decl_attr_present(decl_attr *, enum decl_attr_type);
 
 int decl_is_array( decl *);
 int decl_has_array(decl *);
-int decl_has_incomplete_array(decl *);
+int decl_is_incomplete_array(decl *);
 void decl_complete_array(decl *d, int n);
 int decl_inner_array_count(decl *d);
 int decl_desc_array_count(decl_desc *dp);

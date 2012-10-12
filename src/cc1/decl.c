@@ -693,7 +693,7 @@ int decl_has_array(decl *d)
 	return 0;
 }
 
-int decl_has_incomplete_array(decl *d)
+int decl_is_incomplete_array(decl *d)
 {
 	decl_desc *tail = decl_desc_tail(d);
 

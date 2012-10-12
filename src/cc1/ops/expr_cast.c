@@ -31,6 +31,9 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 	fold_disallow_st_un(e->expr, "cast-expr");
 	fold_disallow_st_un(e, "cast-target");
 
+	if(decl_is_incomplete_array(e->tree_type))
+		DIE_AT(&e->where, "cast to incomplete type %s", decl_to_str(e->tree_type));
+
 #ifdef CAST_COLLAPSE
 	if(expr_kind(e->expr, cast)){
 		/* get rid of e->expr, replace with e->expr->rhs */
