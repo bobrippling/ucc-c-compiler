@@ -16,6 +16,7 @@
 
 #include "../const.h"
 #include "../gen_asm.h"
+#include "../gen_str.h"
 
 /* for asm_temp() */
 #include "../asm.h"
@@ -73,19 +74,60 @@ expr *builtin_parse(const char *sp)
 	if(b){
 		expr *(*f)(void) = b->parser;
 
-		if(f)
-			return f();
+		if(f){
+			expr *e = f();
+			e->spel = ustrdup(sp);
+			return e;
+		}
 	}
 
 	return NULL;
 }
 
+static void gen_str_builtin(expr *e, symtable *stab)
+{
+	const enum pdeclargs dflags =
+		  PDECL_INDENT
+		| PDECL_NEWLINE
+		| PDECL_SYM_OFFSET
+		| PDECL_FUNC_DESCEND
+		| PDECL_PISDEF
+		| PDECL_PINIT
+		| PDECL_SIZE
+		| PDECL_ATTR;
+
+	(void)stab;
+	idt_printf("%s(\n", e->spel);
+
+#define PRINT_ARGS(type, from, func)      \
+	{                                       \
+		type **i;                             \
+                                          \
+		gen_str_indent++;                     \
+		for(i = from; i && *i; i++){          \
+			func;                               \
+			if(i[1])                            \
+				idt_printf(",\n");                \
+		}                                     \
+		gen_str_indent--;                     \
+	}
+
+	PRINT_ARGS(expr, e->funcargs,            print_expr(*i))
+
+	if(e->block_args)
+		PRINT_ARGS(decl, e->block_args->arglist, print_decl(*i, dflags))
+
+	idt_printf(");\n");
+}
+
+#define F_GEN(exp, fc) if(cc1_backend == BACKEND_ASM) exp->f_gen = fc
+
 #define expr_mutate_builtin(exp, to)  \
-	exp->f_fold = fold_ ## to
+	exp->f_fold = fold_ ## to,          \
+	exp->f_gen        = gen_str_builtin
 
 #define expr_mutate_builtin_const(exp, to) \
 	expr_mutate_builtin(exp, to),             \
-	exp->f_gen        = NULL,                 \
 	exp->f_const_fold = const_ ## to
 
 static void wur_builtin(expr *e)
@@ -124,7 +166,7 @@ static expr *parse_unreachable(void)
 	expr *fcall = expr_new_funcall();
 
 	expr_mutate_builtin(fcall, unreachable);
-	fcall->f_gen = builtin_gen_undefined;
+	F_GEN(fcall, builtin_gen_undefined);
 
 	return fcall;
 }
@@ -236,7 +278,7 @@ static expr *parse_frame_address(void)
 {
 	expr *fcall = parse_any_args();
 	expr_mutate_builtin(fcall, frame_address);
-	fcall->f_gen = builtin_gen_frame_pointer;
+	F_GEN(fcall, builtin_gen_frame_pointer);
 	return fcall;
 }
 
@@ -278,6 +320,8 @@ static expr *parse_expect(void)
 {
 	expr *fcall = parse_any_args();
 	expr_mutate_builtin_const(fcall, expect);
-	fcall->f_gen = builtin_gen_expect;
+
+	F_GEN(fcall, builtin_gen_expect);
+
 	return fcall;
 }
