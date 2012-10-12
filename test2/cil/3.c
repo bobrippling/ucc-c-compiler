@@ -11,5 +11,5 @@ int f() {
 
 main()
 {
-	return f() == 5;
+	return f() == 5 ? 0 : 1;
 }

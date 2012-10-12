@@ -1,5 +1,6 @@
 #!/bin/sh
 
+verbose=0
 if [ "$1" = -v ]
 then verbose=1
 fi
