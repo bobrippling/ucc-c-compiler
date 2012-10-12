@@ -14,4 +14,6 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode);
 
 funcargs *parse_func_arglist(void);
 
+decl_init *parse_initialisation(void); /* expr or {{...}} */
+
 #endif

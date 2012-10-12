@@ -51,6 +51,7 @@ struct expr
 	{
 		intval iv;
 		char *s;
+		decl_init *init;
 	} val;
 
 	struct generic_lbl
@@ -116,6 +117,7 @@ expr *expr_new_decl_init(decl *d, decl_init *di);
 #include "ops/expr_stmt.h"
 #include "ops/expr_deref.h"
 #include "ops/expr_struct.h"
+#include "ops/expr_compound_lit.h"
 
 #define expr_free(x) do{if((x)->tree_type) decl_free((x)->tree_type); free(x);}while(0)
 
