@@ -22,11 +22,14 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 
 void gen_expr_compound_lit(expr *e, symtable *stab)
 {
+	(void)e;
+	(void)stab;
 	ICE("TODO: gen_expr_(cast){}");
 }
 
 void gen_expr_str_compound_lit(expr *e, symtable *stab)
 {
+	(void)stab;
 	idt_printf("(%s){}:\n", decl_to_str(e->decl));
 	gen_str_indent++;
 	print_decl(e->decl,
