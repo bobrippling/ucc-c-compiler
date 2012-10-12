@@ -1,6 +1,7 @@
 #include <string.h>
 
 #include "ops.h"
+#include "expr_val.h"
 #include "../out/asm.h"
 
 const char *str_expr_val()

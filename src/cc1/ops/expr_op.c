@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "ops.h"
+#include "expr_op.h"
 #include "../out/lbl.h"
 
 const char *str_expr_op()

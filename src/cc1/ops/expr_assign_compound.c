@@ -1,4 +1,5 @@
 #include "ops.h"
+#include "expr_assign_compound.h"
 
 const char *str_expr_assign_compound()
 {

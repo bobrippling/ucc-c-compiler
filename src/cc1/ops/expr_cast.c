@@ -4,6 +4,7 @@
 
 #include "../../util/alloc.h"
 #include "ops.h"
+#include "expr_cast.h"
 #include "../out/asm.h"
 
 const char *str_expr_cast()
@@ -29,6 +30,9 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 
 	fold_disallow_st_un(e->expr, "cast-expr");
 	fold_disallow_st_un(e, "cast-target");
+
+	if(decl_is_incomplete_array(e->tree_type))
+		DIE_AT(&e->where, "cast to incomplete type %s", decl_to_str(e->tree_type));
 
 #ifdef CAST_COLLAPSE
 	if(expr_kind(e->expr, cast)){

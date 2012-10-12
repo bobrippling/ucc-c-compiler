@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "ops.h"
+#include "expr_if.h"
 #include "../sue.h"
 #include "../out/lbl.h"
 

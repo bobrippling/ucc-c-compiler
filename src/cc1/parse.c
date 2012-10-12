@@ -192,7 +192,17 @@ expr *parse_expr_primary()
 				if((d = parse_decl_single(DECL_SPEL_NO))){
 					e = expr_new_cast(d, 0);
 					EAT(token_close_paren);
-					e->expr = parse_expr_cast(); /* another cast */
+
+					if(curtok == token_open_block){
+						/* C99 compound lit. */
+						decl_init *init = parse_initialisation();
+						e->val.init = init;
+
+						expr_mutate_wrapper(e, compound_lit);
+
+					}else{
+						e->expr = parse_expr_cast(); /* another cast */
+					}
 					return e;
 
 				}else if(curtok == token_open_block){

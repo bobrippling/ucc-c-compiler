@@ -1,5 +1,6 @@
 #include <string.h>
 #include "ops.h"
+#include "expr_identifier.h"
 #include "../out/asm.h"
 #include "../sue.h"
 #include "expr_addr.h"

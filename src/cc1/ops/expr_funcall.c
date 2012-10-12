@@ -3,6 +3,7 @@
 #include <stdlib.h>
 
 #include "ops.h"
+#include "expr_funcall.h"
 #include "../../util/dynarray.h"
 #include "../../util/platform.h"
 #include "../../util/alloc.h"
