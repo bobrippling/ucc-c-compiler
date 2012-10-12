@@ -6,6 +6,13 @@ void const_fold(expr *e, intval *iv, enum constyness *success);
 int const_expr_and_zero(expr *e);
 /*long const_expr_value(expr *e);*/
 
+#define const_fold_val(e, iv, ...) do{            \
+		enum constyness k;                            \
+		const_fold(e, iv, &k);                        \
+		if(k != CONST_WITH_VAL)                       \
+			DIE_AT(&e->where, __VA_ARGS__);             \
+	}while(0)
+
 #define const_fold_need_val(e, iv) do{            \
 		enum constyness k;                            \
 		const_fold(e, iv, &k);                        \

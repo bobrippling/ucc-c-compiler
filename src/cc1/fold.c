@@ -85,7 +85,7 @@ void fold_decl_desc(decl_desc *dp, symtable *stab, decl *root)
 			intval sz;
 
 			fold_expr(dp->bits.array_size, stab);
-			const_fold_need_val(dp->bits.array_size, &sz);
+			const_fold_val(dp->bits.array_size, &sz, "non-constant array-size");
 
 			if(sz.val < 0)
 				DIE_AT(&dp->where, "negative array length %ld", sz.val);
