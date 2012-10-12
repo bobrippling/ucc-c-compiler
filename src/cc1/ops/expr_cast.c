@@ -4,6 +4,7 @@
 
 #include "../../util/alloc.h"
 #include "ops.h"
+#include "expr_cast.h"
 #include "../out/asm.h"
 
 const char *str_expr_cast()

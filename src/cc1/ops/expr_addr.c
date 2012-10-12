@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include "ops.h"
+#include "expr_addr.h"
 #include "../sue.h"
 #include "../str.h"
 #include "../out/asm.h"

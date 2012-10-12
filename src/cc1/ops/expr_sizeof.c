@@ -1,4 +1,5 @@
 #include "ops.h"
+#include "expr_sizeof.h"
 #include "../sue.h"
 #include "../out/asm.h"
 
