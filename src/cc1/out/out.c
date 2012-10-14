@@ -96,6 +96,20 @@ void out_swap(void)
 	vswap();
 }
 
+void vrev(const int n)
+{
+	/* either this or an O(n) rotation */
+	struct vstack *tmp = umalloc(n * sizeof *tmp);
+	int i;
+
+	for(i = 0; i < n; i++)
+		memcpy(&tmp[i], &vtop[-i], sizeof *tmp);
+
+	memcpy(&vtop[-n + 1], &tmp[0], n * sizeof *tmp);
+
+	free(tmp);
+}
+
 void v_prepare_op(struct vstack *vp)
 {
 	switch(vp->type){

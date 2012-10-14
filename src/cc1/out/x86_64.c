@@ -956,8 +956,10 @@ void impl_call(const int nargs, decl *d_ret, decl *d_func)
 		x86_load(vtop, call_reg_str(i, vtop->d));
 		vpop();
 	}
-	/* push remaining args onto the stack */
+
+	/* push remaining args onto the stack, left to right */
 	ncleanup = nargs - i;
+	vrev(ncleanup); /* reverse for l2r */
 	for(; i < nargs; i++){
 		INC_NFLOATS(vtop->d);
 
