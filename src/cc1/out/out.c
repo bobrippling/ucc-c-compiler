@@ -29,7 +29,7 @@ void vpush(decl *d)
 	}else{
 		UCC_ASSERT(vtop < vstack + N_VSTACK - 1,
 				"vstack overflow, vtop=%p, vstack=%p, diff %ld",
-				(void *)vtop, (void *)vstack, vtop - vstack);
+				(void *)vtop, (void *)vstack, (long)(vtop - vstack));
 
 		if(vtop->type == FLAG)
 			v_to_reg(vtop);
