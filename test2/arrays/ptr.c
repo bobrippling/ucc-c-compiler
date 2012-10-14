@@ -1,4 +1,4 @@
-// RUN: %ucc %s
+// RUN: %ucc -c %s
 
 f(int (*pa)[])
 {
