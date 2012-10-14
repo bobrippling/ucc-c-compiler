@@ -263,9 +263,18 @@ void fold_gen_init_assignment2(expr *base, decl *dfor, decl_init *init_from, stm
 
 			case decl_init_scalar:
 			{
+				/* FIXME:
+				 * int x[][2] = { 1, 2, { 3, 4 } };
+				 */
+
 				decl *dtmp = decl_ptr_depth_dec(decl_copy_keep_array(dfor), &dfor->where);
+
 				/* (int[2] size = 8) / type_size = 2 */
 				complete_to = n_inits / (decl_size(dtmp) / type_size(dtmp->type));
+
+				fprintf(stderr, "n_inits = %d, decl_size(*(%s)) = %d, type_size(%s) = %d\n",
+						n_inits, decl_to_str(dfor), decl_size(dtmp),
+						type_to_str(dtmp->type), type_size(dtmp->type));
 
 				fprintf(stderr, "completing array (subtype %s) to %d\n",
 						decl_to_str(dtmp), complete_to);
