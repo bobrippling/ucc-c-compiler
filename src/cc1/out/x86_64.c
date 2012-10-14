@@ -190,7 +190,7 @@ static int x86_stack_change(int amt)
 		else
 			amt += extra;
 
-		out_asm("%sq $0x%x, %%rsp", amt < 0 ? "sub" : "add", amt);
+		out_asm("%sq $0x%x, %%rsp", amt < 0 ? "sub" : "add", abs(amt));
 	}
 
 	return stack_sz + amt;
