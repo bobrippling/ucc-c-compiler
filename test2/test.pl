@@ -9,7 +9,7 @@ sub usage
 }
 
 my $ucc = '../ucc';
-my $f = undef;
+my $file = undef;
 my $verbose = 0;
 
 for(@ARGV){
@@ -17,24 +17,24 @@ for(@ARGV){
 		$ucc = $1;
 	}elsif($_ eq '-v'){
 		$verbose = 1;
-	}elsif(!defined $f){
-		$f = $_;
+	}elsif(!defined $file){
+		$file = $_;
 	}else{
 		usage();
 	}
 }
 
-(my $target = $f) =~ s/\.c$//;
+(my $target = $file) =~ s/\.c$//;
 $target = "./$target";
 
 my %vars = (
-	's'         => $f,
+	's'         => $file,
 	't'         => $target,
 	'ucc'       => $ucc,
 	'check'     => './check.pl' . ($verbose ? " -v" : "")
 );
 
-open F, '<', $f or die2 "$f: $!";
+open F, '<', $file or die2 "$file: $!";
 while(<F>){
 	chomp;
 
@@ -67,8 +67,14 @@ sub die2
 
 sub apply_vars
 {
-	(my $f = shift) =~ s/%([a-z]+)/
-	$vars{$1} ? $vars{$1} : die2 "undefined variable %$1"/ge;
+	my $f = shift;
+
+	for my $regex ("^()%([a-z]+)", "([^%])%([a-z]+)"){
+		$f =~ s/$regex/
+		$vars{$2} ? $1 . $vars{$2} : die2 "undefined variable %$2 in $file"/ge;
+	}
+
+	$f =~ s/%%/%/g;
 
 	return $f;
 }
