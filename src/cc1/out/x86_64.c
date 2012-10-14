@@ -172,7 +172,7 @@ static const char *vstack_str_ptr(struct vstack *vs, int ptr)
 	return vstack_str_r_ptr(buf, vs, ptr);
 }
 
-int impl_alloc_stack(int sz)
+static int x86_stack_change(int amt)
 {
 	static int word_size;
 	/* sz must be a multiple of word_size */
@@ -180,13 +180,32 @@ int impl_alloc_stack(int sz)
 	if(!word_size)
 		word_size = platform_word_size();
 
-	if(sz){
-		const int extra = sz % word_size ? word_size - sz % word_size : 0;
-		out_asm("subq $0x%x, %%rsp", sz += extra);
+	if(amt){
+		const int extra = abs(amt) % word_size
+			? word_size - abs(amt) % word_size
+			: 0;
+
+		if(amt < 0)
+			amt -= extra;
+		else
+			amt += extra;
+
+		out_asm("%sq $0x%x, %%rsp", amt < 0 ? "sub" : "add", amt);
 	}
 
-	return stack_sz + sz;
+	return stack_sz + amt;
 }
+
+static void x86_stack_free(int sz)
+{
+	x86_stack_change(sz);
+}
+
+int impl_alloc_stack(int sz)
+{
+	return x86_stack_change(-sz);
+}
+
 
 const char *call_reg_str(int i, decl *d)
 {
@@ -208,19 +227,78 @@ const char *call_reg_str(int i, decl *d)
 	return buf;
 }
 
-void impl_func_prologue(int stack_res, int nargs, int variadic)
+static struct calling_conv_desc
 {
-	int arg_idx;
+	int n_call_regs;
+	int caller_cleanup;
+} calling_convs[] = {
+	[conv_x64_sysv] = { 6, 1 }, /* rdi, rsi, rdx, rcx, r8, r9 */
+	[conv_x64_ms]   = { 4, 1 }, /* rcx, rdx, r8, r9 */
+	[conv_cdecl]    = { 0, 1 },
+	[conv_stdcall]  = { 0, 0 },
+	[conv_fastcall] = { 2, 0 }, /* ecx, edx */
+};
 
+/* FIXME: need name mangling for stdcall and fastcall
+ *
+ * stdcall@n_arg_bytes
+ * @fastcall@n_arg_bytes
+ *
+ * prepend underscore too
+ */
+
+static struct calling_conv_desc *x86_conv_lookup(decl *df)
+{
+	return &calling_convs[decl_desc_tail(df)->bits.func->conv];
+}
+
+static int x86_caller_cleanup(decl *df)
+{
+	const int cc = x86_conv_lookup(df)->caller_cleanup;
+
+	if(cc && decl_variadic_func(df))
+		DIE_AT(&df->where, "variadic functions can't be callee cleanup");
+
+	return cc;
+}
+
+static int x86_call_regs(decl *df)
+{
+	return x86_conv_lookup(df)->n_call_regs;
+}
+
+static int x86_func_nargs(decl *df)
+{
+	int nargs = 0;
+	decl **aiter;
+
+	for(aiter = df->func_code->symtab->decls;
+			aiter && *aiter;
+			aiter++)
+	{
+		if((*aiter)->sym->type == sym_arg)
+			nargs++;
+	}
+
+	return nargs;
+}
+
+void impl_func_prologue(decl *dfunc)
+{
+	const int n_call_regs = x86_call_regs(dfunc);
+	int nargs = x86_func_nargs(dfunc), arg_idx;
+
+	/* TODO:
+	x86_push(REG_BP);
+	x86_mov(NULL, REG_SP, REG_BP);
+	*/
 	out_asm("pushq %%rbp");
 	out_asm("movq %%rsp, %%rbp");
 
-	UCC_ASSERT(stack_sz == 0, "non-empty x86 stack for new func");
+	UCC_ASSERT(stack_sz == 0, "non-empty x86 stack for new func (%d)", stack_sz);
 
 	if(nargs){
-		int n_reg_args;
-
-		n_reg_args = MIN(nargs, N_CALL_REGS);
+		int n_reg_args = MIN(nargs, n_call_regs);
 
 		for(arg_idx = 0; arg_idx < n_reg_args; arg_idx++){
 #define ARGS_PUSH
@@ -238,18 +316,18 @@ void impl_func_prologue(int stack_res, int nargs, int variadic)
 		}
 	}
 
-	stack_sz = impl_alloc_stack(stack_res)
+	stack_sz = impl_alloc_stack(dfunc->func_code->symtab->auto_total_size)
 		/* make room for saved args too */
 		+ nargs * platform_word_size();
 
-	if(variadic){
+	if(decl_variadic_func(dfunc)){
 		/* play catchup, pushing any remaining reg args
 		 * this is _after_ args and stack alloc,
 		 * to simplify other offsetting code
 		 */
 		char *vfin = out_label_code("fin_...");
 
-		for(; arg_idx < N_CALL_REGS; arg_idx++)
+		for(; arg_idx < n_call_regs; arg_idx++)
 			out_asm("push%c %%%s", asm_type_ch(NULL), call_reg_str(arg_idx, NULL));
 
 		out_asm("testb %%al, %%al");
@@ -264,11 +342,34 @@ void impl_func_prologue(int stack_res, int nargs, int variadic)
 	}
 }
 
-void impl_func_epilogue(void)
+void impl_func_epilogue(decl *df)
 {
 	out_asm("leaveq");
-	stack_sz = 0;
-	out_asm("retq");
+
+	/* callee cleanup */
+	if(!x86_caller_cleanup(df)){
+		const int nargs = x86_func_nargs(df);
+
+		out_asm("retq $%d", nargs * platform_word_size());
+		stack_sz = 0;
+
+	}else{
+		stack_sz = 0;
+		out_asm("retq");
+	}
+}
+
+int impl_arg_offset(sym *s)
+{
+	/*
+	 * if it's less than N_CALL_ARGS, it's below rbp, otherwise it's above
+	 */
+	int n_call_regs = x86_call_regs(s->owning_func);
+
+	return (s->offset < n_call_regs
+			? -(s->offset + 1)
+			:   s->offset - n_call_regs + 2)
+		* platform_word_size();
 }
 
 void impl_pop_func_ret(decl *d)
@@ -839,10 +940,11 @@ void impl_call(const int nargs, decl *d_ret, decl *d_func)
 {
 #define INC_NFLOATS(d) if(d && decl_is_floating(d)) ++nfloats
 
+	const int n_call_regs = x86_call_regs(d_func);
 	int i, ncleanup;
 	int nfloats = 0;
 
-	for(i = 0; i < MIN(nargs, N_CALL_REGS); i++){
+	for(i = 0; i < MIN(nargs, n_call_regs); i++){
 		int ri;
 
 		ri = call_regs[i].idx;
@@ -889,8 +991,8 @@ void impl_call(const int nargs, decl *d_ret, decl *d_func)
 		out_asm("callq %s", jtarget);
 	}
 
-	if(ncleanup)
-		out_asm("addq $0x%x, %%rsp", ncleanup * platform_word_size());
+	if(ncleanup && x86_caller_cleanup(d_func))
+		x86_stack_free(ncleanup * platform_word_size());
 
 	/* return type */
 	vtop_clear(d_ret);

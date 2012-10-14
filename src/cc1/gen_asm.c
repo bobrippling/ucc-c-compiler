@@ -102,31 +102,19 @@ void gen_asm_global(decl *d)
 
 	if(decl_attr_present(d->attr, attr_section))
 		ICW("%s: TODO: section attribute \"%s\" on %s",
-				where_str(&d->attr->where), d->attr->attr_extra.section, d->spel);
+				where_str(&d->attr->where), d->attr->bits.section, d->spel);
 
 	/* order of the if matters */
 	if(d->func_code){
-		int nargs = 0;
-		decl **aiter;
-
-		for(aiter = d->func_code->symtab->decls; aiter && *aiter; aiter++)
-			if((*aiter)->sym->type == sym_arg)
-				nargs++;
-
-		out_label(d->spel);
-
-		out_func_prologue(
-				d->func_code->symtab->auto_total_size,
-				nargs,
-				decl_variadic_func(d));
-
 		curfunc_lblfin = out_label_code(d->spel);
 
-		gen_stmt(d->func_code);
+		out_label(d->spel);
+		out_func_prologue(d);
 
+		gen_stmt(d->func_code);
 		out_label(curfunc_lblfin);
 
-		out_func_epilogue();
+		out_func_epilogue(d);
 
 		free(curfunc_lblfin);
 

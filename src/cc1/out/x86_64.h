@@ -25,14 +25,14 @@ void impl_lbl(const char *);
 
 int  impl_alloc_stack(int sz);
 
-void impl_func_prologue(int stack_res, int nargs, int variadic);
-void impl_func_epilogue(void);
+void impl_func_prologue(decl *);
+void impl_func_epilogue(decl *);
 void impl_pop_func_ret(decl *);
+int  impl_arg_offset(sym *);
 
 void impl_undefined(void);
 int impl_frame_ptr_to_reg(int nframes);
 
 #define N_REGS 4
-#define N_CALL_REGS 6
 
 #endif

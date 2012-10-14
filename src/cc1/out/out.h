@@ -30,8 +30,8 @@ void out_jmp(void); /* jmp to *pop() */
 void out_jtrue( const char *);
 void out_jfalse(const char *);
 
-void out_func_prologue(int stack_res, int nargs, int variadic); /* push rbp, sub rsp, ... */
-void out_func_epilogue(void); /* mov rsp, rbp; ret */
+void out_func_prologue(decl *); /* push rbp, sub rsp, ... */
+void out_func_epilogue(decl *); /* mov rsp, rbp; ret */
 void out_label(const char *);
 
 void out_comment(const char *, ...);
@@ -41,7 +41,5 @@ void out_dump(void);
 void out_undefined(void);
 
 void out_push_frame_ptr(int nframes);
-
-int out_n_call_regs(void);
 
 #endif

@@ -362,13 +362,7 @@ void out_push_sym(sym *s)
 
 		case sym_arg:
 			vtop->type = STACK;
-			/*
-			 * if it's less than N_CALL_ARGS, it's below rbp, otherwise it's above
-			 */
-			vtop->bits.off_from_bp = (s->offset < N_CALL_REGS
-					? -(s->offset + 1)
-					:   s->offset - N_CALL_REGS + 2)
-				* platform_word_size();
+			vtop->bits.off_from_bp = impl_arg_offset(s);
 			break;
 
 		case sym_global:
@@ -672,14 +666,14 @@ void out_comment(const char *fmt, ...)
 	va_end(l);
 }
 
-void out_func_prologue(int stack_res, int nargs, int variadic)
+void out_func_prologue(decl *d)
 {
-	impl_func_prologue(stack_res, nargs, variadic);
+	impl_func_prologue(d);
 }
 
-void out_func_epilogue()
+void out_func_epilogue(decl *df)
 {
-	impl_func_epilogue();
+	impl_func_epilogue(df);
 }
 
 void out_pop_func_ret(decl *d)
@@ -700,9 +694,4 @@ void out_push_frame_ptr(int nframes)
 	vpush(NULL);
 	vtop->type = REG;
 	vtop->bits.reg = impl_frame_ptr_to_reg(nframes);
-}
-
-int out_n_call_regs(void)
-{
-	return N_CALL_REGS;
 }
