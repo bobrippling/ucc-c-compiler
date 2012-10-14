@@ -67,6 +67,10 @@ UCC_LDFLAGS = ${UCC_LDFLAGS}
 		fi
 	fi
 
+	if [ $1 = Cygwin ]
+	then echo "CFLAGS += -Wno-char-subscripts"
+	fi > src/src_config_platform.mk
+
 	echo "Configured for $1"
 }
 

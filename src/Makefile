@@ -1,5 +1,3 @@
-include src_config.mk
-
 MAKE_DIR = make -C $@
 
 all: cc1 cpp2 ucc

@@ -5,3 +5,5 @@ CFLAGS = -g -Wall -Wextra -pedantic -std=c99 \
 #-Wshadow              \
 #-Wstrict-prototypes   \
 #-Wmissing-prototypes  \
+
+include ../src_config_platform.mk
