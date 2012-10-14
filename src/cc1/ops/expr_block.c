@@ -73,9 +73,13 @@ void fold_expr_block(expr *e, symtable *stab)
 
 	/* link args to the function */
 	{
-		sym **i;
-		for(i = e->block_args; i && *i; i++)
-			(*i)->owning_func = e->tree_type;
+		decl **i;
+		for(i = e->block_args->arglist; i && *i; i++){
+			decl *d = *i;
+
+			if(d->sym)
+				d->sym->owning_func = e->tree_type;
+		}
 	}
 
 	fold_decl(e->tree_type, stab); /* funcarg folding + typedef/struct lookup, etc */
