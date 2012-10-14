@@ -1,7 +1,8 @@
-// RUN: %ucc %s; [ $? -ne 0 ]
-// RUN: %ucc %s | %check %s
+// RUN: %ucc -c %s; [ $? -ne 0 ]
+// RUN: %ucc %s 2>&1 | %check %s
 
-f(int (*x)[])
+f(int (*x)[]) // CHECK: /error: incomplete array size/
+              // currently the error is on the decl
 {
-	return *x[1]; // CHECK: /error: incomplete array size/
+	return *x[1];
 }
