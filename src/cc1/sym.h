@@ -13,6 +13,7 @@ struct sym
 	} type;
 
 	decl *decl;
+	decl *owning_func; /* only for sym_arg */
 
 	/* static analysis */
 	int nreads, nwrites;
@@ -67,7 +68,7 @@ symtable *symtab_root(symtable *child);
 sym  *symtab_add(   symtable *, decl *, enum sym_type, int with_sym, int prepend);
 sym  *symtab_search(symtable *, const char *);
 sym  *symtab_has(   symtable *, decl *);
-void  symtab_add_args(symtable *stab, funcargs *fargs, const char *func_spel);
+void  symtab_add_args(symtable *stab, funcargs *fargs, const char *sp, decl *d_func);
 
 const char *sym_to_str(enum sym_type);
 

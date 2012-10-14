@@ -152,9 +152,9 @@ int decl_attr_present(decl_attr *da, enum decl_attr_type t)
 	return 0;
 }
 
-const char *decl_attr_to_str(enum decl_attr_type t)
+const char *decl_attr_to_str(decl_attr *da)
 {
-	switch(t){
+	switch(da->type){
 		CASE_STR_PREFIX(attr, format);
 		CASE_STR_PREFIX(attr, unused);
 		CASE_STR_PREFIX(attr, warn_unused);
@@ -162,6 +162,16 @@ const char *decl_attr_to_str(enum decl_attr_type t)
 		CASE_STR_PREFIX(attr, enum_bitmask);
 		CASE_STR_PREFIX(attr, noreturn);
 		CASE_STR_PREFIX(attr, noderef);
+
+		case attr_call_conv:
+			switch(da->bits.conv){
+				case conv_x64_sysv: return "x64 SYSV";
+				case conv_x64_ms:   return "x64 MS";
+				CASE_STR_PREFIX(conv, cdecl);
+				CASE_STR_PREFIX(conv, stdcall);
+				CASE_STR_PREFIX(conv, fastcall);
+			}
+			break;
 	}
 	return NULL;
 }

@@ -14,20 +14,20 @@ decl_attr *parse_attr_format()
 #define CHECK(s) !strcmp(func, s) || !strcmp(func, "__" s "__")
 
 	if(CHECK("printf"))
-		da->attr_extra.format.fmt_func = attr_fmt_printf;
+		da->bits.format.fmt_func = attr_fmt_printf;
 	else if(CHECK("scanf"))
-		da->attr_extra.format.fmt_func = attr_fmt_scanf;
+		da->bits.format.fmt_func = attr_fmt_scanf;
 	else
 		DIE_AT(&da->where, "unknown format func \"%s\"", func);
 
 	EAT(token_comma);
 
-	da->attr_extra.format.fmt_arg = currentval.val;
+	da->bits.format.fmt_arg = currentval.val;
 	EAT(token_integer);
 
 	EAT(token_comma);
 
-	da->attr_extra.format.var_arg = currentval.val;
+	da->bits.format.var_arg = currentval.val;
 	EAT(token_integer);
 
 	EAT(token_close_paren);
@@ -59,7 +59,7 @@ decl_attr *parse_attr_section()
 
 	da = decl_attr_new(attr_section);
 
-	da->attr_extra.section = func;
+	da->bits.section = func;
 
 	EAT(token_close_paren);
 
@@ -78,6 +78,18 @@ EMPTY(attr_enum_bitmask)
 EMPTY(attr_noreturn)
 EMPTY(attr_noderef)
 
+#define CALL_CONV(n)                            \
+decl_attr *parse_conv_ ## n()                   \
+{                                               \
+	decl_attr *a = decl_attr_new(attr_call_conv); \
+	a->bits.conv = conv_ ## n;                    \
+	return a;                                     \
+}
+
+CALL_CONV(cdecl)
+CALL_CONV(stdcall)
+CALL_CONV(fastcall)
+
 static struct
 {
 	const char *ident;
@@ -90,6 +102,9 @@ static struct
 	{ "bitmask",        parse_attr_enum_bitmask },
 	{ "noreturn",       parse_attr_noreturn },
 	{ "noderef",        parse_attr_noderef },
+	{ "cdecl",          parse_conv_cdecl },
+	{ "stdcall",        parse_conv_stdcall },
+	{ "fastcall",       parse_conv_fastcall },
 	{ NULL, NULL },
 };
 #define MAX_FMT_LEN 16

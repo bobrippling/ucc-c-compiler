@@ -307,7 +307,7 @@ void print_decl(decl *d, enum pdeclargs mode)
 		decl_attr *da = d->attr;
 		gen_str_indent++;
 		for(; da; da = da->next)
-			idt_printf("__attribute__((%s))\n", decl_attr_to_str(da->type));
+			idt_printf("__attribute__((%s))\n", decl_attr_to_str(da));
 		gen_str_indent--;
 	}
 

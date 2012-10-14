@@ -133,7 +133,7 @@ fine:
 	return new;
 }
 
-void symtab_add_args(symtable *stab, funcargs *fargs, const char *func_spel)
+void symtab_add_args(symtable *stab, funcargs *fargs, const char *sp, decl *d_func)
 {
 	int nargs, i;
 
@@ -143,9 +143,10 @@ void symtab_add_args(symtable *stab, funcargs *fargs, const char *func_spel)
 		/* add args backwards, since we push them onto the stack backwards - still need to do this here? */
 		for(i = nargs - 1; i >= 0; i--){
 			if(!fargs->arglist[i]->spel){
-				DIE_AT(&fargs->where, "function \"%s\" has unnamed arguments", func_spel);
+				DIE_AT(&fargs->where, "function \"%s\" has unnamed arguments", sp);
 			}else{
-				SYMTAB_ADD(stab, fargs->arglist[i], sym_arg);
+				sym *s = SYMTAB_ADD(stab, fargs->arglist[i], sym_arg);
+				s->owning_func = d_func;
 			}
 		}
 	}

@@ -14,8 +14,9 @@ struct decl_attr
 		attr_enum_bitmask,
 		attr_noreturn,
 		attr_noderef,
+		attr_call_conv,
 		/*
-		 * TODO: warning, cdecl, stdcall, fastcall
+		 * TODO: warning
 		 * pure - no globals
 		 * const - pure + no pointers
 		 */
@@ -29,7 +30,15 @@ struct decl_attr
 			int fmt_arg, var_arg;
 		} format;
 		char *section;
-	} attr_extra;
+		enum calling_conv
+		{
+			conv_x64_sysv, /* Linux, FreeBSD and Mac OS X, x64 */
+			conv_x64_ms,   /* Windows x64 */
+			conv_cdecl,    /* Windows x86 stack, caller cleanup */
+			conv_stdcall,  /* Windows x86 stack, callee cleanup */
+			conv_fastcall  /* Windows x86, ecx, edx, caller cleanup */
+		} conv;
+	} bits;
 
 	decl_attr *next;
 };
@@ -82,7 +91,9 @@ struct decl_desc
 			int args_old_proto; /* true if f(a, b); where a and b are identifiers */
 			decl **arglist;
 			int variadic;
+			enum calling_conv conv;
 		} *func;
+
 		expr *array_size;      /* int (x[5][2])[2] */
 	} bits;
 
@@ -169,7 +180,7 @@ decl        *decl_new_type(enum type_primitive p);
 
 decl_attr   *decl_attr_new(enum decl_attr_type);
 void         decl_attr_append(decl_attr **loc, decl_attr *new);
-const char  *decl_attr_to_str(enum decl_attr_type);
+const char  *decl_attr_to_str(decl_attr *da);
 
 void         decl_desc_append(decl_desc **parent, decl_desc *child);
 decl_desc   *decl_desc_tail(const decl *d);

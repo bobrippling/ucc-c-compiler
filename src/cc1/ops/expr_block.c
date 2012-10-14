@@ -12,7 +12,8 @@ void fold_expr_block(expr *e, symtable *stab)
 	decl_desc *func;
 
 	/* add e->block_args to symtable */
-	symtab_add_args(e->code->symtab, e->block_args, "block-function");
+	symtab_add_args(e->code->symtab, e->block_args,
+			"block-function", NULL /* link after */);
 
 	/* prevent access to nested vars */
 	e->code->symtab->parent = symtab_root(e->code->symtab);
@@ -69,6 +70,13 @@ void fold_expr_block(expr *e, symtable *stab)
 	e->sym = SYMTAB_ADD(symtab_root(stab), e->tree_type, sym_global);
 
 	e->tree_type->func_code = e->code;
+
+	/* link args to the function */
+	{
+		sym **i;
+		for(i = e->block_args; i && *i; i++)
+			(*i)->owning_func = e->tree_type;
+	}
 
 	fold_decl(e->tree_type, stab); /* funcarg folding + typedef/struct lookup, etc */
 }

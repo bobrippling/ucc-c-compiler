@@ -533,6 +533,46 @@ void fold_decl_init(decl *for_decl, decl_init *di, symtable *stab)
 }
 #endif
 
+void fold_callinv_conv(decl *d)
+{
+	static int init = 0;
+	static enum calling_conv def_conv;
+	enum calling_conv conv;
+
+	decl_attr *i, *found;
+
+	if(!init){
+		init = 1;
+
+		switch(platform_type()){
+			case PLATFORM_32:
+				def_conv = conv_cdecl;
+				break;
+
+			case PLATFORM_64:
+				def_conv = platform_sys() == PLATFORM_CYGWIN ? conv_x64_ms : conv_x64_sysv;
+				break;
+		}
+	}
+
+	conv = def_conv;
+
+	found = NULL;
+	for(i = d->attr; i; i = i->next)
+		if(i->type == attr_call_conv){
+			if(!found)
+				found = i;
+			else
+				DIE_AT(&d->where, "Second calling convention attribute on decl (%s, %s)\n",
+						decl_attr_to_str(found), decl_attr_to_str(i));
+		}
+
+	if(found)
+		conv = found->bits.conv;
+
+	decl_funcargs(d)->conv = conv;
+}
+
 void fold_decl(decl *d, symtable *stab)
 {
 	decl_desc *dp;
@@ -601,7 +641,8 @@ void fold_decl(decl *d, symtable *stab)
 	}
 
 	/* append type's attr into the decl */
-	decl_attr_append(&d->attr, d->type->attr);
+	EOF_WHERE(&d->where,
+			decl_attr_append(&d->attr, d->type->attr));
 
 	switch(d->type->primitive){
 		case type_void:
@@ -642,9 +683,10 @@ void fold_decl(decl *d, symtable *stab)
 	 * now we've folded, check for restrict
 	 * since typedef int *intptr; intptr restrict a; is valid
 	 */
-	if(d->desc){
+	if(d->desc)
 		fold_decl_desc(d->desc, stab, d);
-	}else if(d->type->qual & qual_restrict){
+
+	if(d->type->qual & qual_restrict && !decl_is_ptr(d)){
 		DIE_AT(&d->where, "restrict on non-pointer type %s%s%s",
 				type_to_str(d->type),
 				d->spel ? " " : "",
@@ -676,6 +718,9 @@ void fold_decl(decl *d, symtable *stab)
 
 
 	if(decl_is_func(d)){
+		/* now we have all the attrs... */
+		fold_callinv_conv(d);
+
 		switch(d->type->store){
 			case store_register:
 			case store_auto:
@@ -925,7 +970,7 @@ void fold_func(decl *func_decl)
 		symtab_add_args(
 				func_decl->func_code->symtab,
 				decl_desc_tail(func_decl)->bits.func,
-				func_decl->spel);
+				func_decl->spel, func_decl);
 
 		fold_stmt(func_decl->func_code);
 
