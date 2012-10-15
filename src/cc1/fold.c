@@ -391,11 +391,14 @@ void fold_gen_init_assignment2(expr *base, decl *dfor, decl_init *init_from, stm
 	}
 }
 
+void fold_gen_init_assignment_base(expr *base, decl *dfor, stmt *code)
+{
+	fold_gen_init_assignment2(base, dfor, dfor->init, code);
+}
+
 void fold_gen_init_assignment(decl *dfor, stmt *code)
 {
-	expr *base = expr_new_identifier(dfor->spel);
-
-	fold_gen_init_assignment2(base, dfor, dfor->init, code);
+	fold_gen_init_assignment_base(expr_new_identifier(dfor->spel), dfor, code);
 }
 
 #if 0

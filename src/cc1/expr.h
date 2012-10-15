@@ -44,6 +44,7 @@ struct expr
 #define expr_is_typeof     assign_is_post
 #define expr_is_st_dot     assign_is_post
 #define expr_addr_implicit assign_is_post
+#define expr_comp_lit_cgen assign_is_post
 
 	expr *lhs, *rhs;
 
@@ -66,7 +67,7 @@ struct expr
 	char *spel;
 	expr *expr; /* x = 5; expr is the 5 */
 	expr **funcargs;
-	stmt *code; /* ({ ... }) */
+	stmt *code; /* ({ ... }), comp. lit. assignments */
 	decl *decl; /* for sizeof(decl) */
 	data_store *data_store; /* for strings + { } */
 

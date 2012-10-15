@@ -31,6 +31,9 @@ int expr_is_lvalue(expr *e, enum lvalue_opts opts)
 	if(expr_kind(e, struct))
 		return 1;
 
+	if(expr_kind(e, compound_lit))
+		return 1;
+
 	if(decl_is_array(e->tree_type))
 		return 0;
 

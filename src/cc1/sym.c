@@ -124,7 +124,7 @@ fine:
 	}
 
 	if(with_sym)
-		new = sym_new(d, t);
+		new = sym_new(d, t), d->sym = new;
 	else
 		new = NULL;
 

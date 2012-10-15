@@ -14,6 +14,7 @@
 
 #define RW_TEST(var)                              \
 						s->var == 0                           \
+						&& s->decl->spel                      \
 						&& !decl_has_array(s->decl)           \
 						&& !decl_is_func(s->decl)             \
 						&& !decl_is_struct_or_union(s->decl)
