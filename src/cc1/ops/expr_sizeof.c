@@ -20,20 +20,36 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 
 	chosen = SIZEOF_WHAT(e);
 
-	if(!e->expr_is_typeof){
+	if(chosen->field_width){
+		if(e->expr_is_typeof){
+			WARN_AT(&e->where, "typeof applied to a bit-field - using underlying type");
+
+			chosen->field_width = NULL;
+			/* not a memleak
+			 * should still be referenced from the decl we copied,
+			 * or the struct type, etc
+			 */
+		}else{
+			DIE_AT(&e->where, "sizeof applied to a bit-field");
+		}
+	}
+
+	if(e->expr_is_typeof){
+		e->tree_type = decl_copy_keep_array(chosen);
+	}else{
 		if(decl_is_incomplete_array(chosen))
 			DIE_AT(&e->where, "sizeof incomplete array");
 
 		if(decl_is_struct_or_union(chosen) && sue_incomplete(chosen->type->sue))
 			DIE_AT(&e->where, "sizeof %s", type_to_str(chosen->type));
+
+		SIZEOF_SIZE(e) = decl_size(SIZEOF_WHAT(e));
+
+		e->tree_type = decl_new();
+		/* size_t */
+		e->tree_type->type->primitive = type_long;
+		e->tree_type->type->is_signed = 0;
 	}
-
-	SIZEOF_SIZE(e) = decl_size(SIZEOF_WHAT(e));
-
-	e->tree_type = decl_new();
-	/* size_t */
-	e->tree_type->type->primitive = type_int;
-	e->tree_type->type->is_signed = 0;
 }
 
 void const_expr_sizeof(expr *e, intval *piv, enum constyness *pconst_type)
@@ -68,7 +84,9 @@ void gen_expr_str_sizeof(expr *e, symtable *stab)
 	}else{
 		idt_printf("sizeof %s\n", decl_to_str(e->decl));
 	}
-	idt_printf("size = %ld\n", SIZEOF_SIZE(e));
+
+	if(!e->expr_is_typeof)
+		idt_printf("size = %ld\n", SIZEOF_SIZE(e));
 }
 
 void mutate_expr_sizeof(expr *e)
@@ -80,7 +98,7 @@ void mutate_expr_sizeof(expr *e)
 expr *expr_new_sizeof_decl(decl *d, int is_typeof)
 {
 	expr *e = expr_new_wrapper(sizeof);
-	e->decl = d;
+	e->decl = decl_copy_keep_array(d);
 	e->expr_is_typeof = is_typeof;
 	return e;
 }

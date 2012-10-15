@@ -43,6 +43,9 @@ void fold_expr_addr(expr *e, symtable *stab)
 					e->lhs->f_str(), decl_to_str(e->lhs->tree_type));
 		}
 
+		if(e->lhs->tree_type->field_width)
+			DIE_AT(&e->lhs->where, "taking the address of a bit-field");
+
 		if(e->lhs->tree_type->type->store == store_register)
 			DIE_AT(&e->lhs->where, "can't take the address of register");
 

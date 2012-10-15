@@ -555,21 +555,9 @@ void fold_decl(decl *d, symtable *stab)
 		expr *type_exp;
 
 		type_exp = d->type->type_of;
-
 		fold_expr(type_exp, stab);
-
-		/* either get the typeof() from the decl or the expr type */
-		from = d->type->type_of->decl;
-		if(!from)
-			from = d->type->type_of->expr->tree_type;
-
-		UCC_ASSERT(from, "no decl for typeof/typedef fold: "
-				".decl = %p, .expr->tt = %p",
-				(void *)d->type->type_of->decl,
-				(void *)d->type->type_of->expr->tree_type);
-
-		decl_free(type_exp->tree_type);
-		type_exp->tree_type = decl_copy(from);
+		from = type_exp->tree_type;
+		UCC_ASSERT(from, "no decl for typeof/typedef fold");
 
 		/* type */
 		memcpy(d->type, from->type, sizeof *d->type);
