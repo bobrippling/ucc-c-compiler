@@ -1,7 +1,8 @@
 #include "ops.h"
 #include "expr_compound_lit.h"
 
-#define DINIT ((e)->val.init)
+#define PARSED_DINIT(e) ((e)->val.init)
+#define IS_GLOBAL_INIT(e) !(e)->code->symtab->parent
 
 const char *str_expr_compound_lit(void)
 {
@@ -16,7 +17,7 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 	e->code = stmt_new_wrapper(code, stab);
 
 	fold_decl(e->decl, stab);
-	e->decl->init = DINIT;
+	e->decl->init = PARSED_DINIT(e);
 
 	/* must be set before the recursive fold_gen_init_assignment_base */
 	e->tree_type = decl_copy_keep_array(e->decl);
@@ -24,14 +25,25 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 	e->sym = SYMTAB_ADD(stab, e->decl, sym_local);
 
 	fold_gen_init_assignment_base(e, e->decl, e->code);
-	fold_stmt(e->code);
+
+	if(IS_GLOBAL_INIT(e)){
+		ICW("TODO: fold global compound init");
+	}else{
+		fold_stmt(e->code);
+	}
 }
 
 static void gen_expr_compound_lit_code(expr *e)
 {
 	if(!e->expr_comp_lit_cgen){
 		e->expr_comp_lit_cgen = 1;
-		gen_stmt(e->code);
+
+		if(e->code->symtab->parent){
+			gen_stmt(e->code);
+		}else{
+			/* global */
+			ICE("TODO: global compound initialiser");
+		}
 	}
 }
 
