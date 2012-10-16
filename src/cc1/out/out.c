@@ -22,14 +22,19 @@ struct vstack *vtop = NULL;
 
 static int reserved_regs[N_REGS];
 
+int out_vcount(void)
+{
+	return vtop ? 1 + (int)(vtop - vstack) : 0;
+}
+
 void vpush(decl *d)
 {
 	if(!vtop){
 		vtop = vstack;
 	}else{
 		UCC_ASSERT(vtop < vstack + N_VSTACK - 1,
-				"vstack overflow, vtop=%p, vstack=%p, diff %ld",
-				(void *)vtop, (void *)vstack, (long)(vtop - vstack));
+				"vstack overflow, vtop=%p, vstack=%p, diff %d",
+				(void *)vtop, (void *)vstack, out_vcount());
 
 		if(vtop->type == FLAG)
 			v_to_reg(vtop);
@@ -71,7 +76,7 @@ void out_flush_volatile(void)
 
 void out_assert_vtop_null(void)
 {
-	UCC_ASSERT(!vtop, "vtop not null");
+	UCC_ASSERT(!vtop, "vtop not null (%d entries)", out_vcount());
 }
 
 void out_dump(void)

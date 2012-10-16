@@ -18,6 +18,8 @@ void fold_stmt_expr(stmt *s)
 
 void gen_stmt_expr(stmt *s)
 {
+	const int pre_vcount = out_vcount();
+
 	gen_expr(s->expr, s->symtab);
 
 	if((fopt_mode & FOPT_ENABLE_ASM) == 0
@@ -27,9 +29,10 @@ void gen_stmt_expr(stmt *s)
 	|| strcmp(s->expr->spel, ASM_INLINE_FNAME))
 	{
 		if(!s->expr_no_pop){
-			out_pop();
+			out_pop(); /* cancel the implicit push from gen_expr() above */
 			out_comment("end of %s-stmt", s->f_str());
-			out_assert_vtop_null();
+
+			UCC_ASSERT(out_vcount() == pre_vcount, "vcount changed over statement");
 		}
 	}
 }

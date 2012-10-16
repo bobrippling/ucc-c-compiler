@@ -24,7 +24,6 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 	e->sym = SYMTAB_ADD(stab, e->decl, sym_local);
 
 	fold_gen_init_assignment_base(e, e->decl, e->code);
-	//fold_gen_init_assignment(e->decl, e->code);
 	fold_stmt(e->code);
 }
 

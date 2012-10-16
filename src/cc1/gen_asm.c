@@ -174,7 +174,7 @@ void gen_asm(symtable *globs)
 		}
 
 		gen_asm_global(d);
-	}
 
-	out_assert_vtop_null();
+		UCC_ASSERT(out_vcount() == 0, "non empty vstack after global gen");
+	}
 }
