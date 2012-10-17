@@ -33,7 +33,7 @@ void fold_stmt_code(stmt *s)
 		if(d->init){
 			/* this creates the below s->inits array */
 			if(d->type->store == store_static){
-				fold_decl_global_init(d->init, s->symtab);
+				fold_decl_global_init(d, s->symtab);
 			}else{
 				EOF_WHERE(&d->where,
 						fold_gen_init_assignment(d, s)

@@ -240,10 +240,13 @@ void fold_sue(struct_union_enum_st *sue, symtable *stab, int *poffset, int *pthi
 	}
 }
 
-void fold_gen_init_assignment2(expr *base, decl *dfor, decl_init *init_from, stmt *codes)
+void fold_complete_array(decl *dfor, decl_init *init_from)
 {
-	/* assignment expr for each init */
 	const int n_inits = init_from ? decl_init_len(init_from) : 0;
+
+	/* TODO: struct check also */
+	if(init_from && decl_is_array(dfor) && init_from->type != decl_init_brace)
+		DIE_AT(&init_from->where, "array must be initialised with an initialiser list");
 
 	if(decl_is_incomplete_array(dfor)){
 		/* case 1: int x[][2] = { 0, 1, 2, 3 } - complete to 2
@@ -253,8 +256,6 @@ void fold_gen_init_assignment2(expr *base, decl *dfor, decl_init *init_from, stm
 
 		if(!init_from)
 			DIE_AT(&dfor->where, "can't complete array - no initialiser");
-
-		UCC_ASSERT(init_from->type == decl_init_brace, "not a brace initialiser");
 
 		/* decide based on the first sub */
 		switch(init_from->bits.inits[0]->type){
@@ -290,6 +291,14 @@ void fold_gen_init_assignment2(expr *base, decl *dfor, decl_init *init_from, stm
 
 		decl_complete_array(dfor, complete_to);
 	}
+}
+
+void fold_gen_init_assignment2(expr *base, decl *dfor, decl_init *init_from, stmt *codes)
+{
+	/* assignment expr for each init */
+	const int n_inits = init_from ? decl_init_len(init_from) : 0;
+
+	fold_complete_array(dfor, init_from);
 
 	if(decl_is_array(dfor)){
 		const int pull_from_this_init =
@@ -714,35 +723,20 @@ void fold_decl(decl *d, symtable *stab)
 	}
 }
 
-void fold_decl_global_init(decl_init *dinit, symtable *stab)
+void fold_decl_global_init(decl *d, symtable *stab)
 {
-	switch(dinit->type){
-		case decl_init_scalar:
-		{
-			expr *const e = dinit->bits.expr;
-			intval iv;
-			enum constyness type;
+	int k;
 
-			fold_expr(e, stab);
+	if(!d->init)
+		return;
 
-			const_fold(e, &iv, &type);
+	k = decl_init_is_const(d->init, stab);
 
-			if(type == CONST_NO)
-				DIE_AT(&e->where, "%s initialiser not constant (%s)",
-						stab->parent ? "static" : "global", e->f_str());
+	fold_complete_array(d, d->init);
 
-			break;
-		}
-
-		case decl_init_brace:
-		{
-			decl_init **i;
-
-			for(i = dinit->bits.inits; i && *i; i++)
-				fold_decl_global_init(*i, stab);
-
-			break;
-		}
+	if(!k){
+		DIE_AT(&d->init->where, "%s initialiser not constant (%s)",
+				stab->parent ? "static" : "global", decl_init_to_str(d->init->type));
 	}
 }
 
@@ -766,11 +760,11 @@ void fold_decl_global(decl *d, symtable *stab)
 
 	fold_decl(d, stab);
 
-	/* inits are normally handled in stmt_code,
+	/*
+	 * inits are normally handled in stmt_code,
 	 * but this is global, handle here
 	 */
-	if(d->init)
-		fold_decl_global_init(d->init, stab);
+	fold_decl_global_init(d, stab);
 }
 
 void fold_symtab_scope(symtable *stab)

@@ -2,7 +2,7 @@
 #define FOLD_H
 
 void fold_decl(decl *d, symtable *stab);
-void fold_decl_global_init(decl_init *dinit, symtable *stab);
+void fold_decl_global_init(decl *d, symtable *stab);
 
 void fold_decl_equal(
 		decl *a, decl *b,
@@ -19,6 +19,7 @@ void fold_typecheck(expr *lhs, expr *rhs, symtable *stab, where *where);
 void fold_need_expr(expr *e, const char *stmt_desc, int is_test);
 void fold_disallow_st_un(expr *e, const char *desc);
 
+void fold_complete_array(decl *dfor, decl_init *from);
 void fold_gen_init_assignment_base(expr *base, decl *dfor, stmt *code);
 void fold_gen_init_assignment(decl *dfor, stmt *code);
 
