@@ -1010,6 +1010,42 @@ int decl_init_len(decl_init *di)
  return -1;
 }
 
+int decl_init_is_const(decl_init *dinit, symtable *stab)
+{
+	switch(dinit->type){
+		case decl_init_scalar:
+		{
+			expr *const e = dinit->bits.expr;
+			intval iv;
+			enum constyness type;
+
+			fold_expr(e, stab);
+
+			const_fold(e, &iv, &type);
+
+			return type != CONST_NO;
+		}
+
+		case decl_init_brace:
+		{
+			decl_init **i;
+			int k = 1;
+
+			for(i = dinit->bits.inits; i && *i; i++){
+				int sub_k = decl_init_is_const(*i, stab);
+
+				if(!sub_k)
+					k = 0;
+			}
+
+			return k;
+		}
+	}
+
+	ICE("bad decl init");
+	return -1;
+}
+
 decl_init *decl_init_new(enum decl_init_type t)
 {
 	decl_init *di = umalloc(sizeof *di);

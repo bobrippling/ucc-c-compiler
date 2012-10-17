@@ -1,8 +1,8 @@
 #include "ops.h"
 #include "expr_compound_lit.h"
+#include "../out/asm.h"
 
 #define PARSED_DINIT(e) ((e)->val.init)
-#define IS_GLOBAL_INIT(e) !(e)->code->symtab->parent
 
 const char *str_expr_compound_lit(void)
 {
@@ -14,8 +14,6 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 	if(e->code)
 		return; /* being called from fold_gen_init_assignment_base */
 
-	e->code = stmt_new_wrapper(code, stab);
-
 	fold_decl(e->decl, stab);
 	e->decl->init = PARSED_DINIT(e);
 
@@ -24,12 +22,16 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 
 	e->sym = SYMTAB_ADD(stab, e->decl, sym_local);
 
-	fold_gen_init_assignment_base(e, e->decl, e->code);
+	if(stab->parent){
+		/* non global - FIXME: check statics */
+		e->code = stmt_new_wrapper(code, stab);
 
-	if(IS_GLOBAL_INIT(e)){
-		ICW("TODO: fold global compound init");
-	}else{
+		fold_gen_init_assignment_base(e, e->decl, e->code);
 		fold_stmt(e->code);
+	}else{
+		fold_complete_array(e->decl, e->decl->init);
+
+		fold_decl_global_init(e->decl, stab);
 	}
 }
 
@@ -68,6 +70,14 @@ static void lea_expr_compound_lit(expr *e, symtable *stab)
 	out_push_sym(e->sym);
 }
 
+void const_expr_compound_lit(expr *e, intval *piv, enum constyness *pconst_type)
+{
+	(void)piv;
+
+	*pconst_type = decl_init_is_const(e->decl->init, NULL /* shouldn't be needed */)
+		? CONST_WITHOUT_VAL : CONST_NO;
+}
+
 void gen_expr_str_compound_lit(expr *e, symtable *stab)
 {
 	(void)stab;
@@ -95,4 +105,5 @@ void gen_expr_style_compound_lit(expr *e, symtable *stab)
 void mutate_expr_compound_lit(expr *e)
 {
 	e->f_lea = lea_expr_compound_lit;
+	e->f_const_fold = const_expr_compound_lit;
 }
