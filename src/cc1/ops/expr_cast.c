@@ -82,7 +82,7 @@ void fold_expr_cast(expr *e, symtable *stab)
 	fold_expr_cast_descend(e, stab, 1);
 }
 
-void static_expr_cast_store(expr *e)
+static void static_expr_cast_addr(expr *e)
 {
 	enum constyness type;
 	intval iv;
@@ -154,7 +154,7 @@ void gen_expr_str_cast(expr *e, symtable *stab)
 void mutate_expr_cast(expr *e)
 {
 	e->f_const_fold = fold_const_expr_cast;
-	e->f_static_addr = static_expr_cast_store;
+	e->f_static_addr = static_expr_cast_addr;
 }
 
 expr *expr_new_cast(decl *to, int implicit)

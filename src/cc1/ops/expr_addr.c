@@ -83,6 +83,7 @@ void static_expr_addr_addr(expr *e)
 		asm_declare_partial("%s", e->spel);
 
 	}else{
+		ICE("TODO: address of a static_store");
 		static_store(e->lhs);
 
 	}
