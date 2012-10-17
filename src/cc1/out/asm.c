@@ -220,7 +220,7 @@ static void asm_declare_sub(FILE *f, decl_init *init)
 
 			fprintf(f, ".%s ", asm_type_directive(exp->tree_type));
 
-			if(exp->data_store)
+			if(exp->data_store) /* FIXME: should be handled in expr_addr::static_store */
 				data_store_out(exp->data_store, 0);
 			else
 				static_store(exp); /*if(!const_expr_is_zero(exp))...*/
@@ -255,7 +255,7 @@ static void asm_reserve_bytes(const char *lbl, int nbytes)
 
 void asm_declare(FILE *f, decl *d)
 {
-	if(d->init /* should also check for non-zero... */){
+	if(d->init /* FIXME: should also check for non-zero... */){
 		fprintf(f, "%s:\n", d->spel);
 		asm_declare_sub(f, d->init);
 		fputc('\n', f);
