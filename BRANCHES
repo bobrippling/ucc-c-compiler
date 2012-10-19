@@ -1,0 +1,14 @@
+master                                             // currently NASM highly suboptimal ASM
+	oldfunc                                          // fixes for restoring old style function parsing/handling
+	overloadable                                     // extension to support __attribute__((overloadable)) for functions
+	cpp_multiline                                    // cpp parser which accepts macros over multiple lines
+	vla                                              // VLA implementation, very tricky
+	malloc                                           // lib/stdlib.c malloc implementation [waiting on AT&T branches]
+	namespace                                        // extension to support namespaces
+	decl_init (previously asm_backend_recode)        // currently AT&T acceptable-quality ASM
+		__asm__                                        // provides the __asm__ statement and extended asm via asm("":::)
+		backend_machine                                // allows interchangable backends, i.e. x86, x64, vm
+		float                                          // implements floating point operations
+		stack_layout                                   // fixes for stack layout and variable clobbering
+		testing                                        // changes from test/ to test2/ which uses more consise in-source tests
+		calling_conv                                   // win32 _cdecl, _stdcall and _fastcall calling conventions. Room for more (Linux x86_32)

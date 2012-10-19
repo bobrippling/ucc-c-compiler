@@ -207,14 +207,19 @@ static void tokenise_read_line()
 	bufferpos = buffer = l;
 }
 
+static void set_fname(const char *nam)
+{
+	if(!current_fname_used)
+		free(current_fname);
+	current_fname = nam ? ustrdup(nam) : NULL;
+	current_fname_used = 0;
+}
+
 void tokenise_set_file(FILE *f, const char *nam)
 {
 	infile = f;
 
-	if(!current_fname_used)
-		free(current_fname);
-	current_fname = ustrdup(nam);
-	current_fname_used = 0;
+	set_fname(nam);
 
 	if(!current_line_str_used)
 		free(current_line_str);
@@ -224,6 +229,14 @@ void tokenise_set_file(FILE *f, const char *nam)
 	current_line = 0;
 	buffereof = 0;
 	nexttoken();
+}
+
+void tokenise_close()
+{
+	if(infile != stdin)
+		fclose(infile), infile = NULL;
+
+	set_fname(NULL); /* free */
 }
 
 static int rawnextchar()

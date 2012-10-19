@@ -259,7 +259,7 @@ void print_decl(decl *d, enum pdeclargs mode)
 	if(mode & PDECL_NEWLINE)
 		fputc('\n', cc1_out);
 
-	if(mode & PDECL_PINIT){
+	if(mode & PDECL_PINIT && d->init){
 		gen_str_indent++;
 		print_expr(d->init);
 		gen_str_indent--;
