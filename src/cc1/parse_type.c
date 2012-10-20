@@ -379,6 +379,7 @@ funcargs *parse_func_arglist()
 		}
 
 	}else{
+		/* old func - list of idents */
 		do{
 			decl *d = decl_new();
 
@@ -700,7 +701,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 				 * if we have a type or an open block, parse a (possibly old) function
 				 * old-function decls is is why we can't have __attribute__ on function defs
 				 */
-				decl **old_args;
+				decl **old_args = NULL;
 
 				if(curtok == token_open_block || (old_args = parse_decls_multi_type(0))){
 					/* optionally check for old func decl */
@@ -708,10 +709,11 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 						/* check then replace old args */
 						int n_proto_decls, n_old_args;
 						int i;
-						funcargs *dfuncargs = d->desc->bits.func;
+						funcargs *dfuncargs = decl_desc_tail(d)->bits.func;
 
 						if(!dfuncargs->args_old_proto)
-							DIE_AT(&d->where, "unexpected old-style decls - new style proto used");
+							DIE_AT(&d->where,
+									"unexpected old-style decls - new style proto used (%s)", d->spel);
 
 						n_proto_decls = dynarray_count((void **)dfuncargs->arglist);
 						n_old_args = dynarray_count((void **)old_args);

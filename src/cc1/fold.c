@@ -566,20 +566,17 @@ void fold_funcargs(funcargs *fargs, symtable *stab, char *context)
 
 		for(i = 0; fargs->arglist[i]; i++){
 			decl *const d = fargs->arglist[i];
-			int unknown;
 
 			/* convert any array definitions and functions to pointers */
 			EOF_WHERE(&d->where,
 				decl_conv_array_func_to_ptr(d) /* must be before the decl is folded (since fold checks this) */
 			);
 
-			/* if we have an unknown, save it */
-			unknown = d->type->primitive == type_unknown;
+			/* if we have an unknown (old-func), default it */
+			if(d->type->primitive == type_unknown)
+				d->type->primitive = type_int;
 
 			fold_decl(d, stab);
-
-			if(unknown)
-				d->type->primitive = type_unknown;
 
 			if(type_store_static_or_extern(d->type->store)){
 				const char *sp = d->spel;

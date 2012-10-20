@@ -247,7 +247,7 @@ int decl_size(decl *d)
 int funcargs_equal(funcargs *args_to, funcargs *args_from, int strict_types, int *idx)
 {
 	const enum decl_cmp flag = DECL_CMP_ALLOW_VOID_PTR | (strict_types ? DECL_CMP_STRICT_PRIMITIVE : 0);
-	const int count_to = dynarray_count((void **)args_to->arglist);
+	const int count_to   = dynarray_count((void **)args_to  ->arglist);
 	const int count_from = dynarray_count((void **)args_from->arglist);
 	int i;
 
@@ -256,6 +256,9 @@ int funcargs_equal(funcargs *args_to, funcargs *args_from, int strict_types, int
 		/* a() or b() */
 		return 1;
 	}
+
+	if(args_to->args_old_proto || args_from->args_old_proto)
+		return 1;
 
 	if(!(args_to->variadic ? count_to <= count_from : count_to == count_from)){
 		if(idx) *idx = -1;

@@ -518,6 +518,9 @@ void gen_str(symtable *symtab)
 			gen_str_indent--;
 		}
 
+		if(gen_str_indent != 0)fprintf(stderr, "indent (%d) not reset after %s\n",
+				gen_str_indent, d->spel);
+
 		fputc('\n', cc1_out);
 	}
 }
