@@ -117,7 +117,7 @@ relook:
 			}
 			close_b = nest_close_paren(open_b + 1);
 			if(!close_b)
-				CPP_DIE("no close paren for function-macro");
+				CPP_DIE("no close paren for function-macro '%s'", m->nam);
 
 			*open_b  = '\0';
 			*close_b = '\0';
