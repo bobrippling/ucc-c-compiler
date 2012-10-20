@@ -117,6 +117,8 @@ void gen_expr_str_if(expr *e, symtable *stab)
 
 	SUB_PRINT(rhs);
 #undef SUB_PRINT
+
+	gen_str_indent--;
 }
 
 void mutate_expr_if(expr *e)
