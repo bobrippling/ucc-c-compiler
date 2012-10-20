@@ -397,6 +397,9 @@ funcargs *parse_func_arglist()
 
 			EAT_OR_DIE(token_comma);
 		}while(1);
+
+		cc1_warn_at(NULL, 0, 1, WARN_OMITTED_PARAM_TYPES,
+				"old-style function declaration");
 		args->args_old_proto = 1;
 	}
 
@@ -748,8 +751,6 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 					}
 
 					d->func_code = parse_stmt_block();
-				}else{
-					cc1_warn_at(NULL, 0, 1, WARN_OMITTED_PARAM_TYPES, "parameter names without types");
 				}
 			}
 
