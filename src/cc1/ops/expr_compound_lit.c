@@ -18,7 +18,7 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 	e->decl->init = PARSED_DINIT(e);
 
 	/* must be set before the recursive fold_gen_init_assignment_base */
-	e->tree_type = decl_copy_keep_array(e->decl);
+	e->tree_type = decl_copy(e->decl);
 
 	e->sym = SYMTAB_ADD(stab, e->decl, sym_local);
 

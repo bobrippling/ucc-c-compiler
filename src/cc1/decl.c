@@ -221,9 +221,9 @@ static decl *decl_copy_array(const decl *d, int decay_first_array)
 	return ret;
 }
 
-decl *decl_copy_keep_array(const decl *d)
+decl *decl_copy_decay_array(const decl *d)
 {
-	return decl_copy_array(d, 0);
+	return decl_copy_array(d, 1);
 }
 
 decl *decl_copy(const decl *d)
@@ -1015,11 +1015,12 @@ int decl_init_is_const(decl_init *dinit, symtable *stab)
 	switch(dinit->type){
 		case decl_init_scalar:
 		{
-			expr *const e = dinit->bits.expr;
+			expr *e = dinit->bits.expr;
 			intval iv;
 			enum constyness type;
 
-			fold_expr(e, stab);
+			fold_expr(&e, stab);
+			dinit->bits.expr = e;
 
 			const_fold(e, &iv, &type);
 

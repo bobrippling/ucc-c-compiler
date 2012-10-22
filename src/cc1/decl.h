@@ -183,7 +183,7 @@ decl_desc   *decl_desc_array_new(decl *dparent, decl_desc *parent);
 #define decl_desc_ptr_or_block(d) ((d)->type == decl_desc_ptr || (d)->type == decl_desc_block)
 
 decl      *decl_copy(const decl *);
-decl      *decl_copy_keep_array(const decl *d);
+decl      *decl_copy_decay_array(const decl *d);
 decl_desc *decl_desc_copy(const decl_desc *dp);
 
 decl_init *decl_init_new(enum decl_init_type);

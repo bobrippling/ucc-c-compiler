@@ -67,7 +67,7 @@ void fold_insert_casts(decl *dlhs, expr **prhs, symtable *stab, where *w, const 
 		}else{
 			expr *cast;
 
-			cast = expr_new_cast(decl_copy_keep_array(dlhs), 1);
+			cast = expr_new_cast(decl_copy(dlhs), 1);
 			cast->expr = rhs;
 			*prhs = cast;
 
@@ -117,8 +117,10 @@ void fold_inc_writes_if_sym(expr *e, symtable *stab)
 		e->sym->nwrites++;
 }
 
-void fold_expr(expr *e, symtable *stab)
+void fold_expr(expr **pe, symtable *stab)
 {
+	expr *e = *pe;
+
 	if(e->tree_type)
 		return;
 
@@ -128,6 +130,31 @@ void fold_expr(expr *e, symtable *stab)
 
 	UCC_ASSERT(e->tree_type, "no tree_type after fold (%s)", e->f_str());
 	UCC_ASSERT(e->tree_type->type->primitive != type_unknown, "unknown type after folding expr %s", e->f_str());
+
+	/* perform array decay and pointer decay */
+	{
+		decl_desc *tail = decl_desc_tail(e->tree_type);
+		expr *imp_cast = NULL;
+
+		switch(tail ? tail->type : decl_desc_ptr){
+			case decl_desc_ptr:
+			default:
+				break;
+
+			case decl_desc_array:
+				imp_cast = expr_new_cast(decl_copy_decay_array(e->tree_type), 1);
+				break;
+
+			case decl_desc_func:
+				imp_cast = expr_new_cast(decl_ptr_depth_inc(decl_copy(e->tree_type)), 1);
+				break;
+		}
+
+		if(imp_cast){
+			imp_cast->expr = e;
+			*pe = e = imp_cast;
+		}
+	}
 }
 
 void fold_decl_desc(decl_desc *dp, symtable *stab, decl *root)
@@ -141,7 +168,7 @@ void fold_decl_desc(decl_desc *dp, symtable *stab, decl *root)
 		{
 			intval sz;
 
-			fold_expr(dp->bits.array_size, stab);
+			fold_expr(&dp->bits.array_size, stab);
 			const_fold_need_val(dp->bits.array_size, &sz);
 
 			if(sz.val < 0)
@@ -189,7 +216,8 @@ void fold_enum(struct_union_enum_st *en, symtable *stab)
 		}else{
 			intval iv;
 
-			fold_expr(e, stab);
+			fold_expr(&e, stab);
+			m->val = e;
 			const_fold_need_val(e, &iv);
 
 			defval = bitmask ? iv.val << 1 : iv.val + 1;
