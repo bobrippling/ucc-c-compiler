@@ -249,8 +249,10 @@ void fold_complete_array(decl *dfor, decl_init *init_from)
 		DIE_AT(&init_from->where, "array must be initialised with an initialiser list");
 
 	if(decl_is_incomplete_array(dfor)){
-		/* case 1: int x[][2] = { 0, 1, 2, 3 } - complete to 2
-		 * case 2: int x[][2] = { {1}, {2} } - complete to 2
+		/* case 1: int x[][2] = { 0, 1, 2, 3 }
+		 * case 2: int x[][2] = { {1}, {2} }
+		 * case 3: int x[][2] = { {1}, 2, 3 }
+		 * case 4: int x[][2] = { 1, 2, {3} }
 		 */
 		int complete_to;
 
