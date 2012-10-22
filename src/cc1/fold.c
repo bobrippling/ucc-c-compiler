@@ -266,11 +266,20 @@ void fold_complete_array(decl *dfor, decl_init *init_from)
 
 			case decl_init_scalar:
 			{
-				/* FIXME:
-				 * int x[][2] = { 1, 2, { 3, 4 } };
+				/*
+				 * this must work for:
+				 *
+				 * int x[][2] = {   1, 2,    { 3, 4 } };
+				 * int x[][2] = {   1, 2,      3, 4   };
+				 * int x[][2] = { { 1, 2, }, { 3, 4 } };
+				 * int x[][2] = {   1,       { 3, 4 } };
 				 */
 
 				decl *dtmp = decl_ptr_depth_dec(decl_copy_keep_array(dfor), &dfor->where);
+
+				/* check for different sub-inits */
+				for(){
+				}
 
 				/* (int[2] size = 8) / type_size = 2 */
 				complete_to = n_inits / (decl_size(dtmp) / type_size(dtmp->type));
@@ -295,14 +304,88 @@ void fold_complete_array(decl *dfor, decl_init *init_from)
 	}
 }
 
-void fold_gen_init_assignment2(expr *base, decl *dfor, decl_init *init_from, stmt *codes)
+void fold_gen_init_assignment2(expr *base, decl *dfor,
+		decl_init *init_from, stmt *codes)
 {
+	if(decl_is_array(dfor)){
+		decl *dfor_deref;
+		int ninits = 0;
+		int array_limit;
+		int current_count, wanted_count, array_size;
+
+		if(init_from->type == decl_init_scalar){
+			fold_gen_init_assignment2(base, dfor, init_from->bits.expr, codes);
+			return;
+		}
+
+		ICE("TODO: init assignment gen");
+
+		dfor_deref = decl_ptr_depth_dec(decl_copy(dfor), NULL);
+
+		if(decl_is_array(dfor_deref)){
+			/* int [2] - (2 * 4) / 4 = 2 */
+			wanted_count = decl_array_len(dfor_deref);
+		}else{
+			wanted_count = 1;
+		}
+
+		array_limit = decl_complete_array(dfor) ? decl_array_len(dfor) : -1;
+		array_size = 0;
+
+		{
+			decl_init **i;
+			int i_index;
+
+			current_count = 0;
+
+			/* count */
+			for(i = init_from->bits.inits, i_index = 0; i && *i; i++, i_index++){
+				decl_init *sub = *i;
+
+				/* access the i'th element of base */
+				expr *target = expr_new_op(op_plus);
+
+				target->lhs = base;
+				target->rhs = expr_new_val(i_index);
+
+				target = expr_new_deref(target);
+
+				fold_gen_init_assignment2(target, dfor_deref, sub, codes);
+
+				if(sub->type == decl_init_scalar){
+					/* int x[][2] = { 1, 2, ... }
+					 *                   ^ increment current count,
+					 *                     moving onto the next if needed
+					 */
+					current_count++;
+
+					if(current_count == wanted_count){
+						/* move onto next */
+						goto next_ar;
+					}
+				}else{
+					/* sub is an {...} */
+next_ar:
+					array_size++;
+					current_count = 0;
+					if(array_size == array_limit){
+						WARN_AT(&sub->where, "excess initialiser");
+						break;
+					}
+				}
+			}
+		}
+
+		decl_free(dfor_deref);
+#if 0
 	/* assignment expr for each init */
 	const int n_inits = init_from ? decl_init_len(init_from) : 0;
 
 	fold_complete_array(dfor, init_from);
 
+	// --------------
 	if(decl_is_array(dfor)){
+
 		const int pull_from_this_init =
 			init_from
 		&& init_from->bits.inits
@@ -370,6 +453,9 @@ void fold_gen_init_assignment2(expr *base, decl *dfor, decl_init *init_from, stm
 		}
 
 		decl_free(darray_deref);
+
+
+#endif
 	}else{
 		/* scalar init */
 		switch(init_from ? init_from->type : decl_init_scalar){

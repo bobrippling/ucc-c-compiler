@@ -196,6 +196,7 @@ void decl_conv_array_func_to_ptr(decl *d);
 
 void decl_desc_link(decl *);
 
+#define decl_array_len(d) (decl_size(d) / type_size(d->type))
 int   decl_size( decl *);
 int   decl_equal(decl *, decl *, enum decl_cmp mode);
 
