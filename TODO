@@ -5,6 +5,10 @@ machine target - currently between x86_64 and vm
 
 ---------------------------------------------------- cc1
 
+out/gen-optimisations:
+	constant folding
+	rearrangement of 1+f()+1 to f() + 1 + 1 - avoid pre-call reg saves
+
 const-fold: change interface and checking of ->val.iv.val to more explicit code
             also need type casts for overflows, etc
 
