@@ -1,3 +1,6 @@
+// RUN: %ucc %s -o %t
+// RUN: %t
+
 #include <stdio.h>
 #include <assert.h>
 
@@ -24,4 +27,6 @@ main()
 	assert( x == &x[0]);
 	assert( x == x + 0 );
 	assert( x + 1 == &x[1]);
+
+	return 0;
 }

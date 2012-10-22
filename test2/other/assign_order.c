@@ -1,4 +1,6 @@
-/* ucc: -fno-const-fold */
+// RUN: %ucc -fno-const-fold -o %t %s
+// RUN: %t
+
 #include <stdio.h>
 #include <assert.h>
 

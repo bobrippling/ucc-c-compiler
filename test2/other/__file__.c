@@ -1,3 +1,8 @@
+// RUN: %ucc -o %t %s
+// RUN: %t | grep 'in q'
+// RUN: %t | grep 'overridden, in hi'
+// RUN: %t | grep 'in main (2 = i)'
+
 #include <stdio.h>
 
 void

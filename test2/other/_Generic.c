@@ -1,3 +1,7 @@
+// RUN: %ucc -o %t %s
+// RUN: %t | grep 'yo'
+// RUN: %t | grep '5'
+
 main()
 {
 #define print(x) \

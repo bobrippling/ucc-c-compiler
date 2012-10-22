@@ -1,3 +1,7 @@
+// RUN: %ucc -o %t %s
+// RUN: %t
+// RUN: %t | grep -F 'argv[0] = %t'
+
 #include <assert.h>
 
 int main(int argc, char **argv)

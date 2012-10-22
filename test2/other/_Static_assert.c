@@ -1,4 +1,4 @@
-//#define _Static_assert
+// RUN: %ucc %s
 
 _Static_assert(sizeof(void *) == sizeof(int *), "hi");
 

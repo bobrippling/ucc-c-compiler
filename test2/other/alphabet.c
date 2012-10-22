@@ -1,3 +1,6 @@
+// RUN: %ucc -o %t %s
+// RUN: %t | grep '"abcdefghijklmnopqrstuvwxyz"'
+
 #include <stdlib.h>
 #include <stdio.h>
 #define N 26

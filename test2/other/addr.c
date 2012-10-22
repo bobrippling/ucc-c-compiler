@@ -1,3 +1,6 @@
+// RUN: %ucc -o %t %s
+// RUN: %t | grep -- -
+
 main()
 {
 	if(1){

@@ -1,3 +1,6 @@
+// RUN: %ucc %s -o %t
+// RUN: %t; [ $? -eq 2 ]
+
 main()
 {
 	int ar[10];
