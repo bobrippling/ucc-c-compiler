@@ -316,7 +316,7 @@ int main(int argc, char **argv)
 				{
 					/* check for W%c, */
 					char c;
-					if(sscanf(arg, "-W%c,", &c) == 1){
+					if(sscanf(arg, "-W%c", &c) == 1 && arg[3] == ','){
 						switch(c){
 #define MAP(c, l) case c: arg += 4; goto arg_ ## l;
 							MAP('p', cpp);
