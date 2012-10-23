@@ -16,7 +16,7 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 	decl *chosen;
 
 	if(e->expr)
-		fold_expr(e->expr, stab);
+		FOLD_EXPR(e->expr, stab);
 
 	chosen = SIZEOF_WHAT(e);
 
@@ -35,7 +35,7 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 	}
 
 	if(e->expr_is_typeof){
-		e->tree_type = decl_copy_keep_array(chosen);
+		e->tree_type = decl_copy(chosen);
 	}else{
 		if(decl_is_incomplete_array(chosen))
 			DIE_AT(&e->where, "sizeof incomplete array");
@@ -98,7 +98,7 @@ void mutate_expr_sizeof(expr *e)
 expr *expr_new_sizeof_decl(decl *d, int is_typeof)
 {
 	expr *e = expr_new_wrapper(sizeof);
-	e->decl = decl_copy_keep_array(d);
+	e->decl = decl_copy(d);
 	e->expr_is_typeof = is_typeof;
 	return e;
 }

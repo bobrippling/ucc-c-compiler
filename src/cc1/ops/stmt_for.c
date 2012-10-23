@@ -66,7 +66,7 @@ void fold_stmt_for(stmt *s)
 		s->flow->for_init = init_exp;
 	}
 
-#define FOLD_IF(x) if(x) fold_expr(x, s->flow->for_init_symtab)
+#define FOLD_IF(x) if(x) FOLD_EXPR(x, s->flow->for_init_symtab)
 	FOLD_IF(s->flow->for_init);
 	FOLD_IF(s->flow->for_while);
 	FOLD_IF(s->flow->for_inc);

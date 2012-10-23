@@ -11,8 +11,8 @@ void fold_stmt_case_range(stmt *s)
 {
 	intval lval, rval;
 
-	fold_expr(s->expr,  s->symtab);
-	fold_expr(s->expr2, s->symtab);
+	FOLD_EXPR(s->expr,  s->symtab);
+	FOLD_EXPR(s->expr2, s->symtab);
 
 	const_fold_need_val(s->expr,  &lval);
 	const_fold_need_val(s->expr2, &rval);

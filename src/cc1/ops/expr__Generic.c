@@ -14,13 +14,13 @@ void fold_expr__Generic(expr *e, symtable *stab)
 
 	def = NULL;
 
-	fold_expr(e->expr, stab);
+	FOLD_EXPR(e->expr, stab);
 
 	for(i = e->generics; i && *i; i++){
 		const int flags = DECL_CMP_EXACT_MATCH;
 		struct generic_lbl **j, *l = *i;
 
-		fold_expr(l->e, stab);
+		FOLD_EXPR(l->e, stab);
 
 		for(j = i + 1; *j; j++){
 			decl *m = (*j)->d;

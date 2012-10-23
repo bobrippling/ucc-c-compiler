@@ -47,8 +47,8 @@ void fold_expr_assign(expr *e, symtable *stab)
 {
 	fold_inc_writes_if_sym(e->lhs, stab);
 
-	fold_expr(e->lhs, stab);
-	fold_expr(e->rhs, stab);
+	FOLD_EXPR(e->lhs, stab);
+	FOLD_EXPR(e->rhs, stab);
 
 	if(expr_kind(e->lhs, identifier))
 		e->lhs->sym->nreads--; /* cancel the read that fold_ident thinks it got */

@@ -8,9 +8,9 @@ const char *str_expr_deref()
 
 void fold_expr_deref(expr *e, symtable *stab)
 {
-	expr *const ptr = expr_deref_what(e);
+	expr *ptr;
 
-	fold_expr(ptr, stab);
+	ptr = FOLD_EXPR(expr_deref_what(e), stab);
 
 	if(decl_attr_present(ptr->tree_type->attr, attr_noderef))
 		WARN_AT(&ptr->where, "dereference of noderef expression");

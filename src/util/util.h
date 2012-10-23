@@ -7,10 +7,12 @@
 			__attribute__((__format__ (__printf__, fmtarg, firstvararg)))
 
 #  define ucc_dead __attribute__((noreturn))
+#  define ucc_wur  __attribute__((warn_unused_result))
 
 #else
 #  define ucc_printflike(a, b)
 #  define ucc_dead
+#  define ucc_wur
 #endif
 
 typedef struct where

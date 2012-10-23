@@ -26,7 +26,8 @@ void fold_gen_init_assignment(decl *dfor, stmt *code);
 int  fold_get_sym(          expr *e, symtable *stab);
 void fold_inc_writes_if_sym(expr *e, symtable *stab);
 
-void fold_expr(expr **pe, symtable *stab);
+#define FOLD_EXPR(e, stab) ((e) = fold_expr((e), (stab)))
+expr *fold_expr(expr *e, symtable *stab) ucc_wur;
 void fold_stmt(stmt *t);
 
 int fold_passable(stmt *s);

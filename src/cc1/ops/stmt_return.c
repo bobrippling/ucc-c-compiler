@@ -13,7 +13,7 @@ void fold_stmt_return(stmt *s)
 	if(s->expr){
 		char buf[DECL_STATIC_BUFSIZ];
 
-		fold_expr(s->expr, s->symtab);
+		FOLD_EXPR(s->expr, s->symtab);
 		fold_need_expr(s->expr, "return", 0);
 
 		fold_decl_equal(curdecl_func_called, s->expr->tree_type,

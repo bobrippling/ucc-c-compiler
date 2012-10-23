@@ -47,7 +47,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 			expr_mutate_addr_data(e, sp, len + 1);
 			/* +1 - take the null byte */
 
-			fold_expr(e, stab);
+			FOLD_EXPR(e, stab);
 		}else{
 			/* check for an enum */
 			struct_union_enum_st *sue;
@@ -61,7 +61,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 			expr_mutate_wrapper(e, val);
 
 			e->val = m->val->val;
-			fold_expr(e, stab);
+			FOLD_EXPR(e, stab);
 
 			e->tree_type->type->primitive = type_enum;
 			e->tree_type->type->sue = sue;

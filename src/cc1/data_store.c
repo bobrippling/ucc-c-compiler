@@ -56,7 +56,7 @@ void data_store_fold_decl(data_store *ds, decl **ptree_type, symtable *stab)
 	decl *tree_type = decl_new();
 	expr *sz = expr_new_val(ds->len);
 
-	fold_expr(sz, stab);
+	FOLD_EXPR(sz, stab);
 
 	tree_type->desc = decl_desc_array_new(tree_type, NULL);
 	tree_type->desc->bits.array_size = sz;

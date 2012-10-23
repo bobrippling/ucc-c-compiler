@@ -173,7 +173,7 @@ static void fold_constant_p(expr *e, symtable *stab)
 	if(dynarray_count((void **)e->funcargs) != 1)
 		DIE_AT(&e->where, "%s takes a single argument", e->expr->spel);
 
-	fold_expr(e->funcargs[0], stab);
+	FOLD_EXPR(e->funcargs[0], stab);
 
 	e->tree_type = decl_new_int();
 	wur_builtin(e);
@@ -208,7 +208,7 @@ static void fold_frame_address(expr *e, symtable *stab)
 	if(dynarray_count((void **)e->funcargs) != 1)
 		DIE_AT(&e->where, "%s takes a single argument", e->expr->spel);
 
-	fold_expr(e->funcargs[0], stab);
+	FOLD_EXPR(e->funcargs[0], stab);
 
 	const_fold(e->funcargs[0], &iv, &type);
 	if(type != CONST_WITH_VAL || iv.val < 0)
@@ -249,7 +249,7 @@ static void fold_expect(expr *e, symtable *stab)
 		DIE_AT(&e->where, "%s takes two arguments", e->expr->spel);
 
 	for(i = 0; i < 2; i++)
-		fold_expr(e->funcargs[i], stab);
+		FOLD_EXPR(e->funcargs[i], stab);
 
 	const_fold(e->funcargs[1], &iv, &type);
 	if(type != CONST_WITH_VAL)

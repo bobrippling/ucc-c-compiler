@@ -34,7 +34,7 @@ void fold_stmt_if(stmt *s)
 {
 	symtable *test_symtab = fold_stmt_test_init_expr(s, "if");
 
-	fold_expr(s->expr, test_symtab);
+	FOLD_EXPR(s->expr, test_symtab);
 
 	fold_need_expr(s->expr, s->f_str(), 1);
 	OPT_CHECK(s->expr, "constant expression in if");

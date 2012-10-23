@@ -44,7 +44,7 @@ void fold_expr_if(expr *e, symtable *stab)
 	intval dummy;
 	decl *tt_l, *tt_r;
 
-	fold_expr(e->expr, stab);
+	FOLD_EXPR(e->expr, stab);
 	const_fold(e->expr, &dummy, &is_const);
 
 	if(is_const != CONST_NO)
@@ -54,11 +54,11 @@ void fold_expr_if(expr *e, symtable *stab)
 	fold_disallow_st_un(e->expr, "?: expr");
 
 	if(e->lhs){
-		fold_expr(e->lhs, stab);
+		FOLD_EXPR(e->lhs, stab);
 		fold_disallow_st_un(e->lhs, "?: lhs");
 	}
 
-	fold_expr(e->rhs, stab);
+	FOLD_EXPR(e->rhs, stab);
 	fold_disallow_st_un(e->rhs, "?: rhs");
 
 

@@ -23,7 +23,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 	decl *dlhs, *drhs;
 
 	if(descend)
-		fold_expr(e->expr, stab);
+		FOLD_EXPR(e->expr, stab);
 
 	e->tree_type = e->decl;
 	fold_decl(e->tree_type, stab); /* struct lookup, etc */

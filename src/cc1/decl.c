@@ -1019,10 +1019,10 @@ int decl_init_is_const(decl_init *dinit, symtable *stab)
 			intval iv;
 			enum constyness type;
 
-			fold_expr(&e, stab);
-			dinit->bits.expr = e;
-
+			FOLD_EXPR(e, stab);
 			const_fold(e, &iv, &type);
+
+			dinit->bits.expr = e;
 
 			return type != CONST_NO;
 		}

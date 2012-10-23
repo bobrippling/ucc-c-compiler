@@ -117,12 +117,10 @@ void fold_inc_writes_if_sym(expr *e, symtable *stab)
 		e->sym->nwrites++;
 }
 
-void fold_expr(expr **pe, symtable *stab)
+expr *fold_expr(expr *e, symtable *stab)
 {
-	expr *e = *pe;
-
 	if(e->tree_type)
-		return;
+		goto fin;
 
 	fold_get_sym(e, stab);
 
@@ -136,25 +134,30 @@ void fold_expr(expr **pe, symtable *stab)
 		decl_desc *tail = decl_desc_tail(e->tree_type);
 		expr *imp_cast = NULL;
 
+		EOF_WHERE(&e->where,
 		switch(tail ? tail->type : decl_desc_ptr){
 			case decl_desc_ptr:
-			default:
-				break;
+				default:
+					break;
 
-			case decl_desc_array:
-				imp_cast = expr_new_cast(decl_copy_decay_array(e->tree_type), 1);
-				break;
+				case decl_desc_array:
+					imp_cast = expr_new_cast(decl_copy_decay_array(e->tree_type), 1);
+					break;
 
-			case decl_desc_func:
-				imp_cast = expr_new_cast(decl_ptr_depth_inc(decl_copy(e->tree_type)), 1);
-				break;
-		}
+				case decl_desc_func:
+					imp_cast = expr_new_cast(decl_ptr_depth_inc(decl_copy(e->tree_type)), 1);
+					break;
+		});
 
 		if(imp_cast){
 			imp_cast->expr = e;
-			*pe = e = imp_cast;
+			fold_expr_cast_descend(imp_cast, stab, 0);
+			e = imp_cast;
 		}
 	}
+
+fin:
+	return e;
 }
 
 void fold_decl_desc(decl_desc *dp, symtable *stab, decl *root)
@@ -168,7 +171,7 @@ void fold_decl_desc(decl_desc *dp, symtable *stab, decl *root)
 		{
 			intval sz;
 
-			fold_expr(&dp->bits.array_size, stab);
+			FOLD_EXPR(dp->bits.array_size, stab);
 			const_fold_need_val(dp->bits.array_size, &sz);
 
 			if(sz.val < 0)
@@ -216,9 +219,9 @@ void fold_enum(struct_union_enum_st *en, symtable *stab)
 		}else{
 			intval iv;
 
-			fold_expr(&e, stab);
-			m->val = e;
+			FOLD_EXPR(e, stab);
 			const_fold_need_val(e, &iv);
+			m->val = e;
 
 			defval = bitmask ? iv.val << 1 : iv.val + 1;
 		}
@@ -298,7 +301,7 @@ void fold_complete_array(decl *dfor, decl_init *init_from)
 				 * int x[][2] = { 1, 2, { 3, 4 } };
 				 */
 
-				decl *dtmp = decl_ptr_depth_dec(decl_copy_keep_array(dfor), &dfor->where);
+				decl *dtmp = decl_ptr_depth_dec(decl_copy(dfor), &dfor->where);
 
 				/* (int[2] size = 8) / type_size = 2 */
 				complete_to = n_inits / (decl_size(dtmp) / type_size(dtmp->type));
@@ -343,7 +346,7 @@ void fold_gen_init_assignment2(expr *base, decl *dfor, decl_init *init_from, stm
 		/*if(pull_from_this_init)
 			WARN_AT(&init_from->where, "missing braces around initialiser");*/
 
-		darray_deref = decl_ptr_depth_dec(decl_copy_keep_array(dfor), &dfor->where);
+		darray_deref = decl_ptr_depth_dec(decl_copy(dfor), &dfor->where);
 
 		/* generate array_n assignments */
 		for(array_i = 0; array_i < array_n; array_i++){
@@ -588,7 +591,11 @@ void fold_decl(decl *d, symtable *stab)
 {
 	decl_desc *dp;
 
-	/* typedef / __typeof folding */
+	/* typedef / __typeof folding
+	 *
+	 * FIXME: don't fold this anymore, or at least the type_of, since we don't want decays
+	 *        better typedef handling code in decl.c
+	 */
 	while(d->type->type_of){
 		/* get the typedef decl from t->decl->tree_type */
 		const enum type_qualifier old_qual  = d->type->qual;
@@ -596,8 +603,14 @@ void fold_decl(decl *d, symtable *stab)
 		decl *from;
 		expr *type_exp;
 
+		{
+			static int once = 0;
+			if(!once)
+				once++, ICW("typedef folding is broken");
+		}
+
 		type_exp = d->type->type_of;
-		fold_expr(type_exp, stab);
+		FOLD_EXPR(type_exp, stab);
 		from = type_exp->tree_type;
 		UCC_ASSERT(from, "no decl for typeof/typedef fold");
 
@@ -619,7 +632,7 @@ void fold_decl(decl *d, symtable *stab)
 	}
 	decl_desc_link(d);
 
-	UCC_ASSERT(d->type && d->type->store != store_typedef, "typedef store after tdef folding");
+	UCC_ASSERT(d->type && d->type->store != store_typedef, "typedef store after tdef folding (%s)", decl_to_str(d));
 
 	/* check for array of funcs, func returning array */
 	for(dp = decl_desc_tail(d); dp; dp = dp->parent_desc){
@@ -695,7 +708,7 @@ void fold_decl(decl *d, symtable *stab)
 		intval iv;
 		int width;
 
-		fold_expr(d->field_width, stab);
+		FOLD_EXPR(d->field_width, stab);
 		const_fold(d->field_width, &iv, &type);
 
 		width = iv.val;
@@ -1257,7 +1270,7 @@ void fold(symtable *globs)
 			intval val;
 			enum constyness const_type;
 
-			fold_expr(sa->e, sa->scope);
+			FOLD_EXPR(sa->e, sa->scope);
 			if(!decl_is_integral(sa->e->tree_type))
 				DIE_AT(&sa->e->where, "static assert: not an integral expression (%s)", sa->e->f_str());
 

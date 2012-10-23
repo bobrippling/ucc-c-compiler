@@ -293,11 +293,11 @@ void fold_expr_op(expr *e, symtable *stab)
 	UCC_ASSERT(e->op != op_unknown, "unknown op in expression at %s",
 			where_str(&e->where));
 
-	fold_expr(e->lhs, stab);
+	FOLD_EXPR(e->lhs, stab);
 	fold_disallow_st_un(e->lhs, "op-lhs");
 
 	if(e->rhs){
-		fold_expr(e->rhs, stab);
+		FOLD_EXPR(e->rhs, stab);
 		fold_disallow_st_un(e->rhs, "op-rhs");
 
 		e->tree_type = op_promote_types(e->op, op_to_str(e->op),

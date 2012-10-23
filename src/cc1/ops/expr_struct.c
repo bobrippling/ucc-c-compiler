@@ -20,7 +20,7 @@ void fold_expr_struct(expr *e, symtable *stab)
 	struct_union_enum_st *sue;
 	char *spel;
 
-	fold_expr(e->lhs, stab);
+	FOLD_EXPR(e->lhs, stab);
 	/* don't fold the rhs - just a member name */
 
 	UCC_ASSERT(expr_kind(e->rhs, identifier),
@@ -74,7 +74,7 @@ void fold_expr_struct(expr *e, symtable *stab)
 		e->lhs = cast;
 		e->expr_is_st_dot = 0;
 
-		fold_expr(e->lhs, stab);
+		FOLD_EXPR(e->lhs, stab);
 	}
 
 	e->tree_type = decl_copy(e->rhs->tree_type);

@@ -21,8 +21,8 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 
 	fold_inc_writes_if_sym(lvalue, stab);
 
-	fold_expr(e->lhs, stab);
-	fold_expr(e->rhs, stab);
+	FOLD_EXPR(e->lhs, stab);
+	FOLD_EXPR(e->rhs, stab);
 
 	/* skip the addr we inserted */
 	if(!expr_is_lvalue(lvalue, 0)){

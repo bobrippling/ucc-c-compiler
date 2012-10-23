@@ -91,7 +91,7 @@ invalid:
 		}
 	}
 
-	fold_expr(e->expr, stab);
+	FOLD_EXPR(e->expr, stab);
 	df = e->expr->tree_type;
 
 	if(!decl_is_callable(df)){
@@ -114,23 +114,10 @@ invalid:
 
 	if(e->funcargs){
 		int i;
-		expr *arg;
 
-		for(i = 0; (arg = e->funcargs[i]); i++){
-			char *desc;
-
-			fold_expr(arg, stab);
-
-			desc = ustrprintf("function argument to %s", sp);
-
-			/* promote to pointer, if array */
-			if(decl_is_array(arg->tree_type)){
-				fold_insert_casts(
-						decl_copy(arg->tree_type), /* the copy removes the array */
-						&arg, stab, &arg->where, desc);
-
-				e->funcargs[i] = arg;
-			}
+		for(i = 0; e->funcargs[i]; i++){
+			expr *arg = FOLD_EXPR(e->funcargs[i], stab);
+			char *desc = ustrprintf("function argument to %s", sp);
 
 			fold_need_expr(arg, desc, 0);
 			fold_disallow_st_un(arg, desc);

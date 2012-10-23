@@ -67,7 +67,7 @@ void fold_stmt_switch(stmt *s)
 
 	s->lbl_break = out_label_flow("switch");
 
-	fold_expr(s->expr, test_symtab);
+	FOLD_EXPR(s->expr, test_symtab);
 
 	fold_need_expr(s->expr, "switch", 0);
 
