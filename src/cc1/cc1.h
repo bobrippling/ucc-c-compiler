@@ -76,7 +76,7 @@ extern enum fopt fopt_mode;
 extern enum cc1_backend cc1_backend;
 
 void cc1_warn_atv(struct where *where, int die, int show_line, enum warning w, const char *fmt, va_list l);
-void cc1_warn_at( struct where *where, int die, int show_line, enum warning w, const char *fmt, ...);
+void cc1_warn_at( struct where *where, int die, int show_line, enum warning w, const char *fmt, ...) ucc_printflike(5, 6);
 
 extern FILE *cc_out[NUM_SECTIONS];
 extern FILE *cc1_out;

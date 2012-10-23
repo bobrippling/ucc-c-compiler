@@ -79,7 +79,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 void gen_expr_str_identifier(expr *e, symtable *stab)
 {
 	(void)stab;
-	idt_printf("identifier: \"%s\" (sym %p)\n", e->spel, e->sym);
+	idt_printf("identifier: \"%s\" (sym %p)\n", e->spel, (void *)e->sym);
 }
 
 void gen_expr_identifier(expr *e, symtable *stab)

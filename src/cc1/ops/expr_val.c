@@ -36,7 +36,7 @@ void gen_expr_val(expr *e, symtable *stab)
 void gen_expr_str_val(expr *e, symtable *stab)
 {
 	(void)stab;
-	idt_printf("val: %d\n", e->val);
+	idt_printf("val: %ld\n", e->bits.iv.val);
 }
 
 void const_expr_val(expr *e, intval *piv, enum constyness *pconst_type)

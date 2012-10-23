@@ -351,7 +351,7 @@ void print_enum(struct_union_enum_st *et)
 	for(mi = et->members; *mi; mi++){
 		enum_member *m = (*mi)->enum_member;
 
-		idt_printf("member %s = %d\n", m->spel, m->val->val.iv.val);
+		idt_printf("member %s = %ld\n", m->spel, m->val->bits.iv.val);
 	}
 	gen_str_indent--;
 }
@@ -430,7 +430,7 @@ void print_decl_array_init(decl *d)
 		{
 			int i;
 			for(i = 0; i < init->len; i++)
-				idt_printf("[%d] = %d\n", i, init->data.exprs[i]->val.iv.val);
+				idt_printf("[%d] = %ld\n", i, init->data.exprs[i]->bits.iv.val);
 			break;
 		}
 	}

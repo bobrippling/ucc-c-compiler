@@ -14,7 +14,7 @@ enum pdeclargs
 	PDECL_ATTR          = 1 << 7
 };
 
-void idt_printf(const char *fmt, ...);
+void idt_printf(const char *fmt, ...) ucc_printflike(1, 2);
 void idt_print(void);
 
 void print_decl(decl *d, enum pdeclargs);
