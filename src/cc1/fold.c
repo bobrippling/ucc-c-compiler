@@ -407,7 +407,7 @@ void fold_decl(decl *d, symtable *stab)
 			/* complete the decl */
 			decl_desc *dp = decl_array_first_incomplete(d);
 
-			dp->bits.array_size->val.iv.val = d->init->array_store->len;
+			dp->bits.array_size->bits.iv.val = d->init->array_store->len;
 		}
 
 		/* type check for statics + globals */

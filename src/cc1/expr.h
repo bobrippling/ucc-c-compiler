@@ -45,13 +45,13 @@ struct expr
 	{
 		intval iv;
 		char *s;
-	} val;
 
-	struct generic_lbl
-	{
-		decl *d; /* NULL -> default */
-		expr *e;
-	} **generics, *generic_chosen;
+		struct generic_lbl
+		{
+			decl *d; /* NULL -> default */
+			expr *e;
+		} **generics, *generic_chosen;
+	} bits;
 
 	int ptr_safe; /* does val point to a string we know about? */
 	int in_parens; /* for if((x = 5)) testing */

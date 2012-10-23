@@ -96,7 +96,7 @@ void gen_stmt_switch(stmt *s)
 	for(titer = s->codes; titer && *titer; titer++){
 		stmt *cse = *titer;
 
-		UCC_ASSERT(cse->expr->expr_is_default || !(cse->expr->val.iv.suffix & VAL_UNSIGNED), "don's handle unsigned yet");
+		UCC_ASSERT(cse->expr->expr_is_default || !(cse->expr->bits.iv.suffix & VAL_UNSIGNED), "don's handle unsigned yet");
 
 		if(stmt_kind(cse, case_range)){
 			char *skip = asm_label_code("range_skip");

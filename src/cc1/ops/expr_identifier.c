@@ -50,7 +50,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 
 			expr_mutate_wrapper(e, val);
 
-			e->val = m->val->val;
+			e->bits.iv = m->val->bits.iv;
 			fold_expr(e, stab);
 
 			e->tree_type->type->primitive = type_enum;

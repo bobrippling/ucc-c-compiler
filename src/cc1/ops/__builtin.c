@@ -256,7 +256,7 @@ static void fold_frame_address(expr *e, symtable *stab)
 	if(type != CONST_WITH_VAL || iv.val < 0)
 		DIE_AT(&e->where, "%s needs a positive constant value argument", e->expr->spel);
 
-	memcpy(&e->val.iv, &iv, sizeof iv);
+	memcpy(&e->bits.iv, &iv, sizeof iv);
 
 	e->tree_type = decl_ptr_depth_inc(decl_new_void());
 	wur_builtin(e);
@@ -264,7 +264,7 @@ static void fold_frame_address(expr *e, symtable *stab)
 
 static void builtin_gen_frame_pointer(expr *e, symtable *stab)
 {
-	int depth = e->val.iv.val;
+	int depth = e->bits.iv.val;
 
 	(void)stab;
 

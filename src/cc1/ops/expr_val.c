@@ -9,7 +9,7 @@ const char *str_expr_val()
 
 void gen_expr_val_1(expr *e, FILE *f)
 {
-	asm_out_intval(f, &e->val.iv);
+	asm_out_intval(f, &e->bits.iv);
 }
 
 void fold_expr_val(expr *e, symtable *stab)
@@ -41,7 +41,7 @@ void gen_expr_str_val(expr *e, symtable *stab)
 
 void const_expr_val(expr *e, intval *piv, enum constyness *pconst_type)
 {
-	memcpy(piv, &e->val, sizeof *piv);
+	memcpy(piv, &e->bits.iv, sizeof *piv);
 	*pconst_type = CONST_WITH_VAL; /* obviously vals are const */
 }
 
@@ -54,7 +54,7 @@ void mutate_expr_val(expr *e)
 expr *expr_new_val(int val)
 {
 	expr *e = expr_new_wrapper(val);
-	e->val.iv.val = val;
+	e->bits.iv.val = val;
 	return e;
 }
 

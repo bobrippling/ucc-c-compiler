@@ -106,7 +106,7 @@ void operate_optimise(expr *e)
 				POSSIBLE_OPT(e, "short circuit const");
 			break;
 
-#define VAL(e, x) (expr_kind(e, val) && e->val.iv.val == x)
+#define VAL(e, x) (expr_kind(e, val) && e->bits.iv.val == x)
 
 		case op_plus:
 		case op_minus:
@@ -273,10 +273,10 @@ void fold_expr_op(expr *e, symtable *stab)
 			 * vals default to signed, change to unsigned
 			 */
 
-			if(expr_kind(RHS, val) && RHS->val.iv.val >= 0){
+			if(expr_kind(RHS, val) && RHS->bits.iv.val >= 0){
 				UCC_ASSERT(!e->lhs->tree_type->type->is_signed, "signed-unsigned assumption failure");
 				RHS->tree_type->type->is_signed = 0;
-			}else if(expr_kind(LHS, val) && LHS->val.iv.val >= 0){
+			}else if(expr_kind(LHS, val) && LHS->bits.iv.val >= 0){
 				UCC_ASSERT(!e->rhs->tree_type->type->is_signed, "signed-unsigned assumption failure");
 				LHS->tree_type->type->is_signed = 0;
 			}else{

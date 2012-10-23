@@ -2,7 +2,7 @@
 #include "../sue.h"
 
 #define SIZEOF_WHAT(e) ((e)->expr ? (e)->expr->tree_type : (e)->decl)
-#define SIZEOF_SIZE(e)  (e)->val.iv.val
+#define SIZEOF_SIZE(e)  (e)->bits.iv.val
 
 const char *str_expr_sizeof()
 {
