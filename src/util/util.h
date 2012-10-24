@@ -15,6 +15,8 @@
 #  define ucc_wur
 #endif
 
+#define ucc_unreach() do{ ICE("unreachable"); return 0; }while(0)
+
 typedef struct where
 {
 	const char *fname, *line_str;

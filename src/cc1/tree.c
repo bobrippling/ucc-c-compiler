@@ -66,16 +66,6 @@ type *type_copy(type *t)
 	return ret;
 }
 
-void funcargs_free(funcargs *args, int free_decls)
-{
-	if(free_decls){
-		int i;
-		for(i = 0; args->arglist[i]; i++)
-			decl_free(args->arglist[i]);
-	}
-	free(args);
-}
-
 int type_primitive_size(enum type_primitive tp)
 {
 	switch(tp){
@@ -121,9 +111,6 @@ int type_primitive_size(enum type_primitive tp)
 
 int type_size(const type *t)
 {
-	if(t->type_of)
-		return decl_size(t->type_of->decl);
-
 	if(t->sue)
 		return sue_size(t->sue);
 
@@ -149,25 +136,6 @@ int type_equal(const type *a, const type *b, enum type_cmp mode)
 		return 0;
 
 	return mode & TYPE_CMP_EXACT ? a->primitive == b->primitive : 1;
-}
-
-void function_empty_args(funcargs *func)
-{
-	if(func->arglist){
-		UCC_ASSERT(!func->arglist[1], "empty_args called when it shouldn't be");
-
-		decl_free(func->arglist[0]);
-		free(func->arglist);
-		func->arglist = NULL;
-	}
-	func->args_void = 0;
-}
-
-funcargs *funcargs_new()
-{
-	funcargs *r = umalloc(sizeof *funcargs_new());
-	where_new(&r->where);
-	return r;
 }
 
 const char *op_to_str(const enum op_type o)
@@ -293,8 +261,6 @@ const char *type_to_str(const type *t)
 #define BUF_SIZE (sizeof(buf) - (bufp - buf))
 	static char buf[TYPE_STATIC_BUFSIZ];
 	char *bufp = buf;
-
-	if(t->type_of)     bufp += snprintf(bufp, BUF_SIZE, "typedef ");
 
 	{
 		const char *tmp = type_qual_to_str(t->qual);

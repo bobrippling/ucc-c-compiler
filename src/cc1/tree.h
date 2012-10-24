@@ -14,7 +14,7 @@ typedef struct struct_union_enum_st struct_union_enum_st;
 
 typedef struct type        type;
 typedef struct decl        decl;
-typedef struct decl_desc   decl_desc;
+typedef struct decl_ref    decl_ref;
 typedef struct funcargs    funcargs;
 typedef struct decl_attr   decl_attr;
 
@@ -77,9 +77,6 @@ struct type
 	/* NULL unless this is a struct, union or enum */
 	struct_union_enum_st *sue;
 
-	/* NULL unless from typedef or __typeof() */
-	expr *type_of;
-
 	/* attr applied to all decls whose type is this type */
 	decl_attr *attr;
 };
@@ -93,6 +90,7 @@ enum type_cmp
 
 type *type_new(void);
 type *type_copy(type *);
+#define type_free(x) free(x)
 
 void where_new(struct where *w);
 
@@ -103,22 +101,18 @@ const char *type_primitive_to_str(const enum type_primitive);
 const char *type_store_to_str(    const enum type_storage);
       char *type_qual_to_str(     const enum type_qualifier);
 
+int type_equal(const type *a, const type *b, enum type_cmp mode);
+int type_size( const type *);
+int type_primitive_size(enum type_primitive tp);
+
 int op_is_relational(enum op_type o);
 int op_can_compound(enum op_type o);
 
-int type_equal(const type *a, const type *b, enum type_cmp mode);
-int   type_size( const type *);
-int   type_primitive_size(enum type_primitive tp);
-funcargs *funcargs_new(void);
-void function_empty_args(funcargs *func);
-
-void funcargs_free(funcargs *args, int free_decls);
 
 #define SPEC_STATIC_BUFSIZ 64
 #define TYPE_STATIC_BUFSIZ (SPEC_STATIC_BUFSIZ + 64)
 #define DECL_STATIC_BUFSIZ (256 + TYPE_STATIC_BUFSIZ)
 
-#define type_free(x) free(x)
 
 /* tables local to the current scope */
 extern symtable *current_scope;

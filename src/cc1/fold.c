@@ -591,49 +591,6 @@ void fold_decl(decl *d, symtable *stab)
 {
 	decl_desc *dp;
 
-	/* typedef / __typeof folding
-	 *
-	 * FIXME: don't fold this anymore, or at least the type_of, since we don't want decays
-	 *        better typedef handling code in decl.c
-	 */
-	while(d->type->type_of){
-		/* get the typedef decl from t->decl->tree_type */
-		const enum type_qualifier old_qual  = d->type->qual;
-		const enum type_storage   old_store = d->type->store;
-		decl *from;
-		expr *type_exp;
-
-		{
-			static int once = 0;
-			if(!once)
-				once++, ICW("typedef folding is broken");
-		}
-
-		type_exp = d->type->type_of;
-		FOLD_EXPR(type_exp, stab);
-		from = type_exp->tree_type;
-		UCC_ASSERT(from, "no decl for typeof/typedef fold");
-
-		/* type */
-		memcpy(d->type, from->type, sizeof *d->type);
-		d->type->qual  |= old_qual;
-		d->type->store  = old_store;
-
-		/* decl */
-		if(from->desc){
-			decl_desc *ins = decl_desc_copy(from->desc);
-
-			decl_desc_append(&ins, d->desc);
-			d->desc = ins;
-		}
-
-		/* attr */
-		decl_attr_append(&d->attr, from->attr);
-	}
-	decl_desc_link(d);
-
-	UCC_ASSERT(d->type && d->type->store != store_typedef, "typedef store after tdef folding (%s)", decl_to_str(d));
-
 	/* check for array of funcs, func returning array */
 	for(dp = decl_desc_tail(d); dp; dp = dp->parent_desc){
 

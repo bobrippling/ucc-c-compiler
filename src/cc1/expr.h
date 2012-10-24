@@ -120,7 +120,7 @@ expr *expr_new_decl_init(decl *d, decl_init *di);
 #include "ops/expr_struct.h"
 #include "ops/expr_compound_lit.h"
 
-#define expr_free(x) do{if((x)->tree_type) decl_free((x)->tree_type); free(x);}while(0)
+#define expr_free(x) do{if(x){if((x)->tree_type) decl_free((x)->tree_type); free(x);}}while(0)
 
 #define expr_kind(exp, kind) ((exp)->f_str == str_expr_ ## kind)
 
