@@ -17,6 +17,41 @@ int decl_is_void_ptr(decl *d)
 		&& d->ref->ref->bits.type->primitive == type_void;
 }
 
+int decl_is_integral(decl *d)
+{
+	if(d->ref->type != decl_ref_type)
+		return 0;
+
+	switch(d->ref->bits.type->primitive){
+		case type_int:
+		case type_char:
+		case type__Bool:
+		case type_short:
+		case type_long:
+		case type_llong:
+		case type_enum:
+		case type_intptr_t:
+		case type_ptrdiff_t:
+				return 1;
+
+		case type_unknown:
+		case type_void:
+		case type_struct:
+		case type_union:
+		case type_float:
+		case type_double:
+		case type_ldouble:
+				break;
+	}
+
+	return 0;
+}
+
+int decl_is_func(decl *d)
+{
+	return d->ref->type == decl_ref_func;
+}
+
 int decl_ref_complete(decl_ref *r)
 {
 	/* decl is "void" or incomplete-struct or array[] */
@@ -98,36 +133,6 @@ int decl_is_const(decl *d)
 	return d->type->qual & qual_const;
 }
 
-int decl_is_integral(decl *d)
-{
-	if(d->ref->type != decl_ref_type)
-		return 0;
-
-	switch(d->ref->bits.type->primitive){
-		case type_int:
-		case type_char:
-		case type__Bool:
-		case type_short:
-		case type_long:
-		case type_llong:
-		case type_enum:
-		case type_intptr_t:
-		case type_ptrdiff_t:
-				return 1;
-
-		case type_unknown:
-		case type_void:
-		case type_struct:
-		case type_union:
-		case type_float:
-		case type_double:
-		case type_ldouble:
-				break;
-	}
-
-	return 0;
-}
-
 int decl_is_floating(decl *d)
 {
 	if(d->desc)
@@ -166,12 +171,6 @@ int decl_is_callable(decl *d)
 	}
 
 	return 0;
-}
-
-int decl_is_func(decl *d)
-{
-	decl_desc *dp = decl_leaf(d);
-	return dp && dp->type == decl_desc_func;
 }
 
 int decl_is_fptr(decl *d)

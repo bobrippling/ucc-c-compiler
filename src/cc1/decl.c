@@ -34,6 +34,13 @@ decl_ref *decl_ref_new_type(type *t)
 	return r;
 }
 
+decl_ref *decl_ref_new_tdef(expr *e)
+{
+	decl_ref *r = decl_ref_new(decl_ref_tdef);
+	r->bits.type_of = e;
+	return r;
+}
+
 decl_ref *decl_ref_new_ptr(decl_ref *to, enum type_qualifier q)
 {
 	decl_ref *r = decl_ref_new(decl_ref_ptr);
@@ -42,11 +49,17 @@ decl_ref *decl_ref_new_ptr(decl_ref *to, enum type_qualifier q)
 	return r;
 }
 
+decl_ref *decl_ref_new_block(decl_ref *to, enum type_qualifier q)
+{
+	decl_ref *r = decl_ref_new_ptr(to, q);
+	r->type = decl_ref_block;
+	return r;
+}
+
 decl *decl_new()
 {
 	decl *d = umalloc(sizeof *d);
 	where_new(&d->where);
-	d->ref = decl_ref_new_type(type_new());
 	return d;
 }
 
@@ -348,6 +361,14 @@ decl *decl_ptr_depth_inc(decl *d)
 	return d;
 }
 
+decl_ref *decl_orphan(decl *d)
+{
+	decl_ref *orphan = d->ref;
+	d->ref = d->ref->ref;
+	orphan->ref = NULL;
+	return orphan;
+}
+
 decl *decl_ptr_depth_dec(decl *d, where *from)
 {
 	decl_ref *orphan;
@@ -359,255 +380,124 @@ decl *decl_ptr_depth_dec(decl *d, where *from)
 	if(d->ref->type != decl_ref_ptr)
 		DIE_AT(from, "invalid indirection applied to %s", decl_to_str(d));
 
-	orphan = d->ref;
-
-	d->ref = d->ref->ref;
+	orphan = decl_orphan(d);
 
 	if(!decl_complete(d))
 		DIE_AT(from, "dereference pointer to incomplete type %s", decl_to_str(d));
 
-	orphan->ref = NULL,
 	decl_ref_free(orphan);
 
 fin:
 	return d;
 }
 
-void decl_complete_array(decl *d, int n)
+decl *decl_func_called(decl *d, funcargs **pfuncargs)
 {
-	decl_desc *ar_desc = decl_desc_tail(d);
-	expr *expr_sz;
+	decl_ref *orphan = decl_orphan(d);
 
-	UCC_ASSERT(ar_desc->type == decl_desc_array, "invalid array completion");
-
-	expr_sz = ar_desc->bits.array_size;
-	expr_mutate_wrapper(expr_sz, val);
-	expr_sz->val.iv.val = n;
-}
-
-int decl_desc_array_count(decl_desc *dp)
-{
-	intval iv;
-	enum constyness type;
-
-	const_fold(dp->bits.array_size, &iv, &type);
-
-	if(type != CONST_WITH_VAL)
-		DIE_AT(&dp->where, "use of array with unspecified bounds");
-
-	return iv.val;
-}
-
-int decl_inner_array_count(decl *d)
-{
-	decl_desc *ar_desc = decl_desc_tail(d);
-
-	UCC_ASSERT(ar_desc->type == decl_desc_array, "%s: not array", __func__);
-
-	return decl_desc_array_count(ar_desc);
-}
-
-int decl_ptr_or_block(decl *d)
-{
-	decl_desc *dp;
-	for(dp = d->desc; dp; dp = dp->child)
-		switch(dp->type){
-			case decl_desc_ptr:
-			case decl_desc_block:
-			case decl_desc_array:
-				return 1;
-			case decl_desc_func:
-				break;
-		}
-	return 0;
-}
-
-void decl_desc_cut_loose(decl_desc *dp)
-{
-	if(dp->parent_desc)
-		dp->parent_desc->child = NULL;
-	else
-		dp->parent_decl->desc = NULL;
-}
-
-decl *decl_func_deref(decl *d, funcargs **pfuncargs)
-{
-	decl_desc *dp;
-	funcargs *args;
-
-	for(dp = d->desc; dp->child; dp = dp->child);
-
-	/* should've been caught by is_callable() */
-	UCC_ASSERT(dp, "can't call non-function");
-
-	switch(dp->type){
-		case decl_desc_func:
-			args = dp->bits.func;
-
-			decl_desc_cut_loose(dp);
-
-			decl_desc_free(dp);
-			break;
-
-		case decl_desc_ptr:
-		case decl_desc_block:
+	switch(orphan->type){
+		case decl_ref_ptr:
+		case decl_ref_block:
 		{
-			decl_desc *const func = dp->parent_desc;
+			decl_ref *func = decl_orphan(d);
+			funcargs *args;
 
-			UCC_ASSERT(func, "no parent desc for func-ptr call");
+			UCC_ASSERT(func->type == decl_ref_func, "func call not a func");
 
-			if(func->type == decl_desc_func){
-				args = func->bits.func;
+			args = func->bits.func;
+			func->bits.func = NULL;
 
-				decl_desc_cut_loose(func);
+			decl_ref_free(func);
+			decl_ref_free(orphan);
 
-				decl_desc_free(dp);
-				decl_desc_free(func);
-			}else{
-				goto cant;
-			}
-			break;
+			if(pfuncargs)
+				*pfuncargs = args;
+
+			return d;
 		}
 
+		case decl_ref_func: /* can't call this - decays to type(*)() */
 		default:
-cant:
-			ICE("can't func-deref non func decl desc");
+			ICE("can't func-deref non func-ptr/block ref");
 	}
 
-	if(pfuncargs)
-		*pfuncargs = args;
-	/* else: XXX: memleak */
-
-	return d;
+	ucc_unreach();
 }
 
 void decl_conv_array_func_to_ptr(decl *d)
 {
-	decl_desc *dp = decl_desc_tail(d);
+	decl_ref *r = d->ref;
 
 	/* f(int x[][5]) decays to f(int (*x)[5]), not f(int **x) */
 
-	if(dp){
-		switch(dp->type){
-			case decl_desc_array:
-				expr_free(dp->bits.array_size);
-				dp->type = decl_desc_ptr;
-				dp->bits.qual = qual_none;
-				break;
+	switch(r->type){
+		case decl_ref_array:
+		{
+			decl_ref *orphan = decl_orphan(d);
+			/* orphan == r */
+			decl_ref_free(orphan);
 
-			case decl_desc_func:
-			{
-				decl_desc *ins = decl_desc_ptr_new(dp->parent_decl, dp);
-
-				ins->child = dp->child;
-				dp->child = ins;
-				break;
-			}
-
-			case decl_desc_ptr:
-			case decl_desc_block:
-				break;
-		}
-	}
-}
-
-void decl_set_spel(decl *d, char *sp)
-{
-#if 0
-	decl_desc **new, *prev;
-
-	if(d->desc){
-		decl_desc *p;
-		for(p = d->desc; p->child; p = p->child);
-
-		if(p->type == decl_desc_spel){
-			free(p->bits.spel);
-			p->bits.spel = sp;
-			return;
+			/* fall */
 		}
 
-		prev = p;
-		new = &p->child;
-	}else{
-		prev = NULL;
-		new = &d->desc;
-	}
+		case decl_ref_func:
+			d->ref = decl_ref_new_ptr(r, qual_none);
+			break;
 
-	*new = decl_desc_spel_new(d, prev, sp);
-#endif
-	free(d->spel);
-	d->spel = sp;
-}
-
-void decl_desc_link(decl *d)
-{
-	decl_desc *dp, *prev;
-
-	for(dp = d->desc, prev = NULL; dp; prev = dp, dp = dp->child){
-		dp->parent_decl = d;
-		dp->parent_desc = prev;
+		default:break;
 	}
 }
 
-const char *decl_desc_to_str(enum decl_desc_type t)
-{
-	switch(t){
-		CASE_STR_PREFIX(decl_desc, ptr);
-		CASE_STR_PREFIX(decl_desc, block);
-		CASE_STR_PREFIX(decl_desc, array);
-		CASE_STR_PREFIX(decl_desc, func);
-	}
-	return NULL;
-}
-
-void decl_debug(decl *d)
-{
-	decl_desc *i;
-
-	fprintf(stderr, "decl %s:\n", d->spel);
-
-	for(i = d->desc; i; i = i->child)
-		fprintf(stderr, "\t%s\n", decl_desc_to_str(i->type));
-}
-
-void decl_desc_add_str(decl_desc *dp, int show_spel, char **bufp, int sz)
+static void decl_ref_add_str(decl_ref *r, char *spel, char **bufp, int sz)
 {
 #define BUF_ADD(...) \
 	do{ int n = snprintf(*bufp, sz, __VA_ARGS__); *bufp += n, sz -= n; }while(0)
 
-	const int need_paren = dp->child ? dp->type != dp->child->type : 0;
+	int need_paren;
+
+	switch(r->type){
+		case decl_ref_type:
+		case decl_ref_tdef:
+			return;
+		default:break;
+	}
+
+	need_paren = r->ref == decl_ref_type ? 0 : r->type != r->ref->type;
 
 	if(need_paren)
 		BUF_ADD("(");
 
-	switch(dp->type){
-		case decl_desc_ptr:
-		case decl_desc_block:
+	switch(r->type){
+		case decl_ref_ptr:
+		case decl_ref_block:
 			BUF_ADD("%c%s",
-					dp->type == decl_desc_ptr ? '*' : '^',
-					type_qual_to_str(dp->bits.qual));
+					r->type == decl_ref_ptr ? '*' : '^',
+					type_qual_to_str(r->bits.qual));
 			break;
 		default:
 			break;
 	}
 
-	if(dp->child)
-		decl_desc_add_str(dp->child, show_spel, bufp, sz);
-	else if(show_spel)
-		BUF_ADD("%s", dp->parent_decl->spel);
+	if(r->ref)
+		decl_ref_add_str(r->ref, spel, bufp, sz);
+	else if(spel)
+		BUF_ADD("%s", spel);
 
 	if(need_paren)
 		BUF_ADD(")");
 
-	switch(dp->type){
-		case decl_desc_block:
-		case decl_desc_ptr:
+	switch(r->type){
+		case decl_ref_tdef:
+			/* TODO: "aka: %s" */
+		case decl_ref_type:
+		case decl_ref_block:
+		case decl_ref_ptr:
 			break;
-		case decl_desc_func:
+		case decl_ref_func:
 		{
 			const char *comma = "";
 			decl **i;
-			funcargs *args = dp->bits.func;
+			funcargs *args = r->bits.func;
 
 			BUF_ADD("(");
 			for(i = args->arglist; i && *i; i++){
@@ -618,11 +508,11 @@ void decl_desc_add_str(decl_desc *dp, int show_spel, char **bufp, int sz)
 			BUF_ADD("%s)", args->variadic ? ", ..." : args->args_void ? "void" : "");
 			break;
 		}
-		case decl_desc_array:
+		case decl_ref_array:
 		{
 			intval iv;
 
-			const_fold_need_val(dp->bits.array_size, &iv);
+			const_fold_need_val(r->bits.array_size, &iv);
 
 			if(iv.val == 0)
 				BUF_ADD("[]");
@@ -634,22 +524,35 @@ void decl_desc_add_str(decl_desc *dp, int show_spel, char **bufp, int sz)
 #undef BUF_ADD
 }
 
+static void decl_ref_add_type_str(decl_ref *r, char *spel, char **bufp, int sz)
+{
+	/* go down to the first type or typedef, print it and then its descriptions */
+	{
+		int len;
+		decl_ref *rt;
+
+		for(rt = r; rt->type != decl_ref_type && rt->type != decl_ref_tdef; rt = rt->ref);
+		strcpy(*bufp, type_to_str(rt->bits.type));
+
+		len = strlen(*bufp);
+
+		bufp += len;
+		*(*bufp)++ = ' ';
+
+		sz -= len + 1;
+	}
+
+	decl_ref_add_str(r, spel, bufp, sz);
+}
+
 const char *decl_to_str_r_spel(char buf[DECL_STATIC_BUFSIZ], int show_spel, decl *d)
 {
 	char *bufp = buf;
 
-#define BUF_ADD(...) \
-	bufp += snprintf(bufp, DECL_STATIC_BUFSIZ - (bufp - buf), __VA_ARGS__)
-
-	BUF_ADD("%s%s", type_to_str(d->type), d->desc ? " " : "");
-
-	if(d->desc)
-		decl_desc_add_str(d->desc, show_spel, &bufp, DECL_STATIC_BUFSIZ - (bufp - buf));
-	else if(show_spel && d->spel)
-		BUF_ADD(" %s", d->spel);
+	decl_ref_add_type_str(d->ref, show_spel ? d->spel : NULL,
+			&bufp, DECL_STATIC_BUFSIZ - (bufp - buf));
 
 	return buf;
-#undef BUF_ADD
 }
 
 const char *decl_to_str_r(char buf[DECL_STATIC_BUFSIZ], decl *d)

@@ -9,6 +9,8 @@
 #include "../util/dynarray.h"
 #include "data_structs.h"
 #include "typedef.h"
+#include "decl_init.h"
+#include "funcargs.h"
 
 #include "tokenise.h"
 #include "tokconv.h"
@@ -25,7 +27,7 @@
 
 /*#define PARSE_DECL_VERBOSE*/
 
-decl_desc *parse_decl_desc(enum decl_mode mode, char **sp);
+decl_ref *parse_decl_ref(enum decl_mode mode, char **sp);
 static void parse_add_attr(decl_attr **append);
 
 #define INT_TYPE(t) do{ UCC_ASSERT(!t, "got type"); t = type_new(); t->primitive = type_int; }while(0)
@@ -136,7 +138,7 @@ static void parse_add_attr(decl_attr **append)
 	}
 }
 
-type *parse_type(int with_store)
+decl_ref *parse_type(int with_store)
 {
 #define PRIMITIVE_NO_MORE 2
 
@@ -256,7 +258,7 @@ type *parse_type(int with_store)
 			t->qual  = qual;
 			t->store = store;
 
-			return t;
+			return decl_ref_new_type(t);
 
 		}else if(accept(token_typeof)){
 			if(primitive_set)
@@ -312,31 +314,38 @@ type *parse_type(int with_store)
 	|| had_attr
 	|| is_noreturn)
 	{
-		type *t = type_new();
+		decl_ref *r;
 
-		/* signed size_t x; */
-		if(tdef_typeof && signed_set)
-			DIE_AT(NULL, "signed/unsigned not allowed with typedef instance (%s)", tdef_typeof->decl->spel);
+		if(tdef_typeof){
+			/* signed size_t x; */
+			if(signed_set)
+				DIE_AT(NULL, "signed/unsigned not allowed with typedef instance (%s)", tdef_typeof->decl->spel);
 
+			r = decl_ref_new_tdef(tdef_typeof);
 
-		if(!primitive_set)
-			t->primitive = type_int;
-		else
-			t->primitive = primitive;
+		}else{
+			type *t = type_new();
 
-		t->type_of = tdef_typeof;
-		t->is_signed = is_signed;
-		t->is_inline = is_inline;
-		t->qual  = qual;
-		t->store = store;
+			if(!primitive_set)
+				t->primitive = type_int;
+			else
+				t->primitive = primitive;
 
-		t->attr = attr;
-		parse_add_attr(&t->attr); /* int/struct-A __attr__ */
+			t->is_signed = is_signed;
+			t->is_inline = is_inline;
+			t->qual  = qual;
+			t->store = store;
+
+			r = decl_ref_new_type(t);
+		}
+
+		r->attr = attr;
+		parse_add_attr(&r->attr); /* int/struct-A __attr__ */
 
 		if(is_noreturn)
-			decl_attr_append(&t->attr, decl_attr_new(attr_noreturn));
+			decl_attr_append(&r->attr, decl_attr_new(attr_noreturn));
 
-		return t;
+		return r;
 	}else{
 		return NULL;
 	}
@@ -380,6 +389,18 @@ funcargs *parse_func_arglist()
 	argdecl = parse_decl_single(0);
 
 	if(argdecl){
+
+		/* check for x(void) */
+		if( argdecl->ref->type == decl_ref_type
+		&&  argdecl->ref->bits.type->primitive == type_void
+		&& !argdecl->spel)
+		{
+			/* x(void); */
+			funcargs_empty(args);
+			args->args_void = 1; /* (void) vs () */
+			goto fin;
+		}
+
 		for(;;){
 			dynarray_add((void ***)&args->arglist, argdecl);
 
@@ -398,14 +419,7 @@ funcargs *parse_func_arglist()
 			argdecl = parse_decl_single(DECL_CAN_DEFAULT);
 		}
 
-		if(dynarray_count((void *)args->arglist) == 1
-				&& args->arglist[0]->type->primitive == type_void
-				&& !args->arglist[0]->desc
-				&& !args->arglist[0]->spel){
-			/* x(void); */
-			function_empty_args(args);
-			args->args_void = 1; /* (void) vs () */
-		}
+fin:;
 
 	}else{
 		do{
@@ -414,8 +428,14 @@ funcargs *parse_func_arglist()
 			if(curtok != token_identifier)
 				EAT(token_identifier); /* error */
 
-			d->type->primitive = type_int;
-			decl_set_spel(d, token_current_spel());
+			{
+				type *t = type_new();
+				t->primitive = type_int;
+
+				d->ref = decl_ref_new_type(t);
+			}
+
+			d->spel = token_current_spel();
 			dynarray_add((void ***)&args->arglist, d);
 
 			EAT(token_identifier);
@@ -449,29 +469,21 @@ declarator:
 		;
 */
 
-decl_desc *parse_decl_desc_ptr(enum decl_mode mode, char **sp)
+decl_ref *parse_decl_ref_ptr(enum decl_mode mode, char **sp)
 {
 	int ptr;
 
 	if((ptr = accept(token_multiply)) || accept(token_xor)){
-		decl_desc *desc;
 		enum type_qualifier qual = qual_none;
-
-		desc = (ptr ? decl_desc_ptr_new : decl_desc_block_new)(NULL, NULL);
-
 		while(curtok_is_type_qual()){
 			qual |= curtok_to_type_qualifier();
 			EAT(curtok);
 		}
 
-		desc->bits.qual = qual;
-
-		desc->child = parse_decl_desc(mode, sp);
-
-		return desc;
+		return (ptr ? decl_ref_new_ptr : decl_ref_new_block)(parse_decl_ref(mode, sp), qual);
 
 	}else if(accept(token_open_paren)){
-		decl_desc *ret;
+		decl_ref *ret;
 
 		/*
 		 * we could be here:
@@ -485,7 +497,7 @@ decl_desc *parse_decl_desc_ptr(enum decl_mode mode, char **sp)
 			return NULL;
 		}
 
-		ret = parse_decl_desc(mode, sp);
+		ret = parse_decl_ref(mode, sp);
 		EAT(token_close_paren);
 		return ret;
 
@@ -504,12 +516,12 @@ decl_desc *parse_decl_desc_ptr(enum decl_mode mode, char **sp)
 	return NULL;
 }
 
-decl_desc *parse_decl_desc_array(enum decl_mode mode, char **sp)
+decl_ref *parse_decl_ref_array(enum decl_mode mode, char **sp)
 {
-	decl_desc *dp = parse_decl_desc_ptr(mode, sp);
+	decl_ref *r = parse_decl_ref_ptr(mode, sp);
 
 	while(accept(token_open_square)){
-		decl_desc *dp_new;
+		decl_ref *r_new;
 		expr *size;
 
 		if(accept(token_close_square)){
@@ -522,32 +534,24 @@ decl_desc *parse_decl_desc_array(enum decl_mode mode, char **sp)
 			EAT(token_close_square);
 		}
 
-		dp_new = decl_desc_array_new(NULL, NULL);
+		r_new = decl_ref_new_array(r, size);
 
-		dp_new->bits.array_size = size;
-
-		dp_new->child = dp;
-
-		dp = dp_new;
+		r = r_new;
 	}
 
-	return dp;
+	return r;
 }
 
-decl_desc *parse_decl_desc(enum decl_mode mode, char **sp)
+decl_ref *parse_decl_ref(enum decl_mode mode, char **sp)
 {
-	decl_desc *dp = parse_decl_desc_array(mode, sp);
+	decl_ref *dp = parse_decl_ref_array(mode, sp);
 
 	while(accept(token_open_paren)){
-		decl_desc *dp_new = decl_desc_func_new(NULL, NULL);
-
-		dp_new->bits.func = parse_func_arglist();
+		decl_ref *r_new = decl_ref_new_func(dp, parse_func_arglist());
 
 		EAT(token_close_paren);
 
-		dp_new->child = dp;
-
-		dp = dp_new;
+		dp = r_new;
 	}
 
 	return dp;
@@ -555,11 +559,11 @@ decl_desc *parse_decl_desc(enum decl_mode mode, char **sp)
 
 decl *parse_decl(type *t, enum decl_mode mode)
 {
-	decl_desc *dp;
+	decl_ref *dp;
 	decl *d;
 	char *spel = NULL;
 
-	dp = parse_decl_desc(mode, &spel);
+	dp = parse_decl_ref(mode, &spel);
 
 	/* don't fold typedefs until later (for __typeof) */
 	d = decl_new();
@@ -567,7 +571,7 @@ decl *parse_decl(type *t, enum decl_mode mode)
 	d->type = type_copy(t); /* FIXME: t leaks */
 	d->spel = spel;
 
-	decl_desc_link(d);
+	decl_ref_link(d);
 
 	parse_add_attr(&d->attr); /* int spel __attr__ */
 
@@ -579,8 +583,8 @@ decl *parse_decl(type *t, enum decl_mode mode)
 			d->spel, decl_is_func(d),
 			token_to_str(curtok), d->init);
 
-	for(decl_desc *dp = d->desc; dp; dp = dp->child)
-		fprintf(stderr, "\tdesc %s\n", decl_desc_to_str(dp->type));
+	for(decl_ref *dp = d->desc; dp; dp = dp->child)
+		fprintf(stderr, "\tdesc %s\n", decl_ref_to_str(dp->type));
 #endif
 
 	return d;

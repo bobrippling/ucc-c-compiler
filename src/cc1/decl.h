@@ -113,6 +113,13 @@ decl        *decl_new_type(enum type_primitive p);
 #define      decl_new_int()  decl_new_type(type_int)
 void         decl_free(decl *), decl_ref_free(decl_ref *);
 
+decl_ref *decl_ref_new_tdef(expr *);
+decl_ref *decl_ref_new_type(type *);
+decl_ref *decl_ref_new_ptr(  decl_ref *to, enum type_qualifier);
+decl_ref *decl_ref_new_block(decl_ref *to, enum type_qualifier);
+decl_ref *decl_ref_new_array(decl_ref *to, expr *sz);
+decl_ref *decl_ref_new_func( decl_ref *to, funcargs *args);
+
 
 decl_attr   *decl_attr_new(enum decl_attr_type);
 void         decl_attr_append(decl_attr **loc, decl_attr *new);
@@ -136,5 +143,10 @@ const char *decl_to_str(decl *d);
 const char *decl_to_str_r(char buf[DECL_STATIC_BUFSIZ], decl *);
 
 void decl_attr_free(decl_attr *a);
+
+/* decl_is_* */
+int decl_is_void_ptr(decl *d);
+int decl_is_integral(decl *d);
+int decl_is_func(decl *d);
 
 #endif

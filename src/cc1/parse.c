@@ -17,6 +17,7 @@
 #include "parse_type.h"
 #include "const.h"
 #include "ops/__builtin.h"
+#include "funcargs.h"
 
 #define STAT_NEW(type)      stmt_new_wrapper(type, current_scope)
 #define STAT_NEW_NEST(type) stmt_new_wrapper(type, symtab_new(current_scope))

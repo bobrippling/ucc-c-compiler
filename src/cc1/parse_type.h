@@ -1,7 +1,7 @@
 #ifndef PARSE_TYPE_H
 #define PARSE_TYPE_H
 
-type *parse_type(int with_store);
+decl_ref *parse_type(int with_store);
 
 /* (type) (ident) */
 decl  *parse_decl_single(enum decl_mode mode);

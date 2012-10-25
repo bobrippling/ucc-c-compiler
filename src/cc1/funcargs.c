@@ -2,7 +2,7 @@
 
 void funcargs_free(funcargs *args, int free_decls)
 {
-	if(free_decls){
+	if(free_decls && args){
 		int i;
 		for(i = 0; args->arglist[i]; i++)
 			decl_free(args->arglist[i]);
