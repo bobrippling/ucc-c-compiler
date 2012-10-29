@@ -138,17 +138,19 @@ static void parse_add_attr(decl_attr **append)
 	}
 }
 
-decl_ref *parse_type(int with_store)
+decl_ref *parse_type(enum decl_storage *store)
 {
 #define PRIMITIVE_NO_MORE 2
 
 	expr *tdef_typeof = NULL;
 	decl_attr *attr = NULL;
 	enum type_qualifier qual = qual_none;
-	enum type_storage   store = store_default;
 	enum type_primitive primitive = type_int;
 	int is_signed = 1, is_inline = 0, had_attr = 0, is_noreturn = 0;
 	int store_set = 0, primitive_set = 0, signed_set = 0;
+
+	if(store)
+		*store = store_default;
 
 	for(;;){
 		decl *td;
@@ -157,14 +159,14 @@ decl_ref *parse_type(int with_store)
 			qual |= curtok_to_type_qualifier();
 			EAT(curtok);
 
-		}else if(curtok_is_type_store()){
-			store = curtok_to_type_storage();
+		}else if(curtok_is_decl_store()){
+			if(!store)
+				DIE_AT(NULL, "storage unwanted (%s)", decl_store_to_str(*store));
 
-			if(!with_store)
-				DIE_AT(NULL, "type storage unwanted (%s)", type_store_to_str(store));
+			*store = curtok_to_decl_storage();
 
 			if(store_set)
-				DIE_AT(NULL, "second type store %s", type_store_to_str(store));
+				DIE_AT(NULL, "second store %s", decl_store_to_str(*store));
 
 			store_set = 1;
 			EAT(curtok);
@@ -256,7 +258,6 @@ decl_ref *parse_type(int with_store)
 			}
 
 			t->qual  = qual;
-			t->store = store;
 
 			return decl_ref_new_type(t);
 
@@ -334,7 +335,6 @@ decl_ref *parse_type(int with_store)
 			t->is_signed = is_signed;
 			t->is_inline = is_inline;
 			t->qual  = qual;
-			t->store = store;
 
 			r = decl_ref_new_type(t);
 		}
@@ -353,7 +353,7 @@ decl_ref *parse_type(int with_store)
 
 int parse_curtok_is_type(void)
 {
-	if(curtok_is_type_qual() || curtok_is_type_store() || curtok_is_type_primitive())
+	if(curtok_is_type_qual() || curtok_is_decl_store() || curtok_is_type_primitive())
 		return 1;
 
 	switch(curtok){
@@ -590,17 +590,10 @@ decl *parse_decl(decl_ref *subtype, enum decl_mode mode)
 	return d;
 }
 
-static int is_typedef(decl_ref *r)
+static void prevent_typedef(where *w, enum decl_storage store)
 {
-	for(; r && r->type != decl_ref_type; r = r->ref);
-
-	return r && r->bits.type->store == store_typedef;
-}
-
-static void prevent_typedef(decl_ref *r)
-{
-	if(is_typedef(r))
-		DIE_AT(&r->where, "typedef unexpected");
+	if(store_typedef == store)
+		DIE_AT(w, "typedef unexpected");
 }
 
 static decl_ref *default_type(void)
@@ -617,7 +610,8 @@ static decl_ref *default_type(void)
 
 decl *parse_decl_single(enum decl_mode mode)
 {
-	decl_ref *r = parse_type(mode & DECL_ALLOW_STORE);
+	enum decl_storage store;
+	decl_ref *r = parse_type(mode & DECL_ALLOW_STORE ? &store : NULL);
 
 	if(!r){
 		if((mode & DECL_CAN_DEFAULT) == 0)
@@ -626,21 +620,26 @@ decl *parse_decl_single(enum decl_mode mode)
 		r = default_type();
 
 	}else{
-		prevent_typedef(r);
+		prevent_typedef(&r->where, store);
 	}
 
-	return parse_decl(r, mode);
+	{
+		decl *d = parse_decl(r, mode);
+		d->store = store;
+		return d;
+	}
 }
 
 decl **parse_decls_one_type()
 {
-	decl_ref *r = parse_type(0 /* no store */);
+	enum decl_storage store;
+	decl_ref *r = parse_type(&store);
 	decl **decls = NULL;
 
 	if(!r)
 		return NULL;
 
-	prevent_typedef(r);
+	prevent_typedef(&r->where, store);
 
 	do{
 		decl *d = parse_decl(r, DECL_SPEL_NEED);
@@ -661,13 +660,14 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 	for(;;){
 		decl_ref *ref;
 		type *t;
+		enum decl_storage store = store_default;
 
 		last = NULL;
 		are_tdefs = 0;
 
 		parse_static_assert();
 
-		ref = parse_type(mode & DECL_MULTI_ALLOW_STORE);
+		ref = parse_type(mode & DECL_MULTI_ALLOW_STORE ? &store : NULL);
 
 		if(!ref){
 			/* can_default makes sure we don'ref parse { int *p; *p = 5; } the latter as a decl */
@@ -685,7 +685,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 				t = r->bits.type;
 		}
 
-		if(is_typedef(ref)){
+		if(store == store_typedef){
 			are_tdefs = 1;
 		}else if(t->sue && !parse_possible_decl()){
 			/* FIXME: can't this be caught below anyway? */
@@ -699,10 +699,10 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 				WARN_AT(&t->where, "anonymous struct with no instances");
 
 			/* check for storage/qual on no-instance */
-			if(t->sue && (t->qual || t->store)){
+			if(t->sue && (t->qual || store != store_default)){
 				WARN_AT(&t->where, "ignoring %s%s%son no-instance %s",
-						t->store ? type_store_to_str(t->store) : "",
-						t->store ? " " : "",
+						store != store_default ? decl_store_to_str(store) : "",
+						store != store_default ? " " : "",
 						type_qual_to_str(t->qual),
 						sue_str(t->sue));
 			}

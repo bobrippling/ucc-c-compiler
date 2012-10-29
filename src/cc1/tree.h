@@ -53,25 +53,12 @@ enum type_qualifier
 	qual_restrict = 1 << 2,
 };
 
-enum type_storage
-{
-	store_default, /* auto or external-linkage depending on scope + other defs */
-	store_auto,
-	store_static,
-	store_extern,
-	store_register,
-	store_typedef
-};
-
-#define type_store_static_or_extern(x) ((x) == store_static || (x) == store_extern)
-
 struct type
 {
 	where where;
 
 	enum type_primitive primitive;
 	enum type_qualifier qual;
-	enum type_storage   store;
 	int is_signed, is_inline;
 
 	/* NULL unless this is a struct, union or enum */
@@ -98,7 +85,6 @@ const char *op_to_str(  const enum op_type o);
 const char *type_to_str(const type *t);
 
 const char *type_primitive_to_str(const enum type_primitive);
-const char *type_store_to_str(    const enum type_storage);
       char *type_qual_to_str(     const enum type_qualifier);
 
 int type_equal(const type *a, const type *b, enum type_cmp mode);

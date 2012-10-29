@@ -189,6 +189,19 @@ const char *decl_ref_to_str(enum decl_ref_type t)
 	return NULL;
 }
 
+const char *decl_store_to_str(const enum decl_storage s)
+{
+	switch(s){
+		CASE_STR_PREFIX(store, default);
+		CASE_STR_PREFIX(store, auto);
+		CASE_STR_PREFIX(store, static);
+		CASE_STR_PREFIX(store, extern);
+		CASE_STR_PREFIX(store, register);
+		CASE_STR_PREFIX(store, typedef);
+	}
+	return NULL;
+}
+
 void decl_attr_free(decl_attr *a)
 {
 	if(!a)
@@ -396,7 +409,7 @@ decl *decl_ptr_depth_dec(decl *d, where *from)
 	d->ref = d->ref->ref;
 	r_save = decl_ref_orphan(r);
 
-	if(!decl_ref_complete(r))
+	if(!decl_ref_is_complete(r))
 		/* FIXME */
 		DIE_AT(from, "dereference pointer to incomplete type %s", decl_ref_to_str(r->type));
 
@@ -570,6 +583,8 @@ static void decl_ref_add_type_str(decl_ref *r, char *spel, char **bufp, int sz)
 const char *decl_to_str_r_spel(char buf[DECL_STATIC_BUFSIZ], int show_spel, decl *d)
 {
 	char *bufp = buf;
+
+	if(d->store) bufp += snprintf(bufp, DECL_STATIC_BUFSIZ, "%s ", decl_store_to_str(d->store));
 
 	decl_ref_add_type_str(d->ref, show_spel ? d->spel : NULL,
 			&bufp, DECL_STATIC_BUFSIZ - (bufp - buf));

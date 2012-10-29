@@ -192,19 +192,6 @@ const char *type_primitive_to_str(const enum type_primitive p)
 	return NULL;
 }
 
-const char *type_store_to_str(const enum type_storage s)
-{
-	switch(s){
-		CASE_STR_PREFIX(store, default);
-		CASE_STR_PREFIX(store, auto);
-		CASE_STR_PREFIX(store, static);
-		CASE_STR_PREFIX(store, extern);
-		CASE_STR_PREFIX(store, register);
-		CASE_STR_PREFIX(store, typedef);
-	}
-	return NULL;
-}
-
 char *type_qual_to_str(const enum type_qualifier qual)
 {
 	static char buf[32];
@@ -267,7 +254,6 @@ const char *type_to_str(const type *t)
 		bufp += snprintf(bufp, BUF_SIZE, "%s", tmp);
 	}
 
-	if(t->store)      bufp += snprintf(bufp, BUF_SIZE, "%s ", type_store_to_str(t->store));
 	if(!t->is_signed) bufp += snprintf(bufp, BUF_SIZE, "unsigned ");
 	if( t->is_inline) bufp += snprintf(bufp, BUF_SIZE, "inline ");
 

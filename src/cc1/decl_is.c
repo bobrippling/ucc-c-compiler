@@ -10,24 +10,24 @@ static decl_ref *decl_ref_is(decl_ref *r, enum decl_ref_type t)
 	return r->type == t ? r : NULL;
 }
 
-static int decl_is(decl *d, enum decl_ref_type t)
+decl_ref *decl_is(decl *d, enum decl_ref_type t)
 {
-	return !!decl_ref_is(d->ref, t);
+	return decl_ref_is(d->ref, t);
 }
 
 int decl_is_ptr(decl *d)
 {
-	return decl_is(d, decl_ref_ptr);
+	return !!decl_is(d, decl_ref_ptr);
 }
 
 int decl_is_block(decl *d)
 {
-	return decl_is(d, decl_ref_block);
+	return !!decl_is(d, decl_ref_block);
 }
 
 int decl_is_func(decl *d)
 {
-	return decl_is(d, decl_ref_func);
+	return !!decl_is(d, decl_ref_func);
 }
 
 enum type_primitive decl_ref_type_primitive(decl *d)
@@ -86,7 +86,7 @@ int decl_is_integral(decl *d)
 	return 0;
 }
 
-int decl_ref_complete(decl_ref *r)
+int decl_ref_is_complete(decl_ref *r)
 {
 	/* decl is "void" or incomplete-struct or array[] */
 	switch(r->type){
@@ -100,7 +100,7 @@ int decl_ref_complete(decl_ref *r)
 				case type_struct:
 				case type_union:
 				case type_enum:
-					return t->sue ? 1 : 0;
+					return !sue_incomplete(t->sue);
 
 				default:break;
 			}
@@ -114,7 +114,7 @@ int decl_ref_complete(decl_ref *r)
 
 			const_fold_need_val(r->bits.array_size, &iv);
 
-			return iv.val != 0 && decl_ref_complete(r->ref);
+			return iv.val != 0 && decl_ref_is_complete(r->ref);
 		}
 
 		default:break;
@@ -126,7 +126,7 @@ int decl_ref_complete(decl_ref *r)
 
 int decl_complete(decl *d)
 {
-	return decl_ref_complete(d->ref);
+	return decl_ref_is_complete(d->ref);
 }
 
 #if 0

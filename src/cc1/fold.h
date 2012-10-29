@@ -36,7 +36,8 @@ int fold_passable_no( stmt *s);
 
 void fold(symtable *);
 
-extern decl *curdecl_func, *curdecl_func_called;
+extern decl *curdecl_func;
+extern decl_ref *curdecl_ref_func_called;
 
 void fold_stmt_and_add_to_curswitch(stmt *);
 
