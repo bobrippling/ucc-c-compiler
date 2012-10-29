@@ -83,6 +83,8 @@ struct decl
 
 	decl_ref *ref; /* should never be null - we always have a ref to a type */
 
+	decl_attr *attr;
+
 	/* things we want immediately */
 	char *spel;
 
@@ -128,14 +130,12 @@ const char  *decl_attr_to_str(enum decl_attr_type);
 int   decl_size( decl *);
 int   decl_equal(decl *, decl *, enum decl_cmp mode);
 
-#define decl_is_void(d) decl_non_ptr_type(d, type_void)
-#define decl_is_bool(d) (decl_is_ptr(d) || decl_is_integral(d))
-#define decl_is_definition(d) ((d)->init || (d)->func_code)
+decl *decl_ptr_depth_inc(decl *);
+decl *decl_ptr_depth_dec(decl *, where *from);
 
-decl *decl_ptr_depth_inc(decl *d);
-decl *decl_ptr_depth_dec(decl *d, where *from);
-int   decl_ptr_depth(    decl *d);
 decl *decl_func_deref(decl *d, funcargs **pfuncargs);
+int   decl_ptr_depth(    decl *d);
+decl *decl_decay_first_array(decl *);
 
 int decl_attr_present(decl_attr *, enum decl_attr_type);
 
@@ -145,8 +145,19 @@ const char *decl_to_str_r(char buf[DECL_STATIC_BUFSIZ], decl *);
 void decl_attr_free(decl_attr *a);
 
 /* decl_is_* */
+#define decl_is_definition(d) ((d)->init || (d)->func_code)
+
 int decl_is_void_ptr(decl *d);
+int decl_is_ptr(decl *d);
 int decl_is_integral(decl *d);
 int decl_is_func(decl *d);
+int decl_is_block(decl *d);
+int decl_is_struct(decl *d);
+int decl_is_type(decl *d, enum type_primitive t);
+int decl_is_signed(decl *d);
+struct_union_enum_st *decl_is_sue(decl *d);
+
+#define decl_is_void(d) decl_is_type(d, type_void)
+#define decl_is_bool(d) (decl_is_ptr(d) || decl_is_integral(d))
 
 #endif

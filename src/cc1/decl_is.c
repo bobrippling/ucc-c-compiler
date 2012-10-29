@@ -1,6 +1,45 @@
+static decl_ref *decl_ref_skip_tdefs(decl_ref *r)
+{
+	for(; r->type == decl_ref_tdef; r = r->ref);
+	return r;
+}
+
+static decl_ref *decl_ref_is(decl_ref *r, enum decl_ref_type t)
+{
+	r = decl_ref_skip_tdefs(r);
+	return r->type == t ? r : NULL;
+}
+
+static int decl_is(decl *d, enum decl_ref_type t)
+{
+	return !!decl_ref_is(d->ref, t);
+}
+
 int decl_is_ptr(decl *d)
 {
-	return d->ref->type == decl_ref_ptr;
+	return decl_is(d, decl_ref_ptr);
+}
+
+int decl_is_block(decl *d)
+{
+	return decl_is(d, decl_ref_block);
+}
+
+int decl_is_func(decl *d)
+{
+	return decl_is(d, decl_ref_func);
+}
+
+enum type_primitive decl_ref_type_primitive(decl *d)
+{
+	decl_ref *r = decl_ref_skip_tdefs(d->ref);
+	return r->type == decl_ref_type ? r->bits.type->primitive : type_unknown;
+}
+
+int decl_is_struct_or_union(decl *d)
+{
+	enum type_primitive t = decl_ref_type_primitive(d);
+	return t == type_struct || t == type_union;
 }
 
 int decl_is_fptr(decl *d)
@@ -47,11 +86,6 @@ int decl_is_integral(decl *d)
 	return 0;
 }
 
-int decl_is_func(decl *d)
-{
-	return d->ref->type == decl_ref_func;
-}
-
 int decl_ref_complete(decl_ref *r)
 {
 	/* decl is "void" or incomplete-struct or array[] */
@@ -96,20 +130,9 @@ int decl_complete(decl *d)
 }
 
 #if 0
-int decl_is_block(decl *d)
-{
-	decl_desc *dp = decl_desc_tail(d);
-	return dp && dp->type == decl_desc_block;
-}
-
 int decl_is_struct_or_union_possible_ptr(decl *d)
 {
 	return (d->type->primitive == type_struct || d->type->primitive == type_union);
-}
-
-int decl_is_struct_or_union(decl *d)
-{
-	return decl_is_struct_or_union_possible_ptr(d) && !decl_is_ptr(d);
 }
 
 int decl_is_struct_or_union_ptr(decl *d)

@@ -176,6 +176,19 @@ const char *decl_attr_to_str(enum decl_attr_type t)
 	return NULL;
 }
 
+const char *decl_ref_to_str(enum decl_ref_type t)
+{
+	switch(t){
+		CASE_STR_PREFIX(decl_ref, type);
+		CASE_STR_PREFIX(decl_ref, tdef);
+		CASE_STR_PREFIX(decl_ref, ptr);
+		CASE_STR_PREFIX(decl_ref, block);
+		CASE_STR_PREFIX(decl_ref, func);
+		CASE_STR_PREFIX(decl_ref, array);
+	}
+	return NULL;
+}
+
 void decl_attr_free(decl_attr *a)
 {
 	if(!a)
@@ -352,43 +365,52 @@ int decl_ptr_depth(decl *d)
 	return depth;
 }
 
+decl_ref *decl_ref_orphan(decl_ref *r)
+{
+	decl_ref *ret = r->ref;
+	r->ref = NULL;
+	return ret;
+}
+
 decl *decl_ptr_depth_inc(decl *d)
 {
-	EOF_WHERE(&d->where,
-		d->ref = decl_ref_new_ptr(d->ref, qual_none)
-	);
+	d->ref = decl_ref_new_ptr(d->ref, qual_none);
+	return d;
+}
 
+decl *decl_ptr_depth_dec(decl *d, where *from)
+{
+	decl_ref *r = d->ref;
+	decl_ref *r_save;
+
+	/* *(void (*)()) does nothing */
+	if((r_save = decl_ref_is(r, decl_ref_ptr))
+	&& decl_ref_is(r_save->ref, decl_ref_func))
+	{
+		goto fin;
+	}
+
+	if(!decl_ref_is(r, decl_ref_ptr))
+		DIE_AT(from, "invalid indirection applied to %s", decl_ref_to_str(r->type));
+
+	d->ref = d->ref->ref;
+	r_save = decl_ref_orphan(r);
+
+	if(!decl_ref_complete(r))
+		/* FIXME */
+		DIE_AT(from, "dereference pointer to incomplete type %s", decl_ref_to_str(r->type));
+
+	decl_ref_free(r_save);
+
+fin:
 	return d;
 }
 
 decl_ref *decl_orphan(decl *d)
 {
-	decl_ref *orphan = d->ref;
-	d->ref = d->ref->ref;
-	orphan->ref = NULL;
-	return orphan;
-}
-
-decl *decl_ptr_depth_dec(decl *d, where *from)
-{
-	decl_ref *orphan;
-
-	/* *(void (*)()) does nothing */
-	if(decl_is_fptr(d))
-		goto fin;
-
-	if(d->ref->type != decl_ref_ptr)
-		DIE_AT(from, "invalid indirection applied to %s", decl_to_str(d));
-
-	orphan = decl_orphan(d);
-
-	if(!decl_complete(d))
-		DIE_AT(from, "dereference pointer to incomplete type %s", decl_to_str(d));
-
-	decl_ref_free(orphan);
-
-fin:
-	return d;
+	decl_ref *r = d->ref;
+	d->ref = r->ref;
+	return r;
 }
 
 decl *decl_func_called(decl *d, funcargs **pfuncargs)

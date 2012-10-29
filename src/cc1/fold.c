@@ -39,8 +39,7 @@ void fold_decl_equal(
 		/*cc1_warn_at(w, 0, 0, warn, "%s vs. %s for...", decl_to_str(a), decl_to_str_r(buf, b));*/
 
 
-		one_struct = (!a->desc && a->type->sue && a->type->sue->primitive != type_enum)
-			        || (!b->desc && b->type->sue && b->type->sue->primitive != type_enum);
+		one_struct = decl_is_struct(a) || decl_is_struct(b);
 
 		va_start(l, errfmt);
 		cc1_warn_atv(w, one_struct || decl_is_void(a) || decl_is_void(b), 1, warn, errfmt, l);
@@ -54,49 +53,33 @@ void fold_insert_casts(decl *dlhs, expr **prhs, symtable *stab, where *w, const 
 
 	if(!decl_equal(dlhs, rhs->tree_type,
 				DECL_CMP_ALLOW_VOID_PTR |
-				DECL_CMP_EXACT_MATCH |
-				DECL_CMP_NO_ARRAY
-				))
+				DECL_CMP_EXACT_MATCH))
 	{
 		/* insert a cast: rhs -> lhs */
-		if(expr_kind(rhs, val) && decl_is_integral(rhs->tree_type)){
-			/* don't cast - just change the tree_type */
-			rhs->tree_type->type->primitive = dlhs->type->primitive;
-			rhs->tree_type->type->is_signed = dlhs->type->is_signed;
-			rhs->tree_type->type->qual      = dlhs->type->qual;
-		}else{
-			expr *cast;
+		expr *cast;
 
-			cast = expr_new_cast(decl_copy(dlhs), 1);
-			cast->expr = rhs;
-			*prhs = cast;
+		cast = expr_new_cast(dlhs, 1);
+		cast->expr = rhs;
+		*prhs = cast;
 
-			/* need to fold the cast again - mainly for "loss of precision" warning */
-			fold_expr_cast_descend(cast, stab, 0);
-		}
+		/* need to fold the cast again - mainly for "loss of precision" warning */
+		fold_expr_cast_descend(cast, stab, 0);
 	}
 
-#define lhs_signed dlhs->type->is_signed
-#define rhs_signed rhs->tree_type->type->is_signed
-
-	if(rhs_signed != lhs_signed){
+	if(decl_is_signed(dlhs) != decl_is_signed(rhs->tree_type)){
 		enum constyness type;
 		intval iv;
 
 		const_fold(rhs, &iv, &type);
 
-		if(type == CONST_WITH_VAL && iv.val >= 0){
-			rhs->tree_type->type->is_signed = 0;
-		}else{
 #define SPEL_IF_IDENT(hs)                          \
-				expr_kind(hs, identifier) ? " ("     : "", \
-				expr_kind(hs, identifier) ? hs->spel : "", \
-				expr_kind(hs, identifier) ? ")"      : ""
+		expr_kind(hs, identifier) ? " ("     : "", \
+		expr_kind(hs, identifier) ? hs->spel : "", \
+		expr_kind(hs, identifier) ? ")"      : ""
 
-			cc1_warn_at(w, 0, 1, WARN_SIGN_COMPARE,
-					"operation between signed and unsigned%s%s%s in %s",
-					SPEL_IF_IDENT(rhs), desc);
-		}
+		cc1_warn_at(w, 0, 1, WARN_SIGN_COMPARE,
+				"operation between signed and unsigned%s%s%s in %s",
+				SPEL_IF_IDENT(rhs), desc);
 	}
 }
 
@@ -127,25 +110,24 @@ expr *fold_expr(expr *e, symtable *stab)
 	EOF_WHERE(&e->where, e->f_fold(e, stab));
 
 	UCC_ASSERT(e->tree_type, "no tree_type after fold (%s)", e->f_str());
-	UCC_ASSERT(e->tree_type->type->primitive != type_unknown, "unknown type after folding expr %s", e->f_str());
+	UCC_ASSERT(decl_is_type(e->tree_type, type_unknown), "unknown type after folding expr %s", e->f_str());
 
 	/* perform array decay and pointer decay */
 	{
-		decl_desc *tail = decl_desc_tail(e->tree_type);
+		decl_ref *r = e->tree_type->ref;
 		expr *imp_cast = NULL;
 
 		EOF_WHERE(&e->where,
-		switch(tail ? tail->type : decl_desc_ptr){
-			case decl_desc_ptr:
+		switch(r->type){
 				default:
 					break;
 
-				case decl_desc_array:
-					imp_cast = expr_new_cast(decl_copy_decay_array(e->tree_type), 1);
+				case decl_ref_array:
+					imp_cast = expr_new_cast(decl_decay_first_array(e->tree_type), 1);
 					break;
 
-				case decl_desc_func:
-					imp_cast = expr_new_cast(decl_ptr_depth_inc(decl_copy(e->tree_type)), 1);
+				case decl_ref_func:
+					imp_cast = expr_new_cast(decl_ptr_depth_inc(e->tree_type), 1);
 					break;
 		});
 
@@ -160,37 +142,40 @@ fin:
 	return e;
 }
 
-void fold_decl_desc(decl_desc *dp, symtable *stab, decl *root)
+void fold_ref_desc(decl_ref *r, symtable *stab, decl *root)
 {
-	switch(dp->type){
-		case decl_desc_func:
-			fold_funcargs(dp->bits.func, stab, root->spel);
+	switch(r->type){
+		case decl_ref_func:
+			fold_funcargs(r->bits.func, stab, root->spel);
 			break;
 
-		case decl_desc_array:
+		case decl_ref_array:
 		{
 			intval sz;
 
-			FOLD_EXPR(dp->bits.array_size, stab);
-			const_fold_need_val(dp->bits.array_size, &sz);
+			FOLD_EXPR(r->bits.array_size, stab);
+			const_fold_need_val(r->bits.array_size, &sz);
 
 			if(sz.val < 0)
-				DIE_AT(&dp->where, "negative array length %ld", sz.val);
+				DIE_AT(&r->where, "negative array length %ld", sz.val);
 
 			/* allow incomplete arrays here */
 			/*if(sz.val == 0 && !root->init && root->type->store != store_extern)
 				DIE_AT(&dp->where, "incomplete array");*/
 		}
 
-		case decl_desc_block:
-			/* TODO? */
-		case decl_desc_ptr:
-			/* TODO: check qual */
+		case decl_ref_tdef:
+			FOLD_EXPR(r->bits.type_of, stab);
+			break;
+
+		case decl_ref_type:
+		case decl_ref_block:
+		case decl_ref_ptr:
 			break;
 	}
 
-	if(dp->child)
-		fold_decl_desc(dp->child, stab, root);
+	if(r->ref)
+		fold_ref_desc(r->ref, stab, root);
 }
 
 void fold_enum(struct_union_enum_st *en, symtable *stab)
@@ -228,7 +213,7 @@ void fold_enum(struct_union_enum_st *en, symtable *stab)
 	}
 }
 
-void fold_sue(struct_union_enum_st *sue, symtable *stab, int *poffset, int *pthis)
+void fold_sue(struct_union_enum_st *const sue, symtable *stab, int *poffset, int *pthis)
 {
 	if(sue->primitive == type_enum){
 		int sz;
@@ -242,16 +227,17 @@ void fold_sue(struct_union_enum_st *sue, symtable *stab, int *poffset, int *pthi
 		for(i = sue->members; i && *i; i++){
 			decl *d = (*i)->struct_member;
 			int align;
+			struct_union_enum_st *this_sue;
 
 			fold_decl(d, stab);
 
-			if(d->type->sue && !decl_is_ptr(d)){
-				if(d->type->sue == sue)
+			if((this_sue = decl_is_sue(d)) && !decl_is_ptr(d)){
+				if(this_sue == sue)
 					DIE_AT(&d->where, "nested %s", sue_str(sue));
 
-				fold_sue(d->type->sue, stab, poffset, pthis);
+				fold_sue(this_sue, stab, poffset, pthis);
 
-				align = d->type->sue->align;
+				align = this_sue->align;
 			}else{
 				const int sz = decl_size(d);
 				pack_next(poffset, pthis, sz, sz);

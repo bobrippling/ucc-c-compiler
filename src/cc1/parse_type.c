@@ -557,21 +557,21 @@ decl_ref *parse_decl_ref(enum decl_mode mode, char **sp)
 	return dp;
 }
 
-decl *parse_decl(type *t, enum decl_mode mode)
+decl *parse_decl(decl_ref *subtype, enum decl_mode mode)
 {
-	decl_ref *dp;
+	decl_ref *r;
 	decl *d;
 	char *spel = NULL;
 
-	dp = parse_decl_ref(mode, &spel);
+	r = parse_decl_ref(mode, &spel);
 
 	/* don't fold typedefs until later (for __typeof) */
 	d = decl_new();
-	d->desc = dp;
-	d->type = type_copy(t); /* FIXME: t leaks */
 	d->spel = spel;
 
-	decl_ref_link(d);
+	d->ref = r;
+	for(; r->ref; r = r->ref);
+	r->ref = subtype;
 
 	parse_add_attr(&d->attr); /* int spel __attr__ */
 
@@ -590,37 +590,60 @@ decl *parse_decl(type *t, enum decl_mode mode)
 	return d;
 }
 
+static int is_typedef(decl_ref *r)
+{
+	for(; r && r->type != decl_ref_type; r = r->ref);
+
+	return r && r->bits.type->store == store_typedef;
+}
+
+static void prevent_typedef(decl_ref *r)
+{
+	if(is_typedef(r))
+		DIE_AT(&r->where, "typedef unexpected");
+}
+
+static decl_ref *default_type(void)
+{
+	type *t;
+
+	cc1_warn_at(NULL, 0, 1, WARN_IMPLICIT_INT, "defaulting type to int");
+
+	t = type_new();
+	t->primitive = type_int;
+
+	return decl_ref_new_type(t);
+}
+
 decl *parse_decl_single(enum decl_mode mode)
 {
-	type *t = parse_type(mode & DECL_ALLOW_STORE);
+	decl_ref *r = parse_type(mode & DECL_ALLOW_STORE);
 
-	if(!t){
+	if(!r){
 		if((mode & DECL_CAN_DEFAULT) == 0)
 			return NULL;
 
-		INT_TYPE(t);
-		cc1_warn_at(&t->where, 0, 1, WARN_IMPLICIT_INT, "defaulting type to int");
+		r = default_type();
+
+	}else{
+		prevent_typedef(r);
 	}
 
-	if(t->store == store_typedef)
-		DIE_AT(&t->where, "typedef unexpected");
-
-	return parse_decl(t, mode);
+	return parse_decl(r, mode);
 }
 
 decl **parse_decls_one_type()
 {
-	type *t = parse_type(0);
+	decl_ref *r = parse_type(0 /* no store */);
 	decl **decls = NULL;
 
-	if(!t)
+	if(!r)
 		return NULL;
 
-	if(t->store == store_typedef)
-		DIE_AT(&t->where, "typedef unexpected");
+	prevent_typedef(r);
 
 	do{
-		decl *d = parse_decl(t, DECL_SPEL_NEED);
+		decl *d = parse_decl(r, DECL_SPEL_NEED);
 		dynarray_add((void ***)&decls, d);
 	}while(accept(token_comma));
 
@@ -636,6 +659,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 
 	/* read a type, then *spels separated by commas, then a semi colon, then repeat */
 	for(;;){
+		decl_ref *ref;
 		type *t;
 
 		last = NULL;
@@ -643,19 +667,25 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 
 		parse_static_assert();
 
-		t = parse_type(mode & DECL_MULTI_ALLOW_STORE);
+		ref = parse_type(mode & DECL_MULTI_ALLOW_STORE);
 
-		if(!t){
-			/* can_default makes sure we don't parse { int *p; *p = 5; } the latter as a decl */
+		if(!ref){
+			/* can_default makes sure we don'ref parse { int *p; *p = 5; } the latter as a decl */
 			if(parse_possible_decl() && (mode & DECL_MULTI_CAN_DEFAULT)){
-				INT_TYPE(t);
-				cc1_warn_at(&t->where, 0, 1, WARN_IMPLICIT_INT, "defaulting type to int");
+				ref = default_type();
 			}else{
 				return decls;
 			}
 		}
 
-		if(t->store == store_typedef){
+		{
+			decl_ref *r;
+			for(r = ref; r && r->type != decl_ref_type; r = r->ref);
+			if(r)
+				t = r->bits.type;
+		}
+
+		if(is_typedef(ref)){
 			are_tdefs = 1;
 		}else if(t->sue && !parse_possible_decl()){
 			/* FIXME: can't this be caught below anyway? */
@@ -681,7 +711,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 		}
 
 		do{
-			decl *d = parse_decl(t, parse_flag);
+			decl *d = parse_decl(ref, parse_flag);
 
 			UCC_ASSERT(d, "null decl after parse");
 
@@ -717,14 +747,15 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 						 * [function with int argument, not a pointer to const int
 						 */
 #define err_nodecl "declaration doesn't declare anything"
-						if(d->desc)
+						if(d->ref->type != decl_ref_type)
 							DIE_AT(&d->where, err_nodecl);
 						else
 							WARN_AT(&d->where, err_nodecl);
 #undef err_nodecl
 					}
 
-					decl_free_notype(d);
+					d->ref = NULL;
+					decl_free(d);
 					goto next;
 				}
 				DIE_AT(&d->where, "identifier expected after decl (got %s)", token_to_str(curtok));
@@ -736,7 +767,9 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 					/* check then replace old args */
 					int n_proto_decls, n_old_args;
 					int i;
-					funcargs *dfuncargs = d->desc->bits.func;
+					funcargs *dfuncargs = d->ref->bits.func;
+
+					UCC_ASSERT(d->ref->type == decl_ref_func, "not func");
 
 					if(!dfuncargs->args_old_proto)
 						DIE_AT(&d->where, "unexpected old-style decls - new style proto used");
