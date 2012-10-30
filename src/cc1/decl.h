@@ -79,13 +79,17 @@ struct decl_ref
 
 enum decl_storage
 {
-	store_default, /* auto or external-linkage depending on scope + other defs */
-	store_auto,
-	store_static,
-	store_extern,
-	store_register,
-	store_typedef
+  /* auto or external-linkage depending on scope + other defs */
+  store_default   = 0,
+  store_auto      ,
+  store_static    ,
+  store_extern    ,
+  store_register  ,
+  store_typedef   , /* 5 - next power of two is 8 */
+  store_inline = 1 << 4
 };
+#define STORE_MASK_STORE 0x00003 /* include all below 4 */
+#define STORE_MASK_EXTRA 0xffff4 /* exclude  ^ */
 
 #define decl_store_static_or_extern(x) ((x) == store_static || (x) == store_extern)
 
@@ -93,6 +97,7 @@ struct decl
 {
 	where where;
 	enum decl_storage store;
+	int is_inline;
 
 	decl_ref *ref; /* should never be null - we always have a ref to a type */
 

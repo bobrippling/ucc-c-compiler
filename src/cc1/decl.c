@@ -191,7 +191,21 @@ const char *decl_ref_to_str(enum decl_ref_type t)
 
 const char *decl_store_to_str(const enum decl_storage s)
 {
+	static char buf[16]; /* "inline register" is the longest - just a fit */
+
+	if(s & STORE_MASK_EXTRA){
+		*buf = '\0';
+
+		if((s & STORE_MASK_EXTRA) == store_inline)
+			strcpy(buf, "inline ");
+
+		strcpy(buf + strlen(buf), decl_store_to_str(s & STORE_MASK_STORE));
+		return buf;
+	}
+
 	switch(s){
+		case store_inline:
+			ICE("inline");
 		CASE_STR_PREFIX(store, default);
 		CASE_STR_PREFIX(store, auto);
 		CASE_STR_PREFIX(store, static);

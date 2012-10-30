@@ -333,11 +333,13 @@ decl_ref *parse_type(enum decl_storage *store)
 				t->primitive = primitive;
 
 			t->is_signed = is_signed;
-			t->is_inline = is_inline;
 			t->qual  = qual;
 
 			r = decl_ref_new_type(t);
 		}
+
+		if(is_inline)
+			*store |= store_inline;
 
 		r->attr = attr;
 		parse_add_attr(&r->attr); /* int/struct-A __attr__ */

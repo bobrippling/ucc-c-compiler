@@ -255,7 +255,6 @@ const char *type_to_str(const type *t)
 	}
 
 	if(!t->is_signed) bufp += snprintf(bufp, BUF_SIZE, "unsigned ");
-	if( t->is_inline) bufp += snprintf(bufp, BUF_SIZE, "inline ");
 
 	if(t->sue){
 		snprintf(bufp, BUF_SIZE, "%s%s %s",
