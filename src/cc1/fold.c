@@ -884,17 +884,17 @@ void fold_func(decl *func_decl)
 		} the_return = { NULL, NULL };
 
 		curdecl_func = func_decl;
-		curdecl_ref_func_called = decl_func_deref(curdecl_func, NULL);
+		curdecl_ref_func_called = decl_ref_func_call(curdecl_func->ref, NULL);
 
 		symtab_add_args(
 				func_decl->func_code->symtab,
-				decl_desc_tail(func_decl)->bits.func,
+				curdecl_ref_func_called->bits.func,
 				func_decl->spel);
 
 		fold_stmt(func_decl->func_code);
 
 		if(decl_attr_present(curdecl_func->attr, attr_noreturn)){
-			if(!decl_is_void(curdecl_func_called)){
+			if(!decl_ref_is_void(curdecl_ref_func_called)){
 				cc1_warn_at(&func_decl->where, 0, 1, WARN_RETURN_UNDEF,
 						"function \"%s\" marked no-return has a non-void return value",
 						func_decl->spel);
@@ -923,7 +923,7 @@ void fold_func(decl *func_decl)
 						func_decl->spel, the_return.extra);
 			}
 
-		}else if(!decl_is_void(curdecl_func_called)){
+		}else if(!decl_ref_is_void(curdecl_ref_func_called)){
 			/* non-void func - check it doesn't return */
 			if(fold_passable(func_decl->func_code)){
 				cc1_warn_at(&func_decl->where, 0, 1, WARN_RETURN_UNDEF,
@@ -932,8 +932,7 @@ void fold_func(decl *func_decl)
 			}
 		}
 
-		decl_free(curdecl_func_called);
-		curdecl_func_called = NULL;
+		curdecl_ref_func_called = NULL;
 		curdecl_func = NULL;
 	}
 }

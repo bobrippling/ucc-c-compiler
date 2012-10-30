@@ -154,6 +154,7 @@ decl *decl_ptr_depth_dec(decl *, where *from);
 
 decl_ref *decl_ref_ptr_depth_inc(decl_ref *);
 decl_ref *decl_ref_ptr_depth_dec(decl_ref *, where *from);
+decl_ref *decl_ref_func_call(decl_ref *, where *from);
 
 type *decl_get_type(decl *);
 
@@ -190,6 +191,7 @@ struct_union_enum_st *decl_is_s_or_u(decl *d);
 
 /* decl_ref_is_* */
 int decl_ref_is_complete(decl_ref *r);
+int decl_ref_is_void(decl_ref *r);
 
 #define decl_is_void(d) decl_is_type(d, type_void)
 #define decl_is_bool(d) (decl_is_ptr(d) || decl_is_integral(d))
