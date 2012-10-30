@@ -288,6 +288,13 @@ decl *op_promote_types(
 	return resolved;
 }
 
+static int is_noparen_cmp(expr *e)
+{
+	return !e->in_parens
+		&& expr_kind(e, op)
+		&& op_is_comparison(e->op);
+}
+
 void fold_expr_op(expr *e, symtable *stab)
 {
 	UCC_ASSERT(e->op != op_unknown, "unknown op in expression at %s",
@@ -302,6 +309,23 @@ void fold_expr_op(expr *e, symtable *stab)
 
 		e->tree_type = op_promote_types(e->op, op_to_str(e->op),
 				&e->lhs, &e->rhs, &e->where, stab);
+
+		switch(e->op){
+			/* check for x & y == z  [parsed as x & (y == z)] */
+			case op_and:
+			case op_or:
+				if(is_noparen_cmp(e->lhs) || is_noparen_cmp(e->rhs)){
+					WARN_AT(&e->where, "suggested parens around comparison inside %c",
+							"|&"[e->op == op_and]);
+				}
+				break;
+
+				/* TODO: check for a && b || c ? */
+
+			default:
+				break;
+		}
+
 	}else{
 		/* (except unary-not) can only have operations on integers,
 		 * promote to signed int
