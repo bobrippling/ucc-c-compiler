@@ -239,7 +239,7 @@ decl *op_required_promotion(
 			char bufa[DECL_STATIC_BUFSIZ], bufb[DECL_STATIC_BUFSIZ];
 
 			/* TODO: needed? */
-			fold_decl_equal(dlhs, drhs,
+			fold_type_ref_equal(dlhs, drhs,
 					w, WARN_COMPARE_MISMATCH,
 					"mismatching types in %s (%s and %s)",
 					op_to_str(op),

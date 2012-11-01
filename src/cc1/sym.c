@@ -91,14 +91,14 @@ sym *symtab_has(symtable *tab, decl *d)
 
 sym *symtab_add(symtable *tab, decl *d, enum sym_type t, int with_sym, int prepend)
 {
-	const int descend = d->type->store == store_extern;
+	const int descend = (d->store & STORE_MASK_STORE) == store_extern;
 	sym *new;
 	char buf[WHERE_BUF_SIZ + 4];
 
 	if(d->spel && (new = symtab_search2(tab, d->spel, spel_cmp, descend))){
 
 		/* allow something like: int x; f(){extern int x;} _only_ if types are compatible */
-		if(descend && decl_equal(d, new->decl, DECL_CMP_EXACT_MATCH))
+		if(descend && type_ref_equal(d, new->decl, DECL_CMP_EXACT_MATCH))
 			goto fine;
 
 		if(new->decl)

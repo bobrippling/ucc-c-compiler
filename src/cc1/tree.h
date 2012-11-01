@@ -14,7 +14,7 @@ typedef struct struct_union_enum_st struct_union_enum_st;
 
 typedef struct type        type;
 typedef struct decl        decl;
-typedef struct decl_ref    decl_ref;
+typedef struct type_ref    type_ref;
 typedef struct funcargs    funcargs;
 typedef struct decl_attr   decl_attr;
 
@@ -73,7 +73,6 @@ enum type_cmp
 	TYPE_CMP_EXACT         = 1 << 0,
 	TYPE_CMP_QUAL          = 1 << 1,
 };
-
 
 type *type_new(void);
 type *type_copy(type *);

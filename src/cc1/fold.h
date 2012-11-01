@@ -4,8 +4,8 @@
 void fold_decl(decl *d, symtable *stab);
 void fold_decl_global_init(decl *d, symtable *stab);
 
-void fold_decl_equal(
-		decl *a, decl *b,
+void fold_type_ref_equal(
+		type_ref *a, type_ref *b,
 		where *w,
 		enum warning warn, const char *errfmt, ...);
 
@@ -13,7 +13,7 @@ void fold_funcargs(funcargs *fargs, symtable *stab, char *context);
 
 void fold_symtab_scope(symtable *stab);
 
-void fold_insert_casts(decl *dlhs, expr **prhs, symtable *stab, where *w, const char *desc);
+void fold_insert_casts(type_ref *dlhs, expr **prhs, symtable *stab, where *w, const char *desc);
 void fold_typecheck(expr *lhs, expr *rhs, symtable *stab, where *where);
 
 void fold_need_expr(expr *e, const char *stmt_desc, int is_test);
@@ -37,7 +37,7 @@ int fold_passable_no( stmt *s);
 void fold(symtable *);
 
 extern decl *curdecl_func;
-extern decl_ref *curdecl_ref_func_called;
+extern type_ref *curdecl_ref_func_called;
 
 void fold_stmt_and_add_to_curswitch(stmt *);
 

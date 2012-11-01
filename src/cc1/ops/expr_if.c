@@ -87,7 +87,7 @@ void fold_expr_if(expr *e, symtable *stab)
 	}else if(decl_is_void(tt_l) || decl_is_void(tt_r)){
 		e->tree_type = decl_new_void();
 
-	}else if(decl_equal(tt_l, tt_r, DECL_CMP_EXACT_MATCH)){
+	}else if(type_ref_equal(tt_l, tt_r, DECL_CMP_EXACT_MATCH)){
 		e->tree_type = decl_copy(tt_l);
 
 		e->tree_type->type->qual |= tt_r->type->qual;
@@ -113,7 +113,7 @@ void fold_expr_if(expr *e, symtable *stab)
 			if(l_ptr || r_ptr){
 				char bufa[DECL_STATIC_BUFSIZ], bufb[DECL_STATIC_BUFSIZ];
 
-				fold_decl_equal(tt_l, tt_r, &e->where,
+				fold_type_ref_equal(tt_l, tt_r, &e->where,
 						WARN_COMPARE_MISMATCH, /* FIXME: enum "mismatch" */
 						"pointer type mismatch: %s and %s",
 						decl_to_str_r(bufa, tt_l),

@@ -15,9 +15,9 @@
 #define RW_TEST(var)                              \
 						s->var == 0                           \
 						&& s->decl->spel                      \
-						&& !decl_has_array(s->decl)           \
+						&& !decl_is_array(s->decl)            \
 						&& !decl_is_func(s->decl)             \
-						&& !decl_is_struct_or_union(s->decl)
+						&& !decl_is_s_or_u(s->decl)
 
 #define RW_SHOW(w, str)                           \
 					cc1_warn_at(&s->decl->where, 0, 1,      \
@@ -64,7 +64,7 @@ int symtab_fold(symtable *tab, int current)
 			const int has_unused_attr = decl_attr_present(s->decl->attr, attr_unused);
 
 			if(s->type == sym_local){
-				switch(s->decl->type->store){
+				switch(s->decl->store){
 					case store_default:
 					case store_auto:
 					{
@@ -72,9 +72,9 @@ int symtab_fold(symtable *tab, int current)
 						int align;
 						int this;
 
-						if(decl_is_struct_or_union(s->decl))
+						if(decl_is_s_or_u(s->decl))
 							/* safe - can't have an instance without a ->sue */
-							align = s->decl->type->sue->align;
+							align = decl_get_type(s->decl)->sue->align;
 						else
 							align = siz;
 
@@ -100,7 +100,7 @@ int symtab_fold(symtable *tab, int current)
 					const int unused = RW_TEST(nreads);
 
 					if(unused){
-						if(!has_unused_attr && s->decl->type->store != store_extern)
+						if(!has_unused_attr && (s->decl->store & STORE_MASK_STORE) != store_extern)
 							RW_SHOW(READ, "read");
 					}else if(has_unused_attr){
 						warn_at(&s->decl->where, 1,

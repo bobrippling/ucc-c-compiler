@@ -26,7 +26,7 @@ void fold_expr__Generic(expr *e, symtable *stab)
 			decl *m = (*j)->d;
 
 			/* duplicate default checked below */
-			if(m && decl_equal(m, l->d, flags))
+			if(m && type_ref_equal(m, l->d, flags))
 				DIE_AT(&m->where, "duplicate type in _Generic: %s", decl_to_str(l->d));
 		}
 
@@ -34,7 +34,7 @@ void fold_expr__Generic(expr *e, symtable *stab)
 		if(l->d){
 			fold_decl(l->d, stab);
 
-			if(decl_equal(e->expr->tree_type, l->d, flags)){
+			if(type_ref_equal(e->expr->tree_type, l->d, flags)){
 				UCC_ASSERT(!e->generic_chosen, "already chosen expr for _Generic");
 				e->generic_chosen = l;
 			}

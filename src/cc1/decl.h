@@ -34,21 +34,21 @@ struct decl_attr
 	decl_attr *next;
 };
 
-struct decl_ref
+struct type_ref
 {
 	where where;
-	decl_ref *ref;
+	type_ref *ref;
 
 	decl_attr *attr;
 
-	enum decl_ref_type
+	enum type_ref_type
 	{
-		decl_ref_type,  /* end - at type */
-		decl_ref_tdef,  /* type reference to next ref */
-		decl_ref_ptr,   /* pointer to next ref */
-		decl_ref_block, /* block pointer to next ref (func) */
-		decl_ref_func,  /* function */
-		decl_ref_array  /* array of next ref, similar to pointer */
+		type_ref_type,  /* end - at type */
+		type_ref_tdef,  /* type reference to next ref */
+		type_ref_ptr,   /* pointer to next ref */
+		type_ref_block, /* block pointer to next ref (func) */
+		type_ref_func,  /* function */
+		type_ref_array  /* array of next ref, similar to pointer */
 	} type;
 
 	union
@@ -99,7 +99,7 @@ struct decl
 	enum decl_storage store;
 	int is_inline;
 
-	decl_ref *ref; /* should never be null - we always have a ref to a type */
+	type_ref *ref; /* should never be null - we always have a ref to a type */
 
 	decl_attr *attr;
 
@@ -131,14 +131,14 @@ decl        *decl_new_type(enum type_primitive p);
 #define      decl_new_void() decl_new_type(type_void)
 #define      decl_new_char() decl_new_type(type_char)
 #define      decl_new_int()  decl_new_type(type_int)
-void         decl_free(decl *), decl_ref_free(decl_ref *);
+void         decl_free(decl *), type_ref_free(type_ref *);
 
-decl_ref *decl_ref_new_tdef(expr *);
-decl_ref *decl_ref_new_type(type *);
-decl_ref *decl_ref_new_ptr(  decl_ref *to, enum type_qualifier);
-decl_ref *decl_ref_new_block(decl_ref *to, enum type_qualifier);
-decl_ref *decl_ref_new_array(decl_ref *to, expr *sz);
-decl_ref *decl_ref_new_func( decl_ref *to, funcargs *args);
+type_ref *type_ref_new_tdef(expr *);
+type_ref *type_ref_new_type(type *);
+type_ref *type_ref_new_ptr(  type_ref *to, enum type_qualifier);
+type_ref *type_ref_new_block(type_ref *to, enum type_qualifier);
+type_ref *type_ref_new_array(type_ref *to, expr *sz);
+type_ref *type_ref_new_func( type_ref *to, funcargs *args);
 
 
 decl_attr   *decl_attr_new(enum decl_attr_type);
@@ -146,15 +146,17 @@ void         decl_attr_append(decl_attr **loc, decl_attr *new);
 const char  *decl_attr_to_str(enum decl_attr_type);
 
 int   decl_size( decl *);
-int   decl_ref_size(decl_ref *);
-int   decl_equal(decl *, decl *, enum decl_cmp mode);
+int   type_ref_size(type_ref *);
+int   decl_equal(decl *a, decl *b, enum decl_cmp mode);
+int   type_ref_equal(type_ref *a, type_ref *b, enum decl_cmp mode);
 
 decl *decl_ptr_depth_inc(decl *);
 decl *decl_ptr_depth_dec(decl *, where *from);
 
-decl_ref *decl_ref_ptr_depth_inc(decl_ref *);
-decl_ref *decl_ref_ptr_depth_dec(decl_ref *, where *from);
-decl_ref *decl_ref_func_call(decl_ref *, where *from);
+type_ref *type_ref_ptr_depth_inc(type_ref *);
+type_ref *type_ref_ptr_depth_dec(type_ref *, where *from);
+type_ref *type_ref_func_call(type_ref *, where *from);
+type_ref *type_ref_decay_first_array(decl *);
 
 type *decl_get_type(decl *);
 
@@ -168,7 +170,7 @@ int decl_attr_present(decl_attr *, enum decl_attr_type);
 
 const char *decl_to_str(decl *d);
 const char *decl_to_str_r(char buf[DECL_STATIC_BUFSIZ], decl *);
-const char *decl_ref_to_str(enum decl_ref_type t);
+const char *type_ref_to_str(enum type_ref_type t);
 const char *decl_store_to_str(const enum decl_storage);
 
 void decl_attr_free(decl_attr *a);
@@ -176,7 +178,7 @@ void decl_attr_free(decl_attr *a);
 /* decl_is_* */
 #define decl_is_definition(d) ((d)->init || (d)->func_code)
 
-decl_ref *decl_is(decl *d, enum decl_ref_type t);
+type_ref *decl_is(decl *d, enum type_ref_type t);
 int decl_is_void_ptr(decl *d);
 int decl_is_ptr(decl *d);
 int decl_is_integral(decl *d);
@@ -189,9 +191,9 @@ int decl_is_array(decl *d);
 int decl_is_incomplete_array(decl *d);
 struct_union_enum_st *decl_is_s_or_u(decl *d);
 
-/* decl_ref_is_* */
-int decl_ref_is_complete(decl_ref *r);
-int decl_ref_is_void(decl_ref *r);
+/* type_ref_is_* */
+int type_ref_is_complete(type_ref *r);
+int type_ref_is_void(type_ref *r);
 
 #define decl_is_void(d) decl_is_type(d, type_void)
 #define decl_is_bool(d) (decl_is_ptr(d) || decl_is_integral(d))

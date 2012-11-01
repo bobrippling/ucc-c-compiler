@@ -76,7 +76,7 @@ struct expr
 	sym *sym;
 
 	/* type propagation */
-	decl *tree_type;
+	type_ref *tree_type;
 };
 
 
@@ -120,12 +120,18 @@ expr *expr_new_decl_init(decl *d, decl_init *di);
 #include "ops/expr_struct.h"
 #include "ops/expr_compound_lit.h"
 
-#define expr_free(x) do{if(x){if((x)->tree_type) decl_free((x)->tree_type); free(x);}}while(0)
+#define expr_free(x) do{                 \
+		if(x){                               \
+			if((x)->tree_type)                 \
+				type_ref_free((x)->tree_type);   \
+			free(x);                           \
+		}                                    \
+	}while(0)
 
 #define expr_kind(exp, kind) ((exp)->f_str == str_expr_ ## kind)
 
 expr *expr_new_identifier(char *sp);
-expr *expr_new_cast(decl *cast_to, int implicit);
+expr *expr_new_cast(type_ref *cast_to, int implicit);
 expr *expr_new_val(int val);
 expr *expr_new_op(enum op_type o);
 expr *expr_new_if(expr *test);

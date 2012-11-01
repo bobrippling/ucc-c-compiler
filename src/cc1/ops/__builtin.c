@@ -13,6 +13,7 @@
 #include "../tokenise.h"
 #include "../parse.h"
 #include "../fold.h"
+#include "../funcargs.h"
 
 #include "../const.h"
 #include "../gen_asm.h"
@@ -151,7 +152,7 @@ static void const_compatible_p(expr *e, intval *val, enum constyness *success)
 
 	*success = CONST_WITH_VAL;
 
-	val->val = decl_equal(types[0], types[1], DECL_CMP_EXACT_MATCH);
+	val->val = type_ref_equal(types[0], types[1], DECL_CMP_EXACT_MATCH);
 }
 
 static expr *parse_compatible_p(void)

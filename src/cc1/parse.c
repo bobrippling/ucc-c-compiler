@@ -49,10 +49,10 @@ expr *parse_expr_sizeof_typeof(int is_typeof)
 	expr *e;
 
 	if(accept(token_open_paren)){
-		decl *d = parse_decl_single(DECL_SPEL_NO);
+		type_ref *r = parse_type_ref();
 
-		if(d){
-			e = expr_new_sizeof_decl(d, is_typeof);
+		if(r){
+			e = expr_new_sizeof_decl(r, is_typeof);
 		}else{
 			/* parse a full one, since we're in brackets */
 			e = expr_new_sizeof_expr(parse_expr_exp(), is_typeof);
@@ -83,7 +83,7 @@ expr *parse_expr__Generic()
 	lbls = NULL;
 
 	for(;;){
-		decl *d;
+		type_ref *r;
 		expr *e;
 		struct generic_lbl *lbl;
 
@@ -92,7 +92,7 @@ expr *parse_expr__Generic()
 		if(accept(token_default)){
 			d = NULL;
 		}else{
-			d = parse_decl_single(DECL_SPEL_NO);
+			d = parse_type_ref();
 			if(!d)
 				DIE_AT(NULL, "type expected");
 		}
@@ -131,7 +131,7 @@ expr *parse_block()
 
 	EAT(token_xor);
 
-	rt = parse_decl_single(DECL_SPEL_NO);
+	rt = parse_type_ref();
 
 	if(rt){
 		if(decl_is_func(rt)){
@@ -190,7 +190,7 @@ expr *parse_expr_primary()
 				decl *d;
 				expr *e;
 
-				if((d = parse_decl_single(DECL_SPEL_NO))){
+				if((d = parse_type_ref())){
 					e = expr_new_cast(d, 0);
 					EAT(token_close_paren);
 
@@ -431,20 +431,20 @@ expr *parse_expr_exp()
 	return e;
 }
 
-decl **parse_type_list()
+type_ref **parse_type_list()
 {
-	decl **types = NULL;
+	type_ref **types = NULL;
 
 	if(curtok == token_close_paren)
 		return types;
 
 	do{
-		decl *d = parse_decl_single(DECL_SPEL_NO);
+		type_ref *r = parse_type_ref();
 
-		if(!d)
+		if(!r)
 			DIE_AT(NULL, "type expected");
 
-		dynarray_add((void ***)&types, d);
+		dynarray_add((void ***)&types, r);
 	}while(accept(token_comma));
 
 	return types;

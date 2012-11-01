@@ -20,22 +20,6 @@ struct decl_init
 	} bits;
 };
 
-struct data_store
-{
-	enum
-	{
-		data_store_str
-	} type;
-
-	union
-	{
-		char *str;
-	} bits;
-	int len;
-
-	char *spel; /* asm */
-};
-
 decl_init *decl_init_new(enum decl_init_type);
 int        decl_init_len(decl_init *);
 const char *decl_init_to_str(enum decl_init_type);

@@ -27,7 +27,7 @@
 
 /*#define PARSE_DECL_VERBOSE*/
 
-decl_ref *parse_decl_ref(enum decl_mode mode, char **sp);
+type_ref *parse_decl_ref(enum decl_mode mode, char **sp);
 static void parse_add_attr(decl_attr **append);
 
 #define INT_TYPE(t) do{ UCC_ASSERT(!t, "got type"); t = type_new(); t->primitive = type_int; }while(0)
@@ -138,7 +138,7 @@ static void parse_add_attr(decl_attr **append)
 	}
 }
 
-decl_ref *parse_type(enum decl_storage *store)
+type_ref *parse_type(enum decl_storage *store)
 {
 #define PRIMITIVE_NO_MORE 2
 
@@ -259,7 +259,7 @@ decl_ref *parse_type(enum decl_storage *store)
 
 			t->qual  = qual;
 
-			return decl_ref_new_type(t);
+			return type_ref_new_type(t);
 
 		}else if(accept(token_typeof)){
 			if(primitive_set)
@@ -315,14 +315,14 @@ decl_ref *parse_type(enum decl_storage *store)
 	|| had_attr
 	|| is_noreturn)
 	{
-		decl_ref *r;
+		type_ref *r;
 
 		if(tdef_typeof){
 			/* signed size_t x; */
 			if(signed_set)
 				DIE_AT(NULL, "signed/unsigned not allowed with typedef instance (%s)", tdef_typeof->decl->spel);
 
-			r = decl_ref_new_tdef(tdef_typeof);
+			r = type_ref_new_tdef(tdef_typeof);
 
 		}else{
 			type *t = type_new();
@@ -335,7 +335,7 @@ decl_ref *parse_type(enum decl_storage *store)
 			t->is_signed = is_signed;
 			t->qual  = qual;
 
-			r = decl_ref_new_type(t);
+			r = type_ref_new_type(t);
 		}
 
 		if(is_inline)
@@ -393,7 +393,7 @@ funcargs *parse_func_arglist()
 	if(argdecl){
 
 		/* check for x(void) */
-		if( argdecl->ref->type == decl_ref_type
+		if( argdecl->ref->type == type_ref_type
 		&&  argdecl->ref->bits.type->primitive == type_void
 		&& !argdecl->spel)
 		{
@@ -434,7 +434,7 @@ fin:;
 				type *t = type_new();
 				t->primitive = type_int;
 
-				d->ref = decl_ref_new_type(t);
+				d->ref = type_ref_new_type(t);
 			}
 
 			d->spel = token_current_spel();
@@ -471,7 +471,7 @@ declarator:
 		;
 */
 
-decl_ref *parse_decl_ref_ptr(enum decl_mode mode, char **sp)
+type_ref *parse_decl_ref_ptr(enum decl_mode mode, char **sp)
 {
 	int ptr;
 
@@ -482,10 +482,10 @@ decl_ref *parse_decl_ref_ptr(enum decl_mode mode, char **sp)
 			EAT(curtok);
 		}
 
-		return (ptr ? decl_ref_new_ptr : decl_ref_new_block)(parse_decl_ref(mode, sp), qual);
+		return (ptr ? type_ref_new_ptr : type_ref_new_block)(parse_decl_ref(mode, sp), qual);
 
 	}else if(accept(token_open_paren)){
-		decl_ref *ret;
+		type_ref *ret;
 
 		/*
 		 * we could be here:
@@ -518,12 +518,12 @@ decl_ref *parse_decl_ref_ptr(enum decl_mode mode, char **sp)
 	return NULL;
 }
 
-decl_ref *parse_decl_ref_array(enum decl_mode mode, char **sp)
+type_ref *parse_decl_ref_array(enum decl_mode mode, char **sp)
 {
-	decl_ref *r = parse_decl_ref_ptr(mode, sp);
+	type_ref *r = parse_decl_ref_ptr(mode, sp);
 
 	while(accept(token_open_square)){
-		decl_ref *r_new;
+		type_ref *r_new;
 		expr *size;
 
 		if(accept(token_close_square)){
@@ -536,7 +536,7 @@ decl_ref *parse_decl_ref_array(enum decl_mode mode, char **sp)
 			EAT(token_close_square);
 		}
 
-		r_new = decl_ref_new_array(r, size);
+		r_new = type_ref_new_array(r, size);
 
 		r = r_new;
 	}
@@ -544,12 +544,12 @@ decl_ref *parse_decl_ref_array(enum decl_mode mode, char **sp)
 	return r;
 }
 
-decl_ref *parse_decl_ref(enum decl_mode mode, char **sp)
+type_ref *parse_decl_ref(enum decl_mode mode, char **sp)
 {
-	decl_ref *dp = parse_decl_ref_array(mode, sp);
+	type_ref *dp = parse_decl_ref_array(mode, sp);
 
 	while(accept(token_open_paren)){
-		decl_ref *r_new = decl_ref_new_func(dp, parse_func_arglist());
+		type_ref *r_new = type_ref_new_func(dp, parse_func_arglist());
 
 		EAT(token_close_paren);
 
@@ -559,9 +559,9 @@ decl_ref *parse_decl_ref(enum decl_mode mode, char **sp)
 	return dp;
 }
 
-decl *parse_decl(decl_ref *subtype, enum decl_mode mode)
+decl *parse_decl(type_ref *subtype, enum decl_mode mode)
 {
-	decl_ref *r;
+	type_ref *r;
 	decl *d;
 	char *spel = NULL;
 
@@ -585,8 +585,8 @@ decl *parse_decl(decl_ref *subtype, enum decl_mode mode)
 			d->spel, decl_is_func(d),
 			token_to_str(curtok), d->init);
 
-	for(decl_ref *dp = d->desc; dp; dp = dp->child)
-		fprintf(stderr, "\tdesc %s\n", decl_ref_to_str(dp->type));
+	for(type_ref *dp = d->desc; dp; dp = dp->child)
+		fprintf(stderr, "\tdesc %s\n", type_ref_to_str(dp->type));
 #endif
 
 	return d;
@@ -598,7 +598,7 @@ static void prevent_typedef(where *w, enum decl_storage store)
 		DIE_AT(w, "typedef unexpected");
 }
 
-static decl_ref *default_type(void)
+static type_ref *default_type(void)
 {
 	type *t;
 
@@ -607,13 +607,13 @@ static decl_ref *default_type(void)
 	t = type_new();
 	t->primitive = type_int;
 
-	return decl_ref_new_type(t);
+	return type_ref_new_type(t);
 }
 
 decl *parse_decl_single(enum decl_mode mode)
 {
 	enum decl_storage store;
-	decl_ref *r = parse_type(mode & DECL_ALLOW_STORE ? &store : NULL);
+	type_ref *r = parse_type(mode & DECL_ALLOW_STORE ? &store : NULL);
 
 	if(!r){
 		if((mode & DECL_CAN_DEFAULT) == 0)
@@ -635,7 +635,7 @@ decl *parse_decl_single(enum decl_mode mode)
 decl **parse_decls_one_type()
 {
 	enum decl_storage store;
-	decl_ref *r = parse_type(&store);
+	type_ref *r = parse_type(&store);
 	decl **decls = NULL;
 
 	if(!r)
@@ -660,7 +660,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 
 	/* read a type, then *spels separated by commas, then a semi colon, then repeat */
 	for(;;){
-		decl_ref *ref;
+		type_ref *ref;
 		type *t;
 		enum decl_storage store = store_default;
 
@@ -681,8 +681,8 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 		}
 
 		{
-			decl_ref *r;
-			for(r = ref; r && r->type != decl_ref_type; r = r->ref);
+			type_ref *r;
+			for(r = ref; r && r->type != type_ref_type; r = r->ref);
 			if(r)
 				t = r->bits.type;
 		}
@@ -749,7 +749,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 						 * [function with int argument, not a pointer to const int
 						 */
 #define err_nodecl "declaration doesn't declare anything"
-						if(d->ref->type != decl_ref_type)
+						if(d->ref->type != type_ref_type)
 							DIE_AT(&d->where, err_nodecl);
 						else
 							WARN_AT(&d->where, err_nodecl);
@@ -771,7 +771,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 					int i;
 					funcargs *dfuncargs = d->ref->bits.func;
 
-					UCC_ASSERT(d->ref->type == decl_ref_func, "not func");
+					UCC_ASSERT(d->ref->type == type_ref_func, "not func");
 
 					if(!dfuncargs->args_old_proto)
 						DIE_AT(&d->where, "unexpected old-style decls - new style proto used");

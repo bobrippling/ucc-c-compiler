@@ -20,39 +20,39 @@
 		if(dp->type == typ)
 
 
-decl_ref *decl_ref_new(enum decl_ref_type t)
+type_ref *type_ref_new(enum type_ref_type t)
 {
-	decl_ref *r = umalloc(sizeof *r);
+	type_ref *r = umalloc(sizeof *r);
 	r->type = t;
 	return r;
 }
 
-decl_ref *decl_ref_new_type(type *t)
+type_ref *type_ref_new_type(type *t)
 {
-	decl_ref *r = decl_ref_new(decl_ref_type);
+	type_ref *r = type_ref_new(type_ref_type);
 	r->bits.type = t;
 	return r;
 }
 
-decl_ref *decl_ref_new_tdef(expr *e)
+type_ref *type_ref_new_tdef(expr *e)
 {
-	decl_ref *r = decl_ref_new(decl_ref_tdef);
+	type_ref *r = type_ref_new(type_ref_tdef);
 	r->bits.type_of = e;
 	return r;
 }
 
-decl_ref *decl_ref_new_ptr(decl_ref *to, enum type_qualifier q)
+type_ref *type_ref_new_ptr(type_ref *to, enum type_qualifier q)
 {
-	decl_ref *r = decl_ref_new(decl_ref_ptr);
+	type_ref *r = type_ref_new(type_ref_ptr);
 	r->ref = to;
 	r->bits.qual = q;
 	return r;
 }
 
-decl_ref *decl_ref_new_block(decl_ref *to, enum type_qualifier q)
+type_ref *type_ref_new_block(type_ref *to, enum type_qualifier q)
 {
-	decl_ref *r = decl_ref_new_ptr(to, q);
-	r->type = decl_ref_block;
+	type_ref *r = type_ref_new_ptr(to, q);
+	r->type = type_ref_block;
 	return r;
 }
 
@@ -81,29 +81,29 @@ decl *decl_new_type(enum type_primitive p)
 	return d;
 }
 
-void decl_ref_free(decl_ref *r)
+void type_ref_free(type_ref *r)
 {
 	if(!r)
 		return;
 
-	decl_ref_free(r->ref);
+	type_ref_free(r->ref);
 
 	switch(r->type){
-		case decl_ref_type:
+		case type_ref_type:
 			type_free(r->bits.type);
 			break;
 
-		case decl_ref_block:
-		case decl_ref_func:
+		case type_ref_block:
+		case type_ref_func:
 			funcargs_free(r->bits.func, 1);
 			break;
 
-		case decl_ref_array:
+		case type_ref_array:
 			expr_free(r->bits.array_size);
 			break;
 
-		case decl_ref_ptr:
-		case decl_ref_tdef:
+		case type_ref_ptr:
+		case type_ref_tdef:
 			break;
 	}
 
@@ -117,7 +117,7 @@ void decl_free(decl *d)
 	if(!d)
 		return;
 
-	decl_ref_free(d->ref);
+	type_ref_free(d->ref);
 	expr_free(d->field_width);
 
 	free(d);
@@ -176,15 +176,15 @@ const char *decl_attr_to_str(enum decl_attr_type t)
 	return NULL;
 }
 
-const char *decl_ref_to_str(enum decl_ref_type t)
+const char *type_ref_to_str(enum type_ref_type t)
 {
 	switch(t){
-		CASE_STR_PREFIX(decl_ref, type);
-		CASE_STR_PREFIX(decl_ref, tdef);
-		CASE_STR_PREFIX(decl_ref, ptr);
-		CASE_STR_PREFIX(decl_ref, block);
-		CASE_STR_PREFIX(decl_ref, func);
-		CASE_STR_PREFIX(decl_ref, array);
+		CASE_STR_PREFIX(type_ref, type);
+		CASE_STR_PREFIX(type_ref, tdef);
+		CASE_STR_PREFIX(type_ref, ptr);
+		CASE_STR_PREFIX(type_ref, block);
+		CASE_STR_PREFIX(type_ref, func);
+		CASE_STR_PREFIX(type_ref, array);
 	}
 	return NULL;
 }
@@ -227,24 +227,24 @@ void decl_attr_free(decl_attr *a)
 
 #include "decl_is.c"
 
-int decl_ref_size(decl_ref *r)
+int type_ref_size(type_ref *r)
 {
 	switch(r->type){
-		case decl_ref_type:
+		case type_ref_type:
 			return type_size(r->bits.type);
 
-		case decl_ref_tdef:
-			return decl_ref_size(r->ref);
+		case type_ref_tdef:
+			return type_ref_size(r->ref);
 
-		case decl_ref_ptr:
-		case decl_ref_block:
+		case type_ref_ptr:
+		case type_ref_block:
 			return type_primitive_size(type_intptr_t);
 
-		case decl_ref_func:
+		case type_ref_func:
 			/* don't return r->ref's size */
 			return 1;
 
-		case decl_ref_array:
+		case type_ref_array:
 		{
 			intval sz;
 
@@ -253,7 +253,7 @@ int decl_ref_size(decl_ref *r)
 			if(sz.val == 0)
 				DIE_AT(&r->where, "incomplete array size attempt");
 
-			return sz.val * decl_ref_size(r->ref);
+			return sz.val * type_ref_size(r->ref);
 		}
 	}
 
@@ -273,7 +273,7 @@ int decl_size(decl *d)
 		return iv.val;
 	}
 
-	return decl_ref_size(d->ref);
+	return type_ref_size(d->ref);
 }
 
 enum funcargs_cmp funcargs_equal(
@@ -315,7 +315,7 @@ enum funcargs_cmp funcargs_equal(
 	return funcargs_are_equal;
 }
 
-int decl_ref_equal(decl_ref *a, decl_ref *b, enum decl_cmp mode)
+int type_ref_equal(type_ref *a, type_ref *b, enum decl_cmp mode)
 {
 	if(!a || !b)
 		return a == b ? 1 : 0;
@@ -326,10 +326,10 @@ int decl_ref_equal(decl_ref *a, decl_ref *b, enum decl_cmp mode)
 		return 0;
 
 	switch(a->type){
-		case decl_ref_type:
+		case type_ref_type:
 			return type_equal(a->bits.type, b->bits.type, mode & DECL_CMP_EXACT_MATCH ? TYPE_CMP_EXACT : 0);
 
-		case decl_ref_array:
+		case type_ref_array:
 		{
 			intval av, bv;
 
@@ -342,22 +342,22 @@ int decl_ref_equal(decl_ref *a, decl_ref *b, enum decl_cmp mode)
 			goto ref_eq;
 		}
 
-		case decl_ref_ptr:
-		case decl_ref_block:
+		case type_ref_ptr:
+		case type_ref_block:
 			if(a->bits.qual != b->bits.qual)
 				return 0;
 			/* fall */
 ref_eq:
-		case decl_ref_tdef:
-			return decl_ref_equal(a->ref, b->ref, mode);
+		case type_ref_tdef:
+			return type_ref_equal(a->ref, b->ref, mode);
 
-		case decl_ref_func:
+		case type_ref_func:
 			if(funcargs_are_equal != funcargs_equal(a->bits.func, b->bits.func, 1 /* exact match */, NULL))
 				return 0;
 			break;
 	}
 
-	return decl_ref_equal(a->ref, b->ref, mode);
+	return type_ref_equal(a->ref, b->ref, mode);
 }
 
 int decl_equal(decl *a, decl *b, enum decl_cmp mode)
@@ -377,87 +377,87 @@ int decl_equal(decl *a, decl *b, enum decl_cmp mode)
 	if(a_ptr || b_ptr)
 		mode |= DECL_CMP_EXACT_MATCH;
 
-	return decl_ref_equal(a->ref, b->ref, mode);
+	return type_ref_equal(a->ref, b->ref, mode);
 }
 
 int decl_ptr_depth(decl *d)
 {
 	int depth = 0;
-	decl_ref *r;
+	type_ref *r;
 
 	for(r = d->ref; r; r = r->ref)
-		if(r->type == decl_ref_ptr)
+		if(r->type == type_ref_ptr)
 			depth++;
 
 	return depth;
 }
 
-decl_ref *decl_ref_orphan(decl_ref *r)
+type_ref *type_ref_orphan(type_ref *r)
 {
-	decl_ref *ret = r->ref;
+	type_ref *ret = r->ref;
 	r->ref = NULL;
 	return ret;
 }
 
 decl *decl_ptr_depth_inc(decl *d)
 {
-	d->ref = decl_ref_new_ptr(d->ref, qual_none);
+	d->ref = type_ref_new_ptr(d->ref, qual_none);
 	return d;
 }
 
 decl *decl_ptr_depth_dec(decl *d, where *from)
 {
-	decl_ref *r = d->ref;
-	decl_ref *r_save;
+	type_ref *r = d->ref;
+	type_ref *r_save;
 
 	/* *(void (*)()) does nothing */
-	if((r_save = decl_ref_is(r, decl_ref_ptr))
-	&& decl_ref_is(r_save->ref, decl_ref_func))
+	if((r_save = type_ref_is(r, type_ref_ptr))
+	&& type_ref_is(r_save->ref, type_ref_func))
 	{
 		goto fin;
 	}
 
-	if(!decl_ref_is(r, decl_ref_ptr))
-		DIE_AT(from, "invalid indirection applied to %s", decl_ref_to_str(r->type));
+	if(!type_ref_is(r, type_ref_ptr))
+		DIE_AT(from, "invalid indirection applied to %s", type_ref_to_str(r->type));
 
 	d->ref = d->ref->ref;
-	r_save = decl_ref_orphan(r);
+	r_save = type_ref_orphan(r);
 
-	if(!decl_ref_is_complete(r))
+	if(!type_ref_is_complete(r))
 		/* FIXME */
-		DIE_AT(from, "dereference pointer to incomplete type %s", decl_ref_to_str(r->type));
+		DIE_AT(from, "dereference pointer to incomplete type %s", type_ref_to_str(r->type));
 
-	decl_ref_free(r_save);
+	type_ref_free(r_save);
 
 fin:
 	return d;
 }
 
-decl_ref *decl_orphan(decl *d)
+type_ref *decl_orphan(decl *d)
 {
-	decl_ref *r = d->ref;
+	type_ref *r = d->ref;
 	d->ref = r->ref;
 	return r;
 }
 
 decl *decl_func_called(decl *d, funcargs **pfuncargs)
 {
-	decl_ref *orphan = decl_orphan(d);
+	type_ref *orphan = decl_orphan(d);
 
 	switch(orphan->type){
-		case decl_ref_ptr:
-		case decl_ref_block:
+		case type_ref_ptr:
+		case type_ref_block:
 		{
-			decl_ref *func = decl_orphan(d);
+			type_ref *func = decl_orphan(d);
 			funcargs *args;
 
-			UCC_ASSERT(func->type == decl_ref_func, "func call not a func");
+			UCC_ASSERT(func->type == type_ref_func, "func call not a func");
 
 			args = func->bits.func;
 			func->bits.func = NULL;
 
-			decl_ref_free(func);
-			decl_ref_free(orphan);
+			type_ref_free(func);
+			type_ref_free(orphan);
 
 			if(pfuncargs)
 				*pfuncargs = args;
@@ -465,7 +465,7 @@ decl *decl_func_called(decl *d, funcargs **pfuncargs)
 			return d;
 		}
 
-		case decl_ref_func: /* can't call this - decays to type(*)() */
+		case type_ref_func: /* can't call this - decays to type(*)() */
 		default:
 			ICE("can't func-deref non func-ptr/block ref");
 	}
@@ -475,29 +475,29 @@ decl *decl_func_called(decl *d, funcargs **pfuncargs)
 
 void decl_conv_array_func_to_ptr(decl *d)
 {
-	decl_ref *r = d->ref;
+	type_ref *r = d->ref;
 
 	/* f(int x[][5]) decays to f(int (*x)[5]), not f(int **x) */
 
 	switch(r->type){
-		case decl_ref_array:
+		case type_ref_array:
 		{
-			decl_ref *orphan = decl_orphan(d);
+			type_ref *orphan = decl_orphan(d);
 			/* orphan == r */
-			decl_ref_free(orphan);
+			type_ref_free(orphan);
 
 			/* fall */
 		}
 
-		case decl_ref_func:
-			d->ref = decl_ref_new_ptr(r, qual_none);
+		case type_ref_func:
+			d->ref = type_ref_new_ptr(r, qual_none);
 			break;
 
 		default:break;
 	}
 }
 
-static void decl_ref_add_str(decl_ref *r, char *spel, char **bufp, int sz)
+static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
 {
 #define BUF_ADD(...) \
 	do{ int n = snprintf(*bufp, sz, __VA_ARGS__); *bufp += n, sz -= n; }while(0)
@@ -505,22 +505,22 @@ static void decl_ref_add_str(decl_ref *r, char *spel, char **bufp, int sz)
 	int need_paren;
 
 	switch(r->type){
-		case decl_ref_type:
-		case decl_ref_tdef:
+		case type_ref_type:
+		case type_ref_tdef:
 			return;
 		default:break;
 	}
 
-	need_paren = r->ref == decl_ref_type ? 0 : r->type != r->ref->type;
+	need_paren = r->ref == type_ref_type ? 0 : r->type != r->ref->type;
 
 	if(need_paren)
 		BUF_ADD("(");
 
 	switch(r->type){
-		case decl_ref_ptr:
-		case decl_ref_block:
+		case type_ref_ptr:
+		case type_ref_block:
 			BUF_ADD("%c%s",
-					r->type == decl_ref_ptr ? '*' : '^',
+					r->type == type_ref_ptr ? '*' : '^',
 					type_qual_to_str(r->bits.qual));
 			break;
 		default:
@@ -528,7 +528,7 @@ static void decl_ref_add_str(decl_ref *r, char *spel, char **bufp, int sz)
 	}
 
 	if(r->ref)
-		decl_ref_add_str(r->ref, spel, bufp, sz);
+		type_ref_add_str(r->ref, spel, bufp, sz);
 	else if(spel)
 		BUF_ADD("%s", spel);
 
@@ -536,13 +536,13 @@ static void decl_ref_add_str(decl_ref *r, char *spel, char **bufp, int sz)
 		BUF_ADD(")");
 
 	switch(r->type){
-		case decl_ref_tdef:
+		case type_ref_tdef:
 			/* TODO: "aka: %s" */
-		case decl_ref_type:
-		case decl_ref_block:
-		case decl_ref_ptr:
+		case type_ref_type:
+		case type_ref_block:
+		case type_ref_ptr:
 			break;
-		case decl_ref_func:
+		case type_ref_func:
 		{
 			const char *comma = "";
 			decl **i;
@@ -557,7 +557,7 @@ static void decl_ref_add_str(decl_ref *r, char *spel, char **bufp, int sz)
 			BUF_ADD("%s)", args->variadic ? ", ..." : args->args_void ? "void" : "");
 			break;
 		}
-		case decl_ref_array:
+		case type_ref_array:
 		{
 			intval iv;
 
@@ -573,14 +573,14 @@ static void decl_ref_add_str(decl_ref *r, char *spel, char **bufp, int sz)
 #undef BUF_ADD
 }
 
-static void decl_ref_add_type_str(decl_ref *r, char *spel, char **bufp, int sz)
+static void type_ref_add_type_str(type_ref *r, char *spel, char **bufp, int sz)
 {
 	/* go down to the first type or typedef, print it and then its descriptions */
 	{
 		int len;
-		decl_ref *rt;
+		type_ref *rt;
 
-		for(rt = r; rt->type != decl_ref_type && rt->type != decl_ref_tdef; rt = rt->ref);
+		for(rt = r; rt->type != type_ref_type && rt->type != type_ref_tdef; rt = rt->ref);
 		strcpy(*bufp, type_to_str(rt->bits.type));
 
 		len = strlen(*bufp);
@@ -591,7 +591,7 @@ static void decl_ref_add_type_str(decl_ref *r, char *spel, char **bufp, int sz)
 		sz -= len + 1;
 	}
 
-	decl_ref_add_str(r, spel, bufp, sz);
+	type_ref_add_str(r, spel, bufp, sz);
 }
 
 const char *decl_to_str_r_spel(char buf[DECL_STATIC_BUFSIZ], int show_spel, decl *d)
@@ -600,7 +600,7 @@ const char *decl_to_str_r_spel(char buf[DECL_STATIC_BUFSIZ], int show_spel, decl
 
 	if(d->store) bufp += snprintf(bufp, DECL_STATIC_BUFSIZ, "%s ", decl_store_to_str(d->store));
 
-	decl_ref_add_type_str(d->ref, show_spel ? d->spel : NULL,
+	type_ref_add_type_str(d->ref, show_spel ? d->spel : NULL,
 			&bufp, DECL_STATIC_BUFSIZ - (bufp - buf));
 
 	return buf;
