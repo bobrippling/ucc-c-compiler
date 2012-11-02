@@ -30,7 +30,7 @@
 type_ref *parse_decl_ref(enum decl_mode mode, char **sp);
 static void parse_add_attr(decl_attr **append);
 
-#define INT_TYPE(t) do{ UCC_ASSERT(!t, "got type"); t = type_new(); t->primitive = type_int; }while(0)
+#define INT_TYPE(t) do{ UCC_ASSERT(!t, "got type"); t = type_new_primitive(type_int); }while(0)
 
 void parse_type_preamble(type **tp, char **psp, enum type_primitive primitive)
 {
@@ -38,8 +38,7 @@ void parse_type_preamble(type **tp, char **psp, enum type_primitive primitive)
 	type *t;
 
 	spel = NULL;
-	t = type_new();
-	t->primitive = primitive;
+	t = type_new_primitive(primitive);
 
 	if(curtok == token_identifier){
 		spel = token_current_spel();
@@ -153,7 +152,7 @@ type_ref *parse_type(enum decl_storage *store)
 		*store = store_default;
 
 	for(;;){
-		decl *td;
+		type_ref *tdef_ref;
 
 		if(curtok_is_type_qual()){
 			qual |= curtok_to_type_qualifier();
@@ -268,7 +267,8 @@ type_ref *parse_type(enum decl_storage *store)
 			tdef_typeof = parse_expr_sizeof_typeof(1);
 			primitive_set = 1;
 
-		}else if(curtok == token_identifier && (td = typedef_find(current_scope, token_current_spel_peek()))){
+		}else if(curtok == token_identifier
+		&& (tdef_ref = typedef_find(current_scope, token_current_spel_peek()))){
 			/* typedef name */
 
 			/*
@@ -288,7 +288,7 @@ type_ref *parse_type(enum decl_storage *store)
 
 			/*if(tdef_typeof) - can't reach due to primitive_set */
 
-			tdef_typeof = expr_new_sizeof_decl(td, 1);
+			tdef_typeof = expr_new_sizeof_type(tdef_ref, 1);
 			primitive_set = PRIMITIVE_NO_MORE;
 
 			EAT(token_identifier);
@@ -325,12 +325,7 @@ type_ref *parse_type(enum decl_storage *store)
 			r = type_ref_new_tdef(tdef_typeof);
 
 		}else{
-			type *t = type_new();
-
-			if(!primitive_set)
-				t->primitive = type_int;
-			else
-				t->primitive = primitive;
+			type *t = type_new_primitive(primitive_set ? primitive : type_int);
 
 			t->is_signed = is_signed;
 			t->qual  = qual;
@@ -430,12 +425,7 @@ fin:;
 			if(curtok != token_identifier)
 				EAT(token_identifier); /* error */
 
-			{
-				type *t = type_new();
-				t->primitive = type_int;
-
-				d->ref = type_ref_new_type(t);
-			}
+			d->ref = type_ref_new_type(type_new_primitive(type_int));
 
 			d->spel = token_current_spel();
 			dynarray_add((void ***)&args->arglist, d);
@@ -600,14 +590,9 @@ static void prevent_typedef(where *w, enum decl_storage store)
 
 static type_ref *default_type(void)
 {
-	type *t;
-
 	cc1_warn_at(NULL, 0, 1, WARN_IMPLICIT_INT, "defaulting type to int");
 
-	t = type_new();
-	t->primitive = type_int;
-
-	return type_ref_new_type(t);
+	return type_ref_new_type(type_new_primitive(type_int));
 }
 
 decl *parse_decl_single(enum decl_mode mode)

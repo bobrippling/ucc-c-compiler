@@ -114,7 +114,7 @@ static void fold_unreachable(expr *e, symtable *stab)
 {
 	(void)stab;
 
-	e->tree_type = decl_new_void();
+	e->tree_type = type_ref_new_type(type_new_primitive(type_void));
 	decl_attr_append(&e->tree_type->attr, decl_attr_new(attr_noreturn));
 
 	wur_builtin(e);

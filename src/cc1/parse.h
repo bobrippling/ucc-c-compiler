@@ -35,7 +35,7 @@ expr *parse_expr_sizeof_typeof(int is_typeof);
 expr *parse_expr_exp(void);
 
 void parse_static_assert(void);
-decl **parse_type_list(void);
+type_ref **parse_type_list(void);
 expr **parse_funcargs(void);
 
 symtable *parse(void);

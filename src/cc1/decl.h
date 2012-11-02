@@ -156,7 +156,7 @@ decl *decl_ptr_depth_dec(decl *, where *from);
 type_ref *type_ref_ptr_depth_inc(type_ref *);
 type_ref *type_ref_ptr_depth_dec(type_ref *, where *from);
 type_ref *type_ref_func_call(type_ref *, where *from);
-type_ref *type_ref_decay_first_array(decl *);
+type_ref *type_ref_decay_first_array(type_ref *);
 
 type *decl_get_type(decl *);
 

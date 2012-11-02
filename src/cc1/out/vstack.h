@@ -13,7 +13,7 @@ struct vstack
 		LBL,            /* vtop is a pointer to label */
 	} type;
 
-	decl *d;
+	type_ref *t;
 
 	/*
 	 * TODO: offset to optimise multiple adds
@@ -50,8 +50,8 @@ void vpop(void);
 void vswap(void);
 void vdup(void);
 
-void v_clear(struct vstack *vp, decl *);
-void vtop_clear(decl *);
+void v_clear(struct vstack *vp, type_ref *);
+void vtop_clear(type_ref *);
 
 void vtop2_prepare_op(void);
 void v_prepare_op(struct vstack *vp);

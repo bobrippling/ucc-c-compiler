@@ -75,6 +75,8 @@ enum type_cmp
 };
 
 type *type_new(void);
+type *type_new_primitive(enum type_primitive);
+type *type_new_primitive_qual(enum type_primitive, enum type_qualifier);
 type *type_copy(type *);
 #define type_free(x) free(x)
 

@@ -52,7 +52,7 @@ expr *parse_expr_sizeof_typeof(int is_typeof)
 		type_ref *r = parse_type_ref();
 
 		if(r){
-			e = expr_new_sizeof_decl(r, is_typeof);
+			e = expr_new_sizeof_type(r, is_typeof);
 		}else{
 			/* parse a full one, since we're in brackets */
 			e = expr_new_sizeof_expr(parse_expr_exp(), is_typeof);
@@ -90,10 +90,10 @@ expr *parse_expr__Generic()
 		EAT(token_comma);
 
 		if(accept(token_default)){
-			d = NULL;
+			r = NULL;
 		}else{
-			d = parse_type_ref();
-			if(!d)
+			r = parse_type_ref();
+			if(!r)
 				DIE_AT(NULL, "type expected");
 		}
 		EAT(token_colon);
@@ -101,7 +101,7 @@ expr *parse_expr__Generic()
 
 		lbl = umalloc(sizeof *lbl);
 		lbl->e = e;
-		lbl->d = d;
+		lbl->t = r;
 		dynarray_add((void ***)&lbls, lbl);
 
 		if(accept(token_close_paren))
@@ -127,16 +127,16 @@ expr *parse_expr_identifier()
 expr *parse_block()
 {
 	funcargs *args;
-	decl *rt;
+	type_ref *rt;
 
 	EAT(token_xor);
 
 	rt = parse_type_ref();
 
 	if(rt){
-		if(decl_is_func(rt)){
+		if(type_ref_is_func(rt)){
 			/* got ^int (args...) */
-			rt = decl_func_deref(rt, &args);
+			rt = type_ref_func_deref(rt, &args);
 		}else{
 			/* ^int {...} */
 			goto def_args;
@@ -187,11 +187,11 @@ expr *parse_expr_primary()
 
 		default:
 			if(accept(token_open_paren)){
-				decl *d;
+				type_ref *r;
 				expr *e;
 
-				if((d = parse_type_ref())){
-					e = expr_new_cast(d, 0);
+				if((r = parse_type_ref())){
+					e = expr_new_cast(r, 0);
 					EAT(token_close_paren);
 
 					if(curtok == token_open_block){

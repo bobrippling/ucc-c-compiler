@@ -756,7 +756,7 @@ void fold_need_expr(expr *e, const char *stmt_desc, int is_test)
 	if(is_test){
 		if(!type_ref_is_bool(e->tree_type)){
 			cc1_warn_at(&e->where, 0, 1, WARN_TEST_BOOL, "testing a non-boolean expression, %s, in %s",
-					type_ref_to_str(e->tree_type), stmt_desc);
+					type_ref_to_str(e->tree_type->type), stmt_desc);
 		}
 
 		if(expr_kind(e, addr)){
@@ -1109,23 +1109,11 @@ void fold(symtable *globs)
 		fargs->arglist[1] = NULL;
 
 		/* const char * */
-		{
-			decl *kcharp = fargs->arglist[0] = decl_new();
-			type *t = type_new();
+		(fargs->arglist[0] = decl_new())->ref = type_ref_new_ptr(
+				type_ref_new_type(type_new_primitive_qual(type_char, qual_const)),
+				qual_none);
 
-			t->primitive = type_char;
-			t->qual = qual_const;
-
-			kcharp->ref = type_ref_new_ptr(type_ref_new_type(t), qual_none);
-		}
-
-		{
-			type *t = type_new();
-
-			t->primitive = type_int;
-
-			df->ref = type_ref_new_func(type_ref_new_type(t), fargs);
-		}
+		df->ref = type_ref_new_func(type_ref_new_type(type_new_primitive(type_int)), fargs);
 
 		symtab_add(globs, df, sym_global, SYMTAB_NO_SYM, SYMTAB_PREPEND);
 

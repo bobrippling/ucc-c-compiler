@@ -13,6 +13,7 @@
 #include "str.h"
 #include "const.h"
 #include "ops/stmt_code.h" /* FOR_INIT_AND_CODE */
+#include "decl_init.h"
 
 #define ENGLISH_PRINT_ARGLIST
 
@@ -93,24 +94,26 @@ void print_decl_init(decl_init *di)
 	}
 }
 
-void print_decl_desc_eng(decl_desc *dp)
+void print_type_ref_eng(type_ref *ref)
 {
-	if(dp->child)
-		print_decl_desc_eng(dp->child);
+	if(!ref)
+		return;
 
-	switch(dp->type){
-		case decl_desc_ptr:
-			fprintf(cc1_out, "%spointer to ", type_qual_to_str(dp->bits.qual));
+	print_type_ref_eng(ref->ref);
+
+	switch(ref->type){
+		case type_ref_ptr:
+			fprintf(cc1_out, "%spointer to ", type_qual_to_str(ref->bits.qual));
 			break;
 
-		case decl_desc_block:
+		case type_ref_block:
 			fprintf(cc1_out, "block returning ");
 			break;
 
-		case decl_desc_func:
+		case type_ref_func:
 		{
 #ifdef ENGLISH_PRINT_ARGLIST
-			funcargs *fargs = dp->bits.func;
+			funcargs *fargs = ref->bits.func;
 			decl **iter;
 #endif
 
@@ -139,13 +142,20 @@ void print_decl_desc_eng(decl_desc *dp)
 			break;
 		}
 
-		case decl_desc_array:
-			if(dp->bits.array_size){
+		case type_ref_array:
+			if(ref->bits.array_size){
 				fputs("array[", cc1_out);
-				print_expr_val(dp->bits.array_size);
+				print_expr_val(ref->bits.array_size);
 				fputs("] of ", cc1_out);
 			}
 			break;
+
+		case type_ref_type:
+			fprintf(cc1_out, "%s", type_to_str(ref->bits.type));
+			break;
+
+		case type_ref_tdef:
+			ICE("TODO");
 	}
 }
 
@@ -154,10 +164,7 @@ void print_decl_eng(decl *d)
 	if(d->spel)
 		fprintf(cc1_out, "\"%s\": ", d->spel);
 
-	if(d->desc)
-		print_decl_desc_eng(d->desc);
-
-	fprintf(cc1_out, "%s", type_to_str(d->type));
+	print_type_ref_eng(d->ref);
 }
 
 void print_funcargs(funcargs *fargs)
@@ -178,45 +185,62 @@ void print_funcargs(funcargs *fargs)
 	fprintf(cc1_out, "%s)", fargs->variadic ? ", ..." : "");
 }
 
-void print_decl_desc(decl_desc *dp, decl *d)
+static void print_tdef(type_ref *t)
 {
-	const int need_paren = dp->parent_desc && dp->parent_desc->type != dp->type;
+	UCC_ASSERT(t->type == type_ref_tdef, "invalid tdef");
 
-	if(need_paren)
-		fputc('(', cc1_out);
+	/* TODO */
+	fputc('\n', cc1_out);
+	gen_str_indent++;
+	idt_printf("typeof expr:\n");
+	gen_str_indent++;
+	print_expr(t->bits.type_of);
+	gen_str_indent -= 2;
+	idt_print();
+}
 
-	switch(dp->type){
-		case decl_desc_ptr:
-			fprintf(cc1_out, "*%s", type_qual_to_str(dp->bits.qual));
+void print_type_ref(type_ref *ref, decl *d)
+{
+	switch(ref->type){
+		case type_ref_ptr:
+			fprintf(cc1_out, "*%s", type_qual_to_str(ref->bits.qual));
 			break;
 
-		case decl_desc_block:
+		case type_ref_block:
 			fputc('^', cc1_out);
 			break;
 
-		case decl_desc_array:
-			/* done below */
-			break;
-
-		case decl_desc_func:
+		case type_ref_array: /* done below */
+		case type_ref_func:
+		case type_ref_tdef:
+		case type_ref_type:
 			break;
 	}
 
-	if(dp->child)
-		print_decl_desc(dp->child, d);
-	else if(d->spel)
-		fputs(d->spel, cc1_out);
+	if(ref->ref){
+		const int need_paren = ref->type != ref->ref->type;
 
-	switch(dp->type){
-		case decl_desc_func:
-			print_funcargs(dp->bits.func);
+		if(need_paren)
+			fputc('(', cc1_out);
+
+		print_type_ref(ref->ref, d);
+
+		if(need_paren)
+			fputc(')', cc1_out);
+	}else if(d->spel){
+		fputs(d->spel, cc1_out);
+	}
+
+	switch(ref->type){
+		case type_ref_func:
+			print_funcargs(ref->bits.func);
 			break;
 
-		case decl_desc_array:
+		case type_ref_array:
 		{
 			intval sz;
 
-			const_fold_need_val(dp->bits.array_size, &sz);
+			const_fold_need_val(ref->bits.array_size, &sz);
 
 			if(sz.val)
 				fprintf(cc1_out, "[%ld]", sz.val);
@@ -225,13 +249,13 @@ void print_decl_desc(decl_desc *dp, decl *d)
 			break;
 		}
 
-		case decl_desc_ptr:
-		case decl_desc_block:
+		case type_ref_ptr:
+		case type_ref_block:
 			break;
+		case type_ref_tdef:
+		case type_ref_type:
+			ICE("TODO");
 	}
-
-	if(need_paren)
-		fputc(')', cc1_out);
 }
 
 void print_decl(decl *d, enum pdeclargs mode)
@@ -255,26 +279,17 @@ void print_decl(decl *d, enum pdeclargs mode)
 			fputc(')', cc1_out);
 	}
 
-	if(d->type->type_of){
-		fputc('\n', cc1_out);
-		gen_str_indent++;
-		idt_printf("typeof expr:\n");
-		gen_str_indent++;
-		print_expr(d->type->type_of);
-		gen_str_indent -= 2;
-		idt_print();
-	}
-
 	if(fopt_mode & FOPT_ENGLISH){
 		print_decl_eng(d);
 	}else{
-		fputs(type_to_str(d->type), cc1_out);
+		if(d->spel)
+			fprintf(cc1_out, " %s, type ", d->spel);
 
-		if(d->desc){
+		fputs(type_to_str(decl_get_type(d)), cc1_out);
+
+		if(d->ref){
 			fputc(' ', cc1_out);
-			print_decl_desc(d->desc, d);
-		}else if(d->spel){
-			fprintf(cc1_out, " %s", d->spel);
+			print_type_ref(d->ref, d);
 		}
 	}
 

@@ -153,12 +153,12 @@ void gen_asm(symtable *globs)
 			continue;
 		}
 
-		switch(d->type->store){
+		switch(d->store){
 			case store_auto:
 			case store_register:
 			case store_typedef:
 				ICE("%s storage on global %s",
-						type_store_to_str(d->type->store),
+						type_store_to_str(d->store),
 						decl_to_str(d));
 
 			case store_static:
