@@ -7,6 +7,7 @@
 #include "../../util/dynarray.h"
 #include "../../util/platform.h"
 #include "../../util/alloc.h"
+#include "../funcargs.h"
 
 static int func_is_asm(const char *sp)
 {
@@ -69,20 +70,17 @@ invalid:
 	if(expr_kind(e->expr, identifier) && e->expr->spel){
 		/* check for implicit function */
 		if(!(e->expr->sym = symtab_search(stab, sp))){
+			funcargs *args = funcargs_new();
+			function_empty_args(args); /* set up the funcargs as if it's "x()" - i.e. any args */
+
 			df = decl_new();
 
-			df->type->primitive = type_int;
-			df->type->store     = store_extern;
+			df->ref = type_ref_new_func(type_ref_new_type(type_new_primitive(type_int)), args);
+			df->store     = store_extern;
 
 			cc1_warn_at(&e->where, 0, 1, WARN_IMPLICIT_FUNC, "implicit declaration of function \"%s\"", sp);
 
-			decl_set_spel(df, e->expr->spel);
-
-			df->desc = decl_desc_func_new(df, NULL);
-			df->desc->bits.func = funcargs_new();
-
-			/* set up the funcargs as if it's "x()" - i.e. any args */
-			function_empty_args(df->desc->bits.func);
+			df->spel = e->expr->spel;
 
 			/* not declared - generate a sym ourselves */
 			e->expr->sym = SYMTAB_ADD(stab, df, sym_local);
@@ -148,7 +146,7 @@ invalid:
 			for(iter_arg = e->funcargs; *iter_arg; iter_arg++)
 				dynarray_add((void ***)&args_from_expr->arglist, (*iter_arg)->tree_type);
 
-			if(funcargs_equal(args_from_decl, args_from_expr, 0, sp) == funcargs_cmp_mismatch_count)
+			if(funcargs_equal(args_from_decl, args_from_expr, 0, sp) == funcargs_are_mismatch_count)
 				DIE_AT(&e->where, "mismatching argument count to %s", sp);
 
 			funcargs_free(args_from_expr, 0);

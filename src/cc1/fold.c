@@ -623,6 +623,7 @@ void fold_decl(decl *d, symtable *stab)
 	if((r = decl_is(d, type_ref_type)) && !type_ref_is_complete(r))
 		DIE_AT(&d->where, "use of incomplete type - %s (%s)", d->spel, decl_to_str(d));
 
+#ifdef FIELD_WIDTH_TODO
 	if(d->field_width){
 		enum constyness ktype;
 		intval iv;
@@ -646,6 +647,7 @@ void fold_decl(decl *d, symtable *stab)
 		if(width == 1 && t->is_signed)
 			WARN_AT(&d->where, "%s 1-bit field width is signed (-1 and 0)", decl_to_str(d));
 	}
+#endif
 
 	/* allow:
 	 *   register int (*f)();

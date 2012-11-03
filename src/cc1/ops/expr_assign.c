@@ -6,7 +6,7 @@ const char *str_expr_assign()
 	return "assign";
 }
 
-int expr_is_lvalue(expr *e, enum lvalue_opts opts)
+int expr_is_lvalue(expr *e)
 {
 	/*
 	 * valid lvaluess:
@@ -37,9 +37,6 @@ int expr_is_lvalue(expr *e, enum lvalue_opts opts)
 	if(decl_is_array(e->tree_type))
 		return 0;
 
-	if(expr_kind(e, identifier))
-		return e->tree_type->func_code ? opts & LVAL_ALLOW_FUNC : 1;
-
 	return 0;
 }
 
@@ -56,7 +53,7 @@ void fold_expr_assign(expr *e, symtable *stab)
 	if(decl_is_void(e->rhs->tree_type))
 		DIE_AT(&e->where, "assignment from void expression");
 
-	if(!expr_is_lvalue(e->lhs, 0)){
+	if(!expr_is_lvalue(e->lhs)){
 		DIE_AT(&e->lhs->where, "not an lvalue (%s%s%s)",
 				e->lhs->f_str(),
 				expr_kind(e->lhs, op) ? " - " : "",

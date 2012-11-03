@@ -35,7 +35,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 		FOLD_EXPR(e->lhs, stab);
 
 		/* can address: lvalues, arrays and functions */
-		if(!expr_is_lvalue(e->lhs, LVAL_ALLOW_FUNC)
+		if(!expr_is_lvalue(e->lhs)
 		&& !decl_is_array(e->lhs->tree_type)
 		&& !decl_is_func(e->lhs->tree_type))
 		{
@@ -43,10 +43,12 @@ void fold_expr_addr(expr *e, symtable *stab)
 					e->lhs->f_str(), decl_to_str(e->lhs->tree_type));
 		}
 
+#ifdef FIELD_WIDTH_TODO
 		if(e->lhs->tree_type->field_width)
 			DIE_AT(&e->lhs->where, "taking the address of a bit-field");
+#endif
 
-		if(e->lhs->tree_type->type->store == store_register)
+		if(expr_kind(e->lhs, identifier) && e->lhs->sym->decl->store == store_register)
 			DIE_AT(&e->lhs->where, "can't take the address of register");
 
 		e->tree_type = decl_ptr_depth_inc(decl_copy(e->lhs->tree_type));

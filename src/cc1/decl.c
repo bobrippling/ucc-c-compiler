@@ -118,7 +118,9 @@ void decl_free(decl *d)
 		return;
 
 	type_ref_free(d->ref);
+#ifdef FIELD_WIDTH_TODO
 	expr_free(d->field_width);
+#endif
 
 	free(d);
 }
@@ -262,6 +264,7 @@ int type_ref_size(type_ref *r)
 
 int decl_size(decl *d)
 {
+#ifdef FIELD_WIDTH_TODO
 	if(d->field_width){
 		intval iv;
 
@@ -272,6 +275,7 @@ int decl_size(decl *d)
 
 		return iv.val;
 	}
+#endif
 
 	return type_ref_size(d->ref);
 }

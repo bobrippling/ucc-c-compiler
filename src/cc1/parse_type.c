@@ -289,6 +289,7 @@ type_ref *parse_type(enum decl_storage *store)
 			/*if(tdef_typeof) - can't reach due to primitive_set */
 
 			tdef_typeof = expr_new_sizeof_type(tdef_ref, 1);
+			token_get_current_str(&tdef_typeof->spel, NULL);
 			primitive_set = PRIMITIVE_NO_MORE;
 
 			EAT(token_identifier);
@@ -320,7 +321,8 @@ type_ref *parse_type(enum decl_storage *store)
 		if(tdef_typeof){
 			/* signed size_t x; */
 			if(signed_set)
-				DIE_AT(NULL, "signed/unsigned not allowed with typedef instance (%s)", tdef_typeof->decl->spel);
+				DIE_AT(NULL, "signed/unsigned not allowed with typedef instance (%s)",
+						tdef_typeof->spel);
 
 			r = type_ref_new_tdef(tdef_typeof);
 
@@ -820,7 +822,11 @@ got_field_width:
 
 			if((mode & DECL_MULTI_ACCEPT_FIELD_WIDTH) && accept(token_colon)){
 				/* normal decl, check field spec */
+#ifdef FIELD_WIDTH_TODO
 				d->field_width = parse_expr_exp();
+#else
+				ICE("TODO: field width");
+#endif
 			}
 
 			last = d;

@@ -25,7 +25,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 	if(descend)
 		FOLD_EXPR(e->expr, stab);
 
-	e->tree_type = e->decl;
+	e->tree_type = e->val.sizeof_this;
 	fold_decl(e->tree_type, stab); /* struct lookup, etc */
 
 	fold_disallow_st_un(e->expr, "cast-expr");
@@ -157,10 +157,10 @@ void mutate_expr_cast(expr *e)
 	e->f_static_addr = static_expr_cast_addr;
 }
 
-expr *expr_new_cast(decl *to, int implicit)
+expr *expr_new_cast(type_ref *to, int implicit)
 {
 	expr *e = expr_new_wrapper(cast);
-	e->decl = to;
+	e->val.sizeof_this = to;
 	e->expr_cast_implicit = implicit;
 	return e;
 }

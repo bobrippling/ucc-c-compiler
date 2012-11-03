@@ -379,6 +379,7 @@ void print_struct(struct_union_enum_st *sue)
 
 		idt_printf("offset %d:\n", d->struct_offset);
 
+#ifdef FIELD_WIDTH_TODO
 		if(d->field_width){
 			intval iv;
 
@@ -386,6 +387,7 @@ void print_struct(struct_union_enum_st *sue)
 
 			idt_printf("field width %ld\n", iv.val);
 		}
+#endif
 
 		gen_str_indent++;
 		print_decl(d, PDECL_INDENT | PDECL_NEWLINE | PDECL_ATTR);

@@ -61,13 +61,16 @@ void fold_expr_identifier(expr *e, symtable *stab)
 			expr_mutate_wrapper(e, val);
 
 			e->val = m->val->val;
-			FOLD_EXPR(e, stab);
+			/*FOLD_EXPR(e, stab);*/
 
-			e->tree_type->type->primitive = type_enum;
-			e->tree_type->type->sue = sue;
+			{
+				type *t;
+				e->tree_type = type_ref_new_type(t = type_new_primitive(type_enum));
+				t->sue = sue;
+			}
 		}
 	}else{
-		e->tree_type = decl_copy(e->sym->decl);
+		e->tree_type = e->sym->decl;
 
 #if 0
 Except when it is the operand of the sizeof operator or the unary
@@ -78,7 +81,7 @@ array object and is not an lvalue.
 #endif
 
 		if(e->sym->type == sym_local
-		&& !type_store_static_or_extern(e->sym->decl->type->store)
+		&& !type_store_static_or_extern(e->sym->decl->store)
 		&& !decl_has_array(e->sym->decl)
 		&& !decl_is_struct_or_union_possible_ptr(e->sym->decl)
 		&& !decl_is_func(e->sym->decl)

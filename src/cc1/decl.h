@@ -106,7 +106,9 @@ struct decl
 	/* things we want immediately */
 	char *spel;
 
+#ifdef FIELD_WIDTH_TODO
 	expr *field_width;
+#endif
 	int struct_offset;
 
 	sym *sym;

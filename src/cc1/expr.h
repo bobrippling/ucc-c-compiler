@@ -53,6 +53,7 @@ struct expr
 		intval iv;
 		char *s;
 		decl_init *init;
+		type_ref *sizeof_this;
 	} val;
 
 	struct generic_lbl
@@ -68,7 +69,6 @@ struct expr
 	expr *expr; /* x = 5; expr is the 5 */
 	expr **funcargs;
 	stmt *code; /* ({ ... }), comp. lit. assignments */
-	decl *decl; /* for sizeof(decl) */
 	data_store *data_store; /* for strings + { } */
 
 	funcargs *block_args;

@@ -349,7 +349,7 @@ static void x86_load(struct vstack *from, const char *regstr)
 void impl_load(struct vstack *from, int reg)
 {
 	char buf[REG_STR_SZ];
-	decl *const save = from->t;
+	type_ref *const save = from->t;
 
 	if(from->type == REG && reg == from->bits.reg)
 		return;
@@ -559,7 +559,7 @@ void impl_op(enum op_type op)
 			vtop_clear(vtop->t);
 			vtop->type = REG;
 
-			if(!vtop->t || type_primitive_size(vtop->t->type->primitive) != type_primitive_size(type_int)){
+			if(type_ref_size(vtop->t) != type_primitive_size(type_int)){
 #if 0
 Operand-Size         Dividend  Divisor  Quotient  Remainder
 8                    AX        r/m8     AL        AH
@@ -714,7 +714,7 @@ void impl_normalise(void)
 			reg_str_r(buf, vtop));
 }
 
-void impl_cast(decl *from, decl *to)
+void impl_cast(type_ref *from, type_ref *to)
 {
 	int szfrom, szto;
 
@@ -723,7 +723,7 @@ void impl_cast(decl *from, decl *to)
 
 	if(szfrom != szto){
 		if(szfrom < szto){
-			const int is_signed = from && from->type->is_signed;
+			const int is_signed = type_ref_is_signed(from);
 			const int int_sz = type_primitive_size(type_int);
 
 			char buf_from[REG_STR_SZ], buf_to[REG_STR_SZ];
@@ -878,7 +878,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 			v_save_reg(&vstack[i]);
 
 	{
-		funcargs *args = decl_funcargs(d_func);
+		funcargs *args = decl_funcargs(r_func);
 		int need_float_count = args->variadic || (!args->arglist && !args->args_void);
 		const char *jtarget = x86_call_jmp_target(vtop, need_float_count);
 
@@ -893,7 +893,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 		out_asm("addq $0x%x, %%rsp", ncleanup * platform_word_size());
 
 	/* return type */
-	vtop_clear(d_ret);
+	vtop_clear(r_ret);
 	vtop->type = REG;
 	vtop->bits.reg = REG_RET;
 }
