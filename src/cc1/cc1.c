@@ -260,6 +260,7 @@ int main(int argc, char **argv)
 	FILE *f;
 	const char *fname;
 	int i;
+	int werror = 0;
 
 	/*signal(SIGINT , sigh);*/
 	signal(SIGQUIT, sigh);
@@ -297,6 +298,9 @@ int main(int argc, char **argv)
 
 		}else if(!strcmp(argv[i], "-w")){
 			warn_mode = WARN_NONE;
+
+		}else if(!strcmp(argv[i], "-Werror")){
+			werror = 1;
 
 		}else if(argv[i][0] == '-' && (argv[i][1] == 'W' || argv[i][1] == 'f')){
 			const int fopt = argv[i][1] == 'f';
@@ -396,6 +400,10 @@ usage:
 	if(globs->decls){
 		fold(globs);
 		symtab_fold(globs, 0);
+
+		if(werror && warning_count)
+			ccdie(0, "%s: Treating warnings as errors", *argv);
+
 		gf(globs);
 	}
 

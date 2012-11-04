@@ -19,6 +19,8 @@ typedef struct where
 	int line, chr;
 } where;
 
+extern int warning_count;
+
 #define WHERE_BUF_SIZ 128
 const char *where_str(const struct where *w);
 const char *where_str_r(char buf[WHERE_BUF_SIZ], const struct where *w);

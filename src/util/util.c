@@ -37,6 +37,8 @@ static const char *const colour_strs[] = {
 	"\033[37m",
 };
 
+int warning_count = 0;
+
 const char *where_str_r(char buf[WHERE_BUF_SIZ], const struct where *w)
 {
 	snprintf(buf, WHERE_BUF_SIZ, WHERE_FMT, WHERE_ARGS);
@@ -110,6 +112,8 @@ void vwarn(struct where *w, int err, int show_line, const char *fmt, va_list l)
 
 	fprintf(stderr, "%s: %s: ", where_str(w), err ? "error" : "warning");
 	vfprintf(stderr, fmt, l);
+
+	warning_count++;
 
 	if(fmt[strlen(fmt)-1] == ':'){
 		fputc(' ', stderr);
