@@ -78,7 +78,13 @@ struct decl_desc
 		{
 			where where;
 
-			int args_void; /* true if "spel(void);" otherwise if !args, then we have "spel();" */
+			enum args_void
+			{
+				funcargs_void_explicit, /* (void) */
+				funcargs_void_implicit, /* f(){} - needs an impl */
+				funcargs_void_no        /* (); - no impl, can't tell if used */
+			} args_type; /* true if "spel(void);" otherwise if !args, then we have "spel();" */
+
 			int args_old_proto; /* true if f(a, b); where a and b are identifiers */
 			decl **arglist;
 			int variadic;
