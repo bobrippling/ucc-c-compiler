@@ -327,7 +327,7 @@ static enum token curtok_to_xequal()
 
 static int curtok_is_xequal()
 {
-	return curtok_to_xequal(curtok) != token_unknown;
+	return curtok_to_xequal() != token_unknown;
 }
 
 void read_string(char **sptr, int *plen)
