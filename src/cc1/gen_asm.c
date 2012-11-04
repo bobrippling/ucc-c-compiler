@@ -25,7 +25,7 @@ void gen_expr(expr *e, symtable *stab)
 	const_fold(e, &iv, &type);
 
 	if(type == CONST_WITH_VAL){
-		asm_temp(1, "mov rax, %d", iv.val);
+		asm_temp(1, "mov rax, %ld", iv.val);
 		asm_temp(1, "push rax");
 	}else{
 		e->f_gen(e, stab);

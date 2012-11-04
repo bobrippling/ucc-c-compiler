@@ -52,7 +52,7 @@ void gen_expr_sizeof(expr *e, symtable *stab)
 	decl *d = SIZEOF_WHAT(e);
 	(void)stab;
 
-	asm_temp(1, "push %d ; sizeof %s%s",
+	asm_temp(1, "push %ld ; sizeof %s%s",
 			SIZEOF_SIZE(e),
 			e->expr ? "" : "type ",
 			decl_to_str(d));
