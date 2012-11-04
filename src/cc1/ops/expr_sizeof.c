@@ -3,7 +3,7 @@
 #include "../sue.h"
 #include "../out/asm.h"
 
-#define SIZEOF_WHAT(e) ((e)->expr ? (e)->expr->tree_type : (e)->decl)
+#define SIZEOF_WHAT(e) ((e)->expr ? (e)->expr->tree_type : (e)->val.sizeof_this)
 #define SIZEOF_SIZE(e)  (e)->val.iv.val
 
 const char *str_expr_sizeof()
@@ -20,6 +20,7 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 
 	chosen = SIZEOF_WHAT(e);
 
+#ifdef FIELD_WIDTH_TODO
 	if(chosen->field_width){
 		if(e->expr_is_typeof){
 			WARN_AT(&e->where, "typeof applied to a bit-field - using underlying type");
@@ -33,22 +34,27 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 			DIE_AT(&e->where, "sizeof applied to a bit-field");
 		}
 	}
+#endif
 
 	if(e->expr_is_typeof){
 		e->tree_type = decl_copy(chosen);
 	}else{
+		struct_union_enum_st *sue;
+
 		if(decl_is_incomplete_array(chosen))
 			DIE_AT(&e->where, "sizeof incomplete array");
 
-		if(decl_is_struct_or_union(chosen) && sue_incomplete(chosen->type->sue))
-			DIE_AT(&e->where, "sizeof %s", type_to_str(chosen->type));
+		if((sue = decl_is_struct_or_union(chosen)) && sue_incomplete(sue))
+			DIE_AT(&e->where, "sizeof %s", decl_to_str(chosen));
 
 		SIZEOF_SIZE(e) = decl_size(SIZEOF_WHAT(e));
 
-		e->tree_type = decl_new();
-		/* size_t */
-		e->tree_type->type->primitive = type_long;
-		e->tree_type->type->is_signed = 0;
+		{
+			type *t;
+			e->tree_type = type_ref_new_type(t = type_new_primitive(type_long));
+			/* size_t */
+			t->is_signed = 0;
+		}
 	}
 }
 
@@ -82,7 +88,7 @@ void gen_expr_str_sizeof(expr *e, symtable *stab)
 		idt_printf("sizeof expr:\n");
 		print_expr(e->expr);
 	}else{
-		idt_printf("sizeof %s\n", decl_to_str(e->decl));
+		idt_printf("sizeof %s\n", decl_to_str(e->val.sizeof_this));
 	}
 
 	if(!e->expr_is_typeof)
@@ -98,7 +104,7 @@ void mutate_expr_sizeof(expr *e)
 expr *expr_new_sizeof_decl(decl *d, int is_typeof)
 {
 	expr *e = expr_new_wrapper(sizeof);
-	e->decl = decl_copy(d);
+	e->val.sizeof_this = d;
 	e->expr_is_typeof = is_typeof;
 	return e;
 }

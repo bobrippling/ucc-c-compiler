@@ -173,6 +173,7 @@ void fold_ref_desc(type_ref *r, symtable *stab, decl *root)
 		case type_ref_type:
 		case type_ref_block:
 		case type_ref_ptr:
+		case type_ref_cast:
 			break;
 	}
 

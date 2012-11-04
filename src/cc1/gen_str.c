@@ -102,6 +102,10 @@ void print_type_ref_eng(type_ref *ref)
 	print_type_ref_eng(ref->ref);
 
 	switch(ref->type){
+		case type_ref_cast:
+			fprintf(cc1_out, "%s ", type_qual_to_str(ref->bits.qual));
+			break;
+
 		case type_ref_ptr:
 			fprintf(cc1_out, "%spointer to ", type_qual_to_str(ref->bits.qual));
 			break;
@@ -202,8 +206,9 @@ static void print_tdef(type_ref *t)
 void print_type_ref(type_ref *ref, decl *d)
 {
 	switch(ref->type){
+		case type_ref_cast:
 		case type_ref_ptr:
-			fprintf(cc1_out, "*%s", type_qual_to_str(ref->bits.qual));
+			fprintf(cc1_out, "%s%s", ref->type == type_ref_cast ? "" : "*", type_qual_to_str(ref->bits.qual));
 			break;
 
 		case type_ref_block:
@@ -250,6 +255,7 @@ void print_type_ref(type_ref *ref, decl *d)
 		}
 
 		case type_ref_ptr:
+		case type_ref_cast:
 		case type_ref_block:
 			break;
 		case type_ref_tdef:

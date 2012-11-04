@@ -48,7 +48,8 @@ struct type_ref
 		type_ref_ptr,   /* pointer to next ref */
 		type_ref_block, /* block pointer to next ref (func) */
 		type_ref_func,  /* function */
-		type_ref_array  /* array of next ref, similar to pointer */
+		type_ref_array, /* array of next ref, similar to pointer */
+		type_ref_cast   /* used for adding qualifiers */
 	} type;
 
 	union
@@ -57,12 +58,12 @@ struct type_ref
 		type *type;
 
 		/* ref_tdef */
-		expr *type_of;
+		expr *type_of; /* typedef if NULL else typeof */
 
-		/* ref_ptr */
+		/* ref_ptr, ref_cast */
 		enum type_qualifier qual;
 
-		struct funcargs /* ref_{func,block} */
+		struct funcargs /* ref_func */
 		{
 			where where;
 
@@ -71,6 +72,13 @@ struct type_ref
 			decl **arglist;
 			int variadic;
 		} *func;
+
+		/* ref_block */
+		struct
+		{
+			struct funcargs *func;
+			enum type_qualifier qual;
+		} block;
 
 		/* ref_array */
 		expr *array_size;

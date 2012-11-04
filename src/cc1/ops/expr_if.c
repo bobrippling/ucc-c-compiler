@@ -42,7 +42,7 @@ void fold_expr_if(expr *e, symtable *stab)
 {
 	enum constyness is_const;
 	intval dummy;
-	decl *tt_l, *tt_r;
+	type_ref *tt_l, *tt_r;
 
 	FOLD_EXPR(e->expr, stab);
 	const_fold(e->expr, &dummy, &is_const);
@@ -88,7 +88,8 @@ void fold_expr_if(expr *e, symtable *stab)
 		e->tree_type = decl_new_void();
 
 	}else if(type_ref_equal(tt_l, tt_r, DECL_CMP_EXACT_MATCH)){
-		e->tree_type = tt_l;
+		e->tree_type = type_ref_new_cast(tt_l,
+				type_ref_qual(tt_l) | type_ref_qual(tt_r));
 
 	}else{
 		/* brace yourself. */
@@ -98,8 +99,8 @@ void fold_expr_if(expr *e, symtable *stab)
 		int l_ptr_null = expr_is_null_ptr(e->lhs ? e->lhs : e->expr);
 		int r_ptr_null = expr_is_null_ptr(e->rhs);
 
-		int l_complete = !l_ptr_null && (!l_ptr_st_un || !sue_incomplete(tt_l->type->sue));
-		int r_complete = !r_ptr_null && (!r_ptr_st_un || !sue_incomplete(tt_r->type->sue));
+		int l_complete = !l_ptr_null && (!l_ptr_st_un || !sue_incomplete(tt_l->bits.type->sue));
+		int r_complete = !r_ptr_null && (!r_ptr_st_un || !sue_incomplete(tt_r->bits.type->sue));
 
 		if((l_complete && r_ptr_null) || (r_complete && l_ptr_null)){
 			e->tree_type = decl_copy(l_ptr_null ? tt_r : tt_l);
@@ -117,9 +118,15 @@ void fold_expr_if(expr *e, symtable *stab)
 						decl_to_str_r(bufa, tt_l),
 						decl_to_str_r(bufb, tt_r));
 
-				e->tree_type = decl_ptr_depth_inc(decl_new_void());
+				/* void * */
+				e->tree_type = type_ref_new_ptr(type_ref_new_type(type_new_primitive(type_void)), qual_none);
 
-				e->tree_type->type->qual = tt_l->type->qual | tt_r->type->qual;
+				{
+					enum type_qualifier q = type_ref_qual(tt_l) | type_ref_qual(tt_r);
+
+					if(q)
+						e->tree_type = type_ref_new_cast(e->tree_type, q);
+				}
 
 			}else{
 				char buf[DECL_STATIC_BUFSIZ];

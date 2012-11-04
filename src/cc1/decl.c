@@ -93,15 +93,19 @@ void type_ref_free(type_ref *r)
 			type_free(r->bits.type);
 			break;
 
-		case type_ref_block:
 		case type_ref_func:
 			funcargs_free(r->bits.func, 1);
+			break;
+
+		case type_ref_block:
+			funcargs_free(r->bits.block.func, 1);
 			break;
 
 		case type_ref_array:
 			expr_free(r->bits.array_size);
 			break;
 
+		case type_ref_cast:
 		case type_ref_ptr:
 		case type_ref_tdef:
 			break;
@@ -187,6 +191,7 @@ const char *type_ref_to_str(enum type_ref_type t)
 		CASE_STR_PREFIX(type_ref, block);
 		CASE_STR_PREFIX(type_ref, func);
 		CASE_STR_PREFIX(type_ref, array);
+		CASE_STR_PREFIX(type_ref, cast);
 	}
 	return NULL;
 }
@@ -236,6 +241,7 @@ int type_ref_size(type_ref *r)
 			return type_size(r->bits.type);
 
 		case type_ref_tdef:
+		case type_ref_cast:
 			return type_ref_size(r->ref);
 
 		case type_ref_ptr:
@@ -346,8 +352,13 @@ int type_ref_equal(type_ref *a, type_ref *b, enum decl_cmp mode)
 			goto ref_eq;
 		}
 
-		case type_ref_ptr:
 		case type_ref_block:
+			if(a->bits.block.qual != b->bits.block.qual)
+				return 0;
+			goto ref_eq;
+
+		case type_ref_cast:
+		case type_ref_ptr:
 			if(a->bits.qual != b->bits.qual)
 				return 0;
 			/* fall */
@@ -520,15 +531,24 @@ static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
 	if(need_paren)
 		BUF_ADD("(");
 
-	switch(r->type){
-		case type_ref_ptr:
-		case type_ref_block:
-			BUF_ADD("%c%s",
-					r->type == type_ref_ptr ? '*' : '^',
-					type_qual_to_str(r->bits.qual));
-			break;
-		default:
-			break;
+	{
+		enum type_qualifier q = 0;
+		switch(r->type){
+			case type_ref_ptr:
+				BUF_ADD("*");
+			case type_ref_cast:
+				q = r->bits.qual;
+				break;
+
+			case type_ref_block:
+				BUF_ADD("^");
+				q = r->bits.block.qual;
+				break;
+
+			default:break;
+		}
+		if(q)
+			BUF_ADD("%s", type_qual_to_str(q));
 	}
 
 	if(r->ref)
@@ -542,6 +562,7 @@ static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
 	switch(r->type){
 		case type_ref_tdef:
 			/* TODO: "aka: %s" */
+		case type_ref_cast:
 		case type_ref_type:
 		case type_ref_block:
 		case type_ref_ptr:

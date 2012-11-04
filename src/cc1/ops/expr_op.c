@@ -131,8 +131,6 @@ void expr_promote_int(expr **pe, enum type_primitive to, symtable *stab)
 		return;
 	}
 
-	UCC_ASSERT(!e->tree_type->desc, "invalid type to promote");
-
 	/* if(type_primitive_size(e->tree_type->type->primitive) >= type_primitive_size(to))
 	 *   return;
 	 *
@@ -234,25 +232,29 @@ decl *op_required_promotion(
 			/* fine with any parameter sizes - don't need to match. resolves to lhs */
 			dlarger = dlhs;
 
-		}else if(dlhs->type->primitive != drhs->type->primitive){
-			const int l_larger = decl_size(dlhs) > decl_size(drhs);
-			char bufa[DECL_STATIC_BUFSIZ], bufb[DECL_STATIC_BUFSIZ];
-
-			/* TODO: needed? */
-			fold_type_ref_equal(dlhs, drhs,
-					w, WARN_COMPARE_MISMATCH,
-					"mismatching types in %s (%s and %s)",
-					op_to_str(op),
-					decl_to_str_r(bufa, dlhs),
-					decl_to_str_r(bufb, drhs));
-
-			*(l_larger ? prhs : plhs) = (l_larger ? dlhs : drhs);
-
-			dlarger = l_larger ? dlhs : drhs;
-
 		}else{
-			/* default to either */
-			dlarger = dlhs;
+			const int l_sz = decl_size(dlhs), r_sz = decl_size(drhs);
+
+			if(l_sz != r_sz){
+				const int l_larger = l_sz > r_sz;
+				char bufa[DECL_STATIC_BUFSIZ], bufb[DECL_STATIC_BUFSIZ];
+
+				/* TODO: needed? */
+				fold_type_ref_equal(dlhs, drhs,
+						w, WARN_COMPARE_MISMATCH,
+						"mismatching types in %s (%s and %s)",
+						op_to_str(op),
+						decl_to_str_r(bufa, dlhs),
+						decl_to_str_r(bufb, drhs));
+
+				*(l_larger ? prhs : plhs) = (l_larger ? dlhs : drhs);
+
+				dlarger = l_larger ? dlhs : drhs;
+
+			}else{
+				/* default to either */
+				dlarger = dlhs;
+			}
 		}
 
 		/* if we have a _comparison_ (e.g. between enums), convert to int */
