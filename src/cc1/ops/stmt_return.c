@@ -11,7 +11,7 @@ void fold_stmt_return(stmt *s)
 	const int void_func = type_ref_is_void(curdecl_ref_func_called);
 
 	if(s->expr){
-		char buf[DECL_STATIC_BUFSIZ];
+		char buf[TYPE_REF_STATIC_BUFSIZ];
 
 		FOLD_EXPR(s->expr, s->symtab);
 		fold_need_expr(s->expr, "return", 0);

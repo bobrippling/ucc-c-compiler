@@ -189,14 +189,8 @@ void decl_attr_free(decl_attr *a);
 #define decl_is_definition(d) ((d)->init || (d)->func_code)
 
 type_ref *decl_is(decl *d, enum type_ref_type t);
-int decl_is_void_ptr(decl *d);
-int decl_is_ptr(decl *d);
-int decl_is_integral(decl *d);
 int decl_is_func(decl *d);
-int decl_is_block(decl *d);
-int decl_is_struct(decl *d);
-int decl_is_type(decl *d, enum type_primitive t);
-int decl_is_signed(decl *d);
+int decl_is_ptr(decl *d);
 int decl_is_array(decl *d);
 int decl_is_incomplete_array(decl *d);
 int decl_is_variadic(decl *d);

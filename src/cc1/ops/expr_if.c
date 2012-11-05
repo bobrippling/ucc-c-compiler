@@ -110,7 +110,7 @@ void fold_expr_if(expr *e, symtable *stab)
 			int r_ptr = r_ptr_null || type_ref_is(tt_r, type_ref_ptr);
 
 			if(l_ptr || r_ptr){
-				char bufa[DECL_STATIC_BUFSIZ], bufb[DECL_STATIC_BUFSIZ];
+				char bufa[TYPE_REF_STATIC_BUFSIZ], bufb[TYPE_REF_STATIC_BUFSIZ];
 
 				fold_type_ref_equal(tt_l, tt_r, &e->where,
 						WARN_COMPARE_MISMATCH, /* FIXME: enum "mismatch" */
@@ -129,7 +129,7 @@ void fold_expr_if(expr *e, symtable *stab)
 				}
 
 			}else{
-				char buf[DECL_STATIC_BUFSIZ];
+				char buf[TYPE_REF_STATIC_BUFSIZ];
 
 				WARN_AT(&e->where, "conditional type mismatch (%s vs %s)",
 						type_ref_to_str(tt_l), type_ref_to_str_r(buf, tt_r));

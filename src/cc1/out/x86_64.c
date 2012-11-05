@@ -749,7 +749,7 @@ void impl_cast(type_ref *from, type_ref *to)
 
 			out_asm("mov%cx %%%s, %%%s", "zs"[is_signed], buf_from, buf_to);
 		}else{
-			char buf[DECL_STATIC_BUFSIZ];
+			char buf[TYPE_REF_STATIC_BUFSIZ];
 
 			out_comment("truncate cast from %s to %s, size %d -> %d",
 					from ? type_ref_to_str_r(buf, from) : "",

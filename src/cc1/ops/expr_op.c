@@ -237,7 +237,7 @@ type_ref *op_required_promotion(
 
 			if(l_sz != r_sz){
 				const int l_larger = l_sz > r_sz;
-				char bufa[DECL_STATIC_BUFSIZ], bufb[DECL_STATIC_BUFSIZ];
+				char bufa[TYPE_REF_STATIC_BUFSIZ], bufb[TYPE_REF_STATIC_BUFSIZ];
 
 				/* TODO: needed? */
 				fold_type_ref_equal(tlhs, trhs,
