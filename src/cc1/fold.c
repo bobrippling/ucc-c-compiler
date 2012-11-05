@@ -116,22 +116,15 @@ expr *fold_expr(expr *e, symtable *stab)
 
 	/* perform array decay and pointer decay */
 	{
-		type_ref *r = e->tree_type->ref;
+		type_ref *r = e->tree_type;
 		expr *imp_cast = NULL;
 
 		EOF_WHERE(&e->where,
-		switch(r->type){
-				default:
-					break;
+				type_ref *decayed = type_ref_decay(r);
 
-				case type_ref_array:
-					imp_cast = expr_new_cast(type_ref_decay_first_array(e->tree_type), 1);
-					break;
-
-				case type_ref_func:
-					imp_cast = expr_new_cast(type_ref_ptr_depth_inc(e->tree_type), 1);
-					break;
-		});
+				if(decayed != r)
+					imp_cast = expr_new_cast(decayed, 1);
+			);
 
 		if(imp_cast){
 			imp_cast->expr = e;
@@ -234,7 +227,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab, int *poffset, int
 
 			fold_decl(d, stab);
 
-			if((this_sue = decl_is_s_or_u(d)) && !decl_is_ptr(d)){
+			if((this_sue = type_ref_is_s_or_u(d->ref)) && !type_ref_is(d->ref, type_ref_ptr)){
 				if(this_sue == sue)
 					DIE_AT(&d->where, "nested %s", sue_str(sue));
 
@@ -265,7 +258,7 @@ void fold_complete_array(decl *dfor, decl_init *init_from)
 	const int n_inits = init_from ? decl_init_len(init_from) : 0;
 
 	/* TODO: struct check also */
-	if(init_from && decl_is_array(dfor) && init_from->type != decl_init_brace)
+	if(init_from && DECL_IS_ARRAY(dfor) && init_from->type != decl_init_brace)
 		DIE_AT(&init_from->where, "array must be initialised with an initialiser list");
 
 	if(decl_is_incomplete_array(dfor)){
@@ -322,7 +315,7 @@ void fold_gen_init_assignment2(expr *base, decl *dfor, decl_init *init_from, stm
 
 	fold_complete_array(dfor, init_from);
 
-	if(decl_is_array(dfor)){
+	if(DECL_IS_ARRAY(dfor)){
 #ifdef DECL_ARRAY_INIT_TODO
 		const int pull_from_this_init =
 			init_from
@@ -358,7 +351,7 @@ void fold_gen_init_assignment2(expr *base, decl *dfor, decl_init *init_from, stm
 					decl_to_str_r((char[DECL_STATIC_BUFSIZ]){}, darray_deref));*/
 
 			if(pull_from_this_init){
-				const int inner_count = decl_is_array(darray_deref)
+				const int inner_count = DECL_IS_ARRAY(darray_deref)
 					? decl_inner_array_count(darray_deref)
 					: 1;
 				int i_sub;
@@ -447,7 +440,7 @@ void fold_decl_init(decl *for_decl, decl_init *di, symtable *stab)
 	fold_gen_init_assignment(for_decl, codes);
 
 	/* fold + type check for statics + globals */
-	if(decl_is_array(for_decl)){
+	if(DECL_IS_ARRAY(for_decl)){
 		/* don't allow scalar inits */
 		switch(di->type){
 			case decl_init_struct:
@@ -616,12 +609,10 @@ void fold_decl(decl *d, symtable *stab)
 	 * now we've folded, check for restrict
 	 * since typedef int *intptr; intptr restrict a; is valid
 	 */
-	type_ref *r;
-
 	fold_type_ref(d->ref, NULL, stab);
 
 	/* if we have a type and it's incomplete, error */
-	if((r = decl_is(d, type_ref_type)) && !type_ref_is_complete(r))
+	if(!type_ref_is_complete(d->ref))
 		DIE_AT(&d->where, "use of incomplete type - %s (%s)", d->spel, decl_to_str(d));
 
 #ifdef FIELD_WIDTH_TODO
@@ -656,7 +647,7 @@ void fold_decl(decl *d, symtable *stab)
 	 *   register int   f();
 	 *   register int  *f();
 	 */
-	if(decl_is_func(d)){
+	if(DECL_IS_FUNC(d)){
 		switch(d->store){
 			case store_register:
 			case store_auto:
@@ -676,7 +667,7 @@ void fold_decl(decl *d, symtable *stab)
 			}
 		}
 	}else if(d->is_inline){
-		WARN_AT(&r->where, "inline on non-function");
+		WARN_AT(&d->where, "inline on non-function");
 	}
 
 	if(d->init){
@@ -726,7 +717,7 @@ void fold_decl_global(decl *d, symtable *stab)
 		case store_register:
 			DIE_AT(&d->where, "invalid storage class %s on global scoped %s",
 					decl_store_to_str(d->store),
-					decl_is_func(d) ? "function" : "variable");
+					DECL_IS_FUNC(d) ? "function" : "variable");
 	}
 
 	fold_decl(d, stab);
@@ -1033,7 +1024,7 @@ static void fold_link_decl_defs(dynmap *spel_decls)
 
 		count_total = dynarray_count((void **)decls_for_this);
 
-		if(decl_is_func(definition)){
+		if(DECL_IS_FUNC(definition)){
 			/*
 			 * inline semantics
 			 *
@@ -1155,7 +1146,7 @@ void fold(symtable *globs)
 
 		fold_decl_global(D(i), globs);
 
-		if(decl_is_func(D(i))){
+		if(DECL_IS_FUNC(D(i))){
 			if(decl_is_definition(D(i))){
 				/* gather round, attributes */
 				decl **const protos = dynmap_get(spel_decls, D(i)->spel);

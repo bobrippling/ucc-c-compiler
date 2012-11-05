@@ -166,7 +166,7 @@ void gen_asm(symtable *globs)
 				break;
 
 			case store_extern:
-				if(!decl_is_func(d) || !d->func_code)
+				if(!DECL_IS_FUNC(d) || !d->func_code)
 					break;
 				/* else extern func with definition */
 

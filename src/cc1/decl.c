@@ -20,30 +20,31 @@
 		if(dp->type == typ)
 
 
-type_ref *type_ref_new(enum type_ref_type t)
+static type_ref *type_ref_new(enum type_ref_type t, type_ref *of)
 {
 	type_ref *r = umalloc(sizeof *r);
 	r->type = t;
+	r->ref = of;
 	return r;
 }
 
 type_ref *type_ref_new_type(type *t)
 {
-	type_ref *r = type_ref_new(type_ref_type);
+	type_ref *r = type_ref_new(type_ref_type, NULL);
 	r->bits.type = t;
 	return r;
 }
 
 type_ref *type_ref_new_tdef(expr *e)
 {
-	type_ref *r = type_ref_new(type_ref_tdef);
+	type_ref *r = type_ref_new(type_ref_tdef, NULL);
 	r->bits.type_of = e;
 	return r;
 }
 
 type_ref *type_ref_new_ptr(type_ref *to, enum type_qualifier q)
 {
-	type_ref *r = type_ref_new(type_ref_ptr);
+	type_ref *r = type_ref_new(type_ref_ptr, to);
 	r->ref = to;
 	r->bits.qual = q;
 	return r;
@@ -58,12 +59,18 @@ type_ref *type_ref_new_block(type_ref *to, enum type_qualifier q)
 
 type_ref *type_ref_new_array(type_ref *to, expr *sz)
 {
-	type_ref *r = type_ref_new(type_ref_array);
+	type_ref *r = type_ref_new(type_ref_array, to);
 	r->ref = to;
 	r->bits.array_size = sz;
 	return r;
 }
 
+type_ref *type_ref_new_func(type_ref *of, funcargs *args)
+{
+	type_ref *r = type_ref_new(type_ref_func, of);
+	r->bits.func = args;
+	return r;
+}
 
 decl *decl_new()
 {
@@ -425,6 +432,20 @@ int decl_equal(decl *a, decl *b, enum decl_cmp mode)
 	return type_ref_equal(a->ref, b->ref, mode);
 }
 
+int decl_is_incomplete_array(decl *d)
+{
+	type_ref *r = d->ref;
+
+	if((r = type_ref_is(r, type_ref_array))){
+		intval iv;
+
+		const_fold_need_val(r->bits.array_size, &iv);
+
+		return iv.val == 0;
+	}
+	return 0;
+}
+
 int decl_ptr_depth(decl *d)
 {
 	int depth = 0;
@@ -478,68 +499,15 @@ fin:
 	return d;
 }
 
-type_ref *decl_orphan(decl *d)
-{
-	type_ref *r = d->ref;
-	d->ref = r->ref;
-	return r;
-}
-
 decl *decl_func_called(decl *d, funcargs **pfuncargs)
 {
-	type_ref *orphan = decl_orphan(d);
-
-	switch(orphan->type){
-		case type_ref_ptr:
-		case type_ref_block:
-		{
-			type_ref *func = decl_orphan(d);
-			funcargs *args;
-
-			UCC_ASSERT(func->type == type_ref_func, "func call not a func");
-
-			args = func->bits.func;
-			func->bits.func = NULL;
-
-			type_ref_free(func);
-			type_ref_free(orphan);
-
-			if(pfuncargs)
-				*pfuncargs = args;
-
-			return d;
-		}
-
-		case type_ref_func: /* can't call this - decays to type(*)() */
-		default:
-			ICE("can't func-deref non func-ptr/block ref");
-	}
-
-	ucc_unreach();
+	d->ref = type_ref_func_call(d->ref, pfuncargs);
+	return d;
 }
 
 void decl_conv_array_func_to_ptr(decl *d)
 {
-	type_ref *r = d->ref;
-
-	/* f(int x[][5]) decays to f(int (*x)[5]), not f(int **x) */
-
-	switch(r->type){
-		case type_ref_array:
-		{
-			type_ref *orphan = decl_orphan(d);
-			/* orphan == r */
-			type_ref_free(orphan);
-
-			/* fall */
-		}
-
-		case type_ref_func:
-			d->ref = type_ref_new_ptr(r, qual_none);
-			break;
-
-		default:break;
-	}
+	d->ref = type_ref_decay(d->ref);
 }
 
 static void type_ref_add_str(const type_ref *r, char *spel, char **bufp, int sz)

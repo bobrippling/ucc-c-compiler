@@ -309,7 +309,7 @@ void print_decl(decl *d, enum pdeclargs mode)
 			fprintf(cc1_out, " (no sym)");
 	}
 
-	if(mode & PDECL_SIZE && !decl_is_func(d)){
+	if(mode & PDECL_SIZE && !DECL_IS_FUNC(d)){
 		if(decl_is_incomplete_array(d)){
 			fprintf(cc1_out, " incomplete array in decl");
 		}else{

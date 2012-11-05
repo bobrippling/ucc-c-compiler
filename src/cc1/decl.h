@@ -188,14 +188,13 @@ void decl_attr_free(decl_attr *a);
 /* decl_is_* */
 #define decl_is_definition(d) ((d)->init || (d)->func_code)
 
-type_ref *decl_is(decl *d, enum type_ref_type t);
-int decl_is_func(decl *d);
-int decl_is_ptr(decl *d);
-int decl_is_array(decl *d);
+#define DECL_IS_FUNC(d)   type_ref_is((d)->ref, type_ref_func)
+#define DECL_IS_ARRAY(d)  type_ref_is((d)->ref, type_ref_array)
+#define DECL_IS_S_OR_U(d) type_ref_is_s_or_u((d)->ref)
+#define DECL_IS_FPTR(d)  (type_ref_is((d)->ref, type_ref_ptr) && type_ref_is((d)->ref->ref, type_ref_func))
+
 int decl_is_incomplete_array(decl *d);
 int decl_is_variadic(decl *d);
-int decl_is_fptr(decl *d);
-struct_union_enum_st *decl_is_s_or_u(decl *d);
 
 /* type_ref_is_* */
 int type_ref_is_complete(type_ref *r);
@@ -214,6 +213,7 @@ funcargs *type_ref_funcargs(const type_ref *);
 int type_ref_align(type_ref *);
 type_ref *type_ref_is(type_ref *, enum type_ref_type, ...);
 type_ref *type_ref_func_call(type_ref *, funcargs **pfuncargs);
+type_ref *type_ref_decay(type_ref *);
 struct_union_enum_st *type_ref_is_s_or_u(type_ref *);
 
 #define decl_is_void(d) decl_is_type(d, type_void)

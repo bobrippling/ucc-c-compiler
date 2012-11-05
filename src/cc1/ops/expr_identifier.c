@@ -22,7 +22,7 @@ void fold_const_expr_identifier(expr *e, intval *piv, enum constyness *pconst_ty
 
 	/* may not have e->sym if we're the struct-member-identifier */
 
-	*pconst_type = e->sym && e->sym->decl && decl_is_array(e->sym->decl) ? CONST_WITHOUT_VAL : CONST_NO;
+	*pconst_type = e->sym && e->sym->decl && DECL_IS_ARRAY(e->sym->decl) ? CONST_WITHOUT_VAL : CONST_NO;
 }
 
 void fold_expr_identifier(expr *e, symtable *stab)
@@ -82,9 +82,9 @@ array object and is not an lvalue.
 
 		if(e->sym->type == sym_local
 		&& !decl_store_static_or_extern(e->sym->decl->store)
-		&& !decl_is_array(e->sym->decl)
-		&& !decl_is_s_or_u(e->sym->decl)
-		&& !decl_is_func(e->sym->decl)
+		&& !DECL_IS_ARRAY(e->sym->decl)
+		&& !DECL_IS_S_OR_U(e->sym->decl)
+		&& !DECL_IS_FUNC(e->sym->decl)
 		&& e->sym->nwrites == 0
 		&& !e->sym->decl->init)
 		{
@@ -107,7 +107,7 @@ void gen_expr_identifier(expr *e, symtable *stab)
 {
 	(void)stab;
 
-	if(decl_is_func(e->sym->decl))
+	if(DECL_IS_FUNC(e->sym->decl))
 		out_push_sym(e->sym);
 	else
 		out_push_sym_val(e->sym);

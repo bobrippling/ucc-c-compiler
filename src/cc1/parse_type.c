@@ -579,7 +579,7 @@ decl *parse_decl(type_ref *subtype, enum decl_mode mode)
 
 #ifdef PARSE_DECL_VERBOSE
 	fprintf(stderr, "parsed decl %s, is_func %d, at %s init=%p\n",
-			d->spel, decl_is_func(d),
+			d->spel, DECL_IS_FUNC(d),
 			token_to_str(curtok), d->init);
 
 	for(type_ref *dp = d->desc; dp; dp = dp->child)
@@ -753,7 +753,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 					goto next;
 				}
 				DIE_AT(&d->where, "identifier expected after decl (got %s)", token_to_str(curtok));
-			}else if(decl_is_func(d) && curtok == token_open_block){ /* this is why we can't have __attribute__ on function defs */
+			}else if(DECL_IS_FUNC(d) && curtok == token_open_block){ /* this is why we can't have __attribute__ on function defs */
 				/* optionally check for old func decl */
 				decl **old_args = parse_decls_multi_type(0);
 
@@ -810,7 +810,7 @@ got_field_width:
 					d);
 
 			/* FIXME: check later for functions, not here - typedefs */
-			if(decl_is_func(d)){
+			if(DECL_IS_FUNC(d)){
 				if(d->func_code && (mode & DECL_MULTI_ACCEPT_FUNC_CODE) == 0)
 						DIE_AT(&d->where, "function code not wanted (%s)", d->spel);
 
@@ -819,7 +819,7 @@ got_field_width:
 			}
 
 			if(are_tdefs){
-				if(decl_is_func(d) && d->func_code)
+				if(DECL_IS_FUNC(d) && d->func_code)
 					DIE_AT(&d->where, "can't have a typedef function with code");
 				else if(d->init)
 					DIE_AT(&d->where, "can't init a typedef");

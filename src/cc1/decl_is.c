@@ -183,6 +183,71 @@ struct_union_enum_st *type_ref_is_s_or_u(type_ref *r)
 	return test->bits.type->sue;
 }
 
+type_ref *type_ref_func_call(type_ref *fp, funcargs **pfuncargs)
+{
+	switch(fp->type){
+		case type_ref_ptr:
+		case type_ref_block:
+		{
+			type_ref *func = fp->ref;
+			type_ref *const next = func->ref;
+			funcargs *args;
+
+			UCC_ASSERT(func->type == type_ref_func, "func call not a func");
+
+			args = func->bits.func;
+			/* XXX: memleak */
+			/*func->bits.func = NULL;*/
+			/*type_ref_free(func);*/
+			/*type_ref_free(fp);*/
+
+			if(pfuncargs)
+				*pfuncargs = args;
+
+			return next;
+		}
+
+		case type_ref_func: /* can't call this - decays to type(*)() */
+		default:
+			ICE("can't func-deref non func-ptr/block ref");
+	}
+
+	ucc_unreach();
+}
+
+type_ref *type_ref_decay(type_ref *r)
+{
+	/* f(int x[][5]) decays to f(int (*x)[5]), not f(int **x) */
+
+	switch(r->type){
+		default:break;
+
+		case type_ref_array:
+			r = r->ref;
+			/* XXX: memleak */
+			/* fall */
+
+		case type_ref_func:
+			return type_ref_new_ptr(r, qual_none);
+	}
+
+	return r;
+}
+
+#define TYPE_REF_TYPE_IS(exp) \
+	(r = type_ref_is(r, type_ref_type)) && r->bits.type->exp
+
+
+int type_ref_is_void(type_ref *r)
+{
+	return TYPE_REF_TYPE_IS(primitive == type_void);
+}
+
+int type_ref_is_signed(type_ref *r)
+{
+	return TYPE_REF_TYPE_IS(is_signed);
+}
+
 #if 0
 int decl_is_struct_or_union_possible_ptr(decl *d)
 {

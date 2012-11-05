@@ -15,9 +15,9 @@
 #define RW_TEST(var)                              \
 						s->var == 0                           \
 						&& s->decl->spel                      \
-						&& !decl_is_array(s->decl)            \
-						&& !decl_is_func(s->decl)             \
-						&& !decl_is_s_or_u(s->decl)
+						&& !DECL_IS_ARRAY(s->decl)            \
+						&& !DECL_IS_FUNC(s->decl)             \
+						&& !DECL_IS_S_OR_U(s->decl)
 
 #define RW_SHOW(w, str)                           \
 					cc1_warn_at(&s->decl->where, 0, 1,      \

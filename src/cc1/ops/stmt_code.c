@@ -25,7 +25,7 @@ void fold_stmt_code(stmt *s)
 
 		if(d->func_code)
 			DIE_AT(&d->func_code->where, "can't nest functions");
-		else if(decl_is_func(d) && d->store == store_static)
+		else if(DECL_IS_FUNC(d) && d->store == store_static)
 			DIE_AT(&d->where, "block-scoped function cannot have static storage");
 
 		fold_decl(d, s->symtab);
