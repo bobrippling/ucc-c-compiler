@@ -314,7 +314,7 @@ enum funcargs_cmp funcargs_equal(
 					cc1_warn_at(&args_from->where, 0, 1, WARN_ARG_MISMATCH,
 							"mismatching argument %d to %s (%s <-- %s)",
 							i, fspel,
-							decl_to_str_r(buf,   args_to->arglist[i]),
+							decl_to_str_r(buf, args_to->arglist[i]),
 							decl_to_str(       args_from->arglist[i]));
 				}
 

@@ -22,7 +22,7 @@ int expr_is_lvalue(expr *e)
 	 */
 
 	/* _lvalue_ addressing makes an exception for this */
-	if(decl_is_func(e->tree_type))
+	if(type_ref_is(e->tree_type, type_ref_func))
 		return 0;
 
 	if(expr_kind(e, deref))
@@ -34,7 +34,7 @@ int expr_is_lvalue(expr *e)
 	if(expr_kind(e, compound_lit))
 		return 1;
 
-	if(decl_is_array(e->tree_type))
+	if(type_ref_is(e->tree_type, type_ref_array))
 		return 0;
 
 	return 0;
@@ -50,7 +50,7 @@ void fold_expr_assign(expr *e, symtable *stab)
 	if(expr_kind(e->lhs, identifier))
 		e->lhs->sym->nreads--; /* cancel the read that fold_ident thinks it got */
 
-	if(decl_is_void(e->rhs->tree_type))
+	if(type_ref_is(e->rhs->tree_type, type_ref_type, type_void))
 		DIE_AT(&e->where, "assignment from void expression");
 
 	if(!expr_is_lvalue(e->lhs)){
@@ -61,11 +61,11 @@ void fold_expr_assign(expr *e, symtable *stab)
 			);
 	}
 
-	if(!e->assign_is_init && decl_is_const(e->lhs->tree_type))
+	if(!e->assign_is_init && type_ref_is_const(e->lhs->tree_type))
 		DIE_AT(&e->where, "can't modify const expression %s", e->lhs->f_str());
 
 
-	e->tree_type = decl_copy(e->lhs->tree_type);
+	e->tree_type = e->lhs->tree_type;
 
 	/* type check */
 	{
@@ -75,8 +75,8 @@ void fold_expr_assign(expr *e, symtable *stab)
 				&e->where, WARN_ASSIGN_MISMATCH,
 				"%s type mismatch: %s <-- %s",
 				e->assign_is_init ? "initialisation" : "assignment",
-				decl_to_str_r(bufto,   e->lhs->tree_type),
-				decl_to_str_r(buffrom, e->rhs->tree_type));
+				type_ref_to_str_r(bufto,   e->lhs->tree_type),
+				type_ref_to_str_r(buffrom, e->rhs->tree_type));
 	}
 
 

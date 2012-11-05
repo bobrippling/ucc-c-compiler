@@ -31,13 +31,13 @@ void fold_expr_struct(expr *e, symtable *stab)
 
 	/* we access a struct, of the right ptr depth */
 	if(ptr_expect
-			?(sue = type_ref_is_s_or_u_ptr(e->lhs->tree_type))
-			:(sue = type_ref_is_s_or_u(    e->lhs->tree_type)))
+			? (sue = type_ref_is_s_or_u(e->lhs->tree_type->ref))
+			: (sue = type_ref_is_s_or_u(e->lhs->tree_type)))
 	{
 		const int ident = expr_kind(e->lhs, identifier);
 
 		DIE_AT(&e->lhs->where, "%s%s%s is not a %sstruct or union (member %s)",
-				decl_to_str(e->lhs->tree_type),
+				type_ref_to_str(e->lhs->tree_type),
 				ident ? " " : "",
 				ident ? e->lhs->spel : "",
 				ptr_expect ? "pointer to " : "",
@@ -69,7 +69,7 @@ void fold_expr_struct(expr *e, symtable *stab)
 	if(!ptr_expect){
 		expr *cast, *addr;
 
-		cast = expr_new_cast(decl_ptr_depth_inc(decl_new_void()), 1);
+		cast = expr_new_cast(type_ref_ptr_depth_inc(type_ref_new_VOID()), 1);
 		cast->expr = addr = expr_new_addr();
 
 		addr->lhs = e->lhs;
@@ -82,7 +82,7 @@ void fold_expr_struct(expr *e, symtable *stab)
 
 	/* pull qualifiers from the struct to the member */
 	{
-		enum type_qualifier addon = type_ref_qualifiers(e->lhs->tree_type);
+		enum type_qualifier addon = type_ref_qual(e->lhs->tree_type);
 
 		e->tree_type = type_ref_new_cast(e->rhs->tree_type, addon);
 	}
@@ -94,11 +94,11 @@ void gen_expr_struct_lea(expr *e, symtable *stab)
 
 	gen_expr(e->lhs, stab);
 
-	out_change_decl(NULL);
+	out_change_type(NULL);
 	out_push_i(NULL, struct_offset(e->rhs));
 	out_op(op_plus);
 
-	out_change_decl(decl_ptr_depth_inc(decl_copy(e->rhs->tree_type)));
+	out_change_type(type_ref_ptr_depth_inc(e->rhs->tree_type));
 }
 
 void gen_expr_struct(expr *e, symtable *stab)

@@ -134,9 +134,9 @@ expr *parse_block()
 	rt = parse_type_ref();
 
 	if(rt){
-		if(type_ref_is_func(rt)){
+		if(type_ref_is(rt, type_ref_func)){
 			/* got ^int (args...) */
-			rt = type_ref_func_deref(rt, &args);
+			rt = type_ref_func_call(rt, &args);
 		}else{
 			/* ^int {...} */
 			goto def_args;

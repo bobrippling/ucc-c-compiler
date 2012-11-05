@@ -4,10 +4,27 @@ static type_ref *type_ref_skip_tdefs(type_ref *r)
 	return r;
 }
 
-static type_ref *type_ref_is(type_ref *r, enum type_ref_type t)
+type_ref *type_ref_is(type_ref *r, enum type_ref_type t, ...)
 {
 	r = type_ref_skip_tdefs(r);
-	return r->type == t ? r : NULL;
+
+	if(r->type != t)
+		return NULL;
+
+	if(r->type == type_ref_type){
+		/* extra checks for a type */
+		va_list l;
+		enum type_primitive p;
+
+		va_start(l, t);
+		p = va_arg(l, enum type_primitive);
+		va_end(l);
+
+		if(r->bits.type->primitive != p)
+			return NULL;
+	}
+
+	return r;
 }
 
 type_ref *decl_is(decl *d, enum type_ref_type t)
@@ -32,7 +49,7 @@ int decl_is_func(decl *d)
 
 enum type_primitive type_ref_type_primitive(decl *d)
 {
-	type_ref *r = type_ref_skip_tdefs(d->ref);
+	const type_ref *r = type_ref_skip_tdefs(d->ref);
 	return r->type == type_ref_type ? r->bits.type->primitive : type_unknown;
 }
 
@@ -86,7 +103,7 @@ int decl_is_integral(decl *d)
 	return 0;
 }
 
-int type_ref_is_complete(type_ref *r)
+int type_ref_is_complete(const type_ref *r)
 {
 	/* decl is "void" or incomplete-struct or array[] */
 	switch(r->type){
@@ -126,7 +143,7 @@ int type_ref_is_complete(type_ref *r)
 
 int decl_complete(decl *d)
 {
-	return type_ref_is_complete(d->ref);
+	return type_ref_is_complete((const type_ref *)d->ref);
 }
 
 #if 0

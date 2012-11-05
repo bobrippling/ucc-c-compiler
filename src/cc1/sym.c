@@ -98,7 +98,7 @@ sym *symtab_add(symtable *tab, decl *d, enum sym_type t, int with_sym, int prepe
 	if(d->spel && (new = symtab_search2(tab, d->spel, spel_cmp, descend))){
 
 		/* allow something like: int x; f(){extern int x;} _only_ if types are compatible */
-		if(descend && type_ref_equal(d, new->decl, DECL_CMP_EXACT_MATCH))
+		if(descend && decl_equal(d, new->decl, DECL_CMP_EXACT_MATCH))
 			goto fine;
 
 		if(new->decl)

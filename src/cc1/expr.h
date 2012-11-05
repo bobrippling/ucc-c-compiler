@@ -55,6 +55,7 @@ struct expr
 		decl_init *init;
 		type_ref *tref;
 		decl *decl;
+		type_ref **types;
 	} val;
 
 	struct generic_lbl

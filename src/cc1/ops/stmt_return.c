@@ -8,7 +8,7 @@ const char *str_stmt_return()
 
 void fold_stmt_return(stmt *s)
 {
-	const int void_func = decl_is_void(curdecl_ref_func_called);
+	const int void_func = type_ref_is_void(curdecl_ref_func_called);
 
 	if(s->expr){
 		char buf[DECL_STATIC_BUFSIZ];
@@ -20,8 +20,8 @@ void fold_stmt_return(stmt *s)
 				&s->where, WARN_RETURN_TYPE,
 				"mismatching return type for %s (%s <-- %s)",
 				curdecl_func->spel,
-				decl_to_str_r(buf, curdecl_ref_func_called),
-				decl_to_str(s->expr->tree_type));
+				type_ref_to_str_r(buf, curdecl_ref_func_called),
+				type_ref_to_str(s->expr->tree_type));
 
 		if(void_func){
 			cc1_warn_at(&s->where, 0, 1, WARN_RETURN_TYPE,

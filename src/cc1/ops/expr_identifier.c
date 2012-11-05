@@ -70,7 +70,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 			}
 		}
 	}else{
-		e->tree_type = e->sym->decl;
+		e->tree_type = e->sym->decl->ref;
 
 #if 0
 Except when it is the operand of the sizeof operator or the unary
@@ -81,9 +81,9 @@ array object and is not an lvalue.
 #endif
 
 		if(e->sym->type == sym_local
-		&& !type_store_static_or_extern(e->sym->decl->store)
-		&& !decl_has_array(e->sym->decl)
-		&& !decl_is_struct_or_union_possible_ptr(e->sym->decl)
+		&& !decl_store_static_or_extern(e->sym->decl->store)
+		&& !decl_is_array(e->sym->decl)
+		&& !decl_is_s_or_u(e->sym->decl)
 		&& !decl_is_func(e->sym->decl)
 		&& e->sym->nwrites == 0
 		&& !e->sym->decl->init)

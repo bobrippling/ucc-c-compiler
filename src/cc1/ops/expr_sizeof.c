@@ -15,7 +15,7 @@ const char *str_expr_sizeof()
 
 void fold_expr_sizeof(expr *e, symtable *stab)
 {
-	decl *chosen;
+	type_ref *chosen;
 
 	if(e->expr)
 		FOLD_EXPR(e->expr, stab);
@@ -39,17 +39,17 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 #endif
 
 	if(e->expr_is_typeof){
-		e->tree_type = decl_copy(chosen);
+		e->tree_type = chosen;
 	}else{
 		struct_union_enum_st *sue;
 
-		if(decl_is_incomplete_array(chosen))
-			DIE_AT(&e->where, "sizeof incomplete array");
+		if(!type_ref_is_complete(chosen))
+			DIE_AT(&e->where, "sizeof incomplete type %s", type_ref_to_str(chosen));
 
-		if((sue = decl_is_struct_or_union(chosen)) && sue_incomplete(sue))
-			DIE_AT(&e->where, "sizeof %s", decl_to_str(chosen));
+		if((sue = type_ref_is_s_or_u(chosen)) && sue_incomplete(sue))
+			DIE_AT(&e->where, "sizeof %s", type_ref_to_str(chosen));
 
-		SIZEOF_SIZE(e) = decl_size(SIZEOF_WHAT(e));
+		SIZEOF_SIZE(e) = type_ref_size(SIZEOF_WHAT(e));
 
 		{
 			type *t;
@@ -75,12 +75,12 @@ void static_expr_sizeof_store(expr *e)
 
 void gen_expr_sizeof(expr *e, symtable *stab)
 {
-	decl *d = SIZEOF_WHAT(e);
+	type_ref *r = SIZEOF_WHAT(e);
 	(void)stab;
 
 	out_push_i(e->tree_type, SIZEOF_SIZE(e));
 
-	out_comment("sizeof %s%s", e->expr ? "" : "type ", decl_to_str(d));
+	out_comment("sizeof %s%s", e->expr ? "" : "type ", type_ref_to_str(r));
 }
 
 void gen_expr_str_sizeof(expr *e, symtable *stab)
@@ -90,7 +90,7 @@ void gen_expr_str_sizeof(expr *e, symtable *stab)
 		idt_printf("sizeof expr:\n");
 		print_expr(e->expr);
 	}else{
-		idt_printf("sizeof %s\n", decl_to_str(e->val.sizeof_this));
+		idt_printf("sizeof %s\n", type_ref_to_str(e->val.sizeof_this));
 	}
 
 	if(!e->expr_is_typeof)
@@ -103,10 +103,10 @@ void mutate_expr_sizeof(expr *e)
 	e->f_static_addr = static_expr_sizeof_store;
 }
 
-expr *expr_new_sizeof_decl(decl *d, int is_typeof)
+expr *expr_new_sizeof_type(type_ref *t, int is_typeof)
 {
 	expr *e = expr_new_wrapper(sizeof);
-	e->val.sizeof_this = d;
+	e->val.sizeof_this = t;
 	e->expr_is_typeof = is_typeof;
 	return e;
 }

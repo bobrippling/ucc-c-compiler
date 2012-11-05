@@ -149,6 +149,7 @@ type_ref *type_ref_new_ptr(  type_ref *to, enum type_qualifier);
 type_ref *type_ref_new_block(type_ref *to, enum type_qualifier);
 type_ref *type_ref_new_array(type_ref *to, expr *sz);
 type_ref *type_ref_new_func( type_ref *to, funcargs *args);
+type_ref *type_ref_new_cast( type_ref *from, enum type_qualifier extra);
 
 
 decl_attr   *decl_attr_new(enum decl_attr_type);
@@ -165,12 +166,10 @@ decl *decl_ptr_depth_dec(decl *, where *from);
 
 type_ref *type_ref_ptr_depth_inc(type_ref *);
 type_ref *type_ref_ptr_depth_dec(type_ref *, where *from);
-type_ref *type_ref_func_call(type_ref *, where *from);
 type_ref *type_ref_decay_first_array(type_ref *);
 
 type *decl_get_type(decl *);
 
-decl *decl_func_deref(decl *d, funcargs **pfuncargs);
 int   decl_ptr_depth(    decl *d);
 decl *decl_decay_first_array(decl *);
 void decl_complete_array(decl *, int to);
@@ -180,7 +179,8 @@ int decl_attr_present(decl_attr *, enum decl_attr_type);
 
 const char *decl_to_str(decl *d);
 const char *decl_to_str_r(char buf[DECL_STATIC_BUFSIZ], decl *);
-const char *type_ref_to_str(type_ref *);
+const char *type_ref_to_str_r(char buf[TYPE_REF_STATIC_BUFSIZ], type_ref *);
+const char *type_ref_to_str(const type_ref *);
 const char *decl_store_to_str(const enum decl_storage);
 
 void decl_attr_free(decl_attr *a);
@@ -199,13 +199,34 @@ int decl_is_type(decl *d, enum type_primitive t);
 int decl_is_signed(decl *d);
 int decl_is_array(decl *d);
 int decl_is_incomplete_array(decl *d);
+int decl_is_variadic(decl *d);
+int decl_is_fptr(decl *d);
 struct_union_enum_st *decl_is_s_or_u(decl *d);
 
 /* type_ref_is_* */
-int type_ref_is_complete(type_ref *r);
-int type_ref_is_void(type_ref *r);
+int type_ref_is_complete(   const type_ref *r);
+int type_ref_is_void(       const type_ref *r);
+int type_ref_is_integral(   const type_ref *);
+int type_ref_is_bool(       const type_ref *);
+int type_ref_is_signed(     const type_ref *);
+int type_ref_is_floating(   const type_ref *);
+int type_ref_is_const(      const type_ref *);
+int type_ref_is_callable(   const type_ref *);
+
+enum type_qualifier type_ref_qual(const type_ref *);
+
+funcargs *type_ref_funcargs(const type_ref *);
+
+type_ref *type_ref_is(type_ref *, enum type_ref_type, ...);
+type_ref *type_ref_func_call(type_ref *, funcargs **pfuncargs);
+struct_union_enum_st *type_ref_is_s_or_u(type_ref *);
 
 #define decl_is_void(d) decl_is_type(d, type_void)
 #define decl_is_bool(d) (decl_is_ptr(d) || decl_is_integral(d))
+
+#define type_ref_new_VOID() type_ref_new_type(type_new_primitive(type_void))
+#define type_ref_new_INT()  type_ref_new_type(type_new_primitive(type_int))
+#define type_ref_new_CHAR() type_ref_new_type(type_new_primitive(type_char))
+#define type_ref_new_BOOL() type_ref_new_type(type_new_primitive(type_int))
 
 #endif

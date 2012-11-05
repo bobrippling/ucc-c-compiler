@@ -215,9 +215,12 @@ void print_type_ref(type_ref *ref, decl *d)
 			fputc('^', cc1_out);
 			break;
 
+		case type_ref_tdef:
+			print_tdef(ref);
+			break;
+
 		case type_ref_array: /* done below */
 		case type_ref_func:
-		case type_ref_tdef:
 		case type_ref_type:
 			break;
 	}
@@ -232,7 +235,7 @@ void print_type_ref(type_ref *ref, decl *d)
 
 		if(need_paren)
 			fputc(')', cc1_out);
-	}else if(d->spel){
+	}else if(d && d->spel){
 		fputs(d->spel, cc1_out);
 	}
 
@@ -360,7 +363,7 @@ void print_expr(expr *e)
 	if(e->tree_type){ /* might be a label */
 		idt_printf("tree_type: ");
 		gen_str_indent++;
-		print_decl(e->tree_type, PDECL_NEWLINE);
+		print_type_ref(e->tree_type, NULL);
 		gen_str_indent--;
 	}
 	gen_str_indent++;

@@ -417,7 +417,7 @@ static int calc_ptr_step(type_ref *t)
 	type_ref *ref;
 	int sz;
 
-	if(type_ref_is_void_ptr(t))
+	if(type_ref_is(type_ref_is(t, type_ref_ptr), type_ref_type, type_void))
 		return type_primitive_size(type_void);
 
 	ref = type_ref_ptr_depth_dec(t, NULL);
@@ -480,8 +480,8 @@ def:
 			{
 				int l_ptr, r_ptr;
 
-				l_ptr = type_ref_is_ptr(vtop->t);
-				r_ptr = type_ref_is_ptr(vtop[-1].t);
+				l_ptr = !!type_ref_is(vtop->t   , type_ref_ptr);
+				r_ptr = !!type_ref_is(vtop[-1].t, type_ref_ptr);
 
 				if(l_ptr || r_ptr){
 					const int ptr_step = calc_ptr_step(l_ptr ? vtop->t : vtop[-1].t);
@@ -546,7 +546,8 @@ void out_deref()
 
 	indir = type_ref_ptr_depth_dec(vtop->t, NULL);
 
-	if(type_ref_is_array(indir) || type_ref_is_fptr(vtop->t)){
+	if(type_ref_is(indir, type_ref_array)
+	|| type_ref_is(type_ref_is(vtop->t, type_ref_ptr), type_ref_func)){
 		out_change_type(indir);
 		return; /* noop */
 	}
@@ -612,7 +613,7 @@ void out_cast(type_ref *from, type_ref *to)
 	if(vtop->type != CONST)
 		impl_cast(from, to);
 
-	out_change_decl(to);
+	out_change_type(to);
 }
 
 void out_change_type(type_ref *t)

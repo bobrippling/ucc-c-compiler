@@ -126,7 +126,7 @@ void expr_promote_int(expr **pe, enum type_primitive to, symtable *stab)
 	expr *const e = *pe;
 	expr *cast;
 
-	if(decl_is_ptr(e->tree_type)){
+	if(type_ref_is(e->tree_type, type_ref_ptr)){
 		UCC_ASSERT(to == type_intptr_t, "invalid promotion for pointer");
 		return;
 	}
@@ -137,7 +137,7 @@ void expr_promote_int(expr **pe, enum type_primitive to, symtable *stab)
 	 * insert down-casts too - the tree_type of the expression is still important
 	 */
 
-  cast = expr_new_cast(decl_new_type(to), 1);
+  cast = expr_new_cast(type_ref_new_type(type_new_primitive(to)), 1);
 
 	cast->expr = e;
 
@@ -146,14 +146,14 @@ void expr_promote_int(expr **pe, enum type_primitive to, symtable *stab)
 	*pe = cast;
 }
 
-decl *op_required_promotion(
+type_ref *op_required_promotion(
 		enum op_type op,
 		expr *lhs, expr *rhs,
 		where *w,
-		decl **plhs, decl **prhs)
+		type_ref **plhs, type_ref **prhs)
 {
-	decl *resolved = NULL;
-	decl *const dlhs = lhs->tree_type, *const drhs = rhs->tree_type;
+	type_ref *resolved = NULL;
+	type_ref *const tlhs = lhs->tree_type, *const trhs = rhs->tree_type;
 
 	*plhs = *prhs = NULL;
 
@@ -168,18 +168,18 @@ decl *op_required_promotion(
 		must be + or -
 #endif
 
-	if(decl_is_void(dlhs) || decl_is_void(drhs))
+	if(type_ref_is_void(tlhs) || type_ref_is_void(trhs))
 		DIE_AT(w, "use of void expression");
 
 	{
-		const int l_ptr = decl_is_ptr(dlhs);
-		const int r_ptr = decl_is_ptr(drhs);
+		const int l_ptr = !!type_ref_is(tlhs, type_ref_ptr);
+		const int r_ptr = !!type_ref_is(trhs, type_ref_ptr);
 
 		if(l_ptr && r_ptr){
 			if(op == op_minus){
-				resolved = decl_new_type(type_ptrdiff_t);
+				resolved = type_ref_new_type(type_new_primitive(type_ptrdiff_t));
 			}else if(op_is_relational(op)){
-				resolved = decl_new_type(type_int);
+				resolved = type_ref_new_INT();
 			}else{
 				DIE_AT(w, "operation between two pointers must be relational or subtraction");
 			}
@@ -191,10 +191,10 @@ decl *op_required_promotion(
 			if(op != op_plus && op != op_minus)
 				DIE_AT(w, "operation between pointer and integer must be + or -");
 
-			resolved = decl_copy(l_ptr ? dlhs : drhs);
+			resolved = l_ptr ? tlhs : trhs;
 
 			/* FIXME: promote to unsigned */
-			*(l_ptr ? prhs : plhs) = decl_new_type(op == op_plus ? type_intptr_t : type_ptrdiff_t);
+			*(l_ptr ? prhs : plhs) = type_ref_new_type(type_new_primitive(op == op_plus ? type_intptr_t : type_ptrdiff_t));
 
 			goto fin;
 
@@ -226,41 +226,41 @@ decl *op_required_promotion(
 #endif
 
 	{
-		decl *dlarger = NULL;
+		type_ref *tlarger = NULL;
 
 		if(op == op_shiftl || op == op_shiftr){
 			/* fine with any parameter sizes - don't need to match. resolves to lhs */
-			dlarger = dlhs;
+			tlarger = tlhs;
 
 		}else{
-			const int l_sz = decl_size(dlhs), r_sz = decl_size(drhs);
+			const int l_sz = type_ref_size(tlhs), r_sz = type_ref_size(trhs);
 
 			if(l_sz != r_sz){
 				const int l_larger = l_sz > r_sz;
 				char bufa[DECL_STATIC_BUFSIZ], bufb[DECL_STATIC_BUFSIZ];
 
 				/* TODO: needed? */
-				fold_type_ref_equal(dlhs, drhs,
+				fold_type_ref_equal(tlhs, trhs,
 						w, WARN_COMPARE_MISMATCH,
 						"mismatching types in %s (%s and %s)",
 						op_to_str(op),
-						decl_to_str_r(bufa, dlhs),
-						decl_to_str_r(bufb, drhs));
+						type_ref_to_str_r(bufa, tlhs),
+						type_ref_to_str_r(bufb, trhs));
 
-				*(l_larger ? prhs : plhs) = (l_larger ? dlhs : drhs);
+				*(l_larger ? prhs : plhs) = (l_larger ? tlhs : trhs);
 
-				dlarger = l_larger ? dlhs : drhs;
+				tlarger = l_larger ? tlhs : trhs;
 
 			}else{
 				/* default to either */
-				dlarger = dlhs;
+				tlarger = tlhs;
 			}
 		}
 
 		/* if we have a _comparison_ (e.g. between enums), convert to int */
 		resolved = op_is_relational(op)
-			? decl_new_type(type_int)
-			: decl_copy(dlarger);
+			? type_ref_new_INT()
+			: tlarger;
 	}
 
 fin:
@@ -271,21 +271,21 @@ fin:
 	return resolved;
 }
 
-decl *op_promote_types(
+type_ref *op_promote_types(
 		enum op_type op,
 		const char *desc,
 		expr **plhs, expr **prhs,
 		where *w, symtable *stab)
 {
-	decl *dlhs, *drhs;
-	decl *resolved;
+	type_ref *tlhs, *trhs;
+	type_ref *resolved;
 
-	resolved = op_required_promotion(op, *plhs, *prhs, w, &dlhs, &drhs);
+	resolved = op_required_promotion(op, *plhs, *prhs, w, &tlhs, &trhs);
 
-	if(dlhs)
-		fold_insert_casts(dlhs, plhs, stab, w, desc);
-	else if(drhs)
-		fold_insert_casts(drhs, prhs, stab, w, desc);
+	if(tlhs)
+		fold_insert_casts(tlhs, plhs, stab, w, desc);
+	else if(trhs)
+		fold_insert_casts(trhs, prhs, stab, w, desc);
 
 	return resolved;
 }
@@ -310,22 +310,22 @@ void fold_expr_op(expr *e, symtable *stab)
 		 */
 
 		if(e->op == op_not){
-			e->tree_type = decl_new_int();
+			e->tree_type = type_ref_new_INT();
 
 		}else{
-			decl *d_unary = e->lhs->tree_type;
+			type_ref *t_unary = e->lhs->tree_type;
 
-			if(!decl_is_integral(d_unary) && !decl_is_floating(d_unary))
+			if(!type_ref_is_integral(t_unary) && !type_ref_is_floating(t_unary))
 				DIE_AT(&e->where, "type '%s' to unary %s",
-						decl_to_str(d_unary), op_to_str(e->op));
+						type_ref_to_str(t_unary), op_to_str(e->op));
 
 			/* extend to int if smaller */
-			if(decl_size(d_unary) < type_primitive_size(type_int)){
+			if(type_ref_size(t_unary) < type_primitive_size(type_int)){
 				expr_promote_int(&e->lhs, type_int, stab);
-				d_unary = e->lhs->tree_type;
+				t_unary = e->lhs->tree_type;
 			}
 
-			e->tree_type = decl_copy(d_unary);
+			e->tree_type = t_unary;
 		}
 	}
 }

@@ -32,7 +32,7 @@ void fold_type_ref_equal(
 	int flags = DECL_CMP_ALLOW_VOID_PTR;
 
 	/* stronger checks for blocks */
-	if(type_ref_is_block(a) || type_ref_is_block(b))
+	if(type_ref_is(a, type_ref_block) || type_ref_is(b, type_ref_block))
 		flags |= DECL_CMP_EXACT_MATCH;
 
 	if(!type_ref_equal(a, b, flags)){
@@ -584,7 +584,7 @@ void fold_decl_init(decl *for_decl, decl_init *di, symtable *stab)
 }
 #endif
 
-void fold_decl_ref(type_ref *r, type_ref *parent, symtable *stab)
+void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 {
 	if(!r)
 		return;
@@ -604,10 +604,10 @@ void fold_decl_ref(type_ref *r, type_ref *parent, symtable *stab)
 	}
 
 	if(r->type == type_ref_type)
-		if(r->bits.type->qual & qual_restrict && parent->type != type_ref_ptr)
+		if(r->bits.type->qual & qual_restrict && parent && parent->type != type_ref_ptr)
 			DIE_AT(&r->where, "restrict on non-pointer type %s", type_ref_to_str(r));
 
-	fold_decl_ref(r->ref, r, stab);
+	fold_type_ref(r->ref, r, stab);
 }
 
 void fold_decl(decl *d, symtable *stab)
@@ -618,7 +618,7 @@ void fold_decl(decl *d, symtable *stab)
 	 */
 	type_ref *r;
 
-	fold_decl_ref(d->ref, NULL, stab);
+	fold_type_ref(d->ref, NULL, stab);
 
 	/* if we have a type and it's incomplete, error */
 	if((r = decl_is(d, type_ref_type)) && !type_ref_is_complete(r))
@@ -1116,7 +1116,7 @@ void fold(symtable *globs)
 				type_ref_new_type(type_new_primitive_qual(type_char, qual_const)),
 				qual_none);
 
-		df->ref = type_ref_new_func(type_ref_new_type(type_new_primitive(type_int)), fargs);
+		df->ref = type_ref_new_func(type_ref_new_INT(), fargs);
 
 		symtab_add(globs, df, sym_global, SYMTAB_NO_SYM, SYMTAB_PREPEND);
 

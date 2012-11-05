@@ -86,5 +86,9 @@ expr *expr_new_array_decl_init(decl *d, int ival, int idx)
 int expr_is_null_ptr(expr *e)
 {
 	return const_expr_and_zero(e)
-	&& (type_ref_is_void_ptr(e->tree_type) || type_ref_is_integral(e->tree_type));
+	&&
+	(
+			   type_ref_is(type_ref_is(e->tree_type, type_ref_ptr), type_ref_type, type_void)
+			|| type_ref_is_integral(e->tree_type)
+	);
 }

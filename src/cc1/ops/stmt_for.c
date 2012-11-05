@@ -28,7 +28,7 @@ expr *fold_for_if_init_decls(stmt *s)
 				break;
 			default:
 				DIE_AT(&d->where, "%s variable in %s declaration initialisation",
-						type_store_to_str(d->store), s->f_str());
+						decl_store_to_str(d->store), s->f_str());
 		}
 
 		SYMTAB_ADD(s->flow->for_init_symtab, d, sym_local);

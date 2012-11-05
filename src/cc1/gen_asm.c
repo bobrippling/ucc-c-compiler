@@ -118,7 +118,7 @@ void gen_asm_global(decl *d)
 		out_func_prologue(
 				d->func_code->symtab->auto_total_size,
 				nargs,
-				decl_variadic_func(d));
+				decl_is_variadic(d));
 
 		curfunc_lblfin = out_label_code(d->spel);
 
@@ -153,12 +153,13 @@ void gen_asm(symtable *globs)
 			continue;
 		}
 
-		switch(d->store){
+		switch(d->store & STORE_MASK_STORE){
+			case store_inline:
 			case store_auto:
 			case store_register:
 			case store_typedef:
 				ICE("%s storage on global %s",
-						type_store_to_str(d->store),
+						decl_store_to_str(d->store),
 						decl_to_str(d));
 
 			case store_static:

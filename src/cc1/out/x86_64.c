@@ -360,7 +360,7 @@ void impl_load(struct vstack *from, int reg)
 		out_comment("zero for cmp");
 		out_asm("mov%c $0, %%%s", asm_type_ch(from->t), buf);
 
-		from->t = decl_new_char(); /* force set%s to set the low byte */
+		from->t = type_ref_new_CHAR(); /* force set%s to set the low byte */
 		/* decl changed, reload the register name */
 		x86_reg_str_r(buf, reg, from->t);
 	}
@@ -368,7 +368,7 @@ void impl_load(struct vstack *from, int reg)
 	x86_load(from, buf);
 
 	if(from->t != save)
-		decl_free(from->t);
+		type_ref_free(from->t);
 
 	v_clear(from, save);
 	from->type = REG;
@@ -461,7 +461,7 @@ void impl_op(enum op_type op)
 		case op_shiftr:
 		{
 			char bufv[VSTACK_STR_SZ], bufs[VSTACK_STR_SZ];
-			decl *free_this = NULL;
+			type_ref *free_this = NULL;
 
 			/* value to shift must be a register */
 			v_to_reg(&vtop[-1]);
@@ -473,7 +473,7 @@ void impl_op(enum op_type op)
 					v_to_reg(vtop); /* TODO: v_to_reg_preferred(vtop, REG_C) */
 
 				case REG:
-					free_this = vtop->t = decl_new_char();
+					free_this = vtop->t = type_ref_new_CHAR();
 
 					if(vtop->bits.reg != REG_C){
 						impl_reg_cp(vtop, REG_C);
@@ -496,7 +496,7 @@ void impl_op(enum op_type op)
 			vpop();
 
 			if(free_this)
-				decl_free(free_this);
+				type_ref_free(free_this);
 			return;
 		}
 
@@ -570,7 +570,7 @@ Operand-Size         Dividend  Divisor  Quotient  Remainder
 but gcc and clang promote to ints anyway...
 #endif
 				ICW("idiv incorrect - need to load al:ah/dx:ax/edx:eax for %s",
-						decl_to_str(vtop->t));
+						type_ref_to_str(vtop->t));
 			}
 
 			vtop->bits.reg = op == op_modulus ? REG_D : REG_A;
@@ -602,7 +602,7 @@ but gcc and clang promote to ints anyway...
 					vstack_str_r(buf, vtop));
 
 			vpop();
-			vtop_clear(decl_new_type(type_int)); /* cmp creates an int */
+			vtop_clear(type_ref_new_BOOL()); /* cmp creates an int/bool */
 			vtop->type = FLAG;
 			vtop->bits.flag = op_to_flag(op);
 			return;
@@ -733,8 +733,8 @@ void impl_cast(type_ref *from, type_ref *to)
 			x86_reg_str_r(buf_from, vtop->bits.reg, from);
 
 			if(!is_signed
-			&& (to   ? decl_size(to)   : type_primitive_size(type_intptr_t)) > int_sz
-			&& (from ? decl_size(from) : type_primitive_size(type_intptr_t)) == int_sz)
+			&& (to   ? type_ref_size(to)   : type_primitive_size(type_intptr_t)) > int_sz
+			&& (from ? type_ref_size(from) : type_primitive_size(type_intptr_t)) == int_sz)
 			{
 				/*
 				 * movzx %eax, %rax is invalid
@@ -752,8 +752,8 @@ void impl_cast(type_ref *from, type_ref *to)
 			char buf[DECL_STATIC_BUFSIZ];
 
 			out_comment("truncate cast from %s to %s, size %d -> %d",
-					from ? decl_to_str_r(buf, from) : "",
-					to ? decl_to_str(to) : "",
+					from ? type_ref_to_str_r(buf, from) : "",
+					to   ? type_ref_to_str(to) : "",
 					szfrom, szto);
 		}
 	}
@@ -860,7 +860,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 		INC_NFLOATS(vtop->t);
 
 		/* can't push non-word sized vtops */
-		if(vtop->t && decl_size(vtop->t) != platform_word_size())
+		if(vtop->t && type_ref_size(vtop->t) != platform_word_size())
 			out_cast(vtop->t, NULL);
 
 		out_asm("pushq %s", vstack_str(vtop));
@@ -878,7 +878,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 			v_save_reg(&vstack[i]);
 
 	{
-		funcargs *args = decl_funcargs(r_func);
+		funcargs *args = type_ref_funcargs(r_func);
 		int need_float_count = args->variadic || (!args->arglist && !args->args_void);
 		const char *jtarget = x86_call_jmp_target(vtop, need_float_count);
 

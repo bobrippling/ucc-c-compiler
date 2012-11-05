@@ -48,7 +48,7 @@ void fold_expr_block(expr *e, symtable *stab)
 		if(r && r->expr){
 			e->tree_type = r->expr->tree_type;
 		}else{
-			e->tree_type = type_ref_new_void();
+			e->tree_type = type_ref_new_VOID();
 		}
 	}
 
@@ -81,7 +81,7 @@ void gen_expr_block(expr *e, symtable *stab)
 void gen_expr_str_block(expr *e, symtable *stab)
 {
 	(void)stab;
-	idt_printf("block, type: %s, code:\n", decl_to_str(e->tree_type));
+	idt_printf("block, type: %s, code:\n", type_ref_to_str(e->tree_type));
 	gen_str_indent++;
 	print_stmt(e->code);
 	gen_str_indent--;

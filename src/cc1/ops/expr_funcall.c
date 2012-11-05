@@ -30,7 +30,7 @@ int const_fold_expr_funcall(expr *e)
 void fold_expr_funcall(expr *e, symtable *stab)
 {
 	const char *sp = e->expr->spel;
-	decl *df;
+	type_ref *type_func;
 	funcargs *args_from_decl;
 
 	if(func_is_asm(sp)){
@@ -71,44 +71,44 @@ invalid:
 		/* check for implicit function */
 		if(!(e->expr->sym = symtab_search(stab, sp))){
 			funcargs *args = funcargs_new();
-			function_empty_args(args); /* set up the funcargs as if it's "x()" - i.e. any args */
+			decl *df;
 
-			df = decl_new();
+			funcargs_empty(args); /* set up the funcargs as if it's "x()" - i.e. any args */
 
-			df->ref = type_ref_new_func(type_ref_new_type(type_new_primitive(type_int)), args);
-			df->store     = store_extern;
+			type_func = type_ref_new_func(type_ref_new_type(type_new_primitive(type_int)), args);
 
 			cc1_warn_at(&e->where, 0, 1, WARN_IMPLICIT_FUNC, "implicit declaration of function \"%s\"", sp);
 
+			df = decl_new();
+			df->ref = type_func;
 			df->spel = e->expr->spel;
+			df->is_definition = 1; /* needed since it's a local var */
 
 			/* not declared - generate a sym ourselves */
 			e->expr->sym = SYMTAB_ADD(stab, df, sym_local);
-
-			df->is_definition = 1; /* needed since it's a local var */
 		}
 	}
 
 	FOLD_EXPR(e->expr, stab);
-	df = e->expr->tree_type;
+	type_func = e->expr->tree_type;
 
-	if(!decl_is_callable(df)){
+	if(!type_ref_is_callable(type_func)){
 		DIE_AT(&e->expr->where, "expression %s (%s) not callable",
 				e->expr->f_str(),
-				decl_to_str(df));
+				type_ref_to_str(type_func));
 	}
 
 	if(expr_kind(e->expr, deref)
-	&& decl_is_fptr(expr_deref_what(e->expr)->tree_type)){
+	&& type_ref_is(type_ref_is(expr_deref_what(e->expr)->tree_type, type_ref_ptr), type_ref_func)){
 		/* XXX: memleak */
 		/* (*f)() - dereffing to a function, then calling - remove the deref */
 		e->expr = expr_deref_what(e->expr);
 	}
 
-	df = e->tree_type = decl_func_deref(decl_copy(df), &args_from_decl);
+	type_func = e->tree_type = type_ref_func_call(type_func, &args_from_decl);
 
 	/* func count comparison, only if the func has arg-decls, or the func is f(void) */
-	UCC_ASSERT(args_from_decl, "no funcargs for decl %s", df->spel);
+	UCC_ASSERT(args_from_decl, "no funcargs for decl %s", e->expr->spel);
 
 	if(e->funcargs){
 		int i;
@@ -186,8 +186,7 @@ void gen_expr_funcall(expr *e, symtable *stab)
 			gen_expr(e->expr, stab);
 
 		if(e->funcargs){
-			decl *dint = decl_new_type(type_int);
-			const int int_sz = decl_size(dint);
+			const int int_sz = type_primitive_size(type_int);
 			expr **aiter;
 
 			for(aiter = e->funcargs; *aiter; aiter++, nargs++);
@@ -198,8 +197,8 @@ void gen_expr_funcall(expr *e, symtable *stab)
 				gen_expr(earg, stab);
 
 				/* each arg needs casting up to int size, if smaller */
-				if(decl_size(earg->tree_type) < int_sz)
-					out_cast(earg->tree_type, dint);
+				if(type_ref_size(earg->tree_type) < int_sz)
+					out_cast(earg->tree_type, type_ref_new_INT());
 			}
 		}
 

@@ -27,12 +27,12 @@ void fold_expr__Generic(expr *e, symtable *stab)
 
 			/* duplicate default checked below */
 			if(m && type_ref_equal(m, l->t, flags))
-				DIE_AT(&m->where, "duplicate type in _Generic: %s", decl_to_str(l->t));
+				DIE_AT(&m->where, "duplicate type in _Generic: %s", type_ref_to_str(l->t));
 		}
 
 
 		if(l->t){
-			fold_decl(l->t, stab);
+			fold_type_ref(l->t, NULL, stab);
 
 			if(type_ref_equal(e->expr->tree_type, l->t, flags)){
 				UCC_ASSERT(!e->generic_chosen, "already chosen expr for _Generic");
@@ -50,10 +50,10 @@ void fold_expr__Generic(expr *e, symtable *stab)
 		if(def)
 			e->generic_chosen = def;
 		else
-			DIE_AT(&e->where, "no type satisfying %s", decl_to_str(e->expr->tree_type));
+			DIE_AT(&e->where, "no type satisfying %s", type_ref_to_str(e->expr->tree_type));
 	}
 
-	e->tree_type = decl_copy(e->generic_chosen->e->tree_type);
+	e->tree_type = e->generic_chosen->e->tree_type;
 }
 
 void gen_expr__Generic(expr *e, symtable *stab)
@@ -83,7 +83,7 @@ void gen_expr_str__Generic(expr *e, symtable *stab)
 		if(l->t){
 			idt_printf("type:\n");
 			gen_str_indent++;
-			print_decl(l->t, PDECL_INDENT | PDECL_NEWLINE);
+			print_type_ref(l->t, NULL);
 			gen_str_indent--;
 		}else{
 			idt_printf("default:\n");

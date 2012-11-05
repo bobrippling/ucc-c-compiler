@@ -62,7 +62,6 @@ ret:
 
 void fold_stmt_switch(stmt *s)
 {
-	type *typ;
 	symtable *test_symtab = fold_stmt_test_init_expr(s, "switch");
 
 	s->lbl_break = out_label_flow("switch");
@@ -77,10 +76,16 @@ void fold_stmt_switch(stmt *s)
 	/* FIXME: check for duplicate case values and at most, 1 default */
 
 	/* check for an enum */
-	typ = type_ref_is_type(s->expr->tree_type, type_enum);
-	if(typ){
-		UCC_ASSERT(typ->sue, "no enum for enum type");
-		fold_switch_enum(s, typ);
+	{
+		type_ref *r;
+
+		r = type_ref_is(s->expr->tree_type, type_ref_type, type_enum);
+
+		if(r){
+			type *typ = r->bits.type;
+			UCC_ASSERT(typ->sue, "no enum for enum type");
+			fold_switch_enum(s, typ);
+		}
 	}
 }
 

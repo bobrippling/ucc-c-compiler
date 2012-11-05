@@ -96,9 +96,10 @@ int op_is_relational(enum op_type o);
 int op_can_compound(enum op_type o);
 
 
-#define SPEC_STATIC_BUFSIZ 64
-#define TYPE_STATIC_BUFSIZ (SPEC_STATIC_BUFSIZ + 64)
-#define DECL_STATIC_BUFSIZ (256 + TYPE_STATIC_BUFSIZ)
+#define SPEC_STATIC_BUFSIZ      64
+#define TYPE_STATIC_BUFSIZ      (SPEC_STATIC_BUFSIZ + 64)
+#define DECL_STATIC_BUFSIZ      (256 + TYPE_STATIC_BUFSIZ)
+#define TYPE_REF_STATIC_BUFSIZ  DECL_STATIC_BUFSIZ
 
 
 /* tables local to the current scope */

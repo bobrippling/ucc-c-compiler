@@ -142,13 +142,13 @@ static void fold_compatible_p(expr *e, symtable *stab)
 	fold_decl(types[0], stab);
 	fold_decl(types[1], stab);
 
-	e->tree_type = decl_new_int();
+	e->tree_type = type_ref_new_INT();
 	wur_builtin(e);
 }
 
 static void const_compatible_p(expr *e, intval *val, enum constyness *success)
 {
-	decl **types = e->block_args->arglist;
+	type_ref **types = e->val.types;
 
 	*success = CONST_WITH_VAL;
 
@@ -159,8 +159,7 @@ static expr *parse_compatible_p(void)
 {
 	expr *fcall = expr_new_funcall();
 
-	fcall->block_args = funcargs_new();
-	fcall->block_args->arglist = parse_type_list();
+	fcall->val.types = parse_type_list();
 
 	expr_mutate_builtin_const(fcall, compatible_p);
 
@@ -176,7 +175,7 @@ static void fold_constant_p(expr *e, symtable *stab)
 
 	FOLD_EXPR(e->funcargs[0], stab);
 
-	e->tree_type = decl_new_int();
+	e->tree_type = type_ref_new_INT();
 	wur_builtin(e);
 }
 
@@ -217,7 +216,12 @@ static void fold_frame_address(expr *e, symtable *stab)
 
 	memcpy(&e->val.iv, &iv, sizeof iv);
 
-	e->tree_type = decl_ptr_depth_inc(decl_new_void());
+	e->tree_type = type_ref_new_ptr(
+			type_ref_new_type(
+				type_new_primitive(type_void)
+			),
+			qual_none);
+
 	wur_builtin(e);
 }
 
@@ -256,7 +260,7 @@ static void fold_expect(expr *e, symtable *stab)
 	if(type != CONST_WITH_VAL)
 		WARN_AT(&e->where, "%s second argument isn't a constant value", e->expr->spel);
 
-	e->tree_type = decl_copy(e->funcargs[0]->tree_type);
+	e->tree_type = e->funcargs[0]->tree_type;
 	wur_builtin(e);
 }
 

@@ -19,7 +19,7 @@ void fold_expr_deref(expr *e, symtable *stab)
 	if(expr_kind(ptr, addr) && !ptr->expr_addr_implicit)
 		WARN_AT(&ptr->where, "possible optimisation for *& expression");
 
-	e->tree_type = decl_ptr_depth_dec(decl_copy(ptr->tree_type), &e->where);
+	e->tree_type = type_ref_ptr_depth_dec(ptr->tree_type, &e->where);
 }
 
 void gen_expr_deref_lea(expr *e, symtable *stab)
@@ -37,7 +37,7 @@ void gen_expr_deref(expr *e, symtable *stab)
 void gen_expr_str_deref(expr *e, symtable *stab)
 {
 	(void)stab;
-	idt_printf("deref, size: %s\n", decl_to_str(e->tree_type));
+	idt_printf("deref, size: %s\n", type_ref_to_str(e->tree_type));
 	gen_str_indent++;
 	print_expr(expr_deref_what(e));
 	gen_str_indent--;
