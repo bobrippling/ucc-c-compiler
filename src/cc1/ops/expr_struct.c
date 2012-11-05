@@ -5,6 +5,8 @@
 
 #define ASSERT_NOT_DOT() UCC_ASSERT(!e->expr_is_st_dot, "a.b should have been handled by now")
 
+#define struct_offset(rhs) (rhs)->val.decl->struct_offset
+
 const char *str_expr_struct()
 {
 	return "struct";
@@ -28,8 +30,9 @@ void fold_expr_struct(expr *e, symtable *stab)
 	spel = e->rhs->spel;
 
 	/* we access a struct, of the right ptr depth */
-	if(!decl_is_struct_or_union_possible_ptr(e->lhs->tree_type)
-	||  decl_is_ptr(e->lhs->tree_type) != ptr_expect)
+	if(ptr_expect
+			?(sue = type_ref_is_s_or_u_ptr(e->lhs->tree_type))
+			:(sue = type_ref_is_s_or_u(    e->lhs->tree_type)))
 	{
 		const int ident = expr_kind(e->lhs, identifier);
 
@@ -41,18 +44,18 @@ void fold_expr_struct(expr *e, symtable *stab)
 				spel);
 	}
 
-	sue = e->lhs->tree_type->type->sue;
-
 	if(sue_incomplete(sue)){
 		DIE_AT(&e->lhs->where, "%s incomplete type (%s)",
 				ptr_expect
 					? "dereferencing pointer to"
 					: "use of",
-				type_to_str(e->lhs->tree_type->type));
+				type_ref_to_str(e->tree_type));
 	}
 
 	/* found the struct, find the member */
-	e->rhs->tree_type = struct_union_member_find(sue, spel, &e->where);
+	e->rhs->tree_type = (
+		e->rhs->val.decl = struct_union_member_find(sue, spel, &e->where)
+	)->ref;
 
 	/*
 	 * if it's a.b, convert to (&a)->b for asm gen
@@ -77,9 +80,12 @@ void fold_expr_struct(expr *e, symtable *stab)
 		FOLD_EXPR(e->lhs, stab);
 	}
 
-	e->tree_type = decl_copy(e->rhs->tree_type);
 	/* pull qualifiers from the struct to the member */
-	e->tree_type->type->qual |= e->lhs->tree_type->type->qual;
+	{
+		enum type_qualifier addon = type_ref_qualifiers(e->lhs->tree_type);
+
+		e->tree_type = type_ref_new_cast(e->rhs->tree_type, addon);
+	}
 }
 
 void gen_expr_struct_lea(expr *e, symtable *stab)

@@ -53,7 +53,8 @@ struct expr
 		intval iv;
 		char *s;
 		decl_init *init;
-		type_ref *sizeof_this;
+		type_ref *tref;
+		decl *decl;
 	} val;
 
 	struct generic_lbl

@@ -77,8 +77,8 @@ void fold_stmt_switch(stmt *s)
 	/* FIXME: check for duplicate case values and at most, 1 default */
 
 	/* check for an enum */
-	typ = s->expr->tree_type->type;
-	if(typ->primitive == type_enum){
+	typ = type_ref_is_type(s->expr->tree_type, type_enum);
+	if(typ){
 		UCC_ASSERT(typ->sue, "no enum for enum type");
 		fold_switch_enum(s, typ);
 	}

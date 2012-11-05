@@ -182,7 +182,7 @@ const char *decl_attr_to_str(enum decl_attr_type t)
 	return NULL;
 }
 
-const char *type_ref_to_str(enum type_ref_type t)
+const char *type_ref_type_str(enum type_ref_type t)
 {
 	switch(t){
 		CASE_STR_PREFIX(type_ref, type);
@@ -433,14 +433,14 @@ decl *decl_ptr_depth_dec(decl *d, where *from)
 	}
 
 	if(!type_ref_is(r, type_ref_ptr))
-		DIE_AT(from, "invalid indirection applied to %s", type_ref_to_str(r->type));
+		DIE_AT(from, "invalid indirection applied to %s", type_ref_to_str(r));
 
 	d->ref = d->ref->ref;
 	r_save = type_ref_orphan(r);
 
 	if(!type_ref_is_complete(r))
 		/* FIXME */
-		DIE_AT(from, "dereference pointer to incomplete type %s", type_ref_to_str(r->type));
+		DIE_AT(from, "dereference pointer to incomplete type %s", type_ref_to_str(r));
 
 	type_ref_free(r_save);
 

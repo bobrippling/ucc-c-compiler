@@ -21,14 +21,14 @@ expr *fold_for_if_init_decls(stmt *s)
 
 		fold_decl(d, s->flow->for_init_symtab);
 
-		switch(d->type->store){
+		switch(d->store){
 			case store_auto:
 			case store_default:
 			case store_register:
 				break;
 			default:
 				DIE_AT(&d->where, "%s variable in %s declaration initialisation",
-						type_store_to_str(d->type->store), s->f_str());
+						type_store_to_str(d->store), s->f_str());
 		}
 
 		SYMTAB_ADD(s->flow->for_init_symtab, d, sym_local);

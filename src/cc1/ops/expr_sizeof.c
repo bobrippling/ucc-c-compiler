@@ -6,6 +6,8 @@
 #define SIZEOF_WHAT(e) ((e)->expr ? (e)->expr->tree_type : (e)->val.sizeof_this)
 #define SIZEOF_SIZE(e)  (e)->val.iv.val
 
+#define sizeof_this tref
+
 const char *str_expr_sizeof()
 {
 	return "sizeof";

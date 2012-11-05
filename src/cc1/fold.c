@@ -600,12 +600,12 @@ void fold_decl_ref(type_ref *r, type_ref *parent, symtable *stab)
 			&& (!r->ref || r->ref->type != type_ref_func))
 	{
 		DIE_AT(&r->where, "invalid block pointer - function required (got %s)",
-				type_ref_to_str(r->ref->type));
+				type_ref_to_str(r->ref));
 	}
 
 	if(r->type == type_ref_type)
 		if(r->bits.type->qual & qual_restrict && parent->type != type_ref_ptr)
-			DIE_AT(&r->where, "restrict on non-pointer type %s", type_ref_to_str(r->type));
+			DIE_AT(&r->where, "restrict on non-pointer type %s", type_ref_to_str(r));
 
 	fold_decl_ref(r->ref, r, stab);
 }
@@ -759,7 +759,7 @@ void fold_need_expr(expr *e, const char *stmt_desc, int is_test)
 	if(is_test){
 		if(!type_ref_is_bool(e->tree_type)){
 			cc1_warn_at(&e->where, 0, 1, WARN_TEST_BOOL, "testing a non-boolean expression, %s, in %s",
-					type_ref_to_str(e->tree_type->type), stmt_desc);
+					type_ref_to_str(e->tree_type), stmt_desc);
 		}
 
 		if(expr_kind(e, addr)){

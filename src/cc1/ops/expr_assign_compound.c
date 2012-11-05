@@ -25,7 +25,7 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 	FOLD_EXPR(e->rhs, stab);
 
 	/* skip the addr we inserted */
-	if(!expr_is_lvalue(lvalue, 0)){
+	if(!expr_is_lvalue(lvalue)){
 		DIE_AT(&lvalue->where, "compound target not an lvalue (%s)",
 				lvalue->f_str());
 	}
