@@ -629,7 +629,7 @@ void fold_decl(decl *d, symtable *stab)
 		enum constyness ktype;
 		intval iv;
 		int width;
-		type *t = decl_get_type(d);
+		type *t = ???;
 
 		FOLD_EXPR(d->field_width, stab);
 		const_fold(d->field_width, &iv, &ktype);

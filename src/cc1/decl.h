@@ -198,19 +198,20 @@ int decl_is_fptr(decl *d);
 struct_union_enum_st *decl_is_s_or_u(decl *d);
 
 /* type_ref_is_* */
-int type_ref_is_complete(   const type_ref *r);
-int type_ref_is_void(       const type_ref *r);
-int type_ref_is_integral(   const type_ref *);
-int type_ref_is_bool(       const type_ref *);
-int type_ref_is_signed(     const type_ref *);
-int type_ref_is_floating(   const type_ref *);
-int type_ref_is_const(      const type_ref *);
-int type_ref_is_callable(   const type_ref *);
+int type_ref_is_complete(type_ref *r);
+int type_ref_is_void(    type_ref *r);
+int type_ref_is_integral(type_ref *);
+int type_ref_is_bool(    type_ref *);
+int type_ref_is_signed(  type_ref *);
+int type_ref_is_floating(type_ref *);
+int type_ref_is_const(   type_ref *);
+int type_ref_is_callable(type_ref *);
 
 enum type_qualifier type_ref_qual(const type_ref *);
 
 funcargs *type_ref_funcargs(const type_ref *);
 
+int type_ref_align(type_ref *);
 type_ref *type_ref_is(type_ref *, enum type_ref_type, ...);
 type_ref *type_ref_func_call(type_ref *, funcargs **pfuncargs);
 struct_union_enum_st *type_ref_is_s_or_u(type_ref *);

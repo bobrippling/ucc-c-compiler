@@ -1,3 +1,11 @@
+#include <stdio.h>
+#include <stdarg.h>
+#include <stdlib.h>
+
+#include "../util/util.h"
+#include "../util/alloc.h"
+#include "data_structs.h"
+#include "decl.h"
 #include "funcargs.h"
 
 void funcargs_free(funcargs *args, int free_decls)

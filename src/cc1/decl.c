@@ -56,6 +56,15 @@ type_ref *type_ref_new_block(type_ref *to, enum type_qualifier q)
 	return r;
 }
 
+type_ref *type_ref_new_array(type_ref *to, expr *sz)
+{
+	type_ref *r = type_ref_new(type_ref_array);
+	r->ref = to;
+	r->bits.array_size = sz;
+	return r;
+}
+
+
 decl *decl_new()
 {
 	decl *d = umalloc(sizeof *d);
@@ -79,6 +88,15 @@ decl *decl_new_type(enum type_primitive p)
 	}
 
 	return d;
+}
+
+type *decl_get_type(decl *d)
+{
+	type_ref *r;
+
+	for(r = d->ref; r && r->type != type_ref_type; r = r->ref);
+
+	return r ? r->bits.type : NULL;
 }
 
 void type_ref_free(type_ref *r)
@@ -284,6 +302,18 @@ int decl_size(decl *d)
 #endif
 
 	return type_ref_size(d->ref);
+}
+
+void decl_complete_array(decl *d, int sz)
+{
+	type_ref *r = type_ref_is(d->ref, type_ref_array);
+	type_ref *new;
+
+	UCC_ASSERT(r, "not an array");
+
+	new = type_ref_new_array(d->ref->ref, expr_new_val(sz));
+
+	d->ref = new;
 }
 
 enum funcargs_cmp funcargs_equal(
@@ -512,7 +542,7 @@ void decl_conv_array_func_to_ptr(decl *d)
 	}
 }
 
-static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
+static void type_ref_add_str(const type_ref *r, char *spel, char **bufp, int sz)
 {
 #define BUF_ADD(...) \
 	do{ int n = snprintf(*bufp, sz, __VA_ARGS__); *bufp += n, sz -= n; }while(0)
@@ -598,25 +628,33 @@ static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
 #undef BUF_ADD
 }
 
-static void type_ref_add_type_str(type_ref *r, char *spel, char **bufp, int sz)
+static void type_ref_add_type_str(const type_ref *r, char *spel, char **bufp, int sz)
 {
 	/* go down to the first type or typedef, print it and then its descriptions */
-	{
-		int len;
-		type_ref *rt;
+	int len;
+	const type_ref *rt;
 
-		for(rt = r; rt->type != type_ref_type && rt->type != type_ref_tdef; rt = rt->ref);
-		strcpy(*bufp, type_to_str(rt->bits.type));
+	for(rt = r; rt->type != type_ref_type && rt->type != type_ref_tdef; rt = rt->ref);
+	strcpy(*bufp, type_to_str(rt->bits.type));
 
-		len = strlen(*bufp);
+	len = strlen(*bufp);
 
-		bufp += len;
-		*(*bufp)++ = ' ';
+	bufp += len;
+	*(*bufp)++ = ' ';
 
-		sz -= len + 1;
-	}
+	sz -= len + 1;
 
 	type_ref_add_str(r, spel, bufp, sz);
+}
+
+const char *type_ref_to_str(const type_ref *r)
+{
+	static char buf[TYPE_REF_STATIC_BUFSIZ];
+	char *bufp = buf;
+
+	type_ref_add_type_str(r, NULL, &bufp, sizeof buf);
+
+	return buf;
 }
 
 const char *decl_to_str_r_spel(char buf[DECL_STATIC_BUFSIZ], int show_spel, decl *d)

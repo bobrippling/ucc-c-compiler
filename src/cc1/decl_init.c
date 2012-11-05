@@ -1,3 +1,15 @@
+#include <stdio.h>
+#include <stdarg.h>
+
+#include "../util/util.h"
+#include "../util/dynarray.h"
+#include "../util/alloc.h"
+#include "data_structs.h"
+#include "cc1.h"
+#include "fold.h"
+#include "const.h"
+#include "macros.h"
+
 #include "decl_init.h"
 
 int decl_init_len(decl_init *di)

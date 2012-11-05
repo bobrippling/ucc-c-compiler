@@ -72,11 +72,7 @@ int symtab_fold(symtable *tab, int current)
 						int align;
 						int this;
 
-						if(decl_is_s_or_u(s->decl))
-							/* safe - can't have an instance without a ->sue */
-							align = decl_get_type(s->decl)->sue->align;
-						else
-							align = siz;
+						align = type_ref_align(s->decl->ref);
 
 						pack_next(&current, &this, siz, align); /* an array and structs start at the bottom */
 

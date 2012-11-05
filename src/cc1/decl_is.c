@@ -75,10 +75,22 @@ int decl_is_void_ptr(decl *d)
 
 int decl_is_integral(decl *d)
 {
-	if(d->ref->type != type_ref_type)
+	return type_ref_is_integral(d->ref);
+}
+
+int decl_complete(decl *d)
+{
+	return type_ref_is_complete(d->ref);
+}
+
+int type_ref_is_integral(type_ref *r)
+{
+	r = type_ref_is(r, type_ref_type);
+
+	if(!r)
 		return 0;
 
-	switch(d->ref->bits.type->primitive){
+	switch(r->bits.type->primitive){
 		case type_int:
 		case type_char:
 		case type__Bool:
@@ -88,7 +100,7 @@ int decl_is_integral(decl *d)
 		case type_enum:
 		case type_intptr_t:
 		case type_ptrdiff_t:
-				return 1;
+			return 1;
 
 		case type_unknown:
 		case type_void:
@@ -97,13 +109,33 @@ int decl_is_integral(decl *d)
 		case type_float:
 		case type_double:
 		case type_ldouble:
-				break;
+			break;
 	}
 
 	return 0;
 }
 
-int type_ref_is_complete(const type_ref *r)
+int type_ref_align(type_ref *r)
+{
+	struct_union_enum_st *sue;
+
+	if((sue = type_ref_is_s_or_u(r)))
+		/* safe - can't have an instance without a ->sue */
+		return sue->align;
+
+	if((r = type_ref_is(r, type_ref_ptr))
+	|| (r = type_ref_is(r, type_ref_block)))
+	{
+		return type_primitive_size(type_intptr_t);
+	}
+
+	if((r = type_ref_is(r, type_ref_type)))
+		return type_size(r->bits.type);
+
+	return 1;
+}
+
+int type_ref_is_complete(type_ref *r)
 {
 	/* decl is "void" or incomplete-struct or array[] */
 	switch(r->type){
@@ -141,9 +173,14 @@ int type_ref_is_complete(const type_ref *r)
 	return 1;
 }
 
-int decl_complete(decl *d)
+struct_union_enum_st *type_ref_is_s_or_u(type_ref *r)
 {
-	return type_ref_is_complete((const type_ref *)d->ref);
+	type_ref *test = type_ref_is(r, type_ref_type, type_struct);
+
+	if(!test && !(test = type_ref_is(r, type_ref_type, type_union)))
+		return NULL;
+
+	return test->bits.type->sue;
 }
 
 #if 0

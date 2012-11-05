@@ -27,8 +27,8 @@
 
 /*#define PARSE_DECL_VERBOSE*/
 
-type_ref *parse_decl_ref(enum decl_mode mode, char **sp);
 static void parse_add_attr(decl_attr **append);
+static type_ref *parse_type_ref2(enum decl_mode mode, char **sp);
 
 #define INT_TYPE(t) do{ UCC_ASSERT(!t, "got type"); t = type_new_primitive(type_int); }while(0)
 
@@ -463,7 +463,7 @@ declarator:
 		;
 */
 
-type_ref *parse_decl_ref_ptr(enum decl_mode mode, char **sp)
+type_ref *parse_type_ref_ptr(enum decl_mode mode, char **sp)
 {
 	int ptr;
 
@@ -474,7 +474,7 @@ type_ref *parse_decl_ref_ptr(enum decl_mode mode, char **sp)
 			EAT(curtok);
 		}
 
-		return (ptr ? type_ref_new_ptr : type_ref_new_block)(parse_decl_ref(mode, sp), qual);
+		return (ptr ? type_ref_new_ptr : type_ref_new_block)(parse_type_ref2(mode, sp), qual);
 
 	}else if(accept(token_open_paren)){
 		type_ref *ret;
@@ -491,12 +491,12 @@ type_ref *parse_decl_ref_ptr(enum decl_mode mode, char **sp)
 			return NULL;
 		}
 
-		ret = parse_decl_ref(mode, sp);
+		ret = parse_type_ref2(mode, sp);
 		EAT(token_close_paren);
 		return ret;
 
 	}else if(curtok == token_identifier){
-		if(mode & DECL_SPEL_NO)
+		if(!sp)
 			DIE_AT(NULL, "identifier unexpected");
 
 		*sp = token_current_spel();
@@ -510,9 +510,9 @@ type_ref *parse_decl_ref_ptr(enum decl_mode mode, char **sp)
 	return NULL;
 }
 
-type_ref *parse_decl_ref_array(enum decl_mode mode, char **sp)
+type_ref *parse_type_ref_array(enum decl_mode mode, char **sp)
 {
-	type_ref *r = parse_decl_ref_ptr(mode, sp);
+	type_ref *r = parse_type_ref_ptr(mode, sp);
 
 	while(accept(token_open_square)){
 		type_ref *r_new;
@@ -536,9 +536,9 @@ type_ref *parse_decl_ref_array(enum decl_mode mode, char **sp)
 	return r;
 }
 
-type_ref *parse_decl_ref(enum decl_mode mode, char **sp)
+type_ref *parse_type_ref2(enum decl_mode mode, char **sp)
 {
-	type_ref *dp = parse_decl_ref_array(mode, sp);
+	type_ref *dp = parse_type_ref_array(mode, sp);
 
 	while(accept(token_open_paren)){
 		type_ref *r_new = type_ref_new_func(dp, parse_func_arglist());
@@ -551,13 +551,18 @@ type_ref *parse_decl_ref(enum decl_mode mode, char **sp)
 	return dp;
 }
 
+type_ref *parse_type_ref(void)
+{
+	return parse_type_ref2(0, NULL);
+}
+
 decl *parse_decl(type_ref *subtype, enum decl_mode mode)
 {
 	type_ref *r;
 	decl *d;
 	char *spel = NULL;
 
-	r = parse_decl_ref(mode, &spel);
+	r = parse_type_ref2(mode, &spel);
 
 	/* don't fold typedefs until later (for __typeof) */
 	d = decl_new();

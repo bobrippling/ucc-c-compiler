@@ -52,9 +52,9 @@ void data_store_out(data_store *ds, int newline)
 	}
 }
 
-void data_store_fold_decl(data_store *ds, decl **ptree_type, symtable *stab)
+void data_store_fold_type(data_store *ds, type_ref **ptree_type, symtable *stab)
 {
-	decl *tree_type = decl_new();
+	type_ref *tree_type;
 	expr *sz = expr_new_val(ds->len);
 	type *type;
 
@@ -62,9 +62,7 @@ void data_store_fold_decl(data_store *ds, decl **ptree_type, symtable *stab)
 
 	/* (const char []) */
 
-	tree_type->ref = type_ref_new_array(type_ref_new_type(type = type_new()), sz);
-
-	tree_type->store = store_static;
+	tree_type = type_ref_new_array(type_ref_new_type(type = type_new()), sz);
 
 	switch(ds->type){
 		case data_store_str:
