@@ -37,6 +37,9 @@ int expr_is_lvalue(expr *e)
 	if(type_ref_is(e->tree_type, type_ref_array))
 		return 0;
 
+	if(expr_kind(e, identifier))
+		return 1;
+
 	return 0;
 }
 
