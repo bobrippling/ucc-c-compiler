@@ -23,6 +23,7 @@
 static type_ref *type_ref_new(enum type_ref_type t, type_ref *of)
 {
 	type_ref *r = umalloc(sizeof *r);
+	where_new(&r->where);
 	r->type = t;
 	r->ref = of;
 	return r;
