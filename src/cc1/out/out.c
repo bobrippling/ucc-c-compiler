@@ -29,7 +29,8 @@ int out_vcount(void)
 
 void vpush(type_ref *t)
 {
-	UCC_ASSERT(t, "null type for %s", __func__);
+	if(!t)
+		t = type_ref_new_VOID_PTR();
 
 	if(!vtop){
 		vtop = vstack;

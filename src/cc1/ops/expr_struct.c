@@ -69,7 +69,7 @@ void fold_expr_struct(expr *e, symtable *stab)
 	if(!ptr_expect){
 		expr *cast, *addr;
 
-		cast = expr_new_cast(type_ref_ptr_depth_inc(type_ref_new_VOID()), 1);
+		cast = expr_new_cast(type_ref_new_VOID_PTR(), 1);
 		cast->expr = addr = expr_new_addr();
 
 		addr->lhs = e->lhs;
