@@ -27,10 +27,14 @@ int out_vcount(void)
 	return vtop ? 1 + (int)(vtop - vstack) : 0;
 }
 
+static type_ref *v_default_type(type_ref *r)
+{
+	return r ? r : type_ref_new_VOID_PTR();
+}
+
 void vpush(type_ref *t)
 {
-	if(!t)
-		t = type_ref_new_VOID_PTR();
+	t = v_default_type(t);
 
 	if(!vtop){
 		vtop = vstack;
@@ -50,6 +54,8 @@ void vpush(type_ref *t)
 
 void v_clear(struct vstack *vp, type_ref *t)
 {
+	t = v_default_type(t);
+
 	memset(vp, 0, sizeof *vp);
 	vp->t = t;
 }
@@ -619,6 +625,7 @@ void out_cast(type_ref *from, type_ref *to)
 
 void out_change_type(type_ref *t)
 {
+	t = v_default_type(t);
 	/* XXX: memleak */
 	vtop->t = t;
 }
