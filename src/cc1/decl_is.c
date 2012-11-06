@@ -1,14 +1,14 @@
-static type_ref *type_ref_skip_tdefs(type_ref *r)
+static type_ref *type_ref_skip_tdefs_casts(type_ref *r)
 {
-	for(; r->type == type_ref_tdef; r = r->ref);
+	for(; r && (r->type == type_ref_tdef || r->type == type_ref_cast); r = r->ref);
 	return r;
 }
 
 type_ref *type_ref_is(type_ref *r, enum type_ref_type t, ...)
 {
-	r = type_ref_skip_tdefs(r);
+	r = type_ref_skip_tdefs_casts(r);
 
-	if(r->type != t)
+	if(!r || r->type != t)
 		return NULL;
 
 	if(r->type == type_ref_type){
@@ -69,7 +69,7 @@ int decl_is_func(decl *d)
 
 enum type_primitive type_ref_type_primitive(decl *d)
 {
-	const type_ref *r = type_ref_skip_tdefs(d->ref);
+	const type_ref *r = type_ref_skip_tdefs_casts(d->ref);
 	return r->type == type_ref_type ? r->bits.type->primitive : type_unknown;
 }
 

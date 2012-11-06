@@ -495,7 +495,7 @@ type_ref *type_ref_ptr_depth_dec(type_ref *r)
 	}
 
 	if(!type_ref_is(r, type_ref_ptr))
-		DIE_AT(&r->where, "invalid indirection applied to %s", type_ref_to_str(r));
+		DIE_AT(&r->where, "invalid indirection applied to %s", r ? type_ref_to_str(r) : "(NULL)");
 
 	r_save = r;
 	r = r->ref;
@@ -544,14 +544,21 @@ static void type_ref_add_str(const type_ref *r, char *spel, char **bufp, int sz)
 
 	int need_paren;
 
+	if(!r)
+		return;
+
 	switch(r->type){
 		case type_ref_type:
-		case type_ref_tdef:
 			return;
+
+		case type_ref_tdef:
+			BUF_ADD("|tdef");
+			return;
+
 		default:break;
 	}
 
-	need_paren = r->ref == type_ref_type ? 0 : r->type != r->ref->type;
+	need_paren = r->ref != type_ref_type && r->type != r->ref->type;
 
 	if(need_paren)
 		BUF_ADD("(");
@@ -623,33 +630,35 @@ static void type_ref_add_str(const type_ref *r, char *spel, char **bufp, int sz)
 #undef BUF_ADD
 }
 
-static void type_ref_add_type_str(const type_ref *r, char *spel, char **bufp, int sz)
+static void type_ref_add_type_str(const type_ref *r, char **bufp, int sz)
 {
 	/* go down to the first type or typedef, print it and then its descriptions */
 	const type_ref *rt;
 	char *buf = *bufp;
-	int len;
 
-	for(rt = r; rt->type != type_ref_type && rt->type != type_ref_tdef; rt = rt->ref);
-	strcpy(buf, type_to_str(rt->bits.type));
+	*buf = '\0';
+	for(rt = r; rt && rt->type != type_ref_type && rt->type != type_ref_tdef; rt = rt->ref);
 
-	len = strlen(buf);
+	if(!rt)
+		return;
 
-	buf += len;
-	*buf++ = ' ';
+	snprintf(buf, sz, "%s", type_to_str(rt->bits.type));
+}
 
-	sz -= len + 1;
+static const char *type_ref_to_str_r_spel(char buf[TYPE_REF_STATIC_BUFSIZ], const type_ref *r, char *spel)
+{
+	char *bufp = buf;
 
-	type_ref_add_str(r, spel, &buf, sz);
+	type_ref_add_type_str(r, &bufp, TYPE_REF_STATIC_BUFSIZ);
+
+	type_ref_add_str(r, spel, &bufp, TYPE_REF_STATIC_BUFSIZ - (bufp - buf));
+
+	return buf;
 }
 
 const char *type_ref_to_str_r(char buf[TYPE_REF_STATIC_BUFSIZ], const type_ref *r)
 {
-	char *bufp = buf;
-
-	type_ref_add_type_str(r, NULL, &bufp, sizeof buf);
-
-	return buf;
+	return type_ref_to_str_r_spel(buf, r, NULL);
 }
 
 const char *type_ref_to_str(const type_ref *r)
@@ -664,8 +673,8 @@ const char *decl_to_str_r_spel(char buf[DECL_STATIC_BUFSIZ], int show_spel, decl
 
 	if(d->store) bufp += snprintf(bufp, DECL_STATIC_BUFSIZ, "%s ", decl_store_to_str(d->store));
 
-	type_ref_add_type_str(d->ref, show_spel ? d->spel : NULL,
-			&bufp, DECL_STATIC_BUFSIZ - (bufp - buf));
+	type_ref_to_str_r_spel(bufp, d->ref,
+			show_spel ? d->spel : NULL);
 
 	return buf;
 }
