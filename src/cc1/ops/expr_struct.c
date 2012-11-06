@@ -30,13 +30,10 @@ void fold_expr_struct(expr *e, symtable *stab)
 	spel = e->rhs->spel;
 
 	/* we access a struct, of the right ptr depth */
-	if(ptr_expect
-			? (sue = type_ref_is_s_or_u(e->lhs->tree_type->ref))
-			: (sue = type_ref_is_s_or_u(e->lhs->tree_type)))
-	{
+	if(!(sue = type_ref_is_s_or_u(ptr_expect ? e->lhs->tree_type->ref : e->lhs->tree_type))){
 		const int ident = expr_kind(e->lhs, identifier);
 
-		DIE_AT(&e->lhs->where, "%s%s%s is not a %sstruct or union (member %s)",
+		DIE_AT(&e->lhs->where, "'%s%s%s' is not a %sstruct or union (member %s)",
 				type_ref_to_str(e->lhs->tree_type),
 				ident ? " " : "",
 				ident ? e->lhs->spel : "",
