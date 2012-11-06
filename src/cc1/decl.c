@@ -73,7 +73,12 @@ type_ref *type_ref_new_func(type_ref *of, funcargs *args)
 
 type_ref *type_ref_new_cast(type_ref *to, enum type_qualifier q)
 {
-	type_ref *r = type_ref_new(type_ref_cast, to);
+	type_ref *r;
+
+	if(!q)
+		return to;
+
+	r = type_ref_new(type_ref_cast, to);
 	r->bits.qual = q;
 	return r;
 }
