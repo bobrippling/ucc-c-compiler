@@ -247,7 +247,7 @@ void v_save_reg(struct vstack *vp)
 	memcpy(vp, &store, sizeof store);
 
 	/* no need for copy */
-	vp->t = type_ref_ptr_depth_dec(vp->t, NULL);
+	vp->t = type_ref_ptr_depth_dec(vp->t);
 }
 
 void v_freeup_reg(int r, int allowable_stack)
@@ -420,7 +420,7 @@ static int calc_ptr_step(type_ref *t)
 	if(type_ref_is(type_ref_is(t, type_ref_ptr), type_ref_type, type_void))
 		return type_primitive_size(type_void);
 
-	ref = type_ref_ptr_depth_dec(t, NULL);
+	ref = type_ref_ptr_depth_dec(t);
 	sz = type_ref_size(ref);
 
 	type_ref_free(ref);
@@ -536,7 +536,7 @@ def:
 void v_deref_decl(struct vstack *vp)
 {
 	/* XXX: memleak */
-	vp->t = type_ref_ptr_depth_dec(vp->t, NULL);
+	vp->t = type_ref_ptr_depth_dec(vp->t);
 }
 
 void out_deref()
@@ -544,7 +544,7 @@ void out_deref()
 	type_ref *indir;
 	/* if the pointed-to object is not an lvalue, don't deref */
 
-	indir = type_ref_ptr_depth_dec(vtop->t, NULL);
+	indir = type_ref_ptr_depth_dec(vtop->t);
 
 	if(type_ref_is(indir, type_ref_array)
 	|| type_ref_is(type_ref_is(vtop->t, type_ref_ptr), type_ref_func)){

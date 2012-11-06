@@ -66,6 +66,13 @@ type *type_new_primitive(enum type_primitive p)
 	return t;
 }
 
+type *type_new_primitive_qual(enum type_primitive p, enum type_qualifier q)
+{
+	type *t = type_new_primitive(p);
+	t->qual = q;
+	return t;
+}
+
 type *type_copy(type *t)
 {
 	type *ret = umalloc(sizeof *ret);

@@ -20,11 +20,31 @@ type_ref *type_ref_is(type_ref *r, enum type_ref_type t, ...)
 		p = va_arg(l, enum type_primitive);
 		va_end(l);
 
-		if(r->bits.type->primitive != p)
+		if(p != type_unknown && r->bits.type->primitive != p)
 			return NULL;
 	}
 
 	return r;
+}
+
+int type_ref_is_bool(type_ref *r)
+{
+	r = type_ref_is(r, type_ref_type, type_unknown);
+
+	if(!r)
+		return 0;
+
+	switch(r->bits.type->primitive){
+		case type__Bool:
+		case type_char:
+		case type_int:
+		case type_short:
+		case type_long:
+		case type_llong:
+			return 1;
+		default:
+			return 0;
+	}
 }
 
 type_ref *decl_is(decl *d, enum type_ref_type t)
@@ -188,31 +208,21 @@ type_ref *type_ref_func_call(type_ref *fp, funcargs **pfuncargs)
 	switch(fp->type){
 		case type_ref_ptr:
 		case type_ref_block:
-		{
-			type_ref *func = fp->ref;
-			type_ref *const next = func->ref;
-			funcargs *args;
+			fp = fp->ref;
+			UCC_ASSERT(fp->type == type_ref_func, "not a func for fcall");
+			/* fall */
 
-			UCC_ASSERT(func->type == type_ref_func, "func call not a func");
-
-			args = func->bits.func;
-			/* XXX: memleak */
-			/*func->bits.func = NULL;*/
-			/*type_ref_free(func);*/
-			/*type_ref_free(fp);*/
-
+		case type_ref_func:
 			if(pfuncargs)
-				*pfuncargs = args;
+				*pfuncargs = fp->bits.func;
+			fp = fp->ref;
+			break;
 
-			return next;
-		}
-
-		case type_ref_func: /* can't call this - decays to type(*)() */
 		default:
 			ICE("can't func-deref non func-ptr/block ref");
 	}
 
-	ucc_unreach();
+	return fp;
 }
 
 type_ref *type_ref_decay(type_ref *r)
@@ -248,6 +258,76 @@ int type_ref_is_signed(type_ref *r)
 	return TYPE_REF_TYPE_IS(is_signed);
 }
 
+int type_ref_is_floating(type_ref *r)
+{
+	r = type_ref_is(r, type_ref_type, type_unknown);
+
+	if(!r)
+		return 0;
+
+	switch(r->bits.type->primitive){
+		case type_float:
+		case type_double:
+		case type_ldouble:
+			return 1;
+		default:
+			break;
+	}
+	return 0;
+}
+
+enum type_qualifier type_ref_qual(const type_ref *r)
+{
+	/* stop at the first pointer or type, collecting from type_ref_cast quals */
+
+	if(!r)
+		return qual_none;
+
+	switch(r->type){
+		case type_ref_func:
+		case type_ref_array:
+			return qual_none;
+
+		case type_ref_cast:
+			/* descend */
+			return r->bits.qual | type_ref_qual(r->ref);
+
+		case type_ref_type:
+			return r->bits.type->qual;
+
+		case type_ref_ptr:
+		case type_ref_block:
+			return r->bits.qual; /* no descend */
+
+		case type_ref_tdef:
+			ICE("TODO");
+	}
+
+	ucc_unreach();
+}
+
+funcargs *type_ref_funcargs(type_ref *r)
+{
+	r = type_ref_is(r, type_ref_func);
+	return r ? r->bits.func : NULL;
+}
+
+int type_ref_is_callable(type_ref *r)
+{
+	type_ref *test;
+
+	if((test = type_ref_is(r, type_ref_ptr)) || (test = type_ref_is(r, type_ref_block)))
+		return !!type_ref_is(test, type_ref_func);
+
+	return 0;
+}
+
+int type_ref_is_const(type_ref *r)
+{
+	/* const char *x is not const. char *const x is */
+	return !!(type_ref_qual(r) & qual_const);
+}
+
 #if 0
 int decl_is_struct_or_union_possible_ptr(decl *d)
 {
@@ -257,38 +337,6 @@ int decl_is_struct_or_union_possible_ptr(decl *d)
 int decl_is_struct_or_union_ptr(decl *d)
 {
 	return decl_is_struct_or_union_possible_ptr(d) && decl_is_ptr(d);
-}
-
-int decl_is_const(decl *d)
-{
-	/* const char *x is not const. char *const x is */
-	decl_desc *dp = decl_leaf(d);
-	if(dp)
-		switch(dp->type){
-			case decl_desc_ptr:
-			case decl_desc_block:
-				return dp->bits.qual & qual_const;
-			default:
-				break;
-		}
-
-	return d->type->qual & qual_const;
-}
-
-int decl_is_floating(decl *d)
-{
-	if(d->desc)
-		return 0;
-
-	switch(d->type->primitive){
-		case type_float:
-		case type_double:
-		case type_ldouble:
-			return 1;
-		default:
-			break;
-	}
-	return 0;
 }
 
 int decl_is_callable(decl *d)

@@ -162,10 +162,10 @@ int   decl_equal(decl *a, decl *b, enum decl_cmp mode);
 int   type_ref_equal(type_ref *a, type_ref *b, enum decl_cmp mode);
 
 decl *decl_ptr_depth_inc(decl *);
-decl *decl_ptr_depth_dec(decl *, where *from);
+decl *decl_ptr_depth_dec(decl *);
 
 type_ref *type_ref_ptr_depth_inc(type_ref *);
-type_ref *type_ref_ptr_depth_dec(type_ref *, where *from);
+type_ref *type_ref_ptr_depth_dec(type_ref *);
 type_ref *type_ref_decay_first_array(type_ref *);
 
 type *decl_get_type(decl *);
@@ -179,7 +179,7 @@ int decl_attr_present(decl_attr *, enum decl_attr_type);
 
 const char *decl_to_str(decl *d);
 const char *decl_to_str_r(char buf[DECL_STATIC_BUFSIZ], decl *);
-const char *type_ref_to_str_r(char buf[TYPE_REF_STATIC_BUFSIZ], type_ref *);
+const char *type_ref_to_str_r(char buf[TYPE_REF_STATIC_BUFSIZ], const type_ref *);
 const char *type_ref_to_str(const type_ref *);
 const char *decl_store_to_str(const enum decl_storage);
 
@@ -208,7 +208,7 @@ int type_ref_is_callable(type_ref *);
 
 enum type_qualifier type_ref_qual(const type_ref *);
 
-funcargs *type_ref_funcargs(const type_ref *);
+funcargs *type_ref_funcargs(type_ref *);
 
 int type_ref_align(type_ref *);
 type_ref *type_ref_is(type_ref *, enum type_ref_type, ...);

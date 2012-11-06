@@ -45,7 +45,6 @@ type_ref *type_ref_new_tdef(expr *e)
 type_ref *type_ref_new_ptr(type_ref *to, enum type_qualifier q)
 {
 	type_ref *r = type_ref_new(type_ref_ptr, to);
-	r->ref = to;
 	r->bits.qual = q;
 	return r;
 }
@@ -60,7 +59,6 @@ type_ref *type_ref_new_block(type_ref *to, enum type_qualifier q)
 type_ref *type_ref_new_array(type_ref *to, expr *sz)
 {
 	type_ref *r = type_ref_new(type_ref_array, to);
-	r->ref = to;
 	r->bits.array_size = sz;
 	return r;
 }
@@ -69,6 +67,13 @@ type_ref *type_ref_new_func(type_ref *of, funcargs *args)
 {
 	type_ref *r = type_ref_new(type_ref_func, of);
 	r->bits.func = args;
+	return r;
+}
+
+type_ref *type_ref_new_cast(type_ref *to, enum type_qualifier q)
+{
+	type_ref *r = type_ref_new(type_ref_cast, to);
+	r->bits.qual = q;
 	return r;
 }
 
@@ -446,6 +451,13 @@ int decl_is_incomplete_array(decl *d)
 	return 0;
 }
 
+int decl_is_variadic(decl *d)
+{
+	type_ref *r = d->ref;
+
+	return (r = type_ref_is(r, type_ref_func)) && r->bits.func->variadic;
+}
+
 int decl_ptr_depth(decl *d)
 {
 	int depth = 0;
@@ -465,15 +477,8 @@ type_ref *type_ref_orphan(type_ref *r)
 	return ret;
 }
 
-decl *decl_ptr_depth_inc(decl *d)
+type_ref *type_ref_ptr_depth_dec(type_ref *r)
 {
-	d->ref = type_ref_new_ptr(d->ref, qual_none);
-	return d;
-}
-
-decl *decl_ptr_depth_dec(decl *d, where *from)
-{
-	type_ref *r = d->ref;
 	type_ref *r_save;
 
 	/* *(void (*)()) does nothing */
@@ -484,18 +489,34 @@ decl *decl_ptr_depth_dec(decl *d, where *from)
 	}
 
 	if(!type_ref_is(r, type_ref_ptr))
-		DIE_AT(from, "invalid indirection applied to %s", type_ref_to_str(r));
+		DIE_AT(&r->where, "invalid indirection applied to %s", type_ref_to_str(r));
 
-	d->ref = d->ref->ref;
-	r_save = type_ref_orphan(r);
+	r_save = r;
+	r = r->ref;
 
 	if(!type_ref_is_complete(r))
-		/* FIXME */
-		DIE_AT(from, "dereference pointer to incomplete type %s", type_ref_to_str(r));
+		DIE_AT(&r->where, "dereference of pointer to incomplete type %s", type_ref_to_str(r));
 
 	type_ref_free(r_save);
 
 fin:
+	return r;
+}
+
+type_ref *type_ref_ptr_depth_inc(type_ref *r)
+{
+	return type_ref_new_ptr(r, qual_none);
+}
+
+decl *decl_ptr_depth_inc(decl *d)
+{
+	d->ref = type_ref_ptr_depth_inc(d->ref);
+	return d;
+}
+
+decl *decl_ptr_depth_dec(decl *d)
+{
+	d->ref = type_ref_ptr_depth_dec(d->ref);
 	return d;
 }
 
@@ -599,30 +620,36 @@ static void type_ref_add_str(const type_ref *r, char *spel, char **bufp, int sz)
 static void type_ref_add_type_str(const type_ref *r, char *spel, char **bufp, int sz)
 {
 	/* go down to the first type or typedef, print it and then its descriptions */
-	int len;
 	const type_ref *rt;
+	char *buf = *bufp;
+	int len;
 
 	for(rt = r; rt->type != type_ref_type && rt->type != type_ref_tdef; rt = rt->ref);
-	strcpy(*bufp, type_to_str(rt->bits.type));
+	strcpy(buf, type_to_str(rt->bits.type));
 
-	len = strlen(*bufp);
+	len = strlen(buf);
 
-	bufp += len;
-	*(*bufp)++ = ' ';
+	buf += len;
+	*buf++ = ' ';
 
 	sz -= len + 1;
 
-	type_ref_add_str(r, spel, bufp, sz);
+	type_ref_add_str(r, spel, &buf, sz);
 }
 
-const char *type_ref_to_str(const type_ref *r)
+const char *type_ref_to_str_r(char buf[TYPE_REF_STATIC_BUFSIZ], const type_ref *r)
 {
-	static char buf[TYPE_REF_STATIC_BUFSIZ];
 	char *bufp = buf;
 
 	type_ref_add_type_str(r, NULL, &bufp, sizeof buf);
 
 	return buf;
+}
+
+const char *type_ref_to_str(const type_ref *r)
+{
+	static char buf[TYPE_REF_STATIC_BUFSIZ];
+	return type_ref_to_str_r(buf, r);
 }
 
 const char *decl_to_str_r_spel(char buf[DECL_STATIC_BUFSIZ], int show_spel, decl *d)

@@ -283,7 +283,7 @@ void fold_complete_array(decl *dfor, decl_init *init_from)
 				 * int x[][2] = { 1, 2, { 3, 4 } };
 				 */
 
-				type_ref *dref = type_ref_ptr_depth_dec(dfor->ref, &dfor->where);
+				type_ref *dref = type_ref_ptr_depth_dec(dfor->ref);
 
 				/* (int[2] size = 8) / type_size = 2 */
 				complete_to = n_inits / (type_ref_size(dref) / type_ref_size(dref->ref));
@@ -879,9 +879,10 @@ void fold_func(decl *func_decl)
 		curdecl_func = func_decl;
 		curdecl_ref_func_called = type_ref_func_call(curdecl_func->ref, NULL);
 
+		UCC_ASSERT(func_decl->ref->type == type_ref_func, "not a func");
 		symtab_add_args(
 				func_decl->func_code->symtab,
-				curdecl_ref_func_called->bits.func,
+				func_decl->ref->bits.func,
 				func_decl->spel);
 
 		fold_stmt(func_decl->func_code);
