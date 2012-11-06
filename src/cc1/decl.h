@@ -215,6 +215,7 @@ type_ref *type_ref_is(type_ref *, enum type_ref_type, ...);
 type_ref *type_ref_func_call(type_ref *, funcargs **pfuncargs);
 type_ref *type_ref_decay(type_ref *);
 struct_union_enum_st *type_ref_is_s_or_u(type_ref *);
+struct_union_enum_st *type_ref_is_s_or_u_or_e(type_ref *);
 
 #define decl_is_void(d) decl_is_type(d, type_void)
 #define decl_is_bool(d) (decl_is_ptr(d) || decl_is_integral(d))

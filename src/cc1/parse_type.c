@@ -558,19 +558,19 @@ type_ref *parse_type_ref(void)
 
 decl *parse_decl(type_ref *subtype, enum decl_mode mode)
 {
-	type_ref *r;
+	type_ref **insert;
 	decl *d;
 	char *spel = NULL;
 
-	r = parse_type_ref2(mode, &spel);
+	d = decl_new();
 
 	/* don't fold typedefs until later (for __typeof) */
-	d = decl_new();
+	d->ref = parse_type_ref2(mode, &spel);
+
 	d->spel = spel;
 
-	d->ref = r;
-	for(; r->ref; r = r->ref);
-	r->ref = subtype;
+	for(insert = &d->ref; *insert; insert = &(*insert)->ref);
+	*insert = subtype;
 
 	parse_add_attr(&d->attr); /* int spel __attr__ */
 
@@ -652,60 +652,56 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 
 	/* read a type, then *spels separated by commas, then a semi colon, then repeat */
 	for(;;){
-		type_ref *ref;
-		type *t;
 		enum decl_storage store = store_default;
+		type_ref *this_ref;
 
 		last = NULL;
 		are_tdefs = 0;
 
 		parse_static_assert();
 
-		ref = parse_type(mode & DECL_MULTI_ALLOW_STORE ? &store : NULL);
+		this_ref = parse_type(mode & DECL_MULTI_ALLOW_STORE ? &store : NULL);
 
-		if(!ref){
-			/* can_default makes sure we don'ref parse { int *p; *p = 5; } the latter as a decl */
+		if(!this_ref){
+			/* can_default makes sure we don't parse { int *p; *p = 5; } the latter as a decl */
 			if(parse_possible_decl() && (mode & DECL_MULTI_CAN_DEFAULT)){
-				ref = default_type();
+				this_ref = default_type();
 			}else{
 				return decls;
 			}
 		}
 
-		{
-			type_ref *r;
-			for(r = ref; r && r->type != type_ref_type; r = r->ref);
-			if(r)
-				t = r->bits.type;
-		}
-
 		if(store == store_typedef){
 			are_tdefs = 1;
-		}else if(t->sue && !parse_possible_decl()){
-			/* FIXME: can't this be caught below anyway? */
+		}else{
+			struct_union_enum_st *sue = type_ref_is_s_or_u(this_ref);
 
-			/*
-			 * struct { int i; }; - continue to next one
-			 * we check the actual ->struct/enum because we don't allow "enum x;"
-			 */
+			if(sue && !parse_possible_decl()){
+				/*
+				 * struct { int i; }; - continue to next one
+				 * we check the actual ->struct/enum because we don't allow "enum x;"
+				 */
+				enum type_qualifier qual;
 
-			if(t->primitive != type_enum && t->sue->anon)
-				WARN_AT(&t->where, "anonymous struct with no instances");
+				if(sue->anon)
+					WARN_AT(&this_ref->where, "anonymous struct with no instances");
 
-			/* check for storage/qual on no-instance */
-			if(t->sue && (t->qual || store != store_default)){
-				WARN_AT(&t->where, "ignoring %s%s%son no-instance %s",
-						store != store_default ? decl_store_to_str(store) : "",
-						store != store_default ? " " : "",
-						type_qual_to_str(t->qual),
-						sue_str(t->sue));
+				/* check for storage/qual on no-instance */
+				qual = type_ref_qual(this_ref);
+				if(qual || store != store_default){
+					WARN_AT(&this_ref->where, "ignoring %s%s%son no-instance %s",
+							store != store_default ? decl_store_to_str(store) : "",
+							store != store_default ? " " : "",
+							type_qual_to_str(qual),
+							sue_str(sue));
+				}
+
+				goto next;
 			}
-
-			goto next;
 		}
 
 		do{
-			decl *d = parse_decl(ref, parse_flag);
+			decl *d = parse_decl(this_ref, parse_flag);
 
 			UCC_ASSERT(d, "null decl after parse");
 
@@ -717,18 +713,20 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 				 */
 				if(!last){
 					int warn = 0;
+					struct_union_enum_st *sue;
 
 					/* allow "int : 5;" */
 					if(curtok == token_colon)
 						goto got_field_width;
 
 					/* check for no-fwd and anon */
-					switch(t->primitive){
+					sue = type_ref_is_s_or_u_or_e(this_ref);
+					switch(sue ? sue->primitive : type_unknown){
 						case type_enum:
 						case type_struct:
 						case type_union:
 							/* if it doesn't have a ->sue, it's a forward decl */
-							warn = t->sue && !t->sue->anon;
+							warn = sue && !sue->anon;
 							break;
 
 						default:

@@ -193,14 +193,22 @@ int type_ref_is_complete(type_ref *r)
 	return 1;
 }
 
-struct_union_enum_st *type_ref_is_s_or_u(type_ref *r)
+struct_union_enum_st *type_ref_is_s_or_u_or_e(type_ref *r)
 {
-	type_ref *test = type_ref_is(r, type_ref_type, type_struct);
+	type_ref *test = type_ref_is(r, type_ref_type, type_unknown);
 
-	if(!test && !(test = type_ref_is(r, type_ref_type, type_union)))
+	if(!test)
 		return NULL;
 
-	return test->bits.type->sue;
+	return test->bits.type->sue; /* NULL if not s/u/e */
+}
+
+struct_union_enum_st *type_ref_is_s_or_u(type_ref *r)
+{
+	struct_union_enum_st *sue = type_ref_is_s_or_u_or_e(r);
+	if(sue && sue->primitive != type_enum)
+		return sue;
+	return NULL;
 }
 
 type_ref *type_ref_func_call(type_ref *fp, funcargs **pfuncargs)
