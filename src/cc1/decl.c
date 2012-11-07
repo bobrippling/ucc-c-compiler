@@ -40,7 +40,7 @@ type_ref *type_ref_new_tdef(expr *e, decl *to)
 {
 	type_ref *r = type_ref_new(type_ref_tdef, NULL);
 	r->bits.tdef.type_of = e;
-	r->bits.tdef.decl = to;
+	r->bits.tdef.decl = to; /* NULL if typeof */
 	return r;
 }
 
@@ -565,10 +565,9 @@ static void type_ref_add_str(const type_ref *r,
 
 	switch(r->type){
 		case type_ref_type:
-			return;
-
 		case type_ref_tdef:
-			BUF_ADD("|tdef TODO");
+			if(spel)
+				BUF_ADD("%s", spel);
 			return;
 
 		default:break;
@@ -609,21 +608,12 @@ static void type_ref_add_str(const type_ref *r,
 				BUF_ADD("%s", type_qual_to_str(q));
 		}
 
-		{
-			type_ref_add_str(r->ref, spel, bufp, sz, r);
-
-			if(spel
-			&& (r->ref->type == type_ref_type
-			||  r->ref->type == type_ref_tdef))
-			{
-				BUF_ADD("%s", spel);
-			}
-		}
+		type_ref_add_str(r->ref, spel, bufp, sz, r);
 	}
 
 	switch(r->type){
 		case type_ref_tdef:
-			/* TODO: tdef "aka: %s" */
+			/* tdef "aka: %s" handled elsewhere */
 		case type_ref_cast:
 		case type_ref_type:
 		case type_ref_block:
@@ -677,10 +667,15 @@ static void type_ref_add_type_str(type_ref *r, char **bufp, int sz)
 
 	if(rt->type == type_ref_tdef){
 		char buf[TYPE_REF_STATIC_BUFSIZ];
+		decl *d = rt->bits.tdef.decl;
 
-		BUF_ADD("%s (aka '%s')",
-				rt->bits.tdef.decl->spel,
-				type_ref_to_str_r(buf, r));
+		if(d){
+			BUF_ADD("%s (aka '%s')",
+					d->spel, type_ref_to_str_r(buf, d->ref));
+		}else{
+			BUF_ADD("typeof-expression (%s)",
+					type_ref_to_str_r(buf, rt->bits.tdef.type_of->tree_type));
+		}
 
 	}else{
 		BUF_ADD("%s", type_to_str(rt->bits.type));
@@ -694,7 +689,7 @@ const char *type_ref_to_str_r_spel(char buf[TYPE_REF_STATIC_BUFSIZ], type_ref *r
 
 	type_ref_add_type_str(r, &bufp, TYPE_REF_STATIC_BUFSIZ);
 
-	if(!type_ref_is(r, type_ref_type, type_unknown))
+	if(!type_ref_is(r, type_ref_type, type_unknown) || spel)
 		*bufp++ = ' ';
 
 	type_ref_add_str(r, spel, &bufp, TYPE_REF_STATIC_BUFSIZ - (bufp - buf), NULL);

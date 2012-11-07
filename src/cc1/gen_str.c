@@ -189,20 +189,6 @@ void print_funcargs(funcargs *fargs)
 	fprintf(cc1_out, "%s)", fargs->variadic ? ", ..." : "");
 }
 
-static void print_tdef(type_ref *t)
-{
-	UCC_ASSERT(t->type == type_ref_tdef, "invalid tdef");
-
-	/* TODO */
-	fputc('\n', cc1_out);
-	gen_str_indent++;
-	idt_printf("typeof expr:\n");
-	gen_str_indent++;
-	print_expr(t->bits.tdef.type_of);
-	gen_str_indent -= 2;
-	idt_print();
-}
-
 void print_type_ref(type_ref *ref, decl *d)
 {
 	char buf[TYPE_REF_STATIC_BUFSIZ];
