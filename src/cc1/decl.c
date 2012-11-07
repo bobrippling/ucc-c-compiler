@@ -36,10 +36,11 @@ type_ref *type_ref_new_type(type *t)
 	return r;
 }
 
-type_ref *type_ref_new_tdef(expr *e)
+type_ref *type_ref_new_tdef(expr *e, decl *to)
 {
 	type_ref *r = type_ref_new(type_ref_tdef, NULL);
-	r->bits.type_of = e;
+	r->bits.tdef.type_of = e;
+	r->bits.tdef.decl = to;
 	return r;
 }
 
@@ -284,6 +285,12 @@ int type_ref_size(type_ref *r)
 			return type_size(r->bits.type);
 
 		case type_ref_tdef:
+		{
+			type_ref *sub = r->bits.tdef.type_of->tree_type;
+			UCC_ASSERT(sub, "type_ref_size for unfolded typedef");
+			return type_ref_size(sub);
+		}
+
 		case type_ref_cast:
 			return type_ref_size(r->ref);
 
@@ -616,7 +623,7 @@ static void type_ref_add_str(const type_ref *r,
 
 	switch(r->type){
 		case type_ref_tdef:
-			/* TODO: "aka: %s" */
+			/* TODO: tdef "aka: %s" */
 		case type_ref_cast:
 		case type_ref_type:
 		case type_ref_block:
@@ -655,7 +662,7 @@ static void type_ref_add_str(const type_ref *r,
 		BUF_ADD(")");
 }
 
-static void type_ref_add_type_str(const type_ref *r, char **bufp, int sz)
+static void type_ref_add_type_str(type_ref *r, char **bufp, int sz)
 {
 	/* go down to the first type or typedef, print it and then its descriptions */
 	const type_ref *rt;
@@ -667,10 +674,17 @@ static void type_ref_add_type_str(const type_ref *r, char **bufp, int sz)
 	if(!rt)
 		return;
 
-	BUF_ADD("%s",
-			rt->type == type_ref_tdef
-			? "type_tdef"
-			: type_to_str(rt->bits.type));
+
+	if(rt->type == type_ref_tdef){
+		char buf[TYPE_REF_STATIC_BUFSIZ];
+
+		BUF_ADD("%s (aka '%s')",
+				rt->bits.tdef.decl->spel,
+				type_ref_to_str_r(buf, r));
+
+	}else{
+		BUF_ADD("%s", type_to_str(rt->bits.type));
+	}
 }
 #undef BUF_ADD
 

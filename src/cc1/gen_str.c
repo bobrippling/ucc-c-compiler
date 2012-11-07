@@ -198,7 +198,7 @@ static void print_tdef(type_ref *t)
 	gen_str_indent++;
 	idt_printf("typeof expr:\n");
 	gen_str_indent++;
-	print_expr(t->bits.type_of);
+	print_expr(t->bits.tdef.type_of);
 	gen_str_indent -= 2;
 	idt_print();
 }

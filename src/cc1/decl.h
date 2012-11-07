@@ -58,7 +58,11 @@ struct type_ref
 		type *type;
 
 		/* ref_tdef */
-		expr *type_of; /* typedef if NULL else typeof */
+		struct
+		{
+			expr *type_of;
+			decl *decl;
+		} tdef;
 
 		/* ref_ptr, ref_cast */
 		enum type_qualifier qual;
@@ -145,7 +149,7 @@ void         decl_free(decl *);
 void         type_ref_free(type_ref *);
 void         type_ref_free_1(type_ref *);
 
-type_ref *type_ref_new_tdef(expr *);
+type_ref *type_ref_new_tdef(expr *, decl *);
 type_ref *type_ref_new_type(type *);
 type_ref *type_ref_new_ptr(  type_ref *to, enum type_qualifier);
 type_ref *type_ref_new_block(type_ref *to, enum type_qualifier);

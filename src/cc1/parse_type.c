@@ -147,13 +147,12 @@ type_ref *parse_type(enum decl_storage *store)
 	enum type_primitive primitive = type_int;
 	int is_signed = 1, is_inline = 0, had_attr = 0, is_noreturn = 0;
 	int store_set = 0, primitive_set = 0, signed_set = 0;
+	decl *tdef_decl;
 
 	if(store)
 		*store = store_default;
 
 	for(;;){
-		type_ref *tdef_ref;
-
 		if(curtok_is_type_qual()){
 			qual |= curtok_to_type_qualifier();
 			EAT(curtok);
@@ -268,7 +267,7 @@ type_ref *parse_type(enum decl_storage *store)
 			primitive_set = 1;
 
 		}else if(curtok == token_identifier
-		&& (tdef_ref = typedef_find(current_scope, token_current_spel_peek()))){
+		&& (tdef_decl = typedef_find(current_scope, token_current_spel_peek()))){
 			/* typedef name */
 
 			/*
@@ -288,7 +287,7 @@ type_ref *parse_type(enum decl_storage *store)
 
 			/*if(tdef_typeof) - can't reach due to primitive_set */
 
-			tdef_typeof = expr_new_sizeof_type(tdef_ref, 1);
+			tdef_typeof = expr_new_sizeof_type(tdef_decl->ref, 1);
 			token_get_current_str(&tdef_typeof->spel, NULL);
 			primitive_set = PRIMITIVE_NO_MORE;
 
@@ -320,11 +319,12 @@ type_ref *parse_type(enum decl_storage *store)
 
 		if(tdef_typeof){
 			/* signed size_t x; */
-			if(signed_set)
+			if(signed_set){
 				DIE_AT(NULL, "signed/unsigned not allowed with typedef instance (%s)",
 						tdef_typeof->spel);
+			}
 
-			r = type_ref_new_tdef(tdef_typeof);
+			r = type_ref_new_tdef(tdef_typeof, tdef_decl);
 
 		}else{
 			type *t = type_new_primitive(primitive_set ? primitive : type_int);

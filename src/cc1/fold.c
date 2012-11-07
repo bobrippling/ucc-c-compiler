@@ -137,43 +137,6 @@ fin:
 	return e;
 }
 
-void fold_ref_desc(type_ref *r, symtable *stab, decl *root)
-{
-	switch(r->type){
-		case type_ref_func:
-			fold_funcargs(r->bits.func, stab, root->spel);
-			break;
-
-		case type_ref_array:
-		{
-			intval sz;
-
-			FOLD_EXPR(r->bits.array_size, stab);
-			const_fold_need_val(r->bits.array_size, &sz);
-
-			if(sz.val < 0)
-				DIE_AT(&r->where, "negative array length %ld", sz.val);
-
-			/* allow incomplete arrays here */
-			/*if(sz.val == 0 && !root->init && root->type->store != store_extern)
-				DIE_AT(&dp->where, "incomplete array");*/
-		}
-
-		case type_ref_tdef:
-			FOLD_EXPR(r->bits.type_of, stab);
-			break;
-
-		case type_ref_type:
-		case type_ref_block:
-		case type_ref_ptr:
-		case type_ref_cast:
-			break;
-	}
-
-	if(r->ref)
-		fold_ref_desc(r->ref, stab, root);
-}
-
 void fold_enum(struct_union_enum_st *en, symtable *stab)
 {
 	const int bitmask = decl_attr_present(en->attr, attr_enum_bitmask);
@@ -579,26 +542,56 @@ void fold_decl_init(decl *for_decl, decl_init *di, symtable *stab)
 
 void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 {
+	enum type_qualifier q_to_check = qual_none;
+
 	if(!r)
 		return;
 
+	switch(r->type){
 	/* check for array of funcs, func returning array */
-	if(r->type == type_ref_array && r->ref && r->ref->type == type_ref_func)
-		DIE_AT(&r->where, "can't have an array of functions");
+		case type_ref_array:
+			if(r->ref && r->ref->type == type_ref_func)
+				DIE_AT(&r->where, "can't have an array of functions");
+			break;
 
-	if(r->type == type_ref_func && r->ref && r->ref->type == type_ref_func)
-		DIE_AT(&r->where, "can't have a function returning a function");
+		case type_ref_func:
+			if(r->ref && r->ref->type == type_ref_func)
+				DIE_AT(&r->where, "can't have a function returning a function");
+			break;
 
-	if(r->type == type_ref_block
-			&& (!r->ref || r->ref->type != type_ref_func))
-	{
-		DIE_AT(&r->where, "invalid block pointer - function required (got %s)",
-				type_ref_to_str(r->ref));
+		case type_ref_block:
+			if(r->ref->type != type_ref_func)
+				DIE_AT(&r->where, "invalid block pointer - function required (got %s)",
+						type_ref_to_str(r->ref));
+
+			/*q_to_check = r->bits.block.qual; - allowed */
+			break;
+
+		case type_ref_cast:
+			q_to_check = type_ref_qual(r);
+			break;
+
+		case type_ref_ptr:
+			/*q_to_check = r->bits.qual; - allowed */
+			break;
+
+		case type_ref_type:
+			q_to_check = r->bits.type->qual;
+			break;
+
+		case type_ref_tdef:
+		{
+			expr **p_expr = &r->bits.tdef.type_of;
+
+			/* q_to_check = TODO */
+			FOLD_EXPR(*p_expr, stab);
+
+			break;
+		}
 	}
 
-	if(r->type == type_ref_type)
-		if(r->bits.type->qual & qual_restrict && parent && parent->type != type_ref_ptr)
-			DIE_AT(&r->where, "restrict on non-pointer type %s", type_ref_to_str(r));
+	if(q_to_check & qual_restrict && parent && parent->type != type_ref_ptr)
+		DIE_AT(&r->where, "restrict on non-pointer type %s", type_ref_to_str(r));
 
 	fold_type_ref(r->ref, r, stab);
 }
