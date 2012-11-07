@@ -316,7 +316,13 @@ enum type_qualifier type_ref_qual(const type_ref *r)
 
 funcargs *type_ref_funcargs(type_ref *r)
 {
+	type_ref *test;
+
+	if((test = type_ref_is(r, type_ref_ptr)))
+		r = test->ref; /* jump down past the (*)() */
+
 	r = type_ref_is(r, type_ref_func);
+
 	return r ? r->bits.func : NULL;
 }
 
@@ -325,7 +331,7 @@ int type_ref_is_callable(type_ref *r)
 	type_ref *test;
 
 	if((test = type_ref_is(r, type_ref_ptr)) || (test = type_ref_is(r, type_ref_block)))
-		return !!type_ref_is(test, type_ref_func);
+		return !!type_ref_is(test->ref, type_ref_func);
 
 	return 0;
 }
