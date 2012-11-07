@@ -421,16 +421,12 @@ static void vtop2_are(
 static int calc_ptr_step(type_ref *t)
 {
 	/* we are calculating the sizeof *t */
-	type_ref *ref;
 	int sz;
 
 	if(type_ref_is(type_ref_is(t, type_ref_ptr), type_ref_type, type_void))
 		return type_primitive_size(type_void);
 
-	ref = type_ref_ptr_depth_dec(t);
-	sz = type_ref_size(ref);
-
-	type_ref_free(ref);
+	sz = type_ref_size(t->ref);
 
 	return sz;
 }
