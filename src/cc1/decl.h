@@ -181,8 +181,9 @@ int decl_attr_present(decl_attr *, enum decl_attr_type);
 
 const char *decl_to_str(decl *d);
 const char *decl_to_str_r(char buf[DECL_STATIC_BUFSIZ], decl *);
-const char *type_ref_to_str_r(char buf[TYPE_REF_STATIC_BUFSIZ], const type_ref *r);
-const char *type_ref_to_str(const type_ref *);
+const char *type_ref_to_str_r_spel(char buf[TYPE_REF_STATIC_BUFSIZ], type_ref *r, char *spel);
+const char *type_ref_to_str_r(char buf[TYPE_REF_STATIC_BUFSIZ], type_ref *r);
+const char *type_ref_to_str(type_ref *);
 const char *decl_store_to_str(const enum decl_storage);
 
 void decl_attr_free(decl_attr *a);

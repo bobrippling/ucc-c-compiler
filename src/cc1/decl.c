@@ -545,7 +545,8 @@ void decl_conv_array_func_to_ptr(decl *d)
 	d->ref = type_ref_decay(d->ref);
 }
 
-static void type_ref_add_str(const type_ref *r, char *spel, char **bufp, int sz)
+static void type_ref_add_str(const type_ref *r,
+		char *spel, char **bufp, int sz, const type_ref *parent)
 {
 #define BUF_ADD(...) \
 	do{ int n = snprintf(*bufp, sz, __VA_ARGS__); *bufp += n, sz -= n; }while(0)
@@ -560,44 +561,58 @@ static void type_ref_add_str(const type_ref *r, char *spel, char **bufp, int sz)
 			return;
 
 		case type_ref_tdef:
-			BUF_ADD("|tdef");
+			BUF_ADD("|tdef TODO");
 			return;
 
 		default:break;
 	}
 
-	need_paren = r->ref != type_ref_type && r->type != r->ref->type;
-
-	if(need_paren)
-		BUF_ADD("(");
-
 	{
-		enum type_qualifier q = 0;
 		switch(r->type){
 			case type_ref_ptr:
-				BUF_ADD("*");
-			case type_ref_cast:
-				q = r->bits.qual;
-				break;
-
 			case type_ref_block:
-				BUF_ADD("^");
-				q = r->bits.block.qual;
+				need_paren = !!parent;
 				break;
-
-			default:break;
+			default:
+				need_paren = 0;
 		}
-		if(q)
-			BUF_ADD("%s", type_qual_to_str(q));
+
+		if(need_paren)
+			BUF_ADD("(");
+
+		/* print pre-type annotations */
+		{
+			enum type_qualifier q = qual_none;
+			switch(r->type){
+				case type_ref_ptr:
+					BUF_ADD("*");
+					/* fall */
+				case type_ref_cast:
+					q = r->bits.qual;
+					break;
+
+				case type_ref_block:
+					BUF_ADD("^");
+					q = r->bits.block.qual;
+					break;
+
+				default:break;
+			}
+			if(q)
+				BUF_ADD("%s", type_qual_to_str(q));
+		}
+
+		{
+			type_ref_add_str(r->ref, spel, bufp, sz, r);
+
+			if(spel
+			&& (r->ref->type == type_ref_type
+			||  r->ref->type == type_ref_tdef))
+			{
+				BUF_ADD("%s", spel);
+			}
+		}
 	}
-
-	if(r->ref)
-		type_ref_add_str(r->ref, spel, bufp, sz);
-	else if(spel)
-		BUF_ADD("%s", spel);
-
-	if(need_paren)
-		BUF_ADD(")");
 
 	switch(r->type){
 		case type_ref_tdef:
@@ -635,7 +650,9 @@ static void type_ref_add_str(const type_ref *r, char *spel, char **bufp, int sz)
 			break;
 		}
 	}
-#undef BUF_ADD
+
+	if(need_paren)
+		BUF_ADD(")");
 }
 
 static void type_ref_add_type_str(const type_ref *r, char **bufp, int sz)
@@ -650,26 +667,33 @@ static void type_ref_add_type_str(const type_ref *r, char **bufp, int sz)
 	if(!rt)
 		return;
 
-	snprintf(buf, sz, "%s", type_to_str(rt->bits.type));
+	BUF_ADD("%s",
+			rt->type == type_ref_tdef
+			? "type_tdef"
+			: type_to_str(rt->bits.type));
 }
+#undef BUF_ADD
 
-static const char *type_ref_to_str_r_spel(char buf[TYPE_REF_STATIC_BUFSIZ], const type_ref *r, char *spel)
+const char *type_ref_to_str_r_spel(char buf[TYPE_REF_STATIC_BUFSIZ], type_ref *r, char *spel)
 {
 	char *bufp = buf;
 
 	type_ref_add_type_str(r, &bufp, TYPE_REF_STATIC_BUFSIZ);
 
-	type_ref_add_str(r, spel, &bufp, TYPE_REF_STATIC_BUFSIZ - (bufp - buf));
+	if(!type_ref_is(r, type_ref_type, type_unknown))
+		*bufp++ = ' ';
+
+	type_ref_add_str(r, spel, &bufp, TYPE_REF_STATIC_BUFSIZ - (bufp - buf), NULL);
 
 	return buf;
 }
 
-const char *type_ref_to_str_r(char buf[TYPE_REF_STATIC_BUFSIZ], const type_ref *r)
+const char *type_ref_to_str_r(char buf[TYPE_REF_STATIC_BUFSIZ], type_ref *r)
 {
 	return type_ref_to_str_r_spel(buf, r, NULL);
 }
 
-const char *type_ref_to_str(const type_ref *r)
+const char *type_ref_to_str(type_ref *r)
 {
 	static char buf[TYPE_REF_STATIC_BUFSIZ];
 	return type_ref_to_str_r(buf, r);

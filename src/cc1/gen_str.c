@@ -205,66 +205,9 @@ static void print_tdef(type_ref *t)
 
 void print_type_ref(type_ref *ref, decl *d)
 {
-	switch(ref->type){
-		case type_ref_cast:
-		case type_ref_ptr:
-			fprintf(cc1_out, "%s%s", ref->type == type_ref_cast ? "" : "*", type_qual_to_str(ref->bits.qual));
-			break;
-
-		case type_ref_block:
-			fputc('^', cc1_out);
-			break;
-
-		case type_ref_tdef:
-			print_tdef(ref);
-			break;
-
-		case type_ref_array: /* done below */
-		case type_ref_func:
-		case type_ref_type:
-			break;
-	}
-
-	if(ref->ref){
-		const int need_paren = ref->type != ref->ref->type;
-
-		if(need_paren)
-			fputc('(', cc1_out);
-
-		print_type_ref(ref->ref, d);
-
-		if(need_paren)
-			fputc(')', cc1_out);
-	}else if(d && d->spel){
-		fputs(d->spel, cc1_out);
-	}
-
-	switch(ref->type){
-		case type_ref_func:
-			print_funcargs(ref->bits.func);
-			break;
-
-		case type_ref_array:
-		{
-			intval sz;
-
-			const_fold_need_val(ref->bits.array_size, &sz);
-
-			if(sz.val)
-				fprintf(cc1_out, "[%ld]", sz.val);
-			else
-				fprintf(cc1_out, "[]");
-			break;
-		}
-
-		case type_ref_ptr:
-		case type_ref_cast:
-		case type_ref_block:
-			break;
-		case type_ref_tdef:
-		case type_ref_type:
-			ICE("TODO");
-	}
+	char buf[TYPE_REF_STATIC_BUFSIZ];
+	fprintf(cc1_out, "%s",
+			type_ref_to_str_r_spel(buf, ref, d ? d->spel : NULL));
 }
 
 void print_decl(decl *d, enum pdeclargs mode)
@@ -291,15 +234,7 @@ void print_decl(decl *d, enum pdeclargs mode)
 	if(fopt_mode & FOPT_ENGLISH){
 		print_decl_eng(d);
 	}else{
-		if(d->spel)
-			fprintf(cc1_out, " %s, type ", d->spel);
-
-		fputs(type_to_str(decl_get_type(d)), cc1_out);
-
-		if(d->ref){
-			fputc(' ', cc1_out);
-			print_type_ref(d->ref, d);
-		}
+		print_type_ref(d->ref, d);
 	}
 
 	if(mode & PDECL_SYM_OFFSET){
@@ -365,6 +300,7 @@ void print_expr(expr *e)
 		gen_str_indent++;
 		print_type_ref(e->tree_type, NULL);
 		gen_str_indent--;
+		fputc('\n', cc1_out);
 	}
 	gen_str_indent++;
 	e->f_gen(e, NULL);
