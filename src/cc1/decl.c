@@ -39,6 +39,7 @@ type_ref *type_ref_new_type(type *t)
 type_ref *type_ref_new_tdef(expr *e, decl *to)
 {
 	type_ref *r = type_ref_new(type_ref_tdef, NULL);
+	UCC_ASSERT(expr_kind(e, sizeof), "not sizeof for tdef ref");
 	r->bits.tdef.type_of = e;
 	r->bits.tdef.decl = to; /* NULL if typeof */
 	return r;
@@ -686,7 +687,7 @@ static void type_ref_add_type_str(type_ref *r,
 			BUF_ADD(aka ?
 					"typeof(%s-expr) aka '%s'" :
 					"typeof(%s-expr)",
-					e->f_str(),
+					e->expr->f_str(), /* e is always expr_sizeof() */
 					type_ref_to_str_r(buf,
 						e->tree_type));
 		}
