@@ -670,19 +670,22 @@ static void type_ref_add_type_str(type_ref *r,
 	if(!rt)
 		return;
 
-
 	if(rt->type == type_ref_tdef){
 		char buf[TYPE_REF_STATIC_BUFSIZ];
 		decl *d = rt->bits.tdef.decl;
 
 		if(d){
 			BUF_ADD(aka ? "%s (aka '%s')" : "%s",
-					d->spel, type_ref_to_str_r_spel_aka(buf, d->ref, NULL, 0));
+					d->spel,
+					aka ? type_ref_to_str_r_spel_aka(buf, d->ref, NULL, 0) : "");
+
 		}else{
 			expr *const e = rt->bits.tdef.type_of;
 
 			/* TODO: aka depth limit? */
-			BUF_ADD("typeof(%s-expression) aka '%s'",
+			BUF_ADD(aka ?
+					"typeof(%s-expr) aka '%s'" :
+					"typeof(%s-expr)",
 					e->f_str(),
 					type_ref_to_str_r(buf,
 						e->tree_type));

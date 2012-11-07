@@ -98,8 +98,8 @@ int op_can_compound(enum op_type o);
 
 #define SPEC_STATIC_BUFSIZ      64
 #define TYPE_STATIC_BUFSIZ      (SPEC_STATIC_BUFSIZ + 64)
-#define DECL_STATIC_BUFSIZ      (256 + TYPE_STATIC_BUFSIZ)
-#define TYPE_REF_STATIC_BUFSIZ  DECL_STATIC_BUFSIZ
+#define TYPE_REF_STATIC_BUFSIZ  (TYPE_STATIC_BUFSIZ + 256)
+#define DECL_STATIC_BUFSIZ      (TYPE_REF_STATIC_BUFSIZ + 16)
 
 
 /* tables local to the current scope */
