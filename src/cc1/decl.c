@@ -679,8 +679,13 @@ static void type_ref_add_type_str(type_ref *r,
 			BUF_ADD(aka ? "%s (aka '%s')" : "%s",
 					d->spel, type_ref_to_str_r_spel_aka(buf, d->ref, NULL, 0));
 		}else{
-			BUF_ADD("typeof-expression (%s)",
-					type_ref_to_str_r(buf, rt->bits.tdef.type_of->tree_type));
+			expr *const e = rt->bits.tdef.type_of;
+
+			/* TODO: aka depth limit? */
+			BUF_ADD("typeof(%s-expression) aka '%s'",
+					e->f_str(),
+					type_ref_to_str_r(buf,
+						e->tree_type));
 		}
 
 	}else{

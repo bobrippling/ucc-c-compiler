@@ -49,7 +49,7 @@ expr *parse_expr_sizeof_typeof(int is_typeof)
 	expr *e;
 
 	if(accept(token_open_paren)){
-		type_ref *r = parse_type_ref();
+		type_ref *r = parse_type(NULL);
 
 		if(r){
 			e = expr_new_sizeof_type(r, is_typeof);
@@ -92,7 +92,7 @@ expr *parse_expr__Generic()
 		if(accept(token_default)){
 			r = NULL;
 		}else{
-			r = parse_type_ref();
+			r = parse_type(NULL);
 			if(!r)
 				DIE_AT(NULL, "type expected");
 		}
@@ -131,7 +131,7 @@ expr *parse_block()
 
 	EAT(token_xor);
 
-	rt = parse_type_ref();
+	rt = parse_type(NULL);
 
 	if(rt){
 		if(type_ref_is(rt, type_ref_func)){
@@ -190,7 +190,7 @@ expr *parse_expr_primary()
 				type_ref *r;
 				expr *e;
 
-				if((r = parse_type_ref())){
+				if((r = parse_type(NULL))){
 					e = expr_new_cast(r, 0);
 					EAT(token_close_paren);
 
@@ -439,7 +439,7 @@ type_ref **parse_type_list()
 		return types;
 
 	do{
-		type_ref *r = parse_type_ref();
+		type_ref *r = parse_type(NULL);
 
 		if(!r)
 			DIE_AT(NULL, "type expected");

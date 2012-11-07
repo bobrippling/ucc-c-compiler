@@ -540,7 +540,7 @@ type_ref *parse_type_ref_array(enum decl_mode mode, char **sp)
 	return r;
 }
 
-type_ref *parse_type_ref2(enum decl_mode mode, char **sp)
+static type_ref *parse_type_ref2(enum decl_mode mode, char **sp)
 {
 	type_ref *dp = parse_type_ref_array(mode, sp);
 
@@ -553,11 +553,6 @@ type_ref *parse_type_ref2(enum decl_mode mode, char **sp)
 	}
 
 	return dp;
-}
-
-type_ref *parse_type_ref(void)
-{
-	return parse_type_ref2(0, NULL);
 }
 
 decl *parse_decl(type_ref *subtype, enum decl_mode mode)
