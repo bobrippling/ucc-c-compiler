@@ -93,9 +93,8 @@ invalid:
 	type_func = e->expr->tree_type;
 
 	if(!type_ref_is_callable(type_func)){
-		DIE_AT(&e->expr->where, "expression %s (%s) not callable",
-				e->expr->f_str(),
-				type_ref_to_str(type_func));
+		DIE_AT(&e->expr->where, "%s-expression (type '%s') not callable",
+				e->expr->f_str(), type_ref_to_str(type_func));
 	}
 
 	if(expr_kind(e->expr, deref)
