@@ -64,6 +64,9 @@ int symtab_fold(symtable *tab, int current)
 			const int has_unused_attr = decl_attr_present(s->decl->attr, attr_unused);
 
 			if(s->type == sym_local){
+				if(DECL_IS_FUNC(s->decl))
+					continue;
+
 				switch(s->decl->store){
 					case store_default:
 					case store_auto:
