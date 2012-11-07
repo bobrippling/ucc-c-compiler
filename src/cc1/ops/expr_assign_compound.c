@@ -43,7 +43,7 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 			/* can't cast the lvalue - we must cast the rhs to the correct size  */
 
 			if(tlhs != lvalue->tree_type)
-				type_ref_free(tlhs);
+				type_ref_free_1(tlhs);
 
 			fold_insert_casts(lvalue->tree_type, &e->rhs, stab, &e->where, op_to_str(e->op));
 
@@ -53,7 +53,7 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 
 		e->tree_type = lvalue->tree_type;
 
-		type_ref_free(resolved);
+		type_ref_free_1(resolved);
 	}
 
 	/* type check is done in op_required_promotion() */

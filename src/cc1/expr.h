@@ -122,10 +122,11 @@ expr *expr_new_decl_init(decl *d, decl_init *di);
 #include "ops/expr_struct.h"
 #include "ops/expr_compound_lit.h"
 
+/* XXX: memleak */
 #define expr_free(x) do{                 \
 		if(x){                               \
-			if((x)->tree_type)                 \
-				type_ref_free((x)->tree_type);   \
+			/*if((x)->tree_type)*/             \
+			/*type_ref_free((x)->tree_type);*/ \
 			free(x);                           \
 		}                                    \
 	}while(0)

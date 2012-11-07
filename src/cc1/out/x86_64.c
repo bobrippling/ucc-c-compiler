@@ -368,7 +368,7 @@ void impl_load(struct vstack *from, int reg)
 	x86_load(from, buf);
 
 	if(from->t != save)
-		type_ref_free(from->t);
+		type_ref_free_1(from->t);
 
 	v_clear(from, save);
 	from->type = REG;
@@ -495,8 +495,7 @@ void impl_op(enum op_type op)
 
 			vpop();
 
-			if(free_this)
-				type_ref_free(free_this);
+			type_ref_free_1(free_this);
 			return;
 		}
 

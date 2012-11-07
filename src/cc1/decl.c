@@ -117,16 +117,12 @@ type *decl_get_type(decl *d)
 	return r ? r->bits.type : NULL;
 }
 
-void type_ref_free(type_ref *r)
+void type_ref_free_1(type_ref *r)
 {
-	if(!r)
-		return;
-
-	type_ref_free(r->ref);
-
 	switch(r->type){
 		case type_ref_type:
-			type_free(r->bits.type);
+			/* XXX: memleak */
+			/*type_free(r->bits.type);*/
 			break;
 
 		case type_ref_func:
@@ -152,12 +148,23 @@ void type_ref_free(type_ref *r)
 	free(r);
 }
 
+void type_ref_free(type_ref *r)
+{
+	if(!r)
+		return;
+
+	type_ref_free(r->ref);
+
+	type_ref_free_1(r);
+}
+
 void decl_free(decl *d)
 {
 	if(!d)
 		return;
 
-	type_ref_free(d->ref);
+	/* XXX: memleak */
+	/*type_ref_free(d->ref);*/
 #ifdef FIELD_WIDTH_TODO
 	expr_free(d->field_width);
 #endif
@@ -503,7 +510,8 @@ type_ref *type_ref_ptr_depth_dec(type_ref *r)
 	if(!type_ref_is_complete(r))
 		DIE_AT(&r->where, "dereference of pointer to incomplete type %s", type_ref_to_str(r));
 
-	type_ref_free(r_save);
+	/* XXX: memleak */
+	/*type_ref_free(r_save);*/
 
 fin:
 	return r;
