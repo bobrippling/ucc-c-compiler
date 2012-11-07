@@ -652,7 +652,13 @@ static void type_ref_add_str(const type_ref *r,
 		BUF_ADD(")");
 }
 
-static void type_ref_add_type_str(type_ref *r, char **bufp, int sz)
+static const char *type_ref_to_str_r_spel_aka(
+		char buf[TYPE_REF_STATIC_BUFSIZ], type_ref *r,
+		char *spel, const int aka);
+
+static void type_ref_add_type_str(type_ref *r,
+		char **bufp, int sz,
+		const int aka)
 {
 	/* go down to the first type or typedef, print it and then its descriptions */
 	const type_ref *rt;
@@ -670,8 +676,8 @@ static void type_ref_add_type_str(type_ref *r, char **bufp, int sz)
 		decl *d = rt->bits.tdef.decl;
 
 		if(d){
-			BUF_ADD("%s (aka '%s')",
-					d->spel, type_ref_to_str_r(buf, d->ref));
+			BUF_ADD(aka ? "%s (aka '%s')" : "%s",
+					d->spel, type_ref_to_str_r_spel_aka(buf, d->ref, NULL, 0));
 		}else{
 			BUF_ADD("typeof-expression (%s)",
 					type_ref_to_str_r(buf, rt->bits.tdef.type_of->tree_type));
@@ -683,11 +689,13 @@ static void type_ref_add_type_str(type_ref *r, char **bufp, int sz)
 }
 #undef BUF_ADD
 
-const char *type_ref_to_str_r_spel(char buf[TYPE_REF_STATIC_BUFSIZ], type_ref *r, char *spel)
+static const char *type_ref_to_str_r_spel_aka(
+		char buf[TYPE_REF_STATIC_BUFSIZ], type_ref *r,
+		char *spel, const int aka)
 {
 	char *bufp = buf;
 
-	type_ref_add_type_str(r, &bufp, TYPE_REF_STATIC_BUFSIZ);
+	type_ref_add_type_str(r, &bufp, TYPE_REF_STATIC_BUFSIZ, aka);
 
 	if(!type_ref_is(r, type_ref_type, type_unknown) || spel)
 		*bufp++ = ' ';
@@ -695,6 +703,11 @@ const char *type_ref_to_str_r_spel(char buf[TYPE_REF_STATIC_BUFSIZ], type_ref *r
 	type_ref_add_str(r, spel, &bufp, TYPE_REF_STATIC_BUFSIZ - (bufp - buf), NULL);
 
 	return buf;
+}
+
+const char *type_ref_to_str_r_spel(char buf[TYPE_REF_STATIC_BUFSIZ], type_ref *r, char *spel)
+{
+	return type_ref_to_str_r_spel_aka(buf, r, spel, 1);
 }
 
 const char *type_ref_to_str_r(char buf[TYPE_REF_STATIC_BUFSIZ], type_ref *r)
