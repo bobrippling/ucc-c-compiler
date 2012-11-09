@@ -683,13 +683,11 @@ static void type_ref_add_type_str(type_ref *r,
 		}else{
 			expr *const e = rt->bits.tdef.type_of;
 
-			/* TODO: aka depth limit? */
 			BUF_ADD(aka ?
 					"typeof(%s-expr) aka '%s'" :
 					"typeof(%s-expr)",
 					e->expr->f_str(), /* e is always expr_sizeof() */
-					type_ref_to_str_r(buf,
-						e->tree_type));
+					aka ? type_ref_to_str_r(buf, e->tree_type) : "");
 		}
 
 	}else{
