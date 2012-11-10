@@ -142,8 +142,12 @@ invalid:
 		if(e->funcargs){
 			funcargs *args_from_expr = funcargs_new();
 
-			for(iter_arg = e->funcargs; *iter_arg; iter_arg++)
-				dynarray_add((void ***)&args_from_expr->arglist, (*iter_arg)->tree_type);
+			for(iter_arg = e->funcargs; *iter_arg; iter_arg++){
+				decl *dtmp = decl_new();
+				dtmp->ref = (*iter_arg)->tree_type;
+
+				dynarray_add((void ***)&args_from_expr->arglist, dtmp);
+			}
 
 			if(funcargs_equal(args_from_decl, args_from_expr, 0, sp) == funcargs_are_mismatch_count)
 				DIE_AT(&e->where, "mismatching argument count to %s", sp);
