@@ -74,12 +74,16 @@ int asm_table_lookup(type_ref *r)
 	if(!r)
 		return ASM_INDEX_LONG;
 
-	sz = type_ref_size(r);
+	if(type_ref_is(r, type_ref_array))
+		sz = type_primitive_size(type_intptr_t);
+	else
+		sz = type_ref_size(r);
+
 	for(i = 0; i <= ASM_TABLE_MAX; i++)
 		if(asm_type_table[i].sz == sz)
 			return i;
 
-	ICE("no asm type size for %d", sz);
+	ICE("no asm type index for byte size %d", sz);
 	return -1;
 }
 
