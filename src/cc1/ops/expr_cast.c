@@ -31,7 +31,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 	fold_disallow_st_un(e->expr, "cast-expr");
 	fold_disallow_st_un(e, "cast-target");
 
-	if(!type_ref_is_complete(e->tree_type))
+	if(!type_ref_is_complete(e->tree_type) && !type_ref_is_void(e->tree_type))
 		DIE_AT(&e->where, "cast to incomplete type %s", type_ref_to_str(e->tree_type));
 
 #ifdef CAST_COLLAPSE
