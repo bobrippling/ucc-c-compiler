@@ -26,32 +26,30 @@ fin:
 	return r;
 }
 
-type_ref *type_ref_is(type_ref *r, enum type_ref_type t, ...)
+type_ref *type_ref_is(type_ref *r, enum type_ref_type t)
 {
 	r = type_ref_skip_tdefs_casts(r);
 
 	if(!r || r->type != t)
 		return NULL;
 
-	if(r->type == type_ref_type){
-		/* extra checks for a type */
-		va_list l;
-		enum type_primitive p;
-
-		va_start(l, t);
-		p = va_arg(l, enum type_primitive);
-		va_end(l);
-
-		if(p != type_unknown && r->bits.type->primitive != p)
-			return NULL;
-	}
-
 	return r;
+}
+
+type_ref *type_ref_is_type(type_ref *r, enum type_primitive p)
+{
+	r = type_ref_is(r, type_ref_type);
+
+	/* extra checks for a type */
+	if(r && (p == type_unknown || r->bits.type->primitive == p))
+		return r;
+
+	return NULL;
 }
 
 int type_ref_is_bool(type_ref *r)
 {
-	r = type_ref_is(r, type_ref_type, type_unknown);
+	r = type_ref_is(r, type_ref_type);
 
 	if(!r)
 		return 0;
@@ -110,7 +108,7 @@ int type_ref_is_fptr(type_ref *r)
 int type_ref_is_void_ptr(type_ref *r)
 {
 	if((r = type_ref_is(r, type_ref_ptr)))
-		return !!type_ref_is(r->ref, type_ref_type, type_void);
+		return !!type_ref_is_type(r->ref, type_void);
 
 	return 0;
 }
@@ -127,7 +125,7 @@ int decl_complete(decl *d)
 
 int type_ref_is_integral(type_ref *r)
 {
-	r = type_ref_is(r, type_ref_type, type_unknown);
+	r = type_ref_is(r, type_ref_type);
 
 	if(!r)
 		return 0;
@@ -171,7 +169,7 @@ int type_ref_align(type_ref *r)
 		return type_primitive_size(type_intptr_t);
 	}
 
-	if((r = type_ref_is(r, type_ref_type, type_unknown)))
+	if((r = type_ref_is(r, type_ref_type)))
 		return type_size(r->bits.type);
 
 	return 1;
@@ -217,7 +215,7 @@ int type_ref_is_complete(type_ref *r)
 
 struct_union_enum_st *type_ref_is_s_or_u_or_e(type_ref *r)
 {
-	type_ref *test = type_ref_is(r, type_ref_type, type_unknown);
+	type_ref *test = type_ref_is(r, type_ref_type);
 
 	if(!test)
 		return NULL;
@@ -276,19 +274,19 @@ type_ref *type_ref_decay(type_ref *r)
 
 int type_ref_is_void(type_ref *r)
 {
-	return !!type_ref_is(r, type_ref_type, type_void);
+	return !!type_ref_is_type(r, type_void);
 }
 
 int type_ref_is_signed(type_ref *r)
 {
-	r = type_ref_is(r, type_ref_type, type_unknown);
+	r = type_ref_is(r, type_ref_type);
 
 	return r && r->bits.type->is_signed;
 }
 
 int type_ref_is_floating(type_ref *r)
 {
-	r = type_ref_is(r, type_ref_type, type_unknown);
+	r = type_ref_is(r, type_ref_type);
 
 	if(!r)
 		return 0;

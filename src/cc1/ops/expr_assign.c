@@ -53,7 +53,7 @@ void fold_expr_assign(expr *e, symtable *stab)
 	if(expr_kind(e->lhs, identifier))
 		e->lhs->sym->nreads--; /* cancel the read that fold_ident thinks it got */
 
-	if(type_ref_is(e->rhs->tree_type, type_ref_type, type_void))
+	if(type_ref_is_type(e->rhs->tree_type, type_void))
 		DIE_AT(&e->where, "assignment from void expression");
 
 	if(!expr_is_lvalue(e->lhs)){

@@ -77,9 +77,7 @@ void fold_stmt_switch(stmt *s)
 
 	/* check for an enum */
 	{
-		type_ref *r;
-
-		r = type_ref_is(s->expr->tree_type, type_ref_type, type_enum);
+		type_ref *r = type_ref_is_type(s->expr->tree_type, type_enum);
 
 		if(r){
 			type *typ = r->bits.type;

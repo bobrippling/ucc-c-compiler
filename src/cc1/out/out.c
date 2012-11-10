@@ -423,7 +423,7 @@ static int calc_ptr_step(type_ref *t)
 	/* we are calculating the sizeof *t */
 	int sz;
 
-	if(type_ref_is(type_ref_is(t, type_ref_ptr), type_ref_type, type_void))
+	if(type_ref_is_type(type_ref_is(t, type_ref_ptr), type_void))
 		return type_primitive_size(type_void);
 
 	sz = type_ref_size(t->ref);
