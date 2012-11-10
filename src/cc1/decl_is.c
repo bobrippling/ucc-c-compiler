@@ -127,7 +127,7 @@ int decl_complete(decl *d)
 
 int type_ref_is_integral(type_ref *r)
 {
-	r = type_ref_is(r, type_ref_type);
+	r = type_ref_is(r, type_ref_type, type_unknown);
 
 	if(!r)
 		return 0;
@@ -171,7 +171,7 @@ int type_ref_align(type_ref *r)
 		return type_primitive_size(type_intptr_t);
 	}
 
-	if((r = type_ref_is(r, type_ref_type)))
+	if((r = type_ref_is(r, type_ref_type, type_unknown)))
 		return type_size(r->bits.type);
 
 	return 1;
@@ -274,18 +274,16 @@ type_ref *type_ref_decay(type_ref *r)
 	return r;
 }
 
-#define TYPE_REF_TYPE_IS(exp) \
-	(r = type_ref_is(r, type_ref_type)) && r->bits.type->exp
-
-
 int type_ref_is_void(type_ref *r)
 {
-	return TYPE_REF_TYPE_IS(primitive == type_void);
+	return !!type_ref_is(r, type_ref_type, type_void);
 }
 
 int type_ref_is_signed(type_ref *r)
 {
-	return TYPE_REF_TYPE_IS(is_signed);
+	r = type_ref_is(r, type_ref_type, type_unknown);
+
+	return r && r->bits.type->is_signed;
 }
 
 int type_ref_is_floating(type_ref *r)

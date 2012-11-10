@@ -316,8 +316,8 @@ void fold_expr_op(expr *e, symtable *stab)
 			type_ref *t_unary = e->lhs->tree_type;
 
 			if(!type_ref_is_integral(t_unary) && !type_ref_is_floating(t_unary))
-				DIE_AT(&e->where, "type '%s' to unary %s",
-						type_ref_to_str(t_unary), op_to_str(e->op));
+				DIE_AT(&e->where, "unary %s applied to type '%s'",
+						op_to_str(e->op), type_ref_to_str(t_unary));
 
 			/* extend to int if smaller */
 			if(type_ref_size(t_unary) < type_primitive_size(type_int)){
