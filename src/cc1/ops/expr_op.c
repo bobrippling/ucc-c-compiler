@@ -268,7 +268,7 @@ fin:
 
 	UCC_ASSERT(!!*plhs + !!*prhs < 2, "can't cast both expressions");
 
-	return resolved;
+	return resolved; /* XXX: memleak in some cases */
 }
 
 type_ref *op_promote_types(

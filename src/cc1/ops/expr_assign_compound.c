@@ -53,7 +53,8 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 
 		e->tree_type = lvalue->tree_type;
 
-		type_ref_free_1(resolved);
+		(void)resolved;
+		/*type_ref_free_1(resolved); XXX: memleak */
 	}
 
 	/* type check is done in op_required_promotion() */
