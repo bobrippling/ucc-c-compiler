@@ -393,7 +393,6 @@ int type_ref_equal(type_ref *a, type_ref *b, enum decl_cmp mode)
 	if(!a || !b)
 		return a == b ? 1 : 0;
 
-
 	/* array/func decay takes care of most of this */
 	if(a->type != b->type)
 		return 0;
@@ -553,73 +552,68 @@ void decl_conv_array_func_to_ptr(decl *d)
 	d->ref = type_ref_decay(d->ref);
 }
 
-static void type_ref_add_str(const type_ref *r,
-		char *spel, char **bufp, int sz, const type_ref *parent)
+static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
 {
 #define BUF_ADD(...) \
 	do{ int n = snprintf(*bufp, sz, __VA_ARGS__); *bufp += n, sz -= n; }while(0)
 
 	int need_paren;
+	enum type_qualifier q;
 
-	if(!r)
+	if(!r){
+		/* reached the bottom/end - spel */
+		if(spel)
+			BUF_ADD("%s", spel);
 		return;
+	}
 
-	switch(r->type){
+	q = qual_none;
+	switch(r->ref->type){
 		case type_ref_type:
 		case type_ref_tdef:
-			if(spel)
-				BUF_ADD("%s", spel);
-			return;
+			/* just starting */
+			need_paren = 0;
+			break;
+
+		default:
+			/* for now. can be altered */
+			need_paren = !r->tmp || r->type != r->tmp->type;
+	}
+
+	if(need_paren)
+		BUF_ADD("(");
+
+	switch(r->type){
+		case type_ref_ptr:
+			BUF_ADD("*");
+			/* fall */
+		case type_ref_cast:
+			q = r->bits.qual;
+			break;
+
+		case type_ref_block:
+			BUF_ADD("^");
+			q = r->bits.block.qual;
+			break;
 
 		default:break;
 	}
 
-	{
-		switch(r->type){
-			case type_ref_ptr:
-			case type_ref_block:
-				need_paren = !!parent;
-				break;
-			default:
-				need_paren = 0;
-		}
+	if(q)
+		BUF_ADD("%s", type_qual_to_str(q));
 
-		if(need_paren)
-			BUF_ADD("(");
-
-		/* print pre-type annotations */
-		{
-			enum type_qualifier q = qual_none;
-			switch(r->type){
-				case type_ref_ptr:
-					BUF_ADD("*");
-					/* fall */
-				case type_ref_cast:
-					q = r->bits.qual;
-					break;
-
-				case type_ref_block:
-					BUF_ADD("^");
-					q = r->bits.block.qual;
-					break;
-
-				default:break;
-			}
-			if(q)
-				BUF_ADD("%s", type_qual_to_str(q));
-		}
-
-		type_ref_add_str(r->ref, spel, bufp, sz, r);
-	}
+	type_ref_add_str(r->tmp, spel, bufp, sz);
 
 	switch(r->type){
 		case type_ref_tdef:
 			/* tdef "aka: %s" handled elsewhere */
-		case type_ref_cast:
 		case type_ref_type:
+		case type_ref_cast:
+			/**/
 		case type_ref_block:
 		case type_ref_ptr:
 			break;
+
 		case type_ref_func:
 		{
 			const char *comma = "";
@@ -653,11 +647,23 @@ static void type_ref_add_str(const type_ref *r,
 		BUF_ADD(")");
 }
 
-static const char *type_ref_to_str_r_spel_aka(
+static type_ref *type_ref_set_parent(type_ref *r, type_ref *parent)
+{
+	if(!r)
+		return parent;
+
+	r->tmp = parent;
+
+	return type_ref_set_parent(r->ref, r);
+}
+
+static
+const char *type_ref_to_str_r_spel_aka(
 		char buf[TYPE_REF_STATIC_BUFSIZ], type_ref *r,
 		char *spel, const int aka);
 
-static void type_ref_add_type_str(type_ref *r,
+static
+void type_ref_add_type_str(type_ref *r,
 		char **bufp, int sz,
 		const int aka)
 {
@@ -696,7 +702,8 @@ static void type_ref_add_type_str(type_ref *r,
 }
 #undef BUF_ADD
 
-static const char *type_ref_to_str_r_spel_aka(
+static
+const char *type_ref_to_str_r_spel_aka(
 		char buf[TYPE_REF_STATIC_BUFSIZ], type_ref *r,
 		char *spel, const int aka)
 {
@@ -707,7 +714,10 @@ static const char *type_ref_to_str_r_spel_aka(
 	if(!type_ref_is(r, type_ref_type, type_unknown) || spel)
 		*bufp++ = ' ';
 
-	type_ref_add_str(r, spel, &bufp, TYPE_REF_STATIC_BUFSIZ - (bufp - buf), NULL);
+	/* print in reverse order */
+	r = type_ref_set_parent(r, NULL);
+	/* use r->tmp, since r is type_ref_t{ype,def} */
+	type_ref_add_str(r->tmp, spel, &bufp, TYPE_REF_STATIC_BUFSIZ - (bufp - buf));
 
 	return buf;
 }

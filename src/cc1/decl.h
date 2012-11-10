@@ -37,7 +37,7 @@ struct decl_attr
 struct type_ref
 {
 	where where;
-	type_ref *ref;
+	type_ref *ref, *tmp; /* tmp used for things like printing */
 
 	decl_attr *attr;
 
