@@ -152,7 +152,7 @@ invalid:
 			if(funcargs_equal(args_from_decl, args_from_expr, 0, sp) == funcargs_are_mismatch_count)
 				DIE_AT(&e->where, "mismatching argument count to %s", sp);
 
-			funcargs_free(args_from_expr, 0);
+			funcargs_free(args_from_expr, 1, 0);
 		}
 
 		/*funcargs_free(args_from_decl, 1); XXX memleak*/

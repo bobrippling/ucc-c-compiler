@@ -773,8 +773,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 #undef err_nodecl
 					}
 
-					d->ref = NULL;
-					decl_free(d);
+					decl_free(d, 0);
 					goto next;
 				}
 				DIE_AT(&d->where, "identifier expected after decl (got %s)", token_to_str(curtok));
@@ -816,7 +815,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 								free_this = *replace_this;
 								*replace_this = old_args[i];
 
-								decl_free(free_this);
+								decl_free(free_this, 0);
 								break;
 							}
 						}

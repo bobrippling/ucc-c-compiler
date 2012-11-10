@@ -128,11 +128,11 @@ void type_ref_free_1(type_ref *r)
 			break;
 
 		case type_ref_func:
-			funcargs_free(r->bits.func, 1);
+			/* XXX: memleak x2 */
+			funcargs_free(r->bits.func, 1, 0);
 			break;
-
 		case type_ref_block:
-			funcargs_free(r->bits.block.func, 1);
+			funcargs_free(r->bits.block.func, 1, 0);
 			break;
 
 		case type_ref_array:
@@ -160,13 +160,14 @@ void type_ref_free(type_ref *r)
 	type_ref_free_1(r);
 }
 
-void decl_free(decl *d)
+void decl_free(decl *d, int free_ref)
 {
 	if(!d)
 		return;
 
-	/* XXX: memleak */
-	/*type_ref_free(d->ref);*/
+	if(free_ref)
+		type_ref_free(d->ref);
+
 #ifdef FIELD_WIDTH_TODO
 	expr_free(d->field_width);
 #endif

@@ -145,7 +145,7 @@ decl        *decl_new_type(enum type_primitive p);
 #define      decl_new_void() decl_new_type(type_void)
 #define      decl_new_char() decl_new_type(type_char)
 #define      decl_new_int()  decl_new_type(type_int)
-void         decl_free(decl *);
+void         decl_free(decl *, int free_ref);
 void         type_ref_free(type_ref *);
 void         type_ref_free_1(type_ref *);
 

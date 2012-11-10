@@ -15,6 +15,6 @@ enum funcargs_cmp funcargs_equal(funcargs *args_a, funcargs *args_b,
 
 funcargs *funcargs_new(void);
 void funcargs_empty(funcargs *func);
-void funcargs_free(funcargs *args, int free_decls);
+void funcargs_free(funcargs *args, int free_decls, int free_refs);
 
 #endif
