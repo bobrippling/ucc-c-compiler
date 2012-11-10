@@ -236,8 +236,8 @@ type_ref *type_ref_func_call(type_ref *fp, funcargs **pfuncargs)
 	switch(fp->type){
 		case type_ref_ptr:
 		case type_ref_block:
-			fp = fp->ref;
-			UCC_ASSERT(fp->type == type_ref_func, "not a func for fcall");
+			fp = type_ref_is(fp->ref, type_ref_func);
+			UCC_ASSERT(fp, "not a func for fcall");
 			/* fall */
 
 		case type_ref_func:
