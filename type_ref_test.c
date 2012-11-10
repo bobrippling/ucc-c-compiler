@@ -4,11 +4,16 @@ struct A
 	int k;
 };
 
+init(struct A *p)
+{
+	p->j = 4;
+}
+
 main()
 {
 	struct A b;
 
-	b.i = 3;
+	init(&b);
 
-	return 5;
+	return b.j;
 }
