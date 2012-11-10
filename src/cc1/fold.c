@@ -1093,7 +1093,6 @@ void fold(symtable *globs)
 
 		fargs = funcargs_new();
 		fargs->arglist    = umalloc(2 * sizeof *fargs->arglist);
-		fargs->arglist[0] = decl_new();
 		fargs->arglist[1] = NULL;
 
 		/* const char * */
