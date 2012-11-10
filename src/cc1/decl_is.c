@@ -1,6 +1,28 @@
 static type_ref *type_ref_skip_tdefs_casts(type_ref *r)
 {
-	for(; r && (r->type == type_ref_tdef || r->type == type_ref_cast); r = r->ref);
+	while(r){
+		switch(r->type){
+			case type_ref_tdef:
+			{
+				/* typedef - jump to its typeof */
+				struct type_ref_tdef *tdef = &r->bits.tdef;
+				decl *preferred = tdef->decl;
+
+				r = preferred ? preferred->ref : tdef->type_of->tree_type;
+
+				continue;
+			}
+
+			case type_ref_cast:
+				break;
+
+			default:
+				goto fin;
+		}
+		r = r->ref;
+	}
+
+fin:
 	return r;
 }
 

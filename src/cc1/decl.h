@@ -58,7 +58,7 @@ struct type_ref
 		type *type;
 
 		/* ref_tdef */
-		struct
+		struct type_ref_tdef
 		{
 			expr *type_of;
 			decl *decl;
