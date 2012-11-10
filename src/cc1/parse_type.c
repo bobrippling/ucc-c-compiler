@@ -137,7 +137,7 @@ static void parse_add_attr(decl_attr **append)
 	}
 }
 
-type_ref *parse_type(enum decl_storage *store)
+static type_ref *parse_btype(enum decl_storage *store)
 {
 #define PRIMITIVE_NO_MORE 2
 
@@ -257,7 +257,7 @@ type_ref *parse_type(enum decl_storage *store)
 				EAT(curtok);
 			}
 
-			t->qual  = qual;
+			t->qual = qual;
 
 			return type_ref_new_type(t);
 
@@ -467,25 +467,15 @@ declarator:
 		;
 */
 
-type_ref *parse_type_ref_ptr(enum decl_mode mode, char **sp)
+static type_ref *parse_type_ref_nest(enum decl_mode mode, char **sp)
 {
-	int ptr;
-
-	if((ptr = accept(token_multiply)) || accept(token_xor)){
-		enum type_qualifier qual = qual_none;
-		while(curtok_is_type_qual()){
-			qual |= curtok_to_type_qualifier();
-			EAT(curtok);
-		}
-
-		return (ptr ? type_ref_new_ptr : type_ref_new_block)(parse_type_ref2(mode, sp), qual);
-
-	}else if(accept(token_open_paren)){
+	if(accept(token_open_paren)){
 		type_ref *ret;
 
 		/*
 		 * we could be here:
 		 * int (int a) - from either "^int(int...)" or "void f(int (int));"
+		 *                                ^                        ^
 		 * in which case, we've read the first "int", stop early, and unget the open paren
 		 */
 		if(parse_curtok_is_type() || curtok == token_close_paren){
@@ -514,12 +504,11 @@ type_ref *parse_type_ref_ptr(enum decl_mode mode, char **sp)
 	return NULL;
 }
 
-type_ref *parse_type_ref_array(enum decl_mode mode, char **sp)
+static type_ref *parse_type_ref_array(enum decl_mode mode, char **sp)
 {
-	type_ref *r = parse_type_ref_ptr(mode, sp);
+	type_ref *r = parse_type_ref_nest(mode, sp);
 
 	while(accept(token_open_square)){
-		type_ref *r_new;
 		expr *size;
 
 		if(accept(token_close_square)){
@@ -532,58 +521,97 @@ type_ref *parse_type_ref_array(enum decl_mode mode, char **sp)
 			EAT(token_close_square);
 		}
 
-		r_new = type_ref_new_array(r, size);
-
-		r = r_new;
+		r = type_ref_new_array(r, size);
 	}
 
 	return r;
 }
 
-static type_ref *parse_type_ref2(enum decl_mode mode, char **sp)
+static type_ref *parse_type_ref_func(enum decl_mode mode, char **sp)
 {
-	type_ref *dp = parse_type_ref_array(mode, sp);
+	type_ref *sub = parse_type_ref_array(mode, sp);
 
 	while(accept(token_open_paren)){
-		type_ref *r_new = type_ref_new_func(dp, parse_func_arglist());
+		type_ref *r_new = type_ref_new_func(sub, parse_func_arglist());
 
 		EAT(token_close_paren);
 
-		dp = r_new;
+		sub = r_new;
 	}
 
-	return dp;
+	return sub;
 }
 
-decl *parse_decl(type_ref *subtype, enum decl_mode mode)
+static type_ref *parse_type_ref_ptr(enum decl_mode mode, char **sp)
 {
-	type_ref **insert;
-	decl *d;
+	int ptr;
+
+	if((ptr = accept(token_multiply)) || accept(token_xor)){
+		typedef type_ref *(*ptr_creator_f)(type_ref *, enum type_qualifier);
+		ptr_creator_f creater = ptr ? type_ref_new_ptr : type_ref_new_block;
+
+		enum type_qualifier qual = qual_none;
+
+		while(curtok_is_type_qual()){
+			qual |= curtok_to_type_qualifier();
+			EAT(curtok);
+		}
+
+		return creater(parse_type_ref2(mode, sp), qual);
+	}
+
+	return parse_type_ref_func(mode, sp);
+}
+
+static type_ref *parse_type_ref2(enum decl_mode mode, char **sp)
+{
+	return parse_type_ref_ptr(mode, sp);
+}
+
+static type_ref *type_ref_reverse(type_ref *r, type_ref *subtype)
+{
+	/*
+	 * e.g.  int (*f)() is parsed as:
+	 *   func -> ptr -> NULL
+	 * swap to
+	 *   ptr -> func -> subtype
+	 */
+	type_ref *i, *next, *prev = subtype;
+
+	for(i = r; i; prev = i, i = next){
+		next = i->ref;
+		i->ref = prev;
+	}
+
+	return prev;
+}
+
+static type_ref *parse_type3(
+		enum decl_mode mode, char **spel, type_ref *btype)
+{
+	return type_ref_reverse(parse_type_ref2(mode, spel), btype);
+}
+
+type_ref *parse_type()
+{
+	type_ref *btype = parse_btype(NULL);
+
+	return btype ? parse_type3(0, NULL, btype) : NULL;
+}
+
+decl *parse_decl(type_ref *btype, enum decl_mode mode)
+{
 	char *spel = NULL;
+	decl *d = decl_new();
 
-	d = decl_new();
-
-	/* don't fold typedefs until later (for __typeof) */
-	d->ref = parse_type_ref2(mode, &spel);
+	d->ref = parse_type3(mode, &spel, btype);
 
 	d->spel = spel;
-
-	for(insert = &d->ref; *insert; insert = &(*insert)->ref);
-	*insert = subtype;
 
 	parse_add_attr(&d->attr); /* int spel __attr__ */
 
 	if(d->spel && accept(token_assign))
 		d->init = parse_initialisation();
-
-#ifdef PARSE_DECL_VERBOSE
-	fprintf(stderr, "parsed decl %s, is_func %d, at %s init=%p\n",
-			d->spel, DECL_IS_FUNC(d),
-			token_to_str(curtok), d->init);
-
-	for(type_ref *dp = d->desc; dp; dp = dp->child)
-		fprintf(stderr, "\tdesc %s\n", type_ref_to_str(dp->type));
-#endif
 
 	return d;
 }
@@ -604,7 +632,7 @@ static type_ref *default_type(void)
 decl *parse_decl_single(enum decl_mode mode)
 {
 	enum decl_storage store;
-	type_ref *r = parse_type(mode & DECL_ALLOW_STORE ? &store : NULL);
+	type_ref *r = parse_btype(mode & DECL_ALLOW_STORE ? &store : NULL);
 
 	if(!r){
 		if((mode & DECL_CAN_DEFAULT) == 0)
@@ -626,7 +654,7 @@ decl *parse_decl_single(enum decl_mode mode)
 decl **parse_decls_one_type()
 {
 	enum decl_storage store;
-	type_ref *r = parse_type(&store);
+	type_ref *r = parse_btype(&store);
 	decl **decls = NULL;
 
 	if(!r)
@@ -659,7 +687,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 
 		parse_static_assert();
 
-		this_ref = parse_type(mode & DECL_MULTI_ALLOW_STORE ? &store : NULL);
+		this_ref = parse_btype(mode & DECL_MULTI_ALLOW_STORE ? &store : NULL);
 
 		if(!this_ref){
 			/* can_default makes sure we don't parse { int *p; *p = 5; } the latter as a decl */
