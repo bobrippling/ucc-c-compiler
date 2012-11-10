@@ -29,7 +29,7 @@ void fold_type_ref_equal(
 		type_ref *a, type_ref *b, where *w, enum warning warn,
 		const char *errfmt, ...)
 {
-	int flags = DECL_CMP_ALLOW_VOID_PTR;
+	enum decl_cmp flags = DECL_CMP_ALLOW_VOID_PTR;
 
 	/* stronger checks for blocks */
 	if(type_ref_is(a, type_ref_block) || type_ref_is(b, type_ref_block))

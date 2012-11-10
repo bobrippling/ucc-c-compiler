@@ -198,20 +198,20 @@ void decl_attr_free(decl_attr *a);
 #define DECL_IS_FUNC(d)   type_ref_is((d)->ref, type_ref_func)
 #define DECL_IS_ARRAY(d)  type_ref_is((d)->ref, type_ref_array)
 #define DECL_IS_S_OR_U(d) type_ref_is_s_or_u((d)->ref)
-#define DECL_IS_FPTR(d)  (type_ref_is((d)->ref, type_ref_ptr) && type_ref_is((d)->ref->ref, type_ref_func))
 
 int decl_is_incomplete_array(decl *d);
 int decl_is_variadic(decl *d);
 
 /* type_ref_is_* */
-int type_ref_is_complete(type_ref *r);
-int type_ref_is_void(    type_ref *r);
+int type_ref_is_complete(type_ref *);
+int type_ref_is_void(    type_ref *);
 int type_ref_is_integral(type_ref *);
 int type_ref_is_bool(    type_ref *);
 int type_ref_is_signed(  type_ref *);
 int type_ref_is_floating(type_ref *);
 int type_ref_is_const(   type_ref *);
 int type_ref_is_callable(type_ref *);
+int type_ref_is_fptr(    type_ref *);
 
 enum type_qualifier type_ref_qual(const type_ref *);
 

@@ -101,18 +101,18 @@ int decl_is_struct_or_union(decl *d)
 	return t == type_struct || t == type_union;
 }
 
-int decl_is_fptr(decl *d)
+int type_ref_is_fptr(type_ref *r)
 {
-	return d->ref->type == type_ref_ptr
-		&& d->ref->ref->type == type_ref_func
-		&& d->ref->ref->ref->type == type_ref_type;
+	return (r = type_ref_is(r, type_ref_ptr))
+		&& type_ref_is(r, type_ref_func);
 }
 
-int decl_is_void_ptr(decl *d)
+int type_ref_is_void_ptr(type_ref *r)
 {
-	return decl_is_ptr(d)
-		&& d->ref->ref->type == type_ref_type
-		&& d->ref->ref->bits.type->primitive == type_void;
+	if((r = type_ref_is(r, type_ref_ptr)))
+		return !!type_ref_is(r->ref, type_ref_type, type_void);
+
+	return 0;
 }
 
 int decl_is_integral(decl *d)
@@ -361,84 +361,3 @@ int type_ref_is_const(type_ref *r)
 	/* const char *x is not const. char *const x is */
 	return !!(type_ref_qual(r) & qual_const);
 }
-
-#if 0
-int decl_is_struct_or_union_possible_ptr(decl *d)
-{
-	return (d->type->primitive == type_struct || d->type->primitive == type_union);
-}
-
-int decl_is_struct_or_union_ptr(decl *d)
-{
-	return decl_is_struct_or_union_possible_ptr(d) && decl_is_ptr(d);
-}
-
-int decl_is_callable(decl *d)
-{
-	decl_desc *dp, *pre;
-
-	for(pre = NULL, dp = d->desc; dp && dp->child; pre = dp, dp = dp->child);
-
-	if(!dp)
-		return 0;
-
-	switch(dp->type){
-		case decl_desc_block:
-		case decl_desc_ptr:
-			return pre && pre->type == decl_desc_func; /* ptr to func */
-
-		case decl_desc_func:
-			return 1;
-
-		default:
-			break;
-	}
-
-	return 0;
-}
-
-int decl_is_fptr(decl *d)
-{
-	decl_desc *dp, *prev;
-
-	for(prev = NULL, dp = d->desc;
-			dp && dp->child;
-			prev = dp, dp = dp->child);
-
-	return dp
-		&& prev
-		&& prev->type == decl_desc_func
-		&& (dp->type == decl_desc_ptr || dp->type == decl_desc_block);
-}
-
-int decl_is_array(decl *d)
-{
-	decl_desc *dp = decl_desc_tail(d);
-	return dp ? dp->type == decl_desc_array : 0;
-}
-
-int decl_has_array(decl *d)
-{
-	decl_desc *dp;
-
-	ITER_DESC_TYPE(d, dp, decl_desc_array)
-		return 1;
-
-	return 0;
-}
-
-int decl_is_incomplete_array(decl *d)
-{
-	decl_desc *tail = decl_desc_tail(d);
-
-	if(tail && tail->type == decl_desc_array){
-		intval iv;
-
-		const_fold_need_val(tail->bits.array_size, &iv);
-
-		return iv.val == 0;
-	}
-	return 0;
-}
-
-#endif

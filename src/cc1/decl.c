@@ -389,7 +389,7 @@ enum funcargs_cmp funcargs_equal(
 	return funcargs_are_equal;
 }
 
-int type_ref_equal(type_ref *a, type_ref *b, enum decl_cmp mode)
+static int type_ref_equal_r(type_ref *a, type_ref *b, enum decl_cmp mode)
 {
 	if(!a || !b)
 		return a == b ? 1 : 0;
@@ -427,7 +427,7 @@ int type_ref_equal(type_ref *a, type_ref *b, enum decl_cmp mode)
 			/* fall */
 ref_eq:
 		case type_ref_tdef:
-			return type_ref_equal(a->ref, b->ref, mode);
+			return type_ref_equal_r(a->ref, b->ref, mode);
 
 		case type_ref_func:
 			if(funcargs_are_equal != funcargs_equal(a->bits.func, b->bits.func, 1 /* exact match */, NULL))
@@ -435,21 +435,26 @@ ref_eq:
 			break;
 	}
 
-	return type_ref_equal(a->ref, b->ref, mode);
+	return type_ref_equal_r(a->ref, b->ref, mode);
+}
+
+int type_ref_equal(type_ref *a, type_ref *b, enum decl_cmp mode)
+{
+	if(mode & DECL_CMP_ALLOW_VOID_PTR){
+		/* one side is void * */
+		if(type_ref_is_void_ptr(a) && type_ref_is(b, type_ref_ptr))
+			return 1;
+		if(type_ref_is_void_ptr(b) && type_ref_is(a, type_ref_ptr))
+			return 1;
+	}
+
+	return type_ref_equal_r(a, b, mode);
 }
 
 int decl_equal(decl *a, decl *b, enum decl_cmp mode)
 {
 	const int a_ptr = decl_is_ptr(a);
 	const int b_ptr = decl_is_ptr(b);
-
-	if(mode & DECL_CMP_ALLOW_VOID_PTR){
-		/* one side is void * */
-		if(decl_is_void_ptr(a) && b_ptr)
-			return 1;
-		if(decl_is_void_ptr(b) && a_ptr)
-			return 1;
-	}
 
 	/* we are exact if told, or if either are a pointer - types must be equal */
 	if(a_ptr || b_ptr)
