@@ -326,7 +326,7 @@ enum type_qualifier type_ref_qual(const type_ref *r)
 			return r->bits.qual; /* no descend */
 
 		case type_ref_tdef:
-			ICE("TODO");
+			return type_ref_qual(r->bits.tdef.type_of->tree_type);
 	}
 
 	ucc_unreach();

@@ -288,7 +288,13 @@ int type_ref_size(type_ref *r)
 
 		case type_ref_tdef:
 		{
-			type_ref *sub = r->bits.tdef.type_of->tree_type;
+			decl *d = r->bits.tdef.decl;
+			type_ref *sub;
+
+			if(d)
+				return type_ref_size(d->ref);
+
+			sub = r->bits.tdef.type_of->tree_type;
 			UCC_ASSERT(sub, "type_ref_size for unfolded typedef");
 			return type_ref_size(sub);
 		}

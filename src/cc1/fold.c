@@ -586,6 +586,9 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 			/* q_to_check = TODO */
 			FOLD_EXPR(*p_expr, stab);
 
+			if(r->bits.tdef.decl)
+				fold_decl(r->bits.tdef.decl, stab);
+
 			break;
 		}
 	}
