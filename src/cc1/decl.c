@@ -400,7 +400,10 @@ static int type_ref_equal_r(type_ref *a, type_ref *b, enum decl_cmp mode)
 	if(!a || !b)
 		return a == b ? 1 : 0;
 
-	/* array/func decay takes care of most of this */
+	a = type_ref_skip_tdefs_casts(a);
+	b = type_ref_skip_tdefs_casts(b);
+
+	/* array/func decay takes care of any array->ptr checks */
 	if(a->type != b->type)
 		return 0;
 
