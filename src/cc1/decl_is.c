@@ -49,6 +49,9 @@ type_ref *type_ref_is_type(type_ref *r, enum type_primitive p)
 
 int type_ref_is_bool(type_ref *r)
 {
+	if(type_ref_is(r, type_ref_ptr))
+		return 1;
+
 	r = type_ref_is(r, type_ref_type);
 
 	if(!r)
