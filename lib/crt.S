@@ -17,21 +17,17 @@ _start:
 	// __progname = argv[0]
 	movq (%rsi), %rcx
 
-	movq %rcx, %rax
-	movq %rax, __progname(%rip)
+	movq %rcx, __progname(%rip)
 
 	// find the first env variable
-	leaq 1(%rdi), %rax   // argc + 1
-
 	// rax = argv + (argc + 1) * 8
-	leaq (,%rsi,8), %rax  // [%rsi + rax * 8]
 
-	movq %rax, environ(%rip)
+	leaq 1(%rdi), %rcx         // argc + 1
+	leaq (%rsi, %rcx, 8), %rdx // argv + new_argc * 8
 
-	push %rax // environ
-	push %rsi // argv
-	push %rdi // argc
+	movq %rdx, environ(%rip)
 
+	// argc=rdi, argv=rsi, environ=rdx - FIXME: this is only Linux ABI
 	call main
 	movl %eax, %edi
 	call exit
