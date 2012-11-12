@@ -395,11 +395,8 @@ funcargs *parse_func_arglist()
 
 	if(argdecl){
 
-		/* check for x(void) */
-		if( argdecl->ref->type == type_ref_type
-		&&  argdecl->ref->bits.type->primitive == type_void
-		&& !argdecl->spel)
-		{
+		/* check for x(void) (or an equivalent typedef) */
+		if(type_ref_is_type(argdecl->ref, type_void) && !argdecl->spel){
 			/* x(void); */
 			funcargs_empty(args);
 			args->args_void = 1; /* (void) vs () */
