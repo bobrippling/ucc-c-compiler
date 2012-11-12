@@ -88,9 +88,11 @@ type *parse_type_sue(enum type_primitive prim)
 			decl **i;
 
 			if(!dmembers){
+				const char *t = sue_str_type(prim);
+
 				if(curtok == token_colon)
-					DIE_AT(NULL, "can't have initial struct padding");
-				DIE_AT(NULL, "no members in struct");
+					DIE_AT(NULL, "can't have initial %s padding", t);
+				DIE_AT(NULL, "no members in %s", t);
 			}
 
 			for(i = dmembers; *i; i++){
@@ -105,7 +107,7 @@ type *parse_type_sue(enum type_primitive prim)
 		}
 
 	}else if(!spel){
-		DIE_AT(NULL, "expected: struct definition or name");
+		DIE_AT(NULL, "expected: %s definition or name", sue_str_type(prim));
 
 	}else{
 		/* predeclaring */
@@ -711,7 +713,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 				enum type_qualifier qual;
 
 				if(sue->anon)
-					WARN_AT(&this_ref->where, "anonymous struct with no instances");
+					WARN_AT(&this_ref->where, "anonymous %s with no instances", sue_str(sue));
 
 				/* check for storage/qual on no-instance */
 				qual = type_ref_qual(this_ref);
@@ -872,7 +874,7 @@ next:
 
 		if((mode & DECL_MULTI_ACCEPT_FIELD_WIDTH) && accept(token_colon)){
 			/* padding - struct { int i; :3 } */
-			ICE("TODO: struct inter-var padding");
+			ICE("TODO: struct/union(?) inter-var padding");
 			/* anon-decl with field width to pad? */
 		}
 	}

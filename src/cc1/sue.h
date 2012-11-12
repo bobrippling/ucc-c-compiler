@@ -27,12 +27,13 @@ struct struct_union_enum_st
 	sue_member **members;
 };
 
+#define sue_str_type(t) (t == type_struct \
+                        ? "struct"        \
+                        : t == type_union \
+                        ? "union"         \
+                        : "enum")
 
-#define sue_str(x)  ((x)->primitive == type_struct \
-																	? "struct"                     \
-																	: (x)->primitive == type_union \
-																	? "union"                      \
-																	: "enum")
+#define sue_str(x) sue_str_type((x)->primitive)
 
 /* this is fine - empty structs aren't allowed */
 #define sue_incomplete(x) (!(x)->members)

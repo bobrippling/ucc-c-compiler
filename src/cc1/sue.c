@@ -159,7 +159,7 @@ struct_union_enum_st *sue_add(symtable *const stab, char *spel, sue_member **mem
 	st_en_un_set_spel(&sue->spel, spel, sue_str(sue));
 
 	if(members){
-		UCC_ASSERT(!sue->members, "redef of struct should've been caught");
+		UCC_ASSERT(!sue->members, "redef of struct/union should've been caught");
 		sue->members = members;
 	}
 

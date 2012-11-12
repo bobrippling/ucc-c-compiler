@@ -333,7 +333,7 @@ int decl_size(decl *d, where const *from)
 	if(d->field_width){
 		intval iv;
 
-		ICW("use of struct field width - brace for incorrect code (%s)",
+		ICW("use of field width - brace for incorrect code (%s)",
 				where_str(&d->where));
 
 		const_fold_need_val(d->field_width, &iv);

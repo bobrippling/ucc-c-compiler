@@ -408,7 +408,7 @@ void fold_decl_init(decl *for_decl, decl_init *di, symtable *stab)
 		switch(di->type){
 			case decl_init_struct:
 			case decl_init_scalar:
-				DIE_AT(&for_decl->where, "can't initialise array decl with scalar or struct");
+				DIE_AT(&for_decl->where, "can't initialise array decl with scalar or struct/union");
 
 			case decl_init_brace:
 			{
@@ -433,7 +433,7 @@ void fold_decl_init(decl *for_decl, decl_init *di, symtable *stab)
 
 		switch(di->type){
 			case decl_init_scalar:
-				/*ICE("TODO: struct init with scalar");*/
+				/*ICE("TODO: %s init with scalar", "struct/union");*/
 				DIE_AT(&di->where, "can't initialise %s with expression",
 						decl_to_str(for_decl));
 
@@ -452,7 +452,7 @@ void fold_decl_init(decl *for_decl, decl_init *di, symtable *stab)
 				}
 #endif
 
-				fprintf(stderr, "checked decl struct init for %s\n", for_decl->spel);
+				fprintf(stderr, "checked decl struct/union init for %s\n", for_decl->spel);
 				break;
 			}
 
@@ -467,7 +467,7 @@ void fold_decl_init(decl *for_decl, decl_init *di, symtable *stab)
 					/* folded below */
 
 				}else{
-					DIE_AT(&for_decl->where, "initialisation of incomplete struct");
+					DIE_AT(&for_decl->where, "initialisation of incomplete %s", sue_str(...));
 				}
 				break;
 		}
@@ -495,7 +495,7 @@ void fold_decl_init(decl *for_decl, decl_init *di, symtable *stab)
 					if(di->type != decl_init_struct)
 						DIE_AT(&di->where, "can't initialise array with struct-style init");
 
-					ICE(".x struct init");
+					ICE(".x struct/union init");
 
 					member = struct_union_member_find(sue, s->spel, &di->where);
 

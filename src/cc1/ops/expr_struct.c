@@ -26,7 +26,7 @@ void fold_expr_struct(expr *e, symtable *stab)
 	/* don't fold the rhs - just a member name */
 
 	UCC_ASSERT(expr_kind(e->rhs, identifier),
-			"struct member not identifier (%s)", e->rhs->f_str());
+			"struct/union member not identifier (%s)", e->rhs->f_str());
 	spel = e->rhs->spel;
 
 	/* we access a struct, of the right ptr depth */
@@ -108,13 +108,13 @@ void gen_expr_struct(expr *e, symtable *stab)
 
 	out_deref();
 
-	out_comment("val from struct");
+	out_comment("val from struct/union");
 }
 
 void gen_expr_str_struct(expr *e, symtable *stab)
 {
 	(void)stab;
-	idt_printf("struct%s%s\n",
+	idt_printf("struct/union%s%s\n",
 			e->expr_is_st_dot ? "." : "->",
 			e->rhs->spel);
 

@@ -420,7 +420,7 @@ void print_stmt(stmt *t)
 	PRINT_IF(t, rhs,  print_stmt);
 
 	if(stmt_kind(t, code) && t->symtab && has_st_en_tdef(t->symtab)){
-		idt_printf("structs, enums and tdefs in this block:\n");
+		idt_printf("structs/unions, enums and tdefs in this block:\n");
 		gen_str_indent++;
 		print_st_en_tdef(t->symtab);
 		gen_str_indent--;
