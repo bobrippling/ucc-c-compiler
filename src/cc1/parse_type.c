@@ -768,10 +768,10 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 						 * [function with int argument, not a pointer to const int
 						 */
 #define err_nodecl "declaration doesn't declare anything"
-						if(d->ref->type != type_ref_type)
-							DIE_AT(&d->where, err_nodecl);
-						else
+						if(type_ref_is(d->ref, type_ref_type))
 							WARN_AT(&d->where, err_nodecl);
+						else
+							DIE_AT(&d->where, err_nodecl);
 #undef err_nodecl
 					}
 
@@ -789,7 +789,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 					int i;
 					funcargs *dfuncargs = d->ref->bits.func;
 
-					UCC_ASSERT(d->ref->type == type_ref_func, "not func");
+					UCC_ASSERT(type_ref_is(d->ref, type_ref_func), "not func");
 
 					if(!dfuncargs->args_old_proto)
 						DIE_AT(&d->where, "unexpected old-style decls - new style proto used");

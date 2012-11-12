@@ -550,17 +550,17 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 	switch(r->type){
 	/* check for array of funcs, func returning array */
 		case type_ref_array:
-			if(r->ref && r->ref->type == type_ref_func)
+			if(type_ref_is(r->ref, type_ref_func))
 				DIE_AT(&r->where, "can't have an array of functions");
 			break;
 
 		case type_ref_func:
-			if(r->ref && r->ref->type == type_ref_func)
+			if(type_ref_is(r->ref, type_ref_func))
 				DIE_AT(&r->where, "can't have a function returning a function");
 			break;
 
 		case type_ref_block:
-			if(r->ref->type != type_ref_func)
+			if(!type_ref_is(r->ref, type_ref_func))
 				DIE_AT(&r->where, "invalid block pointer - function required (got %s)",
 						type_ref_to_str(r->ref));
 
@@ -593,7 +593,7 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 		}
 	}
 
-	if(q_to_check & qual_restrict && parent && parent->type != type_ref_ptr)
+	if(q_to_check & qual_restrict && parent && !type_ref_is(parent, type_ref_ptr))
 		DIE_AT(&r->where, "restrict on non-pointer type %s", type_ref_to_str(r));
 
 	fold_type_ref(r->ref, r, stab);
@@ -878,7 +878,7 @@ void fold_func(decl *func_decl)
 		curdecl_func = func_decl;
 		curdecl_ref_func_called = type_ref_func_call(curdecl_func->ref, NULL);
 
-		UCC_ASSERT(func_decl->ref->type == type_ref_func, "not a func");
+		UCC_ASSERT(type_ref_is(func_decl->ref, type_ref_func), "not a func");
 		symtab_add_args(
 				func_decl->func_code->symtab,
 				func_decl->ref->bits.func,
@@ -1155,7 +1155,7 @@ void fold(symtable *globs)
 				for(proto_i = protos; *proto_i; proto_i++){
 					decl *proto = *proto_i;
 
-					UCC_ASSERT(proto->ref->type == type_ref_func, "not func");
+					UCC_ASSERT(type_ref_is(proto->ref, type_ref_func), "not func");
 
 					if(proto->ref->bits.func->args_void)
 						is_void = 1;
