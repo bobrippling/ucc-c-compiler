@@ -181,6 +181,8 @@ int type_ref_align(type_ref *r)
 int type_ref_is_complete(type_ref *r)
 {
 	/* decl is "void" or incomplete-struct or array[] */
+	r = type_ref_skip_tdefs_casts(r);
+
 	switch(r->type){
 		case type_ref_type:
 		{
@@ -209,7 +211,14 @@ int type_ref_is_complete(type_ref *r)
 			return iv.val != 0 && type_ref_is_complete(r->ref);
 		}
 
-		default:break;
+		case type_ref_func:
+		case type_ref_ptr:
+		case type_ref_block:
+			break;
+
+		case type_ref_tdef:
+		case type_ref_cast:
+			ICE("should've been skipped");
 	}
 
 
