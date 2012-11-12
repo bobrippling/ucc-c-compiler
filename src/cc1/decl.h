@@ -176,7 +176,6 @@ type_ref *type_ref_decay_first_array(type_ref *);
 
 type *decl_get_type(decl *);
 
-int   decl_ptr_depth(    decl *d);
 decl *decl_decay_first_array(decl *);
 void decl_complete_array(decl *, int to);
 void decl_conv_array_func_to_ptr(decl *d);

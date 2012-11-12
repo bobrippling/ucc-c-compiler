@@ -494,18 +494,6 @@ int decl_is_variadic(decl *d)
 	return (r = type_ref_is(r, type_ref_func)) && r->bits.func->variadic;
 }
 
-int decl_ptr_depth(decl *d)
-{
-	int depth = 0;
-	type_ref *r;
-
-	for(r = d->ref; r; r = r->ref)
-		if(r->type == type_ref_ptr)
-			depth++;
-
-	return depth;
-}
-
 type_ref *type_ref_orphan(type_ref *r)
 {
 	type_ref *ret = r->ref;
