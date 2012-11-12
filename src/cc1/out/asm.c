@@ -74,7 +74,8 @@ int asm_table_lookup(type_ref *r)
 	if(!r)
 		return ASM_INDEX_LONG;
 
-	if(type_ref_is(r, type_ref_array))
+	/* special case for funcs and arrays */
+	if(type_ref_is(r, type_ref_array) || type_ref_is(r, type_ref_func))
 		sz = type_primitive_size(type_intptr_t);
 	else
 		sz = type_ref_size(r);
