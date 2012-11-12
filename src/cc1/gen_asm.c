@@ -105,9 +105,12 @@ void gen_asm_global(decl *d)
 				where_str(&d->attr->where), d->attr->attr_extra.section, d->spel);
 
 	/* order of the if matters */
-	if(d->func_code){
+	if(DECL_IS_FUNC(d)){
 		int nargs = 0;
 		decl **aiter;
+
+		if(!d->func_code)
+			return;
 
 		for(aiter = d->func_code->symtab->decls; aiter && *aiter; aiter++)
 			if((*aiter)->sym->type == sym_arg)
