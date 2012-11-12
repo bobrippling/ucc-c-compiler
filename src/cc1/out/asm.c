@@ -78,7 +78,7 @@ int asm_table_lookup(type_ref *r)
 	if(type_ref_is(r, type_ref_array) || type_ref_is(r, type_ref_func))
 		sz = type_primitive_size(type_intptr_t);
 	else
-		sz = type_ref_size(r);
+		sz = type_ref_size(r, NULL);
 
 	for(i = 0; i <= ASM_TABLE_MAX; i++)
 		if(asm_type_table[i].sz == sz)
@@ -221,7 +221,7 @@ void asm_declare(FILE *f, decl *d)
 
 	}else{
 		/* always resB, since we use decl_size() */
-		asm_reserve_bytes(d->spel, decl_size(d));
+		asm_reserve_bytes(d->spel, decl_size(d, &d->where));
 
 	}
 }

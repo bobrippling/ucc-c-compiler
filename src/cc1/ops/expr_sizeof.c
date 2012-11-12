@@ -49,7 +49,7 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 		if((sue = type_ref_is_s_or_u(chosen)) && sue_incomplete(sue))
 			DIE_AT(&e->where, "sizeof %s", type_ref_to_str(chosen));
 
-		SIZEOF_SIZE(e) = type_ref_size(SIZEOF_WHAT(e));
+		SIZEOF_SIZE(e) = type_ref_size(SIZEOF_WHAT(e), &e->where);
 
 		{
 			type *t;

@@ -196,7 +196,7 @@ const char *call_reg_str(int i, type_ref *r)
 
 	asm_reg_name(r, &pre, &post);
 
-	if(!call_regs[i].suffix && r && type_ref_size(r) < type_primitive_size(type_long)){
+	if(!call_regs[i].suffix && r && type_ref_size(r, NULL) < type_primitive_size(type_long)){
 		/* r9d, etc */
 		snprintf(buf, sizeof buf, "r%cd", call_regs[i].reg);
 	}else{
@@ -558,7 +558,7 @@ void impl_op(enum op_type op)
 			vtop_clear(vtop->t);
 			vtop->type = REG;
 
-			if(type_ref_size(vtop->t) != type_primitive_size(type_int)){
+			if(type_ref_size(vtop->t, NULL) != type_primitive_size(type_int)){
 #if 0
 Operand-Size         Dividend  Divisor  Quotient  Remainder
 8                    AX        r/m8     AL        AH
@@ -732,8 +732,8 @@ void impl_cast(type_ref *from, type_ref *to)
 			x86_reg_str_r(buf_from, vtop->bits.reg, from);
 
 			if(!is_signed
-			&& (to   ? type_ref_size(to)   : type_primitive_size(type_intptr_t)) > int_sz
-			&& (from ? type_ref_size(from) : type_primitive_size(type_intptr_t)) == int_sz)
+			&& (to   ? type_ref_size(to, NULL)   : type_primitive_size(type_intptr_t)) > int_sz
+			&& (from ? type_ref_size(from, NULL) : type_primitive_size(type_intptr_t)) == int_sz)
 			{
 				/*
 				 * movzx %eax, %rax is invalid
@@ -859,7 +859,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 		INC_NFLOATS(vtop->t);
 
 		/* can't push non-word sized vtops */
-		if(vtop->t && type_ref_size(vtop->t) != platform_word_size())
+		if(vtop->t && type_ref_size(vtop->t, NULL) != platform_word_size())
 			out_cast(vtop->t, NULL);
 
 		out_asm("pushq %s", vstack_str(vtop));

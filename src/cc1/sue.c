@@ -45,10 +45,13 @@ int enum_nentries(struct_union_enum_st *e)
 	return n;
 }
 
-int sue_size(struct_union_enum_st *st)
+int sue_size(struct_union_enum_st *st, const where *w)
 {
 	sue_member **i;
 	int total, max;
+
+	if(sue_incomplete(st))
+		DIE_AT(w, "%s %s is incomplete", sue_str(st), st->spel);
 
 	if(st->primitive == type_enum)
 		return type_primitive_size(type_int);
@@ -56,7 +59,7 @@ int sue_size(struct_union_enum_st *st)
 	total = max = 0;
 
 	for(i = st->members; i && *i; i++){
-		const int sz = decl_size((*i)->struct_member);
+		const int sz = decl_size((*i)->struct_member, w);
 
 		total += sz;
 		if(sz > max)

@@ -234,7 +234,7 @@ void print_decl(decl *d, enum pdeclargs mode)
 		if(decl_is_incomplete_array(d)){
 			fprintf(cc1_out, " incomplete array in decl");
 		}else{
-			const int sz = decl_size(d);
+			const int sz = decl_size(d, &d->where);
 			fprintf(cc1_out, " size %d bytes. %d platform-word(s)", sz, sz / platform_word_size());
 		}
 	}
@@ -302,7 +302,7 @@ void print_struct(struct_union_enum_st *sue)
 		return;
 	}
 
-	idt_printf("%s %s (size %d):\n", sue_str(sue), sue->spel, sue_size(sue));
+	idt_printf("%s %s (size %d):\n", sue_str(sue), sue->spel, sue_size(sue, &sue->where));
 
 	gen_str_indent++;
 	for(iter = sue->members; iter && *iter; iter++){

@@ -246,7 +246,7 @@ void v_save_reg(struct vstack *vp)
 	 * instead/TODO: impl_save_reg(vp) -> "pushq %%rax"
 	 * -O1?
 	 */
-	store.bits.off_from_bp = -impl_alloc_stack(type_ref_size(store.t));
+	store.bits.off_from_bp = -impl_alloc_stack(type_ref_size(store.t, NULL));
 	impl_store(vp, &store);
 
 	store.type = STACK_SAVE;
@@ -426,7 +426,7 @@ static int calc_ptr_step(type_ref *t)
 	if(type_ref_is_type(type_ref_is(t, type_ref_ptr), type_void))
 		return type_primitive_size(type_void);
 
-	sz = type_ref_size(t->ref);
+	sz = type_ref_size(t->ref, NULL);
 
 	return sz;
 }

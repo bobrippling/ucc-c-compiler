@@ -233,7 +233,7 @@ type_ref *op_required_promotion(
 			tlarger = tlhs;
 
 		}else{
-			const int l_sz = type_ref_size(tlhs), r_sz = type_ref_size(trhs);
+			const int l_sz = type_ref_size(tlhs, &lhs->where), r_sz = type_ref_size(trhs, &rhs->where);
 
 			if(l_sz != r_sz){
 				const int l_larger = l_sz > r_sz;
@@ -320,7 +320,7 @@ void fold_expr_op(expr *e, symtable *stab)
 						op_to_str(e->op), type_ref_to_str(t_unary));
 
 			/* extend to int if smaller */
-			if(type_ref_size(t_unary) < type_primitive_size(type_int)){
+			if(type_ref_size(t_unary, &e->where) < type_primitive_size(type_int)){
 				expr_promote_int(&e->lhs, type_int, stab);
 				t_unary = e->lhs->tree_type;
 			}

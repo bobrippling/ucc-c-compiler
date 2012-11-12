@@ -102,9 +102,10 @@ static void static_expr_cast_addr(expr *e)
 		{
 			int from_sz, to_sz;
 			/* only possible if the cast-to and cast-from are the same size */
+			const where *const w = &e->expr->where;
 
-			from_sz = type_ref_size(e->expr->tree_type);
-			to_sz = type_ref_size(e->tree_type);
+			from_sz = type_ref_size(e->expr->tree_type, w);
+			to_sz = type_ref_size(e->tree_type, w);
 
 			if(to_sz != from_sz){
 				WARN_AT(&e->where,

@@ -177,7 +177,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab, int *poffset, int
 	if(sue->primitive == type_enum){
 		int sz;
 		fold_enum(sue, stab);
-		sz = sue_size(sue);
+		sz = sue_size(sue, &sue->where);
 		pack_next(poffset, pthis, sz, sz);
 	}else{
 		int align_max = 1;
@@ -198,7 +198,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab, int *poffset, int
 
 				align = this_sue->align;
 			}else{
-				const int sz = decl_size(d);
+				const int sz = decl_size(d, &d->where);
 				pack_next(poffset, pthis, sz, sz);
 				align = sz; /* for now */
 			}
@@ -249,7 +249,7 @@ void fold_complete_array(decl *dfor, decl_init *init_from)
 				type_ref *dref = type_ref_ptr_depth_dec(dfor->ref);
 
 				/* (int[2] size = 8) / type_size = 2 */
-				complete_to = n_inits / (type_ref_size(dref) / type_ref_size(dref->ref));
+				complete_to = n_inits / (type_ref_size(dref, &dref->where) / type_ref_size(dref->ref, &dref->where));
 
 #ifdef DECL_COMP_VERBOSE
 				fprintf(stderr, "n_inits = %d, decl_size(*(%s)) = %d, type_size(%s) = %d\n",

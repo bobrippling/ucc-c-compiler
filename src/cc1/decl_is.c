@@ -158,7 +158,7 @@ int type_ref_is_integral(type_ref *r)
 	return 0;
 }
 
-int type_ref_align(type_ref *r)
+int type_ref_align(type_ref *r, where const *from)
 {
 	struct_union_enum_st *sue;
 
@@ -173,7 +173,7 @@ int type_ref_align(type_ref *r)
 	}
 
 	if((r = type_ref_is(r, type_ref_type)))
-		return type_size(r->bits.type);
+		return type_size(r->bits.type, from);
 
 	return 1;
 }

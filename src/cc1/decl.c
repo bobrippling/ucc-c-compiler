@@ -280,11 +280,11 @@ void decl_attr_free(decl_attr *a)
 
 #include "decl_is.c"
 
-int type_ref_size(type_ref *r)
+int type_ref_size(type_ref *r, where const *from)
 {
 	switch(r->type){
 		case type_ref_type:
-			return type_size(r->bits.type);
+			return type_size(r->bits.type, from);
 
 		case type_ref_tdef:
 		{
@@ -292,15 +292,15 @@ int type_ref_size(type_ref *r)
 			type_ref *sub;
 
 			if(d)
-				return type_ref_size(d->ref);
+				return type_ref_size(d->ref, from);
 
 			sub = r->bits.tdef.type_of->tree_type;
 			UCC_ASSERT(sub, "type_ref_size for unfolded typedef");
-			return type_ref_size(sub);
+			return type_ref_size(sub, from);
 		}
 
 		case type_ref_cast:
-			return type_ref_size(r->ref);
+			return type_ref_size(r->ref, from);
 
 		case type_ref_ptr:
 		case type_ref_block:
@@ -308,6 +308,7 @@ int type_ref_size(type_ref *r)
 
 		case type_ref_func:
 			/* don't return r->ref's size */
+			ICE("sizeof function");
 			return 1;
 
 		case type_ref_array:
@@ -317,16 +318,16 @@ int type_ref_size(type_ref *r)
 			const_fold_need_val(r->bits.array_size, &sz);
 
 			if(sz.val == 0)
-				DIE_AT(&r->where, "incomplete array size attempt");
+				DIE_AT(from, "incomplete array size attempt");
 
-			return sz.val * type_ref_size(r->ref);
+			return sz.val * type_ref_size(r->ref, from);
 		}
 	}
 
 	ucc_unreach();
 }
 
-int decl_size(decl *d)
+int decl_size(decl *d, where const *from)
 {
 #ifdef FIELD_WIDTH_TODO
 	if(d->field_width){
@@ -341,7 +342,7 @@ int decl_size(decl *d)
 	}
 #endif
 
-	return type_ref_size(d->ref);
+	return type_ref_size(d->ref, from);
 }
 
 void decl_complete_array(decl *d, int sz)

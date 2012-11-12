@@ -71,11 +71,11 @@ int symtab_fold(symtable *tab, int current)
 					case store_default:
 					case store_auto:
 					{
-						int siz = decl_size(s->decl);
+						int siz = decl_size(s->decl, &s->decl->where);
 						int align;
 						int this;
 
-						align = type_ref_align(s->decl->ref);
+						align = type_ref_align(s->decl->ref, &s->decl->where);
 
 						pack_next(&current, &this, siz, align); /* an array and structs start at the bottom */
 

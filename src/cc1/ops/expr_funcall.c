@@ -200,7 +200,7 @@ void gen_expr_funcall(expr *e, symtable *stab)
 				gen_expr(earg, stab);
 
 				/* each arg needs casting up to int size, if smaller */
-				if(type_ref_size(earg->tree_type) < int_sz)
+				if(type_ref_size(earg->tree_type, &earg->where) < int_sz)
 					out_cast(earg->tree_type, type_ref_new_INT());
 			}
 		}

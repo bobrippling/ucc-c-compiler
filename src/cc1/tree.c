@@ -123,10 +123,10 @@ int type_primitive_size(enum type_primitive tp)
 	return -1;
 }
 
-int type_size(const type *t)
+int type_size(const type *t, where const *from)
 {
 	if(t->sue)
-		return sue_size(t->sue);
+		return sue_size(t->sue, from);
 
 	return type_primitive_size(t->primitive);
 }
