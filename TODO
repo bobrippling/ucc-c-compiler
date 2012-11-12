@@ -1,6 +1,8 @@
 update bugs/
 test/ - x.c and x.c.expect (output and assembly)
 
+-Wmissing-prototypes
+
 ---------------------------------------------------- cc1
 
 const-fold: change interface and checking of ->val.iv.val to more explicit code
