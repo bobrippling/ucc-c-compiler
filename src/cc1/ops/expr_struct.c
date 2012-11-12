@@ -45,8 +45,8 @@ void fold_expr_struct(expr *e, symtable *stab)
 		DIE_AT(&e->lhs->where, "%s incomplete type (%s)",
 				ptr_expect
 					? "dereferencing pointer to"
-					: "use of",
-				type_ref_to_str(e->tree_type));
+					: "accessing member of",
+				type_ref_to_str(e->lhs->tree_type));
 	}
 
 	/* found the struct, find the member */
