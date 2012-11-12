@@ -487,6 +487,16 @@ decl_desc *parse_decl_desc_array(enum decl_mode mode, char **sp)
 		decl_desc *dp_new;
 		expr *size;
 
+		/* skip int x[restrict|static ...] for now. TODO: update qual/whatever-for-static */
+		while(curtok == token_restrict || curtok == token_static){
+			static int warned = 0;
+			if(!warned){
+				warned = 1;
+				WARN_AT(NULL, "restrict/static in arrays is currently ignored");
+			}
+			EAT(curtok);
+		}
+
 		if(accept(token_close_square)){
 			/* take size as zero */
 			size = expr_new_val(0);
