@@ -607,9 +607,12 @@ void fold_decl(decl *d, symtable *stab)
 	 */
 	fold_type_ref(d->ref, NULL, stab);
 
+#if 0
 	/* if we have a type and it's incomplete, error */
+	no - only on use
 	if(!type_ref_is_complete(d->ref))
 		DIE_AT(&d->where, "use of incomplete type - %s (%s)", d->spel, decl_to_str(d));
+#endif
 
 #ifdef FIELD_WIDTH_TODO
 	if(d->field_width){
