@@ -528,6 +528,16 @@ static type_ref *parse_type_ref_array(enum decl_mode mode, char **sp)
 	while(accept(token_open_square)){
 		expr *size;
 
+		/* skip int x[restrict|static ...] for now. TODO: update qual/whatever-for-static */
+		while(curtok == token_restrict || curtok == token_static){
+			static int warned = 0;
+			if(!warned){
+				warned = 1;
+				WARN_AT(NULL, "restrict/static in arrays is currently ignored");
+			}
+			EAT(curtok);
+		}
+
 		if(accept(token_close_square)){
 			/* take size as zero */
 			size = expr_new_val(0);
