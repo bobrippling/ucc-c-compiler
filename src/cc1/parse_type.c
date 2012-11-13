@@ -737,7 +737,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 				 * struct A; - fine
 				 * struct { int i; }; - warn
 				 */
-				if(!last){
+				if(last == NULL){
 					int warn = 0;
 					struct_union_enum_st *sue;
 
@@ -749,6 +749,8 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 					sue = type_ref_is_s_or_u_or_e(this_ref);
 					switch(sue ? sue->primitive : type_unknown){
 						case type_enum:
+							warn = 0; /* don't warn for enums - they're always declarations */
+							break;
 						case type_struct:
 						case type_union:
 							/* if it doesn't have a ->sue, it's a forward decl */
