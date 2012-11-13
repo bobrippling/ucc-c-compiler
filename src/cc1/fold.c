@@ -562,12 +562,15 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 	/* check for array of funcs, func returning array */
 		case type_ref_array:
 			if(type_ref_is(r->ref, type_ref_func))
-				DIE_AT(&r->where, "can't have an array of functions");
+				DIE_AT(&r->where, "array of functions");
 			break;
 
 		case type_ref_func:
 			if(type_ref_is(r->ref, type_ref_func))
-				DIE_AT(&r->where, "can't have a function returning a function");
+				DIE_AT(&r->where, "function returning a function");
+
+			if(type_ref_is(parent, type_ref_ptr) && (type_ref_qual(parent) & qual_restrict))
+				DIE_AT(&r->where, "restrict qualified function pointer");
 			break;
 
 		case type_ref_block:
@@ -604,8 +607,8 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 		}
 	}
 
-	if(q_to_check & qual_restrict && parent && !type_ref_is(parent, type_ref_ptr))
-		DIE_AT(&r->where, "restrict on non-pointer type %s", type_ref_to_str(r));
+	if(q_to_check & qual_restrict)
+		WARN_AT(&r->where, "restrict on non-pointer type '%s'", type_ref_to_str(r));
 
 	fold_type_ref(r->ref, r, stab);
 }
