@@ -29,7 +29,14 @@ int out_vcount(void)
 
 static type_ref *v_default_type(type_ref *r)
 {
-	return r ? r : type_ref_new_VOID_PTR();
+	const where w = { 0 };
+	type_ref *ret;
+
+	EOF_WHERE(&w,
+		ret = r ? r : type_ref_new_VOID_PTR()
+	);
+
+	return ret;
 }
 
 void vpush(type_ref *t)
