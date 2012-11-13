@@ -328,7 +328,7 @@ enum type_qualifier type_ref_qual(const type_ref *r)
 
 		case type_ref_cast:
 			/* descend */
-			return r->bits.qual | type_ref_qual(r->ref);
+			return r->bits.cast.qual | (r->bits.cast.additive ? type_ref_qual(r->ref) : qual_none);
 
 		case type_ref_type:
 			return r->bits.type->qual;

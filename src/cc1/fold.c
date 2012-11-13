@@ -52,7 +52,7 @@ void fold_type_ref_equal(
 
 void fold_insert_casts(type_ref *dlhs, expr **prhs, symtable *stab, where *w, const char *desc)
 {
-	expr *rhs = *prhs;
+	expr *const rhs = *prhs;
 
 	if(!type_ref_equal(dlhs, rhs->tree_type,
 				DECL_CMP_ALLOW_VOID_PTR |
@@ -84,6 +84,17 @@ void fold_insert_casts(type_ref *dlhs, expr **prhs, symtable *stab, where *w, co
 				"operation between signed and unsigned%s%s%s in %s",
 				SPEL_IF_IDENT(rhs), desc);
 	}
+}
+
+
+void fold_check_restrict(expr *lhs, expr *rhs, const char *desc, where const *w)
+{
+	/* restrict operation checks */
+	const enum type_qualifier ql = type_ref_qual(lhs->tree_type),
+				                    qr = type_ref_qual(rhs->tree_type);
+
+	if((ql & qual_restrict) && (qr & qual_restrict))
+		WARN_AT(w, "restrict pointers in %s", desc);
 }
 
 int fold_get_sym(expr *e, symtable *stab)

@@ -64,10 +64,18 @@ struct type_ref
 			decl *decl;
 		} tdef;
 
-		/* ref_ptr, ref_cast */
+		/* ref_ptr */
 		enum type_qualifier qual;
 
-		struct funcargs /* ref_func */
+		/* ref_cast */
+		struct
+		{
+			enum type_qualifier qual;
+			unsigned int additive : 1; /* replace qual or add? */
+		} cast;
+
+		/* ref_func */
+		struct funcargs
 		{
 			where where;
 
@@ -155,7 +163,8 @@ type_ref *type_ref_new_ptr(  type_ref *to, enum type_qualifier);
 type_ref *type_ref_new_block(type_ref *to, enum type_qualifier);
 type_ref *type_ref_new_array(type_ref *to, expr *sz);
 type_ref *type_ref_new_func( type_ref *to, funcargs *args);
-type_ref *type_ref_new_cast( type_ref *from, enum type_qualifier extra);
+type_ref *type_ref_new_cast( type_ref *from, enum type_qualifier new);
+type_ref *type_ref_new_cast_add(type_ref *from, enum type_qualifier extra);
 
 
 decl_attr   *decl_attr_new(enum decl_attr_type);

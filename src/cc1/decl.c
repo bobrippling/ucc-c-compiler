@@ -73,16 +73,27 @@ type_ref *type_ref_new_func(type_ref *of, funcargs *args)
 	return r;
 }
 
-type_ref *type_ref_new_cast(type_ref *to, enum type_qualifier q)
+static type_ref *type_ref_new_cast_is_additive(type_ref *to, enum type_qualifier new, int additive)
 {
 	type_ref *r;
 
-	if(!q)
+	if(!new)
 		return to;
 
 	r = type_ref_new(type_ref_cast, to);
-	r->bits.qual = q;
+	r->bits.cast.qual = new;
+	r->bits.cast.additive = additive;
 	return r;
+}
+
+type_ref *type_ref_new_cast(type_ref *to, enum type_qualifier new)
+{
+	return type_ref_new_cast_is_additive(to, new, 0);
+}
+
+type_ref *type_ref_new_cast_add(type_ref *to, enum type_qualifier add)
+{
+	return type_ref_new_cast_is_additive(to, add, 1);
 }
 
 decl *decl_new()
@@ -426,13 +437,17 @@ static int type_ref_equal_r(type_ref *a, type_ref *b, enum decl_cmp mode)
 		}
 
 		case type_ref_block:
-			if(a->bits.block.qual != b->bits.block.qual)
+			if(!type_qual_equal(a->bits.block.qual, b->bits.block.qual))
 				return 0;
 			goto ref_eq;
 
 		case type_ref_cast:
+			if(!type_qual_equal(a->bits.cast.qual, b->bits.cast.qual))
+				return 0;
+			goto ref_eq;
+
 		case type_ref_ptr:
-			if(a->bits.qual != b->bits.qual)
+			if(!type_qual_equal(a->bits.qual, b->bits.qual))
 				return 0;
 			/* fall */
 ref_eq:
@@ -590,9 +605,11 @@ static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
 	switch(r->type){
 		case type_ref_ptr:
 			BUF_ADD("*");
-			/* fall */
-		case type_ref_cast:
 			q = r->bits.qual;
+			break;
+
+		case type_ref_cast:
+			q = r->bits.cast.qual;
 			break;
 
 		case type_ref_block:

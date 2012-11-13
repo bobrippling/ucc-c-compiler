@@ -11,6 +11,8 @@ void fold_type_ref_equal(
 		where *w,
 		enum warning warn, const char *errfmt, ...);
 
+void fold_check_restrict(expr *lhs, expr *rhs, const char *desc, where const *w);
+
 void fold_funcargs(funcargs *fargs, symtable *stab, char *context);
 
 void fold_symtab_scope(symtable *stab);

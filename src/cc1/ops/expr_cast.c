@@ -25,7 +25,13 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 	if(descend)
 		FOLD_EXPR(e->expr, stab);
 
-	e->tree_type = e->val.tref;
+	/* casts remove restrict qualifiers */
+	{
+		enum type_qualifier q = type_ref_qual(e->val.tref);
+
+		e->tree_type = type_ref_new_cast(e->val.tref, q & ~qual_restrict);
+	}
+
 	fold_type_ref(e->tree_type, NULL, stab); /* struct lookup, etc */
 
 	fold_disallow_st_un(e->expr, "cast-expr");

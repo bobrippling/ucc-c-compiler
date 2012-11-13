@@ -103,7 +103,7 @@ void print_type_ref_eng(type_ref *ref)
 
 	switch(ref->type){
 		case type_ref_cast:
-			fprintf(cc1_out, "%s ", type_qual_to_str(ref->bits.qual));
+			fprintf(cc1_out, "%s ", type_qual_to_str(ref->bits.cast.qual));
 			break;
 
 		case type_ref_ptr:

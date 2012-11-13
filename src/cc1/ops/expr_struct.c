@@ -81,7 +81,7 @@ void fold_expr_struct(expr *e, symtable *stab)
 	{
 		enum type_qualifier addon = type_ref_qual(e->lhs->tree_type);
 
-		e->tree_type = type_ref_new_cast(e->rhs->tree_type, addon);
+		e->tree_type = type_ref_new_cast_add(e->rhs->tree_type, addon);
 	}
 }
 

@@ -33,6 +33,8 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 	if(type_ref_is_const(lvalue->tree_type))
 		DIE_AT(&e->where, "can't modify const expression %s", lvalue->f_str());
 
+	fold_check_restrict(lvalue, e->rhs, "compound assignment", &e->where);
+
 	UCC_ASSERT(op_can_compound(e->op), "non-compound op in compound expr");
 
 	{

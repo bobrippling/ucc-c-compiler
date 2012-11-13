@@ -131,9 +131,14 @@ int type_size(const type *t, where const *from)
 	return type_primitive_size(t->primitive);
 }
 
+int type_qual_equal(enum type_qualifier a, enum type_qualifier b)
+{
+ return (a | qual_restrict) == (b | qual_restrict);
+}
+
 int type_equal(const type *a, const type *b, enum type_cmp mode)
 {
-	if(a->qual != b->qual){
+	if(!type_qual_equal(a->qual, b->qual)){
 		if(mode & TYPE_CMP_EXACT)
 			return 0;
 

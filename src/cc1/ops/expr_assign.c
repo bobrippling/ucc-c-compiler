@@ -67,6 +67,7 @@ void fold_expr_assign(expr *e, symtable *stab)
 	if(!e->assign_is_init && type_ref_is_const(e->lhs->tree_type))
 		DIE_AT(&e->where, "can't modify const expression %s", e->lhs->f_str());
 
+	fold_check_restrict(e->lhs, e->rhs, "assignment", &e->where);
 
 	e->tree_type = e->lhs->tree_type;
 
