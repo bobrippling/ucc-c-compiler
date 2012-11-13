@@ -208,13 +208,15 @@ decl_attr *decl_attr_copy(decl_attr *da)
 void decl_attr_append(decl_attr **loc, decl_attr *new)
 {
 	/*
-	 * don't link it up, make copies,
-	 * so when we adjust others,
-	 * things don't get tangled with links
+	 * we can just link up, since pointers aren't rewritten now
+	 * //don't link it up, make copies,
+	 * //so when we adjust others,
+	 * //things don't get tangled with links
 	 */
 
-	if(new)
-		*loc = decl_attr_copy(new);
+	UCC_ASSERT(!*loc, "append attr overwrites");
+
+	*loc = /*decl_attr_copy(*/new/*)*/;
 }
 
 int decl_attr_present(decl_attr *da, enum decl_attr_type t)
