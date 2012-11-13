@@ -900,7 +900,7 @@ void fold_func(decl *func_decl)
 
 		fold_stmt(func_decl->func_code);
 
-		if(decl_attr_present(curdecl_func->attr, attr_noreturn)){
+		if(decl_has_attr(curdecl_func, attr_noreturn)){
 			if(!type_ref_is_void(curdecl_ref_func_called)){
 				cc1_warn_at(&func_decl->where, 0, 1, WARN_RETURN_UNDEF,
 						"function \"%s\" marked no-return has a non-void return value",

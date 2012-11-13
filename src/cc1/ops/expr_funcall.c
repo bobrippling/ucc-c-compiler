@@ -160,10 +160,10 @@ invalid:
 
 	fold_disallow_st_un(e, "return");
 
-	if(decl_attr_present(e->tree_type->attr, attr_format))
+	if(type_attr_present(e->tree_type, attr_format))
 		ICW("TODO: format checks on funcall at %s", where_str(&e->where));
 
-	if(decl_attr_present(e->tree_type->attr, attr_warn_unused))
+	if(type_attr_present(e->tree_type, attr_warn_unused))
 		e->freestanding = 0; /* needs use */
 }
 

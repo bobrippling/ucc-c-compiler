@@ -12,7 +12,7 @@ void fold_expr_deref(expr *e, symtable *stab)
 
 	ptr = FOLD_EXPR(expr_deref_what(e), stab);
 
-	if(decl_attr_present(ptr->tree_type->attr, attr_noderef))
+	if(type_attr_present(ptr->tree_type, attr_noderef))
 		WARN_AT(&ptr->where, "dereference of noderef expression");
 
 	/* check for *&x */

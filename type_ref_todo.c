@@ -21,9 +21,17 @@ enum reg
 #endif
 
 #ifdef TWO
-_Noreturn f()
+_Noreturn void f()
 {
-	__attribute((noreturn)) q();
-	q(); // noreturn attribute isn't picked up (attributes in general)
+	//int __attribute((noreturn)) q();
+	//q(); // noreturn attribute isn't picked up (attributes in general)
 }
+
+extern int use() __attribute__((warn_unused));
+
+doesnt_use()
+{
+	use(); // should warn
+}
+
 #endif

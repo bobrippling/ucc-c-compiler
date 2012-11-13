@@ -100,7 +100,7 @@ void gen_asm_global(decl *d)
 	if(!d->is_definition)
 		return;
 
-	if(decl_attr_present(d->attr, attr_section))
+	if(decl_has_attr(d, attr_section))
 		ICW("%s: TODO: section attribute \"%s\" on %s",
 				where_str(&d->attr->where), d->attr->attr_extra.section, d->spel);
 

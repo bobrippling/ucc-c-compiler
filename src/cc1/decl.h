@@ -190,6 +190,8 @@ void decl_complete_array(decl *, int to);
 void decl_conv_array_func_to_ptr(decl *d);
 
 int decl_attr_present(decl_attr *, enum decl_attr_type);
+int type_attr_present(type_ref *, enum decl_attr_type);
+int decl_has_attr(decl *, enum decl_attr_type);
 
 const char *decl_to_str(decl *d);
 const char *decl_to_str_r(char buf[DECL_STATIC_BUFSIZ], decl *);

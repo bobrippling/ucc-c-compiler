@@ -227,6 +227,59 @@ int decl_attr_present(decl_attr *da, enum decl_attr_type t)
 	return 0;
 }
 
+int type_attr_present(type_ref *r, enum decl_attr_type t)
+{
+	/*
+	 * attributes can be on:
+	 *
+	 * decl (spel)
+	 * type_ref (specifically the type, pointer or func, etc)
+	 * sue (struct A {} __attribute((packed)))
+	 * type (__attribute((section("data"))) int a)
+	 *
+	 * this means typedefs carry attributes too
+	 */
+
+	while(r){
+		if(decl_attr_present(r->attr, t))
+			return 1;
+
+		switch(r->type){
+			case type_ref_type:
+				if(decl_attr_present(r->bits.type->attr, t))
+					return 1;
+				goto fin;
+
+			case type_ref_tdef:
+			{
+				decl *d = r->bits.tdef.decl;
+
+				if(d && decl_attr_present(d->attr, t))
+					return 1;
+
+				return type_attr_present(r->bits.tdef.type_of->tree_type, t);
+			}
+
+			case type_ref_ptr:
+			case type_ref_block:
+			case type_ref_func:
+			case type_ref_array:
+			case type_ref_cast:
+				r = r->ref;
+				break;
+		}
+	}
+
+fin:
+	return 0;
+}
+
+int decl_has_attr(decl *d, enum decl_attr_type t)
+{
+	/* check the attr on the decl _and_ its type */
+	return decl_attr_present(d->attr, t) || type_attr_present(d->ref, t);
+}
+
 const char *decl_attr_to_str(enum decl_attr_type t)
 {
 	switch(t){
