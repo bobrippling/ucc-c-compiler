@@ -21,17 +21,34 @@ enum reg
 #endif
 
 #ifdef TWO
-_Noreturn void f()
+_Noreturn void f() // CHECK: /function "f" marked no-return implicitly returns/
 {
-	//int __attribute((noreturn)) q();
-	//q(); // noreturn attribute isn't picked up (attributes in general)
 }
 
+extern int __attribute__((warn_unused)) use_proper();
+
 extern int use() __attribute__((warn_unused));
+/*
+ * __attribute__ on the end is a special case for the parser
+ *
+ * since it could be:
+ *
+ * int use()
+ *   __attribute__((a)) int i;
+ *   int j;
+ * {
+ * }
+ *
+ * ... etc
+ */
 
 doesnt_use()
 {
-	use(); // should warn
+	use_proper(); // CHECK: /unused expression/
+
+	use(); // CHECK: /unused expression/
+
+	__builtin_trap();
 }
 
 #endif
