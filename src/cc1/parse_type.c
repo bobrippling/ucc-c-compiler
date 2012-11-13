@@ -630,7 +630,7 @@ static type_ref *default_type(void)
 
 decl *parse_decl_single(enum decl_mode mode)
 {
-	enum decl_storage store;
+	enum decl_storage store = store_default;
 	type_ref *r = parse_btype(mode & DECL_ALLOW_STORE ? &store : NULL);
 
 	if(!r){
