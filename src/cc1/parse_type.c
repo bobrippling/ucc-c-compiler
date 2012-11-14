@@ -798,8 +798,11 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 
 					UCC_ASSERT(type_ref_is(d->ref, type_ref_func), "not func");
 
-					if(!dfuncargs->args_old_proto)
-						DIE_AT(&d->where, "unexpected old-style decls - new style proto used");
+					if(!dfuncargs->args_old_proto){
+						DIE_AT(&d->where, dfuncargs->arglist
+								? "unexpected old-style decls - new style proto used"
+								: "parameters specified despite empty declaration in prototype");
+					}
 
 					n_proto_decls = dynarray_count((void **)dfuncargs->arglist);
 					n_old_args = dynarray_count((void **)old_args);
