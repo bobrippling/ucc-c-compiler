@@ -196,6 +196,26 @@ void print_type_ref(type_ref *ref, decl *d)
 			type_ref_to_str_r_spel(buf, ref, d ? d->spel : NULL));
 }
 
+void print_decl_attr_type(enum decl_attr_type t)
+{
+	idt_printf("__attribute__((%s))\n", decl_attr_to_str(t));
+}
+
+void print_decl_attr(decl_attr *da)
+{
+	for(; da; da = da->next)
+		print_decl_attr_type(da->type);
+}
+
+void print_type_attr(type_ref *r)
+{
+	enum decl_attr_type i;
+
+	for(i = 0; i < attr_LAST; i++)
+		if(type_attr_present(r, i))
+			print_decl_attr_type(i);
+}
+
 void print_decl(decl *d, enum pdeclargs mode)
 {
 	if(mode & PDECL_INDENT)
@@ -248,11 +268,10 @@ void print_decl(decl *d, enum pdeclargs mode)
 		gen_str_indent--;
 	}
 
-	if((mode & PDECL_ATTR) && d->attr){
-		decl_attr *da = d->attr;
+	if(mode & PDECL_ATTR){
 		gen_str_indent++;
-		for(; da; da = da->next)
-			idt_printf("__attribute__((%s))\n", decl_attr_to_str(da->type));
+		print_decl_attr(d->attr);
+		print_type_attr(d->ref);
 		gen_str_indent--;
 	}
 

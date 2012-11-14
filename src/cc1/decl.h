@@ -14,6 +14,7 @@ struct decl_attr
 		attr_enum_bitmask,
 		attr_noreturn,
 		attr_noderef,
+#define attr_LAST (attr_noderef + 1)
 		/*
 		 * TODO: warning, cdecl, stdcall, fastcall
 		 * pure - no globals
