@@ -5,6 +5,8 @@
 
 #define ASSERT_NOT_DOT() UCC_ASSERT(!e->expr_is_st_dot, "a.b should have been handled by now")
 
+#define struct_offset(rhs) (rhs)->val.decl->struct_offset
+
 const char *str_expr_struct()
 {
 	return "struct";
@@ -20,39 +22,37 @@ void fold_expr_struct(expr *e, symtable *stab)
 	struct_union_enum_st *sue;
 	char *spel;
 
-	fold_expr(e->lhs, stab);
+	FOLD_EXPR(e->lhs, stab);
 	/* don't fold the rhs - just a member name */
 
 	UCC_ASSERT(expr_kind(e->rhs, identifier),
-			"struct member not identifier (%s)", e->rhs->f_str());
+			"struct/union member not identifier (%s)", e->rhs->f_str());
 	spel = e->rhs->spel;
 
 	/* we access a struct, of the right ptr depth */
-	if(!decl_is_struct_or_union_possible_ptr(e->lhs->tree_type)
-	||  decl_is_ptr(e->lhs->tree_type) != ptr_expect)
-	{
+	if(!(sue = type_ref_is_s_or_u(ptr_expect ? e->lhs->tree_type->ref : e->lhs->tree_type))){
 		const int ident = expr_kind(e->lhs, identifier);
 
-		DIE_AT(&e->lhs->where, "%s%s%s is not a %sstruct or union (member %s)",
-				decl_to_str(e->lhs->tree_type),
+		DIE_AT(&e->lhs->where, "'%s%s%s' is not a %sstruct or union (member %s)",
+				type_ref_to_str(e->lhs->tree_type),
 				ident ? " " : "",
 				ident ? e->lhs->spel : "",
 				ptr_expect ? "pointer to " : "",
 				spel);
 	}
 
-	sue = e->lhs->tree_type->type->sue;
-
 	if(sue_incomplete(sue)){
 		DIE_AT(&e->lhs->where, "%s incomplete type (%s)",
 				ptr_expect
 					? "dereferencing pointer to"
-					: "use of",
-				type_to_str(e->lhs->tree_type->type));
+					: "accessing member of",
+				type_ref_to_str(e->lhs->tree_type));
 	}
 
 	/* found the struct, find the member */
-	e->rhs->tree_type = struct_union_member_find(sue, spel, &e->where);
+	e->rhs->tree_type = (
+		e->rhs->val.decl = struct_union_member_find(sue, spel, &e->where)
+	)->ref;
 
 	/*
 	 * if it's a.b, convert to (&a)->b for asm gen
@@ -66,7 +66,7 @@ void fold_expr_struct(expr *e, symtable *stab)
 	if(!ptr_expect){
 		expr *cast, *addr;
 
-		cast = expr_new_cast(decl_ptr_depth_inc(decl_new_void()), 1);
+		cast = expr_new_cast(type_ref_new_VOID_PTR(), 1);
 		cast->expr = addr = expr_new_addr();
 
 		addr->lhs = e->lhs;
@@ -74,12 +74,15 @@ void fold_expr_struct(expr *e, symtable *stab)
 		e->lhs = cast;
 		e->expr_is_st_dot = 0;
 
-		fold_expr(e->lhs, stab);
+		FOLD_EXPR(e->lhs, stab);
 	}
 
-	e->tree_type = decl_copy(e->rhs->tree_type);
 	/* pull qualifiers from the struct to the member */
-	e->tree_type->type->qual |= e->lhs->tree_type->type->qual;
+	{
+		enum type_qualifier addon = type_ref_qual(e->lhs->tree_type);
+
+		e->tree_type = type_ref_new_cast_add(e->rhs->tree_type, addon);
+	}
 }
 
 void gen_expr_struct_lea(expr *e, symtable *stab)
@@ -88,11 +91,11 @@ void gen_expr_struct_lea(expr *e, symtable *stab)
 
 	gen_expr(e->lhs, stab);
 
-	out_change_decl(NULL);
+	out_change_type(NULL);
 	out_push_i(NULL, struct_offset(e->rhs));
 	out_op(op_plus);
 
-	out_change_decl(decl_ptr_depth_inc(decl_copy(e->rhs->tree_type)));
+	out_change_type(type_ref_ptr_depth_inc(e->rhs->tree_type));
 }
 
 void gen_expr_struct(expr *e, symtable *stab)
@@ -105,13 +108,13 @@ void gen_expr_struct(expr *e, symtable *stab)
 
 	out_deref();
 
-	out_comment("val from struct");
+	out_comment("val from struct/union");
 }
 
 void gen_expr_str_struct(expr *e, symtable *stab)
 {
 	(void)stab;
-	idt_printf("struct%s%s\n",
+	idt_printf("struct/union%s%s\n",
 			e->expr_is_st_dot ? "." : "->",
 			e->rhs->spel);
 

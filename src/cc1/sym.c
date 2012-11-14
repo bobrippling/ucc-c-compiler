@@ -91,7 +91,7 @@ sym *symtab_has(symtable *tab, decl *d)
 
 sym *symtab_add(symtable *tab, decl *d, enum sym_type t, int with_sym, int prepend)
 {
-	const int descend = d->type->store == store_extern;
+	const int descend = (d->store & STORE_MASK_STORE) == store_extern;
 	sym *new;
 	char buf[WHERE_BUF_SIZ + 4];
 

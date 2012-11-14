@@ -17,13 +17,15 @@ const char *str_expr_addr()
 void fold_expr_addr(expr *e, symtable *stab)
 {
 	if(e->data_store){
-		data_store_fold_decl(e->data_store, &e->tree_type, stab);
+		data_store_fold_type(e->data_store, &e->tree_type, stab);
 
 	}else if(e->spel){
 		char *save;
 
 		/* address of label - void * */
-		e->tree_type = decl_ptr_depth_inc(decl_new_void());
+		e->tree_type = type_ref_new_ptr(
+				type_ref_new_type(type_new_primitive(type_void)),
+				qual_none);
 
 		save = e->spel;
 		e->spel = out_label_goto(e->spel);
@@ -32,24 +34,26 @@ void fold_expr_addr(expr *e, symtable *stab)
 	}else{
 		fold_inc_writes_if_sym(e->lhs, stab);
 
-		fold_expr(e->lhs, stab);
+		FOLD_EXPR(e->lhs, stab);
 
 		/* can address: lvalues, arrays and functions */
-		if(!expr_is_lvalue(e->lhs, LVAL_ALLOW_FUNC)
-		&& !decl_is_array(e->lhs->tree_type)
-		&& !decl_is_func(e->lhs->tree_type))
+		if(!expr_is_lvalue(e->lhs)
+		&& !type_ref_is(e->lhs->tree_type, type_ref_array)
+		&& !type_ref_is(e->lhs->tree_type, type_ref_func))
 		{
 			DIE_AT(&e->lhs->where, "can't take the address of %s (%s)",
-					e->lhs->f_str(), decl_to_str(e->lhs->tree_type));
+					e->lhs->f_str(), type_ref_to_str(e->lhs->tree_type));
 		}
 
+#ifdef FIELD_WIDTH_TODO
 		if(e->lhs->tree_type->field_width)
 			DIE_AT(&e->lhs->where, "taking the address of a bit-field");
+#endif
 
-		if(e->lhs->tree_type->type->store == store_register)
+		if(expr_kind(e->lhs, identifier) && e->lhs->sym->decl->store == store_register)
 			DIE_AT(&e->lhs->where, "can't take the address of register");
 
-		e->tree_type = decl_ptr_depth_inc(decl_copy(e->lhs->tree_type));
+		e->tree_type = type_ref_new_ptr(e->lhs->tree_type, qual_none);
 	}
 }
 

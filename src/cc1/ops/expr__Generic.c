@@ -14,27 +14,27 @@ void fold_expr__Generic(expr *e, symtable *stab)
 
 	def = NULL;
 
-	fold_expr(e->expr, stab);
+	FOLD_EXPR(e->expr, stab);
 
 	for(i = e->generics; i && *i; i++){
 		const int flags = DECL_CMP_EXACT_MATCH;
 		struct generic_lbl **j, *l = *i;
 
-		fold_expr(l->e, stab);
+		FOLD_EXPR(l->e, stab);
 
 		for(j = i + 1; *j; j++){
-			decl *m = (*j)->d;
+			type_ref *m = (*j)->t;
 
 			/* duplicate default checked below */
-			if(m && decl_equal(m, l->d, flags))
-				DIE_AT(&m->where, "duplicate type in _Generic: %s", decl_to_str(l->d));
+			if(m && type_ref_equal(m, l->t, flags))
+				DIE_AT(&m->where, "duplicate type in _Generic: %s", type_ref_to_str(l->t));
 		}
 
 
-		if(l->d){
-			fold_decl(l->d, stab);
+		if(l->t){
+			fold_type_ref(l->t, NULL, stab);
 
-			if(decl_equal(e->expr->tree_type, l->d, flags)){
+			if(type_ref_equal(e->expr->tree_type, l->t, flags)){
 				UCC_ASSERT(!e->generic_chosen, "already chosen expr for _Generic");
 				e->generic_chosen = l;
 			}
@@ -50,10 +50,10 @@ void fold_expr__Generic(expr *e, symtable *stab)
 		if(def)
 			e->generic_chosen = def;
 		else
-			DIE_AT(&e->where, "no type satisfying %s", decl_to_str(e->expr->tree_type));
+			DIE_AT(&e->where, "no type satisfying %s", type_ref_to_str(e->expr->tree_type));
 	}
 
-	e->tree_type = decl_copy(e->generic_chosen->e->tree_type);
+	e->tree_type = e->generic_chosen->e->tree_type;
 }
 
 void gen_expr__Generic(expr *e, symtable *stab)
@@ -80,10 +80,10 @@ void gen_expr_str__Generic(expr *e, symtable *stab)
 		if(e->generic_chosen == l)
 			idt_printf("-- Chosen --\n");
 
-		if(l->d){
+		if(l->t){
 			idt_printf("type:\n");
 			gen_str_indent++;
-			print_decl(l->d, PDECL_INDENT | PDECL_NEWLINE);
+			print_type_ref(l->t, NULL);
 			gen_str_indent--;
 		}else{
 			idt_printf("default:\n");

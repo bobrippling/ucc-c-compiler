@@ -20,7 +20,7 @@ void fold_stmt_while(stmt *s)
 	s->lbl_break    = out_label_flow("while_break");
 	s->lbl_continue = out_label_flow("while_cont");
 
-	fold_expr(s->expr, test_symtab);
+	FOLD_EXPR(s->expr, test_symtab);
 	fold_need_expr(s->expr, s->f_str(), 1);
 
 	OPT_CHECK(s->expr, "constant expression in while");

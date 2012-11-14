@@ -15,6 +15,7 @@
 #include "../const.h"
 #include "../gen_asm.h"
 #include "../data_store.h"
+#include "../decl_init.h"
 
 static const struct
 {
@@ -65,93 +66,48 @@ const char *asm_intval_str(intval *iv)
 }
 #endif
 
-int asm_table_lookup(decl *d)
+int asm_table_lookup(type_ref *r)
 {
-	if(!d || decl_ptr_or_block(d)){
-		goto do_long;
-	}else{
-		if(d->type->type_of)
-			ICE("typedefs should've been folded by now");
+	int sz;
+	int i;
 
-		switch(d->type->primitive){
-			case type_void:
-				ICE("type primitive is void (\"%s\")", decl_to_str(d));
+	if(!r)
+		return ASM_INDEX_LONG;
 
-			case type__Bool:
-			case type_char:
-				return ASM_INDEX_CHAR;
+	/* special case for funcs and arrays */
+	if(type_ref_is(r, type_ref_array) || type_ref_is(r, type_ref_func))
+		sz = type_primitive_size(type_intptr_t);
+	else
+		sz = type_ref_size(r, NULL);
 
-			case type_short:
-				return ASM_INDEX_SHORT;
+	for(i = 0; i <= ASM_TABLE_MAX; i++)
+		if(asm_type_table[i].sz == sz)
+			return i;
 
-			case type_enum:
-				UCC_ASSERT(sue_size(d->type->sue) == asm_type_table[ASM_INDEX_INT].sz,
-						"mismatching enum size");
-			case type_int:
-			case type_float:
-				return ASM_INDEX_INT;
-
-			case type_ldouble:
-				ICE("long double in asm");
-				return ASM_INDEX_LDOUBLE;
-			case type_llong:
-				ICE("long long in asm");
-				return ASM_INDEX_LLONG;
-
-			case type_double:
-			case type_long:
-			case type_intptr_t:
-			case type_ptrdiff_t:
-do_long:
-				return m32 ? ASM_INDEX_INT : ASM_INDEX_LONG;
-
-			case type_struct:
-			case type_union:
-				ICE("%s of %s (%s)",
-						__func__,
-						sue_str(d->type->sue),
-						decl_to_str(d));
-				/*DIE_AT(&d->where, "invalid use of struct (%s:%d)", __FILE__, __LINE__);*/
-
-			case type_unknown:
-				ICE("type primitive not set");
-		}
-	}
-	ICE("%s switch error", __func__);
-	return 0;
+	ICE("no asm type index for byte size %d", sz);
+	return -1;
 }
 
-char asm_type_ch(decl *d)
+char asm_type_ch(type_ref *r)
 {
-	return asm_type_table[asm_table_lookup(d)].ch;
+	return asm_type_table[asm_table_lookup(r)].ch;
 }
 
-const char *asm_type_directive(decl *d)
+const char *asm_type_directive(type_ref *r)
 {
-	return asm_type_table[asm_table_lookup(d)].directive;
+	return asm_type_table[asm_table_lookup(r)].directive;
 }
 
-void asm_reg_name(decl *d, const char **regpre, const char **regpost)
+void asm_reg_name(type_ref *r, const char **regpre, const char **regpost)
 {
-	const int i = asm_table_lookup(d);
+	const int i = asm_table_lookup(r);
 	*regpre  = asm_type_table[i].regpre;
 	*regpost = asm_type_table[i].regpost;
 }
 
-int asm_type_size(decl *d)
+int asm_type_size(type_ref *r)
 {
-	if(d){
-		struct_union_enum_st *sue = d->type->sue;
-
-		if(sue && !decl_is_ptr(d))
-			return sue_size(sue);
-
-		/* func ptr */
-		if(decl_is_fptr(d) || decl_is_func(d))
-			d = NULL; /* continue */
-	}
-
-	return asm_type_table[asm_table_lookup(d)].sz;
+	return asm_type_table[asm_table_lookup(r)].sz;
 }
 
 void asm_declare_partial(const char *fmt, ...)
@@ -260,12 +216,12 @@ void asm_declare(FILE *f, decl *d)
 		asm_declare_sub(f, d->init);
 		fputc('\n', f);
 
-	}else if(d->type->store == store_extern){
+	}else if(d->store == store_extern){
 		gen_asm_extern(d);
 
 	}else{
 		/* always resB, since we use decl_size() */
-		asm_reserve_bytes(d->spel, decl_size(d));
+		asm_reserve_bytes(d->spel, decl_size(d, &d->where));
 
 	}
 }

@@ -17,6 +17,7 @@
 #include "parse_type.h"
 #include "const.h"
 #include "ops/__builtin.h"
+#include "funcargs.h"
 
 #define STAT_NEW(type)      stmt_new_wrapper(type, current_scope)
 #define STAT_NEW_NEST(type) stmt_new_wrapper(type, symtab_new(current_scope))
@@ -48,10 +49,10 @@ expr *parse_expr_sizeof_typeof(int is_typeof)
 	expr *e;
 
 	if(accept(token_open_paren)){
-		decl *d = parse_decl_single(DECL_SPEL_NO);
+		type_ref *r = parse_type();
 
-		if(d){
-			e = expr_new_sizeof_decl(d, is_typeof);
+		if(r){
+			e = expr_new_sizeof_type(r, is_typeof);
 		}else{
 			/* parse a full one, since we're in brackets */
 			e = expr_new_sizeof_expr(parse_expr_exp(), is_typeof);
@@ -82,17 +83,17 @@ expr *parse_expr__Generic()
 	lbls = NULL;
 
 	for(;;){
-		decl *d;
+		type_ref *r;
 		expr *e;
 		struct generic_lbl *lbl;
 
 		EAT(token_comma);
 
 		if(accept(token_default)){
-			d = NULL;
+			r = NULL;
 		}else{
-			d = parse_decl_single(DECL_SPEL_NO);
-			if(!d)
+			r = parse_type();
+			if(!r)
 				DIE_AT(NULL, "type expected");
 		}
 		EAT(token_colon);
@@ -100,7 +101,7 @@ expr *parse_expr__Generic()
 
 		lbl = umalloc(sizeof *lbl);
 		lbl->e = e;
-		lbl->d = d;
+		lbl->t = r;
 		dynarray_add((void ***)&lbls, lbl);
 
 		if(accept(token_close_paren))
@@ -126,16 +127,16 @@ expr *parse_expr_identifier()
 expr *parse_block()
 {
 	funcargs *args;
-	decl *rt;
+	type_ref *rt;
 
 	EAT(token_xor);
 
-	rt = parse_decl_single(DECL_SPEL_NO);
+	rt = parse_type();
 
 	if(rt){
-		if(decl_is_func(rt)){
+		if(type_ref_is(rt, type_ref_func)){
 			/* got ^int (args...) */
-			rt = decl_func_deref(rt, &args);
+			rt = type_ref_func_call(rt, &args);
 		}else{
 			/* ^int {...} */
 			goto def_args;
@@ -186,11 +187,11 @@ expr *parse_expr_primary()
 
 		default:
 			if(accept(token_open_paren)){
-				decl *d;
+				type_ref *r;
 				expr *e;
 
-				if((d = parse_decl_single(DECL_SPEL_NO))){
-					e = expr_new_cast(d, 0);
+				if((r = parse_type())){
+					e = expr_new_cast(r, 0);
 					EAT(token_close_paren);
 
 					if(curtok == token_open_block){
@@ -430,20 +431,20 @@ expr *parse_expr_exp()
 	return e;
 }
 
-decl **parse_type_list()
+type_ref **parse_type_list()
 {
-	decl **types = NULL;
+	type_ref **types = NULL;
 
 	if(curtok == token_close_paren)
 		return types;
 
 	do{
-		decl *d = parse_decl_single(DECL_SPEL_NO);
+		type_ref *r = parse_type();
 
-		if(!d)
+		if(!r)
 			DIE_AT(NULL, "type expected");
 
-		dynarray_add((void ***)&types, d);
+		dynarray_add((void ***)&types, r);
 	}while(accept(token_comma));
 
 	return types;

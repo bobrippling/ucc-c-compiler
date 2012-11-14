@@ -22,7 +22,7 @@ void fold_const_expr_identifier(expr *e, intval *piv, enum constyness *pconst_ty
 
 	/* may not have e->sym if we're the struct-member-identifier */
 
-	*pconst_type = e->sym && e->sym->decl && decl_is_array(e->sym->decl) ? CONST_WITHOUT_VAL : CONST_NO;
+	*pconst_type = e->sym && e->sym->decl && DECL_IS_ARRAY(e->sym->decl) ? CONST_WITHOUT_VAL : CONST_NO;
 }
 
 void fold_expr_identifier(expr *e, symtable *stab)
@@ -47,7 +47,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 			expr_mutate_addr_data(e, sp, len + 1);
 			/* +1 - take the null byte */
 
-			fold_expr(e, stab);
+			FOLD_EXPR(e, stab);
 		}else{
 			/* check for an enum */
 			struct_union_enum_st *sue;
@@ -61,13 +61,16 @@ void fold_expr_identifier(expr *e, symtable *stab)
 			expr_mutate_wrapper(e, val);
 
 			e->val = m->val->val;
-			fold_expr(e, stab);
+			/*FOLD_EXPR(e, stab);*/
 
-			e->tree_type->type->primitive = type_enum;
-			e->tree_type->type->sue = sue;
+			{
+				type *t;
+				e->tree_type = type_ref_new_type(t = type_new_primitive(type_enum));
+				t->sue = sue;
+			}
 		}
 	}else{
-		e->tree_type = decl_copy(e->sym->decl);
+		e->tree_type = e->sym->decl->ref;
 
 #if 0
 Except when it is the operand of the sizeof operator or the unary
@@ -78,10 +81,10 @@ array object and is not an lvalue.
 #endif
 
 		if(e->sym->type == sym_local
-		&& !type_store_static_or_extern(e->sym->decl->type->store)
-		&& !decl_has_array(e->sym->decl)
-		&& !decl_is_struct_or_union_possible_ptr(e->sym->decl)
-		&& !decl_is_func(e->sym->decl)
+		&& !decl_store_static_or_extern(e->sym->decl->store)
+		&& !DECL_IS_ARRAY(e->sym->decl)
+		&& !DECL_IS_S_OR_U(e->sym->decl)
+		&& !DECL_IS_FUNC(e->sym->decl)
 		&& e->sym->nwrites == 0
 		&& !e->sym->decl->init)
 		{
@@ -104,7 +107,7 @@ void gen_expr_identifier(expr *e, symtable *stab)
 {
 	(void)stab;
 
-	if(decl_is_func(e->sym->decl))
+	if(DECL_IS_FUNC(e->sym->decl))
 		out_push_sym(e->sym);
 	else
 		out_push_sym_val(e->sym);

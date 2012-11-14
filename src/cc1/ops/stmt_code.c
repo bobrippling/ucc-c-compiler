@@ -25,14 +25,14 @@ void fold_stmt_code(stmt *s)
 
 		if(d->func_code)
 			DIE_AT(&d->func_code->where, "can't nest functions");
-		else if(decl_is_func(d) && d->type->store == store_static)
+		else if(DECL_IS_FUNC(d) && d->store == store_static)
 			DIE_AT(&d->where, "block-scoped function cannot have static storage");
 
 		fold_decl(d, s->symtab);
 
 		if(d->init){
 			/* this creates the below s->inits array */
-			if(d->type->store == store_static){
+			if(d->store == store_static){
 				fold_decl_global_init(d, s->symtab);
 			}else{
 				EOF_WHERE(&d->where,
@@ -46,7 +46,7 @@ void fold_stmt_code(stmt *s)
 		d->is_definition = 1; /* always the def for non-globals */
 
 		SYMTAB_ADD(s->symtab, d,
-				type_store_static_or_extern(d->type->store) ? sym_global : sym_local);
+				decl_store_static_or_extern(d->store) ? sym_global : sym_local);
 	}
 
 	for(siter = s->inits; siter && *siter; siter++){
@@ -84,8 +84,11 @@ void fold_stmt_code(stmt *s)
 			 * check static decls - after we fold,
 			 * so we've linked the syms and can change ->spel
 			 */
-			if(d->type->store == store_static)
-				decl_set_spel(d, out_label_static_local(curdecl_func->spel, d->spel));
+			if(d->store == store_static){
+				char *old = d->spel;
+				d->spel = out_label_static_local(curdecl_func->spel, d->spel);
+				free(old);
+			}
 		}
 	}
 }
@@ -99,7 +102,7 @@ void gen_code_decls(symtable *stab)
 		decl *d = *diter;
 		int func;
 
-		if((func = decl_is_func(d)) || type_store_static_or_extern(d->type->store)){
+		if((func = !!type_ref_is(d->ref, type_ref_func)) || decl_store_static_or_extern(d->store)){
 			int gen = 1;
 
 			if(func){

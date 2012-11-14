@@ -1,6 +1,7 @@
 #include "ops.h"
 #include "expr_compound_lit.h"
 #include "../out/asm.h"
+#include "../decl_init.h"
 
 #define PARSED_DINIT(e) ((e)->val.init)
 
@@ -11,27 +12,30 @@ const char *str_expr_compound_lit(void)
 
 void fold_expr_compound_lit(expr *e, symtable *stab)
 {
+	decl *d;
+
 	if(e->code)
 		return; /* being called from fold_gen_init_assignment_base */
 
-	fold_decl(e->decl, stab);
-	e->decl->init = PARSED_DINIT(e);
+	d = decl_new();
+	d->ref = e->val.tref; /* from expr_cast */
+	e->val.decl = d;
 
 	/* must be set before the recursive fold_gen_init_assignment_base */
-	e->tree_type = decl_copy_keep_array(e->decl);
+	e->tree_type = d->ref;
 
-	e->sym = SYMTAB_ADD(stab, e->decl, sym_local);
+	e->sym = SYMTAB_ADD(stab, d, sym_local);
 
 	if(stab->parent){
 		/* non global - FIXME: check statics */
 		e->code = stmt_new_wrapper(code, stab);
 
-		fold_gen_init_assignment_base(e, e->decl, e->code);
+		fold_gen_init_assignment_base(e, d, e->code);
 		fold_stmt(e->code);
 	}else{
-		fold_complete_array(e->decl, e->decl->init);
+		fold_complete_array(d, d->init);
 
-		fold_decl_global_init(e->decl, stab);
+		fold_decl_global_init(d, stab);
 	}
 }
 
@@ -74,17 +78,19 @@ void const_expr_compound_lit(expr *e, intval *piv, enum constyness *pconst_type)
 {
 	(void)piv;
 
-	*pconst_type = decl_init_is_const(e->decl->init, NULL /* shouldn't be needed */)
+	*pconst_type = decl_init_is_const(PARSED_DINIT(e), NULL /* shouldn't be needed */)
 		? CONST_WITHOUT_VAL : CONST_NO;
 }
 
 void gen_expr_str_compound_lit(expr *e, symtable *stab)
 {
+	decl *const d = e->val.decl;
+
 	(void)stab;
-	idt_printf("(%s){\n", decl_to_str(e->decl));
+	idt_printf("(%s){\n", decl_to_str(d));
 
 	gen_str_indent++;
-	print_decl(e->decl,
+	print_decl(d,
 			PDECL_NONE         |
 			PDECL_INDENT       |
 			PDECL_NEWLINE      |

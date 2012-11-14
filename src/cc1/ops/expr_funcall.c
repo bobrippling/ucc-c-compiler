@@ -7,6 +7,7 @@
 #include "../../util/dynarray.h"
 #include "../../util/platform.h"
 #include "../../util/alloc.h"
+#include "../funcargs.h"
 
 static int func_is_asm(const char *sp)
 {
@@ -29,7 +30,7 @@ int const_fold_expr_funcall(expr *e)
 void fold_expr_funcall(expr *e, symtable *stab)
 {
 	const char *sp = e->expr->spel;
-	decl *df;
+	type_ref *type_func;
 	funcargs *args_from_decl;
 
 	if(func_is_asm(sp)){
@@ -69,68 +70,51 @@ invalid:
 	if(expr_kind(e->expr, identifier) && e->expr->spel){
 		/* check for implicit function */
 		if(!(e->expr->sym = symtab_search(stab, sp))){
-			df = decl_new();
+			funcargs *args = funcargs_new();
+			decl *df;
 
-			df->type->primitive = type_int;
-			df->type->store     = store_extern;
+			funcargs_empty(args); /* set up the funcargs as if it's "x()" - i.e. any args */
+
+			type_func = type_ref_new_func(type_ref_new_type(type_new_primitive(type_int)), args);
 
 			cc1_warn_at(&e->where, 0, 1, WARN_IMPLICIT_FUNC, "implicit declaration of function \"%s\"", sp);
 
-			decl_set_spel(df, e->expr->spel);
-
-			df->desc = decl_desc_func_new(df, NULL);
-			df->desc->bits.func = funcargs_new();
-
-			/* set up the funcargs as if it's "x()" - i.e. any args */
-			function_empty_args(df->desc->bits.func);
+			df = decl_new();
+			df->ref = type_func;
+			df->spel = e->expr->spel;
+			df->is_definition = 1; /* needed since it's a local var */
 
 			/* not declared - generate a sym ourselves */
 			e->expr->sym = SYMTAB_ADD(stab, df, sym_local);
-
-			df->is_definition = 1; /* needed since it's a local var */
 		}
 	}
 
-	fold_expr(e->expr, stab);
-	df = e->expr->tree_type;
+	FOLD_EXPR(e->expr, stab);
+	type_func = e->expr->tree_type;
 
-	if(!decl_is_callable(df)){
-		DIE_AT(&e->expr->where, "expression %s (%s) not callable",
-				e->expr->f_str(),
-				decl_to_str(df));
+	if(!type_ref_is_callable(type_func)){
+		DIE_AT(&e->expr->where, "%s-expression (type '%s') not callable",
+				e->expr->f_str(), type_ref_to_str(type_func));
 	}
 
 	if(expr_kind(e->expr, deref)
-	&& decl_is_fptr(expr_deref_what(e->expr)->tree_type)){
+	&& type_ref_is(type_ref_is(expr_deref_what(e->expr)->tree_type, type_ref_ptr), type_ref_func)){
 		/* XXX: memleak */
 		/* (*f)() - dereffing to a function, then calling - remove the deref */
 		e->expr = expr_deref_what(e->expr);
 	}
 
-	df = e->tree_type = decl_func_deref(decl_copy(df), &args_from_decl);
+	type_func = e->tree_type = type_ref_func_call(type_func, &args_from_decl);
 
 	/* func count comparison, only if the func has arg-decls, or the func is f(void) */
-	UCC_ASSERT(args_from_decl, "no funcargs for decl %s", df->spel);
+	UCC_ASSERT(args_from_decl, "no funcargs for decl %s", e->expr->spel);
 
 	if(e->funcargs){
 		int i;
-		expr *arg;
 
-		for(i = 0; (arg = e->funcargs[i]); i++){
-			char *desc;
-
-			fold_expr(arg, stab);
-
-			desc = ustrprintf("function argument to %s", sp);
-
-			/* promote to pointer, if array */
-			if(decl_is_array(arg->tree_type)){
-				fold_insert_casts(
-						decl_copy(arg->tree_type), /* the copy removes the array */
-						&arg, stab, &arg->where, desc);
-
-				e->funcargs[i] = arg;
-			}
+		for(i = 0; e->funcargs[i]; i++){
+			expr *arg = FOLD_EXPR(e->funcargs[i], stab);
+			char *desc = ustrprintf("function argument to %s", sp);
 
 			fold_need_expr(arg, desc, 0);
 			fold_disallow_st_un(arg, desc);
@@ -158,13 +142,17 @@ invalid:
 		if(e->funcargs){
 			funcargs *args_from_expr = funcargs_new();
 
-			for(iter_arg = e->funcargs; *iter_arg; iter_arg++)
-				dynarray_add((void ***)&args_from_expr->arglist, (*iter_arg)->tree_type);
+			for(iter_arg = e->funcargs; *iter_arg; iter_arg++){
+				decl *dtmp = decl_new();
+				dtmp->ref = (*iter_arg)->tree_type;
 
-			if(funcargs_equal(args_from_decl, args_from_expr, 0, sp) == funcargs_cmp_mismatch_count)
+				dynarray_add((void ***)&args_from_expr->arglist, dtmp);
+			}
+
+			if(funcargs_equal(args_from_decl, args_from_expr, 0, sp) == funcargs_are_mismatch_count)
 				DIE_AT(&e->where, "mismatching argument count to %s", sp);
 
-			funcargs_free(args_from_expr, 0);
+			funcargs_free(args_from_expr, 1, 0);
 		}
 
 		/*funcargs_free(args_from_decl, 1); XXX memleak*/
@@ -172,10 +160,11 @@ invalid:
 
 	fold_disallow_st_un(e, "return");
 
-	if(decl_attr_present(e->tree_type->attr, attr_format))
+	if(type_attr_present(e->tree_type, attr_format))
 		ICW("TODO: format checks on funcall at %s", where_str(&e->where));
 
-	if(decl_attr_present(e->tree_type->attr, attr_warn_unused))
+	/* check the subexp tree type to get the funcall decl_attrs */
+	if(type_attr_present(e->expr->tree_type, attr_warn_unused))
 		e->freestanding = 0; /* needs use */
 }
 
@@ -195,14 +184,13 @@ void gen_expr_funcall(expr *e, symtable *stab)
 		sym *const sym = e->expr->sym;
 		int nargs = 0;
 
-		if(sym && !decl_is_fptr(sym->decl))
+		if(sym && !type_ref_is_fptr(sym->decl->ref))
 			out_push_lbl(sym->decl->spel, 0, NULL);
 		else
 			gen_expr(e->expr, stab);
 
 		if(e->funcargs){
-			decl *dint = decl_new_type(type_int);
-			const int int_sz = decl_size(dint);
+			const int int_sz = type_primitive_size(type_int);
 			expr **aiter;
 
 			for(aiter = e->funcargs; *aiter; aiter++, nargs++);
@@ -213,8 +201,8 @@ void gen_expr_funcall(expr *e, symtable *stab)
 				gen_expr(earg, stab);
 
 				/* each arg needs casting up to int size, if smaller */
-				if(decl_size(earg->tree_type) < int_sz)
-					out_cast(earg->tree_type, dint);
+				if(type_ref_size(earg->tree_type, &earg->where) < int_sz)
+					out_cast(earg->tree_type, type_ref_new_INT());
 			}
 		}
 

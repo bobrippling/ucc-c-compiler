@@ -13,7 +13,7 @@ void fold_stmt_case(stmt *t)
 {
 	intval val;
 
-	fold_expr(t->expr, t->symtab);
+	FOLD_EXPR(t->expr, t->symtab);
 	fold_need_expr(t->expr, "case", 0);
 	const_fold_need_val(t->expr, &val);
 

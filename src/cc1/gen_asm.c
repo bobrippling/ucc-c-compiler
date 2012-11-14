@@ -100,14 +100,17 @@ void gen_asm_global(decl *d)
 	if(!d->is_definition)
 		return;
 
-	if(decl_attr_present(d->attr, attr_section))
+	if(decl_has_attr(d, attr_section))
 		ICW("%s: TODO: section attribute \"%s\" on %s",
 				where_str(&d->attr->where), d->attr->attr_extra.section, d->spel);
 
 	/* order of the if matters */
-	if(d->func_code){
+	if(DECL_IS_FUNC(d)){
 		int nargs = 0;
 		decl **aiter;
+
+		if(!d->func_code)
+			return;
 
 		for(aiter = d->func_code->symtab->decls; aiter && *aiter; aiter++)
 			if((*aiter)->sym->type == sym_arg)
@@ -118,7 +121,7 @@ void gen_asm_global(decl *d)
 		out_func_prologue(
 				d->func_code->symtab->auto_total_size,
 				nargs,
-				decl_variadic_func(d));
+				decl_is_variadic(d));
 
 		curfunc_lblfin = out_label_code(d->spel);
 
@@ -153,19 +156,20 @@ void gen_asm(symtable *globs)
 			continue;
 		}
 
-		switch(d->type->store){
+		switch(d->store & STORE_MASK_STORE){
+			case store_inline:
 			case store_auto:
 			case store_register:
 			case store_typedef:
 				ICE("%s storage on global %s",
-						type_store_to_str(d->type->store),
+						decl_store_to_str(d->store),
 						decl_to_str(d));
 
 			case store_static:
 				break;
 
 			case store_extern:
-				if(!decl_is_func(d) || !d->func_code)
+				if(!DECL_IS_FUNC(d) || !d->func_code)
 					break;
 				/* else extern func with definition */
 

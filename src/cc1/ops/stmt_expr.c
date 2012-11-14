@@ -10,8 +10,8 @@ const char *str_stmt_expr()
 
 void fold_stmt_expr(stmt *s)
 {
-	fold_expr(s->expr, s->symtab);
-	if(!s->freestanding && !s->expr->freestanding && !decl_is_void(s->expr->tree_type))
+	FOLD_EXPR(s->expr, s->symtab);
+	if(!s->freestanding && !s->expr->freestanding && !type_ref_is_void(s->expr->tree_type))
 		cc1_warn_at(&s->expr->where, 0, 1, WARN_UNUSED_EXPR,
 				"unused expression (%s)", s->expr->f_str());
 }
@@ -44,7 +44,7 @@ static int expr_passable(stmt *s)
 	 * if we have a funcall marked noreturn, we're not passable
 	 */
 	if(expr_kind(s->expr, funcall))
-		return !decl_attr_present(s->expr->tree_type->attr, attr_noreturn);
+		return !type_attr_present(s->expr->tree_type, attr_noreturn);
 
 	if(expr_kind(s->expr, stmt))
 		return fold_passable(s->expr->code);

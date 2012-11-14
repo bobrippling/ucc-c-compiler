@@ -21,39 +21,42 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 
 	fold_inc_writes_if_sym(lvalue, stab);
 
-	fold_expr(e->lhs, stab);
-	fold_expr(e->rhs, stab);
+	FOLD_EXPR(e->lhs, stab);
+	FOLD_EXPR(e->rhs, stab);
 
 	/* skip the addr we inserted */
-	if(!expr_is_lvalue(lvalue, 0)){
+	if(!expr_is_lvalue(lvalue)){
 		DIE_AT(&lvalue->where, "compound target not an lvalue (%s)",
 				lvalue->f_str());
 	}
 
-	if(decl_is_const(lvalue->tree_type))
+	if(type_ref_is_const(lvalue->tree_type))
 		DIE_AT(&e->where, "can't modify const expression %s", lvalue->f_str());
+
+	fold_check_restrict(lvalue, e->rhs, "compound assignment", &e->where);
 
 	UCC_ASSERT(op_can_compound(e->op), "non-compound op in compound expr");
 
 	{
-		decl *dlhs, *drhs;
-		decl *resolved = op_required_promotion(e->op, lvalue, e->rhs, &e->where, &dlhs, &drhs);
+		type_ref *tlhs, *trhs;
+		type_ref *resolved = op_required_promotion(e->op, lvalue, e->rhs, &e->where, &tlhs, &trhs);
 
-		if(dlhs){
+		if(tlhs){
 			/* can't cast the lvalue - we must cast the rhs to the correct size  */
 
-			if(dlhs != lvalue->tree_type)
-				decl_free(dlhs);
+			if(tlhs != lvalue->tree_type)
+				type_ref_free_1(tlhs);
 
 			fold_insert_casts(lvalue->tree_type, &e->rhs, stab, &e->where, op_to_str(e->op));
 
-		}else if(drhs){
-			fold_insert_casts(drhs, &e->rhs, stab, &e->where, op_to_str(e->op));
+		}else if(trhs){
+			fold_insert_casts(trhs, &e->rhs, stab, &e->where, op_to_str(e->op));
 		}
 
-		e->tree_type = decl_copy(lvalue->tree_type);
+		e->tree_type = lvalue->tree_type;
 
-		decl_free(resolved);
+		(void)resolved;
+		/*type_ref_free_1(resolved); XXX: memleak */
 	}
 
 	/* type check is done in op_required_promotion() */

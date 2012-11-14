@@ -20,19 +20,25 @@ void fold_const_expr_cast(expr *e, intval *piv, enum constyness *type)
 void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 {
 	int size_lhs, size_rhs;
-	decl *dlhs, *drhs;
+	type_ref *tlhs, *trhs;
 
 	if(descend)
-		fold_expr(e->expr, stab);
+		FOLD_EXPR(e->expr, stab);
 
-	e->tree_type = e->decl;
-	fold_decl(e->tree_type, stab); /* struct lookup, etc */
+	/* casts remove restrict qualifiers */
+	{
+		enum type_qualifier q = type_ref_qual(e->val.tref);
+
+		e->tree_type = type_ref_new_cast(e->val.tref, q & ~qual_restrict);
+	}
+
+	fold_type_ref(e->tree_type, NULL, stab); /* struct lookup, etc */
 
 	fold_disallow_st_un(e->expr, "cast-expr");
 	fold_disallow_st_un(e, "cast-target");
 
-	if(decl_is_incomplete_array(e->tree_type))
-		DIE_AT(&e->where, "cast to incomplete type %s", decl_to_str(e->tree_type));
+	if(!type_ref_is_complete(e->tree_type) && !type_ref_is_void(e->tree_type))
+		DIE_AT(&e->where, "cast to incomplete type %s", type_ref_to_str(e->tree_type));
 
 #ifdef CAST_COLLAPSE
 	if(expr_kind(e->expr, cast)){
@@ -48,23 +54,23 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 	}
 #endif
 
-	dlhs = e->tree_type;
-	drhs = e->expr->tree_type;
+	tlhs = e->tree_type;
+	trhs = e->expr->tree_type;
 
-	if(!decl_is_void(dlhs) && (size_lhs = asm_type_size(dlhs)) < (size_rhs = asm_type_size(drhs))){
+	if(!type_ref_is_void(tlhs) && (size_lhs = asm_type_size(tlhs)) < (size_rhs = asm_type_size(trhs))){
 		char buf[DECL_STATIC_BUFSIZ];
 
-		strcpy(buf, decl_to_str(drhs));
+		strcpy(buf, type_ref_to_str(trhs));
 
 		cc1_warn_at(&e->where, 0, 1, WARN_LOSS_PRECISION,
 				"possible loss of precision %s, size %d <-- %s, size %d",
-				decl_to_str(dlhs), size_lhs,
+				type_ref_to_str(tlhs), size_lhs,
 				buf, size_rhs);
 	}
 
 #ifdef W_QUAL
-	if(decl_is_ptr(dlhs) && decl_is_ptr(drhs) && (dlhs->type->qual | drhs->type->qual) != dlhs->type->qual){
-		const enum type_qualifier away = drhs->type->qual & ~dlhs->type->qual;
+	if(decl_is_ptr(tlhs) && decl_is_ptr(trhs) && (tlhs->type->qual | trhs->type->qual) != tlhs->type->qual){
+		const enum type_qualifier away = trhs->type->qual & ~tlhs->type->qual;
 		char *buf = type_qual_to_str(away);
 		char *p;
 
@@ -102,9 +108,10 @@ static void static_expr_cast_addr(expr *e)
 		{
 			int from_sz, to_sz;
 			/* only possible if the cast-to and cast-from are the same size */
+			const where *const w = &e->expr->where;
 
-			from_sz = decl_size(e->expr->tree_type);
-			to_sz = decl_size(e->tree_type);
+			from_sz = type_ref_size(e->expr->tree_type, w);
+			to_sz = type_ref_size(e->tree_type, w);
 
 			if(to_sz != from_sz){
 				WARN_AT(&e->where,
@@ -121,25 +128,25 @@ static void static_expr_cast_addr(expr *e)
 
 void gen_expr_cast(expr *e, symtable *stab)
 {
-	decl *dto, *dfrom;
+	type_ref *tto, *tfrom;
 
 	gen_expr(e->expr, stab);
 
-	dto = e->tree_type;
-	dfrom = e->expr->tree_type;
+	tto = e->tree_type;
+	tfrom = e->expr->tree_type;
 
 	/* return if cast-to-void */
-	if(decl_is_void(dto)){
-		out_change_decl(dto);
+	if(type_ref_is_void(tto)){
+		out_change_type(tto);
 		out_comment("cast to void");
 		return;
 	}
 
 	/* check float <--> int conversion */
-	if(decl_is_floating(dto) != decl_is_floating(dfrom))
+	if(type_ref_is_floating(tto) != type_ref_is_floating(tfrom))
 		ICE("TODO: float <-> int casting");
 
-	out_cast(dfrom, dto);
+	out_cast(tfrom, tto);
 }
 
 void gen_expr_str_cast(expr *e, symtable *stab)
@@ -157,10 +164,10 @@ void mutate_expr_cast(expr *e)
 	e->f_static_addr = static_expr_cast_addr;
 }
 
-expr *expr_new_cast(decl *to, int implicit)
+expr *expr_new_cast(type_ref *to, int implicit)
 {
 	expr *e = expr_new_wrapper(cast);
-	e->decl = to;
+	e->val.tref = to;
 	e->expr_cast_implicit = implicit;
 	return e;
 }

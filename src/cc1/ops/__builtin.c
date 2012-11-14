@@ -13,6 +13,7 @@
 #include "../tokenise.h"
 #include "../parse.h"
 #include "../fold.h"
+#include "../funcargs.h"
 
 #include "../const.h"
 #include "../gen_asm.h"
@@ -113,7 +114,7 @@ static void fold_unreachable(expr *e, symtable *stab)
 {
 	(void)stab;
 
-	e->tree_type = decl_new_void();
+	e->tree_type = type_ref_new_type(type_new_primitive(type_void));
 	decl_attr_append(&e->tree_type->attr, decl_attr_new(attr_noreturn));
 
 	wur_builtin(e);
@@ -141,25 +142,24 @@ static void fold_compatible_p(expr *e, symtable *stab)
 	fold_decl(types[0], stab);
 	fold_decl(types[1], stab);
 
-	e->tree_type = decl_new_int();
+	e->tree_type = type_ref_new_INT();
 	wur_builtin(e);
 }
 
 static void const_compatible_p(expr *e, intval *val, enum constyness *success)
 {
-	decl **types = e->block_args->arglist;
+	type_ref **types = e->val.types;
 
 	*success = CONST_WITH_VAL;
 
-	val->val = decl_equal(types[0], types[1], DECL_CMP_EXACT_MATCH);
+	val->val = type_ref_equal(types[0], types[1], DECL_CMP_EXACT_MATCH);
 }
 
 static expr *parse_compatible_p(void)
 {
 	expr *fcall = expr_new_funcall();
 
-	fcall->block_args = funcargs_new();
-	fcall->block_args->arglist = parse_type_list();
+	fcall->val.types = parse_type_list();
 
 	expr_mutate_builtin_const(fcall, compatible_p);
 
@@ -173,9 +173,9 @@ static void fold_constant_p(expr *e, symtable *stab)
 	if(dynarray_count((void **)e->funcargs) != 1)
 		DIE_AT(&e->where, "%s takes a single argument", e->expr->spel);
 
-	fold_expr(e->funcargs[0], stab);
+	FOLD_EXPR(e->funcargs[0], stab);
 
-	e->tree_type = decl_new_int();
+	e->tree_type = type_ref_new_INT();
 	wur_builtin(e);
 }
 
@@ -208,7 +208,7 @@ static void fold_frame_address(expr *e, symtable *stab)
 	if(dynarray_count((void **)e->funcargs) != 1)
 		DIE_AT(&e->where, "%s takes a single argument", e->expr->spel);
 
-	fold_expr(e->funcargs[0], stab);
+	FOLD_EXPR(e->funcargs[0], stab);
 
 	const_fold(e->funcargs[0], &iv, &type);
 	if(type != CONST_WITH_VAL || iv.val < 0)
@@ -216,7 +216,12 @@ static void fold_frame_address(expr *e, symtable *stab)
 
 	memcpy(&e->val.iv, &iv, sizeof iv);
 
-	e->tree_type = decl_ptr_depth_inc(decl_new_void());
+	e->tree_type = type_ref_new_ptr(
+			type_ref_new_type(
+				type_new_primitive(type_void)
+			),
+			qual_none);
+
 	wur_builtin(e);
 }
 
@@ -249,13 +254,13 @@ static void fold_expect(expr *e, symtable *stab)
 		DIE_AT(&e->where, "%s takes two arguments", e->expr->spel);
 
 	for(i = 0; i < 2; i++)
-		fold_expr(e->funcargs[i], stab);
+		FOLD_EXPR(e->funcargs[i], stab);
 
 	const_fold(e->funcargs[1], &iv, &type);
 	if(type != CONST_WITH_VAL)
 		WARN_AT(&e->where, "%s second argument isn't a constant value", e->expr->spel);
 
-	e->tree_type = decl_copy(e->funcargs[0]->tree_type);
+	e->tree_type = e->funcargs[0]->tree_type;
 	wur_builtin(e);
 }
 

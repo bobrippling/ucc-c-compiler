@@ -53,11 +53,14 @@ struct expr
 		intval iv;
 		char *s;
 		decl_init *init;
+		type_ref *tref;
+		decl *decl;
+		type_ref **types;
 	} val;
 
 	struct generic_lbl
 	{
-		decl *d; /* NULL -> default */
+		type_ref *t; /* NULL -> default */
 		expr *e;
 	} **generics, *generic_chosen;
 
@@ -68,7 +71,6 @@ struct expr
 	expr *expr; /* x = 5; expr is the 5 */
 	expr **funcargs;
 	stmt *code; /* ({ ... }), comp. lit. assignments */
-	decl *decl; /* for sizeof(decl) */
 	data_store *data_store; /* for strings + { } */
 
 	funcargs *block_args;
@@ -76,7 +78,7 @@ struct expr
 	sym *sym;
 
 	/* type propagation */
-	decl *tree_type;
+	type_ref *tree_type;
 };
 
 
@@ -120,23 +122,30 @@ expr *expr_new_decl_init(decl *d, decl_init *di);
 #include "ops/expr_struct.h"
 #include "ops/expr_compound_lit.h"
 
-#define expr_free(x) do{if((x)->tree_type) decl_free((x)->tree_type); free(x);}while(0)
+/* XXX: memleak */
+#define expr_free(x) do{                 \
+		if(x){                               \
+			/*if((x)->tree_type)*/             \
+			/*type_ref_free((x)->tree_type);*/ \
+			free(x);                           \
+		}                                    \
+	}while(0)
 
 #define expr_kind(exp, kind) ((exp)->f_str == str_expr_ ## kind)
 
 expr *expr_new_identifier(char *sp);
-expr *expr_new_cast(decl *cast_to, int implicit);
+expr *expr_new_cast(type_ref *cast_to, int implicit);
 expr *expr_new_val(int val);
 expr *expr_new_op(enum op_type o);
 expr *expr_new_if(expr *test);
 expr *expr_new_stmt(stmt *code);
-expr *expr_new_sizeof_decl(decl *, int is_typeof);
+expr *expr_new_sizeof_type(type_ref *, int is_typeof);
 expr *expr_new_sizeof_expr(expr *, int is_typeof);
 expr *expr_new_funcall(void);
 expr *expr_new_assign(         expr *to, expr *from);
 expr *expr_new_assign_compound(expr *to, expr *from, enum op_type);
 expr *expr_new__Generic(expr *test, struct generic_lbl **lbls);
-expr *expr_new_block(decl *rt, funcargs *args, stmt *code);
+expr *expr_new_block(type_ref *rt, funcargs *args, stmt *code);
 expr *expr_new_deref(expr *);
 expr *expr_new_struct(expr *sub, int dot, expr *ident);
 

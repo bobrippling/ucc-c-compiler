@@ -7,11 +7,15 @@
 			__attribute__((__format__ (__printf__, fmtarg, firstvararg)))
 
 #  define ucc_dead __attribute__((noreturn))
+#  define ucc_wur  __attribute__((warn_unused_result))
 
 #else
 #  define ucc_printflike(a, b)
 #  define ucc_dead
+#  define ucc_wur
 #endif
+
+#define ucc_unreach() do{ ICE("unreachable"); return 0; }while(0)
 
 typedef struct where
 {
@@ -23,10 +27,10 @@ typedef struct where
 const char *where_str(const struct where *w);
 const char *where_str_r(char buf[WHERE_BUF_SIZ], const struct where *w);
 
-void warn_at(struct where *, int show_line, const char *, ...) ucc_printflike(3, 4);
-void die_at( struct where *, int show_line, const char *, ...) ucc_printflike(3, 4) ucc_dead;
-void vwarn(struct where *w, int err, int show_line, const char *fmt, va_list l);
-void vdie(   struct where *, int show_line, const char *, va_list) ucc_dead;
+void warn_at(const struct where *, int show_line, const char *, ...) ucc_printflike(3, 4);
+void die_at( const struct where *, int show_line, const char *, ...) ucc_printflike(3, 4) ucc_dead;
+void vwarn(const struct where *w, int err, int show_line, const char *fmt, va_list l);
+void vdie(   const struct where *, int show_line, const char *, va_list) ucc_dead;
 void die(const char *fmt, ...) ucc_printflike(1, 2) ucc_dead;
 
 #define DIE_AT( w, ...) die_at( w, 1, __VA_ARGS__)

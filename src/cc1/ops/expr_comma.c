@@ -19,13 +19,13 @@ void fold_const_expr_comma(expr *e, intval *piv, enum constyness *type)
 
 void fold_expr_comma(expr *e, symtable *stab)
 {
-	fold_expr(e->lhs, stab);
+	FOLD_EXPR(e->lhs, stab);
 	fold_disallow_st_un(e->lhs, "comma-expr");
 
-	fold_expr(e->rhs, stab);
+	FOLD_EXPR(e->rhs, stab);
 	fold_disallow_st_un(e->lhs, "comma-expr");
 
-	e->tree_type = decl_copy(e->rhs->tree_type);
+	e->tree_type = e->rhs->tree_type;
 
 	/* TODO: warn if either of the sub-exps are not freestanding */
 	e->freestanding = e->lhs->freestanding || e->rhs->freestanding;

@@ -12,7 +12,7 @@ const char *str_stmt_goto()
 void fold_stmt_goto(stmt *s)
 {
 	if(s->expr->expr_computed_goto){
-		fold_expr(s->expr, s->symtab);
+		FOLD_EXPR(s->expr, s->symtab);
 	}else{
 		char *save;
 
