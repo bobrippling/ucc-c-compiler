@@ -839,7 +839,34 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 				}
 				DIE_AT(&d->where, "identifier expected after decl (got %s)", token_to_str(curtok));
 			}else if(curtok != token_semicolon && DECL_IS_FUNC(d)){
-				d->func_code = parse_stmt_block();
+				/* this is why we can't have __attribute__ on function defs - the old func decls */
+				decl **old_args;
+				int need_func = 1;
+
+				/* special case - support GCC __attribute__ directly after a function */
+				if(curtok == token_attribute){
+					/* add to .ref, since this is what is checked when the function decays to a pointer */
+					parse_add_attr(&d->ref->attr);
+
+					/*
+					 * if we have a type now, it's:
+					 *
+					 * f() __attribute__(()) int i; { ... }
+					 *
+					 * possible to parse, but the user's being silly
+					 */
+
+					need_func = 0; /* a ';' will do me fine */
+
+				}else{
+					old_args = parse_decls_multi_type(0);
+					if(old_args)
+						check_old_func(d, old_args);
+				}
+
+				/* clang-style allows __attribute__ and then a function block */
+				if(need_func || curtok != token_semicolon)
+					d->func_code = parse_stmt_block();
 			}
 
 got_field_width:
