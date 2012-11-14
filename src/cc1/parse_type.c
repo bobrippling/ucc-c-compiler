@@ -677,6 +677,58 @@ decl **parse_decls_one_type()
 	return decls;
 }
 
+static void check_old_func(decl *d, decl **old_args)
+{
+	/* check then replace old args */
+	int n_proto_decls, n_old_args;
+	int i;
+	funcargs *dfuncargs = d->ref->bits.func;
+
+	UCC_ASSERT(type_ref_is(d->ref, type_ref_func), "not func");
+
+	if(!dfuncargs->args_old_proto){
+		DIE_AT(&d->where, dfuncargs->arglist
+				? "unexpected old-style decls - new style proto used"
+				: "parameters specified despite empty declaration in prototype");
+	}
+
+	n_proto_decls = dynarray_count((void **)dfuncargs->arglist);
+	n_old_args = dynarray_count((void **)old_args);
+
+	if(n_old_args > n_proto_decls)
+		DIE_AT(&d->where, "old-style function decl: too many decls");
+
+	for(i = 0; i < n_old_args; i++)
+		if(old_args[i]->init)
+			DIE_AT(&old_args[i]->where, "parameter \"%s\" is initialised", old_args[i]->spel);
+
+	for(i = 0; i < n_old_args; i++){
+		int j, found = 0;
+
+		for(j = 0; j < n_proto_decls; j++){
+			if(!strcmp(old_args[i]->spel, dfuncargs->arglist[j]->spel)){
+				decl **replace_this;
+				decl *free_this;
+
+				/* replace the old implicit int arg */
+				replace_this = &dfuncargs->arglist[j];
+
+				free_this = *replace_this;
+				*replace_this = old_args[i];
+
+				decl_free(free_this, 0);
+				found = 1;
+				break;
+			}
+		}
+
+		if(!found)
+			DIE_AT(&old_args[i]->where, "no such parameter '%s'", old_args[i]->spel);
+	}
+
+	free(old_args);
+}
+
 decl **parse_decls_multi_type(enum decl_multi_mode mode)
 {
 	const enum decl_mode parse_flag = (mode & DECL_MULTI_CAN_DEFAULT ? DECL_CAN_DEFAULT : 0);
@@ -787,60 +839,6 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 				}
 				DIE_AT(&d->where, "identifier expected after decl (got %s)", token_to_str(curtok));
 			}else if(curtok != token_semicolon && DECL_IS_FUNC(d)){
-				/* this is why we can't have __attribute__ on function defs - the old func decls */
-				decl **old_args = parse_decls_multi_type(0);
-
-				if(old_args){
-					/* check then replace old args */
-					int n_proto_decls, n_old_args;
-					int i;
-					funcargs *dfuncargs = d->ref->bits.func;
-
-					UCC_ASSERT(type_ref_is(d->ref, type_ref_func), "not func");
-
-					if(!dfuncargs->args_old_proto){
-						DIE_AT(&d->where, dfuncargs->arglist
-								? "unexpected old-style decls - new style proto used"
-								: "parameters specified despite empty declaration in prototype");
-					}
-
-					n_proto_decls = dynarray_count((void **)dfuncargs->arglist);
-					n_old_args = dynarray_count((void **)old_args);
-
-					if(n_old_args > n_proto_decls)
-						DIE_AT(&d->where, "old-style function decl: too many decls");
-
-					for(i = 0; i < n_old_args; i++)
-						if(old_args[i]->init)
-							DIE_AT(&old_args[i]->where, "parameter \"%s\" is initialised", old_args[i]->spel);
-
-					for(i = 0; i < n_old_args; i++){
-						int j, found = 0;
-
-						for(j = 0; j < n_proto_decls; j++){
-							if(!strcmp(old_args[i]->spel, dfuncargs->arglist[j]->spel)){
-								decl **replace_this;
-								decl *free_this;
-
-								/* replace the old implicit int arg */
-								replace_this = &dfuncargs->arglist[j];
-
-								free_this = *replace_this;
-								*replace_this = old_args[i];
-
-								decl_free(free_this, 0);
-								found = 1;
-								break;
-							}
-						}
-
-						if(!found)
-							DIE_AT(&old_args[i]->where, "no such parameter '%s'", old_args[i]->spel);
-					}
-
-					free(old_args);
-				}
-
 				d->func_code = parse_stmt_block();
 			}
 
