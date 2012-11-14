@@ -607,7 +607,15 @@ decl *parse_decl(type_ref *btype, enum decl_mode mode)
 
 	d->spel = spel;
 
-	parse_add_attr(&d->attr); /* int spel __attr__ */
+	/* only check if it's not a function, otherwise it could be
+	 * int f(i)
+	 *   __attribute__(()) int i;
+	 * {
+	 * }
+	 */
+
+	if(!DECL_IS_FUNC(d))
+		parse_add_attr(&d->attr); /* int spel __attr__ */
 
 	if(d->spel && accept(token_assign))
 		d->init = parse_initialisation();
@@ -778,8 +786,8 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 					goto next;
 				}
 				DIE_AT(&d->where, "identifier expected after decl (got %s)", token_to_str(curtok));
-			}else if(DECL_IS_FUNC(d) && curtok == token_open_block){ /* this is why we can't have __attribute__ on function defs */
-				/* optionally check for old func decl */
+			}else if(curtok != token_semicolon && DECL_IS_FUNC(d)){
+				/* this is why we can't have __attribute__ on function defs - the old func decls */
 				decl **old_args = parse_decls_multi_type(0);
 
 				if(old_args){
@@ -861,6 +869,7 @@ got_field_width:
 
 			last = d;
 		}while(accept(token_comma));
+
 
 		if(last && !last->func_code){
 next:
