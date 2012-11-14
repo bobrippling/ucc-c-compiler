@@ -812,7 +812,8 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 							DIE_AT(&old_args[i]->where, "parameter \"%s\" is initialised", old_args[i]->spel);
 
 					for(i = 0; i < n_old_args; i++){
-						int j;
+						int j, found = 0;
+
 						for(j = 0; j < n_proto_decls; j++){
 							if(!strcmp(old_args[i]->spel, dfuncargs->arglist[j]->spel)){
 								decl **replace_this;
@@ -825,9 +826,13 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 								*replace_this = old_args[i];
 
 								decl_free(free_this, 0);
+								found = 1;
 								break;
 							}
 						}
+
+						if(!found)
+							DIE_AT(&old_args[i]->where, "no such parameter '%s'", old_args[i]->spel);
 					}
 
 					free(old_args);
