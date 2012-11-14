@@ -90,6 +90,10 @@ static struct
 	{ "bitmask",        parse_attr_enum_bitmask },
 	{ "noreturn",       parse_attr_noreturn },
 	{ "noderef",        parse_attr_noderef },
+
+	/* compat */
+	{ "warn_unused_result", parse_attr_warn_unused },
+
 	{ NULL, NULL },
 };
 #define MAX_FMT_LEN 16
