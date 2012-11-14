@@ -207,15 +207,11 @@ decl_attr *decl_attr_copy(decl_attr *da)
 
 void decl_attr_append(decl_attr **loc, decl_attr *new)
 {
-	/*
-	 * we can just link up, since pointers aren't rewritten now
-	 * //don't link it up, make copies,
-	 * //so when we adjust others,
-	 * //things don't get tangled with links
-	 */
+	/* may be appending from a prototype to a function def. */
+	while(*loc)
+		loc = &(*loc)->next;
 
-	UCC_ASSERT(!*loc, "append attr overwrites");
-
+	/* we can just link up, since pointers aren't rewritten now */
 	*loc = /*decl_attr_copy(*/new/*)*/;
 }
 
