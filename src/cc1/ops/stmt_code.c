@@ -48,8 +48,10 @@ void fold_stmt_code(stmt *s)
 			if(!warned
 			&& st->kills_below_code
 			&& iter[1]
-			&& !stmt_kind(iter[1], label)
+#warning FIXME #2
+			&& !stmt_kind(iter[1], label) /* FIXME: change this to iter[1]->f_is_label() */
 			&& !stmt_kind(iter[1], case)
+			&& !stmt_kind(iter[1], case_range)
 			&& !stmt_kind(iter[1], default)
 			){
 				cc1_warn_at(&iter[1]->where, 0, 1, WARN_DEAD_CODE, "dead code after %s (%s)", st->f_str(), iter[1]->f_str());
