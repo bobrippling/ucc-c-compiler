@@ -1,20 +1,59 @@
 #include <stdlib.h>
+#include <string.h>
 
 #include "ops.h"
 #include "stmt_switch.h"
 #include "../sue.h"
 #include "../../util/alloc.h"
+#include "../../util/dynarray.h"
 
 const char *str_stmt_switch()
 {
 	return "switch";
 }
 
+#warning FIXME #3
+/* FIXME: merge with enum checking? */
+void fold_switch_dups(stmt *sw)
+{
+	const int n = dynarray_count((void **)sw->codes);
+	intval *const vals = malloc(n * sizeof *vals);
+
+	stmt **titer;
+	int i;
+
+	/* gather all switch values */
+	for(i = 0, titer = sw->codes; titer && *titer; titer++, i++){
+		stmt *cse = *titer;
+		intval iv;
+
+		if(cse->expr->expr_is_default)
+			continue;
+
+		if(stmt_kind(cse, case_range))
+			ICE("TODO: dup checking on switch ranges");
+
+		const_fold_need_val(cse->expr, &iv);
+		memcpy(&vals[i], &iv, sizeof iv);
+	}
+
+	/* sort vals for comparison */
+	qsort(vals, n, sizeof(*vals), (intval_cmp_cast)intval_cmp);
+
+  /* FIXME */
+#warning FIXME #1
+	for(i = 1; i < n; i++)
+		if(vals[i-1].val == vals[i].val)
+			DIE_AT(&sw->where, "duplicate case statement %ld", vals[i].val);
+
+	free(vals);
+}
+
 void fold_switch_enum(stmt *sw, type *enum_type)
 {
 	const int nents = enum_nentries(enum_type->sue);
 	stmt **titer;
-	char *marks = umalloc(nents * sizeof *marks);
+	char *const marks = umalloc(nents * sizeof *marks);
 	int midx;
 
 	/* for each case/default/case_range... */
@@ -72,8 +111,14 @@ void fold_stmt_switch(stmt *s)
 
 	OPT_CHECK(s->expr, "constant expression in switch");
 
+	/* this folds sub-statements,
+	 * causing case: and default: to add themselves to ->parent->codes,
+	 * i.e. s->codes
+	 */
 	fold_stmt(s->lhs);
-	/* FIXME: check for duplicate case values and at most, 1 default */
+
+	/* check for dups */
+	fold_switch_dups(s);
 
 	/* check for an enum */
 	typ = s->expr->tree_type->type;

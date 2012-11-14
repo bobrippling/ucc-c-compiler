@@ -48,6 +48,17 @@ final:
 	}
 }
 
+int intval_cmp(const intval *a, const intval *b)
+{
+	const long la = a->val, lb = b->val;
+
+	if(la > lb)
+		return 1;
+	if(la < lb)
+		return -1;
+	return 0;
+}
+
 type *type_new()
 {
 	type *t = umalloc(sizeof *t);

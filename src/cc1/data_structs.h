@@ -1,5 +1,9 @@
 typedef struct intval intval;
 
+typedef int (*intval_cmp_cast)(const void *, const void *);
+
+int intval_cmp(const intval *, const intval *);
+
 struct intval
 {
 	long val;
