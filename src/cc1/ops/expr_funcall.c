@@ -163,7 +163,8 @@ invalid:
 	if(type_attr_present(e->tree_type, attr_format))
 		ICW("TODO: format checks on funcall at %s", where_str(&e->where));
 
-	if(type_attr_present(e->tree_type, attr_warn_unused))
+	/* check the subexp tree type to get the funcall decl_attrs */
+	if(type_attr_present(e->expr->tree_type, attr_warn_unused))
 		e->freestanding = 0; /* needs use */
 }
 
