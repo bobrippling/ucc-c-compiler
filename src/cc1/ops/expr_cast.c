@@ -20,6 +20,7 @@ void fold_const_expr_cast(expr *e, intval *piv, enum constyness *type)
 void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 {
 	int size_lhs, size_rhs;
+	int flag;
 	type_ref *tlhs, *trhs;
 
 	if(descend)
@@ -39,6 +40,9 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 
 	if(!type_ref_is_complete(e->tree_type) && !type_ref_is_void(e->tree_type))
 		DIE_AT(&e->where, "cast to incomplete type %s", type_ref_to_str(e->tree_type));
+
+	if((flag = !!type_ref_is(e->tree_type, type_ref_func)) || type_ref_is(e->tree_type, type_ref_array))
+		DIE_AT(&e->where, "cast to %s type '%s'", flag ? "function" : "array", type_ref_to_str(e->tree_type));
 
 #ifdef CAST_COLLAPSE
 	if(expr_kind(e->expr, cast)){
