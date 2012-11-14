@@ -29,8 +29,10 @@ int out_vcount(void)
 
 static type_ref *v_default_type(type_ref *r)
 {
-	const where w = { 0 };
+	where w;
 	type_ref *ret;
+
+	memset(&w, 0, sizeof w);
 
 	EOF_WHERE(&w,
 		ret = r ? r : type_ref_new_VOID_PTR()
