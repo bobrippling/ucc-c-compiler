@@ -307,18 +307,16 @@ void fold_gen_init_assignment2(expr *base, type_ref *tfor,
 		if(init_from->type == decl_init_scalar)
 			DIE_AT(&init_from->where, "arrays must be initialised with an initialiser list");
 
-		ICE("TODO: init assignment gen");
-
 		tfor_deref = type_ref_ptr_depth_dec(tfor);
 
-		if(type_ref_is(tfor_deref, type_ref_array)){
+		if((tfor_deref = type_ref_is(tfor_deref, type_ref_array))){
 			/* int [2] - (2 * 4) / 4 = 2 */
 			wanted_count = type_ref_array_len(tfor_deref);
 		}else{
 			wanted_count = 1;
 		}
 
-		array_limit = type_ref_is(tfor, type_ref_array) ? decl_array_len(tfor) : -1;
+		array_limit = type_ref_is(tfor, type_ref_array) ? type_ref_array_len(tfor) : -1;
 		array_size = 0;
 
 		{
@@ -364,16 +362,15 @@ next_ar:
 				}
 			}
 		}
+		/*type_ref_free(tfor_deref);*/
 
-		decl_free(tfor_deref);
-#if 0
-	/* assignment expr for each init */
-	const int n_inits = init_from ? decl_init_len(init_from) : 0;
+		{
+			/* assignment expr for each init */
+			const int n_inits = init_from ? decl_init_len(init_from) : 0;
 
-	fold_complete_array(tfor, init_from);
+			fold_complete_array(tfor, init_from);
 
-	// --------------
-	if(DECL_IS_ARRAY(tfor)){
+		}
 #ifdef DECL_ARRAY_INIT_TODO
 		const int pull_from_this_init =
 			init_from
@@ -448,7 +445,6 @@ next_ar:
 		decl_free(darray_deref);
 #else
 		ICE("TODO: decl array init");
-#endif
 #endif
 	}else{
 		/* scalar init */

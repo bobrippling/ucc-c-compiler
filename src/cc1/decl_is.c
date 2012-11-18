@@ -371,3 +371,16 @@ int type_ref_is_const(type_ref *r)
 	/* const char *x is not const. char *const x is */
 	return !!(type_ref_qual(r) & qual_const);
 }
+
+int type_ref_array_len(type_ref *r)
+{
+	intval iv;
+
+	r = type_ref_is(r, type_ref_array);
+
+	UCC_ASSERT(r, "not an array");
+
+	const_fold_need_val(r->bits.array_size, &iv);
+
+	return iv.val;
+}
