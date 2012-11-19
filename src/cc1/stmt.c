@@ -27,6 +27,12 @@ void stmt_mutate(stmt *s,
 		|| stmt_kind(s, goto)
 		|| stmt_kind(s, continue);
 
+	s->is_label =
+		   stmt_kind(s, label)
+		|| stmt_kind(s, case)
+		|| stmt_kind(s, case_range)
+		|| stmt_kind(s, default);
+
 	f_mutate(s);
 }
 

@@ -31,6 +31,7 @@ struct stmt
 
 	int freestanding;     /* if this is freestanding, non-freestanding expressions inside are allowed */
 	int kills_below_code; /* break, return, etc - for checking dead code */
+	int is_label;
 
 	decl **decls; /* block definitions, e.g. { int i... } */
 	stmt **codes; /* for a code block */
