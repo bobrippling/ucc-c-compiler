@@ -19,11 +19,11 @@ void fold_switch_dups(stmt *sw)
 	int n = dynarray_count((void **)sw->codes);
 	struct
 	{
-		intval v;
+		intval start, end;
 		stmt *cse;
 	} *const vals = malloc(n * sizeof *vals);
 
-	stmt **titer, **ranges = NULL, *def = NULL;
+	stmt **titer, *def = NULL;
 	int i;
 
 	/* gather all switch values */
@@ -42,26 +42,37 @@ void fold_switch_dups(stmt *sw)
 			continue;
 		}
 
-		if(stmt_kind(cse, case_range)){
-			dynarray_add((void ***)&ranges, cse);
-			n--;
-		}else{
-			const_fold_need_val(cse->expr, &vals[i].v);
-			vals[i].cse = cse;
-			i++;
-		}
+		vals[i].cse = cse;
+
+		const_fold_need_val(cse->expr, &vals[i].start);
+
+		if(stmt_kind(cse, case_range))
+			const_fold_need_val(cse->expr2, &vals[i].end);
+		else
+			memcpy(&vals[i].end, &vals[i].start, sizeof vals[i].end);
+
+		i++;
 	}
 
 	/* sort vals for comparison */
 	qsort(vals, n, sizeof(*vals), (qsort_f)intval_cmp); /* struct layout guarantees this */
 
-	for(i = 1; i < n; i++)
-		if(vals[i-1].v.val == vals[i].v.val){
-			char buf[WHERE_BUF_SIZ];
+	for(i = 1; i < n; i++){
+		const long last_prev  = vals[i-1].end.val;
+		const long first_this = vals[i].start.val;
 
-			DIE_AT(&vals[i-1].cse->where, "duplicate case statement %ld (from %s)",
-					vals[i].v.val, where_str_r(buf, &vals[i].cse->where));
+		if(last_prev >= first_this){
+			char buf[WHERE_BUF_SIZ];
+			const int overlap = vals[i  ].end.val != vals[i  ].start.val
+				               || vals[i-1].end.val != vals[i-1].start.val;
+
+			DIE_AT(&vals[i-1].cse->where, "%s case statements %s %ld (from %s)",
+					overlap ? "overlapping" : "duplicate",
+					overlap ? "starting at" : "for",
+					vals[i].start.val,
+					where_str_r(buf, &vals[i].cse->where));
 		}
+	}
 
 	free(vals);
 }

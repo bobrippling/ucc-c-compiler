@@ -1,11 +1,10 @@
 f(a)
 {
 	switch(a){
-		case 1 ... 3:
-		case 2 ... 5:
+		case 1 ... 10:
+		case 9 ... 13:
 			break;
 
-		case 2:
 		default:
 			;
 	}
