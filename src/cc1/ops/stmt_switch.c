@@ -23,7 +23,7 @@ void fold_switch_dups(stmt *sw)
 		stmt *cse;
 	} *const vals = malloc(n * sizeof *vals);
 
-	stmt **titer, **ranges = NULL;
+	stmt **titer, **ranges = NULL, *def = NULL;
 	int i;
 
 	/* gather all switch values */
@@ -31,6 +31,13 @@ void fold_switch_dups(stmt *sw)
 		stmt *cse = *titer;
 
 		if(cse->expr->expr_is_default){
+			if(def){
+				char buf[WHERE_BUF_SIZ];
+
+				DIE_AT(&cse->where, "duplicate default statement (from %s)",
+						where_str_r(buf, &def->where));
+			}
+			def = cse;
 			n--;
 			continue;
 		}
