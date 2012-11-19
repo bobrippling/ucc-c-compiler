@@ -17,7 +17,11 @@ const char *str_stmt_switch()
 void fold_switch_dups(stmt *sw)
 {
 	const int n = dynarray_count((void **)sw->codes);
-	intval *const vals = malloc(n * sizeof *vals);
+	struct
+	{
+		intval v;
+		stmt *cse;
+	} *const vals = malloc(n * sizeof *vals);
 
 	stmt **titer;
 	int i;
@@ -25,7 +29,6 @@ void fold_switch_dups(stmt *sw)
 	/* gather all switch values */
 	for(i = 0, titer = sw->codes; titer && *titer; titer++, i++){
 		stmt *cse = *titer;
-		intval iv;
 
 		if(cse->expr->expr_is_default)
 			continue;
@@ -33,18 +36,20 @@ void fold_switch_dups(stmt *sw)
 		if(stmt_kind(cse, case_range))
 			ICE("TODO: dup checking on switch ranges");
 
-		const_fold_need_val(cse->expr, &iv);
-		memcpy(&vals[i], &iv, sizeof iv);
+		const_fold_need_val(cse->expr, &vals[i].v);
+		vals[i].cse = cse;
 	}
 
 	/* sort vals for comparison */
-	qsort(vals, n, sizeof(*vals), (intval_cmp_cast)intval_cmp);
+	qsort(vals, n, sizeof(*vals), (intval_cmp_cast)intval_cmp); /* struct layout guarantees this */
 
-  /* FIXME */
-#warning FIXME #1
 	for(i = 1; i < n; i++)
-		if(vals[i-1].val == vals[i].val)
-			DIE_AT(&sw->where, "duplicate case statement %ld", vals[i].val);
+		if(vals[i-1].v.val == vals[i].v.val){
+			char buf[WHERE_BUF_SIZ];
+
+			DIE_AT(&vals[i-1].cse->where, "duplicate case statement %ld (from %s)",
+					vals[i].v.val, where_str_r(buf, &vals[i].cse->where));
+		}
 
 	free(vals);
 }
