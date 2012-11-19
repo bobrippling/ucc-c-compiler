@@ -9,5 +9,6 @@ struct macro
 
 void preprocess(void);
 void preproc_push(FILE *f, const char *fname);
+void preproc_backtrace(void);
 
 #endif

@@ -277,6 +277,8 @@ void handle_error_warning(token **tokens, const char *pre)
 
 	s = tokens_join(tokens);
 
+	preproc_backtrace();
+
 	CPP_WARN("#%s: %s", pre, s);
 
 	free(s);
