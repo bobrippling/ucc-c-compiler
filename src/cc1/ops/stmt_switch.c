@@ -12,36 +12,41 @@ const char *str_stmt_switch()
 	return "switch";
 }
 
-#warning FIXME #3
-/* FIXME: merge with enum checking? */
 void fold_switch_dups(stmt *sw)
 {
-	const int n = dynarray_count((void **)sw->codes);
+	typedef int (*qsort_f)(const void *, const void *);
+
+	int n = dynarray_count((void **)sw->codes);
 	struct
 	{
 		intval v;
 		stmt *cse;
 	} *const vals = malloc(n * sizeof *vals);
 
-	stmt **titer;
+	stmt **titer, **ranges = NULL;
 	int i;
 
 	/* gather all switch values */
-	for(i = 0, titer = sw->codes; titer && *titer; titer++, i++){
+	for(i = 0, titer = sw->codes; titer && *titer; titer++){
 		stmt *cse = *titer;
 
-		if(cse->expr->expr_is_default)
+		if(cse->expr->expr_is_default){
+			n--;
 			continue;
+		}
 
-		if(stmt_kind(cse, case_range))
-			ICE("TODO: dup checking on switch ranges");
-
-		const_fold_need_val(cse->expr, &vals[i].v);
-		vals[i].cse = cse;
+		if(stmt_kind(cse, case_range)){
+			dynarray_add((void ***)&ranges, cse);
+			n--;
+		}else{
+			const_fold_need_val(cse->expr, &vals[i].v);
+			vals[i].cse = cse;
+			i++;
+		}
 	}
 
 	/* sort vals for comparison */
-	qsort(vals, n, sizeof(*vals), (intval_cmp_cast)intval_cmp); /* struct layout guarantees this */
+	qsort(vals, n, sizeof(*vals), (qsort_f)intval_cmp); /* struct layout guarantees this */
 
 	for(i = 1; i < n; i++)
 		if(vals[i-1].v.val == vals[i].v.val){
