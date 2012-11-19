@@ -251,7 +251,7 @@ void print_decl(decl *d, enum pdeclargs mode)
 	}
 
 	if(mode & PDECL_SIZE && !DECL_IS_FUNC(d)){
-		if(decl_is_incomplete_array(d)){
+		if(type_ref_is_incomplete_array(d->ref)){
 			fprintf(cc1_out, " incomplete array in decl");
 		}else{
 			const int sz = decl_size(d, &d->where);

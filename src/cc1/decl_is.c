@@ -225,6 +225,27 @@ int type_ref_is_complete(type_ref *r)
 	return 1;
 }
 
+int type_ref_is_incomplete_array(type_ref *r)
+{
+	if((r = type_ref_is(r, type_ref_array))){
+		intval iv;
+
+		const_fold_need_val(r->bits.array_size, &iv);
+
+		return iv.val == 0;
+	}
+	return 0;
+}
+
+type_ref *type_ref_complete_array(type_ref *r, int sz)
+{
+	r = type_ref_is(r, type_ref_array);
+
+	UCC_ASSERT(r, "not an array");
+
+	return type_ref_new_array(r->ref, expr_new_val(sz));
+}
+
 struct_union_enum_st *type_ref_is_s_or_u_or_e(type_ref *r)
 {
 	type_ref *test = type_ref_is(r, type_ref_type);

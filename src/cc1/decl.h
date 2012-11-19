@@ -187,7 +187,6 @@ type_ref *type_ref_decay_first_array(type_ref *);
 type *decl_get_type(decl *);
 
 decl *decl_decay_first_array(decl *);
-void decl_complete_array(decl *, int to);
 void decl_conv_array_func_to_ptr(decl *d);
 
 int decl_attr_present(decl_attr *, enum decl_attr_type);
@@ -210,7 +209,6 @@ void decl_attr_free(decl_attr *a);
 #define DECL_IS_ARRAY(d)  type_ref_is((d)->ref, type_ref_array)
 #define DECL_IS_S_OR_U(d) type_ref_is_s_or_u((d)->ref)
 
-int decl_is_incomplete_array(decl *d);
 int decl_is_variadic(decl *d);
 
 /* type_ref_is_* */
@@ -223,6 +221,9 @@ int type_ref_is_floating(type_ref *);
 int type_ref_is_const(   type_ref *);
 int type_ref_is_callable(type_ref *);
 int type_ref_is_fptr(    type_ref *);
+
+type_ref *type_ref_complete_array(type_ref *r, int sz) ucc_wur;
+int type_ref_is_incomplete_array(type_ref *);
 
 enum type_qualifier type_ref_qual(const type_ref *);
 

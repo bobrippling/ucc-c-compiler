@@ -407,18 +407,6 @@ int decl_size(decl *d, where const *from)
 	return type_ref_size(d->ref, from);
 }
 
-void decl_complete_array(decl *d, int sz)
-{
-	type_ref *r = type_ref_is(d->ref, type_ref_array);
-	type_ref *new;
-
-	UCC_ASSERT(r, "not an array");
-
-	new = type_ref_new_array(d->ref->ref, expr_new_val(sz));
-
-	d->ref = new;
-}
-
 enum funcargs_cmp funcargs_equal(
 		funcargs *args_to, funcargs *args_from,
 		int strict_types, const char *fspel)
@@ -537,20 +525,6 @@ int decl_equal(decl *a, decl *b, enum decl_cmp mode)
 		mode |= DECL_CMP_EXACT_MATCH;
 
 	return type_ref_equal(a->ref, b->ref, mode);
-}
-
-int decl_is_incomplete_array(decl *d)
-{
-	type_ref *r = d->ref;
-
-	if((r = type_ref_is(r, type_ref_array))){
-		intval iv;
-
-		const_fold_need_val(r->bits.array_size, &iv);
-
-		return iv.val == 0;
-	}
-	return 0;
 }
 
 int decl_is_variadic(decl *d)

@@ -33,7 +33,7 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 		fold_gen_init_assignment_base(e, d, e->code);
 		fold_stmt(e->code);
 	}else{
-		fold_complete_array(d, d->init);
+		fold_complete_array(&d->ref, d->init);
 
 		fold_decl_global_init(d, stab);
 	}

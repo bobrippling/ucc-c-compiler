@@ -227,15 +227,16 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab, int *poffset, int
 	}
 }
 
-void fold_complete_array(decl *dfor, decl_init *init_from)
+void fold_complete_array(type_ref **ptfor, decl_init *init_from)
 {
 	const int n_inits = init_from ? decl_init_len(init_from) : 0;
+	type_ref *tfor = *ptfor;
 
 	/* TODO: struct check also */
-	if(init_from && DECL_IS_ARRAY(dfor) && init_from->type != decl_init_brace)
+	if(init_from && DECL_IS_ARRAY(tfor) && init_from->type != decl_init_brace)
 		DIE_AT(&init_from->where, "array must be initialised with an initialiser list");
 
-	if(decl_is_incomplete_array(dfor)){
+	if(type_ref_is_incomplete_array(tfor)){
 		/* case 1: int x[][2] = { 0, 1, 2, 3 }
 		 * case 2: int x[][2] = { {1}, {2} }
 		 * case 3: int x[][2] = { {1}, 2, 3 }
@@ -244,7 +245,7 @@ void fold_complete_array(decl *dfor, decl_init *init_from)
 		int complete_to;
 
 		if(!init_from)
-			DIE_AT(&dfor->where, "can't complete array - no initialiser");
+			DIE_AT(&tfor->where, "can't complete array - no initialiser");
 
 		/* decide based on the first sub */
 		switch(init_from->bits.inits[0]->type){
@@ -262,7 +263,7 @@ void fold_complete_array(decl *dfor, decl_init *init_from)
 				 * int x[][2] = {   1,       { 3, 4 } };
 				 */
 
-				type_ref *dref = type_ref_ptr_depth_dec(dfor->ref);
+				type_ref *dref = type_ref_ptr_depth_dec(tfor->ref);
 
 				/* check for different sub-inits */
 #if 0
@@ -277,7 +278,7 @@ void fold_complete_array(decl *dfor, decl_init *init_from)
 
 #ifdef DECL_COMP_VERBOSE
 				fprintf(stderr, "n_inits = %d, decl_size(*(%s)) = %d, type_size(%s) = %d\n",
-						n_inits, decl_to_str(dfor), decl_size(dref),
+						n_inits, decl_to_str(tfor), decl_size(dref),
 						type_to_str(dref->type), type_size(dref->type));
 
 				fprintf(stderr, "completing array (subtype %s) to %d\n",
@@ -291,16 +292,16 @@ void fold_complete_array(decl *dfor, decl_init *init_from)
 				break;
 		}
 
-		decl_complete_array(dfor, complete_to);
+		*ptfor = tfor = type_ref_complete_array(tfor, complete_to);
 	}
 }
 
-void fold_gen_init_assignment2(expr *base, type_ref *tfor,
+void fold_gen_init_assignment2(
+		expr *base, type_ref *tfor,
 		decl_init *init_from, stmt *codes)
 {
 	if(type_ref_is(tfor, type_ref_array)){
 		type_ref *tfor_deref;
-		int ninits = 0;
 		int array_limit;
 		int current_count, wanted_count, array_size;
 
@@ -364,14 +365,12 @@ next_ar:
 		}
 		/*type_ref_free(tfor_deref);*/
 
+#ifdef DECL_ARRAY_INIT_TODO
 		{
 			/* assignment expr for each init */
-			const int n_inits = init_from ? decl_init_len(init_from) : 0;
-
-			fold_complete_array(tfor, init_from);
-
+			fold_complete_array(&tfor, init_from);
 		}
-#ifdef DECL_ARRAY_INIT_TODO
+
 		const int pull_from_this_init =
 			init_from
 		&& init_from->bits.inits
@@ -467,8 +466,8 @@ next_ar:
 			}
 
 			case decl_init_brace:
-				if(n_inits > 1)
-					WARN_AT(&init_from->where, "excess initialisers for scalar");
+				/*if(n_inits > 1)
+					WARN_AT(&init_from->where, "excess initialisers for scalar");*/
 
 				fold_gen_init_assignment2(base, tfor,
 						init_from->bits.inits ? init_from->bits.inits[0] : NULL,
@@ -480,7 +479,7 @@ next_ar:
 
 void fold_gen_init_assignment_base(expr *base, decl *dfor, stmt *code)
 {
-	fold_gen_init_assignment2(base, dfor, dfor->init, code);
+	fold_gen_init_assignment2(base, dfor->ref, dfor->init, code);
 }
 
 void fold_gen_init_assignment(decl *dfor, stmt *code)
@@ -714,7 +713,7 @@ void fold_decl(decl *d, symtable *stab)
 		enum constyness ktype;
 		intval iv;
 		int width;
-		type *t = ???;
+		type *t = ;
 
 		FOLD_EXPR(d->field_width, stab);
 		const_fold(d->field_width, &iv, &ktype);
@@ -787,7 +786,7 @@ void fold_decl_global_init(decl *d, symtable *stab)
 
 	k = decl_init_is_const(d->init, stab);
 
-	fold_complete_array(d, d->init);
+	fold_complete_array(&d->ref, d->init);
 
 	if(!k){
 		DIE_AT(&d->init->where, "%s initialiser not constant (%s)",
