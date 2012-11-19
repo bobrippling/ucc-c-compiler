@@ -5,6 +5,6 @@
 int x; // comment
 
 #define A(foo, bar) foo bar
-#define B x // comment 
+#define B x // comment
 
 A(B, B)
