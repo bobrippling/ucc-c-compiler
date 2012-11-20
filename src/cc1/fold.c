@@ -364,88 +364,8 @@ next_ar:
 				}
 			}
 		}
-		/*type_ref_free(tfor_deref);*/
 
-#ifdef DECL_ARRAY_INIT_TODO
-		{
-			/* assignment expr for each init */
-			fold_complete_array(&tfor, init_from);
-		}
-
-		const int pull_from_this_init =
-			init_from
-		&& init_from->bits.inits
-		&& init_from->bits.inits[0]->type == decl_init_scalar;
-
-		intval array_n_val;
-		int array_n;
-		int array_i;
-		type_ref *darray_deref;
-
-		const_fold_need_val(tfor->ref->bits.array_size, &array_n_val);
-		array_n = array_n_val.val;
-
-		/*if(pull_from_this_init)
-			WARN_AT(&init_from->where, "missing braces around initialiser");*/
-
-		darray_deref = type_ref_ptr_depth_dec(tfor->ref, &tfor->where);
-
-		/* generate array_n assignments */
-		for(array_i = 0; array_i < array_n; array_i++){
-			expr *target = expr_new_op(op_plus);
-			decl_init *sub_init;
-
-			/* access the array_i'th element of base */
-			target->lhs = base;
-			target->rhs = expr_new_val(array_i);
-
-			target = expr_new_deref(target);
-
-			/*fprintf(stderr, "for array %s, sub %s\n",
-					decl_to_str(tfor),
-					decl_to_str_r((char[DECL_STATIC_BUFSIZ]){}, darray_deref));*/
-
-			if(pull_from_this_init){
-				const int inner_count = DECL_IS_ARRAY(darray_deref)
-					? decl_inner_array_count(darray_deref)
-					: 1;
-				int i_sub;
-
-				//fprintf(stderr, "from this init, inner_count %d\n", inner_count);
-				sub_init = decl_init_new(decl_init_brace);
-
-				/* pull until we get to the end, i.e.
-				 * int x[10] = { 1 }; - index 1 is the end
-				 */
-				for(i_sub = 0; i_sub < inner_count; i_sub++){
-					int i = array_i * inner_count + i_sub;
-
-					if(i >= n_inits)
-						/* fill the rest with zero */
-						break;
-
-					dynarray_add((void ***)&sub_init->bits.inits,
-							init_from->bits.inits[i]);
-				}
-
-			}else{
-				if(!init_from || array_i >= n_inits)
-					sub_init = NULL; /* initialise with zero */
-				else
-					sub_init = init_from->bits.inits[array_i];
-			}
-
-			fold_gen_init_assignment2(target, darray_deref, sub_init, codes);
-
-			if(pull_from_this_init){
-				//ICW("need to free sub_init");
-			}
-		}
-
-		decl_free(darray_deref);
-#else
 		ICE("TODO: decl array init");
-#endif
 	}else{
 		/* scalar init */
 		switch(init_from ? init_from->type : decl_init_scalar){
