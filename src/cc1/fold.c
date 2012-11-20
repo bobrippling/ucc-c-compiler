@@ -263,7 +263,8 @@ void fold_complete_array(type_ref **ptfor, decl_init *init_from)
 				 * int x[][2] = {   1,       { 3, 4 } };
 				 */
 
-				type_ref *dref = type_ref_ptr_depth_dec(tfor->ref);
+				/* FIXME ->ref */
+				type_ref *t_derefed = type_ref_ptr_depth_dec(tfor->ref);
 
 				/* check for different sub-inits */
 #if 0
@@ -274,12 +275,12 @@ void fold_complete_array(type_ref **ptfor, decl_init *init_from)
 #endif
 
 				/* (int[2] size = 8) / type_size = 2 */
-				complete_to = n_inits / (type_ref_size(dref, &dref->where) / type_ref_size(dref->ref, &dref->where));
+				complete_to = n_inits / (type_ref_size(t_derefed, &t_derefed->where) / type_ref_size(t_derefed->ref, &t_derefed->where));
 
 #ifdef DECL_COMP_VERBOSE
 				fprintf(stderr, "n_inits = %d, decl_size(*(%s)) = %d, type_size(%s) = %d\n",
-						n_inits, decl_to_str(tfor), decl_size(dref),
-						type_to_str(dref->type), type_size(dref->type));
+						n_inits, decl_to_str(tfor), decl_size(t_derefed),
+						type_to_str(t_derefed->type), type_size(t_derefed->type));
 
 				fprintf(stderr, "completing array (subtype %s) to %d\n",
 						decl_to_str(dtmp), complete_to);
@@ -308,7 +309,7 @@ void fold_gen_init_assignment2(
 		if(init_from->type == decl_init_scalar)
 			DIE_AT(&init_from->where, "arrays must be initialised with an initialiser list");
 
-		tfor_deref = type_ref_ptr_depth_dec(tfor);
+		tfor_deref = tfor->ref;
 
 		if((tfor_deref = type_ref_is(tfor_deref, type_ref_array))){
 			/* int [2] - (2 * 4) / 4 = 2 */
@@ -1251,7 +1252,7 @@ void fold(symtable *globs)
 
 					UCC_ASSERT(type_ref_is(proto->ref, type_ref_func), "not func");
 
-					if(proto->ref->bits.func->args_void)
+					if(type_ref_is(proto->ref, type_ref_func)->bits.func->args_void)
 						is_void = 1;
 
 					if(!decl_is_definition(proto)){
@@ -1263,7 +1264,7 @@ void fold(symtable *globs)
 				/* if "type ()", and a proto is "type (void)", take the void */
 				if(is_void)
 					for(proto_i = protos; *proto_i; proto_i++)
-						(*proto_i)->ref->bits.func->args_void = 1;
+						type_ref_is((*proto_i)->ref, type_ref_func)->bits.func->args_void = 1;
 			}
 
 			fold_func(D(i));

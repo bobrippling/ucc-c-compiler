@@ -435,6 +435,7 @@ static int calc_ptr_step(type_ref *t)
 	if(type_ref_is_type(type_ref_is(t, type_ref_ptr), type_void))
 		return type_primitive_size(type_void);
 
+	/* fine to access t->ref, as type_ref_size handles tdefs, etc */
 	sz = type_ref_size(t->ref, NULL);
 
 	return sz;
