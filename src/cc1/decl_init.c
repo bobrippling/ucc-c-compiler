@@ -90,12 +90,28 @@ void decl_init_complete_array(type_ref **ptfor, decl_init *init_from)
 
 void decl_initialise_array(decl_init *dinit, type_ref *tfor, expr *base, stmt *init_code)
 {
-	type_ref *const tfor_deref = type_ref_is(tfor, type_ref_array)->ref;
+	type_ref *tfor_deref;
 	decl_init **it;
 	int i;
 
-	/* FIXME: bounds checking */
+	switch(dinit->type){
+		case decl_init_scalar:
+			/* FIXME: can't check tree_type - fold hasn't occured yet */
+			if((tfor = type_ref_is(dinit->bits.expr->tree_type, type_ref_ptr))
+					&& type_ref_is_type(tfor->ref, type_char))
+			{
+				/* const char * init - need to check tfor is of the same type */
+				ICE("TODO: array init with string literal");
+			}
 
+			DIE_AT(&dinit->where, "array must be initalised with initialiser list");
+		case decl_init_brace:
+			break;
+	}
+
+	tfor_deref = type_ref_is(tfor, type_ref_array)->ref;
+
+	/* FIXME: bounds checking */
 	for(i = 0, it = dinit->bits.inits; it && *it; it++, i++){
 		expr *this;
 		/* `base`[i] */ {
@@ -120,6 +136,10 @@ static void decl_initialise_sue(decl_init *dinit,
 	/* iterate over each member, pulling from the dinit */
 	sue_member **smem;
 	decl_init **p_subinit;
+
+	if(dinit->type != decl_init_brace)
+		DIE_AT(&dinit->where, "%s must be initalised with initialiser list",
+				sue_str(sue));
 
 	for(p_subinit = dinit->bits.inits, smem = sue->members;
 			smem && *smem;
@@ -155,28 +175,9 @@ void decl_init_create_assignments(
 	struct_union_enum_st *sue;
 
 	if((tfor = type_ref_is(tfor_wrapped, type_ref_array))){
-		switch(dinit->type){
-			case decl_init_scalar:
-				/* FIXME: can't check tree_type - fold hasn't occured yet */
-				if((tfor = type_ref_is(dinit->bits.expr->tree_type, type_ref_ptr))
-				&& type_ref_is_type(tfor->ref, type_char))
-				{
-					/* const char * init - need to check tfor is of the same type */
-					ICE("TODO: array init with string literal");
-				}
-
-				DIE_AT(&dinit->where, "array must be initalised with initialiser list");
-			case decl_init_brace:
-				break;
-		}
-
 		decl_initialise_array(dinit, tfor, base, init_code);
 
 	}else if((sue = type_ref_is_s_or_u(tfor_wrapped))){
-		if(dinit->type != decl_init_brace)
-			DIE_AT(&dinit->where, "%s must be initalised with initialiser list",
-					sue_str(sue));
-
 		decl_initialise_sue(dinit, sue, base, init_code);
 
 	}else{
