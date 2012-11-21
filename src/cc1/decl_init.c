@@ -10,6 +10,7 @@
 #include "fold.h"
 #include "const.h"
 #include "macros.h"
+#include "sue.h"
 
 #include "decl_init.h"
 
@@ -113,6 +114,35 @@ void decl_initialise_array(decl_init *dinit, type_ref *tfor, expr *base, stmt *i
 	}
 }
 
+static void decl_initialise_sue(decl_init *dinit,
+		struct_union_enum_st *sue, expr *base, stmt *init_code)
+{
+	/* iterate over each member, pulling from the dinit */
+	sue_member **smem;
+	decl_init **p_subinit;
+
+	for(p_subinit = dinit->bits.inits, smem = sue->members;
+			smem && *smem;
+			(*p_subinit ? ++p_subinit : 0), smem++)
+	{
+		decl *const sue_mem = (*smem)->struct_member;
+
+		/* room for optimisation below - avoid sue name lookup */
+		expr *accessor = expr_new_struct(base, 1 /* a.b */,
+				expr_new_identifier(sue_mem->spel));
+
+		if(*p_subinit){
+			decl_init_create_assignments(*p_subinit,
+					sue_mem->ref,
+					accessor,
+					init_code);
+
+		}else{
+			ICE("TODO: uninitialised struct tailing members");
+		}
+	}
+}
+
 void decl_init_create_assignments(
 		decl_init *dinit,
 		type_ref *const tfor_wrapped, /* could be typedef/cast */
@@ -143,7 +173,11 @@ void decl_init_create_assignments(
 		decl_initialise_array(dinit, tfor, base, init_code);
 
 	}else if((sue = type_ref_is_s_or_u(tfor_wrapped))){
-		ICE("TODO: sue init");
+		if(dinit->type != decl_init_brace)
+			DIE_AT(&dinit->where, "%s must be initalised with initialiser list",
+					sue_str(sue));
+
+		decl_initialise_sue(dinit, sue, base, init_code);
 
 	}else{
 		expr *assign_from, *assign_init;
