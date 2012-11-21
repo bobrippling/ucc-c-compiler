@@ -93,6 +93,8 @@ void decl_initialise_array(decl_init *dinit, type_ref *tfor, expr *base, stmt *i
 	decl_init **it;
 	int i;
 
+	/* FIXME: bounds checking */
+
 	for(i = 0, it = dinit->bits.inits; it && *it; it++, i++){
 		expr *this;
 		/* `base`[i] */ {
