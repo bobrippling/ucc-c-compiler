@@ -113,12 +113,18 @@ void decl_init_create_assignments(
 			while(dinit->type == decl_init_brace){
 				WARN_AT(&dinit->where, "excess braces around scalar initialiser");
 
-				dinit = dinit->bits.inits[0];
+				if(dinit->bits.inits){
+					dinit = dinit->bits.inits[0];
+				}else{
+					WARN_AT(&dinit->where, "empty initaliser");
+					goto zero_init;
+				}
 			}
 
 			assert(dinit->type == decl_init_scalar);
 			assign_from = dinit->bits.expr;
 		}else{
+zero_init:
 			assign_from = expr_new_val(0);
 		}
 
