@@ -181,13 +181,9 @@ void gen_expr_funcall(expr *e, symtable *stab)
 		out_comment("end manual __asm__");
 	}else{
 		/* continue with normal funcall */
-		sym *const sym = e->expr->sym;
 		int nargs = 0;
 
-		if(sym && !type_ref_is_fptr(sym->decl->ref))
-			out_push_lbl(sym->decl->spel, 0, NULL);
-		else
-			gen_expr(e->expr, stab);
+		gen_expr(e->expr, stab);
 
 		if(e->funcargs){
 			const int int_sz = type_primitive_size(type_int);

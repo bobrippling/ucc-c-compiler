@@ -378,6 +378,9 @@ void out_push_sym(sym *s)
 
 	switch(s->type){
 		case sym_local:
+			if(DECL_IS_FUNC(s->decl))
+				goto label;
+
 			vtop->type = STACK;
 			vtop->bits.off_from_bp = -s->offset - platform_word_size();
 			break;
@@ -394,6 +397,7 @@ void out_push_sym(sym *s)
 			break;
 
 		case sym_global:
+label:
 			vtop->type = LBL;
 			vtop->bits.lbl.str = s->decl->spel;
 			vtop->bits.lbl.pic = 1;
