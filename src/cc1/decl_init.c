@@ -102,6 +102,11 @@ void decl_initialise_array(decl_init *dinit, type_ref *tfor, expr *base, stmt *i
 			this = expr_new_deref(op);
 		}
 
+		if((*it)->type == decl_init_scalar){
+			/* pretty annoying - int x[][2] = { 1, 2, 3, 4 } */
+			ICE("ergh...");
+		}
+
 		decl_init_create_assignments(*it, tfor_deref, this, init_code);
 	}
 }
