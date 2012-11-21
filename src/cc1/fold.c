@@ -117,7 +117,13 @@ void fold_inc_writes_if_sym(expr *e, symtable *stab)
 expr *fold_expr(expr *e, symtable *stab)
 {
 	if(e->tree_type)
-		goto fin;
+		goto check;
+	/* don't fold, but do check, in case of decl inits using the same base
+	 * e.g. int x[] = { 1, 2 }
+	 * creates: x[0] = 1, x[1] = 2
+	 * fold the first creates a tree_type for x,
+	 * so folding the second still needs the decay
+	 */
 
 	fold_get_sym(e, stab);
 
@@ -126,6 +132,7 @@ expr *fold_expr(expr *e, symtable *stab)
 	UCC_ASSERT(e->tree_type, "no tree_type after fold (%s)", e->f_str());
 
 	/* perform array decay and pointer decay */
+check:
 	{
 		type_ref *r = e->tree_type;
 		expr *imp_cast = NULL;
@@ -144,7 +151,6 @@ expr *fold_expr(expr *e, symtable *stab)
 		}
 	}
 
-fin:
 	return e;
 }
 
