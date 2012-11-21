@@ -94,6 +94,14 @@ void decl_init_create_assignments_for_spel(decl *d, stmt *init_code)
 			expr_new_identifier(d->spel), init_code);
 }
 
+void fold_decl_init(decl_init *di, symtable *stab)
+{
+	/* only fold scalars
+	 * brace-inits are done on the next pass by the caller */
+	if(di->type == decl_init_scalar)
+		FOLD_EXPR(di->bits.expr, stab);
+}
+
 void decl_init_create_assignments(
 		decl_init *dinit,
 		type_ref *const tfor_wrapped, /* could be typedef/cast */
@@ -103,9 +111,30 @@ void decl_init_create_assignments(
 	/* iterate over tfor's array/struct members/scalar,
 	 * pulling from dinit as necessary */
 	type_ref *tfor;
+	struct_union_enum_st *sue;
+
+	fold_decl_init(dinit, init_code->symtab);
 
 	if((tfor = type_ref_is(tfor_wrapped, type_ref_array))){
+		switch(dinit->type){
+			case decl_init_scalar:
+				if((tfor = type_ref_is(dinit->bits.expr->tree_type, type_ref_ptr))
+				&& type_ref_is_type(tfor->ref, type_char))
+				{
+					/* const char * init - need to check tfor is of the same type */
+					ICE("TODO: array init with string literal");
+				}
+
+				DIE_AT(&dinit->where, "array must be initalised with initialiser list");
+			case decl_init_brace:
+				break;
+		}
+
 		ICE("TODO: array init");
+
+	}else if((sue = type_ref_is_s_or_u(tfor_wrapped))){
+		ICE("TODO: sue init");
+
 	}else{
 		expr *assign_from, *assign_init;
 
