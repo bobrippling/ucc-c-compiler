@@ -94,6 +94,23 @@ void decl_init_create_assignments_for_spel(decl *d, stmt *init_code)
 			expr_new_identifier(d->spel), init_code);
 }
 
+void decl_initialise_array(decl_init *dinit, type_ref *tfor, expr *base, stmt *init_code)
+{
+	/* check type of tfor - we want dinit->bits.inits[0] to be that type
+	 *
+	 * possible cases:
+	 *
+	 * tfor=`int[]`,    dinit=`{ 1, 2, 3, 4 }`
+	 * tfor=`int[][2]`, dinit=`{ 1, 2, 3, 4 }`
+	 * tfor=`int[][2]`, dinit=`{ { 1, 2 }, { 3, 4 } }`
+	 * tfor=`int[][2]`, dinit=`{ { 1 }, { 3 } }`
+	 * tfor=`T[]`,      dinit=`{ 5 }` (5 must match first member of T)
+	 *
+	 * etc
+	 */
+	ICE("TODO: %s", __func__);
+}
+
 void fold_decl_init(decl_init *di, symtable *stab)
 {
 	/* only fold scalars
@@ -130,7 +147,7 @@ void decl_init_create_assignments(
 				break;
 		}
 
-		ICE("TODO: array init");
+		decl_initialise_array(dinit, tfor, base, init_code);
 
 	}else if((sue = type_ref_is_s_or_u(tfor_wrapped))){
 		ICE("TODO: sue init");
