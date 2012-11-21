@@ -4,7 +4,8 @@
 #include "ops.h"
 #include "stmt_code.h"
 #include "../out/lbl.h"
-
+#include "../decl_init.h"
+#include "../../util/dynarray.h"
 
 const char *str_stmt_code()
 {
@@ -15,6 +16,7 @@ void fold_stmt_code(stmt *s)
 {
 	decl **diter;
 	stmt **siter;
+	stmt *inits = NULL;
 	int warned = 0;
 
 	fold_symtab_scope(s->symtab);
@@ -36,7 +38,10 @@ void fold_stmt_code(stmt *s)
 				fold_decl_global_init(d, s->symtab);
 			}else{
 				EOF_WHERE(&d->where,
-						fold_gen_init_assignment(d, s)
+						if(!inits)
+							inits = stmt_new_wrapper(code, s->symtab);
+
+						decl_init_create_assignments_for_spel(d, inits);
 					);
 
 				/* folded below */
@@ -49,13 +54,11 @@ void fold_stmt_code(stmt *s)
 				decl_store_static_or_extern(d->store) ? sym_global : sym_local);
 	}
 
-	for(siter = s->inits; siter && *siter; siter++){
-		stmt *const st = *siter;
-		EOF_WHERE(&st->where, fold_stmt(st));
-	}
+	if(inits)
+		dynarray_prepend((void ***)&s->codes, inits);
 
 	for(siter = s->codes; siter && *siter; siter++){
-		stmt  *const st = *siter;
+		stmt *const st = *siter;
 
 		EOF_WHERE(&st->where, fold_stmt(st));
 
@@ -129,28 +132,25 @@ void gen_code_decls(symtable *stab)
 void gen_stmt_code(stmt *s)
 {
 	stmt **titer;
-	int done_inits;
 
 	/* stmt_for needs to do this too */
 	gen_code_decls(s->symtab);
 
-	FOR_INIT_AND_CODE(titer, s, done_inits,
+	for(titer = s->codes; titer && *titer; titer++)
 		gen_stmt(*titer);
-	)
 }
 
 static int code_passable(stmt *s)
 {
 	stmt **i;
-	int done_inits;
 
-	/* note: check for inits which call noreturn funcs */
+	/* note: this also checks for inits which call noreturn funcs */
 
-	FOR_INIT_AND_CODE(i, s, done_inits,
+	for(i = s->codes; i && *i; i++){
 		stmt *sub = *i;
 		if(!fold_passable(sub))
 			return 0;
-	)
+	}
 
 	return 1;
 }

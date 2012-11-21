@@ -12,7 +12,6 @@
 #include "gen_str.h"
 #include "str.h"
 #include "const.h"
-#include "ops/stmt_code.h" /* FOR_INIT_AND_CODE */
 #include "decl_init.h"
 
 #define ENGLISH_PRINT_ARGLIST
@@ -465,17 +464,16 @@ void print_stmt(stmt *t)
 		}
 	}
 
-	if(t->codes || t->inits){
+	if(t->codes){
 		stmt **iter;
-		int done_code;
 
-		idt_printf("inits and code:\n");
+		idt_printf("code:\n");
 
-		FOR_INIT_AND_CODE(iter, t, done_code,
+		for(iter = t->codes; *iter; iter++){
 			gen_str_indent++;
 			print_stmt(*iter);
 			gen_str_indent--;
-		)
+		}
 	}
 }
 

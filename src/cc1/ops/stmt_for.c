@@ -5,6 +5,7 @@
 #include "stmt_for.h"
 #include "stmt_code.h"
 #include "../out/lbl.h"
+#include "../decl_init.h"
 
 const char *str_stmt_for()
 {
@@ -36,17 +37,13 @@ expr *fold_for_if_init_decls(stmt *s)
 		/* make the for-init a expr-stmt with all our inits */
 		if(d->init){
 			stmt *init_code;
-			stmt **inits;
 
 			init_code = stmt_new_wrapper(code, s->flow->for_init_symtab);
-			fold_gen_init_assignment(d, init_code);
+			decl_init_create_assignments_for_spel(d, init_code);
 
 			init_exp = expr_new_stmt(init_code);
 
-			for(inits = init_code->inits; inits && *inits; inits++){
-				stmt *s = *inits;
-				fold_stmt(s);
-			}
+			fold_stmt(init_code); /* folds each assignment */
 		}
 	}
 

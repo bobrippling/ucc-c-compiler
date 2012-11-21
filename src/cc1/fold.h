@@ -23,10 +23,6 @@ void fold_typecheck(expr *lhs, expr *rhs, symtable *stab, where *where);
 void fold_need_expr(expr *e, const char *stmt_desc, int is_test);
 void fold_disallow_st_un(expr *e, const char *desc);
 
-void fold_complete_array(type_ref **ptfor, decl_init *init_from);
-void fold_gen_init_assignment_base(expr *base, decl *dfor, stmt *code);
-void fold_gen_init_assignment(decl *dfor, stmt *code);
-
 int  fold_get_sym(          expr *e, symtable *stab);
 void fold_inc_writes_if_sym(expr *e, symtable *stab);
 
