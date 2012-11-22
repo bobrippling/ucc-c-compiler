@@ -1,0 +1,14 @@
+global/static init
+
+zero-init of omitted members:
+	int x[2] = { 1 };
+	struct { int a, b; } = { 2 };
+	int y[3] = { }; // extension, also for structs
+
+non-braced init:
+	int x[][2] = { 1, 2, 3, 4 };
+	struct { int i; struct { int j, k; } a; } x = { 1, 2, 3 };
+
+designated init + zero for the rest:
+	int x[] = { [3] = 5 };
+	struct { int x, y, z; } q = { .y = 2, 3 };
