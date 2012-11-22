@@ -388,7 +388,7 @@ void fold_decl_global_init(decl *d, symtable *stab)
 
 	k = decl_init_is_const(d->init, stab);
 
-	decl_init_complete_array(&d->ref, d->init);
+	decl_init_complete_array(d->init, &d->ref);
 
 	if(!k){
 		DIE_AT(&d->init->where, "%s initialiser not constant (%s)",

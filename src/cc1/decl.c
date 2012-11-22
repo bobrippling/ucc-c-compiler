@@ -123,11 +123,7 @@ decl *decl_new_type(enum type_primitive p)
 
 type *decl_get_type(decl *d)
 {
-	type_ref *r;
-
-	for(r = d->ref; r && r->type != type_ref_type; r = r->ref);
-
-	return r ? r->bits.type : NULL;
+	return type_ref_get_type(d->ref);
 }
 
 void type_ref_free_1(type_ref *r)

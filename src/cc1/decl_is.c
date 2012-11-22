@@ -47,6 +47,16 @@ type_ref *type_ref_is_type(type_ref *r, enum type_primitive p)
 	return NULL;
 }
 
+type *type_ref_get_type(type_ref *r)
+{
+	for(; r && r->type != type_ref_type; r = r->ref);
+
+	if(r && r->type == type_ref_tdef)
+		return type_ref_get_type(type_ref_skip_tdefs_casts(r));
+
+	return r ? r->bits.type : NULL;
+}
+
 int type_ref_is_bool(type_ref *r)
 {
 	if(type_ref_is(r, type_ref_ptr))
@@ -243,7 +253,10 @@ type_ref *type_ref_complete_array(type_ref *r, int sz)
 
 	UCC_ASSERT(r, "not an array");
 
-	return type_ref_new_array(r->ref, expr_new_val(sz));
+	EOF_WHERE(&r->where,
+		r = type_ref_new_array(r->ref, expr_new_val(sz))
+	);
+	return r;
 }
 
 struct_union_enum_st *type_ref_is_s_or_u_or_e(type_ref *r)

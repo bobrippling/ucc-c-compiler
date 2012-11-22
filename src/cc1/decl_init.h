@@ -24,9 +24,8 @@ decl_init *decl_init_new(enum decl_init_type);
 int        decl_init_len(decl_init *);
 const char *decl_init_to_str(enum decl_init_type);
 int         decl_init_is_const(decl_init *dinit, symtable *stab);
-#define decl_init_is_brace(di) ((di)->type == decl_init_brace)
 
-void decl_init_complete_array(type_ref **ptfor, decl_init *init_from);
+void decl_init_complete_array(decl_init *init_from, type_ref **ptfor);
 
 void decl_init_create_assignments(
 		decl_init *dinit, type_ref *const tfor_wrapped,

@@ -69,7 +69,7 @@ void print_decl_init(decl_init *di)
 			int i;
 
 			for(i = 0; (s = di->bits.inits[i]); i++){
-				const int need_brace = decl_init_is_brace(s);
+				const int need_brace = s->type == decl_init_brace;
 
 				/* ->member not printed */
 #ifdef DINIT_WITH_STRUCT

@@ -81,11 +81,54 @@ const char *decl_init_to_str(enum decl_init_type t)
 	return NULL;
 }
 
-void decl_init_complete_array(type_ref **ptfor, decl_init *init_from)
+void decl_init_complete_array(decl_init *dinit, type_ref **ptfor)
 {
-	(void)ptfor;
-	(void)init_from;
-	ICE("TODO");
+	/* if we're completing an array, count the subinits and take the tfor into account
+	 * e.g. competing: int x[][2] = { 1, 2, 3, 4 }
+	 *
+	 * tfor = int[2]
+	 * decl_init = { type = brace, bits.inits = { 1, 2, 3, 4 } }
+	 *
+	 * first:
+	 *   sub_type_sz / primitive_sz
+	 *   sizeof(int[2]) / sizeof(int) = 2
+	 *
+	 * then:
+	 *   ninits / calc_sz
+	 *   4 / 2 = 2
+	 *
+	 * -> complete to two
+	 */
+	type_ref *tfor = *ptfor;
+
+	if(!type_ref_is(tfor, type_ref_array))
+		return;
+
+	if(dinit->type != decl_init_brace) /* FIXME: char x[] = "hi" */
+		DIE_AT(&dinit->where, "can't initalise (incomplete) array with non-brace list");
+
+	{
+		const int ninits = dynarray_count((void **)dinit->bits.inits);
+
+		int sub_type_sz  = type_ref_size(tfor, &dinit->where),
+				primitive_sz = type_size(type_ref_get_type(tfor), &dinit->where);
+
+		int calc_sz = sub_type_sz / primitive_sz;
+
+		int complete_to = ninits / calc_sz;
+
+		fprintf(stderr, "%d / %d = %d\n", ninits, calc_sz, complete_to);
+		fprintf(stderr, "complete to = %d for %s\n", complete_to, type_ref_to_str(tfor));
+		*ptfor = type_ref_complete_array(tfor, complete_to);
+	}
+
+#if 0
+	ICE("TODO: decl init for %s from %s (%d inits)",
+			type_ref_to_str(tfor),
+			decl_init_to_str(init_from->type),
+			init_from->type == decl_init_brace ? dynarray_count(init_from->bits.inits)
+			: 0);
+#endif
 }
 
 void decl_initialise_array(decl_init *dinit, type_ref *tfor, expr *base, stmt *init_code)
@@ -216,8 +259,7 @@ void decl_init_create_assignments_for_spel(decl *d, stmt *init_code)
 	if(d->init->type == decl_init_brace
 	&& type_ref_is_incomplete_array(d->ref))
 	{
-		int n = dynarray_count((void **)d->init->bits.inits);
-		d->ref = type_ref_complete_array(d->ref, n); /* XXX: memleak */
+		decl_init_complete_array(d->init, &d->ref);
 	}
 
 	decl_init_create_assignments(
