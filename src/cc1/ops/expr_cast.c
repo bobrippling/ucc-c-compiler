@@ -15,6 +15,39 @@ const char *str_expr_cast()
 void fold_const_expr_cast(expr *e, intval *piv, enum constyness *type)
 {
 	const_fold(e->expr, piv, type);
+
+	if(*type == CONST_WITH_VAL){
+		/* need to cast the val down as appropriate */
+		if(type_ref_is_type(e->tree_type, type__Bool)){
+			piv->val = !!piv->val; /* analagous to out/out.c::out_normalise()'s constant case */
+
+		}else{
+			const int sz = type_ref_size(e->tree_type, &e->where);
+
+			switch(sz){
+				/* TODO: unsigned */
+
+/*
+#define CAST(sz, t) case sz: piv->val = (t)piv->val; break  - don't use host machine casting
+*/
+#define CAST(sz, t) case sz: piv->val = piv->val & ~(-1 << (sz * 8 - 1)); break
+
+				CAST(1, char);
+				CAST(2, short);
+				CAST(4, int);
+
+#undef CAST
+
+				case 8:
+				break; /* no cast - max word size */
+
+				default:
+				*type = CONST_NO;
+				ICW("can't const fold cast expr of type %s size %d",
+						type_ref_to_str(e->tree_type), sz);
+			}
+		}
+	}
 }
 
 void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
@@ -151,6 +184,9 @@ void gen_expr_cast(expr *e, symtable *stab)
 		ICE("TODO: float <-> int casting");
 
 	out_cast(tfrom, tto);
+
+	if(type_ref_is_type(tto, type__Bool)) /* 1 or 0 */
+		out_normalise();
 }
 
 void gen_expr_str_cast(expr *e, symtable *stab)
