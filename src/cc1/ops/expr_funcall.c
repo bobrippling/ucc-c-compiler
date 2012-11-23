@@ -109,20 +109,40 @@ invalid:
 	/* func count comparison, only if the func has arg-decls, or the func is f(void) */
 	UCC_ASSERT(args_from_decl, "no funcargs for decl %s", e->expr->spel);
 
+
+	/* this block folds the args */
 	if(e->funcargs){
+		char *const desc = ustrprintf("function argument to %s", sp);
+		const int int_sz = type_primitive_size(type_int);
+		type_ref *t_int = type_ref_new_INT();
+		int t_int_used = 0;
 		int i;
 
 		for(i = 0; e->funcargs[i]; i++){
 			expr *arg = FOLD_EXPR(e->funcargs[i], stab);
-			char *desc = ustrprintf("function argument to %s", sp);
 
 			fold_need_expr(arg, desc, 0);
 			fold_disallow_st_un(arg, desc);
 
-			free(desc);
+			/* each arg needs casting up to int size, if smaller */
+			if(type_ref_size(arg->tree_type, &arg->where) < int_sz){
+				expr *cast = expr_new_cast(t_int, 1);
+
+				cast->expr = arg;
+				e->funcargs[i] = cast;
+				fold_expr_cast_descend(cast, stab, 0);
+
+				t_int_used = 1;
+			}
 		}
+
+		if(!t_int_used)
+			type_ref_free(t_int);
+
+		free(desc);
 	}
 
+	/* this block is purely type checking */
 	if(args_from_decl->arglist || args_from_decl->args_void){
 		expr **iter_arg;
 		decl **iter_decl;
@@ -186,7 +206,6 @@ void gen_expr_funcall(expr *e, symtable *stab)
 		gen_expr(e->expr, stab);
 
 		if(e->funcargs){
-			const int int_sz = type_primitive_size(type_int);
 			expr **aiter;
 
 			for(aiter = e->funcargs; *aiter; aiter++, nargs++);
@@ -194,11 +213,10 @@ void gen_expr_funcall(expr *e, symtable *stab)
 			for(aiter--; aiter >= e->funcargs; aiter--){
 				expr *earg = *aiter;
 
+				/* should be of size int or larger (for integral types)
+				 * or double (for floating types)
+				 */
 				gen_expr(earg, stab);
-
-				/* each arg needs casting up to int size, if smaller */
-				if(type_ref_size(earg->tree_type, &earg->where) < int_sz)
-					out_cast(earg->tree_type, type_ref_new_INT());
 			}
 		}
 
