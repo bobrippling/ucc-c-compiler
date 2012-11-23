@@ -162,14 +162,15 @@ static type_ref *parse_btype(enum decl_storage *store)
 			EAT(curtok);
 
 		}else if(curtok_is_decl_store()){
-			if(!store)
-				DIE_AT(NULL, "storage unwanted (%s)", decl_store_to_str(*store));
+			const enum decl_storage st = curtok_to_decl_storage();
 
-			*store = curtok_to_decl_storage();
+			if(!store)
+				DIE_AT(NULL, "storage unwanted (%s)", decl_store_to_str(st));
 
 			if(store_set)
-				DIE_AT(NULL, "second store %s", decl_store_to_str(*store));
+				DIE_AT(NULL, "second store %s", decl_store_to_str(st));
 
+			*store = st;
 			store_set = 1;
 			EAT(curtok);
 
