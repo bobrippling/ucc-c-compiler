@@ -324,6 +324,9 @@ static type_ref *parse_btype(enum decl_storage *store)
 	{
 		type_ref *r;
 
+		if(signed_set && primitive == type__Bool)
+			DIE_AT(NULL, "%ssigned with _Bool", is_signed ? "" : "un");
+
 		if(tdef_typeof){
 			/* signed size_t x; */
 			if(signed_set){
