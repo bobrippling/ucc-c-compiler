@@ -180,9 +180,22 @@ int fold_code_escapable(stmt *s)
 
 static int for_passable(stmt *s)
 {
-	/* if we don't have a condition, check for breaks, etc etc */
-	if(s->flow->for_while)
-		return 1;
+	/* if we don't have a condition, it's an infinite loop;
+	 * check for breaks, etc
+	 *
+	 * if we have a condition that is constant-non-zero, infinite loop;
+	 * check for breaks, etc
+	 */
+
+	if(s->flow->for_while){
+		if(const_expr_and_non_zero(s->flow->for_while)){
+			/* need to check */
+		}else{
+			return 1; /* non-constant expr or zero-expr - passable */
+		}
+	}else{
+		/* need to check - break */
+	}
 
 	return fold_code_escapable(s);
 }

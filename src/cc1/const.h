@@ -4,6 +4,7 @@
 void const_fold(expr *e, intval *iv, enum constyness *success);
 /*int const_expr_is_const(expr *e);*/
 int const_expr_and_zero(expr *e);
+int const_expr_and_non_zero(expr *e);
 /*long const_expr_value(expr *e);*/
 
 #define const_fold_val(e, iv, ...) do{            \
