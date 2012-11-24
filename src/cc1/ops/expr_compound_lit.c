@@ -30,7 +30,7 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 		/* non global - FIXME: check statics */
 		e->code = stmt_new_wrapper(code, stab);
 
-		decl_init_create_assignments(d->init, d->ref, e, e->code);
+		decl_init_create_assignments_for_base(d, e, e->code);
 		fold_stmt(e->code);
 	}else{
 		ICE("TODO: complete array");

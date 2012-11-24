@@ -136,6 +136,7 @@ struct decl
 
 	decl_init *init; /* initialiser - converted to an assignment for non-globals */
 	stmt *func_code;
+#define decl_init_code func_code
 
 	int is_definition;
 	/* true if this is the definition of the decl - may have init or func_code */

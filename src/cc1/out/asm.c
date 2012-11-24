@@ -161,11 +161,13 @@ static void asm_declare_sub(FILE *f, decl_init *init)
 				static int warned;
 
 				asm_declare_sub(f, inits[i]);
-				/* TODO: struct padding for next member */
-				fputs("\n// TODO: struct padding for next\n", f);
+				fputc('\n', f);
 
-				if(!warned)
+				/* TODO: struct padding for next member */
+				if(!warned){
 					ICW("global struct padding TODO"), warned = 1;
+					fputs("// TODO: struct padding for next\n", f);
+				}
 			}
 			break;
 		}

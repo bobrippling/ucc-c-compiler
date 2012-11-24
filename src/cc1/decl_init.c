@@ -14,6 +14,12 @@
 
 #include "decl_init.h"
 
+static void decl_init_create_assignments_discard(
+		decl_init *dinit,
+		type_ref *const tfor_wrapped,
+		expr *base,
+		stmt *init_code);
+
 int decl_init_len(decl_init *di)
 {
  switch(di->type){
@@ -47,16 +53,12 @@ int decl_init_is_const(decl_init *dinit, symtable *stab)
 		case decl_init_brace:
 		{
 			decl_init **i;
-			int k = 1;
 
-			for(i = dinit->bits.inits; i && *i; i++){
-				int sub_k = decl_init_is_const(*i, stab);
+			for(i = dinit->bits.inits; i && *i; i++)
+				if(!decl_init_is_const(*i, stab))
+					return 0;
 
-				if(!sub_k)
-					k = 0;
-			}
-
-			return k;
+			return 1;
 		}
 	}
 
@@ -81,57 +83,7 @@ const char *decl_init_to_str(enum decl_init_type t)
 	return NULL;
 }
 
-void decl_init_complete_array(decl_init *dinit, type_ref **ptfor)
-{
-	/* if we're completing an array, count the subinits and take the tfor into account
-	 * e.g. competing: int x[][2] = { 1, 2, 3, 4 }
-	 *
-	 * tfor = int[2]
-	 * decl_init = { type = brace, bits.inits = { 1, 2, 3, 4 } }
-	 *
-	 * first:
-	 *   sub_type_sz / primitive_sz
-	 *   sizeof(int[2]) / sizeof(int) = 2
-	 *
-	 * then:
-	 *   ninits / calc_sz
-	 *   4 / 2 = 2
-	 *
-	 * -> complete to two
-	 */
-	type_ref *tfor = *ptfor;
-
-	if(!type_ref_is(tfor, type_ref_array))
-		return;
-
-	if(dinit->type != decl_init_brace) /* FIXME: char x[] = "hi" */
-		DIE_AT(&dinit->where, "can't initalise (incomplete) array with non-brace list");
-
-	{
-		const int ninits = dynarray_count((void **)dinit->bits.inits);
-
-		int sub_type_sz  = type_ref_size(tfor, &dinit->where),
-				primitive_sz = type_size(type_ref_get_type(tfor), &dinit->where);
-
-		int calc_sz = sub_type_sz / primitive_sz;
-
-		int complete_to = ninits / calc_sz;
-
-		fprintf(stderr, "%d / %d = %d\n", ninits, calc_sz, complete_to);
-		fprintf(stderr, "complete to = %d for %s\n", complete_to, type_ref_to_str(tfor));
-		*ptfor = type_ref_complete_array(tfor, complete_to);
-	}
-
-#if 0
-	ICE("TODO: decl init for %s from %s (%d inits)",
-			type_ref_to_str(tfor),
-			decl_init_to_str(init_from->type),
-			init_from->type == decl_init_brace ? dynarray_count(init_from->bits.inits)
-			: 0);
-#endif
-}
-
-void decl_initialise_array(decl_init *dinit, type_ref *tfor, expr *base, stmt *init_code)
+type_ref *decl_initialise_array(decl_init *dinit, type_ref *tfor, expr *base, stmt *init_code)
 {
 	type_ref *tfor_deref;
 	decl_init **it;
@@ -164,13 +116,14 @@ void decl_initialise_array(decl_init *dinit, type_ref *tfor, expr *base, stmt *i
 			this = expr_new_deref(op);
 		}
 
-		if((*it)->type == decl_init_scalar){
-			/* pretty annoying - int x[][2] = { 1, 2, 3, 4 } */
-			ICE("ergh...");
-		}
-
-		decl_init_create_assignments(*it, tfor_deref, this, init_code);
+		decl_init_create_assignments_discard(*it, tfor_deref, this, init_code);
 	}
+
+	/* patch the type size */
+	if(type_ref_is_incomplete_array(tfor))
+		tfor = type_ref_complete_array(tfor, i);
+
+	return tfor;
 }
 
 static void decl_initialise_sue(decl_init *dinit,
@@ -195,7 +148,7 @@ static void decl_initialise_sue(decl_init *dinit,
 				expr_new_identifier(sue_mem->spel));
 
 		if(*p_subinit){
-			decl_init_create_assignments(*p_subinit,
+			decl_init_create_assignments_discard(*p_subinit,
 					sue_mem->ref,
 					accessor,
 					init_code);
@@ -206,7 +159,7 @@ static void decl_initialise_sue(decl_init *dinit,
 	}
 }
 
-void decl_init_create_assignments(
+static type_ref *decl_init_create_assignments(
 		decl_init *dinit,
 		type_ref *const tfor_wrapped, /* could be typedef/cast */
 		expr *base,
@@ -214,11 +167,11 @@ void decl_init_create_assignments(
 {
 	/* iterate over tfor's array/struct members/scalar,
 	 * pulling from dinit as necessary */
-	type_ref *tfor;
+	type_ref *tfor, *tfor_ret = tfor_wrapped;
 	struct_union_enum_st *sue;
 
 	if((tfor = type_ref_is(tfor_wrapped, type_ref_array))){
-		decl_initialise_array(dinit, tfor, base, init_code);
+		tfor_ret = decl_initialise_array(dinit, tfor, base, init_code);
 
 	}else if((sue = type_ref_is_s_or_u(tfor_wrapped))){
 		decl_initialise_sue(dinit, sue, base, init_code);
@@ -251,18 +204,29 @@ zero_init:
 		dynarray_add((void ***)&init_code->codes,
 				expr_to_stmt(assign_init, init_code->symtab));
 	}
+
+	return tfor_ret;
+}
+
+static void decl_init_create_assignments_discard(
+		decl_init *dinit, type_ref *const tfor_wrapped,
+		expr *base, stmt *init_code)
+{
+	type_ref *t = decl_init_create_assignments(dinit, tfor_wrapped, base, init_code);
+
+	if(t != tfor_wrapped)
+		type_ref_free_1(t);
 }
 
 void decl_init_create_assignments_for_spel(decl *d, stmt *init_code)
 {
-	/* special case of incomplete-array */
-	if(d->init->type == decl_init_brace
-	&& type_ref_is_incomplete_array(d->ref))
-	{
-		decl_init_complete_array(d->init, &d->ref);
-	}
-
-	decl_init_create_assignments(
+	d->ref = decl_init_create_assignments(
 			d->init, d->ref,
 			expr_new_identifier(d->spel), init_code);
+}
+
+void decl_init_create_assignments_for_base(decl *d, expr *base, stmt *init_code)
+{
+	d->ref = decl_init_create_assignments(
+			d->init, d->ref, base, init_code);
 }
