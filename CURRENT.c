@@ -1,1 +1,1 @@
-test2/initialisation/global_array.c
+test2/initialisation/varied.c
