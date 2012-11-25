@@ -386,6 +386,9 @@ void fold_decl_global_init(decl *d, symtable *stab)
 	if(!d->init)
 		return;
 
+	/* TODO: e.g. _Bool x = 5; */
+	fold_insert_casts(d->ref, d->init); /* or something like that */
+
 	EOF_WHERE(&d->where,
 			assignments = stmt_new_wrapper(code, symtab_new(stab));
 
