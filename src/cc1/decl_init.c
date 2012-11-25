@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <assert.h>
+#include <stdlib.h>
 
 #include "../util/util.h"
 #include "../util/dynarray.h"
@@ -74,6 +75,11 @@ decl_init *decl_init_new(enum decl_init_type t)
 	return di;
 }
 
+void decl_init_free_1(decl_init *di)
+{
+	free(di);
+}
+
 const char *decl_init_to_str(enum decl_init_type t)
 {
 	switch(t){
@@ -86,11 +92,11 @@ const char *decl_init_to_str(enum decl_init_type t)
 type_ref *decl_initialise_array(decl_init *dinit, type_ref *tfor, expr *base, stmt *init_code)
 {
 	type_ref *tfor_deref;
-	decl_init **it;
-	int i;
+	int complete_to = 0;
 
-	switch(dinit->type){
+	switch(dinit ? dinit->type : decl_init_brace){
 		case decl_init_scalar:
+			/* if we're nested, pull as many as we need from the init */
 			/* FIXME: can't check tree_type - fold hasn't occured yet */
 			if((tfor = type_ref_is(dinit->bits.expr->tree_type, type_ref_ptr))
 					&& type_ref_is_type(tfor->ref, type_char))
@@ -106,22 +112,87 @@ type_ref *decl_initialise_array(decl_init *dinit, type_ref *tfor, expr *base, st
 
 	tfor_deref = type_ref_is(tfor, type_ref_array)->ref;
 
-	/* FIXME: bounds checking */
-	for(i = 0, it = dinit->bits.inits; it && *it; it++, i++){
-		expr *this;
-		/* `base`[i] */ {
-			expr *op = expr_new_op(op_plus);
-			op->lhs = base;
-			op->rhs = expr_new_val(i);
-			this = expr_new_deref(op);
-		}
+	/* walk through the inits, pulling as many as we need/one sub-brace for a sub-init */
+	/* e.g.
+	 * int x[]    = { 1, 2, 3 };    subinit = int,    pull 1 for each
+	 * int x[][2] = { 1, 2, 3, 4 }  subinit = int[2], pull 2 for each
+	 *
+	 * int x[][2] = { {1}, 2, 3, {4}, 5, {6}, {7} };
+	 * subinit = int[2], pull as show:
+	 *              { {1}, 2, 3, {4}, 5, {6}, {7} };
+	 *                 ^   ^--^   ^   ^   ^    ^      -> 6 inits
+	 */
 
-		decl_init_create_assignments_discard(*it, tfor_deref, this, init_code);
+	{
+		decl_init **it = dinit ? dinit->bits.inits : NULL;
+		decl_init *chosen;
+		const int n = dynarray_count((void **)it);
+		int i;
+
+		for(i = 0; i < n;){
+			int free_chosen = 0;
+			int this_count;
+
+			/* index into the main-array */
+			expr *this;
+			/* `base`[i] */ {
+				expr *op = expr_new_op(op_plus);
+				op->lhs = base;
+				op->rhs = expr_new_val(i);
+				this = expr_new_deref(op);
+			}
+
+			if(it){
+				if(it[i]->type == decl_init_brace){
+					/* just pass this in - sub-initalised fully */
+					chosen = it[i];
+					this_count = 1;
+				}else{
+					/* pull as many _scalars_ as we need */
+					int max, j;
+
+					if(type_ref_is(tfor_deref, type_ref_array)){
+						max = type_ref_array_len(tfor_deref);
+					}else{
+						/* assume scalar for now */
+						max = 1;
+					}
+
+					free_chosen = 1;
+					chosen = decl_init_new(decl_init_brace);
+					chosen->bits.inits = umalloc((max + 1) * sizeof *chosen->bits.inits);
+
+					for(j = 0; j < max; j++)
+						chosen->bits.inits[j + i] = it[i];
+
+					while(j < max){
+						decl_init *tim;
+						tim = chosen->bits.inits[j + i] = decl_init_new(decl_init_scalar);
+						tim->bits.expr = expr_new_val(0);
+					}
+
+					this_count = max;
+				}
+			}else{
+				/* fill with zero */
+				chosen = NULL;
+				this_count = 1;
+			}
+
+			decl_init_create_assignments_discard(chosen, tfor_deref, this, init_code);
+
+			complete_to++;
+			i += this_count;
+
+			if(free_chosen){
+				decl_init_free_1(chosen);
+			}
+		}
 	}
 
 	/* patch the type size */
 	if(type_ref_is_incomplete_array(tfor))
-		tfor = type_ref_complete_array(tfor, i);
+		tfor = type_ref_complete_array(tfor, complete_to);
 
 	return tfor;
 }
@@ -132,6 +203,9 @@ static void decl_initialise_sue(decl_init *dinit,
 	/* iterate over each member, pulling from the dinit */
 	sue_member **smem;
 	decl_init **p_subinit;
+
+	if(dinit == NULL)
+		ICE("TODO: null dinit for struct");
 
 	if(dinit->type != decl_init_brace)
 		DIE_AT(&dinit->where, "%s must be initalised with initialiser list",
@@ -180,7 +254,7 @@ static type_ref *decl_init_create_assignments(
 		expr *assign_from, *assign_init;
 
 		if(dinit){
-			while(dinit->type == decl_init_brace){
+			while(dinit && dinit->type == decl_init_brace){
 				WARN_AT(&dinit->where, "excess braces around scalar initialiser");
 
 				if(dinit->bits.inits){
@@ -190,6 +264,9 @@ static type_ref *decl_init_create_assignments(
 					goto zero_init;
 				}
 			}
+
+			if(!dinit)
+				goto zero_init;
 
 			assert(dinit->type == decl_init_scalar);
 			assign_from = dinit->bits.expr;
