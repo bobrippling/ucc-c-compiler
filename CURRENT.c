@@ -1,1 +1,0 @@
-test2/initialisation/varied.c
