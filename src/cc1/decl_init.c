@@ -110,7 +110,7 @@ static type_ref *decl_initialise_array(
 				ICE("TODO: array init with string literal");
 			}
 
-			//DIE_AT(&dinit->where, "array must be initalised with initialiser list");
+			/* check for scalar init isn't done here */
 			break;
 
 		case decl_init_brace:
@@ -119,12 +119,6 @@ static type_ref *decl_initialise_array(
 
 	tfor = tfor_wrapped;
 	tfor_deref = type_ref_is(tfor_wrapped, type_ref_array)->ref;
-
-	if(dinit && dinit->type == decl_init_scalar){
-		ICW("allowing scalar init for now, on type %s, deref %s",
-				type_ref_to_str_r((char[TYPE_REF_STATIC_BUFSIZ]){0}, tfor),
-				type_ref_to_str_r((char[TYPE_REF_STATIC_BUFSIZ]){0}, tfor_deref));
-	}
 
 	/* walk through the inits, pulling as many as we need/one sub-brace for a sub-init */
 	/* e.g.
@@ -185,10 +179,6 @@ static void decl_initialise_sue(decl_init ***init_iter,
 
 	if(dinit == NULL)
 		ICE("TODO: null dinit for struct");
-
-	if(dinit->type != decl_init_brace) /* also TODO */
-		ICW("%s must be initalised with initialiser list", sue_str(sue));
-
 
 	sue_iter = (dinit->type == decl_init_scalar ? *init_iter : dinit->bits.inits);
 
@@ -289,6 +279,18 @@ static type_ref *decl_init_create_assignments_from_init(
 {
 	decl_init *ar[] = { single_init, NULL };
 	decl_init **it = ar;
+	struct_union_enum_st *sue;
+
+	/* init validity checks */
+	if(single_init->type == decl_init_scalar){
+		if((sue = type_ref_is_s_or_u(tfor_wrapped))
+		||        type_ref_is(       tfor_wrapped, type_ref_array))
+		{
+			DIE_AT(&single_init->where, "%s must be initalised with an initialiser list",
+					sue ? sue_str(sue) : "array");
+		}
+	}
+
 
 	return decl_init_create_assignments(
 			&it, tfor_wrapped, base, init_code);
