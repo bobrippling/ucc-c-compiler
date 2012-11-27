@@ -278,6 +278,10 @@ zero_init:
 		assign_init = expr_new_assign(base, assign_from);
 		assign_init->assign_is_init = 1;
 
+		/* FIXME */
+		fold_insert_casts(tfor_wrapped, &assign_init->rhs,
+				init_code->symtab, &dinit->where, "initalisation");
+
 		dynarray_add((void ***)&init_code->codes,
 				expr_to_stmt(assign_init, init_code->symtab));
 	}
