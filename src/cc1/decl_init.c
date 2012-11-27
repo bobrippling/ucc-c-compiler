@@ -15,6 +15,8 @@
 
 #include "decl_init.h"
 
+#define INIT_DEBUG(...) /*fprintf(stderr, __VA_ARGS__)*/
+
 static void decl_init_create_assignments_discard(
 		decl_init ***init_iter,
 		type_ref *const tfor_wrapped,
@@ -91,10 +93,10 @@ const char *decl_init_to_str(enum decl_init_type t)
 
 static type_ref *decl_initialise_array(
 		decl_init ***init_iter,
-		type_ref *tfor, expr *base, stmt *init_code)
+		type_ref *const tfor_wrapped, expr *base, stmt *init_code)
 {
 	decl_init *dinit = **init_iter;
-	type_ref *tfor_deref;
+	type_ref *tfor_deref, *tfor;
 	int complete_to = 0;
 
 	switch(dinit ? dinit->type : decl_init_brace){
@@ -108,12 +110,21 @@ static type_ref *decl_initialise_array(
 				ICE("TODO: array init with string literal");
 			}
 
-			DIE_AT(&dinit->where, "array must be initalised with initialiser list");
+			//DIE_AT(&dinit->where, "array must be initalised with initialiser list");
+			break;
+
 		case decl_init_brace:
 			break;
 	}
 
-	tfor_deref = type_ref_is(tfor, type_ref_array)->ref;
+	tfor = tfor_wrapped;
+	tfor_deref = type_ref_is(tfor_wrapped, type_ref_array)->ref;
+
+	if(dinit && dinit->type == decl_init_scalar){
+		ICW("allowing scalar init for now, on type %s, deref %s",
+				type_ref_to_str_r((char[TYPE_REF_STATIC_BUFSIZ]){0}, tfor),
+				type_ref_to_str_r((char[TYPE_REF_STATIC_BUFSIZ]){0}, tfor_deref));
+	}
 
 	/* walk through the inits, pulling as many as we need/one sub-brace for a sub-init */
 	/* e.g.
@@ -127,12 +138,10 @@ static type_ref *decl_initialise_array(
 	 */
 
 	if(dinit){
+		decl_init **array_iter = (dinit->type == decl_init_scalar ? *init_iter : dinit->bits.inits);
 		int i;
-		decl_init **start = *init_iter;
 
-		fprintf(stderr, "B init_iter = %p, start = %p\n", *init_iter, start);
-
-		for(i = 0; **init_iter;){
+		for(i = 0; *array_iter; i++){
 			/* index into the main-array */
 			expr *this;
 			{ /* `base`[i] */
@@ -142,21 +151,23 @@ static type_ref *decl_initialise_array(
 				this = expr_new_deref(op);
 			}
 
-			decl_init_create_assignments_discard(
-					init_iter, tfor_deref, this, init_code);
+			INIT_DEBUG("initalising (%s)[%d] with %s\n",
+					type_ref_to_str(tfor), i,
+					decl_init_to_str((*array_iter)->type));
 
-			i++;
+			decl_init_create_assignments_discard(
+					&array_iter, tfor_deref, this, init_code);
 		}
 
-		fprintf(stderr, "E init_iter = %p, start = %p\n", *init_iter, start);
-		complete_to = *init_iter - start;
+		complete_to = i; /* array_iter - start */
+		*init_iter += complete_to;
 	}
 
 	/* patch the type size */
 	if(type_ref_is_incomplete_array(tfor)){
 		tfor = type_ref_complete_array(tfor, complete_to);
 
-		fprintf(stderr, "completed array to %d - %s\n",
+		INIT_DEBUG("completed array to %d - %s\n",
 				complete_to, type_ref_to_str(tfor));
 	}
 
@@ -169,17 +180,21 @@ static void decl_initialise_sue(decl_init ***init_iter,
 	/* iterate over each member, pulling from the dinit */
 	sue_member **smem;
 	decl_init *dinit = **init_iter;
+	decl_init **sue_iter;
+	int cnt;
 
 	if(dinit == NULL)
 		ICE("TODO: null dinit for struct");
 
-	if(dinit->type != decl_init_brace)
-		DIE_AT(&dinit->where, "%s must be initalised with initialiser list",
-				sue_str(sue));
+	if(dinit->type != decl_init_brace) /* also TODO */
+		ICW("%s must be initalised with initialiser list", sue_str(sue));
 
-	for(smem = sue->members;
+
+	sue_iter = (dinit->type == decl_init_scalar ? *init_iter : dinit->bits.inits);
+
+	for(smem = sue->members, cnt = 0;
 			smem && *smem;
-			smem++)
+			smem++, cnt++)
 	{
 		decl *const sue_mem = (*smem)->struct_member;
 
@@ -188,11 +203,13 @@ static void decl_initialise_sue(decl_init ***init_iter,
 				expr_new_identifier(sue_mem->spel));
 
 		decl_init_create_assignments_discard(
-				init_iter,
+				&sue_iter,
 				sue_mem->ref,
 				accessor,
 				init_code);
 	}
+
+	*init_iter += cnt;
 }
 
 static void decl_initialise_scalar(
@@ -226,11 +243,8 @@ static void decl_initialise_scalar(
 	dynarray_add((void ***)&init_code->codes,
 			expr_to_stmt(assign_init, init_code->symtab));
 
-	if(dinit){
-fin:
-		++*init_iter; /* we've used this init */
-		fprintf(stderr, "PLUS PLUS -> %p\n", *init_iter);
-	}
+	if(dinit)
+fin: ++*init_iter; /* we've used this init */
 }
 
 static type_ref *decl_init_create_assignments(
@@ -273,7 +287,7 @@ static type_ref *decl_init_create_assignments_from_init(
 		expr *base,
 		stmt *init_code)
 {
-	decl_init *ar[2] = { single_init, NULL };
+	decl_init *ar[] = { single_init, NULL };
 	decl_init **it = ar;
 
 	return decl_init_create_assignments(
