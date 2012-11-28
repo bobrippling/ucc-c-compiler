@@ -16,6 +16,7 @@
 
 #include "decl_init.h"
 
+#if 0
 static int init_debug_depth;
 
 ucc_printflike(1, 2) void INIT_DEBUG(const char *fmt, ...)
@@ -30,6 +31,13 @@ ucc_printflike(1, 2) void INIT_DEBUG(const char *fmt, ...)
 	vfprintf(stderr, fmt, l);
 	va_end(l);
 }
+
+#  define INIT_DEBUG_DEPTH(op) init_debug_depth op
+#  define DEBUG_DECL_INIT 1
+#else
+#  define INIT_DEBUG_DEPTH(op)
+#  define INIT_DEBUG(...)
+#endif
 
 static void decl_init_create_assignments_discard(
 		decl_init ***init_iter,
@@ -149,10 +157,12 @@ static type_ref *decl_initialise_array(
 		decl_init **array_iter = (dinit->type == decl_init_scalar ? *init_iter : dinit->bits.inits);
 		const int lim = type_ref_is_incomplete_array(tfor) ? INT_MAX : type_ref_array_len(tfor);
 		int i;
+#ifdef DEBUG_DECL_INIT
 		decl_init **start = array_iter;
+#endif
 
 		INIT_DEBUG("initialising array from %s\n", decl_init_to_str(dinit->type));
-		init_debug_depth++;
+		INIT_DEBUG_DEPTH(++);
 
 		for(i = 0; *array_iter && i < lim; i++){
 			/* index into the main-array */
@@ -168,16 +178,16 @@ static type_ref *decl_initialise_array(
 					type_ref_to_str(tfor), i,
 					decl_init_to_str((*array_iter)->type));
 
-			init_debug_depth++;
+			INIT_DEBUG_DEPTH(++);
 			decl_init_create_assignments_discard(
 					&array_iter, tfor_deref, this, init_code);
-			init_debug_depth--;
+			INIT_DEBUG_DEPTH(--);
 		}
 
 		complete_to = i;
 		*init_iter += complete_to; /* advance by the number of steps we moved over */
 
-		init_debug_depth--;
+		INIT_DEBUG_DEPTH(--);
 		INIT_DEBUG("array, len %d finished, i=%d, *array_iter=%p, array_iter-start = %ld <-- adv-by\n",
 				complete_to, i, (void *)*array_iter, (long)(array_iter - start));
 	}
