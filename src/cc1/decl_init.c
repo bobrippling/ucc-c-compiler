@@ -153,7 +153,7 @@ static type_ref *decl_initialise_array(
 					&array_iter, tfor_deref, this, init_code);
 		}
 
-		complete_to = i; /* array_iter - start */
+		complete_to = i + 1; /* array_iter - start */
 		*init_iter += complete_to;
 	}
 
