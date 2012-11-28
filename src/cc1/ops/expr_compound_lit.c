@@ -79,23 +79,32 @@ void gen_expr_str_compound_lit(expr *e, symtable *stab)
 {
 	decl *const d = e->val.decl;
 
-	(void)stab;
-	idt_printf("(%s){\n", decl_to_str(d));
+	if(e->op)
+		return;
 
-	gen_str_indent++;
-	print_decl(d,
-			PDECL_NONE         |
-			PDECL_INDENT       |
-			PDECL_NEWLINE      |
-			PDECL_SYM_OFFSET   |
-			PDECL_FUNC_DESCEND |
-			PDECL_PISDEF       |
-			PDECL_PINIT        |
-			PDECL_SIZE         |
-			PDECL_ATTR);
-	gen_str_indent--;
+	e->op = 1;
+	{
+		(void)stab;
+		idt_printf("(%s){\n", decl_to_str(d));
 
-	idt_printf("}\n");
+		gen_str_indent++;
+		print_decl(d,
+				PDECL_NONE         |
+				PDECL_INDENT       |
+				PDECL_NEWLINE      |
+				PDECL_SYM_OFFSET   |
+				PDECL_FUNC_DESCEND |
+				PDECL_PISDEF       |
+				PDECL_PINIT        |
+				PDECL_SIZE         |
+				PDECL_ATTR);
+		gen_str_indent--;
+
+		idt_printf("}\n");
+		idt_printf("init code:\n");
+		print_stmt(e->code);
+	}
+	e->op = 0;
 }
 
 void gen_expr_style_compound_lit(expr *e, symtable *stab)
