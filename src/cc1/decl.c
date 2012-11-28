@@ -465,8 +465,13 @@ static int type_ref_equal_r(type_ref *a, type_ref *b, enum decl_cmp mode)
 			const_fold_need_val(a->bits.array_size, &av);
 			const_fold_need_val(b->bits.array_size, &bv);
 
-			if(av.val != bv.val)
-				return 0;
+			if(av.val != bv.val){
+				/* if exact match, they're not equal, otherwise allow av.val to be zero */
+				if(mode & DECL_CMP_EXACT_MATCH)
+					return 0;
+				if(av.val != 0)
+					return 0;
+			}
 
 			goto ref_eq;
 		}
