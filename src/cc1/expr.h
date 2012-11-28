@@ -52,7 +52,6 @@ struct expr
 	{
 		intval iv;
 		char *s;
-		decl_init *init;
 		type_ref *tref;
 		decl *decl;
 		type_ref **types;

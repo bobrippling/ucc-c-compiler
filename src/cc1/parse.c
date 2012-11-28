@@ -197,9 +197,8 @@ expr *parse_expr_primary()
 					if(curtok == token_open_block){
 						/* C99 compound lit. */
 						decl_init *init = parse_initialisation();
-						e->val.init = init;
 
-						expr_mutate_wrapper(e, compound_lit);
+						expr_compound_lit_from_cast(e, init);
 
 					}else{
 						e->expr = parse_expr_cast(); /* another cast */

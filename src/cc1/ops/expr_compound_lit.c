@@ -3,8 +3,6 @@
 #include "../out/asm.h"
 #include "../decl_init.h"
 
-#define PARSED_DINIT(e) ((e)->val.init)
-
 const char *str_expr_compound_lit(void)
 {
 	return "compound-lit";
@@ -12,32 +10,25 @@ const char *str_expr_compound_lit(void)
 
 void fold_expr_compound_lit(expr *e, symtable *stab)
 {
-	decl *d;
+	decl *d = e->val.decl;
 
 	if(e->code)
 		return; /* being called from fold_gen_init_assignment_base */
-
-	d = decl_new();
-	d->ref = e->val.tref; /* from expr_cast */
-	e->val.decl = d;
 
 	/* must be set before the recursive fold_gen_init_assignment_base */
 	e->tree_type = d->ref;
 
 	e->sym = SYMTAB_ADD(stab, d, sym_local);
 
-	if(stab->parent){
-		/* non global - FIXME: check statics */
-		e->code = stmt_new_wrapper(code, stab);
+	/* create the code for assignemnts */
+	e->code = stmt_new_wrapper(code, stab);
+	/* create assignments (even for static/global) */
+	decl_init_create_assignments_for_base(d, e, e->code);
 
-		decl_init_create_assignments_for_base(d, e, e->code);
-		fold_stmt(e->code);
-	}else{
-		ICE("TODO: complete array");
-		/*fold_complete_array(&d->ref, d->init);*/
-
+	if(stab->parent)
+		fold_stmt(e->code); /* folds the assignments */
+	else
 		fold_decl_global_init(d, stab);
-	}
 }
 
 static void gen_expr_compound_lit_code(expr *e)
@@ -79,7 +70,8 @@ void const_expr_compound_lit(expr *e, intval *piv, enum constyness *pconst_type)
 {
 	(void)piv;
 
-	*pconst_type = decl_init_is_const(PARSED_DINIT(e), NULL /* shouldn't be needed */)
+	*pconst_type = decl_init_is_const(
+			e->val.decl->init, NULL /* shouldn't be needed */)
 		? CONST_WITHOUT_VAL : CONST_NO;
 }
 
@@ -113,4 +105,16 @@ void mutate_expr_compound_lit(expr *e)
 {
 	e->f_lea = lea_expr_compound_lit;
 	e->f_const_fold = const_expr_compound_lit;
+}
+
+void expr_compound_lit_from_cast(expr *e, decl_init *init)
+{
+	decl *d = decl_new();
+
+	d->init = init;
+	d->ref = e->val.tref; /* from cast */
+
+	e->val.decl = d;
+
+	expr_mutate_wrapper(e, compound_lit);
 }
