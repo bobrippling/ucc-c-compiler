@@ -2,6 +2,7 @@
 #include <stdarg.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <limits.h>
 
 #include "../util/util.h"
 #include "../util/dynarray.h"
@@ -17,7 +18,7 @@
 
 static int init_debug_depth;
 
-void INIT_DEBUG(const char *fmt, ...)
+ucc_printflike(1, 2) void INIT_DEBUG(const char *fmt, ...)
 {
 	va_list l;
 	int i;
@@ -146,11 +147,11 @@ static type_ref *decl_initialise_array(
 
 	if(dinit){
 		decl_init **array_iter = (dinit->type == decl_init_scalar ? *init_iter : dinit->bits.inits);
-		const int lim = type_ref_is_incomplete_array(tfor) ? 32768 : type_ref_array_len(tfor);
+		const int lim = type_ref_is_incomplete_array(tfor) ? INT_MAX : type_ref_array_len(tfor);
 		int i;
+		decl_init **start = array_iter;
 
-#define IDENT (void *)&array_iter
-		INIT_DEBUG("initialising array %p from %s\n", IDENT, decl_init_to_str(dinit->type));
+		INIT_DEBUG("initialising array from %s\n", decl_init_to_str(dinit->type));
 		init_debug_depth++;
 
 		for(i = 0; *array_iter && i < lim; i++){
@@ -174,17 +175,11 @@ static type_ref *decl_initialise_array(
 		}
 
 		complete_to = i;
-
-		/* if we haven't exhausted the init, i is an index.
-		 * increment it to make it a count */
-		if(!*array_iter)
-			complete_to++;
-
-		*init_iter += complete_to;
+		*init_iter += complete_to; /* advance by the number of steps we moved over */
 
 		init_debug_depth--;
-		INIT_DEBUG("array %p len %d (finished, i=%d, *array_iter=%p)\n",
-				IDENT, complete_to, i, (void *)*array_iter);
+		INIT_DEBUG("array, len %d finished, i=%d, *array_iter=%p, array_iter-start = %ld <-- adv-by\n",
+				complete_to, i, (void *)*array_iter, (long)(array_iter - start));
 	}
 
 	/* patch the type size */
