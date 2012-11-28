@@ -382,8 +382,11 @@ funcargs *type_ref_funcargs(type_ref *r)
 {
 	type_ref *test;
 
-	if((test = type_ref_is(r, type_ref_ptr)))
+	if((test = type_ref_is(r, type_ref_ptr))
+	|| (test = type_ref_is(r, type_ref_block)))
+	{
 		r = test->ref; /* jump down past the (*)() */
+	}
 
 	r = type_ref_is(r, type_ref_func);
 

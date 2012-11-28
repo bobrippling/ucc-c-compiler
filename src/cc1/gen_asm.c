@@ -105,7 +105,8 @@ void gen_asm_global(decl *d)
 				where_str(&d->attr->where), d->attr->attr_extra.section, d->spel);
 
 	/* order of the if matters */
-	if(DECL_IS_FUNC(d)){
+	if(d->func_code || DECL_IS_FUNC(d)){
+		/* check .func_code, since it could be a block */
 		int nargs = 0;
 		decl **aiter;
 
