@@ -215,6 +215,13 @@ static void decl_initialise_sue(decl_init ***init_iter,
 	if(dinit == NULL)
 		ICE("TODO: null dinit for struct");
 
+	if(sue_incomplete(sue)){
+		type_ref *r = type_ref_new_type(type_new_primitive(type_struct));
+		r->bits.type->sue = sue;
+
+		DIE_AT(&dinit->where, "initialising %s", type_ref_to_str(r));
+	}
+
 	sue_iter = (dinit->type == decl_init_scalar ? *init_iter : dinit->bits.inits);
 
 	for(smem = sue->members, cnt = 0;
