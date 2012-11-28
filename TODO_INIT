@@ -12,3 +12,9 @@ non-braced init:
 designated init + zero for the rest:
 	int x[] = { [3] = 5 };
 	struct { int x, y, z; } q = { .y = 2, 3 };
+
+sizeof(int){} parsing
+
+bugs:
+	not enough space - array/nobrace.c
+	struct/{array_of.c,nested_array_of_arrays.c}
