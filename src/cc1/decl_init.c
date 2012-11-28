@@ -15,7 +15,20 @@
 
 #include "decl_init.h"
 
-#define INIT_DEBUG(...) /*fprintf(stderr, __VA_ARGS__)*/
+static int init_debug_depth;
+
+void INIT_DEBUG(const char *fmt, ...)
+{
+	va_list l;
+	int i;
+
+	for(i = init_debug_depth; i > 0; i--)
+		fputs("  ", stderr);
+
+	va_start(l, fmt);
+	vfprintf(stderr, fmt, l);
+	va_end(l);
+}
 
 static void decl_init_create_assignments_discard(
 		decl_init ***init_iter,
@@ -133,9 +146,14 @@ static type_ref *decl_initialise_array(
 
 	if(dinit){
 		decl_init **array_iter = (dinit->type == decl_init_scalar ? *init_iter : dinit->bits.inits);
+		const int lim = type_ref_is_incomplete_array(tfor) ? 32768 : type_ref_array_len(tfor);
 		int i;
 
-		for(i = 0; *array_iter; i++){
+#define IDENT (void *)&array_iter
+		INIT_DEBUG("initialising array %p from %s\n", IDENT, decl_init_to_str(dinit->type));
+		init_debug_depth++;
+
+		for(i = 0; *array_iter && i < lim; i++){
 			/* index into the main-array */
 			expr *this;
 			{ /* `base`[i] */
@@ -145,16 +163,28 @@ static type_ref *decl_initialise_array(
 				this = expr_new_deref(op);
 			}
 
-			INIT_DEBUG("initalising (%s)[%d] with %s\n",
+			INIT_DEBUG("initialising (%s)[%d] with %s\n",
 					type_ref_to_str(tfor), i,
 					decl_init_to_str((*array_iter)->type));
 
+			init_debug_depth++;
 			decl_init_create_assignments_discard(
 					&array_iter, tfor_deref, this, init_code);
+			init_debug_depth--;
 		}
 
-		complete_to = i + 1; /* array_iter - start */
+		complete_to = i;
+
+		/* if we haven't exhausted the init, i is an index.
+		 * increment it to make it a count */
+		if(!*array_iter)
+			complete_to++;
+
 		*init_iter += complete_to;
+
+		init_debug_depth--;
+		INIT_DEBUG("array %p len %d (finished, i=%d, *array_iter=%p)\n",
+				IDENT, complete_to, i, (void *)*array_iter);
 	}
 
 	/* patch the type size */
