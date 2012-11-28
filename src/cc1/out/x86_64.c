@@ -19,6 +19,11 @@
 #  define MIN(x, y) ((x) < (y) ? (x) : (y))
 #endif
 
+
+#define NUM_FMT "%d"
+/* format for movl $5, -0x6(%rbp) asm output
+                        ^~~                    */
+
 #define REG_STR_SZ 8
 
 #define REG_A 0
@@ -147,7 +152,7 @@ static const char *vstack_str_r_ptr(char buf[VSTACK_STR_SZ], struct vstack *vs, 
 		case STACK_SAVE:
 		{
 			int n = vs->bits.off_from_bp;
-			SNPRINTF(buf, VSTACK_STR_SZ, "%s0x%x(%%rbp)", n < 0 ? "-" : "", abs(n));
+			SNPRINTF(buf, VSTACK_STR_SZ, "%s" NUM_FMT "(%%rbp)", n < 0 ? "-" : "", abs(n));
 			break;
 		}
 	}
@@ -182,7 +187,7 @@ int impl_alloc_stack(int sz)
 
 	if(sz){
 		const int extra = sz % word_size ? word_size - sz % word_size : 0;
-		out_asm("subq $0x%x, %%rsp", sz += extra);
+		out_asm("subq $" NUM_FMT ", %%rsp", sz += extra);
 	}
 
 	return stack_sz + sz;
@@ -230,7 +235,7 @@ void impl_func_prologue(int stack_res, int nargs, int variadic)
 #else
 			stack_res += nargs * platform_word_size();
 
-			out_asm("mov%c %%%s, -0x%x(%%rbp)",
+			out_asm("mov%c %%%s, -" NUM_FMT "(%%rbp)",
 					asm_type_ch(NULL),
 					call_reg_str(arg_idx, NULL),
 					platform_word_size() * (arg_idx + 1));
@@ -890,7 +895,7 @@ void impl_call(const int nargs, decl *d_ret, decl *d_func)
 	}
 
 	if(ncleanup)
-		out_asm("addq $0x%x, %%rsp", ncleanup * platform_word_size());
+		out_asm("addq $" NUM_FMT ", %%rsp", ncleanup * platform_word_size());
 
 	/* return type */
 	vtop_clear(d_ret);
