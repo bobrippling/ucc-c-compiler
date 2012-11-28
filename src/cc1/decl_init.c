@@ -214,7 +214,7 @@ static void decl_initialise_scalar(
 			decl_init **inits = dinit->bits.inits;
 
 			if(inits && inits[1])
-				WARN_AT(&inits[1]->where, "excess initalisers for scalar");
+				WARN_AT(&inits[1]->where, "excess initaliser%s", inits[2] ? "s" : "");
 
 			/* this seems to be called when it shouldn't... */
 			decl_initialise_scalar(&inits, base, init_code);
