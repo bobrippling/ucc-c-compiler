@@ -113,6 +113,14 @@ const char *decl_init_to_str(enum decl_init_type t)
 	return NULL;
 }
 
+static expr *expr_new_array_idx(expr *base, int i)
+{
+	expr *op = expr_new_op(op_plus);
+	op->lhs = base;
+	op->rhs = expr_new_val(i);
+	return expr_new_deref(op);
+}
+
 static type_ref *decl_initialise_array(
 		decl_init ***init_iter,
 		type_ref *const tfor_wrapped, expr *base, stmt *init_code)
@@ -155,7 +163,8 @@ static type_ref *decl_initialise_array(
 
 	if(dinit){
 		decl_init **array_iter = (dinit->type == decl_init_scalar ? *init_iter : dinit->bits.inits);
-		const int lim = type_ref_is_incomplete_array(tfor) ? INT_MAX : type_ref_array_len(tfor);
+		const int known_length = !type_ref_is_incomplete_array(tfor);
+		const int lim = known_length ? type_ref_array_len(tfor) : INT_MAX;
 		int i;
 #ifdef DEBUG_DECL_INIT
 		decl_init **start = array_iter;
@@ -164,15 +173,9 @@ static type_ref *decl_initialise_array(
 		INIT_DEBUG("initialising array from %s\n", decl_init_to_str(dinit->type));
 		INIT_DEBUG_DEPTH(++);
 
-		for(i = 0; *array_iter && i < lim; i++){
+		for(i = 0; array_iter && *array_iter && i < lim; i++){
 			/* index into the main-array */
-			expr *this;
-			{ /* `base`[i] */
-				expr *op = expr_new_op(op_plus);
-				op->lhs = base;
-				op->rhs = expr_new_val(i);
-				this = expr_new_deref(op);
-			}
+			expr *this = expr_new_array_idx(base, i);
 
 			INIT_DEBUG("initialising (%s)[%d] with %s\n",
 					type_ref_to_str(tfor), i,
@@ -182,6 +185,17 @@ static type_ref *decl_initialise_array(
 			decl_init_create_assignments_discard(
 					&array_iter, tfor_deref, this, init_code);
 			INIT_DEBUG_DEPTH(--);
+		}
+
+		if(known_length){
+			/* need to zero-fill */
+			for(; i < lim; i++){
+				expr *this = expr_new_array_idx(base, i);
+
+				decl_init_create_assignments_discard(
+						&array_iter /* ptr to null */,
+						tfor_deref, this, init_code);
+			}
 		}
 
 		complete_to = i;
@@ -247,7 +261,7 @@ static void decl_initialise_sue(decl_init ***init_iter,
 static void decl_initialise_scalar(
 		decl_init ***init_iter, expr *base, stmt *init_code)
 {
-	decl_init *const dinit = **init_iter;
+	decl_init *const dinit = *init_iter ? **init_iter : NULL;
 	expr *assign_from, *assign_init;
 
 	if(dinit){
