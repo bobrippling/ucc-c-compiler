@@ -1,3 +1,6 @@
+// RUN: %ucc %s
+// RUN: [ `%ucc %s -S -o- | grep 'mov.*[0123]' | wc -l` -eq 12 ]
+
 p(int (*a)[2])
 {
 	int i, j;

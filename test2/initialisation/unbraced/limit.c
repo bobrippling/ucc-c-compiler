@@ -1,3 +1,7 @@
+// RUN: %ucc -c -o /dev/null %s
+// RUN: %ucc -S -o- %s | grep 5; [ $? -ne 0 ]
+// RUN: %ucc -S -o- %s | %asmcheck %s
+
 a()
 {
 	int (*p)[] = (int[][2]){ 1, 2, { 3, 4, 5 } };

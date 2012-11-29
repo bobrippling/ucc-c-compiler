@@ -1,3 +1,6 @@
+// RUN: echo TODO %s
+// RUN: false
+
 #include <stdio.h>
 
 typedef struct int_struct

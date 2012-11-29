@@ -1,3 +1,6 @@
+// RUN: echo TODO %s
+// RUN: false
+
 typedef struct
 {
 	int n1, n2, n3;

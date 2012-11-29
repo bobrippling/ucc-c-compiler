@@ -1,3 +1,5 @@
+// RUN: %ucc -c %s
+
 typedef struct A A;
 
 main()

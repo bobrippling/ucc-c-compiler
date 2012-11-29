@@ -1,3 +1,6 @@
+// RUN: echo TODO %s
+// RUN: false
+
 #define INIT(...) (int[]){ __VA_ARGS__ }
 
 int y[] = INIT( 5, 6 );

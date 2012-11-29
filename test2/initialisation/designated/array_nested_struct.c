@@ -1,3 +1,6 @@
+// RUN: echo TODO %s
+// RUN: false
+
 #ifdef COMPLEX
 struct format_option {
 	union {

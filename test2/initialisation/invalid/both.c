@@ -1,5 +1,5 @@
-// RUN: %ucc -DAR %s; [ $? -ne 0 ]
-// RUN: %ucc      %s; [ $? -ne 0 ]
+// RUN: %ucc -c -DAR %s; [ $? -ne 0 ]
+// RUN: %ucc -c      %s; [ $? -ne 0 ]
 
 #ifdef AR
 int x[] = 1;

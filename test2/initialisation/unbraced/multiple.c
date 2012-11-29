@@ -1,3 +1,6 @@
+// RUN: %ucc %s -S -o/dev/null
+// RUN: %ucc %s -S -o- | %asmcheck
+
 f()
 {
 	int x[][2] = { 1, 2, 3, 4 };

@@ -1,3 +1,5 @@
+// RUN: [ `%ucc %s -S -o- | grep 'mov.*[123456789]' | wc -l` -eq 9 ]
+
 void f(char *);
 
 main()

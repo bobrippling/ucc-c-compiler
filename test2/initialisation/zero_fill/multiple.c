@@ -1,7 +1,5 @@
-f()
-{
-	int x[2] = { 1 };
-}
+// RUN: [ `%ucc %s -S -o- | grep 'mov.*2' | wc -l` -eq 1 ]
+// RUN: [ `%ucc %s -S -o- | grep 'mov.*0' | wc -l` -eq 3 ]
 
 g()
 {

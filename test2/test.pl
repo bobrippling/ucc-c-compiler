@@ -32,6 +32,7 @@ my %vars = (
 	't'         => $target,
 	'ucc'       => $ucc,
 	'check'     => './check.pl'
+	'asmcheck'  => './asmcheck.pl'
 );
 
 open F, '<', $f or die2 "$f: $!";
