@@ -577,13 +577,19 @@ void fold_func(decl *func_decl)
 			where *where;
 		} the_return = { NULL, NULL };
 
-		curdecl_func = func_decl;
-		curdecl_ref_func_called = type_ref_func_call(curdecl_func->ref, NULL);
+		type_ref *fref;
 
-		UCC_ASSERT(type_ref_is(func_decl->ref, type_ref_func), "not a func");
+		curdecl_func = func_decl;
+		fref = type_ref_is(curdecl_func->ref, type_ref_func);
+		UCC_ASSERT(fref, "not a func");
+		curdecl_ref_func_called = type_ref_func_call(fref, NULL);
+
+		if(curdecl_func->ref->type != type_ref_func)
+			WARN_AT(&curdecl_func->where, "typedef function implementation is not C");
+
 		symtab_add_args(
 				func_decl->func_code->symtab,
-				func_decl->ref->bits.func,
+				fref->bits.func,
 				func_decl->spel);
 
 		fold_stmt(func_decl->func_code);
