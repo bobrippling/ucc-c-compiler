@@ -222,8 +222,9 @@ static void decl_initialise_sue(decl_init ***init_iter,
 {
 	/* iterate over each member, pulling from the dinit */
 	sue_member **smem;
-	decl_init *dinit = **init_iter;
+	decl_init *dinit = *init_iter ? **init_iter : NULL;
 	decl_init **sue_iter;
+	int braced;
 	int cnt;
 
 	if(dinit == NULL)
@@ -236,7 +237,8 @@ static void decl_initialise_sue(decl_init ***init_iter,
 		DIE_AT(&dinit->where, "initialising %s", type_ref_to_str(r));
 	}
 
-	sue_iter = (dinit->type == decl_init_scalar ? *init_iter : dinit->bits.inits);
+	braced = dinit->type == decl_init_brace;
+	sue_iter = braced ? dinit->bits.inits : *init_iter;
 
 	for(smem = sue->members, cnt = 0;
 			smem && *smem;
@@ -244,7 +246,7 @@ static void decl_initialise_sue(decl_init ***init_iter,
 	{
 		decl *const sue_mem = (*smem)->struct_member;
 
-		/* room for optimisation below - avoid sue name lookup */
+		/* XXX: room for optimisation below - avoid sue name lookup */
 		expr *accessor = expr_new_struct(base, 1 /* a.b */,
 				expr_new_identifier(sue_mem->spel));
 
@@ -254,6 +256,9 @@ static void decl_initialise_sue(decl_init ***init_iter,
 				accessor,
 				init_code);
 	}
+
+	if(braced)
+		cnt = 1; /* we walk over the one brace, not multiple scalar/subinits */
 
 	*init_iter += cnt;
 }
