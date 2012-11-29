@@ -202,8 +202,11 @@ static type_ref *decl_initialise_array(
 		*init_iter += complete_to; /* advance by the number of steps we moved over */
 
 		INIT_DEBUG_DEPTH(--);
-		INIT_DEBUG("array, len %d finished, i=%d, *array_iter=%p, array_iter-start = %ld <-- adv-by\n",
-				complete_to, i, (void *)*array_iter, (long)(array_iter - start));
+		INIT_DEBUG(
+				"array, len %d finished, i=%d, "
+				"*array_iter=%p, array_iter-start = %ld <-- adv-by\n",
+				complete_to, i,
+				(void *)*array_iter, (long)(array_iter - start));
 	}
 
 	/* patch the type size */
@@ -261,6 +264,11 @@ static void decl_initialise_sue(decl_init ***init_iter,
 		cnt = 1; /* we walk over the one brace, not multiple scalar/subinits */
 
 	*init_iter += cnt;
+	INIT_DEBUG("initialised %s, *init_iter += %d -> %p (%s)\n",
+			sue_str(sue), cnt, (void *)*init_iter,
+			*init_iter && **init_iter
+			? decl_init_to_str((**init_iter)->type)
+			: "n/a");
 }
 
 static void decl_initialise_scalar(
