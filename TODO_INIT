@@ -1,14 +1,5 @@
 global/static init
 
-zero-init of omitted members:
-	int x[2] = { 1 };
-	struct { int a, b; } = { 2 };
-	int y[3] = { }; // extension, also for structs
-
-non-braced init:
-	int x[][2] = { 1, 2, 3, 4 };
-	struct { int i; struct { int j, k; } a; } x = { 1, 2, 3 };
-
 designated init + zero for the rest:
 	int x[] = { [3] = 5 };
 	struct { int x, y, z; } q = { .y = 2, 3 };
@@ -16,5 +7,5 @@ designated init + zero for the rest:
 sizeof(int){} parsing
 
 bugs:
-	not enough space - array/nobrace.c
-	struct/{array_of.c,nested_array_of_arrays.c}
+	not enough space - array/nobrace.c unbraced/multiple.c
+	struct/nested_array_of_arrays.c
