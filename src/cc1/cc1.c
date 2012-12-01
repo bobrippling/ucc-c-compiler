@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <ctype.h>
 
 #include <unistd.h>
 #include <signal.h>
@@ -128,8 +129,7 @@ enum warning warn_mode = ~(
 
 enum fopt    fopt_mode = FOPT_CONST_FOLD | FOPT_SHOW_LINE | FOPT_PIC;
 enum cc1_backend cc1_backend = BACKEND_ASM;
-
-enum cc1_machine cc1_machine = MACHINE_x64;
+int  cc1_bits;
 
 int cc1_max_errors = 16;
 
@@ -206,6 +206,9 @@ void io_cleanup(void)
 {
 	int i;
 	for(i = 0; i < NUM_SECTIONS; i++){
+		if(!cc_out[i])
+			continue;
+
 		if(fclose(cc_out[i]) == EOF && !caught_sig)
 			fprintf(stderr, "close %s: %s\n", fnames[i], strerror(errno));
 		if(remove(fnames[i]) && !caught_sig)
@@ -283,6 +286,7 @@ int main(int argc, char **argv)
 	FILE *f;
 	const char *fname;
 	int i;
+	enum { MIPS_32, X86, X64 } arch = X64;
 
 	/*signal(SIGINT , sigh);*/
 	signal(SIGQUIT, sigh);
@@ -322,19 +326,55 @@ int main(int argc, char **argv)
 			warn_mode = WARN_NONE;
 
 		}else if(!strncmp(argv[i], "-m", 2)){
-			int n;
+			/* format: -m(arch_)?(32|64) */
+			char *p = argv[i] + 2;
+			const char *sarch = "x86";
+			int bits = 64;
 
-			if(!strcmp(argv[i] + 2, "vm")){
-				cc1_machine = MACHINE_VM;
+			if(!*p){
+				fprintf(stderr, "-m requires an arch\n");
+				goto usage;
+			}
 
-			}else if(sscanf(argv[i] + 2, "%d", &n) == 1){
-				if(n != 32 && n != 64){
-					fprintf(stderr, "-mnumber needs either 32 or 64\n");
+			if(isalpha(*p)){
+				sarch = p;
+				while(*p && *p != '_')
+					p++;
+
+				switch(*p){
+					case '_':
+						*p++ = '\0';
+						break;
+
+					case '\0':
+						/* -mx86 */
+						break;
+				}
+			}
+
+			if(*p){
+				if(sscanf(p, "%d", &bits) != 1){
+					fprintf(stderr, "-m argument not numeric (%s)\n", p);
 					goto usage;
 				}
+			}
 
-				cc1_machine = n == 32 ? MACHINE_x86 : MACHINE_x64;
+			if(!strcmp(sarch, "x86")){
+				if(bits == 32){
+					fprintf(stderr, "TODO: x86_32 arch\n");
+					return 1;
+				}
+
+				arch = X64;
+			}else if(!strcmp(sarch, "mipsel")){
+				if(bits == 64){
+					fprintf(stderr, "TODO: mipsel_64 arch\n");
+					return 1;
+				}
+
+				arch = MIPS_32;
 			}else{
+				fprintf(stderr, "unsupported architecture %s_%d\n", sarch, bits);
 				goto usage;
 			}
 
@@ -437,6 +477,19 @@ usage:
 	if(globs->decls){
 		fold(globs);
 		symtab_fold(globs, 0);
+
+		switch(arch){
+			case MIPS_32:
+				impl_mipsel_32();
+				break;
+			case X86:
+				fprintf(stderr, "x86 todo\n");
+				return 1;
+			case X64:
+				impl_x86_64();
+				break;
+		}
+
 		gf(globs);
 	}
 

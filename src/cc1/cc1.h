@@ -74,16 +74,9 @@ enum cc1_backend
 	BACKEND_STYLE,
 };
 
-enum cc1_machine
-{
-	MACHINE_x64,
-	MACHINE_x86,
-	MACHINE_VM
-};
-
 extern enum fopt fopt_mode;
 extern enum cc1_backend cc1_backend;
-extern enum cc1_machine cc1_machine;
+extern int              cc1_bits; /* 32 or 64 */
 
 void cc1_warn_atv(struct where *where, int die, int show_line, enum warning w, const char *fmt, va_list l);
 void cc1_warn_at( struct where *where, int die, int show_line, enum warning w, const char *fmt, ...);
