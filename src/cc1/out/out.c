@@ -24,6 +24,8 @@ int *reserved_regs;
 int N_REGS, N_CALL_REGS;
 int REG_RET;
 
+struct machine_impl impl;
+
 void vpush(decl *d)
 {
 	if(!vtop){
