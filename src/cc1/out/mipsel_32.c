@@ -24,7 +24,13 @@ static int alloc_stack(int sz)
 
 static void func_prologue(int stack_res, int nargs, int variadic)
 {
-	TODO();
+	/* FIXME: very similar to x86_64::func_prologue - merge */
+
+	out_asm("addiu $sp, $sp,-8"); /* space for saved ret */
+	out_asm("sw    $fp, 4($sp)"); /* save ret */
+	out_asm("move  $fp, $sp");    /* new frame */
+
+	out_asm("addiu $sp, $sp,-%d", stack_res); /* etc */
 }
 
 static void func_epilogue(void)
