@@ -1,5 +1,13 @@
-/* common impl code */
+#include <stdio.h>
+#include <stdarg.h>
+
+#include "../../util/util.h"
+#include "../data_structs.h"
+#include "../decl.h"
+#include "vstack.h"
 #include "impl.h"
+
+#include "../cc1.h"
 
 static void out_asmv(enum p_opts opts, const char *fmt, va_list l)
 {
@@ -39,4 +47,24 @@ void comment(const char *fmt, va_list l)
 void lbl(const char *lbl)
 {
 	out_asm2(P_NO_INDENT, "%s:", lbl);
+}
+
+enum flag_cmp op_to_flag(enum op_type op)
+{
+	switch(op){
+#define OP(x) case op_ ## x: return flag_ ## x
+		OP(eq);
+		OP(ne);
+		OP(le);
+		OP(lt);
+		OP(ge);
+		OP(gt);
+#undef OP
+
+		default:
+			break;
+	}
+
+	ICE("invalid op");
+	return -1;
 }

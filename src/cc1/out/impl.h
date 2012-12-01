@@ -25,7 +25,6 @@ extern struct machine_impl
 
 	void (*func_prologue)(int stack_res, int nargs, int variadic);
 	void (*func_epilogue)(void);
-	void (*pop_func_ret)(decl *);
 
 	void (*undefined)(void);
 	int  (*frame_ptr_to_reg)(int nframes);
@@ -34,9 +33,9 @@ extern struct machine_impl
 	int (*n_call_regs)(void);
 } impl;
 
-/* common */
+/* common impl code */
 extern int *reserved_regs;
-extern int N_REGS, N_CALL_REGS;
+extern int N_REGS, N_CALL_REGS, REG_RET;
 
 enum p_opts
 {
@@ -49,5 +48,7 @@ void out_asm2(enum p_opts opts, const char *fmt, ...) ucc_printflike(2, 3);
 
 void impl_comment(const char *fmt, va_list l);
 void impl_lbl(const char *lbl);
+
+enum flag_cmp op_to_flag(enum op_type op);
 
 #endif

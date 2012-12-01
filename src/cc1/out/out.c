@@ -22,7 +22,7 @@ struct vstack *vtop = NULL;
 
 int *reserved_regs;
 int N_REGS, N_CALL_REGS;
-
+int REG_RET;
 
 void vpush(decl *d)
 {
@@ -690,7 +690,10 @@ void out_func_epilogue()
 
 void out_pop_func_ret(decl *d)
 {
-	impl.pop_func_ret(d);
+	(void)d;
+
+	impl.load(vtop, REG_RET);
+	vpop();
 }
 
 void out_undefined(void)

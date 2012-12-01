@@ -26,8 +26,6 @@
 #define REG_C 2
 #define REG_D 3
 
-#define REG_RET REG_A
-
 #define VSTACK_STR_SZ 128
 
 static const char regs[] = "abcd";
@@ -219,14 +217,6 @@ static void func_epilogue(void)
 	out_asm("retq");
 }
 
-static void pop_func_ret(decl *d)
-{
-	(void)d;
-
-	impl.load(vtop, REG_RET);
-	vpop();
-}
-
 static const char *x86_cmp(enum flag_cmp cmp, decl *d)
 {
 	const int is_signed = d->type->is_signed;
@@ -245,26 +235,6 @@ static const char *x86_cmp(enum flag_cmp cmp, decl *d)
 		case flag_nz: return "nz";*/
 	}
 	return NULL;
-}
-
-static enum flag_cmp op_to_flag(enum op_type op)
-{
-	switch(op){
-#define OP(x) case op_ ## x: return flag_ ## x
-		OP(eq);
-		OP(ne);
-		OP(le);
-		OP(lt);
-		OP(ge);
-		OP(gt);
-#undef OP
-
-		default:
-			break;
-	}
-
-	ICE("invalid op");
-	return -1;
 }
 
 static void x86_load(struct vstack *from, const char *regstr)
@@ -851,6 +821,8 @@ void impl_x86_64()
 {
 	N_REGS = 4;
 	N_CALL_REGS = 6;
+	REG_RET = REG_A;
+
 	reserved_regs = umalloc(N_REGS * sizeof *reserved_regs);
 
 #define INIT(fn) impl.fn = fn
@@ -869,7 +841,6 @@ void impl_x86_64()
 	INIT(alloc_stack);
 	INIT(func_prologue);
 	INIT(func_epilogue);
-	INIT(pop_func_ret);
 	INIT(undefined);
 	INIT(frame_ptr_to_reg);
 }
