@@ -20,7 +20,9 @@
 struct vstack vstack[N_VSTACK];
 struct vstack *vtop = NULL;
 
-static int reserved_regs[N_REGS];
+int *reserved_regs;
+int N_REGS, N_CALL_REGS;
+
 
 void vpush(decl *d)
 {
@@ -144,9 +146,12 @@ void vtop2_prepare_op(void)
 
 int v_unused_reg(int stack_as_backup)
 {
+	static int *used;
 	struct vstack *it, *first;
-	int used[N_REGS];
 	int i;
+
+	if(!used)
+		used = umalloc(impl.n_regs() * sizeof *used);
 
 	memcpy(used, reserved_regs, sizeof used);
 	first = NULL;
@@ -661,7 +666,7 @@ void out_label(const char *lbl)
 	/* if we have volatile data, ensure it's in a register */
 	out_flush_volatile();
 
-	impl.lbl(lbl);
+	impl_lbl(lbl);
 }
 
 void out_comment(const char *fmt, ...)
@@ -669,7 +674,7 @@ void out_comment(const char *fmt, ...)
 	va_list l;
 
 	va_start(l, fmt);
-	impl.comment(fmt, l);
+	impl_comment(fmt, l);
 	va_end(l);
 }
 

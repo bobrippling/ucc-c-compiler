@@ -8,7 +8,7 @@
 #include "../../util/platform.h"
 #include "../data_structs.h"
 #include "vstack.h"
-#include "x86_64.h"
+#include "impl.h"
 #include "../cc1.h"
 #include "asm.h"
 #include "common.h"
@@ -26,18 +26,9 @@
 #define REG_C 2
 #define REG_D 3
 
-#define N_REGS 4
-#define N_CALL_REGS 6
-
 #define REG_RET REG_A
 
 #define VSTACK_STR_SZ 128
-
-enum p_opts
-{
-	P_NO_INDENT = 1 << 0,
-	P_NO_NL     = 1 << 1
-};
 
 static const char regs[] = "abcd";
 static const struct
@@ -56,55 +47,11 @@ static const struct
 
 static int stack_sz;
 
-
-static void out_asm( const char *fmt, ...) ucc_printflike(1, 2);
-static void out_asm2(enum p_opts opts, const char *fmt, ...) ucc_printflike(2, 3);
-
-static void out_asmv(enum p_opts opts, const char *fmt, va_list l)
-{
-	FILE *f = cc_out[SECTION_TEXT];
-
-	if((opts & P_NO_INDENT) == 0)
-		fputc('\t', f);
-
-	vfprintf(f, fmt, l);
-
-	if((opts & P_NO_NL) == 0)
-		fputc('\n', f);
-}
-
-static void out_asm(const char *fmt, ...)
-{
-	va_list l;
-	va_start(l, fmt);
-	out_asmv(0, fmt, l);
-	va_end(l);
-}
-
-static void out_asm2(enum p_opts opts, const char *fmt, ...)
-{
-	va_list l;
-	va_start(l, fmt);
-	out_asmv(opts, fmt, l);
-	va_end(l);
-}
-
-static void comment(const char *fmt, va_list l)
-{
-	out_asm2(P_NO_NL, "// ");
-	out_asmv(P_NO_INDENT, fmt, l);
-}
-
-static void lbl(const char *lbl)
-{
-	out_asm2(P_NO_INDENT, "%s:", lbl);
-}
-
 static const char *x86_reg_str_r(char buf[REG_STR_SZ], int reg, decl *d)
 {
 	const char *regpre, *regpost;
 
-	UCC_ASSERT((unsigned)reg < N_REGS, "invalid x86 reg %d", reg);
+	UCC_ASSERT(reg < N_REGS, "invalid x86 reg %d", reg);
 
 	asm_reg_name(d, &regpre, &regpost);
 
@@ -241,7 +188,7 @@ static void func_prologue(int stack_res, int nargs, int variadic)
 
 	if(stack_res){
 		UCC_ASSERT(stack_sz == 0, "non-empty x86 stack for new func");
-		stack_sz = impl_alloc_stack(stack_res);
+		stack_sz = impl.alloc_stack(stack_res);
 	}
 
 	if(variadic){
@@ -276,7 +223,7 @@ static void pop_func_ret(decl *d)
 {
 	(void)d;
 
-	impl_load(vtop, REG_RET);
+	impl.load(vtop, REG_RET);
 	vpop();
 }
 
@@ -383,7 +330,7 @@ static void store(struct vstack *from, struct vstack *to)
 	/* from must be either a reg, value or flag */
 	if(from->type == FLAG && to->type == REG){
 		/* setting a register from a flag - easy */
-		impl_load(from, to->bits.reg);
+		impl.load(from, to->bits.reg);
 		return;
 	}
 
@@ -477,7 +424,7 @@ static void op(enum op_type op)
 					free_this = vtop->d = decl_new_char();
 
 					if(vtop->bits.reg != REG_C){
-						impl_reg_cp(vtop, REG_C);
+						impl.reg_cp(vtop, REG_C);
 						vtop->bits.reg = REG_C;
 					}
 					break;
@@ -530,10 +477,10 @@ static void op(enum op_type op)
 			if(r_div != REG_A){
 				/* we already have rax in use by vtop, swap the values */
 				if(vtop->type == REG && vtop->bits.reg == REG_A){
-					impl_reg_swp(vtop, &vtop[-1]);
+					impl.reg_swp(vtop, &vtop[-1]);
 				}else{
 					v_freeup_reg(REG_A, 2);
-					impl_reg_cp(&vtop[-1], REG_A);
+					impl.reg_cp(&vtop[-1], REG_A);
 					vtop[-1].bits.reg = REG_A;
 				}
 
@@ -767,7 +714,7 @@ static const char *x86_call_jmp_target(struct vstack *vp)
 			v_to_reg(vp); /* again, v_to_reg_preferred(), except that we don't want a reg */
 			if(vp->bits.reg == REG_A){
 				int r = v_unused_reg(1);
-				impl_reg_cp(vp, r);
+				impl.reg_cp(vp, r);
 				vp->bits.reg = r;
 			}
 			reg_str_r(buf + 2, vp);
@@ -900,18 +847,29 @@ static int frame_ptr_to_reg(int nframes)
 	return r;
 }
 
-static int n_regs()
-{
-	return N_REGS;
-}
-
-static int n_call_regs()
-{
-	return N_CALL_REGS;
-}
-
 void impl_x86_64()
 {
-	/*impl.a = a,
-		etc;*/
+	N_REGS = 4;
+	N_CALL_REGS = 6;
+	reserved_regs = umalloc(N_REGS * sizeof *reserved_regs);
+
+#define INIT(fn) impl.fn = fn
+	INIT(store);
+	INIT(load);
+	INIT(reg_cp);
+	INIT(reg_swp);
+	INIT(op);
+	INIT(op_unary);
+	INIT(deref);
+	INIT(normalise);
+	INIT(jmp);
+	INIT(jcond);
+	INIT(cast);
+	INIT(call);
+	INIT(alloc_stack);
+	INIT(func_prologue);
+	INIT(func_epilogue);
+	INIT(pop_func_ret);
+	INIT(undefined);
+	INIT(frame_ptr_to_reg);
 }
