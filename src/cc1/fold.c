@@ -156,9 +156,9 @@ check:
 
 void fold_enum(struct_union_enum_st *en, symtable *stab)
 {
-	const int bitmask = decl_attr_present(en->attr, attr_enum_bitmask);
+	const int has_bitmask = !!decl_attr_present(en->attr, attr_enum_bitmask);
 	sue_member **i;
-	int defval = bitmask;
+	int defval = has_bitmask;
 
 	for(i = en->members; *i; i++){
 		enum_member *m = (*i)->enum_member;
@@ -172,7 +172,7 @@ void fold_enum(struct_union_enum_st *en, symtable *stab)
 				m->val = expr_new_val(defval)
 			);
 
-			if(bitmask)
+			if(has_bitmask)
 				defval <<= 1;
 			else
 				defval++;
@@ -184,7 +184,7 @@ void fold_enum(struct_union_enum_st *en, symtable *stab)
 			const_fold_need_val(e, &iv);
 			m->val = e;
 
-			defval = bitmask ? iv.val << 1 : iv.val + 1;
+			defval = has_bitmask ? iv.val << 1 : iv.val + 1;
 		}
 	}
 }
@@ -528,11 +528,17 @@ void fold_stmt_and_add_to_curswitch(stmt *t)
 	/* TODO: copy ->freestanding? */
 }
 
-void fold_funcargs(funcargs *fargs, symtable *stab, char *context)
+void fold_funcargs(funcargs *fargs, symtable *stab, decl *d, char *context)
 {
 	if(fargs->arglist){
 		/* check for unnamed params and extern/static specs */
+		unsigned long nonnulls = 0;
 		int i;
+		decl_attr *da;
+
+		/* check nonnull corresponds to a pointer arg */
+		if((da = decl_attr_present(d->attr, attr_nonnull)))
+			nonnulls = da->attr_extra.nonnull_args;
 
 		for(i = 0; fargs->arglist[i]; i++){
 			decl *const d = fargs->arglist[i];
@@ -553,7 +559,19 @@ void fold_funcargs(funcargs *fargs, symtable *stab, char *context)
 						sp ? ") " : "",
 						context);
 			}
+
+			/* ensure ptr */
+			if(nonnulls & (1 << i)
+			&& !type_ref_is(d->ref, type_ref_ptr)
+			&& !type_ref_is(d->ref, type_ref_block))
+			{
+				WARN_AT(&fargs->arglist[i]->where, "nonnull attribute applied to non-pointer argument '%s'",
+						type_ref_to_str(d->ref));
+			}
 		}
+
+		if(i == 0 && nonnulls)
+			WARN_AT(&fargs->where, "nonnull attribute applied to function with no arguments");
 	}
 }
 

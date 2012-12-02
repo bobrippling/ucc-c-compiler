@@ -66,6 +66,41 @@ decl_attr *parse_attr_section()
 	return da;
 }
 
+decl_attr *parse_attr_nonnull()
+{
+	/* __attribute__((nonnull(1, 2, 3, 4...)))
+	 * or
+	 * __attribute__((nonnull)) - all args
+	 */
+	decl_attr *da = decl_attr_new(attr_nonnull);
+
+	if(accept(token_open_paren)){
+		unsigned long l = 0;
+
+		while(curtok != token_close_paren){
+			if(curtok == token_integer){
+				int n = currentval.val;
+				if(n < 0)
+					DIE_AT(NULL, "nonnull argument must be >= 0");
+
+				l |= 1 << n; /* implicitly disallow functions with >32 args */
+			}else{
+				EAT(token_integer); /* raise error */
+			}
+			EAT(curtok);
+
+			if(accept(token_comma))
+				continue;
+			break;
+		}
+		EAT(token_close_paren);
+
+		da->attr_extra.nonnull_args = l ? l : ~0UL; /* all if 0 */
+	}
+
+	return da;
+}
+
 #define EMPTY(t)                      \
 decl_attr *parse_ ## t()              \
 {                                     \
@@ -90,6 +125,7 @@ static struct
 	{ "bitmask",        parse_attr_enum_bitmask },
 	{ "noreturn",       parse_attr_noreturn },
 	{ "noderef",        parse_attr_noderef },
+	{ "nonnull",        parse_attr_nonnull },
 
 	/* compat */
 	{ "warn_unused_result", parse_attr_warn_unused },

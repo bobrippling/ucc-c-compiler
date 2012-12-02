@@ -195,24 +195,54 @@ void print_type_ref(type_ref *ref, decl *d)
 			type_ref_to_str_r_spel(buf, ref, d ? d->spel : NULL));
 }
 
-void print_decl_attr_type(enum decl_attr_type t)
-{
-	idt_printf("__attribute__((%s))\n", decl_attr_to_str(t));
-}
-
 void print_decl_attr(decl_attr *da)
 {
-	for(; da; da = da->next)
-		print_decl_attr_type(da->type);
+	for(; da; da = da->next){
+		idt_printf("__attribute__((%s))\n", decl_attr_to_str(da->type));
+
+		gen_str_indent++;
+		switch(da->type){
+			case attr_section:
+				idt_printf("section \"%s\"\n", da->attr_extra.section);
+				break;
+			case attr_nonnull:
+			{
+				unsigned long l = da->attr_extra.nonnull_args;
+
+				idt_printf("nonnull: ");
+				if(l == ~0UL){
+					fprintf(cc1_out, "all");
+				}else{
+					const char *sep = "";
+					int i;
+
+					for(i = 0; i <= 32; i++)
+						if(l & (1 << i)){
+							fprintf(cc1_out, "%s%d", sep, i);
+							sep = ", ";
+						}
+				}
+
+				fputc('\n', cc1_out);
+				break;
+			}
+
+			default:
+				break;
+		}
+		gen_str_indent--;
+	}
 }
 
 void print_type_attr(type_ref *r)
 {
 	enum decl_attr_type i;
 
-	for(i = 0; i < attr_LAST; i++)
-		if(type_attr_present(r, i))
-			print_decl_attr_type(i);
+	for(i = 0; i < attr_LAST; i++){
+		decl_attr *da;
+		if((da = type_attr_present(r, i)))
+			print_decl_attr(da);
+	}
 }
 
 void print_decl(decl *d, enum pdeclargs mode)
