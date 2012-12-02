@@ -8,11 +8,13 @@
 
 #  define ucc_dead __attribute__((noreturn))
 #  define ucc_wur  __attribute__((warn_unused_result))
+#  define ucc_nonnull(args) __attribute__((nonnull args))
 
 #else
 #  define ucc_printflike(a, b)
 #  define ucc_dead
 #  define ucc_wur
+#  define ucc_nonnull(a, b)
 #endif
 
 #define ucc_unreach() do{ ICE("unreachable"); return 0; }while(0)

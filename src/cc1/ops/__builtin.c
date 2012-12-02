@@ -98,7 +98,7 @@ static void builtin_gen_undefined(expr *e, symtable *stab)
 	(void)e;
 	(void)stab;
 	out_undefined();
-	out_push_i(NULL, 0);
+	out_push_i(type_ref_new_INT(), 0); /* needed for function return pop */
 }
 
 static expr *parse_any_args(void)

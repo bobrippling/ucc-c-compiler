@@ -106,8 +106,8 @@ void gen_expr_struct_lea(expr *e, symtable *stab)
 
 	gen_expr(e->lhs, stab);
 
-	out_change_type(NULL);
-	out_push_i(NULL, struct_offset(e->rhs));
+	out_change_type(type_ref_new_INTPTR_T()); /* anything that's not a pointer */
+	out_push_i(type_ref_new_INTPTR_T(), struct_offset(e->rhs));
 	out_op(op_plus);
 
 	out_change_type(type_ref_ptr_depth_inc(e->rhs->tree_type));

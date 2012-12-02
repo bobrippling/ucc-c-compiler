@@ -860,7 +860,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 
 		/* can't push non-word sized vtops */
 		if(vtop->t && type_ref_size(vtop->t, NULL) != platform_word_size())
-			out_cast(vtop->t, NULL);
+			out_cast(vtop->t, type_ref_new_INTPTR_T());
 
 		out_asm("pushq %s", vstack_str(vtop));
 		vpop();
