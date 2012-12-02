@@ -39,7 +39,7 @@ void gen_stmt_while(stmt *s)
 
 	gen_stmt(s->lhs);
 
-	out_push_lbl(s->lbl_continue, 0, NULL);
+	out_push_lbl(s->lbl_continue, 0);
 	out_jmp();
 
 	out_label(s->lbl_break);

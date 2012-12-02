@@ -329,9 +329,9 @@ void out_push_i(type_ref *t, int i)
 	out_push_iv(t, &iv);
 }
 
-void out_push_lbl(char *s, int pic, type_ref *t)
+void out_push_lbl(char *s, int pic)
 {
-	vpush(t);
+	vpush(NULL);
 
 	vtop->bits.lbl.str = s;
 	vtop->bits.lbl.pic = pic;

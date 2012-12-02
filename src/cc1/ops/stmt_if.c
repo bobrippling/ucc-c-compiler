@@ -54,7 +54,7 @@ void gen_stmt_if(stmt *s)
 	out_jfalse(lbl_else);
 
 	gen_stmt(s->lhs);
-	out_push_lbl(lbl_fi, 0, NULL);
+	out_push_lbl(lbl_fi, 0);
 	out_jmp();
 
 	out_label(lbl_else);

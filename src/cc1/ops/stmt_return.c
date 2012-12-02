@@ -44,7 +44,7 @@ void gen_stmt_return(stmt *s)
 		out_pop_func_ret(s->expr->tree_type);
 		out_comment("return");
 	}
-	out_push_lbl(curfunc_lblfin, 0, NULL);
+	out_push_lbl(curfunc_lblfin, 0);
 	out_jmp();
 }
 

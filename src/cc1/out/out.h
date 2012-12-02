@@ -6,7 +6,7 @@ void out_pop_func_ret(type_ref *);
 
 void out_push_iv(type_ref *, intval *iv);
 void out_push_i( type_ref *, int i);
-void out_push_lbl(char *s, int pic, type_ref *);
+void out_push_lbl(char *s, int pic);
 
 void out_dup(void); /* duplicate top of stack */
 void out_normalise(void); /* change to 0 or 1 */

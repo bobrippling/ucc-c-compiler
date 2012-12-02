@@ -60,13 +60,13 @@ void fold_expr_addr(expr *e, symtable *stab)
 void gen_expr_addr(expr *e, symtable *stab)
 {
 	if(e->data_store){
-		out_push_lbl(e->data_store->spel, 1, e->tree_type);
+		out_push_lbl(e->data_store->spel, 1);
 
 		data_store_declare(e->data_store);
 		data_store_out(    e->data_store, 1);
 
 	}else if(e->spel){
-		out_push_lbl(e->spel, 1, NULL); /* GNU &&lbl */
+		out_push_lbl(e->spel, 1); /* GNU &&lbl */
 
 	}else{
 		/* address of possibly an ident "(&a)->b" or a struct expr "&a->b"
