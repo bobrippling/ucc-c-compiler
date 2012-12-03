@@ -73,17 +73,20 @@ decl_attr *parse_attr_nonnull()
 	 * __attribute__((nonnull)) - all args
 	 */
 	decl_attr *da = decl_attr_new(attr_nonnull);
+	unsigned long l = 0;
 
 	if(accept(token_open_paren)){
-		unsigned long l = 0;
-
 		while(curtok != token_close_paren){
 			if(curtok == token_integer){
 				int n = currentval.val;
-				if(n < 0)
-					DIE_AT(NULL, "nonnull argument must be >= 0");
-
-				l |= 1 << n; /* implicitly disallow functions with >32 args */
+				if(n <= 0){
+					/* shouldn't ever be negative */
+					WARN_AT(NULL, "%s nonnull argument ignored", n < 0 ? "negative" : "zero");
+				}else{
+					/* implicitly disallow functions with >32 args */
+					/* n-1, since we convert from 1-base to 0-base */
+					l |= 1 << (n - 1);
+				}
 			}else{
 				EAT(token_integer); /* raise error */
 			}
@@ -94,9 +97,9 @@ decl_attr *parse_attr_nonnull()
 			break;
 		}
 		EAT(token_close_paren);
-
-		da->attr_extra.nonnull_args = l ? l : ~0UL; /* all if 0 */
 	}
+
+	da->attr_extra.nonnull_args = l ? l : ~0UL; /* all if 0 */
 
 	return da;
 }
