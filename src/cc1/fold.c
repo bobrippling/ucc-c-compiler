@@ -237,8 +237,10 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 {
 	enum type_qualifier q_to_check = qual_none;
 
-	if(!r)
+	if(!r || r->folded)
 		return;
+
+	r->folded = 1;
 
 	switch(r->type){
 	/* check for array of funcs, func returning array */

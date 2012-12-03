@@ -43,6 +43,7 @@ struct type_ref
 	type_ref *ref, *tmp; /* tmp used for things like printing */
 
 	decl_attr *attr;
+	int folded;
 
 	enum type_ref_type
 	{
