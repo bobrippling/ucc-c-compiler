@@ -31,7 +31,7 @@ my %vars = (
 	's'         => $f,
 	't'         => $target,
 	'ucc'       => $ucc,
-	'check'     => './check.pl'
+	'check'     => './check.pl',
 	'asmcheck'  => './asmcheck.pl'
 );
 
