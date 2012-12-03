@@ -104,7 +104,7 @@ invalid:
 		e->expr = expr_deref_what(e->expr);
 	}
 
-	type_func = e->tree_type = type_ref_func_call(type_func, &args_from_decl);
+	e->tree_type = type_ref_func_call(type_func, &args_from_decl);
 
 	/* func count comparison, only if the func has arg-decls, or the func is f(void) */
 	UCC_ASSERT(args_from_decl, "no funcargs for decl %s", e->expr->spel);

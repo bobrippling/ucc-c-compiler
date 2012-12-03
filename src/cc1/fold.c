@@ -255,6 +255,8 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 
 			if(type_ref_is(parent, type_ref_ptr) && (type_ref_qual(parent) & qual_restrict))
 				DIE_AT(&r->where, "restrict qualified function pointer");
+
+			fold_funcargs(r->bits.func, stab, r);
 			break;
 
 		case type_ref_block:
@@ -530,17 +532,18 @@ void fold_stmt_and_add_to_curswitch(stmt *t)
 	/* TODO: copy ->freestanding? */
 }
 
-void fold_funcargs(funcargs *fargs, symtable *stab, decl *d, char *context)
+void fold_funcargs(funcargs *fargs, symtable *stab, type_ref *from)
 {
+	decl_attr *da;
+	unsigned long nonnulls = 0;
+
+	/* check nonnull corresponds to a pointer arg */
+	if((da = type_attr_present(from, attr_nonnull)))
+		nonnulls = da->attr_extra.nonnull_args;
+
 	if(fargs->arglist){
 		/* check for unnamed params and extern/static specs */
-		unsigned long nonnulls = 0;
 		int i;
-		decl_attr *da;
-
-		/* check nonnull corresponds to a pointer arg */
-		if((da = decl_attr_present(d->attr, attr_nonnull)))
-			nonnulls = da->attr_extra.nonnull_args;
 
 		for(i = 0; fargs->arglist[i]; i++){
 			decl *const d = fargs->arglist[i];
@@ -553,17 +556,11 @@ void fold_funcargs(funcargs *fargs, symtable *stab, decl *d, char *context)
 			fold_decl(d, stab);
 
 			if(decl_store_static_or_extern(d->store)){
-				const char *sp = d->spel;
-				DIE_AT(&fargs->where, "argument %d %s%s%sin function \"%s\" is static or extern",
-						i + 1,
-						sp ? "(" : "",
-						sp ? sp  : "",
-						sp ? ") " : "",
-						context);
+				DIE_AT(&fargs->where, "function argument %d is static or extern", i + 1);
 			}
 
 			/* ensure ptr */
-			if(nonnulls & (1 << i)
+			if((nonnulls & (1 << i))
 			&& !type_ref_is(d->ref, type_ref_ptr)
 			&& !type_ref_is(d->ref, type_ref_block))
 			{
@@ -574,6 +571,10 @@ void fold_funcargs(funcargs *fargs, symtable *stab, decl *d, char *context)
 
 		if(i == 0 && nonnulls)
 			WARN_AT(&fargs->where, "nonnull attribute applied to function with no arguments");
+		else if(nonnulls != ~0UL && nonnulls & -(1 << i))
+			WARN_AT(&fargs->where, "nonnull attributes above argument index %d ignored", i + 1);
+	}else if(nonnulls){
+		WARN_AT(&fargs->where, "nonnull attribute on parameterless function");
 	}
 }
 
