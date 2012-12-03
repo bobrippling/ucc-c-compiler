@@ -34,7 +34,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 	}else{
 		fold_inc_writes_if_sym(e->lhs, stab);
 
-		FOLD_EXPR(e->lhs, stab);
+		FOLD_EXPR_NO_DECAY(e->lhs, stab);
 
 		/* can address: lvalues, arrays and functions */
 		if(!expr_is_lvalue(e->lhs)

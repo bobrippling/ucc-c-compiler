@@ -18,7 +18,7 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 	type_ref *chosen;
 
 	if(e->expr)
-		FOLD_EXPR(e->expr, stab);
+		FOLD_EXPR_NO_DECAY(e->expr, stab);
 
 	chosen = SIZEOF_WHAT(e);
 

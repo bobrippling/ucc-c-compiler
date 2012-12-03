@@ -365,8 +365,7 @@ int type_ref_size(type_ref *r, where const *from)
 			return type_primitive_size(type_intptr_t);
 
 		case type_ref_func:
-			/* don't return r->ref's size */
-			ICE("sizeof function");
+			/* function size is one, sizeof(main) is valid */
 			return 1;
 
 		case type_ref_array:

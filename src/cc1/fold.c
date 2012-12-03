@@ -154,6 +154,18 @@ check:
 	return e;
 }
 
+expr *FOLD_EXPR_NO_DECAY(expr *e, symtable *stab)
+{
+	expr *const r = fold_expr(e, stab);
+
+	if(e != r){
+		/* decay */
+		expr_free(r);
+	}
+
+	return r;
+}
+
 void fold_enum(struct_union_enum_st *en, symtable *stab)
 {
 	const int bitmask = decl_attr_present(en->attr, attr_enum_bitmask);
