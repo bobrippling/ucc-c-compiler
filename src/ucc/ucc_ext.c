@@ -84,10 +84,10 @@ static void runner(int local, char *path, char **args)
 	if(show){
 		int i;
 
-		printf("%s ", path);
+		fprintf(stderr, "%s ", path);
 		for(i = 0; args[i]; i++)
-			printf("%s ", args[i]);
-		putchar('\n');
+			fprintf(stderr, "%s ", args[i]);
+		fputc('\n', stderr);
 	}
 
 	if(noop)
@@ -182,7 +182,7 @@ void cat(char *fnin, char *fnout, int append)
 	size_t n;
 
 	if(show)
-		printf("cat %s >%s %s\n", fnin, append ? ">" : "", fnout ? fnout : "<stdout>");
+		fprintf(stderr, "cat %s >%s %s\n", fnin, append ? ">" : "", fnout ? fnout : "<stdout>");
 	if(noop)
 		return;
 
