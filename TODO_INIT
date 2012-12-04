@@ -7,5 +7,6 @@ designated init + zero for the rest:
 sizeof(int){} parsing
 
 bugs:
-	not enough space - array/nobrace.c unbraced/multiple.c
+	not enough space - unbraced/multiple.c
+	missing tail init - array/brace.c
 	struct/nested_array_of_arrays.c
