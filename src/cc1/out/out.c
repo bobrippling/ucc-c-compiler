@@ -521,7 +521,7 @@ def:
 								if((swap = (val != vtop)))
 									vswap();
 
-								out_push_i(type_ref_new_PTRDIFF(), ptr_step);
+								out_push_i(type_ref_new_VOID_PTR(), ptr_step);
 								out_op(op_multiply);
 
 								if(swap)
@@ -544,7 +544,7 @@ def:
 		impl_op(op);
 
 		if(div){
-			out_push_i(type_ref_new_PTRDIFF(), div);
+			out_push_i(type_ref_new_VOID_PTR(), div);
 			out_op(op_divide);
 		}
 	}
