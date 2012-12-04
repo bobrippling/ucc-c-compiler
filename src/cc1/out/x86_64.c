@@ -732,8 +732,8 @@ void impl_cast(type_ref *from, type_ref *to)
 			x86_reg_str_r(buf_from, vtop->bits.reg, from);
 
 			if(!is_signed
-			&& (to   ? type_ref_size(to, NULL)   : type_primitive_size(type_intptr_t)) > int_sz
-			&& (from ? type_ref_size(from, NULL) : type_primitive_size(type_intptr_t)) == int_sz)
+			&& type_ref_size(to,   NULL) > int_sz
+			&& type_ref_size(from, NULL) == int_sz)
 			{
 				/*
 				 * movzx %eax, %rax is invalid

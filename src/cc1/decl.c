@@ -110,14 +110,6 @@ decl *decl_new_type(enum type_primitive p)
 
 	t->primitive = p;
 
-	switch(p){
-		case type_ptrdiff_t:
-		case type_intptr_t:
-			t->is_signed = 0;
-		default:
-			break;
-	}
-
 	return d;
 }
 
@@ -362,7 +354,7 @@ int type_ref_size(type_ref *r, where const *from)
 
 		case type_ref_ptr:
 		case type_ref_block:
-			return type_primitive_size(type_intptr_t);
+			return platform_word_size();
 
 		case type_ref_func:
 			/* function size is one, sizeof(main) is valid */

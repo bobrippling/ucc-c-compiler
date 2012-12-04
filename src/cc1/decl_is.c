@@ -151,8 +151,6 @@ int type_ref_is_integral(type_ref *r)
 		case type_long:
 		case type_llong:
 		case type_enum:
-		case type_intptr_t:
-		case type_ptrdiff_t:
 			return 1;
 
 		case type_unknown:
@@ -179,7 +177,7 @@ int type_ref_align(type_ref *r, where const *from)
 	if((r = type_ref_is(r, type_ref_ptr))
 	|| (r = type_ref_is(r, type_ref_block)))
 	{
-		return type_primitive_size(type_intptr_t);
+		return platform_word_size();
 	}
 
 	if((r = type_ref_is(r, type_ref_type)))

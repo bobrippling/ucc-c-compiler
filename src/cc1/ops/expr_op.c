@@ -126,10 +126,8 @@ void expr_promote_int(expr **pe, enum type_primitive to, symtable *stab)
 	expr *const e = *pe;
 	expr *cast;
 
-	if(type_ref_is(e->tree_type, type_ref_ptr)){
-		UCC_ASSERT(to == type_intptr_t, "invalid promotion for pointer");
-		return;
-	}
+	UCC_ASSERT(!type_ref_is(e->tree_type, type_ref_ptr),
+			"invalid promotion for pointer");
 
 	/* if(type_primitive_size(e->tree_type->type->primitive) >= type_primitive_size(to))
 	 *   return;
@@ -177,7 +175,7 @@ type_ref *op_required_promotion(
 
 		if(l_ptr && r_ptr){
 			if(op == op_minus){
-				resolved = type_ref_new_type(type_new_primitive(type_ptrdiff_t));
+				resolved = type_ref_new_INTPTR_T();
 			}else if(op_is_relational(op)){
 				resolved = type_ref_new_INT();
 			}else{
@@ -194,7 +192,7 @@ type_ref *op_required_promotion(
 			resolved = l_ptr ? tlhs : trhs;
 
 			/* FIXME: promote to unsigned */
-			*(l_ptr ? prhs : plhs) = type_ref_new_type(type_new_primitive(op == op_plus ? type_intptr_t : type_ptrdiff_t));
+			*(l_ptr ? prhs : plhs) = type_ref_new_INTPTR_T();
 
 			goto fin;
 

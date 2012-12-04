@@ -38,10 +38,6 @@ enum type_primitive
 	type_union,
 	type_enum,
 
-	/* implicitly unsigned */
-	type_intptr_t,
-	type_ptrdiff_t,
-
 	type_unknown
 };
 
