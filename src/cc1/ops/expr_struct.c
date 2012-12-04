@@ -39,7 +39,7 @@ void fold_expr_struct(expr *e, symtable *stab)
 			if(!rtest && !(rtest = type_ref_is(r, type_ref_array)))
 				goto err;
 
-			r = rtest->ref;
+			r = rtest->ref; /* safe - rtest is an array */
 		}
 
 		if(!(sue = type_ref_is_s_or_u(r))){

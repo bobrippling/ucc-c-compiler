@@ -548,7 +548,7 @@ type_ref *type_ref_ptr_depth_dec(type_ref *r)
 		DIE_AT(&r->where, "invalid indirection applied to %s", r ? type_ref_to_str(r) : "(NULL)");
 
 	r_save = r;
-	r = r->ref;
+	r = r->ref; /* safe since we know r is a ptr */
 
 	if(!type_ref_is_complete(r))
 		DIE_AT(&r->where, "dereference of pointer to incomplete type %s", type_ref_to_str(r));

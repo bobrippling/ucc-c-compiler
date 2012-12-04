@@ -184,6 +184,7 @@ decl *decl_ptr_depth_dec(decl *);
 type_ref *type_ref_ptr_depth_inc(type_ref *);
 type_ref *type_ref_ptr_depth_dec(type_ref *);
 type_ref *type_ref_decay_first_array(type_ref *);
+type_ref *type_ref_next(type_ref *r);
 
 type *type_ref_get_type(type_ref *);
 type *decl_get_type(decl *);

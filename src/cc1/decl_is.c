@@ -26,6 +26,26 @@ fin:
 	return r;
 }
 
+type_ref *type_ref_next(type_ref *r)
+{
+	switch(r->type){
+		case type_ref_type:
+			ICE("%s on type", __func__);
+
+		case type_ref_tdef:
+		case type_ref_cast:
+			return type_ref_next(type_ref_skip_tdefs_casts(r));
+
+		case type_ref_ptr:
+		case type_ref_block:
+		case type_ref_func:
+		case type_ref_array:
+			return r->ref;
+	}
+
+	ucc_unreach();
+}
+
 type_ref *type_ref_is(type_ref *r, enum type_ref_type t)
 {
 	r = type_ref_skip_tdefs_casts(r);
