@@ -120,6 +120,9 @@ type *decl_get_type(decl *d)
 
 void type_ref_free_1(type_ref *r)
 {
+	if(!r)
+		return;
+
 	switch(r->type){
 		case type_ref_type:
 			/* XXX: memleak */
