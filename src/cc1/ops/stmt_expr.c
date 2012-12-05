@@ -44,7 +44,7 @@ static int expr_passable(stmt *s)
 	 * if we have a funcall marked noreturn, we're not passable
 	 */
 	if(expr_kind(s->expr, funcall))
-		return !type_attr_present(s->expr->tree_type, attr_noreturn);
+		return expr_func_passable(s->expr);
 
 	if(expr_kind(s->expr, stmt))
 		return fold_passable(s->expr->code);

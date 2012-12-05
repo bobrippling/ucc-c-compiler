@@ -180,7 +180,7 @@ invalid:
 
 	fold_disallow_st_un(e, "return");
 
-	if(type_attr_present(e->tree_type, attr_format))
+	if(type_attr_present(e->expr->tree_type, attr_format))
 		ICW("TODO: format checks on funcall at %s", where_str(&e->where));
 
 	/* check the subexp tree type to get the funcall decl_attrs */
@@ -255,6 +255,12 @@ void gen_expr_str_funcall(expr *e, symtable *stab)
 void mutate_expr_funcall(expr *e)
 {
 	(void)e;
+}
+
+int expr_func_passable(expr *e)
+{
+	/* need to check the sub-expr, i.e. the function */
+	return !type_attr_present(e->expr->tree_type, attr_noreturn);
 }
 
 expr *expr_new_funcall()
