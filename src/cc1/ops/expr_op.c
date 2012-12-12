@@ -184,10 +184,19 @@ type_ref *op_required_promotion(
 
 			goto fin;
 
-		}else if(l_ptr){
+		}else if(l_ptr || r_ptr){
 			/* + or - */
-			if(op != op_plus && op != op_minus)
-				DIE_AT(w, "operation between pointer and integer must be + or -");
+			switch(op){
+				default:
+					DIE_AT(w, "operation between pointer and integer must be + or -");
+
+				case op_minus:
+					if(!l_ptr)
+						DIE_AT(w, "subtraction of pointer from integer");
+
+				case op_plus:
+					break;
+			}
 
 			resolved = l_ptr ? tlhs : trhs;
 
@@ -195,10 +204,6 @@ type_ref *op_required_promotion(
 			*(l_ptr ? prhs : plhs) = type_ref_new_INTPTR_T();
 
 			goto fin;
-
-		}else if(r_ptr){
-			DIE_AT(w, "invalid %s between integer and pointer", op_to_str(op));
-
 		}
 	}
 
@@ -378,6 +383,7 @@ void gen_expr_op(expr *e, symtable *tab)
 				gen_expr(e->rhs, tab);
 
 				out_op(e->op);
+				out_change_type(e->tree_type); /* make sure we get the pointer */
 			}else{
 				out_op_unary(e->op);
 			}
