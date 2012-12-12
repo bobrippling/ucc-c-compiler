@@ -30,7 +30,7 @@ void gen_expr_deref_lea(expr *e, symtable *stab)
 
 void gen_expr_deref(expr *e, symtable *stab)
 {
-	gen_expr(expr_deref_what(e), stab);
+	gen_expr_deref_lea(e, stab);
 	out_deref();
 }
 
