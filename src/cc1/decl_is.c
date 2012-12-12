@@ -427,7 +427,7 @@ int type_ref_is_const(type_ref *r)
 	return !!(type_ref_qual(r) & qual_const);
 }
 
-int type_ref_array_len(type_ref *r)
+long type_ref_array_len(type_ref *r)
 {
 	intval iv;
 

@@ -233,7 +233,7 @@ enum type_qualifier type_ref_qual(const type_ref *);
 funcargs *type_ref_funcargs(type_ref *);
 
 int type_ref_align(type_ref *, where const *from);
-int type_ref_array_len(type_ref *);
+long type_ref_array_len(type_ref *);
 type_ref *type_ref_is(type_ref *, enum type_ref_type);
 type_ref *type_ref_is_type(type_ref *, enum type_primitive);
 type_ref *type_ref_func_call(type_ref *, funcargs **pfuncargs);

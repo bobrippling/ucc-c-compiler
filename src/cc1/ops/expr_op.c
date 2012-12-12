@@ -293,6 +293,56 @@ type_ref *op_promote_types(
 	return resolved;
 }
 
+static expr *expr_is_array_cast(expr *e)
+{
+	expr *array = e;
+
+	if(expr_kind(array, cast))
+		array = array->expr;
+
+	if(type_ref_is(array->tree_type, type_ref_array))
+		return array;
+
+	return NULL;
+}
+
+static void op_bound(expr *e)
+{
+	/* this could be in expr_deref, but it catches more in expr_op */
+	expr *array;
+	int lhs = 0;
+
+	/* check bounds */
+	if(e->op != op_plus && e->op != op_minus)
+		return;
+
+	array = expr_is_array_cast(e->lhs);
+	if(array)
+		lhs = 1;
+	else
+		array = expr_is_array_cast(e->rhs);
+
+	if(array){
+		enum constyness k;
+		intval idx;
+
+		const_fold(lhs ? e->rhs : e->lhs, &idx, &k);
+
+		if(k == CONST_WITH_VAL){
+			const long sz = type_ref_array_len(array->tree_type);
+
+			if(e->op == op_minus)
+				idx.val = -idx.val;
+
+			if(idx.val < 0 || idx.val >= sz)
+				WARN_AT(&e->where,
+						"index %ld out of bounds of array, size %ld",
+						idx.val, sz);
+			/* TODO: "note: array here" */
+		}
+	}
+}
+
 void fold_expr_op(expr *e, symtable *stab)
 {
 	UCC_ASSERT(e->op != op_unknown, "unknown op in expression at %s",
@@ -307,6 +357,9 @@ void fold_expr_op(expr *e, symtable *stab)
 
 		e->tree_type = op_promote_types(e->op, op_to_str(e->op),
 				&e->lhs, &e->rhs, &e->where, stab);
+
+		op_bound(e);
+
 	}else{
 		/* (except unary-not) can only have operations on integers,
 		 * promote to signed int
