@@ -25,6 +25,12 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 	/* create assignments (even for static/global) */
 	decl_init_create_assignments_for_base(d, e, e->code);
 
+	/*
+	 * update the type, for example if an array type has been completed
+	 * this is done before folds, for array bounds checks
+	 */
+	e->tree_type = d->ref;
+
 	if(stab->parent)
 		fold_stmt(e->code); /* folds the assignments */
 	else
