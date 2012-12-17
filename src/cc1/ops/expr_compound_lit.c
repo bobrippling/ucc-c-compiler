@@ -122,14 +122,26 @@ void mutate_expr_compound_lit(expr *e)
 	e->f_const_fold = const_expr_compound_lit;
 }
 
-void expr_compound_lit_from_cast(expr *e, decl_init *init)
+static decl *compound_lit_decl(type_ref *t, decl_init *init)
 {
 	decl *d = decl_new();
 
+	d->ref = t;
 	d->init = init;
-	d->ref = e->val.tref; /* from cast */
 
-	e->val.decl = d;
+	return d;
+}
+
+void expr_compound_lit_from_cast(expr *e, decl_init *init)
+{
+	e->val.decl = compound_lit_decl(e->val.tref /* from cast */, init);
 
 	expr_mutate_wrapper(e, compound_lit);
+}
+
+expr *expr_new_compound_lit(type_ref *t, decl_init *init)
+{
+	expr *e = expr_new_wrapper(compound_lit);
+	e->val.decl = compound_lit_decl(t, init);
+	return e;
 }

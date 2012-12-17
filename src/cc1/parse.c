@@ -52,13 +52,23 @@ expr *parse_expr_sizeof_typeof(int is_typeof)
 		type_ref *r = parse_type();
 
 		if(r){
-			e = expr_new_sizeof_type(r, is_typeof);
+			EAT(token_close_paren);
+
+			/* check for sizeof(int){...} */
+			if(curtok == token_open_block)
+				e = expr_new_sizeof_expr(
+							expr_new_compound_lit(r,
+								parse_initialisation()),
+							is_typeof);
+			else
+				e = expr_new_sizeof_type(r, is_typeof);
+
 		}else{
 			/* parse a full one, since we're in brackets */
 			e = expr_new_sizeof_expr(parse_expr_exp(), is_typeof);
+			EAT(token_close_paren);
 		}
 
-		EAT(token_close_paren);
 	}else{
 		if(is_typeof)
 			/* TODO? cc1_error = 1, return expr_new_val(0) */
