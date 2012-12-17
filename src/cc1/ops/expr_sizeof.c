@@ -10,7 +10,7 @@
 
 const char *str_expr_sizeof()
 {
-	return "sizeof";
+	return "sizeof/typeof";
 }
 
 void fold_expr_sizeof(expr *e, symtable *stab)
