@@ -297,6 +297,7 @@ struct_union_enum_st *type_ref_is_s_or_u(type_ref *r)
 
 type_ref *type_ref_func_call(type_ref *fp, funcargs **pfuncargs)
 {
+	fp = type_ref_skip_tdefs_casts(fp);
 	switch(fp->type){
 		case type_ref_ptr:
 		case type_ref_block:
@@ -311,7 +312,7 @@ type_ref *type_ref_func_call(type_ref *fp, funcargs **pfuncargs)
 			break;
 
 		default:
-			ICE("can't func-deref non func-ptr/block ref");
+			ICE("can't func-deref non func-ptr/block ref (%d)", fp->type);
 	}
 
 	return fp;
