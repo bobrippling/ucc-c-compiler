@@ -93,14 +93,11 @@ void fold_expr_if(expr *e, symtable *stab)
 
 	}else{
 		/* brace yourself. */
-		int l_ptr_st_un = type_ref_is(tt_l, type_ref_ptr) && type_ref_is_s_or_u(tt_l);
-		int r_ptr_st_un = type_ref_is(tt_r, type_ref_ptr) && type_ref_is_s_or_u(tt_r);
-
 		int l_ptr_null = expr_is_null_ptr(e->lhs ? e->lhs : e->expr);
 		int r_ptr_null = expr_is_null_ptr(e->rhs);
 
-		int l_complete = !l_ptr_null && (!l_ptr_st_un || !sue_incomplete(tt_l->bits.type->sue));
-		int r_complete = !r_ptr_null && (!r_ptr_st_un || !sue_incomplete(tt_r->bits.type->sue));
+		int l_complete = !l_ptr_null && type_ref_is_complete(tt_l);
+		int r_complete = !r_ptr_null && type_ref_is_complete(tt_r);
 
 		if((l_complete && r_ptr_null) || (r_complete && l_ptr_null)){
 			e->tree_type = l_ptr_null ? tt_r : tt_l;
