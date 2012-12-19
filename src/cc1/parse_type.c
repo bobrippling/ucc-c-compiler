@@ -248,8 +248,13 @@ static type_ref *parse_btype(enum decl_storage *store)
 					ICE("wat");
 			}
 
-			if(signed_set || primitive_set || is_noreturn || is_inline)
-				DIE_AT(&t->where, "primitive/signed/unsigned/noreturn/inline with %s", str);
+			if(signed_set || primitive_set || is_inline)
+				DIE_AT(&t->where, "primitive/signed/unsigned/inline with %s", str);
+
+			/* fine... although a _Noreturn function returning a sue
+			 * is pretty daft... */
+			if(is_noreturn)
+				decl_attr_append(&t->attr, decl_attr_new(attr_noreturn));
 
 			/*
 			 * struct A { ... } const x;
