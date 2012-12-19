@@ -128,6 +128,7 @@ static decl *compound_lit_decl(type_ref *t, decl_init *init)
 
 	d->ref = t;
 	d->init = init;
+	d->is_definition = 1;
 
 	return d;
 }
