@@ -104,7 +104,7 @@ invalid:
 		e->expr = expr_deref_what(e->expr);
 	}
 
-	type_func = e->tree_type = type_ref_func_call(type_func, &args_from_decl);
+	e->tree_type = type_ref_func_call(type_func, &args_from_decl);
 
 	/* func count comparison, only if the func has arg-decls, or the func is f(void) */
 	UCC_ASSERT(args_from_decl, "no funcargs for decl %s", e->expr->spel);
@@ -112,17 +112,27 @@ invalid:
 
 	/* this block folds the args */
 	if(e->funcargs){
+		unsigned long nonnulls = 0;
 		char *const desc = ustrprintf("function argument to %s", sp);
 		const int int_sz = type_primitive_size(type_int);
 		type_ref *t_int = type_ref_new_INT();
 		int t_int_used = 0;
 		int i;
 
+		{
+			decl_attr *da;
+			if((da = type_attr_present(type_func, attr_nonnull)))
+				nonnulls = da->attr_extra.nonnull_args;
+		}
+
 		for(i = 0; e->funcargs[i]; i++){
 			expr *arg = FOLD_EXPR(e->funcargs[i], stab);
 
 			fold_need_expr(arg, desc, 0);
 			fold_disallow_st_un(arg, desc);
+
+			if((nonnulls & (1 << i)) && expr_is_null_ptr(arg))
+				WARN_AT(&arg->where, "null passed where non-null required (arg %d)", i + 1);
 
 			/* each arg needs casting up to int size, if smaller */
 			if(type_ref_size(arg->tree_type, &arg->where) < int_sz){

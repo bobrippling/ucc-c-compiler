@@ -206,15 +206,15 @@ void decl_attr_append(decl_attr **loc, decl_attr *new)
 	*loc = /*decl_attr_copy(*/new/*)*/;
 }
 
-int decl_attr_present(decl_attr *da, enum decl_attr_type t)
+decl_attr *decl_attr_present(decl_attr *da, enum decl_attr_type t)
 {
 	for(; da; da = da->next)
 		if(da->type == t)
-			return 1;
-	return 0;
+			return da;
+	return NULL;
 }
 
-int type_attr_present(type_ref *r, enum decl_attr_type t)
+decl_attr *type_attr_present(type_ref *r, enum decl_attr_type t)
 {
 	/*
 	 * attributes can be on:
@@ -228,21 +228,23 @@ int type_attr_present(type_ref *r, enum decl_attr_type t)
 	 */
 
 	while(r){
-		if(decl_attr_present(r->attr, t))
-			return 1;
+		decl_attr *da;
+
+		if((da = decl_attr_present(r->attr, t)))
+			return da;
 
 		switch(r->type){
 			case type_ref_type:
-				if(decl_attr_present(r->bits.type->attr, t))
-					return 1;
+				if((da = decl_attr_present(r->bits.type->attr, t)))
+					return da;
 				goto fin;
 
 			case type_ref_tdef:
 			{
 				decl *d = r->bits.tdef.decl;
 
-				if(d && decl_attr_present(d->attr, t))
-					return 1;
+				if(d && (da = decl_attr_present(d->attr, t)))
+					return da;
 
 				return type_attr_present(r->bits.tdef.type_of->tree_type, t);
 			}
@@ -258,13 +260,18 @@ int type_attr_present(type_ref *r, enum decl_attr_type t)
 	}
 
 fin:
-	return 0;
+	return NULL;
 }
 
-int decl_has_attr(decl *d, enum decl_attr_type t)
+decl_attr *decl_has_attr(decl *d, enum decl_attr_type t)
 {
 	/* check the attr on the decl _and_ its type */
-	return decl_attr_present(d->attr, t) || type_attr_present(d->ref, t);
+	decl_attr *da;
+	if((da = decl_attr_present(d->attr, t)))
+		return da;
+	if((da = type_attr_present(d->ref, t)))
+		return da;
+	return NULL;
 }
 
 const char *decl_attr_to_str(enum decl_attr_type t)
@@ -277,6 +284,7 @@ const char *decl_attr_to_str(enum decl_attr_type t)
 		CASE_STR_PREFIX(attr, enum_bitmask);
 		CASE_STR_PREFIX(attr, noreturn);
 		CASE_STR_PREFIX(attr, noderef);
+		CASE_STR_PREFIX(attr, nonnull);
 	}
 	return NULL;
 }

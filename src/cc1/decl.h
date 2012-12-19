@@ -14,7 +14,8 @@ struct decl_attr
 		attr_enum_bitmask,
 		attr_noreturn,
 		attr_noderef,
-#define attr_LAST (attr_noderef + 1)
+		attr_nonnull,
+#define attr_LAST (attr_nonnull + 1)
 		/*
 		 * TODO: warning, cdecl, stdcall, fastcall
 		 * pure - no globals
@@ -30,6 +31,7 @@ struct decl_attr
 			int fmt_arg, var_arg;
 		} format;
 		char *section;
+		unsigned long nonnull_args; /* limits to sizeof(long)*8 args, i.e. 64 */
 	} attr_extra;
 
 	decl_attr *next;
@@ -41,6 +43,7 @@ struct type_ref
 	type_ref *ref, *tmp; /* tmp used for things like printing */
 
 	decl_attr *attr;
+	int folded;
 
 	enum type_ref_type
 	{
@@ -192,9 +195,9 @@ type *decl_get_type(decl *);
 decl *decl_decay_first_array(decl *);
 void decl_conv_array_func_to_ptr(decl *d);
 
-int decl_attr_present(decl_attr *, enum decl_attr_type);
-int type_attr_present(type_ref *, enum decl_attr_type);
-int decl_has_attr(decl *, enum decl_attr_type);
+decl_attr *decl_attr_present(decl_attr *, enum decl_attr_type);
+decl_attr *type_attr_present(type_ref *, enum decl_attr_type);
+decl_attr *decl_has_attr(decl *, enum decl_attr_type);
 
 const char *decl_to_str(decl *d);
 const char *decl_to_str_r(char buf[DECL_STATIC_BUFSIZ], decl *);

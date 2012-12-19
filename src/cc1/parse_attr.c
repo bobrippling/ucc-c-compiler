@@ -66,6 +66,47 @@ decl_attr *parse_attr_section()
 	return da;
 }
 
+decl_attr *parse_attr_nonnull()
+{
+	/* __attribute__((nonnull(1, 2, 3, 4...)))
+	 * or
+	 * __attribute__((nonnull)) - all args
+	 */
+	decl_attr *da = decl_attr_new(attr_nonnull);
+	unsigned long l = 0;
+	int had_error = 0;
+
+	if(accept(token_open_paren)){
+		while(curtok != token_close_paren){
+			if(curtok == token_integer){
+				int n = currentval.val;
+				if(n <= 0){
+					/* shouldn't ever be negative */
+					WARN_AT(NULL, "%s nonnull argument ignored", n < 0 ? "negative" : "zero");
+					had_error = 1;
+				}else{
+					/* implicitly disallow functions with >32 args */
+					/* n-1, since we convert from 1-base to 0-base */
+					l |= 1 << (n - 1);
+				}
+			}else{
+				EAT(token_integer); /* raise error */
+			}
+			EAT(curtok);
+
+			if(accept(token_comma))
+				continue;
+			break;
+		}
+		EAT(token_close_paren);
+	}
+
+	/* if we had an error, go with what we've got, (even if it's nothing), to avoid spurious warnings */
+	da->attr_extra.nonnull_args = (l || had_error) ? l : ~0UL; /* all if 0 */
+
+	return da;
+}
+
 #define EMPTY(t)                      \
 decl_attr *parse_ ## t()              \
 {                                     \
@@ -90,6 +131,7 @@ static struct
 	{ "bitmask",        parse_attr_enum_bitmask },
 	{ "noreturn",       parse_attr_noreturn },
 	{ "noderef",        parse_attr_noderef },
+	{ "nonnull",        parse_attr_nonnull },
 
 	/* compat */
 	{ "warn_unused_result", parse_attr_warn_unused },
