@@ -1,3 +1,5 @@
+__typeof/sizeof array decay
+
 global/static init - broken, seems to think functions are everything
 
 designated init + zero for the rest:
