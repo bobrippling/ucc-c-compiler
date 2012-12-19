@@ -262,6 +262,7 @@ static type_ref *parse_btype(enum decl_storage *store)
 
 			t->qual = qual;
 
+			/* *store is assigned elsewhere */
 			return type_ref_new_type(t);
 
 		}else if(accept(token_typeof)){
@@ -794,6 +795,8 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 			decl *d = parse_decl(this_ref, parse_flag);
 
 			UCC_ASSERT(d, "null decl after parse");
+
+			d->store = store;
 
 			if(!d->spel){
 				/*
