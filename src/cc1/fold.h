@@ -27,7 +27,7 @@ int  fold_get_sym(          expr *e, symtable *stab);
 void fold_inc_writes_if_sym(expr *e, symtable *stab);
 
 #define FOLD_EXPR(e, stab) ((e) = fold_expr((e), (stab)))
-expr *FOLD_EXPR_NO_DECAY(expr *e, symtable *stab); /* for unary-& and sizeof */
+void FOLD_EXPR_NO_DECAY(expr *e, symtable *stab); /* for unary-& and sizeof */
 expr *fold_expr(expr *e, symtable *stab) ucc_wur;
 void fold_stmt(stmt *t);
 

@@ -114,56 +114,42 @@ void fold_inc_writes_if_sym(expr *e, symtable *stab)
 		e->sym->nwrites++;
 }
 
-expr *fold_expr(expr *e, symtable *stab)
+void FOLD_EXPR_NO_DECAY(expr *e, symtable *stab)
 {
 	if(e->tree_type)
-		goto check;
-	/* don't fold, but do check, in case of decl inits using the same base
-	 * e.g. int x[] = { 1, 2 }
-	 * creates: x[0] = 1, x[1] = 2
-	 * fold the first creates a tree_type for x,
-	 * so folding the second still needs the decay
-	 */
+		return;
 
 	fold_get_sym(e, stab);
 
 	EOF_WHERE(&e->where, e->f_fold(e, stab));
 
 	UCC_ASSERT(e->tree_type, "no tree_type after fold (%s)", e->f_str());
+}
 
+expr *fold_expr(expr *e, symtable *stab)
+{
 	/* perform array decay and pointer decay */
-check:
-	{
-		type_ref *r = e->tree_type;
-		expr *imp_cast = NULL;
+	type_ref *r;
+	expr *imp_cast = NULL;
 
-		EOF_WHERE(&e->where,
-				type_ref *decayed = type_ref_decay(r);
+	FOLD_EXPR_NO_DECAY(e, stab);
 
-				if(decayed != r)
-					imp_cast = expr_new_cast(decayed, 1);
-			);
+	r = e->tree_type;
 
-		if(imp_cast){
-			imp_cast->expr = e;
-			fold_expr_cast_descend(imp_cast, stab, 0);
-			e = imp_cast;
-		}
+	EOF_WHERE(&e->where,
+			type_ref *decayed = type_ref_decay(r);
+
+			if(decayed != r)
+				imp_cast = expr_new_cast(decayed, 1);
+		);
+
+	if(imp_cast){
+		imp_cast->expr = e;
+		fold_expr_cast_descend(imp_cast, stab, 0);
+		e = imp_cast;
 	}
 
 	return e;
-}
-
-expr *FOLD_EXPR_NO_DECAY(expr *e, symtable *stab)
-{
-	expr *const r = fold_expr(e, stab);
-
-	if(e != r){
-		/* decay */
-		expr_free(r);
-	}
-
-	return r;
 }
 
 void fold_enum(struct_union_enum_st *en, symtable *stab)
