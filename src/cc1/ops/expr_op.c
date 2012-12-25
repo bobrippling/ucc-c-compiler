@@ -334,7 +334,8 @@ static void op_bound(expr *e)
 			if(e->op == op_minus)
 				idx.val = -idx.val;
 
-			if(idx.val < 0 || idx.val >= sz)
+			/* index is allowed to be one past the end, i.e. idx.val == sz */
+			if(idx.val < 0 || idx.val > sz)
 				WARN_AT(&e->where,
 						"index %ld out of bounds of array, size %ld",
 						idx.val, sz);
