@@ -45,8 +45,6 @@ FILE *stdin  = &_stdin;
 FILE *stdout = &_stdout;
 FILE *stderr = &_stderr;
 
-static const char *nums = "0123456789abcdef";
-
 /* Private */
 static void fprintd_rec(FILE *f, int n, int base)
 {
@@ -54,7 +52,7 @@ static void fprintd_rec(FILE *f, int n, int base)
 	d = n / base;
 	if(d)
 		fprintd_rec(f, d, base);
-	fwrite(nums + n % base, 1, 1, f);
+	fwrite("0123456789abcdef" + n % base, 1, 1, f);
 }
 
 static void fprintn(FILE *f, int n, int base, int is_signed)
