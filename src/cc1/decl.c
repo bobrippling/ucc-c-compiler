@@ -738,12 +738,15 @@ void type_ref_add_type_str(type_ref *r,
 
 		}else{
 			expr *const e = rt->bits.tdef.type_of;
+			int const is_type = !e->expr;
 
-			BUF_ADD(aka ?
-					"typeof(%s-expr) aka '%s'" :
-					"typeof(%s-expr)",
-					e->expr->f_str(), /* e is always expr_sizeof() */
-					aka ? type_ref_to_str_r(buf, e->tree_type) : "");
+			BUF_ADD("typeof(%s%s)",
+					/* e is always expr_sizeof() */
+					is_type ? "" : "expr: ",
+					is_type ? type_ref_to_str(e->tree_type) : e->expr->f_str());
+
+			if(aka)
+				BUF_ADD(" aka '%s'", type_ref_to_str_r(buf, e->tree_type));
 		}
 
 	}else{
