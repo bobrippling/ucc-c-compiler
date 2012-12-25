@@ -296,7 +296,7 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 			expr **p_expr = &r->bits.tdef.type_of;
 
 			/* q_to_check = TODO */
-			FOLD_EXPR(*p_expr, stab);
+			FOLD_EXPR_NO_DECAY(*p_expr, stab);
 
 			if(r->bits.tdef.decl)
 				fold_decl(r->bits.tdef.decl, stab);
