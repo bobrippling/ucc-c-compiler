@@ -218,13 +218,15 @@ FILE *fopen(const char *path, const char *mode)
 FILE *freopen(const char *path, const char *mode, FILE *f)
 {
 	if(fclose2(f))
-		return NULL;
+		goto err;
 
-	if(fopen2(f, path, mode)){
-		free(f);
-		return NULL;
-	}
+	if(fopen2(f, path, mode))
+		goto err;
+
 	return f;
+err:
+	free(f);
+	return NULL;
 }
 
 FILE *fdopen(int fd, const char *mode)
