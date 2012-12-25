@@ -229,10 +229,9 @@ err:
 	return NULL;
 }
 
-FILE *fdopen(int fd, const char *mode)
+FILE *fdopen(int fd, const char *mode __unused)
 {
 	FILE *f = malloc(sizeof *f);
-	(void)mode;
 	if(!f)
 		return NULL;
 	fopen_init(f, fd);
