@@ -1,4 +1,4 @@
-global/static init - broken, seems to think functions are everything
+global/static init
 
 designated init + zero for the rest:
 	int x[] = { [3] = 5 };
