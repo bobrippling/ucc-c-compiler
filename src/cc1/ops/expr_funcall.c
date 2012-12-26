@@ -8,6 +8,7 @@
 #include "../../util/platform.h"
 #include "../../util/alloc.h"
 #include "../funcargs.h"
+#include "../data_store.h"
 
 static int func_is_asm(const char *sp)
 {
@@ -25,6 +26,125 @@ int const_fold_expr_funcall(expr *e)
 {
 	(void)e;
 	return 1; /* could extend to have int x() const; */
+}
+
+static void format_check_printf_1(char fmt, type_ref *tt, where *w)
+{
+	switch(fmt){
+		case 's':
+			if(!(tt = type_ref_is(tt, type_ref_ptr))
+			|| !(tt = type_ref_is_type(tt->ref, type_char)))
+			{
+				WARN_AT(w, "format %%s expects 'char *' argument");
+			}
+			break;
+
+		case 'd':
+			if(!type_ref_is_integral(tt))
+				WARN_AT(w, "format %%d expects integral argument");
+			break;
+
+		default:
+			WARN_AT(w, "unknown conversion character 0x%x", fmt);
+	}
+}
+
+static void format_check_printf(
+		expr **args,
+		unsigned fmt_arg, unsigned var_arg,
+		where *w)
+{
+	expr *e_str;
+	type_ref *r;
+	intval iv;
+	enum constyness k;
+
+	const_fold(args[fmt_arg], &iv, &k);
+
+	if(k != CONST_WITHOUT_VAL){
+		WARN_AT(w, "format argument isn't constant");
+		return;
+	}
+
+	r = type_ref_is(args[fmt_arg]->tree_type, type_ref_ptr);
+	if(!r)
+		goto wrong_type;
+	r = type_ref_is(r->ref, type_ref_type);
+	if(!r)
+		goto wrong_type;
+
+	if(r->bits.type->primitive != type_char){
+wrong_type:
+		WARN_AT(w, "format argument isn't a string type");
+	}
+
+
+	e_str = args[fmt_arg];
+
+	if(expr_kind(e_str, cast))
+		e_str = e_str->expr;
+	if(!expr_kind(e_str, addr)){
+		ICW("TODO: format check on non-trivial string expr (%s)",
+				args[fmt_arg]->f_str());
+		return;
+	}
+
+	{
+		const char *fmt = e_str->data_store->bits.str;
+		const int   len = e_str->data_store->len;
+		int i, n_arg = 0;
+
+		for(i = 0; i < len && fmt[i];){
+			if(fmt[i++] == '%'){
+				expr *e;
+
+				if(fmt[i] == '%'){
+					i++;
+					continue;
+				}
+
+				e = args[var_arg + n_arg++];
+
+				if(!e){
+					WARN_AT(w, "too few arguments for format (%%%c)", fmt[i]);
+					break;
+				}
+
+				format_check_printf_1(fmt[i], e->tree_type, &e->where);
+			}
+		}
+	}
+}
+
+static void format_check(where *w, type_ref *ref, expr **args)
+{
+	decl_attr *attr = type_attr_present(ref, attr_format);
+	unsigned n, fmt_arg, var_arg;
+
+	if(!attr)
+		return;
+
+	fmt_arg = attr->attr_extra.format.fmt_arg;
+	var_arg = attr->attr_extra.format.var_arg;
+
+	n = dynarray_count((void **)args);
+
+	if(fmt_arg >= n)
+		DIE_AT(w, "format argument out of bounds (%d >= %d)", fmt_arg, n);
+	if(var_arg > n)
+		DIE_AT(w, "variadic argument out of bounds (%d >= %d)", var_arg, n);
+	if(var_arg <= fmt_arg)
+		DIE_AT(w, "variadic argument after format argument");
+
+	switch(attr->attr_extra.format.fmt_func){
+		case attr_fmt_printf:
+			format_check_printf(args, fmt_arg, var_arg, w);
+			break;
+
+		case attr_fmt_scanf:
+			ICW("scanf check");
+			break;
+	}
 }
 
 void fold_expr_funcall(expr *e, symtable *stab)
@@ -190,8 +310,7 @@ invalid:
 
 	fold_disallow_st_un(e, "return");
 
-	if(type_attr_present(e->expr->tree_type, attr_format))
-		ICW("TODO: format checks on funcall at %s", where_str(&e->where));
+	format_check(&e->where, e->expr->tree_type, e->funcargs);
 
 	/* check the subexp tree type to get the funcall decl_attrs */
 	if(type_attr_present(e->expr->tree_type, attr_warn_unused))

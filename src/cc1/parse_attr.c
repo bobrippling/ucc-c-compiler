@@ -22,12 +22,12 @@ decl_attr *parse_attr_format()
 
 	EAT(token_comma);
 
-	da->attr_extra.format.fmt_arg = currentval.val;
+	da->attr_extra.format.fmt_arg = currentval.val - 1;
 	EAT(token_integer);
 
 	EAT(token_comma);
 
-	da->attr_extra.format.var_arg = currentval.val;
+	da->attr_extra.format.var_arg = currentval.val - 1;
 	EAT(token_integer);
 
 	EAT(token_close_paren);
