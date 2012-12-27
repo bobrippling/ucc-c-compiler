@@ -61,9 +61,17 @@ static void format_check_printf(
 
 	const_fold(args[fmt_arg], &iv, &k);
 
-	if(k != CONST_WITHOUT_VAL){
-		WARN_AT(w, "format argument isn't constant");
-		return;
+	switch(k){
+		case CONST_NO:
+			WARN_AT(w, "format argument isn't constant");
+			return;
+
+		case CONST_WITH_VAL:
+			if(iv.val == 0)
+				return; /* printf(NULL, ...) */
+
+		case CONST_WITHOUT_VAL:
+			break;
 	}
 
 	r = type_ref_is(args[fmt_arg]->tree_type, type_ref_ptr);
