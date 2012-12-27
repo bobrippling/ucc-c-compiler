@@ -116,13 +116,16 @@ wrong_type:
 	}
 }
 
-static void format_check(where *w, type_ref *ref, expr **args)
+static void format_check(where *w, type_ref *ref, expr **args, const int variadic)
 {
 	decl_attr *attr = type_attr_present(ref, attr_format);
 	unsigned n, fmt_arg, var_arg;
 
 	if(!attr)
 		return;
+
+	if(!variadic)
+		DIE_AT(w, "variadic function required for format check");
 
 	fmt_arg = attr->attr_extra.format.fmt_arg;
 	var_arg = attr->attr_extra.format.var_arg;
@@ -134,7 +137,7 @@ static void format_check(where *w, type_ref *ref, expr **args)
 	if(var_arg > n)
 		DIE_AT(w, "variadic argument out of bounds (%d >= %d)", var_arg, n);
 	if(var_arg <= fmt_arg)
-		DIE_AT(w, "variadic argument after format argument");
+		DIE_AT(w, "variadic argument %s format argument", var_arg == fmt_arg ? "at" : "before");
 
 	switch(attr->attr_extra.format.fmt_func){
 		case attr_fmt_printf:
@@ -310,7 +313,7 @@ invalid:
 
 	fold_disallow_st_un(e, "return");
 
-	format_check(&e->where, e->expr->tree_type, e->funcargs);
+	format_check(&e->where, e->expr->tree_type, e->funcargs, args_from_decl->variadic);
 
 	/* check the subexp tree type to get the funcall decl_attrs */
 	if(type_attr_present(e->expr->tree_type, attr_warn_unused))
