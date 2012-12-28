@@ -235,9 +235,7 @@ decl_attr *type_attr_present(type_ref *r, enum decl_attr_type t)
 
 		switch(r->type){
 			case type_ref_type:
-				if((da = decl_attr_present(r->bits.type->attr, t)))
-					return da;
-				goto fin;
+				return decl_attr_present(r->bits.type->attr, t);
 
 			case type_ref_tdef:
 			{
@@ -258,8 +256,6 @@ decl_attr *type_attr_present(type_ref *r, enum decl_attr_type t)
 				break;
 		}
 	}
-
-fin:
 	return NULL;
 }
 
@@ -719,9 +715,8 @@ void type_ref_add_type_str(type_ref *r,
 {
 	/* go down to the first type or typedef, print it and then its descriptions */
 	const type_ref *rt;
-	char *buf = *bufp;
 
-	*buf = '\0';
+	**bufp = '\0';
 	for(rt = r; rt && rt->type != type_ref_type && rt->type != type_ref_tdef; rt = rt->ref);
 
 	if(!rt)
@@ -734,7 +729,7 @@ void type_ref_add_type_str(type_ref *r,
 		if(d){
 			BUF_ADD(aka ? "%s (aka '%s')" : "%s",
 					d->spel,
-					aka ? type_ref_to_str_r_spel_aka(buf, d->ref, NULL, 0) : "");
+					aka ? type_ref_to_str_r_spel_aka(buf, d->ref, NULL, 0) : NULL);
 
 		}else{
 			expr *const e = rt->bits.tdef.type_of;
