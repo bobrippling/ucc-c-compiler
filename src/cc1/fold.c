@@ -279,10 +279,10 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 
 		case type_ref_tdef:
 		{
-			expr **p_expr = &r->bits.tdef.type_of;
+			expr *p_expr = r->bits.tdef.type_of;
 
 			/* q_to_check = TODO */
-			FOLD_EXPR_NO_DECAY(*p_expr, stab);
+			FOLD_EXPR_NO_DECAY(p_expr, stab);
 
 			if(r->bits.tdef.decl)
 				fold_decl(r->bits.tdef.decl, stab);
@@ -291,6 +291,10 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 		}
 	}
 
+	/*
+	 * now we've folded, check for restrict
+	 * since typedef int *intptr; intptr restrict a; is valid
+	 */
 	if(q_to_check & qual_restrict)
 		WARN_AT(&r->where, "restrict on non-pointer type '%s'", type_ref_to_str(r));
 
@@ -299,10 +303,6 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 
 void fold_decl(decl *d, symtable *stab)
 {
-	/*
-	 * now we've folded, check for restrict
-	 * since typedef int *intptr; intptr restrict a; is valid
-	 */
 	fold_type_ref(d->ref, NULL, stab);
 
 #if 0
