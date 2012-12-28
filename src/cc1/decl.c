@@ -738,7 +738,7 @@ void type_ref_add_type_str(type_ref *r,
 			BUF_ADD("typeof(%s%s)",
 					/* e is always expr_sizeof() */
 					is_type ? "" : "expr: ",
-					is_type ? type_ref_to_str(e->tree_type) : e->expr->f_str());
+					is_type ? type_ref_to_str_r_spel_aka(buf, e->tree_type, NULL, 0) : e->expr->f_str());
 
 			if(aka)
 				BUF_ADD(" aka '%s'", type_ref_to_str_r(buf, e->tree_type));
