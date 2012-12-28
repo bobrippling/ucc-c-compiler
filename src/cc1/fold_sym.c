@@ -38,6 +38,12 @@ int symtab_fold(symtable *tab, int current)
 	const int this_start = current;
 	int arg_space = 0;
 
+	/*if(tab->typedefs){
+		decl **i;
+		for(i = tab->typedefs; *i; i++)
+			fold_decl(*i, tab);
+	}*/
+
 	if(tab->decls){
 		decl **diter;
 		int arg_idx;
