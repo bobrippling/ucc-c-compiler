@@ -121,6 +121,9 @@ wrong_type:
 				format_check_printf_1(fmt[i], e->tree_type, &e->where);
 			}
 		}
+
+		if((!fmt[i] || i == len) && args[var_arg + n_arg])
+			WARN_AT(w, "too many arguments for format");
 	}
 }
 
