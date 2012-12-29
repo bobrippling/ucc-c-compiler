@@ -9,7 +9,7 @@ void gen_asm_extern(decl *d);
 void gen_asm(symtable *);
 void gen_expr(expr *e, symtable *stab); // FIXME: remove stab param
 void lea_expr(expr *e, symtable *stab);
-void static_store(expr *e);
+void static_addr(expr *e);
 void gen_stmt(stmt *t);
 
 #endif

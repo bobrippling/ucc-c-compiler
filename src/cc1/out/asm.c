@@ -181,7 +181,7 @@ static void asm_declare_sub(FILE *f, decl_init *init)
 			if(exp->data_store) /* FIXME: should be handled in expr_addr::static_store */
 				data_store_out(exp->data_store, 0);
 			else
-				static_store(exp); /*if(!const_expr_is_zero(exp))...*/
+				static_addr(exp); /*if(!const_expr_is_zero(exp))...*/
 
 			break;
 		}
@@ -192,7 +192,7 @@ static void asm_reserve_bytes(const char *lbl, int nbytes)
 {
 	/*
 	 * TODO: .comm buf,512,5
-	 * or    .zerofill SECTION_NAME,_buf,512,5
+	 * or    .zerofill SECTION_NAME,buf,512,5
 	 */
 	asm_out_section(SECTION_BSS, "%s:\n", lbl);
 

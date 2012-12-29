@@ -157,7 +157,7 @@ static void static_expr_cast_addr(expr *e)
 						from_sz, to_sz);
 			}
 
-			static_store(e->expr);
+			static_addr(e->expr);
 			break;
 		}
 	}

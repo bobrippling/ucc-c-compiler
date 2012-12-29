@@ -46,7 +46,7 @@ void gen_stmt(stmt *t)
 	EOF_WHERE(&t->where, t->f_gen(t));
 }
 
-void static_store(expr *e)
+void static_addr(expr *e)
 {
 	if(e->f_static_addr){
 		e->f_static_addr(e);

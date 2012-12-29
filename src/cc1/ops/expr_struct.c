@@ -140,7 +140,8 @@ void gen_expr_str_struct(expr *e, symtable *stab)
 
 void fold_const_expr_struct(expr *e, intval *val, enum constyness *success)
 {
-	/* if lhs is NULL, const fold to struct offset, (obv. if !dot, which is taken care of in fold) */
+	/* if lhs is NULL (or some pointer constant),
+	 * const fold to struct offset, (obv. if !dot, which is taken care of in fold) */
 	ASSERT_NOT_DOT();
 
 	const_fold(e->lhs, val, success);
@@ -155,7 +156,7 @@ void static_expr_struct_addr(expr *e)
 {
 	ASSERT_NOT_DOT();
 
-	static_store(e->lhs);
+	static_addr(e->lhs);
 	asm_declare_partial(" + %ld", struct_offset(e->rhs));
 }
 
