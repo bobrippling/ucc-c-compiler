@@ -32,14 +32,18 @@ static void format_check_printf_1(char fmt, type_ref *tt, where *w)
 {
 	switch(fmt){
 		case 's':
+		case 'p':
 			if(!(tt = type_ref_is(tt, type_ref_ptr))
-			|| !(tt = type_ref_is_type(tt->ref, type_char)))
+			|| !(tt = type_ref_is_type(tt->ref, fmt == 's' ? type_char : type_void)))
 			{
-				WARN_AT(w, "format %%s expects 'char *' argument");
+				WARN_AT(w, "format %%s expects '%s *' argument",
+						fmt == 's' ? "char" : "void");
 			}
 			break;
 
+		case 'c':
 		case 'd':
+		case 'x':
 			if(!type_ref_is_integral(tt))
 				WARN_AT(w, "format %%d expects integral argument");
 			break;
@@ -110,6 +114,8 @@ wrong_type:
 					i++;
 					continue;
 				}
+
+				/* TODO: allow [0-9l. ] etc */
 
 				e = args[var_arg + n_arg++];
 
