@@ -1,6 +1,6 @@
-f(char *, ...) __attribute__((format(printf, 1, 2)));
+#include "printf.h"
 
 main()
 {
-	f("%s\n", "hi");
+	printf("%s\n", "hi");
 }
