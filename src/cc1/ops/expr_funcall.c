@@ -41,6 +41,7 @@ static void format_check_printf_1(char fmt, type_ref *tt, where *w)
 			}
 			break;
 
+		case '*':
 		case 'c':
 		case 'd':
 		case 'x':
@@ -108,6 +109,7 @@ wrong_type:
 
 		for(i = 0; i < len && fmt[i];){
 			if(fmt[i++] == '%'){
+				int fin;
 				expr *e;
 
 				if(fmt[i] == '%'){
@@ -115,7 +117,22 @@ wrong_type:
 					continue;
 				}
 
-				/* TODO: allow [0-9l. ] etc */
+recheck:
+				fin = 0;
+				do switch(fmt[i]){
+					case '1': case '2': case '3':
+					case '4': case '5': case '6':
+					case '7': case '8': case '9':
+
+					case '0': case '#': case '-':
+					case ' ': case '+': case '.':
+
+					case 'l': case 'h': case 'L':
+						i++;
+						break;
+					default:
+						fin = 1;
+				}while(!fin);
 
 				e = args[var_arg + n_arg++];
 
@@ -125,6 +142,10 @@ wrong_type:
 				}
 
 				format_check_printf_1(fmt[i], e->tree_type, &e->where);
+				if(fmt[i] == '*'){
+					i++;
+					goto recheck;
+				}
 			}
 		}
 
