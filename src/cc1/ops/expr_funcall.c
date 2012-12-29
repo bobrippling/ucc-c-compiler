@@ -31,21 +31,42 @@ int const_fold_expr_funcall(expr *e)
 static void format_check_printf_1(char fmt, type_ref *tt, where *w)
 {
 	switch(fmt){
-		case 's':
-		case 'p':
+		enum type_primitive prim;
+
+		case 's': prim = type_char; goto ptr;
+		case 'p': prim = type_void; goto ptr;
+		case 'n': prim = type_int;  goto ptr;
+ptr:
 			if(!(tt = type_ref_is(tt, type_ref_ptr))
-			|| !(tt = type_ref_is_type(tt->ref, fmt == 's' ? type_char : type_void)))
+			|| !(tt = type_ref_is_type(tt->ref, prim)))
 			{
-				WARN_AT(w, "format %%s expects '%s *' argument",
-						fmt == 's' ? "char" : "void");
+				WARN_AT(w, "format %%%c expects '%s *' argument",
+						fmt, type_primitive_to_str(prim));
 			}
 			break;
 
+		case 'x':
+		case 'X':
+		case 'u':
+		case 'o':
+			/* unsigned ... */
 		case '*':
 		case 'c':
 		case 'd':
-		case 'x':
+		case 'i':
 			if(!type_ref_is_integral(tt))
+				WARN_AT(w, "format %%d expects integral argument");
+			break;
+
+		case 'e':
+		case 'E':
+		case 'f':
+		case 'F':
+		case 'g':
+		case 'G':
+		case 'a':
+		case 'A':
+			if(!type_ref_is_floating(tt))
 				WARN_AT(w, "format %%d expects integral argument");
 			break;
 
