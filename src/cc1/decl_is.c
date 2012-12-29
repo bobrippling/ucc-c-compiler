@@ -135,7 +135,7 @@ int decl_is_struct_or_union(decl *d)
 int type_ref_is_fptr(type_ref *r)
 {
 	return (r = type_ref_is(r, type_ref_ptr))
-		&& type_ref_is(r, type_ref_func);
+		&& type_ref_is(r->ref, type_ref_func);
 }
 
 int type_ref_is_void_ptr(type_ref *r)
