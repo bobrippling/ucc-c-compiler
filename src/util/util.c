@@ -76,21 +76,34 @@ static void warn_show_line(struct where *w)
 	if(show_current_line && w->line_str){
 		static int buffed = 0;
 		char *line = ustrdup(w->line_str);
-		char *p;
+		char *p, *nonblank;
 		int i;
 
 		if(!buffed){
+			/* line buffer stderr since we're outputting chars */
 			setvbuf(stderr, NULL, _IOLBF, 0);
 			buffed = 1;
 		}
 
+		nonblank = NULL;
 		for(p = line; *p; p++)
-			if(*p == '\t')
-				*p = ' ';
+			switch(*p){
+				case '\t':
+					*p = ' ';
+				case ' ':
+					break;
+				default:
+					/* trim initial whitespace */
+					if(!nonblank)
+						nonblank = p;
+			}
 
-		fprintf(stderr, "  \"%s\"\n", line);
+		if(!nonblank)
+			nonblank = line;
 
-		for(i = w->chr + 2; i > 0; i--)
+		fprintf(stderr, "  \"%s\"\n", nonblank);
+
+		for(i = w->chr + 2 - (nonblank - line); i > 0; i--)
 			fputc(' ', stderr);
 		fputs("^\n", stderr);
 
