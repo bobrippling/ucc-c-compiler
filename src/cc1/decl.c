@@ -725,11 +725,11 @@ void type_ref_add_type_str(type_ref *r,
 	if(rt->type == type_ref_tdef){
 		char buf[TYPE_REF_STATIC_BUFSIZ];
 		decl *d = rt->bits.tdef.decl;
+		type_ref *of;
 
 		if(d){
-			BUF_ADD(aka ? "%s (aka '%s')" : "%s",
-					d->spel,
-					aka ? type_ref_to_str_r_spel_aka(buf, d->ref, NULL, 0) : NULL);
+			BUF_ADD("%s", d->spel);
+			of = d->ref;
 
 		}else{
 			expr *const e = rt->bits.tdef.type_of;
@@ -738,10 +738,15 @@ void type_ref_add_type_str(type_ref *r,
 			BUF_ADD("typeof(%s%s)",
 					/* e is always expr_sizeof() */
 					is_type ? "" : "expr: ",
-					is_type ? type_ref_to_str_r_spel_aka(buf, e->tree_type, NULL, 0) : e->expr->f_str());
+					is_type ? type_ref_to_str_r_spel_aka(buf, e->tree_type, NULL, 0)
+						: e->expr->f_str());
 
-			/* don't show aka for typeofs - it's there already */
+			/* don't show aka for typeof types - it's there already */
+			of = is_type ? NULL : e->tree_type;
 		}
+
+		if(aka && of)
+			BUF_ADD(" (aka '%s')", type_ref_to_str_r_spel_aka(buf, of, NULL, 0));
 
 	}else{
 		BUF_ADD("%s", type_to_str(rt->bits.type));
