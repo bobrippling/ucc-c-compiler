@@ -1,15 +1,17 @@
 #ifndef CONST_H
 #define CONST_H
 
-void const_fold(expr *e, intval *iv, enum constyness *success);
+void const_fold(expr *e, consty *);
 /*int const_expr_is_const(expr *e);*/
 int const_expr_and_zero(expr *e);
 /*long const_expr_value(expr *e);*/
 
-#define const_fold_need_val(e, iv) do{            \
-		enum constyness k;                            \
-		const_fold(e, iv, &k);                        \
-		UCC_ASSERT(k == CONST_WITH_VAL, "not const"); \
+#define const_fold_need_val(e, iv_addr) do{       \
+		consty k;                                     \
+		const_fold(e, &k);                            \
+		UCC_ASSERT(k.type == CONST_WITH_VAL,          \
+				"not const");                             \
+		memcpy(iv_addr, &k.bits.iv, sizeof *iv_addr); \
 	}while(0)
 
 #define POSSIBLE_OPT(e, s) \
@@ -21,11 +23,11 @@ int const_expr_and_zero(expr *e);
 			expr_kind(e, op) ? op_to_str(e->op) : "")
 
 
-#define OPT_CHECK(e, s)                \
-	do{ intval dummy; enum constyness d; \
-		const_fold(e, &dummy, &d);         \
-		if(d == CONST_WITH_VAL)            \
-			POSSIBLE_OPT(e, s);              \
+#define OPT_CHECK(e, s)          \
+	do{ consty k;                  \
+		const_fold(e, &k);           \
+		if(k.type == CONST_WITH_VAL) \
+			POSSIBLE_OPT(e, s);        \
 	}while(0)
 
 #endif

@@ -6,15 +6,15 @@ const char *str_expr_comma()
 	return "comma";
 }
 
-void fold_const_expr_comma(expr *e, intval *piv, enum constyness *type)
+void fold_const_expr_comma(expr *e, consty *k)
 {
-	enum constyness ok[2];
+	consty klhs;
 
-	const_fold(e->lhs, piv, &ok[0]); /* piv should be overwritten */
-	const_fold(e->rhs, piv, &ok[1]);
+	const_fold(e->lhs, &klhs);
+	const_fold(e->rhs, k);
 
-	if(ok[0] != CONST_NO && ok[1] == CONST_WITH_VAL)
-		*type = CONST_WITH_VAL;
+	if(klhs.type == CONST_NO)
+		k->type = CONST_NO;
 }
 
 void fold_expr_comma(expr *e, symtable *stab)

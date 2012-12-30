@@ -138,18 +138,19 @@ void gen_expr_str_struct(expr *e, symtable *stab)
 	gen_str_indent--;
 }
 
-void fold_const_expr_struct(expr *e, intval *val, enum constyness *success)
+void fold_const_expr_struct(expr *e, consty *k)
 {
 	/* if lhs is NULL (or some pointer constant),
 	 * const fold to struct offset, (obv. if !dot, which is taken care of in fold) */
 	ASSERT_NOT_DOT();
 
-	const_fold(e->lhs, val, success);
+	const_fold(e->lhs, k);
 
-	if(*success == CONST_WITH_VAL)
-		val->val += struct_offset(e->rhs);
+	if(k->type == CONST_WITH_VAL)
+		/* FIXME: this isn't const fold, this is address/static expr */
+		k->bits.iv.val += struct_offset(e->rhs);
 	else
-		*success = CONST_WITHOUT_VAL;
+		k->type = CONST_NO;
 }
 
 void static_expr_struct_addr(expr *e)

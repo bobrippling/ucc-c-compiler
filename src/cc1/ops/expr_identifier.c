@@ -11,10 +11,8 @@ const char *str_expr_identifier()
 	return "identifier";
 }
 
-void fold_const_expr_identifier(expr *e, intval *piv, enum constyness *pconst_type)
+void fold_const_expr_identifier(expr *e, consty *k)
 {
-	(void)piv;
-
 	/*
 	 * if we are an array identifier, we are constant:
 	 * int x[];
@@ -22,7 +20,7 @@ void fold_const_expr_identifier(expr *e, intval *piv, enum constyness *pconst_ty
 
 	/* may not have e->sym if we're the struct-member-identifier */
 
-	*pconst_type = e->sym && e->sym->decl && DECL_IS_ARRAY(e->sym->decl) ? CONST_WITHOUT_VAL : CONST_NO;
+	k->type = e->sym && e->sym->decl && DECL_IS_ARRAY(e->sym->decl) ? CONST_WITHOUT_VAL : CONST_NO;
 }
 
 void fold_expr_identifier(expr *e, symtable *stab)

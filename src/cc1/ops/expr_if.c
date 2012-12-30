@@ -11,43 +11,53 @@ const char *str_expr_if()
 	return "if";
 }
 
-void fold_const_expr_if(expr *e, intval *piv, enum constyness *pconst_type)
+void fold_const_expr_if(expr *e, consty *k)
 {
-	intval vals[3];
-	enum constyness consts[3];
+	consty consts[3];
+	int res;
 
-	const_fold(e->expr, &vals[0], &consts[0]);
-	const_fold(e->rhs,  &vals[2], &consts[2]);
+	const_fold(e->expr, &consts[0]);
+	const_fold(e->rhs,  &consts[2]);
 
-	if(e->lhs){
-		const_fold(e->lhs, &vals[1], &consts[1]);
-	}else{
+	if(e->lhs)
+		const_fold(e->lhs, &consts[1]);
+	else
 		consts[1] = consts[0];
-		vals[1]   = vals[0];
+
+	/* we're only const if expr, lhs and rhs are const */
+	if(consts[0].type == CONST_NO
+	|| consts[1].type == CONST_NO
+	|| consts[2].type == CONST_NO)
+	{
+		k->type = CONST_NO;
+		return;
 	}
 
-	*pconst_type = CONST_NO;
+	switch(consts[0].type){
+		case CONST_WITH_VAL:
+			res = consts[0].bits.iv.val;
+			break;
+		case CONST_WITHOUT_VAL:
+		case CONST_WITH_STR:
+			res = 1;
+			break;
 
-	if(consts[0] == CONST_WITH_VAL){
-		const int idx_from = vals[0].val ? 1 : 2;
-
-		if(consts[idx_from] == CONST_WITH_VAL){
-			memcpy(piv, &vals[idx_from], sizeof *piv);
-			*pconst_type = CONST_WITH_VAL;
-		}
+		case CONST_NO:
+			ICE("buh");
 	}
+
+	memcpy(k, &consts[res ? 1 : 2], sizeof *k);
 }
 
 void fold_expr_if(expr *e, symtable *stab)
 {
-	enum constyness is_const;
-	intval dummy;
+	consty konst;
 	type_ref *tt_l, *tt_r;
 
 	FOLD_EXPR(e->expr, stab);
-	const_fold(e->expr, &dummy, &is_const);
+	const_fold(e->expr, &konst);
 
-	if(is_const != CONST_NO)
+	if(konst.type != CONST_NO)
 		POSSIBLE_OPT(e->expr, "constant ?: expression");
 
 	fold_need_expr(e->expr, "?: expr", 1);

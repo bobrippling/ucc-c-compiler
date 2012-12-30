@@ -70,11 +70,6 @@ void fold_insert_casts(type_ref *dlhs, expr **prhs, symtable *stab, where *w, co
 	}
 
 	if(type_ref_is_signed(dlhs) != type_ref_is_signed(rhs->tree_type)){
-		enum constyness type;
-		intval iv;
-
-		const_fold(rhs, &iv, &type);
-
 #define SPEL_IF_IDENT(hs)                          \
 		expr_kind(hs, identifier) ? " ("     : "", \
 		expr_kind(hs, identifier) ? hs->spel : "", \
@@ -913,19 +908,18 @@ void fold(symtable *globs)
 		static_assert **i;
 		for(i = globs->static_asserts; i && *i; i++){
 			static_assert *sa = *i;
-			intval val;
-			enum constyness const_type;
+			consty k;
 
 			FOLD_EXPR(sa->e, sa->scope);
 			if(!type_ref_is_integral(sa->e->tree_type))
 				DIE_AT(&sa->e->where, "static assert: not an integral expression (%s)", sa->e->f_str());
 
-			const_fold(sa->e, &val, &const_type);
+			const_fold(sa->e, &k);
 
-			if(const_type == CONST_NO)
+			if(k.type == CONST_NO)
 				DIE_AT(&sa->e->where, "static assert: not a constant expression (%s)", sa->e->f_str());
 
-			if(!val.val)
+			if(!k.bits.iv.val)
 				DIE_AT(&sa->e->where, "static assertion failure: %s", sa->s);
 		}
 	}

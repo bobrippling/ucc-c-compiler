@@ -146,13 +146,13 @@ static void fold_compatible_p(expr *e, symtable *stab)
 	wur_builtin(e);
 }
 
-static void const_compatible_p(expr *e, intval *val, enum constyness *success)
+static void const_compatible_p(expr *e, consty *k)
 {
 	type_ref **types = e->val.types;
 
-	*success = CONST_WITH_VAL;
+	k->type = CONST_WITH_VAL;
 
-	val->val = type_ref_equal(types[0], types[1], DECL_CMP_EXACT_MATCH);
+	k->bits.iv.val = type_ref_equal(types[0], types[1], DECL_CMP_EXACT_MATCH);
 }
 
 static expr *parse_compatible_p(void)
@@ -179,16 +179,15 @@ static void fold_constant_p(expr *e, symtable *stab)
 	wur_builtin(e);
 }
 
-static void const_constant_p(expr *e, intval *val, enum constyness *success)
+static void const_constant_p(expr *e, consty *k)
 {
 	expr *test = *e->funcargs;
-	enum constyness type;
-	intval iv;
+	consty subk;
 
-	const_fold(test, &iv, &type);
+	const_fold(test, &subk);
 
-	*success = CONST_WITH_VAL;
-	val->val = type != CONST_NO;
+	k->type = CONST_WITH_VAL;
+	k->bits.iv.val = subk.type != CONST_NO;
 }
 
 static expr *parse_constant_p(void)
@@ -202,19 +201,18 @@ static expr *parse_constant_p(void)
 
 static void fold_frame_address(expr *e, symtable *stab)
 {
-	enum constyness type;
-	intval iv;
+	consty k;
 
 	if(dynarray_count((void **)e->funcargs) != 1)
 		DIE_AT(&e->where, "%s takes a single argument", e->expr->spel);
 
 	FOLD_EXPR(e->funcargs[0], stab);
 
-	const_fold(e->funcargs[0], &iv, &type);
-	if(type != CONST_WITH_VAL || iv.val < 0)
+	const_fold(e->funcargs[0], &k);
+	if(k.type != CONST_WITH_VAL || k.bits.iv.val < 0)
 		DIE_AT(&e->where, "%s needs a positive constant value argument", e->expr->spel);
 
-	memcpy(&e->val.iv, &iv, sizeof iv);
+	memcpy(&e->val.iv, &k.bits.iv, sizeof k.bits.iv);
 
 	e->tree_type = type_ref_new_ptr(
 			type_ref_new_type(
@@ -246,8 +244,7 @@ static expr *parse_frame_address(void)
 
 static void fold_expect(expr *e, symtable *stab)
 {
-	enum constyness type;
-	intval iv;
+	consty k;
 	int i;
 
 	if(dynarray_count((void **)e->funcargs) != 2)
@@ -256,8 +253,8 @@ static void fold_expect(expr *e, symtable *stab)
 	for(i = 0; i < 2; i++)
 		FOLD_EXPR(e->funcargs[i], stab);
 
-	const_fold(e->funcargs[1], &iv, &type);
-	if(type != CONST_WITH_VAL)
+	const_fold(e->funcargs[1], &k);
+	if(k.type != CONST_WITH_VAL)
 		WARN_AT(&e->where, "%s second argument isn't a constant value", e->expr->spel);
 
 	e->tree_type = e->funcargs[0]->tree_type;
@@ -271,9 +268,10 @@ static void builtin_gen_expect(expr *e, symtable *stab)
 	gen_expr(e->funcargs[0], stab);
 }
 
-static void const_expect(expr *e, intval *val, enum constyness *success)
+static void const_expect(expr *e, consty *k)
 {
-	const_fold(e->funcargs[0], val, success);
+	/* forward on */
+	const_fold(e->funcargs[0], k);
 }
 
 static expr *parse_expect(void)

@@ -23,13 +23,12 @@ char *curfunc_lblfin; /* extern */
 
 void gen_expr(expr *e, symtable *stab)
 {
-	intval iv;
-	enum constyness type;
+	consty k;
 
-	const_fold(e, &iv, &type);
+	const_fold(e, &k);
 
-	if(type == CONST_WITH_VAL) /* TODO: -O0 skips this */
-		out_push_iv(e->tree_type, &iv);
+	if(k.type == CONST_WITH_VAL) /* TODO: -O0 skips this */
+		out_push_iv(e->tree_type, &k.bits.iv);
 	else
 		EOF_WHERE(&e->where, e->f_gen(e, stab));
 }

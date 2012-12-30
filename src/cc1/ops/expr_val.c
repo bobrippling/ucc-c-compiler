@@ -31,10 +31,10 @@ void gen_expr_str_val(expr *e, symtable *stab)
 	idt_printf("val: %d\n", e->val);
 }
 
-void const_expr_val(expr *e, intval *piv, enum constyness *pconst_type)
+void const_expr_val(expr *e, consty *k)
 {
-	memcpy(piv, &e->val, sizeof *piv);
-	*pconst_type = CONST_WITH_VAL; /* obviously vals are const */
+	memcpy(&k->bits.iv, &e->val, sizeof e->val);
+	k->type = CONST_WITH_VAL; /* obviously vals are const */
 }
 
 void mutate_expr_val(expr *e)

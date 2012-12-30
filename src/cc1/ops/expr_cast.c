@@ -12,11 +12,12 @@ const char *str_expr_cast()
 	return "cast";
 }
 
-void fold_const_expr_cast(expr *e, intval *piv, enum constyness *type)
+void fold_const_expr_cast(expr *e, consty *k)
 {
-	const_fold(e->expr, piv, type);
+#define piv (&k->bits.iv)
+	const_fold(e->expr, k);
 
-	if(*type == CONST_WITH_VAL){
+	if(k->type == CONST_WITH_VAL){
 		/* need to cast the val down as appropriate */
 		if(type_ref_is_type(e->tree_type, type__Bool)){
 			piv->val = !!piv->val; /* analagous to out/out.c::out_normalise()'s constant case */
@@ -42,12 +43,13 @@ void fold_const_expr_cast(expr *e, intval *piv, enum constyness *type)
 				break; /* no cast - max word size */
 
 				default:
-				*type = CONST_NO;
+				k->type = CONST_NO;
 				ICW("can't const fold cast expr of type %s size %d",
 						type_ref_to_str(e->tree_type), sz);
 			}
 		}
 	}
+#undef piv
 }
 
 void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
@@ -127,18 +129,22 @@ void fold_expr_cast(expr *e, symtable *stab)
 
 static void static_expr_cast_addr(expr *e)
 {
-	enum constyness type;
-	intval iv;
+	consty k;
 
-	const_fold(e, &iv, &type);
+	const_fold(e, &k);
 
-	switch(type){
+	switch(k.type){
 		case CONST_NO:
 			ICE("bad cast static init");
 
 		case CONST_WITH_VAL:
 			/* output with possible truncation (truncate?) */
-			asm_declare_partial("%ld", iv.val);
+			asm_declare_partial("%ld", k.bits.iv.val);
+			break;
+
+		case CONST_WITH_STR:
+			/* TODO */
+			ICE("TODO: const str addr");
 			break;
 
 		case CONST_WITHOUT_VAL:

@@ -94,12 +94,12 @@ void gen_expr_str__Generic(expr *e, symtable *stab)
 	gen_str_indent--;
 }
 
-void const_expr__Generic(expr *e, intval *piv, enum constyness *pconst_type)
+void const_expr__Generic(expr *e, consty *k)
 {
 	/* we're const if our chosen expr is */
 	UCC_ASSERT(e->generic_chosen, "_Generic const check before fold");
 
-	const_fold(e->generic_chosen->e, piv, pconst_type);
+	const_fold(e->generic_chosen->e, k);
 }
 
 void mutate_expr__Generic(expr *e)

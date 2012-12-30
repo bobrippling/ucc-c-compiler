@@ -12,11 +12,12 @@ const char *str_expr_op()
 static void operate(
 		intval *lval, intval *rval,
 		enum op_type op,
-		intval *piv, enum constyness *pconst_type,
+		consty *konst,
 		where *where)
 {
 	/* FIXME: casts based on lval.type */
-#define OP(a, b) case a: piv->val = lval->val b rval->val; return
+#define piv (&konst->bits.iv)
+#define OP(a, b) case a: konst->bits.iv.val = lval->val b rval->val; return
 	switch(op){
 		OP(op_multiply,   *);
 		OP(op_eq,         ==);
@@ -43,7 +44,7 @@ static void operate(
 				return;
 			}
 			warn_at(where, 1, "division by zero");
-			*pconst_type = CONST_NO;
+			konst->type = CONST_NO;
 			return;
 		}
 
@@ -63,6 +64,7 @@ static void operate(
 	}
 
 	ICE("unhandled type");
+#undef piv
 }
 
 void operate_optimise(expr *e)
@@ -100,23 +102,23 @@ void operate_optimise(expr *e)
 	}
 }
 
-void fold_const_expr_op(expr *e, intval *piv, enum constyness *pconst_type)
+void fold_const_expr_op(expr *e, consty *k)
 {
-	intval lhs, rhs;
-	enum constyness l_const, r_const;
+	consty lhs, rhs;
 
-	const_fold(e->lhs, &lhs, &l_const);
+	const_fold(e->lhs, &lhs);
 	if(e->rhs){
-		const_fold(e->rhs, &rhs, &r_const);
+		const_fold(e->rhs, &rhs);
 	}else{
-		r_const = CONST_WITH_VAL;
+		memset(&rhs, 0, sizeof rhs);
+		rhs.type = CONST_WITH_VAL;
 	}
 
-	if(l_const == CONST_WITH_VAL && r_const == CONST_WITH_VAL){
-		*pconst_type = CONST_WITH_VAL;
-		operate(&lhs, e->rhs ? &rhs : NULL, e->op, piv, pconst_type, &e->where);
+	if(lhs.type == CONST_WITH_VAL && rhs.type == CONST_WITH_VAL){
+		k->type = CONST_WITH_VAL;
+		operate(&lhs.bits.iv, e->rhs ? &rhs.bits.iv : NULL, e->op, k, &e->where);
 	}else{
-		*pconst_type = CONST_WITHOUT_VAL;
+		k->type = CONST_NO;
 		operate_optimise(e);
 	}
 }
@@ -323,12 +325,12 @@ static void op_bound(expr *e)
 		array = expr_is_array_cast(e->rhs);
 
 	if(array){
-		enum constyness k;
-		intval idx;
+		consty k;
 
-		const_fold(lhs ? e->rhs : e->lhs, &idx, &k);
+		const_fold(lhs ? e->rhs : e->lhs, &k);
 
-		if(k == CONST_WITH_VAL){
+		if(k.type == CONST_WITH_VAL){
+#define idx k.bits.iv
 			const long sz = type_ref_array_len(array->tree_type);
 
 			if(e->op == op_minus)
@@ -340,6 +342,7 @@ static void op_bound(expr *e)
 						"index %ld out of bounds of array, size %ld",
 						idx.val, sz);
 			/* TODO: "note: array here" */
+#undef idx
 		}
 	}
 }

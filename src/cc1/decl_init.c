@@ -63,16 +63,13 @@ int decl_init_is_const(decl_init *dinit, symtable *stab)
 	switch(dinit->type){
 		case decl_init_scalar:
 		{
-			expr *e = dinit->bits.expr;
-			intval iv;
-			enum constyness type;
+			expr *e;
+			consty k;
 
-			FOLD_EXPR(e, stab);
-			const_fold(e, &iv, &type);
+			e = FOLD_EXPR(dinit->bits.expr, stab);
+			const_fold(e, &k);
 
-			dinit->bits.expr = e;
-
-			return type != CONST_NO;
+			return k.type != CONST_NO;
 		}
 
 		case decl_init_brace:

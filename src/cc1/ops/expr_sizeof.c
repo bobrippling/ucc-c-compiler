@@ -62,12 +62,12 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 	}
 }
 
-void const_expr_sizeof(expr *e, intval *piv, enum constyness *pconst_type)
+void const_expr_sizeof(expr *e, consty *k)
 {
 	UCC_ASSERT(e->tree_type, "const_fold on sizeof before fold");
 	/* memcpy? */
-	piv->val = SIZEOF_SIZE(e);
-	*pconst_type = CONST_WITH_VAL;
+	k->bits.iv.val = SIZEOF_SIZE(e);
+	k->type = CONST_WITH_VAL;
 }
 
 void static_expr_sizeof_store(expr *e)

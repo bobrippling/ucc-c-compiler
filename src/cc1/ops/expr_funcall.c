@@ -80,52 +80,32 @@ static void format_check_printf(
 		unsigned fmt_arg, unsigned var_arg,
 		where *w)
 {
-	expr *e_str;
-	type_ref *r;
-	intval iv;
-	enum constyness k;
+	data_store *fmt_str;
+	consty k;
 
-	const_fold(args[fmt_arg], &iv, &k);
+	const_fold(args[fmt_arg], &k);
 
-	switch(k){
+	switch(k.type){
 		case CONST_NO:
 			WARN_AT(w, "format argument isn't constant");
 			return;
 
 		case CONST_WITH_VAL:
-			if(iv.val == 0)
+			if(k.bits.iv.val == 0)
 				return; /* printf(NULL, ...) */
 
 		case CONST_WITHOUT_VAL:
+			WARN_AT(w, "format argument isn't a string constant");
+			return;
+
+		case CONST_WITH_STR:
+			fmt_str = k.bits.str;
 			break;
 	}
 
-	r = type_ref_is(args[fmt_arg]->tree_type, type_ref_ptr);
-	if(!r)
-		goto wrong_type;
-	r = type_ref_is(r->ref, type_ref_type);
-	if(!r)
-		goto wrong_type;
-
-	if(r->bits.type->primitive != type_char){
-wrong_type:
-		WARN_AT(w, "format argument isn't a string type");
-	}
-
-
-	e_str = args[fmt_arg];
-
-	if(expr_kind(e_str, cast))
-		e_str = e_str->expr;
-	if(!expr_kind(e_str, addr)){
-		ICW("TODO: format check on non-trivial string expr (%s)",
-				args[fmt_arg]->f_str());
-		return;
-	}
-
 	{
-		const char *fmt = e_str->data_store->bits.str;
-		const int   len = e_str->data_store->len;
+		const char *fmt = fmt_str->bits.str;
+		const int   len = fmt_str->len;
 		int i, n_arg = 0;
 
 		for(i = 0; i < len && fmt[i];){

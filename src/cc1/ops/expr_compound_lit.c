@@ -72,11 +72,9 @@ static void lea_expr_compound_lit(expr *e, symtable *stab)
 	out_push_sym(e->sym);
 }
 
-void const_expr_compound_lit(expr *e, intval *piv, enum constyness *pconst_type)
+void const_expr_compound_lit(expr *e, consty *k)
 {
-	(void)piv;
-
-	*pconst_type = decl_init_is_const(
+	k->type = decl_init_is_const(
 			e->val.decl->init, NULL /* shouldn't be needed */)
 		? CONST_WITHOUT_VAL : CONST_NO;
 }
