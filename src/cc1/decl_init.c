@@ -130,9 +130,7 @@ static type_ref *decl_initialise_array(
 		case decl_init_scalar:
 			/* if we're nested, pull as many as we need from the init */
 			/* FIXME: can't check tree_type - fold hasn't occured yet */
-			if((tfor = type_ref_is(dinit->bits.expr->tree_type, type_ref_ptr))
-					&& type_ref_is_type(tfor->ref, type_char))
-			{
+			if(type_ref_is_type(type_ref_is_ptr(dinit->bits.expr->tree_type), type_char)){
 				/* const char * init - need to check tfor is of the same type */
 				ICE("TODO: array init with string literal");
 			}

@@ -67,6 +67,12 @@ type_ref *type_ref_is_type(type_ref *r, enum type_primitive p)
 	return NULL;
 }
 
+type_ref *type_ref_is_ptr(type_ref *r)
+{
+	r = type_ref_is(r, type_ref_ptr);
+	return r ? r->ref : NULL;
+}
+
 type *type_ref_get_type(type_ref *r)
 {
 	for(; r && r->type != type_ref_type; r = r->ref);
@@ -134,16 +140,12 @@ int decl_is_struct_or_union(decl *d)
 
 int type_ref_is_fptr(type_ref *r)
 {
-	return (r = type_ref_is(r, type_ref_ptr))
-		&& type_ref_is(r->ref, type_ref_func);
+	return !!type_ref_is(type_ref_is_ptr(r), type_ref_func);
 }
 
 int type_ref_is_void_ptr(type_ref *r)
 {
-	if((r = type_ref_is(r, type_ref_ptr)))
-		return !!type_ref_is_type(r->ref, type_void);
-
-	return 0;
+	return !!type_ref_is_type(type_ref_is_ptr(r), type_void);
 }
 
 int decl_is_integral(decl *d)
@@ -194,8 +196,8 @@ int type_ref_align(type_ref *r, where const *from)
 		/* safe - can't have an instance without a ->sue */
 		return sue->align;
 
-	if((r = type_ref_is(r, type_ref_ptr))
-	|| (r = type_ref_is(r, type_ref_block)))
+	if(type_ref_is(r, type_ref_ptr)
+	|| type_ref_is(r, type_ref_block))
 	{
 		return platform_word_size();
 	}

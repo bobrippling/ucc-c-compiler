@@ -436,7 +436,7 @@ static int calc_ptr_step(type_ref *t)
 	/* we are calculating the sizeof *t */
 	int sz;
 
-	if(type_ref_is_type(type_ref_is(t, type_ref_ptr), type_void))
+	if(type_ref_is_type(type_ref_is_ptr(t), type_void))
 		return type_primitive_size(type_void);
 
 	sz = type_ref_size(type_ref_next(t), NULL);
@@ -563,7 +563,7 @@ void out_deref()
 	indir = type_ref_ptr_depth_dec(vtop->t);
 
 	if(type_ref_is(indir, type_ref_array)
-	|| type_ref_is(type_ref_is(vtop->t, type_ref_ptr), type_ref_func)){
+	|| type_ref_is(type_ref_is_ptr(vtop->t), type_ref_func)){
 		out_change_type(indir);
 		return; /* noop */
 	}

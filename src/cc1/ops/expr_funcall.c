@@ -37,9 +37,8 @@ static void format_check_printf_1(char fmt, type_ref *tt, where *w)
 		case 'p': prim = type_void; goto ptr;
 		case 'n': prim = type_int;  goto ptr;
 ptr:
-			if(!(tt = type_ref_is(tt, type_ref_ptr))
-			|| !(tt = type_ref_is_type(tt->ref, prim)))
-			{
+			tt = type_ref_is_type(type_ref_is_ptr(tt), prim);
+			if(!tt){
 				WARN_AT(w, "format %%%c expects '%s *' argument",
 						fmt, type_primitive_to_str(prim));
 			}
@@ -260,7 +259,7 @@ invalid:
 	}
 
 	if(expr_kind(e->expr, deref)
-	&& type_ref_is(type_ref_is(expr_deref_what(e->expr)->tree_type, type_ref_ptr), type_ref_func)){
+	&& type_ref_is(type_ref_is_ptr(expr_deref_what(e->expr)->tree_type), type_ref_func)){
 		/* XXX: memleak */
 		/* (*f)() - dereffing to a function, then calling - remove the deref */
 		e->expr = expr_deref_what(e->expr);

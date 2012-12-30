@@ -505,9 +505,9 @@ int type_ref_equal(type_ref *a, type_ref *b, enum decl_cmp mode)
 {
 	if(mode & DECL_CMP_ALLOW_VOID_PTR){
 		/* one side is void * */
-		if(type_ref_is_void_ptr(a) && type_ref_is(b, type_ref_ptr))
+		if(type_ref_is_void_ptr(a) && type_ref_is_ptr(b))
 			return 1;
-		if(type_ref_is_void_ptr(b) && type_ref_is(a, type_ref_ptr))
+		if(type_ref_is_void_ptr(b) && type_ref_is_ptr(a))
 			return 1;
 	}
 
@@ -542,29 +542,27 @@ type_ref *type_ref_orphan(type_ref *r)
 
 type_ref *type_ref_ptr_depth_dec(type_ref *r)
 {
-	type_ref *r_save;
+	type_ref *const r_save = r;
 
-	/* *(void (*)()) does nothing */
-	if((r_save = type_ref_is(r, type_ref_ptr))
-	&& type_ref_is(r_save->ref, type_ref_func))
-	{
-		goto fin;
+	r = type_ref_is_ptr(r);
+
+	if(!r){
+		DIE_AT(r_save ? &r_save->where : NULL,
+				"invalid indirection applied to %s",
+				r_save ? type_ref_to_str(r_save) : "(NULL)");
 	}
 
-	r_save = r;
-
-	if(!(r = type_ref_is(r, type_ref_ptr)))
-		DIE_AT(&r->where, "invalid indirection applied to %s", r ? type_ref_to_str(r) : "(NULL)");
-
-	r = r->ref; /* safe since we know r is a ptr */
+	/* *(void (*)()) does nothing */
+	if(type_ref_is(r, type_ref_func))
+		return r_save;
 
 	if(!type_ref_is_complete(r))
-		DIE_AT(&r->where, "dereference of pointer to incomplete type %s", type_ref_to_str(r));
+		DIE_AT(&r->where, "dereference of pointer to incomplete type %s",
+				type_ref_to_str(r));
 
 	/* XXX: memleak */
 	/*type_ref_free(r_save);*/
 
-fin:
 	return r;
 }
 
