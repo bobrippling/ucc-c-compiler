@@ -238,9 +238,22 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 	switch(r->type){
 	/* check for array of funcs, func returning array */
 		case type_ref_array:
+		{
+			consty k;
+
 			if(type_ref_is(r->ref, type_ref_func))
 				DIE_AT(&r->where, "array of functions");
+
+			FOLD_EXPR(r->bits.array_size, stab);
+			const_fold(r->bits.array_size, &k);
+
+			if(k.type != CONST_WITH_VAL)
+				DIE_AT(&r->where, "not a numeric constant for array size");
+			else if(k.bits.iv.val < 0)
+				DIE_AT(&r->where, "negative array size");
+			/* allow zero length arrays */
 			break;
+		}
 
 		case type_ref_func:
 			if(type_ref_is(r->ref, type_ref_func))
