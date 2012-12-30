@@ -404,8 +404,9 @@ void fold_decl_global_init(decl *d, symtable *stab)
 	);
 
 	if(!decl_init_is_const(d->init, stab)){
-		DIE_AT(&d->init->where, "%s initialiser not constant (%s)",
-				stab->parent ? "static" : "global", decl_init_to_str(d->init->type));
+		DIE_AT(&d->init->where, "%s %s initialiser not constant",
+				stab->parent ? "static" : "global",
+				decl_init_to_str(d->init->type));
 	}
 
 	fold_stmt(assignments);
