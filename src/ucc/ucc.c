@@ -5,6 +5,10 @@
 #include <errno.h>
 #include <assert.h>
 
+/* umask */
+#include <sys/types.h>
+#include <sys/stat.h>
+
 #include "ucc.h"
 #include "ucc_ext.h"
 #include "ucc_lib.h"
@@ -291,6 +295,8 @@ int main(int argc, char **argv)
 		{ 'o', &output   },
 		{ 'X', &backend  },
 	};
+
+	umask(0077); /* prevent reading of the temporary files we create */
 
 	gopts.assume = -1;
 	argv0 = argv[0];
