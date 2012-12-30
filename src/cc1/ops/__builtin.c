@@ -18,6 +18,8 @@
 #include "../const.h"
 #include "../gen_asm.h"
 
+#include "../data_store.h"
+
 #include "../out/out.h"
 
 #define PREFIX "__builtin_"
@@ -25,10 +27,11 @@
 typedef expr *func_builtin_parse(void);
 
 static func_builtin_parse parse_unreachable,
-													parse_compatible_p,
-													parse_constant_p,
-													parse_frame_address,
-													parse_expect;
+                          parse_compatible_p,
+                          parse_constant_p,
+                          parse_frame_address,
+                          parse_expect,
+                          parse_strlen;
 
 typedef struct
 {
@@ -48,20 +51,32 @@ builtin_table builtins[] = {
 	{ "expect", parse_expect },
 
 	{ NULL, NULL }
+
+}, no_prefix_builtins[] = {
+	{ "strlen", parse_strlen },
+
+	{ NULL, NULL }
 };
+
 
 static builtin_table *builtin_find(const char *sp)
 {
-	const int prefix_len = strlen(PREFIX);
+	static int prefix_len;
+	int i;
+	if(!prefix_len)
+		prefix_len = strlen(PREFIX);
 
 	if(!strncmp(sp, PREFIX, prefix_len)){
-		int i;
 		sp += prefix_len;
 
 		for(i = 0; builtins[i].sp; i++)
 			if(!strcmp(sp, builtins[i].sp))
 				return &builtins[i];
 	}
+
+	for(i = 0; no_prefix_builtins[i].sp; i++)
+		if(!strcmp(sp, no_prefix_builtins[i].sp))
+			return &no_prefix_builtins[i];
 
 	return NULL;
 }
@@ -279,5 +294,41 @@ static expr *parse_expect(void)
 	expr *fcall = parse_any_args();
 	expr_mutate_builtin_const(fcall, expect);
 	fcall->f_gen = builtin_gen_expect;
+	return fcall;
+}
+
+/* --- strlen */
+
+static void const_strlen(expr *e, consty *k)
+{
+	k->type = CONST_NO;
+
+	/* if 1 arg and it has a char * constant, return length */
+	if(dynarray_count((void **)e->funcargs) == 1){
+		expr *s = e->funcargs[0];
+		consty subk;
+
+		const_fold(s, &subk);
+		if(subk.type == CONST_WITH_STR){
+			data_store *ds = subk.bits.str;
+			const char *s = ds->bits.str;
+			const char *p = memchr(s, '\0', ds->len);
+
+			if(p){
+				k->type = CONST_WITH_VAL;
+				k->bits.iv.val = p - s;
+				k->bits.iv.suffix = VAL_UNSIGNED;
+			}
+		}
+	}
+}
+
+static expr *parse_strlen(void)
+{
+	expr *fcall = parse_any_args();
+
+	/* simply set the const vtable ent */
+	fcall->f_const_fold = const_strlen;
+
 	return fcall;
 }
