@@ -14,7 +14,7 @@
 #  define ucc_printflike(a, b)
 #  define ucc_dead
 #  define ucc_wur
-#  define ucc_nonnull(a, b)
+#  define ucc_nonnull(a)
 #endif
 
 #define ucc_unreach() do{ ICE("unreachable"); return 0; }while(0)
