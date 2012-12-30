@@ -469,6 +469,8 @@ void out_op(enum op_type op)
 		switch(op){
 			case op_plus:
 			case op_minus:
+			case op_or:
+			case op_xor:
 				if(t_const->bits.val == 0)
 					goto fin;
 			default:
@@ -478,6 +480,12 @@ void out_op(enum op_type op)
 			case op_divide:
 				if(t_const->bits.val == 1)
 					goto fin;
+				break;
+
+			case op_and:
+				if(t_const->bits.val == -1)
+					goto fin;
+				break;
 		}
 
 		goto def;
