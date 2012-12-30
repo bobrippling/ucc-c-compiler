@@ -10,8 +10,6 @@ void fold_expr__Generic(expr *e, symtable *stab)
 {
 	struct generic_lbl **i, *def;
 
-	(void)stab;
-
 	def = NULL;
 
 	FOLD_EXPR(e->expr, stab);
