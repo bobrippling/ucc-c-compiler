@@ -135,19 +135,11 @@ static void static_expr_cast_addr(expr *e)
 
 	switch(k.type){
 		case CONST_NO:
+		case CONST_VAL:
 			ICE("bad cast static init");
 
-		case CONST_VAL:
-			/* output with possible truncation (truncate?) */
-			asm_declare_partial("%ld", k.bits.iv.val);
-			break;
-
-		case CONST_STRK:
-			/* TODO */
-			ICE("TODO: const str addr");
-			break;
-
 		case CONST_ADDR:
+		case CONST_STRK:
 			/* only possible if the cast-to and cast-from are the same size,
 			 * or array decay */
 			if(!type_ref_is(e->expr->tree_type, type_ref_array)){
@@ -165,11 +157,10 @@ static void static_expr_cast_addr(expr *e)
 			}/* else array decay */
 
 			static_addr(e->expr);
+			if(k.offset)
+				asm_declare_partial("+ %ld /*cast*/", k.offset);
 			break;
 	}
-
-	if(k.offset)
-		asm_declare_partial("+ %ld", k.offset);
 }
 
 void gen_expr_cast(expr *e, symtable *stab)

@@ -22,7 +22,6 @@ typedef struct consty
 typedef void         func_fold(          expr *, symtable *);
 typedef void         func_gen(           expr *, symtable *);
 typedef void         func_gen_lea(       expr *, symtable *);
-typedef void         func_static_addr(   expr *);
 typedef void         func_const(         expr *, consty *);
 typedef const char  *func_str(void);
 typedef void         func_mutate_expr(expr *);
@@ -32,13 +31,12 @@ struct expr
 	where where;
 
 	func_fold        *f_fold;
-	func_const       *f_const_fold; /* optional */
-
 	func_gen         *f_gen;
-	func_static_addr *f_static_addr; /* optional */
-	func_gen_lea     *f_lea;         /* optional */
-
 	func_str         *f_str;
+
+	func_const       *f_const_fold; /* optional, used in static/global init */
+	func_gen_lea     *f_lea;        /* optional */
+
 
 	int freestanding; /* e.g. 1; needs use, whereas x(); doesn't - freestanding */
 

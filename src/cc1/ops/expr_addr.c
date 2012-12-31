@@ -81,6 +81,7 @@ void static_expr_addr_addr(expr *e)
 {
 	if(e->data_store){
 		/* address of an array store */
+		/* FIXME: need to data_store_out(e->data_store, 0); */
 		asm_declare_partial("%s", e->data_store->spel);
 
 	}else if(e->spel){
@@ -89,7 +90,6 @@ void static_expr_addr_addr(expr *e)
 	}else{
 		ICE("TODO: address of a static_addr");
 		static_addr(e->lhs);
-
 	}
 }
 

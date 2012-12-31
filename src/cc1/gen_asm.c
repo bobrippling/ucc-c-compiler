@@ -65,7 +65,7 @@ void static_addr(expr *e)
 
 				/* offset in bytes, no mul needed */
 				if(k.offset)
-					asm_declare_partial("+%ld", k.offset);
+					asm_declare_partial(" + %ld /*gen_asm*/", k.offset);
 				break;
 		}
 	}

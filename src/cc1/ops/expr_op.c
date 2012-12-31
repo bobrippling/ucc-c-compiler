@@ -446,9 +446,12 @@ void static_addr_expr_op(expr *e)
 	if(addrsym){
 		static_addr(addrsym);
 
-		if(k.offset)
-			asm_declare_partial("+%ld",
-					k.offset * type_ref_size(type_ref_next(addrsym->tree_type), NULL));
+		if(k.offset){
+			asm_declare_partial(" + %ld /*op*/",
+					k.offset * type_ref_size(
+						type_ref_next(addrsym->tree_type),
+						NULL));
+		}
 	}else{
 		ICE("not a symbol[+offset]");
 	}

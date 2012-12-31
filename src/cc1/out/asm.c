@@ -121,11 +121,7 @@ static void asm_declare_sub(FILE *f, decl_init *init)
 
 			fprintf(f, ".%s ", asm_type_directive(exp->tree_type));
 
-			if(exp->data_store) /* FIXME: should be handled in expr_addr::static_store */
-				data_store_out(exp->data_store, 0);
-			else
-				static_addr(exp); /*if(!const_expr_is_zero(exp))...*/
-
+			static_addr(exp); /*if(!const_expr_is_zero(exp))...*/
 			break;
 		}
 	}
