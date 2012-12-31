@@ -3,6 +3,7 @@
 #include "ops.h"
 #include "expr_op.h"
 #include "../out/lbl.h"
+#include "../out/asm.h"
 
 const char *str_expr_op()
 {
@@ -67,9 +68,19 @@ static void operate(
 #undef piv
 }
 
-void fold_const_expr_op(expr *e, consty *k)
+static void const_offset(consty *r, consty *addr, consty *val)
+{
+	memcpy(r, addr, sizeof *r);
+	/* may already have an offset, hence += */
+	r->offset += val->bits.iv.val;
+}
+
+static void fold_const_expr_op2(expr *e, consty *k, expr **psym)
 {
 	consty lhs, rhs;
+
+	if(psym)
+		*psym = NULL;
 
 	const_fold(e->lhs, &lhs);
 	if(e->rhs){
@@ -83,8 +94,22 @@ void fold_const_expr_op(expr *e, consty *k)
 		k->type = CONST_VAL;
 		operate(&lhs.bits.iv, e->rhs ? &rhs.bits.iv : NULL, e->op, k, &e->where);
 	}else{
-		k->type = CONST_NO;
-	}
+		/* allow one CONST_{ADDR,STRK} and one CONST_VAL for an offset const */
+		int lhs_addr = lhs.type == CONST_ADDR || lhs.type == CONST_STRK;
+		int rhs_addr = rhs.type == CONST_ADDR || rhs.type == CONST_STRK;
+
+		/**/if(lhs_addr && rhs.type == CONST_VAL)
+			const_offset(k, &lhs, &rhs), (psym ? *psym = e->lhs : 0);
+		else if(rhs_addr && lhs.type == CONST_VAL)
+			const_offset(k, &rhs, &lhs), (psym ? *psym = e->lhs : 0);
+		else
+			k->type = CONST_NO;
+		}
+}
+
+void fold_const_expr_op(expr *e, consty *k)
+{
+	fold_const_expr_op2(e, k, NULL);
 }
 
 void expr_promote_int(expr **pe, enum type_primitive to, symtable *stab)
@@ -411,9 +436,28 @@ void gen_expr_op(expr *e, symtable *tab)
 	}
 }
 
+void static_addr_expr_op(expr *e)
+{
+	expr *addrsym;
+	consty k;
+
+	fold_const_expr_op2(e, &k, &addrsym);
+
+	if(addrsym){
+		static_addr(addrsym);
+
+		if(k.offset)
+			asm_declare_partial("+%ld",
+					k.offset * type_ref_size(type_ref_next(addrsym->tree_type), NULL));
+	}else{
+		ICE("not a symbol[+offset]");
+	}
+}
+
 void mutate_expr_op(expr *e)
 {
 	e->f_const_fold = fold_const_expr_op;
+	e->f_static_addr = static_addr_expr_op;
 }
 
 expr *expr_new_op(enum op_type op)

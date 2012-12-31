@@ -18,6 +18,7 @@
 #include "out/out.h"
 #include "out/lbl.h"
 #include "out/asm.h"
+#include "data_store.h"
 
 char *curfunc_lblfin; /* extern */
 
@@ -50,10 +51,23 @@ void static_addr(expr *e)
 	if(e->f_static_addr){
 		e->f_static_addr(e);
 	}else{
-		intval iv;
+		consty k;
 
-		const_fold_need_val(e, &iv);
-		asm_declare_partial("%d", iv.val);
+		const_fold(e, &k);
+
+		switch(k.type){
+			default:
+				ICE("ADDR of non-static_addr expr %s", e->f_str());
+				break;
+
+			case CONST_STRK:
+				asm_declare_partial("%s", k.bits.str->spel);
+
+				/* offset in bytes, no mul needed */
+				if(k.offset)
+					asm_declare_partial("+%ld", k.offset);
+				break;
+		}
 	}
 }
 

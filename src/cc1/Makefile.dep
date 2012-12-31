@@ -108,7 +108,7 @@ gen_asm.o: gen_asm.c ../util/util.h ../util/dynarray.h data_structs.h \
  ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h ops/stmt_return.h \
  ops/stmt_switch.h ops/stmt_while.h ops/stmt_continue.h sym.h decl.h \
  cc1.h macros.h ../util/platform.h gen_asm.h const.h out/out.h out/lbl.h \
- out/asm.h
+ out/asm.h data_store.h
 gen_c.o: gen_c.c
 gen_str.o: gen_str.c ../util/util.h ../util/platform.h data_structs.h \
  tree.h expr.h ops/expr_addr.h ops/expr_assign.h \
@@ -477,7 +477,8 @@ ops/expr_op.o: ops/expr_op.c ops/ops.h ops/../../util/util.h \
  ops/../ops/stmt_return.h ops/../ops/stmt_switch.h \
  ops/../ops/stmt_while.h ops/../ops/stmt_continue.h ops/../sym.h \
  ops/../decl.h ops/../cc1.h ops/../out/out.h ops/../fold.h ops/../const.h \
- ops/../gen_str.h ops/../gen_asm.h ops/expr_op.h ops/../out/lbl.h
+ ops/../gen_str.h ops/../gen_asm.h ops/expr_op.h ops/../out/lbl.h \
+ ops/../out/asm.h
 ops/expr_sizeof.o: ops/expr_sizeof.c ops/ops.h ops/../../util/util.h \
  ops/../data_structs.h ops/../tree.h ops/../expr.h ops/../ops/expr_addr.h \
  ops/../ops/expr_assign.h ops/../ops/expr_assign_compound.h \

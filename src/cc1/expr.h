@@ -11,7 +11,7 @@ typedef struct consty
 		CONST_ADDR,     /* &f where f is global */
 		CONST_STRK,     /* string constant */
 	} type;
-	int offset; /* offset for addr/strk */
+	long offset; /* offset for addr/strk */
 	union
 	{
 		intval iv;
