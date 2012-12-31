@@ -23,8 +23,6 @@ void fold_stmt_while(stmt *s)
 	FOLD_EXPR(s->expr, test_symtab);
 	fold_need_expr(s->expr, s->f_str(), 1);
 
-	OPT_CHECK(s->expr, "constant expression in while");
-
 	fold_stmt(s->lhs);
 }
 

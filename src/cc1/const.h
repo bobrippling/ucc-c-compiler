@@ -14,20 +14,4 @@ int const_expr_and_zero(expr *e);
 		memcpy(iv_addr, &k.bits.iv, sizeof *iv_addr); \
 	}while(0)
 
-#define POSSIBLE_OPT(e, s) \
-	cc1_warn_at(&e->where, 0, 1, WARN_OPT_POSSIBLE,  \
-			"optimisation possible - %s (%s%s%s)",       \
-			s,                                           \
-			e->f_str(),                                  \
-			expr_kind(e, op) ? " - " : "",               \
-			expr_kind(e, op) ? op_to_str(e->op) : "")
-
-
-#define OPT_CHECK(e, s)          \
-	do{ consty k;                  \
-		const_fold(e, &k);           \
-		if(k.type == CONST_WITH_VAL) \
-			POSSIBLE_OPT(e, s);        \
-	}while(0)
-
 #endif

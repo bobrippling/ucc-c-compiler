@@ -71,8 +71,6 @@ void fold_stmt_for(stmt *s)
 
 	if(s->flow->for_while){
 		fold_need_expr(s->flow->for_while, "for-while", 1);
-
-		OPT_CHECK(s->flow->for_while, "constant expression in for");
 	}
 
 	fold_stmt(s->lhs);

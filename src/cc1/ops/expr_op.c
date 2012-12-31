@@ -67,41 +67,6 @@ static void operate(
 #undef piv
 }
 
-void operate_optimise(expr *e)
-{
-	/* TODO */
-
-	switch(e->op){
-		case op_orsc:
-		case op_andsc:
-			/* check if one side is (&& ? false : true) and short circuit it without needing to check the other side */
-			if(expr_kind(e->lhs, val) || expr_kind(e->rhs, val))
-				POSSIBLE_OPT(e, "short circuit const");
-			break;
-
-#define VAL(e, x) (expr_kind(e, val) && e->val.iv.val == x)
-
-		case op_plus:
-		case op_minus:
-			if(VAL(e->lhs, 0) || (e->rhs ? VAL(e->rhs, 0) : 0))
-				POSSIBLE_OPT(e, "zero being added or subtracted");
-			break;
-
-		case op_multiply:
-			if(VAL(e->lhs, 1) || VAL(e->lhs, 0) || (e->rhs ? VAL(e->rhs, 1) || VAL(e->rhs, 0) : 0))
-				POSSIBLE_OPT(e, "1 or 0 being multiplied");
-			else
-		case op_divide:
-			if(VAL(e->rhs, 1))
-				POSSIBLE_OPT(e, "divide by 1");
-			break;
-
-		default:
-			break;
-#undef VAL
-	}
-}
-
 void fold_const_expr_op(expr *e, consty *k)
 {
 	consty lhs, rhs;
@@ -119,7 +84,6 @@ void fold_const_expr_op(expr *e, consty *k)
 		operate(&lhs.bits.iv, e->rhs ? &rhs.bits.iv : NULL, e->op, k, &e->where);
 	}else{
 		k->type = CONST_NO;
-		operate_optimise(e);
 	}
 }
 

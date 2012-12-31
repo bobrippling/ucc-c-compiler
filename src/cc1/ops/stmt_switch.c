@@ -71,8 +71,6 @@ void fold_stmt_switch(stmt *s)
 
 	fold_need_expr(s->expr, "switch", 0);
 
-	OPT_CHECK(s->expr, "constant expression in switch");
-
 	fold_stmt(s->lhs);
 	/* FIXME: check for duplicate case values and at most, 1 default */
 
