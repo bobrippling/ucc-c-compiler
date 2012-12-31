@@ -47,25 +47,6 @@ enum
 	ASM_INDEX_LDOUBLE = 5,
 };
 
-#if 0
-const char *asm_intval_str(intval *iv)
-{
-	static char buf[64];
-	char fmt[8];
-	char *p = fmt;
-
-	*p++ = '$'; /* $53 */
-	*p++ = '%';
-	if(iv->suffix & VAL_LONG)
-		*p++ = 'l';
-
-	strcpy(p, iv->suffix & VAL_UNSIGNED ? "u" : "d");
-
-	snprintf(buf, sizeof buf, fmt, iv->val);
-	return buf;
-}
-#endif
-
 int asm_table_lookup(type_ref *r)
 {
 	int sz;
@@ -109,44 +90,6 @@ int asm_type_size(type_ref *r)
 {
 	return asm_type_table[asm_table_lookup(r)].sz;
 }
-
-void asm_declare_partial(const char *fmt, ...)
-{
-	va_list l;
-
-	va_start(l, fmt);
-	vfprintf(cc_out[SECTION_DATA], fmt, l);
-	va_end(l);
-}
-
-#if 0
-static void asm_declare_array(const char *lbl, array_decl *ad)
-{
-	int tbl_idx;
-	int i;
-
-	switch(ad->type){
-		case array_str:
-			tbl_idx = ASM_INDEX_CHAR;
-			break;
-		case array_exprs:
-			tbl_idx = asm_table_lookup(NULL);
-			break;
-	}
-
-	asm_out_section(SECTION_DATA, "%s:\n", lbl);
-
-	for(i = 0; i < ad->len; i++){
-		if(ad->type == array_str){
-			asm_out_section(SECTION_DATA, ".%s %d\n",
-					asm_type_table[tbl_idx].directive,
-					ad->data.str[i]);
-		}else{
-			static_store(ad->data.exprs[i]);
-		}
-	}
-}
-#endif
 
 static void asm_declare_sub(FILE *f, decl_init *init)
 {
