@@ -146,7 +146,7 @@ void fold_const_expr_struct(expr *e, consty *k)
 
 	const_fold(e->lhs, k);
 
-	if(k->type == CONST_WITH_VAL)
+	if(k->type == CONST_VAL)
 		/* FIXME: this isn't const fold, this is address/static expr */
 		k->bits.iv.val += struct_offset(e->rhs);
 	else

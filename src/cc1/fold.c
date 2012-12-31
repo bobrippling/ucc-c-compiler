@@ -247,7 +247,7 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 			FOLD_EXPR(r->bits.array_size, stab);
 			const_fold(r->bits.array_size, &k);
 
-			if(k.type != CONST_WITH_VAL)
+			if(k.type != CONST_VAL)
 				DIE_AT(&r->where, "not a numeric constant for array size");
 			else if(k.bits.iv.val < 0)
 				DIE_AT(&r->where, "negative array size");

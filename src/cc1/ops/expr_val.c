@@ -34,7 +34,7 @@ void gen_expr_str_val(expr *e, symtable *stab)
 void const_expr_val(expr *e, consty *k)
 {
 	memcpy(&k->bits.iv, &e->val, sizeof e->val);
-	k->type = CONST_WITH_VAL; /* obviously vals are const */
+	k->type = CONST_VAL; /* obviously vals are const */
 }
 
 void mutate_expr_val(expr *e)

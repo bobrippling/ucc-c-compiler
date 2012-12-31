@@ -5,11 +5,13 @@ typedef struct consty
 {
 	enum constyness
 	{
-		CONST_NO          = 0, /* f() */
-		CONST_WITHOUT_VAL,     /* &f where f is global */
-		CONST_WITH_VAL,        /* 5 + 2 */
-		CONST_WITH_STR         /* string constant */
+		CONST_NO = 0,   /* f() */
+		CONST_VAL,      /* 5 + 2 */
+		/* can be offset: */
+		CONST_ADDR,     /* &f where f is global */
+		CONST_STRK,     /* string constant */
 	} type;
+	int offset; /* offset for addr/strk */
 	union
 	{
 		intval iv;

@@ -34,11 +34,11 @@ void fold_const_expr_if(expr *e, consty *k)
 	}
 
 	switch(consts[0].type){
-		case CONST_WITH_VAL:
+		case CONST_VAL:
 			res = consts[0].bits.iv.val;
 			break;
-		case CONST_WITHOUT_VAL:
-		case CONST_WITH_STR:
+		case CONST_ADDR:
+		case CONST_STRK:
 			res = 1;
 			break;
 

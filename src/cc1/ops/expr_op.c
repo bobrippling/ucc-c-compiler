@@ -76,11 +76,11 @@ void fold_const_expr_op(expr *e, consty *k)
 		const_fold(e->rhs, &rhs);
 	}else{
 		memset(&rhs, 0, sizeof rhs);
-		rhs.type = CONST_WITH_VAL;
+		rhs.type = CONST_VAL;
 	}
 
-	if(lhs.type == CONST_WITH_VAL && rhs.type == CONST_WITH_VAL){
-		k->type = CONST_WITH_VAL;
+	if(lhs.type == CONST_VAL && rhs.type == CONST_VAL){
+		k->type = CONST_VAL;
 		operate(&lhs.bits.iv, e->rhs ? &rhs.bits.iv : NULL, e->op, k, &e->where);
 	}else{
 		k->type = CONST_NO;
@@ -293,7 +293,7 @@ static void op_bound(expr *e)
 
 		const_fold(lhs ? e->rhs : e->lhs, &k);
 
-		if(k.type == CONST_WITH_VAL){
+		if(k.type == CONST_VAL){
 #define idx k.bits.iv
 			const long sz = type_ref_array_len(array->tree_type);
 

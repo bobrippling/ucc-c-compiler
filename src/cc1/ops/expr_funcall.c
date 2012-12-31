@@ -89,15 +89,16 @@ static void format_check_printf(
 			WARN_AT(w, "format argument isn't constant");
 			return;
 
-		case CONST_WITH_VAL:
+		case CONST_VAL:
 			if(k.bits.iv.val == 0)
 				return; /* printf(NULL, ...) */
+			/* fall */
 
-		case CONST_WITHOUT_VAL:
+		case CONST_ADDR:
 			WARN_AT(w, "format argument isn't a string constant");
 			return;
 
-		case CONST_WITH_STR:
+		case CONST_STRK:
 			fmt_str = k.bits.str;
 			break;
 	}
@@ -106,6 +107,12 @@ static void format_check_printf(
 		const char *fmt = fmt_str->bits.str;
 		const int   len = fmt_str->len;
 		int i, n_arg = 0;
+
+		if(k.offset >= len){
+			WARN_AT(w, "undefined printf-format argument");
+			return;
+		}
+		fmt += k.offset;
 
 		for(i = 0; i < len && fmt[i];){
 			if(fmt[i++] == '%'){

@@ -52,7 +52,7 @@ int const_expr_and_zero(expr *e)
 
 	const_fold(e, &k);
 
-	return k.type == CONST_WITH_VAL && k.bits.iv.val == 0;
+	return k.type == CONST_VAL && k.bits.iv.val == 0;
 }
 
 /*

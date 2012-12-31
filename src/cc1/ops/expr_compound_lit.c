@@ -76,7 +76,9 @@ void const_expr_compound_lit(expr *e, consty *k)
 {
 	k->type = decl_init_is_const(
 			e->val.decl->init, NULL /* shouldn't be needed */)
-		? CONST_WITHOUT_VAL : CONST_NO;
+		? CONST_ADDR : CONST_NO;
+
+	k->offset = 0;
 }
 
 void gen_expr_str_compound_lit(expr *e, symtable *stab)

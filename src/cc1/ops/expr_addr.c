@@ -118,11 +118,12 @@ void gen_expr_str_addr(expr *e, symtable *stab)
 void const_expr_addr(expr *e, consty *k)
 {
 	if(e->data_store){
-		k->type = CONST_WITH_STR;
+		k->type = CONST_STRK;
 		k->bits.str = e->data_store;
 	}else{
-		k->type = CONST_WITHOUT_VAL; /* addr is const but with no value */
+		k->type = CONST_ADDR; /* addr is const but with no value */
 	}
+	k->offset = 0;
 }
 
 void mutate_expr_addr(expr *e)

@@ -17,7 +17,7 @@ void fold_const_expr_cast(expr *e, consty *k)
 #define piv (&k->bits.iv)
 	const_fold(e->expr, k);
 
-	if(k->type == CONST_WITH_VAL){
+	if(k->type == CONST_VAL){
 		/* need to cast the val down as appropriate */
 		if(type_ref_is_type(e->tree_type, type__Bool)){
 			piv->val = !!piv->val; /* analagous to out/out.c::out_normalise()'s constant case */
@@ -137,17 +137,17 @@ static void static_expr_cast_addr(expr *e)
 		case CONST_NO:
 			ICE("bad cast static init");
 
-		case CONST_WITH_VAL:
+		case CONST_VAL:
 			/* output with possible truncation (truncate?) */
 			asm_declare_partial("%ld", k.bits.iv.val);
 			break;
 
-		case CONST_WITH_STR:
+		case CONST_STRK:
 			/* TODO */
 			ICE("TODO: const str addr");
 			break;
 
-		case CONST_WITHOUT_VAL:
+		case CONST_ADDR:
 		{
 			int from_sz, to_sz;
 			/* only possible if the cast-to and cast-from are the same size */
@@ -167,6 +167,9 @@ static void static_expr_cast_addr(expr *e)
 			break;
 		}
 	}
+
+	if(k.offset)
+		asm_declare_partial("+ %ld", k.offset);
 }
 
 void gen_expr_cast(expr *e, symtable *stab)

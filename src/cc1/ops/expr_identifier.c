@@ -20,7 +20,8 @@ void fold_const_expr_identifier(expr *e, consty *k)
 
 	/* may not have e->sym if we're the struct-member-identifier */
 
-	k->type = e->sym && e->sym->decl && DECL_IS_ARRAY(e->sym->decl) ? CONST_WITHOUT_VAL : CONST_NO;
+	k->type = e->sym && e->sym->decl && DECL_IS_ARRAY(e->sym->decl) ? CONST_ADDR : CONST_NO;
+	k->offset = 0;
 }
 
 void fold_expr_identifier(expr *e, symtable *stab)

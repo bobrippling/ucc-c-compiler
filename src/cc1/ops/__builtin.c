@@ -165,7 +165,7 @@ static void const_compatible_p(expr *e, consty *k)
 {
 	type_ref **types = e->val.types;
 
-	k->type = CONST_WITH_VAL;
+	k->type = CONST_VAL;
 
 	k->bits.iv.val = type_ref_equal(types[0], types[1], DECL_CMP_EXACT_MATCH);
 }
@@ -201,7 +201,7 @@ static void const_constant_p(expr *e, consty *k)
 
 	const_fold(test, &subk);
 
-	k->type = CONST_WITH_VAL;
+	k->type = CONST_VAL;
 	k->bits.iv.val = subk.type != CONST_NO;
 }
 
@@ -224,7 +224,7 @@ static void fold_frame_address(expr *e, symtable *stab)
 	FOLD_EXPR(e->funcargs[0], stab);
 
 	const_fold(e->funcargs[0], &k);
-	if(k.type != CONST_WITH_VAL || k.bits.iv.val < 0)
+	if(k.type != CONST_VAL || k.bits.iv.val < 0)
 		DIE_AT(&e->where, "%s needs a positive constant value argument", e->expr->spel);
 
 	memcpy(&e->val.iv, &k.bits.iv, sizeof k.bits.iv);
@@ -269,7 +269,7 @@ static void fold_expect(expr *e, symtable *stab)
 		FOLD_EXPR(e->funcargs[i], stab);
 
 	const_fold(e->funcargs[1], &k);
-	if(k.type != CONST_WITH_VAL)
+	if(k.type != CONST_VAL)
 		WARN_AT(&e->where, "%s second argument isn't a constant value", e->expr->spel);
 
 	e->tree_type = e->funcargs[0]->tree_type;
@@ -309,13 +309,13 @@ static void const_strlen(expr *e, consty *k)
 		consty subk;
 
 		const_fold(s, &subk);
-		if(subk.type == CONST_WITH_STR){
+		if(subk.type == CONST_STRK){
 			data_store *ds = subk.bits.str;
 			const char *s = ds->bits.str;
 			const char *p = memchr(s, '\0', ds->len);
 
 			if(p){
-				k->type = CONST_WITH_VAL;
+				k->type = CONST_VAL;
 				k->bits.iv.val = p - s;
 				k->bits.iv.suffix = VAL_UNSIGNED;
 			}
