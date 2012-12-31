@@ -110,12 +110,16 @@ void gen_asm_extern(decl *d)
 
 void gen_asm_global(decl *d)
 {
+	decl_attr *sec;
+
 	if(!d->is_definition)
 		return;
 
-	if(decl_has_attr(d, attr_section))
+	if((sec = decl_has_attr(d, attr_section))){
 		ICW("%s: TODO: section attribute \"%s\" on %s",
-				where_str(&d->attr->where), d->attr->attr_extra.section, d->spel);
+				where_str(&d->attr->where),
+				sec->attr_extra.section, d->spel);
+	}
 
 	/* order of the if matters */
 	if(DECL_IS_FUNC(d) || type_ref_is(d->ref, type_ref_block)){
