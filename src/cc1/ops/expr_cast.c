@@ -148,24 +148,24 @@ static void static_expr_cast_addr(expr *e)
 			break;
 
 		case CONST_ADDR:
-		{
-			int from_sz, to_sz;
-			/* only possible if the cast-to and cast-from are the same size */
-			const where *const w = &e->expr->where;
+			/* only possible if the cast-to and cast-from are the same size,
+			 * or array decay */
+			if(!type_ref_is(e->expr->tree_type, type_ref_array)){
+				const where *const w = &e->expr->where;
 
-			from_sz = type_ref_size(e->expr->tree_type, w);
-			to_sz = type_ref_size(e->tree_type, w);
+				const int from_sz = type_ref_size(e->expr->tree_type, w);
+				const int to_sz   = type_ref_size(e->tree_type,       w);
 
-			if(to_sz != from_sz){
-				WARN_AT(&e->where,
-						"%scast changes type size %d -> %d (not a load-time constant)",
-						e->expr_cast_implicit ? "implicit " : "",
-						from_sz, to_sz);
-			}
+				if(to_sz != from_sz){
+					WARN_AT(&e->where,
+							"%scast changes type size %d -> %d (not a load-time constant)",
+							e->expr_cast_implicit ? "implicit " : "",
+							from_sz, to_sz);
+				}
+			}/* else array decay */
 
 			static_addr(e->expr);
 			break;
-		}
 	}
 
 	if(k.offset)
