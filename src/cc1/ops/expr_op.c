@@ -68,19 +68,19 @@ static void operate(
 #undef piv
 }
 
-static void const_offset(consty *r, consty *addr, consty *val)
+static void const_offset(consty *r, consty *val, consty *addr, type_ref *addr_type)
 {
+	unsigned step = type_ref_size(type_ref_next(addr_type), NULL);
+
 	memcpy(r, addr, sizeof *r);
+
 	/* may already have an offset, hence += */
-	r->offset += val->bits.iv.val;
+	r->offset += val->bits.iv.val * step;
 }
 
-static void fold_const_expr_op2(expr *e, consty *k, expr **psym)
+void fold_const_expr_op(expr *e, consty *k)
 {
 	consty lhs, rhs;
-
-	if(psym)
-		*psym = NULL;
 
 	const_fold(e->lhs, &lhs);
 	if(e->rhs){
@@ -99,17 +99,12 @@ static void fold_const_expr_op2(expr *e, consty *k, expr **psym)
 		int rhs_addr = rhs.type == CONST_ADDR || rhs.type == CONST_STRK;
 
 		/**/if(lhs_addr && rhs.type == CONST_VAL)
-			const_offset(k, &lhs, &rhs), (psym ? *psym = e->lhs : 0);
+			const_offset(k, &rhs, &lhs, e->lhs->tree_type);
 		else if(rhs_addr && lhs.type == CONST_VAL)
-			const_offset(k, &rhs, &lhs), (psym ? *psym = e->lhs : 0);
+			const_offset(k, &lhs, &rhs, e->rhs->tree_type);
 		else
 			k->type = CONST_NO;
-		}
-}
-
-void fold_const_expr_op(expr *e, consty *k)
-{
-	fold_const_expr_op2(e, k, NULL);
+	}
 }
 
 void expr_promote_int(expr **pe, enum type_primitive to, symtable *stab)
@@ -436,31 +431,9 @@ void gen_expr_op(expr *e, symtable *tab)
 	}
 }
 
-void static_addr_expr_op(expr *e)
-{
-	expr *addrsym;
-	consty k;
-
-	fold_const_expr_op2(e, &k, &addrsym);
-
-	if(addrsym){
-		static_addr(addrsym);
-
-		if(k.offset){
-			asm_declare_partial(" + %ld /*op*/",
-					k.offset * type_ref_size(
-						type_ref_next(addrsym->tree_type),
-						NULL));
-		}
-	}else{
-		ICE("not a symbol[+offset]");
-	}
-}
-
 void mutate_expr_op(expr *e)
 {
 	e->f_const_fold = fold_const_expr_op;
-	e->f_static_addr = static_addr_expr_op;
 }
 
 expr *expr_new_op(enum op_type op)

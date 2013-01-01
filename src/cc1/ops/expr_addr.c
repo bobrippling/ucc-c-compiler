@@ -77,22 +77,6 @@ void gen_expr_addr(expr *e, symtable *stab)
 	}
 }
 
-void static_expr_addr_addr(expr *e)
-{
-	if(e->data_store){
-		/* address of an array store */
-		/* FIXME: need to data_store_out(e->data_store, 0); */
-		asm_declare_partial("%s", e->data_store->spel);
-
-	}else if(e->spel){
-		asm_declare_partial("%s", e->spel);
-
-	}else{
-		ICE("TODO: address of a static_addr");
-		static_addr(e->lhs);
-	}
-}
-
 void gen_expr_str_addr(expr *e, symtable *stab)
 {
 	(void)stab;
@@ -122,13 +106,13 @@ void const_expr_addr(expr *e, consty *k)
 		k->bits.str = e->data_store;
 	}else{
 		k->type = CONST_ADDR; /* addr is const but with no value */
+		//k->sym_lbl = e->spel;
 	}
 	k->offset = 0;
 }
 
 void mutate_expr_addr(expr *e)
 {
-	e->f_static_addr = static_expr_addr_addr;
 	e->f_const_fold = const_expr_addr;
 }
 

@@ -146,25 +146,13 @@ void fold_const_expr_struct(expr *e, consty *k)
 
 	const_fold(e->lhs, k);
 
-	if(k->type == CONST_VAL)
-		/* FIXME: this isn't const fold, this is address/static expr */
-		k->bits.iv.val += struct_offset(e->rhs);
-	else
-		k->type = CONST_NO;
-}
-
-void static_expr_struct_addr(expr *e)
-{
-	ASSERT_NOT_DOT();
-
-	static_addr(e->lhs);
-	asm_declare_partial(" + %ld", struct_offset(e->rhs));
+	if(k->type != CONST_NO)
+		k->offset += struct_offset(e->rhs);
 }
 
 void mutate_expr_struct(expr *e)
 {
 	e->f_lea = gen_expr_struct_lea;
-	e->f_static_addr = static_expr_struct_addr;
 }
 
 expr *expr_new_struct(expr *sub, int dot, expr *ident)

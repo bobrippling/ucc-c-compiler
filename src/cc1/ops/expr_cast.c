@@ -25,6 +25,8 @@ void fold_const_expr_cast(expr *e, consty *k)
 		}else{
 			const int sz = type_ref_size(e->tree_type, &e->where);
 
+			/* TODO: disallow for ptrs/non-ints */
+
 			switch(sz){
 				/* TODO: unsigned */
 
@@ -127,42 +129,6 @@ void fold_expr_cast(expr *e, symtable *stab)
 	fold_expr_cast_descend(e, stab, 1);
 }
 
-static void static_expr_cast_addr(expr *e)
-{
-	consty k;
-
-	const_fold(e, &k);
-
-	switch(k.type){
-		case CONST_NO:
-		case CONST_VAL:
-			ICE("bad cast static init");
-
-		case CONST_ADDR:
-		case CONST_STRK:
-			/* only possible if the cast-to and cast-from are the same size,
-			 * or array decay */
-			if(!type_ref_is(e->expr->tree_type, type_ref_array)){
-				const where *const w = &e->expr->where;
-
-				const int from_sz = type_ref_size(e->expr->tree_type, w);
-				const int to_sz   = type_ref_size(e->tree_type,       w);
-
-				if(to_sz != from_sz){
-					WARN_AT(&e->where,
-							"%scast changes type size %d -> %d (not a load-time constant)",
-							e->expr_cast_implicit ? "implicit " : "",
-							from_sz, to_sz);
-				}
-			}/* else array decay */
-
-			static_addr(e->expr);
-			if(k.offset)
-				asm_declare_partial("+ %ld /*cast*/", k.offset);
-			break;
-	}
-}
-
 void gen_expr_cast(expr *e, symtable *stab)
 {
 	type_ref *tto, *tfrom;
@@ -201,7 +167,6 @@ void gen_expr_str_cast(expr *e, symtable *stab)
 void mutate_expr_cast(expr *e)
 {
 	e->f_const_fold = fold_const_expr_cast;
-	e->f_static_addr = static_expr_cast_addr;
 }
 
 expr *expr_new_cast(type_ref *to, int implicit)

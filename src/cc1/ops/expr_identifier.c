@@ -22,6 +22,14 @@ void fold_const_expr_identifier(expr *e, consty *k)
 
 	k->type = e->sym && e->sym->decl && DECL_IS_ARRAY(e->sym->decl) ? CONST_ADDR : CONST_NO;
 	k->offset = 0;
+
+	/*
+	 * TODO
+	 * don't use e->spel
+	 * static int i;
+	 * int x;
+	 * x = i; // e->spel is "i". e->sym->decl->spel is "func_name.static_i"
+	 */
 }
 
 void fold_expr_identifier(expr *e, symtable *stab)
@@ -112,17 +120,6 @@ void gen_expr_identifier(expr *e, symtable *stab)
 		out_push_sym_val(e->sym);
 }
 
-void static_expr_identifier_store(expr *e)
-{
-	asm_declare_partial("%s", e->sym->decl->spel);
-	/*
-	 * don't use e->spel
-	 * static int i;
-	 * int x;
-	 * x = i; // e->spel is "i". e->sym->decl->spel is "func_name.static_i"
-	 */
-}
-
 void gen_expr_identifier_lea(expr *e, symtable *stab)
 {
 	(void)stab;
@@ -133,7 +130,6 @@ void gen_expr_identifier_lea(expr *e, symtable *stab)
 void mutate_expr_identifier(expr *e)
 {
 	e->f_lea         = gen_expr_identifier_lea;
-	e->f_static_addr = static_expr_identifier_store;
 	e->f_const_fold  = fold_const_expr_identifier;
 }
 

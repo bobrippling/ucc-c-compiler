@@ -48,27 +48,32 @@ void gen_stmt(stmt *t)
 
 void static_addr(expr *e)
 {
-	if(e->f_static_addr){
-		e->f_static_addr(e);
-	}else{
-		consty k;
+	consty k = { 0 };
 
-		const_fold(e, &k);
+	const_fold(e, &k);
 
-		switch(k.type){
-			default:
-				ICE("ADDR of non-static_addr expr %s", e->f_str());
-				break;
+	switch(k.type){
+		case CONST_NO:
+			ICE("non-constant %s", e->f_str());
+			break;
 
-			case CONST_STRK:
-				asm_declare_partial("%s", k.bits.str->spel);
+		case CONST_VAL:
+			asm_declare_partial("%ld", k.bits.iv.val);
+			break;
 
-				/* offset in bytes, no mul needed */
-				if(k.offset)
-					asm_declare_partial(" + %ld /*gen_asm*/", k.offset);
-				break;
-		}
+		case CONST_ADDR:
+			/* TODO */
+			asm_declare_partial("TODO:addr_lbl");
+			break;
+
+		case CONST_STRK:
+			asm_declare_partial("%s", k.bits.str->spel);
+			break;
 	}
+
+	/* offset in bytes, no mul needed */
+	if(k.offset)
+		asm_declare_partial(" + %ld", k.offset);
 }
 
 #ifdef FANCY_STACK_INIT
