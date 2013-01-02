@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdarg.h>
+#include <string.h>
 
 #include "../util/util.h"
 #include "data_structs.h"
@@ -53,6 +54,16 @@ int const_expr_and_zero(expr *e)
 	const_fold(e, &k);
 
 	return k.type == CONST_VAL && k.bits.iv.val == 0;
+}
+
+void const_fold_need_val(expr *e, intval *piv)
+{
+	consty k;
+	const_fold(e, &k);
+
+	UCC_ASSERT(k.type == CONST_VAL, "not const");
+
+	memcpy(piv, &k.bits.iv, sizeof *piv);
 }
 
 /*
