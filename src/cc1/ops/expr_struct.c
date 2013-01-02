@@ -153,6 +153,7 @@ void fold_const_expr_struct(expr *e, consty *k)
 void mutate_expr_struct(expr *e)
 {
 	e->f_lea = gen_expr_struct_lea;
+	e->f_const_fold = fold_const_expr_struct;
 }
 
 expr *expr_new_struct(expr *sub, int dot, expr *ident)

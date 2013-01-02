@@ -104,9 +104,15 @@ void const_expr_addr(expr *e, consty *k)
 	if(e->data_store){
 		k->type = CONST_STRK;
 		k->bits.str = e->data_store;
+	}else if(e->spel){
+		/*k->sym_lbl = e->spel;*/
+		ICE("TODO");
 	}else{
+		const_fold(e->expr, k);
+		/* TODO/FIXME: checks for valid sub-exprs
+		 * i.e. if it's a->b, allow address, etc
+		 */
 		k->type = CONST_ADDR; /* addr is const but with no value */
-		//k->sym_lbl = e->spel;
 	}
 	k->offset = 0;
 }
