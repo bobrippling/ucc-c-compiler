@@ -107,7 +107,10 @@ void const_expr_addr(expr *e, consty *k)
 		k->offset = 0;
 	}else if(e->spel){
 		/*k->sym_lbl = e->spel;*/
-		ICE("TODO");
+		k->type = CONST_ADDR;
+		k->offset = 0;
+		k->bits.addr.is_lbl = 1;
+		k->bits.addr.bits.lbl = e->spel;
 	}else{
 		const_fold(e->lhs, k);
 

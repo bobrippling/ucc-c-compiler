@@ -15,8 +15,17 @@ typedef struct consty
 	long offset; /* offset for addr/strk */
 	union
 	{
-		intval iv;
-		data_store *str;
+		intval iv;          /* CONST_VAL */
+		data_store *str;    /* CONST_STRK */
+		struct
+		{
+			int is_lbl;
+			union
+			{
+				char *lbl;
+				int   memaddr;
+			} bits;
+		} addr;
 	} bits;
 } consty;
 #define is_const(t) (t != CONST_NO && t != CONST_NEED_ADDR)

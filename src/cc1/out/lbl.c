@@ -43,8 +43,13 @@ char *out_label_code(const char *fmt)
 char *out_label_data_store(int str)
 {
 	char *ret = umalloc(16);
-	SNPRINTF(ret, 16, "%s.%d", str ? "str" : "array", str_last++);
+	SNPRINTF(ret, 16, "%s.%d", str ? "str" : "data", str_last++);
 	return ret;
+}
+
+char *out_label_comp_lit(void)
+{
+	return out_label_data_store(0);
 }
 
 char *out_label_static_local(const char *funcsp, const char *spel)

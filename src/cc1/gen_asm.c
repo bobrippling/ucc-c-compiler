@@ -67,8 +67,10 @@ void static_addr(expr *e)
 			break;
 
 		case CONST_ADDR:
-			/* TODO */
-			asm_declare_partial("TODO:addr_lbl");
+			if(k.bits.addr.is_lbl)
+				asm_declare_partial("%s", k.bits.addr.bits.lbl);
+			else
+				asm_declare_partial("%d", k.bits.addr.bits.memaddr);
 			break;
 
 		case CONST_STRK:

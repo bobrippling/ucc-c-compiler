@@ -146,9 +146,28 @@ void fold_const_expr_struct(expr *e, consty *k)
 
 	const_fold(e->lhs, k);
 
-	if(is_const(k->type)){
-		k->type = CONST_NEED_ADDR; /* not constant unless addressed */
-		k->offset += struct_offset(e->rhs);
+	switch(k->type){
+		case CONST_NO:
+		case CONST_NEED_ADDR:
+		case CONST_STRK:
+			k->type = CONST_NO;
+			break;
+
+		case CONST_ADDR:
+			k->type = CONST_NEED_ADDR; /* not constant unless addressed e.g. &a->b */
+			/* don't touch k->bits.addr info */
+			break;
+
+		case CONST_VAL:
+			k->type = CONST_NEED_ADDR; /* e.g. &((A *)0)->b */
+
+			/* convert the val to a memaddr */
+			/* read iv.val before we clobber it */
+			k->bits.addr.bits.memaddr = k->bits.iv.val + struct_offset(e->rhs);
+			k->offset = 0;
+
+			k->bits.addr.is_lbl = 0;
+			break;
 	}
 }
 

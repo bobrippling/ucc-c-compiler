@@ -1,6 +1,7 @@
 #include "ops.h"
 #include "expr_compound_lit.h"
 #include "../out/asm.h"
+#include "../out/lbl.h"
 #include "../decl_init.h"
 
 const char *str_expr_compound_lit(void)
@@ -18,7 +19,12 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 	/* must be set before the recursive fold_gen_init_assignment_base */
 	e->tree_type = d->ref;
 
-	e->sym = SYMTAB_ADD(stab, d, sym_local);
+	if(!stab->parent){
+		d->spel = out_label_comp_lit();
+		d->store = store_static; /* why don't I need to do this for string literals? */
+	}
+
+	e->sym = SYMTAB_ADD(stab, d, stab->parent ? sym_local : sym_global);
 
 	/* create the code for assignemnts */
 	e->code = stmt_new_wrapper(code, stab);
@@ -74,11 +80,14 @@ static void lea_expr_compound_lit(expr *e, symtable *stab)
 
 void const_expr_compound_lit(expr *e, consty *k)
 {
-	k->type = decl_init_is_const(
-			e->val.decl->init, NULL /* shouldn't be needed */)
-		? CONST_ADDR : CONST_NO;
-
-	k->offset = 0;
+	if(decl_init_is_const(e->val.decl->init, NULL)){
+		k->type = CONST_NEED_ADDR;
+		k->bits.addr.is_lbl = 1;
+		k->bits.addr.bits.lbl = e->sym->decl->spel;
+		k->offset = 0;
+	}else{
+		k->type = CONST_NO;
+	}
 }
 
 void gen_expr_str_compound_lit(expr *e, symtable *stab)

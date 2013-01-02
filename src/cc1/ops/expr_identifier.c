@@ -22,10 +22,13 @@ void fold_const_expr_identifier(expr *e, consty *k)
 
 	if(e->sym && e->sym->decl && DECL_IS_ARRAY(e->sym->decl)){
 		k->type = CONST_ADDR;
-		k->offset = 0;
 	}else{
 		k->type = CONST_NEED_ADDR;
 	}
+
+	k->bits.addr.is_lbl = 1;
+	k->bits.addr.bits.lbl = e->sym->decl->spel;
+	k->offset = 0;
 
 	/*
 	 * don't use e->spel

@@ -393,7 +393,7 @@ ops/expr_compound_lit.o: ops/expr_compound_lit.c ops/ops.h \
  ops/../ops/stmt_while.h ops/../ops/stmt_continue.h ops/../sym.h \
  ops/../decl.h ops/../cc1.h ops/../out/out.h ops/../fold.h ops/../const.h \
  ops/../gen_str.h ops/../gen_asm.h ops/expr_compound_lit.h \
- ops/../out/asm.h ops/../decl_init.h
+ ops/../out/asm.h ops/../out/lbl.h ops/../decl_init.h
 ops/expr_deref.o: ops/expr_deref.c ops/ops.h ops/../../util/util.h \
  ops/../data_structs.h ops/../tree.h ops/../expr.h ops/../ops/expr_addr.h \
  ops/../ops/expr_assign.h ops/../ops/expr_assign_compound.h \
