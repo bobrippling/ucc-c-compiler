@@ -930,7 +930,7 @@ void fold(symtable *globs)
 
 			const_fold(sa->e, &k);
 
-			if(k.type == CONST_NO)
+			if(!is_const(k.type))
 				DIE_AT(&sa->e->where, "static assert: not a constant expression (%s)", sa->e->f_str());
 
 			if(!k.bits.iv.val)

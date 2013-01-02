@@ -20,11 +20,14 @@ void fold_const_expr_identifier(expr *e, consty *k)
 
 	/* may not have e->sym if we're the struct-member-identifier */
 
-	k->type = e->sym && e->sym->decl && DECL_IS_ARRAY(e->sym->decl) ? CONST_ADDR : CONST_NO;
-	k->offset = 0;
+	if(e->sym && e->sym->decl && DECL_IS_ARRAY(e->sym->decl)){
+		k->type = CONST_ADDR;
+		k->offset = 0;
+	}else{
+		k->type = CONST_NEED_ADDR;
+	}
 
 	/*
-	 * TODO
 	 * don't use e->spel
 	 * static int i;
 	 * int x;

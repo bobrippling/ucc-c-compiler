@@ -202,7 +202,7 @@ static void const_constant_p(expr *e, consty *k)
 	const_fold(test, &subk);
 
 	k->type = CONST_VAL;
-	k->bits.iv.val = subk.type != CONST_NO;
+	k->bits.iv.val = is_const(subk.type);
 }
 
 static expr *parse_constant_p(void)

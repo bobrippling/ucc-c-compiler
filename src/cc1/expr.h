@@ -10,6 +10,7 @@ typedef struct consty
 		/* can be offset: */
 		CONST_ADDR,     /* &f where f is global */
 		CONST_STRK,     /* string constant */
+		CONST_NEED_ADDR, /* a.x, b->y, p where p is global int p */
 	} type;
 	long offset; /* offset for addr/strk */
 	union
@@ -18,6 +19,7 @@ typedef struct consty
 		data_store *str;
 	} bits;
 } consty;
+#define is_const(t) (t != CONST_NO && t != CONST_NEED_ADDR)
 
 typedef void         func_fold(          expr *, symtable *);
 typedef void         func_gen(           expr *, symtable *);

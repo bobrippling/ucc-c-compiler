@@ -86,6 +86,7 @@ static void format_check_printf(
 
 	switch(k.type){
 		case CONST_NO:
+		case CONST_NEED_ADDR:
 			WARN_AT(w, "format argument isn't constant");
 			return;
 

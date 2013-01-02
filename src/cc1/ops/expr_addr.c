@@ -104,17 +104,20 @@ void const_expr_addr(expr *e, consty *k)
 	if(e->data_store){
 		k->type = CONST_STRK;
 		k->bits.str = e->data_store;
+		k->offset = 0;
 	}else if(e->spel){
 		/*k->sym_lbl = e->spel;*/
 		ICE("TODO");
 	}else{
-		const_fold(e->expr, k);
-		/* TODO/FIXME: checks for valid sub-exprs
-		 * i.e. if it's a->b, allow address, etc
-		 */
-		k->type = CONST_ADDR; /* addr is const but with no value */
+		const_fold(e->lhs, k);
+
+		if(k->type == CONST_NEED_ADDR){
+			/* it's a->b, a symbol, etc */
+			k->type = CONST_ADDR; /* addr is const but with no value */
+		}else{
+			k->type = CONST_NO;
+		}
 	}
-	k->offset = 0;
 }
 
 void mutate_expr_addr(expr *e)

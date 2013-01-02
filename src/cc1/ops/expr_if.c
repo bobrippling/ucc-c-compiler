@@ -25,9 +25,9 @@ void fold_const_expr_if(expr *e, consty *k)
 		consts[1] = consts[0];
 
 	/* we're only const if expr, lhs and rhs are const */
-	if(consts[0].type == CONST_NO
-	|| consts[1].type == CONST_NO
-	|| consts[2].type == CONST_NO)
+	if(!is_const(consts[0].type)
+	|| !is_const(consts[1].type)
+	|| !is_const(consts[2].type))
 	{
 		k->type = CONST_NO;
 		return;
@@ -42,6 +42,7 @@ void fold_const_expr_if(expr *e, consty *k)
 			res = 1;
 			break;
 
+		case CONST_NEED_ADDR:
 		case CONST_NO:
 			ICE("buh");
 	}

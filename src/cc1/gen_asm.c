@@ -48,13 +48,18 @@ void gen_stmt(stmt *t)
 
 void static_addr(expr *e)
 {
-	consty k = { 0 };
+	consty k;
+
+	memset(&k, 0, sizeof k);
 
 	const_fold(e, &k);
 
 	switch(k.type){
+		case CONST_NEED_ADDR:
 		case CONST_NO:
-			ICE("non-constant %s", e->f_str());
+			ICE("non-constant %s%s",
+					e->f_str(),
+					k.type == CONST_NEED_ADDR ? " (needs addr)" : "");
 			break;
 
 		case CONST_VAL:

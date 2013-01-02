@@ -146,8 +146,10 @@ void fold_const_expr_struct(expr *e, consty *k)
 
 	const_fold(e->lhs, k);
 
-	if(k->type != CONST_NO)
+	if(is_const(k->type)){
+		k->type = CONST_NEED_ADDR; /* not constant unless addressed */
 		k->offset += struct_offset(e->rhs);
+	}
 }
 
 void mutate_expr_struct(expr *e)
