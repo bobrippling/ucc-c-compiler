@@ -21,7 +21,9 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 
 	if(!stab->parent){
 		d->spel = out_label_comp_lit();
-		d->store = store_static; /* why don't I need to do this for string literals? */
+		d->store = store_static;
+		/* don't need to do this for string literals - they're not decls,
+			 they're pointed to by decls. (except char[]) */
 	}
 
 	e->sym = SYMTAB_ADD(stab, d, stab->parent ? sym_local : sym_global);
