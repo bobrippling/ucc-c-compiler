@@ -114,11 +114,22 @@ void const_expr_addr(expr *e, consty *k)
 	}else{
 		const_fold(e->lhs, k);
 
-		if(k->type == CONST_NEED_ADDR){
-			/* it's a->b, a symbol, etc */
-			k->type = CONST_ADDR; /* addr is const but with no value */
-		}else{
-			k->type = CONST_NO;
+		switch(k->type){
+			case CONST_NEED_ADDR:
+				/* it's a->b, a symbol, etc */
+				k->type = CONST_ADDR; /* addr is const but with no value */
+				break;
+
+			case CONST_ADDR:
+				/* int x[]; int *p = &x;
+				 * already addr, just roll with it.
+				 * lvalue/etc checks are done in fold
+				 */
+				break;
+
+			default:
+				k->type = CONST_NO;
+				break;
 		}
 	}
 }
