@@ -45,7 +45,7 @@ void fold_stmt_code(stmt *s)
 			}else{
 				EOF_WHERE(&d->where,
 						if(!inits)
-							inits = stmt_new_wrapper(code, s->symtab);
+							inits = stmt_new_wrapper(code, symtab_new(s->symtab));
 
 						decl_init_create_assignments_for_spel(d, inits);
 					);
@@ -110,10 +110,8 @@ void gen_code_decls(symtable *stab)
 
 			if(func){
 				/* check if the func is defined globally */
-				symtable *globs;
+				symtable *globs = symtab_root(stab);
 				decl **i;
-
-				for(globs = stab; globs->parent; globs = globs->parent);
 
 				for(i = globs->decls; i && *i; i++){
 					if(!strcmp(d->spel, (*i)->spel)){
