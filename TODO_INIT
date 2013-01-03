@@ -1,7 +1,5 @@
 global/static init - mostly there
 
-static initialisation - gives bad-identifier error
-
 designated init + zero for the rest:
 	int x[] = { [3] = 5 };
 	struct { int x, y, z; } q = { .y = 2, 3 };

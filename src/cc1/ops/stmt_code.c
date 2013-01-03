@@ -32,6 +32,12 @@ void fold_stmt_code(stmt *s)
 
 		fold_decl(d, s->symtab);
 
+		d->is_definition = 1; /* always the def for non-globals */
+
+		/* must be before fold*, since sym lookups are done */
+		SYMTAB_ADD(s->symtab, d,
+				decl_store_static_or_extern(d->store) ? sym_global : sym_local);
+
 		if(d->init){
 			/* this creates the below s->inits array */
 			if(d->store == store_static){
@@ -43,15 +49,9 @@ void fold_stmt_code(stmt *s)
 
 						decl_init_create_assignments_for_spel(d, inits);
 					);
-
 				/* folded below */
 			}
 		}
-
-		d->is_definition = 1; /* always the def for non-globals */
-
-		SYMTAB_ADD(s->symtab, d,
-				decl_store_static_or_extern(d->store) ? sym_global : sym_local);
 	}
 
 	if(inits)
