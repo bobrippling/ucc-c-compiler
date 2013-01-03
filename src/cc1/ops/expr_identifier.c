@@ -18,24 +18,28 @@ void fold_const_expr_identifier(expr *e, consty *k)
 	 * int x[];
 	 */
 
+	k->type = CONST_NO;
+
 	/* may not have e->sym if we're the struct-member-identifier */
+	if(e->sym && e->sym->decl){
+		decl *const d = e->sym->decl;
 
-	if(e->sym && e->sym->decl && DECL_IS_ARRAY(e->sym->decl)){
-		k->type = CONST_ADDR;
-	}else{
-		k->type = CONST_NEED_ADDR;
+		/* only a constant if global/static/extern */
+		if(e->sym->type == sym_global || decl_store_static_or_extern(d->store)){
+			k->type = DECL_IS_ARRAY(d) ? CONST_ADDR : CONST_NEED_ADDR;
+
+			/*
+			 * don't use e->spel
+			 * static int i;
+			 * int x;
+			 * x = i; // e->spel is "i". e->sym->decl->spel is "func_name.static_i"
+			 */
+			k->bits.addr.bits.lbl = e->sym->decl->spel;
+
+			k->bits.addr.is_lbl = 1;
+			k->offset = 0;
+		}
 	}
-
-	k->bits.addr.is_lbl = 1;
-	k->bits.addr.bits.lbl = e->sym->decl->spel;
-	k->offset = 0;
-
-	/*
-	 * don't use e->spel
-	 * static int i;
-	 * int x;
-	 * x = i; // e->spel is "i". e->sym->decl->spel is "func_name.static_i"
-	 */
 }
 
 void fold_expr_identifier(expr *e, symtable *stab)
