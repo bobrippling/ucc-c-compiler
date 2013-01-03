@@ -156,6 +156,9 @@ void fold_const_expr_struct(expr *e, consty *k)
 		case CONST_ADDR:
 			k->type = CONST_NEED_ADDR; /* not constant unless addressed e.g. &a->b */
 			/* don't touch k->bits.addr info */
+
+			/* obviously we offset this */
+			k->offset = struct_offset(e->rhs);
 			break;
 
 		case CONST_VAL:
