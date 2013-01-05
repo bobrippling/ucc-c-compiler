@@ -128,7 +128,11 @@ static void asm_declare_init(FILE *f, stmt *init_code, type_ref *tfor)
 		asm_declare_pad(f, pws - end_of_last % pws);
 
 	}else if((r = type_ref_is(tfor, type_ref_array))){
-		ICE("TODO");
+		stmt **i;
+		type_ref *next = type_ref_next(tfor);
+
+		for(i = init_code->codes; i && *i; i++)
+			asm_declare_init(f, *i, next);
 
 	}else{
 		if(init_code->codes){
