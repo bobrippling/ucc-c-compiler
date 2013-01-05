@@ -91,38 +91,73 @@ int asm_type_size(type_ref *r)
 	return asm_type_table[asm_table_lookup(r)].sz;
 }
 
-static void asm_declare_sub(FILE *f, decl_init *init)
+static void asm_declare_pad(FILE *f, unsigned pad)
 {
-	switch(init->type){
-		case decl_init_brace:
-		{
-			decl_init **const inits = init->bits.inits;
-			const int len = dynarray_count((void **)inits);
-			int i;
+	if(pad)
+		fprintf(f, ".space %u\n", pad);
+}
 
-			for(i = 0; i < len; i++){
-				static int warned;
+static void asm_declare_init(FILE *f, stmt *init_code, type_ref *tfor)
+{
+	type_ref *r;
 
-				asm_declare_sub(f, inits[i]);
-				fputc('\n', f);
+	if((r = type_ref_is_type(tfor, type_struct))){
+		/* array of stmts for each member
+		 * assumes the ->codes order is member order
+		 */
+		struct_union_enum_st *sue = r->bits.type->sue;
+		sue_member **mem = sue->members;
+		stmt **i;
+		int end_of_last = 0;
+		static int pws;
 
-				/* TODO: struct padding for next member */
-				if(!warned){
-					ICW("global struct padding TODO"), warned = 1;
-					fputs("// TODO: struct padding for next\n", f);
-				}
-			}
-			break;
+		if(!pws)
+			pws = platform_word_size();
+
+		for(i = init_code->codes; i && *i; i++){
+			decl *d_mem = (*mem++)->struct_member;
+
+			asm_declare_pad(f, d_mem->struct_offset - end_of_last);
+
+			asm_declare_init(f, *i, d_mem->ref);
+
+			end_of_last = d_mem->struct_offset + type_ref_size(d_mem->ref, NULL);
 		}
 
-		case decl_init_scalar:
-		{
-			expr *const exp = init->bits.expr;
+		/* pad up to the alignment */
+		asm_declare_pad(f, pws - end_of_last % pws);
+
+	}else if((r = type_ref_is(tfor, type_ref_array))){
+		ICE("TODO");
+
+	}else{
+		if(init_code->codes){
+			UCC_ASSERT(dynarray_count((void **)init_code->codes) == 1,
+					"too many init codes");
+
+			asm_declare_init(f, init_code->codes[0], tfor);
+		}else{
+			/* scalar */
+			expr *exp = init_code->expr;
+
+			UCC_ASSERT(exp, "no exp for init (%s)", where_str(&init_code->where));
+			UCC_ASSERT(expr_kind(exp, assign), "not assign");
+
+			exp = exp->rhs; /* rvalue */
+
+			/* exp->tree_type should match tfor */
+			{
+				char buf[TYPE_REF_STATIC_BUFSIZ];
+
+				UCC_ASSERT(type_ref_equal(exp->tree_type, tfor, DECL_CMP_ALLOW_VOID_PTR),
+						"mismatching init types: %s and %s",
+						type_ref_to_str_r(buf, exp->tree_type),
+						type_ref_to_str(tfor));
+			}
 
 			fprintf(f, ".%s ", asm_type_directive(exp->tree_type));
-
 			static_addr(exp); /*if(!const_expr_is_zero(exp))...*/
-			break;
+			fputc('\n', f);
 		}
 	}
 }

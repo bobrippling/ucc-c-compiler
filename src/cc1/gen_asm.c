@@ -57,8 +57,9 @@ void static_addr(expr *e)
 	switch(k.type){
 		case CONST_NEED_ADDR:
 		case CONST_NO:
-			ICE("non-constant %s%s",
+			ICE("non-constant expr-%s const=%d%s",
 					e->f_str(),
+					k.type,
 					k.type == CONST_NEED_ADDR ? " (needs addr)" : "");
 			break;
 
