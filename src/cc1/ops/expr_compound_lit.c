@@ -83,7 +83,7 @@ static void lea_expr_compound_lit(expr *e, symtable *stab)
 void const_expr_compound_lit(expr *e, consty *k)
 {
 	if(decl_init_is_const(e->val.decl->init, NULL)){
-		k->type = CONST_NEED_ADDR;
+		k->type = CONST_FROM_ARRAY(e->val.decl);
 		k->bits.addr.is_lbl = 1;
 		k->bits.addr.bits.lbl = e->sym->decl->spel;
 		k->offset = 0;

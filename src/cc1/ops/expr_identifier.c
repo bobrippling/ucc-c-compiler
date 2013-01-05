@@ -26,7 +26,7 @@ void fold_const_expr_identifier(expr *e, consty *k)
 
 		/* only a constant if global/static/extern */
 		if(e->sym->type == sym_global || decl_store_static_or_extern(d->store)){
-			k->type = DECL_IS_ARRAY(d) ? CONST_ADDR : CONST_NEED_ADDR;
+			k->type = CONST_FROM_ARRAY(d);
 
 			/*
 			 * don't use e->spel
