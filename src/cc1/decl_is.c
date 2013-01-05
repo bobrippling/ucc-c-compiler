@@ -28,6 +28,9 @@ fin:
 
 type_ref *type_ref_next(type_ref *r)
 {
+	if(!r)
+		return NULL;
+
 	switch(r->type){
 		case type_ref_type:
 			ICE("%s on type", __func__);

@@ -1,6 +1,5 @@
 global/static init - mostly there
 	nested initalisers - bugs[0]
-	char[] initialisers with strings
 	initialisers with data_store/data_store refactor (i.e. strings)
 
 designated init + zero for the rest:

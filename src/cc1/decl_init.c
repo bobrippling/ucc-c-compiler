@@ -13,6 +13,7 @@
 #include "const.h"
 #include "macros.h"
 #include "sue.h"
+#include "data_store.h"
 
 #include "decl_init.h"
 
@@ -156,15 +157,35 @@ static type_ref *decl_initialise_array(
 
 	switch(dinit ? dinit->type : decl_init_brace){
 		case decl_init_scalar:
-			/* if we're nested, pull as many as we need from the init */
-			/* FIXME: can't check tree_type - fold hasn't occured yet */
-			if(type_ref_is_type(type_ref_is_ptr(dinit->bits.expr->tree_type), type_char)){
-				/* const char * init - need to check tfor is of the same type */
-				ICE("TODO: array init with string literal");
+		{
+			data_store *ds = dinit->bits.expr->data_store;
+			if(ds){
+				/* const char [] init - need to check tfor is of the same type */
+				type_ref *rar = type_ref_is(tfor_wrapped, type_ref_array);
+
+				if(type_ref_is_type(type_ref_next(rar), type_char)){
+					int i;
+
+					complete_to = ds->len;
+
+					for(i = 0; i < complete_to; i++){
+						expr *e  = expr_new_val(ds->bits.str[i]);
+						expr *to = expr_new_array_idx(base, i);
+
+						dynarray_add((void ***)&init_code->codes,
+								expr_to_stmt(
+									expr_new_assign(to, e),
+									init_code->symtab));
+					}
+
+					tfor = tfor_wrapped;
+					goto complete_ar;
+				}
 			}
 
 			/* check for scalar init isn't done here */
 			break;
+		}
 
 		case decl_init_brace:
 			break;
@@ -233,6 +254,7 @@ static type_ref *decl_initialise_array(
 	}
 
 	/* patch the type size */
+complete_ar:
 	if(type_ref_is_incomplete_array(tfor)){
 		tfor = type_ref_complete_array(tfor, complete_to);
 
@@ -375,15 +397,25 @@ static type_ref *decl_init_create_assignments_from_init(
 
 	/* init validity checks */
 	if(single_init->type == decl_init_scalar){
+		type_ref *tar;
+
 		if((sue = type_ref_is_s_or_u(tfor_wrapped))
-		||        type_ref_is(       tfor_wrapped, type_ref_array))
+		|| (tar = type_ref_is(       tfor_wrapped, type_ref_array)))
 		{
+			if(type_ref_is_type(type_ref_next(tar), type_char)){
+				/* is char[] */
+				expr *e = single_init->bits.expr;
+
+				if(e->data_store)
+					goto fine; /* arg is char * */
+			}
+
 			DIE_AT(&single_init->where, "%s must be initalised with an initialiser list",
 					sue ? sue_str(sue) : "array");
 		}
 	}
 
-
+fine:
 	return decl_init_create_assignments(
 			&it, tfor_wrapped, base, init_code);
 }
