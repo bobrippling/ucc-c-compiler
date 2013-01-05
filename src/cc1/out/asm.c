@@ -160,7 +160,7 @@ static void asm_declare_init(FILE *f, stmt *init_code, type_ref *tfor)
 			}
 
 			fprintf(f, ".%s ", asm_type_directive(exp->tree_type));
-			static_addr(exp); /*if(!const_expr_is_zero(exp))...*/
+			static_addr(exp);
 			fputc('\n', f);
 		}
 	}
@@ -191,13 +191,13 @@ static void asm_reserve_bytes(const char *lbl, int nbytes)
 
 void asm_declare(FILE *f, decl *d)
 {
-	if(d->init /* FIXME: should also check for non-zero... */){
-		fprintf(f, "%s:\n", d->spel);
-		asm_declare_sub(f, d->init);
-		fputc('\n', f);
-
-	}else if(d->store == store_extern){
+	if(d->store == store_extern){
 		gen_asm_extern(d);
+
+	}else if(d->init && !decl_init_is_zero(d->init)){
+		fprintf(f, "%s:\n", d->spel);
+		asm_declare_init(f, d->decl_init_code, d->ref);
+		fputc('\n', f);
 
 	}else{
 		/* always resB, since we use decl_size() */
