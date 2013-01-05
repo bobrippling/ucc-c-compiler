@@ -43,9 +43,23 @@ void gen_expr_str_deref(expr *e, symtable *stab)
 	gen_str_indent--;
 }
 
+void const_expr_deref(expr *e, consty *k)
+{
+	const_fold(expr_deref_what(e), k);
+	switch(k->type){
+		case CONST_VAL:
+		case CONST_ADDR:
+		case CONST_STRK:
+			k->type = CONST_NEED_ADDR;
+		default:
+			break;
+	}
+}
+
 void mutate_expr_deref(expr *e)
 {
 	e->f_lea = gen_expr_deref_lea;
+	e->f_const_fold = const_expr_deref;
 }
 
 expr *expr_new_deref(expr *of)
