@@ -311,7 +311,7 @@ static void const_strlen(expr *e, consty *k)
 		const_fold(s, &subk);
 		if(subk.type == CONST_STRK){
 			data_store *ds = subk.bits.str;
-			const char *s = ds->bits.str;
+			const char *s = ds->str;
 			const char *p = memchr(s, '\0', ds->len);
 
 			if(p){

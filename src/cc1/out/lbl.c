@@ -47,11 +47,6 @@ char *out_label_data_store(int str)
 	return ret;
 }
 
-char *out_label_comp_lit(void)
-{
-	return out_label_data_store(0);
-}
-
 char *out_label_static_local(const char *funcsp, const char *spel)
 {
 	char *ret;

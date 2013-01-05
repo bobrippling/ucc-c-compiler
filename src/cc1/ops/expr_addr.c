@@ -3,11 +3,7 @@
 
 #include "ops.h"
 #include "expr_addr.h"
-#include "../sue.h"
-#include "../str.h"
-#include "../out/asm.h"
 #include "../out/lbl.h"
-#include "../data_store.h"
 
 const char *str_expr_addr()
 {
@@ -16,10 +12,7 @@ const char *str_expr_addr()
 
 void fold_expr_addr(expr *e, symtable *stab)
 {
-	if(e->data_store){
-		data_store_fold_type(e->data_store, &e->tree_type, stab);
-
-	}else if(e->spel){
+	if(e->spel){
 		char *save;
 
 		/* address of label - void * */
@@ -59,13 +52,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 
 void gen_expr_addr(expr *e, symtable *stab)
 {
-	if(e->data_store){
-		out_push_lbl(e->data_store->spel, 1);
-
-		data_store_declare(e->data_store);
-		data_store_out(    e->data_store, 1);
-
-	}else if(e->spel){
+	if(e->spel){
 		out_push_lbl(e->spel, 1); /* GNU &&lbl */
 
 	}else{
@@ -81,15 +68,7 @@ void gen_expr_str_addr(expr *e, symtable *stab)
 {
 	(void)stab;
 
-	if(e->data_store){
-		/*asm_temp(1, "mov rax, %s", e->data_store->sym_ident);*/
-		idt_printf("address of datastore %s\n", e->data_store->spel);
-		gen_str_indent++;
-		idt_print();
-		literal_print(cc1_out, e->data_store->bits.str, e->data_store->len);
-		gen_str_indent--;
-		fputc('\n', cc1_out);
-	}else if(e->spel){
+	if(e->spel){
 		idt_printf("address of label \"%s\"\n", e->spel);
 	}else{
 		idt_printf("address of expr:\n");
@@ -101,11 +80,7 @@ void gen_expr_str_addr(expr *e, symtable *stab)
 
 void const_expr_addr(expr *e, consty *k)
 {
-	if(e->data_store){
-		k->type = CONST_STRK;
-		k->bits.str = e->data_store;
-		k->offset = 0;
-	}else if(e->spel){
+	if(e->spel){
 		/*k->sym_lbl = e->spel;*/
 		k->type = CONST_ADDR;
 		k->offset = 0;
@@ -141,15 +116,3 @@ void mutate_expr_addr(expr *e)
 
 void gen_expr_style_addr(expr *e, symtable *stab)
 { (void)e; (void)stab; /* TODO */ }
-
-void expr_mutate_addr_data(expr *e, char *s, int len)
-{
-	e->data_store = data_store_new_str(s, len);
-}
-
-expr *expr_new_addr_str(char *s, int len)
-{
-	expr *e = expr_new_wrapper(addr);
-	expr_mutate_addr_data(e, s, len);
-	return e;
-}

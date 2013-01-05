@@ -169,7 +169,7 @@ static type_ref *decl_initialise_array(
 					complete_to = ds->len;
 
 					for(i = 0; i < complete_to; i++){
-						expr *e  = expr_new_val(ds->bits.str[i]);
+						expr *e  = expr_new_val(ds->str[i]);
 						expr *to = expr_new_array_idx(base, i);
 
 						dynarray_add((void ***)&init_code->codes,

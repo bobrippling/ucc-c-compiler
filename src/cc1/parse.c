@@ -186,7 +186,7 @@ expr *parse_expr_primary()
 			token_get_current_str(&s, &l);
 			EAT(token_string);
 
-			return expr_new_addr_str(s, l);
+			return expr_new_str(s, l);
 		}
 
 		case token__Generic:

@@ -50,7 +50,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 			int len;
 
 			/* mutate into a string literal */
-			expr_mutate_wrapper(e, addr);
+			expr_mutate_wrapper(e, str);
 
 			if(!curdecl_func){
 				WARN_AT(&e->where, "__func__ is not defined outside of functions");
@@ -61,7 +61,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 				len = strlen(curdecl_func->spel);
 			}
 
-			expr_mutate_addr_data(e, sp, len + 1);
+			expr_mutate_str(e, sp, len + 1);
 			/* +1 - take the null byte */
 
 			FOLD_EXPR(e, stab);

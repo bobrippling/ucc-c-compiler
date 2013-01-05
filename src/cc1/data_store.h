@@ -3,21 +3,12 @@
 
 struct data_store
 {
-	enum
-	{
-		data_store_str
-	} type;
-
-	union
-	{
-		char *str;
-	} bits;
+	char *lbl; /* asm */
+	char *str;
 	int len;
-
-	char *spel; /* asm */
 };
 
-data_store *data_store_new_str(char *s, int l);
+data_store *data_store_new(char *s, int l);
 void data_store_fold_type(data_store *ds, type_ref **ptree_type, symtable *stab);
 
 void data_store_out(    data_store *, int newline);

@@ -167,7 +167,7 @@ static void format_check_printf(
 	}
 
 	{
-		const char *fmt = fmt_str->bits.str;
+		const char *fmt = fmt_str->str;
 		const int   len = fmt_str->len;
 
 		if(k.offset >= len)

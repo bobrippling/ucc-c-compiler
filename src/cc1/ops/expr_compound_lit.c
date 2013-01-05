@@ -20,10 +20,8 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 	e->tree_type = d->ref;
 
 	if(!stab->parent){
-		d->spel = out_label_comp_lit();
+		d->spel = out_label_data_store(0);
 		d->store = store_static;
-		/* don't need to do this for string literals - they're not decls,
-			 they're pointed to by decls. (except char[]) */
 	}
 
 	e->sym = SYMTAB_ADD(stab, d, stab->parent ? sym_local : sym_global);
@@ -50,12 +48,9 @@ static void gen_expr_compound_lit_code(expr *e)
 	if(!e->expr_comp_lit_cgen){
 		e->expr_comp_lit_cgen = 1;
 
-		if(e->code->symtab->parent){
-			gen_stmt(e->code);
-		}else{
-			/* global */
-			ICE("TODO: global compound initialiser");
-		}
+		UCC_ASSERT(e->code->symtab->parent, "global compound initialiser tried for code");
+
+		gen_stmt(e->code);
 	}
 }
 

@@ -75,7 +75,7 @@ void static_addr(expr *e)
 			break;
 
 		case CONST_STRK:
-			asm_declare_partial("%s", k.bits.str->spel);
+			asm_declare_partial("%s", k.bits.str->lbl);
 			break;
 	}
 
