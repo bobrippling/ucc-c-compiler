@@ -74,19 +74,81 @@ ptr:
 	}
 }
 
-static void format_check_printf(
+static void format_check_printf_str(
 		expr **args,
-		unsigned fmt_arg, unsigned var_arg,
+		const char *fmt, const int len,
+		int var_arg, where *w)
+{
+	int n_arg = 0;
+	int i;
+
+	for(i = 0; i < len && fmt[i];){
+		if(fmt[i++] == '%'){
+			int fin;
+			expr *e;
+
+			if(fmt[i] == '%'){
+				i++;
+				continue;
+			}
+
+recheck:
+			fin = 0;
+			do switch(fmt[i]){
+				case '1': case '2': case '3':
+				case '4': case '5': case '6':
+				case '7': case '8': case '9':
+
+				case '0': case '#': case '-':
+				case ' ': case '+': case '.':
+
+				case 'l': case 'h': case 'L':
+					i++;
+					break;
+				default:
+					fin = 1;
+			}while(!fin);
+
+			e = args[var_arg + n_arg++];
+
+			if(!e){
+				WARN_AT(w, "too few arguments for format (%%%c)", fmt[i]);
+				break;
+			}
+
+			format_check_printf_1(fmt[i], e->tree_type, &e->where);
+			if(fmt[i] == '*'){
+				i++;
+				goto recheck;
+			}
+		}
+	}
+
+	if((!fmt[i] || i == len) && args[var_arg + n_arg])
+		WARN_AT(w, "too many arguments for format");
+}
+
+static void format_check_printf(
+		expr *str_arg,
+		expr **args,
+		unsigned var_arg,
 		where *w)
 {
 	data_store *fmt_str;
 	consty k;
 
-	const_fold(args[fmt_arg], &k);
+	const_fold(str_arg, &k);
 
 	switch(k.type){
 		case CONST_NO:
 		case CONST_NEED_ADDR:
+			/* check for the common case printf(x?"":"", ...) */
+			if(expr_kind(str_arg, if)){
+				format_check_printf(str_arg->lhs, args, var_arg, w);
+				format_check_printf(str_arg->rhs, args, var_arg, w);
+				return;
+			}
+
 			WARN_AT(w, "format argument isn't constant");
 			return;
 
@@ -107,58 +169,11 @@ static void format_check_printf(
 	{
 		const char *fmt = fmt_str->bits.str;
 		const int   len = fmt_str->len;
-		int i, n_arg = 0;
 
-		if(k.offset >= len){
+		if(k.offset >= len)
 			WARN_AT(w, "undefined printf-format argument");
-			return;
-		}
-		fmt += k.offset;
-
-		for(i = 0; i < len && fmt[i];){
-			if(fmt[i++] == '%'){
-				int fin;
-				expr *e;
-
-				if(fmt[i] == '%'){
-					i++;
-					continue;
-				}
-
-recheck:
-				fin = 0;
-				do switch(fmt[i]){
-					case '1': case '2': case '3':
-					case '4': case '5': case '6':
-					case '7': case '8': case '9':
-
-					case '0': case '#': case '-':
-					case ' ': case '+': case '.':
-
-					case 'l': case 'h': case 'L':
-						i++;
-						break;
-					default:
-						fin = 1;
-				}while(!fin);
-
-				e = args[var_arg + n_arg++];
-
-				if(!e){
-					WARN_AT(w, "too few arguments for format (%%%c)", fmt[i]);
-					break;
-				}
-
-				format_check_printf_1(fmt[i], e->tree_type, &e->where);
-				if(fmt[i] == '*'){
-					i++;
-					goto recheck;
-				}
-			}
-		}
-
-		if((!fmt[i] || i == len) && args[var_arg + n_arg])
-			WARN_AT(w, "too many arguments for format");
+		else
+			format_check_printf_str(args, fmt + k.offset, len, var_arg, w);
 	}
 }
 
@@ -187,7 +202,7 @@ static void format_check(where *w, type_ref *ref, expr **args, const int variadi
 
 	switch(attr->attr_extra.format.fmt_func){
 		case attr_fmt_printf:
-			format_check_printf(args, fmt_arg, var_arg, w);
+			format_check_printf(args[fmt_arg], args, var_arg, w);
 			break;
 
 		case attr_fmt_scanf:
