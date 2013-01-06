@@ -13,7 +13,6 @@
 #include "const.h"
 #include "macros.h"
 #include "sue.h"
-#include "data_store.h"
 
 #include "decl_init.h"
 
@@ -158,6 +157,7 @@ static type_ref *decl_initialise_array(
 	switch(dinit ? dinit->type : decl_init_brace){
 		case decl_init_scalar:
 		{
+#if 0
 			data_store *ds = dinit->bits.expr->data_store;
 			if(ds){
 				/* const char [] init - need to check tfor is of the same type */
@@ -182,6 +182,9 @@ static type_ref *decl_initialise_array(
 					goto complete_ar;
 				}
 			}
+#else
+			ICE("TODO: string init");
+#endif
 
 			/* check for scalar init isn't done here */
 			break;

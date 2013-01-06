@@ -141,6 +141,7 @@ expr *expr_new_decl_init(decl *d, decl_init *di);
 #include "ops/expr_deref.h"
 #include "ops/expr_struct.h"
 #include "ops/expr_compound_lit.h"
+#include "ops/expr_string.h"
 
 /* XXX: memleak */
 #define expr_free(x) do{                 \
@@ -168,6 +169,7 @@ expr *expr_new__Generic(expr *test, struct generic_lbl **lbls);
 expr *expr_new_block(type_ref *rt, funcargs *args, stmt *code);
 expr *expr_new_deref(expr *);
 expr *expr_new_struct(expr *sub, int dot, expr *ident);
+expr *expr_new_str(char *, int);
 
 #define expr_new_addr() expr_new_wrapper(addr)
 
