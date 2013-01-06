@@ -15,7 +15,8 @@ struct decl_attr
 		attr_noreturn,
 		attr_noderef,
 		attr_nonnull,
-#define attr_LAST (attr_nonnull + 1)
+		attr_packed,
+#define attr_LAST (attr_packed + 1)
 		/*
 		 * TODO: warning, cdecl, stdcall, fastcall
 		 * pure - no globals

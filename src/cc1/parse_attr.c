@@ -118,6 +118,7 @@ EMPTY(attr_warn_unused)
 EMPTY(attr_enum_bitmask)
 EMPTY(attr_noreturn)
 EMPTY(attr_noderef)
+EMPTY(attr_packed)
 
 static struct
 {
@@ -132,6 +133,7 @@ static struct
 	{ "noreturn",       parse_attr_noreturn },
 	{ "noderef",        parse_attr_noderef },
 	{ "nonnull",        parse_attr_nonnull },
+	{ "packed",         parse_attr_packed },
 
 	/* compat */
 	{ "warn_unused_result", parse_attr_warn_unused },

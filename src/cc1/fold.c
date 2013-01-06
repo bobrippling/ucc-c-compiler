@@ -193,6 +193,9 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab, int *poffset, int
 		int align_max = 1;
 		sue_member **i;
 
+		if(decl_attr_present(sue->attr, attr_packed))
+			ICE("TODO: __attribute__((packed)) support");
+
 		for(i = sue->members; i && *i; i++){
 			decl *d = (*i)->struct_member;
 			int align;

@@ -281,6 +281,7 @@ const char *decl_attr_to_str(enum decl_attr_type t)
 		CASE_STR_PREFIX(attr, noreturn);
 		CASE_STR_PREFIX(attr, noderef);
 		CASE_STR_PREFIX(attr, nonnull);
+		CASE_STR_PREFIX(attr, packed);
 	}
 	return NULL;
 }
