@@ -30,9 +30,7 @@
 static void parse_add_attr(decl_attr **append);
 static type_ref *parse_type_ref2(enum decl_mode mode, char **sp);
 
-#define INT_TYPE(t) do{ UCC_ASSERT(!t, "got type"); t = type_new_primitive(type_int); }while(0)
-
-void parse_type_preamble(type **tp, char **psp, enum type_primitive primitive)
+void parse_sue_preamble(type **tp, char **psp, enum type_primitive primitive)
 {
 	char *spel;
 	type *t;
@@ -58,7 +56,7 @@ type *parse_type_sue(enum type_primitive prim)
 	char *spel;
 	sue_member **members;
 
-	parse_type_preamble(&t, &spel, prim);
+	parse_sue_preamble(&t, &spel, prim);
 
 	members = NULL;
 
