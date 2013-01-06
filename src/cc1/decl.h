@@ -128,8 +128,7 @@ struct decl
 
 	decl_attr *attr;
 
-	/* things we want immediately */
-	char *spel;
+	char *spel, *spel_asm;
 
 #ifdef FIELD_WIDTH_TODO
 	expr *field_width;
@@ -147,6 +146,8 @@ struct decl
 	int inline_only;
 	/* only inline code - no standalone obj-code generated */
 };
+
+#define decl_asm_spel(d) ((d)->spel_asm ? (d)->spel_asm : (d)->spel)
 
 enum decl_cmp
 {

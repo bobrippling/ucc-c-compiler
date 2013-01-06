@@ -34,7 +34,7 @@ void fold_const_expr_identifier(expr *e, consty *k)
 			 * int x;
 			 * x = i; // e->spel is "i". e->sym->decl->spel is "func_name.static_i"
 			 */
-			k->bits.addr.bits.lbl = e->sym->decl->spel;
+			k->bits.addr.bits.lbl = decl_asm_spel(e->sym->decl);
 
 			k->bits.addr.is_lbl = 1;
 			k->offset = 0;

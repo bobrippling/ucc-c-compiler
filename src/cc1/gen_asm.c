@@ -114,13 +114,6 @@ void gen_func_stack(decl *df, const int offset)
 #else
 #endif
 
-void gen_asm_extern(decl *d)
-{
-	(void)d;
-	/*asm_comment("extern %s", d->spel);*/
-	/*asm_out_section(SECTION_BSS, "extern %s", d->spel);*/
-}
-
 void gen_asm_global(decl *d)
 {
 	decl_attr *sec;
@@ -139,6 +132,7 @@ void gen_asm_global(decl *d)
 		/* check .func_code, since it could be a block */
 		int nargs = 0;
 		decl **aiter;
+		char *sp;
 
 		if(!d->func_code)
 			return;
@@ -147,14 +141,16 @@ void gen_asm_global(decl *d)
 			if((*aiter)->sym->type == sym_arg)
 				nargs++;
 
-		out_label(d->spel);
+		sp = decl_asm_spel(d);
+
+		out_label(sp);
 
 		out_func_prologue(
 				d->func_code->symtab->auto_total_size,
 				nargs,
 				decl_is_variadic(d));
 
-		curfunc_lblfin = out_label_code(d->spel);
+		curfunc_lblfin = out_label_code(sp);
 
 		gen_stmt(d->func_code);
 
@@ -165,8 +161,8 @@ void gen_asm_global(decl *d)
 		free(curfunc_lblfin);
 
 	}else{
-		/* takes care of static, extern, etc */
-		asm_declare(cc_out[SECTION_DATA], d);
+		/* asm takes care of .bss vs .data, etc */
+		asm_declare_decl_init(cc_out[SECTION_DATA], d);
 	}
 }
 
@@ -183,7 +179,7 @@ void gen_asm(symtable *globs)
 
 		if(d->inline_only){
 			/* emit an extern for it anyway */
-			gen_asm_extern(d);
+			asm_predeclare_extern(d);
 			continue;
 		}
 
@@ -205,7 +201,7 @@ void gen_asm(symtable *globs)
 				/* else extern func with definition */
 
 			case store_default:
-				asm_out_section(SECTION_TEXT, ".globl %s\n", d->spel);
+				asm_predeclare_global(d);
 		}
 
 		gen_asm_global(d);

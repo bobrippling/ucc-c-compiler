@@ -189,19 +189,33 @@ static void asm_reserve_bytes(const char *lbl, int nbytes)
 	}
 }
 
-void asm_declare(FILE *f, decl *d)
+void asm_predeclare_extern(decl *d)
+{
+	(void)d;
+	/*
+	asm_comment("extern %s", d->spel);
+	asm_out_section(SECTION_BSS, "extern %s", d->spel);
+	*/
+}
+
+void asm_predeclare_global(decl *d)
+{
+	asm_out_section(SECTION_TEXT, ".globl %s\n", decl_asm_spel(d));
+}
+
+void asm_declare_decl_init(FILE *f, decl *d)
 {
 	if(d->store == store_extern){
-		gen_asm_extern(d);
+		asm_predeclare_extern(d);
 
 	}else if(d->init && !decl_init_is_zero(d->init)){
-		fprintf(f, "%s:\n", d->spel);
+		fprintf(f, "%s:\n", decl_asm_spel(d));
 		asm_declare_init(f, d->decl_init_code, d->ref);
 		fputc('\n', f);
 
 	}else{
 		/* always resB, since we use decl_size() */
-		asm_reserve_bytes(d->spel, decl_size(d, &d->where));
+		asm_reserve_bytes(decl_asm_spel(d), decl_size(d, &d->where));
 
 	}
 }

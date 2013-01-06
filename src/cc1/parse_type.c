@@ -606,6 +606,25 @@ type_ref *parse_type()
 	return btype ? parse_type3(0, NULL, btype) : NULL;
 }
 
+static void parse_add_asm(decl *d)
+{
+	if(accept(token_asm)){
+		char *rename;
+
+		EAT(token_open_paren);
+
+		if(curtok != token_string)
+			DIE_AT(NULL, "string expected");
+
+		token_get_current_str(&rename, NULL);
+		EAT(token_string);
+
+		EAT(token_close_paren);
+
+		d->spel_asm = rename;
+	}
+}
+
 decl *parse_decl(type_ref *btype, enum decl_mode mode)
 {
 	char *spel = NULL;
@@ -622,8 +641,11 @@ decl *parse_decl(type_ref *btype, enum decl_mode mode)
 	 * }
 	 */
 
-	if(!DECL_IS_FUNC(d))
+	if(!DECL_IS_FUNC(d)){
+		/* parse __asm__ naming before attributes, as per gcc and clang */
+		parse_add_asm(d);
 		parse_add_attr(&d->attr); /* int spel __attr__ */
+	}
 
 	if(d->spel && accept(token_assign))
 		d->init = parse_initialisation();
@@ -797,8 +819,6 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 		do{
 			decl *d = parse_decl(this_ref, parse_flag);
 
-			UCC_ASSERT(d, "null decl after parse");
-
 			d->store = store;
 
 			if(!d->spel){
@@ -853,6 +873,15 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 				decl **old_args;
 				int need_func = 1;
 
+				/* special case - support asm directly after a function
+				 * no parse ambiguity - asm can only appear at the end of a decl,
+				 * before __attribute__
+				 */
+				if(curtok == token_asm){
+					parse_add_asm(d);
+					need_func = 0;
+				}
+
 				/* special case - support GCC __attribute__ directly after a function */
 				if(curtok == token_attribute){
 					/* add to .ref, since this is what is checked when the function decays to a pointer */
@@ -867,7 +896,6 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 					 */
 
 					need_func = 0; /* a ';' will do me fine */
-
 				}else{
 					old_args = parse_decls_multi_type(0);
 					if(old_args)

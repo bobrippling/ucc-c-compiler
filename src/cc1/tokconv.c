@@ -147,6 +147,7 @@ const char *token_to_str(enum token t)
 		CASE_STR_PREFIX(token,  default);
 		CASE_STR_PREFIX(token,  continue);
 		CASE_STR_PREFIX(token,  goto);
+		CASE_STR_PREFIX(token,  asm);
 
 		CASE_STR_PREFIX(token,  sizeof);
 		CASE_STR_PREFIX(token,  typeof);

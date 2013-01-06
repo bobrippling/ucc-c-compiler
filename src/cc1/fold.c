@@ -679,6 +679,7 @@ static void fold_link_decl_defs(dynmap *spel_decls)
 		decl *d, *e, *definition, *first_none_extern;
 		decl **decls_for_this, **decl_iter;
 		int count_inline, count_extern, count_static, count_total;
+		char *asm_rename;
 
 		key = dynmap_key(spel_decls, i);
 		if(!key)
@@ -692,6 +693,7 @@ static void fold_link_decl_defs(dynmap *spel_decls)
 		count_inline = d->is_inline;
 		count_extern = count_static = 0;
 		first_none_extern = NULL;
+		asm_rename = d->spel_asm;
 
 		switch(d->store){
 			case store_extern:
@@ -723,6 +725,13 @@ static void fold_link_decl_defs(dynmap *spel_decls)
 						where_str_r(wbuf, &d->where),
 						decl_to_str_r(buf, d),
 						decl_to_str(       e));
+			}
+
+			/* check asm renames */
+			if(e->spel_asm){
+				if(asm_rename && strcmp(asm_rename, e->spel_asm))
+					WARN_AT(&d->where, "multiple asm renames\n%s", where_str_r(wbuf, &e->where));
+				asm_rename = e->spel_asm;
 			}
 
 			if(decl_is_definition(e)){
@@ -807,6 +816,9 @@ static void fold_link_decl_defs(dynmap *spel_decls)
 		}
 
 		definition->is_definition = 1;
+
+		if(!definition->spel_asm)
+			definition->spel_asm = asm_rename;
 
 		/*
 		 * func -> extern (if no func code) done elsewhere,

@@ -399,7 +399,7 @@ void out_push_sym(sym *s)
 		case sym_global:
 label:
 			vtop->type = LBL;
-			vtop->bits.lbl.str = s->decl->spel;
+			vtop->bits.lbl.str = decl_asm_spel(s->decl);
 			vtop->bits.lbl.pic = 1;
 			break;
 	}

@@ -227,6 +227,12 @@ expr *parse_expr_primary()
 				EAT(token_close_paren);
 				return e;
 			}else{
+				/* inline asm */
+				if(accept(token_asm)){
+					ICW("token_asm - redirect to builtin instead of identifier");
+					return expr_new_identifier(ustrdup(ASM_INLINE_FNAME));
+				}
+
 				if(curtok != token_identifier){
 					/* TODO? cc1_error = 1, return expr_new_val(0) */
 					DIE_AT(NULL, "expression expected, got %s (%s:%d)",
