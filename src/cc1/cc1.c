@@ -98,6 +98,7 @@ struct
 	{ 1,  "show-line",     FOPT_SHOW_LINE       },
 	{ 1,  "pic",           FOPT_PIC             },
 	{ 1,  "pic-pcrel",     FOPT_PIC_PCREL       },
+	{ 1,  "leading-underscore", FOPT_LEADING_UNDERSCORE },
 
 	{ 0,  NULL, 0 }
 };
