@@ -63,7 +63,7 @@ void const_fold_need_val(expr *e, intval *piv)
 
 	UCC_ASSERT(k.type == CONST_VAL, "not const");
 
-	memcpy(piv, &k.bits.iv, sizeof *piv);
+	memcpy_safe(piv, &k.bits.iv);
 }
 
 /*

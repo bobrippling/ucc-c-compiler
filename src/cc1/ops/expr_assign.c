@@ -45,13 +45,15 @@ int expr_is_lvalue(expr *e)
 
 void fold_expr_assign(expr *e, symtable *stab)
 {
-	fold_inc_writes_if_sym(e->lhs, stab);
+	sym *lhs_sym = NULL;
+
+	lhs_sym = fold_inc_writes_if_sym(e->lhs, stab);
 
 	FOLD_EXPR(e->lhs, stab);
 	FOLD_EXPR(e->rhs, stab);
 
-	if(expr_kind(e->lhs, identifier))
-		e->lhs->sym->nreads--; /* cancel the read that fold_ident thinks it got */
+	if(lhs_sym)
+		lhs_sym->nreads--; /* cancel the read that fold_ident thinks it got */
 
 	if(type_ref_is_type(e->rhs->tree_type, type_void))
 		DIE_AT(&e->where, "assignment from void expression");

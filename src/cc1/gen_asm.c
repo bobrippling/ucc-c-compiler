@@ -18,7 +18,6 @@
 #include "out/out.h"
 #include "out/lbl.h"
 #include "out/asm.h"
-#include "data_store.h"
 
 char *curfunc_lblfin; /* extern */
 

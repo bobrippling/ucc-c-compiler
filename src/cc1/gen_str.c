@@ -386,7 +386,7 @@ void print_enum(struct_union_enum_st *et)
 	for(mi = et->members; *mi; mi++){
 		enum_member *m = (*mi)->enum_member;
 
-		idt_printf("member %s = %d\n", m->spel, m->val->val.iv.val);
+		idt_printf("member %s = %d\n", m->spel, m->val->bits.iv.val);
 	}
 	gen_str_indent--;
 }

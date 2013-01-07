@@ -299,7 +299,7 @@ static type_ref *parse_btype(enum decl_storage *store)
 			tdef_decl = tdef_decl_test;
 			tdef_typeof = expr_new_sizeof_type(tdef_decl->ref, 1);
 
-			tdef_typeof->spel = token_current_spel();
+			tdef_typeof->bits.ident.spel = token_current_spel();
 			primitive_set = PRIMITIVE_NO_MORE;
 
 			EAT(token_identifier);
@@ -335,7 +335,7 @@ static type_ref *parse_btype(enum decl_storage *store)
 			/* signed size_t x; */
 			if(signed_set){
 				DIE_AT(NULL, "signed/unsigned not allowed with typedef instance (%s)",
-						tdef_typeof->spel);
+						tdef_typeof->bits.ident.spel);
 			}
 
 			r = type_ref_new_tdef(tdef_typeof, tdef_decl);

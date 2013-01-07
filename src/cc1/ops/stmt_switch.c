@@ -127,7 +127,7 @@ void gen_stmt_switch(stmt *s)
 			out_push_iv(cse->expr2->tree_type, &max);
 			out_op(op_gt);
 
-			out_jfalse(cse->expr->spel);
+			out_jfalse(cse->expr->bits.ident.spel);
 
 			out_label(skip);
 			free(skip);
@@ -138,13 +138,13 @@ void gen_stmt_switch(stmt *s)
 
 			out_op(op_eq);
 
-			out_jtrue(cse->expr->spel);
+			out_jtrue(cse->expr->bits.ident.spel);
 		}
 	}
 
 	out_pop(); /* free the value we switched on asap */
 
-	out_push_lbl(tdefault ? tdefault->expr->spel : s->lbl_break, 0);
+	out_push_lbl(tdefault ? tdefault->expr->bits.ident.spel : s->lbl_break, 0);
 	out_jmp();
 
 	/* out-stack must be empty from here on */

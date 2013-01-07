@@ -11,9 +11,7 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 	expr *const lvalue = e->lhs;
 
 	{
-		expr *addr = expr_new_addr();
-
-		addr->lhs = e->lhs;
+		expr *addr = expr_new_addr(e->lhs);
 
 		e->lhs = addr;
 		/* take the address of where we're assigning to - only eval once */

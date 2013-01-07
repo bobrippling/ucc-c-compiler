@@ -19,14 +19,15 @@ void fold_stmt_expr(stmt *s)
 void gen_stmt_expr(stmt *s)
 {
 	const int pre_vcount = out_vcount();
+	char *sp;
 
 	gen_expr(s->expr, s->symtab);
 
 	if((fopt_mode & FOPT_ENABLE_ASM) == 0
 	|| !s->expr
 	|| expr_kind(s->expr, funcall)
-	|| !s->expr->spel
-	|| strcmp(s->expr->spel, ASM_INLINE_FNAME))
+	|| !(sp = s->expr->bits.ident.spel)
+	|| strcmp(sp, ASM_INLINE_FNAME))
 	{
 		if(!s->expr_no_pop){
 			out_pop(); /* cancel the implicit push from gen_expr() above */

@@ -189,7 +189,7 @@ decl_attr *decl_attr_copy(decl_attr *da)
 {
 	decl_attr *ret = decl_attr_new(da->type);
 
-	memcpy(ret, da, sizeof *ret);
+	memcpy_safe(ret, da);
 
 	ret->next = da->next ? decl_attr_copy(da->next) : NULL;
 

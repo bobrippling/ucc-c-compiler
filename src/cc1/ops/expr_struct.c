@@ -5,7 +5,7 @@
 
 #define ASSERT_NOT_DOT() UCC_ASSERT(!e->expr_is_st_dot, "a.b should have been handled by now")
 
-#define struct_offset(rhs) (rhs)->val.decl->struct_offset
+#define struct_offset(e) (e)->bits.struct_mem->struct_offset
 
 const char *str_expr_struct()
 {
@@ -27,7 +27,7 @@ void fold_expr_struct(expr *e, symtable *stab)
 
 	UCC_ASSERT(expr_kind(e->rhs, identifier),
 			"struct/union member not identifier (%s)", e->rhs->f_str());
-	spel = e->rhs->spel;
+	spel = e->rhs->bits.ident.spel;
 
 	/* we access a struct, of the right ptr depth */
 	{
@@ -43,14 +43,9 @@ void fold_expr_struct(expr *e, symtable *stab)
 		}
 
 		if(!(sue = type_ref_is_s_or_u(r))){
-			int ident;
 err:
-			ident = expr_kind(e->lhs, identifier);
-
-			DIE_AT(&e->lhs->where, "'%s%s%s' is not a %sstruct or union (member %s)",
+			DIE_AT(&e->lhs->where, "'%s' is not a %sstruct or union (member %s)",
 					type_ref_to_str(e->lhs->tree_type),
-					ident ? " " : "",
-					ident ? e->lhs->spel : "",
 					ptr_expect ? "pointer to " : "",
 					spel);
 		}
@@ -66,7 +61,7 @@ err:
 
 	/* found the struct, find the member */
 	e->rhs->tree_type = (
-		e->rhs->val.decl = struct_union_member_find(sue, spel, &e->where)
+			e->bits.struct_mem = struct_union_member_find(sue, spel, &e->where)
 	)->ref;
 
 	/*
@@ -82,9 +77,7 @@ err:
 		expr *cast, *addr;
 
 		cast = expr_new_cast(type_ref_new_VOID_PTR(), 1);
-		cast->expr = addr = expr_new_addr();
-
-		addr->lhs = e->lhs;
+		cast->expr = addr = expr_new_addr(e->lhs);
 
 		e->lhs = cast;
 		e->expr_is_st_dot = 0;
@@ -107,7 +100,7 @@ void gen_expr_struct_lea(expr *e, symtable *stab)
 	gen_expr(e->lhs, stab);
 
 	out_change_type(type_ref_new_VOID_PTR()); /* cast for void* arithmetic */
-	out_push_i(type_ref_new_INTPTR_T(), struct_offset(e->rhs)); /* integral offset */
+	out_push_i(type_ref_new_INTPTR_T(), struct_offset(e)); /* integral offset */
 	out_op(op_plus);
 
 	out_change_type(type_ref_ptr_depth_inc(e->rhs->tree_type));
@@ -131,7 +124,7 @@ void gen_expr_str_struct(expr *e, symtable *stab)
 	(void)stab;
 	idt_printf("struct/union%s%s\n",
 			e->expr_is_st_dot ? "." : "->",
-			e->rhs->spel);
+			e->bits.struct_mem->spel);
 
 	gen_str_indent++;
 	print_expr(e->lhs);
@@ -158,7 +151,7 @@ void fold_const_expr_struct(expr *e, consty *k)
 			/* don't touch k->bits.addr info */
 
 			/* obviously we offset this */
-			k->offset = struct_offset(e->rhs);
+			k->offset = struct_offset(e);
 			break;
 
 		case CONST_VAL:
@@ -166,7 +159,7 @@ void fold_const_expr_struct(expr *e, consty *k)
 
 			/* convert the val to a memaddr */
 			/* read iv.val before we clobber it */
-			k->bits.addr.bits.memaddr = k->bits.iv.val + struct_offset(e->rhs);
+			k->bits.addr.bits.memaddr = k->bits.iv.val + struct_offset(e);
 			k->offset = 0;
 
 			k->bits.addr.is_lbl = 0;

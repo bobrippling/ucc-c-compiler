@@ -1,7 +1,7 @@
 #ifndef UTIL_H
 #define UTIL_H
 
-#if defined(__GNUC__) && (__GNUC__ > 2 || __GNUC__ == 2 && __GNUC_MINOR__ >= 7)
+#if defined(__GNUC__)
 
 #  define ucc_printflike(fmtarg, firstvararg) \
 			__attribute__((__format__ (__printf__, fmtarg, firstvararg)))
@@ -16,6 +16,8 @@
 #  define ucc_wur
 #  define ucc_nonnull(a)
 #endif
+
+#define memcpy_safe(a, b) (*(a) = *(b))
 
 #define ucc_unreach() do{ ICE("unreachable"); return 0; }while(0)
 

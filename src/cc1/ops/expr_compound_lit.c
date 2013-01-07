@@ -11,7 +11,7 @@ const char *str_expr_compound_lit(void)
 
 void fold_expr_compound_lit(expr *e, symtable *stab)
 {
-	decl *d = e->val.decl;
+	decl *d = e->bits.complit.decl;
 
 	if(e->code)
 		return; /* being called from fold_gen_init_assignment_base */
@@ -24,7 +24,7 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 		d->store = store_static;
 	}
 
-	e->sym = SYMTAB_ADD(stab, d, stab->parent ? sym_local : sym_global);
+	e->bits.complit.sym = SYMTAB_ADD(stab, d, stab->parent ? sym_local : sym_global);
 
 	/* create the code for assignemnts */
 	e->code = stmt_new_wrapper(code, stab);
@@ -63,7 +63,7 @@ void gen_expr_compound_lit(expr *e, symtable *stab)
 
 	gen_expr_compound_lit_code(e);
 
-	out_push_sym_val(e->sym);
+	out_push_sym_val(e->bits.complit.sym);
 }
 
 static void lea_expr_compound_lit(expr *e, symtable *stab)
@@ -72,15 +72,17 @@ static void lea_expr_compound_lit(expr *e, symtable *stab)
 
 	gen_expr_compound_lit_code(e);
 
-	out_push_sym(e->sym);
+	out_push_sym(e->bits.complit.sym);
 }
 
 void const_expr_compound_lit(expr *e, consty *k)
 {
-	if(decl_init_is_const(e->val.decl->init, NULL)){
-		k->type = CONST_FROM_ARRAY(e->val.decl);
+	decl *d = e->bits.complit.decl;
+
+	if(decl_init_is_const(d->init, NULL)){
+		k->type = CONST_FROM_ARRAY(d);
 		k->bits.addr.is_lbl = 1;
-		k->bits.addr.bits.lbl = e->sym->decl->spel;
+		k->bits.addr.bits.lbl = d->spel;
 		k->offset = 0;
 	}else{
 		k->type = CONST_NO;
@@ -89,7 +91,7 @@ void const_expr_compound_lit(expr *e, consty *k)
 
 void gen_expr_str_compound_lit(expr *e, symtable *stab)
 {
-	decl *const d = e->val.decl;
+	decl *const d = e->bits.complit.decl;
 
 	if(e->op)
 		return;
@@ -141,7 +143,7 @@ static decl *compound_lit_decl(type_ref *t, decl_init *init)
 
 void expr_compound_lit_from_cast(expr *e, decl_init *init)
 {
-	e->val.decl = compound_lit_decl(e->val.tref /* from cast */, init);
+	e->bits.complit.decl = compound_lit_decl(e->bits.tref /* from cast */, init);
 
 	expr_mutate_wrapper(e, compound_lit);
 }
@@ -149,6 +151,6 @@ void expr_compound_lit_from_cast(expr *e, decl_init *init)
 expr *expr_new_compound_lit(type_ref *t, decl_init *init)
 {
 	expr *e = expr_new_wrapper(compound_lit);
-	e->val.decl = compound_lit_decl(t, init);
+	e->bits.complit.decl = compound_lit_decl(t, init);
 	return e;
 }

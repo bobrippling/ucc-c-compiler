@@ -18,11 +18,11 @@
 #include "../const.h"
 #include "../gen_asm.h"
 
-#include "../data_store.h"
-
 #include "../out/out.h"
 
 #define PREFIX "__builtin_"
+
+#define BUILTIN_SPEL(e) (e)->bits.ident.spel
 
 typedef expr *func_builtin_parse(void);
 
@@ -152,7 +152,7 @@ static void fold_compatible_p(expr *e, symtable *stab)
 	decl **types = e->block_args->arglist;
 
 	if(dynarray_count((void **)types) != 2)
-		DIE_AT(&e->where, "need two arguments for %s", e->expr->spel);
+		DIE_AT(&e->where, "need two arguments for %s", BUILTIN_SPEL(e->expr));
 
 	fold_decl(types[0], stab);
 	fold_decl(types[1], stab);
@@ -163,7 +163,7 @@ static void fold_compatible_p(expr *e, symtable *stab)
 
 static void const_compatible_p(expr *e, consty *k)
 {
-	type_ref **types = e->val.types;
+	type_ref **types = e->bits.types;
 
 	k->type = CONST_VAL;
 
@@ -174,7 +174,7 @@ static expr *parse_compatible_p(void)
 {
 	expr *fcall = expr_new_funcall();
 
-	fcall->val.types = parse_type_list();
+	fcall->bits.types = parse_type_list();
 
 	expr_mutate_builtin_const(fcall, compatible_p);
 
@@ -186,7 +186,7 @@ static expr *parse_compatible_p(void)
 static void fold_constant_p(expr *e, symtable *stab)
 {
 	if(dynarray_count((void **)e->funcargs) != 1)
-		DIE_AT(&e->where, "%s takes a single argument", e->expr->spel);
+		DIE_AT(&e->where, "%s takes a single argument", BUILTIN_SPEL(e->expr));
 
 	FOLD_EXPR(e->funcargs[0], stab);
 
@@ -219,15 +219,15 @@ static void fold_frame_address(expr *e, symtable *stab)
 	consty k;
 
 	if(dynarray_count((void **)e->funcargs) != 1)
-		DIE_AT(&e->where, "%s takes a single argument", e->expr->spel);
+		DIE_AT(&e->where, "%s takes a single argument", BUILTIN_SPEL(e->expr));
 
 	FOLD_EXPR(e->funcargs[0], stab);
 
 	const_fold(e->funcargs[0], &k);
 	if(k.type != CONST_VAL || k.bits.iv.val < 0)
-		DIE_AT(&e->where, "%s needs a positive constant value argument", e->expr->spel);
+		DIE_AT(&e->where, "%s needs a positive constant value argument", BUILTIN_SPEL(e->expr));
 
-	memcpy(&e->val.iv, &k.bits.iv, sizeof k.bits.iv);
+	memcpy_safe(&e->bits.iv, &k.bits.iv);
 
 	e->tree_type = type_ref_new_ptr(
 			type_ref_new_type(
@@ -240,7 +240,7 @@ static void fold_frame_address(expr *e, symtable *stab)
 
 static void builtin_gen_frame_pointer(expr *e, symtable *stab)
 {
-	const int depth = e->val.iv.val;
+	const int depth = e->bits.iv.val;
 
 	(void)stab;
 
@@ -263,14 +263,14 @@ static void fold_expect(expr *e, symtable *stab)
 	int i;
 
 	if(dynarray_count((void **)e->funcargs) != 2)
-		DIE_AT(&e->where, "%s takes two arguments", e->expr->spel);
+		DIE_AT(&e->where, "%s takes two arguments", BUILTIN_SPEL(e->expr));
 
 	for(i = 0; i < 2; i++)
 		FOLD_EXPR(e->funcargs[i], stab);
 
 	const_fold(e->funcargs[1], &k);
 	if(k.type != CONST_VAL)
-		WARN_AT(&e->where, "%s second argument isn't a constant value", e->expr->spel);
+		WARN_AT(&e->where, "%s second argument isn't a constant value", BUILTIN_SPEL(e->expr));
 
 	e->tree_type = e->funcargs[0]->tree_type;
 	wur_builtin(e);
@@ -310,9 +310,9 @@ static void const_strlen(expr *e, consty *k)
 
 		const_fold(s, &subk);
 		if(subk.type == CONST_STRK){
-			data_store *ds = subk.bits.str;
-			const char *s = ds->str;
-			const char *p = memchr(s, '\0', ds->len);
+			stringval *sv = subk.bits.str;
+			const char *s = sv->str;
+			const char *p = memchr(s, '\0', sv->len);
 
 			if(p){
 				k->type = CONST_VAL;

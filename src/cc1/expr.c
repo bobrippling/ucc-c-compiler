@@ -52,7 +52,7 @@ expr *expr_new(func_mutate_expr *f,
 expr *expr_new_intval(intval *iv)
 {
 	expr *e = expr_new_val(0);
-	memcpy(&e->val.iv, iv, sizeof e->val.iv);
+	memcpy_safe(&e->bits.iv, iv);
 	return e;
 }
 

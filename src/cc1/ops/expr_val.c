@@ -22,18 +22,18 @@ void gen_expr_val(expr *e, symtable *stab)
 {
 	(void)stab;
 
-	out_push_iv(e->tree_type, &e->val.iv);
+	out_push_iv(e->tree_type, &e->bits.iv);
 }
 
 void gen_expr_str_val(expr *e, symtable *stab)
 {
 	(void)stab;
-	idt_printf("val: %d\n", e->val);
+	idt_printf("val: %d\n", e->bits.iv.val);
 }
 
 void const_expr_val(expr *e, consty *k)
 {
-	memcpy(&k->bits.iv, &e->val, sizeof e->val);
+	memcpy_safe(&k->bits.iv, &e->bits.iv);
 	k->type = CONST_VAL; /* obviously vals are const */
 }
 
@@ -45,7 +45,7 @@ void mutate_expr_val(expr *e)
 expr *expr_new_val(int val)
 {
 	expr *e = expr_new_wrapper(val);
-	e->val.iv.val = val;
+	e->bits.iv.val = val;
 	return e;
 }
 

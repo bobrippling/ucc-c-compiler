@@ -16,7 +16,7 @@ typedef struct consty
 	union
 	{
 		intval iv;          /* CONST_VAL */
-		data_store *str;    /* CONST_STRK */
+		stringval *str;     /* CONST_STRK */
 		struct
 		{
 			int is_lbl;
@@ -68,34 +68,51 @@ struct expr
 #define expr_comp_lit_cgen assign_is_post
 
 	expr *lhs, *rhs;
+	expr *expr;
 
 	union
 	{
 		intval iv;
-		char *s;
-		type_ref *tref;
-		decl *decl;
-		type_ref **types;
-	} val;
+		struct
+		{
+			sym *sym;
+			stringval sv; /* for strings */
+		} str;
 
-	struct generic_lbl
-	{
-		type_ref *t; /* NULL -> default */
-		expr *e;
-	} **generics, *generic_chosen;
+		struct
+		{
+			sym *sym;
+			char *spel;
+		} ident;
 
-	int ptr_safe; /* does val point to a string we know about? */
+		struct /* used in compound literal */
+		{
+			sym *sym;
+			decl *decl;
+		} complit;
+
+		decl *struct_mem;
+
+		sym *block_sym;
+
+		type_ref **types; /* used in __builtin */
+
+		type_ref *tref; /* from cast */
+
+		struct generic_lbl
+		{
+			type_ref *t; /* NULL -> default */
+			expr *e;
+		} **generics, *generic_chosen;
+	} bits;
+
 	int in_parens; /* for if((x = 5)) testing */
 
-	char *spel;
-	expr *expr; /* x = 5; expr is the 5 */
 	expr **funcargs;
 	stmt *code; /* ({ ... }), comp. lit. assignments */
-	data_store *data_store; /* for strings + { } */
 
 	funcargs *block_args;
 
-	sym *sym;
 
 	/* type propagation */
 	type_ref *tree_type;
@@ -170,8 +187,8 @@ expr *expr_new_block(type_ref *rt, funcargs *args, stmt *code);
 expr *expr_new_deref(expr *);
 expr *expr_new_struct(expr *sub, int dot, expr *ident);
 expr *expr_new_str(char *, int);
-
-#define expr_new_addr() expr_new_wrapper(addr)
+expr *expr_new_addr_lbl(char *);
+expr *expr_new_addr(expr *);
 
 #define expr_new_comma() expr_new_wrapper(comma)
 

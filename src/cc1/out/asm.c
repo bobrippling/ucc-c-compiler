@@ -14,7 +14,6 @@
 #include "../sue.h"
 #include "../const.h"
 #include "../gen_asm.h"
-#include "../data_store.h"
 #include "../decl_init.h"
 
 static const struct

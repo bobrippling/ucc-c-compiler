@@ -70,14 +70,8 @@ void fold_insert_casts(type_ref *dlhs, expr **prhs, symtable *stab, where *w, co
 	}
 
 	if(type_ref_is_signed(dlhs) != type_ref_is_signed(rhs->tree_type)){
-#define SPEL_IF_IDENT(hs)                          \
-		expr_kind(hs, identifier) ? " ("     : "", \
-		expr_kind(hs, identifier) ? hs->spel : "", \
-		expr_kind(hs, identifier) ? ")"      : ""
-
 		cc1_warn_at(w, 0, 1, WARN_SIGN_COMPARE,
-				"operation between signed and unsigned%s%s%s in %s",
-				SPEL_IF_IDENT(rhs), desc);
+				"operation between signed and unsigned in %s", desc);
 	}
 }
 
@@ -92,29 +86,24 @@ void fold_check_restrict(expr *lhs, expr *rhs, const char *desc, where const *w)
 		WARN_AT(w, "restrict pointers in %s", desc);
 }
 
-int fold_get_sym(expr *e, symtable *stab)
+sym *fold_inc_writes_if_sym(expr *e, symtable *stab)
 {
-	if(e->sym)
-		return 1;
+	if(expr_kind(e, identifier)){
+		sym *sym = symtab_search(stab, e->bits.ident.spel);
 
-	if(e->spel)
-		return !!(e->sym = symtab_search(stab, e->spel));
+		if(sym){
+			sym->nwrites++;
+			return sym;
+		}
+	}
 
-	return 0;
-}
-
-void fold_inc_writes_if_sym(expr *e, symtable *stab)
-{
-	if(fold_get_sym(e, stab))
-		e->sym->nwrites++;
+	return NULL;
 }
 
 void FOLD_EXPR_NO_DECAY(expr *e, symtable *stab)
 {
 	if(e->tree_type)
 		return;
-
-	fold_get_sym(e, stab);
 
 	EOF_WHERE(&e->where, e->f_fold(e, stab));
 

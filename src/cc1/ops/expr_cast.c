@@ -65,9 +65,9 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 
 	/* casts remove restrict qualifiers */
 	{
-		enum type_qualifier q = type_ref_qual(e->val.tref);
+		enum type_qualifier q = type_ref_qual(e->bits.tref);
 
-		e->tree_type = type_ref_new_cast(e->val.tref, q & ~qual_restrict);
+		e->tree_type = type_ref_new_cast(e->bits.tref, q & ~qual_restrict);
 	}
 
 	fold_type_ref(e->tree_type, NULL, stab); /* struct lookup, etc */
@@ -172,7 +172,7 @@ void mutate_expr_cast(expr *e)
 expr *expr_new_cast(type_ref *to, int implicit)
 {
 	expr *e = expr_new_wrapper(cast);
-	e->val.tref = to;
+	e->bits.tref = to;
 	e->expr_cast_implicit = implicit;
 	return e;
 }

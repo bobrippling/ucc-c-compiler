@@ -270,7 +270,7 @@ expr *parse_expr_postfix()
 
 			/* check for specialised builtin parsing */
 			if(expr_kind(e, identifier))
-				fcall = builtin_parse(e->spel);
+				fcall = builtin_parse(e->bits.ident.spel);
 
 			if(!fcall){
 				fcall = expr_new_funcall();
@@ -315,14 +315,14 @@ expr *parse_expr_unary()
 			case token_andsc:
 				/* GNU &&label */
 				EAT(curtok);
-				e = expr_new_addr();
-				e->spel = token_current_spel();
+				e = expr_new_addr_lbl(token_current_spel());
 				EAT(token_identifier);
 				break;
 
 			case token_and:
-				e = expr_new_addr();
-				goto do_parse;
+				EAT(token_and);
+				e = expr_new_addr(parse_expr_cast());
+				break;
 
 			case token_multiply:
 				EAT(curtok);
@@ -334,7 +334,6 @@ expr *parse_expr_unary()
 			case token_bnot:
 			case token_not:
 				e = expr_new_op(curtok_to_op());
-do_parse:
 				EAT(curtok);
 				e->lhs = parse_expr_cast();
 				break;

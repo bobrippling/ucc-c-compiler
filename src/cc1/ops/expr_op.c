@@ -72,7 +72,7 @@ static void const_offset(consty *r, consty *val, consty *addr, type_ref *addr_ty
 {
 	unsigned step = type_ref_size(type_ref_next(addr_type), NULL);
 
-	memcpy(r, addr, sizeof *r);
+	memcpy_safe(r, addr);
 
 	/* may already have an offset, hence += */
 	r->offset += val->bits.iv.val * step;

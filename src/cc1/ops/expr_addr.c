@@ -12,7 +12,7 @@ const char *str_expr_addr()
 
 void fold_expr_addr(expr *e, symtable *stab)
 {
-	if(e->spel){
+	if(e->bits.ident.spel){
 		char *save;
 
 		/* address of label - void * */
@@ -20,13 +20,11 @@ void fold_expr_addr(expr *e, symtable *stab)
 				type_ref_new_type(type_new_primitive(type_void)),
 				qual_none);
 
-		save = e->spel;
-		e->spel = out_label_goto(e->spel);
+		save = e->bits.ident.spel;
+		e->bits.ident.spel = out_label_goto(e->bits.ident.spel);
 		free(save);
 
 	}else{
-		fold_inc_writes_if_sym(e->lhs, stab);
-
 		FOLD_EXPR_NO_DECAY(e->lhs, stab);
 
 		/* can address: lvalues, arrays and functions */
@@ -43,7 +41,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 			DIE_AT(&e->lhs->where, "taking the address of a bit-field");
 #endif
 
-		if(expr_kind(e->lhs, identifier) && e->lhs->sym->decl->store == store_register)
+		if(expr_kind(e->lhs, identifier) && e->lhs->bits.ident.sym->decl->store == store_register)
 			DIE_AT(&e->lhs->where, "can't take the address of register");
 
 		e->tree_type = type_ref_new_ptr(e->lhs->tree_type, qual_none);
@@ -52,8 +50,8 @@ void fold_expr_addr(expr *e, symtable *stab)
 
 void gen_expr_addr(expr *e, symtable *stab)
 {
-	if(e->spel){
-		out_push_lbl(e->spel, 1); /* GNU &&lbl */
+	if(e->bits.ident.spel){
+		out_push_lbl(e->bits.ident.spel, 1); /* GNU &&lbl */
 
 	}else{
 		/* address of possibly an ident "(&a)->b" or a struct expr "&a->b"
@@ -68,8 +66,8 @@ void gen_expr_str_addr(expr *e, symtable *stab)
 {
 	(void)stab;
 
-	if(e->spel){
-		idt_printf("address of label \"%s\"\n", e->spel);
+	if(e->bits.ident.spel){
+		idt_printf("address of label \"%s\"\n", e->bits.ident.spel);
 	}else{
 		idt_printf("address of expr:\n");
 		gen_str_indent++;
@@ -80,12 +78,12 @@ void gen_expr_str_addr(expr *e, symtable *stab)
 
 void const_expr_addr(expr *e, consty *k)
 {
-	if(e->spel){
-		/*k->sym_lbl = e->spel;*/
+	if(e->bits.ident.spel){
+		/*k->sym_lbl = e->bits.ident.spel;*/
 		k->type = CONST_ADDR;
 		k->offset = 0;
 		k->bits.addr.is_lbl = 1;
-		k->bits.addr.bits.lbl = e->spel;
+		k->bits.addr.bits.lbl = e->bits.ident.spel;
 	}else{
 		const_fold(e->lhs, k);
 
@@ -107,6 +105,20 @@ void const_expr_addr(expr *e, consty *k)
 				break;
 		}
 	}
+}
+
+expr *expr_new_addr(expr *sub)
+{
+	expr *e = expr_new_wrapper(addr);
+	e->lhs = sub;
+	return e;
+}
+
+expr *expr_new_addr_lbl(char *lbl)
+{
+	expr *e = expr_new_wrapper(addr);
+	e->bits.ident.spel = lbl;
+	return e;
 }
 
 void mutate_expr_addr(expr *e)

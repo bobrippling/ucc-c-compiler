@@ -36,9 +36,9 @@ void fold_expr_block(expr *e, symtable *stab)
 	 * else the type of the first one we find
 	 */
 
-	if(e->val.tref){
+	if(e->bits.tref){
 		/* just the return _type_, not (^)() qualified */
-		e->tree_type = e->val.tref;
+		e->tree_type = e->bits.tref;
 
 	}else{
 		stmt *r = NULL;
@@ -60,10 +60,10 @@ void fold_expr_block(expr *e, symtable *stab)
 
 	/* add the function to the global scope */
 	{
-		decl *df = e->val.decl = decl_new();
+		decl *df = decl_new();
 
 		df->spel = out_label_block(curdecl_func->spel);
-		e->sym = SYMTAB_ADD(symtab_root(stab), df, sym_global);
+		e->bits.block_sym = SYMTAB_ADD(symtab_root(stab), df, sym_global);
 
 		df->is_definition = 1; /* necessary for code-gen */
 		df->func_code = e->code;
@@ -76,7 +76,7 @@ void gen_expr_block(expr *e, symtable *stab)
 {
 	(void)stab;
 
-	out_push_lbl(e->sym->decl->spel, 1);
+	out_push_lbl(e->bits.block_sym->decl->spel, 1);
 }
 
 void gen_expr_str_block(expr *e, symtable *stab)
@@ -105,6 +105,6 @@ expr *expr_new_block(type_ref *rt, funcargs *args, stmt *code)
 	expr *e = expr_new_wrapper(block);
 	e->block_args = args;
 	e->code = code;
-	e->val.tref = rt; /* return type if not null */
+	e->bits.tref = rt; /* return type if not null */
 	return e;
 }

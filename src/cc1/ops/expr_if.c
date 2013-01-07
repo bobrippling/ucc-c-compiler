@@ -47,7 +47,7 @@ void fold_const_expr_if(expr *e, consty *k)
 			ICE("buh");
 	}
 
-	memcpy(k, &consts[res ? 1 : 2], sizeof *k);
+	memcpy_safe(k, &consts[res ? 1 : 2]);
 }
 
 void fold_expr_if(expr *e, symtable *stab)

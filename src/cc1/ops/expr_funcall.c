@@ -8,14 +8,6 @@
 #include "../../util/platform.h"
 #include "../../util/alloc.h"
 #include "../funcargs.h"
-#include "../data_store.h"
-
-static int func_is_asm(const char *sp)
-{
-	return fopt_mode & FOPT_ENABLE_ASM
-		&& sp
-		&& !strcmp(sp, ASM_INLINE_FNAME);
-}
 
 const char *str_expr_funcall()
 {
@@ -134,7 +126,7 @@ static void format_check_printf(
 		unsigned var_arg,
 		where *w)
 {
-	data_store *fmt_str;
+	stringval *fmt_str;
 	consty k;
 
 	const_fold(str_arg, &k);
@@ -213,12 +205,12 @@ static void format_check(where *w, type_ref *ref, expr **args, const int variadi
 
 void fold_expr_funcall(expr *e, symtable *stab)
 {
-	const char *sp = e->expr->spel;
 	type_ref *type_func;
 	funcargs *args_from_decl;
+	char *sp = NULL;
 
-	if(func_is_asm(sp)){
 #if 0
+	if(func_is_asm(sp)){
 		expr *arg1;
 		const char *str;
 		int i;
@@ -242,18 +234,14 @@ invalid:
 		/* TODO: allow a long return, e.g. __asm__(("movq $5, %rax")) */
 		e->tree_type = decl_new_void();
 		return;
-#else
 		ICE("TODO: __asm__");
-#endif
 	}
+#endif
 
 
-	if(!sp)
-		sp = "<anon func>";
-
-	if(expr_kind(e->expr, identifier) && e->expr->spel){
+	if(expr_kind(e->expr, identifier) && (sp = e->expr->bits.ident.spel)){
 		/* check for implicit function */
-		if(!(e->expr->sym = symtab_search(stab, sp))){
+		if(!(e->expr->bits.ident.sym = symtab_search(stab, sp))){
 			funcargs *args = funcargs_new();
 			decl *df;
 
@@ -265,11 +253,11 @@ invalid:
 
 			df = decl_new();
 			df->ref = type_func;
-			df->spel = e->expr->spel;
+			df->spel = e->expr->bits.ident.spel;
 			df->is_definition = 1; /* needed since it's a local var */
 
 			/* not declared - generate a sym ourselves */
-			e->expr->sym = SYMTAB_ADD(stab, df, sym_local);
+			e->expr->bits.ident.sym = SYMTAB_ADD(stab, df, sym_local);
 		}
 	}
 
@@ -291,7 +279,7 @@ invalid:
 	e->tree_type = type_ref_func_call(type_func, &args_from_decl);
 
 	/* func count comparison, only if the func has arg-decls, or the func is f(void) */
-	UCC_ASSERT(args_from_decl, "no funcargs for decl %s", e->expr->spel);
+	UCC_ASSERT(args_from_decl, "no funcargs for decl %s", sp);
 
 
 	/* this block folds the args */
@@ -383,9 +371,7 @@ invalid:
 
 void gen_expr_funcall(expr *e, symtable *stab)
 {
-	const char *const fname = e->expr->spel;
-
-	if(func_is_asm(fname)){
+	if(0){
 		out_comment("start manual __asm__");
 		ICE("same");
 #if 0

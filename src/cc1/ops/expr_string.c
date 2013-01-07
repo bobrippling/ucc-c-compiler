@@ -2,6 +2,7 @@
 #include "expr_string.h"
 #include "../decl_init.h"
 #include "../str.h"
+#include "../out/lbl.h"
 
 const char *str_expr_str(void)
 {
@@ -10,31 +11,28 @@ const char *str_expr_str(void)
 
 void fold_expr_str(expr *e, symtable *stab)
 {
-	decl *d_str;
-	int i;
-	type_ref *tree_type;
-	expr *sz = expr_new_val(ds->len);
+	expr *sz = expr_new_val(e->bits.str.sv.len);
+	decl *d;
 	type *type;
 
 	FOLD_EXPR(sz, stab);
 
 	/* (const char []) */
-	tree_type = type_ref_new_array(
+	e->tree_type = type_ref_new_array(
 			type_ref_new_type(
 				type = type_new_primitive_qual(type_char, qual_const)),
 			sz);
 
-	ds->lbl = out_label_data_store(1);
+	e->bits.str.sv.lbl = out_label_data_store(1);
 
-	*ptree_type = tree_type;
+	d = decl_new();
+	d->ref = e->tree_type;
+	d->spel = e->bits.str.sv.lbl;
 
-	d_str = e->val.decl = decl_new();
-	d_str->ref = e->tree_type;
-	d_str->spel = e->data_store->lbl;
+	d->is_definition = 1;
+	d->store = store_static;
 
-	d_str->is_definition = 1;
-	d_str->store = store_static;
-
+#if 0
 	d_str->init = decl_init_new(decl_init_brace);
 	for(i = 0; i < e->data_store->len; i++){
 		expr *a = expr_new_assign(
@@ -42,25 +40,27 @@ void fold_expr_str(expr *e, symtable *stab)
 				);
 
 	}
+#else
+	ICE("TODO: string init");
+#endif
 
 	/* add a sym so the data store gets gen'd */
-	SYMTAB_ADD(stab, d_str, stab->parent ? sym_local : sym_global);
-	/* don't set e->sym */
+	e->bits.str.sym = SYMTAB_ADD(stab, d, stab->parent ? sym_local : sym_global);
 }
 
 void gen_expr_str(expr *e, symtable *stab)
 {
 	(void)stab;
-	out_push_lbl(e->data_store->lbl, 1);
+	out_push_lbl(e->bits.str.sv.lbl, 1);
 }
 
 void gen_expr_str_str(expr *e, symtable *stab)
 {
 	(void)stab;
-	idt_printf("address of datastore %s\n", e->data_store->lbl);
+	idt_printf("address of datastore %s\n", e->bits.str.sv.lbl);
 	gen_str_indent++;
 	idt_print();
-	literal_print(cc1_out, e->data_store->str, e->data_store->len);
+	literal_print(cc1_out, e->bits.str.sv.str, e->bits.str.sv.len);
 	gen_str_indent--;
 	fputc('\n', cc1_out);
 }
@@ -68,7 +68,7 @@ void gen_expr_str_str(expr *e, symtable *stab)
 void const_expr_string(expr *e, consty *k)
 {
 	k->type = CONST_STRK;
-	k->bits.str = e->data_store;
+	k->bits.str = &e->bits.str.sv;
 	k->offset = 0;
 }
 
@@ -79,7 +79,10 @@ void mutate_expr_str(expr *e)
 
 void expr_mutate_str(expr *e, char *s, int len)
 {
-	e->data_store = data_store_new(s, len);
+	stringval *sv = &e->bits.str.sv;
+
+	sv->str = s;
+	sv->len = len;
 }
 
 expr *expr_new_str(char *s, int l)

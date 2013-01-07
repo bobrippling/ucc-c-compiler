@@ -109,9 +109,9 @@ void out_dump(void)
 void vswap(void)
 {
 	struct vstack tmp;
-	memcpy(&tmp, vtop, sizeof tmp);
-	memcpy(vtop, &vtop[-1], sizeof tmp);
-	memcpy(&vtop[-1], &tmp, sizeof tmp);
+	memcpy_safe(&tmp, vtop);
+	memcpy_safe(vtop, &vtop[-1]);
+	memcpy_safe(&vtop[-1], &tmp);
 }
 
 void out_swap(void)
@@ -171,7 +171,7 @@ int v_unused_reg(int stack_as_backup)
 	int used[N_REGS];
 	int i;
 
-	memcpy(used, reserved_regs, sizeof used);
+	memcpy(used, reserved_regs, sizeof *used);
 	first = NULL;
 
 	for(it = vstack; it <= vtop; it++){
@@ -260,7 +260,7 @@ void v_save_reg(struct vstack *vp)
 
 	store.type = STACK_SAVE;
 
-	memcpy(vp, &store, sizeof store);
+	memcpy_safe(vp, &store);
 
 	/* no need for copy */
 	vp->t = type_ref_ptr_depth_dec(vp->t);
@@ -342,7 +342,7 @@ void out_push_lbl(char *s, int pic)
 void vdup(void)
 {
 	vpush(NULL);
-	memcpy(&vtop[0], &vtop[-1], sizeof *vtop);
+	memcpy_safe(&vtop[0], &vtop[-1]);
 }
 
 void out_dup(void)

@@ -157,19 +157,22 @@ static type_ref *decl_initialise_array(
 	switch(dinit ? dinit->type : decl_init_brace){
 		case decl_init_scalar:
 		{
-#if 0
-			data_store *ds = dinit->bits.expr->data_store;
-			if(ds){
+			expr *e = dinit->bits.expr;
+
+			if(expr_kind(e, str)){
+				/* can't const fold, since it's not folded yet */
+				stringval *sv = &e->bits.str.sv;
+
 				/* const char [] init - need to check tfor is of the same type */
 				type_ref *rar = type_ref_is(tfor_wrapped, type_ref_array);
 
 				if(type_ref_is_type(type_ref_next(rar), type_char)){
 					int i;
 
-					complete_to = ds->len;
+					complete_to = sv->len;
 
 					for(i = 0; i < complete_to; i++){
-						expr *e  = expr_new_val(ds->str[i]);
+						expr *e  = expr_new_val(sv->str[i]);
 						expr *to = expr_new_array_idx(base, i);
 
 						dynarray_add((void ***)&init_code->codes,
@@ -182,9 +185,6 @@ static type_ref *decl_initialise_array(
 					goto complete_ar;
 				}
 			}
-#else
-			ICE("TODO: string init");
-#endif
 
 			/* check for scalar init isn't done here */
 			break;
@@ -409,7 +409,7 @@ static type_ref *decl_init_create_assignments_from_init(
 				/* is char[] */
 				expr *e = single_init->bits.expr;
 
-				if(e->data_store)
+				if(expr_kind(e, str))
 					goto fine; /* arg is char * */
 			}
 
