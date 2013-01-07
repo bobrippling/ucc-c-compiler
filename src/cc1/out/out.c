@@ -461,7 +461,7 @@ void out_op(enum op_type op)
 		/* t_const == vtop... should be */
 		t_stack->bits.off_from_bp += t_const->bits.val * calc_ptr_step(t_stack->t);
 
-		goto fin;
+		goto ignore_const;
 
 	}else if(t_const){
 		/* TODO: -O1, constant folding here */
@@ -472,24 +472,28 @@ void out_op(enum op_type op)
 			case op_or:
 			case op_xor:
 				if(t_const->bits.val == 0)
-					goto fin;
+					goto ignore_const;
 			default:
 				break;
 
 			case op_multiply:
 			case op_divide:
 				if(t_const->bits.val == 1)
-					goto fin;
+					goto ignore_const;
 				break;
 
 			case op_and:
 				if(t_const->bits.val == -1)
-					goto fin;
+					goto ignore_const;
 				break;
 		}
 
 		goto def;
-fin:
+
+ignore_const:
+		if(t_const != vtop)
+			vswap(); /* need t_const on top for discarding */
+
 		vpop();
 
 	}else{
