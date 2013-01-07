@@ -457,7 +457,9 @@ void gen_expr_op(expr *e, symtable *tab)
 				gen_expr(e->rhs, tab);
 
 				out_op(e->op);
-				out_change_type(e->tree_type); /* make sure we get the pointer */
+				out_change_type(e->tree_type);
+				/* make sure we get the pointer, for example 2+(int *)p
+				 * or the int, e.g. (int *)a && (int *)b -> int */
 			}else{
 				out_op_unary(e->op);
 			}
