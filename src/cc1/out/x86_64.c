@@ -279,12 +279,10 @@ void impl_pop_func_ret(type_ref *r)
 	vpop();
 }
 
-static const char *x86_cmp(enum flag_cmp cmp, type_ref *r)
+static const char *x86_cmp(struct flag_opts *flag)
 {
-	const int is_signed = type_ref_is_signed(r);
-
-	switch(cmp){
-#define OP(e, s, u) case flag_ ## e: return is_signed ? s : u
+	switch(flag->cmp){
+#define OP(e, s, u) case flag_ ## e: return flag->is_signed ? s : u
 		OP(eq, "e" , "e");
 		OP(ne, "ne", "ne");
 		OP(le, "le", "be");
@@ -326,7 +324,7 @@ static void x86_load(struct vstack *from, const char *regstr)
 	switch(from->type){
 		case FLAG:
 			out_asm("set%s %%%s",
-					x86_cmp(from->bits.flag, from->t),
+					x86_cmp(&from->bits.flag),
 					regstr);
 			return;
 
@@ -583,6 +581,7 @@ but gcc and clang promote to ints anyway...
 		case op_ge:
 		case op_gt:
 		{
+			const int is_signed = type_ref_is_signed(vtop->t);
 			char buf[VSTACK_STR_SZ];
 
 			vtop2_prepare_op();
@@ -603,7 +602,8 @@ but gcc and clang promote to ints anyway...
 			vpop();
 			vtop_clear(type_ref_new_BOOL()); /* cmp creates an int/bool */
 			vtop->type = FLAG;
-			vtop->bits.flag = op_to_flag(op);
+			vtop->bits.flag.cmp = op_to_flag(op);
+			vtop->bits.flag.is_signed = is_signed;
 			return;
 		}
 
@@ -805,9 +805,7 @@ void impl_jcond(int true, const char *lbl)
 		case FLAG:
 			UCC_ASSERT(true, "jcond(false) for flag - should've been inverted");
 
-			out_asm("j%s %s",
-					x86_cmp(vtop->bits.flag, vtop->t),
-					lbl);
+			out_asm("j%s %s", x86_cmp(&vtop->bits.flag), lbl);
 			break;
 
 		case CONST:

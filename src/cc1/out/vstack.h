@@ -30,11 +30,15 @@ struct vstack
 		int val;
 		int reg;
 		int off_from_bp;
-		enum flag_cmp
+		struct flag_opts
 		{
-			flag_eq, flag_ne,
-			flag_le, flag_lt,
-			flag_ge, flag_gt,
+			enum flag_cmp
+			{
+				flag_eq, flag_ne,
+				flag_le, flag_lt,
+				flag_ge, flag_gt,
+			} cmp;
+			int is_signed;
 		} flag;
 		struct
 		{
