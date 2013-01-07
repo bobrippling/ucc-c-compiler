@@ -29,7 +29,7 @@ void fold_type_ref_equal(
 		type_ref *a, type_ref *b, where *w, enum warning warn,
 		const char *errfmt, ...)
 {
-	enum decl_cmp flags = DECL_CMP_ALLOW_VOID_PTR;
+	enum decl_cmp flags = DECL_CMP_ALLOW_VOID_PTR | DECL_CMP_ALLOW_SIGNED_UNSIGNED;
 
 	/* stronger checks for blocks */
 	if(type_ref_is(a, type_ref_block) || type_ref_is(b, type_ref_block))
@@ -277,7 +277,8 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 			break;
 
 		case type_ref_cast:
-			q_to_check = type_ref_qual(r);
+			if(!r->bits.cast.is_signed_cast)
+				q_to_check = type_ref_qual(r);
 			break;
 
 		case type_ref_ptr:

@@ -96,6 +96,14 @@ type_ref *type_ref_new_cast_add(type_ref *to, enum type_qualifier add)
 	return type_ref_new_cast_is_additive(to, add, 1);
 }
 
+type_ref *type_ref_new_cast_signed(type_ref *to, int is_signed)
+{
+	type_ref *r = type_ref_new_cast_is_additive(to, qual_none, 1);
+	r->bits.cast.is_signed_cast = 1;
+	r->bits.cast.signed_true = is_signed;
+	return r;
+}
+
 decl *decl_new()
 {
 	decl *d = umalloc(sizeof *d);
@@ -446,6 +454,7 @@ static int type_ref_equal_r(type_ref *a, type_ref *b, enum decl_cmp mode)
 	if(!a || !b)
 		return a == b ? 1 : 0;
 
+	/* FIXME: can't do this because we need to check for signed vs unsigned */
 	a = type_ref_skip_tdefs_casts(a);
 	b = type_ref_skip_tdefs_casts(b);
 
@@ -481,8 +490,12 @@ static int type_ref_equal_r(type_ref *a, type_ref *b, enum decl_cmp mode)
 			goto ref_eq;
 
 		case type_ref_cast:
-			if(!type_qual_equal(a->bits.cast.qual, b->bits.cast.qual))
+			if(a->bits.cast.is_signed_cast){
+				if(a->bits.cast.signed_true != b->bits.cast.signed_true)
+					return 0;
+			}else if(!type_qual_equal(a->bits.cast.qual, b->bits.cast.qual)){
 				return 0;
+			}
 			goto ref_eq;
 
 		case type_ref_ptr:
@@ -633,7 +646,10 @@ static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
 			break;
 
 		case type_ref_cast:
-			q = r->bits.cast.qual;
+			if(r->bits.cast.is_signed_cast)
+				BUF_ADD(r->bits.cast.signed_true ? "signed" : "unsigned");
+			else
+				q = r->bits.cast.qual;
 			break;
 
 		case type_ref_block:
