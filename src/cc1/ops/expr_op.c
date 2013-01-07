@@ -331,6 +331,38 @@ static void op_bound(expr *e)
 	}
 }
 
+void op_unsigned_cmp_check(expr *e)
+{
+	switch(e->op){
+			int lhs;
+		case op_gt:
+		case op_ge:
+		case op_lt:
+		case op_le:
+			if((lhs = !type_ref_is_signed(e->lhs->tree_type))
+			||        !type_ref_is_signed(e->rhs->tree_type))
+			{
+				consty k;
+
+				const_fold(lhs ? e->rhs : e->lhs, &k);
+
+				if(k.type == CONST_VAL){
+					const int v = k.bits.iv.val;
+
+					if(v <= 0){
+						WARN_AT(&e->where,
+								"comparison of unsigned expression %s %d is always %s",
+								op_to_str(e->op), v,
+								e->op == op_lt || e->op == op_le ? "false" : "true");
+					}
+				}
+			}
+
+		default:
+			break;
+	}
+}
+
 void fold_expr_op(expr *e, symtable *stab)
 {
 	UCC_ASSERT(e->op != op_unknown, "unknown op in expression at %s",
@@ -347,6 +379,7 @@ void fold_expr_op(expr *e, symtable *stab)
 				&e->lhs, &e->rhs, &e->where, stab);
 
 		op_bound(e);
+		op_unsigned_cmp_check(e);
 
 	}else{
 		/* (except unary-not) can only have operations on integers,
