@@ -161,26 +161,26 @@ int type_equal(const type *a, const type *b, enum type_cmp mode)
 const char *op_to_str(const enum op_type o)
 {
 	switch(o){
-		CASE_STR_PREFIX(op, multiply);
-		CASE_STR_PREFIX(op, divide);
-		CASE_STR_PREFIX(op, plus);
-		CASE_STR_PREFIX(op, minus);
-		CASE_STR_PREFIX(op, modulus);
-		CASE_STR_PREFIX(op, eq);
-		CASE_STR_PREFIX(op, ne);
-		CASE_STR_PREFIX(op, le);
-		CASE_STR_PREFIX(op, lt);
-		CASE_STR_PREFIX(op, ge);
-		CASE_STR_PREFIX(op, gt);
-		CASE_STR_PREFIX(op, or);
-		CASE_STR_PREFIX(op, xor);
-		CASE_STR_PREFIX(op, and);
-		CASE_STR_PREFIX(op, orsc);
-		CASE_STR_PREFIX(op, andsc);
-		CASE_STR_PREFIX(op, not);
-		CASE_STR_PREFIX(op, bnot);
-		CASE_STR_PREFIX(op, shiftl);
-		CASE_STR_PREFIX(op, shiftr);
+		case op_multiply: return "*";
+		case op_divide:   return "/";
+		case op_plus:     return "+";
+		case op_minus:    return "-";
+		case op_modulus:  return "%";
+		case op_eq:       return "==";
+		case op_ne:       return "!=";
+		case op_le:       return "<=";
+		case op_lt:       return "<";
+		case op_ge:       return ">=";
+		case op_gt:       return ">";
+		case op_or:       return "|";
+		case op_xor:      return "^";
+		case op_and:      return "|";
+		case op_orsc:     return "||";
+		case op_andsc:    return "&&";
+		case op_not:      return "!";
+		case op_bnot:     return "~";
+		case op_shiftl:   return "<<";
+		case op_shiftr:   return ">>";
 		CASE_STR_PREFIX(op, unknown);
 	}
 	return NULL;
