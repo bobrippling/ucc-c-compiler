@@ -1,26 +1,29 @@
+static type_ref *type_ref_next_1(type_ref *r)
+{
+	if(r->type == type_ref_tdef){
+		/* typedef - jump to its typeof */
+		struct type_ref_tdef *tdef = &r->bits.tdef;
+		decl *preferred = tdef->decl;
+
+		r = preferred ? preferred->ref : tdef->type_of->tree_type;
+
+		return r;
+	}
+
+	return r->ref;
+}
+
 static type_ref *type_ref_skip_tdefs_casts(type_ref *r)
 {
-	while(r){
+	while(r)
 		switch(r->type){
 			case type_ref_tdef:
-			{
-				/* typedef - jump to its typeof */
-				struct type_ref_tdef *tdef = &r->bits.tdef;
-				decl *preferred = tdef->decl;
-
-				r = preferred ? preferred->ref : tdef->type_of->tree_type;
-
-				continue;
-			}
-
 			case type_ref_cast:
-				break;
-
+				r = type_ref_next_1(r);
+				continue;
 			default:
 				goto fin;
 		}
-		r = r->ref;
-	}
 
 fin:
 	return r;
@@ -349,9 +352,22 @@ int type_ref_is_void(type_ref *r)
 
 int type_ref_is_signed(type_ref *r)
 {
-	r = type_ref_is(r, type_ref_type);
+	/* need to take casts into account */
+	while(r)
+		switch(r->type){
+			case type_ref_type:
+				return r->bits.type->is_signed;
 
-	return r && r->bits.type->is_signed;
+			case type_ref_cast:
+				if(r->bits.cast.is_signed_cast)
+					return r->bits.cast.signed_true;
+				/* fall */
+
+			default:
+				r = type_ref_next_1(r);
+		}
+
+	return 0;
 }
 
 int type_ref_is_floating(type_ref *r)
@@ -386,6 +402,8 @@ enum type_qualifier type_ref_qual(const type_ref *r)
 
 		case type_ref_cast:
 			/* descend */
+			if(r->bits.cast.is_signed_cast)
+				return type_ref_qual(r->ref);
 			return r->bits.cast.qual | (r->bits.cast.additive ? type_ref_qual(r->ref) : qual_none);
 
 		case type_ref_type:

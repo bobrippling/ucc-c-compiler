@@ -67,6 +67,7 @@ enum type_cmp
 {
 	TYPE_CMP_EXACT         = 1 << 0,
 	TYPE_CMP_QUAL          = 1 << 1,
+	TYPE_CMP_ALLOW_SIGNED_UNSIGNED = 1 << 2,
 };
 
 type *type_new(void);

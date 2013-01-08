@@ -222,27 +222,55 @@ type_ref *op_required_promotion(
 			tlarger = tlhs;
 
 		}else{
-			const int l_sz = type_ref_size(tlhs, &lhs->where), r_sz = type_ref_size(trhs, &rhs->where);
+			const int l_unsigned = !type_ref_is_signed(tlhs),
+			          r_unsigned = !type_ref_is_signed(trhs);
 
-			if(l_sz != r_sz){
-				const int l_larger = l_sz > r_sz;
-				char bufa[TYPE_REF_STATIC_BUFSIZ], bufb[TYPE_REF_STATIC_BUFSIZ];
+			const int l_sz = type_ref_size(tlhs, &lhs->where),
+			          r_sz = type_ref_size(trhs, &rhs->where);
 
-				/* TODO: needed? */
-				fold_type_ref_equal(tlhs, trhs,
-						w, WARN_COMPARE_MISMATCH,
-						"mismatching types in %s (%s and %s)",
-						op_to_str(op),
-						type_ref_to_str_r(bufa, tlhs),
-						type_ref_to_str_r(bufb, trhs));
+			if(l_unsigned == r_unsigned){
+				if(l_sz != r_sz){
+					const int l_larger = l_sz > r_sz;
+					char bufa[TYPE_REF_STATIC_BUFSIZ], bufb[TYPE_REF_STATIC_BUFSIZ];
 
-				*(l_larger ? prhs : plhs) = (l_larger ? tlhs : trhs);
+					/* TODO: needed? */
+					fold_type_ref_equal(tlhs, trhs,
+							w, WARN_COMPARE_MISMATCH,
+							"mismatching types in %s (%s and %s)",
+							op_to_str(op),
+							type_ref_to_str_r(bufa, tlhs),
+							type_ref_to_str_r(bufb, trhs));
 
-				tlarger = l_larger ? tlhs : trhs;
+					*(l_larger ? prhs : plhs) = (l_larger ? tlhs : trhs);
+
+					tlarger = l_larger ? tlhs : trhs;
+
+				}else{
+					/* default to either */
+					tlarger = tlhs;
+				}
+
+			}else if(l_unsigned ? l_sz >= r_sz : r_sz >= l_sz){
+				if(l_unsigned)
+					tlarger = *prhs = tlhs;
+				else
+					tlarger = *plhs = trhs;
+
+			}else if(l_unsigned ? r_sz > l_sz : l_sz > r_sz){
+				/* can the signed type represent all of the unsigned type's values?
+				 * this is true if signed_type > unsigned_type
+				 * - convert unsigned to signed type */
+
+				if(l_unsigned)
+					tlarger = *plhs = trhs;
+				else
+					tlarger = *prhs = tlhs;
 
 			}else{
-				/* default to either */
-				tlarger = tlhs;
+				/* else convert both to (unsigned)signed_type */
+				type_ref *signed_t = l_unsigned ? trhs : tlhs;
+
+				tlarger = *plhs = *prhs = type_ref_new_cast_signed(signed_t, 0);
 			}
 		}
 
@@ -254,8 +282,6 @@ type_ref *op_required_promotion(
 
 fin:
 	UCC_ASSERT(resolved, "no decl from type promotion");
-
-	UCC_ASSERT(!!*plhs + !!*prhs < 2, "can't cast both expressions");
 
 	return resolved; /* XXX: memleak in some cases */
 }
@@ -273,7 +299,8 @@ type_ref *op_promote_types(
 
 	if(tlhs)
 		fold_insert_casts(tlhs, plhs, stab, w, desc);
-	else if(trhs)
+
+	if(trhs)
 		fold_insert_casts(trhs, prhs, stab, w, desc);
 
 	return resolved;
@@ -331,6 +358,38 @@ static void op_bound(expr *e)
 	}
 }
 
+void op_unsigned_cmp_check(expr *e)
+{
+	switch(e->op){
+			int lhs;
+		/*case op_gt:*/
+		case op_ge:
+		case op_lt:
+		case op_le:
+			if((lhs = !type_ref_is_signed(e->lhs->tree_type))
+			||        !type_ref_is_signed(e->rhs->tree_type))
+			{
+				consty k;
+
+				const_fold(lhs ? e->rhs : e->lhs, &k);
+
+				if(k.type == CONST_VAL){
+					const int v = k.bits.iv.val;
+
+					if(v <= 0){
+						WARN_AT(&e->where,
+								"comparison of unsigned expression %s %d is always %s",
+								op_to_str(e->op), v,
+								e->op == op_lt || e->op == op_le ? "false" : "true");
+					}
+				}
+			}
+
+		default:
+			break;
+	}
+}
+
 void fold_expr_op(expr *e, symtable *stab)
 {
 	UCC_ASSERT(e->op != op_unknown, "unknown op in expression at %s",
@@ -347,6 +406,7 @@ void fold_expr_op(expr *e, symtable *stab)
 				&e->lhs, &e->rhs, &e->where, stab);
 
 		op_bound(e);
+		op_unsigned_cmp_check(e);
 
 	}else{
 		/* (except unary-not) can only have operations on integers,
@@ -424,7 +484,9 @@ void gen_expr_op(expr *e, symtable *tab)
 				gen_expr(e->rhs, tab);
 
 				out_op(e->op);
-				out_change_type(e->tree_type); /* make sure we get the pointer */
+				out_change_type(e->tree_type);
+				/* make sure we get the pointer, for example 2+(int *)p
+				 * or the int, e.g. (int *)a && (int *)b -> int */
 			}else{
 				out_op_unary(e->op);
 			}

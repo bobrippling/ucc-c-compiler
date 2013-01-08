@@ -75,8 +75,10 @@ struct type_ref
 		/* ref_cast */
 		struct
 		{
+			char is_signed_cast; /* if true - signed_true else qual */
+			char signed_true;
+			char additive; /* replace qual or add? */
 			enum type_qualifier qual;
-			unsigned int additive : 1; /* replace qual or add? */
 		} cast;
 
 		/* ref_func */
@@ -153,6 +155,7 @@ enum decl_cmp
 {
 	DECL_CMP_EXACT_MATCH    = 1 << 0,
 	DECL_CMP_ALLOW_VOID_PTR = 1 << 1,
+	DECL_CMP_ALLOW_SIGNED_UNSIGNED = 1 << 2,
 };
 
 decl        *decl_new(void);
@@ -171,6 +174,7 @@ type_ref *type_ref_new_block(type_ref *to, enum type_qualifier);
 type_ref *type_ref_new_array(type_ref *to, expr *sz);
 type_ref *type_ref_new_func( type_ref *to, funcargs *args);
 type_ref *type_ref_new_cast( type_ref *from, enum type_qualifier new);
+type_ref *type_ref_new_cast_signed(type_ref *from, int is_signed);
 type_ref *type_ref_new_cast_add(type_ref *from, enum type_qualifier extra);
 
 

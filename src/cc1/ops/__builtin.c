@@ -31,7 +31,8 @@ static func_builtin_parse parse_unreachable,
                           parse_constant_p,
                           parse_frame_address,
                           parse_expect,
-                          parse_strlen;
+                          parse_strlen,
+													parse_is_signed;
 
 typedef struct
 {
@@ -50,6 +51,8 @@ builtin_table builtins[] = {
 
 	{ "expect", parse_expect },
 
+	{ "is_signed", parse_is_signed },
+
 	{ NULL, NULL }
 
 }, no_prefix_builtins[] = {
@@ -58,27 +61,31 @@ builtin_table builtins[] = {
 	{ NULL, NULL }
 };
 
+static builtin_table *builtin_table_search(builtin_table *tab, const char *sp)
+{
+	int i;
+	for(i = 0; tab[i].sp; i++)
+		if(!strcmp(sp, tab[i].sp))
+			return &tab[i];
+	return NULL;
+}
 
 static builtin_table *builtin_find(const char *sp)
 {
 	static int prefix_len;
-	int i;
-	if(!prefix_len)
-		prefix_len = strlen(PREFIX);
+	builtin_table *tab;
 
 	if(!strncmp(sp, PREFIX, prefix_len)){
-		sp += prefix_len;
+		if(!prefix_len)
+			prefix_len = strlen(PREFIX);
 
-		for(i = 0; builtins[i].sp; i++)
-			if(!strcmp(sp, builtins[i].sp))
-				return &builtins[i];
+		sp += prefix_len;
+		tab = builtins;
+	}else{
+		tab = no_prefix_builtins;
 	}
 
-	for(i = 0; no_prefix_builtins[i].sp; i++)
-		if(!strcmp(sp, no_prefix_builtins[i].sp))
-			return &no_prefix_builtins[i];
-
-	return NULL;
+	return builtin_table_search(tab, sp);
 }
 
 expr *builtin_parse(const char *sp)
@@ -157,7 +164,7 @@ static void fold_compatible_p(expr *e, symtable *stab)
 	fold_decl(types[0], stab);
 	fold_decl(types[1], stab);
 
-	e->tree_type = type_ref_new_INT();
+	e->tree_type = type_ref_new_BOOL();
 	wur_builtin(e);
 }
 
@@ -170,11 +177,18 @@ static void const_compatible_p(expr *e, consty *k)
 	k->bits.iv.val = type_ref_equal(types[0], types[1], DECL_CMP_EXACT_MATCH);
 }
 
-static expr *parse_compatible_p(void)
+static expr *expr_new_funcall_typelist(void)
 {
 	expr *fcall = expr_new_funcall();
 
 	fcall->bits.types = parse_type_list();
+
+	return fcall;
+}
+
+static expr *parse_compatible_p(void)
+{
+	expr *fcall = expr_new_funcall_typelist();
 
 	expr_mutate_builtin_const(fcall, compatible_p);
 
@@ -190,7 +204,7 @@ static void fold_constant_p(expr *e, symtable *stab)
 
 	FOLD_EXPR(e->funcargs[0], stab);
 
-	e->tree_type = type_ref_new_INT();
+	e->tree_type = type_ref_new_BOOL();
 	wur_builtin(e);
 }
 
@@ -294,6 +308,39 @@ static expr *parse_expect(void)
 	expr *fcall = parse_any_args();
 	expr_mutate_builtin_const(fcall, expect);
 	fcall->f_gen = builtin_gen_expect;
+	return fcall;
+}
+
+/* --- is_signed */
+
+static void fold_is_signed(expr *e, symtable *stab)
+{
+	type_ref **tl = e->bits.types;
+
+	if(dynarray_count((void **)tl) != 1)
+		DIE_AT(&e->where, "need a single argument for %s", BUILTIN_SPEL(e->expr));
+
+	fold_type_ref(tl[0], NULL, stab);
+
+	e->tree_type = type_ref_new_BOOL();
+	wur_builtin(e);
+}
+
+static void const_is_signed(expr *e, consty *k)
+{
+	memset(k, 0, sizeof *k);
+	k->type = CONST_VAL;
+	k->bits.iv.val = type_ref_is_signed(e->bits.types[0]);
+}
+
+static expr *parse_is_signed(void)
+{
+	expr *fcall = expr_new_funcall_typelist();
+
+	/* simply set the const vtable ent */
+	fcall->f_fold       = fold_is_signed;
+	fcall->f_const_fold = const_is_signed;
+
 	return fcall;
 }
 
