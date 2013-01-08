@@ -12,46 +12,77 @@ const char *str_expr_cast()
 	return "cast";
 }
 
+static void get_cast_sizes(type_ref *tlhs, type_ref *trhs, int *pl, int *pr)
+{
+	if(!type_ref_is_void(tlhs)){
+		*pl = asm_type_size(tlhs);
+		*pr = asm_type_size(trhs);
+	}else{
+		*pl = *pr = 0;
+	}
+}
+
 void fold_const_expr_cast(expr *e, consty *k)
 {
-#define piv (&k->bits.iv)
 	const_fold(e->expr, k);
 
-	if(k->type == CONST_VAL){
-		/* need to cast the val down as appropriate */
-		if(type_ref_is_type(e->tree_type, type__Bool)){
-			piv->val = !!piv->val; /* analagous to out/out.c::out_normalise()'s constant case */
+	switch(k->type){
+		case CONST_VAL:
+#define piv (&k->bits.iv)
+			/* need to cast the val down as appropriate */
+			if(type_ref_is_type(e->tree_type, type__Bool)){
+				piv->val = !!piv->val; /* analagous to out/out.c::out_normalise()'s constant case */
 
-		}else{
-			const int sz = type_ref_size(e->tree_type, &e->where);
+			}else{
+				const int sz = type_ref_size(e->tree_type, &e->where);
 
-			/* TODO: disallow for ptrs/non-ints */
+				/* TODO: disallow for ptrs/non-ints */
 
-			switch(sz){
-				/* TODO: unsigned */
+				switch(sz){
+					/* TODO: unsigned */
 
-/*
+	/*
 #define CAST(sz, t) case sz: piv->val = (t)piv->val; break  - don't use host machine casting
-*/
+	*/
 #define CAST(sz, t) case sz: piv->val = piv->val & ~(-1 << (sz * 8 - 1)); break
 
-				CAST(1, char);
-				CAST(2, short);
-				CAST(4, int);
+					CAST(1, char);
+					CAST(2, short);
+					CAST(4, int);
 
 #undef CAST
 
-				case 8:
-				break; /* no cast - max word size */
+					case 8:
+					break; /* no cast - max word size */
 
-				default:
-				k->type = CONST_NO;
-				ICW("can't const fold cast expr of type %s size %d",
-						type_ref_to_str(e->tree_type), sz);
+					default:
+					k->type = CONST_NO;
+					ICW("can't const fold cast expr of type %s size %d",
+							type_ref_to_str(e->tree_type), sz);
+				}
 			}
+#undef piv
+			break;
+
+		case CONST_NO:
+			break;
+
+		case CONST_NEED_ADDR:
+			k->type = CONST_NO; /* e.g. (int *)i */
+			break;
+
+		case CONST_ADDR:
+		case CONST_STRK:
+		{
+			int l, r;
+			/* allow if we're casting to a same-size type */
+			get_cast_sizes(e->tree_type, e->expr->tree_type, &l, &r);
+
+			if(l < r)
+				k->type = CONST_NO; /* e.g. (int)&a */
+			break;
 		}
 	}
-#undef piv
 }
 
 void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
@@ -81,24 +112,11 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 	if((flag = !!type_ref_is(e->tree_type, type_ref_func)) || type_ref_is(e->tree_type, type_ref_array))
 		DIE_AT(&e->where, "cast to %s type '%s'", flag ? "function" : "array", type_ref_to_str(e->tree_type));
 
-#ifdef CAST_COLLAPSE
-	if(expr_kind(e->expr, cast)){
-		/* get rid of e->expr, replace with e->expr->rhs */
-		expr *del = e->expr;
-
-		e->expr = e->expr->expr;
-
-		/*decl_free(del->tree_type); XXX: memleak */
-		expr_free(del);
-
-		fold_expr_cast(e, stab);
-	}
-#endif
-
 	tlhs = e->tree_type;
 	trhs = e->expr->tree_type;
 
-	if(!type_ref_is_void(tlhs) && (size_lhs = asm_type_size(tlhs)) < (size_rhs = asm_type_size(trhs))){
+	get_cast_sizes(tlhs, trhs, &size_lhs, &size_rhs);
+	if(size_lhs < size_rhs){
 		char buf[DECL_STATIC_BUFSIZ];
 
 		strcpy(buf, type_ref_to_str(trhs));
