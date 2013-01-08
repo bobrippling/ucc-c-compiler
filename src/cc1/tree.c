@@ -149,8 +149,11 @@ int type_equal(const type *a, const type *b, enum type_cmp mode)
 		}
 	}
 
-	if(a->is_signed != b->is_signed)
+	if((mode & TYPE_CMP_ALLOW_SIGNED_UNSIGNED) == 0
+	&& a->is_signed != b->is_signed)
+	{
 		return 0;
+	}
 
 	if(a->sue != b->sue)
 		return 0;

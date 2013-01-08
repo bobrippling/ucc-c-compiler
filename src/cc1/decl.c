@@ -427,7 +427,11 @@ enum funcargs_cmp funcargs_equal(
 		return funcargs_are_mismatch_count;
 
 	if(count_to){
-		const enum decl_cmp flag = DECL_CMP_ALLOW_VOID_PTR | (strict_types ? DECL_CMP_EXACT_MATCH : 0);
+		const enum decl_cmp flag =
+			  DECL_CMP_ALLOW_SIGNED_UNSIGNED
+			| DECL_CMP_ALLOW_VOID_PTR
+			| (strict_types ? DECL_CMP_EXACT_MATCH : 0);
+
 		int i;
 
 		for(i = 0; args_to->arglist[i]; i++)
@@ -454,7 +458,13 @@ static int type_ref_equal_r(type_ref *a, type_ref *b, enum decl_cmp mode)
 	if(!a || !b)
 		return a == b ? 1 : 0;
 
-	/* FIXME: can't do this because we need to check for signed vs unsigned */
+	/* check for signed vs unsigned */
+	if((mode & DECL_CMP_ALLOW_SIGNED_UNSIGNED) == 0
+	&& type_ref_is_signed(a) != type_ref_is_signed(b))
+	{
+		return 0;
+	}
+
 	a = type_ref_skip_tdefs_casts(a);
 	b = type_ref_skip_tdefs_casts(b);
 
@@ -464,7 +474,16 @@ static int type_ref_equal_r(type_ref *a, type_ref *b, enum decl_cmp mode)
 
 	switch(a->type){
 		case type_ref_type:
-			return type_equal(a->bits.type, b->bits.type, mode & DECL_CMP_EXACT_MATCH ? TYPE_CMP_EXACT : 0);
+		{
+			enum type_cmp tmode = 0;
+
+			if(mode & DECL_CMP_EXACT_MATCH)
+				tmode |= TYPE_CMP_EXACT;
+			if(mode & DECL_CMP_ALLOW_SIGNED_UNSIGNED)
+				tmode |= TYPE_CMP_ALLOW_SIGNED_UNSIGNED;
+
+			return type_equal(a->bits.type, b->bits.type, tmode);
+		}
 
 		case type_ref_array:
 		{
@@ -481,30 +500,22 @@ static int type_ref_equal_r(type_ref *a, type_ref *b, enum decl_cmp mode)
 					return 0;
 			}
 
-			goto ref_eq;
+			break;
 		}
 
 		case type_ref_block:
 			if(!type_qual_equal(a->bits.block.qual, b->bits.block.qual))
 				return 0;
-			goto ref_eq;
-
-		case type_ref_cast:
-			if(a->bits.cast.is_signed_cast){
-				if(a->bits.cast.signed_true != b->bits.cast.signed_true)
-					return 0;
-			}else if(!type_qual_equal(a->bits.cast.qual, b->bits.cast.qual)){
-				return 0;
-			}
-			goto ref_eq;
+			break;
 
 		case type_ref_ptr:
 			if(!type_qual_equal(a->bits.qual, b->bits.qual))
 				return 0;
-			/* fall */
-ref_eq:
+			break;
+
+		case type_ref_cast:
 		case type_ref_tdef:
-			return type_ref_equal_r(a->ref, b->ref, mode);
+			ICE("should've been skipped");
 
 		case type_ref_func:
 			if(funcargs_are_equal != funcargs_equal(a->bits.func, b->bits.func, 1 /* exact match */, NULL))
