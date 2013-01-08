@@ -102,6 +102,17 @@ void fold_const_expr_op(expr *e, consty *k)
 	if(lhs.type == CONST_VAL && rhs.type == CONST_VAL){
 		k->type = CONST_VAL;
 		operate(&lhs.bits.iv, e->rhs ? &rhs.bits.iv : NULL, e->op, k, &e->where);
+
+	}else if((e->op == op_andsc || e->op == op_orsc)
+			&& (is_const(lhs.type) || is_const(rhs.type))){
+
+		/* allow 1 || f() */
+		consty *kside = is_const(lhs.type) ? &lhs : &rhs;
+		int is_true = !!kside->bits.iv.val;
+
+		if(e->op == (is_true ? op_orsc : op_andsc))
+			memcpy(k, kside, sizeof *k);
+
 	}else if(e->op == op_plus || e->op == op_minus){
 		/* allow one CONST_{ADDR,STRK} and one CONST_VAL for an offset const */
 		int lhs_addr = lhs.type == CONST_ADDR || lhs.type == CONST_STRK;
