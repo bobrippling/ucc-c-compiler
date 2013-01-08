@@ -362,7 +362,7 @@ void op_unsigned_cmp_check(expr *e)
 {
 	switch(e->op){
 			int lhs;
-		case op_gt:
+		/*case op_gt:*/
 		case op_ge:
 		case op_lt:
 		case op_le:
