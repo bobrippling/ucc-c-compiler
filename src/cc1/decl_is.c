@@ -361,7 +361,7 @@ int type_ref_is_signed(type_ref *r)
 			case type_ref_cast:
 				if(r->bits.cast.is_signed_cast)
 					return r->bits.cast.signed_true;
-				break;
+				/* fall */
 
 			default:
 				r = type_ref_next_1(r);
