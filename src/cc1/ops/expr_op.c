@@ -68,14 +68,21 @@ static void operate(
 #undef piv
 }
 
-static void const_offset(consty *r, consty *val, consty *addr, type_ref *addr_type)
+static void const_offset(consty *r, consty *val, consty *addr,
+		type_ref *addr_type, enum op_type op)
 {
 	unsigned step = type_ref_size(type_ref_next(addr_type), NULL);
+	int change;
 
 	memcpy_safe(r, addr);
 
+	change = val->bits.iv.val * step;
+
+	if(op == op_minus)
+		change = -change;
+
 	/* may already have an offset, hence += */
-	r->offset += val->bits.iv.val * step;
+	r->offset += change;
 }
 
 void fold_const_expr_op(expr *e, consty *k)
@@ -90,20 +97,20 @@ void fold_const_expr_op(expr *e, consty *k)
 		rhs.type = CONST_VAL;
 	}
 
+	k->type = CONST_NO;
+
 	if(lhs.type == CONST_VAL && rhs.type == CONST_VAL){
 		k->type = CONST_VAL;
 		operate(&lhs.bits.iv, e->rhs ? &rhs.bits.iv : NULL, e->op, k, &e->where);
-	}else{
+	}else if(e->op == op_plus || e->op == op_minus){
 		/* allow one CONST_{ADDR,STRK} and one CONST_VAL for an offset const */
 		int lhs_addr = lhs.type == CONST_ADDR || lhs.type == CONST_STRK;
 		int rhs_addr = rhs.type == CONST_ADDR || rhs.type == CONST_STRK;
 
 		/**/if(lhs_addr && rhs.type == CONST_VAL)
-			const_offset(k, &rhs, &lhs, e->lhs->tree_type);
+			const_offset(k, &rhs, &lhs, e->lhs->tree_type, e->op);
 		else if(rhs_addr && lhs.type == CONST_VAL)
-			const_offset(k, &lhs, &rhs, e->rhs->tree_type);
-		else
-			k->type = CONST_NO;
+			const_offset(k, &lhs, &rhs, e->rhs->tree_type, e->op);
 	}
 }
 
