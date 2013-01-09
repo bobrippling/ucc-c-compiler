@@ -171,15 +171,19 @@ void fold_enum(struct_union_enum_st *en, symtable *stab)
 	}
 }
 
-void fold_sue(struct_union_enum_st *const sue, symtable *stab, int *poffset, int *pthis)
+int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 {
+	if(sue->size)
+		return sue->size;
+
 	if(sue->primitive == type_enum){
-		int sz;
 		fold_enum(sue, stab);
-		sz = sue_size(sue, &sue->where);
-		pack_next(poffset, pthis, sz, sz);
+
+		return sue->size = sue_size(sue, &sue->where);
+
 	}else{
 		int align_max = 1;
+		int offset = 0;
 		sue_member **i;
 
 		if(decl_attr_present(sue->attr, attr_packed))
@@ -187,34 +191,43 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab, int *poffset, int
 
 		for(i = sue->members; i && *i; i++){
 			decl *d = (*i)->struct_member;
-			int align;
-			struct_union_enum_st *this_sue;
+			int align, sz;
+			struct_union_enum_st *sub_sue;
 
 			fold_decl(d, stab);
 
-			if((this_sue = type_ref_is_s_or_u(d->ref)) && !type_ref_is(d->ref, type_ref_ptr)){
-				if(this_sue == sue)
+			if((sub_sue = type_ref_is_s_or_u(d->ref)) && !type_ref_is(d->ref, type_ref_ptr)){
+				if(sub_sue == sue)
 					DIE_AT(&d->where, "nested %s", sue_str(sue));
 
-				fold_sue(this_sue, stab, poffset, pthis);
+				fold_sue(sub_sue, stab);
 
-				align = this_sue->align;
+				sz = sue_size(sub_sue, &d->where);
+				align = sub_sue->align;
+
 			}else{
-				const int sz = decl_size(d, &d->where);
-				pack_next(poffset, pthis, sz, sz);
-				align = sz; /* for now */
+				/* for now - align = sz */
+				align = sz = decl_size(d, &d->where);
 			}
 
 
-			if(sue->primitive == type_struct)
-				d->struct_offset = *pthis;
-			/* else - union, all offsets are the same */
+			{
+				int after_space;
 
-			if(align > align_max)
-				align_max = align;
+				pack_next(&offset, &after_space, sz, align);
+				/* offset is the end of the decl, after_space is the start */
+
+				if(sue->primitive == type_struct)
+					d->struct_offset = after_space;
+				/* else - union, all offsets are the same */
+
+				if(align > align_max)
+					align_max = align;
+			}
 		}
 
 		sue->align = align_max;
+		return sue->size = offset;
 	}
 }
 
@@ -438,10 +451,8 @@ void fold_symtab_scope(symtable *stab)
 {
 	struct_union_enum_st **sit;
 
-	for(sit = stab->sues; sit && *sit; sit++){
-		int this, offset = 0;
-		fold_sue(*sit, stab, &offset, &this);
-	}
+	for(sit = stab->sues; sit && *sit; sit++)
+		fold_sue(*sit, stab);
 }
 
 void fold_need_expr(expr *e, const char *stmt_desc, int is_test)

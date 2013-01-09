@@ -22,7 +22,7 @@ struct struct_union_enum_st
 
 	char *spel; /* "<anon ...>" if anon */
 	int anon : 1;
-	int align;
+	int align, size;
 
 	sue_member **members;
 };
