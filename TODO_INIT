@@ -1,10 +1,10 @@
 global/static init - mostly there
 	nested initalisers - bugs[0]
-	initialisers with data_store/data_store refactor (i.e. strings)
 
 designated init + zero for the rest:
 	int x[] = { [3] = 5 };
 	struct { int x, y, z; } q = { .y = 2, 3 };
+	int k[] = { [7 ... 9] = 2 };
 
 no code gen/space reservation for compound lits/expr-stmts below sizeof
 
