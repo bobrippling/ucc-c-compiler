@@ -25,6 +25,9 @@ void fold_expr_addr(expr *e, symtable *stab)
 		free(save);
 
 	}else{
+		/* if it's an identifier, act as a read */
+		fold_inc_writes_if_sym(e->lhs, stab);
+
 		FOLD_EXPR_NO_DECAY(e->lhs, stab);
 
 		/* can address: lvalues, arrays and functions */
