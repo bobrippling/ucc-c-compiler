@@ -12,6 +12,8 @@
 #include "../../util/platform.h"
 #include "../cc1.h"
 
+#define v_check_type(t) if(!t) t = type_ref_new_VOID_PTR()
+
 /*
  * This entire stack-output idea was inspired by tinycc, and improved somewhat
  */
@@ -27,23 +29,9 @@ int out_vcount(void)
 	return vtop ? 1 + (int)(vtop - vstack) : 0;
 }
 
-static type_ref *v_default_type(type_ref *r)
-{
-	where w;
-	type_ref *ret;
-
-	memset(&w, 0, sizeof w);
-
-	EOF_WHERE(&w,
-		ret = r ? r : type_ref_new_VOID_PTR()
-	);
-
-	return ret;
-}
-
 void vpush(type_ref *t)
 {
-	t = v_default_type(t);
+	v_check_type(t);
 
 	if(!vtop){
 		vtop = vstack;
@@ -63,7 +51,7 @@ void vpush(type_ref *t)
 
 void v_clear(struct vstack *vp, type_ref *t)
 {
-	t = v_default_type(t);
+	v_check_type(t);
 
 	memset(vp, 0, sizeof *vp);
 	vp->t = t;
@@ -171,7 +159,7 @@ int v_unused_reg(int stack_as_backup)
 	int used[N_REGS];
 	int i;
 
-	memcpy(used, reserved_regs, sizeof *used);
+	memcpy(used, reserved_regs, sizeof used);
 	first = NULL;
 
 	for(it = vstack; it <= vtop; it++){
@@ -646,7 +634,7 @@ void out_cast(type_ref *from, type_ref *to)
 
 void out_change_type(type_ref *t)
 {
-	t = v_default_type(t);
+	v_check_type(t);
 	/* XXX: memleak */
 	vtop->t = t;
 }
