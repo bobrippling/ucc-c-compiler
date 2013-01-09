@@ -67,7 +67,7 @@ void gen_stmt_if(stmt *s)
 
 static int if_passable(stmt *s)
 {
-	return fold_passable(s->lhs) || (s->rhs ? fold_passable(s->rhs) : 0);
+	return (s->rhs ? fold_passable(s->rhs) : 1) || fold_passable(s->lhs);
 }
 
 void mutate_stmt_if(stmt *s)
