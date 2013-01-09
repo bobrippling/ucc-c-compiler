@@ -149,7 +149,6 @@ void fold_enum(struct_union_enum_st *en, symtable *stab)
 		/* -1 because we can't do dynarray_add(..., 0) */
 		if(e == (expr *)-1){
 
-			/*expr_free(e); XXX: memleak */
 			EOF_WHERE(&asm_struct_enum_where,
 				m->val = expr_new_val(defval)
 			);
@@ -196,16 +195,21 @@ int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 
 			fold_decl(d, stab);
 
-			if((sub_sue = type_ref_is_s_or_u(d->ref)) && !type_ref_is(d->ref, type_ref_ptr)){
+			if((sub_sue = type_ref_is_s_or_u_or_e(d->ref))){
+				if(sub_sue != sue)
+					fold_sue(sub_sue, stab);
+
+				if(type_ref_is(d->ref, type_ref_ptr) || sub_sue->primitive == type_enum)
+					goto normal;
+
 				if(sub_sue == sue)
 					DIE_AT(&d->where, "nested %s", sue_str(sue));
-
-				fold_sue(sub_sue, stab);
 
 				sz = sue_size(sub_sue, &d->where);
 				align = sub_sue->align;
 
 			}else{
+normal:
 				/* for now - align = sz */
 				align = sz = decl_size(d, &d->where);
 			}
