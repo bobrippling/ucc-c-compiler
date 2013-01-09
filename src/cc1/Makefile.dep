@@ -537,7 +537,7 @@ ops/expr_string.o: ops/expr_string.c ops/ops.h ops/../../util/util.h \
  ops/../ops/stmt_continue.h ops/../sym.h ops/../decl.h ops/../cc1.h \
  ops/../out/out.h ops/../fold.h ops/../const.h ops/../gen_str.h \
  ops/../gen_asm.h ops/expr_string.h ops/../decl_init.h ops/../str.h \
- ops/../out/lbl.h
+ ops/../out/lbl.h ops/../../util/dynarray.h
 ops/expr_struct.o: ops/expr_struct.c ops/ops.h ops/../../util/util.h \
  ops/../data_structs.h ops/../tree.h ops/../expr.h ops/../ops/expr_addr.h \
  ops/../ops/expr_assign.h ops/../ops/expr_assign_compound.h \
