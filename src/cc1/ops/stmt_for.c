@@ -101,11 +101,8 @@ void gen_stmt_for(stmt *s)
 	if(s->flow->for_init){
 		gen_expr(s->flow->for_init, s->flow->for_init_symtab);
 
-		/* only pop if it's an expression (i.e. not a C99 init) */
-		if(!s->flow->for_init_decls){
-			out_pop();
-			out_comment("unused for init");
-		}
+		out_pop();
+		out_comment("for-init");
 	}
 
 	out_label(lbl_test);
