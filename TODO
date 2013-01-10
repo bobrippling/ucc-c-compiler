@@ -11,6 +11,8 @@ machine target - currently between x86_64 and vm
 
 ---------------------------------------------------- cc1
 
+X-Macros instead of switches for enums
+
 const-fold: change interface and checking of ->val.iv.val to more explicit code
             also need type casts for overflows, etc
 
