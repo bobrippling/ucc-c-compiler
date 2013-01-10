@@ -82,13 +82,13 @@ expr *expr_new_array_decl_init(decl *d, int ival, int idx)
 }
 #endif
 
-int expr_is_null_ptr(expr *e)
+int expr_is_null_ptr(expr *e, int allow_int)
 {
 	int b = 0;
 
 	if(type_ref_is_type(type_ref_is_ptr(e->tree_type), type_void))
 		b = 1;
-	else if(type_ref_is_integral(e->tree_type))
+	else if(allow_int && type_ref_is_integral(e->tree_type))
 		b = 1;
 
 	return b && const_expr_and_zero(e);

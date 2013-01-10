@@ -107,6 +107,28 @@ decl_attr *parse_attr_nonnull()
 	return da;
 }
 
+decl_attr *parse_attr_sentinel()
+{
+	decl_attr *da = decl_attr_new(attr_sentinel);
+
+	if(accept(token_open_paren)){
+		int u;
+
+		EAT(token_integer);
+
+		u = currentval.val;
+
+		if(u < 0)
+			WARN_AT(NULL, "negative sentinel argument ignored");
+		else
+			da->attr_extra.sentinel = u;
+
+		EAT(token_close_paren);
+	}
+
+	return da;
+}
+
 #define EMPTY(t)                      \
 decl_attr *parse_ ## t()              \
 {                                     \
@@ -120,20 +142,25 @@ EMPTY(attr_noreturn)
 EMPTY(attr_noderef)
 EMPTY(attr_packed)
 
+#undef EMPTY
+
 static struct
 {
 	const char *ident;
 	decl_attr *(*parser)(void);
 } attrs[] = {
-	{ "format",         parse_attr_format },
-	{ "unused",         parse_attr_unused },
-	{ "warn_unused",    parse_attr_warn_unused },
-	{ "section",        parse_attr_section },
-	{ "bitmask",        parse_attr_enum_bitmask },
-	{ "noreturn",       parse_attr_noreturn },
-	{ "noderef",        parse_attr_noderef },
-	{ "nonnull",        parse_attr_nonnull },
-	{ "packed",         parse_attr_packed },
+#define ATTR(x) { #x, parse_attr_ ## x }
+	ATTR(format),
+	ATTR(unused),
+	ATTR(warn_unused),
+	ATTR(section),
+	ATTR(enum_bitmask),
+	ATTR(noreturn),
+	ATTR(noderef),
+	ATTR(nonnull),
+	ATTR(packed),
+	ATTR(sentinel),
+#undef ATTR
 
 	/* compat */
 	{ "warn_unused_result", parse_attr_warn_unused },

@@ -203,11 +203,46 @@ static void format_check(where *w, type_ref *ref, expr **args, const int variadi
 	}
 }
 
+#define ATTR_WARN(w, ...) do{ WARN_AT(w, __VA_ARGS__); return; }while(0)
+
+static void sentinel_check(where *w, type_ref *ref, expr **args,
+		const int variadic, const int nstdargs)
+{
+	decl_attr *attr = type_attr_present(ref, attr_sentinel);
+	int i, nvs;
+	expr *sentinel;
+
+	if(!attr)
+		return;
+
+	if(!variadic)
+		ATTR_WARN(w, "variadic function required for sentinel check");
+
+	i = attr->attr_extra.sentinel;
+	nvs = dynarray_count((void **)args) - nstdargs;
+
+	if(nvs == 0)
+		ATTR_WARN(w, "not enough variadic arguments for a sentinel");
+
+	UCC_ASSERT(nvs >= 0, "too few args");
+
+	if(i >= nvs)
+		ATTR_WARN(w, "sentinel index is not a variadic argument");
+
+	sentinel = args[(nstdargs + nvs - 1) - i];
+
+	if(!expr_is_null_ptr(sentinel, 0))
+		ATTR_WARN(&sentinel->where, "sentinel argument expected (got %s)",
+				type_ref_to_str(sentinel->tree_type));
+
+}
+
 void fold_expr_funcall(expr *e, symtable *stab)
 {
 	type_ref *type_func;
 	funcargs *args_from_decl;
 	char *sp = NULL;
+	int count_decl;
 
 #if 0
 	if(func_is_asm(sp)){
@@ -303,7 +338,7 @@ invalid:
 			fold_need_expr(arg, desc, 0);
 			fold_disallow_st_un(arg, desc);
 
-			if((nonnulls & (1 << i)) && expr_is_null_ptr(arg))
+			if((nonnulls & (1 << i)) && expr_is_null_ptr(arg, 1))
 				WARN_AT(&arg->where, "null passed where non-null required (arg %d)", i + 1);
 
 			/* each arg needs casting up to int size, if smaller */
@@ -326,14 +361,12 @@ invalid:
 
 	/* this block is purely type checking */
 	if(args_from_decl->arglist || args_from_decl->args_void){
-		expr **iter_arg;
-		decl **iter_decl;
-		int count_decl, count_arg;
+		int count_arg;
 
 		count_decl = count_arg = 0;
 
-		for(iter_arg  = e->funcargs;       iter_arg  && *iter_arg;  iter_arg++,  count_arg++);
-		for(iter_decl = args_from_decl->arglist; iter_decl && *iter_decl; iter_decl++, count_decl++);
+		count_arg  = dynarray_count((void **)e->funcargs);
+		count_decl = dynarray_count((void **)args_from_decl->arglist);
 
 		if(count_decl != count_arg && (args_from_decl->variadic ? count_arg < count_decl : 1)){
 			DIE_AT(&e->where, "too %s arguments to function %s (got %d, need %d)",
@@ -343,6 +376,7 @@ invalid:
 
 		if(e->funcargs){
 			funcargs *args_from_expr = funcargs_new();
+			expr **iter_arg;
 
 			for(iter_arg = e->funcargs; *iter_arg; iter_arg++){
 				decl *dtmp = decl_new();
@@ -358,11 +392,18 @@ invalid:
 		}
 
 		/*funcargs_free(args_from_decl, 1); XXX memleak*/
+	}else{
+		count_decl = 0;
 	}
 
 	fold_disallow_st_un(e, "return");
 
-	format_check(&e->where, e->expr->tree_type, e->funcargs, args_from_decl->variadic);
+	/* attr */{
+		type_ref *r = e->expr->tree_type;
+
+		format_check(&e->where, r, e->funcargs, args_from_decl->variadic);
+		sentinel_check(&e->where, r, e->funcargs, args_from_decl->variadic, count_decl);
+	}
 
 	/* check the subexp tree type to get the funcall decl_attrs */
 	if(type_attr_present(e->expr->tree_type, attr_warn_unused))

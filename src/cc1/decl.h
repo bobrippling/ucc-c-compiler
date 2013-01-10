@@ -16,7 +16,8 @@ struct decl_attr
 		attr_noderef,
 		attr_nonnull,
 		attr_packed,
-#define attr_LAST (attr_packed + 1)
+		attr_sentinel,
+#define attr_LAST (attr_sentinel + 1)
 		/*
 		 * TODO: warning, cdecl, stdcall, fastcall
 		 * pure - no globals
@@ -33,6 +34,7 @@ struct decl_attr
 		} format;
 		char *section;
 		unsigned long nonnull_args; /* limits to sizeof(long)*8 args, i.e. 64 */
+		unsigned sentinel;
 	} attr_extra;
 
 	decl_attr *next;

@@ -101,8 +101,8 @@ void fold_expr_if(expr *e, symtable *stab)
 
 	}else{
 		/* brace yourself. */
-		int l_ptr_null = expr_is_null_ptr(e->lhs ? e->lhs : e->expr);
-		int r_ptr_null = expr_is_null_ptr(e->rhs);
+		int l_ptr_null = expr_is_null_ptr(e->lhs ? e->lhs : e->expr, 1);
+		int r_ptr_null = expr_is_null_ptr(e->rhs, 1);
 
 		int l_complete = !l_ptr_null && type_ref_is_complete(tt_l);
 		int r_complete = !r_ptr_null && type_ref_is_complete(tt_r);

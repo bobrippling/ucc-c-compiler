@@ -192,6 +192,6 @@ expr *expr_new_addr(expr *);
 
 #define expr_new_comma() expr_new_wrapper(comma)
 
-int expr_is_null_ptr(expr *);
+int expr_is_null_ptr(expr *, int allow_int);
 
 #endif
