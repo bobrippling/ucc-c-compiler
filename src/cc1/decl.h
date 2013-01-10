@@ -132,7 +132,7 @@ struct decl
 
 	decl_attr *attr;
 
-	char *spel, *spel_asm;
+	char *spel, *spel_asm; /* if !spel but spel_asm, it's global asm??? */
 
 #ifdef FIELD_WIDTH_TODO
 	expr *field_width;

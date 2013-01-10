@@ -165,11 +165,11 @@ void gen_asm_global(decl *d)
 	}
 }
 
-void gen_asm(symtable *globs)
+void gen_asm(symtable_global *globs)
 {
 	decl **diter;
 
-	for(diter = globs->decls; diter && *diter; diter++){
+	for(diter = globs->symtab.decls; diter && *diter; diter++){
 		decl *d = *diter;
 
 		/* inline_only aren't currently inlined */

@@ -48,7 +48,24 @@ struct symtable
 	static_assert        **static_asserts;
 };
 
+struct symtable_global
+{
+	symtable symtab; /* for convenience */
+
+	struct
+	{
+		int is_asm;
+		union
+		{
+			struct symtable *symtab;
+			char *gasms;
+		} bits;
+	};
+};
+
 sym *sym_new(decl *d, enum sym_type t);
+
+symtable_global *symtabg_new(void);
 
 symtable *symtab_new(symtable *parent);
 void      symtab_set_parent(symtable *child, symtable *parent);

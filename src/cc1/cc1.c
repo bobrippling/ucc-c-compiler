@@ -276,8 +276,8 @@ void sigh(int sig)
 
 int main(int argc, char **argv)
 {
-	static symtable *globs;
-	void (*gf)(symtable *);
+	static symtable_global *globs;
+	void (*gf)(symtable_global *);
 	FILE *f;
 	const char *fname;
 	int i;
@@ -425,9 +425,9 @@ usage:
 	if(f != stdin)
 		fclose(f);
 
-	if(globs->decls){
-		fold(globs);
-		symtab_fold(globs, 0);
+	if(globs->symtab.decls){
+		fold(&globs->symtab);
+		symtab_fold(&globs->symtab, 0);
 		gf(globs);
 	}
 
