@@ -35,8 +35,6 @@ void   macro_remove(const char *nam);
 void filter_macro(char **line);
 void macro_finish(void);
 
-#define TODO() do{die("%s: TODO", __func__); exit(1);}while(0)
-
 enum
 {
 	DEBUG_NORM = 0,

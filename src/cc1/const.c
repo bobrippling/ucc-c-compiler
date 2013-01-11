@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdarg.h>
+#include <string.h>
 
 #include "../util/util.h"
 #include "data_structs.h"
@@ -8,15 +9,15 @@
 #include "../util/util.h"
 #include "cc1.h"
 
-void const_fold(expr *e, intval *iv, enum constyness *success)
+void const_fold(expr *e, consty *k)
 {
 	/* always const_fold functions, i.e. builtins */
 	const int should_fold = (fopt_mode & FOPT_CONST_FOLD) || expr_kind(e, funcall);
 
-	*success = CONST_NO;
+	k->type = CONST_NO;
 
 	if(should_fold && e->f_const_fold)
-		e->f_const_fold(e, iv, success);
+		e->f_const_fold(e, k);
 }
 
 #if 0
@@ -48,12 +49,21 @@ int const_expr_is_const(expr *e)
 
 int const_expr_and_zero(expr *e)
 {
-	enum constyness k;
-	intval val;
+	consty k;
 
-	const_fold(e, &val, &k);
+	const_fold(e, &k);
 
-	return k == CONST_WITH_VAL && val.val == 0;
+	return k.type == CONST_VAL && k.bits.iv.val == 0;
+}
+
+void const_fold_need_val(expr *e, intval *piv)
+{
+	consty k;
+	const_fold(e, &k);
+
+	UCC_ASSERT(k.type == CONST_VAL, "not const");
+
+	memcpy_safe(piv, &k.bits.iv);
 }
 
 /*

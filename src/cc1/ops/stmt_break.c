@@ -14,9 +14,9 @@ void fold_stmt_break_continue(stmt *t, char *lbl)
 		DIE_AT(&t->where, "%s outside a flow-control statement", t->f_str());
 
 	t->expr = expr_new_identifier(lbl);
-	memcpy(&t->expr->where, &t->where, sizeof t->expr->where);
+	memcpy_safe(&t->expr->where, &t->where);
 
-	t->expr->tree_type = decl_new_void();
+	t->expr->tree_type = type_ref_new_VOID();
 }
 
 void fold_stmt_break(stmt *t)

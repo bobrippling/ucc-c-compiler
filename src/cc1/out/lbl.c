@@ -43,7 +43,7 @@ char *out_label_code(const char *fmt)
 char *out_label_data_store(int str)
 {
 	char *ret = umalloc(16);
-	SNPRINTF(ret, 16, "%s.%d", str ? "str" : "array", str_last++);
+	SNPRINTF(ret, 16, "%s.%d", str ? "str" : "data", str_last++);
 	return ret;
 }
 

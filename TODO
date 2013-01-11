@@ -1,9 +1,19 @@
 update bugs/
 test/ - x.c and x.c.expect (output and assembly)
 
+cc1.h - remove unused warnings
+
+struct initialisation
+	Update all compound lit. tests with structs when parsing complete (and then designated inits when complete)
+
+static store and static address-of store
+	i.e. int x = 5; vs int *x = &(int){5};
+
 machine target - currently between x86_64 and vm
 
 ---------------------------------------------------- cc1
+
+X-Macros instead of switches for enums
 
 const-fold: change interface and checking of ->val.iv.val to more explicit code
             also need type casts for overflows, etc

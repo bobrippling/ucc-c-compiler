@@ -52,6 +52,10 @@ struct statement
 	KEYWORD(while),
 	KEYWORD(for),
 
+	KEYWORD(asm),
+	{ "__asm",    token_asm },
+	{ "__asm__",  token_asm },
+
 	KEYWORD(void),
 	KEYWORD(char),
 	KEYWORD(int),

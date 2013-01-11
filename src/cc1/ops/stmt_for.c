@@ -5,6 +5,7 @@
 #include "stmt_for.h"
 #include "stmt_code.h"
 #include "../out/lbl.h"
+#include "../decl_init.h"
 
 const char *str_stmt_for()
 {
@@ -21,14 +22,14 @@ expr *fold_for_if_init_decls(stmt *s)
 
 		fold_decl(d, s->flow->for_init_symtab);
 
-		switch(d->type->store){
+		switch(d->store){
 			case store_auto:
 			case store_default:
 			case store_register:
 				break;
 			default:
 				DIE_AT(&d->where, "%s variable in %s declaration initialisation",
-						type_store_to_str(d->type->store), s->f_str());
+						decl_store_to_str(d->store), s->f_str());
 		}
 
 		SYMTAB_ADD(s->flow->for_init_symtab, d, sym_local);
@@ -36,17 +37,13 @@ expr *fold_for_if_init_decls(stmt *s)
 		/* make the for-init a expr-stmt with all our inits */
 		if(d->init){
 			stmt *init_code;
-			stmt **inits;
 
 			init_code = stmt_new_wrapper(code, s->flow->for_init_symtab);
-			fold_gen_init_assignment(d, init_code);
+			decl_init_create_assignments_for_spel(d, init_code);
 
 			init_exp = expr_new_stmt(init_code);
 
-			for(inits = init_code->inits; inits && *inits; inits++){
-				stmt *s = *inits;
-				fold_stmt(s);
-			}
+			fold_stmt(init_code); /* folds each assignment */
 		}
 	}
 
@@ -66,7 +63,7 @@ void fold_stmt_for(stmt *s)
 		s->flow->for_init = init_exp;
 	}
 
-#define FOLD_IF(x) if(x) fold_expr(x, s->flow->for_init_symtab)
+#define FOLD_IF(x) if(x) FOLD_EXPR(x, s->flow->for_init_symtab)
 	FOLD_IF(s->flow->for_init);
 	FOLD_IF(s->flow->for_while);
 	FOLD_IF(s->flow->for_inc);
@@ -74,8 +71,6 @@ void fold_stmt_for(stmt *s)
 
 	if(s->flow->for_while){
 		fold_need_expr(s->flow->for_while, "for-while", 1);
-
-		OPT_CHECK(s->flow->for_while, "constant expression in for");
 	}
 
 	fold_stmt(s->lhs);
@@ -106,11 +101,8 @@ void gen_stmt_for(stmt *s)
 	if(s->flow->for_init){
 		gen_expr(s->flow->for_init, s->flow->for_init_symtab);
 
-		/* only pop if it's an expression (i.e. not a C99 init) */
-		if(!s->flow->for_init_decls){
-			out_pop();
-			out_comment("unused for init");
-		}
+		out_pop();
+		out_comment("for-init");
 	}
 
 	out_label(lbl_test);
@@ -128,7 +120,7 @@ void gen_stmt_for(stmt *s)
 		out_comment("unused for inc");
 	}
 
-	out_push_lbl(lbl_test, 0, NULL);
+	out_push_lbl(lbl_test, 0);
 	out_jmp();
 
 	out_label(s->lbl_break);

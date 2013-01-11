@@ -1,4 +1,5 @@
 typedef struct intval intval;
+typedef struct stringval stringval;
 
 struct intval
 {
@@ -8,6 +9,13 @@ struct intval
 		VAL_UNSIGNED = 1 << 0,
 		VAL_LONG     = 1 << 1
 	} suffix;
+};
+
+struct stringval
+{
+	char *lbl;
+	const char *str;
+	unsigned len;
 };
 
 enum op_type
