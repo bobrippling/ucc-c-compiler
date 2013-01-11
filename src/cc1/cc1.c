@@ -120,8 +120,6 @@ FILE *cc1_out;                  /* final output */
 enum warning warn_mode = ~(
 		  WARN_VOID_ARITH
 		| WARN_IMPLICIT_INT
-		| WARN_INCOMPLETE_USE
-		| WARN_OPT_POSSIBLE
 		| WARN_LOSS_PRECISION
 		| WARN_SIGN_COMPARE
 		);

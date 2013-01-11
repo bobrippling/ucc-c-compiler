@@ -1,6 +1,8 @@
 update bugs/
 test/ - x.c and x.c.expect (output and assembly)
 
+cc1.h - remove unused warnings
+
 struct initialisation
 	Update all compound lit. tests with structs when parsing complete (and then designated inits when complete)
 
