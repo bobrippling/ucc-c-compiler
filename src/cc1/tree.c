@@ -246,7 +246,7 @@ int op_can_compound(enum op_type o)
 	return 0;
 }
 
-int op_is_relational(enum op_type o)
+int op_is_comparison(enum op_type o)
 {
 	switch(o){
 		case op_eq:
@@ -255,6 +255,18 @@ int op_is_relational(enum op_type o)
 		case op_lt:
 		case op_ge:
 		case op_gt:
+			return 1;
+		default:
+			break;
+	}
+	return 0;
+}
+
+int op_is_relational(enum op_type o)
+{
+	if(op_is_comparison(o))
+		return 1;
+	switch(o){
 		case op_andsc:
 		case op_orsc:
 			return 1;

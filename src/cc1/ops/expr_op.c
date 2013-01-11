@@ -181,7 +181,17 @@ type_ref *op_required_promotion(
 			if(op == op_minus){
 				resolved = type_ref_new_INTPTR_T();
 			}else if(op_is_relational(op)){
+				if(op_is_comparison(op)){
+					char buf[TYPE_REF_STATIC_BUFSIZ];
+
+					fold_type_ref_equal(tlhs, trhs, w,
+							WARN_COMPARE_MISMATCH,
+							"comparison of distinct pointer types lacks a cast (%s vs %s)",
+							type_ref_to_str(tlhs), type_ref_to_str_r(buf, trhs));
+				}
+
 				resolved = type_ref_new_INT();
+
 			}else{
 				DIE_AT(w, "operation between two pointers must be relational or subtraction");
 			}
@@ -376,7 +386,7 @@ static void op_bound(expr *e)
 	}
 }
 
-void op_unsigned_cmp_check(expr *e)
+static void op_unsigned_cmp_check(expr *e)
 {
 	switch(e->op){
 			int lhs;

@@ -31,16 +31,18 @@ void fold_type_ref_equal(
 {
 	enum decl_cmp flags = DECL_CMP_ALLOW_VOID_PTR | DECL_CMP_ALLOW_SIGNED_UNSIGNED;
 
-	/* stronger checks for blocks */
-	if(type_ref_is(a, type_ref_block) || type_ref_is(b, type_ref_block))
+	/* stronger checks for blocks and pointers */
+	if(type_ref_is(a, type_ref_block) || type_ref_is(b, type_ref_block)
+	|| type_ref_is(a, type_ref_ptr)   || type_ref_is(b, type_ref_ptr))
+	{
 		flags |= DECL_CMP_EXACT_MATCH;
+	}
 
 	if(!type_ref_equal(a, b, flags)){
 		int one_struct;
 		va_list l;
 
 		/*cc1_warn_at(w, 0, 0, warn, "%s vs. %s for...", decl_to_str(a), decl_to_str_r(buf, b));*/
-
 
 		one_struct = type_ref_is_s_or_u(a) || type_ref_is_s_or_u(b);
 
