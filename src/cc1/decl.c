@@ -772,8 +772,14 @@ void type_ref_add_type_str(type_ref *r,
 			of = is_type ? NULL : e->tree_type;
 		}
 
-		if(aka && of)
-			BUF_ADD(" (aka '%s')", type_ref_to_str_r_spel_aka(buf, of, NULL, 0));
+		if(aka && of){
+			/* descend to the type */
+			type *t = type_ref_get_type(of);
+
+			BUF_ADD(" (aka '%s')",
+					t ? type_to_str(t)
+					: type_ref_to_str_r_spel_aka(buf, of, NULL, 0));
+		}
 
 	}else{
 		BUF_ADD("%s", type_to_str(rt->bits.type));
