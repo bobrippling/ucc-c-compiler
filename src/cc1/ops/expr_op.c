@@ -3,6 +3,7 @@
 #include "ops.h"
 #include "expr_op.h"
 #include "../out/lbl.h"
+#include "../out/asm.h"
 
 const char *str_expr_op()
 {
@@ -12,11 +13,12 @@ const char *str_expr_op()
 static void operate(
 		intval *lval, intval *rval,
 		enum op_type op,
-		intval *piv, enum constyness *pconst_type,
+		consty *konst,
 		where *where)
 {
 	/* FIXME: casts based on lval.type */
-#define OP(a, b) case a: piv->val = lval->val b rval->val; return
+#define piv (&konst->bits.iv)
+#define OP(a, b) case a: konst->bits.iv.val = lval->val b rval->val; return
 	switch(op){
 		OP(op_multiply,   *);
 		OP(op_eq,         ==);
@@ -43,7 +45,7 @@ static void operate(
 				return;
 			}
 			warn_at(where, 1, "division by zero");
-			*pconst_type = CONST_NO;
+			konst->type = CONST_NO;
 			return;
 		}
 
@@ -63,61 +65,63 @@ static void operate(
 	}
 
 	ICE("unhandled type");
+#undef piv
 }
 
-void operate_optimise(expr *e)
+static void const_offset(consty *r, consty *val, consty *addr,
+		type_ref *addr_type, enum op_type op)
 {
-	/* TODO */
+	unsigned step = type_ref_size(type_ref_next(addr_type), NULL);
+	int change;
 
-	switch(e->op){
-		case op_orsc:
-		case op_andsc:
-			/* check if one side is (&& ? false : true) and short circuit it without needing to check the other side */
-			if(expr_kind(e->lhs, val) || expr_kind(e->rhs, val))
-				POSSIBLE_OPT(e, "short circuit const");
-			break;
+	memcpy_safe(r, addr);
 
-#define VAL(e, x) (expr_kind(e, val) && e->val.iv.val == x)
+	change = val->bits.iv.val * step;
 
-		case op_plus:
-		case op_minus:
-			if(VAL(e->lhs, 0) || (e->rhs ? VAL(e->rhs, 0) : 0))
-				POSSIBLE_OPT(e, "zero being added or subtracted");
-			break;
+	if(op == op_minus)
+		change = -change;
 
-		case op_multiply:
-			if(VAL(e->lhs, 1) || VAL(e->lhs, 0) || (e->rhs ? VAL(e->rhs, 1) || VAL(e->rhs, 0) : 0))
-				POSSIBLE_OPT(e, "1 or 0 being multiplied");
-			else
-		case op_divide:
-			if(VAL(e->rhs, 1))
-				POSSIBLE_OPT(e, "divide by 1");
-			break;
-
-		default:
-			break;
-#undef VAL
-	}
+	/* may already have an offset, hence += */
+	r->offset += change;
 }
 
-void fold_const_expr_op(expr *e, intval *piv, enum constyness *pconst_type)
+void fold_const_expr_op(expr *e, consty *k)
 {
-	intval lhs, rhs;
-	enum constyness l_const, r_const;
+	consty lhs, rhs;
 
-	const_fold(e->lhs, &lhs, &l_const);
+	const_fold(e->lhs, &lhs);
 	if(e->rhs){
-		const_fold(e->rhs, &rhs, &r_const);
+		const_fold(e->rhs, &rhs);
 	}else{
-		r_const = CONST_WITH_VAL;
+		memset(&rhs, 0, sizeof rhs);
+		rhs.type = CONST_VAL;
 	}
 
-	if(l_const == CONST_WITH_VAL && r_const == CONST_WITH_VAL){
-		*pconst_type = CONST_WITH_VAL;
-		operate(&lhs, e->rhs ? &rhs : NULL, e->op, piv, pconst_type, &e->where);
-	}else{
-		*pconst_type = CONST_WITHOUT_VAL;
-		operate_optimise(e);
+	k->type = CONST_NO;
+
+	if(lhs.type == CONST_VAL && rhs.type == CONST_VAL){
+		k->type = CONST_VAL;
+		operate(&lhs.bits.iv, e->rhs ? &rhs.bits.iv : NULL, e->op, k, &e->where);
+
+	}else if((e->op == op_andsc || e->op == op_orsc)
+			&& (is_const(lhs.type) || is_const(rhs.type))){
+
+		/* allow 1 || f() */
+		consty *kside = is_const(lhs.type) ? &lhs : &rhs;
+		int is_true = !!kside->bits.iv.val;
+
+		if(e->op == (is_true ? op_orsc : op_andsc))
+			memcpy(k, kside, sizeof *k);
+
+	}else if(e->op == op_plus || e->op == op_minus){
+		/* allow one CONST_{ADDR,STRK} and one CONST_VAL for an offset const */
+		int lhs_addr = lhs.type == CONST_ADDR || lhs.type == CONST_STRK;
+		int rhs_addr = rhs.type == CONST_ADDR || rhs.type == CONST_STRK;
+
+		/**/if(lhs_addr && rhs.type == CONST_VAL)
+			const_offset(k, &rhs, &lhs, e->lhs->tree_type, e->op);
+		else if(rhs_addr && lhs.type == CONST_VAL)
+			const_offset(k, &lhs, &rhs, e->rhs->tree_type, e->op);
 	}
 }
 
@@ -126,12 +130,8 @@ void expr_promote_int(expr **pe, enum type_primitive to, symtable *stab)
 	expr *const e = *pe;
 	expr *cast;
 
-	if(decl_is_ptr(e->tree_type)){
-		UCC_ASSERT(to == type_intptr_t, "invalid promotion for pointer");
-		return;
-	}
-
-	UCC_ASSERT(!e->tree_type->desc, "invalid type to promote");
+	UCC_ASSERT(!type_ref_is(e->tree_type, type_ref_ptr),
+			"invalid promotion for pointer");
 
 	/* if(type_primitive_size(e->tree_type->type->primitive) >= type_primitive_size(to))
 	 *   return;
@@ -139,7 +139,7 @@ void expr_promote_int(expr **pe, enum type_primitive to, symtable *stab)
 	 * insert down-casts too - the tree_type of the expression is still important
 	 */
 
-  cast = expr_new_cast(decl_new_type(to), 1);
+  cast = expr_new_cast(type_ref_new_type(type_new_primitive(to)), 1);
 
 	cast->expr = e;
 
@@ -148,14 +148,14 @@ void expr_promote_int(expr **pe, enum type_primitive to, symtable *stab)
 	*pe = cast;
 }
 
-decl *op_required_promotion(
+type_ref *op_required_promotion(
 		enum op_type op,
 		expr *lhs, expr *rhs,
 		where *w,
-		decl **plhs, decl **prhs)
+		type_ref **plhs, type_ref **prhs)
 {
-	decl *resolved = NULL;
-	decl *const dlhs = lhs->tree_type, *const drhs = rhs->tree_type;
+	type_ref *resolved = NULL;
+	type_ref *const tlhs = lhs->tree_type, *const trhs = rhs->tree_type;
 
 	*plhs = *prhs = NULL;
 
@@ -170,39 +170,54 @@ decl *op_required_promotion(
 		must be + or -
 #endif
 
-	if(decl_is_void(dlhs) || decl_is_void(drhs))
+	if(type_ref_is_void(tlhs) || type_ref_is_void(trhs))
 		DIE_AT(w, "use of void expression");
 
 	{
-		const int l_ptr = decl_is_ptr(dlhs);
-		const int r_ptr = decl_is_ptr(drhs);
+		const int l_ptr = !!type_ref_is(tlhs, type_ref_ptr);
+		const int r_ptr = !!type_ref_is(trhs, type_ref_ptr);
 
 		if(l_ptr && r_ptr){
 			if(op == op_minus){
-				resolved = decl_new_type(type_ptrdiff_t);
+				resolved = type_ref_new_INTPTR_T();
 			}else if(op_is_relational(op)){
-				resolved = decl_new_type(type_int);
+				if(op_is_comparison(op)){
+					char buf[TYPE_REF_STATIC_BUFSIZ];
+
+					fold_type_ref_equal(tlhs, trhs, w,
+							WARN_COMPARE_MISMATCH,
+							"comparison of distinct pointer types lacks a cast (%s vs %s)",
+							type_ref_to_str(tlhs), type_ref_to_str_r(buf, trhs));
+				}
+
+				resolved = type_ref_new_INT();
+
 			}else{
 				DIE_AT(w, "operation between two pointers must be relational or subtraction");
 			}
 
 			goto fin;
 
-		}else if(l_ptr){
+		}else if(l_ptr || r_ptr){
 			/* + or - */
-			if(op != op_plus && op != op_minus)
-				DIE_AT(w, "operation between pointer and integer must be + or -");
+			switch(op){
+				default:
+					DIE_AT(w, "operation between pointer and integer must be + or -");
 
-			resolved = decl_copy(l_ptr ? dlhs : drhs);
+				case op_minus:
+					if(!l_ptr)
+						DIE_AT(w, "subtraction of pointer from integer");
+
+				case op_plus:
+					break;
+			}
+
+			resolved = l_ptr ? tlhs : trhs;
 
 			/* FIXME: promote to unsigned */
-			*(l_ptr ? prhs : plhs) = decl_new_type(op == op_plus ? type_intptr_t : type_ptrdiff_t);
+			*(l_ptr ? prhs : plhs) = type_ref_new_INTPTR_T();
 
 			goto fin;
-
-		}else if(r_ptr){
-			DIE_AT(w, "invalid %s between integer and pointer", op_to_str(op));
-
 		}
 	}
 
@@ -228,64 +243,179 @@ decl *op_required_promotion(
 #endif
 
 	{
-		decl *dlarger = NULL;
+		type_ref *tlarger = NULL;
 
 		if(op == op_shiftl || op == op_shiftr){
 			/* fine with any parameter sizes - don't need to match. resolves to lhs */
-			dlarger = dlhs;
-
-		}else if(dlhs->type->primitive != drhs->type->primitive){
-			const int l_larger = decl_size(dlhs) > decl_size(drhs);
-			char bufa[DECL_STATIC_BUFSIZ], bufb[DECL_STATIC_BUFSIZ];
-
-			/* TODO: needed? */
-			fold_decl_equal(dlhs, drhs,
-					w, WARN_COMPARE_MISMATCH,
-					"mismatching types in %s (%s and %s)",
-					op_to_str(op),
-					decl_to_str_r(bufa, dlhs),
-					decl_to_str_r(bufb, drhs));
-
-			*(l_larger ? prhs : plhs) = (l_larger ? dlhs : drhs);
-
-			dlarger = l_larger ? dlhs : drhs;
+			tlarger = tlhs;
 
 		}else{
-			/* default to either */
-			dlarger = dlhs;
+			const int l_unsigned = !type_ref_is_signed(tlhs),
+			          r_unsigned = !type_ref_is_signed(trhs);
+
+			const int l_sz = type_ref_size(tlhs, &lhs->where),
+			          r_sz = type_ref_size(trhs, &rhs->where);
+
+			if(l_unsigned == r_unsigned){
+				if(l_sz != r_sz){
+					const int l_larger = l_sz > r_sz;
+					char bufa[TYPE_REF_STATIC_BUFSIZ], bufb[TYPE_REF_STATIC_BUFSIZ];
+
+					/* TODO: needed? */
+					fold_type_ref_equal(tlhs, trhs,
+							w, WARN_COMPARE_MISMATCH,
+							"mismatching types in %s (%s and %s)",
+							op_to_str(op),
+							type_ref_to_str_r(bufa, tlhs),
+							type_ref_to_str_r(bufb, trhs));
+
+					*(l_larger ? prhs : plhs) = (l_larger ? tlhs : trhs);
+
+					tlarger = l_larger ? tlhs : trhs;
+
+				}else{
+					/* default to either */
+					tlarger = tlhs;
+				}
+
+			}else if(l_unsigned ? l_sz >= r_sz : r_sz >= l_sz){
+				if(l_unsigned)
+					tlarger = *prhs = tlhs;
+				else
+					tlarger = *plhs = trhs;
+
+			}else if(l_unsigned ? r_sz > l_sz : l_sz > r_sz){
+				/* can the signed type represent all of the unsigned type's values?
+				 * this is true if signed_type > unsigned_type
+				 * - convert unsigned to signed type */
+
+				if(l_unsigned)
+					tlarger = *plhs = trhs;
+				else
+					tlarger = *prhs = tlhs;
+
+			}else{
+				/* else convert both to (unsigned)signed_type */
+				type_ref *signed_t = l_unsigned ? trhs : tlhs;
+
+				tlarger = *plhs = *prhs = type_ref_new_cast_signed(signed_t, 0);
+			}
 		}
 
 		/* if we have a _comparison_ (e.g. between enums), convert to int */
 		resolved = op_is_relational(op)
-			? decl_new_type(type_int)
-			: decl_copy(dlarger);
+			? type_ref_new_INT()
+			: tlarger;
 	}
 
 fin:
 	UCC_ASSERT(resolved, "no decl from type promotion");
 
-	UCC_ASSERT(!!*plhs + !!*prhs < 2, "can't cast both expressions");
-
-	return resolved;
+	return resolved; /* XXX: memleak in some cases */
 }
 
-decl *op_promote_types(
+type_ref *op_promote_types(
 		enum op_type op,
 		const char *desc,
 		expr **plhs, expr **prhs,
 		where *w, symtable *stab)
 {
-	decl *dlhs, *drhs;
-	decl *resolved;
+	type_ref *tlhs, *trhs;
+	type_ref *resolved;
 
-	resolved = op_required_promotion(op, *plhs, *prhs, w, &dlhs, &drhs);
+	resolved = op_required_promotion(op, *plhs, *prhs, w, &tlhs, &trhs);
 
-	if(dlhs)
-		fold_insert_casts(dlhs, plhs, stab, w, desc);
-	else if(drhs)
-		fold_insert_casts(drhs, prhs, stab, w, desc);
+	if(tlhs)
+		fold_insert_casts(tlhs, plhs, stab, w, desc);
+
+	if(trhs)
+		fold_insert_casts(trhs, prhs, stab, w, desc);
 
 	return resolved;
+}
+
+static expr *expr_is_array_cast(expr *e)
+{
+	expr *array = e;
+
+	if(expr_kind(array, cast))
+		array = array->expr;
+
+	if(type_ref_is(array->tree_type, type_ref_array))
+		return array;
+
+	return NULL;
+}
+
+static void op_bound(expr *e)
+{
+	/* this could be in expr_deref, but it catches more in expr_op */
+	expr *array;
+	int lhs = 0;
+
+	/* check bounds */
+	if(e->op != op_plus && e->op != op_minus)
+		return;
+
+	array = expr_is_array_cast(e->lhs);
+	if(array)
+		lhs = 1;
+	else
+		array = expr_is_array_cast(e->rhs);
+
+	if(array){
+		consty k;
+
+		const_fold(lhs ? e->rhs : e->lhs, &k);
+
+		if(k.type == CONST_VAL){
+#define idx k.bits.iv
+			const long sz = type_ref_array_len(array->tree_type);
+
+			if(e->op == op_minus)
+				idx.val = -idx.val;
+
+			/* index is allowed to be one past the end, i.e. idx.val == sz */
+			if(idx.val < 0 || idx.val > sz)
+				WARN_AT(&e->where,
+						"index %ld out of bounds of array, size %ld",
+						idx.val, sz);
+			/* TODO: "note: array here" */
+#undef idx
+		}
+	}
+}
+
+static void op_unsigned_cmp_check(expr *e)
+{
+	switch(e->op){
+			int lhs;
+		/*case op_gt:*/
+		case op_ge:
+		case op_lt:
+		case op_le:
+			if((lhs = !type_ref_is_signed(e->lhs->tree_type))
+			||        !type_ref_is_signed(e->rhs->tree_type))
+			{
+				consty k;
+
+				const_fold(lhs ? e->rhs : e->lhs, &k);
+
+				if(k.type == CONST_VAL){
+					const int v = k.bits.iv.val;
+
+					if(v <= 0){
+						WARN_AT(&e->where,
+								"comparison of unsigned expression %s %d is always %s",
+								op_to_str(e->op), v,
+								e->op == op_lt || e->op == op_le ? "false" : "true");
+					}
+				}
+			}
+
+		default:
+			break;
+	}
 }
 
 void fold_expr_op(expr *e, symtable *stab)
@@ -293,37 +423,41 @@ void fold_expr_op(expr *e, symtable *stab)
 	UCC_ASSERT(e->op != op_unknown, "unknown op in expression at %s",
 			where_str(&e->where));
 
-	fold_expr(e->lhs, stab);
+	FOLD_EXPR(e->lhs, stab);
 	fold_disallow_st_un(e->lhs, "op-lhs");
 
 	if(e->rhs){
-		fold_expr(e->rhs, stab);
+		FOLD_EXPR(e->rhs, stab);
 		fold_disallow_st_un(e->rhs, "op-rhs");
 
 		e->tree_type = op_promote_types(e->op, op_to_str(e->op),
 				&e->lhs, &e->rhs, &e->where, stab);
+
+		op_bound(e);
+		op_unsigned_cmp_check(e);
+
 	}else{
 		/* (except unary-not) can only have operations on integers,
 		 * promote to signed int
 		 */
 
 		if(e->op == op_not){
-			e->tree_type = decl_new_int();
+			e->tree_type = type_ref_new_INT();
 
 		}else{
-			decl *d_unary = e->lhs->tree_type;
+			type_ref *t_unary = e->lhs->tree_type;
 
-			if(!decl_is_integral(d_unary) && !decl_is_floating(d_unary))
-				DIE_AT(&e->where, "type '%s' to unary %s",
-						decl_to_str(d_unary), op_to_str(e->op));
+			if(!type_ref_is_integral(t_unary) && !type_ref_is_floating(t_unary))
+				DIE_AT(&e->where, "unary %s applied to type '%s'",
+						op_to_str(e->op), type_ref_to_str(t_unary));
 
 			/* extend to int if smaller */
-			if(decl_size(d_unary) < type_primitive_size(type_int)){
+			if(type_ref_size(t_unary, &e->where) < type_primitive_size(type_int)){
 				expr_promote_int(&e->lhs, type_int, stab);
-				d_unary = e->lhs->tree_type;
+				t_unary = e->lhs->tree_type;
 			}
 
-			e->tree_type = decl_copy(d_unary);
+			e->tree_type = t_unary;
 		}
 	}
 }
@@ -378,6 +512,9 @@ void gen_expr_op(expr *e, symtable *tab)
 				gen_expr(e->rhs, tab);
 
 				out_op(e->op);
+				out_change_type(e->tree_type);
+				/* make sure we get the pointer, for example 2+(int *)p
+				 * or the int, e.g. (int *)a && (int *)b -> int */
 			}else{
 				out_op_unary(e->op);
 			}

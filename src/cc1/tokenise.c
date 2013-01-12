@@ -52,6 +52,10 @@ struct statement
 	KEYWORD(while),
 	KEYWORD(for),
 
+	KEYWORD(asm),
+	{ "__asm",    token_asm },
+	{ "__asm__",  token_asm },
+
 	KEYWORD(void),
 	KEYWORD(char),
 	KEYWORD(int),
@@ -97,6 +101,7 @@ static FILE *infile;
 char *current_fname;
 int buffereof = 0;
 int current_fname_used;
+int parse_finished = 0;
 
 static char *buffer, *bufferpos;
 static int ungetch = EOF;
@@ -353,6 +358,8 @@ void nexttoken()
 	int c;
 
 	if(buffereof){
+		/* delay this until we are asked for token_eof */
+		parse_finished = 1;
 		curtok = token_eof;
 		return;
 	}

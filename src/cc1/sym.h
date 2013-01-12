@@ -13,7 +13,7 @@ struct sym
 	} type;
 
 	decl *decl;
-	decl *owning_func; /* only for sym_arg */
+	type_ref *owning_func; /* only for sym_arg */
 
 	/* static analysis */
 	int nreads, nwrites;

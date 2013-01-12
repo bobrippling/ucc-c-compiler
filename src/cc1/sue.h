@@ -22,17 +22,18 @@ struct struct_union_enum_st
 
 	char *spel; /* "<anon ...>" if anon */
 	int anon : 1;
-	int align;
+	int align, size;
 
 	sue_member **members;
 };
 
+#define sue_str_type(t) (t == type_struct \
+                        ? "struct"        \
+                        : t == type_union \
+                        ? "union"         \
+                        : "enum")
 
-#define sue_str(x)  ((x)->primitive == type_struct \
-																	? "struct"                     \
-																	: (x)->primitive == type_union \
-																	? "union"                      \
-																	: "enum")
+#define sue_str(x) sue_str_type((x)->primitive)
 
 /* this is fine - empty structs aren't allowed */
 #define sue_incomplete(x) (!(x)->members)
@@ -52,7 +53,7 @@ int  enum_nentries(struct_union_enum_st *);
 void enum_member_search(enum_member **, struct_union_enum_st **, symtable *, const char *spel);
 
 /* struct/union specific */
-int sue_size(struct_union_enum_st *);
+int sue_size(struct_union_enum_st *, const where *w);
 
 decl *struct_union_member_find(struct_union_enum_st *, const char *spel, where *die_where);
 

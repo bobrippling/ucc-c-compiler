@@ -4,70 +4,95 @@
 #include "../out/asm.h"
 #include "../sue.h"
 #include "expr_addr.h"
-#include "../data_store.h"
 
 const char *str_expr_identifier()
 {
 	return "identifier";
 }
 
-void fold_const_expr_identifier(expr *e, intval *piv, enum constyness *pconst_type)
+void fold_const_expr_identifier(expr *e, consty *k)
 {
-	(void)piv;
-
 	/*
 	 * if we are an array identifier, we are constant:
 	 * int x[];
 	 */
+	sym *sym;
+
+	k->type = CONST_NO;
 
 	/* may not have e->sym if we're the struct-member-identifier */
+	if((sym = e->bits.ident.sym) && sym->decl){
+		decl *const d = sym->decl;
 
-	*pconst_type = e->sym && e->sym->decl && decl_is_array(e->sym->decl) ? CONST_WITHOUT_VAL : CONST_NO;
+		/* only a constant if global/static/extern */
+		if(sym->type == sym_global || decl_store_static_or_extern(d->store)){
+			k->type = CONST_FROM_ARRAY(d);
+
+			/*
+			 * don't use e->spel
+			 * static int i;
+			 * int x;
+			 * x = i; // e->spel is "i". sym->decl->spel is "func_name.static_i"
+			 */
+			k->bits.addr.bits.lbl = decl_asm_spel(sym->decl);
+
+			k->bits.addr.is_lbl = 1;
+			k->offset = 0;
+		}
+	}
 }
 
 void fold_expr_identifier(expr *e, symtable *stab)
 {
-	if(!e->sym){
-		if(!strcmp(e->spel, "__func__")){
-			char *sp;
+	char *sp = e->bits.ident.spel;
+	sym *sym = e->bits.ident.sym;
+
+	if(sp && !sym)
+		e->bits.ident.sym = sym = symtab_search(stab, sp);
+
+	if(!sym){
+
+		if(!strcmp(sp, "__func__")){
+			char *func;
 			int len;
 
 			/* mutate into a string literal */
-			expr_mutate_wrapper(e, addr);
-
 			if(!curdecl_func){
 				WARN_AT(&e->where, "__func__ is not defined outside of functions");
-				sp = "";
+				func = "";
 				len = 0;
 			}else{
-				sp = curdecl_func->spel;
+				func = curdecl_func->spel;
 				len = strlen(curdecl_func->spel);
 			}
 
-			expr_mutate_addr_data(e, sp, len + 1);
+			expr_mutate_str(e, func, len + 1);
 			/* +1 - take the null byte */
 
-			fold_expr(e, stab);
+			FOLD_EXPR(e, stab);
 		}else{
 			/* check for an enum */
 			struct_union_enum_st *sue;
 			enum_member *m;
 
-			enum_member_search(&m, &sue, stab, e->spel);
+			enum_member_search(&m, &sue, stab, sp);
 
 			if(!m)
-				DIE_AT(&e->where, "undeclared identifier \"%s\"", e->spel);
+				DIE_AT(&e->where, "undeclared identifier \"%s\"", sp);
 
 			expr_mutate_wrapper(e, val);
 
-			e->val = m->val->val;
-			fold_expr(e, stab);
+			e->bits.iv = m->val->bits.iv;
+			/*FOLD_EXPR(e, stab);*/
 
-			e->tree_type->type->primitive = type_enum;
-			e->tree_type->type->sue = sue;
+			{
+				type *t;
+				e->tree_type = type_ref_new_type(t = type_new_primitive(type_enum));
+				t->sue = sue;
+			}
 		}
 	}else{
-		e->tree_type = decl_copy(e->sym->decl);
+		e->tree_type = sym->decl->ref;
 
 #if 0
 Except when it is the operand of the sizeof operator or the unary
@@ -77,68 +102,57 @@ with type `pointer to type` that points to the initial element of the
 array object and is not an lvalue.
 #endif
 
-		if(e->sym->type == sym_local
-		&& !type_store_static_or_extern(e->sym->decl->type->store)
-		&& !decl_has_array(e->sym->decl)
-		&& !decl_is_struct_or_union_possible_ptr(e->sym->decl)
-		&& !decl_is_func(e->sym->decl)
-		&& e->sym->nwrites == 0
-		&& !e->sym->decl->init)
+		if(sym->type == sym_local
+		&& !decl_store_static_or_extern(sym->decl->store)
+		&& !DECL_IS_ARRAY(sym->decl)
+		&& !DECL_IS_S_OR_U(sym->decl)
+		&& !DECL_IS_FUNC(sym->decl)
+		&& sym->nwrites == 0
+		&& !sym->decl->init)
 		{
-			cc1_warn_at(&e->where, 0, 1, WARN_READ_BEFORE_WRITE, "\"%s\" uninitialised on read", e->spel);
-			e->sym->nwrites = 1; /* silence future warnings */
+			cc1_warn_at(&e->where, 0, 1, WARN_READ_BEFORE_WRITE, "\"%s\" uninitialised on read", sp);
+			sym->nwrites = 1; /* silence future warnings */
 		}
 
 		/* this is cancelled by expr_assign in the case we fold for an assignment to us */
-		e->sym->nreads++;
+		sym->nreads++;
 	}
 }
 
 void gen_expr_str_identifier(expr *e, symtable *stab)
 {
 	(void)stab;
-	idt_printf("identifier: \"%s\" (sym %p)\n", e->spel, e->sym);
+	idt_printf("identifier: \"%s\" (sym %p)\n", e->bits.ident.spel, e->bits.ident.sym);
 }
 
 void gen_expr_identifier(expr *e, symtable *stab)
 {
+	sym *sym = e->bits.ident.sym;
 	(void)stab;
 
-	if(decl_is_func(e->sym->decl))
-		out_push_sym(e->sym);
+	if(DECL_IS_FUNC(sym->decl))
+		out_push_sym(sym);
 	else
-		out_push_sym_val(e->sym);
-}
-
-void static_expr_identifier_store(expr *e)
-{
-	asm_declare_partial("%s", e->sym->decl->spel);
-	/*
-	 * don't use e->spel
-	 * static int i;
-	 * int x;
-	 * x = i; // e->spel is "i". e->sym->decl->spel is "func_name.static_i"
-	 */
+		out_push_sym_val(sym);
 }
 
 void gen_expr_identifier_lea(expr *e, symtable *stab)
 {
 	(void)stab;
 
-	out_push_sym(e->sym);
+	out_push_sym(e->bits.ident.sym);
 }
 
 void mutate_expr_identifier(expr *e)
 {
 	e->f_lea         = gen_expr_identifier_lea;
-	e->f_static_addr = static_expr_identifier_store;
 	e->f_const_fold  = fold_const_expr_identifier;
 }
 
 expr *expr_new_identifier(char *sp)
 {
 	expr *e = expr_new_wrapper(identifier);
-	e->spel = sp;
+	e->bits.ident.spel = sp;
 	return e;
 }
 

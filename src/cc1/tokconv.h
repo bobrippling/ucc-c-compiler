@@ -5,7 +5,7 @@ enum op_type        curtok_to_op(void);
 
 enum type_primitive curtok_to_type_primitive(void);
 enum type_qualifier curtok_to_type_qualifier(void);
-enum type_storage   curtok_to_type_storage(void);
+enum decl_storage   curtok_to_decl_storage(void);
 
 void eat( enum token t, const char *fnam, int line);
 void eat2(enum token t, const char *fnam, int line, int die);
@@ -17,7 +17,7 @@ int accept(enum token t);
 
 int curtok_is_type_primitive(void);
 int curtok_is_type_qual(void);
-int curtok_is_type_store(void);
+int curtok_is_decl_store(void);
 
 int curtok_in_list(va_list l);
 

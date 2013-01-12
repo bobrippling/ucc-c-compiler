@@ -22,12 +22,12 @@ decl_attr *parse_attr_format()
 
 	EAT(token_comma);
 
-	da->bits.format.fmt_arg = currentval.val;
+	da->bits.format.fmt_arg = currentval.val - 1;
 	EAT(token_integer);
 
 	EAT(token_comma);
 
-	da->bits.format.var_arg = currentval.val;
+	da->bits.format.var_arg = currentval.val - 1;
 	EAT(token_integer);
 
 	EAT(token_close_paren);
@@ -66,6 +66,69 @@ decl_attr *parse_attr_section()
 	return da;
 }
 
+decl_attr *parse_attr_nonnull()
+{
+	/* __attribute__((nonnull(1, 2, 3, 4...)))
+	 * or
+	 * __attribute__((nonnull)) - all args
+	 */
+	decl_attr *da = decl_attr_new(attr_nonnull);
+	unsigned long l = 0;
+	int had_error = 0;
+
+	if(accept(token_open_paren)){
+		while(curtok != token_close_paren){
+			if(curtok == token_integer){
+				int n = currentval.val;
+				if(n <= 0){
+					/* shouldn't ever be negative */
+					WARN_AT(NULL, "%s nonnull argument ignored", n < 0 ? "negative" : "zero");
+					had_error = 1;
+				}else{
+					/* implicitly disallow functions with >32 args */
+					/* n-1, since we convert from 1-base to 0-base */
+					l |= 1 << (n - 1);
+				}
+			}else{
+				EAT(token_integer); /* raise error */
+			}
+			EAT(curtok);
+
+			if(accept(token_comma))
+				continue;
+			break;
+		}
+		EAT(token_close_paren);
+	}
+
+	/* if we had an error, go with what we've got, (even if it's nothing), to avoid spurious warnings */
+	da->bits.nonnull_args = (l || had_error) ? l : ~0UL; /* all if 0 */
+
+	return da;
+}
+
+decl_attr *parse_attr_sentinel()
+{
+	decl_attr *da = decl_attr_new(attr_sentinel);
+
+	if(accept(token_open_paren)){
+		int u;
+
+		EAT(token_integer);
+
+		u = currentval.val;
+
+		if(u < 0)
+			WARN_AT(NULL, "negative sentinel argument ignored");
+		else
+			da->bits.sentinel = u;
+
+		EAT(token_close_paren);
+	}
+
+	return da;
+}
+
 #define EMPTY(t)                      \
 decl_attr *parse_ ## t()              \
 {                                     \
@@ -77,34 +140,47 @@ EMPTY(attr_warn_unused)
 EMPTY(attr_enum_bitmask)
 EMPTY(attr_noreturn)
 EMPTY(attr_noderef)
+EMPTY(attr_packed)
+
+#undef EMPTY
 
 #define CALL_CONV(n)                            \
-decl_attr *parse_conv_ ## n()                   \
+decl_attr *parse_attr_## n()                    \
 {                                               \
 	decl_attr *a = decl_attr_new(attr_call_conv); \
-	a->bits.conv = conv_ ## n;                    \
+	a->bits.conv = n;                             \
 	return a;                                     \
 }
 
-CALL_CONV(cdecl)
-CALL_CONV(stdcall)
-CALL_CONV(fastcall)
+CALL_CONV(conv_cdecl)
+CALL_CONV(conv_stdcall)
+CALL_CONV(conv_fastcall)
 
 static struct
 {
 	const char *ident;
 	decl_attr *(*parser)(void);
 } attrs[] = {
-	{ "format",         parse_attr_format },
-	{ "unused",         parse_attr_unused },
-	{ "warn_unused",    parse_attr_warn_unused },
-	{ "section",        parse_attr_section },
-	{ "bitmask",        parse_attr_enum_bitmask },
-	{ "noreturn",       parse_attr_noreturn },
-	{ "noderef",        parse_attr_noderef },
-	{ "cdecl",          parse_conv_cdecl },
-	{ "stdcall",        parse_conv_stdcall },
-	{ "fastcall",       parse_conv_fastcall },
+#define ATTR(x) { #x, parse_attr_ ## x }
+	ATTR(format),
+	ATTR(unused),
+	ATTR(warn_unused),
+	ATTR(section),
+	ATTR(enum_bitmask),
+	ATTR(noreturn),
+	ATTR(noderef),
+	ATTR(nonnull),
+	ATTR(packed),
+	ATTR(sentinel),
+
+	ATTR(conv_cdecl),
+	ATTR(conv_stdcall),
+	ATTR(conv_fastcall),
+#undef ATTR
+
+	/* compat */
+	{ "warn_unused_result", parse_attr_warn_unused },
+
 	{ NULL, NULL },
 };
 #define MAX_FMT_LEN 16

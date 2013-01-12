@@ -7,6 +7,10 @@ decl_init *parse_initialisation(void)
 
 		di = decl_init_new(decl_init_brace);
 
+#ifdef DEBUG_DECL_INIT
+		fprintf(stderr, "new brace %p\n", (void *)di);
+#endif
+
 		while(curtok != token_close_block){
 			decl_init *sub;
 #ifdef DINIT_WITH_STRUCT
@@ -50,6 +54,10 @@ decl_init *parse_initialisation(void)
 	}else{
 		di = decl_init_new(decl_init_scalar);
 		di->bits.expr = parse_expr_no_comma();
+
+#ifdef DEBUG_DECL_INIT
+		fprintf(stderr, "new scalar %p\n", (void *)di);
+#endif
 	}
 
 	return di;

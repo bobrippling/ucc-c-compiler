@@ -16,9 +16,9 @@ void impl_normalise(void);
 void impl_jmp(void);
 void impl_jcond(int true, const char *lbl);
 
-void impl_cast(decl *from, decl *to);
+void impl_cast(type_ref *from, type_ref *to);
 
-void impl_call(const int nargs, decl *d_ret, decl *d_func);
+void impl_call(const int nargs, type_ref *d_ret, type_ref *d_func);
 void impl_call_fin(int nargs);
 
 void impl_lbl(const char *);
@@ -27,12 +27,13 @@ int  impl_alloc_stack(int sz);
 
 void impl_func_prologue(decl *);
 void impl_func_epilogue(decl *);
-void impl_pop_func_ret(decl *);
+void impl_pop_func_ret(type_ref *);
 int  impl_arg_offset(sym *);
 
 void impl_undefined(void);
 int impl_frame_ptr_to_reg(int nframes);
 
 #define N_REGS 4
+#define N_CALL_REGS 6
 
 #endif

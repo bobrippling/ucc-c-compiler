@@ -115,8 +115,6 @@ Code Generation (gen_asm.c / gen_str.c)
 
 Code generation walks the tree, outputting a visual representation (gen_str) or
 the x64 assembly (gen_asm).
-gen_asm is highly suboptimal, see the asm_backend_recode/decl_init branches for
-vast improvements.
 
 This walks the statement and expression trees, generating code for each.
 For example,
@@ -213,7 +211,7 @@ The expression data structre is pretty easy, an expression has a left and a righ
 
 The complicated bit is the type/decl structure.
 
-I shall explain this when I get around to it.
+TODO
 
 e.g.
 	const int ***x;

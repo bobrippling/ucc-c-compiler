@@ -12,16 +12,16 @@ const char *str_stmt_goto()
 void fold_stmt_goto(stmt *s)
 {
 	if(s->expr->expr_computed_goto){
-		fold_expr(s->expr, s->symtab);
+		FOLD_EXPR(s->expr, s->symtab);
 	}else{
-		char *save;
+		char *save, **psp;
 
 		if(!expr_kind(s->expr, identifier))
 			DIE_AT(&s->expr->where, "not a label identifier");
 
-		save = s->expr->spel;
+		save = *(psp = &s->expr->bits.ident.spel);
 		/* else let the assembler check for link errors */
-		s->expr->spel = out_label_goto(s->expr->spel);
+		*psp = out_label_goto(save);
 		free(save);
 	}
 }
@@ -31,7 +31,7 @@ void gen_stmt_goto(stmt *s)
 	if(s->expr->expr_computed_goto)
 		gen_expr(s->expr, s->symtab);
 	else
-		out_push_lbl(s->expr->spel, 0, NULL);
+		out_push_lbl(s->expr->bits.ident.spel, 0);
 
 	out_jmp();
 }

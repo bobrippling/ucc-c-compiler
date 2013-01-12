@@ -91,7 +91,7 @@ sym *symtab_has(symtable *tab, decl *d)
 
 sym *symtab_add(symtable *tab, decl *d, enum sym_type t, int with_sym, int prepend)
 {
-	const int descend = d->type->store == store_extern;
+	const int descend = (d->store & STORE_MASK_STORE) == store_extern;
 	sym *new;
 	char buf[WHERE_BUF_SIZ + 4];
 
@@ -124,7 +124,7 @@ fine:
 	}
 
 	if(with_sym)
-		new = sym_new(d, t);
+		new = sym_new(d, t), d->sym = new;
 	else
 		new = NULL;
 
@@ -146,7 +146,7 @@ void symtab_add_args(symtable *stab, funcargs *fargs, const char *sp, decl *d_fu
 				DIE_AT(&fargs->where, "function \"%s\" has unnamed arguments", sp);
 			}else{
 				sym *s = SYMTAB_ADD(stab, fargs->arglist[i], sym_arg);
-				s->owning_func = d_func;
+				s->owning_func = d_func->ref;
 			}
 		}
 	}

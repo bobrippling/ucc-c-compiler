@@ -31,7 +31,8 @@ my %vars = (
 	's'         => $f,
 	't'         => $target,
 	'ucc'       => $ucc,
-	'check'     => './check.pl'
+	'check'     => './check.pl',
+	'asmcheck'  => './asmcheck.pl'
 );
 
 open F, '<', $f or die2 "$f: $!";
