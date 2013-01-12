@@ -1,11 +1,13 @@
-void f();
+void f(int);
 
 int main()
 {
-	void (*p)() = f;
+	void (*p)(int) = f;
 
 	printf("hai there");
 	for(int i = 0; i < 3; i++)
-		f();
-	p();
+		p(i);
+	f(0);
+
+	return 42;
 }

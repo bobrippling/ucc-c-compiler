@@ -1,13 +1,16 @@
 .globl printf
 
 caption:
-.byte 'h', 'e', 'l', 'l', 'o', 0
+.byte 'c', 'a', 'p', 't', 'i', 'o', 'n', 0
 
 printf:
+	movl 4(%esp), %eax
+
 	pushl $0
 	pushl $caption
-	pushl %edi
+	pushl %eax
 	pushl $0
+
+	// WINAPI, aka stdcall
 	calll _MessageBoxA
-	//addl $16, %esp
 	ret
