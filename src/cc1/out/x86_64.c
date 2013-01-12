@@ -130,7 +130,8 @@ static const char *vstack_str_r_ptr(char buf[VSTACK_STR_SZ], struct vstack *vs, 
 		{
 			const int pic = fopt_mode & FOPT_PIC && vs->bits.lbl.pic;
 
-			SNPRINTF(buf, VSTACK_STR_SZ, "%s%s",
+			SNPRINTF(buf, VSTACK_STR_SZ, "%s%s%s",
+					ptr ? "$" : "",
 					vs->bits.lbl.str,
 					pic ? "(%rip)" : "");
 			break;
@@ -965,9 +966,24 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 		vpop();
 	}
 
+	/* save all registers before pushing remaining args */
+	{
+		int j = 0;
+#define vcond(x) (&vstack[x] < vtop)
+
+		if(vcond(j))
+			out_comment("pre-call reg-save");
+		for(; vcond(j); j++)
+			/* TODO: v_to_mem (__asm__ branch) */
+			if(vstack[j].type == REG || vstack[j].type == FLAG)
+				v_save_reg(&vstack[j]);
+	}
+
+
 	/* push remaining args onto the stack, left to right */
 	ncleanup = nargs - i;
 	vrev(ncleanup); /* reverse for l2r */
+
 	for(; i < nargs; i++){
 		INC_NFLOATS(vtop->t);
 
@@ -975,19 +991,22 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 		if(vtop->t && type_ref_size(vtop->t, NULL) != platform_word_size())
 			out_cast(vtop->t, type_ref_new_VOID_PTR());
 
+		switch(vtop->type){
+			case STACK:
+			case STACK_SAVE:
+			case FLAG:
+			case LBL:
+				/* can't push the vstack_str repr. of this */
+				v_to_reg(vtop);
+
+			case CONST:
+			case REG:
+				break;
+		}
+
 		out_asm("pushq %s", vstack_str(vtop));
 		vpop();
 	}
-
-	/* save all registers */
-#define vcond (&vstack[i] < vtop)
-	i = 0;
-	if(vcond)
-		out_comment("pre-call reg-save");
-	for(; vcond; i++)
-		/* TODO: v_to_mem (__asm__ branch) */
-		if(vstack[i].type == REG || vstack[i].type == FLAG)
-			v_save_reg(&vstack[i]);
 
 	{
 		funcargs *args = type_ref_funcargs(r_func);
