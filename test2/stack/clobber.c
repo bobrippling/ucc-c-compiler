@@ -1,3 +1,6 @@
+// RUN: %ucc %s -o %t
+// RUN: [ `%t | grep -c 753` -eq 3 ]
+
 wn(int n)
 {
 	int d = n / 10;

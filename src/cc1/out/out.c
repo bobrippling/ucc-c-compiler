@@ -372,8 +372,8 @@ void out_push_sym(sym *s)
 				goto label;
 
 			vtop->type = STACK;
-			/* since the stack grows upwards, we set the offset to the end of the sym */
-			vtop->bits.off_from_bp = -s->offset - platform_word_size() + calc_ptr_step(vtop->t);
+			/* sym offsetting takes into account the stack growth direction */
+			vtop->bits.off_from_bp = -s->offset;
 			break;
 
 		case sym_arg:

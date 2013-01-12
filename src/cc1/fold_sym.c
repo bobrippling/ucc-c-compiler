@@ -80,7 +80,7 @@ int symtab_fold(symtable *tab, int current)
 						int siz = decl_size(s->decl, &s->decl->where);
 						int align = type_ref_align(s->decl->ref, &s->decl->where);
 
-						/* an array and structs start at the bottom */
+						/* packing takes care of everything */
 						pack_next(&current, NULL, siz, align);
 
 						s->offset = current;
