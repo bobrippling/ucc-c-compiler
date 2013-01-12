@@ -147,7 +147,7 @@ static const char *vstack_str_r_ptr(char buf[VSTACK_STR_SZ], struct vstack *vs, 
 		case STACK_SAVE:
 		{
 			int n = vs->bits.off_from_bp;
-			SNPRINTF(buf, VSTACK_STR_SZ, "%s0x%x(%%rbp)", n < 0 ? "-" : "", abs(n));
+			SNPRINTF(buf, VSTACK_STR_SZ, "%s%d(%%rbp)", n < 0 ? "-" : "", abs(n));
 			break;
 		}
 	}
@@ -182,7 +182,7 @@ int impl_alloc_stack(int sz)
 
 	if(sz){
 		const int extra = sz % word_size ? word_size - sz % word_size : 0;
-		out_asm("subq $0x%x, %%rsp", sz += extra);
+		out_asm("subq $%d, %%rsp", sz += extra);
 	}
 
 	return stack_sz + sz;
@@ -230,7 +230,7 @@ void impl_func_prologue(int stack_res, int nargs, int variadic)
 #else
 			stack_res += nargs * platform_word_size();
 
-			out_asm("mov%c %%%s, -0x%x(%%rbp)",
+			out_asm("mov%c %%%s, -%d(%%rbp)",
 					asm_type_ch(NULL),
 					call_reg_str(arg_idx, NULL),
 					platform_word_size() * (arg_idx + 1));
@@ -887,7 +887,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 	}
 
 	if(ncleanup)
-		out_asm("addq $0x%x, %%rsp", ncleanup * platform_word_size());
+		out_asm("addq $%d, %%rsp", ncleanup * platform_word_size());
 
 	/* return type */
 	vtop_clear(r_ret);
