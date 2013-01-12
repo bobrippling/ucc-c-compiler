@@ -839,6 +839,16 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 	int i, ncleanup;
 	int nfloats = 0;
 
+	/* pre-scan of arguments - eliminate flags
+	 * (should only be one,
+	 * since we can only have one flag at a time)
+	 */
+	for(i = 0; i < MIN(nargs, N_CALL_REGS); i++)
+		if(vtop->type == FLAG){
+			v_to_reg(vtop);
+			break;
+		}
+
 	for(i = 0; i < MIN(nargs, N_CALL_REGS); i++){
 		int ri;
 
