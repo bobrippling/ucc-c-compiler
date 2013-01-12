@@ -1,7 +1,3 @@
-bugs:
-	missing tail init - array/brace.c
-	struct/nested_array_of_arrays.c
-
 designated init + zero for the rest:
 	int x[] = { [3] = 5 };
 	struct { int x, y, z; } q = { .y = 2, 3 };

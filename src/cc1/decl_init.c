@@ -16,7 +16,7 @@
 
 #include "decl_init.h"
 
-#if 0
+#ifdef DEBUG_DECL_INIT
 static int init_debug_depth;
 
 ucc_printflike(1, 2) void INIT_DEBUG(const char *fmt, ...)
@@ -33,7 +33,6 @@ ucc_printflike(1, 2) void INIT_DEBUG(const char *fmt, ...)
 }
 
 #  define INIT_DEBUG_DEPTH(op) init_debug_depth op
-#  define DEBUG_DECL_INIT 1
 #else
 #  define INIT_DEBUG_DEPTH(op)
 #  define INIT_DEBUG(...)
@@ -217,16 +216,21 @@ static type_ref *decl_initialise_array(
 		decl_init **start = array_iter;
 #endif
 
-		INIT_DEBUG("initialising array from %s\n", decl_init_to_str(dinit->type));
+		INIT_DEBUG("initialising array from %s"
+				", nested: %d, %p\n",
+				decl_init_to_str(dinit->type),
+				dinit->type == decl_init_brace,
+				(void *)dinit);
 		INIT_DEBUG_DEPTH(++);
 
 		for(i = 0; array_iter && *array_iter && i < lim; i++){
 			/* index into the main-array */
 			expr *this = expr_new_array_idx(base, i);
 
-			INIT_DEBUG("initialising (%s)[%d] with %s\n",
+			INIT_DEBUG("initialising (%s)[%d] with %s, di %p\n",
 					type_ref_to_str(tfor), i,
-					decl_init_to_str((*array_iter)->type));
+					decl_init_to_str((*array_iter)->type),
+					(void *)*array_iter);
 
 			INIT_DEBUG_DEPTH(++);
 			decl_init_create_assignments_discard(
@@ -246,7 +250,11 @@ static type_ref *decl_initialise_array(
 		}
 
 		complete_to = i;
-		*init_iter += complete_to; /* advance by the number of steps we moved over */
+
+		/* advance by the number of steps we moved over,
+		 * if not nested, otherwise advance by one, over the sub-brace
+		 */
+		*init_iter += (dinit->type == decl_init_scalar) ? complete_to : 1;
 
 		INIT_DEBUG_DEPTH(--);
 		INIT_DEBUG(
