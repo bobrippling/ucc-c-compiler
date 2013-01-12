@@ -11,7 +11,7 @@ void *umalloc(size_t l)
 {
 	void *p = calloc(1, l);
 	if(!p)
-		die("calloc %ld bytes:", (long)l);
+		ICE("calloc %ld bytes:", (long)l);
 	return p;
 }
 
@@ -19,7 +19,7 @@ void *urealloc(void *p, size_t l)
 {
 	void *r = realloc(p, l);
 	if(!r)
-		die("realloc %p by %ld bytes:", p, (long)l);
+		ICE("realloc %p by %ld bytes:", p, (long)l);
 	return r;
 }
 
