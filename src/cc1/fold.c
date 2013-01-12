@@ -237,42 +237,36 @@ normal:
 	}
 }
 
-static void fold_callinv_conv(decl *d)
+static void fold_calling_conv(decl *d)
 {
-	static int init = 0;
-	static enum calling_conv def_conv;
 	enum calling_conv conv;
+	decl_attr *found;
 
-	decl_attr *i, *found;
+	/* don't currently check for a second one... */
+	found = decl_has_attr(d, attr_call_conv);
 
-	if(!init){
-		init = 1;
-
-		switch(platform_type()){
-			case PLATFORM_32:
-				def_conv = conv_cdecl;
-				break;
-
-			case PLATFORM_64:
-				def_conv = platform_sys() == PLATFORM_CYGWIN ? conv_x64_ms : conv_x64_sysv;
-				break;
-		}
-	}
-
-	conv = def_conv;
-
-	found = NULL;
-	for(i = d->attr; i; i = i->next)
-		if(i->type == attr_call_conv){
-			if(!found)
-				found = i;
-			else
-				DIE_AT(&d->where, "Second calling convention attribute on decl (%s, %s)\n",
-						decl_attr_to_str(found), decl_attr_to_str(i));
-		}
-
-	if(found)
+	if(found){
 		conv = found->bits.conv;
+	}else{
+		static int init = 0;
+		static enum calling_conv def_conv;
+
+		if(!init){
+			init = 1;
+
+			switch(platform_type()){
+				case PLATFORM_32:
+					def_conv = conv_cdecl;
+					break;
+
+				case PLATFORM_64:
+					def_conv = platform_sys() == PLATFORM_CYGWIN ? conv_x64_ms : conv_x64_sysv;
+					break;
+			}
+		}
+
+		conv = def_conv;
+	}
 
 	type_ref_funcargs(d->ref)->conv = conv;
 }
@@ -405,7 +399,7 @@ void fold_decl(decl *d, symtable *stab)
 	 *   register int  *f();
 	 */
 	if(DECL_IS_FUNC(d)){
-		fold_callinv_conv(d);
+		fold_calling_conv(d);
 
 		switch(d->store){
 			case store_register:
