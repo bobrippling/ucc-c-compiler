@@ -1,14 +1,8 @@
-global/static init - mostly there
-	nested initalisers - bugs[0]
+bugs:
+	missing tail init - array/brace.c
+	struct/nested_array_of_arrays.c
 
 designated init + zero for the rest:
 	int x[] = { [3] = 5 };
 	struct { int x, y, z; } q = { .y = 2, 3 };
 	int k[] = { [7 ... 9] = 2 };
-
-no code gen/space reservation for compound lits/expr-stmts below sizeof
-
-bugs:
-	not enough space - unbraced/multiple.c
-	missing tail init - array/brace.c
-	struct/nested_array_of_arrays.c
