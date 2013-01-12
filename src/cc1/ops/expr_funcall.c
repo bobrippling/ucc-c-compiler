@@ -291,6 +291,8 @@ invalid:
 			df->spel = e->expr->bits.ident.spel;
 			df->is_definition = 1; /* needed since it's a local var */
 
+			fold_decl(df, stab); /* update calling conv, for e.g. */
+
 			/* not declared - generate a sym ourselves */
 			e->expr->bits.ident.sym = SYMTAB_ADD(stab, df, sym_local);
 		}
