@@ -119,6 +119,9 @@ int symtab_fold(symtable *tab, int current)
 		}
 	}
 
+	/* round current up to word size */
+	current = pack_to_word(current);
+
 	{
 		symtable **tabi;
 		int subtab_max = 0;
@@ -129,10 +132,8 @@ int symtab_fold(symtable *tab, int current)
 				subtab_max = this;
 		}
 
-		/* don't account the args in the space,
-		 * just use for offsetting them
-		 */
-		tab->auto_total_size = current - this_start + subtab_max - arg_space;
+		/* don't account the args in the space */
+		tab->auto_total_size = current - this_start + subtab_max;
 	}
 
 	return tab->auto_total_size;
