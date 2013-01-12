@@ -2,7 +2,7 @@ UCC = ../../ucc
 AS_64_to_32 = ../nasm_64_to_32
 
 tim: tim_32.o jim_32.o printf.o /cygdrive/c/Windows/System32/user32.dll
-	ld -o $@ $^
+	ld -e main -o $@ $^
 
 %_32.s: %.s
 	${AS_64_to_32} < $< > $@
