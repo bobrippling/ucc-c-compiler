@@ -237,13 +237,13 @@ normal:
 	}
 }
 
-static void fold_calling_conv(decl *d)
+static void fold_calling_conv(type_ref *r)
 {
 	enum calling_conv conv;
 	decl_attr *found;
 
 	/* don't currently check for a second one... */
-	found = decl_has_attr(d, attr_call_conv);
+	found = type_attr_present(r, attr_call_conv);
 
 	if(found){
 		conv = found->bits.conv;
@@ -268,7 +268,7 @@ static void fold_calling_conv(decl *d)
 		conv = def_conv;
 	}
 
-	type_ref_funcargs(d->ref)->conv = conv;
+	type_ref_funcargs(r)->conv = conv;
 }
 
 void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
@@ -308,6 +308,7 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 				DIE_AT(&r->where, "restrict qualified function pointer");
 
 			fold_funcargs(r->bits.func, stab, r);
+			fold_calling_conv(r);
 			break;
 
 		case type_ref_block:
@@ -399,8 +400,6 @@ void fold_decl(decl *d, symtable *stab)
 	 *   register int  *f();
 	 */
 	if(DECL_IS_FUNC(d)){
-		fold_calling_conv(d);
-
 		switch(d->store){
 			case store_register:
 			case store_auto:
