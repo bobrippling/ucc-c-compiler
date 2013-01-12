@@ -11,4 +11,4 @@ tim: tim_32.o jim_32.o printf.o /cygdrive/c/Windows/System32/user32.dll
 	${UCC} -m32 -fno-pic -S -o $@ $<
 
 clean:
-	rm -f *.o tim.s jim.s tim
+	rm -f *.o tim.s jim.s tim jim_32.s tim_32.s
