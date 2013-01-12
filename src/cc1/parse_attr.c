@@ -148,13 +148,13 @@ EMPTY(attr_packed)
 decl_attr *parse_attr_## n()                    \
 {                                               \
 	decl_attr *a = decl_attr_new(attr_call_conv); \
-	a->bits.conv = n;                             \
+	a->bits.conv = conv_ ## n;                    \
 	return a;                                     \
 }
 
-CALL_CONV(conv_cdecl)
-CALL_CONV(conv_stdcall)
-CALL_CONV(conv_fastcall)
+CALL_CONV(cdecl)
+CALL_CONV(stdcall)
+CALL_CONV(fastcall)
 
 static struct
 {
@@ -173,9 +173,9 @@ static struct
 	ATTR(packed),
 	ATTR(sentinel),
 
-	ATTR(conv_cdecl),
-	ATTR(conv_stdcall),
-	ATTR(conv_fastcall),
+	ATTR(cdecl),
+	ATTR(stdcall),
+	ATTR(fastcall),
 #undef ATTR
 
 	/* compat */
