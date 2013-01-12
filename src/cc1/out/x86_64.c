@@ -938,6 +938,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 {
 #define INC_NFLOATS(t) if(t && type_ref_is_floating(t)) ++nfloats
 
+	const int n_call_regs = x86_call_regs(r_func);
 	int i, ncleanup;
 	int nfloats = 0;
 
@@ -945,13 +946,13 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 	 * (should only be one,
 	 * since we can only have one flag at a time)
 	 */
-	for(i = 0; i < MIN(nargs, N_CALL_REGS); i++)
+	for(i = 0; i < MIN(nargs, n_call_regs); i++)
 		if(vtop->type == FLAG){
 			v_to_reg(vtop);
 			break;
 		}
 
-	for(i = 0; i < MIN(nargs, N_CALL_REGS); i++){
+	for(i = 0; i < MIN(nargs, n_call_regs); i++){
 		int ri;
 
 		ri = call_regs[i].idx;

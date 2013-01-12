@@ -34,6 +34,5 @@ void impl_undefined(void);
 int impl_frame_ptr_to_reg(int nframes);
 
 #define N_REGS 4
-#define N_CALL_REGS 6
 
 #endif
