@@ -24,9 +24,9 @@ intval *intval_new(long v)
 
 void where_new(struct where *w)
 {
-	extern int buffereof;
+	extern int parse_finished;
 
-	if(buffereof){
+	if(parse_finished){
 		if(eof_where)
 			memcpy(w, eof_where, sizeof *w);
 		else
