@@ -115,10 +115,10 @@ enum decl_storage
   store_extern    ,
   store_register  ,
   store_typedef   , /* 5 - next power of two is 8 */
-  store_inline = 1 << 4
+  store_inline = 1 << 3
 };
-#define STORE_MASK_STORE 0x00003 /* include all below 4 */
-#define STORE_MASK_EXTRA 0xffff4 /* exclude  ^ */
+#define STORE_MASK_STORE 0x00007 /* include all below 4 */
+#define STORE_MASK_EXTRA 0xfff38 /* exclude  ^ */
 
 #define decl_store_static_or_extern(x) ((x) == store_static || (x) == store_extern)
 

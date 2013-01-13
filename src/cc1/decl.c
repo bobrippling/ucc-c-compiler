@@ -326,7 +326,8 @@ const char *decl_store_to_str(const enum decl_storage s)
 	switch(s){
 		case store_inline:
 			ICE("inline");
-		CASE_STR_PREFIX(store, default);
+		case store_default:
+			return "";
 		CASE_STR_PREFIX(store, auto);
 		CASE_STR_PREFIX(store, static);
 		CASE_STR_PREFIX(store, extern);
@@ -823,25 +824,20 @@ const char *type_ref_to_str(type_ref *r)
 	return type_ref_to_str_r(buf, r);
 }
 
-const char *decl_to_str_r_spel(char buf[DECL_STATIC_BUFSIZ], int show_spel, decl *d)
+const char *decl_to_str_r(char buf[DECL_STATIC_BUFSIZ], decl *d)
 {
 	char *bufp = buf;
 
-	if(d->store) bufp += snprintf(bufp, DECL_STATIC_BUFSIZ, "%s ", decl_store_to_str(d->store));
+	if(d->store)
+		bufp += snprintf(bufp, DECL_STATIC_BUFSIZ, "%s ", decl_store_to_str(d->store));
 
-	type_ref_to_str_r_spel(bufp, d->ref,
-			show_spel ? d->spel : NULL);
+	type_ref_to_str_r_spel(bufp, d->ref, d->spel);
 
 	return buf;
-}
-
-const char *decl_to_str_r(char buf[DECL_STATIC_BUFSIZ], decl *d)
-{
-	return decl_to_str_r_spel(buf, 0, d);
 }
 
 const char *decl_to_str(decl *d)
 {
 	static char buf[DECL_STATIC_BUFSIZ];
-	return decl_to_str_r_spel(buf, 0, d);
+	return decl_to_str_r(buf, d);
 }
