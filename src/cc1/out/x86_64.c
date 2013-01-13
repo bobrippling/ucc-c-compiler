@@ -173,7 +173,7 @@ static const char *vstack_str_ptr(struct vstack *vs, int ptr)
 	return vstack_str_r_ptr(buf, vs, ptr);
 }
 
-static int x86_stack_change(int amt)
+static void x86_stack_change(int amt)
 {
 	static int word_size;
 	/* sz must be a multiple of word_size */
@@ -192,9 +192,10 @@ static int x86_stack_change(int amt)
 			amt += extra;
 
 		out_asm("%sq $%d, %%rsp", amt < 0 ? "sub" : "add", abs(amt));
-	}
 
-	return stack_sz + amt;
+		/* subtract since the stack grows down, and we want a positive size */
+		stack_sz -= amt;
+	}
 }
 
 static void x86_stack_free(int sz)
@@ -204,7 +205,8 @@ static void x86_stack_free(int sz)
 
 int impl_alloc_stack(int sz)
 {
-	return x86_stack_change(-sz);
+	x86_stack_change(-sz);
+	return stack_sz;
 }
 
 const char *call_reg_str(int i, type_ref *r)
@@ -318,7 +320,7 @@ void impl_func_prologue(decl *dfunc)
 		}
 	}
 
-	stack_sz = impl_alloc_stack(dfunc->func_code->symtab->auto_total_size)
+	impl_alloc_stack(dfunc->func_code->symtab->auto_total_size)
 		/* make room for saved args too */
 		+ nargs * platform_word_size();
 
