@@ -364,12 +364,17 @@ void out_normalise(void)
 
 void out_push_sym(sym *s)
 {
-	vpush(type_ref_ptr_depth_inc(s->decl->ref));
+	decl *const d = s->decl;
+
+	vpush(type_ref_ptr_depth_inc(d->ref));
 
 	switch(s->type){
 		case sym_local:
-			if(DECL_IS_FUNC(s->decl))
+			if(DECL_IS_FUNC(d))
 				goto label;
+
+			if(d->store == store_register && d->spel_asm)
+				ICW("TODO: %s asm(\"%s\")", decl_to_str(d), d->spel_asm);
 
 			vtop->type = STACK;
 			/* sym offsetting takes into account the stack growth direction */
@@ -390,7 +395,7 @@ void out_push_sym(sym *s)
 		case sym_global:
 label:
 			vtop->type = LBL;
-			vtop->bits.lbl.str = decl_asm_spel(s->decl);
+			vtop->bits.lbl.str = decl_asm_spel(d);
 			vtop->bits.lbl.pic = 1;
 			break;
 	}
