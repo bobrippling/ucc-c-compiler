@@ -968,22 +968,13 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 		vpop();
 	}
 
+	/* amount of remaining arguments */
+	ncleanup = nargs - i;
+
 	/* save all registers before pushing remaining args */
-	{
-		int j = 0;
-#define vcond(x) (&vstack[x] < vtop)
-
-		if(vcond(j))
-			out_comment("pre-call reg-save");
-		for(; vcond(j); j++)
-			/* TODO: v_to_mem (__asm__ branch) */
-			if(vstack[j].type == REG || vstack[j].type == FLAG)
-				v_save_reg(&vstack[j]);
-	}
-
+	v_save_regs(ncleanup);
 
 	/* push remaining args onto the stack, left to right */
-	ncleanup = nargs - i;
 	vrev(ncleanup); /* reverse for l2r */
 
 	for(; i < nargs; i++){

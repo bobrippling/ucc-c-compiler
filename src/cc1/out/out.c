@@ -270,6 +270,25 @@ void v_save_reg(struct vstack *vp)
 	vp->t = type_ref_ptr_depth_dec(vp->t);
 }
 
+void v_save_regs(int n_ignore)
+{
+	struct vstack *p;
+	int n;
+
+	if(!vtop)
+		return;
+
+	n = 1 + (vtop - vstack);
+
+	if(n_ignore >= n)
+		return;
+
+	for(p = vstack; p < vtop - n_ignore; p++)
+		/* TODO: v_to_mem (__asm__ branch) */
+		if(p->type == REG || p->type == FLAG)
+			v_save_reg(p);
+}
+
 void v_freeup_reg(int r, int allowable_stack)
 {
 	struct vstack *vp = v_find_reg(r);

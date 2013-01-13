@@ -70,6 +70,7 @@ void v_freeup_regp(struct vstack *);
 void v_freeup_reg(int r, int allowable_stack);
 void v_freeup_regs(int a, int b);
 void v_save_reg(struct vstack *vp);
+void v_save_regs(int n_ignore);
 
 void v_deref_decl(struct vstack *vp);
 
