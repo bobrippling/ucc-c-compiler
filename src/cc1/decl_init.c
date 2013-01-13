@@ -44,19 +44,6 @@ static void decl_init_create_assignments_discard(
 		expr *base,
 		stmt *init_code);
 
-int decl_init_len(decl_init *di)
-{
- switch(di->type){
-	 case decl_init_scalar:
-		 return 1;
-
-	 case decl_init_brace:
-		 return dynarray_count((void **)di->bits.inits);
- }
- ICE("decl init bad type");
- return -1;
-}
-
 int decl_init_is_const(decl_init *dinit, symtable *stab)
 {
 	switch(dinit->type){
