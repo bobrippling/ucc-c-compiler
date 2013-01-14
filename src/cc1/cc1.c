@@ -425,11 +425,9 @@ usage:
 	if(f != stdin)
 		fclose(f);
 
-	if(globs->symtab.decls){
-		fold(&globs->symtab);
-		symtab_fold(&globs->symtab, 0);
-		gf(globs);
-	}
+	fold(&globs->stab);
+	symtab_fold(&globs->stab, 0);
+	gf(globs);
 
 	io_fin(gf == gen_asm, fname);
 
