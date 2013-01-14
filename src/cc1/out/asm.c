@@ -106,19 +106,50 @@ static void asm_declare_init(FILE *f, stmt *init_code, type_ref *tfor)
 		 */
 		struct_union_enum_st *sue = r->bits.type->sue;
 		sue_member **mem = sue->members;
-		stmt **i;
+		stmt **i, *two[2];
 		int end_of_last = 0;
 		static int pws;
 
 		if(!pws)
 			pws = platform_word_size();
 
-		for(i = init_code->codes; i && *i; i++){
-			decl *d_mem = (*mem++)->struct_member;
+		if(init_code){
+			if(init_code->codes){
+				i = init_code->codes;
+			}else{
+				/* single value init, i.e.
+				 * struct
+				 * {
+				 *   struct
+				 *   {
+				 *     int i;
+				 *   } a;
+				 * } b = { 1 };
+				 */
+				two[0] = init_code;
+				two[1] = NULL;
+				i = two;
+			}
+		}else{
+			i = NULL;
+		}
+
+		/* iterate using members, not inits */
+		for(mem = sue->members;
+				mem && *mem;
+				mem++)
+		{
+			decl *d_mem = (*mem)->struct_member;
 
 			asm_declare_pad(f, d_mem->struct_offset - end_of_last);
 
-			asm_declare_init(f, *i, d_mem->ref);
+			asm_declare_init(f, i ? *i : NULL, d_mem->ref);
+
+			if(i){
+				++i;
+				if(!*i)
+					i = NULL;
+			}
 
 			end_of_last = d_mem->struct_offset + type_ref_size(d_mem->ref, NULL);
 		}
