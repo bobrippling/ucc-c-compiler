@@ -7,6 +7,7 @@ typedef struct stmt_flow stmt_flow;
 
 typedef struct sym         sym;
 typedef struct symtable    symtable;
+typedef struct symtable_global symtable_global;
 
 typedef struct tdef        tdef;
 typedef struct tdeftable   tdeftable;

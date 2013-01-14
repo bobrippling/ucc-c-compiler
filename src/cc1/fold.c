@@ -873,6 +873,9 @@ void fold(symtable *globs)
 
 	fold_symtab_scope(globs);
 
+	if(!globs->decls)
+		goto skip_decls;
+
 	for(i = 0; D(i); i++)
 		if(D(i)->sym)
 			ICE("%s: sym (%p) already set for global \"%s\"", where_str(&D(i)->where), (void *)D(i)->sym, D(i)->spel);
@@ -939,6 +942,7 @@ void fold(symtable *globs)
 
 	dynmap_free(spel_decls);
 
+skip_decls:
 	/* static assertions */
 	{
 		static_assert **i;

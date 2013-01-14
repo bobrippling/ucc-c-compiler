@@ -511,13 +511,13 @@ void print_stmt(stmt *t)
 	}
 }
 
-void gen_str(symtable *symtab)
+void gen_str(symtable_global *symtab)
 {
 	decl **diter;
 
-	print_st_en_tdef(symtab);
+	print_st_en_tdef(&symtab->stab);
 
-	for(diter = symtab->decls; diter && *diter; diter++){
+	for(diter = symtab->stab.decls; diter && *diter; diter++){
 		decl *const d = *diter;
 
 		print_decl(d, PDECL_INDENT

@@ -926,46 +926,74 @@ flow:
 	/* unreachable */
 }
 
-symtable *parse()
+static symtable_gasm *parse_gasm(void)
 {
-	symtable *globals;
-	decl **decls = NULL;
-	int i;
-	int warned = 0;
+	symtable_gasm *g = umalloc(sizeof *g);
 
-	current_scope = globals = symtab_new(NULL);
+	EAT(token_open_paren);
+	token_get_current_str(&g->asm_str, NULL);
+	EAT(token_string);
+	EAT(token_close_paren);
+	EAT(token_semicolon);
+
+	return g;
+}
+
+symtable_global *parse()
+{
+	symtable_global *globals;
+	decl **decls = NULL;
+	symtable_gasm **last_gasms = NULL;
+
+	globals = symtabg_new();
+	current_scope = (symtable *)globals; /* fine - sockaddr-esque */
 
 	for(;;){
+		int cont = 0;
+
 		decl **new = parse_decls_multi_type(
 				  DECL_MULTI_CAN_DEFAULT
 				| DECL_MULTI_ACCEPT_FUNC_CODE
 				| DECL_MULTI_ALLOW_STORE);
 
 		if(new){
+			symtable_gasm **i;
+
+			for(i = last_gasms; i && *i; i++)
+				(*i)->before = *new;
+			dynarray_free((void ***)&last_gasms, NULL);
+
 			dynarray_add_array((void ***)&decls, (void **)new);
 			free(new);
 		}
 
-		if(accept(token_semicolon)){
-			if(!warned){
-				WARN_AT(NULL, "extra semi-colon after global decl");
-				warned = 1;
-			}
-			continue;
+		/* global asm */
+		while(accept(token_asm)){
+			symtable_gasm *g = parse_gasm();
+
+			dynarray_add((void ***)&last_gasms, g);
+			dynarray_add((void ***)&globals->gasms, g);
+			cont = 1;
 		}
-		break;
+
+		if(!cont)
+			break;
 	}
+
+	dynarray_free((void ***)&last_gasms, NULL);
 
 	EAT(token_eof);
 
 	if(parse_had_error)
 		exit(1);
 
-	if(decls)
+	if(decls){
+		int i;
 		for(i = 0; decls[i]; i++)
-			symtab_add(globals, decls[i], sym_global, SYMTAB_NO_SYM, SYMTAB_APPEND);
+			symtab_add(current_scope, decls[i], sym_global, SYMTAB_NO_SYM, SYMTAB_APPEND);
+	}
 
-	globals->static_asserts = static_asserts;
+	current_scope->static_asserts = static_asserts;
 
 	return globals;
 }

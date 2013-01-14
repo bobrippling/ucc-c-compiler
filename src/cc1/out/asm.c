@@ -106,35 +106,71 @@ static void asm_declare_init(FILE *f, stmt *init_code, type_ref *tfor)
 		 */
 		struct_union_enum_st *sue = r->bits.type->sue;
 		sue_member **mem = sue->members;
-		stmt **i;
+		stmt **i, *two[2];
 		int end_of_last = 0;
 		static int pws;
 
 		if(!pws)
 			pws = platform_word_size();
 
-		for(i = init_code->codes; i && *i; i++){
-			decl *d_mem = (*mem++)->struct_member;
+		if(init_code){
+			if(init_code->codes){
+				i = init_code->codes;
+			}else{
+				/* single value init, i.e.
+				 * struct
+				 * {
+				 *   struct
+				 *   {
+				 *     int i;
+				 *   } a;
+				 * } b = { 1 };
+				 */
+				two[0] = init_code;
+				two[1] = NULL;
+				i = two;
+			}
+		}else{
+			i = NULL;
+		}
+
+		/* iterate using members, not inits */
+		for(mem = sue->members;
+				mem && *mem;
+				mem++)
+		{
+			decl *d_mem = (*mem)->struct_member;
 
 			asm_declare_pad(f, d_mem->struct_offset - end_of_last);
 
-			asm_declare_init(f, *i, d_mem->ref);
+			asm_declare_init(f, i ? *i : NULL, d_mem->ref);
+
+			if(i){
+				++i;
+				if(!*i)
+					i = NULL;
+			}
 
 			end_of_last = d_mem->struct_offset + type_ref_size(d_mem->ref, NULL);
 		}
-
-		/* pad up to the alignment */
-		asm_declare_pad(f, pws - end_of_last % pws);
 
 	}else if((r = type_ref_is(tfor, type_ref_array))){
 		stmt **i;
 		type_ref *next = type_ref_next(tfor);
 
-		for(i = init_code->codes; i && *i; i++)
-			asm_declare_init(f, *i, next);
+		if(init_code){
+			for(i = init_code->codes; i && *i; i++)
+				asm_declare_init(f, *i, next);
+		}else{
+			/* we should have a size */
+			asm_declare_pad(f, type_ref_size(r, NULL));
+		}
 
 	}else{
-		if(init_code->codes){
+		if(!init_code){
+			asm_declare_pad(f, type_ref_size(tfor, NULL));
+
+		}else if(init_code->codes){
 			UCC_ASSERT(dynarray_count((void **)init_code->codes) == 1,
 					"too many init codes");
 
@@ -208,6 +244,8 @@ void asm_declare_decl_init(FILE *f, decl *d)
 		asm_predeclare_extern(d);
 
 	}else if(d->init && !decl_init_is_zero(d->init)){
+
+		fprintf(f, ".align %d\n", type_ref_align(d->ref, NULL));
 		fprintf(f, "%s:\n", decl_asm_spel(d));
 		asm_declare_init(f, d->decl_init_code, d->ref);
 		fputc('\n', f);
