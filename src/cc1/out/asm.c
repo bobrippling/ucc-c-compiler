@@ -136,7 +136,10 @@ static void asm_declare_init(FILE *f, stmt *init_code, type_ref *tfor)
 		}
 
 	}else{
-		if(init_code->codes){
+		if(!init_code){
+			asm_declare_pad(f, type_ref_size(tfor, NULL));
+
+		}else if(init_code->codes){
 			UCC_ASSERT(dynarray_count((void **)init_code->codes) == 1,
 					"too many init codes");
 
