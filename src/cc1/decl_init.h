@@ -1,6 +1,8 @@
 #ifndef DECL_INIT_H
 #define DECL_INIT_H
 
+typedef struct desig desig;
+
 struct decl_init
 {
 	where where;
@@ -23,7 +25,7 @@ struct decl_init
 		struct
 		{
 			expr *ar;
-			char *name;
+			char *member;
 		} bits;
 		struct desig *next; /* [0].a.b[1] */
 	} *desig;

@@ -124,12 +124,47 @@ const char *decl_init_to_str(enum decl_init_type t)
 	return NULL;
 }
 
-static expr *expr_new_array_idx(expr *base, int i)
+static expr *expr_new_array_idx_e(expr *base, expr *idx)
 {
 	expr *op = expr_new_op(op_plus);
 	op->lhs = base;
-	op->rhs = expr_new_val(i);
+	op->rhs = idx;
 	return expr_new_deref(op);
+}
+
+static expr *expr_new_array_idx(expr *base, int i)
+{
+	return expr_new_array_idx_e(base, expr_new_val(i));
+}
+
+static expr *decl_init_desig_expr(desig *desig, expr *final)
+{
+	expr *e = final;
+
+	for(; desig; desig = desig->next)
+		switch(desig->type){
+			case desig_ar:
+				e = expr_new_array_idx_e(e, desig->bits.ar);
+				break;
+
+			case desig_struct:
+				fprintf(stderr, "construct: %s (%s, %s) . %s\n",
+						e->f_str(),
+						e->lhs->f_str(),
+						e->lhs->bits.ident.spel,
+						desig->bits.member);
+
+				e = expr_new_struct(e, 1 /* dot */, expr_new_identifier(desig->bits.member));
+				break;
+		}
+
+	return e;
+}
+
+static void decl_init_base_desig(expr **pbase, desig *desig)
+{
+	if(desig)
+		*pbase = decl_init_desig_expr(desig, *pbase);
 }
 
 static type_ref *decl_initialise_array(

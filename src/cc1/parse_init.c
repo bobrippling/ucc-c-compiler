@@ -25,7 +25,7 @@ decl_init *parse_initialisation(void)
 
 					if(accept(token_dot)){
 						d->type = desig_struct;
-						d->bits.name = token_current_spel();
+						d->bits.member = token_current_spel();
 						EAT(token_identifier);
 
 					}else if(accept(token_open_square)){
@@ -43,9 +43,6 @@ decl_init *parse_initialisation(void)
 
 			sub = parse_initialisation();
 			sub->desig = desig;
-
-			if(desig)
-				ICW("TODO: impl of designated initialiser");
 
 			dynarray_add((void ***)&exps, sub);
 
