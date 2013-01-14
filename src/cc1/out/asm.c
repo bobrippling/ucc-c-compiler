@@ -123,9 +123,6 @@ static void asm_declare_init(FILE *f, stmt *init_code, type_ref *tfor)
 			end_of_last = d_mem->struct_offset + type_ref_size(d_mem->ref, NULL);
 		}
 
-		/* pad up to the alignment */
-		asm_declare_pad(f, pws - end_of_last % pws);
-
 	}else if((r = type_ref_is(tfor, type_ref_array))){
 		stmt **i;
 		type_ref *next = type_ref_next(tfor);
@@ -208,6 +205,8 @@ void asm_declare_decl_init(FILE *f, decl *d)
 		asm_predeclare_extern(d);
 
 	}else if(d->init && !decl_init_is_zero(d->init)){
+
+		fprintf(f, ".align %d\n", type_ref_align(d->ref, NULL));
 		fprintf(f, "%s:\n", decl_asm_spel(d));
 		asm_declare_init(f, d->decl_init_code, d->ref);
 		fputc('\n', f);
