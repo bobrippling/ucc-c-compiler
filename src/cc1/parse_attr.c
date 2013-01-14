@@ -9,6 +9,9 @@ decl_attr *parse_attr_format()
 	func = token_current_spel();
 	EAT(token_identifier);
 
+	if(!func)
+		return NULL; // TODO: token_current_spel() and token_get_current_str(..,..) checkes everywhere
+
 	da = decl_attr_new(attr_format);
 
 #define CHECK(s) !strcmp(func, s) || !strcmp(func, "__" s "__")
@@ -215,6 +218,8 @@ decl_attr *parse_attr(void)
 
 		ident = token_current_spel();
 		EAT(token_identifier);
+		if(!ident)
+			break;
 
 		if((*next = parse_attr_single(ident)))
 			next = &(*next)->next;
