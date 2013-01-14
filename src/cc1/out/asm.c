@@ -127,8 +127,13 @@ static void asm_declare_init(FILE *f, stmt *init_code, type_ref *tfor)
 		stmt **i;
 		type_ref *next = type_ref_next(tfor);
 
-		for(i = init_code->codes; i && *i; i++)
-			asm_declare_init(f, *i, next);
+		if(init_code){
+			for(i = init_code->codes; i && *i; i++)
+				asm_declare_init(f, *i, next);
+		}else{
+			/* we should have a size */
+			asm_declare_pad(f, type_ref_size(r, NULL));
+		}
 
 	}else{
 		if(init_code->codes){
