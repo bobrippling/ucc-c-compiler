@@ -926,26 +926,27 @@ flow:
 	/* unreachable */
 }
 
-static char *parse_gasm(void)
+static symtable_gasm *parse_gasm(void)
 {
-	char *s;
+	symtable_gasm *g = umalloc(sizeof *g);
 
 	EAT(token_open_paren);
-	token_get_current_str(&s, NULL);
+	token_get_current_str(&g->asm_str, NULL);
 	EAT(token_string);
 	EAT(token_close_paren);
 	EAT(token_semicolon);
 
-	return s;
+	return g;
 }
 
 symtable_global *parse()
 {
 	symtable_global *globals;
 	decl **decls = NULL;
+	symtable_gasm **last_gasms = NULL;
 
 	globals = symtabg_new();
-	current_scope = &globals->symtab;
+	current_scope = (symtable *)globals; /* fine - sockaddr-esque */
 
 	for(;;){
 		int cont = 0;
@@ -956,19 +957,30 @@ symtable_global *parse()
 				| DECL_MULTI_ALLOW_STORE);
 
 		if(new){
+			symtable_gasm **i;
+
+			for(i = last_gasms; i && *i; i++)
+				(*i)->before = *new;
+			dynarray_free((void ***)&last_gasms, NULL);
+
 			dynarray_add_array((void ***)&decls, (void **)new);
 			free(new);
 		}
 
 		/* global asm */
 		while(accept(token_asm)){
-			dynarray_add((void ***)&globals->gasms, parse_gasm());
+			symtable_gasm *g = parse_gasm();
+
+			dynarray_add((void ***)&last_gasms, g);
+			dynarray_add((void ***)&globals->gasms, g);
 			cont = 1;
 		}
 
 		if(!cont)
 			break;
 	}
+
+	dynarray_free((void ***)&last_gasms, NULL);
 
 	EAT(token_eof);
 

@@ -22,7 +22,7 @@ void gen_style_global(decl *d)
 void gen_style(symtable_global *stab)
 {
 	decl **diter;
-	for(diter = stab->symtab.decls; diter && *diter; diter++){
+	for(diter = stab->stab.decls; diter && *diter; diter++){
 		decl *d = *diter;
 
 		gen_style_global(d);

@@ -48,19 +48,15 @@ struct symtable
 	static_assert        **static_asserts;
 };
 
+typedef struct symtable_gasm symtable_gasm;
 struct symtable_global
 {
-	symtable symtab; /* for convenience */
-
-	struct
+	symtable stab; /* ABI compatible with struct symtable */
+	struct symtable_gasm
 	{
-		int is_asm;
-		union
-		{
-			struct symtable *symtab;
-			char *gasms;
-		} bits;
-	};
+		decl *before; /* the decl this occurs before - NULL if last */
+		char *asm_str;
+	} **gasms;
 };
 
 sym *sym_new(decl *d, enum sym_type t);

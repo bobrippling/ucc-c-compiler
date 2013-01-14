@@ -515,9 +515,9 @@ void gen_str(symtable_global *symtab)
 {
 	decl **diter;
 
-	print_st_en_tdef(&symtab->symtab);
+	print_st_en_tdef(&symtab->stab);
 
-	for(diter = symtab->symtab.decls; diter && *diter; diter++){
+	for(diter = symtab->stab.decls; diter && *diter; diter++){
 		decl *const d = *diter;
 
 		print_decl(d, PDECL_INDENT

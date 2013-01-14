@@ -165,12 +165,25 @@ void gen_asm_global(decl *d)
 	}
 }
 
+static void gen_gasm(char *asm_str)
+{
+	fprintf(cc_out[SECTION_TEXT], "%s\n", asm_str);
+}
+
 void gen_asm(symtable_global *globs)
 {
 	decl **diter;
+	struct symtable_gasm **iasm = globs->gasms;
 
-	for(diter = globs->symtab.decls; diter && *diter; diter++){
+	for(diter = globs->stab.decls; diter && *diter; diter++){
 		decl *d = *diter;
+
+		while(iasm && d == (*iasm)->before){
+			gen_gasm((*iasm)->asm_str);
+
+			if(!*++iasm)
+				iasm = NULL;
+		}
 
 		/* inline_only aren't currently inlined */
 		if(!d->is_definition)
@@ -207,4 +220,7 @@ void gen_asm(symtable_global *globs)
 
 		UCC_ASSERT(out_vcount() == 0, "non empty vstack after global gen");
 	}
+
+	for(; iasm && *iasm; ++iasm)
+		gen_gasm((*iasm)->asm_str);
 }
