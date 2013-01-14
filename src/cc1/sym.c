@@ -44,6 +44,11 @@ symtable *symtab_new(symtable *parent)
 	return p;
 }
 
+symtable_global *symtabg_new(void)
+{
+	return umalloc(sizeof *symtabg_new());
+}
+
 symtable *symtab_root(symtable *child)
 {
 	for(; child->parent; child = child->parent);
