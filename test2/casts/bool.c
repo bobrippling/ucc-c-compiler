@@ -17,9 +17,14 @@ _Bool h()
 	return 23;
 }
 
+int ar[(_Bool)5];
+
 int main()
 {
 	_Bool x = f((_Bool)5);
+
+	if(sizeof(ar) != 4)
+		return 1;
 
 	g(false);
 
