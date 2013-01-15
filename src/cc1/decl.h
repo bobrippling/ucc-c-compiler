@@ -199,7 +199,7 @@ type *type_ref_get_type(type_ref *);
 type *decl_get_type(decl *);
 
 decl *decl_decay_first_array(decl *);
-void decl_conv_array_func_to_ptr(decl *d);
+int decl_conv_array_func_to_ptr(decl *d);
 
 decl_attr *decl_attr_present(decl_attr *, enum decl_attr_type);
 decl_attr *type_attr_present(type_ref *, enum decl_attr_type);

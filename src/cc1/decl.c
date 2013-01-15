@@ -616,9 +616,11 @@ decl *decl_func_called(decl *d, funcargs **pfuncargs)
 	return d;
 }
 
-void decl_conv_array_func_to_ptr(decl *d)
+int decl_conv_array_func_to_ptr(decl *d)
 {
+	type_ref *old = d->ref;
 	d->ref = type_ref_decay(d->ref);
+	return old != d->ref;
 }
 
 static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)

@@ -561,12 +561,15 @@ void fold_funcargs(funcargs *fargs, symtable *stab, type_ref *from)
 		for(i = 0; fargs->arglist[i]; i++){
 			decl *const d = fargs->arglist[i];
 
+			/* fold before for array checks, etc */
+			fold_decl(d, stab);
+
 			/* convert any array definitions and functions to pointers */
 			EOF_WHERE(&d->where,
-				decl_conv_array_func_to_ptr(d) /* must be before the decl is folded (since fold checks this) */
+				/* must be before the decl is folded (since fold checks this) */
+				if(decl_conv_array_func_to_ptr(d))
+					fold_type_ref(d->ref, NULL, stab); /* refold if we converted */
 			);
-
-			fold_decl(d, stab);
 
 			if(decl_store_static_or_extern(d->store)){
 				DIE_AT(&fargs->where, "function argument %d is static or extern", i + 1);
