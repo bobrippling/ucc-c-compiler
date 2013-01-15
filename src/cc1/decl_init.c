@@ -148,13 +148,14 @@ static expr *decl_init_desig_expr(desig *desig, expr *final)
 				break;
 
 			case desig_struct:
-				fprintf(stderr, "construct: %s (%s, %s) . %s\n",
+				fprintf(stderr, "construct: %s (lhs=%s (%s)) . %s\n",
 						e->f_str(),
 						e->lhs->f_str(),
 						e->lhs->bits.ident.spel,
 						desig->bits.member);
 
-				e = expr_new_struct(e, 1 /* dot */, expr_new_identifier(desig->bits.member));
+				e = expr_new_struct(e, 1 /* dot */,
+						expr_new_identifier(desig->bits.member));
 				break;
 		}
 
@@ -330,6 +331,11 @@ static void decl_initialise_sue(decl_init ***init_iter,
 		/* XXX: room for optimisation below - avoid sue name lookup */
 		expr *accessor = expr_new_struct(base, 1 /* a.b */,
 				expr_new_identifier(sue_mem->spel));
+
+		if(sue_iter && *sue_iter){
+			decl_init *init_for_mem = *sue_iter;
+			decl_init_base_desig(&accessor, init_for_mem->desig);
+		}
 
 		decl_init_create_assignments_discard(
 				&sue_iter,

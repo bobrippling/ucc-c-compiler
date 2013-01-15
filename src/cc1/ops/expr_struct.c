@@ -44,8 +44,9 @@ void fold_expr_struct(expr *e, symtable *stab)
 
 		if(!(sue = type_ref_is_s_or_u(r))){
 err:
-			DIE_AT(&e->lhs->where, "'%s' is not a %sstruct or union (member %s)",
+			DIE_AT(&e->lhs->where, "'%s' (%s-expr) is not a %sstruct or union (member %s)",
 					type_ref_to_str(e->lhs->tree_type),
+					e->lhs->f_str(),
 					ptr_expect ? "pointer to " : "",
 					spel);
 		}
