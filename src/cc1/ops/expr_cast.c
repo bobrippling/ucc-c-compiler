@@ -41,10 +41,10 @@ void fold_const_expr_cast(expr *e, consty *k)
 				switch(sz){
 					/* TODO: unsigned */
 
+#define CAST(sz, t) case sz: piv->val = (t)piv->val; break
 	/*
-#define CAST(sz, t) case sz: piv->val = (t)piv->val; break  - don't use host machine casting
-	*/
 #define CAST(sz, t) case sz: piv->val = piv->val & ~(-1 << (sz * 8 - 1)); break
+	*/
 
 					CAST(1, char);
 					CAST(2, short);
