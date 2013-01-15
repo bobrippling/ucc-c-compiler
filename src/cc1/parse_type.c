@@ -349,8 +349,12 @@ static type_ref *parse_btype(enum decl_storage *store)
 			r = type_ref_new_type(t);
 		}
 
-		if(is_inline)
-			*store |= store_inline;
+		if(is_inline){
+			if(store)
+				*store |= store_inline;
+			else
+				DIE_AT(NULL, "inline not wanted");
+		}
 
 		r->attr = attr;
 		parse_add_attr(&r->attr); /* int/struct-A __attr__ */

@@ -123,13 +123,16 @@ int symtab_fold(symtable *tab, int current)
 					break;
 			}
 
-			if(s->decl->store != store_register
-			&& s->decl->store != store_extern
-			&& s->decl->spel_asm)
-			{
-				DIE_AT(&s->decl->where,
-						"asm() rename on non-register non-global variable \"%s\"",
-						s->decl->spel);
+			switch((enum decl_storage)(s->decl->store & STORE_MASK_STORE)){
+				case store_register:
+				case store_extern:
+					break;
+				default:
+					if(s->decl->spel_asm){
+						DIE_AT(&s->decl->where,
+								"asm() rename on non-register non-global variable \"%s\"",
+								s->decl->spel);
+					}
 			}
 		}
 	}

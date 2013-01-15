@@ -365,37 +365,33 @@ void fold_decl(decl *d, symtable *stab)
 	 *   register int  *f();
 	 */
 	if(DECL_IS_FUNC(d)){
-		switch(d->store){
+		switch(d->store & STORE_MASK_STORE){
 			case store_register:
 			case store_auto:
 				DIE_AT(&d->where, "%s storage for function", decl_store_to_str(d->store));
-			default:
-				break;
 		}
 
 		if(!d->func_code){
 			/* prototype - set extern, so we get a symbol generated (if needed) */
-			switch(d->store){
+			switch(d->store & STORE_MASK_STORE){
 				case store_default:
-					d->store = store_extern;
+					d->store |= store_extern;
 				case store_extern:
-				default:
 					break;
 			}
 		}
-	}else if(d->is_inline){
+	}else if((d->store & STORE_MASK_EXTRA) == store_inline){
 		WARN_AT(&d->where, "inline on non-function");
 	}
 
 	if(d->init){
-		/* should the store be on the type? */
-		if(d->store == store_extern){
+		if((d->store & STORE_MASK_STORE) == store_extern){
 			/* allow for globals - remove extern since it's a definition */
 			if(stab->parent){
 				DIE_AT(&d->where, "externs can't be initialised");
 			}else{
 				WARN_AT(&d->where, "extern initialisation");
-				d->store = store_default;
+				d->store &= ~store_extern;
 			}
 		}
 	}
@@ -427,15 +423,15 @@ void fold_decl_global_init(decl *d, symtable *stab)
 
 void fold_decl_global(decl *d, symtable *stab)
 {
-	switch(d->store){
+	switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
 		case store_extern:
 		case store_default:
 		case store_static:
-		case store_inline:
 			break;
 
+		case store_inline: /* allowed, but not accessible via STORE_MASK_STORE */
 		case store_typedef:
-			ICE("typedef store");
+			ICE("%s store", decl_store_to_str(d->store));
 
 		case store_auto:
 		case store_register:
@@ -697,12 +693,12 @@ static void fold_link_decl_defs(dynmap *spel_decls)
 
 		definition = decl_is_definition(d) ? d : NULL;
 
-		count_inline = d->is_inline;
+		count_inline = d->store & store_inline;
 		count_extern = count_static = 0;
 		first_none_extern = NULL;
 		asm_rename = d->spel_asm;
 
-		switch(d->store){
+		switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
 			case store_extern:
 				count_extern++;
 				break;
@@ -752,9 +748,9 @@ static void fold_link_decl_defs(dynmap *spel_decls)
 				definition = e;
 			}
 
-			count_inline += e->is_inline;
+			count_inline += e->store & store_inline;
 
-			switch(e->store){
+			switch((enum decl_storage)(e->store & STORE_MASK_STORE)){
 				case store_extern:
 					count_extern++;
 					break;
@@ -787,12 +783,13 @@ static void fold_link_decl_defs(dynmap *spel_decls)
 			 * "static inline" = code emitted, decl is static
 			 * one "inline", and "extern" mentioned, or "inline" not mentioned = code emitted, decl is extern
 			 */
-			definition->is_inline = count_inline > 0;
+			if(count_inline > 0)
+				definition->store |= store_inline;
 
 
 			/* all defs must be static, except the def, which is allowed to be non-static */
 			if(count_static > 0){
-				definition->store = store_static;
+				definition->store |= store_static;
 
 				if(count_static != count_total && (definition->func_code ? count_static != count_total - 1 : 0)){
 					DIE_AT(&definition->where,
@@ -802,7 +799,7 @@ static void fold_link_decl_defs(dynmap *spel_decls)
 			}
 
 
-			if(definition->store == store_static){
+			if((definition->store & STORE_MASK_STORE) == store_static){
 				/* static inline */
 
 			}else if(count_inline == count_total && count_extern == 0){
@@ -811,10 +808,10 @@ static void fold_link_decl_defs(dynmap *spel_decls)
 				WARN_AT(&definition->where, "definition is inline-only (ucc doesn't inline currently)");
 			}else if(count_inline > 0 && (count_extern > 0 || count_inline < count_total)){
 				/* extern inline */
-				definition->store = store_extern;
+				definition->store |= store_extern;
 			}
 
-			if(definition->is_inline && !definition->func_code)
+			if((definition->store & store_inline) && !definition->func_code)
 				WARN_AT(&definition->where, "inline function missing implementation");
 
 		}else if(count_static && count_static != count_total){

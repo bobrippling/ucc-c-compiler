@@ -22,7 +22,7 @@ expr *fold_for_if_init_decls(stmt *s)
 
 		fold_decl(d, s->flow->for_init_symtab);
 
-		switch(d->store){
+		switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
 			case store_auto:
 			case store_default:
 			case store_register:

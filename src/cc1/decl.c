@@ -788,6 +788,17 @@ void type_ref_add_type_str(type_ref *r,
 }
 #undef BUF_ADD
 
+int decl_store_static_or_extern(enum decl_storage s)
+{
+	switch((enum decl_storage)(s & STORE_MASK_STORE)){
+		case store_static:
+		case store_extern:
+			return 1;
+		default:
+			return 0;
+	}
+}
+
 static
 const char *type_ref_to_str_r_spel_aka(
 		char buf[TYPE_REF_STATIC_BUFSIZ], type_ref *r,

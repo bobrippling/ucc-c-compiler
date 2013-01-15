@@ -373,7 +373,7 @@ void out_push_sym(sym *s)
 			if(DECL_IS_FUNC(d))
 				goto label;
 
-			if(d->store == store_register && d->spel_asm)
+			if((d->store & STORE_MASK_STORE) == store_register && d->spel_asm)
 				ICW("TODO: %s asm(\"%s\")", decl_to_str(d), d->spel_asm);
 
 			vtop->type = STACK;

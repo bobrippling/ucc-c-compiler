@@ -120,13 +120,10 @@ enum decl_storage
 #define STORE_MASK_STORE 0x00007 /* include all below 4 */
 #define STORE_MASK_EXTRA 0xfff38 /* exclude  ^ */
 
-#define decl_store_static_or_extern(x) ((x) == store_static || (x) == store_extern)
-
 struct decl
 {
 	where where;
 	enum decl_storage store;
-	int is_inline;
 
 	type_ref *ref; /* should never be null - we always have a ref to a type */
 
@@ -188,6 +185,7 @@ int   decl_size(decl *, where const *from);
 int   type_ref_size(type_ref *, where const *from);
 int   decl_equal(decl *a, decl *b, enum decl_cmp mode);
 int   type_ref_equal(type_ref *a, type_ref *b, enum decl_cmp mode);
+int   decl_store_static_or_extern(enum decl_storage);
 
 decl *decl_ptr_depth_inc(decl *);
 decl *decl_ptr_depth_dec(decl *);
