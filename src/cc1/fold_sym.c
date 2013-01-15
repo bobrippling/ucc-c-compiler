@@ -141,7 +141,7 @@ int symtab_fold(symtable *tab, int current)
 				case store_extern:
 					break;
 				default:
-					if(s->decl->spel_asm){
+					if(s->type != sym_global && s->decl->spel_asm){
 						DIE_AT(&s->decl->where,
 								"asm() rename on non-register non-global variable \"%s\"",
 								s->decl->spel);
