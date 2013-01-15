@@ -73,7 +73,9 @@ int symtab_fold(symtable *tab, int current)
 				if(DECL_IS_FUNC(s->decl))
 					continue;
 
-				switch(s->decl->store){
+				switch((enum decl_storage)(s->decl->store & STORE_MASK_STORE)){
+						/* for now, we allocate stack space for register vars */
+					case store_register:
 					case store_default:
 					case store_auto:
 					{
@@ -91,8 +93,12 @@ int symtab_fold(symtable *tab, int current)
 						break;
 					}
 
-					default:
+					case store_static:
+					case store_extern:
 						break;
+					case store_typedef:
+					case store_inline:
+						ICE("%s store", decl_store_to_str(s->decl->store));
 				}
 			}
 
