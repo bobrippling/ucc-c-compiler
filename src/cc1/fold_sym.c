@@ -10,6 +10,8 @@
 #include "pack.h"
 #include "sue.h"
 #include "out/out.h"
+#include "typedef.h"
+#include "fold.h"
 
 
 #define RW_TEST(var)                              \
@@ -38,11 +40,22 @@ int symtab_fold(symtable *tab, int current)
 	const int this_start = current;
 	int arg_space = 0;
 
-	/*if(tab->typedefs){
+	if(tab->typedefs){
 		decl **i;
-		for(i = tab->typedefs; *i; i++)
-			fold_decl(*i, tab);
-	}*/
+
+		for(i = tab->typedefs; *i; i++){
+			decl *t = *i;
+			decl *dup;
+
+			if((dup = typedef_find4(tab, t->spel, t, 0 /*descend*/))){
+				char buf[WHERE_BUF_SIZ];
+				DIE_AT(&dup->where, "redefinition of typedef from:\n%s",
+						where_str_r(buf, &t->where));
+			}
+
+			fold_decl(t, tab);
+		}
+	}
 
 	if(tab->decls){
 		decl **diter;

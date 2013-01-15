@@ -946,7 +946,7 @@ symtable_global *parse()
 	symtable_gasm **last_gasms = NULL;
 
 	globals = symtabg_new();
-	current_scope = (symtable *)globals; /* fine - sockaddr-esque */
+	current_scope = &globals->stab;
 
 	for(;;){
 		int cont = 0;
