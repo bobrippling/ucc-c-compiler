@@ -613,7 +613,7 @@ type_ref *parse_type()
 static void parse_add_asm(decl *d)
 {
 	if(accept(token_asm)){
-		char *rename;
+		char *rename, *p;
 
 		EAT(token_open_paren);
 
@@ -624,6 +624,13 @@ static void parse_add_asm(decl *d)
 		EAT(token_string);
 
 		EAT(token_close_paren);
+
+		/* only allow [0-9A-Za-z_.] */
+		for(p = rename; *p; p++)
+			if(!isalnum(*p) && *p != '_' && *p != '.'){
+				WARN_AT(NULL, "asm name contains character 0x%x", *p);
+				break;
+			}
 
 		d->spel_asm = rename;
 	}
