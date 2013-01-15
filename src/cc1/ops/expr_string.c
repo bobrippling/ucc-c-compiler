@@ -90,6 +90,8 @@ void expr_mutate_str(expr *e, char *s, int len)
 {
 	stringval *sv = &e->bits.str.sv;
 
+	expr_mutate_wrapper(e, str);
+
 	sv->str = s;
 	sv->len = len;
 }
