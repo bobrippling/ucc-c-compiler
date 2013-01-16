@@ -11,8 +11,3 @@
 	} b;
 	int j;
 } a = { .b.i = 2 };*/
-
-struct A
-{
-	int i, j;
-} x = { .i = 1, .j = 2 };

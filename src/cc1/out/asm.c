@@ -140,16 +140,35 @@ static void asm_declare_init(FILE *f, stmt *init_code, type_ref *tfor)
 				mem++)
 		{
 			decl *d_mem = (*mem)->struct_member;
+			stmt *mem_init = NULL;
+
+			/* search for this member's init */
+			if(i){
+				stmt **search;
+
+				for(search = i; *search; search++){
+					expr *assign = (*search)->expr->lhs;
+					char *sp;
+
+					UCC_ASSERT(expr_kind(assign, struct),
+							"not assign-to-struct (%s)", assign->f_str());
+
+					sp = assign->rhs->bits.ident.spel;
+					if(!strcmp(sp, d_mem->spel)){
+						mem_init = *search;
+						break;
+					}
+				}
+
+				/* mem_init is null if we don't have an init for this member */
+			}
 
 			asm_declare_pad(f, d_mem->struct_offset - end_of_last);
 
-			asm_declare_init(f, i ? *i : NULL, d_mem->ref);
+			asm_declare_init(f, mem_init, d_mem->ref);
 
-			if(i){
-				++i;
-				if(!*i)
-					i = NULL;
-			}
+			/* don't increment i,
+			 * since we keep it at the start for the member lookup */
 
 			end_of_last = d_mem->struct_offset + type_ref_size(d_mem->ref, NULL);
 		}
