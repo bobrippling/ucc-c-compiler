@@ -17,6 +17,14 @@
 
 #include "decl_init.h"
 
+typedef struct decl_init_iter
+{
+	decl_init **pos;
+} decl_init_iter;
+
+#define INIT_ITER_ADV(p, n) (*(p->pos += n) ? 0 : (p->pos = NULL))
+#define INIT_ITER_VALID(i) ((i) && (i)->pos)
+
 #ifdef DEBUG_DECL_INIT
 static int init_debug_depth;
 
@@ -40,13 +48,13 @@ ucc_printflike(1, 2) void INIT_DEBUG(const char *fmt, ...)
 #endif
 
 static void decl_init_create_assignments_discard(
-		decl_init ***init_iter,
+		decl_init_iter *init_iter,
 		type_ref *const tfor_wrapped,
 		expr *base,
 		stmt *init_code);
 
 static void decl_initialise_scalar(
-		decl_init ***init_iter, expr *base, stmt *init_code);
+		decl_init_iter *init_iter, expr *base, stmt *init_code);
 
 int decl_init_is_const(decl_init *dinit, symtable *stab)
 {
@@ -169,10 +177,10 @@ static expr *decl_init_desig_expr(desig *desig, expr *final)
 }
 
 static type_ref *decl_initialise_array(
-		decl_init ***init_iter,
+		decl_init_iter *init_iter,
 		type_ref *const tfor_wrapped, expr *base, stmt *init_code)
 {
-	decl_init *dinit = **init_iter;
+	decl_init *dinit = INIT_ITER_VALID(init_iter) ? init_iter->pos[0] : NULL;
 	type_ref *tfor_deref, *tfor;
 	int complete_to = 0;
 
@@ -231,13 +239,21 @@ static type_ref *decl_initialise_array(
 	 */
 
 	if(dinit){
-		decl_init **array_iter = (dinit->type == decl_init_scalar ? *init_iter : dinit->bits.inits);
+		decl_init_iter sub_array_iter;
+		decl_init_iter *array_iter;
 		const int known_length = !type_ref_is_incomplete_array(tfor);
 		const int lim = known_length ? type_ref_array_len(tfor) : INT_MAX;
 		int i;
 #ifdef DEBUG_DECL_INIT
 		decl_init **start = array_iter;
 #endif
+
+		if(dinit->type == decl_init_scalar){
+			array_iter = init_iter;
+		}else{
+			sub_array_iter.pos = dinit->bits.inits;
+			array_iter = &sub_array_iter;
+		}
 
 		INIT_DEBUG("initialising array from %s"
 				", nested: %d, %p\n",
@@ -246,7 +262,7 @@ static type_ref *decl_initialise_array(
 				(void *)dinit);
 		INIT_DEBUG_DEPTH(++);
 
-		for(i = 0; array_iter && *array_iter && i < lim; i++){
+		for(i = 0; array_iter && i < lim; i++){
 			/* index into the main-array */
 			expr *this = expr_new_array_idx(base, i);
 
@@ -257,7 +273,7 @@ static type_ref *decl_initialise_array(
 
 			INIT_DEBUG_DEPTH(++);
 			decl_init_create_assignments_discard(
-					&array_iter, tfor_deref, this, init_code);
+					array_iter, tfor_deref, this, init_code);
 			INIT_DEBUG_DEPTH(--);
 		}
 
@@ -267,8 +283,7 @@ static type_ref *decl_initialise_array(
 				expr *this = expr_new_array_idx(base, i);
 
 				decl_init_create_assignments_discard(
-						&array_iter /* ptr to null */,
-						tfor_deref, this, init_code);
+						NULL, tfor_deref, this, init_code);
 			}
 		}
 
@@ -277,7 +292,7 @@ static type_ref *decl_initialise_array(
 		/* advance by the number of steps we moved over,
 		 * if not nested, otherwise advance by one, over the sub-brace
 		 */
-		*init_iter += (dinit->type == decl_init_scalar) ? complete_to : 1;
+		INIT_ITER_ADV(array_iter, (dinit->type == decl_init_scalar) ? complete_to : 1);
 
 		INIT_DEBUG_DEPTH(--);
 		INIT_DEBUG(
@@ -299,12 +314,12 @@ complete_ar:
 	return tfor;
 }
 
-static void decl_initialise_sue(decl_init ***init_iter,
+static void decl_initialise_sue(decl_init_iter *init_iter,
 		struct_union_enum_st *sue, expr *base, stmt *init_code)
 {
 	/* iterate over each member, pulling from the dinit */
-	decl_init *dinit = *init_iter ? **init_iter : NULL;
-	decl_init **sue_init_iter;
+	decl_init *dinit = INIT_ITER_VALID(init_iter) ? init_iter->pos[0] : NULL;
+	decl_init_iter sue_init_iter;
 	int braced;
 	int i, cnt;
 	char *initialised;
@@ -320,7 +335,7 @@ static void decl_initialise_sue(decl_init ***init_iter,
 	}
 
 	braced = dinit->type == decl_init_brace;
-	sue_init_iter = braced ? dinit->bits.inits : *init_iter;
+	sue_init_iter.pos = braced ? dinit->bits.inits : init_iter->pos;
 
 	cnt = dynarray_count((void **)sue->members);
 	initialised = umalloc(cnt * sizeof *initialised);
@@ -329,8 +344,8 @@ static void decl_initialise_sue(decl_init ***init_iter,
 		decl *sue_mem = sue->members[i]->struct_member;
 		expr *accessor = NULL;
 
-		if(sue_init_iter && *sue_init_iter){
-			decl_init *init_for_mem = *sue_init_iter;
+		if(sue_init_iter.pos){
+			decl_init *init_for_mem = sue_init_iter.pos[0];
 
 			/* got a designator - skip to that decl */
 			/* don't do duplicate init checks here,
@@ -372,19 +387,20 @@ static void decl_initialise_sue(decl_init ***init_iter,
 		if(!initialised[i]){
 			decl *d_mem = sue->members[i]->struct_member;
 			expr *access = EXPR_STRUCT(base, d_mem->spel);
-			decl_init **empty = NULL;
 
-			decl_initialise_scalar(&empty, access, init_code);
+			decl_initialise_scalar(NULL, access, init_code);
 		}
 	free(initialised);
 
-	if(sue_init_iter && *sue_init_iter)
-		WARN_AT(&(*sue_init_iter)->where, "excess struct initialiser");
+	if(sue_init_iter.pos)
+		WARN_AT(&sue_init_iter.pos[0]->where, "excess struct initialiser");
+
 
 	if(braced)
 		cnt = 1; /* we walk over the one brace, not multiple scalar/subinits */
+	INIT_ITER_ADV(init_iter, cnt);
 
-	*init_iter += cnt;
+
 	INIT_DEBUG("initialised %s, *init_iter += %d -> %p (%s)\n",
 			sue_str(sue), cnt, (void *)*init_iter,
 			*init_iter && **init_iter
@@ -393,21 +409,22 @@ static void decl_initialise_sue(decl_init ***init_iter,
 }
 
 static void decl_initialise_scalar(
-		decl_init ***init_iter, expr *base, stmt *init_code)
+		decl_init_iter *init_iter, expr *base, stmt *init_code)
 {
-	decl_init *const dinit = *init_iter ? **init_iter : NULL;
+	decl_init *const dinit = INIT_ITER_VALID(init_iter) ? init_iter->pos[0] : NULL;
 	expr *assign_from, *assign_init;
 
 	if(dinit){
 		if(dinit->type == decl_init_brace){
 			/* initialising scalar with { ... } - pick first */
 			decl_init **inits = dinit->bits.inits;
+			decl_init_iter new_iter = { inits };
 
 			if(inits && inits[1])
 				WARN_AT(&inits[1]->where, "excess initaliser%s", inits[2] ? "s" : "");
 
 			/* this seems to be called when it shouldn't... */
-			decl_initialise_scalar(&inits, base, init_code);
+			decl_initialise_scalar(&new_iter, base, init_code);
 			goto fin;
 		}
 
@@ -424,11 +441,11 @@ static void decl_initialise_scalar(
 			expr_to_stmt(assign_init, init_code->symtab));
 
 	if(dinit)
-fin: ++*init_iter; /* we've used this init */
+fin: INIT_ITER_ADV(init_iter, 1); /* we've used this init */
 }
 
 static type_ref *decl_init_create_assignments(
-		decl_init ***init_iter,
+		decl_init_iter *init_iter,
 		type_ref *const tfor_wrapped, /* could be typedef/cast */
 		expr *base,
 		stmt *init_code)
@@ -452,7 +469,7 @@ static type_ref *decl_init_create_assignments(
 }
 
 static void decl_init_create_assignments_discard(
-		decl_init ***init_iter, type_ref *const tfor_wrapped,
+		decl_init_iter *init_iter, type_ref *const tfor_wrapped,
 		expr *base, stmt *init_code)
 {
 	type_ref *t = decl_init_create_assignments(init_iter, tfor_wrapped, base, init_code);
@@ -468,7 +485,7 @@ static type_ref *decl_init_create_assignments_from_init(
 		stmt *init_code)
 {
 	decl_init *ar[] = { single_init, NULL };
-	decl_init **it = ar;
+	decl_init_iter it = { ar };
 	struct_union_enum_st *sue;
 
 	/* init validity checks */
