@@ -301,9 +301,10 @@ static void decl_initialise_sue(decl_init ***init_iter,
 	/* iterate over each member, pulling from the dinit */
 	sue_member **smem;
 	decl_init *dinit = *init_iter ? **init_iter : NULL;
-	decl_init **sue_iter;
+	decl_init **sue_init_iter;
 	int braced;
-	int cnt;
+	int i, cnt;
+	char *initialised;
 
 	if(dinit == NULL)
 		ICE("TODO: null dinit for struct");
@@ -316,19 +317,31 @@ static void decl_initialise_sue(decl_init ***init_iter,
 	}
 
 	braced = dinit->type == decl_init_brace;
-	sue_iter = braced ? dinit->bits.inits : *init_iter;
+	sue_init_iter = braced ? dinit->bits.inits : *init_iter;
 
-	for(smem = sue->members, cnt = 0;
+	cnt = dynarray_count((void **)sue->members);
+	initialised = umalloc(cnt * sizeof *initialised);
+
+	for(smem = sue->members, i = 0;
 			smem && *smem;
-			smem++, cnt++)
+			smem++, i++)
 	{
 		decl *const sue_mem = (*smem)->struct_member;
 		expr *accessor = NULL;
 
-		if(sue_iter && *sue_iter){
-			decl_init *init_for_mem = *sue_iter;
+		if(sue_init_iter && *sue_init_iter){
+			decl_init *init_for_mem = *sue_init_iter;
 
+			/* got to a designator - skip to that decl */
+			/* don't do duplicate init checks here,
+			 * since struct { ... } x = { .i[8] = 5, .i[2] = 3 } is valid(?)
+			 */
 			accessor = decl_init_desig_expr(init_for_mem->desig, base);
+			if(accessor){
+				/* TODO - find + update iter */
+				smem = find();
+				sue_mem = &sue->members[xyz];
+			}
 		}
 
 		if(!accessor){
@@ -338,11 +351,18 @@ static void decl_initialise_sue(decl_init ***init_iter,
 		}
 
 		decl_init_create_assignments_discard(
-				&sue_iter,
+				&sue_init_iter,
 				sue_mem->ref,
 				accessor,
 				init_code);
+
+		initialised[i]++;
 	}
+
+	for(i = 0; i < cnt; i++)
+		if(!initialised[i])
+			add_init_for(i);
+	free(initialised);
 
 	if(braced)
 		cnt = 1; /* we walk over the one brace, not multiple scalar/subinits */

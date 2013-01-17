@@ -106,7 +106,7 @@ static void asm_declare_init(FILE *f, stmt *init_code, type_ref *tfor)
 		 */
 		struct_union_enum_st *sue = r->bits.type->sue;
 		sue_member **mem = sue->members;
-		stmt **i, *two[2];
+		stmt **init_code_start, **init_code_i, *two[2];
 		int end_of_last = 0;
 		static int pws;
 
@@ -115,7 +115,7 @@ static void asm_declare_init(FILE *f, stmt *init_code, type_ref *tfor)
 
 		if(init_code){
 			if(init_code->codes){
-				i = init_code->codes;
+				init_code_start = init_code->codes;
 			}else{
 				/* single value init, i.e.
 				 * struct
@@ -128,11 +128,13 @@ static void asm_declare_init(FILE *f, stmt *init_code, type_ref *tfor)
 				 */
 				two[0] = init_code;
 				two[1] = NULL;
-				i = two;
+				init_code_start = two;
 			}
 		}else{
-			i = NULL;
+			init_code_start = NULL;
 		}
+
+		init_code_i = init_code_start;
 
 		/* iterate using members, not inits */
 		for(mem = sue->members;
@@ -143,10 +145,10 @@ static void asm_declare_init(FILE *f, stmt *init_code, type_ref *tfor)
 			stmt *mem_init = NULL;
 
 			/* search for this member's init */
-			if(i){
+			if(init_code_start){
 				stmt **search;
 
-				for(search = i; *search; search++){
+				for(search = init_code_start; *search; search++){
 					expr *assign = (*search)->expr->lhs;
 					char *sp;
 
@@ -155,20 +157,29 @@ static void asm_declare_init(FILE *f, stmt *init_code, type_ref *tfor)
 
 					sp = assign->rhs->bits.ident.spel;
 					if(!strcmp(sp, d_mem->spel)){
-						mem_init = *search;
+						/* advance where we are */
+						init_code_i = search;
 						break;
 					}
 				}
 
-				/* mem_init is null if we don't have an init for this member */
+				if(init_code_i)
+					mem_init = *init_code_i;
+
+				/* mem_init is null if we don't have an init for this member
+				 * we should have an init if we have init_code_start, since
+				 * decl_init::create_assignments creates 0-assignments for
+				 * missing members
+				 */
 			}
 
 			asm_declare_pad(f, d_mem->struct_offset - end_of_last);
 
 			asm_declare_init(f, mem_init, d_mem->ref);
 
-			/* don't increment i,
-			 * since we keep it at the start for the member lookup */
+			/* increment init_code_i - we have the start and this advances for unnamed */
+			if(init_code_i && !*++init_code_i)
+				init_code_i = NULL; /* reached end */
 
 			end_of_last = d_mem->struct_offset + type_ref_size(d_mem->ref, NULL);
 		}
