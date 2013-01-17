@@ -418,9 +418,10 @@ static void op_unsigned_cmp_check(expr *e)
 	}
 }
 
-static void msg_if_precedence(expr *sub, where *w, enum op_type binary)
+static void msg_if_precedence(expr *sub, where *w,
+		enum op_type binary, int (*test)(enum op_type))
 {
-	if(!sub->in_parens && op_is_comparison(sub->op)){
+	if(expr_kind(sub, op) && !sub->in_parens && (*test)(sub->op)){
 		/* ==, !=, <, ... */
 		WARN_AT(w, "%s has higher precedence than %s",
 				op_to_str(sub->op), op_to_str(binary));
@@ -429,11 +430,22 @@ static void msg_if_precedence(expr *sub, where *w, enum op_type binary)
 
 static void op_check_precedence(expr *e)
 {
-	if(e->op != op_or && e->op != op_and)
-		return;
+	switch(e->op){
+		case op_or:
+		case op_and:
+			msg_if_precedence(e->lhs, &e->where, e->op, op_is_comparison);
+			msg_if_precedence(e->rhs, &e->where, e->op, op_is_comparison);
+			break;
 
-	msg_if_precedence(e->lhs, &e->where, e->op);
-	msg_if_precedence(e->rhs, &e->where, e->op);
+		case op_andsc:
+		case op_orsc:
+			msg_if_precedence(e->lhs, &e->where, e->op, op_is_shortcircuit);
+			msg_if_precedence(e->rhs, &e->where, e->op, op_is_shortcircuit);
+			break;
+
+		default:
+			break;
+	}
 }
 
 void fold_expr_op(expr *e, symtable *stab)

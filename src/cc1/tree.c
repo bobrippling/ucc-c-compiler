@@ -262,18 +262,20 @@ int op_is_comparison(enum op_type o)
 	return 0;
 }
 
-int op_is_relational(enum op_type o)
+int op_is_shortcircuit(enum op_type o)
 {
-	if(op_is_comparison(o))
-		return 1;
 	switch(o){
 		case op_andsc:
 		case op_orsc:
 			return 1;
 		default:
-			break;
+			return 0;
 	}
-	return 0;
+}
+
+int op_is_relational(enum op_type o)
+{
+	return op_is_comparison(o) || op_is_shortcircuit(o);
 }
 
 const char *type_to_str(const type *t)
