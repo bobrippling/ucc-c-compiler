@@ -418,6 +418,24 @@ static void op_unsigned_cmp_check(expr *e)
 	}
 }
 
+static void msg_if_precedence(expr *sub, where *w, enum op_type binary)
+{
+	if(!sub->in_parens && op_is_comparison(sub->op)){
+		/* ==, !=, <, ... */
+		WARN_AT(w, "%s has higher precedence than %s",
+				op_to_str(sub->op), op_to_str(binary));
+	}
+}
+
+static void op_check_precedence(expr *e)
+{
+	if(e->op != op_or && e->op != op_and)
+		return;
+
+	msg_if_precedence(e->lhs, &e->where, e->op);
+	msg_if_precedence(e->rhs, &e->where, e->op);
+}
+
 void fold_expr_op(expr *e, symtable *stab)
 {
 	UCC_ASSERT(e->op != op_unknown, "unknown op in expression at %s",
@@ -434,6 +452,7 @@ void fold_expr_op(expr *e, symtable *stab)
 				&e->lhs, &e->rhs, &e->where, stab);
 
 		op_bound(e);
+		op_check_precedence(e);
 		op_unsigned_cmp_check(e);
 
 	}else{
