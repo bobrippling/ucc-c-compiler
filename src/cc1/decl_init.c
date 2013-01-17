@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <limits.h>
+#include <string.h>
 
 #include "../util/util.h"
 #include "../util/dynarray.h"
@@ -43,6 +44,9 @@ static void decl_init_create_assignments_discard(
 		type_ref *const tfor_wrapped,
 		expr *base,
 		stmt *init_code);
+
+static void decl_initialise_scalar(
+		decl_init ***init_iter, expr *base, stmt *init_code);
 
 int decl_init_is_const(decl_init *dinit, symtable *stab)
 {
@@ -299,7 +303,6 @@ static void decl_initialise_sue(decl_init ***init_iter,
 		struct_union_enum_st *sue, expr *base, stmt *init_code)
 {
 	/* iterate over each member, pulling from the dinit */
-	sue_member **smem;
 	decl_init *dinit = *init_iter ? **init_iter : NULL;
 	decl_init **sue_init_iter;
 	int braced;
@@ -322,32 +325,38 @@ static void decl_initialise_sue(decl_init ***init_iter,
 	cnt = dynarray_count((void **)sue->members);
 	initialised = umalloc(cnt * sizeof *initialised);
 
-	for(smem = sue->members, i = 0;
-			smem && *smem;
-			smem++, i++)
-	{
-		decl *const sue_mem = (*smem)->struct_member;
+	for(i = 0; i < cnt; i++){
+		decl *sue_mem = sue->members[i]->struct_member;
 		expr *accessor = NULL;
 
 		if(sue_init_iter && *sue_init_iter){
 			decl_init *init_for_mem = *sue_init_iter;
 
-			/* got to a designator - skip to that decl */
+			/* got a designator - skip to that decl */
 			/* don't do duplicate init checks here,
-			 * since struct { ... } x = { .i[8] = 5, .i[2] = 3 } is valid(?)
+			 * since struct { ... } x = { .i[8] = 5, .i[2] = 3 } is valid
 			 */
 			accessor = decl_init_desig_expr(init_for_mem->desig, base);
 			if(accessor){
-				/* TODO - find + update iter */
-				smem = find();
-				sue_mem = &sue->members[xyz];
+				/* find + update iter */
+				char *target = accessor->rhs->bits.ident.spel;
+
+				for(i = 0; i < cnt; i++){
+					sue_mem = sue->members[i]->struct_member;
+					if(!strcmp(target, sue_mem->spel))
+						break; /* found */
+				}
+
+				UCC_ASSERT(i < cnt, "next not found");
 			}
 		}
 
+#define EXPR_STRUCT(b, nam) expr_new_struct(b, 1 /* a.b */, \
+					expr_new_identifier(nam))
+
 		if(!accessor){
 			/* XXX: room for optimisation below - avoid sue name lookup */
-			accessor = expr_new_struct(base, 1 /* a.b */,
-					expr_new_identifier(sue_mem->spel));
+			accessor = EXPR_STRUCT(base, sue_mem->spel);
 		}
 
 		decl_init_create_assignments_discard(
@@ -360,9 +369,17 @@ static void decl_initialise_sue(decl_init ***init_iter,
 	}
 
 	for(i = 0; i < cnt; i++)
-		if(!initialised[i])
-			add_init_for(i);
+		if(!initialised[i]){
+			decl *d_mem = sue->members[i]->struct_member;
+			expr *access = EXPR_STRUCT(base, d_mem->spel);
+			decl_init **empty = NULL;
+
+			decl_initialise_scalar(&empty, access, init_code);
+		}
 	free(initialised);
+
+	if(sue_init_iter && *sue_init_iter)
+		WARN_AT(&(*sue_init_iter)->where, "excess struct initialiser");
 
 	if(braced)
 		cnt = 1; /* we walk over the one brace, not multiple scalar/subinits */
