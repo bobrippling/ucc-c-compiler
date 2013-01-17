@@ -314,6 +314,9 @@ complete_ar:
 	return tfor;
 }
 
+#define EXPR_STRUCT(b, nam) expr_new_struct(b, 1 /* a.b */, \
+					expr_new_identifier(nam))
+
 static void decl_initialise_sue(decl_init_iter *init_iter,
 		struct_union_enum_st *sue, expr *base, stmt *init_code)
 {
@@ -340,15 +343,15 @@ static void decl_initialise_sue(decl_init_iter *init_iter,
 	cnt = dynarray_count((void **)sue->members);
 	initialised = umalloc(cnt * sizeof *initialised);
 
-	for(i = 0; i < cnt; i++){
-		decl *sue_mem = sue->members[i]->struct_member;
+	for(i = 0;;){
+		decl *sue_mem = NULL;
 		expr *accessor = NULL;
 
 		if(sue_init_iter.pos){
 			decl_init *init_for_mem = sue_init_iter.pos[0];
 
-			/* got a designator - skip to that decl */
-			/* don't do duplicate init checks here,
+			/* got a designator - skip to that decl
+			 * don't do duplicate init checks here,
 			 * since struct { ... } x = { .i[8] = 5, .i[2] = 3 } is valid
 			 */
 			accessor = decl_init_desig_expr(init_for_mem->desig, base);
@@ -362,17 +365,25 @@ static void decl_initialise_sue(decl_init_iter *init_iter,
 						break; /* found */
 				}
 
-				UCC_ASSERT(i < cnt, "next not found");
+				if(i >= cnt)
+					DIE_AT(&init_for_mem->where, "no such member \"%s\" to initialise", target);
 			}
 		}
 
-#define EXPR_STRUCT(b, nam) expr_new_struct(b, 1 /* a.b */, \
-					expr_new_identifier(nam))
-
 		if(!accessor){
-			/* XXX: room for optimisation below - avoid sue name lookup */
+			UCC_ASSERT(sue_init_iter.pos, "no next init - should've been caught below");
+
+			if(i >= cnt){
+				/* trying to initialise past the end */
+				WARN_AT(&sue_init_iter.pos[0]->where, "excess initialiser for struct");
+				break;
+			}
+
+			sue_mem = sue->members[i]->struct_member;
 			accessor = EXPR_STRUCT(base, sue_mem->spel);
 		}
+
+		initialised[i]++;
 
 		decl_init_create_assignments_discard(
 				&sue_init_iter,
@@ -380,7 +391,12 @@ static void decl_initialise_sue(decl_init_iter *init_iter,
 				accessor,
 				init_code);
 
-		initialised[i]++;
+		/* terminating case - we're at the end of the sue_init_iter
+		 * or `i > cnt` (last member) and the next isn't a desig */
+		if(!sue_init_iter.pos)
+			break;
+		if(++i > cnt && !sue_init_iter.pos[0]->desig)
+			break;
 	}
 
 	for(i = 0; i < cnt; i++)
@@ -391,10 +407,6 @@ static void decl_initialise_sue(decl_init_iter *init_iter,
 			decl_initialise_scalar(NULL, access, init_code);
 		}
 	free(initialised);
-
-	if(sue_init_iter.pos)
-		WARN_AT(&sue_init_iter.pos[0]->where, "excess struct initialiser");
-
 
 	if(braced)
 		cnt = 1; /* we walk over the one brace, not multiple scalar/subinits */
