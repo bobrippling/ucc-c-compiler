@@ -583,27 +583,28 @@ but gcc and clang promote to ints anyway...
 		{
 			const int is_signed = type_ref_is_signed(vtop->t);
 			char buf[VSTACK_STR_SZ];
+			int inv = 0;
 
 			vtop2_prepare_op();
 
-			/*
-			 * if we have a const, it must be the first arg
-			 * not sure why this works without having to
-			 * invert the comparison
-			 */
-			if(vtop->type == CONST)
+			/* if we have a const, it must be the first arg */
+			if(vtop[-1].type == CONST){
 				vswap();
+				inv = 1;
+			}
 
 			out_asm("cmp%c %s, %s",
-					asm_type_ch(vtop->t),
-					vstack_str(&vtop[-1]),
-					vstack_str_r(buf, vtop));
+					asm_type_ch(vtop[-1].t), /* pick the non-const one (for type-ing) */
+					vstack_str(       vtop),
+					vstack_str_r(buf, vtop - 1));
 
 			vpop();
 			vtop_clear(type_ref_new_BOOL()); /* cmp creates an int/bool */
 			vtop->type = FLAG;
 			vtop->bits.flag.cmp = op_to_flag(op);
 			vtop->bits.flag.is_signed = is_signed;
+			if(inv)
+				v_inv_cmp(vtop);
 			return;
 		}
 
