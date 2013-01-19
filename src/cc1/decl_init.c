@@ -73,7 +73,8 @@ static void decl_init_create_assignments_discard(
 		stmt *init_code);
 
 static void decl_initialise_scalar(
-		decl_init_iter *init_iter, expr *base, stmt *init_code);
+		decl_init_iter *init_iter, type_ref *const tfor,
+		expr *base, stmt *init_code);
 
 int decl_init_is_const(decl_init *dinit, symtable *stab)
 {
@@ -472,7 +473,8 @@ zero_init:
 }
 
 static void decl_initialise_scalar(
-		decl_init_iter *init_iter, expr *base, stmt *init_code)
+		decl_init_iter *init_iter, type_ref *const tfor,
+		expr *base, stmt *init_code)
 {
 	decl_init *const dinit = INIT_ITER_VALID(init_iter) ? init_iter->pos[0] : NULL;
 	expr *assign_from, *assign_init;
@@ -487,14 +489,18 @@ static void decl_initialise_scalar(
 				WARN_AT(&inits[1]->where, "excess initaliser%s", inits[2] ? "s" : "");
 
 			/* this seems to be called when it shouldn't... */
-			decl_initialise_scalar(&new_iter, base, init_code);
+			decl_initialise_scalar(&new_iter, tfor, base, init_code);
 			goto fin;
 		}
 
 		assert(dinit->type == decl_init_scalar);
 		assign_from = dinit->bits.expr;
 	}else{
-		assign_from = expr_new_val(0);
+		/* implicit cast (alternatively allow assignment to pointers from the
+		 * constant 0) */
+
+		assign_from = expr_new_cast(tfor, 1);
+		assign_from->expr = expr_new_val(0);
 	}
 
 	assign_init = expr_new_assign(base, assign_from);
@@ -527,7 +533,7 @@ static type_ref *decl_init_create_assignments(
 		decl_initialise_sue(init_iter, sue, base, init_code);
 
 	}else{
-		decl_initialise_scalar(init_iter, base, init_code);
+		decl_initialise_scalar(init_iter, tfor_wrapped, base, init_code);
 	}
 
 	return tfor_ret;
