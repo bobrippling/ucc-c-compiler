@@ -77,6 +77,16 @@ static void decl_initialise_scalar(
 
 int decl_init_is_const(decl_init *dinit, symtable *stab)
 {
+	desig *desig;
+
+	for(desig = dinit->desig; desig; desig = desig->next)
+		if(desig->type == desig_ar){
+			consty k;
+			const_fold(desig->bits.ar, &k);
+			if(!is_const(k.type))
+				return 0;
+		}
+
 	switch(dinit->type){
 		case decl_init_scalar:
 		{
