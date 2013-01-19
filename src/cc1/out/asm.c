@@ -102,39 +102,20 @@ static void asm_declare_init(FILE *f, stmt *init_code, type_ref *tfor)
 
 	if((r = type_ref_is_type(tfor, type_struct))){
 		/* array of stmts for each member
-		 * assumes the ->codes order is member order
+		 * doesn't assume the ->codes order is member order
+		 * TODO: sort by ->struct_offset
 		 */
 		struct_union_enum_st *sue = r->bits.type->sue;
 		sue_member **mem = sue->members;
-		stmt **init_code_start, **init_code_i, *two[2];
+		stmt **init_code_start, **init_code_i;
 		int end_of_last = 0;
 		static int pws;
 
 		if(!pws)
 			pws = platform_word_size();
 
-		if(init_code){
-			if(init_code->codes){
-				init_code_start = init_code->codes;
-			}else{
-				/* single value init, i.e.
-				 * struct
-				 * {
-				 *   struct
-				 *   {
-				 *     int i;
-				 *   } a;
-				 * } b = { 1 };
-				 */
-				two[0] = init_code;
-				two[1] = NULL;
-				init_code_start = two;
-			}
-		}else{
-			init_code_start = NULL;
-		}
 
-		init_code_i = init_code_start;
+		init_code_i = init_code_start = init_code ? init_code->codes : NULL;
 
 		/* iterate using members, not inits */
 		for(mem = sue->members;
@@ -185,10 +166,10 @@ static void asm_declare_init(FILE *f, stmt *init_code, type_ref *tfor)
 		}
 
 	}else if((r = type_ref_is(tfor, type_ref_array))){
-		stmt **i;
 		type_ref *next = type_ref_next(tfor);
 
 		if(init_code){
+			stmt **i;
 			for(i = init_code->codes; i && *i; i++)
 				asm_declare_init(f, *i, next);
 		}else{
@@ -200,11 +181,6 @@ static void asm_declare_init(FILE *f, stmt *init_code, type_ref *tfor)
 		if(!init_code){
 			asm_declare_pad(f, type_ref_size(tfor, NULL));
 
-		}else if(init_code->codes){
-			UCC_ASSERT(dynarray_count((void **)init_code->codes) == 1,
-					"too many init codes");
-
-			asm_declare_init(f, init_code->codes[0], tfor);
 		}else{
 			/* scalar */
 			expr *exp = init_code->expr;

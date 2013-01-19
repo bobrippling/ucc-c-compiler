@@ -17,14 +17,6 @@
 
 #include "decl_init.h"
 
-typedef struct decl_init_iter
-{
-	decl_init **pos;
-} decl_init_iter;
-
-#define INIT_ITER_ADV(p, n) (*(p->pos += n) ? 0 : (p->pos = NULL))
-#define INIT_ITER_VALID(i) ((i) && (i)->pos)
-
 #ifdef DEBUG_DECL_INIT
 static int init_debug_depth;
 
@@ -46,6 +38,33 @@ ucc_printflike(1, 2) void INIT_DEBUG(const char *fmt, ...)
 #  define INIT_DEBUG_DEPTH(op)
 #  define INIT_DEBUG(...)
 #endif
+
+
+typedef struct decl_init_iter
+{
+	decl_init **pos;
+} decl_init_iter;
+#define INIT_ITER_VALID(i) ((i) && (i)->pos)
+
+
+static void init_iter_adv(decl_init_iter *i, int n)
+{
+	if(!i || !i->pos)
+		return;
+
+	while(n --> 0)
+		if(!*++i->pos){
+			i->pos = NULL;
+			break;
+		}
+}
+
+static stmt *stmt_sub_init_code(stmt *parent)
+{
+	stmt *sub = stmt_new_wrapper(code, parent->symtab);
+	dynarray_add((void ***)&parent->codes, sub);
+	return sub;
+}
 
 static void decl_init_create_assignments_discard(
 		decl_init_iter *init_iter,
@@ -165,9 +184,6 @@ static expr *decl_init_desig_expr(desig *desig, expr *final)
 				break;
 
 			case desig_struct:
-				fprintf(stderr, "construct: %s . %s\n",
-						e->f_str(), desig->bits.member);
-
 				e = expr_new_struct(e, 1 /* dot */,
 						expr_new_identifier(desig->bits.member));
 				break;
@@ -241,12 +257,9 @@ static type_ref *decl_initialise_array(
 	if(dinit){
 		decl_init_iter sub_array_iter;
 		decl_init_iter *array_iter;
-		const int known_length = !type_ref_is_incomplete_array(tfor);
-		const int lim = known_length ? type_ref_array_len(tfor) : INT_MAX;
-		int i;
-#ifdef DEBUG_DECL_INIT
-		decl_init **start = array_iter;
-#endif
+		int known_length = !type_ref_is_incomplete_array(tfor);
+		int lim = known_length ? type_ref_array_len(tfor) : INT_MAX;
+		int i, adv;
 
 		if(dinit->type == decl_init_scalar){
 			array_iter = init_iter;
@@ -262,14 +275,19 @@ static type_ref *decl_initialise_array(
 				(void *)dinit);
 		INIT_DEBUG_DEPTH(++);
 
-		for(i = 0; array_iter && i < lim; i++){
+		if(!array_iter->pos){
+			/* x = {} */
+			known_length = 1;
+			lim = 1;
+		}
+
+		for(i = 0; array_iter->pos && i < lim; i++){
 			/* index into the main-array */
 			expr *this = expr_new_array_idx(base, i);
 
-			INIT_DEBUG("initialising (%s)[%d] with %s, di %p\n",
+			INIT_DEBUG("initialising (%s)[%d] with %s\n",
 					type_ref_to_str(tfor), i,
-					decl_init_to_str((*array_iter)->type),
-					(void *)*array_iter);
+					decl_init_to_str(array_iter->pos[0]->type));
 
 			INIT_DEBUG_DEPTH(++);
 			decl_init_create_assignments_discard(
@@ -282,6 +300,8 @@ static type_ref *decl_initialise_array(
 			for(; i < lim; i++){
 				expr *this = expr_new_array_idx(base, i);
 
+				fprintf(stderr, "create array assignment to %s\n",
+						type_ref_to_str(tfor_deref));
 				decl_init_create_assignments_discard(
 						NULL, tfor_deref, this, init_code);
 			}
@@ -292,14 +312,16 @@ static type_ref *decl_initialise_array(
 		/* advance by the number of steps we moved over,
 		 * if not nested, otherwise advance by one, over the sub-brace
 		 */
-		INIT_ITER_ADV(array_iter, (dinit->type == decl_init_scalar) ? complete_to : 1);
+		fprintf(stderr, "array iter adv by: %d (complete to %d)\n",
+				(dinit->type == decl_init_scalar) ? complete_to : 1,
+				complete_to);
+
+		adv = (dinit->type == decl_init_scalar) ? complete_to : 1;
+		init_iter_adv(array_iter, adv);
 
 		INIT_DEBUG_DEPTH(--);
-		INIT_DEBUG(
-				"array, len %d finished, i=%d, "
-				"*array_iter=%p, array_iter-start = %ld <-- adv-by\n",
-				complete_to, i,
-				(void *)*array_iter, (long)(array_iter - start));
+		INIT_DEBUG("array, len %d finished, i=%d, adv-by=%d\n",
+				complete_to, i, adv);
 	}
 
 	/* patch the type size */
@@ -307,8 +329,8 @@ complete_ar:
 	if(type_ref_is_incomplete_array(tfor)){
 		tfor = type_ref_complete_array(tfor, complete_to);
 
-		INIT_DEBUG("completed array to %d - %s\n",
-				complete_to, type_ref_to_str(tfor));
+		INIT_DEBUG("completed array to %d - %s (init_codes count %d)\n",
+				complete_to, type_ref_to_str(tfor), dynarray_count((void **)init_code->codes));
 	}
 
 	return tfor;
@@ -326,22 +348,25 @@ static void decl_initialise_sue(decl_init_iter *init_iter,
 	int braced;
 	int i, cnt;
 	char *initialised;
+	stmt *sub_init_code = stmt_sub_init_code(init_code);
 
-	if(dinit == NULL)
-		ICE("TODO: null dinit for struct");
+	cnt = dynarray_count((void **)sue->members);
+	initialised = umalloc(cnt * sizeof *initialised);
 
 	if(sue_incomplete(sue)){
 		type_ref *r = type_ref_new_type(type_new_primitive(type_struct));
 		r->bits.type->sue = sue;
 
-		DIE_AT(&dinit->where, "initialising %s", type_ref_to_str(r));
+		DIE_AT(&base->where, "initialising %s", type_ref_to_str(r));
+	}
+
+	if(dinit == NULL){
+		braced = 1; /* adv by one */
+		goto zero_init;
 	}
 
 	braced = dinit->type == decl_init_brace;
 	sue_init_iter.pos = braced ? dinit->bits.inits : init_iter->pos;
-
-	cnt = dynarray_count((void **)sue->members);
-	initialised = umalloc(cnt * sizeof *initialised);
 
 	for(i = 0;;){
 		decl *sue_mem = NULL;
@@ -367,7 +392,12 @@ static void decl_initialise_sue(decl_init_iter *init_iter,
 
 				if(i >= cnt)
 					DIE_AT(&init_for_mem->where, "no such member \"%s\" to initialise", target);
+
+				INIT_DEBUG("designating %s::%s...\n", sue->spel, sue_mem->spel);
 			}
+		}else{
+			/* null init */
+			break;
 		}
 
 		if(!accessor){
@@ -381,15 +411,23 @@ static void decl_initialise_sue(decl_init_iter *init_iter,
 
 			sue_mem = sue->members[i]->struct_member;
 			accessor = EXPR_STRUCT(base, sue_mem->spel);
+
+			INIT_DEBUG("initialising next member %s::%s...\n", sue->spel, sue_mem->spel);
 		}
 
 		initialised[i]++;
+
+		INIT_DEBUG_DEPTH(++);
+		INIT_DEBUG("... with %s\n", INIT_ITER_VALID(&sue_init_iter)
+				? decl_init_to_str(sue_init_iter.pos[0]->type) : "n/a");
 
 		decl_init_create_assignments_discard(
 				&sue_init_iter,
 				sue_mem->ref,
 				accessor,
-				init_code);
+				sub_init_code);
+
+		INIT_DEBUG_DEPTH(--);
 
 		/* terminating case - we're at the end of the sue_init_iter
 		 * or `i > cnt` (last member) and the next isn't a desig */
@@ -399,26 +437,28 @@ static void decl_initialise_sue(decl_init_iter *init_iter,
 			break;
 	}
 
+zero_init:
 	for(i = 0; i < cnt; i++)
 		if(!initialised[i]){
 			decl *d_mem = sue->members[i]->struct_member;
 			expr *access = EXPR_STRUCT(base, d_mem->spel);
 
 			decl_init_create_assignments_discard(
-					NULL, d_mem->ref, access, init_code);
+					NULL, d_mem->ref, access, sub_init_code);
 		}
 	free(initialised);
 
 	if(braced)
 		cnt = 1; /* we walk over the one brace, not multiple scalar/subinits */
-	INIT_ITER_ADV(init_iter, cnt);
+
+	init_iter_adv(init_iter, cnt);
 
 
-	INIT_DEBUG("initialised %s, *init_iter += %d -> %p (%s)\n",
-			sue_str(sue), cnt, (void *)*init_iter,
-			*init_iter && **init_iter
-			? decl_init_to_str((**init_iter)->type)
-			: "n/a");
+	INIT_DEBUG("initialised %s, *init_iter += %d -> (%s)\n",
+			sue_str(sue), cnt,
+			INIT_ITER_VALID(init_iter)
+				? decl_init_to_str(init_iter->pos[0]->type)
+				: "n/a");
 }
 
 static void decl_initialise_scalar(
@@ -450,11 +490,13 @@ static void decl_initialise_scalar(
 	assign_init = expr_new_assign(base, assign_from);
 	assign_init->assign_is_init = 1;
 
+	INIT_DEBUG("scalar %s\n", assign_from->f_str());
+
 	dynarray_add((void ***)&init_code->codes,
 			expr_to_stmt(assign_init, init_code->symtab));
 
 	if(dinit)
-fin: INIT_ITER_ADV(init_iter, 1); /* we've used this init */
+fin: init_iter_adv(init_iter, 1); /* we've used this init */
 }
 
 static type_ref *decl_init_create_assignments(
