@@ -404,7 +404,8 @@ static void decl_initialise_sue(decl_init_iter *init_iter,
 			decl *d_mem = sue->members[i]->struct_member;
 			expr *access = EXPR_STRUCT(base, d_mem->spel);
 
-			decl_initialise_scalar(NULL, access, init_code);
+			decl_init_create_assignments_discard(
+					NULL, d_mem->ref, access, init_code);
 		}
 	free(initialised);
 
