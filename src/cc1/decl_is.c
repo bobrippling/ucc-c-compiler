@@ -197,6 +197,7 @@ int type_ref_is_integral(type_ref *r)
 int type_ref_align(type_ref *r, where const *from)
 {
 	struct_union_enum_st *sue;
+	type_ref *test;
 
 	if((sue = type_ref_is_s_or_u(r)))
 		/* safe - can't have an instance without a ->sue */
@@ -208,8 +209,11 @@ int type_ref_align(type_ref *r, where const *from)
 		return platform_word_size();
 	}
 
-	if((r = type_ref_is(r, type_ref_type)))
+	if((test = type_ref_is(r, type_ref_type)))
 		return type_size(r->bits.type, from);
+
+	if((test = type_ref_is(r, type_ref_array)))
+		return type_ref_align(test->ref, from);
 
 	return 1;
 }
