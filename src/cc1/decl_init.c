@@ -210,6 +210,7 @@ static type_ref *decl_initialise_array(
 	decl_init *dinit = INIT_ITER_VALID(init_iter) ? init_iter->pos[0] : NULL;
 	type_ref *tfor_deref, *tfor;
 	int complete_to = 0;
+	stmt *sub_init_code = stmt_sub_init_code(init_code);
 
 	switch(dinit ? dinit->type : decl_init_brace){
 		case decl_init_scalar:
@@ -232,7 +233,7 @@ static type_ref *decl_initialise_array(
 						expr *e  = expr_new_val(sv->str[i]);
 						expr *to = expr_new_array_idx(base, i);
 
-						dynarray_add((void ***)&init_code->codes,
+						dynarray_add((void ***)&sub_init_code->codes,
 								expr_to_stmt(
 									expr_new_assign(to, e),
 									init_code->symtab));
@@ -302,7 +303,7 @@ static type_ref *decl_initialise_array(
 
 			INIT_DEBUG_DEPTH(++);
 			decl_init_create_assignments_discard(
-					array_iter, tfor_deref, this, init_code);
+					array_iter, tfor_deref, this, sub_init_code);
 			INIT_DEBUG_DEPTH(--);
 		}
 
@@ -314,7 +315,7 @@ static type_ref *decl_initialise_array(
 				fprintf(stderr, "create array assignment to %s\n",
 						type_ref_to_str(tfor_deref));
 				decl_init_create_assignments_discard(
-						NULL, tfor_deref, this, init_code);
+						NULL, tfor_deref, this, sub_init_code);
 			}
 		}
 
@@ -323,7 +324,7 @@ static type_ref *decl_initialise_array(
 		/* advance by the number of steps we moved over,
 		 * if not nested, otherwise advance by one, over the sub-brace
 		 */
-		fprintf(stderr, "array iter adv by: %d (complete to %d)\n",
+		INIT_DEBUG("array iter adv by: %d (complete to %d)\n",
 				(dinit->type == decl_init_scalar) ? complete_to : 1,
 				complete_to);
 
@@ -340,8 +341,8 @@ complete_ar:
 	if(type_ref_is_incomplete_array(tfor)){
 		tfor = type_ref_complete_array(tfor, complete_to);
 
-		INIT_DEBUG("completed array to %d - %s (init_codes count %d)\n",
-				complete_to, type_ref_to_str(tfor), dynarray_count((void **)init_code->codes));
+		INIT_DEBUG("completed array to %d - %s (sub_init_codes count %d)\n",
+				complete_to, type_ref_to_str(tfor), dynarray_count((void **)sub_init_code->codes));
 	}
 
 	return tfor;

@@ -250,10 +250,14 @@ void asm_declare_decl_init(FILE *f, decl *d)
 		asm_predeclare_extern(d);
 
 	}else if(d->init && !decl_init_is_zero(d->init)){
+		stmt **init_codes = d->decl_init_code->codes;
+
+		UCC_ASSERT(dynarray_count((void **)init_codes) == 1,
+				"too many init codes for single decl");
 
 		fprintf(f, ".align %d\n", type_ref_align(d->ref, NULL));
 		fprintf(f, "%s:\n", decl_asm_spel(d));
-		asm_declare_init(f, d->decl_init_code, d->ref);
+		asm_declare_init(f, init_codes[0], d->ref);
 		fputc('\n', f);
 
 	}else{
