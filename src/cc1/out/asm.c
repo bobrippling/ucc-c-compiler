@@ -241,6 +241,7 @@ void asm_predeclare_extern(decl *d)
 
 void asm_predeclare_global(decl *d)
 {
+	/* FIXME: section cleanup - along with __attribute__((section("..."))) */
 	asm_out_section(SECTION_TEXT, ".globl %s\n", decl_asm_spel(d));
 }
 
