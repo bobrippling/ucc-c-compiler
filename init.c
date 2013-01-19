@@ -2,7 +2,7 @@
 	[5] = 2
 };*/
 
-/*struct A
+struct A
 {
 	//int pre;
 	struct B
@@ -10,4 +10,4 @@
 		int i;
 	} b;
 	int j;
-} a = { .b.i = 2 };*/
+} a = { .b.i = 2 };
