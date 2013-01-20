@@ -17,6 +17,8 @@
 
 #include "decl_init.h"
 
+#define DEBUG_DECL_INIT
+
 #ifdef DEBUG_DECL_INIT
 static int init_debug_depth;
 
@@ -179,30 +181,6 @@ static expr *expr_new_array_idx(expr *base, int i)
 	return expr_new_array_idx_e(base, expr_new_val(i));
 }
 
-static expr *decl_init_desig_expr(desig *desig, expr *final)
-{
-	expr *e;
-
-	if(!desig)
-		return NULL;
-
-	e = final;
-
-	for(; desig; desig = desig->next)
-		switch(desig->type){
-			case desig_ar:
-				e = expr_new_array_idx_e(e, desig->bits.ar);
-				break;
-
-			case desig_struct:
-				e = expr_new_struct(e, 1 /* dot */,
-						expr_new_identifier(desig->bits.member));
-				break;
-		}
-
-	return e;
-}
-
 static type_ref *decl_initialise_array(
 		decl_init_iter *init_iter,
 		type_ref *const tfor_wrapped, expr *base, stmt *init_code)
@@ -360,7 +338,6 @@ static void decl_initialise_sue(decl_init_iter *init_iter,
 	int braced;
 	int i, cnt;
 	char *initialised;
-	stmt *sub_init_code = stmt_sub_init_code(init_code);
 
 	cnt = dynarray_count((void **)sue->members);
 	initialised = umalloc(cnt * sizeof *initialised);
@@ -391,19 +368,25 @@ static void decl_initialise_sue(decl_init_iter *init_iter,
 			 * don't do duplicate init checks here,
 			 * since struct { ... } x = { .i[8] = 5, .i[2] = 3 } is valid
 			 */
-			accessor = decl_init_desig_expr(init_for_mem->desig, base);
-			if(accessor){
-				/* find + update iter */
-				char *target = accessor->rhs->bits.ident.spel;
+			if(init_for_mem->desig){
+				desig *const desig = init_for_mem->desig;
+				char *mem;
 
+				if(desig->type != desig_struct)
+					DIE_AT(&init_for_mem->where, "struct designator expected");
+
+				mem = desig->bits.member;
+				accessor = EXPR_STRUCT(base, mem);
+
+				/* find + update iter */
 				for(i = 0; i < cnt; i++){
 					sue_mem = sue->members[i]->struct_member;
-					if(!strcmp(target, sue_mem->spel))
+					if(!strcmp(mem, sue_mem->spel))
 						break; /* found */
 				}
 
 				if(i >= cnt)
-					DIE_AT(&init_for_mem->where, "no such member \"%s\" to initialise", target);
+					DIE_AT(&init_for_mem->where, "no such member \"%s\" to initialise", mem);
 
 				INIT_DEBUG("designating %s::%s...\n", sue->spel, sue_mem->spel);
 			}
@@ -437,7 +420,7 @@ static void decl_initialise_sue(decl_init_iter *init_iter,
 				&sue_init_iter,
 				sue_mem->ref,
 				accessor,
-				sub_init_code);
+				sub_init_code /* TODO: use dynmap: member => init, then sort */);
 
 		INIT_DEBUG_DEPTH(--);
 
@@ -463,8 +446,12 @@ zero_init:
 	if(braced)
 		cnt = 1; /* we walk over the one brace, not multiple scalar/subinits */
 
-	init_iter_adv(init_iter, cnt);
+	{
+		stmt *sub_init_code = stmt_sub_init_code(init_code);
+		/* sort dynmap */
+	}
 
+	init_iter_adv(init_iter, cnt);
 
 	INIT_DEBUG("initialised %s, *init_iter += %d -> (%s)\n",
 			sue_str(sue), cnt,

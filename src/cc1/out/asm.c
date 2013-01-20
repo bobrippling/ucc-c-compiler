@@ -102,57 +102,21 @@ static void asm_declare_init(FILE *f, stmt *init_code, type_ref *tfor)
 
 	if((r = type_ref_is_type(tfor, type_struct))){
 		/* array of stmts for each member
-		 * doesn't assume the ->codes order is member order
-		 * TODO: sort by ->struct_offset
+		 * assumes the ->codes order is member order
 		 */
-		struct_union_enum_st *sue = r->bits.type->sue;
-		sue_member **mem = sue->members;
-		stmt **init_code_start, **init_code_i;
+		sue_member **mem;
+		stmt **init_code_i;
 		int end_of_last = 0;
-		static int pws;
 
-		if(!pws)
-			pws = platform_word_size();
-
-
-		init_code_i = init_code_start = init_code ? init_code->codes : NULL;
+		init_code_i = init_code ? init_code->codes : NULL;
 
 		/* iterate using members, not inits */
-		for(mem = sue->members;
+		for(mem = r->bits.type->sue->members;
 				mem && *mem;
 				mem++)
 		{
 			decl *d_mem = (*mem)->struct_member;
 			stmt *mem_init = NULL;
-
-			/* search for this member's init */
-			if(init_code_start){
-				stmt **search;
-
-				for(search = init_code_start; *search; search++){
-					expr *assign = (*search)->expr->lhs;
-					char *sp;
-
-					UCC_ASSERT(expr_kind(assign, struct),
-							"not assign-to-struct (%s)", assign->f_str());
-
-					sp = assign->rhs->bits.ident.spel;
-					if(!strcmp(sp, d_mem->spel)){
-						/* advance where we are */
-						init_code_i = search;
-						break;
-					}
-				}
-
-				if(init_code_i)
-					mem_init = *init_code_i;
-
-				/* mem_init is null if we don't have an init for this member
-				 * we should have an init if we have init_code_start, since
-				 * decl_init::create_assignments creates 0-assignments for
-				 * missing members
-				 */
-			}
 
 			asm_declare_pad(f, d_mem->struct_offset - end_of_last);
 
