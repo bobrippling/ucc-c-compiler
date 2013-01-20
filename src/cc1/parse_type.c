@@ -855,7 +855,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 						case type_struct:
 						case type_union:
 							/* if it doesn't have a ->sue, it's a forward decl */
-							warn = sue && !sue->anon;
+							warn = !sue->anon;
 							break;
 
 						default:
