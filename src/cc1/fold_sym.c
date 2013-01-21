@@ -10,13 +10,16 @@
 #include "pack.h"
 #include "sue.h"
 #include "out/out.h"
+#include "typedef.h"
+#include "fold.h"
 
 
 #define RW_TEST(var)                              \
 						s->var == 0                           \
-						&& !decl_has_array(s->decl)           \
-						&& !decl_is_func(s->decl)             \
-						&& !decl_is_struct_or_union(s->decl)
+						&& s->decl->spel                      \
+						&& !DECL_IS_ARRAY(s->decl)            \
+						&& !DECL_IS_FUNC(s->decl)             \
+						&& !DECL_IS_S_OR_U(s->decl)
 
 #define RW_SHOW(w, str)                           \
 					cc1_warn_at(&s->decl->where, 0, 1,      \
@@ -36,6 +39,23 @@ int symtab_fold(symtable *tab, int current)
 {
 	const int this_start = current;
 	int arg_space = 0;
+
+	if(tab->typedefs){
+		decl **i;
+
+		for(i = tab->typedefs; *i; i++){
+			decl *t = *i;
+			decl *dup;
+
+			if((dup = typedef_find4(tab, t->spel, t, 0 /*descend*/))){
+				char buf[WHERE_BUF_SIZ];
+				DIE_AT(&dup->where, "redefinition of typedef from:\n%s",
+						where_str_r(buf, &t->where));
+			}
+
+			fold_decl(t, tab);
+		}
+	}
 
 	if(tab->decls){
 		decl **diter;
@@ -60,26 +80,25 @@ int symtab_fold(symtable *tab, int current)
 
 		for(diter = tab->decls; *diter; diter++){
 			sym *s = (*diter)->sym;
-			const int has_unused_attr = decl_attr_present(s->decl->attr, attr_unused);
+			const int has_unused_attr = !!decl_has_attr(s->decl, attr_unused);
 
 			if(s->type == sym_local){
-				switch(s->decl->type->store){
+				if(DECL_IS_FUNC(s->decl))
+					continue;
+
+				switch((enum decl_storage)(s->decl->store & STORE_MASK_STORE)){
+						/* for now, we allocate stack space for register vars */
+					case store_register:
 					case store_default:
 					case store_auto:
 					{
-						int siz = decl_size(s->decl);
-						int align;
-						int this;
+						int siz = decl_size(s->decl, &s->decl->where);
+						int align = type_ref_align(s->decl->ref, &s->decl->where);
 
-						if(decl_is_struct_or_union(s->decl))
-							/* safe - can't have an instance without a ->sue */
-							align = s->decl->type->sue->align;
-						else
-							align = siz;
+						/* packing takes care of everything */
+						pack_next(&current, NULL, siz, align);
 
-						pack_next(&current, &this, siz, align); /* an array and structs start at the bottom */
-
-						s->offset = this;
+						s->offset = current;
 
 						/* static analysis on sym (only auto-vars) */
 						if(!has_unused_attr && !s->decl->init)
@@ -87,8 +106,12 @@ int symtab_fold(symtable *tab, int current)
 						break;
 					}
 
-					default:
+					case store_static:
+					case store_extern:
 						break;
+					case store_typedef:
+					case store_inline:
+						ICE("%s store", decl_store_to_str(s->decl->store));
 				}
 			}
 
@@ -99,7 +122,7 @@ int symtab_fold(symtable *tab, int current)
 					const int unused = RW_TEST(nreads);
 
 					if(unused){
-						if(!has_unused_attr && s->decl->type->store != store_extern)
+						if(!has_unused_attr && (s->decl->store & STORE_MASK_STORE) != store_extern)
 							RW_SHOW(READ, "read");
 					}else if(has_unused_attr){
 						warn_at(&s->decl->where, 1,
@@ -111,6 +134,18 @@ int symtab_fold(symtable *tab, int current)
 
 				case sym_global:
 					break;
+			}
+
+			switch((enum decl_storage)(s->decl->store & STORE_MASK_STORE)){
+				case store_register:
+				case store_extern:
+					break;
+				default:
+					if(s->type != sym_global && s->decl->spel_asm){
+						DIE_AT(&s->decl->where,
+								"asm() rename on non-register non-global variable \"%s\"",
+								s->decl->spel);
+					}
 			}
 		}
 	}

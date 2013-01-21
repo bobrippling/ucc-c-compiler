@@ -17,20 +17,18 @@ _start:
 	// __progname = argv[0]
 	movq (%rsi), %rcx
 
-	movq %rcx, %rax
-	movq %rax, __progname(%rip)
+	movq %rcx, __progname(%rip)
 
 	// find the first env variable
-	leaq 1(%rdi), %rax   // argc + 1
 
-	// rax = argv + (argc + 1) * 8
-	leaq (,%rsi,8), %rax  // [%rsi + rax * 8]
+	leaq 1(%rdi), %rdx    // rdx = argc + 1
+	sal $3, %rdx          // rdx *= 8
+	addq %rsi, %rdx       // rdx += argv
 
-	movq %rax, environ(%rip)
+	// rdx = (argc + 1) * 8 + argv
+	// env = &argv[argc+1]
 
-	push %rax // environ
-	push %rsi // argv
-	push %rdi // argc
+	movq %rdx, environ(%rip)
 
 	call main
 	movl %eax, %edi

@@ -45,25 +45,19 @@ int enum_nentries(struct_union_enum_st *e)
 	return n;
 }
 
-int sue_size(struct_union_enum_st *st)
+int sue_size(struct_union_enum_st *st, const where *w)
 {
-	sue_member **i;
-	int total, max;
+	if(sue_incomplete(st))
+		DIE_AT(w, "%s %s is incomplete", sue_str(st), st->spel);
+
+	if(st->size)
+		return st->size;
 
 	if(st->primitive == type_enum)
-		return type_primitive_size(type_int);
+		return st->size = type_primitive_size(type_int);
 
-	total = max = 0;
-
-	for(i = st->members; i && *i; i++){
-		const int sz = decl_size((*i)->struct_member);
-
-		total += sz;
-		if(sz > max)
-			max = sz;
-	}
-
-	return st->primitive == type_union ? max : total;
+	ICE("%s of unfolded sue", __func__);
+	return -1;
 }
 
 struct_union_enum_st *sue_find(symtable *stab, const char *spel)
@@ -156,7 +150,7 @@ struct_union_enum_st *sue_add(symtable *const stab, char *spel, sue_member **mem
 	st_en_un_set_spel(&sue->spel, spel, sue_str(sue));
 
 	if(members){
-		UCC_ASSERT(!sue->members, "redef of struct should've been caught");
+		UCC_ASSERT(!sue->members, "redef of struct/union should've been caught");
 		sue->members = members;
 	}
 

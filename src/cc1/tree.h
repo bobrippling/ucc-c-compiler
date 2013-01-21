@@ -7,6 +7,7 @@ typedef struct stmt_flow stmt_flow;
 
 typedef struct sym         sym;
 typedef struct symtable    symtable;
+typedef struct symtable_global symtable_global;
 
 typedef struct tdef        tdef;
 typedef struct tdeftable   tdeftable;
@@ -14,12 +15,11 @@ typedef struct struct_union_enum_st struct_union_enum_st;
 
 typedef struct type        type;
 typedef struct decl        decl;
-typedef struct decl_desc   decl_desc;
+typedef struct type_ref    type_ref;
 typedef struct funcargs    funcargs;
 typedef struct decl_attr   decl_attr;
 
 typedef struct decl_init   decl_init;
-typedef struct data_store  data_store;
 
 enum type_primitive
 {
@@ -38,10 +38,6 @@ enum type_primitive
 	type_union,
 	type_enum,
 
-	/* implicitly unsigned */
-	type_intptr_t,
-	type_ptrdiff_t,
-
 	type_unknown
 };
 
@@ -53,32 +49,16 @@ enum type_qualifier
 	qual_restrict = 1 << 2,
 };
 
-enum type_storage
-{
-	store_default, /* auto or external-linkage depending on scope + other defs */
-	store_auto,
-	store_static,
-	store_extern,
-	store_register,
-	store_typedef
-};
-
-#define type_store_static_or_extern(x) ((x) == store_static || (x) == store_extern)
-
 struct type
 {
 	where where;
 
 	enum type_primitive primitive;
 	enum type_qualifier qual;
-	enum type_storage   store;
-	int is_signed, is_inline;
+	int is_signed;
 
 	/* NULL unless this is a struct, union or enum */
 	struct_union_enum_st *sue;
-
-	/* NULL unless from typedef or __typeof() */
-	expr *type_of;
 
 	/* attr applied to all decls whose type is this type */
 	decl_attr *attr;
@@ -88,11 +68,14 @@ enum type_cmp
 {
 	TYPE_CMP_EXACT         = 1 << 0,
 	TYPE_CMP_QUAL          = 1 << 1,
+	TYPE_CMP_ALLOW_SIGNED_UNSIGNED = 1 << 2,
 };
 
-
 type *type_new(void);
+type *type_new_primitive(enum type_primitive);
+type *type_new_primitive_qual(enum type_primitive, enum type_qualifier);
 type *type_copy(type *);
+#define type_free(x) free(x)
 
 void where_new(struct where *w);
 
@@ -100,25 +83,24 @@ const char *op_to_str(  const enum op_type o);
 const char *type_to_str(const type *t);
 
 const char *type_primitive_to_str(const enum type_primitive);
-const char *type_store_to_str(    const enum type_storage);
       char *type_qual_to_str(     const enum type_qualifier);
 
+int type_equal(const type *a, const type *b, enum type_cmp mode);
+int type_qual_equal(enum type_qualifier, enum type_qualifier);
+int type_size( const type *, where const *from);
+int type_primitive_size(enum type_primitive tp);
+
 int op_is_relational(enum op_type o);
+int op_is_shortcircuit(enum op_type o);
+int op_is_comparison(enum op_type o);
 int op_can_compound(enum op_type o);
 
-int type_equal(const type *a, const type *b, enum type_cmp mode);
-int   type_size( const type *);
-int   type_primitive_size(enum type_primitive tp);
-funcargs *funcargs_new(void);
-void function_empty_args(funcargs *func);
 
-void funcargs_free(funcargs *args, int free_decls);
+#define SPEC_STATIC_BUFSIZ      64
+#define TYPE_STATIC_BUFSIZ      (SPEC_STATIC_BUFSIZ + 64)
+#define TYPE_REF_STATIC_BUFSIZ  (TYPE_STATIC_BUFSIZ + 256)
+#define DECL_STATIC_BUFSIZ      (TYPE_REF_STATIC_BUFSIZ + 16)
 
-#define SPEC_STATIC_BUFSIZ 64
-#define TYPE_STATIC_BUFSIZ (SPEC_STATIC_BUFSIZ + 64)
-#define DECL_STATIC_BUFSIZ (256 + TYPE_STATIC_BUFSIZ)
-
-#define type_free(x) free(x)
 
 /* tables local to the current scope */
 extern symtable *current_scope;

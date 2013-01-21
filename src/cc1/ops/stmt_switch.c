@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 
 #include "ops.h"
 #include "stmt_switch.h"
@@ -62,25 +63,30 @@ ret:
 
 void fold_stmt_switch(stmt *s)
 {
-	type *typ;
 	symtable *test_symtab = fold_stmt_test_init_expr(s, "switch");
 
 	s->lbl_break = out_label_flow("switch");
 
-	fold_expr(s->expr, test_symtab);
+	FOLD_EXPR(s->expr, test_symtab);
 
 	fold_need_expr(s->expr, "switch", 0);
-
-	OPT_CHECK(s->expr, "constant expression in switch");
 
 	fold_stmt(s->lhs);
 	/* FIXME: check for duplicate case values and at most, 1 default */
 
 	/* check for an enum */
-	typ = s->expr->tree_type->type;
-	if(typ->primitive == type_enum){
-		UCC_ASSERT(typ->sue, "no enum for enum type");
-		fold_switch_enum(s, typ);
+	{
+		type_ref *r = type_ref_is_type(s->expr->tree_type, type_enum);
+
+		if(r){
+			type *typ = r->bits.type;
+			UCC_ASSERT(typ->sue, "no enum for enum type");
+			fold_switch_enum(s, typ);
+
+			/* warn if we switch on an enum bitmask */
+			if(decl_attr_present(typ->sue->attr, attr_enum_bitmask))
+				WARN_AT(&s->where, "switch on enum with enum_bitmask attribute");
+		}
 	}
 }
 
@@ -125,7 +131,7 @@ void gen_stmt_switch(stmt *s)
 			out_push_iv(cse->expr2->tree_type, &max);
 			out_op(op_gt);
 
-			out_jfalse(cse->expr->spel);
+			out_jfalse(cse->expr->bits.ident.spel);
 
 			out_label(skip);
 			free(skip);
@@ -136,13 +142,13 @@ void gen_stmt_switch(stmt *s)
 
 			out_op(op_eq);
 
-			out_jtrue(cse->expr->spel);
+			out_jtrue(cse->expr->bits.ident.spel);
 		}
 	}
 
 	out_pop(); /* free the value we switched on asap */
 
-	out_push_lbl(tdefault ? tdefault->expr->spel : s->lbl_break, 0, NULL);
+	out_push_lbl(tdefault ? tdefault->expr->bits.ident.spel : s->lbl_break, 0);
 	out_jmp();
 
 	/* out-stack must be empty from here on */

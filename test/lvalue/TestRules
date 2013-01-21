@@ -1,0 +1,2 @@
+no-link: addr.c, func_addr.c
+compile-error: func_assign.c

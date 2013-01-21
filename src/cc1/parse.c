@@ -17,6 +17,7 @@
 #include "parse_type.h"
 #include "const.h"
 #include "ops/__builtin.h"
+#include "funcargs.h"
 
 #define STAT_NEW(type)      stmt_new_wrapper(type, current_scope)
 #define STAT_NEW_NEST(type) stmt_new_wrapper(type, symtab_new(current_scope))
@@ -48,16 +49,26 @@ expr *parse_expr_sizeof_typeof(int is_typeof)
 	expr *e;
 
 	if(accept(token_open_paren)){
-		decl *d = parse_decl_single(DECL_SPEL_NO);
+		type_ref *r = parse_type();
 
-		if(d){
-			e = expr_new_sizeof_decl(d, is_typeof);
+		if(r){
+			EAT(token_close_paren);
+
+			/* check for sizeof(int){...} */
+			if(curtok == token_open_block)
+				e = expr_new_sizeof_expr(
+							expr_new_compound_lit(r,
+								parse_initialisation()),
+							is_typeof);
+			else
+				e = expr_new_sizeof_type(r, is_typeof);
+
 		}else{
 			/* parse a full one, since we're in brackets */
 			e = expr_new_sizeof_expr(parse_expr_exp(), is_typeof);
+			EAT(token_close_paren);
 		}
 
-		EAT(token_close_paren);
 	}else{
 		if(is_typeof)
 			/* TODO? cc1_error = 1, return expr_new_val(0) */
@@ -82,17 +93,17 @@ expr *parse_expr__Generic()
 	lbls = NULL;
 
 	for(;;){
-		decl *d;
+		type_ref *r;
 		expr *e;
 		struct generic_lbl *lbl;
 
 		EAT(token_comma);
 
 		if(accept(token_default)){
-			d = NULL;
+			r = NULL;
 		}else{
-			d = parse_decl_single(DECL_SPEL_NO);
-			if(!d)
+			r = parse_type();
+			if(!r)
 				DIE_AT(NULL, "type expected");
 		}
 		EAT(token_colon);
@@ -100,7 +111,7 @@ expr *parse_expr__Generic()
 
 		lbl = umalloc(sizeof *lbl);
 		lbl->e = e;
-		lbl->d = d;
+		lbl->t = r;
 		dynarray_add((void ***)&lbls, lbl);
 
 		if(accept(token_close_paren))
@@ -126,16 +137,16 @@ expr *parse_expr_identifier()
 expr *parse_block()
 {
 	funcargs *args;
-	decl *rt;
+	type_ref *rt;
 
 	EAT(token_xor);
 
-	rt = parse_decl_single(DECL_SPEL_NO);
+	rt = parse_type();
 
 	if(rt){
-		if(decl_is_func(rt)){
+		if(type_ref_is(rt, type_ref_func)){
 			/* got ^int (args...) */
-			rt = decl_func_deref(rt, &args);
+			rt = type_ref_func_call(rt, &args);
 		}else{
 			/* ^int {...} */
 			goto def_args;
@@ -175,7 +186,7 @@ expr *parse_expr_primary()
 			token_get_current_str(&s, &l);
 			EAT(token_string);
 
-			return expr_new_addr_str(s, l);
+			return expr_new_str(s, l);
 		}
 
 		case token__Generic:
@@ -186,13 +197,22 @@ expr *parse_expr_primary()
 
 		default:
 			if(accept(token_open_paren)){
-				decl *d;
+				type_ref *r;
 				expr *e;
 
-				if((d = parse_decl_single(DECL_SPEL_NO))){
-					e = expr_new_cast(d, 0);
+				if((r = parse_type())){
+					e = expr_new_cast(r, 0);
 					EAT(token_close_paren);
-					e->expr = parse_expr_cast(); /* another cast */
+
+					if(curtok == token_open_block){
+						/* C99 compound lit. */
+						decl_init *init = parse_initialisation();
+
+						expr_compound_lit_from_cast(e, init);
+
+					}else{
+						e->expr = parse_expr_cast(); /* another cast */
+					}
 					return e;
 
 				}else if(curtok == token_open_block){
@@ -207,6 +227,12 @@ expr *parse_expr_primary()
 				EAT(token_close_paren);
 				return e;
 			}else{
+				/* inline asm */
+				if(accept(token_asm)){
+					ICW("token_asm - redirect to builtin instead of identifier");
+					return expr_new_identifier(ustrdup(ASM_INLINE_FNAME));
+				}
+
 				if(curtok != token_identifier){
 					/* TODO? cc1_error = 1, return expr_new_val(0) */
 					DIE_AT(NULL, "expression expected, got %s (%s:%d)",
@@ -244,7 +270,7 @@ expr *parse_expr_postfix()
 
 			/* check for specialised builtin parsing */
 			if(expr_kind(e, identifier))
-				fcall = builtin_parse(e->spel);
+				fcall = builtin_parse(e->bits.ident.spel);
 
 			if(!fcall){
 				fcall = expr_new_funcall();
@@ -289,14 +315,14 @@ expr *parse_expr_unary()
 			case token_andsc:
 				/* GNU &&label */
 				EAT(curtok);
-				e = expr_new_addr();
-				e->spel = token_current_spel();
+				e = expr_new_addr_lbl(token_current_spel());
 				EAT(token_identifier);
 				break;
 
 			case token_and:
-				e = expr_new_addr();
-				goto do_parse;
+				EAT(token_and);
+				e = expr_new_addr(parse_expr_cast());
+				break;
 
 			case token_multiply:
 				EAT(curtok);
@@ -308,7 +334,6 @@ expr *parse_expr_unary()
 			case token_bnot:
 			case token_not:
 				e = expr_new_op(curtok_to_op());
-do_parse:
 				EAT(curtok);
 				e->lhs = parse_expr_cast();
 				break;
@@ -420,20 +445,20 @@ expr *parse_expr_exp()
 	return e;
 }
 
-decl **parse_type_list()
+type_ref **parse_type_list()
 {
-	decl **types = NULL;
+	type_ref **types = NULL;
 
 	if(curtok == token_close_paren)
 		return types;
 
 	do{
-		decl *d = parse_decl_single(DECL_SPEL_NO);
+		type_ref *r = parse_type();
 
-		if(!d)
+		if(!r)
 			DIE_AT(NULL, "type expected");
 
-		dynarray_add((void ***)&types, d);
+		dynarray_add((void ***)&types, r);
 	}while(accept(token_comma));
 
 	return types;
@@ -901,46 +926,74 @@ flow:
 	/* unreachable */
 }
 
-symtable *parse()
+static symtable_gasm *parse_gasm(void)
 {
-	symtable *globals;
-	decl **decls = NULL;
-	int i;
-	int warned = 0;
+	symtable_gasm *g = umalloc(sizeof *g);
 
-	current_scope = globals = symtab_new(NULL);
+	EAT(token_open_paren);
+	token_get_current_str(&g->asm_str, NULL);
+	EAT(token_string);
+	EAT(token_close_paren);
+	EAT(token_semicolon);
+
+	return g;
+}
+
+symtable_global *parse()
+{
+	symtable_global *globals;
+	decl **decls = NULL;
+	symtable_gasm **last_gasms = NULL;
+
+	globals = symtabg_new();
+	current_scope = &globals->stab;
 
 	for(;;){
+		int cont = 0;
+
 		decl **new = parse_decls_multi_type(
 				  DECL_MULTI_CAN_DEFAULT
 				| DECL_MULTI_ACCEPT_FUNC_CODE
 				| DECL_MULTI_ALLOW_STORE);
 
 		if(new){
+			symtable_gasm **i;
+
+			for(i = last_gasms; i && *i; i++)
+				(*i)->before = *new;
+			dynarray_free((void ***)&last_gasms, NULL);
+
 			dynarray_add_array((void ***)&decls, (void **)new);
 			free(new);
 		}
 
-		if(accept(token_semicolon)){
-			if(!warned){
-				WARN_AT(NULL, "extra semi-colon after global decl");
-				warned = 1;
-			}
-			continue;
+		/* global asm */
+		while(accept(token_asm)){
+			symtable_gasm *g = parse_gasm();
+
+			dynarray_add((void ***)&last_gasms, g);
+			dynarray_add((void ***)&globals->gasms, g);
+			cont = 1;
 		}
-		break;
+
+		if(!cont)
+			break;
 	}
+
+	dynarray_free((void ***)&last_gasms, NULL);
 
 	EAT(token_eof);
 
 	if(parse_had_error)
 		exit(1);
 
-	if(decls)
+	if(decls){
+		int i;
 		for(i = 0; decls[i]; i++)
-			symtab_add(globals, decls[i], sym_global, SYMTAB_NO_SYM, SYMTAB_APPEND);
+			symtab_add(current_scope, decls[i], sym_global, SYMTAB_NO_SYM, SYMTAB_APPEND);
+	}
 
-	globals->static_asserts = static_asserts;
+	current_scope->static_asserts = static_asserts;
 
 	return globals;
 }

@@ -1,8 +1,12 @@
-DIRS = assignment/ blocks/ decl_parsing/ inline/ lib/ structs/ type_parsing/ other/ pointers/ types/
+DIRS = assignment/ blocks/ decl_parsing/ inline/ lib/ structs/ type_parsing/ \
+			 other/ pointers/ types/ arrays/ stack_save/ lvalue/                   \
+			 initialisation/array/ initialisation/scalar/ initialisation/structs/  \
+			 builtin/
+
 MAKEFILES = ${DIRS:/=/Makefile}
 
 # we assume ucc/cc1/cpp are up to date
-test: makefiles ${DIRS:/=/test}
+test: ${DIRS:/=/test}
 	@echo All Tests + Purposeful Failures Succeeded
 
 makefiles: ${MAKEFILES}
@@ -10,11 +14,16 @@ clean: makefiles ${DIRS:/=/clean}
 
 ${MAKEFILES}: make_gen.pl
 
-%/test:
+help:
+	@echo "make dir/test for individual tests"
+	@echo "     dir/clean for cleaning"
+	@echo "     makefiles for updated rules"
+
+%/test: %/Makefile
 	make -C$* test
 
 %/Makefile: %/TestRules
-	cd $*; perl ../make_gen.pl > Makefile
+	perl ./make_gen.pl $* > $*/Makefile
 
 %/clean: %/TestRules
 	make -C$* clean
@@ -23,4 +32,21 @@ ${MAKEFILES}: make_gen.pl
 %/clean:
 	make -C$* clean
 
-.PHONY: all clean test gen ucc
+.PHONY: all clean test gen ucc help
+
+# TODO:
+# anywhere_decl/
+# apply/
+# asm/
+# C99/
+# cil/
+# clang/
+# hai/
+# input/
+# messing around/
+# misc/
+# packing/
+# parse/
+# programs/
+# promotion/
+# Unsorted/

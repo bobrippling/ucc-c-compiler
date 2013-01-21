@@ -120,11 +120,9 @@ FILE *cc1_out;                  /* final output */
 
 enum warning warn_mode = ~(
 		  WARN_VOID_ARITH
-		| WARN_COMPARE_MISMATCH
 		| WARN_IMPLICIT_INT
-		| WARN_INCOMPLETE_USE
-		| WARN_OPT_POSSIBLE
 		| WARN_LOSS_PRECISION
+		| WARN_SIGN_COMPARE
 		);
 
 enum fopt    fopt_mode = FOPT_CONST_FOLD | FOPT_SHOW_LINE | FOPT_PIC;
@@ -281,8 +279,8 @@ void sigh(int sig)
 
 int main(int argc, char **argv)
 {
-	static symtable *globs;
-	void (*gf)(symtable *);
+	static symtable_global *globs;
+	void (*gf)(symtable_global *);
 	FILE *f;
 	const char *fname;
 	int i;
@@ -474,24 +472,22 @@ usage:
 	if(f != stdin)
 		fclose(f);
 
-	if(globs->decls){
-		fold(globs);
-		symtab_fold(globs, 0);
+	fold(&globs->stab);
+	symtab_fold(&globs->stab, 0);
 
-		switch(arch){
-			case MIPS_32:
-				impl_mipsel_32();
-				break;
-			case X86:
-				fprintf(stderr, "x86 todo\n");
-				return 1;
-			case X64:
-				impl_x86_64();
-				break;
-		}
-
-		gf(globs);
+	switch(arch){
+		case MIPS_32:
+			impl_mipsel_32();
+			break;
+		case X86:
+			fprintf(stderr, "x86 todo\n");
+			return 1;
+		case X64:
+			impl_x86_64();
+			break;
 	}
+
+	gf(globs);
 
 	io_fin(gf == gen_asm, fname);
 

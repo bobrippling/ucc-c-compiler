@@ -13,18 +13,32 @@ struct vstack
 		LBL,            /* vtop is a pointer to label */
 	} type;
 
-	decl *d;
+	type_ref *t;
+
+	/*
+	 * TODO: offset to optimise multiple adds
+	 * i.e. movq x+63(%rip), %rax
+	 * instead of
+	 *      leaq x(%rip), %rax
+	 *      addq 60, %rax
+	 *      addq  3, %rax
+	 *      movq (%rax), %rax
+	 */
 
 	union
 	{
 		int val;
 		int reg;
 		int off_from_bp;
-		enum flag_cmp
+		struct flag_opts
 		{
-			flag_eq, flag_ne,
-			flag_le, flag_lt,
-			flag_ge, flag_gt,
+			enum flag_cmp
+			{
+				flag_eq, flag_ne,
+				flag_le, flag_lt,
+				flag_ge, flag_gt,
+			} cmp;
+			int is_signed;
 		} flag;
 		struct
 		{
@@ -40,8 +54,8 @@ void vpop(void);
 void vswap(void);
 void vdup(void);
 
-void v_clear(struct vstack *vp, decl *);
-void vtop_clear(decl *);
+void v_clear(struct vstack *vp, type_ref *);
+void vtop_clear(type_ref *);
 
 void vtop2_prepare_op(void);
 void v_prepare_op(struct vstack *vp);
