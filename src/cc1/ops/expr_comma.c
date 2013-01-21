@@ -26,8 +26,10 @@ void fold_expr_comma(expr *e, symtable *stab)
 
 	e->tree_type = decl_copy(e->rhs->tree_type);
 
-	/* TODO: warn if either of the sub-exps are not freestanding */
-	e->freestanding = e->lhs->freestanding || e->rhs->freestanding;
+	if(!e->lhs->freestanding)
+		WARN_AT(&e->lhs->where, "left hand side of comma is unused");
+
+	e->freestanding = e->rhs->freestanding;
 }
 
 void gen_expr_comma(expr *e, symtable *stab)
