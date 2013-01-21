@@ -24,11 +24,7 @@ static int calc_ptr_step(type_ref *t);
 struct vstack vstack[N_VSTACK];
 struct vstack *vtop = NULL;
 
-int *reserved_regs;
-int N_REGS, N_CALL_REGS;
-int REG_RET;
-
-struct machine_impl impl;
+static int reserved_regs[N_SCRATCH_REGS];
 
 int out_vcount(void)
 {
@@ -161,12 +157,9 @@ void vtop2_prepare_op(void)
 
 int v_unused_reg(int stack_as_backup)
 {
-	static int *used;
+	static int used[N_SCRATCH_REGS];
 	struct vstack *it, *first;
 	int i;
-
-	if(!used)
-		used = umalloc(impl.n_regs() * sizeof *used);
 
 	memcpy(used, reserved_regs, sizeof used);
 	first = NULL;
@@ -179,7 +172,7 @@ int v_unused_reg(int stack_as_backup)
 		}
 	}
 
-	for(i = 0; i < N_REGS; i++)
+	for(i = 0; i < N_SCRATCH_REGS; i++)
 		if(!used[i])
 			return i;
 
@@ -197,7 +190,7 @@ int v_unused_reg(int stack_as_backup)
 int v_to_reg(struct vstack *conv)
 {
 	if(conv->type != REG)
-		impl.load(conv, v_unused_reg(1));
+		impl_load(conv, v_unused_reg(1));
 
 	return conv->bits.reg;
 }
@@ -226,7 +219,7 @@ void v_freeup_regp(struct vstack *vp)
 	r = v_unused_reg(0);
 
 	if(r >= 0){
-		impl.reg_cp(vp, r);
+		impl_reg_cp(vp, r);
 
 		v_clear(vp, NULL);
 		vp->type = REG;
@@ -252,8 +245,8 @@ void v_save_reg(struct vstack *vp)
 	 * instead/TODO: impl_save_reg(vp) -> "pushq %%rax"
 	 * -O1?
 	 */
-	store.bits.off_from_bp = -impl.alloc_stack(type_ref_size(store.t, NULL));
-	impl.store(vp, &store);
+	store.bits.off_from_bp = -impl_alloc_stack(type_ref_size(store.t, NULL));
+	impl_store(vp, &store);
 
 	store.type = STACK_SAVE;
 
@@ -354,7 +347,7 @@ void out_store()
 	val   = &vtop[0];
 	store = &vtop[-1];
 
-	impl.store(val, store);
+	impl_store(val, store);
 
 	/* swap, popping the store, but not the value */
 	vswap();
@@ -366,7 +359,7 @@ void out_normalise(void)
 	if(vtop->type == CONST)
 		vtop->bits.val = !!vtop->bits.val;
 	else
-		impl.normalise();
+		impl_normalise();
 }
 
 void out_push_sym(sym *s)
@@ -391,9 +384,9 @@ void out_push_sym(sym *s)
 		case sym_arg:
 			vtop->type = STACK;
 			/*
-			 * if it's less than N_CALL_ARGS, it's below rbp, otherwise it's above
+			 * if it's less than #call regs, it's below rbp, otherwise it's above
 			 */
-			vtop->bits.off_from_bp = (s->offset < impl.n_call_regs()
+			vtop->bits.off_from_bp = (s->offset < N_CALL_REGS
 					? -(s->offset + 1)
 					:   s->offset - N_CALL_REGS + 2)
 				* platform_word_size();
@@ -555,7 +548,7 @@ def:
 				break;
 		}
 
-		impl.op(op);
+		impl_op(op);
 
 		if(div){
 			out_push_i(type_ref_new_VOID_PTR(), div);
@@ -592,7 +585,7 @@ void out_deref()
 		case STACK:
 		case LBL:
 		case STACK_SAVE:
-			impl.deref();
+			impl_deref();
 			break;
 	}
 }
@@ -635,14 +628,14 @@ void out_op_unary(enum op_type op)
 			}
 	}
 
-	impl.op_unary(op);
+	impl_op_unary(op);
 }
 
 void out_cast(type_ref *from, type_ref *to)
 {
 	/* casting vtop - don't bother if it's a constant, just change the size */
 	if(vtop->type != CONST)
-		impl.cast(from, to);
+		impl_cast(from, to);
 
 	out_change_type(to);
 }
@@ -656,7 +649,7 @@ void out_change_type(type_ref *t)
 
 void out_call(int nargs, type_ref *rt, type_ref *call)
 {
-	impl.call(nargs, rt, call);
+	impl_call(nargs, rt, call);
 }
 
 void out_jmp(void)
@@ -668,14 +661,14 @@ void out_jmp(void)
 		vtop++;
 	}
 
-	impl.jmp();
+	impl_jmp();
 
 	vpop();
 }
 
 void out_jtrue(const char *lbl)
 {
-	impl.jcond(1, lbl);
+	impl_jcond(1, lbl);
 
 	vpop();
 }
@@ -689,7 +682,7 @@ void out_jfalse(const char *lbl)
 		cond = 1;
 	}
 
-	impl.jcond(cond, lbl);
+	impl_jcond(cond, lbl);
 
 	vpop();
 }
@@ -713,12 +706,12 @@ void out_comment(const char *fmt, ...)
 
 void out_func_prologue(int stack_res, int nargs, int variadic)
 {
-	impl.func_prologue(stack_res, nargs, variadic);
+	impl_func_prologue(stack_res, nargs, variadic);
 }
 
 void out_func_epilogue()
 {
-	impl.func_epilogue();
+	impl_func_epilogue();
 }
 
 void out_pop_func_ret(type_ref *t)
@@ -729,7 +722,7 @@ void out_pop_func_ret(type_ref *t)
 void out_undefined(void)
 {
 	out_flush_volatile();
-	impl.undefined();
+	impl_undefined();
 }
 
 void out_push_frame_ptr(int nframes)
@@ -738,10 +731,5 @@ void out_push_frame_ptr(int nframes)
 
 	vpush(NULL);
 	vtop->type = REG;
-	vtop->bits.reg = impl.frame_ptr_to_reg(nframes);
-}
-
-int out_n_call_regs(void)
-{
-	return N_CALL_REGS;
+	vtop->bits.reg = impl_frame_ptr_to_reg(nframes);
 }

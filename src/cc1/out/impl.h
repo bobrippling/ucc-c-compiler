@@ -1,41 +1,32 @@
 #ifndef IMPL_H
 #define IMPL_H
 
-extern struct machine_impl
-{
-	void (*store)(struct vstack *from, struct vstack *to);
-	void (*load)(struct vstack *from, int reg);
+void impl_store(struct vstack *from, struct vstack *to);
+void impl_load(struct vstack *from, int reg);
 
-	void (*reg_cp)(struct vstack *from, int r);
-	void (*reg_swp)(struct vstack *a, struct vstack *b);
+void impl_reg_cp(struct vstack *from, int r);
+void impl_reg_swp(struct vstack *a, struct vstack *b);
 
-	void (*op)(enum op_type);
-	void (*op_unary)(enum op_type); /* returns reg that the result is in */
-	void (*deref)(void);
-	void (*normalise)(void);
+void impl_op(enum op_type);
+void impl_op_unary(enum op_type); /* returns reg that the result is in */
+void impl_deref(void);
+void impl_normalise(void);
 
-	void (*jmp)(void);
-	void (*jcond)(int true, const char *lbl);
+void impl_jmp(void);
+void impl_jcond(int true, const char *lbl);
 
-	void (*cast)(decl *from, decl *to);
+void impl_cast(type_ref *from, type_ref *to);
 
-	void (*call)(const int nargs, decl *d_ret, decl *d_func);
+void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func);
+void impl_pop_func_ret(type_ref *r);
 
-	int  (*alloc_stack)(int sz);
+int  impl_alloc_stack(int sz);
 
-	void (*func_prologue)(int stack_res, int nargs, int variadic);
-	void (*func_epilogue)(void);
+void impl_func_prologue(int stack_res, int nargs, int variadic);
+void impl_func_epilogue(void);
 
-	void (*undefined)(void);
-	int  (*frame_ptr_to_reg)(int nframes);
-
-	int (*n_regs)(void);
-	int (*n_call_regs)(void);
-} impl;
-
-/* common impl code */
-extern int *reserved_regs;
-extern int N_REGS, N_CALL_REGS, REG_RET;
+void impl_undefined(void);
+int  impl_frame_ptr_to_reg(int nframes);
 
 enum p_opts
 {
@@ -50,5 +41,7 @@ void impl_comment(const char *fmt, va_list l);
 void impl_lbl(const char *lbl);
 
 enum flag_cmp op_to_flag(enum op_type op);
+
+#include CC1_IMPL_FNAME
 
 #endif

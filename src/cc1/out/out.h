@@ -42,12 +42,6 @@ void out_undefined(void);
 
 void out_push_frame_ptr(int nframes);
 
-int out_n_call_regs(void);
-
 int out_vcount(void);
-
-/* backends */
-void impl_x86_64(void);
-void impl_mipsel_32(void);
 
 #endif

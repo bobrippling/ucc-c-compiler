@@ -17,12 +17,12 @@
 
 #define TODO() ICE("TODO")
 
-static int alloc_stack(int sz)
+int impl_alloc_stack(int sz)
 {
 	TODO();
 }
 
-static void func_prologue(int stack_res, int nargs, int variadic)
+void impl_func_prologue(int stack_res, int nargs, int variadic)
 {
 	/* FIXME: very similar to x86_64::func_prologue - merge */
 
@@ -33,27 +33,27 @@ static void func_prologue(int stack_res, int nargs, int variadic)
 	out_asm("addiu $sp, $sp,-%d", stack_res); /* etc */
 }
 
-static void func_epilogue(void)
+void impl_func_epilogue(void)
 {
 	TODO();
 }
 
-static void load(struct vstack *from, int reg)
+void impl_load(struct vstack *from, int reg)
 {
 	TODO();
 }
 
-static void store(struct vstack *from, struct vstack *to)
+void impl_store(struct vstack *from, struct vstack *to)
 {
 	TODO();
 }
 
-static void reg_swp(struct vstack *a, struct vstack *b)
+void impl_reg_swp(struct vstack *a, struct vstack *b)
 {
 	TODO();
 }
 
-static void reg_cp(struct vstack *from, int r)
+void impl_reg_cp(struct vstack *from, int r)
 {
 	if(from->type == REG && from->bits.reg == r) /* TODO: x86_64 merge */
 		return;
@@ -61,27 +61,27 @@ static void reg_cp(struct vstack *from, int r)
 	TODO();
 }
 
-static void op(enum op_type op)
+void impl_op(enum op_type op)
 {
 	TODO();
 }
 
-static void deref()
+void impl_deref()
 {
 	TODO();
 }
 
-static void op_unary(enum op_type op)
+void impl_op_unary(enum op_type op)
 {
 	TODO();
 }
 
-static void normalise(void)
+void impl_normalise(void)
 {
 	TODO();
 }
 
-static void cast(decl *from, decl *to)
+void impl_cast(type_ref *from, type_ref *to)
 {
 	/* TODO FIXME: combine with code in x86_64 */
 	int szfrom, szto;
@@ -103,7 +103,7 @@ static void cast(decl *from, decl *to)
 	}
 }
 
-static void jmp()
+void impl_jmp()
 {
 	switch(vtop->type){
 		case LBL:
@@ -117,50 +117,27 @@ static void jmp()
 	ICE("invalid jmp target");
 }
 
-static void jcond(int true, const char *lbl)
+void impl_jcond(int true, const char *lbl)
 {
 	TODO();
 }
 
-static void call(const int nargs, decl *d_ret, decl *d_func)
+void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 {
 	TODO();
 }
 
-static void undefined(void)
+void impl_pop_func_ret(type_ref *r)
 {
 	TODO();
 }
 
-static int frame_ptr_to_reg(int nframes)
+void impl_undefined(void)
 {
 	TODO();
 }
 
-void impl_mipsel_32()
+int impl_frame_ptr_to_reg(int nframes)
 {
-	N_REGS = 10;
-	N_CALL_REGS = 4; /* FIXME ??? */
-	REG_RET = 0; /* FIXME ??? */
-
-	reserved_regs = umalloc(N_REGS * sizeof *reserved_regs);
-
-#define INIT(fn) impl.fn = fn
-	INIT(store);
-	INIT(load);
-	INIT(reg_cp);
-	INIT(reg_swp);
-	INIT(op);
-	INIT(op_unary);
-	INIT(deref);
-	INIT(normalise);
-	INIT(jmp);
-	INIT(jcond);
-	INIT(cast);
-	INIT(call);
-	INIT(alloc_stack);
-	INIT(func_prologue);
-	INIT(func_epilogue);
-	INIT(undefined);
-	INIT(frame_ptr_to_reg);
+	TODO();
 }

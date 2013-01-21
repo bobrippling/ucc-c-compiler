@@ -11,6 +11,7 @@
 #include "../util/platform.h"
 #include "sue.h"
 #include "decl.h"
+#include "cc1.h"
 
 const where *eof_where = NULL;
 
@@ -97,7 +98,10 @@ int type_primitive_size(enum type_primitive tp)
 
 		case type_long:
 		case type_double:
-			return 8; /* FIXME: 4 on 32-bit */
+			/* 4 on 32-bit */
+			if(m32)
+				return 4;
+			return 8;
 
 		case type_llong:
 			ICW("TODO: long long");
