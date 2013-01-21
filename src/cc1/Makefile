@@ -47,3 +47,6 @@ clean:
 .PHONY: clean
 
 include Makefile.dep
+
+# extra deps
+out/impl.h: out/x86_64.h out/mipsel_32.h

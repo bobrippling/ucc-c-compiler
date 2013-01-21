@@ -42,6 +42,11 @@ void impl_lbl(const char *lbl);
 
 enum flag_cmp op_to_flag(enum op_type op);
 
-#include CC1_IMPL_FNAME
+/* can't do this for gen_deps.sh */
+#ifdef CC1_IMPL_FNAME
+#  include CC1_IMPL_FNAME
+#else
+#  warning "no impl defined"
+#endif
 
 #endif
