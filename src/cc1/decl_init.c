@@ -7,6 +7,7 @@
 
 #include "../util/util.h"
 #include "../util/dynarray.h"
+#include "../util/dynmap.h"
 #include "../util/alloc.h"
 #include "data_structs.h"
 #include "cc1.h"
@@ -16,8 +17,6 @@
 #include "sue.h"
 
 #include "decl_init.h"
-
-#define DEBUG_DECL_INIT
 
 #ifdef DEBUG_DECL_INIT
 static int init_debug_depth;
@@ -329,6 +328,12 @@ complete_ar:
 #define EXPR_STRUCT(b, nam) expr_new_struct(b, 1 /* a.b */, \
 					expr_new_identifier(nam))
 
+static int sue_cmp(void *va, void *vb)
+{
+	/* same decl? */
+	return va == vb ? 0 : 1;
+}
+
 static void decl_initialise_sue(decl_init_iter *init_iter,
 		struct_union_enum_st *sue, expr *base, stmt *init_code)
 {
@@ -338,6 +343,8 @@ static void decl_initialise_sue(decl_init_iter *init_iter,
 	int braced;
 	int i, cnt;
 	char *initialised;
+	dynmap *init_maps = dynmap_new(&sue_cmp);
+	stmt *init_code_dummy = stmt_new_wrapper(code, init_code->symtab);
 
 	cnt = dynarray_count((void **)sue->members);
 	initialised = umalloc(cnt * sizeof *initialised);
@@ -416,11 +423,23 @@ static void decl_initialise_sue(decl_init_iter *init_iter,
 		INIT_DEBUG("... with %s\n", INIT_ITER_VALID(&sue_init_iter)
 				? decl_init_to_str(sue_init_iter.pos[0]->type) : "n/a");
 
-		decl_init_create_assignments_discard(
-				&sue_init_iter,
-				sue_mem->ref,
-				accessor,
-				sub_init_code /* TODO: use dynmap: member => init, then sort */);
+		{
+			decl_init_create_assignments_discard(
+					&sue_init_iter,
+					sue_mem->ref,
+					accessor,
+					init_code_dummy);
+
+			/* init_code_dummy->codes now has the init-codes */
+			INIT_DEBUG("%s::%s -> init{%p}   %p{%p} = %p\n",
+					sue->spel,
+					sue_mem->spel,
+					init_code_dummy->codes,
+					init_maps, sue_mem, init_code_dummy->codes);
+
+			dynmap_set(init_maps, sue_mem, init_code_dummy->codes);
+			init_code_dummy->codes = NULL;
+		}
 
 		INIT_DEBUG_DEPTH(--);
 
@@ -433,22 +452,50 @@ static void decl_initialise_sue(decl_init_iter *init_iter,
 	}
 
 zero_init:
+	INIT_DEBUG("init_code_dummy->stab = %p\n",
+			init_code_dummy->symtab);
+
 	for(i = 0; i < cnt; i++)
 		if(!initialised[i]){
 			decl *d_mem = sue->members[i]->struct_member;
 			expr *access = EXPR_STRUCT(base, d_mem->spel);
 
 			decl_init_create_assignments_discard(
-					NULL, d_mem->ref, access, sub_init_code);
+					NULL, d_mem->ref, access, init_code_dummy);
+
+			/* init_code_dummy->codes now has the init-codes */
+			INIT_DEBUG("%s::%s -> init{%p} default/zero init\n",
+					sue->spel,
+					d_mem->spel,
+					init_code_dummy->codes);
+
+			dynmap_set(init_maps, d_mem, init_code_dummy->codes);
+			init_code_dummy->codes = NULL;
 		}
-	free(initialised);
 
 	if(braced)
 		cnt = 1; /* we walk over the one brace, not multiple scalar/subinits */
 
 	{
+		/* linked to init_code */
 		stmt *sub_init_code = stmt_sub_init_code(init_code);
-		/* sort dynmap */
+		int i;
+
+		/* go through members in struct order */
+		for(i = 0; i < cnt; i++){
+			decl *d = sue->members[i]->struct_member;
+			stmt **inits = dynmap_get(init_maps, d);
+
+			INIT_DEBUG("init{%p} <- %s::%s     %p{%p} = %p\n",
+					inits,
+					sue->spel,
+					d->spel,
+					init_maps, d, inits);
+
+			UCC_ASSERT(inits, "no inits for %s::%s", sue->spel, d->spel);
+
+			dynarray_add_array(stmt *, &sub_init_code->codes, inits);
+		}
 	}
 
 	init_iter_adv(init_iter, cnt);
@@ -458,6 +505,10 @@ zero_init:
 			INIT_ITER_VALID(init_iter)
 				? decl_init_to_str(init_iter->pos[0]->type)
 				: "n/a");
+
+	free(init_code_dummy);
+	free(initialised);
+	/*dynmap_free(init_maps);*/
 }
 
 static void decl_initialise_scalar(
