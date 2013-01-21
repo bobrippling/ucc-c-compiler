@@ -394,7 +394,7 @@ static void decl_initialise_sue(decl_init_iter *init_iter,
 				}
 
 				if(i >= cnt)
-					DIE_AT(&init_for_mem->where, "no such member \"%s\" to initialise", mem);
+					DIE_AT(&init_for_mem->where, "no such member %s::%s to initialise", sue->spel, mem);
 
 				INIT_DEBUG("designating %s::%s...\n", sue->spel, sue_mem->spel);
 			}
