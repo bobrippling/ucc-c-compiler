@@ -10,16 +10,7 @@ void  dynarray_nochk_free(   void ***par, void (*f)(void *));
 void  dynarray_nochk_add_array(void ***, void **);
 
 
-/* GCC/Clang - if your compiler doesn't support __builtin_types_compatible_p,
- * chose the other #else
- */
-
-#ifndef NO_DYN_CHECKS
-#  define UCC_TYPECHECK(t, arg) \
-		(void)((int (*)[__builtin_types_compatible_p(t, __typeof(arg)) ? 1 : -1])NULL)
-#else
-#  define UCC_TYPECHECK(t, arg) (void)0
-#endif
+#include "dyn.h"
 
 #define DYNARRAY_CHECK(ar, arg, func, ...) \
 	(UCC_TYPECHECK(__typeof(arg) **, ar),    \
@@ -27,7 +18,6 @@ void  dynarray_nochk_add_array(void ***, void **);
 
 #define dynarray_add(ar, p)     DYNARRAY_CHECK(ar, p, dynarray_nochk_add,     (void ***)(ar), (void *)(p))
 #define dynarray_prepend(ar, p) DYNARRAY_CHECK(ar, p, dynarray_nochk_prepend, (void ***)(ar), (void *)(p))
-
 
 #define dynarray_pop(t, ar)             \
 	(UCC_TYPECHECK(t **, ar),             \

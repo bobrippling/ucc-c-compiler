@@ -8,11 +8,20 @@ typedef int dynmap_cmp_f(void *, void *);
 dynmap *dynmap_new(dynmap_cmp_f);
 void    dynmap_free(dynmap *);
 
-void *dynmap_get(dynmap *, void *key);
-void  dynmap_set(dynmap *, void *key, void *val);
+void *dynmap_nochk_get(dynmap *, void *key);
+void  dynmap_nochk_set(dynmap *, void *key, void *val);
 
-void *dynmap_key(dynmap *map, int i);
+void *dynmap_nochk_key(dynmap *map, int i);
 
-void *dynmap_value(dynmap *map, int i);
+void *dynmap_nochk_value(dynmap *map, int i);
+
+#include "dyn.h"
+
+/* TODO */
+#warning TODO
+
+#define dynmap_get(type_k, type_v, map, key)   \
+	(DYN_CMP(type_k, key),                       \
+	 (type_v)dynmap_nochk_get(map, (void *)key))
 
 #endif
