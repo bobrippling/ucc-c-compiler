@@ -38,7 +38,7 @@ struct struct_union_enum_st
 /* this is fine - empty structs aren't allowed */
 #define sue_incomplete(x) (!(x)->members)
 
-#define sue_nmembers(x) dynarray_count((void **)(x)->members)
+#define sue_nmembers(x) dynarray_count((x)->members)
 
 
 struct_union_enum_st *sue_add( symtable *, char *spel, sue_member **members, enum type_primitive);

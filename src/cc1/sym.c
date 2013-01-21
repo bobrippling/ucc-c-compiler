@@ -24,7 +24,7 @@ sym *sym_new(decl *d, enum sym_type t)
 
 void symtab_rm_parent(symtable *child)
 {
-	dynarray_rm((void **)child->parent->children, child);
+	dynarray_rm(child->parent->children, child);
 	child->parent = NULL;
 }
 
@@ -33,7 +33,7 @@ void symtab_set_parent(symtable *child, symtable *parent)
 	if(child->parent)
 		symtab_rm_parent(child);
 	child->parent = parent;
-	dynarray_add((void ***)&parent->children, child);
+	dynarray_add(&parent->children, child);
 }
 
 symtable *symtab_new(symtable *parent)
@@ -133,7 +133,10 @@ fine:
 	else
 		new = NULL;
 
-	(prepend ? dynarray_prepend : dynarray_add)((void ***)&tab->decls, d);
+	if(prepend)
+		dynarray_prepend(&tab->decls, d);
+	else
+		dynarray_add(&tab->decls, d);
 
 	return new;
 }

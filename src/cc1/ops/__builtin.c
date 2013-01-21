@@ -158,7 +158,7 @@ static void fold_compatible_p(expr *e, symtable *stab)
 {
 	decl **types = e->block_args->arglist;
 
-	if(dynarray_count((void **)types) != 2)
+	if(dynarray_count(types) != 2)
 		DIE_AT(&e->where, "need two arguments for %s", BUILTIN_SPEL(e->expr));
 
 	fold_decl(types[0], stab);
@@ -199,7 +199,7 @@ static expr *parse_compatible_p(void)
 
 static void fold_constant_p(expr *e, symtable *stab)
 {
-	if(dynarray_count((void **)e->funcargs) != 1)
+	if(dynarray_count(e->funcargs) != 1)
 		DIE_AT(&e->where, "%s takes a single argument", BUILTIN_SPEL(e->expr));
 
 	FOLD_EXPR(e->funcargs[0], stab);
@@ -232,7 +232,7 @@ static void fold_frame_address(expr *e, symtable *stab)
 {
 	consty k;
 
-	if(dynarray_count((void **)e->funcargs) != 1)
+	if(dynarray_count(e->funcargs) != 1)
 		DIE_AT(&e->where, "%s takes a single argument", BUILTIN_SPEL(e->expr));
 
 	FOLD_EXPR(e->funcargs[0], stab);
@@ -276,7 +276,7 @@ static void fold_expect(expr *e, symtable *stab)
 	consty k;
 	int i;
 
-	if(dynarray_count((void **)e->funcargs) != 2)
+	if(dynarray_count(e->funcargs) != 2)
 		DIE_AT(&e->where, "%s takes two arguments", BUILTIN_SPEL(e->expr));
 
 	for(i = 0; i < 2; i++)
@@ -317,7 +317,7 @@ static void fold_is_signed(expr *e, symtable *stab)
 {
 	type_ref **tl = e->bits.types;
 
-	if(dynarray_count((void **)tl) != 1)
+	if(dynarray_count(tl) != 1)
 		DIE_AT(&e->where, "need a single argument for %s", BUILTIN_SPEL(e->expr));
 
 	fold_type_ref(tl[0], NULL, stab);
@@ -351,7 +351,7 @@ static void const_strlen(expr *e, consty *k)
 	k->type = CONST_NO;
 
 	/* if 1 arg and it has a char * constant, return length */
-	if(dynarray_count((void **)e->funcargs) == 1){
+	if(dynarray_count(e->funcargs) == 1){
 		expr *s = e->funcargs[0];
 		consty subk;
 

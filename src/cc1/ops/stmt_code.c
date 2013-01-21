@@ -55,7 +55,7 @@ void fold_stmt_code(stmt *s)
 	}
 
 	if(inits)
-		dynarray_prepend((void ***)&s->codes, inits);
+		dynarray_prepend(&s->codes, inits);
 
 	for(siter = s->codes; siter && *siter; siter++){
 		stmt *const st = *siter;

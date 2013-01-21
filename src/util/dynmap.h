@@ -2,6 +2,7 @@
 #define DYNMAP_H
 
 typedef struct dynmap dynmap;
+/* 0 for match, non-zero for mismatch */
 typedef int dynmap_cmp_f(void *, void *);
 
 dynmap *dynmap_new(dynmap_cmp_f);

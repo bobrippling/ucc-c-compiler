@@ -96,10 +96,10 @@ type *parse_type_sue(enum type_primitive prim)
 			for(i = dmembers; *i; i++){
 				sue_member *sm = umalloc(sizeof *sm);
 				sm->struct_member = *i;
-				dynarray_add((void ***)&members, sm);
+				dynarray_add(&members, sm);
 			}
 
-			dynarray_free((void ***)&dmembers, NULL);
+			dynarray_free(&dmembers, NULL);
 
 			EAT(token_close_block);
 		}
@@ -412,7 +412,7 @@ funcargs *parse_func_arglist()
 		}
 
 		for(;;){
-			dynarray_add((void ***)&args->arglist, argdecl);
+			dynarray_add(&args->arglist, argdecl);
 
 			if(curtok == token_close_paren)
 				break;
@@ -441,7 +441,7 @@ fin:;
 			d->ref = type_ref_new_type(type_new_primitive(type_int));
 
 			d->spel = token_current_spel();
-			dynarray_add((void ***)&args->arglist, d);
+			dynarray_add(&args->arglist, d);
 
 			EAT(token_identifier);
 
@@ -701,7 +701,7 @@ decl **parse_decls_one_type()
 
 	do{
 		decl *d = parse_decl(r, DECL_SPEL_NEED);
-		dynarray_add((void ***)&decls, d);
+		dynarray_add(&decls, d);
 	}while(accept(token_comma));
 
 	return decls;
@@ -722,8 +722,8 @@ static void check_old_func(decl *d, decl **old_args)
 				: "parameters specified despite empty declaration in prototype");
 	}
 
-	n_proto_decls = dynarray_count((void **)dfuncargs->arglist);
-	n_old_args = dynarray_count((void **)old_args);
+	n_proto_decls = dynarray_count(dfuncargs->arglist);
+	n_old_args = dynarray_count(old_args);
 
 	if(n_old_args > n_proto_decls)
 		DIE_AT(&d->where, "old-style function decl: too many decls");
@@ -909,8 +909,8 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 
 got_field_width:
 			dynarray_add(are_tdefs
-					? (void ***)&current_scope->typedefs
-					: (void ***)&decls,
+					? &current_scope->typedefs
+					: &decls,
 					d);
 
 			/* FIXME: check later for functions, not here - typedefs */

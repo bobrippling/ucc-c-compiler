@@ -14,7 +14,7 @@ void fold_expr_stmt(expr *e, symtable *stab)
 
 	(void)stab;
 
-	last = dynarray_count((void **)e->code->codes);
+	last = dynarray_count(e->code->codes);
 	if(last){
 		last_stmt = e->code->codes[last - 1];
 		last_stmt->freestanding = 1; /* allow the final to be freestanding */

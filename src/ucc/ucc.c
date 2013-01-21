@@ -71,7 +71,7 @@ static char *tmpfilenam()
 	if(!remove_these) /* only register once */
 		atexit(unlink_files);
 
-	dynarray_add((void ***)&remove_these, r);
+	dynarray_add(&remove_these, r);
 
 	return r;
 }
@@ -218,7 +218,7 @@ void rename_files(struct cc_file *files, int nfiles, char *output, enum mode mod
 
 void process_files(enum mode mode, char **inputs, char *output, char **args[4], char *backend)
 {
-	const int ninputs = dynarray_count((void **)inputs);
+	const int ninputs = dynarray_count(inputs);
 	int i;
 	struct cc_file *files;
 	char **links;
@@ -228,11 +228,11 @@ void process_files(enum mode mode, char **inputs, char *output, char **args[4], 
 	links = gopts.nostdlib ? NULL : objfiles_stdlib();
 
 	if(!gopts.nostartfiles)
-		dynarray_add((void ***)&links, objfiles_start());
+		dynarray_add(&links, objfiles_start());
 
 	if(backend){
-		dynarray_add((void ***)&args[mode_compile], ustrdup("-X"));
-		dynarray_add((void ***)&args[mode_compile], ustrdup(backend));
+		dynarray_add(&args[mode_compile], ustrdup("-X"));
+		dynarray_add(&args[mode_compile], ustrdup(backend));
 	}
 
 	for(i = 0; i < ninputs; i++){
@@ -240,7 +240,7 @@ void process_files(enum mode mode, char **inputs, char *output, char **args[4], 
 
 		gen_obj_file(&files[i], args, mode);
 
-		dynarray_add((void ***)&links, ustrdup(files[i].out));
+		dynarray_add(&links, ustrdup(files[i].out));
 	}
 
 	if(mode == mode_link)
@@ -248,7 +248,7 @@ void process_files(enum mode mode, char **inputs, char *output, char **args[4], 
 	else
 		rename_files(files, ninputs, output, mode);
 
-	dynarray_free((void ***)&links, free);
+	dynarray_free(&links, free);
 
 	/*for(i = 0; i < ninputs; i++)
 		free_file(&files[i]);*/
@@ -309,7 +309,7 @@ int main(int argc, char **argv)
 	for(i = 1; i < argc; i++){
 		if(!strcmp(argv[i], "--")){
 			while(++i < argc)
-				dynarray_add((void ***)&inputs, argv[i]);
+				dynarray_add(&inputs, argv[i]);
 			break;
 
 		}else if(*argv[i] == '-'){
@@ -336,7 +336,7 @@ int main(int argc, char **argv)
 					/* else default to -Wsomething - add to cc1 */
 				}
 
-#define ADD_ARG(to) dynarray_add((void ***)&args[to], ustrdup(arg))
+#define ADD_ARG(to) dynarray_add(&args[to], ustrdup(arg))
 
 				case 'w':
 				case 'f':
@@ -440,12 +440,12 @@ arg_ld:
 			if(!found)
 unrec:	die("unrecognised option \"%s\"", argv[i]);
 		}else{
-input:	dynarray_add((void ***)&inputs, argv[i]);
+input:	dynarray_add(&inputs, argv[i]);
 		}
 	}
 
 	{
-		const int ninputs = dynarray_count((void **)inputs);
+		const int ninputs = dynarray_count(inputs);
 
 		if(output && ninputs > 1 && (mode == mode_compile || mode == mode_assemb))
 			die("can't specify '-o' with '-%c' and an output", MODE_ARG_CH(mode));
@@ -470,8 +470,8 @@ input:	dynarray_add((void ***)&inputs, argv[i]);
 	process_files(mode, inputs, output, args, backend);
 
 	for(i = 0; i < 4; i++)
-		dynarray_free((void ***)&args[i], free);
-	dynarray_free((void ***)&inputs, NULL);
+		dynarray_free(&args[i], free);
+	dynarray_free(&inputs, NULL);
 
 	return 0;
 }

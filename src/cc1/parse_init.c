@@ -44,7 +44,7 @@ decl_init *parse_initialisation(void)
 			sub = parse_initialisation();
 			sub->desig = desig;
 
-			dynarray_add((void ***)&exps, sub);
+			dynarray_add(&exps, sub);
 
 			if(!accept(token_comma))
 				break;

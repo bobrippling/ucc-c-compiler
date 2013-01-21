@@ -183,7 +183,7 @@ static void format_check(where *w, type_ref *ref, expr **args, const int variadi
 	fmt_arg = attr->attr_extra.format.fmt_arg;
 	var_arg = attr->attr_extra.format.var_arg;
 
-	n = dynarray_count((void **)args);
+	n = dynarray_count(args);
 
 	if(fmt_arg >= n)
 		DIE_AT(w, "format argument out of bounds (%d >= %d)", fmt_arg, n);
@@ -219,7 +219,7 @@ static void sentinel_check(where *w, type_ref *ref, expr **args,
 		ATTR_WARN(w, "variadic function required for sentinel check");
 
 	i = attr->attr_extra.sentinel;
-	nvs = dynarray_count((void **)args) - nstdargs;
+	nvs = dynarray_count(args) - nstdargs;
 
 	if(nvs == 0)
 		ATTR_WARN(w, "not enough variadic arguments for a sentinel");
@@ -365,8 +365,8 @@ invalid:
 
 		count_decl = count_arg = 0;
 
-		count_arg  = dynarray_count((void **)e->funcargs);
-		count_decl = dynarray_count((void **)args_from_decl->arglist);
+		count_arg  = dynarray_count(e->funcargs);
+		count_decl = dynarray_count(args_from_decl->arglist);
 
 		if(count_decl != count_arg && (args_from_decl->variadic ? count_arg < count_decl : 1)){
 			DIE_AT(&e->where, "too %s arguments to function %s (got %d, need %d)",
@@ -382,7 +382,7 @@ invalid:
 				decl *dtmp = decl_new();
 				dtmp->ref = (*iter_arg)->tree_type;
 
-				dynarray_add((void ***)&args_from_expr->arglist, dtmp);
+				dynarray_add(&args_from_expr->arglist, dtmp);
 			}
 
 			if(funcargs_equal(args_from_decl, args_from_expr, 0, sp) == funcargs_are_mismatch_count)

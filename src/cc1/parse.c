@@ -112,7 +112,7 @@ expr *parse_expr__Generic()
 		lbl = umalloc(sizeof *lbl);
 		lbl->e = e;
 		lbl->t = r;
-		dynarray_add((void ***)&lbls, lbl);
+		dynarray_add(&lbls, lbl);
 
 		if(accept(token_close_paren))
 			break;
@@ -458,7 +458,7 @@ type_ref **parse_type_list()
 		if(!r)
 			DIE_AT(NULL, "type expected");
 
-		dynarray_add((void ***)&types, r);
+		dynarray_add(&types, r);
 	}while(accept(token_comma));
 
 	return types;
@@ -472,7 +472,7 @@ expr **parse_funcargs()
 		expr *arg = parse_expr_no_comma();
 		if(!arg)
 			DIE_AT(&arg->where, "expected: funcall arg");
-		dynarray_add((void ***)&args, arg);
+		dynarray_add(&args, arg);
 
 		if(curtok == token_close_paren)
 			break;
@@ -636,13 +636,13 @@ void parse_static_assert(void)
 		EAT(token_close_paren);
 		EAT(token_semicolon);
 
-		dynarray_add((void ***)&static_asserts, sa);
+		dynarray_add(&static_asserts, sa);
 	}
 }
 
 void parse_got_decls(decl **decls, stmt *codes_init)
 {
-	dynarray_add_array((void ***)&codes_init->decls, (void **)decls);
+	dynarray_add_array(&codes_init->decls, decls);
 }
 
 stmt *parse_stmt_and_decls()
@@ -713,10 +713,10 @@ normal:
 		}
 
 		if(decls)
-			dynarray_free((void ***)&decls, NULL);
+			dynarray_free(&decls, NULL);
 
 		if(sub)
-			dynarray_add((void ***)&codes->codes, sub);
+			dynarray_add(&codes->codes, sub);
 	}while(!last);
 
 
@@ -961,9 +961,9 @@ symtable_global *parse()
 
 			for(i = last_gasms; i && *i; i++)
 				(*i)->before = *new;
-			dynarray_free((void ***)&last_gasms, NULL);
+			dynarray_free(&last_gasms, NULL);
 
-			dynarray_add_array((void ***)&decls, (void **)new);
+			dynarray_add_array(&decls, new);
 			free(new);
 		}
 
@@ -971,8 +971,8 @@ symtable_global *parse()
 		while(accept(token_asm)){
 			symtable_gasm *g = parse_gasm();
 
-			dynarray_add((void ***)&last_gasms, g);
-			dynarray_add((void ***)&globals->gasms, g);
+			dynarray_add(&last_gasms, g);
+			dynarray_add(&globals->gasms, g);
 			cont = 1;
 		}
 
@@ -980,7 +980,7 @@ symtable_global *parse()
 			break;
 	}
 
-	dynarray_free((void ***)&last_gasms, NULL);
+	dynarray_free(&last_gasms, NULL);
 
 	EAT(token_eof);
 

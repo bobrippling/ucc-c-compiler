@@ -34,7 +34,7 @@ void enum_vals_add(sue_member ***pmembers, char *sp, expr *e)
 
 	mem->enum_member = emem;
 
-	dynarray_add((void ***)pmembers, mem);
+	dynarray_add(pmembers, mem);
 }
 
 int enum_nentries(struct_union_enum_st *e)
@@ -155,7 +155,7 @@ struct_union_enum_st *sue_add(symtable *const stab, char *spel, sue_member **mem
 	}
 
 	if(new)
-		dynarray_add((void ***)&stab->sues, sue);
+		dynarray_add(&stab->sues, sue);
 
 	return sue;
 }

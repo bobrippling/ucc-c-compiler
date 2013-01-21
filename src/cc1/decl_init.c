@@ -63,7 +63,7 @@ static void init_iter_adv(decl_init_iter *i, int n)
 static stmt *stmt_sub_init_code(stmt *parent)
 {
 	stmt *sub = stmt_new_wrapper(code, parent->symtab);
-	dynarray_add((void ***)&parent->codes, sub);
+	dynarray_add(&parent->codes, sub);
 	return sub;
 }
 
@@ -210,7 +210,7 @@ static type_ref *decl_initialise_array(
 						expr *e  = expr_new_val(sv->str[i]);
 						expr *to = expr_new_array_idx(base, i);
 
-						dynarray_add((void ***)&sub_init_code->codes,
+						dynarray_add(&sub_init_code->codes,
 								expr_to_stmt(
 									expr_new_assign(to, e),
 									init_code->symtab));
@@ -319,7 +319,8 @@ complete_ar:
 		tfor = type_ref_complete_array(tfor, complete_to);
 
 		INIT_DEBUG("completed array to %d - %s (sub_init_codes count %d)\n",
-				complete_to, type_ref_to_str(tfor), dynarray_count((void **)sub_init_code->codes));
+				complete_to, type_ref_to_str(tfor),
+				dynarray_count(sub_init_code->codes));
 	}
 
 	return tfor;
@@ -346,7 +347,7 @@ static void decl_initialise_sue(decl_init_iter *init_iter,
 	dynmap *init_maps = dynmap_new(&sue_cmp);
 	stmt *init_code_dummy = stmt_new_wrapper(code, init_code->symtab);
 
-	cnt = dynarray_count((void **)sue->members);
+	cnt = dynarray_count(sue->members);
 	initialised = umalloc(cnt * sizeof *initialised);
 
 	if(sue_incomplete(sue)){
@@ -494,7 +495,7 @@ zero_init:
 
 			UCC_ASSERT(inits, "no inits for %s::%s", sue->spel, d->spel);
 
-			dynarray_add_array(stmt *, &sub_init_code->codes, inits);
+			dynarray_add_array(&sub_init_code->codes, inits);
 		}
 	}
 
@@ -547,7 +548,7 @@ static void decl_initialise_scalar(
 
 	INIT_DEBUG("scalar %s\n", assign_from->f_str());
 
-	dynarray_add((void ***)&init_code->codes,
+	dynarray_add(&init_code->codes,
 			expr_to_stmt(assign_init, init_code->symtab));
 
 	if(dinit)

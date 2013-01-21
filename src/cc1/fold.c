@@ -507,8 +507,8 @@ void print_stab(symtable *st, int current, where *w)
 
 	fprintf(stderr, "\ttable %p, children %d, vars %d, parent: %p",
 			(void *)st,
-			dynarray_count((void **)st->children),
-			dynarray_count((void **)st->decls),
+			dynarray_count(st->children),
+			dynarray_count(st->decls),
 			(void *)st->parent);
 
 	if(current)
@@ -542,7 +542,7 @@ void fold_stmt_and_add_to_curswitch(stmt *t)
 	if(!t->parent)
 		DIE_AT(&t->where, "%s not inside switch", t->f_str());
 
-	dynarray_add((void ***)&t->parent->codes, t);
+	dynarray_add(&t->parent->codes, t);
 
 	/* we are compound, copy some attributes */
 	t->kills_below_code = t->lhs->kills_below_code;
@@ -777,7 +777,7 @@ static void fold_link_decl_defs(dynmap *spel_decls)
         definition = d;
 		}
 
-		count_total = dynarray_count((void **)decls_for_this);
+		count_total = dynarray_count(decls_for_this);
 
 		if(DECL_IS_FUNC(definition)){
 			/*
@@ -897,7 +897,7 @@ void fold(symtable *globs)
 			char *key = D(i)->spel;
 			decl **val = dynmap_get(spel_decls, key);
 
-			dynarray_add((void ***)&val, D(i)); /* fine if val is null */
+			dynarray_add(&val, D(i)); /* fine if val is null */
 
 			dynmap_set(spel_decls, key, val);
 		}

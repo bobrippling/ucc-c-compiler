@@ -217,7 +217,7 @@ void asm_declare_decl_init(FILE *f, decl *d)
 	}else if(d->init && !decl_init_is_zero(d->init)){
 		stmt **init_codes = d->decl_init_code->codes;
 
-		UCC_ASSERT(dynarray_count((void **)init_codes) == 1,
+		UCC_ASSERT(dynarray_count(init_codes) == 1,
 				"too many init codes for single decl");
 
 		fprintf(f, ".align %d\n", type_ref_align(d->ref, NULL));
