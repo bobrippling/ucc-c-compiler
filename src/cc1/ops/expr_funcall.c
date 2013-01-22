@@ -394,6 +394,9 @@ invalid:
 		/*funcargs_free(args_from_decl, 1); XXX memleak*/
 	}else{
 		count_decl = 0;
+
+		if(args_from_decl->args_void_implicit && e->funcargs)
+			WARN_AT(&e->where, "too many arguments to implicitly (void)-function");
 	}
 
 	fold_disallow_st_un(e, "return");

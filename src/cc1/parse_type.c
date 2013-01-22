@@ -881,7 +881,6 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 				DIE_AT(&d->where, "identifier expected after decl (got %s)", token_to_str(curtok));
 			}else if(curtok != token_semicolon && DECL_IS_FUNC(d)){
 				/* this is why we can't have __attribute__ on function defs - the old func decls */
-				decl **old_args;
 				int need_func = 1;
 
 				/* special case - support asm directly after a function
@@ -908,14 +907,20 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 
 					need_func = 0; /* a ';' will do me fine */
 				}else{
-					old_args = parse_decls_multi_type(0);
+					decl **old_args = parse_decls_multi_type(0);
 					if(old_args)
 						check_old_func(d, old_args);
 				}
 
 				/* clang-style allows __attribute__ and then a function block */
-				if(need_func || curtok != token_semicolon)
+				if(need_func || curtok != token_semicolon){
 					d->func_code = parse_stmt_block();
+
+					/* if:
+					 * f(){...}, then we don't have args_void, but implicitly we do
+					 */
+					type_ref_funcargs(d->ref)->args_void_implicit = 1;
+				}
 			}
 
 got_field_width:
