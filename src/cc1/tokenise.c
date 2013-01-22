@@ -301,7 +301,7 @@ void read_number(enum base mode)
 		}
 }
 
-static enum token curtok_to_xequal()
+static enum token curtok_to_xequal(void)
 {
 #define MAP(x) case x: return x ## _assign
 	switch(curtok){
