@@ -116,11 +116,10 @@ static void asm_declare_init(FILE *f, stmt *init_code, type_ref *tfor)
 				mem++)
 		{
 			decl *d_mem = (*mem)->struct_member;
-			stmt *mem_init = NULL;
 
 			asm_declare_pad(f, d_mem->struct_offset - end_of_last);
 
-			asm_declare_init(f, mem_init, d_mem->ref);
+			asm_declare_init(f, init_code_i ? *init_code_i : NULL, d_mem->ref);
 
 			/* increment init_code_i - we have the start and this advances for unnamed */
 			if(init_code_i && !*++init_code_i)
