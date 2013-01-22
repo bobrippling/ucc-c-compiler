@@ -688,11 +688,11 @@ static void fold_link_decl_defs(dynmap *spel_decls)
 		int count_inline, count_extern, count_static, count_total;
 		char *asm_rename;
 
-		key = dynmap_key(spel_decls, i);
+		key = dynmap_key(char *, spel_decls, i);
 		if(!key)
 			break;
 
-		decls_for_this = dynmap_get(spel_decls, key);
+		decls_for_this = dynmap_get(char *, decl **, spel_decls, key);
 		d = *decls_for_this;
 
 		definition = decl_is_definition(d) ? d : NULL;
@@ -895,11 +895,11 @@ void fold(symtable *globs)
 
 		{
 			char *key = D(i)->spel;
-			decl **val = dynmap_get(spel_decls, key);
+			decl **val = dynmap_get(char *, decl **, spel_decls, key);
 
 			dynarray_add(&val, D(i)); /* fine if val is null */
 
-			dynmap_set(spel_decls, key, val);
+			dynmap_set(char *, decl **, spel_decls, key, val);
 		}
 
 		D(i)->sym = sym_new(D(i), sym_global);
@@ -909,7 +909,8 @@ void fold(symtable *globs)
 		if(DECL_IS_FUNC(D(i))){
 			if(decl_is_definition(D(i))){
 				/* gather round, attributes */
-				decl **const protos = dynmap_get(spel_decls, D(i)->spel);
+				decl **const protos = dynmap_get(char *, decl **,
+						spel_decls, D(i)->spel);
 				decl **proto_i;
 				int is_void = 0;
 

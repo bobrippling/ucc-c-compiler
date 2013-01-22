@@ -17,11 +17,19 @@ void *dynmap_nochk_value(dynmap *map, int i);
 
 #include "dyn.h"
 
-/* TODO */
-#warning TODO
-
 #define dynmap_get(type_k, type_v, map, key)   \
-	(DYN_CMP(type_k, key),                       \
+	(UCC_TYPECHECK(type_k, key),                 \
 	 (type_v)dynmap_nochk_get(map, (void *)key))
+
+#define dynmap_set(type_k, type_v, map, key, value)   \
+	(UCC_TYPECHECK(type_k, key),                        \
+	 UCC_TYPECHECK(type_v, value),                      \
+	 dynmap_nochk_set(map, (void *)key, (void *)value))
+
+#define dynmap_key(type_k, map, idx)   \
+	 ((type_k)dynmap_nochk_key(map, idx))
+
+#define dynmap_value(type_v, map, idx)   \
+	 ((type_v)dynmap_nochk_value(map, idx))
 
 #endif

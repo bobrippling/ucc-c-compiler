@@ -438,7 +438,9 @@ static void decl_initialise_sue(decl_init_iter *init_iter,
 					init_code_dummy->codes,
 					init_maps, sue_mem, init_code_dummy->codes);
 
-			dynmap_set(init_maps, sue_mem, init_code_dummy->codes);
+			dynmap_set(decl *, stmt **, init_maps,
+					sue_mem, init_code_dummy->codes);
+
 			init_code_dummy->codes = NULL;
 		}
 
@@ -470,7 +472,9 @@ zero_init:
 					d_mem->spel,
 					init_code_dummy->codes);
 
-			dynmap_set(init_maps, d_mem, init_code_dummy->codes);
+			dynmap_set(decl *, stmt **, init_maps,
+					d_mem, init_code_dummy->codes);
+
 			init_code_dummy->codes = NULL;
 		}
 
@@ -485,7 +489,7 @@ zero_init:
 		/* go through members in struct order */
 		for(i = 0; i < cnt; i++){
 			decl *d = sue->members[i]->struct_member;
-			stmt **inits = dynmap_get(init_maps, d);
+			stmt **inits = dynmap_get(decl *, stmt **, init_maps, d);
 
 			INIT_DEBUG("init{%p} <- %s::%s     %p{%p} = %p\n",
 					inits,
