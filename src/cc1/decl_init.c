@@ -180,6 +180,33 @@ static expr *expr_new_array_idx(expr *base, int i)
 	return expr_new_array_idx_e(base, expr_new_val(i));
 }
 
+static int arr_idx(const expr *e)
+{
+	/* deref -> op+, rhs is the val (from the above functions) */
+	UCC_ASSERT(expr_kind(e, deref), "not []");
+	e = expr_deref_what(e);
+	UCC_ASSERT(expr_kind(e, op), "not []");
+
+	e = e->rhs; /* the val */
+
+	UCC_ASSERT(expr_kind(e, val), "not val");
+	return e->bits.iv.val;
+}
+
+static int arr_cmp(const void *pa, const void *pb)
+{
+	const stmt *sa = *(stmt *const *)pa, *sb = *(stmt *const *)pb;
+
+	int a = arr_idx(sa->expr->lhs),
+			b = arr_idx(sb->expr->lhs);
+
+	if(a > b)
+		return 1;
+	if(a < b)
+		return -1;
+	return 0;
+}
+
 static type_ref *decl_initialise_array(
 		decl_init_iter *init_iter,
 		type_ref *const tfor_wrapped, expr *base, stmt *init_code)
@@ -249,6 +276,7 @@ static type_ref *decl_initialise_array(
 		int known_length = !type_ref_is_incomplete_array(tfor);
 		int lim = known_length ? type_ref_array_len(tfor) : INT_MAX;
 		int i, adv;
+		char *initialised = NULL;
 
 		if(dinit->type == decl_init_scalar){
 			array_iter = init_iter;
@@ -265,14 +293,52 @@ static type_ref *decl_initialise_array(
 		INIT_DEBUG_DEPTH(++);
 
 		if(!array_iter->pos){
-			/* x = {} */
+			/* x = {} = 1-length array */
 			known_length = 1;
 			lim = 1;
 		}
 
 		for(i = 0; array_iter->pos && i < lim; i++){
 			/* index into the main-array */
-			expr *this = expr_new_array_idx(base, i);
+			expr *this;
+
+			if(array_iter->pos){
+				decl_init *init_for_mem = array_iter->pos[0];
+				desig *const desig = init_for_mem->desig;
+
+				if(desig){
+
+					if(desig->type != desig_ar)
+						DIE_AT(&init_for_mem->where, "array designator expected");
+
+					init_for_mem->desig = desig->next; /* advance */
+
+					{
+						expr *idx = desig->bits.ar;
+						consty k;
+
+						FOLD_EXPR(idx, init_code->symtab);
+						const_fold(idx, &k);
+
+						if(k.type != CONST_VAL)
+							DIE_AT(&idx->where, "constant integral expression expected");
+
+						i = k.bits.iv.val;
+						if(!known_length || lim < i + 1)
+							lim = i + 1;
+						known_length = 1;
+
+						this = expr_new_array_idx(base, i);
+
+						initialised = urealloc(initialised,
+								lim * sizeof *initialised);
+
+						initialised[i] = 1;
+					}
+				}
+			}
+
+			this = expr_new_array_idx(base, i);
 
 			INIT_DEBUG("initialising (%s)[%d] with %s\n",
 					type_ref_to_str(tfor), i,
@@ -285,16 +351,30 @@ static type_ref *decl_initialise_array(
 		}
 
 		if(known_length){
-			/* need to zero-fill */
-			for(; i < lim; i++){
-				expr *this = expr_new_array_idx(base, i);
+			/* need to zero-fill
+			 * can't start at i,
+			 * may have skipped over with designators
+			 */
+			for(i = 0; i < lim; i++){
+				expr *this;
 
-				fprintf(stderr, "create array assignment to %s\n",
-						type_ref_to_str(tfor_deref));
+				if(initialised && initialised[i])
+					continue;
+
+				this = expr_new_array_idx(base, i);
+
+				INIT_DEBUG("create array assignment[%d] to %s\n",
+						i, type_ref_to_str(tfor_deref));
 				decl_init_create_assignments_discard(
 						NULL, tfor_deref, this, sub_init_code);
 			}
 		}
+
+		/* FIXME: check for dups */
+		/* sort init-exprs */
+		qsort(sub_init_code->codes,
+				lim, sizeof *sub_init_code->codes,
+				&arr_cmp);
 
 		complete_to = i;
 
@@ -439,6 +519,7 @@ static void decl_initialise_sue(decl_init_iter *init_iter,
 					init_code_dummy);
 
 			/* init_code_dummy->codes now has the init-codes */
+			/* FIXME: check for dups */
 			dynmap_set(decl *, stmt **, init_maps,
 					sue_mem, init_code_dummy->codes);
 
@@ -465,6 +546,7 @@ zero_init:
 					NULL, d_mem->ref, access, init_code_dummy);
 
 			/* init_code_dummy->codes now has the init-codes */
+			/* FIXME: check for dups */
 			dynmap_set(decl *, stmt **, init_maps,
 					d_mem, init_code_dummy->codes);
 
@@ -486,6 +568,7 @@ zero_init:
 
 			UCC_ASSERT(inits, "no inits for %s::%s", sue->spel, d->spel);
 
+			/* FIXME: check for dups */
 			dynarray_add_array(&sub_init_code->codes, inits);
 		}
 	}
