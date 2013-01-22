@@ -380,6 +380,9 @@ static void decl_initialise_sue(decl_init_iter *init_iter,
 				desig *const desig = init_for_mem->desig;
 				char *mem;
 
+				/* advance for sub-inits */
+				init_for_mem->desig = desig->next;
+
 				if(desig->type != desig_struct)
 					DIE_AT(&init_for_mem->where, "struct designator expected");
 
@@ -397,6 +400,10 @@ static void decl_initialise_sue(decl_init_iter *init_iter,
 					DIE_AT(&init_for_mem->where, "no such member %s::%s to initialise", sue->spel, mem);
 
 				INIT_DEBUG("designating %s::%s...\n", sue->spel, sue_mem->spel);
+
+				/* this means we forget about desig
+				 * might be useful for later code analysis? */
+				/*free(desig); XXX: memleak*/
 			}
 		}else{
 			/* null init */
