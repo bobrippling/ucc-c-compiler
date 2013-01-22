@@ -432,12 +432,6 @@ static void decl_initialise_sue(decl_init_iter *init_iter,
 					init_code_dummy);
 
 			/* init_code_dummy->codes now has the init-codes */
-			INIT_DEBUG("%s::%s -> init{%p}   %p{%p} = %p\n",
-					sue->spel,
-					sue_mem->spel,
-					init_code_dummy->codes,
-					init_maps, sue_mem, init_code_dummy->codes);
-
 			dynmap_set(decl *, stmt **, init_maps,
 					sue_mem, init_code_dummy->codes);
 
@@ -455,9 +449,6 @@ static void decl_initialise_sue(decl_init_iter *init_iter,
 	}
 
 zero_init:
-	INIT_DEBUG("init_code_dummy->stab = %p\n",
-			init_code_dummy->symtab);
-
 	for(i = 0; i < cnt; i++)
 		if(!initialised[i]){
 			decl *d_mem = sue->members[i]->struct_member;
@@ -467,11 +458,6 @@ zero_init:
 					NULL, d_mem->ref, access, init_code_dummy);
 
 			/* init_code_dummy->codes now has the init-codes */
-			INIT_DEBUG("%s::%s -> init{%p} default/zero init\n",
-					sue->spel,
-					d_mem->spel,
-					init_code_dummy->codes);
-
 			dynmap_set(decl *, stmt **, init_maps,
 					d_mem, init_code_dummy->codes);
 
@@ -491,12 +477,6 @@ zero_init:
 			decl *d = sue->members[i]->struct_member;
 			stmt **inits = dynmap_get(decl *, stmt **, init_maps, d);
 
-			INIT_DEBUG("init{%p} <- %s::%s     %p{%p} = %p\n",
-					inits,
-					sue->spel,
-					d->spel,
-					init_maps, d, inits);
-
 			UCC_ASSERT(inits, "no inits for %s::%s", sue->spel, d->spel);
 
 			dynarray_add_array(&sub_init_code->codes, inits);
@@ -513,7 +493,7 @@ zero_init:
 
 	free(init_code_dummy);
 	free(initialised);
-	/*dynmap_free(init_maps);*/
+	dynmap_free(init_maps);
 }
 
 static void decl_initialise_scalar(
