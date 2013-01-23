@@ -569,9 +569,6 @@ zero_init:
 			init_code_dummy->codes = NULL;
 		}
 
-	if(braced)
-		cnt = 1; /* we walk over the one brace, not multiple scalar/subinits */
-
 	{
 		/* linked to init_code */
 		stmt *sub_init_code = stmt_sub_init_code(init_code);
@@ -589,7 +586,10 @@ zero_init:
 		}
 	}
 
-	init_iter_adv(init_iter, cnt);
+	if(braced)
+		/* we walk over the one brace, not multiple scalar/subinits */
+		cnt = 1;
+	init_iter_adv(init_iter, cnt); /* MUST be with the above if statement */
 
 	INIT_DEBUG("initialised %s, *init_iter += %d -> (%s)\n",
 			sue_str(sue), cnt,
