@@ -292,7 +292,7 @@ static type_ref *decl_initialise_array(
 				(void *)dinit);
 		INIT_DEBUG_DEPTH(++);
 
-		if(!array_iter->pos){
+		if(!array_iter->pos && !known_length){
 			/* x = {} = 1-length array */
 			known_length = 1;
 			lim = 1;
