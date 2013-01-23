@@ -625,18 +625,21 @@ static void decl_initialise_scalar(
 
 		assert(dinit->type == decl_init_scalar);
 		assign_from = dinit->bits.expr;
+
+		INIT_DEBUG("scalar %s (%ld)\n",
+				assign_from->f_str(),
+				assign_from->bits.iv.val);
 	}else{
 		/* implicit cast (alternatively allow assignment to pointers from the
 		 * constant 0) */
 
 		assign_from = expr_new_cast(tfor, 1);
 		assign_from->expr = expr_new_val(0);
+		INIT_DEBUG("scalar zero\n");
 	}
 
 	assign_init = expr_new_assign(base, assign_from);
 	assign_init->assign_is_init = 1;
-
-	INIT_DEBUG("scalar %s\n", assign_from->f_str());
 
 	dynarray_add(&init_code->codes,
 			expr_to_stmt(assign_init, init_code->symtab));
