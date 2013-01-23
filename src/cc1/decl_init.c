@@ -312,7 +312,6 @@ static type_ref *decl_initialise_array(
 
 		for(i = 0; array_iter->pos && i < lim; i++){
 			/* index into the main-array */
-			expr *this;
 
 			if(array_iter->pos){
 				decl_init *init_for_mem = array_iter->pos[0];
@@ -345,13 +344,9 @@ static type_ref *decl_initialise_array(
 						if(!known_length || lim < i + 1)
 							lim = i + 1;
 						known_length = 1;
-
-						this = expr_new_array_idx(base, i);
 					}
 				}
 			}
-
-			this = expr_new_array_idx(base, i);
 
 			INIT_DEBUG("initialising (%s)[%d] with %s\n",
 					type_ref_to_str(tfor), i,
@@ -360,7 +355,9 @@ static type_ref *decl_initialise_array(
 			/* FIXME: check for dups */
 			INIT_DEBUG_DEPTH(++);
 			decl_init_create_assignments_discard(
-					array_iter, tfor_deref, this, init_code_dummy);
+					array_iter, tfor_deref,
+					expr_new_array_idx(base, i),
+					init_code_dummy);
 			INIT_DEBUG_DEPTH(--);
 
 			/* insert, sorted */
@@ -377,18 +374,15 @@ static type_ref *decl_initialise_array(
 			INIT_DEBUG("max_i = %d (from lim = %d, -1)\n", max_i, lim);
 
 			for(i = 0; i < lim; i++){
-				expr *this;
-
 				if(sorted_array_inits[i])
 					continue;
-
-				this = expr_new_array_idx(base, i);
 
 				INIT_DEBUG("create ZERO array assignment[%d] to %s\n",
 						i, type_ref_to_str(tfor_deref));
 
 				decl_init_create_assignments_discard(
-						NULL, tfor_deref, this, init_code_dummy);
+						NULL, tfor_deref, expr_new_array_idx(base, i),
+						init_code_dummy);
 
 				array_insert_sorted(&sorted_array_inits, i, &max_i, init_code_dummy);
 			}
