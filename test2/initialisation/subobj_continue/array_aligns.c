@@ -7,5 +7,5 @@ struct A
 	4,
 	5,
 	.i = 3//[0 /*... 3*/] = 93
-	// FIXME: space of 16 at the end
+	// space of 16 at the end
 };
