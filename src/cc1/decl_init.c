@@ -278,6 +278,7 @@ static type_ref *decl_initialise_array(
 		decl_init_iter *array_iter;
 		int known_length = !type_ref_is_incomplete_array(tfor);
 		int lim = known_length ? type_ref_array_len(tfor) : INT_MAX;
+		const int fixed_length = known_length;
 		int i, max_i;
 		stmt **sorted_array_inits = NULL;
 		stmt *init_code_dummy = stmt_new_wrapper(code, init_code->symtab);
@@ -330,6 +331,12 @@ static type_ref *decl_initialise_array(
 							DIE_AT(&idx->where, "constant integral expression expected");
 
 						i = k.bits.iv.val;
+						if(i < 0)
+							DIE_AT(&idx->where, "negative array index");
+
+						if(fixed_length && i >= lim)
+							DIE_AT(&idx->where, "index %d out of bounds (%d)", i, lim - 1);
+
 						if(!known_length || lim < i + 1)
 							lim = i + 1;
 						known_length = 1;
