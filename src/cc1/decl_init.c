@@ -536,6 +536,9 @@ static void decl_initialise_sue(decl_init_iter *init_iter,
 
 			/* init_code_dummy->codes now has the init-codes */
 			/* FIXME: check for dups */
+			if(dynmap_get(decl *, stmt **, init_maps, sue_mem))
+				ICW("overwriting dynmap{%s}\n", sue_mem->spel);
+
 			dynmap_set(decl *, stmt **, init_maps,
 					sue_mem, init_code_dummy->codes);
 
@@ -563,6 +566,9 @@ zero_init:
 
 			/* init_code_dummy->codes now has the init-codes */
 			/* FIXME: check for dups */
+			if(dynmap_get(decl *, stmt **, init_maps, d_mem))
+				ICW("overwriting dynmap{%s} with zero\n", d_mem->spel);
+
 			dynmap_set(decl *, stmt **, init_maps,
 					d_mem, init_code_dummy->codes);
 
