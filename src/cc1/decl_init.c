@@ -276,10 +276,12 @@ static type_ref *decl_initialise_array(
 	if(dinit){
 		decl_init_iter sub_array_iter;
 		decl_init_iter *array_iter;
+		const int braced = dinit->type == decl_init_brace;
 		int known_length = !type_ref_is_incomplete_array(tfor);
 		int lim = known_length ? type_ref_array_len(tfor) : INT_MAX;
 		const int fixed_length = known_length;
 		int i, max_i;
+		int adv_iter_by = 0;
 		stmt **sorted_array_inits = NULL;
 		stmt *init_code_dummy = stmt_new_wrapper(code, init_code->symtab);
 
@@ -312,6 +314,7 @@ static type_ref *decl_initialise_array(
 
 		for(i = 0; array_iter->pos && i < lim; i++){
 			/* index into the main-array */
+			adv_iter_by++;
 
 			if(array_iter->pos){
 				decl_init *init_for_mem = array_iter->pos[0];
@@ -319,8 +322,11 @@ static type_ref *decl_initialise_array(
 
 				if(desig){
 
-					if(desig->type != desig_ar)
+					if(desig->type != desig_ar){
+						if(!braced)
+							break; /* similar to struct breaks */
 						DIE_AT(&init_for_mem->where, "array designator expected");
+					}
 
 					init_for_mem->desig = desig->next; /* advance */
 
@@ -402,14 +408,13 @@ static type_ref *decl_initialise_array(
 				(dinit->type == decl_init_scalar) ? complete_to : 1,
 				complete_to);
 
-		{
-			int adv = (dinit->type == decl_init_scalar) ? complete_to : 1;
-			init_iter_adv(array_iter, adv);
+		if(dinit->type == decl_init_brace)
+			init_iter_adv(init_iter, 1);
+		/* otherwise we're walking the init our parent is walking */
 
-			INIT_DEBUG_DEPTH(--);
-			INIT_DEBUG("array, len %d finished, i=%d, adv-by=%d\n",
-					complete_to, i, adv);
-		}
+		INIT_DEBUG_DEPTH(--);
+		INIT_DEBUG("array, len %d finished, i=%d, adv-by=%d\n",
+				complete_to, i, adv);
 
 		free(sorted_array_inits);
 		free(init_code_dummy);
@@ -485,8 +490,11 @@ static void decl_initialise_sue(decl_init_iter *init_iter,
 				/* advance for sub-inits */
 				init_for_mem->desig = desig->next;
 
-				if(desig->type != desig_struct)
+				if(desig->type != desig_struct){
+					if(!braced)
+						break; /* similar to the below check */
 					DIE_AT(&init_for_mem->where, "struct designator expected");
+				}
 
 				mem = desig->bits.member;
 				accessor = EXPR_STRUCT(base, mem);
@@ -498,8 +506,16 @@ static void decl_initialise_sue(decl_init_iter *init_iter,
 						break; /* found */
 				}
 
-				if(i >= cnt)
+				if(i >= cnt){
+					/* have a designator, no member.
+					 * could be: struct{struct{int i;}a; int j;} x = { .a=1,2, .j=3};
+					 *
+					 * - if we're initialised from a non-brace init, break
+					 */
+					if(!braced)
+						break;
 					DIE_AT(&init_for_mem->where, "no such member %s::%s to initialise", sue->spel, mem);
+				}
 
 				INIT_DEBUG("designating %s::%s...\n", sue->spel, sue_mem->spel);
 
@@ -516,8 +532,11 @@ static void decl_initialise_sue(decl_init_iter *init_iter,
 			UCC_ASSERT(sue_init_iter.pos, "no next init - should've been caught below");
 
 			if(i >= cnt){
-				/* trying to initialise past the end */
-				WARN_AT(&sue_init_iter.pos[0]->where, "excess initialiser for struct");
+				/* trying to initialise past the end
+				 * could be like this: struct{struct{int i;}a; int j;} x = { .a=1,2};
+				 */
+				if(braced)
+					WARN_AT(&sue_init_iter.pos[0]->where, "excess initialiser for struct");
 				break;
 			}
 
@@ -598,10 +617,11 @@ zero_init:
 		}
 	}
 
-	if(braced)
+	if(!braced)
 		/* we walk over the one brace, not multiple scalar/subinits */
-		cnt = 1;
-	init_iter_adv(init_iter, cnt); /* MUST be with the above if statement */
+		init_iter_adv(init_iter, cnt);
+	/* otherwise we've walked over the scalar inits of our parent */
+
 
 	INIT_DEBUG("initialised %s, *init_iter += %d -> (%s)\n",
 			sue_str(sue), cnt,
@@ -622,6 +642,10 @@ static void decl_initialise_scalar(
 	expr *assign_from, *assign_init;
 
 	if(dinit){
+		if(dinit->desig)
+			DIE_AT(&dinit->where, "%s-designator for scalar",
+					decl_init_to_str(dinit->type));
+
 		if(dinit->type == decl_init_brace){
 			/* initialising scalar with { ... } - pick first */
 			decl_init **inits = dinit->bits.inits;
