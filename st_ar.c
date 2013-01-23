@@ -1,4 +1,4 @@
-struct
+struct A
 {
 	int i, j;
 } ar[] = {

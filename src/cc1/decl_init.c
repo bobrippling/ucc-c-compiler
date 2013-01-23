@@ -180,31 +180,34 @@ static expr *expr_new_array_idx(expr *base, int i)
 	return expr_new_array_idx_e(base, expr_new_val(i));
 }
 
-static int arr_idx(const expr *e)
+static void array_insert_sorted(stmt ***psorted_array_inits,
+		int i, int *pmax_i, stmt *init_code_dummy)
 {
-	/* deref -> op+, rhs is the val (from the above functions) */
-	UCC_ASSERT(expr_kind(e, deref), "not []");
-	e = expr_deref_what(e);
-	UCC_ASSERT(expr_kind(e, op), "not []");
+#define sorted_array_inits (*psorted_array_inits)
+#define max_i (*pmax_i)
 
-	e = e->rhs; /* the val */
+	stmt *sub_init = init_code_dummy->codes[0];
+	const int old = max_i;
+	int changed = 0;
 
-	UCC_ASSERT(expr_kind(e, val), "not val");
-	return e->bits.iv.val;
-}
+	if(i > max_i)
+		max_i = i, changed = 1;
 
-static int arr_cmp(const void *pa, const void *pb)
-{
-	const stmt *sa = *(stmt *const *)pa, *sb = *(stmt *const *)pb;
+	UCC_ASSERT(!init_code_dummy->codes[1], "too many sub-inits");
+	init_code_dummy->codes = NULL;
 
-	int a = arr_idx(sa->expr->lhs),
-			b = arr_idx(sb->expr->lhs);
+	if(changed || !sorted_array_inits){
+		sorted_array_inits = urealloc(sorted_array_inits,
+				(max_i + 2) * sizeof *sorted_array_inits,
+				old        * sizeof *sorted_array_inits);
 
-	if(a > b)
-		return 1;
-	if(a < b)
-		return -1;
-	return 0;
+		sorted_array_inits[max_i + 1] = NULL; /* dynarray compatability */
+	}
+
+	sorted_array_inits[i] = sub_init;
+
+#undef max_i
+#undef sorted_array_inits
 }
 
 static type_ref *decl_initialise_array(
@@ -275,8 +278,9 @@ static type_ref *decl_initialise_array(
 		decl_init_iter *array_iter;
 		int known_length = !type_ref_is_incomplete_array(tfor);
 		int lim = known_length ? type_ref_array_len(tfor) : INT_MAX;
-		int i, adv;
-		char *initialised = NULL;
+		int i, max_i;
+		stmt **sorted_array_inits = NULL;
+		stmt *init_code_dummy = stmt_new_wrapper(code, init_code->symtab);
 
 		if(dinit->type == decl_init_scalar){
 			array_iter = init_iter;
@@ -297,6 +301,8 @@ static type_ref *decl_initialise_array(
 			known_length = 1;
 			lim = 1;
 		}
+
+		max_i = 0;
 
 		for(i = 0; array_iter->pos && i < lim; i++){
 			/* index into the main-array */
@@ -329,11 +335,6 @@ static type_ref *decl_initialise_array(
 						known_length = 1;
 
 						this = expr_new_array_idx(base, i);
-
-						initialised = urealloc(initialised,
-								lim * sizeof *initialised);
-
-						initialised[i] = 1;
 					}
 				}
 			}
@@ -344,10 +345,14 @@ static type_ref *decl_initialise_array(
 					type_ref_to_str(tfor), i,
 					decl_init_to_str(array_iter->pos[0]->type));
 
+			/* FIXME: check for dups */
 			INIT_DEBUG_DEPTH(++);
 			decl_init_create_assignments_discard(
-					array_iter, tfor_deref, this, sub_init_code);
+					array_iter, tfor_deref, this, init_code_dummy);
 			INIT_DEBUG_DEPTH(--);
+
+			/* insert, sorted */
+			array_insert_sorted(&sorted_array_inits, i, &max_i, init_code_dummy);
 		}
 
 		if(known_length){
@@ -355,29 +360,32 @@ static type_ref *decl_initialise_array(
 			 * can't start at i,
 			 * may have skipped over with designators
 			 */
+			max_i = lim - 1;
+
+			INIT_DEBUG("max_i = %d (from lim = %d, -1)\n", max_i, lim);
+
 			for(i = 0; i < lim; i++){
 				expr *this;
 
-				if(initialised && initialised[i])
+				if(sorted_array_inits[i])
 					continue;
 
 				this = expr_new_array_idx(base, i);
 
-				INIT_DEBUG("create array assignment[%d] to %s\n",
+				INIT_DEBUG("create ZERO array assignment[%d] to %s\n",
 						i, type_ref_to_str(tfor_deref));
+
 				decl_init_create_assignments_discard(
-						NULL, tfor_deref, this, sub_init_code);
+						NULL, tfor_deref, this, init_code_dummy);
+
+				array_insert_sorted(&sorted_array_inits, i, &max_i, init_code_dummy);
 			}
 		}else{
-			/* need to set lim for qsort */
+			/* need to set lim for complete_to */
 			lim = i;
 		}
 
-		/* FIXME: check for dups */
-		/* sort init-exprs */
-		qsort(sub_init_code->codes,
-				lim, sizeof *sub_init_code->codes,
-				&arr_cmp);
+		dynarray_add_array(&sub_init_code->codes, sorted_array_inits);
 
 		complete_to = lim;
 
@@ -388,12 +396,17 @@ static type_ref *decl_initialise_array(
 				(dinit->type == decl_init_scalar) ? complete_to : 1,
 				complete_to);
 
-		adv = (dinit->type == decl_init_scalar) ? complete_to : 1;
-		init_iter_adv(array_iter, adv);
+		{
+			int adv = (dinit->type == decl_init_scalar) ? complete_to : 1;
+			init_iter_adv(array_iter, adv);
 
-		INIT_DEBUG_DEPTH(--);
-		INIT_DEBUG("array, len %d finished, i=%d, adv-by=%d\n",
-				complete_to, i, adv);
+			INIT_DEBUG_DEPTH(--);
+			INIT_DEBUG("array, len %d finished, i=%d, adv-by=%d\n",
+					complete_to, i, adv);
+		}
+
+		free(sorted_array_inits);
+		free(init_code_dummy);
 	}
 
 	/* patch the type size */
@@ -401,7 +414,7 @@ complete_ar:
 	if(type_ref_is_incomplete_array(tfor)){
 		tfor = type_ref_complete_array(tfor, complete_to);
 
-		INIT_DEBUG("completed array to %d - %s (sub_init_codes count %d)\n",
+		INIT_DEBUG("completed array to %d - %s (sub_init_code count %d)\n",
 				complete_to, type_ref_to_str(tfor),
 				dynarray_count(sub_init_code->codes));
 	}
@@ -486,7 +499,7 @@ static void decl_initialise_sue(decl_init_iter *init_iter,
 
 				/* this means we forget about desig
 				 * might be useful for later code analysis? */
-				/*free(desig); XXX: memleak*/
+				free(desig); /* XXX: lost data */
 			}
 		}else{
 			/* null init */

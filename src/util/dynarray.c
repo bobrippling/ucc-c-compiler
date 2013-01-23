@@ -18,7 +18,7 @@ void dynarray_nochk_add(void ***par, void *new)
 		ar = umalloc(2 * sizeof *ar);
 	}else{
 		idx = dynarray_nochk_count(ar);
-		ar = urealloc(ar, (idx + 2) * sizeof *ar);
+		ar = urealloc1(ar, (idx + 2) * sizeof *ar);
 	}
 
 	ar[idx] = new;
@@ -133,7 +133,7 @@ void dynarray_nochk_add_array(void ***par, void **ar2)
 
 	total = n + n2;
 
-	ar = urealloc(ar, (total + 1) * sizeof *ar);
+	ar = urealloc1(ar, (total + 1) * sizeof *ar);
 	memcpy(ar + n, ar2, (n2 + 1) * sizeof *ar2);
 
 	*par = ar;
