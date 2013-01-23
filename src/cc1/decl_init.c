@@ -199,7 +199,7 @@ static void array_insert_sorted(stmt ***psorted_array_inits,
 	if(changed || !sorted_array_inits){
 		sorted_array_inits = urealloc(sorted_array_inits,
 				(max_i + 2) * sizeof *sorted_array_inits,
-				old        * sizeof *sorted_array_inits);
+				(old + 2)   * sizeof *sorted_array_inits);
 
 		sorted_array_inits[max_i + 1] = NULL; /* dynarray compatability */
 	}
@@ -303,7 +303,12 @@ static type_ref *decl_initialise_array(
 			lim = 1;
 		}
 
-		max_i = 0;
+		if(known_length){
+			sorted_array_inits = umalloc((lim + 1) * sizeof *sorted_array_inits);
+			max_i = lim - 1;
+		}else{
+			max_i = 0;
+		}
 
 		for(i = 0; array_iter->pos && i < lim; i++){
 			/* index into the main-array */
