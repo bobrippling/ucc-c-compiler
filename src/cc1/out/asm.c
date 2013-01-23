@@ -131,9 +131,9 @@ static void asm_declare_init(FILE *f, stmt *init_code, type_ref *tfor)
 	}else if((r = type_ref_is(tfor, type_ref_array))){
 		type_ref *next = type_ref_next(tfor);
 
-		if(init_code){
+		if(init_code && init_code->codes){
 			stmt **i;
-			for(i = init_code->codes; i && *i; i++)
+			for(i = init_code->codes; *i; i++)
 				asm_declare_init(f, *i, next);
 		}else{
 			/* we should have a size */
