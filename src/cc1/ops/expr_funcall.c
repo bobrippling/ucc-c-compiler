@@ -20,8 +20,16 @@ int const_fold_expr_funcall(expr *e)
 	return 1; /* could extend to have int x() const; */
 }
 
-static void format_check_printf_1(char fmt, type_ref *tt, where *w)
+enum printf_attr
 {
+	printf_attr_long = 1 << 0
+};
+
+static void format_check_printf_1(char fmt, type_ref *tt,
+		where *w, enum printf_attr attr)
+{
+	int allow_long = 0;
+
 	switch(fmt){
 		enum type_primitive prim;
 
@@ -45,8 +53,11 @@ ptr:
 		case 'c':
 		case 'd':
 		case 'i':
+			allow_long = 1;
 			if(!type_ref_is_integral(tt))
-				WARN_AT(w, "format %%d expects integral argument");
+				WARN_AT(w, "format %%%c expects integral argument", fmt);
+			if((attr & printf_attr_long) && !type_ref_is_type(tt, type_long))
+				WARN_AT(w, "format %%l%c expects long argument", fmt);
 			break;
 
 		case 'e':
@@ -64,6 +75,9 @@ ptr:
 		default:
 			WARN_AT(w, "unknown conversion character 0x%x", fmt);
 	}
+
+	if(!allow_long && attr & printf_attr_long)
+		WARN_AT(w, "format %%%c expects a long", fmt);
 }
 
 static void format_check_printf_str(
@@ -77,6 +91,7 @@ static void format_check_printf_str(
 	for(i = 0; i < len && fmt[i];){
 		if(fmt[i++] == '%'){
 			int fin;
+			enum printf_attr attr;
 			expr *e;
 
 			if(fmt[i] == '%'){
@@ -85,8 +100,13 @@ static void format_check_printf_str(
 			}
 
 recheck:
+			attr = 0;
 			fin = 0;
 			do switch(fmt[i]){
+				 case 'l':
+					/* TODO: multiple check.. */
+					attr |= printf_attr_long;
+
 				case '1': case '2': case '3':
 				case '4': case '5': case '6':
 				case '7': case '8': case '9':
@@ -94,7 +114,7 @@ recheck:
 				case '0': case '#': case '-':
 				case ' ': case '+': case '.':
 
-				case 'l': case 'h': case 'L':
+				case 'h': case 'L':
 					i++;
 					break;
 				default:
@@ -108,7 +128,7 @@ recheck:
 				break;
 			}
 
-			format_check_printf_1(fmt[i], e->tree_type, &e->where);
+			format_check_printf_1(fmt[i], e->tree_type, &e->where, attr);
 			if(fmt[i] == '*'){
 				i++;
 				goto recheck;
