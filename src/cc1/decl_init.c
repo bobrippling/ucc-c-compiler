@@ -368,6 +368,9 @@ static type_ref *decl_initialise_array(
 				decl_init_create_assignments_discard(
 						NULL, tfor_deref, this, sub_init_code);
 			}
+		}else{
+			/* need to set lim for qsort */
+			lim = i;
 		}
 
 		/* FIXME: check for dups */
@@ -376,7 +379,7 @@ static type_ref *decl_initialise_array(
 				lim, sizeof *sub_init_code->codes,
 				&arr_cmp);
 
-		complete_to = i;
+		complete_to = lim;
 
 		/* advance by the number of steps we moved over,
 		 * if not nested, otherwise advance by one, over the sub-brace
