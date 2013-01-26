@@ -98,6 +98,7 @@ struct
 	{ 1,  "show-line",     FOPT_SHOW_LINE       },
 	{ 1,  "pic",           FOPT_PIC             },
 	{ 1,  "pic-pcrel",     FOPT_PIC_PCREL       },
+	{ 1,  "builtin",       FOPT_BUILTIN         },
 
 	{ 0,  NULL, 0 }
 };
@@ -124,7 +125,11 @@ enum warning warn_mode = ~(
 		| WARN_SIGN_COMPARE
 		);
 
-enum fopt    fopt_mode = FOPT_CONST_FOLD | FOPT_SHOW_LINE | FOPT_PIC;
+enum fopt fopt_mode = FOPT_CONST_FOLD
+                    | FOPT_SHOW_LINE
+                    | FOPT_PIC
+                    | FOPT_BUILTIN;
+
 enum cc1_backend cc1_backend = BACKEND_ASM;
 
 int m32 = 0;

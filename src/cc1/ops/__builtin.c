@@ -90,9 +90,9 @@ static builtin_table *builtin_find(const char *sp)
 
 expr *builtin_parse(const char *sp)
 {
-	builtin_table *b = builtin_find(sp);
+	builtin_table *b;
 
-	if(b){
+	if((fopt_mode & FOPT_BUILTIN) && (b = builtin_find(sp))){
 		expr *(*f)(void) = b->parser;
 
 		if(f)
