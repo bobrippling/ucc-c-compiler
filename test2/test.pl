@@ -8,6 +8,12 @@ sub usage
 	die "Usage: $0 [--ucc=path] file\n";
 }
 
+sub timeout
+{
+	system("./timeout", '3', @_);
+	return $?;
+}
+
 my $ucc = '../ucc';
 my $file = undef;
 my $verbose = 0;
@@ -39,13 +45,13 @@ open F, '<', $file or die2 "$file: $!";
 while(<F>){
 	chomp;
 
-	if(my($command, $sh) = m{// *([a-z]+): *(.*)}i){
+	if(my($command, $sh) = m{// *([A-Z]+): *(.*)}){
 		my $subst_sh = apply_vars($sh);
 
 		if($command eq 'RUN'){
 			print "$0: run: $subst_sh\n" if $verbose;
 
-			my $ec = system($subst_sh);
+			my $ec = timeout($subst_sh);
 
 			die2 "command '$subst_sh' failed" if $ec;
 		}else{

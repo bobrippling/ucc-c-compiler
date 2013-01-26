@@ -1,0 +1,45 @@
+#!/usr/bin/perl
+use warnings;
+
+sub usage
+{
+	die "Usage: $0 timeout cmd...\n";
+}
+
+sub bg
+{
+	my $pid = fork;
+	if($pid == 0){
+		exec @_;
+		warn "$0: exec '$_[0]'...: $!\n";
+		exit 127;
+	}
+	return $pid;
+}
+
+usage() unless @ARGV > 1;
+
+my $timeout = shift;
+
+usage() unless $timeout =~ /^[0-9]+$/;
+
+my $pid = bg @ARGV;
+
+$SIG{CHLD} = sub {
+	sub wexitstatus
+	{
+		return ($ret >> 8) & 0xff
+	}
+
+	my $dead = wait;
+	my $ret = $?;
+	#print STDERR "dead child $dead (fork pid $pid) ret $ret\n";
+
+	exit wexitstatus($ret);
+};
+
+select(undef, undef, undef, $timeout);
+kill 15, $pid;
+kill  9, $pid;
+print STDERR "$0: timeout\n";
+exit 1;
