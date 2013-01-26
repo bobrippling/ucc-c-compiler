@@ -99,6 +99,8 @@ struct
 	{ 1,  "pic",           FOPT_PIC             },
 	{ 1,  "pic-pcrel",     FOPT_PIC_PCREL       },
 	{ 1,  "builtin",       FOPT_BUILTIN         },
+	{ 1,  "unnamed-struct",FOPT_UNNAMED_SUBSTRUCT },
+	/* -fms-extensions, -fplan9-extensions */
 
 	{ 0,  NULL, 0 }
 };
@@ -128,8 +130,8 @@ enum warning warn_mode = ~(
 enum fopt fopt_mode = FOPT_CONST_FOLD
                     | FOPT_SHOW_LINE
                     | FOPT_PIC
-                    | FOPT_BUILTIN;
-
+                    | FOPT_BUILTIN
+                    | FOPT_UNNAMED_SUBSTRUCT;
 enum cc1_backend cc1_backend = BACKEND_ASM;
 
 int m32 = 0;

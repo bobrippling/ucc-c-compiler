@@ -66,6 +66,7 @@ enum fopt
 	FOPT_PIC                   = 1 << 4,
 	FOPT_PIC_PCREL             = 1 << 5,
 	FOPT_BUILTIN               = 1 << 6,
+	FOPT_UNNAMED_SUBSTRUCT     = 1 << 7,
 };
 
 enum cc1_backend
