@@ -1,5 +1,5 @@
 CFLAGS = -g -Wall -Wextra -pedantic -std=c99 \
-         -Wcast-qual
+         -Wcast-qual -Wno-char-subscripts
 
 #-Wconversion          \
 #-Wshadow              \

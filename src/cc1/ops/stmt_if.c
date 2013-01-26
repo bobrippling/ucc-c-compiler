@@ -34,10 +34,9 @@ void fold_stmt_if(stmt *s)
 {
 	symtable *test_symtab = fold_stmt_test_init_expr(s, "if");
 
-	fold_expr(s->expr, test_symtab);
+	FOLD_EXPR(s->expr, test_symtab);
 
 	fold_need_expr(s->expr, s->f_str(), 1);
-	OPT_CHECK(s->expr, "constant expression in if");
 
 	fold_stmt(s->lhs);
 	if(s->rhs)
@@ -54,7 +53,7 @@ void gen_stmt_if(stmt *s)
 	out_jfalse(lbl_else);
 
 	gen_stmt(s->lhs);
-	out_push_lbl(lbl_fi, 0, NULL);
+	out_push_lbl(lbl_fi, 0);
 	out_jmp();
 
 	out_label(lbl_else);
@@ -68,7 +67,7 @@ void gen_stmt_if(stmt *s)
 
 static int if_passable(stmt *s)
 {
-	return fold_passable(s->lhs) || (s->rhs ? fold_passable(s->rhs) : 0);
+	return (s->rhs ? fold_passable(s->rhs) : 1) || fold_passable(s->lhs);
 }
 
 void mutate_stmt_if(stmt *s)

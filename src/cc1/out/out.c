@@ -12,6 +12,10 @@
 #include "../../util/platform.h"
 #include "../cc1.h"
 
+#define v_check_type(t) if(!t) t = type_ref_new_VOID_PTR()
+
+static int calc_ptr_step(type_ref *t);
+
 /*
  * This entire stack-output idea was inspired by tinycc, and improved somewhat
  */
@@ -22,14 +26,21 @@ struct vstack *vtop = NULL;
 
 static int reserved_regs[N_REGS];
 
-void vpush(decl *d)
+int out_vcount(void)
 {
+	return vtop ? 1 + (int)(vtop - vstack) : 0;
+}
+
+void vpush(type_ref *t)
+{
+	v_check_type(t);
+
 	if(!vtop){
 		vtop = vstack;
 	}else{
 		UCC_ASSERT(vtop < vstack + N_VSTACK - 1,
-				"vstack overflow, vtop=%p, vstack=%p, diff %ld",
-				(void *)vtop, (void *)vstack, vtop - vstack);
+				"vstack overflow, vtop=%p, vstack=%p, diff %d",
+				(void *)vtop, (void *)vstack, out_vcount());
 
 		if(vtop->type == FLAG)
 			v_to_reg(vtop);
@@ -37,18 +48,20 @@ void vpush(decl *d)
 		vtop++;
 	}
 
-	vtop_clear(d);
+	vtop_clear(t);
 }
 
-void v_clear(struct vstack *vp, decl *d)
+void v_clear(struct vstack *vp, type_ref *t)
 {
+	v_check_type(t);
+
 	memset(vp, 0, sizeof *vp);
-	vp->d = d;
+	vp->t = t;
 }
 
-void vtop_clear(decl *d)
+void vtop_clear(type_ref *t)
 {
-	v_clear(vtop, d);
+	v_clear(vtop, t);
 }
 
 void vpop(void)
@@ -71,7 +84,7 @@ void out_flush_volatile(void)
 
 void out_assert_vtop_null(void)
 {
-	UCC_ASSERT(!vtop, "vtop not null");
+	UCC_ASSERT(!vtop, "vtop not null (%d entries)", out_vcount());
 }
 
 void out_dump(void)
@@ -86,9 +99,9 @@ void out_dump(void)
 void vswap(void)
 {
 	struct vstack tmp;
-	memcpy(&tmp, vtop, sizeof tmp);
-	memcpy(vtop, &vtop[-1], sizeof tmp);
-	memcpy(&vtop[-1], &tmp, sizeof tmp);
+	memcpy_safe(&tmp, vtop);
+	memcpy_safe(vtop, &vtop[-1]);
+	memcpy_safe(&vtop[-1], &tmp);
 }
 
 void out_swap(void)
@@ -226,22 +239,21 @@ void v_save_reg(struct vstack *vp)
 	memset(&store, 0, sizeof store);
 
 	store.type = STACK;
-	store.d = decl_ptr_depth_inc(decl_copy(
-				vp->d ? vp->d : decl_ptr_depth_inc(decl_new_void())));
+	store.t = type_ref_ptr_depth_inc(vp->t);
 
 	/* the following gen two instructions - subq and movq
 	 * instead/TODO: impl_save_reg(vp) -> "pushq %%rax"
 	 * -O1?
 	 */
-	store.bits.off_from_bp = -impl_alloc_stack(decl_size(store.d));
+	store.bits.off_from_bp = -impl_alloc_stack(type_ref_size(store.t, NULL));
 	impl_store(vp, &store);
 
 	store.type = STACK_SAVE;
 
-	memcpy(vp, &store, sizeof store);
+	memcpy_safe(vp, &store);
 
 	/* no need for copy */
-	vp->d = decl_ptr_depth_dec(vp->d, NULL);
+	vp->t = type_ref_ptr_depth_dec(vp->t);
 }
 
 void v_freeup_reg(int r, int allowable_stack)
@@ -266,8 +278,8 @@ void v_freeup_regs(int a, int b)
 
 void v_inv_cmp(struct vstack *vp)
 {
-	switch(vp->bits.flag){
-#define OPPOSITE(from, to) case flag_ ## from: vp->bits.flag = flag_ ## to; return
+	switch(vp->bits.flag.cmp){
+#define OPPOSITE(from, to) case flag_ ## from: vp->bits.flag.cmp = flag_ ## to; return
 		OPPOSITE(eq, ne);
 		OPPOSITE(ne, eq);
 
@@ -289,27 +301,27 @@ void out_pop(void)
 	vpop();
 }
 
-void out_push_iv(decl *d, intval *iv)
+void out_push_iv(type_ref *t, intval *iv)
 {
-	vpush(d);
+	vpush(t);
 
 	vtop->type = CONST;
 	vtop->bits.val = iv->val; /* TODO: unsigned */
 }
 
-void out_push_i(decl *d, int i)
+void out_push_i(type_ref *t, int i)
 {
 	intval iv = {
 		.val = i,
 		.suffix = 0
 	};
 
-	out_push_iv(d, &iv);
+	out_push_iv(t, &iv);
 }
 
-void out_push_lbl(char *s, int pic, decl *d)
+void out_push_lbl(char *s, int pic)
 {
-	vpush(d);
+	vpush(NULL);
 
 	vtop->bits.lbl.str = s;
 	vtop->bits.lbl.pic = pic;
@@ -320,7 +332,7 @@ void out_push_lbl(char *s, int pic, decl *d)
 void vdup(void)
 {
 	vpush(NULL);
-	memcpy(&vtop[0], &vtop[-1], sizeof *vtop);
+	memcpy_safe(&vtop[0], &vtop[-1]);
 }
 
 void out_dup(void)
@@ -352,12 +364,21 @@ void out_normalise(void)
 
 void out_push_sym(sym *s)
 {
-	vpush(decl_ptr_depth_inc(decl_copy(s->decl)));
+	decl *const d = s->decl;
+
+	vpush(type_ref_ptr_depth_inc(d->ref));
 
 	switch(s->type){
 		case sym_local:
+			if(DECL_IS_FUNC(d))
+				goto label;
+
+			if(d->store == store_register && d->spel_asm)
+				ICW("TODO: %s asm(\"%s\")", decl_to_str(d), d->spel_asm);
+
 			vtop->type = STACK;
-			vtop->bits.off_from_bp = -s->offset - platform_word_size();
+			/* sym offsetting takes into account the stack growth direction */
+			vtop->bits.off_from_bp = -s->offset;
 			break;
 
 		case sym_arg:
@@ -372,8 +393,9 @@ void out_push_sym(sym *s)
 			break;
 
 		case sym_global:
+label:
 			vtop->type = LBL;
-			vtop->bits.lbl.str = s->decl->spel;
+			vtop->bits.lbl.str = decl_asm_spel(d);
 			vtop->bits.lbl.pic = 1;
 			break;
 	}
@@ -405,19 +427,15 @@ static void vtop2_are(
 		*pb = NULL;
 }
 
-static int calc_ptr_step(decl *d)
+static int calc_ptr_step(type_ref *t)
 {
-	/* we are calculating the sizeof *d */
-	decl *ref;
+	/* we are calculating the sizeof *t */
 	int sz;
 
-	if(!d || decl_is_void_ptr(d))
+	if(type_ref_is_type(type_ref_is_ptr(t), type_void))
 		return type_primitive_size(type_void);
 
-	ref = decl_ptr_depth_dec(decl_copy_keep_array(d), NULL);
-	sz = decl_size(ref);
-
-	decl_free(ref);
+	sz = type_ref_size(type_ref_next(t), NULL);
 
 	return sz;
 }
@@ -437,9 +455,9 @@ void out_op(enum op_type op)
 
 	if(t_const && t_stack){
 		/* t_const == vtop... should be */
-		t_stack->bits.off_from_bp += t_const->bits.val * calc_ptr_step(t_stack->d);
+		t_stack->bits.off_from_bp += t_const->bits.val * calc_ptr_step(t_stack->t);
 
-		goto fin;
+		goto ignore_const;
 
 	}else if(t_const){
 		/* TODO: -O1, constant folding here */
@@ -447,19 +465,31 @@ void out_op(enum op_type op)
 		switch(op){
 			case op_plus:
 			case op_minus:
+			case op_or:
+			case op_xor:
 				if(t_const->bits.val == 0)
-					goto fin;
+					goto ignore_const;
 			default:
 				break;
 
 			case op_multiply:
 			case op_divide:
 				if(t_const->bits.val == 1)
-					goto fin;
+					goto ignore_const;
+				break;
+
+			case op_and:
+				if(t_const->bits.val == -1)
+					goto ignore_const;
+				break;
 		}
 
 		goto def;
-fin:
+
+ignore_const:
+		if(t_const != vtop)
+			vswap(); /* need t_const on top for discarding */
+
 		vpop();
 
 	}else{
@@ -474,11 +504,11 @@ def:
 			{
 				int l_ptr, r_ptr;
 
-				l_ptr = !vtop->d    || decl_is_ptr(vtop->d);
-				r_ptr = !vtop[-1].d || decl_is_ptr(vtop[-1].d);
+				l_ptr = !!type_ref_is(vtop->t   , type_ref_ptr);
+				r_ptr = !!type_ref_is(vtop[-1].t, type_ref_ptr);
 
 				if(l_ptr || r_ptr){
-					const int ptr_step = calc_ptr_step(l_ptr ? vtop->d : vtop[-1].d);
+					const int ptr_step = calc_ptr_step(l_ptr ? vtop->t : vtop[-1].t);
 
 					if(l_ptr ^ r_ptr){
 						/* ptr +/- int, adjust the non-ptr by sizeof *ptr */
@@ -498,7 +528,7 @@ def:
 								if((swap = (val != vtop)))
 									vswap();
 
-								out_push_i(NULL, ptr_step);
+								out_push_i(type_ref_new_VOID_PTR(), ptr_step);
 								out_op(op_multiply);
 
 								if(swap)
@@ -521,7 +551,7 @@ def:
 		impl_op(op);
 
 		if(div){
-			out_push_i(NULL, div);
+			out_push_i(type_ref_new_VOID_PTR(), div);
 			out_op(op_divide);
 		}
 	}
@@ -530,18 +560,19 @@ def:
 void v_deref_decl(struct vstack *vp)
 {
 	/* XXX: memleak */
-	vp->d = decl_ptr_depth_dec(decl_copy(vp->d), NULL);
+	vp->t = type_ref_ptr_depth_dec(vp->t);
 }
 
 void out_deref()
 {
-	decl *indir;
+	type_ref *indir;
 	/* if the pointed-to object is not an lvalue, don't deref */
 
-	indir = decl_ptr_depth_dec(decl_copy(vtop->d), NULL);
+	indir = type_ref_ptr_depth_dec(vtop->t);
 
-	if(decl_is_array(indir) || decl_is_fptr(vtop->d)){
-		out_change_decl(indir);
+	if(type_ref_is(indir, type_ref_array)
+	|| type_ref_is(type_ref_is_ptr(vtop->t), type_ref_func)){
+		out_change_type(indir);
 		return; /* noop */
 	}
 
@@ -600,22 +631,23 @@ void out_op_unary(enum op_type op)
 	impl_op_unary(op);
 }
 
-void out_cast(decl *from, decl *to)
+void out_cast(type_ref *from, type_ref *to)
 {
 	/* casting vtop - don't bother if it's a constant, just change the size */
 	if(vtop->type != CONST)
 		impl_cast(from, to);
 
-	out_change_decl(to);
+	out_change_type(to);
 }
 
-void out_change_decl(decl *d)
+void out_change_type(type_ref *t)
 {
+	v_check_type(t);
 	/* XXX: memleak */
-	vtop->d = d;
+	vtop->t = t;
 }
 
-void out_call(int nargs, decl *rt, decl *call)
+void out_call(int nargs, type_ref *rt, type_ref *call)
 {
 	impl_call(nargs, rt, call);
 }
@@ -682,9 +714,9 @@ void out_func_epilogue()
 	impl_func_epilogue();
 }
 
-void out_pop_func_ret(decl *d)
+void out_pop_func_ret(type_ref *t)
 {
-	impl_pop_func_ret(d);
+	impl_pop_func_ret(t);
 }
 
 void out_undefined(void)

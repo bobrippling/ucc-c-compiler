@@ -4,7 +4,8 @@
 #include "ops.h"
 #include "stmt_code.h"
 #include "../out/lbl.h"
-
+#include "../decl_init.h"
+#include "../../util/dynarray.h"
 
 const char *str_stmt_code()
 {
@@ -15,6 +16,7 @@ void fold_stmt_code(stmt *s)
 {
 	decl **diter;
 	stmt **siter;
+	stmt *inits = NULL;
 	int warned = 0;
 
 	fold_symtab_scope(s->symtab);
@@ -25,37 +27,38 @@ void fold_stmt_code(stmt *s)
 
 		if(d->func_code)
 			DIE_AT(&d->func_code->where, "can't nest functions");
-		else if(decl_is_func(d) && d->type->store == store_static)
+		else if(DECL_IS_FUNC(d) && d->store == store_static)
 			DIE_AT(&d->where, "block-scoped function cannot have static storage");
 
 		fold_decl(d, s->symtab);
 
+		d->is_definition = 1; /* always the def for non-globals */
+
+		/* must be before fold*, since sym lookups are done */
+		SYMTAB_ADD(s->symtab, d,
+				decl_store_static_or_extern(d->store) ? sym_global : sym_local);
+
 		if(d->init){
 			/* this creates the below s->inits array */
-			if(d->type->store == store_static){
-				fold_decl_global_init(d->init, s->symtab);
+			if(d->store == store_static){
+				fold_decl_global_init(d, s->symtab);
 			}else{
 				EOF_WHERE(&d->where,
-						fold_gen_init_assignment(d, s)
-					);
+						if(!inits)
+							inits = stmt_new_wrapper(code, symtab_new(s->symtab));
 
+						decl_init_create_assignments_for_spel(d, inits);
+					);
 				/* folded below */
 			}
 		}
-
-		d->is_definition = 1; /* always the def for non-globals */
-
-		SYMTAB_ADD(s->symtab, d,
-				type_store_static_or_extern(d->type->store) ? sym_global : sym_local);
 	}
 
-	for(siter = s->inits; siter && *siter; siter++){
-		stmt *const st = *siter;
-		EOF_WHERE(&st->where, fold_stmt(st));
-	}
+	if(inits)
+		dynarray_prepend(&s->codes, inits);
 
 	for(siter = s->codes; siter && *siter; siter++){
-		stmt  *const st = *siter;
+		stmt *const st = *siter;
 
 		EOF_WHERE(&st->where, fold_stmt(st));
 
@@ -84,8 +87,11 @@ void fold_stmt_code(stmt *s)
 			 * check static decls - after we fold,
 			 * so we've linked the syms and can change ->spel
 			 */
-			if(d->type->store == store_static)
-				decl_set_spel(d, out_label_static_local(curdecl_func->spel, d->spel));
+			if(d->store == store_static){
+				char *old = d->spel;
+				d->spel = out_label_static_local(curdecl_func->spel, d->spel);
+				free(old);
+			}
 		}
 	}
 }
@@ -99,15 +105,13 @@ void gen_code_decls(symtable *stab)
 		decl *d = *diter;
 		int func;
 
-		if((func = decl_is_func(d)) || type_store_static_or_extern(d->type->store)){
+		if((func = !!type_ref_is(d->ref, type_ref_func)) || decl_store_static_or_extern(d->store)){
 			int gen = 1;
 
 			if(func){
 				/* check if the func is defined globally */
-				symtable *globs;
+				symtable *globs = symtab_root(stab);
 				decl **i;
-
-				for(globs = stab; globs->parent; globs = globs->parent);
 
 				for(i = globs->decls; i && *i; i++){
 					if(!strcmp(d->spel, (*i)->spel)){
@@ -126,28 +130,25 @@ void gen_code_decls(symtable *stab)
 void gen_stmt_code(stmt *s)
 {
 	stmt **titer;
-	int done_inits;
 
 	/* stmt_for needs to do this too */
 	gen_code_decls(s->symtab);
 
-	FOR_INIT_AND_CODE(titer, s, done_inits,
+	for(titer = s->codes; titer && *titer; titer++)
 		gen_stmt(*titer);
-	)
 }
 
 static int code_passable(stmt *s)
 {
 	stmt **i;
-	int done_inits;
 
-	/* note: check for inits which call noreturn funcs */
+	/* note: this also checks for inits which call noreturn funcs */
 
-	FOR_INIT_AND_CODE(i, s, done_inits,
+	for(i = s->codes; i && *i; i++){
 		stmt *sub = *i;
 		if(!fold_passable(sub))
 			return 0;
-	)
+	}
 
 	return 1;
 }

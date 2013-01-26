@@ -43,7 +43,7 @@ enum type_qualifier curtok_to_type_qualifier()
 	}
 }
 
-enum type_storage curtok_to_type_storage()
+enum decl_storage curtok_to_decl_storage()
 {
 	switch(curtok){
 		case token_auto:     return store_auto;
@@ -99,9 +99,9 @@ int curtok_is_type_qual()
 	return curtok_to_type_qualifier() != qual_none;
 }
 
-int curtok_is_type_store()
+int curtok_is_decl_store()
 {
-	return curtok_to_type_storage() != (enum type_storage)-1;
+	return curtok_to_decl_storage() != (enum decl_storage)-1;
 }
 
 enum op_type curtok_to_compound_op()
@@ -147,6 +147,7 @@ const char *token_to_str(enum token t)
 		CASE_STR_PREFIX(token,  default);
 		CASE_STR_PREFIX(token,  continue);
 		CASE_STR_PREFIX(token,  goto);
+		CASE_STR_PREFIX(token,  asm);
 
 		CASE_STR_PREFIX(token,  sizeof);
 		CASE_STR_PREFIX(token,  typeof);

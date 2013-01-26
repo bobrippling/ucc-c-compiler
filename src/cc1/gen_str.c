@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <unistd.h>
+#include <string.h>
 
 #include "../util/util.h"
 #include "../util/platform.h"
@@ -12,7 +13,7 @@
 #include "gen_str.h"
 #include "str.h"
 #include "const.h"
-#include "ops/stmt_code.h" /* FOR_INIT_AND_CODE */
+#include "decl_init.h"
 
 #define ENGLISH_PRINT_ARGLIST
 
@@ -69,7 +70,7 @@ void print_decl_init(decl_init *di)
 			int i;
 
 			for(i = 0; (s = di->bits.inits[i]); i++){
-				const int need_brace = decl_init_is_brace(s);
+				const int need_brace = s->type == decl_init_brace;
 
 				/* ->member not printed */
 #ifdef DINIT_WITH_STRUCT
@@ -93,24 +94,33 @@ void print_decl_init(decl_init *di)
 	}
 }
 
-void print_decl_desc_eng(decl_desc *dp)
+void print_type_ref_eng(type_ref *ref)
 {
-	if(dp->child)
-		print_decl_desc_eng(dp->child);
+	if(!ref)
+		return;
 
-	switch(dp->type){
-		case decl_desc_ptr:
-			fprintf(cc1_out, "%spointer to ", type_qual_to_str(dp->bits.qual));
+	print_type_ref_eng(ref->ref);
+
+	switch(ref->type){
+		case type_ref_cast:
+			if(ref->bits.cast.is_signed_cast)
+				fprintf(cc1_out, "%s", ref->bits.cast.signed_true ? "signed" : "unsigned");
+			else
+				fprintf(cc1_out, "%s ", type_qual_to_str(ref->bits.cast.qual));
 			break;
 
-		case decl_desc_block:
+		case type_ref_ptr:
+			fprintf(cc1_out, "%spointer to ", type_qual_to_str(ref->bits.qual));
+			break;
+
+		case type_ref_block:
 			fprintf(cc1_out, "block returning ");
 			break;
 
-		case decl_desc_func:
+		case type_ref_func:
 		{
 #ifdef ENGLISH_PRINT_ARGLIST
-			funcargs *fargs = dp->bits.func;
+			funcargs *fargs = ref->bits.func;
 			decl **iter;
 #endif
 
@@ -139,13 +149,20 @@ void print_decl_desc_eng(decl_desc *dp)
 			break;
 		}
 
-		case decl_desc_array:
-			if(dp->bits.array_size){
+		case type_ref_array:
+			if(ref->bits.array_size){
 				fputs("array[", cc1_out);
-				print_expr_val(dp->bits.array_size);
+				print_expr_val(ref->bits.array_size);
 				fputs("] of ", cc1_out);
 			}
 			break;
+
+		case type_ref_type:
+			fprintf(cc1_out, "%s", type_to_str(ref->bits.type));
+			break;
+
+		case type_ref_tdef:
+			ICE("TODO");
 	}
 }
 
@@ -154,10 +171,7 @@ void print_decl_eng(decl *d)
 	if(d->spel)
 		fprintf(cc1_out, "\"%s\": ", d->spel);
 
-	if(d->desc)
-		print_decl_desc_eng(d->desc);
-
-	fprintf(cc1_out, "%s", type_to_str(d->type));
+	print_type_ref_eng(d->ref);
 }
 
 void print_funcargs(funcargs *fargs)
@@ -178,60 +192,61 @@ void print_funcargs(funcargs *fargs)
 	fprintf(cc1_out, "%s)", fargs->variadic ? ", ..." : "");
 }
 
-void print_decl_desc(decl_desc *dp, decl *d)
+void print_type_ref(type_ref *ref, decl *d)
 {
-	const int need_paren = dp->parent_desc && dp->parent_desc->type != dp->type;
+	char buf[TYPE_REF_STATIC_BUFSIZ];
+	fprintf(cc1_out, "%s",
+			type_ref_to_str_r_spel(buf, ref, d ? d->spel : NULL));
+}
 
-	if(need_paren)
-		fputc('(', cc1_out);
+void print_decl_attr(decl_attr *da)
+{
+	for(; da; da = da->next){
+		idt_printf("__attribute__((%s))\n", decl_attr_to_str(da->type));
 
-	switch(dp->type){
-		case decl_desc_ptr:
-			fprintf(cc1_out, "*%s", type_qual_to_str(dp->bits.qual));
-			break;
+		gen_str_indent++;
+		switch(da->type){
+			case attr_section:
+				idt_printf("section \"%s\"\n", da->attr_extra.section);
+				break;
+			case attr_nonnull:
+			{
+				unsigned long l = da->attr_extra.nonnull_args;
 
-		case decl_desc_block:
-			fputc('^', cc1_out);
-			break;
+				idt_printf("nonnull: ");
+				if(l == ~0UL){
+					fprintf(cc1_out, "all");
+				}else{
+					const char *sep = "";
+					int i;
 
-		case decl_desc_array:
-			/* done below */
-			break;
+					for(i = 0; i <= 32; i++)
+						if(l & (1 << i)){
+							fprintf(cc1_out, "%s%d", sep, i);
+							sep = ", ";
+						}
+				}
 
-		case decl_desc_func:
-			break;
-	}
+				fputc('\n', cc1_out);
+				break;
+			}
 
-	if(dp->child)
-		print_decl_desc(dp->child, d);
-	else if(d->spel)
-		fputs(d->spel, cc1_out);
-
-	switch(dp->type){
-		case decl_desc_func:
-			print_funcargs(dp->bits.func);
-			break;
-
-		case decl_desc_array:
-		{
-			intval sz;
-
-			const_fold_need_val(dp->bits.array_size, &sz);
-
-			if(sz.val)
-				fprintf(cc1_out, "[%ld]", sz.val);
-			else
-				fprintf(cc1_out, "[]");
-			break;
+			default:
+				break;
 		}
-
-		case decl_desc_ptr:
-		case decl_desc_block:
-			break;
+		gen_str_indent--;
 	}
+}
 
-	if(need_paren)
-		fputc(')', cc1_out);
+void print_type_attr(type_ref *r)
+{
+	enum decl_attr_type i;
+
+	for(i = 0; i < attr_LAST; i++){
+		decl_attr *da;
+		if((da = type_attr_present(r, i)))
+			print_decl_attr(da);
+	}
 }
 
 void print_decl(decl *d, enum pdeclargs mode)
@@ -255,27 +270,10 @@ void print_decl(decl *d, enum pdeclargs mode)
 			fputc(')', cc1_out);
 	}
 
-	if(d->type->type_of){
-		fputc('\n', cc1_out);
-		gen_str_indent++;
-		idt_printf("typeof expr:\n");
-		gen_str_indent++;
-		print_expr(d->type->type_of);
-		gen_str_indent -= 2;
-		idt_print();
-	}
-
 	if(fopt_mode & FOPT_ENGLISH){
 		print_decl_eng(d);
 	}else{
-		fputs(type_to_str(d->type), cc1_out);
-
-		if(d->desc){
-			fputc(' ', cc1_out);
-			print_decl_desc(d->desc, d);
-		}else if(d->spel){
-			fprintf(cc1_out, " %s", d->spel);
-		}
+		print_type_ref(d->ref, d);
 	}
 
 	if(mode & PDECL_SYM_OFFSET){
@@ -285,11 +283,11 @@ void print_decl(decl *d, enum pdeclargs mode)
 			fprintf(cc1_out, " (no sym)");
 	}
 
-	if(mode & PDECL_SIZE && !decl_is_func(d)){
-		if(decl_is_incomplete_array(d)){
+	if(mode & PDECL_SIZE && !DECL_IS_FUNC(d)){
+		if(type_ref_is_incomplete_array(d->ref)){
 			fprintf(cc1_out, " incomplete array in decl");
 		}else{
-			const int sz = decl_size(d);
+			const int sz = decl_size(d, &d->where);
 			fprintf(cc1_out, " size %d bytes. %d platform-word(s)", sz, sz / platform_word_size());
 		}
 	}
@@ -303,11 +301,10 @@ void print_decl(decl *d, enum pdeclargs mode)
 		gen_str_indent--;
 	}
 
-	if((mode & PDECL_ATTR) && d->attr){
-		decl_attr *da = d->attr;
+	if(mode & PDECL_ATTR){
 		gen_str_indent++;
-		for(; da; da = da->next)
-			idt_printf("__attribute__((%s))\n", decl_attr_to_str(da->type));
+		print_decl_attr(d->attr);
+		print_type_attr(d->ref);
 		gen_str_indent--;
 	}
 
@@ -339,8 +336,9 @@ void print_expr(expr *e)
 	if(e->tree_type){ /* might be a label */
 		idt_printf("tree_type: ");
 		gen_str_indent++;
-		print_decl(e->tree_type, PDECL_NEWLINE);
+		print_type_ref(e->tree_type, NULL);
 		gen_str_indent--;
+		fputc('\n', cc1_out);
 	}
 	gen_str_indent++;
 	e->f_gen(e, NULL);
@@ -356,7 +354,7 @@ void print_struct(struct_union_enum_st *sue)
 		return;
 	}
 
-	idt_printf("%s %s (size %d):\n", sue_str(sue), sue->spel, sue_size(sue));
+	idt_printf("%s %s (size %d):\n", sue_str(sue), sue->spel, sue_size(sue, &sue->where));
 
 	gen_str_indent++;
 	for(iter = sue->members; iter && *iter; iter++){
@@ -364,6 +362,7 @@ void print_struct(struct_union_enum_st *sue)
 
 		idt_printf("offset %d:\n", d->struct_offset);
 
+#ifdef FIELD_WIDTH_TODO
 		if(d->field_width){
 			intval iv;
 
@@ -371,6 +370,7 @@ void print_struct(struct_union_enum_st *sue)
 
 			idt_printf("field width %ld\n", iv.val);
 		}
+#endif
 
 		gen_str_indent++;
 		print_decl(d, PDECL_INDENT | PDECL_NEWLINE | PDECL_ATTR);
@@ -389,7 +389,7 @@ void print_enum(struct_union_enum_st *et)
 	for(mi = et->members; *mi; mi++){
 		enum_member *m = (*mi)->enum_member;
 
-		idt_printf("member %s = %d\n", m->spel, m->val->val.iv.val);
+		idt_printf("member %s = %d\n", m->spel, m->val->bits.iv.val);
 	}
 	gen_str_indent--;
 }
@@ -472,7 +472,7 @@ void print_stmt(stmt *t)
 	PRINT_IF(t, rhs,  print_stmt);
 
 	if(stmt_kind(t, code) && t->symtab && has_st_en_tdef(t->symtab)){
-		idt_printf("structs, enums and tdefs in this block:\n");
+		idt_printf("structs/unions, enums and tdefs in this block:\n");
 		gen_str_indent++;
 		print_st_en_tdef(t->symtab);
 		gen_str_indent--;
@@ -498,27 +498,26 @@ void print_stmt(stmt *t)
 		}
 	}
 
-	if(t->codes || t->inits){
+	if(t->codes){
 		stmt **iter;
-		int done_code;
 
-		idt_printf("inits and code:\n");
+		idt_printf("code:\n");
 
-		FOR_INIT_AND_CODE(iter, t, done_code,
+		for(iter = t->codes; *iter; iter++){
 			gen_str_indent++;
 			print_stmt(*iter);
 			gen_str_indent--;
-		)
+		}
 	}
 }
 
-void gen_str(symtable *symtab)
+void gen_str(symtable_global *symtab)
 {
 	decl **diter;
 
-	print_st_en_tdef(symtab);
+	print_st_en_tdef(&symtab->stab);
 
-	for(diter = symtab->decls; diter && *diter; diter++){
+	for(diter = symtab->stab.decls; diter && *diter; diter++){
 		decl *const d = *diter;
 
 		print_decl(d, PDECL_INDENT

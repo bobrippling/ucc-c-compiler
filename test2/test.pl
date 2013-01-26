@@ -31,7 +31,8 @@ my %vars = (
 	's'         => $file,
 	't'         => $target,
 	'ucc'       => $ucc,
-	'check'     => './check.pl' . ($verbose ? " -v" : "")
+	'check'     => './check.pl' . ($verbose ? " -v" : ""),
+	'asmcheck'  => './asmcheck.pl'
 );
 
 open F, '<', $file or die2 "$file: $!";

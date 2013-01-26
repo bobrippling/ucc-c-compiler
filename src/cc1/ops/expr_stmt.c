@@ -14,7 +14,7 @@ void fold_expr_stmt(expr *e, symtable *stab)
 
 	(void)stab;
 
-	last = dynarray_count((void **)e->code->codes);
+	last = dynarray_count(e->code->codes);
 	if(last){
 		last_stmt = e->code->codes[last - 1];
 		last_stmt->freestanding = 1; /* allow the final to be freestanding */
@@ -24,10 +24,10 @@ void fold_expr_stmt(expr *e, symtable *stab)
 	fold_stmt(e->code); /* symtab should've been set by parse */
 
 	if(last && stmt_kind(last_stmt, expr)){
-		e->tree_type = decl_copy(last_stmt->expr->tree_type);
+		e->tree_type = last_stmt->expr->tree_type;
 		fold_disallow_st_un(e, "({ ... }) statement");
 	}else{
-		e->tree_type = decl_new_void(); /* void expr */
+		e->tree_type = type_ref_new_VOID(); /* void expr */
 	}
 
 	e->freestanding = 1; /* ({ ... }) on its own is freestanding */

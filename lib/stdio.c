@@ -34,7 +34,7 @@ struct __FILE
 	char *buf_write_p, *buf_read_p;
 	*/
 };
-#define FILE_INIT(fd) { fd, file_status_fine, NULL, NULL, NULL, NULL, NULL }
+#define FILE_INIT(_fd) { .status = file_status_fine, .fd = _fd }
 
 static FILE _stdin  = FILE_INIT(0);
 static FILE _stdout = FILE_INIT(1);

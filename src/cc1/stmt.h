@@ -34,7 +34,7 @@ struct stmt
 	int expr_no_pop;
 
 	decl **decls; /* block definitions, e.g. { int i... } */
-	stmt **codes, **inits; /* for a code block */
+	stmt **codes; /* for a code block */
 
 	symtable *symtab;
 

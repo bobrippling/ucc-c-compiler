@@ -14,7 +14,7 @@
 #include "../sue.h"
 #include "../const.h"
 #include "../gen_asm.h"
-#include "../data_store.h"
+#include "../decl_init.h"
 
 static const struct
 {
@@ -46,186 +46,126 @@ enum
 	ASM_INDEX_LDOUBLE = 5,
 };
 
-#if 0
-const char *asm_intval_str(intval *iv)
+int asm_table_lookup(type_ref *r)
 {
-	static char buf[64];
-	char fmt[8];
-	char *p = fmt;
+	int sz;
+	int i;
 
-	*p++ = '$'; /* $53 */
-	*p++ = '%';
-	if(iv->suffix & VAL_LONG)
-		*p++ = 'l';
+	if(!r)
+		return ASM_INDEX_LONG;
 
-	strcpy(p, iv->suffix & VAL_UNSIGNED ? "u" : "d");
+	/* special case for funcs and arrays */
+	if(type_ref_is(r, type_ref_array) || type_ref_is(r, type_ref_func))
+		sz = platform_word_size();
+	else
+		sz = type_ref_size(r, NULL);
 
-	snprintf(buf, sizeof buf, fmt, iv->val);
-	return buf;
-}
-#endif
+	for(i = 0; i <= ASM_TABLE_MAX; i++)
+		if(asm_type_table[i].sz == sz)
+			return i;
 
-int asm_table_lookup(decl *d)
-{
-	if(!d || decl_ptr_or_block(d)){
-		goto do_long;
-	}else{
-		if(d->type->type_of)
-			ICE("typedefs should've been folded by now");
-
-		switch(d->type->primitive){
-			case type_void:
-				ICE("type primitive is void (\"%s\")", decl_to_str(d));
-
-			case type__Bool:
-			case type_char:
-				return ASM_INDEX_CHAR;
-
-			case type_short:
-				return ASM_INDEX_SHORT;
-
-			case type_enum:
-				UCC_ASSERT(sue_size(d->type->sue) == asm_type_table[ASM_INDEX_INT].sz,
-						"mismatching enum size");
-			case type_int:
-			case type_float:
-				return ASM_INDEX_INT;
-
-			case type_ldouble:
-				ICE("long double in asm");
-				return ASM_INDEX_LDOUBLE;
-			case type_llong:
-				ICE("long long in asm");
-				return ASM_INDEX_LLONG;
-
-			case type_double:
-			case type_long:
-			case type_intptr_t:
-			case type_ptrdiff_t:
-do_long:
-				return m32 ? ASM_INDEX_INT : ASM_INDEX_LONG;
-
-			case type_struct:
-			case type_union:
-				ICE("%s of %s (%s)",
-						__func__,
-						sue_str(d->type->sue),
-						decl_to_str(d));
-				/*DIE_AT(&d->where, "invalid use of struct (%s:%d)", __FILE__, __LINE__);*/
-
-			case type_unknown:
-				ICE("type primitive not set");
-		}
-	}
-	ICE("%s switch error", __func__);
-	return 0;
+	ICE("no asm type index for byte size %d", sz);
+	return -1;
 }
 
-char asm_type_ch(decl *d)
+char asm_type_ch(type_ref *r)
 {
-	return asm_type_table[asm_table_lookup(d)].ch;
+	return asm_type_table[asm_table_lookup(r)].ch;
 }
 
-const char *asm_type_directive(decl *d)
+const char *asm_type_directive(type_ref *r)
 {
-	return asm_type_table[asm_table_lookup(d)].directive;
+	return asm_type_table[asm_table_lookup(r)].directive;
 }
 
-void asm_reg_name(decl *d, const char **regpre, const char **regpost)
+void asm_reg_name(type_ref *r, const char **regpre, const char **regpost)
 {
-	const int i = asm_table_lookup(d);
+	const int i = asm_table_lookup(r);
 	*regpre  = asm_type_table[i].regpre;
 	*regpost = asm_type_table[i].regpost;
 }
 
-int asm_type_size(decl *d)
+int asm_type_size(type_ref *r)
 {
-	if(d){
-		struct_union_enum_st *sue = d->type->sue;
-
-		if(sue && !decl_is_ptr(d))
-			return sue_size(sue);
-
-		/* func ptr */
-		if(decl_is_fptr(d) || decl_is_func(d))
-			d = NULL; /* continue */
-	}
-
-	return asm_type_table[asm_table_lookup(d)].sz;
+	return asm_type_table[asm_table_lookup(r)].sz;
 }
 
-void asm_declare_partial(const char *fmt, ...)
+static void asm_declare_pad(FILE *f, unsigned pad)
 {
-	va_list l;
-
-	va_start(l, fmt);
-	vfprintf(cc_out[SECTION_DATA], fmt, l);
-	va_end(l);
+	if(pad)
+		fprintf(f, ".space %u\n", pad);
 }
 
-#if 0
-static void asm_declare_array(const char *lbl, array_decl *ad)
+static void asm_declare_init(FILE *f, stmt *init_code, type_ref *tfor)
 {
-	int tbl_idx;
-	int i;
+	type_ref *r;
 
-	switch(ad->type){
-		case array_str:
-			tbl_idx = ASM_INDEX_CHAR;
-			break;
-		case array_exprs:
-			tbl_idx = asm_table_lookup(NULL);
-			break;
-	}
+	if((r = type_ref_is_type(tfor, type_struct))){
+		/* array of stmts for each member
+		 * assumes the ->codes order is member order
+		 */
+		sue_member **mem;
+		stmt **init_code_i;
+		int end_of_last = 0;
 
-	asm_out_section(SECTION_DATA, "%s:\n", lbl);
+		init_code_i = init_code ? init_code->codes : NULL;
 
-	for(i = 0; i < ad->len; i++){
-		if(ad->type == array_str){
-			asm_out_section(SECTION_DATA, ".%s %d\n",
-					asm_type_table[tbl_idx].directive,
-					ad->data.str[i]);
+		/* iterate using members, not inits */
+		for(mem = r->bits.type->sue->members;
+				mem && *mem;
+				mem++)
+		{
+			decl *d_mem = (*mem)->struct_member;
+
+			asm_declare_pad(f, d_mem->struct_offset - end_of_last);
+
+			asm_declare_init(f, init_code_i ? *init_code_i : NULL, d_mem->ref);
+
+			/* increment init_code_i - we have the start and this advances for unnamed */
+			if(init_code_i && !*++init_code_i)
+				init_code_i = NULL; /* reached end */
+
+			end_of_last = d_mem->struct_offset + type_ref_size(d_mem->ref, NULL);
+		}
+
+	}else if((r = type_ref_is(tfor, type_ref_array))){
+		type_ref *next = type_ref_next(tfor);
+
+		if(init_code && init_code->codes){
+			stmt **i;
+			for(i = init_code->codes; *i; i++)
+				asm_declare_init(f, *i, next);
 		}else{
-			static_store(ad->data.exprs[i]);
+			/* we should have a size */
+			asm_declare_pad(f, type_ref_size(r, NULL));
 		}
-	}
-}
-#endif
 
-static void asm_declare_sub(FILE *f, decl_init *init)
-{
-	switch(init->type){
-		case decl_init_brace:
-		{
-			decl_init **const inits = init->bits.inits;
-			const int len = dynarray_count((void **)inits);
-			int i;
+	}else{
+		if(!init_code){
+			asm_declare_pad(f, type_ref_size(tfor, NULL));
 
-			for(i = 0; i < len; i++){
-				static int warned;
+		}else{
+			/* scalar */
+			expr *exp = init_code->expr;
 
-				asm_declare_sub(f, inits[i]);
-				/* TODO: struct padding for next member */
-				fputs("\n// TODO: struct padding for next\n", f);
+			UCC_ASSERT(exp, "no exp for init (%s)", where_str(&init_code->where));
+			UCC_ASSERT(expr_kind(exp, assign), "not assign");
 
-				if(!warned)
-					ICW("global struct padding TODO"), warned = 1;
+			exp = exp->rhs; /* rvalue */
+
+			/* exp->tree_type should match tfor */
+			{
+				char buf[TYPE_REF_STATIC_BUFSIZ];
+
+				UCC_ASSERT(type_ref_equal(exp->tree_type, tfor, DECL_CMP_ALLOW_VOID_PTR),
+						"mismatching init types: %s and %s",
+						type_ref_to_str_r(buf, exp->tree_type),
+						type_ref_to_str(tfor));
 			}
-			break;
-		}
-
-		case decl_init_scalar:
-		{
-			expr *const exp = init->bits.expr;
 
 			fprintf(f, ".%s ", asm_type_directive(exp->tree_type));
-
-			if(exp->data_store)
-				data_store_out(exp->data_store, 0);
-			else
-				static_store(exp); /*if(!const_expr_is_zero(exp))...*/
-
-			break;
+			static_addr(exp);
+			fputc('\n', f);
 		}
 	}
 }
@@ -234,7 +174,7 @@ static void asm_reserve_bytes(const char *lbl, int nbytes)
 {
 	/*
 	 * TODO: .comm buf,512,5
-	 * or    .zerofill SECTION_NAME,_buf,512,5
+	 * or    .zerofill SECTION_NAME,buf,512,5
 	 */
 	asm_out_section(SECTION_BSS, "%s:\n", lbl);
 
@@ -253,19 +193,40 @@ static void asm_reserve_bytes(const char *lbl, int nbytes)
 	}
 }
 
-void asm_declare(FILE *f, decl *d)
+void asm_predeclare_extern(decl *d)
 {
-	if(d->init /* should also check for non-zero... */){
-		fprintf(f, "%s:\n", d->spel);
-		asm_declare_sub(f, d->init);
-		fputc('\n', f);
+	(void)d;
+	/*
+	asm_comment("extern %s", d->spel);
+	asm_out_section(SECTION_BSS, "extern %s", d->spel);
+	*/
+}
 
-	}else if(d->type->store == store_extern){
-		gen_asm_extern(d);
+void asm_predeclare_global(decl *d)
+{
+	/* FIXME: section cleanup - along with __attribute__((section("..."))) */
+	asm_out_section(SECTION_TEXT, ".globl %s\n", decl_asm_spel(d));
+}
+
+void asm_declare_decl_init(FILE *f, decl *d)
+{
+	if(d->store == store_extern){
+		asm_predeclare_extern(d);
+
+	}else if(d->init && !decl_init_is_zero(d->init)){
+		stmt **init_codes = d->decl_init_code->codes;
+
+		UCC_ASSERT(dynarray_count(init_codes) == 1,
+				"too many init codes for single decl");
+
+		fprintf(f, ".align %d\n", type_ref_align(d->ref, NULL));
+		fprintf(f, "%s:\n", decl_asm_spel(d));
+		asm_declare_init(f, init_codes[0], d->ref);
+		fputc('\n', f);
 
 	}else{
 		/* always resB, since we use decl_size() */
-		asm_reserve_bytes(d->spel, decl_size(d));
+		asm_reserve_bytes(decl_asm_spel(d), decl_size(d, &d->where));
 
 	}
 }

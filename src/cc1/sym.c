@@ -24,7 +24,7 @@ sym *sym_new(decl *d, enum sym_type t)
 
 void symtab_rm_parent(symtable *child)
 {
-	dynarray_rm((void **)child->parent->children, child);
+	dynarray_rm(child->parent->children, child);
 	child->parent = NULL;
 }
 
@@ -33,7 +33,7 @@ void symtab_set_parent(symtable *child, symtable *parent)
 	if(child->parent)
 		symtab_rm_parent(child);
 	child->parent = parent;
-	dynarray_add((void ***)&parent->children, child);
+	dynarray_add(&parent->children, child);
 }
 
 symtable *symtab_new(symtable *parent)
@@ -42,6 +42,11 @@ symtable *symtab_new(symtable *parent)
 	if(parent)
 		symtab_set_parent(p, parent);
 	return p;
+}
+
+symtable_global *symtabg_new(void)
+{
+	return umalloc(sizeof *symtabg_new());
 }
 
 symtable *symtab_root(symtable *child)
@@ -91,7 +96,7 @@ sym *symtab_has(symtable *tab, decl *d)
 
 sym *symtab_add(symtable *tab, decl *d, enum sym_type t, int with_sym, int prepend)
 {
-	const int descend = d->type->store == store_extern;
+	const int descend = (d->store & STORE_MASK_STORE) == store_extern;
 	sym *new;
 	char buf[WHERE_BUF_SIZ + 4];
 
@@ -124,11 +129,14 @@ fine:
 	}
 
 	if(with_sym)
-		new = sym_new(d, t);
+		new = sym_new(d, t), d->sym = new;
 	else
 		new = NULL;
 
-	(prepend ? dynarray_prepend : dynarray_add)((void ***)&tab->decls, d);
+	if(prepend)
+		dynarray_prepend(&tab->decls, d);
+	else
+		dynarray_add(&tab->decls, d);
 
 	return new;
 }

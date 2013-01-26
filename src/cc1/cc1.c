@@ -119,10 +119,7 @@ FILE *cc1_out;                  /* final output */
 
 enum warning warn_mode = ~(
 		  WARN_VOID_ARITH
-		| WARN_COMPARE_MISMATCH
 		| WARN_IMPLICIT_INT
-		| WARN_INCOMPLETE_USE
-		| WARN_OPT_POSSIBLE
 		| WARN_LOSS_PRECISION
 		| WARN_SIGN_COMPARE
 		);
@@ -279,8 +276,8 @@ void sigh(int sig)
 
 int main(int argc, char **argv)
 {
-	static symtable *globs;
-	void (*gf)(symtable *);
+	static symtable_global *globs;
+	void (*gf)(symtable_global *);
 	FILE *f;
 	const char *fname;
 	int i;
@@ -427,11 +424,9 @@ usage:
 	globs = parse();
 	tokenise_close();
 
-	if(globs->decls){
-		fold(globs);
-		symtab_fold(globs, 0);
-		gf(globs);
-	}
+	fold(&globs->stab);
+	symtab_fold(&globs->stab, 0);
+	gf(globs);
 
 	io_fin(gf == gen_asm, fname);
 
