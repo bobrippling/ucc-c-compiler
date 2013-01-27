@@ -10,15 +10,17 @@
 #include "sue.h"
 #include "cc1.h"
 
-void st_en_un_set_spel(char **dest, char *spel, const char *desc)
+static void sue_set_spel(struct_union_enum_st *sue, char *spel)
 {
-	free(*dest);
-	if(spel){
-		*dest = spel;
-	}else{
-		*dest = umalloc(32);
-		snprintf(*dest, 32, "<anon %s %p>", desc, (void *)dest);
+	if(!spel){
+		int len = 6 + 6 + 3 + WHERE_BUF_SIZ + 1 + 1;
+		spel = umalloc(len);
+		snprintf(spel, len, "<anon %s @ %s>",
+				sue_str(sue), where_str(&sue->where));
 	}
+
+	free(sue->spel);
+	sue->spel = spel;
 }
 
 void enum_vals_add(sue_member ***pmembers, char *sp, expr *e)
@@ -147,7 +149,7 @@ struct_union_enum_st *sue_add(symtable *const stab, char *spel, sue_member **mem
 
 	sue->anon = !spel;
 
-	st_en_un_set_spel(&sue->spel, spel, sue_str(sue));
+	sue_set_spel(sue, spel);
 
 	if(members){
 		UCC_ASSERT(!sue->members, "redef of struct/union should've been caught");

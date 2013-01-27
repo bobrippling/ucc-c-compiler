@@ -44,8 +44,6 @@ struct struct_union_enum_st
 struct_union_enum_st *sue_add( symtable *, char *spel, sue_member **members, enum type_primitive);
 struct_union_enum_st *sue_find(symtable *, const char *spel);
 
-void sue_set_spel(char **dest, char *spel, const char *desc);
-
 /* enum specific */
 void enum_vals_add(sue_member ***, char *, expr *);
 int  enum_nentries(struct_union_enum_st *);
