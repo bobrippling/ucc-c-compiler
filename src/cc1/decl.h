@@ -246,6 +246,7 @@ int type_ref_align(type_ref *, where const *from);
 long type_ref_array_len(type_ref *);
 type_ref *type_ref_is(type_ref *, enum type_ref_type);
 type_ref *type_ref_is_type(type_ref *, enum type_primitive);
+decl     *type_ref_is_tdef(type_ref *);
 type_ref *type_ref_is_ptr(type_ref *); /* returns r->ref iff ptr */
 type_ref *type_ref_func_call(type_ref *, funcargs **pfuncargs);
 type_ref *type_ref_decay(type_ref *);
