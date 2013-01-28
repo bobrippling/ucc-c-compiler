@@ -137,7 +137,12 @@ struct_union_enum_st *sue_add(symtable *const stab, char *spel, sue_member **mem
 					DIE_AT(&d->where, "%s member %s is initialised", sue_str(sue), d->spel);
 
 				for(j = i + 1; members[j]; j++){
-					if(!strcmp(d->spel, members[j]->struct_member->spel)){
+					char *sp = members[j]->struct_member->spel;
+
+					/* TODO: (C11 anonymous structs)
+					 * if !sp, check members[j] sub members for duplicates */
+
+					if(sp && d->spel && !strcmp(d->spel, sp)){
 						char buf[WHERE_BUF_SIZ];
 						DIE_AT(&d->where, "duplicate member %s (from %s)",
 								d->spel, where_str_r(buf, &members[j]->struct_member->where));
@@ -162,7 +167,7 @@ struct_union_enum_st *sue_add(symtable *const stab, char *spel, sue_member **mem
 	return sue;
 }
 
-sue_member *sue_member_find(struct_union_enum_st *sue, const char *spel, where *die_where)
+static sue_member *sue_member_find(struct_union_enum_st *sue, const char *spel, unsigned *extra_off)
 {
 	sue_member **mi;
 
@@ -174,15 +179,24 @@ sue_member *sue_member_find(struct_union_enum_st *sue, const char *spel, where *
 			sp = m->spel;
 		}else{
 			decl *d = (*mi)->struct_member;
+			struct_union_enum_st *sub;
+
 			sp = d->spel;
+
+			if(!sp && (sub = type_ref_is_s_or_u(d->ref))){
+				/* C11 anonymous struct/union */
+				sue_member *dsub = sue_member_find(sub, spel, extra_off);
+
+				if(dsub){
+					*extra_off += d->struct_offset;
+					return dsub;
+				}
+			}
 		}
 
-		if(!strcmp(spel, sp))
+		if(sp /* unnamed */ && !strcmp(spel, sp))
 			return *mi;
 	}
-
-	if(die_where)
-		DIE_AT(die_where, "%s %s has no member named \"%s\"", sue_str(sue), sue->spel, spel);
 
 	return NULL;
 }
@@ -197,7 +211,7 @@ void enum_member_search(enum_member **pm, struct_union_enum_st **psue, symtable 
 			struct_union_enum_st *e = *i;
 
 			if(e->primitive == type_enum){
-				sue_member *smemb = sue_member_find(e, spel, NULL);
+				sue_member *smemb = sue_member_find(e, spel, NULL /* safe - is enum */);
 
 				if(smemb){
 					*pm = smemb->enum_member;
@@ -212,9 +226,12 @@ void enum_member_search(enum_member **pm, struct_union_enum_st **psue, symtable 
 	*psue = NULL;
 }
 
-decl *struct_union_member_find(struct_union_enum_st *sue, const char *spel, where *die_where)
+decl *struct_union_member_find(struct_union_enum_st *sue, const char *spel, unsigned *extra_off)
 {
-	return sue_member_find(sue, spel, die_where)->struct_member;
+	sue_member *m = sue_member_find(sue, spel, extra_off);
+	if(m)
+		return m->struct_member;
+	return NULL;
 }
 
 decl *struct_union_member_at_idx(struct_union_enum_st *sue, int idx)
