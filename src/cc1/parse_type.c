@@ -85,7 +85,7 @@ type *parse_type_sue(enum type_primitive prim)
 			decl **dmembers = parse_decls_multi_type(
 					DECL_MULTI_CAN_DEFAULT |
 					DECL_MULTI_ACCEPT_FIELD_WIDTH |
-					((fopt_mode & FOPT_UNNAMED_SUBSTRUCT) ? DECL_MULTI_NAMELESS : 0));
+					((fopt_mode & FOPT_MS_EXTENSIONS) ? DECL_MULTI_NAMELESS : 0));
 			decl **i;
 
 			if(!dmembers){

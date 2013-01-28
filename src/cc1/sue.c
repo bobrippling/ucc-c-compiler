@@ -214,8 +214,13 @@ static sue_member *sue_member_find(struct_union_enum_st *sue, const char *spel, 
 
 			if(!sp && (sub = type_ref_is_s_or_u(d->ref))){
 				/* C11 anonymous struct/union */
-				sue_member *dsub = sue_member_find(sub, spel, extra_off);
+				sue_member *dsub;
+				const int allow_tag = fopt_mode & FOPT_MS_EXTENSIONS;
 
+				if(!allow_tag && sub->spel)
+					DIE_AT(&sub->where, "tag on \"anonymous\" struct");
+
+				dsub = sue_member_find(sub, spel, extra_off);
 				if(dsub){
 					*extra_off += d->struct_offset;
 					return dsub;
