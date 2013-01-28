@@ -16,7 +16,7 @@ struct ambig
 
 main()
 {
-	struct C99 a = {
+	struct C99 a = { /* designated init isn't C99 */
 		.k = 1,
 		.i = 3,
 	};
@@ -59,9 +59,6 @@ struct D
 	int type;
 	U;
 };
-
-
-
 
 
 plan_9()
