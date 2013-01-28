@@ -11,12 +11,12 @@ struct A
 
 struct B
 {
-	int b;
+	int p;
 	union
 	{
 		int a, b, c;
 	};
-	int a;
+	int t;
 };
 
 f(struct A *p)
@@ -35,5 +35,7 @@ main()
 	struct B b;
 	f(&a);
 	g(&b);
-	return a.i + b.a + b.b + b.c;
+	if(b.a != b.b || b.b != b.c)
+		return 1;
+	return a.i + b.a + b.b + b.c == 5 ? 0 : 1;
 }

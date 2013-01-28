@@ -77,6 +77,29 @@ struct_union_enum_st *sue_find(symtable *stab, const char *spel)
 	return NULL;
 }
 
+static void sue_get_decls(sue_member **mems, sue_member ***pds)
+{
+	for(; *mems; mems++){
+		decl *d = (*mems)->struct_member;
+
+		if(d->spel){
+			dynarray_add((void ***)pds, *mems);
+		}else{
+			struct_union_enum_st *sub = type_ref_is_s_or_u(d->ref);
+
+			sue_get_decls(sub->members, pds);
+		}
+	}
+}
+
+static int decl_spel_cmp(const void *pa, const void *pb)
+{
+	const sue_member *a = *(sue_member *const *)pa,
+	                 *b = *(sue_member *const *)pb;
+
+	return strcmp(a->struct_member->spel, b->struct_member->spel);
+}
+
 struct_union_enum_st *sue_add(symtable *const stab, char *spel, sue_member **members, enum type_primitive prim)
 {
 	struct_union_enum_st *sue;
@@ -127,28 +150,34 @@ struct_union_enum_st *sue_add(symtable *const stab, char *spel, sue_member **mem
 			}
 
 		}else{
+			sue_member **decls = NULL;
 			int i;
 
-			for(i = 0; members[i]; i++){
-				decl *d = members[i]->struct_member;
-				int j;
+			sue_get_decls(members, &decls);
+
+			qsort(decls,
+					dynarray_count((void **)decls), sizeof *decls,
+					decl_spel_cmp);
+
+			for(i = 0; decls[i]; i++){
+				decl *d2, *d = decls[i]->struct_member;
 
 				if(d->init)
-					DIE_AT(&d->where, "%s member %s is initialised", sue_str(sue), d->spel);
+					DIE_AT(&d->where, "%s member %s is initialised",
+							sue_str(sue), d->spel);
 
-				for(j = i + 1; members[j]; j++){
-					char *sp = members[j]->struct_member->spel;
+				if(decls[i + 1]
+				&& (d2 = decls[i + 1]->struct_member,
+					!strcmp(d->spel, d2->spel)))
+				{
+					char buf[WHERE_BUF_SIZ];
 
-					/* TODO: (C11 anonymous structs)
-					 * if !sp, check members[j] sub members for duplicates */
-
-					if(sp && d->spel && !strcmp(d->spel, sp)){
-						char buf[WHERE_BUF_SIZ];
-						DIE_AT(&d->where, "duplicate member %s (from %s)",
-								d->spel, where_str_r(buf, &members[j]->struct_member->where));
-					}
+					DIE_AT(&d2->where, "duplicate member %s (from %s)",
+							d->spel, where_str_r(buf, &d->where));
 				}
 			}
+
+			dynarray_free((void ***)&decls, NULL);
 		}
 	}
 
