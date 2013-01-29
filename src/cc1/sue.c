@@ -196,27 +196,31 @@ struct_union_enum_st *sue_add(symtable *const stab, char *spel, sue_member **mem
 	return sue;
 }
 
-static sue_member *sue_member_find(struct_union_enum_st *sue, const char *spel, unsigned *extra_off)
+static void *sue_member_find(struct_union_enum_st *sue, const char *spel, unsigned *extra_off)
 {
 	sue_member **mi;
 
 	for(mi = sue->members; mi && *mi; mi++){
-		char *sp;
-
 		if(sue->primitive == type_enum){
-			enum_member *m = (*mi)->enum_member;
-			sp = m->spel;
+			enum_member *em = (*mi)->enum_member;
+
+			if(!strcmp(spel, em->spel))
+				return em;
+
 		}else{
-			decl *d = (*mi)->struct_member;
 			struct_union_enum_st *sub;
+			decl *d = (*mi)->struct_member;
+			char *sp = d->spel;
 
-			sp = d->spel;
+			if(sp){
+				if(!strcmp(sp, spel))
+					return d;
 
-			if(!sp && (sub = type_ref_is_s_or_u(d->ref))){
+			}else if((sub = type_ref_is_s_or_u(d->ref))){
 				/* C11 anonymous struct/union */
-				sue_member *dsub = NULL;
+				decl *dsub = NULL;
 				decl *tdef;
-				const int allow_tag = fopt_mode & FOPT_MS_EXTENSIONS;
+				const int allow_tag = fopt_mode & FOPT_TAG_ANON_STRUCT_EXT;
 
 				if(!allow_tag && sub->spel)
 					DIE_AT(&sub->where, "tag on \"anonymous\" struct");
@@ -225,7 +229,7 @@ static sue_member *sue_member_find(struct_union_enum_st *sue, const char *spel, 
 				&& (tdef = type_ref_is_tdef(d->ref))
 				&& !strcmp(tdef->spel, spel))
 				{
-					dsub = FIXME(tdef);
+					dsub = tdef;
 				}
 
 				if(!dsub)
@@ -237,9 +241,6 @@ static sue_member *sue_member_find(struct_union_enum_st *sue, const char *spel, 
 				}
 			}
 		}
-
-		if(sp /* unnamed */ && !strcmp(spel, sp))
-			return *mi;
 	}
 
 	return NULL;
@@ -255,10 +256,10 @@ void enum_member_search(enum_member **pm, struct_union_enum_st **psue, symtable 
 			struct_union_enum_st *e = *i;
 
 			if(e->primitive == type_enum){
-				sue_member *smemb = sue_member_find(e, spel, NULL /* safe - is enum */);
+				enum_member *emem = sue_member_find(e, spel, NULL /* safe - is enum */);
 
-				if(smemb){
-					*pm = smemb->enum_member;
+				if(emem){
+					*pm = emem;
 					*psue = e;
 					return;
 				}
@@ -272,10 +273,7 @@ void enum_member_search(enum_member **pm, struct_union_enum_st **psue, symtable 
 
 decl *struct_union_member_find(struct_union_enum_st *sue, const char *spel, unsigned *extra_off)
 {
-	sue_member *m = sue_member_find(sue, spel, extra_off);
-	if(m)
-		return m->struct_member;
-	return NULL;
+	return sue_member_find(sue, spel, extra_off);
 }
 
 decl *struct_union_member_at_idx(struct_union_enum_st *sue, int idx)

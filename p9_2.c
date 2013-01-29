@@ -9,6 +9,12 @@ struct A
 	B;
 };
 
+f(struct A *p)
+{
+	p->k = 2;
+	p->B.k += 3;
+}
+
 main()
 {
 	struct A p;
