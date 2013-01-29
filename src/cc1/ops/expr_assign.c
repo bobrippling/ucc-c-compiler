@@ -78,7 +78,7 @@ void fold_expr_assign(expr *e, symtable *stab)
 		char bufto[TYPE_REF_STATIC_BUFSIZ], buffrom[TYPE_REF_STATIC_BUFSIZ];
 
 		fold_type_ref_equal(e->lhs->tree_type, e->rhs->tree_type,
-				&e->where, WARN_ASSIGN_MISMATCH,
+				&e->where, WARN_ASSIGN_MISMATCH, 0,
 				"%s type mismatch: %s <-- %s",
 				e->assign_is_init ? "initialisation" : "assignment",
 				type_ref_to_str_r(bufto,   e->lhs->tree_type),

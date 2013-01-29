@@ -397,6 +397,7 @@ invalid:
 		if(e->funcargs){
 			funcargs *args_from_expr = funcargs_new();
 			expr **iter_arg;
+			enum funcargs_cmp eq;
 
 			for(iter_arg = e->funcargs; *iter_arg; iter_arg++){
 				decl *dtmp = decl_new();
@@ -405,8 +406,28 @@ invalid:
 				dynarray_add((void ***)&args_from_expr->arglist, dtmp);
 			}
 
-			if(funcargs_equal(args_from_decl, args_from_expr, 0, sp) == funcargs_are_mismatch_count)
-				DIE_AT(&e->where, "mismatching argument count to %s", sp);
+			eq = funcargs_equal(args_from_decl, args_from_expr, 0, sp);
+			switch(eq){
+				case funcargs_are_equal:
+					break;
+
+				case funcargs_are_mismatch_count:
+					DIE_AT(&e->where, "mismatching argument count to %s", sp);
+
+				case funcargs_are_mismatch_types:
+				{
+					/* insert casts */
+					int i;
+
+					for(i = 0; e->funcargs[i]; i++){
+						fold_insert_casts(args_from_decl->arglist[i]->ref,
+								&e->funcargs[i],
+								stab,
+								&e->funcargs[i]->where, "function argument");
+					}
+					break;
+				}
+			}
 
 			funcargs_free(args_from_expr, 1, 0);
 		}

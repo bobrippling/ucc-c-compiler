@@ -25,11 +25,14 @@ type_ref *curdecl_ref_func_called; /* for funcargs-local labels and return type-
 
 static where asm_struct_enum_where;
 
-void fold_type_ref_equal(
-		type_ref *a, type_ref *b, where *w, enum warning warn,
+int fold_type_ref_equal(
+		type_ref *a, type_ref *b, where *w,
+		enum warning warn, enum decl_cmp extra_flags,
 		const char *errfmt, ...)
 {
-	enum decl_cmp flags = DECL_CMP_ALLOW_VOID_PTR | DECL_CMP_ALLOW_SIGNED_UNSIGNED;
+	enum decl_cmp flags = extra_flags
+		| DECL_CMP_ALLOW_VOID_PTR
+		| DECL_CMP_ALLOW_SIGNED_UNSIGNED;
 
 	/* stronger checks for blocks and pointers */
 	if(type_ref_is(a, type_ref_block) || type_ref_is(b, type_ref_block)
@@ -38,7 +41,9 @@ void fold_type_ref_equal(
 		flags |= DECL_CMP_EXACT_MATCH;
 	}
 
-	if(!type_ref_equal(a, b, flags)){
+	if(type_ref_equal(a, b, flags)){
+		return 1;
+	}else{
 		int one_struct;
 		va_list l;
 
@@ -50,6 +55,7 @@ void fold_type_ref_equal(
 		cc1_warn_atv(w, one_struct || type_ref_is_void(a) || type_ref_is_void(b), 1, warn, errfmt, l);
 		va_end(l);
 	}
+	return 0;
 }
 
 void fold_insert_casts(type_ref *dlhs, expr **prhs, symtable *stab, where *w, const char *desc)

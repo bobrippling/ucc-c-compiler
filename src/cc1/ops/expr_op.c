@@ -185,7 +185,7 @@ type_ref *op_required_promotion(
 					char buf[TYPE_REF_STATIC_BUFSIZ];
 
 					fold_type_ref_equal(tlhs, trhs, w,
-							WARN_COMPARE_MISMATCH,
+							WARN_COMPARE_MISMATCH, 0,
 							"comparison of distinct pointer types lacks a cast (%s vs %s)",
 							type_ref_to_str(tlhs), type_ref_to_str_r(buf, trhs));
 				}
@@ -263,7 +263,7 @@ type_ref *op_required_promotion(
 
 					/* TODO: needed? */
 					fold_type_ref_equal(tlhs, trhs,
-							w, WARN_COMPARE_MISMATCH,
+							w, WARN_COMPARE_MISMATCH, 0,
 							"mismatching types in %s (%s and %s)",
 							op_to_str(op),
 							type_ref_to_str_r(bufa, tlhs),
