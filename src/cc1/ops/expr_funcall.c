@@ -341,16 +341,11 @@ invalid:
 	if(e->funcargs){
 		unsigned long nonnulls = 0;
 		char *const desc = ustrprintf("function argument to %s", sp);
-		const int int_sz = type_primitive_size(type_int);
-		type_ref *t_int = type_ref_new_INT();
-		int t_int_used = 0;
 		int i;
+		decl_attr *da;
 
-		{
-			decl_attr *da;
-			if((da = type_attr_present(type_func, attr_nonnull)))
-				nonnulls = da->attr_extra.nonnull_args;
-		}
+		if((da = type_attr_present(type_func, attr_nonnull)))
+			nonnulls = da->attr_extra.nonnull_args;
 
 		for(i = 0; e->funcargs[i]; i++){
 			expr *arg = FOLD_EXPR(e->funcargs[i], stab);
@@ -360,21 +355,7 @@ invalid:
 
 			if((nonnulls & (1 << i)) && expr_is_null_ptr(arg, 1))
 				WARN_AT(&arg->where, "null passed where non-null required (arg %d)", i + 1);
-
-			/* each arg needs casting up to int size, if smaller */
-			if(type_ref_size(arg->tree_type, &arg->where) < int_sz){
-				expr *cast = expr_new_cast(t_int, 1);
-
-				cast->expr = arg;
-				e->funcargs[i] = cast;
-				fold_expr_cast_descend(cast, stab, 0);
-
-				t_int_used = 1;
-			}
 		}
-
-		if(!t_int_used)
-			type_ref_free(t_int);
 
 		free(desc);
 	}
@@ -429,6 +410,7 @@ invalid:
 				}
 			}
 
+
 			funcargs_free(args_from_expr, 1, 0);
 		}
 
@@ -440,9 +422,35 @@ invalid:
 			WARN_AT(&e->where, "too many arguments to implicitly (void)-function");
 	}
 
+
+	/* cast up to int if lower */
+	if(e->funcargs){
+		const int int_sz = type_primitive_size(type_int);
+		type_ref *t_int = type_ref_new_INT();
+		int t_int_used = 0;
+		int i;
+		expr *arg;
+
+		for(i = 0; (arg = e->funcargs[i]); i++){
+			if(type_ref_size(arg->tree_type, &arg->where) < int_sz){
+				expr *cast = expr_new_cast(t_int, 1);
+
+				cast->expr = arg;
+				e->funcargs[i] = cast;
+				fold_expr_cast_descend(cast, stab, 0);
+
+				t_int_used = 1;
+			}
+		}
+
+		if(!t_int_used)
+			type_ref_free(t_int);
+	}
+
 	fold_disallow_st_un(e, "return");
 
-	/* attr */{
+	/* attr */
+	{
 		type_ref *r = e->expr->tree_type;
 
 		format_check(&e->where, r, e->funcargs, args_from_decl->variadic);
