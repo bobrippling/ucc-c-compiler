@@ -54,6 +54,7 @@ void enum_member_search(enum_member **, struct_union_enum_st **, symtable *, con
 int sue_size(struct_union_enum_st *, const where *w);
 
 decl *struct_union_member_find(struct_union_enum_st *, const char *spel, unsigned *extra_off);
+decl *struct_union_member_find_sue(struct_union_enum_st *, struct_union_enum_st *);
 
 decl *struct_union_member_at_idx(struct_union_enum_st *, int idx); /* NULL if out of bounds */
 int   struct_union_member_idx(struct_union_enum_st *, decl *);

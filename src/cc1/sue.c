@@ -271,6 +271,23 @@ void enum_member_search(enum_member **pm, struct_union_enum_st **psue, symtable 
 	*psue = NULL;
 }
 
+decl *struct_union_member_find_sue(struct_union_enum_st *in, struct_union_enum_st *needle)
+{
+	sue_member **i;
+
+	UCC_ASSERT(in->primitive != type_enum, "enum");
+
+	for(i = in->members; i && *i; i++){
+		decl *d = (*i)->struct_member;
+		struct_union_enum_st *s = type_ref_is_s_or_u(d->ref);
+
+		if(s == needle)
+			return d;
+	}
+
+	return NULL;
+}
+
 decl *struct_union_member_find(struct_union_enum_st *sue, const char *spel, unsigned *extra_off)
 {
 	return sue_member_find(sue, spel, extra_off);

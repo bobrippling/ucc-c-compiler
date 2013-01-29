@@ -457,22 +457,24 @@ enum funcargs_cmp funcargs_equal(
 }
 
 static int type_ref_equal_r(
-		type_ref *a,
-		type_ref *b,
+		type_ref *const orig_a,
+		type_ref *const orig_b,
 		enum decl_cmp mode)
 {
-	if(!a || !b)
-		return a == b ? 1 : 0;
+	type_ref *a, *b;
+
+	if(!orig_a || !orig_b)
+		return orig_a == orig_b ? 1 : 0;
 
 	/* check for signed vs unsigned */
 	if((mode & DECL_CMP_ALLOW_SIGNED_UNSIGNED) == 0
-	&& type_ref_is_signed(a) != type_ref_is_signed(b))
+	&& type_ref_is_signed(orig_a) != type_ref_is_signed(orig_b))
 	{
 		return 0;
 	}
 
-	a = type_ref_skip_tdefs_casts(a);
-	b = type_ref_skip_tdefs_casts(b);
+	a = type_ref_skip_tdefs_casts(orig_a);
+	b = type_ref_skip_tdefs_casts(orig_b);
 
 	/* array/func decay takes care of any array->ptr checks */
 	if(a->type != b->type)
