@@ -857,6 +857,7 @@ static void fold_link_decl_defs(dynmap *spel_decls)
 void fold(symtable *globs)
 {
 #define D(x) globs->decls[x]
+	int fold_had_error;
 	extern const char *current_fname;
 	dynmap *spel_decls;
 	int i;
@@ -936,7 +937,10 @@ void fold(symtable *globs)
 				for(proto_i = protos; *proto_i; proto_i++){
 					decl *proto = *proto_i;
 
-					UCC_ASSERT(type_ref_is(proto->ref, type_ref_func), "not func");
+					if(!type_ref_is(proto->ref, type_ref_func)){
+						fold_had_error = 1;
+						continue; /* error caught later */
+					}
 
 					if(type_ref_is(proto->ref, type_ref_func)->bits.func->args_void)
 						is_void = 1;
@@ -983,6 +987,9 @@ skip_decls:
 				DIE_AT(&sa->e->where, "static assertion failure: %s", sa->s);
 		}
 	}
+
+	if(fold_had_error)
+		exit(1);
 
 #undef D
 }
