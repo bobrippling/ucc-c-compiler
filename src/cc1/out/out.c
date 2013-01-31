@@ -24,6 +24,8 @@ static int calc_ptr_step(type_ref *t);
 struct vstack vstack[N_VSTACK];
 struct vstack *vtop = NULL;
 
+static int stack_sz;
+
 static int reserved_regs[N_SCRATCH_REGS];
 
 int out_vcount(void)
@@ -230,6 +232,29 @@ void v_freeup_regp(struct vstack *vp)
 	}
 }
 
+static int out_alloc_stack(int sz)
+{
+	static int word_size;
+	/* sz must be a multiple of word_size */
+
+	if(!word_size)
+		word_size = platform_word_size();
+
+	if(sz){
+		const int extra = sz % word_size ? word_size - sz % word_size : 0;
+
+		vpush(NULL);
+		vtop->type = REG;
+		vtop->bits.reg = REG_SP;
+
+		out_push_i(type_ref_new_INT(), sz += extra);
+		out_op(op_minus);
+		out_pop();
+	}
+
+	return stack_sz + sz;
+}
+
 void v_save_reg(struct vstack *vp)
 {
 	struct vstack store;
@@ -245,7 +270,7 @@ void v_save_reg(struct vstack *vp)
 	 * instead/TODO: impl_save_reg(vp) -> "pushq %%rax"
 	 * -O1?
 	 */
-	store.bits.off_from_bp = -impl_alloc_stack(type_ref_size(store.t, NULL));
+	store.bits.off_from_bp = -out_alloc_stack(type_ref_size(store.t, NULL));
 	impl_store(vp, &store);
 
 	store.type = STACK_SAVE;

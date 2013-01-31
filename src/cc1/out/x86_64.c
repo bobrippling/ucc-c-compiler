@@ -43,8 +43,6 @@ static const struct
 };
 
 
-static int stack_sz;
-
 static const char *x86_reg_str_r(char buf[REG_STR_SZ], int reg, type_ref *r)
 {
 	const char *regpre, *regpost;
@@ -118,22 +116,6 @@ static const char *vstack_str_ptr(struct vstack *vs, int ptr)
 {
 	static char buf[VSTACK_STR_SZ];
 	return vstack_str_r_ptr(buf, vs, ptr);
-}
-
-int impl_alloc_stack(int sz)
-{
-	static int word_size;
-	/* sz must be a multiple of word_size */
-
-	if(!word_size)
-		word_size = platform_word_size();
-
-	if(sz){
-		const int extra = sz % word_size ? word_size - sz % word_size : 0;
-		out_asm("subq $%d, %%rsp", sz += extra);
-	}
-
-	return stack_sz + sz;
 }
 
 const char *call_reg_str(int i, type_ref *r)

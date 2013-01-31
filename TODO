@@ -1,6 +1,8 @@
 update bugs/
 test/ - x.c and x.c.expect (output and assembly)
 
+type_ref_new_*() static references
+
 cc1.h - remove unused warnings
 
 struct initialisation

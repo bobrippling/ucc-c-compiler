@@ -15,16 +15,15 @@
 #include "out.h"
 #include "lbl.h"
 
-#define TODO() ICE("TODO")
+#define F_DEBUG cc_out[SECTION_TEXT]
+#define REG_STR_SZ 4 /* r[0-32] */
 
-int impl_alloc_stack(int sz)
-{
-	TODO();
-}
+#define TODO() ICE("TODO")
 
 void impl_func_prologue(int stack_res, int nargs, int variadic)
 {
 	/* FIXME: very similar to x86_64::func_prologue - merge */
+	fprintf(F_DEBUG, "MIPS prologue %d %d %d\n", stack_res, nargs, variadic);
 
 	out_asm("addiu $sp, $sp,-8"); /* space for saved ret */
 	out_asm("sw    $fp, 4($sp)"); /* save ret */
@@ -35,22 +34,22 @@ void impl_func_prologue(int stack_res, int nargs, int variadic)
 
 void impl_func_epilogue(void)
 {
-	TODO();
+	fprintf(F_DEBUG, "TODO: epilogue\n");
 }
 
 void impl_load(struct vstack *from, int reg)
 {
-	TODO();
+	fprintf(F_DEBUG, "TODO: load into reg %d\n", reg);
 }
 
 void impl_store(struct vstack *from, struct vstack *to)
 {
-	TODO();
+	fprintf(F_DEBUG, "TODO: store %d -> %d\n", from->type, to->type);
 }
 
 void impl_reg_swp(struct vstack *a, struct vstack *b)
 {
-	TODO();
+	fprintf(F_DEBUG, "TODO: swap %d <-> %d\n", a->bits.reg, b->bits.reg);
 }
 
 void impl_reg_cp(struct vstack *from, int r)
@@ -63,81 +62,127 @@ void impl_reg_cp(struct vstack *from, int r)
 
 void impl_op(enum op_type op)
 {
-	TODO();
+	fprintf(F_DEBUG, "TODO: %d %s %d\n",
+			vtop[-1].type, op_to_str(op), vtop->type);
+
+	vpop();
 }
 
 void impl_deref()
 {
-	TODO();
+	fprintf(F_DEBUG, "TODO: deref %d\n", vtop->type);
 }
 
 void impl_op_unary(enum op_type op)
 {
-	TODO();
+	fprintf(F_DEBUG, "TODO: %s %d\n", op_to_str(op), vtop->type);
 }
 
 void impl_normalise(void)
 {
-	TODO();
+	fprintf(F_DEBUG, "TODO: normalise %d\n", vtop->type);
 }
 
 void impl_cast(type_ref *from, type_ref *to)
 {
 	/* TODO FIXME: combine with code in x86_64 */
-	int szfrom, szto;
-
-	szfrom = asm_type_size(from);
-	szto   = asm_type_size(to);
-
-	if(szfrom != szto){
-		if(szfrom < szto){
-			TODO();
-		}else{
-			char buf[DECL_STATIC_BUFSIZ];
-
-			out_comment("truncate cast from %s to %s, size %d -> %d",
-					from ? decl_to_str_r(buf, from) : "",
-					to ? decl_to_str(to) : "",
-					szfrom, szto);
-		}
-	}
 }
 
 void impl_jmp()
 {
 	switch(vtop->type){
 		case LBL:
-			out_asm("j %s", vtop->bits.lbl.str);
+		case REG:
+			out_asm("j%s %s",
+					vtop->type == REG ? "r" : "",
+					vtop->bits.lbl.str);
 			break;
 
 		default:
-			TODO();
+			ICE("invalid jmp target %d", vtop->type);
 	}
-
-	ICE("invalid jmp target");
 }
+
+static char *reg_str_r(char buf[REG_STR_SZ], struct vstack *vp)
+{
+	UCC_ASSERT(vp->type == REG, "not reg");
+	snprintf(buf, REG_STR_SZ, "r%d", vp->bits.reg);
+	return buf;
+}
+
+static char *mips_cmp(struct flag_opts *flag)
+{
+	/* FIXME: factor + check */
+	switch(flag->cmp){
+#define OP(e, s, u) case flag_ ## e: return flag->is_signed ? s : u
+		OP(eq, "e" , "e");
+		OP(ne, "ne", "ne");
+		OP(le, "le", "be");
+		OP(lt, "l",  "b");
+		OP(ge, "ge", "ae");
+		OP(gt, "g",  "a");
+#undef OP
+
+		/*case flag_z:  return "z";
+		case flag_nz: return "nz";*/
+	}
+	return NULL;
+}
+
 
 void impl_jcond(int true, const char *lbl)
 {
-	TODO();
+	switch(vtop->type){
+		case FLAG:
+			UCC_ASSERT(true, "jcond(false) for flag - should've been inverted");
+
+			out_asm("b%s %s", mips_cmp(&vtop->bits.flag), lbl);
+			break;
+
+		case CONST:
+			if(true == !!vtop->bits.val){ /* FIXME: factor */
+				out_asm("b %s", lbl);
+				out_comment("// constant jmp condition %d", vtop->bits.val);
+			}
+			break;
+
+		case STACK:
+		case STACK_SAVE:
+		case LBL:
+			v_to_reg(vtop); /* FIXME: factor */
+
+		case REG:
+		{
+			char buf[REG_STR_SZ];
+
+			reg_str_r(buf, vtop);
+
+			out_asm("b%s %s, %s, %s", lbl, "FIXME", "FIXME");
+		}
+	}
 }
 
-void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
+void impl_call(int nargs, type_ref *r_ret, type_ref *r_func)
 {
-	TODO();
+	out_asm("// funcargs...");
+	out_asm("jal %s", "???");
+
+	while(nargs --> 0)
+		vpop();
 }
 
 void impl_pop_func_ret(type_ref *r)
 {
-	TODO();
+	vpop();
+	fprintf(F_DEBUG, "TODO: pop func ret\n");
 }
 
 void impl_undefined(void)
 {
-	TODO();
+	fprintf(F_DEBUG, "TODO: undefined instruction\n");
 }
 
 int impl_frame_ptr_to_reg(int nframes)
 {
-	TODO();
+	fprintf(F_DEBUG, "TODO: builtin frame address\n");
 }

@@ -5,4 +5,6 @@
 #define N_CALL_REGS    4  /* ??? */
 #define REG_RET        0  /* $r0 */
 
+#define REG_SP 5 /* FIXME */
+
 #endif

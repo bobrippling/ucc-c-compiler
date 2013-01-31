@@ -2,10 +2,10 @@ include ../src_config.mk
 
 # default to x86-64 for now
 
-CFLAGS += -DCC1_IMPL_FNAME=\"x86_64.h\"
-ARCH_OBJ = out/x86_64.o
-#CFLAGS += -DCC1_IMPL_FNAME=\"mipsel_32.h\"
-#ARCH_OBJ = out/mipsel_32.o
+#CFLAGS += -DCC1_IMPL_FNAME=\"x86_64.h\"
+#ARCH_OBJ = out/x86_64.o
+CFLAGS += -DCC1_IMPL_FNAME=\"mipsel_32.h\"
+ARCH_OBJ = out/mipsel_32.o
 
 
 LDFLAGS += -lm
