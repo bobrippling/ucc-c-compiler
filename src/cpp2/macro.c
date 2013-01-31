@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
+#include <ctype.h>
 
 #include "macro.h"
 #include "parse.h"
@@ -10,6 +11,8 @@
 #include "../util/util.h"
 #include "str.h"
 #include "main.h"
+
+#define VA_ARGS_STR "__VA_ARGS__"
 
 macro **macros = NULL;
 char **lib_dirs = NULL;
@@ -177,32 +180,61 @@ tok_fin:
 
 			/* replace #x with the quote of arg x */
 			for(s = strchr(replace, '#'); s; s = strchr(last, '#')){
+				char *const hash = s++;
 				char *arg_target;
+				int found;
 
-				if(s[1] == '#'){
+				if(*s == '#'){
 					/* x ## y */
 					ICE("TODO: pasting");
 				}
 
-				arg_target = word_dup(s + 1);
-				last = s;
+				while(isspace(*s))
+					s++;
 
-				for(i = 0; m->args[i]; i++){
+				arg_target = word_dup(s);
+				found = 0;
+
+				if(!strcmp(arg_target, VA_ARGS_STR)){
+					char *quoted, *free_me;
+					const int offset = s - replace;
+
+					found = 1;
+
+					if(!args)
+						CPP_DIE("#" VA_ARGS_STR " used on non-variadic macro");
+
+					quoted = str_quote(free_me = str_join(args, ", "));
+					free(free_me);
+
+					replace = str_replace(replace,
+							hash,
+							s + strlen(VA_ARGS_STR),
+							quoted);
+
+					free(quoted);
+					last = replace + offset + strlen(quoted);
+				}
+
+				for(i = 0; m->args && !found && m->args[i]; i++){
 					if(!strcmp(m->args[i], arg_target)){
-						char *finish = s + 1 + strlen(arg_target);
+						char *finish = s + strlen(arg_target);
 						char *quoted = str_quote(args[i]);
-						int offset;
+						const int offset = (s - replace) + strlen(quoted);
 
-						offset = (s - replace) + strlen(quoted);
-
-						replace = str_replace(replace, s, finish, quoted);
+						replace = str_replace(replace, s - 1, finish, quoted);
 
 						free(quoted);
 
 						last = replace + offset;
+
+						found = 1;
 						break;
 					}
 				}
+
+				if(!found)
+					CPP_DIE("can't paste non-existent argument %s", arg_target);
 
 				free(arg_target);
 			}
@@ -217,7 +249,7 @@ tok_fin:
 				if(m->type == VARIADIC){
 					char *rest = str_join(args + i, ", ");
 
-					word_replace_g(&replace, "__VA_ARGS__", rest);
+					word_replace_g(&replace, VA_ARGS_STR, rest);
 					free(rest);
 				}
 
