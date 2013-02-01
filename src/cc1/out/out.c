@@ -170,13 +170,13 @@ int v_unused_reg(int stack_as_backup)
 		if(it->type == REG){
 			if(!first)
 				first = it;
-			used[it->bits.reg] = 1;
+			used[it->bits.reg - FIRST_SCRATCH_REG] = 1;
 		}
 	}
 
 	for(i = 0; i < N_SCRATCH_REGS; i++)
 		if(!used[i])
-			return i;
+			return i + FIRST_SCRATCH_REG;
 
 	if(stack_as_backup){
 		/* no free regs, move `first` to the stack and claim its reg */

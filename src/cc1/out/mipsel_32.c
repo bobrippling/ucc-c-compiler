@@ -15,8 +15,10 @@
 #include "out.h"
 #include "lbl.h"
 
+#define SYMBOLIC_REGS
+
 #define F_DEBUG cc_out[SECTION_TEXT]
-#define REG_STR_SZ 4 /* r[0-32] */
+#define REG_STR_SZ 4 /* r[0-31] / r[a-z][0-9a-z] */
 
 #define PIC_CHECK(vp)                 \
 			if(vp->bits.lbl.pic){           \
@@ -31,7 +33,23 @@
 
 static char *reg_str_r_i(char buf[REG_STR_SZ], int r)
 {
+#ifdef SYMBOLIC_REGS
+	static const char *const sym_regs[] = {
+		"0", "at",
+		"v0", "v1",
+		"a0", "a1", "a2", "a3",
+		"t0", "t1", "t2", "t3", "t4", "t5", "t6", "t7",
+		"s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7",
+		"t8", "t9",
+		"k0", "k1",
+		"gp",
+		"sp", "fp", "ra",
+	};
+
+	strcpy(buf, sym_regs[r]);
+#else
 	snprintf(buf, REG_STR_SZ, "r%d", r);
+#endif
 	return buf;
 }
 
@@ -54,19 +72,19 @@ void impl_func_prologue(int stack_res, int nargs, int variadic)
 		ICW("variadic function prologue on MIPS");
 
 	out_asm("addi  $sp, $sp, -8"); /* space for saved ret and fp */
-	out_asm("sw    $lr, 4($sp)");  /* save ret */
+	out_asm("sw    $ra, 4($sp)");  /* save ret */
 	out_asm("sw    $fp,  ($sp)");  /* save fp */
 	out_asm("move  $fp, $sp");     /* new frame */
 
-	out_asm("addi $sp, $sp,-%d", stack_res);
+	out_asm("addi $sp, $sp, -%d", stack_res);
 }
 
 void impl_func_epilogue(void)
 {
 	out_asm("move $fp, $sp");
 	out_asm("lw $fp,  ($sp)");
-	out_asm("lw $lr, 4($sp)");
-	out_asm("TODO: return"); /* FIXME */
+	out_asm("lw $ra, 4($sp)");
+	out_asm("j $ra");
 }
 
 void impl_lea(struct vstack *from, int reg)
@@ -283,7 +301,10 @@ void impl_call(int nargs, type_ref *r_ret, type_ref *r_func)
 
 	for(i = 0; i < nargs; i++){
 		static const int call_regs[] = {
-			1, 2, 3, 4
+			MIPS_REG_A0,
+			MIPS_REG_A1,
+			MIPS_REG_A2,
+			MIPS_REG_A3,
 		};
 		int ri = call_regs[i];
 
