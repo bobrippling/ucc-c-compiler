@@ -130,7 +130,10 @@ void impl_load(struct vstack *from, int reg)
 			break;
 
 		case CONST:
-			out_asm("li $%s, %d", rstr, from->bits.val);
+			if(from->bits.val == 0)
+				out_asm("move $%s, $0", rstr); /* register $zero */
+			else
+				out_asm("li $%s, %d", rstr, from->bits.val);
 			break;
 
 		case REG:
