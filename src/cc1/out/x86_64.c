@@ -230,8 +230,6 @@ static const char *x86_cmp(struct flag_opts *flag)
 
 static void x86_load(struct vstack *from, const char *regstr)
 {
-	int lea = 0;
-
 	switch(from->type){
 		case FLAG:
 			out_asm("set%s %%%s",
@@ -241,15 +239,13 @@ static void x86_load(struct vstack *from, const char *regstr)
 
 		case STACK:
 		case LBL:
-			lea = 1;
-		case STACK_SAVE: /* voila */
+		case STACK_SAVE:
 		case CONST:
 		case REG:
 			break;
 	}
 
-	out_asm("%s%c %s, %%%s",
-			lea ? "lea" : "mov",
+	out_asm("mov%c %s, %%%s",
 			asm_type_ch(from->t),
 			vstack_str(from),
 			regstr);
@@ -279,6 +275,7 @@ void impl_load(struct vstack *from, int reg)
 	if(from->t != save)
 		type_ref_free_1(from->t);
 
+	/* FIXME: merge */
 	v_clear(from, save);
 	from->type = REG;
 	from->bits.reg = reg;
@@ -547,40 +544,22 @@ but gcc and clang promote to ints anyway...
 	}
 }
 
-void impl_deref()
+void impl_deref_reg()
 {
 	const int r = v_unused_reg(1); /* allocate a reg here first, since it'll be used later too */
 	char ptr[VSTACK_STR_SZ], dst[REG_STR_SZ];
 
-	/* optimisation: if we're dereffing a pointer to stack/lbl, just do a mov */
-	switch(vtop->type){
-		case LBL:
-		case STACK:
-		case CONST:
-			v_deref_decl(vtop);
-			out_asm("mov%c %s, %%%s",
-					asm_type_ch(vtop->t),
-					vstack_str_r_ptr(ptr, vtop, 1),
-					x86_reg_str_r(dst, r, vtop->t));
-			break;
+	UCC_ASSERT(vtop->type == REG, "not reg (%d)", vtop->type);
 
-		default:
-			v_to_reg(vtop);
+	vstack_str_r_ptr(ptr, vtop, 1);
 
-			vstack_str_r_ptr(ptr, vtop, 1);
+	/* loaded the pointer, now we apply the deref change */
+	v_deref_decl(vtop);
+	x86_reg_str_r(dst, r, vtop->t);
 
-			/* loaded the pointer, now we apply the deref change */
-			v_deref_decl(vtop);
-			x86_reg_str_r(dst, r, vtop->t);
-
-			out_asm("mov%c %s, %%%s",
-					asm_type_ch(vtop->t),
-					ptr, dst);
-			break;
-	}
-
-	vtop->type = REG;
-	vtop->bits.reg = r;
+	out_asm("mov%c %s, %%%s",
+			asm_type_ch(vtop->t),
+			ptr, dst);
 }
 
 void impl_op_unary(enum op_type op)

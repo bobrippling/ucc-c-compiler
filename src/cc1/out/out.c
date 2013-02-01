@@ -189,10 +189,31 @@ int v_unused_reg(int stack_as_backup)
 	return -1;
 }
 
+void out_load(struct vstack *from, int reg)
+{
+	int lea = 0;
+
+	switch(from->type){
+		case STACK:
+		case LBL:
+			lea = 1;
+		case FLAG:
+		case STACK_SAVE: /* voila */
+		case CONST:
+		case REG:
+			break;
+	}
+
+	(lea ? impl_lea : impl_load)(from, reg);
+
+	from->type = REG;
+	from->bits.reg = reg;
+}
+
 int v_to_reg(struct vstack *conv)
 {
 	if(conv->type != REG)
-		impl_load(conv, v_unused_reg(1));
+		out_load(conv, v_unused_reg(1));
 
 	return conv->bits.reg;
 }
@@ -601,17 +622,28 @@ void out_deref()
 		return; /* noop */
 	}
 
+	/* optimisation: if we're dereffing a pointer to stack/lbl, just do a mov */
 	switch(vtop->type){
 		case FLAG:
 			ICE("deref of flag");
 
-		case CONST:
+		default:
+			v_to_reg(vtop);
 		case REG:
-		case STACK:
-		case LBL:
-		case STACK_SAVE:
-			impl_deref();
+			impl_deref_reg();
 			break;
+
+		case LBL:
+		case STACK:
+		case CONST:
+		{
+			int r = v_unused_reg(1);
+			/* impl_load, since we don't want a lea switch */
+			impl_load(vtop, r);
+			vtop->type = REG;
+			vtop->bits.reg = r;
+			break;
+		}
 	}
 }
 
@@ -686,7 +718,16 @@ void out_jmp(void)
 		vtop++;
 	}
 
-	impl_jmp();
+	switch(vtop->type){
+		default:
+			v_to_reg(vtop);
+		case REG:
+			impl_jmp_reg(vtop->bits.reg);
+			break;
+
+		case LBL:
+			impl_jmp_lbl(vtop->bits.lbl.str);
+	}
 
 	vpop();
 }
