@@ -611,6 +611,10 @@ void v_deref_decl(struct vstack *vp)
 
 void out_deref()
 {
+#define DEREF_CHECK
+#ifdef DEREF_CHECK
+	type_ref *const vtop_t = vtop->t;
+#endif
 	type_ref *indir;
 	/* if the pointed-to object is not an lvalue, don't deref */
 
@@ -640,11 +644,17 @@ void out_deref()
 			int r = v_unused_reg(1);
 			/* impl_load, since we don't want a lea switch */
 			impl_load(vtop, r);
+
 			vtop->type = REG;
 			vtop->bits.reg = r;
+			v_deref_decl(vtop);
 			break;
 		}
 	}
+
+#ifdef DEREF_CHECK
+	UCC_ASSERT(vtop_t != vtop->t, "no depth change");
+#endif
 }
 
 

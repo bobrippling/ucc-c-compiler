@@ -206,6 +206,7 @@ void impl_pop_func_ret(type_ref *r)
 {
 	(void)r;
 
+	/* FIXME: merge with mips */
 	impl_load(vtop, REG_RET);
 	vpop();
 }
