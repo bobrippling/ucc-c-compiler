@@ -43,6 +43,13 @@ static const char *const sym_regs[] = {
 	"sp", "fp", "ra"
 };
 
+static const int call_regs[] = {
+	MIPS_REG_A0,
+	MIPS_REG_A1,
+	MIPS_REG_A2,
+	MIPS_REG_A3,
+};
+
 static char *reg_str_r_i(char buf[REG_STR_SZ], int r)
 {
 #ifdef SYMBOLIC_REGS
@@ -67,7 +74,12 @@ static char *reg_str_i(int r)
 
 void impl_func_prologue(int stack_res, int nargs, int variadic)
 {
-	/* FIXME: very similar to x86_64::func_prologue - merge */
+	static int pws;
+	int i;
+
+	if(!pws)
+		pws = platform_word_size();
+
 	if(variadic)
 		ICW("variadic function prologue on MIPS");
 
@@ -76,10 +88,20 @@ void impl_func_prologue(int stack_res, int nargs, int variadic)
 	out_asm("sw    $fp,  ($sp)");  /* save fp */
 	out_asm("move  $fp, $sp");     /* new frame */
 
-	if(nargs)
-		ICW("TODO: push args");
+	UCC_ASSERT(nargs <= N_CALL_REGS, "TODO: more than 4 args"); /* FIXME */
 
-	out_asm("addi $sp, $sp, -%d", stack_res);
+	out_asm("addi $sp, $sp, -%d", stack_res + nargs * pws);
+
+	for(i = 0; i < nargs; i++){
+		struct vstack arg   = VSTACK_INIT(REG),
+		              stack = VSTACK_INIT(STACK);
+
+		arg.bits.reg = call_regs[i];
+		stack.bits.off_from_bp = -(i + 1) * pws;
+		/* +1 for the saved fp */
+
+		impl_store(&arg, &stack);
+	}
 }
 
 void impl_func_epilogue(void)
@@ -400,13 +422,7 @@ void impl_call(int nargs, type_ref *r_ret, type_ref *r_func)
 	UCC_ASSERT(nargs <= N_CALL_REGS, "TODO: more than 4 args"); /* FIXME */
 
 	for(i = 0; i < nargs; i++){
-		static const int call_regs[] = {
-			MIPS_REG_A0,
-			MIPS_REG_A1,
-			MIPS_REG_A2,
-			MIPS_REG_A3,
-		};
-		int ri = call_regs[i];
+		const int ri = call_regs[i];
 
 		v_freeup_reg(ri, 1);
 		out_load(vtop, ri);

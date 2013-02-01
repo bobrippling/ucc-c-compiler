@@ -47,6 +47,7 @@ struct vstack
 		} lbl;
 	} bits;
 };
+#define VSTACK_INIT(ty) { (ty), NULL, { 0 } }
 
 extern struct vstack *vtop, vstack[];
 
