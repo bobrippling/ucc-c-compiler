@@ -279,19 +279,15 @@ op:
 
 void impl_deref_reg()
 {
-	char from[REG_STR_SZ], to[REG_STR_SZ];
-	int r = v_unused_reg(1);
+	char rstr[REG_STR_SZ];
 
 	UCC_ASSERT(vtop->type == REG, "not reg (%d)", vtop->type);
 
-	reg_str_r_i(from, vtop->bits.reg);
-	reg_str_r_i(to,   r);
+	reg_str_r_i(rstr, vtop->bits.reg);
 
-	out_asm("lw $%s, ($%s)",
-			to, from);
+	out_asm("lw $%s, ($%s)", rstr, rstr);
 
-	vtop->type = REG;
-	vtop->bits.reg = r;
+	v_deref_decl(vtop);
 }
 
 void impl_op_unary(enum op_type op)
