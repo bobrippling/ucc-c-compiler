@@ -296,7 +296,32 @@ void impl_deref_reg()
 
 void impl_op_unary(enum op_type op)
 {
-	fprintf(F_DEBUG, "TODO: %s %d\n", op_to_str(op), vtop->type);
+	char r_vtop[REG_STR_SZ];
+
+	v_to_reg(vtop);
+	reg_str_r(r_vtop, vtop);
+
+	switch(op){
+		default:
+			ICE("unary %s", op_to_str(op));
+
+		case op_plus:
+			/* noop */
+			return;
+
+		case op_minus:
+			out_asm("sub $%s, $%s, $%s",
+					r_vtop, sym_regs[MIPS_REG_ZERO], r_vtop);
+			break;
+
+		case op_bnot:
+			out_asm("not $%s, $%s", r_vtop, r_vtop);
+			break;
+
+		case op_not:
+			out_asm("seq $%s, $%s, $%s",
+					r_vtop, r_vtop, sym_regs[MIPS_REG_ZERO]);
+	}
 }
 
 void impl_normalise(void)
