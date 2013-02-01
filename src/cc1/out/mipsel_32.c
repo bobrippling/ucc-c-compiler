@@ -50,20 +50,23 @@ static char *reg_str_i(int r)
 void impl_func_prologue(int stack_res, int nargs, int variadic)
 {
 	/* FIXME: very similar to x86_64::func_prologue - merge */
-	fprintf(F_DEBUG, "MIPS prologue %d %d %d\n", stack_res, nargs, variadic);
+	if(variadic)
+		ICW("variadic function prologue on MIPS");
 
-#if 0
-	out_asm("addiu $sp, $sp,-8"); /* space for saved ret */
-	out_asm("sw    $fp, 4($sp)"); /* save ret */
-	out_asm("move  $fp, $sp");    /* new frame */
+	out_asm("addi  $sp, $sp, -8"); /* space for saved ret and fp */
+	out_asm("sw    $lr, 4($sp)");  /* save ret */
+	out_asm("sw    $fp,  ($sp)");  /* save fp */
+	out_asm("move  $fp, $sp");     /* new frame */
 
-	out_asm("addiu $sp, $sp,-%d", stack_res); /* etc */
-#endif
+	out_asm("addi $sp, $sp,-%d", stack_res);
 }
 
 void impl_func_epilogue(void)
 {
-	fprintf(F_DEBUG, "TODO: epilogue\n");
+	out_asm("move $fp, $sp");
+	out_asm("lw $fp,  ($sp)");
+	out_asm("lw $lr, 4($sp)");
+	out_asm("TODO: return"); /* FIXME */
 }
 
 void impl_lea(struct vstack *from, int reg)
