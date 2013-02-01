@@ -181,20 +181,32 @@ void impl_store(struct vstack *from, struct vstack *to)
 	}
 }
 
-void impl_reg_swp(struct vstack *a, struct vstack *b)
+static void impl_reg_cp_reg(int from, int to)
 {
-	fprintf(F_DEBUG, "TODO: swap %d <-> %d\n", a->bits.reg, b->bits.reg);
+	char rstr[REG_STR_SZ];
+
+	out_asm("move $%s, $%s",
+			reg_str_i(to),
+			reg_str_r_i(rstr, from));
+}
+
+void impl_reg_swp(struct vstack *va, struct vstack *vb)
+{
+	const int r = v_unused_reg(1),
+	          a = va->bits.reg,
+	          b = vb->bits.reg;
+
+	impl_reg_cp_reg(a, r);
+	impl_reg_cp_reg(b, a);
+	impl_reg_cp_reg(r, b);
 }
 
 void impl_reg_cp(struct vstack *from, int r)
 {
-	char rstr[REG_STR_SZ];
 	if(from->type == REG && from->bits.reg == r) /* FIXME: x86_64 merge */
 		return;
 
-	out_asm("move $%s, $%s",
-			reg_str_r_i(rstr, r),
-			reg_str_i(from->bits.reg));
+	impl_reg_cp_reg(from->bits.reg, r);
 }
 
 void impl_op(enum op_type op)
