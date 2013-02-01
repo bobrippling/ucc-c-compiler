@@ -277,7 +277,7 @@ void impl_pop_func_ret(type_ref *r)
 
 void impl_undefined(void)
 {
-	fprintf(F_DEBUG, "TODO: undefined instruction\n");
+	ICE("TODO: mips undefined instruction");
 }
 
 int impl_frame_ptr_to_reg(int nframes)
