@@ -76,6 +76,9 @@ void impl_func_prologue(int stack_res, int nargs, int variadic)
 	out_asm("sw    $fp,  ($sp)");  /* save fp */
 	out_asm("move  $fp, $sp");     /* new frame */
 
+	if(nargs)
+		ICW("TODO: push args");
+
 	out_asm("addi $sp, $sp, -%d", stack_res);
 }
 
