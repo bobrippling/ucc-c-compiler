@@ -122,7 +122,35 @@ void impl_load(struct vstack *from, int reg)
 
 void impl_store(struct vstack *from, struct vstack *to)
 {
-	fprintf(F_DEBUG, "TODO: store %d -> %d\n", from->type, to->type);
+	char rstr[REG_STR_SZ];
+
+	v_to_reg(from); /* room for optimisation, e.g. const */
+	reg_str_r(rstr, from);
+
+	switch(to->type){
+		case FLAG:
+		case STACK_SAVE:
+			ICE("store to %d", to->type);
+
+		case LBL:
+			PIC_CHECK(from);
+			out_asm("sw $%s, %s", rstr, to->bits.lbl.str);
+			break;
+
+		case CONST:
+			out_asm("sw $%s, %d", rstr, to->bits.val);
+			break;
+
+		case REG:
+			out_asm("sw $%s, ($%s)",
+					rstr,
+					reg_str_i(to->bits.reg));
+			break;
+
+		case STACK:
+			out_asm("sw $%s, %d($fp)",
+					rstr, to->bits.off_from_bp);
+	}
 }
 
 void impl_reg_swp(struct vstack *a, struct vstack *b)
@@ -132,10 +160,13 @@ void impl_reg_swp(struct vstack *a, struct vstack *b)
 
 void impl_reg_cp(struct vstack *from, int r)
 {
-	if(from->type == REG && from->bits.reg == r) /* TODO: x86_64 merge */
+	char rstr[REG_STR_SZ];
+	if(from->type == REG && from->bits.reg == r) /* FIXME: x86_64 merge */
 		return;
 
-	fprintf(F_DEBUG, "TODO: copy %d -> reg %d\n", from->type, r);
+	out_asm("move $%s, $%s",
+			reg_str_r_i(rstr, r),
+			reg_str_i(from->bits.reg));
 }
 
 void impl_op(enum op_type op)
