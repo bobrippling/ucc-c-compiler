@@ -704,9 +704,14 @@ void out_change_type(type_ref *t)
 	vtop->t = t;
 }
 
-void out_call(int nargs, type_ref *rt, type_ref *call)
+void out_call(int nargs, type_ref *r_ret, type_ref *r_func)
 {
-	impl_call(nargs, rt, call);
+	impl_call(nargs, r_ret, r_func);
+
+	/* return type */
+	vtop_clear(r_ret);
+	vtop->type = REG;
+	vtop->bits.reg = REG_RET;
 }
 
 void out_jmp(void)

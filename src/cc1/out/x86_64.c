@@ -789,11 +789,6 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 
 	if(ncleanup)
 		out_asm("addq $%d, %%rsp", ncleanup * platform_word_size());
-
-	/* return type */
-	vtop_clear(r_ret);
-	vtop->type = REG;
-	vtop->bits.reg = REG_RET;
 }
 
 void impl_undefined(void)
