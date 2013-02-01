@@ -31,21 +31,21 @@
 
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 
+static const char *const sym_regs[] = {
+	"0", "at",
+	"v0", "v1",
+	"a0", "a1", "a2", "a3",
+	"t0", "t1", "t2", "t3", "t4", "t5", "t6", "t7",
+	"s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7",
+	"t8", "t9",
+	"k0", "k1",
+	"gp",
+	"sp", "fp", "ra"
+};
+
 static char *reg_str_r_i(char buf[REG_STR_SZ], int r)
 {
 #ifdef SYMBOLIC_REGS
-	static const char *const sym_regs[] = {
-		"0", "at",
-		"v0", "v1",
-		"a0", "a1", "a2", "a3",
-		"t0", "t1", "t2", "t3", "t4", "t5", "t6", "t7",
-		"s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7",
-		"t8", "t9",
-		"k0", "k1",
-		"gp",
-		"sp", "fp", "ra",
-	};
-
 	strcpy(buf, sym_regs[r]);
 #else
 	snprintf(buf, REG_STR_SZ, "r%d", r);
@@ -98,9 +98,10 @@ void impl_lea(struct vstack *from, int reg)
 	reg_str_r_i(rstr, reg);
 
 	switch(from->type){
+		case FLAG:
+			ICE("FLAG in MIPS");
 		case CONST:
 		case REG:
-		case FLAG:
 		case STACK_SAVE:
 			ICE("%s of %d", __func__, from->type);
 
@@ -122,7 +123,7 @@ void impl_load(struct vstack *from, int reg)
 
 	switch(from->type){
 		case FLAG:
-			TODO();
+			ICE("FLAG in MIPS");
 
 		case LBL:
 			PIC_CHECK(from);
@@ -131,7 +132,7 @@ void impl_load(struct vstack *from, int reg)
 
 		case CONST:
 			if(from->bits.val == 0)
-				out_asm("move $%s, $0", rstr); /* register $zero */
+				out_asm("move $%s, $%s", rstr, sym_regs[MIPS_REG_ZERO]);
 			else
 				out_asm("li $%s, %d", rstr, from->bits.val);
 			break;
@@ -157,6 +158,8 @@ void impl_store(struct vstack *from, struct vstack *to)
 
 	switch(to->type){
 		case FLAG:
+			ICE("FLAG in MIPS");
+
 		case STACK_SAVE:
 			ICE("store to %d", to->type);
 
@@ -211,8 +214,65 @@ void impl_reg_cp(struct vstack *from, int r)
 
 void impl_op(enum op_type op)
 {
-	fprintf(F_DEBUG, "TODO: %d %s %d\n",
-			vtop[-1].type, op_to_str(op), vtop->type);
+	const char *cmp;
+	char r_vtop[REG_STR_SZ], r_vtop1[REG_STR_SZ];
+
+	/* TODO: use immediate instructions */
+	v_to_reg(vtop - 1);
+	reg_str_r(r_vtop1, vtop-1);
+
+	v_to_reg(vtop);
+	reg_str_r(r_vtop, vtop);
+
+	/* TODO: signed */
+	switch(op){
+#define OP(ty) case op_ ## ty: cmp = #ty; goto cmp
+		OP(eq);
+		OP(ne);
+		OP(le);
+		OP(lt);
+		OP(ge);
+		OP(gt);
+#undef OP
+cmp:
+		out_asm("s%s $%s, $%s, $%s",
+				cmp, r_vtop1, r_vtop1, r_vtop);
+		break;
+
+		case op_orsc:
+		case op_andsc:
+		case op_not:
+		case op_bnot:
+		case op_unknown:
+			ICE("%s", op_to_str(op));
+
+#define OP(ty, n) case op_ ## ty: cmp = n; goto op
+		OP(multiply, "mul");
+		OP(plus,     "add");
+		OP(minus,    "sub");
+		OP(divide,   "div");
+		OP(modulus,  "div"); /* special */
+		OP(xor,      "xor");
+		OP(or,       "or");
+		OP(and,      "and");
+		OP(shiftl,   "sll");
+		OP(shiftr,   "srl");
+#undef OP
+op:
+		out_asm("%s $%s, $%s, $%s",
+				cmp, r_vtop1, r_vtop1, r_vtop);
+
+		switch(op){
+			case op_divide:
+				out_asm("mflo $%s", r_vtop1);
+				break;
+			case op_modulus:
+				out_asm("mfhi $%s", r_vtop1);
+			default:
+				break;
+		}
+		break;
+	}
 
 	vpop();
 }

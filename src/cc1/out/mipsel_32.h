@@ -1,6 +1,8 @@
 #ifndef MIPSEL_32_H
 #define MIPSEL_32_H
 
+#define MIPS_REG_ZERO 0
+
 /* (values) from expression evaluation and function results */
 #define MIPS_REG_V0 2
 #define MIPS_REG_V1 3
