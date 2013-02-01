@@ -84,9 +84,10 @@ void impl_func_prologue(int stack_res, int nargs, int variadic)
 
 void impl_func_epilogue(void)
 {
-	out_asm("move $fp, $sp");
+	out_asm("move $sp, $fp");
 	out_asm("lw $fp,  ($sp)");
 	out_asm("lw $ra, 4($sp)");
+	out_asm("addi $sp, $sp, 8");
 	out_asm("j $ra");
 }
 
