@@ -207,6 +207,7 @@ void impl_normalise(void)
 void impl_cast(type_ref *from, type_ref *to)
 {
 	/* TODO FIXME: combine with code in x86_64 */
+	ICW("MIPS cast");
 }
 
 void impl_jmp_reg(int r)
