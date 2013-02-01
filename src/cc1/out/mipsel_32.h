@@ -59,4 +59,6 @@
 #define REG_RET        MIPS_REG_V0
 #define REG_SP         MIPS_REG_SP
 
+#define IMPL_COMMENT "#"
+
 #endif

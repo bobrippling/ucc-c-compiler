@@ -6,4 +6,6 @@
 #define N_CALL_REGS    6
 #define REG_RET        0 /* eax */
 
+#define IMPL_COMMENT "//"
+
 #endif

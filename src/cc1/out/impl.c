@@ -40,7 +40,7 @@ void out_asm2(enum p_opts opts, const char *fmt, ...)
 
 void impl_comment(const char *fmt, va_list l)
 {
-	out_asm2(P_NO_NL, "// ");
+	out_asm2(P_NO_NL, IMPL_COMMENT " ");
 	out_asmv(P_NO_INDENT, fmt, l);
 }
 
