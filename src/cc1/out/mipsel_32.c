@@ -363,34 +363,11 @@ void impl_jmp_lbl(const char *lbl)
 	out_asm("j %s", lbl);
 }
 
-static char *mips_cmp(struct flag_opts *flag)
-{
-	/* FIXME: factor + check */
-	switch(flag->cmp){
-#define OP(e, s, u) case flag_ ## e: return flag->is_signed ? s : u
-		OP(eq, "e" , "e");
-		OP(ne, "ne", "ne");
-		OP(le, "le", "be");
-		OP(lt, "l",  "b");
-		OP(ge, "ge", "ae");
-		OP(gt, "g",  "a");
-#undef OP
-
-		/*case flag_z:  return "z";
-		case flag_nz: return "nz";*/
-	}
-	return NULL;
-}
-
-
 void impl_jcond(int true, const char *lbl)
 {
 	switch(vtop->type){
 		case FLAG:
-			UCC_ASSERT(true, "jcond(false) for flag - should've been inverted");
-
-			out_asm("b%s %s", mips_cmp(&vtop->bits.flag), lbl);
-			break;
+			ICE("FLAG in MIPS");
 
 		case CONST:
 			if(true == !!vtop->bits.val){ /* FIXME: factor */
@@ -410,7 +387,7 @@ void impl_jcond(int true, const char *lbl)
 
 			reg_str_r(buf, vtop);
 
-			out_asm("b%s %s, %s, %s", "?", lbl, "FIXME", "FIXME");
+			out_asm("beq $%s, $%s, %s", buf, sym_regs[MIPS_REG_ZERO], lbl);
 		}
 	}
 }
