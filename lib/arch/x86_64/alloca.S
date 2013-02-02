@@ -1,19 +1,11 @@
 #include "../../../src/as_cfg.h"
 .section SECTION_TEXT
-	.globl alloca
-
+.globl alloca
 alloca:
-	// stack looks like:
+	popq %rsi // return addr
 
-	// vars, etc...  <-- rsp
-	// etc...
-	// amount_to_alloca
-	// return addr (continue here) <-- rbp
-
-	popq %rdi // return addr
-	popq %rsi // amount to alloc
-
-	subq %rsi, %rsp
+	// FIXME: need to align to stack boundary
+	subq %rdi, %rsp // rdi = amount to alloc
 	movq %rsp, %rax // return
 
-	jmp *%rdi
+	jmp *%rsi

@@ -48,7 +48,7 @@ __syscall:
 	negq %rax # get positive errno
 #else
 	jnc .fin
-	# carry - err is in rax
+	// carry - err is in rax
 #endif
 	movl %eax, errno(%rip)
 	movq $-1, %rax
