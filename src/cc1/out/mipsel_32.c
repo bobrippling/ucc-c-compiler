@@ -449,7 +449,17 @@ void impl_pop_func_ret(type_ref *r)
 
 void impl_undefined(void)
 {
-	ICE("TODO: mips undefined instruction");
+	type_ref *char_ptr = type_ref_new_ptr(
+				type_ref_new_type(
+					type_new_primitive(type_char)),
+				qual_none);
+
+	out_push_i(char_ptr, 0);
+	out_push_i(char_ptr, 0);
+	out_store(); /* *(char *)0 = 0 */
+	out_pop();
+
+	out_asm("break"); /* if we're in kernel mode */
 }
 
 int impl_frame_ptr_to_reg(int nframes)
