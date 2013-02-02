@@ -8,6 +8,7 @@ UCC_AS      = ${UCC_AS}
 UCC_LD      = ${UCC_LD}
 UCC_ARCH    = ${UCC_ARCH}
 UCC_LDFLAGS = ${UCC_LDFLAGS}
+UCC_CPU     = ${UCC_CPU}
 !
 
 	cat > src/ucc/cfg.h <<!
@@ -16,20 +17,6 @@ UCC_LDFLAGS = ${UCC_LDFLAGS}
 #define UCC_ARCH    "${UCC_ARCH}"
 #define UCC_LDFLAGS "${UCC_LDFLAGS}"
 !
-
-	if [ $1 = Linux ]
-	then
-		cat <<!
-	cmpq \$-1, %rax
-	jg .fin
-	negq %rax # get positive errno
-!
-	else
-		cat <<!
-	jnc .fin
-	# else, carry - err is in rax
-!
-	fi > lib/syscall_err.s
 
 	if [ $1 = Darwin ]
 	then
@@ -73,7 +60,7 @@ UCC_LDFLAGS = ${UCC_LDFLAGS}
 
 usage(){
 	cat >&2 <<!
-Usage: $0 [--as=path/to/as] [clean]
+Usage: $0 [--as=path/to/as] [--cpu=...] [clean]
 !
 	exit 1
 }
@@ -84,28 +71,42 @@ UCC_LD=ld
 
 UCC_ARCH=elf64
 UCC_LDFLAGS=''
+UCC_CPU=x86_64
 
 clean=0
+
+get_arg='echo "$arg" | cut -d= -f2'
 
 i=1
 while [ $i -le $# ]
 do
 	arg=`eval echo '$'"$i"`
-	if echo "$arg" | grep -- '^--as=' > /dev/null
-	then
-		UCC_AS="$(echo "$arg" | sed 's/^--as=//')"
-	elif [ "$arg" = clean ]
-	then
-		clean=1
-	else
-		usage
-	fi
+	case "$arg" in
+		--as=*)
+			UCC_AS="`eval $get_arg`"
+			;;
+		--cpu=*)
+			UCC_CPU="`eval $get_arg`"
+			ARCH_DIR=lib/arch
+			if ! [ -d $ARCH_DIR/"$UCC_CPU" ]
+			then
+				echo >&2 "$UCC_CPU invalid, choices are:"
+				(cd $ARCH_DIR; ls -d *)
+				usage
+			fi
+			;;
+		clean)
+			clean=1
+			;;
+		*)
+			usage
+	esac
 	i=`expr $i + 1`
 done
 
 if [ $clean -ne 0 ]
 then
-	rm -f config.mk lib/syscall_err.s lib/string_strerrs.h lib/syscalls_darwin.h
+	rm -f config.mk lib/string_strerrs.h lib/syscalls_darwin.h
 	exit
 fi
 
