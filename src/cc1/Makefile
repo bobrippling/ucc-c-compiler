@@ -1,12 +1,9 @@
 include ../src_config.mk
+include ../../config.mk
 
-# default to x86-64 for now
+CFLAGS_OUT = ${CFLAGS} -DCC1_IMPL_FNAME=\"${UCC_CPU}.h\"
 
-#CFLAGS += -DCC1_IMPL_FNAME=\"x86_64.h\"
-#ARCH_OBJ = out/x86_64.o
-CFLAGS += -DCC1_IMPL_FNAME=\"mipsel_32.h\"
-ARCH_OBJ = out/mipsel_32.o
-
+ARCH_OBJ = out/${UCC_CPU}.o
 
 LDFLAGS += -lm
 
@@ -21,7 +18,7 @@ OBJ = \
 	fold.o fold_sym.o const.o \
 	sym.o sue.o ops/__builtin.o pack.o \
 	gen_asm.o gen_str.o gen_style.o \
-	out/out.o out/asm.o out/lbl.o out/impl.c \
+	out/out.o out/asm.o out/lbl.o out/impl.o \
 	ops/expr_addr.o ops/expr_assign.o ops/expr_cast.o ops/expr_comma.o \
 	ops/expr_funcall.o ops/expr_identifier.o ops/expr_if.o ops/expr_op.o \
 	ops/expr_sizeof.o ops/expr_val.o ops/expr_stmt.o ops/expr__Generic.o \
@@ -46,7 +43,17 @@ clean:
 
 .PHONY: clean
 
-include Makefile.dep
+# files that need target info
+out/mipsel_32.o: out/mipsel_32.c
+	${CC} ${CFLAGS_OUT} -c -o $@ $<
+out/x86_64.o: out/x86_64.c
+	${CC} ${CFLAGS_OUT} -c -o $@ $<
+out/out.o: out/out.c
+	${CC} ${CFLAGS_OUT} -c -o $@ $<
+out/impl.o: out/impl.c
+	${CC} ${CFLAGS_OUT} -c -o $@ $<
 
 # extra deps
 out/impl.h: out/x86_64.h out/mipsel_32.h
+
+include Makefile.dep

@@ -53,6 +53,7 @@ static const int call_regs[] = {
 static char *reg_str_r_i(char buf[REG_STR_SZ], int r)
 {
 #ifdef SYMBOLIC_REGS
+	/* FIXME: just return the kstr */
 	strcpy(buf, sym_regs[r]);
 #else
 	snprintf(buf, REG_STR_SZ, "r%d", r);

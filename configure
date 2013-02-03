@@ -54,7 +54,7 @@ UCC_CPU     = ${UCC_CPU}
 		fi
 	fi
 
-	echo "Configured for $1"
+	echo "Configured for $UCC_CPU $1"
 }
 
 

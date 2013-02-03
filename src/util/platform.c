@@ -6,8 +6,8 @@
 #include "platform.h"
 
 static int init = 0;
-static enum platform     platform_t;
-static enum platform_sys platform_s;
+static const enum platform platform_t = UCC_PLATFORM;
+static enum platform_sys platform_s; /* TODO: sys is decided at compile time */
 
 #define INIT() \
 	do{ \
@@ -23,13 +23,6 @@ static void platform_init()
 
 	if(uname(&u) == -1){
 		perror("uname()");
-		exit(1);
-	}else if(!strcmp("i686", u.machine)){
-		platform_t = PLATFORM_32;
-	}else if(!strcmp("x86_64", u.machine) || !strcmp("amd64", u.machine)){
-		platform_t = PLATFORM_64;
-	}else{
-		fprintf(stderr, "unrecognised machine architecture: \"%s\"\n", u.machine);
 		exit(1);
 	}
 
@@ -50,7 +43,13 @@ static void platform_init()
 int platform_word_size()
 {
 	INIT();
-	return platform_t == PLATFORM_32 ? 4 : 8;
+	switch(platform_t){
+		case PLATFORM_mipsel_32:
+		 return 4;
+		case PLATFORM_x86_64:
+		 return 8;
+	}
+	abort();
 }
 
 enum platform platform_type()
