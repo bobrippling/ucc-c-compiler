@@ -21,7 +21,7 @@ ${OBJ}: ${LIBDEPS}
 
 crt.o: ${ARCH_DIR}/crt.S
 	${BUILD_CMD}
-syscall.o: ${ARCH_DIR}/syscall_in.S
+syscall.o: ${ARCH_DIR}/syscall.S
 	${BUILD_CMD}
 
 stdio.o: stdio.c
