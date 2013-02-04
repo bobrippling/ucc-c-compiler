@@ -9,8 +9,11 @@
 #define X86_64_REG_RDI 4
 #define X86_64_REG_RSI 5
 
-#define X86_64_REG_RBP 6
-#define X86_64_REG_RSP 7
+#define X86_64_REG_R8  6
+#define X86_64_REG_R9  7
+
+#define X86_64_REG_RBP 8
+#define X86_64_REG_RSP 9
 
 #define N_SCRATCH_REGS    4
 #define FIRST_SCRATCH_REG X86_64_REG_RAX

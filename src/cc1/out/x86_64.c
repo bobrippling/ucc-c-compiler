@@ -23,32 +23,68 @@
 
 #define VSTACK_STR_SZ 128
 
-static const char regs[] = "abcd";
+static const int call_regs[] = {
+	X86_64_REG_RDI,
+	X86_64_REG_RSI,
+	X86_64_REG_RDX,
+	X86_64_REG_RCX,
+	X86_64_REG_R8,
+	X86_64_REG_R9
+};
+
 static const struct
 {
 	char reg, suffix;
-	int idx;
-} call_regs[] = {
-	{ 'd', 'i',  -1 },
-	{ 's', 'i',  -1 },
-	{ 'd', 'x',  X86_64_REG_RDX },
-	{ 'c', 'x',  X86_64_REG_RCX },
-	{ '8', '\0', -1 },
-	{ '9', '\0', -1 },
+} regs[] = {
+	{ 'a', 'x' },
+	{ 'b', 'x' },
+	{ 'c', 'x' },
+	{ 'd', 'x' },
+
+	{ 'd', 'i' },
+	{ 's', 'i' },
+
+	{ '8', '\0' },
+	{ '9', '\0' },
+
+	{ 'b', 'p' },
+	{ 's', 'p' },
 };
+#define N_REGS (sizeof regs / sizeof *regs)
 
 
-static const char *x86_reg_str_r(char buf[REG_STR_SZ], int reg, type_ref *r)
+static const char *x86_reg_str_r(char buf[REG_STR_SZ], unsigned reg, type_ref *r)
 {
 	const char *regpre, *regpost;
+	const char suff[] = { regs[reg].suffix, '\0' };
+	const char *pre, *post;
 
-	UCC_ASSERT(reg < N_SCRATCH_REGS, "invalid x86 reg %d", reg);
+	UCC_ASSERT(reg < N_REGS, "invalid x86 reg %d", reg);
+
+	asm_reg_name(r, &pre, &post);
+
+	if(!regs[reg].suffix && r && type_ref_size(r, NULL) < type_primitive_size(type_long)){
+		/* r9d, etc */
+		snprintf(buf, REG_STR_SZ, "r%cd", regs[reg].reg);
+	}else{
+		snprintf(buf, REG_STR_SZ,
+				"%s%c%s", pre, regs[reg].reg,
+				*suff == *post ? post : suff);
+	}
+
+	return buf;
 
 	asm_reg_name(r, &regpre, &regpost);
 
-	snprintf(buf, REG_STR_SZ, "%s%c%s", regpre, regs[reg], regpost);
+	snprintf(buf, REG_STR_SZ, "%s%c%s", regpre, regs[reg].reg, regpost);
 
 	return buf;
+}
+
+static const char *call_reg_str(int i, type_ref *ty)
+{
+	static char buf[REG_STR_SZ];
+	return x86_reg_str_r(buf, call_regs[i], ty);
 }
 
 static const char *reg_str_r(char buf[REG_STR_SZ], struct vstack *reg)
@@ -111,26 +147,6 @@ static const char *vstack_str_ptr(struct vstack *vs, int ptr)
 {
 	static char buf[VSTACK_STR_SZ];
 	return vstack_str_r_ptr(buf, vs, ptr);
-}
-
-const char *call_reg_str(int i, type_ref *r)
-{
-	static char buf[REG_STR_SZ];
-	const char suff[] = { call_regs[i].suffix, '\0' };
-	const char *pre, *post;
-
-	asm_reg_name(r, &pre, &post);
-
-	if(!call_regs[i].suffix && r && type_ref_size(r, NULL) < type_primitive_size(type_long)){
-		/* r9d, etc */
-		snprintf(buf, sizeof buf, "r%cd", call_regs[i].reg);
-	}else{
-		snprintf(buf, sizeof buf,
-				"%s%c%s", pre, call_regs[i].reg,
-				*suff == *post ? post : suff);
-	}
-
-	return buf;
 }
 
 void impl_func_prologue(int nargs)
@@ -442,7 +458,8 @@ void impl_op(enum op_type op)
 				r_div = vtop[-1].bits.reg;
 			}
 
-			UCC_ASSERT(r_div == X86_64_REG_RAX, "register A not chosen for idiv (%c)", regs[r_div]);
+			UCC_ASSERT(r_div == X86_64_REG_RAX,
+					"register A not chosen for idiv (%c)", regs[r_div].reg);
 
 			out_asm("cqto");
 
@@ -747,11 +764,8 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 		}
 
 	for(i = 0; i < MIN(nargs, N_CALL_REGS); i++){
-		int ri;
-
-		ri = call_regs[i].idx;
-		if(ri != -1)
-			v_freeup_reg(ri, 1);
+		int ri = call_regs[i];
+		v_freeup_reg(ri, 1);
 
 		INC_NFLOATS(vtop->t);
 
