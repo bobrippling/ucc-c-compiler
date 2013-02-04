@@ -43,7 +43,7 @@ __syscall:
 
 	syscall
 #ifdef __linux__
-	cmpq \$-1, %rax
+	cmpq $-1, %rax
 	jg .fin
 	negq %rax # get positive errno
 #else
