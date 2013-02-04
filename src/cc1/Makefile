@@ -43,6 +43,11 @@ clean:
 
 .PHONY: clean
 
+../util/alloc.o ../util/util.o ../util/platform.o ../util/dynarray.o \
+../util/dynmap.o:
+	@echo util must be built from util/
+	false
+
 # files that need target info
 out/mipsel_32.o: out/mipsel_32.c
 	${CC} ${CFLAGS_OUT} -c -o $@ $<
