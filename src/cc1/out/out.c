@@ -270,7 +270,7 @@ static int out_alloc_stack(int sz)
 		vtop->type = REG;
 		vtop->bits.reg = REG_SP;
 
-		out_push_i(type_ref_new_INT(), sz += extra);
+		out_push_i(type_ref_new_INTPTR_T(), sz += extra);
 		out_op(op_minus);
 		out_pop();
 	}
