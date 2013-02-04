@@ -356,14 +356,14 @@ retry:
 	fname[len-1] = '\0';
 	fname++;
 
+	i = dynarray_count((void **)dirnames);
+	dname = dirnames[i - 1];
+
 	if(*fname == '/'){
 		/* absolute path */
 		path = ustrdup(fname);
 		goto abs_path;
 	}
-
-	i = dynarray_count((void **)dirnames);
-	dname = dirnames[i - 1];
 
 	if(lib){
 lib:

@@ -104,7 +104,7 @@ static void asm_declare_init(FILE *f, stmt *init_code, type_ref *tfor)
 		 * assumes the ->codes order is member order
 		 */
 		struct_union_enum_st *sue = r->bits.type->sue;
-		sue_member **mem = sue->members;
+		sue_member **mem;
 		stmt **i, *two[2];
 		int end_of_last = 0;
 		static int pws;

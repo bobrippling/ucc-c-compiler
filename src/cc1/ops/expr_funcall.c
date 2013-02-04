@@ -363,8 +363,6 @@ invalid:
 	if(args_from_decl->arglist || args_from_decl->args_void){
 		int count_arg;
 
-		count_decl = count_arg = 0;
-
 		count_arg  = dynarray_count((void **)e->funcargs);
 		count_decl = dynarray_count((void **)args_from_decl->arglist);
 
