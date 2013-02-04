@@ -21,11 +21,6 @@
 
 #define REG_STR_SZ 8
 
-#define REG_A 0
-#define REG_B 1
-#define REG_C 2
-#define REG_D 3
-
 #define VSTACK_STR_SZ 128
 
 static const char regs[] = "abcd";
@@ -36,8 +31,8 @@ static const struct
 } call_regs[] = {
 	{ 'd', 'i',  -1 },
 	{ 's', 'i',  -1 },
-	{ 'd', 'x',  REG_D },
-	{ 'c', 'x',  REG_C },
+	{ 'd', 'x',  X86_64_REG_RDX },
+	{ 'c', 'x',  X86_64_REG_RCX },
 	{ '8', '\0', -1 },
 	{ '9', '\0', -1 },
 };
@@ -138,14 +133,12 @@ const char *call_reg_str(int i, type_ref *r)
 	return buf;
 }
 
-void impl_func_prologue(int stack_res, int nargs, int variadic)
+void impl_func_prologue(int nargs)
 {
 	int arg_idx;
 
 	out_asm("pushq %%rbp");
 	out_asm("movq %%rsp, %%rbp");
-
-	UCC_ASSERT(stack_sz == 0, "non-empty x86 stack for new func");
 
 	if(nargs){
 		int n_reg_args;
@@ -167,38 +160,34 @@ void impl_func_prologue(int stack_res, int nargs, int variadic)
 #endif
 		}
 	}
+}
 
-	if(stack_res){
-		UCC_ASSERT(stack_sz == 0, "non-empty x86 stack for new func");
-		stack_sz = impl_alloc_stack(stack_res);
-	}
+void impl_func_save_variadic(int nargs)
+{
+	/* play catchup, pushing any remaining reg args
+	 * this is _after_ args and stack alloc,
+	 * to simplify other offsetting code
+	 */
+	char *vfin = out_label_code("fin_...");
+	int i;
 
-	if(variadic){
-		/* play catchup, pushing any remaining reg args
-		 * this is _after_ args and stack alloc,
-		 * to simplify other offsetting code
-		 */
-		char *vfin = out_label_code("fin_...");
+	for(i = nargs; i < N_CALL_REGS; i++)
+		out_asm("push%c %%%s", asm_type_ch(NULL), call_reg_str(i, NULL));
 
-		for(; arg_idx < N_CALL_REGS; arg_idx++)
-			out_asm("push%c %%%s", asm_type_ch(NULL), call_reg_str(arg_idx, NULL));
+	out_asm("testb %%al, %%al");
+	out_asm("jz %s", vfin);
 
-		out_asm("testb %%al, %%al");
-		out_asm("jz %s", vfin);
+	out_asm("// pushq %%xmm0 TODO");
 
-		out_asm("// pushq %%xmm0 TODO");
+	out_label(vfin);
+	free(vfin);
 
-		out_label(vfin);
-		free(vfin);
-
-		ICW("need to adjust stack_sz for variadics");
-	}
+	ICW("need to adjust stack_sz for variadics");
 }
 
 void impl_func_epilogue(void)
 {
 	out_asm("leaveq");
-	stack_sz = 0;
 	out_asm("retq");
 }
 
@@ -229,24 +218,28 @@ static const char *x86_cmp(struct flag_opts *flag)
 	return NULL;
 }
 
-static void x86_load(struct vstack *from, const char *regstr)
+static void x86_load(struct vstack *from, const char *regstr, int lea)
 {
 	switch(from->type){
 		case FLAG:
+			UCC_ASSERT(!lea, "lea FLAG");
+
 			out_asm("set%s %%%s",
 					x86_cmp(&from->bits.flag),
 					regstr);
 			return;
 
+		case REG:
+			UCC_ASSERT(!lea, "lea REG");
 		case STACK:
 		case LBL:
 		case STACK_SAVE:
 		case CONST:
-		case REG:
 			break;
 	}
 
-	out_asm("mov%c %s, %%%s",
+	out_asm("%s%c %s, %%%s",
+			lea ? "lea" : "mov",
 			asm_type_ch(from->t),
 			vstack_str(from),
 			regstr);
@@ -271,15 +264,19 @@ void impl_load(struct vstack *from, int reg)
 		x86_reg_str_r(buf, reg, from->t);
 	}
 
-	x86_load(from, buf);
+	x86_load(from, buf, 0);
 
 	if(from->t != save)
 		type_ref_free_1(from->t);
+}
 
-	/* FIXME: merge */
-	v_clear(from, save);
-	from->type = REG;
-	from->bits.reg = reg;
+void impl_lea(struct vstack *of, int reg)
+{
+	char buf[REG_STR_SZ];
+
+	x86_reg_str_r(buf, reg, of->t);
+
+	x86_load(of, buf, 1);
 }
 
 void impl_store(struct vstack *from, struct vstack *to)
@@ -373,18 +370,18 @@ void impl_op(enum op_type op)
 			/* value to shift must be a register */
 			v_to_reg(&vtop[-1]);
 
-			v_freeup_reg(REG_C, 2); /* shift by rcx... x86 sigh */
+			v_freeup_reg(X86_64_REG_RCX, 2); /* shift by rcx... x86 sigh */
 
 			switch(vtop->type){
 				default:
-					v_to_reg(vtop); /* TODO: v_to_reg_preferred(vtop, REG_C) */
+					v_to_reg(vtop); /* TODO: v_to_reg_preferred(vtop, X86_64_REG_RCX) */
 
 				case REG:
 					free_this = vtop->t = type_ref_new_CHAR();
 
-					if(vtop->bits.reg != REG_C){
-						impl_reg_cp(vtop, REG_C);
-						vtop->bits.reg = REG_C;
+					if(vtop->bits.reg != X86_64_REG_RCX){
+						impl_reg_cp(vtop, X86_64_REG_RCX);
+						vtop->bits.reg = X86_64_REG_RCX;
 					}
 					break;
 
@@ -427,25 +424,25 @@ void impl_op(enum op_type op)
 			/*
 			 * Must freeup the lower
 			 */
-			v_freeup_regs(REG_A, REG_D);
+			v_freeup_regs(X86_64_REG_RAX, X86_64_REG_RDX);
 
 			v_to_reg(vtop);
 			r_div = v_to_reg(&vtop[-1]); /* TODO: similar to above - v_to_reg_preferred */
 
-			if(r_div != REG_A){
+			if(r_div != X86_64_REG_RAX){
 				/* we already have rax in use by vtop, swap the values */
-				if(vtop->type == REG && vtop->bits.reg == REG_A){
+				if(vtop->type == REG && vtop->bits.reg == X86_64_REG_RAX){
 					impl_reg_swp(vtop, &vtop[-1]);
 				}else{
-					v_freeup_reg(REG_A, 2);
-					impl_reg_cp(&vtop[-1], REG_A);
-					vtop[-1].bits.reg = REG_A;
+					v_freeup_reg(X86_64_REG_RAX, 2);
+					impl_reg_cp(&vtop[-1], X86_64_REG_RAX);
+					vtop[-1].bits.reg = X86_64_REG_RAX;
 				}
 
 				r_div = vtop[-1].bits.reg;
 			}
 
-			UCC_ASSERT(r_div == REG_A, "register A not chosen for idiv (%c)", regs[r_div]);
+			UCC_ASSERT(r_div == X86_64_REG_RAX, "register A not chosen for idiv (%c)", regs[r_div]);
 
 			out_asm("cqto");
 
@@ -479,7 +476,7 @@ but gcc and clang promote to ints anyway...
 						type_ref_to_str(vtop->t));
 			}
 
-			vtop->bits.reg = op == op_modulus ? REG_D : REG_A;
+			vtop->bits.reg = op == op_modulus ? X86_64_REG_RDX : X86_64_REG_RAX;
 			return;
 		}
 
@@ -670,7 +667,7 @@ static const char *x86_call_jmp_target(struct vstack *vp, int no_rax)
 		case CONST:
 			v_to_reg(vp); /* again, v_to_reg_preferred(), except that we don't want a reg */
 
-			if(no_rax && vp->bits.reg == REG_A){
+			if(no_rax && vp->bits.reg == X86_64_REG_RAX){
 				int r = v_unused_reg(1);
 				impl_reg_cp(vp, r);
 				vp->bits.reg = r;
@@ -686,9 +683,15 @@ static const char *x86_call_jmp_target(struct vstack *vp, int no_rax)
 	return NULL;
 }
 
-void impl_jmp()
+void impl_jmp_lbl(const char *lbl)
 {
-	out_asm("jmp %s", x86_call_jmp_target(vtop, 0));
+	out_asm("jmp %s", lbl);
+}
+
+void impl_jmp_reg(int r)
+{
+	char rstr[REG_STR_SZ];
+	out_asm("jmp *%s", x86_reg_str_r(rstr, r, NULL));
 }
 
 void impl_jcond(int true, const char *lbl)
@@ -731,6 +734,8 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 	int i, ncleanup;
 	int nfloats = 0;
 
+	(void)r_ret;
+
 	/* pre-scan of arguments - eliminate flags
 	 * (should only be one,
 	 * since we can only have one flag at a time)
@@ -750,7 +755,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 
 		INC_NFLOATS(vtop->t);
 
-		x86_load(vtop, call_reg_str(i, vtop->t));
+		x86_load(vtop, call_reg_str(i, vtop->t), 0);
 		vpop();
 	}
 	/* push remaining args onto the stack */

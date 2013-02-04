@@ -22,9 +22,8 @@ void impl_cast(type_ref *from, type_ref *to);
 void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func);
 void impl_pop_func_ret(type_ref *r);
 
-int  impl_alloc_stack(int sz);
-
-void impl_func_prologue(int stack_res, int nargs, int variadic);
+void impl_func_prologue(int nargs);
+void impl_func_save_variadic(int nargs);
 void impl_func_epilogue(void);
 
 void impl_undefined(void);

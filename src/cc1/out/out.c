@@ -33,7 +33,7 @@ int out_vcount(void)
 	return vtop ? 1 + (int)(vtop - vstack) : 0;
 }
 
-void vpush(type_ref *t)
+static void vpush(type_ref *t)
 {
 	v_check_type(t);
 
@@ -191,6 +191,7 @@ int v_unused_reg(int stack_as_backup)
 
 void out_load(struct vstack *from, int reg)
 {
+	type_ref *const save = from->t;
 	int lea = 0;
 
 	switch(from->type){
@@ -206,6 +207,7 @@ void out_load(struct vstack *from, int reg)
 
 	(lea ? impl_lea : impl_load)(from, reg);
 
+	vtop_clear(save);
 	from->type = REG;
 	from->bits.reg = reg;
 }
@@ -787,12 +789,21 @@ void out_comment(const char *fmt, ...)
 
 void out_func_prologue(int stack_res, int nargs, int variadic)
 {
-	impl_func_prologue(stack_res, nargs, variadic);
+	UCC_ASSERT(stack_sz == 0, "non-empty x86 stack for new func");
+
+	impl_func_prologue(nargs);
+
+	if(stack_res)
+		stack_sz = out_alloc_stack(stack_res);
+
+	if(variadic)
+		impl_func_save_variadic(nargs);
 }
 
 void out_func_epilogue()
 {
 	impl_func_epilogue();
+	stack_sz = 0;
 }
 
 void out_pop_func_ret(type_ref *t)

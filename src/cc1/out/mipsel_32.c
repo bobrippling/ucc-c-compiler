@@ -73,7 +73,7 @@ static char *reg_str_i(int r)
 	return reg_str_r_i(buf, r);
 }
 
-void impl_func_prologue(int stack_res, int nargs, int variadic)
+void impl_func_prologue(int nargs)
 {
 	static int pws;
 	int i;
@@ -81,17 +81,12 @@ void impl_func_prologue(int stack_res, int nargs, int variadic)
 	if(!pws)
 		pws = platform_word_size();
 
-	if(variadic)
-		ICW("variadic function prologue on MIPS");
-
 	out_asm("addi  $sp, $sp, -8"); /* space for saved ret and fp */
 	out_asm("sw    $ra, 4($sp)");  /* save ret */
 	out_asm("sw    $fp,  ($sp)");  /* save fp */
 	out_asm("move  $fp, $sp");     /* new frame */
 
 	UCC_ASSERT(nargs <= N_CALL_REGS, "TODO: more than 4 args"); /* FIXME */
-
-	out_asm("addi $sp, $sp, -%d", stack_res + nargs * pws);
 
 	for(i = 0; i < nargs; i++){
 		struct vstack arg   = VSTACK_INIT(REG),
@@ -103,6 +98,11 @@ void impl_func_prologue(int stack_res, int nargs, int variadic)
 
 		impl_store(&arg, &stack);
 	}
+}
+
+void impl_func_save_variadic(int nargs)
+{
+	ICW("variadic function prologue on MIPS");
 }
 
 void impl_func_epilogue(void)
@@ -393,7 +393,7 @@ void impl_jcond(int true, const char *lbl)
 	}
 }
 
-void impl_call(int nargs, type_ref *r_ret, type_ref *r_func)
+void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 {
 	int i;
 
