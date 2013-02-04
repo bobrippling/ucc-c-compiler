@@ -85,11 +85,8 @@ void fold_expr_identifier(expr *e, symtable *stab)
 			e->bits.iv = m->val->bits.iv;
 			/*FOLD_EXPR(e, stab);*/
 
-			{
-				type *t;
-				e->tree_type = type_ref_new_type(t = type_new_primitive(type_enum));
-				t->sue = sue;
-			}
+			e->tree_type = type_ref_new_type(
+					type_new_primitive_sue(type_enum, sue));
 		}
 	}else{
 		e->tree_type = sym->decl->ref;

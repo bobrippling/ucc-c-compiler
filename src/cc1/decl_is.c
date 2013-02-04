@@ -79,7 +79,7 @@ type_ref *type_ref_is_ptr(type_ref *r)
 	return r ? r->ref : NULL;
 }
 
-type *type_ref_get_type(type_ref *r)
+const type *type_ref_get_type(type_ref *r)
 {
 	for(; r && r->type != type_ref_type; r = r->ref);
 
@@ -222,7 +222,7 @@ int type_ref_is_complete(type_ref *r)
 	switch(r->type){
 		case type_ref_type:
 		{
-			type *t = r->bits.type;
+			const type *t = r->bits.type;
 
 			switch(t->primitive){
 				case type_void:
@@ -407,7 +407,7 @@ enum type_qualifier type_ref_qual(const type_ref *r)
 			return r->bits.cast.qual | (r->bits.cast.additive ? type_ref_qual(r->ref) : qual_none);
 
 		case type_ref_type:
-			return r->bits.type->qual;
+			return qual_none;
 
 		case type_ref_ptr:
 		case type_ref_block:

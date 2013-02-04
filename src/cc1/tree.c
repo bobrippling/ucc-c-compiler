@@ -22,7 +22,6 @@ intval *intval_new(long v)
 	return iv;
 }
 
-
 void where_new(struct where *w)
 {
 	extern int parse_finished;
@@ -51,34 +50,32 @@ void where_new(struct where *w)
 	}
 }
 
-type *type_new()
+static type *type_new_primitive1(enum type_primitive p)
 {
 	type *t = umalloc(sizeof *t);
 	where_new(&t->where);
-	t->is_signed = 1;
-	t->primitive = type_unknown;
-	return t;
-}
-
-type *type_new_primitive(enum type_primitive p)
-{
-	type *t = type_new();
 	t->primitive = p;
+	t->is_signed = 1;
 	return t;
 }
 
-type *type_new_primitive_qual(enum type_primitive p, enum type_qualifier q)
+const type *type_new_primitive_sue(enum type_primitive p, struct_union_enum_st *s)
 {
-	type *t = type_new_primitive(p);
-	t->qual = q;
+	type *t = type_new_primitive1(p);
+	t->sue = s;
 	return t;
 }
 
-type *type_copy(type *t)
+const type *type_new_primitive_signed(enum type_primitive p, int sig)
 {
-	type *ret = umalloc(sizeof *ret);
-	memcpy(ret, t, sizeof *ret);
-	return ret;
+	type *t = type_new_primitive1(p);
+	t->is_signed = sig;
+	return t;
+}
+
+const type *type_new_primitive(enum type_primitive p)
+{
+	return type_new_primitive1(p);
 }
 
 int type_primitive_size(enum type_primitive tp)
@@ -140,19 +137,6 @@ int type_qual_equal(enum type_qualifier a, enum type_qualifier b)
 
 int type_equal(const type *a, const type *b, enum type_cmp mode)
 {
-	if(!type_qual_equal(a->qual, b->qual)){
-		if(mode & TYPE_CMP_EXACT)
-			return 0;
-
-		/* if b is const, a must be */
-		if((mode & TYPE_CMP_QUAL)
-		&& (b->qual & qual_const)
-		&& !(a->qual & qual_const))
-		{
-			return 0;
-		}
-	}
-
 	if((mode & TYPE_CMP_ALLOW_SIGNED_UNSIGNED) == 0
 	&& a->is_signed != b->is_signed)
 	{
@@ -287,11 +271,6 @@ const char *type_to_str(const type *t)
 #define BUF_SIZE (sizeof(buf) - (bufp - buf))
 	static char buf[TYPE_STATIC_BUFSIZ];
 	char *bufp = buf;
-
-	{
-		const char *tmp = type_qual_to_str(t->qual);
-		bufp += snprintf(bufp, BUF_SIZE, "%s", tmp);
-	}
 
 	if(!t->is_signed) bufp += snprintf(bufp, BUF_SIZE, "unsigned ");
 

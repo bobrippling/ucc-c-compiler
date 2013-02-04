@@ -30,35 +30,21 @@
 static void parse_add_attr(decl_attr **append);
 static type_ref *parse_type_ref2(enum decl_mode mode, char **sp);
 
-void parse_sue_preamble(type **tp, char **psp, enum type_primitive primitive)
+/* sue = struct/union/enum */
+type_ref *parse_type_sue(enum type_primitive prim)
 {
-	char *spel;
-	type *t;
-
-	spel = NULL;
-	t = type_new_primitive(primitive);
+	char *spel = NULL;
+	sue_member **members = NULL;
+	decl_attr *this_sue_attr = NULL;
 
 	if(curtok == token_identifier){
 		spel = token_current_spel();
 		EAT(token_identifier);
 	}
 
-	parse_add_attr(&t->attr); /* int/struct-A __attr__ */
-
-	*psp = spel;
-	*tp = t;
-}
-
-/* sue = struct/union/enum */
-type *parse_type_sue(enum type_primitive prim)
-{
-	type *t;
-	char *spel;
-	sue_member **members;
-
-	parse_sue_preamble(&t, &spel, prim);
-
-	members = NULL;
+	/* FIXME: struct A { int i; };
+	 * struct A __attr__((packed)) a; - affects all struct A instances */
+	parse_add_attr(&this_sue_attr); /* int/struct-A __attr__ */
 
 	if(accept(token_open_block)){
 		if(prim == type_enum){
@@ -86,11 +72,11 @@ type *parse_type_sue(enum type_primitive prim)
 			decl **i;
 
 			if(!dmembers){
-				const char *t = sue_str_type(prim);
+				const char *desc = sue_str_type(prim);
 
 				if(curtok == token_colon)
-					DIE_AT(NULL, "can't have initial %s padding", t);
-				DIE_AT(NULL, "no members in %s", t);
+					DIE_AT(NULL, "can't have initial %s padding", desc);
+				DIE_AT(NULL, "no members in %s", desc);
 			}
 
 			for(i = dmembers; *i; i++){
@@ -113,11 +99,14 @@ type *parse_type_sue(enum type_primitive prim)
 			cc1_warn_at(NULL, 0, 1, WARN_PREDECL_ENUM, "predeclaration of enums is not C99");
 	}
 
-	t->sue = sue_add(current_scope, spel, members, prim);
+	{
+		type_ref *r = type_ref_new_type(type_new_primitive_sue(
+					prim,
+					sue_add(current_scope, spel, members, prim)));
 
-	parse_add_attr(&t->sue->attr); /* struct A {} __attr__ */
-
-	return t;
+		r->attr = this_sue_attr; /* struct A {} __attr__ */
+		return r;
+	}
 }
 
 #include "parse_attr.c"
@@ -227,15 +216,15 @@ static type_ref *parse_btype(enum decl_storage *store)
 		}else if(curtok == token_struct || curtok == token_union || curtok == token_enum){
 			const enum token tok = curtok;
 			const char *str;
-			type *t;
+			type_ref *tref;
 
 			EAT(curtok);
 
 			switch(tok){
-#define CASE(a)                           \
-				case token_ ## a:                 \
-					t = parse_type_sue(type_ ## a); \
-					str = #a;                       \
+#define CASE(a)                              \
+				case token_ ## a:                    \
+					tref = parse_type_sue(type_ ## a); \
+					str = #a;                          \
 					break
 
 				CASE(enum);
@@ -247,12 +236,12 @@ static type_ref *parse_btype(enum decl_storage *store)
 			}
 
 			if(signed_set || primitive_set || is_inline)
-				DIE_AT(&t->where, "primitive/signed/unsigned/inline with %s", str);
+				DIE_AT(&tref->where, "primitive/signed/unsigned/inline with %s", str);
 
 			/* fine... although a _Noreturn function returning a sue
 			 * is pretty daft... */
 			if(is_noreturn)
-				decl_attr_append(&t->attr, decl_attr_new(attr_noreturn));
+				decl_attr_append(&tref->attr, decl_attr_new(attr_noreturn));
 
 			/*
 			 * struct A { ... } const x;
@@ -263,10 +252,11 @@ static type_ref *parse_btype(enum decl_storage *store)
 				EAT(curtok);
 			}
 
-			t->qual = qual;
+			if(qual)
+				tref = type_ref_new_cast_add(tref, qual);
 
 			/* *store is assigned elsewhere */
-			return type_ref_new_type(t);
+			return tref;
 
 		}else if(accept(token_typeof)){
 			if(primitive_set)
@@ -341,12 +331,11 @@ static type_ref *parse_btype(enum decl_storage *store)
 			r = type_ref_new_tdef(tdef_typeof, tdef_decl);
 
 		}else{
-			type *t = type_new_primitive(primitive_set ? primitive : type_int);
-
-			t->is_signed = is_signed;
-			t->qual  = qual;
+			const type *t = type_new_primitive(primitive_set ? primitive : type_int);
 
 			r = type_ref_new_type(t);
+			if(!is_signed) /* signed by default */
+				r = type_ref_new_cast_signed(r, is_signed);
 		}
 
 		if(is_inline){

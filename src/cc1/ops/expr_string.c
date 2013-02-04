@@ -14,7 +14,6 @@ void fold_expr_str(expr *e, symtable *stab)
 {
 	expr *sz = expr_new_val(e->bits.str.sv.len);
 	decl *d;
-	type *type;
 	unsigned i;
 
 	if(e->code)
@@ -24,8 +23,7 @@ void fold_expr_str(expr *e, symtable *stab)
 
 	/* (const char []) */
 	e->tree_type = type_ref_new_array(
-			type_ref_new_type(
-				type = type_new_primitive_qual(type_char, qual_const)),
+			type_ref_new_type_qual(type_char, qual_const),
 			sz);
 
 	e->bits.str.sv.lbl = out_label_data_store(1);

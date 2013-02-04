@@ -53,12 +53,8 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 
 		SIZEOF_SIZE(e) = type_ref_size(SIZEOF_WHAT(e), &e->where);
 
-		{
-			type *t;
-			e->tree_type = type_ref_new_type(t = type_new_primitive(type_long));
-			/* size_t */
-			t->is_signed = 0;
-		}
+		/* size_t */
+		e->tree_type = type_ref_new_type(type_new_primitive_signed(type_long, 0));
 	}
 }
 

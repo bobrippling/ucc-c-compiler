@@ -23,17 +23,43 @@
 static type_ref *type_ref_new(enum type_ref_type t, type_ref *of)
 {
 	type_ref *r = umalloc(sizeof *r);
-	where_new(&r->where);
+	if(of)
+		memcpy_safe(&r->where, &of->where);
+	else
+		where_new(&r->where);
+
 	r->type = t;
 	r->ref = of;
 	return r;
 }
 
-type_ref *type_ref_new_type(type *t)
+static type_ref *basics[type_unknown];
+
+void type_ref_init()
 {
-	type_ref *r = type_ref_new(type_ref_type, NULL);
+	basics[type_void] = type_ref_new_VOID();
+	basics[type_int]  = type_ref_new_INT();
+	basics[type_char] = type_ref_new_CHAR();
+	basics[type_long] = type_ref_new_INTPTR_T();
+}
+
+type_ref *type_ref_new_type(const type *t)
+{
+	type_ref *r;
+
+	if((r = basics[t->primitive]))
+		return r;
+
+	r = type_ref_new(type_ref_type, NULL);
 	r->bits.type = t;
 	return r;
+}
+
+type_ref *type_ref_new_type_qual(enum type_primitive t, enum type_qualifier q)
+{
+	return type_ref_new_cast(
+			type_ref_new_type(type_new_primitive(t)),
+			q);
 }
 
 type_ref *type_ref_new_tdef(expr *e, decl *to)
@@ -111,17 +137,7 @@ decl *decl_new()
 	return d;
 }
 
-decl *decl_new_type(enum type_primitive p)
-{
-	decl *d = decl_new();
-	type *t = d->ref->bits.type;
-
-	t->primitive = p;
-
-	return d;
-}
-
-type *decl_get_type(decl *d)
+const type *decl_get_type(decl *d)
 {
 	return type_ref_get_type(d->ref);
 }
@@ -135,6 +151,8 @@ void type_ref_free_1(type_ref *r)
 		case type_ref_type:
 			/* XXX: memleak */
 			/*type_free(r->bits.type);*/
+			if(r == basics[r->bits.type->primitive])
+				return; /* singleton */
 			break;
 
 		case type_ref_func:
@@ -243,8 +261,7 @@ decl_attr *type_attr_present(type_ref *r, enum decl_attr_type t)
 
 		switch(r->type){
 			case type_ref_type:
-				return decl_attr_present(r->bits.type->attr, t);
-
+				return NULL;
 			case type_ref_tdef:
 			{
 				decl *d = r->bits.tdef.decl;
@@ -466,6 +483,22 @@ static int type_ref_equal_r(type_ref *a, type_ref *b, enum decl_cmp mode)
 	{
 		return 0;
 	}
+
+	/* FIXME: check qualifiers */
+#if 0
+	if(!type_qual_equal(a->qual, b->qual)){
+		if(mode & TYPE_CMP_EXACT)
+			return 0;
+
+		/* if b is const, a must be */
+		if((mode & TYPE_CMP_QUAL)
+				&& (b->qual & qual_const)
+				&& !(a->qual & qual_const))
+		{
+			return 0;
+		}
+	}
+#endif
 
 	a = type_ref_skip_tdefs_casts(a);
 	b = type_ref_skip_tdefs_casts(b);
@@ -777,7 +810,7 @@ void type_ref_add_type_str(type_ref *r,
 
 		if(aka && of){
 			/* descend to the type */
-			type *t = type_ref_get_type(of);
+			const type *t = type_ref_get_type(of);
 
 			BUF_ADD(" (aka '%s')",
 					t ? type_to_str(t)

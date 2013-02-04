@@ -54,27 +54,21 @@ struct type
 	where where;
 
 	enum type_primitive primitive;
-	enum type_qualifier qual;
 	int is_signed;
 
 	/* NULL unless this is a struct, union or enum */
 	struct_union_enum_st *sue;
-
-	/* attr applied to all decls whose type is this type */
-	decl_attr *attr;
 };
 
 enum type_cmp
 {
 	TYPE_CMP_EXACT         = 1 << 0,
-	TYPE_CMP_QUAL          = 1 << 1,
-	TYPE_CMP_ALLOW_SIGNED_UNSIGNED = 1 << 2,
+	TYPE_CMP_ALLOW_SIGNED_UNSIGNED = 1 << 1,
 };
 
-type *type_new(void);
-type *type_new_primitive(enum type_primitive);
-type *type_new_primitive_qual(enum type_primitive, enum type_qualifier);
-type *type_copy(type *);
+const type *type_new_primitive(enum type_primitive);
+const type *type_new_primitive_signed(enum type_primitive, int sig);
+const type *type_new_primitive_sue(enum type_primitive, struct_union_enum_st *);
 #define type_free(x) free(x)
 
 void where_new(struct where *w);
