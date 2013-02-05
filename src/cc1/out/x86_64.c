@@ -62,28 +62,23 @@ static const struct
 
 static const char *x86_reg_str_r(char buf[REG_STR_SZ], unsigned reg, type_ref *r)
 {
-	const char *regpre, *regpost;
-	const char suff[] = { regs[reg].suffix, '\0' };
-	const char *pre, *post;
-
 	UCC_ASSERT(reg < N_REGS, "invalid x86 reg %d", reg);
-
-	asm_reg_name(r, &pre, &post);
 
 	if(!regs[reg].suffix && r && type_ref_size(r, NULL) < type_primitive_size(type_long)){
 		/* r9d, etc */
 		snprintf(buf, REG_STR_SZ, "r%cd", regs[reg].reg);
 	}else{
+		*buf = 0;
+#if 0
+		const char suf = regs[reg].suffix;
+
 		snprintf(buf, REG_STR_SZ,
-				"%s%c%s", pre, regs[reg].reg,
-				*suff == *post ? post : suff);
+				"%s%c%c",
+				pre, regs[reg].reg);
+
+		out_comment("%s <-- type %s", buf, r ? type_ref_to_str(r) : "n/a");
+#endif
 	}
-
-	return buf;
-
-	asm_reg_name(r, &regpre, &regpost);
-
-	snprintf(buf, REG_STR_SZ, "%s%c%s", regpre, regs[reg].reg, regpost);
 
 	return buf;
 }
@@ -241,15 +236,22 @@ static const char *x86_cmp(struct flag_opts *flag)
 	return NULL;
 }
 
-static void x86_load(struct vstack *from, const char *regstr, int lea)
+static void x86_load(struct vstack *from, int reg, int lea)
 {
+	char regstr[REG_STR_SZ];
+	type_ref *const save = from->t;
+
 	switch(from->type){
 		case FLAG:
 			UCC_ASSERT(!lea, "lea FLAG");
 
-			out_asm("set%s %%%s",
-					x86_cmp(&from->bits.flag),
-					regstr);
+			/* XXX: memleak */
+			from->t = type_ref_new_CHAR(); /* force set%s to set the low byte */
+			x86_reg_str_r(regstr, reg, from->t);
+
+			out_comment("zero for set");
+			out_asm("mov%c $0, %%%s", asm_type_ch(from->t), regstr);
+			out_asm("set%s %%%s", x86_cmp(&from->bits.flag), regstr);
 			return;
 
 		case REG:
@@ -258,48 +260,30 @@ static void x86_load(struct vstack *from, const char *regstr, int lea)
 		case LBL:
 		case STACK_SAVE:
 		case CONST:
-			break;
+			x86_reg_str_r(regstr, reg, from->t);
+
+			out_asm("%s%c %s, %%%s",
+					lea ? "lea" : "mov",
+					asm_type_ch(from->t),
+					vstack_str(from),
+					regstr);
 	}
-
-	out_asm("%s%c %s, %%%s",
-			lea ? "lea" : "mov",
-			asm_type_ch(from->t),
-			vstack_str(from),
-			regstr);
-}
-
-void impl_load(struct vstack *from, int reg)
-{
-	char buf[REG_STR_SZ];
-	type_ref *const save = from->t;
-
-	if(from->type == REG && reg == from->bits.reg)
-		return;
-
-	x86_reg_str_r(buf, reg, from->t);
-
-	if(from->type == FLAG){
-		out_comment("zero for cmp");
-		out_asm("mov%c $0, %%%s", asm_type_ch(from->t), buf);
-
-		from->t = type_ref_new_CHAR(); /* force set%s to set the low byte */
-		/* decl changed, reload the register name */
-		x86_reg_str_r(buf, reg, from->t);
-	}
-
-	x86_load(from, buf, 0);
 
 	if(from->t != save)
 		type_ref_free_1(from->t);
 }
 
+void impl_load(struct vstack *from, int reg)
+{
+	if(from->type == REG && reg == from->bits.reg)
+		return;
+
+	x86_load(from, reg, 0);
+}
+
 void impl_lea(struct vstack *of, int reg)
 {
-	char buf[REG_STR_SZ];
-
-	x86_reg_str_r(buf, reg, of->t);
-
-	x86_load(of, buf, 1);
+	x86_load(of, reg, 1);
 }
 
 void impl_store(struct vstack *from, struct vstack *to)
@@ -776,7 +760,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 
 		INC_NFLOATS(vtop->t);
 
-		x86_load(vtop, call_reg_str(i, vtop->t), 0);
+		x86_load(vtop, i, 0);
 		vpop();
 	}
 	/* push remaining args onto the stack */
