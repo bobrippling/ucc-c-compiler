@@ -207,20 +207,7 @@ static void asm_reserve_bytes(const char *lbl, int nbytes)
 	 * or    .zerofill SECTION_NAME,buf,512,5
 	 */
 	asm_out_section(SECTION_BSS, "%s:\n", lbl);
-
-	while(nbytes > 0){
-		int i;
-
-		for(i = ASM_TABLE_MAX; i >= 0; i--){
-			const int sz = asm_type_table[i].sz;
-
-			if(nbytes >= sz){
-				asm_out_section(SECTION_BSS, ".%s 0\n", asm_type_table[i].directive);
-				nbytes -= sz;
-				break;
-			}
-		}
-	}
+	asm_out_section(SECTION_BSS, ".space %u\n", nbytes);
 }
 
 void asm_predeclare_extern(decl *d)
