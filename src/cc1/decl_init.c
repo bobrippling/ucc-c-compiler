@@ -404,29 +404,34 @@ static type_ref *decl_init_create_assignments_from_init(
 {
 	decl_init *ar[] = { single_init, NULL };
 	decl_init **it = ar;
-	struct_union_enum_st *sue;
 
 	/* init validity checks */
 	if(single_init->type == decl_init_scalar){
-		type_ref *tar;
+		struct_union_enum_st *sue;
+		type_ref *tar = NULL;
+		int bad = 0;
 
-		if((sue = type_ref_is_s_or_u(tfor_wrapped))
-		|| (tar = type_ref_is(       tfor_wrapped, type_ref_array)))
-		{
+		if((sue = type_ref_is_s_or_u(tfor_wrapped))){
+			bad = 1;
+		}else if((tar = type_ref_is(tfor_wrapped, type_ref_array))){
 			if(type_ref_is_type(type_ref_next(tar), type_char)){
 				/* is char[] */
 				expr *e = single_init->bits.expr;
 
-				if(expr_kind(e, str))
-					goto fine; /* arg is char * */
+				if(!expr_kind(e, str))
+					bad = 1;
+			}else{
+				bad = 1;
 			}
+		}
 
-			DIE_AT(&single_init->where, "%s must be initalised with an initialiser list",
+		if(bad){
+			DIE_AT(&single_init->where,
+					"%s must be initalised with an initialiser list",
 					sue ? sue_str(sue) : "array");
 		}
 	}
 
-fine:
 	return decl_init_create_assignments(
 			&it, tfor_wrapped, base, init_code);
 }
