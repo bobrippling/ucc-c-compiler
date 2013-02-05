@@ -212,11 +212,11 @@ static const char *x86_cmp(struct flag_opts *flag)
 
 static void x86_load(struct vstack *from, int reg, int lea)
 {
-	const char *regstr;
-	type_ref *const save = from->t;
-
 	switch(from->type){
 		case FLAG:
+		{
+			const char *regstr;
+
 			UCC_ASSERT(!lea, "lea FLAG");
 
 			/* XXX: memleak */
@@ -227,6 +227,7 @@ static void x86_load(struct vstack *from, int reg, int lea)
 			out_asm("mov%c $0, %%%s", asm_type_ch(from->t), regstr);
 			out_asm("set%s %%%s", x86_cmp(&from->bits.flag), regstr);
 			return;
+		}
 
 		case REG:
 			UCC_ASSERT(!lea, "lea REG");
@@ -234,17 +235,22 @@ static void x86_load(struct vstack *from, int reg, int lea)
 		case LBL:
 		case STACK_SAVE:
 		case CONST:
-			regstr = x86_reg_str(reg, from->t);
+		{
+			type_ref *of_t;
+
+			/* BUG */
+			fprintf(stderr, "PRE: %s\n", type_ref_to_str(from->t));
+			of_t = type_ref_ptr_depth_dec(from->t);
+			fprintf(stderr, "POST: %s\n", type_ref_to_str(of_t));
 
 			out_asm("%s%c %s, %%%s",
 					lea ? "lea" : "mov",
-					asm_type_ch(from->t),
+					asm_type_ch(of_t),
 					vstack_str(from),
-					regstr);
+					x86_reg_str(reg, of_t));
+			break;
+		}
 	}
-
-	if(from->t != save)
-		type_ref_free_1(from->t);
 }
 
 void impl_load(struct vstack *from, int reg)
