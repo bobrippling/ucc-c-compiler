@@ -23,6 +23,13 @@
 
 #define VSTACK_STR_SZ 128
 
+const struct asm_type_table asm_type_table[ASM_TABLE_MAX + 1] = {
+	{ 1,  'b', "byte"  },
+	{ 2,  'w', "word"  },
+	{ 4,  'l', "long" },
+	{ 8,  'q', "quad" },
+};
+
 static const int call_regs[] = {
 	X86_64_REG_RDI,
 	X86_64_REG_RSI,

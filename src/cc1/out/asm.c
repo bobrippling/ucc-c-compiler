@@ -16,37 +16,7 @@
 #include "../gen_asm.h"
 #include "../decl_init.h"
 
-static const struct
-{
-	int sz;
-	char ch;
-	const char *directive;
-	const char *regpre, *regpost;
-} asm_type_table[] = {
-	{ 1,  'b', "byte", "",  "l"  },
-	{ 2,  'w', "word", "",  "x"  },
-	{ 4,  'l', "long", "e", "x" },
-	{ 8,  'q', "quad", "r", "x" },
-
-	/* llong */
-	{ 16,  '\0', "???", "r", "x" },
-
-	/* ldouble */
-	{ 10,  '\0', "???", "r", "x" },
-};
-#define ASM_TABLE_MAX 3
-
-enum
-{
-	ASM_INDEX_CHAR    = 0,
-	ASM_INDEX_SHORT   = 1,
-	ASM_INDEX_INT     = 2,
-	ASM_INDEX_LONG    = 3,
-	ASM_INDEX_LLONG   = 4,
-	ASM_INDEX_LDOUBLE = 5,
-};
-
-int asm_table_lookup(type_ref *r)
+static int asm_table_lookup(type_ref *r)
 {
 	int sz;
 	int i;
@@ -75,13 +45,6 @@ char asm_type_ch(type_ref *r)
 const char *asm_type_directive(type_ref *r)
 {
 	return asm_type_table[asm_table_lookup(r)].directive;
-}
-
-void asm_reg_name(type_ref *r, const char **regpre, const char **regpost)
-{
-	const int i = asm_table_lookup(r);
-	*regpre  = asm_type_table[i].regpre;
-	*regpost = asm_type_table[i].regpost;
 }
 
 int asm_type_size(type_ref *r)
