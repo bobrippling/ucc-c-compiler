@@ -165,6 +165,7 @@ void         type_ref_free_1(type_ref *);
 void type_ref_init(void);
 type_ref *type_ref_new_tdef(expr *, decl *);
 type_ref *type_ref_new_type(const type *);
+type_ref *type_ref_new_type_primitive(enum type_primitive);
 type_ref *type_ref_new_type_qual(enum type_primitive, enum type_qualifier);
 type_ref *type_ref_new_ptr(  type_ref *to, enum type_qualifier);
 type_ref *type_ref_new_block(type_ref *to, enum type_qualifier);
@@ -253,11 +254,11 @@ struct_union_enum_st *type_ref_is_s_or_u_or_e(type_ref *);
 #define decl_is_bool(d) (decl_is_ptr(d) || decl_is_integral(d))
 
 /* note: returns static references */
-#define type_ref_new_VOID()       type_ref_new_type(type_new_primitive(type_void))
-#define type_ref_new_INT()        type_ref_new_type(type_new_primitive(type_int))
-#define type_ref_new_CHAR()       type_ref_new_type(type_new_primitive(type_char))
-#define type_ref_new_BOOL()       type_ref_new_type(type_new_primitive(type_int))
-#define type_ref_new_INTPTR_T()   type_ref_new_type(type_new_primitive(type_long))
+#define type_ref_new_VOID()       type_ref_new_type_primitive(type_void)
+#define type_ref_new_INT()        type_ref_new_type_primitive(type_int)
+#define type_ref_new_CHAR()       type_ref_new_type_primitive(type_char)
+#define type_ref_new_BOOL()       type_ref_new_type_primitive(type_int)
+#define type_ref_new_INTPTR_T()   type_ref_new_type_primitive(type_long)
 
 #define type_ref_new_VOID_PTR() type_ref_ptr_depth_inc(type_ref_new_VOID())
 

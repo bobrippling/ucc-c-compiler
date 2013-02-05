@@ -33,26 +33,32 @@ static type_ref *type_ref_new(enum type_ref_type t, type_ref *of)
 	return r;
 }
 
-static type_ref *basics[type_unknown];
+static type_ref *cache_basics[type_unknown];
+static type_ref *cache_ptr_void;
 
 void type_ref_init()
 {
-	basics[type_void] = type_ref_new_VOID();
-	basics[type_int]  = type_ref_new_INT();
-	basics[type_char] = type_ref_new_CHAR();
-	basics[type_long] = type_ref_new_INTPTR_T();
+	cache_basics[type_void] = type_ref_new_VOID();
+	cache_basics[type_int]  = type_ref_new_INT();
+	cache_basics[type_char] = type_ref_new_CHAR();
+	cache_basics[type_long] = type_ref_new_INTPTR_T();
+
+	cache_ptr_void = type_ref_new_VOID_PTR();
 }
 
 type_ref *type_ref_new_type(const type *t)
 {
-	type_ref *r;
-
-	if((r = basics[t->primitive]))
-		return r;
-
-	r = type_ref_new(type_ref_type, NULL);
+	type_ref *r = type_ref_new(type_ref_type, NULL);
 	r->bits.type = t;
 	return r;
+}
+
+type_ref *type_ref_new_type_primitive(enum type_primitive p)
+{
+	type_ref *r;
+	if((r = cache_basics[p]))
+		return r;
+	return type_ref_new_type(type_new_primitive(p));
 }
 
 type_ref *type_ref_new_type_qual(enum type_primitive t, enum type_qualifier q)
@@ -154,8 +160,8 @@ void type_ref_free_1(type_ref *r)
 		case type_ref_type:
 			/* XXX: memleak */
 			/*type_free(r->bits.type);*/
-			if(r == basics[r->bits.type->primitive])
-				return; /* singleton */
+			if(r == cache_basics[r->bits.type->primitive])
+				return; /* don't free the cache */
 			break;
 
 		case type_ref_func:
@@ -631,6 +637,9 @@ type_ref *type_ref_ptr_depth_dec(type_ref *r)
 
 type_ref *type_ref_ptr_depth_inc(type_ref *r)
 {
+	if(type_ref_is_type(r, type_void) && cache_ptr_void)
+		return cache_ptr_void;
+
 	return type_ref_new_ptr(r, qual_none);
 }
 
