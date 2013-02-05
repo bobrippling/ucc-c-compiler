@@ -19,6 +19,7 @@ extern const struct asm_type_table
 } asm_type_table[];
 #define ASM_TABLE_MAX 3
 
+int         asm_table_lookup(type_ref *);
 int         asm_type_size(type_ref *);
 char        asm_type_ch(type_ref *);
 const char *asm_type_directive(type_ref *);

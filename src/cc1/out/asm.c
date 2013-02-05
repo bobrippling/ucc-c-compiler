@@ -16,7 +16,7 @@
 #include "../gen_asm.h"
 #include "../decl_init.h"
 
-static int asm_table_lookup(type_ref *r)
+int asm_table_lookup(type_ref *r)
 {
 	int sz;
 	int i;
