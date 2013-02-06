@@ -712,11 +712,18 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 
 	for(i = 0; i < MIN(nargs, N_CALL_REGS); i++){
 		const int ri = call_regs[i];
-		v_freeup_reg(ri, 1);
+#ifdef DEBUG_REG_SAVE
+		out_comment("freeup call reg %s", x86_reg_str(ri, NULL));
+#endif
+		v_freeup_reg(ri, 0);
 
 		INC_NFLOATS(vtop->t);
 
+#ifdef DEBUG_REG_SAVE
+		out_comment("load into call reg %s", x86_reg_str(ri, NULL));
+#endif
 		out_load(vtop, ri);
+		v_reserve_reg(ri); /* we vpop but we don't want this reg clobbering */
 		vpop();
 	}
 	/* push remaining args onto the stack */
@@ -732,19 +739,12 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 		vpop();
 	}
 
-	/* save all registers */
-#define vcond (&vstack[i] < vtop)
-	i = 0;
-	if(vcond)
-		out_comment("pre-call reg-save");
-	for(; vcond; i++)
-		/* TODO: v_to_mem (__asm__ branch) */
-		if(vstack[i].type == REG || vstack[i].type == FLAG)
-			v_save_reg(&vstack[i]);
+	v_save_regs();
 
 	{
 		funcargs *args = type_ref_funcargs(r_func);
 		int need_float_count = args->variadic || (!args->arglist && !args->args_void);
+		/* jtarget must be assigned before "movb $0, %al" */
 		const char *jtarget = x86_call_jmp_target(vtop, need_float_count);
 
 		/* if x(...) or x() */
@@ -753,6 +753,9 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 
 		out_asm("callq %s", jtarget);
 	}
+
+	for(i = 0; i < MIN(nargs, N_CALL_REGS); i++)
+		v_unreserve_reg(call_regs[i]);
 
 	if(ncleanup)
 		out_asm("addq $%d, %%rsp", ncleanup * platform_word_size());

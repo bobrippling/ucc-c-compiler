@@ -294,13 +294,15 @@ void v_save_reg(struct vstack *vp)
 	 * -O1?
 	 */
 	store.bits.off_from_bp = -out_alloc_stack(type_ref_size(store.t, NULL));
+#ifdef DEBUG_REG_SAVE
+	out_comment("save register %d", vp->bits.reg);
+#endif
 	impl_store(vp, &store);
 
 	store.type = STACK_SAVE;
 
 	memcpy_safe(vp, &store);
 
-	/* no need for copy */
 	vp->t = type_ref_ptr_depth_dec(vp->t);
 }
 
@@ -312,16 +314,33 @@ void v_freeup_reg(int r, int allowable_stack)
 		v_freeup_regp(vp);
 }
 
-void v_freeup_regs(int a, int b)
+static void v_alter_reservation(int r, int n)
 {
-	reserved_regs[a] = 1;
-	reserved_regs[b] = 1;
+	r -= FIRST_SCRATCH_REG;
+	if(0 <= r && r <= N_SCRATCH_REGS)
+		reserved_regs[r] += n;
+}
+
+void v_reserve_reg(int r)
+{
+	v_alter_reservation(r, +1);
+}
+
+void v_unreserve_reg(int r)
+{
+	v_alter_reservation(r, -1);
+}
+
+void v_freeup_regs(const int a, const int b)
+{
+	reserved_regs[a - FIRST_SCRATCH_REG]++;
+	reserved_regs[b - FIRST_SCRATCH_REG]++;
 
 	v_freeup_reg(a, 2);
 	v_freeup_reg(b, 2);
 
-	reserved_regs[a] = 0;
-	reserved_regs[b] = 0;
+	reserved_regs[a - FIRST_SCRATCH_REG]--;
+	reserved_regs[b - FIRST_SCRATCH_REG]--;
 }
 
 void v_inv_cmp(struct vstack *vp)
@@ -716,6 +735,21 @@ void out_change_type(type_ref *t)
 	v_check_type(t);
 	/* XXX: memleak */
 	vtop->t = t;
+}
+
+void v_save_regs()
+{
+	int i = 0;
+
+	/* save all registers */
+	for(; &vstack[i] < vtop; i++){
+		if(i == 0)
+			out_comment("pre-call reg-save");
+
+		/* TODO: v_to_mem (__asm__ branch) */
+		if(vstack[i].type == REG || vstack[i].type == FLAG)
+			v_save_reg(&vstack[i]);
+	}
 }
 
 void out_call(int nargs, type_ref *r_ret, type_ref *r_func)
