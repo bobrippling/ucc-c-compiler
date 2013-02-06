@@ -716,12 +716,12 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 		}
 
 	for(i = 0; i < MIN(nargs, N_CALL_REGS); i++){
-		int ri = call_regs[i];
+		const int ri = call_regs[i];
 		v_freeup_reg(ri, 1);
 
 		INC_NFLOATS(vtop->t);
 
-		x86_load(vtop, i, 0);
+		x86_load(vtop, ri, 0);
 		vpop();
 	}
 	/* push remaining args onto the stack */
