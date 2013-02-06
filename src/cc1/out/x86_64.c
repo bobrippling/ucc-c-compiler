@@ -214,20 +214,19 @@ static void x86_load(struct vstack *from, int reg, int lea)
 {
 	switch(from->type){
 		case FLAG:
-		{
-			const char *regstr;
-
 			UCC_ASSERT(!lea, "lea FLAG");
+
+			out_comment("zero for set");
+			out_asm("mov%c $0, %%%s",
+					asm_type_ch(from->t),
+					x86_reg_str(reg, from->t));
 
 			/* XXX: memleak */
 			from->t = type_ref_new_CHAR(); /* force set%s to set the low byte */
-			regstr = x86_reg_str(reg, from->t);
-
-			out_comment("zero for set");
-			out_asm("mov%c $0, %%%s", asm_type_ch(from->t), regstr);
-			out_asm("set%s %%%s", x86_cmp(&from->bits.flag), regstr);
+			out_asm("set%s %%%s",
+					x86_cmp(&from->bits.flag),
+					x86_reg_str(reg, from->t));
 			return;
-		}
 
 		case REG:
 			UCC_ASSERT(!lea, "lea REG");
