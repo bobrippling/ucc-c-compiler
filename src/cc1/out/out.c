@@ -644,12 +644,14 @@ void out_deref()
 		case CONST:
 		{
 			int r = v_unused_reg(1);
+
+			v_deref_decl(vtop);
+
 			/* impl_load, since we don't want a lea switch */
 			impl_load(vtop, r);
 
 			vtop->type = REG;
 			vtop->bits.reg = r;
-			v_deref_decl(vtop);
 			break;
 		}
 	}
