@@ -530,7 +530,6 @@ but gcc and clang promote to ints anyway...
 
 void impl_deref_reg()
 {
-	const int r = v_unused_reg(1); /* allocate a reg here first, since it'll be used later too */
 	char ptr[VSTACK_STR_SZ];
 
 	UCC_ASSERT(vtop->type == REG, "not reg (%d)", vtop->type);
@@ -542,7 +541,7 @@ void impl_deref_reg()
 
 	out_asm("mov%c %s, %%%s",
 			asm_type_ch(vtop->t),
-			ptr, x86_reg_str(r, vtop->t));
+			ptr, x86_reg_str(vtop->bits.reg, vtop->t));
 }
 
 void impl_op_unary(enum op_type op)
