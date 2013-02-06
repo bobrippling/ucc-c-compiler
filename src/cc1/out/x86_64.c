@@ -15,10 +15,6 @@
 #include "out.h"
 #include "lbl.h"
 
-#ifndef MIN
-#  define MIN(x, y) ((x) < (y) ? (x) : (y))
-#endif
-
 #define REG_STR_SZ 8
 
 #define VSTACK_STR_SZ 128

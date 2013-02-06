@@ -275,7 +275,7 @@ static int out_alloc_stack(int sz)
 		out_pop();
 	}
 
-	return stack_sz + sz;
+	return stack_sz += sz;
 }
 
 void v_save_reg(struct vstack *vp)
@@ -791,7 +791,9 @@ void out_comment(const char *fmt, ...)
 
 void out_func_prologue(int stack_res, int nargs, int variadic)
 {
-	UCC_ASSERT(stack_sz == 0, "non-empty x86 stack for new func");
+	UCC_ASSERT(stack_sz == 0, "non-empty stack for new func");
+
+	stack_sz = MIN(nargs, N_CALL_REGS) * platform_word_size();
 
 	impl_func_prologue(nargs);
 
