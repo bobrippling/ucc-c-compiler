@@ -721,7 +721,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 
 		INC_NFLOATS(vtop->t);
 
-		x86_load(vtop, ri, 0);
+		out_load(vtop, ri);
 		vpop();
 	}
 	/* push remaining args onto the stack */
