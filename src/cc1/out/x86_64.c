@@ -475,10 +475,20 @@ but gcc and clang promote to ints anyway...
 				inv = 1;
 			}
 
-			out_asm("cmp%c %s, %s",
-					asm_type_ch(vtop[-1].t), /* pick the non-const one (for type-ing) */
-					vstack_str(       vtop),
-					vstack_str_r(buf, vtop - 1));
+			/* if we have a CONST, it'll be in vtop,
+			 * try a test instruction */
+			if((op == op_eq || op == op_ne)
+			&& vtop->type == CONST
+			&& vtop->bits.val == 0)
+			{
+				const char *vstr = vstack_str(vtop - 1); /* vtop[-1] is REG */
+				out_asm("test%c %s, %s", asm_type_ch(vtop[-1].t), vstr, vstr);
+			}else{
+				out_asm("cmp%c %s, %s",
+						asm_type_ch(vtop[-1].t), /* pick the non-const one (for type-ing) */
+						vstack_str(       vtop),
+						vstack_str_r(buf, vtop - 1));
+			}
 
 			vpop();
 			vtop_clear(type_ref_new_BOOL()); /* cmp creates an int/bool */
