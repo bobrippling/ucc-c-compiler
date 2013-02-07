@@ -569,9 +569,12 @@ void impl_normalise(void)
 
 	out_comment("normalise");
 
-	out_asm("and%c $0x1, %%%s",
-			asm_type_ch(vtop->t),
-			reg_str(vtop));
+	out_push_i(vtop->t, 0);
+	out_op(op_ne);
+	/* 0 -> `0 != 0` = 0
+	 * 1 -> `1 != 0` = 1
+	 * 5 -> `5 != 0` = 1
+	 */
 }
 
 void impl_cast(type_ref *from, type_ref *to)
