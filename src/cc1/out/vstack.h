@@ -58,12 +58,13 @@ void vdup(void);
 void v_clear(struct vstack *vp, type_ref *);
 void vtop_clear(type_ref *);
 
-void vtop2_prepare_op(void);
-void v_prepare_op(struct vstack *vp);
+void v_to_reg_const(struct vstack *vp);
 
 void v_inv_cmp(struct vstack *vp);
 
 int  v_to_reg(struct vstack *conv);
+void v_to_reg2(struct vstack *from, int reg);
+
 
 int  v_unused_reg(int stack_as_backup);
 void v_freeup_regp(struct vstack *);

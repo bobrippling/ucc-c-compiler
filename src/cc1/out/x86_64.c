@@ -19,6 +19,10 @@
 
 #define VSTACK_STR_SZ 128
 
+#define V_TO_REG_CONST2()      \
+			v_to_reg_const(vtop);    \
+			v_to_reg_const(vtop - 1)
+
 const struct asm_type_table asm_type_table[ASM_TABLE_MAX + 1] = {
 	{ 1,  'b', "byte"  },
 	{ 2,  'w', "word"  },
@@ -463,7 +467,7 @@ but gcc and clang promote to ints anyway...
 			char buf[VSTACK_STR_SZ];
 			int inv = 0;
 
-			vtop2_prepare_op();
+			V_TO_REG_CONST2();
 
 			/* if we have a const, it must be the first arg */
 			if(vtop[-1].type == CONST){
@@ -497,7 +501,7 @@ but gcc and clang promote to ints anyway...
 	{
 		char buf[VSTACK_STR_SZ];
 
-		vtop2_prepare_op();
+		V_TO_REG_CONST2();
 
 		/* TODO: -O1
 		 * if the op is commutative and we have REG_RET,
@@ -534,7 +538,7 @@ void impl_op_unary(enum op_type op)
 {
 	const char *opc;
 
-	v_prepare_op(vtop);
+	v_to_reg_const(vtop);
 
 	switch(op){
 		default:
@@ -722,7 +726,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 #ifdef DEBUG_REG_SAVE
 		out_comment("load into call reg %s", x86_reg_str(ri, NULL));
 #endif
-		out_load(vtop, ri);
+		v_to_reg2(vtop, ri);
 		v_reserve_reg(ri); /* we vpop but we don't want this reg clobbering */
 		vpop();
 	}

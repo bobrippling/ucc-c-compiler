@@ -111,7 +111,7 @@ void out_swap(void)
 	vswap();
 }
 
-void v_prepare_op(struct vstack *vp)
+void v_to_reg_const(struct vstack *vp)
 {
 	switch(vp->type){
 		case STACK:
@@ -128,32 +128,6 @@ void v_prepare_op(struct vstack *vp)
 		case REG:
 		case CONST:
 			break;
-	}
-}
-
-void vtop2_prepare_op(void)
-{
-#if 0
-	/* this assume we're assigning back */
-	/* special case - const and stack/lbl is fine */
-	if((vtop->type == CONST && vtop[-1].type == STACK)
-	|| (vtop->type == STACK && vtop[-1].type == CONST))
-	{
-		return;
-	}
-#endif
-
-
-	/* attempt to give this a higher reg,
-	 * since it'll be used more,
-	 * e.g. return and idiv */
-	v_prepare_op(&vtop[-1]);
-
-	v_prepare_op(vtop);
-
-	if((vtop->type == vtop[-1].type && vtop->type != REG) || vtop[-1].type != REG){
-		/* prefer putting vtop[-1] in a reg, since that's returned after */
-		v_to_reg(&vtop[-1]);
 	}
 }
 
@@ -189,7 +163,7 @@ int v_unused_reg(int stack_as_backup)
 	return -1;
 }
 
-void out_load(struct vstack *from, int reg)
+void v_to_reg2(struct vstack *from, int reg)
 {
 	type_ref *const save = from->t;
 	int lea = 0;
@@ -215,7 +189,7 @@ void out_load(struct vstack *from, int reg)
 int v_to_reg(struct vstack *conv)
 {
 	if(conv->type != REG)
-		out_load(conv, v_unused_reg(1));
+		v_to_reg2(conv, v_unused_reg(1));
 
 	return conv->bits.reg;
 }

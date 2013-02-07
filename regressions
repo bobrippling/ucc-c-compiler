@@ -1,3 +1,2 @@
-1: cmp %eax, %ebx seems to have become cmp $0, %eax. Similarly with imull
-2: deref_reg using the same register blows other functions' logic out the water
-3: off_t seems to now be signed?
+1: deref_reg using the same register blows other functions' logic out the water
+2: off_t seems to now be signed?

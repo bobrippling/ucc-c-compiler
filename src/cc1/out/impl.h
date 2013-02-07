@@ -38,8 +38,6 @@ enum p_opts
 void out_asm( const char *fmt, ...) ucc_printflike(1, 2);
 void out_asm2(enum p_opts opts, const char *fmt, ...) ucc_printflike(2, 3);
 
-void out_load(struct vstack *from, int reg);
-
 void impl_comment(const char *fmt, va_list l);
 void impl_lbl(const char *lbl);
 
