@@ -19,10 +19,6 @@
 
 #define VSTACK_STR_SZ 128
 
-#define V_TO_REG_CONST2()      \
-			v_to_reg_const(vtop);    \
-			v_to_reg_const(vtop - 1)
-
 const struct asm_type_table asm_type_table[ASM_TABLE_MAX + 1] = {
 	{ 1,  'b', "byte"  },
 	{ 2,  'w', "word"  },
@@ -467,7 +463,8 @@ but gcc and clang promote to ints anyway...
 			char buf[VSTACK_STR_SZ];
 			int inv = 0;
 
-			V_TO_REG_CONST2();
+			v_to_reg_const(vtop);
+			v_to_reg_const(vtop - 1);
 
 			/* if we have a const, it must be the first arg */
 			if(vtop[-1].type == CONST){
@@ -511,7 +508,12 @@ but gcc and clang promote to ints anyway...
 	{
 		char buf[VSTACK_STR_SZ];
 
-		V_TO_REG_CONST2();
+		v_to_reg_const(vtop);
+		v_to_reg_const(vtop - 1);
+
+		/* vtop[-1] is a constant - needs to be in a reg */
+		if(vtop[-1].type != REG)
+			v_to_reg(vtop - 1);
 
 		/* TODO: -O1
 		 * if the op is commutative and we have REG_RET,
