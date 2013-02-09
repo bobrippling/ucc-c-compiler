@@ -1,5 +1,2 @@
-2: off_t (and others) seem to now be signed?
-	see regression_sign.c
-
 4: register stack save code doesn't align to stack
 	see regression_stack.c

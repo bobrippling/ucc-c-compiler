@@ -331,11 +331,10 @@ static type_ref *parse_btype(enum decl_storage *store)
 			r = type_ref_new_tdef(tdef_typeof, tdef_decl);
 
 		}else{
-			const type *t = type_new_primitive(primitive_set ? primitive : type_int);
-
-			r = type_ref_new_type(t);
-			if(!is_signed) /* signed by default */
-				r = type_ref_new_cast_signed(r, is_signed);
+			r = type_ref_new_type(
+					type_new_primitive_signed(
+						primitive_set ? primitive : type_int,
+						is_signed));
 		}
 
 		if(is_inline){
