@@ -26,7 +26,8 @@ struct vstack *vtop = NULL;
 
 static int stack_sz;
 
-static int reserved_regs[N_SCRATCH_REGS];
+/* we won't reserve it more than 255 times */
+static unsigned char reserved_regs[N_SCRATCH_REGS];
 
 int out_vcount(void)
 {
@@ -128,7 +129,7 @@ void v_to_reg_const(struct vstack *vp)
 
 int v_unused_reg(int stack_as_backup)
 {
-	static int used[N_SCRATCH_REGS];
+	static unsigned char used[N_SCRATCH_REGS];
 	struct vstack *it, *first;
 	int i;
 
@@ -286,7 +287,7 @@ void v_freeup_reg(int r, int allowable_stack)
 static void v_alter_reservation(int r, int n)
 {
 	r -= FIRST_SCRATCH_REG;
-	if(0 <= r && r <= N_SCRATCH_REGS)
+	if(0 <= r && r < N_SCRATCH_REGS)
 		reserved_regs[r] += n;
 }
 
