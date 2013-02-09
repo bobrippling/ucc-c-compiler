@@ -368,6 +368,8 @@ void out_push_lbl(char *s, int pic)
 
 void out_dup(void)
 {
+	/* TODO: mark reg as duped, but COW */
+	out_comment("dup");
 	vpush(NULL);
 	switch(vtop[-1].type){
 		case CONST:
