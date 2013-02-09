@@ -2,12 +2,10 @@
 	see regression_deref.c
 
 2: off_t (and others) seem to now be signed?
-	see stdlib.c
-		setle -> setg
+	see regression_sign.c
 
 3: adding to a global pointer adds zero
 	see regression_add.c
 
 4: register stack save code doesn't align to stack
-	see stdio.c
-		e.g. -41(rbp)
+	see regression_stack.c
