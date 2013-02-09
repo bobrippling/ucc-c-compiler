@@ -43,6 +43,15 @@ static const char *const sym_regs[] = {
 	"sp", "fp", "ra"
 };
 
+const struct asm_type_table asm_type_table[ASM_TABLE_MAX + 1] = {
+	/* FIXME: MIPS backend still doesn't do proper
+	 * char/short/int/long accesses */
+	{ 1,  'b',  "byte"  },
+	{ 2,  'w',  "word"  },
+	{ 4,  '\0', "long"  },
+	{ -1,   0,   NULL   },
+};
+
 static const int call_regs[] = {
 	MIPS_REG_A0,
 	MIPS_REG_A1,
@@ -53,7 +62,6 @@ static const int call_regs[] = {
 static char *reg_str_r_i(char buf[REG_STR_SZ], int r)
 {
 #ifdef SYMBOLIC_REGS
-	/* FIXME: just return the kstr */
 	strcpy(buf, sym_regs[r]);
 #else
 	snprintf(buf, REG_STR_SZ, "r%d", r);
@@ -403,7 +411,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 		const int ri = call_regs[i];
 
 		v_freeup_reg(ri, 1);
-		out_load(vtop, ri);
+		v_to_reg2(vtop, ri);
 		vpop();
 	}
 
@@ -421,7 +429,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 void impl_pop_func_ret(type_ref *r)
 {
 	(void)r;
-	out_load(vtop, REG_RET);
+	v_to_reg2(vtop, REG_RET);
 	vpop();
 }
 
