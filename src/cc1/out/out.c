@@ -370,15 +370,33 @@ void out_push_lbl(char *s, int pic)
 	vtop->type = LBL;
 }
 
-void vdup(void)
-{
-	vpush(NULL);
-	memcpy_safe(&vtop[0], &vtop[-1]);
-}
-
 void out_dup(void)
 {
-	vdup();
+	vpush(NULL);
+	switch(vtop[-1].type){
+		case CONST:
+		case STACK:
+		case STACK_SAVE:
+		case LBL:
+			/* fine */
+			memcpy_safe(&vtop[0], &vtop[-1]);
+			break;
+		case FLAG:
+			v_to_reg(&vtop[-1]);
+			/* fall */
+		case REG:
+		{
+			/* need a new reg */
+			int r = v_unused_reg(1);
+			impl_reg_cp(&vtop[-1], r);
+
+			vtop->type = REG;
+			vtop->bits.reg = r;
+			vtop->t = vtop[-1].t;
+
+			break;
+		}
+	}
 }
 
 void out_store()
