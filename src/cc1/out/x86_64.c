@@ -431,7 +431,7 @@ void impl_op(enum op_type op)
 
 			vpop();
 
-			vtop_clear(vtop->t);
+			v_clear(vtop, vtop->t);
 			vtop->type = REG;
 
 			if(type_ref_size(vtop->t, NULL) != type_primitive_size(type_int)){
@@ -488,7 +488,7 @@ but gcc and clang promote to ints anyway...
 			}
 
 			vpop();
-			vtop_clear(type_ref_new_BOOL()); /* cmp creates an int/bool */
+			v_clear(vtop, type_ref_new_BOOL()); /* cmp creates an int/bool */
 			vtop->type = FLAG;
 			vtop->bits.flag.cmp = op_to_flag(op);
 			vtop->bits.flag.is_signed = is_signed;

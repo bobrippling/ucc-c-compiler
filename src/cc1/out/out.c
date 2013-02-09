@@ -50,7 +50,7 @@ static void vpush(type_ref *t)
 		vtop++;
 	}
 
-	vtop_clear(t);
+	v_clear(vtop, t);
 }
 
 void v_clear(struct vstack *vp, type_ref *t)
@@ -59,11 +59,6 @@ void v_clear(struct vstack *vp, type_ref *t)
 
 	memset(vp, 0, sizeof *vp);
 	vp->t = t;
-}
-
-void vtop_clear(type_ref *t)
-{
-	v_clear(vtop, t);
 }
 
 void vpop(void)
@@ -181,7 +176,7 @@ void v_to_reg2(struct vstack *from, int reg)
 
 	(lea ? impl_lea : impl_load)(from, reg);
 
-	vtop_clear(save);
+	v_clear(from, save);
 	from->type = REG;
 	from->bits.reg = reg;
 }
@@ -749,7 +744,7 @@ void out_call(int nargs, type_ref *r_ret, type_ref *r_func)
 	impl_call(nargs, r_ret, r_func);
 
 	/* return type */
-	vtop_clear(r_ret);
+	v_clear(vtop, r_ret);
 	vtop->type = REG;
 	vtop->bits.reg = REG_RET;
 }

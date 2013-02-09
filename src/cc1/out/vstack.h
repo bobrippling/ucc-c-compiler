@@ -55,7 +55,6 @@ void vpop(void);
 void vswap(void);
 
 void v_clear(struct vstack *vp, type_ref *);
-void vtop_clear(type_ref *);
 
 void v_to_reg_const(struct vstack *vp);
 
