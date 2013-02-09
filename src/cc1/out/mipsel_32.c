@@ -245,15 +245,20 @@ void impl_reg_cp(struct vstack *from, int r)
 
 void impl_op(enum op_type op)
 {
-	const char *cmp;
-	char r_vtop[REG_STR_SZ], r_vtop1[REG_STR_SZ];
+	const char *cmp, *immediate;
+	char r_vtop[16], r_vtop1[REG_STR_SZ];
 
-	/* TODO: use immediate instructions */
 	v_to_reg(vtop - 1);
 	reg_str_r(r_vtop1, vtop-1);
 
-	v_to_reg(vtop);
-	reg_str_r(r_vtop, vtop);
+	v_to_reg_const(vtop);
+	if(vtop->type == CONST){
+		immediate = "i";
+		snprintf(r_vtop, sizeof r_vtop, "%d", vtop->bits.val);
+	}else{
+		immediate = "";
+		reg_str_r(r_vtop, vtop);
+	}
 
 	/* TODO: signed */
 	switch(op){
@@ -266,8 +271,8 @@ void impl_op(enum op_type op)
 		OP(gt);
 #undef OP
 cmp:
-		out_asm("s%s $%s, $%s, $%s",
-				cmp, r_vtop1, r_vtop1, r_vtop);
+		out_asm("s%s%s $%s, $%s, $%s",
+				cmp, immediate, r_vtop1, r_vtop1, r_vtop);
 		break;
 
 		case op_orsc:
@@ -290,8 +295,9 @@ cmp:
 		OP(shiftr,   "srl");
 #undef OP
 op:
-		out_asm("%s $%s, $%s, $%s",
-				cmp, r_vtop1, r_vtop1, r_vtop);
+		out_asm("%s%s $%s, $%s, $%s",
+				cmp, immediate,
+				r_vtop1, r_vtop1, r_vtop);
 
 		switch(op){
 			case op_divide:
