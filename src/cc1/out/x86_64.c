@@ -37,15 +37,20 @@ static const int call_regs[] = {
 
 static const char *x86_reg_str(unsigned reg, type_ref *r)
 {
+	/* must be sync'd with header */
 	static const char *const rnames[][4] = {
-		{  "al",  "ax", "eax", "rax" },
-		{  "bl",  "bx", "ebx", "rbx" },
-		{  "cl",  "cx", "ecx", "rcx" },
-		{  "dl",  "dx", "edx", "rdx" },
+#define REG(x) {  #x "l",  #x "x", "e"#x"x", "r"#x"x" }
+		REG(a), REG(b), REG(c), REG(d),
+#undef REG
+
 		{ "dil",  "di", "edi", "rdi" },
 		{ "sil",  "si", "esi", "rsi" },
-		{  NULL,  NULL, "r8d", "r8"  },
-		{  NULL,  NULL, "r8d", "r9"  },
+
+#define REG(x) {  NULL,  NULL, "r" #x "d", "r" #x  }
+		REG(8),  REG(9),  REG(10), REG(11),
+		REG(12), REG(13), REG(14), REG(15),
+#undef REG
+
 		{  NULL,  "bp", "ebp", "rbp" },
 		{  NULL,  "sp", "esp", "rsp" },
 	};

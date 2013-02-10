@@ -11,11 +11,17 @@
 
 #define X86_64_REG_R8  6
 #define X86_64_REG_R9  7
+#define X86_64_REG_R10 8
+#define X86_64_REG_R11 9
+#define X86_64_REG_R12 10
+#define X86_64_REG_R13 11
+#define X86_64_REG_R14 12
+#define X86_64_REG_R15 13
 
-#define X86_64_REG_RBP 8
-#define X86_64_REG_RSP 9
+#define X86_64_REG_RBP 14
+#define X86_64_REG_RSP 15
 
-#define N_SCRATCH_REGS    4
+#define N_SCRATCH_REGS    14 /* ax-dx, di-si, r8-r15 */
 #define FIRST_SCRATCH_REG X86_64_REG_RAX
 #define N_CALL_REGS       6
 #define REG_RET           X86_64_REG_RAX
