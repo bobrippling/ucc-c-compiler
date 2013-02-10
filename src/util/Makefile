@@ -26,3 +26,4 @@ clean:
 
 .PHONY: all clean
 
+platform.o: platform.c ../../config.mk
