@@ -277,13 +277,13 @@ static type_ref *decl_initialise_array(
 		decl_init_iter sub_array_iter;
 		decl_init_iter *array_iter;
 		const int braced = dinit->type == decl_init_brace;
-		int known_length = !type_ref_is_incomplete_array(tfor);
-		int lim = known_length ? type_ref_array_len(tfor) : INT_MAX;
-		const int fixed_length = known_length;
-		int i, max_i;
 		int adv_iter_by = 0;
 		stmt **sorted_array_inits = NULL;
 		stmt *init_code_dummy = stmt_new_wrapper(code, init_code->symtab);
+
+		int is_fixed_length = !type_ref_is_incomplete_array(tfor);
+		int n_fixed_length  = is_fixed_length ? type_ref_array_len(tfor) : 0;
+		int i, last_index = 0;
 
 		if(dinit->type == decl_init_scalar){
 			array_iter = init_iter;
@@ -299,20 +299,16 @@ static type_ref *decl_initialise_array(
 				(void *)dinit);
 		INIT_DEBUG_DEPTH(++);
 
-		if(!array_iter->pos && !known_length){
+		if(!array_iter->pos && !is_fixed_length){
 			/* x = {} = 1-length array */
-			known_length = 1;
-			lim = 1;
+			is_fixed_length = 1;
+			n_fixed_length = 1;
 		}
 
-		if(known_length){
-			sorted_array_inits = umalloc((lim + 1) * sizeof *sorted_array_inits);
-			max_i = lim - 1;
-		}else{
-			max_i = 0;
-		}
+		if(is_fixed_length)
+			sorted_array_inits = umalloc((n_fixed_length + 1) * sizeof *sorted_array_inits);
 
-		for(i = 0; array_iter->pos && i < lim; i++){
+		for(i = 0; array_iter->pos && (is_fixed_length ? i < n_fixed_length : 1); i++){
 			/* index into the main-array */
 			adv_iter_by++;
 
@@ -344,12 +340,11 @@ static type_ref *decl_initialise_array(
 						if(i < 0)
 							DIE_AT(&idx->where, "negative array index");
 
-						if(fixed_length && i >= lim)
-							DIE_AT(&idx->where, "index %d out of bounds (%d)", i, lim - 1);
+						if(is_fixed_length && i >= n_fixed_length)
+							DIE_AT(&idx->where, "index %d out of bounds (0...%d)", i, n_fixed_length);
 
-						if(!known_length || lim < i + 1)
-							lim = i + 1;
-						known_length = 1;
+						if(i > last_index)
+							last_index = i;
 					}
 				}
 			}
@@ -367,39 +362,39 @@ static type_ref *decl_initialise_array(
 			INIT_DEBUG_DEPTH(--);
 
 			/* insert, sorted */
-			array_insert_sorted(&sorted_array_inits, i, &max_i, init_code_dummy);
+			array_insert_sorted(&sorted_array_inits, i, &last_index, init_code_dummy);
 		}
 
-		if(known_length){
+		INIT_DEBUG("terminating array loop i=%d, is_fixed_length=%d, n_fixed_length=%d, array_iter->pos=%p\n",
+				i, is_fixed_length, n_fixed_length, (void *)array_iter->pos);
+
+		{
 			/* need to zero-fill
 			 * can't start at i,
 			 * may have skipped over with designators
 			 */
-			max_i = lim - 1;
+			const int fill_to = is_fixed_length ? n_fixed_length - 1 : last_index;
 
-			INIT_DEBUG("max_i = %d (from lim = %d, -1)\n", max_i, lim);
+			INIT_DEBUG("fill_to = %d\n", fill_to);
 
-			for(i = 0; i < lim; i++){
+			for(i = 0; i <= fill_to; i++){
 				if(sorted_array_inits[i])
 					continue;
 
-				INIT_DEBUG("create ZERO array assignment[%d] to %s\n",
-						i, type_ref_to_str(tfor_deref));
+				INIT_DEBUG("create ZERO array assignment to %s[%d]\n",
+						type_ref_to_str(tfor_deref), i);
 
 				decl_init_create_assignments_discard(
 						NULL, tfor_deref, expr_new_array_idx(base, i),
 						init_code_dummy);
 
-				array_insert_sorted(&sorted_array_inits, i, &max_i, init_code_dummy);
+				array_insert_sorted(&sorted_array_inits, i, &last_index, init_code_dummy);
 			}
-		}else{
-			/* need to set lim for complete_to */
-			lim = i;
+
+			complete_to = fill_to + 1;
 		}
 
 		dynarray_add_array(&sub_init_code->codes, sorted_array_inits);
-
-		complete_to = lim;
 
 		/* advance by the number of steps we moved over,
 		 * if not nested, otherwise advance by one, over the sub-brace
@@ -414,7 +409,7 @@ static type_ref *decl_initialise_array(
 
 		INIT_DEBUG_DEPTH(--);
 		INIT_DEBUG("array, len %d finished, i=%d, adv-by=%d\n",
-				complete_to, i, adv);
+				complete_to, i, dinit->type == decl_init_brace);
 
 		free(sorted_array_inits);
 		free(init_code_dummy);
