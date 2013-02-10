@@ -413,10 +413,24 @@ void out_store()
 
 void out_normalise(void)
 {
-	if(vtop->type == CONST)
-		vtop->bits.val = !!vtop->bits.val;
-	else
-		impl_normalise();
+	switch(vtop->type){
+		case CONST:
+			vtop->bits.val = !!vtop->bits.val;
+			break;
+
+		default:
+			v_to_reg(vtop);
+
+		case REG:
+			out_comment("normalise");
+
+			out_push_i(vtop->t, 0);
+			out_op(op_ne);
+			/* 0 -> `0 != 0` = 0
+			 * 1 -> `1 != 0` = 1
+			 * 5 -> `5 != 0` = 1
+			 */
+	}
 }
 
 void out_push_sym(sym *s)

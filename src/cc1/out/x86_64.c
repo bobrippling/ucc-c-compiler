@@ -574,21 +574,6 @@ void impl_op_unary(enum op_type op)
 	out_asm("%s %s", opc, vstack_str(vtop));
 }
 
-void impl_normalise(void)
-{
-	if(vtop->type != REG)
-		v_to_reg(vtop);
-
-	out_comment("normalise");
-
-	out_push_i(vtop->t, 0);
-	out_op(op_ne);
-	/* 0 -> `0 != 0` = 0
-	 * 1 -> `1 != 0` = 1
-	 * 5 -> `5 != 0` = 1
-	 */
-}
-
 void impl_cast(type_ref *from, type_ref *to)
 {
 	int szfrom, szto;

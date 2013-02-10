@@ -11,7 +11,6 @@ void impl_reg_swp(struct vstack *a, struct vstack *b);
 void impl_op(enum op_type);
 void impl_op_unary(enum op_type); /* returns reg that the result is in */
 void impl_deref_reg(void);
-void impl_normalise(void);
 
 void impl_jmp_lbl(const char *lbl);
 void impl_jmp_reg(int r);

@@ -27,8 +27,6 @@
 					ICW("TODO: pic on mips");   \
 			}
 
-#define TODO() ICE("TODO")
-
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 
 static const char *const sym_regs[] = {
@@ -355,11 +353,6 @@ void impl_op_unary(enum op_type op)
 			out_asm("seq $%s, $%s, $%s",
 					r_vtop, r_vtop, sym_regs[MIPS_REG_ZERO]);
 	}
-}
-
-void impl_normalise(void)
-{
-	fprintf(F_DEBUG, "TODO: normalise %d\n", vtop->type);
 }
 
 void impl_cast(type_ref *from, type_ref *to)
