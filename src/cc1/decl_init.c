@@ -284,7 +284,6 @@ static type_ref *decl_initialise_array(
 		decl_init_iter sub_array_iter;
 		decl_init_iter *array_iter;
 		const int braced = dinit->type == decl_init_brace;
-		int adv_iter_by = 0;
 		stmt **sorted_array_inits = NULL;
 		stmt *init_code_dummy = stmt_new_wrapper(code, init_code->symtab);
 
@@ -330,8 +329,6 @@ static type_ref *decl_initialise_array(
 				break;
 
 			/* index into the main-array */
-			adv_iter_by++;
-
 			{
 				decl_init *init_for_mem = array_iter->pos[0];
 				desig *const desig = init_for_mem->desig;
@@ -387,7 +384,9 @@ static type_ref *decl_initialise_array(
 			array_insert_sorted(&sorted_array_inits, i, &last_index, init_code_dummy);
 
 			{
-				const int next_is_desig = INIT_ITER_VALID(array_iter) && array_iter->pos[0]->desig;
+				const int next_is_desig = INIT_ITER_VALID(array_iter)
+					&& array_iter->pos[0]->desig;
+
 				if(braced){
 					if(!next_is_desig)
 						init_iter_adv(array_iter, 1);
