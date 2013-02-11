@@ -38,7 +38,16 @@ void gen_expr_stmt(expr *e, symtable *stab)
 	(void)stab;
 
 	gen_stmt(e->code);
-	/* last stmt is told to leave its result on the stack */
+	/* last stmt is told to leave its result on the stack
+	 *
+	 * if the last stmt isn't an expression, we put something
+	 * on the stack for it
+	 */
+	{
+		int n = dynarray_count((void **)e->code->codes);
+		if(n > 0 && !stmt_kind(e->code->codes[n-1], expr))
+			out_push_i(type_ref_new_INT(), 0);
+	}
 
 	out_comment("end of ({...})");
 }
