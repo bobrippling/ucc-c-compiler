@@ -313,11 +313,24 @@ static type_ref *decl_initialise_array(
 		if(is_fixed_length)
 			sorted_array_inits = umalloc((n_fixed_length + 1) * sizeof *sorted_array_inits);
 
-		for(i = 0; array_iter->pos && (is_fixed_length ? i < n_fixed_length : 1); i++){
+		for(i = 0; ; i++){
+			/* terminate if necessary
+			 * don't terminate the loop if the next is a desig
+			 * e.g. int x[3] = { [2] = 1, [1] = 1 };
+			 *            don't terminate ^
+			 */
+			if(!array_iter->pos)
+				break;
+
+			if(!array_iter->pos[0]->desig
+			&& is_fixed_length
+			&& i >= n_fixed_length)
+				break;
+
 			/* index into the main-array */
 			adv_iter_by++;
 
-			if(array_iter->pos){
+			{
 				decl_init *init_for_mem = array_iter->pos[0];
 				desig *const desig = init_for_mem->desig;
 
