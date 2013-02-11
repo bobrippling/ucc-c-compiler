@@ -322,12 +322,8 @@ static type_ref *decl_initialise_array(
 				desig *const desig = init_for_mem->desig;
 
 				if(desig){
-
-					if(desig->type != desig_ar){
-						if(!braced)
-							break; /* similar to struct breaks */
+					if(desig->type != desig_ar)
 						DIE_AT(&init_for_mem->where, "array designator expected");
-					}
 
 					init_for_mem->desig = desig->next; /* advance */
 
@@ -368,6 +364,13 @@ static type_ref *decl_initialise_array(
 
 			/* insert, sorted */
 			array_insert_sorted(&sorted_array_inits, i, &last_index, init_code_dummy);
+
+			if(!braced
+			&& INIT_ITER_VALID(array_iter)
+			&& array_iter->pos[0]->desig)
+			{
+				break;
+			}
 		}
 
 		INIT_DEBUG("terminating array loop i=%d, is_fixed_length=%d, n_fixed_length=%d, array_iter->pos=%p\n",
@@ -642,7 +645,10 @@ static void decl_initialise_scalar(
 	expr *assign_from, *assign_init;
 
 	if(dinit){
-		if(dinit->desig)
+		if(dinit->desig){
+			if(dinit->type != decl_init_brace)
+				return; /* similar to struct/array get-outs */
+
 			DIE_AT(&dinit->where, "%s-designator for scalar",
 					DESIG_TO_STR(dinit->desig->type));
 		}
