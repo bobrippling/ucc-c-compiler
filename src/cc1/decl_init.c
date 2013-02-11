@@ -386,11 +386,18 @@ static type_ref *decl_initialise_array(
 			/* insert, sorted */
 			array_insert_sorted(&sorted_array_inits, i, &last_index, init_code_dummy);
 
-			if(!braced
-			&& INIT_ITER_VALID(array_iter)
-			&& array_iter->pos[0]->desig)
 			{
-				break;
+				const int next_is_desig = INIT_ITER_VALID(array_iter) && array_iter->pos[0]->desig;
+				if(braced){
+					if(!next_is_desig)
+						init_iter_adv(array_iter, 1);
+				}else if(next_is_desig){
+					/* unbraced and next is desig - ignore
+					 * e.g. [0] = 5, <-- next is [1], return up to array, for e.g.
+					 *      [1] = 2
+					 */
+					break;
+				}
 			}
 		}
 
