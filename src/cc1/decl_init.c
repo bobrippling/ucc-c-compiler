@@ -503,14 +503,14 @@ static void decl_initialise_sue(decl_init_iter *init_iter,
 				desig *const desig = init_for_mem->desig;
 				char *mem;
 
-				/* advance for sub-inits */
-				init_for_mem->desig = desig->next;
-
 				if(desig->type != desig_struct){
 					if(!braced)
 						break; /* similar to the below check */
 					DIE_AT(&init_for_mem->where, "struct designator expected");
 				}
+
+				/* advance for sub-inits */
+				init_for_mem->desig = desig->next;
 
 				mem = desig->bits.member;
 				accessor = EXPR_STRUCT(base, mem);
@@ -635,12 +635,12 @@ zero_init:
 
 	if(!braced)
 		/* we walk over the one brace, not multiple scalar/subinits */
-		init_iter_adv(init_iter, cnt);
+		init_iter_adv(init_iter, 1);
 	/* otherwise we've walked over the scalar inits of our parent */
 
 
 	INIT_DEBUG("initialised %s, *init_iter += %d -> (%s)\n",
-			sue_str(sue), cnt,
+			sue_str(sue), braced,
 			INIT_ITER_VALID(init_iter)
 				? decl_init_to_str(init_iter->pos[0]->type)
 				: "n/a");
