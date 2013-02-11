@@ -61,6 +61,7 @@ void print_decl_init(decl_init *di)
 {
 	switch(di->type){
 		case decl_init_scalar:
+			fprintf(cc1_out, "scalar\n");
 			print_expr(di->bits.expr);
 			break;
 
@@ -68,6 +69,8 @@ void print_decl_init(decl_init *di)
 		{
 			decl_init *s;
 			int i;
+
+			fprintf(cc1_out, "brace\n");
 
 			for(i = 0; (s = di->bits.inits[i]); i++){
 				const int need_brace = s->type == decl_init_brace;
