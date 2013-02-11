@@ -197,9 +197,14 @@ static void array_insert_sorted(stmt ***psorted_array_inits,
 	init_code_dummy->codes = NULL;
 
 	if(changed || !sorted_array_inits){
+		int old_sz = (old + 2) * sizeof *sorted_array_inits;
+
+		if(!sorted_array_inits)
+			old_sz = 0;
+
 		sorted_array_inits = urealloc(sorted_array_inits,
 				(max_i + 2) * sizeof *sorted_array_inits,
-				(old + 2)   * sizeof *sorted_array_inits);
+				old_sz);
 
 		sorted_array_inits[max_i + 1] = NULL; /* dynarray compatability */
 	}
