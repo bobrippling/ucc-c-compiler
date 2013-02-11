@@ -30,6 +30,7 @@ struct decl_init
 		struct desig *next; /* [0].a.b[1] */
 	} *desig;
 };
+#define DESIG_TO_STR(t) ((t) == desig_ar ? "array" : "struct")
 
 decl_init *decl_init_new(enum decl_init_type);
 const char *decl_init_to_str(enum decl_init_type);

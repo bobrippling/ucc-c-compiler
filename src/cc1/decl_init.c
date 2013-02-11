@@ -644,7 +644,8 @@ static void decl_initialise_scalar(
 	if(dinit){
 		if(dinit->desig)
 			DIE_AT(&dinit->where, "%s-designator for scalar",
-					decl_init_to_str(dinit->type));
+					DESIG_TO_STR(dinit->desig->type));
+		}
 
 		if(dinit->type == decl_init_brace){
 			/* initialising scalar with { ... } - pick first */
