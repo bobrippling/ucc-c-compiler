@@ -209,6 +209,8 @@ static void array_insert_sorted(stmt ***psorted_array_inits,
 		sorted_array_inits[max_i + 1] = NULL; /* dynarray compatability */
 	}
 
+	if(sorted_array_inits[i])
+		ICW("overwriting old init, at index %d", i);
 	sorted_array_inits[i] = sub_init;
 
 #undef max_i
@@ -357,9 +359,15 @@ static type_ref *decl_initialise_array(
 						if(is_fixed_length && i >= n_fixed_length)
 							DIE_AT(&idx->where, "index %d out of bounds (0...%d)", i, n_fixed_length);
 
-						if(i > last_index)
+						INIT_DEBUG("designating index %d\n", i);
+
+						if(i > last_index){
+							INIT_DEBUG("stretched array to %d -> %d\n", last_index, i);
 							last_index = i;
+						}
 					}
+				}else{
+					INIT_DEBUG("no desig, at index %d\n", i);
 				}
 			}
 
