@@ -126,14 +126,16 @@ static const char *vstack_str_ptr(struct vstack *vs, int ptr)
 	return vstack_str_r_ptr(buf, vs, ptr);
 }
 
-void impl_func_prologue(int nargs)
+void impl_func_prologue_save_fp(void)
 {
-	int arg_idx;
-
 	out_asm("pushq %%rbp");
 	out_asm("movq %%rsp, %%rbp");
+}
 
+void impl_func_prologue_save_call_regs(int nargs)
+{
 	if(nargs){
+		int arg_idx;
 		int n_reg_args;
 
 		n_reg_args = MIN(nargs, N_CALL_REGS);
@@ -155,27 +157,27 @@ void impl_func_prologue(int nargs)
 	}
 }
 
-void impl_func_save_variadic(int nargs)
+int impl_func_prologue_save_variadic(int nargs)
 {
-	/* play catchup, pushing any remaining reg args
-	 * this is _after_ args and stack alloc,
-	 * to simplify other offsetting code
-	 */
-	char *vfin = out_label_code("fin_...");
+	char *vfin = out_label_code("va_skip_float");
+	int extra_sz = N_CALL_REGS * platform_word_size();
 	int i;
 
-	for(i = nargs; i < N_CALL_REGS; i++)
+	for(i = N_CALL_REGS - 1; i >= nargs; i--)
+		/* TODO: do this with out_save_reg or whatever */
 		out_asm("push%c %%%s", asm_type_ch(NULL), call_reg_str(i, NULL));
 
+	/* TODO: do this with out_* */
 	out_asm("testb %%al, %%al");
 	out_asm("jz %s", vfin);
 
-	out_asm("// pushq %%xmm0 TODO");
+	out_asm(IMPL_COMMENT "pushq %%xmm0 TODO - float regs");
+	/* TODO: add to extra_sz */
 
 	out_label(vfin);
 	free(vfin);
 
-	ICW("need to adjust stack_sz for variadics");
+	return extra_sz;
 }
 
 void impl_func_epilogue(void)

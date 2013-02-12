@@ -141,6 +141,9 @@ static type_ref *parse_btype(enum decl_storage *store)
 	if(store)
 		*store = store_default;
 
+	if(accept(token___builtin_va_list))
+		return type_ref_new_VA_LIST();
+
 	for(;;){
 		decl *tdef_decl_test;
 
@@ -369,6 +372,7 @@ int parse_curtok_is_type(void)
 		case token_enum:
 		case token_typeof:
 		case token_attribute:
+		case token___builtin_va_list:
 			return 1;
 
 		case token_identifier:

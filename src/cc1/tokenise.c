@@ -85,6 +85,8 @@ struct statement
 	KEYWORD(union),
 	KEYWORD(enum),
 
+	{ "__builtin_va_list", token___builtin_va_list },
+
 	KEYWORD(sizeof),
 	KEYWORD(_Generic),
 	KEYWORD(_Static_assert),

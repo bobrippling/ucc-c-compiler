@@ -34,6 +34,10 @@ static func_builtin_parse parse_unreachable,
                           parse_strlen,
 													parse_is_signed;
 
+#define BUILTIN_VA(nam) static expr *parse_va_ ##nam(void);
+#  include "__builtin_va.def"
+#undef BUILTIN_VA
+
 typedef struct
 {
 	const char *sp;
@@ -52,6 +56,10 @@ builtin_table builtins[] = {
 	{ "expect", parse_expect },
 
 	{ "is_signed", parse_is_signed },
+
+#define BUILTIN_VA(nam) { "va_" #nam, parse_va_ ##nam },
+#  include "__builtin_va.def"
+#undef BUILTIN_VA
 
 	{ NULL, NULL }
 
@@ -105,6 +113,11 @@ expr *builtin_parse(const char *sp)
 #define expr_mutate_builtin(exp, to)  \
 	exp->f_fold = fold_ ## to
 
+#define expr_mutate_builtin_gen(exp, to) \
+	expr_mutate_builtin(exp, to),          \
+	exp->f_gen        = gen_ ## to
+
+
 #define expr_mutate_builtin_const(exp, to) \
 	expr_mutate_builtin(exp, to),             \
 	exp->f_gen        = NULL,                 \
@@ -129,6 +142,10 @@ static expr *parse_any_args(void)
 	fcall->funcargs = parse_funcargs();
 	return fcall;
 }
+
+/* --- va_* */
+
+#include "__builtin_va.c"
 
 /* --- unreachable */
 

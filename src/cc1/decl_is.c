@@ -182,6 +182,7 @@ int type_ref_is_integral(type_ref *r)
 			return 1;
 
 		case type_unknown:
+		case type_va_list:
 		case type_void:
 		case type_struct:
 		case type_union:

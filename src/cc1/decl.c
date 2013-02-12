@@ -34,7 +34,7 @@ static type_ref *type_ref_new(enum type_ref_type t, type_ref *of)
 }
 
 static type_ref *cache_basics[type_unknown];
-static type_ref *cache_ptr_void;
+static type_ref *cache_ptr_void, *cache_va_list;
 
 void type_ref_init()
 {
@@ -44,6 +44,17 @@ void type_ref_init()
 	cache_basics[type_long] = type_ref_new_INTPTR_T();
 
 	cache_ptr_void = type_ref_new_VOID_PTR();
+	cache_va_list  = type_ref_new_VA_LIST();
+}
+
+type_ref *type_ref_new_VA_LIST(void)
+{
+	/* pointer to struct __builtin_va_list */
+	if(!cache_va_list)
+		cache_va_list = type_ref_new_type(
+					type_new_primitive(type_va_list));
+
+	return cache_va_list;
 }
 
 type_ref *type_ref_new_type(const type *t)

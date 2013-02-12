@@ -833,13 +833,18 @@ void out_func_prologue(int stack_res, int nargs, int variadic)
 
 	stack_sz = MIN(nargs, N_CALL_REGS) * platform_word_size();
 
-	impl_func_prologue(nargs);
+	if(variadic){
+		stack_sz += impl_func_prologue_save_variadic(nargs);
+
+		impl_func_prologue_save_call_regs(nargs);
+		impl_func_prologue_save_fp();
+	}else{
+		impl_func_prologue_save_call_regs(nargs);
+		impl_func_prologue_save_fp();
+	}
 
 	if(stack_res)
 		stack_sz = out_alloc_stack(stack_res);
-
-	if(variadic)
-		impl_func_save_variadic(nargs);
 }
 
 void out_func_epilogue()

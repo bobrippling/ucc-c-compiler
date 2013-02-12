@@ -21,8 +21,10 @@ void impl_cast(type_ref *from, type_ref *to);
 void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func);
 void impl_pop_func_ret(type_ref *r);
 
-void impl_func_prologue(int nargs);
-void impl_func_save_variadic(int nargs);
+void impl_func_prologue_save_fp(void);
+void impl_func_prologue_save_call_regs(int nargs);
+int  impl_func_prologue_save_variadic(int nargs);
+/* returns stack space, aligned */
 void impl_func_epilogue(void);
 
 void impl_undefined(void);
