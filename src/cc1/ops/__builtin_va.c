@@ -3,6 +3,13 @@
 #include "../../util/platform.h"
 
 /* va_start */
+static void LVALUE_VA_CHECK(expr *va_l, expr *in)
+{
+	if(!expr_is_lvalue(va_l))
+		DIE_AT(&in->where, "%s argument 1 must be an lvalue (%s)",
+				BUILTIN_SPEL(in), va_l->f_str());
+}
+
 static void fold_va_start(expr *e, symtable *stab)
 {
 	expr *va_l;
@@ -17,9 +24,7 @@ static void fold_va_start(expr *e, symtable *stab)
 	FOLD_EXPR(         e->funcargs[1], stab);
 
 	va_l = e->funcargs[0];
-	if(!expr_is_lvalue(va_l))
-		DIE_AT(&e->where, "%s argument 1 must be an lvalue (%s)",
-				BUILTIN_SPEL(e->expr), va_l->f_str());
+	LVALUE_VA_CHECK(va_l, e->expr);
 
 	if(!type_ref_is_type(e->funcargs[0]->tree_type, type_va_list)){
 		DIE_AT(&e->funcargs[0]->where,
@@ -66,12 +71,41 @@ expr *parse_va_start(void)
 
 static void gen_va_arg(expr *e, symtable *stab)
 {
-	ICE("TODO");
+	/* read from the va_list / char * */
+	gen_expr(e->lhs, stab);
+	out_dup();
+
+	/* increment the va_list up the stack */
+	out_push_i(type_ref_new_INTPTR_T(), platform_word_size());
+	out_op(op_plus);
+
+	/* store the new pointer value */
+	lea_expr(e->lhs, stab);
+	out_swap();
+	out_store();
+	out_pop(); /* pop the pointer value */
+
+	/* still have the pointer on stack,
+	 * deref it, size of type */
+	out_change_type(
+			type_ref_ptr_depth_inc(
+				e->bits.tref));
+	out_deref(); /* leave on the stack */
 }
 
 static void fold_va_arg(expr *e, symtable *stab)
 {
-	ICE("TODO");
+	type_ref *const ty = e->bits.tref;
+
+	FOLD_EXPR_NO_DECAY(e->lhs, stab);
+	fold_type_ref(ty, NULL, stab);
+
+	LVALUE_VA_CHECK(e->lhs, e->expr);
+
+	if(!type_ref_is_type(e->lhs->tree_type, type_va_list))
+		DIE_AT(&e->expr->where, "va_list expected for va_arg");
+
+	e->tree_type = ty;
 }
 
 expr *parse_va_arg(void)
@@ -84,7 +118,7 @@ expr *parse_va_arg(void)
 	EAT(token_comma);
 	ty = parse_type();
 
-	fcall->expr = list;
+	fcall->lhs = list;
 	fcall->bits.tref = ty;
 
 	expr_mutate_builtin_gen(fcall, va_arg);
