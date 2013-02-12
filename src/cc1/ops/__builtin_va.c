@@ -5,24 +5,23 @@
 /* va_start */
 static void fold_va_start(expr *e, symtable *stab)
 {
-	const int n = dynarray_count((void **)e->funcargs);
-	int i;
+	expr *va_l;
 
-	for(i = 0; i < n; i++)
-		FOLD_EXPR(e->funcargs[i], stab);
-
-	if(n != 2)
+	if(dynarray_count((void **)e->funcargs) != 2)
 		DIE_AT(&e->where, "%s requires two arguments", BUILTIN_SPEL(e->expr));
 
-	if(!expr_is_lvalue(e->funcargs[0]))
-		DIE_AT(&e->where, "%s argument 1 must be an lvalue (%s)",
-				BUILTIN_SPEL(e->expr), e->funcargs[0]->f_str());
+	va_l = e->funcargs[0];
+	fold_inc_writes_if_sym(va_l, stab);
 
-	if(!type_ref_equal(
-				e->funcargs[0]->tree_type,
-				type_ref_new_VA_LIST(),
-				DECL_CMP_EXACT_MATCH))
-	{
+	FOLD_EXPR_NO_DECAY(e->funcargs[0], stab);
+	FOLD_EXPR(         e->funcargs[1], stab);
+
+	va_l = e->funcargs[0];
+	if(!expr_is_lvalue(va_l))
+		DIE_AT(&e->where, "%s argument 1 must be an lvalue (%s)",
+				BUILTIN_SPEL(e->expr), va_l->f_str());
+
+	if(!type_ref_is_type(e->funcargs[0]->tree_type, type_va_list)){
 		DIE_AT(&e->funcargs[0]->where,
 				"first argument to %s should be a va_list",
 				BUILTIN_SPEL(e->expr));
