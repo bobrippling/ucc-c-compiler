@@ -157,10 +157,9 @@ void impl_func_prologue_save_call_regs(int nargs)
 	}
 }
 
-int impl_func_prologue_save_variadic(int nargs)
+void impl_func_prologue_save_variadic(int nargs)
 {
 	char *vfin = out_label_code("va_skip_float");
-	int extra_sz = N_CALL_REGS * platform_word_size();
 	int i;
 
 	for(i = N_CALL_REGS - 1; i >= nargs; i--)
@@ -176,8 +175,6 @@ int impl_func_prologue_save_variadic(int nargs)
 
 	out_label(vfin);
 	free(vfin);
-
-	return extra_sz;
 }
 
 void impl_func_epilogue(void)

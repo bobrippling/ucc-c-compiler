@@ -831,14 +831,13 @@ void out_func_prologue(int stack_res, int nargs, int variadic)
 {
 	UCC_ASSERT(stack_sz == 0, "non-empty stack for new func");
 
-	stack_sz = MIN(nargs, N_CALL_REGS) * platform_word_size();
-
 	if(variadic){
-		stack_sz += impl_func_prologue_save_variadic(nargs);
-
+		impl_func_prologue_save_variadic(nargs);
 		impl_func_prologue_save_call_regs(nargs);
 		impl_func_prologue_save_fp();
+		/* stack is "empty" */
 	}else{
+		stack_sz = MIN(nargs, N_CALL_REGS) * platform_word_size();
 		impl_func_prologue_save_call_regs(nargs);
 		impl_func_prologue_save_fp();
 	}

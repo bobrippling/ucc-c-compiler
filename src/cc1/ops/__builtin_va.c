@@ -1,5 +1,6 @@
 #include "../tokconv.h"
 #include "../parse_type.h"
+#include "../../util/platform.h"
 
 /* va_start */
 static void fold_va_start(expr *e, symtable *stab)
@@ -13,6 +14,10 @@ static void fold_va_start(expr *e, symtable *stab)
 	if(n != 2)
 		DIE_AT(&e->where, "%s requires two arguments", BUILTIN_SPEL(e->expr));
 
+	if(!expr_is_lvalue(e->funcargs[0]))
+		DIE_AT(&e->where, "%s argument 1 must be an lvalue (%s)",
+				BUILTIN_SPEL(e->expr), e->funcargs[0]->f_str());
+
 	if(!type_ref_equal(
 				e->funcargs[0]->tree_type,
 				type_ref_new_VA_LIST(),
@@ -25,11 +30,27 @@ static void fold_va_start(expr *e, symtable *stab)
 
 	/* TODO: check it's the last argument to the function */
 	/* TODO: check we're in a variadic function */
+
+	e->tree_type = type_ref_new_VOID();
 }
 
 static void gen_va_start(expr *e, symtable *stab)
 {
-	ICW("TODO: va_start()");
+	/* assign to
+	 *   e->funcargs[0]
+	 * from
+	 *   __builtin_frame_address(0) - pws() * 2
+	 */
+	out_push_frame_ptr(0);
+	out_push_i(type_ref_new_INTPTR_T(), platform_word_size() * 2);
+	/* stack grows down,
+	 * we want the args which are above the saved return addr + FP
+	 */
+	out_op(op_plus);
+
+	lea_expr(e->funcargs[0], stab);
+	out_swap();
+	out_store();
 }
 
 expr *parse_va_start(void)
