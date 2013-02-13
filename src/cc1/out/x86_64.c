@@ -157,24 +157,29 @@ void impl_func_prologue_save_call_regs(int nargs)
 	}
 }
 
-void impl_func_prologue_save_variadic(int nargs)
+int impl_func_prologue_save_variadic(int nargs)
 {
 	char *vfin = out_label_code("va_skip_float");
+	int sz = 0;
 	int i;
 
-	for(i = N_CALL_REGS - 1; i >= nargs; i--)
+	for(i = nargs; i < N_CALL_REGS; i++){
 		/* TODO: do this with out_save_reg or whatever */
 		out_asm("push%c %%%s", asm_type_ch(NULL), call_reg_str(i, NULL));
+		sz += platform_word_size();
+	}
 
 	/* TODO: do this with out_* */
 	out_asm("testb %%al, %%al");
 	out_asm("jz %s", vfin);
 
 	out_asm(IMPL_COMMENT "pushq %%xmm0 TODO - float regs");
-	/* TODO: add to extra_sz */
+	/* TODO: add to sz */
 
 	out_label(vfin);
 	free(vfin);
+
+	return sz;
 }
 
 void impl_func_epilogue(void)

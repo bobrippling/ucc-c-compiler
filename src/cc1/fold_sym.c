@@ -75,9 +75,6 @@ int symtab_fold(symtable *tab, int current)
 			}
 		}
 
-		arg_space = arg_idx * platform_word_size();
-		current += arg_space;
-
 		for(diter = tab->decls; *diter; diter++){
 			sym *s = (*diter)->sym;
 			const int has_unused_attr = !!decl_has_attr(s->decl, attr_unused);

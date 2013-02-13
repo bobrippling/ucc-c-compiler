@@ -14,7 +14,8 @@ normal(int a, int b)
 }
 */
 
-main()
+_main()
 {
 	return f(1, 2);
+	//return normal(5, 3);
 }

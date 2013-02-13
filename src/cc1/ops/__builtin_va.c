@@ -58,6 +58,17 @@ static void fold_va_start(expr *e, symtable *stab)
 	/* TODO: check we're in a variadic function */
 
 	e->tree_type = type_ref_new_VOID();
+
+	/* finally store the number of arguments to this function */
+	{
+		funcargs *args = type_ref_funcargs(curdecl_func->ref);
+		int nargs = dynarray_count((void **)args->arglist);
+
+		if(!args->variadic)
+			DIE_AT(&e->where, "va_start in non-variadic function");
+
+		e->bits.n = nargs;
+	}
 }
 
 static void gen_va_start(expr *e, symtable *stab)
@@ -65,12 +76,15 @@ static void gen_va_start(expr *e, symtable *stab)
 	/* assign to
 	 *   e->funcargs[0]
 	 * from
-	 *   __builtin_frame_address(0) - pws() * 2
+	 *   __builtin_frame_address(0) + pws() * (nargs + 1)
+	 *
+	 * +1 to step over the saved bp
 	 */
 	out_push_frame_ptr(0);
-	out_push_i(type_ref_new_INTPTR_T(), platform_word_size() * 2);
+	out_push_i(type_ref_new_INTPTR_T(),
+			(e->bits.n + 1) * platform_word_size());
 	/* stack grows down,
-	 * we want the args which are above the saved return addr + FP
+	 * we want the args which are belog the saved return addr + FP
 	 */
 	out_op(op_plus);
 
@@ -149,6 +163,8 @@ expr *parse_va_arg(void)
 }
 
 /* va_end */
+
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 
 static void gen_va_end(expr *e, symtable *stab)
 {

@@ -91,14 +91,6 @@ void fold_expr_identifier(expr *e, symtable *stab)
 	}else{
 		e->tree_type = sym->decl->ref;
 
-#if 0
-Except when it is the operand of the sizeof operator or the unary
-& operator, or is a string literal used to initialize an array, an
-expression that has type `array of type` is converted to an expression
-with type `pointer to type` that points to the initial element of the
-array object and is not an lvalue.
-#endif
-
 		if(sym->type == sym_local
 		&& !decl_store_static_or_extern(sym->decl->store)
 		&& !DECL_IS_ARRAY(sym->decl)
@@ -114,6 +106,9 @@ array object and is not an lvalue.
 		/* this is cancelled by expr_assign in the case we fold for an assignment to us */
 		sym->nreads++;
 	}
+
+	if(!sym->func)
+		sym->func = curdecl_func;
 }
 
 void gen_expr_str_identifier(expr *e, symtable *stab)

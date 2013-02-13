@@ -129,7 +129,7 @@ void gen_asm_global(decl *d)
 	/* order of the if matters */
 	if(DECL_IS_FUNC(d) || type_ref_is(d->ref, type_ref_block)){
 		/* check .func_code, since it could be a block */
-		int nargs = 0;
+		int nargs = 0, is_vari;
 		decl **aiter;
 		char *sp;
 
@@ -147,7 +147,7 @@ void gen_asm_global(decl *d)
 		out_func_prologue(
 				d->func_code->symtab->auto_total_size,
 				nargs,
-				decl_is_variadic(d));
+				is_vari = decl_is_variadic(d));
 
 		curfunc_lblfin = out_label_code(sp);
 

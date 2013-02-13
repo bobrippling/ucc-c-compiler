@@ -24,7 +24,7 @@ static int calc_ptr_step(type_ref *t);
 struct vstack vstack[N_VSTACK];
 struct vstack *vtop = NULL;
 
-static int stack_sz;
+static int stack_sz, stack_local_offset;
 
 /* we won't reserve it more than 255 times */
 static unsigned char reserved_regs[N_SCRATCH_REGS];
@@ -225,7 +225,7 @@ void v_freeup_regp(struct vstack *vp)
 	}
 }
 
-static int out_alloc_stack(int sz)
+static int v_alloc_stack(int sz)
 {
 	static int word_size;
 	/* sz must be a multiple of word_size */
@@ -263,7 +263,7 @@ void v_save_reg(struct vstack *vp)
 	 * instead/TODO: impl_save_reg(vp) -> "pushq %%rax"
 	 * -O1?
 	 */
-	store.bits.off_from_bp = -out_alloc_stack(type_ref_size(store.t, NULL));
+	store.bits.off_from_bp = -v_alloc_stack(type_ref_size(store.t, NULL));
 #ifdef DEBUG_REG_SAVE
 	out_comment("save register %d", vp->bits.reg);
 #endif
@@ -449,18 +449,38 @@ void out_push_sym(sym *s)
 
 			vtop->type = STACK;
 			/* sym offsetting takes into account the stack growth direction */
-			vtop->bits.off_from_bp = -s->offset;
+			vtop->bits.off_from_bp = -(s->offset + stack_local_offset);
 			break;
 
 		case sym_arg:
 			vtop->type = STACK;
 			/*
-			 * if it's less than #call regs, it's below rbp, otherwise it's above
+			 * stack layout is:
+			 * if variadic:
+			 *     extra_args,
+			 *     extra_variadic_args,
+			 *     --bp/ra--,
+			 *     saved_regs,
+			 *     variadic_reg_args, <-- covered by stack_local_offset
+			 *     local_vars...  <-- stack_sz
+			 * else:
+			 *     extra args,
+			 *     --bp/ra--,
+			 *     saved_regs,
+			 *     local_vars...
 			 */
-			vtop->bits.off_from_bp = (s->offset < N_CALL_REGS
-					? -(s->offset + 1)
-					:   s->offset - N_CALL_REGS + 2)
-				* platform_word_size();
+			TODO();
+			if(type_ref_funcargs(s->func->ref)->variadic){
+				if(s->offset >= N_CALL_REGS){
+					vtop->bits.off_from_bp;
+				}
+			}else{
+				vtop->bits.off_from_bp = platform_word_size() *
+					(s->offset < N_CALL_REGS
+					 ? -(s->offset + 1) /* in saved_regs area */
+					 :   s->offset - N_CALL_REGS + 2 /* in extra area */
+					);
+			}
 			break;
 
 		case sym_global:
@@ -831,25 +851,24 @@ void out_func_prologue(int stack_res, int nargs, int variadic)
 {
 	UCC_ASSERT(stack_sz == 0, "non-empty stack for new func");
 
-	if(variadic){
-		impl_func_prologue_save_variadic(nargs);
-		impl_func_prologue_save_call_regs(nargs);
-		impl_func_prologue_save_fp();
-		/* stack is "empty" */
-	}else{
-		stack_sz = MIN(nargs, N_CALL_REGS) * platform_word_size();
-		impl_func_prologue_save_call_regs(nargs);
-		impl_func_prologue_save_fp();
-	}
+	stack_sz = MIN(nargs, N_CALL_REGS) * platform_word_size();
+
+	impl_func_prologue_save_fp();
+	impl_func_prologue_save_call_regs(nargs);
+
+	if(variadic)
+		stack_sz += impl_func_prologue_save_variadic(nargs);
+
+	stack_local_offset = stack_sz;
 
 	if(stack_res)
-		stack_sz = out_alloc_stack(stack_res);
+		stack_sz = v_alloc_stack(stack_res);
 }
 
 void out_func_epilogue()
 {
 	impl_func_epilogue();
-	stack_sz = 0;
+	stack_local_offset = stack_sz = 0;
 }
 
 void out_pop_func_ret(type_ref *t)

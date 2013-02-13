@@ -73,6 +73,10 @@ struct expr
 	union
 	{
 		intval iv;
+
+		/* __builtin_va_start */
+		int n;
+
 		struct
 		{
 			sym *sym;
