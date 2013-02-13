@@ -82,10 +82,14 @@ type *parse_type_sue(enum type_primitive prim)
 
 			EAT(token_close_block);
 		}else{
+			/* always allow nameless structs (C11)
+			 * we don't allow tagged ones unless
+			 * -fms-extensions or -fplan9-extensions
+			 */
 			decl **dmembers = parse_decls_multi_type(
 					DECL_MULTI_CAN_DEFAULT |
 					DECL_MULTI_ACCEPT_FIELD_WIDTH |
-					((fopt_mode & FOPT_TAG_ANON_STRUCT_EXT) ? DECL_MULTI_NAMELESS : 0));
+					DECL_MULTI_NAMELESS);
 			decl **i;
 
 			if(!dmembers){
