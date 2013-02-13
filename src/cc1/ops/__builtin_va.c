@@ -1,6 +1,28 @@
-#include "../tokconv.h"
-#include "../parse_type.h"
+#include <stdio.h>
+#include <stdarg.h>
+
+#include "../../util/util.h"
+#include "../../util/dynarray.h"
 #include "../../util/platform.h"
+#include "../data_structs.h"
+#include "../expr.h"
+#include "__builtin.h"
+#include "__builtin_va.h"
+
+#include "../cc1.h"
+#include "../fold.h"
+#include "../gen_asm.h"
+#include "../out/out.h"
+
+#include "__builtin_va.h"
+
+#include "../tokenise.h"
+#include "../tokconv.h"
+#include "../parse.h"
+#include "../parse_type.h"
+
+/*#include "../parse_type.h"
+#include "../../util/platform.h"*/
 
 /* va_start */
 static void LVALUE_VA_CHECK(expr *va_l, expr *in)

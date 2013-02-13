@@ -19,10 +19,9 @@
 #include "../gen_asm.h"
 
 #include "../out/out.h"
+#include "__builtin_va.h"
 
 #define PREFIX "__builtin_"
-
-#define BUILTIN_SPEL(e) (e)->bits.ident.spel
 
 typedef expr *func_builtin_parse(void);
 
@@ -33,10 +32,6 @@ static func_builtin_parse parse_unreachable,
                           parse_expect,
                           parse_strlen,
 													parse_is_signed;
-
-#define BUILTIN_VA(nam) static expr *parse_va_ ##nam(void);
-#  include "__builtin_va.def"
-#undef BUILTIN_VA
 
 typedef struct
 {
@@ -110,14 +105,6 @@ expr *builtin_parse(const char *sp)
 	return NULL;
 }
 
-#define expr_mutate_builtin(exp, to)  \
-	exp->f_fold = fold_ ## to
-
-#define expr_mutate_builtin_gen(exp, to) \
-	expr_mutate_builtin(exp, to),          \
-	exp->f_gen        = gen_ ## to
-
-
 #define expr_mutate_builtin_const(exp, to) \
 	expr_mutate_builtin(exp, to),             \
 	exp->f_gen        = NULL,                 \
@@ -136,16 +123,12 @@ static void builtin_gen_undefined(expr *e, symtable *stab)
 	out_push_i(type_ref_new_INT(), 0); /* needed for function return pop */
 }
 
-static expr *parse_any_args(void)
+expr *parse_any_args(void)
 {
 	expr *fcall = expr_new_funcall();
 	fcall->funcargs = parse_funcargs();
 	return fcall;
 }
-
-/* --- va_* */
-
-#include "__builtin_va.c"
 
 /* --- unreachable */
 

@@ -16,7 +16,7 @@ OBJ = \
 	tokconv.o tokenise.o \
 	parse.o parse_type.o typedef.o \
 	fold.o fold_sym.o const.o \
-	sym.o sue.o ops/__builtin.o pack.o \
+	sym.o sue.o ops/__builtin.o ops/__builtin_va.o pack.o \
 	gen_asm.o gen_str.o gen_style.o \
 	out/out.o out/asm.o out/lbl.o out/impl.o \
 	ops/expr_addr.o ops/expr_assign.o ops/expr_cast.o ops/expr_comma.o \
