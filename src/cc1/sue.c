@@ -222,8 +222,9 @@ static void *sue_member_find(struct_union_enum_st *sue, const char *spel, unsign
 				decl *tdef;
 				const int allow_tag = fopt_mode & FOPT_TAG_ANON_STRUCT_EXT;
 
-				if(!allow_tag && sub->spel)
-					DIE_AT(&sub->where, "tag on \"anonymous\" struct");
+				/* don't check spel - <anon struct ...> etc */
+				if(!(allow_tag || sub->anon))
+					continue;
 
 				if((fopt_mode & FOPT_PLAN9_EXTENSIONS)
 				&& (tdef = type_ref_is_tdef(d->ref))
