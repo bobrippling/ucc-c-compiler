@@ -857,7 +857,7 @@ static void fold_link_decl_defs(dynmap *spel_decls)
 void fold(symtable *globs)
 {
 #define D(x) globs->decls[x]
-	int fold_had_error;
+	int fold_had_error = 0;
 	extern const char *current_fname;
 	dynmap *spel_decls;
 	int i;
