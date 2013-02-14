@@ -50,8 +50,8 @@ void fold_expr_identifier(expr *e, symtable *stab)
 	if(sp && !sym)
 		e->bits.ident.sym = sym = symtab_search(stab, sp);
 
+	/* special cases */
 	if(!sym){
-
 		if(!strcmp(sp, "__func__")){
 			char *func;
 			int len;
@@ -88,24 +88,25 @@ void fold_expr_identifier(expr *e, symtable *stab)
 			e->tree_type = type_ref_new_type(
 					type_new_primitive_sue(type_enum, sue));
 		}
-	}else{
-		e->tree_type = sym->decl->ref;
-
-		if(sym->type == sym_local
-		&& !decl_store_static_or_extern(sym->decl->store)
-		&& !DECL_IS_ARRAY(sym->decl)
-		&& !DECL_IS_S_OR_U(sym->decl)
-		&& !DECL_IS_FUNC(sym->decl)
-		&& sym->nwrites == 0
-		&& !sym->decl->init)
-		{
-			cc1_warn_at(&e->where, 0, 1, WARN_READ_BEFORE_WRITE, "\"%s\" uninitialised on read", sp);
-			sym->nwrites = 1; /* silence future warnings */
-		}
-
-		/* this is cancelled by expr_assign in the case we fold for an assignment to us */
-		sym->nreads++;
+		return;
 	}
+
+	e->tree_type = sym->decl->ref;
+
+	if(sym->type == sym_local
+	&& !decl_store_static_or_extern(sym->decl->store)
+	&& !DECL_IS_ARRAY(sym->decl)
+	&& !DECL_IS_S_OR_U(sym->decl)
+	&& !DECL_IS_FUNC(sym->decl)
+	&& sym->nwrites == 0
+	&& !sym->decl->init)
+	{
+		cc1_warn_at(&e->where, 0, 1, WARN_READ_BEFORE_WRITE, "\"%s\" uninitialised on read", sp);
+		sym->nwrites = 1; /* silence future warnings */
+	}
+
+	/* this is cancelled by expr_assign in the case we fold for an assignment to us */
+	sym->nreads++;
 
 	if(!sym->func)
 		sym->func = curdecl_func;
