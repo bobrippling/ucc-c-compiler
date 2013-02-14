@@ -44,6 +44,7 @@ void type_ref_init()
 	cache_basics[type_long] = type_ref_new_INTPTR_T();
 
 	cache_ptr[type_void] = type_ref_new_VOID_PTR();
+	cache_ptr[type_long] = type_ref_new_LONG_PTR();
 	cache_ptr[type_int]  = type_ref_new_INT_PTR();
 	cache_va_list  = type_ref_new_VA_LIST();
 }

@@ -72,7 +72,7 @@ static void gen_va_start(expr *e, symtable *stab)
 	 *   0L
 	 */
 	lea_expr(e->funcargs[0], stab);
-	out_push_i(type_ref_new_INTPTR_T(), -1);
+	out_push_i(type_ref_new_INTPTR_T(), 0);
 	out_store();
 }
 
@@ -96,13 +96,13 @@ static void gen_va_arg(expr *e, symtable *stab)
 	 *
 	 * va_list val;
 	 *
-	 * if(((int *)val)[0] + nargs < N_CALL_REGS)
-	 *   __builtin_frame_address(0) - pws * (nargs) - (intptr_t)val[0]++
+	 * if(val[0] + nargs < N_CALL_REGS)
+	 *   __builtin_frame_address(0) - pws * (nargs) - (intptr_t)++val[0]
 	 * else
 	 *   __builtin_frame_address(0) + pws() * (nargs - N_CALL_REGS) + val[1]++
 	 *
 	 * if becomes:
-	 *   if(((int *)val)[0] < N_CALL_REGS - nargs)
+	 *   if(val[0] < N_CALL_REGS - nargs)
 	 * since N_CALL_REGS-nargs can be calculated at compile time
 	 */
 	/* finally store the number of arguments to this function */
@@ -113,41 +113,57 @@ static void gen_va_arg(expr *e, symtable *stab)
 	out_comment("va_arg start");
 
 	lea_expr(e->lhs, stab);
+	/* &va */
 
 	out_dup();
+	/* &va, &va */
 
-	out_change_type(type_ref_new_INT_PTR());
-	out_deref(); /* deref size int */
+	out_change_type(type_ref_new_LONG_PTR());
+	out_deref();
+	/* &va, va */
 
-	out_push_i(type_ref_new_INT(), out_n_call_regs() - nargs);
+	out_push_i(type_ref_new_LONG(), out_n_call_regs() - nargs);
 	out_op(op_lt);
+	/* &va, (<) */
 
 	out_jfalse(lbl_else);
+	/* &va */
 
-	/* __builtin_frame_address(0) - pws * (nargs) */
+	/* __builtin_frame_address(0) - nargs
+	 * - multiply by pws is implicit - void *
+	 */
 	out_push_frame_ptr(0);
-	out_push_i(type_ref_new_INTPTR_T(),
-			platform_word_size() * nargs);
+	out_change_type(type_ref_new_LONG_PTR());
+	out_push_i(type_ref_new_INTPTR_T(), nargs);
 	out_op(op_minus);
+	/* &va, va_ptr */
 
-	/*  - (intptr_t)val[0]++  */
+	/* - (intptr_t)val[0]++  */
 	out_swap(); /* pull &val to the top */
-	out_change_type(type_ref_new_INT_PTR());
+
+	/* va_ptr, &va */
 	out_dup();
+	out_change_type(type_ref_new_LONG_PTR());
+	/* va_ptr, (long *)&va, (int *)&va */
 
 	out_deref();
-	out_push_i(type_ref_new_INT(), 1);
-	out_op(op_plus); /* val[0]++ */
-	out_store();
+	/* va_ptr, &va, va */
 
-	/* stack = { frame_address_etc, val[0] } */
-	out_cast(type_ref_new_INT(), type_ref_new_INTPTR_T());
+	out_push_i(type_ref_new_INTPTR_T(), 1);
+	out_op(op_plus); /* val[0]++ */
+	/* va_ptr, &va, (va+1) */
+	out_store();
+	/* va_ptr, (va+1) */
+
 	out_op(op_minus);
+	/* va_ptr - (va+1) */
+	/* va_ptr - va - 1 = va_ptr_arg-1 */
 
 	EOF_WHERE(&e->where,
 		out_change_type(type_ref_new_ptr(e->tree_type, qual_none));
 	);
 	out_deref();
+	/* *va_arg() */
 
 	out_push_lbl(lbl_fin, 0);
 	out_jmp();
