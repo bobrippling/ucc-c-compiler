@@ -16,6 +16,6 @@ normal(int a, int b)
 
 _main()
 {
-	return f(1, 2);
+	return f(1, 2, 3, 4);
 	//return normal(5, 3);
 }

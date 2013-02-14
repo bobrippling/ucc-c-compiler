@@ -457,8 +457,11 @@ void out_push_sym(sym *s)
 			/*
 			 * stack layout is:
 			 * if variadic:
-			 *     extra_args,
-			 *     extra_variadic_args,
+			 *     2nd variadic-extra arg...
+			 *     1st variadic-extra arg,
+			 *     3rd arg...
+			 *     2nd arg
+			 *     1st arg
 			 *     --bp/ra--,
 			 *     saved_regs,
 			 *     variadic_reg_args, <-- covered by stack_local_offset
@@ -469,19 +472,20 @@ void out_push_sym(sym *s)
 			 *     saved_regs,
 			 *     local_vars...
 			 */
-			TODO();
-			if(type_ref_funcargs(s->func->ref)->variadic){
-				if(s->offset >= N_CALL_REGS){
-					vtop->bits.off_from_bp;
+			{
+				int off;
+
+				if(s->offset < N_CALL_REGS){
+					/* in saved_regs area */
+					off = -(s->offset + 1);
+				}else{
+					/* in extra area */
+					off = s->offset - N_CALL_REGS + 2;
 				}
-			}else{
-				vtop->bits.off_from_bp = platform_word_size() *
-					(s->offset < N_CALL_REGS
-					 ? -(s->offset + 1) /* in saved_regs area */
-					 :   s->offset - N_CALL_REGS + 2 /* in extra area */
-					);
+
+				vtop->bits.off_from_bp = platform_word_size() * off;
+				break;
 			}
-			break;
 
 		case sym_global:
 label:
@@ -874,6 +878,11 @@ void out_func_epilogue()
 void out_pop_func_ret(type_ref *t)
 {
 	impl_pop_func_ret(t);
+}
+
+int out_n_call_regs(void)
+{
+	return N_CALL_REGS;
 }
 
 void out_undefined(void)

@@ -263,5 +263,6 @@ struct_union_enum_st *type_ref_is_s_or_u_or_e(type_ref *);
 type_ref *type_ref_new_VA_LIST(void);
 
 #define type_ref_new_VOID_PTR() type_ref_ptr_depth_inc(type_ref_new_VOID())
+#define type_ref_new_INT_PTR()  type_ref_ptr_depth_inc(type_ref_new_INT())
 
 #endif

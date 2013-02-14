@@ -34,7 +34,7 @@ static type_ref *type_ref_new(enum type_ref_type t, type_ref *of)
 }
 
 static type_ref *cache_basics[type_unknown];
-static type_ref *cache_ptr_void, *cache_va_list;
+static type_ref *cache_ptr[type_unknown], *cache_va_list;
 
 void type_ref_init()
 {
@@ -43,7 +43,8 @@ void type_ref_init()
 	cache_basics[type_char] = type_ref_new_CHAR();
 	cache_basics[type_long] = type_ref_new_INTPTR_T();
 
-	cache_ptr_void = type_ref_new_VOID_PTR();
+	cache_ptr[type_void] = type_ref_new_VOID_PTR();
+	cache_ptr[type_int]  = type_ref_new_INT_PTR();
 	cache_va_list  = type_ref_new_VA_LIST();
 }
 
@@ -648,8 +649,12 @@ type_ref *type_ref_ptr_depth_dec(type_ref *r)
 
 type_ref *type_ref_ptr_depth_inc(type_ref *r)
 {
-	if(type_ref_is_type(r, type_void) && cache_ptr_void)
-		return cache_ptr_void;
+	type_ref *test;
+	if((test = type_ref_is_type(r, type_unknown))){
+		type_ref *p = cache_ptr[test->bits.type->primitive];
+		if(p)
+			return p;
+	}
 
 	return type_ref_new_ptr(r, qual_none);
 }

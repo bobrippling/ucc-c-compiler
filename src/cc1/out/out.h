@@ -44,4 +44,6 @@ void out_push_frame_ptr(int nframes);
 
 int out_vcount(void);
 
+int out_n_call_regs(void); /* for va_* - TODO: move to impl */
+
 #endif

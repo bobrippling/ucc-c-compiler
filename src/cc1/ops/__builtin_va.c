@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdlib.h>
 
 #include "../../util/util.h"
 #include "../../util/dynarray.h"
@@ -13,6 +14,7 @@
 #include "../fold.h"
 #include "../gen_asm.h"
 #include "../out/out.h"
+#include "../out/lbl.h"
 
 #include "__builtin_va.h"
 
@@ -20,9 +22,6 @@
 #include "../tokconv.h"
 #include "../parse.h"
 #include "../parse_type.h"
-
-/*#include "../parse_type.h"
-#include "../../util/platform.h"*/
 
 /* va_start */
 static void LVALUE_VA_CHECK(expr *va_l, expr *in)
@@ -55,41 +54,25 @@ static void fold_va_start(expr *e, symtable *stab)
 	}
 
 	/* TODO: check it's the last argument to the function */
-	/* TODO: check we're in a variadic function */
 
 	e->tree_type = type_ref_new_VOID();
-
-	/* finally store the number of arguments to this function */
-	{
-		funcargs *args = type_ref_funcargs(curdecl_func->ref);
-		int nargs = dynarray_count((void **)args->arglist);
-
-		if(!args->variadic)
-			DIE_AT(&e->where, "va_start in non-variadic function");
-
-		e->bits.n = nargs;
-	}
 }
 
 static void gen_va_start(expr *e, symtable *stab)
 {
-	/* assign to
+	/*
+	 * va_list is 8-bytes. use the second 4 as the int
+	 * offset into saved_reg_args. if this is >= N_CALL_REGS,
+	 * we go into saved_var_args (see out/out.c::push_sym sym_arg
+	 * for reference)
+	 *
+	 * assign to
 	 *   e->funcargs[0]
 	 * from
-	 *   __builtin_frame_address(0) + pws() * (nargs + 1)
-	 *
-	 * +1 to step over the saved bp
+	 *   0L
 	 */
-	out_push_frame_ptr(0);
-	out_push_i(type_ref_new_INTPTR_T(),
-			(e->bits.n + 1) * platform_word_size());
-	/* stack grows down,
-	 * we want the args which are belog the saved return addr + FP
-	 */
-	out_op(op_plus);
-
 	lea_expr(e->funcargs[0], stab);
-	out_swap();
+	out_push_i(type_ref_new_INTPTR_T(), -1);
 	out_store();
 }
 
@@ -107,26 +90,78 @@ expr *parse_va_start(void)
 
 static void gen_va_arg(expr *e, symtable *stab)
 {
-	/* read from the va_list / char * */
-	gen_expr(e->lhs, stab);
+	/*
+	 * first 4 bytes are offset into saved_regs
+	 * second 4 bytes are offset into saved_var_stack
+	 *
+	 * va_list val;
+	 *
+	 * if(((int *)val)[0] + nargs < N_CALL_REGS)
+	 *   __builtin_frame_address(0) - pws * (nargs) - (intptr_t)val[0]++
+	 * else
+	 *   __builtin_frame_address(0) + pws() * (nargs - N_CALL_REGS) + val[1]++
+	 *
+	 * if becomes:
+	 *   if(((int *)val)[0] < N_CALL_REGS - nargs)
+	 * since N_CALL_REGS-nargs can be calculated at compile time
+	 */
+	/* finally store the number of arguments to this function */
+	const int nargs = e->bits.n;
+	char *lbl_else = out_label_code("va_arg_overflow"),
+			 *lbl_fin  = out_label_code("va_arg_fin");
+
+	out_comment("va_arg start");
+
+	lea_expr(e->lhs, stab);
+
 	out_dup();
 
-	/* increment the va_list up the stack */
-	out_push_i(type_ref_new_INTPTR_T(), platform_word_size());
-	out_op(op_plus);
+	out_change_type(type_ref_new_INT_PTR());
+	out_deref(); /* deref size int */
 
-	/* store the new pointer value */
-	lea_expr(e->lhs, stab);
-	out_swap();
+	out_push_i(type_ref_new_INT(), out_n_call_regs() - nargs);
+	out_op(op_lt);
+
+	out_jfalse(lbl_else);
+
+	/* __builtin_frame_address(0) - pws * (nargs) */
+	out_push_frame_ptr(0);
+	out_push_i(type_ref_new_INTPTR_T(),
+			platform_word_size() * nargs);
+	out_op(op_minus);
+
+	/*  - (intptr_t)val[0]++  */
+	out_swap(); /* pull &val to the top */
+	out_change_type(type_ref_new_INT_PTR());
+	out_dup();
+
+	out_deref();
+	out_push_i(type_ref_new_INT(), 1);
+	out_op(op_plus); /* val[0]++ */
 	out_store();
-	out_pop(); /* pop the pointer value */
 
-	/* still have the pointer on stack,
-	 * deref it, size of type */
-	out_change_type(
-			type_ref_ptr_depth_inc(
-				e->bits.tref));
-	out_deref(); /* leave on the stack */
+	/* stack = { frame_address_etc, val[0] } */
+	out_cast(type_ref_new_INT(), type_ref_new_INTPTR_T());
+	out_op(op_minus);
+
+	EOF_WHERE(&e->where,
+		out_change_type(type_ref_new_ptr(e->tree_type, qual_none));
+	);
+	out_deref();
+
+	out_push_lbl(lbl_fin, 0);
+	out_jmp();
+	out_label(lbl_else);
+
+	out_comment("TODO");
+	out_undefined();
+
+	out_label(lbl_fin);
+
+	free(lbl_else);
+	free(lbl_fin);
+
+	out_comment("va_arg end");
 }
 
 static void fold_va_arg(expr *e, symtable *stab)
@@ -142,6 +177,17 @@ static void fold_va_arg(expr *e, symtable *stab)
 		DIE_AT(&e->expr->where, "va_list expected for va_arg");
 
 	e->tree_type = ty;
+
+	/* finally store the number of arguments to this function */
+	{
+		funcargs *args = type_ref_funcargs(curdecl_func->ref);
+		int nargs = dynarray_count((void **)args->arglist);
+
+		if(!args->variadic)
+			DIE_AT(&e->where, "va_start in non-variadic function");
+
+		e->bits.n = nargs;
+	}
 }
 
 expr *parse_va_arg(void)
