@@ -366,6 +366,11 @@ void out_push_lbl(char *s, int pic)
 	vtop->type = LBL;
 }
 
+void out_push_noop()
+{
+	out_push_i(type_ref_new_INTPTR_T(), 0);
+}
+
 void out_dup(void)
 {
 	/* TODO: mark reg as duped, but COW */

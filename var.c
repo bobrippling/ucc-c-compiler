@@ -1,10 +1,15 @@
 f(int a, ...)
 {
 	__builtin_va_list l;
+	int ret;
 
 	__builtin_va_start(l, a);
 
-	return __builtin_va_arg(l, int);
+	__builtin_va_arg(l, int);
+	ret = a + __builtin_va_arg(l, int);
+	__builtin_va_end(l);
+
+	return ret;
 }
 
 /*
@@ -16,6 +21,6 @@ normal(int a, int b)
 
 _main()
 {
-	return f(1, 2, 3, 4);
+	_printf("%d\n", f(5, 2, 3, 4));
 	//return normal(5, 3);
 }
