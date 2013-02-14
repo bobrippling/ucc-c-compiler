@@ -1,3 +1,6 @@
+// RUN: %ucc -o %t %s
+// RUN: %t; [ $? -eq 8 ]
+
 f(int a, ...)
 {
 	__builtin_va_list l;
@@ -12,15 +15,7 @@ f(int a, ...)
 	return ret;
 }
 
-/*
-normal(int a, int b)
-{
-	return a+b;
-}
-*/
-
 _main()
 {
-	_printf("%d\n", f(5, 2, 3, 4));
-	//return normal(5, 3);
+	return f(5, 2, 3, 4);
 }
