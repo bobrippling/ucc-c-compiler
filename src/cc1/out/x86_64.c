@@ -520,7 +520,6 @@ void impl_op(enum op_type op)
 			 */
 			v_freeup_regs(REG_A, REG_D);
 
-			v_to_reg(vtop);
 			r_div = v_to_reg(&vtop[-1]); /* TODO: similar to above - v_to_reg_preferred */
 
 			if(r_div != REG_A){
@@ -538,8 +537,6 @@ void impl_op(enum op_type op)
 
 			UCC_ASSERT(r_div == REG_A, "register A not chosen for idiv (%c)", regs[r_div]);
 
-			out_asm("cqto");
-
 			/* idiv takes either a reg or memory address */
 			switch(vtop->type){
 				default:
@@ -548,6 +545,7 @@ void impl_op(enum op_type op)
 
 				case REG:
 				case STACK:
+					out_asm("cqto");
 					out_asm("idiv%c %s", asm_type_ch(vtop->t), vstack_str(vtop));
 			}
 
