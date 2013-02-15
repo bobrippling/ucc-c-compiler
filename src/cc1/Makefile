@@ -1,7 +1,7 @@
 include ../src_config.mk
 include ../../config.mk
 
-CFLAGS_OUT = ${CFLAGS} -DCC1_IMPL_FNAME=\"${UCC_CPU}.h\"
+CPPFLAGS = -DCC1_IMPL_FNAME=\"${UCC_CPU}.h\"
 
 ARCH_OBJ = out/${UCC_CPU}.o
 
@@ -32,7 +32,7 @@ OBJ = \
 
 include ../../config.mk
 
-cc1: ${OBJ}
+cc1: ${OBJ} deps
 	${CC} ${CFLAGS} ${LDFLAGS} -o $@ ${OBJ}
 
 .c.o:
@@ -50,15 +50,22 @@ clean:
 
 # files that need target info
 out/mipsel_32.o: out/mipsel_32.c
-	${CC} ${CFLAGS_OUT} -c -o $@ $<
+	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<
 out/x86_64.o: out/x86_64.c
-	${CC} ${CFLAGS_OUT} -c -o $@ $<
+	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<
 out/out.o: out/out.c
-	${CC} ${CFLAGS_OUT} -c -o $@ $<
+	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<
 out/impl.o: out/impl.c
-	${CC} ${CFLAGS_OUT} -c -o $@ $<
+	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<
 
 # extra deps
 out/impl.h: out/x86_64.h out/mipsel_32.h
+
+deps: Makefile.dep
+
+Makefile.dep:
+	cc ${CPPFLAGS} -MM *.c > $@
+	cc ${CPPFLAGS} -MM ops/*.c | sed 's#^\([^ ]\)#ops/\1#' >> $@
+	cc ${CPPFLAGS} -MM out/*.c | sed 's#^\([^ ]\)#out/\1#' >> $@
 
 include Makefile.dep

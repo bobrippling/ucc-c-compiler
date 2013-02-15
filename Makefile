@@ -2,6 +2,9 @@ all: configure
 	make -C src
 	make -C lib
 
+deps:
+	make -BCsrc/cc1 deps
+
 configure:
 	@if ! test -e config.mk; then echo ucc needs configuring; exit 1; fi
 
