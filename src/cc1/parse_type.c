@@ -325,8 +325,33 @@ static type_ref *parse_btype(enum decl_storage *store)
 	{
 		type_ref *r;
 
-		if(signed_set && primitive == type__Bool)
-			DIE_AT(NULL, "%ssigned with _Bool", is_signed ? "" : "un");
+		if(signed_set){
+			switch(primitive){
+				case type__Bool:
+				case type_void:
+				case type_float:
+				case type_double:
+				case type_ldouble:
+				case type_va_list:
+					DIE_AT(NULL, "%ssigned with %s",
+							is_signed ? "" : "un",
+							type_primitive_to_str(primitive));
+					break;
+
+				case type_struct:
+				case type_union:
+				case type_enum:
+				case type_unknown:
+					ucc_unreach();
+
+				case type_char:
+				case type_int:
+				case type_short:
+				case type_long:
+				case type_llong:
+					break;
+			}
+		}
 
 		if(tdef_typeof){
 			/* signed size_t x; */
