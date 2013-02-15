@@ -125,27 +125,34 @@ void fold_const_expr_op(expr *e, consty *k)
 	}
 }
 
-void expr_promote_int(expr **pe, enum type_primitive to, symtable *stab)
+void expr_promote_int_if_smaller(expr **pe, symtable *stab)
 {
-	expr *const e = *pe;
-	expr *cast;
+	static int sz_int;
+	expr *e = *pe;
 
-	UCC_ASSERT(!type_ref_is(e->tree_type, type_ref_ptr),
-			"invalid promotion for pointer");
+	if(!sz_int)
+		sz_int = type_primitive_size(type_int);
 
-	/* if(type_primitive_size(e->tree_type->type->primitive) >= type_primitive_size(to))
-	 *   return;
-	 *
-	 * insert down-casts too - the tree_type of the expression is still important
-	 */
+	if(type_ref_size(e->tree_type, &e->where) < sz_int){
+		expr *cast;
 
-  cast = expr_new_cast(type_ref_new_type(type_new_primitive(to)), 1);
+		UCC_ASSERT(!type_ref_is(e->tree_type, type_ref_ptr),
+				"invalid promotion for pointer");
 
-	cast->expr = e;
+		/* if(type_primitive_size(e->tree_type->type->primitive) >= type_primitive_size(to))
+		 *   return;
+		 *
+		 * insert down-casts too - the tree_type of the expression is still important
+		 */
 
-	fold_expr_cast_descend(cast, stab, 0);
+		cast = expr_new_cast(type_ref_new_type(type_new_primitive(type_int)), 1);
 
-	*pe = cast;
+		cast->expr = e;
+
+		fold_expr_cast_descend(cast, stab, 0);
+
+		*pe = cast;
+	}
 }
 
 type_ref *op_required_promotion(
@@ -460,6 +467,9 @@ void fold_expr_op(expr *e, symtable *stab)
 		FOLD_EXPR(e->rhs, stab);
 		fold_disallow_st_un(e->rhs, "op-rhs");
 
+		expr_promote_int_if_smaller(&e->lhs, stab);
+		expr_promote_int_if_smaller(&e->rhs, stab);
+
 		e->tree_type = op_promote_types(e->op, op_to_str(e->op),
 				&e->lhs, &e->rhs, &e->where, stab);
 
@@ -476,19 +486,16 @@ void fold_expr_op(expr *e, symtable *stab)
 			e->tree_type = type_ref_new_INT();
 
 		}else{
+			/* op_bnot */
 			type_ref *t_unary = e->lhs->tree_type;
 
-			if(!type_ref_is_integral(t_unary) && !type_ref_is_floating(t_unary))
+			if(!type_ref_is_integral(t_unary))
 				DIE_AT(&e->where, "unary %s applied to type '%s'",
 						op_to_str(e->op), type_ref_to_str(t_unary));
 
-			/* extend to int if smaller */
-			if(type_ref_size(t_unary, &e->where) < type_primitive_size(type_int)){
-				expr_promote_int(&e->lhs, type_int, stab);
-				t_unary = e->lhs->tree_type;
-			}
+			expr_promote_int_if_smaller(&e->lhs, stab);
 
-			e->tree_type = t_unary;
+			e->tree_type = e->lhs->tree_type;
 		}
 	}
 }

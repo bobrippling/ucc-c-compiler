@@ -341,9 +341,6 @@ invalid:
 	if(e->funcargs){
 		unsigned long nonnulls = 0;
 		char *const desc = ustrprintf("function argument to %s", sp);
-		const int int_sz = type_primitive_size(type_int);
-		type_ref *t_int = type_ref_new_INT();
-		int t_int_used = 0;
 		int i;
 
 		{
@@ -362,19 +359,8 @@ invalid:
 				WARN_AT(&arg->where, "null passed where non-null required (arg %d)", i + 1);
 
 			/* each arg needs casting up to int size, if smaller */
-			if(type_ref_size(arg->tree_type, &arg->where) < int_sz){
-				expr *cast = expr_new_cast(t_int, 1);
-
-				cast->expr = arg;
-				e->funcargs[i] = cast;
-				fold_expr_cast_descend(cast, stab, 0);
-
-				t_int_used = 1;
-			}
+			expr_promote_int_if_smaller(&e->funcargs[i], stab);
 		}
-
-		if(!t_int_used)
-			type_ref_free(t_int);
 
 		free(desc);
 	}

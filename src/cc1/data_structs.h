@@ -20,21 +20,15 @@ struct stringval
 
 enum op_type
 {
-	/* maths */
-	op_multiply,
-	op_divide,
-	op_plus,
-	op_minus,
-	op_modulus,
-
 	/* binary */
-	op_xor,
-	op_or,   op_and,
+	op_multiply, op_divide, op_modulus,
+	op_plus, op_minus,
+	op_xor, op_or, op_and,
 	op_orsc, op_andsc,
-	op_not,  op_bnot,
-
-	/* shift */
 	op_shiftl, op_shiftr,
+
+	/* unary */
+	op_not,  op_bnot,
 
 	/* comparison */
 	op_eq, op_ne,

@@ -556,20 +556,9 @@ void impl_op(enum op_type op)
 			vtop_clear(vtop->t);
 			vtop->type = REG;
 
-			if(type_ref_size(vtop->t, NULL) != type_primitive_size(type_int)){
-#if 0
-Operand-Size         Dividend  Divisor  Quotient  Remainder
-8                    AX        r/m8     AL        AH
-16                   DX:AX     r/m16    AX        DX
-32                   EDX:EAX   r/m32    EAX       EDX
-64                   RDX:RAX   r/m64    RAX       RDX
-
-but gcc and clang promote to ints anyway...
-#endif
-				ICW("idiv incorrect - need to load al:ah/dx:ax/edx:eax for %s",
-						type_ref_to_str(vtop->t));
-			}
-
+			/* this is fine - we always use int-sized arithmetic or higher
+			 * (in the char case, we would need ah:al
+			 */
 			vtop->bits.reg = op == op_modulus ? REG_D : REG_A;
 			return;
 		}
