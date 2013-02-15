@@ -190,7 +190,7 @@ const char *type_primitive_to_str(const enum type_primitive p)
 		CASE_STR_PREFIX(type, float);
 		CASE_STR_PREFIX(type, double);
 		CASE_STR_PREFIX(type, _Bool);
-		CASE_STR_PREFIX(type, va_list);
+		case type_va_list: return "__builtin_va_list";
 
 		case type_llong:   return "long long";
 		case type_ldouble: return "long double";
@@ -285,29 +285,27 @@ const char *type_to_str(const type *t)
 
 	}else{
 		switch(t->primitive){
-#define SAPPEND(s) snprintf(bufp, BUF_SIZE, "%s", s); break
-#define APPEND(t) case type_ ## t: SAPPEND(#t)
-			APPEND(void);
-			APPEND(_Bool);
-			APPEND(char);
-			APPEND(short);
-			APPEND(int);
-			APPEND(long);
-			APPEND(float);
-			APPEND(double);
-			APPEND(va_list);
-
-			case type_llong:   SAPPEND("long long");
-			case type_ldouble: SAPPEND("long double");
+			case type_void:
+			case type__Bool:
+			case type_char:
+			case type_short:
+			case type_int:
+			case type_long:
+			case type_float:
+			case type_double:
+			case type_va_list:
+			case type_llong:
+			case type_ldouble:
+				snprintf(bufp, BUF_SIZE, "%s",
+						type_primitive_to_str(t->primitive));
+				break;
 
 			case type_unknown:
 				ICE("unknown type primitive (%s)", where_str(&t->where));
 			case type_enum:
-				ICE("enum without ->enu");
 			case type_struct:
 			case type_union:
-				ICE("struct/union without ->struct_union");
-#undef APPEND
+				ICE("struct/union/enum without ->sue");
 		}
 	}
 
