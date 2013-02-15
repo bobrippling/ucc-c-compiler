@@ -36,16 +36,12 @@ static void va_lvalue_check(expr *va_l, expr *in)
 				BUILTIN_SPEL(in));
 }
 
-static void va_ensure_variadic(expr *e, int *pnargs)
+static void va_ensure_variadic(expr *e)
 {
 	funcargs *args = type_ref_funcargs(curdecl_func->ref);
-	const int nargs = dynarray_count((void **)args->arglist);
 
 	if(!args->variadic)
 		DIE_AT(&e->where, "%s in non-variadic function", BUILTIN_SPEL(e->expr));
-
-	if(pnargs)
-		*pnargs = nargs;
 }
 
 static void fold_va_start(expr *e, symtable *stab)
@@ -64,7 +60,7 @@ static void fold_va_start(expr *e, symtable *stab)
 	va_l = e->funcargs[0];
 	va_lvalue_check(va_l, e->expr);
 
-	va_ensure_variadic(e, NULL);
+	va_ensure_variadic(e);
 	/* TODO: check funcargs[1] is last argument to the function */
 
 	e->tree_type = type_ref_new_VOID();
@@ -202,7 +198,7 @@ static void fold_va_arg(expr *e, symtable *stab)
 	e->tree_type = ty;
 
 	/* finally store the number of arguments to this function */
-	va_ensure_variadic(e, &e->bits.n);
+	e->bits.n = dynarray_count((void **)type_ref_funcargs(curdecl_func->ref)->arglist);
 }
 
 expr *parse_va_arg(void)
@@ -238,7 +234,7 @@ static void fold_va_end(expr *e, symtable *stab)
 	FOLD_EXPR_NO_DECAY(e->funcargs[0], stab);
 	va_lvalue_check(e->funcargs[0], e->expr);
 
-	va_ensure_variadic(e, NULL);
+	va_ensure_variadic(e);
 
 	e->tree_type = type_ref_new_VOID();
 }
