@@ -38,8 +38,6 @@ enum type_primitive
 	type_union,
 	type_enum,
 
-	type_va_list, /* special builtin */
-
 	type_unknown
 };
 

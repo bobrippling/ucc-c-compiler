@@ -86,11 +86,9 @@ type_ref *parse_type_sue(enum type_primitive prim)
 				DIE_AT(NULL, "no members in %s", desc);
 			}
 
-			for(i = dmembers; *i; i++){
-				sue_member *sm = umalloc(sizeof *sm);
-				sm->struct_member = *i;
-				dynarray_add((void ***)&members, sm);
-			}
+			for(i = dmembers; *i; i++)
+				dynarray_add((void ***)&members,
+						sue_member_from_decl(*i));
 
 			dynarray_free((void ***)&dmembers, NULL);
 
@@ -141,7 +139,7 @@ static type_ref *parse_btype(enum decl_storage *store)
 	decl_attr *attr = NULL;
 	enum type_qualifier qual = qual_none;
 	enum type_primitive primitive = type_int;
-	int is_signed = 1, is_inline = 0, had_attr = 0, is_noreturn = 0;
+	int is_signed = 1, is_inline = 0, had_attr = 0, is_noreturn = 0, is_va_list = 0;
 	int store_set = 0, primitive_set = 0, signed_set = 0;
 	decl *tdef_decl = NULL;
 
@@ -277,7 +275,8 @@ static type_ref *parse_btype(enum decl_storage *store)
 				DIE_AT(NULL, "can't combine previous primitive with va_list");
 
 			primitive_set = 1;
-			primitive = type_va_list;
+			is_va_list = 1;
+			primitive = type_struct;
 
 		}else if(curtok == token_identifier
 		&& (tdef_decl_test = typedef_find(current_scope, token_current_spel_peek()))){
@@ -339,7 +338,6 @@ static type_ref *parse_btype(enum decl_storage *store)
 				case type_float:
 				case type_double:
 				case type_ldouble:
-				case type_va_list:
 					DIE_AT(NULL, "%ssigned with %s",
 							is_signed ? "" : "un",
 							type_primitive_to_str(primitive));
@@ -360,7 +358,10 @@ static type_ref *parse_btype(enum decl_storage *store)
 			}
 		}
 
-		if(tdef_typeof){
+		if(is_va_list){
+			r = type_ref_new_VA_LIST();
+
+		}else if(tdef_typeof){
 			/* signed size_t x; */
 			if(signed_set){
 				DIE_AT(NULL, "signed/unsigned not allowed with typedef instance (%s)",

@@ -430,7 +430,6 @@ usage:
 	show_current_line = fopt_mode & FOPT_SHOW_LINE;
 
 	tokenise_set_file(f, fname);
-	type_ref_init();
 	globs = parse();
 	if(f != stdin)
 		fclose(f);

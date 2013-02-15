@@ -23,17 +23,16 @@
 #include "../parse.h"
 #include "../parse_type.h"
 
-static void va_lvalue_check(expr *va_l, expr *in)
+static void va_check(expr *va_l, expr *in)
 {
-	if(!expr_is_lvalue(va_l))
-		DIE_AT(&in->where,
-				"%s argument 1 must be an lvalue (%s)",
-				BUILTIN_SPEL(in), va_l->f_str());
-
-	if(!type_ref_is_type(va_l->tree_type, type_va_list))
+	if(!type_ref_equal(va_l->tree_type,
+				type_ref_new_VA_LIST(),
+				DECL_CMP_EXACT_MATCH))
+	{
 		DIE_AT(&va_l->where,
 				"first argument to %s should be a va_list",
 				BUILTIN_SPEL(in));
+	}
 }
 
 static void va_ensure_variadic(expr *e)
@@ -58,7 +57,7 @@ static void fold_va_start(expr *e, symtable *stab)
 	FOLD_EXPR(         e->funcargs[1], stab);
 
 	va_l = e->funcargs[0];
-	va_lvalue_check(va_l, e->expr);
+	va_check(va_l, e->expr);
 
 	va_ensure_variadic(e);
 	/* TODO: check funcargs[1] is last argument to the function */
@@ -193,7 +192,7 @@ static void fold_va_arg(expr *e, symtable *stab)
 	FOLD_EXPR_NO_DECAY(e->lhs, stab);
 	fold_type_ref(ty, NULL, stab);
 
-	va_lvalue_check(e->lhs, e->expr);
+	va_check(e->lhs, e->expr);
 
 	e->tree_type = ty;
 
@@ -232,7 +231,7 @@ static void fold_va_end(expr *e, symtable *stab)
 		DIE_AT(&e->where, "%s requires one argument", BUILTIN_SPEL(e->expr));
 
 	FOLD_EXPR_NO_DECAY(e->funcargs[0], stab);
-	va_lvalue_check(e->funcargs[0], e->expr);
+	va_check(e->funcargs[0], e->expr);
 
 	va_ensure_variadic(e);
 

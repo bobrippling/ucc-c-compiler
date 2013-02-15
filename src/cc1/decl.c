@@ -34,9 +34,10 @@ static type_ref *type_ref_new(enum type_ref_type t, type_ref *of)
 }
 
 static type_ref *cache_basics[type_unknown];
-static type_ref *cache_ptr[type_unknown], *cache_va_list;
+static type_ref *cache_ptr[type_unknown];
+static type_ref *cache_va_list;
 
-void type_ref_init()
+void type_ref_init(symtable *stab)
 {
 	cache_basics[type_void] = type_ref_new_VOID();
 	cache_basics[type_int]  = type_ref_new_INT();
@@ -46,16 +47,82 @@ void type_ref_init()
 	cache_ptr[type_void] = type_ref_new_VOID_PTR();
 	cache_ptr[type_long] = type_ref_new_LONG_PTR();
 	cache_ptr[type_int]  = type_ref_new_INT_PTR();
-	cache_va_list  = type_ref_new_VA_LIST();
+
+	/* pointer to struct __builtin_va_list */
+	{
+		/* must match GNU abi - vfprintf(..., ap); */
+		sue_member **sue_members = NULL;
+
+		type_ref *char_ptr = type_ref_new_ptr(
+				type_ref_new_CHAR(),
+				qual_none);
+
+		/*
+		unsigned int gp_offset;
+		unsigned int fp_offset;
+		union {
+		unsigned int overflow_offset;
+		char *overflow_arg_area;
+		};
+		char *reg_save_area;
+		*/
+
+#define ADD_DECL(to, dcl)          \
+		dynarray_add((void ***)&to,    \
+				sue_member_from_decl(dcl))
+
+#define ADD_SCALAR(to, ty, sp)                 \
+		ADD_DECL(to,                               \
+				decl_new_ty_sp(                        \
+					type_ref_new_type(                   \
+						type_new_primitive_signed(ty, 0)), \
+					ustrdup(sp)))
+
+
+		ADD_SCALAR(sue_members, type_int, "gp_offset");
+		ADD_SCALAR(sue_members, type_int, "fp_offset");
+
+		{
+			sue_member **anon_un_members = NULL;
+
+			ADD_SCALAR(anon_un_members, type_int, "overflow_offset");
+			ADD_DECL(anon_un_members, decl_new_ty_sp(char_ptr, "overflow_arg_area"));
+
+			ADD_DECL(sue_members, decl_new_ty_sp(
+						type_ref_new_type(
+							type_new_primitive_sue(
+								type_union,
+								sue_add(stab, NULL, anon_un_members, type_union))),
+						NULL /* anon union */));
+		}
+
+		ADD_DECL(sue_members, decl_new_ty_sp(char_ptr, "reg_save_area"));
+
+		/* typedef struct __va_list_struct __builtin_va_list[1]; */
+		{
+			type_ref *va_list_struct = type_ref_new_type(
+					type_new_primitive_sue(
+						type_struct,
+						sue_add(stab, ustrdup("__va_list_struct"),
+							sue_members, type_struct)));
+
+
+			type_ref *builtin_ar = type_ref_new_array(
+					va_list_struct,
+					expr_new_val(1));
+
+			type_ref *td = type_ref_new_tdef(
+					expr_new_sizeof_type(builtin_ar, 1),
+					decl_new_ty_sp(builtin_ar,
+						ustrdup("__builtin_va_list")));
+
+			cache_va_list = td;
+		}
+	}
 }
 
 type_ref *type_ref_new_VA_LIST(void)
 {
-	/* pointer to struct __builtin_va_list */
-	if(!cache_va_list)
-		cache_va_list = type_ref_new_type(
-					type_new_primitive(type_va_list));
-
 	return cache_va_list;
 }
 
@@ -156,6 +223,14 @@ decl *decl_new()
 {
 	decl *d = umalloc(sizeof *d);
 	where_new(&d->where);
+	return d;
+}
+
+decl *decl_new_ty_sp(type_ref *ty, char *sp)
+{
+	decl *d = decl_new();
+	d->ref = ty;
+	d->spel = sp;
 	return d;
 }
 

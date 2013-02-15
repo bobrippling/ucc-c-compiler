@@ -159,11 +159,12 @@ enum decl_cmp
 };
 
 decl        *decl_new(void);
+decl        *decl_new_ty_sp(type_ref *, char *);
 void         decl_free(decl *, int free_ref);
 void         type_ref_free(type_ref *);
 void         type_ref_free_1(type_ref *);
 
-void type_ref_init(void);
+void type_ref_init(symtable *stab);
 type_ref *type_ref_new_tdef(expr *, decl *);
 type_ref *type_ref_new_type(const type *);
 type_ref *type_ref_new_type_primitive(enum type_primitive);
