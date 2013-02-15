@@ -23,7 +23,6 @@
 #include "../parse.h"
 #include "../parse_type.h"
 
-/* va_start */
 static void va_lvalue_check(expr *va_l, expr *in)
 {
 	if(!expr_is_lvalue(va_l))
@@ -98,8 +97,6 @@ expr *parse_va_start(void)
 	expr_mutate_builtin_gen(fcall, va_start);
 	return fcall;
 }
-
-/* va_arg */
 
 static void gen_va_arg(expr *e, symtable *stab)
 {
@@ -226,12 +223,10 @@ expr *parse_va_arg(void)
 	return fcall;
 }
 
-/* va_end */
-
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-
 static void gen_va_end(expr *e, symtable *stab)
 {
+	(void)e;
+	(void)stab;
 	out_push_noop();
 }
 
