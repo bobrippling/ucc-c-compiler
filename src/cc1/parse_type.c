@@ -141,9 +141,6 @@ static type_ref *parse_btype(enum decl_storage *store)
 	if(store)
 		*store = store_default;
 
-	if(accept(token___builtin_va_list))
-		return type_ref_new_VA_LIST();
-
 	for(;;){
 		decl *tdef_decl_test;
 
@@ -267,6 +264,13 @@ static type_ref *parse_btype(enum decl_storage *store)
 
 			tdef_typeof = parse_expr_sizeof_typeof(1);
 			primitive_set = 1;
+
+		}else if(accept(token___builtin_va_list)){
+			if(primitive_set)
+				DIE_AT(NULL, "can't combine previous primitive with va_list");
+
+			primitive_set = 1;
+			primitive = type_va_list;
 
 		}else if(curtok == token_identifier
 		&& (tdef_decl_test = typedef_find(current_scope, token_current_spel_peek()))){
