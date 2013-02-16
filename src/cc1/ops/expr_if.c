@@ -118,7 +118,7 @@ void fold_expr_if(expr *e, symtable *stab)
 				char bufa[TYPE_REF_STATIC_BUFSIZ], bufb[TYPE_REF_STATIC_BUFSIZ];
 
 				fold_type_ref_equal(tt_l, tt_r, &e->where,
-						WARN_COMPARE_MISMATCH, /* FIXME: enum "mismatch" */
+						WARN_COMPARE_MISMATCH, 0, /* FIXME: enum "mismatch" */
 						"pointer type mismatch: %s and %s",
 						type_ref_to_str_r(bufa, tt_l),
 						type_ref_to_str_r(bufb, tt_r));

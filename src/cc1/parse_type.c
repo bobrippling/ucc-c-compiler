@@ -82,7 +82,14 @@ type *parse_type_sue(enum type_primitive prim)
 
 			EAT(token_close_block);
 		}else{
-			decl **dmembers = parse_decls_multi_type(DECL_MULTI_CAN_DEFAULT | DECL_MULTI_ACCEPT_FIELD_WIDTH);
+			/* always allow nameless structs (C11)
+			 * we don't allow tagged ones unless
+			 * -fms-extensions or -fplan9-extensions
+			 */
+			decl **dmembers = parse_decls_multi_type(
+					DECL_MULTI_CAN_DEFAULT |
+					DECL_MULTI_ACCEPT_FIELD_WIDTH |
+					DECL_MULTI_NAMELESS);
 			decl **i;
 
 			if(!dmembers){
@@ -806,24 +813,26 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 			if(sue && !parse_possible_decl()){
 				/*
 				 * struct { int i; }; - continue to next one
-				 * we check the actual ->struct/enum because we don't allow "enum x;"
+				 * this is either struct or union, not enum
 				 */
-				enum type_qualifier qual;
+				if((mode & DECL_MULTI_NAMELESS) == 0){
+					enum type_qualifier qual;
 
-				if(sue->anon)
-					WARN_AT(&this_ref->where, "anonymous %s with no instances", sue_str(sue));
+					if(sue->anon)
+						WARN_AT(&this_ref->where, "anonymous %s with no instances", sue_str(sue));
 
-				/* check for storage/qual on no-instance */
-				qual = type_ref_qual(this_ref);
-				if(qual || store != store_default){
-					WARN_AT(&this_ref->where, "ignoring %s%s%son no-instance %s",
-							store != store_default ? decl_store_to_str(store) : "",
-							store != store_default ? " " : "",
-							type_qual_to_str(qual),
-							sue_str(sue));
+					/* check for storage/qual on no-instance */
+					qual = type_ref_qual(this_ref);
+					if(qual || store != store_default){
+						WARN_AT(&this_ref->where, "ignoring %s%s%son no-instance %s",
+								store != store_default ? decl_store_to_str(store) : "",
+								store != store_default ? " " : "",
+								type_qual_to_str(qual),
+								sue_str(sue));
+					}
+
+					goto next;
 				}
-
-				goto next;
 			}
 		}
 
@@ -838,24 +847,27 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 				 * struct A; - fine
 				 * struct { int i; }; - warn
 				 */
+
 				if(last == NULL){
 					int warn = 0;
 					struct_union_enum_st *sue;
 
 					/* allow "int : 5;" */
 					if(curtok == token_colon)
-						goto got_field_width;
+						goto add;
 
 					/* check for no-fwd and anon */
 					sue = type_ref_is_s_or_u_or_e(this_ref);
 					switch(sue ? sue->primitive : type_unknown){
-						case type_enum:
-							warn = 0; /* don't warn for enums - they're always declarations */
-							break;
 						case type_struct:
 						case type_union:
-							/* if it doesn't have a ->sue, it's a forward decl */
-							warn = !sue->anon;
+							/* don't warn for tagged struct/unions */
+							if(mode & DECL_MULTI_NAMELESS)
+								goto add;
+
+							UCC_ASSERT(!sue->anon, "tagless struct should've been caught above");
+						case type_enum:
+							warn = 0; /* don't warn for enums - they're always declarations */
 							break;
 
 						default:
@@ -923,7 +935,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 				}
 			}
 
-got_field_width:
+add:
 			dynarray_add(are_tdefs
 					? (void ***)&current_scope->typedefs
 					: (void ***)&decls,

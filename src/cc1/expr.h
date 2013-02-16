@@ -91,7 +91,11 @@ struct expr
 			decl *decl;
 		} complit;
 
-		decl *struct_mem;
+		struct
+		{
+			decl *d;
+			unsigned extra_off;
+		} struct_mem;
 
 		sym *block_sym;
 

@@ -342,12 +342,10 @@ invalid:
 		unsigned long nonnulls = 0;
 		char *const desc = ustrprintf("function argument to %s", sp);
 		int i;
+		decl_attr *da;
 
-		{
-			decl_attr *da;
-			if((da = type_attr_present(type_func, attr_nonnull)))
-				nonnulls = da->attr_extra.nonnull_args;
-		}
+		if((da = type_attr_present(type_func, attr_nonnull)))
+			nonnulls = da->attr_extra.nonnull_args;
 
 		for(i = 0; e->funcargs[i]; i++){
 			expr *arg = FOLD_EXPR(e->funcargs[i], stab);
@@ -357,9 +355,6 @@ invalid:
 
 			if((nonnulls & (1 << i)) && expr_is_null_ptr(arg, 1))
 				WARN_AT(&arg->where, "null passed where non-null required (arg %d)", i + 1);
-
-			/* each arg needs casting up to int size, if smaller */
-			expr_promote_int_if_smaller(&e->funcargs[i], stab);
 		}
 
 		free(desc);
@@ -383,6 +378,7 @@ invalid:
 		if(e->funcargs){
 			funcargs *args_from_expr = funcargs_new();
 			expr **iter_arg;
+			enum funcargs_cmp eq;
 
 			for(iter_arg = e->funcargs; *iter_arg; iter_arg++){
 				decl *dtmp = decl_new();
@@ -391,8 +387,29 @@ invalid:
 				dynarray_add((void ***)&args_from_expr->arglist, dtmp);
 			}
 
-			if(funcargs_equal(args_from_decl, args_from_expr, 0, sp) == funcargs_are_mismatch_count)
-				DIE_AT(&e->where, "mismatching argument count to %s", sp);
+			eq = funcargs_equal(args_from_decl, args_from_expr, 0, sp);
+			switch(eq){
+				case funcargs_are_equal:
+					break;
+
+				case funcargs_are_mismatch_count:
+					DIE_AT(&e->where, "mismatching argument count to %s", sp);
+
+				case funcargs_are_mismatch_types:
+				{
+					/* insert casts */
+					int i;
+
+					for(i = 0; e->funcargs[i]; i++){
+						fold_insert_casts(args_from_decl->arglist[i]->ref,
+								&e->funcargs[i],
+								stab,
+								&e->funcargs[i]->where, "function argument");
+					}
+					break;
+				}
+			}
+
 
 			funcargs_free(args_from_expr, 1, 0);
 		}
@@ -405,9 +422,17 @@ invalid:
 			WARN_AT(&e->where, "too many arguments to implicitly (void)-function");
 	}
 
+	/* each arg needs casting up to int size, if smaller */
+	if(e->funcargs){
+		int i;
+		for(i = 0; e->funcargs[i]; i++)
+			expr_promote_int_if_smaller(&e->funcargs[i], stab);
+	}
+
 	fold_disallow_st_un(e, "return");
 
-	/* attr */{
+	/* attr */
+	{
 		type_ref *r = e->expr->tree_type;
 
 		format_check(&e->where, r, e->funcargs, args_from_decl->variadic);

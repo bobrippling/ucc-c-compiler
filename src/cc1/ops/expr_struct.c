@@ -5,7 +5,7 @@
 
 #define ASSERT_NOT_DOT() UCC_ASSERT(!e->expr_is_st_dot, "a.b should have been handled by now")
 
-#define struct_offset(e) (e)->bits.struct_mem->struct_offset
+#define struct_offset(e) ((e)->bits.struct_mem.d->struct_offset + (e)->bits.struct_mem.extra_off)
 
 const char *str_expr_struct()
 {
@@ -60,9 +60,16 @@ err:
 	}
 
 	/* found the struct, find the member */
-	e->rhs->tree_type = (
-			e->bits.struct_mem = struct_union_member_find(sue, spel, &e->where)
-	)->ref;
+	{
+		decl *d_mem = struct_union_member_find(sue, spel,
+				&e->bits.struct_mem.extra_off);
+
+		if(!d_mem)
+			DIE_AT(&e->where, "%s %s has no member named \"%s\"",
+					sue_str(sue), sue->spel, spel);
+
+		e->rhs->tree_type = (e->bits.struct_mem.d = d_mem)->ref;
+	}
 
 	/*
 	 * if it's a.b, convert to (&a)->b for asm gen
@@ -124,7 +131,7 @@ void gen_expr_str_struct(expr *e, symtable *stab)
 	(void)stab;
 	idt_printf("struct/union%s%s\n",
 			e->expr_is_st_dot ? "." : "->",
-			e->bits.struct_mem->spel);
+			e->bits.struct_mem.d->spel);
 
 	gen_str_indent++;
 	print_expr(e->lhs);

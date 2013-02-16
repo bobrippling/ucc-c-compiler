@@ -414,7 +414,7 @@ int decl_size(decl *d, where const *from)
 
 enum funcargs_cmp funcargs_equal(
 		funcargs *args_to, funcargs *args_from,
-		int strict_types, const char *fspel)
+		int exact, const char *fspel)
 {
 	const int count_to = dynarray_count((void **)args_to->arglist);
 	const int count_from = dynarray_count((void **)args_from->arglist);
@@ -429,46 +429,52 @@ enum funcargs_cmp funcargs_equal(
 		return funcargs_are_mismatch_count;
 
 	if(count_to){
-		const enum decl_cmp flag =
-			  DECL_CMP_ALLOW_SIGNED_UNSIGNED
-			| DECL_CMP_ALLOW_VOID_PTR
-			| (strict_types ? DECL_CMP_EXACT_MATCH : 0);
+		const enum decl_cmp flag = exact ? DECL_CMP_EXACT_MATCH : 0;
 
 		int i;
 
-		for(i = 0; args_to->arglist[i]; i++)
-			if(!decl_equal(args_to->arglist[i], args_from->arglist[i], flag)){
-				if(fspel){
-					char buf[DECL_STATIC_BUFSIZ];
+		for(i = 0; args_to->arglist[i]; i++){
+			char buf[TYPE_REF_STATIC_BUFSIZ];
 
-					cc1_warn_at(&args_from->where, 0, 1, WARN_ARG_MISMATCH,
-							"mismatching argument %d to %s (%s <-- %s)",
-							i, fspel,
-							decl_to_str_r(buf, args_to->arglist[i]),
-							decl_to_str(       args_from->arglist[i]));
-				}
+			int eq = fold_type_ref_equal(
+					args_to->arglist[i]->ref,
+					args_from->arglist[i]->ref,
+					&args_from->where, WARN_ARG_MISMATCH, flag,
+					"mismatching argument %d %s%s%s(%s <-- %s)",
+					i,
+					fspel ? "to " : "",
+					fspel ? fspel : "",
+					fspel ? " " : "",
+					decl_to_str_r(buf, args_to->arglist[i]),
+					decl_to_str(       args_from->arglist[i]));
 
+			if(!eq)
 				return funcargs_are_mismatch_types;
-			}
+		}
 	}
 
 	return funcargs_are_equal;
 }
 
-static int type_ref_equal_r(type_ref *a, type_ref *b, enum decl_cmp mode)
+static int type_ref_equal_r(
+		type_ref *const orig_a,
+		type_ref *const orig_b,
+		enum decl_cmp mode)
 {
-	if(!a || !b)
-		return a == b ? 1 : 0;
+	type_ref *a, *b;
+
+	if(!orig_a || !orig_b)
+		return orig_a == orig_b ? 1 : 0;
 
 	/* check for signed vs unsigned */
 	if((mode & DECL_CMP_ALLOW_SIGNED_UNSIGNED) == 0
-	&& type_ref_is_signed(a) != type_ref_is_signed(b))
+	&& type_ref_is_signed(orig_a) != type_ref_is_signed(orig_b))
 	{
 		return 0;
 	}
 
-	a = type_ref_skip_tdefs_casts(a);
-	b = type_ref_skip_tdefs_casts(b);
+	a = type_ref_skip_tdefs_casts(orig_a);
+	b = type_ref_skip_tdefs_casts(orig_b);
 
 	/* array/func decay takes care of any array->ptr checks */
 	if(a->type != b->type)

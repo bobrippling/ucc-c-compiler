@@ -29,6 +29,14 @@ fin:
 	return r;
 }
 
+decl *type_ref_is_tdef(type_ref *r)
+{
+	if(r && r->type == type_ref_tdef)
+		return r->bits.tdef.decl;
+
+	return NULL;
+}
+
 type_ref *type_ref_next(type_ref *r)
 {
 	if(!r)

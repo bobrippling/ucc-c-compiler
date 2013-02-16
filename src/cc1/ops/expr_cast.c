@@ -6,6 +6,7 @@
 #include "ops.h"
 #include "expr_cast.h"
 #include "../out/asm.h"
+#include "../sue.h"
 
 const char *str_expr_cast()
 {
@@ -166,6 +167,28 @@ void gen_expr_cast(expr *e, symtable *stab)
 	/* check float <--> int conversion */
 	if(type_ref_is_floating(tto) != type_ref_is_floating(tfrom))
 		ICE("TODO: float <-> int casting");
+
+	if(fopt_mode & FOPT_PLAN9_EXTENSIONS){
+		/* allow b to be an anonymous member of a */
+		struct_union_enum_st *a_sue = type_ref_is_s_or_u(type_ref_is_ptr(tto)),
+												 *b_sue = type_ref_is_s_or_u(type_ref_is_ptr(tfrom));
+
+		if(a_sue && b_sue && a_sue != b_sue){
+			decl *mem = struct_union_member_find_sue(b_sue, a_sue);
+
+			if(mem){
+				/*char buf[TYPE_REF_STATIC_BUFSIZ];
+				fprintf(stderr, "CAST %s -> %s, adj by %d\n",
+						type_ref_to_str(tfrom),
+						type_ref_to_str_r(buf, tto),
+						mem->struct_offset);*/
+
+				out_change_type(type_ref_new_VOID_PTR());
+				out_push_i(type_ref_new_INTPTR_T(), mem->struct_offset);
+				out_op(op_plus);
+			}
+		}
+	}
 
 	out_cast(tfrom, tto);
 
