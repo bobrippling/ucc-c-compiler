@@ -20,8 +20,16 @@ int const_fold_expr_funcall(expr *e)
 	return 1; /* could extend to have int x() const; */
 }
 
-static void format_check_printf_1(char fmt, type_ref *tt, where *w)
+enum printf_attr
 {
+	printf_attr_long = 1 << 0
+};
+
+static void format_check_printf_1(char fmt, type_ref *tt,
+		where *w, enum printf_attr attr)
+{
+	int allow_long = 0;
+
 	switch(fmt){
 		enum type_primitive prim;
 
@@ -45,8 +53,11 @@ ptr:
 		case 'c':
 		case 'd':
 		case 'i':
+			allow_long = 1;
 			if(!type_ref_is_integral(tt))
-				WARN_AT(w, "format %%d expects integral argument");
+				WARN_AT(w, "format %%%c expects integral argument", fmt);
+			if((attr & printf_attr_long) && !type_ref_is_type(tt, type_long))
+				WARN_AT(w, "format %%l%c expects long argument", fmt);
 			break;
 
 		case 'e':
@@ -64,6 +75,9 @@ ptr:
 		default:
 			WARN_AT(w, "unknown conversion character 0x%x", fmt);
 	}
+
+	if(!allow_long && attr & printf_attr_long)
+		WARN_AT(w, "format %%%c expects a long", fmt);
 }
 
 static void format_check_printf_str(
@@ -77,6 +91,7 @@ static void format_check_printf_str(
 	for(i = 0; i < len && fmt[i];){
 		if(fmt[i++] == '%'){
 			int fin;
+			enum printf_attr attr;
 			expr *e;
 
 			if(fmt[i] == '%'){
@@ -85,8 +100,13 @@ static void format_check_printf_str(
 			}
 
 recheck:
+			attr = 0;
 			fin = 0;
 			do switch(fmt[i]){
+				 case 'l':
+					/* TODO: multiple check.. */
+					attr |= printf_attr_long;
+
 				case '1': case '2': case '3':
 				case '4': case '5': case '6':
 				case '7': case '8': case '9':
@@ -94,7 +114,7 @@ recheck:
 				case '0': case '#': case '-':
 				case ' ': case '+': case '.':
 
-				case 'l': case 'h': case 'L':
+				case 'h': case 'L':
 					i++;
 					break;
 				default:
@@ -108,7 +128,7 @@ recheck:
 				break;
 			}
 
-			format_check_printf_1(fmt[i], e->tree_type, &e->where);
+			format_check_printf_1(fmt[i], e->tree_type, &e->where, attr);
 			if(fmt[i] == '*'){
 				i++;
 				goto recheck;
@@ -321,16 +341,11 @@ invalid:
 	if(e->funcargs){
 		unsigned long nonnulls = 0;
 		char *const desc = ustrprintf("function argument to %s", sp);
-		const int int_sz = type_primitive_size(type_int);
-		type_ref *t_int = type_ref_new_INT();
-		int t_int_used = 0;
 		int i;
+		decl_attr *da;
 
-		{
-			decl_attr *da;
-			if((da = type_attr_present(type_func, attr_nonnull)))
-				nonnulls = da->attr_extra.nonnull_args;
-		}
+		if((da = type_attr_present(type_func, attr_nonnull)))
+			nonnulls = da->attr_extra.nonnull_args;
 
 		for(i = 0; e->funcargs[i]; i++){
 			expr *arg = FOLD_EXPR(e->funcargs[i], stab);
@@ -340,21 +355,7 @@ invalid:
 
 			if((nonnulls & (1 << i)) && expr_is_null_ptr(arg, 1))
 				WARN_AT(&arg->where, "null passed where non-null required (arg %d)", i + 1);
-
-			/* each arg needs casting up to int size, if smaller */
-			if(type_ref_size(arg->tree_type, &arg->where) < int_sz){
-				expr *cast = expr_new_cast(t_int, 1);
-
-				cast->expr = arg;
-				e->funcargs[i] = cast;
-				fold_expr_cast_descend(cast, stab, 0);
-
-				t_int_used = 1;
-			}
 		}
-
-		if(!t_int_used)
-			type_ref_free(t_int);
 
 		free(desc);
 	}
@@ -375,6 +376,7 @@ invalid:
 		if(e->funcargs){
 			funcargs *args_from_expr = funcargs_new();
 			expr **iter_arg;
+			enum funcargs_cmp eq;
 
 			for(iter_arg = e->funcargs; *iter_arg; iter_arg++){
 				decl *dtmp = decl_new();
@@ -383,8 +385,29 @@ invalid:
 				dynarray_add((void ***)&args_from_expr->arglist, dtmp);
 			}
 
-			if(funcargs_equal(args_from_decl, args_from_expr, 0, sp) == funcargs_are_mismatch_count)
-				DIE_AT(&e->where, "mismatching argument count to %s", sp);
+			eq = funcargs_equal(args_from_decl, args_from_expr, 0, sp);
+			switch(eq){
+				case funcargs_are_equal:
+					break;
+
+				case funcargs_are_mismatch_count:
+					DIE_AT(&e->where, "mismatching argument count to %s", sp);
+
+				case funcargs_are_mismatch_types:
+				{
+					/* insert casts */
+					int i;
+
+					for(i = 0; e->funcargs[i]; i++){
+						fold_insert_casts(args_from_decl->arglist[i]->ref,
+								&e->funcargs[i],
+								stab,
+								&e->funcargs[i]->where, "function argument");
+					}
+					break;
+				}
+			}
+
 
 			funcargs_free(args_from_expr, 1, 0);
 		}
@@ -392,11 +415,22 @@ invalid:
 		/*funcargs_free(args_from_decl, 1); XXX memleak*/
 	}else{
 		count_decl = 0;
+
+		if(args_from_decl->args_void_implicit && e->funcargs)
+			WARN_AT(&e->where, "too many arguments to implicitly (void)-function");
+	}
+
+	/* each arg needs casting up to int size, if smaller */
+	if(e->funcargs){
+		int i;
+		for(i = 0; e->funcargs[i]; i++)
+			expr_promote_int_if_smaller(&e->funcargs[i], stab);
 	}
 
 	fold_disallow_st_un(e, "return");
 
-	/* attr */{
+	/* attr */
+	{
 		type_ref *r = e->expr->tree_type;
 
 		format_check(&e->where, r, e->funcargs, args_from_decl->variadic);

@@ -44,8 +44,6 @@ struct struct_union_enum_st
 struct_union_enum_st *sue_add( symtable *, char *spel, sue_member **members, enum type_primitive);
 struct_union_enum_st *sue_find(symtable *, const char *spel);
 
-void sue_set_spel(char **dest, char *spel, const char *desc);
-
 /* enum specific */
 void enum_vals_add(sue_member ***, char *, expr *);
 int  enum_nentries(struct_union_enum_st *);
@@ -55,7 +53,8 @@ void enum_member_search(enum_member **, struct_union_enum_st **, symtable *, con
 /* struct/union specific */
 int sue_size(struct_union_enum_st *, const where *w);
 
-decl *struct_union_member_find(struct_union_enum_st *, const char *spel, where *die_where);
+decl *struct_union_member_find(struct_union_enum_st *, const char *spel, unsigned *extra_off);
+decl *struct_union_member_find_sue(struct_union_enum_st *, struct_union_enum_st *);
 
 decl *struct_union_member_at_idx(struct_union_enum_st *, int idx); /* NULL if out of bounds */
 int   struct_union_member_idx(struct_union_enum_st *, decl *);

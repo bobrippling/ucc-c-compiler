@@ -25,11 +25,14 @@ type_ref *curdecl_ref_func_called; /* for funcargs-local labels and return type-
 
 static where asm_struct_enum_where;
 
-void fold_type_ref_equal(
-		type_ref *a, type_ref *b, where *w, enum warning warn,
+int fold_type_ref_equal(
+		type_ref *a, type_ref *b, where *w,
+		enum warning warn, enum decl_cmp extra_flags,
 		const char *errfmt, ...)
 {
-	enum decl_cmp flags = DECL_CMP_ALLOW_VOID_PTR | DECL_CMP_ALLOW_SIGNED_UNSIGNED;
+	enum decl_cmp flags = extra_flags
+		| DECL_CMP_ALLOW_VOID_PTR
+		| DECL_CMP_ALLOW_SIGNED_UNSIGNED;
 
 	/* stronger checks for blocks and pointers */
 	if(type_ref_is(a, type_ref_block) || type_ref_is(b, type_ref_block)
@@ -38,9 +41,24 @@ void fold_type_ref_equal(
 		flags |= DECL_CMP_EXACT_MATCH;
 	}
 
-	if(!type_ref_equal(a, b, flags)){
+	if(type_ref_equal(a, b, flags)){
+		return 1;
+	}else{
 		int one_struct;
 		va_list l;
+
+		if(fopt_mode & FOPT_PLAN9_EXTENSIONS){
+			/* allow b to be an anonymous member of a */
+			struct_union_enum_st *a_sue = type_ref_is_s_or_u(type_ref_is_ptr(a)),
+													 *b_sue = type_ref_is_s_or_u(type_ref_is_ptr(b));
+
+			if(a_sue && b_sue /* they aren't equal */){
+				/* b_sue has an a_sue,
+				 * the implicit cast adjusts to return said a_sue */
+				if(struct_union_member_find_sue(b_sue, a_sue))
+					goto fin;
+			}
+		}
 
 		/*cc1_warn_at(w, 0, 0, warn, "%s vs. %s for...", decl_to_str(a), decl_to_str_r(buf, b));*/
 
@@ -50,6 +68,8 @@ void fold_type_ref_equal(
 		cc1_warn_atv(w, one_struct || type_ref_is_void(a) || type_ref_is_void(b), 1, warn, errfmt, l);
 		va_end(l);
 	}
+fin:
+	return 0;
 }
 
 void fold_insert_casts(type_ref *dlhs, expr **prhs, symtable *stab, where *w, const char *desc)
@@ -836,6 +856,7 @@ static void fold_link_decl_defs(dynmap *spel_decls)
 void fold(symtable *globs)
 {
 #define D(x) globs->decls[x]
+	int fold_had_error = 0;
 	extern const char *current_fname;
 	dynmap *spel_decls;
 	int i;
@@ -915,7 +936,10 @@ void fold(symtable *globs)
 				for(proto_i = protos; *proto_i; proto_i++){
 					decl *proto = *proto_i;
 
-					UCC_ASSERT(type_ref_is(proto->ref, type_ref_func), "not func");
+					if(!type_ref_is(proto->ref, type_ref_func)){
+						fold_had_error = 1;
+						continue; /* error caught later */
+					}
 
 					if(type_ref_is(proto->ref, type_ref_func)->bits.func->args_void)
 						is_void = 1;
@@ -962,6 +986,9 @@ skip_decls:
 				DIE_AT(&sa->e->where, "static assertion failure: %s", sa->s);
 		}
 	}
+
+	if(fold_had_error)
+		exit(1);
 
 #undef D
 }

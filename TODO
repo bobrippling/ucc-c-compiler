@@ -26,6 +26,8 @@ __alignof__/_Alignof, _Alignas(type/const-expr):
 		longs + doubles + ptrs change as their sizeof changes (x86 vs x64)
 	for structs/unions, it is the alignment of the largest type
 
+-ftrapv
+
 -Wmissing-prototypes - increase statics (in Makefile)
 	redundant-decls
 	nested-externs

@@ -18,7 +18,7 @@ void fold_stmt_expr(stmt *s)
 
 void gen_stmt_expr(stmt *s)
 {
-	const int pre_vcount = out_vcount();
+	int pre_vcount = out_vcount();
 	char *sp;
 
 	gen_expr(s->expr, s->symtab);
@@ -29,15 +29,17 @@ void gen_stmt_expr(stmt *s)
 	|| !(sp = s->expr->bits.ident.spel)
 	|| strcmp(sp, ASM_INLINE_FNAME))
 	{
-		if(!s->expr_no_pop){
+		if(s->expr_no_pop)
+			pre_vcount++;
+		else
 			out_pop(); /* cancel the implicit push from gen_expr() above */
-			out_comment("end of %s-stmt", s->f_str());
 
-			UCC_ASSERT(out_vcount() == pre_vcount,
-					"vcount changed over %s statement (%d -> %d)",
-					s->expr->f_str(),
-					out_vcount(), pre_vcount);
-		}
+		out_comment("end of %s-stmt", s->f_str());
+
+		UCC_ASSERT(out_vcount() == pre_vcount,
+				"vcount changed over %s statement (%d -> %d)",
+				s->expr->f_str(),
+				out_vcount(), pre_vcount);
 	}
 }
 

@@ -354,18 +354,27 @@ expr *parse_expr_unary()
 expr *parse_expr_generic(expr *(*above)(), enum token t, ...)
 {
 	expr *e = above();
-	va_list l;
 
-	va_start(l, t);
-	while(curtok == t || curtok_in_list(l)){
-		expr *join = expr_new_op(curtok_to_op());
+	for(;;){
+		expr *join;
+		int have = curtok == t;
+
+		if(!have){
+			va_list l; va_start(l, t);
+			have = curtok_in_list(l);
+			va_end(l);
+		}
+
+		if(!have)
+			break;
+
+		join = expr_new_op(curtok_to_op());
 		EAT(curtok);
 		join->lhs = e;
 		join->rhs = above();
 		e = join;
 	}
 
-	va_end(l);
 	return e;
 }
 

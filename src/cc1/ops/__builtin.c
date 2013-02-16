@@ -78,10 +78,10 @@ static builtin_table *builtin_find(const char *sp)
 	static int prefix_len;
 	builtin_table *tab;
 
-	if(!strncmp(sp, PREFIX, prefix_len)){
-		if(!prefix_len)
-			prefix_len = strlen(PREFIX);
+	if(!prefix_len)
+		prefix_len = strlen(PREFIX);
 
+	if(!strncmp(sp, PREFIX, prefix_len)){
 		sp += prefix_len;
 		tab = builtins;
 	}else{
@@ -93,9 +93,9 @@ static builtin_table *builtin_find(const char *sp)
 
 expr *builtin_parse(const char *sp)
 {
-	builtin_table *b = builtin_find(sp);
+	builtin_table *b;
 
-	if(b){
+	if((fopt_mode & FOPT_BUILTIN) && (b = builtin_find(sp))){
 		expr *(*f)(void) = b->parser;
 
 		if(f)

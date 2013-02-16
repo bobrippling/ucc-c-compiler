@@ -167,7 +167,7 @@ const char *op_to_str(const enum op_type o)
 		case op_gt:       return ">";
 		case op_or:       return "|";
 		case op_xor:      return "^";
-		case op_and:      return "|";
+		case op_and:      return "&";
 		case op_orsc:     return "||";
 		case op_andsc:    return "&&";
 		case op_not:      return "!";

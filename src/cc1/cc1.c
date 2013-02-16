@@ -99,6 +99,9 @@ struct
 	{ 1,  "show-line",     FOPT_SHOW_LINE       },
 	{ 1,  "pic",           FOPT_PIC             },
 	{ 1,  "pic-pcrel",     FOPT_PIC_PCREL       },
+	{ 1,  "builtin",       FOPT_BUILTIN         },
+	{ 1,  "ms-extensions",    FOPT_MS_EXTENSIONS    },
+	{ 1,  "plan9-extensions", FOPT_PLAN9_EXTENSIONS },
 
 	{ 0,  NULL, 0 }
 };
@@ -113,7 +116,6 @@ struct
 };
 
 
-
 FILE *cc_out[NUM_SECTIONS];     /* temporary section files */
 char  fnames[NUM_SECTIONS][32]; /* duh */
 FILE *cc1_out;                  /* final output */
@@ -125,7 +127,11 @@ enum warning warn_mode = ~(
 		| WARN_SIGN_COMPARE
 		);
 
-enum fopt    fopt_mode = FOPT_CONST_FOLD | FOPT_SHOW_LINE | FOPT_PIC;
+enum fopt fopt_mode = FOPT_CONST_FOLD
+                    | FOPT_SHOW_LINE
+                    | FOPT_PIC
+                    | FOPT_BUILTIN
+                    | FOPT_MS_EXTENSIONS;
 enum cc1_backend cc1_backend = BACKEND_ASM;
 int m32 = 0;
 
