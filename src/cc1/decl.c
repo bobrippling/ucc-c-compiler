@@ -817,7 +817,7 @@ const char *type_ref_to_str_r_spel_aka(
 	type_ref_add_type_str(r, &bufp, TYPE_REF_STATIC_BUFSIZ, aka);
 
 	if(!type_ref_is(r, type_ref_type) || spel)
-		*bufp++ = ' ';
+		strcpy(bufp++, " "); /* need the nul char */
 
 	/* print in reverse order */
 	r = type_ref_set_parent(r, NULL);
