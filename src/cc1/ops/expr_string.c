@@ -12,7 +12,7 @@ const char *str_expr_str(void)
 
 void fold_expr_str(expr *e, symtable *stab)
 {
-	expr *sz = expr_new_val(e->bits.str.sv.len);
+	expr *sz;
 	decl *d;
 	type *type;
 	unsigned i;
@@ -20,6 +20,7 @@ void fold_expr_str(expr *e, symtable *stab)
 	if(e->code)
 		return; /* called from a sub-assignment */
 
+	sz = expr_new_val(e->bits.str.sv.len);
 	FOLD_EXPR(sz, stab);
 
 	/* (const char []) */
