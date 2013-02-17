@@ -23,7 +23,7 @@
 #include "../parse.h"
 #include "../parse_type.h"
 
-static void va_check(expr *va_l, expr *in)
+static void va_type_check(expr *va_l, expr *in)
 {
 	if(!type_ref_equal(va_l->tree_type,
 				type_ref_new_VA_LIST(),
@@ -57,7 +57,7 @@ static void fold_va_start(expr *e, symtable *stab)
 	FOLD_EXPR(         e->funcargs[1], stab);
 
 	va_l = e->funcargs[0];
-	va_check(va_l, e->expr);
+	va_type_check(va_l, e->expr);
 
 	va_ensure_variadic(e);
 	/* TODO: check funcargs[1] is last argument to the function */
@@ -192,7 +192,7 @@ static void fold_va_arg(expr *e, symtable *stab)
 	FOLD_EXPR_NO_DECAY(e->lhs, stab);
 	fold_type_ref(ty, NULL, stab);
 
-	va_check(e->lhs, e->expr);
+	va_type_check(e->lhs, e->expr);
 
 	e->tree_type = ty;
 
@@ -231,7 +231,7 @@ static void fold_va_end(expr *e, symtable *stab)
 		DIE_AT(&e->where, "%s requires one argument", BUILTIN_SPEL(e->expr));
 
 	FOLD_EXPR_NO_DECAY(e->funcargs[0], stab);
-	va_check(e->funcargs[0], e->expr);
+	va_type_check(e->funcargs[0], e->expr);
 
 	va_ensure_variadic(e);
 
