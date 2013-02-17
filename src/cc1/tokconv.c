@@ -328,12 +328,19 @@ char *token_current_spel_peek(void)
 	return currentspelling;
 }
 
-void token_get_current_str(char **ps, int *pl)
+void token_get_current_str(char **ps, int *pl, int *pwide)
 {
 	extern char *currentstring;
 	extern int   currentstringlen;
+	extern int   currentstringwide;
 
 	*ps = currentstring;
+
+	if(pwide){
+		*pwide = currentstringwide;
+	}else{
+		DIE_AT(NULL, "wide string not wanted");
+	}
 
 	if(pl){
 		*pl = currentstringlen;

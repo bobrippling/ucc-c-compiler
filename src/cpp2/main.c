@@ -20,8 +20,11 @@ static const struct
 	{ "__unix__",       "1"  },
 	/* __STDC__ TODO */
 
-	{ "__SIZE_TYPE__",    "unsigned long"  },
-	{ "__PTRDIFF_TYPE__", "unsigned long"  },
+#define TYPE(ty, c) { "__" #ty "_TYPE__", #c  }
+
+	TYPE(SIZE, unsigned long),
+	TYPE(PTRDIFF, unsigned long),
+	TYPE(WINT, unsigned),
 
 	{ "__GOT_SHORT_LONG", "1"  },
 
@@ -92,6 +95,7 @@ int main(int argc, char **argv)
 	const char *infname, *outfname;
 	int ret = 0;
 	int i;
+	int platform_win32 = 0;
 
 	infname = outfname = NULL;
 
@@ -108,9 +112,16 @@ int main(int argc, char **argv)
 		MAP(PLATFORM_LINUX,   "__linux__");
 		MAP(PLATFORM_FREEBSD, "__FreeBSD__");
 		MAP(PLATFORM_DARWIN,  "__DARWIN__");
-		MAP(PLATFORM_CYGWIN,  "__CYGWIN__");
 #undef MAP
+
+		case PLATFORM_CYGWIN:
+			macro_add("__CYGWIN__", "1");
+			platform_win32 = 1;
+			break;
 	}
+
+	macro_add("__WCHAR_TYPE__",
+			platform_win32 ? "short" : "int");
 
 	calctime();
 

@@ -181,12 +181,12 @@ expr *parse_expr_primary()
 		/*case token_open_block: - not allowed here */
 		{
 			char *s;
-			int l;
+			int l, wide;
 
-			token_get_current_str(&s, &l);
+			token_get_current_str(&s, &l, &wide);
 			EAT(token_string);
 
-			return expr_new_str(s, l);
+			return expr_new_str(s, l, wide);
 		}
 
 		case token__Generic:
@@ -639,7 +639,7 @@ void parse_static_assert(void)
 		sa->e = parse_expr_no_comma();
 		EAT(token_comma);
 
-		token_get_current_str(&sa->s, NULL);
+		token_get_current_str(&sa->s, NULL, NULL);
 
 		EAT(token_string);
 		EAT(token_close_paren);
@@ -940,7 +940,7 @@ static symtable_gasm *parse_gasm(void)
 	symtable_gasm *g = umalloc(sizeof *g);
 
 	EAT(token_open_paren);
-	token_get_current_str(&g->asm_str, NULL);
+	token_get_current_str(&g->asm_str, NULL, NULL);
 	EAT(token_string);
 	EAT(token_close_paren);
 	EAT(token_semicolon);

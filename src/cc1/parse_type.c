@@ -627,7 +627,7 @@ static void parse_add_asm(decl *d)
 		if(curtok != token_string)
 			DIE_AT(NULL, "string expected");
 
-		token_get_current_str(&rename, NULL);
+		token_get_current_str(&rename, NULL, NULL);
 		EAT(token_string);
 
 		EAT(token_close_paren);

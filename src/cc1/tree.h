@@ -26,6 +26,7 @@ enum type_primitive
 	type_void,
 	type__Bool,
 	type_char,
+#define type_wchar (platform_sys() == PLATFORM_CYGWIN ? type_short : type_int)
 	type_int,
 	type_short,
 	type_long,

@@ -121,6 +121,7 @@ char *currentspelling = NULL; /* e.g. name of a variable */
 
 char *currentstring   = NULL; /* a string literal */
 int   currentstringlen = 0;
+int   currentstringwide = 0;
 
 /* -- */
 int current_line = 0;
@@ -327,7 +328,7 @@ static int curtok_is_xequal()
 	return curtok_to_xequal(curtok) != token_unknown;
 }
 
-void read_string(char **sptr, int *plen)
+static void read_string(char **sptr, int *plen)
 {
 	char *const start = bufferpos;
 	char *const end = terminating_quote(start);
@@ -351,6 +352,50 @@ void read_string(char **sptr, int *plen)
 	escape_string(*sptr, plen);
 
 	bufferpos += size;
+}
+
+static void read_string_multiple(const int is_wide)
+{
+	/* TODO: read in "hello\\" - parse string char by char, rather than guessing and escaping later */
+	char *str;
+	int len;
+
+	read_string(&str, &len);
+
+	curtok = token_string;
+
+	for(;;){
+		int c = nextchar();
+		if(c == '"'){
+			/* "abc" "def"
+			 *       ^
+			 */
+			char *new, *alloc;
+			int newlen;
+
+			read_string(&new, &newlen);
+
+			alloc = umalloc(newlen + len);
+
+			memcpy(alloc, str, len);
+			memcpy(alloc + len - 1, new, newlen);
+
+			free(str);
+			free(new);
+
+			str = alloc;
+			len += newlen - 1;
+		}else{
+			if(ungetch != EOF)
+				ICE("ungetch");
+			ungetch = c;
+			break;
+		}
+	}
+
+	currentstring    = str;
+	currentstringlen = len;
+	currentstringwide = is_wide;
 }
 
 void nexttoken()
@@ -463,6 +508,13 @@ void nexttoken()
 		}
 	}
 
+	if(c == 'L' && peeknextchar() == '"'){
+		/* wchar_t string */
+		nextchar();
+		read_string_multiple(1);
+		return;
+	}
+
 	if(isalpha(c) || c == '_' || c == '$'){
 		unsigned int len = 1, i;
 		char *const start = bufferpos - 1; /* regrab the char we switched on */
@@ -496,45 +548,8 @@ void nexttoken()
 
 	switch(c){
 		case '"':
-		{
-			/* TODO: read in "hello\\" - parse string char by char, rather than guessing and escaping later */
-			char *str;
-			int len;
-
-			read_string(&str, &len);
-
-			curtok = token_string;
-
-recheck:
-			c = nextchar();
-			if(c == '"'){
-				char *new, *alloc;
-				int newlen;
-
-				read_string(&new, &newlen);
-
-				alloc = umalloc(newlen + len);
-
-				memcpy(alloc, str, len);
-				memcpy(alloc + len - 1, new, newlen);
-
-				free(str);
-				free(new);
-
-				str = alloc;
-				len += newlen - 1;
-
-				goto recheck;
-			}else{
-				if(ungetch != EOF)
-					ICE("ungetch");
-				ungetch = c;
-			}
-
-			currentstring    = str;
-			currentstringlen = len;
+			read_string_multiple(0);
 			break;
-		}
 
 		case '\'':
 		{

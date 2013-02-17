@@ -16,6 +16,7 @@ struct stringval
 	char *lbl;
 	const char *str;
 	unsigned len;
+	int wide;
 };
 
 enum op_type
