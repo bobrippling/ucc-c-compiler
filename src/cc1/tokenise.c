@@ -398,6 +398,50 @@ static void read_string_multiple(const int is_wide)
 	currentstringwide = is_wide;
 }
 
+static void read_char(const int is_wide)
+{
+	/* TODO: merge with read_string escape code */
+	int c = rawnextchar();
+
+	if(c == EOF){
+		DIE_AT(NULL, "Invalid character");
+	}else if(c == '\\'){
+		char esc = peeknextchar();
+
+		if(esc == 'x' || esc == 'b' || isoct(esc)){
+
+			if(esc == 'x' || esc == 'b')
+				nextchar();
+
+			read_number(esc == 'x' ? HEX : esc == 'b' ? BIN : OCT);
+
+			if(currentval.suffix)
+				DIE_AT(NULL, "invalid character sequence: suffix given");
+
+			if(!is_wide && currentval.val > 0xff)
+				warn_at(NULL, 1, "invalid character sequence: too large (parsed 0x%lx)", currentval.val);
+
+			c = currentval.val;
+		}else{
+			/* special parsing */
+			c = escape_char(esc);
+
+			if(c == -1)
+				DIE_AT(NULL, "invalid escape character '%c'", esc);
+
+			nextchar();
+		}
+	}
+
+	currentval.val = c;
+	currentval.suffix = 0;
+
+	if((c = nextchar()) != '\'')
+		DIE_AT(NULL, "no terminating \"'\" for character (got '%c')", c);
+
+	curtok = token_character;
+}
+
 void nexttoken()
 {
 	int c;
@@ -508,11 +552,16 @@ void nexttoken()
 		}
 	}
 
-	if(c == 'L' && peeknextchar() == '"'){
-		/* wchar_t string */
-		nextchar();
-		read_string_multiple(1);
-		return;
+	switch(c == 'L' ? peeknextchar() : 0){
+		case '"':
+			/* wchar_t string */
+			nextchar();
+			read_string_multiple(1);
+			return;
+		case '\'':
+			nextchar();
+			read_char(1);
+			return;
 	}
 
 	if(isalpha(c) || c == '_' || c == '$'){
@@ -552,51 +601,8 @@ void nexttoken()
 			break;
 
 		case '\'':
-		{
-			c = rawnextchar();
-
-			if(c == EOF){
-				DIE_AT(NULL, "Invalid character");
-			}else if(c == '\\'){
-				char esc = peeknextchar();
-
-				if(esc == 'x' || esc == 'b' || isoct(esc)){
-
-					if(esc == 'x' || esc == 'b')
-						nextchar();
-
-					read_number(esc == 'x' ? HEX : esc == 'b' ? BIN : OCT);
-
-					if(currentval.suffix)
-						DIE_AT(NULL, "invalid character sequence: suffix given");
-
-					if(currentval.val > 0xff)
-						warn_at(NULL, 1, "invalid character sequence: too large (parsed 0x%lx)", currentval.val);
-
-					c = currentval.val;
-				}else{
-					/* special parsing */
-					c = escape_char(esc);
-
-					if(c == -1)
-						DIE_AT(NULL, "invalid escape character '%c'", esc);
-
-					nextchar();
-				}
-			}
-
-			currentval.val = c;
-			currentval.suffix = 0;
-
-			if((c = nextchar()) == '\''){
-				curtok = token_character;
-			}else{
-				DIE_AT(NULL, "no terminating \"'\" for character (got '%c')", c);
-			}
-
+			read_char(0);
 			break;
-		}
-
 
 		case '(':
 			curtok = token_open_paren;
