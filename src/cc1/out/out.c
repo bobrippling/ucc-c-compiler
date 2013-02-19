@@ -865,13 +865,16 @@ void out_func_prologue(int stack_res, int nargs, int variadic)
 	impl_func_prologue_save_fp();
 	impl_func_prologue_save_call_regs(nargs);
 
-	if(variadic)
+	if(variadic){
+		/* create a __builtin_va_list as needed */
+		stack_sz += type_ref_size(type_ref_new_VA_LIST(), NULL);
 		stack_sz += impl_func_prologue_save_variadic(nargs);
+	}
 
 	stack_local_offset = stack_sz;
 
 	if(stack_res)
-		stack_sz = v_alloc_stack(stack_res);
+		stack_sz += v_alloc_stack(stack_res);
 }
 
 void out_func_epilogue()

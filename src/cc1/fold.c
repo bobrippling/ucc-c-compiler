@@ -624,6 +624,38 @@ int fold_passable(stmt *s)
 	return s->f_passable(s);
 }
 
+static stmt *fold_setup_variadic(symtable *stab)
+{
+	char *ident = ustrdup("__va_list");
+	decl *va_dcl = decl_new_ty_sp(type_ref_new_VA_LIST(), ident);
+	stmt *assigns = stmt_new_wrapper(code, symtab_new(stab));
+	expr *assign;
+	int reg_count, sse_count, stack_sz;
+
+	symtab_add(stab, va_dcl, sym_local,
+			SYMTAB_WITH_SYM, SYMTAB_PREPEND);
+
+	reg_count = sse_count = stack_sz = 0;
+
+#define ADD_ASSIGN(memb, val)             \
+	assign = expr_new_assign(               \
+			expr_new_struct(                    \
+				expr_new_deref(                   \
+					expr_new_identifier(ident)),    \
+				1 /* dot */,                      \
+				expr_new_identifier(memb)),       \
+			expr_new_val(val));                 \
+                                          \
+	dynarray_add((void ***)&assigns->codes, \
+			expr_to_stmt(assign, stab))
+
+	ADD_ASSIGN("gp_offset",       reg_count * 8);
+	ADD_ASSIGN("fp_offset",       sse_count * 16 + 48);
+	ADD_ASSIGN("overflow_offset", stack_sz);
+
+	return assigns;
+}
+
 void fold_func(decl *func_decl)
 {
 	if(func_decl->func_code){
@@ -647,6 +679,17 @@ void fold_func(decl *func_decl)
 				func_decl->func_code->symtab,
 				fref->bits.func,
 				func_decl->spel);
+
+		/* assign to the va_list */
+		if(fref->bits.func->variadic){
+			EOF_WHERE(&func_decl->where,
+				stmt *assigns = fold_setup_variadic(func_decl->func_code->symtab);
+
+				dynarray_prepend(
+						(void ***)&func_decl->func_code->codes,
+						assigns);
+			);
+		}
 
 		fold_stmt(func_decl->func_code);
 
