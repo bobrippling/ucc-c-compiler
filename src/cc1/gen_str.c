@@ -341,7 +341,10 @@ void print_expr(expr *e)
 		fputc('\n', cc1_out);
 	}
 	gen_str_indent++;
-	e->f_gen(e, NULL);
+	if(e->f_gen)
+		e->f_gen(e, NULL);
+	else
+		idt_printf("builtin/%s::%s\n", e->f_str(), e->expr->bits.ident.spel);
 	gen_str_indent--;
 }
 
@@ -402,6 +405,7 @@ int has_st_en_tdef(symtable *stab)
 void print_st_en_tdef(symtable *stab)
 {
 	struct_union_enum_st **sit;
+	static_assert **stati;
 	int nl = 0;
 
 	for(sit = stab->sues; sit && *sit; sit++){
@@ -420,6 +424,17 @@ void print_st_en_tdef(symtable *stab)
 			nl = 1;
 		}
 		gen_str_indent--;
+	}
+
+	for(stati = stab->static_asserts; stati && *stati; stati++){
+		static_assert *sa = *stati;
+
+		idt_printf("static assertion: %s\n", sa->s);
+		gen_str_indent++;
+		print_expr(sa->e);
+		gen_str_indent--;
+
+		nl = 1;
 	}
 
 	if(nl)

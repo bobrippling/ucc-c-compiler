@@ -99,6 +99,8 @@ struct expr
 
 		sym *block_sym;
 
+		funcargs *block_args; /* ^{} */
+
 		type_ref **types; /* used in __builtin */
 
 		type_ref *tref; /* from cast */
@@ -114,9 +116,6 @@ struct expr
 
 	expr **funcargs;
 	stmt *code; /* ({ ... }), comp. lit. assignments */
-
-	funcargs *block_args;
-
 
 	/* type propagation */
 	type_ref *tree_type;

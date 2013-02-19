@@ -311,10 +311,7 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 
 		case type_ref_ptr:
 			/*q_to_check = r->bits.qual; - allowed */
-			break;
-
 		case type_ref_type:
-			q_to_check = r->bits.type->qual;
 			break;
 
 		case type_ref_tdef:
@@ -882,7 +879,9 @@ void fold(symtable *globs)
 
 		/* const char * */
 		(fargs->arglist[0] = decl_new())->ref = type_ref_new_ptr(
-				type_ref_new_type(type_new_primitive_qual(type_char, qual_const)),
+				type_ref_new_cast_add(
+					type_ref_new_type(type_new_primitive(type_char)),
+					qual_const),
 				qual_none);
 
 		df->ref = type_ref_new_func(type_ref_new_INT(), fargs);

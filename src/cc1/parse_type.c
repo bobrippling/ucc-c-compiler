@@ -270,10 +270,8 @@ static type_ref *parse_btype(enum decl_storage *store)
 				EAT(curtok);
 			}
 
-			t->qual = qual;
-
 			/* *store is assigned elsewhere */
-			return type_ref_new_type(t);
+			return type_ref_new_cast_add(type_ref_new_type(t), qual);
 
 		}else if(accept(token_typeof)){
 			if(primitive_set)
@@ -351,10 +349,11 @@ static type_ref *parse_btype(enum decl_storage *store)
 			type *t = type_new_primitive(primitive_set ? primitive : type_int);
 
 			t->is_signed = is_signed;
-			t->qual  = qual;
 
 			r = type_ref_new_type(t);
 		}
+
+		r = type_ref_new_cast_add(r, qual);
 
 		if(is_inline){
 			if(store)

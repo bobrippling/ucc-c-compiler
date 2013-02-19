@@ -29,10 +29,11 @@ void fold_expr_str(expr *e, symtable *stab)
 
 	/* (const char []) */
 	e->tree_type = type_ref_new_array(
-			type_ref_new_type(
-				type = type_new_primitive_qual(
-					sv->wide ? type_wchar : type_char,
-					qual_const)),
+			type_ref_new_cast_add(
+				type_ref_new_type(
+					type = type_new_primitive(
+						sv->wide ? type_wchar : type_char)),
+				qual_const),
 			sz);
 
 	sv->lbl = out_label_data_store(1);

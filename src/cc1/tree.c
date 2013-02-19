@@ -66,13 +66,6 @@ type *type_new_primitive(enum type_primitive p)
 	return t;
 }
 
-type *type_new_primitive_qual(enum type_primitive p, enum type_qualifier q)
-{
-	type *t = type_new_primitive(p);
-	t->qual = q;
-	return t;
-}
-
 type *type_copy(type *t)
 {
 	type *ret = umalloc(sizeof *ret);
@@ -136,19 +129,6 @@ int type_qual_equal(enum type_qualifier a, enum type_qualifier b)
 
 int type_equal(const type *a, const type *b, enum type_cmp mode)
 {
-	if(!type_qual_equal(a->qual, b->qual)){
-		if(mode & TYPE_CMP_EXACT)
-			return 0;
-
-		/* if b is const, a must be */
-		if((mode & TYPE_CMP_QUAL)
-		&& (b->qual & qual_const)
-		&& !(a->qual & qual_const))
-		{
-			return 0;
-		}
-	}
-
 	if((mode & TYPE_CMP_ALLOW_SIGNED_UNSIGNED) == 0
 	&& a->is_signed != b->is_signed)
 	{
@@ -283,11 +263,6 @@ const char *type_to_str(const type *t)
 #define BUF_SIZE (sizeof(buf) - (bufp - buf))
 	static char buf[TYPE_STATIC_BUFSIZ];
 	char *bufp = buf;
-
-	{
-		const char *tmp = type_qual_to_str(t->qual);
-		bufp += snprintf(bufp, BUF_SIZE, "%s", tmp);
-	}
 
 	if(!t->is_signed) bufp += snprintf(bufp, BUF_SIZE, "unsigned ");
 

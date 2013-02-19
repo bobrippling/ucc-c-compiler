@@ -98,7 +98,8 @@ type_ref *type_ref_new_cast_add(type_ref *to, enum type_qualifier add)
 
 type_ref *type_ref_new_cast_signed(type_ref *to, int is_signed)
 {
-	type_ref *r = type_ref_new_cast_is_additive(to, qual_none, 1);
+	type_ref *r = type_ref_new(type_ref_cast, to);
+	r->bits.cast.additive = 1;
 	r->bits.cast.is_signed_cast = 1;
 	r->bits.cast.signed_true = is_signed;
 	return r;
@@ -647,8 +648,8 @@ static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
 	q = qual_none;
 	switch(r->ref->type){
 		case type_ref_type:
-		case type_ref_tdef:
-			/* just starting */
+		case type_ref_tdef: /* just starting */
+		case type_ref_cast: /* no need */
 			need_paren = 0;
 			break;
 
