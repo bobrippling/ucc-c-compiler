@@ -156,13 +156,13 @@ static expr *parse_unreachable(void)
 
 static void fold_compatible_p(expr *e, symtable *stab)
 {
-	decl **types = e->block_args->arglist;
+	type_ref **types = e->bits.types;
 
 	if(dynarray_count((void **)types) != 2)
 		DIE_AT(&e->where, "need two arguments for %s", BUILTIN_SPEL(e->expr));
 
-	fold_decl(types[0], stab);
-	fold_decl(types[1], stab);
+	fold_type_ref(types[0], NULL, stab);
+	fold_type_ref(types[1], NULL, stab);
 
 	e->tree_type = type_ref_new_BOOL();
 	wur_builtin(e);
