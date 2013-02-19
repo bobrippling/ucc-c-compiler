@@ -336,11 +336,10 @@ void token_get_current_str(char **ps, int *pl, int *pwide)
 
 	*ps = currentstring;
 
-	if(pwide){
+	if(pwide)
 		*pwide = currentstringwide;
-	}else{
+	else if(currentstringwide)
 		DIE_AT(NULL, "wide string not wanted");
-	}
 
 	if(pl){
 		*pl = currentstringlen;
