@@ -406,6 +406,7 @@ enum type_qualifier type_ref_qual(const type_ref *r)
 	switch(r->type){
 		case type_ref_func:
 		case type_ref_array:
+		case type_ref_type:
 			return qual_none;
 
 		case type_ref_cast:
@@ -413,9 +414,6 @@ enum type_qualifier type_ref_qual(const type_ref *r)
 			if(r->bits.cast.is_signed_cast)
 				return type_ref_qual(r->ref);
 			return r->bits.cast.qual | (r->bits.cast.additive ? type_ref_qual(r->ref) : qual_none);
-
-		case type_ref_type:
-			return r->bits.type->qual;
 
 		case type_ref_ptr:
 		case type_ref_block:
