@@ -370,22 +370,47 @@ invalid:
 			fold_disallow_st_un(arg, desc);
 
 			if((decl_arg = args_from_decl->arglist[j])){
+				type_ref *ty_decl;
+				type_ref *ty_a, *ty_b;
 				char dbuf[DECL_STATIC_BUFSIZ];
 				char rbuf[TYPE_REF_STATIC_BUFSIZ];
+				int eq;
 
-				const int eq = fold_type_ref_equal(
-						decl_arg->ref, arg->tree_type, &arg->where,
+				if((ty_decl = type_ref_is(decl_arg->ref, type_ref_array))){
+					/* allow passing to array parameters,
+					 * since we don't decay them.
+					 *
+					 * Move to next, and move ty_expr to next, then type check
+					 */
+					type_ref *ty_expr_next;
+					if((ty_expr_next = type_ref_is_ptr(arg->tree_type))){
+						ty_a = type_ref_next(ty_decl);
+						ty_b = ty_expr_next;
+					}else{
+						/* this should fail at the check */
+						ty_a = ty_decl;
+						ty_b = arg->tree_type;
+					}
+				}else{
+					ty_a = decl_arg->ref;
+					ty_b = arg->tree_type;
+				}
+
+				eq = fold_type_ref_equal(
+						ty_a, ty_b, &arg->where,
 						WARN_ARG_MISMATCH, 0,
 						"mismatching argument %d to %s (%s <-- %s)",
 						i, sp,
 						decl_to_str_r(dbuf, decl_arg),
 						type_ref_to_str_r(rbuf, arg->tree_type));
 
-				if(!eq)
-					fold_insert_casts(args_from_decl->arglist[i]->ref,
+				if(!eq){
+					fold_insert_casts(decl_arg->ref,
 							&e->funcargs[i], stab,
 							&arg->where, desc);
 
+					arg = e->funcargs[i];
+				}
 				j++;
 			}
 

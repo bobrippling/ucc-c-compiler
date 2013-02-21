@@ -582,13 +582,6 @@ void fold_funcargs(funcargs *fargs, symtable *stab, type_ref *from)
 			/* fold before for array checks, etc */
 			fold_decl(d, stab);
 
-			/* convert any array definitions and functions to pointers */
-			EOF_WHERE(&d->where,
-				/* must be before the decl is folded (since fold checks this) */
-				if(decl_conv_array_func_to_ptr(d))
-					fold_type_ref(d->ref, NULL, stab); /* refold if we converted */
-			);
-
 			if(decl_store_static_or_extern(d->store)){
 				DIE_AT(&fargs->where, "function argument %d is static or extern", i + 1);
 			}

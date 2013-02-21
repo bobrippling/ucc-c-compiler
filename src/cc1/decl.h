@@ -193,14 +193,10 @@ decl *decl_ptr_depth_dec(decl *);
 
 type_ref *type_ref_ptr_depth_inc(type_ref *);
 type_ref *type_ref_ptr_depth_dec(type_ref *);
-type_ref *type_ref_decay_first_array(type_ref *);
 type_ref *type_ref_next(type_ref *r);
 
 type *type_ref_get_type(type_ref *);
 type *decl_get_type(decl *);
-
-decl *decl_decay_first_array(decl *);
-int decl_conv_array_func_to_ptr(decl *d);
 
 decl_attr *decl_attr_present(decl_attr *, enum decl_attr_type);
 decl_attr *type_attr_present(type_ref *, enum decl_attr_type);
