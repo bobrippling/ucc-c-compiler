@@ -413,50 +413,6 @@ int decl_size(decl *d, where const *from)
 	return type_ref_size(d->ref, from);
 }
 
-enum funcargs_cmp funcargs_equal(
-		funcargs *args_to, funcargs *args_from,
-		int exact, const char *fspel)
-{
-	const int count_to = dynarray_count((void **)args_to->arglist);
-	const int count_from = dynarray_count((void **)args_from->arglist);
-
-	if((count_to   == 0 && !args_to->args_void)
-	|| (count_from == 0 && !args_from->args_void)){
-		/* a() or b() */
-		return funcargs_are_equal;
-	}
-
-	if(!(args_to->variadic ? count_to <= count_from : count_to == count_from))
-		return funcargs_are_mismatch_count;
-
-	if(count_to){
-		const enum decl_cmp flag = exact ? DECL_CMP_EXACT_MATCH : 0;
-
-		int i;
-
-		for(i = 0; args_to->arglist[i]; i++){
-			char buf[TYPE_REF_STATIC_BUFSIZ];
-
-			int eq = fold_type_ref_equal(
-					args_to->arglist[i]->ref,
-					args_from->arglist[i]->ref,
-					&args_from->where, WARN_ARG_MISMATCH, flag,
-					"mismatching argument %d %s%s%s(%s <-- %s)",
-					i,
-					fspel ? "to " : "",
-					fspel ? fspel : "",
-					fspel ? " " : "",
-					decl_to_str_r(buf, args_to->arglist[i]),
-					decl_to_str(       args_from->arglist[i]));
-
-			if(!eq)
-				return funcargs_are_mismatch_types;
-		}
-	}
-
-	return funcargs_are_equal;
-}
-
 static int type_ref_equal_r(
 		type_ref *const orig_a,
 		type_ref *const orig_b,
@@ -527,7 +483,7 @@ static int type_ref_equal_r(
 			ICE("should've been skipped");
 
 		case type_ref_func:
-			if(funcargs_are_equal != funcargs_equal(a->bits.func, b->bits.func, 1 /* exact match */, NULL))
+			if(FUNCARGS_ARE_EQUAL != funcargs_equal(a->bits.func, b->bits.func, 1 /* exact match */, NULL))
 				return 0;
 			break;
 	}

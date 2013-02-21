@@ -389,13 +389,13 @@ invalid:
 
 			eq = funcargs_equal(args_from_decl, args_from_expr, 0, sp);
 			switch(eq){
-				case funcargs_are_equal:
+				case FUNCARGS_ARE_EQUAL:
 					break;
 
-				case funcargs_are_mismatch_count:
+				case FUNCARGS_ARE_MISMATCH_COUNT:
 					DIE_AT(&e->where, "mismatching argument count to %s", sp);
 
-				case funcargs_are_mismatch_types:
+				case FUNCARGS_ARE_MISMATCH_TYPES:
 				{
 					/* insert casts */
 					int i;
