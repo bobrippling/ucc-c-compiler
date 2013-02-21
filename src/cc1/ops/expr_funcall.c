@@ -262,7 +262,7 @@ void fold_expr_funcall(expr *e, symtable *stab)
 	type_ref *type_func;
 	funcargs *args_from_decl;
 	char *sp = NULL;
-	int count_decl;
+	int count_decl = 0;
 
 #if 0
 	if(func_is_asm(sp)){
@@ -337,36 +337,10 @@ invalid:
 	UCC_ASSERT(args_from_decl, "no funcargs for decl %s", sp);
 
 
-	/* this block folds the args */
-	if(e->funcargs){
-		unsigned long nonnulls = 0;
-		char *const desc = ustrprintf("function argument to %s", sp);
-		int i;
-		decl_attr *da;
-
-		if((da = type_attr_present(type_func, attr_nonnull)))
-			nonnulls = da->attr_extra.nonnull_args;
-
-		for(i = 0; e->funcargs[i]; i++){
-			expr *arg = FOLD_EXPR(e->funcargs[i], stab);
-
-			fold_need_expr(arg, desc, 0);
-			fold_disallow_st_un(arg, desc);
-
-			if((nonnulls & (1 << i)) && expr_is_null_ptr(arg, 1))
-				WARN_AT(&arg->where, "null passed where non-null required (arg %d)", i + 1);
-		}
-
-		free(desc);
-	}
-
-	/* this block is purely type checking */
+	/* this block is purely count checking */
 	if(args_from_decl->arglist || args_from_decl->args_void){
-		int count_arg;
+		const int count_arg  = dynarray_count((void **)e->funcargs);
 
-		count_decl = count_arg = 0;
-
-		count_arg  = dynarray_count((void **)e->funcargs);
 		count_decl = dynarray_count((void **)args_from_decl->arglist);
 
 		if(count_decl != count_arg && (args_from_decl->variadic ? count_arg < count_decl : 1)){
@@ -374,52 +348,52 @@ invalid:
 					count_arg > count_decl ? "many" : "few",
 					sp, count_arg, count_decl);
 		}
+	}else if(args_from_decl->args_void_implicit && e->funcargs){
+		WARN_AT(&e->where, "too many arguments to implicitly (void)-function");
+	}
 
-		if(e->funcargs){
-			funcargs *args_from_expr = funcargs_new();
-			expr **iter_arg;
-			enum funcargs_cmp eq;
+	/* this block folds the args and type-checks */
+	if(e->funcargs){
+		unsigned long nonnulls = 0;
+		char *const desc = ustrprintf("function argument to %s", sp);
+		int i, j;
+		decl_attr *da;
 
-			for(iter_arg = e->funcargs; *iter_arg; iter_arg++){
-				decl *dtmp = decl_new();
-				dtmp->ref = (*iter_arg)->tree_type;
+		if((da = type_attr_present(type_func, attr_nonnull)))
+			nonnulls = da->attr_extra.nonnull_args;
 
-				dynarray_add((void ***)&args_from_expr->arglist, dtmp);
+		for(i = j = 0; e->funcargs[i]; i++){
+			decl *decl_arg;
+			expr *arg = FOLD_EXPR(e->funcargs[i], stab);
+
+			fold_need_expr(arg, desc, 0);
+			fold_disallow_st_un(arg, desc);
+
+			if((decl_arg = args_from_decl->arglist[j])){
+				char dbuf[DECL_STATIC_BUFSIZ];
+				char rbuf[TYPE_REF_STATIC_BUFSIZ];
+
+				const int eq = fold_type_ref_equal(
+						decl_arg->ref, arg->tree_type, &arg->where,
+						WARN_ARG_MISMATCH, 0,
+						"mismatching argument %d to %s (%s <-- %s)",
+						i, sp,
+						decl_to_str_r(dbuf, decl_arg),
+						type_ref_to_str_r(rbuf, arg->tree_type));
+
+				if(!eq)
+					fold_insert_casts(args_from_decl->arglist[i]->ref,
+							&e->funcargs[i], stab,
+							&arg->where, desc);
+
+				j++;
 			}
 
-			eq = funcargs_equal(args_from_decl, args_from_expr, 0, sp);
-			switch(eq){
-				case FUNCARGS_ARE_EQUAL:
-					break;
-
-				case FUNCARGS_ARE_MISMATCH_COUNT:
-					DIE_AT(&e->where, "mismatching argument count to %s", sp);
-
-				case FUNCARGS_ARE_MISMATCH_TYPES:
-				{
-					/* insert casts */
-					int i;
-
-					for(i = 0; e->funcargs[i]; i++){
-						fold_insert_casts(args_from_decl->arglist[i]->ref,
-								&e->funcargs[i],
-								stab,
-								&e->funcargs[i]->where, "function argument");
-					}
-					break;
-				}
-			}
-
-
-			funcargs_free(args_from_expr, 1, 0);
+			if((nonnulls & (1 << i)) && expr_is_null_ptr(arg, 1))
+				WARN_AT(&arg->where, "null passed where non-null required (arg %d)", i + 1);
 		}
 
-		/*funcargs_free(args_from_decl, 1); XXX memleak*/
-	}else{
-		count_decl = 0;
-
-		if(args_from_decl->args_void_implicit && e->funcargs)
-			WARN_AT(&e->where, "too many arguments to implicitly (void)-function");
+		free(desc);
 	}
 
 	/* each arg needs casting up to int size, if smaller */

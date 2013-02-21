@@ -25,6 +25,7 @@ type_ref *curdecl_ref_func_called; /* for funcargs-local labels and return type-
 
 static where asm_struct_enum_where;
 
+/* FIXME: don't have the callers do type_ref_to_str() */
 int fold_type_ref_equal(
 		type_ref *a, type_ref *b, where *w,
 		enum warning warn, enum decl_cmp extra_flags,
