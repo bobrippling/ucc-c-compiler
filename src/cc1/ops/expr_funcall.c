@@ -257,6 +257,16 @@ static void sentinel_check(where *w, type_ref *ref, expr **args,
 
 }
 
+static void static_array_check(type_ref *ty_func, type_ref *ty_expr)
+{
+	/* if ty_func is x[static %d], check counts */
+	type_ref *ty_func2;
+
+	if((ty_func2 = type_ref_is(ty_func, type_ref_array))){
+		fprintf(stderr, "ARRAY! @ %s\n", where_str(&ty_func->where));
+	}
+}
+
 void fold_expr_funcall(expr *e, symtable *stab)
 {
 	type_ref *type_func;
@@ -370,13 +380,13 @@ invalid:
 			fold_disallow_st_un(arg, desc);
 
 			if((decl_arg = args_from_decl->arglist[j])){
-				type_ref *ty_decl;
+				type_ref *ty_array_decl;
 				type_ref *ty_a, *ty_b;
 				char dbuf[DECL_STATIC_BUFSIZ];
 				char rbuf[TYPE_REF_STATIC_BUFSIZ];
 				int eq;
 
-				if((ty_decl = type_ref_is(decl_arg->ref, type_ref_array))){
+				if((ty_array_decl = type_ref_is(decl_arg->ref, type_ref_array))){
 					/* allow passing to array parameters,
 					 * since we don't decay them.
 					 *
@@ -384,11 +394,11 @@ invalid:
 					 */
 					type_ref *ty_expr_next;
 					if((ty_expr_next = type_ref_is_ptr(arg->tree_type))){
-						ty_a = type_ref_next(ty_decl);
+						ty_a = type_ref_next(ty_array_decl);
 						ty_b = ty_expr_next;
 					}else{
 						/* this should fail at the check */
-						ty_a = ty_decl;
+						ty_a = ty_array_decl;
 						ty_b = arg->tree_type;
 					}
 				}else{
@@ -411,6 +421,11 @@ invalid:
 
 					arg = e->funcargs[i];
 				}
+
+				/* f(int [static 5]) check */
+				if(ty_array_decl)
+					static_array_check(ty_array_decl, arg->tree_type);
+
 				j++;
 			}
 
