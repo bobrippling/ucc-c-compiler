@@ -66,6 +66,15 @@ type_ref *type_ref_new_array(type_ref *to, expr *sz)
 	return r;
 }
 
+type_ref *type_ref_new_array2(type_ref *to, expr *sz,
+		enum type_qualifier q, int is_static)
+{
+	type_ref *r = type_ref_new_array(to, sz);
+	r->bits.array.is_static = is_static;
+	r->bits.array.qual      = q;
+	return r;
+}
+
 type_ref *type_ref_new_func(type_ref *of, funcargs *args)
 {
 	type_ref *r = type_ref_new(type_ref_func, of);
