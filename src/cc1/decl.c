@@ -597,12 +597,17 @@ int decl_conv_array_func_to_ptr(decl *d)
 	return old != d->ref;
 }
 
-expr *decl_is_decayed_array(decl *d)
+type_ref *type_ref_is_decayed_array(type_ref *r)
 {
-	type_ref *r;
-	if((r = type_ref_is(d->ref, type_ref_ptr)))
-		return r->bits.ptr.size;
+	if((r = type_ref_is(r, type_ref_ptr)) && r->bits.ptr.size)
+		return r;
+
 	return NULL;
+}
+
+type_ref *decl_is_decayed_array(decl *d)
+{
+	return type_ref_is_decayed_array(d->ref);
 }
 
 static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)

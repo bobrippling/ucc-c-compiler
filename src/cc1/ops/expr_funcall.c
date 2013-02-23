@@ -258,16 +258,42 @@ static void sentinel_check(where *w, type_ref *ref, expr **args,
 }
 
 static void static_array_check(
-		decl *arg_decl, type_ref *ty_expr,
-		symtable *stab)
+		decl *arg_decl, expr *arg_expr)
 {
 	/* if ty_func is x[static %d], check counts */
-	expr *array_sz = decl_is_decayed_array(arg_decl);
+	type_ref *ty_expr = arg_expr->tree_type;
+	type_ref *ty_decl = decl_is_decayed_array(arg_decl);
+	consty k_decl;
 
-	if(!array_sz)
+	if(!ty_decl || !ty_decl->bits.ptr.is_static)
 		return;
 
-#warning TODO
+	if(expr_is_null_ptr(arg_expr, 1 /* int */)){
+		WARN_AT(&arg_expr->where, "passing null-pointer where array expected");
+		return;
+	}
+
+	const_fold(ty_decl->bits.ptr.size, &k_decl);
+
+	if(!(ty_expr = type_ref_is_decayed_array(ty_expr))){
+		WARN_AT(&arg_expr->where,
+				(k_decl.type == CONST_VAL) ?
+				"array of size >= %ld expected for parameter" :
+				"array expected for parameter", k_decl.bits.iv.val);
+		return;
+	}
+
+	/* ty_expr is the type_ref_ptr, decayed from array */
+	{
+		consty k_arg;
+
+		const_fold(ty_expr->bits.ptr.size, &k_arg);
+
+		if(k_decl.type == CONST_VAL && k_arg.bits.iv.val < k_decl.bits.iv.val)
+			WARN_AT(&arg_expr->where,
+					"array of size %ld passed where size %ld needed",
+					k_arg.bits.iv.val, k_decl.bits.iv.val);
+	}
 }
 
 void fold_expr_funcall(expr *e, symtable *stab)
@@ -402,7 +428,7 @@ invalid:
 				}
 
 				/* f(int [static 5]) check */
-				static_array_check(decl_arg, arg->tree_type, stab);
+				static_array_check(decl_arg, arg);
 
 				j++;
 			}
