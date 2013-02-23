@@ -48,7 +48,7 @@ type_ref *type_ref_new_tdef(expr *e, decl *to)
 type_ref *type_ref_new_ptr(type_ref *to, enum type_qualifier q)
 {
 	type_ref *r = type_ref_new(type_ref_ptr, to);
-	r->bits.qual = q;
+	r->bits.ptr.qual = q;
 	return r;
 }
 
@@ -62,7 +62,16 @@ type_ref *type_ref_new_block(type_ref *to, enum type_qualifier q)
 type_ref *type_ref_new_array(type_ref *to, expr *sz)
 {
 	type_ref *r = type_ref_new(type_ref_array, to);
-	r->bits.array_size = sz;
+	r->bits.array.size = sz;
+	return r;
+}
+
+type_ref *type_ref_new_array2(type_ref *to, expr *sz,
+		enum type_qualifier q, int is_static)
+{
+	type_ref *r = type_ref_new_array(to, sz);
+	r->bits.array.is_static = is_static;
+	r->bits.array.qual      = q;
 	return r;
 }
 
@@ -147,7 +156,7 @@ void type_ref_free_1(type_ref *r)
 			break;
 
 		case type_ref_array:
-			expr_free(r->bits.array_size);
+			expr_free(r->bits.array.size);
 			break;
 
 		case type_ref_cast:
@@ -383,7 +392,7 @@ int type_ref_size(type_ref *r, where const *from)
 		{
 			intval sz;
 
-			const_fold_need_val(r->bits.array_size, &sz);
+			const_fold_need_val(r->bits.array.size, &sz);
 
 			if(sz.val == 0)
 				DIE_AT(from, "incomplete array size attempt");
@@ -411,50 +420,6 @@ int decl_size(decl *d, where const *from)
 #endif
 
 	return type_ref_size(d->ref, from);
-}
-
-enum funcargs_cmp funcargs_equal(
-		funcargs *args_to, funcargs *args_from,
-		int exact, const char *fspel)
-{
-	const int count_to = dynarray_count((void **)args_to->arglist);
-	const int count_from = dynarray_count((void **)args_from->arglist);
-
-	if((count_to   == 0 && !args_to->args_void)
-	|| (count_from == 0 && !args_from->args_void)){
-		/* a() or b() */
-		return funcargs_are_equal;
-	}
-
-	if(!(args_to->variadic ? count_to <= count_from : count_to == count_from))
-		return funcargs_are_mismatch_count;
-
-	if(count_to){
-		const enum decl_cmp flag = exact ? DECL_CMP_EXACT_MATCH : 0;
-
-		int i;
-
-		for(i = 0; args_to->arglist[i]; i++){
-			char buf[TYPE_REF_STATIC_BUFSIZ];
-
-			int eq = fold_type_ref_equal(
-					args_to->arglist[i]->ref,
-					args_from->arglist[i]->ref,
-					&args_from->where, WARN_ARG_MISMATCH, flag,
-					"mismatching argument %d %s%s%s(%s <-- %s)",
-					i,
-					fspel ? "to " : "",
-					fspel ? fspel : "",
-					fspel ? " " : "",
-					decl_to_str_r(buf, args_to->arglist[i]),
-					decl_to_str(       args_from->arglist[i]));
-
-			if(!eq)
-				return funcargs_are_mismatch_types;
-		}
-	}
-
-	return funcargs_are_equal;
 }
 
 static int type_ref_equal_r(
@@ -498,8 +463,8 @@ static int type_ref_equal_r(
 		{
 			intval av, bv;
 
-			const_fold_need_val(a->bits.array_size, &av);
-			const_fold_need_val(b->bits.array_size, &bv);
+			const_fold_need_val(a->bits.array.size, &av);
+			const_fold_need_val(b->bits.array.size, &bv);
 
 			if(av.val != bv.val){
 				/* if exact match, they're not equal, otherwise allow av.val to be zero */
@@ -518,7 +483,7 @@ static int type_ref_equal_r(
 			break;
 
 		case type_ref_ptr:
-			if(!type_qual_equal(a->bits.qual, b->bits.qual))
+			if(!type_qual_equal(a->bits.ptr.qual, b->bits.ptr.qual))
 				return 0;
 			break;
 
@@ -527,7 +492,7 @@ static int type_ref_equal_r(
 			ICE("should've been skipped");
 
 		case type_ref_func:
-			if(funcargs_are_equal != funcargs_equal(a->bits.func, b->bits.func, 1 /* exact match */, NULL))
+			if(FUNCARGS_ARE_EQUAL != funcargs_equal(a->bits.func, b->bits.func, 1 /* exact match */, NULL))
 				return 0;
 			break;
 	}
@@ -626,8 +591,23 @@ decl *decl_func_called(decl *d, funcargs **pfuncargs)
 int decl_conv_array_func_to_ptr(decl *d)
 {
 	type_ref *old = d->ref;
+
 	d->ref = type_ref_decay(d->ref);
+
 	return old != d->ref;
+}
+
+type_ref *type_ref_is_decayed_array(type_ref *r)
+{
+	if((r = type_ref_is(r, type_ref_ptr)) && r->bits.ptr.size)
+		return r;
+
+	return NULL;
+}
+
+type_ref *decl_is_decayed_array(decl *d)
+{
+	return type_ref_is_decayed_array(d->ref);
 }
 
 static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
@@ -663,8 +643,13 @@ static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
 
 	switch(r->type){
 		case type_ref_ptr:
+#ifdef SHOW_DECAYED_ARRAYS
+			if(r->bits.ptr.size)
+				break; /* decayed array */
+#endif
+
 			BUF_ADD("*");
-			q = r->bits.qual;
+			q = r->bits.ptr.qual;
 			break;
 
 		case type_ref_cast:
@@ -694,7 +679,6 @@ static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
 		case type_ref_cast:
 			/**/
 		case type_ref_block:
-		case type_ref_ptr:
 			break;
 
 		case type_ref_func:
@@ -712,16 +696,28 @@ static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
 			BUF_ADD("%s)", args->variadic ? ", ..." : args->args_void ? "void" : "");
 			break;
 		}
+		case type_ref_ptr:
+#ifdef SHOW_DECAYED_ARRAYS
+			if(!r->bits.ptr.size)
+#endif
+				break;
+			/* fall */
 		case type_ref_array:
 		{
 			intval iv;
 
-			const_fold_need_val(r->bits.array_size, &iv);
+			const_fold_need_val(r->bits.array.size, &iv);
 
-			if(iv.val == 0)
-				BUF_ADD("[]");
+			BUF_ADD("[");
+
+			if(r->bits.array.is_static)
+				BUF_ADD("static ");
+			BUF_ADD("%s", type_qual_to_str(r->bits.array.qual));
+
+			if(iv.val)
+				BUF_ADD("%ld]", iv.val);
 			else
-				BUF_ADD("[%ld]", iv.val);
+				BUF_ADD("]");
 			break;
 		}
 	}

@@ -527,6 +527,20 @@ static type_ref *parse_type_ref_array(enum decl_mode mode, char **sp)
 
 	while(accept(token_open_square)){
 		expr *size;
+		enum type_qualifier q = qual_none;
+		int is_static = 0;
+
+		/* parse int x[restrict|static ...] */
+		for(;;){
+			if(curtok_is_type_qual())
+				q |= curtok_to_type_qualifier();
+			else if(curtok == token_static)
+				is_static++;
+			else
+				break;
+
+			EAT(curtok);
+		}
 
 		if(accept(token_close_square)){
 			/* take size as zero */
@@ -538,7 +552,10 @@ static type_ref *parse_type_ref_array(enum decl_mode mode, char **sp)
 			EAT(token_close_square);
 		}
 
-		r = type_ref_new_array(r, size);
+		if(is_static > 1)
+			DIE_AT(NULL, "multiple static specifiers in array size");
+
+		r = type_ref_new_array2(r, size, q, is_static);
 	}
 
 	return r;

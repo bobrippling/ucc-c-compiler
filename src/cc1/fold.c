@@ -25,6 +25,7 @@ type_ref *curdecl_ref_func_called; /* for funcargs-local labels and return type-
 
 static where asm_struct_enum_where;
 
+/* FIXME: don't have the callers do type_ref_to_str() */
 int fold_type_ref_equal(
 		type_ref *a, type_ref *b, where *w,
 		enum warning warn, enum decl_cmp extra_flags,
@@ -275,8 +276,8 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 			if(type_ref_is(r->ref, type_ref_func))
 				DIE_AT(&r->where, "array of functions");
 
-			FOLD_EXPR(r->bits.array_size, stab);
-			const_fold(r->bits.array_size, &k);
+			FOLD_EXPR(r->bits.array.size, stab);
+			const_fold(r->bits.array.size, &k);
 
 			if(k.type != CONST_VAL)
 				DIE_AT(&r->where, "not a numeric constant for array size");

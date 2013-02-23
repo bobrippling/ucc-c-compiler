@@ -110,7 +110,7 @@ void print_type_ref_eng(type_ref *ref)
 			break;
 
 		case type_ref_ptr:
-			fprintf(cc1_out, "%spointer to ", type_qual_to_str(ref->bits.qual));
+			fprintf(cc1_out, "%spointer to ", type_qual_to_str(ref->bits.ptr.qual));
 			break;
 
 		case type_ref_block:
@@ -150,9 +150,9 @@ void print_type_ref_eng(type_ref *ref)
 		}
 
 		case type_ref_array:
-			if(ref->bits.array_size){
+			if(ref->bits.array.size){
 				fputs("array[", cc1_out);
-				print_expr_val(ref->bits.array_size);
+				print_expr_val(ref->bits.array.size);
 				fputs("] of ", cc1_out);
 			}
 			break;
