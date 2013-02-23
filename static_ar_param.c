@@ -1,4 +1,4 @@
-int f(int x[static volatile /*const*/ 10])
+int f(int x[static /*const*/ 10])
 {
 	return *++x;
 }
