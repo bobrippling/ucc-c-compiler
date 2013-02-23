@@ -638,8 +638,10 @@ static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
 
 	switch(r->type){
 		case type_ref_ptr:
+#ifdef SHOW_DECAYED_ARRAYS
 			if(r->bits.ptr.size)
 				break; /* decayed array */
+#endif
 
 			BUF_ADD("*");
 			q = r->bits.ptr.qual;
@@ -690,7 +692,9 @@ static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
 			break;
 		}
 		case type_ref_ptr:
+#ifdef SHOW_DECAYED_ARRAYS
 			if(!r->bits.ptr.size)
+#endif
 				break;
 			/* fall */
 		case type_ref_array:
