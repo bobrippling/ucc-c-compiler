@@ -250,7 +250,7 @@ int type_ref_is_complete(type_ref *r)
 		{
 			intval iv;
 
-			const_fold_need_val(r->bits.array_size, &iv);
+			const_fold_need_val(r->bits.array.size, &iv);
 
 			return iv.val != 0 && type_ref_is_complete(r->ref);
 		}
@@ -274,7 +274,7 @@ int type_ref_is_incomplete_array(type_ref *r)
 	if((r = type_ref_is(r, type_ref_array))){
 		intval iv;
 
-		const_fold_need_val(r->bits.array_size, &iv);
+		const_fold_need_val(r->bits.array.size, &iv);
 
 		return iv.val == 0;
 	}
@@ -339,15 +339,19 @@ type_ref *type_ref_decay(type_ref *r)
 	/* f(int x[][5]) decays to f(int (*x)[5]), not f(int **x) */
 
 	switch(r->type){
-		default:break;
-
 		case type_ref_array:
-			r = r->ref;
-			/* XXX: memleak */
-			/* fall */
+		{
+			/* don't mutate a type_ref */
+			type_ref *new = type_ref_new_ptr(r->ref, qual_none);
+			new->bits.ptr = r->bits.array; /* save the old size, etc */
+			return new;
+		}
 
 		case type_ref_func:
 			return type_ref_new_ptr(r, qual_none);
+
+		default:
+			break;
 	}
 
 	return r;
@@ -417,7 +421,7 @@ enum type_qualifier type_ref_qual(const type_ref *r)
 
 		case type_ref_ptr:
 		case type_ref_block:
-			return r->bits.qual; /* no descend */
+			return r->bits.ptr.qual; /* no descend */
 
 		case type_ref_tdef:
 			return type_ref_qual(r->bits.tdef.type_of->tree_type);
@@ -465,7 +469,7 @@ long type_ref_array_len(type_ref *r)
 
 	UCC_ASSERT(r, "not an array");
 
-	const_fold_need_val(r->bits.array_size, &iv);
+	const_fold_need_val(r->bits.array.size, &iv);
 
 	return iv.val;
 }

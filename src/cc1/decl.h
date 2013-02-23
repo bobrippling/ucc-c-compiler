@@ -71,8 +71,17 @@ struct type_ref
 			decl *decl;
 		} tdef;
 
-		/* ref_ptr */
-		enum type_qualifier qual;
+		/* ref_{ptr,array} */
+		struct
+		{
+			enum type_qualifier qual;
+			int is_static;
+			expr *size;
+			/* when we decay
+			 * f(int x[2]) -> f(int *x)
+			 * we save the size + is_static
+			 */
+		} ptr, array;
 
 		/* ref_cast */
 		struct
@@ -101,9 +110,6 @@ struct type_ref
 			struct funcargs *func;
 			enum type_qualifier qual;
 		} block;
-
-		/* ref_array */
-		expr *array_size;
 	} bits;
 };
 
@@ -197,6 +203,9 @@ type_ref *type_ref_next(type_ref *r);
 
 type *type_ref_get_type(type_ref *);
 type *decl_get_type(decl *);
+
+int decl_conv_array_func_to_ptr(decl *d);
+expr *decl_is_decayed_array(decl *);
 
 decl_attr *decl_attr_present(decl_attr *, enum decl_attr_type);
 decl_attr *type_attr_present(type_ref *, enum decl_attr_type);

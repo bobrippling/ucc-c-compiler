@@ -48,7 +48,7 @@ type_ref *type_ref_new_tdef(expr *e, decl *to)
 type_ref *type_ref_new_ptr(type_ref *to, enum type_qualifier q)
 {
 	type_ref *r = type_ref_new(type_ref_ptr, to);
-	r->bits.qual = q;
+	r->bits.ptr.qual = q;
 	return r;
 }
 
@@ -62,7 +62,7 @@ type_ref *type_ref_new_block(type_ref *to, enum type_qualifier q)
 type_ref *type_ref_new_array(type_ref *to, expr *sz)
 {
 	type_ref *r = type_ref_new(type_ref_array, to);
-	r->bits.array_size = sz;
+	r->bits.array.size = sz;
 	return r;
 }
 
@@ -147,7 +147,7 @@ void type_ref_free_1(type_ref *r)
 			break;
 
 		case type_ref_array:
-			expr_free(r->bits.array_size);
+			expr_free(r->bits.array.size);
 			break;
 
 		case type_ref_cast:
@@ -383,7 +383,7 @@ int type_ref_size(type_ref *r, where const *from)
 		{
 			intval sz;
 
-			const_fold_need_val(r->bits.array_size, &sz);
+			const_fold_need_val(r->bits.array.size, &sz);
 
 			if(sz.val == 0)
 				DIE_AT(from, "incomplete array size attempt");
@@ -454,8 +454,8 @@ static int type_ref_equal_r(
 		{
 			intval av, bv;
 
-			const_fold_need_val(a->bits.array_size, &av);
-			const_fold_need_val(b->bits.array_size, &bv);
+			const_fold_need_val(a->bits.array.size, &av);
+			const_fold_need_val(b->bits.array.size, &bv);
 
 			if(av.val != bv.val){
 				/* if exact match, they're not equal, otherwise allow av.val to be zero */
@@ -474,7 +474,7 @@ static int type_ref_equal_r(
 			break;
 
 		case type_ref_ptr:
-			if(!type_qual_equal(a->bits.qual, b->bits.qual))
+			if(!type_qual_equal(a->bits.ptr.qual, b->bits.ptr.qual))
 				return 0;
 			break;
 
@@ -579,6 +579,23 @@ decl *decl_func_called(decl *d, funcargs **pfuncargs)
 	return d;
 }
 
+int decl_conv_array_func_to_ptr(decl *d)
+{
+	type_ref *old = d->ref;
+
+	d->ref = type_ref_decay(d->ref);
+
+	return old != d->ref;
+}
+
+expr *decl_is_decayed_array(decl *d)
+{
+	type_ref *r;
+	if((r = type_ref_is(d->ref, type_ref_ptr)))
+		return r->bits.ptr.size;
+	return NULL;
+}
+
 static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
 {
 #define BUF_ADD(...) \
@@ -612,8 +629,11 @@ static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
 
 	switch(r->type){
 		case type_ref_ptr:
+			if(r->bits.ptr.size)
+				break; /* decayed array */
+
 			BUF_ADD("*");
-			q = r->bits.qual;
+			q = r->bits.ptr.qual;
 			break;
 
 		case type_ref_cast:
@@ -643,7 +663,6 @@ static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
 		case type_ref_cast:
 			/**/
 		case type_ref_block:
-		case type_ref_ptr:
 			break;
 
 		case type_ref_func:
@@ -661,16 +680,26 @@ static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
 			BUF_ADD("%s)", args->variadic ? ", ..." : args->args_void ? "void" : "");
 			break;
 		}
+		case type_ref_ptr:
+			if(!r->bits.ptr.size)
+				break;
+			/* fall */
 		case type_ref_array:
 		{
 			intval iv;
 
-			const_fold_need_val(r->bits.array_size, &iv);
+			const_fold_need_val(r->bits.array.size, &iv);
 
-			if(iv.val == 0)
-				BUF_ADD("[]");
+			BUF_ADD("[");
+
+			if(r->bits.array.is_static)
+				BUF_ADD("static ");
+			BUF_ADD("%s", type_qual_to_str(r->bits.array.qual));
+
+			if(iv.val)
+				BUF_ADD("%ld]", iv.val);
 			else
-				BUF_ADD("[%ld]", iv.val);
+				BUF_ADD("]");
 			break;
 		}
 	}

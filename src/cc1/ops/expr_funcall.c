@@ -257,14 +257,17 @@ static void sentinel_check(where *w, type_ref *ref, expr **args,
 
 }
 
-static void static_array_check(type_ref *ty_func, type_ref *ty_expr)
+static void static_array_check(
+		decl *arg_decl, type_ref *ty_expr,
+		symtable *stab)
 {
 	/* if ty_func is x[static %d], check counts */
-	type_ref *ty_func2;
+	expr *array_sz = decl_is_decayed_array(arg_decl);
 
-	if((ty_func2 = type_ref_is(ty_func, type_ref_array))){
-		fprintf(stderr, "ARRAY! @ %s\n", where_str(&ty_func->where));
-	}
+	if(!array_sz)
+		return;
+
+#warning TODO
 }
 
 void fold_expr_funcall(expr *e, symtable *stab)
@@ -380,34 +383,11 @@ invalid:
 			fold_disallow_st_un(arg, desc);
 
 			if(args_from_decl->arglist && (decl_arg = args_from_decl->arglist[j])){
-				type_ref *ty_array_decl;
-				type_ref *ty_a, *ty_b;
 				char dbuf[DECL_STATIC_BUFSIZ];
 				char rbuf[TYPE_REF_STATIC_BUFSIZ];
-				int eq;
 
-				if((ty_array_decl = type_ref_is(decl_arg->ref, type_ref_array))){
-					/* allow passing to array parameters,
-					 * since we don't decay them.
-					 *
-					 * Move to next, and move ty_expr to next, then type check
-					 */
-					type_ref *ty_expr_next;
-					if((ty_expr_next = type_ref_is_ptr(arg->tree_type))){
-						ty_a = type_ref_next(ty_array_decl);
-						ty_b = ty_expr_next;
-					}else{
-						/* this should fail at the check */
-						ty_a = ty_array_decl;
-						ty_b = arg->tree_type;
-					}
-				}else{
-					ty_a = decl_arg->ref;
-					ty_b = arg->tree_type;
-				}
-
-				eq = fold_type_ref_equal(
-						ty_a, ty_b, &arg->where,
+				const int eq = fold_type_ref_equal(
+						decl_arg->ref, arg->tree_type, &arg->where,
 						WARN_ARG_MISMATCH, 0,
 						"mismatching argument %d to %s (%s <-- %s)",
 						i, sp,
@@ -415,16 +395,14 @@ invalid:
 						type_ref_to_str_r(rbuf, arg->tree_type));
 
 				if(!eq){
-					fold_insert_casts(decl_arg->ref,
-							&e->funcargs[i], stab,
-							&arg->where, desc);
+					fold_insert_casts(decl_arg->ref, &e->funcargs[i],
+							stab, &arg->where, desc);
 
 					arg = e->funcargs[i];
 				}
 
 				/* f(int [static 5]) check */
-				if(ty_array_decl)
-					static_array_check(ty_array_decl, arg->tree_type);
+				static_array_check(decl_arg, arg->tree_type, stab);
 
 				j++;
 			}
