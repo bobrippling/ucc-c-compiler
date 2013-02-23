@@ -40,10 +40,7 @@ ucc_printflike(1, 2) void INIT_DEBUG(const char *fmt, ...)
 #  define INIT_DEBUG(...)
 #endif
 
-typedef struct
-{
-	decl_init **pos;
-} init_iter;
+typedef decl_init *init_iter;
 
 
 int decl_init_is_const(decl_init *dinit, symtable *stab)
@@ -156,34 +153,45 @@ static expr *expr_new_array_idx(expr *base, int i)
 
 static decl_init *decl_init_brace_up(init_iter *, type_ref *);
 
+#define DINIT_STR(t) (const char *[]){"scalar","brace"}[t]
+
 static decl_init *decl_init_brace_up_array(
-		init_iter *iter, type_ref *const tfor_wrapped)
+		enum decl_init_type type,
+		init_iter *iter,
+		type_ref *const tfor_wrapped)
 {
-	decl_init *first_init = iter->pos[0];
+	type_ref *const next_type = type_ref_next(tfor_wrapped);
+
+	fprintf(stderr, "brace up array, first init type %s\n",
+			DINIT_STR(iter[0]->type));
 
 	/* '{' expected, if there isn't one, pretend there is */
-	if(first_init->type == decl_init_scalar){
+	if(type == decl_init_scalar){
 		decl_init *const ret = decl_init_new(decl_init_brace);
-		type_ref *const next_type = type_ref_next(tfor_wrapped);
+		decl_init *i;
 
-		do{
+		for(i = iter[0]; i; i = iter[0])
 			dynarray_add(&ret->bits.inits,
 					decl_init_brace_up(iter, next_type));
-
-			first_init = iter->pos[0];
-		}while(first_init);
 
 		return ret;
 
 	}else{
-		return first_init;
+		/* this is fine but we need to brace up each sub */
+		init_iter *p;
+
+		for(p = iter; *p; p++)
+			*p = decl_init_brace_up(p, next_type);
+
+		return iter;
 	}
 }
 
+#define U __attribute((unused))
 static decl_init *decl_init_brace_up_sue(
-		init_iter *iter, struct_union_enum_st *sue)
+		U init_iter *iter, U struct_union_enum_st *sue)
 {
-	decl_init *first_init = iter->pos[0];
+	/*decl_init *first_init = iter->pos[0];
 
 	if(first_init->type == decl_init_scalar){
 		decl_init *const ret = decl_init_new(decl_init_brace);
@@ -199,22 +207,20 @@ static decl_init *decl_init_brace_up_sue(
 		return ret;
 	}else{
 		return first_init;
-	}
+	}*/
+	fprintf(stderr, "in brace sue\n");
+	__builtin_trap();
 }
 
 static decl_init *decl_init_brace_up_scalar(
 		init_iter *iter, type_ref *const tfor)
 {
-	decl_init *first_init = iter->pos[0];
+	decl_init *first_init = iter[0];
 
-	if(first_init->type == decl_init_brace){
-		decl_init *inits[2] = {
-			first_init, NULL
-		};
-		init_iter next = { inits };
+	fprintf(stderr, "brace up %s\n", DINIT_STR(first_init->type));
 
-		return decl_init_brace_up(&next, tfor);
-	}
+	if(first_init->type == decl_init_brace)
+		return decl_init_brace_up(first_init->bits.inits, tfor);
 
 	return first_init;
 }
@@ -237,12 +243,12 @@ static void DEBUG(decl_init *init, type_ref *tfor)
 	decl_init *inits[2] = {
 		init, NULL
 	};
-	init_iter next = { inits };
 
-	decl_init *braced = decl_init_brace_up(&next, tfor);
+	decl_init *braced = decl_init_brace_up(inits, tfor);
 
 	cc1_out = stdout;
-	printf("braced = %p\n",braced);
+	printf("braced = %p\n", (void *)braced);
+	void print_decl_init(void *);
 	print_decl_init(braced);
 
 	exit(5);
