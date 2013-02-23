@@ -61,7 +61,10 @@ void print_decl_init(decl_init *di)
 {
 	switch(di->type){
 		case decl_init_scalar:
+			idt_printf("scalar:\n");
+			gen_str_indent++;
 			print_expr(di->bits.expr);
+			gen_str_indent--;
 			break;
 
 		case decl_init_brace:
@@ -69,6 +72,9 @@ void print_decl_init(decl_init *di)
 			decl_init *s;
 			int i;
 
+			idt_printf("brace\n");
+
+			gen_str_indent++;
 			for(i = 0; (s = di->bits.inits[i]); i++){
 				const int need_brace = s->type == decl_init_brace;
 
@@ -89,6 +95,7 @@ void print_decl_init(decl_init *di)
 				if(need_brace)
 					idt_printf("}\n");
 			}
+			gen_str_indent--;
 			break;
 		}
 	}
