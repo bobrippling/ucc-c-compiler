@@ -69,7 +69,7 @@ ptr:
 		case 'a':
 		case 'A':
 			if(!type_ref_is_floating(tt))
-				WARN_AT(w, "format %%d expects integral argument");
+				WARN_AT(w, "format %%d expects double argument");
 			break;
 
 		default:
