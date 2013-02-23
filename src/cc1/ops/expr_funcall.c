@@ -379,7 +379,7 @@ invalid:
 			fold_need_expr(arg, desc, 0);
 			fold_disallow_st_un(arg, desc);
 
-			if((decl_arg = args_from_decl->arglist[j])){
+			if(args_from_decl->arglist && (decl_arg = args_from_decl->arglist[j])){
 				type_ref *ty_array_decl;
 				type_ref *ty_a, *ty_b;
 				char dbuf[DECL_STATIC_BUFSIZ];
