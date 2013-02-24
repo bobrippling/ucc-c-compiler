@@ -44,8 +44,11 @@ void fold_expr_addr(expr *e, symtable *stab)
 			DIE_AT(&e->lhs->where, "taking the address of a bit-field");
 #endif
 
-		if(expr_kind(e->lhs, identifier) && e->lhs->bits.ident.sym->decl->store == store_register)
+		if(expr_kind(e->lhs, identifier)
+		&& (e->lhs->bits.ident.sym->decl->store & STORE_MASK_STORE) == store_register)
+		{
 			DIE_AT(&e->lhs->where, "can't take the address of register");
+		}
 
 		e->tree_type = type_ref_new_ptr(e->lhs->tree_type, qual_none);
 	}

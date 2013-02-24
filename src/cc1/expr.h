@@ -91,9 +91,15 @@ struct expr
 			decl *decl;
 		} complit;
 
-		decl *struct_mem;
+		struct
+		{
+			decl *d;
+			unsigned extra_off;
+		} struct_mem;
 
 		sym *block_sym;
+
+		funcargs *block_args; /* ^{} */
 
 		type_ref **types; /* used in __builtin */
 
@@ -110,9 +116,6 @@ struct expr
 
 	expr **funcargs;
 	stmt *code; /* ({ ... }), comp. lit. assignments */
-
-	funcargs *block_args;
-
 
 	/* type propagation */
 	type_ref *tree_type;
@@ -186,7 +189,7 @@ expr *expr_new__Generic(expr *test, struct generic_lbl **lbls);
 expr *expr_new_block(type_ref *rt, funcargs *args, stmt *code);
 expr *expr_new_deref(expr *);
 expr *expr_new_struct(expr *sub, int dot, expr *ident);
-expr *expr_new_str(char *, int);
+expr *expr_new_str(char *, int len, int wide);
 expr *expr_new_addr_lbl(char *);
 expr *expr_new_addr(expr *);
 

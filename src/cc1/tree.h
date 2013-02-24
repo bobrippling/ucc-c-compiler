@@ -26,6 +26,7 @@ enum type_primitive
 	type_void,
 	type__Bool,
 	type_char,
+#define type_wchar (platform_sys() == PLATFORM_CYGWIN ? type_short : type_int)
 	type_int,
 	type_short,
 	type_long,
@@ -54,7 +55,6 @@ struct type
 	where where;
 
 	enum type_primitive primitive;
-	enum type_qualifier qual;
 	int is_signed;
 
 	/* NULL unless this is a struct, union or enum */
@@ -66,14 +66,12 @@ struct type
 
 enum type_cmp
 {
-	TYPE_CMP_EXACT         = 1 << 0,
-	TYPE_CMP_QUAL          = 1 << 1,
-	TYPE_CMP_ALLOW_SIGNED_UNSIGNED = 1 << 2,
+	TYPE_CMP_EXACT                 = 1 << 0,
+	TYPE_CMP_ALLOW_SIGNED_UNSIGNED = 1 << 1,
 };
 
 type *type_new(void);
 type *type_new_primitive(enum type_primitive);
-type *type_new_primitive_qual(enum type_primitive, enum type_qualifier);
 type *type_copy(type *);
 #define type_free(x) free(x)
 
@@ -91,6 +89,7 @@ int type_size( const type *, where const *from);
 int type_primitive_size(enum type_primitive tp);
 
 int op_is_relational(enum op_type o);
+int op_is_shortcircuit(enum op_type o);
 int op_is_comparison(enum op_type o);
 int op_can_compound(enum op_type o);
 

@@ -121,6 +121,7 @@ char *currentspelling = NULL; /* e.g. name of a variable */
 
 char *currentstring   = NULL; /* a string literal */
 int   currentstringlen = 0;
+int   currentstringwide = 0;
 
 /* -- */
 int current_line = 0;
@@ -327,7 +328,7 @@ static int curtok_is_xequal()
 	return curtok_to_xequal(curtok) != token_unknown;
 }
 
-void read_string(char **sptr, int *plen)
+static void read_string(char **sptr, int *plen)
 {
 	char *const start = bufferpos;
 	char *const end = terminating_quote(start);
@@ -351,6 +352,94 @@ void read_string(char **sptr, int *plen)
 	escape_string(*sptr, plen);
 
 	bufferpos += size;
+}
+
+static void read_string_multiple(const int is_wide)
+{
+	/* TODO: read in "hello\\" - parse string char by char, rather than guessing and escaping later */
+	char *str;
+	int len;
+
+	read_string(&str, &len);
+
+	curtok = token_string;
+
+	for(;;){
+		int c = nextchar();
+		if(c == '"'){
+			/* "abc" "def"
+			 *       ^
+			 */
+			char *new, *alloc;
+			int newlen;
+
+			read_string(&new, &newlen);
+
+			alloc = umalloc(newlen + len);
+
+			memcpy(alloc, str, len);
+			memcpy(alloc + len - 1, new, newlen);
+
+			free(str);
+			free(new);
+
+			str = alloc;
+			len += newlen - 1;
+		}else{
+			if(ungetch != EOF)
+				ICE("ungetch");
+			ungetch = c;
+			break;
+		}
+	}
+
+	currentstring    = str;
+	currentstringlen = len;
+	currentstringwide = is_wide;
+}
+
+static void read_char(const int is_wide)
+{
+	/* TODO: merge with read_string escape code */
+	int c = rawnextchar();
+
+	if(c == EOF){
+		DIE_AT(NULL, "Invalid character");
+	}else if(c == '\\'){
+		char esc = peeknextchar();
+
+		if(esc == 'x' || esc == 'b' || isoct(esc)){
+
+			if(esc == 'x' || esc == 'b')
+				nextchar();
+
+			read_number(esc == 'x' ? HEX : esc == 'b' ? BIN : OCT);
+
+			if(currentval.suffix)
+				DIE_AT(NULL, "invalid character sequence: suffix given");
+
+			if(!is_wide && currentval.val > 0xff)
+				warn_at(NULL, 1, "invalid character sequence: too large (parsed 0x%lx)", currentval.val);
+
+			c = currentval.val;
+		}else{
+			/* special parsing */
+			c = escape_char(esc);
+
+			if(c == -1)
+				DIE_AT(NULL, "invalid escape character '%c'", esc);
+
+			nextchar();
+		}
+	}
+
+	currentval.val = c;
+	currentval.suffix = 0;
+
+	if((c = nextchar()) != '\'')
+		DIE_AT(NULL, "no terminating \"'\" for character (got '%c')", c);
+
+	curtok = token_character;
 }
 
 void nexttoken()
@@ -463,6 +552,18 @@ void nexttoken()
 		}
 	}
 
+	switch(c == 'L' ? peeknextchar() : 0){
+		case '"':
+			/* wchar_t string */
+			nextchar();
+			read_string_multiple(1);
+			return;
+		case '\'':
+			nextchar();
+			read_char(1);
+			return;
+	}
+
 	if(isalpha(c) || c == '_' || c == '$'){
 		unsigned int len = 1, i;
 		char *const start = bufferpos - 1; /* regrab the char we switched on */
@@ -496,92 +597,12 @@ void nexttoken()
 
 	switch(c){
 		case '"':
-		{
-			/* TODO: read in "hello\\" - parse string char by char, rather than guessing and escaping later */
-			char *str;
-			int len;
-
-			read_string(&str, &len);
-
-			curtok = token_string;
-
-recheck:
-			c = nextchar();
-			if(c == '"'){
-				char *new, *alloc;
-				int newlen;
-
-				read_string(&new, &newlen);
-
-				alloc = umalloc(newlen + len);
-
-				memcpy(alloc, str, len);
-				memcpy(alloc + len - 1, new, newlen);
-
-				free(str);
-				free(new);
-
-				str = alloc;
-				len += newlen - 1;
-
-				goto recheck;
-			}else{
-				if(ungetch != EOF)
-					ICE("ungetch");
-				ungetch = c;
-			}
-
-			currentstring    = str;
-			currentstringlen = len;
+			read_string_multiple(0);
 			break;
-		}
 
 		case '\'':
-		{
-			c = rawnextchar();
-
-			if(c == EOF){
-				DIE_AT(NULL, "Invalid character");
-			}else if(c == '\\'){
-				char esc = peeknextchar();
-
-				if(esc == 'x' || esc == 'b' || isoct(esc)){
-
-					if(esc == 'x' || esc == 'b')
-						nextchar();
-
-					read_number(esc == 'x' ? HEX : esc == 'b' ? BIN : OCT);
-
-					if(currentval.suffix)
-						DIE_AT(NULL, "invalid character sequence: suffix given");
-
-					if(currentval.val > 0xff)
-						warn_at(NULL, 1, "invalid character sequence: too large (parsed 0x%lx)", currentval.val);
-
-					c = currentval.val;
-				}else{
-					/* special parsing */
-					c = escape_char(esc);
-
-					if(c == -1)
-						DIE_AT(NULL, "invalid escape character '%c'", esc);
-
-					nextchar();
-				}
-			}
-
-			currentval.val = c;
-			currentval.suffix = 0;
-
-			if((c = nextchar()) == '\''){
-				curtok = token_character;
-			}else{
-				DIE_AT(NULL, "no terminating \"'\" for character (got '%c')", c);
-			}
-
+			read_char(0);
 			break;
-		}
-
 
 		case '(':
 			curtok = token_open_paren;

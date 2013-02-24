@@ -3,9 +3,9 @@
 
 enum funcargs_cmp
 {
-	funcargs_are_equal,
-	funcargs_are_mismatch_types,
-	funcargs_are_mismatch_count
+	FUNCARGS_ARE_EQUAL,
+	FUNCARGS_ARE_MISMATCH_TYPES,
+	FUNCARGS_ARE_MISMATCH_COUNT
 };
 
 /* if fspel ! NULL, print warnings */

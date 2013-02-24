@@ -75,10 +75,10 @@ static builtin_table *builtin_find(const char *sp)
 	static int prefix_len;
 	builtin_table *tab;
 
-	if(!strncmp(sp, PREFIX, prefix_len)){
-		if(!prefix_len)
-			prefix_len = strlen(PREFIX);
+	if(!prefix_len)
+		prefix_len = strlen(PREFIX);
 
+	if(!strncmp(sp, PREFIX, prefix_len)){
 		sp += prefix_len;
 		tab = builtins;
 	}else{
@@ -90,9 +90,9 @@ static builtin_table *builtin_find(const char *sp)
 
 expr *builtin_parse(const char *sp)
 {
-	builtin_table *b = builtin_find(sp);
+	builtin_table *b;
 
-	if(b){
+	if((fopt_mode & FOPT_BUILTIN) && (b = builtin_find(sp))){
 		expr *(*f)(void) = b->parser;
 
 		if(f)
@@ -156,13 +156,13 @@ static expr *parse_unreachable(void)
 
 static void fold_compatible_p(expr *e, symtable *stab)
 {
-	decl **types = e->block_args->arglist;
+	type_ref **types = e->bits.types;
 
 	if(dynarray_count(types) != 2)
 		DIE_AT(&e->where, "need two arguments for %s", BUILTIN_SPEL(e->expr));
 
-	fold_decl(types[0], stab);
-	fold_decl(types[1], stab);
+	fold_type_ref(types[0], NULL, stab);
+	fold_type_ref(types[1], NULL, stab);
 
 	e->tree_type = type_ref_new_BOOL();
 	wur_builtin(e);

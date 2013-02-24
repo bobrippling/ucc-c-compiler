@@ -233,7 +233,7 @@ static decl_init *decl_init_brace_up(init_iter *dinit, type_ref *tfor)
 		return decl_init_brace_up_sue(dinit, sue);
 
 	if(type_ref_is(tfor, type_ref_array))
-		return decl_init_brace_up_array(dinit, tfor);
+		0;//return decl_init_brace_up_array(dinit, tfor);
 
 	return decl_init_brace_up_scalar(dinit, tfor);
 }

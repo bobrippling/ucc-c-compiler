@@ -1,9 +1,12 @@
+#include <string.h>
+
 #include "ops.h"
 #include "expr_string.h"
 #include "../decl_init.h"
 #include "../str.h"
 #include "../out/lbl.h"
 #include "../../util/dynarray.h"
+#include "../../util/platform.h"
 
 const char *str_expr_str(void)
 {
@@ -12,7 +15,8 @@ const char *str_expr_str(void)
 
 void fold_expr_str(expr *e, symtable *stab)
 {
-	expr *sz = expr_new_val(e->bits.str.sv.len);
+	stringval *const sv = &e->bits.str.sv;
+	expr *sz;
 	decl *d;
 	type *type;
 	unsigned i;
@@ -20,28 +24,32 @@ void fold_expr_str(expr *e, symtable *stab)
 	if(e->code)
 		return; /* called from a sub-assignment */
 
+	sz = expr_new_val(sv->len);
 	FOLD_EXPR(sz, stab);
 
 	/* (const char []) */
 	e->tree_type = type_ref_new_array(
-			type_ref_new_type(
-				type = type_new_primitive_qual(type_char, qual_const)),
+			type_ref_new_cast_add(
+				type_ref_new_type(
+					type = type_new_primitive(
+						sv->wide ? type_wchar : type_char)),
+				qual_const),
 			sz);
 
-	e->bits.str.sv.lbl = out_label_data_store(1);
+	sv->lbl = out_label_data_store(1);
 
 	d = decl_new();
 	d->ref = e->tree_type;
-	d->spel = e->bits.str.sv.lbl;
+	d->spel = sv->lbl;
 
 	d->is_definition = 1;
 	d->store = store_static;
 
 	d->init = decl_init_new(decl_init_brace);
-	for(i = 0; i < e->bits.str.sv.len; i++){
+	for(i = 0; i < sv->len; i++){
 		decl_init *di = decl_init_new(decl_init_scalar);
 
-		di->bits.expr = expr_new_val(e->bits.str.sv.str[i]);
+		di->bits.expr = expr_new_val(sv->str[i]);
 
 		dynarray_add(&d->init->bits.inits, di);
 	}
@@ -65,8 +73,10 @@ void gen_expr_str(expr *e, symtable *stab)
 
 void gen_expr_str_str(expr *e, symtable *stab)
 {
+	stringval *sv = &e->bits.str.sv;
 	(void)stab;
-	idt_printf("address of datastore %s\n", e->bits.str.sv.lbl);
+
+	idt_printf("%sstring at %s\n", sv->wide ? "wide " : "", sv->lbl);
 	gen_str_indent++;
 	idt_print();
 	literal_print(cc1_out, e->bits.str.sv.str, e->bits.str.sv.len);
@@ -76,9 +86,14 @@ void gen_expr_str_str(expr *e, symtable *stab)
 
 void const_expr_string(expr *e, consty *k)
 {
-	k->type = CONST_STRK;
-	k->bits.str = &e->bits.str.sv;
-	k->offset = 0;
+	if(e->bits.str.sv.wide){
+		k->type = CONST_NO;
+		ICW("TODO: wide string const");
+	}else{
+		k->type = CONST_STRK;
+		k->bits.str = &e->bits.str.sv;
+		k->offset = 0;
+	}
 }
 
 void mutate_expr_str(expr *e)
@@ -90,14 +105,18 @@ void expr_mutate_str(expr *e, char *s, int len)
 {
 	stringval *sv = &e->bits.str.sv;
 
+	expr_mutate_wrapper(e, str);
+
+	memset(sv, 0, sizeof *sv);
 	sv->str = s;
 	sv->len = len;
 }
 
-expr *expr_new_str(char *s, int l)
+expr *expr_new_str(char *s, int l, int wide)
 {
 	expr *e = expr_new_wrapper(str);
 	expr_mutate_str(e, s, l);
+	e->bits.str.sv.wide = wide;
 	return e;
 }
 

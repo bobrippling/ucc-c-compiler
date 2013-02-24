@@ -210,7 +210,7 @@ void asm_predeclare_global(decl *d)
 
 void asm_declare_decl_init(FILE *f, decl *d)
 {
-	if(d->store == store_extern){
+	if((d->store & STORE_MASK_STORE) == store_extern){
 		asm_predeclare_extern(d);
 
 	}else if(d->init && !decl_init_is_zero(d->init)){

@@ -125,27 +125,34 @@ void fold_const_expr_op(expr *e, consty *k)
 	}
 }
 
-void expr_promote_int(expr **pe, enum type_primitive to, symtable *stab)
+void expr_promote_int_if_smaller(expr **pe, symtable *stab)
 {
-	expr *const e = *pe;
-	expr *cast;
+	static int sz_int;
+	expr *e = *pe;
 
-	UCC_ASSERT(!type_ref_is(e->tree_type, type_ref_ptr),
-			"invalid promotion for pointer");
+	if(!sz_int)
+		sz_int = type_primitive_size(type_int);
 
-	/* if(type_primitive_size(e->tree_type->type->primitive) >= type_primitive_size(to))
-	 *   return;
-	 *
-	 * insert down-casts too - the tree_type of the expression is still important
-	 */
+	if(type_ref_size(e->tree_type, &e->where) < sz_int){
+		expr *cast;
 
-  cast = expr_new_cast(type_ref_new_type(type_new_primitive(to)), 1);
+		UCC_ASSERT(!type_ref_is(e->tree_type, type_ref_ptr),
+				"invalid promotion for pointer");
 
-	cast->expr = e;
+		/* if(type_primitive_size(e->tree_type->type->primitive) >= type_primitive_size(to))
+		 *   return;
+		 *
+		 * insert down-casts too - the tree_type of the expression is still important
+		 */
 
-	fold_expr_cast_descend(cast, stab, 0);
+		cast = expr_new_cast(type_ref_new_type(type_new_primitive(type_int)), 1);
 
-	*pe = cast;
+		cast->expr = e;
+
+		fold_expr_cast_descend(cast, stab, 0);
+
+		*pe = cast;
+	}
 }
 
 type_ref *op_required_promotion(
@@ -185,7 +192,7 @@ type_ref *op_required_promotion(
 					char buf[TYPE_REF_STATIC_BUFSIZ];
 
 					fold_type_ref_equal(tlhs, trhs, w,
-							WARN_COMPARE_MISMATCH,
+							WARN_COMPARE_MISMATCH, 0,
 							"comparison of distinct pointer types lacks a cast (%s vs %s)",
 							type_ref_to_str(tlhs), type_ref_to_str_r(buf, trhs));
 				}
@@ -263,7 +270,7 @@ type_ref *op_required_promotion(
 
 					/* TODO: needed? */
 					fold_type_ref_equal(tlhs, trhs,
-							w, WARN_COMPARE_MISMATCH,
+							w, WARN_COMPARE_MISMATCH, 0,
 							"mismatching types in %s (%s and %s)",
 							op_to_str(op),
 							type_ref_to_str_r(bufa, tlhs),
@@ -418,6 +425,36 @@ static void op_unsigned_cmp_check(expr *e)
 	}
 }
 
+static void msg_if_precedence(expr *sub, where *w,
+		enum op_type binary, int (*test)(enum op_type))
+{
+	if(expr_kind(sub, op) && !sub->in_parens && (*test)(sub->op)){
+		/* ==, !=, <, ... */
+		WARN_AT(w, "%s has higher precedence than %s",
+				op_to_str(sub->op), op_to_str(binary));
+	}
+}
+
+static void op_check_precedence(expr *e)
+{
+	switch(e->op){
+		case op_or:
+		case op_and:
+			msg_if_precedence(e->lhs, &e->where, e->op, op_is_comparison);
+			msg_if_precedence(e->rhs, &e->where, e->op, op_is_comparison);
+			break;
+
+		case op_andsc:
+		case op_orsc:
+			msg_if_precedence(e->lhs, &e->where, e->op, op_is_shortcircuit);
+			msg_if_precedence(e->rhs, &e->where, e->op, op_is_shortcircuit);
+			break;
+
+		default:
+			break;
+	}
+}
+
 void fold_expr_op(expr *e, symtable *stab)
 {
 	UCC_ASSERT(e->op != op_unknown, "unknown op in expression at %s",
@@ -430,10 +467,14 @@ void fold_expr_op(expr *e, symtable *stab)
 		FOLD_EXPR(e->rhs, stab);
 		fold_disallow_st_un(e->rhs, "op-rhs");
 
+		expr_promote_int_if_smaller(&e->lhs, stab);
+		expr_promote_int_if_smaller(&e->rhs, stab);
+
 		e->tree_type = op_promote_types(e->op, op_to_str(e->op),
 				&e->lhs, &e->rhs, &e->where, stab);
 
 		op_bound(e);
+		op_check_precedence(e);
 		op_unsigned_cmp_check(e);
 
 	}else{
@@ -445,19 +486,16 @@ void fold_expr_op(expr *e, symtable *stab)
 			e->tree_type = type_ref_new_INT();
 
 		}else{
+			/* op_bnot */
 			type_ref *t_unary = e->lhs->tree_type;
 
-			if(!type_ref_is_integral(t_unary) && !type_ref_is_floating(t_unary))
+			if(!type_ref_is_integral(t_unary))
 				DIE_AT(&e->where, "unary %s applied to type '%s'",
 						op_to_str(e->op), type_ref_to_str(t_unary));
 
-			/* extend to int if smaller */
-			if(type_ref_size(t_unary, &e->where) < type_primitive_size(type_int)){
-				expr_promote_int(&e->lhs, type_int, stab);
-				t_unary = e->lhs->tree_type;
-			}
+			expr_promote_int_if_smaller(&e->lhs, stab);
 
-			e->tree_type = t_unary;
+			e->tree_type = e->lhs->tree_type;
 		}
 	}
 }

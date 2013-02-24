@@ -20,8 +20,16 @@ int const_fold_expr_funcall(expr *e)
 	return 1; /* could extend to have int x() const; */
 }
 
-static void format_check_printf_1(char fmt, type_ref *tt, where *w)
+enum printf_attr
 {
+	printf_attr_long = 1 << 0
+};
+
+static void format_check_printf_1(char fmt, type_ref *tt,
+		where *w, enum printf_attr attr)
+{
+	int allow_long = 0;
+
 	switch(fmt){
 		enum type_primitive prim;
 
@@ -45,8 +53,11 @@ ptr:
 		case 'c':
 		case 'd':
 		case 'i':
+			allow_long = 1;
 			if(!type_ref_is_integral(tt))
-				WARN_AT(w, "format %%d expects integral argument");
+				WARN_AT(w, "format %%%c expects integral argument", fmt);
+			if((attr & printf_attr_long) && !type_ref_is_type(tt, type_long))
+				WARN_AT(w, "format %%l%c expects long argument", fmt);
 			break;
 
 		case 'e':
@@ -58,12 +69,15 @@ ptr:
 		case 'a':
 		case 'A':
 			if(!type_ref_is_floating(tt))
-				WARN_AT(w, "format %%d expects integral argument");
+				WARN_AT(w, "format %%d expects double argument");
 			break;
 
 		default:
 			WARN_AT(w, "unknown conversion character 0x%x", fmt);
 	}
+
+	if(!allow_long && attr & printf_attr_long)
+		WARN_AT(w, "format %%%c expects a long", fmt);
 }
 
 static void format_check_printf_str(
@@ -77,6 +91,7 @@ static void format_check_printf_str(
 	for(i = 0; i < len && fmt[i];){
 		if(fmt[i++] == '%'){
 			int fin;
+			enum printf_attr attr;
 			expr *e;
 
 			if(fmt[i] == '%'){
@@ -85,8 +100,13 @@ static void format_check_printf_str(
 			}
 
 recheck:
+			attr = 0;
 			fin = 0;
 			do switch(fmt[i]){
+				 case 'l':
+					/* TODO: multiple check.. */
+					attr |= printf_attr_long;
+
 				case '1': case '2': case '3':
 				case '4': case '5': case '6':
 				case '7': case '8': case '9':
@@ -94,7 +114,7 @@ recheck:
 				case '0': case '#': case '-':
 				case ' ': case '+': case '.':
 
-				case 'l': case 'h': case 'L':
+				case 'h': case 'L':
 					i++;
 					break;
 				default:
@@ -108,7 +128,7 @@ recheck:
 				break;
 			}
 
-			format_check_printf_1(fmt[i], e->tree_type, &e->where);
+			format_check_printf_1(fmt[i], e->tree_type, &e->where, attr);
 			if(fmt[i] == '*'){
 				i++;
 				goto recheck;
@@ -237,12 +257,51 @@ static void sentinel_check(where *w, type_ref *ref, expr **args,
 
 }
 
+static void static_array_check(
+		decl *arg_decl, expr *arg_expr)
+{
+	/* if ty_func is x[static %d], check counts */
+	type_ref *ty_expr = arg_expr->tree_type;
+	type_ref *ty_decl = decl_is_decayed_array(arg_decl);
+	consty k_decl;
+
+	if(!ty_decl || !ty_decl->bits.ptr.is_static)
+		return;
+
+	if(expr_is_null_ptr(arg_expr, 1 /* int */)){
+		WARN_AT(&arg_expr->where, "passing null-pointer where array expected");
+		return;
+	}
+
+	const_fold(ty_decl->bits.ptr.size, &k_decl);
+
+	if(!(ty_expr = type_ref_is_decayed_array(ty_expr))){
+		WARN_AT(&arg_expr->where,
+				(k_decl.type == CONST_VAL) ?
+				"array of size >= %ld expected for parameter" :
+				"array expected for parameter", k_decl.bits.iv.val);
+		return;
+	}
+
+	/* ty_expr is the type_ref_ptr, decayed from array */
+	{
+		consty k_arg;
+
+		const_fold(ty_expr->bits.ptr.size, &k_arg);
+
+		if(k_decl.type == CONST_VAL && k_arg.bits.iv.val < k_decl.bits.iv.val)
+			WARN_AT(&arg_expr->where,
+					"array of size %ld passed where size %ld needed",
+					k_arg.bits.iv.val, k_decl.bits.iv.val);
+	}
+}
+
 void fold_expr_funcall(expr *e, symtable *stab)
 {
 	type_ref *type_func;
 	funcargs *args_from_decl;
 	char *sp = NULL;
-	int count_decl;
+	int count_decl = 0;
 
 #if 0
 	if(func_is_asm(sp)){
@@ -317,88 +376,81 @@ invalid:
 	UCC_ASSERT(args_from_decl, "no funcargs for decl %s", sp);
 
 
-	/* this block folds the args */
-	if(e->funcargs){
-		unsigned long nonnulls = 0;
-		char *const desc = ustrprintf("function argument to %s", sp);
-		const int int_sz = type_primitive_size(type_int);
-		type_ref *t_int = type_ref_new_INT();
-		int t_int_used = 0;
-		int i;
-
-		{
-			decl_attr *da;
-			if((da = type_attr_present(type_func, attr_nonnull)))
-				nonnulls = da->attr_extra.nonnull_args;
-		}
-
-		for(i = 0; e->funcargs[i]; i++){
-			expr *arg = FOLD_EXPR(e->funcargs[i], stab);
-
-			fold_need_expr(arg, desc, 0);
-			fold_disallow_st_un(arg, desc);
-
-			if((nonnulls & (1 << i)) && expr_is_null_ptr(arg, 1))
-				WARN_AT(&arg->where, "null passed where non-null required (arg %d)", i + 1);
-
-			/* each arg needs casting up to int size, if smaller */
-			if(type_ref_size(arg->tree_type, &arg->where) < int_sz){
-				expr *cast = expr_new_cast(t_int, 1);
-
-				cast->expr = arg;
-				e->funcargs[i] = cast;
-				fold_expr_cast_descend(cast, stab, 0);
-
-				t_int_used = 1;
-			}
-		}
-
-		if(!t_int_used)
-			type_ref_free(t_int);
-
-		free(desc);
-	}
-
-	/* this block is purely type checking */
+	/* this block is purely count checking */
 	if(args_from_decl->arglist || args_from_decl->args_void){
-		int count_arg;
+		const int count_arg  = dynarray_count((void **)e->funcargs);
 
-		count_decl = count_arg = 0;
-
-		count_arg  = dynarray_count(e->funcargs);
-		count_decl = dynarray_count(args_from_decl->arglist);
+		count_decl = dynarray_count((void **)args_from_decl->arglist);
 
 		if(count_decl != count_arg && (args_from_decl->variadic ? count_arg < count_decl : 1)){
 			DIE_AT(&e->where, "too %s arguments to function %s (got %d, need %d)",
 					count_arg > count_decl ? "many" : "few",
 					sp, count_arg, count_decl);
 		}
+	}else if(args_from_decl->args_void_implicit && e->funcargs){
+		WARN_AT(&e->where, "too many arguments to implicitly (void)-function");
+	}
 
-		if(e->funcargs){
-			funcargs *args_from_expr = funcargs_new();
-			expr **iter_arg;
+	/* this block folds the args and type-checks */
+	if(e->funcargs){
+		unsigned long nonnulls = 0;
+		char *const desc = ustrprintf("function argument to %s", sp);
+		int i, j;
+		decl_attr *da;
 
-			for(iter_arg = e->funcargs; *iter_arg; iter_arg++){
-				decl *dtmp = decl_new();
-				dtmp->ref = (*iter_arg)->tree_type;
+		if((da = type_attr_present(type_func, attr_nonnull)))
+			nonnulls = da->attr_extra.nonnull_args;
 
-				dynarray_add(&args_from_expr->arglist, dtmp);
+		for(i = j = 0; e->funcargs[i]; i++){
+			decl *decl_arg;
+			expr *arg = FOLD_EXPR(e->funcargs[i], stab);
+
+			fold_need_expr(arg, desc, 0);
+			fold_disallow_st_un(arg, desc);
+
+			if(args_from_decl->arglist && (decl_arg = args_from_decl->arglist[j])){
+				char dbuf[DECL_STATIC_BUFSIZ];
+				char rbuf[TYPE_REF_STATIC_BUFSIZ];
+
+				const int eq = fold_type_ref_equal(
+						decl_arg->ref, arg->tree_type, &arg->where,
+						WARN_ARG_MISMATCH, 0,
+						"mismatching argument %d to %s (%s <-- %s)",
+						i, sp,
+						decl_to_str_r(dbuf, decl_arg),
+						type_ref_to_str_r(rbuf, arg->tree_type));
+
+				if(!eq){
+					fold_insert_casts(decl_arg->ref, &e->funcargs[i],
+							stab, &arg->where, desc);
+
+					arg = e->funcargs[i];
+				}
+
+				/* f(int [static 5]) check */
+				static_array_check(decl_arg, arg);
+
+				j++;
 			}
 
-			if(funcargs_equal(args_from_decl, args_from_expr, 0, sp) == funcargs_are_mismatch_count)
-				DIE_AT(&e->where, "mismatching argument count to %s", sp);
-
-			funcargs_free(args_from_expr, 1, 0);
+			if((nonnulls & (1 << i)) && expr_is_null_ptr(arg, 1))
+				WARN_AT(&arg->where, "null passed where non-null required (arg %d)", i + 1);
 		}
 
-		/*funcargs_free(args_from_decl, 1); XXX memleak*/
-	}else{
-		count_decl = 0;
+		free(desc);
+	}
+
+	/* each arg needs casting up to int size, if smaller */
+	if(e->funcargs){
+		int i;
+		for(i = 0; e->funcargs[i]; i++)
+			expr_promote_int_if_smaller(&e->funcargs[i], stab);
 	}
 
 	fold_disallow_st_un(e, "return");
 
-	/* attr */{
+	/* attr */
+	{
 		type_ref *r = e->expr->tree_type;
 
 		format_check(&e->where, r, e->funcargs, args_from_decl->variadic);

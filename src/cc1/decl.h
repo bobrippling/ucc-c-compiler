@@ -71,8 +71,17 @@ struct type_ref
 			decl *decl;
 		} tdef;
 
-		/* ref_ptr */
-		enum type_qualifier qual;
+		/* ref_{ptr,array} */
+		struct
+		{
+			enum type_qualifier qual;
+			int is_static;
+			expr *size;
+			/* when we decay
+			 * f(int x[2]) -> f(int *x)
+			 * we save the size + is_static
+			 */
+		} ptr, array;
 
 		/* ref_cast */
 		struct
@@ -88,6 +97,7 @@ struct type_ref
 		{
 			where where;
 
+			int args_void_implicit; /* f(){} - implicitly (void) */
 			int args_void; /* true if "spel(void);" otherwise if !args, then we have "spel();" */
 			int args_old_proto; /* true if f(a, b); where a and b are identifiers */
 			decl **arglist;
@@ -100,9 +110,6 @@ struct type_ref
 			struct funcargs *func;
 			enum type_qualifier qual;
 		} block;
-
-		/* ref_array */
-		expr *array_size;
 	} bits;
 };
 
@@ -120,13 +127,10 @@ enum decl_storage
 #define STORE_MASK_STORE 0x00007 /* include all below 4 */
 #define STORE_MASK_EXTRA 0xfff38 /* exclude  ^ */
 
-#define decl_store_static_or_extern(x) ((x) == store_static || (x) == store_extern)
-
 struct decl
 {
 	where where;
 	enum decl_storage store;
-	int is_inline;
 
 	type_ref *ref; /* should never be null - we always have a ref to a type */
 
@@ -174,6 +178,7 @@ type_ref *type_ref_new_type(type *);
 type_ref *type_ref_new_ptr(  type_ref *to, enum type_qualifier);
 type_ref *type_ref_new_block(type_ref *to, enum type_qualifier);
 type_ref *type_ref_new_array(type_ref *to, expr *sz);
+type_ref *type_ref_new_array2(type_ref *to, expr *sz, enum type_qualifier, int is_static);
 type_ref *type_ref_new_func( type_ref *to, funcargs *args);
 type_ref *type_ref_new_cast( type_ref *from, enum type_qualifier new);
 type_ref *type_ref_new_cast_signed(type_ref *from, int is_signed);
@@ -188,20 +193,21 @@ int   decl_size(decl *, where const *from);
 int   type_ref_size(type_ref *, where const *from);
 int   decl_equal(decl *a, decl *b, enum decl_cmp mode);
 int   type_ref_equal(type_ref *a, type_ref *b, enum decl_cmp mode);
+int   decl_store_static_or_extern(enum decl_storage);
 
 decl *decl_ptr_depth_inc(decl *);
 decl *decl_ptr_depth_dec(decl *);
 
 type_ref *type_ref_ptr_depth_inc(type_ref *);
 type_ref *type_ref_ptr_depth_dec(type_ref *);
-type_ref *type_ref_decay_first_array(type_ref *);
 type_ref *type_ref_next(type_ref *r);
 
 type *type_ref_get_type(type_ref *);
 type *decl_get_type(decl *);
 
-decl *decl_decay_first_array(decl *);
-void decl_conv_array_func_to_ptr(decl *d);
+int decl_conv_array_func_to_ptr(decl *d);
+type_ref *decl_is_decayed_array(decl *);
+type_ref *type_ref_is_decayed_array(type_ref *);
 
 decl_attr *decl_attr_present(decl_attr *, enum decl_attr_type);
 decl_attr *type_attr_present(type_ref *, enum decl_attr_type);
@@ -247,6 +253,7 @@ int type_ref_align(type_ref *, where const *from);
 long type_ref_array_len(type_ref *);
 type_ref *type_ref_is(type_ref *, enum type_ref_type);
 type_ref *type_ref_is_type(type_ref *, enum type_primitive);
+decl     *type_ref_is_tdef(type_ref *);
 type_ref *type_ref_is_ptr(type_ref *); /* returns r->ref iff ptr */
 type_ref *type_ref_func_call(type_ref *, funcargs **pfuncargs);
 type_ref *type_ref_decay(type_ref *);

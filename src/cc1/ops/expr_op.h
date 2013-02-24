@@ -13,3 +13,4 @@ func_gen     gen_expr_style_op;
 
 type_ref *op_required_promotion(enum op_type op, expr *lhs, expr *rhs, where *w, type_ref **plhs, type_ref **prhs) ucc_wur;
 type_ref *op_promote_types(enum op_type op, const char *desc, expr **plhs, expr **prhs, where *w, symtable *stab) ucc_wur;
+void expr_promote_int_if_smaller(expr **pe, symtable *stab);
