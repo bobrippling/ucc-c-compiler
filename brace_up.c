@@ -9,6 +9,7 @@ int x[][2] = {
 	// finish
 };
 
+/*
 struct A
 {
 	struct B
@@ -18,4 +19,13 @@ struct A
 			int i;
 		} c;
 	} b;
-} a = { 1 };
+} a = {
+	// insert
+	// insert
+	// insert
+	1
+	// finish
+	// finish
+	// finish
+};
+*/

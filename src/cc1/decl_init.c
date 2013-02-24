@@ -155,62 +155,6 @@ static decl_init *decl_init_brace_up(init_iter *, type_ref *);
 
 #define DINIT_STR(t) (const char *[]){"scalar","brace"}[t]
 
-static decl_init *decl_init_brace_up_array(
-		enum decl_init_type type,
-		init_iter *iter,
-		type_ref *const tfor_wrapped)
-{
-	type_ref *const next_type = type_ref_next(tfor_wrapped);
-
-	fprintf(stderr, "brace up array, first init type %s\n",
-			DINIT_STR(iter[0]->type));
-
-	/* '{' expected, if there isn't one, pretend there is */
-	if(type == decl_init_scalar){
-		decl_init *const ret = decl_init_new(decl_init_brace);
-		decl_init *i;
-
-		for(i = iter[0]; i; i = iter[0])
-			dynarray_add(&ret->bits.inits,
-					decl_init_brace_up(iter, next_type));
-
-		return ret;
-
-	}else{
-		/* this is fine but we need to brace up each sub */
-		init_iter *p;
-
-		for(p = iter; *p; p++)
-			*p = decl_init_brace_up(p, next_type);
-
-		return iter;
-	}
-}
-
-#define U __attribute((unused))
-static decl_init *decl_init_brace_up_sue(
-		U init_iter *iter, U struct_union_enum_st *sue)
-{
-	/*decl_init *first_init = iter->pos[0];
-
-	if(first_init->type == decl_init_scalar){
-		decl_init *const ret = decl_init_new(decl_init_brace);
-		sue_member **mem_iter;
-
-		for(mem_iter = sue->members; *mem_iter; mem_iter++){
-			decl *smem = (*mem_iter)->struct_member;
-
-			dynarray_add(&ret->bits.inits,
-					decl_init_brace_up(iter, smem->ref));
-		}
-
-		return ret;
-	}else{
-		return first_init;
-	}*/
-	fprintf(stderr, "in brace sue\n");
-	__builtin_trap();
-}
 
 static decl_init *decl_init_brace_up_scalar(
 		init_iter *iter, type_ref *const tfor)
@@ -225,17 +169,59 @@ static decl_init *decl_init_brace_up_scalar(
 	return first_init;
 }
 
-static decl_init *decl_init_brace_up(init_iter *dinit, type_ref *tfor)
+static decl_init *decl_init_brace_up_array(init_iter *iter, type_ref *tfor)
+{
+	decl_init *first = iter[0];
+	type_ref *next_type = type_ref_next(tfor);
+
+	if(first->type != decl_init_brace){
+		decl_init *array = decl_init_new(decl_init_brace);
+		int limit;
+
+		if(type_ref_is_incomplete_array(tfor))
+			limit = -1;
+		else
+			limit = type_ref_array_len(tfor);
+
+		/* we need to pull from iter, bracing up our children inits */
+		while(*iter){
+			decl_init *sub;
+
+			if(limit-- == 0)
+				break;
+
+			sub = decl_init_brace_up(iter, next_type);
+
+			dynarray_add(&array->bits.inits, sub);
+		}
+
+		return array;
+	}else{
+		int i;
+
+		for(i = 0; first->bits.inits[i]; i++){
+			decl_init **p = &first->bits.inits[i];
+
+			*p = decl_init_brace_up(p, next_type);
+		}
+
+		return first; /* this is in the {} state */
+	}
+}
+
+static decl_init *decl_init_brace_up(init_iter *iter, type_ref *tfor)
 {
 	struct_union_enum_st *sue;
 
-	if((sue = type_ref_is_s_or_u(tfor)))
-		return decl_init_brace_up_sue(dinit, sue);
-
 	if(type_ref_is(tfor, type_ref_array))
-		0;//return decl_init_brace_up_array(dinit, tfor);
+		return decl_init_brace_up_array(iter, tfor);
 
-	return decl_init_brace_up_scalar(dinit, tfor);
+	if((sue = type_ref_is_s_or_u(tfor))){
+		ICE("TODO: sue");
+		/*return decl_init_brace_up_sue(dinit, sue);*/
+	}
+
+	return decl_init_brace_up_scalar(iter, tfor);
 }
 
 static void DEBUG(decl_init *init, type_ref *tfor)
