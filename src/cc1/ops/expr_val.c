@@ -11,10 +11,30 @@ const char *str_expr_val()
 
 void fold_expr_val(expr *e, symtable *stab)
 {
+	intval *const iv = &e->bits.iv;
+
+	enum type_primitive p = type_int;
+	int s = 1;
+
 	(void)stab;
 
+	if(iv->suffix & VAL_LONG)
+		p = type_long;
+
+	if(iv->suffix & VAL_UNSIGNED)
+		s = 0;
+
+#if 0
+	/* size checks - don't rely on libc */
+	const long int_max            =         0xffffffff;
+	const long uint_max           =         0x7fffffff;
+	const unsigned long ulong_max = 0xffffffffffffffff; // FIXME: 64-bit currently
+	const          long  long_max = 0x7fffffffffffffff;
+#endif
+
 	EOF_WHERE(&e->where,
-		e->tree_type = type_ref_new_INT(); /* TODO: pull L / U / LU from .val */
+		/* TODO: pull L / U / LU from .val */
+		e->tree_type = type_ref_new_type(type_new_primitive_signed(p, s));
 	);
 }
 

@@ -292,7 +292,6 @@ void read_number(enum base mode)
 			case 'L':
 				currentval.suffix = VAL_LONG;
 				nextchar();
-				ICE("TODO: long integer suffix");
 				break;
 			default:
 				read_suffix = 0;

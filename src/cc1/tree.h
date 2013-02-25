@@ -72,6 +72,7 @@ enum type_cmp
 
 type *type_new(void);
 type *type_new_primitive(enum type_primitive);
+type *type_new_primitive_signed(enum type_primitive, int is_signed);
 type *type_copy(type *);
 #define type_free(x) free(x)
 

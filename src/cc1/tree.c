@@ -66,6 +66,15 @@ type *type_new_primitive(enum type_primitive p)
 	return t;
 }
 
+type *type_new_primitive_signed(enum type_primitive p, int is_signed)
+{
+	/* until merge */
+	type *t = type_new();
+	t->primitive = p;
+	t->is_signed = is_signed;
+	return t;
+}
+
 type *type_copy(type *t)
 {
 	type *ret = umalloc(sizeof *ret);
