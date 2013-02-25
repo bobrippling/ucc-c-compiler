@@ -1,4 +1,5 @@
 #include <string.h>
+#include <stdlib.h>
 
 #include "ops.h"
 #include "expr_val.h"
@@ -24,13 +25,63 @@ void fold_expr_val(expr *e, symtable *stab)
 	if(iv->suffix & VAL_UNSIGNED)
 		s = 0;
 
-#if 0
 	/* size checks - don't rely on libc */
 	const long int_max            =         0xffffffff;
 	const long uint_max           =         0x7fffffff;
-	const unsigned long ulong_max = 0xffffffffffffffff; // FIXME: 64-bit currently
+	/*const unsigned long ulong_max = 0xffffffffffffffff; // FIXME: 64-bit currently*/
 	const          long  long_max = 0x7fffffffffffffff;
-#endif
+
+	for(;;){
+		if(s){
+			switch(p){
+				default:
+					ICE("bad primitive");
+
+				case type_int:
+					if(labs(iv->val) > labs(int_max)){
+						/* attempt to fit into unsigned int */
+						s = 0;
+						continue;
+					}
+					/* fits into a signed int */
+					break;
+
+				case type_long:
+					/* fits into signed long? */
+					if((unsigned)labs(iv->val) <= (unsigned)long_max){
+						/* yes */
+						break;
+					}
+					/* doesn't fit into long, try unsigned long */
+					s = 0;
+					continue;
+			}
+			/* fine */
+			break;
+		}else{
+			/* unsigned */
+			switch(p){
+				default:
+					ICE("bad primitive");
+
+				case type_int:
+					if(labs(iv->val) > labs(uint_max)){
+						/* attempt to fit into a signed long */
+						s = 1;
+						p = type_long;
+						continue;
+					}
+					/* fits into an unsigned int */
+					break;
+
+				case type_long:
+					/* this is the largest type we have - TODO: check for overflows */
+					break;
+			}
+			/* fine */
+			break;
+		}
+	}
 
 	EOF_WHERE(&e->where,
 		/* TODO: pull L / U / LU from .val */
