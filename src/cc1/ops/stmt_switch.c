@@ -373,7 +373,20 @@ void style_stmt_switch(const stmt *s, out_ctx *octx)
 
 static int switch_passable(stmt *s)
 {
-	return fold_passable(s->lhs);
+	stmt **iter;
+
+	/* this isn't perfect - gotos may jump into s->lhs */
+	for(iter = s->bits.switch_.cases; iter && *iter; iter++){
+		/* if any of the entry points (i.e. cases) is passable, we're passable */
+		if(fold_passable(*iter))
+			return 1;
+	}
+
+	if(s->bits.switch_.default_case)
+		return fold_passable(s->bits.switch_.default_case);
+
+	/* no default case, assume switch is passable */
+	return 1;
 }
 
 void init_stmt_switch(stmt *s)
