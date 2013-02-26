@@ -26,8 +26,8 @@ void fold_expr_val(expr *e, symtable *stab)
 		s = 0;
 
 	/* size checks - don't rely on libc */
-	const long int_max            =         0xffffffff;
-	const long uint_max           =         0x7fffffff;
+	const long int_max            =         0x7fffffff;
+	const long uint_max           =         0xffffffff;
 	/*const unsigned long ulong_max = 0xffffffffffffffff; // FIXME: 64-bit currently*/
 	const          long  long_max = 0x7fffffffffffffff;
 
