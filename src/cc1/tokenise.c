@@ -286,11 +286,13 @@ void read_number(enum base mode)
 	while(read_suffix)
 		switch(peeknextchar()){
 			case 'U':
-				currentval.suffix = VAL_UNSIGNED;
+			case 'u':
+				currentval.suffix |= VAL_UNSIGNED;
 				nextchar();
 				break;
 			case 'L':
-				currentval.suffix = VAL_LONG;
+			case 'l':
+				currentval.suffix |= VAL_LONG;
 				nextchar();
 				break;
 			default:
