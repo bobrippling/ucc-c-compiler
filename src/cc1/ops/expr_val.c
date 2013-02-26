@@ -98,7 +98,7 @@ void gen_expr_val(expr *e, symtable *stab)
 void gen_expr_str_val(expr *e, symtable *stab)
 {
 	(void)stab;
-	idt_printf("val: %d\n", e->bits.iv.val);
+	idt_printf("val: %ld\n", e->bits.iv.val);
 }
 
 void const_expr_val(expr *e, consty *k)

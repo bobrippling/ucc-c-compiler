@@ -479,7 +479,8 @@ void out_op(enum op_type op)
 				break;
 
 			case op_and:
-				if(t_const->bits.val == -1)
+				/* FIXME/signed: signed check */
+				if((long)t_const->bits.val == -1)
 					goto ignore_const;
 				break;
 		}
