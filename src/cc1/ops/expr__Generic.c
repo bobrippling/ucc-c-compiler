@@ -76,13 +76,14 @@ void gen_expr_str__Generic(expr *e, symtable *stab)
 		struct generic_lbl *l = *i;
 
 		if(e->bits.generic.chosen == l)
-			idt_printf("-- Chosen --\n");
+			idt_printf("[Chosen]\n");
 
 		if(l->t){
-			idt_printf("type:\n");
+			idt_printf("type: ");
 			gen_str_indent++;
 			print_type_ref(l->t, NULL);
 			gen_str_indent--;
+			fprintf(cc1_out, "\n");
 		}else{
 			idt_printf("default:\n");
 		}
