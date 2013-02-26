@@ -72,4 +72,6 @@ void v_save_reg(struct vstack *vp);
 
 void v_deref_decl(struct vstack *vp);
 
+const char *v_val_str(struct vstack *vp);
+
 #endif

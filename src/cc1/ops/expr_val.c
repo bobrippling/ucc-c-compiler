@@ -31,6 +31,11 @@ void fold_expr_val(expr *e, symtable *stab)
 	/*const unsigned long ulong_max = 0xffffffffffffffff; // FIXME: 64-bit currently*/
 	const          long  long_max = 0x7fffffffffffffff;
 
+	/* a pure intval will never be negative,
+	 * since we parse -5 as (- (intval 5))
+	 * so if it's negative, we have long_max
+	 */
+
 	for(;;){
 		if(s){
 			switch(p){
@@ -38,6 +43,12 @@ void fold_expr_val(expr *e, symtable *stab)
 					ICE("bad primitive");
 
 				case type_int:
+					if(iv->val < 0L){
+						/* overflow - try signed long */
+						p = type_long;
+						continue;
+					}
+
 					if(labs(iv->val) > labs(int_max)){
 						/* attempt to fit into unsigned int */
 						s = 0;
@@ -47,6 +58,12 @@ void fold_expr_val(expr *e, symtable *stab)
 					break;
 
 				case type_long:
+					if(iv->val < 0L){
+						/* overflow - try unsigned long */
+						s = 0;
+						continue;
+					}
+
 					/* fits into signed long? */
 					if((unsigned)labs(iv->val) <= (unsigned)long_max){
 						/* yes */
@@ -98,7 +115,7 @@ void gen_expr_val(expr *e, symtable *stab)
 void gen_expr_str_val(expr *e, symtable *stab)
 {
 	(void)stab;
-	idt_printf("val: %ld\n", e->bits.iv.val);
+	idt_printf("val: 0x%lx\n", (unsigned long)e->bits.iv.val);
 }
 
 void const_expr_val(expr *e, consty *k)

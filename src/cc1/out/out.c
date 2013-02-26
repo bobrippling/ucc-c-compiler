@@ -306,7 +306,20 @@ void out_push_iv(type_ref *t, intval *iv)
 	vpush(t);
 
 	vtop->type = CONST;
-	vtop->bits.val = iv->val; /* TODO: unsigned */
+	vtop->bits.val = iv->val;
+}
+
+const char *v_val_str(struct vstack *vp)
+{
+	static char buf[64];
+
+	UCC_ASSERT(vp->type == CONST, "val?");
+
+	snprintf(buf, sizeof buf,
+			type_ref_is_signed(vp->t) ? "%ld" : "%lu",
+			vp->bits.val);
+
+	return buf;
 }
 
 void out_push_i(type_ref *t, int i)
