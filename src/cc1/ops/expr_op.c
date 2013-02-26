@@ -428,7 +428,11 @@ static void op_unsigned_cmp_check(expr *e)
 static void msg_if_precedence(expr *sub, where *w,
 		enum op_type binary, int (*test)(enum op_type))
 {
-	if(expr_kind(sub, op) && !sub->in_parens && (*test)(sub->op)){
+	if(expr_kind(sub, op)
+	&& !sub->in_parens
+	&& sub->op != binary
+	&& (*test)(sub->op))
+	{
 		/* ==, !=, <, ... */
 		WARN_AT(w, "%s has higher precedence than %s",
 				op_to_str(sub->op), op_to_str(binary));
