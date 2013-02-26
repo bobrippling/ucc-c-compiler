@@ -15,7 +15,7 @@ void fold_expr_val(expr *e, symtable *stab)
 	intval *const iv = &e->bits.iv;
 
 	enum type_primitive p = type_int;
-	int s = 1;
+	int s = 1, set_s = 0;
 
 	(void)stab;
 
@@ -23,7 +23,7 @@ void fold_expr_val(expr *e, symtable *stab)
 		p = type_long;
 
 	if(iv->suffix & VAL_UNSIGNED)
-		s = 0;
+		s = 0, set_s = 1;
 
 	/* size checks - don't rely on libc */
 	const long int_max            =         0x7fffffff;
@@ -84,7 +84,9 @@ void fold_expr_val(expr *e, symtable *stab)
 				case type_int:
 					if(labs(iv->val) > labs(uint_max)){
 						/* attempt to fit into a signed long */
-						s = 1;
+						if(!set_s)
+							s = 1; /* else U specified, don't go to signed */
+
 						p = type_long;
 						continue;
 					}
