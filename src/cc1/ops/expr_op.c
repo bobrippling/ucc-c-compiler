@@ -110,6 +110,10 @@ void fold_const_expr_op(expr *e, consty *k)
 		consty *kside = is_const(lhs.type) ? &lhs : &rhs;
 		int is_true = !!kside->bits.iv.val;
 
+		/* TODO: to be more conformant we should disallow: a() && 0
+		 * i.e. ordering
+		 */
+
 		if(e->op == (is_true ? op_orsc : op_andsc))
 			memcpy(k, kside, sizeof *k);
 
