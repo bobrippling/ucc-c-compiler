@@ -25,7 +25,10 @@ TY_ASSERT(0xffffffffffUL, unsigned long);
 
 
 TY_ASSERT(0x7fffffffffffffffU, unsigned long); // no L-suffix, but promoted
+TY_ASSERT(0x7fffffffffffffffL,          long); // no U-suffix, signed
+TY_ASSERT(0xffffffffffffffffL, unsigned long); // no U-suffix, but promoted
 
+//TY_ASSERT(0x10000000000000000L, unsigned long); long long
 //TY_ASSERT(0xfffffffffffffffffffffffffffL, unsigned long long); // L-suffix, but promoted since it's too small
 
 main()
