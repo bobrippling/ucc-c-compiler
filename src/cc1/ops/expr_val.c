@@ -10,6 +10,33 @@ const char *str_expr_val()
 	return "val";
 }
 
+/*
+
+-- no suffix --
+[0-9]+ -> int, int, long int, long long int
+oct|hex -> int, unsigned int, long int, unsigned long int, long long int, unsigned long long int
+
+-- u suffix --
+decimal/octal/hexadecimal [Uu]suffix -> unsigned int, unsigned long int, unsigned long long int
+
+-- l suffix --
+decimal [Ll] suffix -> long int, long long int
+octal/hexadecimal [Ll] suffix -> long int, unsigned long int, long long int, unsigned long long int
+
+-- ul suffix --
+[uU][lL] suffix -> unsigned long int, unsigned long long int
+
+
+
+-- ll suffix (unsupported) --
+decimal (ll|LL) suffix ->	long long int
+oct/hex (ll|LL) suffix -> long long int, unsigned long long int
+
+-- llu suffix (unsupported) --
+(ll|LL)[Uu] suffix -> unsigned long long int
+
+*/
+
 void fold_expr_val(expr *e, symtable *stab)
 {
 	intval *const iv = &e->bits.iv;
@@ -35,6 +62,8 @@ void fold_expr_val(expr *e, symtable *stab)
 	 * since we parse -5 as (- (intval 5))
 	 * so if it's negative, we have long_max
 	 */
+
+	ICW("TODO: standard conforming literal typing");
 
 	for(;;){
 		if(s){
