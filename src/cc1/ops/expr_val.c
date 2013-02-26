@@ -84,7 +84,6 @@ void fold_expr_val(expr *e, symtable *stab)
 	}
 
 	EOF_WHERE(&e->where,
-		/* TODO: pull L / U / LU from .val */
 		e->tree_type = type_ref_new_type(type_new_primitive_signed(p, s));
 	);
 }
