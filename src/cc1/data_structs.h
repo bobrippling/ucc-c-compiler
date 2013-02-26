@@ -4,7 +4,7 @@ typedef struct stringval stringval;
 struct intval
 {
 	long val;
-	enum
+	enum intval_suffix
 	{
 		VAL_UNSIGNED = 1 << 0,
 		VAL_LONG     = 1 << 1

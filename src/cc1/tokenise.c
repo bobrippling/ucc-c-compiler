@@ -273,6 +273,13 @@ static int peeknextchar()
 	return *bufferpos;
 }
 
+static void add_suffix(enum intval_suffix s)
+{
+	if(currentval.suffix & s)
+		DIE_AT(NULL, "duplicate suffix %c", "_UL"[s]);
+	currentval.suffix |= s;
+}
+
 void read_number(enum base mode)
 {
 	int read_suffix = 1;
@@ -287,12 +294,12 @@ void read_number(enum base mode)
 		switch(peeknextchar()){
 			case 'U':
 			case 'u':
-				currentval.suffix |= VAL_UNSIGNED;
+				add_suffix(VAL_UNSIGNED);
 				nextchar();
 				break;
 			case 'L':
 			case 'l':
-				currentval.suffix |= VAL_LONG;
+				add_suffix(VAL_LONG);
 				nextchar();
 				break;
 			default:
