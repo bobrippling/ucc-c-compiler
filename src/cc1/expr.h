@@ -105,11 +105,14 @@ struct expr
 
 		type_ref *tref; /* from cast */
 
-		struct generic_lbl
+		struct
 		{
-			type_ref *t; /* NULL -> default */
-			expr *e;
-		} **generics, *generic_chosen;
+			struct generic_lbl
+			{
+				type_ref *t; /* NULL -> default */
+				expr *e;
+			} **list, *chosen;
+		} generic;
 	} bits;
 
 	int in_parens; /* for if((x = 5)) testing */

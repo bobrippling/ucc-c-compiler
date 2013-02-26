@@ -110,6 +110,10 @@ void fold_const_expr_op(expr *e, consty *k)
 		consty *kside = is_const(lhs.type) ? &lhs : &rhs;
 		int is_true = !!kside->bits.iv.val;
 
+		/* TODO: to be more conformant we should disallow: a() && 0
+		 * i.e. ordering
+		 */
+
 		if(e->op == (is_true ? op_orsc : op_andsc))
 			memcpy(k, kside, sizeof *k);
 
@@ -428,7 +432,11 @@ static void op_unsigned_cmp_check(expr *e)
 static void msg_if_precedence(expr *sub, where *w,
 		enum op_type binary, int (*test)(enum op_type))
 {
-	if(expr_kind(sub, op) && !sub->in_parens && (*test)(sub->op)){
+	if(expr_kind(sub, op)
+	&& !sub->in_parens
+	&& sub->op != binary
+	&& (*test)(sub->op))
+	{
 		/* ==, !=, <, ... */
 		WARN_AT(w, "%s has higher precedence than %s",
 				op_to_str(sub->op), op_to_str(binary));
