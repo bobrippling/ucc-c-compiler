@@ -40,7 +40,11 @@ ucc_printflike(1, 2) void INIT_DEBUG(const char *fmt, ...)
 #  define INIT_DEBUG(...)
 #endif
 
-typedef decl_init *init_iter;
+typedef struct
+{
+	decl_init **array;
+	decl_init **pos;
+} init_iter;
 
 
 int decl_init_is_const(decl_init *dinit, symtable *stab)
@@ -159,22 +163,28 @@ static decl_init *decl_init_brace_up(init_iter *, type_ref *);
 static decl_init *decl_init_brace_up_scalar(
 		init_iter *iter, type_ref *const tfor)
 {
-	decl_init *first_init = iter[0];
+	decl_init *first_init = *iter->pos;
 
-	fprintf(stderr, "brace up %s\n", DINIT_STR(first_init->type));
+	++iter->pos;
+	fprintf(stderr, "++*iter in %s\n", __func__);
 
-	if(first_init->type == decl_init_brace)
-		return decl_init_brace_up(first_init->bits.inits, tfor);
+	if(first_init->type == decl_init_brace){
+		init_iter it;
+		it.array = it.pos = first_init->bits.inits;
+		return decl_init_brace_up(&it, tfor);
+	}
 
 	return first_init;
 }
 
 static decl_init *decl_init_brace_up_array(init_iter *iter, type_ref *tfor)
 {
-	decl_init *first = iter[0];
 	type_ref *next_type = type_ref_next(tfor);
 
-	if(first->type != decl_init_brace){
+	fprintf(stderr, "%s, iter->array[0]->type = %s\n",
+			__func__, DINIT_STR(iter->array[0]->type));
+
+	if(iter->pos[0]->type != decl_init_brace){
 		decl_init *array = decl_init_new(decl_init_brace);
 		int limit;
 
@@ -184,7 +194,7 @@ static decl_init *decl_init_brace_up_array(init_iter *iter, type_ref *tfor)
 			limit = type_ref_array_len(tfor);
 
 		/* we need to pull from iter, bracing up our children inits */
-		while(*iter){
+		while(*iter->pos){
 			decl_init *sub;
 
 			if(limit-- == 0)
@@ -197,13 +207,24 @@ static decl_init *decl_init_brace_up_array(init_iter *iter, type_ref *tfor)
 
 		return array;
 	}else{
+		decl_init *first = iter->pos[0];
+		decl_init **old_subs = first->bits.inits;
+		init_iter it;
 		int i;
 
-		for(i = 0; first->bits.inits[i]; i++){
-			decl_init **p = &first->bits.inits[i];
+		first->bits.inits = NULL;
 
-			*p = decl_init_brace_up(p, next_type);
+		it.array = it.pos = old_subs;
+
+		for(i = 0; *it.pos; i++){
+			decl_init *new = decl_init_brace_up(&it, next_type);
+
+			dynarray_add(&first->bits.inits, new);
 		}
+
+		++iter->pos;
+
+		free(old_subs);
 
 		return first; /* this is in the {} state */
 	}
@@ -229,8 +250,10 @@ static void DEBUG(decl_init *init, type_ref *tfor)
 	decl_init *inits[2] = {
 		init, NULL
 	};
+	init_iter it;
+	it.array = it.pos = inits;
 
-	decl_init *braced = decl_init_brace_up(inits, tfor);
+	decl_init *braced = decl_init_brace_up(&it, tfor);
 
 	cc1_out = stdout;
 	printf("braced = %p\n", (void *)braced);
