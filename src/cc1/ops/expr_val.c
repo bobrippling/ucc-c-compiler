@@ -11,9 +11,8 @@ const char *str_expr_val()
 }
 
 /*
-
 -- no suffix --
-[0-9]+ -> int, int, long int, long long int
+[0-9]+ -> int, long int, long long int
 oct|hex -> int, unsigned int, long int, unsigned long int, long long int, unsigned long long int
 
 -- u suffix --
@@ -34,39 +33,58 @@ oct/hex (ll|LL) suffix -> long long int, unsigned long long int
 
 -- llu suffix (unsupported) --
 (ll|LL)[Uu] suffix -> unsigned long long int
-
 */
 
 void fold_expr_val(expr *e, symtable *stab)
 {
+	/* size checks - don't rely on libc */
+	const long  int_max  =         0x7fffffff;
+	const long  uint_max =         0xffffffff;
+	const long  long_max = 0x7fffffffffffffff;
+	/*const unsigned long ulong_max = 0xffffffffffffffff; // FIXME: 64-bit currently*/
+
 	intval *const iv = &e->bits.iv;
 
-	enum type_primitive p = type_int;
-	int s = 1, set_s = 0;
+	enum type_primitive p;
+	int is_signed;
+	int allow_change_sign;
 
 	(void)stab;
 
-	if(iv->suffix & VAL_LONG)
+	if((iv->suffix & (VAL_LONG | VAL_UNSIGNED)) == (VAL_LONG | VAL_UNSIGNED)){
+		/* [uU][lL] suffix -> unsigned long int, unsigned long long int */
+		allow_change_sign = 0;
+		is_signed = 0;
 		p = type_long;
 
-	if(iv->suffix & VAL_UNSIGNED)
-		s = 0, set_s = 1;
+	}else if(iv->suffix & VAL_UNSIGNED){
+		/* [Uu]suffix -> unsigned int, unsigned long int, unsigned long long int */
+		allow_change_sign = 0;
+		is_signed = 0;
+		p = type_int;
 
-	/* size checks - don't rely on libc */
-	const long int_max            =         0x7fffffff;
-	const long uint_max           =         0xffffffff;
-	/*const unsigned long ulong_max = 0xffffffffffffffff; // FIXME: 64-bit currently*/
-	const          long  long_max = 0x7fffffffffffffff;
+	}else if(iv->suffix & VAL_LONG){
+		/* decimal [Ll] suffix           -> long int,                    long long int
+		 * octal/hexadecimal [Ll] suffix -> long int, unsigned long int, long long int, unsigned long long int
+		 */
+		allow_change_sign = iv->suffix & VAL_NON_DECIMAL;
+		is_signed = 1;
+		p = type_long;
+
+	}else{
+		/* no suffix */
+		allow_change_sign = iv->suffix & VAL_NON_DECIMAL;
+		is_signed = 1;
+		p = type_int;
+	}
 
 	/* a pure intval will never be negative,
 	 * since we parse -5 as (- (intval 5))
-	 * so if it's negative, we have long_max
+	 * so if it'is_signed negative, we have long_max
 	 */
 
-	ICW("TODO: standard conforming literal typing");
-
 	for(;;){
-		if(s){
+		if(is_signed){
 			switch(p){
 				default:
 					ICE("bad primitive");
@@ -79,8 +97,13 @@ void fold_expr_val(expr *e, symtable *stab)
 					}
 
 					if(labs(iv->val) > labs(int_max)){
-						/* attempt to fit into unsigned int */
-						s = 0;
+						if(allow_change_sign)
+							/* attempt to fit into unsigned int */
+							is_signed = 0;
+						else
+							/* attempt to fit into signed long */
+							p = type_long;
+
 						continue;
 					}
 					/* fits into a signed int */
@@ -89,7 +112,10 @@ void fold_expr_val(expr *e, symtable *stab)
 				case type_long:
 					if(iv->val < 0L){
 						/* overflow - try unsigned long */
-						s = 0;
+						if(allow_change_sign)
+							is_signed = 0;
+						else
+							goto too_large_sl;
 						continue;
 					}
 
@@ -98,8 +124,15 @@ void fold_expr_val(expr *e, symtable *stab)
 						/* yes */
 						break;
 					}
+
 					/* doesn't fit into long, try unsigned long */
-					s = 0;
+					if(allow_change_sign){
+too_large_sl:
+						WARN_AT(&e->where, "integer constant too large for signed long");
+						break;
+					}else{
+						is_signed = 0;
+					}
 					continue;
 			}
 			/* fine */
@@ -112,10 +145,9 @@ void fold_expr_val(expr *e, symtable *stab)
 
 				case type_int:
 					if(labs(iv->val) > labs(uint_max)){
-						/* attempt to fit into a signed long */
-						if(!set_s)
-							s = 1; /* else U specified, don't go to signed */
-
+						if(allow_change_sign)
+							is_signed = 1; /* attempt to fit into a signed long */
+						/* else go to unsigned long */
 						p = type_long;
 						continue;
 					}
@@ -132,7 +164,7 @@ void fold_expr_val(expr *e, symtable *stab)
 	}
 
 	EOF_WHERE(&e->where,
-		e->tree_type = type_ref_new_type(type_new_primitive_signed(p, s));
+		e->tree_type = type_ref_new_type(type_new_primitive_signed(p, is_signed));
 	);
 }
 
