@@ -177,50 +177,50 @@ static decl_init *decl_init_brace_up_scalar(
 	return first_init;
 }
 
+static decl_init **decl_init_brace_up_array2(
+		init_iter *iter, type_ref *next_type, int limit)
+{
+	decl_init **ret = NULL;
+
+	while(*iter->pos){
+		decl_init *sub;
+
+		if(limit-- == 0)
+			break;
+
+		sub = decl_init_brace_up(iter, next_type);
+
+		dynarray_add(&ret, sub);
+	}
+
+	return ret;
+}
+
 static decl_init *decl_init_brace_up_array(init_iter *iter, type_ref *tfor)
 {
 	type_ref *next_type = type_ref_next(tfor);
+	const int limit =
+		type_ref_is_incomplete_array(tfor)
+		? -1 : type_ref_array_len(tfor);
 
 	fprintf(stderr, "%s, iter->array[0]->type = %s\n",
 			__func__, DINIT_STR(iter->array[0]->type));
 
 	if(iter->pos[0]->type != decl_init_brace){
 		decl_init *array = decl_init_new(decl_init_brace);
-		int limit;
-
-		if(type_ref_is_incomplete_array(tfor))
-			limit = -1;
-		else
-			limit = type_ref_array_len(tfor);
 
 		/* we need to pull from iter, bracing up our children inits */
-		while(*iter->pos){
-			decl_init *sub;
-
-			if(limit-- == 0)
-				break;
-
-			sub = decl_init_brace_up(iter, next_type);
-
-			dynarray_add(&array->bits.inits, sub);
-		}
+		array->bits.inits = decl_init_brace_up_array2(iter, next_type, limit);
 
 		return array;
 	}else{
 		decl_init *first = iter->pos[0];
 		decl_init **old_subs = first->bits.inits;
 		init_iter it;
-		int i;
-
-		first->bits.inits = NULL;
 
 		it.array = it.pos = old_subs;
 
-		for(i = 0; *it.pos; i++){
-			decl_init *new = decl_init_brace_up(&it, next_type);
-
-			dynarray_add(&first->bits.inits, new);
-		}
+		first->bits.inits = decl_init_brace_up_array2(&it, next_type, limit);
 
 		++iter->pos;
 
