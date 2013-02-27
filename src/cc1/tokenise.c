@@ -280,7 +280,7 @@ static void add_suffix(enum intval_suffix s)
 	currentval.suffix |= s;
 }
 
-void read_number(enum base mode)
+void read_number(const enum base mode)
 {
 	int read_suffix = 1;
 	int nlen;
@@ -288,7 +288,6 @@ void read_number(enum base mode)
 	char_seq_to_iv(bufferpos, &currentval, &nlen, mode);
 
 	bufferpos += nlen;
-	currentval.suffix = 0;
 
 	while(read_suffix)
 		switch(peeknextchar()){
@@ -423,7 +422,7 @@ static void read_char(const int is_wide)
 
 			read_number(esc == 'x' ? HEX : esc == 'b' ? BIN : OCT);
 
-			if(currentval.suffix)
+			if(currentval.suffix & ~VAL_PREFIX_MASK)
 				DIE_AT(NULL, "invalid character sequence: suffix given");
 
 			if(!is_wide && currentval.val > 0xff)

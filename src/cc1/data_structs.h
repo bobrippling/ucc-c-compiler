@@ -7,7 +7,16 @@ struct intval
 	enum intval_suffix
 	{
 		VAL_UNSIGNED = 1 << 0,
-		VAL_LONG     = 1 << 1
+		VAL_LONG     = 1 << 1,
+
+		/* variable was read in as:
+		 * (decimal if neither of these set)
+		 */
+		VAL_OCTAL       = 1 << 2,
+		VAL_HEX         = 1 << 3,
+		VAL_BIN         = 1 << 4,
+		VAL_NON_DECIMAL = VAL_OCTAL | VAL_HEX | VAL_BIN,
+		VAL_PREFIX_MASK = VAL_NON_DECIMAL,
 	} suffix;
 };
 
