@@ -45,38 +45,11 @@ void fold_expr_val(expr *e, symtable *stab)
 
 	intval *const iv = &e->bits.iv;
 
-	enum type_primitive p;
-	int is_signed;
-	int allow_change_sign;
+	enum type_primitive p = iv->suffix & VAL_LONG ? type_long : type_int;
+	int is_signed         = !(iv->suffix & VAL_UNSIGNED);
+	const int change_sign = is_signed && (iv->suffix & VAL_NON_DECIMAL);
 
 	(void)stab;
-
-	if((iv->suffix & (VAL_LONG | VAL_UNSIGNED)) == (VAL_LONG | VAL_UNSIGNED)){
-		/* [uU][lL] suffix -> unsigned long int, unsigned long long int */
-		allow_change_sign = 0;
-		is_signed = 0;
-		p = type_long;
-
-	}else if(iv->suffix & VAL_UNSIGNED){
-		/* [Uu]suffix -> unsigned int, unsigned long int, unsigned long long int */
-		allow_change_sign = 0;
-		is_signed = 0;
-		p = type_int;
-
-	}else if(iv->suffix & VAL_LONG){
-		/* decimal [Ll] suffix           -> long int,                    long long int
-		 * octal/hexadecimal [Ll] suffix -> long int, unsigned long int, long long int, unsigned long long int
-		 */
-		allow_change_sign = iv->suffix & VAL_NON_DECIMAL;
-		is_signed = 1;
-		p = type_long;
-
-	}else{
-		/* no suffix */
-		allow_change_sign = iv->suffix & VAL_NON_DECIMAL;
-		is_signed = 1;
-		p = type_int;
-	}
 
 	/* a pure intval will never be negative,
 	 * since we parse -5 as (- (intval 5))
@@ -97,7 +70,7 @@ void fold_expr_val(expr *e, symtable *stab)
 					}
 
 					if(labs(iv->val) > labs(int_max)){
-						if(allow_change_sign)
+						if(change_sign)
 							/* attempt to fit into unsigned int */
 							is_signed = 0;
 						else
@@ -112,7 +85,7 @@ void fold_expr_val(expr *e, symtable *stab)
 				case type_long:
 					if(iv->val < 0L){
 						/* overflow - try unsigned long */
-						if(allow_change_sign)
+						if(change_sign)
 							is_signed = 0;
 						else
 							goto too_large_sl;
@@ -126,7 +99,7 @@ void fold_expr_val(expr *e, symtable *stab)
 					}
 
 					/* doesn't fit into long, try unsigned long */
-					if(allow_change_sign){
+					if(change_sign){
 too_large_sl:
 						WARN_AT(&e->where, "integer constant too large for signed long");
 						break;
@@ -145,7 +118,7 @@ too_large_sl:
 
 				case type_int:
 					if(labs(iv->val) > labs(uint_max)){
-						if(allow_change_sign)
+						if(change_sign)
 							is_signed = 1; /* attempt to fit into a signed long */
 						/* else go to unsigned long */
 						p = type_long;
