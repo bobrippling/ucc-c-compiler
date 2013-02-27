@@ -413,7 +413,7 @@ static void read_char(const int is_wide)
 	if(c == EOF){
 		DIE_AT(NULL, "Invalid character");
 	}else if(c == '\\'){
-		char esc = peeknextchar();
+		char esc = tolower(peeknextchar());
 
 		if(esc == 'x' || esc == 'b' || isoct(esc)){
 
@@ -475,7 +475,7 @@ void nexttoken()
 		enum base mode;
 
 		if(c == '0'){
-			switch((c = nextchar())){
+			switch(tolower(c = nextchar())){
 				case 'x':
 					mode = HEX;
 					break;
