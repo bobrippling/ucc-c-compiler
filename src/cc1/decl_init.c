@@ -166,7 +166,10 @@ static decl_init *decl_init_brace_up_scalar(
 	decl_init *first_init = *iter->pos;
 
 	++iter->pos;
-	fprintf(stderr, "++*iter in %s\n", __func__);
+
+	if(first_init->desig)
+		DIE_AT(&first_init->where, "initialising scalar with %s designator",
+				DESIG_TO_STR(first_init->desig->type));
 
 	if(first_init->type == decl_init_brace){
 		init_iter it;
@@ -178,19 +181,92 @@ static decl_init *decl_init_brace_up_scalar(
 }
 
 static decl_init **decl_init_brace_up_array2(
-		init_iter *iter, type_ref *next_type, int limit)
+		init_iter *iter, type_ref *next_type,
+		int limit)
 {
+	int n = 0, i = 0;
 	decl_init **ret = NULL;
+	decl_init *this;
 
-	while(*iter->pos){
-		decl_init *sub;
+	while((this = *iter->pos)){
+		desig *des;
+		decl_init *next_braced_up;
+		init_iter *chosen_iter = iter;
+
+		init_iter desig_sub_iter;
+		decl_init *desig_sub_bits[2];
 
 		if(limit-- == 0)
 			break;
 
-		sub = decl_init_brace_up(iter, next_type);
+		if((des = this->desig)){
+			consty k;
 
-		dynarray_add(&ret, sub);
+			this->desig = des->next;
+
+			if(des->type != desig_ar){
+				DIE_AT(&this->where,
+						"%s designator can't designate array",
+						DESIG_TO_STR(des->type));
+			}
+
+			const_fold(des->bits.ar, &k);
+
+			if(k.type != CONST_VAL)
+				DIE_AT(&this->where, "non-constant array-designator");
+
+			i = k.bits.iv.val;
+			/* TODO: bound */
+
+			/* [0][1] = 5, [3][2] = 2
+			 *
+			 * we don't want [0][1]'s bracer to eat [3][2]'s init,
+			 * so we create a sub-iterator for this
+			 */
+
+			if(this->type == decl_init_brace){
+				desig_sub_iter.array = desig_sub_iter.pos = this->bits.inits;
+			}else{
+				desig_sub_bits[0] = this;
+				desig_sub_bits[1] = NULL;
+
+				desig_sub_iter.array = desig_sub_iter.pos = desig_sub_bits;
+			}
+			chosen_iter = &desig_sub_iter;
+			iter->pos++;
+		}
+
+		next_braced_up = decl_init_brace_up(chosen_iter, next_type);
+
+		if(i < n){
+			/* already have one, replace */
+			decl_init **p = &ret[i],
+								*out = *p;
+
+			if(out != (decl_init *)DYNARRAY_NULL){
+				char buf[WHERE_BUF_SIZ];
+
+				WARN_AT(&this->where, "overriding previous array init from %s",
+						where_str_r(buf, &out->where));
+
+				/*decl_init_free_1(out); XXX: memleak */
+			}
+
+			*p = next_braced_up;
+		}else{
+			/* pad up to it */
+			int j;
+			for(j = i - n; j > 0; j--){
+				dynarray_add(&ret, (decl_init *)DYNARRAY_NULL);
+				n++;
+			}
+
+			/* add */
+			dynarray_add(&ret, next_braced_up);
+			n++;
+		}
+
+		i++;
 	}
 
 	return ret;
@@ -202,9 +278,6 @@ static decl_init *decl_init_brace_up_array(init_iter *iter, type_ref *tfor)
 	const int limit =
 		type_ref_is_incomplete_array(tfor)
 		? -1 : type_ref_array_len(tfor);
-
-	fprintf(stderr, "%s, iter->array[0]->type = %s\n",
-			__func__, DINIT_STR(iter->array[0]->type));
 
 	if(iter->pos[0]->type != decl_init_brace){
 		decl_init *array = decl_init_new(decl_init_brace);

@@ -5,6 +5,7 @@
 
 #include "../util/util.h"
 #include "../util/platform.h"
+#include "../util/dynarray.h"
 #include "data_structs.h"
 #include "macros.h"
 #include "sym.h"
@@ -76,24 +77,28 @@ void print_decl_init(decl_init *di)
 
 			gen_str_indent++;
 			for(i = 0; (s = di->bits.inits[i]); i++){
-				const int need_brace = s->type == decl_init_brace;
+				if(s == DYNARRAY_NULL){
+					idt_printf("[%d] = <zero init>\n", i);
+				}else{
+					const int need_brace = s->type == decl_init_brace;
 
-				/* ->member not printed */
+					/* ->member not printed */
 #ifdef DINIT_WITH_STRUCT
-				if(s->spel)
-					idt_printf(".%s", s->spel);
-				else
+					if(s->spel)
+						idt_printf(".%s", s->spel);
+					else
 #endif
-					idt_printf("[%d]", i);
+						idt_printf("[%d]", i);
 
-				fprintf(cc1_out, " = %s\n", need_brace ? "{" : "");
+					fprintf(cc1_out, " = %s\n", need_brace ? "{" : "");
 
-				gen_str_indent++;
-				print_decl_init(s);
-				gen_str_indent--;
+					gen_str_indent++;
+					print_decl_init(s);
+					gen_str_indent--;
 
-				if(need_brace)
-					idt_printf("}\n");
+					if(need_brace)
+						idt_printf("}\n");
+				}
 			}
 			gen_str_indent--;
 			break;

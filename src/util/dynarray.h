@@ -9,6 +9,7 @@ int   dynarray_nochk_count(  void **);
 void  dynarray_nochk_free(   void ***par, void (*f)(void *));
 void  dynarray_nochk_add_array(void ***, void **);
 
+#define DYNARRAY_NULL (void *)1
 
 #include "dyn.h"
 
