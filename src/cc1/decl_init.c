@@ -163,9 +163,15 @@ static decl_init *decl_init_brace_up(init_iter *, type_ref *);
 static decl_init *decl_init_brace_up_scalar(
 		init_iter *iter, type_ref *const tfor)
 {
-	decl_init *first_init = *iter->pos;
+	decl_init *first_init;
 
-	++iter->pos;
+	if(!iter->pos){
+		first_init = decl_init_new(decl_init_scalar);
+		first_init->bits.expr = expr_new_val(0); /* default init for everything */
+		return first_init;
+	}
+
+	first_init = *iter->pos++;
 
 	if(first_init->desig)
 		DIE_AT(&first_init->where, "initialising scalar with %s designator",
@@ -187,6 +193,12 @@ static decl_init **decl_init_brace_up_array2(
 	int n = 0, i = 0;
 	decl_init **ret = NULL;
 	decl_init *this;
+
+	if(!iter->pos){
+		/* {} */
+		dynarray_add(&ret, (decl_init *)DYNARRAY_NULL);
+		return ret;
+	}
 
 	while((this = *iter->pos)){
 		desig *des;
