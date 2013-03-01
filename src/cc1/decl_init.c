@@ -289,35 +289,42 @@ static decl_init *decl_init_brace_up_array(init_iter *iter, type_ref *tfor)
 	}
 }
 
-static decl_init *decl_init_brace_up_sue(init_iter *iter, struct_union_enum_st *sue)
+static decl_init **decl_init_brace_up_sue2(
+		init_iter *iter, struct_union_enum_st *sue)
 {
-	if(iter->pos[0]->type == decl_init_brace){
+	decl_init **r = NULL;
+
+	sue_member *mem;
+	int i;
+	for(i = 0; (mem = sue->members[i]) && *iter->pos; i++){
+		type_ref *ty = mem->struct_member->ref;
+
+		dynarray_add(&r, decl_init_brace_up(iter, ty));
+	}
+
+	return r;
+}
+
+static decl_init *decl_init_brace_up_sue(
+		init_iter *iter, struct_union_enum_st *sue)
+{
+	if(iter->pos[0]->type != decl_init_brace){
+		decl_init *r = decl_init_new(decl_init_brace);
+
+		r->bits.inits = decl_init_brace_up_sue2(iter, sue);
+
+		return r;
+	}else{
 		/* we're initialising ourselves with a brace,
 		 * just need to do this to all sub-inits */
 		decl_init *first = iter->pos[0];
-		decl_init **ar = first->bits.inits;
-		int i;
+		init_iter it;
 
-		first->bits.inits = NULL;
+		it.array = it.pos = first->bits.inits;
 
-		for(i = 0; ar[i]; i++){
-			type_ref *ty = sue->members[i]->struct_member->ref;
-			init_iter it;
+		first->bits.inits = decl_init_brace_up_sue2(&it, sue);
 
-			it.array = it.pos = &ar[i];
-
-			ar[i] = decl_init_brace_up(&it, ty);
-		}
-
-		first->bits.inits = ar;
-
-		return iter++->pos[0];
-	}else{
-		decl_init *r = decl_init_new(decl_init_brace);
-
-		ICE("TODO");
-
-		return r;
+		return iter->pos++[0];
 	}
 }
 

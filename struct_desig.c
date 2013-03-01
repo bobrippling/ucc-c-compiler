@@ -1,6 +1,11 @@
 struct A
 {
-	int i, j;
+	int i;
+	struct B
+	{
+		int x, y;
+	} b;
+	int j;
 } a = {
-	1, 2
+	1, 2, 3
 };
