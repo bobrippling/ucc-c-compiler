@@ -289,6 +289,38 @@ static decl_init *decl_init_brace_up_array(init_iter *iter, type_ref *tfor)
 	}
 }
 
+static decl_init *decl_init_brace_up_sue(init_iter *iter, struct_union_enum_st *sue)
+{
+	if(iter->pos[0]->type == decl_init_brace){
+		/* we're initialising ourselves with a brace,
+		 * just need to do this to all sub-inits */
+		decl_init *first = iter->pos[0];
+		decl_init **ar = first->bits.inits;
+		int i;
+
+		first->bits.inits = NULL;
+
+		for(i = 0; ar[i]; i++){
+			type_ref *ty = sue->members[i]->struct_member->ref;
+			init_iter it;
+
+			it.array = it.pos = &ar[i];
+
+			ar[i] = decl_init_brace_up(&it, ty);
+		}
+
+		first->bits.inits = ar;
+
+		return iter++->pos[0];
+	}else{
+		decl_init *r = decl_init_new(decl_init_brace);
+
+		ICE("TODO");
+
+		return r;
+	}
+}
+
 static decl_init *decl_init_brace_up(init_iter *iter, type_ref *tfor)
 {
 	struct_union_enum_st *sue;
@@ -296,10 +328,8 @@ static decl_init *decl_init_brace_up(init_iter *iter, type_ref *tfor)
 	if(type_ref_is(tfor, type_ref_array))
 		return decl_init_brace_up_array(iter, tfor);
 
-	if((sue = type_ref_is_s_or_u(tfor))){
-		ICE("TODO: sue");
-		/*return decl_init_brace_up_sue(dinit, sue);*/
-	}
+	if((sue = type_ref_is_s_or_u(tfor)))
+		return decl_init_brace_up_sue(iter, sue);
 
 	return decl_init_brace_up_scalar(iter, tfor);
 }
