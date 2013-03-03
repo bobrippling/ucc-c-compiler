@@ -31,13 +31,16 @@ int fold_type_ref_equal(
 		enum warning warn, enum decl_cmp extra_flags,
 		const char *errfmt, ...)
 {
-	enum decl_cmp flags = extra_flags
-		| DECL_CMP_ALLOW_VOID_PTR
-		| DECL_CMP_ALLOW_SIGNED_UNSIGNED;
+	enum decl_cmp flags = extra_flags | DECL_CMP_ALLOW_VOID_PTR;
+
+	if(!type_ref_is(a, type_ref_ptr) && !type_ref_is(b, type_ref_ptr))
+		flags |= DECL_CMP_ALLOW_SIGNED_UNSIGNED;
 
 	/* stronger checks for blocks and pointers */
-	if(type_ref_is(a, type_ref_block) || type_ref_is(b, type_ref_block)
-	|| type_ref_is(a, type_ref_ptr)   || type_ref_is(b, type_ref_ptr))
+	if(type_ref_is(a, type_ref_block)
+	|| type_ref_is(b, type_ref_block)
+	|| type_ref_is(a, type_ref_func)
+	|| type_ref_is(b, type_ref_func))
 	{
 		flags |= DECL_CMP_EXACT_MATCH;
 	}

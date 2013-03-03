@@ -64,7 +64,7 @@ enum funcargs_cmp funcargs_equal(
 					&args_from->where, WARN_ARG_MISMATCH, flag,
 					"mismatching argument %d %s%s%s(%s <-- %s)",
 					i,
-					fspel ? "to " : "",
+					fspel ? "to " : "between declarations ",
 					fspel ? fspel : "",
 					fspel ? " " : "",
 					decl_to_str_r(buf, args_to->arglist[i]),
