@@ -228,6 +228,9 @@ type_ref *op_required_promotion(
 			/* FIXME: promote to unsigned */
 			*(l_ptr ? prhs : plhs) = type_ref_new_INTPTR_T();
 
+			if(type_ref_is_void_ptr(resolved))
+				WARN_AT(w, "arithmetic on void pointer");
+
 			goto fin;
 		}
 	}
