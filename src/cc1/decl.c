@@ -502,7 +502,7 @@ static int type_ref_equal_r(
 
 int type_ref_equal(type_ref *a, type_ref *b, enum decl_cmp mode)
 {
-	if(mode & DECL_CMP_ALLOW_VOID_PTR){
+	if(!(mode & DECL_CMP_EXACT_MATCH) && mode & DECL_CMP_ALLOW_VOID_PTR){
 		/* one side is void * */
 		if(type_ref_is_void_ptr(a) && type_ref_is_ptr(b))
 			return 1;
