@@ -27,9 +27,7 @@ int brk(void *p)
 
 void *sbrk(int inc)
 {
-	void *new;
-
-	new = ucc_brk(NULL) + inc;
+	void *new = (char *)ucc_brk(NULL) + inc;
 
 	if(brk(new) == -1){
 		/*errno = ENOMEM;*/
