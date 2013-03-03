@@ -539,14 +539,14 @@ type_ref *type_ref_orphan(type_ref *r)
 	return ret;
 }
 
-type_ref *type_ref_ptr_depth_dec(type_ref *r)
+type_ref *type_ref_ptr_depth_dec(type_ref *r, where *w)
 {
 	type_ref *const r_save = r;
 
 	r = type_ref_is_ptr(r);
 
 	if(!r){
-		DIE_AT(r_save ? &r_save->where : NULL,
+		DIE_AT(w,
 				"invalid indirection applied to %s",
 				r_save ? type_ref_to_str(r_save) : "(NULL)");
 	}
@@ -556,7 +556,7 @@ type_ref *type_ref_ptr_depth_dec(type_ref *r)
 		return r_save;
 
 	if(!type_ref_is_complete(r))
-		DIE_AT(&r->where, "dereference of pointer to incomplete type %s",
+		DIE_AT(w, "dereference of pointer to incomplete type %s",
 				type_ref_to_str(r));
 
 	/* XXX: memleak */
@@ -568,18 +568,6 @@ type_ref *type_ref_ptr_depth_dec(type_ref *r)
 type_ref *type_ref_ptr_depth_inc(type_ref *r)
 {
 	return type_ref_new_ptr(r, qual_none);
-}
-
-decl *decl_ptr_depth_inc(decl *d)
-{
-	d->ref = type_ref_ptr_depth_inc(d->ref);
-	return d;
-}
-
-decl *decl_ptr_depth_dec(decl *d)
-{
-	d->ref = type_ref_ptr_depth_dec(d->ref);
-	return d;
 }
 
 decl *decl_func_called(decl *d, funcargs **pfuncargs)
