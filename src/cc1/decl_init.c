@@ -190,7 +190,7 @@ static decl_init **decl_init_brace_up_array2(
 		init_iter *iter, type_ref *next_type,
 		int limit)
 {
-	int n = 0, i = 0;
+	unsigned n = 0, i = 0;
 	decl_init **ret = NULL;
 	decl_init *this;
 
@@ -250,33 +250,7 @@ static decl_init **decl_init_brace_up_array2(
 
 		next_braced_up = decl_init_brace_up(chosen_iter, next_type);
 
-		if(i < n){
-			/* already have one, replace */
-			decl_init **p = &ret[i],
-								*out = *p;
-
-			if(out != (decl_init *)DYNARRAY_NULL){
-				char buf[WHERE_BUF_SIZ];
-
-				WARN_AT(&this->where, "overriding previous array init from %s",
-						where_str_r(buf, &out->where));
-
-				/*decl_init_free_1(out); XXX: memleak */
-			}
-
-			*p = next_braced_up;
-		}else{
-			/* pad up to it */
-			int j;
-			for(j = i - n; j > 0; j--){
-				dynarray_add(&ret, (decl_init *)DYNARRAY_NULL);
-				n++;
-			}
-
-			/* add */
-			dynarray_add(&ret, next_braced_up);
-			n++;
-		}
+		dynarray_padinsert(&ret, i, &n, next_braced_up);
 
 		i++;
 	}
