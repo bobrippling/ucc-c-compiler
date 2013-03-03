@@ -294,12 +294,50 @@ static decl_init **decl_init_brace_up_sue2(
 {
 	decl_init **r = NULL;
 
-	sue_member *mem;
+	unsigned n = 0;
 	int i;
-	for(i = 0; (mem = sue->members[i]) && *iter->pos; i++){
-		type_ref *ty = mem->struct_member->ref;
+	decl_init *this;
+	for(i = 0; (this = *iter->pos); i++){
+		desig *des;
 
-		dynarray_add(&r, decl_init_brace_up(iter, ty));
+		if((des = this->desig)){
+			/* find member, set `i' to its index */
+			decl *mem;
+			unsigned j = 0;
+
+			if(des->type != desig_struct){
+				DIE_AT(&this->where,
+						"%s designator can't designate struct",
+						DESIG_TO_STR(des->type));
+			}
+
+			this->desig = des->next;
+
+			mem = struct_union_member_find(sue, des->bits.member, &j);
+			if(j)
+				ICE("Anonymous struct init TODO");
+
+			for(j = 0; sue->members[j]; j++)
+				if(sue->members[j]->struct_member == mem){
+					i = j;
+					break;
+				}
+
+			if(!sue->members[j])
+				ICE("couldn't find member %s", des->bits.member);
+
+			fprintf(stderr, "chose member %s for init\n", des->bits.member);
+		}
+
+		{
+			sue_member *mem = sue->members[i];
+			if(!mem)
+				break;
+
+			dynarray_padinsert(&r, i, &n,
+					decl_init_brace_up(iter,
+						mem->struct_member->ref));
+		}
 	}
 
 	return r;
