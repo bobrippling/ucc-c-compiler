@@ -315,6 +315,11 @@ static decl_init **decl_init_brace_up_sue2(
 			this->desig = des->next;
 
 			mem = struct_union_member_find(sue, des->bits.member, &j);
+			if(!mem)
+				DIE_AT(&this->where,
+						"%s %s contains no such member \"%s\"",
+						sue_str(sue), sue->spel, des->bits.member);
+
 			if(j)
 				ICE("Anonymous struct init TODO");
 
@@ -326,8 +331,6 @@ static decl_init **decl_init_brace_up_sue2(
 
 			if(!sue->members[j])
 				ICE("couldn't find member %s", des->bits.member);
-
-			fprintf(stderr, "chose member %s for init\n", des->bits.member);
 		}
 
 		{
