@@ -285,13 +285,26 @@ static decl_init **decl_init_brace_up_sue2(
 						sue_str(sue), sue->spel, des->bits.member);
 
 			if(j)
-				ICE("Anonymous struct init TODO");
+				ICE("Plan 9 struct init TODO");
 
-			for(j = 0; sue->members[j]; j++)
-				if(sue->members[j]->struct_member == mem){
+			for(j = 0; sue->members[j]; j++){
+				decl *jmem = sue->members[j]->struct_member;
+
+				/* XXX: could pull in the members to this struct,
+				 * at the same offset at the anon-struct's members */
+				fprintf(stderr, "search, at %p, %s (looking for %p)\n",
+						sue->members[j]->struct_member,
+						sue->members[j]->struct_member->spel, mem);
+
+				if(!jmem->spel){
+					/* anon struct/union, sub init it */
+					fprintf(stderr, "found anon struct\n");
+
+				}else if(jmem == mem){
 					i = j;
 					break;
 				}
+			}
 
 			if(!sue->members[j])
 				ICE("couldn't find member %s", des->bits.member);
