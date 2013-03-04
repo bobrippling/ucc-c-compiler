@@ -188,7 +188,7 @@ static decl_init *decl_init_brace_up_scalar(
 
 static decl_init **decl_init_brace_up_array2(
 		init_iter *iter, type_ref *next_type,
-		int limit)
+		const int limit)
 {
 	unsigned n = 0, i = 0;
 	decl_init **ret = NULL;
@@ -208,7 +208,7 @@ static decl_init **decl_init_brace_up_array2(
 		init_iter desig_sub_iter;
 		decl_init *desig_sub_bits[2];
 
-		if(limit-- == 0)
+		if(limit > -1 && i >= (unsigned)limit)
 			break;
 
 		if((des = this->desig)){
@@ -228,7 +228,8 @@ static decl_init **decl_init_brace_up_array2(
 				DIE_AT(&this->where, "non-constant array-designator");
 
 			i = k.bits.iv.val;
-			/* TODO: bound */
+			if(limit > -1 && i >= (unsigned)limit)
+				DIE_AT(&this->where, "designating outside of array bounds (%d)", limit);
 
 			/* [0][1] = 5, [3][2] = 2
 			 *
