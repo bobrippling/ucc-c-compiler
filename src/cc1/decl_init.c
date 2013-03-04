@@ -194,12 +194,6 @@ static decl_init **decl_init_brace_up_array2(
 	decl_init **ret = NULL;
 	decl_init *this;
 
-	if(!iter->pos){
-		/* {} */
-		dynarray_add(&ret, (decl_init *)DYNARRAY_NULL);
-		return ret;
-	}
-
 	while((this = *iter->pos)){
 		desig *des;
 		decl_init *next_braced_up;
@@ -259,37 +253,6 @@ static decl_init **decl_init_brace_up_array2(
 	return ret;
 }
 
-static decl_init *decl_init_brace_up_array(init_iter *iter, type_ref *tfor)
-{
-	type_ref *next_type = type_ref_next(tfor);
-	const int limit =
-		type_ref_is_incomplete_array(tfor)
-		? -1 : type_ref_array_len(tfor);
-
-	if(iter->pos[0]->type != decl_init_brace){
-		decl_init *array = decl_init_new(decl_init_brace);
-
-		/* we need to pull from iter, bracing up our children inits */
-		array->bits.inits = decl_init_brace_up_array2(iter, next_type, limit);
-
-		return array;
-	}else{
-		decl_init *first = iter->pos[0];
-		decl_init **old_subs = first->bits.inits;
-		init_iter it;
-
-		it.array = it.pos = old_subs;
-
-		first->bits.inits = decl_init_brace_up_array2(&it, next_type, limit);
-
-		++iter->pos;
-
-		free(old_subs);
-
-		return first; /* this is in the {} state */
-	}
-}
-
 static decl_init **decl_init_brace_up_sue2(
 		init_iter *iter, struct_union_enum_st *sue)
 {
@@ -298,6 +261,7 @@ static decl_init **decl_init_brace_up_sue2(
 	unsigned n = 0;
 	int i;
 	decl_init *this;
+
 	for(i = 0; (this = *iter->pos); i++){
 		desig *des;
 
@@ -347,26 +311,41 @@ static decl_init **decl_init_brace_up_sue2(
 	return r;
 }
 
-static decl_init *decl_init_brace_up_sue(
-		init_iter *iter, struct_union_enum_st *sue)
+static decl_init *decl_init_brace_up_aggregate(
+		init_iter *iter,
+		decl_init **(*brace_up_f)(),
+		void *arg1, int arg2)
 {
 	if(iter->pos[0]->type != decl_init_brace){
 		decl_init *r = decl_init_new(decl_init_brace);
 
-		r->bits.inits = decl_init_brace_up_sue2(iter, sue);
+		/* we need to pull from iter, bracing up our children inits */
+		r->bits.inits = brace_up_f(iter, arg1, arg2);
 
 		return r;
 	}else{
 		/* we're initialising ourselves with a brace,
 		 * just need to do this to all sub-inits */
 		decl_init *first = iter->pos[0];
-		init_iter it;
+		decl_init **old_subs = first->bits.inits;
 
-		it.array = it.pos = first->bits.inits;
+		if(!old_subs){
+			/* {} */
+			first->bits.inits = NULL;
+			dynarray_add(&first->bits.inits, (decl_init *)DYNARRAY_NULL);
+		}else{
+			init_iter it;
 
-		first->bits.inits = decl_init_brace_up_sue2(&it, sue);
+			it.array = it.pos = old_subs;
 
-		return iter->pos++[0];
+			first->bits.inits = brace_up_f(&it, arg1, arg2);
+		}
+
+		++iter->pos;
+
+		free(old_subs);
+
+		return first; /* this is in the {} state */
 	}
 }
 
@@ -374,11 +353,19 @@ static decl_init *decl_init_brace_up(init_iter *iter, type_ref *tfor)
 {
 	struct_union_enum_st *sue;
 
-	if(type_ref_is(tfor, type_ref_array))
-		return decl_init_brace_up_array(iter, tfor);
+	if(type_ref_is(tfor, type_ref_array)){
+		const int limit = type_ref_is_incomplete_array(tfor)
+			? -1 : type_ref_array_len(tfor);
+
+		return decl_init_brace_up_aggregate(
+				iter, &decl_init_brace_up_array2,
+				type_ref_next(tfor), limit);
+	}
 
 	if((sue = type_ref_is_s_or_u(tfor)))
-		return decl_init_brace_up_sue(iter, sue);
+		return decl_init_brace_up_aggregate(
+				iter, &decl_init_brace_up_sue2,
+				sue, 0);
 
 	return decl_init_brace_up_scalar(iter, tfor);
 }
