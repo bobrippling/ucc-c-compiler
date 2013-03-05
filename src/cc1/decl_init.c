@@ -46,6 +46,10 @@ typedef struct
 	decl_init **pos;
 } init_iter;
 
+static decl_init *decl_init_brace_up_aggregate(
+		init_iter *iter,
+		decl_init **(*brace_up_f)(),
+		void *arg1, int arg2);
 
 int decl_init_is_const(decl_init *dinit, symtable *stab)
 {
@@ -254,7 +258,7 @@ static decl_init **decl_init_brace_up_array2(
 }
 
 static decl_init **decl_init_brace_up_sue2(
-		init_iter *iter, struct_union_enum_st *sue)
+		init_iter *iter, struct_union_enum_st *sue, const int is_anon)
 {
 	decl_init **r = NULL;
 
@@ -282,10 +286,17 @@ static decl_init **decl_init_brace_up_sue2(
 			this->desig = des->next;
 
 			mem = struct_union_member_find(sue, des->bits.member, &j, &in);
-			if(!mem)
+			if(!mem){
+				/* if we're an anonymous struct, return out */
+				if(is_anon){
+					this->desig = des;
+					break;
+				}
+
 				DIE_AT(&this->where,
 						"%s %s contains no such member \"%s\"",
 						sue_str(sue), sue->spel, des->bits.member);
+			}
 
 			if(j)
 				ICE("Plan 9 struct init TODO");
@@ -300,7 +311,8 @@ static decl_init **decl_init_brace_up_sue2(
 					if(jmem_sue == in){
 						/* anon struct/union, sub init it, restoring the desig. */
 						this->desig = des;
-						braced_sub = decl_init_brace_up(iter, jmem->ref);
+						braced_sub = decl_init_brace_up_aggregate(
+								iter, &decl_init_brace_up_sue2, in, 1);
 						found = 1;
 					}
 				}
@@ -383,7 +395,7 @@ static decl_init *decl_init_brace_up(init_iter *iter, type_ref *tfor)
 	if((sue = type_ref_is_s_or_u(tfor)))
 		return decl_init_brace_up_aggregate(
 				iter, &decl_init_brace_up_sue2,
-				sue, 0);
+				sue, 0 /* is anon */);
 
 	return decl_init_brace_up_scalar(iter, tfor);
 }
