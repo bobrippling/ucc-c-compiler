@@ -200,6 +200,7 @@ static decl_init **decl_init_brace_up_array2(
 
 	while((this = *iter->pos)){
 		desig *des;
+		decl_init *replaced;
 
 		if(limit > -1 && i >= (unsigned)limit)
 			break;
@@ -225,8 +226,17 @@ static decl_init **decl_init_brace_up_array2(
 				DIE_AT(&this->where, "designating outside of array bounds (%d)", limit);
 		}
 
-		dynarray_padinsert(&ret, i, &n,
+		replaced = dynarray_padinsert(&ret, i, &n,
 				decl_init_brace_up(iter, next_type));
+
+		if(replaced){
+			char buf[WHERE_BUF_SIZ];
+
+			WARN_AT(&this->where,
+					"overriding initialisation of index %d\n"
+					"%s prior initialisation here",
+					i, where_str_r(buf, &replaced->where));
+		}
 
 		i++;
 	}
