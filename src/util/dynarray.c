@@ -40,7 +40,7 @@ void *dynarray_nochk_padinsert(
 
 		*p = ins;
 
-		return out;
+		return out == DYNARRAY_NULL ? NULL : out;
 	}else{
 		/* pad up to it */
 		unsigned j;

@@ -305,13 +305,25 @@ static decl_init **decl_init_brace_up_sue2(
 
 		{
 			sue_member *mem = sue->members[i];
+			decl_init *replaced;
+
 			if(!mem)
 				break;
 
 			if(!braced_sub)
 				braced_sub = decl_init_brace_up(iter, mem->struct_member->ref);
 
-			dynarray_padinsert(&r, i, &n, braced_sub);
+			replaced = dynarray_padinsert(&r, i, &n, braced_sub);
+
+			if(replaced){
+				char buf[WHERE_BUF_SIZ];
+
+				WARN_AT(&this->where,
+						"overriding initialisation of %s\n"
+						"%s prior initialisation here",
+						mem->struct_member->spel,
+						where_str_r(buf, &replaced->where));
+			}
 		}
 	}
 
