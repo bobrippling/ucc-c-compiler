@@ -200,11 +200,6 @@ static decl_init **decl_init_brace_up_array2(
 
 	while((this = *iter->pos)){
 		desig *des;
-		decl_init *next_braced_up;
-		init_iter *chosen_iter = iter;
-
-		init_iter desig_sub_iter;
-		decl_init *desig_sub_bits[2];
 
 		if(limit > -1 && i >= (unsigned)limit)
 			break;
@@ -228,28 +223,10 @@ static decl_init **decl_init_brace_up_array2(
 			i = k.bits.iv.val;
 			if(limit > -1 && i >= (unsigned)limit)
 				DIE_AT(&this->where, "designating outside of array bounds (%d)", limit);
-
-			/* [0][1] = 5, [3][2] = 2
-			 *
-			 * we don't want [0][1]'s bracer to eat [3][2]'s init,
-			 * so we create a sub-iterator for this
-			 */
-
-			if(this->type == decl_init_brace){
-				desig_sub_iter.array = desig_sub_iter.pos = this->bits.inits;
-			}else{
-				desig_sub_bits[0] = this;
-				desig_sub_bits[1] = NULL;
-
-				desig_sub_iter.array = desig_sub_iter.pos = desig_sub_bits;
-			}
-			chosen_iter = &desig_sub_iter;
-			iter->pos++;
 		}
 
-		next_braced_up = decl_init_brace_up(chosen_iter, next_type);
-
-		dynarray_padinsert(&ret, i, &n, next_braced_up);
+		dynarray_padinsert(&ret, i, &n,
+				decl_init_brace_up(iter, next_type));
 
 		i++;
 	}
