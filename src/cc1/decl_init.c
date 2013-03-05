@@ -264,11 +264,14 @@ static decl_init **decl_init_brace_up_sue2(
 
 	for(i = 0; (this = *iter->pos); i++){
 		desig *des;
+		decl_init *braced_sub = NULL;
 
 		if((des = this->desig)){
 			/* find member, set `i' to its index */
+			struct_union_enum_st *in;
 			decl *mem;
 			unsigned j = 0;
+			int found = 0;
 
 			if(des->type != desig_struct){
 				DIE_AT(&this->where,
@@ -278,7 +281,7 @@ static decl_init **decl_init_brace_up_sue2(
 
 			this->desig = des->next;
 
-			mem = struct_union_member_find(sue, des->bits.member, &j);
+			mem = struct_union_member_find(sue, des->bits.member, &j, &in);
 			if(!mem)
 				DIE_AT(&this->where,
 						"%s %s contains no such member \"%s\"",
@@ -290,23 +293,24 @@ static decl_init **decl_init_brace_up_sue2(
 			for(j = 0; sue->members[j]; j++){
 				decl *jmem = sue->members[j]->struct_member;
 
-				/* XXX: could pull in the members to this struct,
-				 * at the same offset at the anon-struct's members */
-				fprintf(stderr, "search, at %p, %s (looking for %p)\n",
-						sue->members[j]->struct_member,
-						sue->members[j]->struct_member->spel, mem);
-
-				if(!jmem->spel){
-					/* anon struct/union, sub init it */
-					fprintf(stderr, "found anon struct\n");
-
-				}else if(jmem == mem){
+				if(jmem == mem){
+					found = 1;
+				}else if(in){
+					struct_union_enum_st *jmem_sue = type_ref_is_s_or_u(jmem->ref);
+					if(jmem_sue == in){
+						/* anon struct/union, sub init it, restoring the desig. */
+						this->desig = des;
+						braced_sub = decl_init_brace_up(iter, jmem->ref);
+						found = 1;
+					}
+				}
+				if(found){
 					i = j;
 					break;
 				}
 			}
 
-			if(!sue->members[j])
+			if(!found)
 				ICE("couldn't find member %s", des->bits.member);
 		}
 
@@ -315,9 +319,10 @@ static decl_init **decl_init_brace_up_sue2(
 			if(!mem)
 				break;
 
-			dynarray_padinsert(&r, i, &n,
-					decl_init_brace_up(iter,
-						mem->struct_member->ref));
+			if(!braced_sub)
+				braced_sub = decl_init_brace_up(iter, mem->struct_member->ref);
+
+			dynarray_padinsert(&r, i, &n, braced_sub);
 		}
 	}
 

@@ -196,9 +196,14 @@ struct_union_enum_st *sue_add(symtable *const stab, char *spel, sue_member **mem
 	return sue;
 }
 
-static void *sue_member_find(struct_union_enum_st *sue, const char *spel, unsigned *extra_off)
+static void *sue_member_find(
+		struct_union_enum_st *sue, const char *spel, unsigned *extra_off,
+		struct_union_enum_st **pin)
 {
 	sue_member **mi;
+
+	if(pin)
+		*pin = NULL;
 
 	for(mi = sue->members; mi && *mi; mi++){
 		if(sue->primitive == type_enum){
@@ -234,9 +239,11 @@ static void *sue_member_find(struct_union_enum_st *sue, const char *spel, unsign
 				}
 
 				if(!dsub)
-					dsub = sue_member_find(sub, spel, extra_off);
+					dsub = sue_member_find(sub, spel, extra_off, pin);
 
 				if(dsub){
+					if(pin)
+						*pin = sub;
 					*extra_off += d->struct_offset;
 					return dsub;
 				}
@@ -257,7 +264,8 @@ void enum_member_search(enum_member **pm, struct_union_enum_st **psue, symtable 
 			struct_union_enum_st *e = *i;
 
 			if(e->primitive == type_enum){
-				enum_member *emem = sue_member_find(e, spel, NULL /* safe - is enum */);
+				enum_member *emem = sue_member_find(e, spel,
+						NULL /* safe - is enum */, NULL);
 
 				if(emem){
 					*pm = emem;
@@ -289,9 +297,12 @@ decl *struct_union_member_find_sue(struct_union_enum_st *in, struct_union_enum_s
 	return NULL;
 }
 
-decl *struct_union_member_find(struct_union_enum_st *sue, const char *spel, unsigned *extra_off)
+decl *struct_union_member_find(
+		struct_union_enum_st *sue,
+		const char *spel, unsigned *extra_off,
+		struct_union_enum_st **pin)
 {
-	return sue_member_find(sue, spel, extra_off);
+	return sue_member_find(sue, spel, extra_off, pin);
 }
 
 decl *struct_union_member_at_idx(struct_union_enum_st *sue, int idx)

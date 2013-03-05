@@ -63,7 +63,7 @@ err:
 	/* found the struct, find the member */
 	{
 		decl *d_mem = struct_union_member_find(sue, spel,
-				&e->bits.struct_mem.extra_off);
+				&e->bits.struct_mem.extra_off, NULL);
 
 		if(!d_mem)
 			DIE_AT(&e->where, "%s %s has no member named \"%s\"",
