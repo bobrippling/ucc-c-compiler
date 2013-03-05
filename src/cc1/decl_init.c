@@ -306,7 +306,7 @@ static decl_init **decl_init_brace_up_sue2(
 
 				if(jmem == mem){
 					found = 1;
-				}else if(in){
+				}else if(!jmem->spel && in){
 					struct_union_enum_st *jmem_sue = type_ref_is_s_or_u(jmem->ref);
 					if(jmem_sue == in){
 						/* anon struct/union, sub init it, restoring the desig. */
@@ -346,36 +346,76 @@ static decl_init *decl_init_brace_up_aggregate(
 		decl_init **(*brace_up_f)(),
 		void *arg1, int arg2)
 {
-	if(iter->pos[0]->type != decl_init_brace){
+	/* we don't pass through iter in the case that:
+	 * we are brace or next is a designator, i.e.
+	 *
+	 * struct A
+	 * {
+	 *   struct
+	 *   {
+	 *     int sub1, sub2;
+	 *   } sub;
+	 *   int i;
+	 * };
+	 *
+	 * struct A x = {
+	 *   { 1 }, 2 // we've specified sub with a brace
+	 *            // don't pass through `2'
+	 * };
+	 *
+	 * struct A y = {
+	 *    1, .i = 2 // initialise sub1 with `1',
+	 *              // but don't pass .i=2 to the sub-init
+	 * };
+	 */
+	int is_braced;
+
+	if((is_braced = iter->pos[0]->type == decl_init_brace)
+	|| (iter->pos[1] && iter->pos[1]->desig))
+	{
+		/* only pass down this single initialiser */
+		decl_init *first = iter->pos[0];
+
+		if(is_braced){
+			decl_init **old_subs = first->bits.inits;
+
+			if(old_subs){
+				init_iter it;
+
+				it.array = it.pos = old_subs;
+
+				first->bits.inits = brace_up_f(&it, arg1, arg2);
+
+				free(old_subs);
+
+			}else{
+				/* {} */
+				first->bits.inits = NULL;
+				dynarray_add(&first->bits.inits, (decl_init *)DYNARRAY_NULL);
+			}
+		}else{
+			init_iter it;
+			decl_init *it_bits[2] = {
+				first, NULL
+			};
+
+			it.array = it.pos = it_bits;
+
+			/* XXX: memleak? */
+			first = decl_init_new(decl_init_brace);
+			first->bits.inits = brace_up_f(&it, arg1, arg2);
+		}
+
+		++iter->pos;
+
+		return first; /* this is in the {} state */
+	}else{
 		decl_init *r = decl_init_new(decl_init_brace);
 
 		/* we need to pull from iter, bracing up our children inits */
 		r->bits.inits = brace_up_f(iter, arg1, arg2);
 
 		return r;
-	}else{
-		/* we're initialising ourselves with a brace,
-		 * just need to do this to all sub-inits */
-		decl_init *first = iter->pos[0];
-		decl_init **old_subs = first->bits.inits;
-
-		if(!old_subs){
-			/* {} */
-			first->bits.inits = NULL;
-			dynarray_add(&first->bits.inits, (decl_init *)DYNARRAY_NULL);
-		}else{
-			init_iter it;
-
-			it.array = it.pos = old_subs;
-
-			first->bits.inits = brace_up_f(&it, arg1, arg2);
-		}
-
-		++iter->pos;
-
-		free(old_subs);
-
-		return first; /* this is in the {} state */
 	}
 }
 
