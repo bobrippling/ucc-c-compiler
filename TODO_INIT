@@ -1,6 +1,15 @@
 register stack space bug
 
-designated init + zero for the rest:
-	int x[] = { [3] = 5 };
-	struct { int x, y, z; } q = { .y = 2, 3 };
-	int k[] = { [7 ... 9] = 2 };
+array range designators - [0 ... 5] = 2
+
+overriding initialisation of the same subobject, e.g.
+	struct A
+	{
+		struct B
+		{
+			int i, j;
+		} a;
+	} x = {
+		.a.i = 1,
+		.a.j = 2, // this overrides the whole .a subobject
+	};

@@ -1,4 +1,3 @@
-/*
 struct A
 {
 	int x, y, z;
@@ -7,13 +6,4 @@ struct A
 	.x = 2,
 	1,
 	3
-};
-*/
-
-struct B
-{
-	int x[2];
-} b = {
-	.x[0] = 5,
-	[1] = 2
 };
