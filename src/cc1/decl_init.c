@@ -172,6 +172,20 @@ static decl_init *decl_init_brace_up_scalar(
 {
 	decl_init *first_init;
 
+	if(current){
+		where *w = iter->pos ? &iter->pos[0]->where : &tfor->where;
+		/* shouldn't need the else-part ^ */;
+		char buf[WHERE_BUF_SIZ];
+
+		WARN_AT(w,
+				"overriding initialisation of \"%s\"\n"
+				"%s prior initialisation here",
+				type_ref_to_str(tfor),
+				where_str_r(buf, &current->where));
+
+		decl_init_free_1(current);
+	}
+
 	if(!iter->pos){
 		first_init = decl_init_new(decl_init_scalar);
 		first_init->bits.expr = expr_new_val(0); /* default init for everything */
@@ -236,17 +250,6 @@ static decl_init **decl_init_brace_up_array2(
 
 			dynarray_padinsert(&current, i, &n,
 					decl_init_brace_up(replacing, iter, next_type));
-
-#if 0
-			if(replaced){
-				char buf[WHERE_BUF_SIZ];
-
-				WARN_AT(&this->where,
-						"overriding initialisation of index %d\n"
-						"%s prior initialisation here",
-						i, where_str_r(buf, &replaced->where));
-			}
-#endif
 		}
 
 		i++;
@@ -341,18 +344,6 @@ static decl_init **decl_init_brace_up_sue2(
 			}
 
 			dynarray_padinsert(&current, i, &n, braced_sub);
-
-#if 0
-			if(replaced){
-				char buf[WHERE_BUF_SIZ];
-
-				WARN_AT(&this->where,
-						"overriding initialisation of %s\n"
-						"%s prior initialisation here",
-						mem->struct_member->spel,
-						where_str_r(buf, &replaced->where));
-			}
-#endif
 		}
 	}
 
