@@ -42,7 +42,6 @@ ucc_printflike(1, 2) void INIT_DEBUG(const char *fmt, ...)
 
 typedef struct
 {
-	decl_init **array;
 	decl_init **pos;
 } init_iter;
 
@@ -200,7 +199,7 @@ static decl_init *decl_init_brace_up_scalar(
 
 	if(first_init->type == decl_init_brace){
 		init_iter it;
-		it.array = it.pos = first_init->bits.inits;
+		it.pos = first_init->bits.inits;
 		return decl_init_brace_up(current, &it, tfor);
 	}
 
@@ -392,7 +391,7 @@ static decl_init *decl_init_brace_up_aggregate(
 			if(old_subs){
 				init_iter it;
 
-				it.array = it.pos = old_subs;
+				it.pos = old_subs;
 
 				first->bits.inits = brace_up_f(
 						current ? current->bits.inits : NULL,
@@ -411,7 +410,7 @@ static decl_init *decl_init_brace_up_aggregate(
 				first, NULL
 			};
 
-			it.array = it.pos = it_bits;
+			it.pos = it_bits;
 
 			/* XXX: memleak? */
 			first = decl_init_new(decl_init_brace);
@@ -464,8 +463,7 @@ static decl_init *decl_init_brace_up_start(decl_init *init, type_ref *tfor)
 		init, NULL
 	};
 	init_iter it;
-	it.array = it.pos = inits;
-
+	it.pos = inits;
 
 	return decl_init_brace_up(NULL, &it, tfor);
 }
