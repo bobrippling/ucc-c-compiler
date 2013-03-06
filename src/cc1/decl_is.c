@@ -140,18 +140,6 @@ int decl_is_func(decl *d)
 	return !!decl_is(d, type_ref_func);
 }
 
-enum type_primitive type_ref_type_primitive(decl *d)
-{
-	const type_ref *r = type_ref_skip_tdefs_casts(d->ref);
-	return r->type == type_ref_type ? r->bits.type->primitive : type_unknown;
-}
-
-int decl_is_struct_or_union(decl *d)
-{
-	enum type_primitive t = type_ref_type_primitive(d);
-	return t == type_struct || t == type_union;
-}
-
 int type_ref_is_fptr(type_ref *r)
 {
 	return !!type_ref_is(type_ref_is_ptr(r), type_ref_func);

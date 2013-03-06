@@ -92,7 +92,6 @@ void fold_expr_assign(expr *e, symtable *stab)
 
 void gen_expr_assign(expr *e, symtable *stab)
 {
-	/*if(decl_is_struct_or_union(e->tree_type))*/
 	fold_disallow_st_un(e, "copy (TODO)"); /* yes this is meant to be in gen */
 
 	UCC_ASSERT(!e->assign_is_post, "assign_is_post set for non-compound assign");
