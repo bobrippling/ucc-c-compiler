@@ -458,7 +458,7 @@ static decl_init *decl_init_brace_up(decl_init *current, init_iter *iter, type_r
 	return decl_init_brace_up_scalar(current, iter, tfor);
 }
 
-static void DEBUG(decl_init *init, type_ref *tfor)
+static decl_init *decl_init_brace_up_start(decl_init *init, type_ref *tfor)
 {
 	decl_init *inits[2] = {
 		init, NULL
@@ -466,25 +466,17 @@ static void DEBUG(decl_init *init, type_ref *tfor)
 	init_iter it;
 	it.array = it.pos = inits;
 
-	decl_init *braced = decl_init_brace_up(NULL, &it, tfor);
 
-	cc1_out = stdout;
-	printf("braced = %p\n", (void *)braced);
-	void print_decl_init(void *);
-	print_decl_init(braced);
-
-	exit(5);
+	return decl_init_brace_up(NULL, &it, tfor);
 }
 
-void decl_init_create_assignments_for_spel(decl *d, stmt *init_code)
+void decl_init_brace_spel(decl *d, stmt *init_code)
 {
 	(void)init_code;
-	DEBUG(d->init, d->ref);
+	d->init = decl_init_brace_up_start(d->init, d->ref);
 }
 
-void decl_init_create_assignments_for_base(decl *d, expr *base, stmt *init_code)
+void decl_init_brace_base(decl *d, expr *base)
 {
-	(void)init_code;
-	(void)base;
-	DEBUG(d->init, d->ref);
+	d->init = decl_init_brace_up_start(d->init, d->ref);
 }
