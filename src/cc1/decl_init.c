@@ -46,9 +46,12 @@ typedef struct
 	decl_init **pos;
 } init_iter;
 
+typedef decl_init **aggregate_brace_f(decl_init **, init_iter *, void *, int);
+
 static decl_init *decl_init_brace_up_aggregate(
+		decl_init *current,
 		init_iter *iter,
-		decl_init **(*brace_up_f)(),
+		aggregate_brace_f *,
 		void *arg1, int arg2);
 
 int decl_init_is_const(decl_init *dinit, symtable *stab)
@@ -159,13 +162,13 @@ static expr *expr_new_array_idx(expr *base, int i)
  * -------------
  */
 
-static decl_init *decl_init_brace_up(init_iter *, type_ref *);
+static decl_init *decl_init_brace_up(decl_init *current, init_iter *, type_ref *);
 
 #define DINIT_STR(t) (const char *[]){"scalar","brace"}[t]
 
 
 static decl_init *decl_init_brace_up_scalar(
-		init_iter *iter, type_ref *const tfor)
+		decl_init *current, init_iter *iter, type_ref *const tfor)
 {
 	decl_init *first_init;
 
@@ -184,23 +187,22 @@ static decl_init *decl_init_brace_up_scalar(
 	if(first_init->type == decl_init_brace){
 		init_iter it;
 		it.array = it.pos = first_init->bits.inits;
-		return decl_init_brace_up(&it, tfor);
+		return decl_init_brace_up(current, &it, tfor);
 	}
 
 	return first_init;
 }
 
 static decl_init **decl_init_brace_up_array2(
-		init_iter *iter, type_ref *next_type,
+		decl_init **current, init_iter *iter,
+		type_ref *next_type,
 		const int limit)
 {
 	unsigned n = 0, i = 0;
-	decl_init **ret = NULL;
 	decl_init *this;
 
 	while((this = *iter->pos)){
 		desig *des;
-		decl_init *replaced;
 
 		if(limit > -1 && i >= (unsigned)limit)
 			break;
@@ -226,26 +228,36 @@ static decl_init **decl_init_brace_up_array2(
 				DIE_AT(&this->where, "designating outside of array bounds (%d)", limit);
 		}
 
-		replaced = dynarray_padinsert(&ret, i, &n,
-				decl_init_brace_up(iter, next_type));
+		{
+			decl_init *replacing = NULL;
 
-		if(replaced){
-			char buf[WHERE_BUF_SIZ];
+			if(i < n && current[i] != DYNARRAY_NULL)
+				replacing = current[i]; /* replacing object `i' */
 
-			WARN_AT(&this->where,
-					"overriding initialisation of index %d\n"
-					"%s prior initialisation here",
-					i, where_str_r(buf, &replaced->where));
+			dynarray_padinsert(&current, i, &n,
+					decl_init_brace_up(replacing, iter, next_type));
+
+#if 0
+			if(replaced){
+				char buf[WHERE_BUF_SIZ];
+
+				WARN_AT(&this->where,
+						"overriding initialisation of index %d\n"
+						"%s prior initialisation here",
+						i, where_str_r(buf, &replaced->where));
+			}
+#endif
 		}
 
 		i++;
 	}
 
-	return ret;
+	return current;
 }
 
 static decl_init **decl_init_brace_up_sue2(
-		init_iter *iter, struct_union_enum_st *sue, const int is_anon)
+		decl_init **current /* TODO/replace */, init_iter *iter,
+		struct_union_enum_st *sue, const int is_anon)
 {
 	decl_init **r = NULL;
 
@@ -299,7 +311,8 @@ static decl_init **decl_init_brace_up_sue2(
 						/* anon struct/union, sub init it, restoring the desig. */
 						this->desig = des;
 						braced_sub = decl_init_brace_up_aggregate(
-								iter, &decl_init_brace_up_sue2, in, 1);
+								NULL /* TODO/replace */, iter,
+								(aggregate_brace_f *)&decl_init_brace_up_sue2, in, 1);
 						found = 1;
 					}
 				}
@@ -321,7 +334,9 @@ static decl_init **decl_init_brace_up_sue2(
 				break;
 
 			if(!braced_sub)
-				braced_sub = decl_init_brace_up(iter, mem->struct_member->ref);
+				braced_sub = decl_init_brace_up(
+						NULL /* TODO/replace */,
+						iter, mem->struct_member->ref);
 
 			replaced = dynarray_padinsert(&r, i, &n, braced_sub);
 
@@ -341,8 +356,9 @@ static decl_init **decl_init_brace_up_sue2(
 }
 
 static decl_init *decl_init_brace_up_aggregate(
+		decl_init *current,
 		init_iter *iter,
-		decl_init **(*brace_up_f)(),
+		aggregate_brace_f *brace_up_f,
 		void *arg1, int arg2)
 {
 	/* we don't pass through iter in the case that:
@@ -383,7 +399,9 @@ static decl_init *decl_init_brace_up_aggregate(
 
 				it.array = it.pos = old_subs;
 
-				first->bits.inits = brace_up_f(&it, arg1, arg2);
+				first->bits.inits = brace_up_f(
+						current ? current->bits.inits : NULL,
+						&it, arg1, arg2);
 
 				free(old_subs);
 
@@ -402,7 +420,9 @@ static decl_init *decl_init_brace_up_aggregate(
 
 			/* XXX: memleak? */
 			first = decl_init_new(decl_init_brace);
-			first->bits.inits = brace_up_f(&it, arg1, arg2);
+			first->bits.inits = brace_up_f(
+					current ? current->bits.inits : NULL,
+					&it, arg1, arg2);
 		}
 
 		++iter->pos;
@@ -412,13 +432,15 @@ static decl_init *decl_init_brace_up_aggregate(
 		decl_init *r = decl_init_new(decl_init_brace);
 
 		/* we need to pull from iter, bracing up our children inits */
-		r->bits.inits = brace_up_f(iter, arg1, arg2);
+		r->bits.inits = brace_up_f(
+				current ? current->bits.inits : NULL,
+				iter, arg1, arg2);
 
 		return r;
 	}
 }
 
-static decl_init *decl_init_brace_up(init_iter *iter, type_ref *tfor)
+static decl_init *decl_init_brace_up(decl_init *current, init_iter *iter, type_ref *tfor)
 {
 	struct_union_enum_st *sue;
 
@@ -427,16 +449,18 @@ static decl_init *decl_init_brace_up(init_iter *iter, type_ref *tfor)
 			? -1 : type_ref_array_len(tfor);
 
 		return decl_init_brace_up_aggregate(
-				iter, &decl_init_brace_up_array2,
+				current, iter,
+				(aggregate_brace_f *)&decl_init_brace_up_array2,
 				type_ref_next(tfor), limit);
 	}
 
 	if((sue = type_ref_is_s_or_u(tfor)))
 		return decl_init_brace_up_aggregate(
-				iter, &decl_init_brace_up_sue2,
+				current, iter,
+				(aggregate_brace_f *)&decl_init_brace_up_sue2,
 				sue, 0 /* is anon */);
 
-	return decl_init_brace_up_scalar(iter, tfor);
+	return decl_init_brace_up_scalar(current, iter, tfor);
 }
 
 static void DEBUG(decl_init *init, type_ref *tfor)
@@ -447,7 +471,7 @@ static void DEBUG(decl_init *init, type_ref *tfor)
 	init_iter it;
 	it.array = it.pos = inits;
 
-	decl_init *braced = decl_init_brace_up(&it, tfor);
+	decl_init *braced = decl_init_brace_up(NULL, &it, tfor);
 
 	cc1_out = stdout;
 	printf("braced = %p\n", (void *)braced);
