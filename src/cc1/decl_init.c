@@ -198,7 +198,7 @@ static decl_init **decl_init_brace_up_array2(
 		type_ref *next_type,
 		const int limit)
 {
-	unsigned n = 0, i = 0;
+	unsigned n = dynarray_count(current), i = 0;
 	decl_init *this;
 
 	while((this = *iter->pos)){
