@@ -326,6 +326,8 @@ type_ref *type_ref_decay(type_ref *r)
 {
 	/* f(int x[][5]) decays to f(int (*x)[5]), not f(int **x) */
 
+	r = type_ref_skip_tdefs_casts(r);
+
 	switch(r->type){
 		case type_ref_array:
 		{
