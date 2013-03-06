@@ -51,7 +51,16 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 		if((sue = type_ref_is_s_or_u(chosen)) && sue_incomplete(sue))
 			DIE_AT(&e->where, "sizeof %s", type_ref_to_str(chosen));
 
-		SIZEOF_SIZE(e) = type_ref_size(SIZEOF_WHAT(e), &e->where);
+		SIZEOF_SIZE(e) = type_ref_size(chosen, &e->where);
+
+		/* check for sizeof array parameter */
+		if(type_ref_is_decayed_array(chosen)){
+			char ar_buf[TYPE_REF_STATIC_BUFSIZ];
+
+			WARN_AT(&e->where, "array parameter size is sizeof(%s), not sizeof(%s)",
+					type_ref_to_str(chosen),
+					type_ref_to_str_r_show_decayed(ar_buf, chosen));
+		}
 
 		{
 			type *t;

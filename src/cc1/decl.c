@@ -822,6 +822,15 @@ const char *type_ref_to_str_r(char buf[TYPE_REF_STATIC_BUFSIZ], type_ref *r)
 	return type_ref_to_str_r_spel(buf, r, NULL);
 }
 
+const char *type_ref_to_str_r_show_decayed(char buf[TYPE_REF_STATIC_BUFSIZ], type_ref *r)
+{
+	const char *s;
+	r->type = type_ref_array;
+	s = type_ref_to_str_r(buf, r);
+	r->type = type_ref_ptr;
+	return s;
+}
+
 const char *type_ref_to_str(type_ref *r)
 {
 	static char buf[TYPE_REF_STATIC_BUFSIZ];

@@ -214,6 +214,7 @@ const char *decl_to_str(decl *d);
 const char *decl_to_str_r(char buf[ucc_static_param DECL_STATIC_BUFSIZ], decl *);
 const char *type_ref_to_str_r_spel(char buf[ucc_static_param TYPE_REF_STATIC_BUFSIZ], type_ref *r, char *spel);
 const char *type_ref_to_str_r(char buf[ucc_static_param TYPE_REF_STATIC_BUFSIZ], type_ref *r);
+const char *type_ref_to_str_r_show_decayed(char buf[ucc_static_param TYPE_REF_STATIC_BUFSIZ], type_ref *r);
 const char *type_ref_to_str(type_ref *);
 const char *decl_store_to_str(const enum decl_storage);
 
