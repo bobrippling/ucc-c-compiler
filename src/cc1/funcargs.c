@@ -56,7 +56,7 @@ enum funcargs_cmp funcargs_equal(
 
 		for(i = 0; args_to->arglist[i]; i++){
 			/* FIXME: this is not an output function */
-			char buf[TYPE_REF_STATIC_BUFSIZ];
+			char buf[DECL_STATIC_BUFSIZ];
 
 			int eq = fold_type_ref_equal(
 					args_to->arglist[i]->ref,

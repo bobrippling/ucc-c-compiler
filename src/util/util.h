@@ -9,12 +9,14 @@
 #  define ucc_dead __attribute__((noreturn))
 #  define ucc_wur  __attribute__((warn_unused_result))
 #  define ucc_nonnull(args) __attribute__((nonnull args))
+#  define ucc_static_param static
 
 #else
 #  define ucc_printflike(a, b)
 #  define ucc_dead
 #  define ucc_wur
 #  define ucc_nonnull(a)
+#  define ucc_static_param
 #endif
 
 #define memcpy_safe(a, b) (*(a) = *(b))
@@ -29,7 +31,7 @@ typedef struct where
 
 #define WHERE_BUF_SIZ 128
 const char *where_str(const struct where *w);
-const char *where_str_r(char buf[WHERE_BUF_SIZ], const struct where *w);
+const char *where_str_r(char buf[ucc_static_param WHERE_BUF_SIZ], const struct where *w);
 
 void warn_at(const struct where *, int show_line, const char *, ...) ucc_printflike(3, 4);
 void die_at( const struct where *, int show_line, const char *, ...) ucc_printflike(3, 4) ucc_dead;
