@@ -256,13 +256,10 @@ static decl_init **decl_init_brace_up_array2(
 }
 
 static decl_init **decl_init_brace_up_sue2(
-		decl_init **current /* TODO/replace */, init_iter *iter,
+		decl_init **current, init_iter *iter,
 		struct_union_enum_st *sue, const int is_anon)
 {
-	decl_init **r = NULL;
-
-	unsigned n = 0;
-	int i;
+	unsigned n = dynarray_count(current), i;
 	decl_init *this;
 
 	for(i = 0; (this = *iter->pos); i++){
@@ -310,8 +307,9 @@ static decl_init **decl_init_brace_up_sue2(
 					if(jmem_sue == in){
 						/* anon struct/union, sub init it, restoring the desig. */
 						this->desig = des;
+						ICW("TODO: replacements");
 						braced_sub = decl_init_brace_up_aggregate(
-								NULL /* TODO/replace */, iter,
+								NULL /* FIXME/replace */, iter,
 								(aggregate_brace_f *)&decl_init_brace_up_sue2, in, 1);
 						found = 1;
 					}
@@ -328,18 +326,23 @@ static decl_init **decl_init_brace_up_sue2(
 
 		{
 			sue_member *mem = sue->members[i];
-			decl_init *replaced;
+			decl_init *replacing = NULL;
 
 			if(!mem)
 				break;
 
-			if(!braced_sub)
+			if(i < n && current[i] != DYNARRAY_NULL)
+				replacing = current[i];
+
+			if(!braced_sub){
 				braced_sub = decl_init_brace_up(
-						NULL /* TODO/replace */,
+						replacing,
 						iter, mem->struct_member->ref);
+			}
 
-			replaced = dynarray_padinsert(&r, i, &n, braced_sub);
+			dynarray_padinsert(&current, i, &n, braced_sub);
 
+#if 0
 			if(replaced){
 				char buf[WHERE_BUF_SIZ];
 
@@ -349,10 +352,11 @@ static decl_init **decl_init_brace_up_sue2(
 						mem->struct_member->spel,
 						where_str_r(buf, &replaced->where));
 			}
+#endif
 		}
 	}
 
-	return r;
+	return current;
 }
 
 static decl_init *decl_init_brace_up_aggregate(
