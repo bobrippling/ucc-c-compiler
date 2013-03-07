@@ -417,16 +417,12 @@ void fold_decl(decl *d, symtable *stab)
 
 void fold_decl_global_init(decl *d, symtable *stab)
 {
-	stmt *assignments;
-
 	if(!d->init)
 		return;
 
 	EOF_WHERE(&d->where,
-			assignments = stmt_new_wrapper(code, symtab_new(stab));
-
 		/* this completes the array, if any */
-		decl_init_create_assignments_for_spel(d, assignments);
+		decl_init_fold_brace(d);
 	);
 
 	if(!decl_init_is_const(d->init, stab)){
@@ -434,9 +430,6 @@ void fold_decl_global_init(decl *d, symtable *stab)
 				stab->parent ? "static" : "global",
 				decl_init_to_str(d->init->type));
 	}
-
-	fold_stmt(assignments);
-	d->decl_init_code = assignments;
 }
 
 void fold_decl_global(decl *d, symtable *stab)

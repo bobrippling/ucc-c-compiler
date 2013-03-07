@@ -96,19 +96,27 @@ static void asm_declare_pad(FILE *f, unsigned pad)
 		fprintf(f, ".space %u\n", pad);
 }
 
-static void asm_declare_init(FILE *f, stmt *init_code, type_ref *tfor)
+static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 {
 	type_ref *r;
 
+	if(init == DYNARRAY_NULL)
+		init = NULL;
+
 	if((r = type_ref_is_type(tfor, type_struct))){
 		/* array of stmts for each member
-		 * assumes the ->codes order is member order
+		 * assumes the ->bits.inits order is member order
 		 */
 		sue_member **mem;
-		stmt **init_code_i;
+		decl_init **i;
 		int end_of_last = 0;
 
-		init_code_i = init_code ? init_code->codes : NULL;
+		if(init){
+			UCC_ASSERT(init->type == decl_init_brace, "unbraced struct");
+			i = init->bits.inits;
+		}else{
+			i = NULL;
+		}
 
 		/* iterate using members, not inits */
 		for(mem = r->bits.type->sue->members;
@@ -119,11 +127,10 @@ static void asm_declare_init(FILE *f, stmt *init_code, type_ref *tfor)
 
 			asm_declare_pad(f, d_mem->struct_offset - end_of_last);
 
-			asm_declare_init(f, init_code_i ? *init_code_i : NULL, d_mem->ref);
+			asm_declare_init(f, i ? *i : NULL, d_mem->ref);
 
-			/* increment init_code_i - we have the start and this advances for unnamed */
-			if(init_code_i && !*++init_code_i)
-				init_code_i = NULL; /* reached end */
+			if(i && !*++i)
+				i = NULL; /* reached end */
 
 			end_of_last = d_mem->struct_offset + type_ref_size(d_mem->ref, NULL);
 		}
@@ -131,27 +138,34 @@ static void asm_declare_init(FILE *f, stmt *init_code, type_ref *tfor)
 	}else if((r = type_ref_is(tfor, type_ref_array))){
 		type_ref *next = type_ref_next(tfor);
 
-		if(init_code && init_code->codes){
-			stmt **i;
-			for(i = init_code->codes; *i; i++)
-				asm_declare_init(f, *i, next);
+		if(init){
+			decl_init **i;
+
+			UCC_ASSERT(init->type == decl_init_brace, "unbraced struct");
+
+			for(i = init->bits.inits; *i; i++){
+				decl_init *this = *i;
+				if(this == DYNARRAY_FLAG)
+					ICE("TODO: range init");
+				asm_declare_init(f, this, next);
+			}
 		}else{
 			/* we should have a size */
 			asm_declare_pad(f, type_ref_size(r, NULL));
 		}
 
 	}else{
-		if(!init_code){
+		if(!init){
 			asm_declare_pad(f, type_ref_size(tfor, NULL));
 
 		}else{
 			/* scalar */
-			expr *exp = init_code->expr;
+			expr *exp = init->bits.expr;
 
-			UCC_ASSERT(exp, "no exp for init (%s)", where_str(&init_code->where));
-			UCC_ASSERT(expr_kind(exp, assign), "not assign");
+			UCC_ASSERT(init->type == decl_init_scalar, "scalar init expected");
 
-			exp = exp->rhs; /* rvalue */
+			if(exp == DYNARRAY_NULL)
+				exp = NULL;
 
 			/* exp->tree_type should match tfor */
 			{
@@ -214,14 +228,9 @@ void asm_declare_decl_init(FILE *f, decl *d)
 		asm_predeclare_extern(d);
 
 	}else if(d->init && !decl_init_is_zero(d->init)){
-		stmt **init_codes = d->decl_init_code->codes;
-
-		UCC_ASSERT(dynarray_count(init_codes) == 1,
-				"too many init codes for single decl");
-
 		fprintf(f, ".align %d\n", type_ref_align(d->ref, NULL));
 		fprintf(f, "%s:\n", decl_asm_spel(d));
-		asm_declare_init(f, init_codes[0], d->ref);
+		asm_declare_init(f, d->init, d->ref);
 		fputc('\n', f);
 
 	}else{

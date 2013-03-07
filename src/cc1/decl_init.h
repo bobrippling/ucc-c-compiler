@@ -37,7 +37,6 @@ const char *decl_init_to_str(enum decl_init_type);
 int         decl_init_is_const(decl_init *dinit, symtable *stab);
 int         decl_init_is_zero(decl_init *dinit);
 
-void decl_init_create_assignments_for_spel(decl *d, stmt *init_code);
-void decl_init_create_assignments_for_base(decl *d, expr *base, stmt *init_code);
+void decl_init_fold_brace(decl *d);
 
 #endif
