@@ -175,7 +175,7 @@ static decl_init *decl_init_brace_up_scalar(
 		decl_init_free_1(current);
 	}
 
-	if(!iter->pos){
+	if(!iter->pos || !*iter->pos){
 		first_init = decl_init_new(decl_init_scalar);
 		first_init->bits.expr = expr_new_val(0); /* default init for everything */
 		return first_init;
