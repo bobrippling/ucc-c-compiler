@@ -79,6 +79,8 @@ void print_decl_init(decl_init *di)
 			for(i = 0; (s = di->bits.inits[i]); i++){
 				if(s == DYNARRAY_NULL){
 					idt_printf("[%d] = <zero init>\n", i);
+				}else if(s == DYNARRAY_FLAG){
+					idt_printf("[%d] = <previous>\n", i);
 				}else{
 					const int need_brace = s->type == decl_init_brace;
 

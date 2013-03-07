@@ -13,6 +13,7 @@ void *dynarray_nochk_padinsert(void ***par,
 		unsigned i, unsigned *pn, void *ins);
 
 #define DYNARRAY_NULL (void *)1
+#define DYNARRAY_FLAG (void *)2
 
 #include "dyn.h"
 

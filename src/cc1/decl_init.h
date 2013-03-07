@@ -24,7 +24,7 @@ struct decl_init
 		enum { desig_ar, desig_struct } type;
 		struct
 		{
-			expr *ar;
+			expr *range[2];
 			char *member;
 		} bits;
 		struct desig *next; /* [0].a.b[1] */

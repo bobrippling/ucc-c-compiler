@@ -30,7 +30,11 @@ decl_init *parse_initialisation(void)
 
 					}else if(accept(token_open_square)){
 						d->type = desig_ar;
-						d->bits.ar = parse_expr_exp();
+						d->bits.range[0] = parse_expr_exp();
+
+						if(accept(token_elipsis))
+							d->bits.range[1] = parse_expr_exp();
+
 						EAT(token_close_square);
 
 					}else{

@@ -201,7 +201,7 @@ static decl_init **decl_init_brace_up_array2(
 		type_ref *next_type,
 		const int limit)
 {
-	unsigned n = dynarray_count(current), i = 0;
+	unsigned n = dynarray_count(current), i = 0, j = 0;
 	decl_init *this;
 
 	while((this = *iter->pos)){
@@ -211,7 +211,7 @@ static decl_init **decl_init_brace_up_array2(
 			break;
 
 		if((des = this->desig)){
-			consty k;
+			consty k[2];
 
 			this->desig = des->next;
 
@@ -221,27 +221,47 @@ static decl_init **decl_init_brace_up_array2(
 						DESIG_TO_STR(des->type));
 			}
 
-			const_fold(des->bits.ar, &k);
+			const_fold(des->bits.range[0], &k[0]);
+			if(des->bits.range[1])
+				const_fold(des->bits.range[1], &k[1]);
+			else
+				memcpy(&k[1], &k[0], sizeof k[1]);
 
-			if(k.type != CONST_VAL)
+			if(k[0].type != CONST_VAL || k[1].type != CONST_VAL)
 				DIE_AT(&this->where, "non-constant array-designator");
 
-			i = k.bits.iv.val;
-			if(limit > -1 && i >= (unsigned)limit)
+			if(k[0].bits.iv.val < 0 || k[1].bits.iv.val < 0)
+				DIE_AT(&this->where, "negative array index initialiser");
+
+			if(limit > -1
+			&& (k[0].bits.iv.val >= (unsigned)limit || k[1].bits.iv.val >= (unsigned)limit))
+			{
 				DIE_AT(&this->where, "designating outside of array bounds (%d)", limit);
+			}
+
+			i  = k[0].bits.iv.val;
+			j = k[1].bits.iv.val;
 		}
 
 		{
 			decl_init *replacing = NULL;
+			unsigned replace_idx;
+			decl_init *braced;
 
 			if(i < n && current[i] != DYNARRAY_NULL)
 				replacing = current[i]; /* replacing object `i' */
 
-			dynarray_padinsert(&current, i, &n,
-					decl_init_brace_up(replacing, iter, next_type));
+			braced = decl_init_brace_up(replacing, iter, next_type);
+
+			dynarray_padinsert(&current, i, &n, braced);
+
+			for(replace_idx = i + 1; replace_idx <= j; replace_idx++)
+				replacing = dynarray_padinsert(&current, replace_idx, &n,
+						(decl_init *)DYNARRAY_FLAG);
 		}
 
 		i++;
+		j++;
 	}
 
 	return current;
