@@ -1,15 +1,3 @@
 register stack space bug
 
 array range designators - [0 ... 5] = 2
-
-overriding initialisation of the same subobject, e.g.
-	struct A
-	{
-		struct B
-		{
-			int i, j;
-		} a;
-	} x = {
-		.a.i = 1,
-		.a.j = 2, // this overrides the whole .a subobject
-	};
