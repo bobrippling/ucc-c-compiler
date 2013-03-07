@@ -45,6 +45,8 @@ typedef struct
 	decl_init **pos;
 } init_iter;
 
+#define ITER_WHERE(it, def) (it && it->pos[0] ? &it->pos[0]->where : def)
+
 typedef decl_init **aggregate_brace_f(decl_init **, init_iter *, void *, int);
 
 static decl_init *decl_init_brace_up_aggregate(
@@ -172,11 +174,9 @@ static decl_init *decl_init_brace_up_scalar(
 	decl_init *first_init;
 
 	if(current){
-		where *w = iter->pos ? &iter->pos[0]->where : &tfor->where;
-		/* shouldn't need the else-part ^ */;
 		char buf[WHERE_BUF_SIZ];
 
-		WARN_AT(w,
+		WARN_AT(ITER_WHERE(iter, &tfor->where),
 				"overriding initialisation of \"%s\"\n"
 				"%s prior initialisation here",
 				type_ref_to_str(tfor),
@@ -263,6 +263,8 @@ static decl_init **decl_init_brace_up_sue2(
 {
 	unsigned n = dynarray_count(current), i;
 	decl_init *this;
+
+	UCC_ASSERT(sue->members, "no members in struct");
 
 	for(i = 0; (this = *iter->pos); i++){
 		desig *des;
@@ -441,11 +443,22 @@ static decl_init *decl_init_brace_up(decl_init *current, init_iter *iter, type_r
 	if(type_ref_is(tfor, type_ref_array)){
 		const int limit = type_ref_is_incomplete_array(tfor)
 			? -1 : type_ref_array_len(tfor);
+		type_ref *next = type_ref_next(tfor);
+
+		if(!type_ref_is_complete(next))
+			goto bad_init;
 
 		return decl_init_brace_up_aggregate(
 				current, iter,
 				(aggregate_brace_f *)&decl_init_brace_up_array2,
 				type_ref_next(tfor), limit);
+	}
+
+	/* incomplete check _after_ array, since we allow T x[] */
+	if(!type_ref_is_complete(tfor)){
+bad_init:
+		DIE_AT(ITER_WHERE(iter, &tfor->where),
+				"initialising %s", type_ref_to_str(tfor));
 	}
 
 	if((sue = type_ref_is_s_or_u(tfor)))
