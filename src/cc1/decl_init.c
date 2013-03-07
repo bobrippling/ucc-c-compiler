@@ -418,29 +418,19 @@ static decl_init *decl_init_brace_up_aggregate(
 		return first; /* this is in the {} state */
 
 	}else if((desig_index = find_desig(iter->pos)) > 0){
-		decl_init **it_bits = umalloc((desig_index + 1) * sizeof *it_bits);
-		decl_init *ret;
-		init_iter it;
-		int i;
+		decl_init *const saved = iter->pos[desig_index];
+		decl_init *ret = decl_init_new(decl_init_brace);
+		init_iter it = { iter->pos };
 
-		for(i = 0; i < desig_index; i++)
-			it_bits[i] = iter->pos[i];
-		it_bits[i] = NULL;
+		iter->pos[desig_index] = NULL;
 
-		it.pos = it_bits;
-
-		/* XXX: memleak? */
-		ret = decl_init_new(decl_init_brace);
 		ret->bits.inits = brace_up_f(
 				current ? current->bits.inits : NULL,
 				&it, arg1, arg2);
 
-		free(it_bits);
-
-		iter->pos += desig_index; /* advance to the desig */
+		*(iter->pos += desig_index) = saved;
 
 		return ret;
-
 	}else{
 		decl_init *r = decl_init_new(decl_init_brace);
 
