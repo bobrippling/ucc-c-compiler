@@ -10,6 +10,6 @@ struct A
 } a = {
 	1, // pass this and the next through to the sub-init,
 	2, // but nothing after the desig
-	.b.c.j = 2,
+	.b.c.j = 5,
 	3
 };

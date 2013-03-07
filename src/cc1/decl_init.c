@@ -351,6 +351,17 @@ static decl_init **decl_init_brace_up_sue2(
 	return current;
 }
 
+static int find_desig(decl_init **const ar)
+{
+	decl_init **i, *d;
+
+	for(i = ar; (d = *i); i++)
+		if(d->desig)
+			return i - ar;
+
+	return -1;
+}
+
 static decl_init *decl_init_brace_up_aggregate(
 		decl_init *current,
 		init_iter *iter,
@@ -364,7 +375,7 @@ static decl_init *decl_init_brace_up_aggregate(
 	 * {
 	 *   struct
 	 *   {
-	 *     int sub1, sub2;
+	 *     int sub1, sub2, sub3, ...;
 	 *   } sub;
 	 *   int i;
 	 * };
@@ -375,55 +386,61 @@ static decl_init *decl_init_brace_up_aggregate(
 	 * };
 	 *
 	 * struct A y = {
-	 *    1, .i = 2 // initialise sub1 with `1',
+	 *    1, 3, .i = 2 // initialise sub1 with { 1, 3 },
 	 *              // but don't pass .i=2 to the sub-init
 	 * };
 	 */
-	int is_braced;
+	int desig_index;
 
-	if((is_braced = iter->pos[0]->type == decl_init_brace)
-	|| (iter->pos[1] && iter->pos[1]->desig))
-	{
-		/* only pass down this single initialiser */
+	if(iter->pos[0]->type == decl_init_brace){
+		/* pass down this as a new iterator */
 		decl_init *first = iter->pos[0];
+		decl_init **old_subs = first->bits.inits;
 
-		if(is_braced){
-			decl_init **old_subs = first->bits.inits;
-
-			if(old_subs){
-				init_iter it;
-
-				it.pos = old_subs;
-
-				first->bits.inits = brace_up_f(
-						current ? current->bits.inits : NULL,
-						&it, arg1, arg2);
-
-				free(old_subs);
-
-			}else{
-				/* {} */
-				first->bits.inits = NULL;
-				dynarray_add(&first->bits.inits, (decl_init *)DYNARRAY_NULL);
-			}
-		}else{
+		if(old_subs){
 			init_iter it;
-			decl_init *it_bits[2] = {
-				first, NULL
-			};
 
-			it.pos = it_bits;
+			it.pos = old_subs;
 
-			/* XXX: memleak? */
-			first = decl_init_new(decl_init_brace);
 			first->bits.inits = brace_up_f(
 					current ? current->bits.inits : NULL,
 					&it, arg1, arg2);
+
+			free(old_subs);
+
+		}else{
+			/* {} */
+			first->bits.inits = NULL;
+			dynarray_add(&first->bits.inits, (decl_init *)DYNARRAY_NULL);
 		}
 
 		++iter->pos;
-
 		return first; /* this is in the {} state */
+
+	}else if((desig_index = find_desig(iter->pos)) > 0){
+		decl_init **it_bits = umalloc((desig_index + 1) * sizeof *it_bits);
+		decl_init *ret;
+		init_iter it;
+		int i;
+
+		for(i = 0; i < desig_index; i++)
+			it_bits[i] = iter->pos[i];
+		it_bits[i] = NULL;
+
+		it.pos = it_bits;
+
+		/* XXX: memleak? */
+		ret = decl_init_new(decl_init_brace);
+		ret->bits.inits = brace_up_f(
+				current ? current->bits.inits : NULL,
+				&it, arg1, arg2);
+
+		free(it_bits);
+
+		iter->pos += desig_index; /* advance to the desig */
+
+		return ret;
+
 	}else{
 		decl_init *r = decl_init_new(decl_init_brace);
 
