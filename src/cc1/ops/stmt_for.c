@@ -42,7 +42,8 @@ expr *fold_for_if_init_decls(stmt *s)
 
 			decl_init_fold_brace(d);
 			decl_init_create_assignments_base(d->init,
-					expr_new_identifier(d->spel), init_code);
+					d->ref, expr_new_identifier(d->spel),
+					init_code);
 
 			init_exp = expr_new_stmt(init_code);
 

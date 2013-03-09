@@ -533,7 +533,10 @@ void decl_init_fold_brace(decl *d)
 	d->init = decl_init_brace_up_start(d->init, &d->ref);
 }
 
-void decl_init_create_assignments_base(decl_init *init, expr *base, stmt *code)
+void decl_init_create_assignments_base(
+		decl_init *init,
+		type_ref *tfor, expr *base,
+		stmt *code)
 {
 	switch(init->type){
 		case decl_init_scalar:
@@ -546,7 +549,6 @@ void decl_init_create_assignments_base(decl_init *init, expr *base, stmt *code)
 
 		case decl_init_brace:
 		{
-			type_ref *const tfor = base->tree_type;
 			struct_union_enum_st *sue = type_ref_is_s_or_u(tfor);
 			decl_init **i;
 			int idx;
@@ -554,6 +556,7 @@ void decl_init_create_assignments_base(decl_init *init, expr *base, stmt *code)
 			for(idx = 0, i = init->bits.inits; *i; i++, idx++){
 				decl_init *di = *i;
 				expr *new_base;
+				type_ref *next_type;
 
 				if(di == DYNARRAY_NULL){
 					di = NULL;
@@ -561,14 +564,22 @@ void decl_init_create_assignments_base(decl_init *init, expr *base, stmt *code)
 					ICE("TODO: range init");
 				}
 
-				new_base = sue
-					? expr_new_struct(
+				if(sue){
+					decl *smem = sue->members[idx]->struct_member;
+
+					new_base = expr_new_struct(
 							base,
 							1 /* . */,
-							expr_new_identifier(sue->members[idx]->struct_member->spel))
-					: expr_new_array_idx(base, idx);
+							expr_new_identifier(smem->spel));
 
-				decl_init_create_assignments_base(di, new_base, code);
+					next_type = smem->ref;
+				}else{
+					new_base = expr_new_array_idx(base, idx);
+
+					next_type = type_ref_next(tfor);
+				}
+
+				decl_init_create_assignments_base(di, next_type, new_base, code);
 			}
 			break;
 		}

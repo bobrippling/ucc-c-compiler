@@ -38,6 +38,10 @@ int         decl_init_is_const(decl_init *dinit, symtable *stab);
 int         decl_init_is_zero(decl_init *dinit);
 
 void decl_init_fold_brace(decl *d);
-void decl_init_create_assignments_base(decl_init *init, expr *base, stmt *code);
+
+void decl_init_create_assignments_base(
+		decl_init *init,
+		type_ref *tfor, expr *base,
+		stmt *code);
 
 #endif

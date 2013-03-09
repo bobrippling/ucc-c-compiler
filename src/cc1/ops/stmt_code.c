@@ -49,7 +49,8 @@ void fold_stmt_code(stmt *s)
 
 						decl_init_fold_brace(d);
 						decl_init_create_assignments_base(d->init,
-							expr_new_identifier(d->spel), inits);
+							d->ref, expr_new_identifier(d->spel),
+							inits);
 					);
 				/* folded below */
 			}
