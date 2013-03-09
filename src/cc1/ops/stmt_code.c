@@ -47,7 +47,8 @@ void fold_stmt_code(stmt *s)
 						if(!inits)
 							inits = stmt_new_wrapper(code, symtab_new(s->symtab));
 
-						decl_init_create_assignments_base(d,
+						decl_init_fold_brace(d);
+						decl_init_create_assignments_base(d->init,
 							expr_new_identifier(d->spel), inits);
 					);
 				/* folded below */

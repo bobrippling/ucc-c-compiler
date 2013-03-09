@@ -145,7 +145,7 @@ const char *decl_init_to_str(enum decl_init_type t)
 	return NULL;
 }
 
-/*static expr *expr_new_array_idx_e(expr *base, expr *idx)
+static expr *expr_new_array_idx_e(expr *base, expr *idx)
 {
 	expr *op = expr_new_op(op_plus);
 	op->lhs = base;
@@ -156,7 +156,7 @@ const char *decl_init_to_str(enum decl_init_type t)
 static expr *expr_new_array_idx(expr *base, int i)
 {
 	return expr_new_array_idx_e(base, expr_new_val(i));
-}*/
+}
 
 /*
  * brace up code
@@ -533,7 +533,44 @@ void decl_init_fold_brace(decl *d)
 	d->init = decl_init_brace_up_start(d->init, &d->ref);
 }
 
-void decl_init_create_assignments_base(decl *d, expr *base, stmt *code)
+void decl_init_create_assignments_base(decl_init *init, expr *base, stmt *code)
 {
-	ICE("TODO");
+	switch(init->type){
+		case decl_init_scalar:
+			dynarray_add(
+					&code->codes,
+					expr_to_stmt(
+						expr_new_assign(base, init->bits.expr),
+						code->symtab));
+			break;
+
+		case decl_init_brace:
+		{
+			type_ref *const tfor = base->tree_type;
+			struct_union_enum_st *sue = type_ref_is_s_or_u(tfor);
+			decl_init **i;
+			int idx;
+
+			for(idx = 0, i = init->bits.inits; *i; i++, idx++){
+				decl_init *di = *i;
+				expr *new_base;
+
+				if(di == DYNARRAY_NULL){
+					di = NULL;
+				}else if(di == DYNARRAY_FLAG){
+					ICE("TODO: range init");
+				}
+
+				new_base = sue
+					? expr_new_struct(
+							base,
+							1 /* . */,
+							expr_new_identifier(sue->members[idx]->struct_member->spel))
+					: expr_new_array_idx(base, idx);
+
+				decl_init_create_assignments_base(di, new_base, code);
+			}
+			break;
+		}
+	}
 }
