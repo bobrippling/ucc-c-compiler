@@ -55,8 +55,16 @@ static decl_init *decl_init_brace_up_aggregate(
 		aggregate_brace_f *,
 		void *arg1, int arg2);
 
+/* null init are const/zero, flag-init is const/zero if prev. is const/zero,
+ * which will be checked elsewhere */
+#define DINIT_NULL_CHECK(di)                        \
+	if(di == DYNARRAY_FLAG || di == DYNARRAY_NULL)    \
+		return 1
+
 int decl_init_is_const(decl_init *dinit, symtable *stab)
 {
+	DINIT_NULL_CHECK(dinit);
+
 	switch(dinit->type){
 		case decl_init_scalar:
 		{
@@ -87,6 +95,8 @@ int decl_init_is_const(decl_init *dinit, symtable *stab)
 
 int decl_init_is_zero(decl_init *dinit)
 {
+	DINIT_NULL_CHECK(dinit);
+
 	switch(dinit->type){
 		case decl_init_scalar:
 		{
