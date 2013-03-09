@@ -139,14 +139,24 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 		type_ref *next = type_ref_next(tfor);
 
 		if(init){
-			decl_init **i;
+			size_t i;
+			decl_init **p;
 
 			UCC_ASSERT(init->type == decl_init_brace, "unbraced struct");
 
-			for(i = init->bits.inits; *i; i++){
-				decl_init *this = *i;
-				if(this == DYNARRAY_FLAG)
-					ICE("TODO: range init");
+			for(i = type_ref_array_len(tfor), p = init->bits.inits;
+					i > 0;
+					i--)
+			{
+				decl_init *this;
+				if(p){
+					this = *p++;
+					if(this == DYNARRAY_FLAG)
+						ICE("TODO: range init");
+				}else{
+					this = NULL;
+				}
+
 				asm_declare_init(f, this, next);
 			}
 		}else{
