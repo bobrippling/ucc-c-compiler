@@ -26,10 +26,9 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 
 	e->bits.complit.sym = SYMTAB_ADD(stab, d, stab->parent ? sym_local : sym_global);
 
-	/* create the code for assignemnts */
-	e->code = stmt_new_wrapper(code, stab);
-	/* create assignments (even for static/global) */
-	decl_init_create_assignments_for_base(d, e, e->code);
+	/* fold the initialiser */
+	UCC_ASSERT(d->init, "no init for comp.literal");
+	decl_init_fold_brace(d);
 
 	/*
 	 * update the type, for example if an array type has been completed
@@ -37,9 +36,7 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 	 */
 	e->tree_type = d->ref;
 
-	if(stab->parent)
-		fold_stmt(e->code); /* folds the assignments */
-	else
+	if(!stab->parent)
 		fold_decl_global_init(d, stab);
 }
 

@@ -131,7 +131,7 @@ enum fopt fopt_mode = FOPT_CONST_FOLD
                     | FOPT_PIC
                     | FOPT_BUILTIN
                     | FOPT_MS_EXTENSIONS;
-enum cc1_backend cc1_backend = BACKEND_PRINT;
+enum cc1_backend cc1_backend = BACKEND_ASM;
 
 int m32 = 0;
 
