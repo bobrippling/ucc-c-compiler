@@ -90,10 +90,10 @@ int asm_type_size(type_ref *r)
 	return asm_type_table[asm_table_lookup(r)].sz;
 }
 
-static void asm_declare_pad(FILE *f, unsigned pad)
+static void asm_declare_pad(FILE *f, unsigned pad, const char *why)
 {
 	if(pad)
-		fprintf(f, ".space %u\n", pad);
+		fprintf(f, ".space %u ; %s\n", pad, why);
 }
 
 static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
@@ -125,7 +125,7 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 		{
 			decl *d_mem = (*mem)->struct_member;
 
-			asm_declare_pad(f, d_mem->struct_offset - end_of_last);
+			asm_declare_pad(f, d_mem->struct_offset - end_of_last, "struct padding");
 
 			asm_declare_init(f, i ? *i : NULL, d_mem->ref);
 
@@ -162,12 +162,12 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 			}
 		}else{
 			/* we should have a size */
-			asm_declare_pad(f, type_ref_size(r, NULL));
+			asm_declare_pad(f, type_ref_size(r, NULL), "empty array");
 		}
 
 	}else{
 		if(!init){
-			asm_declare_pad(f, type_ref_size(tfor, NULL));
+			asm_declare_pad(f, type_ref_size(tfor, NULL), "null scalar init");
 
 		}else{
 			/* scalar */
