@@ -487,18 +487,26 @@ bad_init:
 	return decl_init_brace_up_scalar(current, iter, tfor);
 }
 
-static decl_init *decl_init_brace_up_start(decl_init *init, type_ref *tfor)
+static decl_init *decl_init_brace_up_start(decl_init *init, type_ref **ptfor)
 {
 	decl_init *inits[2] = {
 		init, NULL
 	};
-	init_iter it;
-	it.pos = inits;
+	init_iter it = { inits };
+	type_ref *const tfor = *ptfor;
 
-	return decl_init_brace_up(NULL, &it, tfor);
+	decl_init *ret = decl_init_brace_up(NULL, &it, tfor);
+
+	if(type_ref_is_incomplete_array(tfor)){
+		/* complete it */
+		UCC_ASSERT(ret->type == decl_init_brace, "unbraced array");
+		*ptfor = type_ref_complete_array(tfor, dynarray_count(ret->bits.inits));
+	}
+
+	return ret;
 }
 
 void decl_init_fold_brace(decl *d)
 {
-	d->init = decl_init_brace_up_start(d->init, d->ref);
+	d->init = decl_init_brace_up_start(d->init, &d->ref);
 }
