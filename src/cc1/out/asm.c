@@ -143,6 +143,7 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 			decl_init **p;
 
 			UCC_ASSERT(init->type == decl_init_brace, "unbraced struct");
+			UCC_ASSERT(type_ref_is_complete(tfor), "incomplete array init");
 
 			for(i = type_ref_array_len(tfor), p = init->bits.inits;
 					i > 0;
