@@ -67,6 +67,7 @@ void fold_expr_str(expr *e, symtable *stab)
 void gen_expr_str(expr *e, symtable *stab)
 {
 	(void)stab;
+	/*gen_asm_local(e->bits.str.sym.decl); - done for the decl we create */
 	out_push_lbl(e->bits.str.sv.lbl, 1);
 }
 

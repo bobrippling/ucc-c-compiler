@@ -532,3 +532,8 @@ void decl_init_fold_brace(decl *d)
 {
 	d->init = decl_init_brace_up_start(d->init, &d->ref);
 }
+
+void decl_init_create_assignments_base(decl *d, expr *base, stmt *code)
+{
+	ICE("TODO");
+}

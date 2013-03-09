@@ -16,6 +16,7 @@ void fold_stmt_code(stmt *s)
 {
 	decl **diter;
 	stmt **siter;
+	stmt *inits = NULL;
 	int warned = 0;
 
 	fold_symtab_scope(s->symtab);
@@ -38,16 +39,24 @@ void fold_stmt_code(stmt *s)
 				decl_store_static_or_extern(d->store) ? sym_global : sym_local);
 
 		if(d->init){
+			/* this creates the below s->inits array */
 			if((d->store & STORE_MASK_STORE) == store_static){
 				fold_decl_global_init(d, s->symtab);
 			}else{
 				EOF_WHERE(&d->where,
-						decl_init_fold_brace(d);
+						if(!inits)
+							inits = stmt_new_wrapper(code, symtab_new(s->symtab));
+
+						decl_init_create_assignments_base(d,
+							expr_new_identifier(d->spel), inits);
 					);
 				/* folded below */
 			}
 		}
 	}
+
+	if(inits)
+		dynarray_prepend(&s->codes, inits);
 
 	for(siter = s->codes; siter && *siter; siter++){
 		stmt *const st = *siter;

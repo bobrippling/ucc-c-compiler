@@ -34,8 +34,19 @@ expr *fold_for_if_init_decls(stmt *s)
 
 		SYMTAB_ADD(s->flow->for_init_symtab, d, sym_local);
 
-		if(d->init)
-			decl_init_fold_brace(d);
+		/* make the for-init a expr-stmt with all our inits */
+		if(d->init){
+			stmt *init_code;
+
+			init_code = stmt_new_wrapper(code, s->flow->for_init_symtab);
+
+			decl_init_create_assignments_base(d,
+					expr_new_identifier(d->spel), init_code);
+
+			init_exp = expr_new_stmt(init_code);
+
+			fold_stmt(init_code); /* folds each assignment */
+		}
 	}
 
 	return init_exp;

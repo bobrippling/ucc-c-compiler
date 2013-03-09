@@ -36,8 +36,15 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 	 */
 	e->tree_type = d->ref;
 
-	if(!stab->parent)
+	if(stab->parent){
+		/* create the code for assignemnts */
+		e->code = stmt_new_wrapper(code, stab);
+		decl_init_create_assignments_base(d, e, e->code);
+
+		fold_stmt_code(e->code);
+	}else{
 		fold_decl_global_init(d, stab);
+	}
 }
 
 static void gen_expr_compound_lit_code(expr *e)
