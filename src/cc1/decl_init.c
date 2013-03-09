@@ -504,8 +504,20 @@ static decl_init *decl_init_brace_up_start(decl_init *init, type_ref **ptfor)
 	};
 	init_iter it = { inits };
 	type_ref *const tfor = *ptfor;
+	decl_init *ret;
 
-	decl_init *ret = decl_init_brace_up(NULL, &it, tfor);
+	if(init->type != decl_init_brace){
+		int array;
+
+		if((array = !!type_ref_is(tfor, type_ref_array)) || type_ref_is_s_or_u(tfor)){
+			/* TODO: struct copy init */
+			DIE_AT(&init->where,
+					"%s must be initialised with an initialiser list%s",
+					type_ref_to_str(tfor), array ? "" : " (TODO: struct copy)");
+		}
+	}
+
+	ret = decl_init_brace_up(NULL, &it, tfor);
 
 	if(type_ref_is_incomplete_array(tfor)){
 		/* complete it */
