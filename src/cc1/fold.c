@@ -974,7 +974,7 @@ skip_decls:
 
 			const_fold(sa->e, &k);
 
-			if(!is_const(k.type))
+			if(!CONST_AT_COMPILE_TIME(k.type))
 				DIE_AT(&sa->e->where, "static assert: not a constant expression (%s)", sa->e->f_str());
 
 			if(!k.bits.iv.val)

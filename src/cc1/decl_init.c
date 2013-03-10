@@ -74,7 +74,7 @@ int decl_init_is_const(decl_init *dinit, symtable *stab)
 			e = FOLD_EXPR(dinit->bits.expr, stab);
 			const_fold(e, &k);
 
-			return is_const(k.type);
+			return CONST_AT_COMPILE_TIME(k.type);
 		}
 
 		case decl_init_brace:

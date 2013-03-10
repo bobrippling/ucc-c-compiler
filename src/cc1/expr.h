@@ -28,7 +28,7 @@ typedef struct consty
 		} addr;
 	} bits;
 } consty;
-#define is_const(t) (t != CONST_NO && t != CONST_NEED_ADDR)
+#define CONST_AT_COMPILE_TIME(t) (t != CONST_NO && t != CONST_NEED_ADDR)
 #define CONST_ADDR_OR_NEED(d) (DECL_IS_ARRAY(d) || DECL_IS_FUNC(d) \
 		? CONST_ADDR : CONST_NEED_ADDR)
 

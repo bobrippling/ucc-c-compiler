@@ -25,9 +25,9 @@ void fold_const_expr_if(expr *e, consty *k)
 		consts[1] = consts[0];
 
 	/* we're only const if expr, lhs and rhs are const */
-	if(!is_const(consts[0].type)
-	|| !is_const(consts[1].type)
-	|| !is_const(consts[2].type))
+	if(!CONST_AT_COMPILE_TIME(consts[0].type)
+	|| !CONST_AT_COMPILE_TIME(consts[1].type)
+	|| !CONST_AT_COMPILE_TIME(consts[2].type))
 	{
 		k->type = CONST_NO;
 		return;

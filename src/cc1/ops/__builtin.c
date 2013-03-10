@@ -216,7 +216,7 @@ static void const_constant_p(expr *e, consty *k)
 	const_fold(test, &subk);
 
 	k->type = CONST_VAL;
-	k->bits.iv.val = is_const(subk.type);
+	k->bits.iv.val = CONST_AT_COMPILE_TIME(subk.type);
 }
 
 static expr *parse_constant_p(void)

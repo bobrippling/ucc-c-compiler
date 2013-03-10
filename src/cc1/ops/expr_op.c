@@ -104,10 +104,10 @@ void fold_const_expr_op(expr *e, consty *k)
 		operate(&lhs.bits.iv, e->rhs ? &rhs.bits.iv : NULL, e->op, k, &e->where);
 
 	}else if((e->op == op_andsc || e->op == op_orsc)
-			&& (is_const(lhs.type) || is_const(rhs.type))){
+	&& (CONST_AT_COMPILE_TIME(lhs.type) || CONST_AT_COMPILE_TIME(rhs.type))){
 
 		/* allow 1 || f() */
-		consty *kside = is_const(lhs.type) ? &lhs : &rhs;
+		consty *kside = CONST_AT_COMPILE_TIME(lhs.type) ? &lhs : &rhs;
 		int is_true = !!kside->bits.iv.val;
 
 		if(e->op == (is_true ? op_orsc : op_andsc))
