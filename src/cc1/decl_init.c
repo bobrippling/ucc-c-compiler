@@ -145,19 +145,6 @@ const char *decl_init_to_str(enum decl_init_type t)
 	return NULL;
 }
 
-static expr *expr_new_array_idx_e(expr *base, expr *idx)
-{
-	expr *op = expr_new_op(op_plus);
-	op->lhs = base;
-	op->rhs = idx;
-	return expr_new_deref(op);
-}
-
-static expr *expr_new_array_idx(expr *base, int i)
-{
-	return expr_new_array_idx_e(base, expr_new_val(i));
-}
-
 /*
  * brace up code
  * -------------

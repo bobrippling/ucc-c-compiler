@@ -198,4 +198,8 @@ expr *expr_new_addr(expr *);
 
 int expr_is_null_ptr(expr *, int allow_int);
 
+/* util */
+expr *expr_new_array_idx_e(expr *base, expr *idx);
+expr *expr_new_array_idx(expr *base, int i);
+
 #endif
