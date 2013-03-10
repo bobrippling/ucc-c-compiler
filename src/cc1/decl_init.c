@@ -587,3 +587,46 @@ void decl_init_create_assignments_base(
 		}
 	}
 }
+
+static void decl_init_insert_cast2(decl_init *di, type_ref *tto)
+{
+	switch(di->type){
+		case decl_init_scalar:
+		{
+			expr *e = di->bits.expr;
+			if(!type_ref_equal(tto, e->tree_type,
+						DECL_CMP_ALLOW_VOID_PTR | DECL_CMP_ALLOW_SIGNED_UNSIGNED))
+			{
+				expr *cast = expr_new_cast(tto, 1);
+				cast->expr = di->bits.expr;
+				di->bits.expr = cast;
+			}
+			break;
+		}
+
+		case decl_init_brace:
+		{
+			struct_union_enum_st *sue = type_ref_is_s_or_u(tto);
+			decl_init **i;
+			int idx;
+
+			for(idx = 0, i = di->bits.inits; *i; i++, idx++){
+				decl_init *sub = *i;
+
+				if(sub == DYNARRAY_NULL || sub == DYNARRAY_FLAG)
+					continue;
+
+				if(sue)
+					decl_init_insert_cast2(sub, sue->members[idx]->struct_member->ref);
+				else
+					decl_init_insert_cast2(sub, type_ref_next(tto));
+			}
+			break;
+		}
+	}
+}
+
+void decl_init_insert_cast(decl *d)
+{
+	decl_init_insert_cast2(d->init, d->ref);
+}

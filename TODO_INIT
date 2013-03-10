@@ -2,8 +2,6 @@ register stack space bug
 
 array range designators - [0 ... 5] = 2
 
-global/static init cast insertion
-
 char/wchar_t [] initialisers
 
 initialise aggregate from aggregate expr

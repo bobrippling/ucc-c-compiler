@@ -44,4 +44,6 @@ void decl_init_create_assignments_base(
 		type_ref *tfor, expr *base,
 		stmt *code);
 
+void decl_init_insert_cast(decl *d);
+
 #endif

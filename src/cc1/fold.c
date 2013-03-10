@@ -423,6 +423,7 @@ void fold_decl_global_init(decl *d, symtable *stab)
 	EOF_WHERE(&d->where,
 		/* this completes the array, if any */
 		decl_init_fold_brace(d);
+		decl_init_insert_cast(d);
 	);
 
 	if(!decl_init_is_const(d->init, stab)){
