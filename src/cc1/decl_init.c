@@ -242,7 +242,8 @@ static decl_init **decl_init_brace_up_array2(
 				DIE_AT(&this->where, "negative array index initialiser");
 
 			if(limit > -1
-			&& (k[0].bits.iv.val >= (unsigned)limit || k[1].bits.iv.val >= (unsigned)limit))
+			&& (k[0].bits.iv.val >= (long)limit
+			||  k[1].bits.iv.val >= (long)limit))
 			{
 				DIE_AT(&this->where, "designating outside of array bounds (%d)", limit);
 			}
