@@ -165,8 +165,6 @@ static expr *expr_new_array_idx(expr *base, int i)
 
 static decl_init *decl_init_brace_up(decl_init *current, init_iter *, type_ref *);
 
-#define DINIT_STR(t) (const char *[]){"scalar","brace"}[t]
-
 
 static decl_init *decl_init_brace_up_scalar(
 		decl_init *current, init_iter *iter, type_ref *const tfor)
@@ -249,7 +247,7 @@ static decl_init **decl_init_brace_up_array2(
 				DIE_AT(&this->where, "designating outside of array bounds (%d)", limit);
 			}
 
-			i  = k[0].bits.iv.val;
+			i = k[0].bits.iv.val;
 			j = k[1].bits.iv.val;
 		}
 
@@ -318,9 +316,6 @@ static decl_init **decl_init_brace_up_sue2(
 						sue_str(sue), sue->spel, des->bits.member);
 			}
 
-			if(j)
-				ICE("Plan 9 struct init TODO");
-
 			for(j = 0; sue->members[j]; j++){
 				decl *jmem = sue->members[j]->struct_member;
 
@@ -329,12 +324,19 @@ static decl_init **decl_init_brace_up_sue2(
 				}else if(!jmem->spel && in){
 					struct_union_enum_st *jmem_sue = type_ref_is_s_or_u(jmem->ref);
 					if(jmem_sue == in){
+						decl_init *replacing;
+
 						/* anon struct/union, sub init it, restoring the desig. */
 						this->desig = des;
-						ICW("TODO: replacements");
+
+						replacing = j < n
+							&& current[j] != DYNARRAY_NULL ? current[j] : NULL;
+
 						braced_sub = decl_init_brace_up_aggregate(
-								NULL /* FIXME/replace */, iter,
+								replacing,
+								iter,
 								(aggregate_brace_f *)&decl_init_brace_up_sue2, in, 1);
+
 						found = 1;
 					}
 				}
