@@ -1,7 +1,9 @@
-register stack space bug
+local zero-out initialisation
+
+char/wchar_t [] initialisers
 
 array range designators - [0 ... 5] = 2
 
-char/wchar_t [] initialisers
+register stack space bug
 
 initialise aggregate from aggregate expr

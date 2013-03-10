@@ -528,6 +528,10 @@ void decl_init_create_assignments_base(
 		type_ref *tfor, expr *base,
 		stmt *code)
 {
+	if(!init){
+		ICE("TODO: %s without init", __func__);
+	}
+
 	switch(init->type){
 		case decl_init_scalar:
 			dynarray_add(
