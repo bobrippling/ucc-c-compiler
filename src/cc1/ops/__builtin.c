@@ -75,20 +75,24 @@ static builtin_table *builtin_table_search(builtin_table *tab, const char *sp)
 
 static builtin_table *builtin_find(const char *sp)
 {
-	static int prefix_len;
-	builtin_table *tab;
+	static unsigned prefix_len;
+	builtin_table *found;
 
 	if(!prefix_len)
 		prefix_len = strlen(PREFIX);
 
-	if(!strncmp(sp, PREFIX, prefix_len)){
-		sp += prefix_len;
-		tab = builtins;
-	}else{
-		tab = no_prefix_builtins;
-	}
+	if(strlen(sp) <= prefix_len)
+		return NULL;
 
-	return builtin_table_search(tab, sp);
+	if(!strncmp(sp, PREFIX, prefix_len))
+		found = builtin_table_search(builtins, sp + prefix_len);
+	else
+		found = NULL;
+
+	if(!found) /* look for __builtin_strlen, etc */
+		found = builtin_table_search(no_prefix_builtins, sp + prefix_len);
+
+	return found;
 }
 
 expr *builtin_parse(const char *sp)
