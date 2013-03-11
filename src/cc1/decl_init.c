@@ -544,10 +544,11 @@ void decl_init_create_assignments_base(
 		case decl_init_brace:
 		{
 			struct_union_enum_st *sue = type_ref_is_s_or_u(tfor);
+			const size_t n = sue ? dynarray_count(sue->members) : type_ref_array_len(tfor);
 			decl_init **i;
-			int idx;
+			unsigned idx;
 
-			for(idx = 0, i = init->bits.inits; *i; i++, idx++){
+			for(idx = 0, i = init->bits.inits; idx < n; (*i ? i++ : 0), idx++){
 				decl_init *di = *i;
 				expr *new_base;
 				type_ref *next_type;
