@@ -218,7 +218,7 @@ int type_ref_align(type_ref *r, where const *from)
 	}
 
 	if((test = type_ref_is(r, type_ref_type)))
-		return type_size(r->bits.type, from);
+		return type_size(test->bits.type, from);
 
 	if((test = type_ref_is(r, type_ref_array)))
 		return type_ref_align(test->ref, from);
