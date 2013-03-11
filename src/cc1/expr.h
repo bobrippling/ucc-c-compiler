@@ -111,6 +111,12 @@ struct expr
 			type_ref *t; /* NULL -> default */
 			expr *e;
 		} **generics, *generic_chosen;
+
+		struct
+		{
+			int ch;
+			size_t len;
+		} builtin_memset;
 	} bits;
 
 	int in_parens; /* for if((x = 5)) testing */

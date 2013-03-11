@@ -3,4 +3,6 @@
 
 expr *builtin_parse(const char *sp);
 
+expr *builtin_new_memset(expr *p, int ch, size_t len);
+
 #endif

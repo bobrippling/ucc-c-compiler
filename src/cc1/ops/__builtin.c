@@ -32,7 +32,7 @@ static func_builtin_parse parse_unreachable,
                           parse_frame_address,
                           parse_expect,
                           parse_strlen,
-													parse_is_signed;
+                          parse_is_signed;
 
 typedef struct
 {
@@ -57,6 +57,9 @@ builtin_table builtins[] = {
 
 }, no_prefix_builtins[] = {
 	{ "strlen", parse_strlen },
+#ifdef MEMSET_PARSER
+	{ "memset", parse_memset },
+#endif
 
 	{ NULL, NULL }
 };
@@ -129,6 +132,76 @@ static expr *parse_any_args(void)
 	fcall->funcargs = parse_funcargs();
 	return fcall;
 }
+
+/* --- memset */
+
+static void fold_memset(expr *e, symtable *stab)
+{
+	FOLD_EXPR(e->expr, stab);
+
+	if(e->bits.builtin_memset.len == 0)
+		WARN_AT(&e->where, "zero size memset");
+
+	if((unsigned)e->bits.builtin_memset.ch > 255)
+		WARN_AT(&e->where, "memset with value > UCHAR_MAX");
+
+	e->tree_type = type_ref_new_VOID_PTR();
+}
+
+static void builtin_gen_memset(expr *e, symtable *stab)
+{
+	unsigned i;
+
+	out_comment("memset(%s, %d, %u)",
+			e->expr->f_str(),
+			e->bits.builtin_memset.ch,
+			e->bits.builtin_memset.len);
+
+	gen_expr(e->expr, stab);
+	out_change_type(type_ref_new_CHAR_PTR()); /* char *p; */
+	out_dup();
+
+	for(i = 0; i < e->bits.builtin_memset.len; i++){
+		out_dup(); /* copy pointer */
+
+		/* *p = 0 */
+		out_push_i(type_ref_new_CHAR(), 0);
+		out_store();
+		out_pop();
+
+		/* p++ (copied pointer) */
+		out_push_i(type_ref_new_INTPTR_T(), 1);
+		out_op(op_plus);
+	}
+
+	out_pop();
+}
+
+expr *builtin_new_memset(expr *p, int ch, size_t len)
+{
+	expr *fcall = expr_new_funcall();
+
+	expr_mutate_builtin(fcall, memset);
+	fcall->f_gen = builtin_gen_memset;
+
+	fcall->expr = p;
+	fcall->bits.builtin_memset.ch = ch;
+	fcall->bits.builtin_memset.len = len;
+
+	return fcall;
+}
+
+#ifdef MEMSET_PARSER
+static expr *parse_memset(void)
+{
+	expr *fcall = parse_any_args();
+
+	expr_mutate_builtin(fcall, memset);
+	fcall->f_gen = builtin_gen_memset;
+
+	return fcall;
+}
+#endif
 
 /* --- unreachable */
 

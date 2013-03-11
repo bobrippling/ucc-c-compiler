@@ -15,6 +15,7 @@
 #include "const.h"
 #include "macros.h"
 #include "sue.h"
+#include "ops/__builtin.h"
 
 #include "decl_init.h"
 
@@ -529,7 +530,15 @@ void decl_init_create_assignments_base(
 		stmt *code)
 {
 	if(!init){
-		ICE("TODO: %s without init", __func__);
+		expr *zero = builtin_new_memset(
+				expr_new_addr(base),
+				0,
+				type_ref_size(tfor, &base->where));
+
+		dynarray_add(
+				&code->codes,
+				expr_to_stmt(zero, code->symtab));
+		return;
 	}
 
 	switch(init->type){
