@@ -401,6 +401,7 @@ int parse_curtok_is_type(void)
 
 funcargs *parse_func_arglist()
 {
+	const enum decl_mode flags = DECL_CAN_DEFAULT;
 	funcargs *args;
 	decl *argdecl;
 
@@ -409,7 +410,7 @@ funcargs *parse_func_arglist()
 	if(curtok == token_close_paren)
 		goto empty_func;
 
-	argdecl = parse_decl_single(0);
+	argdecl = parse_decl_single(flags);
 
 	if(argdecl){
 
@@ -435,8 +436,7 @@ funcargs *parse_func_arglist()
 			}
 
 			/* continue loop */
-			/* actually, we don't need a type here, default to int, i think */
-			argdecl = parse_decl_single(DECL_CAN_DEFAULT);
+			argdecl = parse_decl_single(flags);
 		}
 
 fin:;
