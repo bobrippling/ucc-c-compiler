@@ -439,6 +439,8 @@ int type_ref_is_callable(type_ref *r)
 {
 	type_ref *test;
 
+	r = type_ref_skip_tdefs_casts(r);
+
 	if((test = type_ref_is(r, type_ref_ptr)) || (test = type_ref_is(r, type_ref_block)))
 		return !!type_ref_is(test->ref, type_ref_func);
 
