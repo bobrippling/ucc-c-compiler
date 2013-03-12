@@ -295,9 +295,14 @@ int accept(enum token t)
 void uneat(enum token t)
 {
 	UCC_ASSERT(curtok_save == token_unknown, "curtok regurgitate buffer full");
+
+	/* if current is an identifier, abort,
+	 * since we can't hold two in currentspelling */
+	UCC_ASSERT(curtok_save == token_identifier ? t != token_identifier : 1,
+			"can't save another identifier");
+
 	curtok_save = curtok;
 	curtok = t;
-	UCC_ASSERT(t != token_identifier, "uneat(identifier) - need spel too");
 }
 
 void eat(enum token t, const char *fnam, int line)

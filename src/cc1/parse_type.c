@@ -495,7 +495,7 @@ static type_ref *parse_type_ref_nest(enum decl_mode mode, char **sp)
 		 *                                ^                        ^
 		 * in which case, we've read the first "int", stop early, and unget the open paren
 		 */
-		if(parse_curtok_is_type() || curtok == token_close_paren){
+		if(parse_curtok_is_type() || curtok == token_close_paren || curtok == token_open_paren){
 			/* int() - func decl */
 			uneat(token_open_paren);
 			/* parse_...func will grab this as funcargs instead */
