@@ -392,7 +392,7 @@ void fold_decl(decl *d, symtable *stab)
 				DIE_AT(&d->where, "%s storage for function", decl_store_to_str(d->store));
 		}
 
-		if(!d->func_code){
+		if(!d->func_code && d->sym && d->sym->type == sym_global){
 			/* prototype - set extern, so we get a symbol generated (if needed) */
 			switch(d->store & STORE_MASK_STORE){
 				case store_default:
