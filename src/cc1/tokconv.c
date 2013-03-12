@@ -297,6 +297,7 @@ void uneat(enum token t)
 	UCC_ASSERT(curtok_save == token_unknown, "curtok regurgitate buffer full");
 	curtok_save = curtok;
 	curtok = t;
+	UCC_ASSERT(t != token_identifier, "uneat(identifier) - need spel too");
 }
 
 void eat(enum token t, const char *fnam, int line)
