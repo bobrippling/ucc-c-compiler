@@ -158,34 +158,62 @@ static void fold_memset(expr *e, symtable *stab)
 
 static void builtin_gen_memset(expr *e, symtable *stab)
 {
+	size_t n, rem;
 	unsigned i;
+	type_ref *tzero = e->bits.builtin_memset.aligned
+		? type_ref_cached_MAX_FOR(e->bits.builtin_memset.len)
+		: NULL;
+	type_ref *textra, *textrap;
 
-	out_comment("memset(%s, %d, %u)",
-			e->expr->f_str(),
-			e->bits.builtin_memset.ch,
-			e->bits.builtin_memset.len);
+	if(!tzero)
+		tzero = type_ref_cached_CHAR();
+
+	n   = e->bits.builtin_memset.len / type_ref_size(tzero, NULL);
+	rem = e->bits.builtin_memset.len % type_ref_size(tzero, NULL);
+
+	if((textra = rem ? type_ref_cached_MAX_FOR(rem) : NULL))
+		textrap = type_ref_new_ptr(textra, qual_none);
 
 	gen_expr(e->lhs, stab);
-	out_change_type(type_ref_cached_CHAR_PTR()); /* char *p; */
+
+	out_change_type(type_ref_new_ptr(tzero, qual_none));
+
 	out_dup();
 
-	for(i = 0; i < e->bits.builtin_memset.len; i++){
+#ifdef MEMSET_VERBOSE
+	out_comment("memset(%s, %d, %lu), using ptr<%s>, %lu steps",
+			e->expr->f_str(),
+			e->bits.builtin_memset.ch,
+			e->bits.builtin_memset.len,
+			type_ref_to_str(tzero), n);
+#endif
+
+	for(i = 0; i < n; i++){
 		out_dup(); /* copy pointer */
 
 		/* *p = 0 */
-		out_push_i(type_ref_cached_CHAR(), 0);
+		out_push_i(tzero, 0);
 		out_store();
 		out_pop();
 
 		/* p++ (copied pointer) */
 		out_push_i(type_ref_cached_INTPTR_T(), 1);
 		out_op(op_plus);
+
+		if(rem){
+			/* need to zero a little more */
+			out_dup();
+			out_change_type(textrap);
+			out_push_i(textra, 0);
+			out_store();
+			out_pop();
+		}
 	}
 
 	out_pop();
 }
 
-expr *builtin_new_memset(expr *p, int ch, size_t len)
+expr *builtin_new_memset(expr *p, int ch, size_t len, int aligned_to_len)
 {
 	expr *fcall = expr_new_funcall();
 
@@ -197,6 +225,7 @@ expr *builtin_new_memset(expr *p, int ch, size_t len)
 	fcall->lhs = p;
 	fcall->bits.builtin_memset.ch = ch;
 	fcall->bits.builtin_memset.len = len;
+	fcall->bits.builtin_memset.aligned = aligned_to_len;
 
 	return fcall;
 }

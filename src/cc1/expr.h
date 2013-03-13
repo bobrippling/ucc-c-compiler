@@ -114,7 +114,7 @@ struct expr
 
 		struct
 		{
-			int ch;
+			int ch, aligned;
 			size_t len;
 		} builtin_memset;
 	} bits;

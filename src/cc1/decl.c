@@ -82,6 +82,19 @@ type_ref *type_ref_new_func(type_ref *of, funcargs *args)
 	return r;
 }
 
+type_ref *type_ref_cached_MAX_FOR(unsigned sz)
+{
+	enum type_primitive prims[] = {
+		type_long, type_int, type_short, type_char
+	};
+	unsigned i;
+
+	for(i = 0; i < sizeof(prims)/sizeof(*prims); i++)
+		if(sz >= type_primitive_size(prims[i]))
+			return type_ref_new_type(type_new_primitive(prims[i]));
+	return NULL;
+}
+
 static type_ref *type_ref_new_cast_is_additive(type_ref *to, enum type_qualifier new, int additive)
 {
 	type_ref *r;
