@@ -34,7 +34,7 @@ void out_func_prologue(int stack_res, int nargs, int variadic); /* push rbp, sub
 void out_func_epilogue(void); /* mov rsp, rbp; ret */
 void out_label(const char *);
 
-void out_comment(const char *, ...);
+void out_comment(const char *, ...) ucc_printflike(1, 2);
 
 void out_assert_vtop_null(void);
 void out_dump(void);
