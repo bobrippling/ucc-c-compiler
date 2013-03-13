@@ -1,6 +1,6 @@
-char/wchar_t [] initialisers
+array range designators with aggregate types - [0 ... 5] = { 1, 2 }
 
-array range designators - [0 ... 5] = 2
+char/wchar_t [] initialisers
 
 register stack space bug
 

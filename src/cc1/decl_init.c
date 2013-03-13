@@ -561,16 +561,15 @@ void decl_init_create_assignments_base(
 			for(idx = 0, i = init->bits.inits; idx < n; (*i ? i++ : 0), idx++){
 				decl_init *di = *i;
 				expr *new_base;
-				type_ref *next_type;
+				type_ref *next_type = NULL;
 
-				if(di == DYNARRAY_NULL){
+				if(di == DYNARRAY_NULL)
 					di = NULL;
-				}else if(di == DYNARRAY_FLAG){
-					ICE("TODO: range init");
-				}
 
 				if(sue){
 					decl *smem = sue->members[idx]->struct_member;
+
+					UCC_ASSERT(di != DYNARRAY_FLAG, "range init for struct");
 
 					new_base = expr_new_struct(
 							base,
@@ -581,7 +580,26 @@ void decl_init_create_assignments_base(
 				}else{
 					new_base = expr_new_array_idx(base, idx);
 
-					next_type = type_ref_next(tfor);
+					if(di == DYNARRAY_FLAG){
+						unsigned n = dynarray_count(code->codes);
+						stmt *last_assign;
+
+						UCC_ASSERT(n > 0, "bad range init - no previous exprs");
+
+						last_assign = code->codes[n - 1];
+
+						/* insert like so:
+						 *
+						 * this = (prev_assign = ...)
+						 *        ^-----------------^
+						 *          already present
+						 */
+						last_assign->expr = expr_new_assign(new_base, last_assign->expr);
+						continue;
+					}
+
+					if(!next_type)
+						next_type = type_ref_next(tfor);
 				}
 
 				decl_init_create_assignments_base(di, next_type, new_base, code);
