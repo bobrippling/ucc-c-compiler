@@ -140,7 +140,7 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 
 		if(init){
 			size_t i;
-			decl_init **p;
+			decl_init **p, *last_nonflag = NULL;
 
 			UCC_ASSERT(init->type == decl_init_brace, "unbraced struct");
 			UCC_ASSERT(type_ref_is_complete(tfor), "incomplete array init");
@@ -150,12 +150,17 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 					i--)
 			{
 				decl_init *this;
-				if(p){
+				if(*p){
 					this = *p++;
-					if(this == DYNARRAY_FLAG)
-						ICE("TODO: range init");
+
+					if(this == DYNARRAY_FLAG){
+						UCC_ASSERT(last_nonflag, "no previous init for array range");
+						this = last_nonflag;
+					}else{
+						last_nonflag = this;
+					}
 				}else{
-					this = NULL;
+					last_nonflag = this = NULL;
 				}
 
 				asm_declare_init(f, this, next);
