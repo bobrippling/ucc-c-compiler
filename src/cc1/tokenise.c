@@ -428,19 +428,18 @@ void nexttoken()
 	}
 
 	if(c == '.'){
+		curtok = token_dot;
+
 		if(peeknextchar() == '.'){
 			nextchar();
 			if(peeknextchar() == '.'){
 				nextchar();
 				curtok = token_elipsis;
-			}else{
-				DIE_AT(NULL, "unknown token \"..\"\n");
 			}
-			return;
-		}else{
-			curtok = token_dot;
-			return;
+			/* else leave it at token_dot and next as token_dot;
+			 * parser will get an error */
 		}
+		return;
 	}
 
 	if(isalpha(c) || c == '_' || c == '$'){
