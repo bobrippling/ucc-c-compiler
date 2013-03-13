@@ -186,7 +186,7 @@ type_ref *op_required_promotion(
 
 		if(l_ptr && r_ptr){
 			if(op == op_minus){
-				resolved = type_ref_new_INTPTR_T();
+				resolved = type_ref_cached_INTPTR_T();
 			}else if(op_is_relational(op)){
 				if(op_is_comparison(op)){
 					char buf[TYPE_REF_STATIC_BUFSIZ];
@@ -197,7 +197,7 @@ type_ref *op_required_promotion(
 							type_ref_to_str(tlhs), type_ref_to_str_r(buf, trhs));
 				}
 
-				resolved = type_ref_new_INT();
+				resolved = type_ref_cached_INT();
 
 			}else{
 				DIE_AT(w, "operation between two pointers must be relational or subtraction");
@@ -222,7 +222,7 @@ type_ref *op_required_promotion(
 			resolved = l_ptr ? tlhs : trhs;
 
 			/* FIXME: promote to unsigned */
-			*(l_ptr ? prhs : plhs) = type_ref_new_INTPTR_T();
+			*(l_ptr ? prhs : plhs) = type_ref_cached_INTPTR_T();
 
 			goto fin;
 		}
@@ -311,7 +311,7 @@ type_ref *op_required_promotion(
 
 		/* if we have a _comparison_ (e.g. between enums), convert to int */
 		resolved = op_is_relational(op)
-			? type_ref_new_INT()
+			? type_ref_cached_INT()
 			: tlarger;
 	}
 
@@ -483,7 +483,7 @@ void fold_expr_op(expr *e, symtable *stab)
 		 */
 
 		if(e->op == op_not){
-			e->tree_type = type_ref_new_INT();
+			e->tree_type = type_ref_cached_INT();
 
 		}else{
 			/* op_bnot */

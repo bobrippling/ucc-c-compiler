@@ -879,7 +879,7 @@ void fold(symtable *globs)
 					qual_const),
 				qual_none);
 
-		df->ref = type_ref_new_func(type_ref_new_INT(), fargs);
+		df->ref = type_ref_new_func(type_ref_cached_INT(), fargs);
 
 		symtab_add(globs, df, sym_global, SYMTAB_NO_SYM, SYMTAB_PREPEND);
 

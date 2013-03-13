@@ -183,8 +183,8 @@ void gen_expr_cast(expr *e, symtable *stab)
 						type_ref_to_str_r(buf, tto),
 						mem->struct_offset);*/
 
-				out_change_type(type_ref_new_VOID_PTR());
-				out_push_i(type_ref_new_INTPTR_T(), mem->struct_offset);
+				out_change_type(type_ref_cached_VOID_PTR());
+				out_push_i(type_ref_cached_INTPTR_T(), mem->struct_offset);
 				out_op(op_plus);
 			}
 		}

@@ -48,7 +48,7 @@ void fold_expr_block(expr *e, symtable *stab)
 		if(r && r->expr){
 			e->tree_type = r->expr->tree_type;
 		}else{
-			e->tree_type = type_ref_new_VOID();
+			e->tree_type = type_ref_cached_VOID();
 		}
 	}
 

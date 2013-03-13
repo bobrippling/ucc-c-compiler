@@ -126,7 +126,7 @@ static void builtin_gen_undefined(expr *e, symtable *stab)
 	(void)e;
 	(void)stab;
 	out_undefined();
-	out_push_i(type_ref_new_INT(), 0); /* needed for function return pop */
+	out_push_i(type_ref_cached_INT(), 0); /* needed for function return pop */
 }
 
 static expr *parse_any_args(void)
@@ -153,7 +153,7 @@ static void fold_memset(expr *e, symtable *stab)
 		ICE("TODO: parsed memset fold/gen");
 	}
 
-	e->tree_type = type_ref_new_VOID_PTR();
+	e->tree_type = type_ref_cached_VOID_PTR();
 }
 
 static void builtin_gen_memset(expr *e, symtable *stab)
@@ -166,19 +166,19 @@ static void builtin_gen_memset(expr *e, symtable *stab)
 			e->bits.builtin_memset.len);
 
 	gen_expr(e->lhs, stab);
-	out_change_type(type_ref_new_CHAR_PTR()); /* char *p; */
+	out_change_type(type_ref_cached_CHAR_PTR()); /* char *p; */
 	out_dup();
 
 	for(i = 0; i < e->bits.builtin_memset.len; i++){
 		out_dup(); /* copy pointer */
 
 		/* *p = 0 */
-		out_push_i(type_ref_new_CHAR(), 0);
+		out_push_i(type_ref_cached_CHAR(), 0);
 		out_store();
 		out_pop();
 
 		/* p++ (copied pointer) */
-		out_push_i(type_ref_new_INTPTR_T(), 1);
+		out_push_i(type_ref_cached_INTPTR_T(), 1);
 		out_op(op_plus);
 	}
 
@@ -245,7 +245,7 @@ static void fold_compatible_p(expr *e, symtable *stab)
 	fold_type_ref(types[0], NULL, stab);
 	fold_type_ref(types[1], NULL, stab);
 
-	e->tree_type = type_ref_new_BOOL();
+	e->tree_type = type_ref_cached_BOOL();
 	wur_builtin(e);
 }
 
@@ -285,7 +285,7 @@ static void fold_constant_p(expr *e, symtable *stab)
 
 	FOLD_EXPR(e->funcargs[0], stab);
 
-	e->tree_type = type_ref_new_BOOL();
+	e->tree_type = type_ref_cached_BOOL();
 	wur_builtin(e);
 }
 
@@ -403,7 +403,7 @@ static void fold_is_signed(expr *e, symtable *stab)
 
 	fold_type_ref(tl[0], NULL, stab);
 
-	e->tree_type = type_ref_new_BOOL();
+	e->tree_type = type_ref_cached_BOOL();
 	wur_builtin(e);
 }
 

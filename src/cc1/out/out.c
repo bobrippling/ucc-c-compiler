@@ -12,7 +12,7 @@
 #include "../../util/platform.h"
 #include "../cc1.h"
 
-#define v_check_type(t) if(!t) t = type_ref_new_VOID_PTR()
+#define v_check_type(t) if(!t) t = type_ref_cached_VOID_PTR()
 
 static int calc_ptr_step(type_ref *t);
 
@@ -528,7 +528,7 @@ def:
 								if((swap = (val != vtop)))
 									vswap();
 
-								out_push_i(type_ref_new_VOID_PTR(), ptr_step);
+								out_push_i(type_ref_cached_VOID_PTR(), ptr_step);
 								out_op(op_multiply);
 
 								if(swap)
@@ -551,7 +551,7 @@ def:
 		impl_op(op);
 
 		if(div){
-			out_push_i(type_ref_new_VOID_PTR(), div);
+			out_push_i(type_ref_cached_VOID_PTR(), div);
 			out_op(op_divide);
 		}
 	}

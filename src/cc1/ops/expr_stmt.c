@@ -27,7 +27,7 @@ void fold_expr_stmt(expr *e, symtable *stab)
 		e->tree_type = last_stmt->expr->tree_type;
 		fold_disallow_st_un(e, "({ ... }) statement");
 	}else{
-		e->tree_type = type_ref_new_VOID(); /* void expr */
+		e->tree_type = type_ref_cached_VOID(); /* void expr */
 	}
 
 	e->freestanding = 1; /* ({ ... }) on its own is freestanding */
@@ -46,7 +46,7 @@ void gen_expr_stmt(expr *e, symtable *stab)
 	{
 		int n = dynarray_count((void **)e->code->codes);
 		if(n > 0 && !stmt_kind(e->code->codes[n-1], expr))
-			out_push_i(type_ref_new_INT(), 0);
+			out_push_i(type_ref_cached_INT(), 0);
 	}
 
 	out_comment("end of ({...})");

@@ -124,7 +124,7 @@ void fold_expr_if(expr *e, symtable *stab)
 						type_ref_to_str_r(bufb, tt_r));
 
 				/* void * */
-				e->tree_type = type_ref_new_ptr(type_ref_new_VOID(), qual_none);
+				e->tree_type = type_ref_new_ptr(type_ref_cached_VOID(), qual_none);
 
 				{
 					enum type_qualifier q = type_ref_qual(tt_l) | type_ref_qual(tt_r);
@@ -139,7 +139,7 @@ void fold_expr_if(expr *e, symtable *stab)
 				WARN_AT(&e->where, "conditional type mismatch (%s vs %s)",
 						type_ref_to_str(tt_l), type_ref_to_str_r(buf, tt_r));
 
-				e->tree_type = type_ref_new_VOID();
+				e->tree_type = type_ref_cached_VOID();
 			}
 		}
 	}

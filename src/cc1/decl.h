@@ -263,13 +263,16 @@ struct_union_enum_st *type_ref_is_s_or_u_or_e(type_ref *);
 #define decl_is_void(d) decl_is_type(d, type_void)
 #define decl_is_bool(d) (decl_is_ptr(d) || decl_is_integral(d))
 
-#define type_ref_new_VOID()       type_ref_new_type(type_new_primitive(type_void))
-#define type_ref_new_INT()        type_ref_new_type(type_new_primitive(type_int))
-#define type_ref_new_CHAR()       type_ref_new_type(type_new_primitive(type_char))
-#define type_ref_new_BOOL()       type_ref_new_type(type_new_primitive(type_int))
-#define type_ref_new_INTPTR_T()   type_ref_new_type(type_new_primitive(type_long))
+#define type_ref_cached_VOID()       type_ref_new_type(type_new_primitive(type_void))
+#define type_ref_cached_INT()        type_ref_new_type(type_new_primitive(type_int))
+#define type_ref_cached_CHAR()       type_ref_new_type(type_new_primitive(type_char))
+#define type_ref_cached_BOOL()       type_ref_new_type(type_new_primitive(type_int))
+#define type_ref_cached_INTPTR_T()   type_ref_new_type(type_new_primitive(type_long))
 
-#define type_ref_new_CHAR_PTR() type_ref_ptr_depth_inc(type_ref_new_CHAR())
-#define type_ref_new_VOID_PTR() type_ref_ptr_depth_inc(type_ref_new_VOID())
+#define type_ref_cached_VOID_PTR() type_ref_ptr_depth_inc(type_ref_cached_VOID())
+#define type_ref_cached_CHAR_PTR() type_ref_ptr_depth_inc(type_ref_cached_CHAR())
+
+type_ref *type_ref_cached_MAX_FOR(unsigned sz);
+
 
 #endif

@@ -358,7 +358,7 @@ void impl_load(struct vstack *from, int reg)
 		out_comment("zero for cmp");
 		out_asm("mov%c $0, %%%s", asm_type_ch(from->t), buf);
 
-		from->t = type_ref_new_CHAR(); /* force set%s to set the low byte */
+		from->t = type_ref_cached_CHAR(); /* force set%s to set the low byte */
 		/* decl changed, reload the register name */
 		x86_reg_str_r(buf, reg, from->t);
 	}
@@ -471,7 +471,7 @@ void impl_op(enum op_type op)
 					v_to_reg(vtop); /* TODO: v_to_reg_preferred(vtop, REG_C) */
 
 				case REG:
-					free_this = vtop->t = type_ref_new_CHAR();
+					free_this = vtop->t = type_ref_cached_CHAR();
 
 					if(vtop->bits.reg != REG_C){
 						impl_reg_cp(vtop, REG_C);
@@ -586,7 +586,7 @@ void impl_op(enum op_type op)
 					vstack_str_r(buf, vtop - 1));
 
 			vpop();
-			vtop_clear(type_ref_new_BOOL()); /* cmp creates an int/bool */
+			vtop_clear(type_ref_cached_BOOL()); /* cmp creates an int/bool */
 			vtop->type = FLAG;
 			vtop->bits.flag.cmp = op_to_flag(op);
 			vtop->bits.flag.is_signed = is_signed;
@@ -856,7 +856,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 
 		/* can't push non-word sized vtops */
 		if(vtop->t && type_ref_size(vtop->t, NULL) != platform_word_size())
-			out_cast(vtop->t, type_ref_new_VOID_PTR());
+			out_cast(vtop->t, type_ref_cached_VOID_PTR());
 
 		out_asm("pushq %s", vstack_str(vtop));
 		vpop();
