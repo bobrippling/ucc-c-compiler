@@ -57,7 +57,8 @@ void fold_expr_str(expr *e, symtable *stab)
 	/* add a sym so the data store gets gen'd */
 	e->bits.str.sym = SYMTAB_ADD(stab, d, stab->parent ? sym_local : sym_global);
 
-	decl_init_fold_brace(d);
+	decl_init_brace_up(d);
+	decl_init_fold(d, stab);
 
 	/* no non-global folding,
 	 * all strks are static globals/read from the init */

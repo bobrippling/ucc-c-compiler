@@ -40,7 +40,7 @@ expr *fold_for_if_init_decls(stmt *s)
 
 			init_code = stmt_new_wrapper(code, s->flow->for_init_symtab);
 
-			decl_init_fold_brace(d);
+			decl_init_brace_up(d);
 			decl_init_create_assignments_base(d->init,
 					d->ref, expr_new_identifier(d->spel),
 					init_code);

@@ -151,7 +151,7 @@ const char *decl_init_to_str(enum decl_init_type t)
  * -------------
  */
 
-static decl_init *decl_init_brace_up(decl_init *current, init_iter *, type_ref *);
+static decl_init *decl_init_brace_up_r(decl_init *current, init_iter *, type_ref *);
 
 
 static decl_init *decl_init_brace_up_scalar(
@@ -186,7 +186,7 @@ static decl_init *decl_init_brace_up_scalar(
 	if(first_init->type == decl_init_brace){
 		init_iter it;
 		it.pos = first_init->bits.inits;
-		return decl_init_brace_up(current, &it, tfor);
+		return decl_init_brace_up_r(current, &it, tfor);
 	}
 
 	return first_init;
@@ -248,7 +248,7 @@ static decl_init **decl_init_brace_up_array2(
 			if(i < n && current[i] != DYNARRAY_NULL)
 				replacing = current[i]; /* replacing object `i' */
 
-			braced = decl_init_brace_up(replacing, iter, next_type);
+			braced = decl_init_brace_up_r(replacing, iter, next_type);
 
 			dynarray_padinsert(&current, i, &n, braced);
 
@@ -350,7 +350,7 @@ static decl_init **decl_init_brace_up_sue2(
 				replacing = current[i];
 
 			if(!braced_sub){
-				braced_sub = decl_init_brace_up(
+				braced_sub = decl_init_brace_up_r(
 						replacing,
 						iter, mem->struct_member->ref);
 			}
@@ -454,7 +454,7 @@ static decl_init *decl_init_brace_up_aggregate(
 	}
 }
 
-static decl_init *decl_init_brace_up(decl_init *current, init_iter *iter, type_ref *tfor)
+static decl_init *decl_init_brace_up_r(decl_init *current, init_iter *iter, type_ref *tfor)
 {
 	struct_union_enum_st *sue;
 
@@ -508,7 +508,7 @@ static decl_init *decl_init_brace_up_start(decl_init *init, type_ref **ptfor)
 		}
 	}
 
-	ret = decl_init_brace_up(NULL, &it, tfor);
+	ret = decl_init_brace_up_r(NULL, &it, tfor);
 
 	if(type_ref_is_incomplete_array(tfor)){
 		/* complete it */
@@ -519,7 +519,7 @@ static decl_init *decl_init_brace_up_start(decl_init *init, type_ref **ptfor)
 	return ret;
 }
 
-void decl_init_fold_brace(decl *d)
+void decl_init_brace_up(decl *d)
 {
 	d->init = decl_init_brace_up_start(d->init, &d->ref);
 }
@@ -591,14 +591,20 @@ void decl_init_create_assignments_base(
 	}
 }
 
-static void decl_init_insert_cast2(decl_init *di, type_ref *tto)
+static void decl_init_fold_r(decl_init *di, type_ref *tto, symtable *stab)
 {
 	switch(di->type){
 		case decl_init_scalar:
 		{
-			expr *e = di->bits.expr;
-			if(!type_ref_equal(tto, e->tree_type,
-						DECL_CMP_ALLOW_VOID_PTR | DECL_CMP_ALLOW_SIGNED_UNSIGNED))
+			char buf[TYPE_REF_STATIC_BUFSIZ];
+			expr *e = FOLD_EXPR(di->bits.expr, stab);
+
+			if(!fold_type_ref_equal(
+						tto, e->tree_type, &di->where,
+						WARN_ASSIGN_MISMATCH,
+						DECL_CMP_ALLOW_VOID_PTR | DECL_CMP_ALLOW_SIGNED_UNSIGNED,
+						"mismatching types in initialisation (%s <-- %s)",
+						type_ref_to_str_r(buf, tto), type_ref_to_str(e->tree_type)))
 			{
 				expr *cast = expr_new_cast(tto, 1);
 				cast->expr = di->bits.expr;
@@ -620,16 +626,17 @@ static void decl_init_insert_cast2(decl_init *di, type_ref *tto)
 					continue;
 
 				if(sue)
-					decl_init_insert_cast2(sub, sue->members[idx]->struct_member->ref);
+					decl_init_fold_r(sub, sue->members[idx]->struct_member->ref, stab);
 				else
-					decl_init_insert_cast2(sub, type_ref_next(tto));
+					decl_init_fold_r(sub, type_ref_next(tto), stab);
 			}
 			break;
 		}
 	}
 }
 
-void decl_init_insert_cast(decl *d)
+void decl_init_fold(decl *d, symtable *stab)
 {
-	decl_init_insert_cast2(d->init, d->ref);
+	/* only called on global decl inits */
+	decl_init_fold_r(d->init, d->ref, stab);
 }
