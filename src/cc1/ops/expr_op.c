@@ -127,7 +127,7 @@ void fold_const_expr_op(expr *e, consty *k)
 
 void expr_promote_int_if_smaller(expr **pe, symtable *stab)
 {
-	static int sz_int;
+	static unsigned sz_int;
 	expr *e = *pe;
 
 	if(!sz_int)

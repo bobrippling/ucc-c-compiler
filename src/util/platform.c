@@ -47,7 +47,7 @@ static void platform_init()
 	}
 }
 
-int platform_word_size()
+unsigned platform_word_size()
 {
 	INIT();
 	return platform_t == PLATFORM_32 ? 4 : 8;

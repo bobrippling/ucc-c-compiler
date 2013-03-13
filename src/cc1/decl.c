@@ -358,7 +358,7 @@ void decl_attr_free(decl_attr *a)
 
 #include "decl_is.c"
 
-int type_ref_size(type_ref *r, where const *from)
+unsigned type_ref_size(type_ref *r, where const *from)
 {
 	switch(r->type){
 		case type_ref_type:
@@ -404,7 +404,7 @@ int type_ref_size(type_ref *r, where const *from)
 	ucc_unreach();
 }
 
-int decl_size(decl *d, where const *from)
+unsigned decl_size(decl *d, where const *from)
 {
 #ifdef FIELD_WIDTH_TODO
 	if(d->field_width){

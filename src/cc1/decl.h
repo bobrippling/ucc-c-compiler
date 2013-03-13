@@ -188,8 +188,9 @@ decl_attr   *decl_attr_new(enum decl_attr_type);
 void         decl_attr_append(decl_attr **loc, decl_attr *new);
 const char  *decl_attr_to_str(enum decl_attr_type);
 
-int   decl_size(decl *, where const *from);
-int   type_ref_size(type_ref *, where const *from);
+unsigned decl_size(decl *, where const *from);
+unsigned type_ref_size(type_ref *, where const *from);
+
 int   decl_equal(decl *a, decl *b, enum decl_cmp mode);
 int   type_ref_equal(type_ref *a, type_ref *b, enum decl_cmp mode);
 int   decl_store_static_or_extern(enum decl_storage);

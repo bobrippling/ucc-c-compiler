@@ -711,7 +711,7 @@ void impl_cast(type_ref *from, type_ref *to)
 	if(szfrom != szto){
 		if(szfrom < szto){
 			const int is_signed = type_ref_is_signed(from);
-			const int int_sz = type_primitive_size(type_int);
+			const unsigned int_sz = type_primitive_size(type_int);
 
 			char buf_from[REG_STR_SZ], buf_to[REG_STR_SZ];
 
