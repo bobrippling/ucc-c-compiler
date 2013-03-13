@@ -189,6 +189,8 @@ expr *builtin_new_memset(expr *p, int ch, size_t len)
 {
 	expr *fcall = expr_new_funcall();
 
+	fcall->expr = expr_new_identifier("__builtin_memset");
+
 	expr_mutate_builtin(fcall, memset);
 	fcall->f_gen = builtin_gen_memset;
 
