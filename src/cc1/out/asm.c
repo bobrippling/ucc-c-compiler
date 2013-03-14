@@ -187,7 +187,8 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 			{
 				char buf[TYPE_REF_STATIC_BUFSIZ];
 
-				UCC_ASSERT(type_ref_equal(exp->tree_type, tfor, DECL_CMP_ALLOW_VOID_PTR),
+				UCC_ASSERT(type_ref_equal(exp->tree_type, tfor,
+							DECL_CMP_ALLOW_VOID_PTR | DECL_CMP_ALLOW_SIGNED_UNSIGNED),
 						"mismatching init types: %s and %s",
 						type_ref_to_str_r(buf, exp->tree_type),
 						type_ref_to_str(tfor));
