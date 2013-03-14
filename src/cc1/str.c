@@ -8,6 +8,7 @@
 #include "../util/alloc.h"
 #include "data_structs.h"
 #include "str.h"
+#include "macros.h"
 
 int escape_char(int c)
 {
@@ -87,6 +88,17 @@ void char_seq_to_iv(char *s, intval *iv, int *plen, enum base mode)
 
 	iv->val = lval;
 	*plen = s - start;
+}
+
+const char *base_to_str(enum base b)
+{
+	switch(b){
+		case BIN: return "binary";
+		case OCT: return "octal";
+		case DEC: return "decimal";
+		case HEX: return "hexadecimal";
+	}
+	return NULL;
 }
 
 int escape_multi_char(char *pos, char *pval, int *len)

@@ -273,12 +273,16 @@ static int peeknextchar()
 	return *bufferpos;
 }
 
-void read_number(enum base mode)
+static void read_number(enum base mode)
 {
 	int read_suffix = 1;
 	int nlen;
 
 	char_seq_to_iv(bufferpos, &currentval, &nlen, mode);
+
+	if(nlen == 0)
+		DIE_AT(NULL, "%s-number expected (got '%c')",
+				base_to_str(mode), peeknextchar());
 
 	bufferpos += nlen;
 	currentval.suffix = 0;
@@ -468,12 +472,14 @@ void nexttoken()
 		enum base mode;
 
 		if(c == '0'){
-			switch((c = nextchar())){
+			switch((c = peeknextchar())){
 				case 'x':
 					mode = HEX;
+					nextchar();
 					break;
 				case 'b':
 					mode = BIN;
+					nextchar();
 					break;
 				default:
 					if(!isoct(c)){
@@ -481,11 +487,11 @@ void nexttoken()
 							DIE_AT(NULL, "invalid oct character '%c'", c);
 						else
 							mode = DEC; /* just zero */
+
+						bufferpos--; /* have the zero */
 					}else{
 						mode = OCT;
 					}
-
-					bufferpos--; /* rewind over c */
 					break;
 			}
 		}else{
