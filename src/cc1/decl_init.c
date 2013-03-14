@@ -555,8 +555,9 @@ void decl_init_create_assignments_base(
 		{
 			struct_union_enum_st *sue = type_ref_is_s_or_u(tfor);
 			const size_t n = sue ? dynarray_count(sue->members) : type_ref_array_len(tfor);
-			decl_init **i;
+			decl_init **i, *last_nonflag = NULL;
 			unsigned idx;
+			expr *last_base = NULL;
 
 			for(idx = 0, i = init->bits.inits; idx < n; (*i ? i++ : 0), idx++){
 				decl_init *di = *i;
@@ -580,29 +581,50 @@ void decl_init_create_assignments_base(
 				}else{
 					new_base = expr_new_array_idx(base, idx);
 
+					if(!next_type)
+						next_type = type_ref_next(tfor);
+
 					if(di == DYNARRAY_FLAG){
-						unsigned n = dynarray_count(code->codes);
-						stmt *last_assign;
+						UCC_ASSERT(last_nonflag, "no previous init for '...'");
 
-						UCC_ASSERT(n > 0, "bad range init - no previous exprs");
-
-						last_assign = code->codes[n - 1];
-
-						/* insert like so:
-						 *
-						 * this = (prev_assign = ...)
-						 *        ^-----------------^
-						 *          already present
+						/* TODO: ideally when the backend is sufficiently optimised, we
+						 * will always be able to use the memcpy case, and it'll pick it up
 						 */
-						last_assign->expr = expr_new_assign(new_base, last_assign->expr);
+						if(last_nonflag->type == decl_init_scalar){
+							unsigned n = dynarray_count(code->codes);
+							stmt *last_assign;
+							UCC_ASSERT(n > 0, "bad range init - no previous exprs");
+
+							last_assign = code->codes[n - 1];
+
+							/* insert like so:
+							 *
+							 * this = (prev_assign = ...)
+							 *        ^-----------------^
+							 *          already present
+							 */
+							last_assign->expr = expr_new_assign(new_base, last_assign->expr);
+						}else{
+							/* memcpy from the previous init */
+							expr *memcp;
+
+							UCC_ASSERT(next_type, "no next type for array (i=%d)", idx);
+							UCC_ASSERT(last_base, "no previous base for ... init");
+
+							memcp = builtin_new_memcpy(
+									new_base, last_base, type_ref_size(next_type, &di->where));
+
+							dynarray_add(&code->codes,
+									expr_to_stmt(memcp, code->symtab));
+						}
 						continue;
 					}
 
-					if(!next_type)
-						next_type = type_ref_next(tfor);
+					last_nonflag = di;
 				}
 
 				decl_init_create_assignments_base(di, next_type, new_base, code);
+				last_base = new_base;
 			}
 			break;
 		}

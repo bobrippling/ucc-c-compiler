@@ -244,6 +244,58 @@ static expr *parse_memset(void)
 	return fcall;
 }
 
+/* --- memcpy */
+
+void fold_memcpy(expr *e, symtable *stab)
+{
+	FOLD_EXPR(e->lhs, stab);
+	FOLD_EXPR(e->rhs, stab);
+
+	e->tree_type = type_ref_cached_VOID_PTR();
+}
+
+static decl *decl_new_tref(char *sp, type_ref *ref)
+{
+	decl *d = decl_new();
+	d->ref = ref;
+	d->spel = sp;
+	return d;
+}
+
+void builtin_gen_memcpy(expr *e, symtable *stab)
+{
+	funcargs *fargs = funcargs_new();
+
+	dynarray_add(&fargs->arglist, decl_new_tref(NULL, type_ref_cached_VOID_PTR()));
+	dynarray_add(&fargs->arglist, decl_new_tref(NULL, type_ref_cached_VOID_PTR()));
+	dynarray_add(&fargs->arglist, decl_new_tref(NULL, type_ref_cached_INTPTR_T()));
+
+	type_ref *ctype = type_ref_new_func(
+			e->tree_type, fargs);
+
+	out_push_lbl("memcpy", 0);
+	out_push_i(type_ref_cached_INTPTR_T(), e->bits.iv.val);
+	lea_expr(e->rhs, stab);
+	lea_expr(e->lhs, stab);
+	out_call(3, e->tree_type, ctype);
+}
+
+expr *builtin_new_memcpy(expr *to, expr *from, size_t len)
+{
+	expr *fcall = expr_new_funcall();
+
+	fcall->expr = expr_new_identifier("__builtin_memcpy");
+
+	expr_mutate_builtin(fcall, memcpy);
+	fcall->f_gen = builtin_gen_memcpy;
+
+	fcall->lhs = to;
+	fcall->rhs = from;
+	fcall->bits.iv.val = len;
+
+	return fcall;
+}
+
 /* --- unreachable */
 
 static void fold_unreachable(expr *e, symtable *stab)
