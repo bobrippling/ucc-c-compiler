@@ -194,7 +194,8 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 						type_ref_to_str(tfor));
 			}
 
-			fprintf(f, ".%s ", asm_type_directive(exp->tree_type));
+			/* use tfor, since "abc" has type (char[]){(int)'a', (int)'b', ...} */
+			fprintf(f, ".%s ", asm_type_directive(tfor));
 			static_addr(exp);
 			fputc('\n', f);
 		}
