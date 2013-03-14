@@ -58,7 +58,7 @@ builtin_table builtins[] = {
 
 }, no_prefix_builtins[] = {
 	{ "strlen", parse_strlen },
-	{ "memset", parse_memset }, // TODO: __builtin_memset too
+	{ "memset", parse_memset }, /* TODO: __builtin_memset and memcpy too */
 
 	{ NULL, NULL }
 };
@@ -115,6 +115,10 @@ expr *builtin_parse(const char *sp)
 	expr_mutate_builtin(exp, to),             \
 	exp->f_gen        = NULL,                 \
 	exp->f_const_fold = const_ ## to
+
+#define expr_mutate_builtin_gen(exp, to)  \
+	exp->f_fold = fold_ ## to,              \
+	exp->f_gen  = builtin_gen_ ## to
 
 static void wur_builtin(expr *e)
 {
@@ -219,8 +223,7 @@ expr *builtin_new_memset(expr *p, int ch, size_t len, int aligned_to_len)
 
 	fcall->expr = expr_new_identifier("__builtin_memset");
 
-	expr_mutate_builtin(fcall, memset);
-	fcall->f_gen = builtin_gen_memset;
+	expr_mutate_builtin_gen(fcall, memset);
 
 	fcall->lhs = p;
 	fcall->bits.builtin_memset.ch = ch;
@@ -234,8 +237,9 @@ static expr *parse_memset(void)
 {
 	expr *fcall = parse_any_args();
 
-	expr_mutate_builtin(fcall, memset);
-	fcall->f_gen = builtin_gen_memset;
+	ICE("TODO: builtin memset parsing");
+
+	expr_mutate_builtin_gen(fcall, memset);
 
 	return fcall;
 }
@@ -362,7 +366,7 @@ static void fold_frame_address(expr *e, symtable *stab)
 	wur_builtin(e);
 }
 
-static void builtin_gen_frame_pointer(expr *e, symtable *stab)
+static void builtin_gen_frame_address(expr *e, symtable *stab)
 {
 	const int depth = e->bits.iv.val;
 
@@ -374,8 +378,7 @@ static void builtin_gen_frame_pointer(expr *e, symtable *stab)
 static expr *parse_frame_address(void)
 {
 	expr *fcall = parse_any_args();
-	expr_mutate_builtin(fcall, frame_address);
-	fcall->f_gen = builtin_gen_frame_pointer;
+	expr_mutate_builtin_gen(fcall, frame_address);
 	return fcall;
 }
 
