@@ -615,10 +615,26 @@ void impl_op(enum op_type op)
 		 * make it the result reg
 		 */
 
-		out_asm("%s%c %s, %s", opc,
-				asm_type_ch(vtop->t),
-				vstack_str_r(buf, &vtop[ 0]),
-				vstack_str(       &vtop[-1]));
+		switch(op){
+			case op_plus:
+			case op_minus:
+				/* use inc/dec if possible */
+				if(vtop->type == CONST
+				&& vtop->bits.val == 1
+				&& vtop[-1].type == REG)
+				{
+					out_asm("%s%c %s",
+							op == op_plus ? "inc" : "dec",
+							asm_type_ch(vtop->t),
+							vstack_str(&vtop[-1]));
+					break;
+				}
+			default:
+				out_asm("%s%c %s, %s", opc,
+						asm_type_ch(vtop->t),
+						vstack_str_r(buf, &vtop[ 0]),
+						vstack_str(       &vtop[-1]));
+		}
 
 		/* remove first operand - result is then in vtop (already in a reg) */
 		vpop();
