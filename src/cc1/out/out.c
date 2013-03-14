@@ -340,6 +340,19 @@ void out_dup(void)
 	vdup();
 }
 
+void out_pulltop(int i)
+{
+	struct vstack tmp;
+	int j;
+
+	memcpy_safe(&tmp, &vtop[-i]);
+
+	for(j = -i; j < 0; j++)
+		vtop[j] = vtop[j + 1];
+
+	memcpy_safe(vtop, &tmp);
+}
+
 void out_store()
 {
 	struct vstack *store, *val;

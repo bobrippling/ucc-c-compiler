@@ -254,6 +254,7 @@ void fold_memcpy(expr *e, symtable *stab)
 	e->tree_type = type_ref_cached_VOID_PTR();
 }
 
+#ifdef BUILTIN_USE_LIBC
 static decl *decl_new_tref(char *sp, type_ref *ref)
 {
 	decl *d = decl_new();
@@ -261,9 +262,12 @@ static decl *decl_new_tref(char *sp, type_ref *ref)
 	d->spel = sp;
 	return d;
 }
+#endif
 
 void builtin_gen_memcpy(expr *e, symtable *stab)
 {
+#ifdef BUILTIN_USE_LIBC
+	/* TODO - also with memset */
 	funcargs *fargs = funcargs_new();
 
 	dynarray_add(&fargs->arglist, decl_new_tref(NULL, type_ref_cached_VOID_PTR()));
@@ -278,6 +282,42 @@ void builtin_gen_memcpy(expr *e, symtable *stab)
 	lea_expr(e->rhs, stab);
 	lea_expr(e->lhs, stab);
 	out_call(3, e->tree_type, ctype);
+#else
+	/* TODO: backend rep movsb
+	 * TODO: large/word sized copies
+	 */
+	unsigned i = e->bits.iv.val;
+	type_ref *const tcptr = type_ref_cached_CHAR_PTR(),
+					 *const t1    = type_ref_cached_INTPTR_T();
+
+	lea_expr(e->lhs, stab); /* d */
+	out_change_type(tcptr);
+	out_dup();              /* dd */
+	lea_expr(e->rhs, stab); /* dds */
+	out_change_type(tcptr);
+
+	while(i --> 0){
+		out_dup();      /* ddss */
+		out_deref();    /* dds. */
+		out_pulltop(2); /* ds.d */
+		out_swap();     /* dsd. */
+		out_store();    /* ds. */
+		out_pop();      /* ds */
+
+		out_push_i(t1, 1); /* ds1 */
+		out_op(op_plus);   /* dS */
+
+		out_swap();        /* Sd */
+		out_push_i(t1, 1); /* Sd1 */
+		out_op(op_plus);   /* SD */
+
+		out_dup();      /* SDD */
+		out_pulltop(2); /* DDS */
+	}
+
+	out_pop(); /* dd */
+	out_pop(); /* d */
+#endif
 }
 
 expr *builtin_new_memcpy(expr *to, expr *from, size_t len)

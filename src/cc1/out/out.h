@@ -9,6 +9,7 @@ void out_push_i( type_ref *, int i) ucc_nonnull((1));
 void out_push_lbl(char *s, int pic);
 
 void out_dup(void); /* duplicate top of stack */
+void out_pulltop(int i); /* pull the nth stack entry to the top */
 void out_normalise(void); /* change to 0 or 1 */
 
 void out_push_sym(sym *);
