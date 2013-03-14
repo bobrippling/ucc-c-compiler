@@ -1,3 +1,5 @@
+bug_init_fold.c
+
 char/wchar_t [] initialisers
 
 register stack space bug
