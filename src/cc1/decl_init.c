@@ -508,12 +508,19 @@ static decl_init *decl_init_brace_up_array_pre(
 
 	if(for_str_ar
 	&& (this = *iter->pos)
-	&& this->type == decl_init_scalar)
+	/* allow "xyz" or { "xyz" } */
+	&& (this->type == decl_init_scalar
+	|| (this->type == decl_init_brace &&
+		  1 == dynarray_count(this->bits.inits) &&
+		  this->bits.inits[0]->type == decl_init_scalar)))
 	{
+		decl_init *strk = this->type == decl_init_scalar
+			? this : this->bits.inits[0];
+
 		consty k;
 
-		FOLD_EXPR(this->bits.expr, stab);
-		const_fold(this->bits.expr, &k);
+		FOLD_EXPR(strk->bits.expr, stab);
+		const_fold(strk->bits.expr, &k);
 
 		if(k.type == CONST_STRK){
 			unsigned str_i;
