@@ -529,15 +529,15 @@ static decl_init *decl_init_brace_up_start(
 	type_ref *const tfor = *ptfor;
 	decl_init *ret;
 
-	if(init->type != decl_init_brace){
-		int array;
-
-		if((array = !!type_ref_is(tfor, type_ref_array)) || type_ref_is_s_or_u(tfor)){
-			/* TODO: struct copy init */
-			DIE_AT(&init->where,
-					"%s must be initialised with an initialiser list%s",
-					type_ref_to_str(tfor), array ? "" : " (TODO: struct copy)");
-		}
+	/* check for non-brace init */
+	if(type_ref_is_s_or_u(tfor)
+	&& init
+	&& init->type == decl_init_scalar)
+	{
+		/* TODO: struct copy init */
+		DIE_AT(&init->where,
+				"%s must be initialised with an initialiser list",
+				type_ref_to_str(tfor));
 	}
 
 	ret = decl_init_brace_up_r(NULL, &it, tfor, stab);
