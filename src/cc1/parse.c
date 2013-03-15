@@ -948,13 +948,11 @@ static symtable_gasm *parse_gasm(void)
 	return g;
 }
 
-symtable_global *parse()
+void parse(symtable_global *globals)
 {
-	symtable_global *globals;
 	decl **decls = NULL;
 	symtable_gasm **last_gasms = NULL;
 
-	globals = symtabg_new();
 	current_scope = &globals->stab;
 
 	for(;;){
@@ -1003,6 +1001,4 @@ symtable_global *parse()
 	}
 
 	current_scope->static_asserts = static_asserts;
-
-	return globals;
 }

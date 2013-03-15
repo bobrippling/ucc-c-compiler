@@ -97,7 +97,7 @@ struct statement
 	{ "__attribute__", token_attribute }
 };
 
-static FILE *infile;
+static tokenise_line_f *in_func;
 char *current_fname;
 int buffereof = 0;
 int current_fname_used;
@@ -151,12 +151,9 @@ static void tokenise_read_line()
 		buffer = NULL;
 	}
 
-	l = fline(infile);
+	l = in_func();
 	if(!l){
-		if(feof(infile))
-			buffereof = 1;
-		else
-			die("read():");
+		buffereof = 1;
 	}else{
 		/* check for preprocessor line info */
 		int lno;
@@ -218,9 +215,9 @@ static void tokenise_read_line()
 	bufferpos = buffer = l;
 }
 
-void tokenise_set_file(FILE *f, const char *nam)
+void tokenise_set_input(tokenise_line_f *func, const char *nam)
 {
-	infile = f;
+	in_func = func;
 
 	if(!current_fname_used)
 		free(current_fname);
@@ -234,6 +231,7 @@ void tokenise_set_file(FILE *f, const char *nam)
 
 	current_line = 0;
 	buffereof = 0;
+	parse_finished = 0;
 	nexttoken();
 }
 

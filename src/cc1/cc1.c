@@ -151,6 +151,7 @@ const char *section_names[NUM_SECTIONS] = {
 	EXPAND_QUOTE(SECTION_BSS),
 };
 
+static FILE *infile;
 
 /* compile time check for enum <-> int compat */
 #define COMP_CHECK(pre, test) \
@@ -280,11 +281,23 @@ void sigh(int sig)
 	io_cleanup();
 }
 
+static char *next_line()
+{
+	char *s = fline(infile);
+
+	if(!s){
+		if(feof(infile))
+			return NULL;
+		else
+			die("read():");
+	}
+	return s;
+}
+
 int main(int argc, char **argv)
 {
 	static symtable_global *globs;
 	void (*gf)(symtable_global *);
-	FILE *f;
 	const char *fname;
 	int i;
 
@@ -408,11 +421,11 @@ usage:
 	}
 
 	if(fname && strcmp(fname, "-")){
-		f = fopen(fname, "r");
-		if(!f)
+		infile = fopen(fname, "r");
+		if(!infile)
 			ccdie(0, "open %s:", fname);
 	}else{
-		f = stdin;
+		infile = stdin;
 		fname = "-";
 	}
 
@@ -426,10 +439,12 @@ usage:
 
 	show_current_line = fopt_mode & FOPT_SHOW_LINE;
 
-	tokenise_set_file(f, fname);
-	globs = parse();
-	if(f != stdin)
-		fclose(f);
+	globs = symtabg_new();
+	tokenise_set_input(next_line, fname);
+	parse(globs);
+
+	if(infile != stdin)
+		fclose(infile), infile = NULL;
 
 	fold(&globs->stab);
 	symtab_fold(&globs->stab, 0);
