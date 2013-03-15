@@ -239,11 +239,15 @@ static decl_init **decl_init_brace_up_array2(
 						DESIG_TO_STR(des->type));
 			}
 
+			FOLD_EXPR(des->bits.range[0], stab);
 			const_fold(des->bits.range[0], &k[0]);
-			if(des->bits.range[1])
+
+			if(des->bits.range[1]){
+				FOLD_EXPR(des->bits.range[1], stab);
 				const_fold(des->bits.range[1], &k[1]);
-			else
+			}else{
 				memcpy(&k[1], &k[0], sizeof k[1]);
+			}
 
 			if(k[0].type != CONST_VAL || k[1].type != CONST_VAL)
 				DIE_AT(&this->where, "non-constant array-designator");
