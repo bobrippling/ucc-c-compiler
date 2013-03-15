@@ -134,13 +134,11 @@ decl *decl_new()
 	return d;
 }
 
-decl *decl_new_type(enum type_primitive p)
+decl *decl_new_tref(char *sp, type_ref *ref)
 {
 	decl *d = decl_new();
-	type *t = d->ref->bits.type;
-
-	t->primitive = p;
-
+	d->ref = ref;
+	d->spel = sp;
 	return d;
 }
 
