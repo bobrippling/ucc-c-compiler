@@ -33,7 +33,8 @@ static func_builtin_parse parse_unreachable,
                           parse_expect,
                           parse_strlen,
                           parse_is_signed,
-                          parse_memset;
+                          parse_memset,
+                          parse_memcpy;
 
 typedef struct
 {
@@ -58,7 +59,8 @@ builtin_table builtins[] = {
 
 }, no_prefix_builtins[] = {
 	{ "strlen", parse_strlen },
-	{ "memset", parse_memset }, /* TODO: __builtin_memset and memcpy too */
+	{ "memset", parse_memset },
+	{ "memcpy", parse_memcpy },
 
 	{ NULL, NULL }
 };
@@ -77,10 +79,14 @@ static builtin_table *builtin_find(const char *sp)
 	static unsigned prefix_len;
 	builtin_table *found;
 
+	found = builtin_table_search(no_prefix_builtins, sp);
+	if(found)
+		return found;
+
 	if(!prefix_len)
 		prefix_len = strlen(PREFIX);
 
-	if(strlen(sp) <= prefix_len)
+	if(strlen(sp) < prefix_len)
 		return NULL;
 
 	if(!strncmp(sp, PREFIX, prefix_len))
@@ -360,6 +366,17 @@ expr *builtin_new_memcpy(expr *to, expr *from, size_t len)
 	fcall->lhs = to;
 	fcall->rhs = from;
 	fcall->bits.iv.val = len;
+
+	return fcall;
+}
+
+static expr *parse_memcpy(void)
+{
+	expr *fcall = parse_any_args();
+
+	ICE("TODO: builtin memcpy parsing");
+
+	expr_mutate_builtin_gen(fcall, memcpy);
 
 	return fcall;
 }
