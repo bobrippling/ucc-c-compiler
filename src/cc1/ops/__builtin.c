@@ -264,6 +264,36 @@ static decl *decl_new_tref(char *sp, type_ref *ref)
 }
 #endif
 
+static void builtin_memcpy_single(void)
+{
+	static type_ref *t1;
+
+	if(!t1)
+		t1 = type_ref_cached_INTPTR_T();
+
+	/* ds */
+
+	out_swap(); // sd
+	out_dup();  // sdd
+	out_pulltop(2); // dds
+
+	out_dup();      /* ddss */
+	out_deref();    /* dds. */
+	out_pulltop(2); /* ds.d */
+	out_swap();     /* dsd. */
+	out_store();    /* ds. */
+	out_pop();      /* ds */
+
+	out_push_i(t1, 1); /* ds1 */
+	out_op(op_plus);   /* dS */
+
+	out_swap();        /* Sd */
+	out_push_i(t1, 1); /* Sd1 */
+	out_op(op_plus);   /* SD */
+
+	out_swap(); /* DS */
+}
+
 void builtin_gen_memcpy(expr *e, symtable *stab)
 {
 #ifdef BUILTIN_USE_LIBC
@@ -283,39 +313,37 @@ void builtin_gen_memcpy(expr *e, symtable *stab)
 	lea_expr(e->lhs, stab);
 	out_call(3, e->tree_type, ctype);
 #else
-	/* TODO: backend rep movsb
-	 * TODO: large/word sized copies
-	 */
+	/* TODO: backend rep movsb */
 	unsigned i = e->bits.iv.val;
-	type_ref *const tcptr = type_ref_cached_CHAR_PTR(),
-					 *const t1    = type_ref_cached_INTPTR_T();
+	type_ref *tptr = type_ref_new_ptr(
+				type_ref_cached_MAX_FOR(e->bits.iv.val),
+				qual_none);
+	unsigned tptr_sz = type_ref_size(tptr, &e->where);
 
 	lea_expr(e->lhs, stab); /* d */
-	out_change_type(tcptr);
-	out_dup();              /* dd */
-	lea_expr(e->rhs, stab); /* dds */
-	out_change_type(tcptr);
+	lea_expr(e->rhs, stab); /* ds */
 
-	while(i --> 0){
-		out_dup();      /* ddss */
-		out_deref();    /* dds. */
-		out_pulltop(2); /* ds.d */
-		out_swap();     /* dsd. */
-		out_store();    /* ds. */
-		out_pop();      /* ds */
+	while(i > 0){
+		/* as many copies as we can */
+		out_change_type(tptr);
+		out_swap();
+		out_change_type(tptr);
+		out_swap();
 
-		out_push_i(t1, 1); /* ds1 */
-		out_op(op_plus);   /* dS */
+		while(i >= tptr_sz){
+			i -= tptr_sz;
+			builtin_memcpy_single();
+		}
 
-		out_swap();        /* Sd */
-		out_push_i(t1, 1); /* Sd1 */
-		out_op(op_plus);   /* SD */
-
-		out_dup();      /* SDD */
-		out_pulltop(2); /* DDS */
+		if(i > 0){
+			tptr_sz /= 2;
+			tptr = type_ref_new_ptr(
+					type_ref_cached_MAX_FOR(tptr_sz),
+					qual_none);
+		}
 	}
 
-	out_pop(); /* dd */
+	/* ds */
 	out_pop(); /* d */
 #endif
 }
