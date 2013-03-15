@@ -37,10 +37,7 @@ const char *decl_init_to_str(enum decl_init_type);
 int         decl_init_is_const(decl_init *dinit, symtable *stab);
 int         decl_init_is_zero(decl_init *dinit);
 
-void decl_init_brace_up(decl *d); /* normalises braces */
-
-/* folds + casts - only used for global inits */
-void decl_init_fold(decl *d, symtable *stab);
+void decl_init_brace_up_fold(decl *d, symtable *); /* normalises braces */
 
 /* creates assignment exprs - only used for local inits */
 void decl_init_create_assignments_base(

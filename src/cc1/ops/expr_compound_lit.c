@@ -29,8 +29,7 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 	/* fold the initialiser */
 	UCC_ASSERT(d->init, "no init for comp.literal");
 
-	decl_init_brace_up(d);
-	decl_init_fold(d, stab);
+	decl_init_brace_up_fold(d, stab);
 
 	/*
 	 * update the type, for example if an array type has been completed

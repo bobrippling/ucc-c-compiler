@@ -48,11 +48,14 @@ typedef struct
 
 #define ITER_WHERE(it, def) (it && it->pos[0] ? &it->pos[0]->where : def)
 
-typedef decl_init **aggregate_brace_f(decl_init **, init_iter *, void *, int);
+typedef decl_init **aggregate_brace_f(decl_init **, init_iter *,
+		symtable *,
+		void *, int);
 
 static decl_init *decl_init_brace_up_aggregate(
 		decl_init *current,
 		init_iter *iter,
+		symtable *stab,
 		aggregate_brace_f *,
 		void *arg1, int arg2);
 
@@ -151,11 +154,12 @@ const char *decl_init_to_str(enum decl_init_type t)
  * -------------
  */
 
-static decl_init *decl_init_brace_up_r(decl_init *current, init_iter *, type_ref *);
+static decl_init *decl_init_brace_up_r(decl_init *current, init_iter *, type_ref *, symtable *stab);
 
 
 static decl_init *decl_init_brace_up_scalar(
-		decl_init *current, init_iter *iter, type_ref *const tfor)
+		decl_init *current, init_iter *iter, type_ref *const tfor,
+		symtable *stab)
 {
 	decl_init *first_init;
 
@@ -186,7 +190,25 @@ static decl_init *decl_init_brace_up_scalar(
 	if(first_init->type == decl_init_brace){
 		init_iter it;
 		it.pos = first_init->bits.inits;
-		return decl_init_brace_up_r(current, &it, tfor);
+		return decl_init_brace_up_r(current, &it, tfor, stab);
+	}
+
+	/* fold */
+	{
+		char buf[TYPE_REF_STATIC_BUFSIZ];
+		expr *e = FOLD_EXPR(first_init->bits.expr, stab);
+
+		if(!fold_type_ref_equal(
+					tfor, e->tree_type, &first_init->where,
+					WARN_ASSIGN_MISMATCH,
+					DECL_CMP_ALLOW_VOID_PTR | DECL_CMP_ALLOW_SIGNED_UNSIGNED,
+					"mismatching types in initialisation (%s <-- %s)",
+					type_ref_to_str_r(buf, tfor), type_ref_to_str(e->tree_type)))
+		{
+			expr *cast = expr_new_cast(tfor, 1);
+			cast->expr = first_init->bits.expr;
+			first_init->bits.expr = cast;
+		}
 	}
 
 	return first_init;
@@ -194,8 +216,8 @@ static decl_init *decl_init_brace_up_scalar(
 
 static decl_init **decl_init_brace_up_array2(
 		decl_init **current, init_iter *iter,
-		type_ref *next_type,
-		const int limit)
+		symtable *stab,
+		type_ref *next_type, const int limit)
 {
 	unsigned n = dynarray_count(current), i = 0, j = 0;
 	decl_init *this;
@@ -248,7 +270,7 @@ static decl_init **decl_init_brace_up_array2(
 			if(i < n && current[i] != DYNARRAY_NULL)
 				replacing = current[i]; /* replacing object `i' */
 
-			braced = decl_init_brace_up_r(replacing, iter, next_type);
+			braced = decl_init_brace_up_r(replacing, iter, next_type, stab);
 
 			dynarray_padinsert(&current, i, &n, braced);
 
@@ -266,6 +288,7 @@ static decl_init **decl_init_brace_up_array2(
 
 static decl_init **decl_init_brace_up_sue2(
 		decl_init **current, init_iter *iter,
+		symtable *stab,
 		struct_union_enum_st *sue, const int is_anon)
 {
 	unsigned n = dynarray_count(current), i;
@@ -322,8 +345,7 @@ static decl_init **decl_init_brace_up_sue2(
 							&& current[j] != DYNARRAY_NULL ? current[j] : NULL;
 
 						braced_sub = decl_init_brace_up_aggregate(
-								replacing,
-								iter,
+								replacing, iter, stab,
 								(aggregate_brace_f *)&decl_init_brace_up_sue2, in, 1);
 
 						found = 1;
@@ -351,8 +373,8 @@ static decl_init **decl_init_brace_up_sue2(
 
 			if(!braced_sub){
 				braced_sub = decl_init_brace_up_r(
-						replacing,
-						iter, mem->struct_member->ref);
+						replacing, iter,
+						mem->struct_member->ref, stab);
 			}
 
 			dynarray_padinsert(&current, i, &n, braced_sub);
@@ -376,6 +398,7 @@ static int find_desig(decl_init **const ar)
 static decl_init *decl_init_brace_up_aggregate(
 		decl_init *current,
 		init_iter *iter,
+		symtable *stab,
 		aggregate_brace_f *brace_up_f,
 		void *arg1, int arg2)
 {
@@ -415,7 +438,8 @@ static decl_init *decl_init_brace_up_aggregate(
 
 			first->bits.inits = brace_up_f(
 					current ? current->bits.inits : NULL,
-					&it, arg1, arg2);
+					&it,
+					stab, arg1, arg2);
 
 			free(old_subs);
 
@@ -437,7 +461,7 @@ static decl_init *decl_init_brace_up_aggregate(
 
 		ret->bits.inits = brace_up_f(
 				current ? current->bits.inits : NULL,
-				&it, arg1, arg2);
+				&it, stab, arg1, arg2);
 
 		*(iter->pos += desig_index) = saved;
 
@@ -448,13 +472,15 @@ static decl_init *decl_init_brace_up_aggregate(
 		/* we need to pull from iter, bracing up our children inits */
 		r->bits.inits = brace_up_f(
 				current ? current->bits.inits : NULL,
-				iter, arg1, arg2);
+				iter, stab, arg1, arg2);
 
 		return r;
 	}
 }
 
-static decl_init *decl_init_brace_up_r(decl_init *current, init_iter *iter, type_ref *tfor)
+static decl_init *decl_init_brace_up_r(
+		decl_init *current, init_iter *iter,
+		type_ref *tfor, symtable *stab)
 {
 	struct_union_enum_st *sue;
 
@@ -467,7 +493,7 @@ static decl_init *decl_init_brace_up_r(decl_init *current, init_iter *iter, type
 			goto bad_init;
 
 		return decl_init_brace_up_aggregate(
-				current, iter,
+				current, iter, stab,
 				(aggregate_brace_f *)&decl_init_brace_up_array2,
 				type_ref_next(tfor), limit);
 	}
@@ -481,14 +507,16 @@ bad_init:
 
 	if((sue = type_ref_is_s_or_u(tfor)))
 		return decl_init_brace_up_aggregate(
-				current, iter,
+				current, iter, stab,
 				(aggregate_brace_f *)&decl_init_brace_up_sue2,
 				sue, 0 /* is anon */);
 
-	return decl_init_brace_up_scalar(current, iter, tfor);
+	return decl_init_brace_up_scalar(current, iter, tfor, stab);
 }
 
-static decl_init *decl_init_brace_up_start(decl_init *init, type_ref **ptfor)
+static decl_init *decl_init_brace_up_start(
+		decl_init *init, type_ref **ptfor,
+		symtable *stab)
 {
 	decl_init *inits[2] = {
 		init, NULL
@@ -508,7 +536,7 @@ static decl_init *decl_init_brace_up_start(decl_init *init, type_ref **ptfor)
 		}
 	}
 
-	ret = decl_init_brace_up_r(NULL, &it, tfor);
+	ret = decl_init_brace_up_r(NULL, &it, tfor, stab);
 
 	if(type_ref_is_incomplete_array(tfor)){
 		/* complete it */
@@ -519,9 +547,9 @@ static decl_init *decl_init_brace_up_start(decl_init *init, type_ref **ptfor)
 	return ret;
 }
 
-void decl_init_brace_up(decl *d)
+void decl_init_brace_up_fold(decl *d, symtable *stab)
 {
-	d->init = decl_init_brace_up_start(d->init, &d->ref);
+	d->init = decl_init_brace_up_start(d->init, &d->ref, stab);
 }
 
 void decl_init_create_assignments_base(
@@ -628,54 +656,4 @@ void decl_init_create_assignments_base(
 			break;
 		}
 	}
-}
-
-static void decl_init_fold_r(decl_init *di, type_ref *tto, symtable *stab)
-{
-	switch(di->type){
-		case decl_init_scalar:
-		{
-			char buf[TYPE_REF_STATIC_BUFSIZ];
-			expr *e = FOLD_EXPR(di->bits.expr, stab);
-
-			if(!fold_type_ref_equal(
-						tto, e->tree_type, &di->where,
-						WARN_ASSIGN_MISMATCH,
-						DECL_CMP_ALLOW_VOID_PTR | DECL_CMP_ALLOW_SIGNED_UNSIGNED,
-						"mismatching types in initialisation (%s <-- %s)",
-						type_ref_to_str_r(buf, tto), type_ref_to_str(e->tree_type)))
-			{
-				expr *cast = expr_new_cast(tto, 1);
-				cast->expr = di->bits.expr;
-				di->bits.expr = cast;
-			}
-			break;
-		}
-
-		case decl_init_brace:
-		{
-			struct_union_enum_st *sue = type_ref_is_s_or_u(tto);
-			decl_init **i;
-			int idx;
-
-			for(idx = 0, i = di->bits.inits; *i; i++, idx++){
-				decl_init *sub = *i;
-
-				if(sub == DYNARRAY_NULL || sub == DYNARRAY_FLAG)
-					continue;
-
-				if(sue)
-					decl_init_fold_r(sub, sue->members[idx]->struct_member->ref, stab);
-				else
-					decl_init_fold_r(sub, type_ref_next(tto), stab);
-			}
-			break;
-		}
-	}
-}
-
-void decl_init_fold(decl *d, symtable *stab)
-{
-	/* only called on global decl inits */
-	decl_init_fold_r(d->init, d->ref, stab);
 }
