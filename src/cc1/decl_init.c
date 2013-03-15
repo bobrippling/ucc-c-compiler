@@ -274,6 +274,7 @@ static decl_init **decl_init_brace_up_array2(
 			if(i < n && current[i] != DYNARRAY_NULL)
 				replacing = current[i]; /* replacing object `i' */
 
+			/* check for char[] init */
 			braced = decl_init_brace_up_r(replacing, iter, next_type, stab);
 
 			dynarray_padinsert(&current, i, &n, braced);
@@ -482,32 +483,80 @@ static decl_init *decl_init_brace_up_aggregate(
 	}
 }
 
+static void die_incomplete(init_iter *iter, type_ref *tfor)
+{
+	DIE_AT(ITER_WHERE(iter, &tfor->where),
+			"initialising %s", type_ref_to_str(tfor));
+}
+
+static decl_init *decl_init_brace_up_array_pre(
+		decl_init *current, init_iter *iter,
+		type_ref *next_type, symtable *stab)
+{
+	const int limit = type_ref_is_incomplete_array(next_type)
+		? -1 : type_ref_array_len(next_type);
+
+	type_ref *next = type_ref_next(next_type);
+
+	const int for_str_ar = !!type_ref_is_type(
+			type_ref_is_array(next_type), type_char);
+
+	decl_init *this;
+
+	if(!type_ref_is_complete(next))
+		die_incomplete(iter, next_type);
+
+	if(for_str_ar
+	&& (this = *iter->pos)
+	&& this->type == decl_init_scalar)
+	{
+		consty k;
+
+		FOLD_EXPR(this->bits.expr, stab);
+		const_fold(this->bits.expr, &k);
+
+		if(k.type == CONST_STRK){
+			unsigned str_i;
+
+			if(k.bits.str->wide)
+				ICE("TODO: wide string init");
+
+			decl_init *braced = decl_init_new(decl_init_brace);
+
+			for(str_i = 0; str_i < k.bits.str->len; str_i++){
+				decl_init *char_init = decl_init_new(decl_init_scalar);
+
+				char_init->bits.expr = expr_new_val(k.bits.str->str[str_i]);
+
+				dynarray_add(&braced->bits.inits, char_init);
+			}
+
+			++iter->pos;
+
+			return braced;
+		}
+	}
+
+	return decl_init_brace_up_aggregate(
+			current, iter, stab,
+			(aggregate_brace_f *)&decl_init_brace_up_array2,
+			type_ref_next(next_type), limit);
+}
+
+
 static decl_init *decl_init_brace_up_r(
 		decl_init *current, init_iter *iter,
 		type_ref *tfor, symtable *stab)
 {
 	struct_union_enum_st *sue;
 
-	if(type_ref_is(tfor, type_ref_array)){
-		const int limit = type_ref_is_incomplete_array(tfor)
-			? -1 : type_ref_array_len(tfor);
-		type_ref *next = type_ref_next(tfor);
-
-		if(!type_ref_is_complete(next))
-			goto bad_init;
-
-		return decl_init_brace_up_aggregate(
-				current, iter, stab,
-				(aggregate_brace_f *)&decl_init_brace_up_array2,
-				type_ref_next(tfor), limit);
-	}
+	if(type_ref_is(tfor, type_ref_array))
+		return decl_init_brace_up_array_pre(
+				current, iter, tfor, stab);
 
 	/* incomplete check _after_ array, since we allow T x[] */
-	if(!type_ref_is_complete(tfor)){
-bad_init:
-		DIE_AT(ITER_WHERE(iter, &tfor->where),
-				"initialising %s", type_ref_to_str(tfor));
-	}
+	if(!type_ref_is_complete(tfor))
+		die_incomplete(iter, tfor);
 
 	if((sue = type_ref_is_s_or_u(tfor)))
 		return decl_init_brace_up_aggregate(

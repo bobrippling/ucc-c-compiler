@@ -87,6 +87,12 @@ type_ref *type_ref_is_ptr(type_ref *r)
 	return r ? r->ref : NULL;
 }
 
+type_ref *type_ref_is_array(type_ref *r)
+{
+	r = type_ref_is(r, type_ref_array);
+	return r ? r->ref : NULL;
+}
+
 type *type_ref_get_type(type_ref *r)
 {
 	for(; r && r->type != type_ref_type; r = r->ref);
