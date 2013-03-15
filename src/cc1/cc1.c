@@ -20,6 +20,7 @@
 #include "sym.h"
 #include "fold_sym.h"
 #include "out/out.h"
+#include "ops/__builtin.h"
 
 struct
 {

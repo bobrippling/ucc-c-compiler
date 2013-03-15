@@ -533,8 +533,7 @@ void decl_init_create_assignments_base(
 		expr *zero = builtin_new_memset(
 				expr_new_addr(base),
 				0,
-				type_ref_size(tfor, &base->where),
-				1 /* aligned */);
+				type_ref_size(tfor, &base->where));
 
 		dynarray_add(
 				&code->codes,

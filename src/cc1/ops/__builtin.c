@@ -32,9 +32,11 @@ static func_builtin_parse parse_unreachable,
                           parse_frame_address,
                           parse_expect,
                           parse_strlen,
-                          parse_is_signed,
+                          parse_is_signed;
+#ifdef BUILTIN_LIBC_FUNCTIONS
                           parse_memset,
                           parse_memcpy;
+#endif
 
 typedef struct
 {
@@ -59,8 +61,10 @@ builtin_table builtins[] = {
 
 }, no_prefix_builtins[] = {
 	{ "strlen", parse_strlen },
+#ifdef BUILTIN_LIBC_FUNCTIONS
 	{ "memset", parse_memset },
 	{ "memcpy", parse_memcpy },
+#endif
 
 	{ NULL, NULL }
 };
@@ -150,18 +154,13 @@ static expr *parse_any_args(void)
 
 static void fold_memset(expr *e, symtable *stab)
 {
-	if(e->lhs){
-		FOLD_EXPR(e->lhs, stab);
+	FOLD_EXPR(e->lhs, stab);
 
-		if(e->bits.builtin_memset.len == 0)
-			WARN_AT(&e->where, "zero size memset");
+	if(e->bits.builtin_memset.len == 0)
+		WARN_AT(&e->where, "zero size memset");
 
-		if((unsigned)e->bits.builtin_memset.ch > 255)
-			WARN_AT(&e->where, "memset with value > UCHAR_MAX");
-	}else{
-		/* parsed memset */
-		ICE("TODO: parsed memset fold/gen");
-	}
+	if((unsigned)e->bits.builtin_memset.ch > 255)
+		WARN_AT(&e->where, "memset with value > UCHAR_MAX");
 
 	e->tree_type = type_ref_cached_VOID_PTR();
 }
@@ -170,9 +169,7 @@ static void builtin_gen_memset(expr *e, symtable *stab)
 {
 	size_t n, rem;
 	unsigned i;
-	type_ref *tzero = e->bits.builtin_memset.aligned
-		? type_ref_cached_MAX_FOR(e->bits.builtin_memset.len)
-		: NULL;
+	type_ref *tzero = type_ref_cached_MAX_FOR(e->bits.builtin_memset.len);
 	type_ref *textra, *textrap;
 
 	if(!tzero)
@@ -223,7 +220,7 @@ static void builtin_gen_memset(expr *e, symtable *stab)
 	out_pop();
 }
 
-expr *builtin_new_memset(expr *p, int ch, size_t len, int aligned_to_len)
+expr *builtin_new_memset(expr *p, int ch, size_t len)
 {
 	expr *fcall = expr_new_funcall();
 
@@ -234,11 +231,11 @@ expr *builtin_new_memset(expr *p, int ch, size_t len, int aligned_to_len)
 	fcall->lhs = p;
 	fcall->bits.builtin_memset.ch = ch;
 	fcall->bits.builtin_memset.len = len;
-	fcall->bits.builtin_memset.aligned = aligned_to_len;
 
 	return fcall;
 }
 
+#ifdef BUILTIN_LIBC_FUNCTIONS
 static expr *parse_memset(void)
 {
 	expr *fcall = parse_any_args();
@@ -249,6 +246,7 @@ static expr *parse_memset(void)
 
 	return fcall;
 }
+#endif
 
 /* --- memcpy */
 
@@ -370,6 +368,7 @@ expr *builtin_new_memcpy(expr *to, expr *from, size_t len)
 	return fcall;
 }
 
+#ifdef BUILTIN_LIBC_FUNCTIONS
 static expr *parse_memcpy(void)
 {
 	expr *fcall = parse_any_args();
@@ -380,6 +379,7 @@ static expr *parse_memcpy(void)
 
 	return fcall;
 }
+#endif
 
 /* --- unreachable */
 
