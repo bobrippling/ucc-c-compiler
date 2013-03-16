@@ -136,11 +136,10 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 		}
 
 	}else if((r = type_ref_is(tfor, type_ref_array))){
-		type_ref *next = type_ref_next(tfor);
-
 		if(init){
 			size_t i;
 			decl_init **p, *last_nonflag = NULL;
+			type_ref *next = type_ref_next(tfor);
 
 			UCC_ASSERT(init->type == decl_init_brace, "unbraced struct");
 			UCC_ASSERT(type_ref_is_complete(tfor), "incomplete array init");
