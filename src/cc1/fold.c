@@ -205,6 +205,7 @@ int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 
 	}else{
 		int align_max = 1;
+		int sz_max = 0;
 		int offset = 0;
 		sue_member **i;
 
@@ -238,23 +239,23 @@ normal:
 			}
 
 
-			{
+			if(sue->primitive == type_struct){
 				int after_space;
 
 				pack_next(&offset, &after_space, sz, align);
 				/* offset is the end of the decl, after_space is the start */
 
-				if(sue->primitive == type_struct)
-					d->struct_offset = after_space;
-				/* else - union, all offsets are the same */
-
-				if(align > align_max)
-					align_max = align;
+				d->struct_offset = after_space;
 			}
+
+			if(align > align_max)
+				align_max = align;
+			if(sz > sz_max)
+				sz_max = sz;
 		}
 
 		sue->align = align_max;
-		return sue->size = offset;
+		return sue->size = sue->primitive == type_struct ? offset : sz_max;
 	}
 }
 
