@@ -1,11 +1,17 @@
 // RUN: %ucc -fleading-underscore %s
-// RUN: %ucc -S -o- -fleading-underscore %s | grep '[^_]no_leading'
+// RUN: ! %ucc -S -o- -fleading-underscore %s | grep '_no_leading'
 // RUN: %ucc -S -o- -fleading-underscore %s | grep '_main'
 
-int i asm("no_leading");
+int i asm("no_leading"), j;
+
+extern g();
 
 main()
 {
-	i = 2;
+	extern h();
+
+	f(), g(), h();
+
+	i = j = 2;
 	return i;
 }
