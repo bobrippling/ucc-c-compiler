@@ -1,4 +1,4 @@
-union
+union A
 {
 	struct
 	{
@@ -6,4 +6,8 @@ union
 	} a;
 	int i;
 	char *p;
-} x = { 1, 2, 3 };
+} x = { .i = 1, 2, 3 };
+
+y=sizeof(x);
+
+union A b = {};

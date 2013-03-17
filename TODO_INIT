@@ -1,4 +1,4 @@
-union inits
+local union inits
 
 register stack space bug
 

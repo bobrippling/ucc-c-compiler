@@ -383,6 +383,9 @@ static decl_init **decl_init_brace_up_sue2(
 			}
 
 			dynarray_padinsert(&current, i, &n, braced_sub);
+
+			if(sue->primitive == type_union)
+				break;
 		}
 	}
 
@@ -656,6 +659,9 @@ void decl_init_create_assignments_base(
 
 				if(sue){
 					decl *smem = sue->members[idx]->struct_member;
+
+					if(sue->primitive == type_union)
+						ICE("TODO: non-global union init");
 
 					UCC_ASSERT(di != DYNARRAY_FLAG, "range init for struct");
 

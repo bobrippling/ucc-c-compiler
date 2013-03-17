@@ -169,6 +169,31 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 			asm_declare_pad(f, type_ref_size(r, NULL), "empty array");
 		}
 
+	}else if((r = type_ref_is_type(tfor, type_union))){
+		/* union inits are decl_init_brace with spaces up to the first union init,
+		 * then NULL/end of the init-array */
+		struct_union_enum_st *sue = type_ref_is_s_or_u(r);
+		unsigned i, sub = 0;
+
+		UCC_ASSERT(init->type == decl_init_brace, "brace init expected");
+
+		/* skip the empties until we get to one */
+		for(i = 0; init->bits.inits[i] == DYNARRAY_NULL; i++);
+
+		if(init->bits.inits[i]){
+			/* null union init */
+			type_ref *mem_r = sue->members[i]->struct_member->ref;
+
+			/* union init, member at index `i' */
+			asm_declare_init(f, init->bits.inits[i], mem_r);
+
+			sub = type_ref_size(mem_r, NULL);
+		}
+
+		asm_declare_pad(f,
+				type_ref_size(r, NULL) - sub,
+				"union extra");
+
 	}else{
 		if(!init){
 			asm_declare_pad(f, type_ref_size(tfor, NULL), "null scalar init");
