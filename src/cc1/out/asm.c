@@ -93,7 +93,7 @@ int asm_type_size(type_ref *r)
 static void asm_declare_pad(FILE *f, unsigned pad, const char *why)
 {
 	if(pad)
-		fprintf(f, ".space %u ; %s\n", pad, why);
+		fprintf(f, ".space %u # %s\n", pad, why);
 }
 
 static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
