@@ -134,5 +134,12 @@ expr *expr_new_assign(expr *to, expr *from)
 	return ass;
 }
 
+expr *expr_new_assign_init(expr *to, expr *from)
+{
+	expr *e = expr_new_assign(to, from);
+	e->assign_is_init = 1;
+	return e;
+}
+
 void gen_expr_style_assign(expr *e, symtable *stab)
 { (void)e; (void)stab; /* TODO */ }

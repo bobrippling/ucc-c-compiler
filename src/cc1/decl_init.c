@@ -634,7 +634,7 @@ void decl_init_create_assignments_base(
 			dynarray_add(
 					&code->codes,
 					expr_to_stmt(
-						expr_new_assign(base, init->bits.expr),
+						expr_new_assign_init(base, init->bits.expr),
 						code->symtab));
 			break;
 
@@ -690,7 +690,7 @@ void decl_init_create_assignments_base(
 							 *        ^-----------------^
 							 *          already present
 							 */
-							last_assign->expr = expr_new_assign(new_base, last_assign->expr);
+							last_assign->expr = expr_new_assign_init(new_base, last_assign->expr);
 						}else{
 							/* memcpy from the previous init */
 							expr *memcp;

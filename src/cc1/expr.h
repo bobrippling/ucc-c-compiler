@@ -191,6 +191,7 @@ expr *expr_new_sizeof_type(type_ref *, int is_typeof);
 expr *expr_new_sizeof_expr(expr *, int is_typeof);
 expr *expr_new_funcall(void);
 expr *expr_new_assign(         expr *to, expr *from);
+expr *expr_new_assign_init(    expr *to, expr *from);
 expr *expr_new_assign_compound(expr *to, expr *from, enum op_type);
 expr *expr_new__Generic(expr *test, struct generic_lbl **lbls);
 expr *expr_new_block(type_ref *rt, funcargs *args, stmt *code);
