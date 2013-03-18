@@ -29,8 +29,15 @@ typedef struct consty
 	} bits;
 } consty;
 #define CONST_AT_COMPILE_TIME(t) (t != CONST_NO && t != CONST_NEED_ADDR)
-#define CONST_ADDR_OR_NEED(d) (DECL_IS_ARRAY(d) || DECL_IS_FUNC(d) \
+
+#define CONST_ADDR_OR_NEED_TREF(r)  \
+	(  type_ref_is_array(r)           \
+	|| type_ref_is_decayed_array(r)   \
+	|| type_ref_is(r, type_ref_func)  \
 		? CONST_ADDR : CONST_NEED_ADDR)
+
+#define CONST_ADDR_OR_NEED(d) CONST_ADDR_OR_NEED_TREF((d)->ref)
+
 
 typedef void         func_fold(          expr *, symtable *);
 typedef void         func_gen(           expr *, symtable *);

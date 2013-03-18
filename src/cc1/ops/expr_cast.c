@@ -68,10 +68,7 @@ void fold_const_expr_cast(expr *e, consty *k)
 		case CONST_NO:
 			break;
 
-		case CONST_NEED_ADDR:
-			k->type = CONST_NO; /* e.g. (int *)i */
-			break;
-
+		case CONST_NEED_ADDR: /* allow if we're casting to a same-sized type */
 		case CONST_ADDR:
 		case CONST_STRK:
 		{
