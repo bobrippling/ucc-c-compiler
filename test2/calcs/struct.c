@@ -12,7 +12,7 @@ struct ST
   struct RT Z; // 808
 }; // sz = 4 + 4 + 8 + 808 = 824
 
-int *foo(struct ST *s)
+int *f(struct ST *s)
 {
   return &s[1].Z.B[5][13];
 
@@ -22,4 +22,9 @@ int *foo(struct ST *s)
 	 * [5]  = 844 + (20*4)*5 = 844+400 = 1244
 	 * [13] = 1244 + 4*13 = 1244 + 52 = 1296
 	 */
+}
+
+main()
+{
+	return f((void *)0) == 1296;
 }
