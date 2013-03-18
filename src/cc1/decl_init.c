@@ -612,7 +612,10 @@ static decl_init *decl_init_brace_up_start(
 
 void decl_init_brace_up_fold(decl *d, symtable *stab)
 {
-	d->init = decl_init_brace_up_start(d->init, &d->ref, stab);
+	if(!d->init_normalised){
+		d->init = decl_init_brace_up_start(d->init, &d->ref, stab);
+		d->init_normalised = 1;
+	}
 }
 
 

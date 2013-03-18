@@ -1,5 +1,3 @@
-local union inits
-
 register stack space bug
 
 initialise aggregate from aggregate expr

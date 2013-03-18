@@ -142,6 +142,7 @@ struct decl
 	expr *field_width;
 #endif
 	int struct_offset;
+	int init_normalised;
 
 	sym *sym;
 
