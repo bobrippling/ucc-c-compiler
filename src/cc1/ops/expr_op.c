@@ -188,13 +188,20 @@ type_ref *op_required_promotion(
 			if(op == op_minus){
 				resolved = type_ref_cached_INTPTR_T();
 			}else if(op_is_relational(op)){
+ptr_relation:
 				if(op_is_comparison(op)){
 					char buf[TYPE_REF_STATIC_BUFSIZ];
 
-					fold_type_ref_equal(tlhs, trhs, w,
+					if(!fold_type_ref_equal(tlhs, trhs, w,
 							WARN_COMPARE_MISMATCH, 0,
-							"comparison of distinct pointer types lacks a cast (%s vs %s)",
-							type_ref_to_str(tlhs), type_ref_to_str_r(buf, trhs));
+							l_ptr && r_ptr
+							? "comparison of distinct pointer types lacks a cast (%s vs %s)"
+							: "comparison between pointer and integer (%s vs %s)",
+							type_ref_to_str(tlhs), type_ref_to_str_r(buf, trhs)))
+					{
+						/* not equal - ptr vs int */
+						*(l_ptr ? prhs : plhs) = type_ref_cached_INTPTR_T();
+					}
 				}
 
 				resolved = type_ref_cached_INT();
@@ -207,6 +214,11 @@ type_ref *op_required_promotion(
 
 		}else if(l_ptr || r_ptr){
 			/* + or - */
+
+			/* cmp between pointer and integer - missing cast */
+			if(op_is_relational(op))
+				goto ptr_relation;
+
 			switch(op){
 				default:
 					DIE_AT(w, "operation between pointer and integer must be + or -");
