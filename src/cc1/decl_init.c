@@ -615,13 +615,34 @@ void decl_init_brace_up_fold(decl *d, symtable *stab)
 	d->init = decl_init_brace_up_start(d->init, &d->ref, stab);
 }
 
+
+static expr *decl_init_create_assignments_sue_base(
+		struct_union_enum_st *sue, expr *base,
+		decl **psmem,
+		unsigned idx, unsigned n)
+{
+	decl *smem;
+
+	UCC_ASSERT(idx < n, "oob member init");
+
+	*psmem = smem = sue->members[idx]->struct_member;
+
+	return expr_new_struct(
+			base,
+			1 /* . */,
+			expr_new_identifier(smem->spel));
+}
+
 void decl_init_create_assignments_base(
 		decl_init *init,
 		type_ref *tfor, expr *base,
 		stmt *code)
 {
 	if(!init){
-		expr *zero = builtin_new_memset(
+		expr *zero;
+
+zero_init:
+		zero = builtin_new_memset(
 				expr_new_addr(base),
 				0,
 				type_ref_size(tfor, &base->where));
@@ -649,6 +670,31 @@ void decl_init_create_assignments_base(
 			unsigned idx;
 			expr *last_base = NULL;
 
+			if(sue && sue->primitive == type_union){
+				decl *smem;
+				expr *sue_base;
+
+				/* look for a non null init */
+				for(idx = 0, i = init->bits.inits; *i == DYNARRAY_NULL; i++, idx++);
+
+				if(*i){
+					UCC_ASSERT(*i != DYNARRAY_FLAG, "range init for union");
+
+					sue_base = decl_init_create_assignments_sue_base(
+							sue, base, &smem, idx, n);
+
+					decl_init_create_assignments_base(
+							*i,
+							smem->ref,
+							sue_base,
+							code);
+				}else{
+					/* zero init union - make sure we get all of it */
+					goto zero_init;
+				}
+				return;
+			}
+
 			for(idx = 0, i = init->bits.inits; idx < n; (*i ? i++ : 0), idx++){
 				decl_init *di = *i;
 				expr *new_base;
@@ -658,17 +704,13 @@ void decl_init_create_assignments_base(
 					di = NULL;
 
 				if(sue){
-					decl *smem = sue->members[idx]->struct_member;
-
-					if(sue->primitive == type_union)
-						ICE("TODO: non-global union init");
+					decl *smem;
 
 					UCC_ASSERT(di != DYNARRAY_FLAG, "range init for struct");
+					UCC_ASSERT(sue->primitive != type_union, "sneaky union");
 
-					new_base = expr_new_struct(
-							base,
-							1 /* . */,
-							expr_new_identifier(smem->spel));
+					new_base = decl_init_create_assignments_sue_base(
+							sue, base, &smem, idx, n);
 
 					next_type = smem->ref;
 				}else{
