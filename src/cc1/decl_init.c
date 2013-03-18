@@ -301,6 +301,17 @@ static decl_init **decl_init_brace_up_sue2(
 
 	UCC_ASSERT(sue->members, "no members in struct");
 
+	/* check for copy-init */
+	if((this = *iter->pos) && this->type == decl_init_scalar){
+		expr *e = FOLD_EXPR(this->bits.expr, stab);
+
+		if(type_ref_is_s_or_u(e->tree_type) == sue){
+			/* copy init */
+			dynarray_padinsert(&current, 0, &n, this);
+			return current;
+		}
+	}
+
 	for(i = 0; (this = *iter->pos); i++){
 		desig *des;
 		decl_init *braced_sub = NULL;
@@ -593,10 +604,14 @@ static decl_init *decl_init_brace_up_start(
 	&& init
 	&& init->type == decl_init_scalar)
 	{
-		/* TODO: struct copy init */
-		DIE_AT(&init->where,
-				"%s must be initialised with an initialiser list",
-				type_ref_to_str(tfor));
+		expr *e = FOLD_EXPR(init->bits.expr, stab);
+
+		if(!type_ref_equal(e->tree_type, tfor, DECL_CMP_EXACT_MATCH)){
+			DIE_AT(&init->where,
+					"%s must be initialised with an initialiser list",
+					type_ref_to_str(tfor));
+		}
+		/* else struct copy init */
 	}
 
 	ret = decl_init_brace_up_r(NULL, &it, tfor, stab);
@@ -672,6 +687,25 @@ zero_init:
 			decl_init **i, *last_nonflag = NULL;
 			unsigned idx;
 			expr *last_base = NULL;
+
+			if(sue
+			&& dynarray_count(init->bits.inits) == 1
+			&& init->bits.inits[0] != DYNARRAY_NULL
+			&& init->bits.inits[0]->type == decl_init_scalar)
+			{
+				/* check for struct copy */
+				expr *e = init->bits.inits[0]->bits.expr;
+
+				if(type_ref_is_s_or_u(e->tree_type) == sue){
+					dynarray_add(
+							&code->codes,
+							expr_to_stmt(
+								builtin_new_memcpy(
+									base, e, type_ref_size(e->tree_type, &e->where)),
+								code->symtab));
+					return;
+				}
+			}
 
 			if(sue && sue->primitive == type_union){
 				decl *smem;
