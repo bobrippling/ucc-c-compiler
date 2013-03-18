@@ -255,7 +255,11 @@ normal:
 		}
 
 		sue->align = align_max;
-		return sue->size = sue->primitive == type_struct ? offset : sz_max;
+		sue->size = pack_to_align(
+				sue->primitive == type_struct ? offset : sz_max,
+				align_max);
+
+		return sue->size;
 	}
 }
 
