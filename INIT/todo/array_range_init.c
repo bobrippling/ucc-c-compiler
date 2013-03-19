@@ -11,5 +11,7 @@ extern void sys_read(void);
 const sys_call_ptr_t sys_call_table[__NR_syscall_max+1] = {
 	[0 ... __NR_syscall_max] = &sys_ni_syscall,
 
+// FIXME: overrides the first, and so breaks the rest which depend on it
+// FIXME: test middle array-range overrides
 	__SYSCALL(__NR_read, sys_read)
 };
