@@ -471,8 +471,8 @@ static decl_init *decl_init_brace_up_aggregate(
 		++iter->pos;
 		return first; /* this is in the {} state */
 
-	}else if((desig_index = find_desig(iter->pos)) > 0){
-		decl_init *const saved = iter->pos[desig_index];
+	}else if((desig_index = find_desig(iter->pos + 1)) >= 0){
+		decl_init *const saved = iter->pos[++desig_index];
 		decl_init *ret = decl_init_new(decl_init_brace);
 		init_iter it = { iter->pos };
 
