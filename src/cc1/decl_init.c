@@ -489,6 +489,19 @@ static decl_init *decl_init_brace_up_aggregate(
 
 			it.pos = old_subs;
 
+			/* prevent designator loss */
+			if(first->desig){
+				/* need to insert our desig */
+				struct desig *sub_d = old_subs[0]->desig, *di;
+
+				/* insert */
+				old_subs[0]->desig = first->desig;
+
+				/* tack old on the end */
+				for(di = old_subs[0]->desig; di->next; di = di->next);
+				di->next = sub_d;
+			}
+
 			first->bits.inits = brace_up_f(
 					current ? current->bits.inits : NULL,
 					&it,
