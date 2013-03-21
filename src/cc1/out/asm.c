@@ -148,7 +148,15 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 					i > 0;
 					i--)
 			{
-				asm_declare_init(f, *p ? *p++ : NULL, next);
+				decl_init *this = NULL;
+				if(*p){
+					this = *p++;
+
+					if(this != DYNARRAY_NULL && this->type == decl_init_copy)
+						this = init->bits.inits[this->bits.copy.idx];
+				}
+
+				asm_declare_init(f, this, next);
 			}
 		}else{
 			/* we should have a size */
