@@ -825,9 +825,7 @@ zero_init:
 						}else{
 							/* memcpy from the previous init */
 							expr *memcp;
-							expr *last_base;
-
-							ICE("need last_base");
+							expr *last_base = code->codes[copy->idx]->expr->lhs;
 
 							UCC_ASSERT(next_type, "no next type for array (i=%d)", idx);
 
