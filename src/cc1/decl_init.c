@@ -93,7 +93,7 @@ int decl_init_is_const(decl_init *dinit, symtable *stab)
 		}
 
 		case decl_init_copy:
-			return decl_init_is_const(dinit->bits.copy.from, stab);
+			return 1;
 	}
 
 	ICE("bad decl init");
@@ -126,7 +126,7 @@ int decl_init_is_zero(decl_init *dinit)
 		}
 
 		case decl_init_copy:
-			return decl_init_is_zero(dinit->bits.copy.from);
+			return 1;
 	}
 
 	ICE("bad decl init");
@@ -285,21 +285,27 @@ static decl_init **decl_init_brace_up_array2(
 			if(i < n && current[i] != DYNARRAY_NULL){
 				replacing = current[i]; /* replacing object `i' */
 
-				if(replacing->type == decl_init_copy){
-					/* replacing a part of a range-init */
-					replacing = NULL; /* prevent free() */
-
-				}else if(i+1 < n
+				if(i+1 < n
 				&& current[i+1] != DYNARRAY_NULL
 				&& current[i+1]->type == decl_init_copy)
 				{
-					replacing = NULL; /* don't let this be free()'d */
+					/* replacing start of a range-init */
 
-					/* we're replacing the start - let the next be us
-					 * this is an optimisation
+					/* each is a copy of the previous:
+					 * either redirect to i-1 or move the init
 					 */
-					current[i+1] = current[i];
-					current[i] = DYNARRAY_NULL;
+					if(i == 0
+					|| (current[i-1] != DYNARRAY_NULL
+						&& current[i-1]->type != decl_init_copy))
+					{
+						/* move */
+						memcpy_safe(current[i+1], replacing);
+					}else{
+						/* redirect */
+						current[i+1]->bits.copy_idx = i - 1;
+					}
+
+					replacing = NULL; /* prevent free() */
 				}
 			}
 
@@ -311,8 +317,7 @@ static decl_init **decl_init_brace_up_array2(
 			for(replace_idx = i + 1; replace_idx <= j; replace_idx++){
 				decl_init *cpy = decl_init_new(decl_init_copy);
 
-				cpy->bits.copy.from = braced;
-				cpy->bits.copy.idx  = i;
+				cpy->bits.copy_idx  = replace_idx - 1;
 
 				replacing = dynarray_padinsert(&current, replace_idx, &n, cpy);
 			}
@@ -808,21 +813,22 @@ zero_init:
 						/* TODO: ideally when the backend is sufficiently optimised, we
 						 * will always be able to use the memcpy case, and it'll pick it up
 						 */
-						struct decl_init_copy *copy;
+						size_t copy_idx;
 
-						for(copy = &di->bits.copy;
-								copy->from->type == decl_init_copy;
-								copy = &copy->from->bits.copy);
+						do{
+							copy_idx = di->bits.copy_idx;
+							di = init->bits.inits[copy_idx];
+						}while(di->type == decl_init_copy);
 
-						if(copy->from->type == decl_init_scalar){
-							unsigned n = dynarray_count(code->codes);
+						if(di->type == decl_init_scalar){
+							size_t n = dynarray_count(code->codes);
 							stmt *last_assign;
 
-							UCC_ASSERT(n > 0 && copy->idx < n,
-									"bad range init - bad index (n=%d, idx=%d)",
-									n, idx);
+							UCC_ASSERT(n > 0 && copy_idx < n,
+									"bad range init - bad index (n=%ld, idx=%ld)",
+									(long)n, (long)idx);
 
-							last_assign = code->codes[copy->idx];
+							last_assign = code->codes[copy_idx];
 
 							/* insert like so:
 							 *
@@ -834,7 +840,7 @@ zero_init:
 						}else{
 							/* memcpy from the previous init */
 							expr *memcp;
-							expr *last_base = code->codes[copy->idx]->expr->lhs;
+							expr *last_base = code->codes[copy_idx]->expr->lhs;
 
 							UCC_ASSERT(next_type, "no next type for array (i=%d)", idx);
 

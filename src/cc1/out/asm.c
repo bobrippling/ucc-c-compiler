@@ -152,8 +152,8 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 				if(*p){
 					this = *p++;
 
-					if(this != DYNARRAY_NULL && this->type == decl_init_copy)
-						this = init->bits.inits[this->bits.copy.idx];
+					while(this != DYNARRAY_NULL && this->type == decl_init_copy)
+						this = init->bits.inits[this->bits.copy_idx];
 				}
 
 				asm_declare_init(f, this, next);

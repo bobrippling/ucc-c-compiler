@@ -69,10 +69,7 @@ void print_decl_init(decl_init *di)
 			break;
 
 		case decl_init_copy:
-			idt_printf("copy of idx %ld:\n", di->bits.copy.idx);
-			gen_str_indent++;
-			print_decl_init(di->bits.copy.from);
-			gen_str_indent--;
+			idt_printf("copy of idx %ld:\n", di->bits.copy_idx);
 			break;
 
 		case decl_init_brace:
@@ -87,7 +84,7 @@ void print_decl_init(decl_init *di)
 				if(s == DYNARRAY_NULL){
 					idt_printf("[%d] = <zero init> ; %p\n", i, s);
 				}else if(s->type == decl_init_copy){
-					idt_printf("[%d] = copy from %d\n", i, s->bits.copy.idx);
+					idt_printf("[%d] = copy from %d\n", i, s->bits.copy_idx);
 				}else{
 					const int need_brace = s->type == decl_init_brace;
 

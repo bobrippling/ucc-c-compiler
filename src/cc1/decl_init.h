@@ -18,11 +18,7 @@ struct decl_init
 	{
 		expr *expr;
 		decl_init **inits;
-		struct decl_init_copy
-		{
-			decl_init *from;
-			size_t idx;
-		} copy;
+		size_t copy_idx;
 	} bits;
 
 	struct desig
