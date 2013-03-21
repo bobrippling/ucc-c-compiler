@@ -237,9 +237,6 @@ static decl_init **decl_init_brace_up_array2(
 	while((this = *iter->pos)){
 		desig *des;
 
-		if(limit > -1 && i >= (unsigned)limit)
-			break;
-
 		if((des = this->desig)){
 			consty k[2];
 
@@ -276,18 +273,17 @@ static decl_init **decl_init_brace_up_array2(
 
 			i = k[0].bits.iv.val;
 			j = k[1].bits.iv.val;
+		}else if(limit > -1 && i >= (unsigned)limit){
+			break;
 		}
 
 		{
 			decl_init *replacing = NULL;
-			where *replace_w = NULL;
 			unsigned replace_idx;
 			decl_init *braced;
 
 			if(i < n && current[i] != DYNARRAY_NULL){
 				replacing = current[i]; /* replacing object `i' */
-
-				replace_w = &replacing->where;
 
 				if(replacing->type == decl_init_copy){
 					/* replacing a part of a range-init */
@@ -309,9 +305,6 @@ static decl_init **decl_init_brace_up_array2(
 
 			/* check for char[] init */
 			braced = decl_init_brace_up_r(replacing, iter, next_type, stab);
-
-			if(replace_w)
-					override_warn(next_type, replace_w, &braced->where);
 
 			dynarray_padinsert(&current, i, &n, braced);
 
