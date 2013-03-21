@@ -11,12 +11,18 @@ struct decl_init
 	{
 		decl_init_scalar,  /* = [0-9] | basic-expr */
 		decl_init_brace,   /* { `decl_init`, `decl_init`, ... } */
+		decl_init_copy,    /* used in range init - references where we copy from */
 	} type;
 
 	union
 	{
 		expr *expr;
 		decl_init **inits;
+		struct
+		{
+			decl_init *from;
+			size_t idx;
+		} copy;
 	} bits;
 
 	struct desig

@@ -138,7 +138,7 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 	}else if((r = type_ref_is(tfor, type_ref_array))){
 		if(init){
 			size_t i;
-			decl_init **p, *last_nonflag = NULL;
+			decl_init **p;
 			type_ref *next = type_ref_next(tfor);
 
 			UCC_ASSERT(init->type == decl_init_brace, "unbraced struct");
@@ -148,21 +148,7 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 					i > 0;
 					i--)
 			{
-				decl_init *this;
-				if(*p){
-					this = *p++;
-
-					if(this == DYNARRAY_FLAG){
-						UCC_ASSERT(last_nonflag, "no previous init for array range");
-						this = last_nonflag;
-					}else{
-						last_nonflag = this;
-					}
-				}else{
-					last_nonflag = this = NULL;
-				}
-
-				asm_declare_init(f, this, next);
+				asm_declare_init(f, *p ? *p++ : NULL, next);
 			}
 		}else{
 			/* we should have a size */

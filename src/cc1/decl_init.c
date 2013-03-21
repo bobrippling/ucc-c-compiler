@@ -61,8 +61,8 @@ static decl_init *decl_init_brace_up_aggregate(
 
 /* null init are const/zero, flag-init is const/zero if prev. is const/zero,
  * which will be checked elsewhere */
-#define DINIT_NULL_CHECK(di)                        \
-	if(di == DYNARRAY_FLAG || di == DYNARRAY_NULL)    \
+#define DINIT_NULL_CHECK(di) \
+	if(di == DYNARRAY_NULL)    \
 		return 1
 
 int decl_init_is_const(decl_init *dinit, symtable *stab)
@@ -91,6 +91,9 @@ int decl_init_is_const(decl_init *dinit, symtable *stab)
 
 			return 1;
 		}
+
+		case decl_init_copy:
+			return decl_init_is_const(dinit->bits.copy.from, stab);
 	}
 
 	ICE("bad decl init");
@@ -121,6 +124,9 @@ int decl_init_is_zero(decl_init *dinit)
 
 			return 1;
 		}
+
+		case decl_init_copy:
+			return decl_init_is_zero(dinit->bits.copy.from);
 	}
 
 	ICE("bad decl init");
@@ -145,6 +151,7 @@ const char *decl_init_to_str(enum decl_init_type t)
 	switch(t){
 		CASE_STR_PREFIX(decl_init, scalar);
 		CASE_STR_PREFIX(decl_init, brace);
+		CASE_STR_PREFIX(decl_init, copy);
 	}
 	return NULL;
 }
@@ -279,11 +286,14 @@ static decl_init **decl_init_brace_up_array2(
 
 			if(i < n && current[i] != DYNARRAY_NULL){
 				replacing = current[i]; /* replacing object `i' */
-				if(replacing == DYNARRAY_FLAG){
+				if(replacing->type == decl_init_copy){
 					/* replacing a part of a range-init */
 					ICE("range init mid replacement");
 
-				}else if(i+1 < n && current[i+1] == DYNARRAY_FLAG){
+				}else if(i+1 < n
+				&& current[i+1] != DYNARRAY_NULL
+				&& current[i+1]->type == decl_init_copy)
+				{
 					/* we're replacing the start - let the next be us */
 					replace_w = &replacing->where;
 
@@ -301,9 +311,14 @@ static decl_init **decl_init_brace_up_array2(
 
 			dynarray_padinsert(&current, i, &n, braced);
 
-			for(replace_idx = i + 1; replace_idx <= j; replace_idx++)
-				replacing = dynarray_padinsert(&current, replace_idx, &n,
-						(decl_init *)DYNARRAY_FLAG);
+			for(replace_idx = i + 1; replace_idx <= j; replace_idx++){
+				decl_init *cpy = decl_init_new(decl_init_copy);
+
+				cpy->bits.copy.from = braced;
+				cpy->bits.copy.idx  = i;
+
+				replacing = dynarray_padinsert(&current, replace_idx, &n, cpy);
+			}
 		}
 
 		i++;
@@ -702,20 +717,21 @@ zero_init:
 						code->symtab));
 			break;
 
+		case decl_init_copy:
+			ICE("copy got through assignment");
+
 		case decl_init_brace:
 		{
 			struct_union_enum_st *sue = type_ref_is_s_or_u(tfor);
 			const size_t n = sue ? dynarray_count(sue->members) : type_ref_array_len(tfor);
-			decl_init **i, *last_nonflag = NULL;
+			decl_init **i;
 			unsigned idx;
-			expr *last_base = NULL;
 
-			if(sue
+			if(sue /* check for struct copy */
 			&& dynarray_count(init->bits.inits) == 1
 			&& init->bits.inits[0] != DYNARRAY_NULL
 			&& init->bits.inits[0]->type == decl_init_scalar)
 			{
-				/* check for struct copy */
 				expr *e = init->bits.inits[0]->bits.expr;
 
 				if(type_ref_is_s_or_u(e->tree_type) == sue){
@@ -737,8 +753,6 @@ zero_init:
 				for(idx = 0, i = init->bits.inits; *i == DYNARRAY_NULL; i++, idx++);
 
 				if(*i){
-					UCC_ASSERT(*i != DYNARRAY_FLAG, "range init for union");
-
 					sue_base = decl_init_create_assignments_sue_base(
 							sue, base, &smem, idx, n);
 
@@ -765,7 +779,6 @@ zero_init:
 				if(sue){
 					decl *smem;
 
-					UCC_ASSERT(di != DYNARRAY_FLAG, "range init for struct");
 					UCC_ASSERT(sue->primitive != type_union, "sneaky union");
 
 					new_base = decl_init_create_assignments_sue_base(
@@ -778,16 +791,17 @@ zero_init:
 					if(!next_type)
 						next_type = type_ref_next(tfor);
 
-					if(di == DYNARRAY_FLAG){
-						UCC_ASSERT(last_nonflag, "no previous init for '...'");
-
+					if(di && di != DYNARRAY_NULL && di->type == decl_init_copy){
 						/* TODO: ideally when the backend is sufficiently optimised, we
 						 * will always be able to use the memcpy case, and it'll pick it up
 						 */
-						if(last_nonflag->type == decl_init_scalar){
+						ICE("copy");
+						if(di->bits.copy.from->type == decl_init_scalar){
 							unsigned n = dynarray_count(code->codes);
 							stmt *last_assign;
 							UCC_ASSERT(n > 0, "bad range init - no previous exprs");
+
+							ICE("can't do last assign");
 
 							last_assign = code->codes[n - 1];
 
@@ -801,9 +815,11 @@ zero_init:
 						}else{
 							/* memcpy from the previous init */
 							expr *memcp;
+							expr *last_base;
+
+							ICE("need last_base");
 
 							UCC_ASSERT(next_type, "no next type for array (i=%d)", idx);
-							UCC_ASSERT(last_base, "no previous base for ... init");
 
 							memcp = builtin_new_memcpy(
 									new_base, last_base, type_ref_size(next_type, &di->where));
@@ -813,12 +829,9 @@ zero_init:
 						}
 						continue;
 					}
-
-					last_nonflag = di;
 				}
 
 				decl_init_create_assignments_base(di, next_type, new_base, code);
-				last_base = new_base;
 			}
 			break;
 		}
