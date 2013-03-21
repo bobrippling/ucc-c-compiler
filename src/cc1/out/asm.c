@@ -103,7 +103,11 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 	if(init == DYNARRAY_NULL)
 		init = NULL;
 
-	if((r = type_ref_is_type(tfor, type_struct))){
+	if(!init){
+		asm_declare_pad(f, type_ref_size(tfor, NULL),
+				"null init"/*, type_ref_to_str(tfor)*/);
+
+	}else if((r = type_ref_is_type(tfor, type_struct))){
 		/* array of stmts for each member
 		 * assumes the ->bits.inits order is member order
 		 */
@@ -111,12 +115,8 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 		decl_init **i;
 		int end_of_last = 0;
 
-		if(init){
-			UCC_ASSERT(init->type == decl_init_brace, "unbraced struct");
-			i = init->bits.inits;
-		}else{
-			i = NULL;
-		}
+		UCC_ASSERT(init->type == decl_init_brace, "unbraced struct");
+		i = init->bits.inits;
 
 		/* iterate using members, not inits */
 		for(mem = r->bits.type->sue->members;
@@ -136,31 +136,26 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 		}
 
 	}else if((r = type_ref_is(tfor, type_ref_array))){
-		if(init){
-			size_t i;
-			decl_init **p;
-			type_ref *next = type_ref_next(tfor);
+		size_t i;
+		decl_init **p;
+		type_ref *next = type_ref_next(tfor);
 
-			UCC_ASSERT(init->type == decl_init_brace, "unbraced struct");
-			UCC_ASSERT(type_ref_is_complete(tfor), "incomplete array init");
+		UCC_ASSERT(init->type == decl_init_brace, "unbraced struct");
+		UCC_ASSERT(type_ref_is_complete(tfor), "incomplete array init");
 
-			for(i = type_ref_array_len(tfor), p = init->bits.inits;
-					i > 0;
-					i--)
-			{
-				decl_init *this = NULL;
-				if(*p){
-					this = *p++;
+		for(i = type_ref_array_len(tfor), p = init->bits.inits;
+				i > 0;
+				i--)
+		{
+			decl_init *this = NULL;
+			if(*p){
+				this = *p++;
 
-					while(this != DYNARRAY_NULL && this->type == decl_init_copy)
-						this = init->bits.inits[this->bits.copy_idx];
-				}
-
-				asm_declare_init(f, this, next);
+				while(this != DYNARRAY_NULL && this->type == decl_init_copy)
+					this = init->bits.inits[this->bits.copy_idx];
 			}
-		}else{
-			/* we should have a size */
-			asm_declare_pad(f, type_ref_size(r, NULL), "empty array");
+
+			asm_declare_init(f, this, next);
 		}
 
 	}else if((r = type_ref_is_type(tfor, type_union))){
@@ -189,34 +184,29 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 				"union extra");
 
 	}else{
-		if(!init){
-			asm_declare_pad(f, type_ref_size(tfor, NULL), "null scalar init");
+		/* scalar */
+		expr *exp = init->bits.expr;
 
-		}else{
-			/* scalar */
-			expr *exp = init->bits.expr;
+		UCC_ASSERT(init->type == decl_init_scalar, "scalar init expected");
 
-			UCC_ASSERT(init->type == decl_init_scalar, "scalar init expected");
+		if(exp == DYNARRAY_NULL)
+			exp = NULL;
 
-			if(exp == DYNARRAY_NULL)
-				exp = NULL;
+		/* exp->tree_type should match tfor */
+		{
+			char buf[TYPE_REF_STATIC_BUFSIZ];
 
-			/* exp->tree_type should match tfor */
-			{
-				char buf[TYPE_REF_STATIC_BUFSIZ];
-
-				UCC_ASSERT(type_ref_equal(exp->tree_type, tfor,
-							DECL_CMP_ALLOW_VOID_PTR | DECL_CMP_ALLOW_SIGNED_UNSIGNED),
-						"mismatching init types: %s and %s",
-						type_ref_to_str_r(buf, exp->tree_type),
-						type_ref_to_str(tfor));
-			}
-
-			/* use tfor, since "abc" has type (char[]){(int)'a', (int)'b', ...} */
-			fprintf(f, ".%s ", asm_type_directive(tfor));
-			static_addr(exp);
-			fputc('\n', f);
+			UCC_ASSERT(type_ref_equal(exp->tree_type, tfor,
+						DECL_CMP_ALLOW_VOID_PTR | DECL_CMP_ALLOW_SIGNED_UNSIGNED),
+					"mismatching init types: %s and %s",
+					type_ref_to_str_r(buf, exp->tree_type),
+					type_ref_to_str(tfor));
 		}
+
+		/* use tfor, since "abc" has type (char[]){(int)'a', (int)'b', ...} */
+		fprintf(f, ".%s ", asm_type_directive(tfor));
+		static_addr(exp);
+		fputc('\n', f);
 	}
 }
 
