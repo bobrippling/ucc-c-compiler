@@ -118,13 +118,13 @@ void print_type_ref_eng(type_ref *ref)
 	switch(ref->type){
 		case type_ref_cast:
 			if(ref->bits.cast.is_signed_cast)
-				fprintf(cc1_out, "%s", ref->bits.cast.signed_true ? "signed" : "unsigned");
+				fprintf(cc1_out, "%s ", ref->bits.cast.signed_true ? "signed" : "unsigned");
 			else
-				fprintf(cc1_out, "%s ", type_qual_to_str(ref->bits.cast.qual));
+				fprintf(cc1_out, "%s", type_qual_to_str(ref->bits.cast.qual, 1));
 			break;
 
 		case type_ref_ptr:
-			fprintf(cc1_out, "%spointer to ", type_qual_to_str(ref->bits.ptr.qual));
+			fprintf(cc1_out, "%spointer to ", type_qual_to_str(ref->bits.ptr.qual, 1));
 			break;
 
 		case type_ref_block:

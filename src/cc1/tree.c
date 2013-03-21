@@ -193,14 +193,15 @@ const char *type_primitive_to_str(const enum type_primitive p)
 	return NULL;
 }
 
-char *type_qual_to_str(const enum type_qualifier qual)
+const char *type_qual_to_str(const enum type_qualifier qual, int trailing_space)
 {
 	static char buf[32];
 	/* trailing space is purposeful */
-	snprintf(buf, sizeof buf, "%s%s%s",
-		qual & qual_const    ? "const "    : "",
-		qual & qual_volatile ? "volatile " : "",
-		qual & qual_restrict ? "restrict " : "");
+	snprintf(buf, sizeof buf, "%s%s%s%s",
+		qual & qual_const    ? "const"    : "",
+		qual & qual_volatile ? "volatile" : "",
+		qual & qual_restrict ? "restrict" : "",
+		qual && trailing_space ? " " : "");
 	return buf;
 }
 

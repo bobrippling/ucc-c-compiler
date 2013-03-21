@@ -679,7 +679,7 @@ static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
 	}
 
 	if(q)
-		BUF_ADD("%s", type_qual_to_str(q));
+		BUF_ADD(" %s", type_qual_to_str(q, 0));
 
 	type_ref_add_str(r->tmp, spel, bufp, sz);
 
@@ -723,7 +723,7 @@ static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
 
 			if(r->bits.array.is_static)
 				BUF_ADD("static ");
-			BUF_ADD("%s", type_qual_to_str(r->bits.array.qual));
+			BUF_ADD("%s", type_qual_to_str(r->bits.array.qual, 1));
 
 			if(iv.val)
 				BUF_ADD("%ld]", iv.val);

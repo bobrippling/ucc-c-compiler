@@ -843,7 +843,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 						WARN_AT(&this_ref->where, "ignoring %s%s%son no-instance %s",
 								store != store_default ? decl_store_to_str(store) : "",
 								store != store_default ? " " : "",
-								type_qual_to_str(qual),
+								type_qual_to_str(qual, 1),
 								sue_str(sue));
 					}
 

@@ -81,7 +81,7 @@ const char *op_to_str(  const enum op_type o);
 const char *type_to_str(const type *t);
 
 const char *type_primitive_to_str(const enum type_primitive);
-      char *type_qual_to_str(     const enum type_qualifier);
+const char *type_qual_to_str(     const enum type_qualifier, int trailing_space);
 
 int type_equal(const type *a, const type *b, enum type_cmp mode);
 int type_qual_equal(enum type_qualifier, enum type_qualifier);
