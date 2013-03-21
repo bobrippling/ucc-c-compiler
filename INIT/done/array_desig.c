@@ -15,13 +15,13 @@ int x[][2] = {
 2, 0
 */
 
-int x[][2] = {
+int y[][2] = {
 	// this checks we pass the second [1] designator to:
 	// { [1] = 1, 2, 3 }
 	[1][1] = { 1, 2, 3 }
 };
 
-struct { int i; } y[][2] = {
+struct { int i; } z[][2] = {
 	// this checks the same passing but also that we preserve the .i designator
 	// { [1].i = 1, 2, 3 }
 	[1][1] = { .i = 1, 2, 3 }

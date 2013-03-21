@@ -2,7 +2,6 @@
 struct S2 {
 	int x, y;
 } a3[3] = {
-	// FIXME: some are lost
 	[2].y=6, [2].x=5,
 	[1].y=4, [1].x=3,
 	[0].y=2, [0].x=1
