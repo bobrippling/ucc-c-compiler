@@ -156,6 +156,17 @@ const char *decl_init_to_str(enum decl_init_type t)
 
 static decl_init *decl_init_brace_up_r(decl_init *current, init_iter *, type_ref *, symtable *stab);
 
+static void override_warn(
+		type_ref *tfor, where *old, where *new)
+{
+	char buf[WHERE_BUF_SIZ];
+
+	WARN_AT(new,
+			"overriding initialisation of \"%s\"\n"
+			"%s prior initialisation here",
+			type_ref_to_str(tfor),
+			where_str_r(buf, old));
+}
 
 static decl_init *decl_init_brace_up_scalar(
 		decl_init *current, init_iter *iter, type_ref *const tfor,
@@ -164,13 +175,7 @@ static decl_init *decl_init_brace_up_scalar(
 	decl_init *first_init;
 
 	if(current){
-		char buf[WHERE_BUF_SIZ];
-
-		WARN_AT(ITER_WHERE(iter, &tfor->where),
-				"overriding initialisation of \"%s\"\n"
-				"%s prior initialisation here",
-				type_ref_to_str(tfor),
-				where_str_r(buf, &current->where));
+		override_warn(tfor, ITER_WHERE(iter, &tfor->where), &current->where);
 
 		decl_init_free_1(current);
 	}
@@ -268,14 +273,31 @@ static decl_init **decl_init_brace_up_array2(
 
 		{
 			decl_init *replacing = NULL;
+			where *replace_w = NULL;
 			unsigned replace_idx;
 			decl_init *braced;
 
-			if(i < n && current[i] != DYNARRAY_NULL)
+			if(i < n && current[i] != DYNARRAY_NULL){
 				replacing = current[i]; /* replacing object `i' */
+				if(replacing == DYNARRAY_FLAG){
+					/* replacing a part of a range-init */
+					ICE("range init mid replacement");
+
+				}else if(i+1 < n && current[i+1] == DYNARRAY_FLAG){
+					/* we're replacing the start - let the next be us */
+					replace_w = &replacing->where;
+
+					current[i+1] = current[i];
+					current[i] = DYNARRAY_NULL;
+					replacing = NULL;
+				}
+			}
 
 			/* check for char[] init */
 			braced = decl_init_brace_up_r(replacing, iter, next_type, stab);
+
+			if(replace_w)
+					override_warn(next_type, replace_w, &braced->where);
 
 			dynarray_padinsert(&current, i, &n, braced);
 
