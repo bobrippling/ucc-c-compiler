@@ -516,7 +516,10 @@ static decl_init *decl_init_brace_up_aggregate(
 				current ? current->bits.inits : NULL,
 				&it, stab, arg1, arg2);
 
-		*(iter->pos += desig_index) = saved;
+		iter->pos[desig_index] = saved;
+
+		/* need to increment only by the amount that was used */
+		iter->pos += it.pos - iter->pos;
 
 		return ret;
 	}else{
