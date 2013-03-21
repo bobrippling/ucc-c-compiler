@@ -286,20 +286,24 @@ static decl_init **decl_init_brace_up_array2(
 
 			if(i < n && current[i] != DYNARRAY_NULL){
 				replacing = current[i]; /* replacing object `i' */
+
+				replace_w = &replacing->where;
+
 				if(replacing->type == decl_init_copy){
 					/* replacing a part of a range-init */
-					ICE("range init mid replacement");
+					replacing = NULL; /* prevent free() */
 
 				}else if(i+1 < n
 				&& current[i+1] != DYNARRAY_NULL
 				&& current[i+1]->type == decl_init_copy)
 				{
-					/* we're replacing the start - let the next be us */
-					replace_w = &replacing->where;
+					replacing = NULL; /* don't let this be free()'d */
 
+					/* we're replacing the start - let the next be us
+					 * this is an optimisation
+					 */
 					current[i+1] = current[i];
 					current[i] = DYNARRAY_NULL;
-					replacing = NULL;
 				}
 			}
 
