@@ -18,7 +18,7 @@ struct decl_init
 	{
 		expr *expr;
 		decl_init **inits;
-		struct
+		struct decl_init_copy
 		{
 			decl_init *from;
 			size_t idx;

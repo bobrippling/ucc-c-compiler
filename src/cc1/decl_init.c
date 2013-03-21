@@ -799,15 +799,21 @@ zero_init:
 						/* TODO: ideally when the backend is sufficiently optimised, we
 						 * will always be able to use the memcpy case, and it'll pick it up
 						 */
-						ICE("copy");
-						if(di->bits.copy.from->type == decl_init_scalar){
+						struct decl_init_copy *copy;
+
+						for(copy = &di->bits.copy;
+								copy->from->type == decl_init_copy;
+								copy = &copy->from->bits.copy);
+
+						if(copy->from->type == decl_init_scalar){
 							unsigned n = dynarray_count(code->codes);
 							stmt *last_assign;
-							UCC_ASSERT(n > 0, "bad range init - no previous exprs");
 
-							ICE("can't do last assign");
+							UCC_ASSERT(n > 0 && copy->idx < n,
+									"bad range init - bad index (n=%d, idx=%d)",
+									n, idx);
 
-							last_assign = code->codes[n - 1];
+							last_assign = code->codes[copy->idx];
 
 							/* insert like so:
 							 *
