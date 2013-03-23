@@ -62,10 +62,15 @@ struct expr
 #define expr_is_default    assign_is_post
 #define expr_computed_goto assign_is_post
 #define expr_cast_implicit assign_is_post
-#define expr_is_typeof     assign_is_post
 #define expr_is_st_dot     assign_is_post
 #define expr_addr_implicit assign_is_post
 #define expr_comp_lit_cgen assign_is_post
+	enum what_of
+	{
+		what_sizeof,
+		what_typeof,
+		what_alignof,
+	} what_of;
 
 	expr *lhs, *rhs;
 	expr *expr;
@@ -177,8 +182,8 @@ expr *expr_new_val(int val);
 expr *expr_new_op(enum op_type o);
 expr *expr_new_if(expr *test);
 expr *expr_new_stmt(stmt *code);
-expr *expr_new_sizeof_type(type_ref *, int is_typeof);
-expr *expr_new_sizeof_expr(expr *, int is_typeof);
+expr *expr_new_sizeof_type(type_ref *, enum what_of what_of);
+expr *expr_new_sizeof_expr(expr *, enum what_of what_of);
 expr *expr_new_funcall(void);
 expr *expr_new_assign(         expr *to, expr *from);
 expr *expr_new_assign_compound(expr *to, expr *from, enum op_type);

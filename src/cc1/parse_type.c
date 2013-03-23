@@ -272,7 +272,7 @@ static type_ref *parse_btype(enum decl_storage *store)
 			if(primitive_set)
 				DIE_AT(NULL, "duplicate typeof specifier");
 
-			tdef_typeof = parse_expr_sizeof_typeof(1);
+			tdef_typeof = parse_expr_sizeof_typeof_alignof(what_typeof);
 			primitive_set = 1;
 
 		}else if(curtok == token_identifier

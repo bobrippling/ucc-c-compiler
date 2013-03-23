@@ -30,7 +30,7 @@ extern enum token curtok;
 /* these need to be visible to parse_type.c */
 expr *parse_expr_assignment(void);
 stmt *parse_stmt_block(void);
-expr *parse_expr_sizeof_typeof(int is_typeof);
+expr *parse_expr_sizeof_typeof_alignof(enum what_of what_of);
 expr *parse_expr_exp(void);
 
 void parse_static_assert(void);

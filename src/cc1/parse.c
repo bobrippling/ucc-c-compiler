@@ -44,7 +44,7 @@ static stmt *current_continue_target,
 						*current_switch;
 
 
-expr *parse_expr_sizeof_typeof(int is_typeof)
+expr *parse_expr_sizeof_typeof_alignof(enum what_of what_of)
 {
 	expr *e;
 
@@ -59,22 +59,22 @@ expr *parse_expr_sizeof_typeof(int is_typeof)
 				e = expr_new_sizeof_expr(
 							expr_new_compound_lit(r,
 								parse_initialisation()),
-							is_typeof);
+							what_of);
 			else
-				e = expr_new_sizeof_type(r, is_typeof);
+				e = expr_new_sizeof_type(r, what_of);
 
 		}else{
 			/* parse a full one, since we're in brackets */
-			e = expr_new_sizeof_expr(parse_expr_exp(), is_typeof);
+			e = expr_new_sizeof_expr(parse_expr_exp(), what_of);
 			EAT(token_close_paren);
 		}
 
 	}else{
-		if(is_typeof)
+		if(what_of == what_typeof)
 			/* TODO? cc1_error = 1, return expr_new_val(0) */
 			DIE_AT(NULL, "open paren expected after typeof");
 
-		e = expr_new_sizeof_expr(parse_expr_unary(), is_typeof);
+		e = expr_new_sizeof_expr(parse_expr_unary(), what_of);
 		/* don't go any higher, sizeof a - 1, means sizeof(a) - 1 */
 	}
 
@@ -340,7 +340,7 @@ expr *parse_expr_unary()
 
 			case token_sizeof:
 				EAT(token_sizeof);
-				e = parse_expr_sizeof_typeof(0);
+				e = parse_expr_sizeof_typeof_alignof(what_sizeof);
 				break;
 
 			default:
