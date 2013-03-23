@@ -182,7 +182,7 @@ static decl_init *decl_init_brace_up_scalar(
 	decl_init *first_init;
 
 	if(current){
-		override_warn(tfor, ITER_WHERE(iter, &tfor->where), &current->where);
+		override_warn(tfor, &current->where, ITER_WHERE(iter, &tfor->where), 0);
 
 		decl_init_free_1(current);
 	}
