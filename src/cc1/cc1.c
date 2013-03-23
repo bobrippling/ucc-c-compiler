@@ -8,9 +8,9 @@
 #include <signal.h>
 
 #include "../util/util.h"
+#include "../util/platform.h"
 #include "data_structs.h"
 #include "tokenise.h"
-#include "../util/util.h"
 #include "parse.h"
 #include "cc1.h"
 #include "fold.h"
@@ -112,6 +112,12 @@ struct
 	{ NULL, NULL }
 };
 
+static enum fopt fopt_defaults[] = {
+		[PLATFORM_LINUX]   = FOPT_NONE,
+		[PLATFORM_FREEBSD] = FOPT_NONE,
+		[PLATFORM_CYGWIN]  = FOPT_LEADING_UNDERSCORE,
+		[PLATFORM_DARWIN]  = FOPT_LEADING_UNDERSCORE,
+};
 
 
 FILE *cc_out[NUM_SECTIONS];     /* temporary section files */
@@ -128,7 +134,7 @@ enum warning warn_mode = ~(
 		| WARN_SIGN_COMPARE
 		);
 
-enum fopt    fopt_mode = FOPT_CONST_FOLD | FOPT_SHOW_LINE | FOPT_PIC;
+enum fopt fopt_mode = FOPT_CONST_FOLD | FOPT_SHOW_LINE | FOPT_PIC;
 enum cc1_backend cc1_backend = BACKEND_ASM;
 
 int m32 = 0;
@@ -293,6 +299,9 @@ int main(int argc, char **argv)
 	signal(SIGSEGV, sigh);
 
 	fname = NULL;
+
+	/* defaults */
+	fopt_mode |= fopt_defaults[platform_sys()];
 
 	for(i = 1; i < argc; i++){
 		if(!strcmp(argv[i], "-X")){
