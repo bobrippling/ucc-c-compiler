@@ -56,6 +56,7 @@ static decl_init *decl_init_brace_up_aggregate(
 		decl_init *current,
 		init_iter *iter,
 		symtable *stab,
+		type_ref *tfor,
 		aggregate_brace_f *,
 		void *arg1, int arg2);
 
@@ -164,13 +165,14 @@ const char *decl_init_to_str(enum decl_init_type t)
 static decl_init *decl_init_brace_up_r(decl_init *current, init_iter *, type_ref *, symtable *stab);
 
 static void override_warn(
-		type_ref *tfor, where *old, where *new)
+		type_ref *tfor, where *old, where *new, int whole)
 {
 	char buf[WHERE_BUF_SIZ];
 
 	WARN_AT(new,
-			"overriding initialisation of \"%s\"\n"
-			"%s prior initialisation here",
+			"overriding %sinitialisation of \"%s\"\n"
+			"%s: prior initialisation here",
+			whole ? "entire " : "",
 			type_ref_to_str(tfor),
 			where_str_r(buf, old));
 }
@@ -400,7 +402,7 @@ static decl_init **decl_init_brace_up_sue2(
 							&& current[j] != DYNARRAY_NULL ? current[j] : NULL;
 
 						braced_sub = decl_init_brace_up_aggregate(
-								replacing, iter, stab,
+								replacing, iter, stab, jmem->ref,
 								(aggregate_brace_f *)&decl_init_brace_up_sue2, in, 1);
 
 						found = 1;
@@ -456,7 +458,7 @@ static int find_desig(decl_init **const ar)
 static decl_init *decl_init_brace_up_aggregate(
 		decl_init *current,
 		init_iter *iter,
-		symtable *stab,
+		symtable *stab, type_ref *tfor,
 		aggregate_brace_f *brace_up_f,
 		void *arg1, int arg2)
 {
@@ -507,8 +509,14 @@ static decl_init *decl_init_brace_up_aggregate(
 				di->next = sub_d;
 			}
 
+			/* gcc and C99 compliant (not clang) */
+			if(current){
+				override_warn(tfor, &current->where, &first->where, 1 /* whole */);
+				/* XXX: memleak decl_init_free(current); */
+			}
+
 			first->bits.inits = brace_up_f(
-					current ? current->bits.inits : NULL,
+					NULL, /* clang would pass current->bits.inits through here */
 					&it,
 					stab, arg1, arg2);
 
@@ -614,7 +622,7 @@ static decl_init *decl_init_brace_up_array_pre(
 	}
 
 	return decl_init_brace_up_aggregate(
-			current, iter, stab,
+			current, iter, stab, next_type,
 			(aggregate_brace_f *)&decl_init_brace_up_array2,
 			type_ref_next(next_type), limit);
 }
@@ -636,7 +644,7 @@ static decl_init *decl_init_brace_up_r(
 
 	if((sue = type_ref_is_s_or_u(tfor)))
 		return decl_init_brace_up_aggregate(
-				current, iter, stab,
+				current, iter, stab, tfor,
 				(aggregate_brace_f *)&decl_init_brace_up_sue2,
 				sue, 0 /* is anon */);
 
