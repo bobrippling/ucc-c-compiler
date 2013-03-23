@@ -160,6 +160,8 @@ const char *token_to_str(enum token t)
 		CASE_STR_PREFIX(token,  static);
 		CASE_STR_PREFIX(token,  auto);
 		CASE_STR_PREFIX(token,  register);
+		CASE_STR_PREFIX(token, _Alignof);
+		CASE_STR_PREFIX(token, _Alignas);
 
 		/* sort-of storage */
 		CASE_STR_PREFIX(token,  inline);

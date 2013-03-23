@@ -57,6 +57,8 @@ enum token
 	token_static,
 	token_extern,
 	token_register,
+	token__Alignof,
+	token__Alignas,
 	/**/
 	token_typedef,
 	token_struct,
