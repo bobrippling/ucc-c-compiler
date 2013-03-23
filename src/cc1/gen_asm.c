@@ -132,7 +132,7 @@ void gen_asm_global(decl *d)
 		/* check .func_code, since it could be a block */
 		int nargs = 0;
 		decl **aiter;
-		char *sp;
+		const char *sp;
 
 		if(!d->func_code)
 			return;

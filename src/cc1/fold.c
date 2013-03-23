@@ -817,12 +817,8 @@ static void fold_link_decl_defs(dynmap *spel_decls)
 
 		definition->is_definition = 1;
 
-		if(!definition->spel_asm){
-			if((fopt_mode & FOPT_LEADING_UNDERSCORE) && !asm_rename)
-				asm_rename = ustrprintf("_%s", definition->spel);
-
+		if(!definition->spel_asm)
 			definition->spel_asm = asm_rename;
-		}
 
 		/*
 		 * func -> extern (if no func code) done elsewhere,

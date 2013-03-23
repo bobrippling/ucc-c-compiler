@@ -38,7 +38,7 @@ struct vstack
 		} flag;
 		struct
 		{
-			char *str;
+			const char *str;
 			int pic;
 		} lbl;
 	} bits;

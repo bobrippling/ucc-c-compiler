@@ -22,7 +22,7 @@ typedef struct consty
 			int is_lbl;
 			union
 			{
-				char *lbl;
+				const char *lbl;
 				int   memaddr;
 			} bits;
 		} addr;

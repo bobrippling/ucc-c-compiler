@@ -2,16 +2,24 @@
 // RUN: ! %ucc -S -o- -fleading-underscore %s | grep '_no_leading'
 // RUN: %ucc -S -o- -fleading-underscore %s | grep '_main'
 
-int i asm("no_leading"), j;
+int g_i asm("no_leading"), g_j;
 
-extern g();
+extern global();
+extern global_renamed() asm("global_renamed_HAI");
 
 main()
 {
-	extern h();
+	extern local();
+	extern local_renamed() asm("local_renamed_HAI");
 
-	f(), g(), h();
+	implicit();
 
-	i = j = 2;
-	return i;
+	global();
+	global_renamed();
+
+	local();
+	local_renamed();
+
+	g_i = g_j = 2;
+	return g_i;
 }
