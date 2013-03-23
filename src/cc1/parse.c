@@ -343,6 +343,11 @@ expr *parse_expr_unary()
 				e = parse_expr_sizeof_typeof_alignof(what_sizeof);
 				break;
 
+			case token__Alignof:
+				EAT(token__Alignof);
+				e = parse_expr_sizeof_typeof_alignof(what_alignof);
+				break;
+
 			default:
 				e = parse_expr_postfix();
 		}
