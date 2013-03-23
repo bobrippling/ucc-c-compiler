@@ -1,0 +1,3 @@
+multiple alignment specifiers
+checks for reducing alignment
+checks on typedef, bitfields, registers and funcs
