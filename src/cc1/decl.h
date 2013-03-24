@@ -136,6 +136,16 @@ struct decl
 	expr *field_width;
 #endif
 	int struct_offset;
+	struct decl_align
+	{
+		int as_int;
+		unsigned resolved;
+		union
+		{
+			expr *align_intk;
+			type_ref *align_ty;
+		} bits;
+	} *align;
 
 	sym *sym;
 
