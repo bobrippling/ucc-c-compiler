@@ -303,6 +303,9 @@ void print_decl(decl *d, enum pdeclargs mode)
 
 	if(mode & PDECL_ATTR){
 		gen_str_indent++;
+		if(d->align)
+			idt_printf("[align={as_int=%d, resolved=%d}]\n",
+					d->align->as_int, d->align->resolved);
 		print_decl_attr(d->attr);
 		print_type_attr(d->ref);
 		gen_str_indent--;

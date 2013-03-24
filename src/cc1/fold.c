@@ -323,6 +323,8 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 
 void fold_decl(decl *d, symtable *stab)
 {
+	int can_align = 1;
+
 	fold_type_ref(d->ref, NULL, stab);
 
 #if 0
@@ -355,6 +357,8 @@ void fold_decl(decl *d, symtable *stab)
 
 		if(width == 1 && t->is_signed)
 			WARN_AT(&d->where, "%s 1-bit field width is signed (-1 and 0)", decl_to_str(d));
+
+		can_align = 0;
 	}
 #endif
 
@@ -380,8 +384,41 @@ void fold_decl(decl *d, symtable *stab)
 					break;
 			}
 		}
+
+		can_align = 0;
 	}else if((d->store & STORE_MASK_EXTRA) == store_inline){
 		WARN_AT(&d->where, "inline on non-function");
+	}
+
+	if(d->align){
+		int al;
+
+		if((d->store & STORE_MASK_STORE) == store_register)
+			can_align = 0;
+
+		if(!can_align)
+			DIE_AT(&d->where, "can't align %s", decl_to_str(d));
+
+		if(d->align->as_int){
+			consty k;
+
+			const_fold(
+					FOLD_EXPR(d->align->bits.align_intk, stab),
+					&k);
+
+			if(k.type != CONST_VAL)
+				DIE_AT(&d->where, "alignment must be an integer constant");
+
+			al = k.bits.iv.val;
+		}else{
+			fold_type_ref(d->align->bits.align_ty, NULL, stab);
+			al = type_ref_align(d->align->bits.align_ty, &d->where);
+		}
+
+		if(al & (al - 1))
+			DIE_AT(&d->where, "alignment isn't a power of 2");
+
+		d->align->resolved = al;
 	}
 
 	if(d->init){
