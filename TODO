@@ -3,6 +3,9 @@ test/ - x.c and x.c.expect (output and assembly)
 
 "note:" output, instead of DIE_AT(..., "...\n%s here", where_str(...))
 
+-fcommon: .comm nam,sz,align
+out/* - constant offset for symbols - x+61(%rsp), etc
+
 cc1.h - remove unused warnings
 
 struct initialisation
