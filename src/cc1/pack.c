@@ -3,10 +3,14 @@
 
 int pack_to_align(int o, int align)
 {
+#ifdef SLOW
 	if(o % align)
 		o += align - o % align;
 
 	return o;
+#else
+	return (o + align - 1) & -align;
+#endif
 }
 
 int pack_to_word(int o)
