@@ -394,7 +394,7 @@ int type_ref_size(type_ref *r, where const *from)
 	ucc_unreach();
 }
 
-int decl_size(decl *d, where const *from)
+unsigned decl_size(decl *d)
 {
 #ifdef FIELD_WIDTH_TODO
 	if(d->field_width){
@@ -409,7 +409,18 @@ int decl_size(decl *d, where const *from)
 	}
 #endif
 
-	return type_ref_size(d->ref, from);
+	return type_ref_size(d->ref, &d->where);
+}
+
+unsigned decl_align(decl *d)
+{
+	unsigned al = 0;
+
+	if(d->align)
+		al = d->align->resolved;
+
+	/* unsigned fixed in another branch */
+	return al ? al : (unsigned)type_ref_align(d->ref, &d->where);
 }
 
 enum funcargs_cmp funcargs_equal(

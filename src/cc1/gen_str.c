@@ -287,7 +287,7 @@ void print_decl(decl *d, enum pdeclargs mode)
 		if(type_ref_is_incomplete_array(d->ref)){
 			fprintf(cc1_out, " incomplete array in decl");
 		}else{
-			const int sz = decl_size(d, &d->where);
+			const int sz = decl_size(d);
 			fprintf(cc1_out, " size %d bytes. %d platform-word(s)", sz, sz / platform_word_size());
 		}
 	}

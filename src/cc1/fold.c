@@ -212,8 +212,8 @@ int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 
 			}else{
 normal:
-				/* for now - align = sz */
-				align = sz = decl_size(d, &d->where);
+				align = decl_align(d);
+				sz = decl_size(d);
 			}
 
 

@@ -92,8 +92,8 @@ int symtab_fold(symtable *tab, int current)
 					case store_default:
 					case store_auto:
 					{
-						int siz = decl_size(s->decl, &s->decl->where);
-						int align = type_ref_align(s->decl->ref, &s->decl->where);
+						int siz = decl_size(s->decl);
+						int align = decl_align(s->decl);
 
 						/* packing takes care of everything */
 						pack_next(&current, NULL, siz, align);

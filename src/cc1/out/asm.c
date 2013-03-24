@@ -201,19 +201,26 @@ static void asm_declare_init(FILE *f, stmt *init_code, type_ref *tfor)
 	}
 }
 
-static void asm_reserve_bytes(const char *lbl, int nbytes)
+static void asm_nam_begin(FILE *f, decl *d)
+{
+	fprintf(f,
+			".align %u\n"
+			"%s:\n",
+			decl_align(d),
+			decl_asm_spel(d));
+}
+
+static void asm_reserve_bytes(unsigned nbytes)
 {
 	/*
 	 * TODO: .comm buf,512,5
 	 * or    .zerofill SECTION_NAME,buf,512,5
 	 */
-	asm_out_section(SECTION_BSS, "%s:\n", lbl);
-
 	while(nbytes > 0){
 		int i;
 
 		for(i = ASM_TABLE_MAX; i >= 0; i--){
-			const int sz = asm_type_table[i].sz;
+			const unsigned sz = asm_type_table[i].sz;
 
 			if(nbytes >= sz){
 				asm_out_section(SECTION_BSS, ".%s 0\n", asm_type_table[i].directive);
@@ -243,17 +250,16 @@ void asm_declare_decl_init(FILE *f, decl *d)
 	if((d->store & STORE_MASK_STORE) == store_extern){
 		asm_predeclare_extern(d);
 
-	}else if(d->init && !decl_init_is_zero(d->init)){
-
-		fprintf(f, ".align %d\n", type_ref_align(d->ref, NULL));
-		fprintf(f, "%s:\n", decl_asm_spel(d));
-		asm_declare_init(f, d->decl_init_code, d->ref);
-		fputc('\n', f);
-
 	}else{
-		/* always resB, since we use decl_size() */
-		asm_reserve_bytes(decl_asm_spel(d), decl_size(d, &d->where));
-
+		if(d->init && !decl_init_is_zero(d->init)){
+			asm_nam_begin(f, d);
+			asm_declare_init(f, d->decl_init_code, d->ref);
+			fputc('\n', f);
+		}else{
+			/* always resB, since we use decl_size() */
+			asm_nam_begin(cc_out[SECTION_BSS], d);
+			asm_reserve_bytes(decl_size(d));
+		}
 	}
 }
 
