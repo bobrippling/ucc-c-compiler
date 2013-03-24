@@ -8,9 +8,9 @@
 #include <signal.h>
 
 #include "../util/util.h"
+#include "../util/platform.h"
 #include "data_structs.h"
 #include "tokenise.h"
-#include "../util/util.h"
 #include "parse.h"
 #include "cc1.h"
 #include "fold.h"
@@ -101,6 +101,7 @@ struct
 	{ 1,  "builtin",       FOPT_BUILTIN         },
 	{ 1,  "ms-extensions",    FOPT_MS_EXTENSIONS    },
 	{ 1,  "plan9-extensions", FOPT_PLAN9_EXTENSIONS },
+	{ 1,  "leading-underscore", FOPT_LEADING_UNDERSCORE },
 
 	{ 0,  NULL, 0 }
 };
@@ -114,6 +115,12 @@ struct
 	{ NULL, NULL }
 };
 
+static enum fopt fopt_defaults[] = {
+		[PLATFORM_LINUX]   = FOPT_NONE,
+		[PLATFORM_FREEBSD] = FOPT_NONE,
+		[PLATFORM_CYGWIN]  = FOPT_LEADING_UNDERSCORE,
+		[PLATFORM_DARWIN]  = FOPT_LEADING_UNDERSCORE,
+};
 
 FILE *cc_out[NUM_SECTIONS];     /* temporary section files */
 char  fnames[NUM_SECTIONS][32]; /* duh */
@@ -295,6 +302,9 @@ int main(int argc, char **argv)
 	signal(SIGSEGV, sigh);
 
 	fname = NULL;
+
+	/* defaults */
+	fopt_mode |= fopt_defaults[platform_sys()];
 
 	for(i = 1; i < argc; i++){
 		if(!strcmp(argv[i], "-X")){

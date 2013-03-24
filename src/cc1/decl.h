@@ -155,7 +155,7 @@ struct decl
 	/* only inline code - no standalone obj-code generated */
 };
 
-#define decl_asm_spel(d) ((d)->spel_asm ? (d)->spel_asm : (d)->spel)
+const char *decl_asm_spel(decl *);
 
 enum decl_cmp
 {

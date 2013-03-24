@@ -136,6 +136,15 @@ type *decl_get_type(decl *d)
 	return type_ref_get_type(d->ref);
 }
 
+const char *decl_asm_spel(decl *d)
+{
+	if(d->spel_asm)
+		return d->spel_asm;
+
+	return d->spel_asm = ((fopt_mode & FOPT_LEADING_UNDERSCORE)
+			? ustrprintf("_%s", d->spel) : d->spel);
+}
+
 void type_ref_free_1(type_ref *r)
 {
 	if(!r)
