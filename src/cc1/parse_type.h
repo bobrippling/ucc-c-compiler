@@ -4,9 +4,6 @@
 /* (type *[]) */
 type_ref *parse_type(void);
 
-/* (type) (ident) - type with spel + store */
-decl  *parse_decl_single(enum decl_mode mode);
-
 /* type ident(, ident, ...) - multiple of the above */
 decl **parse_decls_one_type(void);
 

@@ -29,6 +29,7 @@
 
 static void parse_add_attr(decl_attr **append);
 static type_ref *parse_type_ref2(enum decl_mode mode, char **sp);
+static decl *parse_decl_single(enum decl_mode mode);
 
 void parse_sue_preamble(type **tp, char **psp, enum type_primitive primitive)
 {
@@ -82,7 +83,10 @@ type *parse_type_sue(enum type_primitive prim)
 
 			EAT(token_close_block);
 		}else{
-			decl **dmembers = parse_decls_multi_type(DECL_MULTI_CAN_DEFAULT | DECL_MULTI_ACCEPT_FIELD_WIDTH);
+			decl **dmembers = parse_decls_multi_type(
+					  DECL_MULTI_CAN_DEFAULT
+					| DECL_MULTI_ACCEPT_FIELD_WIDTH
+					| DECL_MULTI_ALLOW_ALIGNAS);
 			decl **i;
 
 			if(!dmembers){
@@ -137,15 +141,14 @@ static void parse_add_attr(decl_attr **append)
 	}
 }
 
-struct decl_extra
-{
-	enum decl_storage store;
-	struct decl_align *align;
-};
+#define PARSE_BTYPE(mode, ps, pa)                        \
+parse_btype(mode & DECL_MULTI_ALLOW_STORE   ? ps : NULL, \
+            mode & DECL_MULTI_ALLOW_ALIGNAS ? pa : NULL)
 
-static type_ref *parse_btype(struct decl_extra *extra)
+static type_ref *parse_btype(
+		enum decl_storage *store, struct decl_align **palign)
 {
-	/* *extra should be initialised */
+	/* *store and *palign should be initialised */
 #define PRIMITIVE_NO_MORE 2
 
 	expr *tdef_typeof = NULL;
@@ -166,13 +169,13 @@ static type_ref *parse_btype(struct decl_extra *extra)
 		}else if(curtok_is_decl_store()){
 			const enum decl_storage st = curtok_to_decl_storage();
 
-			if(!extra)
+			if(!store)
 				DIE_AT(NULL, "storage unwanted (%s)", decl_store_to_str(st));
 
 			if(store_set)
 				DIE_AT(NULL, "second store %s", decl_store_to_str(st));
 
-			extra->store = st;
+			*store = st;
 			store_set = 1;
 			EAT(curtok);
 
@@ -269,7 +272,7 @@ static type_ref *parse_btype(struct decl_extra *extra)
 
 			t->qual = qual;
 
-			/* *extra is assigned elsewhere */
+			/* *store is assigned elsewhere */
 			return type_ref_new_type(t);
 
 		}else if(accept(token_typeof)){
@@ -320,13 +323,13 @@ static type_ref *parse_btype(struct decl_extra *extra)
 			struct decl_align *da;
 			type_ref *as_ty;
 
-			if(!extra)
+			if(!palign)
 				DIE_AT(NULL, "%s unexpected", token_to_str(curtok));
 
-			if(extra->align)
+			if(*palign)
 				DIE_AT(NULL, "second alignment specifier");
 
-			da = extra->align = umalloc(sizeof *extra->align);
+			da = *palign = umalloc(sizeof **palign);
 
 			EAT(token__Alignas);
 			EAT(token_open_paren);
@@ -354,7 +357,7 @@ static type_ref *parse_btype(struct decl_extra *extra)
 	|| is_inline
 	|| had_attr
 	|| is_noreturn
-	|| (extra && extra->align))
+	|| (palign && *palign))
 	{
 		type_ref *r;
 
@@ -380,8 +383,8 @@ static type_ref *parse_btype(struct decl_extra *extra)
 		}
 
 		if(is_inline){
-			if(extra)
-				extra->store |= store_inline;
+			if(store)
+				*store |= store_inline;
 			else
 				DIE_AT(NULL, "inline not wanted");
 		}
@@ -635,7 +638,7 @@ static type_ref *parse_type3(
 
 type_ref *parse_type()
 {
-	type_ref *btype = parse_btype(NULL);
+	type_ref *btype = parse_btype(NULL, NULL);
 
 	return btype ? parse_type3(0, NULL, btype) : NULL;
 }
@@ -708,18 +711,19 @@ static type_ref *default_type(void)
 }
 
 static decl *parse_decl_extra(
-		type_ref *r, enum decl_mode mode, struct decl_extra *x)
+		type_ref *r, enum decl_mode mode,
+		enum decl_storage store, struct decl_align *align)
 {
 	decl *d = parse_decl(r, mode);
-	d->store = x->store;
-	d->align = x->align;
+	d->store = store;
+	d->align = align;
 	return d;
 }
 
-decl *parse_decl_single(enum decl_mode mode)
+static decl *parse_decl_single(enum decl_mode mode)
 {
-	struct decl_extra x = { store_default };
-	type_ref *r = parse_btype(mode & DECL_ALLOW_STORE ? &x : NULL);
+	enum decl_storage store = store_default;
+	type_ref *r = PARSE_BTYPE(mode, &store, NULL);
 
 	if(!r){
 		if((mode & DECL_CAN_DEFAULT) == 0)
@@ -728,26 +732,27 @@ decl *parse_decl_single(enum decl_mode mode)
 		r = default_type();
 
 	}else{
-		prevent_typedef(&r->where, x.store);
+		prevent_typedef(&r->where, store);
 	}
 
-	return parse_decl_extra(r, mode, &x);
+	return parse_decl_extra(r, mode, store, NULL);
 }
 
 decl **parse_decls_one_type()
 {
-	struct decl_extra x = { store_default };
-	type_ref *r = parse_btype(&x);
+	enum decl_storage store = store_default;
+	struct decl_align *align = NULL;
+	type_ref *r = parse_btype(&store, &align);
 	decl **decls = NULL;
 
 	if(!r)
 		return NULL;
 
-	prevent_typedef(&r->where, x.store);
+	prevent_typedef(&r->where, store);
 
 	do
 		dynarray_add((void ***)&decls,
-				parse_decl_extra(r, DECL_SPEL_NEED, &x));
+				parse_decl_extra(r, DECL_SPEL_NEED, store, align));
 	while(accept(token_comma));
 
 	return decls;
@@ -814,7 +819,8 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 
 	/* read a type, then *spels separated by commas, then a semi colon, then repeat */
 	for(;;){
-		struct decl_extra x = { store_default };
+		enum decl_storage store = store_default;
+		struct decl_align *align = NULL;
 		type_ref *this_ref;
 
 		last = NULL;
@@ -822,7 +828,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 
 		parse_static_assert();
 
-		this_ref = parse_btype(mode & DECL_MULTI_ALLOW_STORE ? &x : NULL);
+		this_ref = PARSE_BTYPE(mode, &store, &align);
 
 		if(!this_ref){
 			/* can_default makes sure we don't parse { int *p; *p = 5; } the latter as a decl */
@@ -833,7 +839,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 			}
 		}
 
-		if(x.store == store_typedef){
+		if(store == store_typedef){
 			are_tdefs = 1;
 		}else{
 			struct_union_enum_st *sue = type_ref_is_s_or_u(this_ref);
@@ -850,10 +856,10 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 
 				/* check for storage/qual on no-instance */
 				qual = type_ref_qual(this_ref);
-				if(qual || x.store != store_default){
+				if(qual || store != store_default){
 					WARN_AT(&this_ref->where, "ignoring %s%s%son no-instance %s",
-							x.store != store_default ? decl_store_to_str(x.store) : "",
-							x.store != store_default ? " " : "",
+							store != store_default ? decl_store_to_str(store) : "",
+							store != store_default ? " " : "",
 							type_qual_to_str(qual),
 							sue_str(sue));
 				}
@@ -863,7 +869,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 		}
 
 		do{
-			decl *d = parse_decl_extra(this_ref, parse_flag, &x);
+			decl *d = parse_decl_extra(this_ref, parse_flag, store, align);
 
 			if(!d->spel){
 				/*

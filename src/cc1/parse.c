@@ -664,7 +664,11 @@ stmt *parse_stmt_and_decls()
 
 		parse_static_assert();
 
-		decls = parse_decls_multi_type(DECL_MULTI_ACCEPT_FUNC_DECL | DECL_MULTI_ALLOW_STORE);
+		decls = parse_decls_multi_type(
+				  DECL_MULTI_ACCEPT_FUNC_DECL
+				| DECL_MULTI_ALLOW_STORE
+				| DECL_MULTI_ALLOW_ALIGNAS);
+
 		sub = NULL;
 
 		if(decls){
@@ -959,7 +963,8 @@ symtable_global *parse()
 		decl **new = parse_decls_multi_type(
 				  DECL_MULTI_CAN_DEFAULT
 				| DECL_MULTI_ACCEPT_FUNC_CODE
-				| DECL_MULTI_ALLOW_STORE);
+				| DECL_MULTI_ALLOW_STORE
+				| DECL_MULTI_ALLOW_ALIGNAS);
 
 		if(new){
 			symtable_gasm **i;

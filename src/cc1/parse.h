@@ -14,7 +14,8 @@ enum decl_multi_mode
 	DECL_MULTI_ACCEPT_FIELD_WIDTH = 1 << 1,
 	DECL_MULTI_ACCEPT_FUNC_DECL   = 1 << 2,
 	DECL_MULTI_ACCEPT_FUNC_CODE   = 1 << 3 | DECL_MULTI_ACCEPT_FUNC_DECL,
-	DECL_MULTI_ALLOW_STORE        = 1 << 4
+	DECL_MULTI_ALLOW_STORE        = 1 << 4,
+	DECL_MULTI_ALLOW_ALIGNAS      = 1 << 5,
 };
 
 extern enum token curtok;
