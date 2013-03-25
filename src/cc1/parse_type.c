@@ -382,6 +382,14 @@ static type_ref *parse_btype(
 			r = type_ref_new_type(t);
 		}
 
+		if(store
+		&& (*store & STORE_MASK_STORE) == store_typedef
+		&& palign && *palign)
+		{
+			DIE_AT(NULL, "typedefs can't be aligned");
+		}
+
+
 		if(is_inline){
 			if(store)
 				*store |= store_inline;
