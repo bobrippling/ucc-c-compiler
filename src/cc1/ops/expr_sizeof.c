@@ -3,8 +3,8 @@
 #include "../sue.h"
 #include "../out/asm.h"
 
-#define SIZEOF_WHAT(e) ((e)->expr ? (e)->expr->tree_type : (e)->bits.sizeof_this)
-#define SIZEOF_SIZE(e)  (e)->bits.iv.val
+#define SIZEOF_WHAT(e) ((e)->expr ? (e)->expr->tree_type : (e)->bits.size_of.of_type)
+#define SIZEOF_SIZE(e)  (e)->bits.size_of.sz
 
 #define sizeof_this tref
 
@@ -20,7 +20,7 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 	if(e->expr)
 		FOLD_EXPR_NO_DECAY(e->expr, stab);
 	else
-		fold_type_ref(e->bits.sizeof_this, NULL, stab);
+		fold_type_ref(e->bits.size_of.of_type, NULL, stab);
 
 	chosen = SIZEOF_WHAT(e);
 
@@ -74,7 +74,8 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 void const_expr_sizeof(expr *e, consty *k)
 {
 	UCC_ASSERT(e->tree_type, "const_fold on sizeof before fold");
-	memcpy_safe(&k->bits.iv, &e->bits.iv);
+	k->bits.iv.val = SIZEOF_SIZE(e);
+	k->bits.iv.suffix = VAL_UNSIGNED | VAL_LONG;
 	k->type = CONST_VAL;
 }
 
@@ -95,7 +96,7 @@ void gen_expr_str_sizeof(expr *e, symtable *stab)
 		idt_printf("sizeof expr:\n");
 		print_expr(e->expr);
 	}else{
-		idt_printf("sizeof %s\n", type_ref_to_str(e->bits.sizeof_this));
+		idt_printf("sizeof %s\n", type_ref_to_str(e->bits.size_of.of_type));
 	}
 
 	if(!e->expr_is_typeof)
@@ -110,7 +111,7 @@ void mutate_expr_sizeof(expr *e)
 expr *expr_new_sizeof_type(type_ref *t, int is_typeof)
 {
 	expr *e = expr_new_wrapper(sizeof);
-	e->bits.sizeof_this = t;
+	e->bits.size_of.of_type = t;
 	e->expr_is_typeof = is_typeof;
 	return e;
 }

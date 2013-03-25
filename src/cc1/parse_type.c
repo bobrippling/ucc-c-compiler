@@ -304,7 +304,6 @@ static type_ref *parse_btype(enum decl_storage *store)
 			tdef_decl = tdef_decl_test;
 			tdef_typeof = expr_new_sizeof_type(tdef_decl->ref, 1);
 
-			tdef_typeof->bits.ident.spel = token_current_spel();
 			primitive_set = PRIMITIVE_NO_MORE;
 
 			EAT(token_identifier);

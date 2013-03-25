@@ -107,6 +107,12 @@ struct expr
 
 		struct
 		{
+			unsigned sz;
+			type_ref *of_type;
+		} size_of;
+
+		struct
+		{
 			struct generic_lbl
 			{
 				type_ref *t; /* NULL -> default */
