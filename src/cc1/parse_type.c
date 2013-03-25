@@ -320,16 +320,15 @@ static type_ref *parse_btype(
 			 */
 
 		}else if(curtok == token__Alignas){
-			struct decl_align *da;
+			struct decl_align *da, **psave;
 			type_ref *as_ty;
 
 			if(!palign)
 				DIE_AT(NULL, "%s unexpected", token_to_str(curtok));
 
-			if(*palign)
-				DIE_AT(NULL, "second alignment specifier");
+			for(psave = palign; *psave; psave = &(*psave)->next);
 
-			da = *palign = umalloc(sizeof **palign);
+			da = *psave = umalloc(sizeof **palign);
 
 			EAT(token__Alignas);
 			EAT(token_open_paren);

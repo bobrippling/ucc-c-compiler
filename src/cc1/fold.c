@@ -391,7 +391,10 @@ void fold_decl(decl *d, symtable *stab)
 	}
 
 	if(d->align){
-		int al;
+		const int tal = type_ref_align(d->ref, &d->where);
+
+		struct decl_align *i;
+		int max_al = 0;
 
 		if((d->store & STORE_MASK_STORE) == store_register)
 			can_align = 0;
@@ -399,34 +402,39 @@ void fold_decl(decl *d, symtable *stab)
 		if(!can_align)
 			DIE_AT(&d->where, "can't align %s", decl_to_str(d));
 
-		if(d->align->as_int){
-			consty k;
+		for(i = d->align; i; i = i->next){
+			int al;
 
-			const_fold(
-					FOLD_EXPR(d->align->bits.align_intk, stab),
-					&k);
+			if(i->as_int){
+				consty k;
 
-			if(k.type != CONST_VAL)
-				DIE_AT(&d->where, "alignment must be an integer constant");
+				const_fold(
+						FOLD_EXPR(i->bits.align_intk, stab),
+						&k);
 
-			al = k.bits.iv.val;
-		}else{
-			fold_type_ref(d->align->bits.align_ty, NULL, stab);
-			al = type_ref_align(d->align->bits.align_ty, &d->where);
-		}
+				if(k.type != CONST_VAL)
+					DIE_AT(&d->where, "alignment must be an integer constant");
 
-		/* allow zero */
-		if(al & (al - 1))
-			DIE_AT(&d->where, "alignment isn't a power of 2");
-		{
-			const int tal = type_ref_align(d->ref, &d->where);
+				al = k.bits.iv.val;
+			}else{
+				type_ref *ty = i->bits.align_ty;
+				fold_type_ref(ty, NULL, stab);
+				al = type_ref_align(ty, &d->where);
+			}
+
+			/* allow zero */
+			if(al & (al - 1))
+				DIE_AT(&d->where, "alignment %d isn't a power of 2", al);
 			if(al > 0 && al < tal)
 				DIE_AT(&d->where,
 						"can't reduce alignment (%d -> %d)",
 						tal, al);
+
+			if(al > max_al)
+				max_al = al;
 		}
 
-		d->align->resolved = al;
+		d->align->resolved = max_al;
 	}
 
 	if(d->init){

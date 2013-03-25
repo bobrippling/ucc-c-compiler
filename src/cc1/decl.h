@@ -145,6 +145,7 @@ struct decl
 			expr *align_intk;
 			type_ref *align_ty;
 		} bits;
+		struct decl_align *next;
 	} *align;
 
 	sym *sym;
