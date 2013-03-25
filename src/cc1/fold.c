@@ -415,8 +415,16 @@ void fold_decl(decl *d, symtable *stab)
 			al = type_ref_align(d->align->bits.align_ty, &d->where);
 		}
 
+		/* allow zero */
 		if(al & (al - 1))
 			DIE_AT(&d->where, "alignment isn't a power of 2");
+		{
+			const int tal = type_ref_align(d->ref, &d->where);
+			if(al > 0 && al < tal)
+				DIE_AT(&d->where,
+						"can't reduce alignment (%d -> %d)",
+						tal, al);
+		}
 
 		d->align->resolved = al;
 	}
