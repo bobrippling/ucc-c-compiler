@@ -13,7 +13,7 @@ main()
 
 	_Alignas(void (*)()) pf; // 8
 
-	_Alignas(1) _Alignas(4) _Alignas(16) int j; // 16
+	_Alignas(8) _Alignas(4) _Alignas(16) int j; // 16
 
 #define ALIGN(var, n) \
 	_Static_assert(_Alignof(var) == n, #var " alignment not " #n)
