@@ -1,1 +1,2 @@
-multiple alignment specifiers
+__attribute__((aligned))
+__attribute__((aligned(...)))
