@@ -110,24 +110,40 @@ decl_attr *parse_attr_nonnull()
 	return da;
 }
 
-decl_attr *parse_attr_sentinel()
+static unsigned long optional_parened_int(void)
 {
-	decl_attr *da = decl_attr_new(attr_sentinel);
-
 	if(accept(token_open_paren)){
-		int u;
+		long u;
 
 		EAT(token_integer);
 
 		u = currentval.val;
-
-		if(u < 0)
+		if(u < 0){
 			WARN_AT(NULL, "negative sentinel argument ignored");
-		else
-			da->attr_extra.sentinel = u;
+			u = 0;
+		}
 
 		EAT(token_close_paren);
+
+		return u;
 	}
+	return 0;
+}
+
+decl_attr *parse_attr_sentinel()
+{
+	decl_attr *da = decl_attr_new(attr_sentinel);
+
+  da->attr_extra.sentinel = optional_parened_int();
+
+	return da;
+}
+
+decl_attr *parse_attr_aligned()
+{
+	decl_attr *da = decl_attr_new(attr_aligned);
+
+  da->attr_extra.align = optional_parened_int();
 
 	return da;
 }
@@ -163,6 +179,7 @@ static struct
 	ATTR(nonnull),
 	ATTR(packed),
 	ATTR(sentinel),
+	ATTR(aligned),
 #undef ATTR
 
 	/* compat */

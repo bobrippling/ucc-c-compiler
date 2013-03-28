@@ -17,7 +17,8 @@ struct decl_attr
 		attr_nonnull,
 		attr_packed,
 		attr_sentinel,
-#define attr_LAST (attr_sentinel + 1)
+		attr_aligned,
+		attr_LAST
 		/*
 		 * TODO: warning, cdecl, stdcall, fastcall
 		 * pure - no globals
@@ -34,6 +35,7 @@ struct decl_attr
 		} format;
 		char *section;
 		unsigned long nonnull_args; /* limits to sizeof(long)*8 args, i.e. 64 */
+		unsigned long align;
 		unsigned sentinel;
 	} attr_extra;
 

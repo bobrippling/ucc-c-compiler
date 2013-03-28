@@ -296,6 +296,9 @@ const char *decl_attr_to_str(enum decl_attr_type t)
 		CASE_STR_PREFIX(attr, nonnull);
 		CASE_STR_PREFIX(attr, packed);
 		CASE_STR_PREFIX(attr, sentinel);
+		CASE_STR_PREFIX(attr, aligned);
+		case attr_LAST:
+			break;
 	}
 	return NULL;
 }
