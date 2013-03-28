@@ -1,3 +1,5 @@
+// RUN: %ucc -c %s
+
 main()
 {
 #define PALIGN(ty) \
@@ -9,4 +11,7 @@ main()
 
 	_Alignas(__alignof__(int)) short x = 2;
 	_Alignas(4) char c;
+
+	_Static_assert(_Alignof(x) == 4, "");
+	_Static_assert(_Alignof(c) == 4, "");
 }

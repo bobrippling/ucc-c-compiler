@@ -1,3 +1,6 @@
+// RUN: %ucc -c %s
+// RUN: %ucc -S -o- %s | asmcheck %s
+
 struct align
 {
 	char pre;
