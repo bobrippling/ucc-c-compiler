@@ -321,8 +321,25 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 	fold_type_ref(r->ref, r, stab);
 }
 
+static int fold_align(int al, int min, int max, where *w)
+{
+	/* allow zero */
+	if(al & (al - 1))
+		DIE_AT(w, "alignment %d isn't a power of 2", al);
+
+	if(al > 0 && al < min)
+		DIE_AT(w,
+				"can't reduce alignment (%d -> %d)",
+				min, al);
+
+	if(al > max)
+		max = al;
+	return max;
+}
+
 void fold_decl(decl *d, symtable *stab)
 {
+	decl_attr *attrib = NULL;
 	int can_align = 1;
 
 	fold_type_ref(d->ref, NULL, stab);
@@ -390,7 +407,7 @@ void fold_decl(decl *d, symtable *stab)
 		WARN_AT(&d->where, "inline on non-function");
 	}
 
-	if(d->align){
+	if(d->align || (attrib = decl_has_attr(d, attr_aligned))){
 		const int tal = type_ref_align(d->ref, &d->where);
 
 		struct decl_align *i;
@@ -422,16 +439,13 @@ void fold_decl(decl *d, symtable *stab)
 				al = type_ref_align(ty, &d->where);
 			}
 
-			/* allow zero */
-			if(al & (al - 1))
-				DIE_AT(&d->where, "alignment %d isn't a power of 2", al);
-			if(al > 0 && al < tal)
-				DIE_AT(&d->where,
-						"can't reduce alignment (%d -> %d)",
-						tal, al);
+			max_al = fold_align(al, tal, max_al, &d->where);
+		}
 
-			if(al > max_al)
-				max_al = al;
+		if(attrib){
+			max_al = fold_align(attrib->attr_extra.align, tal, max_al, &attrib->where);
+			if(!d->align)
+				d->align = umalloc(sizeof *d->align);
 		}
 
 		d->align->resolved = max_al;
