@@ -151,16 +151,24 @@ int main(int argc, char **argv)
 
 			case 'D':
 			{
+				char *arg = argv[i] + 2;
 				char *eq;
-				if(!argv[i][2])
+				if(!*arg)
 					goto usage;
 
-				eq = strchr(argv[i] + 2, '=');
+				eq = strchr(arg, '=');
 				if(eq){
+					/* FIXME: this is hacky and doesn't
+					 * work for things like "-D531,31;5=a".
+					 * Should be pushed through the parser */
+					if(strchr(arg, '('))
+						die("can't handle function-like macros via -D yet");
+
 					*eq++ = '\0';
-					macro_add(argv[i] + 2, eq);
+
+					macro_add(arg, eq);
 				}else{
-					macro_add(argv[i] + 2, "1"); /* -Dhello means #define hello 1 */
+					macro_add(arg, "1"); /* -Dhello means #define hello 1 */
 				}
 				break;
 			}

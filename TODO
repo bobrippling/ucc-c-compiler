@@ -55,6 +55,8 @@ extensions:
 
 fix memory leaks
 
+-Df(x)=x+1
+
 fix dir-relative file opening (for #include <>):
 	cc -E dir/x.c
 	doesn't work, but
