@@ -354,6 +354,17 @@ static decl_init **decl_init_brace_up_sue2(
 		}
 	}
 
+	sue_nmem = sue_nmembers(sue);
+	/* check for {} */
+	if(sue_nmem == 0
+	&& (this = *iter->pos)
+	&& (this->type != decl_init_brace
+		|| dynarray_count(this->bits.inits) != 0))
+	{
+		WARN_AT(&this->where, "missing {} initialiser for empty %s",
+				sue_str(sue), sue->spel);
+	}
+
 	for(i = 0; (this = *iter->pos); i++){
 		desig *des;
 		decl_init *braced_sub = NULL;
