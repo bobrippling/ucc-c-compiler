@@ -300,7 +300,7 @@ void out_asm_inline(asm_args *cmd)
 		}
 
 		out_comment("### actual inline");
-		fprintf(out, "\t%s\n", buf);
+		fprintf(out, "\t%s\n", buf ? buf : "");
 		out_comment("### end");
 
 		index = n_outputs;
