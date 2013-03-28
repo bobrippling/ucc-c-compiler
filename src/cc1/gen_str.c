@@ -294,7 +294,7 @@ void print_decl(decl *d, enum pdeclargs mode)
 		if(type_ref_is_incomplete_array(d->ref)){
 			fprintf(cc1_out, " incomplete array in decl");
 		}else{
-			const int sz = decl_size(d, &d->where);
+			const int sz = decl_size(d);
 			fprintf(cc1_out, " size %d bytes. %d platform-word(s)", sz, sz / platform_word_size());
 		}
 	}
@@ -310,6 +310,9 @@ void print_decl(decl *d, enum pdeclargs mode)
 
 	if(mode & PDECL_ATTR){
 		gen_str_indent++;
+		if(d->align)
+			idt_printf("[align={as_int=%d, resolved=%d}]\n",
+					d->align->as_int, d->align->resolved);
 		print_decl_attr(d->attr);
 		print_type_attr(d->ref);
 		gen_str_indent--;

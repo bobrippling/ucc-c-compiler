@@ -15,6 +15,12 @@
 
 #define KEYWORD(x) { #x, token_ ## x }
 
+#define KEYWORD__(x, t) \
+	{ "__" #x,      t },  \
+	{ "__" #x "__", t }
+
+#define KEYWORD__ALL(x) KEYWORD(x), KEYWORD__(x, token_ ## x)
+
 struct statement
 {
 	const char *str;
@@ -52,9 +58,7 @@ struct statement
 	KEYWORD(while),
 	KEYWORD(for),
 
-	KEYWORD(asm),
-	{ "__asm",    token_asm },
-	{ "__asm__",  token_asm },
+	KEYWORD__ALL(asm),
 
 	KEYWORD(void),
 	KEYWORD(char),
@@ -70,31 +74,33 @@ struct statement
 	KEYWORD(extern),
 	KEYWORD(register),
 
-	KEYWORD(inline),
+	KEYWORD__ALL(inline),
 	KEYWORD(_Noreturn),
 
-	KEYWORD(const),
-	KEYWORD(volatile),
-	KEYWORD(restrict),
+	KEYWORD__ALL(const),
+	KEYWORD__ALL(volatile),
+	KEYWORD__ALL(restrict),
 
-	KEYWORD(signed),
-	KEYWORD(unsigned),
+	KEYWORD__ALL(signed),
+	KEYWORD__ALL(unsigned),
 
 	KEYWORD(typedef),
 	KEYWORD(struct),
 	KEYWORD(union),
 	KEYWORD(enum),
 
+	KEYWORD(_Alignof),
+	KEYWORD__(alignof, token__Alignof),
+	KEYWORD(_Alignas),
+	KEYWORD__(alignas, token__Alignas),
+
 	KEYWORD(sizeof),
 	KEYWORD(_Generic),
 	KEYWORD(_Static_assert),
 
-	KEYWORD(typeof),
-	{ "__typeof",    token_typeof },
-	{ "__typeof__",  token_typeof },
+	KEYWORD__ALL(typeof),
 
-	{ "__attribute",   token_attribute },
-	{ "__attribute__", token_attribute }
+	KEYWORD__(attribute, token_attribute),
 };
 
 static FILE *infile;

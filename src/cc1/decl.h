@@ -17,7 +17,8 @@ struct decl_attr
 		attr_nonnull,
 		attr_packed,
 		attr_sentinel,
-#define attr_LAST (attr_sentinel + 1)
+		attr_aligned,
+		attr_LAST
 		/*
 		 * TODO: warning, cdecl, stdcall, fastcall
 		 * pure - no globals
@@ -34,6 +35,7 @@ struct decl_attr
 		} format;
 		char *section;
 		unsigned long nonnull_args; /* limits to sizeof(long)*8 args, i.e. 64 */
+		unsigned long align;
 		unsigned sentinel;
 	} attr_extra;
 
@@ -142,6 +144,17 @@ struct decl
 	expr *field_width;
 #endif
 	int struct_offset;
+	struct decl_align
+	{
+		int as_int;
+		unsigned resolved;
+		union
+		{
+			expr *align_intk;
+			type_ref *align_ty;
+		} bits;
+		struct decl_align *next;
+	} *align;
 
 	sym *sym;
 
@@ -189,7 +202,8 @@ decl_attr   *decl_attr_new(enum decl_attr_type);
 void         decl_attr_append(decl_attr **loc, decl_attr *new);
 const char  *decl_attr_to_str(enum decl_attr_type);
 
-int   decl_size(decl *, where const *from);
+unsigned decl_size(decl *);
+unsigned decl_align(decl *);
 int   type_ref_size(type_ref *, where const *from);
 int   decl_equal(decl *a, decl *b, enum decl_cmp mode);
 int   type_ref_equal(type_ref *a, type_ref *b, enum decl_cmp mode);

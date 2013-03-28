@@ -236,8 +236,8 @@ int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 
 			}else{
 normal:
-				/* for now - align = sz */
-				align = sz = decl_size(d, &d->where);
+				align = decl_align(d);
+				sz = decl_size(d);
 			}
 
 
@@ -342,8 +342,27 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 	fold_type_ref(r->ref, r, stab);
 }
 
+static int fold_align(int al, int min, int max, where *w)
+{
+	/* allow zero */
+	if(al & (al - 1))
+		DIE_AT(w, "alignment %d isn't a power of 2", al);
+
+	if(al > 0 && al < min)
+		DIE_AT(w,
+				"can't reduce alignment (%d -> %d)",
+				min, al);
+
+	if(al > max)
+		max = al;
+	return max;
+}
+
 void fold_decl(decl *d, symtable *stab)
 {
+	decl_attr *attrib = NULL;
+	int can_align = 1;
+
 	fold_type_ref(d->ref, NULL, stab);
 
 #if 0
@@ -376,6 +395,8 @@ void fold_decl(decl *d, symtable *stab)
 
 		if(width == 1 && t->is_signed)
 			WARN_AT(&d->where, "%s 1-bit field width is signed (-1 and 0)", decl_to_str(d));
+
+		can_align = 0;
 	}
 #endif
 
@@ -401,8 +422,54 @@ void fold_decl(decl *d, symtable *stab)
 					break;
 			}
 		}
+
+		can_align = 0;
 	}else if((d->store & STORE_MASK_EXTRA) == store_inline){
 		WARN_AT(&d->where, "inline on non-function");
+	}
+
+	if(d->align || (attrib = decl_has_attr(d, attr_aligned))){
+		const int tal = type_ref_align(d->ref, &d->where);
+
+		struct decl_align *i;
+		int max_al = 0;
+
+		if((d->store & STORE_MASK_STORE) == store_register)
+			can_align = 0;
+
+		if(!can_align)
+			DIE_AT(&d->where, "can't align %s", decl_to_str(d));
+
+		for(i = d->align; i; i = i->next){
+			int al;
+
+			if(i->as_int){
+				consty k;
+
+				const_fold(
+						FOLD_EXPR(i->bits.align_intk, stab),
+						&k);
+
+				if(k.type != CONST_VAL)
+					DIE_AT(&d->where, "alignment must be an integer constant");
+
+				al = k.bits.iv.val;
+			}else{
+				type_ref *ty = i->bits.align_ty;
+				fold_type_ref(ty, NULL, stab);
+				al = type_ref_align(ty, &d->where);
+			}
+
+			max_al = fold_align(al, tal, max_al, &d->where);
+		}
+
+		if(attrib){
+			max_al = fold_align(attrib->attr_extra.align, tal, max_al, &attrib->where);
+			if(!d->align)
+				d->align = umalloc(sizeof *d->align);
+		}
+
+		d->align->resolved = max_al;
 	}
 
 	if(d->init){

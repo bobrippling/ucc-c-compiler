@@ -29,6 +29,7 @@
 
 static void parse_add_attr(decl_attr **append);
 static type_ref *parse_type_ref2(enum decl_mode mode, char **sp);
+static decl *parse_decl_single(enum decl_mode mode);
 
 void parse_sue_preamble(type **tp, char **psp, enum type_primitive primitive)
 {
@@ -87,9 +88,10 @@ type *parse_type_sue(enum type_primitive prim)
 			 * -fms-extensions or -fplan9-extensions
 			 */
 			decl **dmembers = parse_decls_multi_type(
-					DECL_MULTI_CAN_DEFAULT |
-					DECL_MULTI_ACCEPT_FIELD_WIDTH |
-					DECL_MULTI_NAMELESS);
+					  DECL_MULTI_CAN_DEFAULT
+					| DECL_MULTI_ACCEPT_FIELD_WIDTH
+					| DECL_MULTI_NAMELESS
+					| DECL_MULTI_ALLOW_ALIGNAS);
 			decl **i;
 
 			if(!dmembers){
@@ -144,8 +146,14 @@ static void parse_add_attr(decl_attr **append)
 	}
 }
 
-static type_ref *parse_btype(enum decl_storage *store)
+#define PARSE_BTYPE(mode, ps, pa)                        \
+parse_btype(mode & DECL_MULTI_ALLOW_STORE   ? ps : NULL, \
+            mode & DECL_MULTI_ALLOW_ALIGNAS ? pa : NULL)
+
+static type_ref *parse_btype(
+		enum decl_storage *store, struct decl_align **palign)
 {
+	/* *store and *palign should be initialised */
 #define PRIMITIVE_NO_MORE 2
 
 	expr *tdef_typeof = NULL;
@@ -155,9 +163,6 @@ static type_ref *parse_btype(enum decl_storage *store)
 	int is_signed = 1, is_inline = 0, had_attr = 0, is_noreturn = 0;
 	int store_set = 0, primitive_set = 0, signed_set = 0;
 	decl *tdef_decl = NULL;
-
-	if(store)
-		*store = store_default;
 
 	for(;;){
 		decl *tdef_decl_test;
@@ -277,7 +282,7 @@ static type_ref *parse_btype(enum decl_storage *store)
 			if(primitive_set)
 				DIE_AT(NULL, "duplicate typeof specifier");
 
-			tdef_typeof = parse_expr_sizeof_typeof(1);
+			tdef_typeof = parse_expr_sizeof_typeof_alignof(what_typeof);
 			primitive_set = 1;
 
 		}else if(curtok == token_identifier
@@ -316,6 +321,30 @@ static type_ref *parse_btype(enum decl_storage *store)
 			 * __attribute__(());
 			 */
 
+		}else if(curtok == token__Alignas){
+			struct decl_align *da, **psave;
+			type_ref *as_ty;
+
+			if(!palign)
+				DIE_AT(NULL, "%s unexpected", token_to_str(curtok));
+
+			for(psave = palign; *psave; psave = &(*psave)->next);
+
+			da = *psave = umalloc(sizeof **palign);
+
+			EAT(token__Alignas);
+			EAT(token_open_paren);
+
+			if((as_ty = parse_type())){
+				da->as_int = 0;
+				da->bits.align_ty = as_ty;
+			}else{
+				da->as_int = 1;
+				da->bits.align_intk = parse_expr_exp();
+			}
+
+			EAT(token_close_paren);
+
 		}else{
 			break;
 		}
@@ -328,7 +357,8 @@ static type_ref *parse_btype(enum decl_storage *store)
 	|| tdef_typeof
 	|| is_inline
 	|| had_attr
-	|| is_noreturn)
+	|| is_noreturn
+	|| (palign && *palign))
 	{
 		type_ref *r;
 
@@ -350,6 +380,13 @@ static type_ref *parse_btype(enum decl_storage *store)
 			t->is_signed = is_signed;
 
 			r = type_ref_new_type(t);
+		}
+
+		if(store
+		&& (*store & STORE_MASK_STORE) == store_typedef
+		&& palign && *palign)
+		{
+			DIE_AT(NULL, "typedefs can't be aligned");
 		}
 
 		r = type_ref_new_cast_add(r, qual);
@@ -627,7 +664,7 @@ static type_ref *parse_type3(
 
 type_ref *parse_type()
 {
-	type_ref *btype = parse_btype(NULL);
+	type_ref *btype = parse_btype(NULL, NULL);
 
 	return btype ? parse_type3(0, NULL, btype) : NULL;
 }
@@ -699,10 +736,20 @@ static type_ref *default_type(void)
 	return type_ref_new_type(type_new_primitive(type_int));
 }
 
-decl *parse_decl_single(enum decl_mode mode)
+static decl *parse_decl_extra(
+		type_ref *r, enum decl_mode mode,
+		enum decl_storage store, struct decl_align *align)
+{
+	decl *d = parse_decl(r, mode);
+	d->store = store;
+	d->align = align;
+	return d;
+}
+
+static decl *parse_decl_single(enum decl_mode mode)
 {
 	enum decl_storage store = store_default;
-	type_ref *r = parse_btype(mode & DECL_ALLOW_STORE ? &store : NULL);
+	type_ref *r = PARSE_BTYPE(mode, &store, NULL);
 
 	if(!r){
 		if((mode & DECL_CAN_DEFAULT) == 0)
@@ -714,17 +761,14 @@ decl *parse_decl_single(enum decl_mode mode)
 		prevent_typedef(&r->where, store);
 	}
 
-	{
-		decl *d = parse_decl(r, mode);
-		d->store = store;
-		return d;
-	}
+	return parse_decl_extra(r, mode, store, NULL);
 }
 
 decl **parse_decls_one_type()
 {
-	enum decl_storage store;
-	type_ref *r = parse_btype(&store);
+	enum decl_storage store = store_default;
+	struct decl_align *align = NULL;
+	type_ref *r = parse_btype(&store, &align);
 	decl **decls = NULL;
 
 	if(!r)
@@ -732,10 +776,10 @@ decl **parse_decls_one_type()
 
 	prevent_typedef(&r->where, store);
 
-	do{
-		decl *d = parse_decl(r, DECL_SPEL_NEED);
-		dynarray_add((void ***)&decls, d);
-	}while(accept(token_comma));
+	do
+		dynarray_add((void ***)&decls,
+				parse_decl_extra(r, DECL_SPEL_NEED, store, align));
+	while(accept(token_comma));
 
 	return decls;
 }
@@ -802,6 +846,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 	/* read a type, then *spels separated by commas, then a semi colon, then repeat */
 	for(;;){
 		enum decl_storage store = store_default;
+		struct decl_align *align = NULL;
 		type_ref *this_ref;
 
 		last = NULL;
@@ -809,7 +854,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 
 		parse_static_assert();
 
-		this_ref = parse_btype(mode & DECL_MULTI_ALLOW_STORE ? &store : NULL);
+		this_ref = PARSE_BTYPE(mode, &store, &align);
 
 		if(!this_ref){
 			/* can_default makes sure we don't parse { int *p; *p = 5; } the latter as a decl */
@@ -852,9 +897,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 		}
 
 		do{
-			decl *d = parse_decl(this_ref, parse_flag);
-
-			d->store = store;
+			decl *d = parse_decl_extra(this_ref, parse_flag, store, align);
 
 			if(!d->spel){
 				/*

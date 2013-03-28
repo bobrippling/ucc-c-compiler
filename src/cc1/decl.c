@@ -262,7 +262,12 @@ decl_attr *type_attr_present(type_ref *r, enum decl_attr_type t)
 
 		switch(r->type){
 			case type_ref_type:
-				return decl_attr_present(r->bits.type->attr, t);
+			{
+				struct_union_enum_st *sue = r->bits.type->sue;
+				if((da = decl_attr_present(r->bits.type->attr, t)))
+					return da;
+				return sue ? decl_attr_present(sue->attr, t) : NULL;
+			}
 
 			case type_ref_tdef:
 			{
@@ -310,6 +315,9 @@ const char *decl_attr_to_str(enum decl_attr_type t)
 		CASE_STR_PREFIX(attr, nonnull);
 		CASE_STR_PREFIX(attr, packed);
 		CASE_STR_PREFIX(attr, sentinel);
+		CASE_STR_PREFIX(attr, aligned);
+		case attr_LAST:
+			break;
 	}
 	return NULL;
 }
@@ -413,7 +421,7 @@ int type_ref_size(type_ref *r, where const *from)
 	ucc_unreach();
 }
 
-int decl_size(decl *d, where const *from)
+unsigned decl_size(decl *d)
 {
 #ifdef FIELD_WIDTH_TODO
 	if(d->field_width){
@@ -428,7 +436,18 @@ int decl_size(decl *d, where const *from)
 	}
 #endif
 
-	return type_ref_size(d->ref, from);
+	return type_ref_size(d->ref, &d->where);
+}
+
+unsigned decl_align(decl *d)
+{
+	unsigned al = 0;
+
+	if(d->align)
+		al = d->align->resolved;
+
+	/* unsigned fixed in another branch */
+	return al ? al : (unsigned)type_ref_align(d->ref, &d->where);
 }
 
 static int type_ref_equal_r(
