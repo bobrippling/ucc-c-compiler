@@ -338,9 +338,10 @@ static decl_init **decl_init_brace_up_sue2(
 		struct_union_enum_st *sue, const int is_anon)
 {
 	unsigned n = dynarray_count(current), i;
+	unsigned sue_nmem;
 	decl_init *this;
 
-	UCC_ASSERT(sue->members, "no members in struct");
+	UCC_ASSERT(!sue_incomplete(sue), "incomplete struct init");
 
 	/* check for copy-init */
 	if((this = *iter->pos) && this->type == decl_init_scalar){
@@ -418,7 +419,7 @@ static decl_init **decl_init_brace_up_sue2(
 				ICE("couldn't find member %s", des->bits.member);
 		}
 
-		{
+		if(i < sue_nmem){
 			sue_member *mem = sue->members[i];
 			decl_init *replacing = NULL;
 
@@ -438,6 +439,8 @@ static decl_init **decl_init_brace_up_sue2(
 
 			if(sue->primitive == type_union)
 				break;
+		}else{
+			break;
 		}
 	}
 
