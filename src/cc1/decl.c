@@ -243,7 +243,12 @@ decl_attr *type_attr_present(type_ref *r, enum decl_attr_type t)
 
 		switch(r->type){
 			case type_ref_type:
-				return decl_attr_present(r->bits.type->attr, t);
+			{
+				struct_union_enum_st *sue = r->bits.type->sue;
+				if((da = decl_attr_present(r->bits.type->attr, t)))
+					return da;
+				return sue ? decl_attr_present(sue->attr, t) : NULL;
+			}
 
 			case type_ref_tdef:
 			{
