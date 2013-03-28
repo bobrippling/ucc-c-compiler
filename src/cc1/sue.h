@@ -21,7 +21,7 @@ struct struct_union_enum_st
 	enum type_primitive primitive; /* struct or enum or union */
 
 	char *spel; /* "<anon ...>" if anon */
-	int anon : 1;
+	int anon : 1, complete : 1;
 	int align, size;
 
 	sue_member **members;
@@ -36,12 +36,12 @@ struct struct_union_enum_st
 #define sue_str(x) sue_str_type((x)->primitive)
 
 /* this is fine - empty structs aren't allowed */
-#define sue_incomplete(x) (!(x)->members)
+#define sue_incomplete(x) (!(x)->complete)
 
 #define sue_nmembers(x) dynarray_count((x)->members)
 
 
-struct_union_enum_st *sue_add( symtable *, char *spel, sue_member **members, enum type_primitive);
+struct_union_enum_st *sue_add( symtable *, char *spel, sue_member **members, enum type_primitive, int complete);
 struct_union_enum_st *sue_find(symtable *, const char *spel);
 
 /* enum specific */

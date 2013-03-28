@@ -55,6 +55,7 @@ type *parse_type_sue(enum type_primitive prim)
 	type *t;
 	char *spel;
 	sue_member **members;
+	int is_complete = 0;
 
 	parse_sue_preamble(&t, &spel, prim);
 
@@ -79,8 +80,6 @@ type *parse_type_sue(enum type_primitive prim)
 				if(!accept(token_comma))
 					break;
 			}while(curtok == token_identifier);
-
-			EAT(token_close_block);
 		}else{
 			/* always allow nameless structs (C11)
 			 * we don't allow tagged ones unless
@@ -97,19 +96,23 @@ type *parse_type_sue(enum type_primitive prim)
 
 				if(curtok == token_colon)
 					DIE_AT(NULL, "can't have initial %s padding", t);
-				DIE_AT(NULL, "no members in %s", t);
-			}
 
-			for(i = dmembers; *i; i++){
-				sue_member *sm = umalloc(sizeof *sm);
-				sm->struct_member = *i;
-				dynarray_add(&members, sm);
-			}
+				WARN_AT(NULL, "empty %s", t);
 
-			dynarray_free(&dmembers, NULL);
+			}else{
+				for(i = dmembers; i && *i; i++){
+					sue_member *sm = umalloc(sizeof *sm);
+					sm->struct_member = *i;
+					dynarray_add(&members, sm);
+				}
+
+				dynarray_free(&dmembers, NULL);
+			}
 
 			EAT(token_close_block);
 		}
+
+		is_complete = 1;
 
 	}else if(!spel){
 		DIE_AT(NULL, "expected: %s definition or name", sue_str_type(prim));
@@ -120,7 +123,7 @@ type *parse_type_sue(enum type_primitive prim)
 			cc1_warn_at(NULL, 0, 1, WARN_PREDECL_ENUM, "predeclaration of enums is not C99");
 	}
 
-	t->sue = sue_add(current_scope, spel, members, prim);
+	t->sue = sue_add(current_scope, spel, members, prim, is_complete);
 
 	parse_add_attr(&t->sue->attr); /* struct A {} __attr__ */
 

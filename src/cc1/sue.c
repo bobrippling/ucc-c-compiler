@@ -52,14 +52,10 @@ int sue_size(struct_union_enum_st *st, const where *w)
 	if(sue_incomplete(st))
 		DIE_AT(w, "%s %s is incomplete", sue_str(st), st->spel);
 
-	if(st->size)
-		return st->size;
-
 	if(st->primitive == type_enum)
 		return st->size = type_primitive_size(type_int);
 
-	ICE("%s of unfolded sue", __func__);
-	return -1;
+	return st->size; /* can be zero */
 }
 
 struct_union_enum_st *sue_find(symtable *stab, const char *spel)
@@ -79,7 +75,7 @@ struct_union_enum_st *sue_find(symtable *stab, const char *spel)
 
 static void sue_get_decls(sue_member **mems, sue_member ***pds)
 {
-	for(; *mems; mems++){
+	for(; mems && *mems; mems++){
 		decl *d = (*mems)->struct_member;
 
 		if(d->spel){
@@ -100,7 +96,10 @@ static int decl_spel_cmp(const void *pa, const void *pb)
 	return strcmp(a->struct_member->spel, b->struct_member->spel);
 }
 
-struct_union_enum_st *sue_add(symtable *const stab, char *spel, sue_member **members, enum type_primitive prim)
+struct_union_enum_st *sue_add(
+		symtable *const stab, char *spel,
+		sue_member **members, enum type_primitive prim,
+		int is_complete)
 {
 	struct_union_enum_st *sue;
 	int new = 0;
@@ -159,7 +158,7 @@ struct_union_enum_st *sue_add(symtable *const stab, char *spel, sue_member **mem
 					dynarray_count((void **)decls), sizeof *decls,
 					decl_spel_cmp);
 
-			for(i = 0; decls[i]; i++){
+			for(i = 0; decls && decls[i]; i++){
 				decl *d2, *d = decls[i]->struct_member;
 
 				if(d->init)
@@ -182,6 +181,8 @@ struct_union_enum_st *sue_add(symtable *const stab, char *spel, sue_member **mem
 	}
 
 	sue->anon = !spel;
+	if(is_complete)
+		sue->complete = 1;
 
 	sue_set_spel(sue, spel);
 
