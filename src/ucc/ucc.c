@@ -386,21 +386,28 @@ arg_ld:
 					continue;
 
 				case 'x':
+				{
+					const char *arg;
 					/* prevent implicit assumption of source */
-					if(!argv[++i])
+					if(argv[i][2])
+						arg = argv[i] + 2;
+					else if(!argv[++i])
 						die("-x needs an argument");
+					else
+						arg = argv[i];
 
 					/* TODO: "asm-with-cpp"? */
 					/* TODO: order-sensitive -x */
-					if(!strcmp(argv[i], "c"))
+					if(!strcmp(arg, "c"))
 						gopts.assume = mode_preproc;
-					else if(!strcmp(argv[i], "cpp"))
+					else if(!strcmp(arg, "cpp"))
 						gopts.assume = mode_compile;
-					else if(!strcmp(argv[i], "asm"))
+					else if(!strcmp(arg, "asm"))
 						gopts.assume = mode_assemb;
 					else
-						die("-x accepts \"c\", \"cpp\", or \"asm\", not \"%s\"", argv[i]);
+						die("-x accepts \"c\", \"cpp\", or \"asm\", not \"%s\"", arg);
 					continue;
+				}
 
 				case '\0':
 					/* "-" aka stdin */
