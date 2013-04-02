@@ -10,6 +10,7 @@
 #  define ucc_wur  __attribute__((warn_unused_result))
 #  define ucc_nonnull(args) __attribute__((nonnull args))
 #  define ucc_static_param static
+#  define ucc_const __attribute__((const))
 
 #else
 #  define ucc_printflike(a, b)

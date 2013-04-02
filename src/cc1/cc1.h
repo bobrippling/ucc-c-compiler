@@ -72,7 +72,6 @@ enum fopt
 	FOPT_LEADING_UNDERSCORE    = 1 << 9,
 };
 
-
 enum cc1_backend
 {
 	BACKEND_ASM,
@@ -91,6 +90,7 @@ extern FILE *cc1_out;
 
 extern int cc1_max_errors;
 
-extern int m32; /* 32bit mode or 64? */
+extern int cc1_m32; /* 32bit mode or 64? */
+extern int cc1_mstack_align; /* 2^n */
 
 #endif

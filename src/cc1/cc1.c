@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <math.h>
 
 #include <unistd.h>
 #include <signal.h>
@@ -108,11 +109,13 @@ struct
 
 struct
 {
+	char pref;
 	const char *arg;
 	int *pval;
 } val_args[] = {
-	{ "max-errors",   &cc1_max_errors },
-	{ NULL, NULL }
+	{ 'f', "max-errors",   &cc1_max_errors },
+	{ 'm', "preferred-stack-boundary", &cc1_mstack_align },
+	{ 0, NULL, NULL }
 };
 
 static enum fopt fopt_defaults[] = {
@@ -140,7 +143,8 @@ enum fopt fopt_mode = FOPT_CONST_FOLD
                     | FOPT_MS_EXTENSIONS;
 enum cc1_backend cc1_backend = BACKEND_ASM;
 
-int m32 = 0;
+int cc1_m32 = 0;
+int cc1_mstack_align; /* align stack to n, platform_word_size by default */
 
 int cc1_max_errors = 16;
 
@@ -187,7 +191,7 @@ void ccdie(int verbose, const char *fmt, ...)
 		for(i = 0; args[i].arg; i++)
 			fprintf(stderr, "  -%c%s\n", args[i].is_opt["Wf"], args[i].arg);
 		for(i = 0; val_args[i].arg; i++)
-			fprintf(stderr, "  -f%s=value\n", val_args[i].arg);
+			fprintf(stderr, "  -%c%s=value\n", val_args[i].pref, val_args[i].arg);
 	}
 
 	exit(1);
@@ -305,6 +309,7 @@ int main(int argc, char **argv)
 
 	/* defaults */
 	fopt_mode |= fopt_defaults[platform_sys()];
+	cc1_mstack_align = platform_word_size();
 
 	for(i = 1; i < argc; i++){
 		if(!strcmp(argv[i], "-X")){
@@ -335,18 +340,9 @@ int main(int argc, char **argv)
 		}else if(!strcmp(argv[i], "-w")){
 			warn_mode = WARN_NONE;
 
-		}else if(!strncmp(argv[i], "-m", 2)){
-			int n;
-
-			if(sscanf(argv[i] + 2, "%d", &n) != 1 || (n != 32 && n != 64)){
-				fprintf(stderr, "-m needs either 32 or 64\n");
-				goto usage;
-			}
-
-			m32 = n == 32;
-
-		}else if(argv[i][0] == '-' && (argv[i][1] == 'W' || argv[i][1] == 'f')){
-			const int fopt = argv[i][1] == 'f';
+		}else if(argv[i][0] == '-'
+		&& (argv[i][1] == 'W' || argv[i][1] == 'f' || argv[i][1] == 'm')){
+			const char arg_ty = argv[i][1];
 			char *arg = argv[i] + 2;
 			int *mask;
 			int j, found, rev;
@@ -358,7 +354,7 @@ int main(int argc, char **argv)
 				rev = 1;
 			}
 
-			if(fopt){
+			if(arg_ty != 'W'){
 				char *equal = strchr(arg, '=');
 
 				if(equal){
@@ -376,7 +372,7 @@ int main(int argc, char **argv)
 					}
 
 					for(j = 0; val_args[j].arg; j++)
-						if(!strcmp(arg, val_args[j].arg)){
+						if(val_args[j].pref == arg_ty && !strcmp(arg, val_args[j].arg)){
 							*val_args[j].pval = new_val;
 							found = 1;
 							break;
@@ -409,12 +405,32 @@ unrecognised:
 				goto usage;
 			}
 
+		}else if(!strncmp(argv[i], "-m", 2)){
+			int n;
+
+			if(sscanf(argv[i] + 2, "%d", &n) != 1 || (n != 32 && n != 64)){
+				fprintf(stderr, "-m needs either 32 or 64\n");
+				goto usage;
+			}
+
+			cc1_m32 = n == 32;
+
 		}else if(!fname){
 			fname = argv[i];
 		}else{
 usage:
 			ccdie(1, "Usage: %s [-W[no-]warning] [-f[no-]option] [-X backend] [-m[32|64]] [-o output] file", *argv);
 		}
+	}
+
+	/* sanity checks */
+	{
+		const int new = powf(2, cc1_mstack_align);
+		if(new < platform_word_size())
+			ccdie(1, "stack alignment must be >= platform word size (2^%d)",
+					(int)log2f(platform_word_size()));
+
+		cc1_mstack_align = new;
 	}
 
 	if(fname && strcmp(fname, "-")){
