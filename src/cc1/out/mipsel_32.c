@@ -41,7 +41,7 @@ static const char *const sym_regs[] = {
 	"sp", "fp", "ra"
 };
 
-const struct asm_type_table asm_type_table[ASM_TABLE_MAX + 1] = {
+const struct asm_type_table asm_type_table[ASM_TABLE_LEN] = {
 	/* FIXME: MIPS backend still doesn't do proper
 	 * char/short/int/long accesses */
 	{ 1,  'b',  "byte"  },

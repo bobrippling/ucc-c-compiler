@@ -29,7 +29,7 @@ int asm_table_lookup(type_ref *r)
 	else
 		sz = type_ref_size(r, NULL);
 
-	for(i = 0; i <= ASM_TABLE_MAX; i++)
+	for(i = 0; i < ASM_TABLE_LEN; i++)
 		if(asm_type_table[i].sz == sz)
 			return i;
 
