@@ -108,9 +108,8 @@ type *parse_type_sue(enum type_primitive prim)
 
 				dynarray_free(&dmembers, NULL);
 			}
-
-			EAT(token_close_block);
 		}
+		EAT(token_close_block);
 
 		is_complete = 1;
 
