@@ -46,7 +46,10 @@ typedef struct
 	decl_init **pos;
 } init_iter;
 
-#define ITER_WHERE(it, def) (it && it->pos[0] ? &it->pos[0]->where : def)
+#define ITER_WHERE(it, def) \
+	(it && it->pos[0] && it->pos[0] != DYNARRAY_NULL \
+	 ? &it->pos[0]->where \
+	 : def)
 
 typedef decl_init **aggregate_brace_f(decl_init **, init_iter *,
 		symtable *,
@@ -134,12 +137,20 @@ int decl_init_is_zero(decl_init *dinit)
 	return -1;
 }
 
-decl_init *decl_init_new(enum decl_init_type t)
+decl_init *decl_init_new_w(enum decl_init_type t, where *w)
 {
 	decl_init *di = umalloc(sizeof *di);
-	where_new(&di->where);
+	if(w)
+		memcpy_safe(&di->where, w);
+	else
+		where_new(&di->where);
 	di->type = t;
 	return di;
+}
+
+decl_init *decl_init_new(enum decl_init_type t)
+{
+	return decl_init_new_w(t, NULL);
 }
 
 void decl_init_free_1(decl_init *di)
@@ -182,15 +193,16 @@ static decl_init *decl_init_brace_up_scalar(
 		symtable *stab)
 {
 	decl_init *first_init;
+	where *const w = ITER_WHERE(iter, &tfor->where);
 
 	if(current){
-		override_warn(tfor, &current->where, ITER_WHERE(iter, &tfor->where), 0);
+		override_warn(tfor, &current->where, w, 0);
 
 		decl_init_free_1(current);
 	}
 
 	if(!iter->pos || !*iter->pos){
-		first_init = decl_init_new(decl_init_scalar);
+		first_init = decl_init_new_w(decl_init_scalar, w);
 		first_init->bits.expr = expr_new_val(0); /* default init for everything */
 		return first_init;
 	}
@@ -335,7 +347,7 @@ static decl_init **decl_init_brace_up_array2(
 			dynarray_padinsert(&current, i, &n, braced);
 
 			for(replace_idx = i + 1; replace_idx <= j; replace_idx++){
-				decl_init *cpy = decl_init_new(decl_init_copy);
+				decl_init *cpy = decl_init_new_w(decl_init_copy, &braced->where);
 
 				cpy->bits.copy_idx  = replace_idx - 1;
 
@@ -565,7 +577,7 @@ static decl_init *decl_init_brace_up_aggregate(
 
 	}else if((desig_index = find_desig(iter->pos + 1)) >= 0){
 		decl_init *const saved = iter->pos[++desig_index];
-		decl_init *ret = decl_init_new(decl_init_brace);
+		decl_init *ret = decl_init_new_w(decl_init_brace, ITER_WHERE(iter, NULL));
 		init_iter it = { iter->pos };
 
 		iter->pos[desig_index] = NULL;
@@ -581,7 +593,8 @@ static decl_init *decl_init_brace_up_aggregate(
 
 		return ret;
 	}else{
-		decl_init *r = decl_init_new(decl_init_brace);
+		decl_init *r = decl_init_new_w(decl_init_brace,
+				ITER_WHERE(iter, NULL));
 
 		/* we need to pull from iter, bracing up our children inits */
 		r->bits.inits = brace_up_f(
@@ -632,15 +645,16 @@ static decl_init *decl_init_brace_up_array_pre(
 		const_fold(strk->bits.expr, &k);
 
 		if(k.type == CONST_STRK){
+			where *const w = &strk->where;
 			unsigned str_i;
 
 			if(k.bits.str->wide)
 				ICE("TODO: wide string init");
 
-			decl_init *braced = decl_init_new(decl_init_brace);
+			decl_init *braced = decl_init_new_w(decl_init_brace, w);
 
 			for(str_i = 0; str_i < k.bits.str->len; str_i++){
-				decl_init *char_init = decl_init_new(decl_init_scalar);
+				decl_init *char_init = decl_init_new_w(decl_init_scalar, w);
 
 				char_init->bits.expr = expr_new_val(k.bits.str->str[str_i]);
 
