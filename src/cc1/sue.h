@@ -21,7 +21,7 @@ struct struct_union_enum_st
 	enum type_primitive primitive; /* struct or enum or union */
 
 	char *spel; /* "<anon ...>" if anon */
-	int anon : 1, complete : 1;
+	unsigned anon : 1, complete : 1;
 	int align, size;
 
 	sue_member **members;
