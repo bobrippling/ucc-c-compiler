@@ -14,6 +14,7 @@
 #include "common.h"
 #include "out.h"
 #include "lbl.h"
+#include "../pack.h"
 
 #ifndef MIN
 #  define MIN(x, y) ((x) < (y) ? (x) : (y))
@@ -176,15 +177,12 @@ static const char *vstack_str_ptr(struct vstack *vs, int ptr)
 
 int impl_alloc_stack(int sz)
 {
-	static int word_size;
-	/* sz must be a multiple of word_size */
-
-	if(!word_size)
-		word_size = platform_word_size();
+	/* sz must be a multiple of mstack_align */
 
 	if(sz){
-		const int extra = sz % word_size ? word_size - sz % word_size : 0;
-		out_asm("subq $%d, %%rsp", sz += extra);
+		const int new = pack_to_align(sz, cc1_mstack_align);
+		if(new > sz)
+			out_asm("subq $%d, %%rsp", sz = new);
 	}
 
 	return stack_sz + sz;
