@@ -287,6 +287,24 @@ static decl_init **decl_init_brace_up_array2(
 			if(i < n && current[i] != DYNARRAY_NULL){
 				replacing = current[i]; /* replacing object `i' */
 
+				/* we can't designate sub parts of a [x ... y] subobject yet,
+				 * as this requires being able to copy the init from x to y,
+				 * then replace a subobject in y, which we don't have the data
+				 * structures to do
+				 */
+				if(replacing != DYNARRAY_NULL && this->type != decl_init_brace){
+					/* not replacing a full subobject
+					 * disallow, unless it's of scalar type
+					 */
+					if(!type_ref_is_scalar(next_type)){
+						char wbuf[WHERE_BUF_SIZ];
+
+						DIE_AT(&this->where,
+								"can't replace part of array-range subobject without braces\n"
+								"%s: array range here", where_str_r(wbuf, &replacing->where));
+					}
+				}
+
 				if(i+1 < n
 				&& current[i+1] != DYNARRAY_NULL
 				&& current[i+1]->type == decl_init_copy)

@@ -93,6 +93,13 @@ type_ref *type_ref_is_array(type_ref *r)
 	return r ? r->ref : NULL;
 }
 
+type_ref *type_ref_is_scalar(type_ref *r)
+{
+	if(type_ref_is_s_or_u(r) || type_ref_is_array(r))
+		return NULL;
+	return r;
+}
+
 type *type_ref_get_type(type_ref *r)
 {
 	for(; r && r->type != type_ref_type; r = r->ref);
