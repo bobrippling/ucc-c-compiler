@@ -1,3 +1,5 @@
+// RUN: %ucc -o %t %s
+// RUN: %t; [ $? -eq 4 ]
 plus(i)
 {
 	return i + 1;

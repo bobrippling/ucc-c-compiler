@@ -1,3 +1,5 @@
+// RUN: %ucc -o %t %s
+// RUN: %t | %output_check a b
 static int (*fs[3])();
 static int f_i;
 
@@ -12,13 +14,13 @@ run()
 		fs[i]();
 }
 
-a(){}
-b(){}
+a(){printf("a\n");}
+b(){printf("b\n");}
 
 main()
 {
-	printf("%p\n", fs);
-	//add(a);
-	//add(&b);
-	//run();
+	//printf("%p\n", fs);
+	add(a);
+	add(&b);
+	run();
 }

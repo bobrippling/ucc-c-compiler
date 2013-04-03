@@ -1,3 +1,5 @@
+// RUN: %ucc -c %s
+
 main()
 {
 	void (^const  blockA)(void) = ^{ };

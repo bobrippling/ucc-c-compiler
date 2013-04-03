@@ -1,3 +1,4 @@
+// RUN: echo TODO; false
 void cpp_overload1(int p1)
 {
 	printf("CPP One param: %d\n", p1);
@@ -18,3 +19,8 @@ void cpp_overload3(int p1, int p2, int p3)
 
 #define cpp_overload(...)\
 	CAT(cpp_overload, COUNT_PARMS(__VA_ARGS__))(__VA_ARGS__)
+
+main()
+{
+	cpp_overload(1);
+}

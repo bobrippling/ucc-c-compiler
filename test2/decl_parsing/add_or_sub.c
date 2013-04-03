@@ -1,3 +1,5 @@
+// RUN: %ucc -o %t %s
+// RUN: %t; [ $? -eq 6 ]
 call_for_me(int (*f)(int), int arg)
 {
 	return f(arg);

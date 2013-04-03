@@ -1,3 +1,5 @@
+// RUN: echo TODO; false
+
 union u {
 	int i;
 	struct s {

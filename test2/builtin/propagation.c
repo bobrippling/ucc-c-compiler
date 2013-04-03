@@ -1,3 +1,6 @@
+// RUN: %ucc -o %t %s
+// RUN: %t; [ $? -eq 1 ]
+
 main()
 {
 	static int i;

@@ -28,7 +28,7 @@ my $pid = bg @ARGV;
 $SIG{CHLD} = sub {
 	sub wexitstatus
 	{
-		return ($ret >> 8) & 0xff
+		return (shift >> 8) & 0xff
 	}
 
 	my $dead = wait;

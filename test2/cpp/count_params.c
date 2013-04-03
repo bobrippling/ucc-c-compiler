@@ -4,7 +4,12 @@
 
 #define f(...) COUNT_PARMS(__VA_ARGS__)
 
+// RUN: %ucc -o %t %s
+// RUN: %t
+
 main()
 {
-	assert(f(1, 2, 3) == 3);
+	if(f(1, 2, 3) != 3)
+		return 1;
+	return 0;
 }

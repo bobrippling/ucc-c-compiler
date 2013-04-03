@@ -1,3 +1,4 @@
+// RUN: echo TODO; false
 
 // test of ABI
 // compile: gcc -c -O2

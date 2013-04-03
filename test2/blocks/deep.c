@@ -1,3 +1,4 @@
+// RUN: %ucc -c %s
 main()
 {
 	typedef int (*(*(*(*fp)())())())();

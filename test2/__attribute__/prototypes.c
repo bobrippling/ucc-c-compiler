@@ -1,3 +1,5 @@
+// RUN: %ucc -fsyntax-only %s
+
 void  __attribute__((__noreturn__)) _exit(int x);
 
 void _exit(int x) __attribute__((__noreturn__));

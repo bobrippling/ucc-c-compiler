@@ -1,4 +1,4 @@
-// TODO
+// RUN: echo TODO; false
 main()
 {
 	int x, y, z;

@@ -1,3 +1,8 @@
+// RUN: %ucc -o %t %s
+// RUN: %t
+
+#define ASSERT_IS(n, exp) _Static_assert(n == (exp), #exp " failed")
+
 not_builtin()
 {
 }
@@ -13,16 +18,17 @@ next:
 	not_builtin();
 
 	// 1
-	__builtin_constant_p(__builtin_constant_p(5));
+	ASSERT_IS(1, __builtin_constant_p(__builtin_constant_p(5)));
 
 	// 0
-	__builtin_constant_p(__builtin_types_compatible_p(void, int));
+	ASSERT_IS(1, __builtin_constant_p(__builtin_types_compatible_p(void, int), 0));
 
 	// 3
-	return __builtin_types_compatible_p(int *, intp)
-		   + __builtin_types_compatible_p(int *, typeof(0) *)
-			 + __builtin_constant_p(f())
-			 + __builtin_constant_p(1);
+	ASSERT_IS(1, __builtin_types_compatible_p(int *, intp));
+	ASSERT_IS(1, __builtin_types_compatible_p(int *, typeof(0) *));
+	ASSERT_IS(0, __builtin_constant_p(f()));
+	ASSERT_IS(1, __builtin_constant_p(1));
 
+	return 0;
 	__builtin_unreachable();
 }

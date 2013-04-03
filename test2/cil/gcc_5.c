@@ -1,3 +1,4 @@
+// RUN: %ucc %s; [ $? -ne 0 ]
 // stupid.
 
 extern inline foo(void) { return 1; }

@@ -1,3 +1,6 @@
+// RUN: %ucc -o %t %s
+// RUN: %t | %output_check a b c
+// RUN: %asmcheck %s
 void (*fs[3])(void); // only has 3 bytes resb'd
 int f_i;
 

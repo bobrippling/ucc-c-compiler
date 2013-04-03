@@ -1,3 +1,5 @@
+// RUN: %ucc -o %t %s
+// RUN: %t | %output_check '^2$' ^7$' '^5$' '^hi$'
 int the_i;
 
 int (^makeadder(int i))(int)
@@ -16,6 +18,8 @@ main()
 
 	adder = makeadder(5);
 	printf("%d\n", adder(2)); // 7
+
+	printf("%d\n", makeadder(3)(2));
 
 	^(const char *s){printf("%s\n", s);}("hi");
 }

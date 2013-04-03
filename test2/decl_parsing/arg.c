@@ -1,3 +1,5 @@
+// RUN: %ucc %s
+
 typedef int fpos_t;
 
 #define __unused __attribute__((unused))

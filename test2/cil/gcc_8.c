@@ -1,3 +1,4 @@
+// RUN: echo TODO; false
 static int bar(int x, char y) {
 	return x + y;
 }

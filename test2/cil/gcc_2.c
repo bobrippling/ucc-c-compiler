@@ -1,4 +1,5 @@
-// %ucc -o %t %s && %t
+// RUN: %ucc -o %t %s
+// RUN: %t
 
 ncalls;
 

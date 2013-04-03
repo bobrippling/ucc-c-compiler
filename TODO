@@ -1,3 +1,6 @@
+%output_check anchors regex by default
+%ocheck [0-9]+ src compiles + runs + checks return code
+
 update bugs/
 test/ - x.c and x.c.expect (output and assembly)
 

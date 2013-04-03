@@ -1,3 +1,6 @@
+// RUN: %ucc -o %t %s
+// RUN: %t | %output_check 1 2 3 4 5 7 3 3
+
 void inst(int i)
 {
 	printf("inst(%d)\n", i);

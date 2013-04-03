@@ -1,3 +1,6 @@
+// RUN: %ucc -o %t %s
+// RUN: %t; [ $? -eq 3 ]
+
 #define unlikely(x) __builtin_expect(!!(x), 0)
 
 f(unsigned i)

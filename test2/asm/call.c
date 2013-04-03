@@ -1,4 +1,4 @@
-/*
+// RUN: echo todo; false
 f(int a, int b, int c)
 {
 	int i = 5;
@@ -8,14 +8,12 @@ f(int a, int b, int c)
 p()
 {
 }
-*/
 
 q(a, b, c, d, e, f, g, h, j)
 {
 	return a + b + c + d + e + f + g + h + j;
 }
 
-/*
 main()
 {
 	int (*f)() = p;
@@ -24,4 +22,3 @@ main()
 	f(1 == 2);
 	f(5 - 3);
 }
-*/

@@ -1,3 +1,4 @@
+// RUN: echo TODO: false
 void test(int a, uint8_t *pixels)
 {
 	__asm volatile(

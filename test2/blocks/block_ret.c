@@ -1,38 +1,15 @@
-/*
+// RUN: %ucc -o %t %s
+// RUN: %t; [ $? -eq 0 ]
+// RUN: %t | sed -n 1p | grep 'hi 5'
+// RUN: %t | sed -n 2p | grep '^a$'
+
 main()
 {
 	int (^f)(int) = ^int (int i) {printf("hi %d\n", i); return 0;};
 
-	^void {
-		printf("test\n");
-	}();
+	printf("%c\n", ^char {
+		return 'a'
+	}());
 
-	f(5);
-}
-
-*/
-
-int p(int(char));
-
-int p(int x(char))
-{
-	x('B');
-}
-
-q(char c)
-{
-	printf("%c\n", c);
-}
-
-main()
-{
-	int (^x)(char) = ^int(char tim){printf("%c\n", tim);};
-	int (^(*y))(char) = &x;
-	//void (^z)(void) = 0;
-
-	x('a');
-	(*y)('a');
-	(0 ? x : *y)('a');
-
-	p(q);
+	return f(5);
 }
