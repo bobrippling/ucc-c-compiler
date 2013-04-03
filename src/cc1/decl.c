@@ -790,8 +790,9 @@ void type_ref_add_type_str(type_ref *r,
 		}
 
 		if(aka && of){
-			/* descend to the type */
-			type *t = type_ref_get_type(of);
+			/* descend to the type if it's next */
+			type_ref *t_ref = type_ref_is_type(of, type_unknown);
+			type *t = t_ref ? t_ref->bits.type : NULL;
 
 			BUF_ADD(" (aka '%s')",
 					t ? type_to_str(t)
