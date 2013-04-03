@@ -551,16 +551,20 @@ static decl_init *decl_init_brace_up_aggregate(
 				/* tack old on the end */
 				for(di = old_subs[0]->desig; di->next; di = di->next);
 				di->next = sub_d;
-			}
 
-			/* gcc and C99 compliant (not clang) */
-			if(current){
+			}else if(current){ /* gcc (not clang) compliant */
+				/* we have no sub-designator - we're overriding an entire sub object */
+
 				override_warn(tfor, &current->where, &first->where, 1 /* whole */);
 				/* XXX: memleak decl_init_free(current); */
+				current = NULL; /* prevent any current init getting through */
 			}
 
 			first->bits.inits = brace_up_f(
-					NULL, /* clang would pass current->bits.inits through here */
+					current ? current->bits.inits : NULL,
+					/* clang would always pass current->bits.inits through here
+					 * and not current=NULL above
+					 */
 					&it,
 					stab, arg1, arg2);
 
