@@ -14,6 +14,13 @@ sub timeout
 	return $?;
 }
 
+sub basename
+{
+	my $s = shift;
+	return $1 if $s =~ m;/([^/]+$);;
+	return $s;
+}
+
 my $ucc = '../ucc';
 my $file = undef;
 my $verbose = 0;
@@ -30,7 +37,7 @@ for(@ARGV){
 	}
 }
 
-(my $target = $file) =~ s/\.c$//;
+(my $target = basename($file)) =~ s/\.[a-z]+$/.out/;
 $target = "./$target";
 
 my %vars = (
@@ -41,11 +48,15 @@ my %vars = (
 	'asmcheck'  => './asmcheck.pl'
 );
 
+my $ran = 0;
+
 open F, '<', $file or die2 "$file: $!";
 while(<F>){
 	chomp;
 
 	if(my($command, $sh) = m{// *([A-Z]+): *(.*)}){
+		$ran++;
+
 		my $subst_sh = apply_vars($sh);
 
 		if($command eq 'RUN'){
@@ -63,7 +74,12 @@ close F;
 
 unlink $target;
 
-exit;
+if($ran){
+	exit 0;
+}else{
+	warn "no commands in $file\n";
+	exit 1;
+}
 
 # --------
 
