@@ -713,9 +713,9 @@ static decl_init *decl_init_brace_up_start(
 	decl_init *ret;
 
 	/* check for non-brace init */
-	if(type_ref_is_s_or_u(tfor)
-	&& init
-	&& init->type == decl_init_scalar)
+	if(init
+	&& init->type == decl_init_scalar
+	&& type_ref_is_array(tfor))
 	{
 		expr *e = FOLD_EXPR(init->bits.expr, stab);
 

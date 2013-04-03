@@ -16,7 +16,7 @@ static const struct
     [2][2] = { "3/5/13", 100, RED,   CHANGE_DOWN, },
 };
 
-typeof(*data) p = &data; // bug #2: bad _to_str for typeof(*data)
+//typeof(*data) p = &data;
 
 pd(int x, int y)
 {
