@@ -1,4 +1,4 @@
-// RUN: %asmcheck %s
+// RUN: %layoutcheck %s
 typedef int tdef_int;
 
 typedef tdef_int tdef_int2;
