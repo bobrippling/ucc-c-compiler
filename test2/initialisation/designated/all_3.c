@@ -33,4 +33,4 @@ int i = 2;
 short j[] = { 2, 3 };
 
 // RUN: %ucc -c %s
-// RUN: %asmcheck %s
+// RUN: %layoutcheck %s

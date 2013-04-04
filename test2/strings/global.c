@@ -1,3 +1,3 @@
-// RUN: %asmcheck %s
+// RUN: %layoutcheck %s
 char x[] = "hello";
 char *p = "yo";
