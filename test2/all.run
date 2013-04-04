@@ -1,0 +1,3327 @@
+fail: ./__asm__/decl.c
+  Died at ./asmcheck.pl line 12.
+  ./test.pl: command './asmcheck.pl ./__asm__/decl.c' failed
+pass: ./__asm__/extern.c
+fail: ./__asm__/inline.c
+  ./__asm__/inline.c:6:5: ICW parse.c:232 (parse_expr_primary): token_asm - redirect to builtin instead of identifier
+  ./__asm__/inline.c:6:7: warning: implicit declaration of function "__asm__"
+    " asm("movl $3, %eax");"
+          ^
+  ./__asm__/inline.c:4:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  Undefined symbols for architecture x86_64:
+    "__asm__", referenced from:
+        main in tmp.2.ga8cDZ
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./__asm__/inline.c -o ./inline.out' failed
+fail: ./__asm__/multiple.c
+  ./__asm__/multiple.c:8:5: ICW parse.c:232 (parse_expr_primary): token_asm - redirect to builtin instead of identifier
+  ./__asm__/multiple.c:10:5: warning: implicit declaration of function "__asm__"
+    "   "ret\n");"
+        ^
+  ./__asm__/multiple.c:11:8: warning: implicit declaration of function "abort"
+    " abort();"
+           ^
+  ./__asm__/multiple.c:6:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  Undefined symbols for architecture x86_64:
+    "__asm__", referenced from:
+        main in tmp.2.2tBAt4
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -o ./multiple.out ./__asm__/multiple.c' failed
+fail: ./__attribute__/_Noreturn.c
+  ./__attribute__/_Noreturn.c:4:16: warning: function "f" marked no-return implicitly returns
+    "_Noreturn void f() "
+                   ^
+  ./__attribute__/_Noreturn.c:14:13: warning: unused expression (funcall)
+    " use_proper(); "
+                ^
+  ./__attribute__/_Noreturn.c:15:6: warning: unused expression (funcall)
+    " use(); "
+         ^
+  ./__attribute__/_Noreturn.c:12:10: warning: control reaches end of non-void function doesnt_use
+    "doesnt_use()"
+             ^
+  line: 4, warnings (0) != checks (1)
+  line: 14, warnings (0) != checks (1)
+  line: 15, warnings (0) != checks (1)
+  ./test.pl: command './check.pl ./__attribute__/_Noreturn.c' failed
+fail: ./__attribute__/attr_simple.c
+  ./__attribute__/attr_simple.c:7:4: warning: unused expression (funcall)
+    " f(); "
+       ^
+  ./__attribute__/attr_simple.c:4:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+    "f", referenced from:
+        main in tmp.2.2j7YwP
+       (maybe you meant: fork, _fdopendir , printf , fopen , dprintf , fileno , fwrite , freopen , fputc , vprintf , fflush , fgetc , fprintf , _dirfd , fclose , fsetpos , ferror , fgets , fropen , fdopen , fputs , ftell , fgetpos , free , feof , funopen , fseek , fwopen , vfprintf , __assert_fail , fread )
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./__attribute__/attr_simple.c' failed
+fail: ./__attribute__/awkward.c
+  ./__attribute__/awkward.c:5:22: error: expecting token open_block, got int (parse.c:779)
+    " __attribute__(()) int i;"
+                         ^
+  ./__attribute__/awkward.c:11:1: error: expecting token semicolon, got open_block (parse.c:921)
+    "{"
+    ^
+  ./__attribute__/awkward.c:13:1: error: expression expected, got eof (parse.c:239)
+    "}"
+    ^
+  ../ucc: cc1/cc1 returned 1
+  ./test.pl: command '../ucc ./__attribute__/awkward.c -o ./awkward.out' failed
+fail: ./__attribute__/nonnull.c
+  check /warning nonnull attribute on parameterless function/ not found in warnings on line 8
+  check /nonnull attribute applied to non-pointer argument 'int'/ not found in warnings on line 12
+  check /null passed where non-null required (arg 1)/ not found in warnings on line 16
+  ./test.pl: command '../ucc -c ./__attribute__/nonnull.c 2>&1 | ./check.pl ./__attribute__/nonnull.c' failed
+fail: ./__attribute__/nonnull_simple.c
+  ./__attribute__/nonnull_simple.c:10:11: warning: null passed where non-null required (arg 1)
+    " f((void *)0); "
+              ^
+  ./__attribute__/nonnull_simple.c:12:5: warning: null passed where non-null required (arg 1)
+    " f(0); "
+        ^
+  ./__attribute__/nonnull_simple.c:12:5: warning: mismatching argument 0 to f (int * <-- int)
+    " f(0); "
+        ^
+  ./__attribute__/nonnull_simple.c:6:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  line: 10, warnings (0) != checks (1)
+  line: 12, warnings (0) != checks (1)
+  ./test.pl: command './check.pl ./__attribute__/nonnull_simple.c' failed
+fail: ./__attribute__/prototypes.c
+  "-fsyntax-only" unrecognised
+  Usage: ..//src/ucc//../cc1/cc1 [-W[no-]warning] [-f[no-]option] [-X backend] [-m[32|64]] [-o output] file
+  warnings + options:
+    -Wall
+    -Wextra
+    -Wmismatch-arg
+    -Warray-comma
+    -Wmismatch-assign
+    -Wreturn-type
+    -Wsign-compare
+    -Wextern-assume
+    -Wimplicit-int
+    -Wimplicit-func
+    -Wimplicit
+    -Wswitch-enum
+    -Wenum-compare
+    -Wincomplete-use
+    -Wunused-expr
+    -Wtest-in-assign
+    -Wtest-bool
+    -Wdead-code
+    -Wpredecl-enum
+    -Wmixed-code-decls
+    -Wloss-of-precision
+    -Woptimisation
+    -fenable-asm
+    -fconst-fold
+    -fenglish
+    -fshow-line
+    -fpic
+    -fpic-pcrel
+    -fmax-errors=value
+  ../ucc: cc1/cc1 returned 1
+  ./test.pl: command '../ucc -fsyntax-only ./__attribute__/prototypes.c' failed
+fail: ./__attribute__/reachability.c
+  ./test.pl: command '../ucc -c ./__attribute__/reachability.c 2>&1 | grep .; [ $? -eq 0 ]' failed
+fail: ./__attribute__/sentinel.c
+  ./__attribute__/sentinel.c:14:10: warning: sentinel argument expected (got int)
+    " f(1, 2, 3); "
+             ^
+  ./__attribute__/sentinel.c:17:25: warning: sentinel argument expected (got int)
+    " f(1, 2, 3, (void *)0, 2); "
+                            ^
+  ./__attribute__/sentinel.c:18:8: warning: sentinel argument expected (got int)
+    " f(1, 0); "
+           ^
+  ./__attribute__/sentinel.c:22:46: warning: sentinel argument expected (got int)
+    " f(1, 2, 3, (void *)0, 5, 6, 7, (void *)0, 2);  "
+                                                 ^
+  ./__attribute__/sentinel.c:24:8: warning: sentinel argument expected (got int)
+    " g(1, 0); "
+           ^
+  ./__attribute__/sentinel.c:25:5: warning: not enough variadic arguments for a sentinel
+    " g(0);    "
+        ^
+  ./__attribute__/sentinel.c:27:4: warning: not enough variadic arguments for a sentinel
+    " h(5);            "
+       ^
+  ./__attribute__/sentinel.c:28:4: warning: sentinel index is not a variadic argument
+    " h(5, (void *)0); "
+       ^
+  ./__attribute__/sentinel.c:29:19: warning: sentinel argument expected (got int)
+    " h(5, (void *)0, 2, 3); "
+                      ^
+  ./__attribute__/sentinel.c:32:4: warning: not enough variadic arguments for a sentinel
+    " k(1); "
+       ^
+  ./__attribute__/sentinel.c:34:22: warning: sentinel argument expected (got int)
+    " k(1, 2, (void *)0, 3, 3, 3, 4); "
+                         ^
+  ./__attribute__/sentinel.c:37:4: warning: variadic function required for sentinel check
+    " r(5);"
+       ^
+  ./__attribute__/sentinel.c:12:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  line: 10, warnings (0) != checks (1)
+  line: 14, warnings (0) != checks (1)
+  line: 17, warnings (0) != checks (1)
+  line: 18, warnings (0) != checks (1)
+  line: 22, warnings (0) != checks (1)
+  line: 24, warnings (0) != checks (1)
+  line: 25, warnings (0) != checks (1)
+  line: 27, warnings (0) != checks (1)
+  line: 28, warnings (0) != checks (1)
+  line: 29, warnings (0) != checks (1)
+  line: 32, warnings (0) != checks (1)
+  line: 34, warnings (0) != checks (1)
+  ./test.pl: command './check.pl ./__attribute__/sentinel.c' failed
+pass: ./__attribute__/underscore.c
+fail: ./__builtin/bfa.c
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./__builtin/bfa.c -o ./bfa.out' failed
+fail: ./__builtin/is_signed.c
+  ./__builtin/is_signed.c:8:1: error: expecting token semicolon, got close_block (parse.c:850)
+    "}"
+    ^
+  ../ucc: cc1/cc1 returned 1
+  ./test.pl: command '../ucc -o ./is_signed.out ./__builtin/is_signed.c' failed
+fail: ./__builtin/strlen_k.c
+  ./__builtin/strlen_k.c:9:9: warning: implicit declaration of function "strlen"
+    " strlen(s);"
+            ^
+  ./__builtin/strlen_k.c:11:9: warning: implicit declaration of function "q"
+    " q(strlen("yo"));"
+            ^
+  ./__builtin/strlen_k.c:15:9: warning: implicit declaration of function "abort"
+    "  abort();"
+            ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+    "q", referenced from:
+        main in tmp.2.NxiEXA
+       (maybe you meant: quick_exit, at_quick_exit )
+    "s", referenced from:
+        main in tmp.2.NxiEXA
+       (maybe you meant: socket, _seekdir , _closedir , isxdigit , islower , isupper , isalpha , isalnum , isblank , isspace , symlink , iscntrl , nanosleep , strncpy , isascii , strcpy , isdigit , strcmp , strchr , select , strncmp , puts , ispunct , fflush , strerror , _start , __dump_regs , usleep , _scandir , memset , fclose , strlen , stdout , fsetpos , isgraph , __syscall , fgets , fputs , isprint , fgetpos , stderr , fseek , sleep , __assert_fail , close , stdin , raise )
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -o ./strlen_k.out ./__builtin/strlen_k.c' failed
+fail: ./anywhere_decl/decl.c
+  ./anywhere_decl/decl.c:8:6: warning: mixed code and declarations
+    " int j;"
+         ^
+  ./anywhere_decl/decl.c:19:7: warning: "j" never read
+    "  int j = 3;"
+          ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -o ./decl.out ./anywhere_decl/decl.c && ./decl.out' failed
+fail: ./anywhere_decl/loop.c
+  ./anywhere_decl/loop.c:12:7: warning: mixed code and declarations
+    "  int j = 3;"
+          ^
+  ./anywhere_decl/loop.c:5:1: warning: control reaches end of non-void function x
+    "x(){}"
+    ^
+  ./anywhere_decl/loop.c:14:11: warning: implicit declaration of function "printf"
+    "  printf("%d, %d\n", i, j);"
+              ^
+  ./anywhere_decl/loop.c:15:3: warning: unused expression (identifier)
+    "  j;"
+      ^
+  ./anywhere_decl/loop.c:7:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./anywhere_decl/loop.c -o ./loop.out' failed
+fail: ./anywhere_decl/parse.c
+  ./anywhere_decl/parse.c:9:6: warning: mixed code and declarations
+    " int a;"
+         ^
+  ./anywhere_decl/parse.c:14:2: warning: unused expression (val)
+    " 5;"
+     ^
+  ./anywhere_decl/parse.c:3:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  ./anywhere_decl/parse.c:6:7: warning: "i" never written to
+    "  int i;"
+          ^
+  ./anywhere_decl/parse.c:6:7: warning: "i" never read
+    "  int i;"
+          ^
+  ./anywhere_decl/parse.c:9:6: warning: "a" never written to
+    " int a;"
+         ^
+  ./anywhere_decl/parse.c:9:6: warning: "a" never read
+    " int a;"
+         ^
+  ./anywhere_decl/parse.c:18:6: warning: "x" never written to
+    " int x;"
+         ^
+  ./anywhere_decl/parse.c:18:6: warning: "x" never read
+    " int x;"
+         ^
+  ./anywhere_decl/parse.c:11:7: warning: "a" never written to
+    "  int a;"
+          ^
+  ./anywhere_decl/parse.c:11:7: warning: "a" never read
+    "  int a;"
+          ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./anywhere_decl/parse.c' failed
+fail: ./anywhere_decl/shadow.c
+  ./anywhere_decl/shadow.c:10:6: warning: mixed code and declarations
+    " int i = 3; "
+         ^
+  ./anywhere_decl/shadow.c:8:10: warning: implicit declaration of function "printf"
+    " printf("%d\n", i);"
+             ^
+  ./anywhere_decl/shadow.c:10:6: error: "i" already declared at:
+  ./anywhere_decl/shadow.c:6:6
+    " int i = 3; "
+         ^
+  ../ucc: cc1/cc1 returned 1
+  ./anywhere_decl/shadow.c:10:6: warning: mixed code and declarations
+    " int i = 3; "
+         ^
+  ./anywhere_decl/shadow.c:8:10: warning: implicit declaration of function "printf"
+    " printf("%d\n", i);"
+             ^
+  ./anywhere_decl/shadow.c:10:6: error: "i" already declared at:
+  ./anywhere_decl/shadow.c:6:6
+    " int i = 3; "
+         ^
+  ../ucc: cc1/cc1 returned 1
+  line: 10, warnings (0) != checks (1)
+  ./test.pl: command '../ucc ./anywhere_decl/shadow.c | ./check.pl ./anywhere_decl/shadow.c' failed
+fail: ./arrays/bounds.c
+  line: 13, warnings (0) != checks (1)
+  check /index -2 out of bounds.*2/ not found in warnings on line 24
+  line: 27, warnings (0) != checks (1)
+  check /index -5 out of bounds.*2/ not found in warnings on line 32
+  ./test.pl: command '../ucc -o /dev/null -S ./arrays/bounds.c 2>&1 | ./check.pl ./arrays/bounds.c' failed
+fail: ./arrays/bounds_add.c
+  line: 7, warnings (0) != checks (1)
+  ./test.pl: command '../ucc -o /dev/null -S ./arrays/bounds_add.c 2>&1 | ./check.pl ./arrays/bounds_add.c' failed
+pass: ./arrays/bounds_one_after.c
+fail: ./arrays/bounds_parse.c
+  ./arrays/bounds_parse.c:8:14: warning: index -2 out of bounds of array, size 4
+    " return (-2)[x] "
+                 ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./arrays/bounds_parse.c' failed
+fail: ./arrays/invalid_inc.c
+  ./arrays/invalid_inc.c:4:13: error: dereference of pointer to incomplete type int []
+    "f(int (*x)[]) "
+                ^
+  ../ucc: cc1/cc1 returned 1
+  check /error: incomplete array size/ not found in warnings on line 4
+  ./test.pl: command '../ucc ./arrays/invalid_inc.c 2>&1 | ./check.pl ./arrays/invalid_inc.c' failed
+fail: ./arrays/op_order.c
+  ./arrays/op_order.c:11:12: warning: mismatching argument 0 to f (char *x <-- const char *)
+    " return f("abc") == 'c' ? 0 : 1;"
+               ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./arrays/op_order.c -o ./op_order.out' failed
+fail: ./arrays/opt_load.c
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -o ./opt_load.out ./arrays/opt_load.c' failed
+fail: ./arrays/ptr.c
+  ./arrays/ptr.c:3:14: error: dereference of pointer to incomplete type int []
+    "f(int (*pa)[])"
+                 ^
+  ../ucc: cc1/cc1 returned 1
+  ./test.pl: command '../ucc -c ./arrays/ptr.c' failed
+fail: ./arrays/stride_nx2x4.c
+  ./arrays/stride_nx2x4.c:8:11: warning: index 1 out of bounds of array, size 0
+    " return x[1][2][3]; "
+              ^
+  ./arrays/stride_nx2x4.c:4:15: error: dereference of pointer to incomplete type int ([])[2][4]
+    "extern int x[][2][4];"
+                  ^
+  ../ucc: cc1/cc1 returned 1
+  ./test.pl: command '../ucc -c ./arrays/stride_nx2x4.c' failed
+fail: ./arrays/stride_nx3.c
+  ./arrays/stride_nx3.c:12:4: warning: index 1 out of bounds of array, size 0
+    "  [1]  "
+       ^
+  ./arrays/stride_nx3.c:21:4: warning: index 2 out of bounds of array, size 0
+    "  [2]  "
+       ^
+  ./arrays/stride_nx3.c:6:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  ./arrays/stride_nx3.c:8:16: error: dereference of pointer to incomplete type int ([])[3]
+    " extern int a[][3];"
+                   ^
+  ../ucc: cc1/cc1 returned 1
+  ./test.pl: command '../ucc -c ./arrays/stride_nx3.c' failed
+fail: ./arrays/strlen_2.c
+  ./arrays/strlen_2.c:2:16: warning: implicit declaration of function "strlen"
+    "char x[strlen("yo") - 1];"
+                   ^
+  ./arrays/strlen_2.c:2:22: error: not a numeric constant for array size
+    "char x[strlen("yo") - 1];"
+                         ^
+  ../ucc: cc1/cc1 returned 1
+  ./test.pl: command '../ucc -c ./arrays/strlen_2.c' failed
+fail: ./asm/abi-test.c
+  TODO
+  ./test.pl: command 'echo TODO; false' failed
+pass: ./asm/abi_vararg_nulfptr.c
+pass: ./asm/asm_bend.c
+pass: ./asm/assigns.c
+fail: ./asm/call.c
+  todo
+  ./test.pl: command 'echo todo; false' failed
+fail: ./asm/call_or.c
+  ./asm/call_or.c:6:4: warning: implicit declaration of function "x"
+    " x() || y();"
+       ^
+  ./asm/call_or.c:6:11: warning: implicit declaration of function "y"
+    " x() || y();"
+              ^
+  ./asm/call_or.c:6:7: warning: unused expression (op)
+    " x() || y();"
+          ^
+  ./asm/call_or.c:4:1: warning: control reaches end of non-void function f
+    "f(a)"
+    ^
+  ./asm/call_or.c:4:3: warning: "a" never read
+    "f(a)"
+      ^
+  ./asm/call_or.c:6:4: warning: implicit declaration of function "x"
+    " x() || y();"
+       ^
+  ./asm/call_or.c:6:11: warning: implicit declaration of function "y"
+    " x() || y();"
+              ^
+  ./asm/call_or.c:6:7: warning: unused expression (op)
+    " x() || y();"
+          ^
+  ./asm/call_or.c:4:1: warning: control reaches end of non-void function f
+    "f(a)"
+    ^
+  ./asm/call_or.c:4:3: warning: "a" never read
+    "f(a)"
+      ^
+  ./test.pl: command '[ "`../ucc -S -o- ./asm/call_or.c | grep -c 'call' | grep -Ec '\b(x|y)\b'`" -eq 2 ]' failed
+pass: ./asm/call_ptr.c
+pass: ./asm/cast.c
+pass: ./asm/cmp.c
+fail: ./asm/complex_math.c
+  ./asm/complex_math.c:11:11: warning: "a" uninitialised on read
+    " } while (a);"
+              ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./asm/complex_math.c -o ./complex_math.out' failed
+pass: ./asm/compound_assign.c
+fail: ./asm/compound_increment.c
+  ./asm/compound_increment.c:6:1: warning: control reaches end of non-void function q
+    "q()"
+    ^
+  ./test.pl: command '[ `grep -c 'call.*f'` -eq 1 ]' failed
+fail: ./asm/computed_goto.c
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -o ./computed_goto.out ./asm/computed_goto.c' failed
+pass: ./asm/different_sizes.c
+pass: ./asm/div.c
+pass: ./asm/expr-if.c
+fail: ./asm/goto.c
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./asm/goto.c -o ./goto.out' failed
+fail: ./asm/inc.c
+  ./asm/inc.c:6:4: warning: implicit declaration of function "f"
+    " f();"
+       ^
+  ./asm/inc.c:2:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+    "f", referenced from:
+        main in tmp.2.Blf2zD
+       (maybe you meant: fork, _fdopendir , printf , fopen , dprintf , fileno , fwrite , freopen , fputc , vprintf , fflush , fgetc , fprintf , _dirfd , fclose , fsetpos , ferror , fgets , fropen , fdopen , fputs , ftell , fgetpos , free , feof , funopen , fseek , fwopen , vfprintf , __assert_fail , fread )
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./asm/inc.c' failed
+fail: ./asm/jmp.c
+  ./asm/jmp.c:7:5: warning: "i" uninitialised on read
+    " if(i > 2)"
+        ^
+  ./asm/jmp.c:3:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./asm/jmp.c' failed
+pass: ./asm/kjmp.c
+pass: ./asm/lea.c
+fail: ./asm/load-time-constant.c
+  ./asm/load-time-constant.c:6:1: warning: initialisation type mismatch: int <-- int *
+    "i = &j;"
+    ^
+  (null):6:7: ICE gen_asm.c:62 (static_addr): non-constant expr-cast const=0
+  ../ucc: cc1/cc1 caught signal 6
+  ./test.pl: command '../ucc -c ./asm/load-time-constant.c' failed
+pass: ./asm/memory.c
+fail: ./asm/mismatch_compound.c
+  ./asm/mismatch_compound.c:11:6: warning: mixed code and declarations
+    " int *p; "
+         ^
+  ./asm/mismatch_compound.c:9:7: warning: "i" uninitialised on read
+    " s -= i;"
+          ^
+  ./asm/mismatch_compound.c:4:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./asm/mismatch_compound.c' failed
+fail: ./asm/offsetof.c
+  ./asm/offsetof.c:10:23: error: global scalar initialiser not constant
+    "const int static i =  ((int)&((struct A *)0)->x);"
+                          ^
+  ../ucc: cc1/cc1 returned 1
+  ./test.pl: command '../ucc -c ./asm/offsetof.c' failed
+fail: ./asm/pointers.c
+  ./asm/pointers.c:7:4: warning: "p" uninitialised on read
+    " *(p + 1);"
+       ^
+  ./asm/pointers.c:7:10: warning: unused expression (deref)
+    " *(p + 1);"
+             ^
+  ./asm/pointers.c:9:5: warning: unused expression (op)
+    " *p + 1;"
+        ^
+  ./asm/pointers.c:11:6: warning: "q" uninitialised on read
+    " p - q;"
+         ^
+  ./asm/pointers.c:11:4: warning: unused expression (op)
+    " p - q;"
+       ^
+  ./asm/pointers.c:13:10: warning: unused expression (if)
+    " p < q ? 1 : 0;"
+             ^
+  ./asm/pointers.c:3:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  (null):14:1: ICW out/x86_64.c:570 (impl_op): idiv incorrect - need to load al:ah/dx:ax/edx:eax for int *
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./asm/pointers.c' failed
+fail: ./asm/shft.c
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+    "main", referenced from:
+        _start in crt.o
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./asm/shft.c' failed
+pass: ./asm/store.c
+fail: ./asm/x86_shift.c
+  ./asm/x86_shift.c:8:10: warning: "l" uninitialised on read
+    " return (l << c) + (s << l);"
+             ^
+  ./asm/x86_shift.c:8:15: warning: "c" uninitialised on read
+    " return (l << c) + (s << l);"
+                  ^
+  ./asm/x86_shift.c:8:21: warning: "s" uninitialised on read
+    " return (l << c) + (s << l);"
+                        ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./asm/x86_shift.c' failed
+fail: ./assignment/assign_check.c
+  ./assignment/assign_check.c:15:15: warning: assignment type mismatch: struct A *((*)(int)) <-- struct A *((*)(int i, int j))
+    "  a.f = ret_me; "
+                  ^
+  ./assignment/assign_check.c:18:10: warning: implicit declaration of function "printf"
+    " printf("%d\n", i);"
+             ^
+  ./assignment/assign_check.c:8:22: warning: "j" never read
+    "} *ret_me(int i, int j)"
+                         ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./assignment/assign_check.c -o ./assign_check.out' failed
+fail: ./assignment/valid1.c
+  ./assignment/valid1.c:3:1: warning: control reaches end of non-void function f
+    "f(int (*p)())"
+    ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./assignment/valid1.c' failed
+fail: ./bitfields/bitfield_warns.c
+  ./bitfields/bitfield_warns.c:8:19: ICE parse_type.c:937 (parse_decls_multi_type): TODO: field width
+  ../ucc: cc1/cc1 caught signal 6
+  ./test.pl: command '../ucc ./bitfields/bitfield_warns.c' failed
+fail: ./blocks/basic.c
+  ./timeout: timeout
+  ./test.pl: command '../ucc -o ./basic.out ./blocks/basic.c' failed
+fail: ./blocks/block_const.c
+  ./blocks/block_const.c:8:15: error: can't modify const expression identifier
+    " blockA = ^{ };"
+                  ^
+  ../ucc: cc1/cc1 returned 1
+  ./test.pl: command '../ucc -c ./blocks/block_const.c' failed
+fail: ./blocks/block_decl.c
+  ./blocks/block_decl.c:6:12: warning: control reaches end of non-void function dispatch
+    "int dispatch(int x(char))"
+               ^
+  ./blocks/block_decl.c:13:10: warning: implicit declaration of function "printf"
+    " printf("%c\n", c);"
+             ^
+  ./blocks/block_decl.c:11:2: warning: control reaches end of non-void function pc
+    "pc(char c)"
+     ^
+  ./blocks/block_decl.c:18:42: warning: implicit declaration of function "printf"
+    " int (^x)(char) = ^int(char tim){printf("%c\n", tim);};"
+                                             ^
+  ./blocks/block_decl.c:20:7: warning: initialisation type mismatch: void (^)(void) <-- int
+    " void (^z)(void) = 0;"
+          ^
+  ./blocks/block_decl.c:16:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  ./blocks/block_decl.c:20:7: warning: "z" never read
+    " void (^z)(void) = 0;"
+          ^
+  ./timeout: timeout
+  ./test.pl: command '../ucc -o ./block_decl.out ./blocks/block_decl.c' failed
+fail: ./blocks/block_ret.c
+  ./blocks/block_ret.c:12:2: error: expecting token semicolon, got close_block (parse.c:850)
+    " }());"
+     ^
+  ../ucc: cc1/cc1 returned 1
+  ./test.pl: command '../ucc -o ./block_ret.out ./blocks/block_ret.c' failed
+fail: ./blocks/blocks_args.c
+  ./timeout: timeout
+  ./test.pl: command '../ucc -o ./blocks_args.out ./blocks/blocks_args.c' failed
+fail: ./blocks/blocks_simple.c
+  ./blocks/blocks_simple.c:8:44: warning: mismatching return type for main (int <-- int *)
+    " int *(^q)() = ^{ static int i = 2; return &i; };"
+                                               ^
+  ./blocks/blocks_simple.c:8:6: warning: initialisation type mismatch: int *((^)()) <-- int (^)(void)
+    " int *(^q)() = ^{ static int i = 2; return &i; };"
+         ^
+  ./blocks/blocks_simple.c:10:10: warning: implicit declaration of function "printf"
+    " printf("%d\n", *q());"
+             ^
+  ./blocks/blocks_simple.c:13:11: warning: implicit declaration of function "printf"
+    "  printf("hi\n");"
+              ^
+  ./blocks/blocks_simple.c:17:12: warning: implicit declaration of function "printf"
+    " ^{printf("inline call\n");}();"
+               ^
+  ./timeout: timeout
+  ./test.pl: command '../ucc -o ./blocks_simple.out ./blocks/blocks_simple.c' failed
+fail: ./blocks/blocks_state.c
+  ./blocks/blocks_state.c:8:25: warning: mismatching return type for makeadder (int (^)(int) <-- int)
+    " return ^(int a){return a + the_i;};"
+                            ^
+  ./blocks/blocks_state.c:8:9: warning: mismatching return type for makeadder (int (^)(int) <-- int (^((^)(int a)))(int))
+    " return ^(int a){return a + the_i;};"
+            ^
+  ./blocks/blocks_state.c:17:10: warning: implicit declaration of function "printf"
+    " printf("%d\n", (*i)());"
+             ^
+  ./blocks/blocks_state.c:24:27: warning: implicit declaration of function "printf"
+    " ^(const char *s){printf("%s\n", s);}("hi");"
+                              ^
+  ./blocks/blocks_state.c:11:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  ./timeout: timeout
+  ./test.pl: command '../ucc -o ./blocks_state.out ./blocks/blocks_state.c' failed
+fail: ./blocks/deep.c
+  ./blocks/deep.c:5:10: warning: initialisation type mismatch: fp (aka 'int')  <-- int (^)(void)
+    " ({fp this= ^{return 0;}; this;})()()()();"
+             ^
+  ./blocks/deep.c:2:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  ./timeout: timeout
+  ./test.pl: command '../ucc -c ./blocks/deep.c' failed
+fail: ./blocks/equal.c
+  ./blocks/equal.c:5:7: warning: initialisation type mismatch: char (^)() <-- int (^)(void)
+    " char (^f)() = ^{"
+          ^
+  ./timeout: timeout
+  ./test.pl: command '../ucc -o ./equal.out ./blocks/equal.c' failed
+fail: ./blocks/folding.c
+  ./timeout: timeout
+  ./test.pl: command '../ucc -o ./folding.out ./blocks/folding.c' failed
+fail: ./blocks/full_decl.c
+  ./timeout: timeout
+  ./test.pl: command '../ucc -o ./full_decl.out ./blocks/full_decl.c' failed
+fail: ./blocks/nest.c
+  ./timeout: timeout
+  ./test.pl: command '../ucc -o ./nest.out ./blocks/nest.c' failed
+fail: ./builtin/all.c
+  ./builtin/all.c:6:11: warning: control reaches end of non-void function not_builtin
+    "not_builtin()"
+              ^
+  ./builtin/all.c:15:18: warning: dead code after goto (expr)
+    " __builtin_trap();"
+                     ^
+  ./builtin/all.c:24:72: error: __builtin_constant_p takes a single argument
+    "  _Static_assert(1 == (__builtin_constant_p(__builtin_types_compatible_p(void, int), 0)), "__builtin_constant_p(__builtin_types_compatible_p(void, int), 0)" " failed");"
+                                                                           ^
+  ../ucc: cc1/cc1 returned 1
+  ./test.pl: command '../ucc -o ./all.out ./builtin/all.c' failed
+fail: ./builtin/expect.c
+  ./builtin/expect.c:6:1: warning: control reaches end of non-void function f
+    "f(unsigned i)"
+    ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -o ./expect.out ./builtin/expect.c' failed
+fail: ./builtin/frame_address.c
+  ./builtin/frame_address.c:8:10: warning: implicit declaration of function "printf"
+    " printf("%d\n", i);"
+             ^
+  ./builtin/frame_address.c:8:12: warning: "i" uninitialised on read
+    " printf("%d\n", i);"
+               ^
+  ./builtin/frame_address.c:3:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -o ./frame_address.out ./builtin/frame_address.c' failed
+fail: ./builtin/propagation.c
+  ./timeout: timeout
+  ./test.pl: command '../ucc -o ./propagation.out ./builtin/propagation.c' failed
+fail: ./builtin/sizeof.c
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -o ./sizeof.out ./builtin/sizeof.c' failed
+fail: ./builtin/unused.c
+  ./timeout: timeout
+  ./test.pl: command '../ucc ./builtin/unused.c' failed
+fail: ./C99/C99_for.c
+  (null):14:1: ICE out/out.c:69 (vpop): NULL vtop for vpop
+  ../ucc: cc1/cc1 caught signal 6
+  ./test.pl: command '../ucc -o ./C99_for.out ./C99/C99_for.c' failed
+fail: ./C99/generic_complex.c
+  ./C99/generic_complex.c:9:29: error: trying to redefine union as struct (from ./C99/generic_complex.c:8:44)
+    "    , char: 5, int(struct f): 1);"
+                                ^
+  ../ucc: cc1/cc1 returned 1
+  ./timeout: timeout
+  ./test.pl: command '../ucc -DS_OR_U=union  ./C99/generic_complex.c -o ./generic_complex.out; [ $? -eq 0 ]' failed
+fail: ./C99/generic_default.c
+  (null):7:1: ICE fold.c:112 (FOLD_EXPR_NO_DECAY): no tree_type after fold (_Generic)
+  ../ucc: cc1/cc1 caught signal 6
+  ./test.pl: command '../ucc -o ./generic_default.out ./C99/generic_default.c' failed
+pass: ./C99/generic_dup.c
+pass: ./C99/generic_nomatch.c
+fail: ./C99/generic_simple.c
+  (null):7:1: ICE ops/expr__Generic.c:36 (fold_expr__Generic): already chosen expr for _Generic
+  ../ucc: cc1/cc1 caught signal 6
+  ./test.pl: command '../ucc -o ./generic_simple.out ./C99/generic_simple.c' failed
+fail: ./casts/bool.c
+  ./casts/bool.c:8:9: warning: implicit declaration of function "_Exit"
+    "  _Exit(1);"
+            ^
+  ./casts/bool.c:13:1: warning: control reaches end of non-void function g
+    "g(_Bool a){}"
+    ^
+  ./casts/bool.c:13:9: warning: "a" never read
+    "g(_Bool a){}"
+            ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -o ./bool.out ./casts/bool.c && ./bool.out' failed
+fail: ./casts/const_cast.c
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -o ./const_cast.out ./casts/const_cast.c && ./const_cast.out' failed
+fail: ./casts/ineq_ptr.c
+  ./casts/ineq_ptr.c:10:4: warning: implicit declaration of function "q"
+    " q(a == (char *)0); "
+       ^
+  ./casts/ineq_ptr.c:10:4: warning: "a" uninitialised on read
+    " q(a == (char *)0); "
+       ^
+  ./casts/ineq_ptr.c:10:7: warning: comparison of distinct pointer types lacks a cast (i_td (aka 'int') * vs char *)
+    " q(a == (char *)0); "
+          ^
+  ./casts/ineq_ptr.c:12:16: warning: assignment type mismatch: i_td (aka 'int') * <-- short *
+    " a = (short *)5; "
+                   ^
+  ./casts/ineq_ptr.c:4:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+    "q", referenced from:
+        main in tmp.2.K9iZNG
+       (maybe you meant: quick_exit, at_quick_exit )
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./casts/ineq_ptr.c' failed
+fail: ./casts/invalid.c
+  assuming "etc" is object-file
+  assuming "etc..." is object-file
+  ld: file not found: etc
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -DTYPE='int[]' etc etc...' failed
+pass: ./casts/invalid_bool.c
+fail: ./cil/1.c
+  ./cil/1.c:5:9: warning: "x" uninitialised on read
+    " return x == (1 && x);"
+            ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./cil/1.c' failed
+fail: ./cil/2.c
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./cil/2.c' failed
+fail: ./cil/3.c
+  ./cil/3.c:5:6: warning: "x" never read
+    " int x = 3;"
+         ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./cil/3.c -o ./3.out && ./3.out' failed
+pass: ./cil/4.c
+pass: ./cil/5.c
+fail: ./cil/6.c
+  ./timeout: timeout
+  ./test.pl: command '../ucc -o ./6.out ./cil/6.c && ./6.out' failed
+fail: ./cil/7.c
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -o ./7.out ./cil/7.c && ( ./7.out; [ $? -eq 2 ] )' failed
+pass: ./cil/8.c
+fail: ./cil/9.c
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -o ./9.out ./cil/9.c && ./9.out' failed
+fail: ./cil/cil_1.c
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./cil/cil_1.c' failed
+fail: ./cil/gcc_1.c
+  TODO
+  ./test.pl: command 'echo TODO; false' failed
+fail: ./cil/gcc_2.c
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -o ./gcc_2.out ./cil/gcc_2.c' failed
+fail: ./cil/gcc_3.c
+  ./cil/gcc_3.c:20:27: warning: implicit declaration of function "exit"
+    " if (doit(0) != 0) exit(1);"
+                              ^
+  ./cil/gcc_3.c:19:8: warning: control reaches end of non-void function main
+    "int main(void){"
+           ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -o ./gcc_3.out ./cil/gcc_3.c && ./gcc_3.out' failed
+fail: ./cil/gcc_4.c
+  ./cil/gcc_4.c:4:21: warning: dead code after goto (expr)
+    " return ({goto L; 0;}) && ({L: 5;});"
+                        ^
+  ./cil/gcc_4.c:4:33: warning: unused expression (val)
+    " return ({goto L; 0;}) && ({L: 5;});"
+                                    ^
+  ./cil/gcc_4.c:4:26: error: use of void expression
+    " return ({goto L; 0;}) && ({L: 5;});"
+                             ^
+  ../ucc: cc1/cc1 returned 1
+  ./test.pl: command '../ucc -o ./gcc_4.out ./cil/gcc_4.c && (./gcc_4.out; [ $? -eq 5 ])' failed
+pass: ./cil/gcc_5.c
+fail: ./cil/gcc_6.c
+  TODO
+  ./test.pl: command 'echo TODO; false' failed
+fail: ./cil/gcc_7.c
+  TODO
+  ./test.pl: command 'echo TODO; false' failed
+fail: ./cil/gcc_8.c
+  TODO
+  ./test.pl: command 'echo TODO; false' failed
+fail: ./clang/declarators.c
+  ./test.pl: undefined variable %clang in ./clang/declarators.c
+fail: ./clang/expressions.c
+  ./test.pl: undefined variable %clang in ./clang/expressions.c
+fail: ./clang/if-scope.c
+  ./test.pl: undefined variable %clang in ./clang/if-scope.c
+fail: ./clang/proto-promote.c
+  ./test.pl: undefined variable %clang in ./clang/proto-promote.c
+fail: ./clang/ptr-arith.c
+  ./test.pl: undefined variable %clang in ./clang/ptr-arith.c
+fail: ./clang/ptr-promote.c
+  ./test.pl: undefined variable %clang in ./clang/ptr-promote.c
+fail: ./clang/stmts.c
+  ./test.pl: undefined variable %clang in ./clang/stmts.c
+fail: ./clang/switch.c
+  ./test.pl: undefined variable %clang in ./clang/switch.c
+fail: ./clang/typeof.c
+  ./test.pl: undefined variable %clang in ./clang/typeof.c
+fail: ./clang/types.c
+  ./test.pl: undefined variable %clang in ./clang/types.c
+fail: ./code_gen/vtop_check.c
+  ./code_gen/vtop_check.c:3:1: warning: control reaches end of non-void function f
+    "f(){}"
+    ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -o ./vtop_check.out ./code_gen/vtop_check.c' failed
+fail: ./compound_literal/add.c
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -o ./add.out ./compound_literal/add.c' failed
+fail: ./compound_literal/addr.c
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -o ./addr.out ./compound_literal/addr.c' failed
+fail: ./compound_literal/adv_addr.c
+  ./compound_literal/adv_addr.c:8:20: warning: assignment type mismatch: int (*)[] <-- int (*)[2]
+    " p = &(int[]){1, 2};"
+                       ^
+  ./compound_literal/adv_addr.c:6:12: error: dereference of pointer to incomplete type int []
+    " int (*p)[];"
+               ^
+  ../ucc: cc1/cc1 returned 1
+  ./test.pl: command '../ucc -o ./adv_addr.out ./compound_literal/adv_addr.c' failed
+fail: ./compound_literal/c-lit.c
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -o ./c-lit.out ./compound_literal/c-lit.c' failed
+fail: ./compound_literal/global.c
+  ./compound_literal/global.c:4:9: error: global scalar initialiser not constant
+    "int i = (int){1};"
+            ^
+  ../ucc: cc1/cc1 returned 1
+  ./test.pl: command '../ucc -o ./global.out ./compound_literal/global.c' failed
+fail: ./compound_literal/nested_several.c
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -o ./nested_several.out ./compound_literal/nested_several.c' failed
+fail: ./compound_literal/ptr.c
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -o ./ptr.out ./compound_literal/ptr.c' failed
+fail: ./compound_literal/sizeof.c
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -o ./sizeof.out ./compound_literal/sizeof.c' failed
+pass: ./const/const_int.c
+fail: ./cpp/count_params.c
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -o ./count_params.out ./cpp/count_params.c' failed
+pass: ./cpp/cpp.c
+fail: ./cpp/overload.c
+  TODO
+  ./test.pl: command 'echo TODO; false' failed
+fail: ./decay/array.c
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -o ./array.out ./decay/array.c' failed
+fail: ./decay/assign.c
+  check /error: not an lvalue (identifier)/ not found in warnings on line 6
+  ./test.pl: command '../ucc -S -o- ./decay/assign.c 2>&1 | ./check.pl ./decay/assign.c' failed
+fail: ./decay/typeof.c
+  ./decay/typeof.c:4:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./decay/typeof.c' failed
+fail: ./decay/unary_addr_and_sizeof.c
+  ./decay/unary_addr_and_sizeof.c:4:1: warning: control reaches end of non-void function f
+    "f()"
+    ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -o ./unary_addr_and_sizeof.out ./decay/unary_addr_and_sizeof.c' failed
+fail: ./decl_parsing/add_or_sub.c
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -o ./add_or_sub.out ./decl_parsing/add_or_sub.c' failed
+fail: ./decl_parsing/ar.c
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -o ./ar.out ./decl_parsing/ar.c' failed
+fail: ./decl_parsing/arg.c
+  ./decl_parsing/arg.c:8:6: warning: control reaches end of non-void function fa
+    "int fa(void *fp  __attribute__((unused)), char *s  __attribute__((unused)), int n  __attribute__((unused)))"
+         ^
+  ./decl_parsing/arg.c:16:5: warning: control reaches end of non-void function funopen2
+    "int *funopen2("
+        ^
+  ./decl_parsing/arg.c:26:6: warning: control reaches end of non-void function fb
+    "int fb(void *fp  __attribute__((unused)), const char *s  __attribute__((unused)), int n  __attribute__((unused)))"
+         ^
+  ./decl_parsing/arg.c:30:9: warning: control reaches end of non-void function fc
+    "fpos_t fc(void *fp  __attribute__((unused)), fpos_t t  __attribute__((unused)), int n  __attribute__((unused)))"
+            ^
+  ./decl_parsing/arg.c:34:6: warning: control reaches end of non-void function fd
+    "int fd(void *fp  __attribute__((unused)))"
+         ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./decl_parsing/arg.c' failed
+fail: ./decl_parsing/atexit/atexit.c
+  ./decl_parsing/atexit/atexit.c:5:10: warning: implicit declaration of function "printf"
+    " printf("beet\n");"
+             ^
+  ./decl_parsing/atexit/atexit.c:3:4: warning: control reaches end of non-void function p_hi
+    "p_hi()"
+       ^
+  ./decl_parsing/atexit/atexit.c:10:10: warning: implicit declaration of function "printf"
+    " printf("bye\n");"
+             ^
+  ./decl_parsing/atexit/atexit.c:8:5: warning: control reaches end of non-void function p_bye
+    "p_bye()"
+        ^
+  ./decl_parsing/atexit/atexit.c:15:12: warning: implicit declaration of function "atexit"
+    " atexit(p_hi);"
+               ^
+  ./decl_parsing/atexit/atexit.c:13:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -o ./atexit.out ./decl_parsing/atexit/atexit.c' failed
+fail: ./decl_parsing/atexit/atexit2.c
+  ./decl_parsing/atexit/atexit2.c:6:3: warning: control reaches end of non-void function add
+    "add(int (*f)())"
+      ^
+  ./decl_parsing/atexit/atexit2.c:11:3: warning: control reaches end of non-void function run
+    "run()"
+      ^
+  ./decl_parsing/atexit/atexit2.c:17:13: warning: implicit declaration of function "printf"
+    "a(){printf("a\n");}"
+                ^
+  ./decl_parsing/atexit/atexit2.c:17:1: warning: control reaches end of non-void function a
+    "a(){printf("a\n");}"
+    ^
+  ./decl_parsing/atexit/atexit2.c:18:13: warning: implicit declaration of function "printf"
+    "b(){printf("b\n");}"
+                ^
+  ./decl_parsing/atexit/atexit2.c:18:1: warning: control reaches end of non-void function b
+    "b(){printf("b\n");}"
+    ^
+  ./decl_parsing/atexit/atexit2.c:20:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -o ./atexit2.out ./decl_parsing/atexit/atexit2.c' failed
+fail: ./decl_parsing/atexit/atexit_simplified.c
+  ./decl_parsing/atexit/atexit_simplified.c:7:3: warning: control reaches end of non-void function add
+    "add(void (*f)())"
+      ^
+  ./decl_parsing/atexit/atexit_simplified.c:15:10: warning: implicit declaration of function "printf"
+    " printf("fs = %p\n", fs);"
+             ^
+  ./decl_parsing/atexit/atexit_simplified.c:12:3: warning: control reaches end of non-void function run
+    "run()"
+      ^
+  ./decl_parsing/atexit/atexit_simplified.c:22:21: warning: implicit declaration of function "printf"
+    " void a(){printf("a" "\n");}"
+                        ^
+  ./decl_parsing/atexit/atexit_simplified.c:23:21: warning: implicit declaration of function "printf"
+    " void b(){printf("b" "\n");}"
+                        ^
+  ./decl_parsing/atexit/atexit_simplified.c:24:21: warning: implicit declaration of function "printf"
+    " void c(){printf("c" "\n");}"
+                        ^
+  ./decl_parsing/atexit/atexit_simplified.c:26:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -o ./atexit_simplified.out ./decl_parsing/atexit/atexit_simplified.c' failed
+fail: ./decl_parsing/fptr.c
+  ./decl_parsing/fptr.c:6:10: warning: implicit declaration of function "printf"
+    " printf("inst(%d)\n", i);"
+             ^
+  ./decl_parsing/fptr.c:20:4: warning: unused expression (deref)
+    " *f;"
+       ^
+  ./decl_parsing/fptr.c:9:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -o ./fptr.out ./decl_parsing/fptr.c' failed
+fail: ./decl_parsing/fptr_arg.c
+  ./test.pl: undefined variable %ocheck in ./decl_parsing/fptr_arg.c
+fail: ./decl_parsing/fptr_get.c
+  ./decl_parsing/fptr_get.c:5:10: warning: implicit declaration of function "printf"
+    " printf("yo\n");"
+             ^
+  ./decl_parsing/fptr_get.c:3:5: warning: control reaches end of non-void function x
+    "int x()"
+        ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -o ./fptr_get.out ./decl_parsing/fptr_get.c' failed
+fail: ./decl_parsing/func_array.c
+  ./decl_parsing/func_array.c:10:25: warning: implicit declaration of function "printf"
+    " void p1(int i){printf("%s %d\n", __func__, i);}"
+                            ^
+  ./timeout: timeout
+  ./test.pl: command '../ucc ./decl_parsing/func_array.c' failed
+pass: ./decl_parsing/parse_test.c
+fail: ./decl_parsing/ptr.c
+  ./test.pl: undefined variable %ocheck in ./decl_parsing/ptr.c
+fail: ./decl_parsing/simple.c
+  ./test.pl: undefined variable %ocheck in ./decl_parsing/simple.c
+fail: ./decl_parsing/st_fn.c
+  ./test.pl: undefined variable %ocheck in ./decl_parsing/st_fn.c
+fail: ./enum/enum.c
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -o ./enum.out ./enum/enum.c && ./enum.out' failed
+fail: ./format/fmt.c
+  ./format/fmt.c:5:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./format/fmt.c' failed
+fail: ./format/fmt_invalid.c
+  ./format/fmt_invalid.c:9:5: warning: mismatching argument 2 to f (char * <-- const char *)
+    " f(0, 0, "hi", 2);"
+        ^
+  ./format/fmt_invalid.c:9:5: error: variadic argument at format argument
+    " f(0, 0, "hi", 2);"
+        ^
+  ../ucc: cc1/cc1 returned 1
+  ./test.pl: command '../ucc ./format/fmt_invalid.c' failed
+fail: ./format/mismatch.c
+  ./format/mismatch.c:7:13: warning: format %d expects integral argument
+    " printf("hello %d\n", "yo"); "
+                ^
+  ./format/mismatch.c:8:12: warning: format %s expects 'char *' argument
+    " printf("hello %s\n", 2); "
+               ^
+  ./format/mismatch.c:5:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./format/mismatch.c' failed
+fail: ./format/non_trivial_fmt.c
+  ./format/non_trivial_fmt.c:7:9: warning: mismatching argument 0 to printf (char * <-- const char *)
+    " printf(a ? "b=%d (a=%s)\n" : "b=%d\n", b, a); "
+            ^
+  ./format/non_trivial_fmt.c:7:23: warning: format %s expects 'char *' argument
+    " printf(a ? "b=%d (a=%s)\n" : "b=%d\n", b, a); "
+                          ^
+  ./format/non_trivial_fmt.c:7:9: warning: too many arguments for format
+    " printf(a ? "b=%d (a=%s)\n" : "b=%d\n", b, a); "
+            ^
+  ./format/non_trivial_fmt.c:4:1: warning: control reaches end of non-void function f
+    "f(int a, int b)"
+    ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+    "main", referenced from:
+        _start in crt.o
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./format/non_trivial_fmt.c' failed
+fail: ./format/non_variadic.c
+  Can't exec "!": No such file or directory at ./timeout line 13.
+  ./timeout: exec '! ../ucc ./format/non_variadic.c'...: No such file or directory
+  ./test.pl: command '! ../ucc ./format/non_variadic.c' failed
+fail: ./format/null.c
+  ./format/null.c:9:10: warning: mismatching argument 0 to printf (const char * <-- int)
+    " printf(0);"
+             ^
+  ./format/null.c:6:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./format/null.c' failed
+fail: ./format/str.c
+  ./format/str.c:6:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./format/str.c' failed
+fail: ./format/too_few.c
+  ./format/too_few.c:7:10: warning: too few arguments for format (%d)
+    " printf("hi %d\n"); "
+             ^
+  ./format/too_few.c:8:10: warning: too few arguments for format (%s)
+    " printf("hi %d %s\n", 2); "
+             ^
+  ./format/too_few.c:5:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./format/too_few.c' failed
+fail: ./format/too_many.c
+  ./format/too_many.c:7:10: warning: too many arguments for format
+    " printf("hi %d\n", 1, 2); "
+             ^
+  ./format/too_many.c:8:10: warning: too many arguments for format
+    " printf("hi %d %s\n", 2, "hi", 3); "
+             ^
+  ./format/too_many.c:5:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./format/too_many.c' failed
+fail: ./functions/stret.c
+  ./functions/stret.c:3:20: warning: function "p" marked no-return has a non-void return value
+    "_Noreturn struct A *p()"
+                       ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+    "main", referenced from:
+        _start in crt.o
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./functions/stret.c' failed
+fail: ./gasm/gasm.c
+  ./test.pl: undefined variable %ocheck in ./gasm/gasm.c
+fail: ./gasm/gasm_order.c
+  ./gasm/gasm_order.c:5:1: warning: control reaches end of non-void function A
+    "A(){}"
+    ^
+  ./gasm/gasm_order.c:7:1: warning: control reaches end of non-void function C
+    "C(){}"
+    ^
+  ./gasm/gasm_order.c:9:1: warning: control reaches end of non-void function E
+    "E(){}"
+    ^
+  Usage: ./asmcheck.pl src
+  ./test.pl: command './asmcheck.pl -c ./gasm/gasm_order.c' failed
+fail: ./gen/flag_argument.c
+  ./gen/flag_argument.c:7:4: warning: implicit declaration of function "f"
+    " f((char *)0 == i);"
+       ^
+  ./gen/flag_argument.c:7:18: warning: "i" uninitialised on read
+    " f((char *)0 == i);"
+                     ^
+  ./gen/flag_argument.c:7:16: warning: comparison of distinct pointer types lacks a cast (char * vs int *)
+    " f((char *)0 == i);"
+                   ^
+  ./gen/flag_argument.c:4:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+    "f", referenced from:
+        main in tmp.2.Djz34Y
+       (maybe you meant: fork, _fdopendir , printf , fopen , dprintf , fileno , fwrite , freopen , fputc , vprintf , fflush , fgetc , fprintf , _dirfd , fclose , fsetpos , ferror , fgets , fropen , fdopen , fputs , ftell , fgetpos , free , feof , funopen , fseek , fwopen , vfprintf , __assert_fail , fread )
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./gen/flag_argument.c' failed
+fail: ./gen/for_C99.c
+  ./gen/for_C99.c:5:10: warning: "i" never read
+    " for(int i =0;;);"
+             ^
+  (null):7:1: ICE out/out.c:69 (vpop): NULL vtop for vpop
+  ./timeout: timeout
+  ./test.pl: command '../ucc ./gen/for_C99.c' failed
+fail: ./initialisation/array/brace.c
+  ./initialisation/array/brace.c:4:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./initialisation/array/brace.c' failed
+pass: ./initialisation/array/nobrace.c
+pass: ./initialisation/array/normal.c
+fail: ./initialisation/array/variations.c
+  ./initialisation/array/variations.c:9:12: warning: implicit declaration of function "printf"
+    "   printf("[%d][%d] = %d\n", i, j, a[i][j]);"
+               ^
+  ./initialisation/array/variations.c:4:1: warning: control reaches end of non-void function p
+    "p(int (*a)[2])"
+    ^
+  ./initialisation/array/variations.c:12:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./initialisation/array/variations.c' failed
+pass: ./initialisation/compound/funcall.c
+pass: ./initialisation/compound/ptr.c
+fail: ./initialisation/compound/sizeof_parsing.c
+  ./initialisation/compound/sizeof_parsing.c:5:18: warning: unused expression (sizeof/typeof)
+    " sizeof(int[]){1};"
+                     ^
+  ./initialisation/compound/sizeof_parsing.c:3:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./initialisation/compound/sizeof_parsing.c' failed
+fail: ./initialisation/compound/undefined.c
+  TODO ./initialisation/compound/undefined.c
+  ./test.pl: command 'false' failed
+fail: ./initialisation/compound_global/addr_global.c
+  TODO ./initialisation/compound_global/addr_global.c
+  ./test.pl: command 'false' failed
+fail: ./initialisation/compound_global/and_static.c
+  TODO ./initialisation/compound_global/and_static.c
+  ./test.pl: command 'false' failed
+fail: ./initialisation/compound_global/cast_lit.c
+  ./initialisation/compound_global/cast_lit.c:3:9: error: global scalar initialiser not constant
+    "int i = (int)(int){5};"
+            ^
+  ../ucc: cc1/cc1 returned 1
+  ./test.pl: command '../ucc -S -o- ./initialisation/compound_global/cast_lit.c | grep -E '\.long +5'' failed
+fail: ./initialisation/compound_global/yes_no_cases.c
+  TODO ./initialisation/compound_global/yes_no_cases.c
+  ./test.pl: command 'false' failed
+fail: ./initialisation/compound_lit/basic.c
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./initialisation/compound_lit/basic.c -o ./basic.out' failed
+fail: ./initialisation/compound_lit/nested.c
+  ./initialisation/compound_lit/nested.c:6:6: warning: initialisation type mismatch: int * <-- int (*)[2]
+    " int *p = (int[][2]){"
+         ^
+  ./initialisation/compound_lit/nested.c:6:6: error: invalid indirection applied to int
+    " int *p = (int[][2]){"
+         ^
+  ../ucc: cc1/cc1 returned 1
+  ./test.pl: command '../ucc -o ./nested.out ./initialisation/compound_lit/nested.c' failed
+fail: ./initialisation/compound_lit/sizeof.c
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./initialisation/compound_lit/sizeof.c -o ./sizeof.out' failed
+fail: ./initialisation/designated/all_3.c
+  Died at ./asmcheck.pl line 12.
+  ./test.pl: command './asmcheck.pl ./initialisation/designated/all_3.c' failed
+fail: ./initialisation/designated/array/basic.c
+  ./test.pl: undefined variable %ocheck in ./initialisation/designated/array/basic.c
+fail: ./initialisation/designated/array/bounds.c
+  Can't exec "!": No such file or directory at ./timeout line 13.
+  ./timeout: exec '! ../ucc ./initialisation/designated/array/bounds.c'...: No such file or directory
+  ./test.pl: command '! ../ucc ./initialisation/designated/array/bounds.c' failed
+fail: ./initialisation/designated/array/of_structs.c
+  Died at ./asmcheck.pl line 12.
+  ./test.pl: command './asmcheck.pl ./initialisation/designated/array/of_structs.c' failed
+fail: ./initialisation/designated/array_nested_struct.c
+  TODO ./initialisation/designated/array_nested_struct.c
+  ./test.pl: command 'false' failed
+fail: ./initialisation/designated/arrays.c
+  Died at ./asmcheck.pl line 12.
+  ./test.pl: command './asmcheck.pl ./initialisation/designated/arrays.c' failed
+fail: ./initialisation/designated/backwards_struct.c
+  Died at ./asmcheck.pl line 12.
+  ./test.pl: command './asmcheck.pl ./initialisation/designated/backwards_struct.c' failed
+fail: ./initialisation/designated/desig_array_st.c
+  Died at ./asmcheck.pl line 12.
+  ./test.pl: command './asmcheck.pl ./initialisation/designated/desig_array_st.c' failed
+fail: ./initialisation/designated/struct/sub_desig.c
+  ./test.pl: undefined variable %ocheck in ./initialisation/designated/struct/sub_desig.c
+fail: ./initialisation/designated/struct/various_desig.c
+  Died at ./asmcheck.pl line 12.
+  ./test.pl: command './asmcheck.pl ./initialisation/designated/struct/various_desig.c' failed
+fail: ./initialisation/designated/unordered_struct.c
+  ./initialisation/designated/unordered_struct.c:13:2: warning: excess initialiser for struct
+    " 3, "
+     ^
+  check /warning: excess struct initialiser/ not found in warnings on line 13
+  ./test.pl: command '../ucc -c ./initialisation/designated/unordered_struct.c 2>&1 | ./check.pl ./initialisation/designated/unordered_struct.c' failed
+fail: ./initialisation/global/address_cast.c
+  ./initialisation/global/address_cast.c:6:10: error: global scalar initialiser not constant
+    "int *p = (int)&x; "
+             ^
+  ../ucc: cc1/cc1 returned 1
+  ./initialisation/global/address_cast.c:6:10: error: global scalar initialiser not constant
+    "int *p = (int)&x; "
+             ^
+  ../ucc: cc1/cc1 returned 1
+  line: 6, warnings (0) != checks (1)
+  ./test.pl: command '../ucc -S ./initialisation/global/address_cast.c | ./check.pl ./initialisation/global/address_cast.c' failed
+fail: ./initialisation/global/array.c
+  ./test.pl: command '[ `../ucc ./initialisation/global/array.c -S -o- | grep '[1234]' | wc -l` -eq 16 ]' failed
+fail: ./initialisation/global/array_init.c
+  ./test.pl: undefined variable %ocheck in ./initialisation/global/array_init.c
+fail: ./initialisation/global/compound_lit_and_str.c
+  Died at ./asmcheck.pl line 12.
+  ./test.pl: command './asmcheck.pl ./initialisation/global/compound_lit_and_str.c' failed
+fail: ./initialisation/global/compound_literal.c
+  Died at ./asmcheck.pl line 12.
+  ./test.pl: command './asmcheck.pl ./initialisation/global/compound_literal.c' failed
+fail: ./initialisation/global/compound_literal_addr_off.c
+  ./test.pl: undefined variable %ocheck in ./initialisation/global/compound_literal_addr_off.c
+pass: ./initialisation/global/const_shortcircuit.c
+fail: ./initialisation/global/empty.c
+  Died at ./asmcheck.pl line 12.
+  ./test.pl: command './asmcheck.pl ./initialisation/global/empty.c' failed
+pass: ./initialisation/global/global_negative.c
+fail: ./initialisation/global/globals.c
+  Died at ./asmcheck.pl line 12.
+  ./test.pl: command './asmcheck.pl ./initialisation/global/globals.c' failed
+fail: ./initialisation/global/offsetof.c
+  ./test.pl: undefined variable %ocheck in ./initialisation/global/offsetof.c
+fail: ./initialisation/global/static_addr.c
+  ./initialisation/global/static_addr.c:8:18: error: static scalar initialiser not constant
+    " static int *p = &a;"
+                     ^
+  ../ucc: cc1/cc1 returned 1
+  ./initialisation/global/static_addr.c:5:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -DSTORE=static ./initialisation/global/static_addr.c' failed
+pass: ./initialisation/global/struct.c
+fail: ./initialisation/global/struct_addr.c
+  Died at ./asmcheck.pl line 12.
+  ./test.pl: command './asmcheck.pl ./initialisation/global/struct_addr.c' failed
+fail: ./initialisation/global/struct_fn.c
+  Died at ./asmcheck.pl line 12.
+  ./test.pl: command './asmcheck.pl ./initialisation/global/struct_fn.c' failed
+fail: ./initialisation/global/struct_offset.c
+  Died at ./asmcheck.pl line 12.
+  ./test.pl: command './asmcheck.pl ./initialisation/global/struct_offset.c' failed
+fail: ./initialisation/global/struct_pad.c
+  Died at ./asmcheck.pl line 12.
+  ./test.pl: command './asmcheck.pl ./initialisation/global/struct_pad.c' failed
+pass: ./initialisation/invalid/arrays.c
+fail: ./initialisation/invalid/both.c
+  ./initialisation/invalid/both.c:5:11: error: array must be initalised with an initialiser list
+    "int x[] = 1;"
+              ^
+  ../ucc: cc1/cc1 returned 1
+  ./timeout: timeout
+  ./test.pl: command '../ucc -c      ./initialisation/invalid/both.c; [ $? -ne 0 ]' failed
+pass: ./initialisation/invalid/incomplete.c
+pass: ./initialisation/invalid/incomplete_struct.c
+fail: ./initialisation/scalar/brace.c
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -o ./brace.out ./initialisation/scalar/brace.c' failed
+fail: ./initialisation/string/char_ar.c
+  ./initialisation/string/char_ar.c:7:6: warning: initialisation type mismatch: char * <-- const char *
+    "char *z = "yo";"
+         ^
+  ./initialisation/string/char_ar.c:7:6: warning: initialisation type mismatch: char * <-- const char *
+    "char *z = "yo";"
+         ^
+  ./initialisation/string/char_ar.c:4:4: warning: control reaches end of non-void function main
+    "main(){"
+       ^
+  ./initialisation/string/char_ar.c:7:6: warning: "z" never read
+    "char *z = "yo";"
+         ^
+  /var/tmp/tmp.1.JcfjLP:37:FATAL:Symbol str.1 already defined.
+  ../ucc: as returned 1
+  ./test.pl: command '../ucc -c ./initialisation/string/char_ar.c -DPRE='main(){' -DPOST='}'' failed
+fail: ./initialisation/struct/array_of.c
+  ./timeout: timeout
+  ./test.pl: command '../ucc -c ./initialisation/struct/array_of.c' failed
+fail: ./initialisation/struct/complicated.c
+  TODO ./initialisation/struct/complicated.c
+  ./test.pl: command 'false' failed
+fail: ./initialisation/struct/nested_array_of_arrays.c
+  ./initialisation/struct/nested_array_of_arrays.c:5:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  ./initialisation/struct/nested_array_of_arrays.c:5:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  ./test.pl: command '[ `../ucc ./initialisation/struct/nested_array_of_arrays.c -S -o- | grep 'mov.*[123456789]' | wc -l` -eq 9 ]' failed
+fail: ./initialisation/struct/nested_unbraced.c
+  Died at ./asmcheck.pl line 12.
+  ./test.pl: command './asmcheck.pl ./initialisation/struct/nested_unbraced.c' failed
+fail: ./initialisation/struct/nesting.c
+  ./initialisation/struct/nesting.c:11:16: warning: excess initialiser for struct
+    "} a = { { 3 }, 2 };"
+                   ^
+  Died at ./asmcheck.pl line 12, <STDIN> line 9.
+  ./test.pl: command '../ucc -DO='{' -DC='}' -S -o- ./initialisation/struct/nesting.c | ./asmcheck.pl ./initialisation/struct/nesting.c' failed
+fail: ./initialisation/struct/pad.c
+  ./initialisation/struct/pad.c:6:3: warning: initialisation type mismatch: int * <-- int
+    "} a = { 0, 2 }, b = { 2, 3 };"
+      ^
+  ./initialisation/struct/pad.c:6:18: warning: initialisation type mismatch: int * <-- int
+    "} a = { 0, 2 }, b = { 2, 3 };"
+                     ^
+  Died at ./asmcheck.pl line 12, <STDIN> line 15.
+  ./test.pl: command '../ucc -S -o- ./initialisation/struct/pad.c | ./asmcheck.pl ./initialisation/struct/pad.c' failed
+pass: ./initialisation/struct/simple.c
+fail: ./initialisation/subobj_continue/array.c
+  Died at ./asmcheck.pl line 12.
+  ./test.pl: command './asmcheck.pl ./initialisation/subobj_continue/array.c' failed
+fail: ./initialisation/subobj_continue/array_aligns.c
+  Died at ./asmcheck.pl line 12.
+  ./test.pl: command './asmcheck.pl ./initialisation/subobj_continue/array_aligns.c' failed
+fail: ./initialisation/subobj_continue/array_error.c
+  Can't exec "!": No such file or directory at ./timeout line 13.
+  ./timeout: exec '! ../ucc ./initialisation/subobj_continue/array_error.c'...: No such file or directory
+  ./test.pl: command '! ../ucc ./initialisation/subobj_continue/array_error.c' failed
+fail: ./initialisation/subobj_continue/struct.c
+  Died at ./asmcheck.pl line 12.
+  ./test.pl: command './asmcheck.pl ./initialisation/subobj_continue/struct.c' failed
+fail: ./initialisation/subobj_continue/substruct.c
+  Died at ./asmcheck.pl line 12.
+  ./test.pl: command './asmcheck.pl ./initialisation/subobj_continue/substruct.c' failed
+fail: ./initialisation/unbraced/limit.c
+  ./initialisation/unbraced/limit.c:7:6: warning: initialisation type mismatch: int (*)[] <-- int (*)[2]
+    " int (*p)[] = (int[][2]){ 1, 2, { 3, 4, 5 } };"
+         ^
+  ./initialisation/unbraced/limit.c:5:1: warning: control reaches end of non-void function a
+    "a()"
+    ^
+  ./initialisation/unbraced/limit.c:16:1: warning: control reaches end of non-void function b
+    "b()"
+    ^
+  ./initialisation/unbraced/limit.c:24:1: warning: control reaches end of non-void function c
+    "c()"
+    ^
+  ./initialisation/unbraced/limit.c:7:6: warning: "p" never read
+    " int (*p)[] = (int[][2]){ 1, 2, { 3, 4, 5 } };"
+         ^
+  ./initialisation/unbraced/limit.c:18:11: warning: "p" never read
+    " struct A *p = (struct A []){"
+              ^
+  ./initialisation/unbraced/limit.c:7:6: warning: initialisation type mismatch: int (*)[] <-- int (*)[2]
+    " int (*p)[] = (int[][2]){ 1, 2, { 3, 4, 5 } };"
+         ^
+  ./initialisation/unbraced/limit.c:5:1: warning: control reaches end of non-void function a
+    "a()"
+    ^
+  ./initialisation/unbraced/limit.c:16:1: warning: control reaches end of non-void function b
+    "b()"
+    ^
+  ./initialisation/unbraced/limit.c:24:1: warning: control reaches end of non-void function c
+    "c()"
+    ^
+  ./initialisation/unbraced/limit.c:7:6: warning: "p" never read
+    " int (*p)[] = (int[][2]){ 1, 2, { 3, 4, 5 } };"
+         ^
+  ./initialisation/unbraced/limit.c:18:11: warning: "p" never read
+    " struct A *p = (struct A []){"
+              ^
+  ./initialisation/unbraced/limit.c:7:6: warning: initialisation type mismatch: int (*)[] <-- int (*)[2]
+    " int (*p)[] = (int[][2]){ 1, 2, { 3, 4, 5 } };"
+         ^
+  ./initialisation/unbraced/limit.c:5:1: warning: control reaches end of non-void function a
+    "a()"
+    ^
+  ./initialisation/unbraced/limit.c:16:1: warning: control reaches end of non-void function b
+    "b()"
+    ^
+  ./initialisation/unbraced/limit.c:24:1: warning: control reaches end of non-void function c
+    "c()"
+    ^
+  ./initialisation/unbraced/limit.c:7:6: warning: "p" never read
+    " int (*p)[] = (int[][2]){ 1, 2, { 3, 4, 5 } };"
+         ^
+  ./initialisation/unbraced/limit.c:18:11: warning: "p" never read
+    " struct A *p = (struct A []){"
+              ^
+  Died at ./asmcheck.pl line 12, <STDIN> line 57.
+  ./test.pl: command '../ucc -S -o- ./initialisation/unbraced/limit.c | ./asmcheck.pl ./initialisation/unbraced/limit.c' failed
+fail: ./initialisation/unbraced/multiple.c
+  ./initialisation/unbraced/multiple.c:4:1: warning: control reaches end of non-void function f
+    "f()"
+    ^
+  ./initialisation/unbraced/multiple.c:9:1: warning: control reaches end of non-void function g
+    "g()"
+    ^
+  Usage: ./asmcheck.pl src
+  ./initialisation/unbraced/multiple.c:4:1: warning: control reaches end of non-void function f
+    "f()"
+    ^
+  ./initialisation/unbraced/multiple.c:9:1: warning: control reaches end of non-void function g
+    "g()"
+    ^
+  ./test.pl: command '../ucc ./initialisation/unbraced/multiple.c -S -o- | ./asmcheck.pl' failed
+pass: ./initialisation/zero_fill/array.c
+fail: ./initialisation/zero_fill/multiple.c
+  ./initialisation/zero_fill/multiple.c:4:1: warning: control reaches end of non-void function g
+    "g()"
+    ^
+  ./initialisation/zero_fill/multiple.c:9:1: warning: control reaches end of non-void function h
+    "h()"
+    ^
+  ./test.pl: command '[ `../ucc ./initialisation/zero_fill/multiple.c -S -o- | grep 'mov.*2' | wc -l` -eq 1 ]' failed
+fail: ./initialisation/zero_fill/struct.c
+  ./initialisation/zero_fill/struct.c:5:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  ./initialisation/zero_fill/struct.c:21:23: warning: excess initialiser for struct
+    " struct A b = { 1, 2, 3 };"
+                          ^
+  ./initialisation/zero_fill/struct.c:13:1: warning: control reaches end of non-void function f
+    "f()"
+    ^
+  ./test.pl: command '[ `../ucc ./initialisation/zero_fill/struct.c -S -o- | grep 'mov.*0' | wc -l` -eq 1 ]' failed
+fail: ./lib/select.c
+  TODO
+  ./test.pl: command 'echo TODO; false' failed
+fail: ./lib/sleep.c
+  ./lib/sleep.c:2:1: error: can't find include file <stdlib.h>
+  ../ucc: cpp2/cpp returned 1
+  ./test.pl: command '../ucc ./lib/sleep.c' failed
+fail: ./lib/uname.c
+  TODO
+  ./test.pl: command 'echo TODO; false' failed
+fail: ./lib/usleep.c
+  TODO
+  ./test.pl: command 'echo TODO; false' failed
+pass: ./lvalue/addr.c
+pass: ./lvalue/func_addr.c
+fail: ./lvalue/func_assign.c
+  Can't exec "!../ucc": No such file or directory at ./timeout line 13.
+  ./timeout: exec '!../ucc ./lvalue/func_assign.c'...: No such file or directory
+  ./test.pl: command '!../ucc ./lvalue/func_assign.c' failed
+pass: ./macros.c
+fail: ./old_func/errors.c
+  ./old_func/errors.c:3:6: error: no such parameter 'y'
+    " int y;"
+         ^
+  ../ucc: cc1/cc1 returned 1
+  ./test.pl: command '../ucc -c ./old_func/errors.c' failed
+fail: ./old_func/works.c
+  ./test.pl: undefined variable %ocheck in ./old_func/works.c
+fail: ./other/__asm__.c
+  ./other/__asm__.c:8:16: ICW parse.c:232 (parse_expr_primary): token_asm - redirect to builtin instead of identifier
+  ./other/__asm__.c:9:27: error: expecting token comma, got identifier "EXIT_CODE" (parse.c:479)
+    "                "movl $" EXIT_CODE ", %eax\n""
+                              ^
+  ./other/__asm__.c:12:9: error: expecting token comma, got string (parse.c:479)
+    "        );"
+            ^
+  ../ucc: cc1/cc1 returned 1
+  ./test.pl: command '../ucc -c ./other/__asm__.c' failed
+fail: ./other/__file__.c
+  ./other/__file__.c:6:1: error: can't find include file <stdio.h>
+  ../ucc: cpp2/cpp returned 1
+  ./test.pl: command '../ucc -o ./__file__.out ./other/__file__.c' failed
+fail: ./other/_Generic.c
+  ./other/_Generic.c:13:7: warning: initialisation type mismatch: char * <-- const char *
+    " char *s = "yo";"
+          ^
+  ./other/_Generic.c:15:17: warning: implicit declaration of function "printf"
+    "  printf(_Generic(i, char *: "%s", int: "%d"), i);"
+                    ^
+  (null):20:1: ICE ops/expr__Generic.c:36 (fold_expr__Generic): already chosen expr for _Generic
+  ./timeout: timeout
+  ./test.pl: command '../ucc -o ./_Generic.out ./other/_Generic.c' failed
+fail: ./other/_Generic_const.c
+  (null):9:1: ICE ops/expr__Generic.c:36 (fold_expr__Generic): already chosen expr for _Generic
+  ./timeout: timeout
+  ./test.pl: command '../ucc -o ./_Generic_const.out ./other/_Generic_const.c' failed
+fail: ./other/_Static_assert.c
+  ./other/_Static_assert.c:9:24: warning: "i" uninitialised on read
+    " _Static_assert(sizeof(i) == sizeof(int), "buh");"
+                           ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./other/_Static_assert.c' failed
+fail: ./other/addr.c
+  ./other/addr.c:8:9: warning: implicit declaration of function "write"
+    "  write(1, &neg, 1);"
+            ^
+  ./other/addr.c:10:10: warning: implicit declaration of function "printf"
+    " printf("\n");"
+             ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -o ./addr.out ./other/addr.c' failed
+fail: ./other/alphabet.c
+  ./other/alphabet.c:4:1: error: can't find include file <stdlib.h>
+  ../ucc: cpp2/cpp returned 1
+  ./test.pl: command '../ucc -o ./alphabet.out ./other/alphabet.c' failed
+fail: ./other/ar_addr.c
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./other/ar_addr.c -o ./ar_addr.out' failed
+fail: ./other/args_definitions.c
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./other/args_definitions.c' failed
+fail: ./other/array_addressof.c
+  ./other/array_addressof.c:4:1: error: can't find include file <stdio.h>
+  ../ucc: cpp2/cpp returned 1
+  ./test.pl: command '../ucc ./other/array_addressof.c -o ./array_addressof.out' failed
+fail: ./other/array_size_check.c
+  ./other/array_size_check.c:5:13: error: expecting token open_block, got comma (parse.c:779)
+    "int printf(), abort();"
+                ^
+  ./other/array_size_check.c:5:13: error: expression expected, got comma (parse.c:239)
+    "int printf(), abort();"
+                ^
+  ../ucc: cc1/cc1 returned 1
+  ./test.pl: command '../ucc -o ./array_size_check.out ./other/array_size_check.c' failed
+fail: ./other/assert.c
+  ./other/assert.c:5:1: error: can't find include file <assert.h>
+  ../ucc: cpp2/cpp returned 1
+  ./test.pl: command '../ucc -o ./assert.out ./other/assert.c' failed
+fail: ./other/assign_order.c
+  ./other/assign_order.c:4:1: error: can't find include file <stdio.h>
+  ../ucc: cpp2/cpp returned 1
+  ./test.pl: command '../ucc -fno-const-fold -o ./assign_order.out ./other/assign_order.c' failed
+fail: ./other/atexit.c
+  ./other/atexit.c:6:1: error: can't find include file <stdio.h>
+  ../ucc: cpp2/cpp returned 1
+  ./test.pl: command '../ucc -o ./atexit.out ./other/atexit.c' failed
+pass: ./output-fail.c
+fail: ./parse/empty_array.c
+  ./parse/empty_array.c:2:21: error: dereference of pointer to incomplete type char (*([]))()
+    "extern char (*(*x)[])();"
+                        ^
+  ../ucc: cc1/cc1 returned 1
+  ./test.pl: command '../ucc -c -o ./empty_array.out ./parse/empty_array.c' failed
+fail: ./parse/eof_mid_parse.c
+  ./parse/eof_mid_parse.c:3:2: error: expecting token semicolon, got eof (parse_type.c:951)
+    "a "
+     ^
+  ../ucc: cc1/cc1 returned 1
+  line: 3, warnings (0) != checks (1)
+  ./test.pl: command '../ucc ./parse/eof_mid_parse.c | ./check.pl ./parse/eof_mid_parse.c' failed
+fail: ./parse/expr_if.c
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -o ./expr_if.out ./parse/expr_if.c && (./expr_if.out; [ $? -eq 3 ])' failed
+fail: ./parse/switch.c
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -o ./switch.out ./parse/switch.c && ./switch.out' failed
+fail: ./parse/type_storage.c
+  ./parse/type_storage.c:5:15: error: storage unwanted (static)
+    " return (static)5; "
+                  ^
+  ../ucc: cc1/cc1 returned 1
+  line: 5, warnings (0) != checks (1)
+  ./test.pl: command '../ucc ./parse/type_storage.c | ./check.pl ./parse/type_storage.c' failed
+fail: ./parsing/eof_mid.c
+  Can't exec "!": No such file or directory at ./timeout line 13.
+  ./timeout: exec '! ../ucc ./parsing/eof_mid.c'...: No such file or directory
+  ./test.pl: command '! ../ucc ./parsing/eof_mid.c' failed
+fail: ./parsing/parse_comma.c
+  ./test.pl: undefined variable %ocheck in ./parsing/parse_comma.c
+pass: ./parsing/tdef_func.c
+pass: ./paths/reachable.c
+fail: ./pointers/add.c
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -o ./add.out ./pointers/add.c' failed
+fail: ./pointers/func_arith.c
+  line: 5, warnings (0) != checks (1)
+  line: 6, warnings (0) != checks (1)
+  ./test.pl: command './check.pl ./pointers/func_arith.c' failed
+fail: ./pointers/ptr_cmp.c
+  ./pointers/ptr_cmp.c:6:21: warning: comparison of distinct pointer types lacks a cast (char * vs int *)
+    " return (char *)0 == (int *)5; "
+                        ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./pointers/ptr_cmp.c' failed
+fail: ./pointers/ptr_sub.c
+  Can't exec "!": No such file or directory at ./timeout line 13.
+  ./timeout: exec '! ../ucc ./pointers/ptr_sub.c'...: No such file or directory
+  ./test.pl: command '! ../ucc ./pointers/ptr_sub.c' failed
+fail: ./pointers/void_arith.c
+  line: 4, warnings (0) != checks (1)
+  ./test.pl: command './check.pl ./pointers/void_arith.c' failed
+fail: ./random/confusion_parsing.c
+  ./random/confusion_parsing.c:17:3: warning: "x" never written to
+    " a(*x);"
+      ^
+  ./random/confusion_parsing.c:17:3: warning: "x" never read
+    " a(*x);"
+      ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -DDECL -o ./confusion_parsing.out ./random/confusion_parsing.c && ./confusion_parsing.out' failed
+fail: ./random/printf_args.c
+  ./random/printf_args.c:6:11: warning: implicit declaration of function "printf"
+    "  printf("argv[%d] = \"%s\"\n", i, argv[i]);"
+              ^
+  /var/tmp/tmp.1.sRrKfQ:66:FATAL:Symbol str.1 already defined.
+  ../ucc: as returned 1
+  ./test.pl: command '../ucc -o ./printf_args.out ./random/printf_args.c && ./printf_args.out hello | grep 'argv\[1\] = "hello"'' failed
+fail: ./restrict/restrict_fine.c
+  ./restrict/restrict_fine.c:6:20: error: externs can't be initialised
+    " extern int i, *p, *q = (void *)0, *r;"
+                       ^
+  ../ucc: cc1/cc1 returned 1
+  ./test.pl: command '../ucc ./restrict/restrict_fine.c -c' failed
+pass: ./restrict/restrict_fptr.c
+pass: ./restrict/restrict_int.c
+pass: ./restrict/restrict_ptr_invalid.c
+fail: ./restrict/restrict_undefined.c
+  ./test.pl: undefined variable %c in ./restrict/restrict_undefined.c
+fail: ./sign/cast.c
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -o ./cast.out ./sign/cast.c' failed
+fail: ./sign/cmp.c
+  ./sign/cmp.c:6:8: warning: comparison of unsigned expression >= 0 is always true
+    " if(i >= 0); "
+           ^
+  ./sign/cmp.c:7:7: warning: comparison of unsigned expression < 0 is always false
+    " if(i < 0);  "
+          ^
+  ./sign/cmp.c:3:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  line: 6, warnings (0) != checks (1)
+  line: 7, warnings (0) != checks (1)
+  ./test.pl: command '../ucc -S -o- ./sign/cmp.c | ./check.pl ./sign/cmp.c' failed
+pass: ./sign/gen.c
+fail: ./sign/rule.c
+  Died at ./asmcheck.pl line 12.
+  ./test.pl: command './asmcheck.pl ./sign/rule.c' failed
+fail: ./simple/simple.c
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -o ./simple.out ./simple/simple.c' failed
+fail: ./stack/clobber.c
+  ./stack/clobber.c:12:8: warning: implicit declaration of function "write"
+    " write(1, &c, 1);"
+           ^
+  ./stack/clobber.c:4:2: warning: control reaches end of non-void function wn
+    "wn(int n)"
+     ^
+  ./stack/clobber.c:17:8: warning: implicit declaration of function "write"
+    " write(1, "\n", 1);"
+           ^
+  ./stack/clobber.c:15:2: warning: control reaches end of non-void function nl
+    "nl()"
+     ^
+  ./stack/clobber.c:20:3: warning: control reaches end of non-void function wn3
+    "wn3(a, b, c)"
+      ^
+  ./stack/clobber.c:30:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./stack/clobber.c -o ./clobber.out' failed
+fail: ./stack/packing.c
+  ./stack/packing.c:6:1: warning: control reaches end of non-void function f
+    "f()"
+    ^
+  ./stack/packing.c:12:1: warning: control reaches end of non-void function g
+    "g()"
+    ^
+  ./stack/packing.c:25:1: warning: control reaches end of non-void function h
+    "h()"
+    ^
+  ./stack/packing.c:6:1: warning: control reaches end of non-void function f
+    "f()"
+    ^
+  ./stack/packing.c:12:1: warning: control reaches end of non-void function g
+    "g()"
+    ^
+  ./stack/packing.c:25:1: warning: control reaches end of non-void function h
+    "h()"
+    ^
+  Died at ./asmcheck.pl line 12, <STDIN> line 61.
+  ./test.pl: command '../ucc -S ./stack/packing.c -o- | ./asmcheck.pl ./stack/packing.c' failed
+fail: ./strings/basic.c
+  ./test.pl: undefined variable %ocheck in ./strings/basic.c
+fail: ./strings/global.c
+  Died at ./asmcheck.pl line 12.
+  ./test.pl: command './asmcheck.pl ./strings/global.c' failed
+fail: ./structs/nested.c
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -o ./nested.out ./structs/nested.c' failed
+fail: ./structs/nested_decl.c
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./structs/nested_decl.c' failed
+fail: ./structs/offset_sizeof.c
+  ./structs/offset_sizeof.c:42:13: warning: implicit declaration of function "printf"
+    "  printf("(unsigned long)&((struct Y *)0)->i" " = %u\n", (unsigned long)&((struct Y *)0)->i);"
+                ^
+  ./structs/offset_sizeof.c:19:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./structs/offset_sizeof.c -o ./offset_sizeof.out' failed
+fail: ./structs/simple.c
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./structs/simple.c -o ./simple.out' failed
+fail: ./structs/validity.c
+  ./structs/validity.c:12:2: warning: "p" uninitialised on read
+    " p->i;"
+     ^
+  ./structs/validity.c:12:6: warning: unused expression (struct)
+    " p->i;"
+         ^
+  ./structs/validity.c:13:5: warning: unused expression (struct)
+    " a.i;"
+        ^
+  ./structs/validity.c:8:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./structs/validity.c' failed
+fail: ./structs/validity2.c
+  ./structs/validity2.c:13:2: error: 'struct A *' (identifier-expr) is not a struct or union (member i)
+    " p.i; "
+     ^
+  ../ucc: cc1/cc1 returned 1
+  check /error: '[^']+' is not a struct or union \(member i\)/ not found in warnings on line 13
+  ./test.pl: command '../ucc ./structs/validity2.c 2>&1 | ./check.pl ./structs/validity2.c' failed
+fail: ./structs/validity3.c
+  ./structs/validity3.c:13:2: error: 'struct A' (identifier-expr) is not a pointer to struct or union (member i)
+    " a->i; "
+     ^
+  ../ucc: cc1/cc1 returned 1
+  check /error: '[^']+' is not a pointer to struct or union \(member i\)/ not found in warnings on line 13
+  ./test.pl: command '../ucc ./structs/validity3.c 2>&1 | ./check.pl ./structs/validity3.c' failed
+fail: ./switch/enum_int.c
+  line: 9, warnings (0) != checks (1)
+  line: 10, warnings (0) != checks (1)
+  ./test.pl: command './check.pl ./switch/enum_int.c' failed
+fail: ./type_parsing_printing/func_ptr.c
+  ./type_parsing_printing/func_ptr.c:13:4: warning: unused expression (op)
+    " 1 - *g();"
+       ^
+  ./type_parsing_printing/func_ptr.c:14:4: warning: unused expression (op)
+    " 1 - (*(*ptr_to_f_ret_ptr_to_f)())();"
+       ^
+  ./type_parsing_printing/func_ptr.c:15:4: warning: unused expression (op)
+    " 1 - (*p)();"
+       ^
+  ./type_parsing_printing/func_ptr.c:16:4: warning: unused expression (op)
+    " 1 - *(f());"
+       ^
+  ./type_parsing_printing/func_ptr.c:10:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+    "f", referenced from:
+        main in tmp.2.gE90Fa
+       (maybe you meant: ptr_to_f_ret_ptr_to_f, fork , _fdopendir , printf , fopen , dprintf , fileno , fwrite , freopen , fputc , vprintf , fflush , fgetc , fprintf , _dirfd , fclose , fsetpos , ferror , fgets , fropen , fdopen , fputs , ftell , fgetpos , free , feof , funopen , fseek , fwopen , vfprintf , __assert_fail , fread )
+    "g", referenced from:
+        main in tmp.2.gE90Fa
+       (maybe you meant: isxdigit, __progname , isdigit , fgetc , __dump_regs , getchar , isgraph , fgets , getpid , fgetpos , getenv )
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./type_parsing_printing/func_ptr.c' failed
+pass: ./type_parsing_printing/tdef_func.c
+fail: ./type_parsing_printing/tdef_func_inst.c
+  ./type_parsing_printing/tdef_func_inst.c:5:1: error: declaration doesn't declare anything
+    "{"
+    ^
+  ../ucc: cc1/cc1 returned 1
+  ./test.pl: command '../ucc -c ./type_parsing_printing/tdef_func_inst.c' failed
+fail: ./type_parsing_printing/tdef_test.c
+  Died at ./asmcheck.pl line 12.
+  ./test.pl: command './asmcheck.pl ./type_parsing_printing/tdef_test.c' failed
+fail: ./type_parsing_printing/type_ref_test.c
+  ./test.pl: undefined variable %ocheck in ./type_parsing_printing/type_ref_test.c
+pass: ./type_parsing_printing/typedef.c
+fail: ./type_parsing_printing/typeof_nest.c
+  ./type_parsing_printing/typeof_nest.c:6:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  ./type_parsing_printing/typeof_nest.c:9:25: warning: "a" never written to
+    " typeof(typeof(size_t)) a;"
+                            ^
+  ./type_parsing_printing/typeof_nest.c:9:25: warning: "a" never read
+    " typeof(typeof(size_t)) a;"
+                            ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./type_parsing_printing/typeof_nest.c' failed
+fail: ./type_parsing_printing/typeof_print.c
+  ./type_parsing_printing/typeof_print.c:4:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  ./type_parsing_printing/typeof_print.c:6:14: warning: "a" never written to
+    " typeof(int) a; "
+                 ^
+  ./type_parsing_printing/typeof_print.c:6:14: warning: "a" never read
+    " typeof(int) a; "
+                 ^
+  ./type_parsing_printing/typeof_print.c:7:14: warning: "b" never written to
+    " typeof(5)   b; "
+                 ^
+  ./type_parsing_printing/typeof_print.c:7:14: warning: "b" never read
+    " typeof(5)   b; "
+                 ^
+      typeof(int) a (sym local, offset = 4)
+  ./type_parsing_printing/typeof_print.c:4:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  ./type_parsing_printing/typeof_print.c:6:14: warning: "a" never written to
+    " typeof(int) a; "
+                 ^
+  ./type_parsing_printing/typeof_print.c:6:14: warning: "a" never read
+    " typeof(int) a; "
+                 ^
+  ./type_parsing_printing/typeof_print.c:7:14: warning: "b" never written to
+    " typeof(5)   b; "
+                 ^
+  ./type_parsing_printing/typeof_print.c:7:14: warning: "b" never read
+    " typeof(5)   b; "
+                 ^
+  ./test.pl: command '../ucc -Xprint ./type_parsing_printing/typeof_print.c | grep -F "typeof(expr: val) aka 'int' b"' failed
+pass: ./type_parsing_printing/typeof_to_str.c
+fail: ./type_parsing_printing/void_args_typedef.c
+  Can't exec "!": No such file or directory at ./timeout line 13.
+  ./timeout: exec '! ../ucc -DA -c ./type_parsing_printing/void_args_typedef.c'...: No such file or directory
+  ./test.pl: command '! ../ucc -DA -c ./type_parsing_printing/void_args_typedef.c' failed
+fail: ./type_propagation/compound_literal_typeof.c
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./type_propagation/compound_literal_typeof.c -o ./compound_literal_typeof.out' failed
+fail: ./type_propagation/if_expr_fptr.c
+  ./type_propagation/if_expr_fptr.c:5:2: warning: "x" uninitialised on read
+    " x();"
+     ^
+  ./type_propagation/if_expr_fptr.c:2:4: warning: control reaches end of non-void function main
+    "main()"
+       ^
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc ./type_propagation/if_expr_fptr.c' failed
+pass: ./type_propagation/if_expr_void.c
+fail: ./typedef_typeof/tdef_ar.c
+  ./typedef_typeof/tdef_ar.c:8:4: error: incomplete array size attempt
+    " A x"
+       ^
+  ../ucc: cc1/cc1 returned 1
+  Undefined symbols for architecture x86_64:
+    "_close", referenced from:
+        _fdopendir in dirent.o
+        _closedir in dirent.o
+       (maybe you meant: _closedir)
+    "_errno", referenced from:
+        _fdopendir in dirent.o
+    "_free", referenced from:
+        _closedir in dirent.o
+    "_malloc", referenced from:
+        _fdopendir in dirent.o
+    "_open", referenced from:
+        _opendir in dirent.o
+       (maybe you meant: _opendir)
+  ld: symbol(s) not found for inferred architecture x86_64
+  ../ucc: ld returned 1
+  ./test.pl: command '../ucc -DINIT ./typedef_typeof/tdef_ar.c; [ $? -eq 0 ]' failed
+pass: ./warnings/pp.c
+fail: ./warnings/warn.c
+  line: 12, warnings (0) != checks (1)
+  ./test.pl: command '../ucc -Wall ./warnings/warn.c 2>&1 | ./check.pl ./warnings/warn.c' failed
