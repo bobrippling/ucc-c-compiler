@@ -1,3 +1,6 @@
+// RUN: %ucc %s -o %t
+// RUN: %t | diff -u - %s.ocheck
+
 struct X
 {
 	struct Y

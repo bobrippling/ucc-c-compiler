@@ -1,3 +1,6 @@
+// RUN: %ocheck 108 %s
+// RUN: %output_check %s hi
+
 f()
 {
 	char s[] = "hello";

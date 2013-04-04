@@ -1,3 +1,5 @@
+// RUN: %asmcheck %s
+
 struct A
 {
 	int i, j;

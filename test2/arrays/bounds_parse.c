@@ -1,3 +1,6 @@
+// RUN: %ucc %s
+// RUN: %check %s
+
 main()
 {
 	int x[4];

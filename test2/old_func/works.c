@@ -1,3 +1,4 @@
+// RUN: %ocheck 5 %s
 f(i);
 
 f(i)

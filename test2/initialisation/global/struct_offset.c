@@ -1,3 +1,5 @@
+// RUN: %asmcheck %s
+
 typedef struct A
 {
 	int i, j;

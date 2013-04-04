@@ -1,3 +1,5 @@
+// RUN: %asmcheck %s
+
 char x[3] = {
 };
 

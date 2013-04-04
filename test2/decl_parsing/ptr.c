@@ -1,3 +1,5 @@
+// RUN: %ocheck 5 %s
+
 int i;
 
 int *x()

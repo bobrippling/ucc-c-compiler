@@ -1,3 +1,7 @@
+// RUN: %ucc %s
+// RUN: %asmcheck %s
+// RUN: %output_check %s 'p1 1' 'p2 2' 'p3 3' 'p4 4'
+
 (*f[4])(int);
 
 #define P(n) \

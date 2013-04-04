@@ -1,3 +1,4 @@
+// RUN: ! %ucc %s
 main()
 {
 	q();

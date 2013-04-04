@@ -1,3 +1,6 @@
+// RUN: %ucc %s
+// RUN: %asmcheck %s
+
 main()
 {
 	int *i;

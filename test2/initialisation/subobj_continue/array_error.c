@@ -1,3 +1,5 @@
+// RUN: ! %ucc %s
+
 struct
 {
 	int x[4];

@@ -1,3 +1,6 @@
+// RUN: %ocheck 0 %s
+// RUN: %output_check %s yo
+
 p1(){printf("yo\n");}
 main()
 {

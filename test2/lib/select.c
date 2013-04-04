@@ -1,3 +1,5 @@
+// RUN: echo TODO; false
+
 #include <sys/select.h>
 
 main()

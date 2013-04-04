@@ -1,3 +1,4 @@
+// RUN: %check %s
 enum
 {
 	A, B, C = B
@@ -5,8 +6,8 @@ enum
 
 main()
 {
-	switch((typeof(A))0){
-		case 5:
+	switch((typeof(A))0){ // CHECK: /warning: enum ::A not handled in switch/
+		case 5: // CHECK: /warning: not a member of enum/
 		case B:
 			;
 	}

@@ -1,3 +1,4 @@
+// RUN: echo TODO; false
 #include <sys/utsname.h>
 
 main()

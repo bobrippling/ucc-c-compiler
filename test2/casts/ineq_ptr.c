@@ -1,3 +1,6 @@
+// RUN: %ucc %s
+// RUN: %check %s
+
 main()
 {
 	typedef int i_td;

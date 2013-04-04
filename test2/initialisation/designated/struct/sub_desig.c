@@ -1,3 +1,5 @@
+// RUN: %ocheck 5 %s
+
 struct A
 {
 	struct B
@@ -7,3 +9,8 @@ struct A
 } a = {
 	.b.j = 5
 };
+
+main()
+{
+	return a.b.i + a.b.j;
+}

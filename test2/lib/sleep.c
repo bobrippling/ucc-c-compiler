@@ -1,6 +1,7 @@
+// RUN: %ucc %s
 #include <stdlib.h>
 
 main()
 {
-	sleep(2);
+	sleep(1);
 }

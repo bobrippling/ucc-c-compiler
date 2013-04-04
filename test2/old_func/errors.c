@@ -1,3 +1,4 @@
+// RUN: %ucc -c %s
 f(x)
 	int y;
 {
