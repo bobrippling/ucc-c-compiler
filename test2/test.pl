@@ -10,7 +10,7 @@ sub usage
 
 sub timeout
 {
-	system("./timeout", '3', @_);
+	system("./timeout", '1', @_);
 	return $?;
 }
 

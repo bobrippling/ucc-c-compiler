@@ -16,7 +16,7 @@ ec=0
 tdir=/tmp/ucc.test/
 mkdir -p $tdir || exit $?
 
-find . -iname '*.c' | while read f
+./list_tests.sh | while read f
 do
 	[ $verbose -ne 0 ] && echo "$0: $f"
 
