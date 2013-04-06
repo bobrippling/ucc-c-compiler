@@ -40,6 +40,7 @@ my $pid = bg @ARGV;
 
 select(undef, undef, undef, $timeout);
 kill 15, $pid;
+select(undef, undef, undef, 0.5); # half a second to tidy up
 kill  9, $pid;
-print STDERR "$0: timeout\n";
+print STDERR "$0: timeout $ARGV[0]\n";
 exit 1;
