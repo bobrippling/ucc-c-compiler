@@ -2,7 +2,7 @@
 
 if [ $# -ne 1 ]
 then
-	echo "Usage: $0 file\n" >&2
+	echo "Usage: $0 file" >&2
 	exit 1
 fi
 
