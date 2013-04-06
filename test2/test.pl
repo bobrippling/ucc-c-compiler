@@ -44,7 +44,7 @@ my %vars = (
 	's'         => $file,
 	't'         => $target,
 	'ucc'       => $ucc,
-	'check'     => './check.pl' . ($verbose ? " -v" : ""),
+	'check'     => './check.sh' . ($verbose ? " -v" : ""),
 	'asmcheck'  => './asmcheck.pl'
 );
 

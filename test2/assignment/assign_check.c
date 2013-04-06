@@ -1,6 +1,6 @@
 // RUN: %ucc %s -o %t
 // RUN: %t
-// RUN: %ucc %s | %check %s
+// RUN: %check %s
 
 struct A
 {

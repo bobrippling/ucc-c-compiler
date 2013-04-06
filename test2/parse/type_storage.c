@@ -1,4 +1,4 @@
-// RUN: %ucc %s | %check %s
+// RUN: %check %s
 
 main()
 {

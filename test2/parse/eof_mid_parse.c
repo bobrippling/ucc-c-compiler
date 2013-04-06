@@ -1,3 +1,3 @@
-// RUN: %ucc %s | %check %s
+// RUN: %check %s
 
 a // CHECK: /error: expecting token semicolon, got eof/

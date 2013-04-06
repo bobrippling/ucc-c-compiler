@@ -1,4 +1,4 @@
-// RUN: %ucc -c %s 2>&1 | %check %s
+// RUN: %check %s
 
 f(int *) __attribute__((nonnull()));
 g(int *, int *, int *, int *, int *) __attribute__((nonnull(2, 3, 1, 1, 2)));

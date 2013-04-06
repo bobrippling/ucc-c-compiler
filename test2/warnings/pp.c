@@ -9,4 +9,4 @@ hi
 #pragma yo
 #warning 10 // CHECK: /warning: +10/
 
-// RUN: %ucc -E -o- %s 2>&1 | %check %s
+// RUN: %check %s
