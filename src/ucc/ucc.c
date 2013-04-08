@@ -284,7 +284,7 @@ void ice(const char *fmt)
 int main(int argc, char **argv)
 {
 	enum mode mode = mode_link;
-	int i;
+	int i, syntax_only = 0;
 	char **inputs = NULL;
 	char **args[4] = { 0 };
 	char *output = NULL;
@@ -338,8 +338,13 @@ int main(int argc, char **argv)
 
 #define ADD_ARG(to) dynarray_add(&args[to], ustrdup(arg))
 
-				case 'w':
 				case 'f':
+					if(!strcmp(arg, "-fsyntax-only")){
+						syntax_only = 1;
+						continue;
+					}
+
+				case 'w':
 				case 'm':
 /*arg_cc1:*/
 					ADD_ARG(mode_compile);
@@ -449,6 +454,15 @@ input:	dynarray_add(&inputs, argv[i]);
 
 		if(output && ninputs > 1 && (mode == mode_compile || mode == mode_assemb))
 			die("can't specify '-o' with '-%c' and an output", MODE_ARG_CH(mode));
+
+		if(syntax_only){
+			if(output || mode != mode_link)
+				die("-%c specified in syntax-only mode",
+						output ? 'o' : MODE_ARG_CH(mode));
+
+			mode = mode_compile;
+			output = "/dev/null";
+		}
 
 		if(ninputs == 0)
 			die("no inputs");
