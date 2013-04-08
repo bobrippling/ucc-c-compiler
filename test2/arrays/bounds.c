@@ -21,7 +21,7 @@ main()
 
 		// negative bounds
 		x[-2] +                             // CHECK: /index -2 out of bounds.*2/
-		*(x - 1) +                          // CHECK: /index -2 out of bounds.*2/
+		*(x - 1) +                          // CHECK: /index -1 out of bounds.*2/
 
 		// reverse oob
 		*(2 + x) +                          // CHECK: /index 2 out of bounds.*2/

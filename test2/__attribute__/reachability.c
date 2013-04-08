@@ -1,4 +1,4 @@
-// RUN: %ucc -c %s 2>&1 | grep .; [ $? -eq 0 ]
+// RUN: %ucc -c %s 2>&1 | grep .; [ $? -ne 0 ]
 
 abort() __attribute__((__noreturn__));
 

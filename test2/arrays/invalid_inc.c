@@ -1,8 +1,6 @@
-// RUN: %ucc -c %s; [ $? -ne 0 ]
-// RUN: %check %s
+// RUN: %check -e %s
 
-f(int (*x)[]) // CHECK: /error: incomplete array size/
-              // currently the error is on the decl
+f(int (*x)[])
 {
-	return *x[1];
+	return *x[1]; // CHECK: /error: dereference of pointer to incom/
 }

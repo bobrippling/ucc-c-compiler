@@ -3,9 +3,11 @@
 // RUN: %ucc -S -o- %s | grep -F 'movl .8'
 // RUN: %ucc -S -o- %s | grep -F 'movl .2'
 
+q(){}
+char *s = "";
+
 main()
 {
-	extern char *s;
 	strlen(s);
 
 	q(strlen("yo"));
