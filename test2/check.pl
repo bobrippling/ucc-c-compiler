@@ -130,47 +130,32 @@ iter_lines(
 		my @checks = @$check_ref;
 		my @warns  = @$warn_ref;
 
-		my $nchecks = @checks;
-		my $nwarns  = @warns;
+		# check all
+		for my $check (@checks){
+			my $match = $check->{check}; # /regex/
+			my $rev = 0;
 
-		if($nchecks != $nwarns){
-			# if all checks for this line are inverse, it's fine
-			for my $check (@checks){
-				if($check->{check} !~ /^!/){
-					warn "line: $line, warnings ($nwarns) != checks ($nchecks)\n";
-					$missing_warning = 1;
+			if($match =~ m#^(!)?/(.*)/$#){
+				$rev = defined $1;
+			}else{
+				die2 "invalid CHECK: '$match'"
+			}
+
+
+			my $regex = $2;
+			my $found = 0;
+
+			for(@warns){
+				if($rev ^ ($_->{msg} =~ /$regex/)){
+					$found = 1;
+					$_->{msg} = ''; # silence
 					last;
 				}
 			}
 
-		}elsif($nchecks){
-			# make sure they're equal using $check
-			for my $check (@checks){
-				my $match = $check->{check}; # /regex/
-				my $rev = 0;
-
-				if($match =~ m#^(!)?/(.*)/$#){
-					$rev = defined $1;
-				}else{
-					die2 "invalid CHECK: '$match'"
-				}
-
-
-				my $regex = $2;
-				my $found = 0;
-
-				for(@warns){
-					if($rev ^ ($_->{msg} =~ /$regex/)){
-						$found = 1;
-						$_->{msg} = ''; # silence
-						last;
-					}
-				}
-
-				if(!$found){
-					$missing_warning = 1;
-					warn "check $match not found in warnings on line $check->{line}\n"
-				}
+			if(!$found){
+				$missing_warning = 1;
+				warn "check $match not found in warnings on line $check->{line}\n"
 			}
 		}
 	}
