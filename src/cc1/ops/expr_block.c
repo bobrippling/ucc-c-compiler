@@ -67,6 +67,7 @@ void fold_expr_block(expr *e, symtable *stab)
 
 		df->is_definition = 1; /* necessary for code-gen */
 		df->func_code = e->code;
+		df->ref = e->tree_type;
 
 		fold_decl(df, stab); /* funcarg folding + typedef/struct lookup, etc */
 	}

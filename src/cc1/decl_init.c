@@ -730,7 +730,7 @@ static type_ref *decl_init_create_assignments_from_init(
 
 	/* init validity checks */
 	if(single_init->type == decl_init_scalar){
-		type_ref *tar;
+		type_ref *tar = 0;
 
 		if((sue = type_ref_is_s_or_u(tfor_wrapped))
 		|| (tar = type_ref_is(       tfor_wrapped, type_ref_array)))
