@@ -146,14 +146,14 @@ iter_lines(
 			my $found = 0;
 
 			for(@warns){
-				if($rev ^ ($_->{msg} =~ /$regex/)){
+				if($_->{msg} =~ /$regex/){
 					$found = 1;
 					$_->{msg} = ''; # silence
 					last;
 				}
 			}
 
-			if(!$found){
+			if($found == $rev){
 				$missing_warning = 1;
 				warn "check $match not found in warnings on line $check->{line}\n"
 			}
