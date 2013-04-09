@@ -56,8 +56,15 @@ for(chomp_all(<STDIN>)){
 
 $line = 1;
 for(chomp_all(lines(shift))){
-	if(m#// *CHECK: *(.*)#){
-		push @{$lines[$line - 1]->{checks}}, { check => $1, line => $line };
+	if(m#// *CHECK: *(\^)? *(.*)#){
+		my($above, $check) = ($1, $2);
+		my $line_resolved = $line;
+
+		--$line_resolved if defined $above;
+
+		push @{$lines[$line_resolved - 1]->{checks}}, {
+			check => $check,
+			line => $line_resolved };
 	}
 	$line++;
 }
