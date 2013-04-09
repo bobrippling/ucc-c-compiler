@@ -27,7 +27,9 @@ void  *pv[3];
 int  (*fi[3])();
 void (*fv[3])();
 
-_Static_assert(sizeof(pi) == sizeof(int  *) * 3);
-_Static_assert(sizeof(pv) == sizeof(void *) * 3);
-_Static_assert(sizeof(fi) == sizeof(int  *) * 3);
-_Static_assert(sizeof(fv) == sizeof(void *) * 3);
+#define passert2(x) _Static_assert((x), #x " failed")
+
+passert2(sizeof(pi) == sizeof(int  *) * 3);
+passert2(sizeof(pv) == sizeof(void *) * 3);
+passert2(sizeof(fi) == sizeof(int  *) * 3);
+passert2(sizeof(fv) == sizeof(void *) * 3);

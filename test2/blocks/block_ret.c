@@ -8,7 +8,7 @@ main()
 	int (^f)(int) = ^int (int i) {printf("hi %d\n", i); return 0;};
 
 	printf("%c\n", ^char {
-		return 'a'
+		return 'a';
 	}());
 
 	return f(5);

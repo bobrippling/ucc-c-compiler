@@ -1,6 +1,6 @@
-// RUN: %check %s
+// RUN: %check -e %s
 
 main()
 {
-	return (static)5; // CHECK: /error: type storage unwanted (static)/
+	return (static)5; // CHECK: /error: storage unwanted \(static\)/
 }

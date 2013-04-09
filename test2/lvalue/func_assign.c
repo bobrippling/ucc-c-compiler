@@ -1,4 +1,4 @@
-// RUN: !%ucc %s
+// RUN: %ucc %s; [ $? -ne 0 ]
 f();
 
 main()

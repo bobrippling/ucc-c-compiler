@@ -1,5 +1,5 @@
 // RUN: %ucc -o %t %s
-// RUN: %ocheck 5 %t
+// RUN: %ocheck 6 %t
 
 call_for_me(int (*f)(int), int arg)
 {

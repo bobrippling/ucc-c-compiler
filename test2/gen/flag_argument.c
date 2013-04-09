@@ -1,6 +1,8 @@
 // RUN: %ucc %s
 // RUN: %asmcheck %s
 
+f(){}
+
 main()
 {
 	int *i;

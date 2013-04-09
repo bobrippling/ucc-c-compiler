@@ -1,10 +1,10 @@
-// RUN: %ucc -c %s
+// RUN: %check -e %s
 
 main()
 {
 	void (^const  blockA)(void) = ^{ };
-	void (*const  ptrA)         = (void *)0;
+	//void (*const  ptrA)         = (void *)0;
 
-	blockA = ^{ };
-	ptrA   = (void *)5;
+	blockA = ^{ }; // CHECK: /error: .*const/
+	//ptrA   = (void *)5;
 }

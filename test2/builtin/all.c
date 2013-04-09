@@ -21,7 +21,7 @@ next:
 	ASSERT_IS(1, __builtin_constant_p(__builtin_constant_p(5)));
 
 	// 0
-	ASSERT_IS(1, __builtin_constant_p(__builtin_types_compatible_p(void, int), 0));
+	ASSERT_IS(1, __builtin_constant_p(__builtin_types_compatible_p(void, int)));
 
 	// 3
 	ASSERT_IS(1, __builtin_types_compatible_p(int *, intp));

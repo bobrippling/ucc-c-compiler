@@ -1,5 +1,5 @@
 // RUN: %ucc -S -o %t %s
-// RUN: [ `grep -c 'call.*f'` -eq 1 ]
+// RUN: [ `grep -c 'call.*f' < %t` -eq 1 ]
 
 int *f();
 

@@ -1,6 +1,7 @@
 // RUN: %ucc %s
 // RUN: %check %s
 
+main;
 f(int a, int b)
 {
 	int printf(char *, ...) __attribute((format(printf, 1, 2)));
