@@ -45,7 +45,8 @@ my %vars = (
 	't'         => $target,
 	'ucc'       => $ucc,
 	'check'     => './check.sh' . ($verbose ? " -v" : ""),
-	'asmcheck'  => './asmcheck.pl'
+	'asmcheck'  => './asmcheck.pl',
+	'output_check' => './stdoutcheck.pl'
 );
 
 my $ran = 0;
@@ -92,8 +93,8 @@ sub apply_vars
 {
 	my $f = shift;
 
-	for my $regex ("^()%([a-z]+)", "([^%])%([a-z]+)"){
-		$f =~ s/$regex/
+	for my $regex ("^()", "([^%])"){
+		$f =~ s/$regex%([a-z_]+)/
 		$vars{$2} ? $1 . $vars{$2} : die2 "undefined variable %$2 in $file"/ge;
 	}
 
