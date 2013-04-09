@@ -59,9 +59,8 @@ while(<F>){
 	if(my($command, $sh) = m{// *([A-Z]+): *(.*)}){
 		$ran++;
 
-		my $subst_sh = apply_vars($sh);
-
 		if($command eq 'RUN'){
+			my $subst_sh = apply_vars($sh);
 			print "$0: run: $subst_sh\n" if $verbose;
 
 			my $ec = timeout($subst_sh);
