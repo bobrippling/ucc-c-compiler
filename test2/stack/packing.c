@@ -1,4 +1,5 @@
-// RUN: %ocheck 0 %s
+// RUN: %ucc -o %t %s
+// RUN: %ocheck 0 %t
 
 abort();
 #define assert(x) if(!(x)) abort()

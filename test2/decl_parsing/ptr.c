@@ -1,4 +1,5 @@
-// RUN: %ocheck 5 %s
+// RUN: %ucc -o %t %s
+// RUN: %ocheck 5 %t
 
 int i;
 

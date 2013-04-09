@@ -1,5 +1,6 @@
-// RUN: %ocheck 108 %s
-// RUN: %output_check %s hi
+// RUN: %ucc -o %t %s
+// RUN: %ocheck 108 %t
+// RUN: %t | %output_check hi
 
 f()
 {

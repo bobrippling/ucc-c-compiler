@@ -1,5 +1,6 @@
-// RUN: %ocheck 0 %s
-// RUN: %output_check %s yo
+// RUN: %ucc -o %t %s
+// RUN: %ocheck 0 %t
+// RUN: %t | %output_check yo
 
 p1(){printf("yo\n");}
 main()

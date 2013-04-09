@@ -1,4 +1,5 @@
-// RUN: %ocheck 5 %s
+// RUN: %ucc -o %t %s
+// RUN: %ocheck 5 %t
 
 void set_to_3(int *p)
 {

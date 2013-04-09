@@ -1,4 +1,5 @@
-// RUN: %ocheck 2 %s
+// RUN: %ucc -o %t %s
+// RUN: %ocheck 2 %t
 
 int x[] = {
 	[5] = 2

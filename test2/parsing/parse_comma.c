@@ -1,4 +1,5 @@
-// RUN: %ocheck 2 %s
+// RUN: %ucc -o %t %s
+// RUN: %ocheck 2 %t
 void f_void(){}
 int f_int(){return 2;}
 main()

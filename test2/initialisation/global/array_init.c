@@ -1,4 +1,5 @@
-// RUN: %ocheck 1 %s
+// RUN: %ucc -o %t %s
+// RUN: %ocheck 1 %t
 
 int x[4] = { 1 };
 
