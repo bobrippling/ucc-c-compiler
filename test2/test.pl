@@ -46,7 +46,8 @@ my %vars = (
 	'ucc'       => $ucc,
 	'check'     => './check.sh' . ($verbose ? " -v" : ""),
 	'asmcheck'  => './asmcheck.pl',
-	'output_check' => './stdoutcheck.pl'
+	'output_check' => './stdoutcheck.pl',
+	'ocheck'    => './retcheck.pl',
 );
 
 my $ran = 0;
