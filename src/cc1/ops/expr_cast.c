@@ -128,6 +128,17 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 				buf, size_rhs);
 	}
 
+	if((flag = (type_ref_is_fptr(tlhs) && type_ref_is_nonfptr(trhs)))
+	||         (type_ref_is_fptr(trhs) && type_ref_is_nonfptr(tlhs)))
+	{
+		char buf[TYPE_REF_STATIC_BUFSIZ];
+		WARN_AT(&e->where, "%scast from %spointer to %spointer\n"
+				"%s <- %s",
+				e->expr_cast_implicit ? "implicit " : "",
+				flag ? "" : "function-", flag ? "function-" : "",
+				type_ref_to_str(tlhs), type_ref_to_str_r(buf, trhs));
+	}
+
 #ifdef W_QUAL
 	if(decl_is_ptr(tlhs) && decl_is_ptr(trhs) && (tlhs->type->qual | trhs->type->qual) != tlhs->type->qual){
 		const enum type_qualifier away = trhs->type->qual & ~tlhs->type->qual;

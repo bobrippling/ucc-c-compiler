@@ -145,6 +145,14 @@ int type_ref_is_fptr(type_ref *r)
 	return !!type_ref_is(type_ref_is_ptr(r), type_ref_func);
 }
 
+int type_ref_is_nonfptr(type_ref *r)
+{
+	if((r = type_ref_is_ptr(r)))
+		return !type_ref_is(r, type_ref_func);
+
+	return 0; /* not a ptr */
+}
+
 int type_ref_is_void_ptr(type_ref *r)
 {
 	return !!type_ref_is_type(type_ref_is_ptr(r), type_void);
