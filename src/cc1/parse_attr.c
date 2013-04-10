@@ -115,6 +115,9 @@ static unsigned long optional_parened_int(void)
 	if(accept(token_open_paren)){
 		long u;
 
+		if(accept(token_close_paren))
+			goto out;
+
 		EAT(token_integer);
 
 		u = currentval.val;
@@ -127,6 +130,7 @@ static unsigned long optional_parened_int(void)
 
 		return u;
 	}
+out:
 	return 0;
 }
 
