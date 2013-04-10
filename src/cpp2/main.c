@@ -111,8 +111,13 @@ int main(int argc, char **argv)
 #define MAP(t, s) case t: macro_add(s, "1"); break
 		MAP(PLATFORM_LINUX,   "__linux__");
 		MAP(PLATFORM_FREEBSD, "__FreeBSD__");
-		MAP(PLATFORM_DARWIN,  "__DARWIN__");
 #undef MAP
+
+		case PLATFORM_DARWIN:
+			macro_add("__DARWIN__", "1");
+			macro_add("__MACH__", "1"); /* TODO: proper detection for these */
+			macro_add("__APPLE__", "1");
+			break;
 
 		case PLATFORM_CYGWIN:
 			macro_add("__CYGWIN__", "1");
