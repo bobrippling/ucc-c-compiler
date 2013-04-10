@@ -31,7 +31,7 @@ struct decl_attr
 		struct
 		{
 			enum { attr_fmt_printf, attr_fmt_scanf } fmt_func;
-			unsigned fmt_arg, var_arg;
+			int fmt_arg, var_arg;
 		} format;
 		char *section;
 		unsigned long nonnull_args; /* limits to sizeof(long)*8 args, i.e. 64 */

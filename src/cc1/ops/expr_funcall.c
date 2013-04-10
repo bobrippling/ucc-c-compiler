@@ -192,16 +192,19 @@ static void format_check_printf(
 static void format_check(where *w, type_ref *ref, expr **args, const int variadic)
 {
 	decl_attr *attr = type_attr_present(ref, attr_format);
-	unsigned n, fmt_arg, var_arg;
+	int n, fmt_arg, var_arg;
 
 	if(!attr)
 		return;
 
-	if(!variadic)
-		DIE_AT(w, "variadic function required for format check");
-
 	fmt_arg = attr->attr_extra.format.fmt_arg;
 	var_arg = attr->attr_extra.format.var_arg;
+
+	if(!variadic){
+		if(var_arg >= 0)
+			WARN_AT(w, "variadic function required for format check");
+		return;
+	}
 
 	n = dynarray_count((void **)args);
 
