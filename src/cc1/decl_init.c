@@ -153,6 +153,46 @@ decl_init *decl_init_new(enum decl_init_type t)
 	return decl_init_new_w(t, NULL);
 }
 
+static decl_init *decl_init_copy_const(decl_init *di)
+{
+	decl_init *ret = umalloc(sizeof *ret);
+	memcpy_safe(ret, di);
+
+	switch(ret->type){
+		case decl_init_scalar:
+		case decl_init_copy:
+			/* no need to copy these - treated as immutable */
+			break;
+		case decl_init_brace:
+		{
+			/* need to copy inits as we may replace copy-ees'
+			 * sub inits via designations */
+			decl_init **inits = di->bits.inits;
+			size_t i;
+
+			ret->bits.inits = umalloc((dynarray_count(inits) + 1) * sizeof *inits);
+			for(i = 0; inits[i]; i++)
+				ret->bits.inits[i] = decl_init_copy_const(di->bits.inits[i]);
+			break;
+		}
+	}
+
+	return ret;
+}
+
+static void decl_init_resolve_copy(decl_init **arr, const size_t idx)
+{
+	decl_init *resolved;
+
+	UCC_ASSERT(arr[idx]->type == decl_init_copy, "copying a non-copy");
+
+	for(resolved = arr[idx];
+			resolved->type == decl_init_copy;
+			resolved = arr[resolved->bits.copy_idx]);
+
+	memcpy_safe(arr[idx], decl_init_copy_const(resolved));
+}
+
 void decl_init_free_1(decl_init *di)
 {
 	free(di);
@@ -240,6 +280,43 @@ static decl_init *decl_init_brace_up_scalar(
 	return first_init;
 }
 
+/* replacing current[i]:
+ * if current[i+1] is a _copy, make it point to either i-1
+ * or move the init there if there is no i-1
+ */
+static int replacing_range_init_at(
+		decl_init **current, decl_init *with, size_t i, size_t n)
+{
+	if(with
+	&& i+1 < n
+	&& current[i+1]
+	&& current[i+1] != DYNARRAY_NULL
+	&& current[i+1]->type == decl_init_copy)
+	{
+		/* replacing part of a range-init */
+
+		/* each is a copy of the previous:
+		 * either redirect to i-1 or move the init
+		 */
+		if(i == 0
+		|| (current[i-1] != DYNARRAY_NULL
+			&& current[i-1]->type != decl_init_copy))
+		{
+			/* move the start */
+			memcpy_safe(current[i+1], with);
+		}else{
+			/* redirect to before us
+			 * FIXME? this should make sure current[i-1] is a _copy too
+			 */
+			current[i+1]->bits.copy_idx = i - 1;
+		}
+
+		return 1;
+	}
+
+	return 0;
+}
+
 static decl_init **decl_init_brace_up_array2(
 		decl_init **current, init_iter *iter,
 		symtable *stab,
@@ -297,47 +374,55 @@ static decl_init **decl_init_brace_up_array2(
 			decl_init *braced;
 
 			if(i < n && current[i] != DYNARRAY_NULL){
+				int partial_replace = 0;
+
 				replacing = current[i]; /* replacing object `i' */
 
 				/* we can't designate sub parts of a [x ... y] subobject yet,
 				 * as this requires being able to copy the init from x to y,
 				 * then replace a subobject in y, which we don't have the data
 				 * structures to do
+				 *
+				 * disallow, unless it's of scalar type
+				 * i.e. x[] = { [0 ... 2] = f(), [1] = 5 }
+				 * ^ fine, as we can't replace subobjects of scalars
 				 */
-				if(replacing != DYNARRAY_NULL && this->type != decl_init_brace){
-					/* not replacing a full subobject
-					 * disallow, unless it's of scalar type
+				if(replacing != DYNARRAY_NULL
+				&& this->type != decl_init_brace
+				&& !type_ref_is_scalar(next_type)){
+					/* we can replace brace inits IF they're constant (as a special
+					 * case), which is usually a common usage for static/global inits
 					 */
-					if(!type_ref_is_scalar(next_type)){
+					partial_replace = 1;
+
+					if(decl_init_is_const(replacing, stab)){
+						/* need to:
+						 * - update current[i+1] if it's a copy of current[i]
+						 * - change current[i] and `replacing' to a copy of
+						 *   what replacing `copies'
+						 */
+						replacing_range_init_at(current, replacing, i, n);
+
+						decl_init_resolve_copy(current, i);
+
+						/* pass the copy down so sub-inits can update/replace it */
+						replacing = current[i];
+
+						fprintf(stderr, "replacing->type = %d\n",
+								i, replacing->type);
+
+					}else{
 						char wbuf[WHERE_BUF_SIZ];
 
 						DIE_AT(&this->where,
-								"can't replace part of array-range subobject without braces\n"
+								"can't replace _part_ of array-range subobject without braces\n"
 								"%s: array range here", where_str_r(wbuf, &replacing->where));
 					}
 				}
 
-				if(i+1 < n
-				&& current[i+1] != DYNARRAY_NULL
-				&& current[i+1]->type == decl_init_copy)
-				{
-					/* replacing start of a range-init */
-
-					/* each is a copy of the previous:
-					 * either redirect to i-1 or move the init
-					 */
-					if(i == 0
-					|| (current[i-1] != DYNARRAY_NULL
-						&& current[i-1]->type != decl_init_copy))
-					{
-						/* move */
-						memcpy_safe(current[i+1], replacing);
-					}else{
-						/* redirect */
-						current[i+1]->bits.copy_idx = i - 1;
-					}
-
-					replacing = NULL; /* prevent free() */
+				if(replacing_range_init_at(current, replacing, i, n)){
+					if(!partial_replace)
+						replacing = NULL;
 				}
 			}
 
