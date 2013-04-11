@@ -184,7 +184,7 @@ static void decl_init_resolve_copy(decl_init **arr, const size_t idx)
 {
 	decl_init *resolved;
 
-	UCC_ASSERT(arr[idx]->type == decl_init_copy, "copying a non-copy");
+	UCC_ASSERT(arr[idx]->type == decl_init_copy, "copying a non-copy (%d)", arr[idx]->type);
 
 	for(resolved = arr[idx];
 			resolved->type == decl_init_copy;
@@ -284,11 +284,10 @@ static decl_init *decl_init_brace_up_scalar(
  * if current[i+1] is a _copy, make it point to either i-1
  * or move the init there if there is no i-1
  */
-static int replacing_range_init_at(
-		decl_init **current, decl_init *with, size_t i, size_t n)
+static void copy_redirect(
+		decl_init **current, size_t i, size_t n)
 {
-	if(with
-	&& i+1 < n
+	if(i+1 < n
 	&& current[i+1]
 	&& current[i+1] != DYNARRAY_NULL
 	&& current[i+1]->type == decl_init_copy)
@@ -298,23 +297,16 @@ static int replacing_range_init_at(
 		/* each is a copy of the previous:
 		 * either redirect to i-1 or move the init
 		 */
-		if(i == 0
-		|| (current[i-1] != DYNARRAY_NULL
-			&& current[i-1]->type != decl_init_copy))
-		{
+		if(i == 0){
 			/* move the start */
-			memcpy_safe(current[i+1], with);
+			memcpy_safe(current[i+1], current[i]);
 		}else{
 			/* redirect to before us
 			 * FIXME? this should make sure current[i-1] is a _copy too
 			 */
 			current[i+1]->bits.copy_idx = i - 1;
 		}
-
-		return 1;
 	}
-
-	return 0;
 }
 
 static decl_init **decl_init_brace_up_array2(
@@ -401,15 +393,15 @@ static decl_init **decl_init_brace_up_array2(
 						 * - change current[i] and `replacing' to a copy of
 						 *   what replacing `copies'
 						 */
-						replacing_range_init_at(current, replacing, i, n);
+						if(i > 0)
+							decl_init_resolve_copy(current, i);
+						/* else it's not a copy */
 
-						decl_init_resolve_copy(current, i);
+						fprintf(stderr, "copy_redirect(%d)\n", i);
+						copy_redirect(current, i, n);
 
 						/* pass the copy down so sub-inits can update/replace it */
 						replacing = current[i];
-
-						fprintf(stderr, "replacing->type = %d\n",
-								i, replacing->type);
 
 					}else{
 						char wbuf[WHERE_BUF_SIZ];
@@ -420,9 +412,9 @@ static decl_init **decl_init_brace_up_array2(
 					}
 				}
 
-				if(replacing_range_init_at(current, replacing, i, n)){
-					if(!partial_replace)
-						replacing = NULL;
+				if(!partial_replace){
+					copy_redirect(current, i, n);
+					replacing = NULL; /* prevent free + we're starting anew */
 				}
 			}
 

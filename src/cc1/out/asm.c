@@ -149,10 +149,21 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 		{
 			decl_init *this = NULL;
 			if(*p){
-				this = *p++;
+				int is_cpy;
 
-				while(this != DYNARRAY_NULL && this->type == decl_init_copy)
+				this = *p++;
+				is_cpy = this != DYNARRAY_NULL && this->type == decl_init_copy;
+
+				if(is_cpy)
+					fprintf(f, "/* copy chain: ");
+
+				while(this != DYNARRAY_NULL && this->type == decl_init_copy){
+					fprintf(f, "%lu,", (unsigned long)this->bits.copy_idx);
 					this = init->bits.inits[this->bits.copy_idx];
+				}
+
+				if(is_cpy)
+					fprintf(f, "*/\n");
 			}
 
 			asm_declare_init(f, this, next);
