@@ -54,7 +54,7 @@ decl_init *parse_initialisation(void)
 				break;
 		}
 
-		di->bits.inits = exps;
+		di->bits.ar.inits = exps;
 
 		EAT(token_close_block);
 

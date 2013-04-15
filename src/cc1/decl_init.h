@@ -17,8 +17,16 @@ struct decl_init
 	union
 	{
 		expr *expr;
-		decl_init **inits;
-		size_t copy_idx;
+		struct
+		{
+			decl_init **inits;
+			decl_init **range_inits;
+			/* see decl_init.doc */
+		} ar;
+		decl_init **range_copy;
+#define DECL_INIT_COPY_IDX(this, array) \
+		((this)->bits.range_copy - (array)->bits.ar.range_inits)
+
 	} bits;
 
 	struct desig

@@ -116,7 +116,7 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 		int end_of_last = 0;
 
 		UCC_ASSERT(init->type == decl_init_brace, "unbraced struct");
-		i = init->bits.inits;
+		i = init->bits.ar.inits;
 
 		/* iterate using members, not inits */
 		for(mem = r->bits.type->sue->members;
@@ -143,27 +143,18 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 		UCC_ASSERT(init->type == decl_init_brace, "unbraced struct");
 		UCC_ASSERT(type_ref_is_complete(tfor), "incomplete array init");
 
-		for(i = type_ref_array_len(tfor), p = init->bits.inits;
+		for(i = type_ref_array_len(tfor), p = init->bits.ar.inits;
 				i > 0;
 				i--)
 		{
 			decl_init *this = NULL;
 			if(*p){
-				int is_cpy;
-
 				this = *p++;
-				is_cpy = this != DYNARRAY_NULL && this->type == decl_init_copy;
 
-				if(is_cpy)
-					fprintf(f, "/* copy chain: ");
-
-				while(this != DYNARRAY_NULL && this->type == decl_init_copy){
-					fprintf(f, "%lu,", (unsigned long)this->bits.copy_idx);
-					this = init->bits.inits[this->bits.copy_idx];
+				if(this != DYNARRAY_NULL && this->type == decl_init_copy){
+					/*fprintf(f, "# copy from %lu\n", DECL_INIT_COPY_IDX(this, init));*/
+					this = *this->bits.range_copy; /* resolve the copy */
 				}
-
-				if(is_cpy)
-					fprintf(f, "*/\n");
 			}
 
 			asm_declare_init(f, this, next);
@@ -178,14 +169,14 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 		UCC_ASSERT(init->type == decl_init_brace, "brace init expected");
 
 		/* skip the empties until we get to one */
-		for(i = 0; init->bits.inits[i] == DYNARRAY_NULL; i++);
+		for(i = 0; init->bits.ar.inits[i] == DYNARRAY_NULL; i++);
 
-		if(init->bits.inits[i]){
+		if(init->bits.ar.inits[i]){
 			/* null union init */
 			type_ref *mem_r = sue->members[i]->struct_member->ref;
 
 			/* union init, member at index `i' */
-			asm_declare_init(f, init->bits.inits[i], mem_r);
+			asm_declare_init(f, init->bits.ar.inits[i], mem_r);
 
 			sub = type_ref_size(mem_r, NULL);
 		}

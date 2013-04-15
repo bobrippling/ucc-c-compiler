@@ -51,7 +51,9 @@ typedef struct
 	 ? &it->pos[0]->where \
 	 : def)
 
-typedef decl_init **aggregate_brace_f(decl_init **, init_iter *,
+typedef decl_init **aggregate_brace_f(
+		decl_init **current, decl_init ***range_copies,
+		init_iter *,
 		symtable *,
 		void *, int);
 
@@ -89,7 +91,7 @@ int decl_init_is_const(decl_init *dinit, symtable *stab)
 		{
 			decl_init **i;
 
-			for(i = dinit->bits.inits; i && *i; i++)
+			for(i = dinit->bits.ar.inits; i && *i; i++)
 				if(!decl_init_is_const(*i, stab))
 					return 0;
 
@@ -122,7 +124,7 @@ int decl_init_is_zero(decl_init *dinit)
 		{
 			decl_init **i;
 
-			for(i = dinit->bits.inits; i && *i; i++)
+			for(i = dinit->bits.ar.inits; i && *i; i++)
 				if(!decl_init_is_zero(*i))
 					return 0;
 
@@ -130,7 +132,7 @@ int decl_init_is_zero(decl_init *dinit)
 		}
 
 		case decl_init_copy:
-			return 1;
+			return decl_init_is_zero(*dinit->bits.range_copy);
 	}
 
 	ICE("bad decl init");
@@ -155,6 +157,7 @@ decl_init *decl_init_new(enum decl_init_type t)
 
 static decl_init *decl_init_copy_const(decl_init *di)
 {
+	ICE("TODO");
 	decl_init *ret = umalloc(sizeof *ret);
 	memcpy_safe(ret, di);
 
@@ -167,12 +170,12 @@ static decl_init *decl_init_copy_const(decl_init *di)
 		{
 			/* need to copy inits as we may replace copy-ees'
 			 * sub inits via designations */
-			decl_init **inits = di->bits.inits;
+			decl_init **inits = di->bits.ar.inits;
 			size_t i;
 
-			ret->bits.inits = umalloc((dynarray_count(inits) + 1) * sizeof *inits);
+			ret->bits.ar.inits = umalloc((dynarray_count(inits) + 1) * sizeof *inits);
 			for(i = 0; inits[i]; i++)
-				ret->bits.inits[i] = decl_init_copy_const(di->bits.inits[i]);
+				ret->bits.ar.inits[i] = decl_init_copy_const(di->bits.ar.inits[i]);
 			break;
 		}
 	}
@@ -182,6 +185,7 @@ static decl_init *decl_init_copy_const(decl_init *di)
 
 static void decl_init_resolve_copy(decl_init **arr, const size_t idx)
 {
+#if 0
 	decl_init *resolved;
 
 	UCC_ASSERT(arr[idx]->type == decl_init_copy, "copying a non-copy (%d)", arr[idx]->type);
@@ -191,6 +195,9 @@ static void decl_init_resolve_copy(decl_init **arr, const size_t idx)
 			resolved = arr[resolved->bits.copy_idx]);
 
 	memcpy_safe(arr[idx], decl_init_copy_const(resolved));
+#else
+	ICE("TODO");
+#endif
 }
 
 void decl_init_free_1(decl_init *di)
@@ -255,7 +262,7 @@ static decl_init *decl_init_brace_up_scalar(
 
 	if(first_init->type == decl_init_brace){
 		init_iter it;
-		it.pos = first_init->bits.inits;
+		it.pos = first_init->bits.ar.inits;
 		return decl_init_brace_up_r(current, &it, tfor, stab);
 	}
 
@@ -280,37 +287,9 @@ static decl_init *decl_init_brace_up_scalar(
 	return first_init;
 }
 
-/* replacing current[i]:
- * if current[i+1] is a _copy, make it point to either i-1
- * or move the init there if there is no i-1
- */
-static void copy_redirect(
-		decl_init **current, size_t i, size_t n)
-{
-	if(i+1 < n
-	&& current[i+1]
-	&& current[i+1] != DYNARRAY_NULL
-	&& current[i+1]->type == decl_init_copy)
-	{
-		/* replacing part of a range-init */
-
-		/* each is a copy of the previous:
-		 * either redirect to i-1 or move the init
-		 */
-		if(i == 0){
-			/* move the start */
-			memcpy_safe(current[i+1], current[i]);
-		}else{
-			/* redirect to before us
-			 * FIXME? this should make sure current[i-1] is a _copy too
-			 */
-			current[i+1]->bits.copy_idx = i - 1;
-		}
-	}
-}
-
 static decl_init **decl_init_brace_up_array2(
-		decl_init **current, init_iter *iter,
+		decl_init **current, decl_init ***range_copies,
+		init_iter *iter,
 		symtable *stab,
 		type_ref *next_type, const int limit)
 {
@@ -388,17 +367,16 @@ static decl_init **decl_init_brace_up_array2(
 					partial_replace = 1;
 
 					if(decl_init_is_const(replacing, stab)){
+						ICE("TODO: partial replacment of const aggregate (%d)", i);
+#if 0
 						/* need to:
-						 * - update current[i+1] if it's a copy of current[i]
 						 * - change current[i] and `replacing' to a copy of
 						 *   what replacing `copies'
 						 */
 						if(i > 0)
 							decl_init_resolve_copy(current, i);
 						/* else it's not a copy */
-
-						fprintf(stderr, "copy_redirect(%d)\n", i);
-						copy_redirect(current, i, n);
+#endif
 
 						/* pass the copy down so sub-inits can update/replace it */
 						replacing = current[i];
@@ -412,10 +390,8 @@ static decl_init **decl_init_brace_up_array2(
 					}
 				}
 
-				if(!partial_replace){
-					copy_redirect(current, i, n);
+				if(!partial_replace)
 					replacing = NULL; /* prevent free + we're starting anew */
-				}
 			}
 
 			/* check for char[] init */
@@ -423,12 +399,19 @@ static decl_init **decl_init_brace_up_array2(
 
 			dynarray_padinsert(&current, i, &n, braced);
 
-			for(replace_idx = i + 1; replace_idx <= j; replace_idx++){
-				decl_init *cpy = decl_init_new_w(decl_init_copy, &braced->where);
+			if(i < j){ /* then we have a range to copy */
+				const size_t copy_idx = dynarray_count(*range_copies);
 
-				cpy->bits.copy_idx  = replace_idx - 1;
+				/* keep track of the initial copy aggregate in .range_inits */
+				dynarray_add(range_copies, braced);
 
-				replacing = dynarray_padinsert(&current, replace_idx, &n, cpy);
+				for(replace_idx = i; replace_idx <= j; replace_idx++){
+					decl_init *cpy = decl_init_new_w(decl_init_copy, &braced->where);
+
+					cpy->bits.range_copy = &(*range_copies)[copy_idx];
+
+					dynarray_padinsert(&current, replace_idx, &n, cpy);
+				}
 			}
 		}
 
@@ -440,13 +423,16 @@ static decl_init **decl_init_brace_up_array2(
 }
 
 static decl_init **decl_init_brace_up_sue2(
-		decl_init **current, init_iter *iter,
+		decl_init **current, decl_init ***range_copies,
+		init_iter *iter,
 		symtable *stab,
 		struct_union_enum_st *sue, const int is_anon)
 {
 	unsigned n = dynarray_count(current), i;
 	unsigned sue_nmem;
 	decl_init *this;
+
+	(void)range_copies;
 
 	UCC_ASSERT(!sue_incomplete(sue), "incomplete struct init");
 
@@ -466,7 +452,7 @@ static decl_init **decl_init_brace_up_sue2(
 	if(sue_nmem == 0
 	&& (this = *iter->pos)
 	&& (this->type != decl_init_brace
-		|| dynarray_count(this->bits.inits) != 0))
+		|| dynarray_count(this->bits.ar.inits) != 0))
 	{
 		WARN_AT(&this->where, "missing {} initialiser for empty %s",
 				sue_str(sue), sue->spel);
@@ -610,7 +596,7 @@ static decl_init *decl_init_brace_up_aggregate(
 	if(iter->pos[0]->type == decl_init_brace){
 		/* pass down this as a new iterator */
 		decl_init *first = iter->pos[0];
-		decl_init **old_subs = first->bits.inits;
+		decl_init **old_subs = first->bits.ar.inits;
 
 		if(old_subs){
 			init_iter it;
@@ -637,11 +623,12 @@ static decl_init *decl_init_brace_up_aggregate(
 				current = NULL; /* prevent any current init getting through */
 			}
 
-			first->bits.inits = brace_up_f(
-					current ? current->bits.inits : NULL,
+			first->bits.ar.inits = brace_up_f(
+					current ? current->bits.ar.inits : NULL,
 					/* clang would always pass current->bits.inits through here
 					 * and not current=NULL above
 					 */
+					&first->bits.ar.range_inits,
 					&it,
 					stab, arg1, arg2);
 
@@ -649,8 +636,8 @@ static decl_init *decl_init_brace_up_aggregate(
 
 		}else{
 			/* {} */
-			first->bits.inits = NULL;
-			dynarray_add(&first->bits.inits, (decl_init *)DYNARRAY_NULL);
+			first->bits.ar.inits = NULL;
+			dynarray_add(&first->bits.ar.inits, (decl_init *)DYNARRAY_NULL);
 		}
 
 		++iter->pos;
@@ -663,8 +650,9 @@ static decl_init *decl_init_brace_up_aggregate(
 
 		iter->pos[desig_index] = NULL;
 
-		ret->bits.inits = brace_up_f(
-				current ? current->bits.inits : NULL,
+		ret->bits.ar.inits = brace_up_f(
+				current ? current->bits.ar.inits : NULL,
+				&ret->bits.ar.range_inits,
 				&it, stab, arg1, arg2);
 
 		iter->pos[desig_index] = saved;
@@ -678,8 +666,9 @@ static decl_init *decl_init_brace_up_aggregate(
 				ITER_WHERE(iter, NULL));
 
 		/* we need to pull from iter, bracing up our children inits */
-		r->bits.inits = brace_up_f(
-				current ? current->bits.inits : NULL,
+		r->bits.ar.inits = brace_up_f(
+				current ? current->bits.ar.inits : NULL,
+				&r->bits.ar.range_inits,
 				iter, stab, arg1, arg2);
 
 		return r;
@@ -714,11 +703,11 @@ static decl_init *decl_init_brace_up_array_pre(
 	/* allow "xyz" or { "xyz" } */
 	&& (this->type == decl_init_scalar
 	|| (this->type == decl_init_brace &&
-		  1 == dynarray_count(this->bits.inits) &&
-		  this->bits.inits[0]->type == decl_init_scalar)))
+		  1 == dynarray_count(this->bits.ar.inits) &&
+		  this->bits.ar.inits[0]->type == decl_init_scalar)))
 	{
 		decl_init *strk = this->type == decl_init_scalar
-			? this : this->bits.inits[0];
+			? this : this->bits.ar.inits[0];
 
 		consty k;
 
@@ -739,7 +728,7 @@ static decl_init *decl_init_brace_up_array_pre(
 
 				char_init->bits.expr = expr_new_val(k.bits.str->str[str_i]);
 
-				dynarray_add(&braced->bits.inits, char_init);
+				dynarray_add(&braced->bits.ar.inits, char_init);
 			}
 
 			++iter->pos;
@@ -813,7 +802,7 @@ static decl_init *decl_init_brace_up_start(
 	if(type_ref_is_incomplete_array(tfor)){
 		/* complete it */
 		UCC_ASSERT(ret->type == decl_init_brace, "unbraced array");
-		*ptfor = type_ref_complete_array(tfor, dynarray_count(ret->bits.inits));
+		*ptfor = type_ref_complete_array(tfor, dynarray_count(ret->bits.ar.inits));
 	}
 
 	return ret;
@@ -885,11 +874,11 @@ zero_init:
 			unsigned idx;
 
 			if(sue /* check for struct copy */
-			&& dynarray_count(init->bits.inits) == 1
-			&& init->bits.inits[0] != DYNARRAY_NULL
-			&& init->bits.inits[0]->type == decl_init_scalar)
+			&& dynarray_count(init->bits.ar.inits) == 1
+			&& init->bits.ar.inits[0] != DYNARRAY_NULL
+			&& init->bits.ar.inits[0]->type == decl_init_scalar)
 			{
-				expr *e = init->bits.inits[0]->bits.expr;
+				expr *e = init->bits.ar.inits[0]->bits.expr;
 
 				if(type_ref_is_s_or_u(e->tree_type) == sue){
 					dynarray_add(
@@ -907,7 +896,7 @@ zero_init:
 				expr *sue_base;
 
 				/* look for a non null init */
-				for(idx = 0, i = init->bits.inits; *i == DYNARRAY_NULL; i++, idx++);
+				for(idx = 0, i = init->bits.ar.inits; *i == DYNARRAY_NULL; i++, idx++);
 
 				if(*i){
 					sue_base = decl_init_create_assignments_sue_base(
@@ -925,7 +914,7 @@ zero_init:
 				return;
 			}
 
-			for(idx = 0, i = init->bits.inits; idx < n; (*i ? i++ : 0), idx++){
+			for(idx = 0, i = init->bits.ar.inits; idx < n; (*i ? i++ : 0), idx++){
 				decl_init *di = *i;
 				expr *new_base;
 				type_ref *next_type = NULL;
@@ -952,14 +941,10 @@ zero_init:
 						/* TODO: ideally when the backend is sufficiently optimised, we
 						 * will always be able to use the memcpy case, and it'll pick it up
 						 */
-						size_t copy_idx;
+						size_t copy_idx = DECL_INIT_COPY_IDX(di, init);
 
-						do{
-							copy_idx = di->bits.copy_idx;
-							di = init->bits.inits[copy_idx];
-						}while(di->type == decl_init_copy);
-
-						if(di->type == decl_init_scalar){
+						if(0){ //di->type == decl_init_scalar){
+#if 0
 							size_t n = dynarray_count(code->codes);
 							stmt *last_assign;
 
@@ -976,6 +961,7 @@ zero_init:
 							 *          already present
 							 */
 							last_assign->expr = expr_new_assign_init(new_base, last_assign->expr);
+#endif
 						}else{
 							/* memcpy from the previous init */
 							expr *memcp;

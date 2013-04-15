@@ -1,0 +1,18 @@
+store range inits separately, e.g.
+
+struct
+{
+	int i, j;
+} x[] = {
+  [0 ... 5] = { 1, 2, },
+};
+
+We store the init { 1, 2 } in .range_inits (immutable once stored).
+Then each of .inits[0 ... 5] is of type decl_init_copy, and its .bits.range_copy
+points into the .range_inits.
+
+if we then have:
+  [1].j = 3,
+
+this takes the .range_copy, and if its constant, we copy it
+into *di, and alter it accordingly, if it's constant.

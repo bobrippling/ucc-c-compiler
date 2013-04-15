@@ -51,7 +51,7 @@ void fold_expr_str(expr *e, symtable *stab)
 
 		di->bits.expr = expr_new_val(sv->str[i]);
 
-		dynarray_add(&d->init->bits.inits, di);
+		dynarray_add(&d->init->bits.ar.inits, di);
 	}
 
 	/* add a sym so the data store gets gen'd */

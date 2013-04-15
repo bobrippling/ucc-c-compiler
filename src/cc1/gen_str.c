@@ -69,7 +69,7 @@ void print_decl_init(decl_init *di)
 			break;
 
 		case decl_init_copy:
-			idt_printf("copy of idx %ld:\n", di->bits.copy_idx);
+			ICE("copy in print");
 			break;
 
 		case decl_init_brace:
@@ -80,11 +80,11 @@ void print_decl_init(decl_init *di)
 			idt_printf("brace\n");
 
 			gen_str_indent++;
-			for(i = 0; (s = di->bits.inits[i]); i++){
+			for(i = 0; (s = di->bits.ar.inits[i]); i++){
 				if(s == DYNARRAY_NULL){
 					idt_printf("[%d] = <zero init> ; %p\n", i, s);
 				}else if(s->type == decl_init_copy){
-					idt_printf("[%d] = copy from %d\n", i, s->bits.copy_idx);
+					idt_printf("[%d] = copy from %d\n", i, DECL_INIT_COPY_IDX(s, di));
 				}else{
 					const int need_brace = s->type == decl_init_brace;
 
@@ -107,7 +107,18 @@ void print_decl_init(decl_init *di)
 				}
 			}
 			gen_str_indent--;
-			break;
+
+			if(di->bits.ar.range_inits){
+				idt_printf("range store:\n");
+				gen_str_indent++;
+				for(i = 0; (s = di->bits.ar.range_inits[i]); i++){
+					idt_printf("store[%d]:\n", i);
+					gen_str_indent++;
+					print_decl_init(s);
+					gen_str_indent--;
+				}
+				gen_str_indent--;
+			}
 		}
 	}
 }
