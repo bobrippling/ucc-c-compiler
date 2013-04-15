@@ -1,6 +1,6 @@
 store range inits separately, e.g.
 
-struct
+struct A
 {
 	int i, j;
 } x[] = {
@@ -16,3 +16,13 @@ if we then have:
 
 this takes the .range_copy, and if its constant, we copy it
 into *di, and alter it accordingly, if it's constant.
+
+The another annoying case is that we're replacing something with a range-init,
+e.g.
+struct A x[] = {
+	{ 1, 2 },
+	[0 ... 5].j = 99
+};
+
+This should generate { { 1, 99 }, { 0, 99 }... }
+i.e. the first range init should partially replace [0].

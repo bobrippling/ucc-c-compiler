@@ -52,7 +52,7 @@ typedef struct
 	 : def)
 
 typedef decl_init **aggregate_brace_f(
-		decl_init **current, decl_init ***range_copies,
+		decl_init **current, decl_init ***range_store,
 		init_iter *,
 		symtable *,
 		void *, int);
@@ -157,7 +157,6 @@ decl_init *decl_init_new(enum decl_init_type t)
 
 static decl_init *decl_init_copy_const(decl_init *di)
 {
-	ICE("TODO");
 	decl_init *ret = umalloc(sizeof *ret);
 	memcpy_safe(ret, di);
 
@@ -185,19 +184,12 @@ static decl_init *decl_init_copy_const(decl_init *di)
 
 static void decl_init_resolve_copy(decl_init **arr, const size_t idx)
 {
-#if 0
-	decl_init *resolved;
+	decl_init *resolved = arr[idx];
 
-	UCC_ASSERT(arr[idx]->type == decl_init_copy, "copying a non-copy (%d)", arr[idx]->type);
+	UCC_ASSERT(resolved->type == decl_init_copy,
+			"resolving a non-copy (%d)", resolved->type);
 
-	for(resolved = arr[idx];
-			resolved->type == decl_init_copy;
-			resolved = arr[resolved->bits.copy_idx]);
-
-	memcpy_safe(arr[idx], decl_init_copy_const(resolved));
-#else
-	ICE("TODO");
-#endif
+	memcpy_safe(resolved, decl_init_copy_const(*resolved->bits.range_copy));
 }
 
 void decl_init_free_1(decl_init *di)
@@ -288,7 +280,7 @@ static decl_init *decl_init_brace_up_scalar(
 }
 
 static decl_init **decl_init_brace_up_array2(
-		decl_init **current, decl_init ***range_copies,
+		decl_init **current, decl_init ***range_store,
 		init_iter *iter,
 		symtable *stab,
 		type_ref *next_type, const int limit)
@@ -340,13 +332,12 @@ static decl_init **decl_init_brace_up_array2(
 		}
 
 		{
-			decl_init *replacing = NULL;
+			decl_init *replacing = NULL, *replace_save = NULL;
 			unsigned replace_idx;
 			decl_init *braced;
+			int partial_replace = 0;
 
 			if(i < n && current[i] != DYNARRAY_NULL){
-				int partial_replace = 0;
-
 				replacing = current[i]; /* replacing object `i' */
 
 				/* we can't designate sub parts of a [x ... y] subobject yet,
@@ -364,34 +355,34 @@ static decl_init **decl_init_brace_up_array2(
 					/* we can replace brace inits IF they're constant (as a special
 					 * case), which is usually a common usage for static/global inits
 					 */
-					partial_replace = 1;
-
-					if(decl_init_is_const(replacing, stab)){
-						ICE("TODO: partial replacment of const aggregate (%d)", i);
-#if 0
-						/* need to:
-						 * - change current[i] and `replacing' to a copy of
-						 *   what replacing `copies'
-						 */
-						if(i > 0)
-							decl_init_resolve_copy(current, i);
-						/* else it's not a copy */
-#endif
-
-						/* pass the copy down so sub-inits can update/replace it */
-						replacing = current[i];
-
-					}else{
+					if(!decl_init_is_const(replacing, stab)){
 						char wbuf[WHERE_BUF_SIZ];
 
 						DIE_AT(&this->where,
 								"can't replace _part_ of array-range subobject without braces\n"
 								"%s: array range here", where_str_r(wbuf, &replacing->where));
 					}
+
+					/*
+					 * else - partial replacement
+					 * resolve the copy, then pass the copy down so sub-inits can
+					 * update/replace it
+					 */
+					partial_replace = 1;
+
+					if(replacing->type == decl_init_copy){
+						decl_init_resolve_copy(current, i);
+						replacing = current[i];
+					}
 				}
 
 				if(!partial_replace)
 					replacing = NULL; /* prevent free + we're starting anew */
+			}
+
+			if(partial_replace && i < j){
+				/* we're replacing something with a range */
+				replace_save = decl_init_copy_const(replacing);
 			}
 
 			/* check for char[] init */
@@ -400,15 +391,42 @@ static decl_init **decl_init_brace_up_array2(
 			dynarray_padinsert(&current, i, &n, braced);
 
 			if(i < j){ /* then we have a range to copy */
-				const size_t copy_idx = dynarray_count(*range_copies);
+				const size_t copy_idx = dynarray_count(*range_store);
 
-				/* keep track of the initial copy aggregate in .range_inits */
-				dynarray_add(range_copies, braced);
+				/* if we've replaced something existing with a range, e.g.
+				 * typedef struct { int i, j; } pair;
+				 * pair x[] = { { 1, 2 }, [0 ... 5].j = 3 };
+				 *
+				 * we want: 1, 3, { 0, 3 }...
+				 *
+				 * so we keep the { 1, 3 } custom like it is,
+				 * and add replace_save to the range_stores instead
+				 */
+
+				/* keep track of the initial copy ({ 1, 3 })
+				 * aggregate in .range_store */
+				dynarray_add(range_store, braced);
+
+				if(replace_save){
+					/* keep track of what we replaced */
+					dynarray_add(range_store, replace_save);
+				}
 
 				for(replace_idx = i; replace_idx <= j; replace_idx++){
 					decl_init *cpy = decl_init_new_w(decl_init_copy, &braced->where);
 
-					cpy->bits.range_copy = &(*range_copies)[copy_idx];
+					if(partial_replace){
+						decl_init *old = replace_idx < n ? current[replace_idx] : NULL;
+
+						if(old == DYNARRAY_NULL)
+							old = NULL;
+
+						if(old){
+							DIE_AT(&old->where, "can't replace with a range currently");
+						}
+					}
+
+					cpy->bits.range_copy = &(*range_store)[copy_idx];
 
 					dynarray_padinsert(&current, replace_idx, &n, cpy);
 				}
@@ -423,7 +441,7 @@ static decl_init **decl_init_brace_up_array2(
 }
 
 static decl_init **decl_init_brace_up_sue2(
-		decl_init **current, decl_init ***range_copies,
+		decl_init **current, decl_init ***range_store,
 		init_iter *iter,
 		symtable *stab,
 		struct_union_enum_st *sue, const int is_anon)
@@ -432,7 +450,7 @@ static decl_init **decl_init_brace_up_sue2(
 	unsigned sue_nmem;
 	decl_init *this;
 
-	(void)range_copies;
+	(void)range_store;
 
 	UCC_ASSERT(!sue_incomplete(sue), "incomplete struct init");
 
