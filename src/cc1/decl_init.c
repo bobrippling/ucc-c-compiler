@@ -761,6 +761,8 @@ static decl_init *decl_init_brace_up_r(
 {
 	struct_union_enum_st *sue;
 
+	fold_type_ref(tfor, NULL, stab);
+
 	if(type_ref_is(tfor, type_ref_array))
 		return decl_init_brace_up_array_pre(
 				current, iter, tfor, stab);
@@ -788,6 +790,8 @@ static decl_init *decl_init_brace_up_start(
 	init_iter it = { inits };
 	type_ref *const tfor = *ptfor;
 	decl_init *ret;
+
+	fold_type_ref(tfor, NULL, stab);
 
 	/* check for non-brace init */
 	if(init

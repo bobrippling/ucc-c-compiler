@@ -7,6 +7,8 @@ static type_ref *type_ref_next_1(type_ref *r)
 
 		r = preferred ? preferred->ref : tdef->type_of->tree_type;
 
+		UCC_ASSERT(r, "unfolded typeof()");
+
 		return r;
 	}
 
