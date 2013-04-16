@@ -741,18 +741,6 @@ type_ref *type_ref_ptr_depth_inc(type_ref *r)
 	return type_ref_new_ptr(r, qual_none);
 }
 
-decl *decl_ptr_depth_inc(decl *d)
-{
-	d->ref = type_ref_ptr_depth_inc(d->ref);
-	return d;
-}
-
-decl *decl_ptr_depth_dec(decl *d)
-{
-	d->ref = type_ref_ptr_depth_dec(d->ref);
-	return d;
-}
-
 decl *decl_func_called(decl *d, funcargs **pfuncargs)
 {
 	d->ref = type_ref_func_call(d->ref, pfuncargs);

@@ -188,9 +188,6 @@ int   decl_equal(decl *a, decl *b, enum decl_cmp mode);
 int   type_ref_equal(type_ref *a, type_ref *b, enum decl_cmp mode);
 int   decl_store_static_or_extern(enum decl_storage);
 
-decl *decl_ptr_depth_inc(decl *);
-decl *decl_ptr_depth_dec(decl *);
-
 type_ref *type_ref_ptr_depth_inc(type_ref *);
 type_ref *type_ref_ptr_depth_dec(type_ref *r, where *);
 type_ref *type_ref_decay_first_array(type_ref *);
