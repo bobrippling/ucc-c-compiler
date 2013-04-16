@@ -48,6 +48,7 @@ my %vars = (
 	'asmcheck'  => './asmcheck.pl',
 	'output_check' => './stdoutcheck.pl',
 	'ocheck'    => './retcheck.pl',
+	'layout_check' => './layout_check.sh',
 );
 
 my $ran = 0;
