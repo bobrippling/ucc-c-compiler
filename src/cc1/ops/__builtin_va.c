@@ -45,28 +45,35 @@ static void va_ensure_variadic(expr *e)
 
 static void fold_va_start(expr *e, symtable *stab)
 {
-	expr *va_l;
-
 	if(dynarray_count((void **)e->funcargs) != 2)
 		DIE_AT(&e->where, "%s requires two arguments", BUILTIN_SPEL(e->expr));
 
-	va_l = e->funcargs[0];
-	fold_inc_writes_if_sym(va_l, stab);
+#ifdef UCC_VA_ABI
+	{
+		expr *va_l;
 
-	FOLD_EXPR_NO_DECAY(e->funcargs[0], stab);
-	FOLD_EXPR(         e->funcargs[1], stab);
+		va_l = e->funcargs[0];
+		fold_inc_writes_if_sym(va_l, stab);
 
-	va_l = e->funcargs[0];
-	va_type_check(va_l, e->expr);
+		FOLD_EXPR_NO_DECAY(e->funcargs[0], stab);
+		FOLD_EXPR(         e->funcargs[1], stab);
 
-	va_ensure_variadic(e);
-	/* TODO: check funcargs[1] is last argument to the function */
+		va_l = e->funcargs[0];
+		va_type_check(va_l, e->expr);
+
+		va_ensure_variadic(e);
+		/* TODO: check funcargs[1] is last argument to the function */
+	}
+#else
+	ICE("TODO: fold_setup_variadic() move to here");
+#endif
 
 	e->tree_type = type_ref_new_VOID();
 }
 
 static void gen_va_start(expr *e, symtable *stab)
 {
+#ifdef UCC_VA_ABI
 	/*
 	 * va_list is 8-bytes. use the second 4 as the int
 	 * offset into saved_reg_args. if this is >= N_CALL_REGS,
@@ -81,6 +88,9 @@ static void gen_va_start(expr *e, symtable *stab)
 	lea_expr(e->funcargs[0], stab);
 	out_push_i(type_ref_new_INTPTR_T(), 0);
 	out_store();
+#else
+	ICE("TODO: %s", __func__);
+#endif
 }
 
 expr *parse_va_start(void)
@@ -95,6 +105,7 @@ expr *parse_va_start(void)
 
 static void gen_va_arg(expr *e, symtable *stab)
 {
+#ifdef UCC_VA_ABI
 	/*
 	 * first 4 bytes are offset into saved_regs
 	 * second 4 bytes are offset into saved_var_stack
@@ -183,6 +194,9 @@ static void gen_va_arg(expr *e, symtable *stab)
 	free(lbl_fin);
 
 	out_comment("va_arg end");
+#else
+	ICE("TODO: %s", __func__);
+#endif
 }
 
 static void fold_va_arg(expr *e, symtable *stab)
@@ -202,8 +216,10 @@ static void fold_va_arg(expr *e, symtable *stab)
 
 	e->tree_type = ty;
 
+#ifdef UCC_VA_ABI
 	/* finally store the number of arguments to this function */
 	e->bits.n = dynarray_count((void **)type_ref_funcargs(curdecl_func->ref)->arglist);
+#endif
 }
 
 expr *parse_va_arg(void)
