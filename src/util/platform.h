@@ -18,6 +18,6 @@ enum platform_sys
 enum platform     platform_type(void);
 enum platform_sys platform_sys( void);
 
-int platform_word_size(void);
+unsigned platform_word_size(void);
 
 #endif

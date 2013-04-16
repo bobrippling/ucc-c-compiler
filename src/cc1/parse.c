@@ -181,12 +181,12 @@ expr *parse_expr_primary()
 		/*case token_open_block: - not allowed here */
 		{
 			char *s;
-			int l;
+			int l, wide;
 
-			token_get_current_str(&s, &l);
+			token_get_current_str(&s, &l, &wide);
 			EAT(token_string);
 
-			return expr_new_str(s, l);
+			return expr_new_str(s, l, wide);
 		}
 
 		case token__Generic:
@@ -354,18 +354,27 @@ expr *parse_expr_unary()
 expr *parse_expr_generic(expr *(*above)(), enum token t, ...)
 {
 	expr *e = above();
-	va_list l;
 
-	va_start(l, t);
-	while(curtok == t || curtok_in_list(l)){
-		expr *join = expr_new_op(curtok_to_op());
+	for(;;){
+		expr *join;
+		int have = curtok == t;
+
+		if(!have){
+			va_list l; va_start(l, t);
+			have = curtok_in_list(l);
+			va_end(l);
+		}
+
+		if(!have)
+			break;
+
+		join = expr_new_op(curtok_to_op());
 		EAT(curtok);
 		join->lhs = e;
 		join->rhs = above();
 		e = join;
 	}
 
-	va_end(l);
 	return e;
 }
 
@@ -630,7 +639,7 @@ void parse_static_assert(void)
 		sa->e = parse_expr_no_comma();
 		EAT(token_comma);
 
-		token_get_current_str(&sa->s, NULL);
+		token_get_current_str(&sa->s, NULL, NULL);
 
 		EAT(token_string);
 		EAT(token_close_paren);
@@ -931,7 +940,7 @@ static symtable_gasm *parse_gasm(void)
 	symtable_gasm *g = umalloc(sizeof *g);
 
 	EAT(token_open_paren);
-	token_get_current_str(&g->asm_str, NULL);
+	token_get_current_str(&g->asm_str, NULL, NULL);
 	EAT(token_string);
 	EAT(token_close_paren);
 	EAT(token_semicolon);
@@ -939,14 +948,12 @@ static symtable_gasm *parse_gasm(void)
 	return g;
 }
 
-symtable_global *parse()
+void parse(symtable_global *globals)
 {
-	symtable_global *globals;
 	decl **decls = NULL;
 	symtable_gasm **last_gasms = NULL;
 
-	globals = symtabg_new();
-	current_scope = (symtable *)globals; /* fine - sockaddr-esque */
+	current_scope = &globals->stab;
 
 	for(;;){
 		int cont = 0;
@@ -994,6 +1001,4 @@ symtable_global *parse()
 	}
 
 	current_scope->static_asserts = static_asserts;
-
-	return globals;
 }

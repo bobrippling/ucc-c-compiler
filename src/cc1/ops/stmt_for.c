@@ -22,7 +22,7 @@ expr *fold_for_if_init_decls(stmt *s)
 
 		fold_decl(d, s->flow->for_init_symtab);
 
-		switch(d->store){
+		switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
 			case store_auto:
 			case store_default:
 			case store_register:
@@ -39,7 +39,11 @@ expr *fold_for_if_init_decls(stmt *s)
 			stmt *init_code;
 
 			init_code = stmt_new_wrapper(code, s->flow->for_init_symtab);
-			decl_init_create_assignments_for_spel(d, init_code);
+
+			decl_init_brace_up_fold(d, s->flow->for_init_symtab);
+			decl_init_create_assignments_base(d->init,
+					d->ref, expr_new_identifier(d->spel),
+					init_code);
 
 			init_exp = expr_new_stmt(init_code);
 
@@ -74,23 +78,6 @@ void fold_stmt_for(stmt *s)
 	}
 
 	fold_stmt(s->lhs);
-
-	/*
-	 * need an extra generation for for_init,
-	 * since it's generated unlike other loops (symtab_new() in parse.c)
-	 */
-	gen_code_decls(s->flow->for_init_symtab);
-
-#ifdef SYMTAB_DEBUG
-	fprintf(stderr, "for-code st:\n");
-	PRINT_STAB(s->lhs, 1);
-
-	fprintf(stderr, "for-init st:\n");
-	print_stab(s->flow->for_init_symtab, 0, NULL);
-
-	fprintf(stderr, "for enclosing scope st:\n");
-	PRINT_STAB(s, 0);
-#endif
 }
 
 void gen_stmt_for(stmt *s)

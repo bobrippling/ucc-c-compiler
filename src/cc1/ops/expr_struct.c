@@ -5,7 +5,7 @@
 
 #define ASSERT_NOT_DOT() UCC_ASSERT(!e->expr_is_st_dot, "a.b should have been handled by now")
 
-#define struct_offset(e) (e)->bits.struct_mem->struct_offset
+#define struct_offset(e) ((e)->bits.struct_mem.d->struct_offset + (e)->bits.struct_mem.extra_off)
 
 const char *str_expr_struct()
 {
@@ -61,9 +61,16 @@ err:
 	}
 
 	/* found the struct, find the member */
-	e->rhs->tree_type = (
-			e->bits.struct_mem = struct_union_member_find(sue, spel, &e->where)
-	)->ref;
+	{
+		decl *d_mem = struct_union_member_find(sue, spel,
+				&e->bits.struct_mem.extra_off, NULL);
+
+		if(!d_mem)
+			DIE_AT(&e->where, "%s %s has no member named \"%s\"",
+					sue_str(sue), sue->spel, spel);
+
+		e->rhs->tree_type = (e->bits.struct_mem.d = d_mem)->ref;
+	}
 
 	/*
 	 * if it's a.b, convert to (&a)->b for asm gen
@@ -77,7 +84,7 @@ err:
 	if(!ptr_expect){
 		expr *cast, *addr;
 
-		cast = expr_new_cast(type_ref_new_VOID_PTR(), 1);
+		cast = expr_new_cast(type_ref_cached_VOID_PTR(), 1);
 		cast->expr = addr = expr_new_addr(e->lhs);
 
 		e->lhs = cast;
@@ -100,8 +107,8 @@ void gen_expr_struct_lea(expr *e, symtable *stab)
 
 	gen_expr(e->lhs, stab);
 
-	out_change_type(type_ref_new_VOID_PTR()); /* cast for void* arithmetic */
-	out_push_i(type_ref_new_INTPTR_T(), struct_offset(e)); /* integral offset */
+	out_change_type(type_ref_cached_VOID_PTR()); /* cast for void* arithmetic */
+	out_push_i(type_ref_cached_INTPTR_T(), struct_offset(e)); /* integral offset */
 	out_op(op_plus);
 
 	out_change_type(type_ref_ptr_depth_inc(e->rhs->tree_type));
@@ -125,7 +132,7 @@ void gen_expr_str_struct(expr *e, symtable *stab)
 	(void)stab;
 	idt_printf("struct/union%s%s\n",
 			e->expr_is_st_dot ? "." : "->",
-			e->bits.struct_mem->spel);
+			e->bits.struct_mem.d->spel);
 
 	gen_str_indent++;
 	print_expr(e->lhs);
@@ -148,11 +155,12 @@ void fold_const_expr_struct(expr *e, consty *k)
 			break;
 
 		case CONST_ADDR:
-			k->type = CONST_NEED_ADDR; /* not constant unless addressed e.g. &a->b */
+			/* not constant unless addressed e.g. &a->b (unless array/func) */
+			k->type = CONST_ADDR_OR_NEED(e->bits.struct_mem.d);
 			/* don't touch k->bits.addr info */
 
 			/* obviously we offset this */
-			k->offset = struct_offset(e);
+			k->offset += struct_offset(e);
 			break;
 
 		case CONST_VAL:

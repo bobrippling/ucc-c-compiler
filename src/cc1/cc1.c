@@ -20,6 +20,7 @@
 #include "sym.h"
 #include "fold_sym.h"
 #include "out/out.h"
+#include "ops/__builtin.h"
 
 struct
 {
@@ -98,6 +99,9 @@ struct
 	{ 1,  "show-line",     FOPT_SHOW_LINE       },
 	{ 1,  "pic",           FOPT_PIC             },
 	{ 1,  "pic-pcrel",     FOPT_PIC_PCREL       },
+	{ 1,  "builtin",       FOPT_BUILTIN         },
+	{ 1,  "ms-extensions",    FOPT_MS_EXTENSIONS    },
+	{ 1,  "plan9-extensions", FOPT_PLAN9_EXTENSIONS },
 
 	{ 0,  NULL, 0 }
 };
@@ -112,7 +116,6 @@ struct
 };
 
 
-
 FILE *cc_out[NUM_SECTIONS];     /* temporary section files */
 char  fnames[NUM_SECTIONS][32]; /* duh */
 FILE *cc1_out;                  /* final output */
@@ -124,7 +127,11 @@ enum warning warn_mode = ~(
 		| WARN_SIGN_COMPARE
 		);
 
-enum fopt    fopt_mode = FOPT_CONST_FOLD | FOPT_SHOW_LINE | FOPT_PIC;
+enum fopt fopt_mode = FOPT_CONST_FOLD
+                    | FOPT_SHOW_LINE
+                    | FOPT_PIC
+                    | FOPT_BUILTIN
+                    | FOPT_MS_EXTENSIONS;
 enum cc1_backend cc1_backend = BACKEND_ASM;
 
 int m32 = 0;
@@ -145,6 +152,7 @@ const char *section_names[NUM_SECTIONS] = {
 	EXPAND_QUOTE(SECTION_BSS),
 };
 
+static FILE *infile;
 
 /* compile time check for enum <-> int compat */
 #define COMP_CHECK(pre, test) \
@@ -274,11 +282,23 @@ void sigh(int sig)
 	io_cleanup();
 }
 
+static char *next_line()
+{
+	char *s = fline(infile);
+
+	if(!s){
+		if(feof(infile))
+			return NULL;
+		else
+			die("read():");
+	}
+	return s;
+}
+
 int main(int argc, char **argv)
 {
 	static symtable_global *globs;
 	void (*gf)(symtable_global *);
-	FILE *f;
 	const char *fname;
 	int i;
 
@@ -402,11 +422,11 @@ usage:
 	}
 
 	if(fname && strcmp(fname, "-")){
-		f = fopen(fname, "r");
-		if(!f)
+		infile = fopen(fname, "r");
+		if(!infile)
 			ccdie(0, "open %s:", fname);
 	}else{
-		f = stdin;
+		infile = stdin;
 		fname = "-";
 	}
 
@@ -420,9 +440,12 @@ usage:
 
 	show_current_line = fopt_mode & FOPT_SHOW_LINE;
 
-	tokenise_set_file(f, fname);
-	globs = parse();
-	tokenise_close();
+	globs = symtabg_new();
+	tokenise_set_input(next_line, fname);
+	parse(globs);
+
+	if(infile != stdin)
+		fclose(infile), infile = NULL;
 
 	fold(&globs->stab);
 	symtab_fold(&globs->stab, 0);

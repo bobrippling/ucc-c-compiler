@@ -25,9 +25,9 @@ void fold_const_expr_if(expr *e, consty *k)
 		consts[1] = consts[0];
 
 	/* we're only const if expr, lhs and rhs are const */
-	if(!is_const(consts[0].type)
-	|| !is_const(consts[1].type)
-	|| !is_const(consts[2].type))
+	if(!CONST_AT_COMPILE_TIME(consts[0].type)
+	|| !CONST_AT_COMPILE_TIME(consts[1].type)
+	|| !CONST_AT_COMPILE_TIME(consts[2].type))
 	{
 		k->type = CONST_NO;
 		return;
@@ -118,13 +118,13 @@ void fold_expr_if(expr *e, symtable *stab)
 				char bufa[TYPE_REF_STATIC_BUFSIZ], bufb[TYPE_REF_STATIC_BUFSIZ];
 
 				fold_type_ref_equal(tt_l, tt_r, &e->where,
-						WARN_COMPARE_MISMATCH, /* FIXME: enum "mismatch" */
+						WARN_COMPARE_MISMATCH, 0, /* FIXME: enum "mismatch" */
 						"pointer type mismatch: %s and %s",
 						type_ref_to_str_r(bufa, tt_l),
 						type_ref_to_str_r(bufb, tt_r));
 
 				/* void * */
-				e->tree_type = type_ref_new_ptr(type_ref_new_VOID(), qual_none);
+				e->tree_type = type_ref_new_ptr(type_ref_cached_VOID(), qual_none);
 
 				{
 					enum type_qualifier q = type_ref_qual(tt_l) | type_ref_qual(tt_r);
@@ -139,7 +139,7 @@ void fold_expr_if(expr *e, symtable *stab)
 				WARN_AT(&e->where, "conditional type mismatch (%s vs %s)",
 						type_ref_to_str(tt_l), type_ref_to_str_r(buf, tt_r));
 
-				e->tree_type = type_ref_new_VOID();
+				e->tree_type = type_ref_cached_VOID();
 			}
 		}
 	}

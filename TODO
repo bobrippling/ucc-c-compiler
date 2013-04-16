@@ -4,6 +4,9 @@
 update bugs/
 test/ - x.c and x.c.expect (output and assembly)
 
+-fno-builtin
+default to external memset calls, -ffreestanding to use builtin on
+
 cc1.h - remove unused warnings
 
 struct initialisation
@@ -30,6 +33,8 @@ __alignof__/_Alignof, _Alignas(type/const-expr):
 		doubles: { linux32 => 4, win32 => 8, linux64 => 8 }
 		longs + doubles + ptrs change as their sizeof changes (x86 vs x64)
 	for structs/unions, it is the alignment of the largest type
+
+-ftrapv
 
 -Wmissing-prototypes - increase statics (in Makefile)
 	redundant-decls

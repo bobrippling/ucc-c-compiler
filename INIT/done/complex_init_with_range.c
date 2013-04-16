@@ -20,3 +20,5 @@ struct A
 	},
 	[8].sub_b[3].a = { 2, 3 }
 };
+
+// FIXME: see asm comment

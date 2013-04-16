@@ -5,6 +5,7 @@
 
 #include "../util/util.h"
 #include "../util/platform.h"
+#include "../util/dynarray.h"
 #include "data_structs.h"
 #include "macros.h"
 #include "sym.h"
@@ -61,7 +62,14 @@ void print_decl_init(decl_init *di)
 {
 	switch(di->type){
 		case decl_init_scalar:
+			idt_printf("scalar:\n");
+			gen_str_indent++;
 			print_expr(di->bits.expr);
+			gen_str_indent--;
+			break;
+
+		case decl_init_copy:
+			ICE("copy in print");
 			break;
 
 		case decl_init_brace:
@@ -69,27 +77,48 @@ void print_decl_init(decl_init *di)
 			decl_init *s;
 			int i;
 
-			for(i = 0; (s = di->bits.inits[i]); i++){
-				const int need_brace = s->type == decl_init_brace;
+			idt_printf("brace\n");
 
-				/* ->member not printed */
+			gen_str_indent++;
+			for(i = 0; (s = di->bits.ar.inits[i]); i++){
+				if(s == DYNARRAY_NULL){
+					idt_printf("[%d] = <zero init> ; %p\n", i, s);
+				}else if(s->type == decl_init_copy){
+					idt_printf("[%d] = copy from %d\n", i, DECL_INIT_COPY_IDX(s, di));
+				}else{
+					const int need_brace = s->type == decl_init_brace;
+
+					/* ->member not printed */
 #ifdef DINIT_WITH_STRUCT
-				if(s->spel)
-					idt_printf(".%s", s->spel);
-				else
+					if(s->spel)
+						idt_printf(".%s", s->spel);
+					else
 #endif
-					idt_printf("[%d]", i);
+						idt_printf("[%d]", i);
 
-				fprintf(cc1_out, " = %s\n", need_brace ? "{" : "");
+					fprintf(cc1_out, " = %s\n", need_brace ? "{" : "");
 
-				gen_str_indent++;
-				print_decl_init(s);
-				gen_str_indent--;
+					gen_str_indent++;
+					print_decl_init(s);
+					gen_str_indent--;
 
-				if(need_brace)
-					idt_printf("}\n");
+					if(need_brace)
+						idt_printf("}\n");
+				}
 			}
-			break;
+			gen_str_indent--;
+
+			if(di->bits.ar.range_inits){
+				idt_printf("range store:\n");
+				gen_str_indent++;
+				for(i = 0; (s = di->bits.ar.range_inits[i]); i++){
+					idt_printf("store[%d]:\n", i);
+					gen_str_indent++;
+					print_decl_init(s);
+					gen_str_indent--;
+				}
+				gen_str_indent--;
+			}
 		}
 	}
 }
@@ -104,13 +133,13 @@ void print_type_ref_eng(type_ref *ref)
 	switch(ref->type){
 		case type_ref_cast:
 			if(ref->bits.cast.is_signed_cast)
-				fprintf(cc1_out, "%s", ref->bits.cast.signed_true ? "signed" : "unsigned");
+				fprintf(cc1_out, "%s ", ref->bits.cast.signed_true ? "signed" : "unsigned");
 			else
-				fprintf(cc1_out, "%s ", type_qual_to_str(ref->bits.cast.qual));
+				fprintf(cc1_out, "%s", type_qual_to_str(ref->bits.cast.qual, 1));
 			break;
 
 		case type_ref_ptr:
-			fprintf(cc1_out, "%spointer to ", type_qual_to_str(ref->bits.qual));
+			fprintf(cc1_out, "%spointer to ", type_qual_to_str(ref->bits.ptr.qual, 1));
 			break;
 
 		case type_ref_block:
@@ -150,9 +179,9 @@ void print_type_ref_eng(type_ref *ref)
 		}
 
 		case type_ref_array:
-			if(ref->bits.array_size){
+			if(ref->bits.array.size){
 				fputs("array[", cc1_out);
-				print_expr_val(ref->bits.array_size);
+				print_expr_val(ref->bits.array.size);
 				fputs("] of ", cc1_out);
 			}
 			break;
@@ -341,7 +370,10 @@ void print_expr(expr *e)
 		fputc('\n', cc1_out);
 	}
 	gen_str_indent++;
-	e->f_gen(e, NULL);
+	if(e->f_gen)
+		e->f_gen(e, NULL);
+	else
+		idt_printf("builtin/%s::%s\n", e->f_str(), e->expr->bits.ident.spel);
 	gen_str_indent--;
 }
 
@@ -402,6 +434,7 @@ int has_st_en_tdef(symtable *stab)
 void print_st_en_tdef(symtable *stab)
 {
 	struct_union_enum_st **sit;
+	static_assert **stati;
 	int nl = 0;
 
 	for(sit = stab->sues; sit && *sit; sit++){
@@ -420,6 +453,17 @@ void print_st_en_tdef(symtable *stab)
 			nl = 1;
 		}
 		gen_str_indent--;
+	}
+
+	for(stati = stab->static_asserts; stati && *stati; stati++){
+		static_assert *sa = *stati;
+
+		idt_printf("static assertion: %s\n", sa->s);
+		gen_str_indent++;
+		print_expr(sa->e);
+		gen_str_indent--;
+
+		nl = 1;
 	}
 
 	if(nl)

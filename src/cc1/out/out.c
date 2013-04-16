@@ -12,7 +12,7 @@
 #include "../../util/platform.h"
 #include "../cc1.h"
 
-#define v_check_type(t) if(!t) t = type_ref_new_VOID_PTR()
+#define v_check_type(t) if(!t) t = type_ref_cached_VOID_PTR()
 
 static int calc_ptr_step(type_ref *t);
 
@@ -340,6 +340,19 @@ void out_dup(void)
 	vdup();
 }
 
+void out_pulltop(int i)
+{
+	struct vstack tmp;
+	int j;
+
+	memcpy_safe(&tmp, &vtop[-i]);
+
+	for(j = -i; j < 0; j++)
+		vtop[j] = vtop[j + 1];
+
+	memcpy_safe(vtop, &tmp);
+}
+
 void out_store()
 {
 	struct vstack *store, *val;
@@ -373,7 +386,7 @@ void out_push_sym(sym *s)
 			if(DECL_IS_FUNC(d))
 				goto label;
 
-			if(d->store == store_register && d->spel_asm)
+			if((d->store & STORE_MASK_STORE) == store_register && d->spel_asm)
 				ICW("TODO: %s asm(\"%s\")", decl_to_str(d), d->spel_asm);
 
 			vtop->type = STACK;
@@ -528,7 +541,7 @@ def:
 								if((swap = (val != vtop)))
 									vswap();
 
-								out_push_i(type_ref_new_VOID_PTR(), ptr_step);
+								out_push_i(type_ref_cached_VOID_PTR(), ptr_step);
 								out_op(op_multiply);
 
 								if(swap)
@@ -551,7 +564,7 @@ def:
 		impl_op(op);
 
 		if(div){
-			out_push_i(type_ref_new_VOID_PTR(), div);
+			out_push_i(type_ref_cached_VOID_PTR(), div);
 			out_op(op_divide);
 		}
 	}

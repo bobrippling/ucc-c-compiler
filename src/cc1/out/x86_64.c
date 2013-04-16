@@ -358,7 +358,7 @@ void impl_load(struct vstack *from, int reg)
 		out_comment("zero for cmp");
 		out_asm("mov%c $0, %%%s", asm_type_ch(from->t), buf);
 
-		from->t = type_ref_new_CHAR(); /* force set%s to set the low byte */
+		from->t = type_ref_cached_CHAR(); /* force set%s to set the low byte */
 		/* decl changed, reload the register name */
 		x86_reg_str_r(buf, reg, from->t);
 	}
@@ -471,7 +471,7 @@ void impl_op(enum op_type op)
 					v_to_reg(vtop); /* TODO: v_to_reg_preferred(vtop, REG_C) */
 
 				case REG:
-					free_this = vtop->t = type_ref_new_CHAR();
+					free_this = vtop->t = type_ref_cached_CHAR();
 
 					if(vtop->bits.reg != REG_C){
 						impl_reg_cp(vtop, REG_C);
@@ -520,7 +520,6 @@ void impl_op(enum op_type op)
 			 */
 			v_freeup_regs(REG_A, REG_D);
 
-			v_to_reg(vtop);
 			r_div = v_to_reg(&vtop[-1]); /* TODO: similar to above - v_to_reg_preferred */
 
 			if(r_div != REG_A){
@@ -538,8 +537,6 @@ void impl_op(enum op_type op)
 
 			UCC_ASSERT(r_div == REG_A, "register A not chosen for idiv (%c)", regs[r_div]);
 
-			out_asm("cqto");
-
 			/* idiv takes either a reg or memory address */
 			switch(vtop->type){
 				default:
@@ -548,6 +545,7 @@ void impl_op(enum op_type op)
 
 				case REG:
 				case STACK:
+					out_asm("cqto");
 					out_asm("idiv%c %s", asm_type_ch(vtop->t), vstack_str(vtop));
 			}
 
@@ -556,20 +554,9 @@ void impl_op(enum op_type op)
 			vtop_clear(vtop->t);
 			vtop->type = REG;
 
-			if(type_ref_size(vtop->t, NULL) != type_primitive_size(type_int)){
-#if 0
-Operand-Size         Dividend  Divisor  Quotient  Remainder
-8                    AX        r/m8     AL        AH
-16                   DX:AX     r/m16    AX        DX
-32                   EDX:EAX   r/m32    EAX       EDX
-64                   RDX:RAX   r/m64    RAX       RDX
-
-but gcc and clang promote to ints anyway...
-#endif
-				ICW("idiv incorrect - need to load al:ah/dx:ax/edx:eax for %s",
-						type_ref_to_str(vtop->t));
-			}
-
+			/* this is fine - we always use int-sized arithmetic or higher
+			 * (in the char case, we would need ah:al
+			 */
 			vtop->bits.reg = op == op_modulus ? REG_D : REG_A;
 			return;
 		}
@@ -583,27 +570,28 @@ but gcc and clang promote to ints anyway...
 		{
 			const int is_signed = type_ref_is_signed(vtop->t);
 			char buf[VSTACK_STR_SZ];
+			int inv = 0;
 
 			vtop2_prepare_op();
 
-			/*
-			 * if we have a const, it must be the first arg
-			 * not sure why this works without having to
-			 * invert the comparison
-			 */
-			if(vtop->type == CONST)
+			/* if we have a const, it must be the first arg */
+			if(vtop[-1].type == CONST){
 				vswap();
+				inv = 1;
+			}
 
 			out_asm("cmp%c %s, %s",
-					asm_type_ch(vtop->t),
-					vstack_str(&vtop[-1]),
-					vstack_str_r(buf, vtop));
+					asm_type_ch(vtop[-1].t), /* pick the non-const one (for type-ing) */
+					vstack_str(       vtop),
+					vstack_str_r(buf, vtop - 1));
 
 			vpop();
-			vtop_clear(type_ref_new_BOOL()); /* cmp creates an int/bool */
+			vtop_clear(type_ref_cached_BOOL()); /* cmp creates an int/bool */
 			vtop->type = FLAG;
 			vtop->bits.flag.cmp = op_to_flag(op);
 			vtop->bits.flag.is_signed = is_signed;
+			if(inv)
+				v_inv_cmp(vtop);
 			return;
 		}
 
@@ -723,7 +711,7 @@ void impl_cast(type_ref *from, type_ref *to)
 	if(szfrom != szto){
 		if(szfrom < szto){
 			const int is_signed = type_ref_is_signed(from);
-			const int int_sz = type_primitive_size(type_int);
+			const unsigned int_sz = type_primitive_size(type_int);
 
 			char buf_from[REG_STR_SZ], buf_to[REG_STR_SZ];
 
@@ -868,7 +856,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 
 		/* can't push non-word sized vtops */
 		if(vtop->t && type_ref_size(vtop->t, NULL) != platform_word_size())
-			out_cast(vtop->t, type_ref_new_VOID_PTR());
+			out_cast(vtop->t, type_ref_cached_VOID_PTR());
 
 		out_asm("pushq %s", vstack_str(vtop));
 		vpop();

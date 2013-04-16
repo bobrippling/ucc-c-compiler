@@ -13,7 +13,7 @@ void fold_const_expr_comma(expr *e, consty *k)
 	const_fold(e->lhs, &klhs);
 	const_fold(e->rhs, k);
 
-	if(!is_const(klhs.type))
+	if(!CONST_AT_COMPILE_TIME(klhs.type))
 		k->type = CONST_NO;
 }
 

@@ -82,6 +82,10 @@ void fold_stmt_switch(stmt *s)
 			type *typ = r->bits.type;
 			UCC_ASSERT(typ->sue, "no enum for enum type");
 			fold_switch_enum(s, typ);
+
+			/* warn if we switch on an enum bitmask */
+			if(decl_attr_present(typ->sue->attr, attr_enum_bitmask))
+				WARN_AT(&s->where, "switch on enum with enum_bitmask attribute");
 		}
 	}
 }

@@ -45,12 +45,16 @@ void gen_expr_str_deref(expr *e, symtable *stab)
 
 void const_expr_deref(expr *e, consty *k)
 {
-	const_fold(expr_deref_what(e), k);
+	expr *from = expr_deref_what(e);
+
+	const_fold(from, k);
+
 	switch(k->type){
 		case CONST_VAL:
 		case CONST_ADDR:
 		case CONST_STRK:
-			k->type = CONST_NEED_ADDR;
+			k->type = CONST_ADDR_OR_NEED_TREF(from->tree_type);
+			/* *(int [10])a -> still need_addr */
 		default:
 			break;
 	}

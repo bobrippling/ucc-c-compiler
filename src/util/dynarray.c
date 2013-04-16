@@ -27,6 +27,37 @@ void dynarray_nochk_add(void ***par, void *new)
 	*par = ar;
 }
 
+void *dynarray_nochk_padinsert(
+		void ***par, unsigned i, unsigned *pn, void *ins)
+{
+	void **ar = *par;
+	unsigned n = *pn;
+
+	if(i < n){
+		/* already have one, replace */
+		void **p = &ar[i],
+				 *out = *p;
+
+		*p = ins;
+
+		return out == DYNARRAY_NULL ? NULL : out;
+	}else{
+		/* pad up to it */
+		unsigned j;
+		for(j = i - n; j > 0; j--){
+			dynarray_add(par, DYNARRAY_NULL);
+			n++;
+		}
+
+		/* add */
+		dynarray_add(par, ins);
+		n++;
+
+		*pn = n;
+		return NULL;
+	}
+}
+
 char *dynarray_nochk_pop(void ***par)
 {
 	void **ar = *par;
