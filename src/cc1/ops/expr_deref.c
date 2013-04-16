@@ -19,7 +19,7 @@ void fold_expr_deref(expr *e, symtable *stab)
 	if(expr_kind(ptr, addr) && !ptr->expr_addr_implicit)
 		WARN_AT(&ptr->where, "possible optimisation for *& expression");
 
-	e->tree_type = type_ref_ptr_depth_dec(ptr->tree_type);
+	e->tree_type = type_ref_ptr_depth_dec(ptr->tree_type, &e->where);
 }
 
 void gen_expr_deref_lea(expr *e, symtable *stab)

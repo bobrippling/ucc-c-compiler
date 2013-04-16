@@ -703,14 +703,14 @@ type_ref *type_ref_orphan(type_ref *r)
 	return ret;
 }
 
-type_ref *type_ref_ptr_depth_dec(type_ref *r)
+type_ref *type_ref_ptr_depth_dec(type_ref *r, where *w)
 {
 	type_ref *const r_save = r;
 
 	r = type_ref_is_ptr(r);
 
 	if(!r){
-		DIE_AT(r_save ? &r_save->where : NULL,
+		DIE_AT(w,
 				"invalid indirection applied to %s",
 				r_save ? type_ref_to_str(r_save) : "(NULL)");
 	}
