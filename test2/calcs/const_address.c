@@ -1,3 +1,6 @@
+// RUN: %ucc %s
+// RUN: %ucc %s -S -o- | grep -F 's + 1296'
+
 struct RT
 {
   char A; // 1

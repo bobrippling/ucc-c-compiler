@@ -1,3 +1,5 @@
+// RUN: %ocheck 3 %s
+
 f(int x[])
 {
 	return x[2];
@@ -5,5 +7,6 @@ f(int x[])
 
 main()
 {
-	f(0);
+	int x[] = { 1, 2, 3 };
+	return f(0);
 }

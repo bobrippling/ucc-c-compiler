@@ -1,3 +1,6 @@
+// RUN: %ucc -o %t %s
+// RUN: %t | %output_check Leto Paul Tim Paul
+
 typedef struct User {
 	const char *name;
 } User;

@@ -1,3 +1,6 @@
+// RUN: %ucc %s -c
+// RUN: %asmcheck %s
+
 char abc[] = "abc";
 
 char *p = "hi";

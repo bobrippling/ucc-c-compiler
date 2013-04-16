@@ -1,3 +1,4 @@
+// RUN: %ocheck 3 %s
 struct A
 {
 	int i, j;

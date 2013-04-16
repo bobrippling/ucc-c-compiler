@@ -1,3 +1,4 @@
+// RUN: %layout_check %s
 int x[][2] = {
 	[1][0] = 2,
 	[0][0] = 0,
@@ -11,7 +12,7 @@ struct A
 	{
 		int i, j;
 	} a;
-} x = {
+} y = {
 	.a.i = 1,
 	.a.j = 2,
 };

@@ -1,3 +1,4 @@
+// RUN: %layout_check %s
 struct
 {
 	int i, j, k[2];

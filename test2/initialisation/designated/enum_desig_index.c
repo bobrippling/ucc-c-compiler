@@ -1,3 +1,5 @@
+// RUN: %ucc -c %s
+
 enum { A };
 
 int x[] = {

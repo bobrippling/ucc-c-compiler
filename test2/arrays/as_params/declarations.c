@@ -1,3 +1,5 @@
+// RUN: %ucc %s
+
 f(int [][static 2]);
 
 h(int [][static  0]);
