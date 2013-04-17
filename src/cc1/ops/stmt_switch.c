@@ -40,14 +40,20 @@ void fold_switch_enum(stmt *sw, type *enum_type)
 
 		for(; v <= w; v++){
 			sue_member **mi;
+			int found = 0;
+
 			for(midx = 0, mi = enum_type->sue->members; *mi; midx++, mi++){
 				enum_member *m = (*mi)->enum_member;
 
 				const_fold_need_val(m->val, &iv);
 
 				if(v == iv.val)
-					marks[midx]++;
+					marks[midx]++, found = 1;
 			}
+
+			if(!found)
+				WARN_AT(&cse->where, "'case %ld' not not a member of enum %s",
+						(long)v, enum_type->sue->spel);
 		}
 	}
 
