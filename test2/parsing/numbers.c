@@ -1,3 +1,5 @@
+// RUN: %ocheck 31 %s
+f(){return 3;}
 main()
 {
 	int d = 0;
@@ -7,6 +9,8 @@ main()
 
 	switch(f()){
 		case 0 ... 5:
-			;
+			return d + x + o + b; // 31
 	}
+
+	return 99;
 }

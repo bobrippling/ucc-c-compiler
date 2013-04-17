@@ -1,3 +1,6 @@
+// RUN: %ucc -o %t %s
+// RUN: %t | %output_check '0 0 0 8'
+
 struct A
 {
 };
@@ -14,13 +17,13 @@ struct Pre
 	int j;
 };
 
-main()
+_main()
 {
 	struct A a;
 	struct Containter b;
 	struct Pre c;
 
-	printf("%d %d %d %d\n",
+	_printf("%d %d %d %d\n",
 			sizeof(struct A),
 			sizeof a,
 			sizeof b,

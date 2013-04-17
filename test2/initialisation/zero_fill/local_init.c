@@ -1,3 +1,4 @@
+// RUN: %ocheck 7 %s
 main()
 {
 	int *p = (int[]){1,2,3};

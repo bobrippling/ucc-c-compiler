@@ -1,3 +1,5 @@
+// RUN: %layout_check %s
+
 union U
 {
 	struct S

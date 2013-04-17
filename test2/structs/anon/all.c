@@ -1,3 +1,4 @@
+// RUN: %ucc %s
 struct C99
 {
 	union
@@ -41,6 +42,7 @@ typedef union
 
 
 
+struct B_A { int b_a; };
 struct B
 {
 	struct B_A;              // MS-extensions, since struct has a tag

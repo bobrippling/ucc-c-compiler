@@ -1,3 +1,6 @@
+// RUN: %ucc -o %t %s
+// RUN: %t | diff -u - %s.out
+
 #define PEXP(fmt, exp) printf(#exp " = " fmt "\n", (exp))
 main()
 {

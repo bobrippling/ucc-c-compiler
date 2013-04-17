@@ -1,3 +1,4 @@
+// RUN: %layout_check %s
 union A
 {
 	struct {};

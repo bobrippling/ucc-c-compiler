@@ -1,3 +1,4 @@
+// RUN: %ucc -c %s
 #define TYPE_CHECK(ch, ty, s)     \
 _Static_assert(                   \
 		__builtin_types_compatible_p( \
