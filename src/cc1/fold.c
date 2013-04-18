@@ -168,7 +168,7 @@ void fold_enum(struct_union_enum_st *en, symtable *stab)
 	sue_member **i;
 	int defval = has_bitmask;
 
-	for(i = en->members; *i; i++){
+	for(i = en->members; i && *i; i++){
 		enum_member *m = (*i)->enum_member;
 		expr *e = m->val;
 
@@ -204,7 +204,10 @@ int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 	if(sue->primitive == type_enum){
 		fold_enum(sue, stab);
 
-		return sue->size = sue_size(sue, &sue->where);
+		/* we don't call sue_size as that dies on a forward-enum,
+		 * we want to die later, when we have the decl location
+		 */
+		return sue_enum_size(sue);
 
 	}else{
 		int align_max = 1;

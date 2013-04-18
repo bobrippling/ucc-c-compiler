@@ -47,6 +47,11 @@ int enum_nentries(struct_union_enum_st *e)
 	return n;
 }
 
+int sue_enum_size(struct_union_enum_st *st)
+{
+	return st->size = type_primitive_size(type_int);
+}
+
 int sue_size(struct_union_enum_st *st, const where *w)
 {
 	if(sue_incomplete(st))
@@ -56,7 +61,7 @@ int sue_size(struct_union_enum_st *st, const where *w)
 		return st->size;
 
 	if(st->primitive == type_enum)
-		return st->size = type_primitive_size(type_int);
+		return sue_enum_size(st);
 
 	ICE("%s of unfolded sue", __func__);
 	return -1;
