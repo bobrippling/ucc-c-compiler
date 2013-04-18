@@ -261,12 +261,49 @@ static void builtin_gen_frame_pointer(expr *e, symtable *stab)
 	out_push_frame_ptr(depth + 1);
 }
 
+static expr *builtin_frame_address_mutate(expr *e)
+{
+	expr_mutate_builtin(e, frame_address);
+	e->f_gen = builtin_gen_frame_pointer;
+	return e;
+}
+
 static expr *parse_frame_address(void)
 {
-	expr *fcall = parse_any_args();
-	expr_mutate_builtin(fcall, frame_address);
-	fcall->f_gen = builtin_gen_frame_pointer;
-	return fcall;
+	return builtin_frame_address_mutate(parse_any_args());
+}
+
+expr *builtin_new_frame_address(int depth)
+{
+	expr *e = expr_new_funcall();
+
+	dynarray_add((void ***)&e->funcargs, expr_new_val(depth));
+
+	return builtin_frame_address_mutate(e);
+}
+
+expr *builtin_new_reg_save_area(void);
+
+/* --- reg_save_area (a basic wrapper aroudn out_push_reg_save_ptr()) */
+
+void fold_reg_save_area(expr *e, symtable *stab)
+{
+	e->tree_type = type_ref_new_VOID_PTR();
+}
+
+void gen_reg_save_area(expr *e, symtable *stab)
+{
+	out_push_reg_save_ptr();
+}
+
+expr *builtin_new_reg_save_area(void)
+{
+	expr *e = expr_new_funcall();
+
+	expr_mutate_builtin(e, reg_save_area);
+	e->f_gen = gen_reg_save_area;
+
+	return e;
 }
 
 /* --- expect */

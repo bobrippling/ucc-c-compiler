@@ -907,3 +907,12 @@ void out_push_frame_ptr(int nframes)
 	vtop->type = REG;
 	vtop->bits.reg = impl_frame_ptr_to_reg(nframes);
 }
+
+void out_push_reg_save_ptr(void)
+{
+	out_flush_volatile();
+
+	vpush(NULL);
+	vtop->type = STACK;
+	vtop->bits.off_from_bp = stack_local_offset;
+}

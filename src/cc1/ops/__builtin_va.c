@@ -45,27 +45,57 @@ static void va_ensure_variadic(expr *e)
 
 static void fold_va_start(expr *e, symtable *stab)
 {
+	expr *va_l;
+
 	if(dynarray_count((void **)e->funcargs) != 2)
 		DIE_AT(&e->where, "%s requires two arguments", BUILTIN_SPEL(e->expr));
 
-#ifdef UCC_VA_ABI
+	va_l = e->funcargs[0];
+	fold_inc_writes_if_sym(va_l, stab);
+
+	FOLD_EXPR_NO_DECAY(e->funcargs[0], stab);
+	FOLD_EXPR(         e->funcargs[1], stab);
+
+	va_l = e->funcargs[0];
+	va_type_check(va_l, e->expr);
+
+	va_ensure_variadic(e);
+	/* TODO: check funcargs[1] is last argument to the function */
+
+#ifndef UCC_VA_ABI
 	{
-		expr *va_l;
+		stmt *assigns = stmt_new_wrapper(code, symtab_new(stab));
+		expr *assign;
 
-		va_l = e->funcargs[0];
-		fold_inc_writes_if_sym(va_l, stab);
+#define ADD_ASSIGN(memb, exp)               \
+		assign = expr_new_assign(               \
+				expr_new_struct(                    \
+					expr_new_deref(                   \
+						va_l),                          \
+					1 /* dot */,                      \
+					expr_new_identifier(memb)),       \
+				exp);                               \
+		                                        \
+		dynarray_add((void ***)&assigns->codes, \
+				expr_to_stmt(assign, stab))
 
-		FOLD_EXPR_NO_DECAY(e->funcargs[0], stab);
-		FOLD_EXPR(         e->funcargs[1], stab);
+#define ADD_ASSIGN_VAL(memb, val) ADD_ASSIGN(memb, expr_new_val(val))
 
-		va_l = e->funcargs[0];
-		va_type_check(va_l, e->expr);
+		/* zero the offsets */
+		ADD_ASSIGN_VAL("gp_offset",         0);
+		ADD_ASSIGN_VAL("fp_offset",         0);
 
-		va_ensure_variadic(e);
-		/* TODO: check funcargs[1] is last argument to the function */
+		ADD_ASSIGN("reg_save_area",     builtin_new_reg_save_area());
+
+		ADD_ASSIGN("overflow_arg_area",
+				expr_new_op2(op_plus,
+					builtin_new_frame_address(0),
+					expr_new_val(platform_word_size())));
+
+
+		fold_stmt(assigns);
+		e->bits.variadic_setup = assigns;
 	}
-#else
-	ICE("TODO: fold_setup_variadic() move to here");
 #endif
 
 	e->tree_type = type_ref_new_VOID();
@@ -89,7 +119,12 @@ static void gen_va_start(expr *e, symtable *stab)
 	out_push_i(type_ref_new_INTPTR_T(), 0);
 	out_store();
 #else
-	ICE("TODO: %s", __func__);
+	(void)stab;
+
+	out_comment("va_start() begin");
+	gen_stmt(e->bits.variadic_setup);
+	out_push_i(type_ref_new_INT(), 0);
+	out_comment("va_start() end");
 #endif
 }
 
@@ -195,7 +230,21 @@ static void gen_va_arg(expr *e, symtable *stab)
 
 	out_comment("va_arg end");
 #else
-	ICE("TODO: %s", __func__);
+
+	out_push_lbl("__va_arg", 1);
+
+	/* generate a call to abi.c's __va_arg */
+	out_push_i(type_ref_new_LONG(), type_ref_size(e->bits.tref, NULL));
+	/* 0 - abi.c's gen_reg. this is temporary until we have builtin_va_arg proper */
+	out_push_i(type_ref_new_INT(), 0);
+	gen_expr(e->lhs, stab);
+
+	extern void *funcargs_new(); /* XXX: temporary hack for the call */
+
+	out_call(3, type_ref_new_ptr(e->bits.tref, qual_none),
+			type_ref_new_func(type_ref_new_VOID(), funcargs_new()));
+
+	out_deref(); /* __va_arg returns a pointer to the stack location of the argument */
 #endif
 }
 

@@ -112,6 +112,8 @@ struct expr
 			type_ref *t; /* NULL -> default */
 			expr *e;
 		} **generics, *generic_chosen;
+
+		stmt *variadic_setup;
 	} bits;
 
 	int in_parens; /* for if((x = 5)) testing */
@@ -183,6 +185,7 @@ expr *expr_new_identifier(char *sp);
 expr *expr_new_cast(type_ref *cast_to, int implicit);
 expr *expr_new_val(int val);
 expr *expr_new_op(enum op_type o);
+expr *expr_new_op2(enum op_type o, expr *l, expr *r);
 expr *expr_new_if(expr *test);
 expr *expr_new_stmt(stmt *code);
 expr *expr_new_sizeof_type(type_ref *, int is_typeof);

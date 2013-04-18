@@ -3,6 +3,9 @@
 
 #define BUILTIN_SPEL(e) (e)->bits.ident.spel
 
+expr *builtin_new_reg_save_area(void);
+expr *builtin_new_frame_address(int depth);
+
 expr *builtin_parse(const char *sp);
 expr *parse_any_args(void);
 
