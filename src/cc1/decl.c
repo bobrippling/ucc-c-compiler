@@ -50,21 +50,16 @@ void type_ref_init(symtable *stab)
 
 	/* pointer to struct __builtin_va_list */
 	{
-		/* must match GNU abi - vfprintf(..., ap); */
+		/* must match platform abi - vfprintf(..., ap); */
 		sue_member **sue_members = NULL;
 
-		type_ref *char_ptr = type_ref_new_ptr(
-				type_ref_new_CHAR(),
-				qual_none);
+		type_ref *void_ptr = type_ref_new_VOID_PTR();
 
 		/*
 		unsigned int gp_offset;
 		unsigned int fp_offset;
-		union {
-		unsigned int overflow_offset;
-		char *overflow_arg_area;
-		};
-		char *reg_save_area;
+		void *overflow_arg_area;
+		void *reg_save_area;
 		*/
 
 #define ADD_DECL(to, dcl)          \
@@ -81,22 +76,8 @@ void type_ref_init(symtable *stab)
 
 		ADD_SCALAR(sue_members, type_int, "gp_offset");
 		ADD_SCALAR(sue_members, type_int, "fp_offset");
-
-		{
-			sue_member **anon_un_members = NULL;
-
-			ADD_SCALAR(anon_un_members, type_int, "overflow_offset");
-			ADD_DECL(anon_un_members, decl_new_ty_sp(char_ptr, "overflow_arg_area"));
-
-			ADD_DECL(sue_members, decl_new_ty_sp(
-						type_ref_new_type(
-							type_new_primitive_sue(
-								type_union,
-								sue_add(stab, NULL, anon_un_members, type_union))),
-						NULL /* anon union */));
-		}
-
-		ADD_DECL(sue_members, decl_new_ty_sp(char_ptr, "reg_save_area"));
+		ADD_DECL(sue_members, decl_new_ty_sp(void_ptr, "overflow_arg_area"));
+		ADD_DECL(sue_members, decl_new_ty_sp(void_ptr, "reg_save_area"));
 
 		/* typedef struct __va_list_struct __builtin_va_list[1]; */
 		{
