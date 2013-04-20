@@ -9,12 +9,18 @@ expr *builtin_new_frame_address(int depth);
 expr *builtin_parse(const char *sp);
 expr *parse_any_args(void);
 
+void builtin_gen_print(expr *, symtable *);
+#define BUILTIN_GEN(target)  \
+	cc1_backend == BACKEND_ASM \
+		? (target)               \
+		: builtin_gen_print
+
 #define expr_mutate_builtin(exp, to)  \
 	exp->f_fold = fold_ ## to
 
 #define expr_mutate_builtin_gen(exp, to) \
 	expr_mutate_builtin(exp, to),          \
-	exp->f_gen        = gen_ ## to
+	exp->f_gen        = BUILTIN_GEN(gen_ ## to)
 
 
 #endif

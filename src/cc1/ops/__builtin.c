@@ -17,6 +17,7 @@
 
 #include "../const.h"
 #include "../gen_asm.h"
+#include "../gen_str.h"
 
 #include "../out/out.h"
 #include "__builtin_va.h"
@@ -105,6 +106,12 @@ expr *builtin_parse(const char *sp)
 	return NULL;
 }
 
+void builtin_gen_print(expr *e, symtable *stab)
+{
+	(void)stab;
+	idt_printf("builtin: %s\n", BUILTIN_SPEL(e->expr));
+}
+
 #define expr_mutate_builtin_const(exp, to) \
 	expr_mutate_builtin(exp, to),             \
 	exp->f_gen        = NULL,                 \
@@ -147,7 +154,7 @@ static expr *parse_unreachable(void)
 	expr *fcall = expr_new_funcall();
 
 	expr_mutate_builtin(fcall, unreachable);
-	fcall->f_gen = builtin_gen_undefined;
+	fcall->f_gen = BUILTIN_GEN(builtin_gen_undefined);
 
 	return fcall;
 }
@@ -264,7 +271,7 @@ static void builtin_gen_frame_pointer(expr *e, symtable *stab)
 static expr *builtin_frame_address_mutate(expr *e)
 {
 	expr_mutate_builtin(e, frame_address);
-	e->f_gen = builtin_gen_frame_pointer;
+	e->f_gen = BUILTIN_GEN(builtin_gen_frame_pointer);
 	return e;
 }
 
@@ -303,7 +310,7 @@ expr *builtin_new_reg_save_area(void)
 	expr *e = expr_new_funcall();
 
 	expr_mutate_builtin(e, reg_save_area);
-	e->f_gen = gen_reg_save_area;
+	e->f_gen = BUILTIN_GEN(gen_reg_save_area);
 
 	return e;
 }
@@ -346,7 +353,7 @@ static expr *parse_expect(void)
 {
 	expr *fcall = parse_any_args();
 	expr_mutate_builtin_const(fcall, expect);
-	fcall->f_gen = builtin_gen_expect;
+	fcall->f_gen = BUILTIN_GEN(builtin_gen_expect);
 	return fcall;
 }
 
