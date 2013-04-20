@@ -163,8 +163,10 @@ int impl_func_prologue_save_variadic(int nargs)
 	int sz = 0;
 	int i;
 
-	for(i = nargs; i < N_CALL_REGS; i++){
-		/* TODO: do this with out_save_reg or whatever */
+	/* go backwards, as we want registers pushed in reverse
+	 * so we can iterate positively */
+	for(i = N_CALL_REGS - 1; i >= nargs; i--){
+		/* TODO: do this with out_save_reg */
 		out_asm("push%c %%%s", asm_type_ch(NULL), call_reg_str(i, NULL));
 		sz += platform_word_size();
 	}

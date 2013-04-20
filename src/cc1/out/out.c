@@ -24,6 +24,27 @@ static int calc_ptr_step(type_ref *t);
 struct vstack vstack[N_VSTACK];
 struct vstack *vtop = NULL;
 
+/*
+ * stack layout is:
+ *   2nd variadic-extra arg...
+ *   1st variadic-extra arg,
+ *   3rd arg...
+ *   2nd arg
+ *   1st arg
+ *   --bp/ra--,
+ *   call_regs[0],
+ *   call_regs[1],
+ *   call_regs[2],
+ *   variadic_reg_args[2],
+ *   variadic_reg_args[1],
+ *   variadic_reg_args[0], <-- stack_variadic_offset
+ *   local_var[0],         <-- stack_local_offset
+ *   local_var[1],
+ *   local_var[2],         <-- stack_sz (note local vars may be packed)
+ *
+ * all call/variadic regs must be at increasing memory addresses for
+ * variadic logic is in impl_func_prologue_save_variadic
+ */
 static int stack_sz, stack_local_offset, stack_variadic_offset;
 
 /* we won't reserve it more than 255 times */
@@ -459,24 +480,6 @@ void out_push_sym(sym *s)
 
 		case sym_arg:
 			vtop->type = STACK;
-			/*
-			 * stack layout is:
-			 *   2nd variadic-extra arg...
-			 *   1st variadic-extra arg,
-			 *   3rd arg...
-			 *   2nd arg
-			 *   1st arg
-			 *   --bp/ra--,
-			 *   call_regs[0],
-			 *   call_regs[1],
-			 *   call_regs[2],         <-- stack_variadic_offset
-			 *   variadic_reg_args[0],
-			 *   variadic_reg_args[1],
-			 *   variadic_reg_args[2], <-- stack_local_offset
-			 *   local_var[0],
-			 *   local_var[1],
-			 *   local_var[2],         <-- stack_sz (note local vars may be packed)
-			 */
 			{
 				int off;
 
@@ -865,15 +868,12 @@ void out_func_prologue(int stack_res, int nargs, int variadic)
 	impl_func_prologue_save_fp();
 	impl_func_prologue_save_call_regs(nargs);
 
-	/* point to the first variadic argument
-	 * -> one past the last saved call argument
-	 */
-	stack_variadic_offset = stack_sz + platform_word_size();
-
 	if(variadic) /* save variadic call registers */
 		stack_sz += impl_func_prologue_save_variadic(nargs);
 
-	stack_local_offset = stack_sz;
+	/* setup "pointers" to the right place in the stack */
+	stack_variadic_offset = stack_sz;
+	stack_local_offset    = stack_sz;
 
 	if(stack_res)
 		stack_sz += v_alloc_stack(stack_res);
