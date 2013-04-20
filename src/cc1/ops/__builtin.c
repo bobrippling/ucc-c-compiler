@@ -282,17 +282,19 @@ expr *builtin_new_frame_address(int depth)
 	return builtin_frame_address_mutate(e);
 }
 
-expr *builtin_new_reg_save_area(void);
-
-/* --- reg_save_area (a basic wrapper aroudn out_push_reg_save_ptr()) */
+/* --- reg_save_area (a basic wrapper around out_push_reg_save_ptr()) */
 
 void fold_reg_save_area(expr *e, symtable *stab)
 {
+	(void)stab;
 	e->tree_type = type_ref_new_VOID_PTR();
 }
 
 void gen_reg_save_area(expr *e, symtable *stab)
 {
+	(void)e;
+	(void)stab;
+	out_comment("stack local offset:");
 	out_push_reg_save_ptr();
 }
 

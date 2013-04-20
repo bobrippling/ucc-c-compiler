@@ -70,9 +70,7 @@ static void fold_va_start(expr *e, symtable *stab)
 #define ADD_ASSIGN(memb, exp)               \
 		assign = expr_new_assign(               \
 				expr_new_struct(                    \
-					expr_new_deref(                   \
-						va_l),                          \
-					1 /* dot */,                      \
+					va_l, 0 /* ->  since it's [1] */, \
 					expr_new_identifier(memb)),       \
 				exp);                               \
 		                                        \
@@ -85,7 +83,7 @@ static void fold_va_start(expr *e, symtable *stab)
 		ADD_ASSIGN_VAL("gp_offset",         0);
 		ADD_ASSIGN_VAL("fp_offset",         0);
 
-		ADD_ASSIGN("reg_save_area",     builtin_new_reg_save_area());
+		ADD_ASSIGN("reg_save_area", builtin_new_reg_save_area());
 
 		ADD_ASSIGN("overflow_arg_area",
 				expr_new_op2(op_plus,

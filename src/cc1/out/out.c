@@ -24,7 +24,7 @@ static int calc_ptr_step(type_ref *t);
 struct vstack vstack[N_VSTACK];
 struct vstack *vtop = NULL;
 
-static int stack_sz, stack_local_offset;
+static int stack_sz, stack_local_offset, stack_variadic_offset;
 
 /* we won't reserve it more than 255 times */
 static unsigned char reserved_regs[N_SCRATCH_REGS];
@@ -461,21 +461,21 @@ void out_push_sym(sym *s)
 			vtop->type = STACK;
 			/*
 			 * stack layout is:
-			 * if variadic:
-			 *     2nd variadic-extra arg...
-			 *     1st variadic-extra arg,
-			 *     3rd arg...
-			 *     2nd arg
-			 *     1st arg
-			 *     --bp/ra--,
-			 *     saved_regs,
-			 *     variadic_reg_args, <-- covered by stack_local_offset
-			 *     local_vars...  <-- stack_sz
-			 * else:
-			 *     extra args,
-			 *     --bp/ra--,
-			 *     saved_regs,
-			 *     local_vars...
+			 *   2nd variadic-extra arg...
+			 *   1st variadic-extra arg,
+			 *   3rd arg...
+			 *   2nd arg
+			 *   1st arg
+			 *   --bp/ra--,
+			 *   call_regs[0],
+			 *   call_regs[1],
+			 *   call_regs[2],         <-- stack_variadic_offset
+			 *   variadic_reg_args[0],
+			 *   variadic_reg_args[1],
+			 *   variadic_reg_args[2], <-- stack_local_offset
+			 *   local_var[0],
+			 *   local_var[1],
+			 *   local_var[2],         <-- stack_sz (note local vars may be packed)
 			 */
 			{
 				int off;
@@ -865,11 +865,13 @@ void out_func_prologue(int stack_res, int nargs, int variadic)
 	impl_func_prologue_save_fp();
 	impl_func_prologue_save_call_regs(nargs);
 
-	if(variadic){
-		/* create a __builtin_va_list as needed */
-		stack_sz += type_ref_size(type_ref_new_VA_LIST(), NULL);
+	/* point to the first variadic argument
+	 * -> one past the last saved call argument
+	 */
+	stack_variadic_offset = stack_sz + platform_word_size();
+
+	if(variadic) /* save variadic call registers */
 		stack_sz += impl_func_prologue_save_variadic(nargs);
-	}
 
 	stack_local_offset = stack_sz;
 
@@ -914,5 +916,5 @@ void out_push_reg_save_ptr(void)
 
 	vpush(NULL);
 	vtop->type = STACK;
-	vtop->bits.off_from_bp = stack_local_offset;
+	vtop->bits.off_from_bp = -stack_variadic_offset;
 }
