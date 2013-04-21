@@ -50,7 +50,13 @@ static void va_ensure_variadic(expr *e)
 
 static void fold_va_start(expr *e, symtable *stab)
 {
+	int n_args;
 	expr *va_l;
+
+	if(!curdecl_func)
+		DIE_AT(&e->where, "va_start() outside a function");
+
+	n_args = CURRENT_FUNC_ARGS_CNT();
 
 	if(dynarray_count((void **)e->funcargs) != 2)
 		DIE_AT(&e->where, "%s requires two arguments", BUILTIN_SPEL(e->expr));
@@ -65,7 +71,19 @@ static void fold_va_start(expr *e, symtable *stab)
 	va_type_check(va_l, e->expr);
 
 	va_ensure_variadic(e);
-	/* TODO: check funcargs[1] is last argument to the function */
+
+	/* check funcargs[1] is last argument to the function */
+	{
+		expr *last = e->funcargs[1];
+		sym *s;
+
+		if(!expr_kind(last, identifier)
+		|| (s = last->bits.ident.sym, s->type != sym_arg)
+		|| s->offset != n_args - 1)
+		{
+			WARN_AT(&last->where, "second parameter to va_start isn't last named argument");
+		}
+	}
 
 #ifndef UCC_VA_ABI
 	{
@@ -85,10 +103,7 @@ static void fold_va_start(expr *e, symtable *stab)
 #define ADD_ASSIGN_VAL(memb, val) ADD_ASSIGN(memb, expr_new_val(val))
 
 		const int ws = platform_word_size();
-		const int n_args_pws = CURRENT_FUNC_ARGS_CNT() * ws;
-
-		if(!curdecl_func)
-			DIE_AT(&e->where, "va_start() outside a function");
+		const int n_args_pws = n_args * ws;
 
 		/* need to set the offsets to act as if we've skipped over
 		 * n call regs, since we may already have some arguments used
