@@ -138,7 +138,7 @@ static void gen_va_start(expr *e, symtable *stab)
 
 	out_comment("va_start() begin");
 	gen_stmt(e->bits.variadic_setup);
-	out_push_i(type_ref_new_INT(), 0);
+	out_push_noop();
 	out_comment("va_start() end");
 #endif
 }

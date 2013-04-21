@@ -46,7 +46,7 @@ void gen_expr_stmt(expr *e, symtable *stab)
 	{
 		int n = dynarray_count((void **)e->code->codes);
 		if(n > 0 && !stmt_kind(e->code->codes[n-1], expr))
-			out_push_i(type_ref_new_INT(), 0);
+			out_push_noop();
 	}
 
 	out_comment("end of ({...})");
