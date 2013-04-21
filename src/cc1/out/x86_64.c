@@ -731,15 +731,17 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 	/* push remaining args onto the stack */
 	ncleanup = nargs - i;
 	for(; i < nargs; i++){
-		INC_NFLOATS(vtop->t);
+		struct vstack *vp = &vtop[-(nargs - i) + 1]; /* reverse order for stack push */
+		INC_NFLOATS(vp->t);
 
 		/* can't push non-word sized vtops */
-		if(vtop->t && type_ref_size(vtop->t, NULL) != platform_word_size())
-			out_cast(vtop->t, type_ref_new_VOID_PTR());
+		if(vp->t && type_ref_size(vp->t, NULL) != platform_word_size())
+			out_cast(vp->t, type_ref_new_VOID_PTR());
 
-		out_asm("pushq %s", vstack_str(vtop));
-		vpop();
+		out_asm("pushq %s", vstack_str(vp));
 	}
+	for(i = 0; i < ncleanup; i++)
+		vpop();
 
 	v_save_regs();
 
