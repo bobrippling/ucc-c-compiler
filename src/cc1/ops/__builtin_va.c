@@ -23,6 +23,11 @@
 #include "../parse.h"
 #include "../parse_type.h"
 
+#define CURRENT_FUNC_ARGS_CNT()      \
+	dynarray_count(                    \
+			(void **)type_ref_funcargs(    \
+				curdecl_func->ref)->arglist)
+
 static void va_type_check(expr *va_l, expr *in)
 {
 	if(!type_ref_equal(va_l->tree_type,
@@ -79,16 +84,28 @@ static void fold_va_start(expr *e, symtable *stab)
 
 #define ADD_ASSIGN_VAL(memb, val) ADD_ASSIGN(memb, expr_new_val(val))
 
-		/* zero the offsets */
-		ADD_ASSIGN_VAL("gp_offset",         0);
-		ADD_ASSIGN_VAL("fp_offset",         0);
+		const int ws = platform_word_size();
+		const int n_args_pws = CURRENT_FUNC_ARGS_CNT() * ws;
 
-		ADD_ASSIGN("reg_save_area", builtin_new_reg_save_area());
+		if(!curdecl_func)
+			DIE_AT(&e->where, "va_start() outside a function");
+
+		/* need to set the offsets to act as if we've skipped over
+		 * n call regs, since we may already have some arguments used
+		 */
+		ADD_ASSIGN_VAL("gp_offset", n_args_pws);
+		ADD_ASSIGN_VAL("fp_offset", 0); /* TODO: when we have float support */
+
+		/* adjust to take the skip into account */
+		ADD_ASSIGN("reg_save_area",
+				expr_new_op2(op_minus,
+					builtin_new_reg_save_area(), /* void arith - need _pws */
+					expr_new_val(n_args_pws)));
 
 		ADD_ASSIGN("overflow_arg_area",
 				expr_new_op2(op_plus,
-					builtin_new_frame_address(0),
-					expr_new_val(platform_word_size())));
+					builtin_new_frame_address(0), /* *2 to step over saved-rbp and saved-ret */
+					expr_new_val(ws * 2)));
 
 
 		fold_stmt(assigns);
@@ -265,7 +282,7 @@ static void fold_va_arg(expr *e, symtable *stab)
 
 #ifdef UCC_VA_ABI
 	/* finally store the number of arguments to this function */
-	e->bits.n = dynarray_count((void **)type_ref_funcargs(curdecl_func->ref)->arglist);
+	e->bits.n = CURRENT_FUNC_ARGS_CNT();
 #endif
 }
 
