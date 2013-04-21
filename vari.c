@@ -11,12 +11,12 @@ f(int a, ...)
 
 	int t = 0;
 	while(a != -1){
+		pd(a);
 		t += a;
 		a = __builtin_va_arg(l, int);
 	}
+	__builtin_va_end(l);
 	return t;
-
-	//va_end(l);
 }
 
 /* stack layout of f:
@@ -35,5 +35,6 @@ f(int a, ...)
 
 main()
 {
-	return f(1, 2, 3, -1);
+	//return f(1, 2, 3, -1);
+	return f(1, 2, 3, 4, 5, 6, 7, 8, 9, -1);
 }
