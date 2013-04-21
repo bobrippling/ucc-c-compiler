@@ -1,3 +1,4 @@
+// RUN: %ocheck 45 %s
 //#include <stdarg.h>
 
 typedef __builtin_va_list va_list;
@@ -11,7 +12,7 @@ f(int a, ...)
 
 	int t = 0;
 	while(a != -1){
-		pd(a);
+		//pd(a);
 		t += a;
 		a = __builtin_va_arg(l, int);
 	}
