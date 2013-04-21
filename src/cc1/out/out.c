@@ -556,9 +556,12 @@ void out_op(enum op_type op)
 	/* check for adding or subtracting to stack */
 	vtop2_are(CONST, STACK, &t_const, &t_stack);
 
-	if(t_const && t_stack){
+	if(t_const && t_stack && (op == op_plus || op == op_minus)){
 		/* t_const == vtop... should be */
-		t_stack->bits.off_from_bp += t_const->bits.val * calc_ptr_step(t_stack->t);
+		t_stack->bits.off_from_bp +=
+			(op == op_minus ? -1 : 1) *
+			t_const->bits.val *
+			calc_ptr_step(t_stack->t);
 
 		goto ignore_const;
 
