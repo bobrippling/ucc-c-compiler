@@ -45,5 +45,3 @@ void *__va_arg(struct __va_list_struct *ap,
         abort();
     }
 }
-
-pd(int i){printf("%d\n", i);}
