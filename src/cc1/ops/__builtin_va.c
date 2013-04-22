@@ -348,7 +348,8 @@ stack:
 			/* stack code */
 			out_label(lbl_stack);
 
-			out_pop();
+			/* prepare for joining later */
+			out_phi_pop_to();
 
 			gen_expr(e->lhs, stab);
 			/* va */
@@ -369,6 +370,10 @@ stack:
 			out_push_i(type_ref_new_LONG(), 8);
 			out_op(op_minus);
 
+			/* ensure we match the other block's final result before the merge */
+			out_phi_join();
+
+			/* "merge" */
 			out_label(lbl_fin);
 
 			/* now have a pointer to the right memory address */
@@ -379,15 +384,16 @@ stack:
 				type_ref_free_1(r_tmp);
 			}
 
-			/* FIXME:
-			 * this currently doesn't work, we end up with something like this:
-			 * i.e.:
+			/*
+			 * this works by using phi magic - we end up with something like this:
+			 *
 			 *   <reg calc>
 			 *   // pointer in rbx
 			 *   jmp fin
 			 * else:
 			 *   <stack calc>
 			 *   // pointer in rax
+			 *   <phi-merge with previous block>
 			 * fin:
 			 *   ...
 			 *

@@ -21,7 +21,8 @@ static int calc_ptr_step(type_ref *t);
  */
 
 #define N_VSTACK 1024
-struct vstack vstack[N_VSTACK];
+static struct vstack vstack[N_VSTACK];
+static struct vstack vphi;
 struct vstack *vtop = NULL;
 
 /*
@@ -93,6 +94,35 @@ void vpop(void)
 		UCC_ASSERT(vtop < vstack + N_VSTACK - 1, "vstack underflow");
 		vtop--;
 	}
+}
+
+void out_phi_pop_to(void)
+{
+	/* put the current value into the phi-save area */
+	memcpy_safe(&vphi, vtop);
+
+	if(vphi.type == REG)
+		v_reserve_reg(vphi.bits.reg); /* XXX: watch me */
+
+	out_pop();
+}
+
+void out_phi_join(void)
+{
+	if(vphi.type == REG)
+		v_unreserve_reg(vphi.bits.reg); /* XXX: voila */
+
+	/* join vtop and the current phi-save area */
+	v_to_reg(vtop);
+	v_to_reg(&vphi);
+
+	if(vtop->bits.reg != vphi.bits.reg){
+		/* _must_ match vphi, since it's already been generated */
+		impl_reg_cp(vtop, vphi.bits.reg);
+		memcpy_safe(vtop, &vphi);
+	}
+
+	memset(&vphi, 0, sizeof vphi);
 }
 
 void out_flush_volatile(void)

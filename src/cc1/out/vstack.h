@@ -49,7 +49,7 @@ struct vstack
 };
 #define VSTACK_INIT(ty) { (ty), NULL, { 0 } }
 
-extern struct vstack *vtop, vstack[];
+extern struct vstack *vtop;
 
 void vpop(void);
 void vswap(void);
