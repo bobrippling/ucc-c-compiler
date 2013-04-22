@@ -15,6 +15,8 @@
 #include "../gen_asm.h"
 #include "../out/out.h"
 #include "../out/lbl.h"
+#include "../pack.h"
+#include "../sue.h"
 
 #include "__builtin_va.h"
 
@@ -259,7 +261,7 @@ static void gen_va_arg(expr *e, symtable *stab)
 	free(lbl_fin);
 
 	out_comment("va_arg end");
-#else
+#elif defined(UCC_ABI_EXTERNAL)
 
 	out_push_lbl("__va_arg", 1);
 
@@ -275,6 +277,93 @@ static void gen_va_arg(expr *e, symtable *stab)
 			type_ref_new_func(type_ref_new_VOID(), funcargs_new()));
 
 	out_deref(); /* __va_arg returns a pointer to the stack location of the argument */
+#else
+	{
+		type_ref *const ty = e->bits.tref;
+
+		if(type_ref_is_floating(ty)){
+			const type *typ = type_ref_get_type(ty);
+
+			if(typ->primitive == type_ldouble)
+				goto stack;
+
+			ICW("TODO: floating point");
+
+		}else if(type_ref_is_s_or_u(ty)){
+			ICE("TODO: s/u/e va_arg");
+stack:
+			ICE("TODO: stack __builtin_va_arg()");
+
+		}else{
+			/* register */
+			char *lbl_stack = out_label_code("va_else");
+			char *lbl_fin   = out_label_code("va_fin");
+
+			struct_union_enum_st *sue_va = type_ref_next(type_ref_new_VA_LIST())->bits.type->sue;
+
+#define VA_DECL(nam) \
+			decl *mem_ ## nam = struct_union_member_find(sue_va, #nam, NULL)
+			VA_DECL(gp_offset);
+			VA_DECL(reg_save_area);
+
+			gen_expr(e->lhs, stab); /* va_list */
+			out_change_type(type_ref_new_VOID_PTR());
+			out_dup(); /* va, va */
+
+			out_push_i(type_ref_new_LONG(), mem_gp_offset->struct_offset);
+			out_op(op_plus); /* va, &va.gp_offset */
+
+			out_change_type(type_ref_new_INT_PTR());
+			out_dup(); /* va, &gp_o, &gp_o */
+
+			out_deref(); /* va, &gp_o, gp_o */
+			out_push_i(type_ref_new_INT(), 6 * 8); /* N_CALL_REGS * pws */
+			out_op(op_lt); /* va, &gp_o, <cond> */
+			out_jfalse(lbl_stack);
+
+			/* register code */
+			out_dup(); /* va, &gp_o, &gp_o */
+			out_deref(); /* va, &gp_o, gp_o */
+
+			out_push_i(type_ref_new_INT(), 8); /* pws */
+			out_op(op_plus); /* va, &gp_o, gp_o+8 */
+
+			out_store(); /* va, gp_o+8 */
+			out_push_i(type_ref_new_INT(), 8); /* pws */
+			out_op(op_minus); /* va, gp_o */
+			out_change_type(type_ref_new_LONG());
+
+			out_swap(); /* gp_o, va */
+			out_push_i(type_ref_new_LONG(), mem_reg_save_area->struct_offset);
+			out_op(op_plus); /* gp_o, &reg_save_area */
+			out_change_type(type_ref_new_LONG_PTR());
+			out_deref();
+			out_swap();
+			out_op(op_plus); /* reg_save_area + gp_o */
+
+			out_push_lbl(lbl_fin, 0);
+			out_jmp();
+
+			/* stack code */
+			out_label(lbl_stack);
+
+			out_undefined();
+
+			out_label(lbl_fin);
+
+			/* now have a pointer to the right memory address */
+			{
+				type_ref *r_tmp = type_ref_new_ptr(ty, qual_none);
+				out_change_type(r_tmp);
+				out_deref();
+				type_ref_free_1(r_tmp);
+			}
+
+			free(lbl_stack);
+			free(lbl_fin);
+		}
+	}
+
 #endif
 }
 
