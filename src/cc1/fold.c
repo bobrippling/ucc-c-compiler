@@ -344,6 +344,14 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 	fold_type_ref(r->ref, r, stab);
 }
 
+static void fold_func_attr(decl *d)
+{
+	funcargs *fa = type_ref_funcargs(d->ref);
+
+	if(decl_has_attr(d, attr_sentinel) && !fa->variadic)
+		WARN_AT(&d->where, "variadic function required for sentinel check");
+}
+
 void fold_decl(decl *d, symtable *stab)
 {
 	fold_type_ref(d->ref, NULL, stab);
@@ -403,6 +411,9 @@ void fold_decl(decl *d, symtable *stab)
 					break;
 			}
 		}
+
+		fold_func_attr(d);
+
 	}else if((d->store & STORE_MASK_EXTRA) == store_inline){
 		WARN_AT(&d->where, "inline on non-function");
 	}

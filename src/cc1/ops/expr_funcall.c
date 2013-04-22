@@ -223,7 +223,7 @@ static void format_check(where *w, type_ref *ref, expr **args, const int variadi
 	}
 }
 
-#define ATTR_WARN(w, ...) do{ WARN_AT(w, __VA_ARGS__); return; }while(0)
+#define ATTR_WARN_RET(w, ...) do{ WARN_AT(w, __VA_ARGS__); return; }while(0)
 
 static void sentinel_check(where *w, type_ref *ref, expr **args,
 		const int variadic, const int nstdargs)
@@ -236,23 +236,23 @@ static void sentinel_check(where *w, type_ref *ref, expr **args,
 		return;
 
 	if(!variadic)
-		ATTR_WARN(w, "variadic function required for sentinel check");
+		return; /* warning emitted elsewhere, on the decl */
 
 	i = attr->attr_extra.sentinel;
 	nvs = dynarray_count(args) - nstdargs;
 
 	if(nvs == 0)
-		ATTR_WARN(w, "not enough variadic arguments for a sentinel");
+		ATTR_WARN_RET(w, "not enough variadic arguments for a sentinel");
 
 	UCC_ASSERT(nvs >= 0, "too few args");
 
 	if(i >= nvs)
-		ATTR_WARN(w, "sentinel index is not a variadic argument");
+		ATTR_WARN_RET(w, "sentinel index is not a variadic argument");
 
 	sentinel = args[(nstdargs + nvs - 1) - i];
 
 	if(!expr_is_null_ptr(sentinel, 0))
-		ATTR_WARN(&sentinel->where, "sentinel argument expected (got %s)",
+		ATTR_WARN_RET(&sentinel->where, "sentinel argument expected (got %s)",
 				type_ref_to_str(sentinel->tree_type));
 
 }
