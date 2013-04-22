@@ -305,6 +305,7 @@ stack:
 			decl *mem_ ## nam = struct_union_member_find(sue_va, #nam, NULL)
 			VA_DECL(gp_offset);
 			VA_DECL(reg_save_area);
+			VA_DECL(overflow_arg_area);
 
 			gen_expr(e->lhs, stab); /* va_list */
 			out_change_type(type_ref_new_VOID_PTR());
@@ -347,7 +348,26 @@ stack:
 			/* stack code */
 			out_label(lbl_stack);
 
-			out_undefined();
+			out_pop();
+
+			gen_expr(e->lhs, stab);
+			/* va */
+			out_change_type(type_ref_new_VOID_PTR());
+			out_push_i(type_ref_new_LONG(), mem_overflow_arg_area->struct_offset);
+			out_op(op_plus);
+			/* &overflow_a */
+
+			out_dup(), out_change_type(type_ref_new_LONG_PTR()), out_deref();
+			/* &overflow_a, overflow_a */
+
+			/* XXX: 8 = pws, but will need changing if we jump directly to stack, e.g. passing a struct */
+			out_push_i(type_ref_new_LONG(), 8);
+			out_op(op_plus);
+
+			out_store();
+
+			out_push_i(type_ref_new_LONG(), 8);
+			out_op(op_minus);
 
 			out_label(lbl_fin);
 
@@ -358,6 +378,26 @@ stack:
 				out_deref();
 				type_ref_free_1(r_tmp);
 			}
+
+			/* FIXME:
+			 * this currently doesn't work, we end up with something like this:
+			 * i.e.:
+			 *   <reg calc>
+			 *   // pointer in rbx
+			 *   jmp fin
+			 * else:
+			 *   <stack calc>
+			 *   // pointer in rax
+			 * fin:
+			 *   ...
+			 *
+			 * This is because the two parts of the if above are disjoint, one may
+			 * leave its result in eax, one in ebx. We need basic blocks and phi:s to
+			 * solve this properly.
+			 *
+			 * This problem exists in other code, such as &&-gen, but since we pop
+			 * and push immediately, it doesn't manifest itself.
+			 */
 
 			free(lbl_stack);
 			free(lbl_fin);
