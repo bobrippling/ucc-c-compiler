@@ -28,7 +28,28 @@
 /*#define PARSE_DECL_VERBOSE*/
 
 /* we don't do the type_ref_is_* since it needs to be folded for that */
-#define PARSE_DECL_IS_FUNC(d) ((d)->ref->type == type_ref_func)
+#define PARSE_type_ref_is(r, ty) (((r)->type == ty) ? (r) : NULL)
+#define PARSE_DECL_IS_FUNC(d) PARSE_type_ref_is((d)->ref, type_ref_func)
+
+#define PARSE_type_ref_is_s_or_u_or_e(r) PARSE_type_ref_is_s_or_u_or_e2(r, 1)
+#define PARSE_type_ref_is_s_or_u(r)      PARSE_type_ref_is_s_or_u_or_e2(r, 0)
+
+struct_union_enum_st *PARSE_type_ref_is_s_or_u_or_e2(type_ref *r, int allow_e)
+{
+	if(r->type == type_ref_type){
+		type *t = r->bits.type;
+		switch(t->primitive){
+			case type_enum:
+				if(!allow_e)
+			default:
+					break;
+			case type_struct:
+			case type_union:
+				return t->sue;
+		}
+	}
+	return NULL;
+}
 
 static void parse_add_attr(decl_attr **append);
 static type_ref *parse_type_ref2(enum decl_mode mode, char **sp);
@@ -419,7 +440,11 @@ funcargs *parse_func_arglist()
 	if(argdecl){
 
 		/* check for x(void) (or an equivalent typedef) */
-		if(type_ref_is_type(argdecl->ref, type_void) && !argdecl->spel){
+		/* can't use type_ref_is, since that requires folding */
+		if(argdecl->ref->type == type_ref_type
+		&& argdecl->ref->bits.type->primitive == type_void
+		&& !argdecl->spel)
+		{
 			/* x(void); */
 			funcargs_empty(args);
 			args->args_void = 1; /* (void) vs () */
@@ -748,7 +773,7 @@ decl **parse_decls_one_type()
 
 static int is_old_func(decl *d)
 {
-	type_ref *r = type_ref_is(d->ref, type_ref_func);
+	type_ref *r = PARSE_type_ref_is(d->ref, type_ref_func);
 	return r && r->bits.func->args_old_proto;
 }
 
@@ -759,7 +784,7 @@ static void check_old_func(decl *d, decl **old_args)
 	int i;
 	funcargs *dfuncargs = d->ref->bits.func;
 
-	UCC_ASSERT(type_ref_is(d->ref, type_ref_func), "not func");
+	UCC_ASSERT(PARSE_type_ref_is(d->ref, type_ref_func), "not func");
 
 	if(!dfuncargs->args_old_proto){
 		DIE_AT(&d->where, dfuncargs->arglist
@@ -835,7 +860,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 		if(store == store_typedef){
 			are_tdefs = 1;
 		}else{
-			struct_union_enum_st *sue = type_ref_is_s_or_u(this_ref);
+			struct_union_enum_st *sue = PARSE_type_ref_is_s_or_u(this_ref);
 
 			if(sue && !parse_possible_decl()){
 				/*
@@ -884,7 +909,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 						goto add;
 
 					/* check for no-fwd and anon */
-					sue = type_ref_is_s_or_u_or_e(this_ref);
+					sue = PARSE_type_ref_is_s_or_u_or_e(this_ref);
 					switch(sue ? sue->primitive : type_unknown){
 						case type_struct:
 						case type_union:
@@ -907,7 +932,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 						 * [function with int argument, not a pointer to const int
 						 */
 #define err_nodecl "declaration doesn't declare anything"
-						if(type_ref_is(d->ref, type_ref_type))
+						if(PARSE_type_ref_is(d->ref, type_ref_type))
 							WARN_AT(&d->where, err_nodecl);
 						else
 							DIE_AT(&d->where, err_nodecl);

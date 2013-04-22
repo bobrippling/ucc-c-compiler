@@ -25,6 +25,8 @@ void fold_stmt_code(stmt *s)
 	for(diter = s->decls; diter && *diter; diter++){
 		decl *d = *diter;
 
+		fold_type_ref(d->ref, NULL, s->symtab);
+
 		if(d->func_code)
 			DIE_AT(&d->func_code->where, "can't nest functions");
 		else if(DECL_IS_FUNC(d) && (d->store & STORE_MASK_STORE) == store_static)
