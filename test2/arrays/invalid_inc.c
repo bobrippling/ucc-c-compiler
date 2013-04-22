@@ -2,5 +2,5 @@
 
 f(int (*x)[])
 {
-	return *x[1]; // CHECK: /error: dereference of pointer to incom/
+	return *x[1]; // CHECK: /error: arithmetic on pointer to incomplete type int \[\]/
 }

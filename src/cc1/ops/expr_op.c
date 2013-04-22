@@ -236,6 +236,18 @@ ptr_relation:
 			/* FIXME: promote to unsigned */
 			*(l_ptr ? prhs : plhs) = type_ref_cached_INTPTR_T();
 
+			/* + or -, check if we can */
+			{
+				type_ref *const next = type_ref_next(resolved);
+
+				if(!type_ref_is_complete(next)){
+					DIE_AT(w, "arithmetic on pointer to incomplete type %s",
+							type_ref_to_str(next));
+					/* TODO: note: type declared at resolved->where */
+				}
+			}
+
+
 			goto fin;
 		}
 	}

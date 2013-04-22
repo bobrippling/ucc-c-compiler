@@ -566,9 +566,7 @@ type_ref *type_ref_ptr_depth_dec(type_ref *r)
 	if(type_ref_is(r, type_ref_func))
 		return r_save;
 
-	if(!type_ref_is_complete(r))
-		DIE_AT(&r->where, "dereference of pointer to incomplete type %s",
-				type_ref_to_str(r));
+	/* don't check for incomplete types here */
 
 	/* XXX: memleak */
 	/*type_ref_free(r_save);*/

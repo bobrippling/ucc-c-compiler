@@ -448,7 +448,7 @@ static int calc_ptr_step(type_ref *t)
 	if(type_ref_is_type(type_ref_is_ptr(t), type_void))
 		return type_primitive_size(type_void);
 
-	sz = type_ref_size(type_ref_next(t), NULL);
+	sz = type_ref_size(type_ref_next(t), &t->where);
 
 	return sz;
 }
