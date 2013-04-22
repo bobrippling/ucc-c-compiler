@@ -31,9 +31,12 @@ $SIG{CHLD} = sub {
 
 	my $dead = wait;
 	my $ret = $?;
-	#print STDERR "dead child $dead (fork pid $pid) ret $ret\n";
 
-	exit wexitstatus($ret);
+	if($ret){
+		print STDERR "timeout: child returned $ret\n";
+	}
+
+	exit $ret;
 };
 
 my $pid = bg @ARGV;
