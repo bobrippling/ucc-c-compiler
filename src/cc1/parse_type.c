@@ -142,11 +142,11 @@ type *parse_type_sue(enum type_primitive prim)
 
 	}else{
 		/* predeclaring */
-		if(prim == type_enum && !sue_find(current_scope, spel))
+		if(prim == type_enum && !sue_find_this_scope(current_scope, spel))
 			cc1_warn_at(NULL, 0, 1, WARN_PREDECL_ENUM, "predeclaration of enums is not C99");
 	}
 
-	t->sue = sue_add(current_scope, spel, members, prim, is_complete);
+	t->sue = sue_find_or_add(current_scope, spel, members, prim, is_complete);
 
 	parse_add_attr(&t->sue->attr); /* struct A {} __attr__ */
 

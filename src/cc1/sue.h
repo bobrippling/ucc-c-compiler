@@ -41,8 +41,8 @@ struct struct_union_enum_st
 #define sue_nmembers(x) dynarray_count((x)->members)
 
 
-struct_union_enum_st *sue_add( symtable *, char *spel, sue_member **members, enum type_primitive, int complete);
-struct_union_enum_st *sue_find(symtable *, const char *spel);
+struct_union_enum_st *sue_find_or_add(symtable *, char *spel, sue_member **members, enum type_primitive, int complete);
+struct_union_enum_st *sue_find_this_scope(symtable *, const char *spel);
 
 /* enum specific */
 void enum_vals_add(sue_member ***, char *, expr *);

@@ -58,18 +58,26 @@ int sue_size(struct_union_enum_st *st, const where *w)
 	return st->size; /* can be zero */
 }
 
-struct_union_enum_st *sue_find(symtable *stab, const char *spel)
+struct_union_enum_st *sue_find_this_scope(symtable *stab, const char *spel)
+{
+	struct_union_enum_st **i;
+	for(i = stab->sues; i && *i; i++){
+		struct_union_enum_st *st = *i;
+
+		if(st->spel && !strcmp(st->spel, spel))
+			return st;
+	}
+	return NULL;
+}
+
+static struct_union_enum_st *sue_find_descend(symtable *stab, const char *spel)
 {
 	for(; stab; stab = stab->parent){
-		struct_union_enum_st **i;
-
-		for(i = stab->sues; i && *i; i++){
-			struct_union_enum_st *st = *i;
-
-			if(st->spel && !strcmp(st->spel, spel))
-				return st;
-		}
+		struct_union_enum_st *sue = sue_find_this_scope(stab, spel);
+		if(sue)
+			return sue;
 	}
+
 	return NULL;
 }
 
@@ -96,15 +104,14 @@ static int decl_spel_cmp(const void *pa, const void *pb)
 	return strcmp(a->struct_member->spel, b->struct_member->spel);
 }
 
-struct_union_enum_st *sue_add(
-		symtable *const stab, char *spel,
-		sue_member **members, enum type_primitive prim,
-		int is_complete)
+
+struct_union_enum_st *sue_find_or_add(symtable *stab, char *spel,
+		sue_member **members, enum type_primitive prim, int is_complete)
 {
 	struct_union_enum_st *sue;
 	int new = 0;
 
-	if(spel && (sue = sue_find(stab, spel))){
+	if(spel && (sue = sue_find_descend(stab, spel))){
 		char buf[WHERE_BUF_SIZ];
 
 		snprintf(buf, sizeof buf, "%s", where_str(&sue->where));
@@ -183,6 +190,7 @@ struct_union_enum_st *sue_add(
 	sue->anon = !spel;
 	if(is_complete)
 		sue->complete = 1;
+	/* completeness checks done above */
 
 	sue_set_spel(sue, spel);
 
