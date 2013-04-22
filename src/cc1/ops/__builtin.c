@@ -387,7 +387,10 @@ static void fold_unreachable(expr *e, symtable *stab)
 {
 	(void)stab;
 
-	e->tree_type = type_ref_new_type(type_new_primitive(type_void));
+	e->tree_type = type_ref_func_call(
+			e->expr->tree_type = type_ref_new_func(
+				type_ref_cached_VOID(), funcargs_new()), NULL);
+
 	decl_attr_append(&e->tree_type->attr, decl_attr_new(attr_noreturn));
 
 	wur_builtin(e);
