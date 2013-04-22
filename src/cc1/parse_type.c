@@ -27,6 +27,9 @@
 
 /*#define PARSE_DECL_VERBOSE*/
 
+/* we don't do the type_ref_is_* since it needs to be folded for that */
+#define PARSE_DECL_IS_FUNC(d) ((d)->ref->type == type_ref_func)
+
 static void parse_add_attr(decl_attr **append);
 static type_ref *parse_type_ref2(enum decl_mode mode, char **sp);
 
@@ -677,7 +680,7 @@ decl *parse_decl(type_ref *btype, enum decl_mode mode)
 	 * }
 	 */
 
-	if(!DECL_IS_FUNC(d)){
+	if(!PARSE_DECL_IS_FUNC(d)){
 		/* parse __asm__ naming before attributes, as per gcc and clang */
 		parse_add_asm(d);
 		parse_add_attr(&d->attr); /* int spel __attr__ */
@@ -915,7 +918,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 					goto next;
 				}
 				DIE_AT(&d->where, "identifier expected after decl (got %s)", token_to_str(curtok));
-			}else if(DECL_IS_FUNC(d)){
+			}else if(PARSE_DECL_IS_FUNC(d)){
 				int need_func = 0;
 
 				/* special case - support asm directly after a function
@@ -968,7 +971,7 @@ add:
 					d);
 
 			/* FIXME: check later for functions, not here - typedefs */
-			if(DECL_IS_FUNC(d)){
+			if(PARSE_DECL_IS_FUNC(d)){
 				if(d->func_code && (mode & DECL_MULTI_ACCEPT_FUNC_CODE) == 0)
 						DIE_AT(&d->where, "function code not wanted (%s)", d->spel);
 
@@ -977,7 +980,7 @@ add:
 			}
 
 			if(are_tdefs){
-				if(DECL_IS_FUNC(d) && d->func_code)
+				if(PARSE_DECL_IS_FUNC(d) && d->func_code)
 					DIE_AT(&d->where, "can't have a typedef function with code");
 				else if(d->init)
 					DIE_AT(&d->where, "can't init a typedef");
