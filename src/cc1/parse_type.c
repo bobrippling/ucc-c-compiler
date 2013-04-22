@@ -743,6 +743,12 @@ decl **parse_decls_one_type()
 	return decls;
 }
 
+static int is_old_func(decl *d)
+{
+	type_ref *r = type_ref_is(d->ref, type_ref_func);
+	return r && r->bits.func->args_old_proto;
+}
+
 static void check_old_func(decl *d, decl **old_args)
 {
 	/* check then replace old args */
@@ -909,37 +915,39 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 					goto next;
 				}
 				DIE_AT(&d->where, "identifier expected after decl (got %s)", token_to_str(curtok));
-			}else if(curtok != token_semicolon && DECL_IS_FUNC(d)){
-				/* this is why we can't have __attribute__ on function defs - the old func decls */
-				int need_func = 1;
+			}else if(DECL_IS_FUNC(d)){
+				int need_func = 0;
 
 				/* special case - support asm directly after a function
 				 * no parse ambiguity - asm can only appear at the end of a decl,
 				 * before __attribute__
 				 */
-				if(curtok == token_asm){
+				if(curtok == token_asm)
 					parse_add_asm(d);
-					need_func = 0;
-				}
 
-				/* special case - support GCC __attribute__ directly after a function */
-				if(curtok == token_attribute){
+				/* special case - support GCC __attribute__
+				 * directly after a "new"/prototype function
+				 *
+				 * only accept if it's a new-style function,
+				 * i.e.
+				 *
+				 * f(i) __attribute__(()) int i; { ... }
+				 *
+				 * is invalid, since old-style functions have
+				 * decls after the final close-paren
+				 */
+				if(curtok == token_attribute && !is_old_func(d)){
 					/* add to .ref, since this is what is checked when the function decays to a pointer */
 					parse_add_attr(&d->ref->attr);
-
-					/*
-					 * if we have a type now, it's:
-					 *
-					 * f() __attribute__(()) int i; { ... }
-					 *
-					 * possible to parse, but the user's being silly
-					 */
-
-					need_func = 0; /* a ';' will do me fine */
 				}else{
 					decl **old_args = parse_decls_multi_type(0);
-					if(old_args)
+					if(old_args){
 						check_old_func(d, old_args);
+
+						/* old function with decls after the close paren,
+						 * need a function */
+						need_func = 1;
+					}
 				}
 
 				/* clang-style allows __attribute__ and then a function block */
