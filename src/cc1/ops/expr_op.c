@@ -388,9 +388,12 @@ static void op_bound(expr *e)
 		const_fold(lhs ? e->rhs : e->lhs, &k);
 
 		if(k.type == CONST_VAL){
-#define idx k.bits.iv
 			const long sz = type_ref_array_len(array->tree_type);
 
+			if(sz == 0) /* FIXME: sentinel */
+				return;
+
+#define idx k.bits.iv
 			if(e->op == op_minus)
 				idx.val = -idx.val;
 
