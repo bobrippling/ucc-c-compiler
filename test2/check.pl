@@ -145,7 +145,7 @@ iter_lines(
 			if($match =~ m#^(!)?/(.*)/$#){
 				$rev = defined $1;
 			}else{
-				die2 "invalid CHECK: '$match'"
+				die2 "invalid CHECK (line $check->{line}): '$match'"
 			}
 
 
