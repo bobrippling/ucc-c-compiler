@@ -185,13 +185,20 @@ type_ref *op_required_promotion(
 		const int r_ptr = !!type_ref_is(trhs, type_ref_ptr);
 
 		if(l_ptr && r_ptr){
+			char buf[TYPE_REF_STATIC_BUFSIZ];
+
 			if(op == op_minus){
+				/* don't allow void * */
+				if(!type_ref_equal(tlhs, trhs, DECL_CMP_EXACT_MATCH)){
+					DIE_AT(w, "subtraction of distinct pointer types %s and %s",
+							type_ref_to_str(tlhs), type_ref_to_str_r(buf, trhs));
+				}
+
 				resolved = type_ref_cached_INTPTR_T();
+
 			}else if(op_is_relational(op)){
 ptr_relation:
 				if(op_is_comparison(op)){
-					char buf[TYPE_REF_STATIC_BUFSIZ];
-
 					if(!fold_type_ref_equal(tlhs, trhs, w,
 							WARN_COMPARE_MISMATCH, 0,
 							l_ptr && r_ptr
