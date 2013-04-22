@@ -208,6 +208,7 @@ expr *expr_new_str(char *, int len, int wide);
 expr *expr_new_addr_lbl(char *);
 expr *expr_new_addr(expr *);
 
+expr *expr_new_comma2(expr *lhs, expr *rhs);
 #define expr_new_comma() expr_new_wrapper(comma)
 
 int expr_is_null_ptr(expr *, int allow_int);

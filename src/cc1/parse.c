@@ -493,17 +493,22 @@ expr **parse_funcargs()
 
 void parse_test_init_expr(stmt *t)
 {
-	decl **c99_ucc_inits;
+	decl *d;
 
 	EAT(token_open_paren);
 
-	c99_ucc_inits = parse_decls_one_type();
-	if(c99_ucc_inits){
+	d = parse_decl_single(DECL_SPEL_NEED);
+	if(d){
 		t->flow = stmt_flow_new(symtab_new(t->symtab));
 
 		current_scope = t->flow->for_init_symtab;
 
-		t->flow->for_init_decls = c99_ucc_inits;
+		dynarray_add(&t->flow->for_init_decls, d);
+
+		if(accept(token_comma)){
+			/* if(int i = 5, i > f()){ ... } */
+			t->expr = parse_expr_exp();
+		}
 	}else{
 		t->expr = parse_expr_exp();
 	}

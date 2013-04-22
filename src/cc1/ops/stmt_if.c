@@ -14,16 +14,20 @@ symtable *fold_stmt_test_init_expr(stmt *s, const char *which)
 {
 	if(s->flow){
 		/* if(char *x = ...) */
-		expr *dinit;
-
-		dinit = fold_for_if_init_decls(s);
+		expr *dinit = fold_for_if_init_decls(s);
 
 		if(!dinit)
 			DIE_AT(&s->where, "no initialiser to test in %s", which);
 
-		UCC_ASSERT(!s->expr, "%s-expr in C99_ucc %s-init mode", which, which);
+		/* allow s->expr: if(int i = f(), i > 2) ... */
+		if(s->expr){
+			/* treat as if it's: if(i = f(), i > 2) */
+			s->expr = expr_new_comma2(dinit, s->expr);
+		}else{
+			/* treat it as: if(i = f()) */
+			s->expr = dinit;
+		}
 
-		s->expr = dinit;
 		return s->flow->for_init_symtab;
 	}
 
