@@ -1,4 +1,4 @@
-// RUN: %ucc %s
+// RUN: %ucc -c %s
 // RUN: %check %s
 
 int f(int [static 2]);

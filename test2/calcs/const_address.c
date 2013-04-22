@@ -1,5 +1,5 @@
-// RUN: %ucc %s
-// RUN: %ucc %s -S -o- | grep -F 's + 1296'
+// RUN: %ucc -c %s
+// RUN: %ucc %s -S -o- | grep -F 's + 1296' > /dev/null
 
 struct RT
 {

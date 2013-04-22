@@ -1,7 +1,5 @@
 // RUN: %ucc -o %t %s
 // RUN: %t; [ $? -eq 8 ]
-// RUN: %ucc -S -o- %s | grep -F 'movl .8'
-// RUN: %ucc -S -o- %s | grep -F 'movl .2'
 
 q(){}
 char *s = "";

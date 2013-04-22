@@ -162,7 +162,7 @@ iter_lines(
 
 			if($found == $rev){
 				$missing_warning = 1;
-				warn "check $match not found in warnings on line $check->{line}\n"
+				warn "check $match " . ($rev ? "" : "not ") . "found in warnings on line $check->{line}\n"
 			}
 		}
 	}

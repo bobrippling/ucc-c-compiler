@@ -1,6 +1,6 @@
-// RUN: %ucc -c %s
+// RUN: %check -e %s
 
 int j;
-int
-//long
-i = &j;
+long l = &j; // fine
+
+int i = &j; // CHECK: /error:.*not constant/

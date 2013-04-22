@@ -8,5 +8,5 @@ f(int x[])
 main()
 {
 	int x[] = { 1, 2, 3 };
-	return f(0);
+	return f(x);
 }

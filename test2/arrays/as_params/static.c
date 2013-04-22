@@ -1,10 +1,12 @@
 // RUN: %ucc -o %t %s
+// RUN: %check %s
+
 int f(int x[static /*const*/ 10])
 {
 	return *++x;
 }
 
-int g(int x[10]);
+int g(int x[10]){}
 
 main()
 {

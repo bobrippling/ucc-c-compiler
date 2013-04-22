@@ -1,6 +1,5 @@
 // RUN: %ucc %s -o %t
-// RUN: %t | grep '0, 3'
-// RUN: %t | grep '4, 3'
+// RUN: %t | %output_check '0, 3' '1, 3' '2, 3' '3, 3' '4, 3'
 
 x(){}
 
