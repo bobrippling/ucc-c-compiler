@@ -22,6 +22,10 @@
 #define STAT_NEW(type)      stmt_new_wrapper(type, current_scope)
 #define STAT_NEW_NEST(type) stmt_new_wrapper(type, symtab_new(current_scope))
 
+#define STMT_SCOPE_RECOVER(t) \
+	if(t->flow)            \
+		current_scope = current_scope->parent
+
 stmt *parse_stmt_block(void);
 stmt *parse_stmt(void);
 expr **parse_funcargs(void);
@@ -529,8 +533,7 @@ stmt *parse_if()
 	if(accept(token_else))
 		t->rhs = parse_stmt();
 
-	if(t->flow)
-		current_scope = current_scope->parent;
+	STMT_SCOPE_RECOVER(t);
 
 	return t;
 }
@@ -551,6 +554,8 @@ stmt *parse_switch()
 
 	current_break_target = old;
 	current_switch = old_sw;
+
+	STMT_SCOPE_RECOVER(t);
 
 	return t;
 }
@@ -585,6 +590,8 @@ stmt *parse_while()
 	parse_test_init_expr(t);
 
 	t->lhs = parse_stmt();
+
+	STMT_SCOPE_RECOVER(t);
 
 	return t;
 }
@@ -734,7 +741,10 @@ normal:
 	}while(!last);
 
 
-	current_scope = codes->symtab->parent;
+	/*current_scope = codes->symtab->parent;
+	 * don't - we use ->parent for scope leak checks
+	 */
+	current_scope = current_scope->parent;
 
 	return codes;
 }
@@ -1006,4 +1016,6 @@ void parse(symtable_global *globals)
 	}
 
 	current_scope->static_asserts = static_asserts;
+
+	UCC_ASSERT(!current_scope->parent, "scope leak during parse");
 }
