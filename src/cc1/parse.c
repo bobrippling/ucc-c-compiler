@@ -31,7 +31,7 @@ expr *parse_expr_unary(void);
 
 /* parse_type uses this for structs, tdefs and enums */
 symtable *current_scope;
-static_assert **static_asserts;
+static static_assert **static_asserts;
 
 
 /* sometimes we can carry on after an error, but we don't want to go through to compilation etc */
@@ -491,7 +491,7 @@ expr **parse_funcargs()
 	return args;
 }
 
-void parse_test_init_expr(stmt *t)
+static void parse_test_init_expr(stmt *t)
 {
 	decl *d;
 
