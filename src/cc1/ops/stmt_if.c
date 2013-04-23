@@ -31,6 +31,8 @@ symtable *fold_stmt_test_init_expr(stmt *s, const char *which)
 		return s->flow->for_init_symtab;
 	}
 
+	fold_symtab_scope(s->symtab);
+
 	return s->symtab;
 }
 

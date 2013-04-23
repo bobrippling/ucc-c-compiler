@@ -478,6 +478,13 @@ void fold_decl_global(decl *d, symtable *stab)
 
 void fold_symtab_scope(symtable *stab)
 {
+	/* this is called from wherever we can define a
+	 * struct/union/enum,
+	 * e.g. a code-block (explicit or implicit),
+	 *      global scope
+	 * and an if/switch/while statement: if((struct A { int i; } *)0)...
+	 */
+
 	struct_union_enum_st **sit;
 
 	for(sit = stab->sues; sit && *sit; sit++)
