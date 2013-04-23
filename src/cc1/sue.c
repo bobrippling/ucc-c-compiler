@@ -70,12 +70,16 @@ struct_union_enum_st *sue_find_this_scope(symtable *stab, const char *spel)
 	return NULL;
 }
 
-static struct_union_enum_st *sue_find_descend(symtable *stab, const char *spel)
+static struct_union_enum_st *sue_find_descend(
+		symtable *stab, const char *spel, int *descended)
 {
+	*descended = 0;
+
 	for(; stab; stab = stab->parent){
 		struct_union_enum_st *sue = sue_find_this_scope(stab, spel);
 		if(sue)
 			return sue;
+		*descended = 1;
 	}
 
 	return NULL;
@@ -110,24 +114,32 @@ struct_union_enum_st *sue_find_or_add(symtable *stab, char *spel,
 {
 	struct_union_enum_st *sue;
 	int new = 0;
+	int descended;
 
-	if(spel && (sue = sue_find_descend(stab, spel))){
-		char buf[WHERE_BUF_SIZ];
+	if(spel && (sue = sue_find_descend(stab, spel, &descended))){
+		/* check if we're creating a new type or using an old one */
+		if(!is_complete || !descended){
+			/* using current */
+			char buf[WHERE_BUF_SIZ];
 
-		snprintf(buf, sizeof buf, "%s", where_str(&sue->where));
+			snprintf(buf, sizeof buf, "%s", where_str(&sue->where));
 
-		/* redef checks */
-		if(sue->primitive != prim)
-			DIE_AT(NULL, "trying to redefine %s as %s (from %s)",
-					sue_str(sue),
-					type_primitive_to_str(prim),
-					buf);
+			/* redef checks */
+			if(sue->primitive != prim)
+				DIE_AT(NULL, "trying to redefine %s as %s (from %s)",
+						sue_str(sue),
+						type_primitive_to_str(prim),
+						buf);
 
-		if(members && !sue_incomplete(sue))
-			DIE_AT(NULL, "can't redefine %s %s's members (defined at %s)",
-					sue_str(sue), sue->spel, buf);
+			if(members && !sue_incomplete(sue))
+				DIE_AT(NULL, "can't redefine %s %s's members (defined at %s)",
+						sue_str(sue), sue->spel, buf);
+		}else{
+			goto new_type;
+		}
 
 	}else{
+new_type:
 		sue = umalloc(sizeof *sue);
 		sue->primitive = prim;
 
