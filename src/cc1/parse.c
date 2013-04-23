@@ -511,7 +511,7 @@ static void parse_test_init_expr(stmt *t)
 	 * C90 drags the scope of the enum up to the enclosing block
 	 */
 	if(cc1_std == STD_C99)
-		current_scope = symtab_new(current_scope);
+		t->symtab = current_scope = symtab_new(current_scope);
 
 	d = parse_decl_single(DECL_SPEL_NEED);
 	if(d){
