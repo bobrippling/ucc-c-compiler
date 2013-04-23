@@ -9,7 +9,7 @@ cc1.o: cc1.c ../util/util.h data_structs.h tree.h expr.h ops/expr_addr.h \
  ops/stmt_label.h ops/stmt_noop.h ops/stmt_return.h ops/stmt_switch.h \
  ops/stmt_while.h ops/stmt_continue.h sym.h decl.h tokenise.h parse.h \
  cc1.h fold.h gen_asm.h gen_str.h gen_style.h fold_sym.h out/out.h \
- ../as_cfg.h
+ ops/__builtin.h ../as_cfg.h
 const.o: const.c ../util/util.h data_structs.h tree.h expr.h \
  ops/expr_addr.h ops/expr_assign.h ops/expr_assign_compound.h \
  ops/expr_cast.h ops/expr_comma.h ops/expr_funcall.h \
@@ -313,7 +313,7 @@ ops/expr_assign.o: ops/expr_assign.c ops/ops.h ops/../../util/util.h \
  ops/../ops/stmt_switch.h ops/../ops/stmt_while.h \
  ops/../ops/stmt_continue.h ops/../sym.h ops/../decl.h ops/../cc1.h \
  ops/../out/out.h ops/../fold.h ops/../const.h ops/../gen_str.h \
- ops/../gen_asm.h ops/expr_assign.h
+ ops/../gen_asm.h ops/expr_assign.h ops/__builtin.h
 ops/expr_assign_compound.o: ops/expr_assign_compound.c ops/ops.h \
  ops/../../util/util.h ops/../data_structs.h ops/../tree.h ops/../expr.h \
  ops/../ops/expr_addr.h ops/../ops/expr_assign.h \
