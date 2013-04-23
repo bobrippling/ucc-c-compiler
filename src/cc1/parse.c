@@ -22,9 +22,12 @@
 #define STAT_NEW(type)      stmt_new_wrapper(type, current_scope)
 #define STAT_NEW_NEST(type) stmt_new_wrapper(type, symtab_new(current_scope))
 
-#define STMT_SCOPE_RECOVER(t) \
-	if(t->flow)            \
+#define STMT_SCOPE_RECOVER(t)              \
+	if(t->flow)                              \
+		current_scope = current_scope->parent; \
+	if(cc1_std == STD_C99)                   \
 		current_scope = current_scope->parent
+/* ^ recover C99's if/switch/while scoping */
 
 stmt *parse_stmt_block(void);
 stmt *parse_stmt(void);
@@ -501,9 +504,18 @@ static void parse_test_init_expr(stmt *t)
 
 	EAT(token_open_paren);
 
+	/* if C99, we create a new scope here, for e.g.
+	 * if(5 > (enum { a, b })a){ return a; } return b;
+	 * "return b" can't see 'b' since its scope is only the if
+	 *
+	 * C90 drags the scope of the enum up to the enclosing block
+	 */
+	if(cc1_std == STD_C99)
+		current_scope = symtab_new(current_scope);
+
 	d = parse_decl_single(DECL_SPEL_NEED);
 	if(d){
-		t->flow = stmt_flow_new(symtab_new(t->symtab));
+		t->flow = stmt_flow_new(symtab_new(current_scope));
 
 		current_scope = t->flow->for_init_symtab;
 
