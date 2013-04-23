@@ -87,7 +87,7 @@ type *parse_type_sue(enum type_primitive prim)
 
 	if(accept(token_open_block)){
 		if(prim == type_enum){
-			do{
+			for(;;){
 				expr *e;
 				char *sp;
 
@@ -103,7 +103,14 @@ type *parse_type_sue(enum type_primitive prim)
 
 				if(!accept(token_comma))
 					break;
-			}while(curtok == token_identifier);
+
+				if(curtok != token_identifier){
+					if(cc1_std < STD_C99)
+						WARN_AT(NULL, "trailing comma in enum definition");
+					break;
+				}
+			}
+
 		}else{
 			/* always allow nameless structs (C11)
 			 * we don't allow tagged ones unless

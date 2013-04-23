@@ -52,6 +52,9 @@ decl_init *parse_initialisation(void)
 
 			if(!accept(token_comma))
 				break;
+
+			if(curtok == token_close_block && cc1_std < STD_C99)
+				WARN_AT(NULL, "trailing comma in initialiser");
 		}
 
 		di->bits.ar.inits = exps;

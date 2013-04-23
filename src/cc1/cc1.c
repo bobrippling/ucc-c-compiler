@@ -134,6 +134,8 @@ enum fopt fopt_mode = FOPT_CONST_FOLD
                     | FOPT_MS_EXTENSIONS;
 enum cc1_backend cc1_backend = BACKEND_ASM;
 
+enum cc1_std cc1_std = STD_C99;
+
 int m32 = 0;
 
 int cc1_max_errors = 16;
@@ -335,6 +337,21 @@ int main(int argc, char **argv)
 					return 1;
 				}
 			}
+
+		}else if(!strncmp(argv[i], "-std=", 5)){
+			const char *std = argv[i] + 5;
+
+			if(!strcmp(std, "c99"))
+				cc1_std = STD_C99;
+			else if(!strcmp(std, "c90"))
+std_c90: cc1_std = STD_C90;
+			else if(!strcmp(std, "c89"))
+				cc1_std = STD_C89;
+			else
+				ccdie(0, "-std argument \"%s\" not recognised", std);
+
+		}else if(!strcmp(argv[i], "-ansi")){
+			goto std_c90;
 
 		}else if(!strcmp(argv[i], "-w")){
 			warn_mode = WARN_NONE;

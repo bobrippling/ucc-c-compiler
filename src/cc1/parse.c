@@ -699,7 +699,7 @@ stmt *parse_stmt_and_decls()
 			if(!codes->codes){
 				parse_got_decls(decls, codes);
 				goto normal;
-			}else{
+			}else if(cc1_std < STD_C99){
 				static int warned = 0;
 				if(!warned){
 					warned = 1;

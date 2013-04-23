@@ -346,7 +346,7 @@ int main(int argc, char **argv)
 
 				case 'w':
 				case 'm':
-/*arg_cc1:*/
+arg_cc1:
 					ADD_ARG(mode_compile);
 					continue;
 
@@ -412,7 +412,9 @@ arg_ld:
 					goto input;
 
 				default:
-					if(!strcmp(argv[i], "-nostdlib"))
+					if(!strncmp(argv[i], "-std=", 5) || !strcmp(argv[i], "-ansi"))
+						goto arg_cc1;
+					else if(!strcmp(argv[i], "-nostdlib"))
 						gopts.nostdlib = 1;
 					else if(!strcmp(argv[i], "-nostartfiles"))
 						gopts.nostartfiles = 1;
