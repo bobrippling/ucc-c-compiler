@@ -74,6 +74,9 @@ extensions:
 	classes?
 	__attribute__((overloadable)) - clang
 
+warn on C99 uses in -std=c(89|90)|ansi ?
+	e.g. compound literals, _Generic, _Static_assert, etc
+
 ---------------------------------------------------- cpp
 
 fix memory leaks
