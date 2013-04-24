@@ -398,8 +398,16 @@ static type_ref *parse_btype(enum decl_storage *store)
 	{
 		type_ref *r;
 
-		if(signed_set && primitive == type__Bool)
-			DIE_AT(NULL, "%ssigned with _Bool", is_signed ? "" : "un");
+		switch(primitive){
+			case type__Bool:
+			case type_float:
+			case type_double:
+			case type_ldouble:
+				if(signed_set)
+					DIE_AT(NULL, "%ssigned with _Bool", is_signed ? "" : "un");
+			default:
+				break;
+		}
 
 		switch(primitive_mode){
 			case TYPEDEF:
