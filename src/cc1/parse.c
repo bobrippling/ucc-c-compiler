@@ -630,10 +630,13 @@ stmt *parse_for()
 
 	SEMI_WRAP(
 			decl **c99inits = parse_decls_one_type();
-			if(c99inits)
+			if(c99inits){
 				sf->for_init_decls = c99inits;
-			else
-				sf->for_init = parse_expr_exp()
+				if(cc1_std < STD_C99)
+					WARN_AT(NULL, "use of C99 for-init");
+			}else{
+				sf->for_init = parse_expr_exp();
+			}
 	);
 
 	SEMI_WRAP(sf->for_while = parse_expr_exp());
