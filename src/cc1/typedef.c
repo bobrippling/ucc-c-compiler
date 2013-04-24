@@ -9,8 +9,15 @@
 #include "typedef.h"
 #include "sym.h"
 
-decl *typedef_find4(symtable *stab, const char *spel, decl *exclude, int descend)
+static decl *typedef_find4(
+		symtable *stab,
+		const char *spel,
+		int *pdescended,
+		decl *exclude)
 {
+	if(pdescended)
+		*pdescended = 0;
+
 	for(; stab; stab = stab->parent){
 		decl **di;
 		for(di = stab->typedefs; di && *di; di++){
@@ -18,14 +25,27 @@ decl *typedef_find4(symtable *stab, const char *spel, decl *exclude, int descend
 			if(d != exclude && !strcmp(d->spel, spel))
 				return d;
 		}
-		if(!descend)
-			break;
+		if(pdescended)
+			*pdescended = 1;
 	}
 
 	return NULL;
 }
 
-decl *typedef_find(symtable *stab, const char *spel)
+decl *typedef_find_descended_exclude(
+		symtable *stab, const char *spel, int *pdescended,
+		decl *exclude)
 {
-	return typedef_find4(stab, spel, NULL, 1);
+	return typedef_find4(stab, spel, pdescended, exclude);
+}
+
+decl *typedef_find_descended(
+		symtable *stab, const char *spel, int *pdescended)
+{
+	return typedef_find4(stab, spel, pdescended, NULL);
+}
+
+int typedef_visible(symtable *stab, const char *spel)
+{
+	return !!typedef_find4(stab, spel, NULL, NULL);
 }

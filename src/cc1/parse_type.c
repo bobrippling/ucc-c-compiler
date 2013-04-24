@@ -179,15 +179,22 @@ static void parse_add_attr(decl_attr **append)
 
 static type_ref *parse_btype(enum decl_storage *store)
 {
-#define PRIMITIVE_NO_MORE 2
-
 	expr *tdef_typeof = NULL;
 	decl_attr *attr = NULL;
 	enum type_qualifier qual = qual_none;
 	enum type_primitive primitive = type_int;
 	int is_signed = 1, is_inline = 0, had_attr = 0, is_noreturn = 0;
-	int store_set = 0, primitive_set = 0, signed_set = 0;
+	int store_set = 0, signed_set = 0;
+	int descended;
 	decl *tdef_decl = NULL;
+	enum
+	{
+		NONE,
+		PRIMITIVE_MAYBE_MORE,
+		PRIMITIVE_NO_MORE,
+		TYPEDEF,
+		TYPEOF
+	} primitive_mode = NONE;
 
 	if(store)
 		*store = store_default;
@@ -215,36 +222,58 @@ static type_ref *parse_btype(enum decl_storage *store)
 		}else if(curtok_is_type_primitive()){
 			const enum type_primitive got = curtok_to_type_primitive();
 
-			if(primitive_set){
-				/* allow "long int" and "short int" */
+			switch(primitive_mode){
+				case PRIMITIVE_MAYBE_MORE:
+					/* allow "long int" and "short int" */
 #define INT(x)   x == type_int
 #define SHORT(x) x == type_short
 #define LONG(x)  x == type_long
 #define DBL(x)   x == type_double
 
-				if(      INT(got) && (SHORT(primitive) || LONG(primitive))){
-					/* fine, ignore the int */
-				}else if(INT(primitive) && (SHORT(got) || LONG(got))){
-					primitive = got;
-				}else{
-					int die = 1;
+					if(      INT(got) && (SHORT(primitive) || LONG(primitive))){
+						/* fine, ignore the int */
+					}else if(INT(primitive) && (SHORT(got) || LONG(got))){
+						primitive = got;
+					}else{
+						int die = 1;
 
-					if(primitive_set < PRIMITIVE_NO_MORE){
-						/* special case for long long and long double */
-						if(LONG(primitive) && LONG(got))
-							primitive = type_llong, die = 0;
-						else if((LONG(primitive) && DBL(got)) || (DBL(primitive) && LONG(got)))
-							primitive = type_ldouble, die = 0;
+						if(primitive_mode == PRIMITIVE_MAYBE_MORE){
+							/* special case for long long and long double */
+							if(LONG(primitive) && LONG(got))
+								primitive = type_llong, die = 0;
+							else if((LONG(primitive) && DBL(got)) || (DBL(primitive) && LONG(got)))
+								primitive = type_ldouble, die = 0;
+
+							primitive_mode = PRIMITIVE_NO_MORE;
+						}
+
+						if(die)
+				case PRIMITIVE_NO_MORE:
+							DIE_AT(NULL, "second type primitive %s", type_primitive_to_str(got));
 					}
+					if(primitive_mode == PRIMITIVE_MAYBE_MORE){
+						switch(primitive){
+							case type_int:
+							case type_long:
+								/* allow short int, long int and long long */
+								break;
+							default:
+								primitive_mode = PRIMITIVE_NO_MORE;
+						}
+					}
+					break;
 
-					if(die)
-						DIE_AT(NULL, "second type primitive %s", type_primitive_to_str(got));
-				}
-			}else{
-				primitive = got;
+				case NONE:
+					primitive = got;
+					primitive_mode = PRIMITIVE_MAYBE_MORE;
+					break;
+				case TYPEDEF:
+				case TYPEOF:
+					DIE_AT(NULL, "type primitive (%s) with %s",
+							type_primitive_to_str(primitive),
+							primitive_mode == TYPEDEF ? "typedef-instance" : "typeof");
 			}
 
-			primitive_set++;
 			EAT(curtok);
 
 		}else if(curtok == token_signed || curtok == token_unsigned){
@@ -286,7 +315,7 @@ static type_ref *parse_btype(enum decl_storage *store)
 					ICE("wat");
 			}
 
-			if(signed_set || primitive_set || is_inline)
+			if(signed_set || primitive_mode != NONE || is_inline)
 				DIE_AT(&t->where, "primitive/signed/unsigned/inline with %s", str);
 
 			/* fine... although a _Noreturn function returning a sue
@@ -307,14 +336,17 @@ static type_ref *parse_btype(enum decl_storage *store)
 			return type_ref_new_cast_add(type_ref_new_type(t), qual);
 
 		}else if(accept(token_typeof)){
-			if(primitive_set)
-				DIE_AT(NULL, "duplicate typeof specifier");
+			if(primitive_mode != NONE)
+				DIE_AT(NULL, "typeof specifier after primitive");
 
 			tdef_typeof = parse_expr_sizeof_typeof(1);
-			primitive_set = 1;
+			primitive_mode = PRIMITIVE_NO_MORE;
 
 		}else if(curtok == token_identifier
-		&& (tdef_decl_test = typedef_find(current_scope, token_current_spel_peek()))){
+		&& (tdef_decl_test = typedef_find_descended(
+				                         current_scope,
+				                         token_current_spel_peek(),
+																 &descended))){
 			/* typedef name */
 
 			/*
@@ -326,19 +358,19 @@ static type_ref *parse_btype(enum decl_storage *store)
 			 * x is a valid label
 			 */
 
-			if(primitive_set){
-				/* "int x" - we are at x, which is also a typedef somewhere */
-				DIE_AT(NULL, "redefinition of %s as different symbol", token_current_spel_peek());
-				break;
+			if(primitive_mode != NONE){
+				/* also get here if !!tdef_typeof */
+				if(!descended)
+					DIE_AT(NULL, "second type \"%s\" specified after primitive",
+							token_current_spel_peek());
+				/* else it's from another scope - replace */
 			}
-
-			/*if(tdef_typeof) - can't reach due to primitive_set */
 
 			tdef_decl = tdef_decl_test;
 			tdef_typeof = expr_new_sizeof_type(tdef_decl->ref, 1);
 
 			tdef_typeof->bits.ident.spel = token_current_spel();
-			primitive_set = PRIMITIVE_NO_MORE;
+			primitive_mode = PRIMITIVE_NO_MORE;
 
 			EAT(token_identifier);
 
@@ -357,7 +389,7 @@ static type_ref *parse_btype(enum decl_storage *store)
 
 	if(qual != qual_none
 	|| store_set
-	|| primitive_set
+	|| primitive_mode != NONE
 	|| signed_set
 	|| tdef_typeof
 	|| is_inline
@@ -369,21 +401,31 @@ static type_ref *parse_btype(enum decl_storage *store)
 		if(signed_set && primitive == type__Bool)
 			DIE_AT(NULL, "%ssigned with _Bool", is_signed ? "" : "un");
 
-		if(tdef_typeof){
-			/* signed size_t x; */
-			if(signed_set){
-				DIE_AT(NULL, "signed/unsigned not allowed with typedef instance (%s)",
-						tdef_typeof->bits.ident.spel);
+		switch(primitive_mode){
+			case TYPEDEF:
+			case TYPEOF:
+				UCC_ASSERT(tdef_typeof, "no tdef_typeof for typedef/typeof");
+				/* signed size_t x; */
+				if(signed_set){
+					DIE_AT(NULL, "signed/unsigned not allowed with typedef instance (%s)",
+							tdef_typeof->bits.ident.spel);
+				}
+
+				r = type_ref_new_tdef(tdef_typeof, tdef_decl);
+				break;
+
+			case PRIMITIVE_NO_MORE:
+			case PRIMITIVE_MAYBE_MORE:
+			case NONE:
+			{
+				type *t = type_new_primitive(
+						primitive_mode == NONE ? type_int : primitive);
+
+				t->is_signed = is_signed;
+
+				r = type_ref_new_type(t);
+				break;
 			}
-
-			r = type_ref_new_tdef(tdef_typeof, tdef_decl);
-
-		}else{
-			type *t = type_new_primitive(primitive_set ? primitive : type_int);
-
-			t->is_signed = is_signed;
-
-			r = type_ref_new_type(t);
 		}
 
 		r = type_ref_new_cast_add(r, qual);
@@ -423,7 +465,7 @@ int parse_curtok_is_type(void)
 			return 1;
 
 		case token_identifier:
-			return !!typedef_find(current_scope, token_current_spel_peek());
+			return typedef_visible(current_scope, token_current_spel_peek());
 
 		default:
 			break;

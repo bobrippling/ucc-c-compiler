@@ -46,11 +46,22 @@ int symtab_fold(symtable *tab, int current)
 		for(i = tab->typedefs; *i; i++){
 			decl *t = *i;
 			decl *dup;
+			int descended;
 
-			if((dup = typedef_find4(tab, t->spel, t, 0 /*descend*/))){
+			if((dup = typedef_find_descended_exclude(
+							tab, t->spel, &descended, t)))
+			{
+				/* XXX: note: */
 				char buf[WHERE_BUF_SIZ];
-				DIE_AT(&dup->where, "redefinition of typedef from:\n%s",
-						where_str_r(buf, &t->where));
+
+				if(descended){
+					WARN_AT(&t->where, "shadowing definition of %s, from:\n%s",
+							t->spel, where_str_r(buf, &dup->where));
+				}else{
+					/* yes dup/t's where are meant to be reversed */
+					DIE_AT(&dup->where, "redefinition of %s from:\n%s",
+							t->spel, where_str_r(buf, &t->where));
+				}
 			}
 
 			fold_decl(t, tab);
