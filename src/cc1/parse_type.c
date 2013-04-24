@@ -358,6 +358,13 @@ static type_ref *parse_btype(enum decl_storage *store)
 			 * x is a valid label
 			 */
 
+			/* FIXME: this is broken
+			 * e.g. typedef short size_t;
+			 * doesn't mean "short size_t" [identifier],
+			 * it means
+			 * "short" <identifier>size_t</ident>
+			 */
+
 			if(primitive_mode != NONE){
 				/* also get here if !!tdef_typeof */
 				if(!descended)
