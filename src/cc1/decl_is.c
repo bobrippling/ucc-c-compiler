@@ -31,6 +31,14 @@ fin:
 	return r;
 }
 
+type_ref *type_ref_skip_casts(type_ref *r)
+{
+	while(r && r->type == type_ref_cast)
+		r = type_ref_next_1(r);
+
+	return r;
+}
+
 decl *type_ref_is_tdef(type_ref *r)
 {
 	if(r && r->type == type_ref_tdef)

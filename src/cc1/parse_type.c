@@ -28,14 +28,15 @@
 /*#define PARSE_DECL_VERBOSE*/
 
 /* we don't do the type_ref_is_* since it needs to be folded for that */
-#define PARSE_type_ref_is(r, ty) (((r)->type == ty) ? (r) : NULL)
-#define PARSE_DECL_IS_FUNC(d) PARSE_type_ref_is((d)->ref, type_ref_func)
+#define PARSE_type_ref_is(r, ty) ((type_ref_skip_casts(r)->type == ty) ? (r) : NULL)
+#define PARSE_DECL_IS_FUNC(d) PARSE_type_ref_is(type_ref_skip_casts(d->ref), type_ref_func)
 
 #define PARSE_type_ref_is_s_or_u_or_e(r) PARSE_type_ref_is_s_or_u_or_e2(r, 1)
 #define PARSE_type_ref_is_s_or_u(r)      PARSE_type_ref_is_s_or_u_or_e2(r, 0)
 
 struct_union_enum_st *PARSE_type_ref_is_s_or_u_or_e2(type_ref *r, int allow_e)
 {
+	r = type_ref_skip_casts(r);
 	if(r->type == type_ref_type){
 		type *t = r->bits.type;
 		switch(t->primitive){
@@ -342,7 +343,8 @@ static type_ref *parse_btype(enum decl_storage *store)
 			tdef_typeof = parse_expr_sizeof_typeof(1);
 			primitive_mode = PRIMITIVE_NO_MORE;
 
-		}else if(curtok == token_identifier
+		}else if(!signed_set /* can't sign a typedef */
+		&& curtok == token_identifier
 		&& (tdef_decl_test = typedef_find_descended(
 				                         current_scope,
 				                         token_current_spel_peek(),
@@ -366,10 +368,15 @@ static type_ref *parse_btype(enum decl_storage *store)
 			 */
 
 			if(primitive_mode != NONE){
-				/* also get here if !!tdef_typeof */
-				if(!descended)
-					DIE_AT(NULL, "second type \"%s\" specified after primitive",
-							token_current_spel_peek());
+				if(!descended){
+					/* we're at a typedef name, e.g.
+					 * typedef int td_i;
+					 * {
+					 *   td_i td_i;
+					 * }
+					 */
+					break;
+				}
 				/* else it's from another scope - replace */
 			}
 

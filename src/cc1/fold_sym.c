@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "../util/util.h"
 #include "data_structs.h"
@@ -7,6 +9,7 @@
 #include "sym.h"
 #include "fold_sym.h"
 #include "../util/platform.h"
+#include "../util/dynarray.h"
 #include "pack.h"
 #include "sue.h"
 #include "out/out.h"
@@ -39,6 +42,10 @@ int symtab_fold(symtable *tab, int current)
 {
 	const int this_start = current;
 	int arg_space = 0;
+	char wbuf[WHERE_BUF_SIZ];
+
+	const int check_clashes = tab->typedefs && tab->decls;
+	decl **all_spels = NULL;
 
 	if(tab->typedefs){
 		decl **i;
@@ -52,19 +59,16 @@ int symtab_fold(symtable *tab, int current)
 							tab, t->spel, &descended, t)))
 			{
 				/* XXX: note: */
-				char buf[WHERE_BUF_SIZ];
-
 				if(descended){
 					WARN_AT(&t->where, "shadowing definition of %s, from:\n%s",
-							t->spel, where_str_r(buf, &dup->where));
-				}else{
-					/* yes dup/t's where are meant to be reversed */
-					DIE_AT(&dup->where, "redefinition of %s from:\n%s",
-							t->spel, where_str_r(buf, &t->where));
+							t->spel, where_str_r(wbuf, &dup->where));
 				}
 			}
 
 			fold_decl(t, tab);
+
+			if(check_clashes)
+				dynarray_add(&all_spels, t);
 		}
 	}
 
@@ -92,6 +96,9 @@ int symtab_fold(symtable *tab, int current)
 		for(diter = tab->decls; *diter; diter++){
 			sym *s = (*diter)->sym;
 			const int has_unused_attr = !!decl_has_attr(s->decl, attr_unused);
+
+			if(check_clashes)
+				dynarray_add(&all_spels, *diter);
 
 			if(s->type == sym_local){
 				if(DECL_IS_FUNC(s->decl))
@@ -159,6 +166,27 @@ int symtab_fold(symtable *tab, int current)
 					}
 			}
 		}
+	}
+
+	if(check_clashes){
+		decl **di;
+
+		qsort(all_spels,
+				dynarray_count(all_spels),
+				sizeof *all_spels,
+				(int (*)(const void *, const void *))decl_sort_cmp);
+
+		for(di = all_spels; di[1]; di++){
+			decl *a = di[0], *b = di[1];
+			if(!strcmp(a->spel, b->spel)){
+				/* XXX: note */
+				DIE_AT(&a->where, "clashing definitions of \"%s\"\n%s: note: other definition",
+						a->spel, where_str_r(wbuf, &b->where));
+			}
+		}
+
+
+		dynarray_free(&all_spels, NULL);
 	}
 
 	{

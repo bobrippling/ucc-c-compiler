@@ -536,6 +536,11 @@ int decl_equal(decl *a, decl *b, enum decl_cmp mode)
 	return type_ref_equal(a->ref, b->ref, mode);
 }
 
+int decl_sort_cmp(const decl **pa, const decl **pb)
+{
+	return strcmp((*pa)->spel, (*pb)->spel);
+}
+
 int decl_is_variadic(decl *d)
 {
 	type_ref *r = d->ref;
