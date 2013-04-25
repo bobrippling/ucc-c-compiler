@@ -186,7 +186,6 @@ static type_ref *parse_btype(enum decl_storage *store)
 	enum type_primitive primitive = type_int;
 	int is_signed = 1, is_inline = 0, had_attr = 0, is_noreturn = 0;
 	int store_set = 0, signed_set = 0;
-	int descended;
 	decl *tdef_decl = NULL;
 	enum
 	{
@@ -345,39 +344,29 @@ static type_ref *parse_btype(enum decl_storage *store)
 
 		}else if(!signed_set /* can't sign a typedef */
 		&& curtok == token_identifier
-		&& (tdef_decl_test = typedef_find_descended(
-				                         current_scope,
-				                         token_current_spel_peek(),
-																 &descended))){
-			/* typedef name */
+		&& (tdef_decl_test = scope_find(current_scope, token_current_spel_peek())))
+		{
 
-			/*
-			 * FIXME
-			 * check for a following colon, in the case of
-			 * typedef int x;
-			 * x:;
-			 *
-			 * x is a valid label
+			/* typedef name or decl:
+			 * if we find a decl named this in our scope,
+			 * we're a reference to that, not a type, e.g.
+			 * typedef int td;
+			 * {
+			 *   int td;
+			 *   td = 2; // "td" found as typedef + decl
+			 * }
 			 */
 
-			/* FIXME: this is broken
-			 * e.g. typedef short size_t;
-			 * doesn't mean "short size_t" [identifier],
-			 * it means
-			 * "short" <identifier>size_t</ident>
-			 */
+			if(primitive_mode != NONE)
+				break; /* already got a primitive
+								* e.g. typedef int td
+								*      { short td; }
+								*/
 
-			if(primitive_mode != NONE){
-				if(!descended){
-					/* we're at a typedef name, e.g.
-					 * typedef int td_i;
-					 * {
-					 *   td_i td_i;
-					 * }
-					 */
-					break;
-				}
-				/* else it's from another scope - replace */
+			if(tdef_decl_test->store != store_typedef){
+				/* found an identifier instead */
+				tdef_decl_test = NULL;
+				break;
 			}
 
 			tdef_decl = tdef_decl_test;
@@ -387,6 +376,15 @@ static type_ref *parse_btype(enum decl_storage *store)
 			primitive_mode = PRIMITIVE_NO_MORE;
 
 			EAT(token_identifier);
+
+			/*
+			 * FIXME
+			 * check for a following colon, in the case of
+			 * typedef int x;
+			 * x:;
+			 *
+			 * x is a valid label
+			 */
 
 		}else if(curtok == token_attribute){
 			parse_add_attr(&attr); /* __attr__ int ... */

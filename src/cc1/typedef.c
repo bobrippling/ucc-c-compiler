@@ -9,7 +9,7 @@
 #include "typedef.h"
 #include "sym.h"
 
-static decl *typedef_find4(
+static decl *scope_find4(
 		symtable *stab,
 		const char *spel,
 		int *pdescended,
@@ -20,11 +20,20 @@ static decl *typedef_find4(
 
 	for(; stab; stab = stab->parent){
 		decl **di;
+
+		/* FIXME/typedefs: merge .typedefs and .decls */
 		for(di = stab->typedefs; di && *di; di++){
 			decl *d = *di;
 			if(d != exclude && !strcmp(d->spel, spel))
 				return d;
 		}
+
+		for(di = stab->decls; di && *di; di++){
+			decl *d = *di;
+			if(!strcmp(d->spel, spel))
+				return d;
+		}
+
 		if(pdescended)
 			*pdescended = 1;
 	}
@@ -36,16 +45,18 @@ decl *typedef_find_descended_exclude(
 		symtable *stab, const char *spel, int *pdescended,
 		decl *exclude)
 {
-	return typedef_find4(stab, spel, pdescended, exclude);
+	decl *d = scope_find4(stab, spel, pdescended, exclude);
+	return d && d->store == store_typedef ? d : NULL;
 }
 
-decl *typedef_find_descended(
-		symtable *stab, const char *spel, int *pdescended)
+decl *scope_find(symtable *stab, const char *spel)
 {
-	return typedef_find4(stab, spel, pdescended, NULL);
+	return scope_find4(stab, spel, NULL, NULL);
 }
+
+decl *scope_find(symtable *, const char *spel);
 
 int typedef_visible(symtable *stab, const char *spel)
 {
-	return !!typedef_find4(stab, spel, NULL, NULL);
+	return !!typedef_find_descended_exclude(stab, spel, NULL, NULL);
 }
