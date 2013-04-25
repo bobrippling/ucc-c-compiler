@@ -695,8 +695,14 @@ stmt *parse_stmt_and_decls()
 
 		parse_static_assert();
 
-		decls = parse_decls_multi_type(DECL_MULTI_ACCEPT_FUNC_DECL | DECL_MULTI_ALLOW_STORE);
+		parse_decls_multi_type(
+				DECL_MULTI_ACCEPT_FUNC_DECL | DECL_MULTI_ALLOW_STORE,
+				current_scope);
+
+		decls = current_scope->decls;
 		sub = NULL;
+
+		/* FIXME/typedefs: merge .decls and .typedefs so the below works for scoped typedefs */
 
 		if(decls){
 			/*
@@ -987,13 +993,18 @@ void parse(symtable_global *globals)
 
 	for(;;){
 		int cont = 0;
+		const int current = dynarray_count(current_scope->decls);
+		decl **new;
 
-		decl **new = parse_decls_multi_type(
+		parse_decls_multi_type(
 				  DECL_MULTI_CAN_DEFAULT
 				| DECL_MULTI_ACCEPT_FUNC_CODE
-				| DECL_MULTI_ALLOW_STORE);
+				| DECL_MULTI_ALLOW_STORE,
+				current_scope);
 
-		if(new){
+		new = current_scope->decls + current;
+
+		if(*new){
 			symtable_gasm **i;
 
 			for(i = last_gasms; i && *i; i++)
@@ -1026,6 +1037,7 @@ void parse(symtable_global *globals)
 
 	if(decls){
 		int i;
+		/* FIXME: we now add into current_scope directly on parse_type */
 		for(i = 0; decls[i]; i++)
 			symtab_add(current_scope, decls[i], sym_global, SYMTAB_NO_SYM, SYMTAB_APPEND);
 	}

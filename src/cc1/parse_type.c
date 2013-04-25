@@ -898,10 +898,9 @@ static void check_old_func(decl *d, decl **old_args)
 	free(old_args);
 }
 
-decl **parse_decls_multi_type(enum decl_multi_mode mode)
+void parse_decls_multi_type(enum decl_multi_mode mode, symtable *stab)
 {
 	const enum decl_mode parse_flag = (mode & DECL_MULTI_CAN_DEFAULT ? DECL_CAN_DEFAULT : 0);
-	decl **decls = NULL;
 	decl *last;
 	int are_tdefs;
 
@@ -922,7 +921,7 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 			if(parse_possible_decl() && (mode & DECL_MULTI_CAN_DEFAULT)){
 				this_ref = default_type();
 			}else{
-				return decls;
+				return; /* normal exit */
 			}
 		}
 
@@ -1060,8 +1059,8 @@ decl **parse_decls_multi_type(enum decl_multi_mode mode)
 
 add:
 			dynarray_add(are_tdefs
-					? &current_scope->typedefs
-					: &decls,
+					? &stab->typedefs
+					: &stab->decls,
 					d);
 
 			/* FIXME: check later for functions, not here - typedefs */
