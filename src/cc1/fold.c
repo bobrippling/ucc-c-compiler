@@ -542,7 +542,7 @@ void fold_symtab_scope(symtable *stab, stmt **pinit_code)
 		/* check static decls
 		 * -> doesn't need to be after fold since we change .spel_asm
 		 */
-		if((d->store & STORE_MASK_STORE) == store_static)
+		if(curdecl_func && (d->store & STORE_MASK_STORE) == store_static)
 			d->spel_asm = out_label_static_local(curdecl_func->spel, d->spel);
 	}
 #undef inits
