@@ -72,11 +72,12 @@ int symtab_fold(symtable *tab, int current)
 		current += arg_space;
 
 		for(diter = tab->decls; *diter; diter++){
-			sym *s = (*diter)->sym;
-			const int has_unused_attr = !!decl_has_attr(s->decl, attr_unused);
+			decl *d = *diter;
+			sym *s = d->sym;
+			const int has_unused_attr = !!decl_has_attr(d, attr_unused);
 
-			if(check_dups)
-				dynarray_add(&all_spels, *diter);
+			if(check_dups && d->spel)
+				dynarray_add(&all_spels, d);
 
 			switch(s->type){
 				case sym_local: /* warn on unused args and locals */
@@ -136,10 +137,15 @@ int symtab_fold(symtable *tab, int current)
 				case store_extern:
 					break;
 				default:
-					if(s->type != sym_global && s->decl->spel_asm){
-						DIE_AT(&s->decl->where,
-								"asm() rename on non-register non-global variable \"%s\"",
-								s->decl->spel);
+					if(s->type != sym_global){
+						decl *d = s->decl;
+
+						/* allow anonymous decls to have .spel_asm */
+						if(d->spel && d->spel_asm){
+							DIE_AT(&s->decl->where,
+									"asm() rename on non-register non-global variable \"%s\"",
+									s->decl->spel);
+						}
 					}
 			}
 		}

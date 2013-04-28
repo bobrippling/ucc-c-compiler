@@ -40,7 +40,7 @@ void fold_expr_str(expr *e, symtable *stab)
 
 	d = decl_new();
 	d->ref = e->tree_type;
-	d->spel = sv->lbl;
+	d->spel_asm = sv->lbl;
 
 	d->is_definition = 1;
 	d->store = store_static;

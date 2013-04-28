@@ -509,7 +509,7 @@ void fold_symtab_scope(symtable *stab, stmt **pinit_code)
 		/* must be before fold*, since sym lookups are done */
 		if(d->sym){
 			/* arg */
-			UCC_ASSERT(d->sym->type == sym_arg,
+			UCC_ASSERT(d->sym->type == sym_arg || !d->spel /* anon sym, e.g. strk */,
 					"%s given symbol too early",
 					d->spel);
 		}else{
@@ -539,8 +539,10 @@ void fold_symtab_scope(symtable *stab, stmt **pinit_code)
 
 		/* check static decls
 		 * -> doesn't need to be after fold since we change .spel_asm
+		 *
+		 * don't for anonymous symbols, they're referenced via other means
 		 */
-		if(curdecl_func && (d->store & STORE_MASK_STORE) == store_static)
+		if(curdecl_func && d->spel && (d->store & STORE_MASK_STORE) == store_static)
 			d->spel_asm = out_label_static_local(curdecl_func->spel, d->spel);
 	}
 #undef inits
@@ -973,11 +975,15 @@ void fold(symtable *globs)
 
 	for(i = 0; D(i); i++){
 		char *key = D(i)->spel;
-		decl **val = dynmap_get(char *, decl **, spel_decls, key);
 
-		dynarray_add(&val, D(i)); /* fine if val is null */
+		if(key){
+			/* skip anonymous (e.g. string) symbols/decls */
+			decl **val = dynmap_get(char *, decl **, spel_decls, key);
 
-		dynmap_set(char *, decl **, spel_decls, key, val);
+			dynarray_add(&val, D(i)); /* fine if val is null */
+
+			dynmap_set(char *, decl **, spel_decls, key, val);
+		}
 
 		fold_decl_global(D(i), globs);
 
