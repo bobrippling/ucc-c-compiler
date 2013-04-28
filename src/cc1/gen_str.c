@@ -299,6 +299,9 @@ void print_decl(decl *d, enum pdeclargs mode)
 			fputc(')', cc1_out);
 	}
 
+	if(d->store)
+		fprintf(cc1_out, "%s ", decl_store_to_str(d->store));
+
 	if(fopt_mode & FOPT_ENGLISH){
 		print_decl_eng(d);
 	}else{
