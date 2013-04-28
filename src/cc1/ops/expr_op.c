@@ -248,8 +248,12 @@ ptr_relation:
 				type_ref *const next = type_ref_next(resolved);
 
 				if(!type_ref_is_complete(next)){
-					DIE_AT(w, "arithmetic on pointer to incomplete type %s",
-							type_ref_to_str(next));
+					if(type_ref_is_void(next)){
+						WARN_AT(w, "arithmetic on void pointer");
+					}else{
+						DIE_AT(w, "arithmetic on pointer to incomplete type %s",
+								type_ref_to_str(next));
+					}
 					/* TODO: note: type declared at resolved->where */
 				}
 			}

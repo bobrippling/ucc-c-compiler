@@ -3,9 +3,9 @@
 
 #include "sys/types.h"
 
-typedef void *va_list;
+typedef char *va_list;
 
-#define va_start(l, arg) l = (void *)&arg
+#define va_start(l, arg) l = (va_list)&arg
 /*
  * va_arg assumes arguments are promoted to
  * machine-word size when pushed onto the stack
