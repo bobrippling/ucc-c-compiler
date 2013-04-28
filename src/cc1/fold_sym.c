@@ -81,17 +81,17 @@ int symtab_fold(symtable *tab, int current)
 
 			switch(s->type){
 				case sym_local: /* warn on unused args and locals */
-					if(DECL_IS_FUNC(s->decl))
+					if(DECL_IS_FUNC(d))
 						continue;
 
-					switch((enum decl_storage)(s->decl->store & STORE_MASK_STORE)){
+					switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
 							/* for now, we allocate stack space for register vars */
 						case store_register:
 						case store_default:
 						case store_auto:
 						{
-							int siz = decl_size(s->decl, &s->decl->where);
-							int align = type_ref_align(s->decl->ref, &s->decl->where);
+							int siz = decl_size(d, &d->where);
+							int align = type_ref_align(d->ref, &d->where);
 
 							/* packing takes care of everything */
 							pack_next(&current, NULL, siz, align);
@@ -99,7 +99,7 @@ int symtab_fold(symtable *tab, int current)
 							s->offset = current;
 
 							/* static analysis on sym (only auto-vars) */
-							if(!has_unused_attr && !s->decl->init)
+							if(!has_unused_attr && !d->init)
 								RW_WARN(WRITTEN, nwrites, "written to");
 							break;
 						}
@@ -109,7 +109,7 @@ int symtab_fold(symtable *tab, int current)
 							break;
 						case store_typedef:
 						case store_inline:
-							ICE("%s store", decl_store_to_str(s->decl->store));
+							ICE("%s store", decl_store_to_str(d->store));
 					}
 					/* fall */
 
@@ -118,11 +118,11 @@ int symtab_fold(symtable *tab, int current)
 					const int unused = RW_TEST(nreads);
 
 					if(unused){
-						if(!has_unused_attr && (s->decl->store & STORE_MASK_STORE) != store_extern)
+						if(!has_unused_attr && (d->store & STORE_MASK_STORE) != store_extern)
 							RW_SHOW(READ, "read");
 					}else if(has_unused_attr){
-						warn_at(&s->decl->where, 1,
-								"\"%s\" declared unused, but is used", s->decl->spel);
+						warn_at(&d->where, 1,
+								"\"%s\" declared unused, but is used", d->spel);
 					}
 
 					break;
@@ -132,19 +132,17 @@ int symtab_fold(symtable *tab, int current)
 					break;
 			}
 
-			switch((enum decl_storage)(s->decl->store & STORE_MASK_STORE)){
+			switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
 				case store_register:
 				case store_extern:
 					break;
 				default:
 					if(s->type != sym_global){
-						decl *d = s->decl;
-
 						/* allow anonymous decls to have .spel_asm */
 						if(d->spel && d->spel_asm){
-							DIE_AT(&s->decl->where,
+							DIE_AT(&d->where,
 									"asm() rename on non-register non-global variable \"%s\"",
-									s->decl->spel);
+									d->spel);
 						}
 					}
 			}
