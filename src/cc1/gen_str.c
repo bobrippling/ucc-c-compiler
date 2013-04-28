@@ -426,12 +426,7 @@ void print_enum(struct_union_enum_st *et)
 	gen_str_indent--;
 }
 
-int has_st_en_tdef(symtable *stab)
-{
-	return stab->sues || stab->typedefs;
-}
-
-void print_st_en_tdef(symtable *stab)
+void print_sues_static_asserts(symtable *stab)
 {
 	struct_union_enum_st **sit;
 	static_assert **stati;
@@ -441,18 +436,6 @@ void print_st_en_tdef(symtable *stab)
 		struct_union_enum_st *sue = *sit;
 		(sue->primitive == type_enum ? print_enum : print_struct)(sue);
 		nl = 1;
-	}
-
-	if(stab->typedefs){
-		decl **tit;
-
-		idt_printf("typedefs:\n");
-		gen_str_indent++;
-		for(tit = stab->typedefs; tit && *tit; tit++){
-			print_decl(*tit, PDECL_INDENT | PDECL_NEWLINE | PDECL_ATTR);
-			nl = 1;
-		}
-		gen_str_indent--;
 	}
 
 	for(stati = stab->static_asserts; stati && *stati; stati++){
@@ -515,14 +498,14 @@ void print_stmt(stmt *t)
 	PRINT_IF(t, rhs,  print_stmt);
 	PRINT_IF(t, rhs,  print_stmt);
 
-	if(stmt_kind(t, code) && t->symtab && has_st_en_tdef(t->symtab)){
-		idt_printf("structs/unions, enums and tdefs in this block:\n");
+	if(stmt_kind(t, code)){
+		idt_printf("structs/unions/enums:\n");
 		gen_str_indent++;
-		print_st_en_tdef(t->symtab);
+		print_sues_static_asserts(t->symtab);
 		gen_str_indent--;
 	}
 
-	if(t->decls){
+	if(t->symtab){
 		decl **iter;
 
 		idt_printf("stack space %d\n", t->symtab->auto_total_size);
@@ -559,7 +542,7 @@ void gen_str(symtable_global *symtab)
 {
 	decl **diter;
 
-	print_st_en_tdef(&symtab->stab);
+	print_sues_static_asserts(&symtab->stab);
 
 	for(diter = symtab->stab.decls; diter && *diter; diter++){
 		decl *const d = *diter;

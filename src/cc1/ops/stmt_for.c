@@ -32,7 +32,7 @@ expr *fold_for_if_init_decls(stmt *s)
 						decl_store_to_str(d->store), s->f_str());
 		}
 
-		SYMTAB_ADD(s->flow->for_init_symtab, d, sym_local);
+		sym_new_stab(s->flow->for_init_symtab, d, sym_local);
 
 		/* make the for-init a expr-stmt with all our inits */
 		if(d->init){

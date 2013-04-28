@@ -21,16 +21,9 @@ static decl *scope_find4(
 	for(; stab; stab = stab->parent){
 		decl **di;
 
-		/* FIXME/typedefs: merge .typedefs and .decls */
-		for(di = stab->typedefs; di && *di; di++){
-			decl *d = *di;
-			if(d != exclude && !strcmp(d->spel, spel))
-				return d;
-		}
-
 		for(di = stab->decls; di && *di; di++){
 			decl *d = *di;
-			if(!strcmp(d->spel, spel))
+			if(d != exclude && !strcmp(d->spel, spel))
 				return d;
 		}
 

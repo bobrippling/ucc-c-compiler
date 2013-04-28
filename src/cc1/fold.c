@@ -19,6 +19,7 @@
 #include "decl_init.h"
 #include "pack.h"
 #include "funcargs.h"
+#include "out/lbl.h"
 
 decl     *curdecl_func;
 type_ref *curdecl_ref_func_called; /* for funcargs-local labels and return type-checking */
@@ -457,8 +458,9 @@ void fold_decl_global(decl *d, symtable *stab)
 			break;
 
 		case store_inline: /* allowed, but not accessible via STORE_MASK_STORE */
-		case store_typedef:
-			ICE("%s store", decl_store_to_str(d->store));
+			ICE("inline");
+		case store_typedef: /* global typedef */
+			break;
 
 		case store_auto:
 		case store_register:
@@ -476,8 +478,9 @@ void fold_decl_global(decl *d, symtable *stab)
 	fold_decl_global_init(d, stab);
 }
 
-void fold_symtab_scope(symtable *stab)
+void fold_symtab_scope(symtable *stab, stmt **pinit_code)
 {
+#define inits (*pinit_code)
 	/* this is called from wherever we can define a
 	 * struct/union/enum,
 	 * e.g. a code-block (explicit or implicit),
@@ -486,9 +489,56 @@ void fold_symtab_scope(symtable *stab)
 	 */
 
 	struct_union_enum_st **sit;
+	decl **diter;
 
 	for(sit = stab->sues; sit && *sit; sit++)
 		fold_sue(*sit, stab);
+
+	for(diter = stab->decls; diter && *diter; diter++){
+		decl *d = *diter;
+
+		fold_decl(d, stab);
+
+		if(stab->parent){
+			if(d->func_code)
+				DIE_AT(&d->func_code->where, "can't nest functions (%s)", d->spel);
+			else if(DECL_IS_FUNC(d) && (d->store & STORE_MASK_STORE) == store_static)
+				DIE_AT(&d->where, "block-scoped function cannot have static storage");
+		}
+
+		d->is_definition = 1; /* always the def for non-globals */
+
+		/* must be before fold*, since sym lookups are done */
+		d->sym = sym_new(d,
+				!stab->parent || decl_store_static_or_extern(d->store) ?
+				sym_global :
+				sym_local);
+
+		if(d->init && pinit_code){
+			/* this creates the below s->inits array */
+			if((d->store & STORE_MASK_STORE) == store_static){
+				fold_decl_global_init(d, stab);
+			}else{
+				EOF_WHERE(&d->where,
+						if(!inits)
+							inits = stmt_new_wrapper(code, symtab_new(stab));
+
+						decl_init_brace_up_fold(d, inits->symtab);
+						decl_init_create_assignments_base(d->init,
+							d->ref, expr_new_identifier(d->spel),
+							inits);
+					);
+				/* folded elsewhere */
+			}
+		}
+
+		/* check static decls
+		 * -> doesn't need to be after fold since we change .spel_asm
+		 */
+		if((d->store & STORE_MASK_STORE) == store_static)
+			d->spel_asm = out_label_static_local(curdecl_func->spel, d->spel);
+	}
+#undef inits
 }
 
 void fold_need_expr(expr *e, const char *stmt_desc, int is_test)
@@ -903,43 +953,26 @@ void fold(symtable *globs)
 
 		df->ref = type_ref_new_func(type_ref_cached_INT(), fargs);
 
-		symtab_add(globs, df, sym_global, SYMTAB_NO_SYM, SYMTAB_PREPEND);
+		ICE("__asm__ symtable");
+		/*symtab_add(globs, df, sym_global, SYMTAB_NO_SYM, SYMTAB_PREPEND);*/
 
 		eof_where = old_w;
 	}
 
-	fold_symtab_scope(globs);
+	fold_symtab_scope(globs, NULL);
 
 	if(!globs->decls)
 		goto skip_decls;
 
-	for(i = 0; D(i); i++)
-		if(D(i)->sym)
-			ICE("%s: sym (%p) already set for global \"%s\"", where_str(&D(i)->where), (void *)D(i)->sym, D(i)->spel);
-
 	spel_decls = dynmap_new((dynmap_cmp_f *)strcmp);
 
-	for(;;){
-		int i;
+	for(i = 0; D(i); i++){
+		char *key = D(i)->spel;
+		decl **val = dynmap_get(char *, decl **, spel_decls, key);
 
-		/* find the next sym (since we can prepend, start at 0 each time */
-		for(i = 0; D(i); i++)
-			if(!D(i)->sym)
-				break;
+		dynarray_add(&val, D(i)); /* fine if val is null */
 
-		if(!D(i))
-			break; /* finished */
-
-		{
-			char *key = D(i)->spel;
-			decl **val = dynmap_get(char *, decl **, spel_decls, key);
-
-			dynarray_add(&val, D(i)); /* fine if val is null */
-
-			dynmap_set(char *, decl **, spel_decls, key, val);
-		}
-
-		D(i)->sym = sym_new(D(i), sym_global);
+		dynmap_set(char *, decl **, spel_decls, key, val);
 
 		fold_decl_global(D(i), globs);
 

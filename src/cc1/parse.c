@@ -676,11 +676,6 @@ void parse_static_assert(void)
 	}
 }
 
-void parse_got_decls(decl **decls, stmt *codes_init)
-{
-	dynarray_add_array(&codes_init->decls, decls);
-}
-
 stmt *parse_stmt_and_decls()
 {
 	stmt *codes = STAT_NEW_NEST(code);
@@ -690,6 +685,7 @@ stmt *parse_stmt_and_decls()
 
 	last = 0;
 	do{
+		size_t count = dynarray_count(current_scope->decls);
 		decl **decls;
 		stmt *sub;
 
@@ -697,14 +693,12 @@ stmt *parse_stmt_and_decls()
 
 		parse_decls_multi_type(
 				DECL_MULTI_ACCEPT_FUNC_DECL | DECL_MULTI_ALLOW_STORE,
-				current_scope);
+				&current_scope->decls);
 
-		decls = current_scope->decls;
+		decls = &current_scope->decls[count];
 		sub = NULL;
 
-		/* FIXME/typedefs: merge .decls and .typedefs so the below works for scoped typedefs */
-
-		if(decls){
+		if(decls && *decls){
 			/*
 			 * create an implicit block for the decl i.e.
 			 *
@@ -718,7 +712,6 @@ stmt *parse_stmt_and_decls()
 
 			/* optimise - initial-block-decls doesn't need a sub-block */
 			if(!codes->codes){
-				parse_got_decls(decls, codes);
 				goto normal;
 			}else if(cc1_std < STD_C99){
 				static int warned = 0;
@@ -741,8 +734,6 @@ stmt *parse_stmt_and_decls()
 			/* mark as internal - for duplicate checks */
 			sub->symtab->internal_nest = 1;
 
-			parse_got_decls(decls, sub);
-
 			last = 1;
 		}else{
 normal:
@@ -753,9 +744,6 @@ normal:
 				last = 1;
 			}
 		}
-
-		if(decls)
-			dynarray_free(&decls, NULL);
 
 		if(sub)
 			dynarray_add(&codes->codes, sub);
@@ -986,7 +974,6 @@ static symtable_gasm *parse_gasm(void)
 
 void parse(symtable_global *globals)
 {
-	decl **decls = NULL;
 	symtable_gasm **last_gasms = NULL;
 
 	current_scope = &globals->stab;
@@ -1000,7 +987,7 @@ void parse(symtable_global *globals)
 				  DECL_MULTI_CAN_DEFAULT
 				| DECL_MULTI_ACCEPT_FUNC_CODE
 				| DECL_MULTI_ALLOW_STORE,
-				current_scope);
+				&current_scope->decls);
 
 		new = current_scope->decls + current;
 
@@ -1010,9 +997,6 @@ void parse(symtable_global *globals)
 			for(i = last_gasms; i && *i; i++)
 				(*i)->before = *new;
 			dynarray_free(&last_gasms, NULL);
-
-			dynarray_add_array(&decls, new);
-			free(new);
 		}
 
 		/* global asm */
@@ -1034,13 +1018,6 @@ void parse(symtable_global *globals)
 
 	if(parse_had_error)
 		exit(1);
-
-	if(decls){
-		int i;
-		/* FIXME: we now add into current_scope directly on parse_type */
-		for(i = 0; decls[i]; i++)
-			symtab_add(current_scope, decls[i], sym_global, SYMTAB_NO_SYM, SYMTAB_APPEND);
-	}
 
 	current_scope->static_asserts = static_asserts;
 

@@ -117,11 +117,14 @@ type *parse_type_sue(enum type_primitive prim)
 			 * we don't allow tagged ones unless
 			 * -fms-extensions or -fplan9-extensions
 			 */
-			decl **dmembers = parse_decls_multi_type(
+			decl **dmembers = NULL;
+			decl **i;
+
+			parse_decls_multi_type(
 					DECL_MULTI_CAN_DEFAULT |
 					DECL_MULTI_ACCEPT_FIELD_WIDTH |
-					DECL_MULTI_NAMELESS);
-			decl **i;
+					DECL_MULTI_NAMELESS,
+					&dmembers);
 
 			if(!dmembers){
 				const char *t = sue_str_type(prim);
@@ -898,11 +901,10 @@ static void check_old_func(decl *d, decl **old_args)
 	free(old_args);
 }
 
-void parse_decls_multi_type(enum decl_multi_mode mode, symtable *stab)
+void parse_decls_multi_type(enum decl_multi_mode mode, decl ***pdecls)
 {
 	const enum decl_mode parse_flag = (mode & DECL_MULTI_CAN_DEFAULT ? DECL_CAN_DEFAULT : 0);
 	decl *last;
-	int are_tdefs;
 
 	/* read a type, then *spels separated by commas, then a semi colon, then repeat */
 	for(;;){
@@ -910,7 +912,6 @@ void parse_decls_multi_type(enum decl_multi_mode mode, symtable *stab)
 		type_ref *this_ref;
 
 		last = NULL;
-		are_tdefs = 0;
 
 		parse_static_assert();
 
@@ -925,9 +926,7 @@ void parse_decls_multi_type(enum decl_multi_mode mode, symtable *stab)
 			}
 		}
 
-		if(store == store_typedef){
-			are_tdefs = 1;
-		}else{
+		if(store != store_typedef){
 			struct_union_enum_st *sue = PARSE_type_ref_is_s_or_u(this_ref);
 
 			if(sue && !parse_possible_decl()){
@@ -1036,7 +1035,8 @@ void parse_decls_multi_type(enum decl_multi_mode mode, symtable *stab)
 					/* add to .ref, since this is what is checked when the function decays to a pointer */
 					parse_add_attr(&d->ref->attr);
 				}else{
-					decl **old_args = parse_decls_multi_type(0);
+					decl **old_args = NULL;
+					parse_decls_multi_type(0, &old_args);
 					if(old_args){
 						check_old_func(d, old_args);
 
@@ -1058,10 +1058,7 @@ void parse_decls_multi_type(enum decl_multi_mode mode, symtable *stab)
 			}
 
 add:
-			dynarray_add(are_tdefs
-					? &stab->typedefs
-					: &stab->decls,
-					d);
+			dynarray_add(pdecls, d);
 
 			/* FIXME: check later for functions, not here - typedefs */
 			if(PARSE_DECL_IS_FUNC(d)){
@@ -1072,7 +1069,7 @@ add:
 					DIE_AT(&d->where, "function decl not wanted (%s)", d->spel);
 			}
 
-			if(are_tdefs){
+			if(store == store_typedef){
 				if(PARSE_DECL_IS_FUNC(d) && d->func_code)
 					DIE_AT(&d->where, "can't have a typedef function with code");
 				else if(d->init)

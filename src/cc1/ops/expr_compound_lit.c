@@ -24,7 +24,7 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 		d->store = store_static;
 	}
 
-	e->bits.complit.sym = SYMTAB_ADD(stab, d, stab->parent ? sym_local : sym_global);
+	e->bits.complit.sym = sym_new_stab(stab, d, stab->parent ? sym_local : sym_global);
 
 	/* fold the initialiser */
 	UCC_ASSERT(d->init, "no init for comp.literal");

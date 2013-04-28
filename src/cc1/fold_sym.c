@@ -44,33 +44,7 @@ int symtab_fold(symtable *tab, int current)
 	int arg_space = 0;
 	char wbuf[WHERE_BUF_SIZ];
 
-	const int check_clashes = tab->typedefs && tab->decls;
 	decl **all_spels = NULL;
-
-	if(tab->typedefs){
-		decl **i;
-
-		for(i = tab->typedefs; *i; i++){
-			decl *t = *i;
-			decl *dup;
-			int descended;
-
-			if((dup = typedef_find_descended_exclude(
-							tab, t->spel, &descended, t)))
-			{
-				/* XXX: note: */
-				if(descended){
-					WARN_AT(&t->where, "shadowing definition of %s, from:\n%s",
-							t->spel, where_str_r(wbuf, &dup->where));
-				}
-			}
-
-			fold_decl(t, tab);
-
-			if(check_clashes)
-				dynarray_add(&all_spels, t);
-		}
-	}
 
 	if(tab->decls){
 		decl **diter;
@@ -82,7 +56,10 @@ int symtab_fold(symtable *tab, int current)
 		for(diter = tab->decls; *diter; diter++);
 
 		for(diter--; diter >= tab->decls; diter--){
-			sym *s = (*diter)->sym;
+			decl *d = *diter;
+			sym *s = d->sym;
+
+			fold_decl(d, tab);
 
 			if(s->type == sym_arg){
 				s->offset = arg_idx++;
@@ -97,8 +74,7 @@ int symtab_fold(symtable *tab, int current)
 			sym *s = (*diter)->sym;
 			const int has_unused_attr = !!decl_has_attr(s->decl, attr_unused);
 
-			if(check_clashes)
-				dynarray_add(&all_spels, *diter);
+			dynarray_add(&all_spels, *diter);
 
 			if(s->type == sym_local){
 				if(DECL_IS_FUNC(s->decl))
@@ -168,7 +144,8 @@ int symtab_fold(symtable *tab, int current)
 		}
 	}
 
-	if(check_clashes){
+	if(all_spels){
+		/* check_clashes */
 		decl **di;
 
 		qsort(all_spels,

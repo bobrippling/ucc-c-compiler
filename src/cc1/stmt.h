@@ -33,10 +33,9 @@ struct stmt
 	int kills_below_code; /* break, return, etc - for checking dead code */
 	int expr_no_pop;
 
-	decl **decls; /* block definitions, e.g. { int i... } */
 	stmt **codes; /* for a code block */
 
-	symtable *symtab;
+	symtable *symtab; /* block definitions, e.g. { int i... } */
 
 	/* parents - applicable for break and continue */
 	stmt *parent;
