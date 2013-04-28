@@ -376,7 +376,7 @@ static type_ref *parse_btype(enum decl_storage *store)
 			tdef_typeof = expr_new_sizeof_type(tdef_decl->ref, 1);
 
 			tdef_typeof->bits.ident.spel = token_current_spel();
-			primitive_mode = PRIMITIVE_NO_MORE;
+			primitive_mode = TYPEDEF;
 
 			EAT(token_identifier);
 
