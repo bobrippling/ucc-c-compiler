@@ -506,8 +506,6 @@ void fold_symtab_scope(symtable *stab, stmt **pinit_code)
 				DIE_AT(&d->where, "block-scoped function cannot have static storage");
 		}
 
-		d->is_definition = 1; /* always the def for non-globals */
-
 		/* must be before fold*, since sym lookups are done */
 		if(d->sym){
 			/* arg */

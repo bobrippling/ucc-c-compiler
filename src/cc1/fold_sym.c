@@ -45,6 +45,7 @@ int symtab_fold(symtable *tab, int current)
 	char wbuf[WHERE_BUF_SIZ];
 
 	decl **all_spels = NULL;
+	const int check_dups = !!tab->parent;
 
 	if(tab->decls){
 		decl **diter;
@@ -74,7 +75,8 @@ int symtab_fold(symtable *tab, int current)
 			sym *s = (*diter)->sym;
 			const int has_unused_attr = !!decl_has_attr(s->decl, attr_unused);
 
-			dynarray_add(&all_spels, *diter);
+			if(check_dups)
+				dynarray_add(&all_spels, *diter);
 
 			switch(s->type){
 				case sym_local: /* warn on unused args and locals */
@@ -155,7 +157,7 @@ int symtab_fold(symtable *tab, int current)
 		for(di = all_spels; di[1]; di++){
 			decl *a = di[0], *b = di[1];
 			/* functions are checked elsewhere */
-			if(!DECL_IS_FUNC(a) && !strcmp(a->spel, b->spel)){
+			if(!strcmp(a->spel, b->spel)){
 				/* XXX: note */
 				DIE_AT(&a->where, "clashing definitions of \"%s\"\n%s: note: other definition",
 						a->spel, where_str_r(wbuf, &b->where));
