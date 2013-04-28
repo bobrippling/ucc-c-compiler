@@ -76,42 +76,41 @@ int symtab_fold(symtable *tab, int current)
 
 			dynarray_add(&all_spels, *diter);
 
-			if(s->type == sym_local){
-				if(DECL_IS_FUNC(s->decl))
-					continue;
-
-				switch((enum decl_storage)(s->decl->store & STORE_MASK_STORE)){
-						/* for now, we allocate stack space for register vars */
-					case store_register:
-					case store_default:
-					case store_auto:
-					{
-						int siz = decl_size(s->decl, &s->decl->where);
-						int align = type_ref_align(s->decl->ref, &s->decl->where);
-
-						/* packing takes care of everything */
-						pack_next(&current, NULL, siz, align);
-
-						s->offset = current;
-
-						/* static analysis on sym (only auto-vars) */
-						if(!has_unused_attr && !s->decl->init)
-							RW_WARN(WRITTEN, nwrites, "written to");
-						break;
-					}
-
-					case store_static:
-					case store_extern:
-						break;
-					case store_typedef:
-					case store_inline:
-						ICE("%s store", decl_store_to_str(s->decl->store));
-				}
-			}
-
 			switch(s->type){
-				case sym_arg:
 				case sym_local: /* warn on unused args and locals */
+					if(DECL_IS_FUNC(s->decl))
+						continue;
+
+					switch((enum decl_storage)(s->decl->store & STORE_MASK_STORE)){
+							/* for now, we allocate stack space for register vars */
+						case store_register:
+						case store_default:
+						case store_auto:
+						{
+							int siz = decl_size(s->decl, &s->decl->where);
+							int align = type_ref_align(s->decl->ref, &s->decl->where);
+
+							/* packing takes care of everything */
+							pack_next(&current, NULL, siz, align);
+
+							s->offset = current;
+
+							/* static analysis on sym (only auto-vars) */
+							if(!has_unused_attr && !s->decl->init)
+								RW_WARN(WRITTEN, nwrites, "written to");
+							break;
+						}
+
+						case store_static:
+						case store_extern:
+							break;
+						case store_typedef:
+						case store_inline:
+							ICE("%s store", decl_store_to_str(s->decl->store));
+					}
+					/* fall */
+
+				case sym_arg:
 				{
 					const int unused = RW_TEST(nreads);
 
