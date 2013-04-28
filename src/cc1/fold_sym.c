@@ -154,7 +154,8 @@ int symtab_fold(symtable *tab, int current)
 
 		for(di = all_spels; di[1]; di++){
 			decl *a = di[0], *b = di[1];
-			if(!strcmp(a->spel, b->spel)){
+			/* functions are checked elsewhere */
+			if(!DECL_IS_FUNC(a) && !strcmp(a->spel, b->spel)){
 				/* XXX: note */
 				DIE_AT(&a->where, "clashing definitions of \"%s\"\n%s: note: other definition",
 						a->spel, where_str_r(wbuf, &b->where));
