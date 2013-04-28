@@ -16,6 +16,7 @@
 sym *sym_new(decl *d, enum sym_type t)
 {
 	sym *s = umalloc(sizeof *s);
+	UCC_ASSERT(!d->sym, "%s already has a sym", d->spel);
 	s->decl = d;
 	d->sym  = s;
 	s->type = t;

@@ -509,10 +509,17 @@ void fold_symtab_scope(symtable *stab, stmt **pinit_code)
 		d->is_definition = 1; /* always the def for non-globals */
 
 		/* must be before fold*, since sym lookups are done */
-		d->sym = sym_new(d,
-				!stab->parent || decl_store_static_or_extern(d->store) ?
-				sym_global :
-				sym_local);
+		if(d->sym){
+			/* arg */
+			UCC_ASSERT(d->sym->type == sym_arg,
+					"%s given symbol too early",
+					d->spel);
+		}else{
+			d->sym = sym_new(d,
+					!stab->parent || decl_store_static_or_extern(d->store) ?
+					sym_global :
+					sym_local);
+		}
 
 		if(d->init && pinit_code){
 			/* this creates the below s->inits array */
