@@ -989,9 +989,9 @@ void parse(symtable_global *globals)
 				| DECL_MULTI_ALLOW_STORE,
 				&current_scope->decls);
 
-		new = current_scope->decls + current;
-
-		if(*new){
+		if(current_scope->decls
+		&& *(new = current_scope->decls + current))
+		{
 			symtable_gasm **i;
 
 			for(i = last_gasms; i && *i; i++)
