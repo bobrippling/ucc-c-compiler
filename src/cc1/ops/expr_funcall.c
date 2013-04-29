@@ -351,7 +351,7 @@ invalid:
 			df->is_definition = 1; /* needed since it's a local var */
 
 			/* not declared - generate a sym ourselves */
-			e->expr->bits.ident.sym = sym_new_stab(stab, df, sym_local);
+			e->expr->bits.ident.sym = sym_new_stab(stab, df, sym_global);
 		}
 	}
 
