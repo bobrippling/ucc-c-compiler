@@ -10,8 +10,8 @@ sub usage
 
 sub timeout
 {
-	system("./timeout", '1', @_);
-	return $?;
+	my $r = system("./timeout", '1', @_);
+	return $r;
 }
 
 sub basename

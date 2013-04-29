@@ -17,7 +17,11 @@ my %sizes = (
 my %sizes_r = map { $sizes{$_} => $_ } keys %sizes;
 
 my @parts; # { size, value } or { lbl }
-while(<>){
+
+die "Usage: $0 fname\n" unless @ARGV == 1;
+my $fnam = shift;
+open F, '<', $fnam or die "open $fnam: $!\n";
+while(<F>){
 	if(/^[ \t]*\.(byte|word|long|quad|zero|space)[ \t]+(.*)/){
 		my $is_zero = is_zero($1);
 
@@ -37,6 +41,7 @@ while(<>){
 		emit({ lbl => $1 });
 	}
 }
+close F;
 
 sub flush;
 sub emit2;

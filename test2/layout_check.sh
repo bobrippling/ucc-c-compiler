@@ -23,7 +23,7 @@ trap "rm -f $a $b" EXIT
 
 set -e
 
-./layout_filter.pl "$1" > $a
-./layout_filter.pl "$2" > $b
+./layout_normalise.pl "$1" > $a
+./layout_normalise.pl "$2" > $b
 
 diff -u $a $b # set -e

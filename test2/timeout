@@ -33,10 +33,10 @@ $SIG{CHLD} = sub {
 	my $ret = $?;
 
 	if($ret){
-		print STDERR "timeout: child returned $ret\n";
+		die "timeout: child returned $ret\n";
 	}
 
-	exit $ret;
+	exit 0;
 };
 
 my $pid = bg @ARGV;
