@@ -519,11 +519,14 @@ static void parse_test_init_expr(stmt *t)
 
 		current_scope = t->flow->for_init_symtab;
 
-		dynarray_add(&t->flow->for_init_decls, d);
+		dynarray_add(&current_scope->decls, d);
 
 		if(accept(token_comma)){
 			/* if(int i = 5, i > f()){ ... } */
 			t->expr = parse_expr_exp();
+		}else{
+			/* if(int i = 5) -> if(i) */
+			t->expr = expr_new_identifier(d->spel);
 		}
 	}else{
 		t->expr = parse_expr_exp();
@@ -631,7 +634,8 @@ stmt *parse_for()
 	SEMI_WRAP(
 			decl **c99inits = parse_decls_one_type();
 			if(c99inits){
-				sf->for_init_decls = c99inits;
+				dynarray_add_array(&current_scope->decls, c99inits);
+
 				if(cc1_std < STD_C99)
 					WARN_AT(NULL, "use of C99 for-init");
 			}else{

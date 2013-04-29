@@ -458,25 +458,6 @@ void print_sues_static_asserts(symtable *stab)
 
 void print_stmt_flow(stmt_flow *t)
 {
-	idt_printf("flow:\n");
-
-	if(t->for_init_decls){
-		decl **i;
-
-		idt_printf("inits:\n");
-		gen_str_indent++;
-
-		for(i = t->for_init_decls; *i; i++)
-			print_decl(*i, PDECL_INDENT
-					| PDECL_NEWLINE
-					| PDECL_SYM_OFFSET
-					| PDECL_PISDEF
-					| PDECL_PINIT
-					| PDECL_ATTR);
-
-		gen_str_indent--;
-	}
-
 	idt_printf("for parts:\n");
 
 	gen_str_indent++;

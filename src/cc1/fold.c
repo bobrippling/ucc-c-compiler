@@ -509,7 +509,7 @@ void fold_symtab_scope(symtable *stab, stmt **pinit_code)
 		/* must be before fold*, since sym lookups are done */
 		if(d->sym){
 			/* arg */
-			UCC_ASSERT(d->sym->type == sym_arg || !d->spel /* anon sym, e.g. strk */,
+			UCC_ASSERT(d->sym->type != sym_local || !d->spel /* anon sym, e.g. strk */,
 					"%s given symbol too early",
 					d->spel);
 		}else{

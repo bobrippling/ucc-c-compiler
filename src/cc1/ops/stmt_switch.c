@@ -69,11 +69,13 @@ ret:
 
 void fold_stmt_switch(stmt *s)
 {
-	symtable *test_symtab = fold_stmt_test_init_expr(s, "switch");
+	symtable *stab = s->symtab;
+
+	flow_fold(s->flow, &stab);
 
 	s->lbl_break = out_label_flow("switch");
 
-	FOLD_EXPR(s->expr, test_symtab);
+	FOLD_EXPR(s->expr, stab);
 
 	fold_need_expr(s->expr, "switch", 0);
 
