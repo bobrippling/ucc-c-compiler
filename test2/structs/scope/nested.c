@@ -1,3 +1,5 @@
+// RUN: %ucc -c %s
+
 main()
 {
 	struct A { int j; } *p;

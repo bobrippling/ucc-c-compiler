@@ -1,4 +1,4 @@
-// RUN: %ucc -c %c -o /dev/null
+// RUN: %ucc -c %s -o /dev/null
 // RUN: %check %s
 
 f(int *restrict a, int *restrict b)

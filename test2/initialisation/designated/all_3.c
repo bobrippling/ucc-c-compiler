@@ -1,3 +1,6 @@
+// RUN: %ucc -c %s
+// RUN: %layoutcheck %s
+
 typedef int (*fp)();
 typedef struct __FILE FILE;
 
@@ -31,6 +34,3 @@ FILE static _stdin = {
 int i = 2;
 
 short j[] = { 2, 3 };
-
-// RUN: %ucc -c %s
-// RUN: %layoutcheck %s

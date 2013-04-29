@@ -1,4 +1,4 @@
-// RUN: %ucc -S -o- %s | grep 'subq \$[0-9]\+, %rsp'
+// RUN: %ucc -S -o- %s | grep 'subq \$[0-9]\+, %%rsp'
 main()
 {
 	extern int i asm("hi");
