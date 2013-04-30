@@ -2,7 +2,7 @@ UCC_CC = ../src/ucc/ucc
 OBJ    = crt.o syscall.o dirent.o                       \
          stdio.o stdlib.o string.o unistd.o signal.o    \
 				 assert.o ctype.o                               \
-				 ucc.o alloca.o                                 \
+				 alloca.o                                 \
          sys/fcntl.o sys/wait.o sys/mman.o sys/socket.o \
 				 sys/utsname.o sys/select.o sys/time.o          \
          arpa/inet.o
@@ -42,8 +42,8 @@ dirent.o: dirent.c
 alloca.o: alloca.S
 	${BUILD_CMD}
 
-ucc.o: ucc.c
-	${UCC_CC} -fenable-asm -c -o $@ $<
+#ucc.o: ucc.c
+#	${UCC_CC} -fenable-asm -c -o $@ $<
 
 sys/fcntl.o: sys/fcntl.c
 	${BUILD_CMD}

@@ -23,7 +23,6 @@
 		"assert.o",       \
 		"ctype.o",        \
 		"dirent.o",       \
-		"ucc.o",          \
 		"alloca.o",       \
 		"sys/fcntl.o",    \
 		"sys/wait.o",     \
