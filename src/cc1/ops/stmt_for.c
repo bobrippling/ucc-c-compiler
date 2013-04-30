@@ -37,7 +37,7 @@ void gen_stmt_for(stmt *s)
 {
 	char *lbl_test = out_label_flow("for_test");
 
-	flow_gen(s->flow);
+	flow_gen(s->flow, s->symtab);
 
 	/* don't else-if, possible to have both (comma-exp for init) */
 	if(s->flow->for_init){

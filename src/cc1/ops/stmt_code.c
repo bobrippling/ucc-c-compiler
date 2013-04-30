@@ -77,7 +77,7 @@ void gen_stmt_code(stmt *s)
 {
 	stmt **titer;
 
-	/* stmt_for needs to do this too */
+	/* stmt_for/if/while/do needs to do this too */
 	gen_code_decls(s->symtab);
 
 	for(titer = s->codes; titer && *titer; titer++)

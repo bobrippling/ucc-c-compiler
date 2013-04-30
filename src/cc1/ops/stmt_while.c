@@ -29,7 +29,7 @@ void gen_stmt_while(stmt *s)
 {
 	out_label(s->lbl_continue);
 
-	flow_gen(s->flow);
+	flow_gen(s->flow, s->symtab);
 	gen_expr(s->expr, s->symtab);
 
 	out_op_unary(op_not);

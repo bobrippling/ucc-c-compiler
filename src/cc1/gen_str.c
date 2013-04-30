@@ -495,7 +495,7 @@ void print_stmt(stmt *t)
 		idt_printf("stack space %d\n", t->symtab->auto_total_size);
 		idt_printf("decls:\n");
 
-		for(iter = t->symtab->decls; *iter; iter++){
+		for(iter = t->symtab->decls; iter && *iter; iter++){
 			decl *d = *iter;
 
 			gen_str_indent++;

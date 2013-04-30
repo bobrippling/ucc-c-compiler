@@ -37,12 +37,16 @@ void flow_fold(stmt_flow *flow, symtable **pstab)
 	}
 }
 
-void flow_gen(stmt_flow *flow)
+void flow_gen(stmt_flow *flow, symtable *stab)
 {
-	if(flow && flow->inits){
-		stmt **i;
-		for(i = flow->inits->codes; *i; i++)
-			gen_stmt(*i);
+	gen_code_decls(stab);
+
+	if(flow){
+		gen_code_decls(flow->for_init_symtab);
+
+		if(flow->inits)
+			gen_stmt(flow->inits);
+		/* also generates decls on the flow->inits statement */
 	}
 }
 
@@ -66,7 +70,7 @@ void gen_stmt_if(stmt *s)
 	char *lbl_else = out_label_code("else");
 	char *lbl_fi   = out_label_code("fi");
 
-	flow_gen(s->flow);
+	flow_gen(s->flow, s->symtab);
 	gen_expr(s->expr, s->symtab);
 
 	out_jfalse(lbl_else);
