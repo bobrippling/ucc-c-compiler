@@ -491,6 +491,10 @@ void fold_symtab_scope(symtable *stab, stmt **pinit_code)
 	struct_union_enum_st **sit;
 	decl **diter;
 
+	if(stab->folded)
+		return;
+	stab->folded = 1;
+
 	for(sit = stab->sues; sit && *sit; sit++)
 		fold_sue(*sit, stab);
 

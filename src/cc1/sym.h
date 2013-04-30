@@ -31,6 +31,7 @@ struct symtable
 {
 	int auto_total_size;
 	int internal_nest;
+	int folded;
 	/*
 	 * { int i; 5; int j; }
 	 * j's symtab is internally represented like:
