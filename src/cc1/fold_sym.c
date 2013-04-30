@@ -106,8 +106,8 @@ int symtab_fold(symtable *tab, int current)
 
 						case store_static:
 						case store_extern:
-							break;
 						case store_typedef:
+							break;
 						case store_inline:
 							ICE("%s store", decl_store_to_str(d->store));
 					}
