@@ -3,6 +3,7 @@
 #include <stdarg.h>
 
 #include "../../util/alloc.h"
+#include "../../util/platform.h"
 #include "ops.h"
 #include "expr_cast.h"
 #include "../out/asm.h"
@@ -76,8 +77,42 @@ void fold_const_expr_cast(expr *e, consty *k)
 			/* allow if we're casting to a same-size type */
 			get_cast_sizes(e->tree_type, e->expr->tree_type, &l, &r);
 
-			if(l < r)
-				k->type = CONST_NO; /* e.g. (int)&a */
+			if(l < r){
+				/* shouldn't fit, check if it will */
+				switch(k->type){
+					default:
+						ICE("bad switch");
+
+					case CONST_STRK:
+						/* no idea where it will be in memory,
+						 * can't fit into a smaller type */
+						k->type = CONST_NO; /* e.g. (int)&a */
+						break;
+
+					case CONST_NEED_ADDR:
+					case CONST_ADDR:
+						if(k->bits.addr.is_lbl){
+							k->type = CONST_NO; /* similar to strk case */
+						}else{
+							unsigned long new = k->bits.addr.bits.memaddr;
+							const int pws = platform_word_size();
+
+							/* mask out bits so we have it truncated to `l' */
+							if(l < pws){
+								/* 8 = bits in a byte */
+								new &= ~(~0UL << (8 * l));
+
+								if(k->bits.addr.bits.memaddr != new)
+									/* can't cast without losing value - not const */
+									k->type = CONST_NO;
+
+							}else{
+								/* what are you doing... */
+								k->type = CONST_NO;
+							}
+						}
+				}
+			}
 			break;
 		}
 	}

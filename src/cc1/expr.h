@@ -23,7 +23,7 @@ typedef struct consty
 			union
 			{
 				char *lbl;
-				int   memaddr;
+				unsigned long memaddr;
 			} bits;
 		} addr;
 	} bits;
