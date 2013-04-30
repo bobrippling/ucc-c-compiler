@@ -141,8 +141,8 @@ int symtab_fold(symtable *tab, int current)
 						/* allow anonymous decls to have .spel_asm */
 						if(d->spel && d->spel_asm){
 							DIE_AT(&d->where,
-									"asm() rename on non-register non-global variable \"%s\"",
-									d->spel);
+									"asm() rename on non-register non-global variable \"%s\" (%s)",
+									d->spel, d->spel_asm);
 						}
 					}
 			}
