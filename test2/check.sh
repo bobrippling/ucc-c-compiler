@@ -1,25 +1,24 @@
 #!/bin/sh
 
 error=0
-if [ "$1" = -e ] && [ $# -eq 2 ]
+if [ "$1" = -e ]
 then
 	shift
 	error=1
 fi
 
-if [ $# -ne 1 ]
-then
-	echo "Usage: $0 [-e] src" >&2
+usage(){
+	echo "Usage: $0 [-e] cc-params..." >&2
 	echo "-e: expect ucc to error" >&2
 	exit 1
-fi
+}
 
 ucc=../ucc
 e=/tmp/check.$$
 
 trap "rm -f $e" EXIT
 
-$ucc -o/dev/null -c "$1" 2>$e
+$ucc -o/dev/null -c $@ 2>$e
 r=$?
 if [ $r -ne 0 ]
 then r=1

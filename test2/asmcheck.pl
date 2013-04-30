@@ -3,7 +3,8 @@ use warnings;
 
 sub file_contents
 {
-	open S, '<', shift or die;
+	my $f = shift;
+	open S, '<', $f or die "open $f: $!\n";
 	my @l = <STDIN>;
 	close S;
 	return @l;
