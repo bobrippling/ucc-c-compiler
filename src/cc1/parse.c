@@ -658,6 +658,8 @@ char **parse_asm_clobbers(void)
 		EAT(token_string);
 
 		dynarray_add((void ***)&ret, s);
+		if(!accept(token_comma))
+			break;
 	}
 
 	return ret;
