@@ -381,8 +381,18 @@ void fold_expr_funcall(expr *e, symtable *stab)
 void gen_expr_funcall(expr *e, symtable *stab)
 {
 	/* continue with normal funcall */
-	sym *const sym = e->expr->bits.ident.sym;
+	sym *sym = NULL;
 	int nargs = 0;
+
+	{
+		expr *sym_exp = e->expr;
+		while(expr_kind(sym_exp, cast))
+			sym_exp = sym_exp->expr;
+
+		if(expr_kind(sym_exp, identifier))
+			sym = sym_exp->bits.ident.sym;
+	}
+
 
 	if(sym && !type_ref_is_fptr(sym->decl->ref))
 		out_push_lbl(sym->decl->spel, 0);
