@@ -141,8 +141,8 @@ static void constraint_type(const char *constraint, constraint_t *con)
 
 			case 'f': ICE("TODO: fp reg constraint");
 
-			case 'S': reg = REG_LAST + 1; break;
-			case 'D': reg = REG_LAST + 2; break;
+			case 'S': reg = REG_SI; break;
+			case 'D': reg = REG_DI; break;
 
 			case 'q': /* currently the same as 'r' */
 			case 'r':
@@ -197,13 +197,13 @@ void out_constrain(asm_inout *io)
 		case C_REG:
 		{
 			const int reg = con.reg;
-			const int r = reg != -1 && reg <= REG_LAST ? reg : v_unused_reg(1);
+			const int r = reg != -1 && reg < N_REGS ? reg : v_unused_reg(1);
 
 			v_freeup_reg(r, 1);
 			v_to_reg(vtop); /* TODO: v_to_reg_preferred */
 
-			if(reg > REG_LAST)
-				ICE("TODO: register %d for constraint", reg);
+			if(reg >= N_REGS)
+				ICE("TODO/OOB register: reg_%d for constraint", reg);
 
 			if(vtop->bits.reg != r){
 				impl_reg_cp(vtop, r);

@@ -33,14 +33,15 @@ void impl_pop_func_ret(decl *);
 void impl_undefined(void);
 int impl_frame_ptr_to_reg(int nframes);
 
-#define N_REGS 4
+#define N_REGS 6
 #define N_CALL_REGS 6
 
 #define REG_A 0
 #define REG_B 1
 #define REG_C 2
 #define REG_D 3
-#define REG_LAST REG_D
+#define REG_DI 4
+#define REG_SI 5
 
 /* shared between x86 and __asm */
 void out_asm(const char *fmt, ...) ucc_printflike(1, 2);
