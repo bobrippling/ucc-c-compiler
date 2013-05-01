@@ -3,8 +3,7 @@ include ../../config.mk
 
 CFLAGS_OUT = ${CFLAGS} -DCC1_IMPL_FNAME=\"${UCC_CPU}.h\"
 
-# XXX: hack until post merge for rename
-ARCH_OBJ = out/${UCC_CPU}.o out/__asm_x64.o
+ARCH_OBJ = out/${UCC_CPU}.o out/__asm_${UCC_CPU}.o
 
 LDFLAGS += -lm
 
@@ -50,18 +49,16 @@ clean:
 	false
 
 # files that need target info
-out/mipsel_32.o: out/mipsel_32.c
-	${CC} ${CFLAGS_OUT} -c -o $@ $<
-out/x86_64.o: out/x86_64.c
-	${CC} ${CFLAGS_OUT} -c -o $@ $<
 out/out.o: out/out.c
 	${CC} ${CFLAGS_OUT} -c -o $@ $<
 out/impl.o: out/impl.c
 	${CC} ${CFLAGS_OUT} -c -o $@ $<
-out/__asm_x64.o: out/__asm_x64.c
+out/${UCC_CPU}.o: out/${UCC_CPU}.c
+	${CC} ${CFLAGS_OUT} -c -o $@ $<
+out/__asm_${UCC_CPU}.o: out/__asm_${UCC_CPU}.c
 	${CC} ${CFLAGS_OUT} -c -o $@ $<
 
 # extra deps
-out/impl.h: out/x86_64.h out/mipsel_32.h
+out/impl.h: out/${UCC_CPU}.h
 
 include Makefile.dep
