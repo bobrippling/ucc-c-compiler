@@ -1,15 +1,14 @@
-section .text
-	global memcpy
+.section .text
+	.globl memcpy
 
 memcpy:
-	; n
-	; src
-	; dest
-	; retaddr
-	mov rdi, [rsp + 8]  ; dest
-	mov rsi, [rsp + 16] ; src
-	mov rcx, [rsp + 24] ; n
+	# n
+	# src
+	# dest
+	# retaddr
+	movq %rdi, %rbx
+	movq %rdx, %rcx # get into the "count" register
 	cld
 	repnz movsb
-	mov rax, [rsp + 24]
+	movq %rbx, %rax # return dest
 	ret
