@@ -20,10 +20,8 @@ void fold_stmt_while(stmt *s)
 	s->lbl_break    = out_label_flow("while_break");
 	s->lbl_continue = out_label_flow("while_cont");
 
-	fold_expr(s->expr, test_symtab);
+	FOLD_EXPR(s->expr, test_symtab);
 	fold_need_expr(s->expr, s->f_str(), 1);
-
-	OPT_CHECK(s->expr, "constant expression in while");
 
 	fold_stmt(s->lhs);
 }
@@ -39,7 +37,7 @@ void gen_stmt_while(stmt *s)
 
 	gen_stmt(s->lhs);
 
-	out_push_lbl(s->lbl_continue, 0, NULL);
+	out_push_lbl(s->lbl_continue, 0);
 	out_jmp();
 
 	out_label(s->lbl_break);
@@ -47,12 +45,11 @@ void gen_stmt_while(stmt *s)
 
 int while_passable(stmt *s)
 {
-	intval val;
-	enum constyness k;
+	consty k;
 
-	const_fold(s->expr, &val, &k);
+	const_fold(s->expr, &k);
 
-	if(k == CONST_WITH_VAL && val.val)
+	if(k.type == CONST_VAL && k.bits.iv.val)
 		return fold_code_escapable(s); /* while(1) */
 
 	return 1; /* fold_passable(s->lhs) - doesn't depend on this */

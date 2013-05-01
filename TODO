@@ -1,21 +1,24 @@
-updated bugs/ and test/
+update bugs/
+test/ - x.c and x.c.expect (output and assembly)
+
+type_ref_new_*() static references
+
+cc1.h - remove unused warnings
+
+struct initialisation
+	Update all compound lit. tests with structs when parsing complete (and then designated inits when complete)
+
+static store and static address-of store
+	i.e. int x = 5; vs int *x = &(int){5};
 
 machine target - currently between x86_64 and vm
 
 ---------------------------------------------------- cc1
 
+X-Macros instead of switches for enums
+
 const-fold: change interface and checking of ->val.iv.val to more explicit code
             also need type casts for overflows, etc
-
-_Generic const-ify
-
-extern int i;
-extern int i;
-extern int i = 5; // this defines i. similar for functions - probably in now...?
-
-inline semantics - probably in now...?
-
-reachability checking - non-void function returns - probably in now...?
 
 __alignof__/_Alignof, _Alignas(type/const-expr):
 	same as sizeof except:
@@ -24,14 +27,10 @@ __alignof__/_Alignof, _Alignas(type/const-expr):
 	for structs/unions, it is the alignment of the largest type
 
 -Wmissing-prototypes - increase statics (in Makefile)
-  redundant-decls
+	redundant-decls
 	nested-externs
 
-int x[] -> NULL init, not 0
-
-floats, long + short (in a branch)
-
-initialisers
+initialisers [partially complete]
 	arrays and structs:
 		{ { 0 }, 5, {{{2}}} }
 		e.g. int a[] = { ... };
@@ -45,31 +44,19 @@ bitfields: must be ints,
 	nor sizeof()'d
 	also: struct x { int i : 1; : 3; } is valid (but not for the first field)
 
-const:
-	const char *s; - *s is not writable, s is
-	const char *a = "hi";
-	int x(char *s);
-	x(a); // warning - removing const
-	// same for assignments
-
 32-bit code gen
 
 -fms-extensions - MS unnamed struct members
 
-general lhs assignment:
+general lhs assignment (gnu extension):
 	(b ? x : y) = 5;
-	^-- note: gnu extension
-	(x ? a : b)(2); // similarly
-	(x = y) = 2; // assign to x
 
 __attribute__((pure))
 - function with no side effects (e.g. strlen())
 
-get rid of __asm__ hacks (mainly in gen_asm.c)
-
 stabs/dwarf debugging annotations
 
-fastcall - ecx, edx, stack, etc (__attribute__)
+__attribute__((fastcall)), cdecl, etc
 - see Windows name mangling - https://en.wikipedia.org/wiki/Name_mangling
 
 extensions:
@@ -81,15 +68,13 @@ extensions:
 
 fix memory leaks
 
-fix dir-relative file opening:
+fix dir-relative file opening (for #include <>):
 	cc -E dir/x.c
 	doesn't work, but
 	cd dir; cc -E x.c
 	does
 
 cc -MM *.c
-
-push current_line when descending into #include/# [0-9] for cc1
 
 macros over multiple lines
 	#define a(x, y) x + y
@@ -100,4 +85,4 @@ macros over multiple lines
 
 ---------------------------------------------------- lib
 
-stdio - buffers, etc
+stdio buffers, etc

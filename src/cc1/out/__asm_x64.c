@@ -11,6 +11,7 @@
 #include "out.h"
 #include "x86_64.h"
 #include "__asm.h"
+#include "impl.h"
 #include "../cc1.h"
 
 #if 0
@@ -133,16 +134,16 @@ static void constraint_type(const char *constraint, constraint_t *con)
 	while(*constraint)
 		switch(*constraint++){
 #define CHOOSE(c, i) case c: reg = i; break
-			CHOOSE('a', REG_A);
-			CHOOSE('b', REG_B);
-			CHOOSE('c', REG_C);
-			CHOOSE('d', REG_D);
+			CHOOSE('a', X86_64_REG_RAX);
+			CHOOSE('b', X86_64_REG_RBX);
+			CHOOSE('c', X86_64_REG_RCX);
+			CHOOSE('d', X86_64_REG_RDX);
 #undef CHOOSE
 
 			case 'f': ICE("TODO: fp reg constraint");
 
-			case 'S': reg = REG_SI; break;
-			case 'D': reg = REG_DI; break;
+			case 'S': reg = X86_64_REG_RSI; break;
+			case 'D': reg = X86_64_REG_RDI; break;
 
 			case 'q': /* currently the same as 'r' */
 			case 'r':
@@ -197,17 +198,13 @@ void out_constrain(asm_inout *io)
 		case C_REG:
 		{
 			const int reg = con.reg;
-			const int r = reg != -1 && reg < N_REGS ? reg : v_unused_reg(1);
 
-			v_freeup_reg(r, 1);
+			v_freeup_reg(reg, 1);
 			v_to_reg(vtop); /* TODO: v_to_reg_preferred */
 
-			if(reg >= N_REGS)
-				ICE("TODO/OOB register: reg_%d for constraint", reg);
-
-			if(vtop->bits.reg != r){
-				impl_reg_cp(vtop, r);
-				vtop->bits.reg = r;
+			if(vtop->bits.reg != reg){
+				impl_reg_cp(vtop, reg);
+				vtop->bits.reg = reg;
 			}
 			break;
 		}
@@ -259,7 +256,7 @@ void out_asm_inline(asm_args *cmd)
 
 					constraint_type(constraint, &con);
 
-					vpush(vp->d);
+					vpush(vp->t);
 
 					switch(con.type){
 						case C_REG:
@@ -269,11 +266,11 @@ void out_asm_inline(asm_args *cmd)
 
 						case C_MEM:
 						{
-							const int sz = decl_size(vtop->d);
+							const int sz = type_ref_size(vtop->t, NULL);
 
 							vtop->type = STACK;
 							stack_res += sz;
-							vtop->bits.off_from_bp = impl_alloc_stack(sz);
+							vtop->bits.off_from_bp = out_alloc_stack(sz);
 							break;
 						}
 
@@ -310,7 +307,7 @@ void out_asm_inline(asm_args *cmd)
 
 			vpop();
 		}
-		impl_free_stack(stack_res);
+		out_free_stack(stack_res);
 	}else{
 		fprintf(out, "%s\n", cmd->cmd);
 	}

@@ -23,8 +23,8 @@ enum token
 	token_sizeof,
 	token_typeof,
 	token__Static_assert,
-	token_asm,
 
+	token_asm,
 	token_attribute,
 
 	token_identifier,

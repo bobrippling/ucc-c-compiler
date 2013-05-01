@@ -4,9 +4,8 @@
 enum decl_mode
 {
 	DECL_SPEL_NEED    = 1 << 0,
-	DECL_SPEL_NO      = 1 << 1,
-	DECL_CAN_DEFAULT  = 1 << 2,
-	DECL_ALLOW_STORE  = 1 << 3
+	DECL_CAN_DEFAULT  = 1 << 1,
+	DECL_ALLOW_STORE  = 1 << 2
 };
 
 enum decl_multi_mode
@@ -35,9 +34,9 @@ expr *parse_expr_sizeof_typeof(int is_typeof);
 expr *parse_expr_exp(void);
 
 void parse_static_assert(void);
-decl **parse_type_list(void);
+type_ref **parse_type_list(void);
 expr **parse_funcargs(void);
 
-symtable *parse(void);
+symtable_global *parse(void);
 
 #endif

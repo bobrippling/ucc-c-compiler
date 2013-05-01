@@ -13,18 +13,32 @@ struct vstack
 		LBL,            /* vtop is a pointer to label */
 	} type;
 
-	decl *d;
+	type_ref *t;
+
+	/*
+	 * TODO: offset to optimise multiple adds
+	 * i.e. movq x+63(%rip), %rax
+	 * instead of
+	 *      leaq x(%rip), %rax
+	 *      addq 60, %rax
+	 *      addq  3, %rax
+	 *      movq (%rax), %rax
+	 */
 
 	union
 	{
 		int val;
 		int reg;
 		int off_from_bp;
-		enum flag_cmp
+		struct flag_opts
 		{
-			flag_eq, flag_ne,
-			flag_le, flag_lt,
-			flag_ge, flag_gt,
+			enum flag_cmp
+			{
+				flag_eq, flag_ne,
+				flag_le, flag_lt,
+				flag_ge, flag_gt,
+			} cmp;
+			int is_signed;
 		} flag;
 		struct
 		{
@@ -33,23 +47,22 @@ struct vstack
 		} lbl;
 	} bits;
 };
+#define VSTACK_INIT(ty) { (ty), NULL, { 0 } }
 
 extern struct vstack *vtop, vstack[];
 
-void vpush(decl *d);
 void vpop(void);
+void vpush(type_ref *);
 void vswap(void);
-void vdup(void);
 
-void v_clear(struct vstack *vp, decl *);
-void vtop_clear(decl *);
+void v_clear(struct vstack *vp, type_ref *);
 
-void vtop2_prepare_op(void);
-void v_prepare_op(struct vstack *vp);
+void v_to_reg_const(struct vstack *vp);
 
 void v_inv_cmp(struct vstack *vp);
 
 int  v_to_reg(struct vstack *conv);
+void v_to_reg2(struct vstack *from, int reg);
 void v_to_mem(struct vstack *conv);
 
 int  v_unused_reg(int stack_as_backup);
@@ -57,7 +70,17 @@ void v_freeup_regp(struct vstack *);
 void v_freeup_reg(int r, int allowable_stack);
 void v_freeup_regs(int a, int b);
 void v_save_reg(struct vstack *vp);
+void v_save_regs(void);
+void v_reserve_reg(const int r);
+void v_unreserve_reg(const int r);
 
 void v_deref_decl(struct vstack *vp);
+
+int impl_n_scratch_regs(void);
+int impl_n_call_regs(void);
+int impl_ret_reg(void);
+
+int out_alloc_stack(int sz);
+void out_free_stack(int sz);
 
 #endif

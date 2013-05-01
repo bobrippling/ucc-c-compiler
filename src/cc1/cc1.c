@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <ctype.h>
 
 #include <unistd.h>
 #include <signal.h>
@@ -118,16 +119,13 @@ FILE *cc1_out;                  /* final output */
 
 enum warning warn_mode = ~(
 		  WARN_VOID_ARITH
-		| WARN_COMPARE_MISMATCH
 		| WARN_IMPLICIT_INT
-		| WARN_INCOMPLETE_USE
-		| WARN_OPT_POSSIBLE
 		| WARN_LOSS_PRECISION
+		| WARN_SIGN_COMPARE
 		);
 
 enum fopt    fopt_mode = FOPT_CONST_FOLD | FOPT_SHOW_LINE | FOPT_PIC;
 enum cc1_backend cc1_backend = BACKEND_ASM;
-
 int m32 = 0;
 
 int cc1_max_errors = 16;
@@ -205,6 +203,9 @@ void io_cleanup(void)
 {
 	int i;
 	for(i = 0; i < NUM_SECTIONS; i++){
+		if(!cc_out[i])
+			continue;
+
 		if(fclose(cc_out[i]) == EOF && !caught_sig)
 			fprintf(stderr, "close %s: %s\n", fnames[i], strerror(errno));
 		if(remove(fnames[i]) && !caught_sig)
@@ -277,8 +278,8 @@ void sigh(int sig)
 
 int main(int argc, char **argv)
 {
-	static symtable *globs;
-	void (*gf)(symtable *);
+	static symtable_global *globs;
+	void (*gf)(symtable_global *);
 	FILE *f;
 	const char *fname;
 	int i;
@@ -422,15 +423,15 @@ usage:
 	show_current_line = fopt_mode & FOPT_SHOW_LINE;
 
 	tokenise_set_file(f, fname);
+	type_ref_init();
 	globs = parse();
 	if(f != stdin)
 		fclose(f);
 
-	if(globs->decls){
-		fold(globs);
-		symtab_fold(globs, 0);
-		gf(globs);
-	}
+	fold(&globs->stab);
+	symtab_fold(&globs->stab, 0);
+
+	gf(globs);
 
 	io_fin(gf == gen_asm, fname);
 

@@ -6,5 +6,5 @@ main()
 	char c = 3;
 
 	c += (int)1; // FIXME: this should generate addl, not addb
-	// i.e. integer promotion rules
+	// i.e. integer promotion rules (for compound assign)
 }

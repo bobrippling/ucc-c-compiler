@@ -14,7 +14,7 @@ static void check_constraint(asm_inout *io, symtable *stab, int output)
 	if(output)
 		fold_inc_writes_if_sym(io->exp, stab);
 
-	fold_expr(io->exp, stab);
+	FOLD_EXPR(io->exp, stab);
 
 	out_constraint_check(&io->exp->where, io->constraints, output);
 }
@@ -32,7 +32,7 @@ void fold_stmt_asm(stmt *s)
 	for(it = s->asm_bits->outputs; it && *it; it++, n_inouts++){
 		asm_inout *io = *it;
 		check_constraint(io, s->symtab, 1);
-		if(!expr_is_lvalue(io->exp, 0))
+		if(!expr_is_lvalue(io->exp))
 			DIE_AT(&io->exp->where, "asm output not an lvalue");
 	}
 
