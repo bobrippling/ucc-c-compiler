@@ -6,6 +6,7 @@ void impl_load(struct vstack *from, int reg);
 void impl_lea( struct vstack *from, int reg);
 
 void impl_reg_cp(struct vstack *from, int r);
+void impl_reg_cp_rev(struct vstack *to, int r);
 void impl_reg_swp(struct vstack *a, struct vstack *b);
 
 void impl_op(enum op_type);

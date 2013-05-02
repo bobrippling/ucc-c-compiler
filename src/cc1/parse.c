@@ -636,7 +636,7 @@ void parse_static_assert(void)
 	}
 }
 
-asm_inout **parse_asm_inout()
+asm_inout **parse_asm_inout(int is_output)
 {
 	asm_inout **inouts;
 
@@ -661,6 +661,8 @@ asm_inout **parse_asm_inout()
 		EAT(token_open_paren);
 		io->exp = parse_expr_exp();
 		EAT(token_close_paren);
+
+		io->is_output = is_output;
 
 		dynarray_add((void ***)&inouts, io);
 	}while(accept(token_comma));
@@ -700,13 +702,16 @@ stmt *parse_asm(void)
 	token_get_current_str(&bits->cmd, NULL);
 	EAT(token_string);
 
-	/* input operands */
+	/* output operands */
 	if((bits->extended = accept(token_colon))){
-		bits->outputs = parse_asm_inout();
+		bits->ios = parse_asm_inout(1);
 
-		/* output operands */
-		if(accept(token_colon))
-			bits->inputs = parse_asm_inout();
+		/* input operands */
+		if(accept(token_colon)){
+			asm_inout **outputs = parse_asm_inout(0);
+			if(outputs)
+				dynarray_add_array((void ***)&bits->ios, (void **)outputs);
+		}
 
 		/* clobber list */
 		if(accept(token_colon))

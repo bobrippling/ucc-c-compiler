@@ -877,7 +877,7 @@ ops/stmt_while.o: ops/stmt_while.c ops/ops.h ops/../../util/util.h \
  ops/../decl.h ops/../cc1.h ops/../out/out.h ops/../fold.h ops/../const.h \
  ops/../gen_str.h ops/../gen_asm.h ops/stmt_while.h ops/stmt_if.h \
  ops/stmt_for.h ops/../out/lbl.h
-out/__asm_x64.o: out/__asm_x64.c out/../../util/util.h \
+out/__asm_x86_64.o: out/__asm_x86_64.c out/../../util/util.h \
  out/../../util/dynarray.h out/../../util/dynmap.h out/../../util/alloc.h \
  out/../data_structs.h out/../tree.h out/../expr.h out/../ops/expr_addr.h \
  out/../ops/expr_assign.h out/../ops/expr_assign_compound.h \
@@ -894,7 +894,7 @@ out/__asm_x64.o: out/__asm_x64.c out/../../util/util.h \
  out/../ops/stmt_switch.h out/../ops/stmt_while.h \
  out/../ops/stmt_continue.h out/../ops/stmt_asm.h out/../sym.h \
  out/../decl.h out/vstack.h out/out.h out/x86_64.h out/__asm.h out/impl.h \
- out/../cc1.h
+ out/../cc1.h out/../pack.h
 out/asm.o: out/asm.c out/../../util/util.h out/../data_structs.h \
  out/../tree.h out/../expr.h out/../ops/expr_addr.h \
  out/../ops/expr_assign.h out/../ops/expr_assign_compound.h \

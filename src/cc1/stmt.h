@@ -9,15 +9,16 @@ typedef void        func_mutate_stmt(stmt *);
 /* non-critical */
 typedef int         func_passable_stmt(stmt *);
 
-typedef struct
+typedef struct asm_inout
 {
 	expr *exp;
 	char *constraints;
+	int is_output;
 } asm_inout;
 
 typedef struct
 {
-	asm_inout **outputs, **inputs;
+	asm_inout **ios;
 	char **clobbers;
 	char *cmd;
 	int extended; /* is it asm("") or asm("":::) */

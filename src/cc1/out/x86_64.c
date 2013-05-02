@@ -303,22 +303,29 @@ void impl_reg_swp(struct vstack *a, struct vstack *b)
 	b->bits.reg = tmp;
 }
 
-void impl_reg_cp(struct vstack *from, int r)
+static void impl_reg_mv(int from, int to, type_ref *ty)
 {
-	char buf_v[VSTACK_STR_SZ];
-	const char *regstr;
-
-	UCC_ASSERT(from->type == REG, "reg_cp: not a reg");
-
-	if(from->bits.reg == r)
+	if(from == to)
 		return;
 
-	regstr = x86_reg_str(r, from->t);
+	out_asm("mov%c %%%s, %%%s",
+			asm_type_ch(ty),
+			x86_reg_str(from, ty),
+			x86_reg_str(to, ty));
+}
 
-	out_asm("mov%c %s, %%%s",
-			asm_type_ch(from->t),
-			vstack_str_r(buf_v, from),
-			regstr);
+void impl_reg_cp_rev(struct vstack *to, int r)
+{
+	UCC_ASSERT(to->type == REG, "reg_cp: not a reg");
+
+	impl_reg_mv(r, to->bits.reg, to->t);
+}
+
+void impl_reg_cp(struct vstack *from, int r)
+{
+	UCC_ASSERT(from->type == REG, "reg_cp: not a reg");
+
+	impl_reg_mv(from->bits.reg, r, from->t);
 }
 
 void impl_op(enum op_type op)

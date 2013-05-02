@@ -1,4 +1,4 @@
-#include <string.h>
+#include <stdlib.h>
 
 #include "ops.h"
 #include "stmt_asm.h"
@@ -22,17 +22,14 @@ static void check_constraint(asm_inout *io, symtable *stab, int output)
 void fold_stmt_asm(stmt *s)
 {
 	asm_inout **it;
-	int n_inouts;
+	int n_inouts = 0;
 
-	n_inouts = 0;
-
-	for(it = s->asm_bits->inputs; it && *it; it++, n_inouts++)
-		check_constraint(*it, s->symtab, 0);
-
-	for(it = s->asm_bits->outputs; it && *it; it++, n_inouts++){
+	for(it = s->asm_bits->ios; it && *it; it++, n_inouts++){
 		asm_inout *io = *it;
-		check_constraint(io, s->symtab, 1);
-		if(!expr_is_lvalue(io->exp))
+
+		check_constraint(io, s->symtab, io->is_output);
+
+		if(io->is_output && !expr_is_lvalue(io->exp))
 			DIE_AT(&io->exp->where, "asm output not an lvalue");
 	}
 
@@ -49,13 +46,16 @@ void fold_stmt_asm(stmt *s)
 					ICE("TODO: named constraint");
 
 				}else{
-					int pos;
+					char *ep;
+					long pos = strtol(str + 1, &ep, 0);
 
-					if(sscanf(str + 1, "%d", &pos) != 1)
-						DIE_AT(&s->where, "invalid register character '%c', number expected", str[1]);
+					if(ep == str + 1)
+						DIE_AT(&s->where, "invalid register character '%c', number expected", *ep);
 
 					if(pos >= n_inouts)
-						DIE_AT(&s->where, "invalid register index %d / %d", pos, n_inouts);
+						DIE_AT(&s->where, "invalid register index %ld / %d", pos, n_inouts);
+
+					str = ep - 1;
 				}
 			}
 	}
@@ -65,33 +65,20 @@ void gen_stmt_asm(stmt *s)
 {
 	asm_inout **ios;
 	int npops = 0;
-	int i;
 
-	for(ios = s->asm_bits->outputs, i = 0; ios && ios[i]; i++, npops++){
-		asm_inout *const io = ios[i];
+	for(ios = s->asm_bits->ios; ios && *ios; ios++, npops++){
+		asm_inout *io = *ios;
 
-		lea_expr(io->exp, s->symtab);
-	}
-
-	if((ios = s->asm_bits->inputs)){
-		for(i = 0; ios && ios[i]; i++, npops++)
-			gen_expr(ios[i]->exp, s->symtab);
-
-		/* move into the registers or wherever necessary */
-		for(i--; i >= 0; i--)
-			out_constrain(ios[i]);
+		(io->is_output ? lea_expr : gen_expr)(io->exp, s->symtab);
 	}
 
 	out_comment("### begin asm(%s) from %s",
 			s->asm_bits->extended ? ":::" : "",
 			where_str(&s->where));
 
-	out_asm_inline(s->asm_bits);
+	out_asm_inline(s->asm_bits, &s->where);
 
 	out_comment("### end asm()");
-
-	while(npops --> 0)
-		out_pop();
 }
 
 void mutate_stmt_asm(stmt *s)
