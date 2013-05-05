@@ -53,9 +53,9 @@ out/mipsel_32.o: out/mipsel_32.c
 	${CC} ${CFLAGS_OUT} -c -o $@ $<
 out/x86_64.o: out/x86_64.c
 	${CC} ${CFLAGS_OUT} -c -o $@ $<
-out/out.o: out/out.c
+out/out.o: out/out.c out/impl.h
 	${CC} ${CFLAGS_OUT} -c -o $@ $<
-out/impl.o: out/impl.c
+out/impl.o: out/impl.c out/impl.h
 	${CC} ${CFLAGS_OUT} -c -o $@ $<
 
 # extra deps
