@@ -126,6 +126,16 @@ static const char *vstack_str_ptr(struct vstack *vs, int ptr)
 	return vstack_str_r_ptr(buf, vs, ptr);
 }
 
+int impl_reg_to_scratch(int i)
+{
+	return i;
+}
+
+int impl_scratch_to_reg(int i)
+{
+	return i;
+}
+
 void impl_func_prologue(int nargs)
 {
 	int arg_idx;

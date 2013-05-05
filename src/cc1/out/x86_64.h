@@ -22,7 +22,6 @@
 #define X86_64_REG_RSP 15
 
 #define N_SCRATCH_REGS    14 /* ax-dx, di-si, r8-r15 */
-#define FIRST_SCRATCH_REG X86_64_REG_RAX
 #define N_CALL_REGS       6
 #define REG_RET           X86_64_REG_RAX
 #define REG_SP            X86_64_REG_RSP

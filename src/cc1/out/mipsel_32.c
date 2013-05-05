@@ -79,6 +79,24 @@ static char *reg_str_i(int r)
 	return reg_str_r_i(buf, r);
 }
 
+int impl_reg_to_scratch(int i)
+{
+	if(MIPS_REG_TMP_0 <= i && i <= MIPS_REG_TMP_7)
+		return i - MIPS_REG_TMP_0;
+
+	if(MIPS_REG_TMP_8 <= i && i <= MIPS_REG_TMP_9)
+		return i - MIPS_REG_TMP_8 + (MIPS_REG_TMP_7 - MIPS_REG_TMP_0);
+
+	ICE("bad scratch register");
+}
+
+int impl_scratch_to_reg(int i)
+{
+	if(i > 8)
+		return MIPS_REG_TMP_8 + i - 8;
+	return MIPS_REG_TMP_0 + i;
+}
+
 void impl_func_prologue(int nargs)
 {
 	static int pws;

@@ -28,6 +28,10 @@ void impl_func_epilogue(void);
 void impl_undefined(void);
 int  impl_frame_ptr_to_reg(int nframes);
 
+/* scratch register indexing */
+int impl_reg_to_scratch(int);
+int impl_scratch_to_reg(int);
+
 enum p_opts
 {
 	P_NO_INDENT = 1 << 0,
