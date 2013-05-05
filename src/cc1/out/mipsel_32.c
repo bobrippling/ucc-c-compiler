@@ -373,7 +373,7 @@ void impl_op_unary(enum op_type op)
 	}
 }
 
-void impl_cast(type_ref *from, type_ref *to)
+void impl_cast_load(type_ref *small, type_ref *big, int is_signed)
 {
 	/* TODO FIXME: combine with code in x86_64 */
 	ICW("MIPS cast");

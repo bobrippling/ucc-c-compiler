@@ -590,48 +590,40 @@ void impl_op_unary(enum op_type op)
 	out_asm("%s %s", opc, vstack_str(vtop));
 }
 
-void impl_cast(type_ref *from, type_ref *to)
+void impl_cast_load(type_ref *small, type_ref *big, int is_signed)
 {
-	int szfrom, szto;
+	/* we are always up-casting here, i.e. int -> long */
+	const int int_sz = type_primitive_size(type_int);
+	char buf_small[VSTACK_STR_SZ];
 
-	szfrom = asm_type_size(from);
-	szto   = asm_type_size(to);
+	switch(vtop->type){
+		case STACK:
+		case STACK_SAVE:
+		case LBL:
+			/* something like movsx -8(%rbp), %rax */
+			vstack_str_r(buf_small, vtop);
+			break;
 
-	if(szfrom != szto){
-		if(szfrom < szto){
-			const int is_signed = type_ref_is_signed(from);
-			const int int_sz = type_primitive_size(type_int);
-
-			const char *rstr_from, *rstr_to;
-
+		case CONST:
+		case FLAG:
 			v_to_reg(vtop);
+		case REG:
+			strcpy(buf_small, x86_reg_str(vtop->bits.reg, small));
+	}
 
-			rstr_from = x86_reg_str(vtop->bits.reg, from);
-
-			if(!is_signed
-			&& type_ref_size(to,   NULL) > int_sz
-			&& type_ref_size(from, NULL) == int_sz)
-			{
-				/*
-				 * movzx %eax, %rax is invalid
-				 * since movl %eax, %eax automatically zeros the top half of rax
-				 * in x64 mode
-				 */
-				out_asm("movl %%%s, %%%s", rstr_from, rstr_from);
-				return;
-			}else{
-				rstr_to = x86_reg_str(vtop->bits.reg, to);
-			}
-
-			out_asm("mov%cx %%%s, %%%s", "zs"[is_signed], rstr_from, rstr_to);
-		}else{
-			char buf[TYPE_REF_STATIC_BUFSIZ];
-
-			out_comment("truncate cast from %s to %s, size %d -> %d",
-					from ? type_ref_to_str_r(buf, from) : "",
-					to   ? type_ref_to_str(to) : "",
-					szfrom, szto);
-		}
+	if(vtop->type == REG
+	&& !is_signed
+	&& type_ref_size(big,   NULL) > int_sz
+	&& type_ref_size(small, NULL) == int_sz)
+	{
+		/*
+		 * movzx %eax, %rax is invalid since movl %eax, %eax
+		 * automatically zeros the top half of rax in x64 mode
+		 */
+		out_asm("movl %%%s, %%%s", buf_small, buf_small);
+	}else{
+		const char *rstr_big = x86_reg_str(vtop->bits.reg, big);
+		out_asm("mov%cx %%%s, %%%s", "zs"[is_signed], buf_small, rstr_big);
 	}
 }
 

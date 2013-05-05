@@ -11,6 +11,7 @@
 #include "impl.h"
 #include "../../util/platform.h"
 #include "../cc1.h"
+#include "asm.h"
 
 #define v_check_type(t) if(!t) t = type_ref_new_VOID_PTR()
 
@@ -728,8 +729,24 @@ void out_op_unary(enum op_type op)
 void out_cast(type_ref *from, type_ref *to)
 {
 	/* casting vtop - don't bother if it's a constant, just change the size */
-	if(vtop->type != CONST)
-		impl_cast(from, to);
+	if(vtop->type != CONST){
+		int szfrom = asm_type_size(from),
+				szto   = asm_type_size(to);
+
+		if(szfrom != szto){
+			if(szto > szfrom){
+				impl_cast_load(from, to,
+						type_ref_is_signed(from));
+			}else{
+				char buf[TYPE_REF_STATIC_BUFSIZ];
+
+				out_comment("truncate cast from %s to %s, size %d -> %d",
+						from ? type_ref_to_str_r(buf, from) : "",
+						to   ? type_ref_to_str(to) : "",
+						szfrom, szto);
+			}
+		}
+	}
 
 	out_change_type(to);
 }
