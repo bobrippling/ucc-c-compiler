@@ -379,7 +379,7 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 					break;
 				}
 				case 'c':
-					fputc(va_arg(ap, char), file);
+					fputc(va_arg(ap, int), file);
 					break;
 				case 'u':
 				case 'd':
