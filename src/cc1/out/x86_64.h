@@ -1,38 +1,32 @@
 #ifndef X86_64_H
 #define X86_64_H
 
-void impl_comment(const char *, va_list);
+#define X86_64_REG_RAX 0
+#define X86_64_REG_RBX 1
+#define X86_64_REG_RCX 2
+#define X86_64_REG_RDX 3
 
-void impl_store(struct vstack *from, struct vstack *to);
-void impl_load(struct vstack *from, int reg);
+#define X86_64_REG_RDI 4
+#define X86_64_REG_RSI 5
 
-void impl_reg_cp(struct vstack *from, int r);
+#define X86_64_REG_R8  6
+#define X86_64_REG_R9  7
+#define X86_64_REG_R10 8
+#define X86_64_REG_R11 9
+#define X86_64_REG_R12 10
+#define X86_64_REG_R13 11
+#define X86_64_REG_R14 12
+#define X86_64_REG_R15 13
 
-void impl_op(enum op_type);
-void impl_op_unary(enum op_type); /* returns reg that the result is in */
-void impl_deref(void);
-void impl_normalise(void);
+#define X86_64_REG_RBP 14
+#define X86_64_REG_RSP 15
 
-void impl_jmp(void);
-void impl_jcond(int true, const char *lbl);
+#define N_SCRATCH_REGS    14 /* ax-dx, di-si, r8-r15 */
+#define FIRST_SCRATCH_REG X86_64_REG_RAX
+#define N_CALL_REGS       6
+#define REG_RET           X86_64_REG_RAX
+#define REG_SP            X86_64_REG_RSP
 
-void impl_cast(type_ref *from, type_ref *to);
-
-void impl_call(const int nargs, type_ref *d_ret, type_ref *d_func);
-void impl_call_fin(int nargs);
-
-void impl_lbl(const char *);
-
-int  impl_alloc_stack(int sz);
-
-void impl_func_prologue(int stack_res, int nargs, int variadic);
-void impl_func_epilogue(void);
-void impl_pop_func_ret(type_ref *);
-
-void impl_undefined(void);
-int impl_frame_ptr_to_reg(int nframes);
-
-#define N_REGS 4
-#define N_CALL_REGS 6
+#define IMPL_COMMENT "//"
 
 #endif

@@ -1,4 +1,4 @@
-#include "../src/as_cfg.h"
+#include "../../../src/as_cfg.h"
 .section SECTION_BSS
 	.globl errno
 errno:
@@ -42,7 +42,14 @@ __syscall:
 #endif
 
 	syscall
-#include "syscall_err.s"
+#ifdef __linux__
+	cmpq $-1, %rax
+	jg .fin
+	negq %rax # get positive errno
+#else
+	jnc .fin
+	// carry - err is in rax
+#endif
 	movl %eax, errno(%rip)
 	movq $-1, %rax
 .fin:

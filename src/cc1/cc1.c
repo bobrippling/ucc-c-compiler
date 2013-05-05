@@ -4,6 +4,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <math.h>
+#include <ctype.h>
 
 #include <unistd.h>
 #include <signal.h>
@@ -221,6 +222,9 @@ void io_cleanup(void)
 {
 	int i;
 	for(i = 0; i < NUM_SECTIONS; i++){
+		if(!cc_out[i])
+			continue;
+
 		if(fclose(cc_out[i]) == EOF && !caught_sig)
 			fprintf(stderr, "close %s: %s\n", fnames[i], strerror(errno));
 		if(remove(fnames[i]) && !caught_sig)
@@ -459,6 +463,7 @@ usage:
 
 	fold(&globs->stab);
 	symtab_fold(&globs->stab, 0);
+
 	gf(globs);
 
 	io_fin(gf == gen_asm, fname);

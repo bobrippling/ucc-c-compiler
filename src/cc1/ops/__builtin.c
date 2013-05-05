@@ -17,12 +17,12 @@
 
 #include "../const.h"
 #include "../gen_asm.h"
+#include "../gen_str.h"
 
 #include "../out/out.h"
+#include "__builtin_va.h"
 
 #define PREFIX "__builtin_"
-
-#define BUILTIN_SPEL(e) (e)->bits.ident.spel
 
 typedef expr *func_builtin_parse(void);
 
@@ -52,6 +52,10 @@ builtin_table builtins[] = {
 	{ "expect", parse_expect },
 
 	{ "is_signed", parse_is_signed },
+
+#define BUILTIN_VA(nam) { "va_" #nam, parse_va_ ##nam },
+#  include "__builtin_va.def"
+#undef BUILTIN_VA
 
 	{ NULL, NULL }
 
@@ -102,8 +106,11 @@ expr *builtin_parse(const char *sp)
 	return NULL;
 }
 
-#define expr_mutate_builtin(exp, to)  \
-	exp->f_fold = fold_ ## to
+void builtin_gen_print(expr *e, symtable *stab)
+{
+	(void)stab;
+	idt_printf("builtin: %s\n", BUILTIN_SPEL(e->expr));
+}
 
 #define expr_mutate_builtin_const(exp, to) \
 	expr_mutate_builtin(exp, to),             \
@@ -120,10 +127,10 @@ static void builtin_gen_undefined(expr *e, symtable *stab)
 	(void)e;
 	(void)stab;
 	out_undefined();
-	out_push_i(type_ref_new_INT(), 0); /* needed for function return pop */
+	out_push_noop(); /* needed for function return pop */
 }
 
-static expr *parse_any_args(void)
+expr *parse_any_args(void)
 {
 	expr *fcall = expr_new_funcall();
 	fcall->funcargs = parse_funcargs();
@@ -147,7 +154,7 @@ static expr *parse_unreachable(void)
 	expr *fcall = expr_new_funcall();
 
 	expr_mutate_builtin(fcall, unreachable);
-	fcall->f_gen = builtin_gen_undefined;
+	fcall->f_gen = BUILTIN_GEN(builtin_gen_undefined);
 
 	return fcall;
 }
@@ -261,12 +268,51 @@ static void builtin_gen_frame_pointer(expr *e, symtable *stab)
 	out_push_frame_ptr(depth + 1);
 }
 
+static expr *builtin_frame_address_mutate(expr *e)
+{
+	expr_mutate_builtin(e, frame_address);
+	e->f_gen = BUILTIN_GEN(builtin_gen_frame_pointer);
+	return e;
+}
+
 static expr *parse_frame_address(void)
 {
-	expr *fcall = parse_any_args();
-	expr_mutate_builtin(fcall, frame_address);
-	fcall->f_gen = builtin_gen_frame_pointer;
-	return fcall;
+	return builtin_frame_address_mutate(parse_any_args());
+}
+
+expr *builtin_new_frame_address(int depth)
+{
+	expr *e = expr_new_funcall();
+
+	dynarray_add((void ***)&e->funcargs, expr_new_val(depth));
+
+	return builtin_frame_address_mutate(e);
+}
+
+/* --- reg_save_area (a basic wrapper around out_push_reg_save_ptr()) */
+
+void fold_reg_save_area(expr *e, symtable *stab)
+{
+	(void)stab;
+	e->tree_type = type_ref_new_VOID_PTR();
+}
+
+void gen_reg_save_area(expr *e, symtable *stab)
+{
+	(void)e;
+	(void)stab;
+	out_comment("stack local offset:");
+	out_push_reg_save_ptr();
+}
+
+expr *builtin_new_reg_save_area(void)
+{
+	expr *e = expr_new_funcall();
+
+	expr_mutate_builtin(e, reg_save_area);
+	e->f_gen = BUILTIN_GEN(gen_reg_save_area);
+
+	return e;
 }
 
 /* --- expect */
@@ -307,7 +353,7 @@ static expr *parse_expect(void)
 {
 	expr *fcall = parse_any_args();
 	expr_mutate_builtin_const(fcall, expect);
-	fcall->f_gen = builtin_gen_expect;
+	fcall->f_gen = BUILTIN_GEN(builtin_gen_expect);
 	return fcall;
 }
 

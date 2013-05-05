@@ -12,7 +12,7 @@ const char *str_stmt_switch()
 	return "switch";
 }
 
-void fold_switch_enum(stmt *sw, type *enum_type)
+void fold_switch_enum(stmt *sw, const type *enum_type)
 {
 	const int nents = enum_nentries(enum_type->sue);
 	stmt **titer;
@@ -79,7 +79,7 @@ void fold_stmt_switch(stmt *s)
 		type_ref *r = type_ref_is_type(s->expr->tree_type, type_enum);
 
 		if(r){
-			type *typ = r->bits.type;
+			const type *typ = r->bits.type;
 			UCC_ASSERT(typ->sue, "no enum for enum type");
 			fold_switch_enum(s, typ);
 

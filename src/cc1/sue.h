@@ -40,6 +40,7 @@ struct struct_union_enum_st
 
 #define sue_nmembers(x) dynarray_count((void **)(x)->members)
 
+sue_member *sue_member_from_decl(decl *);
 
 struct_union_enum_st *sue_add( symtable *, char *spel, sue_member **members, enum type_primitive);
 struct_union_enum_st *sue_find(symtable *, const char *spel);
@@ -56,6 +57,8 @@ int sue_enum_size(struct_union_enum_st *st);
 
 decl *struct_union_member_find(struct_union_enum_st *, const char *spel, unsigned *extra_off);
 decl *struct_union_member_find_sue(struct_union_enum_st *, struct_union_enum_st *);
+
+unsigned struct_union_member_offset(struct_union_enum_st *, const char *);
 
 decl *struct_union_member_at_idx(struct_union_enum_st *, int idx); /* NULL if out of bounds */
 int   struct_union_member_idx(struct_union_enum_st *, decl *);

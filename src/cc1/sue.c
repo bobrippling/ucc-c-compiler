@@ -105,6 +105,13 @@ static int decl_spel_cmp(const void *pa, const void *pb)
 	return strcmp(a->struct_member->spel, b->struct_member->spel);
 }
 
+sue_member *sue_member_from_decl(decl *d)
+{
+	sue_member *sm = umalloc(sizeof *sm);
+	sm->struct_member = d;
+	return sm;
+}
+
 struct_union_enum_st *sue_add(symtable *const stab, char *spel, sue_member **members, enum type_primitive prim)
 {
 	struct_union_enum_st *sue;

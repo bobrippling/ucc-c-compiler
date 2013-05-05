@@ -11,6 +11,7 @@
 #include "../util/platform.h"
 #include "sue.h"
 #include "decl.h"
+#include "cc1.h"
 
 const where *eof_where = NULL;
 
@@ -20,7 +21,6 @@ intval *intval_new(long v)
 	iv->val = v;
 	return iv;
 }
-
 
 void where_new(struct where *w)
 {
@@ -50,36 +50,32 @@ void where_new(struct where *w)
 	}
 }
 
-type *type_new()
+static type *type_new_primitive1(enum type_primitive p)
 {
 	type *t = umalloc(sizeof *t);
 	where_new(&t->where);
+	t->primitive = p;
 	t->is_signed = 1;
-	t->primitive = type_unknown;
 	return t;
 }
 
-type *type_new_primitive(enum type_primitive p)
+const type *type_new_primitive_sue(enum type_primitive p, struct_union_enum_st *s)
 {
-	type *t = type_new();
-	t->primitive = p;
+	type *t = type_new_primitive1(p);
+	t->sue = s;
 	return t;
 }
 
-type *type_new_primitive_signed(enum type_primitive p, int is_signed)
+const type *type_new_primitive_signed(enum type_primitive p, int sig)
 {
-	/* until merge */
-	type *t = type_new();
-	t->primitive = p;
-	t->is_signed = is_signed;
+	type *t = type_new_primitive1(p);
+	t->is_signed = sig;
 	return t;
 }
 
-type *type_copy(type *t)
+const type *type_new_primitive(enum type_primitive p)
 {
-	type *ret = umalloc(sizeof *ret);
-	memcpy(ret, t, sizeof *ret);
-	return ret;
+	return type_new_primitive1(p);
 }
 
 int type_primitive_size(enum type_primitive tp)
@@ -99,7 +95,10 @@ int type_primitive_size(enum type_primitive tp)
 
 		case type_long:
 		case type_double:
-			return 8; /* FIXME: 4 on 32-bit */
+			/* 4 on 32-bit */
+			if(cc1_m32)
+				return 4;
+			return 8;
 
 		case type_llong:
 			ICW("TODO: long long");
@@ -283,28 +282,26 @@ const char *type_to_str(const type *t)
 
 	}else{
 		switch(t->primitive){
-#define SAPPEND(s) snprintf(bufp, BUF_SIZE, "%s", s); break
-#define APPEND(t) case type_ ## t: SAPPEND(#t)
-			APPEND(void);
-			APPEND(_Bool);
-			APPEND(char);
-			APPEND(short);
-			APPEND(int);
-			APPEND(long);
-			APPEND(float);
-			APPEND(double);
-
-			case type_llong:   SAPPEND("long long");
-			case type_ldouble: SAPPEND("long double");
+			case type_void:
+			case type__Bool:
+			case type_char:
+			case type_short:
+			case type_int:
+			case type_long:
+			case type_float:
+			case type_double:
+			case type_llong:
+			case type_ldouble:
+				snprintf(bufp, BUF_SIZE, "%s",
+						type_primitive_to_str(t->primitive));
+				break;
 
 			case type_unknown:
 				ICE("unknown type primitive (%s)", where_str(&t->where));
 			case type_enum:
-				ICE("enum without ->enu");
 			case type_struct:
 			case type_union:
-				ICE("struct/union without ->struct_union");
-#undef APPEND
+				ICE("struct/union/enum without ->sue");
 		}
 	}
 

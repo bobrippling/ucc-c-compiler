@@ -953,9 +953,7 @@ void fold(symtable *globs)
 
 		/* const char * */
 		(fargs->arglist[0] = decl_new())->ref = type_ref_new_ptr(
-				type_ref_new_cast_add(
-					type_ref_new_type(type_new_primitive(type_char)),
-					qual_const),
+				type_ref_new_type_qual(type_char, qual_const),
 				qual_none);
 
 		df->ref = type_ref_new_func(type_ref_new_INT(), fargs);

@@ -94,6 +94,8 @@ struct statement
 	KEYWORD(_Alignas),
 	KEYWORD__(alignas, token__Alignas),
 
+	{ "__builtin_va_list", token___builtin_va_list },
+
 	KEYWORD(sizeof),
 	KEYWORD(_Generic),
 	KEYWORD(_Static_assert),

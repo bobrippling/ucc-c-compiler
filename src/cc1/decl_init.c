@@ -289,12 +289,9 @@ static void decl_initialise_sue(decl_init ***init_iter,
 	if(dinit == NULL)
 		ICE("TODO: null dinit for struct");
 
-	if(sue_incomplete(sue)){
-		type_ref *r = type_ref_new_type(type_new_primitive(type_struct));
-		r->bits.type->sue = sue;
-
-		DIE_AT(&dinit->where, "initialising %s", type_ref_to_str(r));
-	}
+	if(sue_incomplete(sue))
+		DIE_AT(&dinit->where, "initialising %s %s",
+				sue_str(sue), sue->spel);
 
 	braced = dinit->type == decl_init_brace;
 	sue_iter = braced ? dinit->bits.inits : *init_iter;

@@ -3,7 +3,7 @@
 
 struct sym
 {
-	int offset; /* stack offset */
+	int offset; /* stack offset / arg index */
 
 	enum sym_type
 	{
@@ -12,7 +12,7 @@ struct sym
 		sym_arg
 	} type;
 
-	decl *decl;
+	decl *decl, *func;
 
 	/* static analysis */
 	int nreads, nwrites;

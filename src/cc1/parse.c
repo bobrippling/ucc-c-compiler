@@ -966,6 +966,8 @@ symtable_global *parse()
 	globals = symtabg_new();
 	current_scope = &globals->stab;
 
+	type_ref_init(current_scope);
+
 	for(;;){
 		int cont = 0;
 

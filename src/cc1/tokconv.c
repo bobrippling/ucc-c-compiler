@@ -188,6 +188,7 @@ const char *token_to_str(enum token t)
 		CASE_STR_PREFIX(token,  struct);
 		CASE_STR_PREFIX(token,  union);
 		CASE_STR_PREFIX(token,  enum);
+		CASE_STR_PREFIX(token,  __builtin_va_list);
 
 		CASE_STR_PREFIX(token,  identifier);
 		CASE_STR_PREFIX(token,  integer);

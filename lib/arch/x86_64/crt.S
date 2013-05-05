@@ -1,4 +1,4 @@
-#include "../src/as_cfg.h"
+#include "../../../src/as_cfg.h"
 .section SECTION_TEXT
 .globl _start
 _start:

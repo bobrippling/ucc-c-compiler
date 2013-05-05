@@ -64,7 +64,7 @@ struct type_ref
 	union
 	{
 		/* ref_type */
-		type *type;
+		const type *type;
 
 		/* ref_tdef */
 		struct type_ref_tdef
@@ -178,16 +178,16 @@ enum decl_cmp
 };
 
 decl        *decl_new(void);
-decl        *decl_new_type(enum type_primitive p);
-#define      decl_new_void() decl_new_type(type_void)
-#define      decl_new_char() decl_new_type(type_char)
-#define      decl_new_int()  decl_new_type(type_int)
+decl        *decl_new_ty_sp(type_ref *, char *);
 void         decl_free(decl *, int free_ref);
 void         type_ref_free(type_ref *);
 void         type_ref_free_1(type_ref *);
 
+void type_ref_init(symtable *stab);
 type_ref *type_ref_new_tdef(expr *, decl *);
-type_ref *type_ref_new_type(type *);
+type_ref *type_ref_new_type(const type *);
+type_ref *type_ref_new_type_primitive(enum type_primitive);
+type_ref *type_ref_new_type_qual(enum type_primitive, enum type_qualifier);
 type_ref *type_ref_new_ptr(  type_ref *to, enum type_qualifier);
 type_ref *type_ref_new_block(type_ref *to, enum type_qualifier);
 type_ref *type_ref_new_array(type_ref *to, expr *sz);
@@ -210,11 +210,11 @@ int   type_ref_equal(type_ref *a, type_ref *b, enum decl_cmp mode);
 int   decl_store_static_or_extern(enum decl_storage);
 
 type_ref *type_ref_ptr_depth_inc(type_ref *);
-type_ref *type_ref_ptr_depth_dec(type_ref *r, where *w);
+type_ref *type_ref_ptr_depth_dec(type_ref *r, where *);
 type_ref *type_ref_next(type_ref *r);
 
-type *type_ref_get_type(type_ref *);
-type *decl_get_type(decl *);
+const type *type_ref_get_type(type_ref *);
+const type *decl_get_type(decl *);
 
 int decl_conv_array_func_to_ptr(decl *d);
 type_ref *decl_is_decayed_array(decl *);
@@ -277,12 +277,18 @@ struct_union_enum_st *type_ref_is_s_or_u_or_e(type_ref *);
 #define decl_is_void(d) decl_is_type(d, type_void)
 #define decl_is_bool(d) (decl_is_ptr(d) || decl_is_integral(d))
 
-#define type_ref_new_VOID()       type_ref_new_type(type_new_primitive(type_void))
-#define type_ref_new_INT()        type_ref_new_type(type_new_primitive(type_int))
-#define type_ref_new_CHAR()       type_ref_new_type(type_new_primitive(type_char))
-#define type_ref_new_BOOL()       type_ref_new_type(type_new_primitive(type_int))
-#define type_ref_new_INTPTR_T()   type_ref_new_type(type_new_primitive(type_long))
+/* note: returns static references */
+#define type_ref_new_VOID()       type_ref_new_type_primitive(type_void)
+#define type_ref_new_INT()        type_ref_new_type_primitive(type_int)
+#define type_ref_new_LONG()       type_ref_new_type_primitive(type_long)
+#define type_ref_new_CHAR()       type_ref_new_type_primitive(type_char)
+#define type_ref_new_BOOL()       type_ref_new_type_primitive(type_int)
+#define type_ref_new_INTPTR_T()   type_ref_new_type_primitive(type_long)
+
+type_ref *type_ref_new_VA_LIST(void);
 
 #define type_ref_new_VOID_PTR() type_ref_ptr_depth_inc(type_ref_new_VOID())
+#define type_ref_new_INT_PTR()  type_ref_ptr_depth_inc(type_ref_new_INT())
+#define type_ref_new_LONG_PTR() type_ref_ptr_depth_inc(type_ref_new_LONG())
 
 #endif

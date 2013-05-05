@@ -66,14 +66,13 @@ struct type
 
 enum type_cmp
 {
-	TYPE_CMP_EXACT                 = 1 << 0,
+	TYPE_CMP_EXACT         = 1 << 0,
 	TYPE_CMP_ALLOW_SIGNED_UNSIGNED = 1 << 1,
 };
 
-type *type_new(void);
-type *type_new_primitive(enum type_primitive);
-type *type_new_primitive_signed(enum type_primitive, int is_signed);
-type *type_copy(type *);
+const type *type_new_primitive(enum type_primitive);
+const type *type_new_primitive_signed(enum type_primitive, int sig);
+const type *type_new_primitive_sue(enum type_primitive, struct_union_enum_st *);
 #define type_free(x) free(x)
 
 void where_new(struct where *w);

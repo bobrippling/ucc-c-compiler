@@ -31,35 +31,21 @@ static void parse_add_attr(decl_attr **append);
 static type_ref *parse_type_ref2(enum decl_mode mode, char **sp);
 static decl *parse_decl_single(enum decl_mode mode);
 
-void parse_sue_preamble(type **tp, char **psp, enum type_primitive primitive)
+/* sue = struct/union/enum */
+type_ref *parse_type_sue(enum type_primitive prim)
 {
-	char *spel;
-	type *t;
-
-	spel = NULL;
-	t = type_new_primitive(primitive);
+	char *spel = NULL;
+	sue_member **members = NULL;
+	decl_attr *this_sue_attr = NULL;
 
 	if(curtok == token_identifier){
 		spel = token_current_spel();
 		EAT(token_identifier);
 	}
 
-	parse_add_attr(&t->attr); /* int/struct-A __attr__ */
-
-	*psp = spel;
-	*tp = t;
-}
-
-/* sue = struct/union/enum */
-type *parse_type_sue(enum type_primitive prim)
-{
-	type *t;
-	char *spel;
-	sue_member **members;
-
-	parse_sue_preamble(&t, &spel, prim);
-
-	members = NULL;
+	/* FIXME: struct A { int i; };
+	 * struct A __attr__((packed)) a; - affects all struct A instances */
+	parse_add_attr(&this_sue_attr); /* int/struct-A __attr__ */
 
 	if(accept(token_open_block)){
 		if(prim == type_enum){
@@ -95,18 +81,16 @@ type *parse_type_sue(enum type_primitive prim)
 			decl **i;
 
 			if(!dmembers){
-				const char *t = sue_str_type(prim);
+				const char *desc = sue_str_type(prim);
 
 				if(curtok == token_colon)
-					DIE_AT(NULL, "can't have initial %s padding", t);
-				DIE_AT(NULL, "no members in %s", t);
+					DIE_AT(NULL, "can't have initial %s padding", desc);
+				DIE_AT(NULL, "no members in %s", desc);
 			}
 
-			for(i = dmembers; *i; i++){
-				sue_member *sm = umalloc(sizeof *sm);
-				sm->struct_member = *i;
-				dynarray_add((void ***)&members, sm);
-			}
+			for(i = dmembers; *i; i++)
+				dynarray_add((void ***)&members,
+						sue_member_from_decl(*i));
 
 			dynarray_free((void ***)&dmembers, NULL);
 
@@ -122,11 +106,14 @@ type *parse_type_sue(enum type_primitive prim)
 			cc1_warn_at(NULL, 0, 1, WARN_PREDECL_ENUM, "predeclaration of enums is not C99");
 	}
 
-	t->sue = sue_add(current_scope, spel, members, prim);
+	{
+		type_ref *r = type_ref_new_type(type_new_primitive_sue(
+					prim,
+					sue_add(current_scope, spel, members, prim)));
 
-	parse_add_attr(&t->sue->attr); /* struct A {} __attr__ */
-
-	return t;
+		r->attr = this_sue_attr; /* struct A {} __attr__ */
+		return r;
+	}
 }
 
 #include "parse_attr.c"
@@ -160,7 +147,7 @@ static type_ref *parse_btype(
 	decl_attr *attr = NULL;
 	enum type_qualifier qual = qual_none;
 	enum type_primitive primitive = type_int;
-	int is_signed = 1, is_inline = 0, had_attr = 0, is_noreturn = 0;
+	int is_signed = 1, is_inline = 0, had_attr = 0, is_noreturn = 0, is_va_list = 0;
 	int store_set = 0, primitive_set = 0, signed_set = 0;
 	decl *tdef_decl = NULL;
 
@@ -239,15 +226,15 @@ static type_ref *parse_btype(
 		}else if(curtok == token_struct || curtok == token_union || curtok == token_enum){
 			const enum token tok = curtok;
 			const char *str;
-			type *t;
+			type_ref *tref;
 
 			EAT(curtok);
 
 			switch(tok){
-#define CASE(a)                           \
-				case token_ ## a:                 \
-					t = parse_type_sue(type_ ## a); \
-					str = #a;                       \
+#define CASE(a)                              \
+				case token_ ## a:                    \
+					tref = parse_type_sue(type_ ## a); \
+					str = #a;                          \
 					break
 
 				CASE(enum);
@@ -259,12 +246,12 @@ static type_ref *parse_btype(
 			}
 
 			if(signed_set || primitive_set || is_inline)
-				DIE_AT(&t->where, "primitive/signed/unsigned/inline with %s", str);
+				DIE_AT(&tref->where, "primitive/signed/unsigned/inline with %s", str);
 
 			/* fine... although a _Noreturn function returning a sue
 			 * is pretty daft... */
 			if(is_noreturn)
-				decl_attr_append(&t->attr, decl_attr_new(attr_noreturn));
+				decl_attr_append(&tref->attr, decl_attr_new(attr_noreturn));
 
 			/*
 			 * struct A { ... } const x;
@@ -276,7 +263,7 @@ static type_ref *parse_btype(
 			}
 
 			/* *store is assigned elsewhere */
-			return type_ref_new_cast_add(type_ref_new_type(t), qual);
+			return type_ref_new_cast_add(tref, qual);
 
 		}else if(accept(token_typeof)){
 			if(primitive_set)
@@ -284,6 +271,14 @@ static type_ref *parse_btype(
 
 			tdef_typeof = parse_expr_sizeof_typeof_alignof(what_typeof);
 			primitive_set = 1;
+
+		}else if(accept(token___builtin_va_list)){
+			if(primitive_set)
+				DIE_AT(NULL, "can't combine previous primitive with va_list");
+
+			primitive_set = 1;
+			is_va_list = 1;
+			primitive = type_struct;
 
 		}else if(curtok == token_identifier
 		&& (tdef_decl_test = typedef_find(current_scope, token_current_spel_peek()))){
@@ -362,10 +357,37 @@ static type_ref *parse_btype(
 	{
 		type_ref *r;
 
-		if(signed_set && primitive == type__Bool)
-			DIE_AT(NULL, "%ssigned with _Bool", is_signed ? "" : "un");
+		if(signed_set){
+			switch(primitive){
+				case type__Bool:
+				case type_void:
+				case type_float:
+				case type_double:
+				case type_ldouble:
+					DIE_AT(NULL, "%ssigned with %s",
+							is_signed ? "" : "un",
+							type_primitive_to_str(primitive));
+					break;
 
-		if(tdef_typeof){
+				case type_struct:
+				case type_union:
+				case type_enum:
+				case type_unknown:
+					ucc_unreach();
+
+				case type_char:
+				case type_int:
+				case type_short:
+				case type_long:
+				case type_llong:
+					break;
+			}
+		}
+
+		if(is_va_list){
+			r = type_ref_new_VA_LIST();
+
+		}else if(tdef_typeof){
 			/* signed size_t x; */
 			if(signed_set){
 				DIE_AT(NULL, "signed/unsigned not allowed with typedef instance (%s)",
@@ -375,11 +397,10 @@ static type_ref *parse_btype(
 			r = type_ref_new_tdef(tdef_typeof, tdef_decl);
 
 		}else{
-			type *t = type_new_primitive(primitive_set ? primitive : type_int);
-
-			t->is_signed = is_signed;
-
-			r = type_ref_new_type(t);
+			r = type_ref_new_type(
+					type_new_primitive_signed(
+						primitive_set ? primitive : type_int,
+						is_signed));
 		}
 
 		if(store
@@ -423,6 +444,7 @@ int parse_curtok_is_type(void)
 		case token_enum:
 		case token_typeof:
 		case token_attribute:
+		case token___builtin_va_list:
 			return 1;
 
 		case token_identifier:

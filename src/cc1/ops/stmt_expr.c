@@ -35,7 +35,11 @@ void gen_stmt_expr(stmt *s)
 			out_pop(); /* cancel the implicit push from gen_expr() above */
 
 		out_comment("end of %s-stmt", s->f_str());
-		UCC_ASSERT(out_vcount() == pre_vcount, "vcount changed over statement");
+
+		UCC_ASSERT(out_vcount() == pre_vcount,
+				"vcount changed over %s statement (%d -> %d)",
+				s->expr->f_str(),
+				out_vcount(), pre_vcount);
 	}
 }
 

@@ -305,6 +305,7 @@ void fold_expr_funcall(expr *e, symtable *stab)
 	funcargs *args_from_decl;
 	char *sp = NULL;
 	int count_decl = 0;
+	char *desc;
 
 #if 0
 	if(func_is_asm(sp)){
@@ -358,6 +359,7 @@ invalid:
 		}
 	}
 
+	desc = ustrprintf("function argument to %s", sp);
 	FOLD_EXPR(e->expr, stab);
 	type_func = e->expr->tree_type;
 
@@ -397,7 +399,6 @@ invalid:
 	/* this block folds the args and type-checks */
 	if(e->funcargs){
 		unsigned long nonnulls = 0;
-		char *const desc = ustrprintf("function argument to %s", sp);
 		int i, j;
 		decl_attr *da;
 
@@ -405,23 +406,49 @@ invalid:
 			nonnulls = da->attr_extra.nonnull_args;
 
 		for(i = j = 0; e->funcargs[i]; i++){
-			decl *decl_arg;
 			expr *arg = FOLD_EXPR(e->funcargs[i], stab);
 
 			fold_need_expr(arg, desc, 0);
 			fold_disallow_st_un(arg, desc);
 
-			if(args_from_decl->arglist && (decl_arg = args_from_decl->arglist[j])){
-				char dbuf[DECL_STATIC_BUFSIZ];
-				char rbuf[TYPE_REF_STATIC_BUFSIZ];
+			if((nonnulls & (1 << i)) && expr_is_null_ptr(arg, 1))
+				WARN_AT(&arg->where, "null passed where non-null required (arg %d)", i + 1);
+		}
+	}
 
-				const int eq = fold_type_ref_equal(
+	/* this block is purely type checking */
+	if(args_from_decl->arglist || args_from_decl->args_void){
+		int count_arg;
+
+		count_arg  = dynarray_count((void **)e->funcargs);
+		count_decl = dynarray_count((void **)args_from_decl->arglist);
+
+		if(count_decl != count_arg && (args_from_decl->variadic ? count_arg < count_decl : 1)){
+			DIE_AT(&e->where, "too %s arguments to function %s (got %d, need %d)",
+					count_arg > count_decl ? "many" : "few",
+					sp, count_arg, count_decl);
+		}
+
+		if(e->funcargs){
+			int i;
+
+			for(i = 0; ; i++){
+				expr *arg      = e->funcargs[i];
+				decl *decl_arg = args_from_decl->arglist[i];
+				int eq;
+				char arg_buf[TYPE_REF_STATIC_BUFSIZ];
+				char exp_buf[TYPE_REF_STATIC_BUFSIZ];
+
+				if(!decl_arg)
+					break;
+
+				eq = fold_type_ref_equal(
 						decl_arg->ref, arg->tree_type, &arg->where,
 						WARN_ARG_MISMATCH, 0,
 						"mismatching argument %d to %s (%s <-- %s)",
 						i, sp,
-						decl_to_str_r(dbuf, decl_arg),
-						type_ref_to_str_r(rbuf, arg->tree_type));
+						type_ref_to_str_r(exp_buf, decl_arg->ref),
+						type_ref_to_str_r(arg_buf, arg->tree_type));
 
 				if(!eq){
 					fold_insert_casts(decl_arg->ref, &e->funcargs[i],
@@ -432,16 +459,11 @@ invalid:
 
 				/* f(int [static 5]) check */
 				static_array_check(decl_arg, arg);
-
-				j++;
 			}
-
-			if((nonnulls & (1 << i)) && expr_is_null_ptr(arg, 1))
-				WARN_AT(&arg->where, "null passed where non-null required (arg %d)", i + 1);
 		}
-
-		free(desc);
 	}
+
+	free(desc), desc = NULL;
 
 	/* each arg needs casting up to int size, if smaller */
 	if(e->funcargs){

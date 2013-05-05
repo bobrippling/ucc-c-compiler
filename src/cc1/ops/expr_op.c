@@ -582,5 +582,12 @@ expr *expr_new_op(enum op_type op)
 	return e;
 }
 
+expr *expr_new_op2(enum op_type o, expr *l, expr *r)
+{
+	expr *e = expr_new_op(o);
+	e->lhs = l, e->rhs = r;
+	return e;
+}
+
 void gen_expr_style_op(expr *e, symtable *stab)
 { (void)e; (void)stab; /* TODO */ }

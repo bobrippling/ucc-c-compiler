@@ -3,8 +3,8 @@
 
 enum platform
 {
-	PLATFORM_32,
-	PLATFORM_64
+	PLATFORM_mipsel_32,
+	PLATFORM_x86_64
 };
 
 enum platform_sys

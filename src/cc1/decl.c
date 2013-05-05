@@ -23,17 +23,110 @@
 static type_ref *type_ref_new(enum type_ref_type t, type_ref *of)
 {
 	type_ref *r = umalloc(sizeof *r);
-	where_new(&r->where);
+	if(of)
+		memcpy_safe(&r->where, &of->where);
+	else
+		where_new(&r->where);
+
 	r->type = t;
 	r->ref = of;
 	return r;
 }
 
-type_ref *type_ref_new_type(type *t)
+static type_ref *cache_basics[type_unknown];
+static type_ref *cache_ptr[type_unknown];
+static type_ref *cache_va_list;
+
+void type_ref_init(symtable *stab)
+{
+	cache_basics[type_void] = type_ref_new_VOID();
+	cache_basics[type_int]  = type_ref_new_INT();
+	cache_basics[type_char] = type_ref_new_CHAR();
+	cache_basics[type_long] = type_ref_new_INTPTR_T();
+
+	cache_ptr[type_void] = type_ref_new_VOID_PTR();
+	cache_ptr[type_long] = type_ref_new_LONG_PTR();
+	cache_ptr[type_int]  = type_ref_new_INT_PTR();
+
+	/* pointer to struct __builtin_va_list */
+	{
+		/* must match platform abi - vfprintf(..., ap); */
+		sue_member **sue_members = NULL;
+
+		type_ref *void_ptr = type_ref_new_VOID_PTR();
+
+		/*
+		unsigned int gp_offset;
+		unsigned int fp_offset;
+		void *overflow_arg_area;
+		void *reg_save_area;
+		*/
+
+#define ADD_DECL(to, dcl)          \
+		dynarray_add((void ***)&to,    \
+				sue_member_from_decl(dcl))
+
+#define ADD_SCALAR(to, ty, sp)                 \
+		ADD_DECL(to,                               \
+				decl_new_ty_sp(                        \
+					type_ref_new_type(                   \
+						type_new_primitive_signed(ty, 0)), \
+					ustrdup(sp)))
+
+
+		ADD_SCALAR(sue_members, type_int, "gp_offset");
+		ADD_SCALAR(sue_members, type_int, "fp_offset");
+		ADD_DECL(sue_members, decl_new_ty_sp(void_ptr, "overflow_arg_area"));
+		ADD_DECL(sue_members, decl_new_ty_sp(void_ptr, "reg_save_area"));
+
+		/* typedef struct __va_list_struct __builtin_va_list[1]; */
+		{
+			type_ref *va_list_struct = type_ref_new_type(
+					type_new_primitive_sue(
+						type_struct,
+						sue_add(stab, ustrdup("__va_list_struct"),
+							sue_members, type_struct)));
+
+
+			type_ref *builtin_ar = type_ref_new_array(
+					va_list_struct,
+					expr_new_val(1));
+
+			type_ref *td = type_ref_new_tdef(
+					expr_new_sizeof_type(builtin_ar, 1),
+					decl_new_ty_sp(builtin_ar,
+						ustrdup("__builtin_va_list")));
+
+			cache_va_list = td;
+		}
+	}
+}
+
+type_ref *type_ref_new_VA_LIST(void)
+{
+	return cache_va_list;
+}
+
+type_ref *type_ref_new_type(const type *t)
 {
 	type_ref *r = type_ref_new(type_ref_type, NULL);
 	r->bits.type = t;
 	return r;
+}
+
+type_ref *type_ref_new_type_primitive(enum type_primitive p)
+{
+	type_ref *r;
+	if((r = cache_basics[p]))
+		return r;
+	return type_ref_new_type(type_new_primitive(p));
+}
+
+type_ref *type_ref_new_type_qual(enum type_primitive t, enum type_qualifier q)
+{
+	return type_ref_new_cast(
+			type_ref_new_type(type_new_primitive(t)),
+			q);
 }
 
 type_ref *type_ref_new_tdef(expr *e, decl *to)
@@ -107,10 +200,12 @@ type_ref *type_ref_new_cast_add(type_ref *to, enum type_qualifier add)
 
 type_ref *type_ref_new_cast_signed(type_ref *to, int is_signed)
 {
-	type_ref *r = type_ref_new(type_ref_cast, to);
-	r->bits.cast.additive = 1;
-	r->bits.cast.is_signed_cast = 1;
-	r->bits.cast.signed_true = is_signed;
+	type_ref *r = type_ref_new_cast_is_additive(to, qual_none, 1);
+	/* `to' may be returned */
+	if(r->type == type_ref_cast){
+		r->bits.cast.is_signed_cast = 1;
+		r->bits.cast.signed_true = is_signed;
+	}
 	return r;
 }
 
@@ -121,17 +216,15 @@ decl *decl_new()
 	return d;
 }
 
-decl *decl_new_type(enum type_primitive p)
+decl *decl_new_ty_sp(type_ref *ty, char *sp)
 {
 	decl *d = decl_new();
-	type *t = d->ref->bits.type;
-
-	t->primitive = p;
-
+	d->ref = ty;
+	d->spel = sp;
 	return d;
 }
 
-type *decl_get_type(decl *d)
+const type *decl_get_type(decl *d)
 {
 	return type_ref_get_type(d->ref);
 }
@@ -154,6 +247,8 @@ void type_ref_free_1(type_ref *r)
 		case type_ref_type:
 			/* XXX: memleak */
 			/*type_free(r->bits.type);*/
+			if(r == cache_basics[r->bits.type->primitive])
+				return; /* don't free the cache */
 			break;
 
 		case type_ref_func:
@@ -467,6 +562,22 @@ static int type_ref_equal_r(
 		return 0;
 	}
 
+	/* FIXME: check qualifiers */
+#if 0
+	if(!type_qual_equal(a->qual, b->qual)){
+		if(mode & TYPE_CMP_EXACT)
+			return 0;
+
+		/* if b is const, a must be */
+		if((mode & TYPE_CMP_QUAL)
+				&& (b->qual & qual_const)
+				&& !(a->qual & qual_const))
+		{
+			return 0;
+		}
+	}
+#endif
+
 	a = type_ref_skip_tdefs_casts(orig_a);
 	b = type_ref_skip_tdefs_casts(orig_b);
 
@@ -595,6 +706,13 @@ type_ref *type_ref_ptr_depth_dec(type_ref *r, where *w)
 
 type_ref *type_ref_ptr_depth_inc(type_ref *r)
 {
+	type_ref *test;
+	if((test = type_ref_is_type(r, type_unknown))){
+		type_ref *p = cache_ptr[test->bits.type->primitive];
+		if(p)
+			return p;
+	}
+
 	return type_ref_new_ptr(r, qual_none);
 }
 
@@ -796,7 +914,7 @@ void type_ref_add_type_str(type_ref *r,
 
 		if(aka && of){
 			/* descend to the type */
-			type *t = type_ref_get_type(of);
+			const type *t = type_ref_get_type(of);
 
 			BUF_ADD(" (aka '%s')",
 					t ? type_to_str(t)
