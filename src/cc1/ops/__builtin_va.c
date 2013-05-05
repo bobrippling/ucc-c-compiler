@@ -37,6 +37,10 @@ static void va_type_check(expr *va_l, expr *in)
 	 * aka
 	 * f(__builtin_va_list *l) [the array has decayed]
 	 */
+	if(!curdecl_func)
+		DIE_AT(&in->where, "%s() outside a function",
+				BUILTIN_SPEL(in));
+
 	if(!type_ref_equal(va_l->tree_type,
 				type_ref_cached_VA_LIST_decayed(),
 				DECL_CMP_EXACT_MATCH))
@@ -60,11 +64,6 @@ static void fold_va_start(expr *e, symtable *stab)
 	int n_args;
 	expr *va_l;
 
-	if(!curdecl_func)
-		DIE_AT(&e->where, "va_start() outside a function");
-
-	n_args = CURRENT_FUNC_ARGS_CNT();
-
 	if(dynarray_count((void **)e->funcargs) != 2)
 		DIE_AT(&e->where, "%s requires two arguments", BUILTIN_SPEL(e->expr));
 
@@ -79,18 +78,7 @@ static void fold_va_start(expr *e, symtable *stab)
 
 	va_ensure_variadic(e);
 
-	/* check funcargs[1] is last argument to the function */
-	{
-		expr *last = e->funcargs[1];
-		sym *s;
-
-		if(!expr_kind(last, identifier)
-		|| (s = last->bits.ident.sym, s->type != sym_arg)
-		|| s->offset != n_args - 1)
-		{
-			WARN_AT(&last->where, "second parameter to va_start isn't last named argument");
-		}
-	}
+	n_args = CURRENT_FUNC_ARGS_CNT();
 
 #ifndef UCC_VA_ABI
 	{
