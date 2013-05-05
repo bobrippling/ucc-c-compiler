@@ -877,6 +877,22 @@ ops/stmt_while.o: ops/stmt_while.c ops/ops.h ops/../../util/util.h \
  ops/../decl.h ops/../cc1.h ops/../out/out.h ops/../fold.h ops/../const.h \
  ops/../gen_str.h ops/../gen_asm.h ops/stmt_while.h ops/stmt_if.h \
  ops/stmt_for.h ops/../out/lbl.h
+out/__asm_mipsel_32.o: out/__asm_mipsel_32.c out/../../util/util.h \
+ out/../data_structs.h out/../tree.h out/../expr.h out/../ops/expr_addr.h \
+ out/../ops/expr_assign.h out/../ops/expr_assign_compound.h \
+ out/../ops/expr_cast.h out/../ops/expr_comma.h out/../ops/expr_funcall.h \
+ out/../ops/expr_identifier.h out/../ops/expr_if.h out/../ops/expr_op.h \
+ out/../ops/expr_sizeof.h out/../ops/expr_val.h out/../ops/expr_stmt.h \
+ out/../ops/expr_deref.h out/../ops/expr_struct.h \
+ out/../ops/expr_compound_lit.h out/../ops/expr_string.h out/../stmt.h \
+ out/../ops/stmt_break.h out/../ops/stmt_case.h \
+ out/../ops/stmt_case_range.h out/../ops/stmt_code.h \
+ out/../ops/stmt_default.h out/../ops/stmt_do.h out/../ops/stmt_expr.h \
+ out/../ops/stmt_for.h out/../ops/stmt_goto.h out/../ops/stmt_if.h \
+ out/../ops/stmt_label.h out/../ops/stmt_noop.h out/../ops/stmt_return.h \
+ out/../ops/stmt_switch.h out/../ops/stmt_while.h \
+ out/../ops/stmt_continue.h out/../ops/stmt_asm.h out/../sym.h \
+ out/../decl.h out/../expr.h out/../tree.h out/../stmt.h out/__asm.h
 out/__asm_x86_64.o: out/__asm_x86_64.c out/../../util/util.h \
  out/../../util/dynarray.h out/../../util/dynmap.h out/../../util/alloc.h \
  out/../data_structs.h out/../tree.h out/../expr.h out/../ops/expr_addr.h \
