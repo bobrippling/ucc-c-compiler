@@ -46,13 +46,14 @@ static const char *x86_reg_str(unsigned reg, type_ref *r)
 		{ "dil",  "di", "edi", "rdi" },
 		{ "sil",  "si", "esi", "rsi" },
 
-#define REG(x) {  NULL,  NULL, "r" #x "d", "r" #x  }
+		/* r[8 - 15] -> r8b, r8w, r8d,  r8 */
+#define REG(x) {  "r" #x "b",  "r" #x "w", "r" #x "d", "r" #x  }
 		REG(8),  REG(9),  REG(10), REG(11),
 		REG(12), REG(13), REG(14), REG(15),
 #undef REG
 
-		{  NULL,  "bp", "ebp", "rbp" },
-		{  NULL,  "sp", "esp", "rsp" },
+		{  "bpl", "bp", "ebp", "rbp" },
+		{  "spl", "sp", "esp", "rsp" },
 	};
 #define N_REGS (sizeof rnames / sizeof *rnames)
 
