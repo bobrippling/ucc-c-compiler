@@ -502,7 +502,7 @@ static void fold_frame_address(expr *e, symtable *stab)
 
 	e->tree_type = type_ref_new_ptr(
 			type_ref_new_type(
-				type_new_primitive(type_void)
+				type_new_primitive(type_char)
 			),
 			qual_none);
 
@@ -544,7 +544,7 @@ expr *builtin_new_frame_address(int depth)
 void fold_reg_save_area(expr *e, symtable *stab)
 {
 	(void)stab;
-	e->tree_type = type_ref_cached_VOID_PTR();
+	e->tree_type = type_ref_cached_CHAR_PTR();
 }
 
 void gen_reg_save_area(expr *e, symtable *stab)
