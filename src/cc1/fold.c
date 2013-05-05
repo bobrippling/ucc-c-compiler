@@ -150,7 +150,7 @@ expr *fold_expr(expr *e, symtable *stab)
 	EOF_WHERE(&e->where,
 			type_ref *decayed = type_ref_decay(r);
 
-			if(decayed != r)
+			if(!type_ref_equal(decayed, r, DECL_CMP_EXACT_MATCH))
 				imp_cast = expr_new_cast(decayed, 1);
 		);
 

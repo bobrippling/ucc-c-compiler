@@ -71,8 +71,8 @@ static void fold_va_start(expr *e, symtable *stab)
 	va_l = e->funcargs[0];
 	fold_inc_writes_if_sym(va_l, stab);
 
-	FOLD_EXPR_NO_DECAY(e->funcargs[0], stab);
-	FOLD_EXPR(         e->funcargs[1], stab);
+	FOLD_EXPR(e->funcargs[0], stab);
+	FOLD_EXPR(e->funcargs[1], stab);
 
 	va_l = e->funcargs[0];
 	va_type_check(va_l, e->expr);
@@ -422,7 +422,7 @@ static void fold_va_arg(expr *e, symtable *stab)
 {
 	type_ref *const ty = e->bits.tref;
 
-	FOLD_EXPR_NO_DECAY(e->lhs, stab);
+	FOLD_EXPR(e->lhs, stab);
 	fold_type_ref(ty, NULL, stab);
 
 	va_type_check(e->lhs, e->expr);
@@ -471,7 +471,7 @@ static void fold_va_end(expr *e, symtable *stab)
 	if(dynarray_count((void **)e->funcargs) != 1)
 		DIE_AT(&e->where, "%s requires one argument", BUILTIN_SPEL(e->expr));
 
-	FOLD_EXPR_NO_DECAY(e->funcargs[0], stab);
+	FOLD_EXPR(e->funcargs[0], stab);
 	va_type_check(e->funcargs[0], e->expr);
 
 	va_ensure_variadic(e);
