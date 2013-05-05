@@ -413,6 +413,7 @@ void impl_op(enum op_type op)
 			 * Must freeup the lower
 			 */
 			v_freeup_regs(X86_64_REG_RAX, X86_64_REG_RDX);
+			v_reserve_reg(X86_64_REG_RDX); /* prevent rdx being used in the division */
 
 			r_div = v_to_reg(&vtop[-1]); /* TODO: similar to above - v_to_reg_preferred */
 
@@ -439,10 +440,19 @@ void impl_op(enum op_type op)
 					/* fall */
 
 				case REG:
+					if(vtop->bits.reg == X86_64_REG_RDX){
+						/* prevent rdx in division operand */
+						int r = v_unused_reg(1);
+						impl_reg_cp(vtop, r);
+						vtop->bits.reg = r;
+					}
+
 				case STACK:
 					out_asm("cqto");
 					out_asm("idiv%c %s", asm_type_ch(vtop->t), vstack_str(vtop));
 			}
+
+			v_unreserve_reg(X86_64_REG_RDX); /* free rdx */
 
 			vpop();
 
