@@ -409,8 +409,11 @@ void impl_op_unary(enum op_type op)
 
 void impl_cast_load(type_ref *small, type_ref *big, int is_signed)
 {
-	/* TODO FIXME: combine with code in x86_64 */
-	ICW("MIPS cast");
+	if(vtop->type != REG){
+		out_comment("// mips cast to %s - loading to register",
+				type_ref_to_str(big));
+		v_to_reg(vtop);
+	}
 }
 
 void impl_jmp_reg(int r)
