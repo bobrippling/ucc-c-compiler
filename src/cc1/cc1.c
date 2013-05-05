@@ -22,6 +22,10 @@
 #include "fold_sym.h"
 #include "out/out.h"
 
+#include "../as_cfg.h"
+#define QUOTE(...) #__VA_ARGS__
+#define EXPAND_QUOTE(y) QUOTE(y)
+
 struct
 {
 	int is_opt;
@@ -127,17 +131,13 @@ enum warning warn_mode = ~(
 
 enum fopt    fopt_mode = FOPT_CONST_FOLD | FOPT_SHOW_LINE | FOPT_PIC;
 enum cc1_backend cc1_backend = BACKEND_ASM;
-int m32 = 0;
+int m32 = UCC_M32;
 
 int cc1_max_errors = 16;
 
 int caught_sig = 0;
 
 int show_current_line;
-
-#include "../as_cfg.h"
-#define QUOTE(...) #__VA_ARGS__
-#define EXPAND_QUOTE(y) QUOTE(y)
 
 const char *section_names[NUM_SECTIONS] = {
 	EXPAND_QUOTE(SECTION_TEXT),
