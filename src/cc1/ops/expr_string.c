@@ -35,7 +35,7 @@ void fold_expr_str(expr *e, symtable *stab)
 
 	d = decl_new();
 	d->ref = e->tree_type;
-	d->spel = sv->lbl;
+	d->spel_asm = sv->lbl;
 
 	d->is_definition = 1;
 	d->store = store_static;
@@ -46,14 +46,16 @@ void fold_expr_str(expr *e, symtable *stab)
 
 		di->bits.expr = expr_new_val(sv->str[i]);
 
-		dynarray_add((void ***)&d->init->bits.inits, di);
+		dynarray_add(&d->init->bits.ar.inits, di);
 	}
 
 	/* add a sym so the data store gets gen'd */
-	e->bits.str.sym = SYMTAB_ADD(stab, d, stab->parent ? sym_local : sym_global);
+	e->bits.str.sym = sym_new_stab(
+			stab,
+			d,
+			stab->parent ? sym_local : sym_global);
 
-	e->code = stmt_new_wrapper(code, stab);
-	decl_init_create_assignments_for_base(d, e, e->code);
+	decl_init_brace_up_fold(d, stab);
 
 	/* no non-global folding,
 	 * all strks are static globals/read from the init */
@@ -63,6 +65,7 @@ void fold_expr_str(expr *e, symtable *stab)
 void gen_expr_str(expr *e, symtable *stab)
 {
 	(void)stab;
+	/*gen_asm_local(e->bits.str.sym.decl); - done for the decl we create */
 	out_push_lbl(e->bits.str.sv.lbl, 1);
 }
 

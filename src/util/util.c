@@ -202,7 +202,7 @@ char *fline(FILE *f)
 		line[pos++] = c;
 		if(pos == len){
 			len *= 2;
-			line = urealloc(line, len);
+			line = urealloc1(line, len);
 			line[pos] = '\0';
 		}
 

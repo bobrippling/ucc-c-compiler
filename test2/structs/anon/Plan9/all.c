@@ -1,3 +1,6 @@
+// RUN: %ucc -fplan9-extensions -o %t %s
+// RUN: %t
+
 /*
 3.3. Unnamed substructures
 	The most important and most heavily used of the extensions is the

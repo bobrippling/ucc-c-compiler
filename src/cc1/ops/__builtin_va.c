@@ -32,13 +32,18 @@
 
 static void va_type_check(expr *va_l, expr *in)
 {
+	/* we need to check decayed, since we may have
+	 * f(va_list l)
+	 * aka
+	 * f(__builtin_va_list *l) [the array has decayed]
+	 */
 	if(!type_ref_equal(va_l->tree_type,
-				type_ref_new_VA_LIST(),
+				type_ref_cached_VA_LIST_decayed(),
 				DECL_CMP_EXACT_MATCH))
 	{
 		DIE_AT(&va_l->where,
-				"first argument to %s should be a va_list",
-				BUILTIN_SPEL(in));
+				"first argument to %s should be a va_list (not %s)",
+				BUILTIN_SPEL(in), type_ref_to_str(va_l->tree_type));
 	}
 }
 
@@ -99,7 +104,7 @@ static void fold_va_start(expr *e, symtable *stab)
 					expr_new_identifier(memb)),       \
 				exp);                               \
 		                                        \
-		dynarray_add((void ***)&assigns->codes, \
+		dynarray_add(&assigns->codes,           \
 				expr_to_stmt(assign, stab))
 
 #define ADD_ASSIGN_VAL(memb, val) ADD_ASSIGN(memb, expr_new_val(val))
@@ -130,10 +135,10 @@ static void fold_va_start(expr *e, symtable *stab)
 	}
 #endif
 
-	e->tree_type = type_ref_new_VOID();
+	e->tree_type = type_ref_cached_VOID();
 }
 
-static void gen_va_start(expr *e, symtable *stab)
+static void builtin_gen_va_start(expr *e, symtable *stab)
 {
 #ifdef UCC_VA_ABI
 	/*
@@ -170,7 +175,7 @@ expr *parse_va_start(void)
 	return fcall;
 }
 
-static void gen_va_arg(expr *e, symtable *stab)
+static void builtin_gen_va_arg(expr *e, symtable *stab)
 {
 #ifdef UCC_VA_ABI
 	/*
@@ -299,26 +304,26 @@ stack:
 			char *lbl_stack = out_label_code("va_else");
 			char *lbl_fin   = out_label_code("va_fin");
 
-			struct_union_enum_st *sue_va = type_ref_next(type_ref_new_VA_LIST())->bits.type->sue;
+			struct_union_enum_st *sue_va = type_ref_next(type_ref_cached_VA_LIST())->bits.type->sue;
 
 #define VA_DECL(nam) \
-			decl *mem_ ## nam = struct_union_member_find(sue_va, #nam, NULL)
+			decl *mem_ ## nam = struct_union_member_find(sue_va, #nam, NULL, NULL)
 			VA_DECL(gp_offset);
 			VA_DECL(reg_save_area);
 			VA_DECL(overflow_arg_area);
 
 			gen_expr(e->lhs, stab); /* va_list */
-			out_change_type(type_ref_new_VOID_PTR());
+			out_change_type(type_ref_cached_VOID_PTR());
 			out_dup(); /* va, va */
 
-			out_push_i(type_ref_new_LONG(), mem_gp_offset->struct_offset);
+			out_push_i(type_ref_cached_LONG(), mem_gp_offset->struct_offset);
 			out_op(op_plus); /* va, &va.gp_offset */
 
-			out_change_type(type_ref_new_INT_PTR());
+			out_change_type(type_ref_cached_INT_PTR());
 			out_dup(); /* va, &gp_o, &gp_o */
 
 			out_deref(); /* va, &gp_o, gp_o */
-			out_push_i(type_ref_new_INT(), 6 * 8); /* N_CALL_REGS * pws */
+			out_push_i(type_ref_cached_INT(), 6 * 8); /* N_CALL_REGS * pws */
 			out_op(op_lt); /* va, &gp_o, <cond> */
 			out_jfalse(lbl_stack);
 
@@ -326,18 +331,18 @@ stack:
 			out_dup(); /* va, &gp_o, &gp_o */
 			out_deref(); /* va, &gp_o, gp_o */
 
-			out_push_i(type_ref_new_INT(), 8); /* pws */
+			out_push_i(type_ref_cached_INT(), 8); /* pws */
 			out_op(op_plus); /* va, &gp_o, gp_o+8 */
 
 			out_store(); /* va, gp_o+8 */
-			out_push_i(type_ref_new_INT(), 8); /* pws */
+			out_push_i(type_ref_cached_INT(), 8); /* pws */
 			out_op(op_minus); /* va, gp_o */
-			out_change_type(type_ref_new_LONG());
+			out_change_type(type_ref_cached_LONG());
 
 			out_swap(); /* gp_o, va */
-			out_push_i(type_ref_new_LONG(), mem_reg_save_area->struct_offset);
+			out_push_i(type_ref_cached_LONG(), mem_reg_save_area->struct_offset);
 			out_op(op_plus); /* gp_o, &reg_save_area */
-			out_change_type(type_ref_new_LONG_PTR());
+			out_change_type(type_ref_cached_LONG_PTR());
 			out_deref();
 			out_swap();
 			out_op(op_plus); /* reg_save_area + gp_o */
@@ -353,21 +358,21 @@ stack:
 
 			gen_expr(e->lhs, stab);
 			/* va */
-			out_change_type(type_ref_new_VOID_PTR());
-			out_push_i(type_ref_new_LONG(), mem_overflow_arg_area->struct_offset);
+			out_change_type(type_ref_cached_VOID_PTR());
+			out_push_i(type_ref_cached_LONG(), mem_overflow_arg_area->struct_offset);
 			out_op(op_plus);
 			/* &overflow_a */
 
-			out_dup(), out_change_type(type_ref_new_LONG_PTR()), out_deref();
+			out_dup(), out_change_type(type_ref_cached_LONG_PTR()), out_deref();
 			/* &overflow_a, overflow_a */
 
 			/* XXX: 8 = pws, but will need changing if we jump directly to stack, e.g. passing a struct */
-			out_push_i(type_ref_new_LONG(), 8);
+			out_push_i(type_ref_cached_LONG(), 8);
 			out_op(op_plus);
 
 			out_store();
 
-			out_push_i(type_ref_new_LONG(), 8);
+			out_push_i(type_ref_cached_LONG(), 8);
 			out_op(op_minus);
 
 			/* ensure we match the other block's final result before the merge */
@@ -454,7 +459,7 @@ expr *parse_va_arg(void)
 	return fcall;
 }
 
-static void gen_va_end(expr *e, symtable *stab)
+static void builtin_gen_va_end(expr *e, symtable *stab)
 {
 	(void)e;
 	(void)stab;
@@ -471,7 +476,7 @@ static void fold_va_end(expr *e, symtable *stab)
 
 	va_ensure_variadic(e);
 
-	e->tree_type = type_ref_new_VOID();
+	e->tree_type = type_ref_cached_VOID();
 }
 
 expr *parse_va_end(void)

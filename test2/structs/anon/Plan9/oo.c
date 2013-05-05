@@ -1,3 +1,6 @@
+// RUN: %ucc -fplan9-extensions -o %t %s
+// RUN: %t | %output_check 'weight 2' 'weight 5'
+
 typedef struct Animal Animal;
 
 struct Animal

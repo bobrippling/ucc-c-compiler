@@ -39,21 +39,21 @@ static type_ref *cache_va_list;
 
 void type_ref_init(symtable *stab)
 {
-	cache_basics[type_void] = type_ref_new_VOID();
-	cache_basics[type_int]  = type_ref_new_INT();
-	cache_basics[type_char] = type_ref_new_CHAR();
-	cache_basics[type_long] = type_ref_new_INTPTR_T();
+	cache_basics[type_void] = type_ref_cached_VOID();
+	cache_basics[type_int]  = type_ref_cached_INT();
+	cache_basics[type_char] = type_ref_cached_CHAR();
+	cache_basics[type_long] = type_ref_cached_INTPTR_T();
 
-	cache_ptr[type_void] = type_ref_new_VOID_PTR();
-	cache_ptr[type_long] = type_ref_new_LONG_PTR();
-	cache_ptr[type_int]  = type_ref_new_INT_PTR();
+	cache_ptr[type_void] = type_ref_cached_VOID_PTR();
+	cache_ptr[type_long] = type_ref_cached_LONG_PTR();
+	cache_ptr[type_int]  = type_ref_cached_INT_PTR();
 
 	/* pointer to struct __builtin_va_list */
 	{
 		/* must match platform abi - vfprintf(..., ap); */
 		sue_member **sue_members = NULL;
 
-		type_ref *void_ptr = type_ref_new_VOID_PTR();
+		type_ref *void_ptr = type_ref_cached_VOID_PTR();
 
 		/*
 		unsigned int gp_offset;
@@ -63,7 +63,7 @@ void type_ref_init(symtable *stab)
 		*/
 
 #define ADD_DECL(to, dcl)          \
-		dynarray_add((void ***)&to,    \
+		dynarray_add(&to,              \
 				sue_member_from_decl(dcl))
 
 #define ADD_SCALAR(to, ty, sp)                 \
@@ -84,8 +84,8 @@ void type_ref_init(symtable *stab)
 			type_ref *va_list_struct = type_ref_new_type(
 					type_new_primitive_sue(
 						type_struct,
-						sue_add(stab, ustrdup("__va_list_struct"),
-							sue_members, type_struct)));
+						sue_find_or_add(stab, ustrdup("__va_list_struct"),
+							sue_members, type_struct, 1)));
 
 
 			type_ref *builtin_ar = type_ref_new_array(
@@ -102,9 +102,20 @@ void type_ref_init(symtable *stab)
 	}
 }
 
-type_ref *type_ref_new_VA_LIST(void)
+type_ref *type_ref_cached_VA_LIST(void)
 {
 	return cache_va_list;
+}
+
+type_ref *type_ref_cached_VA_LIST_decayed(void)
+{
+	static type_ref *cache_va_list_decayed;
+
+	if(!cache_va_list_decayed)
+		cache_va_list_decayed = type_ref_decay(
+				type_ref_cached_VA_LIST());
+
+	return cache_va_list_decayed;
 }
 
 type_ref *type_ref_new_type(const type *t)
@@ -173,6 +184,19 @@ type_ref *type_ref_new_func(type_ref *of, funcargs *args)
 	type_ref *r = type_ref_new(type_ref_func, of);
 	r->bits.func = args;
 	return r;
+}
+
+type_ref *type_ref_cached_MAX_FOR(unsigned sz)
+{
+	enum type_primitive prims[] = {
+		type_long, type_int, type_short, type_char
+	};
+	unsigned i;
+
+	for(i = 0; i < sizeof(prims)/sizeof(*prims); i++)
+		if(sz >= type_primitive_size(prims[i]))
+			return type_ref_new_type(type_new_primitive(prims[i]));
+	return NULL;
 }
 
 static type_ref *type_ref_new_cast_is_additive(type_ref *to, enum type_qualifier new, int additive)
@@ -470,7 +494,7 @@ void decl_attr_free(decl_attr *a)
 
 #include "decl_is.c"
 
-int type_ref_size(type_ref *r, where const *from)
+unsigned type_ref_size(type_ref *r, where const *from)
 {
 	switch(r->type){
 		case type_ref_type:
@@ -541,8 +565,7 @@ unsigned decl_align(decl *d)
 	if(d->align)
 		al = d->align->resolved;
 
-	/* unsigned fixed in another branch */
-	return al ? al : (unsigned)type_ref_align(d->ref, &d->where);
+	return al ? al : type_ref_align(d->ref, &d->where);
 }
 
 static int type_ref_equal_r(
@@ -664,6 +687,11 @@ int decl_equal(decl *a, decl *b, enum decl_cmp mode)
 	return type_ref_equal(a->ref, b->ref, mode);
 }
 
+int decl_sort_cmp(const decl **pa, const decl **pb)
+{
+	return strcmp((*pa)->spel, (*pb)->spel);
+}
+
 int decl_is_variadic(decl *d)
 {
 	type_ref *r = d->ref;
@@ -694,9 +722,7 @@ type_ref *type_ref_ptr_depth_dec(type_ref *r, where *w)
 	if(type_ref_is(r, type_ref_func))
 		return r_save;
 
-	if(!type_ref_is_complete(r))
-		DIE_AT(w, "dereference of pointer to incomplete type %s",
-				type_ref_to_str(r));
+	/* don't check for incomplete types here */
 
 	/* XXX: memleak */
 	/*type_ref_free(r_save);*/
@@ -802,7 +828,7 @@ static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
 	}
 
 	if(q)
-		BUF_ADD("%s", type_qual_to_str(q));
+		BUF_ADD(" %s", type_qual_to_str(q, 0));
 
 	type_ref_add_str(r->tmp, spel, bufp, sz);
 
@@ -846,7 +872,7 @@ static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
 
 			if(r->bits.array.is_static)
 				BUF_ADD("static ");
-			BUF_ADD("%s", type_qual_to_str(r->bits.array.qual));
+			BUF_ADD("%s", type_qual_to_str(r->bits.array.qual, 1));
 
 			if(iv.val)
 				BUF_ADD("%ld]", iv.val);
@@ -913,8 +939,9 @@ void type_ref_add_type_str(type_ref *r,
 		}
 
 		if(aka && of){
-			/* descend to the type */
-			const type *t = type_ref_get_type(of);
+			/* descend to the type if it's next */
+			type_ref *t_ref = type_ref_is_type(of, type_unknown);
+			const type *t = t_ref ? t_ref->bits.type : NULL;
 
 			BUF_ADD(" (aka '%s')",
 					t ? type_to_str(t)

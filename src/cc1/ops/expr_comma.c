@@ -13,7 +13,7 @@ void fold_const_expr_comma(expr *e, consty *k)
 	const_fold(e->lhs, &klhs);
 	const_fold(e->rhs, k);
 
-	if(!is_const(klhs.type))
+	if(!CONST_AT_COMPILE_TIME(klhs.type))
 		k->type = CONST_NO;
 }
 
@@ -51,6 +51,13 @@ void gen_expr_str_comma(expr *e, symtable *stab)
 	gen_str_indent++;
 	print_expr(e->rhs);
 	gen_str_indent--;
+}
+
+expr *expr_new_comma2(expr *lhs, expr *rhs)
+{
+	expr *e = expr_new_comma();
+	e->lhs = lhs, e->rhs = rhs;
+	return e;
 }
 
 void mutate_expr_comma(expr *e)

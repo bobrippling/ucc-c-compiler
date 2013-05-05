@@ -5,6 +5,7 @@
 
 #include "../util/util.h"
 #include "../util/platform.h"
+#include "../util/dynarray.h"
 #include "data_structs.h"
 #include "macros.h"
 #include "sym.h"
@@ -67,6 +68,10 @@ void print_decl_init(decl_init *di)
 			gen_str_indent--;
 			break;
 
+		case decl_init_copy:
+			ICE("copy in print");
+			break;
+
 		case decl_init_brace:
 		{
 			decl_init *s;
@@ -75,28 +80,45 @@ void print_decl_init(decl_init *di)
 			idt_printf("brace\n");
 
 			gen_str_indent++;
-			for(i = 0; (s = di->bits.inits[i]); i++){
-				const int need_brace = s->type == decl_init_brace;
+			for(i = 0; (s = di->bits.ar.inits[i]); i++){
+				if(s == DYNARRAY_NULL){
+					idt_printf("[%d] = <zero init> ; %p\n", i, s);
+				}else if(s->type == decl_init_copy){
+					idt_printf("[%d] = copy from %d\n", i, DECL_INIT_COPY_IDX(s, di));
+				}else{
+					const int need_brace = s->type == decl_init_brace;
 
-				/* ->member not printed */
+					/* ->member not printed */
 #ifdef DINIT_WITH_STRUCT
-				if(s->spel)
-					idt_printf(".%s", s->spel);
-				else
+					if(s->spel)
+						idt_printf(".%s", s->spel);
+					else
 #endif
-					idt_printf("[%d]", i);
+						idt_printf("[%d]", i);
 
-				fprintf(cc1_out, " = %s\n", need_brace ? "{" : "");
+					fprintf(cc1_out, " = %s\n", need_brace ? "{" : "");
 
-				gen_str_indent++;
-				print_decl_init(s);
-				gen_str_indent--;
+					gen_str_indent++;
+					print_decl_init(s);
+					gen_str_indent--;
 
-				if(need_brace)
-					idt_printf("}\n");
+					if(need_brace)
+						idt_printf("}\n");
+				}
 			}
 			gen_str_indent--;
-			break;
+
+			if(di->bits.ar.range_inits){
+				idt_printf("range store:\n");
+				gen_str_indent++;
+				for(i = 0; (s = di->bits.ar.range_inits[i]); i++){
+					idt_printf("store[%d]:\n", i);
+					gen_str_indent++;
+					print_decl_init(s);
+					gen_str_indent--;
+				}
+				gen_str_indent--;
+			}
 		}
 	}
 }
@@ -111,13 +133,13 @@ void print_type_ref_eng(type_ref *ref)
 	switch(ref->type){
 		case type_ref_cast:
 			if(ref->bits.cast.is_signed_cast)
-				fprintf(cc1_out, "%s", ref->bits.cast.signed_true ? "signed" : "unsigned");
+				fprintf(cc1_out, "%s ", ref->bits.cast.signed_true ? "signed" : "unsigned");
 			else
-				fprintf(cc1_out, "%s ", type_qual_to_str(ref->bits.cast.qual));
+				fprintf(cc1_out, "%s", type_qual_to_str(ref->bits.cast.qual, 1));
 			break;
 
 		case type_ref_ptr:
-			fprintf(cc1_out, "%spointer to ", type_qual_to_str(ref->bits.ptr.qual));
+			fprintf(cc1_out, "%spointer to ", type_qual_to_str(ref->bits.ptr.qual, 1));
 			break;
 
 		case type_ref_block:
@@ -277,6 +299,9 @@ void print_decl(decl *d, enum pdeclargs mode)
 			fputc(')', cc1_out);
 	}
 
+	if(d->store)
+		fprintf(cc1_out, "%s ", decl_store_to_str(d->store));
+
 	if(fopt_mode & FOPT_ENGLISH){
 		print_decl_eng(d);
 	}else{
@@ -407,12 +432,7 @@ void print_enum(struct_union_enum_st *et)
 	gen_str_indent--;
 }
 
-int has_st_en_tdef(symtable *stab)
-{
-	return stab->sues || stab->typedefs;
-}
-
-void print_st_en_tdef(symtable *stab)
+void print_sues_static_asserts(symtable *stab)
 {
 	struct_union_enum_st **sit;
 	static_assert **stati;
@@ -422,18 +442,6 @@ void print_st_en_tdef(symtable *stab)
 		struct_union_enum_st *sue = *sit;
 		(sue->primitive == type_enum ? print_enum : print_struct)(sue);
 		nl = 1;
-	}
-
-	if(stab->typedefs){
-		decl **tit;
-
-		idt_printf("typedefs:\n");
-		gen_str_indent++;
-		for(tit = stab->typedefs; tit && *tit; tit++){
-			print_decl(*tit, PDECL_INDENT | PDECL_NEWLINE | PDECL_ATTR);
-			nl = 1;
-		}
-		gen_str_indent--;
 	}
 
 	for(stati = stab->static_asserts; stati && *stati; stati++){
@@ -453,25 +461,6 @@ void print_st_en_tdef(symtable *stab)
 
 void print_stmt_flow(stmt_flow *t)
 {
-	idt_printf("flow:\n");
-
-	if(t->for_init_decls){
-		decl **i;
-
-		idt_printf("inits:\n");
-		gen_str_indent++;
-
-		for(i = t->for_init_decls; *i; i++)
-			print_decl(*i, PDECL_INDENT
-					| PDECL_NEWLINE
-					| PDECL_SYM_OFFSET
-					| PDECL_PISDEF
-					| PDECL_PINIT
-					| PDECL_ATTR);
-
-		gen_str_indent--;
-	}
-
 	idt_printf("for parts:\n");
 
 	gen_str_indent++;
@@ -496,20 +485,20 @@ void print_stmt(stmt *t)
 	PRINT_IF(t, rhs,  print_stmt);
 	PRINT_IF(t, rhs,  print_stmt);
 
-	if(stmt_kind(t, code) && t->symtab && has_st_en_tdef(t->symtab)){
-		idt_printf("structs/unions, enums and tdefs in this block:\n");
+	if(stmt_kind(t, code)){
+		idt_printf("structs/unions/enums:\n");
 		gen_str_indent++;
-		print_st_en_tdef(t->symtab);
+		print_sues_static_asserts(t->symtab);
 		gen_str_indent--;
 	}
 
-	if(t->decls){
+	if(t->symtab){
 		decl **iter;
 
 		idt_printf("stack space %d\n", t->symtab->auto_total_size);
 		idt_printf("decls:\n");
 
-		for(iter = t->symtab->decls; *iter; iter++){
+		for(iter = t->symtab->decls; iter && *iter; iter++){
 			decl *d = *iter;
 
 			gen_str_indent++;
@@ -540,7 +529,7 @@ void gen_str(symtable_global *symtab)
 {
 	decl **diter;
 
-	print_st_en_tdef(&symtab->stab);
+	print_sues_static_asserts(&symtab->stab);
 
 	for(diter = symtab->stab.decls; diter && *diter; diter++){
 		decl *const d = *diter;

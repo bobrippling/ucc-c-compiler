@@ -1,3 +1,4 @@
+// RUN: %ocheck 97 %s
 #include <wchar.h>
 
 main()

@@ -1,8 +1,12 @@
+#include <assert.h>
+
 #include "pack.h"
 #include "../util/platform.h"
 
 int pack_to_align(int o, int align)
 {
+	assert(align > 0);
+
 #ifdef SLOW
 	if(o % align)
 		o += align - o % align;

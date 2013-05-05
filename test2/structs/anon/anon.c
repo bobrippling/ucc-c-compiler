@@ -1,12 +1,17 @@
-struct B{int i;};
+// RUN: %ucc %s
+
+//struct B{int i;};
 struct
 {
-	struct A;
-	struct B;
+	//struct A;
+	//struct B;
 	struct B{int i;};
 } jim;
 
-jim.i = 2; // error
+q()
+{
+	jim.i = 2; // error
+}
 
 struct XY_or_WX
 {
@@ -23,6 +28,9 @@ struct XY_or_WX
 	};
 };
 
-struct XY_or_WX tim;
+f()
+{
+	struct XY_or_WX tim;
 
-tim.x = 2;
+	tim.x = 2;
+}

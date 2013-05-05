@@ -22,6 +22,7 @@
 #include "sym.h"
 #include "fold_sym.h"
 #include "out/out.h"
+#include "ops/__builtin.h"
 
 struct
 {
@@ -147,6 +148,8 @@ enum cc1_backend cc1_backend = BACKEND_ASM;
 int cc1_m32 = 0;
 int cc1_mstack_align; /* align stack to n, platform_word_size by default */
 
+enum cc1_std cc1_std = STD_C99;
+
 int cc1_max_errors = 16;
 
 int caught_sig = 0;
@@ -163,6 +166,7 @@ const char *section_names[NUM_SECTIONS] = {
 	EXPAND_QUOTE(SECTION_BSS),
 };
 
+static FILE *infile;
 
 /* compile time check for enum <-> int compat */
 #define COMP_CHECK(pre, test) \
@@ -295,11 +299,23 @@ void sigh(int sig)
 	io_cleanup();
 }
 
+static char *next_line()
+{
+	char *s = fline(infile);
+
+	if(!s){
+		if(feof(infile))
+			return NULL;
+		else
+			die("read():");
+	}
+	return s;
+}
+
 int main(int argc, char **argv)
 {
 	static symtable_global *globs;
 	void (*gf)(symtable_global *);
-	FILE *f;
 	const char *fname;
 	int i;
 
@@ -340,6 +356,21 @@ int main(int argc, char **argv)
 					return 1;
 				}
 			}
+
+		}else if(!strncmp(argv[i], "-std=", 5)){
+			const char *std = argv[i] + 5;
+
+			if(!strcmp(std, "c99"))
+				cc1_std = STD_C99;
+			else if(!strcmp(std, "c90"))
+std_c90: cc1_std = STD_C90;
+			else if(!strcmp(std, "c89"))
+				cc1_std = STD_C89;
+			else
+				ccdie(0, "-std argument \"%s\" not recognised", std);
+
+		}else if(!strcmp(argv[i], "-ansi")){
+			goto std_c90;
 
 		}else if(!strcmp(argv[i], "-w")){
 			warn_mode = WARN_NONE;
@@ -429,7 +460,7 @@ usage:
 
 	/* sanity checks */
 	{
-		const int new = powf(2, cc1_mstack_align);
+		const unsigned new = powf(2, cc1_mstack_align);
 		if(new < platform_word_size())
 			ccdie(1, "stack alignment must be >= platform word size (2^%d)",
 					(int)log2f(platform_word_size()));
@@ -438,11 +469,11 @@ usage:
 	}
 
 	if(fname && strcmp(fname, "-")){
-		f = fopen(fname, "r");
-		if(!f)
+		infile = fopen(fname, "r");
+		if(!infile)
 			ccdie(0, "open %s:", fname);
 	}else{
-		f = stdin;
+		infile = stdin;
 		fname = "-";
 	}
 
@@ -456,10 +487,12 @@ usage:
 
 	show_current_line = fopt_mode & FOPT_SHOW_LINE;
 
-	tokenise_set_file(f, fname);
-	globs = parse();
-	if(f != stdin)
-		fclose(f);
+	globs = symtabg_new();
+	tokenise_set_input(next_line, fname);
+	parse(globs);
+
+	if(infile != stdin)
+		fclose(infile), infile = NULL;
 
 	fold(&globs->stab);
 	symtab_fold(&globs->stab, 0);

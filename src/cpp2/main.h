@@ -18,6 +18,7 @@ extern int current_line;
 	do{                      \
 		current_line--;        \
 		f(NULL, __VA_ARGS__);  \
+		current_line++;        \
 	}while(0)
 
 #define CPP_WARN(...) CPP_X(WARN_AT, __VA_ARGS__)

@@ -32,7 +32,7 @@ OBJ = \
 
 include ../../config.mk
 
-cc1: ${OBJ} deps
+cc1: ${OBJ}
 	${CC} ${CFLAGS} ${LDFLAGS} -o $@ ${OBJ}
 
 .c.o:
@@ -41,7 +41,7 @@ cc1: ${OBJ} deps
 clean:
 	rm -f *.o cc1 ops/*.o out/*.o
 
-.PHONY: clean
+.PHONY: clean deps
 
 ../util/alloc.o ../util/util.o ../util/platform.o ../util/dynarray.o \
 ../util/dynmap.o:

@@ -40,7 +40,7 @@ static void platform_init()
 	}
 }
 
-int platform_word_size()
+unsigned platform_word_size()
 {
 	INIT();
 	switch(platform_t){

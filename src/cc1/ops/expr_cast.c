@@ -2,8 +2,9 @@
 #include <string.h>
 #include <stdarg.h>
 
-#include "../../util/alloc.h"
 #include "ops.h"
+#include "../../util/alloc.h"
+#include "../../util/platform.h"
 #include "expr_cast.h"
 #include "../out/asm.h"
 #include "../sue.h"
@@ -68,10 +69,7 @@ void fold_const_expr_cast(expr *e, consty *k)
 		case CONST_NO:
 			break;
 
-		case CONST_NEED_ADDR:
-			k->type = CONST_NO; /* e.g. (int *)i */
-			break;
-
+		case CONST_NEED_ADDR: /* allow if we're casting to a same-sized type */
 		case CONST_ADDR:
 		case CONST_STRK:
 		{
@@ -79,8 +77,42 @@ void fold_const_expr_cast(expr *e, consty *k)
 			/* allow if we're casting to a same-size type */
 			get_cast_sizes(e->tree_type, e->expr->tree_type, &l, &r);
 
-			if(l < r)
-				k->type = CONST_NO; /* e.g. (int)&a */
+			if(l < r){
+				/* shouldn't fit, check if it will */
+				switch(k->type){
+					default:
+						ICE("bad switch");
+
+					case CONST_STRK:
+						/* no idea where it will be in memory,
+						 * can't fit into a smaller type */
+						k->type = CONST_NO; /* e.g. (int)&a */
+						break;
+
+					case CONST_NEED_ADDR:
+					case CONST_ADDR:
+						if(k->bits.addr.is_lbl){
+							k->type = CONST_NO; /* similar to strk case */
+						}else{
+							unsigned long new = k->bits.addr.bits.memaddr;
+							const int pws = platform_word_size();
+
+							/* mask out bits so we have it truncated to `l' */
+							if(l < pws){
+								/* 8 = bits in a byte */
+								new &= ~(~0UL << (8 * l));
+
+								if(k->bits.addr.bits.memaddr != new)
+									/* can't cast without losing value - not const */
+									k->type = CONST_NO;
+
+							}else{
+								/* what are you doing... */
+								k->type = CONST_NO;
+							}
+						}
+				}
+			}
 			break;
 		}
 	}
@@ -194,8 +226,8 @@ void gen_expr_cast(expr *e, symtable *stab)
 						type_ref_to_str_r(buf, tto),
 						mem->struct_offset);*/
 
-				out_change_type(type_ref_new_VOID_PTR());
-				out_push_i(type_ref_new_INTPTR_T(), mem->struct_offset);
+				out_change_type(type_ref_cached_VOID_PTR());
+				out_push_i(type_ref_cached_INTPTR_T(), mem->struct_offset);
 				out_op(op_plus);
 			}
 		}

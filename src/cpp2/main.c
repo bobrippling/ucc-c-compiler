@@ -58,12 +58,12 @@ int option_line_info = 1;
 void dirname_push(char *d)
 {
 	/*fprintf(stderr, "dirname_push(%s = %p)\n", d, d);*/
-	dynarray_add((void ***)&dirnames, d);
+	dynarray_add(&dirnames, d);
 }
 
 char *dirname_pop()
 {
-	char *r = dynarray_pop((void ***)&dirnames);
+	char *r = dynarray_pop(char *, &dirnames);
 	(void)r;
 	/*fprintf(stderr, "dirname_pop() = %s (%p)\n", r, r);
 	return r; TODO - free*/

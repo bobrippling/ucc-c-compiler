@@ -13,7 +13,7 @@ int fold_type_ref_equal(
 
 void fold_check_restrict(expr *lhs, expr *rhs, const char *desc, where const *w);
 
-void fold_symtab_scope(symtable *stab);
+void fold_symtab_scope(symtable *stab, stmt **pinit_code);
 
 void fold_funcargs(funcargs *fargs, symtable *stab, type_ref *from);
 

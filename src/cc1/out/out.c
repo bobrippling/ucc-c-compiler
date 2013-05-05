@@ -12,7 +12,7 @@
 #include "../../util/platform.h"
 #include "../cc1.h"
 
-#define v_check_type(t) if(!t) t = type_ref_new_VOID_PTR()
+#define v_check_type(t) if(!t) t = type_ref_cached_VOID_PTR()
 
 static int calc_ptr_step(type_ref *t);
 
@@ -291,7 +291,7 @@ static int v_alloc_stack(int sz)
 		vtop->type = REG;
 		vtop->bits.reg = REG_SP;
 
-		out_push_i(type_ref_new_INTPTR_T(), sz += extra);
+		out_push_i(type_ref_cached_INTPTR_T(), sz += extra);
 		out_op(op_minus);
 		out_pop();
 	}
@@ -432,7 +432,7 @@ void out_push_lbl(char *s, int pic)
 
 void out_push_noop()
 {
-	out_push_i(type_ref_new_INTPTR_T(), 0);
+	out_push_i(type_ref_cached_INTPTR_T(), 0);
 }
 
 void out_dup(void)
@@ -464,6 +464,19 @@ void out_dup(void)
 			break;
 		}
 	}
+}
+
+void out_pulltop(int i)
+{
+	struct vstack tmp;
+	int j;
+
+	memcpy_safe(&tmp, &vtop[-i]);
+
+	for(j = -i; j < 0; j++)
+		vtop[j] = vtop[j + 1];
+
+	memcpy_safe(vtop, &tmp);
 }
 
 void out_store()
@@ -581,7 +594,7 @@ static int calc_ptr_step(type_ref *t)
 	if(type_ref_is_type(type_ref_is_ptr(t), type_void))
 		return type_primitive_size(type_void);
 
-	sz = type_ref_size(type_ref_next(t), NULL);
+	sz = type_ref_size(type_ref_next(t), &t->where);
 
 	return sz;
 }
@@ -678,7 +691,7 @@ def:
 								if((swap = (val != vtop)))
 									vswap();
 
-								out_push_i(type_ref_new_VOID_PTR(), ptr_step);
+								out_push_i(type_ref_cached_VOID_PTR(), ptr_step);
 								out_op(op_multiply);
 
 								if(swap)
@@ -701,7 +714,7 @@ def:
 		impl_op(op);
 
 		if(div){
-			out_push_i(type_ref_new_VOID_PTR(), div);
+			out_push_i(type_ref_cached_VOID_PTR(), div);
 			out_op(op_divide);
 		}
 	}

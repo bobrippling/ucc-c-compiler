@@ -22,6 +22,13 @@
 #define STAT_NEW(type)      stmt_new_wrapper(type, current_scope)
 #define STAT_NEW_NEST(type) stmt_new_wrapper(type, symtab_new(current_scope))
 
+#define STMT_SCOPE_RECOVER(t)              \
+	if(t->flow)                              \
+		current_scope = current_scope->parent; \
+	if(cc1_std == STD_C99)                   \
+		current_scope = current_scope->parent
+/* ^ recover C99's if/switch/while scoping */
+
 stmt *parse_stmt_block(void);
 stmt *parse_stmt(void);
 expr **parse_funcargs(void);
@@ -31,7 +38,7 @@ expr *parse_expr_unary(void);
 
 /* parse_type uses this for structs, tdefs and enums */
 symtable *current_scope;
-static_assert **static_asserts;
+static static_assert **static_asserts;
 
 
 /* sometimes we can carry on after an error, but we don't want to go through to compilation etc */
@@ -112,7 +119,7 @@ expr *parse_expr__Generic()
 		lbl = umalloc(sizeof *lbl);
 		lbl->e = e;
 		lbl->t = r;
-		dynarray_add((void ***)&lbls, lbl);
+		dynarray_add(&lbls, lbl);
 
 		if(accept(token_close_paren))
 			break;
@@ -472,7 +479,7 @@ type_ref **parse_type_list()
 		if(!r)
 			DIE_AT(NULL, "type expected");
 
-		dynarray_add((void ***)&types, r);
+		dynarray_add(&types, r);
 	}while(accept(token_comma));
 
 	return types;
@@ -486,7 +493,7 @@ expr **parse_funcargs()
 		expr *arg = parse_expr_no_comma();
 		if(!arg)
 			DIE_AT(&arg->where, "expected: funcall arg");
-		dynarray_add((void ***)&args, arg);
+		dynarray_add(&args, arg);
 
 		if(curtok == token_close_paren)
 			break;
@@ -496,19 +503,36 @@ expr **parse_funcargs()
 	return args;
 }
 
-void parse_test_init_expr(stmt *t)
+static void parse_test_init_expr(stmt *t)
 {
-	decl **c99_ucc_inits;
+	decl *d;
 
 	EAT(token_open_paren);
 
-	c99_ucc_inits = parse_decls_one_type();
-	if(c99_ucc_inits){
-		t->flow = stmt_flow_new(symtab_new(t->symtab));
+	/* if C99, we create a new scope here, for e.g.
+	 * if(5 > (enum { a, b })a){ return a; } return b;
+	 * "return b" can't see 'b' since its scope is only the if
+	 *
+	 * C90 drags the scope of the enum up to the enclosing block
+	 */
+	if(cc1_std == STD_C99)
+		t->symtab = current_scope = symtab_new(current_scope);
+
+	d = parse_decl_single(DECL_SPEL_NEED);
+	if(d){
+		t->flow = stmt_flow_new(symtab_new(current_scope));
 
 		current_scope = t->flow->for_init_symtab;
 
-		t->flow->for_init_decls = c99_ucc_inits;
+		dynarray_add(&current_scope->decls, d);
+
+		if(accept(token_comma)){
+			/* if(int i = 5, i > f()){ ... } */
+			t->expr = parse_expr_exp();
+		}else{
+			/* if(int i = 5) -> if(i) */
+			t->expr = expr_new_identifier(d->spel);
+		}
 	}else{
 		t->expr = parse_expr_exp();
 	}
@@ -529,8 +553,7 @@ stmt *parse_if()
 	if(accept(token_else))
 		t->rhs = parse_stmt();
 
-	if(t->flow)
-		current_scope = current_scope->parent;
+	STMT_SCOPE_RECOVER(t);
 
 	return t;
 }
@@ -551,6 +574,8 @@ stmt *parse_switch()
 
 	current_break_target = old;
 	current_switch = old_sw;
+
+	STMT_SCOPE_RECOVER(t);
 
 	return t;
 }
@@ -586,6 +611,8 @@ stmt *parse_while()
 
 	t->lhs = parse_stmt();
 
+	STMT_SCOPE_RECOVER(t);
+
 	return t;
 }
 
@@ -611,10 +638,14 @@ stmt *parse_for()
 
 	SEMI_WRAP(
 			decl **c99inits = parse_decls_one_type();
-			if(c99inits)
-				sf->for_init_decls = c99inits;
-			else
-				sf->for_init = parse_expr_exp()
+			if(c99inits){
+				dynarray_add_array(&current_scope->decls, c99inits);
+
+				if(cc1_std < STD_C99)
+					WARN_AT(NULL, "use of C99 for-init");
+			}else{
+				sf->for_init = parse_expr_exp();
+			}
 	);
 
 	SEMI_WRAP(sf->for_while = parse_expr_exp());
@@ -650,13 +681,8 @@ void parse_static_assert(void)
 		EAT(token_close_paren);
 		EAT(token_semicolon);
 
-		dynarray_add((void ***)&static_asserts, sa);
+		dynarray_add(&static_asserts, sa);
 	}
-}
-
-void parse_got_decls(decl **decls, stmt *codes_init)
-{
-	dynarray_add_array((void ***)&codes_init->decls, (void **)decls);
 }
 
 stmt *parse_stmt_and_decls()
@@ -668,19 +694,22 @@ stmt *parse_stmt_and_decls()
 
 	last = 0;
 	do{
+		size_t count = dynarray_count(current_scope->decls);
 		decl **decls;
 		stmt *sub;
 
 		parse_static_assert();
 
-		decls = parse_decls_multi_type(
+		parse_decls_multi_type(
 				  DECL_MULTI_ACCEPT_FUNC_DECL
 				| DECL_MULTI_ALLOW_STORE
-				| DECL_MULTI_ALLOW_ALIGNAS);
+				| DECL_MULTI_ALLOW_ALIGNAS,
+				&current_scope->decls);
 
+		decls = &current_scope->decls[count];
 		sub = NULL;
 
-		if(decls){
+		if(decls && *decls){
 			/*
 			 * create an implicit block for the decl i.e.
 			 *
@@ -694,9 +723,8 @@ stmt *parse_stmt_and_decls()
 
 			/* optimise - initial-block-decls doesn't need a sub-block */
 			if(!codes->codes){
-				parse_got_decls(decls, codes);
 				goto normal;
-			}else{
+			}else if(cc1_std < STD_C99){
 				static int warned = 0;
 				if(!warned){
 					warned = 1;
@@ -717,8 +745,6 @@ stmt *parse_stmt_and_decls()
 			/* mark as internal - for duplicate checks */
 			sub->symtab->internal_nest = 1;
 
-			parse_got_decls(decls, sub);
-
 			last = 1;
 		}else{
 normal:
@@ -730,15 +756,15 @@ normal:
 			}
 		}
 
-		if(decls)
-			dynarray_free((void ***)&decls, NULL);
-
 		if(sub)
-			dynarray_add((void ***)&codes->codes, sub);
+			dynarray_add(&codes->codes, sub);
 	}while(!last);
 
 
-	current_scope = codes->symtab->parent;
+	/*current_scope = codes->symtab->parent;
+	 * don't - we use ->parent for scope leak checks
+	 */
+	current_scope = current_scope->parent;
 
 	return codes;
 }
@@ -957,43 +983,42 @@ static symtable_gasm *parse_gasm(void)
 	return g;
 }
 
-symtable_global *parse()
+void parse(symtable_global *globals)
 {
-	symtable_global *globals;
-	decl **decls = NULL;
 	symtable_gasm **last_gasms = NULL;
 
-	globals = symtabg_new();
 	current_scope = &globals->stab;
 
 	type_ref_init(current_scope);
 
 	for(;;){
 		int cont = 0;
+		const int current = dynarray_count(current_scope->decls);
+		decl **new;
 
-		decl **new = parse_decls_multi_type(
+		parse_decls_multi_type(
 				  DECL_MULTI_CAN_DEFAULT
 				| DECL_MULTI_ACCEPT_FUNC_CODE
 				| DECL_MULTI_ALLOW_STORE
-				| DECL_MULTI_ALLOW_ALIGNAS);
+				| DECL_MULTI_ALLOW_ALIGNAS,
+				&current_scope->decls);
 
-		if(new){
+		if(current_scope->decls
+		&& *(new = current_scope->decls + current))
+		{
 			symtable_gasm **i;
 
 			for(i = last_gasms; i && *i; i++)
 				(*i)->before = *new;
-			dynarray_free((void ***)&last_gasms, NULL);
-
-			dynarray_add_array((void ***)&decls, (void **)new);
-			free(new);
+			dynarray_free(&last_gasms, NULL);
 		}
 
 		/* global asm */
 		while(accept(token_asm)){
 			symtable_gasm *g = parse_gasm();
 
-			dynarray_add((void ***)&last_gasms, g);
-			dynarray_add((void ***)&globals->gasms, g);
+			dynarray_add(&last_gasms, g);
+			dynarray_add(&globals->gasms, g);
 			cont = 1;
 		}
 
@@ -1001,20 +1026,14 @@ symtable_global *parse()
 			break;
 	}
 
-	dynarray_free((void ***)&last_gasms, NULL);
+	dynarray_free(&last_gasms, NULL);
 
 	EAT(token_eof);
 
 	if(parse_had_error)
 		exit(1);
 
-	if(decls){
-		int i;
-		for(i = 0; decls[i]; i++)
-			symtab_add(current_scope, decls[i], sym_global, SYMTAB_NO_SYM, SYMTAB_APPEND);
-	}
-
 	current_scope->static_asserts = static_asserts;
 
-	return globals;
+	UCC_ASSERT(!current_scope->parent, "scope leak during parse");
 }

@@ -2,7 +2,8 @@
 #define ALLOC_H
 
 void *umalloc(size_t);
-void *urealloc(void *, size_t);
+void *urealloc1(void *, size_t new);
+void *urealloc(void *, size_t new, size_t old);
 char *ustrdup(const char *);
 char *ustrdup2(const char *, const char *);
 char *ustrprintf( const char *, ...);

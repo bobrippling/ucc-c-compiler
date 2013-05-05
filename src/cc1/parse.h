@@ -39,6 +39,6 @@ void parse_static_assert(void);
 type_ref **parse_type_list(void);
 expr **parse_funcargs(void);
 
-symtable_global *parse(void);
+void parse(symtable_global *globals);
 
 #endif

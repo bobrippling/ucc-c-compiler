@@ -20,7 +20,10 @@ void builtin_gen_print(expr *, symtable *);
 
 #define expr_mutate_builtin_gen(exp, to) \
 	expr_mutate_builtin(exp, to),          \
-	exp->f_gen        = BUILTIN_GEN(gen_ ## to)
+	exp->f_gen        = BUILTIN_GEN(builtin_gen_ ## to)
 
+
+expr *builtin_new_memset(expr *p, int ch, size_t len);
+expr *builtin_new_memcpy(expr *to, expr *from, size_t len);
 
 #endif

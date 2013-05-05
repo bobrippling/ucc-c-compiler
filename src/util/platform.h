@@ -21,6 +21,6 @@ enum platform_sys platform_sys( void);
 #ifndef ucc_const
 #  define ucc_const
 #endif
-int platform_word_size(void) ucc_const;
+unsigned platform_word_size(void) ucc_const;
 
 #endif

@@ -93,3 +93,16 @@ int expr_is_null_ptr(expr *e, int allow_int)
 
 	return b && const_expr_and_zero(e);
 }
+
+expr *expr_new_array_idx_e(expr *base, expr *idx)
+{
+	expr *op = expr_new_op(op_plus);
+	op->lhs = base;
+	op->rhs = idx;
+	return expr_new_deref(op);
+}
+
+expr *expr_new_array_idx(expr *base, int i)
+{
+	return expr_new_array_idx_e(base, expr_new_val(i));
+}

@@ -23,7 +23,6 @@
 		"assert.o",       \
 		"ctype.o",        \
 		"dirent.o",       \
-		"ucc.o",          \
 		"alloca.o",       \
 		"sys/fcntl.o",    \
 		"sys/wait.o",     \
@@ -48,7 +47,7 @@ char **objfiles_stdlib(void)
 		int i;
 
 		for(i = 0; names[i]; i++)
-			dynarray_add((void ***)&ret, lib_actual_path(names[i]));
+			dynarray_add(&ret, lib_actual_path(names[i]));
 	}
 
 	return ret;

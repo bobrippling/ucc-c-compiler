@@ -1,5 +1,5 @@
 // RUN: %ucc -S %s; [ $? -ne 0 ]
-// RUN: %ucc -S %s | %check %s
+// RUN: %check %s
 
 // this is a bad constant cast
 int x;

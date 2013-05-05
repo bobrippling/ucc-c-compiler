@@ -1,0 +1,6 @@
+_stdin:
+.long 1
+.zero 44
+i:
+.long 2
+j:

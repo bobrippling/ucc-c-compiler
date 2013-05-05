@@ -232,7 +232,7 @@ static void x86_load(struct vstack *from, int reg, int lea)
 					x86_reg_str(reg, from->t));
 
 			/* XXX: memleak */
-			from->t = type_ref_new_CHAR(); /* force set%s to set the low byte */
+			from->t = type_ref_cached_CHAR(); /* force set%s to set the low byte */
 			out_asm("set%s %%%s",
 					x86_cmp(&from->bits.flag),
 					x86_reg_str(reg, from->t));
@@ -244,6 +244,8 @@ static void x86_load(struct vstack *from, int reg, int lea)
 		case LBL:
 		case STACK_SAVE:
 		case CONST:
+			/* XXX: do we really want to use from->t here? (when lea)
+			 * I think the middle-end takes care of it in folds */
 			out_asm("%s%c %s, %%%s",
 					lea ? "lea" : "mov",
 					asm_type_ch(from->t),
@@ -255,6 +257,7 @@ static void x86_load(struct vstack *from, int reg, int lea)
 
 void impl_load(struct vstack *from, int reg)
 {
+	/* TODO: push down logic? */
 	if(from->type == REG && reg == from->bits.reg)
 		return;
 
@@ -362,7 +365,7 @@ void impl_op(enum op_type op)
 					v_to_reg(vtop); /* TODO: v_to_reg_preferred(vtop, X86_64_REG_RCX) */
 
 				case REG:
-					free_this = vtop->t = type_ref_new_CHAR();
+					free_this = vtop->t = type_ref_cached_CHAR();
 
 					if(vtop->bits.reg != X86_64_REG_RCX){
 						impl_reg_cp(vtop, X86_64_REG_RCX);
@@ -489,7 +492,7 @@ void impl_op(enum op_type op)
 			}
 
 			vpop();
-			v_clear(vtop, type_ref_new_BOOL()); /* cmp creates an int/bool */
+			v_clear(vtop, type_ref_cached_BOOL()); /* cmp creates an int/bool */
 			vtop->type = FLAG;
 			vtop->bits.flag.cmp = op_to_flag(op);
 			vtop->bits.flag.is_signed = is_signed;
@@ -601,7 +604,7 @@ void impl_cast(type_ref *from, type_ref *to)
 	if(szfrom != szto){
 		if(szfrom < szto){
 			const int is_signed = type_ref_is_signed(from);
-			const int int_sz = type_primitive_size(type_int);
+			const unsigned int_sz = type_primitive_size(type_int);
 
 			const char *rstr_from, *rstr_to;
 
@@ -755,7 +758,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 
 		/* can't push non-word sized vtops */
 		if(vp->t && type_ref_size(vp->t, NULL) != platform_word_size())
-			out_cast(vp->t, type_ref_new_VOID_PTR());
+			out_cast(vp->t, type_ref_cached_VOID_PTR());
 
 		out_asm("pushq %s", vstack_str(vp));
 	}

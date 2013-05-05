@@ -1,3 +1,7 @@
+// RUN: %ucc -o %t %s
+// RUN: %ocheck 108 %t
+// RUN: %t | %output_check hi
+
 f()
 {
 	char s[] = "hello";

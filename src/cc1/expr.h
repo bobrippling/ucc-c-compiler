@@ -23,13 +23,21 @@ typedef struct consty
 			union
 			{
 				const char *lbl;
-				int   memaddr;
+				unsigned long memaddr;
 			} bits;
 		} addr;
 	} bits;
 } consty;
-#define is_const(t) (t != CONST_NO && t != CONST_NEED_ADDR)
-#define CONST_FROM_ARRAY(d) (DECL_IS_ARRAY(d) ? CONST_ADDR : CONST_NEED_ADDR)
+#define CONST_AT_COMPILE_TIME(t) (t != CONST_NO && t != CONST_NEED_ADDR)
+
+#define CONST_ADDR_OR_NEED_TREF(r)  \
+	(  type_ref_is_array(r)           \
+	|| type_ref_is_decayed_array(r)   \
+	|| type_ref_is(r, type_ref_func)  \
+		? CONST_ADDR : CONST_NEED_ADDR)
+
+#define CONST_ADDR_OR_NEED(d) CONST_ADDR_OR_NEED_TREF((d)->ref)
+
 
 typedef void         func_fold(          expr *, symtable *);
 typedef void         func_gen(           expr *, symtable *);
@@ -129,6 +137,12 @@ struct expr
 			} **list, *chosen;
 		} generic;
 
+		struct
+		{
+			size_t len;
+			int ch;
+		} builtin_memset;
+
 		stmt *variadic_setup;
 	} bits;
 
@@ -205,6 +219,7 @@ expr *expr_new_sizeof_type(type_ref *, enum what_of what_of);
 expr *expr_new_sizeof_expr(expr *, enum what_of what_of);
 expr *expr_new_funcall(void);
 expr *expr_new_assign(         expr *to, expr *from);
+expr *expr_new_assign_init(    expr *to, expr *from);
 expr *expr_new_assign_compound(expr *to, expr *from, enum op_type);
 expr *expr_new__Generic(expr *test, struct generic_lbl **lbls);
 expr *expr_new_block(type_ref *rt, funcargs *args, stmt *code);
@@ -214,8 +229,13 @@ expr *expr_new_str(char *, int len, int wide);
 expr *expr_new_addr_lbl(char *);
 expr *expr_new_addr(expr *);
 
+expr *expr_new_comma2(expr *lhs, expr *rhs);
 #define expr_new_comma() expr_new_wrapper(comma)
 
 int expr_is_null_ptr(expr *, int allow_int);
+
+/* util */
+expr *expr_new_array_idx_e(expr *base, expr *idx);
+expr *expr_new_array_idx(expr *base, int i);
 
 #endif

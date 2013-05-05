@@ -10,31 +10,53 @@ const char *str_stmt_if()
 	return "if";
 }
 
-symtable *fold_stmt_test_init_expr(stmt *s, const char *which)
+void flow_fold(stmt_flow *flow, symtable **pstab)
 {
-	if(s->flow){
-		/* if(char *x = ...) */
-		expr *dinit;
+	if(flow){
+		decl **i;
 
-		dinit = fold_for_if_init_decls(s);
+		*pstab = flow->for_init_symtab;
+		fold_symtab_scope(*pstab, &flow->inits);
+		if(flow->inits)
+			fold_stmt(flow->inits);
 
-		if(!dinit)
-			DIE_AT(&s->where, "no initialiser to test in %s", which);
+		/* sanity check on _flow_ vars only */
+		for(i = (*pstab)->decls; i && *i; i++){
+			decl *const d = *i;
 
-		UCC_ASSERT(!s->expr, "%s-expr in C99_ucc %s-init mode", which, which);
-
-		s->expr = dinit;
-		return s->flow->for_init_symtab;
+			switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
+				case store_auto:
+				case store_default:
+				case store_register:
+					break;
+				default:
+					DIE_AT(&d->where, "%s variable in statement-initialisation",
+							decl_store_to_str(d->store));
+			}
+		}
 	}
+}
 
-	return s->symtab;
+void flow_gen(stmt_flow *flow, symtable *stab)
+{
+	gen_code_decls(stab);
+
+	if(flow){
+		gen_code_decls(flow->for_init_symtab);
+
+		if(flow->inits)
+			gen_stmt(flow->inits);
+		/* also generates decls on the flow->inits statement */
+	}
 }
 
 void fold_stmt_if(stmt *s)
 {
-	symtable *test_symtab = fold_stmt_test_init_expr(s, "if");
+	symtable *stab = s->symtab;
 
-	FOLD_EXPR(s->expr, test_symtab);
+	flow_fold(s->flow, &stab);
+
+	FOLD_EXPR(s->expr, stab);
 
 	fold_need_expr(s->expr, s->f_str(), 1);
 
@@ -48,6 +70,7 @@ void gen_stmt_if(stmt *s)
 	char *lbl_else = out_label_code("else");
 	char *lbl_fi   = out_label_code("fi");
 
+	flow_gen(s->flow, s->symtab);
 	gen_expr(s->expr, s->symtab);
 
 	out_jfalse(lbl_else);

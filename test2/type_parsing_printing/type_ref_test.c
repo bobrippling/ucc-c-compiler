@@ -1,3 +1,5 @@
+// RUN: %ucc -o %t %s
+// RUN: %ocheck 4 %t
 struct A
 {
 	int i, j;

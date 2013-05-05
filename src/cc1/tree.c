@@ -24,19 +24,25 @@ intval *intval_new(long v)
 
 void where_new(struct where *w)
 {
+	extern const char *current_fname;
 	extern int parse_finished;
 
 	if(parse_finished){
-		if(eof_where)
+		if(eof_where){
 			memcpy(w, eof_where, sizeof *w);
-		else
+		}else if(current_fname){
+			/* still parsing, at EOF */
+			goto final;
+		}else{
 			ICE("where_new() after buffer eof");
+		}
 
 	}else{
 		extern int current_line, current_chr;
 		extern const char *current_fname, *current_line_str;
 		extern int current_fname_used, current_line_str_used;
 
+final:
 		w->line  = current_line;
 		w->chr   = current_chr;
 		w->fname = current_fname;
@@ -78,7 +84,7 @@ const type *type_new_primitive(enum type_primitive p)
 	return type_new_primitive1(p);
 }
 
-int type_primitive_size(enum type_primitive tp)
+unsigned type_primitive_size(enum type_primitive tp)
 {
 	switch(tp){
 		case type_char:
@@ -122,7 +128,7 @@ int type_primitive_size(enum type_primitive tp)
 	return -1;
 }
 
-int type_size(const type *t, where const *from)
+unsigned type_size(const type *t, where const *from)
 {
 	if(t->sue)
 		return sue_size(t->sue, from);
@@ -201,14 +207,15 @@ const char *type_primitive_to_str(const enum type_primitive p)
 	return NULL;
 }
 
-char *type_qual_to_str(const enum type_qualifier qual)
+const char *type_qual_to_str(const enum type_qualifier qual, int trailing_space)
 {
 	static char buf[32];
 	/* trailing space is purposeful */
-	snprintf(buf, sizeof buf, "%s%s%s",
-		qual & qual_const    ? "const "    : "",
-		qual & qual_volatile ? "volatile " : "",
-		qual & qual_restrict ? "restrict " : "");
+	snprintf(buf, sizeof buf, "%s%s%s%s",
+		qual & qual_const    ? "const"    : "",
+		qual & qual_volatile ? "volatile" : "",
+		qual & qual_restrict ? "restrict" : "",
+		qual && trailing_space ? " " : "");
 	return buf;
 }
 

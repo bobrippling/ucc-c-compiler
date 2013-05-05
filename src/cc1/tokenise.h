@@ -114,7 +114,12 @@ enum token
 	token_unknown
 };
 
-void tokenise_set_file(FILE *f, const char *nam);
+typedef char *tokenise_line_f(void);
+
+void tokenise_set_input(
+		tokenise_line_f *,
+		const char *nam);
+
 void nexttoken(void);
 
 #endif

@@ -1,8 +1,9 @@
+// RUN: %ocheck 4 %s
 struct A
 {
 	int a, b;
 };
-f(struct A *);
+f(struct A *p){p->a = 1, p->b = 2}
 
 main()
 {
@@ -19,7 +20,7 @@ main()
 	p = &b;
 	f(&b);
 
-	b.b = 2;
+	b.b = 3;
 
-	return p->b;
+	return p->b + b.a;
 }
