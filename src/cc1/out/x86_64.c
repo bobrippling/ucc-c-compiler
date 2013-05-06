@@ -634,22 +634,27 @@ void impl_cast_load(type_ref *small, type_ref *big, int is_signed)
 			v_to_reg(vtop);
 		case REG:
 			strcpy(buf_small, x86_reg_str(vtop->bits.reg, small));
+
+			if(!is_signed
+			&& type_ref_size(big,   NULL) > int_sz
+			&& type_ref_size(small, NULL) == int_sz)
+			{
+				/*
+				 * movzx %eax, %rax is invalid since movl %eax, %eax
+				 * automatically zeros the top half of rax in x64 mode
+				 */
+				out_asm("movl %%%s, %%%s", buf_small, buf_small);
+				return;
+			}
 	}
 
-	/* FIXME: post merge - factor this into the switch */
-	if(vtop->type == REG
-	&& !is_signed
-	&& type_ref_size(big,   NULL) > int_sz
-	&& type_ref_size(small, NULL) == int_sz)
 	{
-		/*
-		 * movzx %eax, %rax is invalid since movl %eax, %eax
-		 * automatically zeros the top half of rax in x64 mode
-		 */
-		out_asm("movl %%%s, %%%s", buf_small, buf_small);
-	}else{
-		const char *rstr_big = x86_reg_str(vtop->bits.reg, big);
+		const int r = v_unused_reg(1);
+		const char *rstr_big = x86_reg_str(r, big);
 		out_asm("mov%cx %%%s, %%%s", "zs"[is_signed], buf_small, rstr_big);
+
+		vtop->type = REG;
+		vtop->bits.reg = r;
 	}
 }
 
