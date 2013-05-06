@@ -33,6 +33,7 @@ UCC_CPU     = ${UCC_CPU}
 #define SECTION_TEXT $SECTION_TEXT
 #define SECTION_DATA $SECTION_DATA
 #define SECTION_BSS  $SECTION_BSS
+#define UCC_M32      ${UCC_M32}
 !
 
 	if ! which perl > /dev/null
@@ -72,6 +73,22 @@ UCC_LD=ld
 UCC_ARCH=elf64
 UCC_LDFLAGS=''
 UCC_CPU=x86_64
+UCC_M32=0
+
+unam="$(uname -s)"
+
+# defaults for an OS
+case "$unam" in
+	Darwin)
+		UCC_ARCH=macho64
+		UCC_LDFLAGS='-e _start -macosx_version_min 10.5'
+		;;
+
+	CYGWIN_NT-*)
+		UCC_ARCH=win32
+		UCC_M32=1
+		;;
+esac
 
 clean=0
 
@@ -94,6 +111,10 @@ do
 				(cd $ARCH_DIR; ls -d *)
 				usage
 			fi
+			if echo "$UCC_CPU" | grep 64 > /dev/null
+			then UCC_M32=0
+			else UCC_M32=1
+			fi
 			;;
 		clean)
 			clean=1
@@ -110,10 +131,8 @@ then
 	exit
 fi
 
-case "$(uname -s)" in
+case "$unam" in
 	Darwin)
-		UCC_ARCH=macho64
-		UCC_LDFLAGS='-e _start -macosx_version_min 10.5'
 		os_cfg Darwin
 		;;
 
@@ -126,12 +145,11 @@ case "$(uname -s)" in
 		;;
 
 	CYGWIN_NT-*)
-		UCC_ARCH=win32
 		os_cfg Cygwin
 		;;
 
 	*)
-		echo "unknown OS ($(uname -a))" >&2
+		echo "unknown OS ($unam)" >&2
 		exit 1
 		;;
 esac

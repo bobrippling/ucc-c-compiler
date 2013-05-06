@@ -11,6 +11,7 @@
 #include "impl.h"
 #include "../../util/platform.h"
 #include "../cc1.h"
+#include "asm.h"
 
 #define v_check_type(t) if(!t) t = type_ref_cached_VOID_PTR()
 
@@ -191,13 +192,13 @@ int v_unused_reg(int stack_as_backup)
 		if(it->type == REG){
 			if(!first)
 				first = it;
-			used[it->bits.reg - FIRST_SCRATCH_REG] = 1;
+			used[impl_reg_to_scratch(it->bits.reg)] = 1;
 		}
 	}
 
 	for(i = 0; i < N_SCRATCH_REGS; i++)
 		if(!used[i])
-			return i + FIRST_SCRATCH_REG;
+			return impl_scratch_to_reg(i);
 
 	if(stack_as_backup){
 		/* no free regs, move `first` to the stack and claim its reg */
@@ -337,7 +338,7 @@ void v_freeup_reg(int r, int allowable_stack)
 
 static void v_alter_reservation(int r, int n)
 {
-	r -= FIRST_SCRATCH_REG;
+	r = impl_reg_to_scratch(r);
 	if(0 <= r && r < N_SCRATCH_REGS)
 		reserved_regs[r] += n;
 }
@@ -354,14 +355,14 @@ void v_unreserve_reg(int r)
 
 void v_freeup_regs(const int a, const int b)
 {
-	reserved_regs[a - FIRST_SCRATCH_REG]++;
-	reserved_regs[b - FIRST_SCRATCH_REG]++;
+	v_reserve_reg(a);
+	v_reserve_reg(b);
 
 	v_freeup_reg(a, 2);
 	v_freeup_reg(b, 2);
 
-	reserved_regs[a - FIRST_SCRATCH_REG]--;
-	reserved_regs[b - FIRST_SCRATCH_REG]--;
+	v_unreserve_reg(a);
+	v_unreserve_reg(b);
 }
 
 void v_inv_cmp(struct vstack *vp)
@@ -820,8 +821,24 @@ void out_op_unary(enum op_type op)
 void out_cast(type_ref *from, type_ref *to)
 {
 	/* casting vtop - don't bother if it's a constant, just change the size */
-	if(vtop->type != CONST)
-		impl_cast(from, to);
+	if(vtop->type != CONST){
+		int szfrom = asm_type_size(from),
+				szto   = asm_type_size(to);
+
+		if(szfrom != szto){
+			if(szto > szfrom){
+				impl_cast_load(from, to,
+						type_ref_is_signed(from));
+			}else{
+				char buf[TYPE_REF_STATIC_BUFSIZ];
+
+				out_comment("truncate cast from %s to %s, size %d -> %d",
+						from ? type_ref_to_str_r(buf, from) : "",
+						to   ? type_ref_to_str(to) : "",
+						szfrom, szto);
+			}
+		}
+	}
 
 	out_change_type(to);
 }

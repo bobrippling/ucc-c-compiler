@@ -41,9 +41,7 @@ static const char *const sym_regs[] = {
 	"sp", "fp", "ra"
 };
 
-const struct asm_type_table asm_type_table[ASM_TABLE_MAX + 1] = {
-	/* FIXME: MIPS backend still doesn't do proper
-	 * char/short/int/long accesses */
+const struct asm_type_table asm_type_table[ASM_TABLE_LEN] = {
 	{ 1,  'b',  "byte"  },
 	{ 2,  'w',  "word"  },
 	{ 4,  '\0', "long"  },
@@ -77,6 +75,24 @@ static char *reg_str_i(int r)
 {
 	static char buf[REG_STR_SZ];
 	return reg_str_r_i(buf, r);
+}
+
+int impl_reg_to_scratch(int i)
+{
+	if(MIPS_REG_TMP_0 <= i && i <= MIPS_REG_TMP_7)
+		return i - MIPS_REG_TMP_0;
+
+	if(MIPS_REG_TMP_8 <= i && i <= MIPS_REG_TMP_9)
+		return i - MIPS_REG_TMP_8 + (MIPS_REG_TMP_7 - MIPS_REG_TMP_0);
+
+	ICE("bad scratch register");
+}
+
+int impl_scratch_to_reg(int i)
+{
+	if(i > 8)
+		return MIPS_REG_TMP_8 + i - 8;
+	return MIPS_REG_TMP_0 + i;
 }
 
 void impl_func_prologue(int nargs)
@@ -144,6 +160,29 @@ void impl_lea(struct vstack *from, int reg)
 	}
 }
 
+static const char *mips_type_ch(type_ref *ty, int chk_sig)
+{
+	int sz, sig;
+
+	if(!ty)
+		return "w";
+
+	sz = type_ref_size(ty, NULL);
+	sig = chk_sig ? type_ref_is_signed(ty) : 1;
+
+	switch(sz){
+		case 1:
+			return sig ? "b" : "bu";
+		case 2:
+			return sig ? "h" : "hu";
+		case 4:
+			return "w"; /* full 32-bits,
+										 no need to sign extend a load */
+	}
+
+	ICE("bad type ref size for load %d (%d)", sz, sig);
+}
+
 void impl_load(struct vstack *from, int reg)
 {
 	char rstr[REG_STR_SZ];
@@ -156,14 +195,17 @@ void impl_load(struct vstack *from, int reg)
 
 		case LBL:
 			PIC_CHECK(from);
-			out_asm("lw $%s, %s", rstr, from->bits.lbl.str);
+			out_asm("l%s $%s, %s", mips_type_ch(from->t, 1),
+					rstr, from->bits.lbl.str);
 			break;
 
 		case CONST:
 			if(from->bits.val == 0)
 				out_asm("move $%s, $%s", rstr, sym_regs[MIPS_REG_ZERO]);
 			else
-				out_asm("li $%s, %d", rstr, from->bits.val);
+				out_asm("li%s $%s, %d",
+						type_ref_is_signed(from->t) ? "" : "u",
+						rstr, from->bits.val);
 			break;
 
 		case REG:
@@ -172,7 +214,8 @@ void impl_load(struct vstack *from, int reg)
 
 		case STACK:
 		case STACK_SAVE:
-			out_asm("lw $%s, %d($fp)",
+			out_asm("l%s $%s, %d($fp)",
+					mips_type_ch(from->t, 1),
 					rstr,
 					from->bits.off_from_bp);
 	}
@@ -181,6 +224,7 @@ void impl_load(struct vstack *from, int reg)
 void impl_store(struct vstack *from, struct vstack *to)
 {
 	char rstr[REG_STR_SZ];
+	const char *ty_ch = mips_type_ch(from->t, 0);
 
 	v_to_reg(from); /* room for optimisation, e.g. const */
 	reg_str_r(rstr, from);
@@ -194,22 +238,27 @@ void impl_store(struct vstack *from, struct vstack *to)
 
 		case LBL:
 			PIC_CHECK(from);
-			out_asm("sw $%s, %s", rstr, to->bits.lbl.str);
+			out_asm("s%s $%s, %s",
+					ty_ch,
+					rstr, to->bits.lbl.str);
 			break;
 
 		case CONST:
-			out_asm("sw $%s, %d", rstr, to->bits.val);
+			out_asm("s%s $%s, %d",
+					ty_ch, rstr,
+					to->bits.val);
 			break;
 
 		case REG:
-			out_asm("sw $%s, ($%s)",
-					rstr,
+			out_asm("s%s $%s, ($%s)",
+					ty_ch, rstr,
 					reg_str_i(to->bits.reg));
 			break;
 
 		case STACK:
-			out_asm("sw $%s, %d($fp)",
-					rstr, to->bits.off_from_bp);
+			out_asm("s%s $%s, %d($fp)",
+					ty_ch, rstr,
+					to->bits.off_from_bp);
 	}
 }
 
@@ -245,6 +294,7 @@ void impl_op(enum op_type op)
 {
 	const char *cmp, *immediate;
 	char r_vtop[16], r_vtop1[REG_STR_SZ];
+	const char *ssigned;
 
 	v_to_reg(vtop - 1);
 	reg_str_r(r_vtop1, vtop-1);
@@ -258,7 +308,8 @@ void impl_op(enum op_type op)
 		reg_str_r(r_vtop, vtop);
 	}
 
-	/* TODO: signed */
+	ssigned = type_ref_is_signed(vtop->t) ? "" : "u";
+
 	switch(op){
 #define OP(ty) case op_ ## ty: cmp = #ty; goto cmp
 		OP(eq);
@@ -269,8 +320,8 @@ void impl_op(enum op_type op)
 		OP(gt);
 #undef OP
 cmp:
-		out_asm("s%s%s $%s, $%s, $%s",
-				cmp, immediate, r_vtop1, r_vtop1, r_vtop);
+		out_asm("s%s%s%s $%s, $%s, $%s",
+				cmp, immediate, ssigned, r_vtop1, r_vtop1, r_vtop);
 		break;
 
 		case op_orsc:
@@ -320,9 +371,10 @@ void impl_deref_reg()
 
 	reg_str_r_i(rstr, vtop->bits.reg);
 
-	out_asm("lw $%s, ($%s)", rstr, rstr);
-
+	/* XXX: must be before mips_type_ch(), but after reg_str() */
 	v_deref_decl(vtop);
+
+	out_asm("l%s $%s, ($%s)", mips_type_ch(vtop->t, 1), rstr, rstr);
 }
 
 void impl_op_unary(enum op_type op)
@@ -355,10 +407,13 @@ void impl_op_unary(enum op_type op)
 	}
 }
 
-void impl_cast(type_ref *from, type_ref *to)
+void impl_cast_load(type_ref *small, type_ref *big, int is_signed)
 {
-	/* TODO FIXME: combine with code in x86_64 */
-	ICW("MIPS cast");
+	if(vtop->type != REG){
+		out_comment("// mips cast to %s - loading to register",
+				type_ref_to_str(big));
+		v_to_reg(vtop);
+	}
 }
 
 void impl_jmp_reg(int r)

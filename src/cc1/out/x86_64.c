@@ -20,7 +20,7 @@
 
 #define VSTACK_STR_SZ 128
 
-const struct asm_type_table asm_type_table[ASM_TABLE_MAX + 1] = {
+const struct asm_type_table asm_type_table[ASM_TABLE_LEN] = {
 	{ 1,  'b', "byte"  },
 	{ 2,  'w', "word"  },
 	{ 4,  'l', "long" },
@@ -47,13 +47,14 @@ static const char *x86_reg_str(unsigned reg, type_ref *r)
 		{ "dil",  "di", "edi", "rdi" },
 		{ "sil",  "si", "esi", "rsi" },
 
-#define REG(x) {  NULL,  NULL, "r" #x "d", "r" #x  }
+		/* r[8 - 15] -> r8b, r8w, r8d,  r8 */
+#define REG(x) {  "r" #x "b",  "r" #x "w", "r" #x "d", "r" #x  }
 		REG(8),  REG(9),  REG(10), REG(11),
 		REG(12), REG(13), REG(14), REG(15),
 #undef REG
 
-		{  NULL,  "bp", "ebp", "rbp" },
-		{  NULL,  "sp", "esp", "rsp" },
+		{  "bpl", "bp", "ebp", "rbp" },
+		{  "spl", "sp", "esp", "rsp" },
 	};
 #define N_REGS (sizeof rnames / sizeof *rnames)
 
@@ -127,6 +128,16 @@ static const char *vstack_str_ptr(struct vstack *vs, int ptr)
 {
 	static char buf[VSTACK_STR_SZ];
 	return vstack_str_r_ptr(buf, vs, ptr);
+}
+
+int impl_reg_to_scratch(int i)
+{
+	return i;
+}
+
+int impl_scratch_to_reg(int i)
+{
+	return i;
 }
 
 void impl_func_prologue_save_fp(void)
@@ -604,48 +615,41 @@ void impl_op_unary(enum op_type op)
 	out_asm("%s %s", opc, vstack_str(vtop));
 }
 
-void impl_cast(type_ref *from, type_ref *to)
+void impl_cast_load(type_ref *small, type_ref *big, int is_signed)
 {
-	int szfrom, szto;
+	/* we are always up-casting here, i.e. int -> long */
+	const unsigned int_sz = type_primitive_size(type_int);
+	char buf_small[VSTACK_STR_SZ];
 
-	szfrom = asm_type_size(from);
-	szto   = asm_type_size(to);
+	switch(vtop->type){
+		case STACK:
+		case STACK_SAVE:
+		case LBL:
+			/* something like movsx -8(%rbp), %rax */
+			vstack_str_r(buf_small, vtop);
+			break;
 
-	if(szfrom != szto){
-		if(szfrom < szto){
-			const int is_signed = type_ref_is_signed(from);
-			const unsigned int_sz = type_primitive_size(type_int);
-
-			const char *rstr_from, *rstr_to;
-
+		case CONST:
+		case FLAG:
 			v_to_reg(vtop);
+		case REG:
+			strcpy(buf_small, x86_reg_str(vtop->bits.reg, small));
+	}
 
-			rstr_from = x86_reg_str(vtop->bits.reg, from);
-
-			if(!is_signed
-			&& type_ref_size(to,   NULL) > int_sz
-			&& type_ref_size(from, NULL) == int_sz)
-			{
-				/*
-				 * movzx %eax, %rax is invalid
-				 * since movl %eax, %eax automatically zeros the top half of rax
-				 * in x64 mode
-				 */
-				out_asm("movl %%%s, %%%s", rstr_from, rstr_from);
-				return;
-			}else{
-				rstr_to = x86_reg_str(vtop->bits.reg, to);
-			}
-
-			out_asm("mov%cx %%%s, %%%s", "zs"[is_signed], rstr_from, rstr_to);
-		}else{
-			char buf[TYPE_REF_STATIC_BUFSIZ];
-
-			out_comment("truncate cast from %s to %s, size %d -> %d",
-					from ? type_ref_to_str_r(buf, from) : "",
-					to   ? type_ref_to_str(to) : "",
-					szfrom, szto);
-		}
+	/* FIXME: post merge - factor this into the switch */
+	if(vtop->type == REG
+	&& !is_signed
+	&& type_ref_size(big,   NULL) > int_sz
+	&& type_ref_size(small, NULL) == int_sz)
+	{
+		/*
+		 * movzx %eax, %rax is invalid since movl %eax, %eax
+		 * automatically zeros the top half of rax in x64 mode
+		 */
+		out_asm("movl %%%s, %%%s", buf_small, buf_small);
+	}else{
+		const char *rstr_big = x86_reg_str(vtop->bits.reg, big);
+		out_asm("mov%cx %%%s, %%%s", "zs"[is_signed], buf_small, rstr_big);
 	}
 }
 

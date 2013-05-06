@@ -24,6 +24,10 @@
 #include "out/out.h"
 #include "ops/__builtin.h"
 
+#include "../as_cfg.h"
+#define QUOTE(...) #__VA_ARGS__
+#define EXPAND_QUOTE(y) QUOTE(y)
+
 struct
 {
 	int is_opt;
@@ -145,7 +149,7 @@ enum fopt fopt_mode = FOPT_CONST_FOLD
                     | FOPT_MS_EXTENSIONS;
 enum cc1_backend cc1_backend = BACKEND_ASM;
 
-int cc1_m32 = 0;
+int cc1_m32 = UCC_M32;
 int cc1_mstack_align; /* align stack to n, platform_word_size by default */
 
 enum cc1_std cc1_std = STD_C99;
@@ -155,10 +159,6 @@ int cc1_max_errors = 16;
 int caught_sig = 0;
 
 int show_current_line;
-
-#include "../as_cfg.h"
-#define QUOTE(...) #__VA_ARGS__
-#define EXPAND_QUOTE(y) QUOTE(y)
 
 const char *section_names[NUM_SECTIONS] = {
 	EXPAND_QUOTE(SECTION_TEXT),
