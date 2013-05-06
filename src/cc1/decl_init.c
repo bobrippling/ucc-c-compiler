@@ -263,17 +263,18 @@ static decl_init *decl_init_brace_up_scalar(
 		char buf[TYPE_REF_STATIC_BUFSIZ];
 		expr *e = FOLD_EXPR(first_init->bits.expr, stab);
 
-		if(!fold_type_ref_equal(
+		/* for the warning */
+		fold_type_ref_equal(
 					tfor, e->tree_type, &first_init->where,
 					WARN_ASSIGN_MISMATCH,
 					DECL_CMP_ALLOW_VOID_PTR | DECL_CMP_ALLOW_SIGNED_UNSIGNED,
 					"mismatching types in initialisation (%s <-- %s)",
-					type_ref_to_str_r(buf, tfor), type_ref_to_str(e->tree_type)))
-		{
-			expr *cast = expr_new_cast(tfor, 1);
-			cast->expr = first_init->bits.expr;
-			first_init->bits.expr = cast;
-		}
+					type_ref_to_str_r(buf, tfor), type_ref_to_str(e->tree_type));
+
+		/* attempt to insert regardless, e.g. _Bool x = 5;
+		 *  - they match but we need the _Bool cast */
+		fold_insert_casts(tfor, &first_init->bits.expr, stab,
+				&first_init->bits.expr->where, "initialisation");
 	}
 
 	return first_init;
