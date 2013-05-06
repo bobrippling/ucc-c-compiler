@@ -26,8 +26,6 @@ static const struct
 	TYPE(PTRDIFF, unsigned long),
 	TYPE(WINT, unsigned),
 
-	{ "__GOT_SHORT_LONG", "1"  },
-
 	/* non-standard */
 	{ "__BLOCKS__",     "1"  },
 

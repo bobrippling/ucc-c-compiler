@@ -17,10 +17,6 @@
 #endif
 #endif
 
-#ifndef __GOT_SHORT_LONG
-# define long int
-#endif
-
 extern long __syscall(int, ...);
 
 #endif
