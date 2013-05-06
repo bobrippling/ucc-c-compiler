@@ -16,6 +16,11 @@
 #include "lbl.h"
 #include "../pack.h"
 
+
+#define NUM_FMT "%d"
+/* format for movl $5, -0x6(%rbp) asm output
+                        ^~~                    */
+
 #define REG_STR_SZ 8
 
 #define VSTACK_STR_SZ 128
@@ -105,7 +110,7 @@ static const char *vstack_str_r_ptr(char buf[VSTACK_STR_SZ], struct vstack *vs, 
 		case STACK_SAVE:
 		{
 			int n = vs->bits.off_from_bp;
-			SNPRINTF(buf, VSTACK_STR_SZ, "%s%d(%%rbp)", n < 0 ? "-" : "", abs(n));
+			SNPRINTF(buf, VSTACK_STR_SZ, "%s" NUM_FMT "(%%rbp)", n < 0 ? "-" : "", abs(n));
 			break;
 		}
 	}
@@ -162,7 +167,7 @@ void impl_func_prologue_save_call_regs(int nargs)
 #else
 			stack_res += nargs * platform_word_size();
 
-			out_asm("mov%c %%%s, -%d(%%rbp)",
+			out_asm("mov%c %%%s, -" NUM_FMT "(%%rbp)",
 					asm_type_ch(NULL),
 					call_reg_str(arg_idx, NULL),
 					platform_word_size() * (arg_idx + 1));
@@ -803,7 +808,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 		v_unreserve_reg(call_regs[i]);
 
 	if(ncleanup)
-		out_asm("addq $%d, %%rsp", ncleanup * platform_word_size());
+		out_asm("addq $" NUM_FMT ", %%rsp", ncleanup * platform_word_size());
 }
 
 void impl_undefined(void)

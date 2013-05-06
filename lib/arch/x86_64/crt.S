@@ -22,14 +22,13 @@ _start:
 	// find the first env variable
 
 	leaq 1(%rdi), %rdx    // rdx = argc + 1
-	sal $3, %rdx          // rdx *= 8
-	addq %rsi, %rdx       // rdx += argv
+	// rax = argv + (argc + 1) * 8
 
-	// rdx = (argc + 1) * 8 + argv
-	// env = &argv[argc+1]
+	leaq (%rsi, %rdx, 8), %rdx // argv + new_argc * 8
 
 	movq %rdx, environ(%rip)
 
+	// argc=rdi, argv=rsi, environ=rdx - FIXME: this is only Linux ABI
 	call main
 	movl %eax, %edi
 	call exit
