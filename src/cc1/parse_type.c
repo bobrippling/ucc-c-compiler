@@ -1112,7 +1112,7 @@ void parse_decls_multi_type(enum decl_multi_mode mode, decl ***pdecls)
 				}
 
 				/* clang-style allows __attribute__ and then a function block */
-				if(need_func || curtok != token_semicolon){
+				if(need_func || curtok == token_open_block){
 					d->func_code = parse_stmt_block();
 
 					/* if:
