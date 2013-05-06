@@ -147,7 +147,7 @@ re_read:
 		if(join){
 			join = 0;
 
-			last = urealloc(last, strlen(last) + strlen(line) + 1);
+			last = urealloc1(last, strlen(last) + strlen(line) + 1);
 			strcpy(last + strlen(last), line);
 			free(line);
 			line = last;

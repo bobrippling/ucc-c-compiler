@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 master                           // currently NASM highly suboptimal ASM
 	overloadable                   // extension to support __attribute__((overloadable)) for functions
 	cpp_multiline                  // cpp parser which accepts macros over multiple lines
@@ -13,3 +14,12 @@ master                           // currently NASM highly suboptimal ASM
 			stack_layout               // fixes for stack layout and variable clobbering
 			testing                    // changes from test/ to test2/ which uses more consise in-source tests
 			calling_conv               // win32 _cdecl, _stdcall and _fastcall calling conventions. Room for more (Linux x86_32)
+=======
+experimental/base
+	experimental/align - close to merge
+	experimental/designated_init - issue with overwrite of sub-copied objects via array range
+	experimental/mips_backend - more checks required
+	experimental/calling_conv - awaiting merge (?)
+	experimental/debugger - awaiting development
+	experimental/switch_passable - awaiting development
+>>>>>>> experimental/base

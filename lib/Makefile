@@ -2,9 +2,10 @@ UCC_CC = ../src/ucc/ucc
 OBJ    = crt.o syscall.o dirent.o                       \
          stdio.o stdlib.o string.o unistd.o signal.o    \
 				 assert.o ctype.o                               \
-				 ucc.o alloca.o                                 \
+				 alloca.o                                 \
          sys/fcntl.o sys/wait.o sys/mman.o sys/socket.o \
-				 sys/utsname.o sys/select.o sys/time.o
+				 sys/utsname.o sys/select.o sys/time.o          \
+         arpa/inet.o
 
 LIBDEPS = ${UCC_CC} ../src/cc1/cc1 ../src/cpp2/cpp
 
@@ -12,13 +13,15 @@ BUILD_CMD = ${UCC_CC} -c -o $@ $<
 
 include ../config.mk
 
+ARCH_DIR = arch/${UCC_CPU}
+
 libs: ${OBJ}
 
 ${OBJ}: ${LIBDEPS}
 
-crt.o: crt.s
+crt.o: ${ARCH_DIR}/crt.S
 	${BUILD_CMD}
-syscall.o: syscall.s
+syscall.o: ${ARCH_DIR}/syscall.S
 	${BUILD_CMD}
 
 stdio.o: stdio.c
@@ -38,11 +41,11 @@ ctype.o: ctype.c
 dirent.o: dirent.c
 	${BUILD_CMD}
 
-alloca.o: alloca.s
+alloca.o: ${ARCH_DIR}/alloca.S
 	${BUILD_CMD}
 
-ucc.o: ucc.c
-	${UCC_CC} -fenable-asm -c -o $@ $<
+#ucc.o: ucc.c
+#	${UCC_CC} -fenable-asm -c -o $@ $<
 
 sys/fcntl.o: sys/fcntl.c
 	${BUILD_CMD}
@@ -61,9 +64,6 @@ sys/time.o: sys/time.c
 
 arpa/inet.o: arpa/inet.c
 	${BUILD_CMD}
-
-syscall.s: syscall_in.s syscall_err.s
-	${UCC_CC} -x c -E -o $@ syscall_in.s
 
 clean:
 	rm -f *.o sys/*.o

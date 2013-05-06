@@ -20,8 +20,13 @@ static const struct
 	{ "__unix__",       "1"  },
 	/* __STDC__ TODO */
 
-	{ "__SIZE_TYPE__",    "unsigned int"  },
-	{ "__PTRDIFF_TYPE__", "unsigned int"  },
+#define TYPE(ty, c) { "__" #ty "_TYPE__", #c  }
+
+	TYPE(SIZE, unsigned long),
+	TYPE(PTRDIFF, unsigned long),
+	TYPE(WINT, unsigned),
+
+	{ "__GOT_SHORT_LONG", "1"  },
 
 	/* non-standard */
 	{ "__BLOCKS__",     "1"  },
@@ -53,12 +58,12 @@ int option_line_info = 1;
 void dirname_push(char *d)
 {
 	/*fprintf(stderr, "dirname_push(%s = %p)\n", d, d);*/
-	dynarray_add((void ***)&dirnames, d);
+	dynarray_add(&dirnames, d);
 }
 
 char *dirname_pop()
 {
-	char *r = dynarray_pop((void ***)&dirnames);
+	char *r = dynarray_pop(char *, &dirnames);
 	(void)r;
 	/*fprintf(stderr, "dirname_pop() = %s (%p)\n", r, r);
 	return r; TODO - free*/
@@ -90,25 +95,43 @@ int main(int argc, char **argv)
 	const char *infname, *outfname;
 	int ret = 0;
 	int i;
+	int platform_win32 = 0;
 
 	infname = outfname = NULL;
 
 	for(i = 0; initial_defs[i].nam; i++)
 		macro_add(initial_defs[i].nam, initial_defs[i].val);
 
-	if(platform_type() == PLATFORM_64){
-		macro_add("__x86_64__", "1");
-		macro_add("__LP64__", "1");
+	switch(platform_type()){
+		case PLATFORM_x86_64:
+			macro_add("__LP64__", "1");
+			macro_add("__x86_64__", "1");
+			break;
+
+		case PLATFORM_mipsel_32:
+			macro_add("__MIPS__", "1");
 	}
 
 	switch(platform_sys()){
 #define MAP(t, s) case t: macro_add(s, "1"); break
 		MAP(PLATFORM_LINUX,   "__linux__");
 		MAP(PLATFORM_FREEBSD, "__FreeBSD__");
-		MAP(PLATFORM_DARWIN,  "__DARWIN__");
-		MAP(PLATFORM_CYGWIN,  "__CYGWIN__");
 #undef MAP
+
+		case PLATFORM_DARWIN:
+			macro_add("__DARWIN__", "1");
+			macro_add("__MACH__", "1"); /* TODO: proper detection for these */
+			macro_add("__APPLE__", "1");
+			break;
+
+		case PLATFORM_CYGWIN:
+			macro_add("__CYGWIN__", "1");
+			platform_win32 = 1;
+			break;
 	}
+
+	macro_add("__WCHAR_TYPE__",
+			platform_win32 ? "short" : "int");
 
 	calctime();
 

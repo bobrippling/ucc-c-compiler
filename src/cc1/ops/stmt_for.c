@@ -4,126 +4,68 @@
 #include "ops.h"
 #include "stmt_for.h"
 #include "stmt_code.h"
+#include "../out/lbl.h"
+#include "../decl_init.h"
 
 const char *str_stmt_for()
 {
 	return "for";
 }
 
-expr *fold_for_if_init_decls(stmt *s)
-{
-	decl **i;
-	expr *init_exp = NULL;
-
-	for(i = s->flow->for_init_decls; *i; i++){
-		decl *const d = *i;
-
-		fold_decl(d, s->flow->for_init_symtab);
-
-		switch(d->type->store){
-			case store_auto:
-			case store_default:
-			case store_register:
-				break;
-			default:
-				DIE_AT(&d->where, "%s variable in %s declaration initialisation",
-						type_store_to_str(d->type->store), s->f_str());
-		}
-
-		SYMTAB_ADD(s->flow->for_init_symtab, d, sym_local);
-
-		/* make the for-init a comma-exp with all our inits */
-		if(d->init){
-			expr *dinit = expr_new_decl_init(d);
-
-			if(init_exp){
-				expr *comma = expr_new_comma(); /* change this to an &&-op for if(char *x = .., *y = ..) anding */
-				comma->lhs = init_exp;
-				comma->rhs = dinit;
-				init_exp = comma;
-			}else{
-				init_exp = dinit;
-			}
-		}
-	}
-
-	return init_exp;
-}
-
 void fold_stmt_for(stmt *s)
 {
-	s->lbl_break    = asm_label_flow("for_start");
-	s->lbl_continue = asm_label_flow("for_contiune");
+	symtable *stab = NULL;
+	flow_fold(s->flow, &stab);
+	UCC_ASSERT(stab, "fold_flow in for didn't pick up .flow");
 
-	if(s->flow->for_init_decls){
-		expr *init_exp = fold_for_if_init_decls(s);
+	s->lbl_break    = out_label_flow("for_start");
+	s->lbl_continue = out_label_flow("for_contiune");
 
-		UCC_ASSERT(!s->flow->for_init, "for init in c99 for-decl mode");
-
-		s->flow->for_init = init_exp;
-	}
-
-#define FOLD_IF(x) if(x) fold_expr(x, s->flow->for_init_symtab)
+#define FOLD_IF(x) if(x) FOLD_EXPR(x, stab)
 	FOLD_IF(s->flow->for_init);
 	FOLD_IF(s->flow->for_while);
 	FOLD_IF(s->flow->for_inc);
 #undef FOLD_IF
 
-	if(s->flow->for_while){
+	if(s->flow->for_while)
 		fold_need_expr(s->flow->for_while, "for-while", 1);
 
-		OPT_CHECK(s->flow->for_while, "constant expression in for");
-	}
-
 	fold_stmt(s->lhs);
-
-	/*
-	 * need an extra generation for for_init,
-	 * since it's generated unlike other loops (symtab_new() in parse.c)
-	 */
-	gen_code_decls(s->flow->for_init_symtab);
-
-#ifdef SYMTAB_DEBUG
-	fprintf(stderr, "for-code st:\n");
-	PRINT_STAB(s->lhs, 1);
-
-	fprintf(stderr, "for-init st:\n");
-	print_stab(s->flow->for_init_symtab, 0, NULL);
-
-	fprintf(stderr, "for enclosing scope st:\n");
-	PRINT_STAB(s, 0);
-#endif
 }
 
 void gen_stmt_for(stmt *s)
 {
-	char *lbl_test = asm_label_flow("for_test");
+	char *lbl_test = out_label_flow("for_test");
+
+	flow_gen(s->flow, s->symtab);
 
 	/* don't else-if, possible to have both (comma-exp for init) */
 	if(s->flow->for_init){
 		gen_expr(s->flow->for_init, s->flow->for_init_symtab);
-		asm_temp(1, "pop rax ; unused for init");
+
+		out_pop();
+		out_comment("for-init");
 	}
 
-	asm_label(lbl_test);
+	out_label(lbl_test);
 	if(s->flow->for_while){
 		gen_expr(s->flow->for_while, s->flow->for_init_symtab);
-
-		asm_temp(1, "pop rax");
-		asm_temp(1, "test rax, rax");
-		asm_temp(1, "jz %s", s->lbl_break);
+		out_jfalse(s->lbl_break);
 	}
 
 	gen_stmt(s->lhs);
-	asm_label(s->lbl_continue);
+	out_label(s->lbl_continue);
 	if(s->flow->for_inc){
 		gen_expr(s->flow->for_inc, s->flow->for_init_symtab);
-		asm_temp(1, "pop rax ; unused for inc");
+
+		out_pop();
+		out_comment("unused for inc");
 	}
 
-	asm_temp(1, "jmp %s", lbl_test);
+	out_push_lbl(lbl_test, 0);
+	out_jmp();
 
-	asm_label(s->lbl_break);
+	out_label(s->lbl_break);
 
 	free(lbl_test);
 }

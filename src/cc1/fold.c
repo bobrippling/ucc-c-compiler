@@ -11,119 +11,176 @@
 #include "sym.h"
 #include "../util/platform.h"
 #include "const.h"
-#include "asm.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
 #include "../util/dynmap.h"
 #include "sue.h"
 #include "decl.h"
+#include "decl_init.h"
+#include "pack.h"
+#include "funcargs.h"
+#include "out/lbl.h"
 
-decl *curdecl_func, *curdecl_func_called; /* for funcargs-local labels and return type-checking */
+decl     *curdecl_func;
+type_ref *curdecl_ref_func_called; /* for funcargs-local labels and return type-checking */
 
 static where asm_struct_enum_where;
 
-void fold_decl_equal(decl *a, decl *b, where *w, enum warning warn,
+/* FIXME: don't have the callers do type_ref_to_str() */
+int fold_type_ref_equal(
+		type_ref *a, type_ref *b, where *w,
+		enum warning warn, enum decl_cmp extra_flags,
 		const char *errfmt, ...)
 {
-	if(!decl_equal(a, b, DECL_CMP_ALLOW_VOID_PTR | (fopt_mode & FOPT_STRICT_TYPES ? DECL_CMP_STRICT_PRIMITIVE : 0))){
+	enum decl_cmp flags = extra_flags | DECL_CMP_ALLOW_VOID_PTR;
+
+	if(!type_ref_is(a, type_ref_ptr) && !type_ref_is(b, type_ref_ptr))
+		flags |= DECL_CMP_ALLOW_SIGNED_UNSIGNED;
+
+	/* stronger checks for blocks and pointers */
+	if(type_ref_is(a, type_ref_block)
+	|| type_ref_is(b, type_ref_block)
+	|| type_ref_is(a, type_ref_func)
+	|| type_ref_is(b, type_ref_func))
+	{
+		flags |= DECL_CMP_EXACT_MATCH;
+	}
+
+	if(type_ref_equal(a, b, flags)){
+		return 1;
+	}else{
 		int one_struct;
 		va_list l;
 
+		if(fopt_mode & FOPT_PLAN9_EXTENSIONS){
+			/* allow b to be an anonymous member of a */
+			struct_union_enum_st *a_sue = type_ref_is_s_or_u(type_ref_is_ptr(a)),
+													 *b_sue = type_ref_is_s_or_u(type_ref_is_ptr(b));
+
+			if(a_sue && b_sue /* they aren't equal */){
+				/* b_sue has an a_sue,
+				 * the implicit cast adjusts to return said a_sue */
+				if(struct_union_member_find_sue(b_sue, a_sue))
+					goto fin;
+			}
+		}
+
 		/*cc1_warn_at(w, 0, 0, warn, "%s vs. %s for...", decl_to_str(a), decl_to_str_r(buf, b));*/
 
-
-		one_struct = (!a->desc && a->type->sue && a->type->sue->primitive != type_enum)
-			        || (!b->desc && b->type->sue && b->type->sue->primitive != type_enum);
+		one_struct = type_ref_is_s_or_u(a) || type_ref_is_s_or_u(b);
 
 		va_start(l, errfmt);
-		cc1_warn_atv(w, one_struct || decl_is_void(a) || decl_is_void(b), 1, warn, errfmt, l);
+		cc1_warn_atv(w, one_struct || type_ref_is_void(a) || type_ref_is_void(b), 1, warn, errfmt, l);
 		va_end(l);
 	}
-}
-
-int fold_get_sym(expr *e, symtable *stab)
-{
-	if(e->sym)
-		return 1;
-
-	if(e->spel)
-		return !!(e->sym = symtab_search(stab, e->spel));
-
+fin:
 	return 0;
 }
 
-void fold_inc_writes_if_sym(expr *e, symtable *stab)
+void fold_insert_casts(type_ref *dlhs, expr **prhs, symtable *stab, where *w, const char *desc)
 {
-	if(fold_get_sym(e, stab))
-		e->sym->nwrites++;
-}
+	expr *const rhs = *prhs;
 
-void fold_expr(expr *e, symtable *stab)
-{
-	where *old_w;
+	if(!type_ref_equal(dlhs, rhs->tree_type,
+				DECL_CMP_ALLOW_VOID_PTR |
+				DECL_CMP_EXACT_MATCH))
+	{
+		/* insert a cast: rhs -> lhs */
+		expr *cast;
 
-	fold_get_sym(e, stab);
+		cast = expr_new_cast(dlhs, 1);
+		cast->expr = rhs;
+		*prhs = cast;
 
-	old_w = eof_where;
-	eof_where = &e->where;
-	e->f_fold(e, stab);
-	eof_where = old_w;
-
-	UCC_ASSERT(e->tree_type, "no tree_type after fold (%s)", e->f_str());
-	UCC_ASSERT(e->tree_type->type->primitive != type_unknown, "unknown type after folding expr %s", e->f_str());
-}
-
-void fold_decl_desc(decl_desc *dp, symtable *stab, decl *root)
-{
-	switch(dp->type){
-		case decl_desc_func:
-			fold_funcargs(dp->bits.func, stab, root->spel);
-			break;
-
-		case decl_desc_array:
-		{
-			intval sz;
-
-			fold_expr(dp->bits.array_size, stab);
-			const_fold_val(dp->bits.array_size, &sz, "non-constant array-size");
-
-			if(sz.val < 0)
-				DIE_AT(&dp->where, "negative array length %ld", sz.val);
-
-			if(sz.val == 0 && !root->init && root->type->store != store_extern)
-				DIE_AT(&dp->where, "incomplete array");
-		}
-
-		case decl_desc_block:
-			/* TODO? */
-		case decl_desc_ptr:
-			/* TODO: check qual */
-			break;
+		/* need to fold the cast again - mainly for "loss of precision" warning */
+		fold_expr_cast_descend(cast, stab, 0);
 	}
 
-	if(dp->child)
-		fold_decl_desc(dp->child, stab, root);
+	if(type_ref_is_signed(dlhs) != type_ref_is_signed(rhs->tree_type)){
+		cc1_warn_at(w, 0, 1, WARN_SIGN_COMPARE,
+				"operation between signed and unsigned in %s", desc);
+	}
+}
+
+
+void fold_check_restrict(expr *lhs, expr *rhs, const char *desc, where const *w)
+{
+	/* restrict operation checks */
+	const enum type_qualifier ql = type_ref_qual(lhs->tree_type),
+				                    qr = type_ref_qual(rhs->tree_type);
+
+	if((ql & qual_restrict) && (qr & qual_restrict))
+		WARN_AT(w, "restrict pointers in %s", desc);
+}
+
+sym *fold_inc_writes_if_sym(expr *e, symtable *stab)
+{
+	if(expr_kind(e, identifier)){
+		sym *sym = symtab_search(stab, e->bits.ident.spel);
+
+		if(sym){
+			sym->nwrites++;
+			return sym;
+		}
+	}
+
+	return NULL;
+}
+
+void FOLD_EXPR_NO_DECAY(expr *e, symtable *stab)
+{
+	if(e->tree_type)
+		return;
+
+	EOF_WHERE(&e->where, e->f_fold(e, stab));
+
+	UCC_ASSERT(e->tree_type, "no tree_type after fold (%s)", e->f_str());
+}
+
+expr *fold_expr(expr *e, symtable *stab)
+{
+	/* perform array decay and pointer decay */
+	type_ref *r;
+	expr *imp_cast = NULL;
+
+	FOLD_EXPR_NO_DECAY(e, stab);
+
+	r = e->tree_type;
+
+	EOF_WHERE(&e->where,
+			type_ref *decayed = type_ref_decay(r);
+
+			if(!type_ref_equal(decayed, r, DECL_CMP_EXACT_MATCH))
+				imp_cast = expr_new_cast(decayed, 1);
+		);
+
+	if(imp_cast){
+		imp_cast->expr = e;
+		fold_expr_cast_descend(imp_cast, stab, 0);
+		e = imp_cast;
+	}
+
+	return e;
 }
 
 void fold_enum(struct_union_enum_st *en, symtable *stab)
 {
-	const int bitmask = decl_attr_present(en->attr, attr_enum_bitmask);
+	const int has_bitmask = !!decl_attr_present(en->attr, attr_enum_bitmask);
 	sue_member **i;
-	int defval = bitmask;
+	int defval = has_bitmask;
 
-	for(i = en->members; *i; i++){
+	for(i = en->members; i && *i; i++){
 		enum_member *m = (*i)->enum_member;
 		expr *e = m->val;
 
 		/* -1 because we can't do dynarray_add(..., 0) */
 		if(e == (expr *)-1){
 
-			/*expr_free(e); XXX: memleak */
 			EOF_WHERE(&asm_struct_enum_where,
 				m->val = expr_new_val(defval)
 			);
 
-			if(bitmask)
+			if(has_bitmask)
 				defval <<= 1;
 			else
 				defval++;
@@ -131,228 +188,220 @@ void fold_enum(struct_union_enum_st *en, symtable *stab)
 		}else{
 			intval iv;
 
-			fold_expr(e, stab);
+			FOLD_EXPR(e, stab);
 			const_fold_need_val(e, &iv);
+			m->val = e;
 
-			defval = bitmask ? iv.val << 1 : iv.val + 1;
+			defval = has_bitmask ? iv.val << 1 : iv.val + 1;
 		}
 	}
 }
 
-int fold_sue(struct_union_enum_st *sue, symtable *stab)
+int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 {
-	int offset;
-	sue_member **i;
+	if(sue->size)
+		return sue->size;
 
 	if(sue->primitive == type_enum){
 		fold_enum(sue, stab);
-		offset = platform_word_size(); /* XXX: assumes enums are 64-bit */
+
+		/* we don't call sue_size as that dies on a forward-enum,
+		 * we want to die later, when we have the decl location
+		 */
+		return sue_enum_size(sue);
+
 	}else{
-		for(offset = 0, i = sue->members; i && *i; i++){
+		int align_max = 1;
+		int sz_max = 0;
+		int offset = 0;
+		sue_member **i;
+
+		if(decl_attr_present(sue->attr, attr_packed))
+			ICE("TODO: __attribute__((packed)) support");
+
+		for(i = sue->members; i && *i; i++){
 			decl *d = (*i)->struct_member;
+			int align, sz;
+			struct_union_enum_st *sub_sue;
 
 			fold_decl(d, stab);
 
-			if(sue->primitive == type_struct)
-				d->struct_offset = offset;
-			/* else - union, all offsets are the same */
+			if((sub_sue = type_ref_is_s_or_u_or_e(d->ref))){
+				if(sub_sue != sue)
+					fold_sue(sub_sue, stab);
 
-			if(d->type->sue && decl_ptr_depth(d) == 0){
-				if(d->type->sue == sue)
+				if(type_ref_is(d->ref, type_ref_ptr) || sub_sue->primitive == type_enum)
+					goto normal;
+
+				if(sub_sue == sue)
 					DIE_AT(&d->where, "nested %s", sue_str(sue));
 
-				offset += fold_sue(d->type->sue, stab);
+				sz = sue_size(sub_sue, &d->where);
+				align = sub_sue->align;
+
 			}else{
-				offset += decl_size(d);
+normal:
+				align = decl_align(d);
+				sz = decl_size(d);
 			}
-		}
-	}
 
-	return offset;
-}
 
-void fold_coerce_assign(decl *d, expr *assign, int *ok)
-{
-	/*
-	 * assignment coercion - complete incomplete arrays
-	 * and convert type[] to struct inits for structs
-	 */
-	*ok = 0;
+			if(sue->primitive == type_struct){
+				int after_space;
 
-	if(!decl_ptr_depth(d) && d->type->primitive == type_struct){
-		if(assign->array_store){
-			array_decl *store = assign->array_store;
+				pack_next(&offset, &after_space, sz, align);
+				/* offset is the end of the decl, after_space is the start */
 
-			if(store->struct_idents){
-				int i;
-
-				for(i = 0; store->struct_idents[i]; i++){
-					fprintf(stderr, ".%s = %s\n",
-							store->struct_idents[i],
-							decl_to_str(store->data.exprs[i]->tree_type));
-				}
-
-				ICE("TODO: struct init from ^");
-			}else{
-				decl_desc *dp = decl_array_first(assign->tree_type);
-				int nmembers;
-				intval iv;
-
-				const_fold_need_val(dp->bits.array_size, &iv);
-
-				*ok = 1;
-
-				/*
-				 * for now just check the counts - this will break for:
-				 * struct { int i; char c; int j } = { 1, 2, 3 };
-				 *                   ^
-				 * in global scope
-				 */
-				nmembers = sue_nmembers(d->type->sue);
-
-				if(iv.val != nmembers){
-					WARN_AT(&assign->where,
-							"mismatching member counts for struct init (struct of %d vs array of %ld)",
-							nmembers, iv.val);
-					/* TODO: zero the rest */
-				}else if(!d->sym || d->sym->type == sym_global){
-					sue_member **i;
-
-					for(i = d->type->sue->members; i && *i; i++){
-						decl *d = (*i)->struct_member;
-						if(!decl_ptr_depth(d) && d->type->primitive == type_char){
-							WARN_AT(&assign->where, "struct init via { } breaks with char member (%s %s)",
-									decl_to_str(d), d->spel);
-							break;
-						}
-					}
-				}
+				d->struct_offset = after_space;
 			}
-		}else{
-			ICE("struct init from %s", decl_to_str(assign->tree_type));
+
+			if(align > align_max)
+				align_max = align;
+			if(sz > sz_max)
+				sz_max = sz;
 		}
+
+		sue->align = align_max;
+		sue->size = pack_to_align(
+				sue->primitive == type_struct ? offset : sz_max,
+				align_max);
+
+		return sue->size;
 	}
 }
 
-void fold_decl(decl *d, symtable *stab)
+void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 {
-	decl_desc *dp;
+	enum type_qualifier q_to_check = qual_none;
 
-	/* typedef / __typeof folding */
-	while(d->type->type_of){
-		/* get the typedef decl from t->decl->tree_type */
-		const enum type_qualifier old_qual  = d->type->qual;
-		const enum type_storage   old_store = d->type->store;
-		decl *from;
-		expr *type_exp;
+	if(!r || r->folded)
+		return;
 
-		type_exp = d->type->type_of;
+	r->folded = 1;
 
-		fold_expr(type_exp, stab);
-		decl_free(type_exp->tree_type);
-
-		/* either get the typeof() from the decl or the expr type */
-		from = d->type->type_of->decl;
-		if(!from)
-			from = d->type->type_of->expr->tree_type;
-
-		UCC_ASSERT(from, "no decl for typeof/typedef fold: "
-				".decl = %p, .expr->tt = %p",
-				(void *)d->type->type_of->decl,
-				(void *)d->type->type_of->expr->tree_type);
-
-		type_exp->tree_type = decl_copy(from);
-
-		/* type */
-		memcpy(d->type, from->type, sizeof *d->type);
-		d->type->qual  |= old_qual;
-		d->type->store  = old_store;
-
-		/* decl */
-		if(from->desc){
-			decl_desc *ins = decl_desc_copy(from->desc);
-
-			decl_desc_append(&ins, d->desc);
-			d->desc = ins;
-		}
-
-		/* attr */
-		decl_attr_append(&d->attr, from->attr);
-	}
-	decl_desc_link(d);
-
-	UCC_ASSERT(d->type && d->type->store != store_typedef, "typedef store after tdef folding");
-
+	switch(r->type){
 	/* check for array of funcs, func returning array */
-	for(dp = decl_desc_tail(d); dp; dp = dp->parent_desc){
-
-		if(dp->parent_desc && dp->parent_desc->type == decl_desc_func){
-			if(dp->type == decl_desc_array)
-				DIE_AT(&dp->where, "can't have an array of functions");
-			else if(dp->type == decl_desc_func)
-				DIE_AT(&dp->where, "can't have a function returning a function");
-		}
-
-		if(dp->type == decl_desc_block
-		&& (!dp->parent_desc || dp->parent_desc->type != decl_desc_func))
+		case type_ref_array:
 		{
-			DIE_AT(&dp->where, "invalid block pointer - function required (got %s)",
-					decl_desc_to_str(dp->parent_desc->type));
+			consty k;
+
+			if(type_ref_is(r->ref, type_ref_func))
+				DIE_AT(&r->where, "array of functions");
+
+			FOLD_EXPR(r->bits.array.size, stab);
+			const_fold(r->bits.array.size, &k);
+
+			if(k.type != CONST_VAL)
+				DIE_AT(&r->where, "not a numeric constant for array size");
+			else if(k.bits.iv.val < 0)
+				DIE_AT(&r->where, "negative array size");
+			/* allow zero length arrays */
+			break;
 		}
-	}
 
-	/* append type's attr into the decl */
-	decl_attr_append(&d->attr, d->type->attr);
+		case type_ref_func:
+			if(type_ref_is(r->ref, type_ref_func))
+				DIE_AT(&r->where, "function returning a function");
 
-	switch(d->type->primitive){
-		case type_void:
-			if(!decl_ptr_depth(d) && !decl_is_callable(d) && d->spel)
-				DIE_AT(&d->where, "can't have a void variable - %s (%s)", d->spel, decl_to_str(d));
+			if(type_ref_is(parent, type_ref_ptr) && (type_ref_qual(parent) & qual_restrict))
+				DIE_AT(&r->where, "restrict qualified function pointer");
+
+			fold_funcargs(r->bits.func, stab, r);
 			break;
 
-		case type_struct:
-		case type_union:
-			/* don't apply qualifiers to the sue */
-		case type_enum:
-			if(sue_incomplete(d->type->sue) && !decl_ptr_depth(d))
-				DIE_AT(&d->where, "use of %s%s%s",
-						type_to_str(d->type),
-						d->spel ?     " " : "",
-						d->spel ? d->spel : "");
+		case type_ref_block:
+			if(!type_ref_is(r->ref, type_ref_func))
+				DIE_AT(&r->where, "invalid block pointer - function required (got %s)",
+						type_ref_to_str(r->ref));
+
+			/*q_to_check = r->bits.block.qual; - allowed */
 			break;
 
-		case type_int:
-		case type_char:
+		case type_ref_cast:
+			if(!r->bits.cast.is_signed_cast)
+				q_to_check = type_ref_qual(r);
 			break;
 
-		case type_unknown:
-			ICE("unknown type");
+		case type_ref_ptr:
+			/*q_to_check = r->bits.qual; - allowed */
+		case type_ref_type:
+			break;
+
+		case type_ref_tdef:
+		{
+			expr *p_expr = r->bits.tdef.type_of;
+
+			/* q_to_check = TODO */
+			FOLD_EXPR_NO_DECAY(p_expr, stab);
+
+			if(r->bits.tdef.decl)
+				fold_decl(r->bits.tdef.decl, stab);
+
+			break;
+		}
 	}
 
 	/*
 	 * now we've folded, check for restrict
 	 * since typedef int *intptr; intptr restrict a; is valid
 	 */
-	if(d->desc){
-		fold_decl_desc(d->desc, stab, d);
-	}else if(d->type->qual & qual_restrict){
-		DIE_AT(&d->where, "restrict on non-pointer type %s%s%s",
-				type_to_str(d->type),
-				d->spel ? " " : "",
-				d->spel ? d->spel : "");
-	}
+	if(q_to_check & qual_restrict)
+		WARN_AT(&r->where, "restrict on non-pointer type '%s'", type_ref_to_str(r));
 
+	fold_type_ref(r->ref, r, stab);
+}
+
+static int fold_align(int al, int min, int max, where *w)
+{
+	/* allow zero */
+	if(al & (al - 1))
+		DIE_AT(w, "alignment %d isn't a power of 2", al);
+
+	if(al > 0 && al < min)
+		DIE_AT(w,
+				"can't reduce alignment (%d -> %d)",
+				min, al);
+
+	if(al > max)
+		max = al;
+	return max;
+}
+
+static void fold_func_attr(decl *d)
+{
+	funcargs *fa = type_ref_funcargs(d->ref);
+
+	if(decl_has_attr(d, attr_sentinel) && !fa->variadic)
+		WARN_AT(&d->where, "variadic function required for sentinel check");
+}
+
+void fold_decl(decl *d, symtable *stab)
+{
+	decl_attr *attrib = NULL;
+	int can_align = 1;
+
+	fold_type_ref(d->ref, NULL, stab);
+
+#if 0
+	/* if we have a type and it's incomplete, error */
+	no - only on use
+	if(!type_ref_is_complete(d->ref))
+		DIE_AT(&d->where, "use of incomplete type - %s (%s)", d->spel, decl_to_str(d));
+#endif
+
+#ifdef FIELD_WIDTH_TODO
 	if(d->field_width){
-		enum constyness type;
+		enum constyness ktype;
 		intval iv;
 		int width;
+		type *t = ;
 
-		fold_expr(d->field_width, stab);
-		const_fold(d->field_width, &iv, &type);
+		FOLD_EXPR(d->field_width, stab);
+		const_fold(d->field_width, &iv, &ktype);
 
 		width = iv.val;
 
-		if(type != CONST_WITH_VAL)
+		if(ktype != CONST_WITH_VAL)
 			DIE_AT(&d->where, "constant expression required for field width");
 
 		if(width <= 0)
@@ -361,128 +410,237 @@ void fold_decl(decl *d, symtable *stab)
 		if(!decl_is_integral(d))
 			DIE_AT(&d->where, "field width on non-integral type %s", decl_to_str(d));
 
-		if(width == 1 && d->type->is_signed)
+		if(width == 1 && t->is_signed)
 			WARN_AT(&d->where, "%s 1-bit field width is signed (-1 and 0)", decl_to_str(d));
+
+		can_align = 0;
 	}
+#endif
 
-
-	if(decl_is_func(d)){
-		switch(d->type->store){
+	/* allow:
+	 *   register int (*f)();
+	 * disallow:
+	 *   register int   f();
+	 *   register int  *f();
+	 */
+	if(DECL_IS_FUNC(d)){
+		switch(d->store & STORE_MASK_STORE){
 			case store_register:
 			case store_auto:
-				DIE_AT(&d->where, "%s storage for function", type_store_to_str(d->type->store));
-			default:
-				break;
+				DIE_AT(&d->where, "%s storage for function", decl_store_to_str(d->store));
 		}
 
-		if(!d->func_code){
+		if(!d->func_code && d->sym && d->sym->type == sym_global){
 			/* prototype - set extern, so we get a symbol generated (if needed) */
-			switch(d->type->store){
+			switch(d->store & STORE_MASK_STORE){
 				case store_default:
-					d->type->store = store_extern;
+					d->store |= store_extern;
 				case store_extern:
-				default:
 					break;
 			}
 		}
-	}else{
-		if(d->type->is_inline)
-			WARN_AT(&d->where, "inline on non-function%s%s",
-					d->spel ? " " : "",
-					d->spel ? d->spel : "");
+
+		can_align = 0;
+
+		fold_func_attr(d);
+
+	}else if((d->store & STORE_MASK_EXTRA) == store_inline){
+		WARN_AT(&d->where, "inline on non-function");
+	}
+
+	if(d->align || (attrib = decl_has_attr(d, attr_aligned))){
+		const int tal = type_ref_align(d->ref, &d->where);
+
+		struct decl_align *i;
+		int max_al = 0;
+
+		if((d->store & STORE_MASK_STORE) == store_register)
+			can_align = 0;
+
+		if(!can_align)
+			DIE_AT(&d->where, "can't align %s", decl_to_str(d));
+
+		for(i = d->align; i; i = i->next){
+			int al;
+
+			if(i->as_int){
+				consty k;
+
+				const_fold(
+						FOLD_EXPR(i->bits.align_intk, stab),
+						&k);
+
+				if(k.type != CONST_VAL)
+					DIE_AT(&d->where, "alignment must be an integer constant");
+
+				al = k.bits.iv.val;
+			}else{
+				type_ref *ty = i->bits.align_ty;
+				fold_type_ref(ty, NULL, stab);
+				al = type_ref_align(ty, &d->where);
+			}
+
+			max_al = fold_align(al, tal, max_al, &d->where);
+		}
+
+		if(attrib){
+			max_al = fold_align(attrib->attr_extra.align, tal, max_al, &attrib->where);
+			if(!d->align)
+				d->align = umalloc(sizeof *d->align);
+		}
+
+		d->align->resolved = max_al;
 	}
 
 	if(d->init){
-		if(d->type->store == store_extern){
+		if((d->store & STORE_MASK_STORE) == store_extern){
 			/* allow for globals - remove extern since it's a definition */
 			if(stab->parent){
 				DIE_AT(&d->where, "externs can't be initialised");
 			}else{
 				WARN_AT(&d->where, "extern initialisation");
-				d->type->store = store_default;
+				d->store &= ~store_extern;
 			}
 		}
+	}
+}
 
-		if(decl_has_incomplete_array(d) && d->init->array_store){
-			/* complete the decl */
-			decl_desc *dp = decl_array_first_incomplete(d);
+void fold_decl_global_init(decl *d, symtable *stab)
+{
+	if(!d->init)
+		return;
 
-			dp->bits.array_size->bits.iv.val = d->init->array_store->len;
-		}
+	EOF_WHERE(&d->where,
+		/* this completes the array, if any */
+		decl_init_brace_up_fold(d, stab);
+	);
 
-		/* type check for statics + globals */
-		if(d->type->store == store_static || (d->sym && d->sym->type == sym_global)){
-			int ok;
-			enum constyness type;
-			intval dummy;
-
-			fold_expr(d->init, stab); /* else it's done as part of the stmt code */
-			fold_coerce_assign(d, d->init, &ok); /* also done as stmt code */
-
-			if(!ok){
-				fold_decl_equal(d, d->init->tree_type, &d->where, WARN_ASSIGN_MISMATCH,
-						"mismatching initialisation for %s", d->spel);
-			}
-
-			const_fold(d->init, &dummy, &type);
-			if(type == CONST_NO){
-				/* global/static + not constant */
-				/* allow identifiers if the identifier is also static */
-
-				if(!expr_kind(d->init, identifier)
-				|| d->init->tree_type->type->store != store_static)
-				{
-					DIE_AT(&d->init->where,
-							"not a constant expression for %s %s initialisation - %s",
-							d->type->store == store_static ? "static" : "global",
-							d->spel, d->init->f_str());
-				}
-			}
-		}
+	if(!decl_init_is_const(d->init, stab)){
+		DIE_AT(&d->init->where, "%s %s initialiser not constant",
+				stab->parent ? "static" : "global",
+				decl_init_to_str(d->init->type));
 	}
 }
 
 void fold_decl_global(decl *d, symtable *stab)
 {
-	switch(d->type->store){
+	switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
 		case store_extern:
 		case store_default:
 		case store_static:
 			break;
 
-		case store_typedef:
-			ICE("typedef store");
+		case store_inline: /* allowed, but not accessible via STORE_MASK_STORE */
+			ICE("inline");
+		case store_typedef: /* global typedef */
+			break;
 
 		case store_auto:
 		case store_register:
 			DIE_AT(&d->where, "invalid storage class %s on global scoped %s",
-					type_store_to_str(d->type->store),
-					decl_is_func(d) ? "function" : "variable");
+					decl_store_to_str(d->store),
+					DECL_IS_FUNC(d) ? "function" : "variable");
 	}
 
 	fold_decl(d, stab);
+
+	/*
+	 * inits are normally handled in stmt_code,
+	 * but this is global, handle here
+	 */
+	fold_decl_global_init(d, stab);
 }
 
-void fold_symtab_scope(symtable *stab)
+void fold_symtab_scope(symtable *stab, stmt **pinit_code)
 {
+#define inits (*pinit_code)
+	/* this is called from wherever we can define a
+	 * struct/union/enum,
+	 * e.g. a code-block (explicit or implicit),
+	 *      global scope
+	 * and an if/switch/while statement: if((struct A { int i; } *)0)...
+	 */
+
 	struct_union_enum_st **sit;
+	decl **diter;
+
+	if(stab->folded)
+		return;
+	stab->folded = 1;
 
 	for(sit = stab->sues; sit && *sit; sit++)
 		fold_sue(*sit, stab);
+
+	for(diter = stab->decls; diter && *diter; diter++){
+		decl *d = *diter;
+
+		fold_decl(d, stab);
+
+		if(stab->parent){
+			if(d->func_code)
+				DIE_AT(&d->func_code->where, "can't nest functions (%s)", d->spel);
+			else if(DECL_IS_FUNC(d) && (d->store & STORE_MASK_STORE) == store_static)
+				DIE_AT(&d->where, "block-scoped function cannot have static storage");
+		}
+
+		/* must be before fold*, since sym lookups are done */
+		if(d->sym){
+			/* arg */
+			UCC_ASSERT(d->sym->type != sym_local || !d->spel /* anon sym, e.g. strk */,
+					"%s given symbol too early",
+					d->spel);
+		}else{
+			d->sym = sym_new(d,
+					!stab->parent || decl_store_static_or_extern(d->store) ?
+					sym_global :
+					sym_local);
+		}
+
+		if(d->init && pinit_code){
+			/* this creates the below s->inits array */
+			if((d->store & STORE_MASK_STORE) == store_static){
+				fold_decl_global_init(d, stab);
+			}else{
+				EOF_WHERE(&d->where,
+						if(!inits)
+							inits = stmt_new_wrapper(code, symtab_new(stab));
+
+						decl_init_brace_up_fold(d, inits->symtab);
+						decl_init_create_assignments_base(d->init,
+							d->ref, expr_new_identifier(d->spel),
+							inits);
+					);
+				/* folded elsewhere */
+			}
+		}
+
+		/* check static decls
+		 * -> doesn't need to be after fold since we change .spel_asm
+		 *
+		 * don't for anonymous symbols, they're referenced via other means
+		 */
+		if(curdecl_func){
+			d->is_definition = 1;
+
+			if((d->store & STORE_MASK_STORE) == store_static && d->spel)
+				d->spel_asm = out_label_static_local(curdecl_func->spel, d->spel);
+		}
+	}
+#undef inits
 }
 
 void fold_need_expr(expr *e, const char *stmt_desc, int is_test)
 {
-	if(!decl_ptr_depth(e->tree_type) && e->tree_type->type->primitive == type_void)
+	if(type_ref_is_void(e->tree_type))
 		DIE_AT(&e->where, "%s requires non-void expression", stmt_desc);
 
 	if(!e->in_parens && expr_kind(e, assign))
 		cc1_warn_at(&e->where, 0, 1, WARN_TEST_ASSIGN, "testing an assignment in %s", stmt_desc);
 
 	if(is_test){
-		if(!decl_is_bool(e->tree_type)){
+		if(!type_ref_is_bool(e->tree_type)){
 			cc1_warn_at(&e->where, 0, 1, WARN_TEST_BOOL, "testing a non-boolean expression, %s, in %s",
-					decl_to_str(e->tree_type), stmt_desc);
+					type_ref_to_str(e->tree_type), stmt_desc);
 		}
 
 		if(expr_kind(e, addr)){
@@ -496,10 +654,11 @@ void fold_need_expr(expr *e, const char *stmt_desc, int is_test)
 
 void fold_disallow_st_un(expr *e, const char *desc)
 {
-	if(decl_is_struct_or_union(e->tree_type)){
+	struct_union_enum_st *sue;
+
+	if((sue = type_ref_is_s_or_u(e->tree_type))){
 		DIE_AT(&e->where, "%s involved in %s",
-				sue_str(e->tree_type->type->sue),
-				desc);
+				sue_str(sue), desc);
 	}
 }
 
@@ -516,8 +675,8 @@ void print_stab(symtable *st, int current, where *w)
 
 	fprintf(stderr, "\ttable %p, children %d, vars %d, parent: %p",
 			(void *)st,
-			dynarray_count((void **)st->children),
-			dynarray_count((void **)st->decls),
+			dynarray_count(st->children),
+			dynarray_count(st->decls),
 			(void *)st->parent);
 
 	if(current)
@@ -551,15 +710,22 @@ void fold_stmt_and_add_to_curswitch(stmt *t)
 	if(!t->parent)
 		DIE_AT(&t->where, "%s not inside switch", t->f_str());
 
-	dynarray_add((void ***)&t->parent->codes, t);
+	dynarray_add(&t->parent->codes, t);
 
 	/* we are compound, copy some attributes */
 	t->kills_below_code = t->lhs->kills_below_code;
 	/* TODO: copy ->freestanding? */
 }
 
-void fold_funcargs(funcargs *fargs, symtable *stab, char *context)
+void fold_funcargs(funcargs *fargs, symtable *stab, type_ref *from)
 {
+	decl_attr *da;
+	unsigned long nonnulls = 0;
+
+	/* check nonnull corresponds to a pointer arg */
+	if((da = type_attr_present(from, attr_nonnull)))
+		nonnulls = da->attr_extra.nonnull_args;
+
 	if(fargs->arglist){
 		/* check for unnamed params and extern/static specs */
 		int i;
@@ -567,27 +733,36 @@ void fold_funcargs(funcargs *fargs, symtable *stab, char *context)
 		for(i = 0; fargs->arglist[i]; i++){
 			decl *const d = fargs->arglist[i];
 
-			/* convert any array definitions and functions to pointers */
-			EOF_WHERE(&d->where,
-				decl_conv_array_func_to_ptr(d) /* must be before the decl is folded (since fold checks this) */
-			);
-
-			/* if we have an unknown (old-func), default it */
-			if(d->type->primitive == type_unknown)
-				d->type->primitive = type_int;
-
+			/* fold before for array checks, etc */
 			fold_decl(d, stab);
 
-			if(type_store_static_or_extern(d->type->store)){
-				const char *sp = d->spel;
-				DIE_AT(&fargs->where, "argument %d %s%s%sin function \"%s\" is static or extern",
-						i + 1,
-						sp ? "(" : "",
-						sp ? sp  : "",
-						sp ? ") " : "",
-						context);
+			/* convert any array definitions and functions to pointers */
+			EOF_WHERE(&d->where,
+				/* must be before the decl is folded (since fold checks this) */
+				if(decl_conv_array_func_to_ptr(d))
+					fold_type_ref(d->ref, NULL, stab); /* refold if we converted */
+			);
+
+			if(decl_store_static_or_extern(d->store)){
+				DIE_AT(&fargs->where, "function argument %d is static or extern", i + 1);
+			}
+
+			/* ensure ptr */
+			if((nonnulls & (1 << i))
+			&& !type_ref_is(d->ref, type_ref_ptr)
+			&& !type_ref_is(d->ref, type_ref_block))
+			{
+				WARN_AT(&fargs->arglist[i]->where, "nonnull attribute applied to non-pointer argument '%s'",
+						type_ref_to_str(d->ref));
 			}
 		}
+
+		if(i == 0 && nonnulls)
+			WARN_AT(&fargs->where, "nonnull attribute applied to function with no arguments");
+		else if(nonnulls != ~0UL && nonnulls & -(1 << i))
+			WARN_AT(&fargs->where, "nonnull attributes above argument index %d ignored", i + 1);
+	}else if(nonnulls){
+		WARN_AT(&fargs->where, "nonnull attribute on parameterless function");
 	}
 }
 
@@ -611,18 +786,25 @@ void fold_func(decl *func_decl)
 			where *where;
 		} the_return = { NULL, NULL };
 
+		type_ref *fref;
+
 		curdecl_func = func_decl;
-		curdecl_func_called = decl_func_deref(decl_copy(curdecl_func), NULL);
+		fref = type_ref_is(curdecl_func->ref, type_ref_func);
+		UCC_ASSERT(fref, "not a func");
+		curdecl_ref_func_called = type_ref_func_call(fref, NULL);
+
+		if(curdecl_func->ref->type != type_ref_func)
+			WARN_AT(&curdecl_func->where, "typedef function implementation is not C");
 
 		symtab_add_args(
 				func_decl->func_code->symtab,
-				decl_desc_tail(func_decl)->bits.func,
-				curdecl_func->spel);
+				fref->bits.func,
+				func_decl->spel);
 
 		fold_stmt(func_decl->func_code);
 
-		if(decl_attr_present(curdecl_func->attr, attr_noreturn)){
-			if(!decl_is_void(curdecl_func_called)){
+		if(decl_has_attr(curdecl_func, attr_noreturn)){
+			if(!type_ref_is_void(curdecl_ref_func_called)){
 				cc1_warn_at(&func_decl->where, 0, 1, WARN_RETURN_UNDEF,
 						"function \"%s\" marked no-return has a non-void return value",
 						func_decl->spel);
@@ -651,7 +833,7 @@ void fold_func(decl *func_decl)
 						func_decl->spel, the_return.extra);
 			}
 
-		}else if(!decl_is_void(curdecl_func_called)){
+		}else if(!type_ref_is_void(curdecl_ref_func_called)){
 			/* non-void func - check it doesn't return */
 			if(fold_passable(func_decl->func_code)){
 				cc1_warn_at(&func_decl->where, 0, 1, WARN_RETURN_UNDEF,
@@ -660,8 +842,7 @@ void fold_func(decl *func_decl)
 			}
 		}
 
-		free(curdecl_func_called);
-		curdecl_func_called = NULL;
+		curdecl_ref_func_called = NULL;
 		curdecl_func = NULL;
 	}
 }
@@ -676,21 +857,23 @@ static void fold_link_decl_defs(dynmap *spel_decls)
 		decl *d, *e, *definition, *first_none_extern;
 		decl **decls_for_this, **decl_iter;
 		int count_inline, count_extern, count_static, count_total;
+		char *asm_rename;
 
-		key = dynmap_key(spel_decls, i);
+		key = dynmap_key(char *, spel_decls, i);
 		if(!key)
 			break;
 
-		decls_for_this = dynmap_get(spel_decls, key);
+		decls_for_this = dynmap_get(char *, decl **, spel_decls, key);
 		d = *decls_for_this;
 
 		definition = decl_is_definition(d) ? d : NULL;
 
-		count_inline = d->type->is_inline;
+		count_inline = d->store & store_inline;
 		count_extern = count_static = 0;
 		first_none_extern = NULL;
+		asm_rename = d->spel_asm;
 
-		switch(d->type->store){
+		switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
 			case store_extern:
 				count_extern++;
 				break;
@@ -712,8 +895,22 @@ static void fold_link_decl_defs(dynmap *spel_decls)
 
 		for(decl_iter = decls_for_this + 1; (e = *decl_iter); decl_iter++){
 			/* check they are the same decl */
-			if(!decl_equal(d, e, DECL_CMP_STRICT_PRIMITIVE))
-				DIE_AT(&e->where, "mismatching declaration of %s (%s)", d->spel, where_str_r(wbuf, &d->where));
+			if(!decl_equal(d, e, DECL_CMP_EXACT_MATCH)){
+				char buf[DECL_STATIC_BUFSIZ];
+
+				DIE_AT(&e->where, "mismatching declaration of %s\n%s\n%s vs %s",
+						d->spel,
+						where_str_r(wbuf, &d->where),
+						decl_to_str_r(buf, d),
+						decl_to_str(       e));
+			}
+
+			/* check asm renames */
+			if(e->spel_asm){
+				if(asm_rename && strcmp(asm_rename, e->spel_asm))
+					WARN_AT(&d->where, "multiple asm renames\n%s", where_str_r(wbuf, &e->where));
+				asm_rename = e->spel_asm;
+			}
 
 			if(decl_is_definition(e)){
 				/* e is the implementation/instantiation */
@@ -726,9 +923,9 @@ static void fold_link_decl_defs(dynmap *spel_decls)
 				definition = e;
 			}
 
-			count_inline += e->type->is_inline;
+			count_inline += e->store & store_inline;
 
-			switch(e->type->store){
+			switch((enum decl_storage)(e->store & STORE_MASK_STORE)){
 				case store_extern:
 					count_extern++;
 					break;
@@ -751,9 +948,9 @@ static void fold_link_decl_defs(dynmap *spel_decls)
         definition = d;
 		}
 
-		count_total = dynarray_count((void **)decls_for_this);
+		count_total = dynarray_count(decls_for_this);
 
-		if(decl_is_func(definition)){
+		if(DECL_IS_FUNC(definition)){
 			/*
 			 * inline semantics
 			 *
@@ -761,12 +958,13 @@ static void fold_link_decl_defs(dynmap *spel_decls)
 			 * "static inline" = code emitted, decl is static
 			 * one "inline", and "extern" mentioned, or "inline" not mentioned = code emitted, decl is extern
 			 */
-			definition->type->is_inline = count_inline > 0;
+			if(count_inline > 0)
+				definition->store |= store_inline;
 
 
 			/* all defs must be static, except the def, which is allowed to be non-static */
 			if(count_static > 0){
-				definition->type->store = store_static;
+				definition->store |= store_static;
 
 				if(count_static != count_total && (definition->func_code ? count_static != count_total - 1 : 0)){
 					DIE_AT(&definition->where,
@@ -776,7 +974,7 @@ static void fold_link_decl_defs(dynmap *spel_decls)
 			}
 
 
-			if(definition->type->store == store_static){
+			if((definition->store & STORE_MASK_STORE) == store_static){
 				/* static inline */
 
 			}else if(count_inline == count_total && count_extern == 0){
@@ -785,10 +983,10 @@ static void fold_link_decl_defs(dynmap *spel_decls)
 				WARN_AT(&definition->where, "definition is inline-only (ucc doesn't inline currently)");
 			}else if(count_inline > 0 && (count_extern > 0 || count_inline < count_total)){
 				/* extern inline */
-				definition->type->store = store_extern;
+				definition->store |= store_extern;
 			}
 
-			if(definition->type->is_inline && !definition->func_code)
+			if((definition->store & store_inline) && !definition->func_code)
 				WARN_AT(&definition->where, "inline function missing implementation");
 
 		}else if(count_static && count_static != count_total){
@@ -797,6 +995,9 @@ static void fold_link_decl_defs(dynmap *spel_decls)
 		}
 
 		definition->is_definition = 1;
+
+		if(!definition->spel_asm)
+			definition->spel_asm = asm_rename;
 
 		/*
 		 * func -> extern (if no func code) done elsewhere,
@@ -808,6 +1009,7 @@ static void fold_link_decl_defs(dynmap *spel_decls)
 void fold(symtable *globs)
 {
 #define D(x) globs->decls[x]
+	int fold_had_error = 0;
 	extern const char *current_fname;
 	dynmap *spel_decls;
 	int i;
@@ -818,76 +1020,81 @@ void fold(symtable *globs)
 	if(fopt_mode & FOPT_ENABLE_ASM){
 		decl *df;
 		funcargs *fargs;
-		where *old_w;
+		const where *old_w;
 
 		old_w = eof_where;
 		eof_where = &asm_struct_enum_where;
 
 		df = decl_new();
-		decl_set_spel(df, ustrdup(ASM_INLINE_FNAME));
-
-		df->type->primitive = type_int;
+		df->spel = ustrdup(ASM_INLINE_FNAME);
 
 		fargs = funcargs_new();
 		fargs->arglist    = umalloc(2 * sizeof *fargs->arglist);
-		fargs->arglist[0] = decl_new();
 		fargs->arglist[1] = NULL;
-		fargs->arglist[0]->type->primitive = type_char;
-		fargs->arglist[0]->type->qual      = qual_const;
-		fargs->arglist[0]->desc            = decl_desc_ptr_new(fargs->arglist[0], NULL);
 
-		df->desc = decl_desc_func_new(df, NULL);
-		df->desc->bits.func = fargs;
+		/* const char * */
+		(fargs->arglist[0] = decl_new())->ref = type_ref_new_ptr(
+				type_ref_new_type_qual(type_char, qual_const),
+				qual_none);
 
-		symtab_add(globs, df, sym_global, SYMTAB_NO_SYM, SYMTAB_PREPEND);
+		df->ref = type_ref_new_func(type_ref_cached_INT(), fargs);
+
+		ICE("__asm__ symtable");
+		/*symtab_add(globs, df, sym_global, SYMTAB_NO_SYM, SYMTAB_PREPEND);*/
 
 		eof_where = old_w;
 	}
 
-	fold_symtab_scope(globs);
+	fold_symtab_scope(globs, NULL);
 
-	for(i = 0; D(i); i++)
-		if(D(i)->sym)
-			ICE("%s: sym (%p) already set for global \"%s\"", where_str(&D(i)->where), (void *)D(i)->sym, D(i)->spel);
+	if(!globs->decls)
+		goto skip_decls;
 
 	spel_decls = dynmap_new((dynmap_cmp_f *)strcmp);
 
-	for(;;){
-		int i;
+	for(i = 0; D(i); i++){
+		char *key = D(i)->spel;
 
-		/* find the next sym (since we can prepend, start at 0 each time */
-		for(i = 0; D(i); i++)
-			if(!D(i)->sym)
-				break;
+		if(key){
+			/* skip anonymous (e.g. string) symbols/decls */
+			decl **val = dynmap_get(char *, decl **, spel_decls, key);
 
-		if(!D(i))
-			break; /* finished */
+			dynarray_add(&val, D(i)); /* fine if val is null */
 
-		{
-			char *key = D(i)->spel;
-			decl **val = dynmap_get(spel_decls, key);
-
-			dynarray_add((void ***)&val, D(i)); /* fine if val is null */
-
-			dynmap_set(spel_decls, key, val);
+			dynmap_set(char *, decl **, spel_decls, key, val);
 		}
-
-		D(i)->sym = sym_new(D(i), sym_global);
 
 		fold_decl_global(D(i), globs);
 
-		if(decl_is_func(D(i))){
+		if(DECL_IS_FUNC(D(i))){
 			if(decl_is_definition(D(i))){
 				/* gather round, attributes */
-				decl **protos;
+				decl **const protos = dynmap_get(char *, decl **,
+						spel_decls, D(i)->spel);
+				decl **proto_i;
+				int is_void = 0;
 
-				for(protos = dynmap_get(spel_decls, D(i)->spel); *protos; protos++){
-					decl *d = *protos;
+				for(proto_i = protos; *proto_i; proto_i++){
+					decl *proto = *proto_i;
 
-					if(!decl_is_definition(d)){
-						decl_attr_append(&D(i)->attr, d->attr);
+					if(!type_ref_is(proto->ref, type_ref_func)){
+						fold_had_error = 1;
+						continue; /* error caught later */
+					}
+
+					if(type_ref_is(proto->ref, type_ref_func)->bits.func->args_void)
+						is_void = 1;
+
+					if(!decl_is_definition(proto)){
+						EOF_WHERE(&D(i)->where,
+								decl_attr_append(&D(i)->attr, proto->attr));
 					}
 				}
+
+				/* if "type ()", and a proto is "type (void)", take the void */
+				if(is_void)
+					for(proto_i = protos; *proto_i; proto_i++)
+						type_ref_is((*proto_i)->ref, type_ref_func)->bits.func->args_void = 1;
 			}
 
 			fold_func(D(i));
@@ -899,27 +1106,30 @@ void fold(symtable *globs)
 
 	dynmap_free(spel_decls);
 
+skip_decls:
 	/* static assertions */
 	{
 		static_assert **i;
 		for(i = globs->static_asserts; i && *i; i++){
 			static_assert *sa = *i;
-			intval val;
-			enum constyness const_type;
+			consty k;
 
-			fold_expr(sa->e, sa->scope);
-			if(!decl_is_integral(sa->e->tree_type))
+			FOLD_EXPR(sa->e, sa->scope);
+			if(!type_ref_is_integral(sa->e->tree_type))
 				DIE_AT(&sa->e->where, "static assert: not an integral expression (%s)", sa->e->f_str());
 
-			const_fold(sa->e, &val, &const_type);
+			const_fold(sa->e, &k);
 
-			if(const_type == CONST_NO)
+			if(!CONST_AT_COMPILE_TIME(k.type))
 				DIE_AT(&sa->e->where, "static assert: not a constant expression (%s)", sa->e->f_str());
 
-			if(!val.val)
+			if(!k.bits.iv.val)
 				DIE_AT(&sa->e->where, "static assertion failure: %s", sa->s);
 		}
 	}
+
+	if(fold_had_error)
+		exit(1);
 
 #undef D
 }

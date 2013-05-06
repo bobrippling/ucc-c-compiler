@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "ops.h"
 #include "stmt_break.h"
 
@@ -12,7 +14,9 @@ void fold_stmt_break_continue(stmt *t, char *lbl)
 		DIE_AT(&t->where, "%s outside a flow-control statement", t->f_str());
 
 	t->expr = expr_new_identifier(lbl);
-	t->expr->tree_type = decl_new_void();
+	memcpy_safe(&t->expr->where, &t->where);
+
+	t->expr->tree_type = type_ref_cached_VOID();
 }
 
 void fold_stmt_break(stmt *t)

@@ -9,6 +9,9 @@ decl_attr *parse_attr_format()
 	func = token_current_spel();
 	EAT(token_identifier);
 
+	if(!func)
+		return NULL; // TODO: token_current_spel() and token_get_current_str(..,..) checkes everywhere
+
 	da = decl_attr_new(attr_format);
 
 #define CHECK(s) !strcmp(func, s) || !strcmp(func, "__" s "__")
@@ -22,12 +25,12 @@ decl_attr *parse_attr_format()
 
 	EAT(token_comma);
 
-	da->attr_extra.format.fmt_arg = currentval.val;
+	da->attr_extra.format.fmt_arg = currentval.val - 1;
 	EAT(token_integer);
 
 	EAT(token_comma);
 
-	da->attr_extra.format.var_arg = currentval.val;
+	da->attr_extra.format.var_arg = currentval.val - 1;
 	EAT(token_integer);
 
 	EAT(token_close_paren);
@@ -47,7 +50,7 @@ decl_attr *parse_attr_section()
 	if(curtok != token_string)
 		DIE_AT(NULL, "string expected for section");
 
-	token_get_current_str(&func, &len);
+	token_get_current_str(&func, &len, NULL);
 	EAT(token_string);
 
 	for(i = 0; i < len; i++)
@@ -66,6 +69,89 @@ decl_attr *parse_attr_section()
 	return da;
 }
 
+decl_attr *parse_attr_nonnull()
+{
+	/* __attribute__((nonnull(1, 2, 3, 4...)))
+	 * or
+	 * __attribute__((nonnull)) - all args
+	 */
+	decl_attr *da = decl_attr_new(attr_nonnull);
+	unsigned long l = 0;
+	int had_error = 0;
+
+	if(accept(token_open_paren)){
+		while(curtok != token_close_paren){
+			if(curtok == token_integer){
+				int n = currentval.val;
+				if(n <= 0){
+					/* shouldn't ever be negative */
+					WARN_AT(NULL, "%s nonnull argument ignored", n < 0 ? "negative" : "zero");
+					had_error = 1;
+				}else{
+					/* implicitly disallow functions with >32 args */
+					/* n-1, since we convert from 1-base to 0-base */
+					l |= 1 << (n - 1);
+				}
+			}else{
+				EAT(token_integer); /* raise error */
+			}
+			EAT(curtok);
+
+			if(accept(token_comma))
+				continue;
+			break;
+		}
+		EAT(token_close_paren);
+	}
+
+	/* if we had an error, go with what we've got, (even if it's nothing), to avoid spurious warnings */
+	da->attr_extra.nonnull_args = (l || had_error) ? l : ~0UL; /* all if 0 */
+
+	return da;
+}
+
+static unsigned long optional_parened_int(void)
+{
+	if(accept(token_open_paren)){
+		long u;
+
+		if(accept(token_close_paren))
+			goto out;
+
+		EAT(token_integer);
+
+		u = currentval.val;
+		if(u < 0){
+			WARN_AT(NULL, "negative sentinel argument ignored");
+			u = 0;
+		}
+
+		EAT(token_close_paren);
+
+		return u;
+	}
+out:
+	return 0;
+}
+
+decl_attr *parse_attr_sentinel()
+{
+	decl_attr *da = decl_attr_new(attr_sentinel);
+
+  da->attr_extra.sentinel = optional_parened_int();
+
+	return da;
+}
+
+decl_attr *parse_attr_aligned()
+{
+	decl_attr *da = decl_attr_new(attr_aligned);
+
+  da->attr_extra.align = optional_parened_int();
+
+	return da;
+}
+
 #define EMPTY(t)                      \
 decl_attr *parse_ ## t()              \
 {                                     \
@@ -77,19 +163,32 @@ EMPTY(attr_warn_unused)
 EMPTY(attr_enum_bitmask)
 EMPTY(attr_noreturn)
 EMPTY(attr_noderef)
+EMPTY(attr_packed)
+
+#undef EMPTY
 
 static struct
 {
 	const char *ident;
 	decl_attr *(*parser)(void);
 } attrs[] = {
-	{ "format",         parse_attr_format },
-	{ "unused",         parse_attr_unused },
-	{ "warn_unused",    parse_attr_warn_unused },
-	{ "section",        parse_attr_section },
-	{ "bitmask",        parse_attr_enum_bitmask },
-	{ "noreturn",       parse_attr_noreturn },
-	{ "noderef",        parse_attr_noderef },
+#define ATTR(x) { #x, parse_attr_ ## x }
+	ATTR(format),
+	ATTR(unused),
+	ATTR(warn_unused),
+	ATTR(section),
+	ATTR(enum_bitmask),
+	ATTR(noreturn),
+	ATTR(noderef),
+	ATTR(nonnull),
+	ATTR(packed),
+	ATTR(sentinel),
+	ATTR(aligned),
+#undef ATTR
+
+	/* compat */
+	{ "warn_unused_result", parse_attr_warn_unused },
+
 	{ NULL, NULL },
 };
 #define MAX_FMT_LEN 16
@@ -140,6 +239,8 @@ decl_attr *parse_attr(void)
 
 		ident = token_current_spel();
 		EAT(token_identifier);
+		if(!ident)
+			break;
 
 		if((*next = parse_attr_single(ident)))
 			next = &(*next)->next;

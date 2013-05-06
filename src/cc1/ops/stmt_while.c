@@ -3,7 +3,7 @@
 #include "ops.h"
 #include "stmt_while.h"
 #include "stmt_if.h"
-#include "stmt_for.h"
+#include "../out/lbl.h"
 
 const char *str_stmt_while()
 {
@@ -12,41 +12,44 @@ const char *str_stmt_while()
 
 void fold_stmt_while(stmt *s)
 {
-	symtable *test_symtab;
+	symtable *stab = s->symtab;
 
-	test_symtab = fold_stmt_test_init_expr(s, "which");
+	flow_fold(s->flow, &stab);
 
-	s->lbl_break    = asm_label_flow("while_break");
-	s->lbl_continue = asm_label_flow("while_cont");
+	s->lbl_break    = out_label_flow("while_break");
+	s->lbl_continue = out_label_flow("while_cont");
 
-	fold_expr(s->expr, test_symtab);
+	FOLD_EXPR(s->expr, stab);
 	fold_need_expr(s->expr, s->f_str(), 1);
-
-	OPT_CHECK(s->expr, "constant expression in while");
 
 	fold_stmt(s->lhs);
 }
 
 void gen_stmt_while(stmt *s)
 {
-	asm_label(s->lbl_continue);
-	gen_expr(s->expr, s->symtab); /* TODO: optimise */
-	asm_temp(1, "pop rax");
-	asm_temp(1, "test rax, rax");
-	asm_temp(1, "jz %s", s->lbl_break);
+	out_label(s->lbl_continue);
+
+	flow_gen(s->flow, s->symtab);
+	gen_expr(s->expr, s->symtab);
+
+	out_op_unary(op_not);
+	out_jtrue(s->lbl_break);
+
 	gen_stmt(s->lhs);
-	asm_temp(1, "jmp %s", s->lbl_continue);
-	asm_label(s->lbl_break);
+
+	out_push_lbl(s->lbl_continue, 0);
+	out_jmp();
+
+	out_label(s->lbl_break);
 }
 
 int while_passable(stmt *s)
 {
-	intval val;
-	enum constyness k;
+	consty k;
 
-	const_fold(s->expr, &val, &k);
+	const_fold(s->expr, &k);
 
-	if(k == CONST_WITH_VAL && val.val)
+	if(k.type == CONST_VAL && k.bits.iv.val)
 		return fold_code_escapable(s); /* while(1) */
 
 	return 1; /* fold_passable(s->lhs) - doesn't depend on this */

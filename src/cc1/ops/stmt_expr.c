@@ -10,22 +10,36 @@ const char *str_stmt_expr()
 
 void fold_stmt_expr(stmt *s)
 {
-	fold_expr(s->expr, s->symtab);
-	if(!s->freestanding && !s->expr->freestanding && !decl_is_void(s->expr->tree_type))
-		cc1_warn_at(&s->expr->where, 0, 1, WARN_UNUSED_EXPR, "unused expression");
+	FOLD_EXPR(s->expr, s->symtab);
+	if(!s->freestanding && !s->expr->freestanding && !type_ref_is_void(s->expr->tree_type))
+		cc1_warn_at(&s->expr->where, 0, 1, WARN_UNUSED_EXPR,
+				"unused expression (%s)", s->expr->f_str());
 }
 
 void gen_stmt_expr(stmt *s)
 {
+	int pre_vcount = out_vcount();
+	char *sp;
+
 	gen_expr(s->expr, s->symtab);
 
 	if((fopt_mode & FOPT_ENABLE_ASM) == 0
 	|| !s->expr
 	|| expr_kind(s->expr, funcall)
-	|| !s->expr->spel
-	|| strcmp(s->expr->spel, ASM_INLINE_FNAME))
+	|| !(sp = s->expr->bits.ident.spel)
+	|| strcmp(sp, ASM_INLINE_FNAME))
 	{
-		asm_temp(1, "pop rax ; unused expr");
+		if(s->expr_no_pop)
+			pre_vcount++;
+		else
+			out_pop(); /* cancel the implicit push from gen_expr() above */
+
+		out_comment("end of %s-stmt", s->f_str());
+
+		UCC_ASSERT(out_vcount() == pre_vcount,
+				"vcount changed over %s statement (%d -> %d)",
+				s->expr->f_str(),
+				out_vcount(), pre_vcount);
 	}
 }
 
@@ -36,7 +50,7 @@ static int expr_passable(stmt *s)
 	 * if we have a funcall marked noreturn, we're not passable
 	 */
 	if(expr_kind(s->expr, funcall))
-		return !decl_attr_present(s->expr->tree_type->attr, attr_noreturn);
+		return expr_func_passable(s->expr);
 
 	if(expr_kind(s->expr, stmt))
 		return fold_passable(s->expr->code);

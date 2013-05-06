@@ -27,12 +27,6 @@ void stmt_mutate(stmt *s,
 		|| stmt_kind(s, goto)
 		|| stmt_kind(s, continue);
 
-	s->is_label =
-		   stmt_kind(s, label)
-		|| stmt_kind(s, case)
-		|| stmt_kind(s, case_range)
-		|| stmt_kind(s, default);
-
 	f_mutate(s);
 }
 
@@ -48,6 +42,13 @@ stmt *stmt_new(func_fold_stmt *f_fold, func_gen_stmt *f_gen, func_str_stmt *f_st
 	stmt_mutate(s, f_fold, f_gen, f_str, f_mutate);
 
 	return s;
+}
+
+stmt *expr_to_stmt(expr *e, symtable *scope)
+{
+	stmt *t = stmt_new_wrapper(expr, scope);
+	t->expr = e;
+	return t;
 }
 
 static void stmt_walk2(stmt *base, stmt_walk_enter enter, stmt_walk_leave leave, void *data, int *stop)

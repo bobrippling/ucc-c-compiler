@@ -2,62 +2,147 @@
 #include <string.h>
 
 #include "ops.h"
+#include "expr_if.h"
+#include "../sue.h"
+#include "../out/lbl.h"
 
 const char *str_expr_if()
 {
 	return "if";
 }
 
-void fold_const_expr_if(expr *e, intval *piv, enum constyness *pconst_type)
+void fold_const_expr_if(expr *e, consty *k)
 {
-	intval vals[3];
-	enum constyness consts[3];
+	consty consts[3];
+	int res;
 
-	const_fold(e->expr, &vals[0], &consts[0]);
-	const_fold(e->rhs,  &vals[2], &consts[2]);
+	const_fold(e->expr, &consts[0]);
+	const_fold(e->rhs,  &consts[2]);
 
-	if(e->lhs){
-		const_fold(e->lhs, &vals[1], &consts[1]);
-	}else{
+	if(e->lhs)
+		const_fold(e->lhs, &consts[1]);
+	else
 		consts[1] = consts[0];
-		vals[1]   = vals[0];
+
+	/* we're only const if expr, lhs and rhs are const */
+	if(!CONST_AT_COMPILE_TIME(consts[0].type)
+	|| !CONST_AT_COMPILE_TIME(consts[1].type)
+	|| !CONST_AT_COMPILE_TIME(consts[2].type))
+	{
+		k->type = CONST_NO;
+		return;
 	}
 
-	*pconst_type = CONST_NO;
+	switch(consts[0].type){
+		case CONST_VAL:
+			res = consts[0].bits.iv.val;
+			break;
+		case CONST_ADDR:
+		case CONST_STRK:
+			res = 1;
+			break;
 
-	if(consts[0] == CONST_WITH_VAL){
-		const int idx_from = vals[0].val ? 1 : 2;
-
-		if(consts[idx_from] == CONST_WITH_VAL){
-			memcpy(piv, &vals[idx_from], sizeof *piv);
-			*pconst_type = CONST_WITH_VAL;
-		}
+		case CONST_NEED_ADDR:
+		case CONST_NO:
+			ICE("buh");
 	}
+
+	memcpy_safe(k, &consts[res ? 1 : 2]);
 }
 
 void fold_expr_if(expr *e, symtable *stab)
 {
-	enum constyness is_const;
-	intval dummy;
+	consty konst;
+	type_ref *tt_l, *tt_r;
 
-	fold_expr(e->expr, stab);
-	const_fold(e->expr, &dummy, &is_const);
-
-	if(is_const != CONST_NO)
-		POSSIBLE_OPT(e->expr, "constant ?: expression");
+	FOLD_EXPR(e->expr, stab);
+	const_fold(e->expr, &konst);
 
 	fold_need_expr(e->expr, "?: expr", 1);
 	fold_disallow_st_un(e->expr, "?: expr");
 
 	if(e->lhs){
-		fold_expr(e->lhs, stab);
+		FOLD_EXPR(e->lhs, stab);
 		fold_disallow_st_un(e->lhs, "?: lhs");
 	}
 
-	fold_expr(e->rhs, stab);
+	FOLD_EXPR(e->rhs, stab);
 	fold_disallow_st_un(e->rhs, "?: rhs");
 
-	e->tree_type = decl_copy(e->rhs->tree_type); /* TODO: check they're the same */
+
+	/*
+
+	Arithmetic                             Arithmetic                           Arithmetic type after usual arithmetic conversions
+	// Structure or union type                Compatible structure or union type   Structure or union type with all the qualifiers on both operands
+	void                                   void                                 void
+	Pointer to compatible type             Pointer to compatible type           Pointer to type with all the qualifiers specified for the type
+	Pointer to type                        NULL pointer (the constant 0)        Pointer to type
+	Pointer to object or incomplete type   Pointer to void                      Pointer to void with all the qualifiers specified for the type
+
+	GCC and Clang seem to relax the last rule:
+		a) resolve if either is any pointer, not just (void *)
+	  b) resolve to a pointer to the incomplete-type
+	*/
+
+	tt_l = (e->lhs ? e->lhs : e->expr)->tree_type;
+	tt_r = e->rhs->tree_type;
+
+	if(type_ref_is_integral(tt_l) && type_ref_is_integral(tt_r)){
+		e->tree_type = op_promote_types(op_unknown, "?:",
+				(e->lhs ? &e->lhs : &e->expr), &e->rhs,
+				&e->where, stab);
+
+	}else if(type_ref_is_void(tt_l) || type_ref_is_void(tt_r)){
+		e->tree_type = type_ref_new_type(type_new_primitive(type_void));
+
+	}else if(type_ref_equal(tt_l, tt_r, DECL_CMP_EXACT_MATCH)){
+		e->tree_type = type_ref_new_cast(tt_l,
+				type_ref_qual(tt_l) | type_ref_qual(tt_r));
+
+	}else{
+		/* brace yourself. */
+		int l_ptr_null = expr_is_null_ptr(e->lhs ? e->lhs : e->expr, 1);
+		int r_ptr_null = expr_is_null_ptr(e->rhs, 1);
+
+		int l_complete = !l_ptr_null && type_ref_is_complete(tt_l);
+		int r_complete = !r_ptr_null && type_ref_is_complete(tt_r);
+
+		if((l_complete && r_ptr_null) || (r_complete && l_ptr_null)){
+			e->tree_type = l_ptr_null ? tt_r : tt_l;
+
+		}else{
+			int l_ptr = l_ptr_null || type_ref_is(tt_l, type_ref_ptr);
+			int r_ptr = r_ptr_null || type_ref_is(tt_r, type_ref_ptr);
+
+			if(l_ptr || r_ptr){
+				char bufa[TYPE_REF_STATIC_BUFSIZ], bufb[TYPE_REF_STATIC_BUFSIZ];
+
+				fold_type_ref_equal(tt_l, tt_r, &e->where,
+						WARN_COMPARE_MISMATCH, 0, /* FIXME: enum "mismatch" */
+						"pointer type mismatch: %s and %s",
+						type_ref_to_str_r(bufa, tt_l),
+						type_ref_to_str_r(bufb, tt_r));
+
+				/* void * */
+				e->tree_type = type_ref_new_ptr(type_ref_cached_VOID(), qual_none);
+
+				{
+					enum type_qualifier q = type_ref_qual(tt_l) | type_ref_qual(tt_r);
+
+					if(q)
+						e->tree_type = type_ref_new_cast(e->tree_type, q);
+				}
+
+			}else{
+				char buf[TYPE_REF_STATIC_BUFSIZ];
+
+				WARN_AT(&e->where, "conditional type mismatch (%s vs %s)",
+						type_ref_to_str(tt_l), type_ref_to_str_r(buf, tt_r));
+
+				e->tree_type = type_ref_cached_VOID();
+			}
+		}
+	}
 
 	e->freestanding = (e->lhs ? e->lhs : e->expr)->freestanding || e->rhs->freestanding;
 }
@@ -65,33 +150,35 @@ void fold_expr_if(expr *e, symtable *stab)
 
 void gen_expr_if(expr *e, symtable *stab)
 {
-	char *lblfin, *lblelse;
+	char *lblfin;
 
-	lblfin = asm_label_code("ifexpa");
+	lblfin = out_label_code("ifexp_fi");
 
 	gen_expr(e->expr, stab);
 
 	if(e->lhs){
-		lblelse = asm_label_code("ifexpb");
+		char *lblelse = out_label_code("ifexp_else");
 
-		asm_temp(1, "pop rax");
-		asm_temp(1, "test rax, rax");
-		asm_temp(1, "jz %s", lblelse);
+		out_jfalse(lblelse);
+
 		gen_expr(e->lhs, stab);
-		asm_temp(1, "jmp %s", lblfin);
-		asm_label(lblelse);
+
+		out_push_lbl(lblfin, 0);
+		out_jmp();
+
+		out_label(lblelse);
+		free(lblelse);
+
 	}else{
-		asm_temp(1, "mov rax, [rsp] ; save for ?:");
-		asm_temp(1, "test rax, rax");
-		asm_temp(1, "jnz %s", lblfin);
-		asm_temp(1, "pop rax ; discard lhs");
+		out_dup();
+
+		out_jtrue(lblfin);
 	}
 
-	gen_expr(e->rhs, stab);
-	asm_label(lblfin);
+	out_pop();
 
-	if(e->lhs)
-		free(lblelse);
+	gen_expr(e->rhs, stab);
+	out_label(lblfin);
 
 	free(lblfin);
 }

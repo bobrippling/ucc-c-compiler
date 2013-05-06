@@ -26,20 +26,22 @@ enum warning
 	WARN_IMPLICIT_INT             = 1 << 8,
 	WARN_VOID_ARITH               = 1 << 9,
 	WARN_MIXED_CODE_DECLS         = 1 << 10,
-	WARN_OPT_POSSIBLE             = 1 << 11,
-	WARN_SWITCH_ENUM              = 1 << 12,
-	WARN_ENUM_CMP                 = 1 << 13,
-	WARN_INCOMPLETE_USE           = 1 << 14,
-	WARN_UNUSED_EXPR              = 1 << 15,
-	WARN_TEST_ASSIGN              = 1 << 16,
-	WARN_READ_BEFORE_WRITE        = 1 << 17,
-	WARN_SYM_NEVER_WRITTEN        = 1 << 18,
-	WARN_SYM_NEVER_READ           = 1 << 19,
-	WARN_DEAD_CODE                = 1 << 20,
-	WARN_PREDECL_ENUM             = 1 << 21,
-	WARN_OMITTED_PARAM_TYPES      = 1 << 22,
-	WARN_RETURN_UNDEF             = 1 << 23,
-	WARN_TEST_BOOL                = 1 << 24,
+	WARN_TEST_BOOL                = 1 << 11,
+	WARN_LOSS_PRECISION           = 1 << 12,
+
+	WARN_OPT_POSSIBLE             = 1 << 13,
+	WARN_SWITCH_ENUM              = 1 << 14,
+	WARN_ENUM_CMP                 = 1 << 15,
+	WARN_INCOMPLETE_USE           = 1 << 16,
+	WARN_UNUSED_EXPR              = 1 << 17,
+	WARN_TEST_ASSIGN              = 1 << 18,
+	WARN_READ_BEFORE_WRITE        = 1 << 19,
+	WARN_SYM_NEVER_WRITTEN        = 1 << 20,
+	WARN_SYM_NEVER_READ           = 1 << 21,
+	WARN_DEAD_CODE                = 1 << 22,
+	WARN_PREDECL_ENUM             = 1 << 23,
+	WARN_OMITTED_PARAM_TYPES      = 1 << 24,
+	WARN_RETURN_UNDEF             = 1 << 25,
 
 	/* TODO */
 	/*
@@ -59,10 +61,16 @@ enum fopt
 {
 	FOPT_NONE                  = 0,
 	FOPT_ENABLE_ASM            = 1 << 0,
-	FOPT_STRICT_TYPES          = 1 << 1,
-	FOPT_CONST_FOLD            = 1 << 2,
-	FOPT_ENGLISH               = 1 << 3,
-	FOPT_SHOW_LINE             = 1 << 4,
+	FOPT_CONST_FOLD            = 1 << 1,
+	FOPT_ENGLISH               = 1 << 2,
+	FOPT_SHOW_LINE             = 1 << 3,
+	FOPT_PIC                   = 1 << 4,
+	FOPT_PIC_PCREL             = 1 << 5,
+	FOPT_BUILTIN               = 1 << 6,
+	FOPT_MS_EXTENSIONS         = 1 << 7,
+	FOPT_PLAN9_EXTENSIONS      = 1 << 8,
+	FOPT_TAG_ANON_STRUCT_EXT   = FOPT_MS_EXTENSIONS | FOPT_PLAN9_EXTENSIONS,
+	FOPT_LEADING_UNDERSCORE    = 1 << 9,
 };
 
 enum cc1_backend
@@ -75,6 +83,13 @@ enum cc1_backend
 extern enum fopt fopt_mode;
 extern enum cc1_backend cc1_backend;
 
+extern enum cc1_std
+{
+	STD_C89, /* comparable with < */
+	STD_C90,
+	STD_C99
+} cc1_std;
+
 void cc1_warn_atv(struct where *where, int die, int show_line, enum warning w, const char *fmt, va_list l);
 void cc1_warn_at( struct where *where, int die, int show_line, enum warning w, const char *fmt, ...) ucc_printflike(5, 6);
 
@@ -82,5 +97,8 @@ extern FILE *cc_out[NUM_SECTIONS];
 extern FILE *cc1_out;
 
 extern int cc1_max_errors;
+
+extern int cc1_m32; /* 32bit mode or 64? */
+extern int cc1_mstack_align; /* 2^n */
 
 #endif

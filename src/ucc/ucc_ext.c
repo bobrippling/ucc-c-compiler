@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <stdarg.h>
 
 #include "ucc_ext.h"
 #include "ucc.h"
@@ -12,8 +13,8 @@
 #include "../util/dynarray.h"
 #include "cfg.h"
 
-#ifndef UCC_NASM
-# error "ucc needs reconfiguring (for nasm)"
+#ifndef UCC_AS
+# error "ucc needs reconfiguring"
 #endif
 
 static int show, noop;
@@ -103,7 +104,7 @@ static void runner(int local, char *path, char **args)
 
 		case 0:
 		{
-			const int nargs = dynarray_count((void **)args);
+			const int nargs = dynarray_count(args);
 			int i;
 			char **argv;
 
@@ -216,16 +217,16 @@ static void runner_1(int local, char *path, char *in, char *out, char **args)
 	char **all = NULL;
 
 	if(args)
-		dynarray_add_array((void ***)&all, (void **)args);
+		dynarray_add_array(&all, args);
 
-	dynarray_add((void ***)&all, "-o");
-	dynarray_add((void ***)&all, out);
+	dynarray_add(&all, (char *)"-o");
+	dynarray_add(&all, out);
 
-	dynarray_add((void ***)&all, in);
+	dynarray_add(&all, in);
 
 	runner(local, path, all);
 
-	dynarray_free((void ***)&all, NULL);
+	dynarray_free(&all, NULL);
 }
 
 void preproc(char *in, char *out, char **args)
@@ -235,18 +236,18 @@ void preproc(char *in, char *out, char **args)
 	char *inc;
 
 	if(args)
-		dynarray_add_array((void ***)&all, (void **)args);
+		dynarray_add_array(&all, args);
 
 	inc_path = actual_path("../../lib/", "");
 	inc = ustrprintf("-I%s", inc_path);
 
-	dynarray_add((void ***)&all, inc);
+	dynarray_add(&all, inc);
 
 	runner_1(1, "cpp2/cpp", in, out, all);
 
 	free(inc);
 	free(inc_path);
-	dynarray_free((void ***)&all, NULL);
+	dynarray_free(&all, NULL);
 }
 
 void compile(char *in, char *out, char **args)
@@ -259,14 +260,11 @@ void assemble(char *in, char *out, char **args)
 	char **copy = NULL;
 
 	if(args)
-		dynarray_add_array((void ***)&copy, (void **)args);
+		dynarray_add_array(&copy, args);
 
-	dynarray_add((void ***)&copy, "-f");
-	dynarray_add((void ***)&copy, UCC_ARCH);
+	runner_1(0, UCC_AS, in, out, copy);
 
-	runner_1(0, UCC_NASM, in, out, copy);
-
-	dynarray_free((void ***)&copy, NULL);
+	dynarray_free(&copy, NULL);
 }
 
 void link_all(char **objs, char *out, char **args)
@@ -274,23 +272,23 @@ void link_all(char **objs, char *out, char **args)
 	char **all = NULL;
 	char *tok, *dup;
 
-	dynarray_add((void ***)&all, "-o");
-	dynarray_add((void ***)&all, out);
+	dynarray_add(&all, (char *)"-o");
+	dynarray_add(&all, out);
 
 	dup = ustrdup(UCC_LDFLAGS);
 
 	for(tok = strtok(dup, " "); tok; tok = strtok(NULL, " "))
-		dynarray_add((void ***)&all, tok);
+		dynarray_add(&all, tok);
 
-	dynarray_add_array((void ***)&all, (void **)objs);
+	dynarray_add_array(&all, objs);
 
 	/* TODO: order is important - can't just group all objs at the end, etc */
 
 	if(args)
-		dynarray_add_array((void ***)&all, (void **)args);
+		dynarray_add_array(&all, args);
 
 	runner(0, "ld", all);
 
-	dynarray_free((void ***)&all, NULL);
+	dynarray_free(&all, NULL);
 	free(dup);
 }

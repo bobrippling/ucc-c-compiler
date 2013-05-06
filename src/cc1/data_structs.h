@@ -1,38 +1,51 @@
 typedef struct intval intval;
+typedef struct stringval stringval;
 
 int intval_cmp(const intval *, const intval *);
 
 struct intval
 {
 	long val;
-	enum
+	enum intval_suffix
 	{
 		VAL_UNSIGNED = 1 << 0,
-		VAL_LONG     = 1 << 1
+		VAL_LONG     = 1 << 1,
+
+		/* variable was read in as:
+		 * (decimal if neither of these set)
+		 */
+		VAL_OCTAL       = 1 << 2,
+		VAL_HEX         = 1 << 3,
+		VAL_BIN         = 1 << 4,
+		VAL_NON_DECIMAL = VAL_OCTAL | VAL_HEX | VAL_BIN,
+		VAL_PREFIX_MASK = VAL_NON_DECIMAL,
 	} suffix;
+};
+
+struct stringval
+{
+	char *lbl;
+	const char *str;
+	unsigned len;
+	int wide;
 };
 
 enum op_type
 {
-	op_multiply,
-	op_divide,
-	op_plus,
-	op_minus,
-	op_modulus,
-	op_deref,
+	/* binary */
+	op_multiply, op_divide, op_modulus,
+	op_plus, op_minus,
+	op_xor, op_or, op_and,
+	op_orsc, op_andsc,
+	op_shiftl, op_shiftr,
 
+	/* unary */
+	op_not,  op_bnot,
+
+	/* comparison */
 	op_eq, op_ne,
 	op_le, op_lt,
 	op_ge, op_gt,
-
-	op_xor,
-	op_or,   op_and,
-	op_orsc, op_andsc,
-	op_not,  op_bnot,
-
-	op_shiftl, op_shiftr,
-
-	op_struct_ptr, op_struct_dot,
 
 	op_unknown
 };

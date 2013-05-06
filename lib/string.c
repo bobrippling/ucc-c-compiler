@@ -9,7 +9,7 @@ static const char *_errs[] = {
 
 size_t strlen(const char *s)
 {
-	int i = 0;
+	size_t i = 0;
 	while(*s++)
 		i++;
 	return i;
@@ -57,7 +57,7 @@ char *strchr(const char *s, char c)
 {
 	while(*s)
 		if(*s == c)
-			return s;
+			return (char *)s; /* the arg becomes non-const */
 		else
 			s++;
 	return NULL;
@@ -65,17 +65,18 @@ char *strchr(const char *s, char c)
 
 void *memset(void *p, unsigned char c, size_t len)
 {
-	void *const start = p;
+	char *s = p;
 	// TODO: asm / duff's device
 	while(len-- > 0)
-		*(char *)p++ = c;
-	return start;
+		*(unsigned char *)s++ = c;
+	return p;
 }
 
-void *memcpy(char *to, const char *from, size_t count)
+void *memcpy(void *v_to, const void *v_from, size_t count)
 {
 	/* TODO: repnz movsb */
 	/* thank you duff */
+	char *to = v_to, *from = v_from;
 	char *const ret = to;
 	size_t n = (count + 7) / 8;
 

@@ -24,16 +24,24 @@ enum token
 	token_typeof,
 	token__Static_assert,
 
+	token_asm,
 	token_attribute,
 
 	token_identifier,
 	token_integer,     /* aka [1-9] */
 	token_character,   /* aka 'f' */
-	token_void,        /* aka subroutine */
-	token_char,        /* aka "char" */
-	token_int,         /* aka "int" */
 	token_elipsis,     /* aka ... */
 	token_string,      /* aka \"...\" */
+
+	token_void,        /* aka subroutine */
+	token_char,        /* aka "char" */
+	token_short,
+	token_int,         /* aka "int" */
+	token_long,
+	token_float,
+	token_double,
+	token__Bool,
+	token___builtin_va_list,
 
 	token_inline,
 	token__Noreturn,
@@ -50,6 +58,8 @@ enum token
 	token_static,
 	token_extern,
 	token_register,
+	token__Alignof,
+	token__Alignas,
 	/**/
 	token_typedef,
 	token_struct,
@@ -104,8 +114,12 @@ enum token
 	token_unknown
 };
 
-void tokenise_set_file(FILE *f, const char *nam);
-void tokenise_close(void);
+typedef char *tokenise_line_f(void);
+
+void tokenise_set_input(
+		tokenise_line_f *,
+		const char *nam);
+
 void nexttoken(void);
 
 #endif

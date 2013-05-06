@@ -31,12 +31,11 @@ struct stmt
 
 	int freestanding;     /* if this is freestanding, non-freestanding expressions inside are allowed */
 	int kills_below_code; /* break, return, etc - for checking dead code */
-	int is_label;
+	int expr_no_pop;
 
-	decl **decls; /* block definitions, e.g. { int i... } */
 	stmt **codes; /* for a code block */
 
-	symtable *symtab;
+	symtable *symtab; /* block definitions, e.g. { int i... } */
 
 	/* parents - applicable for break and continue */
 	stmt *parent;
@@ -44,10 +43,11 @@ struct stmt
 
 struct stmt_flow
 {
-	expr *for_init, *for_while, *for_inc;
-
-	decl    **for_init_decls;  /* c99 for initialisation (and ucc if-init) */
 	symtable *for_init_symtab; /* for(int b;;){} - symtab for b */
+	stmt *inits;
+
+	/* for specific */
+	expr *for_init, *for_while, *for_inc;
 };
 
 #include "ops/stmt_break.h"
@@ -75,6 +75,8 @@ struct stmt_flow
 stmt *stmt_new(func_fold_stmt *, func_gen_stmt *, func_str_stmt *, func_mutate_stmt *, symtable *stab);
 stmt_flow *stmt_flow_new(symtable *parent);
 void stmt_mutate(stmt *, func_fold_stmt *, func_gen_stmt *, func_str_stmt *, func_mutate_stmt *);
+
+stmt *expr_to_stmt(expr *e, symtable *scope);
 
 typedef void stmt_walk_enter(stmt *current, int *stop, int *descend, void *);
 typedef void stmt_walk_leave(stmt *current, void *);

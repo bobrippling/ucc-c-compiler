@@ -8,6 +8,7 @@
 #include "../util/alloc.h"
 #include "data_structs.h"
 #include "str.h"
+#include "macros.h"
 
 int escape_char(int c)
 {
@@ -51,8 +52,11 @@ void char_seq_to_iv(char *s, intval *iv, int *plen, enum base mode)
 	char *const start = s;
 	long lval = 0;
 
+	memset(iv, 0, sizeof *iv);
+
 	switch(mode){
 		case BIN:
+			iv->suffix = VAL_BIN;
 			READ_NUM(*s == '0' || *s == '1', 2);
 			break;
 
@@ -61,12 +65,14 @@ void char_seq_to_iv(char *s, intval *iv, int *plen, enum base mode)
 			break;
 
 		case OCT:
+			iv->suffix = VAL_OCTAL;
 			READ_NUM(isoct(*s), 010);
 			break;
 
 		case HEX:
 		{
 			int charsread = 0;
+			iv->suffix = VAL_HEX;
 			do{
 				if(isxdigit(*s)){
 					lval = 0x10 * lval + (isdigit(tolower(*s)) ? *s - '0' : 10 + tolower(*s) - 'a');
@@ -87,6 +93,17 @@ void char_seq_to_iv(char *s, intval *iv, int *plen, enum base mode)
 
 	iv->val = lval;
 	*plen = s - start;
+}
+
+const char *base_to_str(enum base b)
+{
+	switch(b){
+		case BIN: return "binary";
+		case OCT: return "octal";
+		case DEC: return "decimal";
+		case HEX: return "hexadecimal";
+	}
+	return NULL;
 }
 
 int escape_multi_char(char *pos, char *pval, int *len)

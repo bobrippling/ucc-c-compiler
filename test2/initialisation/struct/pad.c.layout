@@ -1,0 +1,8 @@
+a:
+.zero 8
+.byte 2
+.zero 7
+b:
+.quad 2
+.byte 3
+.zero 7

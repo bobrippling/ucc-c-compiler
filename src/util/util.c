@@ -51,7 +51,7 @@ const char *where_str(const struct where *w)
 	return where_str_r(buf, w);
 }
 
-struct where *default_where(struct where *w)
+const struct where *default_where(const struct where *w)
 {
 	if(!w){
 		extern const char *current_fname, *current_line_str;
@@ -69,7 +69,7 @@ struct where *default_where(struct where *w)
 	return w;
 }
 
-static void warn_show_line(struct where *w)
+static void warn_show_line(const struct where *w)
 {
 	extern int show_current_line;
 
@@ -111,7 +111,7 @@ static void warn_show_line(struct where *w)
 	}
 }
 
-void vwarn(struct where *w, int err, int show_line, const char *fmt, va_list l)
+void vwarn(const struct where *w, int err, int show_line, const char *fmt, va_list l)
 {
 	static enum { f = 0, t = 1, need_init = 2 } is_tty = need_init;
 
@@ -142,13 +142,13 @@ void vwarn(struct where *w, int err, int show_line, const char *fmt, va_list l)
 		warn_show_line(w);
 }
 
-void vdie(struct where *w, int show_line, const char *fmt, va_list l)
+void vdie(const struct where *w, int show_line, const char *fmt, va_list l)
 {
 	vwarn(w, 1, show_line, fmt, l);
 	exit(1);
 }
 
-void warn_at(struct where *w, int show_line, const char *fmt, ...)
+void warn_at(const struct where *w, int show_line, const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
@@ -156,7 +156,7 @@ void warn_at(struct where *w, int show_line, const char *fmt, ...)
 	va_end(l);
 }
 
-void die_at(struct where *w, int show_line, const char *fmt, ...)
+void die_at(const struct where *w, int show_line, const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
@@ -176,7 +176,7 @@ void die(const char *fmt, ...)
 
 #define ICE_STR(s)  \
 	va_list l; \
-	struct where *w = default_where(NULL); \
+	const struct where *w = default_where(NULL); \
 	fprintf(stderr, WHERE_FMT ": " s " %s:%d (%s): ", WHERE_ARGS, f, line, fn); \
 	va_start(l, fmt); \
 	vfprintf(stderr, fmt, l); \
@@ -219,7 +219,7 @@ char *fline(FILE *f)
 		line[pos++] = c;
 		if(pos == len){
 			len *= 2;
-			line = urealloc(line, len);
+			line = urealloc1(line, len);
 			line[pos] = '\0';
 		}
 

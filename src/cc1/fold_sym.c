@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "../util/util.h"
 #include "data_structs.h"
@@ -7,14 +9,20 @@
 #include "sym.h"
 #include "fold_sym.h"
 #include "../util/platform.h"
+#include "../util/dynarray.h"
+#include "pack.h"
+#include "sue.h"
+#include "out/out.h"
+#include "typedef.h"
+#include "fold.h"
 
 
 #define RW_TEST(var)                              \
 						s->var == 0                           \
-						&& !s->decl->internal                 \
-						&& !decl_has_array(s->decl)           \
-						&& !decl_is_func(s->decl)             \
-						&& !decl_is_struct_or_union(s->decl)
+						&& s->decl->spel                      \
+						&& !DECL_IS_ARRAY(s->decl)            \
+						&& !DECL_IS_FUNC(s->decl)             \
+						&& !DECL_IS_S_OR_U(s->decl)
 
 #define RW_SHOW(w, str)                           \
 					cc1_warn_at(&s->decl->where, 0, 1,      \
@@ -33,67 +41,90 @@
 int symtab_fold(symtable *tab, int current)
 {
 	const int this_start = current;
+	int arg_space = 0;
+	char wbuf[WHERE_BUF_SIZ];
+
+	decl **all_spels = NULL;
+	const int check_dups = !!tab->parent;
 
 	if(tab->decls){
-		const int word_size = platform_word_size();
 		decl **diter;
-		int arg_offset;
+		int arg_idx;
 
-		arg_offset = 0;
+		arg_idx = 0;
 
 		/* need to walk backwards for args */
 		for(diter = tab->decls; *diter; diter++);
 
 		for(diter--; diter >= tab->decls; diter--){
-			sym *s = (*diter)->sym;
-			/*enum type_primitive last = type_int; TODO: packing */
+			decl *d = *diter;
+			sym *s = d->sym;
 
-			if(s->type == sym_local){
-				switch(s->decl->type->store){
-					case store_auto:
-					case store_default:
-						if(!decl_is_func(s->decl)){
-						int siz = decl_size(s->decl);
+			fold_decl(d, tab);
 
-						if(siz <= word_size)
-							s->offset = current;
-						else
-							s->offset = current + siz - word_size; /* an array and structs start at the bottom */
-
-						/* need to increase by a multiple of word_size */
-						if(siz % word_size)
-							siz += word_size - siz % word_size;
-						current += siz;
-
-
-						/* static analysis on sym (only auto-vars) */
-						RW_WARN(WRITTEN, nwrites, "written to");
-					}
-
-					default:
-						break;
-				}
-
-			}else if(s->type == sym_arg){
-				s->offset = arg_offset;
-				arg_offset += word_size;
+			if(s->type == sym_arg){
+				s->offset = arg_idx++;
 				s->decl->is_definition = 1; /* just for completeness */
-
 			}
+		}
+
+		for(diter = tab->decls; *diter; diter++){
+			decl *d = *diter;
+			sym *s = d->sym;
+			const int has_unused_attr = !!decl_has_attr(d, attr_unused);
+
+			if(check_dups && d->spel)
+				dynarray_add(&all_spels, d);
 
 			switch(s->type){
-				case sym_arg:
 				case sym_local: /* warn on unused args and locals */
+					if(DECL_IS_FUNC(d))
+						continue;
+
+					switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
+							/* for now, we allocate stack space for register vars */
+						case store_register:
+						case store_default:
+						case store_auto:
+						{
+							unsigned siz = decl_size(s->decl);
+							unsigned align = decl_align(s->decl);
+
+							/* align greater than size - we increase
+							 * size so it can be aligned to `align'
+							 */
+							if(align > siz)
+								siz = pack_to_align(siz, align);
+
+							/* packing takes care of everything */
+							pack_next(&current, NULL, siz, align);
+							s->offset = current;
+
+							/* static analysis on sym (only auto-vars) */
+							if(!has_unused_attr && !d->init)
+								RW_WARN(WRITTEN, nwrites, "written to");
+							break;
+						}
+
+						case store_static:
+						case store_extern:
+						case store_typedef:
+							break;
+						case store_inline:
+							ICE("%s store", decl_store_to_str(d->store));
+					}
+					/* fall */
+
+				case sym_arg:
 				{
-					const int has_attr = decl_attr_present(s->decl->attr, attr_unused);
 					const int unused = RW_TEST(nreads);
 
 					if(unused){
-						if(!has_attr && s->decl->type->store != store_extern)
+						if(!has_unused_attr && (d->store & STORE_MASK_STORE) != store_extern)
 							RW_SHOW(READ, "read");
-					}else if(has_attr){
-						warn_at(&s->decl->where, 1,
-								"\"%s\" declared unused, but is used", s->decl->spel);
+					}else if(has_unused_attr){
+						warn_at(&d->where, 1,
+								"\"%s\" declared unused, but is used", d->spel);
 					}
 
 					break;
@@ -102,7 +133,45 @@ int symtab_fold(symtable *tab, int current)
 				case sym_global:
 					break;
 			}
+
+			switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
+				case store_register:
+				case store_extern:
+					break;
+				default:
+					if(s->type != sym_global){
+						/* allow anonymous decls to have .spel_asm */
+						if(d->spel && d->spel_asm){
+							DIE_AT(&d->where,
+									"asm() rename on non-register non-global variable \"%s\" (%s)",
+									d->spel, d->spel_asm);
+						}
+					}
+			}
 		}
+	}
+
+	if(all_spels){
+		/* check_clashes */
+		decl **di;
+
+		qsort(all_spels,
+				dynarray_count(all_spels),
+				sizeof *all_spels,
+				(int (*)(const void *, const void *))decl_sort_cmp);
+
+		for(di = all_spels; di[1]; di++){
+			decl *a = di[0], *b = di[1];
+			/* functions are checked elsewhere */
+			if(!strcmp(a->spel, b->spel)){
+				/* XXX: note */
+				DIE_AT(&a->where, "clashing definitions of \"%s\"\n%s: note: other definition",
+						a->spel, where_str_r(wbuf, &b->where));
+			}
+		}
+
+
+		dynarray_free(&all_spels, NULL);
 	}
 
 	{
@@ -115,7 +184,10 @@ int symtab_fold(symtable *tab, int current)
 				subtab_max = this;
 		}
 
-		tab->auto_total_size = current - this_start + subtab_max;
+		/* don't account the args in the space,
+		 * just use for offsetting them
+		 */
+		tab->auto_total_size = current - this_start + subtab_max - arg_space;
 	}
 
 	return tab->auto_total_size;

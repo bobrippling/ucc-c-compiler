@@ -3,14 +3,16 @@
 #include <errno.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <math.h>
+#include <ctype.h>
 
 #include <unistd.h>
 #include <signal.h>
 
 #include "../util/util.h"
+#include "../util/platform.h"
 #include "data_structs.h"
 #include "tokenise.h"
-#include "../util/util.h"
 #include "parse.h"
 #include "cc1.h"
 #include "fold.h"
@@ -19,6 +21,12 @@
 #include "gen_style.h"
 #include "sym.h"
 #include "fold_sym.h"
+#include "out/out.h"
+#include "ops/__builtin.h"
+
+#include "../as_cfg.h"
+#define QUOTE(...) #__VA_ARGS__
+#define EXPAND_QUOTE(y) QUOTE(y)
 
 struct
 {
@@ -58,6 +66,9 @@ struct
 
 	{ 0, "mixed-code-decls", WARN_MIXED_CODE_DECLS                  },
 
+	{ 0, "loss-of-precision", WARN_LOSS_PRECISION                   },
+
+	/* TODO: W_QUAL (ops/expr_cast) */
 
 #if 0
 	/* TODO */
@@ -89,24 +100,36 @@ struct
 /* --- options --- */
 
 	{ 1,  "enable-asm",    FOPT_ENABLE_ASM      },
-	{ 1,  "strict-types",  FOPT_STRICT_TYPES    },
 	{ 1,  "const-fold",    FOPT_CONST_FOLD      },
 	{ 1,  "english",       FOPT_ENGLISH         },
 	{ 1,  "show-line",     FOPT_SHOW_LINE       },
+	{ 1,  "pic",           FOPT_PIC             },
+	{ 1,  "pic-pcrel",     FOPT_PIC_PCREL       },
+	{ 1,  "builtin",       FOPT_BUILTIN         },
+	{ 1,  "ms-extensions",    FOPT_MS_EXTENSIONS    },
+	{ 1,  "plan9-extensions", FOPT_PLAN9_EXTENSIONS },
+	{ 1,  "leading-underscore", FOPT_LEADING_UNDERSCORE },
 
 	{ 0,  NULL, 0 }
 };
 
 struct
 {
+	char pref;
 	const char *arg;
 	int *pval;
 } val_args[] = {
-	{ "max-errors",   &cc1_max_errors },
-	{ NULL, NULL }
+	{ 'f', "max-errors",   &cc1_max_errors },
+	{ 'm', "preferred-stack-boundary", &cc1_mstack_align },
+	{ 0, NULL, NULL }
 };
 
-
+static enum fopt fopt_defaults[] = {
+		[PLATFORM_LINUX]   = FOPT_NONE,
+		[PLATFORM_FREEBSD] = FOPT_NONE,
+		[PLATFORM_CYGWIN]  = FOPT_LEADING_UNDERSCORE,
+		[PLATFORM_DARWIN]  = FOPT_LEADING_UNDERSCORE,
+};
 
 FILE *cc_out[NUM_SECTIONS];     /* temporary section files */
 char  fnames[NUM_SECTIONS][32]; /* duh */
@@ -114,14 +137,22 @@ FILE *cc1_out;                  /* final output */
 
 enum warning warn_mode = ~(
 		  WARN_VOID_ARITH
-		| WARN_COMPARE_MISMATCH
 		| WARN_IMPLICIT_INT
-		| WARN_INCOMPLETE_USE
-		| WARN_OPT_POSSIBLE
+		| WARN_LOSS_PRECISION
+		| WARN_SIGN_COMPARE
 		);
 
-enum fopt    fopt_mode = FOPT_CONST_FOLD | FOPT_SHOW_LINE;
+enum fopt fopt_mode = FOPT_CONST_FOLD
+                    | FOPT_SHOW_LINE
+                    | FOPT_PIC
+                    | FOPT_BUILTIN
+                    | FOPT_MS_EXTENSIONS;
 enum cc1_backend cc1_backend = BACKEND_ASM;
+
+int cc1_m32 = UCC_M32;
+int cc1_mstack_align; /* align stack to n, platform_word_size by default */
+
+enum cc1_std cc1_std = STD_C99;
 
 int cc1_max_errors = 16;
 
@@ -130,9 +161,12 @@ int caught_sig = 0;
 int show_current_line;
 
 const char *section_names[NUM_SECTIONS] = {
-	"text", "data", "bss"
+	EXPAND_QUOTE(SECTION_TEXT),
+	EXPAND_QUOTE(SECTION_DATA),
+	EXPAND_QUOTE(SECTION_BSS),
 };
 
+static FILE *infile;
 
 /* compile time check for enum <-> int compat */
 #define COMP_CHECK(pre, test) \
@@ -162,7 +196,7 @@ void ccdie(int verbose, const char *fmt, ...)
 		for(i = 0; args[i].arg; i++)
 			fprintf(stderr, "  -%c%s\n", args[i].is_opt["Wf"], args[i].arg);
 		for(i = 0; val_args[i].arg; i++)
-			fprintf(stderr, "  -f%s=value\n", val_args[i].arg);
+			fprintf(stderr, "  -%c%s=value\n", val_args[i].pref, val_args[i].arg);
 	}
 
 	exit(1);
@@ -192,6 +226,9 @@ void io_cleanup(void)
 {
 	int i;
 	for(i = 0; i < NUM_SECTIONS; i++){
+		if(!cc_out[i])
+			continue;
+
 		if(fclose(cc_out[i]) == EOF && !caught_sig)
 			fprintf(stderr, "close %s: %s\n", fnames[i], strerror(errno));
 		if(remove(fnames[i]) && !caught_sig)
@@ -217,9 +254,18 @@ void io_setup(void)
 	atexit(io_cleanup);
 }
 
-void io_fin(int do_sections)
+void io_fin(int do_sections, const char *fname)
 {
 	int i;
+
+#if 0
+	if(do_sections){
+		if(fprintf(cc1_out, "\t.file \"%s\"\n", fname) < 0)
+			ccdie(0, "write to cc1_out:");
+	}
+#else
+	(void)fname;
+#endif
 
 	for(i = 0; i < NUM_SECTIONS; i++){
 		/* cat cc_out[i] to cc1_out, with section headers */
@@ -230,7 +276,7 @@ void io_fin(int do_sections)
 			if(last == -1 || fseek(cc_out[i], 0, SEEK_SET) == -1)
 				ccdie(0, "seeking on section file %d:", i);
 
-			if(fprintf(cc1_out, "section .%s\n", section_names[i]) < 0)
+			if(fprintf(cc1_out, ".section %s\n", section_names[i]) < 0)
 				ccdie(0, "write to cc1 output:");
 
 			while(fgets(buf, sizeof buf, cc_out[i]))
@@ -253,11 +299,23 @@ void sigh(int sig)
 	io_cleanup();
 }
 
+static char *next_line()
+{
+	char *s = fline(infile);
+
+	if(!s){
+		if(feof(infile))
+			return NULL;
+		else
+			die("read():");
+	}
+	return s;
+}
+
 int main(int argc, char **argv)
 {
-	static symtable *globs;
-	void (*gf)(symtable *);
-	FILE *f;
+	static symtable_global *globs;
+	void (*gf)(symtable_global *);
 	const char *fname;
 	int i;
 	int werror = 0;
@@ -269,6 +327,10 @@ int main(int argc, char **argv)
 	signal(SIGSEGV, sigh);
 
 	fname = NULL;
+
+	/* defaults */
+	fopt_mode |= fopt_defaults[platform_sys()];
+	cc1_mstack_align = platform_word_size();
 
 	for(i = 1; i < argc; i++){
 		if(!strcmp(argv[i], "-X")){
@@ -296,14 +358,30 @@ int main(int argc, char **argv)
 				}
 			}
 
+		}else if(!strncmp(argv[i], "-std=", 5)){
+			const char *std = argv[i] + 5;
+
+			if(!strcmp(std, "c99"))
+				cc1_std = STD_C99;
+			else if(!strcmp(std, "c90"))
+std_c90: cc1_std = STD_C90;
+			else if(!strcmp(std, "c89"))
+				cc1_std = STD_C89;
+			else
+				ccdie(0, "-std argument \"%s\" not recognised", std);
+
+		}else if(!strcmp(argv[i], "-ansi")){
+			goto std_c90;
+
 		}else if(!strcmp(argv[i], "-w")){
 			warn_mode = WARN_NONE;
 
 		}else if(!strcmp(argv[i], "-Werror")){
 			werror = 1;
 
-		}else if(argv[i][0] == '-' && (argv[i][1] == 'W' || argv[i][1] == 'f')){
-			const int fopt = argv[i][1] == 'f';
+		}else if(argv[i][0] == '-'
+		&& (argv[i][1] == 'W' || argv[i][1] == 'f' || argv[i][1] == 'm')){
+			const char arg_ty = argv[i][1];
 			char *arg = argv[i] + 2;
 			int *mask;
 			int j, found, rev;
@@ -315,7 +393,7 @@ int main(int argc, char **argv)
 				rev = 1;
 			}
 
-			if(fopt){
+			if(arg_ty != 'W'){
 				char *equal = strchr(arg, '=');
 
 				if(equal){
@@ -333,7 +411,7 @@ int main(int argc, char **argv)
 					}
 
 					for(j = 0; val_args[j].arg; j++)
-						if(!strcmp(arg, val_args[j].arg)){
+						if(val_args[j].pref == arg_ty && !strcmp(arg, val_args[j].arg)){
 							*val_args[j].pval = new_val;
 							found = 1;
 							break;
@@ -366,20 +444,40 @@ unrecognised:
 				goto usage;
 			}
 
+		}else if(!strncmp(argv[i], "-m", 2)){
+			int n;
+
+			if(sscanf(argv[i] + 2, "%d", &n) != 1 || (n != 32 && n != 64)){
+				fprintf(stderr, "-m needs either 32 or 64\n");
+				goto usage;
+			}
+
+			cc1_m32 = n == 32;
+
 		}else if(!fname){
 			fname = argv[i];
 		}else{
 usage:
-			ccdie(1, "Usage: %s [-W[no-]warning] [-f[no-]option] [-X backend] [-o output] file", *argv);
+			ccdie(1, "Usage: %s [-W[no-]warning] [-f[no-]option] [-X backend] [-m[32|64]] [-o output] file", *argv);
 		}
 	}
 
+	/* sanity checks */
+	{
+		const unsigned new = powf(2, cc1_mstack_align);
+		if(new < platform_word_size())
+			ccdie(1, "stack alignment must be >= platform word size (2^%d)",
+					(int)log2f(platform_word_size()));
+
+		cc1_mstack_align = new;
+	}
+
 	if(fname && strcmp(fname, "-")){
-		f = fopen(fname, "r");
-		if(!f)
+		infile = fopen(fname, "r");
+		if(!infile)
 			ccdie(0, "open %s:", fname);
 	}else{
-		f = stdin;
+		infile = stdin;
 		fname = "-";
 	}
 
@@ -393,21 +491,22 @@ usage:
 
 	show_current_line = fopt_mode & FOPT_SHOW_LINE;
 
-	tokenise_set_file(f, fname);
-	globs = parse();
-	tokenise_close();
+	globs = symtabg_new();
+	tokenise_set_input(next_line, fname);
+	parse(globs);
 
-	if(globs->decls){
-		fold(globs);
-		symtab_fold(globs, 0);
+	if(infile != stdin)
+		fclose(infile), infile = NULL;
 
-		if(werror && warning_count)
-			ccdie(0, "%s: Treating warnings as errors", *argv);
+	fold(&globs->stab);
+	symtab_fold(&globs->stab, 0);
 
-		gf(globs);
-	}
+	if(werror && warning_count)
+		ccdie(0, "%s: Treating warnings as errors", *argv);
 
-	io_fin(gf == gen_asm);
+	gf(globs);
+
+	io_fin(gf == gen_asm, fname);
 
 	return 0;
 }

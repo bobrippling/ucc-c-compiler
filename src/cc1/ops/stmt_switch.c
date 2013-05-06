@@ -6,6 +6,7 @@
 #include "../sue.h"
 #include "../../util/alloc.h"
 #include "../../util/dynarray.h"
+#include "../out/lbl.h"
 
 const char *str_stmt_switch()
 {
@@ -77,7 +78,7 @@ void fold_switch_dups(stmt *sw)
 	free(vals);
 }
 
-void fold_switch_enum(stmt *sw, type *enum_type)
+void fold_switch_enum(stmt *sw, const type *enum_type)
 {
 	const int nents = enum_nentries(enum_type->sue);
 	stmt **titer;
@@ -105,14 +106,20 @@ void fold_switch_enum(stmt *sw, type *enum_type)
 
 		for(; v <= w; v++){
 			sue_member **mi;
+			int found = 0;
+
 			for(midx = 0, mi = enum_type->sue->members; *mi; midx++, mi++){
 				enum_member *m = (*mi)->enum_member;
 
 				const_fold_need_val(m->val, &iv);
 
 				if(v == iv.val)
-					marks[midx]++;
+					marks[midx]++, found = 1;
 			}
+
+			if(!found)
+				WARN_AT(&cse->where, "'case %ld' not not a member of enum %s",
+						(long)v, enum_type->sue->spel);
 		}
 	}
 
@@ -128,16 +135,15 @@ ret:
 
 void fold_stmt_switch(stmt *s)
 {
-	type *typ;
-	symtable *test_symtab = fold_stmt_test_init_expr(s, "switch");
+	symtable *stab = s->symtab;
 
-	s->lbl_break = asm_label_flow("switch");
+	flow_fold(s->flow, &stab);
 
-	fold_expr(s->expr, test_symtab);
+	s->lbl_break = out_label_flow("switch");
+
+	FOLD_EXPR(s->expr, stab);
 
 	fold_need_expr(s->expr, "switch", 0);
-
-	OPT_CHECK(s->expr, "constant expression in switch");
 
 	/* this folds sub-statements,
 	 * causing case: and default: to add themselves to ->parent->codes,
@@ -149,63 +155,87 @@ void fold_stmt_switch(stmt *s)
 	fold_switch_dups(s);
 
 	/* check for an enum */
-	typ = s->expr->tree_type->type;
-	if(typ->primitive == type_enum){
-		UCC_ASSERT(typ->sue, "no enum for enum type");
-		fold_switch_enum(s, typ);
+	{
+		type_ref *r = type_ref_is_type(s->expr->tree_type, type_enum);
+
+		if(r){
+			const type *typ = r->bits.type;
+			UCC_ASSERT(typ->sue, "no enum for enum type");
+			fold_switch_enum(s, typ);
+
+			/* warn if we switch on an enum bitmask */
+			if(decl_attr_present(typ->sue->attr, attr_enum_bitmask))
+				WARN_AT(&s->where, "switch on enum with enum_bitmask attribute");
+		}
 	}
 }
 
 void gen_stmt_switch(stmt *s)
 {
 	stmt **titer, *tdefault;
-	int is_unsigned = !s->expr->tree_type->type->is_signed;
 
 	tdefault = NULL;
 
 	gen_expr(s->expr, s->symtab);
-	asm_temp(1, "pop rax ; switch on this");
+
+	out_comment("switch on this");
 
 	for(titer = s->codes; titer && *titer; titer++){
 		stmt *cse = *titer;
+		intval iv;
 
-		UCC_ASSERT(cse->expr->expr_is_default || !(cse->expr->bits.iv.suffix & VAL_UNSIGNED), "don's handle unsigned yet");
+		if(cse->expr->expr_is_default){
+			tdefault = cse;
+			continue;
+		}
+
+		const_fold_need_val(cse->expr, &iv);
+
+		UCC_ASSERT(cse->expr->expr_is_default || !(iv.suffix & VAL_UNSIGNED),
+				"don't handle unsigned yet");
 
 		if(stmt_kind(cse, case_range)){
-			char *skip = asm_label_code("range_skip");
-			intval min, max;
+			char *skip = out_label_code("range_skip");
+			intval max;
 
-			const_fold_need_val(cse->expr,  &min);
+			/* TODO: proper signed/unsiged format - out_op() */
 			const_fold_need_val(cse->expr2, &max);
 
-			/* TODO: proper signed/unsiged format */
-			asm_temp(1, "cmp rax, %ld", min.val);
-			asm_temp(1, "j%s %s", is_unsigned ? "b" : "l", skip);
-			asm_temp(1, "cmp rax, %ld", max.val);
-			asm_temp(1, "j%se %s", is_unsigned ? "b" : "l", cse->expr->spel);
-			asm_label(skip);
+			out_dup();
+			out_push_iv(cse->expr->tree_type, &iv);
+
+			out_op(op_lt);
+			out_jtrue(skip);
+
+			out_dup();
+			out_push_iv(cse->expr2->tree_type, &max);
+			out_op(op_gt);
+
+			out_jfalse(cse->expr->bits.ident.spel);
+
+			out_label(skip);
 			free(skip);
-		}else if(cse->expr->expr_is_default){
-			tdefault = cse;
+
 		}else{
-			/* FIXME: address-of, etc? */
-			intval iv;
+			out_dup();
+			out_push_iv(cse->expr->tree_type, &iv);
 
-			const_fold_need_val(cse->expr, &iv);
+			out_op(op_eq);
 
-			asm_temp(1, "cmp rax, %ld", iv.val);
-			asm_temp(1, "je %s", cse->expr->spel);
+			out_jtrue(cse->expr->bits.ident.spel);
 		}
 	}
 
-	if(tdefault)
-		asm_temp(1, "jmp %s", tdefault->expr->spel);
-	else
-		asm_temp(1, "jmp %s", s->lbl_break);
+	out_pop(); /* free the value we switched on asap */
+
+	out_push_lbl(tdefault ? tdefault->expr->bits.ident.spel : s->lbl_break, 0);
+	out_jmp();
+
+	/* out-stack must be empty from here on */
 
 	gen_stmt(s->lhs); /* the actual code inside the switch */
 
-	asm_label(s->lbl_break);
+	out_label(s->lbl_break);
 }
 
 int switch_passable(stmt *s)

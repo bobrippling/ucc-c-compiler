@@ -3,6 +3,8 @@
 
 #include "ops.h"
 #include "stmt_code.h"
+#include "../decl_init.h"
+#include "../../util/dynarray.h"
 
 const char *str_stmt_code()
 {
@@ -11,63 +13,31 @@ const char *str_stmt_code()
 
 void fold_stmt_code(stmt *s)
 {
-	decl **iter;
+	stmt **siter;
+	stmt *inits = NULL;
+	int warned = 0;
 
-	fold_symtab_scope(s->symtab);
+	fold_symtab_scope(s->symtab, &inits);
+	if(inits)
+		dynarray_prepend(&s->codes, inits);
 
-	/* NOTE: this only folds + adds decls, not args */
-	for(iter = s->decls; iter && *iter; iter++){
-		decl *d = *iter;
+	for(siter = s->codes; siter && *siter; siter++){
+		stmt *const st = *siter;
 
-		if(d->func_code)
-			DIE_AT(&d->func_code->where, "can't nest functions");
-		else if(decl_is_func(d) && d->type->store == store_static)
-			DIE_AT(&d->where, "block-scoped function cannot have static storage");
+		EOF_WHERE(&st->where, fold_stmt(st));
 
-		fold_decl(d, s->symtab);
-		d->is_definition = 1; /* always the def for non-globals */
-
-		SYMTAB_ADD(s->symtab, d, sym_local);
-	}
-
-	if(s->codes){
-		stmt **iter;
-		int warned = 0;
-
-		for(iter = s->codes; *iter; iter++){
-			stmt  *const st = *iter;
-			where *const old_w = eof_where;
-
-			eof_where = &st->where;
-			fold_stmt(st);
-			eof_where = old_w;
-
-			/*
-			 * check for dead code
-			 */
-			if(!warned
-			&& st->kills_below_code
-			&& iter[1]
-			&&!iter[1]->is_label
-			){
-				cc1_warn_at(&iter[1]->where, 0, 1, WARN_DEAD_CODE, "dead code after %s (%s)", st->f_str(), iter[1]->f_str());
-				warned = 1;
-			}
-		}
-	}
-
-	/* static folding */
-	if(s->decls){
-		decl **iter;
-
-		for(iter = s->decls; *iter; iter++){
-			decl *d = *iter;
-			/*
-			 * check static decls - after we fold,
-			 * so we've linked the syms and can change ->spel
-			 */
-			if(d->type->store == store_static)
-				decl_set_spel(d, asm_label_static_local(curdecl_func->spel, d->spel));
+		/*
+		 * check for dead code
+		 */
+		if(!warned
+		&& st->kills_below_code
+		&& siter[1]
+		&& !stmt_kind(siter[1], label)
+		&& !stmt_kind(siter[1], case)
+		&& !stmt_kind(siter[1], default)
+		){
+			cc1_warn_at(&siter[1]->where, 0, 1, WARN_DEAD_CODE, "dead code after %s (%s)", st->f_str(), siter[1]->f_str());
+			warned = 1;
 		}
 	}
 }
@@ -81,15 +51,13 @@ void gen_code_decls(symtable *stab)
 		decl *d = *diter;
 		int func;
 
-		if((func = decl_is_func(d)) || type_store_static_or_extern(d->type->store)){
+		if((func = !!type_ref_is(d->ref, type_ref_func)) || decl_store_static_or_extern(d->store)){
 			int gen = 1;
 
 			if(func){
 				/* check if the func is defined globally */
-				symtable *globs;
+				symtable *globs = symtab_root(stab);
 				decl **i;
-
-				for(globs = stab; globs->parent; globs = globs->parent);
 
 				for(i = globs->decls; i && *i; i++){
 					if(!strcmp(d->spel, (*i)->spel)){
@@ -109,7 +77,7 @@ void gen_stmt_code(stmt *s)
 {
 	stmt **titer;
 
-	/* stmt_for needs to do this too */
+	/* stmt_for/if/while/do needs to do this too */
 	gen_code_decls(s->symtab);
 
 	for(titer = s->codes; titer && *titer; titer++)
@@ -120,7 +88,7 @@ static int code_passable(stmt *s)
 {
 	stmt **i;
 
-	/* REACH TODO */
+	/* note: this also checks for inits which call noreturn funcs */
 
 	for(i = s->codes; i && *i; i++){
 		stmt *sub = *i;

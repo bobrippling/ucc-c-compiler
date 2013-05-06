@@ -19,7 +19,7 @@ char **lib_dirs = NULL;
 
 void macro_add_dir(char *d)
 {
-	dynarray_add((void ***)&lib_dirs, d);
+	dynarray_add(&lib_dirs, d);
 }
 
 macro *macro_find(const char *sp)
@@ -43,7 +43,7 @@ macro *macro_add(const char *nam, const char *val)
 		free(m->val);
 	}else{
 		m = umalloc(sizeof *m);
-		dynarray_add((void ***)&macros, m);
+		dynarray_add(&macros, m);
 	}
 
 	m->nam = ustrdup(nam);
@@ -70,7 +70,7 @@ void macro_remove(const char *nam)
 	if(m){
 		free(m->nam);
 		free(m->val);
-		dynarray_rm((void **)macros, m);
+		dynarray_rm(macros, m);
 		free(m);
 	}
 }
@@ -131,7 +131,7 @@ relook:
 					case ',':
 						if(nest == 0){
 							*s = '\0'; {
-								dynarray_add((void ***)&args, ustrdup(last));
+								dynarray_add(&args, ustrdup(last));
 							} *s = ',';
 							last = s + 1;
 						}
@@ -139,7 +139,7 @@ relook:
 
 					case '\0':
 						if(s > last || (args && s == last)) /* args - otherwise it's () */
-							dynarray_add((void ***)&args, ustrdup(last));
+							dynarray_add(&args, ustrdup(last));
 						goto tok_fin;
 
 					case '(':
@@ -155,8 +155,8 @@ relook:
 tok_fin:
 			{
 				int got, exp;
-				got = dynarray_count((void **)args);
-				exp = dynarray_count((void **)m->args);
+				got = dynarray_count(args);
+				exp = dynarray_count(m->args);
 
 				if(m->type == VARIADIC ? got <= exp : got != exp){
 					if(option_debug)
@@ -253,7 +253,7 @@ tok_fin:
 					free(rest);
 				}
 
-				dynarray_free((void ***)&args, free);
+				dynarray_free(&args, free);
 			}
 
 			{

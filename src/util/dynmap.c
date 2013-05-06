@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdarg.h>
 
 #include "dynmap.h"
 #include "alloc.h"
@@ -35,7 +36,7 @@ dynmap_free(dynmap *map)
 }
 
 static pair *
-dynmap_pair(dynmap *map, void *key)
+dynmap_nochk_pair(dynmap *map, void *key)
 {
 	pair *i;
 
@@ -47,11 +48,11 @@ dynmap_pair(dynmap *map, void *key)
 }
 
 void *
-dynmap_get(dynmap *map, void *key)
+dynmap_nochk_get(dynmap *map, void *key)
 {
 	pair *i;
 
-	i = dynmap_pair(map, key);
+	i = dynmap_nochk_pair(map, key);
 	if(i)
 		return i->value;
 
@@ -59,9 +60,9 @@ dynmap_get(dynmap *map, void *key)
 }
 
 void
-dynmap_set(dynmap *map, void *key, void *val)
+dynmap_nochk_set(dynmap *map, void *key, void *val)
 {
-	pair *p = dynmap_pair(map, key);
+	pair *p = dynmap_nochk_pair(map, key);
 
 	if(p){
 		p->value = val;
@@ -80,7 +81,7 @@ dynmap_set(dynmap *map, void *key, void *val)
 }
 
 static pair *
-dynmap_idx(dynmap *map, int i)
+dynmap_nochk_idx(dynmap *map, int i)
 {
 	pair *p;
 
@@ -90,15 +91,15 @@ dynmap_idx(dynmap *map, int i)
 }
 
 void *
-dynmap_key(dynmap *map, int i)
+dynmap_nochk_key(dynmap *map, int i)
 {
-	pair *p = dynmap_idx(map, i);
+	pair *p = dynmap_nochk_idx(map, i);
 	return p ? p->key : NULL;
 }
 
 void *
-dynmap_value(dynmap *map, int i)
+dynmap_nochk_value(dynmap *map, int i)
 {
-	pair *p = dynmap_idx(map, i);
+	pair *p = dynmap_nochk_idx(map, i);
 	return p ? p->value : NULL;
 }
