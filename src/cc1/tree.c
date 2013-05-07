@@ -28,6 +28,7 @@ void where_new(struct where *w)
 	extern int parse_finished;
 
 	if(parse_finished){
+eof_w:
 		if(eof_where){
 			memcpy(w, eof_where, sizeof *w);
 		}else if(current_fname){
@@ -42,14 +43,14 @@ void where_new(struct where *w)
 		extern const char *current_fname, *current_line_str;
 		extern int current_fname_used, current_line_str_used;
 
+		if(!current_fname || !current_line_str)
+			goto eof_w;
+
 final:
 		w->line  = current_line;
 		w->chr   = current_chr;
 		w->fname = current_fname;
 		w->line_str = current_line_str;
-
-		UCC_ASSERT(current_fname, "no current fname");
-		UCC_ASSERT(current_line_str, "no current line");
 
 		current_fname_used = 1;
 		current_line_str_used = 1;

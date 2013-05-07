@@ -29,6 +29,7 @@ typedef struct where
 	const char *fname, *line_str;
 	int line, chr;
 } where;
+#define WHERE_INIT(fnam, lstr, n, c) { fnam, lstr, n, c }
 
 extern int warning_count;
 

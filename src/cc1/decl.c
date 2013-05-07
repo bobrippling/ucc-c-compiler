@@ -39,6 +39,9 @@ static type_ref *cache_va_list;
 
 void type_ref_init(symtable *stab)
 {
+	const where w = WHERE_INIT("<builtin>", "<builtin>", 1, 1);
+	eof_where = &w;
+
 	cache_basics[type_void] = type_ref_cached_VOID();
 	cache_basics[type_int]  = type_ref_cached_INT();
 	cache_basics[type_char] = type_ref_cached_CHAR();
@@ -100,6 +103,8 @@ void type_ref_init(symtable *stab)
 			cache_va_list = td;
 		}
 	}
+
+	eof_where = NULL;
 }
 
 type_ref *type_ref_cached_VA_LIST(void)
