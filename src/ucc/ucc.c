@@ -14,6 +14,8 @@
 #include "ucc_lib.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
+#include "../util/util.h"
+#include "../util/platform.h"
 
 enum mode
 {
@@ -260,6 +262,7 @@ void process_files(enum mode mode, char **inputs, char *output, char **args[4], 
 	free(files);
 }
 
+ucc_dead
 void die(const char *fmt, ...)
 {
 	const int len = strlen(fmt);
@@ -280,8 +283,11 @@ void die(const char *fmt, ...)
 	exit(1);
 }
 
-void ice(const char *fmt)
+void ice(const char *f, int line, const char *fn, const char *fmt, ...)
 {
+	(void)f;
+	(void)line;
+	(void)fn;
 	die("ICE: %s", fmt);
 }
 
@@ -311,6 +317,18 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Usage: %s [options] input(s)\n", *argv);
 		return 1;
 	}
+
+	/* do before arg processing, so these can be removed */
+	switch(platform_sys()){
+		case PLATFORM_LINUX:
+		case PLATFORM_FREEBSD:
+			break;
+		case PLATFORM_CYGWIN:
+		case PLATFORM_DARWIN:
+			dynarray_add(&args[mode_compile], ustrdup("-fleading-underscore"));
+			dynarray_add(&args[mode_preproc], ustrdup("-D__LEADING_UNDERSCORE"));
+	}
+
 
 	for(i = 1; i < argc; i++){
 		if(!strcmp(argv[i], "--")){
