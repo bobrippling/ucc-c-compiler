@@ -160,21 +160,22 @@ char *word_find(char *line, char *word)
 	return NULL;
 }
 
-char *nest_close_paren(char *start)
+char *strchr_nest(char *start, char find)
 {
-	int nest = 0;
+	size_t nest = 0;
 
-	while(*start){
+	for(; *start; start++)
 		switch(*start){
 			case '(':
 				nest++;
 				break;
 			case ')':
-				if(nest-- == 0)
+				nest--;
+				/* fall */
+			default:
+				if(nest == 0 && *start == find)
 					return start;
 		}
-		start++;
-	}
 
 	return NULL;
 }

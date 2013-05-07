@@ -75,6 +75,27 @@ void macro_remove(const char *nam)
 	}
 }
 
+static char **split_args(char *open_b, char *close_b)
+{
+	char **arg_separators = NULL;
+	char *arg;
+
+	for(arg = open_b + 1;
+			arg && arg < close_b;
+			(arg = strchr_nest(arg, ',')) ? arg + 1 : NULL)
+	{
+		dynarray_add(&arg_separators, arg);
+	}
+
+	{
+		char **args = NULL;
+		size_t i;
+
+		for(i = 0; arg_separators[i]; i++){
+		}
+	}
+}
+
 static char *eval_macro_r(macro *m, char *start, char *at)
 {
 	if(m->type == MACRO){
@@ -113,60 +134,19 @@ static char *eval_macro_r(macro *m, char *start, char *at)
 		return ret;
 
 	}else{
-		ICE("TODO");
-#if 0
-		char *s, *last;
-		char **args;
 		char *open_b, *close_b;
-		char *replace;
-		char *pos;
-		int i, nest;
+		char **args;
 
-		nest = 0;
+		for(open_b = at + strlen(m->nam); isspace(*open_b); open_b++);
 
-		if(!(pos = word_find(substitute_here, m->nam)))
-			continue;
+		if(*open_b != '(')
+			break; /* not an invocation */
 
-relook:
-		open_b  = strchr(pos, '(');
-		if(!open_b){
-			/* ignore the macro */
-			pos++;
-			goto relook;
-		}
-		close_b = nest_close_paren(open_b + 1);
+		close_b = strchr_nest(open_b + 1, ')');
 		if(!close_b)
-			CPP_DIE("no close paren for function-macro '%s'", m->nam);
+			CPP_DIE("unterminated function-macro '%s'", m->nam);
 
-		*open_b  = '\0';
-		*close_b = '\0';
-
-		args = NULL;
-		for(last = s = open_b + 1; ; s++){
-			switch(*s){
-				case ',':
-					if(nest == 0){
-						*s = '\0'; {
-							dynarray_add(&args, ustrdup(last));
-						} *s = ',';
-						last = s + 1;
-					}
-					break;
-
-				case '\0':
-					if(s > last || (args && s == last)) /* args - otherwise it's () */
-						dynarray_add(&args, ustrdup(last));
-					goto tok_fin;
-
-				case '(':
-					nest++;
-					break;
-
-				case ')':
-					nest--;
-					break;
-			}
-		}
+		args = split_args(open_b, close_b);
 
 tok_fin:
 		{
@@ -285,8 +265,9 @@ tok_fin:
 		free(replace);
 
 		did_replace = 1;
-#endif
 	}
+
+	return start;
 }
 
 static char *eval_macro(macro *m, char *start, char *at)
