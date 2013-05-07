@@ -43,6 +43,8 @@ struct cc_file
 			 *assemb;
 
 	char *out;
+
+	int preproc_asm;
 };
 #define FILE_IN_MODE(f)        \
 ((f)->preproc ? mode_preproc : \
@@ -120,8 +122,11 @@ preproc:
 compile:
 			case 'i':
 				ASSIGN(compile);
+				goto after_compile;
 assemb:
 			case 'S':
+				file->preproc_asm = 1;
+after_compile:
 				ASSIGN(preproc); /* preprocess .S assembly files by default */
 			case 's':
 				ASSIGN(assemb);
@@ -145,7 +150,10 @@ void gen_obj_file(struct cc_file *file, char **args[4], enum mode mode)
 	char *in = file->in;
 
 	if(file->preproc){
-		preproc(in, file->preproc, args[mode_preproc]);
+		/* if we're preprocessing, but not cc1'ing, but we are as'ing,
+		 * it's an assembly language file */
+		if(file->preproc_asm)
+			dynarray_add(&args[mode_preproc], ustrdup("-D__ASSEMBLER__=1"));
 
 		preproc(in, file->preproc, args[mode_preproc]);
 
