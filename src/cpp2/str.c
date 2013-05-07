@@ -9,9 +9,15 @@
 #include "../util/util.h"
 #include "macro.h"
 
-static int iswordpart(char c)
+int iswordpart(char c)
 {
 	return isalnum(c) || c == '_';
+}
+
+char *word_end(char *s)
+{
+	for(; iswordpart(*s); s++);
+	return s;
 }
 
 void str_trim(char *str)
@@ -104,31 +110,9 @@ char *str_replace(char *line, char *start, char *end, const char *replace)
 	}
 }
 
-char *word_replace(char *line, char *pos, const char *find, const char *replace)
+char *word_replace(char *line, char *pos, size_t len, const char *replace)
 {
-	return str_replace(line, pos, pos + strlen(find), replace);
-}
-
-int word_replace_g(char **pline, char *find, const char *replace)
-{
-	char *pos = *pline;
-	int r = 0;
-
-	DEBUG(DEBUG_VERB, "word_find(\"%s\", \"%s\")\n", pos, find);
-
-	while((pos = word_find(pos, find))){
-		int posidx = pos - *pline;
-
-		DEBUG(DEBUG_VERB, "word_replace(line=\"%s\", pos=\"%s\", nam=\"%s\", val=\"%s\")\n",
-				*pline, pos, find, replace);
-
-		*pline = word_replace(*pline, pos, find, replace);
-		pos = *pline + posidx + strlen(replace);
-
-		r = 1;
-	}
-
-	return r;
+	return str_replace(line, pos, pos + len, replace);
 }
 
 char *word_strstr(char *haystack, char *needle)

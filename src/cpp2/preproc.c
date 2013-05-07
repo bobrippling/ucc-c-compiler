@@ -208,7 +208,7 @@ char *filter_macros(char *line)
 		free(line);
 		return NULL;
 	}else{
-		filter_macro(&line);
+		line = filter_macro(line);
 		return line;
 	}
 }
