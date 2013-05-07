@@ -201,6 +201,9 @@ void handle_define(token **tokens)
 
 	name = tokens[0]->w;
 
+	if(tokens[1]) /* prevent initial whitespace */
+		tokens[1]->had_whitespace = 0;
+
 	if(tokens[1] && tokens[1]->tok == TOKEN_OPEN_PAREN && !tokens[1]->had_whitespace){
 		/* function macro */
 		int i, variadic;
