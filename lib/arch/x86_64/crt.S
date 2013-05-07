@@ -1,7 +1,8 @@
 #include "../../../src/as_cfg.h"
+#include "defs.h"
 .section SECTION_TEXT
-.globl _start
-_start:
+.globl SYMBL(_start)
+SYMBL(_start):
 	// need to set up stack base pointer
 	movq %rsp, %rbp
 
@@ -17,7 +18,7 @@ _start:
 	// __progname = argv[0]
 	movq (%rsi), %rcx
 
-	movq %rcx, __progname(%rip)
+	movq %rcx, SYMBL(__progname)(%rip)
 
 	// find the first env variable
 
@@ -26,20 +27,20 @@ _start:
 
 	leaq (%rsi, %rdx, 8), %rdx // argv + new_argc * 8
 
-	movq %rdx, environ(%rip)
+	movq %rdx, SYMBL(environ)(%rip)
 
 	// argc=rdi, argv=rsi, environ=rdx - FIXME: this is only Linux ABI
-	call main
+	call SYMBL(main)
 	movl %eax, %edi
-	call exit
+	call SYMBL(exit)
 	hlt
 
 .section SECTION_BSS
 // other things we sort out at startup
 
-.globl environ
-.globl __progname
+.globl SYMBL(environ)
+.globl SYMBL(__progname)
 
 // size, align
-.comm   environ,  8, 8
-.comm __progname, 8, 8
+.comm SYMBL(  environ),  8, 8
+.comm SYMBL(__progname), 8, 8
