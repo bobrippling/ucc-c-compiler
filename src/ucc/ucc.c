@@ -186,8 +186,8 @@ void rename_files(struct cc_file *files, int nfiles, char *output, enum mode mod
 		/* path/to/input.c -> path/to/input.[os] */
 		char *new;
 
-		if(mode < mode_link && FILE_IN_MODE(&files[i]) == mode_link){
-			fprintf(stderr, "linker input \"%s\" unused with -%c present\n",
+		if(mode < FILE_IN_MODE(&files[i])){
+			fprintf(stderr, "input \"%s\" unused with -%c present\n",
 					files[i].in, mode_ch);
 			continue;
 		}
@@ -199,7 +199,9 @@ void rename_files(struct cc_file *files, int nfiles, char *output, enum mode mod
 					cat(files[i].preproc, output, i);
 				continue;
 			}else if(mode == mode_compile && !strcmp(output, "-")){
-				cat(files[i].compile, NULL, 0);
+				/* -S -o- */
+				if(files[i].compile)
+					cat(files[i].compile, NULL, 0);
 				continue;
 			}
 
