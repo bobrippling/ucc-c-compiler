@@ -147,20 +147,22 @@ void gen_obj_file(struct cc_file *file, char **args[4], enum mode mode)
 	if(file->preproc){
 		preproc(in, file->preproc, args[mode_preproc]);
 
-		if(mode == mode_preproc)
-			return;
+		preproc(in, file->preproc, args[mode_preproc]);
 
 		in = file->preproc;
 	}
 
+	if(mode == mode_preproc)
+		return;
+
 	if(file->compile){
 		compile(in, file->compile, args[mode_compile]);
 
-		if(mode == mode_compile)
-			return;
-
 		in = file->compile;
 	}
+
+	if(mode == mode_compile)
+		return;
 
 	if(file->assemb){
 		assemble(in, file->assemb, args[mode_assemb]);
