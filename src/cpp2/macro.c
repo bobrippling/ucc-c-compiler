@@ -80,19 +80,34 @@ static char **split_args(char *open_b, char *close_b)
 	char **arg_separators = NULL;
 	char *arg;
 
-	for(arg = open_b + 1;
-			arg && arg < close_b;
-			(arg = strchr_nest(arg, ',')) ? arg + 1 : NULL)
-	{
+	arg = open_b;
+
+	do{
 		dynarray_add(&arg_separators, arg);
-	}
+		arg = strchr_nest(arg, ',');
+	}while(arg && arg < close_b);
+
+	dynarray_add(&arg_separators, close_b);
 
 	{
 		char **args = NULL;
 		size_t i;
 
-		for(i = 0; arg_separators[i]; i++){
+		for(i = 0; arg_separators[i + 1]; i++){
+			char *from = arg_separators[i] + 1;
+			char *to   = arg_separators[i + 1] - 1;
+
+			if(from < to)
+				arg = ustrdup2(from, to);
+			else
+				arg = ustrdup("");
+
+			dynarray_add(&args, arg);
 		}
+
+		dynarray_free(arg_separators, NULL);
+
+		return args;
 	}
 }
 
@@ -140,7 +155,7 @@ static char *eval_macro_r(macro *m, char *start, char *at)
 		for(open_b = at + strlen(m->nam); isspace(*open_b); open_b++);
 
 		if(*open_b != '(')
-			break; /* not an invocation */
+			return start; /* not an invocation */
 
 		close_b = strchr_nest(open_b + 1, ')');
 		if(!close_b)
@@ -148,6 +163,15 @@ static char *eval_macro_r(macro *m, char *start, char *at)
 
 		args = split_args(open_b, close_b);
 
+		/* XXX: progress here */
+		{
+			int i;
+			for(i = 0; args[i]; i++)
+				fprintf(stderr, "arg[%d] = \"%s\"\n", i, args[i]);
+		}
+
+		ICE("TODO");
+#if 0
 tok_fin:
 		{
 			int got, exp;
@@ -155,22 +179,22 @@ tok_fin:
 			exp = dynarray_count(m->args);
 
 			if(m->type == VARIADIC ? got <= exp : got != exp){
-				if(option_debug)
+				if(option_debug){
+					int i;
 					for(i = 0; i < got; i++)
 						fprintf(stderr, "args[%d] = \"%s\"\n", i, args[i]);
+				}
 
-				CPP_DIE("wrong number of args to function macro \"%s\", got %d, expected %d%s%s%s",
-						m->nam, got, exp,
-						option_debug ? " (" : "",
-						option_debug ? *pline : "",
-						option_debug ? ")"  : ""
-						);
+				CPP_DIE("wrong number of args to function macro \"%s\", got %d, expected %d",
+						m->nam, got, exp);
 			}
 		}
 
-		if(args)
+		if(args){
+			int i;
 			for(i = 0; args[i]; i++)
 				str_trim(args[i]);
+		}
 
 		replace = ustrdup(m->val);
 
@@ -265,9 +289,8 @@ tok_fin:
 		free(replace);
 
 		did_replace = 1;
+#endif
 	}
-
-	return start;
 }
 
 static char *eval_macro(macro *m, char *start, char *at)
