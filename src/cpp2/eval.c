@@ -15,7 +15,7 @@
 #include "str.h"
 #include "main.h"
 
-static char *eval_macro_1(macro *m, char *args_str)
+static char **split_func_args(char *args_str)
 {
 	token **tokens = tokenise(args_str);
 	token **ti, **anchor = tokens;
@@ -34,31 +34,19 @@ static char *eval_macro_1(macro *m, char *args_str)
 	if(anchor != ti)
 		dynarray_add(&args, tokens_join_n(anchor, ti - anchor));
 
-	/* XXX: progress here */
-	{
-		int i;
-		for(i = 0; args[i]; i++)
-			fprintf(stderr, "arg[%d] = \"%s\"\n", i, args[i]);
-	}
+	return args;
+}
 
-	ICE("TODO");
-#if 0
-tok_fin:
-	{
-		int got, exp;
-		got = dynarray_count(args);
-		exp = dynarray_count(m->args);
+static char *eval_func_macro(macro *m, char *args_str)
+{
+	char **args = split_func_args(args_str);
 
-		if(m->type == VARIADIC ? got <= exp : got != exp){
-			if(option_debug){
-				int i;
-				for(i = 0; i < got; i++)
-					fprintf(stderr, "args[%d] = \"%s\"\n", i, args[i]);
-			}
+	int got = dynarray_count(args)
+		, exp = dynarray_count(m->args);
 
-			CPP_DIE("wrong number of args to function macro \"%s\", got %d, expected %d",
-					m->nam, got, exp);
-		}
+	if(m->type == VARIADIC ? got <= exp : got != exp){
+		CPP_DIE("wrong number of args to function macro \"%s\", got %d, expected %d",
+				m->nam, got, exp);
 	}
 
 	if(args){
@@ -67,6 +55,9 @@ tok_fin:
 			str_trim(args[i]);
 	}
 
+	/* XXX: progress here */
+	ICE("TODO");
+#if 0
 	replace = ustrdup(m->val);
 
 	/* replace #x with the quote of arg x */
@@ -216,7 +207,7 @@ static char *eval_macro_r(macro *m, char *start, char *at)
 
 		{
 			char *all_args = ustrdup2(open_b + 1, close_b);
-			char *eval_d = eval_macro_1(m, all_args);
+			char *eval_d = eval_func_macro(m, all_args);
 			char *ret = str_replace(start, at, close_b, eval_d);
 
 			free(all_args);
