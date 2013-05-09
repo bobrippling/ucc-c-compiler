@@ -1010,7 +1010,7 @@ void parse(symtable_global *globals)
 
 			for(i = last_gasms; i && *i; i++)
 				(*i)->before = *new;
-			dynarray_free(&last_gasms, NULL);
+			dynarray_free(symtable_gasm **, &last_gasms, NULL);
 		}
 
 		/* global asm */
@@ -1026,7 +1026,7 @@ void parse(symtable_global *globals)
 			break;
 	}
 
-	dynarray_free(&last_gasms, NULL);
+	dynarray_free(symtable_gasm **, &last_gasms, NULL);
 
 	EAT(token_eof);
 
