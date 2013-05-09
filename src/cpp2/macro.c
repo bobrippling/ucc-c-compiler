@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
+#include <ctype.h>
 
 #include "macro.h"
 #include "parse.h"
@@ -11,12 +12,14 @@
 #include "str.h"
 #include "main.h"
 
+#define VA_ARGS_STR "__VA_ARGS__"
+
 macro **macros = NULL;
 char **lib_dirs = NULL;
 
 void macro_add_dir(char *d)
 {
-	dynarray_add((void ***)&lib_dirs, d);
+	dynarray_add(&lib_dirs, d);
 }
 
 macro *macro_find(const char *sp)
@@ -40,7 +43,7 @@ macro *macro_add(const char *nam, const char *val)
 		free(m->val);
 	}else{
 		m = umalloc(sizeof *m);
-		dynarray_add((void ***)&macros, m);
+		dynarray_add(&macros, m);
 	}
 
 	m->nam = ustrdup(nam);
@@ -67,7 +70,7 @@ void macro_remove(const char *nam)
 	if(m){
 		free(m->nam);
 		free(m->val);
-		dynarray_rm((void **)macros, m);
+		dynarray_rm(macros, m);
 		free(m);
 	}
 }
@@ -117,7 +120,7 @@ relook:
 			}
 			close_b = nest_close_paren(open_b + 1);
 			if(!close_b)
-				CPP_DIE("no close paren for function-macro");
+				CPP_DIE("no close paren for function-macro '%s'", m->nam);
 
 			*open_b  = '\0';
 			*close_b = '\0';
@@ -128,7 +131,7 @@ relook:
 					case ',':
 						if(nest == 0){
 							*s = '\0'; {
-								dynarray_add((void ***)&args, ustrdup(last));
+								dynarray_add(&args, ustrdup(last));
 							} *s = ',';
 							last = s + 1;
 						}
@@ -136,7 +139,7 @@ relook:
 
 					case '\0':
 						if(s > last || (args && s == last)) /* args - otherwise it's () */
-							dynarray_add((void ***)&args, ustrdup(last));
+							dynarray_add(&args, ustrdup(last));
 						goto tok_fin;
 
 					case '(':
@@ -152,8 +155,8 @@ relook:
 tok_fin:
 			{
 				int got, exp;
-				got = dynarray_count((void **)args);
-				exp = dynarray_count((void **)m->args);
+				got = dynarray_count(args);
+				exp = dynarray_count(m->args);
 
 				if(m->type == VARIADIC ? got <= exp : got != exp){
 					if(option_debug)
@@ -177,32 +180,61 @@ tok_fin:
 
 			/* replace #x with the quote of arg x */
 			for(s = strchr(replace, '#'); s; s = strchr(last, '#')){
+				char *const hash = s++;
 				char *arg_target;
+				int found;
 
-				if(s[1] == '#'){
+				if(*s == '#'){
 					/* x ## y */
 					ICE("TODO: pasting");
 				}
 
-				arg_target = word_dup(s + 1);
-				last = s;
+				while(isspace(*s))
+					s++;
 
-				for(i = 0; m->args[i]; i++){
+				arg_target = word_dup(s);
+				found = 0;
+
+				if(!strcmp(arg_target, VA_ARGS_STR)){
+					char *quoted, *free_me;
+					const int offset = s - replace;
+
+					found = 1;
+
+					if(!args)
+						CPP_DIE("#" VA_ARGS_STR " used on non-variadic macro");
+
+					quoted = str_quote(free_me = str_join(args, ", "));
+					free(free_me);
+
+					replace = str_replace(replace,
+							hash,
+							s + strlen(VA_ARGS_STR),
+							quoted);
+
+					free(quoted);
+					last = replace + offset + strlen(quoted);
+				}
+
+				for(i = 0; m->args && !found && m->args[i]; i++){
 					if(!strcmp(m->args[i], arg_target)){
-						char *finish = s + 1 + strlen(arg_target);
+						char *finish = s + strlen(arg_target);
 						char *quoted = str_quote(args[i]);
-						int offset;
+						const int offset = (s - replace) + strlen(quoted);
 
-						offset = (s - replace) + strlen(quoted);
-
-						replace = str_replace(replace, s, finish, quoted);
+						replace = str_replace(replace, s - 1, finish, quoted);
 
 						free(quoted);
 
 						last = replace + offset;
+
+						found = 1;
 						break;
 					}
 				}
+
+				if(!found)
+					CPP_DIE("can't paste non-existent argument %s", arg_target);
 
 				free(arg_target);
 			}
@@ -217,11 +249,11 @@ tok_fin:
 				if(m->type == VARIADIC){
 					char *rest = str_join(args + i, ", ");
 
-					word_replace_g(&replace, "__VA_ARGS__", rest);
+					word_replace_g(&replace, VA_ARGS_STR, rest);
 					free(rest);
 				}
 
-				dynarray_free((void ***)&args, free);
+				dynarray_free(&args, free);
 			}
 
 			{

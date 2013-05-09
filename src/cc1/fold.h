@@ -6,14 +6,14 @@ void fold_decl(decl *d, symtable *stab);
 void fold_decl_global_init(decl *d, symtable *stab);
 void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab);
 
-void fold_type_ref_equal(
-		type_ref *a, type_ref *b,
-		where *w,
-		enum warning warn, const char *errfmt, ...);
+int fold_type_ref_equal(
+		type_ref *a, type_ref *b, where *w,
+		enum warning warn, enum decl_cmp extra_flags,
+		const char *errfmt, ...);
 
 void fold_check_restrict(expr *lhs, expr *rhs, const char *desc, where const *w);
 
-void fold_symtab_scope(symtable *stab);
+void fold_symtab_scope(symtable *stab, stmt **pinit_code);
 
 void fold_funcargs(funcargs *fargs, symtable *stab, type_ref *from);
 

@@ -19,10 +19,10 @@ void gen_style_global(decl *d)
 		gen_stmt_style(d->func_code);
 }
 
-void gen_style(symtable *stab)
+void gen_style(symtable_global *stab)
 {
 	decl **diter;
-	for(diter = stab->decls; diter && *diter; diter++){
+	for(diter = stab->stab.decls; diter && *diter; diter++){
 		decl *d = *diter;
 
 		gen_style_global(d);

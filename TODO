@@ -1,5 +1,18 @@
+%output_check anchors regex by default
+%ocheck [0-9]+ src compiles + runs + checks return code
+
 update bugs/
 test/ - x.c and x.c.expect (output and assembly)
+
+-Wmissing-prototypes
+
+"note:" output, instead of DIE_AT(..., "...\n%s here", where_str(...))
+
+-fcommon: .comm nam,sz,align
+out/* - constant offset for symbols - x+61(%rsp), etc
+
+-fno-builtin
+default to external memset calls, -ffreestanding to use builtin on
 
 cc1.h - remove unused warnings
 
@@ -13,6 +26,10 @@ machine target - currently between x86_64 and vm
 
 ---------------------------------------------------- cc1
 
+out/gen-optimisations:
+	constant folding
+	rearrangement of 1+f()+1 to f() + 1 + 1 - avoid pre-call reg saves
+
 X-Macros instead of switches for enums
 
 const-fold: change interface and checking of ->val.iv.val to more explicit code
@@ -23,6 +40,8 @@ __alignof__/_Alignof, _Alignas(type/const-expr):
 		doubles: { linux32 => 4, win32 => 8, linux64 => 8 }
 		longs + doubles + ptrs change as their sizeof changes (x86 vs x64)
 	for structs/unions, it is the alignment of the largest type
+
+-ftrapv
 
 -Wmissing-prototypes - increase statics (in Makefile)
 	redundant-decls
@@ -62,9 +81,14 @@ extensions:
 	classes?
 	__attribute__((overloadable)) - clang
 
+warn on C99 uses in -std=c(89|90)|ansi ?
+	e.g. compound literals, _Generic, _Static_assert, etc
+
 ---------------------------------------------------- cpp
 
 fix memory leaks
+
+-Df(x)=x+1
 
 fix dir-relative file opening (for #include <>):
 	cc -E dir/x.c

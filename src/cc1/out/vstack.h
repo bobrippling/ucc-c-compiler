@@ -27,7 +27,7 @@ struct vstack
 
 	union
 	{
-		int val;
+		unsigned long val;
 		int reg;
 		int off_from_bp;
 		struct flag_opts
@@ -42,28 +42,27 @@ struct vstack
 		} flag;
 		struct
 		{
-			char *str;
+			const char *str;
 			int pic;
 		} lbl;
 	} bits;
 };
+#define VSTACK_INIT(ty) { (ty), NULL, { 0 } }
 
-extern struct vstack *vtop, vstack[];
+extern struct vstack *vtop;
 
 void vpop(void);
 void vswap(void);
-void vdup(void);
-void vrev(int);
 
 void v_clear(struct vstack *vp, type_ref *);
-void vtop_clear(type_ref *);
 
-void vtop2_prepare_op(void);
-void v_prepare_op(struct vstack *vp);
+void v_to_reg_const(struct vstack *vp);
 
 void v_inv_cmp(struct vstack *vp);
 
 int  v_to_reg(struct vstack *conv);
+void v_to_reg2(struct vstack *from, int reg);
+
 
 int  v_unused_reg(int stack_as_backup);
 void v_freeup_regp(struct vstack *);
@@ -71,7 +70,11 @@ void v_freeup_reg(int r, int allowable_stack);
 void v_freeup_regs(int a, int b);
 void v_save_reg(struct vstack *vp);
 void v_save_regs(int n_ignore);
+void v_reserve_reg(const int r);
+void v_unreserve_reg(const int r);
 
 void v_deref_decl(struct vstack *vp);
+
+const char *v_val_str(struct vstack *vp);
 
 #endif

@@ -1,7 +1,7 @@
 // RUN: %ucc %s
 // TODO: have %check ignore ifdef'd checks
-// RUN: %ucc -DADDR   %s 2>&1 | %check %s
-// RUN: %ucc -DSIZEOF %s 2>&1 | %check %s
+// RUN: %check %s -DADDR
+// RUN: %check %s -DSIZEOF
 
 main()
 {

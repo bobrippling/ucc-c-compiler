@@ -3,9 +3,11 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <limits.h>
+#include <string.h>
 
 #include "../util/util.h"
 #include "../util/dynarray.h"
+#include "../util/dynmap.h"
 #include "../util/alloc.h"
 #include "data_structs.h"
 #include "cc1.h"
@@ -13,6 +15,7 @@
 #include "const.h"
 #include "macros.h"
 #include "sue.h"
+#include "ops/__builtin.h"
 
 #include "decl_init.h"
 
@@ -38,27 +41,40 @@ ucc_printflike(1, 2) void INIT_DEBUG(const char *fmt, ...)
 #  define INIT_DEBUG(...)
 #endif
 
-static void decl_init_create_assignments_discard(
-		decl_init ***init_iter,
-		type_ref *const tfor_wrapped,
-		expr *base,
-		stmt *init_code);
-
-int decl_init_len(decl_init *di)
+typedef struct
 {
- switch(di->type){
-	 case decl_init_scalar:
-		 return 1;
+	decl_init **pos;
+} init_iter;
 
-	 case decl_init_brace:
-		 return dynarray_count((void **)di->bits.inits);
- }
- ICE("decl init bad type");
- return -1;
-}
+#define ITER_WHERE(it, def) \
+	(it && it->pos[0] && it->pos[0] != DYNARRAY_NULL \
+	 ? &it->pos[0]->where \
+	 : def)
+
+typedef decl_init **aggregate_brace_f(
+		decl_init **current, decl_init ***range_store,
+		init_iter *,
+		symtable *,
+		void *, int);
+
+static decl_init *decl_init_brace_up_aggregate(
+		decl_init *current,
+		init_iter *iter,
+		symtable *stab,
+		type_ref *tfor,
+		aggregate_brace_f *,
+		void *arg1, int arg2);
+
+/* null init are const/zero, flag-init is const/zero if prev. is const/zero,
+ * which will be checked elsewhere */
+#define DINIT_NULL_CHECK(di) \
+	if(di == DYNARRAY_NULL)    \
+		return 1
 
 int decl_init_is_const(decl_init *dinit, symtable *stab)
 {
+	DINIT_NULL_CHECK(dinit);
+
 	switch(dinit->type){
 		case decl_init_scalar:
 		{
@@ -68,19 +84,22 @@ int decl_init_is_const(decl_init *dinit, symtable *stab)
 			e = FOLD_EXPR(dinit->bits.expr, stab);
 			const_fold(e, &k);
 
-			return is_const(k.type);
+			return CONST_AT_COMPILE_TIME(k.type);
 		}
 
 		case decl_init_brace:
 		{
 			decl_init **i;
 
-			for(i = dinit->bits.inits; i && *i; i++)
+			for(i = dinit->bits.ar.inits; i && *i; i++)
 				if(!decl_init_is_const(*i, stab))
 					return 0;
 
 			return 1;
 		}
+
+		case decl_init_copy:
+			return 1;
 	}
 
 	ICE("bad decl init");
@@ -89,6 +108,8 @@ int decl_init_is_const(decl_init *dinit, symtable *stab)
 
 int decl_init_is_zero(decl_init *dinit)
 {
+	DINIT_NULL_CHECK(dinit);
+
 	switch(dinit->type){
 		case decl_init_scalar:
 		{
@@ -103,24 +124,72 @@ int decl_init_is_zero(decl_init *dinit)
 		{
 			decl_init **i;
 
-			for(i = dinit->bits.inits; i && *i; i++)
+			for(i = dinit->bits.ar.inits; i && *i; i++)
 				if(!decl_init_is_zero(*i))
 					return 0;
 
 			return 1;
 		}
+
+		case decl_init_copy:
+			return decl_init_is_zero(*dinit->bits.range_copy);
 	}
 
 	ICE("bad decl init");
 	return -1;
 }
 
-decl_init *decl_init_new(enum decl_init_type t)
+decl_init *decl_init_new_w(enum decl_init_type t, where *w)
 {
 	decl_init *di = umalloc(sizeof *di);
-	where_new(&di->where);
+	if(w)
+		memcpy_safe(&di->where, w);
+	else
+		where_new(&di->where);
 	di->type = t;
 	return di;
+}
+
+decl_init *decl_init_new(enum decl_init_type t)
+{
+	return decl_init_new_w(t, NULL);
+}
+
+static decl_init *decl_init_copy_const(decl_init *di)
+{
+	decl_init *ret = umalloc(sizeof *ret);
+	memcpy_safe(ret, di);
+
+	switch(ret->type){
+		case decl_init_scalar:
+		case decl_init_copy:
+			/* no need to copy these - treated as immutable */
+			break;
+		case decl_init_brace:
+		{
+			/* need to copy inits as we may replace copy-ees'
+			 * sub inits via designations */
+			decl_init **inits = di->bits.ar.inits;
+			size_t i;
+
+			ret->bits.ar.inits = umalloc((dynarray_count(inits) + 1) * sizeof *inits);
+			for(i = 0; inits[i]; i++)
+				ret->bits.ar.inits[i] = decl_init_copy_const(di->bits.ar.inits[i]);
+			break;
+		}
+	}
+
+	return ret;
+}
+
+static void decl_init_resolve_copy(decl_init **arr, const size_t idx)
+{
+	decl_init *resolved = arr[idx];
+
+	UCC_ASSERT(resolved->type == decl_init_copy,
+			"resolving a non-copy (%d)", resolved->type);
+
+	memcpy_safe(resolved, decl_init_copy_const(*resolved->bits.range_copy));
 }
 
 void decl_init_free_1(decl_init *di)
@@ -133,313 +202,807 @@ const char *decl_init_to_str(enum decl_init_type t)
 	switch(t){
 		CASE_STR_PREFIX(decl_init, scalar);
 		CASE_STR_PREFIX(decl_init, brace);
+		CASE_STR_PREFIX(decl_init, copy);
 	}
 	return NULL;
 }
 
-static expr *expr_new_array_idx(expr *base, int i)
+/*
+ * brace up code
+ * -------------
+ */
+
+static decl_init *decl_init_brace_up_r(decl_init *current, init_iter *, type_ref *, symtable *stab);
+
+static void override_warn(
+		type_ref *tfor, where *old, where *new, int whole)
 {
-	expr *op = expr_new_op(op_plus);
-	op->lhs = base;
-	op->rhs = expr_new_val(i);
-	return expr_new_deref(op);
+	char buf[WHERE_BUF_SIZ];
+
+	WARN_AT(new,
+			"overriding %sinitialisation of \"%s\"\n"
+			"%s: prior initialisation here",
+			whole ? "entire " : "",
+			type_ref_to_str(tfor),
+			where_str_r(buf, old));
 }
 
-static type_ref *decl_initialise_array(
-		decl_init ***init_iter,
-		type_ref *const tfor_wrapped, expr *base, stmt *init_code)
+static decl_init *decl_init_brace_up_scalar(
+		decl_init *current, init_iter *iter, type_ref *const tfor,
+		symtable *stab)
 {
-	decl_init *dinit = **init_iter;
-	type_ref *tfor_deref, *tfor;
-	int complete_to = 0;
+	decl_init *first_init;
+	where *const w = ITER_WHERE(iter, &tfor->where);
 
-	switch(dinit ? dinit->type : decl_init_brace){
-		case decl_init_scalar:
+	if(current){
+		override_warn(tfor, &current->where, w, 0);
+
+		decl_init_free_1(current);
+	}
+
+	if(!iter->pos || !*iter->pos){
+		first_init = decl_init_new_w(decl_init_scalar, w);
+		first_init->bits.expr = expr_new_val(0); /* default init for everything */
+		return first_init;
+	}
+
+	first_init = *iter->pos++;
+
+	if(first_init->desig)
+		DIE_AT(&first_init->where, "initialising scalar with %s designator",
+				DESIG_TO_STR(first_init->desig->type));
+
+	if(first_init->type == decl_init_brace){
+		init_iter it;
+		it.pos = first_init->bits.ar.inits;
+		return decl_init_brace_up_r(current, &it, tfor, stab);
+	}
+
+	/* fold */
+	{
+		char buf[TYPE_REF_STATIC_BUFSIZ];
+		expr *e = FOLD_EXPR(first_init->bits.expr, stab);
+
+		/* for the warning */
+		fold_type_ref_equal(
+					tfor, e->tree_type, &first_init->where,
+					WARN_ASSIGN_MISMATCH,
+					DECL_CMP_ALLOW_VOID_PTR | DECL_CMP_ALLOW_SIGNED_UNSIGNED,
+					"mismatching types in initialisation (%s <-- %s)",
+					type_ref_to_str_r(buf, tfor), type_ref_to_str(e->tree_type));
+
+		/* attempt to insert regardless, e.g. _Bool x = 5;
+		 *  - they match but we need the _Bool cast */
+		fold_insert_casts(tfor, &first_init->bits.expr, stab,
+				&first_init->bits.expr->where, "initialisation");
+	}
+
+	return first_init;
+}
+
+static decl_init **decl_init_brace_up_array2(
+		decl_init **current, decl_init ***range_store,
+		init_iter *iter,
+		symtable *stab,
+		type_ref *next_type, const int limit)
+{
+	unsigned n = dynarray_count(current), i = 0, j = 0;
+	decl_init *this;
+
+	while((this = *iter->pos)){
+		desig *des;
+
+		if((des = this->desig)){
+			consty k[2];
+
+			this->desig = des->next;
+
+			if(des->type != desig_ar){
+				DIE_AT(&this->where,
+						"%s designator can't designate array",
+						DESIG_TO_STR(des->type));
+			}
+
+			FOLD_EXPR(des->bits.range[0], stab);
+			const_fold(des->bits.range[0], &k[0]);
+
+			if(des->bits.range[1]){
+				FOLD_EXPR(des->bits.range[1], stab);
+				const_fold(des->bits.range[1], &k[1]);
+			}else{
+				memcpy(&k[1], &k[0], sizeof k[1]);
+			}
+
+			if(k[0].type != CONST_VAL || k[1].type != CONST_VAL)
+				DIE_AT(&this->where, "non-constant array-designator");
+
+			if(k[0].bits.iv.val < 0 || k[1].bits.iv.val < 0)
+				DIE_AT(&this->where, "negative array index initialiser");
+
+			if(limit > -1
+			&& (k[0].bits.iv.val >= (long)limit
+			||  k[1].bits.iv.val >= (long)limit))
+			{
+				DIE_AT(&this->where, "designating outside of array bounds (%d)", limit);
+			}
+
+			i = k[0].bits.iv.val;
+			j = k[1].bits.iv.val;
+		}else if(limit > -1 && i >= (unsigned)limit){
+			break;
+		}
+
 		{
-			expr *e = dinit->bits.expr;
+			decl_init *replacing = NULL, *replace_save = NULL;
+			unsigned replace_idx;
+			decl_init *braced;
+			int partial_replace = 0;
 
-			if(expr_kind(e, str)){
-				/* can't const fold, since it's not folded yet */
-				stringval *sv = &e->bits.str.sv;
+			if(i < n && current[i] != DYNARRAY_NULL){
+				replacing = current[i]; /* replacing object `i' */
 
-				/* const char [] init - need to check tfor is of the same type */
-				type_ref *rar = type_ref_is(tfor_wrapped, type_ref_array);
+				/* we can't designate sub parts of a [x ... y] subobject yet,
+				 * as this requires being able to copy the init from x to y,
+				 * then replace a subobject in y, which we don't have the data
+				 * structures to do
+				 *
+				 * disallow, unless it's of scalar type
+				 * i.e. x[] = { [0 ... 2] = f(), [1] = 5 }
+				 * ^ fine, as we can't replace subobjects of scalars
+				 */
+				if(replacing != DYNARRAY_NULL
+				&& this->type != decl_init_brace
+				&& !type_ref_is_scalar(next_type)){
+					/* we can replace brace inits IF they're constant (as a special
+					 * case), which is usually a common usage for static/global inits
+					 */
+					if(!decl_init_is_const(replacing, stab)){
+						char wbuf[WHERE_BUF_SIZ];
 
-				if(type_ref_is_type(type_ref_next(rar), type_char)){
-					int i;
-
-					complete_to = sv->len;
-
-					for(i = 0; i < complete_to; i++){
-						expr *e  = expr_new_val(sv->str[i]);
-						expr *to = expr_new_array_idx(base, i);
-
-						dynarray_add((void ***)&init_code->codes,
-								expr_to_stmt(
-									expr_new_assign(to, e),
-									init_code->symtab));
+						DIE_AT(&this->where,
+								"can't replace _part_ of array-range subobject without braces\n"
+								"%s: array range here", where_str_r(wbuf, &replacing->where));
 					}
 
-					tfor = tfor_wrapped;
-					goto complete_ar;
+					/*
+					 * else - partial replacement
+					 * resolve the copy, then pass the copy down so sub-inits can
+					 * update/replace it
+					 */
+					partial_replace = 1;
+
+					if(replacing->type == decl_init_copy){
+						decl_init_resolve_copy(current, i);
+						replacing = current[i];
+					}
+				}
+
+				if(!partial_replace)
+					replacing = NULL; /* prevent free + we're starting anew */
+			}
+
+			if(partial_replace && i < j){
+				/* we're replacing something with a range */
+				replace_save = decl_init_copy_const(replacing);
+			}
+
+			/* check for char[] init */
+			braced = decl_init_brace_up_r(replacing, iter, next_type, stab);
+
+			dynarray_padinsert(&current, i, &n, braced);
+
+			if(i < j){ /* then we have a range to copy */
+				const size_t copy_idx = dynarray_count(*range_store);
+
+				/* if we've replaced something existing with a range, e.g.
+				 * typedef struct { int i, j; } pair;
+				 * pair x[] = { { 1, 2 }, [0 ... 5].j = 3 };
+				 *
+				 * we want: 1, 3, { 0, 3 }...
+				 *
+				 * so we keep the { 1, 3 } custom like it is,
+				 * and add replace_save to the range_stores instead
+				 */
+
+				/* keep track of the initial copy ({ 1, 3 })
+				 * aggregate in .range_store */
+				dynarray_add(range_store, braced);
+
+				if(replace_save){
+					/* keep track of what we replaced */
+					dynarray_add(range_store, replace_save);
+				}
+
+				for(replace_idx = i; replace_idx <= j; replace_idx++){
+					decl_init *cpy = decl_init_new_w(decl_init_copy, &braced->where);
+
+					if(partial_replace){
+						decl_init *old = replace_idx < n ? current[replace_idx] : NULL;
+
+						if(old == DYNARRAY_NULL)
+							old = NULL;
+
+						if(old){
+							DIE_AT(&old->where, "can't replace with a range currently");
+						}
+					}
+
+					cpy->bits.range_copy = &(*range_store)[copy_idx];
+
+					dynarray_padinsert(&current, replace_idx, &n, cpy);
+				}
+			}
+		}
+
+		i++;
+		j++;
+	}
+
+	return current;
+}
+
+static decl_init **decl_init_brace_up_sue2(
+		decl_init **current, decl_init ***range_store,
+		init_iter *iter,
+		symtable *stab,
+		struct_union_enum_st *sue, const int is_anon)
+{
+	unsigned n = dynarray_count(current), i;
+	unsigned sue_nmem;
+	decl_init *this;
+
+	(void)range_store;
+
+	if(sue_incomplete(sue))
+		DIE_AT(ITER_WHERE(iter, &sue->where), "initialising %s %s",
+				sue_str(sue), sue->spel);
+
+	/* check for copy-init */
+	if((this = *iter->pos) && this->type == decl_init_scalar){
+		expr *e = FOLD_EXPR(this->bits.expr, stab);
+
+		if(type_ref_is_s_or_u(e->tree_type) == sue){
+			/* copy init */
+			dynarray_padinsert(&current, 0, &n, this);
+			return current;
+		}
+	}
+
+	sue_nmem = sue_nmembers(sue);
+	/* check for {} */
+	if(sue_nmem == 0
+	&& (this = *iter->pos)
+	&& (this->type != decl_init_brace
+		|| dynarray_count(this->bits.ar.inits) != 0))
+	{
+		WARN_AT(&this->where, "missing {} initialiser for empty %s",
+				sue_str(sue), sue->spel);
+	}
+
+	for(i = 0; (this = *iter->pos); i++){
+		desig *des;
+		decl_init *braced_sub = NULL;
+
+		if((des = this->desig)){
+			/* find member, set `i' to its index */
+			struct_union_enum_st *in;
+			decl *mem;
+			unsigned j = 0;
+			int found = 0;
+
+			if(des->type != desig_struct){
+				DIE_AT(&this->where,
+						"%s designator can't designate struct",
+						DESIG_TO_STR(des->type));
+			}
+
+			this->desig = des->next;
+
+			mem = struct_union_member_find(sue, des->bits.member, &j, &in);
+			if(!mem){
+				/* if we're an anonymous struct, return out */
+				if(is_anon){
+					this->desig = des;
+					break;
+				}
+
+				DIE_AT(&this->where,
+						"%s %s contains no such member \"%s\"",
+						sue_str(sue), sue->spel, des->bits.member);
+			}
+
+			for(j = 0; sue->members[j]; j++){
+				decl *jmem = sue->members[j]->struct_member;
+
+				if(jmem == mem){
+					found = 1;
+				}else if(!jmem->spel && in){
+					struct_union_enum_st *jmem_sue = type_ref_is_s_or_u(jmem->ref);
+					if(jmem_sue == in){
+						decl_init *replacing;
+
+						/* anon struct/union, sub init it, restoring the desig. */
+						this->desig = des;
+
+						replacing = j < n
+							&& current[j] != DYNARRAY_NULL ? current[j] : NULL;
+
+						braced_sub = decl_init_brace_up_aggregate(
+								replacing, iter, stab, jmem->ref,
+								(aggregate_brace_f *)&decl_init_brace_up_sue2, in, 1);
+
+						found = 1;
+					}
+				}
+				if(found){
+					i = j;
+					break;
 				}
 			}
 
-			/* check for scalar init isn't done here */
+			if(!found)
+				ICE("couldn't find member %s", des->bits.member);
+		}
+
+		if(i < sue_nmem){
+			sue_member *mem = sue->members[i];
+			decl_init *replacing = NULL;
+
+			if(!mem)
+				break;
+
+			if(i < n && current[i] != DYNARRAY_NULL)
+				replacing = current[i];
+
+			if(!braced_sub){
+				braced_sub = decl_init_brace_up_r(
+						replacing, iter,
+						mem->struct_member->ref, stab);
+			}
+
+			dynarray_padinsert(&current, i, &n, braced_sub);
+
+			if(sue->primitive == type_union)
+				break;
+		}else{
 			break;
 		}
+	}
+
+	return current;
+}
+
+static int find_desig(decl_init **const ar)
+{
+	decl_init **i, *d;
+
+	for(i = ar; (d = *i); i++)
+		if(d->desig)
+			return i - ar;
+
+	return -1;
+}
+
+static decl_init *decl_init_brace_up_aggregate(
+		decl_init *current,
+		init_iter *iter,
+		symtable *stab, type_ref *tfor,
+		aggregate_brace_f *brace_up_f,
+		void *arg1, int arg2)
+{
+	/* we don't pass through iter in the case that:
+	 * we are brace or next is a designator, i.e.
+	 *
+	 * struct A
+	 * {
+	 *   struct
+	 *   {
+	 *     int sub1, sub2, sub3, ...;
+	 *   } sub;
+	 *   int i;
+	 * };
+	 *
+	 * struct A x = {
+	 *   { 1 }, 2 // we've specified sub with a brace
+	 *            // don't pass through `2'
+	 * };
+	 *
+	 * struct A y = {
+	 *    1, 3, .i = 2 // initialise sub1 with { 1, 3 },
+	 *              // but don't pass .i=2 to the sub-init
+	 * };
+	 */
+	int desig_index;
+
+	if(iter->pos[0]->type == decl_init_brace){
+		/* pass down this as a new iterator */
+		decl_init *first = iter->pos[0];
+		decl_init **old_subs = first->bits.ar.inits;
+
+		if(old_subs){
+			init_iter it;
+
+			it.pos = old_subs;
+
+			/* prevent designator loss */
+			if(first->desig){
+				/* need to insert our desig */
+				struct desig *sub_d = old_subs[0]->desig, *di;
+
+				/* insert */
+				old_subs[0]->desig = first->desig;
+
+				/* tack old on the end */
+				for(di = old_subs[0]->desig; di->next; di = di->next);
+				di->next = sub_d;
+
+			}else if(current){ /* gcc (not clang) compliant */
+				/* we have no sub-designator - we're overriding an entire sub object */
+
+				override_warn(tfor, &current->where, &first->where, 1 /* whole */);
+				/* XXX: memleak decl_init_free(current); */
+				current = NULL; /* prevent any current init getting through */
+			}
+
+			first->bits.ar.inits = brace_up_f(
+					current ? current->bits.ar.inits : NULL,
+					/* clang would always pass current->bits.inits through here
+					 * and not current=NULL above
+					 */
+					&first->bits.ar.range_inits,
+					&it,
+					stab, arg1, arg2);
+
+			free(old_subs);
+
+		}else{
+			/* {} */
+			first->bits.ar.inits = NULL;
+			dynarray_add(&first->bits.ar.inits, (decl_init *)DYNARRAY_NULL);
+		}
+
+		++iter->pos;
+		return first; /* this is in the {} state */
+
+	}else if((desig_index = find_desig(iter->pos + 1)) >= 0){
+		decl_init *const saved = iter->pos[++desig_index];
+		decl_init *ret = decl_init_new_w(decl_init_brace, ITER_WHERE(iter, NULL));
+		init_iter it = { iter->pos };
+
+		iter->pos[desig_index] = NULL;
+
+		ret->bits.ar.inits = brace_up_f(
+				current ? current->bits.ar.inits : NULL,
+				&ret->bits.ar.range_inits,
+				&it, stab, arg1, arg2);
+
+		iter->pos[desig_index] = saved;
+
+		/* need to increment only by the amount that was used */
+		iter->pos += it.pos - iter->pos;
+
+		return ret;
+	}else{
+		decl_init *r = decl_init_new_w(decl_init_brace,
+				ITER_WHERE(iter, NULL));
+
+		/* we need to pull from iter, bracing up our children inits */
+		r->bits.ar.inits = brace_up_f(
+				current ? current->bits.ar.inits : NULL,
+				&r->bits.ar.range_inits,
+				iter, stab, arg1, arg2);
+
+		return r;
+	}
+}
+
+static void die_incomplete(init_iter *iter, type_ref *tfor)
+{
+	DIE_AT(ITER_WHERE(iter, &tfor->where),
+			"initialising %s", type_ref_to_str(tfor));
+}
+
+static decl_init *decl_init_brace_up_array_pre(
+		decl_init *current, init_iter *iter,
+		type_ref *next_type, symtable *stab)
+{
+	const int limit = type_ref_is_incomplete_array(next_type)
+		? -1 : type_ref_array_len(next_type);
+
+	type_ref *next = type_ref_next(next_type);
+
+	const int for_str_ar = !!type_ref_is_type(
+			type_ref_is_array(next_type), type_char);
+
+	decl_init *this;
+
+	if(!type_ref_is_complete(next))
+		die_incomplete(iter, next_type);
+
+	if(for_str_ar
+	&& (this = *iter->pos)
+	/* allow "xyz" or { "xyz" } */
+	&& (this->type == decl_init_scalar
+	|| (this->type == decl_init_brace &&
+		  1 == dynarray_count(this->bits.ar.inits) &&
+		  this->bits.ar.inits[0]->type == decl_init_scalar)))
+	{
+		decl_init *strk = this->type == decl_init_scalar
+			? this : this->bits.ar.inits[0];
+
+		consty k;
+
+		FOLD_EXPR(strk->bits.expr, stab);
+		const_fold(strk->bits.expr, &k);
+
+		if(k.type == CONST_STRK){
+			where *const w = &strk->where;
+			unsigned str_i;
+
+			if(k.bits.str->wide)
+				ICE("TODO: wide string init");
+
+			decl_init *braced = decl_init_new_w(decl_init_brace, w);
+
+			for(str_i = 0; str_i < k.bits.str->len; str_i++){
+				decl_init *char_init = decl_init_new_w(decl_init_scalar, w);
+
+				char_init->bits.expr = expr_new_val(k.bits.str->str[str_i]);
+
+				dynarray_add(&braced->bits.ar.inits, char_init);
+			}
+
+			++iter->pos;
+
+			return braced;
+		}
+	}
+
+	return decl_init_brace_up_aggregate(
+			current, iter, stab, next_type,
+			(aggregate_brace_f *)&decl_init_brace_up_array2,
+			type_ref_next(next_type), limit);
+}
+
+
+static decl_init *decl_init_brace_up_r(
+		decl_init *current, init_iter *iter,
+		type_ref *tfor, symtable *stab)
+{
+	struct_union_enum_st *sue;
+
+	fold_type_ref(tfor, NULL, stab);
+
+	if(type_ref_is(tfor, type_ref_array))
+		return decl_init_brace_up_array_pre(
+				current, iter, tfor, stab);
+
+	/* incomplete check _after_ array, since we allow T x[] */
+	if(!type_ref_is_complete(tfor))
+		die_incomplete(iter, tfor);
+
+	if((sue = type_ref_is_s_or_u(tfor)))
+		return decl_init_brace_up_aggregate(
+				current, iter, stab, tfor,
+				(aggregate_brace_f *)&decl_init_brace_up_sue2,
+				sue, 0 /* is anon */);
+
+	return decl_init_brace_up_scalar(current, iter, tfor, stab);
+}
+
+static decl_init *decl_init_brace_up_start(
+		decl_init *init, type_ref **ptfor,
+		symtable *stab)
+{
+	decl_init *inits[2] = {
+		init, NULL
+	};
+	init_iter it = { inits };
+	type_ref *const tfor = *ptfor;
+	decl_init *ret;
+
+	fold_type_ref(tfor, NULL, stab);
+
+	/* check for non-brace init */
+	if(init
+	&& init->type == decl_init_scalar
+	&& type_ref_is_array(tfor))
+	{
+		expr *e = FOLD_EXPR(init->bits.expr, stab);
+
+		if(!type_ref_equal(e->tree_type, tfor, DECL_CMP_EXACT_MATCH)){
+			DIE_AT(&init->where,
+					"%s must be initialised with an initialiser list",
+					type_ref_to_str(tfor));
+		}
+		/* else struct copy init */
+	}
+
+	ret = decl_init_brace_up_r(NULL, &it, tfor, stab);
+
+	if(type_ref_is_incomplete_array(tfor)){
+		/* complete it */
+		UCC_ASSERT(ret->type == decl_init_brace, "unbraced array");
+		*ptfor = type_ref_complete_array(tfor, dynarray_count(ret->bits.ar.inits));
+	}
+
+	return ret;
+}
+
+void decl_init_brace_up_fold(decl *d, symtable *stab)
+{
+	if(!d->init_normalised){
+		d->init = decl_init_brace_up_start(d->init, &d->ref, stab);
+		d->init_normalised = 1;
+	}
+}
+
+
+static expr *decl_init_create_assignments_sue_base(
+		struct_union_enum_st *sue, expr *base,
+		decl **psmem,
+		unsigned idx, unsigned n)
+{
+	decl *smem;
+
+	UCC_ASSERT(idx < n, "oob member init");
+
+	*psmem = smem = sue->members[idx]->struct_member;
+
+	return expr_new_struct(
+			base,
+			1 /* . */,
+			expr_new_identifier(smem->spel));
+}
+
+void decl_init_create_assignments_base(
+		decl_init *init,
+		type_ref *tfor, expr *base,
+		stmt *code)
+{
+	if(!init){
+		expr *zero;
+
+zero_init:
+		zero = builtin_new_memset(
+				expr_new_addr(base),
+				0,
+				type_ref_size(tfor, &base->where));
+
+		dynarray_add(
+				&code->codes,
+				expr_to_stmt(zero, code->symtab));
+		return;
+	}
+
+	switch(init->type){
+		case decl_init_scalar:
+			dynarray_add(
+					&code->codes,
+					expr_to_stmt(
+						expr_new_assign_init(base, init->bits.expr),
+						code->symtab));
+			break;
+
+		case decl_init_copy:
+			ICE("copy got through assignment");
 
 		case decl_init_brace:
-			break;
-	}
-
-	tfor = tfor_wrapped;
-	tfor_deref = type_ref_is(tfor_wrapped, type_ref_array)->ref;
-
-	/* walk through the inits, pulling as many as we need/one sub-brace for a sub-init */
-	/* e.g.
-	 * int x[]    = { 1, 2, 3 };    subinit = int,    pull 1 for each
-	 * int x[][2] = { 1, 2, 3, 4 }  subinit = int[2], pull 2 for each
-	 *
-	 * int x[][2] = { {1}, 2, 3, {4}, 5, {6}, {7} };
-	 * subinit = int[2], pull as show:
-	 *              { {1}, 2, 3, {4}, 5, {6}, {7} };
-	 *                 ^   ^--^   ^   ^   ^    ^      -> 6 inits
-	 */
-
-	if(dinit){
-		decl_init **array_iter = (dinit->type == decl_init_scalar ? *init_iter : dinit->bits.inits);
-		const int known_length = !type_ref_is_incomplete_array(tfor);
-		const int lim = known_length ? type_ref_array_len(tfor) : INT_MAX;
-		int i;
-#ifdef DEBUG_DECL_INIT
-		decl_init **start = array_iter;
-#endif
-
-		INIT_DEBUG("initialising array from %s"
-				", nested: %d, %p\n",
-				decl_init_to_str(dinit->type),
-				dinit->type == decl_init_brace,
-				(void *)dinit);
-		INIT_DEBUG_DEPTH(++);
-
-		for(i = 0; array_iter && *array_iter && i < lim; i++){
-			/* index into the main-array */
-			expr *this = expr_new_array_idx(base, i);
-
-			INIT_DEBUG("initialising (%s)[%d] with %s, di %p\n",
-					type_ref_to_str(tfor), i,
-					decl_init_to_str((*array_iter)->type),
-					(void *)*array_iter);
-
-			INIT_DEBUG_DEPTH(++);
-			decl_init_create_assignments_discard(
-					&array_iter, tfor_deref, this, init_code);
-			INIT_DEBUG_DEPTH(--);
-		}
-
-		if(known_length){
-			/* need to zero-fill */
-			for(; i < lim; i++){
-				expr *this = expr_new_array_idx(base, i);
-
-				decl_init_create_assignments_discard(
-						&array_iter /* ptr to null */,
-						tfor_deref, this, init_code);
-			}
-		}
-
-		complete_to = i;
-
-		/* advance by the number of steps we moved over,
-		 * if not nested, otherwise advance by one, over the sub-brace
-		 */
-		*init_iter += (dinit->type == decl_init_scalar) ? complete_to : 1;
-
-		INIT_DEBUG_DEPTH(--);
-		INIT_DEBUG(
-				"array, len %d finished, i=%d, "
-				"*array_iter=%p, array_iter-start = %ld <-- adv-by\n",
-				complete_to, i,
-				(void *)*array_iter, (long)(array_iter - start));
-	}
-
-	/* patch the type size */
-complete_ar:
-	if(type_ref_is_incomplete_array(tfor)){
-		tfor = type_ref_complete_array(tfor, complete_to);
-
-		INIT_DEBUG("completed array to %d - %s\n",
-				complete_to, type_ref_to_str(tfor));
-	}
-
-	return tfor;
-}
-
-static void decl_initialise_sue(decl_init ***init_iter,
-		struct_union_enum_st *sue, expr *base, stmt *init_code)
-{
-	/* iterate over each member, pulling from the dinit */
-	sue_member **smem;
-	decl_init *dinit = *init_iter ? **init_iter : NULL;
-	decl_init **sue_iter;
-	int braced;
-	int cnt;
-
-	if(dinit == NULL)
-		ICE("TODO: null dinit for struct");
-
-	if(sue_incomplete(sue)){
-		type_ref *r = type_ref_new_type(type_new_primitive(type_struct));
-		r->bits.type->sue = sue;
-
-		DIE_AT(&dinit->where, "initialising %s", type_ref_to_str(r));
-	}
-
-	braced = dinit->type == decl_init_brace;
-	sue_iter = braced ? dinit->bits.inits : *init_iter;
-
-	for(smem = sue->members, cnt = 0;
-			smem && *smem;
-			smem++, cnt++)
-	{
-		decl *const sue_mem = (*smem)->struct_member;
-
-		/* XXX: room for optimisation below - avoid sue name lookup */
-		expr *accessor = expr_new_struct(base, 1 /* a.b */,
-				expr_new_identifier(sue_mem->spel));
-
-		decl_init_create_assignments_discard(
-				&sue_iter,
-				sue_mem->ref,
-				accessor,
-				init_code);
-	}
-
-	if(braced)
-		cnt = 1; /* we walk over the one brace, not multiple scalar/subinits */
-
-	*init_iter += cnt;
-	INIT_DEBUG("initialised %s, *init_iter += %d -> %p (%s)\n",
-			sue_str(sue), cnt, (void *)*init_iter,
-			*init_iter && **init_iter
-			? decl_init_to_str((**init_iter)->type)
-			: "n/a");
-}
-
-static void decl_initialise_scalar(
-		decl_init ***init_iter, expr *base, stmt *init_code)
-{
-	decl_init *const dinit = *init_iter ? **init_iter : NULL;
-	expr *assign_from, *assign_init;
-
-	if(dinit){
-		if(dinit->type == decl_init_brace){
-			/* initialising scalar with { ... } - pick first */
-			decl_init **inits = dinit->bits.inits;
-
-			if(inits && inits[1])
-				WARN_AT(&inits[1]->where, "excess initaliser%s", inits[2] ? "s" : "");
-
-			/* this seems to be called when it shouldn't... */
-			decl_initialise_scalar(&inits, base, init_code);
-			goto fin;
-		}
-
-		assert(dinit->type == decl_init_scalar);
-		assign_from = dinit->bits.expr;
-	}else{
-		assign_from = expr_new_val(0);
-	}
-
-	assign_init = expr_new_assign(base, assign_from);
-	assign_init->assign_is_init = 1;
-
-	dynarray_add((void ***)&init_code->codes,
-			expr_to_stmt(assign_init, init_code->symtab));
-
-	if(dinit)
-fin: ++*init_iter; /* we've used this init */
-}
-
-static type_ref *decl_init_create_assignments(
-		decl_init ***init_iter,
-		type_ref *const tfor_wrapped, /* could be typedef/cast */
-		expr *base,
-		stmt *init_code)
-{
-	/* iterate over tfor's array/struct members/scalar,
-	 * pulling from dinit as necessary */
-	type_ref *tfor, *tfor_ret = tfor_wrapped;
-	struct_union_enum_st *sue;
-
-	if((tfor = type_ref_is(tfor_wrapped, type_ref_array))){
-		tfor_ret = decl_initialise_array(init_iter, tfor, base, init_code);
-
-	}else if((sue = type_ref_is_s_or_u(tfor_wrapped))){
-		decl_initialise_sue(init_iter, sue, base, init_code);
-
-	}else{
-		decl_initialise_scalar(init_iter, base, init_code);
-	}
-
-	return tfor_ret;
-}
-
-static void decl_init_create_assignments_discard(
-		decl_init ***init_iter, type_ref *const tfor_wrapped,
-		expr *base, stmt *init_code)
-{
-	type_ref *t = decl_init_create_assignments(init_iter, tfor_wrapped, base, init_code);
-
-	if(t != tfor_wrapped)
-		type_ref_free_1(t);
-}
-
-static type_ref *decl_init_create_assignments_from_init(
-		decl_init *single_init,
-		type_ref *const tfor_wrapped, /* could be typedef/cast */
-		expr *base,
-		stmt *init_code)
-{
-	decl_init *ar[] = { single_init, NULL };
-	decl_init **it = ar;
-	struct_union_enum_st *sue;
-
-	/* init validity checks */
-	if(single_init->type == decl_init_scalar){
-		type_ref *tar;
-
-		if((sue = type_ref_is_s_or_u(tfor_wrapped))
-		|| (tar = type_ref_is(       tfor_wrapped, type_ref_array)))
 		{
-			if(type_ref_is_type(type_ref_next(tar), type_char)){
-				/* is char[] */
-				expr *e = single_init->bits.expr;
+			struct_union_enum_st *sue = type_ref_is_s_or_u(tfor);
+			const size_t n = sue ? dynarray_count(sue->members) : type_ref_array_len(tfor);
+			decl_init **i;
+			unsigned idx;
 
-				if(expr_kind(e, str))
-					goto fine; /* arg is char * */
+			if(sue /* check for struct copy */
+			&& dynarray_count(init->bits.ar.inits) == 1
+			&& init->bits.ar.inits[0] != DYNARRAY_NULL
+			&& init->bits.ar.inits[0]->type == decl_init_scalar)
+			{
+				expr *e = init->bits.ar.inits[0]->bits.expr;
+
+				if(type_ref_is_s_or_u(e->tree_type) == sue){
+					dynarray_add(
+							&code->codes,
+							expr_to_stmt(
+								builtin_new_memcpy(
+									base, e, type_ref_size(e->tree_type, &e->where)),
+								code->symtab));
+					return;
+				}
 			}
 
-			DIE_AT(&single_init->where, "%s must be initalised with an initialiser list",
-					sue ? sue_str(sue) : "array");
+			if(sue && sue->primitive == type_union){
+				decl *smem;
+				expr *sue_base;
+
+				/* look for a non null init */
+				for(idx = 0, i = init->bits.ar.inits; *i == DYNARRAY_NULL; i++, idx++);
+
+				if(*i){
+					sue_base = decl_init_create_assignments_sue_base(
+							sue, base, &smem, idx, n);
+
+					decl_init_create_assignments_base(
+							*i,
+							smem->ref,
+							sue_base,
+							code);
+				}else{
+					/* zero init union - make sure we get all of it */
+					goto zero_init;
+				}
+				return;
+			}
+
+			for(idx = 0, i = init->bits.ar.inits; idx < n; (*i ? i++ : 0), idx++){
+				decl_init *di = *i;
+				expr *new_base;
+				type_ref *next_type = NULL;
+
+				if(di == DYNARRAY_NULL)
+					di = NULL;
+
+				if(sue){
+					decl *smem;
+
+					UCC_ASSERT(sue->primitive != type_union, "sneaky union");
+
+					new_base = decl_init_create_assignments_sue_base(
+							sue, base, &smem, idx, n);
+
+					next_type = smem->ref;
+				}else{
+					new_base = expr_new_array_idx(base, idx);
+
+					if(!next_type)
+						next_type = type_ref_next(tfor);
+
+					if(di && di != DYNARRAY_NULL && di->type == decl_init_copy){
+						/* TODO: ideally when the backend is sufficiently optimised, we
+						 * will always be able to use the memcpy case, and it'll pick it up
+						 */
+						size_t copy_idx = DECL_INIT_COPY_IDX(di, init);
+
+						if(0){ //di->type == decl_init_scalar){
+#if 0
+							size_t n = dynarray_count(code->codes);
+							stmt *last_assign;
+
+							UCC_ASSERT(n > 0 && copy_idx < n,
+									"bad range init - bad index (n=%ld, idx=%ld)",
+									(long)n, (long)idx);
+
+							last_assign = code->codes[copy_idx];
+
+							/* insert like so:
+							 *
+							 * this = (prev_assign = ...)
+							 *        ^-----------------^
+							 *          already present
+							 */
+							last_assign->expr = expr_new_assign_init(new_base, last_assign->expr);
+#endif
+						}else{
+							/* memcpy from the previous init */
+							expr *memcp;
+							expr *last_base = code->codes[copy_idx]->expr->lhs;
+
+							UCC_ASSERT(next_type, "no next type for array (i=%d)", idx);
+
+							memcp = builtin_new_memcpy(
+									new_base, last_base, type_ref_size(next_type, &di->where));
+
+							dynarray_add(&code->codes,
+									expr_to_stmt(memcp, code->symtab));
+						}
+						continue;
+					}
+				}
+
+				decl_init_create_assignments_base(di, next_type, new_base, code);
+			}
+			break;
 		}
 	}
-
-fine:
-	return decl_init_create_assignments(
-			&it, tfor_wrapped, base, init_code);
-}
-
-void decl_init_create_assignments_for_spel(decl *d, stmt *init_code)
-{
-	d->ref = decl_init_create_assignments_from_init(
-			d->init, d->ref,
-			expr_new_identifier(d->spel), init_code);
-}
-
-void decl_init_create_assignments_for_base(decl *d, expr *base, stmt *init_code)
-{
-	d->ref = decl_init_create_assignments_from_init(
-			d->init, d->ref, base, init_code);
 }

@@ -20,10 +20,11 @@ static const struct
 	{ "__unix__",       "1"  },
 	/* __STDC__ TODO */
 
-	{ "__SIZE_TYPE__",    "unsigned long"  },
-	{ "__PTRDIFF_TYPE__", "unsigned long"  },
+#define TYPE(ty, c) { "__" #ty "_TYPE__", #c  }
 
-	{ "__GOT_SHORT_LONG", "1"  },
+	TYPE(SIZE, unsigned long),
+	TYPE(PTRDIFF, unsigned long),
+	TYPE(WINT, unsigned),
 
 	/* non-standard */
 	{ "__BLOCKS__",     "1"  },
@@ -55,12 +56,12 @@ int option_line_info = 1;
 void dirname_push(char *d)
 {
 	/*fprintf(stderr, "dirname_push(%s = %p)\n", d, d);*/
-	dynarray_add((void ***)&dirnames, d);
+	dynarray_add(&dirnames, d);
 }
 
 char *dirname_pop()
 {
-	char *r = dynarray_pop((void ***)&dirnames);
+	char *r = dynarray_pop(char *, &dirnames);
 	(void)r;
 	/*fprintf(stderr, "dirname_pop() = %s (%p)\n", r, r);
 	return r; TODO - free*/
@@ -92,25 +93,43 @@ int main(int argc, char **argv)
 	const char *infname, *outfname;
 	int ret = 0;
 	int i;
+	int platform_win32 = 0;
 
 	infname = outfname = NULL;
 
 	for(i = 0; initial_defs[i].nam; i++)
 		macro_add(initial_defs[i].nam, initial_defs[i].val);
 
-	if(platform_type() == PLATFORM_64){
-		macro_add("__x86_64__", "1");
-		macro_add("__LP64__", "1");
+	switch(platform_type()){
+		case PLATFORM_x86_64:
+			macro_add("__LP64__", "1");
+			macro_add("__x86_64__", "1");
+			break;
+
+		case PLATFORM_mipsel_32:
+			macro_add("__MIPS__", "1");
 	}
 
 	switch(platform_sys()){
 #define MAP(t, s) case t: macro_add(s, "1"); break
 		MAP(PLATFORM_LINUX,   "__linux__");
 		MAP(PLATFORM_FREEBSD, "__FreeBSD__");
-		MAP(PLATFORM_DARWIN,  "__DARWIN__");
-		MAP(PLATFORM_CYGWIN,  "__CYGWIN__");
 #undef MAP
+
+		case PLATFORM_DARWIN:
+			macro_add("__DARWIN__", "1");
+			macro_add("__MACH__", "1"); /* TODO: proper detection for these */
+			macro_add("__APPLE__", "1");
+			break;
+
+		case PLATFORM_CYGWIN:
+			macro_add("__CYGWIN__", "1");
+			platform_win32 = 1;
+			break;
 	}
+
+	macro_add("__WCHAR_TYPE__",
+			platform_win32 ? "short" : "int");
 
 	calctime();
 
@@ -153,16 +172,24 @@ int main(int argc, char **argv)
 
 			case 'D':
 			{
+				char *arg = argv[i] + 2;
 				char *eq;
-				if(!argv[i][2])
+				if(!*arg)
 					goto usage;
 
-				eq = strchr(argv[i] + 2, '=');
+				eq = strchr(arg, '=');
 				if(eq){
+					/* FIXME: this is hacky and doesn't
+					 * work for things like "-D531,31;5=a".
+					 * Should be pushed through the parser */
+					if(strchr(arg, '('))
+						die("can't handle function-like macros via -D yet");
+
 					*eq++ = '\0';
-					macro_add(argv[i] + 2, eq);
+
+					macro_add(arg, eq);
 				}else{
-					macro_add(argv[i] + 2, "1"); /* -Dhello means #define hello 1 */
+					macro_add(arg, "1"); /* -Dhello means #define hello 1 */
 				}
 				break;
 			}

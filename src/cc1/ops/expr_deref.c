@@ -19,7 +19,7 @@ void fold_expr_deref(expr *e, symtable *stab)
 	if(expr_kind(ptr, addr) && !ptr->expr_addr_implicit)
 		WARN_AT(&ptr->where, "possible optimisation for *& expression");
 
-	e->tree_type = type_ref_ptr_depth_dec(ptr->tree_type);
+	e->tree_type = type_ref_ptr_depth_dec(ptr->tree_type, &e->where);
 }
 
 void gen_expr_deref_lea(expr *e, symtable *stab)
@@ -45,12 +45,16 @@ void gen_expr_str_deref(expr *e, symtable *stab)
 
 void const_expr_deref(expr *e, consty *k)
 {
-	const_fold(expr_deref_what(e), k);
+	expr *from = expr_deref_what(e);
+
+	const_fold(from, k);
+
 	switch(k->type){
 		case CONST_VAL:
 		case CONST_ADDR:
 		case CONST_STRK:
-			k->type = CONST_NEED_ADDR;
+			k->type = CONST_ADDR_OR_NEED_TREF(from->tree_type);
+			/* *(int [10])a -> still need_addr */
 		default:
 			break;
 	}

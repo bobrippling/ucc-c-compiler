@@ -9,6 +9,9 @@ decl_attr *parse_attr_format()
 	func = token_current_spel();
 	EAT(token_identifier);
 
+	if(!func)
+		return NULL; // TODO: token_current_spel() and token_get_current_str(..,..) checkes everywhere
+
 	da = decl_attr_new(attr_format);
 
 #define CHECK(s) !strcmp(func, s) || !strcmp(func, "__" s "__")
@@ -47,7 +50,7 @@ decl_attr *parse_attr_section()
 	if(curtok != token_string)
 		DIE_AT(NULL, "string expected for section");
 
-	token_get_current_str(&func, &len);
+	token_get_current_str(&func, &len, NULL);
 	EAT(token_string);
 
 	for(i = 0; i < len; i++)
@@ -107,24 +110,44 @@ decl_attr *parse_attr_nonnull()
 	return da;
 }
 
-decl_attr *parse_attr_sentinel()
+static unsigned long optional_parened_int(void)
 {
-	decl_attr *da = decl_attr_new(attr_sentinel);
-
 	if(accept(token_open_paren)){
-		int u;
+		long u;
+
+		if(accept(token_close_paren))
+			goto out;
 
 		EAT(token_integer);
 
 		u = currentval.val;
-
-		if(u < 0)
-			WARN_AT(NULL, "negative sentinel argument ignored");
-		else
-			da->bits.sentinel = u;
+		if(u < 0){
+			WARN_AT(NULL, "negative attribute argument ignored");
+			u = 0;
+		}
 
 		EAT(token_close_paren);
+
+		return u;
 	}
+out:
+	return 0;
+}
+
+decl_attr *parse_attr_sentinel()
+{
+	decl_attr *da = decl_attr_new(attr_sentinel);
+
+  da->bits.sentinel = optional_parened_int();
+
+	return da;
+}
+
+decl_attr *parse_attr_aligned()
+{
+	decl_attr *da = decl_attr_new(attr_aligned);
+
+  da->bits.align = optional_parened_int();
 
 	return da;
 }
@@ -172,6 +195,7 @@ static struct
 	ATTR(nonnull),
 	ATTR(packed),
 	ATTR(sentinel),
+	ATTR(aligned),
 
 	ATTR(cdecl),
 	ATTR(stdcall),
@@ -231,6 +255,8 @@ decl_attr *parse_attr(void)
 
 		ident = token_current_spel();
 		EAT(token_identifier);
+		if(!ident)
+			break;
 
 		if((*next = parse_attr_single(ident)))
 			next = &(*next)->next;

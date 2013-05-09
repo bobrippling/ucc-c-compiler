@@ -129,9 +129,9 @@ void gen_asm_global(decl *d)
 	/* order of the if matters */
 	if(DECL_IS_FUNC(d) || type_ref_is(d->ref, type_ref_block)){
 		/* check .func_code, since it could be a block */
-		int nargs = 0;
+		int nargs = 0, is_vari;
 		decl **aiter;
-		char *sp;
+		const char *sp;
 
 		if(!d->func_code)
 			return;
@@ -144,14 +144,18 @@ void gen_asm_global(decl *d)
 
 		out_label(sp);
 
-		out_func_prologue(d);
+		out_func_prologue(d->ref,
+				d->func_code->symtab->auto_total_size,
+				nargs,
+				is_vari = type_ref_is_variadic_func(d->ref));
 
 		curfunc_lblfin = out_label_code(sp);
 
 		gen_stmt(d->func_code);
+
 		out_label(curfunc_lblfin);
 
-		out_func_epilogue(d);
+		out_func_epilogue(d->ref);
 
 		free(curfunc_lblfin);
 
@@ -161,12 +165,25 @@ void gen_asm_global(decl *d)
 	}
 }
 
-void gen_asm(symtable *globs)
+static void gen_gasm(char *asm_str)
+{
+	fprintf(cc_out[SECTION_TEXT], "%s\n", asm_str);
+}
+
+void gen_asm(symtable_global *globs)
 {
 	decl **diter;
+	struct symtable_gasm **iasm = globs->gasms;
 
-	for(diter = globs->decls; diter && *diter; diter++){
+	for(diter = globs->stab.decls; diter && *diter; diter++){
 		decl *d = *diter;
+
+		while(iasm && d == (*iasm)->before){
+			gen_gasm((*iasm)->asm_str);
+
+			if(!*++iasm)
+				iasm = NULL;
+		}
 
 		/* inline_only aren't currently inlined */
 		if(!d->is_definition)
@@ -182,10 +199,12 @@ void gen_asm(symtable *globs)
 			case store_inline:
 			case store_auto:
 			case store_register:
-			case store_typedef:
 				ICE("%s storage on global %s",
 						decl_store_to_str(d->store),
 						decl_to_str(d));
+
+			case store_typedef:
+				continue;
 
 			case store_static:
 				break;
@@ -203,4 +222,7 @@ void gen_asm(symtable *globs)
 
 		UCC_ASSERT(out_vcount() == 0, "non empty vstack after global gen");
 	}
+
+	for(; iasm && *iasm; ++iasm)
+		gen_gasm((*iasm)->asm_str);
 }

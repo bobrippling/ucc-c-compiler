@@ -33,10 +33,9 @@ struct stmt
 	int kills_below_code; /* break, return, etc - for checking dead code */
 	int expr_no_pop;
 
-	decl **decls; /* block definitions, e.g. { int i... } */
 	stmt **codes; /* for a code block */
 
-	symtable *symtab;
+	symtable *symtab; /* block definitions, e.g. { int i... } */
 
 	/* parents - applicable for break and continue */
 	stmt *parent;
@@ -44,10 +43,11 @@ struct stmt
 
 struct stmt_flow
 {
-	expr *for_init, *for_while, *for_inc;
-
-	decl    **for_init_decls;  /* C99 for initialisation (and ucc if-init) */
 	symtable *for_init_symtab; /* for(int b;;){} - symtab for b */
+	stmt *inits;
+
+	/* for specific */
+	expr *for_init, *for_while, *for_inc;
 };
 
 #include "ops/stmt_break.h"

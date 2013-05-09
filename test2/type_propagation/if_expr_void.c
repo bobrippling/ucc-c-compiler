@@ -1,5 +1,5 @@
 // RUN: %ucc %s; [ $? -ne 0 ]
-// RUN: %ucc %s 2>&1 | %check %s
+// RUN: %check %s
 
 main()
 {

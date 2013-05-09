@@ -16,15 +16,23 @@
 sym *sym_new(decl *d, enum sym_type t)
 {
 	sym *s = umalloc(sizeof *s);
+	UCC_ASSERT(!d->sym, "%s already has a sym", d->spel);
 	s->decl = d;
 	d->sym  = s;
 	s->type = t;
 	return s;
 }
 
+sym *sym_new_stab(symtable *stab, decl *d, enum sym_type t)
+{
+	sym *s = sym_new(d, t);
+	dynarray_add(&stab->decls, d);
+	return s;
+}
+
 void symtab_rm_parent(symtable *child)
 {
-	dynarray_rm((void **)child->parent->children, child);
+	dynarray_rm(child->parent->children, child);
 	child->parent = NULL;
 }
 
@@ -33,7 +41,7 @@ void symtab_set_parent(symtable *child, symtable *parent)
 	if(child->parent)
 		symtab_rm_parent(child);
 	child->parent = parent;
-	dynarray_add((void ***)&parent->children, child);
+	dynarray_add(&parent->children, child);
 }
 
 symtable *symtab_new(symtable *parent)
@@ -42,6 +50,11 @@ symtable *symtab_new(symtable *parent)
 	if(parent)
 		symtab_set_parent(p, parent);
 	return p;
+}
+
+symtable_global *symtabg_new(void)
+{
+	return umalloc(sizeof *symtabg_new());
 }
 
 symtable *symtab_root(symtable *child)
@@ -89,63 +102,18 @@ sym *symtab_has(symtable *tab, decl *d)
 	return symtab_search2(tab, d, decl_cmp, 1);
 }
 
-sym *symtab_add(symtable *tab, decl *d, enum sym_type t, int with_sym, int prepend)
+void symtab_add_args(
+		symtable *stab, funcargs *fargs,
+		const char *func_spel, decl *d_func)
 {
-	const int descend = (d->store & STORE_MASK_STORE) == store_extern;
-	sym *new;
-	char buf[WHERE_BUF_SIZ + 4];
-
-	if(d->spel && (new = symtab_search2(tab, d->spel, spel_cmp, descend))){
-
-		/* allow something like: int x; f(){extern int x;} _only_ if types are compatible */
-		if(descend && decl_equal(d, new->decl, DECL_CMP_EXACT_MATCH))
-			goto fine;
-
-		if(new->decl)
-			snprintf(buf, sizeof buf, " at:\n%s", where_str(&new->decl->where));
-		else
-			*buf = '\0';
-
-		DIE_AT(&d->where, "\"%s\" %s%s",
-				d->spel,
-				descend ? "incompatible with definition" : "already declared",
-				buf);
-
-	}else{
-		struct_union_enum_st *sue;
-		enum_member *m;
-
-fine:
-		enum_member_search(&m, &sue, tab, d->spel);
-
-		if(m)
-			DIE_AT(&d->where, "redeclaring %s\n%s",
-					d->spel, where_str_r(buf, &sue->where));
-	}
-
-	if(with_sym)
-		new = sym_new(d, t), d->sym = new;
-	else
-		new = NULL;
-
-	(prepend ? dynarray_prepend : dynarray_add)((void ***)&tab->decls, d);
-
-	return new;
-}
-
-void symtab_add_args(symtable *stab, funcargs *fargs, const char *sp, decl *d_func)
-{
-	int nargs, i;
-
 	if(fargs->arglist){
-		for(nargs = 0; fargs->arglist[nargs]; nargs++);
-
-		/* add args backwards, since we push them onto the stack backwards - still need to do this here? */
-		for(i = nargs - 1; i >= 0; i--){
+		int i;
+		for(i = 0; fargs->arglist[i]; i++){
 			if(!fargs->arglist[i]->spel){
-				DIE_AT(&fargs->where, "function \"%s\" has unnamed arguments", sp);
+				DIE_AT(&fargs->where, "function \"%s\" has unnamed arguments (%d)",
+						func_spel, i + 1);
 			}else{
-				sym *s = SYMTAB_ADD(stab, fargs->arglist[i], sym_arg);
+				sym *s = sym_new_stab(stab, fargs->arglist[i], sym_arg);
 				s->owning_func = d_func->ref;
 			}
 		}

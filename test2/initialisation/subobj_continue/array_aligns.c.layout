@@ -1,0 +1,9 @@
+abc:
+.zero 8
+.long 76
+.long 3
+.long 4
+.long 5
+.zero 8
+.long 3
+.zero 16

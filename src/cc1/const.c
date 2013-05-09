@@ -47,13 +47,13 @@ int const_expr_is_const(expr *e)
 }
 #endif
 
-int const_expr_and_zero(expr *e)
+static int const_expr_zero(expr *e, int zero)
 {
 	consty k;
 
 	const_fold(e, &k);
 
-	return k.type == CONST_VAL && k.bits.iv.val == 0;
+	return k.type == CONST_VAL && (zero ? k.bits.iv.val == 0 : k.bits.iv.val != 0);
 }
 
 void const_fold_need_val(expr *e, intval *piv)
@@ -64,6 +64,16 @@ void const_fold_need_val(expr *e, intval *piv)
 	UCC_ASSERT(k.type == CONST_VAL, "not const");
 
 	memcpy_safe(piv, &k.bits.iv);
+}
+
+int const_expr_and_non_zero(expr *e)
+{
+	return const_expr_zero(e, 0);
+}
+
+int const_expr_and_zero(expr *e)
+{
+	return const_expr_zero(e, 1);
 }
 
 /*

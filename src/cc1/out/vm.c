@@ -6,7 +6,7 @@
 #include "../../util/util.h"
 #include "../data_structs.h"
 #include "vstack.h"
-#include "x86_64.h"
+#include "impl.h"
 #include "../cc1.h"
 
 static void vm_show_v(struct vstack *vs)

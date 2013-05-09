@@ -27,7 +27,7 @@ ssize_t readlink(const char *restrict path, char *restrict buf, size_t bufsize);
 int link(const char *from, const char *new);
 int symlink(const char *link, const char *new);
 
-int pipe(int [2]);
+int pipe(int [static 2]);
 
 extern char **environ;
 

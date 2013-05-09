@@ -37,6 +37,8 @@ static const char *const colour_strs[] = {
 	"\033[37m",
 };
 
+int warning_count = 0;
+
 const char *where_str_r(char buf[WHERE_BUF_SIZ], const struct where *w)
 {
 	snprintf(buf, WHERE_BUF_SIZ, WHERE_FMT, WHERE_ARGS);
@@ -74,21 +76,34 @@ static void warn_show_line(const struct where *w)
 	if(show_current_line && w->line_str){
 		static int buffed = 0;
 		char *line = ustrdup(w->line_str);
-		char *p;
+		char *p, *nonblank;
 		int i;
 
 		if(!buffed){
+			/* line buffer stderr since we're outputting chars */
 			setvbuf(stderr, NULL, _IOLBF, 0);
 			buffed = 1;
 		}
 
+		nonblank = NULL;
 		for(p = line; *p; p++)
-			if(*p == '\t')
-				*p = ' ';
+			switch(*p){
+				case '\t':
+					*p = ' ';
+				case ' ':
+					break;
+				default:
+					/* trim initial whitespace */
+					if(!nonblank)
+						nonblank = p;
+			}
 
-		fprintf(stderr, "  \"%s\"\n", line);
+		if(!nonblank)
+			nonblank = line;
 
-		for(i = w->chr + 2; i > 0; i--)
+		fprintf(stderr, "  \"%s\"\n", nonblank);
+
+		for(i = w->chr + 2 - (nonblank - line); i > 0; i--)
 			fputc(' ', stderr);
 		fputs("^\n", stderr);
 
@@ -110,6 +125,8 @@ void vwarn(const struct where *w, int err, int show_line, const char *fmt, va_li
 
 	fprintf(stderr, "%s: %s: ", where_str(w), err ? "error" : "warning");
 	vfprintf(stderr, fmt, l);
+
+	warning_count++;
 
 	if(fmt[strlen(fmt)-1] == ':'){
 		fputc(' ', stderr);
@@ -202,7 +219,7 @@ char *fline(FILE *f)
 		line[pos++] = c;
 		if(pos == len){
 			len *= 2;
-			line = urealloc(line, len);
+			line = urealloc1(line, len);
 			line[pos] = '\0';
 		}
 

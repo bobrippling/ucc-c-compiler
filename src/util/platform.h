@@ -3,8 +3,8 @@
 
 enum platform
 {
-	PLATFORM_32,
-	PLATFORM_64
+	PLATFORM_mipsel_32,
+	PLATFORM_x86_64
 };
 
 enum platform_sys
@@ -17,7 +17,11 @@ enum platform_sys
 
 enum platform     platform_type(void);
 enum platform_sys platform_sys( void);
+int platform_32bit(void);
 
-int platform_word_size(void);
+#ifndef ucc_const
+#  define ucc_const
+#endif
+unsigned platform_word_size(void) ucc_const;
 
 #endif

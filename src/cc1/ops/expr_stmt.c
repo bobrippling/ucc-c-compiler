@@ -14,7 +14,7 @@ void fold_expr_stmt(expr *e, symtable *stab)
 
 	(void)stab;
 
-	last = dynarray_count((void **)e->code->codes);
+	last = dynarray_count(e->code->codes);
 	if(last){
 		last_stmt = e->code->codes[last - 1];
 		last_stmt->freestanding = 1; /* allow the final to be freestanding */
@@ -27,7 +27,7 @@ void fold_expr_stmt(expr *e, symtable *stab)
 		e->tree_type = last_stmt->expr->tree_type;
 		fold_disallow_st_un(e, "({ ... }) statement");
 	}else{
-		e->tree_type = type_ref_new_VOID(); /* void expr */
+		e->tree_type = type_ref_cached_VOID(); /* void expr */
 	}
 
 	e->freestanding = 1; /* ({ ... }) on its own is freestanding */
@@ -38,7 +38,16 @@ void gen_expr_stmt(expr *e, symtable *stab)
 	(void)stab;
 
 	gen_stmt(e->code);
-	/* last stmt is told to leave its result on the stack */
+	/* last stmt is told to leave its result on the stack
+	 *
+	 * if the last stmt isn't an expression, we put something
+	 * on the stack for it
+	 */
+	{
+		int n = dynarray_count((void **)e->code->codes);
+		if(n > 0 && !stmt_kind(e->code->codes[n-1], expr))
+			out_push_noop();
+	}
 
 	out_comment("end of ({...})");
 }

@@ -15,11 +15,11 @@
 #include "str.h"
 
 #define SINGLE_TOKEN(err) \
-	if(dynarray_count((void **)tokens) != 1 || tokens[0]->tok != TOKEN_WORD) \
+	if(dynarray_count(tokens) != 1 || tokens[0]->tok != TOKEN_WORD) \
 		CPP_DIE(err)
 
 #define NO_TOKEN(err) \
-	if(dynarray_count((void **)tokens)) \
+	if(dynarray_count(tokens)) \
 		CPP_DIE(err)
 
 #define NOOP_RET() if(should_noop()) return
@@ -69,7 +69,7 @@ token **tokenise(char *line)
 		char c;
 
 		t = umalloc(sizeof *t);
-		dynarray_add((void ***)&tokens, t);
+		dynarray_add(&tokens, t);
 
 		while(isspace(*p)){
 			t->had_whitespace = 1;
@@ -131,7 +131,7 @@ word:
 
 	if(*p){
 		t = umalloc(sizeof *t);
-		dynarray_add((void ***)&tokens, t);
+		dynarray_add(&tokens, t);
 		if(isspace(*p))
 			t->had_whitespace = 1;
 		t->tok = TOKEN_OTHER;
@@ -225,7 +225,7 @@ void handle_define(token **tokens)
 					goto for_fin;
 
 				case TOKEN_WORD:
-					dynarray_add((void ***)&args, ustrdup(token_str(tokens[i])));
+					dynarray_add(&args, ustrdup(token_str(tokens[i])));
 
 					i++;
 					switch(tokens[i]->tok){
@@ -277,7 +277,9 @@ void handle_error_warning(token **tokens, const char *pre)
 
 	s = tokens_join(tokens);
 
-	CPP_WARN("#%s: %s\n", pre, s);
+	preproc_backtrace();
+
+	CPP_WARN("#%s: %s", pre, s);
 
 	free(s);
 }
@@ -356,13 +358,16 @@ retry:
 	fname[len-1] = '\0';
 	fname++;
 
+	i = dynarray_count((void **)dirnames);
+	dname = dirnames[i - 1];
+
 	if(*fname == '/'){
 		/* absolute path */
 		path = ustrdup(fname);
 		goto abs_path;
 	}
 
-	i = dynarray_count((void **)dirnames);
+	i = dynarray_count(dirnames);
 	dname = dirnames[i - 1];
 
 	if(lib){

@@ -21,7 +21,14 @@ sub lines
 	return @l;
 }
 
-die "Usage: $0 file_with_checks.c\n" unless @ARGV == 1;
+my $verbose = 0;
+
+if(@ARGV and $ARGV[0] eq '-v'){
+	$verbose = 1;
+	shift;
+}
+
+die "Usage: $0 [-v] file_with_checks.c\n" unless @ARGV == 1;
 
 my @lines;
 my $line;
@@ -49,8 +56,15 @@ for(chomp_all(<STDIN>)){
 
 $line = 1;
 for(chomp_all(lines(shift))){
-	if(m#// *CHECK: *(.*)#){
-		push @{$lines[$line]->{checks}}, { check => $1, line => $line };
+	if(m#// *CHECK: *(\^)? *(.*)#){
+		my($above, $check) = ($1, $2);
+		my $line_resolved = $line;
+
+		--$line_resolved if defined $above;
+
+		push @{$lines[$line_resolved - 1]->{checks}}, {
+			check => $check,
+			line => $line_resolved };
 	}
 	$line++;
 }
@@ -109,10 +123,12 @@ iter_lines(
 		print "  checks:\n" if @checks;
 		print "    " . h2s($_) . "\n" for @checks;
 	}
-);
+) if $verbose;
 
 # ---------------------------
-# compare
+# make sure all checks are fulfilled. don't check all warnings have checks
+
+my $missing_warning = 0;
 
 iter_lines(
 	sub {
@@ -121,33 +137,35 @@ iter_lines(
 		my @checks = @$check_ref;
 		my @warns  = @$warn_ref;
 
-		my $nchecks = @checks;
-		my $nwarns  = @warns;
+		# check all
+		for my $check (@checks){
+			my $match = $check->{check}; # /regex/
+			my $rev = 0;
 
-		if($nchecks != $nwarns){
-			warn "line: $line, warnings ($nwarns) != checks ($nchecks)\n";
-		}elsif($nchecks){
-			# make sure they're equal using $check
-			my @copy = @warns;
+			if($match =~ m#^(!)?/(.*)/$#){
+				$rev = defined $1;
+			}else{
+				die2 "invalid CHECK (line $check->{line}): '$match'"
+			}
 
-			for(@checks){
-				my $check = $_;
-				my $match = $check->{check}; # /regex/
-				die2 "invalid CHECK: '$match'" unless $match =~ m#^/(.*)/$#;
 
-				my $regex = $1;
-				my $found = 0;
+			my $regex = $2;
+			my $found = 0;
 
-				for(@copy){
-					if($_ =~ /$regex/){
-						$found = 1;
-						$_ = ''; # silence
-						last;
-					}
+			for(@warns){
+				if($_->{msg} =~ /$regex/){
+					$found = 1;
+					$_->{msg} = ''; # silence
+					last;
 				}
+			}
 
-				warn "check $match not found in warnings, line $check->{line}\n" unless $found;
+			if($found == $rev){
+				$missing_warning = 1;
+				warn "check $match " . ($rev ? "" : "not ") . "found in warnings on line $check->{line}\n"
 			}
 		}
 	}
 );
+
+exit $missing_warning;

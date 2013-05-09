@@ -8,8 +8,21 @@ sub usage
 	die "Usage: $0 [--ucc=path] file\n";
 }
 
+sub timeout
+{
+	my $r = system("./timeout", '1', @_);
+	return $r;
+}
+
+sub basename
+{
+	my $s = shift;
+	return $1 if $s =~ m;/([^/]+$);;
+	return $s;
+}
+
 my $ucc = '../ucc';
-my $f = undef;
+my $file = undef;
 my $verbose = 0;
 
 for(@ARGV){
@@ -17,35 +30,41 @@ for(@ARGV){
 		$ucc = $1;
 	}elsif($_ eq '-v'){
 		$verbose = 1;
-	}elsif(!defined $f){
-		$f = $_;
+	}elsif(!defined $file){
+		$file = $_;
 	}else{
 		usage();
 	}
 }
 
-(my $target = $f) =~ s/\.c$//;
+(my $target = basename($file)) =~ s/\.[a-z]+$/.out/;
 $target = "./$target";
 
 my %vars = (
-	's'         => $f,
+	's'         => $file,
 	't'         => $target,
 	'ucc'       => $ucc,
-	'check'     => './check.pl',
-	'asmcheck'  => './asmcheck.pl'
+	'check'     => './check.sh' . ($verbose ? " -v" : ""),
+	'asmcheck'  => './asmcheck.pl',
+	'output_check' => './stdoutcheck.pl',
+	'ocheck'    => './retcheck.pl',
+	'layout_check' => './layout_check.sh',
 );
 
-open F, '<', $f or die2 "$f: $!";
+my $ran = 0;
+
+open F, '<', $file or die2 "$file: $!";
 while(<F>){
 	chomp;
 
-	if(my($command, $sh) = m{// *([a-z]+): *(.*)}i){
-		my $subst_sh = apply_vars($sh);
+	if(my($command, $sh) = m{// *([A-Z]+): *(.*)}){
+		$ran++;
 
 		if($command eq 'RUN'){
+			my $subst_sh = apply_vars($sh);
 			print "$0: run: $subst_sh\n" if $verbose;
 
-			my $ec = system($subst_sh);
+			my $ec = timeout($subst_sh);
 
 			die2 "command '$subst_sh' failed" if $ec;
 		}else{
@@ -57,7 +76,12 @@ close F;
 
 unlink $target;
 
-exit;
+if($ran){
+	exit 0;
+}else{
+	warn "no commands in $file\n";
+	exit 1;
+}
 
 # --------
 
@@ -68,8 +92,14 @@ sub die2
 
 sub apply_vars
 {
-	(my $f = shift) =~ s/%([a-z]+)/
-	$vars{$1} ? $vars{$1} : die2 "undefined variable %$1"/ge;
+	my $f = shift;
+
+	for my $regex ("^()", "([^%])"){
+		$f =~ s/$regex%([a-z_]+)/
+		$vars{$2} ? $1 . $vars{$2} : die2 "undefined variable %$2 in $file"/ge;
+	}
+
+	$f =~ s/%%/%/g;
 
 	return $f;
 }

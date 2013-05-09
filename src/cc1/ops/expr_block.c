@@ -1,6 +1,7 @@
 #include "ops.h"
 #include "expr_block.h"
 #include "../out/lbl.h"
+#include "../../util/dynarray.h"
 
 const char *str_expr_block(void)
 {
@@ -9,9 +10,9 @@ const char *str_expr_block(void)
 
 void fold_expr_block(expr *e, symtable *stab)
 {
-	/* add e->block_args to symtable */
-	symtab_add_args(e->code->symtab, e->block_args,
-			"block-function", NULL /* link after */);
+	/* add e->bits.block_args to symtable */
+	symtab_add_args(e->code->symtab, e->bits.block_args,
+			"block-function", curdecl_func);
 
 	/* prevent access to nested vars */
 	e->code->symtab->parent = symtab_root(e->code->symtab);
@@ -49,13 +50,13 @@ void fold_expr_block(expr *e, symtable *stab)
 		if(r && r->expr){
 			e->tree_type = r->expr->tree_type;
 		}else{
-			e->tree_type = type_ref_new_VOID();
+			e->tree_type = type_ref_cached_VOID();
 		}
 	}
 
 	/* copied the type, now make it a (^)() */
 	e->tree_type = type_ref_new_block(
-			type_ref_new_func(e->tree_type, e->block_args),
+			type_ref_new_func(e->tree_type, e->bits.block_args),
 			qual_const
 			);
 
@@ -64,21 +65,11 @@ void fold_expr_block(expr *e, symtable *stab)
 		decl *df = decl_new();
 
 		df->spel = out_label_block(curdecl_func->spel);
-		e->bits.block_sym = SYMTAB_ADD(symtab_root(stab), df, sym_global);
-
-		/* link args to the function */
-		{
-			decl **i;
-			for(i = e->block_args->arglist; i && *i; i++){
-				decl *d = *i;
-
-				if(d->sym)
-					d->sym->owning_func = e->tree_type;
-			}
-		}
+		e->bits.block_sym = sym_new_stab(symtab_root(stab), df, sym_global);
 
 		df->is_definition = 1; /* necessary for code-gen */
 		df->func_code = e->code;
+		df->ref = e->tree_type;
 
 		fold_decl(df, stab); /* funcarg folding + typedef/struct lookup, etc */
 	}
@@ -115,7 +106,7 @@ void mutate_expr_block(expr *e)
 expr *expr_new_block(type_ref *rt, funcargs *args, stmt *code)
 {
 	expr *e = expr_new_wrapper(block);
-	e->block_args = args;
+	e->bits.block_args = args;
 	e->code = code;
 	e->bits.tref = rt; /* return type if not null */
 	return e;

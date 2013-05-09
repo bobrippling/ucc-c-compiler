@@ -1,3 +1,4 @@
+// RUN: %asmcheck %s
 struct A
 {
 	char a; /* b c d */

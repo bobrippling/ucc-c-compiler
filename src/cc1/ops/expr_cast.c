@@ -2,10 +2,12 @@
 #include <string.h>
 #include <stdarg.h>
 
-#include "../../util/alloc.h"
 #include "ops.h"
+#include "../../util/alloc.h"
+#include "../../util/platform.h"
 #include "expr_cast.h"
 #include "../out/asm.h"
+#include "../sue.h"
 
 const char *str_expr_cast()
 {
@@ -41,10 +43,10 @@ void fold_const_expr_cast(expr *e, consty *k)
 				switch(sz){
 					/* TODO: unsigned */
 
+#define CAST(sz, t) case sz: piv->val = (t)piv->val; break
 	/*
-#define CAST(sz, t) case sz: piv->val = (t)piv->val; break  - don't use host machine casting
-	*/
 #define CAST(sz, t) case sz: piv->val = piv->val & ~(-1 << (sz * 8 - 1)); break
+	*/
 
 					CAST(1, char);
 					CAST(2, short);
@@ -67,10 +69,7 @@ void fold_const_expr_cast(expr *e, consty *k)
 		case CONST_NO:
 			break;
 
-		case CONST_NEED_ADDR:
-			k->type = CONST_NO; /* e.g. (int *)i */
-			break;
-
+		case CONST_NEED_ADDR: /* allow if we're casting to a same-sized type */
 		case CONST_ADDR:
 		case CONST_STRK:
 		{
@@ -78,8 +77,42 @@ void fold_const_expr_cast(expr *e, consty *k)
 			/* allow if we're casting to a same-size type */
 			get_cast_sizes(e->tree_type, e->expr->tree_type, &l, &r);
 
-			if(l < r)
-				k->type = CONST_NO; /* e.g. (int)&a */
+			if(l < r){
+				/* shouldn't fit, check if it will */
+				switch(k->type){
+					default:
+						ICE("bad switch");
+
+					case CONST_STRK:
+						/* no idea where it will be in memory,
+						 * can't fit into a smaller type */
+						k->type = CONST_NO; /* e.g. (int)&a */
+						break;
+
+					case CONST_NEED_ADDR:
+					case CONST_ADDR:
+						if(k->bits.addr.is_lbl){
+							k->type = CONST_NO; /* similar to strk case */
+						}else{
+							unsigned long new = k->bits.addr.bits.memaddr;
+							const int pws = platform_word_size();
+
+							/* mask out bits so we have it truncated to `l' */
+							if(l < pws){
+								/* 8 = bits in a byte */
+								new &= ~(~0UL << (8 * l));
+
+								if(k->bits.addr.bits.memaddr != new)
+									/* can't cast without losing value - not const */
+									k->type = CONST_NO;
+
+							}else{
+								/* what are you doing... */
+								k->type = CONST_NO;
+							}
+						}
+				}
+			}
 			break;
 		}
 	}
@@ -127,6 +160,17 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 				buf, size_rhs);
 	}
 
+	if((flag = (type_ref_is_fptr(tlhs) && type_ref_is_nonfptr(trhs)))
+	||         (type_ref_is_fptr(trhs) && type_ref_is_nonfptr(tlhs)))
+	{
+		char buf[TYPE_REF_STATIC_BUFSIZ];
+		WARN_AT(&e->where, "%scast from %spointer to %spointer\n"
+				"%s <- %s",
+				e->expr_cast_implicit ? "implicit " : "",
+				flag ? "" : "function-", flag ? "function-" : "",
+				type_ref_to_str(tlhs), type_ref_to_str_r(buf, trhs));
+	}
+
 #ifdef W_QUAL
 	if(decl_is_ptr(tlhs) && decl_is_ptr(trhs) && (tlhs->type->qual | trhs->type->qual) != tlhs->type->qual){
 		const enum type_qualifier away = trhs->type->qual & ~tlhs->type->qual;
@@ -166,6 +210,28 @@ void gen_expr_cast(expr *e, symtable *stab)
 	/* check float <--> int conversion */
 	if(type_ref_is_floating(tto) != type_ref_is_floating(tfrom))
 		ICE("TODO: float <-> int casting");
+
+	if(fopt_mode & FOPT_PLAN9_EXTENSIONS){
+		/* allow b to be an anonymous member of a */
+		struct_union_enum_st *a_sue = type_ref_is_s_or_u(type_ref_is_ptr(tto)),
+												 *b_sue = type_ref_is_s_or_u(type_ref_is_ptr(tfrom));
+
+		if(a_sue && b_sue && a_sue != b_sue){
+			decl *mem = struct_union_member_find_sue(b_sue, a_sue);
+
+			if(mem){
+				/*char buf[TYPE_REF_STATIC_BUFSIZ];
+				fprintf(stderr, "CAST %s -> %s, adj by %d\n",
+						type_ref_to_str(tfrom),
+						type_ref_to_str_r(buf, tto),
+						mem->struct_offset);*/
+
+				out_change_type(type_ref_cached_VOID_PTR());
+				out_push_i(type_ref_cached_INTPTR_T(), mem->struct_offset);
+				out_op(op_plus);
+			}
+		}
+	}
 
 	out_cast(tfrom, tto);
 

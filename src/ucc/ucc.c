@@ -5,11 +5,17 @@
 #include <errno.h>
 #include <assert.h>
 
+/* umask */
+#include <sys/types.h>
+#include <sys/stat.h>
+
 #include "ucc.h"
 #include "ucc_ext.h"
 #include "ucc_lib.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
+#include "../util/util.h"
+#include "../util/platform.h"
 
 enum mode
 {
@@ -37,6 +43,8 @@ struct cc_file
 			 *assemb;
 
 	char *out;
+
+	int preproc_asm;
 };
 #define FILE_IN_MODE(f)        \
 ((f)->preproc ? mode_preproc : \
@@ -71,7 +79,7 @@ static char *tmpfilenam()
 	if(!remove_these) /* only register once */
 		atexit(unlink_files);
 
-	dynarray_add((void ***)&remove_these, r);
+	dynarray_add(&remove_these, r);
 
 	return r;
 }
@@ -114,8 +122,11 @@ preproc:
 compile:
 			case 'i':
 				ASSIGN(compile);
+				goto after_compile;
 assemb:
 			case 'S':
+				file->preproc_asm = 1;
+after_compile:
 				ASSIGN(preproc); /* preprocess .S assembly files by default */
 			case 's':
 				ASSIGN(assemb);
@@ -139,22 +150,27 @@ void gen_obj_file(struct cc_file *file, char **args[4], enum mode mode)
 	char *in = file->in;
 
 	if(file->preproc){
-		preproc(in, file->preproc, args[mode_preproc]);
+		/* if we're preprocessing, but not cc1'ing, but we are as'ing,
+		 * it's an assembly language file */
+		if(file->preproc_asm)
+			dynarray_add(&args[mode_preproc], ustrdup("-D__ASSEMBLER__=1"));
 
-		if(mode == mode_preproc)
-			return;
+		preproc(in, file->preproc, args[mode_preproc]);
 
 		in = file->preproc;
 	}
 
+	if(mode == mode_preproc)
+		return;
+
 	if(file->compile){
 		compile(in, file->compile, args[mode_compile]);
 
-		if(mode == mode_compile)
-			return;
-
 		in = file->compile;
 	}
+
+	if(mode == mode_compile)
+		return;
 
 	if(file->assemb){
 		assemble(in, file->assemb, args[mode_assemb]);
@@ -170,8 +186,8 @@ void rename_files(struct cc_file *files, int nfiles, char *output, enum mode mod
 		/* path/to/input.c -> path/to/input.[os] */
 		char *new;
 
-		if(mode < mode_link && FILE_IN_MODE(&files[i]) == mode_link){
-			fprintf(stderr, "linker input \"%s\" unused with -%c present\n",
+		if(mode < FILE_IN_MODE(&files[i])){
+			fprintf(stderr, "input \"%s\" unused with -%c present\n",
 					files[i].in, mode_ch);
 			continue;
 		}
@@ -183,7 +199,9 @@ void rename_files(struct cc_file *files, int nfiles, char *output, enum mode mod
 					cat(files[i].preproc, output, i);
 				continue;
 			}else if(mode == mode_compile && !strcmp(output, "-")){
-				cat(files[i].compile, NULL, 0);
+				/* -S -o- */
+				if(files[i].compile)
+					cat(files[i].compile, NULL, 0);
 				continue;
 			}
 
@@ -218,7 +236,7 @@ void rename_files(struct cc_file *files, int nfiles, char *output, enum mode mod
 
 void process_files(enum mode mode, char **inputs, char *output, char **args[4], char *backend)
 {
-	const int ninputs = dynarray_count((void **)inputs);
+	const int ninputs = dynarray_count(inputs);
 	int i;
 	struct cc_file *files;
 	char **links;
@@ -228,11 +246,11 @@ void process_files(enum mode mode, char **inputs, char *output, char **args[4], 
 	links = gopts.nostdlib ? NULL : objfiles_stdlib();
 
 	if(!gopts.nostartfiles)
-		dynarray_add((void ***)&links, objfiles_start());
+		dynarray_add(&links, objfiles_start());
 
 	if(backend){
-		dynarray_add((void ***)&args[mode_compile], ustrdup("-X"));
-		dynarray_add((void ***)&args[mode_compile], ustrdup(backend));
+		dynarray_add(&args[mode_compile], ustrdup("-X"));
+		dynarray_add(&args[mode_compile], ustrdup(backend));
 	}
 
 	for(i = 0; i < ninputs; i++){
@@ -240,7 +258,7 @@ void process_files(enum mode mode, char **inputs, char *output, char **args[4], 
 
 		gen_obj_file(&files[i], args, mode);
 
-		dynarray_add((void ***)&links, ustrdup(files[i].out));
+		dynarray_add(&links, ustrdup(files[i].out));
 	}
 
 	if(mode == mode_link)
@@ -248,7 +266,7 @@ void process_files(enum mode mode, char **inputs, char *output, char **args[4], 
 	else
 		rename_files(files, ninputs, output, mode);
 
-	dynarray_free((void ***)&links, free);
+	dynarray_free(&links, free);
 
 	/*for(i = 0; i < ninputs; i++)
 		free_file(&files[i]);*/
@@ -256,6 +274,7 @@ void process_files(enum mode mode, char **inputs, char *output, char **args[4], 
 	free(files);
 }
 
+ucc_dead
 void die(const char *fmt, ...)
 {
 	const int len = strlen(fmt);
@@ -276,15 +295,18 @@ void die(const char *fmt, ...)
 	exit(1);
 }
 
-void ice(const char *fmt)
+void ice(const char *f, int line, const char *fn, const char *fmt, ...)
 {
+	(void)f;
+	(void)line;
+	(void)fn;
 	die("ICE: %s", fmt);
 }
 
 int main(int argc, char **argv)
 {
 	enum mode mode = mode_link;
-	int i;
+	int i, syntax_only = 0;
 	char **inputs = NULL;
 	char **args[4] = { 0 };
 	char *output = NULL;
@@ -298,6 +320,8 @@ int main(int argc, char **argv)
 		{ 'X', &backend  },
 	};
 
+	umask(0077); /* prevent reading of the temporary files we create */
+
 	gopts.assume = -1;
 	argv0 = argv[0];
 
@@ -306,10 +330,22 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
+	/* do before arg processing, so these can be removed */
+	switch(platform_sys()){
+		case PLATFORM_LINUX:
+		case PLATFORM_FREEBSD:
+			break;
+		case PLATFORM_CYGWIN:
+		case PLATFORM_DARWIN:
+			dynarray_add(&args[mode_compile], ustrdup("-fleading-underscore"));
+			dynarray_add(&args[mode_preproc], ustrdup("-D__LEADING_UNDERSCORE"));
+	}
+
+
 	for(i = 1; i < argc; i++){
 		if(!strcmp(argv[i], "--")){
 			while(++i < argc)
-				dynarray_add((void ***)&inputs, argv[i]);
+				dynarray_add(&inputs, argv[i]);
 			break;
 
 		}else if(*argv[i] == '-'){
@@ -322,7 +358,7 @@ int main(int argc, char **argv)
 				{
 					/* check for W%c, */
 					char c;
-					if(sscanf(arg, "-W%c,", &c) == 1){
+					if(sscanf(arg, "-W%c", &c) == 1 && arg[3] == ','){
 						switch(c){
 #define MAP(c, l) case c: arg += 4; goto arg_ ## l;
 							MAP('p', cpp);
@@ -336,12 +372,17 @@ int main(int argc, char **argv)
 					/* else default to -Wsomething - add to cc1 */
 				}
 
-#define ADD_ARG(to) dynarray_add((void ***)&args[to], ustrdup(arg))
+#define ADD_ARG(to) dynarray_add(&args[to], ustrdup(arg))
+
+				case 'f':
+					if(!strcmp(arg, "-fsyntax-only")){
+						syntax_only = 1;
+						continue;
+					}
 
 				case 'w':
-				case 'f':
 				case 'm':
-/*arg_cc1:*/
+arg_cc1:
 					ADD_ARG(mode_compile);
 					continue;
 
@@ -386,28 +427,37 @@ arg_ld:
 					continue;
 
 				case 'x':
+				{
+					const char *arg;
 					/* prevent implicit assumption of source */
-					if(!argv[++i])
+					if(argv[i][2])
+						arg = argv[i] + 2;
+					else if(!argv[++i])
 						die("-x needs an argument");
+					else
+						arg = argv[i];
 
 					/* TODO: "asm-with-cpp"? */
 					/* TODO: order-sensitive -x */
-					if(!strcmp(argv[i], "c"))
+					if(!strcmp(arg, "c"))
 						gopts.assume = mode_preproc;
-					else if(!strcmp(argv[i], "cpp"))
+					else if(!strcmp(arg, "cpp"))
 						gopts.assume = mode_compile;
-					else if(!strcmp(argv[i], "asm"))
+					else if(!strcmp(arg, "asm"))
 						gopts.assume = mode_assemb;
 					else
-						die("-x accepts \"c\", \"cpp\", or \"asm\", not \"%s\"", argv[i]);
+						die("-x accepts \"c\", \"cpp\", or \"asm\", not \"%s\"", arg);
 					continue;
+				}
 
 				case '\0':
 					/* "-" aka stdin */
 					goto input;
 
 				default:
-					if(!strcmp(argv[i], "-nostdlib"))
+					if(!strncmp(argv[i], "-std=", 5) || !strcmp(argv[i], "-ansi"))
+						goto arg_cc1;
+					else if(!strcmp(argv[i], "-nostdlib"))
 						gopts.nostdlib = 1;
 					else if(!strcmp(argv[i], "-nostartfiles"))
 						gopts.nostartfiles = 1;
@@ -440,15 +490,24 @@ arg_ld:
 			if(!found)
 unrec:	die("unrecognised option \"%s\"", argv[i]);
 		}else{
-input:	dynarray_add((void ***)&inputs, argv[i]);
+input:	dynarray_add(&inputs, argv[i]);
 		}
 	}
 
 	{
-		const int ninputs = dynarray_count((void **)inputs);
+		const int ninputs = dynarray_count(inputs);
 
 		if(output && ninputs > 1 && (mode == mode_compile || mode == mode_assemb))
 			die("can't specify '-o' with '-%c' and an output", MODE_ARG_CH(mode));
+
+		if(syntax_only){
+			if(output || mode != mode_link)
+				die("-%c specified in syntax-only mode",
+						output ? 'o' : MODE_ARG_CH(mode));
+
+			mode = mode_compile;
+			output = "/dev/null";
+		}
 
 		if(ninputs == 0)
 			die("no inputs");
@@ -470,8 +529,8 @@ input:	dynarray_add((void ***)&inputs, argv[i]);
 	process_files(mode, inputs, output, args, backend);
 
 	for(i = 0; i < 4; i++)
-		dynarray_free((void ***)&args[i], free);
-	dynarray_free((void ***)&inputs, NULL);
+		dynarray_free(&args[i], free);
+	dynarray_free(&inputs, NULL);
 
 	return 0;
 }

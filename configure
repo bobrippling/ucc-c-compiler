@@ -8,6 +8,7 @@ UCC_AS      = ${UCC_AS}
 UCC_LD      = ${UCC_LD}
 UCC_ARCH    = ${UCC_ARCH}
 UCC_LDFLAGS = ${UCC_LDFLAGS}
+UCC_CPU     = ${UCC_CPU}
 !
 
 	cat > src/ucc/cfg.h <<!
@@ -16,20 +17,6 @@ UCC_LDFLAGS = ${UCC_LDFLAGS}
 #define UCC_ARCH    "${UCC_ARCH}"
 #define UCC_LDFLAGS "${UCC_LDFLAGS}"
 !
-
-	if [ $1 = Linux ]
-	then
-		cat <<!
-	cmpq \$-1, %rax
-	jg .fin
-	negq %rax # get positive errno
-!
-	else
-		cat <<!
-	jnc .fin
-	# else, carry - err is in rax
-!
-	fi > lib/syscall_err.s
 
 	if [ $1 = Darwin ]
 	then
@@ -46,6 +33,7 @@ UCC_LDFLAGS = ${UCC_LDFLAGS}
 #define SECTION_TEXT $SECTION_TEXT
 #define SECTION_DATA $SECTION_DATA
 #define SECTION_BSS  $SECTION_BSS
+#define UCC_M32      ${UCC_M32}
 !
 
 	if ! which perl > /dev/null
@@ -71,13 +59,13 @@ UCC_LDFLAGS = ${UCC_LDFLAGS}
 	then echo "CFLAGS += -Wno-char-subscripts"
 	fi > src/src_config_platform.mk
 
-	echo "Configured for $1"
+	echo "Configured for $UCC_CPU $1"
 }
 
 
 usage(){
 	cat >&2 <<!
-Usage: $0 [--as=path/to/as] [clean]
+Usage: $0 [--as=path/to/as] [--cpu=...] [clean]
 !
 	exit 1
 }
@@ -88,35 +76,67 @@ UCC_LD=ld
 
 UCC_ARCH=elf64
 UCC_LDFLAGS=''
+UCC_CPU=x86_64
+UCC_M32=0
+
+unam="$(uname -s)"
+
+# defaults for an OS
+case "$unam" in
+	Darwin)
+		UCC_ARCH=macho64
+		UCC_LDFLAGS='-e _start -macosx_version_min 10.5'
+		;;
+
+	CYGWIN_NT-*)
+		UCC_ARCH=win32
+		UCC_M32=1
+		;;
+esac
 
 clean=0
+
+get_arg='echo "$arg" | cut -d= -f2'
 
 i=1
 while [ $i -le $# ]
 do
 	arg=`eval echo '$'"$i"`
-	if echo "$arg" | grep -- '^--as=' > /dev/null
-	then
-		UCC_AS="$(echo "$arg" | sed 's/^--as=//')"
-	elif [ "$arg" = clean ]
-	then
-		clean=1
-	else
-		usage
-	fi
+	case "$arg" in
+		--as=*)
+			UCC_AS="`eval $get_arg`"
+			;;
+		--cpu=*)
+			UCC_CPU="`eval $get_arg`"
+			ARCH_DIR=lib/arch
+			if ! [ -d $ARCH_DIR/"$UCC_CPU" ]
+			then
+				echo >&2 "$UCC_CPU invalid, choices are:"
+				(cd $ARCH_DIR; ls -d *)
+				usage
+			fi
+			if echo "$UCC_CPU" | grep 64 > /dev/null
+			then UCC_M32=0
+			else UCC_M32=1
+			fi
+			;;
+		clean)
+			clean=1
+			;;
+		*)
+			usage
+	esac
 	i=`expr $i + 1`
 done
 
 if [ $clean -ne 0 ]
 then
-	rm -f config.mk lib/syscall_err.s lib/string_strerrs.h lib/syscalls_darwin.h
+	rm -f config.mk lib/string_strerrs.h lib/syscalls_darwin.h
 	exit
 fi
 
-case "$(uname -s)" in
+case "$unam" in
 	Darwin)
-		UCC_ARCH=macho64
-		UCC_LDFLAGS='-e _start -macosx_version_min 10.5'
 		os_cfg Darwin
 		;;
 
@@ -129,12 +149,11 @@ case "$(uname -s)" in
 		;;
 
 	CYGWIN_NT-*)
-		UCC_ARCH=win32
 		os_cfg Cygwin
 		;;
 
 	*)
-		echo "unknown OS ($(uname -a))" >&2
+		echo "unknown OS ($unam)" >&2
 		exit 1
 		;;
 esac

@@ -26,7 +26,7 @@ void fold_const_expr_identifier(expr *e, consty *k)
 
 		/* only a constant if global/static/extern */
 		if(sym->type == sym_global || decl_store_static_or_extern(d->store)){
-			k->type = CONST_FROM_ARRAY(d);
+			k->type = CONST_ADDR_OR_NEED(d);
 
 			/*
 			 * don't use e->spel
@@ -50,8 +50,8 @@ void fold_expr_identifier(expr *e, symtable *stab)
 	if(sp && !sym)
 		e->bits.ident.sym = sym = symtab_search(stab, sp);
 
+	/* special cases */
 	if(!sym){
-
 		if(!strcmp(sp, "__func__")){
 			char *func;
 			int len;
@@ -83,46 +83,36 @@ void fold_expr_identifier(expr *e, symtable *stab)
 			expr_mutate_wrapper(e, val);
 
 			e->bits.iv = m->val->bits.iv;
-			/*FOLD_EXPR(e, stab);*/
+			FOLD_EXPR(e, stab);
 
-			{
-				type *t;
-				e->tree_type = type_ref_new_type(t = type_new_primitive(type_enum));
-				t->sue = sue;
-			}
+			e->tree_type = type_ref_new_type(
+					type_new_primitive_sue(type_enum, sue));
 		}
-	}else{
-		e->tree_type = sym->decl->ref;
-
-#if 0
-Except when it is the operand of the sizeof operator or the unary
-& operator, or is a string literal used to initialize an array, an
-expression that has type `array of type` is converted to an expression
-with type `pointer to type` that points to the initial element of the
-array object and is not an lvalue.
-#endif
-
-		if(sym->type == sym_local
-		&& !decl_store_static_or_extern(sym->decl->store)
-		&& !DECL_IS_ARRAY(sym->decl)
-		&& !DECL_IS_S_OR_U(sym->decl)
-		&& !DECL_IS_FUNC(sym->decl)
-		&& sym->nwrites == 0
-		&& !sym->decl->init)
-		{
-			cc1_warn_at(&e->where, 0, 1, WARN_READ_BEFORE_WRITE, "\"%s\" uninitialised on read", sp);
-			sym->nwrites = 1; /* silence future warnings */
-		}
-
-		/* this is cancelled by expr_assign in the case we fold for an assignment to us */
-		sym->nreads++;
+		return;
 	}
+
+	e->tree_type = sym->decl->ref;
+
+	if(sym->type == sym_local
+	&& !decl_store_static_or_extern(sym->decl->store)
+	&& !DECL_IS_ARRAY(sym->decl)
+	&& !DECL_IS_S_OR_U(sym->decl)
+	&& !DECL_IS_FUNC(sym->decl)
+	&& sym->nwrites == 0
+	&& !sym->decl->init)
+	{
+		cc1_warn_at(&e->where, 0, 1, WARN_READ_BEFORE_WRITE, "\"%s\" uninitialised on read", sp);
+		sym->nwrites = 1; /* silence future warnings */
+	}
+
+	/* this is cancelled by expr_assign in the case we fold for an assignment to us */
+	sym->nreads++;
 }
 
 void gen_expr_str_identifier(expr *e, symtable *stab)
 {
 	(void)stab;
-	idt_printf("identifier: \"%s\" (sym %p)\n", e->bits.ident.spel, e->bits.ident.sym);
+	idt_printf("identifier: \"%s\" (sym %p)\n", e->bits.ident.spel, (void *)e->bits.ident.sym);
 }
 
 void gen_expr_identifier(expr *e, symtable *stab)

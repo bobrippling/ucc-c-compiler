@@ -1,4 +1,9 @@
 include ../src_config.mk
+include ../../config.mk
+
+CPPFLAGS = -DCC1_IMPL_FNAME=\"${UCC_CPU}.h\"
+
+ARCH_OBJ = out/${UCC_CPU}.o
 
 LDFLAGS += -lm
 
@@ -11,9 +16,9 @@ OBJ = \
 	tokconv.o tokenise.o \
 	parse.o parse_type.o typedef.o \
 	fold.o fold_sym.o const.o \
-	sym.o sue.o ops/__builtin.o pack.o \
+	sym.o sue.o ops/__builtin.o ops/__builtin_va.o pack.o \
 	gen_asm.o gen_str.o gen_style.o \
-	out/out.o out/asm.o out/lbl.o out/x86_64.o \
+	out/out.o out/asm.o out/lbl.o out/impl.o \
 	ops/expr_addr.o ops/expr_assign.o ops/expr_cast.o ops/expr_comma.o \
 	ops/expr_funcall.o ops/expr_identifier.o ops/expr_if.o ops/expr_op.o \
 	ops/expr_sizeof.o ops/expr_val.o ops/expr_stmt.o ops/expr__Generic.o \
@@ -22,7 +27,8 @@ OBJ = \
 	ops/stmt_default.o ops/stmt_do.o ops/stmt_expr.o ops/stmt_for.o ops/stmt_goto.o \
 	ops/stmt_if.o ops/stmt_label.o ops/stmt_noop.o ops/stmt_return.o \
 	ops/stmt_switch.o ops/stmt_while.o ops/stmt_continue.o ops/expr_block.o \
-	ops/expr_assign_compound.o ops/expr_string.o
+	ops/expr_assign_compound.o ops/expr_string.o \
+	${ARCH_OBJ}
 
 include ../../config.mk
 
@@ -35,6 +41,31 @@ cc1: ${OBJ}
 clean:
 	rm -f *.o cc1 ops/*.o out/*.o
 
-.PHONY: clean
+.PHONY: clean deps
+
+../util/alloc.o ../util/util.o ../util/platform.o ../util/dynarray.o \
+../util/dynmap.o:
+	@echo util must be built from util/
+	false
+
+# files that need target info
+out/mipsel_32.o: out/mipsel_32.c
+	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<
+out/x86_64.o: out/x86_64.c
+	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<
+out/out.o: out/out.c out/impl.h
+	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<
+out/impl.o: out/impl.c out/impl.h
+	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<
+
+# extra deps
+out/impl.h: out/x86_64.h out/mipsel_32.h
+
+deps: Makefile.dep
+
+Makefile.dep:
+	cc ${CPPFLAGS} -MM *.c > $@
+	cc ${CPPFLAGS} -MM ops/*.c | sed 's#^\([^ ]\)#ops/\1#' >> $@
+	cc ${CPPFLAGS} -MM out/*.c | sed 's#^\([^ ]\)#out/\1#' >> $@
 
 include Makefile.dep

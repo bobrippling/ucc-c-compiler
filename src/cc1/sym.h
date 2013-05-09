@@ -3,7 +3,7 @@
 
 struct sym
 {
-	int offset; /* stack offset */
+	int offset; /* stack offset / arg index */
 
 	enum sym_type
 	{
@@ -32,6 +32,7 @@ struct symtable
 {
 	int auto_total_size;
 	int internal_nest;
+	int folded;
 	/*
 	 * { int i; 5; int j; }
 	 * j's symtab is internally represented like:
@@ -42,14 +43,29 @@ struct symtable
 
 	symtable *parent, **children;
 
-	decl                 **decls;
 	struct_union_enum_st **sues;
-	decl                 **typedefs;
 
-	static_assert        **static_asserts;
+	/* identifiers and typedefs */
+	decl **decls;
+
+	static_assert **static_asserts;
+};
+
+typedef struct symtable_gasm symtable_gasm;
+struct symtable_global
+{
+	symtable stab; /* ABI compatible with struct symtable */
+	struct symtable_gasm
+	{
+		decl *before; /* the decl this occurs before - NULL if last */
+		char *asm_str;
+	} **gasms;
 };
 
 sym *sym_new(decl *d, enum sym_type t);
+sym *sym_new_stab(symtable *, decl *d, enum sym_type t);
+
+symtable_global *symtabg_new(void);
 
 symtable *symtab_new(symtable *parent);
 void      symtab_set_parent(symtable *child, symtable *parent);
@@ -57,15 +73,6 @@ void      symtab_rm_parent( symtable *child);
 
 symtable *symtab_root(symtable *child);
 
-#define SYMTAB_APPEND  0
-#define SYMTAB_PREPEND 1
-
-#define SYMTAB_NO_SYM   0
-#define SYMTAB_WITH_SYM 1
-
-#define SYMTAB_ADD(tab, decl, type) symtab_add(tab, decl, type, SYMTAB_WITH_SYM, SYMTAB_APPEND)
-
-sym  *symtab_add(   symtable *, decl *, enum sym_type, int with_sym, int prepend);
 sym  *symtab_search(symtable *, const char *);
 sym  *symtab_has(   symtable *, decl *);
 void  symtab_add_args(symtable *stab, funcargs *fargs, const char *sp, decl *d_func);
