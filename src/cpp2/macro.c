@@ -105,7 +105,7 @@ static char **split_args(char *open_b, char *close_b)
 			dynarray_add(&args, arg);
 		}
 
-		dynarray_free(arg_separators, NULL);
+		dynarray_free(&arg_separators, NULL);
 
 		return args;
 	}
