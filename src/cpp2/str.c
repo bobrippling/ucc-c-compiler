@@ -115,7 +115,7 @@ char *word_replace(char *line, char *pos, size_t len, const char *replace)
 	return str_replace(line, pos, pos + len, replace);
 }
 
-char *word_strstr(char *haystack, char *needle)
+static char *word_strstr(char *haystack, char *needle)
 {
 	const int nlen = strlen(needle);
 	char *i;
@@ -170,7 +170,8 @@ char *strchr_nest(char *start, char find)
 				nest++;
 				break;
 			case ')':
-				nest--;
+				if(nest > 0)
+					nest--;
 				/* fall */
 			default:
 				if(nest == 0 && *start == find)

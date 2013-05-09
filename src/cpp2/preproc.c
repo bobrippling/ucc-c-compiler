@@ -6,10 +6,17 @@
 
 #include "../util/util.h"
 #include "../util/alloc.h"
+#if 0
 #include "../util/dynarray.h"
+#endif
+
+#if 0
 #include "macro.h"
-#include "parse.h"
+#endif
 #include "main.h"
+#include "preproc.h"
+#include "parse.h"
+#include "eval.h"
 
 #define ARRAY_LEN(x) (sizeof(x) / sizeof(x[0]))
 
@@ -39,7 +46,7 @@ void preproc_backtrace(void)
 	}
 }
 
-void preproc_out_info(void)
+static void preproc_out_info(void)
 {
 	/* output PP info */
 	if(option_line_info)
@@ -79,7 +86,7 @@ void preproc_push(FILE *f, const char *fname)
 	preproc_out_info();
 }
 
-void preproc_pop(void)
+static void preproc_pop(void)
 {
 	if(!file_stack_idx)
 		ICE("file stack idx = 0 on pop()");
@@ -103,7 +110,7 @@ void preproc_pop(void)
 	preproc_out_info();
 }
 
-char *splice_line(void)
+static char *splice_line(void)
 {
 	static int n_nls;
 	char *last;
@@ -165,7 +172,7 @@ re_read:
 	}
 }
 
-char *strip_comment(char *line)
+static char *strip_comment(char *line)
 {
 	char *s;
 
@@ -201,19 +208,22 @@ char *strip_comment(char *line)
 	return line;
 }
 
-char *filter_macros(char *line)
+static char *filter_macros(char *line)
 {
 	if(*line == '#'){
-		handle_macro(line);
+		parse_directive(line + 1);
 		free(line);
 		return NULL;
 	}else{
-		line = filter_macro(line);
+		if(parse_should_noop())
+			*line = '\0';
+		else
+			line = eval_expand_macros(line);
 		return line;
 	}
 }
 
-void preprocess()
+void preprocess(void)
 {
 	char *line;
 
@@ -231,5 +241,5 @@ void preprocess()
 	if(strip_in_block)
 		CPP_DIE("no terminating block comment");
 
-	macro_finish();
+	parse_end_validate();
 }
