@@ -260,11 +260,43 @@ const type *decl_get_type(decl *d)
 
 const char *decl_asm_spel(decl *d)
 {
-	if(d->spel_asm)
-		return d->spel_asm;
+	if(!d->spel_asm){
+		/* apply underscore prefixes, name mangling, etc */
+		type_ref *rf = DECL_IS_FUNC(d);
+		char *pre, suff[8];
 
-	return d->spel_asm = ((fopt_mode & FOPT_LEADING_UNDERSCORE)
-			? ustrprintf("_%s", d->spel) : d->spel);
+		pre = fopt_mode & FOPT_LEADING_UNDERSCORE ? "_" : "";
+		*suff = '\0';
+
+		if(rf){
+			funcargs *fa = type_ref_funcargs(rf);
+
+			switch(fa->conv){
+				case conv_fastcall:
+					pre = "@";
+
+				case conv_stdcall:
+					snprintf(suff, sizeof suff,
+							"@%d",
+							dynarray_count(fa->arglist) * platform_word_size());
+
+				case conv_x64_sysv:
+				case conv_x64_ms:
+				case conv_cdecl:
+					break;
+			}
+		}
+
+		if(*pre || *suff)
+			d->spel_asm = ustrprintf(
+					"%s%s%s", pre, d->spel, suff);
+
+
+		if(!d->spel_asm)
+			d->spel_asm = d->spel;
+	}
+
+	return d->spel_asm;
 }
 
 void type_ref_free_1(type_ref *r)

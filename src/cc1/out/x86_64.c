@@ -70,12 +70,6 @@ static struct calling_conv_desc
 	}
 };
 
-/* FIXME: need name mangling for stdcall and fastcall
- *
- * stdcall@n_arg_bytes
- * @fastcall@n_arg_bytes
- */
-
 static const char *x86_reg_str(unsigned reg, type_ref *r)
 {
 	/* must be sync'd with header */
