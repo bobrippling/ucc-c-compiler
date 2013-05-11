@@ -10,13 +10,19 @@ typedef struct
 		TOKEN_CLOSE_PAREN,
 		TOKEN_COMMA,
 		TOKEN_ELIPSIS,
+
+		TOKEN_STRING,
+
+		TOKEN_HASH_QUOTE,
+		TOKEN_HASH_JOIN,
+
 		TOKEN_OTHER
 	} tok;
 	char *w;
 	int had_whitespace;
 } token;
 
-token **tokenise(char *line);
+token **tokenise(const char *line, int until_close_paren);
 const char *token_str(token *t);
 
 char *tokens_join(token **tokens);

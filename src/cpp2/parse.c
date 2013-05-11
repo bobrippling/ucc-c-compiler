@@ -25,13 +25,6 @@
 
 #define NOOP_RET() if(parse_should_noop()) return
 
-#define SHOW_TOKENS(pre, t) \
-	do{ \
-		int i, len; \
-		for(len = 0; t[i]; i++) \
-			fprintf(stderr, pre "token %d = %s (whitespace = %c)\n", i, token_str(t[i]), t[i]->had_whitespace["NY"]); \
-	}while(0)
-
 
 static char ifdef_stack[32] = { 0 };
 static int  ifdef_idx = 0;
@@ -343,7 +336,7 @@ void parse_directive(char *line)
 	token **tokens;
 	int i;
 
-	tokens = tokenise(line);
+	tokens = tokenise(line, 1 /* only until ')' */);
 
 	if(!tokens)
 		return;

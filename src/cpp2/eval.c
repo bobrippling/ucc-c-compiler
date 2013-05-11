@@ -17,7 +17,7 @@
 
 static char **split_func_args(char *args_str)
 {
-	token **tokens = tokenise(args_str);
+	token **tokens = tokenise(args_str, 0 /* don't stop at ')' */);
 	token **ti, **anchor = tokens;
 	char **args = NULL;
 
@@ -37,48 +37,7 @@ static char **split_func_args(char *args_str)
 	return args;
 }
 
-static char *eval_func_macro(macro *m, char *args_str)
-{
-	char **args = split_func_args(args_str);
-
-	int got = dynarray_count(args)
-		, exp = dynarray_count(m->args);
-
-	if(m->type == VARIADIC ? got <= exp : got != exp){
-		CPP_DIE("wrong number of args to function macro \"%s\", got %d, expected %d",
-				m->nam, got, exp);
-	}
-
-	if(args){
-		int i;
-		for(i = 0; args[i]; i++)
-			str_trim(args[i]);
-	}
-
-	/* XXX: progress here */
-	ICE("TODO");
 #if 0
-	replace = ustrdup(m->val);
-
-	/* replace #x with the quote of arg x */
-	for(s = strchr(replace, '#'); s; s = strchr(last, '#')){
-		char *const hash = s++;
-		char *arg_target;
-		int paste = 0; /* x ## y ? */
-		int found;
-
-		if(*s == '#'){
-			/* x ## y */
-			paste = 1;
-			s++;
-		}
-
-		while(isspace(*s))
-			s++;
-
-		arg_target = word_dup(s);
-		found = 0;
-
 		if(!strcmp(arg_target, VA_ARGS_STR)){
 			char *quoted, *free_me;
 			const int offset = s - replace;
@@ -99,59 +58,74 @@ static char *eval_func_macro(macro *m, char *args_str)
 			free(quoted);
 			last = replace + offset + strlen(quoted);
 		}
+#endif
 
-		for(i = 0; m->args && !found && m->args[i]; i++){
-			if(!strcmp(m->args[i], arg_target)){
-				char *finish = s + strlen(arg_target);
-				char *quoted = str_quote(args[i]);
-				const int offset = (s - replace) + strlen(quoted);
+static char *eval_func_macro(macro *m, char *args_str)
+{
+	char **args = split_func_args(args_str);
 
-				replace = str_replace(replace, s - 1, finish, quoted);
+	int got = dynarray_count(args)
+		, exp = dynarray_count(m->args);
 
-				free(quoted);
-
-				last = replace + offset;
-
-				found = 1;
-				break;
-			}
-		}
-
-		if(!found)
-			CPP_DIE("can't paste non-existent argument %s", arg_target);
-
-		free(arg_target);
+	if(m->type == VARIADIC ? got <= exp : got != exp){
+		CPP_DIE("wrong number of args to function macro \"%s\", got %d, expected %d",
+				m->nam, got, exp);
 	}
 
 	if(args){
-		i = 0;
-
-		if(m->args)
-			for(; m->args[i]; i++)
-				word_replace_g(&replace, m->args[i], args[i]);
-
-		if(m->type == VARIADIC){
-			char *rest = str_join(args + i, ", ");
-
-			word_replace_g(&replace, VA_ARGS_STR, rest);
-			free(rest);
-		}
-
-		dynarray_free(&args, free);
+		int i;
+		for(i = 0; args[i]; i++)
+			str_trim(args[i]);
 	}
 
 	{
-		int diff = close_b - *pline + 1;
+		token **toks = tokenise(m->val, 0);
+		token **ti;
+		char *replace = ustrdup("");
 
-		*pline = str_replace(*pline, pos, close_b + 1, replace);
+#define APPEND(fmt, ...)                            \
+				do{                                         \
+					char *new = ustrprintf("%s " fmt,         \
+							replace, __VA_ARGS__);                \
+					free(replace), replace = new;             \
+					break;                                    \
+				}while(0)
 
-		substitute_here = *pline + diff;
+		for(ti = toks; ti && *ti; ti++){
+			token *this = *ti;
+			switch(this->tok){
+				case TOKEN_HASH_QUOTE:
+					/* replace #arg with the quote of arg */
+					this = *++ti;
+					if(!this)
+						CPP_DIE("nothing to quote after '#'");
+					if(this->tok != TOKEN_WORD)
+						CPP_DIE("can't quote a none-word");
+
+					APPEND("\"%s\"", this->w);
+					break;
+
+				case TOKEN_HASH_JOIN:
+					/* replace a ## b with the join of both */
+					ICE("TODO: ##");
+					break;
+
+				case TOKEN_WORD:
+				case TOKEN_OPEN_PAREN:
+				case TOKEN_CLOSE_PAREN:
+				case TOKEN_COMMA:
+				case TOKEN_ELIPSIS:
+				case TOKEN_STRING:
+				case TOKEN_OTHER:
+					APPEND("%s", token_str(this));
+			}
+		}
+
+
+		/* TODO: free args */
+		return replace;
 	}
-
-	free(replace);
-
-	did_replace = 1;
-#endif
+#undef APPEND
 }
 
 static char *eval_macro_r(macro *m, char *start, char *at)
@@ -185,8 +159,6 @@ static char *eval_macro_r(macro *m, char *start, char *at)
 		}
 
 		ret = word_replace(start, at, strlen(m->nam), m->val);
-		if(ret != start)
-			free(start);
 
 		if(free_val)
 			free(val);
@@ -208,13 +180,10 @@ static char *eval_macro_r(macro *m, char *start, char *at)
 		{
 			char *all_args = ustrdup2(open_b + 1, close_b);
 			char *eval_d = eval_func_macro(m, all_args);
-			char *ret = str_replace(start, at, close_b, eval_d);
+			char *ret = str_replace(start, at, close_b + 1, eval_d);
 
 			free(all_args);
 			free(eval_d);
-
-			if(ret != start)
-				free(start);
 
 			return ret;
 		}

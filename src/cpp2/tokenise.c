@@ -12,18 +12,15 @@
 #include "str.h"
 
 /* start must be free'd if not returned */
-token **tokenise(char *line)
+token **tokenise(const char *line, int until_close_paren)
 {
-	token **tokens;
-	token *t;
-	char *p;
-
-	tokens = NULL;
+	token **tokens = NULL;
+	const char *p;
 
 	for(p = line; *p; p++){
+		token *t = umalloc(sizeof *t);
 		char c;
 
-		t = umalloc(sizeof *t);
 		dynarray_add(&tokens, t);
 
 		while(isspace(*p)){
@@ -38,9 +35,7 @@ token **tokenise(char *line)
 
 		c = *p;
 		if(isalpha(c) || c == '_'){
-			char *start;
-word:
-			start = p;
+			const char *start = p;
 
 			t->tok = TOKEN_WORD;
 
@@ -48,44 +43,41 @@ word:
 				if(!(isalnum(*p) || *p == '_'))
 					break;
 
-			c = *p;
-			*p = '\0';
-			t->w = ustrdup(start);
-			*p = c;
+			t->w = ustrdup2(start, p);
 			p--;
+
 		}else if(c == ','){
 			t->tok = TOKEN_COMMA;
 		}else if(c == '('){
 			t->tok = TOKEN_OPEN_PAREN;
 		}else if(c == ')'){
 			t->tok = TOKEN_CLOSE_PAREN;
-			p++;
-			break; /* exit early */
+			if(until_close_paren){
+				p++;
+				break; /* exit early */
+			}
 		}else if(!strncmp(p, "...", 3)){
 			t->tok = TOKEN_ELIPSIS;
 			p += 2;
 		}else if(c == '"'){
 			char *end  = strchr(p + 1, '"');
-			char c;
 
 			/* guaranteed, since strip_comment() checks */
 			while(end[-1] == '\\')
 				end = strchr(end + 1, '"');
 
-			c = end[1];
-			end[1] = '\0';
-			t->w = ustrdup(p);
-			end[1] = c;
-			p = end;
+			t->w = ustrdup2(p, end + 1);
+			p = end + 1;
 
-			t->tok = TOKEN_WORD;
+			t->tok = TOKEN_STRING;
 		}else{
-			goto word;
+			t->tok = TOKEN_OTHER;
+			t->w = ustrdup2(p, p + 1);
 		}
 	}
 
 	if(*p){
-		t = umalloc(sizeof *t);
+		token *t = umalloc(sizeof *t);
 		dynarray_add(&tokens, t);
 		if(isspace(*p))
 			t->had_whitespace = 1;
@@ -109,8 +101,8 @@ const char *token_str(token *t)
 	switch(t->tok){
 		case TOKEN_OTHER:
 		case TOKEN_WORD:
-			if(!t->w)
-				ICE("no string for token word");
+		case TOKEN_STRING:
+			UCC_ASSERT(t->w, "no word");
 			return t->w;
 
 #define MAP(e, c) case e: return c
@@ -118,6 +110,8 @@ const char *token_str(token *t)
 		MAP(TOKEN_CLOSE_PAREN, ")");
 		MAP(TOKEN_COMMA,       ",");
 		MAP(TOKEN_ELIPSIS,   "...");
+		MAP(TOKEN_HASH_QUOTE,  "#");
+		MAP(TOKEN_HASH_JOIN,  "##");
 #undef MAP
 	}
 
