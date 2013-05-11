@@ -368,19 +368,23 @@ void v_freeup_regs(const int a, const int b)
 void v_inv_cmp(struct vstack *vp)
 {
 	switch(vp->bits.flag.cmp){
-#define OPPOSITE(from, to) case flag_ ## from: vp->bits.flag.cmp = flag_ ## to; return
+#define OPPOSITE2(from, to) \
+		case flag_ ## from: vp->bits.flag.cmp = flag_ ## to; return
+
+#define OPPOSITE(from, to) OPPOSITE2(from, to); OPPOSITE2(to, from)
+
 		OPPOSITE(eq, ne);
-		OPPOSITE(ne, eq);
 
 		OPPOSITE(le, gt);
-		OPPOSITE(gt, le);
 
 		OPPOSITE(lt, ge);
-		OPPOSITE(ge, lt);
+
+		OPPOSITE(overflow, no_overflow);
 
 		/*OPPOSITE(z, nz);
 		OPPOSITE(nz, z);*/
 #undef OPPOSITE
+#undef OPPOSITE2
 	}
 	ICE("invalid op");
 }
@@ -976,6 +980,12 @@ void out_undefined(void)
 {
 	out_flush_volatile();
 	impl_undefined();
+}
+
+void out_push_overflow(void)
+{
+	vpush(type_ref_cached_BOOL());
+	impl_set_overflow();
 }
 
 void out_push_frame_ptr(int nframes)

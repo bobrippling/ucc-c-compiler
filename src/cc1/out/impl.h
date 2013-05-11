@@ -27,6 +27,7 @@ int  impl_func_prologue_save_variadic(int nargs);
 void impl_func_epilogue(void);
 
 void impl_undefined(void);
+void impl_set_overflow(void);
 int  impl_frame_ptr_to_reg(int nframes);
 
 /* scratch register indexing */

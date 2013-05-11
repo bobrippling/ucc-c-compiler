@@ -600,6 +600,18 @@ void gen_expr_op(expr *e, symtable *tab)
 
 				out_op(e->op);
 				out_change_type(e->tree_type);
+
+				if(fopt_mode & FOPT_TRAPV
+				&& type_ref_is_integral(e->tree_type)
+				&& type_ref_is_signed(e->tree_type))
+				{
+					char *skip = out_label_code("trapv");
+					out_push_overflow();
+					out_jfalse(skip);
+					out_undefined();
+					out_label(skip);
+					free(skip);
+				}
 				/* make sure we get the pointer, for example 2+(int *)p
 				 * or the int, e.g. (int *)a && (int *)b -> int */
 			}else{

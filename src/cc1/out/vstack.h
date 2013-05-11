@@ -37,6 +37,7 @@ struct vstack
 				flag_eq, flag_ne,
 				flag_le, flag_lt,
 				flag_ge, flag_gt,
+				flag_overflow, flag_no_overflow
 			} cmp;
 			int is_signed;
 		} flag;

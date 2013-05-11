@@ -109,6 +109,7 @@ struct
 	{ 1,  "ms-extensions",    FOPT_MS_EXTENSIONS    },
 	{ 1,  "plan9-extensions", FOPT_PLAN9_EXTENSIONS },
 	{ 1,  "leading-underscore", FOPT_LEADING_UNDERSCORE },
+	{ 1,  "trapv",              FOPT_TRAPV },
 
 	{ 0,  NULL, 0 }
 };

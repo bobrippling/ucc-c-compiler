@@ -230,6 +230,9 @@ static const char *x86_cmp(struct flag_opts *flag)
 		OP(gt, "g",  "a");
 #undef OP
 
+		case flag_overflow: return "o";
+		case flag_no_overflow: return "no";
+
 		/*case flag_z:  return "z";
 		case flag_nz: return "nz";*/
 	}
@@ -814,6 +817,12 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 void impl_undefined(void)
 {
 	out_asm("ud2");
+}
+
+void impl_set_overflow(void)
+{
+	vtop->type = FLAG;
+	vtop->bits.flag.cmp = flag_overflow;
 }
 
 int impl_frame_ptr_to_reg(int nframes)
