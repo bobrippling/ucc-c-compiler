@@ -26,6 +26,8 @@
 
 #define VSTACK_STR_SZ 128
 
+#define CALL_REG_STR(idx, ty) x86_reg_str(call_regs[idx], ty)
+
 const struct asm_type_table asm_type_table[ASM_TABLE_LEN] = {
 	{ 1,  'b', "byte"  },
 	{ 2,  'w', "word"  },
@@ -33,14 +35,46 @@ const struct asm_type_table asm_type_table[ASM_TABLE_LEN] = {
 	{ 8,  'q', "quad" },
 };
 
-static const int call_regs[] = {
-	X86_64_REG_RDI,
-	X86_64_REG_RSI,
-	X86_64_REG_RDX,
-	X86_64_REG_RCX,
-	X86_64_REG_R8,
-	X86_64_REG_R9
+static struct calling_conv_desc
+{
+	int caller_cleanup;
+	int n_call_regs;
+	int call_regs[6];
+} calling_convs[] = {
+	[conv_x64_sysv] = {
+		1,
+		6,
+		{
+			X86_64_REG_RDI, X86_64_REG_RSI,
+			X86_64_REG_RDX, X86_64_REG_RCX,
+			X86_64_REG_R8,  X86_64_REG_R9
+		}
+	},
+
+	[conv_x64_ms]   = {
+		1,
+		4,
+		{
+			X86_64_REG_RCX, X86_64_REG_RDX,
+			X86_64_REG_R8,  X86_64_REG_R9
+		}
+	},
+
+	[conv_cdecl]    = { 1, 0 },
+	[conv_stdcall]  = { 0, 0 },
+
+	[conv_fastcall] = {
+		0,
+		2,
+		{ X86_64_REG_RCX, X86_64_REG_RDX }
+	}
 };
+
+/* FIXME: need name mangling for stdcall and fastcall
+ *
+ * stdcall@n_arg_bytes
+ * @fastcall@n_arg_bytes
+ */
 
 static const char *x86_reg_str(unsigned reg, type_ref *r)
 {
@@ -67,11 +101,6 @@ static const char *x86_reg_str(unsigned reg, type_ref *r)
 	UCC_ASSERT(reg < N_REGS, "invalid x86 reg %d", reg);
 
 	return rnames[reg][asm_table_lookup(r)];
-}
-
-static const char *call_reg_str(int i, type_ref *ty)
-{
-	return x86_reg_str(call_regs[i], ty);
 }
 
 static const char *reg_str(struct vstack *reg)
@@ -147,26 +176,6 @@ int impl_scratch_to_reg(int i)
 	return i;
 }
 
-static struct calling_conv_desc
-{
-	int n_call_regs;
-	int caller_cleanup;
-} calling_convs[] = {
-	[conv_x64_sysv] = { 6, 1 }, /* rdi, rsi, rdx, rcx, r8, r9 */
-	[conv_x64_ms]   = { 4, 1 }, /* rcx, rdx, r8, r9 */
-	[conv_cdecl]    = { 0, 1 },
-	[conv_stdcall]  = { 0, 0 },
-	[conv_fastcall] = { 2, 0 }, /* ecx, edx */
-};
-
-/* FIXME: need name mangling for stdcall and fastcall
- *
- * stdcall@n_arg_bytes
- * @fastcall@n_arg_bytes
- *
- * prepend underscore too
- */
-
 static struct calling_conv_desc *x86_conv_lookup(type_ref *fr)
 {
 	funcargs *fa = type_ref_funcargs(fr);
@@ -184,9 +193,12 @@ static int x86_caller_cleanup(type_ref *fr)
 	return cc;
 }
 
-static int x86_call_regs(type_ref *fr)
+static void x86_call_regs(type_ref *fr, int *pn, int **par)
 {
-	return x86_conv_lookup(fr)->n_call_regs;
+	struct calling_conv_desc *ent = x86_conv_lookup(fr);
+	*pn = ent->n_call_regs;
+	if(par)
+		*par = ent->call_regs;
 }
 
 static int x86_func_nargs(type_ref *rf)
@@ -197,7 +209,9 @@ static int x86_func_nargs(type_ref *rf)
 
 int impl_n_call_regs(type_ref *rf)
 {
-	return x86_call_regs(rf);
+	int n;
+	x86_call_regs(rf, &n, NULL);
+	return n;
 }
 
 void impl_func_prologue_save_fp(void)
@@ -209,9 +223,13 @@ void impl_func_prologue_save_fp(void)
 void impl_func_prologue_save_call_regs(type_ref *rf, int nargs)
 {
 	if(nargs){
-		const int n_call_regs = x86_call_regs(rf);
+		int n_call_regs;
+		int *call_regs;
+
 		int arg_idx;
 		int n_reg_args;
+
+		x86_call_regs(rf, &n_call_regs, &call_regs);
 
 		n_reg_args = MIN(nargs, n_call_regs);
 
@@ -219,13 +237,13 @@ void impl_func_prologue_save_call_regs(type_ref *rf, int nargs)
 #define ARGS_PUSH
 
 #ifdef ARGS_PUSH
-			out_asm("push%c %%%s", asm_type_ch(NULL), call_reg_str(arg_idx, NULL));
+			out_asm("push%c %%%s", asm_type_ch(NULL), CALL_REG_STR(arg_idx, NULL));
 #else
 			stack_res += nargs * platform_word_size();
 
 			out_asm("mov%c %%%s, -" NUM_FMT "(%%rbp)",
 					asm_type_ch(NULL),
-					call_reg_str(arg_idx, NULL),
+					CALL_REG_STR(arg_idx, NULL),
 					platform_word_size() * (arg_idx + 1));
 #endif
 		}
@@ -234,16 +252,19 @@ void impl_func_prologue_save_call_regs(type_ref *rf, int nargs)
 
 int impl_func_prologue_save_variadic(type_ref *rf, int nargs)
 {
-	const int n_call_regs = x86_call_regs(rf);
+	int n_call_regs;
+	int *call_regs;
 	char *vfin = out_label_code("va_skip_float");
 	int sz = 0;
 	int i;
+
+	x86_call_regs(rf, &n_call_regs, &call_regs);
 
 	/* go backwards, as we want registers pushed in reverse
 	 * so we can iterate positively */
 	for(i = n_call_regs - 1; i >= nargs; i--){
 		/* TODO: do this with out_save_reg */
-		out_asm("push%c %%%s", asm_type_ch(NULL), call_reg_str(i, NULL));
+		out_asm("push%c %%%s", asm_type_ch(NULL), CALL_REG_STR(i, NULL));
 		sz += platform_word_size();
 	}
 
@@ -279,7 +300,8 @@ int impl_arg_offset(sym *s)
 	/*
 	 * if it's less than N_CALL_ARGS, it's below rbp, otherwise it's above
 	 */
-	int n_call_regs = x86_call_regs(s->owning_func);
+	int n_call_regs;
+	x86_call_regs(s->owning_func, &n_call_regs, NULL);
 
 	return (s->offset < n_call_regs
 			? -(s->offset + 1)
@@ -821,9 +843,12 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 {
 #define INC_NFLOATS(t) if(t && type_ref_is_floating(t)) ++nfloats
 
-	const int n_call_regs = x86_call_regs(r_func);
+	int n_call_regs;
+	int *call_regs;
 	int i, ncleanup;
 	int nfloats = 0;
+
+	x86_call_regs(r_func, &n_call_regs, &call_regs);
 
 	(void)r_ret;
 

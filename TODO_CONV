@@ -1,6 +1,4 @@
-correct call registers for x64 MS and fastcall
 name mangling for stdcall and fastcall
-_ prefix
 
 correct -m32 behaviour - need to set platform_word_size()
 (especially for implicit casts and calling conv checks)
