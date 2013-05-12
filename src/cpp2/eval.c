@@ -75,6 +75,25 @@ static char *eval_word(macro *m, char *word, char **args)
 	return word;
 }
 
+static char *ensure_argument(macro *m, token *this, char **args, const char *emsg)
+{
+	char *evalled;
+
+	if(!this)
+		CPP_DIE("nothing to %s after '#' character", emsg);
+	if(this->tok != TOKEN_WORD)
+		CPP_DIE("can't %s a none-word (%s)", emsg, token_str(this));
+
+	evalled = eval_word(m, this->w, args);
+	if(evalled == this->w){
+		/* not found */
+		CPP_DIE("can't %s non-argument \"%s\"", emsg, evalled);
+	}
+
+	return evalled;
+}
+
+
 static char *eval_func_macro(macro *m, char *args_str)
 {
 	char **args = split_func_args(args_str);
@@ -112,33 +131,24 @@ static char *eval_func_macro(macro *m, char *args_str)
 			token *this = *ti;
 			switch(this->tok){
 				case TOKEN_HASH_QUOTE:
-				{
-					char *evalled;
-
 					/* replace #arg with the quote of arg */
-					this = *++ti;
-					if(!this)
-						CPP_DIE("nothing to quote after '#'");
-					if(this->tok != TOKEN_WORD)
-						CPP_DIE("can't quote a none-word");
-
-					evalled = eval_word(m, this->w, args);
-					if(evalled == this->w){
-						/* not found */
-						CPP_DIE("can't quote non-argument \"%s\"", evalled);
-					}
-
-					APPEND("\"%s\"", evalled);
+					APPEND("\"%s\"", ensure_argument(m, *++ti, args, "quote"));
 					break;
-				}
 
 				case TOKEN_HASH_JOIN:
 					/* replace a ## b with the join of both */
-					ICE("TODO: ##");
-					break;
+					CPP_DIE("## with no prior argument");
 
 				case TOKEN_WORD:
-					APPEND("%s", eval_word(m, this->w, args));
+					if(ti[1] && ti[1]->tok == TOKEN_HASH_JOIN){
+						APPEND("%s%s",
+								ensure_argument(m, ti[0], args, "join"),
+								ensure_argument(m, ti[2], args, "join"));
+
+						ti += 2; /* word and ## */
+					}else{
+						APPEND("%s", eval_word(m, this->w, args));
+					}
 					break;
 
 				case TOKEN_OPEN_PAREN:
