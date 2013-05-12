@@ -112,6 +112,9 @@ static char *eval_func_macro(macro *m, char *args_str)
 			token *this = *ti;
 			switch(this->tok){
 				case TOKEN_HASH_QUOTE:
+				{
+					char *evalled;
+
 					/* replace #arg with the quote of arg */
 					this = *++ti;
 					if(!this)
@@ -119,8 +122,15 @@ static char *eval_func_macro(macro *m, char *args_str)
 					if(this->tok != TOKEN_WORD)
 						CPP_DIE("can't quote a none-word");
 
-					APPEND("\"%s\"", this->w);
+					evalled = eval_word(m, this->w, args);
+					if(evalled == this->w){
+						/* not found */
+						CPP_DIE("can't quote non-argument \"%s\"", evalled);
+					}
+
+					APPEND("\"%s\"", evalled);
 					break;
+				}
 
 				case TOKEN_HASH_JOIN:
 					/* replace a ## b with the join of both */
