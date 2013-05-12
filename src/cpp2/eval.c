@@ -60,6 +60,21 @@ static char **split_func_args(char *args_str)
 		}
 #endif
 
+static char *eval_word(macro *m, char *word, char **args)
+{
+	if(m->args){
+		char *w;
+		int i;
+
+		for(i = 0; (w = m->args[i]); i++)
+			if(!strcmp(w, word))
+				return args[i];
+	}
+
+	/* word not found, we use the given identifier */
+	return word;
+}
+
 static char *eval_func_macro(macro *m, char *args_str)
 {
 	char **args = split_func_args(args_str);
@@ -113,6 +128,9 @@ static char *eval_func_macro(macro *m, char *args_str)
 					break;
 
 				case TOKEN_WORD:
+					APPEND("%s", eval_word(m, this->w, args));
+					break;
+
 				case TOKEN_OPEN_PAREN:
 				case TOKEN_CLOSE_PAREN:
 				case TOKEN_COMMA:
