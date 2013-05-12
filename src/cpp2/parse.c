@@ -62,9 +62,6 @@ static void handle_define(token **tokens)
 
 	name = tokens[0]->w;
 
-	if(tokens[1]) /* prevent initial whitespace */
-		tokens[1]->had_whitespace = 0;
-
 	if(tokens[1] && tokens[1]->tok == TOKEN_OPEN_PAREN && !tokens[1]->had_whitespace){
 		/* function macro */
 		int i, variadic;
@@ -107,10 +104,14 @@ static void handle_define(token **tokens)
 			}
 		}
 for_fin:
-		if(!tokens[i])
+		if(!tokens[i]){
 			val = ustrdup("");
-		else
+		}else{
+			/* prevent leading whitespace */
+			tokens[i]->had_whitespace = 0;
+
 			val = tokens_join(tokens + i);
+		}
 
 		macro_add_func(name, val, args, variadic);
 
@@ -118,6 +119,10 @@ for_fin:
 
 	}else{
 		char *val;
+
+		if(tokens[1]) /* prevent initial whitespace */
+			tokens[1]->had_whitespace = 0;
+
 		val = tokens_join(tokens + 1);
 
 		macro_add(name, val);

@@ -85,8 +85,10 @@ static char *eval_func_macro(macro *m, char *args_str)
 
 #define APPEND(fmt, ...)                            \
 				do{                                         \
-					char *new = ustrprintf("%s " fmt,         \
-							replace, __VA_ARGS__);                \
+					char *new = ustrprintf("%s%s" fmt,        \
+							replace,                              \
+							*replace ? " " : "",                  \
+							__VA_ARGS__);                         \
 					free(replace), replace = new;             \
 					break;                                    \
 				}while(0)
