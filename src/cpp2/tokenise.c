@@ -46,33 +46,48 @@ token **tokenise(const char *line, int until_close_paren)
 			t->w = ustrdup2(start, p);
 			p--;
 
-		}else if(c == ','){
-			t->tok = TOKEN_COMMA;
-		}else if(c == '('){
-			t->tok = TOKEN_OPEN_PAREN;
-		}else if(c == ')'){
-			t->tok = TOKEN_CLOSE_PAREN;
-			if(until_close_paren){
-				p++;
-				break; /* exit early */
+		}else switch(c){
+			case ',':
+				t->tok = TOKEN_COMMA;
+				break;
+			case '(':
+				t->tok = TOKEN_OPEN_PAREN;
+				break;
+			case ')':
+				t->tok = TOKEN_CLOSE_PAREN;
+				if(until_close_paren){
+					p++;
+					break; /* exit early */
+				}
+				break;
+			case '"':
+			{
+				char *end  = strchr(p + 1, '"');
+
+				/* guaranteed, since strip_comment() checks */
+				while(end[-1] == '\\')
+					end = strchr(end + 1, '"');
+
+				t->w = ustrdup2(p, end + 1);
+				p = end + 1;
+
+				t->tok = TOKEN_STRING;
+				break;
 			}
-		}else if(!strncmp(p, "...", 3)){
-			t->tok = TOKEN_ELIPSIS;
-			p += 2;
-		}else if(c == '"'){
-			char *end  = strchr(p + 1, '"');
-
-			/* guaranteed, since strip_comment() checks */
-			while(end[-1] == '\\')
-				end = strchr(end + 1, '"');
-
-			t->w = ustrdup2(p, end + 1);
-			p = end + 1;
-
-			t->tok = TOKEN_STRING;
-		}else{
-			t->tok = TOKEN_OTHER;
-			t->w = ustrdup2(p, p + 1);
+			case '#':
+				if(p[1] == '#')
+					t->tok = TOKEN_HASH_JOIN, p++;
+				else
+					t->tok = TOKEN_HASH_QUOTE;
+				break;
+			default:
+				if(!strncmp(p, "...", 3)){
+					t->tok = TOKEN_ELIPSIS;
+					p += 2;
+				}else{
+					t->tok = TOKEN_OTHER;
+					t->w = ustrdup2(p, p + 1);
+				}
 		}
 	}
 
