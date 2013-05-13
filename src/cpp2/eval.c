@@ -198,7 +198,7 @@ static char *eval_macro_r(macro *m, char *start, char *at)
 			}
 		}
 
-		ret = word_replace(start, at, strlen(m->nam), m->val);
+		ret = word_replace(start, at, strlen(m->nam), val);
 
 		if(free_val)
 			free(val);
