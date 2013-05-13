@@ -143,6 +143,7 @@ static char *eval_func_macro(macro *m, char *args_str)
 
 				case TOKEN_WORD:
 				{
+					int free_word = 1;
 					char *word;
 
 					if(ti[1] && ti[1]->tok == TOKEN_HASH_JOIN){
@@ -162,11 +163,14 @@ static char *eval_func_macro(macro *m, char *args_str)
 						}
 						ti--;
 					}else{
-						word = eval_word(m, this->w, args);
+						word = this->w;
+						/* TODO FIXME */
+						free_word = 0;
 					}
 
 					APPEND(this->had_whitespace, "%s", word);
-					free(word);
+					if(free_word)
+						free(word);
 					break;
 				}
 

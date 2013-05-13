@@ -9,7 +9,12 @@
 //#define F(x, y) x + G(y) //x + #y + y ## x
 //F(2, G(3))
 
-#define A(x) x + 1
-#define B(y) y + 2
+//#define A(x) x + 1
+//#define B(y) y + 2
+//A(B(3))
 
-A(B(3))
+#define WIDTH 32
+#define DIRECT(n) data##n
+#define INDIRECT(n) DIRECT(n)
+INDIRECT(WIDTH)
+DIRECT(WIDTH)
