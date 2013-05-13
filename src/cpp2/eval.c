@@ -75,7 +75,8 @@ static char *eval_word(macro *m, char *word, char **args)
 	return word;
 }
 
-static char *ensure_argument(macro *m, token *this, char **args, const char *emsg)
+static char *eval_hash(
+		macro *m, token *this, char **args, int need_arg, const char *emsg)
 {
 	char *evalled;
 
@@ -85,7 +86,7 @@ static char *ensure_argument(macro *m, token *this, char **args, const char *ems
 		CPP_DIE("can't %s a none-word (%s)", emsg, token_str(this));
 
 	evalled = eval_word(m, this->w, args);
-	if(evalled == this->w){
+	if(need_arg && evalled == this->w){
 		/* not found */
 		CPP_DIE("can't %s non-argument \"%s\"", emsg, evalled);
 	}
@@ -132,7 +133,8 @@ static char *eval_func_macro(macro *m, char *args_str)
 			switch(this->tok){
 				case TOKEN_HASH_QUOTE:
 					/* replace #arg with the quote of arg */
-					APPEND(this->had_whitespace, "\"%s\"", ensure_argument(m, *++ti, args, "quote"));
+					APPEND(this->had_whitespace, "\"%s\"",
+							eval_hash(m, *++ti, args, 1, "quote"));
 					break;
 
 				case TOKEN_HASH_JOIN:
@@ -144,7 +146,7 @@ static char *eval_func_macro(macro *m, char *args_str)
 					char *word;
 
 					if(ti[1] && ti[1]->tok == TOKEN_HASH_JOIN){
-						word = ensure_argument(m, ti[0], args, "join");
+						word = eval_hash(m, ti[0], args, 0, "join");
 
 						ti++;
 
@@ -152,7 +154,7 @@ static char *eval_func_macro(macro *m, char *args_str)
 							char *old = word;
 
 							word = ustrprintf("%s%s", word,
-									ensure_argument(m, ti[1], args, "join"));
+									eval_hash(m, ti[1], args, 0, "join"));
 
 							free(old);
 
