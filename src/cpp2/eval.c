@@ -140,16 +140,33 @@ static char *eval_func_macro(macro *m, char *args_str)
 					CPP_DIE("## with no prior argument");
 
 				case TOKEN_WORD:
-					if(ti[1] && ti[1]->tok == TOKEN_HASH_JOIN){
-						APPEND("%s%s",
-								ensure_argument(m, ti[0], args, "join"),
-								ensure_argument(m, ti[2], args, "join"));
+				{
+					char *word;
 
-						ti += 2; /* word and ## */
+					if(ti[1] && ti[1]->tok == TOKEN_HASH_JOIN){
+						word = ensure_argument(m, ti[0], args, "join");
+
+						ti++;
+
+						while(*ti && ti[0]->tok == TOKEN_HASH_JOIN){
+							char *old = word;
+
+							word = ustrprintf("%s%s", word,
+									ensure_argument(m, ti[1], args, "join"));
+
+							free(old);
+
+							ti += 2;
+						}
+						ti--;
 					}else{
-						APPEND("%s", eval_word(m, this->w, args));
+						word = eval_word(m, this->w, args);
 					}
+
+					APPEND("%s", word);
+					free(word);
 					break;
+				}
 
 				case TOKEN_OPEN_PAREN:
 				case TOKEN_CLOSE_PAREN:
