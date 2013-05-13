@@ -68,7 +68,7 @@ static char *eval_word(macro *m, char *word, char **args)
 
 		for(i = 0; (w = m->args[i]); i++)
 			if(!strcmp(w, word))
-				return args[i];
+				return eval_expand_macros(args[i]);
 	}
 
 	/* word not found, we use the given identifier */
