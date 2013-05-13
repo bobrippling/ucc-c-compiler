@@ -63,6 +63,19 @@ char *word_dup(const char *s)
 	return ustrdup2(start, s);
 }
 
+char *str_quotefin(char *s)
+{
+	for(; *s; s++) switch(*s){
+		case '\\':
+			s++;
+			break;
+		case '"':
+			return s;
+	}
+
+	return NULL;
+}
+
 char *str_quote(const char *quoteme)
 {
 	int len;
@@ -125,13 +138,10 @@ static char *word_strstr(char *haystack, char *needle)
 
 	for(i = haystack; *i; i++)
 		if(*i == '"'){
-refind:
-			i = strchr(i + 1, '"');
+			i = str_quotefin(i + 1);
 			if(!i)
 				ICE("terminating quote not found\nhaystack = >>%s<<\nneedle = >>%s<<",
 						haystack, needle);
-			else if(i[-1] == '\\')
-				goto refind;
 		}else if(!strncmp(i, needle, nlen)){
 			return i;
 		}

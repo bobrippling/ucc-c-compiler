@@ -15,5 +15,6 @@ char *word_replace(char *line, char *pos, size_t len, const char *replace);
 char *word_find(   char *line, char *word);
 
 char *strchr_nest(char *start, char find);
+char *str_quotefin(char *);
 
 #endif

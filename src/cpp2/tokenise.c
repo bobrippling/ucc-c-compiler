@@ -12,10 +12,10 @@
 #include "str.h"
 
 /* start must be free'd if not returned */
-token **tokenise(const char *line, int until_close_paren)
+token **tokenise(char *line, int until_close_paren)
 {
 	token **tokens = NULL;
-	const char *p;
+	char *p;
 
 	for(p = line; *p; p++){
 		token *t = umalloc(sizeof *t);
@@ -62,14 +62,13 @@ token **tokenise(const char *line, int until_close_paren)
 				break;
 			case '"':
 			{
-				char *end  = strchr(p + 1, '"');
+				char *end = str_quotefin(p + 1);
 
 				/* guaranteed, since strip_comment() checks */
-				while(end[-1] == '\\')
-					end = strchr(end + 1, '"');
+				UCC_ASSERT(end, "strip_comment() broken for >>>%s<<<", p);
 
 				t->w = ustrdup2(p, end + 1);
-				p = end + 1;
+				p = end;
 
 				t->tok = TOKEN_STRING;
 				break;
