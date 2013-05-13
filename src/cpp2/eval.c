@@ -117,11 +117,11 @@ static char *eval_func_macro(macro *m, char *args_str)
 		token **ti;
 		char *replace = ustrdup("");
 
-#define APPEND(fmt, ...)                            \
+#define APPEND(ws, fmt, ...)                        \
 				do{                                         \
 					char *new = ustrprintf("%s%s" fmt,        \
 							replace,                              \
-							*replace ? " " : "",                  \
+							*replace && ws ? " " : "",            \
 							__VA_ARGS__);                         \
 					free(replace), replace = new;             \
 					break;                                    \
@@ -132,7 +132,7 @@ static char *eval_func_macro(macro *m, char *args_str)
 			switch(this->tok){
 				case TOKEN_HASH_QUOTE:
 					/* replace #arg with the quote of arg */
-					APPEND("\"%s\"", ensure_argument(m, *++ti, args, "quote"));
+					APPEND(this->had_whitespace, "\"%s\"", ensure_argument(m, *++ti, args, "quote"));
 					break;
 
 				case TOKEN_HASH_JOIN:
@@ -163,7 +163,7 @@ static char *eval_func_macro(macro *m, char *args_str)
 						word = eval_word(m, this->w, args);
 					}
 
-					APPEND("%s", word);
+					APPEND(this->had_whitespace, "%s", word);
 					free(word);
 					break;
 				}
@@ -174,7 +174,7 @@ static char *eval_func_macro(macro *m, char *args_str)
 				case TOKEN_ELIPSIS:
 				case TOKEN_STRING:
 				case TOKEN_OTHER:
-					APPEND("%s", token_str(this));
+					APPEND(this->had_whitespace, "%s", token_str(this));
 			}
 		}
 
