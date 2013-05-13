@@ -213,7 +213,7 @@ static char *eval_macro_r(macro *m, char *start, char *at)
 		if(*open_b != '(')
 			return start; /* not an invocation */
 
-		close_b = strchr_nest(open_b + 1, ')');
+		close_b = strchr_nest(open_b, ')');
 		if(!close_b)
 			CPP_DIE("unterminated function-macro '%s'", m->nam);
 
