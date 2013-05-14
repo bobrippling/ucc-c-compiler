@@ -353,6 +353,8 @@ void out_asm_inline(asm_args *cmd, const where *const err_w)
 					vpush(vp->t);
 					/* XXX: copying vstack? out_dup_from() ? */
 					memcpy_safe(vtop, vp);
+					/* FIXME: struct/array - we write into as much
+					 * as possible, up to a machine word */
 					out_deref();
 					vp = vtop;
 					n_output_derefs++;
