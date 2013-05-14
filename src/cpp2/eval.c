@@ -60,7 +60,7 @@ static char **split_func_args(char *args_str)
 		}
 #endif
 
-static char *eval_word(macro *m, char *word, char **args)
+static char *find_arg(macro *m, char *word, char **args)
 {
 	if(m->args){
 		char *w;
@@ -68,35 +68,45 @@ static char *eval_word(macro *m, char *word, char **args)
 
 		for(i = 0; (w = m->args[i]); i++)
 			if(!strcmp(w, word))
-				return eval_expand_macros(args[i]);
+				return args[i]; /* don't expand */
 	}
 
 	/* word not found, we use the given identifier */
 	return word;
 }
 
-static char *eval_hash(
+static char *noeval_hash(
 		macro *m, token *this, char **args, int need_arg, const char *emsg)
 {
-	char *evalled;
+	char *word;
 
 	if(!this)
 		CPP_DIE("nothing to %s after '#' character", emsg);
 	if(this->tok != TOKEN_WORD)
 		CPP_DIE("can't %s a none-word (%s)", emsg, token_str(this));
 
-	evalled = eval_word(m, this->w, args);
-	if(need_arg && evalled == this->w){
+	word = find_arg(m, this->w, args); /* don't expand */
+	if(need_arg && word == this->w){
 		/* not found */
-		CPP_DIE("can't %s non-argument \"%s\"", emsg, evalled);
+		CPP_DIE("can't %s non-argument \"%s\"", emsg, word);
 	}
 
-	return evalled;
+	return word;
 }
 
 
 static char *eval_func_macro(macro *m, char *args_str)
 {
+	/*
+	 * 6.10.3.1/1:
+	 * ... after the arguments for the invocation of a function-like
+	 * macro have been identified, argument substitution takes
+	 * place. A parameter in the replacement list, unless preceded
+	 * by a # or ## preprocessing token or followed by a ##
+	 * preprocessing token (see below), is replaced by the
+	 * corresponding argument after all macros contained therein
+	 * have been expanded...
+	 */
 	char **args = split_func_args(args_str);
 
 	int got = dynarray_count(args)
@@ -133,8 +143,9 @@ static char *eval_func_macro(macro *m, char *args_str)
 			switch(this->tok){
 				case TOKEN_HASH_QUOTE:
 					/* replace #arg with the quote of arg */
+					/* # - don't eval */
 					APPEND(this->had_whitespace, "\"%s\"",
-							eval_hash(m, *++ti, args, 1, "quote"));
+							noeval_hash(m, *++ti, args, 1, "quote"));
 					break;
 
 				case TOKEN_HASH_JOIN:
@@ -147,7 +158,8 @@ static char *eval_func_macro(macro *m, char *args_str)
 					char *word;
 
 					if(ti[1] && ti[1]->tok == TOKEN_HASH_JOIN){
-						word = eval_hash(m, ti[0], args, 0, "join");
+						/* word with ## - don't eval */
+						word = noeval_hash(m, ti[0], args, 0, "join");
 
 						ti++;
 
@@ -155,7 +167,7 @@ static char *eval_func_macro(macro *m, char *args_str)
 							char *old = word;
 
 							word = ustrprintf("%s%s", word,
-									eval_hash(m, ti[1], args, 0, "join"));
+									noeval_hash(m, ti[1], args, 0, "join"));
 
 							free(old);
 
@@ -163,8 +175,15 @@ static char *eval_func_macro(macro *m, char *args_str)
 						}
 						ti--;
 					}else{
-						word = this->w;
-						/* TODO FIXME */
+						/* word without # nor ## - we may eval */
+						word = find_arg(m, this->w, args);
+						if(word != this->w){
+							/* is an argument, eval.
+							 * "... is replaced by the corresponding argument after all
+							 * macros contained therein have been expanded..."
+							 */
+							word = eval_expand_macros(word);
+						}
 						free_word = 0;
 					}
 
