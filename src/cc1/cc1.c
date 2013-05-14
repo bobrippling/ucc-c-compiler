@@ -34,8 +34,11 @@ struct
 	const char *arg;
 	int mask;
 } args[] = {
+	/* TODO - wall picks sensible, extra = more, everything = ~0 */
 	{ 0,  "all",             ~0 },
 	{ 0,  "extra",            0 },
+	{ 0,  "everything",      ~0 },
+
 
 	{ 0,  "mismatch-arg",    WARN_ARG_MISMATCH                      },
 	{ 0,  "array-comma",     WARN_ARRAY_COMMA                       },
@@ -67,6 +70,8 @@ struct
 	{ 0, "mixed-code-decls", WARN_MIXED_CODE_DECLS                  },
 
 	{ 0, "loss-of-precision", WARN_LOSS_PRECISION                   },
+
+	{ 0, "pad",               WARN_PAD },
 
 	/* TODO: W_QUAL (ops/expr_cast) */
 
@@ -134,6 +139,7 @@ enum warning warn_mode = ~(
 		| WARN_IMPLICIT_INT
 		| WARN_LOSS_PRECISION
 		| WARN_SIGN_COMPARE
+		| WARN_PAD
 		);
 
 enum fopt fopt_mode = FOPT_CONST_FOLD

@@ -42,6 +42,7 @@ enum warning
 	WARN_PREDECL_ENUM             = 1 << 23,
 	WARN_OMITTED_PARAM_TYPES      = 1 << 24,
 	WARN_RETURN_UNDEF             = 1 << 25,
+	WARN_PAD                      = 1 << 26,
 
 	/* TODO */
 	/*

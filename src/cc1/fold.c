@@ -247,12 +247,22 @@ normal:
 
 
 			if(sue->primitive == type_struct){
+				const int prev_offset = offset;
 				int after_space;
 
 				pack_next(&offset, &after_space, sz, align);
 				/* offset is the end of the decl, after_space is the start */
 
 				d->struct_offset = after_space;
+
+				{
+					int pad = after_space - prev_offset;
+					if(pad){
+						cc1_warn_at(&d->where, 0, 1, WARN_PAD,
+								"padding '%s' with %d bytes to align '%s'",
+								sue->spel, pad, decl_to_str(d));
+					}
+				}
 			}
 
 			if(align > align_max)
