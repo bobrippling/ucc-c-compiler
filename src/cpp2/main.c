@@ -13,6 +13,7 @@
 #include "main.h"
 #include "macro.h"
 #include "preproc.h"
+#include "include.h"
 
 static const struct
 {

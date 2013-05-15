@@ -14,6 +14,7 @@
 #include "main.h"
 #include "macro.h"
 #include "preproc.h"
+#include "include.h"
 
 #define SINGLE_TOKEN(err) \
 	if(dynarray_count(tokens) != 1 || tokens[0]->tok != TOKEN_WORD) \
