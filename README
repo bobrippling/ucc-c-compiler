@@ -1,4 +1,4 @@
-It should be fairly obvious what this program does
+It's a compiler!
 
 It doesn't use system include files nor libraries yet, just some simple ones in lib/
 
@@ -9,7 +9,7 @@ Requirements
 as (I use gnu as, but any should be fine)
 ld (any form should be fine)
 
-Obviously you need a compiler to compiler this compiler with.
+Obviously you need a compiler to compile this compiler with.
 
 
 Compiling (the compiler)
@@ -31,7 +31,7 @@ All programs compiled by ucc are staticly linked.
 Major C-Features Todo
 =============
 
-floating point numbers, long + short types (asm_backend_recode branch)
+floating point numbers
 
 
 Examples
