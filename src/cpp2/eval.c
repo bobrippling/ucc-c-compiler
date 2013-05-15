@@ -14,6 +14,7 @@
 #include "macro.h"
 #include "str.h"
 #include "main.h"
+#include "snapshot.h"
 
 static char **split_func_args(char *args_str)
 {
@@ -94,8 +95,7 @@ static char *noeval_hash(
 	return word;
 }
 
-
-static char *eval_func_macro(macro *m, char *args_str)
+static char *eval_func_macro_r(macro *m, char *args_str)
 {
 	/*
 	 * 6.10.3.1/1:
@@ -215,6 +215,29 @@ static char *eval_func_macro(macro *m, char *args_str)
 #undef APPEND
 }
 
+static char *eval_func_macro(macro *m, char *args_str)
+{
+	snapshot *snapshot = snapshot_take();
+	char *ret, *free_me;
+
+	free_me = eval_func_macro_r(m, args_str);
+
+	/* mark any macros that changed as blue, to prevent re-evaluation */
+	snapshot_take_post(snapshot);
+	snapshot_blue_changed(snapshot);
+	{
+		/* double eval */
+		ret = eval_expand_macros(free_me);
+
+		if(ret != free_me)
+			free(free_me);
+	}
+	snapshot_unblue_changed(snapshot);
+	snapshot_free(snapshot);
+
+	return ret;
+}
+
 static char *eval_macro_r(macro *m, char *start, char *at)
 {
 	if(m->type == MACRO){
@@ -282,6 +305,8 @@ static char *eval_macro(macro *m, char *start, char *at)
 	char *r;
 	if(m->blue)
 		return start;
+
+	m->use_cnt++;
 
 	m->blue = 1;
 	r = eval_macro_r(m, start, at);

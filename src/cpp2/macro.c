@@ -13,7 +13,7 @@
 
 #define VA_ARGS_STR "__VA_ARGS__"
 
-static macro **macros = NULL;
+macro **macros = NULL;
 
 macro *macro_find(const char *sp)
 {
