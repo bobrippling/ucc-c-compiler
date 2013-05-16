@@ -154,7 +154,7 @@ static char *eval_func_macro_r(macro *m, char *args_str)
 
 				case TOKEN_WORD:
 				{
-					int free_word = 1;
+					int free_word = 0;
 					char *word;
 
 					if(ti[1] && ti[1]->tok == TOKEN_HASH_JOIN){
@@ -169,7 +169,9 @@ static char *eval_func_macro_r(macro *m, char *args_str)
 							word = ustrprintf("%s%s", word,
 									noeval_hash(m, ti[1], args, 0, "join"));
 
-							free(old);
+							if(free_word)
+								free(old);
+							free_word = 1;
 
 							ti += 2;
 						}
@@ -182,13 +184,10 @@ static char *eval_func_macro_r(macro *m, char *args_str)
 							 * "... is replaced by the corresponding argument after all
 							 * macros contained therein have been expanded..."
 							 */
-							char *free_me = ustrdup(word);
-							word = eval_expand_macros(free_me);
-							if(word != free_me)
-								free(free_me);
-							free_word = 1; /* it's been alloced, or it's free_me */
-						}else{
-							free_word = 0;
+							char *old = word;
+							word = eval_expand_macros(word);
+							if(word != old)
+								free_word = 1;
 						}
 					}
 
