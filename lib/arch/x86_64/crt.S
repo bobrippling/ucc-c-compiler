@@ -1,8 +1,16 @@
 #include "../../../src/as_cfg.h"
 #include "defs.h"
 .section SECTION_TEXT
-.globl SYMBL(_start)
-SYMBL(_start):
+// start is special, since it's an asm-only symbol
+
+#ifdef __LEADING_UNDERSCORE
+.globl start
+start:
+#else
+.globl _start
+_start:
+#endif
+
 	// need to set up stack base pointer
 	movq %rsp, %rbp
 
