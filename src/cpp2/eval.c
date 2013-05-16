@@ -37,6 +37,8 @@ static char **split_func_args(char *args_str)
 	if(anchor != ti)
 		dynarray_add(&args, tokens_join_n(anchor, ti - anchor));
 
+	tokens_free(tokens);
+
 	return args;
 }
 
@@ -197,7 +199,8 @@ static char *eval_func_macro(macro *m, char *args_str)
 		}
 
 
-		/* TODO: free args and toks */
+		dynarray_free(char **, &args, free);
+		tokens_free(toks);
 		return replace;
 	}
 #undef APPEND

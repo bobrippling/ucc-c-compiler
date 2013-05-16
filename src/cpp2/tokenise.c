@@ -155,3 +155,16 @@ char *tokens_join(token **tokens)
 {
 	return tokens_join_n(tokens, -1);
 }
+
+void tokens_free(token **tokens)
+{
+	int i;
+	if(!tokens)
+		return;
+
+	for(i = 0; tokens[i]; i++){
+		free(tokens[i]->w);
+		free(tokens[i]);
+	}
+	free(tokens);
+}

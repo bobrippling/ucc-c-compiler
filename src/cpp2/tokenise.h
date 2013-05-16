@@ -28,4 +28,6 @@ const char *token_str(token *t);
 char *tokens_join(token **tokens);
 char *tokens_join_n(token **tokens, int lim);
 
+void tokens_free(token **);
+
 #endif

@@ -352,7 +352,7 @@ void parse_directive(char *line)
 
 	if(tokens[0]->tok != TOKEN_WORD){
 		if(parse_should_noop())
-			return;
+			goto fin;
 
 		CPP_DIE("invalid preproc token");
 	}
@@ -361,7 +361,7 @@ void parse_directive(char *line)
 	if(sscanf(tokens[0]->w, "%d \"", &i) == 1){
 		/* output, and ignore */
 		puts(line);
-		return;
+		goto fin;
 	}
 
 	putchar('\n'); /* keep line-no.s in sync */
@@ -379,7 +379,7 @@ void parse_directive(char *line)
 	HANDLE(endif)
 
 	if(parse_should_noop())
-		return; /* checked for flow control, nothing else so noop */
+		goto fin; /* checked for flow control, nothing else so noop */
 
 	HANDLE(include)
 
@@ -393,11 +393,7 @@ void parse_directive(char *line)
 
 	CPP_DIE("unrecognised preproc command \"%s\"", tokens[0]->w);
 fin:
-	for(i = 0; tokens[i]; i++){
-		free(tokens[i]->w);
-		free(tokens[i]);
-	}
-	free(tokens);
+	tokens_free(tokens);
 }
 
 void parse_end_validate()

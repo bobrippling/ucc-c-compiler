@@ -64,11 +64,7 @@ void dirname_push(char *d)
 
 char *dirname_pop()
 {
-	char *r = dynarray_pop(char *, &cd_stack);
-	(void)r;
-	/*fprintf(stderr, "dirname_pop() = %s (%p)\n", r, r);
-	return r; TODO - free*/
-	return NULL;
+	return dynarray_pop(char *, &cd_stack);
 }
 
 static void calctime(void)
