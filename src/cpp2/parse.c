@@ -241,7 +241,7 @@ retry:
 
 	if(lib){
 lib:
-		f = include_fopen(current_include_dname, fname);
+		f = include_fopen(current_include_dname, fname, &path);
 
 		if(!f)
 			CPP_DIE("can't find include file %c%s%c",

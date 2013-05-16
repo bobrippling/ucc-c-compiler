@@ -14,7 +14,7 @@ void include_add_dir(char *d)
 	dynarray_add(&include_dirs, d);
 }
 
-FILE *include_fopen(const char *cd, const char *fnam)
+FILE *include_fopen(const char *cd, const char *fnam, char **ppath)
 {
 	FILE *f = NULL;
 	int i;
@@ -27,9 +27,11 @@ FILE *include_fopen(const char *cd, const char *fnam)
 				fnam);
 
 		f = fopen(path, "r");
-		free(path);
-		if(f)
+		if(f){
+			*ppath = path;
 			break;
+		}
+		free(path);
 	}
 
 	return f;
