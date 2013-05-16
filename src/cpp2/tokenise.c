@@ -12,7 +12,7 @@
 #include "str.h"
 
 /* start must be free'd if not returned */
-token **tokenise(char *line, int until_close_paren)
+token **tokenise(char *line)
 {
 	token **tokens = NULL;
 	char *p;
@@ -55,10 +55,6 @@ token **tokenise(char *line, int until_close_paren)
 				break;
 			case ')':
 				t->tok = TOKEN_CLOSE_PAREN;
-				if(until_close_paren){
-					p++;
-					break; /* exit early */
-				}
 				break;
 			case '"':
 			{

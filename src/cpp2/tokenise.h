@@ -22,7 +22,7 @@ typedef struct
 	int had_whitespace;
 } token;
 
-token **tokenise(char *line, int until_close_paren);
+token **tokenise(char *line);
 const char *token_str(token *t);
 
 char *tokens_join(token **tokens);

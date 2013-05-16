@@ -18,7 +18,7 @@
 
 static char **split_func_args(char *args_str)
 {
-	token **tokens = tokenise(args_str, 0 /* don't stop at ')' */);
+	token **tokens = tokenise(args_str);
 	token **ti, **anchor = tokens;
 	char **args = NULL;
 
@@ -124,7 +124,7 @@ static char *eval_func_macro_r(macro *m, char *args_str)
 	}
 
 	{
-		token **toks = tokenise(m->val, 0);
+		token **toks = tokenise(m->val);
 		token **ti;
 		char *replace = ustrdup("");
 

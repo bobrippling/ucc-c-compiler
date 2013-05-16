@@ -63,7 +63,10 @@ static void handle_define(token **tokens)
 
 	name = tokens[0]->w;
 
-	if(tokens[1] && tokens[1]->tok == TOKEN_OPEN_PAREN && !tokens[1]->had_whitespace){
+	if(tokens[1]
+	&& tokens[1]->tok == TOKEN_OPEN_PAREN
+	&& !tokens[1]->had_whitespace)
+	{
 		/* function macro */
 		int i, variadic;
 		char **args;
@@ -342,7 +345,7 @@ void parse_directive(char *line)
 	token **tokens;
 	int i;
 
-	tokens = tokenise(line, 1 /* only until ')' */);
+	tokens = tokenise(line);
 
 	if(!tokens)
 		return;
