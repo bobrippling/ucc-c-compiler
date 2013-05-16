@@ -301,9 +301,9 @@ static char *eval_macro(macro *m, char *start, char *at)
 
 	m->use_cnt++;
 
-	m->blue = 1;
+	m->blue++;
 	r = eval_macro_double_eval(m, start, at);
-	m->blue = 0;
+	m->blue--;
 	return r;
 }
 
