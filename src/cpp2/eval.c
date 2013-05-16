@@ -227,8 +227,7 @@ static char *eval_func_macro(macro *m, char *args_str)
 	snapshot_blue_used(snapshot);
 	{
 		/* double eval */
-		//ret = eval_expand_macros(free_me);
-		ret = free_me;
+		ret = eval_expand_macros(free_me);
 
 		if(ret != free_me)
 			free(free_me);
@@ -322,10 +321,12 @@ char *eval_expand_macros(char *line)
 	for(i = 0; line[i]; i++){
 		char *end, save;
 		macro *m;
-
-		if(!iswordpart(line[i]))
-			continue;
-
+		{
+			char *start = word_find_any(line + i);
+			if(!start)
+				break;
+			i = start - line;
+		}
 		end = word_end(line + i);
 		save = *end, *end = '\0';
 		m = macro_find(line + i);
@@ -339,6 +340,9 @@ char *eval_expand_macros(char *line)
 			new_len = strlen(line);
 
 			i = i - old_len + new_len;
+		}else{
+			/* skip this word */
+			i = end - line; /* i incremented by loop */
 		}
 	}
 

@@ -20,6 +20,14 @@ char *word_end(char *s)
 	return s;
 }
 
+char *word_find_any(char *s)
+{
+	for(; *s; s++)
+		if(iswordpart(*s))
+			return s;
+	return NULL;
+}
+
 void str_trim(char *str)
 {
 	char *s;
