@@ -48,7 +48,9 @@ static char *find_arg(macro *m, char *word, char **args)
 
 		if(!strcmp(word, VA_ARGS_STR)){
 			i = dynarray_count(m->args);
-			/* FIXME: what if count(args) < i ? */
+			/* if count(args) < i then args[i] is NULL,
+			 * which str_join handles
+			 */
 			return str_join(args + i, ", ");
 		}
 
@@ -97,9 +99,10 @@ static char *eval_func_macro(macro *m, char *args_str)
 	int got = dynarray_count(args)
 		, exp = dynarray_count(m->args);
 
-	if(m->type == VARIADIC ? got <= exp : got != exp){
-		CPP_DIE("wrong number of args to function macro \"%s\", got %d, expected %d",
-				m->nam, got, exp);
+	if(m->type == VARIADIC ? got < exp : got != exp){
+		CPP_DIE("wrong number of args to function macro \"%s\", "
+				"got %d, expected %s%d",
+				m->nam, got, m->type == VARIADIC ? "at least " : "", exp);
 	}
 
 	if(args){
