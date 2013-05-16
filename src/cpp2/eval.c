@@ -216,7 +216,7 @@ static char *eval_func_macro_r(macro *m, char *args_str)
 
 static char *eval_func_macro(macro *m, char *args_str)
 {
-	/* FIXME: need to take account of *m too, i.e. snapshot one level higher */
+	/* FIXME: need to take account of *m too? i.e. snapshot one level higher */
 	snapshot *snapshot = snapshot_take();
 	char *ret, *free_me;
 
