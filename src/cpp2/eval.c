@@ -42,17 +42,22 @@ static char **split_func_args(char *args_str)
 
 static char *find_arg(macro *m, char *word, char **args)
 {
-	if(m->args){
-		char *w;
-		size_t i;
-
-		if(!strcmp(word, VA_ARGS_STR)){
-			i = dynarray_count(m->args);
+	if(!strcmp(word, VA_ARGS_STR)){
+		if(args){
+			size_t i = dynarray_count(m->args);
 			/* if count(args) < i then args[i] is NULL,
 			 * which str_join handles
 			 */
+			/* XXX: memleak, everything other return path returns a +0 pointer */
 			return str_join(args + i, ", ");
+		}else{
+			return "";
 		}
+	}
+
+	if(m->args){
+		char *w;
+		size_t i;
 
 		for(i = 0; (w = m->args[i]); i++)
 			if(!strcmp(w, word))
