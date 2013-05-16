@@ -128,7 +128,6 @@ static char *eval_func_macro(macro *m, char *args_str)
 							*replace && ws ? " " : "",            \
 							__VA_ARGS__);                         \
 					free(replace), replace = new;             \
-					break;                                    \
 				}while(0)
 
 		for(ti = toks; ti && *ti; ti++){
@@ -177,10 +176,7 @@ static char *eval_func_macro(macro *m, char *args_str)
 							 * "... is replaced by the corresponding argument after all
 							 * macros contained therein have been expanded..."
 							 */
-							char *old = word;
 							word = eval_expand_macros(word);
-							if(word != old)
-								free_word = 1;
 						}
 					}
 
@@ -201,7 +197,7 @@ static char *eval_func_macro(macro *m, char *args_str)
 		}
 
 
-		/* TODO: free args */
+		/* TODO: free args and toks */
 		return replace;
 	}
 #undef APPEND
@@ -262,12 +258,14 @@ static char *eval_macro_r(macro *m, char *start, char *at)
 		{
 			char *all_args = ustrdup2(open_b + 1, close_b);
 			char *eval_d = eval_func_macro(m, all_args);
-			char *ret = str_replace(start, at, close_b + 1, eval_d);
 
 			free(all_args);
+
+			start = str_replace(start, at, close_b + 1, eval_d);
+
 			free(eval_d);
 
-			return ret;
+			return start;
 		}
 	}
 }
@@ -276,27 +274,23 @@ static char *eval_macro_double_eval(macro *m, char *start, char *at)
 {
 	/* FIXME: need to snapshot *m too? i.e. snapshot one level higher */
 	snapshot *snapshot = snapshot_take();
-	char *ret, *free_me;
 
-	free_me = eval_macro_r(m, start, at);
+	start = eval_macro_r(m, start, at);
 
 	/* mark any macros that changed as blue, to prevent re-evaluation */
 	snapshot_take_post(snapshot);
 	snapshot_blue_used(snapshot);
 	{
 		/* double eval */
-		ret = eval_expand_macros(free_me);
+		start = eval_expand_macros(start);
 #ifdef EVAL_DEBUG
 		fprintf(stderr, "eval_expand_macros('%s') = '%s'\n", free_me, ret);
 #endif
-
-		if(ret != free_me)
-			free(free_me);
 	}
 	snapshot_unblue_used(snapshot);
 	snapshot_free(snapshot);
 
-	return ret;
+	return start;
 }
 
 static char *eval_macro(macro *m, char *start, char *at)
