@@ -329,13 +329,11 @@ char *eval_expand_macros(char *line)
 		*end = save;
 
 		if(m){
-			const int old_len = strlen(line);
-			int new_len;
-
 			line = eval_macro(m, line, line + i);
-			new_len = strlen(line);
 
-			i = i - old_len + new_len;
+			while(iswordpart(line[i]))
+				i++;
+
 		}else{
 			/* skip this word */
 			i = end - line; /* i incremented by loop */
