@@ -249,8 +249,11 @@ static char *eval_macro_r(macro *m, char *start, char *at)
 
 		for(open_b = at + strlen(m->nam); isspace(*open_b); open_b++);
 
-		if(*open_b != '(')
-			return start; /* not an invocation */
+		if(*open_b != '('){
+			/* not an invocation - return and also knock down the use-count */
+			m->use_cnt--;
+			return start;
+		}
 
 		close_b = strchr_nest(open_b, ')');
 		if(!close_b)
@@ -283,6 +286,9 @@ static char *eval_macro_double_eval(macro *m, char *start, char *at)
 	{
 		/* double eval */
 		ret = eval_expand_macros(free_me);
+#ifdef EVAL_DEBUG
+		fprintf(stderr, "eval_expand_macros('%s') = '%s'\n", free_me, ret);
+#endif
 
 		if(ret != free_me)
 			free(free_me);

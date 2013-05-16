@@ -60,6 +60,9 @@ static void snapshot_alter_blue(snapshot *snap, int change)
 
 	for(i = 0; i < snap->n; i++)
 		if(snap->post[i] != snap->pre[i])
+#ifdef EVAL_DEBUG
+			printf(">> blue %s += %d\n", macros[i]->nam, change),
+#endif
 			macros[i]->blue += change;
 }
 
