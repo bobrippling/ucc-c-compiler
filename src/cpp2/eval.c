@@ -16,6 +16,8 @@
 #include "main.h"
 #include "snapshot.h"
 
+#define VA_ARGS_STR "__VA_ARGS__"
+
 static char **split_func_args(char *args_str)
 {
 	token **tokens = tokenise(args_str);
@@ -38,34 +40,17 @@ static char **split_func_args(char *args_str)
 	return args;
 }
 
-#if 0
-		if(!strcmp(arg_target, VA_ARGS_STR)){
-			char *quoted, *free_me;
-			const int offset = s - replace;
-
-			found = 1;
-
-			if(!args)
-				CPP_DIE("#" VA_ARGS_STR " used on non-variadic macro");
-
-			quoted = str_quote(free_me = str_join(args, ", "));
-			free(free_me);
-
-			replace = str_replace(replace,
-					hash,
-					s + strlen(VA_ARGS_STR),
-					quoted);
-
-			free(quoted);
-			last = replace + offset + strlen(quoted);
-		}
-#endif
-
 static char *find_arg(macro *m, char *word, char **args)
 {
 	if(m->args){
 		char *w;
-		int i;
+		size_t i;
+
+		if(!strcmp(word, VA_ARGS_STR)){
+			i = dynarray_count(m->args);
+			/* FIXME: what if count(args) < i ? */
+			return str_join(args + i, ", ");
+		}
 
 		for(i = 0; (w = m->args[i]); i++)
 			if(!strcmp(w, word))
