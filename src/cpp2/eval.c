@@ -95,7 +95,7 @@ static char *noeval_hash(
 	return word;
 }
 
-static char *eval_func_macro_r(macro *m, char *args_str)
+static char *eval_func_macro(macro *m, char *args_str)
 {
 	/*
 	 * 6.10.3.1/1:
@@ -214,30 +214,6 @@ static char *eval_func_macro_r(macro *m, char *args_str)
 #undef APPEND
 }
 
-static char *eval_func_macro(macro *m, char *args_str)
-{
-	/* FIXME: need to take account of *m too? i.e. snapshot one level higher */
-	snapshot *snapshot = snapshot_take();
-	char *ret, *free_me;
-
-	free_me = eval_func_macro_r(m, args_str);
-
-	/* mark any macros that changed as blue, to prevent re-evaluation */
-	snapshot_take_post(snapshot);
-	snapshot_blue_used(snapshot);
-	{
-		/* double eval */
-		ret = eval_expand_macros(free_me);
-
-		if(ret != free_me)
-			free(free_me);
-	}
-	snapshot_unblue_used(snapshot);
-	snapshot_free(snapshot);
-
-	return ret;
-}
-
 static char *eval_macro_r(macro *m, char *start, char *at)
 {
 	if(m->type == MACRO){
@@ -300,6 +276,30 @@ static char *eval_macro_r(macro *m, char *start, char *at)
 	}
 }
 
+static char *eval_macro_double_eval(macro *m, char *start, char *at)
+{
+	/* FIXME: need to snapshot *m too? i.e. snapshot one level higher */
+	snapshot *snapshot = snapshot_take();
+	char *ret, *free_me;
+
+	free_me = eval_macro_r(m, start, at);
+
+	/* mark any macros that changed as blue, to prevent re-evaluation */
+	snapshot_take_post(snapshot);
+	snapshot_blue_used(snapshot);
+	{
+		/* double eval */
+		ret = eval_expand_macros(free_me);
+
+		if(ret != free_me)
+			free(free_me);
+	}
+	snapshot_unblue_used(snapshot);
+	snapshot_free(snapshot);
+
+	return ret;
+}
+
 static char *eval_macro(macro *m, char *start, char *at)
 {
 	char *r;
@@ -309,7 +309,7 @@ static char *eval_macro(macro *m, char *start, char *at)
 	m->use_cnt++;
 
 	m->blue = 1;
-	r = eval_macro_r(m, start, at);
+	r = eval_macro_double_eval(m, start, at);
 	m->blue = 0;
 	return r;
 }
