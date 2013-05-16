@@ -59,16 +59,16 @@ static void snapshot_alter_blue(snapshot *snap, int change)
 	size_t i;
 
 	for(i = 0; i < snap->n; i++)
-		if(snap->post[i] > snap->pre[i])
+		if(snap->post[i] != snap->pre[i])
 			macros[i]->blue += change;
 }
 
-void snapshot_blue_changed(snapshot *snap)
+void snapshot_blue_used(snapshot *snap)
 {
 	snapshot_alter_blue(snap, 1);
 }
 
-void snapshot_unblue_changed(snapshot *snap)
+void snapshot_unblue_used(snapshot *snap)
 {
 	snapshot_alter_blue(snap, -1);
 }

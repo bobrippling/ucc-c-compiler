@@ -224,15 +224,16 @@ static char *eval_func_macro(macro *m, char *args_str)
 
 	/* mark any macros that changed as blue, to prevent re-evaluation */
 	snapshot_take_post(snapshot);
-	snapshot_blue_changed(snapshot);
+	snapshot_blue_used(snapshot);
 	{
 		/* double eval */
-		ret = eval_expand_macros(free_me);
+		//ret = eval_expand_macros(free_me);
+		ret = free_me;
 
 		if(ret != free_me)
 			free(free_me);
 	}
-	snapshot_unblue_changed(snapshot);
+	snapshot_unblue_used(snapshot);
 	snapshot_free(snapshot);
 
 	return ret;
