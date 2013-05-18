@@ -1,6 +1,7 @@
 #ifndef MACRO_H
 #define MACRO_H
 
+#define DEFINED_STR "defined"
 /*#define EVAL_DEBUG*/
 
 typedef struct

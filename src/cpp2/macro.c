@@ -28,6 +28,9 @@ macro *macro_add(const char *nam, const char *val)
 {
 	macro *m;
 
+	if(!strcmp(nam, DEFINED_STR))
+		CPP_DIE("\"" DEFINED_STR "\" can't be used as a macro name");
+
 	m = macro_find(nam);
 
 	if(m){

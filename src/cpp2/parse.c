@@ -16,6 +16,7 @@
 #include "preproc.h"
 #include "include.h"
 #include "str.h"
+#include "eval.h"
 
 #define SINGLE_TOKEN(err) \
 	if(dynarray_count(tokens) != 1 || tokens[0]->tok != TOKEN_WORD) \
@@ -302,18 +303,34 @@ static void handle_ifndef(token **tokens)
 
 static void handle_if(token **tokens)
 {
-	const char *str = tokens[0]->w;
-	int test;
+	char *w;
+	//expr *e;
 
-	SINGLE_TOKEN("limited if macro");
+	if(!tokens)
+		CPP_DIE("#if needs arguments");
 
-	/* currently only check for #if 0 */
-	test = !strcmp(str, "0");
+	w = tokens_join(tokens);
 
-	if(!test)
-		fprintf(stderr, "\"#if %s\" assuming pass\n", str);
+	/* first we need to filter out defined() */
+	w = eval_expand_defined(w);
 
-	ifdef_push(test);
+	/* then macros */
+	w = eval_expand_macros(w);
+
+	ICE("TODO: #if");
+
+	/* then parse */
+	//e = expr_parse(w);
+	//free(w);
+
+	/* and eval */
+	//ifdef_push(expr_eval(e));
+}
+
+static void handle_elif(token **tokens)
+{
+	(void)tokens;
+	ICE("TODO: elif");
 }
 
 static void handle_else(token **tokens)
@@ -376,6 +393,7 @@ void parse_directive(char *line)
 	HANDLE(ifdef)
 	HANDLE(ifndef)
 	HANDLE(if)
+	HANDLE(elif)
 	HANDLE(else)
 	HANDLE(endif)
 

@@ -26,7 +26,7 @@ main.o: main.c ../util/util.h ../util/dynarray.h ../util/dyn.h \
  ../util/alloc.h ../util/platform.h main.h macro.h preproc.h include.h
 parse.o: parse.c ../util/util.h ../util/dynarray.h ../util/dyn.h \
  ../util/alloc.h parse.h tokenise.h main.h macro.h preproc.h include.h \
- str.h
+ str.h eval.h
 preproc.o: preproc.c ../util/util.h ../util/alloc.h main.h preproc.h \
  parse.h eval.h
 snapshot.o: snapshot.c ../util/dynarray.h ../util/dyn.h ../util/alloc.h \
