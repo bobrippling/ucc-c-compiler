@@ -35,6 +35,7 @@ const struct asm_type_table asm_type_table[ASM_TABLE_LEN] = {
 	{ 8,  'q', "quad" },
 };
 
+/* TODO: each register has a class, smarter than this */
 static struct calling_conv_desc
 {
 	int caller_cleanup;
