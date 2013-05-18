@@ -23,10 +23,9 @@ token **tokenise(char *line)
 
 		dynarray_add(&tokens, t);
 
-		while(isspace(*p)){
+		if(isspace(*p))
 			t->had_whitespace = 1;
-			p++;
-		}
+		p = str_spc_skip(p);
 
 		if(!*p){
 			t->w = ustrdup("");

@@ -20,6 +20,12 @@ char *word_end(char *s)
 	return s;
 }
 
+char *str_spc_skip(char *s)
+{
+	for(; isspace(*s); s++);
+	return s;
+}
+
 char *word_find_any(char *s)
 {
 	for(; *s; s++)
@@ -30,9 +36,7 @@ char *word_find_any(char *s)
 
 void str_trim(char *str)
 {
-	char *s;
-
-	for(s = str; isspace(*s); s++);
+	char *s = str_spc_skip(str);
 
 	memmove(str, s, strlen(s) + 1);
 

@@ -15,6 +15,7 @@
 #include "macro.h"
 #include "preproc.h"
 #include "include.h"
+#include "str.h"
 
 #define SINGLE_TOKEN(err) \
 	if(dynarray_count(tokens) != 1 || tokens[0]->tok != TOKEN_WORD) \
@@ -218,7 +219,7 @@ retry:
 		if(!m)
 			CPP_DIE("invalid include start \"%s\" (not <xyz>, \"xyz\" or a macro)", fname);
 
-		for(fname = m->val; isspace(*fname); fname++);
+		fname = str_spc_skip(m->val);
 		len = strlen(fname);
 		goto retry;
 	}

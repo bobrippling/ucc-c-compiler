@@ -260,7 +260,7 @@ static char *eval_macro_r(macro *m, char *start, char *at)
 	}else{
 		char *open_b, *close_b;
 
-		for(open_b = at + strlen(m->nam); isspace(*open_b); open_b++);
+		open_b = str_spc_skip(at + strlen(m->nam));
 
 		if(*open_b != '('){
 			/* not an invocation - return and also knock down the use-count */
