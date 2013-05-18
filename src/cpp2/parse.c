@@ -17,6 +17,7 @@
 #include "include.h"
 #include "str.h"
 #include "eval.h"
+#include "expr.h"
 
 #define SINGLE_TOKEN(err) \
 	if(dynarray_count(tokens) != 1 || tokens[0]->tok != TOKEN_WORD) \
@@ -304,7 +305,7 @@ static void handle_ifndef(token **tokens)
 static void handle_if(token **tokens)
 {
 	char *w;
-	//expr *e;
+	expr *e;
 
 	if(!tokens)
 		CPP_DIE("#if needs arguments");
@@ -317,14 +318,14 @@ static void handle_if(token **tokens)
 	/* then macros */
 	w = eval_expand_macros(w);
 
-	ICE("TODO: #if");
-
 	/* then parse */
-	//e = expr_parse(w);
-	//free(w);
+	e = expr_parse(w);
+	fprintf(stderr, "eval(\"%s\") = %ld\n",
+			w, expr_eval(e));
+	free(w);
 
-	/* and eval */
-	//ifdef_push(expr_eval(e));
+	/* and eval (this also frees e - TODO) */
+	ifdef_push(/* noop - hence not */ !expr_eval(e));
 }
 
 static void handle_elif(token **tokens)

@@ -3,10 +3,11 @@ include ../src_config.mk
 CFLAGS += -Wmissing-prototypes
 
 OBJ = preproc.o main.o macro.o str.o \
-			parse.o tokenise.o eval.o      \
-			snapshot.o include.o           \
-			../util/util.o ../util/alloc.o \
-			../util/platform.o ../util/dynarray.o
+      parse.o tokenise.o eval.o      \
+      snapshot.o include.o           \
+      expr.o expr_tok.o              \
+      ../util/util.o ../util/alloc.o \
+      ../util/platform.o ../util/dynarray.o
 
 cpp: ${OBJ}
 	${CC} ${CFLAGS} -o $@ ${OBJ}
@@ -18,6 +19,8 @@ clean:
 
 eval.o: eval.c eval.h ../util/dynarray.h ../util/dyn.h ../util/util.h \
  ../util/alloc.h tokenise.h macro.h str.h main.h snapshot.h
+expr.o: expr.c expr.h expr_tok.h main.h ../util/alloc.h ../util/util.h
+expr_tok.o: expr_tok.c expr.h expr_tok.h str.h ../util/alloc.h
 include.o: include.c ../util/dynarray.h ../util/dyn.h ../util/alloc.h \
  include.h
 macro.o: macro.c ../util/util.h ../util/alloc.h ../util/dynarray.h \
@@ -26,7 +29,7 @@ main.o: main.c ../util/util.h ../util/dynarray.h ../util/dyn.h \
  ../util/alloc.h ../util/platform.h main.h macro.h preproc.h include.h
 parse.o: parse.c ../util/util.h ../util/dynarray.h ../util/dyn.h \
  ../util/alloc.h parse.h tokenise.h main.h macro.h preproc.h include.h \
- str.h eval.h
+ str.h eval.h expr.h
 preproc.o: preproc.c ../util/util.h ../util/alloc.h main.h preproc.h \
  parse.h eval.h
 snapshot.o: snapshot.c ../util/dynarray.h ../util/dyn.h ../util/alloc.h \
