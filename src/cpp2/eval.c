@@ -42,15 +42,16 @@ static char **split_func_args(char *args_str)
 	return args;
 }
 
-static char *find_arg(macro *m, char *word, char **args)
+static char *find_arg(macro *m, char *word, char **args, int *alloced)
 {
+	*alloced = 0;
 	if(!strcmp(word, VA_ARGS_STR)){
 		if(args){
 			size_t i = dynarray_count(m->args);
 			/* if count(args) < i then args[i] is NULL,
 			 * which str_join handles
 			 */
-			/* XXX: memleak, everything other return path returns a +0 pointer */
+			*alloced = 1;
 			return str_join(args + i, ", ");
 		}else{
 			return "";
@@ -71,7 +72,9 @@ static char *find_arg(macro *m, char *word, char **args)
 }
 
 static char *noeval_hash(
-		macro *m, token *this, char **args, int need_arg, const char *emsg)
+		macro *m, token *this, char **args,
+		int *alloced,
+		int need_arg, const char *emsg)
 {
 	char *word;
 
@@ -80,7 +83,7 @@ static char *noeval_hash(
 	if(this->tok != TOKEN_WORD)
 		CPP_DIE("can't %s a none-word (%s)", emsg, token_str(this));
 
-	word = find_arg(m, this->w, args); /* don't expand */
+	word = find_arg(m, this->w, args, alloced); /* don't expand */
 	if(need_arg && word == this->w){
 		/* not found */
 		CPP_DIE("can't %s non-argument \"%s\"", emsg, word);
@@ -136,11 +139,18 @@ static char *eval_func_macro(macro *m, char *args_str)
 			token *this = *ti;
 			switch(this->tok){
 				case TOKEN_HASH_QUOTE:
+				{
+					char *w;
+					int alloced;
 					/* replace #arg with the quote of arg */
 					/* # - don't eval */
 					APPEND(this->had_whitespace, "\"%s\"",
-							noeval_hash(m, *++ti, args, 1, "quote"));
+							w = noeval_hash(m, *++ti, args, &alloced, 1, "quote"));
+
+					if(alloced)
+						free(w);
 					break;
+				}
 
 				case TOKEN_HASH_JOIN:
 					/* replace a ## b with the join of both */
@@ -153,16 +163,20 @@ static char *eval_func_macro(macro *m, char *args_str)
 
 					if(ti[1] && ti[1]->tok == TOKEN_HASH_JOIN){
 						/* word with ## - don't eval */
-						word = noeval_hash(m, ti[0], args, 0, "join");
+						word = noeval_hash(m, ti[0], args, &free_word, 0, "join");
 
 						ti++;
 
 						while(*ti && ti[0]->tok == TOKEN_HASH_JOIN){
 							char *old = word;
+							char *neh;
+							int free_neh;
 
 							word = ustrprintf("%s%s", word,
-									noeval_hash(m, ti[1], args, 0, "join"));
+									neh = noeval_hash(m, ti[1], args, &free_neh, 0, "join"));
 
+							if(free_neh)
+								free(neh);
 							if(free_word)
 								free(old);
 							free_word = 1;
@@ -172,7 +186,7 @@ static char *eval_func_macro(macro *m, char *args_str)
 						ti--;
 					}else{
 						/* word without # nor ## - we may eval */
-						word = find_arg(m, this->w, args);
+						word = find_arg(m, this->w, args, &free_word);
 						if(word != this->w){
 							/* is an argument, eval.
 							 * "... is replaced by the corresponding argument after all
