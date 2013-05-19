@@ -26,6 +26,15 @@ void tok_next()
 	if(isdigit(*tok_pos)){
 		char *ep;
 		tok_cur_num = strtol(tok_pos, &ep, 0);
+		do switch(*ep){
+			case 'L':
+			case 'U':
+				ep++;
+				break;
+			default:
+				goto end_ty;
+		}while(1);
+end_ty:
 		tok_pos = ep;
 		tok_cur = tok_num;
 		return;
