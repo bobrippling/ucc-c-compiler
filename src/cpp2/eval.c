@@ -23,14 +23,27 @@ static char **split_func_args(char *args_str)
 	token **tokens = tokenise(args_str);
 	token **ti, **anchor = tokens;
 	char **args = NULL;
+	unsigned nest = 0;
 
 	for(ti = tokens; ti && *ti; ti++){
 		token *t = *ti;
 
-		if(t->tok == TOKEN_COMMA){
-			char *arg = tokens_join_n(anchor, ti - anchor);
-			dynarray_add(&args, arg);
-			anchor = ti + 1;
+		switch(t->tok){
+			case TOKEN_COMMA:
+				if(nest == 0){
+					char *arg = tokens_join_n(anchor, ti - anchor);
+					dynarray_add(&args, arg);
+					anchor = ti + 1;
+					break;
+				}
+			case TOKEN_OPEN_PAREN:
+				nest++;
+				break;
+			case TOKEN_CLOSE_PAREN:
+				nest--;
+				break;
+			default:
+				break;
 		}
 	}
 
