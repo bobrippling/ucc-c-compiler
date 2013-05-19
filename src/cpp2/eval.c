@@ -350,7 +350,7 @@ char *eval_expand_macros(char *line)
 
 		}else{
 			/* skip this word */
-			i = end - line; /* i incremented by loop */
+			i = end - line - 1; /* i incremented by loop */
 		}
 	}
 
