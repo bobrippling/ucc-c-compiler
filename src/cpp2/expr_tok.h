@@ -9,6 +9,10 @@ extern enum tok
 	tok_ident = -1,
 	tok_num   = -2,
 	tok_eof   =  0,
+
+	tok_lparen = '(',
+	tok_rparen = ')',
+
 	/* operators returned as char-value,
 	 * except for double-char ops
 	 */

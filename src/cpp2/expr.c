@@ -28,6 +28,8 @@ struct expr
 	} bits;
 };
 
+static expr *parse(void);
+
 static int is_op(e_op op)
 {
 	switch(op){
@@ -77,6 +79,17 @@ static expr *parse_primary(void)
 	switch(tok_cur){
 		case tok_ident: tok_next(); return expr_ident();
 		case tok_num:   tok_next(); return expr_num(tok_cur_num);
+		case tok_lparen:
+		{
+			expr *e;
+			tok_next();
+			e = parse();
+			if(tok_cur != tok_rparen)
+				CPP_DIE("close paren expected");
+			tok_next();
+			return e;
+		}
+
 		default:
 			break;
 	}
@@ -136,12 +149,9 @@ static expr *parse_rhs(expr *lhs, int priority)
 		e_op op;
 		expr *rhs;
 
-		if(tok_cur == tok_eof)
-			return lhs;
-
 		op = tok_cur;
 		if(!is_op(op))
-			CPP_DIE("operator expected, got '%c'", op);
+			return lhs; /* eof and rparen covered here */
 
 		this_pri = PRECEDENCE(op);
     if(this_pri > priority)
