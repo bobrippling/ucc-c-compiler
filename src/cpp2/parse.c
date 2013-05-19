@@ -19,9 +19,10 @@
 #include "eval.h"
 #include "expr.h"
 
-#define SINGLE_TOKEN(err) \
-	if(dynarray_count(tokens) != 1 || tokens[0]->tok != TOKEN_WORD) \
-		CPP_DIE(err)
+#define SINGLE_TOKEN(...) \
+	tokens = tokens_skip_whitespace(tokens);                        \
+	if(tokens_count_skip_spc(tokens) != 1 || tokens[0]->tok != TOKEN_WORD) \
+		CPP_DIE(__VA_ARGS__)
 
 #define NO_TOKEN(err) \
 	if(tokens_count_skip_spc(tokens) > 0) \
