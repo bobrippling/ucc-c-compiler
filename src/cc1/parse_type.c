@@ -544,7 +544,8 @@ int parse_curtok_is_type(void)
 
 funcargs *parse_func_arglist()
 {
-	const enum decl_mode flags = DECL_CAN_DEFAULT;
+	/* don't allow default - we handle that manually in old-func parsing */
+	const enum decl_mode flags = 0;
 	funcargs *args;
 	decl *argdecl;
 
