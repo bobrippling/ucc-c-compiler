@@ -167,3 +167,26 @@ void tokens_free(token **tokens)
 	}
 	free(tokens);
 }
+
+int tokens_just_whitespace(token **tokens)
+{
+	for(; tokens && *tokens; tokens++){
+		token *t = *tokens;
+		switch(t->tok){
+			case TOKEN_WORD:
+				if(*str_spc_skip(t->w))
+					return 0;
+				break;
+			case TOKEN_OPEN_PAREN:
+			case TOKEN_CLOSE_PAREN:
+			case TOKEN_COMMA:
+			case TOKEN_ELIPSIS:
+			case TOKEN_STRING:
+			case TOKEN_HASH_QUOTE:
+			case TOKEN_HASH_JOIN:
+			case TOKEN_OTHER:
+				return 0;
+		}
+	}
+	return 1;
+}

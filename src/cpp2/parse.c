@@ -24,8 +24,8 @@
 		CPP_DIE(err)
 
 #define NO_TOKEN(err) \
-	if(dynarray_count(tokens)) \
-		CPP_DIE(err)
+	if(tokens_count_skip_spc(tokens) > 0) \
+		CPP_WARN(err " directive with extra tokens")
 
 #define NOOP_RET() if(parse_should_noop()) return
 
@@ -346,7 +346,7 @@ static void handle_elif(token **tokens)
 
 static void handle_else(token **tokens)
 {
-	NO_TOKEN("invalid else macro");
+	NO_TOKEN("else");
 
 	got_else("else");
 
@@ -355,7 +355,7 @@ static void handle_else(token **tokens)
 
 static void handle_endif(token **tokens)
 {
-	NO_TOKEN("invalid endif macro");
+	NO_TOKEN("endif");
 
 	if(ifdef_idx == 0)
 		CPP_DIE("endif unexpected");
