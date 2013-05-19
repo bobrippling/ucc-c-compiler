@@ -302,13 +302,13 @@ static void handle_ifndef(token **tokens)
 	handle_somedef(tokens, 1);
 }
 
-static void handle_if(token **tokens)
+static int /*bool*/ if_eval(token **tokens, const char *type)
 {
 	char *w;
 	expr *e;
 
 	if(!tokens)
-		CPP_DIE("#if needs arguments");
+		CPP_DIE("#%s needs arguments", type);
 
 	w = tokens_join(tokens);
 
@@ -323,21 +323,32 @@ static void handle_if(token **tokens)
 	free(w);
 
 	/* and eval (this also frees e) */
-	ifdef_push(/* noop - hence not */ !expr_eval(e));
+	return !!expr_eval(e);
+}
+
+static void handle_if(token **tokens)
+{
+	/* noop - hence not: */
+	ifdef_push( ! if_eval(tokens, "if"));
+}
+
+static void got_else(const char *type)
+{
+	if(ifdef_idx == 0)
+		CPP_DIE("%s unexpected", type);
 }
 
 static void handle_elif(token **tokens)
 {
-	(void)tokens;
-	ICE("TODO: elif");
+	got_else("elif");
+	noop = if_eval(tokens, "elif") ^ noop;
 }
 
 static void handle_else(token **tokens)
 {
 	NO_TOKEN("invalid else macro");
 
-	if(ifdef_idx == 0)
-		CPP_DIE("else unexpected");
+	got_else("else");
 
 	noop = !noop;
 }
