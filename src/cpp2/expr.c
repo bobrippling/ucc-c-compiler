@@ -210,13 +210,13 @@ expr *expr_parse(char *str)
 
 	expr_init();
 
-	tok_pos = str;
+	tok_begin(str);
 	tok_next();
 
 	e = parse();
 
 	if(tok_cur != tok_eof)
-		CPP_DIE("'%s' at end of expression", tok_pos - 1);
+		CPP_DIE("'%s' at end of expression", tok_last());
 
 	return e;
 }

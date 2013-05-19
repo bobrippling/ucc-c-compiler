@@ -8,12 +8,28 @@
 
 #include "../util/alloc.h"
 
+static char *tok_pos;
+
 enum tok tok_cur;
-char *tok_pos;
 expr_n tok_cur_num;
+
+void tok_begin(char *begin)
+{
+	tok_pos = begin;
+}
+
+const char *tok_last(void)
+{
+	return tok_pos - 1;
+}
 
 void tok_next()
 {
+	if(!*tok_pos){
+		tok_cur = tok_eof;
+		return;
+	}
+
 	tok_pos = str_spc_skip(tok_pos);
 
 	if(isalpha(*tok_pos) || *tok_pos == '_'){

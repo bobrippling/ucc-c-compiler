@@ -1,7 +1,6 @@
 #ifndef EXPR_TOK_H
 #define EXPR_TOK_H
 
-extern char *tok_pos;
 extern expr_n tok_cur_num;
 
 extern enum tok
@@ -46,5 +45,7 @@ extern enum tok
 } tok_cur;
 
 void tok_next(void);
+void tok_begin(char *);
+const char *tok_last(void);
 
 #endif
