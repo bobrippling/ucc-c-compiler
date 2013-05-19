@@ -320,11 +320,9 @@ static void handle_if(token **tokens)
 
 	/* then parse */
 	e = expr_parse(w);
-	fprintf(stderr, "eval(\"%s\") = %ld\n",
-			w, expr_eval(e));
 	free(w);
 
-	/* and eval (this also frees e - TODO) */
+	/* and eval (this also frees e) */
 	ifdef_push(/* noop - hence not */ !expr_eval(e));
 }
 

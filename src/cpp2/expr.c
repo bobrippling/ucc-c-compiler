@@ -186,31 +186,34 @@ expr *expr_parse(char *str)
 }
 
 /* eval */
-expr_n expr_eval(expr *e)
+expr_n expr_eval(expr *e_)
 {
-	switch(e->type){
+	const expr ke = *e_;
+	free(e_);
+
+	switch(ke.type){
 		case E_IDENT:
 			return 0; /* identifiers are zero */
 		case E_NUM:
-			return e->bits.num;
+			return ke.bits.num;
 		case E_OP:
 		{
 			expr_n nums[2];
 
-			nums[0] = expr_eval(e->bits.op.lhs);
-			nums[1] = expr_eval(e->bits.op.rhs);
+			nums[0] = expr_eval(ke.bits.op.lhs);
+			nums[1] = expr_eval(ke.bits.op.rhs);
 
-			switch(e->bits.op.op){
+			switch(ke.bits.op.op){
 				case '*':
 				case '/':
 					if(nums[1] == 0)
 						CPP_DIE("%s by zero",
-								e->bits.op.op == '/' ? "division" : "modulo");
+								ke.bits.op.op == '/' ? "division" : "modulo");
 				default:
 					break;
 			}
 
-			switch(e->bits.op.op){
+			switch(ke.bits.op.op){
 #define OP(ty, op) case tok_ ## ty: return nums[0] op nums[1]
 				OP(divide, /);
 				OP(modulus, %);
