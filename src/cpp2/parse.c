@@ -287,7 +287,8 @@ static void ifdef_pop(void)
 
 static void handle_somedef(token **tokens, int rev)
 {
-	SINGLE_TOKEN("invalid ifdef macro");
+	tokens = tokens_skip_whitespace(tokens);
+	SINGLE_TOKEN("too many arguments to ifdef macro");
 
 	ifdef_push(rev ^ !macro_find(tokens[0]->w));
 }

@@ -28,6 +28,7 @@ const char *token_str(token *t);
 char *tokens_join(token **tokens);
 char *tokens_join_n(token **tokens, int lim);
 
+token **tokens_skip_whitespace(token **tokens);
 int tokens_just_whitespace(token **tokens);
 
 void tokens_free(token **);
