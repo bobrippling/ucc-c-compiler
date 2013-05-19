@@ -365,24 +365,29 @@ char *eval_expand_defined(char *w)
 		char *s = str_spc_skip(word_end(defined));
 		char *ident;
 		char buf[2], save;
+		int with_paren;
 
-		if(*s != '(')
-			CPP_DIE("'(' expected after \"" DEFINED_STR "\"");
+		if((with_paren = *s == '('))
+			s = str_spc_skip(s+1);
 
-		s = str_spc_skip(s+1);
 		if(!iswordpart(*s))
 			CPP_DIE("identifier expected for \"" DEFINED_STR "\"");
 
 		ident = s;
-		s = str_spc_skip(word_end(s));
-		if(*s != ')')
-			CPP_DIE("')' expected for \"" DEFINED_STR "\"");
+		s = word_end(s);
 
 		save = *s, *s = '\0';
 		snprintf(buf, sizeof buf, "%d", !!macro_find(ident));
 		*s = save;
 
-		w = str_replace(w, defined, s + 1, buf);
+		if(with_paren){
+			s = str_spc_skip(s);
+			if(*s != ')')
+				CPP_DIE("')' expected for \"" DEFINED_STR "\"");
+			s++;
+		}
+
+		w = str_replace(w, defined, s, buf);
 	}
 
 	return w;

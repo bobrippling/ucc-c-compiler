@@ -216,7 +216,7 @@ expr *expr_parse(char *str)
 	e = parse();
 
 	if(tok_cur != tok_eof)
-		CPP_DIE("'%s' at end of expression", tok_pos);
+		CPP_DIE("'%s' at end of expression", tok_pos - 1);
 
 	return e;
 }
