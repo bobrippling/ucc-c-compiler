@@ -5,12 +5,15 @@
 #include <stdarg.h>
 #include <time.h>
 
-#include "macro.h"
-#include "preproc.h"
 #include "../util/util.h"
 #include "../util/dynarray.h"
 #include "../util/alloc.h"
 #include "../util/platform.h"
+
+#include "main.h"
+#include "macro.h"
+#include "preproc.h"
+#include "include.h"
 
 static const struct
 {
@@ -47,7 +50,7 @@ int show_current_line = 1;
 
 char cpp_time[16], cpp_date[16];
 
-char **dirnames = NULL;
+char **cd_stack = NULL;
 
 int option_debug     = 0;
 int option_line_info = 1;
@@ -56,19 +59,15 @@ int option_line_info = 1;
 void dirname_push(char *d)
 {
 	/*fprintf(stderr, "dirname_push(%s = %p)\n", d, d);*/
-	dynarray_add(&dirnames, d);
+	dynarray_add(&cd_stack, d);
 }
 
 char *dirname_pop()
 {
-	char *r = dynarray_pop(char *, &dirnames);
-	(void)r;
-	/*fprintf(stderr, "dirname_pop() = %s (%p)\n", r, r);
-	return r; TODO - free*/
-	return NULL;
+	return dynarray_pop(char *, &cd_stack);
 }
 
-void calctime(void)
+static void calctime(void)
 {
 	time_t t;
 	struct tm *now;
@@ -140,7 +139,7 @@ int main(int argc, char **argv)
 		switch(argv[i][1]){
 			case 'I':
 				if(argv[i][2])
-					macro_add_dir(argv[i]+2);
+					include_add_dir(argv[i]+2);
 				else
 					goto usage;
 				break;
@@ -244,13 +243,6 @@ int main(int argc, char **argv)
 	}
 
 	current_fname = infname;
-
-	if(DEBUG_VERB < option_debug){
-		extern macro **macros;
-		for(i = 0; macros[i]; i++)
-			fprintf(stderr, "### macro \"%s\" = \"%s\"\n",
-					macros[i]->nam, macros[i]->val);
-	}
 
 	preprocess();
 

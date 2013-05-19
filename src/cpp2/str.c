@@ -9,16 +9,34 @@
 #include "../util/util.h"
 #include "macro.h"
 
-static int iswordpart(char c)
+int iswordpart(char c)
 {
 	return isalnum(c) || c == '_';
 }
 
+char *word_end(char *s)
+{
+	for(; iswordpart(*s); s++);
+	return s;
+}
+
+char *str_spc_skip(char *s)
+{
+	for(; isspace(*s); s++);
+	return s;
+}
+
+char *word_find_any(char *s)
+{
+	for(; *s; s++)
+		if(iswordpart(*s))
+			return s;
+	return NULL;
+}
+
 void str_trim(char *str)
 {
-	char *s;
-
-	for(s = str; isspace(*s); s++);
+	char *s = str_spc_skip(str);
 
 	memmove(str, s, strlen(s) + 1);
 
@@ -55,6 +73,19 @@ char *word_dup(const char *s)
 	while(iswordpart(*s))
 		s++;
 	return ustrdup2(start, s);
+}
+
+char *str_quotefin(char *s)
+{
+	for(; *s; s++) switch(*s){
+		case '\\':
+			s++;
+			break;
+		case '"':
+			return s;
+	}
+
+	return NULL;
 }
 
 char *str_quote(const char *quoteme)
@@ -104,34 +135,12 @@ char *str_replace(char *line, char *start, char *end, const char *replace)
 	}
 }
 
-char *word_replace(char *line, char *pos, const char *find, const char *replace)
+char *word_replace(char *line, char *pos, size_t len, const char *replace)
 {
-	return str_replace(line, pos, pos + strlen(find), replace);
+	return str_replace(line, pos, pos + len, replace);
 }
 
-int word_replace_g(char **pline, char *find, const char *replace)
-{
-	char *pos = *pline;
-	int r = 0;
-
-	DEBUG(DEBUG_VERB, "word_find(\"%s\", \"%s\")\n", pos, find);
-
-	while((pos = word_find(pos, find))){
-		int posidx = pos - *pline;
-
-		DEBUG(DEBUG_VERB, "word_replace(line=\"%s\", pos=\"%s\", nam=\"%s\", val=\"%s\")\n",
-				*pline, pos, find, replace);
-
-		*pline = word_replace(*pline, pos, find, replace);
-		pos = *pline + posidx + strlen(replace);
-
-		r = 1;
-	}
-
-	return r;
-}
-
-char *word_strstr(char *haystack, char *needle)
+static char *word_strstr(char *haystack, char *needle)
 {
 	const int nlen = strlen(needle);
 	char *i;
@@ -141,13 +150,10 @@ char *word_strstr(char *haystack, char *needle)
 
 	for(i = haystack; *i; i++)
 		if(*i == '"'){
-refind:
-			i = strchr(i + 1, '"');
+			i = str_quotefin(i + 1);
 			if(!i)
 				ICE("terminating quote not found\nhaystack = >>%s<<\nneedle = >>%s<<",
 						haystack, needle);
-			else if(i[-1] == '\\')
-				goto refind;
 		}else if(!strncmp(i, needle, nlen)){
 			return i;
 		}
@@ -176,21 +182,23 @@ char *word_find(char *line, char *word)
 	return NULL;
 }
 
-char *nest_close_paren(char *start)
+char *strchr_nest(char *start, char find)
 {
-	int nest = 0;
+	size_t nest = 0;
 
-	while(*start){
+	for(; *start; start++)
 		switch(*start){
 			case '(':
 				nest++;
 				break;
 			case ')':
-				if(nest-- == 0)
+				if(nest > 0)
+					nest--;
+				/* fall */
+			default:
+				if(nest == 0 && *start == find)
 					return start;
 		}
-		start++;
-	}
 
 	return NULL;
 }

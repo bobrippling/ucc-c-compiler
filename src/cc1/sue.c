@@ -206,7 +206,7 @@ new_type:
 				}
 			}
 
-			dynarray_free((void ***)&decls, NULL);
+			dynarray_free(sue_member **, &decls, NULL);
 		}
 	}
 

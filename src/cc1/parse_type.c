@@ -120,7 +120,7 @@ type_ref *parse_type_sue(enum type_primitive prim)
 					dynarray_add(&members,
 							sue_member_from_decl(*i));
 
-				dynarray_free(&dmembers, NULL);
+				dynarray_free(decl **, &dmembers, NULL);
 			}
 		}
 		EAT(token_close_block);

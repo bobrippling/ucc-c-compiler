@@ -81,7 +81,7 @@ unam="$(uname -s)"
 case "$unam" in
 	Darwin)
 		UCC_ARCH=macho64
-		UCC_LDFLAGS='-e _start -macosx_version_min 10.5'
+		UCC_LDFLAGS='-macosx_version_min 10.5'
 		;;
 
 	CYGWIN_NT-*)

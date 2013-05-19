@@ -5,13 +5,16 @@
 #include <stdio.h>
 #include <errno.h>
 
-#include "parse.h"
-#include "macro.h"
-#include "../util/alloc.h"
-#include "../util/dynarray.h"
 #include "../util/util.h"
-#include "preproc.h"
+#include "../util/dynarray.h"
+#include "../util/alloc.h"
+
+#include "parse.h"
+#include "tokenise.h"
 #include "main.h"
+#include "macro.h"
+#include "preproc.h"
+#include "include.h"
 #include "str.h"
 
 #define SINGLE_TOKEN(err) \
@@ -22,22 +25,15 @@
 	if(dynarray_count(tokens)) \
 		CPP_DIE(err)
 
-#define NOOP_RET() if(should_noop()) return
-
-#define SHOW_TOKENS(pre, t) \
-	do{ \
-		int i, len; \
-		for(len = 0; t[i]; i++) \
-			fprintf(stderr, pre "token %d = %s (whitespace = %c)\n", i, token_str(t[i]), t[i]->had_whitespace["NY"]); \
-	}while(0)
+#define NOOP_RET() if(parse_should_noop()) return
 
 
-char ifdef_stack[32] = { 0 };
-int  ifdef_idx = 0;
-int noop = 0;
+static char ifdef_stack[32] = { 0 };
+static int  ifdef_idx = 0;
+static int noop = 0;
 
 
-int should_noop(void)
+int parse_should_noop(void)
 {
 	int i;
 
@@ -57,140 +53,7 @@ int should_noop(void)
 	return 0;
 }
 
-token **tokenise(char *line)
-{
-	token **tokens;
-	token *t;
-	char *p;
-
-	tokens = NULL;
-
-	for(p = line + 1; *p; p++){
-		char c;
-
-		t = umalloc(sizeof *t);
-		dynarray_add(&tokens, t);
-
-		while(isspace(*p)){
-			t->had_whitespace = 1;
-			p++;
-		}
-
-		if(!*p){
-			t->w = ustrdup("");
-			break;
-		}
-
-		c = *p;
-		if(isalpha(c) || c == '_'){
-			char *start;
-word:
-			start = p;
-
-			t->tok = TOKEN_WORD;
-
-			for(p++; *p; p++)
-				if(!(isalnum(*p) || *p == '_'))
-					break;
-
-			c = *p;
-			*p = '\0';
-			t->w = ustrdup(start);
-			*p = c;
-			p--;
-		}else if(c == ','){
-			t->tok = TOKEN_COMMA;
-		}else if(c == '('){
-			t->tok = TOKEN_OPEN_PAREN;
-		}else if(c == ')'){
-			t->tok = TOKEN_CLOSE_PAREN;
-			p++;
-			break; /* exit early */
-		}else if(!strncmp(p, "...", 3)){
-			t->tok = TOKEN_ELIPSIS;
-			p += 2;
-		}else if(c == '"'){
-			char *end  = strchr(p + 1, '"');
-			char c;
-
-			/* guaranteed, since strip_comment() checks */
-			while(end[-1] == '\\')
-				end = strchr(end + 1, '"');
-
-			c = end[1];
-			end[1] = '\0';
-			t->w = ustrdup(p);
-			end[1] = c;
-			p = end;
-
-			t->tok = TOKEN_WORD;
-		}else{
-			goto word;
-		}
-	}
-
-	if(*p){
-		t = umalloc(sizeof *t);
-		dynarray_add(&tokens, t);
-		if(isspace(*p))
-			t->had_whitespace = 1;
-		t->tok = TOKEN_OTHER;
-		t->w = ustrdup(p);
-	}
-
-	/* trim tokens */
-	if(tokens){
-		int i;
-		for(i = 0; tokens[i]; i++)
-			if(tokens[i]->w)
-				str_trim(tokens[i]->w);
-	}
-
-	return tokens;
-}
-
-const char *token_str(token *t)
-{
-	switch(t->tok){
-		case TOKEN_OTHER:
-		case TOKEN_WORD:
-			if(!t->w)
-				ICE("no string for token word");
-			return t->w;
-
-#define MAP(e, c) case e: return c
-		MAP(TOKEN_OPEN_PAREN,  "(");
-		MAP(TOKEN_CLOSE_PAREN, ")");
-		MAP(TOKEN_COMMA,       ",");
-		MAP(TOKEN_ELIPSIS,   "...");
-#undef MAP
-	}
-
-	ICE("invalid token %d", t->tok);
-	return NULL;
-}
-
-char *tokens_join(token **tokens)
-{
-	int i;
-	int len;
-	char *val;
-
-	len = 1;
-	for(i = 0; tokens[i]; i++)
-		len += 1 + strlen(token_str(tokens[i]));
-	val = umalloc(len);
-	*val = '\0';
-	for(i = 0; tokens[i]; i++){
-		if(tokens[i]->had_whitespace)
-			strcat(val, " ");
-		strcat(val, token_str(tokens[i]));
-	}
-
-	return val;
-}
-
-void handle_define(token **tokens)
+static void handle_define(token **tokens)
 {
 	char *name;
 
@@ -201,7 +64,10 @@ void handle_define(token **tokens)
 
 	name = tokens[0]->w;
 
-	if(tokens[1] && tokens[1]->tok == TOKEN_OPEN_PAREN && !tokens[1]->had_whitespace){
+	if(tokens[1]
+	&& tokens[1]->tok == TOKEN_OPEN_PAREN
+	&& !tokens[1]->had_whitespace)
+	{
 		/* function macro */
 		int i, variadic;
 		char **args;
@@ -243,10 +109,14 @@ void handle_define(token **tokens)
 			}
 		}
 for_fin:
-		if(!tokens[i])
+		if(!tokens[i]){
 			val = ustrdup("");
-		else
+		}else{
+			/* prevent leading whitespace */
+			tokens[i]->had_whitespace = 0;
+
 			val = tokens_join(tokens + i);
+		}
 
 		macro_add_func(name, val, args, variadic);
 
@@ -254,6 +124,10 @@ for_fin:
 
 	}else{
 		char *val;
+
+		if(tokens[1]) /* prevent initial whitespace */
+			tokens[1]->had_whitespace = 0;
+
 		val = tokens_join(tokens + 1);
 
 		macro_add(name, val);
@@ -262,7 +136,7 @@ for_fin:
 	}
 }
 
-void handle_undef(token **tokens)
+static void handle_undef(token **tokens)
 {
 	SINGLE_TOKEN("invalid undef macro");
 
@@ -271,7 +145,7 @@ void handle_undef(token **tokens)
 	macro_remove(tokens[0]->w);
 }
 
-void handle_error_warning(token **tokens, const char *pre)
+static void handle_error_warning(token **tokens, const char *pre)
 {
 	char *s;
 
@@ -284,27 +158,26 @@ void handle_error_warning(token **tokens, const char *pre)
 	free(s);
 }
 
-void handle_warning(token **tokens)
+static void handle_warning(token **tokens)
 {
 	NOOP_RET();
 	handle_error_warning(tokens, "warning");
 }
 
-void handle_error(token **tokens)
+static void handle_error(token **tokens)
 {
 	NOOP_RET();
 	handle_error_warning(tokens, "error");
 	exit(1);
 }
 
-void handle_include(token **tokens)
+static void handle_include(token **tokens)
 {
 	FILE *f;
 	char *fname;
 	int len, free_fname, lib;
 
-	extern char **dirnames;
-	char *dname;
+	const char *current_include_dname;
 	char *path = NULL;
 	int i;
 
@@ -346,7 +219,7 @@ retry:
 		if(!m)
 			CPP_DIE("invalid include start \"%s\" (not <xyz>, \"xyz\" or a macro)", fname);
 
-		for(fname = m->val; isspace(*fname); fname++);
+		fname = str_spc_skip(m->val);
 		len = strlen(fname);
 		goto retry;
 	}
@@ -358,8 +231,8 @@ retry:
 	fname[len-1] = '\0';
 	fname++;
 
-	i = dynarray_count((void **)dirnames);
-	dname = dirnames[i - 1];
+	i = dynarray_count(cd_stack);
+	current_include_dname = cd_stack[i - 1];
 
 	if(*fname == '/'){
 		/* absolute path */
@@ -367,38 +240,21 @@ retry:
 		goto abs_path;
 	}
 
-	i = dynarray_count(dirnames);
-	dname = dirnames[i - 1];
-
 	if(lib){
 lib:
-		f = NULL;
-
-		for(i = 0; lib_dirs && lib_dirs[i]; i++){
-			path = ustrprintf("%s/%s/%s",
-					*lib_dirs[i] == '/' ? "" : dname,
-					lib_dirs[i], fname);
-			f = fopen(path, "r");
-			if(f)
-				break;
-		}
+		f = include_fopen(current_include_dname, fname, &path);
 
 		if(!f)
 			CPP_DIE("can't find include file %c%s%c",
 					"\"<"[lib], fname, "\">"[lib]);
-
-		if(option_debug)
-			fprintf(stderr, ">>> include lib: %s\n", path);
 	}else{
-		path = ustrprintf("%s/%s", dname, fname);
+		path = ustrprintf("%s/%s", current_include_dname, fname);
 abs_path:
 		f = fopen(path, "r");
 		if(!f){
 			/* attempt lib */
 			goto lib;
 		}
-		if(option_debug)
-			fprintf(stderr, ">>> include \"%s/%s\"\n", dname, fname);
 	}
 
 	preproc_push(f, path);
@@ -427,24 +283,24 @@ static void ifdef_pop(void)
 	noop = ifdef_stack[--ifdef_idx];
 }
 
-void handle_somedef(token **tokens, int rev)
+static void handle_somedef(token **tokens, int rev)
 {
 	SINGLE_TOKEN("invalid ifdef macro");
 
 	ifdef_push(rev ^ !macro_find(tokens[0]->w));
 }
 
-void handle_ifdef(token **tokens)
+static void handle_ifdef(token **tokens)
 {
 	handle_somedef(tokens, 0);
 }
 
-void handle_ifndef(token **tokens)
+static void handle_ifndef(token **tokens)
 {
 	handle_somedef(tokens, 1);
 }
 
-void handle_if(token **tokens)
+static void handle_if(token **tokens)
 {
 	const char *str = tokens[0]->w;
 	int test;
@@ -460,7 +316,7 @@ void handle_if(token **tokens)
 	ifdef_push(test);
 }
 
-void handle_else(token **tokens)
+static void handle_else(token **tokens)
 {
 	NO_TOKEN("invalid else macro");
 
@@ -470,7 +326,7 @@ void handle_else(token **tokens)
 	noop = !noop;
 }
 
-void handle_endif(token **tokens)
+static void handle_endif(token **tokens)
 {
 	NO_TOKEN("invalid endif macro");
 
@@ -480,12 +336,12 @@ void handle_endif(token **tokens)
 	ifdef_pop();
 }
 
-void handle_pragma(token **tokens)
+static void handle_pragma(token **tokens)
 {
 	(void)tokens;
 }
 
-void handle_macro(char *line)
+void parse_directive(char *line)
 {
 	token **tokens;
 	int i;
@@ -496,19 +352,17 @@ void handle_macro(char *line)
 		return;
 
 	if(tokens[0]->tok != TOKEN_WORD){
-		if(should_noop())
-			return;
+		if(parse_should_noop())
+			goto fin;
 
 		CPP_DIE("invalid preproc token");
 	}
-
-	DEBUG(DEBUG_NORM, "macro %s\n", tokens[0]->w);
 
 	/* check for '# [0-9]+ "..."' */
 	if(sscanf(tokens[0]->w, "%d \"", &i) == 1){
 		/* output, and ignore */
 		puts(line);
-		return;
+		goto fin;
 	}
 
 	putchar('\n'); /* keep line-no.s in sync */
@@ -525,8 +379,8 @@ void handle_macro(char *line)
 	HANDLE(else)
 	HANDLE(endif)
 
-	if(should_noop())
-		return; /* checked for flow control, nothing else so noop */
+	if(parse_should_noop())
+		goto fin; /* checked for flow control, nothing else so noop */
 
 	HANDLE(include)
 
@@ -540,14 +394,10 @@ void handle_macro(char *line)
 
 	CPP_DIE("unrecognised preproc command \"%s\"", tokens[0]->w);
 fin:
-	for(i = 0; tokens[i]; i++){
-		free(tokens[i]->w);
-		free(tokens[i]);
-	}
-	free(tokens);
+	tokens_free(tokens);
 }
 
-void macro_finish()
+void parse_end_validate()
 {
 	if(ifdef_idx)
 		CPP_DIE("endif expected");

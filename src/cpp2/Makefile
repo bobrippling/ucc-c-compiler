@@ -1,6 +1,10 @@
 include ../src_config.mk
 
-OBJ = preproc.o main.o macro.o str.o parse.o \
+CFLAGS += -Wmissing-prototypes
+
+OBJ = preproc.o main.o macro.o str.o \
+			parse.o tokenise.o eval.o      \
+			snapshot.o include.o           \
 			../util/util.o ../util/alloc.o \
 			../util/platform.o ../util/dynarray.o
 
@@ -12,12 +16,21 @@ clean:
 
 .PHONY: clean
 
-macro.o: macro.c macro.h parse.h ../util/alloc.h ../util/dynarray.h \
- ../util/util.h str.h main.h
-main.o: main.c macro.h preproc.h ../util/util.h ../util/dynarray.h \
- ../util/alloc.h ../util/platform.h
-parse.o: parse.c parse.h macro.h ../util/alloc.h ../util/dynarray.h \
- ../util/util.h preproc.h main.h str.h
-preproc.o: preproc.c ../util/util.h ../util/alloc.h ../util/dynarray.h \
- macro.h parse.h main.h
+eval.o: eval.c eval.h ../util/dynarray.h ../util/dyn.h ../util/util.h \
+ ../util/alloc.h tokenise.h macro.h str.h main.h snapshot.h
+include.o: include.c ../util/dynarray.h ../util/dyn.h ../util/alloc.h \
+ include.h
+macro.o: macro.c ../util/util.h ../util/alloc.h ../util/dynarray.h \
+ ../util/dyn.h macro.h main.h
+main.o: main.c ../util/util.h ../util/dynarray.h ../util/dyn.h \
+ ../util/alloc.h ../util/platform.h main.h macro.h preproc.h include.h
+parse.o: parse.c ../util/util.h ../util/dynarray.h ../util/dyn.h \
+ ../util/alloc.h parse.h tokenise.h main.h macro.h preproc.h include.h \
+ str.h
+preproc.o: preproc.c ../util/util.h ../util/alloc.h main.h preproc.h \
+ parse.h eval.h
+snapshot.o: snapshot.c ../util/dynarray.h ../util/dyn.h ../util/alloc.h \
+ snapshot.h macro.h
 str.o: str.c str.h ../util/alloc.h ../util/util.h macro.h
+tokenise.o: tokenise.c ../util/dynarray.h ../util/dyn.h ../util/alloc.h \
+ ../util/util.h tokenise.h str.h

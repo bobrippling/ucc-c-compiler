@@ -218,8 +218,9 @@ char *fline(FILE *f)
 
 		line[pos++] = c;
 		if(pos == len){
+			const size_t old = len;
 			len *= 2;
-			line = urealloc1(line, len);
+			line = urealloc(line, len, old);
 			line[pos] = '\0';
 		}
 

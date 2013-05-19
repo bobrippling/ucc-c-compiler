@@ -171,7 +171,7 @@ int symtab_fold(symtable *tab, int current)
 		}
 
 
-		dynarray_free(&all_spels, NULL);
+		dynarray_free(decl **, &all_spels, NULL);
 	}
 
 	{

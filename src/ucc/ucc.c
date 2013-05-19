@@ -266,7 +266,7 @@ void process_files(enum mode mode, char **inputs, char *output, char **args[4], 
 	else
 		rename_files(files, ninputs, output, mode);
 
-	dynarray_free(&links, free);
+	dynarray_free(char **, &links, free);
 
 	/*for(i = 0; i < ninputs; i++)
 		free_file(&files[i]);*/
@@ -529,8 +529,8 @@ input:	dynarray_add(&inputs, argv[i]);
 	process_files(mode, inputs, output, args, backend);
 
 	for(i = 0; i < 4; i++)
-		dynarray_free(&args[i], free);
-	dynarray_free(&inputs, NULL);
+		dynarray_free(char **, &args[i], free);
+	dynarray_free(char **, &inputs, NULL);
 
 	return 0;
 }
