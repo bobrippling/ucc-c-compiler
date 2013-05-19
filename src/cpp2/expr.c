@@ -116,7 +116,11 @@ static expr *parse_primary(void)
 			break;
 	}
 
-	CPP_DIE("expression expected (got %c)", tok_cur);
+	{
+		char s[2];
+		*s = tok_cur, s[1] = '\0';
+		CPP_DIE("expression expected (got %s)", tok_cur == tok_eof ? "eof" : s);
+	}
 }
 
 static int preds[255];
