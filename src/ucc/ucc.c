@@ -16,6 +16,7 @@
 #include "../util/dynarray.h"
 #include "../util/util.h"
 #include "../util/platform.h"
+#include "cfg.h"
 
 enum mode
 {
@@ -303,10 +304,22 @@ void ice(const char *f, int line, const char *fn, const char *fmt, ...)
 	die("ICE: %s", fmt);
 }
 
+static void create_stdinc_paths(void)
+{
+	char *buf = ustrdup(UCC_INC);
+	char *s;
+
+	for(s = strtok(buf, ":"); s; s = strtok(NULL, ":"))
+		dynarray_add(&include_paths, ustrdup(s));
+
+	free(buf);
+}
+
 int main(int argc, char **argv)
 {
 	enum mode mode = mode_link;
 	int i, syntax_only = 0;
+	int stdinc = 1;
 	char **inputs = NULL;
 	char **args[4] = { 0 };
 	char *output = NULL;
@@ -340,7 +353,6 @@ int main(int argc, char **argv)
 			dynarray_add(&args[mode_compile], ustrdup("-fleading-underscore"));
 			dynarray_add(&args[mode_preproc], ustrdup("-D__LEADING_UNDERSCORE"));
 	}
-
 
 	for(i = 1; i < argc; i++){
 		if(!strcmp(argv[i], "--")){
@@ -461,6 +473,8 @@ arg_ld:
 						gopts.nostdlib = 1;
 					else if(!strcmp(argv[i], "-nostartfiles"))
 						gopts.nostartfiles = 1;
+					else if(!strcmp(argv[i], "-nostdinc"))
+						stdinc = 0;
 					else if(!strcmp(argv[i], "-###"))
 						ucc_ext_cmds_show(1), ucc_ext_cmds_noop(1);
 					else if(!strcmp(argv[i], "-v"))
@@ -524,6 +538,10 @@ input:	dynarray_add(&inputs, argv[i]);
 		if(!output)
 			output = "-";
 	}
+
+	/* default include paths */
+	if(stdinc)
+		create_stdinc_paths();
 
 	/* got arguments, a mode, and files to link */
 	process_files(mode, inputs, output, args, backend);

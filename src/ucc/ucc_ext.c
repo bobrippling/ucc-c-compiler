@@ -17,6 +17,8 @@
 # error "ucc needs reconfiguring"
 #endif
 
+char **include_paths;
+
 static int show, noop;
 
 void ucc_ext_cmds_show(int s)
@@ -232,21 +234,30 @@ static void runner_1(int local, char *path, char *in, char *out, char **args)
 void preproc(char *in, char *out, char **args)
 {
 	char **all = NULL;
-	char *inc_path;
-	char *inc;
+	char **i;
 
 	if(args)
 		dynarray_add_array(&all, args);
 
-	inc_path = actual_path("../../lib/", "");
-	inc = ustrprintf("-I%s", inc_path);
+	for(i = include_paths; i && *i; i++){
+		char *this = *i, *inc;
+		int f_this = 1;
 
-	dynarray_add(&all, inc);
+		if(*this == '/'){
+			f_this = 0;
+		}else{
+			this = actual_path(this, "");
+		}
+
+		inc = ustrprintf("-I%s", this);
+
+		dynarray_add(&all, inc);
+		if(f_this)
+			free(this);
+	}
 
 	runner_1(1, "cpp2/cpp", in, out, all);
 
-	free(inc);
-	free(inc_path);
 	dynarray_free(char **, &all, NULL);
 }
 

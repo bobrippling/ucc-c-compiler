@@ -16,6 +16,7 @@ UCC_CPU     = ${UCC_CPU}
 #define UCC_LD      "${UCC_LD}"
 #define UCC_ARCH    "${UCC_ARCH}"
 #define UCC_LDFLAGS "${UCC_LDFLAGS}"
+#define UCC_INC     "${UCC_INC}"
 !
 
 	if [ $1 = Darwin ]
@@ -57,7 +58,6 @@ UCC_CPU     = ${UCC_CPU}
 
 	echo "Configured for $UCC_CPU $1"
 }
-
 
 usage(){
 	cat >&2 <<!
@@ -130,6 +130,12 @@ then
 	rm -f config.mk lib/string_strerrs.h lib/syscalls_darwin.h
 	exit
 fi
+
+# setup include paths
+# FIXME: gcc specific + version specific
+# TODO: option to use local ./lib path
+unam_lc="$(echo "$unam" | tr A-Z a-z)"
+UCC_INC="/usr/include:/usr/include/$UCC_CPU-$unam_lc-gnu:/usr/lib/gcc/$UCC_CPU-$unam_lc-gnu/4.7.2/include"
 
 case "$unam" in
 	Darwin)
