@@ -14,7 +14,7 @@ struct expr
 {
 	enum
 	{
-		E_IDENT, E_NUM, E_OP
+		E_IDENT, E_NUM, E_OP, E_UOP
 	} type;
 
 	union
@@ -25,6 +25,11 @@ struct expr
 			e_op op;
 			expr *lhs, *rhs;
 		} op;
+		struct
+		{
+			e_op op;
+			expr *e;
+		} uop;
 	} bits;
 };
 
@@ -74,6 +79,14 @@ static expr *expr_op(e_op op, expr *l, expr *r)
 	return e;
 }
 
+static expr *expr_new_uop(e_op op, expr *sub)
+{
+	expr *e = expr_new(E_UOP);
+	e->bits.uop.e  = sub;
+	e->bits.uop.op = op;
+	return e;
+}
+
 static expr *parse_primary(void)
 {
 	switch(tok_cur){
@@ -88,6 +101,15 @@ static expr *parse_primary(void)
 				CPP_DIE("close paren expected");
 			tok_next();
 			return e;
+		}
+
+		case tok_not:
+		case tok_bnot:
+		case tok_minus:
+		{
+			const e_op op = tok_cur;
+			tok_next();
+			return expr_new_uop(op, parse_primary());
 		}
 
 		default:
@@ -206,6 +228,19 @@ expr_n expr_eval(expr *e_)
 			return 0; /* identifiers are zero */
 		case E_NUM:
 			return ke.bits.num;
+		case E_UOP:
+		{
+			expr_n n = expr_eval(ke.bits.uop.e);
+			switch(ke.bits.op.op){
+#define UNARY(ch, o) case ch: return o n
+				UNARY('-', -);
+				UNARY('!', !);
+				UNARY('~', ~);
+				default:
+				break;
+			}
+			ICE("bad op");
+		}
 		case E_OP:
 		{
 			expr_n nums[2];
@@ -245,9 +280,8 @@ expr_n expr_eval(expr *e_)
 				OP(gt, >);
 #undef OP
 
-				case tok_not:
-				case tok_bnot:
-					ICE("TODO: unary");
+				default:
+					break;
 			}
 			ICE("bad op");
 		}
