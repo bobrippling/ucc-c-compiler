@@ -378,16 +378,6 @@ std_c90: cc1_std = STD_C90;
 		}else if(!strcmp(argv[i], "-Werror")){
 			werror = 1;
 
-		}else if(!strncmp(argv[i], "-m", 2)){
-			int n;
-
-			if(sscanf(argv[i] + 2, "%d", &n) != 1 || (n != 32 && n != 64)){
-				fprintf(stderr, "-m needs either 32 or 64\n");
-				goto usage;
-			}
-
-			cc1_m32 = n == 32;
-
 		}else if(argv[i][0] == '-'
 		&& (argv[i][1] == 'W' || argv[i][1] == 'f' || argv[i][1] == 'm')){
 			const char arg_ty = argv[i][1];
@@ -452,6 +442,16 @@ unrecognised:
 				fprintf(stderr, "\"%s\" unrecognised\n", argv[i]);
 				goto usage;
 			}
+
+		}else if(!strncmp(argv[i], "-m", 2)){
+			int n;
+
+			if(sscanf(argv[i] + 2, "%d", &n) != 1 || (n != 32 && n != 64)){
+				fprintf(stderr, "-m needs either 32 or 64\n");
+				goto usage;
+			}
+
+			cc1_m32 = n == 32;
 
 		}else if(!fname){
 			fname = argv[i];
