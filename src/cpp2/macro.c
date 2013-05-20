@@ -36,10 +36,8 @@ macro *macro_add(const char *nam, const char *val)
 
 	if(m){
 		/* only warn if they're different */
-		if(strcmp(val, m->val)){
-			preproc_backtrace();
+		if(strcmp(val, m->val))
 			CPP_WARN("cpp: warning: redefining \"%s\"", nam);
-		}
 		free(m->val);
 	}else{
 		m = umalloc(sizeof *m);

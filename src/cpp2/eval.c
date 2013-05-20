@@ -15,6 +15,7 @@
 #include "str.h"
 #include "main.h"
 #include "snapshot.h"
+#include "preproc.h"
 
 #define VA_ARGS_STR "__VA_ARGS__"
 

@@ -8,6 +8,7 @@
 #include "main.h"
 #include "../util/alloc.h"
 #include "../util/util.h"
+#include "preproc.h"
 
 typedef signed char e_op;
 struct expr

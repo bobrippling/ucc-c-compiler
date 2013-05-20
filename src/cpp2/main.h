@@ -20,6 +20,7 @@ extern int no_output;
 #define CPP_X(f, ...)      \
 	do{                      \
 		current_line--;        \
+		preproc_backtrace();   \
 		f(NULL, __VA_ARGS__);  \
 		current_line++;        \
 	}while(0)
