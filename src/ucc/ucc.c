@@ -300,10 +300,12 @@ void die(const char *fmt, ...)
 
 void ice(const char *f, int line, const char *fn, const char *fmt, ...)
 {
-	(void)f;
-	(void)line;
-	(void)fn;
-	die("ICE: %s", fmt);
+	va_list l;
+	fprintf(stderr, "ICE: %s:%d:%s: ", f, line, fn);
+	va_start(l, fmt);
+	vfprintf(stderr, fmt, l);
+	va_end(l);
+	abort();
 }
 
 static void add_cfg_args(char ***par, const char *args)
