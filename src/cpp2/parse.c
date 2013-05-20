@@ -31,9 +31,15 @@
 #define NOOP_RET() if(parse_should_noop()) return
 
 
-static char ifdef_stack[32] = { 0 };
-static int  ifdef_idx = 0;
+#define N_IFSTACK 32
+static struct
+{
+	char noop, if_chosen;
+} if_stack[N_IFSTACK] = {{ 0, 0 }};
+
+static int if_idx = 0;
 static int noop = 0;
+static int if_elif_chosen = 0;
 
 
 int parse_should_noop(void)
@@ -49,8 +55,8 @@ int parse_should_noop(void)
 		return 1;
 
 	/* TODO: optimise with memcmp? */
-	for(i = 0; i < ifdef_idx; i++)
-		if(ifdef_stack[i])
+	for(i = 0; i < if_idx; i++)
+		if(if_stack[i].noop)
 			return 1;
 
 	return 0;
@@ -275,22 +281,30 @@ abs_path:
 		free(fname - 1);
 }
 
-static void ifdef_push(int new)
+static void if_push(int is_true)
 {
-	ifdef_stack[ifdef_idx++] = noop;
+	if_stack[if_idx].noop      = noop;
+	if_stack[if_idx].if_chosen = if_elif_chosen;
 
-	if(ifdef_idx == sizeof ifdef_stack)
+	if_idx++;
+
+	if(if_idx == N_IFSTACK)
 		die("ifdef stack exceeded");
 
-	noop = new;
+	noop = !is_true;
+	/* we've found a true #if/#ifdef/#ifndef ? */
+	if_elif_chosen = is_true;
 }
 
-static void ifdef_pop(void)
+static void if_pop(void)
 {
-	if(ifdef_idx == 0)
-		ICE("ifdef_idx == 0 on ifdef_pop()");
+	if(if_idx == 0)
+		ICE("if_idx == 0 on if_pop()");
 
-	noop = ifdef_stack[--ifdef_idx];
+	if_idx--;
+
+	noop           = if_stack[if_idx].noop;
+	if_elif_chosen = if_stack[if_idx].if_chosen;
 }
 
 static void handle_somedef(token **tokens, int rev)
@@ -298,7 +312,10 @@ static void handle_somedef(token **tokens, int rev)
 	tokens = tokens_skip_whitespace(tokens);
 	SINGLE_TOKEN("too many arguments to ifdef macro");
 
-	ifdef_push(rev ^ !macro_find(tokens[0]->w));
+	if(noop)
+		if_push(0);
+	else
+		if_push(rev ^ !!macro_find(tokens[0]->w));
 }
 
 static void handle_ifdef(token **tokens)
@@ -337,20 +354,31 @@ static int /*bool*/ if_eval(token **tokens, const char *type)
 
 static void handle_if(token **tokens)
 {
-	/* noop - hence not: */
-	ifdef_push( ! if_eval(tokens, "if"));
+	int is_true;
+	if(noop)
+		is_true = 0;
+	else
+		is_true = !!if_eval(tokens, "if");
+
+	if_push(is_true);
 }
 
 static void got_else(const char *type)
 {
-	if(ifdef_idx == 0)
+	if(if_idx == 0)
 		CPP_DIE("%s unexpected", type);
 }
 
 static void handle_elif(token **tokens)
 {
 	got_else("elif");
-	noop = if_eval(tokens, "elif") ^ noop;
+
+	if(if_elif_chosen){
+		noop = 1;
+	}else{
+		if_elif_chosen = if_eval(tokens, "elif");
+		noop = !if_elif_chosen;
+	}
 }
 
 static void handle_else(token **tokens)
@@ -359,17 +387,17 @@ static void handle_else(token **tokens)
 
 	got_else("else");
 
-	noop = !noop;
+	noop = if_elif_chosen;
 }
 
 static void handle_endif(token **tokens)
 {
 	NO_TOKEN("endif");
 
-	if(ifdef_idx == 0)
+	if(if_idx == 0)
 		CPP_DIE("endif unexpected");
 
-	ifdef_pop();
+	if_pop();
 }
 
 static void handle_pragma(token **tokens)
@@ -438,6 +466,6 @@ fin:
 
 void parse_end_validate()
 {
-	if(ifdef_idx)
+	if(if_idx)
 		CPP_DIE("endif expected");
 }
