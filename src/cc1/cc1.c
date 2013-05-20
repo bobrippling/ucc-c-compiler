@@ -378,16 +378,6 @@ std_c90: cc1_std = STD_C90;
 		}else if(!strcmp(argv[i], "-Werror")){
 			werror = 1;
 
-		}else if(!strncmp(argv[i], "-m", 2)){
-			int n;
-
-			if(sscanf(argv[i] + 2, "%d", &n) != 1 || (n != 32 && n != 64)){
-				fprintf(stderr, "-m needs either 32 or 64\n");
-				goto usage;
-			}
-
-			cc1_m32 = n == 32;
-
 		}else if(argv[i][0] == '-'
 		&& (argv[i][1] == 'W' || argv[i][1] == 'f' || argv[i][1] == 'm')){
 			const char arg_ty = argv[i][1];
@@ -453,6 +443,16 @@ unrecognised:
 				goto usage;
 			}
 
+		}else if(!strncmp(argv[i], "-m", 2)){
+			int n;
+
+			if(sscanf(argv[i] + 2, "%d", &n) != 1 || (n != 32 && n != 64)){
+				fprintf(stderr, "-m needs either 32 or 64\n");
+				goto usage;
+			}
+
+			cc1_m32 = n == 32;
+
 		}else if(!fname){
 			fname = argv[i];
 		}else{
@@ -465,7 +465,7 @@ usage:
 	{
 		const unsigned new = powf(2, cc1_mstack_align);
 		if(new < platform_word_size())
-			ccdie(1, "stack alignment must be >= platform word size (2^%d)",
+			ccdie(0, "stack alignment must be >= platform word size (2^%d)",
 					(int)log2f(platform_word_size()));
 
 		cc1_mstack_align = new;

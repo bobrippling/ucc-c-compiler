@@ -316,11 +316,11 @@ void print_decl(decl *d, enum pdeclargs mode)
 	}
 
 	if(mode & PDECL_SIZE && !DECL_IS_FUNC(d)){
-		if(type_ref_is_incomplete_array(d->ref)){
-			fprintf(cc1_out, " incomplete array in decl");
-		}else{
+		if(type_ref_is_complete(d->ref)){
 			const int sz = decl_size(d);
 			fprintf(cc1_out, " size %d bytes. %d platform-word(s)", sz, sz / platform_word_size());
+		}else{
+			fprintf(cc1_out, " incomplete decl");
 		}
 	}
 
