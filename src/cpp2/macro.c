@@ -10,6 +10,7 @@
 
 #include "macro.h"
 #include "main.h"
+#include "preproc.h"
 
 #define VA_ARGS_STR "__VA_ARGS__"
 
@@ -34,7 +35,11 @@ macro *macro_add(const char *nam, const char *val)
 	m = macro_find(nam);
 
 	if(m){
-		CPP_WARN("cpp: warning: redefining \"%s\"", nam);
+		/* only warn if they're different */
+		if(strcmp(val, m->val)){
+			preproc_backtrace();
+			CPP_WARN("cpp: warning: redefining \"%s\"", nam);
+		}
 		free(m->val);
 	}else{
 		m = umalloc(sizeof *m);
