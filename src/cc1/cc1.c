@@ -465,7 +465,7 @@ usage:
 	{
 		const unsigned new = powf(2, cc1_mstack_align);
 		if(new < platform_word_size())
-			ccdie(1, "stack alignment must be >= platform word size (2^%d)",
+			ccdie(0, "stack alignment must be >= platform word size (2^%d)",
 					(int)log2f(platform_word_size()));
 
 		cc1_mstack_align = new;

@@ -12,6 +12,7 @@
 #include "../../util/platform.h"
 #include "../cc1.h"
 #include "asm.h"
+#include "../pack.h"
 
 #define v_check_type(t) if(!t) t = type_ref_cached_VOID_PTR()
 
@@ -286,13 +287,14 @@ static int v_alloc_stack(int sz)
 		word_size = platform_word_size();
 
 	if(sz){
-		const int extra = sz % word_size ? word_size - sz % word_size : 0;
+		/* sz must be a multiple of mstack_align */
+		sz = pack_to_align(sz, cc1_mstack_align);
 
 		vpush(NULL);
 		vtop->type = REG;
 		vtop->bits.reg = REG_SP;
 
-		out_push_i(type_ref_cached_INTPTR_T(), sz += extra);
+		out_push_i(type_ref_cached_INTPTR_T(), sz);
 		out_op(op_minus);
 		out_pop();
 	}
