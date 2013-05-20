@@ -11,6 +11,7 @@
 #include "ucc.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
+#include "str.h"
 #include "cfg.h"
 
 #ifndef UCC_AS
@@ -281,15 +282,11 @@ void assemble(char *in, char *out, char **args)
 void link_all(char **objs, char *out, char **args)
 {
 	char **all = NULL;
-	char *tok, *dup;
 
 	dynarray_add(&all, (char *)"-o");
 	dynarray_add(&all, out);
 
-	dup = ustrdup(UCC_LDFLAGS);
-
-	for(tok = strtok(dup, " "); tok; tok = strtok(NULL, " "))
-		dynarray_add(&all, tok);
+	dynarray_add_tmparray(&all, strsplit(UCC_LDFLAGS, " "));
 
 	dynarray_add_array(&all, objs);
 
@@ -301,5 +298,4 @@ void link_all(char **objs, char *out, char **args)
 	runner(0, "ld", all);
 
 	dynarray_free(char **, &all, NULL);
-	free(dup);
 }

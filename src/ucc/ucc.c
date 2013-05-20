@@ -16,6 +16,7 @@
 #include "../util/dynarray.h"
 #include "../util/util.h"
 #include "../util/platform.h"
+#include "str.h"
 #include "cfg.h"
 
 enum mode
@@ -244,10 +245,11 @@ void process_files(enum mode mode, char **inputs, char *output, char **args[4], 
 
 	files = umalloc(ninputs * sizeof *files);
 
-	links = gopts.nostdlib ? NULL : objfiles_stdlib();
+	links = gopts.nostdlib ? NULL : ld_stdlib_args();
 
 	if(!gopts.nostartfiles)
-		dynarray_add(&links, objfiles_start());
+		/* ld_crt_args() refers to static memory */
+		dynarray_add_array(&links, ld_crt_args());
 
 	if(backend){
 		dynarray_add(&args[mode_compile], ustrdup("-X"));
@@ -304,15 +306,9 @@ void ice(const char *f, int line, const char *fn, const char *fmt, ...)
 	die("ICE: %s", fmt);
 }
 
-static void create_stdinc_paths(void)
+static void add_cfg_args(char ***par, const char *args)
 {
-	char *buf = ustrdup(UCC_INC);
-	char *s;
-
-	for(s = strtok(buf, ":"); s; s = strtok(NULL, ":"))
-		dynarray_add(&include_paths, ustrdup(s));
-
-	free(buf);
+	dynarray_add_tmparray(par, strsplit(args, " "));
 }
 
 int main(int argc, char **argv)
@@ -320,6 +316,7 @@ int main(int argc, char **argv)
 	enum mode mode = mode_link;
 	int i, syntax_only = 0;
 	int stdinc = 1;
+	char **includes = NULL;
 	char **inputs = NULL;
 	char **args[4] = { 0 };
 	char *output = NULL;
@@ -343,16 +340,10 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	/* do before arg processing, so these can be removed */
-	switch(platform_sys()){
-		case PLATFORM_LINUX:
-		case PLATFORM_FREEBSD:
-			break;
-		case PLATFORM_CYGWIN:
-		case PLATFORM_DARWIN:
-			dynarray_add(&args[mode_compile], ustrdup("-fleading-underscore"));
-			dynarray_add(&args[mode_preproc], ustrdup("-D__LEADING_UNDERSCORE"));
-	}
+	/* bring in CPPFLAGS and CFLAGS */
+	add_cfg_args(&args[mode_compile], UCC_CFLAGS);
+	add_cfg_args(&args[mode_preproc], UCC_CPPFLAGS);
+
 
 	for(i = 1; i < argc; i++){
 		if(!strcmp(argv[i], "--")){
@@ -400,9 +391,11 @@ arg_cc1:
 
 				case 'D':
 				case 'U':
-				case 'I':
 arg_cpp:
 					ADD_ARG(mode_preproc);
+					continue;
+				case 'I':
+					dynarray_add(&includes, ustrdup(arg));
 					continue;
 
 arg_asm:
@@ -541,7 +534,10 @@ input:	dynarray_add(&inputs, argv[i]);
 
 	/* default include paths */
 	if(stdinc)
-		create_stdinc_paths();
+		add_cfg_args(&args[mode_preproc], UCC_INC);
+	/* custom incldue paths */
+	if(includes)
+		dynarray_add_tmparray(&args[mode_preproc], includes);
 
 	/* got arguments, a mode, and files to link */
 	process_files(mode, inputs, output, args, backend);

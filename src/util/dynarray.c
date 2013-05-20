@@ -169,3 +169,12 @@ void dynarray_nochk_add_array(void ***par, void **ar2)
 
 	*par = ar;
 }
+
+void dynarray_nochk_add_tmparray(void ***par, void **ar2)
+{
+	dynarray_nochk_add_array(par, ar2);
+	dynarray_nochk_free(&ar2, NULL);
+	/* can't have ***par2 since it might not be an lvalue in the macro,
+	 * e.g. dynarray_add_tmparray(&ar, f())
+	 */
+}

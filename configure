@@ -15,8 +15,14 @@ UCC_CPU     = ${UCC_CPU}
 #define UCC_AS      "${UCC_AS}"
 #define UCC_LD      "${UCC_LD}"
 #define UCC_ARCH    "${UCC_ARCH}"
-#define UCC_LDFLAGS "${UCC_LDFLAGS}"
 #define UCC_INC     "${UCC_INC}"
+
+#define UCC_CPPFLAGS "${UCC_CPPFLAGS}"
+#define UCC_CFLAGS   "${UCC_CFLAGS}"
+#define UCC_LDFLAGS  "${UCC_LDFLAGS}"
+
+#define UCC_STDLIB "${UCC_STDLIB}"
+#define UCC_CRT    "${UCC_CRT}"
 !
 
 	if [ $1 = Darwin ]
@@ -66,27 +72,48 @@ Usage: $0 [--as=path/to/as] [--cpu=...] [clean]
 	exit 1
 }
 
+leading_underscore(){
+	UCC_CPPFLAGS="-D__LEADING_UNDERSCORE $UCC_CPPFLAGS"
+	UCC_CFLAGS="-fleading-underscore $UCC_CFLAGS"
+}
 
 UCC_AS=as
 UCC_LD=ld
 
 UCC_ARCH=elf64
 UCC_LDFLAGS=''
+UCC_CFLAGS=''
 UCC_CPU=x86_64
 UCC_M32=0
 
 unam="$(uname -s)"
 
+# setup include paths
+# TODO: option to use local ./lib path
+UCC_INC="-I/usr/include"
+
 # defaults for an OS
 case "$unam" in
+	Linux)
+		# assume gcc
+		unam_lc="$(echo "$unam" | tr A-Z a-z)"
+		# FIXME: gcc specific + version specific
+		UCC_INC="$UCC_INC -I/usr/include/$UCC_CPU-$unam_lc-gnu -I/usr/lib/gcc/$UCC_CPU-$unam_lc-gnu/4.7.2/include"
+		;;
+
 	Darwin)
 		UCC_ARCH=macho64
+		UCC_CFLAGS='-mpreferred-stack-boundary=4' # 2^4 = 16 byte aligned
+		UCC_STDLIB='-lSystem'
+		UCC_CRT='-lcrt1.o'
 		UCC_LDFLAGS='-macosx_version_min 10.5'
+		leading_underscore
 		;;
 
 	CYGWIN_NT-*)
 		UCC_ARCH=win32
 		UCC_M32=1
+		leading_underscore
 		;;
 esac
 
@@ -130,12 +157,6 @@ then
 	rm -f config.mk lib/string_strerrs.h lib/syscalls_darwin.h
 	exit
 fi
-
-# setup include paths
-# FIXME: gcc specific + version specific
-# TODO: option to use local ./lib path
-unam_lc="$(echo "$unam" | tr A-Z a-z)"
-UCC_INC="/usr/include:/usr/include/$UCC_CPU-$unam_lc-gnu:/usr/lib/gcc/$UCC_CPU-$unam_lc-gnu/4.7.2/include"
 
 case "$unam" in
 	Darwin)
