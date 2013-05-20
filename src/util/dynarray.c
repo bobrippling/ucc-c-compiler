@@ -148,7 +148,8 @@ void dynarray_nochk_add_array(void ***par, void **ar2)
 	void **ar = *par;
 	int n, n2, total;
 
-	UCC_ASSERT(ar2, "dynarray_nochk_add_array(): empty array");
+	if(!ar2)
+		return;
 
 	if(!ar){
 		n = dynarray_nochk_count(ar2);
