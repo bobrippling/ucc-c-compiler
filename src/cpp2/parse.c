@@ -148,7 +148,7 @@ static void handle_undef(token **tokens)
 	macro_remove(tokens[0]->w);
 }
 
-static void handle_error_warning(token **tokens, const char *pre)
+static void handle_error_warning(token **tokens, int err)
 {
 	char *s;
 
@@ -156,22 +156,29 @@ static void handle_error_warning(token **tokens, const char *pre)
 
 	preproc_backtrace();
 
-	CPP_WARN("#%s: %s", pre, s);
+	warn_colour(1, err);
+
+	(err ? die_at : warn_at)(NULL, 0,
+			"#%s:%s", err ? "error" : "warning", s);
+
+	warn_colour(0, err);
 
 	free(s);
+
+	if(err)
+		exit(1);
 }
 
 static void handle_warning(token **tokens)
 {
 	NOOP_RET();
-	handle_error_warning(tokens, "warning");
+	handle_error_warning(tokens, 0);
 }
 
 static void handle_error(token **tokens)
 {
 	NOOP_RET();
-	handle_error_warning(tokens, "error");
-	exit(1);
+	handle_error_warning(tokens, 1);
 }
 
 static void handle_include(token **tokens)

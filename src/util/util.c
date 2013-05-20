@@ -111,15 +111,24 @@ static void warn_show_line(const struct where *w)
 	}
 }
 
-void vwarn(const struct where *w, int err, int show_line, const char *fmt, va_list l)
+void warn_colour(int on, int err)
 {
 	static enum { f = 0, t = 1, need_init = 2 } is_tty = need_init;
 
 	if(is_tty == need_init)
 		is_tty = isatty(2);
 
-	if(is_tty)
-		fputs(colour_strs[err ? colour_err : colour_warn], stderr);
+	if(is_tty){
+		if(on)
+			fputs(colour_strs[err ? colour_err : colour_warn], stderr);
+		else
+			fprintf(stderr, "\033[m");
+	}
+}
+
+void vwarn(const struct where *w, int err, int show_line, const char *fmt, va_list l)
+{
+	warn_colour(1, err);
 
 	w = default_where(w);
 
@@ -135,8 +144,7 @@ void vwarn(const struct where *w, int err, int show_line, const char *fmt, va_li
 		fputc('\n', stderr);
 	}
 
-	if(is_tty)
-		fprintf(stderr, "\033[m");
+	warn_colour(0, err);
 
 	if(show_line)
 		warn_show_line(w);
