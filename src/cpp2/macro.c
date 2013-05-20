@@ -35,14 +35,14 @@ macro *macro_add(const char *nam, const char *val)
 
 	if(m){
 		CPP_WARN("cpp: warning: redefining \"%s\"", nam);
-		free(m->nam);
 		free(m->val);
 	}else{
 		m = umalloc(sizeof *m);
 		dynarray_add(&macros, m);
+
+		m->nam = ustrdup(nam);
 	}
 
-	m->nam = ustrdup(nam);
 	m->val = val ? ustrdup(val) : NULL;
 	m->type = MACRO;
 
@@ -52,6 +52,8 @@ macro *macro_add(const char *nam, const char *val)
 macro *macro_add_func(const char *nam, const char *val, char **args, int variadic)
 {
 	macro *m  = macro_add(nam, val);
+	if(m->args)
+		dynarray_free(char **, &m->args, free);
 	m->args = args;
 	m->type = variadic ? VARIADIC : FUNC;
 	return m;
