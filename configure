@@ -99,6 +99,10 @@ case "$unam" in
 		unam_lc="$(echo "$unam" | tr A-Z a-z)"
 		# FIXME: gcc specific + version specific
 		UCC_INC="$UCC_INC -I/usr/include/$UCC_CPU-$unam_lc-gnu -I/usr/lib/gcc/$UCC_CPU-$unam_lc-gnu/4.7.2/include"
+
+		# TODO
+		UCC_STDLIB=""
+		UCC_CRT=""
 		;;
 
 	Darwin)
