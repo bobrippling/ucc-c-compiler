@@ -233,7 +233,8 @@ void preprocess(void)
 		char *s = filter_macros(strip_comment(line));
 
 		if(s){
-			puts(s);
+			if(!no_output)
+				puts(s);
 			free(s);
 		}
 	}

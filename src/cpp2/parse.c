@@ -390,11 +390,13 @@ void parse_directive(char *line)
 	/* check for '# [0-9]+ "..."' */
 	if(sscanf(tokens[0]->w, "%d \"", &i) == 1){
 		/* output, and ignore */
-		puts(line);
+		if(option_line_info)
+			puts(line);
 		goto fin;
 	}
 
-	putchar('\n'); /* keep line-no.s in sync */
+	if(!no_output)
+		putchar('\n'); /* keep line-no.s in sync */
 
 #define HANDLE(s)                \
 	if(!strcmp(tokens[0]->w, #s)){ \

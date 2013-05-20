@@ -389,6 +389,7 @@ arg_cc1:
 					ADD_ARG(mode_compile);
 					continue;
 
+				case 'P':
 				case 'D':
 				case 'U':
 arg_cpp:
@@ -468,6 +469,8 @@ arg_ld:
 						gopts.nostartfiles = 1;
 					else if(!strcmp(argv[i], "-nostdinc"))
 						stdinc = 0;
+					else if(!strcmp(argv[i], "-MM") || !strcmp(argv[i], "-dM"))
+						goto arg_cpp;
 					else if(!strcmp(argv[i], "-###"))
 						ucc_ext_cmds_show(1), ucc_ext_cmds_noop(1);
 					else if(!strcmp(argv[i], "-v"))

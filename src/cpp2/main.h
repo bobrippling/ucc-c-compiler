@@ -14,6 +14,7 @@ extern int option_line_info;
 
 extern const char *current_fname;
 extern int current_line;
+extern int no_output;
 
 
 #define CPP_X(f, ...)      \

@@ -68,3 +68,30 @@ void macro_remove(const char *nam)
 		free(m);
 	}
 }
+
+void macros_dump(void)
+{
+	macro **i;
+	for(i = macros; i && *i; i++){
+		macro *const m = *i;
+		if(m->val){
+			printf("#define %s", m->nam);
+			switch(m->type){
+				case FUNC:
+				case VARIADIC:
+				{
+					char **arg;
+					putchar('(');
+					for(arg = m->args; arg && *arg; arg++)
+						printf("%s%s", *arg, arg[1] ? ", " : "");
+					if(m->type == VARIADIC)
+						printf(", ...");
+					putchar(')');
+					case MACRO:
+					break;
+				}
+			}
+			printf(" %s\n", m->val);
+		}
+	}
+}

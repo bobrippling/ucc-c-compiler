@@ -47,6 +47,7 @@ static const struct
 
 const char *current_fname, *current_line_str;
 int show_current_line = 1;
+int no_output = 0;
 
 char cpp_time[16], cpp_date[16];
 
@@ -91,6 +92,7 @@ int main(int argc, char **argv)
 {
 	const char *infname, *outfname;
 	int ret = 0;
+	int dump = 0;
 	int i;
 	int platform_win32 = 0;
 
@@ -156,7 +158,7 @@ int main(int argc, char **argv)
 					goto usage;
 				break;
 
-			case 'L':
+			case 'P':
 				option_line_info = 0;
 				break;
 
@@ -200,7 +202,12 @@ int main(int argc, char **argv)
 				break;
 
 			case 'd':
-				option_debug++;
+				if(strcmp(argv[i] + 2, "M"))
+						goto usage;
+				/* list #defines */
+				dump = 1;
+				no_output = 1;
+				option_line_info = 0;
 				break;
 
 			case '\0':
@@ -246,6 +253,9 @@ int main(int argc, char **argv)
 
 	preprocess();
 
+	if(dump)
+		macros_dump();
+
 	free(dirname_pop());
 
 	errno = 0;
@@ -261,8 +271,9 @@ usage:
 				"  -Dxyz[=abc]: Define xyz (to equal abc)\n"
 				"  -Uxyz: Undefine xyz\n"
 				"  -o output: output file\n"
-				"  -d: increase debug tracing\n"
-				"  -L: don't add #line directives\n"
+				"  -P: don't add #line directives\n"
+				"  -dM: debug output\n"
+				"  -MM: generate Makefile dependencies\n"
 				, stderr);
 	return 1;
 }
