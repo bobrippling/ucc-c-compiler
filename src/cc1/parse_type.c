@@ -333,7 +333,7 @@ static type_ref *parse_btype(
 				DIE_AT(NULL, "typeof specifier after primitive");
 
 			tdef_typeof = parse_expr_sizeof_typeof_alignof(what_typeof);
-			primitive_mode = PRIMITIVE_NO_MORE;
+			primitive_mode = TYPEOF;
 
 		}else if(accept(token___builtin_va_list)){
 			if(primitive_mode != NONE)
