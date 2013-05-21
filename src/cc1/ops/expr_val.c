@@ -39,8 +39,6 @@ oct/hex (ll|LL) suffix -> long long int, unsigned long long int
 void fold_expr_val(expr *e, symtable *stab)
 {
 	/* size checks - don't rely on libc */
-	const long  int_max  =         0x7fffffff;
-	const long  uint_max =         0xffffffff;
 #ifndef UCC_M32
 #  error "need to know if we're -m32 or not"
 #endif
@@ -51,8 +49,20 @@ void fold_expr_val(expr *e, symtable *stab)
 #  define UCC_LONG_MAX  0x7fffffffffffffff
 #  define UCC_ULONG_MAX 0xffffffffffffffff
 #endif
-	const long  long_max = UCC_LONG_MAX;
-	const unsigned long ulong_max = UCC_ULONG_MAX;
+	const struct promo_t
+	{
+		int sgned;
+		enum type_primitive prim;
+		unsigned long long max;
+	} promo_tbl[] = {
+		{ 1, type_int, 0x7fffffff },
+		{ 0, type_int, 0xffffffff },
+		{ 1, type_long,  UCC_LONG_MAX  },
+		{ 0, type_long,  UCC_ULONG_MAX },
+		{ 1, type_llong, 0x7fffffffffffffff },
+		{ 0, type_llong, 0xffffffffffffffff },
+		{ -1, 0, 0 }
+	};
 
 	intval *const iv = &e->bits.iv;
 
@@ -62,123 +72,47 @@ void fold_expr_val(expr *e, symtable *stab)
 
 	int is_signed         = !(iv->suffix & VAL_UNSIGNED);
 	const int change_sign = is_signed && (iv->suffix & VAL_NON_DECIMAL);
-
-	(void)stab;
+	int i;
+	typedef unsigned long long ull_t;
 
 	/* a pure intval will never be negative,
 	 * since we parse -5 as (- (intval 5))
 	 * so if it's negative, we have long_max
 	 */
+	for(i = 0; promo_tbl[i].sgned != -1; i++){
+		if(!change_sign && promo_tbl[i].sgned != is_signed)
+			continue;
 
-	for(;;){
-		if(is_signed){
-			switch(p){
-				default:
-					ICE("bad primitive");
-
-				case type_int:
-					if(iv->val < 0L){
-						/* overflow - try signed long */
-						p = type_long;
-						continue;
-					}
-
-					if(labs(iv->val) > labs(int_max)){
-						/* doesn't fit into a signed int */
-						if(change_sign)
-							/* attempt to fit into unsigned int */
-							is_signed = 0;
-						else
-							/* attempt to fit into signed long */
-							p = type_long;
-
-						continue;
-					}
-					/* fits into a signed int */
-					break;
-
-				case type_long:
-					if(iv->val < 0L){
-						/* overflow - try long long */
-						p = type_llong;
-						continue;
-					}
-
-					/* fits into signed long? */
-					if((unsigned)labs(iv->val) <= (unsigned)long_max){
-						/* yes */
-						break;
-					}
-
-					/* doesn't fit into a signed long */
-					if(change_sign){
-						/* attempt to fit into unsigned long */
-						is_signed = 0;
-						continue;
-					}else{
-						/* attempt to fit into long long */
-						p = type_llong;
-						/* fall */
-					}
-
-				case type_llong:
-					if(iv->val < 0LL){
-						/* doesn't fit into long long, try unsigned long long */
-						if(change_sign){
-							is_signed = 0;
-						}else{
-							WARN_AT(&e->where, "integer constant too large");
-							break; /* tough */
-						}
-					}
-					/* fits */
-					break;
-			}
-			/* fine */
-			break;
-		}else{
-			/* unsigned */
-			switch(p){
-				unsigned long long u_max;
-				enum type_primitive target_prim;
-
-				default:
-					ICE("bad primitive");
-
-				case type_int:
-					u_max = uint_max;
-					target_prim = type_long;
-					goto ucheck;
-
-				case type_long:
-					u_max = ulong_max;
-					target_prim = type_llong;
-					/* fall */
-ucheck:
-					if(llabs(iv->val) > llabs(u_max)){
-						if(change_sign){
-							is_signed = 1; /* attempt to fit into a signed long long */
-							p = (p == type_int ? type_long : type_llong);
-						}else{
-							p = target_prim; /* else go to unsigned higher */
-						}
-						continue;
-					}
-					/* fits into an where we are */
-					break;
-
-				case type_llong:
-					/* this is the largest type we have - TODO: check for overflows */
-					break;
-			}
-			/* fine */
+		/* check the signed limit */
+		if(promo_tbl[i].sgned){
+			if((signed long long)(iv->val & promo_tbl[i].max) < 0)
+				continue;
+		}
+		/* check the unsigned limit */
+		if((ull_t)iv->val <= promo_tbl[i].max){
+			/* done */
+			is_signed = promo_tbl[i].sgned;
+			p = promo_tbl[i].prim;
 			break;
 		}
 	}
 
+	if(promo_tbl[i].sgned != -1){
+		WARN_AT(&e->where, "integer literal too large for any type");
+		p = type_llong;
+		is_signed = 0;
+	}
+
+	fprintf(stderr, "%s -> %ssigned %s\n",
+			where_str(&e->where),
+			is_signed ? "" : "un",
+			type_primitive_to_str(p));
+
 	EOF_WHERE(&e->where,
 		e->tree_type = type_ref_new_type(type_new_primitive_signed(p, is_signed));
 	);
+
+	(void)stab;
 }
 
 void gen_expr_val(expr *e, symtable *stab)
