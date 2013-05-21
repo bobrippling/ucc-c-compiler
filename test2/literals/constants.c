@@ -46,6 +46,11 @@ TY_ASSERT(9223372036854775807L,          long);
 TY_ASSERT(18446744073709551615, unsigned long long); // warn here about change to unsigned
 TY_ASSERT(18446744073709551615L, unsigned long long); // warn here
 
+TY_ASSERT(1LL, long long);
+TY_ASSERT(01LL, long long);
+TY_ASSERT(1LLU, unsigned long long);
+TY_ASSERT(1ULL, unsigned long long);
+
 main()
 {
 }
