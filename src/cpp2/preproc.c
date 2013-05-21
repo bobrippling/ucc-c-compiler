@@ -9,7 +9,7 @@
 
 #include "main.h"
 #include "preproc.h"
-#include "parse.h"
+#include "directive.h"
 #include "eval.h"
 #include "str.h"
 

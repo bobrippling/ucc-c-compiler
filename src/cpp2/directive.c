@@ -9,7 +9,7 @@
 #include "../util/dynarray.h"
 #include "../util/alloc.h"
 
-#include "parse.h"
+#include "directive.h"
 #include "tokenise.h"
 #include "main.h"
 #include "macro.h"
