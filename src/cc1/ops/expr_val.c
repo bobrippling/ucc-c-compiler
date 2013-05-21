@@ -4,6 +4,7 @@
 #include "ops.h"
 #include "expr_val.h"
 #include "../out/asm.h"
+#include "../../as_cfg.h" /* m32 */
 
 const char *str_expr_val()
 {
@@ -40,12 +41,25 @@ void fold_expr_val(expr *e, symtable *stab)
 	/* size checks - don't rely on libc */
 	const long  int_max  =         0x7fffffff;
 	const long  uint_max =         0xffffffff;
-	const long  long_max = 0x7fffffffffffffff;
-	/*const unsigned long ulong_max = 0xffffffffffffffff; // FIXME: 64-bit currently*/
+#ifndef UCC_M32
+#  error "need to know if we're -m32 or not"
+#endif
+#if UCC_M32
+#  define UCC_LONG_MAX  int_max
+#  define UCC_ULONG_MAX uint_max
+#else
+#  define UCC_LONG_MAX  0x7fffffffffffffff
+#  define UCC_ULONG_MAX 0xffffffffffffffff
+#endif
+	const long  long_max = UCC_LONG_MAX;
+	const unsigned long ulong_max = UCC_ULONG_MAX;
 
 	intval *const iv = &e->bits.iv;
 
-	enum type_primitive p = iv->suffix & VAL_LONG ? type_long : type_int;
+	enum type_primitive p =
+		iv->suffix & VAL_LLONG ? type_llong :
+		iv->suffix & VAL_LONG  ? type_long  : type_int;
+
 	int is_signed         = !(iv->suffix & VAL_UNSIGNED);
 	const int change_sign = is_signed && (iv->suffix & VAL_NON_DECIMAL);
 
@@ -53,7 +67,7 @@ void fold_expr_val(expr *e, symtable *stab)
 
 	/* a pure intval will never be negative,
 	 * since we parse -5 as (- (intval 5))
-	 * so if it'is_signed negative, we have long_max
+	 * so if it's negative, we have long_max
 	 */
 
 	for(;;){
@@ -70,6 +84,7 @@ void fold_expr_val(expr *e, symtable *stab)
 					}
 
 					if(labs(iv->val) > labs(int_max)){
+						/* doesn't fit into a signed int */
 						if(change_sign)
 							/* attempt to fit into unsigned int */
 							is_signed = 0;
@@ -84,11 +99,8 @@ void fold_expr_val(expr *e, symtable *stab)
 
 				case type_long:
 					if(iv->val < 0L){
-						/* overflow - try unsigned long */
-						if(change_sign)
-							is_signed = 0;
-						else
-							goto too_large_sl;
+						/* overflow - try long long */
+						p = type_llong;
 						continue;
 					}
 
@@ -98,36 +110,64 @@ void fold_expr_val(expr *e, symtable *stab)
 						break;
 					}
 
-					/* doesn't fit into long, try unsigned long */
+					/* doesn't fit into a signed long */
 					if(change_sign){
-too_large_sl:
-						WARN_AT(&e->where, "integer constant too large for signed long");
-						break;
-					}else{
+						/* attempt to fit into unsigned long */
 						is_signed = 0;
+						continue;
+					}else{
+						/* attempt to fit into long long */
+						p = type_llong;
+						/* fall */
 					}
-					continue;
+
+				case type_llong:
+					if(iv->val < 0LL){
+						/* doesn't fit into long long, try unsigned long long */
+						if(change_sign){
+							is_signed = 0;
+						}else{
+							WARN_AT(&e->where, "integer constant too large");
+							break; /* tough */
+						}
+					}
+					/* fits */
+					break;
 			}
 			/* fine */
 			break;
 		}else{
 			/* unsigned */
 			switch(p){
+				unsigned long long u_max;
+				enum type_primitive target_prim;
+
 				default:
 					ICE("bad primitive");
 
 				case type_int:
-					if(labs(iv->val) > labs(uint_max)){
-						if(change_sign)
-							is_signed = 1; /* attempt to fit into a signed long */
-						/* else go to unsigned long */
-						p = type_long;
-						continue;
-					}
-					/* fits into an unsigned int */
-					break;
+					u_max = uint_max;
+					target_prim = type_long;
+					goto ucheck;
 
 				case type_long:
+					u_max = ulong_max;
+					target_prim = type_llong;
+					/* fall */
+ucheck:
+					if(llabs(iv->val) > llabs(u_max)){
+						if(change_sign){
+							is_signed = 1; /* attempt to fit into a signed long long */
+							p = (p == type_int ? type_long : type_llong);
+						}else{
+							p = target_prim; /* else go to unsigned higher */
+						}
+						continue;
+					}
+					/* fits into an where we are */
+					break;
+
+				case type_llong:
 					/* this is the largest type we have - TODO: check for overflows */
 					break;
 			}

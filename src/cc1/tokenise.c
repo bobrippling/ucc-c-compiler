@@ -282,6 +282,7 @@ static void read_number(enum base mode)
 {
 	int read_suffix = 1;
 	int nlen;
+	int long_count = 0;
 
 	char_seq_to_iv(bufferpos, &currentval, &nlen, mode);
 
@@ -300,12 +301,25 @@ static void read_number(enum base mode)
 				break;
 			case 'L':
 			case 'l':
-				add_suffix(VAL_LONG);
+				long_count++;
 				nextchar();
 				break;
 			default:
 				read_suffix = 0;
 		}
+
+	switch(long_count){
+		case 0:
+			break;
+		case 1:
+			add_suffix(VAL_LONG);
+			break;
+		case 2:
+			add_suffix(VAL_LLONG);
+			break;
+		default:
+			DIE_AT(NULL, "too many L suffixes");
+	}
 }
 
 static enum token curtok_to_xequal(void)

@@ -116,11 +116,9 @@ unsigned type_primitive_size(enum type_primitive tp)
 			/* 4 on 32-bit */
 			if(cc1_m32)
 				return 4;
-			return 8;
-
+			/* fall */
 		case type_llong:
-			ICW("TODO: long long");
-			return 16;
+			return 8;
 
 		case type_ldouble:
 			/* 80-bit float */
