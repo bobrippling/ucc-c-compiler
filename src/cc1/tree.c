@@ -136,7 +136,8 @@ unsigned type_primitive_size(enum type_primitive tp)
 			break;
 	}
 
-	ICE("type %s in type_size()", type_primitive_to_str(tp));
+	ICE("type %s in %s()",
+			type_primitive_to_str(tp), __func__);
 	return -1;
 }
 

@@ -533,6 +533,9 @@ unsigned type_ref_size(type_ref *r, where const *from)
 		{
 			intval sz;
 
+			if(type_ref_is_void(r->ref))
+				DIE_AT(from, "array of void");
+
 			const_fold_need_val(r->bits.array.size, &sz);
 
 			if(sz.val == 0)
@@ -547,6 +550,9 @@ unsigned type_ref_size(type_ref *r, where const *from)
 
 unsigned decl_size(decl *d)
 {
+	if(type_ref_is_void(d->ref))
+		DIE_AT(&d->where, "%s is void", d->spel);
+
 #ifdef FIELD_WIDTH_TODO
 	if(d->field_width){
 		intval iv;
