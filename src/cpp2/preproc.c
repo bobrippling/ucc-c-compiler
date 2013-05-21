@@ -6,17 +6,12 @@
 
 #include "../util/util.h"
 #include "../util/alloc.h"
-#if 0
-#include "../util/dynarray.h"
-#endif
 
-#if 0
-#include "macro.h"
-#endif
 #include "main.h"
 #include "preproc.h"
 #include "parse.h"
 #include "eval.h"
+#include "str.h"
 
 #define ARRAY_LEN(x) (sizeof(x) / sizeof(x[0]))
 
@@ -210,8 +205,11 @@ static char *strip_comment(char *line)
 
 static char *filter_macros(char *line)
 {
-	if(*line == '#'){
-		parse_directive(line + 1);
+	/* check for non-standard space-then-# */
+	char *hash = line;
+
+	if(*hash == '#' || *(hash = str_spc_skip(hash)) == '#'){
+		parse_directive(hash + 1);
 		free(line);
 		return NULL;
 	}else{
