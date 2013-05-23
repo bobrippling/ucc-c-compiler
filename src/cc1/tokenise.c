@@ -282,7 +282,7 @@ static void read_number(enum base mode)
 {
 	int read_suffix = 1;
 	int nlen;
-	int long_count = 0;
+	char c;
 
 	char_seq_to_iv(bufferpos, &currentval, &nlen, mode);
 
@@ -292,8 +292,9 @@ static void read_number(enum base mode)
 
 	bufferpos += nlen;
 
+	/* accept either 'U' 'L' or 'LL' as atomic parts (i.e. not LUL) */
 	/* fine using nextchar() since we peeknextchar() first */
-	do switch(peeknextchar()){
+	do switch((c = peeknextchar())){
 		case 'U':
 		case 'u':
 			add_suffix(VAL_UNSIGNED);
@@ -301,25 +302,18 @@ static void read_number(enum base mode)
 			break;
 		case 'L':
 		case 'l':
-			long_count++;
+			if(currentval.suffix & (VAL_LLONG | VAL_LONG))
+				DIE_AT(NULL, "already have a L/LL suffix");
+
 			nextchar();
+			if(peeknextchar() == c)
+				add_suffix(VAL_LLONG), nextchar();
+			else
+				add_suffix(VAL_LONG);
 			break;
 		default:
 			read_suffix = 0;
 	} while(read_suffix);
-
-	switch(long_count){
-		case 0:
-			break;
-		case 1:
-			add_suffix(VAL_LONG);
-			break;
-		case 2:
-			add_suffix(VAL_LLONG);
-			break;
-		default:
-			DIE_AT(NULL, "too many L suffixes");
-	}
 }
 
 static enum token curtok_to_xequal(void)
