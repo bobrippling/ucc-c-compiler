@@ -281,8 +281,8 @@ static void static_array_check(
 	if(!(ty_expr = type_ref_is_decayed_array(ty_expr))){
 		WARN_AT(&arg_expr->where,
 				(k_decl.type == CONST_VAL) ?
-				"array of size >= %ld expected for parameter" :
-				"array expected for parameter", k_decl.bits.iv.val);
+				"array of size >= %" INTVAL_FMT_D " expected for parameter" :
+				"array expected for parameter", (intval_t)k_decl.bits.iv.val);
 		return;
 	}
 
@@ -294,7 +294,7 @@ static void static_array_check(
 
 		if(k_decl.type == CONST_VAL && k_arg.bits.iv.val < k_decl.bits.iv.val)
 			WARN_AT(&arg_expr->where,
-					"array of size %ld passed where size %ld needed",
+					"array of size %" INTVAL_FMT_D " passed where size %" INTVAL_FMT_D " needed",
 					k_arg.bits.iv.val, k_decl.bits.iv.val);
 	}
 }

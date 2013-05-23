@@ -886,7 +886,7 @@ static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
 			BUF_ADD("%s", type_qual_to_str(r->bits.array.qual, 1));
 
 			if(iv.val)
-				BUF_ADD("%ld]", iv.val);
+				BUF_ADD("%" INTVAL_FMT_D "]", iv.val);
 			else
 				BUF_ADD("]");
 			break;

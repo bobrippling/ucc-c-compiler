@@ -55,7 +55,7 @@ void print_expr_val(expr *e)
 
 	UCC_ASSERT((iv.suffix & VAL_UNSIGNED) == 0, "TODO: unsigned");
 
-	fprintf(cc1_out, "%ld", iv.val);
+	fprintf(cc1_out, INTVAL_FMT_D, iv.val);
 }
 
 void print_decl_init(decl_init *di)
@@ -427,7 +427,7 @@ void print_enum(struct_union_enum_st *et)
 	for(mi = et->members; *mi; mi++){
 		enum_member *m = (*mi)->enum_member;
 
-		idt_printf("member %s = %ld\n", m->spel, m->val->bits.iv.val);
+		idt_printf("member %s = %" INTVAL_FMT_D "\n", m->spel, (intval_t)m->val->bits.iv.val);
 	}
 	gen_str_indent--;
 }

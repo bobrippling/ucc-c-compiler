@@ -442,7 +442,9 @@ static void read_char(const int is_wide)
 				DIE_AT(NULL, "invalid character sequence: suffix given");
 
 			if(!is_wide && currentval.val > 0xff)
-				warn_at(NULL, 1, "invalid character sequence: too large (parsed 0x%lx)", currentval.val);
+				warn_at(NULL, 1,
+						"invalid character sequence: too large (parsed 0x%" INTVAL_FMT_X ")",
+						currentval.val);
 
 			c = currentval.val;
 		}else{

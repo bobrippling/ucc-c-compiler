@@ -1,11 +1,18 @@
+#include <stdint.h>
+
 typedef struct intval intval;
 typedef struct stringval stringval;
 
 int intval_cmp(const intval *, const intval *);
 
+typedef unsigned long long intval_t;
+typedef   signed long long sintval_t;
+#define INTVAL_FMT_D "lld"
+#define INTVAL_FMT_X "llx"
+#define INTVAL_T_MAX ULLONG_MAX
 struct intval
 {
-	long val;
+	intval_t val;
 	enum intval_suffix
 	{
 		VAL_UNSIGNED = 1 << 0,
