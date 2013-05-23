@@ -1,14 +1,24 @@
 #include <string.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include "ops.h"
 #include "expr_val.h"
 #include "../out/asm.h"
-#include "../../as_cfg.h" /* m32 */
 
 const char *str_expr_val()
 {
 	return "val";
+}
+
+static int find_highest_bit(unsigned long long v)
+{
+	int i;
+	/* XXX: assumption about sizeof v */
+	for(i = 63; i >= 0; i--)
+		if(v & (1ULL << i))
+			return i;
+	return -1;
 }
 
 /*
@@ -38,75 +48,91 @@ oct/hex (ll|LL) suffix -> long long int, unsigned long long int
 
 void fold_expr_val(expr *e, symtable *stab)
 {
-	/* size checks - don't rely on libc */
-#ifndef UCC_M32
-#  error "need to know if we're -m32 or not"
-#endif
-#if UCC_M32
-#  define UCC_LONG_MAX  int_max
-#  define UCC_ULONG_MAX uint_max
-#else
-#  define UCC_LONG_MAX  0x7fffffffffffffff
-#  define UCC_ULONG_MAX 0xffffffffffffffff
-#endif
-	const struct promo_t
-	{
-		int sgned;
-		enum type_primitive prim;
-		unsigned long long max;
-	} promo_tbl[] = {
-		{ 1, type_int, 0x7fffffff },
-		{ 0, type_int, 0xffffffff },
-		{ 1, type_long,  UCC_LONG_MAX  },
-		{ 0, type_long,  UCC_ULONG_MAX },
-		{ 1, type_llong, 0x7fffffffffffffff },
-		{ 0, type_llong, 0xffffffffffffffff },
-		{ -1, 0, 0 }
-	};
-
 	intval *const iv = &e->bits.iv;
 
+	int is_signed = !(iv->suffix & VAL_UNSIGNED);
+	const int can_change_sign = is_signed && (iv->suffix & VAL_NON_DECIMAL);
+
+	const int long_max_bit = 63; /* TODO */
+	const int highest_bit = find_highest_bit(iv->val);
 	enum type_primitive p =
 		iv->suffix & VAL_LLONG ? type_llong :
 		iv->suffix & VAL_LONG  ? type_long  : type_int;
 
-	int is_signed         = !(iv->suffix & VAL_UNSIGNED);
-	const int change_sign = is_signed && (iv->suffix & VAL_NON_DECIMAL);
-	int i;
-	typedef unsigned long long ull_t;
+	/*fprintf(stderr, "----\n0x%" INTVAL_FMT_X
+	      ", highest bit = %d. suff = 0x%x\n",
+	      iv->val, highest_bit, iv->suffix);*/
 
-	/* a pure intval will never be negative,
-	 * since we parse -5 as (- (intval 5))
-	 * so if it's negative, we have long_max
-	 */
-	for(i = 0; promo_tbl[i].sgned != -1; i++){
-		if(!change_sign && promo_tbl[i].sgned != is_signed)
-			continue;
-
-		/* check the signed limit */
-		if(promo_tbl[i].sgned){
-			if((signed long long)(iv->val & promo_tbl[i].max) < 0)
-				continue;
-		}
-		/* check the unsigned limit */
-		if((ull_t)iv->val <= promo_tbl[i].max){
-			/* done */
-			is_signed = promo_tbl[i].sgned;
-			p = promo_tbl[i].prim;
-			break;
-		}
+	if(iv->val == 0){
+		assert(highest_bit == -1);
+		goto chosen;
+	}else{
+		assert(highest_bit != -1);
 	}
 
-	if(promo_tbl[i].sgned != -1){
-		WARN_AT(&e->where, "integer literal too large for any type");
-		p = type_llong;
+	/* can we have a signed int? */
+	if(p <= type_int && highest_bit < 31){
+		/* attempt signed */
+		if(can_change_sign)
+			is_signed = 1;
+
+		p = type_int;
+		goto chosen;
+	}
+
+	/* uint? */
+	if(p <= type_int && highest_bit == 31 && (can_change_sign || !is_signed)){
 		is_signed = 0;
+		p = type_int;
+		goto chosen;
 	}
 
+	/* long? - only chose long if given by suffix::L */
+	if(p <= type_long && highest_bit < long_max_bit){
+		/* attempt signed */
+		if(can_change_sign)
+			is_signed = 1;
+
+		p = type_long;
+		goto chosen;
+	}
+
+	/* ulong? */
+	if(p <= type_long && highest_bit == long_max_bit && (!is_signed || can_change_sign)){
+		is_signed = 0;
+		p = type_long;
+		goto chosen;
+	}
+
+	/* long long? */
+	if(p <= type_llong && highest_bit < 63){
+		/* attempt signed */
+		if(can_change_sign)
+			is_signed = 1;
+
+		p = type_llong;
+		goto chosen;
+	}
+
+	/* ull */
+	if(p <= type_llong && highest_bit == 63){
+		/* we get here if we're forcing it to ull,
+		 * not if the user says, so we can warn unconditionally */
+		if(is_signed){
+			WARN_AT(&e->where, "integer constant is so large it is unsigned");
+			is_signed = 0;
+		}
+		p = type_llong;
+	}else{
+		/* we stick with what we started with */
+	}
+
+chosen:
+	/*
 	fprintf(stderr, "%s -> %ssigned %s\n",
 			where_str(&e->where),
 			is_signed ? "" : "un",
-			type_primitive_to_str(p));
+			type_primitive_to_str(p)); */
 
 	EOF_WHERE(&e->where,
 		e->tree_type = type_ref_new_type(type_new_primitive_signed(p, is_signed));

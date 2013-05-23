@@ -946,7 +946,7 @@ out/out.o: out/out.c out/../../util/util.h out/../../util/alloc.h \
  out/../ops/stmt_switch.h out/../ops/stmt_while.h \
  out/../ops/stmt_continue.h out/../sym.h out/../decl.h out/out.h \
  out/vstack.h out/impl.h out/x86_64.h out/../../util/platform.h \
- out/../cc1.h out/asm.h
+ out/../cc1.h out/asm.h out/../pack.h
 out/vm.o: out/vm.c out/../../util/util.h out/../data_structs.h out/../tree.h \
  out/../expr.h out/../ops/expr_addr.h out/../ops/expr_assign.h \
  out/../ops/expr_assign_compound.h out/../ops/expr_cast.h \
@@ -980,4 +980,4 @@ out/x86_64.o: out/x86_64.c out/../../util/util.h out/../../util/alloc.h \
  out/../ops/stmt_switch.h out/../ops/stmt_while.h \
  out/../ops/stmt_continue.h out/../sym.h out/../decl.h out/vstack.h \
  out/impl.h out/x86_64.h out/../cc1.h out/asm.h out/common.h out/out.h \
- out/lbl.h out/../pack.h
+ out/lbl.h
