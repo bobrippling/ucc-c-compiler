@@ -221,6 +221,7 @@ static type_ref *parse_btype(
 #define INT(x)   x == type_int
 #define SHORT(x) x == type_short
 #define LONG(x)  x == type_long
+#define LLONG(x) x == type_llong
 #define DBL(x)   x == type_double
 
 					if(      INT(got) && (SHORT(primitive) || LONG(primitive))){
@@ -233,11 +234,11 @@ static type_ref *parse_btype(
 						if(primitive_mode == PRIMITIVE_MAYBE_MORE){
 							/* special case for long long and long double */
 							if(LONG(primitive) && LONG(got))
-								primitive = type_llong, die = 0;
+								primitive = type_llong, die = 0; /* allow "int" after this */
+							else if(LLONG(primitive) && INT(got))
+								primitive_mode = PRIMITIVE_NO_MORE, die = 0;
 							else if((LONG(primitive) && DBL(got)) || (DBL(primitive) && LONG(got)))
-								primitive = type_ldouble, die = 0;
-
-							primitive_mode = PRIMITIVE_NO_MORE;
+								primitive = type_ldouble, die = 0, primitive_mode = PRIMITIVE_NO_MORE;
 						}
 
 						if(die)
@@ -248,7 +249,8 @@ static type_ref *parse_btype(
 						switch(primitive){
 							case type_int:
 							case type_long:
-								/* allow short int, long int and long long */
+							case type_llong:
+								/* allow short int, long int and long long and long long int */
 								break;
 							default:
 								primitive_mode = PRIMITIVE_NO_MORE;
