@@ -44,14 +44,18 @@ static int overflow_chk(intval_t *const pv, int base, int inc)
 
 	*pv = v * base + inc;
 
-	/* unsigned overflow is well defined */
-	if(*pv < v)
+	/* unsigned overflow is well defined
+	 * if we're adding zero, ignore, e.g. a bare 0
+	 * unless v > 0, in which case we need to check v*base didn't of
+	 */
+	if((inc > 0 || v > 0) && *pv <= v)
 		return 1;
 
 	return 0;
 }
 
 typedef int digit_test(int);
+
 static char *overflow_handle(intval *pv, char *s, digit_test *test)
 {
 	WARN_AT(NULL, "overflow parsing integer, truncating to unsigned long long");
