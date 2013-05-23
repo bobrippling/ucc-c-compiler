@@ -271,18 +271,12 @@ static int peeknextchar()
 	return *bufferpos;
 }
 
-static void add_suffix(enum intval_suffix s)
-{
-	if(currentval.suffix & s)
-		DIE_AT(NULL, "duplicate suffix %c", "_UL"[s]);
-	currentval.suffix |= s;
-}
-
 static void read_number(enum base mode)
 {
 	int read_suffix = 1;
 	int nlen;
 	char c;
+	enum intval_suffix suff = 0;
 
 	char_seq_to_iv(bufferpos, &currentval, &nlen, mode);
 
@@ -297,23 +291,31 @@ static void read_number(enum base mode)
 	do switch((c = peeknextchar())){
 		case 'U':
 		case 'u':
-			add_suffix(VAL_UNSIGNED);
+			if(suff & VAL_UNSIGNED)
+				DIE_AT(NULL, "duplicate U suffix");
+			suff |= VAL_UNSIGNED;
 			nextchar();
 			break;
 		case 'L':
 		case 'l':
-			if(currentval.suffix & (VAL_LLONG | VAL_LONG))
+			if(suff & (VAL_LLONG | VAL_LONG))
 				DIE_AT(NULL, "already have a L/LL suffix");
 
 			nextchar();
 			if(peeknextchar() == c)
-				add_suffix(VAL_LLONG), nextchar();
+				suff |= VAL_LLONG, nextchar();
 			else
-				add_suffix(VAL_LONG);
+				suff |= VAL_LONG;
 			break;
 		default:
 			read_suffix = 0;
-	} while(read_suffix);
+	}while(read_suffix);
+
+	/* don't touch cv.suffix until after
+	 * - it may already have ULL from an
+	 * overflow in parsing
+	 */
+	currentval.suffix |= suff;
 }
 
 static enum token curtok_to_xequal(void)
