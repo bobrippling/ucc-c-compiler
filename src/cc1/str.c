@@ -3,6 +3,7 @@
 #include <ctype.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <limits.h>
 
 #include "../util/util.h"
 #include "../util/alloc.h"
@@ -37,61 +38,82 @@ int escape_char(int c)
 	return -1;
 }
 
+static int overflow_chk(intval_t *const pv, int base, int inc)
+{
+	const intval_t v = *pv;
+
+	*pv = v * base + inc;
+
+	/* unsigned overflow is well defined */
+	if(*pv < v)
+		return 1;
+
+	return 0;
+}
+
+typedef int digit_test(int);
+static char *overflow_handle(intval *pv, char *s, digit_test *test)
+{
+	WARN_AT(NULL, "overflow parsing integer, truncating to unsigned long long");
+
+	while(test(*s))
+		s++;
+
+	/* force unsigned long long ULLONG_MAX */
+	pv->val = INTVAL_T_MAX;
+	pv->suffix = VAL_LLONG | VAL_UNSIGNED;
+	return s;
+}
+
+static char *read_ap_num(digit_test test, char *s, intval *pval, int base)
+{
+	while(test(*s)){
+		int dv = isdigit(*s) ? *s - '0' : tolower(*s) - 'a' + 10;
+		if(overflow_chk(&pval->val, base, dv)){
+			/* advance over what's left, etc */
+			s = overflow_handle(pval, s, test);
+			break;
+		}
+		s++;
+		while(*s == '_')
+			s++;
+	}
+	return s;
+}
+
+static int isbdigit(int c)
+{
+	return c == '0' || c == '1';
+}
+
+static int isodigit(int c)
+{
+	return '0' <= c && c < '8';
+}
+
 void char_seq_to_iv(char *s, intval *iv, int *plen, enum base mode)
 {
-#define READ_NUM(test, base)             \
-			do{                                \
-				if(!(test))                      \
-					break;                         \
-				lval = base * lval + *s - '0';   \
-				s++;                             \
-				while(*s == '_')                 \
-					s++;                           \
-			}while(1)
-
 	char *const start = s;
-	long lval = 0;
+	struct
+	{
+		enum intval_suffix suff;
+		int base;
+		digit_test *test;
+	} bases[] = {
+		{ VAL_BIN,     2, isbdigit },
+		{ VAL_OCTAL, 010, isodigit },
+		{ 0,          10, isdigit  },
+		{ VAL_HEX,  0x10, isxdigit },
+	};
 
 	memset(iv, 0, sizeof *iv);
 
-	switch(mode){
-		case BIN:
-			iv->suffix = VAL_BIN;
-			READ_NUM(*s == '0' || *s == '1', 2);
-			break;
+	iv->suffix = bases[mode].suff;
+	s = read_ap_num(bases[mode].test, s, iv, bases[mode].base);
 
-		case DEC:
-			READ_NUM(isdigit(*s), 10);
-			break;
+	if(s == start)
+		DIE_AT(NULL, "invalid number (read 0 chars, at \"%s\")", s);
 
-		case OCT:
-			iv->suffix = VAL_OCTAL;
-			READ_NUM(isoct(*s), 010);
-			break;
-
-		case HEX:
-		{
-			int charsread = 0;
-			iv->suffix = VAL_HEX;
-			do{
-				if(isxdigit(*s)){
-					lval = 0x10 * lval + (isdigit(tolower(*s)) ? *s - '0' : 10 + tolower(*s) - 'a');
-					s++;
-				}else{
-					break;
-				}
-				charsread++;
-				while(*s == '_')
-					s++;
-			}while(1);
-
-			if(charsread < 1)
-				DIE_AT(NULL, "invalid hex char (read 0 chars, at \"%s\")", s);
-			break;
-		}
-	}
-
-	iv->val = lval;
 	*plen = s - start;
 }
 

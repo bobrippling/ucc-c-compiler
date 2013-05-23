@@ -292,21 +292,21 @@ static void read_number(enum base mode)
 
 	bufferpos += nlen;
 
-	while(read_suffix)
-		switch(peeknextchar()){
-			case 'U':
-			case 'u':
-				add_suffix(VAL_UNSIGNED);
-				nextchar();
-				break;
-			case 'L':
-			case 'l':
-				long_count++;
-				nextchar();
-				break;
-			default:
-				read_suffix = 0;
-		}
+	/* fine using nextchar() since we peeknextchar() first */
+	do switch(peeknextchar()){
+		case 'U':
+		case 'u':
+			add_suffix(VAL_UNSIGNED);
+			nextchar();
+			break;
+		case 'L':
+		case 'l':
+			long_count++;
+			nextchar();
+			break;
+		default:
+			read_suffix = 0;
+	} while(read_suffix);
 
 	switch(long_count){
 		case 0:
