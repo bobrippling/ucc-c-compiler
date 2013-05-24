@@ -1,4 +1,1 @@
-func_fold_stmt fold_stmt_return;
-func_gen_stmt  gen_stmt_return;
-func_str_stmt  str_stmt_return;
-func_mutate_stmt mutate_stmt_return;
+STMT_DEFS(return);

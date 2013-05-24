@@ -50,6 +50,16 @@ struct stmt_flow
 	expr *for_init, *for_while, *for_inc;
 };
 
+#define STMT_DEFS_NOGEN(ty)            \
+	func_fold_stmt   fold_stmt_ ## ty;   \
+	func_gen_stmt    style_stmt_ ## ty;  \
+	func_str_stmt    str_stmt_ ## ty;    \
+	func_mutate_stmt mutate_stmt_ ## ty
+
+#define STMT_DEFS(ty)                  \
+	STMT_DEFS_NOGEN(ty);                 \
+	func_gen_stmt    gen_stmt_ ## ty     \
+
 #include "ops/stmt_break.h"
 #include "ops/stmt_case.h"
 #include "ops/stmt_case_range.h"
