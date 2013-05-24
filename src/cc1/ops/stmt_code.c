@@ -84,6 +84,25 @@ void gen_stmt_code(stmt *s)
 		gen_stmt(*titer);
 }
 
+void gen_stmt_code_style(stmt *s)
+{
+	stmt **i_s;
+	decl **i_d;
+
+	stylef("\n{\n");
+
+	for(i_d = s->symtab->decls; i_d && *i_d; i_d++){
+		decl *d = *i_d;
+		gen_style_decl(d);
+	}
+
+	for(i_s = s->codes; i_s && *i_s; i_s++){
+		gen_stmt(*i_s);
+	}
+
+	stylef("\n}\n");
+}
+
 static int code_passable(stmt *s)
 {
 	stmt **i;

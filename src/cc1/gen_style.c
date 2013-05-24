@@ -8,15 +8,21 @@
 #include "cc1.h"
 #include "sym.h"
 #include "gen_style.h"
+#include "gen_asm.h" /* FIXME: gen_stmt/_expr should be in gen.h */
 
-void gen_stmt_style(stmt *s)
-{ (void)s; /* TODO */ }
+void gen_style_decl(decl *d)
+{
+	stylef("%s", decl_to_str(d));
+}
 
 void gen_style_global(decl *d)
 {
-	fprintf(cc1_out, "global decl %s\n", d->spel);
-	if(d->func_code)
-		gen_stmt_style(d->func_code);
+	gen_style_decl(d);
+	if(d->func_code){
+		gen_stmt(d->func_code);
+	}else{
+		stylef(";\n");
+	}
 }
 
 void gen_style(symtable_global *stab)

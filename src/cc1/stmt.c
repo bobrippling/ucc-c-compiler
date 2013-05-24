@@ -5,6 +5,7 @@
 #include "../util/alloc.h"
 #include "data_structs.h"
 #include "stmt.h"
+#include "cc1.h"
 
 stmt_flow *stmt_flow_new(symtable *parent)
 {
@@ -14,11 +15,26 @@ stmt_flow *stmt_flow_new(symtable *parent)
 }
 
 void stmt_mutate(stmt *s,
-		func_fold_stmt *f_fold, func_gen_stmt *f_gen, func_str_stmt *f_str,
+		func_fold_stmt *f_fold,
+		func_gen_stmt *f_gen,
+		func_gen_stmt *f_gen_style,
+		func_str_stmt *f_str,
 		func_mutate_stmt *f_mutate)
 {
 	s->f_fold = f_fold;
-	s->f_gen  = f_gen;
+
+	switch(cc1_backend){
+		case BACKEND_ASM:
+			s->f_gen = f_gen;
+			break;
+		case BACKEND_PRINT:
+		case BACKEND_STYLE:
+			s->f_gen = f_gen_style;
+			break;
+		default:
+			ICE("bad backend");
+	}
+
 	s->f_str  = f_str;
 
 	s->kills_below_code =
@@ -30,8 +46,13 @@ void stmt_mutate(stmt *s,
 	f_mutate(s);
 }
 
-stmt *stmt_new(func_fold_stmt *f_fold, func_gen_stmt *f_gen, func_str_stmt *f_str,
-		func_mutate_stmt *f_mutate, symtable *stab)
+stmt *stmt_new(
+		func_fold_stmt *f_fold,
+		func_gen_stmt *f_gen,
+		func_gen_stmt *f_gen_style,
+		func_str_stmt *f_str,
+		func_mutate_stmt *f_mutate,
+		symtable *stab)
 {
 	stmt *s = umalloc(sizeof *s);
 	where_new(&s->where);
@@ -39,7 +60,7 @@ stmt *stmt_new(func_fold_stmt *f_fold, func_gen_stmt *f_gen, func_str_stmt *f_st
 	UCC_ASSERT(stab, "no symtable for statement");
 	s->symtab = stab;
 
-	stmt_mutate(s, f_fold, f_gen, f_str, f_mutate);
+	stmt_mutate(s, f_fold, f_gen, f_gen_style, f_str, f_mutate);
 
 	return s;
 }
