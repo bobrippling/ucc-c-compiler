@@ -37,6 +37,7 @@ void fold_const_expr_cast(expr *e, consty *k)
 
 			}else{
 				const int sz = type_ref_size(e->tree_type, &e->where);
+				const intval_t old = piv->val;
 
 				/* TODO: disallow for ptrs/non-ints */
 
@@ -62,6 +63,11 @@ void fold_const_expr_cast(expr *e, consty *k)
 					ICW("can't const fold cast expr of type %s size %d",
 							type_ref_to_str(e->tree_type), sz);
 				}
+
+				if(e->expr_cast_implicit && old != piv->val)
+					WARN_AT(&e->where,
+							"implicit cast changes value from %" INTVAL_FMT_D " to %" INTVAL_FMT_D,
+							old, piv->val);
 			}
 #undef piv
 			break;
