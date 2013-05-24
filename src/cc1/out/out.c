@@ -410,9 +410,7 @@ const char *v_val_str(struct vstack *vp)
 
 	UCC_ASSERT(vp->type == CONST, "val?");
 
-	snprintf(buf, sizeof buf,
-			type_ref_is_signed(vp->t) ? "%ld" : "%lu",
-			vp->bits.val);
+	intval_str(buf, sizeof buf, vp->bits.val, type_ref_is_signed(vp->t));
 
 	return buf;
 }
