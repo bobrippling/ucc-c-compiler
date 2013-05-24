@@ -5,6 +5,10 @@
 #include "../out/lbl.h"
 #include "../out/asm.h"
 
+#ifndef CHAR_BIT
+#    define CHAR_BIT 8
+#endif
+
 const char *str_expr_op()
 {
 	return "op";
@@ -91,15 +95,40 @@ void fold_const_expr_op(expr *e, consty *k)
 {
 	consty lhs, rhs;
 
+	memset(k, 0, sizeof *k);
+
 	const_fold(e->lhs, &lhs);
 	if(e->rhs){
 		const_fold(e->rhs, &rhs);
+
+		if(rhs.type == CONST_VAL){
+			switch(e->op){
+				case op_shiftl:
+				case op_shiftr:
+				{
+					const unsigned ty_sz = CHAR_BIT * type_ref_size(e->lhs->tree_type, &e->lhs->where);
+					if(rhs.bits.iv.val >= ty_sz){
+						WARN_AT(&e->rhs->where, "shift count >= width of %s (%u)",
+								type_ref_to_str(e->lhs->tree_type), ty_sz);
+
+
+						if(lhs.type == CONST_VAL){
+							/* already 0 */
+							k->type = CONST_VAL;
+						}else{
+							k->type = CONST_NO;
+						}
+						return;
+					}
+				}
+				default:
+					break;
+			}
+		}
 	}else{
 		memset(&rhs, 0, sizeof rhs);
 		rhs.type = CONST_VAL;
 	}
-
-	memset(k, 0, sizeof *k);
 
 	if(lhs.type == CONST_VAL && rhs.type == CONST_VAL){
 		const char *err = NULL;
