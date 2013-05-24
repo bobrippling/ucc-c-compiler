@@ -117,4 +117,18 @@ expr *expr_new__Generic(expr *test, struct generic_lbl **lbls)
 }
 
 void gen_expr_style__Generic(expr *e, symtable *stab)
-{ (void)e; (void)stab; /* TODO */ }
+{
+	struct generic_lbl **i;
+
+	stylef("_Generic(");
+	gen_expr(e->expr, stab);
+
+	for(i = e->bits.generic.list; i && *i; i++){
+		struct generic_lbl *l = *i;
+
+		idt_printf("%s: ",
+				l->t ? type_ref_to_str(l->t) : "default");
+
+		gen_expr(l->e, stab);
+	}
+}

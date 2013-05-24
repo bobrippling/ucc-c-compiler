@@ -74,4 +74,8 @@ expr *expr_new_deref(expr *of)
 }
 
 void gen_expr_style_deref(expr *e, symtable *stab)
-{ (void)e; (void)stab; /* TODO */ }
+{
+	stylef("*(");
+	gen_expr(expr_deref_what(e), stab);
+	stylef(")");
+}

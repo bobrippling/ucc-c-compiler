@@ -68,4 +68,8 @@ void mutate_expr_comma(expr *e)
 }
 
 void gen_expr_style_comma(expr *e, symtable *stab)
-{ (void)e; (void)stab; /* TODO */ }
+{
+	gen_expr(e->lhs, stab);
+	stylef(", ");
+	gen_expr(e->rhs, stab);
+}

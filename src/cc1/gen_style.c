@@ -10,13 +10,25 @@
 #include "gen_style.h"
 #include "gen_asm.h" /* FIXME: gen_stmt/_expr should be in gen.h */
 
+void gen_style_dinit(decl_init *di)
+{
+	/* TODO */
+}
+
 void gen_style_decl(decl *d)
 {
 	stylef("%s", decl_to_str(d));
-	if(d->func_code)
+
+	if(d->func_code){
 		gen_stmt(d->func_code);
-	else
-		stylef(";\n");
+		return;
+	}
+
+	if(d->init){
+		stylef(" = ");
+		gen_style_dinit(d->init);
+	}
+	stylef(";\n");
 }
 
 void gen_style(symtable_global *stab)

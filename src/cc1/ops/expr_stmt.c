@@ -74,4 +74,9 @@ expr *expr_new_stmt(stmt *code)
 }
 
 void gen_expr_style_stmt(expr *e, symtable *stab)
-{ (void)e; (void)stab; /* TODO */ }
+{
+	(void)stab;
+	stylef("({\n");
+	gen_stmt(e->code);
+	stylef("\n})");
+}

@@ -133,4 +133,8 @@ void mutate_expr_addr(expr *e)
 }
 
 void gen_expr_style_addr(expr *e, symtable *stab)
-{ (void)e; (void)stab; /* TODO */ }
+{
+	stylef("&(");
+	gen_expr(e->lhs, stab);
+	stylef(")");
+}

@@ -153,4 +153,8 @@ expr *expr_new_assign_init(expr *to, expr *from)
 }
 
 void gen_expr_style_assign(expr *e, symtable *stab)
-{ (void)e; (void)stab; /* TODO */ }
+{
+	gen_expr(e->lhs, stab);
+	stylef(" = ");
+	gen_expr(e->rhs, stab);
+}

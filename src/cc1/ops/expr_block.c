@@ -92,9 +92,10 @@ void gen_expr_str_block(expr *e, symtable *stab)
 
 void gen_expr_style_block(expr *e, symtable *stab)
 {
-	(void)e;
 	(void)stab;
-	/* TODO */
+
+	stylef("^%s", type_ref_to_str(e->tree_type));
+	gen_stmt(e->code);
 }
 
 void mutate_expr_block(expr *e)

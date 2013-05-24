@@ -192,4 +192,7 @@ expr *expr_new_struct(expr *sub, int dot, expr *ident)
 }
 
 void gen_expr_style_struct(expr *e, symtable *stab)
-{ (void)e; (void)stab; /* TODO */ }
+{
+	gen_expr(e->lhs, stab);
+	stylef("->%s", e->bits.struct_mem.d->spel);
+}

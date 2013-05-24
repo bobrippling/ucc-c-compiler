@@ -221,4 +221,11 @@ expr *expr_new_if(expr *test)
 }
 
 void gen_expr_style_if(expr *e, symtable *stab)
-{ (void)e; (void)stab; /* TODO */ }
+{
+	gen_expr(e->expr, stab);
+	stylef(" ? ");
+	if(e->lhs)
+		gen_expr(e->lhs, stab);
+	stylef(" : ");
+	gen_expr(e->rhs, stab);
+}

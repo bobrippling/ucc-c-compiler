@@ -150,4 +150,7 @@ expr *expr_new_identifier(char *sp)
 }
 
 void gen_expr_style_identifier(expr *e, symtable *stab)
-{ (void)e; (void)stab; /* TODO */ }
+{
+	(void)stab;
+	stylef("%s", e->bits.ident.spel);
+}

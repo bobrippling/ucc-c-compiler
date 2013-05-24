@@ -262,4 +262,7 @@ expr *expr_new_cast(type_ref *to, int implicit)
 }
 
 void gen_expr_style_cast(expr *e, symtable *stab)
-{ (void)e; (void)stab; /* TODO */ }
+{
+	stylef("(%s)", type_ref_to_str(e->bits.tref));
+	gen_expr(e->expr, stab);
+}

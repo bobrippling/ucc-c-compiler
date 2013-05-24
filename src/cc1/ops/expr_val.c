@@ -174,4 +174,7 @@ expr *expr_new_val(int val)
 }
 
 void gen_expr_style_val(expr *e, symtable *stab)
-{ (void)e; (void)stab; /* TODO */ }
+{
+	(void)stab;
+	stylef("%ld", e->bits.iv.val);
+}

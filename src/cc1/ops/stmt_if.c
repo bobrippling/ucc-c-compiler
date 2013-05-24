@@ -92,11 +92,11 @@ void style_stmt_if(stmt *s)
 {
 	stylef("if(");
 	gen_expr(s->expr, s->symtab);
-	stylef(")");
+	stylef(")\n");
 	gen_stmt(s->lhs);
 
 	if(s->rhs){
-		stylef("else");
+		stylef("else\n");
 		gen_stmt(s->rhs);
 	}
 }

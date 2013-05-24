@@ -119,4 +119,7 @@ expr *expr_new_str(char *s, int l, int wide)
 }
 
 void gen_expr_style_str(expr *e, symtable *stab)
-{ (void)e; (void)stab; /* TODO */ }
+{
+	(void)stab;
+	literal_print(cc1_out, e->bits.str.sv.str, e->bits.str.sv.len);
+}

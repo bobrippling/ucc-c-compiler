@@ -18,6 +18,7 @@
 #include "out/out.h"
 #include "out/lbl.h"
 #include "out/asm.h"
+#include "gen_style.h"
 
 char *curfunc_lblfin; /* extern */
 
@@ -27,10 +28,14 @@ void gen_expr(expr *e, symtable *stab)
 
 	const_fold(e, &k);
 
-	if(k.type == CONST_VAL) /* TODO: -O0 skips this */
-		out_push_iv(e->tree_type, &k.bits.iv);
-	else
+	if(k.type == CONST_VAL){ /* TODO: -O0 skips this */
+		if(cc1_backend == BACKEND_ASM)
+			out_push_iv(e->tree_type, &k.bits.iv);
+		else
+			stylef("%ld", k.bits.iv.val);
+	}else{
 		EOF_WHERE(&e->where, e->f_gen(e, stab));
+	}
 }
 
 void lea_expr(expr *e, symtable *stab)

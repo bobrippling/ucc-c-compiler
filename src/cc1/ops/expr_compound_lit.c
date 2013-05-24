@@ -127,7 +127,12 @@ void gen_expr_str_compound_lit(expr *e, symtable *stab)
 }
 
 void gen_expr_style_compound_lit(expr *e, symtable *stab)
-{ (void)e; (void)stab; /* TODO */ }
+{
+	(void)stab;
+
+	stylef("(%s)", type_ref_to_str(e->bits.complit.decl->ref));
+	gen_style_dinit(e->bits.complit.decl->init);
+}
 
 void mutate_expr_compound_lit(expr *e)
 {

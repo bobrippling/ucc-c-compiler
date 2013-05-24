@@ -640,4 +640,13 @@ expr *expr_new_op2(enum op_type o, expr *l, expr *r)
 }
 
 void gen_expr_style_op(expr *e, symtable *stab)
-{ (void)e; (void)stab; /* TODO */ }
+{
+	if(e->rhs){
+		gen_expr(e->lhs, stab);
+		stylef(" %s ", op_to_str(e->op));
+		gen_expr(e->rhs, stab);
+	}else{
+		stylef("%s ", op_to_str(e->op));
+		gen_expr(e->lhs, stab);
+	}
+}

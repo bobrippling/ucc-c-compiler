@@ -20,7 +20,8 @@ void gen_stmt_label(stmt *s)
 
 void style_stmt_label(stmt *s)
 {
-	stylef("\n%s:", s->expr->bits.ident.spel);
+	stylef("\n%s: ", s->expr->bits.ident.spel);
+	gen_stmt(s->lhs);
 }
 
 int label_passable(stmt *s)

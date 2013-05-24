@@ -146,4 +146,20 @@ expr *expr_new_sizeof_expr(expr *sizeof_this, enum what_of what_of)
 }
 
 void gen_expr_style_sizeof(expr *e, symtable *stab)
-{ (void)e; (void)stab; /* TODO */ }
+{
+	switch(e->what_of){
+		case what_typeof:
+			stylef("typeof(");
+		case what_sizeof:
+			stylef("sizeof(");
+		case what_alignof:
+			stylef("alignof(");
+	}
+
+	if(e->expr)
+		gen_expr(e->expr, stab);
+	else
+		stylef("%s", type_ref_to_str(e->bits.size_of.of_type));
+
+	stylef(")");
+}

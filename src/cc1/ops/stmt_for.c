@@ -84,7 +84,7 @@ void style_stmt_for(stmt *s)
 	if(s->flow->for_inc)
 		gen_expr(s->flow->for_inc, s->symtab);
 
-	stylef(")");
+	stylef(")\n");
 
 	gen_stmt(s->lhs);
 }

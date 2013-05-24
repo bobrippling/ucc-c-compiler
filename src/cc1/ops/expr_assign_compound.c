@@ -121,4 +121,8 @@ expr *expr_new_assign_compound(expr *to, expr *from, enum op_type op)
 }
 
 void gen_expr_style_assign_compound(expr *e, symtable *stab)
-{ (void)e; (void)stab; /* TODO */ }
+{
+	gen_expr(e->lhs->lhs, stab);
+	stylef(" %s= ", op_to_str(e->op));
+	gen_expr(e->rhs, stab);
+}

@@ -568,4 +568,17 @@ expr *expr_new_funcall()
 }
 
 void gen_expr_style_funcall(expr *e, symtable *stab)
-{ (void)e; (void)stab; /* TODO */ }
+{
+	stylef("(");
+	gen_expr(e->expr, stab);
+	stylef(")(");
+	if(e->funcargs){
+		expr **i;
+		for(i = e->funcargs; i && *i; i++){
+			gen_expr(*i, stab);
+			if(i[1])
+				stylef(", ");
+		}
+	}
+	stylef(")");
+}
