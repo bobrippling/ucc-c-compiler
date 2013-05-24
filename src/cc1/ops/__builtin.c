@@ -124,7 +124,7 @@ expr *builtin_parse(const char *sp)
 
 void builtin_gen_print(expr *e, symtable *stab)
 {
-	const enum pdeclargs dflags =
+	/*const enum pdeclargs dflags =
 		  PDECL_INDENT
 		| PDECL_NEWLINE
 		| PDECL_SYM_OFFSET
@@ -132,7 +132,7 @@ void builtin_gen_print(expr *e, symtable *stab)
 		| PDECL_PISDEF
 		| PDECL_PINIT
 		| PDECL_SIZE
-		| PDECL_ATTR;
+		| PDECL_ATTR;*/
 
 	(void)stab;
 	idt_printf("%s(\n", BUILTIN_SPEL(e->expr));
@@ -153,8 +153,8 @@ void builtin_gen_print(expr *e, symtable *stab)
 	if(e->funcargs)
 		PRINT_ARGS(expr, e->funcargs, print_expr(*i))
 
-	if(e->bits.block_args)
-		PRINT_ARGS(decl, e->bits.block_args->arglist, print_decl(*i, dflags))
+	/*if(e->bits.block_args)
+		PRINT_ARGS(decl, e->bits.block_args->arglist, print_decl(*i, dflags))*/
 
 	idt_printf(");\n");
 }
