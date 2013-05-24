@@ -70,6 +70,12 @@ void gen_stmt_for(stmt *s)
 	free(lbl_test);
 }
 
+void style_stmt_for(stmt *s)
+{
+	stylef("for( [expr]; [expr]; [expr] )");
+	gen_stmt(s->lhs);
+}
+
 struct walk_info
 {
 	stmt *escape;

@@ -18,6 +18,11 @@ void gen_stmt_label(stmt *s)
 	gen_stmt(s->lhs); /* the code-part of the compound statement */
 }
 
+void style_stmt_label(stmt *s)
+{
+	stylef("\n%s:", s->expr->bits.ident.spel);
+}
+
 int label_passable(stmt *s)
 {
 	return fold_passable(s->lhs);

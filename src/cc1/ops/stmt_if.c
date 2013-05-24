@@ -88,6 +88,16 @@ void gen_stmt_if(stmt *s)
 	free(lbl_fi);
 }
 
+void style_stmt_if(stmt *s)
+{
+	stylef("if( [expr] )");
+	gen_stmt(s->lhs);
+	if(s->rhs){
+		stylef("else");
+		gen_stmt(s->rhs);
+	}
+}
+
 static int if_passable(stmt *s)
 {
 	return (s->rhs ? fold_passable(s->rhs) : 1) || fold_passable(s->lhs);

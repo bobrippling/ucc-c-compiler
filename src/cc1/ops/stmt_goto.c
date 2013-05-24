@@ -36,6 +36,12 @@ void gen_stmt_goto(stmt *s)
 	out_jmp();
 }
 
+void style_stmt_goto(stmt *s)
+{
+	stylef("goto %s;",
+			s->expr->expr_computed_goto ? "*[expr]" : s->expr->bits.ident.spel);
+}
+
 void mutate_stmt_goto(stmt *s)
 {
 	s->f_passable = fold_passable_no;

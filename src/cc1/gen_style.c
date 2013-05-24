@@ -13,24 +13,15 @@
 void gen_style_decl(decl *d)
 {
 	stylef("%s", decl_to_str(d));
-}
-
-void gen_style_global(decl *d)
-{
-	gen_style_decl(d);
-	if(d->func_code){
+	if(d->func_code)
 		gen_stmt(d->func_code);
-	}else{
+	else
 		stylef(";\n");
-	}
 }
 
 void gen_style(symtable_global *stab)
 {
-	decl **diter;
-	for(diter = stab->stab.decls; diter && *diter; diter++){
-		decl *d = *diter;
-
-		gen_style_global(d);
-	}
+	decl **i;
+	for(i = stab->stab.decls; i && *i; i++)
+		gen_style_decl(*i);
 }

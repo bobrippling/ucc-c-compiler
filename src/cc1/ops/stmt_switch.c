@@ -238,6 +238,12 @@ void gen_stmt_switch(stmt *s)
 	out_label(s->lbl_break);
 }
 
+void style_stmt_switch(stmt *s)
+{
+	stylef("switch( [expr] )");
+	gen_stmt(s->lhs);
+}
+
 int switch_passable(stmt *s)
 {
 	return fold_passable(s->lhs);

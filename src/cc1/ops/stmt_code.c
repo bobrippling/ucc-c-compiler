@@ -84,21 +84,18 @@ void gen_stmt_code(stmt *s)
 		gen_stmt(*titer);
 }
 
-void gen_stmt_code_style(stmt *s)
+void style_stmt_code(stmt *s)
 {
 	stmt **i_s;
 	decl **i_d;
 
-	stylef("\n{\n");
+	stylef("{\n");
 
-	for(i_d = s->symtab->decls; i_d && *i_d; i_d++){
-		decl *d = *i_d;
-		gen_style_decl(d);
-	}
+	for(i_d = s->symtab->decls; i_d && *i_d; i_d++)
+		gen_style_decl(*i_d);
 
-	for(i_s = s->codes; i_s && *i_s; i_s++){
+	for(i_s = s->codes; i_s && *i_s; i_s++)
 		gen_stmt(*i_s);
-	}
 
 	stylef("\n}\n");
 }

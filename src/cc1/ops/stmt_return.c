@@ -48,6 +48,12 @@ void gen_stmt_return(stmt *s)
 	out_jmp();
 }
 
+void style_stmt_return(stmt *s)
+{
+	(void)s;
+	stylef("return [expr];");
+}
+
 void mutate_stmt_return(stmt *s)
 {
 	s->f_passable = fold_passable_no;

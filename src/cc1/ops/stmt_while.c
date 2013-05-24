@@ -43,6 +43,12 @@ void gen_stmt_while(stmt *s)
 	out_label(s->lbl_break);
 }
 
+void style_stmt_while(stmt *s)
+{
+	stylef("while( [expr] )");
+	gen_stmt(s->lhs);
+}
+
 int while_passable(stmt *s)
 {
 	consty k;

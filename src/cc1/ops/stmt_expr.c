@@ -43,6 +43,11 @@ void gen_stmt_expr(stmt *s)
 	}
 }
 
+void style_stmt_expr(stmt *s)
+{
+	stylef("\n%s-expr", s->expr->f_str());
+}
+
 static int expr_passable(stmt *s)
 {
 	/*

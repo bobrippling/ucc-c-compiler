@@ -1,2 +1,1 @@
-STMT_DEFS_NOGEN(case);
-extern func_gen_stmt *gen_stmt_case;
+STMT_DEFS_PGEN(case);

@@ -31,6 +31,13 @@ void gen_stmt_do(stmt *s)
 	free(begin);
 }
 
+void style_stmt_do(stmt *s)
+{
+	stylef("do");
+	gen_stmt(s->lhs);
+	stylef("while( [expr] );");
+}
+
 void mutate_stmt_do(stmt *s)
 {
 	s->f_passable = while_passable;

@@ -35,4 +35,4 @@ void mutate_stmt_case_range(stmt *s)
 	s->f_passable = label_passable;
 }
 
-func_gen_stmt (*gen_stmt_case_range) = gen_stmt_label;
+STMT_LBL_DEFS(case_range);
