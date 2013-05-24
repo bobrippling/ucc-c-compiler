@@ -35,7 +35,8 @@ void gen_expr(expr *e, symtable *stab)
 
 void lea_expr(expr *e, symtable *stab)
 {
-	UCC_ASSERT(e->f_lea, "invalid store expression %s (no f_store())", e->f_str());
+	UCC_ASSERT(e->f_lea,
+			"invalid store expression expr-%s (no f_store())", e->f_str());
 
 	e->f_lea(e, stab);
 }

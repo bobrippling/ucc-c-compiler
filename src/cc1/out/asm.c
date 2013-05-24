@@ -115,7 +115,9 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 
 				if(this != DYNARRAY_NULL && this->type == decl_init_copy){
 					/*fprintf(f, "# copy from %lu\n", DECL_INIT_COPY_IDX(this, init));*/
-					this = *this->bits.range_copy; /* resolve the copy */
+					struct init_cpy *icpy = *this->bits.range_copy;
+					/* resolve the copy */
+					this = icpy->range_init;
 				}
 			}
 

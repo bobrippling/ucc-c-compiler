@@ -20,10 +20,15 @@ struct decl_init
 		struct
 		{
 			decl_init **inits;
-			decl_init **range_inits;
+			struct init_cpy
+			{
+				decl_init *range_init;
+				expr *first_instance;
+			} **range_inits;
+
 			/* see decl_init.doc */
 		} ar;
-		decl_init **range_copy;
+		struct init_cpy **range_copy;
 #define DECL_INIT_COPY_IDX(this, array) \
 		((this)->bits.range_copy - (array)->bits.ar.range_inits)
 

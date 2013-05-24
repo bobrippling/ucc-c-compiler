@@ -52,7 +52,7 @@ typedef struct
 	 : def)
 
 typedef decl_init **aggregate_brace_f(
-		decl_init **current, decl_init ***range_store,
+		decl_init **current, struct init_cpy ***range_store,
 		init_iter *,
 		symtable *,
 		void *, int);
@@ -70,6 +70,13 @@ static decl_init *decl_init_brace_up_aggregate(
 #define DINIT_NULL_CHECK(di) \
 	if(di == DYNARRAY_NULL)    \
 		return 1
+
+static struct init_cpy *init_cpy_from_dinit(decl_init *di)
+{
+	struct init_cpy *cpy = umalloc(sizeof *cpy);
+	cpy->range_init = di;
+	return cpy;
+}
 
 int decl_init_is_const(decl_init *dinit, symtable *stab)
 {
@@ -132,7 +139,10 @@ int decl_init_is_zero(decl_init *dinit)
 		}
 
 		case decl_init_copy:
-			return decl_init_is_zero(*dinit->bits.range_copy);
+		{
+			struct init_cpy *cpy = *dinit->bits.range_copy;
+			return decl_init_is_zero(cpy->range_init);
+		}
 	}
 
 	ICE("bad decl init");
@@ -185,11 +195,13 @@ static decl_init *decl_init_copy_const(decl_init *di)
 static void decl_init_resolve_copy(decl_init **arr, const size_t idx)
 {
 	decl_init *resolved = arr[idx];
+	struct init_cpy *cpy;
 
 	UCC_ASSERT(resolved->type == decl_init_copy,
 			"resolving a non-copy (%d)", resolved->type);
 
-	memcpy_safe(resolved, decl_init_copy_const(*resolved->bits.range_copy));
+	cpy = *resolved->bits.range_copy;
+	memcpy_safe(resolved, decl_init_copy_const(cpy->range_init));
 }
 
 void decl_init_free_1(decl_init *di)
@@ -281,7 +293,7 @@ static decl_init *decl_init_brace_up_scalar(
 }
 
 static decl_init **decl_init_brace_up_array2(
-		decl_init **current, decl_init ***range_store,
+		decl_init **current, struct init_cpy ***range_store,
 		init_iter *iter,
 		symtable *stab,
 		type_ref *next_type, const int limit)
@@ -406,11 +418,11 @@ static decl_init **decl_init_brace_up_array2(
 
 				/* keep track of the initial copy ({ 1, 3 })
 				 * aggregate in .range_store */
-				dynarray_add(range_store, braced);
+				dynarray_add(range_store, init_cpy_from_dinit(braced));
 
 				if(replace_save){
 					/* keep track of what we replaced */
-					dynarray_add(range_store, replace_save);
+					dynarray_add(range_store, init_cpy_from_dinit(replace_save));
 				}
 
 				for(replace_idx = i; replace_idx <= j; replace_idx++){
@@ -856,52 +868,31 @@ static expr *decl_init_create_assignments_sue_base(
 }
 
 static void decl_init_create_assignment_from_copy(
-		decl_init *di, decl_init *init, stmt *code,
-		type_ref *next_type, unsigned idx, expr *new_base)
+		decl_init *di, stmt *code,
+		type_ref *next_type, expr *new_base)
 {
-	/* TODO: ideally when the backend is sufficiently optimised, we
-	 * will always be able to use the memcpy case, and it'll pick it up
+	/* TODO: ideally when the backend is sufficiently optimised
+	 * it'll pick it up the memcpy well
 	 */
-	size_t copy_idx = DECL_INIT_COPY_IDX(di, init);
+	struct init_cpy *icpy = *di->bits.range_copy;
 
-	UCC_ASSERT(next_type, "no next type for array (i=%d)", idx);
+	UCC_ASSERT(next_type, "no next type for array");
 
-	if(0){ //di->type == decl_init_scalar){
-#if 0
-		size_t n = dynarray_count(code->codes);
-		stmt *last_assign;
+	/* memcpy from the previous init */
+	if(icpy->first_instance){
+		expr *last_base = icpy->first_instance;
 
-		UCC_ASSERT(n > 0 && copy_idx < n,
-				"bad range init - bad index (n=%ld, idx=%ld)",
-				(long)n, (long)idx);
+		expr *memcp = builtin_new_memcpy(
+				new_base, last_base, type_ref_size(next_type, &di->where));
 
-		last_assign = code->codes[copy_idx];
-
-		/* insert like so:
-		 *
-		 * this = (prev_assign = ...)
-		 *        ^-----------------^
-		 *          already present
-		 */
-		last_assign->expr = expr_new_assign_init(new_base, last_assign->expr);
-#endif
+		dynarray_add(&code->codes,
+				expr_to_stmt(memcp, code->symtab));
 	}else{
-		/* memcpy from the previous init */
-		if(code->codes){
-			expr *last_base = code->codes[copy_idx]->expr->lhs;
+		/* the initial assignment from the range_copy */
+		icpy->first_instance = new_base;
 
-			expr *memcp = builtin_new_memcpy(
-					new_base, last_base, type_ref_size(next_type, &di->where));
-
-			dynarray_add(&code->codes,
-					expr_to_stmt(memcp, code->symtab));
-		}else{
-			/* the initial assignment from the range_copy */
-			decl_init *cpy = *di->bits.range_copy;
-
-			decl_init_create_assignments_base(cpy,
-					next_type, new_base, code);
-		}
+		decl_init_create_assignments_base(icpy->range_init,
+				next_type, new_base, code);
 	}
 }
 
@@ -1010,7 +1001,7 @@ zero_init:
 
 					if(di && di != DYNARRAY_NULL && di->type == decl_init_copy){
 						decl_init_create_assignment_from_copy(
-								di, init, code, next_type, idx, new_base);
+								di, code, next_type, new_base);
 						continue;
 					}
 				}

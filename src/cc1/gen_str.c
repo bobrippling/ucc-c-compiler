@@ -82,9 +82,10 @@ void print_decl_init(decl_init *di)
 			gen_str_indent++;
 			for(i = 0; (s = di->bits.ar.inits[i]); i++){
 				if(s == DYNARRAY_NULL){
-					idt_printf("[%d] = <zero init> ; %p\n", i, (void *)s);
+					idt_printf("[%d] = <zero init>\n", i);
 				}else if(s->type == decl_init_copy){
-					idt_printf("[%d] = copy from %ld\n", i, DECL_INIT_COPY_IDX(s, di));
+					idt_printf("[%d] = copy from range_store[%ld]\n",
+							i, DECL_INIT_COPY_IDX(s, di));
 				}else{
 					const int need_brace = s->type == decl_init_brace;
 
@@ -109,13 +110,22 @@ void print_decl_init(decl_init *di)
 			gen_str_indent--;
 
 			if(di->bits.ar.range_inits){
+				struct init_cpy *icpy;
+
 				idt_printf("range store:\n");
 				gen_str_indent++;
-				for(i = 0; (s = di->bits.ar.range_inits[i]); i++){
+
+				for(i = 0; (icpy = di->bits.ar.range_inits[i]); i++){
 					idt_printf("store[%d]:\n", i);
 					gen_str_indent++;
-					print_decl_init(s);
+					print_decl_init(icpy->range_init);
 					gen_str_indent--;
+					if(icpy->first_instance){
+						idt_printf("first expr:\n");
+						gen_str_indent++;
+						print_expr(icpy->first_instance);
+						gen_str_indent--;
+					}
 				}
 				gen_str_indent--;
 			}
