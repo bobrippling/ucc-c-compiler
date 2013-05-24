@@ -90,8 +90,11 @@ void gen_stmt_if(stmt *s)
 
 void style_stmt_if(stmt *s)
 {
-	stylef("if( [expr] )");
+	stylef("if(");
+	gen_expr(s->expr, s->symtab);
+	stylef(")");
 	gen_stmt(s->lhs);
+
 	if(s->rhs){
 		stylef("else");
 		gen_stmt(s->rhs);

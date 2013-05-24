@@ -35,7 +35,9 @@ void style_stmt_do(stmt *s)
 {
 	stylef("do");
 	gen_stmt(s->lhs);
-	stylef("while( [expr] );");
+	stylef("while(");
+	gen_expr(s->expr, s->symtab);
+	stylef(");");
 }
 
 void mutate_stmt_do(stmt *s)

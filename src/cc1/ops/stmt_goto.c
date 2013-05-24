@@ -38,8 +38,16 @@ void gen_stmt_goto(stmt *s)
 
 void style_stmt_goto(stmt *s)
 {
-	stylef("goto %s;",
-			s->expr->expr_computed_goto ? "*[expr]" : s->expr->bits.ident.spel);
+	stylef("goto ");
+
+	if(s->expr->expr_computed_goto){
+		stylef("*");
+		gen_expr(s->expr, s->symtab);
+	}else{
+		stylef("%s", s->expr->bits.ident.spel);
+	}
+
+	stylef(";");
 }
 
 void mutate_stmt_goto(stmt *s)

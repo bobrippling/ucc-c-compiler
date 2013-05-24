@@ -45,7 +45,9 @@ void gen_stmt_while(stmt *s)
 
 void style_stmt_while(stmt *s)
 {
-	stylef("while( [expr] )");
+	stylef("while(");
+	gen_expr(s->expr, s->symtab);
+	stylef(")");
 	gen_stmt(s->lhs);
 }
 

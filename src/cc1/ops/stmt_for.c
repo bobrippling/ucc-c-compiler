@@ -72,7 +72,20 @@ void gen_stmt_for(stmt *s)
 
 void style_stmt_for(stmt *s)
 {
-	stylef("for( [expr]; [expr]; [expr] )");
+	stylef("for(");
+	if(s->flow->for_init)
+		gen_expr(s->flow->for_init, s->symtab);
+
+	stylef("; ");
+	if(s->flow->for_while)
+		gen_expr(s->flow->for_while, s->symtab);
+
+	stylef("; ");
+	if(s->flow->for_inc)
+		gen_expr(s->flow->for_inc, s->symtab);
+
+	stylef(")");
+
 	gen_stmt(s->lhs);
 }
 

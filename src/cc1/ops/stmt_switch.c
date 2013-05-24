@@ -240,7 +240,9 @@ void gen_stmt_switch(stmt *s)
 
 void style_stmt_switch(stmt *s)
 {
-	stylef("switch( [expr] )");
+	stylef("switch(");
+	gen_expr(s->expr, s->symtab);
+	stylef(")");
 	gen_stmt(s->lhs);
 }
 

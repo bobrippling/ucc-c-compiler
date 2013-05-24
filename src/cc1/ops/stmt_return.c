@@ -50,8 +50,9 @@ void gen_stmt_return(stmt *s)
 
 void style_stmt_return(stmt *s)
 {
-	(void)s;
-	stylef("return [expr];");
+	stylef("return ");
+	gen_expr(s->expr, s->symtab);
+	stylef(";");
 }
 
 void mutate_stmt_return(stmt *s)
