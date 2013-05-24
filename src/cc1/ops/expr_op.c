@@ -10,15 +10,14 @@ const char *str_expr_op()
 	return "op";
 }
 
-static void operate(
-		intval *lval, intval *rval,
+static intval_t operate(
+		intval_t lval, intval_t *rval, /* rval is optional */
 		enum op_type op,
-		consty *konst,
-		where *where)
+		char *error)
 {
 	/* FIXME: casts based on lval.type */
 #define piv (&konst->bits.iv)
-#define OP(a, b) case a: konst->bits.iv.val = lval->val b rval->val; return
+#define OP(a, b) case a: return lval b *rval
 	switch(op){
 		OP(op_multiply,   *);
 		OP(op_eq,         ==);
@@ -37,28 +36,20 @@ static void operate(
 
 		case op_modulus:
 		case op_divide:
-		{
-			long l = lval->val, r = rval->val;
+			if(*rval)
+				return op == op_divide ? lval / *rval : lval % *rval;
 
-			if(r){
-				piv->val = op == op_divide ? l / r : l % r;
-				return;
-			}
-			warn_at(where, 1, "division by zero");
-			konst->type = CONST_NO;
-			return;
-		}
+			*error = 1;
+			return 0;
 
 		case op_plus:
-			piv->val = lval->val + (rval ? rval->val : 0);
-			return;
+			return lval + (rval ? *rval : 0);
 
 		case op_minus:
-			piv->val = rval ? lval->val - rval->val : -lval->val;
-			return;
+			return rval ? lval - *rval : -lval;
 
-		case op_not:  piv->val = !lval->val; return;
-		case op_bnot: piv->val = ~lval->val; return;
+		case op_not:  return !lval;
+		case op_bnot: return ~lval;
 
 		case op_unknown:
 			break;
@@ -97,11 +88,23 @@ void fold_const_expr_op(expr *e, consty *k)
 		rhs.type = CONST_VAL;
 	}
 
-	k->type = CONST_NO;
+	memset(k, 0, sizeof *k);
 
 	if(lhs.type == CONST_VAL && rhs.type == CONST_VAL){
-		k->type = CONST_VAL;
-		operate(&lhs.bits.iv, e->rhs ? &rhs.bits.iv : NULL, e->op, k, &e->where);
+		char err = 0;
+		intval_t r;
+
+		r = operate(
+				lhs.bits.iv.val,
+				e->rhs ? &rhs.bits.iv.val : NULL,
+				e->op, &err);
+
+		if(err){
+			WARN_AT(&e->where, "division by zero");
+		}else{
+			k->type = CONST_VAL;
+			k->bits.iv.val = r;
+		}
 
 	}else if((e->op == op_andsc || e->op == op_orsc)
 	&& (CONST_AT_COMPILE_TIME(lhs.type) || CONST_AT_COMPILE_TIME(rhs.type))){
