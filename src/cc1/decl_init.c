@@ -855,6 +855,56 @@ static expr *decl_init_create_assignments_sue_base(
 			expr_new_identifier(smem->spel));
 }
 
+static void decl_init_create_assignment_from_copy(
+		decl_init *di, decl_init *init, stmt *code,
+		type_ref *next_type, unsigned idx, expr *new_base)
+{
+	/* TODO: ideally when the backend is sufficiently optimised, we
+	 * will always be able to use the memcpy case, and it'll pick it up
+	 */
+	size_t copy_idx = DECL_INIT_COPY_IDX(di, init);
+
+	UCC_ASSERT(next_type, "no next type for array (i=%d)", idx);
+
+	if(0){ //di->type == decl_init_scalar){
+#if 0
+		size_t n = dynarray_count(code->codes);
+		stmt *last_assign;
+
+		UCC_ASSERT(n > 0 && copy_idx < n,
+				"bad range init - bad index (n=%ld, idx=%ld)",
+				(long)n, (long)idx);
+
+		last_assign = code->codes[copy_idx];
+
+		/* insert like so:
+		 *
+		 * this = (prev_assign = ...)
+		 *        ^-----------------^
+		 *          already present
+		 */
+		last_assign->expr = expr_new_assign_init(new_base, last_assign->expr);
+#endif
+	}else{
+		/* memcpy from the previous init */
+		if(code->codes){
+			expr *last_base = code->codes[copy_idx]->expr->lhs;
+
+			expr *memcp = builtin_new_memcpy(
+					new_base, last_base, type_ref_size(next_type, &di->where));
+
+			dynarray_add(&code->codes,
+					expr_to_stmt(memcp, code->symtab));
+		}else{
+			/* the initial assignment from the range_copy */
+			decl_init *cpy = *di->bits.range_copy;
+
+			decl_init_create_assignments_base(cpy,
+					next_type, new_base, code);
+		}
+	}
+}
+
 void decl_init_create_assignments_base(
 		decl_init *init,
 		type_ref *tfor, expr *base,
@@ -959,43 +1009,8 @@ zero_init:
 						next_type = type_ref_next(tfor);
 
 					if(di && di != DYNARRAY_NULL && di->type == decl_init_copy){
-						/* TODO: ideally when the backend is sufficiently optimised, we
-						 * will always be able to use the memcpy case, and it'll pick it up
-						 */
-						size_t copy_idx = DECL_INIT_COPY_IDX(di, init);
-
-						if(0){ //di->type == decl_init_scalar){
-#if 0
-							size_t n = dynarray_count(code->codes);
-							stmt *last_assign;
-
-							UCC_ASSERT(n > 0 && copy_idx < n,
-									"bad range init - bad index (n=%ld, idx=%ld)",
-									(long)n, (long)idx);
-
-							last_assign = code->codes[copy_idx];
-
-							/* insert like so:
-							 *
-							 * this = (prev_assign = ...)
-							 *        ^-----------------^
-							 *          already present
-							 */
-							last_assign->expr = expr_new_assign_init(new_base, last_assign->expr);
-#endif
-						}else{
-							/* memcpy from the previous init */
-							expr *memcp;
-							expr *last_base = code->codes[copy_idx]->expr->lhs;
-
-							UCC_ASSERT(next_type, "no next type for array (i=%d)", idx);
-
-							memcp = builtin_new_memcpy(
-									new_base, last_base, type_ref_size(next_type, &di->where));
-
-							dynarray_add(&code->codes,
-									expr_to_stmt(memcp, code->symtab));
-						}
+						decl_init_create_assignment_from_copy(
+								di, init, code, next_type, idx, new_base);
 						continue;
 					}
 				}
