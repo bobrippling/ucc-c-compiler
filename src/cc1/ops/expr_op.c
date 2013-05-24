@@ -12,20 +12,31 @@ const char *str_expr_op()
 
 static intval_t operate(
 		intval_t lval, intval_t *rval, /* rval is optional */
-		enum op_type op,
-		char *error)
+		enum op_type op, int is_signed,
+		const char **error)
 {
+	typedef sintval_t S;
+	typedef  intval_t U;
+
 	/* FIXME: casts based on lval.type */
 #define piv (&konst->bits.iv)
-#define OP(a, b) case a: return lval b *rval
+
+#define S_OP(o) (S)lval o (S)*rval
+#define U_OP(o) (U)lval o (U)*rval
+
+#define OP(  a, b) case a: return S_OP(b)
+#define OP_U(a, b) case a: return is_signed ? S_OP(b) : U_OP(b)
+
 	switch(op){
 		OP(op_multiply,   *);
 		OP(op_eq,         ==);
 		OP(op_ne,         !=);
-		OP(op_le,         <=);
-		OP(op_lt,         <);
-		OP(op_ge,         >=);
-		OP(op_gt,         >);
+
+		OP_U(op_le,       <=);
+		OP_U(op_lt,       <);
+		OP_U(op_ge,       >=);
+		OP_U(op_gt,       >);
+
 		OP(op_xor,        ^);
 		OP(op_or,         |);
 		OP(op_and,        &);
@@ -39,7 +50,7 @@ static intval_t operate(
 			if(*rval)
 				return op == op_divide ? lval / *rval : lval % *rval;
 
-			*error = 1;
+			*error = "division by zero";
 			return 0;
 
 		case op_plus:
@@ -91,16 +102,20 @@ void fold_const_expr_op(expr *e, consty *k)
 	memset(k, 0, sizeof *k);
 
 	if(lhs.type == CONST_VAL && rhs.type == CONST_VAL){
-		char err = 0;
+		const char *err = NULL;
 		intval_t r;
+		/* the op is signed if an operand is, not the result,
+		 * e.g. u_a < u_b produces a bool (signed) */
+		int is_signed = type_ref_is_signed(e->lhs->tree_type) ||
+		                type_ref_is_signed(e->rhs->tree_type);
 
 		r = operate(
 				lhs.bits.iv.val,
 				e->rhs ? &rhs.bits.iv.val : NULL,
-				e->op, &err);
+				e->op, is_signed, &err);
 
 		if(err){
-			WARN_AT(&e->where, "division by zero");
+			WARN_AT(&e->where, "%s", err);
 		}else{
 			k->type = CONST_VAL;
 			k->bits.iv.val = r;
