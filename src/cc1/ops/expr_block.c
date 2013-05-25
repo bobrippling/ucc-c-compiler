@@ -74,26 +74,21 @@ void fold_expr_block(expr *e, symtable *stab)
 	}
 }
 
-void gen_expr_block(expr *e, symtable *stab)
+void gen_expr_block(expr *e)
 {
-	(void)stab;
-
 	out_push_lbl(e->bits.block_sym->decl->spel, 1);
 }
 
-void gen_expr_str_block(expr *e, symtable *stab)
+void gen_expr_str_block(expr *e)
 {
-	(void)stab;
 	idt_printf("block, type: %s, code:\n", type_ref_to_str(e->tree_type));
 	gen_str_indent++;
 	print_stmt(e->code);
 	gen_str_indent--;
 }
 
-void gen_expr_style_block(expr *e, symtable *stab)
+void gen_expr_style_block(expr *e)
 {
-	(void)stab;
-
 	stylef("^%s", type_ref_to_str(e->tree_type));
 	gen_stmt(e->code);
 }

@@ -30,7 +30,7 @@ void gen_stmt_while(stmt *s)
 	out_label(s->lbl_continue);
 
 	flow_gen(s->flow, s->symtab);
-	gen_expr(s->expr, s->symtab);
+	gen_expr(s->expr);
 
 	out_op_unary(op_not);
 	out_jtrue(s->lbl_break);
@@ -46,7 +46,7 @@ void gen_stmt_while(stmt *s)
 void style_stmt_while(stmt *s)
 {
 	stylef("while(");
-	gen_expr(s->expr, s->symtab);
+	gen_expr(s->expr);
 	stylef(")");
 	gen_stmt(s->lhs);
 }

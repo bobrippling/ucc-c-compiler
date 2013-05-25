@@ -22,7 +22,7 @@
 
 char *curfunc_lblfin; /* extern */
 
-void gen_expr(expr *e, symtable *stab)
+void gen_expr(expr *e)
 {
 	consty k;
 
@@ -34,16 +34,16 @@ void gen_expr(expr *e, symtable *stab)
 		else
 			stylef("%ld", k.bits.iv.val);
 	}else{
-		EOF_WHERE(&e->where, e->f_gen(e, stab));
+		EOF_WHERE(&e->where, e->f_gen(e));
 	}
 }
 
-void lea_expr(expr *e, symtable *stab)
+void lea_expr(expr *e)
 {
 	UCC_ASSERT(e->f_lea,
 			"invalid store expression expr-%s (no f_store())", e->f_str());
 
-	e->f_lea(e, stab);
+	e->f_lea(e);
 }
 
 void gen_stmt(stmt *t)

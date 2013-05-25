@@ -141,16 +141,13 @@ too_large_sl:
 	);
 }
 
-void gen_expr_val(expr *e, symtable *stab)
+void gen_expr_val(expr *e)
 {
-	(void)stab;
-
 	out_push_iv(e->tree_type, &e->bits.iv);
 }
 
-void gen_expr_str_val(expr *e, symtable *stab)
+void gen_expr_str_val(expr *e)
 {
-	(void)stab;
 	idt_printf("val: 0x%lx\n", (unsigned long)e->bits.iv.val);
 }
 
@@ -173,8 +170,7 @@ expr *expr_new_val(int val)
 	return e;
 }
 
-void gen_expr_style_val(expr *e, symtable *stab)
+void gen_expr_style_val(expr *e)
 {
-	(void)stab;
 	stylef("%ld", e->bits.iv.val);
 }

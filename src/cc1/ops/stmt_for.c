@@ -41,7 +41,7 @@ void gen_stmt_for(stmt *s)
 
 	/* don't else-if, possible to have both (comma-exp for init) */
 	if(s->flow->for_init){
-		gen_expr(s->flow->for_init, s->flow->for_init_symtab);
+		gen_expr(s->flow->for_init);
 
 		out_pop();
 		out_comment("for-init");
@@ -49,14 +49,14 @@ void gen_stmt_for(stmt *s)
 
 	out_label(lbl_test);
 	if(s->flow->for_while){
-		gen_expr(s->flow->for_while, s->flow->for_init_symtab);
+		gen_expr(s->flow->for_while);
 		out_jfalse(s->lbl_break);
 	}
 
 	gen_stmt(s->lhs);
 	out_label(s->lbl_continue);
 	if(s->flow->for_inc){
-		gen_expr(s->flow->for_inc, s->flow->for_init_symtab);
+		gen_expr(s->flow->for_inc);
 
 		out_pop();
 		out_comment("unused for inc");
@@ -74,15 +74,15 @@ void style_stmt_for(stmt *s)
 {
 	stylef("for(");
 	if(s->flow->for_init)
-		gen_expr(s->flow->for_init, s->symtab);
+		gen_expr(s->flow->for_init);
 
 	stylef("; ");
 	if(s->flow->for_while)
-		gen_expr(s->flow->for_while, s->symtab);
+		gen_expr(s->flow->for_while);
 
 	stylef("; ");
 	if(s->flow->for_inc)
-		gen_expr(s->flow->for_inc, s->symtab);
+		gen_expr(s->flow->for_inc);
 
 	stylef(")\n");
 

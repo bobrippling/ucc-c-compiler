@@ -112,16 +112,14 @@ void fold_expr_identifier(expr *e, symtable *stab)
 		sym->func = curdecl_func;
 }
 
-void gen_expr_str_identifier(expr *e, symtable *stab)
+void gen_expr_str_identifier(expr *e)
 {
-	(void)stab;
 	idt_printf("identifier: \"%s\" (sym %p)\n", e->bits.ident.spel, (void *)e->bits.ident.sym);
 }
 
-void gen_expr_identifier(expr *e, symtable *stab)
+void gen_expr_identifier(expr *e)
 {
 	sym *sym = e->bits.ident.sym;
-	(void)stab;
 
 	if(DECL_IS_FUNC(sym->decl))
 		out_push_sym(sym);
@@ -129,10 +127,8 @@ void gen_expr_identifier(expr *e, symtable *stab)
 		out_push_sym_val(sym);
 }
 
-void gen_expr_identifier_lea(expr *e, symtable *stab)
+void gen_expr_identifier_lea(expr *e)
 {
-	(void)stab;
-
 	out_push_sym(e->bits.ident.sym);
 }
 
@@ -149,8 +145,7 @@ expr *expr_new_identifier(char *sp)
 	return e;
 }
 
-void gen_expr_style_identifier(expr *e, symtable *stab)
+void gen_expr_style_identifier(expr *e)
 {
-	(void)stab;
 	stylef("%s", e->bits.ident.spel);
 }

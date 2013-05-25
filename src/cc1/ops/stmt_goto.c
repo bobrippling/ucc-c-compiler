@@ -29,7 +29,7 @@ void fold_stmt_goto(stmt *s)
 void gen_stmt_goto(stmt *s)
 {
 	if(s->expr->expr_computed_goto)
-		gen_expr(s->expr, s->symtab);
+		gen_expr(s->expr);
 	else
 		out_push_lbl(s->expr->bits.ident.spel, 0);
 
@@ -42,7 +42,7 @@ void style_stmt_goto(stmt *s)
 
 	if(s->expr->expr_computed_goto){
 		stylef("*");
-		gen_expr(s->expr, s->symtab);
+		gen_expr(s->expr);
 	}else{
 		stylef("%s", s->expr->bits.ident.spel);
 	}

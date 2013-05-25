@@ -59,10 +59,8 @@ static void gen_expr_compound_lit_code(expr *e)
 	}
 }
 
-void gen_expr_compound_lit(expr *e, symtable *stab)
+void gen_expr_compound_lit(expr *e)
 {
-	(void)stab;
-
 	/* allow (int){2}, but not (struct...){...} */
 	fold_disallow_st_un(e, "compound literal");
 
@@ -71,10 +69,8 @@ void gen_expr_compound_lit(expr *e, symtable *stab)
 	out_push_sym_val(e->bits.complit.sym);
 }
 
-static void lea_expr_compound_lit(expr *e, symtable *stab)
+static void lea_expr_compound_lit(expr *e)
 {
-	(void)stab;
-
 	gen_expr_compound_lit_code(e);
 
 	out_push_sym(e->bits.complit.sym);
@@ -94,7 +90,7 @@ void const_expr_compound_lit(expr *e, consty *k)
 	}
 }
 
-void gen_expr_str_compound_lit(expr *e, symtable *stab)
+void gen_expr_str_compound_lit(expr *e)
 {
 	decl *const d = e->bits.complit.decl;
 
@@ -103,7 +99,6 @@ void gen_expr_str_compound_lit(expr *e, symtable *stab)
 
 	e->op = 1;
 	{
-		(void)stab;
 		idt_printf("(%s){\n", decl_to_str(d));
 
 		gen_str_indent++;
@@ -126,10 +121,8 @@ void gen_expr_str_compound_lit(expr *e, symtable *stab)
 	e->op = 0;
 }
 
-void gen_expr_style_compound_lit(expr *e, symtable *stab)
+void gen_expr_style_compound_lit(expr *e)
 {
-	(void)stab;
-
 	stylef("(%s)", type_ref_to_str(e->bits.complit.decl->ref));
 	gen_style_dinit(e->bits.complit.decl->init);
 }

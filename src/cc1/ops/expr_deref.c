@@ -22,21 +22,20 @@ void fold_expr_deref(expr *e, symtable *stab)
 	e->tree_type = type_ref_ptr_depth_dec(ptr->tree_type, &e->where);
 }
 
-void gen_expr_deref_lea(expr *e, symtable *stab)
+void gen_expr_deref_lea(expr *e)
 {
 	/* a dereference */
-	gen_expr(expr_deref_what(e), stab); /* skip over the *() bit */
+	gen_expr(expr_deref_what(e)); /* skip over the *() bit */
 }
 
-void gen_expr_deref(expr *e, symtable *stab)
+void gen_expr_deref(expr *e)
 {
-	gen_expr_deref_lea(e, stab);
+	gen_expr_deref_lea(e);
 	out_deref();
 }
 
-void gen_expr_str_deref(expr *e, symtable *stab)
+void gen_expr_str_deref(expr *e)
 {
-	(void)stab;
 	idt_printf("deref, size: %s\n", type_ref_to_str(e->tree_type));
 	gen_str_indent++;
 	print_expr(expr_deref_what(e));
@@ -73,9 +72,9 @@ expr *expr_new_deref(expr *of)
 	return e;
 }
 
-void gen_expr_style_deref(expr *e, symtable *stab)
+void gen_expr_style_deref(expr *e)
 {
 	stylef("*(");
-	gen_expr(expr_deref_what(e), stab);
+	gen_expr(expr_deref_what(e));
 	stylef(")");
 }

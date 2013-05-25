@@ -101,11 +101,11 @@ err:
 	}
 }
 
-void gen_expr_struct_lea(expr *e, symtable *stab)
+void gen_expr_struct_lea(expr *e)
 {
 	ASSERT_NOT_DOT();
 
-	gen_expr(e->lhs, stab);
+	gen_expr(e->lhs);
 
 	out_change_type(type_ref_cached_VOID_PTR()); /* cast for void* arithmetic */
 	out_push_i(type_ref_cached_INTPTR_T(), struct_offset(e)); /* integral offset */
@@ -114,22 +114,19 @@ void gen_expr_struct_lea(expr *e, symtable *stab)
 	out_change_type(type_ref_ptr_depth_inc(e->rhs->tree_type));
 }
 
-void gen_expr_struct(expr *e, symtable *stab)
+void gen_expr_struct(expr *e)
 {
-	(void)stab;
-
 	ASSERT_NOT_DOT();
 
-	gen_expr_struct_lea(e, stab);
+	gen_expr_struct_lea(e);
 
 	out_deref();
 
 	out_comment("val from struct/union");
 }
 
-void gen_expr_str_struct(expr *e, symtable *stab)
+void gen_expr_str_struct(expr *e)
 {
-	(void)stab;
 	idt_printf("struct/union%s%s\n",
 			e->expr_is_st_dot ? "." : "->",
 			e->bits.struct_mem.d->spel);
@@ -191,8 +188,8 @@ expr *expr_new_struct(expr *sub, int dot, expr *ident)
 	return e;
 }
 
-void gen_expr_style_struct(expr *e, symtable *stab)
+void gen_expr_style_struct(expr *e)
 {
-	gen_expr(e->lhs, stab);
+	gen_expr(e->lhs);
 	stylef("->%s", e->bits.struct_mem.d->spel);
 }

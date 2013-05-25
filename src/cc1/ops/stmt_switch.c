@@ -176,7 +176,7 @@ void gen_stmt_switch(stmt *s)
 
 	tdefault = NULL;
 
-	gen_expr(s->expr, s->symtab);
+	gen_expr(s->expr);
 
 	out_comment("switch on this");
 
@@ -241,7 +241,7 @@ void gen_stmt_switch(stmt *s)
 void style_stmt_switch(stmt *s)
 {
 	stylef("switch(");
-	gen_expr(s->expr, s->symtab);
+	gen_expr(s->expr);
 	stylef(")");
 	gen_stmt(s->lhs);
 }

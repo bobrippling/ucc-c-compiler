@@ -71,7 +71,7 @@ void gen_stmt_if(stmt *s)
 	char *lbl_fi   = out_label_code("fi");
 
 	flow_gen(s->flow, s->symtab);
-	gen_expr(s->expr, s->symtab);
+	gen_expr(s->expr);
 
 	out_jfalse(lbl_else);
 
@@ -91,7 +91,7 @@ void gen_stmt_if(stmt *s)
 void style_stmt_if(stmt *s)
 {
 	stylef("if(");
-	gen_expr(s->expr, s->symtab);
+	gen_expr(s->expr);
 	stylef(")\n");
 	gen_stmt(s->lhs);
 

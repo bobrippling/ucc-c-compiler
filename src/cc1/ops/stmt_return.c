@@ -40,7 +40,7 @@ void fold_stmt_return(stmt *s)
 void gen_stmt_return(stmt *s)
 {
 	if(s->expr){
-		gen_expr(s->expr, s->symtab);
+		gen_expr(s->expr);
 		out_pop_func_ret(s->expr->tree_type);
 		out_comment("return");
 	}
@@ -51,7 +51,7 @@ void gen_stmt_return(stmt *s)
 void style_stmt_return(stmt *s)
 {
 	stylef("return ");
-	gen_expr(s->expr, s->symtab);
+	gen_expr(s->expr);
 	stylef(";");
 }
 

@@ -122,7 +122,7 @@ expr *builtin_parse(const char *sp)
 	return NULL;
 }
 
-void builtin_gen_print(expr *e, symtable *stab)
+void builtin_gen_print(expr *e)
 {
 	/*const enum pdeclargs dflags =
 		  PDECL_INDENT
@@ -134,7 +134,6 @@ void builtin_gen_print(expr *e, symtable *stab)
 		| PDECL_SIZE
 		| PDECL_ATTR;*/
 
-	(void)stab;
 	idt_printf("%s(\n", BUILTIN_SPEL(e->expr));
 
 #define PRINT_ARGS(type, from, func)      \
@@ -168,10 +167,9 @@ static void wur_builtin(expr *e)
 	e->freestanding = 0; /* needs use */
 }
 
-static void builtin_gen_undefined(expr *e, symtable *stab)
+static void builtin_gen_undefined(expr *e)
 {
 	(void)e;
-	(void)stab;
 	out_undefined();
 	out_push_noop(); /* needed for function return pop */
 }
@@ -198,7 +196,7 @@ static void fold_memset(expr *e, symtable *stab)
 	e->tree_type = type_ref_cached_VOID_PTR();
 }
 
-static void builtin_gen_memset(expr *e, symtable *stab)
+static void builtin_gen_memset(expr *e)
 {
 	size_t n, rem;
 	unsigned i;
@@ -214,7 +212,7 @@ static void builtin_gen_memset(expr *e, symtable *stab)
 	if((textra = rem ? type_ref_cached_MAX_FOR(rem) : NULL))
 		textrap = type_ref_new_ptr(textra, qual_none);
 
-	gen_expr(e->lhs, stab);
+	gen_expr(e->lhs);
 
 	out_change_type(type_ref_new_ptr(tzero, qual_none));
 
@@ -331,7 +329,7 @@ static void builtin_memcpy_single(void)
 	out_swap(); /* DS */
 }
 
-void builtin_gen_memcpy(expr *e, symtable *stab)
+void builtin_gen_memcpy(expr *e)
 {
 #ifdef BUILTIN_USE_LIBC
 	/* TODO - also with memset */
@@ -357,8 +355,8 @@ void builtin_gen_memcpy(expr *e, symtable *stab)
 				qual_none);
 	unsigned tptr_sz = type_ref_size(tptr, &e->where);
 
-	lea_expr(e->lhs, stab); /* d */
-	lea_expr(e->rhs, stab); /* ds */
+	lea_expr(e->lhs); /* d */
+	lea_expr(e->rhs); /* ds */
 
 	while(i > 0){
 		/* as many copies as we can */
@@ -539,11 +537,9 @@ static void fold_frame_address(expr *e, symtable *stab)
 	wur_builtin(e);
 }
 
-static void builtin_gen_frame_address(expr *e, symtable *stab)
+static void builtin_gen_frame_address(expr *e)
 {
 	const int depth = e->bits.iv.val;
-
-	(void)stab;
 
 	out_push_frame_ptr(depth + 1);
 }
@@ -577,10 +573,9 @@ void fold_reg_save_area(expr *e, symtable *stab)
 	e->tree_type = type_ref_cached_CHAR_PTR();
 }
 
-void gen_reg_save_area(expr *e, symtable *stab)
+void gen_reg_save_area(expr *e)
 {
 	(void)e;
-	(void)stab;
 	out_comment("stack local offset:");
 	out_push_reg_save_ptr();
 }
@@ -616,11 +611,11 @@ static void fold_expect(expr *e, symtable *stab)
 	wur_builtin(e);
 }
 
-static void builtin_gen_expect(expr *e, symtable *stab)
+static void builtin_gen_expect(expr *e)
 {
-	gen_expr(e->funcargs[1], stab); /* not needed if it's const, but gcc and clang do this */
+	gen_expr(e->funcargs[1]); /* not needed if it's const, but gcc and clang do this */
 	out_pop();
-	gen_expr(e->funcargs[0], stab);
+	gen_expr(e->funcargs[0]);
 }
 
 static void const_expect(expr *e, consty *k)

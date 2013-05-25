@@ -549,9 +549,8 @@ void fold_expr_op(expr *e, symtable *stab)
 	}
 }
 
-void gen_expr_str_op(expr *e, symtable *stab)
+void gen_expr_str_op(expr *e)
 {
-	(void)stab;
 	idt_printf("op: %s\n", op_to_str(e->op));
 	gen_str_indent++;
 
@@ -563,17 +562,17 @@ void gen_expr_str_op(expr *e, symtable *stab)
 	gen_str_indent--;
 }
 
-static void op_shortcircuit(expr *e, symtable *tab)
+static void op_shortcircuit(expr *e)
 {
 	char *bail = out_label_code("shortcircuit_bail");
 
-	gen_expr(e->lhs, tab);
+	gen_expr(e->lhs);
 
 	out_dup();
 	(e->op == op_andsc ? out_jfalse : out_jtrue)(bail);
 	out_pop();
 
-	gen_expr(e->rhs, tab);
+	gen_expr(e->rhs);
 
 	out_label(bail);
 	free(bail);
@@ -581,22 +580,22 @@ static void op_shortcircuit(expr *e, symtable *tab)
 	out_normalise();
 }
 
-void gen_expr_op(expr *e, symtable *tab)
+void gen_expr_op(expr *e)
 {
 	switch(e->op){
 		case op_orsc:
 		case op_andsc:
-			op_shortcircuit(e, tab);
+			op_shortcircuit(e);
 			break;
 
 		case op_unknown:
 			ICE("asm_operate: unknown operator got through");
 
 		default:
-			gen_expr(e->lhs, tab);
+			gen_expr(e->lhs);
 
 			if(e->rhs){
-				gen_expr(e->rhs, tab);
+				gen_expr(e->rhs);
 
 				out_op(e->op);
 				out_change_type(e->tree_type);
@@ -639,14 +638,14 @@ expr *expr_new_op2(enum op_type o, expr *l, expr *r)
 	return e;
 }
 
-void gen_expr_style_op(expr *e, symtable *stab)
+void gen_expr_style_op(expr *e)
 {
 	if(e->rhs){
-		gen_expr(e->lhs, stab);
+		gen_expr(e->lhs);
 		stylef(" %s ", op_to_str(e->op));
-		gen_expr(e->rhs, stab);
+		gen_expr(e->rhs);
 	}else{
 		stylef("%s ", op_to_str(e->op));
-		gen_expr(e->lhs, stab);
+		gen_expr(e->lhs);
 	}
 }

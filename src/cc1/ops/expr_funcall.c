@@ -487,7 +487,7 @@ invalid:
 		e->freestanding = 0; /* needs use */
 }
 
-void gen_expr_funcall(expr *e, symtable *stab)
+void gen_expr_funcall(expr *e)
 {
 	if(0){
 		out_comment("start manual __asm__");
@@ -500,7 +500,7 @@ void gen_expr_funcall(expr *e, symtable *stab)
 		/* continue with normal funcall */
 		int nargs = 0;
 
-		gen_expr(e->expr, stab);
+		gen_expr(e->expr);
 
 		if(e->funcargs){
 			expr **aiter;
@@ -513,7 +513,7 @@ void gen_expr_funcall(expr *e, symtable *stab)
 				/* should be of size int or larger (for integral types)
 				 * or double (for floating types)
 				 */
-				gen_expr(earg, stab);
+				gen_expr(earg);
 			}
 		}
 
@@ -521,11 +521,9 @@ void gen_expr_funcall(expr *e, symtable *stab)
 	}
 }
 
-void gen_expr_str_funcall(expr *e, symtable *stab)
+void gen_expr_str_funcall(expr *e)
 {
 	expr **iter;
-
-	(void)stab;
 
 	idt_printf("funcall, calling:\n");
 
@@ -567,15 +565,15 @@ expr *expr_new_funcall()
 	return e;
 }
 
-void gen_expr_style_funcall(expr *e, symtable *stab)
+void gen_expr_style_funcall(expr *e)
 {
 	stylef("(");
-	gen_expr(e->expr, stab);
+	gen_expr(e->expr);
 	stylef(")(");
 	if(e->funcargs){
 		expr **i;
 		for(i = e->funcargs; i && *i; i++){
-			gen_expr(*i, stab);
+			gen_expr(*i);
 			if(i[1])
 				stylef(", ");
 		}
