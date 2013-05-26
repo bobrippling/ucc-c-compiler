@@ -399,7 +399,8 @@ void impl_op(enum op_type op)
 			vstack_str_r(bufv, &vtop[-1]);
 
 			out_asm("%s%c %s, %s",
-					op == op_shiftl ? "shl" : "shr",
+					op == op_shiftl      ? "shl" :
+					type_ref_is_signed(vtop[-1].t) ? "sar" : "shr",
 					asm_type_ch(vtop[-1].t),
 					bufs, bufv);
 
