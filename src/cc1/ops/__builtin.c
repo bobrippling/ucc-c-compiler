@@ -390,7 +390,7 @@ expr *builtin_new_memcpy(expr *to, expr *from, size_t len)
 	fcall->expr = expr_new_identifier("__builtin_memcpy");
 
 	expr_mutate_builtin(fcall, memcpy);
-	fcall->f_gen = builtin_gen_memcpy;
+	BUILTIN_SET_GEN(fcall, builtin_gen_memcpy);
 
 	fcall->lhs = to;
 	fcall->rhs = from;
@@ -432,7 +432,8 @@ static expr *parse_unreachable(void)
 	expr *fcall = expr_new_funcall();
 
 	expr_mutate_builtin(fcall, unreachable);
-	fcall->f_gen = BUILTIN_GEN(builtin_gen_undefined);
+
+	BUILTIN_SET_GEN(fcall, builtin_gen_undefined);
 
 	return fcall;
 }
@@ -547,7 +548,7 @@ static void builtin_gen_frame_address(expr *e)
 static expr *builtin_frame_address_mutate(expr *e)
 {
 	expr_mutate_builtin(e, frame_address);
-	e->f_gen = BUILTIN_GEN(builtin_gen_frame_address);
+	BUILTIN_SET_GEN(e, builtin_gen_frame_address);
 	return e;
 }
 
@@ -585,7 +586,7 @@ expr *builtin_new_reg_save_area(void)
 	expr *e = expr_new_funcall();
 
 	expr_mutate_builtin(e, reg_save_area);
-	e->f_gen = BUILTIN_GEN(gen_reg_save_area);
+	BUILTIN_SET_GEN(e, gen_reg_save_area);
 
 	return e;
 }
@@ -628,7 +629,7 @@ static expr *parse_expect(void)
 {
 	expr *fcall = parse_any_args();
 	expr_mutate_builtin_const(fcall, expect);
-	fcall->f_gen = BUILTIN_GEN(builtin_gen_expect);
+	BUILTIN_SET_GEN(fcall, builtin_gen_expect);
 	return fcall;
 }
 

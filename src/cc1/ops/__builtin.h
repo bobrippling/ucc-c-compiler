@@ -10,9 +10,9 @@ expr *builtin_parse(const char *sp);
 expr *parse_any_args(void);
 
 void builtin_gen_print(expr *);
-#define BUILTIN_GEN(target)  \
-	cc1_backend == BACKEND_ASM \
-		? (target)               \
+#define BUILTIN_SET_GEN(exp, target)      \
+	exp->f_gen = cc1_backend == BACKEND_ASM \
+		? (target)                            \
 		: builtin_gen_print
 
 #define expr_mutate_builtin(exp, to)  \
@@ -20,7 +20,7 @@ void builtin_gen_print(expr *);
 
 #define expr_mutate_builtin_gen(exp, to) \
 	expr_mutate_builtin(exp, to),          \
-	exp->f_gen        = BUILTIN_GEN(builtin_gen_ ## to)
+	BUILTIN_SET_GEN(exp, builtin_gen_ ## to)
 
 
 expr *builtin_new_memset(expr *p, int ch, size_t len);
