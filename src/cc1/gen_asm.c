@@ -32,7 +32,7 @@ void gen_expr(expr *e)
 		if(cc1_backend == BACKEND_ASM)
 			out_push_iv(e->tree_type, &k.bits.iv);
 		else
-			stylef("%ld", k.bits.iv.val);
+			stylef("%" INTVAL_FMT_D, k.bits.iv.val);
 	}else{
 		EOF_WHERE(&e->where, e->f_gen(e));
 	}

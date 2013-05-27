@@ -172,5 +172,5 @@ expr *expr_new_val(int val)
 
 void gen_expr_style_val(expr *e)
 {
-	stylef("%ld", e->bits.iv.val);
+	stylef("%" INTVAL_FMT_D, e->bits.iv.val);
 }

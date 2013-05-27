@@ -416,7 +416,7 @@ void print_struct(struct_union_enum_st *sue)
 
 			const_fold_need_val(d->field_width, &iv);
 
-			idt_printf("field width %ld\n", iv.val);
+			idt_printf("field width %" INTVAL_FMT_D "\n", iv.val);
 		}
 #endif
 
