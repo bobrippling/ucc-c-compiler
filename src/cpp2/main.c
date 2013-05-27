@@ -14,6 +14,7 @@
 #include "macro.h"
 #include "preproc.h"
 #include "include.h"
+#include "directive.h"
 
 static const struct
 {
@@ -98,6 +99,9 @@ int main(int argc, char **argv)
 
 	infname = outfname = NULL;
 
+	current_fname = "<builtin>";
+	current_line = 1;
+
 	for(i = 0; initial_defs[i].nam; i++)
 		macro_add(initial_defs[i].nam, initial_defs[i].val);
 
@@ -176,20 +180,20 @@ int main(int argc, char **argv)
 			{
 				char *arg = argv[i] + 2;
 				char *eq;
+
 				if(!*arg)
 					goto usage;
 
 				eq = strchr(arg, '=');
 				if(eq){
-					/* FIXME: this is hacky and doesn't
-					 * work for things like "-D531,31;5=a".
-					 * Should be pushed through the parser */
-					if(strchr(arg, '('))
-						die("can't handle function-like macros via -D yet");
+					char *directive;
 
-					*eq++ = '\0';
+					*eq = '\0';
 
-					macro_add(arg, eq);
+					directive = ustrprintf("define %s %s", arg, eq+1);
+
+					parse_directive(directive);
+					free(directive);
 				}else{
 					macro_add(arg, "1"); /* -Dhello means #define hello 1 */
 				}
