@@ -134,8 +134,12 @@ for_fin:
 	}else{
 		char *val;
 
-		if(tokens[1]) /* prevent initial whitespace */
+		if(tokens[1]){
+			if(!tokens[1]->had_whitespace)
+				CPP_WARN("no whitespace after macro name (%s)", name);
+			/* prevent initial whitespace */
 			tokens[1]->had_whitespace = 0;
+		}
 
 		val = tokens_join(tokens + 1);
 
