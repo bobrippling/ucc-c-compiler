@@ -100,9 +100,14 @@ case "$unam" in
 		# FIXME: gcc specific + version specific
 		UCC_INC="$UCC_INC -I/usr/include/$UCC_CPU-$unam_lc-gnu -I/usr/lib/gcc/$UCC_CPU-$unam_lc-gnu/4.7.2/include"
 
-		# TODO
-		UCC_STDLIB=""
-		UCC_CRT=""
+		UCC_LDFLAGS="$UCC_LDFLAGS -dynamic-linker /lib64/ld-linux-x86-64.so.2"
+		UCC_STDLIB="-lc"
+
+		UCC_CRT="$UCC_CRT:/usr/lib/x86_64-linux-gnu/crt1.o"
+		UCC_CRT="$UCC_CRT:/usr/lib/x86_64-linux-gnu/crti.o"
+		UCC_CRT="$UCC_CRT:/usr/lib/gcc/x86_64-linux-gnu/4.6/crtbegin.o"
+		UCC_CRT="$UCC_CRT:/usr/lib/gcc/x86_64-linux-gnu/4.6/crtend.o"
+		UCC_CRT="$UCC_CRT:/usr/lib/x86_64-linux-gnu/crtn.o"
 		;;
 
 	Darwin)
