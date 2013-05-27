@@ -1,13 +1,11 @@
 #include <string.h>
 #include <stdlib.h>
+
+#include "../defs.h"
 #include "ops.h"
 #include "expr_op.h"
 #include "../out/lbl.h"
 #include "../out/asm.h"
-
-#ifndef CHAR_BIT
-#    define CHAR_BIT 8
-#endif
 
 const char *str_expr_op()
 {

@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
+#include "defs.h"
 #include "../util/util.h"
 #include "data_structs.h"
 #include "cc1.h"
@@ -214,6 +215,7 @@ int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 		int align_max = 1;
 		int sz_max = 0;
 		int offset = 0;
+		int bitfield_current = 0;
 		sue_member **i;
 
 		if(decl_attr_present(sue->attr, attr_packed))
@@ -239,14 +241,26 @@ int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 				sz = sue_size(sub_sue, &d->where);
 				align = sub_sue->align;
 
+			}else if(d->field_width){
+				intval width;
+				const_fold_need_val(d->field_width, &width);
+
+				bitfield_current += width.val;
+				/* cram bitfields into chars */
+				if(bitfield_current >= CHAR_BIT){
+					sz = align = 1; /* char attributes */
+
+					bitfield_current -= CHAR_BIT;
+
+					ICE("TODO: bitfield packing");
+				}
 			}else{
 normal:
 				align = decl_align(d);
 				sz = decl_size(d);
 			}
 
-
-			if(sue->primitive == type_struct){
+			if(sue->primitive == type_struct && (!d->field_width || sz)){
 				const int prev_offset = offset;
 				int after_space;
 
