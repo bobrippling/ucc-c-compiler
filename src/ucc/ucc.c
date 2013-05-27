@@ -241,15 +241,14 @@ void process_files(enum mode mode, char **inputs, char *output, char **args[4], 
 	const int ninputs = dynarray_count(inputs);
 	int i;
 	struct cc_file *files;
-	char **links;
+	char **links = NULL;
 
 	files = umalloc(ninputs * sizeof *files);
 
-	links = gopts.nostdlib ? NULL : ld_stdlib_args();
-
+	/* crt must come first */
 	if(!gopts.nostartfiles)
-		/* ld_crt_args() refers to static memory */
 		dynarray_add_array(&links, ld_crt_args());
+
 
 	if(backend){
 		dynarray_add(&args[mode_compile], ustrdup("-X"));
@@ -264,10 +263,19 @@ void process_files(enum mode mode, char **inputs, char *output, char **args[4], 
 		dynarray_add(&links, ustrdup(files[i].out));
 	}
 
-	if(mode == mode_link)
+	if(mode == mode_link){
+		/* An object file's unresolved symbols must
+		 * be _later_ in the linker's argv array.
+		 * crt, user files, then stdlib
+		 */
+		if(!gopts.nostdlib)
+			/* ld_crt_args() refers to static memory */
+			dynarray_add_array(&links, ld_stdlib_args());
+
 		link_all(links, output ? output : "a.out", args[mode_link]);
-	else
+	}else{
 		rename_files(files, ninputs, output, mode);
+	}
 
 	dynarray_free(char **, &links, free);
 

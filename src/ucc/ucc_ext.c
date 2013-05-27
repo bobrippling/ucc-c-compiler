@@ -286,11 +286,13 @@ void link_all(char **objs, char *out, char **args)
 	dynarray_add(&all, (char *)"-o");
 	dynarray_add(&all, out);
 
+	/* note: order is important - can't just group all objs at the end
+	 * this is handled in configure
+	 */
+
 	dynarray_add_tmparray(&all, strsplit(UCC_LDFLAGS, " "));
 
 	dynarray_add_array(&all, objs);
-
-	/* TODO: order is important - can't just group all objs at the end, etc */
 
 	if(args)
 		dynarray_add_array(&all, args);
