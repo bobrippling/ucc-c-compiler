@@ -192,7 +192,7 @@ int main(int argc, char **argv)
 
 					directive = ustrprintf("define %s %s", arg, eq+1);
 
-					parse_directive(directive);
+					parse_internal_directive(directive);
 					free(directive);
 				}else{
 					macro_add(arg, "1"); /* -Dhello means #define hello 1 */

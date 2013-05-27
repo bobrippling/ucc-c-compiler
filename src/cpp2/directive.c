@@ -429,7 +429,7 @@ void parse_directive(char *line)
 	/* check for '# [0-9]+ "..."' */
 	if(sscanf(tokens[0]->w, "%d \"", &i) == 1){
 		/* output, and ignore */
-		if(option_line_info)
+		if(!no_output && option_line_info)
 			puts(line);
 		goto fin;
 	}
@@ -466,6 +466,13 @@ void parse_directive(char *line)
 	CPP_DIE("unrecognised preproc command \"%s\"", tokens[0]->w);
 fin:
 	tokens_free(tokens);
+}
+
+void parse_internal_directive(char *line)
+{
+	no_output = 1;
+	parse_directive(line);
+	no_output = 0;
 }
 
 void parse_end_validate()
