@@ -1,10 +1,10 @@
 UCC_CC = ../src/ucc/ucc
 LIBC   = libc.a
 CRT    = crt.a
-OBJ_LIBC = syscall.o dirent.o                             \
-           stdio.o stdlib.o string.o unistd.o signal.o    \
-           assert.o ctype.o                               \
+OBJ_LIBC = syscall.o begin.o                              \
            alloca.o                                       \
+           stdio.o stdlib.o string.o unistd.o signal.o    \
+           assert.o ctype.o dirent.o                      \
            sys/fcntl.o sys/wait.o sys/mman.o sys/socket.o \
            sys/utsname.o sys/select.o sys/time.o          \
            arpa/inet.o
@@ -34,6 +34,8 @@ ${OBJ_CRT}: ${LIBDEPS}
 crt.o: ${ARCH_DIR}/crt.S
 	${BUILD_CMD}
 syscall.o: ${ARCH_DIR}/syscall.S
+	${BUILD_CMD}
+begin.o: begin.c
 	${BUILD_CMD}
 
 stdio.o: stdio.c
