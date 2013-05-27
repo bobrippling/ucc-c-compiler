@@ -39,15 +39,14 @@ void fold_expr_addr(expr *e, symtable *stab)
 					e->lhs->f_str(), type_ref_to_str(e->lhs->tree_type));
 		}
 
-#ifdef FIELD_WIDTH_TODO
-		if(e->lhs->tree_type->field_width)
-			DIE_AT(&e->lhs->where, "taking the address of a bit-field");
-#endif
+		if(expr_kind(e->lhs, identifier)){
+			decl *d = e->lhs->bits.ident.sym->decl;
 
-		if(expr_kind(e->lhs, identifier)
-		&& (e->lhs->bits.ident.sym->decl->store & STORE_MASK_STORE) == store_register)
-		{
-			DIE_AT(&e->lhs->where, "can't take the address of register");
+			if((d->store & STORE_MASK_STORE) == store_register)
+				DIE_AT(&e->lhs->where, "can't take the address of register");
+
+			if(d->field_width)
+				DIE_AT(&e->lhs->where, "taking the address of a bit-field");
 		}
 
 		e->tree_type = type_ref_new_ptr(e->lhs->tree_type, qual_none);

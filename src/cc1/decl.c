@@ -321,9 +321,7 @@ void decl_free(decl *d, int free_ref)
 	if(free_ref)
 		type_ref_free(d->ref);
 
-#ifdef FIELD_WIDTH_TODO
-	expr_free(d->field_width);
-#endif
+	expr_free(d->field_width); /* XXX: bad? */
 
 	free(d);
 }
@@ -553,18 +551,8 @@ unsigned decl_size(decl *d)
 	if(type_ref_is_void(d->ref))
 		DIE_AT(&d->where, "%s is void", d->spel);
 
-#ifdef FIELD_WIDTH_TODO
-	if(d->field_width){
-		intval iv;
-
-		ICW("use of field width - brace for incorrect code (%s)",
-				where_str(&d->where));
-
-		const_fold_need_val(d->field_width, &iv);
-
-		return iv.val;
-	}
-#endif
+	if(d->field_width)
+		DIE_AT(&d->where, "can't take size of a bitfield");
 
 	return type_ref_size(d->ref, &d->where);
 }

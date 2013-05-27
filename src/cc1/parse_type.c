@@ -1146,11 +1146,7 @@ add:
 
 			if((mode & DECL_MULTI_ACCEPT_FIELD_WIDTH) && accept(token_colon)){
 				/* normal decl, check field spec */
-#ifdef FIELD_WIDTH_TODO
 				d->field_width = parse_expr_exp();
-#else
-				ICE("TODO: field width");
-#endif
 			}
 
 			last = d;

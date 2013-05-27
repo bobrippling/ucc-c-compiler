@@ -399,33 +399,28 @@ void fold_decl(decl *d, symtable *stab)
 		DIE_AT(&d->where, "use of incomplete type - %s (%s)", d->spel, decl_to_str(d));
 #endif
 
-#ifdef FIELD_WIDTH_TODO
 	if(d->field_width){
-		enum constyness ktype;
-		intval iv;
-		int width;
-		type *t = ;
+		consty k;
 
 		FOLD_EXPR(d->field_width, stab);
-		const_fold(d->field_width, &iv, &ktype);
+		const_fold(d->field_width, &k);
 
-		width = iv.val;
-
-		if(ktype != CONST_WITH_VAL)
+		if(k.type != CONST_VAL)
 			DIE_AT(&d->where, "constant expression required for field width");
 
-		if(width <= 0)
+		if(k.bits.iv.val <= 0)
 			DIE_AT(&d->where, "field width must be positive");
 
-		if(!decl_is_integral(d))
-			DIE_AT(&d->where, "field width on non-integral type %s", decl_to_str(d));
+		if(!type_ref_is_integral(d->ref))
+			DIE_AT(&d->where, "field width on non-integral field %s",
+					decl_to_str(d));
 
-		if(width == 1 && t->is_signed)
-			WARN_AT(&d->where, "%s 1-bit field width is signed (-1 and 0)", decl_to_str(d));
+		if(k.bits.iv.val == 1 && type_ref_is_signed(d->ref))
+			WARN_AT(&d->where, "%s 1-bit field width is signed (-1 and 0)",
+					decl_to_str(d));
 
 		can_align = 0;
 	}
-#endif
 
 	/* allow:
 	 *   register int (*f)();
