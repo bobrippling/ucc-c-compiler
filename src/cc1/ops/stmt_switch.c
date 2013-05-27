@@ -70,7 +70,7 @@ void fold_switch_dups(stmt *sw)
 			DIE_AT(&vals[i-1].cse->where, "%s case statements %s %ld (from %s)",
 					overlap ? "overlapping" : "duplicate",
 					overlap ? "starting at" : "for",
-					vals[i].start.val,
+					(long)vals[i].start.val,
 					where_str_r(buf, &vals[i].cse->where));
 		}
 	}
@@ -88,7 +88,7 @@ void fold_switch_enum(stmt *sw, const type *enum_type)
 	/* for each case/default/case_range... */
 	for(titer = sw->codes; titer && *titer; titer++){
 		stmt *cse = *titer;
-		int v, w;
+		intval_t v, w;
 		intval iv;
 
 		if(cse->expr->expr_is_default)

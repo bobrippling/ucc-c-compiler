@@ -271,17 +271,12 @@ static int peeknextchar()
 	return *bufferpos;
 }
 
-static void add_suffix(enum intval_suffix s)
-{
-	if(currentval.suffix & s)
-		DIE_AT(NULL, "duplicate suffix %c", "_UL"[s]);
-	currentval.suffix |= s;
-}
-
 static void read_number(enum base mode)
 {
 	int read_suffix = 1;
 	int nlen;
+	char c;
+	enum intval_suffix suff = 0;
 
 	char_seq_to_iv(bufferpos, &currentval, &nlen, mode);
 
@@ -291,21 +286,36 @@ static void read_number(enum base mode)
 
 	bufferpos += nlen;
 
-	while(read_suffix)
-		switch(peeknextchar()){
-			case 'U':
-			case 'u':
-				add_suffix(VAL_UNSIGNED);
-				nextchar();
-				break;
-			case 'L':
-			case 'l':
-				add_suffix(VAL_LONG);
-				nextchar();
-				break;
-			default:
-				read_suffix = 0;
-		}
+	/* accept either 'U' 'L' or 'LL' as atomic parts (i.e. not LUL) */
+	/* fine using nextchar() since we peeknextchar() first */
+	do switch((c = peeknextchar())){
+		case 'U':
+		case 'u':
+			if(suff & VAL_UNSIGNED)
+				DIE_AT(NULL, "duplicate U suffix");
+			suff |= VAL_UNSIGNED;
+			nextchar();
+			break;
+		case 'L':
+		case 'l':
+			if(suff & (VAL_LLONG | VAL_LONG))
+				DIE_AT(NULL, "already have a L/LL suffix");
+
+			nextchar();
+			if(peeknextchar() == c)
+				suff |= VAL_LLONG, nextchar();
+			else
+				suff |= VAL_LONG;
+			break;
+		default:
+			read_suffix = 0;
+	}while(read_suffix);
+
+	/* don't touch cv.suffix until after
+	 * - it may already have ULL from an
+	 * overflow in parsing
+	 */
+	currentval.suffix |= suff;
 }
 
 static enum token curtok_to_xequal(void)
@@ -428,7 +438,9 @@ static void read_char(const int is_wide)
 				DIE_AT(NULL, "invalid character sequence: suffix given");
 
 			if(!is_wide && currentval.val > 0xff)
-				warn_at(NULL, 1, "invalid character sequence: too large (parsed 0x%lx)", currentval.val);
+				warn_at(NULL, 1,
+						"invalid character sequence: too large (parsed 0x%" INTVAL_FMT_X ")",
+						currentval.val);
 
 			c = currentval.val;
 		}else{

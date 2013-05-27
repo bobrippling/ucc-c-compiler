@@ -328,12 +328,12 @@ static decl_init **decl_init_brace_up_array2(
 			if(k[0].type != CONST_VAL || k[1].type != CONST_VAL)
 				DIE_AT(&this->where, "non-constant array-designator");
 
-			if(k[0].bits.iv.val < 0 || k[1].bits.iv.val < 0)
+			if((sintval_t)k[0].bits.iv.val < 0 || (sintval_t)k[1].bits.iv.val < 0)
 				DIE_AT(&this->where, "negative array index initialiser");
 
 			if(limit > -1
-			&& (k[0].bits.iv.val >= (long)limit
-			||  k[1].bits.iv.val >= (long)limit))
+			&& (k[0].bits.iv.val >= (intval_t)limit
+			||  k[1].bits.iv.val >= (intval_t)limit))
 			{
 				DIE_AT(&this->where, "designating outside of array bounds (%d)", limit);
 			}

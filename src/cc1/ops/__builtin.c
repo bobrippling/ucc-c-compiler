@@ -524,7 +524,7 @@ static void fold_frame_address(expr *e, symtable *stab)
 	FOLD_EXPR(e->funcargs[0], stab);
 
 	const_fold(e->funcargs[0], &k);
-	if(k.type != CONST_VAL || k.bits.iv.val < 0)
+	if(k.type != CONST_VAL || (sintval_t)k.bits.iv.val < 0)
 		DIE_AT(&e->where, "%s needs a positive constant value argument", BUILTIN_SPEL(e->expr));
 
 	memcpy_safe(&e->bits.iv, &k.bits.iv);

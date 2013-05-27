@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include "ops.h"
 #include "expr_val.h"
@@ -8,6 +9,16 @@
 const char *str_expr_val()
 {
 	return "val";
+}
+
+static int find_highest_bit(unsigned long long v)
+{
+	int i;
+	/* XXX: assumption about sizeof v */
+	for(i = 63; i >= 0; i--)
+		if(v & (1ULL << i))
+			return i;
+	return -1;
 }
 
 /*
@@ -37,108 +48,97 @@ oct/hex (ll|LL) suffix -> long long int, unsigned long long int
 
 void fold_expr_val(expr *e, symtable *stab)
 {
-	/* size checks - don't rely on libc */
-	const long  int_max  =         0x7fffffff;
-	const long  uint_max =         0xffffffff;
-	const long  long_max = 0x7fffffffffffffff;
-	/*const unsigned long ulong_max = 0xffffffffffffffff; // FIXME: 64-bit currently*/
-
 	intval *const iv = &e->bits.iv;
 
-	enum type_primitive p = iv->suffix & VAL_LONG ? type_long : type_int;
-	int is_signed         = !(iv->suffix & VAL_UNSIGNED);
-	const int change_sign = is_signed && (iv->suffix & VAL_NON_DECIMAL);
+	int is_signed = !(iv->suffix & VAL_UNSIGNED);
+	const int can_change_sign = is_signed && (iv->suffix & VAL_NON_DECIMAL);
 
-	(void)stab;
+	const int long_max_bit = 63; /* TODO */
+	const int highest_bit = find_highest_bit(iv->val);
+	enum type_primitive p =
+		iv->suffix & VAL_LLONG ? type_llong :
+		iv->suffix & VAL_LONG  ? type_long  : type_int;
 
-	/* a pure intval will never be negative,
-	 * since we parse -5 as (- (intval 5))
-	 * so if it'is_signed negative, we have long_max
-	 */
+	/*fprintf(stderr, "----\n0x%" INTVAL_FMT_X
+	      ", highest bit = %d. suff = 0x%x\n",
+	      iv->val, highest_bit, iv->suffix);*/
 
-	for(;;){
-		if(is_signed){
-			switch(p){
-				default:
-					ICE("bad primitive");
-
-				case type_int:
-					if(iv->val < 0L){
-						/* overflow - try signed long */
-						p = type_long;
-						continue;
-					}
-
-					if(labs(iv->val) > labs(int_max)){
-						if(change_sign)
-							/* attempt to fit into unsigned int */
-							is_signed = 0;
-						else
-							/* attempt to fit into signed long */
-							p = type_long;
-
-						continue;
-					}
-					/* fits into a signed int */
-					break;
-
-				case type_long:
-					if(iv->val < 0L){
-						/* overflow - try unsigned long */
-						if(change_sign)
-							is_signed = 0;
-						else
-							goto too_large_sl;
-						continue;
-					}
-
-					/* fits into signed long? */
-					if((unsigned)labs(iv->val) <= (unsigned)long_max){
-						/* yes */
-						break;
-					}
-
-					/* doesn't fit into long, try unsigned long */
-					if(change_sign){
-too_large_sl:
-						WARN_AT(&e->where, "integer constant too large for signed long");
-						break;
-					}else{
-						is_signed = 0;
-					}
-					continue;
-			}
-			/* fine */
-			break;
-		}else{
-			/* unsigned */
-			switch(p){
-				default:
-					ICE("bad primitive");
-
-				case type_int:
-					if(labs(iv->val) > labs(uint_max)){
-						if(change_sign)
-							is_signed = 1; /* attempt to fit into a signed long */
-						/* else go to unsigned long */
-						p = type_long;
-						continue;
-					}
-					/* fits into an unsigned int */
-					break;
-
-				case type_long:
-					/* this is the largest type we have - TODO: check for overflows */
-					break;
-			}
-			/* fine */
-			break;
-		}
+	if(iv->val == 0){
+		assert(highest_bit == -1);
+		goto chosen;
+	}else{
+		assert(highest_bit != -1);
 	}
+
+	/* can we have a signed int? */
+	if(p <= type_int && highest_bit < 31){
+		/* attempt signed */
+		if(can_change_sign)
+			is_signed = 1;
+
+		p = type_int;
+		goto chosen;
+	}
+
+	/* uint? */
+	if(p <= type_int && highest_bit == 31 && (can_change_sign || !is_signed)){
+		is_signed = 0;
+		p = type_int;
+		goto chosen;
+	}
+
+	/* long? - only chose long if given by suffix::L */
+	if(p <= type_long && highest_bit < long_max_bit){
+		/* attempt signed */
+		if(can_change_sign)
+			is_signed = 1;
+
+		p = type_long;
+		goto chosen;
+	}
+
+	/* ulong? */
+	if(p <= type_long && highest_bit == long_max_bit && (!is_signed || can_change_sign)){
+		is_signed = 0;
+		p = type_long;
+		goto chosen;
+	}
+
+	/* long long? */
+	if(p <= type_llong && highest_bit < 63){
+		/* attempt signed */
+		if(can_change_sign)
+			is_signed = 1;
+
+		p = type_llong;
+		goto chosen;
+	}
+
+	/* ull */
+	if(p <= type_llong && highest_bit == 63){
+		/* we get here if we're forcing it to ull,
+		 * not if the user says, so we can warn unconditionally */
+		if(is_signed){
+			WARN_AT(&e->where, "integer constant is so large it is unsigned");
+			is_signed = 0;
+		}
+		p = type_llong;
+	}else{
+		/* we stick with what we started with */
+	}
+
+chosen:
+	/*
+	fprintf(stderr, "%s -> %ssigned %s\n",
+			where_str(&e->where),
+			is_signed ? "" : "un",
+			type_primitive_to_str(p)); */
 
 	EOF_WHERE(&e->where,
 		e->tree_type = type_ref_new_type(type_new_primitive_signed(p, is_signed));
 	);
+
+	(void)stab;
 }
 
 void gen_expr_val(expr *e)

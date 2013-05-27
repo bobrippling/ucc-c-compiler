@@ -5,28 +5,42 @@
 #include "../out/lbl.h"
 #include "../out/asm.h"
 
+#ifndef CHAR_BIT
+#    define CHAR_BIT 8
+#endif
+
 const char *str_expr_op()
 {
 	return "op";
 }
 
-static void operate(
-		intval *lval, intval *rval,
-		enum op_type op,
-		consty *konst,
-		where *where)
+static intval_t operate(
+		intval_t lval, intval_t *rval, /* rval is optional */
+		enum op_type op, int is_signed,
+		const char **error)
 {
+	typedef sintval_t S;
+	typedef  intval_t U;
+
 	/* FIXME: casts based on lval.type */
 #define piv (&konst->bits.iv)
-#define OP(a, b) case a: konst->bits.iv.val = lval->val b rval->val; return
+
+#define S_OP(o) (S)lval o (S)*rval
+#define U_OP(o) (U)lval o (U)*rval
+
+#define OP(  a, b) case a: return S_OP(b)
+#define OP_U(a, b) case a: return is_signed ? S_OP(b) : U_OP(b)
+
 	switch(op){
 		OP(op_multiply,   *);
 		OP(op_eq,         ==);
 		OP(op_ne,         !=);
-		OP(op_le,         <=);
-		OP(op_lt,         <);
-		OP(op_ge,         >=);
-		OP(op_gt,         >);
+
+		OP_U(op_le,       <=);
+		OP_U(op_lt,       <);
+		OP_U(op_ge,       >=);
+		OP_U(op_gt,       >);
+
 		OP(op_xor,        ^);
 		OP(op_or,         |);
 		OP(op_and,        &);
@@ -37,28 +51,20 @@ static void operate(
 
 		case op_modulus:
 		case op_divide:
-		{
-			long l = lval->val, r = rval->val;
+			if(*rval)
+				return op == op_divide ? lval / *rval : lval % *rval;
 
-			if(r){
-				piv->val = op == op_divide ? l / r : l % r;
-				return;
-			}
-			warn_at(where, 1, "division by zero");
-			konst->type = CONST_NO;
-			return;
-		}
+			*error = "division by zero";
+			return 0;
 
 		case op_plus:
-			piv->val = lval->val + (rval ? rval->val : 0);
-			return;
+			return lval + (rval ? *rval : 0);
 
 		case op_minus:
-			piv->val = rval ? lval->val - rval->val : -lval->val;
-			return;
+			return rval ? lval - *rval : -lval;
 
-		case op_not:  piv->val = !lval->val; return;
-		case op_bnot: piv->val = ~lval->val; return;
+		case op_not:  return !lval;
+		case op_bnot: return ~lval;
 
 		case op_unknown:
 			break;
@@ -89,19 +95,60 @@ void fold_const_expr_op(expr *e, consty *k)
 {
 	consty lhs, rhs;
 
+	memset(k, 0, sizeof *k);
+
 	const_fold(e->lhs, &lhs);
 	if(e->rhs){
 		const_fold(e->rhs, &rhs);
+
+		if(rhs.type == CONST_VAL){
+			switch(e->op){
+				case op_shiftl:
+				case op_shiftr:
+				{
+					const unsigned ty_sz = CHAR_BIT * type_ref_size(e->lhs->tree_type, &e->lhs->where);
+					if(rhs.bits.iv.val >= ty_sz){
+						WARN_AT(&e->rhs->where, "shift count >= width of %s (%u)",
+								type_ref_to_str(e->lhs->tree_type), ty_sz);
+
+
+						if(lhs.type == CONST_VAL){
+							/* already 0 */
+							k->type = CONST_VAL;
+						}else{
+							k->type = CONST_NO;
+						}
+						return;
+					}
+				}
+				default:
+					break;
+			}
+		}
 	}else{
 		memset(&rhs, 0, sizeof rhs);
 		rhs.type = CONST_VAL;
 	}
 
-	k->type = CONST_NO;
-
 	if(lhs.type == CONST_VAL && rhs.type == CONST_VAL){
-		k->type = CONST_VAL;
-		operate(&lhs.bits.iv, e->rhs ? &rhs.bits.iv : NULL, e->op, k, &e->where);
+		const char *err = NULL;
+		intval_t r;
+		/* the op is signed if an operand is, not the result,
+		 * e.g. u_a < u_b produces a bool (signed) */
+		int is_signed = type_ref_is_signed(e->lhs->tree_type) ||
+		                type_ref_is_signed(e->rhs->tree_type);
+
+		r = operate(
+				lhs.bits.iv.val,
+				e->rhs ? &rhs.bits.iv.val : NULL,
+				e->op, is_signed, &err);
+
+		if(err){
+			WARN_AT(&e->where, "%s", err);
+		}else{
+			k->type = CONST_VAL;
+			k->bits.iv.val = r;
+		}
 
 	}else if((e->op == op_andsc || e->op == op_orsc)
 	&& (CONST_AT_COMPILE_TIME(lhs.type) || CONST_AT_COMPILE_TIME(rhs.type))){
@@ -418,7 +465,7 @@ static void op_bound(expr *e)
 		const_fold(lhs ? e->rhs : e->lhs, &k);
 
 		if(k.type == CONST_VAL){
-			const long sz = type_ref_array_len(array->tree_type);
+			const size_t sz = type_ref_array_len(array->tree_type);
 
 			if(sz == 0) /* FIXME: sentinel */
 				return;
@@ -428,10 +475,10 @@ static void op_bound(expr *e)
 				idx.val = -idx.val;
 
 			/* index is allowed to be one past the end, i.e. idx.val == sz */
-			if(idx.val < 0 || idx.val > sz)
+			if((sintval_t)idx.val < 0 || idx.val > sz)
 				WARN_AT(&e->where,
-						"index %ld out of bounds of array, size %ld",
-						idx.val, sz);
+						"index %" INTVAL_FMT_D " out of bounds of array, size %ld",
+						idx.val, (long)sz);
 			/* TODO: "note: array here" */
 #undef idx
 		}
