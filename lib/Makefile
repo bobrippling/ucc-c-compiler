@@ -1,11 +1,15 @@
 UCC_CC = ../src/ucc/ucc
-OBJ    = crt.o syscall.o dirent.o                       \
-         stdio.o stdlib.o string.o unistd.o signal.o    \
-				 assert.o ctype.o                               \
-				 alloca.o                                 \
-         sys/fcntl.o sys/wait.o sys/mman.o sys/socket.o \
-				 sys/utsname.o sys/select.o sys/time.o          \
-         arpa/inet.o
+LIBC   = libc.a
+CRT    = crt.a
+OBJ_LIBC = syscall.o dirent.o                             \
+           stdio.o stdlib.o string.o unistd.o signal.o    \
+           assert.o ctype.o                               \
+           alloca.o                                       \
+           sys/fcntl.o sys/wait.o sys/mman.o sys/socket.o \
+           sys/utsname.o sys/select.o sys/time.o          \
+           arpa/inet.o
+
+OBJ_CRT  = crt.o
 
 LIBDEPS = ${UCC_CC} ../src/cc1/cc1 ../src/cpp2/cpp
 
@@ -17,9 +21,15 @@ include ../config.mk
 
 ARCH_DIR = arch/${UCC_CPU}
 
-libs: ${OBJ}
+all: ${LIBC} ${CRT}
 
-${OBJ}: ${LIBDEPS}
+${CRT}: ${OBJ_CRT}
+	${AR} rc ${CRT} ${OBJ_CRT}
+${LIBC}: ${OBJ_LIBC}
+	${AR} rc ${LIBC} ${OBJ_LIBC}
+
+${OBJ_LIBC}: ${LIBDEPS}
+${OBJ_CRT}: ${LIBDEPS}
 
 crt.o: ${ARCH_DIR}/crt.S
 	${BUILD_CMD}
@@ -68,9 +78,9 @@ arpa/inet.o: arpa/inet.c
 	${BUILD_CMD}
 
 clean:
-	rm -f *.o sys/*.o
+	rm -f *.o sys/*.o ${CRT} ${LIBC}
 
-.PHONY: libs clean
+.PHONY: all clean
 
 
 

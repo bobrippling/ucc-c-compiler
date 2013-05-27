@@ -67,7 +67,7 @@ UCC_CPU     = ${UCC_CPU}
 
 usage(){
 	cat >&2 <<!
-Usage: $0 [--as=path/to/as] [--cpu=...] [clean]
+Usage: $0 [--as=path/to/as] [--cpu=...] [--with-ucc-lib] [clean]
 !
 	exit 1
 }
@@ -100,7 +100,8 @@ case "$unam" in
 		# FIXME: gcc specific + version specific
 		UCC_INC="$UCC_INC -I/usr/include/$UCC_CPU-$unam_lc-gnu -I/usr/lib/gcc/$UCC_CPU-$unam_lc-gnu/4.7.2/include"
 
-		UCC_LDFLAGS="$UCC_LDFLAGS -dynamic-linker /lib64/ld-linux-x86-64.so.2"
+		UCC_LDFLAGS="$UCC_LDFLAGS"
+		UCC_DYN="-dynamic-linker /lib64/ld-linux-x86-64.so.2"
 		UCC_STDLIB="-lc"
 
 		UCC_CRT="$UCC_CRT:/usr/lib/x86_64-linux-gnu/crt1.o"
@@ -152,6 +153,12 @@ do
 			else UCC_M32=1
 			fi
 			;;
+		--with-ucc-lib)
+			UCC_INC="-Ilib/"
+			UCC_CRT="lib/crt.a"
+			UCC_STDLIB="lib/libc.a"
+			UCC_DYN=''
+			;;
 		clean)
 			clean=1
 			;;
@@ -166,6 +173,8 @@ then
 	rm -f config.mk lib/string_strerrs.h lib/syscalls_darwin.h
 	exit
 fi
+
+UCC_LDFLAGS="$UCC_LDFLAGS $UCC_DYN"
 
 case "$unam" in
 	Darwin)
