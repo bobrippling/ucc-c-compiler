@@ -228,7 +228,12 @@ void preprocess(void)
 	preproc_push(stdin, current_fname);
 
 	while((line = splice_line())){
-		char *s = filter_macros(strip_comment(line));
+		char *s;
+		debug_push_line(line);
+
+		s = filter_macros(strip_comment(line));
+
+		debug_pop_line();
 
 		if(s){
 			if(!no_output)

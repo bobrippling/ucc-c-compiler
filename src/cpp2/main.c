@@ -46,7 +46,8 @@ static const struct
 	{ NULL,             NULL }
 };
 
-const char *current_fname, *current_line_str;
+const char *current_fname;
+char *current_line_str;
 int show_current_line = 1;
 int no_output = 0;
 
@@ -57,6 +58,16 @@ char **cd_stack = NULL;
 int option_debug     = 0;
 int option_line_info = 1;
 
+void debug_push_line(char *s)
+{
+	debug_pop_line(); /* currently only a single level */
+	current_line_str = ustrdup(s);
+}
+
+void debug_pop_line(void)
+{
+	free(current_line_str), current_line_str = NULL;
+}
 
 void dirname_push(char *d)
 {

@@ -211,6 +211,8 @@ expr *expr_parse(char *str)
 
 	expr_init();
 
+	debug_push_line(str);
+
 	tok_begin(str);
 	tok_next();
 
@@ -218,6 +220,8 @@ expr *expr_parse(char *str)
 
 	if(tok_cur != tok_eof)
 		CPP_DIE("'%s' at end of expression", tok_last());
+
+	debug_pop_line();
 
 	return e;
 }
