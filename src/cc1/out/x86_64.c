@@ -545,8 +545,13 @@ void impl_op(enum op_type op)
 		v_to_reg_const(vtop - 1);
 
 		/* vtop[-1] is a constant - needs to be in a reg */
-		if(vtop[-1].type != REG)
-			v_to_reg(vtop - 1);
+		if(vtop[-1].type != REG){
+			/* if the op is commutative, swap */
+			if(op_is_commutative(op))
+				out_swap();
+			else
+				v_to_reg(vtop - 1);
+		}
 
 		/* TODO: -O1
 		 * if the op is commutative and we have REG_RET,

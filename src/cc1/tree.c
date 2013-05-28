@@ -260,6 +260,38 @@ int op_can_compound(enum op_type o)
 	return 0;
 }
 
+int op_is_commutative(enum op_type o)
+{
+	switch(o){
+		case op_multiply:
+		case op_plus:
+		case op_xor:
+		case op_or:
+		case op_and:
+		case op_eq:
+		case op_ne:
+			return 1;
+
+		case op_unknown:
+			ICE("bad op");
+		case op_minus:
+		case op_divide:
+		case op_modulus:
+		case op_orsc:
+		case op_andsc:
+		case op_shiftl:
+		case op_shiftr:
+		case op_le:
+		case op_lt:
+		case op_ge:
+		case op_gt:
+		case op_not:
+		case op_bnot:
+			break;
+	}
+	return 0;
+}
+
 int op_is_comparison(enum op_type o)
 {
 	switch(o){

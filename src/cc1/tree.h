@@ -88,6 +88,7 @@ int type_qual_equal(enum type_qualifier, enum type_qualifier);
 unsigned type_size( const type *, where const *from);
 unsigned type_primitive_size(enum type_primitive tp);
 
+int op_is_commutative(enum op_type o);
 int op_is_relational(enum op_type o);
 int op_is_shortcircuit(enum op_type o);
 int op_is_comparison(enum op_type o);
