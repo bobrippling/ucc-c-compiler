@@ -15,7 +15,7 @@ _start:
 
 	popq %rsi
 	movq %rsp, %rdx
-	leaq SYMBL(main), %rdi
+	leaq SYMBL(main)(%rip), %rdi
 
 	// 1: main, 2: argc, 3: argv
 	call SYMBL(__libc_start_main)
