@@ -733,9 +733,12 @@ type_ref *type_ref_ptr_depth_inc(type_ref *r)
 {
 	type_ref *test;
 	if((test = type_ref_is_type(r, type_unknown))){
-		type_ref *p = cache_ptr[test->bits.type->primitive];
-		if(p)
-			return p;
+		/* FIXME: cache unsigned types too */
+		if(test->bits.type->is_signed){
+			type_ref *p = cache_ptr[test->bits.type->primitive];
+			if(p)
+				return p;
+		}
 	}
 
 	return type_ref_new_ptr(r, qual_none);
