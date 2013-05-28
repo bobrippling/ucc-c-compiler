@@ -553,6 +553,11 @@ void impl_op(enum op_type op)
 				v_to_reg(vtop - 1);
 		}
 
+		/* if both are constants, v_to_reg one */
+		if(vtop->type == CONST && vtop[-1].type == CONST)
+			/* -1 is where the op is going (see end of this block) */
+			v_to_reg(vtop - 1);
+
 		/* TODO: -O1
 		 * if the op is commutative and we have REG_RET,
 		 * make it the result reg
