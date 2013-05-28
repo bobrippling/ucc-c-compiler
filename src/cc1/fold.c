@@ -234,7 +234,7 @@ int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 		return sue_enum_size(sue);
 
 	}else{
-		unsigned bitfield_lim = CHAR_BIT * type_primitive_size(type_long);
+		unsigned bitfield_lim = CHAR_BIT * type_primitive_size(BITFIELD_MAX_TY);
 		int align_max = 1;
 		int sz_max = 0;
 		int offset = 0;

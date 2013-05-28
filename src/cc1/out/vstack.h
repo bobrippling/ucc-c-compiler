@@ -47,6 +47,11 @@ struct vstack
 			int pic;
 		} lbl;
 	} bits;
+
+	struct vbitfield
+	{
+		unsigned off, nbits;
+	} bitfield; /* !!width iif bitfield */
 };
 #define VSTACK_INIT(ty) { (ty), NULL, { 0 } }
 

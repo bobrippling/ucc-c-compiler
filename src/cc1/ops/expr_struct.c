@@ -112,6 +112,18 @@ void gen_expr_struct_lea(expr *e)
 	out_op(op_plus);
 
 	out_change_type(type_ref_ptr_depth_inc(e->rhs->tree_type));
+
+	{
+		decl *d = e->bits.struct_mem.d;
+
+		/* set if we're a bitfield - out_deref() and out_store()
+		 * i.e. read + write then handle this
+		 */
+		if(d->field_width){
+			unsigned w = const_fold_val(d->field_width);
+			out_set_bitfield(d->struct_offset_bitfield, w);
+		}
+	}
 }
 
 void gen_expr_struct(expr *e)

@@ -13,6 +13,7 @@
 #include "../cc1.h"
 #include "asm.h"
 #include "../pack.h"
+#include "../defs.h"
 
 #define v_check_type(t) if(!t) t = type_ref_cached_VOID_PTR()
 
@@ -727,6 +728,24 @@ def:
 	}
 }
 
+void out_set_bitfield(unsigned off, unsigned nbits)
+{
+	vtop->bitfield.off   = off;
+	vtop->bitfield.nbits = nbits;
+}
+
+void bitfield_to_scalar(const struct vbitfield *bf)
+{
+	type_ref *const ty = vtop->t;
+
+	/* shift right, then mask */
+	out_push_i(ty, bf->off);
+	out_op(op_shiftr);
+
+	out_push_i(ty, ~(-1UL << bf->nbits));
+	out_op(op_and);
+}
+
 void v_deref_decl(struct vstack *vp)
 {
 	/* XXX: memleak */
@@ -735,6 +754,7 @@ void v_deref_decl(struct vstack *vp)
 
 void out_deref()
 {
+	const struct vbitfield bf = vtop->bitfield;
 #define DEREF_CHECK
 #ifdef DEREF_CHECK
 	type_ref *const vtop_t = vtop->t;
@@ -781,6 +801,9 @@ void out_deref()
 #ifdef DEREF_CHECK
 	UCC_ASSERT(vtop_t != vtop->t, "no depth change");
 #endif
+
+	if(bf.nbits)
+		bitfield_to_scalar(&bf);
 }
 
 

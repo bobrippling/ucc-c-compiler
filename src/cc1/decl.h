@@ -140,6 +140,7 @@ struct decl
 
 	char *spel, *spel_asm; /* if !spel but spel_asm, it's global asm??? */
 
+#define BITFIELD_MAX_TY type_long
 	expr *field_width;
 	unsigned struct_offset;
 	unsigned struct_offset_bitfield; /* add onto struct_offset */
@@ -286,6 +287,7 @@ type_ref *type_ref_skip_casts(type_ref *);
 #define type_ref_cached_CHAR()       type_ref_new_type(type_new_primitive(type_char))
 #define type_ref_cached_BOOL()       type_ref_new_type(type_new_primitive(type_int))
 #define type_ref_cached_LONG()       type_ref_new_type(type_new_primitive(type_long))
+#define type_ref_cached_ULONG()      type_ref_new_type(type_new_primitive_signed(type_long, 0))
 #define type_ref_cached_INTPTR_T()   type_ref_cached_LONG()
 
 #define type_ref_cached_VOID_PTR() type_ref_ptr_depth_inc(type_ref_cached_VOID())
