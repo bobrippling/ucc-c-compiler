@@ -634,6 +634,8 @@ void out_op(enum op_type op)
 			case op_minus:
 			case op_or:
 			case op_xor:
+			case op_shiftl: /* if we're shifting 0, or shifting _by_ zero, noop */
+			case op_shiftr:
 				if(t_const->bits.val == 0)
 					goto ignore_const;
 			default:
