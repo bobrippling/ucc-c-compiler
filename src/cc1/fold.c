@@ -187,13 +187,13 @@ void fold_enum(struct_union_enum_st *en, symtable *stab)
 				defval++;
 
 		}else{
-			intval iv;
+			intval_t v;
 
 			FOLD_EXPR(e, stab);
-			const_fold_need_val(e, &iv);
+			v = const_fold_val(e);
 			m->val = e;
 
-			defval = has_bitmask ? iv.val << 1 : iv.val + 1;
+			defval = has_bitmask ? v << 1 : v + 1;
 		}
 	}
 }
@@ -242,10 +242,9 @@ int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 				align = sub_sue->align;
 
 			}else if(d->field_width){
-				intval width;
-				const_fold_need_val(d->field_width, &width);
+				intval_t width = const_fold_val(d->field_width);
 
-				bitfield_current += width.val;
+				bitfield_current += width;
 				/* cram bitfields into chars */
 				if(bitfield_current >= CHAR_BIT){
 					sz = align = 1; /* char attributes */

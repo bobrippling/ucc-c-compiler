@@ -45,10 +45,10 @@ void fold_switch_dups(stmt *sw)
 
 		vals[i].cse = cse;
 
-		const_fold_need_val(cse->expr, &vals[i].start);
+		const_fold_intval(cse->expr, &vals[i].start);
 
 		if(stmt_kind(cse, case_range))
-			const_fold_need_val(cse->expr2, &vals[i].end);
+			const_fold_intval(cse->expr2, &vals[i].end);
 		else
 			memcpy(&vals[i].end, &vals[i].start, sizeof vals[i].end);
 
@@ -89,20 +89,13 @@ void fold_switch_enum(stmt *sw, const type *enum_type)
 	for(titer = sw->codes; titer && *titer; titer++){
 		stmt *cse = *titer;
 		intval_t v, w;
-		intval iv;
 
 		if(cse->expr->expr_is_default)
 			goto ret;
 
-		const_fold_need_val(cse->expr, &iv);
-		v = iv.val;
+		v = const_fold_val(cse->expr);
 
-		if(stmt_kind(cse, case_range)){
-			const_fold_need_val(cse->expr2, &iv);
-			w = iv.val;
-		}else{
-			w = v;
-		}
+		w = stmt_kind(cse, case_range) ? const_fold_val(cse->expr2) : v;
 
 		for(; v <= w; v++){
 			sue_member **mi;
@@ -111,9 +104,7 @@ void fold_switch_enum(stmt *sw, const type *enum_type)
 			for(midx = 0, mi = enum_type->sue->members; *mi; midx++, mi++){
 				enum_member *m = (*mi)->enum_member;
 
-				const_fold_need_val(m->val, &iv);
-
-				if(v == iv.val)
+				if(v == const_fold_val(m->val))
 					marks[midx]++, found = 1;
 			}
 
@@ -189,7 +180,7 @@ void gen_stmt_switch(stmt *s)
 			continue;
 		}
 
-		const_fold_need_val(cse->expr, &iv);
+		const_fold_intval(cse->expr, &iv);
 
 		UCC_ASSERT(cse->expr->expr_is_default || !(iv.suffix & VAL_UNSIGNED),
 				"don't handle unsigned yet");
@@ -199,7 +190,7 @@ void gen_stmt_switch(stmt *s)
 			intval max;
 
 			/* TODO: proper signed/unsiged format - out_op() */
-			const_fold_need_val(cse->expr2, &max);
+			const_fold_intval(cse->expr2, &max);
 
 			out_dup();
 			out_push_iv(cse->expr->tree_type, &iv);

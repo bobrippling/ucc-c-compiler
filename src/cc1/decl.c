@@ -529,17 +529,17 @@ unsigned type_ref_size(type_ref *r, where const *from)
 
 		case type_ref_array:
 		{
-			intval sz;
+			intval_t sz;
 
 			if(type_ref_is_void(r->ref))
 				DIE_AT(from, "array of void");
 
-			const_fold_need_val(r->bits.array.size, &sz);
+			sz = const_fold_val(r->bits.array.size);
 
-			if(sz.val == 0)
+			if(sz == 0)
 				DIE_AT(from, "incomplete array size attempt");
 
-			return sz.val * type_ref_size(r->ref, from);
+			return sz * type_ref_size(r->ref, from);
 		}
 	}
 
@@ -622,16 +622,14 @@ static int type_ref_equal_r(
 
 		case type_ref_array:
 		{
-			intval av, bv;
+			const intval_t av = const_fold_val(a->bits.array.size),
+						         bv = const_fold_val(b->bits.array.size);
 
-			const_fold_need_val(a->bits.array.size, &av);
-			const_fold_need_val(b->bits.array.size, &bv);
-
-			if(av.val != bv.val){
+			if(av != bv){
 				/* if exact match, they're not equal, otherwise allow av.val to be zero */
 				if(mode & DECL_CMP_EXACT_MATCH)
 					return 0;
-				if(av.val != 0)
+				if(av != 0)
 					return 0;
 			}
 
@@ -866,9 +864,7 @@ static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
 			/* fall */
 		case type_ref_array:
 		{
-			intval iv;
-
-			const_fold_need_val(r->bits.array.size, &iv);
+			const intval_t v = const_fold_val(r->bits.array.size);
 
 			BUF_ADD("[");
 
@@ -876,8 +872,8 @@ static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
 				BUF_ADD("static ");
 			BUF_ADD("%s", type_qual_to_str(r->bits.array.qual, 1));
 
-			if(iv.val)
-				BUF_ADD("%" INTVAL_FMT_D "]", iv.val);
+			if(v)
+				BUF_ADD("%" INTVAL_FMT_D "]", v);
 			else
 				BUF_ADD("]");
 			break;

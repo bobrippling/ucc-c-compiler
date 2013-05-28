@@ -49,13 +49,14 @@ void idt_printf(const char *fmt, ...)
 
 void print_expr_val(expr *e)
 {
-	intval iv;
+	consty k;
 
-	const_fold_need_val(e, &iv);
+	const_fold(e, &k);
 
-	UCC_ASSERT((iv.suffix & VAL_UNSIGNED) == 0, "TODO: unsigned");
+	UCC_ASSERT(k.type == CONST_VAL, "val expected");
+	UCC_ASSERT((k.bits.iv.suffix & VAL_UNSIGNED) == 0, "TODO: unsigned");
 
-	fprintf(cc1_out, INTVAL_FMT_D, iv.val);
+	fprintf(cc1_out, INTVAL_FMT_D, k.bits.iv.val);
 }
 
 void print_decl_init(decl_init *di)
@@ -411,11 +412,9 @@ void print_struct(struct_union_enum_st *sue)
 		idt_printf("offset %d:\n", d->struct_offset);
 
 		if(d->field_width){
-			intval iv;
+			intval_t v = const_fold_val(d->field_width);
 
-			const_fold_need_val(d->field_width, &iv);
-
-			idt_printf("field width %" INTVAL_FMT_D "\n", iv.val);
+			idt_printf("field width %" INTVAL_FMT_D "\n", v);
 		}
 
 		gen_str_indent++;
