@@ -141,7 +141,8 @@ struct decl
 	char *spel, *spel_asm; /* if !spel but spel_asm, it's global asm??? */
 
 	expr *field_width;
-	int struct_offset;
+	unsigned struct_offset;
+	unsigned struct_offset_bitfield; /* add onto struct_offset */
 
 	struct decl_align
 	{

@@ -198,6 +198,28 @@ void fold_enum(struct_union_enum_st *en, symtable *stab)
 	}
 }
 
+static void struct_pack(decl *d, int *poffset, unsigned sz, unsigned align)
+{
+	int after_space;
+
+	pack_next(poffset, &after_space, sz, align);
+	/* offset is the end of the decl, after_space is the start */
+
+	d->struct_offset = after_space;
+}
+
+static void struct_pack_finish_bitfield(int *poffset, int *pbitfield_current)
+{
+	/* gone from a bitfield to a normal field - pad */
+	unsigned change = *pbitfield_current / CHAR_BIT;
+	if(*pbitfield_current % CHAR_BIT)
+		change++;
+
+	*poffset = pack_to_align(*poffset + change, 1);
+
+	*pbitfield_current = 0;
+}
+
 int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 {
 	if(sue->size)
@@ -212,6 +234,7 @@ int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 		return sue_enum_size(sue);
 
 	}else{
+		unsigned bitfield_lim = CHAR_BIT * type_primitive_size(type_long);
 		int align_max = 1;
 		int sz_max = 0;
 		int offset = 0;
@@ -242,34 +265,42 @@ int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 				align = sub_sue->align;
 
 			}else if(d->field_width){
-				intval_t width = const_fold_val(d->field_width);
+				const unsigned bits = const_fold_val(d->field_width);
 
-				bitfield_current += width;
-				/* cram bitfields into chars */
-				if(bitfield_current >= CHAR_BIT){
-					sz = align = 1; /* char attributes */
+				if(!bitfield_current || bitfield_current + bits > bitfield_lim){
+					if(bitfield_current)
+						struct_pack_finish_bitfield(&offset, &bitfield_current);
 
-					bitfield_current -= CHAR_BIT;
-
-					ICE("TODO: bitfield packing");
+					/* get some initial padding */
+					struct_pack(d, &offset, 1, 1);
+				}else{
+					/* mirror previous bitfields
+					 * difference is in .struct_offset_bitfield
+					 */
+					d->struct_offset = offset - 1;
 				}
+
+				d->struct_offset_bitfield = bitfield_current;
+				bitfield_current += bits; /* allowed to go above sizeof(int) */
+
+				sz = align = 0;
+
 			}else{
 normal:
 				align = decl_align(d);
 				sz = decl_size(d);
 			}
 
-			if(sue->primitive == type_struct && (!d->field_width || sz)){
+			if(sue->primitive == type_struct && !d->field_width){
 				const int prev_offset = offset;
-				int after_space;
 
-				pack_next(&offset, &after_space, sz, align);
-				/* offset is the end of the decl, after_space is the start */
+				if(bitfield_current)
+					struct_pack_finish_bitfield(&offset, &bitfield_current);
 
-				d->struct_offset = after_space;
+				struct_pack(d, &offset, sz, align);
 
 				{
-					int pad = after_space - prev_offset;
+					int pad = d->struct_offset - prev_offset;
 					if(pad){
 						cc1_warn_at(&d->where, 0, 1, WARN_PAD,
 								"padding '%s' with %d bytes to align '%s'",

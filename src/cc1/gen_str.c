@@ -409,16 +409,25 @@ void print_struct(struct_union_enum_st *sue)
 	for(iter = sue->members; iter && *iter; iter++){
 		decl *d = (*iter)->struct_member;
 
-		idt_printf("offset %d:\n", d->struct_offset);
+		idt_printf("decl:\n");
+		gen_str_indent++;
+		print_decl(d, PDECL_INDENT | PDECL_NEWLINE | PDECL_ATTR);
+
+#define SHOW_FIELD(nam) idt_printf("." #nam " = %u\n", d->nam)
+		SHOW_FIELD(struct_offset);
 
 		if(d->field_width){
 			intval_t v = const_fold_val(d->field_width);
 
-			idt_printf("field width %" INTVAL_FMT_D "\n", v);
+			gen_str_indent++;
+
+			idt_printf(".field_width = %" INTVAL_FMT_D "\n", v);
+
+			SHOW_FIELD(struct_offset_bitfield);
+
+			gen_str_indent--;
 		}
 
-		gen_str_indent++;
-		print_decl(d, PDECL_INDENT | PDECL_NEWLINE | PDECL_ATTR);
 		gen_str_indent--;
 	}
 	gen_str_indent--;
