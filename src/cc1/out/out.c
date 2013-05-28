@@ -485,12 +485,85 @@ void out_pulltop(int i)
 	memcpy_safe(vtop, &tmp);
 }
 
+/* expects vtop to be the value to merge with,
+ * and &vtop[-1] to be a pointer to the word of memory */
+void bitfield_scalar_merge(const struct vbitfield *const bf)
+{
+	/* load in,
+	 * &-out where we want our value,
+	 * |-in our new value,
+	 * store
+	 */
+
+	struct vstack *const store = vtop - 1;
+	const int r = v_unused_reg(1);
+	type_ref *ty;
+	unsigned long mask_leading_1s, mask_back_0s, mask_rm;
+
+	/* load the pointer to the store */
+	impl_load(store, r);
+	vpush(store->t);
+	vtop->type = REG;
+	vtop->bits.reg = r;
+	/*memcpy_safe(&vtop->bitfield, &store->bitfield); - NO */
+
+	/* load the bitfield without using bitfield semantics */
+	out_deref();
+	ty = vtop->t;
+
+	/* e.g. width of 3, offset of 2:
+	 * 111100000
+	 *     ^~~^~
+	 *     |  |- offset
+	 *     +- width
+	 */
+
+	mask_leading_1s = -1UL << (bf->off + bf->nbits);
+
+	/* e.g. again:
+	 *
+	 * -1 = 11111111
+	 * << = 11111100
+	 * ~  = 00000011
+	 */
+	if(bf->off)
+		mask_back_0s = -1UL << (bf->off * 1);
+	else
+		mask_back_0s = 0;
+	mask_back_0s = ~mask_back_0s;
+
+	/* | = 111100011 */
+	mask_rm = mask_leading_1s | mask_back_0s;
+
+	/* &-out our value */
+	out_push_i(type_ref_cached_LONG(), mask_rm);
+	out_cast(vtop->t, ty);
+	out_comment("bitmask/rm = %#lx", mask_rm);
+	out_op(op_and);
+
+	/* bring the value to the top */
+	out_swap();
+
+	/* mask and shift our value up */
+	out_push_i(ty, ~(-1UL << bf->nbits));
+	out_op(op_and);
+
+	out_push_i(ty, bf->off);
+	out_op(op_shiftl);
+
+	/* | our value in with the dereferenced store value */
+	out_op(op_or);
+}
+
 void out_store()
 {
 	struct vstack *store, *val;
 
 	val   = &vtop[0];
 	store = &vtop[-1];
+
+	if(store->bitfield.nbits)
+		bitfield_scalar_merge(&store->bitfield);
 
 	impl_store(val, store);
 
