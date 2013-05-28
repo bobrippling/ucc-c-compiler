@@ -452,8 +452,10 @@ void fold_decl(decl *d, symtable *stab)
 		if(k.type != CONST_VAL)
 			DIE_AT(&d->where, "constant expression required for field width");
 
-		if(k.bits.iv.val <= 0)
+		if((sintval_t)k.bits.iv.val < 0)
 			DIE_AT(&d->where, "field width must be positive");
+		else if(k.bits.iv.val == 0)
+			ICE("TODO: zero width bitfield / align next bitfield");
 
 		if(!type_ref_is_integral(d->ref))
 			DIE_AT(&d->where, "field width on non-integral field %s",
