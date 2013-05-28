@@ -342,11 +342,18 @@ static int /*bool*/ if_eval(token **tokens, const char *type)
 
 	w = tokens_join(tokens);
 
-	/* first we need to filter out defined() */
-	w = eval_expand_defined(w);
+	for(;;){
+		/* first we need to filter out defined() */
+		w = eval_expand_defined(w);
 
-	/* then macros */
-	w = eval_expand_macros(w);
+		/* then macros */
+		w = eval_expand_macros(w);
+
+		/* then maybe refilter out defined() again */
+		if(word_find(w, DEFINED_STR))
+			continue;
+		break;
+	}
 
 	/* then parse */
 	e = expr_parse(w);
