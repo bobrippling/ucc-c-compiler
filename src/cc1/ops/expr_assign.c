@@ -90,6 +90,33 @@ void fold_expr_assign(expr *e, symtable *stab)
 	/* do the typecheck after the equal-check, since the typecheck inserts casts */
 	fold_insert_casts(e->lhs->tree_type, &e->rhs, stab, &e->where, "assignment");
 
+	/* the only way to get a value into a bitfield (aside from memcpy / indirection) is via this
+	 * hence we're fine doing the truncation check here
+	 */
+	{
+		decl *mem;
+		if(expr_kind(e->lhs, struct) && (mem = e->lhs->bits.struct_mem.d)->field_width){
+			consty k;
+			const_fold(e->rhs, &k);
+
+			if(k.type == CONST_VAL){
+				const sintval_t kexp = k.bits.iv.val;
+				const unsigned highest = val_highest_bit(k.bits.iv.val);
+
+				const_fold(mem->field_width, &k);
+
+				UCC_ASSERT(k.type == CONST_VAL, "bitfield size not val?");
+
+				if(highest >= k.bits.iv.val){
+					WARN_AT(&e->where,
+							"truncation in assignment to bitfield alters value: %" INTVAL_FMT_D " -> %" INTVAL_FMT_D,
+							kexp, kexp & ~(-1UL << k.bits.iv.val));
+				}
+			}
+		}
+	}
+
+
 	if(type_ref_is_s_or_u(e->tree_type)){
 		e->expr = builtin_new_memcpy(
 				e->lhs, e->rhs,
