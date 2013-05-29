@@ -140,9 +140,15 @@ void gen_expr_struct(expr *e)
 
 void gen_expr_str_struct(expr *e)
 {
-	idt_printf("struct/union%s%s\n",
-			e->expr_is_st_dot ? "." : "->",
-			e->bits.struct_mem.d->spel);
+	decl *mem = e->bits.struct_mem.d;
+
+	idt_printf("struct/union member %s offset %d\n",
+			mem->spel, struct_offset(e));
+
+	if(mem->field_width)
+		idt_printf("bitfield offset %u, width %u\n",
+				mem->struct_offset_bitfield,
+				(unsigned)const_fold_val(mem->field_width));
 
 	gen_str_indent++;
 	print_expr(e->lhs);
