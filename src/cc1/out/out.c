@@ -144,8 +144,11 @@ void out_dump(void)
 	int i;
 
 	for(i = 0; &vstack[i] <= vtop; i++)
-		fprintf(stderr, "vstack[%d] = { %d, %d }\n",
-				i, vstack[i].type, vstack[i].bits.reg);
+		fprintf(stderr,
+				"vstack[%d] = { .type = %d, .reg = %d, "
+				".bitfield = { .nbits = %u, .off = %u } }\n",
+				i, vstack[i].type, vstack[i].bits.reg,
+				vstack[i].bitfield.nbits, vstack[i].bitfield.off);
 }
 
 void vswap(void)
