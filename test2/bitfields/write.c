@@ -1,4 +1,5 @@
-// RUN: %output_check %s '1 2 3 4 5' '1 2 3 35 5'
+// RUN: %ucc -o %t %s
+// RUN: %t | %output_check '1 2 3 4 5' '1 2 3 35 5'
 struct A
 {
 	int f_1;

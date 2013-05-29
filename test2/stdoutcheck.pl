@@ -8,7 +8,7 @@ sub usage
 
 usage() unless @ARGV;
 
-die "$0 doesn't take STDIN\n" if -t STDIN;
+die "$0 needs STDIN from a pipe\n" if -t STDIN;
 
 my @output = map { chomp; $_ } <STDIN>;
 
