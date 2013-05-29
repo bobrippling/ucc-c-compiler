@@ -53,6 +53,8 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 
 		e->tree_type = lvalue->tree_type;
 
+		fold_disallow_st_un(e, "compound assignment");
+
 		(void)resolved;
 		/*type_ref_free_1(resolved); XXX: memleak */
 	}
@@ -62,8 +64,6 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 
 void gen_expr_assign_compound(expr *e)
 {
-	fold_disallow_st_un(e, "copy (TODO)"); /* yes this is meant to be in gen */
-
 	gen_expr(e->lhs);
 
 	if(e->assign_is_post){
