@@ -2,8 +2,6 @@
 
 check for bitfield size > word size
 
-crash on current bitfields/write.c test - seems to break on stack (vs pointer) structs
-
 warn on constant-truncation via assignment to bitfield
 	(+ const fold constant truncation/general backend const fold for constant ops?)
 

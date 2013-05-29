@@ -495,20 +495,26 @@ void bitfield_scalar_merge(const struct vbitfield *const bf)
 	 * store
 	 */
 
-	struct vstack *const store = vtop - 1;
-	const int r = v_unused_reg(1);
 	type_ref *ty;
 	unsigned long mask_leading_1s, mask_back_0s, mask_rm;
 
-	/* load the pointer to the store */
-	impl_load(store, r);
-	vpush(store->t);
-	vtop->type = REG;
-	vtop->bits.reg = r;
-	/*memcpy_safe(&vtop->bitfield, &store->bitfield); - NO */
+	/* load the pointer to the store, forgetting the bitfield */
+	/* stack: store, val */
+	out_swap();
+	out_dup();
+	vtop->bitfield.nbits = 0;
+	/* stack: val, store, store-less-bitfield */
 
-	/* load the bitfield without using bitfield semantics */
+	/* load the bitfield without using bitfield semantics
+	 * XXX: unaligned access. should be fine for ints/longs
+	 */
 	out_deref();
+	/* stack: val, store, orig-val */
+	out_pulltop(2);
+	/* stack: store, orig-val, val */
+	out_swap();
+	/* stack: store, val, orig-val */
+
 	ty = vtop->t;
 
 	/* e.g. width of 3, offset of 2:
@@ -541,6 +547,7 @@ void bitfield_scalar_merge(const struct vbitfield *const bf)
 	out_comment("bitmask/rm = %#lx", mask_rm);
 	out_op(op_and);
 
+	/* stack: store, val, orig-val-masked */
 	/* bring the value to the top */
 	out_swap();
 

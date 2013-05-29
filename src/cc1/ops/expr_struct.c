@@ -122,6 +122,7 @@ void gen_expr_struct_lea(expr *e)
 		if(d->field_width){
 			unsigned w = const_fold_val(d->field_width);
 			out_set_bitfield(d->struct_offset_bitfield, w);
+			out_comment("struct bitfield lea");
 		}
 	}
 }
