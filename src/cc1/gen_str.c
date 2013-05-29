@@ -508,7 +508,7 @@ void print_stmt(stmt *t)
 		gen_str_indent--;
 	}
 
-	if(t->symtab){
+	if(stmt_kind(t, code) && t->symtab){
 		decl **iter;
 
 		idt_printf("stack space %d\n", t->symtab->auto_total_size);
