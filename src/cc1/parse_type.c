@@ -63,6 +63,8 @@ type_ref *parse_type_sue(enum type_primitive prim)
 	sue_member **members = NULL;
 	decl_attr *this_sue_attr = NULL;
 
+	parse_add_attr(&this_sue_attr); /* struct __attr__(()) name { ... } ... */
+
 	if(curtok == token_identifier){
 		spel = token_current_spel();
 		EAT(token_identifier);
