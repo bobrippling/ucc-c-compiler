@@ -19,3 +19,7 @@ check for gcc-compat with bitfields where there's overflow,
 		int x : 30; // pad with :2
 		int y : 30; // new field
 	};
+
+check compound assignment with bitfields
+
+designated init with bitfields
