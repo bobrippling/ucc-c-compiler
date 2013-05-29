@@ -229,12 +229,11 @@ type_ref *type_ref_new_cast_add(type_ref *to, enum type_qualifier add)
 
 type_ref *type_ref_new_cast_signed(type_ref *to, int is_signed)
 {
-	type_ref *r = type_ref_new_cast_is_additive(to, qual_none, 1);
-	/* `to' may be returned */
-	if(r->type == type_ref_cast){
-		r->bits.cast.is_signed_cast = 1;
-		r->bits.cast.signed_true = is_signed;
-	}
+	type_ref *r = type_ref_new(type_ref_cast, to);
+
+	r->bits.cast.is_signed_cast = 1;
+	r->bits.cast.signed_true = is_signed;
+
 	return r;
 }
 
