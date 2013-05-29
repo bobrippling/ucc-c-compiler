@@ -1,7 +1,7 @@
-bf: bf_wrap.o bf.o
+bf: bf.o bf_lib.o
 
 bf.o: bf.c bf.h src/cc1/cc1
 	./ucc -c -o $@ $<
 
-bf_wrap.o: bf_wrap.c bf.h
+bf_lib.o: bf_lib.c bf.h
 	cc -c -o $@ $<

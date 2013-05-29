@@ -6,4 +6,4 @@ struct half_bytes
 	int f_2;
 };
 
-read_bf(struct half_bytes *p);
+pbf(struct half_bytes *p);

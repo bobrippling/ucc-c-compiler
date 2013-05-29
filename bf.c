@@ -1,7 +1,18 @@
 #include "bf.h"
 
-write_bf(struct half_bytes *p)
+main()
 {
-	p->bf_2 = 35;
-	//p->bf_2 = 333335; // truncated to 23 TODO: warn on truncation
+	struct half_bytes a;
+
+	a.f_1 = -1UL;
+	a.bf_1 = -1UL;
+	a.bf_2 = -1UL;
+	a.f_2 = -1UL;
+
+	//a.f_1 = 1; // BUG
+	//a.bf_1 = 2;
+	//a.bf_2 = 3;
+	//a.f_2 = 4;
+
+	pbf(&a);
 }
