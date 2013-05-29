@@ -509,7 +509,8 @@ void bitfield_scalar_merge(const struct vbitfield *const bf)
 	/* stack: val, store, store-less-bitfield */
 
 	/* load the bitfield without using bitfield semantics
-	 * XXX: unaligned access. should be fine for ints/longs
+	 * FIXME: unaligned access - i386/x86 ABI says it should be aligned
+	 * i.e. need to fix struct_pack() code
 	 */
 	out_deref();
 	/* stack: val, store, orig-val */

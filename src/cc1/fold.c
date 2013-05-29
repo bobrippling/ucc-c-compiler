@@ -273,10 +273,15 @@ int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 
 					/* get some initial padding */
 					struct_pack(d, &offset, 1, 1);
+					/* FIXME: not 1 - set sz + align and allocate that much space for the initial field
+					 * we want to affect the align_max of the struct and the size of this field
+					 */
 				}else{
 					/* mirror previous bitfields
 					 * difference is in .struct_offset_bitfield
 					 */
+					/* FIXME: related - store the offset of the original bitfield
+					 * or subtract the correct amount, not 1 */
 					d->struct_offset = offset - 1;
 				}
 

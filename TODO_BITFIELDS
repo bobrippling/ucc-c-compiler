@@ -5,6 +5,13 @@ check for bitfield size > word size
 warn on constant-truncation via assignment to bitfield
 	(+ const fold constant truncation/general backend const fold for constant ops?)
 
+alignment on bitfields, e.g.:
+	struct { int x : 1; } a;
+	a.i;
+	// causes a 4-byte read at (char *)&a + 1, which is misaligned
+	need to assert alignment in out.c::bitfield_scalar_merge()
+	and correctly pack in fold.c::fold_sue()
+
 check for gcc-compat with bitfields where there's overflow,
 	e.g.
 	struct
