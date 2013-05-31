@@ -416,10 +416,48 @@ static void handle_pragma(token **tokens)
 	(void)tokens;
 }
 
+static int handle_line_directive(char *line)
+{
+	int need_line = 0;
+	int n;
+	char *endp;
+
+	line = str_spc_skip(line);
+
+	if(!strncmp(line, "line", 4)){
+		char *end = word_end(line);
+		if(end != line + 4)
+			return 0;
+
+		line += 4;
+		need_line = 1;
+	}
+
+	n = strtol(line, &endp, 0);
+	if(endp == line){
+		if(need_line)
+			CPP_DIE("invalid #line directive");
+		/* else we've had # something */
+		return 0;
+	}
+
+	if(n < 0)
+		CPP_DIE("#line directive with a negative argument");
+
+	/* don't care about the filename - that's for cc1 */
+	if(option_line_info && !no_output)
+		printf("# %s\n", line);
+
+	return 1;
+}
+
 void parse_directive(char *line)
 {
-	token **tokens;
-	int i;
+	token **tokens = NULL;
+
+	/* check for /# *[0-9]+ *( +"...")?/ */
+	if(handle_line_directive(line))
+		goto fin;
 
 	tokens = tokenise(line);
 
@@ -431,14 +469,6 @@ void parse_directive(char *line)
 			goto fin;
 
 		CPP_DIE("invalid preproc token");
-	}
-
-	/* check for '# [0-9]+ "..."' */
-	if(sscanf(tokens[0]->w, "%d \"", &i) == 1){
-		/* output, and ignore */
-		if(!no_output && option_line_info)
-			puts(line);
-		goto fin;
 	}
 
 	if(!no_output)
