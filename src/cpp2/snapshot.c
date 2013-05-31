@@ -3,6 +3,7 @@
 
 #include "../util/dynarray.h"
 #include "../util/alloc.h"
+#include "../util/where.h"
 
 #include "snapshot.h"
 #include "macro.h"

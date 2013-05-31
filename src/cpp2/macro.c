@@ -36,8 +36,14 @@ macro *macro_add(const char *nam, const char *val)
 
 	if(m){
 		/* only warn if they're different */
-		if(strcmp(val, m->val))
-			CPP_WARN("cpp: warning: redefining \"%s\"", nam);
+		if(strcmp(val, m->val)){
+			char buf[WHERE_BUF_SIZ];
+
+			CPP_WARN("cpp: warning: redefining \"%s\"\n"
+					"%s: note: previous definition here",
+					nam, where_str_r(buf, &m->where));
+		}
+
 		free(m->val);
 	}else{
 		m = umalloc(sizeof *m);
@@ -45,6 +51,8 @@ macro *macro_add(const char *nam, const char *val)
 
 		m->nam = ustrdup(nam);
 	}
+
+	where_current(&m->where);
 
 	m->val = val ? ustrdup(val) : NULL;
 	m->type = MACRO;

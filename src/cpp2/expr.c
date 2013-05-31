@@ -2,12 +2,13 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
+#include "../util/alloc.h"
+#include "../util/util.h"
+
 #include "expr.h"
 #include "expr_tok.h"
 
 #include "main.h"
-#include "../util/alloc.h"
-#include "../util/util.h"
 #include "preproc.h"
 
 typedef signed char e_op;

@@ -6,6 +6,7 @@
 
 typedef struct
 {
+	where where;
 	char *nam, *val;
 	enum { MACRO, FUNC, VARIADIC } type;
 	char **args;
