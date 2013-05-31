@@ -2,6 +2,7 @@ include ../src_config.mk
 include ../../config.mk
 
 OBJ = platform.o util.o alloc.o dynarray.o dynmap.o
+SRC = $(OBJ:.o=.c)
 
 BUILD_CC = ${CC} ${CFLAGS} -c -g -o $@ $<
 
@@ -21,9 +22,16 @@ dynarray.o: dynarray.c
 dynmap.o: dynmap.c
 	${BUILD_CC}
 
+deps: Makefile.dep
+
+Makefile.deps:
+	cc -MM ${SRC} > $@
+
 clean:
 	rm -f *.o
 
 .PHONY: all clean
 
 platform.o: platform.c ../../config.mk
+
+include Makefile.deps

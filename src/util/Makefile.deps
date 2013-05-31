@@ -1,0 +1,5 @@
+platform.o: platform.c platform.h
+util.o: util.c util.h alloc.h
+alloc.o: alloc.c ../util/util.h alloc.h
+dynarray.o: dynarray.c alloc.h dynarray.h dyn.h util.h
+dynmap.o: dynmap.c dynmap.h dyn.h alloc.h
