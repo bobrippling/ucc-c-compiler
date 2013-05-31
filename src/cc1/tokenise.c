@@ -286,8 +286,10 @@ static void tokenise_read_line()
 			return;
 		}
 
-		current_line++;
 		current_chr = -1;
+		current_line++;
+		if(current_fname_stack_cnt > 0)
+			current_fname_stack[current_fname_stack_cnt - 1].lno = current_line;
 	}
 
 	if(l)
