@@ -7,6 +7,7 @@
 #include "str.h"
 #include "../util/alloc.h"
 #include "../util/util.h"
+#include "../util/str.h"
 #include "macro.h"
 
 int iswordpart(char c)
@@ -17,12 +18,6 @@ int iswordpart(char c)
 char *word_end(char *s)
 {
 	for(; iswordpart(*s); s++);
-	return s;
-}
-
-char *str_spc_skip(char *s)
-{
-	for(; isspace(*s); s++);
 	return s;
 }
 
@@ -73,19 +68,6 @@ char *word_dup(const char *s)
 	while(iswordpart(*s))
 		s++;
 	return ustrdup2(start, s);
-}
-
-char *str_quotefin(char *s)
-{
-	for(; *s; s++) switch(*s){
-		case '\\':
-			s++;
-			break;
-		case '"':
-			return s;
-	}
-
-	return NULL;
 }
 
 char *str_quote(const char *quoteme)

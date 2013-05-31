@@ -8,6 +8,7 @@
 #include "../util/util.h"
 #include "../util/dynarray.h"
 #include "../util/alloc.h"
+#include "../util/str.h"
 
 #include "directive.h"
 #include "tokenise.h"

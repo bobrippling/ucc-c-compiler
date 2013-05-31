@@ -6,6 +6,7 @@
 
 #include "../util/util.h"
 #include "../util/alloc.h"
+#include "../util/str.h"
 
 #include "main.h"
 #include "preproc.h"

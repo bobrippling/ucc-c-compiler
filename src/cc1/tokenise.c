@@ -9,7 +9,7 @@
 #include "data_structs.h"
 #include "tokenise.h"
 #include "../util/alloc.h"
-#include "../util/util.h"
+#include "../util/str.h"
 #include "str.h"
 #include "cc1.h"
 

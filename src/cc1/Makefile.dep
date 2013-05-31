@@ -229,7 +229,7 @@ tokenise.o: tokenise.c ../util/util.h ../util/where.h ../util/compiler.h \
  ops/stmt_default.h ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h \
  ops/stmt_goto.h ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h \
  ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h ops/stmt_continue.h \
- sym.h decl.h tokenise.h ../util/alloc.h str.h cc1.h
+ sym.h decl.h tokenise.h ../util/alloc.h ../util/str.h str.h cc1.h
 tree.o: tree.c ../util/alloc.h ../util/util.h ../util/where.h \
  ../util/compiler.h data_structs.h tree.h expr.h ops/expr_addr.h \
  ops/expr_assign.h ops/expr_assign_compound.h ops/expr_cast.h \

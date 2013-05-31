@@ -9,6 +9,7 @@
 #include "../util/dynarray.h"
 #include "../util/util.h"
 #include "../util/alloc.h"
+#include "../util/str.h"
 
 #include "tokenise.h"
 #include "macro.h"

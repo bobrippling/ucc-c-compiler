@@ -7,6 +7,7 @@
 #include "str.h"
 
 #include "../util/alloc.h"
+#include "../util/str.h"
 
 static char *tok_pos;
 
