@@ -28,18 +28,23 @@ struct
 
 int file_stack_idx = -1;
 
-void preproc_backtrace(void)
+void include_bt(FILE *f)
 {
 	int i;
 
 	for(i = 0; i < file_stack_idx; i++){
-		fprintf(stderr, "%sfrom: %s:%d\n",
+		fprintf(f, "%sfrom: %s:%d\n",
 				i == 0 ?
 				"in file included " :
 				"                 ",
 				file_stack[i].fname,
 				file_stack[i].line_no - 1);
 	}
+}
+
+void preproc_backtrace()
+{
+	include_bt(stderr);
 }
 
 static void preproc_out_info(void)

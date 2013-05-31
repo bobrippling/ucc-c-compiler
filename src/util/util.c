@@ -107,6 +107,8 @@ void warn_colour(int on, int err)
 
 void vwarn(struct where *w, int err, int show_line, const char *fmt, va_list l)
 {
+	include_bt(stderr);
+
 	warn_colour(1, err);
 
 	w = default_where(w);

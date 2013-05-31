@@ -17,6 +17,8 @@ void vwarn(struct where *w, int err, int show_line, const char *fmt, va_list l);
 void vdie(struct where *, int show_line, const char *, va_list) ucc_dead;
 void die(const char *fmt, ...) ucc_printflike(1, 2) ucc_dead;
 
+extern void include_bt(FILE *); /* implemented by the program */
+
 #define DIE_AT( w, ...) die_at( w, 1, __VA_ARGS__)
 #define WARN_AT(w, ...) warn_at(w, 1, __VA_ARGS__)
 
