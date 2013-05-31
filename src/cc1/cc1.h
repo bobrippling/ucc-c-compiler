@@ -73,6 +73,7 @@ enum fopt
 	FOPT_TAG_ANON_STRUCT_EXT   = FOPT_MS_EXTENSIONS | FOPT_PLAN9_EXTENSIONS,
 	FOPT_LEADING_UNDERSCORE    = 1 << 9,
 	FOPT_TRAPV                 = 1 << 10,
+	FOPT_TRACK_INITIAL_FNAM    = 1 << 11,
 };
 
 enum cc1_backend

@@ -350,6 +350,11 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
+	/* we don't want the initial temporary fname "/tmp/tmp.xyz" tracked
+	 * or showing up in error messages
+	 */
+	dynarray_add(&args[mode_compile], ustrdup("-fno-track-initial-fname"));
+
 	/* bring in CPPFLAGS and CFLAGS */
 	add_cfg_args(&args[mode_compile], UCC_CFLAGS);
 	add_cfg_args(&args[mode_preproc], UCC_CPPFLAGS);

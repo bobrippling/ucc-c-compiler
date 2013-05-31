@@ -300,9 +300,13 @@ static void tokenise_read_line()
 
 void tokenise_set_input(tokenise_line_f *func, const char *nam)
 {
+	char *nam_dup = ustrdup(nam);
 	in_func = func;
 
-	push_fname(ustrdup(nam), 1);
+	if(fopt_mode & FOPT_TRACK_INITIAL_FNAM)
+		push_fname(nam_dup, 1);
+	else
+		current_fname = nam_dup;
 
 	SET_CURRENT_LINE_STR(NULL);
 

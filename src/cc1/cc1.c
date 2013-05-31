@@ -115,6 +115,7 @@ struct
 	{ 1,  "plan9-extensions", FOPT_PLAN9_EXTENSIONS },
 	{ 1,  "leading-underscore", FOPT_LEADING_UNDERSCORE },
 	{ 1,  "trapv",              FOPT_TRAPV },
+	{ 1,  "track-initial-fname", FOPT_TRACK_INITIAL_FNAM },
 
 	{ 0,  NULL, 0 }
 };
@@ -146,7 +147,8 @@ enum fopt fopt_mode = FOPT_CONST_FOLD
                     | FOPT_SHOW_LINE
                     | FOPT_PIC
                     | FOPT_BUILTIN
-                    | FOPT_MS_EXTENSIONS;
+                    | FOPT_MS_EXTENSIONS
+										| FOPT_TRACK_INITIAL_FNAM;
 enum cc1_backend cc1_backend = BACKEND_ASM;
 
 int cc1_m32 = UCC_M32;
