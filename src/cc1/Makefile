@@ -9,7 +9,7 @@ LDFLAGS += -lm
 
 OBJ = \
 	../util/alloc.o ../util/util.o ../util/platform.o \
-	../util/dynarray.o ../util/dynmap.o \
+	../util/dynarray.o ../util/dynmap.o ../util/where.o \
 	str.o \
 	cc1.o \
 	tree.o decl.o decl_init.o funcargs.o expr.o stmt.o \

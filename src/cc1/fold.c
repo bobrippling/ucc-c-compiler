@@ -103,7 +103,7 @@ void fold_insert_casts(type_ref *dlhs, expr **prhs, symtable *stab, where *w, co
 }
 
 
-void fold_check_restrict(expr *lhs, expr *rhs, const char *desc, where const *w)
+void fold_check_restrict(expr *lhs, expr *rhs, const char *desc, where *w)
 {
 	/* restrict operation checks */
 	const enum type_qualifier ql = type_ref_qual(lhs->tree_type),

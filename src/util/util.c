@@ -8,9 +8,6 @@
 #include "util.h"
 #include "alloc.h"
 
-#define WHERE_FMT "%s:%d:%d"
-#define WHERE_ARGS w->fname, w->line, w->chr + 1
-
 enum
 {
 	colour_black,
@@ -39,31 +36,13 @@ static const char *const colour_strs[] = {
 
 int warning_count = 0;
 
-const char *where_str_r(char buf[WHERE_BUF_SIZ], const struct where *w)
-{
-	snprintf(buf, WHERE_BUF_SIZ, WHERE_FMT, WHERE_ARGS);
-	return buf;
-}
-
-const char *where_str(const struct where *w)
-{
-	static char buf[WHERE_BUF_SIZ];
-	return where_str_r(buf, w);
-}
-
-const struct where *default_where(const struct where *w)
+static struct where *default_where(struct where *w)
 {
 	if(!w){
-		extern const char *current_fname, *current_line_str;
-		extern int current_line, current_chr;
 		static struct where instead;
 
 		w = &instead;
-
-		instead.fname    = current_fname;
-		instead.line     = current_line;
-		instead.chr      = current_chr;
-		instead.line_str = current_line_str;
+		where_current(w);
 	}
 
 	return w;
@@ -126,7 +105,7 @@ void warn_colour(int on, int err)
 	}
 }
 
-void vwarn(const struct where *w, int err, int show_line, const char *fmt, va_list l)
+void vwarn(struct where *w, int err, int show_line, const char *fmt, va_list l)
 {
 	warn_colour(1, err);
 
@@ -150,13 +129,13 @@ void vwarn(const struct where *w, int err, int show_line, const char *fmt, va_li
 		warn_show_line(w);
 }
 
-void vdie(const struct where *w, int show_line, const char *fmt, va_list l)
+void vdie(struct where *w, int show_line, const char *fmt, va_list l)
 {
 	vwarn(w, 1, show_line, fmt, l);
 	exit(1);
 }
 
-void warn_at(const struct where *w, int show_line, const char *fmt, ...)
+void warn_at(struct where *w, int show_line, const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
@@ -164,7 +143,7 @@ void warn_at(const struct where *w, int show_line, const char *fmt, ...)
 	va_end(l);
 }
 
-void die_at(const struct where *w, int show_line, const char *fmt, ...)
+void die_at(struct where *w, int show_line, const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
@@ -182,23 +161,33 @@ void die(const char *fmt, ...)
 	/* unreachable */
 }
 
-#define ICE_STR(s)  \
-	va_list l; \
-	const struct where *w = default_where(NULL); \
-	fprintf(stderr, WHERE_FMT ": " s " %s:%d (%s): ", WHERE_ARGS, f, line, fn); \
-	va_start(l, fmt); \
-	vfprintf(stderr, fmt, l); \
-	fputc('\n', stderr)
+static void ice_msg(const char *pre,
+		const char *f, int line, const char *fn, const char *fmt, va_list l)
+{
+	const struct where *w = default_where(NULL);
+
+	fprintf(stderr, "%s: %s %s:%d (%s): ",
+			where_str(w), pre, f, line, fn);
+
+	vfprintf(stderr, fmt, l);
+	fputc('\n', stderr);
+}
 
 void ice(const char *f, int line, const char *fn, const char *fmt, ...)
 {
-	ICE_STR("ICE");
+	va_list l;
+	va_start(l, fmt);
+	ice_msg("ICE", f, line, fn, fmt, l);
+	va_end(l);
 	abort();
 }
 
 void icw(const char *f, int line, const char *fn, const char *fmt, ...)
 {
-	ICE_STR("ICW");
+	va_list l;
+	va_start(l, fmt);
+	ice_msg("ICW", f, line, fn, fmt, l);
+	va_end(l);
 }
 
 char *fline(FILE *f)

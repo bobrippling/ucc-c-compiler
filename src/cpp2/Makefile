@@ -7,7 +7,9 @@ OBJ = preproc.o main.o macro.o str.o \
       snapshot.o include.o           \
       expr.o expr_tok.o              \
       ../util/util.o ../util/alloc.o \
-      ../util/platform.o ../util/dynarray.o
+      ../util/platform.o             \
+			../util/where.o                \
+			../util/dynarray.o
 
 cpp: ${OBJ}
 	${CC} ${CFLAGS} -o $@ ${OBJ}
