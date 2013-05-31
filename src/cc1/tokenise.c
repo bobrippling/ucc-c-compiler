@@ -173,44 +173,51 @@ static void tokenise_read_line()
 		buffereof = 1;
 	}else{
 		/* check for preprocessor line info */
-		int lno;
-
 		/* but first - add to store_lines */
 		if(fopt_mode & FOPT_SHOW_LINE)
 			add_store_line(l);
 
-		/* format is # [0-9] "filename" ([0-9])* */
-		if(sscanf(l, "# %d", &lno) == 1){
-			char *p = strchr(l, '"');
-			char *fin;
+		/* format is # line? [0-9] "filename" ([0-9])* */
+		if(*l == '#'){
+			int lno;
+			char *ep;
 
-			if(p){
-				fin = p + 1;
-				for(;;){
-					fin = strchr(fin, '"');
+			l = str_spc_skip(l + 1);
+			if(!strncmp(l, "line", 4))
+				l += 4;
 
-					if(!fin)
-						die("no terminating quote for pre-proc info");
+			lno = strtol(l, &ep, 0);
+			if(ep == l)
+				die("couldn't parse number for #line directive (%s)", ep);
 
-					if(fin[-1] != '\\')
-						break;
-					fin++;
-				}
-
-				SET_CURRENT_FNAME(ustrdup2(p + 1, fin));
-			}else{
-				/* check there's nothing left */
-				for(p = l + 2; isdigit(*p); p++);
-				for(; isspace(*p); p++);
-
-				if(*p != '\0')
-					die("extra text after # 0-9: \"%s\"", p);
-			}
+			if(lno < 0)
+				die("negative #line directive argument");
 
 			current_line = lno - 1; /* inc'd below */
 
-			tokenise_read_line();
+			ep = str_spc_skip(ep);
 
+			switch(*ep){
+				case '"':
+				{
+					char *p = str_quotefin(++ep);
+					if(!p)
+						die("no terminating quote to #line directive (%s)", l);
+					SET_CURRENT_FNAME(ustrdup2(ep, p));
+					/*l = str_spc_skip(p + 1);
+					if(*l)
+						die("characters after #line?");
+						- gcc puts characters after the string */
+					break;
+				}
+				case '\0':
+					break;
+
+				default:
+					die("expected '\"' or nothing after #line directive (%s)", ep);
+			}
+
+			tokenise_read_line();
 			return;
 		}
 
