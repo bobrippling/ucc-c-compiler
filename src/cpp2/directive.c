@@ -161,6 +161,7 @@ static void handle_undef(token **tokens)
 
 static void handle_error_warning(token **tokens, int err)
 {
+	where w;
 	char *s;
 
 	s = tokens_join(tokens);
@@ -169,7 +170,11 @@ static void handle_error_warning(token **tokens, int err)
 
 	warn_colour(1, err);
 
-	(err ? die_at : warn_at)(NULL, 0,
+	/* we're already on the next line */
+	where_current(&w);
+	w.line--;
+
+	(err ? die_at : warn_at)(&w, 0,
 			"#%s:%s", err ? "error" : "warning", s);
 
 	warn_colour(0, err);
