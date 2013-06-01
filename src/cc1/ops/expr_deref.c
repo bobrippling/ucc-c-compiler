@@ -3,7 +3,7 @@
 
 const char *str_expr_deref()
 {
-	return "deref";
+	return "dereference";
 }
 
 void fold_expr_deref(expr *e, symtable *stab)
