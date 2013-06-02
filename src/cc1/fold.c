@@ -478,7 +478,7 @@ void fold_decl(decl *d, symtable *stab)
 					decl_to_str(d));
 
 		if(k.bits.iv.val == 1 && type_ref_is_signed(d->ref))
-			WARN_AT(&d->where, "%s 1-bit field width is signed (-1 and 0)",
+			WARN_AT(&d->where, "1-bit signed field \"%s\" takes values -1 and 0",
 					decl_to_str(d));
 
 		can_align = 0;
