@@ -128,8 +128,8 @@ compile:
 assemb:
 			case 'S':
 				file->preproc_asm = 1;
-after_compile:
 				ASSIGN(preproc); /* preprocess .S assembly files by default */
+after_compile:
 			case 's':
 				ASSIGN(assemb);
 				file->out = file->assemb;
@@ -457,10 +457,12 @@ arg_ld:
 					/* TODO: order-sensitive -x */
 					if(!strcmp(arg, "c"))
 						gopts.assume = mode_preproc;
-					else if(!strcmp(arg, "cpp"))
+					else if(!strcmp(arg, "cpp-output"))
 						gopts.assume = mode_compile;
 					else if(!strcmp(arg, "asm"))
 						gopts.assume = mode_assemb;
+					else if(!strcmp(arg, "none"))
+						gopts.assume = -1; /* reset */
 					else
 						die("-x accepts \"c\", \"cpp\", or \"asm\", not \"%s\"", arg);
 					continue;
