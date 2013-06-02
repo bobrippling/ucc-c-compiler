@@ -158,7 +158,7 @@ unsigned type_size(const type *t, where const *from)
 unsigned type_align(const type *t, where const *from)
 {
 	if(t->sue)
-		return t->sue->align;
+		return sue_align(t->sue, from);
 
 	/* align to the size,
 	 * except for double and ldouble
