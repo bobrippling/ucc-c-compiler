@@ -267,10 +267,10 @@ int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 			}else if(d->field_width){
 				const unsigned bits = const_fold_val(d->field_width);
 
-				if(bits == 0)
-					ICE("0-width bitfield packing");
+				if(bits == 0){
+					struct_pack_finish_bitfield(&offset, &bitfield_current);
 
-				if(!bitfield_current || bitfield_current + bits > bitfield_lim){
+				}else if(!bitfield_current || bitfield_current + bits > bitfield_lim){
 					if(bitfield_current)
 						struct_pack_finish_bitfield(&offset, &bitfield_current);
 
