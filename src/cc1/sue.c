@@ -98,9 +98,11 @@ static void sue_get_decls(sue_member **mems, sue_member ***pds)
 		if(d->spel){
 			dynarray_add(pds, *mems);
 		}else{
+			/* either an anonymous struct/union OR a bitfield */
 			struct_union_enum_st *sub = type_ref_is_s_or_u(d->ref);
 
-			sue_get_decls(sub->members, pds);
+			if(sub)
+				sue_get_decls(sub->members, pds);
 		}
 	}
 }
@@ -185,7 +187,7 @@ new_type:
 			sue_get_decls(members, &decls);
 
 			qsort(decls,
-					dynarray_count((void **)decls), sizeof *decls,
+					dynarray_count(decls), sizeof *decls,
 					decl_spel_cmp);
 
 			for(i = 0; decls && decls[i]; i++){

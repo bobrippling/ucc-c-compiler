@@ -267,6 +267,9 @@ int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 			}else if(d->field_width){
 				const unsigned bits = const_fold_val(d->field_width);
 
+				if(bits == 0)
+					ICE("0-width bitfield packing");
+
 				if(!bitfield_current || bitfield_current + bits > bitfield_lim){
 					if(bitfield_current)
 						struct_pack_finish_bitfield(&offset, &bitfield_current);
@@ -459,8 +462,16 @@ void fold_decl(decl *d, symtable *stab)
 
 		if((sintval_t)k.bits.iv.val < 0)
 			DIE_AT(&d->where, "field width must be positive");
-		else if(k.bits.iv.val == 0)
-			ICE("TODO: zero width bitfield / align next bitfield");
+
+		if(k.bits.iv.val == 0){
+			/* allow anonymous 0-width bitfields
+			 * we align the next bitfield to a boundary
+			 */
+			if(d->spel)
+				DIE_AT(&d->where,
+						"none-anonymous bitfield \"%s\" with 0-width",
+						d->spel);
+		}
 
 		if(!type_ref_is_integral(d->ref))
 			DIE_AT(&d->where, "field width on non-integral field %s",
