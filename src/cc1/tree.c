@@ -131,7 +131,7 @@ unsigned type_primitive_size(enum type_primitive tp)
 		case type_ldouble:
 			/* 80-bit float */
 			ICW("TODO: long double");
-			return 10; /* FIXME: 32-bit? */
+			return cc1_m32 ? 12 : 16;
 
 		case type_union:
 		case type_struct:
@@ -153,6 +153,33 @@ unsigned type_size(const type *t, where const *from)
 		return sue_size(t->sue, from);
 
 	return type_primitive_size(t->primitive);
+}
+
+unsigned type_align(const type *t, where const *from)
+{
+	if(t->sue)
+		return t->sue->align;
+
+	/* align to the size,
+	 * except for double and ldouble
+	 * (long changes but this is accounted for in type_primitive_size)
+	 */
+	switch(t->primitive){
+		case type_double:
+			if(cc1_m32){
+				/* 8 on Win32, 4 on Linux32 */
+				if(platform_sys() == PLATFORM_CYGWIN)
+					return 8;
+				return 4;
+			}
+			return 8; /* 8 on 64-bit */
+
+		case type_ldouble:
+			return cc1_m32 ? 4 : 16;
+
+		default:
+			return type_primitive_size(t->primitive);
+	}
 }
 
 int type_qual_equal(enum type_qualifier a, enum type_qualifier b)

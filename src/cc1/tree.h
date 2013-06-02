@@ -86,6 +86,7 @@ const char *type_qual_to_str(     const enum type_qualifier, int trailing_space)
 int type_equal(const type *a, const type *b, enum type_cmp mode);
 int type_qual_equal(enum type_qualifier, enum type_qualifier);
 unsigned type_size( const type *, where const *from);
+unsigned type_align(const type *, where const *from);
 unsigned type_primitive_size(enum type_primitive tp);
 
 int op_is_commutative(enum op_type o);
