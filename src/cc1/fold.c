@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <assert.h>
 
 #include "defs.h"
 #include "../util/util.h"
@@ -220,6 +221,24 @@ static void struct_pack_finish_bitfield(int *poffset, int *pbitfield_current)
 	*pbitfield_current = 0;
 }
 
+static void bitfield_size_align(
+		type_ref *tref, int *psz, int *palign, where *from)
+{
+	/* implementation defined if ty isn't one of:
+	 * unsigned, signed or _Bool.
+	 * We make it take that align,
+	 * and reserve a max. of that size for the bitfield
+	 */
+	const type *ty;
+	tref = type_ref_is_type(tref, type_unknown);
+	assert(tref);
+
+	ty = tref->bits.type;
+
+	*psz = type_size(ty, from);
+	*palign = type_align(ty, from);
+}
+
 int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 {
 	if(sue->size)
@@ -234,12 +253,17 @@ int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 		return sue_enum_size(sue);
 
 	}else{
-		unsigned bitfield_lim = CHAR_BIT * type_primitive_size(BITFIELD_MAX_TY);
+		const unsigned bitfield_lim = CHAR_BIT * type_primitive_size(BITFIELD_MAX_TY);
 		int align_max = 1;
 		int sz_max = 0;
 		int offset = 0;
-		int bitfield_current = 0;
+		struct
+		{
+			int current_off, first_off;
+		} bitfield;
 		sue_member **i;
+
+		memset(&bitfield, 0, sizeof bitfield);
 
 		if(decl_attr_present(sue->attr, attr_packed))
 			ICE("TODO: __attribute__((packed)) support");
@@ -267,31 +291,32 @@ int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 			}else if(d->field_width){
 				const unsigned bits = const_fold_val(d->field_width);
 
+				sz = align = 0; /* don't affect sz_max or align_max */
+
 				if(bits == 0){
-					struct_pack_finish_bitfield(&offset, &bitfield_current);
+					/* align next field / treat as new bitfield */
+					struct_pack_finish_bitfield(&offset, &bitfield.current_off);
 
-				}else if(!bitfield_current || bitfield_current + bits > bitfield_lim){
-					if(bitfield_current)
-						struct_pack_finish_bitfield(&offset, &bitfield_current);
+				}else if(!bitfield.current_off || bitfield.current_off + bits > bitfield_lim){
+					if(bitfield.current_off)
+						struct_pack_finish_bitfield(&offset, &bitfield.current_off);
 
-					/* get some initial padding */
-					struct_pack(d, &offset, 1, 1);
-					/* FIXME: not 1 - set sz + align and allocate that much space for the initial field
-					 * we want to affect the align_max of the struct and the size of this field
+					/* Get some initial padding.
+					 * Note that we want to affect the align_max
+					 * of the struct and the size of this field
 					 */
+					bitfield_size_align(d->ref, &sz, &align, &d->where);
+
+					struct_pack(d, &offset, sz, align);
 				}else{
-					/* mirror previous bitfields
+					/* mirror previous bitfields' offset in the struct
 					 * difference is in .struct_offset_bitfield
 					 */
-					/* FIXME: related - store the offset of the original bitfield
-					 * or subtract the correct amount, not 1 */
-					d->struct_offset = offset - 1;
+					d->struct_offset = bitfield.first_off;
 				}
 
-				d->struct_offset_bitfield = bitfield_current;
-				bitfield_current += bits; /* allowed to go above sizeof(int) */
-
-				sz = align = 0;
+				d->struct_offset_bitfield = bitfield.current_off;
+				bitfield.current_off += bits; /* allowed to go above sizeof(int) */
 
 			}else{
 normal:
@@ -302,8 +327,8 @@ normal:
 			if(sue->primitive == type_struct && !d->field_width){
 				const int prev_offset = offset;
 
-				if(bitfield_current)
-					struct_pack_finish_bitfield(&offset, &bitfield_current);
+				if(bitfield.current_off)
+					struct_pack_finish_bitfield(&offset, &bitfield.current_off);
 
 				struct_pack(d, &offset, sz, align);
 
