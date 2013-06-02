@@ -211,10 +211,8 @@ static void struct_pack(decl *d, int *poffset, unsigned sz, unsigned align)
 
 static void struct_pack_finish_bitfield(int *poffset, int *pbitfield_current)
 {
-	/* gone from a bitfield to a normal field - pad */
+	/* gone from a bitfield to a normal field - pad by the overflow */
 	unsigned change = *pbitfield_current / CHAR_BIT;
-	if(*pbitfield_current % CHAR_BIT)
-		change++;
 
 	*poffset = pack_to_align(*poffset + change, 1);
 
