@@ -11,7 +11,7 @@ main()
 	&a.i; // CHECK: /error: taking the address of a bit-field/
 #endif
 
-	typeof(a.i) b; // CHECK: /warning: taking the address of a bit-field/
+	typeof(a.i) b; // CHECK: /warning: typeof a bitfield/
 
 #ifdef SIZEOF
 	return sizeof a.i; // CHECK: /error: sizeof applied to a bit-field/
