@@ -22,7 +22,7 @@ static const struct
 } initial_defs[] = {
 	/* standard */
 	{ "__unix__",       "1"  },
-	/* __STDC__ TODO */
+	{ "__STDC__",       "1"  },
 
 #define TYPE(ty, c) { "__" #ty "_TYPE__", #c  }
 
