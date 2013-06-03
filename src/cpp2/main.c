@@ -9,6 +9,7 @@
 #include "../util/dynarray.h"
 #include "../util/alloc.h"
 #include "../util/platform.h"
+#include "../util/std.h"
 
 #include "main.h"
 #include "macro.h"
@@ -107,6 +108,8 @@ int main(int argc, char **argv)
 	enum { NONE, MACROS, STATS } dump = NONE;
 	int i;
 	int platform_win32 = 0;
+	int freestanding = 0;
+	enum c_std std = STD_C99;
 
 	infname = outfname = NULL;
 
@@ -237,9 +240,30 @@ int main(int argc, char **argv)
 				/* we've been passed "-" as a filename */
 				break;
 
+			case 'f':
+				if(!strcmp(argv[i]+2, "freestanding"))
+					freestanding = 1;
+				else
+					goto usage;
+				break;
+
 			default:
-				goto usage;
+				if(std_from_str(argv[i], &std) == 0){
+					/* we have an std */
+				}else{
+					goto usage;
+				}
 		}
+	}
+
+	macro_add("__STDC_HOSTED__",  freestanding ? "0" : "1");
+	switch(std){
+		case STD_C89:
+		case STD_C90:
+			/* no */
+			break;
+		case STD_C99:
+			macro_add("__STDC_VERSION__", "199901L");
 	}
 
 	if(i < argc){

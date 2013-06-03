@@ -397,10 +397,13 @@ int main(int argc, char **argv)
 						syntax_only = 1;
 						continue;
 					}
+					else if(!strcmp(argv[i], "-ffreestanding")){
+						/* preproc gets this too */
+						ADD_ARG(mode_preproc);
+					}
 
 				case 'w':
 				case 'm':
-arg_cc1:
 					ADD_ARG(mode_compile);
 					continue;
 
@@ -482,8 +485,10 @@ arg_ld:
 					goto input;
 
 				default:
-					if(!strncmp(argv[i], "-std=", 5) || !strcmp(argv[i], "-ansi"))
-						goto arg_cc1;
+					if(!strncmp(argv[i], "-std=", 5) || !strcmp(argv[i], "-ansi")){
+						ADD_ARG(mode_compile);
+						ADD_ARG(mode_preproc);
+					}
 					else if(!strcmp(argv[i], "-nostdlib"))
 						gopts.nostdlib = 1;
 					else if(!strcmp(argv[i], "-nostartfiles"))

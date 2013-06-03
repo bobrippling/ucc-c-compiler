@@ -116,6 +116,7 @@ struct
 	{ 1,  "leading-underscore", FOPT_LEADING_UNDERSCORE },
 	{ 1,  "trapv",              FOPT_TRAPV },
 	{ 1,  "track-initial-fname", FOPT_TRACK_INITIAL_FNAM },
+	{ 1,  "freestanding",        FOPT_FREESTANDING },
 
 	{ 0,  NULL, 0 }
 };
@@ -154,7 +155,7 @@ enum cc1_backend cc1_backend = BACKEND_ASM;
 int cc1_m32 = UCC_M32;
 int cc1_mstack_align; /* align stack to n, platform_word_size by default */
 
-enum cc1_std cc1_std = STD_C99;
+enum c_std cc1_std = STD_C99;
 
 int cc1_max_errors = 16;
 
@@ -359,20 +360,9 @@ int main(int argc, char **argv)
 				}
 			}
 
-		}else if(!strncmp(argv[i], "-std=", 5)){
-			const char *std = argv[i] + 5;
-
-			if(!strcmp(std, "c99"))
-				cc1_std = STD_C99;
-			else if(!strcmp(std, "c90"))
-std_c90: cc1_std = STD_C90;
-			else if(!strcmp(std, "c89"))
-				cc1_std = STD_C89;
-			else
-				ccdie(0, "-std argument \"%s\" not recognised", std);
-
-		}else if(!strcmp(argv[i], "-ansi")){
-			goto std_c90;
+		}else if(!strncmp(argv[i], "-std=", 5) || !strcmp(argv[i], "-ansi")){
+			if(std_from_str(argv[i], &cc1_std))
+				ccdie(0, "-std argument \"%s\" not recognised", argv[i]);
 
 		}else if(!strcmp(argv[i], "-w")){
 			warn_mode = WARN_NONE;

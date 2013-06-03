@@ -1,6 +1,8 @@
 #ifndef CC1_H
 #define CC1_H
 
+#include "../util/std.h"
+
 /*#define FANCY_STACK_INIT 1*/
 #define ASM_INLINE_FNAME "__asm__"
 
@@ -74,6 +76,7 @@ enum fopt
 	FOPT_LEADING_UNDERSCORE    = 1 << 9,
 	FOPT_TRAPV                 = 1 << 10,
 	FOPT_TRACK_INITIAL_FNAM    = 1 << 11,
+	FOPT_FREESTANDING          = 1 << 12,
 };
 
 enum cc1_backend
@@ -86,12 +89,7 @@ enum cc1_backend
 extern enum fopt fopt_mode;
 extern enum cc1_backend cc1_backend;
 
-extern enum cc1_std
-{
-	STD_C89, /* comparable with < */
-	STD_C90,
-	STD_C99
-} cc1_std;
+extern enum c_std cc1_std;
 
 void cc1_warn_atv(struct where *where, int die, int show_line, enum warning w, const char *fmt, va_list l);
 void cc1_warn_at( struct where *where, int die, int show_line, enum warning w, const char *fmt, ...) ucc_printflike(5, 6);
