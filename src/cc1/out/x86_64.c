@@ -623,25 +623,25 @@ void impl_op_unary(enum op_type op)
 	out_asm("%s %s", opc, vstack_str(vtop));
 }
 
-void impl_cast_load(type_ref *small, type_ref *big, int is_signed)
+void impl_cast_load(struct vstack *vp, type_ref *small, type_ref *big, int is_signed)
 {
 	/* we are always up-casting here, i.e. int -> long */
 	const unsigned int_sz = type_primitive_size(type_int);
 	char buf_small[VSTACK_STR_SZ];
 
-	switch(vtop->type){
+	switch(vp->type){
 		case STACK:
 		case STACK_SAVE:
 		case LBL:
 			/* something like movsx -8(%rbp), %rax */
-			vstack_str_r(buf_small, vtop);
+			vstack_str_r(buf_small, vp);
 			break;
 
 		case CONST:
 		case FLAG:
-			v_to_reg(vtop);
+			v_to_reg(vp);
 		case REG:
-			strcpy(buf_small, x86_reg_str(vtop->bits.reg, small));
+			strcpy(buf_small, x86_reg_str(vp->bits.reg, small));
 
 			if(!is_signed
 			&& type_ref_size(big,   NULL) > int_sz
@@ -661,8 +661,8 @@ void impl_cast_load(type_ref *small, type_ref *big, int is_signed)
 		const char *rstr_big = x86_reg_str(r, big);
 		out_asm("mov%cx %%%s, %%%s", "zs"[is_signed], buf_small, rstr_big);
 
-		vtop->type = REG;
-		vtop->bits.reg = r;
+		vp->type = REG;
+		vp->bits.reg = r;
 	}
 }
 
@@ -785,7 +785,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 
 		/* can't push non-word sized vtops */
 		if(vp->t && type_ref_size(vp->t, NULL) != platform_word_size())
-			out_cast(vp->t, type_ref_cached_VOID_PTR());
+			v_cast(vp, vp->t, type_ref_cached_VOID_PTR());
 
 		out_asm("pushq %s", vstack_str(vp));
 	}
