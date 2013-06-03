@@ -1,7 +1,6 @@
 include ../src_config.mk
 include ../../config.mk
 
-OBJ = platform.o util.o alloc.o dynarray.o dynmap.o where.o
 OBJ = platform.o util.o alloc.o dynarray.o dynmap.o where.o str.o
 SRC = $(OBJ:.o=.c)
 
