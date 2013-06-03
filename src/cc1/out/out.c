@@ -828,6 +828,19 @@ void bitfield_to_scalar(const struct vbitfield *bf)
 
 	out_push_i(ty, ~(-1UL << bf->nbits));
 	out_op(op_and);
+
+	/* if it's signed we need to sign extend
+	 * using a signed right shift to copy its MSB
+	 */
+	if(type_ref_is_signed(ty)){
+		const unsigned ty_sz = type_ref_size(ty, NULL);
+		const unsigned nshift = CHAR_BIT * ty_sz - bf->nbits;
+
+		out_push_i(ty, nshift);
+		out_op(op_shiftl);
+		out_push_i(ty, nshift);
+		out_op(op_shiftr);
+	}
 }
 
 void v_deref_decl(struct vstack *vp)
