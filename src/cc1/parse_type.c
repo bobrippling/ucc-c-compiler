@@ -1148,7 +1148,7 @@ add:
 
 			if((mode & DECL_MULTI_ACCEPT_FIELD_WIDTH) && accept(token_colon)){
 				/* normal decl, check field spec */
-				d->field_width = parse_expr_exp();
+				d->field_width = parse_expr_no_comma();
 			}
 
 			last = d;
@@ -1158,7 +1158,7 @@ add:
 		if(last && !last->func_code){
 next:
 			/* end of type, if we have an identifier, '(' or '*', it's an unknown type name */
-			if(parse_possible_decl() && last)
+			if(parse_possible_decl())
 				DIE_AT(NULL, "unknown type name '%s'", last->spel);
 			/* else die here: */
 			EAT(token_semicolon);
