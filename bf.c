@@ -1,4 +1,20 @@
-#include "bf.h"
+struct half_bytes
+{
+	int f_1;
+	int bf_1 : 3;
+	int : 0;
+	unsigned bf_2 : 7;
+	int f_2;
+};
+
+pbf(struct half_bytes *p);
+
+pbf(struct half_bytes *p)
+{
+	printf("sz=%d, p = %d %d %d %d\n",
+			sizeof(*p),
+			p->f_1, p->bf_1, p->bf_2, p->f_2);
+}
 
 main()
 {
