@@ -685,17 +685,18 @@ void parse_static_assert(void)
 	}
 }
 
-stmt *parse_stmt_and_decls()
+static stmt *parse_stmt_and_decls(decl **with_decls)
 {
 	stmt *codes = STAT_NEW_NEST(code);
 	int last;
 
 	current_scope = codes->symtab;
+	UCC_ASSERT(!current_scope->decls, "already have decls?");
+	current_scope->decls = with_decls;
 
 	last = 0;
 	do{
-		size_t count = dynarray_count(current_scope->decls);
-		decl **decls;
+		decl **decls = NULL;
 		stmt *sub;
 
 		parse_static_assert();
@@ -704,9 +705,8 @@ stmt *parse_stmt_and_decls()
 				  DECL_MULTI_ACCEPT_FUNC_DECL
 				| DECL_MULTI_ALLOW_STORE
 				| DECL_MULTI_ALLOW_ALIGNAS,
-				&current_scope->decls);
+				&decls);
 
-		decls = &current_scope->decls[count];
 		sub = NULL;
 
 		if(decls && *decls){
@@ -735,11 +735,13 @@ stmt *parse_stmt_and_decls()
 
 			/* new sub block */
 			if(curtok != token_close_block)
-				sub = parse_stmt_and_decls();
+				sub = parse_stmt_and_decls(decls);
 
 			if(!sub){
 				/* decls aren't useless - { int i = f(); } - f called */
 				sub = STAT_NEW(code);
+				UCC_ASSERT(!sub->symtab->decls, "replacing existing decls");
+				sub->symtab->decls = decls;
 			}
 
 			/* mark as internal - for duplicate checks */
@@ -748,6 +750,10 @@ stmt *parse_stmt_and_decls()
 			last = 1;
 		}else{
 normal:
+			if(decls){ /* make sure we use `decls' */
+				dynarray_add_array(&current_scope->decls, decls);
+				dynarray_free(decl **, &decls, NULL);
+			}
 			if(curtok != token_close_block){
 				/* fine with a normal statement */
 				sub = parse_stmt();
@@ -822,7 +828,7 @@ stmt *parse_stmt_block()
 
 	EAT(token_open_block);
 
-	t = parse_stmt_and_decls();
+	t = parse_stmt_and_decls(NULL);
 
 	EAT(token_close_block);
 

@@ -329,7 +329,7 @@ int main(int argc, char **argv)
 	fname = NULL;
 
 	/* defaults */
-	cc1_mstack_align = platform_word_size();
+	cc1_mstack_align = log2f(platform_word_size());
 
 	for(i = 1; i < argc; i++){
 		if(!strcmp(argv[i], "-X")){
