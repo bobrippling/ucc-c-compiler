@@ -946,14 +946,19 @@ void out_op_unary(enum op_type op)
 
 void out_cast(type_ref *from, type_ref *to)
 {
+	v_cast(vtop, from, to);
+}
+
+void v_cast(struct vstack *vp, type_ref *from, type_ref *to)
+{
 	/* casting vtop - don't bother if it's a constant, just change the size */
-	if(vtop->type != CONST){
+	if(vp->type != CONST){
 		int szfrom = asm_type_size(from),
 				szto   = asm_type_size(to);
 
 		if(szfrom != szto){
 			if(szto > szfrom){
-				impl_cast_load(from, to,
+				impl_cast_load(vp, from, to,
 						type_ref_is_signed(from));
 			}else{
 				char buf[TYPE_REF_STATIC_BUFSIZ];
@@ -966,7 +971,7 @@ void out_cast(type_ref *from, type_ref *to)
 		}
 	}
 
-	out_change_type(to);
+	vp->t = to;
 }
 
 void out_change_type(type_ref *t)
