@@ -14,14 +14,17 @@
 
 #define VA_ARGS_STR "__VA_ARGS__"
 
+#define ITER_MACROS(m)                \
+	macro **i, *m;                      \
+	for(i = macros; i && (m = *i); i++)
+
 macro **macros = NULL;
 
 macro *macro_find(const char *sp)
 {
-	macro **i;
-	for(i = macros; i && *i; i++)
-		if(!strcmp((*i)->nam, sp))
-			return *i;
+	ITER_MACROS(m)
+		if(!strcmp(m->nam, sp))
+			return m;
 	return NULL;
 }
 
@@ -84,9 +87,7 @@ void macro_remove(const char *nam)
 
 void macros_dump(void)
 {
-	macro **i;
-	for(i = macros; i && *i; i++){
-		macro *const m = *i;
+	ITER_MACROS(m){
 		if(m->val){
 			printf("#define %s", m->nam);
 			switch(m->type){
@@ -107,4 +108,10 @@ void macros_dump(void)
 			printf(" %s\n", m->val);
 		}
 	}
+}
+
+void macros_stats(void)
+{
+	ITER_MACROS(m)
+		printf("%s %d\n", m->nam, m->use_cnt);
 }

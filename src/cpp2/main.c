@@ -104,7 +104,7 @@ int main(int argc, char **argv)
 {
 	const char *infname, *outfname;
 	int ret = 0;
-	int dump = 0;
+	enum { NONE, MACROS, STATS } dump = NONE;
 	int i;
 	int platform_win32 = 0;
 
@@ -218,12 +218,19 @@ int main(int argc, char **argv)
 				break;
 
 			case 'd':
-				if(strcmp(argv[i] + 2, "M"))
+				if(argv[i][3])
+					goto usage;
+				switch(argv[i][2]){
+					case 'M':
+					case 'S':
+						/* list #defines */
+						dump = argv[i][2] == 'M' ? MACROS : STATS;
+						no_output = 1;
+						option_line_info = 0;
+						break;
+					default:
 						goto usage;
-				/* list #defines */
-				dump = 1;
-				no_output = 1;
-				option_line_info = 0;
+				}
 				break;
 
 			case '\0':
@@ -269,8 +276,16 @@ int main(int argc, char **argv)
 
 	preprocess();
 
-	if(dump)
-		macros_dump();
+	switch(dump){
+		case NONE:
+			break;
+		case MACROS:
+			macros_dump();
+			break;
+		case STATS:
+			macros_stats();
+			break;
+	}
 
 	free(dirname_pop());
 
@@ -289,6 +304,7 @@ usage:
 				"  -o output: output file\n"
 				"  -P: don't add #line directives\n"
 				"  -dM: debug output\n"
+				"  -dS: print macro usage stats\n"
 				"  -MM: generate Makefile dependencies\n"
 				, stderr);
 	return 1;

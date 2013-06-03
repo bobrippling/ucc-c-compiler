@@ -447,6 +447,10 @@ arg_ld:
 					ADD_ARG(mode_assemb);
 					continue;
 
+				case 'M':
+				case 'd':
+					goto arg_cpp;
+
 				case 'x':
 				{
 					const char *arg;
@@ -486,8 +490,6 @@ arg_ld:
 						gopts.nostartfiles = 1;
 					else if(!strcmp(argv[i], "-nostdinc"))
 						stdinc = 0;
-					else if(!strcmp(argv[i], "-MM") || !strcmp(argv[i], "-dM"))
-						goto arg_cpp;
 					else if(!strcmp(argv[i], "-###"))
 						ucc_ext_cmds_show(1), ucc_ext_cmds_noop(1);
 					else if(!strcmp(argv[i], "-v"))

@@ -21,6 +21,7 @@ macro *macro_add_func(const char *nam, const char *val,
 macro *macro_find(const char *sp);
 void   macro_remove(const char *nam);
 void   macros_dump(void);
+void   macros_stats(void);
 
 extern macro **macros;
 
