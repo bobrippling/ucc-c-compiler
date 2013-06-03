@@ -101,15 +101,21 @@ void fold_expr_assign(expr *e, symtable *stab)
 				const sintval_t kexp = k.bits.iv.val;
 				/* highest may be -1 - k.bits.iv.val is zero */
 				const int highest = val_highest_bit(k.bits.iv.val);
+				const int is_signed = type_ref_is_signed(mem->field_width->tree_type);
 
 				const_fold(mem->field_width, &k);
 
 				UCC_ASSERT(k.type == CONST_VAL, "bitfield size not val?");
 
-				if(highest >= (sintval_t)k.bits.iv.val){
+				if(highest > (sintval_t)k.bits.iv.val
+				|| (is_signed && highest == (sintval_t)k.bits.iv.val))
+				{
+					sintval_t kexp_to = kexp & ~(-1UL << k.bits.iv.val);
+
 					WARN_AT(&e->where,
-							"truncation in assignment to bitfield alters value: %" INTVAL_FMT_D " -> %" INTVAL_FMT_D,
-							kexp, kexp & ~(-1UL << k.bits.iv.val));
+							"truncation in assignment to bitfield alters value: "
+							"%" INTVAL_FMT_D " -> %" INTVAL_FMT_D,
+							kexp, kexp_to);
 				}
 			}
 		}
