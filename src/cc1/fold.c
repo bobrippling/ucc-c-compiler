@@ -496,6 +496,13 @@ void fold_decl(decl *d, symtable *stab)
 				DIE_AT(&d->where,
 						"none-anonymous bitfield \"%s\" with 0-width",
 						d->spel);
+		}else{
+			const unsigned max = CHAR_BIT * type_ref_size(d->ref, &d->where);
+			if(k.bits.iv.val > max){
+				DIE_AT(&d->where,
+						"bitfield too large for \"%s\" (%u bits)",
+						decl_to_str(d), max);
+			}
 		}
 
 		if(!type_ref_is_integral(d->ref))
