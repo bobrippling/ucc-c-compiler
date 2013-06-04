@@ -38,13 +38,13 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 
 	chosen = SIZEOF_WHAT(e);
 
-	if(e->expr && expr_kind(e->expr, identifier)){
-		decl *d = e->expr->bits.ident.sym->decl;
+	if(e->expr && expr_kind(e->expr, struct)){
+		decl *d = e->expr->bits.struct_mem.d;
 
 		if(d->field_width){
 			if(e->what_of == what_typeof){
 				WARN_AT(&e->where, "typeof applied to a bit-field "
-						"- using underlying type");
+						"- using underlying type (%s)", type_ref_to_str(d->ref));
 			}else{
 				DIE_AT(&e->where, "%s applied to a bit-field",
 						sizeof_what(e->what_of));
