@@ -739,7 +739,7 @@ static stmt *parse_stmt_and_decls(decl **with_decls)
 
 			if(!sub){
 				/* decls aren't useless - { int i = f(); } - f called */
-				sub = STAT_NEW(code);
+				sub = STAT_NEW_NEST(code); /* need a new symtable */
 				UCC_ASSERT(!sub->symtab->decls, "replacing existing decls");
 				sub->symtab->decls = decls;
 			}
