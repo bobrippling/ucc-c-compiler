@@ -754,6 +754,21 @@ void fold_disallow_st_un(expr *e, const char *desc)
 	}
 }
 
+void fold_disallow_bitfield(expr *e, const char *desc, ...)
+{
+	if(e && expr_kind(e, struct)){
+		decl *d = e->bits.struct_mem.d;
+
+		if(d->field_width){
+			va_list l;
+			va_start(l, desc);
+			vdie(&e->where, 1, desc, l);
+			va_end(l);
+		}
+	}
+
+}
+
 #ifdef SYMTAB_DEBUG
 void print_stab(symtable *st, int current, where *w)
 {

@@ -22,6 +22,7 @@ void fold_typecheck(expr *lhs, expr *rhs, symtable *stab, where *where);
 
 void fold_need_expr(expr *e, const char *stmt_desc, int is_test);
 void fold_disallow_st_un(expr *e, const char *desc);
+void fold_disallow_bitfield(expr *e, const char *desc, ...);
 
 sym *fold_inc_writes_if_sym(expr *e, symtable *stab);
 
