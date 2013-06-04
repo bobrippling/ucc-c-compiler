@@ -15,6 +15,8 @@ main()
 {
 	struct bits bs;
 
+	memset(&bs, 0, sizeof bs);
+
 	bs.bit = 1;
 	bs.second = 1;
 

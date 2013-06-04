@@ -24,6 +24,8 @@ main()
 {
 	struct A a;
 
+	memset(&a, 0, sizeof a);
+
 	a.f_1 = 1;
 	a.bf_1 = 2;
 	a.f_2 = 3;

@@ -23,6 +23,8 @@ main()
 {
 	struct half_bytes a;
 
+	memset(&a, 0, sizeof a);
+
 	a.f_1 = 1;
 	a.bf_1 = 2;
 	a.bf_2 = 1;

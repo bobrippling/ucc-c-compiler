@@ -11,7 +11,7 @@ struct bits
 chk(struct bits *p)
 {
 	// check the bottom two bits
-	char v = 0x3 & (*(char *)p);
+	char v = 0x3 & *(char *)p;
 	if(v != 3)
 		abort();
 }
