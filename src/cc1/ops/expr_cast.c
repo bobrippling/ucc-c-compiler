@@ -8,6 +8,7 @@
 #include "expr_cast.h"
 #include "../out/asm.h"
 #include "../sue.h"
+#include "../defs.h"
 
 const char *str_expr_cast()
 {
@@ -46,7 +47,10 @@ void fold_const_expr_cast(expr *e, consty *k)
 
 #define CAST(sz, t) case sz: piv->val = (t)piv->val; break
 	/*
-#define CAST(sz, t) case sz: piv->val = piv->val & ~(-1 << (sz * 8 - 1)); break
+#define CAST(sz, t)                                            \
+					case sz:                                             \
+						piv->val = piv->val & ~(-1UL << (sz * CHAR_BIT));  \
+						break
 	*/
 
 					CAST(1, char);
@@ -105,8 +109,7 @@ void fold_const_expr_cast(expr *e, consty *k)
 
 							/* mask out bits so we have it truncated to `l' */
 							if(l < pws){
-								/* 8 = bits in a byte */
-								new &= ~(~0UL << (8 * l));
+								new &= ~(-1UL << (CHAR_BIT * l));
 
 								if(k->bits.addr.bits.memaddr != new)
 									/* can't cast without losing value - not const */
