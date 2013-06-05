@@ -81,7 +81,7 @@ static type *type_new_primitive1(enum type_primitive p)
 	type *t = umalloc(sizeof *t);
 	where_new(&t->where);
 	t->primitive = p;
-	t->is_signed = 1;
+	t->is_signed = p != type__Bool;
 	return t;
 }
 
@@ -95,7 +95,7 @@ const type *type_new_primitive_sue(enum type_primitive p, struct_union_enum_st *
 const type *type_new_primitive_signed(enum type_primitive p, int sig)
 {
 	type *t = type_new_primitive1(p);
-	t->is_signed = sig;
+	t->is_signed = sig && p != type__Bool;
 	return t;
 }
 
