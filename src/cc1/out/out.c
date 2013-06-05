@@ -493,7 +493,8 @@ void out_pulltop(int i)
 void bitfield_scalar_merge(const struct vbitfield *const bf)
 {
 	/* load in,
-	 * &-out where we want our value,
+	 * &-out where we want our value (to 0),
+	 * &-out our value (so we don't affect other bits),
 	 * |-in our new value,
 	 * store
 	 */
@@ -508,10 +509,7 @@ void bitfield_scalar_merge(const struct vbitfield *const bf)
 	vtop->bitfield.nbits = 0;
 	/* stack: val, store, store-less-bitfield */
 
-	/* load the bitfield without using bitfield semantics
-	 * FIXME: unaligned access - i386/x86 ABI says it should be aligned
-	 * i.e. need to fix struct_pack() code
-	 */
+	/* load the bitfield without using bitfield semantics */
 	out_deref();
 	/* stack: val, store, orig-val */
 	out_pulltop(2);
@@ -536,11 +534,7 @@ void bitfield_scalar_merge(const struct vbitfield *const bf)
 	 * << = 11111100
 	 * ~  = 00000011
 	 */
-	if(bf->off)
-		mask_back_0s = -1UL << (bf->off * 1);
-	else
-		mask_back_0s = 0;
-	mask_back_0s = ~mask_back_0s;
+	mask_back_0s = ~(-1UL << bf->off);
 
 	/* | = 111100011 */
 	mask_rm = mask_leading_1s | mask_back_0s;
@@ -733,7 +727,6 @@ void out_op(enum op_type op)
 				break;
 
 			case op_and:
-				/* FIXME/signed: signed check */
 				if((sintval_t)t_const->bits.val == -1)
 					goto ignore_const;
 				break;
