@@ -23,7 +23,7 @@ main()
 	if(0[(int *)&bs] != 1)
 		return 1;
 	if(1[(int *)&bs] != 1) // ensure it's packed to an int spacing
-		return 1;
+		return 2;
 
 	return 0;
 }

@@ -10,12 +10,12 @@ main()
 		BF(4);
 	} a;
 
-	*(int *)&a = 0;
+	*(char *)&a = 0; // needed to clear the upper 4 bits
 	a.b1 = 1;
 	a.b2 = 0;
 	a.b3 = 0;
 	a.b4 = 1;
 
-	int i = *(int *)&a; // 9
+	char i = *(char *)&a; // 9
 	return i;
 }

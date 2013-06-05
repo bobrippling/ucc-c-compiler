@@ -16,7 +16,6 @@ chk(int a, int b)
 main()
 {
 	struct A a;
-	memset(&a, 0, sizeof a);
 
 	a.x = 3;
 	a.y = 5;
