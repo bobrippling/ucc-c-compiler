@@ -251,7 +251,7 @@ int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 		return sue_enum_size(sue);
 
 	}else{
-		const unsigned bitfield_lim = CHAR_BIT * type_primitive_size(BITFIELD_MAX_TY);
+		unsigned bf_cur_lim;
 		int align_max = 1;
 		int sz_max = 0;
 		int offset = 0;
@@ -295,9 +295,21 @@ int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 					/* align next field / treat as new bitfield */
 					struct_pack_finish_bitfield(&offset, &bitfield.current_off);
 
-				}else if(!bitfield.current_off || bitfield.current_off + bits > bitfield_lim){
-					if(bitfield.current_off)
+				}else if(!bitfield.current_off
+				|| bitfield.current_off + bits > bf_cur_lim)
+				{
+					if(bitfield.current_off){
+						/* bitfield overflow - repad */
+						WARN_AT(&d->where, "bitfield overflow (%d + %d > %d) - "
+								"moved to next boundary", bitfield.current_off, bits,
+								bf_cur_lim);
+
+						/* don't pay attention to the current bitfield offset */
+						bitfield.current_off = 0;
 						struct_pack_finish_bitfield(&offset, &bitfield.current_off);
+					}
+
+					bf_cur_lim = CHAR_BIT * type_ref_size(d->ref, &d->where);
 
 					/* Get some initial padding.
 					 * Note that we want to affect the align_max
@@ -327,8 +339,11 @@ normal:
 			if(sue->primitive == type_struct && !d->field_width){
 				const int prev_offset = offset;
 
-				if(bitfield.current_off)
-					struct_pack_finish_bitfield(&offset, &bitfield.current_off);
+				if(bitfield.current_off){
+					/* we automatically pad on the next struct_pack,
+					 * don't struct_pack() here */
+					bitfield.current_off = 0;
+				}
 
 				struct_pack(d, &offset, sz, align);
 

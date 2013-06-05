@@ -140,7 +140,6 @@ struct decl
 
 	char *spel, *spel_asm; /* if !spel but spel_asm, it's global asm??? */
 
-#define BITFIELD_MAX_TY type_long
 	expr *field_width;
 	unsigned struct_offset;
 	unsigned struct_offset_bitfield; /* add onto struct_offset */
