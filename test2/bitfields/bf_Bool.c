@@ -1,3 +1,5 @@
+// RUN: %ocheck 1 %s
+
 main()
 {
 	struct

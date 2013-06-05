@@ -1,3 +1,6 @@
+// RUN: %ucc -o %t %s
+// RUN: %t | %output_check 'sz=16, p = -1 -1 127 -1'
+
 struct half_bytes
 {
 	int f_1;
@@ -24,11 +27,6 @@ main()
 	a.bf_1 = -1UL;
 	a.bf_2 = -1UL;
 	a.f_2 = -1UL;
-
-	//a.f_1 = 1; // BUG
-	//a.bf_1 = 2;
-	//a.bf_2 = 3;
-	//a.f_2 = 4;
 
 	pbf(&a);
 }
