@@ -45,16 +45,16 @@ FILE *stdout = &_stdout;
 FILE *stderr = &_stderr;
 
 /* Private */
-static void fprintd_rec(FILE *f, int n, int base)
+static void fprintd_rec(FILE *f, long long n, int base)
 {
-	int d;
+	long long d;
 	d = n / base;
 	if(d)
 		fprintd_rec(f, d, base);
 	fwrite("0123456789abcdef" + n % base, 1, 1, f);
 }
 
-static void fprintn(FILE *f, int n, int base, int is_signed)
+static void fprintn(FILE *f, long long n, int base, int is_signed)
 {
 	if(is_signed && n < 0){
 		fwrite("-", 1, 1, f);
@@ -64,12 +64,12 @@ static void fprintn(FILE *f, int n, int base, int is_signed)
 	fprintd_rec(f, n, base);
 }
 
-static void fprintd(FILE *f, int n, int is_signed)
+static void fprintd(FILE *f, long long n, int is_signed)
 {
 	fprintn(f, n, 10, is_signed);
 }
 
-static void fprintx(FILE *f, int n, int is_signed)
+static void fprintx(FILE *f, long long n, int is_signed)
 {
 	fprintn(f, n, 16, is_signed);
 }
@@ -368,6 +368,13 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 			}
 #endif
 
+			int lcount = 0;
+			while(*fmt == 'l')
+				lcount++, fmt++;
+
+			if(lcount > 2)
+				goto wat;
+
 			switch(*fmt){
 				case 's':
 				{
@@ -383,12 +390,16 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 				case 'u':
 				case 'd':
 				{
-					const int n = va_arg(ap, int);
+					const long long n =
+						lcount == 0 ? va_arg(ap, int)  :
+						lcount == 1 ? va_arg(ap, long) :
+						              va_arg(ap, long long);
 
 #ifdef PRINTF_ENABLE_PADDING
 					if(pad){
 						if(n){
-							int len = 0, copy = n;
+							int len = 0;
+							long long copy = n;
 
 							while(copy){
 								copy /= 10;
@@ -427,6 +438,7 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 					break;
 
 				default:
+wat:
 					fwrite(fmt, 1, 1, file); /* default to just printing the char */
 			}
 
