@@ -27,7 +27,7 @@ struct vstack
 
 	union
 	{
-		unsigned long val;
+		intval_t val;
 		int reg;
 		int off_from_bp;
 		struct flag_opts

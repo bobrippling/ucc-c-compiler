@@ -733,7 +733,8 @@ void impl_jcond(int true, const char *lbl)
 		case CONST:
 			if(true == !!vtop->bits.val){
 				out_asm("jmp %s", lbl);
-				out_comment("// constant jmp condition %ld", vtop->bits.val);
+				out_comment("// constant jmp condition %" INTVAL_FMT_D,
+						vtop->bits.val);
 			}
 			break;
 
