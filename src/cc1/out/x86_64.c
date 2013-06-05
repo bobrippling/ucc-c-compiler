@@ -82,10 +82,22 @@ static const char *vstack_str_r_ptr(char buf[VSTACK_STR_SZ], struct vstack *vs, 
 {
 	switch(vs->type){
 		case CONST:
-			/* FIXME/signed: better output for intval */
-			SNPRINTF(buf, VSTACK_STR_SZ, "%s%s",
-					ptr ? "" : "$", v_val_str(vs));
+		{
+			char *p = buf;
+			/* we should never get a 64-bit value here
+			 * since movabsq should load those in
+			 */
+			UCC_ASSERT(!intval_is_64_bit(vs->bits.val, type_ref_is_signed(vs->t)),
+					"can't load 64-bit constants here (0x%llx)", vs->bits.val);
+
+			if(!ptr)
+				*p++ = '$';
+
+			intval_str(p, VSTACK_STR_SZ - (!ptr ? 1 : 0),
+					vs->bits.val,
+					type_ref_is_signed(vs->t));
 			break;
+		}
 
 		case FLAG:
 			ICE("%s shouldn't be called with cmp-flag data", __func__);
@@ -270,6 +282,26 @@ static void x86_load(struct vstack *from, int reg, int lea)
 					vstack_str(from),
 					x86_reg_str(reg, from->t));
 			break;
+	}
+}
+
+void impl_load_iv(struct vstack *vp)
+{
+	if(intval_is_64_bit(vp->bits.val, type_ref_is_signed(vp->t))){
+		int r = v_unused_reg(1);
+
+		/* TODO: 64-bit registers in general on 32-bit */
+		UCC_ASSERT(!cc1_m32, "TODO: 32-bit 64-literal loads");
+
+		UCC_ASSERT(type_ref_size(vp->t, NULL) == 8,
+				"loading 64-bit literal (%lld) for non-long? (%s)",
+				vp->bits.val, type_ref_to_str(vp->t));
+
+		out_asm("movabsq $%" INTVAL_FMT_D ", %%%s",
+				vp->bits.val, x86_reg_str(r, vp->t));
+
+		vp->type = REG;
+		vp->bits.reg = r;
 	}
 }
 

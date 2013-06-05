@@ -12,6 +12,7 @@
 #include "sue.h"
 #include "decl.h"
 #include "cc1.h"
+#include "defs.h"
 
 const where *eof_where = NULL;
 
@@ -75,6 +76,23 @@ int intval_str(char *buf, size_t nbuf, intval_t v, int is_signed)
 			is_signed ? "%" INTVAL_FMT_D : "%" INTVAL_FMT_U,
 			v);
 }
+
+int intval_is_64_bit(const intval_t val, const int is_signed)
+{
+#define INT_SHIFT (CHAR_BIT * sizeof(int))
+	if(is_signed){
+		const sintval_t as_signed = val;
+
+		if(as_signed < 0){
+			/* need unsigned (i.e. shr) shift */
+			return (int)((intval_t)val >> INT_SHIFT) != -1;
+		}
+	}
+
+	return (val >> INT_SHIFT) != 0;
+#undef INT_SHIFT
+}
+
 
 static type *type_new_primitive1(enum type_primitive p)
 {

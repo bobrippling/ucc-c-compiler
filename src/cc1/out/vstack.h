@@ -83,8 +83,6 @@ void v_unreserve_reg(const int r);
 
 void v_deref_decl(struct vstack *vp);
 
-const char *v_val_str(struct vstack *vp);
-
 int impl_n_scratch_regs(void);
 int impl_n_call_regs(void);
 int impl_ret_reg(void);

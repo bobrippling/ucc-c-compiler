@@ -406,17 +406,7 @@ void out_push_iv(type_ref *t, intval *iv)
 
 	vtop->type = CONST;
 	vtop->bits.val = iv->val;
-}
-
-const char *v_val_str(struct vstack *vp)
-{
-	static char buf[64];
-
-	UCC_ASSERT(vp->type == CONST, "val?");
-
-	intval_str(buf, sizeof buf, vp->bits.val, type_ref_is_signed(vp->t));
-
-	return buf;
+	impl_load_iv(vtop);
 }
 
 void out_push_i(type_ref *t, int i)
