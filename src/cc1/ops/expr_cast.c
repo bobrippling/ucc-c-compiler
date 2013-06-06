@@ -66,10 +66,37 @@ void fold_const_expr_cast(expr *e, consty *k)
 							type_ref_to_str(e->tree_type), sz);
 				}
 
-				if(e->expr_cast_implicit && old != piv->val)
-					WARN_AT(&e->where,
-							"implicit cast changes value from %" INTVAL_FMT_D " to %" INTVAL_FMT_D,
-							old, piv->val);
+				if(e->expr_cast_implicit && old != piv->val){
+#define CAST_WARN(pre_fmt, pre_val, post_fmt, post_val)  \
+						WARN_AT(&e->where,                           \
+								"implicit cast changes value from %"     \
+								pre_fmt " to %" post_fmt,                \
+								pre_val, post_val)
+
+					const int from_sig = type_ref_is_signed(e->expr->tree_type),
+								to_sig = type_ref_is_signed(e->tree_type);
+
+					/* nice... */
+					if(from_sig){
+						if(to_sig)
+							CAST_WARN(
+									INTVAL_FMT_D, (long long signed)old,
+									INTVAL_FMT_D, (long long signed)to_iv);
+						else
+							CAST_WARN(
+									INTVAL_FMT_D, (long long signed)old,
+									INTVAL_FMT_U, (long long unsigned)piv->val);
+					}else{
+						if(to_sig)
+							CAST_WARN(
+									INTVAL_FMT_U, (long long unsigned)old,
+									INTVAL_FMT_D, (long long signed)to_iv);
+						else
+							CAST_WARN(
+									INTVAL_FMT_U, (long long unsigned)old,
+									INTVAL_FMT_U, (long long unsigned)piv->val);
+					}
+				}
 			}
 #undef piv
 			break;
