@@ -39,19 +39,16 @@ void fold_const_expr_cast(expr *e, consty *k)
 			}else{
 				const int sz = type_ref_size(e->tree_type, &e->where);
 				const intval_t old = piv->val;
+				intval_t to_iv;
 
 				/* TODO: disallow for ptrs/non-ints */
 
 				switch(sz){
-					/* TODO: unsigned */
-
-#define CAST(sz, t) case sz: piv->val = (t)piv->val; break
-	/*
 #define CAST(sz, t)                                            \
 					case sz:                                             \
 						piv->val = piv->val & ~(-1UL << (sz * CHAR_BIT));  \
+						to_iv = (intval_t)(t)piv->val;                     \
 						break
-	*/
 
 					CAST(1, char);
 					CAST(2, short);
@@ -60,6 +57,7 @@ void fold_const_expr_cast(expr *e, consty *k)
 #undef CAST
 
 					case 8:
+					to_iv = old;
 					break; /* no cast - max word size */
 
 					default:
