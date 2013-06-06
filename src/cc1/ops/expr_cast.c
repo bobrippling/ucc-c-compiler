@@ -37,8 +37,10 @@ void fold_const_expr_cast(expr *e, consty *k)
 				piv->val = !!piv->val; /* analagous to out/out.c::out_normalise()'s constant case */
 
 			}else{
-				const int sz = type_ref_size(e->tree_type, &e->where);
+				const unsigned sz = type_ref_size(e->tree_type, &e->where);
 				const intval_t old = piv->val;
+				const int to_sig   = type_ref_is_signed(e->tree_type);
+				const int from_sig = type_ref_is_signed(e->expr->tree_type);
 				intval_t to_iv;
 
 				/* TODO: disallow for ptrs/non-ints */
@@ -66,15 +68,14 @@ void fold_const_expr_cast(expr *e, consty *k)
 							type_ref_to_str(e->tree_type), sz);
 				}
 
-				if(e->expr_cast_implicit && old != piv->val){
+				if(e->expr_cast_implicit
+				&& (to_sig && from_sig ? old != to_iv : old != piv->val))
+				{
 #define CAST_WARN(pre_fmt, pre_val, post_fmt, post_val)  \
 						WARN_AT(&e->where,                           \
 								"implicit cast changes value from %"     \
 								pre_fmt " to %" post_fmt,                \
 								pre_val, post_val)
-
-					const int from_sig = type_ref_is_signed(e->expr->tree_type),
-								to_sig = type_ref_is_signed(e->tree_type);
 
 					/* nice... */
 					if(from_sig){
