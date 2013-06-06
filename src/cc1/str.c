@@ -10,33 +10,6 @@
 #include "str.h"
 #include "macros.h"
 
-int escape_char(int c)
-{
-	struct
-	{
-		char from, to;
-	} escapechars[] = {
-		{ 'n', '\n'  },
-		{ 't', '\t'  },
-		{ 'b', '\b'  },
-		{ 'r', '\r'  },
-		{ 'v', '\v'  },
-		{ 'f', '\f'  },
-		{ '0', '\0'  },
-		{ 'e', '\33' },
-		{ '\\', '\\' },
-		{ '\'', '\'' },
-		{ '"',  '"'  }
-	};
-	unsigned int i;
-
-	for(i = 0; i < sizeof(escapechars) / sizeof(escapechars[0]); i++)
-		if(escapechars[i].from == c)
-			return escapechars[i].to;
-
-	return -1;
-}
-
 void char_seq_to_iv(char *s, intval *iv, int *plen, enum base mode)
 {
 #define READ_NUM(test, base)             \

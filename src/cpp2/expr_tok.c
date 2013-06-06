@@ -57,6 +57,16 @@ end_ty:
 		return;
 	}
 
+	if(*tok_pos == '\''){
+		/* char literal */
+		char *fin = char_quotefin(tok_pos + 1);
+
+		/* TODO: escape*() tidy up */
+		ICE("TODO: char literals");
+
+		return;
+	}
+
 	tok_cur = *tok_pos++;
 
 	/* check for double-char ops, e.g. <<, >=, etc */
