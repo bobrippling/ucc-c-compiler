@@ -36,7 +36,7 @@ void fold_const_expr_cast(expr *e, consty *k)
 			if(type_ref_is_type(e->tree_type, type__Bool)){
 				piv->val = !!piv->val; /* analagous to out/out.c::out_normalise()'s constant case */
 
-			}else{
+			}else if(e->expr_cast_implicit){ /* otherwise this is a no-op */
 				const unsigned sz = type_ref_size(e->tree_type, &e->where);
 				const intval_t old = piv->val;
 				const int to_sig   = type_ref_is_signed(e->tree_type);
@@ -49,9 +49,7 @@ void fold_const_expr_cast(expr *e, consty *k)
 				 * so negative numbers, for example, are preserved */
 				to_iv = intval_truncate(piv->val, sz, &to_iv_sign_ext);
 
-				if(e->expr_cast_implicit
-				&& (to_sig && from_sig ? old != to_iv_sign_ext : old != to_iv))
-				{
+				if(to_sig && from_sig ? old != to_iv_sign_ext : old != to_iv){
 #define CAST_WARN(pre_fmt, pre_val, post_fmt, post_val)  \
 						WARN_AT(&e->where,                           \
 								"implicit cast changes value from %"     \
