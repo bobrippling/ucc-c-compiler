@@ -531,7 +531,7 @@ void bitfield_scalar_merge(const struct vbitfield *const bf)
 
 	/* &-out our value */
 	out_push_i(type_ref_cached_LONG(), mask_rm);
-	out_cast(vtop->t, ty);
+	out_cast(ty);
 	out_comment("bitmask/rm = %#lx", mask_rm);
 	out_op(op_and);
 
@@ -927,15 +927,17 @@ void out_op_unary(enum op_type op)
 	impl_op_unary(op);
 }
 
-void out_cast(type_ref *from, type_ref *to)
+void out_cast(type_ref *to)
 {
-	v_cast(vtop, from, to);
+	v_cast(vtop, to);
 }
 
-void v_cast(struct vstack *vp, type_ref *from, type_ref *to)
+void v_cast(struct vstack *vp, type_ref *to)
 {
 	/* casting vtop - don't bother if it's a constant, just change the size */
 	if(vp->type != CONST){
+		type_ref *from = vp->t;
+
 		int szfrom = asm_type_size(from),
 				szto   = asm_type_size(to);
 

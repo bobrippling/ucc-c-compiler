@@ -249,7 +249,7 @@ void gen_expr_cast(expr *e)
 		}
 	}
 
-	out_cast(tfrom, tto);
+	out_cast(tto);
 
 	if(type_ref_is_type(tto, type__Bool)) /* 1 or 0 */
 		out_normalise();
