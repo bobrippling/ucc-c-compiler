@@ -242,7 +242,7 @@ retry:
 
 	if(lib){
 lib:
-		f = include_fopen(current_include_dname, fname, &path);
+		f = include_search_fopen(current_include_dname, fname, &path);
 
 		if(!f)
 			CPP_DIE("can't find include file %c%s%c",
@@ -250,7 +250,7 @@ lib:
 	}else{
 		path = ustrprintf("%s/%s", current_include_dname, fname);
 abs_path:
-		f = fopen(path, "r");
+		f = include_fopen(path);
 		if(!f){
 			/* attempt lib */
 			goto lib;

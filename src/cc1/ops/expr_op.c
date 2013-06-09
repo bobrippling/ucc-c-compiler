@@ -105,11 +105,24 @@ void fold_const_expr_op(expr *e, consty *k)
 				case op_shiftr:
 				{
 					const unsigned ty_sz = CHAR_BIT * type_ref_size(e->lhs->tree_type, &e->lhs->where);
-					if(rhs.bits.iv.val >= ty_sz){
+					int undefined = 0;
+
+					if(type_ref_is_signed(e->rhs->tree_type)
+					&& (sintval_t)rhs.bits.iv.val < 0)
+					{
+						WARN_AT(&e->rhs->where, "shift count is negative (%"
+								INTVAL_FMT_D ")", (sintval_t)rhs.bits.iv.val);
+
+						undefined = 1;
+					}else if(rhs.bits.iv.val >= ty_sz){
 						WARN_AT(&e->rhs->where, "shift count >= width of %s (%u)",
 								type_ref_to_str(e->lhs->tree_type), ty_sz);
 
+						undefined = 1;
+					}
 
+
+					if(undefined){
 						if(lhs.type == CONST_VAL){
 							/* already 0 */
 							k->type = CONST_VAL;

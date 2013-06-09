@@ -40,6 +40,10 @@ for(@ARGV){
 (my $target = basename($file)) =~ s/\.[a-z]+$/.out/;
 $target = "./$target";
 
+END {
+	unlink $target;
+}
+
 my %vars = (
 	's'         => $file,
 	't'         => $target,
@@ -73,8 +77,6 @@ while(<F>){
 	}
 }
 close F;
-
-unlink $target;
 
 if($ran){
 	exit 0;

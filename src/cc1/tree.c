@@ -60,7 +60,7 @@ final:
 
 int intval_cmp(const intval *a, const intval *b)
 {
-	const long la = a->val, lb = b->val;
+	const intval_t la = a->val, lb = b->val;
 
 	if(la > lb)
 		return 1;

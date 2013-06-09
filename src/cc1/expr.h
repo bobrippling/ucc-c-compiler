@@ -59,7 +59,11 @@ struct expr
 
 
 	int freestanding; /* e.g. 1; needs use, whereas x(); doesn't - freestanding */
-
+	struct
+	{
+		int const_folded;
+		consty k;
+	} const_eval;
 
 	enum op_type op;
 
