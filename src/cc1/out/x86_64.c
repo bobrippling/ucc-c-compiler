@@ -289,6 +289,7 @@ void impl_load_iv(struct vstack *vp)
 {
 	if(intval_is_64_bit(vp->bits.val, type_ref_is_signed(vp->t))){
 		int r = v_unused_reg(1);
+		char buf[INTVAL_BUF_SIZ];
 
 		/* TODO: 64-bit registers in general on 32-bit */
 		UCC_ASSERT(!cc1_m32, "TODO: 32-bit 64-literal loads");
@@ -297,8 +298,11 @@ void impl_load_iv(struct vstack *vp)
 				"loading 64-bit literal (%lld) for non-long? (%s)",
 				vp->bits.val, type_ref_to_str(vp->t));
 
-		out_asm("movabsq $%" INTVAL_FMT_D ", %%%s",
-				vp->bits.val, x86_reg_str(r, vp->t));
+		intval_str(buf, sizeof buf,
+				vp->bits.val, type_ref_is_signed(vp->t));
+
+		out_asm("movabsq $%s, %%%s",
+				buf, x86_reg_str(r, vp->t));
 
 		vp->type = REG;
 		vp->bits.reg = r;

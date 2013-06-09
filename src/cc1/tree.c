@@ -73,8 +73,10 @@ int intval_str(char *buf, size_t nbuf, intval_t v, int is_signed)
 {
 	return snprintf(
 			buf, nbuf,
-			is_signed ? "%" INTVAL_FMT_D : "%" INTVAL_FMT_U,
-			v);
+			is_signed
+				? "%" INTVAL_FMT_D
+				: "%" INTVAL_FMT_U,
+			v, is_signed);
 }
 
 int intval_is_64_bit(const intval_t val, const int is_signed)
