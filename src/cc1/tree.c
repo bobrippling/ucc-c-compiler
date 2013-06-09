@@ -112,6 +112,12 @@ intval_t intval_truncate(
 
 int intval_is_64_bit(const intval_t val, type_ref *ty)
 {
+	/* must apply the truncation here */
+	intval_t trunc;
+
+	trunc = intval_truncate(
+			val, type_ref_size(ty, &ty->where), NULL);
+
 #define INT_SHIFT (CHAR_BIT * sizeof(int))
 	if(type_ref_is_signed(ty)){
 		const sintval_t as_signed = val;
