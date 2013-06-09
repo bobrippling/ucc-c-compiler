@@ -199,9 +199,10 @@ void fold_enum(struct_union_enum_st *en, symtable *stab)
 	}
 }
 
-static void struct_pack(decl *d, int *poffset, unsigned sz, unsigned align)
+static void struct_pack(
+		decl *d, unsigned *poffset, unsigned sz, unsigned align)
 {
-	int after_space;
+	unsigned after_space;
 
 	pack_next(poffset, &after_space, sz, align);
 	/* offset is the end of the decl, after_space is the start */
@@ -209,7 +210,8 @@ static void struct_pack(decl *d, int *poffset, unsigned sz, unsigned align)
 	d->struct_offset = after_space;
 }
 
-static void struct_pack_finish_bitfield(int *poffset, int *pbitfield_current)
+static void struct_pack_finish_bitfield(
+		unsigned *poffset, unsigned *pbitfield_current)
 {
 	/* gone from a bitfield to a normal field - pad by the overflow */
 	unsigned change = *pbitfield_current / CHAR_BIT;
@@ -220,7 +222,7 @@ static void struct_pack_finish_bitfield(int *poffset, int *pbitfield_current)
 }
 
 static void bitfield_size_align(
-		type_ref *tref, int *psz, int *palign, where *from)
+		type_ref *tref, unsigned *psz, unsigned *palign, where *from)
 {
 	/* implementation defined if ty isn't one of:
 	 * unsigned, signed or _Bool.
@@ -252,12 +254,12 @@ int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 
 	}else{
 		unsigned bf_cur_lim;
-		int align_max = 1;
-		int sz_max = 0;
-		int offset = 0;
+		unsigned align_max = 1;
+		unsigned sz_max = 0;
+		unsigned offset = 0;
 		struct
 		{
-			int current_off, first_off;
+			unsigned current_off, first_off;
 		} bitfield;
 		sue_member **i;
 
@@ -268,7 +270,7 @@ int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 
 		for(i = sue->members; i && *i; i++){
 			decl *d = (*i)->struct_member;
-			int align, sz;
+			unsigned align, sz;
 			struct_union_enum_st *sub_sue;
 
 			fold_decl(d, stab);

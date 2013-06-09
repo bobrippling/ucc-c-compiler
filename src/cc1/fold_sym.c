@@ -38,9 +38,9 @@
 							}                                         \
 						}while(0)
 
-int symtab_fold(symtable *tab, int current)
+int symtab_fold(symtable *tab, unsigned current)
 {
-	const int this_start = current;
+	const unsigned this_start = current;
 	int arg_space = 0;
 	char wbuf[WHERE_BUF_SIZ];
 
