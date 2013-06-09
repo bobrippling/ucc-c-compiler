@@ -597,8 +597,8 @@ void fold_symtab_scope(symtable *stab, stmt **pinit_code)
 		if(d->sym){
 			/* arg */
 			UCC_ASSERT(d->sym->type != sym_local || !d->spel /* anon sym, e.g. strk */,
-					"%s given symbol too early",
-					d->spel);
+					"sym (type %d) \"%s\" given symbol too early",
+					d->sym->type, d->spel);
 		}else{
 			d->sym = sym_new(d,
 					!stab->parent || decl_store_static_or_extern(d->store) ?

@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <assert.h>
 
 #include "../util/util.h"
 #include "../util/alloc.h"
@@ -113,6 +114,7 @@ type_ref *parse_type_sue(enum type_primitive prim)
 					| DECL_MULTI_ACCEPT_FIELD_WIDTH
 					| DECL_MULTI_NAMELESS
 					| DECL_MULTI_ALLOW_ALIGNAS,
+					NULL,
 					&dmembers);
 
 			if(!dmembers){
@@ -167,6 +169,42 @@ static void parse_add_attr(decl_attr **append)
 
 		EAT(token_close_paren);
 		EAT(token_close_paren);
+	}
+}
+
+static decl *parse_at_tdef(void)
+{
+	if(curtok == token_identifier){
+		decl *d = scope_find(current_scope, token_current_spel_peek());
+		if(d && d->store == store_typedef)
+			return d;
+	}
+	return NULL;
+}
+
+int parse_at_decl(void)
+{
+	switch(curtok){
+		case token_identifier:
+			return !!parse_at_tdef();
+
+		default:
+			return curtok_is_type_qual()
+				|| curtok_is_type_primitive()
+				|| curtok_is_decl_store();
+	}
+}
+
+static int parse_at_decl_spec(void)
+{
+	switch(curtok){
+		case token_identifier:
+		case token_multiply:
+		case token_xor:
+		case token_open_paren:
+			return 1;
+		default:
+			return 0;
 	}
 }
 
@@ -348,10 +386,8 @@ static type_ref *parse_btype(
 			primitive = type_struct;
 
 		}else if(!signed_set /* can't sign a typedef */
-		&& curtok == token_identifier
-		&& (tdef_decl_test = scope_find(current_scope, token_current_spel_peek())))
+		&& (tdef_decl_test = parse_at_tdef()))
 		{
-
 			/* typedef name or decl:
 			 * if we find a decl named this in our scope,
 			 * we're a reference to that, not a type, e.g.
@@ -368,11 +404,7 @@ static type_ref *parse_btype(
 								*      { short td; }
 								*/
 
-			if(tdef_decl_test->store != store_typedef){
-				/* found an identifier instead */
-				tdef_decl_test = NULL;
-				break;
-			}
+			assert(tdef_decl_test->store == store_typedef);
 
 			tdef_decl = tdef_decl_test;
 			tdef_typeof = expr_new_sizeof_type(tdef_decl->ref, 1);
@@ -972,10 +1004,15 @@ static void check_old_func(decl *d, decl **old_args)
 	free(old_args);
 }
 
-void parse_decls_multi_type(enum decl_multi_mode mode, decl ***pdecls)
+void parse_decls_multi_type(
+		enum decl_multi_mode mode,
+		symtable *scope,
+		decl ***pdecls)
 {
 	const enum decl_mode parse_flag = (mode & DECL_MULTI_CAN_DEFAULT ? DECL_CAN_DEFAULT : 0);
 	decl *last;
+
+	UCC_ASSERT(scope || pdecls, "what shall I do?");
 
 	/* read a type, then *spels separated by commas, then a semi colon, then repeat */
 	for(;;){
@@ -991,7 +1028,7 @@ void parse_decls_multi_type(enum decl_multi_mode mode, decl ***pdecls)
 
 		if(!this_ref){
 			/* can_default makes sure we don't parse { int *p; *p = 5; } the latter as a decl */
-			if(parse_possible_decl() && (mode & DECL_MULTI_CAN_DEFAULT)){
+			if(parse_at_decl_spec() && (mode & DECL_MULTI_CAN_DEFAULT)){
 				this_ref = default_type();
 			}else{
 				return; /* normal exit */
@@ -1001,7 +1038,7 @@ void parse_decls_multi_type(enum decl_multi_mode mode, decl ***pdecls)
 		if(store != store_typedef){
 			struct_union_enum_st *sue = PARSE_type_ref_is_s_or_u(this_ref);
 
-			if(sue && !parse_possible_decl()){
+			if(sue && !parse_at_decl_spec()){
 				/*
 				 * struct { int i; }; - continue to next one
 				 * this is either struct or union, not enum
@@ -1106,7 +1143,7 @@ void parse_decls_multi_type(enum decl_multi_mode mode, decl ***pdecls)
 					parse_add_attr(&d->ref->attr);
 				}else{
 					decl **old_args = NULL;
-					parse_decls_multi_type(0, &old_args);
+					parse_decls_multi_type(0, scope, &old_args);
 					if(old_args){
 						check_old_func(d, old_args);
 
@@ -1128,7 +1165,10 @@ void parse_decls_multi_type(enum decl_multi_mode mode, decl ***pdecls)
 			}
 
 add:
-			dynarray_add(pdecls, d);
+			if(scope)
+				dynarray_add(&scope->decls, d);
+			if(pdecls)
+				dynarray_add(pdecls, d);
 
 			/* FIXME: check later for functions, not here - typedefs */
 			if(PARSE_DECL_IS_FUNC(d)){
@@ -1162,7 +1202,7 @@ add:
 		if(last && !last->func_code){
 next:
 			/* end of type, if we have an identifier, '(' or '*', it's an unknown type name */
-			if(parse_possible_decl() && last)
+			if(parse_at_decl_spec() && last)
 				DIE_AT(NULL, "unknown type name '%s'", last->spel);
 			/* else die here: */
 			EAT(token_semicolon);
