@@ -375,7 +375,8 @@ const char *type_to_str(const type *t)
 	static char buf[TYPE_STATIC_BUFSIZ];
 	char *bufp = buf;
 
-	if(!t->is_signed) bufp += snprintf(bufp, BUF_SIZE, "unsigned ");
+	if(!t->is_signed && t->primitive != type__Bool)
+		bufp += snprintf(bufp, BUF_SIZE, "unsigned ");
 
 	if(t->sue){
 		snprintf(bufp, BUF_SIZE, "%s%s %s",
