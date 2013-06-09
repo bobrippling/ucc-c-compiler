@@ -962,6 +962,14 @@ void out_change_type(type_ref *t)
 	v_check_type(t);
 	/* XXX: memleak */
 	vtop->t = t;
+
+	/* we can't change type for large integer values,
+	 * they need truncating
+	 */
+	UCC_ASSERT(
+			vtop->type != CONST
+			|| !intval_is_64_bit(vtop->bits.val, type_ref_is_signed(vtop->t)),
+			"can't %s for large constant %" INTVAL_FMT_X, __func__, vtop->bits.val);
 }
 
 void v_save_regs()
