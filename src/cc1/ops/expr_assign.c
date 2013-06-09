@@ -95,6 +95,14 @@ void fold_expr_assign(expr *e, symtable *stab)
 		decl *mem;
 		if(expr_kind(e->lhs, struct) && (mem = e->lhs->bits.struct_mem.d)->field_width){
 			consty k;
+
+			if(expr_kind(e->rhs, cast)){
+				/* we'll warn about bitfield truncation, prevent warnings
+				 * about cast truncation
+				 */
+				e->rhs->expr_cast_implicit = 0;
+			}
+
 			const_fold(e->rhs, &k);
 
 			if(k.type == CONST_VAL){
