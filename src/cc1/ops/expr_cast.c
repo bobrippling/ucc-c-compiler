@@ -111,12 +111,12 @@ void fold_const_expr_cast(expr *e, consty *k)
 						if(k->bits.addr.is_lbl){
 							k->type = CONST_NO; /* similar to strk case */
 						}else{
-							unsigned long new = k->bits.addr.bits.memaddr;
+							intval_t new = k->bits.addr.bits.memaddr;
 							const int pws = platform_word_size();
 
 							/* mask out bits so we have it truncated to `l' */
 							if(l < pws){
-								new &= ~(-1UL << (CHAR_BIT * l));
+								new = intval_truncate(new, l, NULL);
 
 								if(k->bits.addr.bits.memaddr != new)
 									/* can't cast without losing value - not const */
