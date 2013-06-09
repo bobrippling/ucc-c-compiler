@@ -81,22 +81,6 @@ int intval_str(char *buf, size_t nbuf, intval_t v, type_ref *ty)
 			v, is_signed);
 }
 
-int intval_is_64_bit(const intval_t val, const int is_signed)
-{
-#define INT_SHIFT (CHAR_BIT * sizeof(int))
-	if(is_signed){
-		const sintval_t as_signed = val;
-
-		if(as_signed < 0){
-			/* need unsigned (i.e. shr) shift */
-			return (int)((intval_t)val >> INT_SHIFT) != -1;
-		}
-	}
-
-	return (val >> INT_SHIFT) != 0;
-#undef INT_SHIFT
-}
-
 intval_t intval_truncate(
 		intval_t val, unsigned bytes, intval_t *sign_extended)
 {
@@ -124,6 +108,22 @@ intval_t intval_truncate(
 	}
 
 	return val;
+}
+
+int intval_is_64_bit(const intval_t val, type_ref *ty)
+{
+#define INT_SHIFT (CHAR_BIT * sizeof(int))
+	if(type_ref_is_signed(ty)){
+		const sintval_t as_signed = val;
+
+		if(as_signed < 0){
+			/* need unsigned (i.e. shr) shift */
+			return (int)((intval_t)trunc >> INT_SHIFT) != -1;
+		}
+	}
+
+	return (trunc >> INT_SHIFT) != 0;
+#undef INT_SHIFT
 }
 
 static type *type_new_primitive1(enum type_primitive p)

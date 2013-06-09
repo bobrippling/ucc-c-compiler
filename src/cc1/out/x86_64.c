@@ -87,7 +87,7 @@ static const char *vstack_str_r_ptr(char buf[VSTACK_STR_SZ], struct vstack *vs, 
 			/* we should never get a 64-bit value here
 			 * since movabsq should load those in
 			 */
-			UCC_ASSERT(!intval_is_64_bit(vs->bits.val, type_ref_is_signed(vs->t)),
+			UCC_ASSERT(!intval_is_64_bit(vs->bits.val, vs->t),
 					"can't load 64-bit constants here (0x%llx)", vs->bits.val);
 
 			if(!ptr)
@@ -286,7 +286,7 @@ static void x86_load(struct vstack *from, int reg, int lea)
 
 void impl_load_iv(struct vstack *vp)
 {
-	if(intval_is_64_bit(vp->bits.val, type_ref_is_signed(vp->t))){
+	if(intval_is_64_bit(vp->bits.val, vp->t)){
 		int r = v_unused_reg(1);
 		char buf[INTVAL_BUF_SIZ];
 

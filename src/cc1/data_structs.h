@@ -33,8 +33,9 @@ struct intval
 #define INTVAL_BUF_SIZ 32
 int intval_cmp(const intval *, const intval *);
 int intval_str(char *buf, size_t nbuf, intval_t v, type_ref *ty);
-int intval_is_64_bit(const intval_t val, const int is_signed);
-intval_t intval_truncate(intval_t val, unsigned bytes, intval_t *sign_extended);
+int intval_is_64_bit(const intval_t val, type_ref *ty);
+intval_t intval_truncate(
+		intval_t val, unsigned bytes, intval_t *sign_extended);
 
 struct stringval
 {
