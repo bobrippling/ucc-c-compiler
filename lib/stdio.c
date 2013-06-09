@@ -6,6 +6,7 @@
 #include "sys/fcntl.h"
 #include "assert.h"
 #include "ctype.h"
+#include "limits.h"
 
 #include "ucc_attr.h"
 
@@ -45,38 +46,46 @@ FILE *stdout = &_stdout;
 FILE *stderr = &_stderr;
 
 /* Private */
-static void fprintd_rec(FILE *f, long long n, int base)
+static void fprintn_r(FILE *f, uintmax_t n, int base, int ty_sz)
 {
-	long long d;
-	d = n / base;
+	uintmax_t d = n / base;
 	if(d)
-		fprintd_rec(f, d, base);
+		fprintn_r(f, d, base, ty_sz);
 	fwrite("0123456789abcdef" + n % base, 1, 1, f);
 }
 
-static void fprintn(FILE *f, long long n, int base, int is_signed)
+static void fprintn(FILE *f, uintmax_t n, int base, int is_signed, int ty_sz)
 {
-	if(is_signed && n < 0){
-		fwrite("-", 1, 1, f);
-		n = -n;
+	if(is_signed){
+		// if we have an int/short/char, sign extend
+		if(ty_sz < sizeof(uintmax_t)){
+			// force sign extension - signed right shift
+			n <<= (sizeof(long) - ty_sz) * CHAR_BIT;
+			n = (intmax_t)n >> (sizeof(long) - ty_sz) * CHAR_BIT;
+		}
+
+		if((intmax_t)n < 0){
+			fwrite("-", 1, 1, f);
+			n = -(intmax_t)n;
+		}
 	}
 
-	fprintd_rec(f, n, base);
+	fprintn_r(f, n, base, ty_sz);
 }
 
-static void fprintd(FILE *f, long long n, int is_signed)
+static void fprintd(FILE *f, uintmax_t n, int is_signed, int ty_sz)
 {
-	fprintn(f, n, 10, is_signed);
+	fprintn(f, n, 10, is_signed, ty_sz);
 }
 
-static void fprintx(FILE *f, long long n, int is_signed)
+static void fprintx(FILE *f, uintmax_t n, int is_signed, int ty_sz)
 {
-	fprintn(f, n, 16, is_signed);
+	fprintn(f, n, 16, is_signed, ty_sz);
 }
 
-static void fprinto(FILE *f, int n, int is_signed)
+static void fprinto(FILE *f, uintmax_t n, int is_signed, int ty_sz)
 {
-	fprintn(f, n, 8, is_signed);
+	fprintn(f, n, 8, is_signed, ty_sz);
 }
 
 /* Public */
@@ -389,8 +398,17 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 					break;
 				case 'u':
 				case 'd':
+				case 'x':
+				case 'o':
 				{
-					const long long n =
+					static void (*printers[])(FILE *, uintmax_t, int, int) = {
+						['u'] = fprintd,
+						['d'] = fprintd,
+						['x'] = fprintx,
+						['o'] = fprinto,
+					};
+
+					const uintmax_t n =
 						lcount == 0 ? va_arg(ap, int)  :
 						lcount == 1 ? va_arg(ap, long) :
 						              va_arg(ap, long long);
@@ -399,7 +417,7 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 					if(pad){
 						if(n){
 							int len = 0;
-							long long copy = n;
+							uintmax_t copy = n;
 
 							while(copy){
 								copy /= 10;
@@ -415,7 +433,7 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 					}
 #endif
 
-					fprintd(file, n, *fmt == 'd');
+					printers[*fmt](file, n, *fmt == 'd', sizeof(int) + (lcount ? 1 : 0));
 					break;
 				}
 				case 'p':
@@ -424,18 +442,12 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 					if(p){
 						/* TODO - intptr_t */
 						fputs("0x", file);
-						fprintx(file, (long)p, 0);
+						fprintx(file, (long)p, 0, sizeof(long));
 					}else{
 						fputs("(nil)", file);
 					}
 					break;
 				}
-				case 'x':
-					fprintx(file, va_arg(ap, int), 1);
-					break;
-				case 'o':
-					fprinto(file, va_arg(ap, int), 1);
-					break;
 
 				default:
 wat:
@@ -452,6 +464,8 @@ wat:
 
 	if(buflen)
 		fwrite(buf, buflen, 1, file);
+
+	return 0;
 }
 
 int vprintf(const char *fmt, va_list l)
