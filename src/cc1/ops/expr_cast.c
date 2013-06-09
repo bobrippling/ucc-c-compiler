@@ -44,29 +44,7 @@ void fold_const_expr_cast(expr *e, consty *k)
 				intval_t to_iv;
 
 				/* TODO: disallow for ptrs/non-ints */
-
-				switch(sz){
-#define CAST(sz, t)                                            \
-					case sz:                                             \
-						piv->val = piv->val & ~(-1UL << (sz * CHAR_BIT));  \
-						to_iv = (intval_t)(t)piv->val;                     \
-						break
-
-					CAST(1, char);
-					CAST(2, short);
-					CAST(4, int);
-
-#undef CAST
-
-					case 8:
-					to_iv = old;
-					break; /* no cast - max word size */
-
-					default:
-					k->type = CONST_NO;
-					ICW("can't const fold cast expr of type %s size %d",
-							type_ref_to_str(e->tree_type), sz);
-				}
+				piv->val = intval_truncate(piv->val, sz, &to_iv);
 
 				if(e->expr_cast_implicit
 				&& (to_sig && from_sig ? old != to_iv : old != piv->val))

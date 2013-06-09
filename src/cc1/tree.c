@@ -95,6 +95,34 @@ int intval_is_64_bit(const intval_t val, const int is_signed)
 #undef INT_SHIFT
 }
 
+intval_t intval_truncate(
+		intval_t val, unsigned bytes, intval_t *sign_extended)
+{
+	switch(bytes){
+#define CAST(sz, t)                         \
+		case sz:                                \
+			val &= ~(-1UL << (bytes * CHAR_BIT)); \
+			if(sign_extended)                     \
+				*sign_extended = (intval_t)(unsigned t)val;  \
+			break
+
+		CAST(1, char);
+		CAST(2, short);
+		CAST(4, int);
+
+#undef CAST
+
+		case 8:
+			if(sign_extended)
+				*sign_extended = val;
+			break; /* no cast - max word size */
+
+		default:
+			ICW("can't truncate intval to %d bytes", bytes);
+	}
+
+	return val;
+}
 
 static type *type_new_primitive1(enum type_primitive p)
 {
