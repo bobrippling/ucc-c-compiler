@@ -489,8 +489,11 @@ void bitfield_scalar_merge(const struct vbitfield *const bf)
 	 * store
 	 */
 
-	type_ref *ty;
+	type_ref *const ty = type_ref_ptr_depth_dec(vtop[-1].t, NULL);
 	unsigned long mask_leading_1s, mask_back_0s, mask_rm;
+
+	/* coerce vtop to a vtop[-1] type */
+	out_cast(ty);
 
 	/* load the pointer to the store, forgetting the bitfield */
 	/* stack: store, val */
@@ -506,8 +509,6 @@ void bitfield_scalar_merge(const struct vbitfield *const bf)
 	/* stack: store, orig-val, val */
 	out_swap();
 	/* stack: store, val, orig-val */
-
-	ty = vtop->t;
 
 	/* e.g. width of 3, offset of 2:
 	 * 111100000
@@ -530,8 +531,7 @@ void bitfield_scalar_merge(const struct vbitfield *const bf)
 	mask_rm = mask_leading_1s | mask_back_0s;
 
 	/* &-out our value */
-	out_push_i(type_ref_cached_LONG(), mask_rm);
-	out_cast(ty);
+	out_push_i(ty, mask_rm);
 	out_comment("bitmask/rm = %#lx", mask_rm);
 	out_op(op_and);
 
