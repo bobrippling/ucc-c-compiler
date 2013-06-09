@@ -332,6 +332,11 @@ int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 				d->struct_offset_bitfield = bitfield.current_off;
 				bitfield.current_off += bits; /* allowed to go above sizeof(int) */
 
+				if(bitfield.current_off == bf_cur_lim){
+					/* exactly reached the limit, reset bitfield indexing */
+					bitfield.current_off = 0;
+				}
+
 			}else{
 normal:
 				align = decl_align(d);
