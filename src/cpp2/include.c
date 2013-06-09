@@ -1,9 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <errno.h>
 
 #include "../util/dynarray.h"
 #include "../util/alloc.h"
+#include "../util/util.h"
 
 #include "include.h"
 
@@ -14,7 +16,19 @@ void include_add_dir(char *d)
 	dynarray_add(&include_dirs, d);
 }
 
-FILE *include_fopen(const char *cd, const char *fnam, char **ppath)
+FILE *include_fopen(const char *fnam)
+{
+	FILE *f = fopen(fnam, "r");
+	if(f)
+		return f;
+
+	if(errno != ENOENT)
+		die("open: %s:", fnam);
+
+	return NULL;
+}
+
+FILE *include_search_fopen(const char *cd, const char *fnam, char **ppath)
 {
 	FILE *f = NULL;
 	int i;
@@ -26,7 +40,7 @@ FILE *include_fopen(const char *cd, const char *fnam, char **ppath)
 				include_dirs[i],
 				fnam);
 
-		f = fopen(path, "r");
+		f = include_fopen(path);
 		if(f){
 			*ppath = path;
 			break;
