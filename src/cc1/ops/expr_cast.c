@@ -41,13 +41,16 @@ void fold_const_expr_cast(expr *e, consty *k)
 				const intval_t old = piv->val;
 				const int to_sig   = type_ref_is_signed(e->tree_type);
 				const int from_sig = type_ref_is_signed(e->expr->tree_type);
-				intval_t to_iv;
+				intval_t to_iv, to_iv_sign_ext;
 
 				/* TODO: disallow for ptrs/non-ints */
-				piv->val = intval_truncate(piv->val, sz, &to_iv);
+
+				/* we don't save the truncated value - we keep the original
+				 * so negative numbers, for example, are preserved */
+				to_iv = intval_truncate(piv->val, sz, &to_iv_sign_ext);
 
 				if(e->expr_cast_implicit
-				&& (to_sig && from_sig ? old != to_iv : old != piv->val))
+				&& (to_sig && from_sig ? old != to_iv_sign_ext : old != to_iv))
 				{
 #define CAST_WARN(pre_fmt, pre_val, post_fmt, post_val)  \
 						WARN_AT(&e->where,                           \
@@ -60,20 +63,20 @@ void fold_const_expr_cast(expr *e, consty *k)
 						if(to_sig)
 							CAST_WARN(
 									INTVAL_FMT_D, (long long signed)old,
-									INTVAL_FMT_D, (long long signed)to_iv);
+									INTVAL_FMT_D, (long long signed)to_iv_sign_ext);
 						else
 							CAST_WARN(
 									INTVAL_FMT_D, (long long signed)old,
-									INTVAL_FMT_U, (long long unsigned)piv->val);
+									INTVAL_FMT_U, (long long unsigned)to_iv);
 					}else{
 						if(to_sig)
 							CAST_WARN(
 									INTVAL_FMT_U, (long long unsigned)old,
-									INTVAL_FMT_D, (long long signed)to_iv);
+									INTVAL_FMT_D, (long long signed)to_iv_sign_ext);
 						else
 							CAST_WARN(
 									INTVAL_FMT_U, (long long unsigned)old,
-									INTVAL_FMT_U, (long long unsigned)piv->val);
+									INTVAL_FMT_U, (long long unsigned)to_iv);
 					}
 				}
 			}
