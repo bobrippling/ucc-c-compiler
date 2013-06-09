@@ -69,8 +69,10 @@ int intval_cmp(const intval *a, const intval *b)
 	return 0;
 }
 
-int intval_str(char *buf, size_t nbuf, intval_t v, int is_signed)
+int intval_str(char *buf, size_t nbuf, intval_t v, type_ref *ty)
 {
+	const int is_signed = type_ref_is_signed(ty);
+
 	return snprintf(
 			buf, nbuf,
 			is_signed

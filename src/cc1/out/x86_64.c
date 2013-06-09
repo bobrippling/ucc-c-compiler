@@ -94,8 +94,7 @@ static const char *vstack_str_r_ptr(char buf[VSTACK_STR_SZ], struct vstack *vs, 
 				*p++ = '$';
 
 			intval_str(p, VSTACK_STR_SZ - (!ptr ? 1 : 0),
-					vs->bits.val,
-					type_ref_is_signed(vs->t));
+					vs->bits.val, vs->t);
 			break;
 		}
 
@@ -299,7 +298,7 @@ void impl_load_iv(struct vstack *vp)
 				vp->bits.val, type_ref_to_str(vp->t));
 
 		intval_str(buf, sizeof buf,
-				vp->bits.val, type_ref_is_signed(vp->t));
+				vp->bits.val, vp->t);
 
 		out_asm("movabsq $%s, %%%s",
 				buf, x86_reg_str(r, vp->t));
