@@ -1,10 +1,9 @@
 // RUN: %ucc %s
 
-#include <stdio.h>
-#include <limits.h>
-#include <stdint.h>
-
-#define SIZE_FMT "lu"
+typedef unsigned char  uint8_t;
+typedef unsigned short uint16_t;
+typedef unsigned int   uint32_t;
+typedef unsigned long long uint64_t;
 
 int main(void)
 {
@@ -21,10 +20,3 @@ int main(void)
     _Static_assert(sizeof(struct s64) == 8, "bad size");
     return 0;
 }
-/*
-sizeof (struct sb)  =  1 ( 8 bits)
-sizeof (struct s8)  =  1 ( 8 bits)
-sizeof (struct s16) =  2 (16 bits)
-sizeof (struct s32) =  4 (32 bits)
-sizeof (struct s64) =  8 (64 bits)
-*/
