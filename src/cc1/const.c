@@ -16,8 +16,14 @@ void const_fold(expr *e, consty *k)
 
 	k->type = CONST_NO;
 
-	if(should_fold && e->f_const_fold)
-		e->f_const_fold(e, k);
+	if(should_fold && e->f_const_fold){
+		if(!e->const_eval.const_folded){
+			e->const_eval.const_folded = 1;
+			e->f_const_fold(e, &e->const_eval.k);
+		}
+
+		memcpy(k, &e->const_eval.k, sizeof *k);
+	}
 }
 
 #if 0
