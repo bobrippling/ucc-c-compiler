@@ -99,11 +99,11 @@ intval_t intval_truncate(
 		intval_t val, unsigned bytes, intval_t *sign_extended)
 {
 	switch(bytes){
-#define CAST(sz, t)                         \
-		case sz:                                \
-			val &= ~(-1UL << (bytes * CHAR_BIT)); \
-			if(sign_extended)                     \
-				*sign_extended = (intval_t)(unsigned t)val;  \
+#define CAST(sz, t)                                 \
+		case sz:                                        \
+			val &= ~(-1UL << (bytes * CHAR_BIT - 1));     \
+			if(sign_extended)                             \
+				*sign_extended = (intval_t)(unsigned t)val; \
 			break
 
 		CAST(1, char);
