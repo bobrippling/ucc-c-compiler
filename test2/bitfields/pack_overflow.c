@@ -7,7 +7,7 @@ main()
 	{
 		int a : 16;
 		// should pad here int:16
-		int b : 19; // CHECK: /warning: bitfield overflow \(16 + 19 > 32\) - moved to next boundary/
+		int b : 19; // CHECK: /warning: bitfield overflow \(16 \+ 19 > 32\) - moved to next boundary/
 		int c;
 	} s;
 
