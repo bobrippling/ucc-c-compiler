@@ -115,6 +115,9 @@ int intval_is_64_bit(const intval_t val, type_ref *ty)
 	/* must apply the truncation here */
 	intval_t trunc;
 
+	if(type_ref_size(ty, &ty->where) < platform_word_size())
+		return 0;
+
 	trunc = intval_truncate(
 			val, type_ref_size(ty, &ty->where), NULL);
 
