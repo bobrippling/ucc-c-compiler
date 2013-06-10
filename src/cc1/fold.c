@@ -572,7 +572,8 @@ void fold_symtab_scope(symtable *stab, stmt **pinit_code)
 	 */
 
 	struct_union_enum_st **sit;
-	decl **diter;
+	unsigned di;
+	decl *d;
 
 	if(stab->folded)
 		return;
@@ -581,9 +582,8 @@ void fold_symtab_scope(symtable *stab, stmt **pinit_code)
 	for(sit = stab->sues; sit && *sit; sit++)
 		fold_sue(*sit, stab);
 
-	for(diter = stab->decls; diter && *diter; diter++){
-		decl *d = *diter;
-
+	/* sub-calls may change the array, must iterate with an index */
+	for(di = 0; stab->decls && (d = stab->decls[di]); di++){
 		fold_decl(d, stab);
 
 		if(stab->parent){
