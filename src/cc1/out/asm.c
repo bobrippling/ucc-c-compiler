@@ -16,6 +16,13 @@
 #include "../gen_asm.h"
 #include "../decl_init.h"
 
+struct bitfield_val
+{
+	intval_t val;
+	unsigned offset;
+	unsigned width;
+};
+
 int asm_table_lookup(type_ref *r)
 {
 	int sz;
@@ -58,6 +65,30 @@ static void asm_declare_pad(FILE *f, unsigned pad, const char *why)
 		fprintf(f, ".space %u # %s\n", pad, why);
 }
 
+static void asm_declare_init_type(FILE *f, type_ref *ty)
+{
+	fprintf(f, ".%s ", asm_type_directive(ty));
+}
+
+static void asm_declare_init_bitfields(
+		FILE *f,
+		struct bitfield_val *vals, unsigned n,
+		type_ref *ty)
+{
+	intval_t v = 0;
+	unsigned i;
+
+	for(i = 0; i < n; i++){
+		intval_t this = intval_truncate_bits(
+				vals[i].val, vals[i].width);
+
+		v |= this << vals[i].offset;
+	}
+
+	asm_declare_init_type(f, ty);
+	fprintf(f, "%" INTVAL_FMT_D "\n", v);
+}
+
 static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 {
 	type_ref *r;
@@ -88,6 +119,10 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 			decl *d_mem = (*mem)->struct_member;
 
 			asm_declare_pad(f, d_mem->struct_offset - end_of_last, "struct padding");
+
+			if(d_mem->field_width){
+				ICE("field width todo");
+			}
 
 			asm_declare_init(f, i ? *i : NULL, d_mem->ref);
 
@@ -129,21 +164,36 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 		 * then NULL/end of the init-array */
 		struct_union_enum_st *sue = type_ref_is_s_or_u(r);
 		unsigned i, sub = 0;
+		decl_init *u_init;
 
 		UCC_ASSERT(init->type == decl_init_brace, "brace init expected");
 
 		/* skip the empties until we get to one */
 		for(i = 0; init->bits.ar.inits[i] == DYNARRAY_NULL; i++);
 
-		if(init->bits.ar.inits[i]){
-			/* null union init */
-			type_ref *mem_r = sue->members[i]->struct_member->ref;
+		if((u_init = init->bits.ar.inits[i])){
+			decl *mem = sue->members[i]->struct_member;
+			type_ref *mem_r = mem->ref;
 
 			/* union init, member at index `i' */
-			asm_declare_init(f, init->bits.ar.inits[i], mem_r);
+			if(mem->field_width){
+				/* we know it's integral */
+				struct bitfield_val bfv;
+
+				UCC_ASSERT(u_init->type == decl_init_scalar,
+						"scalar init expected for bitfield");
+
+				bfv.val = const_fold_val(u_init->bits.expr);
+				bfv.offset = 0;
+				bfv.width = const_fold_val(mem->field_width);
+
+				asm_declare_init_bitfields(f, &bfv, 1, mem_r);
+			}else{
+				asm_declare_init(f, u_init, mem_r);
+			}
 
 			sub = type_ref_size(mem_r, NULL);
-		}
+		} /* else null union init */
 
 		asm_declare_pad(f,
 				type_ref_size(r, NULL) - sub,
@@ -170,7 +220,7 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 		}
 
 		/* use tfor, since "abc" has type (char[]){(int)'a', (int)'b', ...} */
-		fprintf(f, ".%s ", asm_type_directive(tfor));
+		asm_declare_init_type(f, tfor);
 		static_addr(exp);
 		fputc('\n', f);
 	}

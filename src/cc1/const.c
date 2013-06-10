@@ -68,6 +68,7 @@ void const_fold_intval(expr *e, intval *piv)
 	const_fold(e, &k);
 
 	UCC_ASSERT(k.type == CONST_VAL, "not const");
+	UCC_ASSERT(k.offset == 0, "got offset for val?");
 
 	memcpy_safe(piv, &k.bits.iv);
 }

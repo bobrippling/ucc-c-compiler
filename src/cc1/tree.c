@@ -81,13 +81,19 @@ int intval_str(char *buf, size_t nbuf, intval_t v, type_ref *ty)
 			v, is_signed);
 }
 
+intval_t intval_truncate_bits(intval_t val, unsigned bits)
+{
+	return val & ~(-1UL << bits);
+}
+
 intval_t intval_truncate(
 		intval_t val, unsigned bytes, intval_t *sign_extended)
 {
 	switch(bytes){
 #define CAST(sz, t)                                 \
 		case sz:                                        \
-			val &= ~(-1UL << (bytes * CHAR_BIT - 1));     \
+			val = intval_truncate_bits(                   \
+					val, bytes * CHAR_BIT - 1);               \
 			if(sign_extended)                             \
 				*sign_extended = (intval_t)(unsigned t)val; \
 			break

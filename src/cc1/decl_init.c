@@ -453,6 +453,7 @@ static decl_init **decl_init_brace_up_array2(
 	return current;
 }
 
+
 static decl_init **decl_init_brace_up_sue2(
 		decl_init **current, decl_init ***range_store,
 		init_iter *iter,

@@ -37,6 +37,8 @@ int intval_is_64_bit(const intval_t val, type_ref *ty);
 intval_t intval_truncate(
 		intval_t val, unsigned bytes, intval_t *sign_extended);
 
+intval_t intval_truncate_bits(intval_t val, unsigned bits);
+
 struct stringval
 {
 	char *lbl;
