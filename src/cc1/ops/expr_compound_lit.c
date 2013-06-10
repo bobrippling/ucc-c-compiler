@@ -24,7 +24,8 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 		d->store = store_static;
 	}
 
-	e->bits.complit.sym = sym_new_stab(stab, d, stab->parent ? sym_local : sym_global);
+	e->bits.complit.sym = sym_new_stab(
+			stab, d, stab->parent ? sym_local : sym_global);
 
 	/* fold the initialiser */
 	UCC_ASSERT(d->init, "no init for comp.literal");
@@ -38,8 +39,14 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 	e->tree_type = d->ref;
 
 	if(stab->parent){
-		/* create the code for assignemnts */
-		e->code = stmt_new_wrapper(code, stab);
+		/* create the code for assignemnts
+		 *
+		 * - we must create a nested scope,
+		 *   otherwise any other decls in stab's scope will
+		 *   be generated twice - once for the scope we're nested in (stab),
+		 *   and again on our call to gen_stmt() in our gen function
+		 */
+		e->code = stmt_new_wrapper(code, symtab_new(stab));
 		decl_init_create_assignments_base(d->init, d->ref, e, e->code);
 
 		fold_stmt_code(e->code);
@@ -53,7 +60,8 @@ static void gen_expr_compound_lit_code(expr *e)
 	if(!e->expr_comp_lit_cgen){
 		e->expr_comp_lit_cgen = 1;
 
-		UCC_ASSERT(e->code->symtab->parent, "global compound initialiser tried for code");
+		UCC_ASSERT(e->code->symtab->parent,
+				"global compound initialiser tried for code");
 
 		gen_stmt(e->code);
 	}
