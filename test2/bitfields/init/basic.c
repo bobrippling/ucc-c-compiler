@@ -1,3 +1,4 @@
+// RUN: %ocheck 0 %s
 struct Basic
 {
 	int x : 4, y : 4;
