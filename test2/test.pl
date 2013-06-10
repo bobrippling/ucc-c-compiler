@@ -57,6 +57,8 @@ my %vars = (
 
 my $ran = 0;
 
+$ENV{UCC} = $ucc; # export for sub-programs
+
 open F, '<', $file or die2 "$file: $!";
 while(<F>){
 	chomp;
