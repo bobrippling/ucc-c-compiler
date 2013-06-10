@@ -143,6 +143,7 @@ struct decl
 	expr *field_width;
 	unsigned struct_offset;
 	unsigned struct_offset_bitfield; /* add onto struct_offset */
+	int first_bitfield; /* marker for the first bitfield in a set */
 
 	struct decl_align
 	{

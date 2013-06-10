@@ -319,8 +319,10 @@ int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 					 */
 					bitfield_size_align(d->ref, &sz, &align, &d->where);
 
+					/* we are onto the beginning of a new group */
 					struct_pack(d, &offset, sz, align);
 					bitfield.first_off = d->struct_offset;
+					d->first_bitfield = 1;
 
 				}else{
 					/* mirror previous bitfields' offset in the struct

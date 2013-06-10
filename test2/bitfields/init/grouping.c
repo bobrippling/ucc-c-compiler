@@ -12,3 +12,8 @@ struct Padded
 struct Padded pad = {
 	1, 2, 3 // should initialise i, j and k, skipping unnamed fields
 };
+
+main()
+{
+	printf("0x%lx\n", *(long *)&pad);
+}

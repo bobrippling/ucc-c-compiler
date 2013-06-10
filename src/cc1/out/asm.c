@@ -15,6 +15,7 @@
 #include "../const.h"
 #include "../gen_asm.h"
 #include "../decl_init.h"
+#include "../pack.h"
 
 #define ASSERT_SCALAR(di)                  \
 	UCC_ASSERT(di->type == decl_init_scalar, \
@@ -79,15 +80,24 @@ static void asm_declare_init_bitfields(
 		struct bitfield_val *vals, unsigned n,
 		type_ref *ty)
 {
+#define BITFIELD_DBG(...) /*fprintf(stderr, __VA_ARGS__)*/
 	intval_t v = 0;
 	unsigned i;
 
+	BITFIELD_DBG("bitfield out -- new\n");
 	for(i = 0; i < n; i++){
 		intval_t this = intval_truncate_bits(
 				vals[i].val, vals[i].width);
 
+		BITFIELD_DBG("bitfield out: 0x%llx << %u gives ",
+				this, vals[i].offset);
+
 		v |= this << vals[i].offset;
+
+		BITFIELD_DBG("0x%llx\n", v);
 	}
+
+	BITFIELD_DBG("bitfield done with 0x%llx\n", v);
 
 	asm_declare_init_type(f, ty);
 	fprintf(f, "%" INTVAL_FMT_D "\n", v);
@@ -102,6 +112,14 @@ static void bitfields_out(
 	*pn = 0;
 }
 
+static void bitfield_val_set(
+		struct bitfield_val *bfv, expr *kval, expr *field_w)
+{
+	bfv->val = kval ? const_fold_val(kval) : 0;
+	bfv->offset = 0;
+	bfv->width = const_fold_val(field_w);
+}
+
 static struct bitfield_val *bitfields_add(
 		struct bitfield_val *bfs, unsigned *pn,
 		decl *mem, decl_init *di)
@@ -113,9 +131,11 @@ static struct bitfield_val *bitfields_add(
 	if(di)
 		ASSERT_SCALAR(di);
 
-	bfs[i].val = di ? const_fold_val(di->bits.expr) : 0;
+	bitfield_val_set(&bfs[i],
+			di ? di->bits.expr : NULL,
+			mem->field_width);
+
 	bfs[i].offset = mem->struct_offset_bitfield;
-	bfs[i].width = const_fold_val(mem->field_width);
 
 	return bfs;
 }
@@ -151,18 +171,34 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 				mem++)
 		{
 			decl *d_mem = (*mem)->struct_member;
+			int inc_iter = 1;
 
 			/* only pad if we're not on a bitfield or we're on the first bitfield */
 			if(!d_mem->field_width || !first_bf)
 				asm_declare_pad(f, d_mem->struct_offset - end_of_last, "struct padding");
 
 			if(d_mem->field_width){
-				if(!first_bf)
+				decl_init *di_to_use = NULL;
+
+				if(!first_bf || d_mem->first_bitfield){
+					if(first_bf){
+						/* next bitfield group - store the current */
+						bitfields_out(f, bitfields, &nbitfields, first_bf->ref);
+					}
 					first_bf = d_mem;
+				}
+
+				if(d_mem->spel && i){
+					if((di_to_use = *i) == DYNARRAY_NULL)
+						di_to_use = NULL;
+				}else{
+					inc_iter = 0;
+				}
 
 				bitfields = bitfields_add(
 						bitfields, &nbitfields,
-						d_mem, i ? *i : NULL);
+						d_mem, di_to_use);
+
 			}else{
 				if(nbitfields){
 					bitfields_out(f, bitfields, &nbitfields, first_bf->ref);
@@ -172,7 +208,7 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 				asm_declare_init(f, i ? *i : NULL, d_mem->ref);
 			}
 
-			if(i && !*++i)
+			if(inc_iter && i && !*++i)
 				i = NULL; /* reached end */
 
 			end_of_last = d_mem->struct_offset + type_ref_size(d_mem->ref, NULL);
@@ -232,9 +268,7 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 
 				ASSERT_SCALAR(u_init);
 
-				bfv.val = const_fold_val(u_init->bits.expr);
-				bfv.offset = 0;
-				bfv.width = const_fold_val(mem->field_width);
+				bitfield_val_set(&bfv, u_init->bits.expr, mem->field_width);
 
 				asm_declare_init_bitfields(f, &bfv, 1, mem_r);
 			}else{
