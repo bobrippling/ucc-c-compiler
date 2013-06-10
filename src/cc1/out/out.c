@@ -962,7 +962,7 @@ void out_func_prologue(int stack_res, int nargs, int variadic)
 	stack_local_offset    = stack_sz;
 
 	if(stack_res)
-		stack_sz += v_alloc_stack(stack_res);
+		v_alloc_stack(stack_res);
 }
 
 void out_func_epilogue()
