@@ -213,7 +213,8 @@ void impl_pop_func_ret(type_ref *r)
 	(void)r;
 
 	/* FIXME: merge with mips */
-	impl_load(vtop, REG_RET);
+	/* v_to_reg since we don't handle lea/load ourselves */
+	v_to_reg2(vtop, REG_RET);
 	vpop();
 }
 
