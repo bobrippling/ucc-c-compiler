@@ -141,6 +141,7 @@ void mutate_expr_identifier(expr *e)
 expr *expr_new_identifier(char *sp)
 {
 	expr *e = expr_new_wrapper(identifier);
+	UCC_ASSERT(sp, "NULL spel for identifier");
 	e->bits.ident.spel = sp;
 	return e;
 }

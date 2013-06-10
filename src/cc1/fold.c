@@ -606,7 +606,10 @@ void fold_symtab_scope(symtable *stab, stmt **pinit_code)
 					sym_local);
 		}
 
-		if(d->init && pinit_code){
+		/* don't generate for anonymous symbols
+		 * they're done elsewhere (e.g. compound literals)
+		 */
+		if(d->init && d->spel && pinit_code){
 			/* this creates the below s->inits array */
 			if((d->store & STORE_MASK_STORE) == store_static){
 				fold_decl_global_init(d, stab);
