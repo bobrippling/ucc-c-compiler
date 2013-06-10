@@ -20,7 +20,8 @@
 #define RW_TEST(var)                              \
 						s->var == 0                           \
 						&& s->decl->spel                      \
-						&& s->decl->store != store_typedef    \
+						&& (s->decl->store & STORE_MASK_STORE)\
+						        != store_typedef              \
 						&& !DECL_IS_ARRAY(s->decl)            \
 						&& !DECL_IS_FUNC(s->decl)             \
 						&& !DECL_IS_S_OR_U(s->decl)
