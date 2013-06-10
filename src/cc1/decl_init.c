@@ -575,6 +575,13 @@ static decl_init **decl_init_brace_up_sue2(
 
 			dynarray_padinsert(&current, i, &n, braced_sub);
 
+			/* done, check bitfield truncation */
+			if(braced_sub && mem->struct_member->field_width){
+				UCC_ASSERT(braced_sub->type == decl_init_scalar,
+						"scalar init expected for union");
+				bitfield_trunc_check(mem->struct_member, braced_sub->bits.expr);
+			}
+
 			if(sue->primitive == type_union)
 				break;
 		}else{

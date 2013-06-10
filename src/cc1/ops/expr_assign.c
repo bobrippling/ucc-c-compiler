@@ -44,6 +44,42 @@ int expr_is_lvalue(expr *e)
 	return 0;
 }
 
+void bitfield_trunc_check(decl *mem, expr *from)
+{
+	consty k;
+
+	if(expr_kind(from, cast)){
+		/* we'll warn about bitfield truncation, prevent warnings
+		 * about cast truncation
+		 */
+		from->expr_cast_implicit = 0;
+	}
+
+	const_fold(from, &k);
+
+	if(k.type == CONST_VAL){
+		const sintval_t kexp = k.bits.iv.val;
+		/* highest may be -1 - k.bits.iv.val is zero */
+		const int highest = val_highest_bit(k.bits.iv.val);
+		const int is_signed = type_ref_is_signed(mem->field_width->tree_type);
+
+		const_fold(mem->field_width, &k);
+
+		UCC_ASSERT(k.type == CONST_VAL, "bitfield size not val?");
+
+		if(highest > (sintval_t)k.bits.iv.val
+		|| (is_signed && highest == (sintval_t)k.bits.iv.val))
+		{
+			sintval_t kexp_to = kexp & ~(-1UL << k.bits.iv.val);
+
+			WARN_AT(&from->where,
+					"truncation in store to bitfield alters value: "
+					"%" INTVAL_FMT_D " -> %" INTVAL_FMT_D,
+					kexp, kexp_to);
+		}
+	}
+}
+
 void fold_expr_assign(expr *e, symtable *stab)
 {
 	sym *lhs_sym = NULL;
@@ -93,39 +129,10 @@ void fold_expr_assign(expr *e, symtable *stab)
 	 */
 	{
 		decl *mem;
-		if(expr_kind(e->lhs, struct) && (mem = e->lhs->bits.struct_mem.d)->field_width){
-			consty k;
-
-			if(expr_kind(e->rhs, cast)){
-				/* we'll warn about bitfield truncation, prevent warnings
-				 * about cast truncation
-				 */
-				e->rhs->expr_cast_implicit = 0;
-			}
-
-			const_fold(e->rhs, &k);
-
-			if(k.type == CONST_VAL){
-				const sintval_t kexp = k.bits.iv.val;
-				/* highest may be -1 - k.bits.iv.val is zero */
-				const int highest = val_highest_bit(k.bits.iv.val);
-				const int is_signed = type_ref_is_signed(mem->field_width->tree_type);
-
-				const_fold(mem->field_width, &k);
-
-				UCC_ASSERT(k.type == CONST_VAL, "bitfield size not val?");
-
-				if(highest > (sintval_t)k.bits.iv.val
-				|| (is_signed && highest == (sintval_t)k.bits.iv.val))
-				{
-					sintval_t kexp_to = kexp & ~(-1UL << k.bits.iv.val);
-
-					WARN_AT(&e->where,
-							"truncation in assignment to bitfield alters value: "
-							"%" INTVAL_FMT_D " -> %" INTVAL_FMT_D,
-							kexp, kexp_to);
-				}
-			}
+		if(expr_kind(e->lhs, struct)
+		&& (mem = e->lhs->bits.struct_mem.d)->field_width)
+		{
+			bitfield_trunc_check(mem, e->rhs);
 		}
 	}
 

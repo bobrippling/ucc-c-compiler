@@ -1,19 +1,20 @@
 // RUN: %ucc -o %t %s
 // RUN: %t
+// RUN: %check %s
 
 union
 {
 	int i;
 	signed bf : 1;
 } x = {
-	.bf = 5 // 1 TODO: warn here
+	.bf = 5 // CHECK: /warning: truncation in store to bitfield alters value: 5 -> 1/
 };
 
 union
 {
 	int x : 2;
 } tim = {
-	4 // zero XXX: TODO: warn here
+	4 // CHECK: /warning: truncation in store to bitfield alters value: 4 -> 0/
 };
 
 main()
