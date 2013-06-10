@@ -16,6 +16,10 @@
 #include "../gen_asm.h"
 #include "../decl_init.h"
 
+#define ASSERT_SCALAR(di)                  \
+	UCC_ASSERT(di->type == decl_init_scalar, \
+			"scalar expected for bitfield init")
+
 struct bitfield_val
 {
 	intval_t val;
@@ -89,6 +93,33 @@ static void asm_declare_init_bitfields(
 	fprintf(f, "%" INTVAL_FMT_D "\n", v);
 }
 
+static void bitfields_out(
+		FILE *f,
+		struct bitfield_val *bfs, unsigned *pn,
+		type_ref *ty)
+{
+	asm_declare_init_bitfields(f, bfs, *pn, ty);
+	*pn = 0;
+}
+
+static struct bitfield_val *bitfields_add(
+		struct bitfield_val *bfs, unsigned *pn,
+		decl *mem, decl_init *di)
+{
+	const unsigned i = *pn;
+
+	bfs = urealloc1(bfs, (*pn += 1) * sizeof *bfs);
+
+	if(di)
+		ASSERT_SCALAR(di);
+
+	bfs[i].val = di ? const_fold_val(di->bits.expr) : 0;
+	bfs[i].offset = mem->struct_offset_bitfield;
+	bfs[i].width = const_fold_val(mem->field_width);
+
+	return bfs;
+}
+
 static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 {
 	type_ref *r;
@@ -107,6 +138,9 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 		sue_member **mem;
 		decl_init **i;
 		int end_of_last = 0;
+		struct bitfield_val *bitfields = NULL;
+		unsigned nbitfields = 0;
+		decl *first_bf = NULL;
 
 		UCC_ASSERT(init->type == decl_init_brace, "unbraced struct");
 		i = init->bits.ar.inits;
@@ -118,19 +152,35 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 		{
 			decl *d_mem = (*mem)->struct_member;
 
-			asm_declare_pad(f, d_mem->struct_offset - end_of_last, "struct padding");
+			/* only pad if we're not on a bitfield or we're on the first bitfield */
+			if(!d_mem->field_width || !first_bf)
+				asm_declare_pad(f, d_mem->struct_offset - end_of_last, "struct padding");
 
 			if(d_mem->field_width){
-				ICE("field width todo");
-			}
+				if(!first_bf)
+					first_bf = d_mem;
 
-			asm_declare_init(f, i ? *i : NULL, d_mem->ref);
+				bitfields = bitfields_add(
+						bitfields, &nbitfields,
+						d_mem, i ? *i : NULL);
+			}else{
+				if(nbitfields){
+					bitfields_out(f, bitfields, &nbitfields, first_bf->ref);
+					first_bf = NULL;
+				}
+
+				asm_declare_init(f, i ? *i : NULL, d_mem->ref);
+			}
 
 			if(i && !*++i)
 				i = NULL; /* reached end */
 
 			end_of_last = d_mem->struct_offset + type_ref_size(d_mem->ref, NULL);
 		}
+
+		if(nbitfields)
+			bitfields_out(f, bitfields, &nbitfields, first_bf->ref);
+		free(bitfields);
 
 	}else if((r = type_ref_is(tfor, type_ref_array))){
 		size_t i;
@@ -180,8 +230,7 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 				/* we know it's integral */
 				struct bitfield_val bfv;
 
-				UCC_ASSERT(u_init->type == decl_init_scalar,
-						"scalar init expected for bitfield");
+				ASSERT_SCALAR(u_init);
 
 				bfv.val = const_fold_val(u_init->bits.expr);
 				bfv.offset = 0;

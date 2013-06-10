@@ -1,8 +1,3 @@
-struct Basic
-{
-	int x : 4, y : 4;
-} bas = { 1, 2 };
-
 struct Desig
 {
 	int x : 16, y : 2;
