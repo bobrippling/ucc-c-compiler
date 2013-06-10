@@ -1,10 +1,3 @@
-struct Desig
-{
-	int x : 16, y : 2;
-} des = {
-	.y = 1
-};
-
 struct Padded
 {
 	int i : 2;
