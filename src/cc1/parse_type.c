@@ -952,7 +952,7 @@ static int is_old_func(decl *d)
 	return r && r->bits.func->args_old_proto;
 }
 
-static void check_old_func(decl *d, decl **old_args)
+static void check_and_replace_old_func(decl *d, decl **old_args)
 {
 	/* check then replace old args */
 	int n_proto_decls, n_old_args;
@@ -1143,9 +1143,10 @@ void parse_decls_multi_type(
 					parse_add_attr(&d->ref->attr);
 				}else{
 					decl **old_args = NULL;
-					parse_decls_multi_type(0, scope, &old_args);
+					/* NULL - we don't want these in a scope */
+					parse_decls_multi_type(0, NULL, &old_args);
 					if(old_args){
-						check_old_func(d, old_args);
+						check_and_replace_old_func(d, old_args);
 
 						/* old function with decls after the close paren,
 						 * need a function */
