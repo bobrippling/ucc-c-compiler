@@ -913,8 +913,13 @@ void decl_init_create_assignments_base(
 		expr *zero;
 
 zero_init:
+		/* this works for zeroing bitfields,
+		 * since we don't take the address
+		 * - builtin memset calls lea_expr()
+		 *   which can handle bitfields
+		 */
 		zero = builtin_new_memset(
-				expr_new_addr(base),
+				base,
 				0,
 				type_ref_size(tfor, &base->where));
 

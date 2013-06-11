@@ -10,6 +10,13 @@ const char *str_expr_addr()
 	return "addr";
 }
 
+int expr_is_addressable(expr *e)
+{
+	return expr_is_lvalue(e)
+		|| type_ref_is(e->tree_type, type_ref_array)
+		|| type_ref_is(e->tree_type, type_ref_func);
+}
+
 void fold_expr_addr(expr *e, symtable *stab)
 {
 	if(e->bits.ident.spel){
@@ -31,10 +38,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 		FOLD_EXPR_NO_DECAY(e->lhs, stab);
 
 		/* can address: lvalues, arrays and functions */
-		if(!expr_is_lvalue(e->lhs)
-		&& !type_ref_is(e->lhs->tree_type, type_ref_array)
-		&& !type_ref_is(e->lhs->tree_type, type_ref_func))
-		{
+		if(!expr_is_addressable(e->lhs)){
 			DIE_AT(&e->lhs->where, "can't take the address of %s (%s)",
 					e->lhs->f_str(), type_ref_to_str(e->lhs->tree_type));
 		}
