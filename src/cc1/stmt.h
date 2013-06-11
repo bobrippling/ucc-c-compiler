@@ -22,6 +22,7 @@ typedef struct
 	char **clobbers;
 	char *cmd;
 	int extended; /* is it asm("") or asm("":::) */
+	int is_volatile;
 } asm_args;
 
 struct stmt

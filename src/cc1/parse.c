@@ -692,11 +692,23 @@ stmt *parse_asm(void)
 {
 	stmt *asm_st;
 	asm_args *bits;
+	enum type_qualifier qual = qual_none;
 
 	asm_st = STAT_NEW(asm);
 	bits = asm_st->asm_bits = umalloc(sizeof *asm_st->asm_bits);
 
 	EAT(token_asm);
+	while(curtok_is_type_qual()){
+		qual |= curtok_to_type_qualifier();
+		EAT(curtok);
+	}
+
+	if(qual & ~qual_volatile){
+		WARN_AT(&asm_st->where, "Ignoring extra qualifiers after asm (%s)",
+				type_qual_to_str(qual));
+	}
+	bits->is_volatile = (qual & qual_volatile) == qual_volatile;
+
 	EAT(token_open_paren);
 
 	token_get_current_str(&bits->cmd, NULL);
