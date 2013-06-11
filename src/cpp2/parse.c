@@ -234,13 +234,7 @@ retry:
 	i = dynarray_count(cd_stack);
 	current_include_dname = cd_stack[i - 1];
 
-	if(*fname == '/'){
-		/* absolute path */
-		path = ustrdup(fname);
-		goto abs_path;
-	}
-
-	if(lib){
+	if(lib && *fname != '/'){
 lib:
 		f = include_search_fopen(current_include_dname, fname, &path);
 
@@ -248,8 +242,13 @@ lib:
 			CPP_DIE("can't find include file %c%s%c",
 					"\"<"[lib], fname, "\">"[lib]);
 	}else{
-		path = ustrprintf("%s/%s", current_include_dname, fname);
-abs_path:
+		if(*fname == '/'){
+			/* absolute path */
+			path = ustrdup(fname);
+		}else{
+			path = ustrprintf("%s/%s", current_include_dname, fname);
+		}
+
 		f = include_fopen(path);
 		if(!f){
 			/* attempt lib */
