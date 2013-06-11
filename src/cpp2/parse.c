@@ -231,6 +231,9 @@ retry:
 	fname[len-1] = '\0';
 	fname++;
 
+	if(!*fname)
+		CPP_DIE("empty filename");
+
 	i = dynarray_count(cd_stack);
 	current_include_dname = cd_stack[i - 1];
 
