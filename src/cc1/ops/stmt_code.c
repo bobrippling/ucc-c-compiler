@@ -5,7 +5,7 @@
 #include "stmt_code.h"
 #include "../decl_init.h"
 #include "../../util/dynarray.h"
-#include "../typedef.h"
+#include "../scope.h"
 
 const char *str_stmt_code()
 {

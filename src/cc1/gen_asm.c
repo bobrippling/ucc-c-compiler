@@ -195,10 +195,30 @@ void gen_asm(symtable_global *globs)
 		if(!d->is_definition)
 			continue;
 
-		if(d->inline_only){
-			/* emit an extern for it anyway */
-			asm_predeclare_extern(d);
-			continue;
+		if(d->store & store_inline){
+			/*
+			 * inline semantics
+			 *
+			 * all "inline", none "extern" = inline_only
+			 * "static inline" = code emitted, decl is static
+			 * one "inline", and "extern" mentioned, or "inline" not mentioned = code emitted, decl is extern
+			 */
+			enum decl_storage stor = d->store & STORE_MASK_STORE;
+			switch(stor){
+				default:
+					ICE("bad storage for function %s %s",
+							d->spel, decl_store_to_str(stor));
+
+				case store_default:
+					/* inline only - emit an extern for it anyway */
+					asm_predeclare_extern(d);
+					continue;
+
+				case store_extern:
+				case store_static:
+					/* fine - these just say what the emitted code's linkage is */
+					break;
+			}
 		}
 
 		switch(d->store & STORE_MASK_STORE){

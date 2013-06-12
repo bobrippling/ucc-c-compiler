@@ -295,16 +295,13 @@ void print_decl(decl *d, enum pdeclargs mode)
 		idt_print();
 
 	if((mode & PDECL_PISDEF)){
-		int one = !d->is_definition || d->inline_only;
+		const int one = !d->is_definition;
 
 		if(one)
 			fputc('(', cc1_out);
 
 		if(!d->is_definition)
 			fprintf(cc1_out, "not definition");
-
-		if(d->inline_only)
-			fprintf(cc1_out, "%sinline-only", d->is_definition ? "" : ", ");
 
 		if(one)
 			fputc(')', cc1_out);

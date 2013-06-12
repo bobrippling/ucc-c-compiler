@@ -37,6 +37,9 @@ extern int warning_count;
 const char *where_str(const struct where *w);
 const char *where_str_r(char buf[ucc_static_param WHERE_BUF_SIZ], const struct where *w);
 
+/* used by the *_had_error notification+continue code */
+void warn_at_print_error(const struct where *, const char *fmt, ...);
+
 void warn_at(const struct where *, int show_line, const char *, ...) ucc_printflike(3, 4);
 void die_at( const struct where *, int show_line, const char *, ...) ucc_printflike(3, 4) ucc_dead;
 void vwarn(const struct where *w, int err, int show_line, const char *fmt, va_list l);

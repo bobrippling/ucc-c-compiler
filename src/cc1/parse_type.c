@@ -9,7 +9,7 @@
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
 #include "data_structs.h"
-#include "typedef.h"
+#include "scope.h"
 #include "decl_init.h"
 #include "funcargs.h"
 
@@ -1004,6 +1004,75 @@ static void check_and_replace_old_func(decl *d, decl **old_args)
 	free(old_args);
 }
 
+static void decl_pull_to_func(decl *const d_this)
+{
+	/* look for a previous declaration of d->spel.
+	 * if found, we pull its asm() and attributes to the current,
+	 * thus propagating them down in O(1) to the eventual definition.
+	 *
+	 * This also means any call to d will have the most up to date
+	 * attribute information about it
+	 */
+	decl *d_prev = scope_find(current_scope, d_this->spel);
+	char wbuf[WHERE_BUF_SIZ];
+
+	if(d_this->func_code)
+		d_this->is_definition = 1;
+
+	if(!d_prev)
+		return;
+
+	if(!type_ref_is(d_prev->ref, type_ref_func))
+		return; /* error caught later */
+
+	if(d_prev->func_code){
+		/* just warn that we have a declaration
+		 * after a definition, then get out.
+		 *
+		 * any declarations after this aren't warned about
+		 * (since d_prev is different), but one warning is fine
+		 */
+		WARN_AT(&d_this->where,
+				"declaration of \"%s\" after definition is ignored\n"
+				"%s: note: definition here",
+				d_this->spel,
+				where_str_r(wbuf, &d_prev->where));
+		return;
+	}
+
+	/* set asm rename + append attributes */
+	EOF_WHERE(&d_this->where,
+			decl_attr_append(&d_this->attr, d_prev->attr)
+	);
+
+	if(d_this->spel_asm){
+		if(d_prev->spel_asm){
+			parse_had_error = 1;
+			warn_at_print_error(&d_this->where,
+					"second asm() rename on \"%s\"\n"
+					"%s: note: previous definition here",
+					d_this->spel, where_str_r(wbuf, &d_prev->where));
+		}
+	}else if(d_prev->spel_asm){
+		d_this->spel_asm = d_prev->spel_asm;
+	}
+
+	/* propagate static and inline */
+	if((d_prev->store & STORE_MASK_STORE) == store_static)
+		d_this->store = (d_this->store & ~STORE_MASK_STORE) | store_static;
+
+	d_this->store |= (d_prev->store & STORE_MASK_EXTRA);
+
+	/* update the f(void) bools */
+	{
+		funcargs *fargs_this = type_ref_funcargs(d_this->ref),
+		         *fargs_prev = type_ref_funcargs(d_prev->ref);
+
+		fargs_this->args_void          |= fargs_prev->args_void;
+		fargs_this->args_void_implicit |= fargs_prev->args_void_implicit;
+	}
+}
+
 void parse_decls_multi_type(
 		enum decl_multi_mode mode,
 		symtable *scope,
@@ -1166,10 +1235,16 @@ void parse_decls_multi_type(
 			}
 
 add:
-			if(scope)
-				dynarray_add(&scope->decls, d);
-			if(pdecls)
-				dynarray_add(pdecls, d);
+			{
+				/* do this before adding, so we don't find 'd' */
+				if(PARSE_DECL_IS_FUNC(d))
+					decl_pull_to_func(d);
+
+				if(scope)
+					dynarray_add(&scope->decls, d);
+				if(pdecls)
+					dynarray_add(pdecls, d);
+			}
 
 			/* FIXME: check later for functions, not here - typedefs */
 			if(PARSE_DECL_IS_FUNC(d)){

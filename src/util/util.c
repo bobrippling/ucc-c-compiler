@@ -142,6 +142,15 @@ void vwarn(const struct where *w, int err, int show_line, const char *fmt, va_li
 		warn_show_line(w);
 }
 
+void warn_at_print_error(const struct where *w, const char *fmt, ...)
+{
+	va_list l;
+	va_start(l, fmt);
+	vwarn(w, 1, 1, fmt, l);
+	va_end(l);
+}
+
+
 void vdie(const struct where *w, int show_line, const char *fmt, va_list l)
 {
 	vwarn(w, 1, show_line, fmt, l);

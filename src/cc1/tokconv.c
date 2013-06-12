@@ -253,21 +253,13 @@ const char *token_to_str(enum token t)
 	return NULL;
 }
 
-void warn_at_print_error(const char *fmt, ...)
-{
-	va_list l;
-	va_start(l, fmt);
-	vwarn(NULL, 1, 1, fmt, l);
-	va_end(l);
-}
-
 void eat2(enum token t, const char *fnam, int line, int die)
 {
 	if(t != curtok){
 		const int ident = curtok == token_identifier;
 		parse_had_error = 1;
 
-		warn_at_print_error(
+		warn_at_print_error(NULL,
 				"expecting token %s, got %s %s%s%s(%s:%d)",
 				token_to_str(t), token_to_str(curtok),
 				ident ? "\"" : "",

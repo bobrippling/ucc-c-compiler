@@ -532,7 +532,77 @@ void fold_decl_global_init(decl *d, symtable *stab)
 	}
 }
 
-void fold_decl_global(decl *d, symtable *stab)
+static void fold_func(decl *func_decl)
+{
+	if(func_decl->func_code){
+		struct
+		{
+			char *extra;
+			where *where;
+		} the_return = { NULL, NULL };
+
+		type_ref *fref;
+
+		curdecl_func = func_decl;
+		fref = type_ref_is(curdecl_func->ref, type_ref_func);
+		UCC_ASSERT(fref, "not a func");
+		curdecl_ref_func_called = type_ref_func_call(fref, NULL);
+
+		if(curdecl_func->ref->type != type_ref_func)
+			WARN_AT(&curdecl_func->where, "typedef function implementation is not C");
+
+		symtab_add_args(
+				func_decl->func_code->symtab,
+				fref->bits.func,
+				func_decl->spel);
+
+		fold_stmt(func_decl->func_code);
+
+		if(decl_has_attr(curdecl_func, attr_noreturn)){
+			if(!type_ref_is_void(curdecl_ref_func_called)){
+				cc1_warn_at(&func_decl->where, 0, 1, WARN_RETURN_UNDEF,
+						"function \"%s\" marked no-return has a non-void return value",
+						func_decl->spel);
+			}
+
+
+			if(fold_passable(func_decl->func_code)){
+				/* if we reach the end, it's bad */
+				the_return.extra = "implicitly ";
+				the_return.where = &func_decl->where;
+			}else{
+				stmt *ret = NULL;
+
+				stmt_walk(func_decl->func_code, stmt_walk_first_return, NULL, &ret);
+
+				if(ret){
+					/* obviously returns */
+					the_return.extra = "";
+					the_return.where = &ret->where;
+				}
+			}
+
+			if(the_return.extra){
+				cc1_warn_at(the_return.where, 0, 1, WARN_RETURN_UNDEF,
+						"function \"%s\" marked no-return %sreturns",
+						func_decl->spel, the_return.extra);
+			}
+
+		}else if(!type_ref_is_void(curdecl_ref_func_called)){
+			/* non-void func - check it doesn't return */
+			if(fold_passable(func_decl->func_code)){
+				cc1_warn_at(&func_decl->where, 0, 1, WARN_RETURN_UNDEF,
+						"control reaches end of non-void function %s",
+						func_decl->spel);
+			}
+		}
+
+		curdecl_ref_func_called = NULL;
+		curdecl_func = NULL;
+	}
+}
+
+static void fold_decl_global(decl *d, symtable *stab)
 {
 	switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
 		case store_extern:
@@ -554,11 +624,16 @@ void fold_decl_global(decl *d, symtable *stab)
 
 	fold_decl(d, stab);
 
-	/*
-	 * inits are normally handled in stmt_code,
-	 * but this is global, handle here
-	 */
-	fold_decl_global_init(d, stab);
+	if(DECL_IS_FUNC(d)){
+		UCC_ASSERT(!d->init, "function has init?");
+		fold_func(d);
+	}else{
+		/*
+		 * inits are normally handled in stmt_code,
+		 * but this is global, handle here
+		 */
+		fold_decl_global_init(d, stab);
+	}
 }
 
 void fold_symtab_scope(symtable *stab, stmt **pinit_code)
@@ -790,241 +865,11 @@ int fold_passable(stmt *s)
 	return s->f_passable(s);
 }
 
-void fold_func(decl *func_decl)
-{
-	if(func_decl->func_code){
-		struct
-		{
-			char *extra;
-			where *where;
-		} the_return = { NULL, NULL };
-
-		type_ref *fref;
-
-		curdecl_func = func_decl;
-		fref = type_ref_is(curdecl_func->ref, type_ref_func);
-		UCC_ASSERT(fref, "not a func");
-		curdecl_ref_func_called = type_ref_func_call(fref, NULL);
-
-		if(curdecl_func->ref->type != type_ref_func)
-			WARN_AT(&curdecl_func->where, "typedef function implementation is not C");
-
-		symtab_add_args(
-				func_decl->func_code->symtab,
-				fref->bits.func,
-				func_decl->spel);
-
-		fold_stmt(func_decl->func_code);
-
-		if(decl_has_attr(curdecl_func, attr_noreturn)){
-			if(!type_ref_is_void(curdecl_ref_func_called)){
-				cc1_warn_at(&func_decl->where, 0, 1, WARN_RETURN_UNDEF,
-						"function \"%s\" marked no-return has a non-void return value",
-						func_decl->spel);
-			}
-
-
-			if(fold_passable(func_decl->func_code)){
-				/* if we reach the end, it's bad */
-				the_return.extra = "implicitly ";
-				the_return.where = &func_decl->where;
-			}else{
-				stmt *ret = NULL;
-
-				stmt_walk(func_decl->func_code, stmt_walk_first_return, NULL, &ret);
-
-				if(ret){
-					/* obviously returns */
-					the_return.extra = "";
-					the_return.where = &ret->where;
-				}
-			}
-
-			if(the_return.extra){
-				cc1_warn_at(the_return.where, 0, 1, WARN_RETURN_UNDEF,
-						"function \"%s\" marked no-return %sreturns",
-						func_decl->spel, the_return.extra);
-			}
-
-		}else if(!type_ref_is_void(curdecl_ref_func_called)){
-			/* non-void func - check it doesn't return */
-			if(fold_passable(func_decl->func_code)){
-				cc1_warn_at(&func_decl->where, 0, 1, WARN_RETURN_UNDEF,
-						"control reaches end of non-void function %s",
-						func_decl->spel);
-			}
-		}
-
-		curdecl_ref_func_called = NULL;
-		curdecl_func = NULL;
-	}
-}
-
-static void fold_link_decl_defs(dynmap *spel_decls)
-{
-	int i;
-
-	for(i = 0; ; i++){
-		char *key;
-		char wbuf[WHERE_BUF_SIZ];
-		decl *d, *e, *definition, *first_none_extern;
-		decl **decls_for_this, **decl_iter;
-		int count_inline, count_extern, count_static, count_total;
-		char *asm_rename;
-
-		key = dynmap_key(char *, spel_decls, i);
-		if(!key)
-			break;
-
-		decls_for_this = dynmap_get(char *, decl **, spel_decls, key);
-		d = *decls_for_this;
-
-		definition = decl_is_definition(d) ? d : NULL;
-
-		count_inline = d->store & store_inline;
-		count_extern = count_static = 0;
-		first_none_extern = NULL;
-		asm_rename = d->spel_asm;
-
-		switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
-			case store_extern:
-				count_extern++;
-				break;
-
-			case store_static:
-				count_static++;
-				/* fall */
-			default:
-				first_none_extern = d;
-				break;
-		}
-
-		/*
-		 * check the first is equal to all the rest, strict-types
-		 * check they all have the same static/non-static storage
-		 * if all are extern (and not initialised), the decl is extern
-		 * if all are extern but there is an init, the decl is global
-		 */
-
-		for(decl_iter = decls_for_this + 1; (e = *decl_iter); decl_iter++){
-			/* check they are the same decl */
-			if(!decl_equal(d, e, DECL_CMP_EXACT_MATCH)){
-				char buf[DECL_STATIC_BUFSIZ];
-
-				DIE_AT(&e->where, "mismatching declaration of %s\n%s\n%s vs %s",
-						d->spel,
-						where_str_r(wbuf, &d->where),
-						decl_to_str_r(buf, d),
-						decl_to_str(       e));
-			}
-
-			/* check asm renames */
-			if(e->spel_asm){
-				if(asm_rename && strcmp(asm_rename, e->spel_asm))
-					WARN_AT(&d->where, "multiple asm renames\n%s", where_str_r(wbuf, &e->where));
-				asm_rename = e->spel_asm;
-			}
-
-			if(decl_is_definition(e)){
-				/* e is the implementation/instantiation */
-
-				if(definition){
-					/* already got one */
-					DIE_AT(&e->where, "duplicate definition of %s (%s)", d->spel, where_str_r(wbuf, &d->where));
-				}
-
-				definition = e;
-			}
-
-			count_inline += e->store & store_inline;
-
-			switch((enum decl_storage)(e->store & STORE_MASK_STORE)){
-				case store_extern:
-					count_extern++;
-					break;
-
-				case store_static:
-					count_static++;
-					/* fall */
-				default:
-					if(!first_none_extern)
-						first_none_extern = e;
-					break;
-			}
-		}
-
-		if(!definition){
-      /* implicit definition - attempt a not-extern def if we have one */
-      if(first_none_extern)
-        definition = first_none_extern;
-      else
-        definition = d;
-		}
-
-		count_total = dynarray_count(decls_for_this);
-
-		if(DECL_IS_FUNC(definition)){
-			/*
-			 * inline semantics
-			 *
-			 * all "inline", none "extern" = inline_only
-			 * "static inline" = code emitted, decl is static
-			 * one "inline", and "extern" mentioned, or "inline" not mentioned = code emitted, decl is extern
-			 */
-			if(count_inline > 0)
-				definition->store |= store_inline;
-
-
-			/* all defs must be static, except the def, which is allowed to be non-static */
-			if(count_static > 0){
-				definition->store |= store_static;
-
-				if(count_static != count_total && (definition->func_code ? count_static != count_total - 1 : 0)){
-					DIE_AT(&definition->where,
-							"static/non-static mismatch of function %s (%d static defs vs %d total)",
-							definition->spel, count_static, count_total);
-				}
-			}
-
-
-			if((definition->store & STORE_MASK_STORE) == store_static){
-				/* static inline */
-
-			}else if(count_inline == count_total && count_extern == 0){
-				/* inline only */
-				definition->inline_only = 1;
-				WARN_AT(&definition->where, "definition is inline-only (ucc doesn't inline currently)");
-			}else if(count_inline > 0 && (count_extern > 0 || count_inline < count_total)){
-				/* extern inline */
-				definition->store |= store_extern;
-			}
-
-			if((definition->store & store_inline) && !definition->func_code)
-				WARN_AT(&definition->where, "inline function missing implementation");
-
-		}else if(count_static && count_static != count_total){
-			/* TODO: iter through decls, printing them out */
-			DIE_AT(&definition->where, "static/non-static mismatch of %s", definition->spel);
-		}
-
-		definition->is_definition = 1;
-
-		if(!definition->spel_asm)
-			definition->spel_asm = asm_rename;
-
-		/*
-		 * func -> extern (if no func code) done elsewhere,
-		 * since we need to do it for local decls too
-		 */
-	}
-}
-
 void fold(symtable *globs)
 {
 #define D(x) globs->decls[x]
 	int fold_had_error = 0;
 	extern const char *current_fname;
-	dynmap *spel_decls;
 	int i;
 
 	memset(&asm_struct_enum_where, 0, sizeof asm_struct_enum_where);
@@ -1060,66 +905,10 @@ void fold(symtable *globs)
 
 	fold_symtab_scope(globs, NULL);
 
-	if(!globs->decls)
-		goto skip_decls;
+	if(globs->decls)
+		for(i = 0; D(i); i++)
+			fold_decl_global(D(i), globs);
 
-	spel_decls = dynmap_new((dynmap_cmp_f *)strcmp);
-
-	for(i = 0; D(i); i++){
-		char *key = D(i)->spel;
-
-		if(key){
-			/* skip anonymous (e.g. string) symbols/decls */
-			decl **val = dynmap_get(char *, decl **, spel_decls, key);
-
-			dynarray_add(&val, D(i)); /* fine if val is null */
-
-			dynmap_set(char *, decl **, spel_decls, key, val);
-		}
-
-		fold_decl_global(D(i), globs);
-
-		if(DECL_IS_FUNC(D(i))){
-			if(decl_is_definition(D(i))){
-				/* gather round, attributes */
-				decl **const protos = dynmap_get(char *, decl **,
-						spel_decls, D(i)->spel);
-				decl **proto_i;
-				int is_void = 0;
-
-				for(proto_i = protos; *proto_i; proto_i++){
-					decl *proto = *proto_i;
-
-					if(!type_ref_is(proto->ref, type_ref_func)){
-						fold_had_error = 1;
-						continue; /* error caught later */
-					}
-
-					if(type_ref_is(proto->ref, type_ref_func)->bits.func->args_void)
-						is_void = 1;
-
-					if(!decl_is_definition(proto)){
-						EOF_WHERE(&D(i)->where,
-								decl_attr_append(&D(i)->attr, proto->attr));
-					}
-				}
-
-				/* if "type ()", and a proto is "type (void)", take the void */
-				if(is_void)
-					for(proto_i = protos; *proto_i; proto_i++)
-						type_ref_is((*proto_i)->ref, type_ref_func)->bits.func->args_void = 1;
-			}
-
-			fold_func(D(i));
-		}
-	}
-
-	/* link declarations with definitions */
-	fold_link_decl_defs(spel_decls);
-
-	dynmap_free(spel_decls);
-
-skip_decls:
 	/* static assertions */
 	{
 		static_assert **i;

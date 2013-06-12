@@ -700,7 +700,14 @@ int decl_equal(decl *a, decl *b, enum decl_cmp mode)
 
 int decl_sort_cmp(const decl **pa, const decl **pb)
 {
-	return strcmp((*pa)->spel, (*pb)->spel);
+	const decl *const a = *pa, *const b = *pb;
+	int cmp = strcmp(a->spel, b->spel);
+
+	if(cmp != 0)
+		return cmp; /* names take priority */
+
+	/* assume functions - sort by whether they have code */
+	return !!a->func_code - !!b->func_code;
 }
 
 int decl_is_variadic(decl *d)
@@ -751,12 +758,6 @@ type_ref *type_ref_ptr_depth_inc(type_ref *r)
 	}
 
 	return type_ref_new_ptr(r, qual_none);
-}
-
-decl *decl_func_called(decl *d, funcargs **pfuncargs)
-{
-	d->ref = type_ref_func_call(d->ref, pfuncargs);
-	return d;
 }
 
 int decl_conv_array_func_to_ptr(decl *d)

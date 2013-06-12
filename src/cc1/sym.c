@@ -10,7 +10,7 @@
 #include "../util/alloc.h"
 #include "macros.h"
 #include "../util/dynarray.h"
-#include "typedef.h"
+#include "scope.h"
 #include "sue.h"
 #include "funcargs.h"
 
