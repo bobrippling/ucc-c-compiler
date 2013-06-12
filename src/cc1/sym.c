@@ -12,6 +12,7 @@
 #include "../util/dynarray.h"
 #include "typedef.h"
 #include "sue.h"
+#include "funcargs.h"
 
 sym *sym_new(decl *d, enum sym_type t)
 {

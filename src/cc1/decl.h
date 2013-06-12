@@ -95,16 +95,7 @@ struct type_ref
 		} cast;
 
 		/* ref_func */
-		struct funcargs
-		{
-			where where;
-
-			int args_void_implicit; /* f(){} - implicitly (void) */
-			int args_void; /* true if "spel(void);" otherwise if !args, then we have "spel();" */
-			int args_old_proto; /* true if f(a, b); where a and b are identifiers */
-			decl **arglist;
-			int variadic;
-		} *func;
+		struct funcargs *func;
 
 		/* ref_block */
 		struct

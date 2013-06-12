@@ -15,6 +15,7 @@
 #include "str.h"
 #include "const.h"
 #include "decl_init.h"
+#include "funcargs.h"
 
 #define ENGLISH_PRINT_ARGLIST
 

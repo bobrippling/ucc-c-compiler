@@ -17,6 +17,7 @@
 #include "../out/lbl.h"
 #include "../pack.h"
 #include "../sue.h"
+#include "../funcargs.h"
 
 #include "__builtin_va.h"
 

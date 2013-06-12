@@ -14,6 +14,7 @@
 #include "common.h"
 #include "out.h"
 #include "lbl.h"
+#include "../funcargs.h"
 
 
 #define NUM_FMT "%d"

@@ -8,6 +8,17 @@ enum funcargs_cmp
 	FUNCARGS_ARE_MISMATCH_COUNT
 };
 
+struct funcargs
+{
+	where where;
+
+	int args_void_implicit; /* f(){} - implicitly (void) */
+	int args_void; /* true if "spel(void);" otherwise if !args, then we have "spel();" */
+	int args_old_proto; /* true if f(a, b); where a and b are identifiers */
+	decl **arglist;
+	int variadic;
+};
+
 /* if fspel ! NULL, print warnings */
 enum funcargs_cmp funcargs_equal(funcargs *args_a, funcargs *args_b,
 		int strict_types, const char *fspel);
