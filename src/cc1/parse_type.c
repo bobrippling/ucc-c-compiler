@@ -9,7 +9,6 @@
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
 #include "data_structs.h"
-#include "scope.h"
 #include "decl_init.h"
 #include "funcargs.h"
 
@@ -175,7 +174,7 @@ static void parse_add_attr(decl_attr **append)
 static decl *parse_at_tdef(void)
 {
 	if(curtok == token_identifier){
-		decl *d = scope_find(current_scope, token_current_spel_peek());
+		decl *d = symtab_search_d(current_scope, token_current_spel_peek());
 		if(d && d->store == store_typedef)
 			return d;
 	}
@@ -1013,7 +1012,7 @@ static void decl_pull_to_func(decl *const d_this)
 	 * This also means any call to d will have the most up to date
 	 * attribute information about it
 	 */
-	decl *d_prev = scope_find(current_scope, d_this->spel);
+	decl *d_prev = symtab_search_d(current_scope, d_this->spel);
 	char wbuf[WHERE_BUF_SIZ];
 
 	if(!d_prev)

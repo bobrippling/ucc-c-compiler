@@ -5,7 +5,6 @@
 #include "stmt_code.h"
 #include "../decl_init.h"
 #include "../../util/dynarray.h"
-#include "../scope.h"
 
 const char *str_stmt_code()
 {
@@ -27,7 +26,7 @@ void fold_stmt_code(stmt *s)
 	for(diter = s->symtab->decls; diter && *diter; diter++){
 		decl *const d = *diter;
 		decl *found;
-		if(DECL_IS_FUNC(d) && (found = scope_find(s->symtab->parent, d->spel))){
+		if(DECL_IS_FUNC(d) && (found = symtab_search_d(s->symtab->parent, d->spel))){
 			if(!decl_equal(d, found, DECL_CMP_EXACT_MATCH)){
 				char buf[WHERE_BUF_SIZ];
 

@@ -13,7 +13,6 @@
 #include "pack.h"
 #include "sue.h"
 #include "out/out.h"
-#include "scope.h"
 #include "fold.h"
 
 

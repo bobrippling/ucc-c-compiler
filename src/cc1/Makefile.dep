@@ -81,7 +81,7 @@ fold_sym.o: fold_sym.c ../util/util.h data_structs.h tree.h expr.h \
  ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h ops/stmt_return.h \
  ops/stmt_switch.h ops/stmt_while.h ops/stmt_continue.h sym.h decl.h \
  cc1.h fold_sym.h ../util/platform.h ../util/dynarray.h ../util/dyn.h \
- pack.h sue.h out/out.h scope.h fold.h
+ pack.h sue.h out/out.h fold.h
 funcargs.o: funcargs.c ../util/util.h ../util/alloc.h ../util/dynarray.h \
  ../util/dyn.h data_structs.h tree.h expr.h ops/expr_addr.h \
  ops/expr_assign.h ops/expr_assign_compound.h ops/expr_cast.h \
@@ -156,19 +156,8 @@ parse_type.o: parse_type.c ../util/util.h ../util/alloc.h \
  ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h ops/stmt_goto.h \
  ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h ops/stmt_return.h \
  ops/stmt_switch.h ops/stmt_while.h ops/stmt_continue.h sym.h decl.h \
- scope.h decl_init.h funcargs.h tokenise.h tokconv.h sue.h cc1.h parse.h \
+ decl_init.h funcargs.h tokenise.h tokconv.h sue.h cc1.h parse.h \
  parse_type.h parse_attr.c parse_init.c
-scope.o: scope.c ../util/util.h data_structs.h tree.h expr.h \
- ops/expr_addr.h ops/expr_assign.h ops/expr_assign_compound.h \
- ops/expr_cast.h ops/expr_comma.h ops/expr_funcall.h \
- ops/expr_identifier.h ops/expr_if.h ops/expr_op.h ops/expr_sizeof.h \
- ops/expr_val.h ops/expr_stmt.h ops/expr_deref.h ops/expr_struct.h \
- ops/expr_compound_lit.h ops/expr_string.h stmt.h ops/stmt_break.h \
- ops/stmt_case.h ops/stmt_case_range.h ops/stmt_code.h ops/stmt_default.h \
- ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h ops/stmt_goto.h \
- ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h ops/stmt_return.h \
- ops/stmt_switch.h ops/stmt_while.h ops/stmt_continue.h sym.h decl.h \
- ../util/alloc.h ../util/dynarray.h ../util/dyn.h scope.h
 stmt.o: stmt.c ../util/util.h ../util/alloc.h data_structs.h tree.h \
  expr.h ops/expr_addr.h ops/expr_assign.h ops/expr_assign_compound.h \
  ops/expr_cast.h ops/expr_comma.h ops/expr_funcall.h \
@@ -212,7 +201,7 @@ sym.o: sym.c ../util/util.h data_structs.h tree.h expr.h ops/expr_addr.h \
  ops/stmt_expr.h ops/stmt_for.h ops/stmt_goto.h ops/stmt_if.h \
  ops/stmt_label.h ops/stmt_noop.h ops/stmt_return.h ops/stmt_switch.h \
  ops/stmt_while.h ops/stmt_continue.h sym.h decl.h ../util/alloc.h \
- macros.h ../util/dynarray.h ../util/dyn.h scope.h sue.h funcargs.h
+ macros.h ../util/dynarray.h ../util/dyn.h sue.h funcargs.h
 tokconv.o: tokconv.c ../util/util.h data_structs.h tree.h expr.h \
  ops/expr_addr.h ops/expr_assign.h ops/expr_assign_compound.h \
  ops/expr_cast.h ops/expr_comma.h ops/expr_funcall.h \
@@ -675,7 +664,7 @@ ops/stmt_code.o: ops/stmt_code.c ops/ops.h ops/../../util/util.h \
  ops/../ops/stmt_continue.h ops/../sym.h ops/../decl.h ops/../cc1.h \
  ops/../out/out.h ops/../fold.h ops/../const.h ops/../gen_str.h \
  ops/../gen_style.h ops/../gen_asm.h ops/stmt_code.h ops/../decl_init.h \
- ops/../../util/dynarray.h ops/../../util/dyn.h ops/../scope.h
+ ops/../../util/dynarray.h ops/../../util/dyn.h
 ops/stmt_continue.o: ops/stmt_continue.c ops/ops.h ops/../../util/util.h \
  ops/../data_structs.h ops/../tree.h ops/../expr.h ops/../ops/expr_addr.h \
  ops/../ops/expr_assign.h ops/../ops/expr_assign_compound.h \
