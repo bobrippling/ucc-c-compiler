@@ -548,6 +548,14 @@ static void fold_func(decl *func_decl)
 		UCC_ASSERT(fref, "not a func");
 		curdecl_ref_func_called = type_ref_func_call(fref, NULL);
 
+		if(curdecl_func->store & store_inline
+		&& (curdecl_func->store & STORE_MASK_STORE) == store_default)
+		{
+			WARN_AT(&curdecl_func->where,
+					"pure inline function will not have code emitted "
+					"(missing \"static\" or \"extern\")");
+		}
+
 		if(curdecl_func->ref->type != type_ref_func)
 			WARN_AT(&curdecl_func->where, "typedef function implementation is not C");
 
