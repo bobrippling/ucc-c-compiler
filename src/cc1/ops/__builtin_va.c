@@ -64,7 +64,7 @@ static void fold_va_start(expr *e, symtable *stab)
 	int n_args;
 	expr *va_l;
 
-	if(dynarray_count((void **)e->funcargs) != 2)
+	if(dynarray_count(e->funcargs) != 2)
 		DIE_AT(&e->where, "%s requires two arguments", BUILTIN_SPEL(e->expr));
 
 	va_l = e->funcargs[0];
@@ -453,7 +453,7 @@ static void builtin_gen_va_end(expr *e)
 
 static void fold_va_end(expr *e, symtable *stab)
 {
-	if(dynarray_count((void **)e->funcargs) != 1)
+	if(dynarray_count(e->funcargs) != 1)
 		DIE_AT(&e->where, "%s requires one argument", BUILTIN_SPEL(e->expr));
 
 	FOLD_EXPR(e->funcargs[0], stab);

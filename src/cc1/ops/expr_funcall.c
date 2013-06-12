@@ -383,9 +383,9 @@ invalid:
 
 	/* this block is purely count checking */
 	if(args_from_decl->arglist || args_from_decl->args_void){
-		const int count_arg  = dynarray_count((void **)e->funcargs);
+		const int count_arg  = dynarray_count(e->funcargs);
 
-		count_decl = dynarray_count((void **)args_from_decl->arglist);
+		count_decl = dynarray_count(args_from_decl->arglist);
 
 		if(count_decl != count_arg && (args_from_decl->variadic ? count_arg < count_decl : 1)){
 			DIE_AT(&e->where, "too %s arguments to function %s (got %d, need %d)",
@@ -420,8 +420,8 @@ invalid:
 	if(args_from_decl->arglist || args_from_decl->args_void){
 		int count_arg;
 
-		count_arg  = dynarray_count((void **)e->funcargs);
-		count_decl = dynarray_count((void **)args_from_decl->arglist);
+		count_arg  = dynarray_count(e->funcargs);
+		count_decl = dynarray_count(args_from_decl->arglist);
 
 		if(count_decl != count_arg && (args_from_decl->variadic ? count_arg < count_decl : 1)){
 			DIE_AT(&e->where, "too %s arguments to function %s (got %d, need %d)",

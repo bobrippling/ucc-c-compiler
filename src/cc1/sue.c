@@ -185,7 +185,7 @@ new_type:
 			sue_get_decls(members, &decls);
 
 			qsort(decls,
-					dynarray_count((void **)decls), sizeof *decls,
+					dynarray_count(decls), sizeof *decls,
 					decl_spel_cmp);
 
 			for(i = 0; decls && decls[i]; i++){

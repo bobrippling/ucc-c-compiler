@@ -17,7 +17,7 @@ void fold_switch_dups(stmt *sw)
 {
 	typedef int (*qsort_f)(const void *, const void *);
 
-	int n = dynarray_count((void **)sw->codes);
+	int n = dynarray_count(sw->codes);
 	struct
 	{
 		intval start, end;

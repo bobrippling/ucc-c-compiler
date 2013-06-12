@@ -42,7 +42,7 @@ void gen_expr_stmt(expr *e)
 	 * on the stack for it
 	 */
 	{
-		int n = dynarray_count((void **)e->code->codes);
+		int n = dynarray_count(e->code->codes);
 		if(n > 0 && !stmt_kind(e->code->codes[n-1], expr))
 			out_push_noop();
 	}
