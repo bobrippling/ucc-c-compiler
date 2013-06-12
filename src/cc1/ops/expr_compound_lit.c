@@ -116,7 +116,6 @@ void gen_expr_str_compound_lit(expr *e)
 				PDECL_NEWLINE      |
 				PDECL_SYM_OFFSET   |
 				PDECL_FUNC_DESCEND |
-				PDECL_PISDEF       |
 				PDECL_PINIT        |
 				PDECL_SIZE         |
 				PDECL_ATTR);
@@ -147,7 +146,6 @@ static decl *compound_lit_decl(type_ref *t, decl_init *init)
 
 	d->ref = t;
 	d->init = init;
-	d->is_definition = 1;
 
 	return d;
 }

@@ -1016,9 +1016,6 @@ static void decl_pull_to_func(decl *const d_this)
 	decl *d_prev = scope_find(current_scope, d_this->spel);
 	char wbuf[WHERE_BUF_SIZ];
 
-	if(d_this->func_code)
-		d_this->is_definition = 1;
-
 	if(!d_prev)
 		return;
 

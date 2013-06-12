@@ -123,9 +123,6 @@ void gen_asm_global(decl *d)
 {
 	decl_attr *sec;
 
-	if(!d->is_definition)
-		return;
-
 	if((sec = decl_has_attr(d, attr_section))){
 		ICW("%s: TODO: section attribute \"%s\" on %s",
 				where_str(&d->attr->where),
@@ -190,10 +187,6 @@ void gen_asm(symtable_global *globs)
 			if(!*++iasm)
 				iasm = NULL;
 		}
-
-		/* inline_only aren't currently inlined */
-		if(!d->is_definition)
-			continue;
 
 		if(d->store & store_inline){
 			/*

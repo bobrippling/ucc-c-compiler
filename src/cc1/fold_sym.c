@@ -64,10 +64,8 @@ int symtab_fold(symtable *tab, int current)
 
 			fold_decl(d, tab);
 
-			if(s->type == sym_arg){
+			if(s->type == sym_arg)
 				s->offset = arg_idx++;
-				s->decl->is_definition = 1; /* just for completeness */
-			}
 		}
 
 		for(diter = tab->decls; *diter; diter++){

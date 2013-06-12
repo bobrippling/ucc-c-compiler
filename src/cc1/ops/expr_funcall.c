@@ -352,7 +352,6 @@ invalid:
 			df = decl_new();
 			df->ref = type_func;
 			df->spel = e->expr->bits.ident.spel;
-			df->is_definition = 1; /* needed since it's a local var */
 
 			/* not declared - generate a sym ourselves */
 			e->expr->bits.ident.sym = sym_new_stab(stab, df, sym_global);

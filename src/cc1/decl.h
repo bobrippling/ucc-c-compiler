@@ -154,9 +154,6 @@ struct decl
 
 	decl_init *init; /* initialiser - converted to an assignment for non-globals */
 	stmt *func_code;
-
-	int is_definition;
-	/* true if this is the definition of the decl - may have init or func_code */
 };
 
 const char *decl_asm_spel(decl *);
@@ -226,9 +223,6 @@ const char *type_ref_to_str(type_ref *);
 const char *decl_store_to_str(const enum decl_storage);
 
 void decl_attr_free(decl_attr *a);
-
-/* decl_is_* */
-#define decl_is_definition(d) ((d)->init || (d)->func_code)
 
 #define DECL_IS_FUNC(d)   type_ref_is((d)->ref, type_ref_func)
 #define DECL_IS_ARRAY(d)  type_ref_is((d)->ref, type_ref_array)

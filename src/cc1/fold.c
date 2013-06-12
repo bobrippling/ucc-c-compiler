@@ -708,8 +708,6 @@ void fold_symtab_scope(symtable *stab, stmt **pinit_code)
 		 * don't for anonymous symbols, they're referenced via other means
 		 */
 		if(curdecl_func){
-			d->is_definition = 1;
-
 			if((d->store & STORE_MASK_STORE) == store_static && d->spel)
 				d->spel_asm = out_label_static_local(curdecl_func->spel, d->spel);
 		}

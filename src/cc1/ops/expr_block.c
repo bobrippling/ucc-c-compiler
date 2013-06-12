@@ -66,7 +66,6 @@ void fold_expr_block(expr *e, symtable *stab)
 		df->spel = out_label_block(curdecl_func->spel);
 		e->bits.block_sym = sym_new_stab(symtab_root(stab), df, sym_global);
 
-		df->is_definition = 1; /* necessary for code-gen */
 		df->func_code = e->code;
 		df->ref = e->tree_type;
 

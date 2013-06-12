@@ -294,19 +294,6 @@ void print_decl(decl *d, enum pdeclargs mode)
 	if(mode & PDECL_INDENT)
 		idt_print();
 
-	if((mode & PDECL_PISDEF)){
-		const int one = !d->is_definition;
-
-		if(one)
-			fputc('(', cc1_out);
-
-		if(!d->is_definition)
-			fprintf(cc1_out, "not definition");
-
-		if(one)
-			fputc(')', cc1_out);
-	}
-
 	if(d->store)
 		fprintf(cc1_out, "%s ", decl_store_to_str(d->store));
 
@@ -370,7 +357,7 @@ void print_decl(decl *d, enum pdeclargs mode)
 void print_sym(sym *s)
 {
 	idt_printf("sym: type=%s, offset=%d, type: ", sym_to_str(s->type), s->offset);
-	print_decl(s->decl, PDECL_NEWLINE | PDECL_PISDEF);
+	print_decl(s->decl, PDECL_NEWLINE);
 }
 
 void print_expr(expr *e)
@@ -513,7 +500,6 @@ void print_stmt(stmt *t)
 			print_decl(d, PDECL_INDENT
 					| PDECL_NEWLINE
 					| PDECL_SYM_OFFSET
-					| PDECL_PISDEF
 					| PDECL_ATTR
 					| PDECL_PINIT);
 			gen_str_indent--;
@@ -544,7 +530,6 @@ void gen_str(symtable_global *symtab)
 
 		print_decl(d, PDECL_INDENT
 				| PDECL_NEWLINE
-				| PDECL_PISDEF
 				| PDECL_FUNC_DESCEND
 				| PDECL_SIZE
 				| PDECL_PINIT

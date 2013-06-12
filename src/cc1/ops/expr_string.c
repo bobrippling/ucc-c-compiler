@@ -37,7 +37,6 @@ void fold_expr_str(expr *e, symtable *stab)
 	d->ref = e->tree_type;
 	d->spel_asm = sv->lbl;
 
-	d->is_definition = 1;
 	d->store = store_static;
 
 	d->init = decl_init_new(decl_init_brace);
