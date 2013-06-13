@@ -1,3 +1,4 @@
+// RUN: %layout_check %s
 enum
 {
 	SIGHUP,
@@ -29,7 +30,6 @@ struct
 } sigs[] = {
 	[0 ... 31 - 1] = { "?", 6 },
 
-	// TODO: allow copy of constant decl_init subs
 	[SIGHUP].nam = "SIG""HUP",
 	[SIGINT].nam = "SIG""INT",
 	[SIGQUIT].nam = "SIG""QUIT",
