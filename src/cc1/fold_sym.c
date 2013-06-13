@@ -162,24 +162,32 @@ int symtab_fold(symtable *tab, int current)
 		for(di = all_decls; di[1]; di++){
 			decl *a = di[0], *b = di[1];
 			char *clash = NULL;
-			int is_func;
 
 			/* we allow multiple function declarations,
 			 * and multiple declarations at global scope,
 			 * but not definitions
 			 */
 			if(!strcmp(a->spel, b->spel)){
-				if(LOCAL_SCOPE){
-					clash = "clashing";
+				const int a_func = !!DECL_IS_FUNC(a);
+
+				if(!!DECL_IS_FUNC(b) != a_func
+				|| !decl_equal(a, b, DECL_CMP_EXACT_MATCH))
+				{
+					clash = "mismatching";
 				}else{
-					if((is_func = !!DECL_IS_FUNC(a)) != !!DECL_IS_FUNC(b)){
-						clash = "mismatching";
-					}else if(is_func){
-						if(a->func_code && b->func_code)
-							clash = "duplicate";
+					if(LOCAL_SCOPE){
+						/* allow multiple functions or multiple externs */
+						if(a_func){
+							/* fine - we know they're equal */
+						}else if((a->store & STORE_MASK_STORE) == store_extern
+								  && (b->store & STORE_MASK_STORE) == store_extern){
+							/* both are extern declarations */
+						}else{
+							clash = "extern/non-extern";
+						}
+					}else if(a_func && a->func_code && b->func_code){
+						clash = "duplicate";
 					}
-					if(!clash && !decl_equal(a, b, DECL_CMP_EXACT_MATCH))
-						clash = "mismatching";
 				}
 			}
 
