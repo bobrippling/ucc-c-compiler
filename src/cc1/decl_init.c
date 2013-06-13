@@ -167,7 +167,12 @@ decl_init *decl_init_new(enum decl_init_type t)
 
 static decl_init *decl_init_copy_const(decl_init *di)
 {
-	decl_init *ret = umalloc(sizeof *ret);
+	decl_init *ret;
+
+	if(di == DYNARRAY_NULL)
+		return di;
+
+	ret = umalloc(sizeof *ret);
 	memcpy_safe(ret, di);
 
 	switch(ret->type){
