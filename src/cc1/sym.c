@@ -65,10 +65,14 @@ symtable *symtab_root(symtable *child)
 
 decl *symtab_search_d(symtable *tab, const char *spel)
 {
-	decl **diter;
+	decl **const decls = tab->decls;
+	int i;
 
-	for(diter = tab->decls; diter && *diter; diter++){
-		decl *d = *diter;
+	/* must search in reverse order - find the most
+	 * recent decl first (e.g. function prototype propagation)
+	 */
+	for(i = dynarray_count(decls) - 1; i >= 0; i--){
+		decl *d = decls[i];
 		if(d->spel && !strcmp(spel, d->spel))
 			return d;
 	}
