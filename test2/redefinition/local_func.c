@@ -1,3 +1,5 @@
+// RUN: %ucc %s
+
 main()
 {
 	int f();
