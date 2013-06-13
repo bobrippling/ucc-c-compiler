@@ -49,8 +49,12 @@ static char **split_func_args(char *args_str)
 		}
 	}
 
-	if(anchor != ti)
+	/* need to account for a finishing comma */
+	if(anchor != ti
+	|| (ti > tokens && ti[-1]->tok == TOKEN_COMMA))
+	{
 		dynarray_add(&args, tokens_join_n(anchor, ti - anchor));
+	}
 
 	tokens_free(tokens);
 
