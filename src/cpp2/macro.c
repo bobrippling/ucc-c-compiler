@@ -80,6 +80,7 @@ void macro_remove(const char *nam)
 	if(m){
 		free(m->nam);
 		free(m->val);
+		dynarray_free(char **, &m->args, free);
 		dynarray_rm(macros, m);
 		free(m);
 	}
