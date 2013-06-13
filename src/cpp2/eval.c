@@ -211,6 +211,14 @@ static char *eval_func_macro(macro *m, char *args_str)
 							 * "... is replaced by the corresponding argument after all
 							 * macros contained therein have been expanded..."
 							 */
+
+							if(!free_word){
+								/* eval_expand_macros() (below) frees its argument
+								 * if it expands, so we must own 'word' at this point */
+								word = ustrdup(word);
+								free_word = 1;
+							}
+
 							word = eval_expand_macros(word);
 						}
 					}
