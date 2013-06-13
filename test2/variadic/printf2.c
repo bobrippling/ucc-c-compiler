@@ -1,3 +1,6 @@
+// RUN: %ucc -o %t %s
+// RUN: %t | %output_check 'hi 3, yo'
+
 strlen2(char *s)
 {
 	int i = 0;
@@ -36,6 +39,5 @@ norm:
 
 main()
 {
-	char s[] = { 'h', 'i', ' ', '%', 'd', ',', ' ', '%', 's', '\n', 0 };
-	printf2(s, 3, (char[]){'y', 'o', 0});
+	printf2("hi %d, %s\n", 3, (char[]){'y', 'o', 0});
 }

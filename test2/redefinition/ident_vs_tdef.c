@@ -1,3 +1,4 @@
+// RUN: %ucc %s
 typedef int td;
 
 main()
