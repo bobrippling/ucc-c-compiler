@@ -36,8 +36,8 @@ static char **split_func_args(char *args_str)
 					char *arg = tokens_join_n(anchor, ti - anchor);
 					dynarray_add(&args, arg);
 					anchor = ti + 1;
-					break;
 				}
+				break;
 			case TOKEN_OPEN_PAREN:
 				nest++;
 				break;
