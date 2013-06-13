@@ -145,7 +145,7 @@ int decl_init_is_zero(decl_init *dinit)
 		}
 	}
 
-	ICE("bad decl init");
+	ICE("bad decl init type %d", dinit->type);
 	return -1;
 }
 
@@ -297,6 +297,38 @@ static decl_init *decl_init_brace_up_scalar(
 	return first_init;
 }
 
+static void range_store_add(
+		struct init_cpy ***range_store,
+		struct init_cpy *entry,
+		decl_init **updataable_refs)
+{
+	long *offsets = NULL, *off;
+	decl_init **i;
+
+	for(i = updataable_refs; i && *i; i++){
+		decl_init *ent = *i;
+		if(ent != DYNARRAY_NULL && ent->type == decl_init_copy){
+			/* this entry's copy points into range_store,
+			 * and will need updating */
+			dynarray_add(&offsets, 1 + DECL_INIT_COPY_IDX_INITS(ent, *range_store));
+
+			/* +1 because dynarray doesn't allow NULL */
+		}
+	}
+
+	dynarray_add(range_store, entry);
+
+	off = offsets;
+	for(i = updataable_refs; i && *i; i++){
+		decl_init *ent = *i;
+		if(ent != DYNARRAY_NULL && ent->type == decl_init_copy)
+			/* -1 explained above */
+			ent->bits.range_copy = *range_store + (*off++ - 1);
+	}
+
+	free(offsets);
+}
+
 static decl_init **decl_init_brace_up_array2(
 		decl_init **current, struct init_cpy ***range_store,
 		init_iter *iter,
@@ -423,11 +455,12 @@ static decl_init **decl_init_brace_up_array2(
 
 				/* keep track of the initial copy ({ 1, 3 })
 				 * aggregate in .range_store */
-				dynarray_add(range_store, init_cpy_from_dinit(braced));
+				range_store_add(range_store, init_cpy_from_dinit(braced), current);
 
 				if(replace_save){
 					/* keep track of what we replaced */
-					dynarray_add(range_store, init_cpy_from_dinit(replace_save));
+					range_store_add(range_store,
+							init_cpy_from_dinit(replace_save), current);
 				}
 
 				for(replace_idx = i; replace_idx <= j; replace_idx++){

@@ -29,8 +29,12 @@ struct decl_init
 			/* see decl_init.doc */
 		} ar;
 		struct init_cpy **range_copy;
+#define DECL_INIT_COPY_IDX_INITS(this, inits) \
+		((this)->bits.range_copy - (inits))
+
 #define DECL_INIT_COPY_IDX(this, array) \
-		((this)->bits.range_copy - (array)->bits.ar.range_inits)
+		DECL_INIT_COPY_IDX_INITS(this,      \
+				(array)->bits.ar.range_inits)
 
 	} bits;
 
