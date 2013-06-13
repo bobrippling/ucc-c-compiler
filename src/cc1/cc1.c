@@ -151,6 +151,7 @@ enum cc1_backend cc1_backend = BACKEND_ASM;
 
 int cc1_m32 = UCC_M32;
 int cc1_mstack_align; /* align stack to n, platform_word_size by default */
+int cc1_gdebug;
 
 enum cc1_std cc1_std = STD_C99;
 
@@ -344,6 +345,9 @@ int main(int argc, char **argv)
 				cc1_backend = BACKEND_STYLE;
 			else
 				goto usage;
+
+		}else if(!strcmp(argv[i], "-g")){
+			cc1_gdebug = 1;
 
 		}else if(!strcmp(argv[i], "-o")){
 			if(++i == argc)

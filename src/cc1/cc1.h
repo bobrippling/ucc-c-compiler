@@ -102,5 +102,6 @@ extern int cc1_max_errors;
 
 extern int cc1_m32; /* 32bit mode or 64? */
 extern int cc1_mstack_align; /* 2^n */
+extern int cc1_gdebug; /* -g */
 
 #endif

@@ -34,6 +34,9 @@ void gen_expr(expr *e)
 		else
 			stylef("%" INTVAL_FMT_D, k.bits.iv.val);
 	}else{
+		if(cc1_gdebug)
+			out_comment("at %s", where_str(&e->where));
+
 		EOF_WHERE(&e->where, e->f_gen(e));
 	}
 }
