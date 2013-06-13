@@ -165,7 +165,7 @@ expr *fold_expr(expr *e, symtable *stab)
 
 void fold_enum(struct_union_enum_st *en, symtable *stab)
 {
-	const int has_bitmask = !!decl_attr_present(en->attr, attr_enum_bitmask);
+	const int has_bitmask = !!attr_present(en->attr, attr_enum_bitmask);
 	sue_member **i;
 	int defval = has_bitmask;
 
@@ -216,7 +216,7 @@ int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 		int offset = 0;
 		sue_member **i;
 
-		if(decl_attr_present(sue->attr, attr_packed))
+		if(attr_present(sue->attr, attr_packed))
 			ICE("TODO: __attribute__((packed)) support");
 
 		for(i = sue->members; i && *i; i++){
@@ -381,7 +381,7 @@ static void fold_func_attr(decl *d)
 {
 	funcargs *fa = type_ref_funcargs(d->ref);
 
-	if(decl_has_attr(d, attr_sentinel) && !fa->variadic)
+	if(decl_attr_present(d, attr_sentinel) && !fa->variadic)
 		WARN_AT(&d->where, "variadic function required for sentinel check");
 }
 
@@ -458,7 +458,7 @@ void fold_decl(decl *d, symtable *stab)
 		WARN_AT(&d->where, "inline on non-function");
 	}
 
-	if(d->align || (attrib = decl_has_attr(d, attr_aligned))){
+	if(d->align || (attrib = decl_attr_present(d, attr_aligned))){
 		const int tal = type_ref_align(d->ref, &d->where);
 
 		struct decl_align *i;
@@ -566,7 +566,7 @@ static void fold_func(decl *func_decl)
 
 		fold_stmt(func_decl->func_code);
 
-		if(decl_has_attr(curdecl_func, attr_noreturn)){
+		if(decl_attr_present(curdecl_func, attr_noreturn)){
 			if(!type_ref_is_void(curdecl_ref_func_called)){
 				cc1_warn_at(&func_decl->where, 0, 1, WARN_RETURN_UNDEF,
 						"function \"%s\" marked no-return has a non-void return value",

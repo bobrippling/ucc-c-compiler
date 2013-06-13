@@ -357,7 +357,7 @@ void decl_attr_append(decl_attr **loc, decl_attr *new)
 	*loc = /*decl_attr_copy(*/new/*)*/;
 }
 
-decl_attr *decl_attr_present(decl_attr *da, enum decl_attr_type t)
+decl_attr *attr_present(decl_attr *da, enum decl_attr_type t)
 {
 	for(; da; da = da->next)
 		if(da->type == t)
@@ -381,23 +381,23 @@ decl_attr *type_attr_present(type_ref *r, enum decl_attr_type t)
 	while(r){
 		decl_attr *da;
 
-		if((da = decl_attr_present(r->attr, t)))
+		if((da = attr_present(r->attr, t)))
 			return da;
 
 		switch(r->type){
 			case type_ref_type:
 			{
 				struct_union_enum_st *sue = r->bits.type->sue;
-				if((da = decl_attr_present(r->bits.type->attr, t)))
+				if((da = attr_present(r->bits.type->attr, t)))
 					return da;
-				return sue ? decl_attr_present(sue->attr, t) : NULL;
+				return sue ? attr_present(sue->attr, t) : NULL;
 			}
 
 			case type_ref_tdef:
 			{
 				decl *d = r->bits.tdef.decl;
 
-				if(d && (da = decl_attr_present(d->attr, t)))
+				if(d && (da = attr_present(d->attr, t)))
 					return da;
 
 				return type_attr_present(r->bits.tdef.type_of->tree_type, t);
@@ -415,11 +415,11 @@ decl_attr *type_attr_present(type_ref *r, enum decl_attr_type t)
 	return NULL;
 }
 
-decl_attr *decl_has_attr(decl *d, enum decl_attr_type t)
+decl_attr *decl_attr_present(decl *d, enum decl_attr_type t)
 {
 	/* check the attr on the decl _and_ its type */
 	decl_attr *da;
-	if((da = decl_attr_present(d->attr, t)))
+	if((da = attr_present(d->attr, t)))
 		return da;
 	if((da = type_attr_present(d->ref, t)))
 		return da;

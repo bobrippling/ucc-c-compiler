@@ -70,7 +70,7 @@ int symtab_fold(symtable *tab, int current)
 		for(diter = tab->decls; *diter; diter++){
 			decl *d = *diter;
 			sym *s = d->sym;
-			const int has_unused_attr = !!decl_has_attr(d, attr_unused);
+			const int has_unused_attr = !!decl_attr_present(d, attr_unused);
 
 			if(d->spel)
 				dynarray_add(&all_decls, d);

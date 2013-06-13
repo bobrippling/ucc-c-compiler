@@ -210,9 +210,9 @@ int decl_conv_array_func_to_ptr(decl *d);
 type_ref *decl_is_decayed_array(decl *);
 type_ref *type_ref_is_decayed_array(type_ref *);
 
-decl_attr *decl_attr_present(decl_attr *, enum decl_attr_type);
+decl_attr *attr_present(decl_attr *, enum decl_attr_type);
 decl_attr *type_attr_present(type_ref *, enum decl_attr_type);
-decl_attr *decl_has_attr(decl *, enum decl_attr_type);
+decl_attr *decl_attr_present(decl *, enum decl_attr_type);
 
 const char *decl_to_str(decl *d);
 const char *decl_to_str_r(char buf[ucc_static_param DECL_STATIC_BUFSIZ], decl *);

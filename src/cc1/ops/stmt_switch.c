@@ -164,7 +164,7 @@ void fold_stmt_switch(stmt *s)
 			fold_switch_enum(s, typ);
 
 			/* warn if we switch on an enum bitmask */
-			if(decl_attr_present(typ->sue->attr, attr_enum_bitmask))
+			if(attr_present(typ->sue->attr, attr_enum_bitmask))
 				WARN_AT(&s->where, "switch on enum with enum_bitmask attribute");
 		}
 	}

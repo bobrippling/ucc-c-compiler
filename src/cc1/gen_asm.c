@@ -123,7 +123,7 @@ void gen_asm_global(decl *d)
 {
 	decl_attr *sec;
 
-	if((sec = decl_has_attr(d, attr_section))){
+	if((sec = decl_attr_present(d, attr_section))){
 		ICW("%s: TODO: section attribute \"%s\" on %s",
 				where_str(&d->attr->where),
 				sec->attr_extra.section, d->spel);
