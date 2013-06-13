@@ -12,5 +12,5 @@ f()
 
 main()
 {
-	f(); // CHECK: /warn: unused/
+	f(); // CHECK: /warning: unused expression/
 }
