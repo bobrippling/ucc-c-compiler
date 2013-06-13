@@ -149,7 +149,7 @@ void fold_const_expr_op(expr *e, consty *k)
 		/* the op is signed if an operand is, not the result,
 		 * e.g. u_a < u_b produces a bool (signed) */
 		int is_signed = type_ref_is_signed(e->lhs->tree_type) ||
-		                type_ref_is_signed(e->rhs->tree_type);
+		                (e->rhs ? type_ref_is_signed(e->rhs->tree_type) : 0);
 
 		r = operate(
 				lhs.bits.iv.val,
