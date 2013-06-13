@@ -400,7 +400,7 @@ decl_attr *type_attr_present(type_ref *r, enum decl_attr_type t)
 				if(d && (da = attr_present(d->attr, t)))
 					return da;
 
-				return type_attr_present(r->bits.tdef.type_of->tree_type, t);
+				return expr_attr_present(r->bits.tdef.type_of, t);
 			}
 
 			case type_ref_ptr:
@@ -425,6 +425,28 @@ decl_attr *decl_attr_present(decl *d, enum decl_attr_type t)
 		return da;
 
 	return d->proto ? decl_attr_present(d->proto, t) : NULL;
+}
+
+decl_attr *expr_attr_present(expr *e, enum decl_attr_type t)
+{
+	decl_attr *da;
+
+	if(expr_kind(e, cast)){
+		da = expr_attr_present(e->expr, t);
+		if(da)
+			return da;
+	}
+
+	if(expr_kind(e, identifier)){
+		sym *s = e->bits.ident.sym;
+		if(s){
+			da = decl_attr_present(s->decl, t);
+			if(da)
+				return da;
+		}
+	}
+
+	return type_attr_present(e->tree_type, t);
 }
 
 const char *decl_attr_to_str(enum decl_attr_type t)

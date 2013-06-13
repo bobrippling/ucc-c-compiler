@@ -482,7 +482,7 @@ invalid:
 	}
 
 	/* check the subexp tree type to get the funcall decl_attrs */
-	if(type_attr_present(e->expr->tree_type, attr_warn_unused))
+	if(expr_attr_present(e->expr, attr_warn_unused))
 		e->freestanding = 0; /* needs use */
 }
 
@@ -554,7 +554,7 @@ void mutate_expr_funcall(expr *e)
 int expr_func_passable(expr *e)
 {
 	/* need to check the sub-expr, i.e. the function */
-	return !type_attr_present(e->expr->tree_type, attr_noreturn);
+	return !expr_attr_present(e->expr, attr_noreturn);
 }
 
 expr *expr_new_funcall()
