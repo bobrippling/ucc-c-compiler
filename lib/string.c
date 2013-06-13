@@ -7,12 +7,18 @@ static const char *_errs[] = {
 };
 
 
-size_t strlen(const char *s)
+size_t strnlen(const char *s, size_t lim)
 {
 	size_t i = 0;
 	while(*s++)
-		i++;
+		if(++i == lim)
+			return lim;
 	return i;
+}
+
+size_t strlen(const char *s)
+{
+	return strnlen(s, -1UL);
 }
 
 const char *strerror(int eno)
@@ -21,11 +27,12 @@ const char *strerror(int eno)
 	return _errs[eno - 1];
 }
 
-int strncmp(const char *a, const char *b, size_t n)
+int memcmp(const void *va, const void *vb, size_t n)
 {
+	const unsigned char *a = va, *b = vb;
 	while(n > 0){
 		int diff;
-		char ac, bc;
+		unsigned char ac, bc;
 
 		ac = *a;
 		bc = *b;
@@ -46,6 +53,15 @@ int strncmp(const char *a, const char *b, size_t n)
 		b++;
 	}
 	return 0;
+}
+
+int strncmp(const char *a, const char *b, size_t n)
+{
+	//size_t max = MAX(strnlen(a, n), strnlen(b, n)); - waiting for cpp merge
+	size_t max_a = strnlen(a, n);
+	size_t max_b = strnlen(b, n);
+
+	return memcmp(a, b, MAX(max_a, max_b));
 }
 
 int strcmp(const char *a, const char *b)
