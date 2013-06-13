@@ -375,6 +375,9 @@ char *eval_expand_macros(char *line)
 			while(iswordpart(line[i]))
 				i++;
 
+			if(!line[i])
+				break;
+
 		}else{
 			/* skip this word */
 			i = end - line - 1; /* i incremented by loop */
