@@ -150,6 +150,9 @@ struct decl
 
 	int init_normalised;
 
+	/* a reference to a previous prototype, used for attribute checks */
+	decl *proto;
+
 	sym *sym;
 
 	decl_init *init; /* initialiser - converted to an assignment for non-globals */

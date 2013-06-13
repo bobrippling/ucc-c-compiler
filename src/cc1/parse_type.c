@@ -1036,10 +1036,8 @@ static void decl_pull_to_func(decl *const d_this)
 		return;
 	}
 
-	/* set asm rename + append attributes */
-	EOF_WHERE(&d_this->where,
-			decl_attr_append(&d_this->attr, d_prev->attr)
-	);
+	/* link the proto chain for __attribute__ checking */
+	d_this->proto = d_prev;
 
 	if(d_this->spel_asm){
 		if(d_prev->spel_asm){

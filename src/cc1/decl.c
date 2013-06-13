@@ -423,7 +423,8 @@ decl_attr *decl_attr_present(decl *d, enum decl_attr_type t)
 		return da;
 	if((da = type_attr_present(d->ref, t)))
 		return da;
-	return NULL;
+
+	return d->proto ? decl_attr_present(d->proto, t) : NULL;
 }
 
 const char *decl_attr_to_str(enum decl_attr_type t)
