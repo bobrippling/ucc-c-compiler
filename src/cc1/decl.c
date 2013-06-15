@@ -657,19 +657,19 @@ static int type_ref_equal_r(
 
 		case type_ref_array:
 		{
-			const int a_incomplete = !a->bits.array.size,
-			          b_incomplete = !b->bits.array.size;
+			const int a_complete = !!a->bits.array.size,
+			          b_complete = !!b->bits.array.size;
 
-			if(a_incomplete != b_incomplete)
-				return 0;
-
-			if(!a_incomplete){
+			if(a_complete && b_complete){
 				intval av, bv;
 
 				const_fold_need_val(a->bits.array.size, &av);
 				const_fold_need_val(b->bits.array.size, &bv);
 
 				if(av.val != bv.val)
+					return 0;
+			}else if(a_complete != b_complete){
+				if((mode & DECL_CMP_ALLOW_TENATIVE_ARRAY) == 0)
 					return 0;
 			}
 

@@ -166,6 +166,7 @@ enum decl_cmp
 	DECL_CMP_EXACT_MATCH    = 1 << 0,
 	DECL_CMP_ALLOW_VOID_PTR = 1 << 1,
 	DECL_CMP_ALLOW_SIGNED_UNSIGNED = 1 << 2,
+	DECL_CMP_ALLOW_TENATIVE_ARRAY = 1 << 3,
 };
 
 decl        *decl_new(void);

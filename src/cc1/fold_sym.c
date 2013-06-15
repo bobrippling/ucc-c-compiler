@@ -171,7 +171,8 @@ int symtab_fold(symtable *tab, int current)
 				const int a_func = !!DECL_IS_FUNC(a);
 
 				if(!!DECL_IS_FUNC(b) != a_func
-				|| !decl_equal(a, b, DECL_CMP_EXACT_MATCH))
+				|| !decl_equal(a, b,
+					DECL_CMP_EXACT_MATCH | DECL_CMP_ALLOW_TENATIVE_ARRAY))
 				{
 					clash = "mismatching";
 				}else{
@@ -199,7 +200,7 @@ int symtab_fold(symtable *tab, int current)
 						clash, a->spel,
 						where_str_r(wbuf, &b->where));
 			}
-			}
+		}
 
 
 		dynarray_free(decl **, &all_decls, NULL);
