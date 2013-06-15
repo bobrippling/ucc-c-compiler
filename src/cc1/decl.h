@@ -149,6 +149,7 @@ struct decl
 	} *align;
 
 	int init_normalised;
+	int flag;
 
 	/* a reference to a previous prototype, used for attribute checks */
 	decl *proto;

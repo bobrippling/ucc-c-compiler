@@ -995,20 +995,9 @@ static void check_and_replace_old_func(decl *d, decl **old_args)
 	free(old_args);
 }
 
-static void decl_pull_to_func(decl *const d_this)
+static void decl_pull_to_func(decl *const d_this, decl *const d_prev)
 {
-	/* look for a previous declaration of d->spel.
-	 * if found, we pull its asm() and attributes to the current,
-	 * thus propagating them down in O(1) to the eventual definition.
-	 *
-	 * This also means any call to d will have the most up to date
-	 * attribute information about it
-	 */
-	decl *d_prev = symtab_search_d(current_scope, d_this->spel);
 	char wbuf[WHERE_BUF_SIZ];
-
-	if(!d_prev)
-		return;
 
 	if(!type_ref_is(d_prev->ref, type_ref_func))
 		return; /* error caught later */
@@ -1027,9 +1016,6 @@ static void decl_pull_to_func(decl *const d_this)
 				where_str_r(wbuf, &d_prev->where));
 		return;
 	}
-
-	/* link the proto chain for __attribute__ checking */
-	d_this->proto = d_prev;
 
 	if(d_this->spel_asm){
 		if(d_prev->spel_asm){
@@ -1222,9 +1208,23 @@ void parse_decls_multi_type(
 
 add:
 			{
-				/* do this before adding, so we don't find 'd' */
-				if(PARSE_DECL_IS_FUNC(d))
-					decl_pull_to_func(d);
+				/* Look for a previous declaration of d->spel.
+				 * if found, we pull its asm() and attributes to the current,
+				 * thus propagating them down in O(1) to the eventual definition.
+				 * Do this before adding, so we don't find 'd'
+				 *
+				 * This also means any use of d will have the most up to date
+				 * attribute information about it
+				 */
+				decl *d_prev = symtab_search_d(current_scope, d->spel);
+
+				if(d_prev){
+					/* link the proto chain for __attribute__ checking */
+					d->proto = d_prev;
+
+					if(PARSE_DECL_IS_FUNC(d_prev))
+						decl_pull_to_func(d, d_prev);
+				}
 
 				if(scope)
 					dynarray_add(&scope->decls, d);

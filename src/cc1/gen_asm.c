@@ -191,33 +191,7 @@ void gen_asm(symtable_global *globs)
 				iasm = NULL;
 		}
 
-		if(d->store & store_inline){
-			/*
-			 * inline semantics
-			 *
-			 * all "inline", none "extern" = inline_only
-			 * "static inline" = code emitted, decl is static
-			 * one "inline", and "extern" mentioned, or "inline" not mentioned = code emitted, decl is extern
-			 */
-			enum decl_storage stor = d->store & STORE_MASK_STORE;
-			switch(stor){
-				default:
-					ICE("bad storage for function %s %s",
-							d->spel, decl_store_to_str(stor));
-
-				case store_default:
-					/* inline only - emit an extern for it anyway */
-					asm_predeclare_extern(d);
-					continue;
-
-				case store_extern:
-				case store_static:
-					/* fine - these just say what the emitted code's linkage is */
-					break;
-			}
-		}
-
-		switch(d->store & STORE_MASK_STORE){
+		switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
 			case store_inline:
 			case store_auto:
 			case store_register:
@@ -228,18 +202,43 @@ void gen_asm(symtable_global *globs)
 			case store_typedef:
 				continue;
 
+			case store_extern:
+			case store_default:
 			case store_static:
 				break;
-
-			case store_extern:
-				if(!DECL_IS_FUNC(d) || !d->func_code)
-					break;
-				/* else extern func with definition */
-
-			case store_default:
-				asm_predeclare_global(d);
 		}
 
+		if(DECL_IS_FUNC(d)){
+			if(d->store & store_inline){
+				/*
+				 * inline semantics
+				 *
+				 * "" = inline only
+				 * "static" = code emitted, decl is static
+				 * "extern" mentioned, or "inline" not mentioned = code emitted, decl is extern
+				 */
+				if((d->store & STORE_MASK_STORE) == store_default){
+					/* inline only - emit an extern for it anyway */
+					asm_predeclare_extern(d);
+					continue;
+				}
+			}
+
+			if(!d->func_code){
+				asm_predeclare_extern(d);
+				continue;
+			}
+		}else{
+			/* variable - if there's no init,
+			 * it's tenative and not output */
+			if(!d->init){
+				asm_predeclare_extern(d);
+				continue;
+			}
+		}
+
+		if((d->store & STORE_MASK_STORE) != store_static)
+			asm_predeclare_global(d);
 		gen_asm_global(d);
 
 		UCC_ASSERT(out_vcount() == 0, "non empty vstack after global gen");

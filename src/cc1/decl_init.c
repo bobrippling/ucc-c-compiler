@@ -47,7 +47,7 @@ typedef struct
 } init_iter;
 
 #define ITER_WHERE(it, def) \
-	(it && it->pos[0] && it->pos[0] != DYNARRAY_NULL \
+	(it && it->pos && it->pos[0] && it->pos[0] != DYNARRAY_NULL \
 	 ? &it->pos[0]->where \
 	 : def)
 

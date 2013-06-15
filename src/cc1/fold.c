@@ -870,6 +870,54 @@ int fold_passable(stmt *s)
 	return s->f_passable(s);
 }
 
+void fold_merge_tenatives(symtable *stab)
+{
+	decl **const globs = stab->decls;
+
+	int i;
+	/* go in reverse */
+	for(i = dynarray_count(globs) - 1; i >= 0; i--){
+		decl *d = globs[i];
+		decl *init = NULL;
+
+		/* functions are checked via .func_code on parsing */
+		if(d->flag || !d->spel || DECL_IS_FUNC(d))
+			continue;
+
+		switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
+			case store_typedef:
+			case store_extern:
+				continue;
+			default:
+				break;
+		}
+
+		/* check for a single init between all prototypes */
+		for(; d; d = d->proto){
+			d->flag = 1;
+			if(d->init){
+				if(init){
+					char wbuf[WHERE_BUF_SIZ];
+					DIE_AT(&init->where, "multiple definitions of \"%s\"\n"
+							"%s: note: other definition here", init->spel,
+							where_str_r(wbuf, &d->where));
+				}
+				init = d;
+			}
+		}
+		if(!init){
+			/* no initialiser, give the last declared one a default init */
+			d = globs[i];
+			d->init = decl_init_new_w(decl_init_brace, &d->where);
+			decl_init_brace_up_fold(d, stab);
+
+			WARN_AT(&d->where,
+					"default-initialising tenative definition of \"%s\"",
+					d->spel);
+		}
+	}
+}
+
 void fold(symtable *globs)
 {
 #define D(x) globs->decls[x]
@@ -910,9 +958,12 @@ void fold(symtable *globs)
 
 	fold_symtab_scope(globs, NULL);
 
-	if(globs->decls)
+	if(globs->decls){
 		for(i = 0; D(i); i++)
 			fold_decl_global(D(i), globs);
+
+		fold_merge_tenatives(globs);
+	}
 
 	/* static assertions */
 	{
