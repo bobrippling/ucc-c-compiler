@@ -14,13 +14,13 @@ const char *str_expr_op()
 	return "op";
 }
 
-static intval_t operate(
-		intval_t lval, intval_t *rval, /* rval is optional */
+static integral_t operate(
+		integral_t lval, integral_t *rval, /* rval is optional */
 		enum op_type op, int is_signed,
 		const char **error)
 {
-	typedef sintval_t S;
-	typedef  intval_t U;
+	typedef sintegral_t S;
+	typedef  integral_t U;
 
 	/* FIXME: casts based on lval.type */
 #define piv (&konst->bits.iv)
@@ -82,7 +82,7 @@ static void const_offset(consty *r, consty *val, consty *addr,
 
 	memcpy_safe(r, addr);
 
-	change = val->bits.iv.val * step;
+	change = val->bits.iv.val.i * step;
 
 	if(op == op_minus)
 		change = -change;
@@ -110,13 +110,13 @@ void fold_const_expr_op(expr *e, consty *k)
 					int undefined = 0;
 
 					if(type_ref_is_signed(e->rhs->tree_type)
-					&& (sintval_t)rhs.bits.iv.val < 0)
+					&& (sintegral_t)rhs.bits.iv.val.i < 0)
 					{
 						WARN_AT(&e->rhs->where, "shift count is negative (%"
-								INTVAL_FMT_D ")", (sintval_t)rhs.bits.iv.val);
+								NUMERIC_FMT_D ")", (sintegral_t)rhs.bits.iv.val.i);
 
 						undefined = 1;
-					}else if(rhs.bits.iv.val >= ty_sz){
+					}else if(rhs.bits.iv.val.i >= ty_sz){
 						WARN_AT(&e->rhs->where, "shift count >= width of %s (%u)",
 								type_ref_to_str(e->lhs->tree_type), ty_sz);
 
@@ -145,22 +145,22 @@ void fold_const_expr_op(expr *e, consty *k)
 
 	if(lhs.type == CONST_VAL && rhs.type == CONST_VAL){
 		const char *err = NULL;
-		intval_t r;
+		integral_t r;
 		/* the op is signed if an operand is, not the result,
 		 * e.g. u_a < u_b produces a bool (signed) */
 		int is_signed = type_ref_is_signed(e->lhs->tree_type) ||
 		                (e->rhs ? type_ref_is_signed(e->rhs->tree_type) : 0);
 
 		r = operate(
-				lhs.bits.iv.val,
-				e->rhs ? &rhs.bits.iv.val : NULL,
+				lhs.bits.iv.val.i,
+				e->rhs ? &rhs.bits.iv.val.i : NULL,
 				e->op, is_signed, &err);
 
 		if(err){
 			WARN_AT(&e->where, "%s", err);
 		}else{
 			k->type = CONST_VAL;
-			k->bits.iv.val = r;
+			k->bits.iv.val.i = r;
 		}
 
 	}else if((e->op == op_andsc || e->op == op_orsc)
@@ -168,7 +168,7 @@ void fold_const_expr_op(expr *e, consty *k)
 
 		/* allow 1 || f() */
 		consty *kside = CONST_AT_COMPILE_TIME(lhs.type) ? &lhs : &rhs;
-		int is_true = !!kside->bits.iv.val;
+		int is_true = !!kside->bits.iv.val.i;
 
 		/* TODO: to be more conformant we should disallow: a() && 0
 		 * i.e. ordering
@@ -482,13 +482,13 @@ static void op_bound(expr *e)
 
 #define idx k.bits.iv
 			if(e->op == op_minus)
-				idx.val = -idx.val;
+				idx.val.i = -idx.val.i;
 
-			/* index is allowed to be one past the end, i.e. idx.val == sz */
-			if((sintval_t)idx.val < 0 || idx.val > sz)
+			/* index is allowed to be one past the end, i.e. idx.val.i == sz */
+			if((sintegral_t)idx.val.i < 0 || idx.val.i > sz)
 				WARN_AT(&e->where,
-						"index %" INTVAL_FMT_D " out of bounds of array, size %ld",
-						idx.val, (long)sz);
+						"index %" NUMERIC_FMT_D " out of bounds of array, size %ld",
+						idx.val.i, (long)sz);
 			/* TODO: "note: array here" */
 #undef idx
 		}
@@ -511,7 +511,7 @@ static void op_unsigned_cmp_check(expr *e)
 				const_fold(lhs ? e->rhs : e->lhs, &k);
 
 				if(k.type == CONST_VAL){
-					const int v = k.bits.iv.val;
+					const int v = k.bits.iv.val.i;
 
 					if(v <= 0){
 						WARN_AT(&e->where,

@@ -179,7 +179,7 @@ expr *parse_expr_primary()
 		case token_integer:
 		case token_character:
 		{
-			expr *e = expr_new_intval(&currentval);
+			expr *e = expr_new_numeric(&currentval);
 			EAT(curtok);
 			return e;
 		}

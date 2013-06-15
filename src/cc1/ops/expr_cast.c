@@ -31,22 +31,22 @@ void fold_const_expr_cast(expr *e, consty *k)
 	switch(k->type){
 		case CONST_VAL:
 #define piv (&k->bits.iv)
-			/* need to cast the val down as appropriate */
+			/* need to cast the val.i down as appropriate */
 			if(type_ref_is_type(e->tree_type, type__Bool)){
-				piv->val = !!piv->val; /* analagous to out/out.c::out_normalise()'s constant case */
+				piv->val.i = !!piv->val.i; /* analagous to out/out.c::out_normalise()'s constant case */
 
 			}else{
 				const int sz = type_ref_size(e->tree_type, &e->where);
-				const intval_t old = piv->val;
+				const integral_t old = piv->val.i;
 
 				/* TODO: disallow for ptrs/non-ints */
 
 				switch(sz){
 					/* TODO: unsigned */
 
-#define CAST(sz, t) case sz: piv->val = (t)piv->val; break
+#define CAST(sz, t) case sz: piv->val.i = (t)piv->val.i; break
 	/*
-#define CAST(sz, t) case sz: piv->val = piv->val & ~(-1 << (sz * 8 - 1)); break
+#define CAST(sz, t) case sz: piv->val.i = piv->val.i & ~(-1 << (sz * 8 - 1)); break
 	*/
 
 					CAST(1, char);
@@ -64,10 +64,10 @@ void fold_const_expr_cast(expr *e, consty *k)
 							type_ref_to_str(e->tree_type), sz);
 				}
 
-				if(e->expr_cast_implicit && old != piv->val)
+				if(e->expr_cast_implicit && old != piv->val.i)
 					WARN_AT(&e->where,
-							"implicit cast changes value from %" INTVAL_FMT_D " to %" INTVAL_FMT_D,
-							old, piv->val);
+							"implicit cast changes value from %" NUMERIC_FMT_D " to %" NUMERIC_FMT_D,
+							old, piv->val.i);
 			}
 #undef piv
 			break;

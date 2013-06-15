@@ -49,39 +49,6 @@ expr *expr_new(func_mutate_expr *f,
 	return e;
 }
 
-expr *expr_new_intval(intval *iv)
-{
-	expr *e = expr_new_val(0);
-	memcpy_safe(&e->bits.iv, iv);
-	return e;
-}
-
-expr *expr_new_decl_init(decl *d, decl_init *di)
-{
-	ICE("TODO - only allow simple expr inits");
-	(void)d;
-	(void)di;
-	/*UCC_ASSERT(d->init, "no init");
-	return expr_new_assign_init(expr_new_identifier(d->spel), d->init);*/
-	return 0;
-}
-
-#if 0
-expr *expr_new_array_decl_init(decl *d, int ival, int idx)
-{
-	expr *sum;
-
-	UCC_ASSERT(d->init, "no init");
-
-	sum = expr_new_op(op_plus);
-
-	sum->lhs = expr_new_identifier(d->spel);
-	sum->rhs = expr_new_val(idx);
-
-	return expr_new_assign(expr_new_deref(sum), expr_new_val(ival));
-}
-#endif
-
 int expr_is_null_ptr(expr *e, int allow_int)
 {
 	int b = 0;

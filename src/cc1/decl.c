@@ -596,7 +596,7 @@ unsigned type_ref_size(type_ref *r, where *from)
 
 		case type_ref_array:
 		{
-			intval sz;
+			numeric sz;
 
 			if(type_ref_is_void(r->ref))
 				DIE_AT(from, "array of void");
@@ -606,7 +606,7 @@ unsigned type_ref_size(type_ref *r, where *from)
 
 			const_fold_need_val(r->bits.array.size, &sz);
 
-			return sz.val * type_ref_size(r->ref, from);
+			return sz.val.i * type_ref_size(r->ref, from);
 		}
 	}
 
@@ -620,7 +620,7 @@ unsigned decl_size(decl *d)
 
 #ifdef FIELD_WIDTH_TODO
 	if(d->field_width){
-		intval iv;
+		numeric iv;
 
 		ICW("use of field width - brace for incorrect code (%s)",
 				where_str(&d->where));
@@ -703,12 +703,12 @@ static int type_ref_equal_r(
 			          b_complete = !!b->bits.array.size;
 
 			if(a_complete && b_complete){
-				intval av, bv;
+				numeric av, bv;
 
 				const_fold_need_val(a->bits.array.size, &av);
 				const_fold_need_val(b->bits.array.size, &bv);
 
-				if(av.val != bv.val)
+				if(av.val.i != bv.val.i)
 					return 0;
 			}else if(a_complete != b_complete){
 				if((mode & DECL_CMP_ALLOW_TENATIVE_ARRAY) == 0)
@@ -944,14 +944,14 @@ static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
 		case type_ref_array:
 			BUF_ADD("[");
 			if(r->bits.array.size){
-				intval iv;
+				numeric iv;
 
 				if(r->bits.array.is_static)
 					BUF_ADD("static ");
 				BUF_ADD("%s", type_qual_to_str(r->bits.array.qual, 1));
 
 				const_fold_need_val(r->bits.array.size, &iv);
-				BUF_ADD("%" INTVAL_FMT_D, iv.val);
+				BUF_ADD("%" NUMERIC_FMT_D, iv.val.i);
 			}
 			BUF_ADD("]");
 			break;

@@ -20,7 +20,7 @@ void fold_switch_dups(stmt *sw)
 	int n = dynarray_count(sw->codes);
 	struct
 	{
-		intval start, end;
+		numeric start, end;
 		stmt *cse;
 	} *const vals = malloc(n * sizeof *vals);
 
@@ -56,21 +56,21 @@ void fold_switch_dups(stmt *sw)
 	}
 
 	/* sort vals for comparison */
-	qsort(vals, n, sizeof(*vals), (qsort_f)intval_cmp); /* struct layout guarantees this */
+	qsort(vals, n, sizeof(*vals), (qsort_f)numeric_cmp); /* struct layout guarantees this */
 
 	for(i = 1; i < n; i++){
-		const long last_prev  = vals[i-1].end.val;
-		const long first_this = vals[i].start.val;
+		const long last_prev  = vals[i-1].end.val.i;
+		const long first_this = vals[i].start.val.i;
 
 		if(last_prev >= first_this){
 			char buf[WHERE_BUF_SIZ];
-			const int overlap = vals[i  ].end.val != vals[i  ].start.val
-				               || vals[i-1].end.val != vals[i-1].start.val;
+			const int overlap = vals[i  ].end.val.i != vals[i  ].start.val.i
+				               || vals[i-1].end.val.i != vals[i-1].start.val.i;
 
 			DIE_AT(&vals[i-1].cse->where, "%s case statements %s %ld (from %s)",
 					overlap ? "overlapping" : "duplicate",
 					overlap ? "starting at" : "for",
-					(long)vals[i].start.val,
+					(long)vals[i].start.val.i,
 					where_str_r(buf, &vals[i].cse->where));
 		}
 	}
@@ -88,18 +88,18 @@ void fold_switch_enum(stmt *sw, const type *enum_type)
 	/* for each case/default/case_range... */
 	for(titer = sw->codes; titer && *titer; titer++){
 		stmt *cse = *titer;
-		intval_t v, w;
-		intval iv;
+		integral_t v, w;
+		numeric iv;
 
 		if(cse->expr->expr_is_default)
 			goto ret;
 
 		const_fold_need_val(cse->expr, &iv);
-		v = iv.val;
+		v = iv.val.i;
 
 		if(stmt_kind(cse, case_range)){
 			const_fold_need_val(cse->expr2, &iv);
-			w = iv.val;
+			w = iv.val.i;
 		}else{
 			w = v;
 		}
@@ -113,7 +113,7 @@ void fold_switch_enum(stmt *sw, const type *enum_type)
 
 				const_fold_need_val(m->val, &iv);
 
-				if(v == iv.val)
+				if(v == iv.val.i)
 					marks[midx]++, found = 1;
 			}
 
@@ -182,7 +182,7 @@ void gen_stmt_switch(stmt *s)
 
 	for(titer = s->codes; titer && *titer; titer++){
 		stmt *cse = *titer;
-		intval iv;
+		numeric iv;
 
 		if(cse->expr->expr_is_default){
 			tdefault = cse;
@@ -196,7 +196,7 @@ void gen_stmt_switch(stmt *s)
 
 		if(stmt_kind(cse, case_range)){
 			char *skip = out_label_code("range_skip");
-			intval max;
+			numeric max;
 
 			/* TODO: proper signed/unsiged format - out_op() */
 			const_fold_need_val(cse->expr2, &max);

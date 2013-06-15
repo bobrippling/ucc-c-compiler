@@ -59,10 +59,10 @@ static int const_expr_zero(expr *e, int zero)
 
 	const_fold(e, &k);
 
-	return k.type == CONST_VAL && (zero ? k.bits.iv.val == 0 : k.bits.iv.val != 0);
+	return k.type == CONST_VAL && (zero ? k.bits.iv.val.i == 0 : k.bits.iv.val.i != 0);
 }
 
-void const_fold_need_val(expr *e, intval *piv)
+void const_fold_need_val(expr *e, numeric *piv)
 {
 	consty k;
 	const_fold(e, &k);
@@ -86,7 +86,7 @@ int const_expr_and_zero(expr *e)
 long const_expr_value(expr *e)
 {
 	enum constyness k;
-	intval val;
+	numeric val;
 
 	const_fold(e, &val, &k);
 	UCC_ASSERT(k == CONST_WITH_VAL, "not a constant");

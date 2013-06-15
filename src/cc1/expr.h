@@ -15,7 +15,7 @@ typedef struct consty
 	long offset; /* offset for addr/strk */
 	union
 	{
-		intval iv;          /* CONST_VAL */
+		numeric iv;          /* CONST_VAL */
 		stringval *str;     /* CONST_STRK */
 		struct
 		{
@@ -89,7 +89,7 @@ struct expr
 
 	union
 	{
-		intval iv;
+		numeric iv;
 
 		/* __builtin_va_start */
 		int n;
@@ -178,7 +178,7 @@ void expr_mutate(expr *, func_mutate_expr *, func_fold *, func_str *, func_gen *
                                         gen_expr_str_    ## type, \
                                         gen_expr_style_  ## type)
 
-expr *expr_new_intval(intval *);
+expr *expr_new_numeric(numeric *);
 
 /* simple wrappers */
 expr *expr_ptr_multiply(expr *, decl *);

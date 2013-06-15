@@ -186,13 +186,13 @@ void fold_enum(struct_union_enum_st *en, symtable *stab)
 				defval++;
 
 		}else{
-			intval iv;
+			numeric iv;
 
 			FOLD_EXPR(e, stab);
 			const_fold_need_val(e, &iv);
 			m->val = e;
 
-			defval = has_bitmask ? iv.val << 1 : iv.val + 1;
+			defval = has_bitmask ? iv.val.i << 1 : iv.val.i + 1;
 		}
 	}
 }
@@ -336,7 +336,7 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 
 				if(k.type != CONST_VAL)
 					DIE_AT(&r->where, "not a numeric constant for array size");
-				else if((sintval_t)k.bits.iv.val < 0)
+				else if((sintegral_t)k.bits.iv.val.i < 0)
 					DIE_AT(&r->where, "negative array size");
 				/* allow zero length arrays */
 			}
@@ -436,7 +436,7 @@ void fold_decl(decl *d, symtable *stab)
 #ifdef FIELD_WIDTH_TODO
 	if(d->field_width){
 		enum constyness ktype;
-		intval iv;
+		numeric iv;
 		int width;
 		type *t = ;
 
@@ -517,7 +517,7 @@ void fold_decl(decl *d, symtable *stab)
 				if(k.type != CONST_VAL)
 					DIE_AT(&d->where, "alignment must be an integer constant");
 
-				al = k.bits.iv.val;
+				al = k.bits.iv.val.i;
 			}else{
 				type_ref *ty = i->bits.align_ty;
 				fold_type_ref(ty, NULL, stab);
@@ -1024,7 +1024,7 @@ void fold(symtable *globs)
 			if(!CONST_AT_COMPILE_TIME(k.type))
 				DIE_AT(&sa->e->where, "static assert: not a constant expression (%s)", sa->e->f_str());
 
-			if(!k.bits.iv.val)
+			if(!k.bits.iv.val.i)
 				DIE_AT(&sa->e->where, "static assertion failure: %s", sa->s);
 		}
 	}

@@ -15,10 +15,10 @@
 
 const where *eof_where = NULL;
 
-intval *intval_new(long v)
+numeric *numeric_new(long v)
 {
-	intval *iv = umalloc(sizeof *iv);
-	iv->val = v;
+	numeric *iv = umalloc(sizeof *iv);
+	iv->val.i = v;
 	return iv;
 }
 
@@ -57,9 +57,9 @@ final:
 	}
 }
 
-int intval_cmp(const intval *a, const intval *b)
+int numeric_cmp(const numeric *a, const numeric *b)
 {
-	const intval_t la = a->val, lb = b->val;
+	const integral_t la = a->val.i, lb = b->val.i;
 
 	if(la > lb)
 		return 1;
@@ -68,11 +68,11 @@ int intval_cmp(const intval *a, const intval *b)
 	return 0;
 }
 
-int intval_str(char *buf, size_t nbuf, intval_t v, int is_signed)
+int numeric_str(char *buf, size_t nbuf, integral_t v, int is_signed)
 {
 	return snprintf(
 			buf, nbuf,
-			is_signed ? "%" INTVAL_FMT_D : "%" INTVAL_FMT_U,
+			is_signed ? "%" NUMERIC_FMT_D : "%" NUMERIC_FMT_U,
 			v);
 }
 

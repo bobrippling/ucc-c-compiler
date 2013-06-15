@@ -57,7 +57,7 @@ int while_passable(stmt *s)
 
 	const_fold(s->expr, &k);
 
-	if(k.type == CONST_VAL && k.bits.iv.val)
+	if(k.type == CONST_VAL && k.bits.iv.val.i)
 		return fold_code_escapable(s); /* while(1) */
 
 	return 1; /* fold_passable(s->lhs) - doesn't depend on this */

@@ -13,7 +13,7 @@ enum base
 
 const char *base_to_str(enum base);
 
-void char_seq_to_iv(char *s, intval *iv, int *plen, enum base mode);
+void char_seq_to_iv(char *s, numeric *iv, int *plen, enum base mode);
 
 #define isoct(x) ('0' <= (x) && (x) < '8')
 

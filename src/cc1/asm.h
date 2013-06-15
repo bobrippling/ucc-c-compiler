@@ -48,7 +48,7 @@ void asm_new(enum asm_type, void *);
 
 void asm_temp(          int indent, const char *, ...) ucc_printflike(2, 3);
 void asm_tempf(FILE *f, int indent, const char *, ...) ucc_printflike(3, 4);
-void asm_out_intval(FILE *f, intval *iv);
+void asm_out_numeric(FILE *f, numeric *iv);
 
 void asm_indir(enum asm_indir mode, decl *tt, char rto, char rfrom, const char *comment);
 

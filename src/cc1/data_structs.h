@@ -1,22 +1,28 @@
 #include <stdint.h>
 
-typedef struct intval intval;
+typedef struct numeric numeric;
 typedef struct stringval stringval;
 
-typedef unsigned long long intval_t;
-typedef   signed long long sintval_t;
-#define INTVAL_FMT_D "lld"
-#define INTVAL_FMT_U "llu"
-#define INTVAL_FMT_X "llx"
-#define INTVAL_T_MAX ULLONG_MAX
-struct intval
+typedef unsigned long long integral_t;
+typedef   signed long long sintegral_t;
+typedef        long double floating_t;
+#define NUMERIC_FMT_D "lld"
+#define NUMERIC_FMT_U "llu"
+#define NUMERIC_FMT_X "llx"
+#define NUMERIC_T_MAX ULLONG_MAX
+struct numeric
 {
-	intval_t val;
-	enum intval_suffix
+	union
+	{
+		integral_t i;
+		floating_t   f;
+	} val;
+	enum numeric_suffix
 	{
 		VAL_UNSIGNED = 1 << 0,
 		VAL_LONG     = 1 << 1,
 		VAL_LLONG    = 1 << 2,
+		VAL_FLOATING = 1 << 6,
 
 		/* variable was read in as:
 		 * (decimal if neither of these set)
@@ -29,8 +35,8 @@ struct intval
 	} suffix;
 };
 
-int intval_cmp(const intval *, const intval *);
-int intval_str(char *buf, size_t nbuf, intval_t v, int is_signed);
+int numeric_cmp(const numeric *, const numeric *);
+int numeric_str(char *buf, size_t nbuf, integral_t v, int is_signed);
 
 struct stringval
 {

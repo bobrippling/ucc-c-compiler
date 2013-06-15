@@ -32,7 +32,7 @@ void gen_expr(expr *e)
 		if(cc1_backend == BACKEND_ASM)
 			out_push_iv(e->tree_type, &k.bits.iv);
 		else
-			stylef("%" INTVAL_FMT_D, k.bits.iv.val);
+			stylef("%" NUMERIC_FMT_D, k.bits.iv.val.i);
 	}else{
 		if(cc1_gdebug)
 			out_comment("at %s", where_str(&e->where));
@@ -72,7 +72,7 @@ void static_addr(expr *e)
 			break;
 
 		case CONST_VAL:
-			asm_declare_partial("%ld", k.bits.iv.val);
+			asm_declare_partial("%ld", k.bits.iv.val.i);
 			break;
 
 		case CONST_ADDR:

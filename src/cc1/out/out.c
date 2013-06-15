@@ -450,12 +450,12 @@ void out_pop(void)
 	vpop();
 }
 
-void out_push_iv(type_ref *t, intval *iv)
+void out_push_iv(type_ref *t, numeric *iv)
 {
 	vpush(t);
 
 	vtop->type = CONST;
-	vtop->bits.val = iv->val;
+	vtop->bits.val = iv->val.i;
 }
 
 const char *v_val_str(struct vstack *vp)
@@ -464,15 +464,15 @@ const char *v_val_str(struct vstack *vp)
 
 	UCC_ASSERT(vp->type == CONST, "val?");
 
-	intval_str(buf, sizeof buf, vp->bits.val, type_ref_is_signed(vp->t));
+	numeric_str(buf, sizeof buf, vp->bits.val, type_ref_is_signed(vp->t));
 
 	return buf;
 }
 
 void out_push_i(type_ref *t, int i)
 {
-	intval iv = {
-		.val = i,
+	numeric iv = {
+		.val = { i },
 		.suffix = 0
 	};
 

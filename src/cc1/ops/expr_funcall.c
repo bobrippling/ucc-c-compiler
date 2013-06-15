@@ -165,7 +165,7 @@ static void format_check_printf(
 			return;
 
 		case CONST_VAL:
-			if(k.bits.iv.val == 0)
+			if(k.bits.iv.val.i == 0)
 				return; /* printf(NULL, ...) */
 			/* fall */
 
@@ -284,8 +284,8 @@ static void static_array_check(
 	if(!(ty_expr = type_ref_is_decayed_array(ty_expr))){
 		WARN_AT(&arg_expr->where,
 				(k_decl.type == CONST_VAL) ?
-				"array of size >= %" INTVAL_FMT_D " expected for parameter" :
-				"array expected for parameter", (intval_t)k_decl.bits.iv.val);
+				"array of size >= %" NUMERIC_FMT_D " expected for parameter" :
+				"array expected for parameter", (integral_t)k_decl.bits.iv.val.i);
 		return;
 	}
 
@@ -295,10 +295,10 @@ static void static_array_check(
 
 		const_fold(ty_expr->bits.ptr.size, &k_arg);
 
-		if(k_decl.type == CONST_VAL && k_arg.bits.iv.val < k_decl.bits.iv.val)
+		if(k_decl.type == CONST_VAL && k_arg.bits.iv.val.i < k_decl.bits.iv.val.i)
 			WARN_AT(&arg_expr->where,
-					"array of size %" INTVAL_FMT_D " passed where size %" INTVAL_FMT_D " needed",
-					k_arg.bits.iv.val, k_decl.bits.iv.val);
+					"array of size %" NUMERIC_FMT_D " passed where size %" NUMERIC_FMT_D " needed",
+					k_arg.bits.iv.val.i, k_decl.bits.iv.val.i);
 	}
 }
 

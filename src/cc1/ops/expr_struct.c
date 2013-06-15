@@ -165,7 +165,7 @@ void fold_const_expr_struct(expr *e, consty *k)
 
 			/* convert the val to a memaddr */
 			/* read iv.val before we clobber it */
-			k->bits.addr.bits.memaddr = k->bits.iv.val + struct_offset(e);
+			k->bits.addr.bits.memaddr = k->bits.iv.val.i + struct_offset(e);
 			k->offset = 0;
 
 			k->bits.addr.is_lbl = 0;

@@ -132,7 +132,7 @@ static struct line_list
 /* -- */
 enum token curtok, curtok_uneat;
 
-intval currentval = { 0 }; /* an integer literal */
+numeric currentval = { { 0 } }; /* an integer literal */
 
 char *currentspelling = NULL; /* e.g. name of a variable */
 
@@ -355,7 +355,7 @@ static void read_number(enum base mode)
 	int read_suffix = 1;
 	int nlen;
 	char c;
-	enum intval_suffix suff = 0;
+	enum numeric_suffix suff = 0;
 
 	char_seq_to_iv(bufferpos, &currentval, &nlen, mode);
 
@@ -519,12 +519,12 @@ static void read_char(const int is_wide)
 			if(currentval.suffix & ~VAL_PREFIX_MASK)
 				DIE_AT(NULL, "invalid character sequence: suffix given");
 
-			if(!is_wide && currentval.val > 0xff)
+			if(!is_wide && currentval.val.i > 0xff)
 				warn_at(NULL, 1,
-						"invalid character sequence: too large (parsed 0x%" INTVAL_FMT_X ")",
-						currentval.val);
+						"invalid character sequence: too large (parsed 0x%" NUMERIC_FMT_X ")",
+						currentval.val.i);
 
-			c = currentval.val;
+			c = currentval.val.i;
 		}else{
 			/* special parsing */
 			c = escape_char(esc);
@@ -536,7 +536,7 @@ static void read_char(const int is_wide)
 		}
 	}
 
-	currentval.val = c;
+	currentval.val.i = c;
 	currentval.suffix = 0;
 
 	if((c = nextchar()) != '\'')
@@ -623,13 +623,13 @@ void nexttoken()
 
 			nextchar();
 
-			parts[0] = currentval.val;
+			parts[0] = currentval.val.i;
 
 			while(*bufferpos == '0')
 				bufferpos++, dec_padding++;
 
 			read_number(DEC);
-			parts[1] = currentval.val;
+			parts[1] = currentval.val.i;
 
 			if(peeknextchar() == 'f'){
 				nextchar();
@@ -651,10 +651,10 @@ void nexttoken()
 				char buf[32];
 
 				snprintf(buf, sizeof buf, "%d.%0*d", parts[0], dec_padding, parts[1]);
-				UCC_ASSERT(sscanf(buf, "%lf", &currentval.dval) == 1, "invalid float (%s)", buf);
+				UCC_ASSERT(sscanf(buf, "%Lf", &currentval.val.f) == 1, "invalid float (%s)", buf);
 			}
 
-			ICE("TODO: float/double repr %d.%d = %f", parts[0], parts[1], currentval.dval);
+			ICE("TODO: float/double repr %d.%d = %Lf", parts[0], parts[1], currentval.val.f);
 		}else{
 			curtok = token_integer;
 		}

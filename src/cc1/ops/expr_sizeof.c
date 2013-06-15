@@ -95,7 +95,7 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 void const_expr_sizeof(expr *e, consty *k)
 {
 	UCC_ASSERT(e->tree_type, "const_fold on sizeof before fold");
-	k->bits.iv.val = SIZEOF_SIZE(e);
+	k->bits.iv.val.i = SIZEOF_SIZE(e);
 	k->bits.iv.suffix = VAL_UNSIGNED | VAL_LONG;
 	k->type = CONST_VAL;
 }

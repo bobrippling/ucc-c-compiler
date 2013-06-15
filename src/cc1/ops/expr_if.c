@@ -35,7 +35,7 @@ void fold_const_expr_if(expr *e, consty *k)
 
 	switch(consts[0].type){
 		case CONST_VAL:
-			res = consts[0].bits.iv.val;
+			res = consts[0].bits.iv.val.i;
 			break;
 		case CONST_ADDR:
 		case CONST_STRK:

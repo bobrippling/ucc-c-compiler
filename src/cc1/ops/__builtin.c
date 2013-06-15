@@ -349,9 +349,9 @@ void builtin_gen_memcpy(expr *e)
 	out_call(3, e->tree_type, ctype);
 #else
 	/* TODO: backend rep movsb */
-	unsigned i = e->bits.iv.val;
+	unsigned i = e->bits.iv.val.i;
 	type_ref *tptr = type_ref_new_ptr(
-				type_ref_cached_MAX_FOR(e->bits.iv.val),
+				type_ref_cached_MAX_FOR(e->bits.iv.val.i),
 				qual_none);
 	unsigned tptr_sz = type_ref_size(tptr, &e->where);
 
@@ -394,7 +394,7 @@ expr *builtin_new_memcpy(expr *to, expr *from, size_t len)
 
 	fcall->lhs = to;
 	fcall->rhs = from;
-	fcall->bits.iv.val = len;
+	fcall->bits.iv.val.i = len;
 
 	return fcall;
 }
@@ -460,7 +460,7 @@ static void const_compatible_p(expr *e, consty *k)
 
 	k->type = CONST_VAL;
 
-	k->bits.iv.val = type_ref_equal(types[0], types[1], DECL_CMP_EXACT_MATCH);
+	k->bits.iv.val.i = type_ref_equal(types[0], types[1], DECL_CMP_EXACT_MATCH);
 }
 
 static expr *expr_new_funcall_typelist(void)
@@ -502,7 +502,7 @@ static void const_constant_p(expr *e, consty *k)
 	const_fold(test, &subk);
 
 	k->type = CONST_VAL;
-	k->bits.iv.val = CONST_AT_COMPILE_TIME(subk.type);
+	k->bits.iv.val.i = CONST_AT_COMPILE_TIME(subk.type);
 }
 
 static expr *parse_constant_p(void)
@@ -524,7 +524,7 @@ static void fold_frame_address(expr *e, symtable *stab)
 	FOLD_EXPR(e->funcargs[0], stab);
 
 	const_fold(e->funcargs[0], &k);
-	if(k.type != CONST_VAL || (sintval_t)k.bits.iv.val < 0)
+	if(k.type != CONST_VAL || (sintegral_t)k.bits.iv.val.i < 0)
 		DIE_AT(&e->where, "%s needs a positive constant value argument", BUILTIN_SPEL(e->expr));
 
 	memcpy_safe(&e->bits.iv, &k.bits.iv);
@@ -540,7 +540,7 @@ static void fold_frame_address(expr *e, symtable *stab)
 
 static void builtin_gen_frame_address(expr *e)
 {
-	const int depth = e->bits.iv.val;
+	const int depth = e->bits.iv.val.i;
 
 	out_push_frame_ptr(depth + 1);
 }
@@ -652,7 +652,7 @@ static void const_is_signed(expr *e, consty *k)
 {
 	memset(k, 0, sizeof *k);
 	k->type = CONST_VAL;
-	k->bits.iv.val = type_ref_is_signed(e->bits.types[0]);
+	k->bits.iv.val.i = type_ref_is_signed(e->bits.types[0]);
 }
 
 static expr *parse_is_signed(void)
@@ -685,7 +685,7 @@ static void const_strlen(expr *e, consty *k)
 
 			if(p){
 				k->type = CONST_VAL;
-				k->bits.iv.val = p - s;
+				k->bits.iv.val.i = p - s;
 				k->bits.iv.suffix = VAL_UNSIGNED;
 			}
 		}

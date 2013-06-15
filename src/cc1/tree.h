@@ -102,7 +102,7 @@ int op_can_compound(enum op_type o);
 
 /* tables local to the current scope */
 extern symtable *current_scope;
-intval *intval_new(long v);
+numeric *numeric_new(long v);
 
 extern const where *eof_where;
 

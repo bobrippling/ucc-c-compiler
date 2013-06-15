@@ -50,13 +50,13 @@ void idt_printf(const char *fmt, ...)
 
 void print_expr_val(expr *e)
 {
-	intval iv;
+	numeric iv;
 
 	const_fold_need_val(e, &iv);
 
 	UCC_ASSERT((iv.suffix & VAL_UNSIGNED) == 0, "TODO: unsigned");
 
-	fprintf(cc1_out, INTVAL_FMT_D, iv.val);
+	fprintf(cc1_out, NUMERIC_FMT_D, iv.val.i);
 }
 
 void print_decl_init(decl_init *di)
@@ -396,11 +396,11 @@ void print_struct(struct_union_enum_st *sue)
 
 #ifdef FIELD_WIDTH_TODO
 		if(d->field_width){
-			intval iv;
+			numeric iv;
 
 			const_fold_need_val(d->field_width, &iv);
 
-			idt_printf("field width %" INTVAL_FMT_D "\n", iv.val);
+			idt_printf("field width %" NUMERIC_FMT_D "\n", iv.val);
 		}
 #endif
 
@@ -421,7 +421,7 @@ void print_enum(struct_union_enum_st *et)
 	for(mi = et->members; *mi; mi++){
 		enum_member *m = (*mi)->enum_member;
 
-		idt_printf("member %s = %" INTVAL_FMT_D "\n", m->spel, (intval_t)m->val->bits.iv.val);
+		idt_printf("member %s = %" NUMERIC_FMT_D "\n", m->spel, (integral_t)m->val->bits.iv.val.i);
 	}
 	gen_str_indent--;
 }

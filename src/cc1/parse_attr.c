@@ -25,12 +25,12 @@ decl_attr *parse_attr_format()
 
 	EAT(token_comma);
 
-	da->bits.format.fmt_arg = currentval.val - 1;
+	da->bits.format.fmt_arg = currentval.val.i - 1;
 	EAT(token_integer);
 
 	EAT(token_comma);
 
-	da->bits.format.var_arg = currentval.val - 1;
+	da->bits.format.var_arg = currentval.val.i - 1;
 	EAT(token_integer);
 
 	EAT(token_close_paren);
@@ -82,7 +82,7 @@ decl_attr *parse_attr_nonnull()
 	if(accept(token_open_paren)){
 		while(curtok != token_close_paren){
 			if(curtok == token_integer){
-				int n = currentval.val;
+				int n = currentval.val.i;
 				if(n <= 0){
 					/* shouldn't ever be negative */
 					WARN_AT(NULL, "%s nonnull argument ignored", n < 0 ? "negative" : "zero");
@@ -120,7 +120,7 @@ static unsigned long optional_parened_int(void)
 
 		EAT(token_integer);
 
-		u = currentval.val;
+		u = currentval.val.i;
 		if(u < 0){
 			WARN_AT(NULL, "negative attribute argument ignored");
 			u = 0;

@@ -120,7 +120,7 @@ static const char *vstack_str_r_ptr(char buf[VSTACK_STR_SZ], struct vstack *vs, 
 {
 	switch(vs->type){
 		case CONST:
-			/* FIXME/signed: better output for intval */
+			/* FIXME/signed: better output for numeric */
 			SNPRINTF(buf, VSTACK_STR_SZ, "%s%s",
 					ptr ? "" : "$", v_val_str(vs));
 			break;

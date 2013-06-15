@@ -8,7 +8,7 @@
 
 const char *str_expr_val()
 {
-	return "val";
+	return "val.i";
 }
 
 static int find_highest_bit(unsigned long long v)
@@ -48,22 +48,22 @@ oct/hex (ll|LL) suffix -> long long int, unsigned long long int
 
 void fold_expr_val(expr *e, symtable *stab)
 {
-	intval *const iv = &e->bits.iv;
+	numeric *const iv = &e->bits.iv;
 
 	int is_signed = !(iv->suffix & VAL_UNSIGNED);
 	const int can_change_sign = is_signed && (iv->suffix & VAL_NON_DECIMAL);
 
 	const int long_max_bit = 63; /* TODO */
-	const int highest_bit = find_highest_bit(iv->val);
+	const int highest_bit = find_highest_bit(iv->val.i);
 	enum type_primitive p =
 		iv->suffix & VAL_LLONG ? type_llong :
 		iv->suffix & VAL_LONG  ? type_long  : type_int;
 
-	/*fprintf(stderr, "----\n0x%" INTVAL_FMT_X
+	/*fprintf(stderr, "----\n0x%" NUMERIC_FMT_X
 	      ", highest bit = %d. suff = 0x%x\n",
-	      iv->val, highest_bit, iv->suffix);*/
+	      iv->val.i, highest_bit, iv->suffix);*/
 
-	if(iv->val == 0){
+	if(iv->val.i == 0){
 		assert(highest_bit == -1);
 		goto chosen;
 	}else{
@@ -148,7 +148,7 @@ void gen_expr_val(expr *e)
 
 void gen_expr_str_val(expr *e)
 {
-	idt_printf("val: 0x%lx\n", (unsigned long)e->bits.iv.val);
+	idt_printf("val.i: 0x%lx\n", (unsigned long)e->bits.iv.val.i);
 }
 
 void const_expr_val(expr *e, consty *k)
@@ -166,11 +166,18 @@ void mutate_expr_val(expr *e)
 expr *expr_new_val(int val)
 {
 	expr *e = expr_new_wrapper(val);
-	e->bits.iv.val = val;
+	e->bits.iv.val.i = val;
+	return e;
+}
+
+expr *expr_new_numeric(numeric *iv)
+{
+	expr *e = expr_new_val(0);
+	memcpy_safe(&e->bits.iv, iv);
 	return e;
 }
 
 void gen_expr_style_val(expr *e)
 {
-	stylef("%" INTVAL_FMT_D, e->bits.iv.val);
+	stylef("%" NUMERIC_FMT_D, e->bits.iv.val.i);
 }

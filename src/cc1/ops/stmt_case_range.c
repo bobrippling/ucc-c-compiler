@@ -11,7 +11,7 @@ const char *str_stmt_case_range()
 
 void fold_stmt_case_range(stmt *s)
 {
-	intval lv, rv;
+	numeric lv, rv;
 
 	FOLD_EXPR(s->expr,  s->symtab);
 	FOLD_EXPR(s->expr2, s->symtab);
@@ -22,10 +22,10 @@ void fold_stmt_case_range(stmt *s)
 	const_fold_need_val(s->expr,  &lv);
 	const_fold_need_val(s->expr2, &rv);
 
-	if(lv.val >= rv.val)
+	if(lv.val.i >= rv.val.i)
 		DIE_AT(&s->where, "case range equal or inverse");
 
-	s->expr->bits.ident.spel = out_label_case(CASE_RANGE, lv.val);
+	s->expr->bits.ident.spel = out_label_case(CASE_RANGE, lv.val.i);
 
 	fold_stmt_and_add_to_curswitch(s);
 }

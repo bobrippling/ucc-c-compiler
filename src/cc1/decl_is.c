@@ -478,9 +478,9 @@ int type_ref_is_const(type_ref *r)
 	return !!(type_ref_qual(r) & qual_const);
 }
 
-long type_ref_array_len(type_ref *r)
+unsigned type_ref_array_len(type_ref *r)
 {
-	intval iv;
+	numeric iv;
 
 	r = type_ref_is(r, type_ref_array);
 
@@ -489,5 +489,5 @@ long type_ref_array_len(type_ref *r)
 
 	const_fold_need_val(r->bits.array.size, &iv);
 
-	return iv.val;
+	return iv.val.i;
 }

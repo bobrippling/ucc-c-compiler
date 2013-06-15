@@ -1,7 +1,7 @@
 #ifndef token_ise_h
 #define token_ise_h
 
-extern intval currentval;
+extern numeric currentval;
 
 enum token
 {
