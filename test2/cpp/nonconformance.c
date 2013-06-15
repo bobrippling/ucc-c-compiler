@@ -1,4 +1,5 @@
 // http://stackoverflow.com/questions/5641836/c-preprocessor-recursive-macros
+// RUN: %ucc -E %s -P | %output_check -w 'CAT(x, y);' 'CAT(x, y);'
 #define CAT_I(a, b) a ## b
 #define CAT(a, b) CAT_I(a, b)
 
@@ -17,5 +18,5 @@ N(0);       //  expands to xy _OR_ CAT(x, y)
 
 
 // and another:
-#define X 10
-1e-X // shouldn't be replaced
+//#define X 10
+//1e-X // shouldn't be replaced

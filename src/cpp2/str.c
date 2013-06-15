@@ -7,6 +7,7 @@
 #include "str.h"
 #include "../util/alloc.h"
 #include "../util/util.h"
+#include "../util/str.h"
 #include "macro.h"
 
 int iswordpart(char c)
@@ -20,17 +21,29 @@ char *word_end(char *s)
 	return s;
 }
 
-char *str_spc_skip(char *s)
-{
-	for(; isspace(*s); s++);
-	return s;
-}
-
 char *word_find_any(char *s)
 {
-	for(; *s; s++)
-		if(iswordpart(*s))
+	char in_quote = 0;
+	for(; *s; s++){
+		switch(*s){
+			case '"':
+			case '\'':
+				if(in_quote == *s)
+					in_quote = 0;
+				else
+					in_quote = *s;
+				break;
+
+			case '\\':
+				if(in_quote){
+					if(!*++s)
+						break;
+					continue;
+				}
+		}
+		if(!in_quote && iswordpart(*s))
 			return s;
+	}
 	return NULL;
 }
 
@@ -75,20 +88,7 @@ char *word_dup(const char *s)
 	return ustrdup2(start, s);
 }
 
-char *str_quotefin(char *s)
-{
-	for(; *s; s++) switch(*s){
-		case '\\':
-			s++;
-			break;
-		case '"':
-			return s;
-	}
-
-	return NULL;
-}
-
-char *str_quote(const char *quoteme)
+char *str_quote(char *quoteme, int free_in)
 {
 	int len;
 	const char *s;
@@ -96,21 +96,29 @@ char *str_quote(const char *quoteme)
 
 	len = 3; /* ""\0 */
 	for(s = quoteme; *s; s++, len++)
-		if(*s == '"')
-			len++;
+		switch(*s){
+			case '"':
+			case '\\':
+				len++;
+		}
 
 	p = ret = umalloc(len);
 
 	*p++ = '"';
 
 	for(s = quoteme; *s; s++){
-		if(*s == '"')
-			*p++ = '\\';
+		switch(*s){
+			case '"':
+			case '\\':
+				*p++ = '\\';
+		}
 		*p++ = *s;
 	}
 
 	strcpy(p, "\"");
 
+	if(free_in)
+		free(quoteme);
 	return ret;
 }
 

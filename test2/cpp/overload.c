@@ -1,26 +1,14 @@
-// RUN: echo TODO; false
-void cpp_overload1(int p1)
-{
-	printf("CPP One param: %d\n", p1);
-}
-
-void cpp_overload2(double *p1, const char *p2)
-{
-	printf("CPP Two params: %p (%f) %s\n", p1, *p1, p2);
-}
-
-void cpp_overload3(int p1, int p2, int p3)
-{
-	printf("CPP Three params: %c %d %d\n", p1, p2, p3);
-}
-
+// RUN: %ucc -E %s -P | %output_check -w 'cpp_overload1(1);' 'cpp_overload2(1, 2);' 'cpp_overload3(1, 2, 3);'
 #define CAT(A, B) CAT2(A, B)
 #define CAT2(A, B) A ## B
+
+#define COUNT_PARMS2(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _, ...) _
+#define COUNT_PARMS(...)\
+	COUNT_PARMS2(__VA_ARGS__, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
 
 #define cpp_overload(...)\
 	CAT(cpp_overload, COUNT_PARMS(__VA_ARGS__))(__VA_ARGS__)
 
-main()
-{
-	cpp_overload(1);
-}
+cpp_overload(1);
+cpp_overload(1, 2);
+cpp_overload(1, 2, 3);

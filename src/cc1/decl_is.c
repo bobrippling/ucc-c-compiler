@@ -221,7 +221,7 @@ int type_ref_is_integral(type_ref *r)
 	return 0;
 }
 
-unsigned type_ref_align(type_ref *r, where const *from)
+unsigned type_ref_align(type_ref *r, where *from)
 {
 	struct_union_enum_st *sue;
 	type_ref *test;

@@ -147,7 +147,7 @@ unsigned type_primitive_size(enum type_primitive tp)
 	return -1;
 }
 
-unsigned type_size(const type *t, where const *from)
+unsigned type_size(const type *t, where *from)
 {
 	if(t->sue)
 		return sue_size(t->sue, from);

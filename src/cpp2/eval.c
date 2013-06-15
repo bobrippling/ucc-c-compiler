@@ -3,18 +3,21 @@
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <assert.h>
 
 #include "eval.h"
 
 #include "../util/dynarray.h"
 #include "../util/util.h"
 #include "../util/alloc.h"
+#include "../util/str.h"
 
 #include "tokenise.h"
 #include "macro.h"
 #include "str.h"
 #include "main.h"
 #include "snapshot.h"
+#include "preproc.h"
 
 #define VA_ARGS_STR "__VA_ARGS__"
 
@@ -23,19 +26,36 @@ static char **split_func_args(char *args_str)
 	token **tokens = tokenise(args_str);
 	token **ti, **anchor = tokens;
 	char **args = NULL;
+	unsigned nest = 0;
 
 	for(ti = tokens; ti && *ti; ti++){
 		token *t = *ti;
 
-		if(t->tok == TOKEN_COMMA){
-			char *arg = tokens_join_n(anchor, ti - anchor);
-			dynarray_add(&args, arg);
-			anchor = ti + 1;
+		switch(t->tok){
+			case TOKEN_COMMA:
+				if(nest == 0){
+					char *arg = tokens_join_n(anchor, ti - anchor);
+					dynarray_add(&args, arg);
+					anchor = ti + 1;
+				}
+				break;
+			case TOKEN_OPEN_PAREN:
+				nest++;
+				break;
+			case TOKEN_CLOSE_PAREN:
+				nest--;
+				break;
+			default:
+				break;
 		}
 	}
 
-	if(anchor != ti)
+	/* need to account for a finishing comma */
+	if(anchor != ti
+	|| (ti > tokens && ti[-1]->tok == TOKEN_COMMA))
+	{
 		dynarray_add(&args, tokens_join_n(anchor, ti - anchor));
+	}
 
 	tokens_free(tokens);
 
@@ -140,15 +160,15 @@ static char *eval_func_macro(macro *m, char *args_str)
 			switch(this->tok){
 				case TOKEN_HASH_QUOTE:
 				{
-					char *w;
-					int alloced;
 					/* replace #arg with the quote of arg */
 					/* # - don't eval */
-					APPEND(this->had_whitespace, "\"%s\"",
-							w = noeval_hash(m, *++ti, args, &alloced, 1, "quote"));
+					int alloced;
+					char *w = noeval_hash(m, *++ti, args, &alloced, 1, "quote");
+					w = str_quote(w, alloced);
 
-					if(alloced)
-						free(w);
+					APPEND(this->had_whitespace, "%s", w);
+
+					free(w);
 					break;
 				}
 
@@ -168,12 +188,23 @@ static char *eval_func_macro(macro *m, char *args_str)
 						ti++;
 
 						while(*ti && ti[0]->tok == TOKEN_HASH_JOIN){
-							char *old = word;
+							char *old = free_word ? word : (free_word = 1, ustrdup(word));
 							char *neh;
 							int free_neh;
+							char *p;
 
 							word = ustrprintf("%s%s", word,
 									neh = noeval_hash(m, ti[1], args, &free_neh, 0, "join"));
+
+							if(iswordpart(*p) || (*p && iswordpart(p[1]))){
+								/* else we might have < ## < which gives << */
+								for(p = word; *p; p++)
+									if(!iswordpart(*p)){
+										CPP_WARN("pasting \"%s\" and \"%s\" doesn't give a single token",
+												old, neh);
+										break;
+									}
+							}
 
 							if(free_neh)
 								free(neh);
@@ -192,7 +223,29 @@ static char *eval_func_macro(macro *m, char *args_str)
 							 * "... is replaced by the corresponding argument after all
 							 * macros contained therein have been expanded..."
 							 */
-							word = eval_expand_macros(word);
+
+							if(!free_word){
+								/* eval_expand_macros() (below) frees its argument
+								 * if it expands, so we must own 'word' at this point */
+								word = ustrdup(word);
+								free_word = 1;
+							}
+
+							/* we don't blue paint arguments, e.g.
+							 * define G(x) x+5
+							 * define F(x) G(x)
+							 * F(G(1))
+							 * we end up with `replace = "G(x+5)`
+							 * which we then want to double-expand
+							 */
+							{
+								snapshot *snap = snapshot_take();
+
+								word = eval_expand_macros(word);
+
+								snapshot_restore_used(snap);
+								snapshot_free(snap);
+							}
 						}
 					}
 
@@ -220,13 +273,14 @@ static char *eval_func_macro(macro *m, char *args_str)
 #undef APPEND
 }
 
-static char *eval_macro_r(macro *m, char *start, char *at)
+static char *eval_macro_r(macro *m, char *start, char **pat)
 {
 	if(m->type == MACRO){
 		static int counter = 0; /* __COUNTER__ */
 		int free_val = 0;
 		char *val;
 		char *ret;
+		size_t change;
 
 		if(m->val){
 			val = m->val;
@@ -234,7 +288,9 @@ static char *eval_macro_r(macro *m, char *start, char *at)
 			free_val = 1;
 
 			if(!strcmp(m->nam, "__FILE__")){
-				val = ustrprintf("\"%s\"", current_fname);
+				char *q = str_quote(current_fname, 0);
+				val = ustrprintf("%s", q);
+				free(q);
 			}else if(!strcmp(m->nam, "__LINE__")){
 				val = ustrprintf("%d", current_line);
 			}else if(!strcmp(m->nam, "__COUNTER__")){
@@ -250,7 +306,9 @@ static char *eval_macro_r(macro *m, char *start, char *at)
 			}
 		}
 
-		ret = word_replace(start, at, strlen(m->nam), val);
+		change = *pat - start;
+		ret = word_replace(start, *pat, strlen(m->nam), val);
+		*pat = ret + change + strlen(val);
 
 		if(free_val)
 			free(val);
@@ -260,11 +318,11 @@ static char *eval_macro_r(macro *m, char *start, char *at)
 	}else{
 		char *open_b, *close_b;
 
-		open_b = str_spc_skip(at + strlen(m->nam));
+		open_b = str_spc_skip(*pat + strlen(m->nam));
 
 		if(*open_b != '('){
 			/* not an invocation - return and also knock down the use-count */
-			m->use_cnt--;
+			macro_use(m, -1);
 			return start;
 		}
 
@@ -275,10 +333,13 @@ static char *eval_macro_r(macro *m, char *start, char *at)
 		{
 			char *all_args = ustrdup2(open_b + 1, close_b);
 			char *eval_d = eval_func_macro(m, all_args);
+			size_t change;
 
 			free(all_args);
 
-			start = str_replace(start, at, close_b + 1, eval_d);
+			change = *pat - start;
+			start = str_replace(start, *pat, close_b + 1, eval_d);
+			*pat = start + change + strlen(eval_d);
 
 			free(eval_d);
 
@@ -287,72 +348,117 @@ static char *eval_macro_r(macro *m, char *start, char *at)
 	}
 }
 
-static char *eval_macro_double_eval(macro *m, char *start, char *at)
+static char *eval_macro_double_eval(macro *m, char *start, char **pat)
 {
 	/* FIXME: need to snapshot *m too? i.e. snapshot one level higher */
 	snapshot *snapshot = snapshot_take();
+	size_t change;
 
-	start = eval_macro_r(m, start, at);
+	start = eval_macro_r(m, start, pat);
+	change = *pat - start;
 
 	/* mark any macros that changed as blue, to prevent re-evaluation */
 	snapshot_take_post(snapshot);
 	snapshot_blue_used(snapshot);
-	{
-		/* double eval */
-		start = eval_expand_macros(start);
-#ifdef EVAL_DEBUG
-		fprintf(stderr, "eval_expand_macros('%s') = '%s'\n", free_me, ret);
-#endif
-	}
+
+	/* double eval */
+	start = eval_expand_macros(start);
+	*pat = start + change;
+
 	snapshot_unblue_used(snapshot);
 	snapshot_free(snapshot);
 
 	return start;
 }
 
-static char *eval_macro(macro *m, char *start, char *at)
+static char *eval_macro(macro *m, char *start, char **pat)
 {
 	char *r;
-	if(m->blue)
+	if(m->blue){
+		*pat += strlen(m->nam);
 		return start;
+	}
 
-	m->use_cnt++;
+	macro_use(m, +1);
 
 	m->blue++;
-	r = eval_macro_double_eval(m, start, at);
+	r = eval_macro_double_eval(m, start, pat);
 	m->blue--;
 	return r;
 }
 
 char *eval_expand_macros(char *line)
 {
-	size_t i;
+	char *anchor = line;
 
-	for(i = 0; line[i]; i++){
+	for(; *line; line++){
 		char *end, save;
 		macro *m;
-		{
-			char *start = word_find_any(line + i);
-			if(!start)
-				break;
-			i = start - line;
-		}
-		end = word_end(line + i);
+
+		line = word_find_any(line);
+		if(!line)
+			break;
+
+		end = word_end(line);
 		save = *end, *end = '\0';
-		m = macro_find(line + i);
+		m = macro_find(line);
 		*end = save;
 
 		if(m){
-			line = eval_macro(m, line, line + i);
+			anchor = eval_macro(m, anchor, &line);
 
-			while(iswordpart(line[i]))
-				i++;
+			switch(*line){
+				case '"':
+				case '\'':
+					/* skip quotes */
+					line = str_quotefin(line + 1);
+					assert(line);
+					break;
+			}
 
 		}else{
 			/* skip this word */
-			i = end - line; /* i incremented by loop */
+			line = end;
 		}
+		if(!*line)
+			break;
 	}
 
-	return line;
+	return anchor;
+}
+
+char *eval_expand_defined(char *w)
+{
+	char *defined;
+
+	while((defined = word_find(w, DEFINED_STR))){
+		char *s = str_spc_skip(word_end(defined));
+		char *ident;
+		char buf[2], save;
+		int with_paren;
+
+		if((with_paren = *s == '('))
+			s = str_spc_skip(s+1);
+
+		if(!iswordpart(*s))
+			CPP_DIE("identifier expected for \"" DEFINED_STR "\"");
+
+		ident = s;
+		s = word_end(s);
+
+		save = *s, *s = '\0';
+		snprintf(buf, sizeof buf, "%d", !!macro_find(ident));
+		*s = save;
+
+		if(with_paren){
+			s = str_spc_skip(s);
+			if(*s != ')')
+				CPP_DIE("')' expected for \"" DEFINED_STR "\"");
+			s++;
+		}
+
+		w = str_replace(w, defined, s, buf);
+	}
+
+	return w;
 }

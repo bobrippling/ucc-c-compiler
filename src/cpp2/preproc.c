@@ -6,17 +6,13 @@
 
 #include "../util/util.h"
 #include "../util/alloc.h"
-#if 0
-#include "../util/dynarray.h"
-#endif
+#include "../util/str.h"
 
-#if 0
-#include "macro.h"
-#endif
 #include "main.h"
 #include "preproc.h"
-#include "parse.h"
+#include "directive.h"
 #include "eval.h"
+#include "str.h"
 
 #define ARRAY_LEN(x) (sizeof(x) / sizeof(x[0]))
 
@@ -32,18 +28,23 @@ struct
 
 int file_stack_idx = -1;
 
-void preproc_backtrace(void)
+void include_bt(FILE *f)
 {
 	int i;
 
 	for(i = 0; i < file_stack_idx; i++){
-		fprintf(stderr, "%sfrom: %s:%d\n",
+		fprintf(f, "%sfrom: %s:%d\n",
 				i == 0 ?
 				"in file included " :
 				"                 ",
 				file_stack[i].fname,
 				file_stack[i].line_no - 1);
 	}
+}
+
+void preproc_backtrace()
+{
+	include_bt(stderr);
 }
 
 static void preproc_out_info(void)
@@ -210,8 +211,11 @@ static char *strip_comment(char *line)
 
 static char *filter_macros(char *line)
 {
-	if(*line == '#'){
-		parse_directive(line + 1);
+	/* check for non-standard space-then-# */
+	char *hash = line;
+
+	if(*hash == '#' || *(hash = str_spc_skip(hash)) == '#'){
+		parse_directive(hash + 1);
 		free(line);
 		return NULL;
 	}else{
@@ -230,10 +234,16 @@ void preprocess(void)
 	preproc_push(stdin, current_fname);
 
 	while((line = splice_line())){
-		char *s = filter_macros(strip_comment(line));
+		char *s;
+		debug_push_line(line);
+
+		s = filter_macros(strip_comment(line));
+
+		debug_pop_line();
 
 		if(s){
-			puts(s);
+			if(!no_output)
+				puts(s);
 			free(s);
 		}
 	}

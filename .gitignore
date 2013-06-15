@@ -8,6 +8,9 @@ src/ucc/ucc
 src/ucc/cfg.h
 src/as_cfg.h
 
+lib/libc.a
+lib/crt.a
+
 lib/syscall.s
 lib/syscall_err.s
 lib/syscalls_darwin.h

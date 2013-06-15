@@ -7,6 +7,7 @@
 #include "../util/dynarray.h"
 #include "../util/alloc.h"
 #include "../util/util.h"
+#include "../util/str.h"
 
 #include "tokenise.h"
 #include "str.h"
@@ -166,4 +167,48 @@ void tokens_free(token **tokens)
 		free(tokens[i]);
 	}
 	free(tokens);
+}
+
+static int token_is_space(token *t)
+{
+	switch(t->tok){
+		case TOKEN_WORD:
+			if(*str_spc_skip(t->w))
+				return 0;
+			break;
+		case TOKEN_OPEN_PAREN:
+		case TOKEN_CLOSE_PAREN:
+		case TOKEN_COMMA:
+		case TOKEN_ELIPSIS:
+		case TOKEN_STRING:
+		case TOKEN_HASH_QUOTE:
+		case TOKEN_HASH_JOIN:
+		case TOKEN_OTHER:
+			return 0;
+	}
+	return 1;
+}
+
+token **tokens_skip_whitespace(token **tokens)
+{
+	for(; tokens && *tokens; tokens++)
+		if(!token_is_space(*tokens))
+			return tokens;
+	return tokens;
+}
+
+int tokens_just_whitespace(token **tokens)
+{
+	return tokens_skip_whitespace(tokens) ? 0 : 1;
+}
+
+int tokens_count_skip_spc(token **tokens)
+{
+	unsigned n = 0;
+
+	for(; tokens && *tokens; tokens++)
+		if(!token_is_space(*tokens))
+			n++;
+
+	return n;
 }

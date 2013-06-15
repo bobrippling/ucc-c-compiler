@@ -522,7 +522,7 @@ void decl_attr_free(decl_attr *a)
 
 #include "decl_is.c"
 
-unsigned type_ref_size(type_ref *r, where const *from)
+unsigned type_ref_size(type_ref *r, where *from)
 {
 	switch(r->type){
 		case type_ref_type:

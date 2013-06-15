@@ -8,6 +8,7 @@ void  dynarray_nochk_rm(     void **,  void *);
 int   dynarray_nochk_count(  void **);
 void  dynarray_nochk_free(   void ***par, void (*f)(void *));
 void  dynarray_nochk_add_array(void ***, void **);
+void  dynarray_nochk_add_tmparray(void ***, void **);
 
 void *dynarray_nochk_padinsert(void ***par,
 		unsigned i, unsigned *pn, void *ins);
@@ -47,6 +48,9 @@ void *dynarray_nochk_padinsert(void ***par,
 	(UCC_TYPECHECK(__typeof(sub) *, ar),                   \
 	 dynarray_nochk_add_array((void ***)ar, (void **)sub))
 
+#define dynarray_add_tmparray(ar, tsub) \
+	(UCC_TYPECHECK(__typeof(tsub) *, ar), \
+	 dynarray_nochk_add_tmparray((void ***)ar, (void **)tsub))
 
 #define dynarray_count(ar) dynarray_nochk_count((void **)ar)
 

@@ -3,6 +3,7 @@
 
 #include "../util/dynarray.h"
 #include "../util/alloc.h"
+#include "../util/where.h"
 
 #include "snapshot.h"
 #include "macro.h"
@@ -18,8 +19,13 @@ struct snapshot
 
 static int *snapshot_take_1(size_t n)
 {
-	int *p = NEW_N(n, p);
+	int *p;
 	size_t i;
+
+	if(!n)
+		return NULL;
+
+	p = NEW_N(n, p);
 
 	for(i = 0; i < n; i++)
 		p[i] = macros[i]->use_cnt;
@@ -27,13 +33,17 @@ static int *snapshot_take_1(size_t n)
 	return p;
 }
 
+void snapshot_restore_used(snapshot *snap)
+{
+	size_t i;
+	for(i = 0; i < snap->n; i++)
+		macros[i]->use_cnt = snap->pre[i];
+}
+
 snapshot *snapshot_take(void)
 {
 	snapshot *snap;
 	size_t n = dynarray_count(macros);
-
-	if(!n)
-		return NULL;
 
 	snap       = NEW(snap);
 	snap->n    = n;

@@ -9,7 +9,7 @@
 #include "data_structs.h"
 #include "tokenise.h"
 #include "../util/alloc.h"
-#include "../util/util.h"
+#include "../util/str.h"
 #include "str.h"
 #include "cc1.h"
 
@@ -106,10 +106,19 @@ struct statement
 };
 
 static tokenise_line_f *in_func;
-char *current_fname;
 int buffereof = 0;
-int current_fname_used;
 int parse_finished = 0;
+
+#define FNAME_STACK_N 32
+static struct fnam_stack
+{
+	char *fnam;
+	int    lno;
+} current_fname_stack[FNAME_STACK_N];
+
+static int current_fname_stack_cnt;
+char *current_fname;
+int current_fname_used;
 
 static char *buffer, *bufferpos;
 static int ungetch = EOF;
@@ -143,8 +152,64 @@ int current_line_str_used = 0;
 	current_## ty = new;          \
 	current_## ty ##_used = 0; }while(0)
 
-#define SET_CURRENT_FNAME(   new) SET_CURRENT(fname,    new)
 #define SET_CURRENT_LINE_STR(new) SET_CURRENT(line_str, new)
+
+static void push_fname(char *fn, int lno)
+{
+	current_fname = fn;
+	if(current_fname_stack_cnt < FNAME_STACK_N){
+		struct fnam_stack *p = &current_fname_stack[current_fname_stack_cnt++];
+		p->fnam = ustrdup(fn);
+		p->lno = lno;
+	}
+}
+
+static void pop_fname(void)
+{
+	if(current_fname_stack_cnt > 0){
+		struct fnam_stack *p = &current_fname_stack[--current_fname_stack_cnt];
+		free(p->fnam);
+	}
+}
+
+static void handle_line_file_directive(char *fnam, int lno)
+{
+	/*
+# 1 "inc.c"
+# 5 "yo.h"  // include "yo.h"
+            // if we get an error here,
+            // we want to know we're included from inc.c:1
+# 2 "inc.c" // include end - the line no. doesn't have to be prev+1
+	 */
+
+	/* logic for knowing when to pop and when to push */
+	int i;
+
+	for(i = current_fname_stack_cnt - 1; i >= 0; i--){
+		struct fnam_stack *stk = &current_fname_stack[i];
+
+		if(!strcmp(fnam, stk->fnam)){
+			/* found another "inc.c" */
+			/* pop `n` stack entries, then push our new one */
+			while(current_fname_stack_cnt > i)
+				pop_fname();
+			break;
+		}
+	}
+
+	push_fname(fnam, lno);
+}
+
+void include_bt(FILE *f)
+{
+	int i;
+	for(i = 0; i < current_fname_stack_cnt - 1; i++){
+		struct fnam_stack *stk = &current_fname_stack[i];
+
+		fprintf(f, "%s:%d: included from here\n",
+				stk->fnam, stk->lno);
+	}
+}
 
 static void add_store_line(char *l)
 {
@@ -173,49 +238,58 @@ static void tokenise_read_line()
 		buffereof = 1;
 	}else{
 		/* check for preprocessor line info */
-		int lno;
-
 		/* but first - add to store_lines */
 		if(fopt_mode & FOPT_SHOW_LINE)
 			add_store_line(l);
 
-		/* format is # [0-9] "filename" ([0-9])* */
-		if(sscanf(l, "# %d", &lno) == 1){
-			char *p = strchr(l, '"');
-			char *fin;
+		/* format is # line? [0-9] "filename" ([0-9])* */
+		if(*l == '#'){
+			int lno;
+			char *ep;
 
-			if(p){
-				fin = p + 1;
-				for(;;){
-					fin = strchr(fin, '"');
+			l = str_spc_skip(l + 1);
+			if(!strncmp(l, "line", 4))
+				l += 4;
 
-					if(!fin)
-						die("no terminating quote for pre-proc info");
+			lno = strtol(l, &ep, 0);
+			if(ep == l)
+				die("couldn't parse number for #line directive (%s)", ep);
 
-					if(fin[-1] != '\\')
-						break;
-					fin++;
-				}
-
-				SET_CURRENT_FNAME(ustrdup2(p + 1, fin));
-			}else{
-				/* check there's nothing left */
-				for(p = l + 2; isdigit(*p); p++);
-				for(; isspace(*p); p++);
-
-				if(*p != '\0')
-					die("extra text after # 0-9: \"%s\"", p);
-			}
+			if(lno < 0)
+				die("negative #line directive argument");
 
 			current_line = lno - 1; /* inc'd below */
 
-			tokenise_read_line();
+			ep = str_spc_skip(ep);
 
+			switch(*ep){
+				case '"':
+				{
+					char *p = str_quotefin(++ep);
+					if(!p)
+						die("no terminating quote to #line directive (%s)", l);
+					handle_line_file_directive(ustrdup2(ep, p), lno);
+					/*l = str_spc_skip(p + 1);
+					if(*l)
+						die("characters after #line?");
+						- gcc puts characters after the string */
+					break;
+				}
+				case '\0':
+					break;
+
+				default:
+					die("expected '\"' or nothing after #line directive (%s)", ep);
+			}
+
+			tokenise_read_line();
 			return;
 		}
 
-		current_line++;
 		current_chr = -1;
+		current_line++;
+		if(current_fname_stack_cnt > 0)
+			current_fname_stack[current_fname_stack_cnt - 1].lno = current_line;
 	}
 
 	if(l)
@@ -226,9 +300,14 @@ static void tokenise_read_line()
 
 void tokenise_set_input(tokenise_line_f *func, const char *nam)
 {
+	char *nam_dup = ustrdup(nam);
 	in_func = func;
 
-	SET_CURRENT_FNAME(ustrdup(nam));
+	if(fopt_mode & FOPT_TRACK_INITIAL_FNAM)
+		push_fname(nam_dup, 1);
+	else
+		current_fname = nam_dup;
+
 	SET_CURRENT_LINE_STR(NULL);
 
 	current_line = buffereof = parse_finished = 0;

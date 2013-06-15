@@ -148,7 +148,8 @@ void dynarray_nochk_add_array(void ***par, void **ar2)
 	void **ar = *par;
 	int n, n2, total;
 
-	UCC_ASSERT(ar2, "dynarray_nochk_add_array(): empty array");
+	if(!ar2)
+		return;
 
 	if(!ar){
 		n = dynarray_nochk_count(ar2);
@@ -168,4 +169,13 @@ void dynarray_nochk_add_array(void ***par, void **ar2)
 	memcpy(ar + n, ar2, (n2 + 1) * sizeof *ar2);
 
 	*par = ar;
+}
+
+void dynarray_nochk_add_tmparray(void ***par, void **ar2)
+{
+	dynarray_nochk_add_array(par, ar2);
+	dynarray_nochk_free(&ar2, NULL);
+	/* can't have ***par2 since it might not be an lvalue in the macro,
+	 * e.g. dynarray_add_tmparray(&ar, f())
+	 */
 }

@@ -11,7 +11,7 @@ int fold_type_ref_equal(
 		enum warning warn, enum decl_cmp extra_flags,
 		const char *errfmt, ...);
 
-void fold_check_restrict(expr *lhs, expr *rhs, const char *desc, where const *w);
+void fold_check_restrict(expr *lhs, expr *rhs, const char *desc, where *w);
 
 void fold_symtab_scope(symtable *stab, stmt **pinit_code);
 

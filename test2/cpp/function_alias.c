@@ -1,4 +1,4 @@
-// RUN: %ucc %s
+// RUN: %check -e %s
 
 #define F(a, b, c) a + b - c
 #define A F

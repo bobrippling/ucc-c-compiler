@@ -197,7 +197,7 @@ const char  *decl_attr_to_str(enum decl_attr_type);
 
 unsigned decl_size(decl *);
 unsigned decl_align(decl *);
-unsigned type_ref_size(type_ref *, where const *from);
+unsigned type_ref_size(type_ref *, where *from);
 
 int   decl_equal(decl *a, decl *b, enum decl_cmp mode);
 int   type_ref_equal(type_ref *a, type_ref *b, enum decl_cmp mode);
@@ -255,7 +255,7 @@ enum type_qualifier type_ref_qual(const type_ref *);
 
 funcargs *type_ref_funcargs(type_ref *);
 
-unsigned type_ref_align(type_ref *, where const *from);
+unsigned type_ref_align(type_ref *, where *from);
 long type_ref_array_len(type_ref *);
 type_ref *type_ref_is(type_ref *, enum type_ref_type);
 type_ref *type_ref_is_type(type_ref *, enum type_primitive);

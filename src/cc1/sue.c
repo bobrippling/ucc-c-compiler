@@ -52,7 +52,7 @@ int sue_enum_size(struct_union_enum_st *st)
 	return st->size = type_primitive_size(type_int);
 }
 
-int sue_size(struct_union_enum_st *st, const where *w)
+int sue_size(struct_union_enum_st *st, where *w)
 {
 	if(sue_incomplete(st))
 		DIE_AT(w, "%s %s is incomplete", sue_str(st), st->spel);
