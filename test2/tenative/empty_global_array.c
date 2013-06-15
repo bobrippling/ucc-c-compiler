@@ -1,4 +1,4 @@
-// RUN: %check %s
+// RUN: %check %s -Wtenative-init
 // RUN: [ `%ucc -S -o- %s | grep 'ar' | wc -l` -eq 2 ]
 // RUN: [ `%ucc -S -o- %s | grep 'st' | wc -l` -eq 2 ]
 

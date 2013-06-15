@@ -919,7 +919,7 @@ void fold_merge_tenatives(symtable *stab)
 						"tenative array definition assumed to have one element");
 			}
 
-			WARN_AT(&d->where,
+			cc1_warn_at(&d->where, 0, 1, WARN_TENATIVE_INIT,
 					"default-initialising tenative definition of \"%s\"",
 					d->spel);
 		}

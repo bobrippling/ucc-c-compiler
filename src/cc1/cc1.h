@@ -43,6 +43,7 @@ enum warning
 	WARN_OMITTED_PARAM_TYPES      = 1 << 24,
 	WARN_RETURN_UNDEF             = 1 << 25,
 	WARN_PAD                      = 1 << 26,
+	WARN_TENATIVE_INIT            = 1 << 27,
 
 	/* TODO */
 	/*

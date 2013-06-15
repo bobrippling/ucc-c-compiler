@@ -73,6 +73,8 @@ struct
 
 	{ 0, "pad",               WARN_PAD },
 
+	{ 0, "tenative-init",     WARN_TENATIVE_INIT },
+
 	/* TODO: W_QUAL (ops/expr_cast) */
 
 #if 0
@@ -140,6 +142,7 @@ enum warning warn_mode = ~(
 		| WARN_LOSS_PRECISION
 		| WARN_SIGN_COMPARE
 		| WARN_PAD
+		| WARN_TENATIVE_INIT
 		);
 
 enum fopt fopt_mode = FOPT_CONST_FOLD
