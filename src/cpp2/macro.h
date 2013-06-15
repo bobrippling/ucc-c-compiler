@@ -12,6 +12,7 @@ typedef struct
 	char **args;
 	int blue; /* being evaluated? */
 	int use_cnt; /* track usage for double-eval */
+	int use_dump; /* for -dS */
 } macro;
 
 macro *macro_add(     const char *nam, const char *val);
@@ -24,5 +25,7 @@ void   macros_dump(void);
 void   macros_stats(void);
 
 extern macro **macros;
+
+void macro_use(macro *m, int adj);
 
 #endif

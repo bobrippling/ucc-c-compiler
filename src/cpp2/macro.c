@@ -86,6 +86,12 @@ void macro_remove(const char *nam)
 	}
 }
 
+void macro_use(macro *m, int adj)
+{
+	m->use_cnt  += adj;
+	m->use_dump += adj;
+}
+
 void macros_dump(void)
 {
 	ITER_MACROS(m){
@@ -114,5 +120,5 @@ void macros_dump(void)
 void macros_stats(void)
 {
 	ITER_MACROS(m)
-		printf("%s %d\n", m->nam, m->use_cnt);
+		printf("%s %d\n", m->nam, m->use_dump);
 }

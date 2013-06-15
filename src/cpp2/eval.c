@@ -322,7 +322,7 @@ static char *eval_macro_r(macro *m, char *start, char **pat)
 
 		if(*open_b != '('){
 			/* not an invocation - return and also knock down the use-count */
-			m->use_cnt--;
+			macro_use(m, -1);
 			return start;
 		}
 
@@ -379,7 +379,7 @@ static char *eval_macro(macro *m, char *start, char **pat)
 		return start;
 	}
 
-	m->use_cnt++;
+	macro_use(m, +1);
 
 	m->blue++;
 	r = eval_macro_double_eval(m, start, pat);
