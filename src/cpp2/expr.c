@@ -16,7 +16,7 @@ struct expr
 {
 	enum
 	{
-		E_IDENT, E_NUM, E_OP, E_UOP
+		E_IDENT, E_NUM, E_OP, E_UOP, E_TOP
 	} type;
 
 	union
@@ -32,6 +32,10 @@ struct expr
 			e_op op;
 			expr *e;
 		} uop;
+		struct
+		{
+			expr *e, *if_true, *if_false;
+		} top;
 	} bits;
 };
 
@@ -46,8 +50,8 @@ static int is_op(e_op op)
 		case tok_andsc:    case tok_shiftl: case tok_shiftr:
 		case tok_not:      case tok_bnot:   case tok_eq:
 		case tok_ne:       case tok_le:     case tok_lt:
-		case tok_ge:       case tok_gt:
-				return 1;
+		case tok_ge:       case tok_gt:     case tok_question:
+			return 1;
 	}
 	return 0;
 }
@@ -87,6 +91,15 @@ static expr *expr_new_uop(e_op op, expr *sub)
 	e->bits.uop.e  = sub;
 	e->bits.uop.op = op;
 	return e;
+}
+
+static expr *expr_new_top(expr *e, expr *l, expr *r)
+{
+	expr *top = expr_new(E_TOP);
+	top->bits.top.e = e;
+	top->bits.top.if_true  = l;
+	top->bits.top.if_false = r;
+	return top;
 }
 
 static expr *parse_primary(void)
@@ -167,6 +180,8 @@ static void expr_init(void)
 
 	PRED_SET(andsc,      9);
 	PRED_SET(orsc,      10);
+
+	PRED_SET(question,  11);
 #undef PRED_SET
 }
 
@@ -179,7 +194,7 @@ static expr *parse_rhs(expr *lhs, int priority)
 
 		op = tok_cur;
 		if(!is_op(op))
-			return lhs; /* eof and rparen covered here */
+			return lhs; /* eof, rparen and colon covered here */
 
 		this_pri = PRECEDENCE(op);
     if(this_pri > priority)
@@ -188,16 +203,29 @@ static expr *parse_rhs(expr *lhs, int priority)
 		/* eat the op */
 		tok_next();
 
-		rhs = parse_primary();
+		/* special case for ternary */
+		if(op == tok_question){
+			expr *if_t = parse();
 
-		/* now on the next op, or eof (in which case, precedence returns -1 */
-    next_pri = PRECEDENCE(tok_cur);
-    if(next_pri < this_pri) {
-			/* next is tighter, give it our rhs as its lhs */
-      rhs = parse_rhs(rhs, next_pri);
+			if(tok_cur != tok_colon)
+				CPP_DIE("colon expected for ternary-? operator");
+			tok_next();
+
+			rhs = parse();
+
+			lhs = expr_new_top(lhs, if_t, rhs);
+		}else{
+			rhs = parse_primary();
+
+			/* now on the next op, or eof (in which case, precedence returns -1 */
+			next_pri = PRECEDENCE(tok_cur);
+			if(next_pri < this_pri) {
+				/* next is tighter, give it our rhs as its lhs */
+				rhs = parse_rhs(rhs, next_pri);
+			}
+
+			lhs = expr_op(op, lhs, rhs);
 		}
-
-    lhs = expr_op(op, lhs, rhs);
   }
 }
 
@@ -294,6 +322,15 @@ expr_n expr_eval(expr *e_)
 					break;
 			}
 			ICE("bad op");
+		}
+		case E_TOP:
+		{
+			expr_n a, b, c;
+			/* must evaluate all - free the expressions */
+			a = expr_eval(ke.bits.top.e);
+			b = expr_eval(ke.bits.top.if_true);
+			c = expr_eval(ke.bits.top.if_false);
+			return a ? b : c;
 		}
 	}
 

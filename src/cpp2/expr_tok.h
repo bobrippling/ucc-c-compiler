@@ -41,6 +41,11 @@ extern enum tok
 	tok_lt       = '<',
 	tok_ge       = -8,
 	tok_gt       = '>',
+
+	/* ternary */
+	tok_question = '?',
+	tok_colon    = ':',
+
 #define MIN_OP -8
 } tok_cur;
 
