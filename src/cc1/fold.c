@@ -911,6 +911,11 @@ void fold_merge_tenatives(symtable *stab)
 			d->init = decl_init_new_w(decl_init_brace, &d->where);
 			decl_init_brace_up_fold(d, stab);
 
+			if(DECL_IS_ARRAY(d)){
+				WARN_AT(&d->where,
+						"tenative array definition assumed to have one element");
+			}
+
 			WARN_AT(&d->where,
 					"default-initialising tenative definition of \"%s\"",
 					d->spel);
