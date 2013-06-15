@@ -88,7 +88,7 @@ char *word_dup(const char *s)
 	return ustrdup2(start, s);
 }
 
-char *str_quote(char *quoteme)
+char *str_quote(char *quoteme, int free_in)
 {
 	int len;
 	const char *s;
@@ -117,7 +117,8 @@ char *str_quote(char *quoteme)
 
 	strcpy(p, "\"");
 
-	free(quoteme);
+	if(free_in)
+		free(quoteme);
 	return ret;
 }
 

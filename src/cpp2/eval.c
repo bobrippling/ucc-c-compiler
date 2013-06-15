@@ -164,9 +164,7 @@ static char *eval_func_macro(macro *m, char *args_str)
 					/* # - don't eval */
 					int alloced;
 					char *w = noeval_hash(m, *++ti, args, &alloced, 1, "quote");
-					if(!alloced)
-						w = ustrdup(w);
-					w = str_quote(w);
+					w = str_quote(w, alloced);
 
 					APPEND(this->had_whitespace, "%s", w);
 
@@ -276,7 +274,9 @@ static char *eval_macro_r(macro *m, char *start, char **pat)
 			free_val = 1;
 
 			if(!strcmp(m->nam, "__FILE__")){
-				val = ustrprintf("\"%s\"", current_fname);
+				char *q = str_quote(current_fname, 0);
+				val = ustrprintf("%s", q);
+				free(q);
 			}else if(!strcmp(m->nam, "__LINE__")){
 				val = ustrprintf("%d", current_line);
 			}else if(!strcmp(m->nam, "__COUNTER__")){

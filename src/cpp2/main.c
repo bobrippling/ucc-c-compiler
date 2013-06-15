@@ -47,7 +47,7 @@ static const struct
 	{ NULL,             NULL }
 };
 
-const char *current_fname;
+char *current_fname;
 char *current_line_str;
 int show_current_line = 1;
 int no_output = 0;
@@ -103,7 +103,7 @@ static void calctime(void)
 
 int main(int argc, char **argv)
 {
-	const char *infname, *outfname;
+	char *infname, *outfname;
 	int ret = 0;
 	enum { NONE, MACROS, STATS } dump = NONE;
 	int i;
