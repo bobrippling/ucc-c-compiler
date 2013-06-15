@@ -19,8 +19,13 @@ struct snapshot
 
 static int *snapshot_take_1(size_t n)
 {
-	int *p = NEW_N(n, p);
+	int *p;
 	size_t i;
+
+	if(!n)
+		return NULL;
+
+	p = NEW_N(n, p);
 
 	for(i = 0; i < n; i++)
 		p[i] = macros[i]->use_cnt;
@@ -32,9 +37,6 @@ snapshot *snapshot_take(void)
 {
 	snapshot *snap;
 	size_t n = dynarray_count(macros);
-
-	if(!n)
-		return NULL;
 
 	snap       = NEW(snap);
 	snap->n    = n;
