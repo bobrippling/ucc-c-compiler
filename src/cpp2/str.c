@@ -70,7 +70,7 @@ char *word_dup(const char *s)
 	return ustrdup2(start, s);
 }
 
-char *str_quote(const char *quoteme)
+char *str_quote(char *quoteme)
 {
 	int len;
 	const char *s;
@@ -78,21 +78,28 @@ char *str_quote(const char *quoteme)
 
 	len = 3; /* ""\0 */
 	for(s = quoteme; *s; s++, len++)
-		if(*s == '"')
-			len++;
+		switch(*s){
+			case '"':
+			case '\\':
+				len++;
+		}
 
 	p = ret = umalloc(len);
 
 	*p++ = '"';
 
 	for(s = quoteme; *s; s++){
-		if(*s == '"')
-			*p++ = '\\';
+		switch(*s){
+			case '"':
+			case '\\':
+				*p++ = '\\';
+		}
 		*p++ = *s;
 	}
 
 	strcpy(p, "\"");
 
+	free(quoteme);
 	return ret;
 }
 

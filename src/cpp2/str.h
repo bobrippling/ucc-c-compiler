@@ -6,7 +6,7 @@ char *word_dup(const char *);
 char *word_end(char *); /* word_end("hello=there") -> ptr to '=' */
 char *word_find_any(char *);
 
-char *str_quote(const char *s);
+char *str_quote(char *quoteme);
 char *str_join(char **, const char *with);
 void  str_trim(char *);
 

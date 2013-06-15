@@ -159,15 +159,17 @@ static char *eval_func_macro(macro *m, char *args_str)
 			switch(this->tok){
 				case TOKEN_HASH_QUOTE:
 				{
-					char *w;
-					int alloced;
 					/* replace #arg with the quote of arg */
 					/* # - don't eval */
-					APPEND(this->had_whitespace, "\"%s\"",
-							w = noeval_hash(m, *++ti, args, &alloced, 1, "quote"));
+					int alloced;
+					char *w = noeval_hash(m, *++ti, args, &alloced, 1, "quote");
+					if(!alloced)
+						w = ustrdup(w);
+					w = str_quote(w);
 
-					if(alloced)
-						free(w);
+					APPEND(this->had_whitespace, "%s", w);
+
+					free(w);
 					break;
 				}
 
