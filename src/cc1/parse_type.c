@@ -516,6 +516,9 @@ static type_ref *parse_btype(
 			case PRIMITIVE_NO_MORE:
 			case PRIMITIVE_MAYBE_MORE:
 			case NONE:
+				if(primitive_mode != NONE && primitive == type_llong)
+					C99_LONGLONG();
+
 				r = type_ref_new_type(
 						type_new_primitive_signed(
 							primitive_mode == NONE ? type_int : primitive,

@@ -302,10 +302,13 @@ static void read_number(enum base mode)
 				DIE_AT(NULL, "already have a L/LL suffix");
 
 			nextchar();
-			if(peeknextchar() == c)
-				suff |= VAL_LLONG, nextchar();
-			else
+			if(peeknextchar() == c){
+				C99_LONGLONG();
+				suff |= VAL_LLONG;
+				nextchar();
+			}else{
 				suff |= VAL_LONG;
+			}
 			break;
 		default:
 			read_suffix = 0;
