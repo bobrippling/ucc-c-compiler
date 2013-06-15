@@ -199,96 +199,66 @@ static void handle_error(token **tokens)
 
 static void handle_include(token **tokens)
 {
-	FILE *f;
-	char *fname;
-	int len, free_fname, lib;
+	const char *curdir;
+	char *fname, *final_path, *fin;
+	size_t fname_len;
+	int is_lib = 0;
+	FILE *f = NULL;
 
-	const char *current_include_dname;
-	char *path = NULL;
-	int i;
+	NOOP_RET();
 
-	free_fname = 0;
+	fname = eval_expand_macros(tokens_join(tokens));
+	str_trim(fname);
+	fname_len = strlen(fname);
 
-	if(tokens[1]){
-		int i;
-
-		len = 0;
-
-		for(i = 0; tokens[i]; i++)
-			len += strlen(token_str(tokens[i]));
-
-		fname = umalloc(len + 1);
-		*fname = '\0';
-
-		for(i = 0; tokens[i]; i++)
-			strcat(fname, token_str(tokens[i]));
-
-		free_fname = 1;
-	}else{
-		fname = tokens[0]->w;
-		len = strlen(fname);
+	switch(*fname){
+		case '<':
+			is_lib = 1;
+			fin = strchr(fname, '>');
+			break;
+		case '"':
+			fin = strchr(fname + 1, '"');
+			break;
+		default:
+			CPP_DIE("bad include start: %c", *fname);
 	}
+	if(!fin)
+		CPP_DIE("invalid include end '%c'", fname[fname_len-1]);
 
-retry:
-	if(*fname == '<'){
-		if(fname[len-1] != '>')
-			CPP_DIE("invalid include end '%c'", fname[len-1]);
-	}else if(*fname != '"'){
-		/*
-		 * #define a "hi"
-		 * #include a
-		 * pretty annoying..
-		 */
-		macro *m;
-
-		m = macro_find(fname);
-		if(!m)
-			CPP_DIE("invalid include start \"%s\" (not <xyz>, \"xyz\" or a macro)", fname);
-
-		fname = str_spc_skip(m->val);
-		len = strlen(fname);
-		goto retry;
-	}
-	/* if it's '"' then we've got a finishing '"' */
-
-	NOOP_RET(); /* should be higher up? */
-
-	lib = *fname == '<';
-	fname[len-1] = '\0';
+	*fin = '\0';
 	fname++;
 
-	i = dynarray_count(cd_stack);
-	current_include_dname = cd_stack[i - 1];
+	curdir = cd_stack[dynarray_count(cd_stack) - 1];
 
-	if(*fname == '/'){
+	if(*fname == '/' || !is_lib){
 		/* absolute path */
-		path = ustrdup(fname);
-		goto abs_path;
-	}
+		if(*fname == '/')
+			final_path = ustrdup(fname);
+		else
+			final_path = ustrprintf("%s/%s", curdir, fname);
 
-	if(lib){
-lib:
-		f = include_fopen(current_include_dname, fname, &path);
-
-		if(!f)
-			CPP_DIE("can't find include file %c%s%c",
-					"\"<"[lib], fname, "\">"[lib]);
-	}else{
-		path = ustrprintf("%s/%s", current_include_dname, fname);
-abs_path:
-		f = fopen(path, "r");
+		f = fopen(final_path, "r");
+		/* if it fails, try lib */
 		if(!f){
-			/* attempt lib */
-			goto lib;
+			/* TODO: check for !ENOENT */
+			free(final_path), final_path = NULL;
 		}
 	}
 
-	preproc_push(f, path);
-	dirname_push(udirname(path));
-	free(path);
+	if(!f){
+		f = include_fopen(curdir, fname, &final_path);
 
-	if(free_fname)
-		free(fname - 1);
+		if(!f){
+			CPP_DIE("can't find include file %c%s%c",
+					"\"<"[is_lib], fname, "\">"[is_lib]);
+		}
+	}
+
+	preproc_push(f, final_path);
+	dirname_push(udirname(final_path));
+	free(final_path);
+
+	free(fname - 1);
 }
 
 static void if_push(int is_true)
