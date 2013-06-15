@@ -187,12 +187,23 @@ static char *eval_func_macro(macro *m, char *args_str)
 						ti++;
 
 						while(*ti && ti[0]->tok == TOKEN_HASH_JOIN){
-							char *old = word;
+							char *old = free_word ? word : (free_word = 1, ustrdup(word));
 							char *neh;
 							int free_neh;
+							char *p;
 
 							word = ustrprintf("%s%s", word,
 									neh = noeval_hash(m, ti[1], args, &free_neh, 0, "join"));
+
+							if(iswordpart(*p) || (*p && iswordpart(p[1]))){
+								/* else we might have < ## < which gives << */
+								for(p = word; *p; p++)
+									if(!iswordpart(*p)){
+										CPP_WARN("pasting \"%s\" and \"%s\" doesn't give a single token",
+												old, neh);
+										break;
+									}
+							}
 
 							if(free_neh)
 								free(neh);
