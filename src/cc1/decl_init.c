@@ -1052,3 +1052,11 @@ zero_init:
 		}
 	}
 }
+
+void decl_default_init(decl *d, symtable *stab)
+{
+	UCC_ASSERT(!d->init, "already initialised?");
+
+	d->init = decl_init_new_w(decl_init_brace, &d->where);
+	decl_init_brace_up_fold(d, stab);
+}

@@ -903,13 +903,16 @@ void fold_merge_tenatives(symtable *stab)
 							where_str_r(wbuf, &d->where));
 				}
 				init = d;
+			}else if(DECL_IS_ARRAY(d) && type_ref_is_complete(d->ref)){
+				init = d;
+				decl_default_init(d, stab);
 			}
 		}
 		if(!init){
 			/* no initialiser, give the last declared one a default init */
 			d = globs[i];
-			d->init = decl_init_new_w(decl_init_brace, &d->where);
-			decl_init_brace_up_fold(d, stab);
+
+			decl_default_init(d, stab);
 
 			if(DECL_IS_ARRAY(d)){
 				WARN_AT(&d->where,

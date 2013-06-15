@@ -59,6 +59,9 @@ int         decl_init_is_zero(decl_init *dinit);
 
 void decl_init_brace_up_fold(decl *d, symtable *); /* normalises braces */
 
+/* used for default initialising tenatives */
+void decl_default_init(decl *d, symtable *stab);
+
 /* creates assignment exprs - only used for local inits */
 void decl_init_create_assignments_base(
 		decl_init *init,
