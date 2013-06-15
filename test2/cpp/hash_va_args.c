@@ -1,3 +1,4 @@
+// RUN: %ucc -E %s | %output_check '"yo"' 'timothy("" "hello , there", hello , there, 0);'
 #define quote(x) #    x
 
 quote(yo)

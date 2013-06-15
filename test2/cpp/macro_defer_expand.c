@@ -1,5 +1,5 @@
-// RUN: %ucc -E %s -o %t
-// RUN: cat %t | %output_check '123' 'A ()' '123'
+// RUN: %ucc -E %s -P -o %t
+// RUN: cat %t | %output_check -w '123' 'A ()' '123'
 
 #define EMPTY()
 #define DEFER(id) id EMPTY()
