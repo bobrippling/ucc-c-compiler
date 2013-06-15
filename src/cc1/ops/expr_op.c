@@ -472,16 +472,13 @@ static void op_bound(expr *e)
 	else
 		array = expr_is_array_cast(e->rhs);
 
-	if(array){
+	if(array && !type_ref_is_incomplete_array(array->tree_type)){
 		consty k;
 
 		const_fold(lhs ? e->rhs : e->lhs, &k);
 
 		if(k.type == CONST_VAL){
 			const size_t sz = type_ref_array_len(array->tree_type);
-
-			if(sz == 0) /* FIXME: sentinel */
-				return;
 
 #define idx k.bits.iv
 			if(e->op == op_minus)

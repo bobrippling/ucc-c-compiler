@@ -268,7 +268,7 @@ static void static_array_check(
 	type_ref *ty_decl = decl_is_decayed_array(arg_decl);
 	consty k_decl;
 
-	if(!ty_decl || !ty_decl->bits.ptr.is_static)
+	if(!ty_decl || !ty_decl->bits.ptr.is_static || !ty_decl->bits.ptr.size)
 		return;
 
 	if(expr_is_null_ptr(arg_expr, 1 /* int */)){
@@ -287,7 +287,7 @@ static void static_array_check(
 	}
 
 	/* ty_expr is the type_ref_ptr, decayed from array */
-	{
+	if(ty_expr->bits.ptr.size){
 		consty k_arg;
 
 		const_fold(ty_expr->bits.ptr.size, &k_arg);

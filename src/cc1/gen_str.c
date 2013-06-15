@@ -190,11 +190,10 @@ void print_type_ref_eng(type_ref *ref)
 		}
 
 		case type_ref_array:
-			if(ref->bits.array.size){
-				fputs("array[", cc1_out);
+			fputs("array[", cc1_out);
+			if(ref->bits.array.size)
 				print_expr_val(ref->bits.array.size);
-				fputs("] of ", cc1_out);
-			}
+			fputs("] of ", cc1_out);
 			break;
 
 		case type_ref_type:

@@ -270,13 +270,7 @@ int type_ref_is_complete(type_ref *r)
 		}
 
 		case type_ref_array:
-		{
-			intval iv;
-
-			const_fold_need_val(r->bits.array.size, &iv);
-
-			return iv.val != 0 && type_ref_is_complete(r->ref);
-		}
+			return r->bits.array.size && type_ref_is_complete(r->ref);
 
 		case type_ref_func:
 		case type_ref_ptr:
@@ -294,13 +288,9 @@ int type_ref_is_complete(type_ref *r)
 
 int type_ref_is_incomplete_array(type_ref *r)
 {
-	if((r = type_ref_is(r, type_ref_array))){
-		intval iv;
+	if((r = type_ref_is(r, type_ref_array)))
+		return !r->bits.array.size;
 
-		const_fold_need_val(r->bits.array.size, &iv);
-
-		return iv.val == 0;
-	}
 	return 0;
 }
 
@@ -495,6 +485,7 @@ long type_ref_array_len(type_ref *r)
 	r = type_ref_is(r, type_ref_array);
 
 	UCC_ASSERT(r, "not an array");
+	UCC_ASSERT(r->bits.array.size, "array len of []");
 
 	const_fold_need_val(r->bits.array.size, &iv);
 

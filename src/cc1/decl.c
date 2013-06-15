@@ -559,10 +559,10 @@ unsigned type_ref_size(type_ref *r, where const *from)
 			if(type_ref_is_void(r->ref))
 				DIE_AT(from, "array of void");
 
-			const_fold_need_val(r->bits.array.size, &sz);
-
-			if(sz.val == 0)
+			if(!r->bits.array.size)
 				DIE_AT(from, "incomplete array size attempt");
+
+			const_fold_need_val(r->bits.array.size, &sz);
 
 			return sz.val * type_ref_size(r->ref, from);
 		}
@@ -657,19 +657,23 @@ static int type_ref_equal_r(
 
 		case type_ref_array:
 		{
-			intval av, bv;
+			const int a_incomplete = !a->bits.array.size,
+			          b_incomplete = !b->bits.array.size;
 
-			const_fold_need_val(a->bits.array.size, &av);
-			const_fold_need_val(b->bits.array.size, &bv);
+			if(a_incomplete != b_incomplete)
+				return 0;
 
-			if(av.val != bv.val){
-				/* if exact match, they're not equal, otherwise allow av.val to be zero */
-				if(mode & DECL_CMP_EXACT_MATCH)
-					return 0;
-				if(av.val != 0)
+			if(!a_incomplete){
+				intval av, bv;
+
+				const_fold_need_val(a->bits.array.size, &av);
+				const_fold_need_val(b->bits.array.size, &bv);
+
+				if(av.val != bv.val)
 					return 0;
 			}
 
+			/* next */
 			break;
 		}
 
@@ -898,23 +902,19 @@ static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
 				break;
 			/* fall */
 		case type_ref_array:
-		{
-			intval iv;
-
-			const_fold_need_val(r->bits.array.size, &iv);
-
 			BUF_ADD("[");
+			if(r->bits.array.size){
+				intval iv;
 
-			if(r->bits.array.is_static)
-				BUF_ADD("static ");
-			BUF_ADD("%s", type_qual_to_str(r->bits.array.qual, 1));
+				if(r->bits.array.is_static)
+					BUF_ADD("static ");
+				BUF_ADD("%s", type_qual_to_str(r->bits.array.qual, 1));
 
-			if(iv.val)
-				BUF_ADD("%" INTVAL_FMT_D "]", iv.val);
-			else
-				BUF_ADD("]");
+				const_fold_need_val(r->bits.array.size, &iv);
+				BUF_ADD("%" INTVAL_FMT_D, iv.val);
+			}
+			BUF_ADD("]");
 			break;
-		}
 	}
 
 	if(need_paren)

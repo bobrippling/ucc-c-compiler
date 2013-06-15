@@ -969,6 +969,8 @@ zero_init:
 		case decl_init_brace:
 		{
 			struct_union_enum_st *sue = type_ref_is_s_or_u(tfor);
+			/* type_ref_array_len() below:
+			 * we're already braced so there are no incomplete arrays */
 			const size_t n = sue ? dynarray_count(sue->members) : type_ref_array_len(tfor);
 			decl_init **i;
 			unsigned idx;
