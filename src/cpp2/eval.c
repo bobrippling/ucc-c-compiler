@@ -231,7 +231,21 @@ static char *eval_func_macro(macro *m, char *args_str)
 								free_word = 1;
 							}
 
-							word = eval_expand_macros(word);
+							/* we don't blue paint arguments, e.g.
+							 * define G(x) x+5
+							 * define F(x) G(x)
+							 * F(G(1))
+							 * we end up with `replace = "G(x+5)`
+							 * which we then want to double-expand
+							 */
+							{
+								snapshot *snap = snapshot_take();
+
+								word = eval_expand_macros(word);
+
+								snapshot_restore_used(snap);
+								snapshot_free(snap);
+							}
 						}
 					}
 

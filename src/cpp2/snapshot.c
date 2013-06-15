@@ -33,6 +33,13 @@ static int *snapshot_take_1(size_t n)
 	return p;
 }
 
+void snapshot_restore_used(snapshot *snap)
+{
+	size_t i;
+	for(i = 0; i < snap->n; i++)
+		macros[i]->use_cnt = snap->pre[i];
+}
+
 snapshot *snapshot_take(void)
 {
 	snapshot *snap;
