@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <assert.h>
 
 #include "eval.h"
 
@@ -388,8 +389,20 @@ char *eval_expand_macros(char *line)
 			while(iswordpart(line[i]))
 				i++;
 
-			if(!line[i])
-				break;
+			switch(line[i]){
+				case '\0':
+					i--; /* force exit on loop */
+					break;
+				case '"':
+				case '\'':
+				{
+					/* skip quotes */
+					char *fin = str_quotefin(line + i + 1);
+					assert(fin);
+					i = fin - line + 1;
+					break;
+				}
+			}
 
 		}else{
 			/* skip this word */

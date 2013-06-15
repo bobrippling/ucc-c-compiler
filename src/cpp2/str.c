@@ -23,9 +23,27 @@ char *word_end(char *s)
 
 char *word_find_any(char *s)
 {
-	for(; *s; s++)
-		if(iswordpart(*s))
+	char in_quote = 0;
+	for(; *s; s++){
+		switch(*s){
+			case '"':
+			case '\'':
+				if(in_quote == *s)
+					in_quote = 0;
+				else
+					in_quote = *s;
+				break;
+
+			case '\\':
+				if(in_quote){
+					if(!*++s)
+						break;
+					continue;
+				}
+		}
+		if(!in_quote && iswordpart(*s))
 			return s;
+	}
 	return NULL;
 }
 
