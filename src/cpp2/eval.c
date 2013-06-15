@@ -261,13 +261,14 @@ static char *eval_func_macro(macro *m, char *args_str)
 #undef APPEND
 }
 
-static char *eval_macro_r(macro *m, char *start, char *at)
+static char *eval_macro_r(macro *m, char *start, char **pat)
 {
 	if(m->type == MACRO){
 		static int counter = 0; /* __COUNTER__ */
 		int free_val = 0;
 		char *val;
 		char *ret;
+		size_t change;
 
 		if(m->val){
 			val = m->val;
@@ -291,7 +292,9 @@ static char *eval_macro_r(macro *m, char *start, char *at)
 			}
 		}
 
-		ret = word_replace(start, at, strlen(m->nam), val);
+		change = *pat - start;
+		ret = word_replace(start, *pat, strlen(m->nam), val);
+		*pat = ret + change + strlen(val);
 
 		if(free_val)
 			free(val);
@@ -301,7 +304,7 @@ static char *eval_macro_r(macro *m, char *start, char *at)
 	}else{
 		char *open_b, *close_b;
 
-		open_b = str_spc_skip(at + strlen(m->nam));
+		open_b = str_spc_skip(*pat + strlen(m->nam));
 
 		if(*open_b != '('){
 			/* not an invocation - return and also knock down the use-count */
@@ -316,10 +319,13 @@ static char *eval_macro_r(macro *m, char *start, char *at)
 		{
 			char *all_args = ustrdup2(open_b + 1, close_b);
 			char *eval_d = eval_func_macro(m, all_args);
+			size_t change;
 
 			free(all_args);
 
-			start = str_replace(start, at, close_b + 1, eval_d);
+			change = *pat - start;
+			start = str_replace(start, *pat, close_b + 1, eval_d);
+			*pat = start + change + strlen(eval_d);
 
 			free(eval_d);
 
@@ -328,89 +334,83 @@ static char *eval_macro_r(macro *m, char *start, char *at)
 	}
 }
 
-static char *eval_macro_double_eval(macro *m, char *start, char *at)
+static char *eval_macro_double_eval(macro *m, char *start, char **pat)
 {
 	/* FIXME: need to snapshot *m too? i.e. snapshot one level higher */
 	snapshot *snapshot = snapshot_take();
+	size_t change;
 
-	start = eval_macro_r(m, start, at);
+	start = eval_macro_r(m, start, pat);
+	change = *pat - start;
 
 	/* mark any macros that changed as blue, to prevent re-evaluation */
 	snapshot_take_post(snapshot);
 	snapshot_blue_used(snapshot);
-	{
-		/* double eval */
-		start = eval_expand_macros(start);
-#ifdef EVAL_DEBUG
-		fprintf(stderr, "eval_expand_macros('%s') = '%s'\n", free_me, ret);
-#endif
-	}
+
+	/* double eval */
+	start = eval_expand_macros(start);
+	*pat = start + change;
+
 	snapshot_unblue_used(snapshot);
 	snapshot_free(snapshot);
 
 	return start;
 }
 
-static char *eval_macro(macro *m, char *start, char *at)
+static char *eval_macro(macro *m, char *start, char **pat)
 {
 	char *r;
-	if(m->blue)
+	if(m->blue){
+		*pat += strlen(m->nam);
 		return start;
+	}
 
 	m->use_cnt++;
 
 	m->blue++;
-	r = eval_macro_double_eval(m, start, at);
+	r = eval_macro_double_eval(m, start, pat);
 	m->blue--;
 	return r;
 }
 
 char *eval_expand_macros(char *line)
 {
-	size_t i;
+	char *anchor = line;
 
-	for(i = 0; line[i]; i++){
+	for(; *line; line++){
 		char *end, save;
 		macro *m;
-		{
-			char *start = word_find_any(line + i);
-			if(!start)
-				break;
-			i = start - line;
-		}
-		end = word_end(line + i);
+
+		line = word_find_any(line);
+		if(!line)
+			break;
+
+		end = word_end(line);
 		save = *end, *end = '\0';
-		m = macro_find(line + i);
+		m = macro_find(line);
 		*end = save;
 
 		if(m){
-			line = eval_macro(m, line, line + i);
+			anchor = eval_macro(m, anchor, &line);
 
-			while(iswordpart(line[i]))
-				i++;
-
-			switch(line[i]){
-				case '\0':
-					i--; /* force exit on loop */
-					break;
+			switch(*line){
 				case '"':
 				case '\'':
-				{
 					/* skip quotes */
-					char *fin = str_quotefin(line + i + 1);
-					assert(fin);
-					i = fin - line + 1;
+					line = str_quotefin(line + 1);
+					assert(line);
 					break;
-				}
 			}
 
 		}else{
 			/* skip this word */
-			i = end - line - 1; /* i incremented by loop */
+			line = end;
 		}
+		if(!*line)
+			break;
 	}
 
-	return line;
+	return anchor;
 }
 
 char *eval_expand_defined(char *w)
