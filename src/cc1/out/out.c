@@ -871,22 +871,65 @@ void out_cast(type_ref *from, type_ref *to)
 
 void v_cast(struct vstack *vp, type_ref *from, type_ref *to)
 {
-	/* casting vtop - don't bother if it's a constant, just change the size */
-	if(vp->type != CONST){
-		int szfrom = asm_type_size(from),
-				szto   = asm_type_size(to);
+	char fp[2];
+	fp[0] = type_ref_is_floating(from);
+	fp[1] = type_ref_is_floating(to);
 
-		if(szfrom != szto){
-			if(szto > szfrom){
-				impl_cast_load(vp, from, to,
-						type_ref_is_signed(from));
-			}else{
-				char buf[TYPE_REF_STATIC_BUFSIZ];
+	if(fp[0] || fp[1]){
+		if(fp[0] && fp[1]){
+			unsigned sz[2];
 
-				out_comment("truncate cast from %s to %s, size %d -> %d",
-						from ? type_ref_to_str_r(buf, from) : "",
-						to   ? type_ref_to_str(to) : "",
-						szfrom, szto);
+			char bufa[TYPE_REF_STATIC_BUFSIZ],
+					 bufb[TYPE_REF_STATIC_BUFSIZ];
+
+			sz[0] = type_ref_size(from, NULL);
+			sz[1] = type_ref_size(to, NULL);
+
+			ICE("TODO: %s -> %s casting",
+					type_ref_to_str_r(bufa, from),
+					type_ref_to_str_r(bufb, to));
+
+			if(sz[1] > sz[0]){
+
+			}/* else truncation? */
+
+
+		}else if(fp[0]){
+			/* float -> int */
+			UCC_ASSERT(type_ref_is_integral(to),
+					"fp to %s?", type_ref_to_str(to));
+
+			impl_f2i(vp, from, to);
+
+		}else{
+			/* int -> float */
+			UCC_ASSERT(type_ref_is_integral(from),
+					"%s to fp?", type_ref_to_str(from));
+
+			impl_i2f(vp, from, to);
+
+		}
+
+	}else{
+		/* casting integral vtop
+		 * don't bother if it's a constant,
+		 * just change the size */
+		if(vp->type != CONST){
+			int szfrom = asm_type_size(from),
+					szto   = asm_type_size(to);
+
+			if(szfrom != szto){
+				if(szto > szfrom){
+					impl_cast_load(vp, from, to,
+							type_ref_is_signed(from));
+				}else{
+					char buf[TYPE_REF_STATIC_BUFSIZ];
+
+					out_comment("truncate cast from %s to %s, size %d -> %d",
+							from ? type_ref_to_str_r(buf, from) : "",
+							to   ? type_ref_to_str(to) : "",
+							szfrom, szto);
+				}
 			}
 		}
 	}

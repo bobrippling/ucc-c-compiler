@@ -16,7 +16,12 @@ void impl_jmp_lbl(const char *lbl);
 void impl_jmp_reg(int r);
 void impl_jcond(int true, const char *lbl);
 
-void impl_cast_load(struct vstack *vp, type_ref *small, type_ref *big, int is_signed);
+void impl_i2f(struct vstack *, type_ref *t_i, type_ref *t_f);
+void impl_f2i(struct vstack *, type_ref *t_f, type_ref *t_i);
+void impl_cast_load(
+		struct vstack *vp,
+		type_ref *small, type_ref *big,
+		int is_signed);
 
 void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func);
 void impl_pop_func_ret(type_ref *r);

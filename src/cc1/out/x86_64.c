@@ -774,6 +774,16 @@ void impl_cast_load(struct vstack *vp, type_ref *small, type_ref *big, int is_si
 	}
 }
 
+void impl_i2f(struct vstack *vp, type_ref *t_i, type_ref *t_f)
+{
+	ICE("TODO");
+}
+
+void impl_f2i(struct vstack *vp, type_ref *t_f, type_ref *t_i)
+{
+	ICE("TODO");
+}
+
 static const char *x86_call_jmp_target(struct vstack *vp, int no_rax)
 {
 	static char buf[VSTACK_STR_SZ + 2];
