@@ -17,9 +17,17 @@
 #include "parse_type.h"
 #include "const.h"
 #include "ops/__builtin.h"
+#include "funcargs.h"
 
 #define STAT_NEW(type)      stmt_new_wrapper(type, current_scope)
 #define STAT_NEW_NEST(type) stmt_new_wrapper(type, symtab_new(current_scope))
+
+#define STMT_SCOPE_RECOVER(t)              \
+	if(t->flow)                              \
+		current_scope = current_scope->parent; \
+	if(cc1_std == STD_C99)                   \
+		current_scope = current_scope->parent
+/* ^ recover C99's if/switch/while scoping */
 
 stmt *parse_stmt_block(void);
 stmt *parse_stmt(void);
@@ -30,7 +38,7 @@ expr *parse_expr_unary(void);
 
 /* parse_type uses this for structs, tdefs and enums */
 symtable *current_scope;
-static_assert **static_asserts;
+static static_assert **static_asserts;
 
 
 /* sometimes we can carry on after an error, but we don't want to go through to compilation etc */
@@ -43,27 +51,37 @@ static stmt *current_continue_target,
 						*current_switch;
 
 
-expr *parse_expr_sizeof_typeof(int is_typeof)
+expr *parse_expr_sizeof_typeof_alignof(enum what_of what_of)
 {
 	expr *e;
 
 	if(accept(token_open_paren)){
-		decl *d = parse_decl_single(DECL_SPEL_NO);
+		type_ref *r = parse_type();
 
-		if(d){
-			e = expr_new_sizeof_decl(d, is_typeof);
+		if(r){
+			EAT(token_close_paren);
+
+			/* check for sizeof(int){...} */
+			if(curtok == token_open_block)
+				e = expr_new_sizeof_expr(
+							expr_new_compound_lit(r,
+								parse_initialisation()),
+							what_of);
+			else
+				e = expr_new_sizeof_type(r, what_of);
+
 		}else{
 			/* parse a full one, since we're in brackets */
-			e = expr_new_sizeof_expr(parse_expr_exp(), is_typeof);
+			e = expr_new_sizeof_expr(parse_expr_exp(), what_of);
+			EAT(token_close_paren);
 		}
 
-		EAT(token_close_paren);
 	}else{
-		if(is_typeof)
+		if(what_of == what_typeof)
 			/* TODO? cc1_error = 1, return expr_new_val(0) */
 			DIE_AT(NULL, "open paren expected after typeof");
 
-		e = expr_new_sizeof_expr(parse_expr_unary(), is_typeof);
+		e = expr_new_sizeof_expr(parse_expr_unary(), what_of);
 		/* don't go any higher, sizeof a - 1, means sizeof(a) - 1 */
 	}
 
@@ -82,17 +100,17 @@ expr *parse_expr__Generic()
 	lbls = NULL;
 
 	for(;;){
-		decl *d;
+		type_ref *r;
 		expr *e;
 		struct generic_lbl *lbl;
 
 		EAT(token_comma);
 
 		if(accept(token_default)){
-			d = NULL;
+			r = NULL;
 		}else{
-			d = parse_decl_single(DECL_SPEL_NO);
-			if(!d)
+			r = parse_type();
+			if(!r)
 				DIE_AT(NULL, "type expected");
 		}
 		EAT(token_colon);
@@ -100,8 +118,8 @@ expr *parse_expr__Generic()
 
 		lbl = umalloc(sizeof *lbl);
 		lbl->e = e;
-		lbl->d = d;
-		dynarray_add((void ***)&lbls, lbl);
+		lbl->t = r;
+		dynarray_add(&lbls, lbl);
 
 		if(accept(token_close_paren))
 			break;
@@ -126,16 +144,16 @@ expr *parse_expr_identifier()
 expr *parse_block()
 {
 	funcargs *args;
-	decl *rt;
+	type_ref *rt;
 
 	EAT(token_xor);
 
-	rt = parse_decl_single(DECL_SPEL_NO);
+	rt = parse_type();
 
 	if(rt){
-		if(decl_is_func(rt)){
+		if(type_ref_is(rt, type_ref_func)){
 			/* got ^int (args...) */
-			rt = decl_func_deref(rt, &args);
+			rt = type_ref_func_call(rt, &args);
 		}else{
 			/* ^int {...} */
 			goto def_args;
@@ -170,12 +188,12 @@ expr *parse_expr_primary()
 		/*case token_open_block: - not allowed here */
 		{
 			char *s;
-			int l;
+			int l, wide;
 
-			token_get_current_str(&s, &l);
+			token_get_current_str(&s, &l, &wide);
 			EAT(token_string);
 
-			return expr_new_addr_str(s, l);
+			return expr_new_str(s, l, wide);
 		}
 
 		case token__Generic:
@@ -186,13 +204,22 @@ expr *parse_expr_primary()
 
 		default:
 			if(accept(token_open_paren)){
-				decl *d;
+				type_ref *r;
 				expr *e;
 
-				if((d = parse_decl_single(DECL_SPEL_NO))){
-					e = expr_new_cast(d, 0);
+				if((r = parse_type())){
+					e = expr_new_cast(r, 0);
 					EAT(token_close_paren);
-					e->expr = parse_expr_cast(); /* another cast */
+
+					if(curtok == token_open_block){
+						/* C99 compound lit. */
+						decl_init *init = parse_initialisation();
+
+						expr_compound_lit_from_cast(e, init);
+
+					}else{
+						e->expr = parse_expr_cast(); /* another cast */
+					}
 					return e;
 
 				}else if(curtok == token_open_block){
@@ -207,6 +234,12 @@ expr *parse_expr_primary()
 				EAT(token_close_paren);
 				return e;
 			}else{
+				/* inline asm */
+				if(accept(token_asm)){
+					ICW("token_asm - redirect to builtin instead of identifier");
+					return expr_new_identifier(ustrdup(ASM_INLINE_FNAME));
+				}
+
 				if(curtok != token_identifier){
 					/* TODO? cc1_error = 1, return expr_new_val(0) */
 					DIE_AT(NULL, "expression expected, got %s (%s:%d)",
@@ -244,7 +277,7 @@ expr *parse_expr_postfix()
 
 			/* check for specialised builtin parsing */
 			if(expr_kind(e, identifier))
-				fcall = builtin_parse(e->spel);
+				fcall = builtin_parse(e->bits.ident.spel);
 
 			if(!fcall){
 				fcall = expr_new_funcall();
@@ -289,14 +322,14 @@ expr *parse_expr_unary()
 			case token_andsc:
 				/* GNU &&label */
 				EAT(curtok);
-				e = expr_new_addr();
-				e->spel = token_current_spel();
+				e = expr_new_addr_lbl(token_current_spel());
 				EAT(token_identifier);
 				break;
 
 			case token_and:
-				e = expr_new_addr();
-				goto do_parse;
+				EAT(token_and);
+				e = expr_new_addr(parse_expr_cast());
+				break;
 
 			case token_multiply:
 				EAT(curtok);
@@ -308,14 +341,18 @@ expr *parse_expr_unary()
 			case token_bnot:
 			case token_not:
 				e = expr_new_op(curtok_to_op());
-do_parse:
 				EAT(curtok);
 				e->lhs = parse_expr_cast();
 				break;
 
 			case token_sizeof:
 				EAT(token_sizeof);
-				e = parse_expr_sizeof_typeof(0);
+				e = parse_expr_sizeof_typeof_alignof(what_sizeof);
+				break;
+
+			case token__Alignof:
+				EAT(token__Alignof);
+				e = parse_expr_sizeof_typeof_alignof(what_alignof);
 				break;
 
 			default:
@@ -329,18 +366,27 @@ do_parse:
 expr *parse_expr_generic(expr *(*above)(), enum token t, ...)
 {
 	expr *e = above();
-	va_list l;
 
-	va_start(l, t);
-	while(curtok == t || curtok_in_list(l)){
-		expr *join = expr_new_op(curtok_to_op());
+	for(;;){
+		expr *join;
+		int have = curtok == t;
+
+		if(!have){
+			va_list l; va_start(l, t);
+			have = curtok_in_list(l);
+			va_end(l);
+		}
+
+		if(!have)
+			break;
+
+		join = expr_new_op(curtok_to_op());
 		EAT(curtok);
 		join->lhs = e;
 		join->rhs = above();
 		e = join;
 	}
 
-	va_end(l);
 	return e;
 }
 
@@ -420,20 +466,20 @@ expr *parse_expr_exp()
 	return e;
 }
 
-decl **parse_type_list()
+type_ref **parse_type_list()
 {
-	decl **types = NULL;
+	type_ref **types = NULL;
 
 	if(curtok == token_close_paren)
 		return types;
 
 	do{
-		decl *d = parse_decl_single(DECL_SPEL_NO);
+		type_ref *r = parse_type();
 
-		if(!d)
+		if(!r)
 			DIE_AT(NULL, "type expected");
 
-		dynarray_add((void ***)&types, d);
+		dynarray_add(&types, r);
 	}while(accept(token_comma));
 
 	return types;
@@ -447,7 +493,7 @@ expr **parse_funcargs()
 		expr *arg = parse_expr_no_comma();
 		if(!arg)
 			DIE_AT(&arg->where, "expected: funcall arg");
-		dynarray_add((void ***)&args, arg);
+		dynarray_add(&args, arg);
 
 		if(curtok == token_close_paren)
 			break;
@@ -457,19 +503,36 @@ expr **parse_funcargs()
 	return args;
 }
 
-void parse_test_init_expr(stmt *t)
+static void parse_test_init_expr(stmt *t)
 {
-	decl **c99_ucc_inits;
+	decl *d;
 
 	EAT(token_open_paren);
 
-	c99_ucc_inits = parse_decls_one_type();
-	if(c99_ucc_inits){
-		t->flow = stmt_flow_new(symtab_new(t->symtab));
+	/* if C99, we create a new scope here, for e.g.
+	 * if(5 > (enum { a, b })a){ return a; } return b;
+	 * "return b" can't see 'b' since its scope is only the if
+	 *
+	 * C90 drags the scope of the enum up to the enclosing block
+	 */
+	if(cc1_std == STD_C99)
+		t->symtab = current_scope = symtab_new(current_scope);
+
+	d = parse_decl_single(DECL_SPEL_NEED);
+	if(d){
+		t->flow = stmt_flow_new(symtab_new(current_scope));
 
 		current_scope = t->flow->for_init_symtab;
 
-		t->flow->for_init_decls = c99_ucc_inits;
+		dynarray_add(&current_scope->decls, d);
+
+		if(accept(token_comma)){
+			/* if(int i = 5, i > f()){ ... } */
+			t->expr = parse_expr_exp();
+		}else{
+			/* if(int i = 5) -> if(i) */
+			t->expr = expr_new_identifier(d->spel);
+		}
 	}else{
 		t->expr = parse_expr_exp();
 	}
@@ -490,8 +553,7 @@ stmt *parse_if()
 	if(accept(token_else))
 		t->rhs = parse_stmt();
 
-	if(t->flow)
-		current_scope = current_scope->parent;
+	STMT_SCOPE_RECOVER(t);
 
 	return t;
 }
@@ -512,6 +574,8 @@ stmt *parse_switch()
 
 	current_break_target = old;
 	current_switch = old_sw;
+
+	STMT_SCOPE_RECOVER(t);
 
 	return t;
 }
@@ -547,6 +611,8 @@ stmt *parse_while()
 
 	t->lhs = parse_stmt();
 
+	STMT_SCOPE_RECOVER(t);
+
 	return t;
 }
 
@@ -572,10 +638,14 @@ stmt *parse_for()
 
 	SEMI_WRAP(
 			decl **c99inits = parse_decls_one_type();
-			if(c99inits)
-				sf->for_init_decls = c99inits;
-			else
-				sf->for_init = parse_expr_exp()
+			if(c99inits){
+				dynarray_add_array(&current_scope->decls, c99inits);
+
+				if(cc1_std < STD_C99)
+					WARN_AT(NULL, "use of C99 for-init");
+			}else{
+				sf->for_init = parse_expr_exp();
+			}
 	);
 
 	SEMI_WRAP(sf->for_while = parse_expr_exp());
@@ -605,99 +675,69 @@ void parse_static_assert(void)
 		sa->e = parse_expr_no_comma();
 		EAT(token_comma);
 
-		token_get_current_str(&sa->s, NULL);
+		token_get_current_str(&sa->s, NULL, NULL);
 
 		EAT(token_string);
 		EAT(token_close_paren);
 		EAT(token_semicolon);
 
-		dynarray_add((void ***)&static_asserts, sa);
+		dynarray_add(&static_asserts, sa);
 	}
 }
 
-void parse_got_decls(decl **decls, stmt *codes_init)
+static stmt *parse_stmt_and_decls(void)
 {
-	dynarray_add_array((void ***)&codes_init->decls, (void **)decls);
-}
+	stmt *code_stmt = STAT_NEW_NEST(code);
 
-stmt *parse_stmt_and_decls()
-{
-	stmt *codes = STAT_NEW_NEST(code);
-	int last;
+	current_scope = code_stmt->symtab;
 
-	current_scope = codes->symtab;
+	parse_static_assert();
 
-	last = 0;
-	do{
-		decl **decls;
-		stmt *sub;
+	parse_decls_multi_type(
+			DECL_MULTI_ACCEPT_FUNC_DECL
+			| DECL_MULTI_ALLOW_STORE
+			| DECL_MULTI_ALLOW_ALIGNAS,
+			current_scope,
+			NULL);
+
+	if(curtok != token_close_block){
+		/* fine with a normal statement */
+		int at_decl = 0;
 
 		parse_static_assert();
 
-		decls = parse_decls_multi_type(DECL_MULTI_ACCEPT_FUNC_DECL | DECL_MULTI_ALLOW_STORE);
-		sub = NULL;
+		while(curtok != token_close_block && !(at_decl = parse_at_decl()))
+			dynarray_add(&code_stmt->codes, parse_stmt());
 
-		if(decls){
-			/*
-			 * create an implicit block for the decl i.e.
-			 *
-			 * int i;              int i;
-			 * i = 5;              i = 5;
-			 *                     {
-			 * int j;   ---->        int j;
-			 * j = 2;                j = 2;
-			 *                     }
-			 */
+		if(at_decl){
+			if(code_stmt->codes){
+				stmt *nest = parse_stmt_and_decls();
 
-			/* optimise - initial-block-decls doesn't need a sub-block */
-			if(!codes->codes){
-				parse_got_decls(decls, codes);
-				goto normal;
-			}else{
-				static int warned = 0;
-				if(!warned){
-					warned = 1;
-					cc1_warn_at(&decls[0]->where, 0, 1, WARN_MIXED_CODE_DECLS,
-							"mixed code and declarations");
+				if(cc1_std < STD_C99){
+					static int warned = 0;
+					if(!warned){
+						warned = 1;
+						cc1_warn_at(&nest->where, 0, 1, WARN_MIXED_CODE_DECLS,
+								"mixed code and declarations");
+					}
 				}
-			}
 
-			/* new sub block */
-			if(curtok != token_close_block)
-				sub = parse_stmt_and_decls();
+				/* mark as internal - for duplicate checks */
+				nest->symtab->internal_nest = 1;
 
-			if(!sub){
-				/* decls aren't useless - { int i = f(); } - f called */
-				sub = STAT_NEW(code);
-			}
-
-			/* mark as internal - for duplicate checks */
-			sub->symtab->internal_nest = 1;
-
-			parse_got_decls(decls, sub);
-
-			last = 1;
-		}else{
-normal:
-			if(curtok != token_close_block){
-				/* fine with a normal statement */
-				sub = parse_stmt();
+				dynarray_add(&code_stmt->codes, nest);
 			}else{
-				last = 1;
+				ICE("got another decl - should've been handled already");
 			}
 		}
+	}
 
-		if(decls)
-			dynarray_free((void ***)&decls, NULL);
+	/*current_scope = code_stmt->symtab->parent;
+	 * don't - we use ->parent for scope leak checks
+	 */
+	current_scope = current_scope->parent;
 
-		if(sub)
-			dynarray_add((void ***)&codes->codes, sub);
-	}while(!last);
-
-
-	current_scope = codes->symtab->parent;
-
-	return codes;
+	return code_stmt;
 }
 
 #ifdef SYMTAB_DEBUG
@@ -901,46 +941,69 @@ flow:
 	/* unreachable */
 }
 
-symtable *parse()
+static symtable_gasm *parse_gasm(void)
 {
-	symtable *globals;
-	decl **decls = NULL;
-	int i;
-	int warned = 0;
+	symtable_gasm *g = umalloc(sizeof *g);
 
-	current_scope = globals = symtab_new(NULL);
+	EAT(token_open_paren);
+	token_get_current_str(&g->asm_str, NULL, NULL);
+	EAT(token_string);
+	EAT(token_close_paren);
+	EAT(token_semicolon);
+
+	return g;
+}
+
+void parse(symtable_global *globals)
+{
+	symtable_gasm **last_gasms = NULL;
+
+	current_scope = &globals->stab;
+
+	type_ref_init(current_scope);
 
 	for(;;){
-		decl **new = parse_decls_multi_type(
+		int cont = 0;
+		decl **new = NULL;
+
+		parse_decls_multi_type(
 				  DECL_MULTI_CAN_DEFAULT
 				| DECL_MULTI_ACCEPT_FUNC_CODE
-				| DECL_MULTI_ALLOW_STORE);
+				| DECL_MULTI_ALLOW_STORE
+				| DECL_MULTI_ALLOW_ALIGNAS,
+				current_scope,
+				&new);
 
 		if(new){
-			dynarray_add_array((void ***)&decls, (void **)new);
-			free(new);
+			symtable_gasm **i;
+
+			for(i = last_gasms; i && *i; i++)
+				(*i)->before = *new;
+			dynarray_free(symtable_gasm **, &last_gasms, NULL);
+			dynarray_free(decl **, &new, NULL);
 		}
 
-		if(accept(token_semicolon)){
-			if(!warned){
-				WARN_AT(NULL, "extra semi-colon after global decl");
-				warned = 1;
-			}
-			continue;
+		/* global asm */
+		while(accept(token_asm)){
+			symtable_gasm *g = parse_gasm();
+
+			dynarray_add(&last_gasms, g);
+			dynarray_add(&globals->gasms, g);
+			cont = 1;
 		}
-		break;
+
+		if(!cont)
+			break;
 	}
+
+	dynarray_free(symtable_gasm **, &last_gasms, NULL);
 
 	EAT(token_eof);
 
 	if(parse_had_error)
 		exit(1);
 
-	if(decls)
-		for(i = 0; decls[i]; i++)
-			symtab_add(globals, decls[i], sym_global, SYMTAB_NO_SYM, SYMTAB_APPEND);
+	current_scope->static_asserts = static_asserts;
 
-	globals->static_asserts = static_asserts;
-
-	return globals;
+	UCC_ASSERT(!current_scope->parent, "scope leak during parse");
 }

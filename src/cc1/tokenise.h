@@ -24,6 +24,7 @@ enum token
 	token_typeof,
 	token__Static_assert,
 
+	token_asm,
 	token_attribute,
 
 	token_identifier,
@@ -40,6 +41,7 @@ enum token
 	token_float,
 	token_double,
 	token__Bool,
+	token___builtin_va_list,
 
 	token_inline,
 	token__Noreturn,
@@ -56,6 +58,8 @@ enum token
 	token_static,
 	token_extern,
 	token_register,
+	token__Alignof,
+	token__Alignas,
 	/**/
 	token_typedef,
 	token_struct,
@@ -110,7 +114,12 @@ enum token
 	token_unknown
 };
 
-void tokenise_set_file(FILE *f, const char *nam);
+typedef char *tokenise_line_f(void);
+
+void tokenise_set_input(
+		tokenise_line_f *,
+		const char *nam);
+
 void nexttoken(void);
 
 #endif

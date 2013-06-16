@@ -6,10 +6,13 @@
 
 #include "../util/util.h"
 #include "../util/alloc.h"
-#include "../util/dynarray.h"
-#include "macro.h"
-#include "parse.h"
+#include "../util/str.h"
+
 #include "main.h"
+#include "preproc.h"
+#include "directive.h"
+#include "eval.h"
+#include "str.h"
 
 #define ARRAY_LEN(x) (sizeof(x) / sizeof(x[0]))
 
@@ -25,7 +28,26 @@ struct
 
 int file_stack_idx = -1;
 
-void preproc_out_info(void)
+void include_bt(FILE *f)
+{
+	int i;
+
+	for(i = 0; i < file_stack_idx; i++){
+		fprintf(f, "%sfrom: %s:%d\n",
+				i == 0 ?
+				"in file included " :
+				"                 ",
+				file_stack[i].fname,
+				file_stack[i].line_no - 1);
+	}
+}
+
+void preproc_backtrace()
+{
+	include_bt(stderr);
+}
+
+static void preproc_out_info(void)
 {
 	/* output PP info */
 	if(option_line_info)
@@ -40,7 +62,7 @@ void preproc_push(FILE *f, const char *fname)
 
 	file_stack_idx++;
 	if(file_stack_idx == ARRAY_LEN(file_stack))
-		die("too many includes");
+		CPP_DIE("too many includes");
 
 #ifdef DO_CHDIR
 	char *wd;
@@ -65,7 +87,7 @@ void preproc_push(FILE *f, const char *fname)
 	preproc_out_info();
 }
 
-void preproc_pop(void)
+static void preproc_pop(void)
 {
 	if(!file_stack_idx)
 		ICE("file stack idx = 0 on pop()");
@@ -89,7 +111,7 @@ void preproc_pop(void)
 	preproc_out_info();
 }
 
-char *splice_line(void)
+static char *splice_line(void)
 {
 	static int n_nls;
 	char *last;
@@ -133,7 +155,7 @@ re_read:
 		if(join){
 			join = 0;
 
-			last = urealloc(last, strlen(last) + strlen(line) + 1);
+			last = urealloc1(last, strlen(last) + strlen(line) + 1);
 			strcpy(last + strlen(last), line);
 			free(line);
 			line = last;
@@ -151,7 +173,7 @@ re_read:
 	}
 }
 
-char *strip_comment(char *line)
+static char *strip_comment(char *line)
 {
 	char *s;
 
@@ -168,7 +190,7 @@ char *strip_comment(char *line)
 			/* read until the end of the string */
 			s = terminating_quote(s + 1);
 			if(!s)
-				die("no terminating quote to string");
+				CPP_DIE("no terminating quote to string");
 			/* finish of string */
 		}else if(*s == '/'){
 			if(s[1] == '/'){
@@ -187,34 +209,47 @@ char *strip_comment(char *line)
 	return line;
 }
 
-char *filter_macros(char *line)
+static char *filter_macros(char *line)
 {
-	if(*line == '#'){
-		handle_macro(line);
+	/* check for non-standard space-then-# */
+	char *hash = line;
+
+	if(*hash == '#' || *(hash = str_spc_skip(hash)) == '#'){
+		parse_directive(hash + 1);
 		free(line);
 		return NULL;
 	}else{
-		filter_macro(&line);
+		if(parse_should_noop())
+			*line = '\0';
+		else
+			line = eval_expand_macros(line);
 		return line;
 	}
 }
 
-void preprocess()
+void preprocess(void)
 {
 	char *line;
 
 	preproc_push(stdin, current_fname);
 
 	while((line = splice_line())){
-		char *s = filter_macros(strip_comment(line));
+		char *s;
+		debug_push_line(line);
+
+		s = filter_macros(strip_comment(line));
+
+		debug_pop_line();
+
 		if(s){
-			puts(s);
+			if(!no_output)
+				puts(s);
 			free(s);
 		}
 	}
 
 	if(strip_in_block)
-		die("no terminating block comment");
+		CPP_DIE("no terminating block comment");
 
-	macro_finish();
+	parse_end_validate();
 }

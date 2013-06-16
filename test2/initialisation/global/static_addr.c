@@ -1,0 +1,9 @@
+// RUN: %ucc -DSTORE= %s; [ $? -ne 0 ]
+// RUN: %ucc -DSTORE=static %s
+// RUN: %ucc -DSTORE=extern %s
+
+main()
+{
+	STORE int a;
+	static int *p = &a;
+}

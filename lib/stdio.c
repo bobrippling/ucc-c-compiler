@@ -34,7 +34,7 @@ struct __FILE
 	char *buf_write_p, *buf_read_p;
 	*/
 };
-#define FILE_INIT(fd) { fd, file_status_fine, NULL, NULL, NULL, NULL, NULL }
+#define FILE_INIT(_fd) { .status = file_status_fine, .fd = _fd }
 
 static FILE _stdin  = FILE_INIT(0);
 static FILE _stdout = FILE_INIT(1);
@@ -44,8 +44,6 @@ FILE *stdin  = &_stdin;
 FILE *stdout = &_stdout;
 FILE *stderr = &_stderr;
 
-static const char *nums = "0123456789abcdef";
-
 /* Private */
 static void fprintd_rec(FILE *f, int n, int base)
 {
@@ -53,7 +51,7 @@ static void fprintd_rec(FILE *f, int n, int base)
 	d = n / base;
 	if(d)
 		fprintd_rec(f, d, base);
-	fwrite(nums + n % base, 1, 1, f);
+	fwrite("0123456789abcdef" + n % base, 1, 1, f);
 }
 
 static void fprintn(FILE *f, int n, int base, int is_signed)
@@ -219,19 +217,20 @@ FILE *fopen(const char *path, const char *mode)
 FILE *freopen(const char *path, const char *mode, FILE *f)
 {
 	if(fclose2(f))
-		return NULL;
+		goto err;
 
-	if(fopen2(f, path, mode)){
-		free(f);
-		return NULL;
-	}
+	if(fopen2(f, path, mode))
+		goto err;
+
 	return f;
+err:
+	free(f);
+	return NULL;
 }
 
-FILE *fdopen(int fd, const char *mode)
+FILE *fdopen(int fd, const char *mode __unused)
 {
 	FILE *f = malloc(sizeof *f);
-	(void)mode;
 	if(!f)
 		return NULL;
 	fopen_init(f, fd);
@@ -379,7 +378,7 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 					break;
 				}
 				case 'c':
-					fputc(va_arg(ap, char), file);
+					fputc(va_arg(ap, int), file);
 					break;
 				case 'u':
 				case 'd':

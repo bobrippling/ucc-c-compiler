@@ -1,0 +1,6 @@
+a:
+.zero 8
+b:
+.zero 8
+p:
+.quad a+4

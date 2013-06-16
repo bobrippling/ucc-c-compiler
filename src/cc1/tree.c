@@ -11,6 +11,7 @@
 #include "../util/platform.h"
 #include "sue.h"
 #include "decl.h"
+#include "cc1.h"
 
 const where *eof_where = NULL;
 
@@ -21,62 +22,89 @@ intval *intval_new(long v)
 	return iv;
 }
 
-
 void where_new(struct where *w)
 {
-	extern int buffereof;
+	extern const char *current_fname;
+	extern int parse_finished;
 
-	if(buffereof){
-		if(eof_where)
+	if(parse_finished){
+eof_w:
+		if(eof_where){
 			memcpy(w, eof_where, sizeof *w);
-		else
+		}else if(current_fname){
+			/* still parsing, at EOF */
+			goto final;
+		}else{
 			ICE("where_new() after buffer eof");
+		}
 
 	}else{
 		extern int current_line, current_chr;
 		extern const char *current_fname, *current_line_str;
 		extern int current_fname_used, current_line_str_used;
 
+		if(!current_fname || !current_line_str)
+			goto eof_w;
+
+final:
 		w->line  = current_line;
 		w->chr   = current_chr;
 		w->fname = current_fname;
 		w->line_str = current_line_str;
-
-		UCC_ASSERT(current_fname, "no current fname");
-		UCC_ASSERT(current_line_str, "no current line");
 
 		current_fname_used = 1;
 		current_line_str_used = 1;
 	}
 }
 
-type *type_new()
+int intval_cmp(const intval *a, const intval *b)
+{
+	const intval_t la = a->val, lb = b->val;
+
+	if(la > lb)
+		return 1;
+	if(la < lb)
+		return -1;
+	return 0;
+}
+
+int intval_str(char *buf, size_t nbuf, intval_t v, int is_signed)
+{
+	return snprintf(
+			buf, nbuf,
+			is_signed ? "%" INTVAL_FMT_D : "%" INTVAL_FMT_U,
+			v);
+}
+
+static type *type_new_primitive1(enum type_primitive p)
 {
 	type *t = umalloc(sizeof *t);
 	where_new(&t->where);
+	t->primitive = p;
 	t->is_signed = 1;
-	t->primitive = type_unknown;
 	return t;
 }
 
-type *type_copy(type *t)
+const type *type_new_primitive_sue(enum type_primitive p, struct_union_enum_st *s)
 {
-	type *ret = umalloc(sizeof *ret);
-	memcpy(ret, t, sizeof *ret);
-	return ret;
+	type *t = type_new_primitive1(p);
+	t->sue = s;
+	return t;
 }
 
-void funcargs_free(funcargs *args, int free_decls)
+const type *type_new_primitive_signed(enum type_primitive p, int sig)
 {
-	if(free_decls){
-		int i;
-		for(i = 0; args->arglist[i]; i++)
-			decl_free(args->arglist[i]);
-	}
-	free(args);
+	type *t = type_new_primitive1(p);
+	t->is_signed = sig;
+	return t;
 }
 
-int type_primitive_size(enum type_primitive tp)
+const type *type_new_primitive(enum type_primitive p)
+{
+	return type_new_primitive1(p);
+}
+
+unsigned type_primitive_size(enum type_primitive tp)
 {
 	switch(tp){
 		case type_char:
@@ -91,15 +119,14 @@ int type_primitive_size(enum type_primitive tp)
 		case type_float:
 			return 4;
 
-		case type_intptr_t:
-		case type_ptrdiff_t:
 		case type_long:
 		case type_double:
-			return 8; /* FIXME: 4 on 32-bit */
-
+			/* 4 on 32-bit */
+			if(cc1_m32)
+				return 4;
+			/* fall */
 		case type_llong:
-			ICW("TODO: long long");
-			return 16;
+			return 8;
 
 		case type_ldouble:
 			/* 80-bit float */
@@ -115,34 +142,30 @@ int type_primitive_size(enum type_primitive tp)
 			break;
 	}
 
-	ICE("type %s in type_size()", type_primitive_to_str(tp));
+	ICE("type %s in %s()",
+			type_primitive_to_str(tp), __func__);
 	return -1;
 }
 
-int type_size(const type *t)
+unsigned type_size(const type *t, where *from)
 {
-	if(t->type_of)
-		return decl_size(t->type_of->decl);
-
 	if(t->sue)
-		return sue_size(t->sue);
+		return sue_size(t->sue, from);
 
 	return type_primitive_size(t->primitive);
 }
 
+int type_qual_equal(enum type_qualifier a, enum type_qualifier b)
+{
+ return (a | qual_restrict) == (b | qual_restrict);
+}
+
 int type_equal(const type *a, const type *b, enum type_cmp mode)
 {
-	if(a->qual != b->qual){
-		if(mode & TYPE_CMP_EXACT)
-			return 0;
-
-		/* if b is const, a must be */
-		if((mode & TYPE_CMP_QUAL)
-		&& (b->qual & qual_const)
-		&& !(a->qual & qual_const))
-		{
-			return 0;
-		}
+	if((mode & TYPE_CMP_ALLOW_SIGNED_UNSIGNED) == 0
+	&& a->is_signed != b->is_signed)
+	{
+		return 0;
 	}
 
 	if(a->sue != b->sue)
@@ -151,48 +174,29 @@ int type_equal(const type *a, const type *b, enum type_cmp mode)
 	return mode & TYPE_CMP_EXACT ? a->primitive == b->primitive : 1;
 }
 
-void function_empty_args(funcargs *func)
-{
-	if(func->arglist){
-		UCC_ASSERT(!func->arglist[1], "empty_args called when it shouldn't be");
-
-		decl_free(func->arglist[0]);
-		free(func->arglist);
-		func->arglist = NULL;
-	}
-	func->args_void = 0;
-}
-
-funcargs *funcargs_new()
-{
-	funcargs *r = umalloc(sizeof *funcargs_new());
-	where_new(&r->where);
-	return r;
-}
-
 const char *op_to_str(const enum op_type o)
 {
 	switch(o){
-		CASE_STR_PREFIX(op, multiply);
-		CASE_STR_PREFIX(op, divide);
-		CASE_STR_PREFIX(op, plus);
-		CASE_STR_PREFIX(op, minus);
-		CASE_STR_PREFIX(op, modulus);
-		CASE_STR_PREFIX(op, eq);
-		CASE_STR_PREFIX(op, ne);
-		CASE_STR_PREFIX(op, le);
-		CASE_STR_PREFIX(op, lt);
-		CASE_STR_PREFIX(op, ge);
-		CASE_STR_PREFIX(op, gt);
-		CASE_STR_PREFIX(op, or);
-		CASE_STR_PREFIX(op, xor);
-		CASE_STR_PREFIX(op, and);
-		CASE_STR_PREFIX(op, orsc);
-		CASE_STR_PREFIX(op, andsc);
-		CASE_STR_PREFIX(op, not);
-		CASE_STR_PREFIX(op, bnot);
-		CASE_STR_PREFIX(op, shiftl);
-		CASE_STR_PREFIX(op, shiftr);
+		case op_multiply: return "*";
+		case op_divide:   return "/";
+		case op_plus:     return "+";
+		case op_minus:    return "-";
+		case op_modulus:  return "%";
+		case op_eq:       return "==";
+		case op_ne:       return "!=";
+		case op_le:       return "<=";
+		case op_lt:       return "<";
+		case op_ge:       return ">=";
+		case op_gt:       return ">";
+		case op_or:       return "|";
+		case op_xor:      return "^";
+		case op_and:      return "&";
+		case op_orsc:     return "||";
+		case op_andsc:    return "&&";
+		case op_not:      return "!";
+		case op_bnot:     return "~";
+		case op_shiftl:   return "<<";
+		case op_shiftr:   return ">>";
 		CASE_STR_PREFIX(op, unknown);
 	}
 	return NULL;
@@ -209,8 +213,6 @@ const char *type_primitive_to_str(const enum type_primitive p)
 		CASE_STR_PREFIX(type, float);
 		CASE_STR_PREFIX(type, double);
 		CASE_STR_PREFIX(type, _Bool);
-		CASE_STR_PREFIX(type, intptr_t);
-		CASE_STR_PREFIX(type, ptrdiff_t);
 
 		case type_llong:   return "long long";
 		case type_ldouble: return "long double";
@@ -224,27 +226,15 @@ const char *type_primitive_to_str(const enum type_primitive p)
 	return NULL;
 }
 
-const char *type_store_to_str(const enum type_storage s)
-{
-	switch(s){
-		CASE_STR_PREFIX(store, default);
-		CASE_STR_PREFIX(store, auto);
-		CASE_STR_PREFIX(store, static);
-		CASE_STR_PREFIX(store, extern);
-		CASE_STR_PREFIX(store, register);
-		CASE_STR_PREFIX(store, typedef);
-	}
-	return NULL;
-}
-
-char *type_qual_to_str(const enum type_qualifier qual)
+const char *type_qual_to_str(const enum type_qualifier qual, int trailing_space)
 {
 	static char buf[32];
 	/* trailing space is purposeful */
-	snprintf(buf, sizeof buf, "%s%s%s",
-		qual & qual_const    ? "const "    : "",
-		qual & qual_volatile ? "volatile " : "",
-		qual & qual_restrict ? "restrict " : "");
+	snprintf(buf, sizeof buf, "%s%s%s%s",
+		qual & qual_const    ? "const"    : "",
+		qual & qual_volatile ? "volatile" : "",
+		qual & qual_restrict ? "restrict" : "",
+		qual && trailing_space ? " " : "");
 	return buf;
 }
 
@@ -270,7 +260,7 @@ int op_can_compound(enum op_type o)
 	return 0;
 }
 
-int op_is_relational(enum op_type o)
+int op_is_comparison(enum op_type o)
 {
 	switch(o){
 		case op_eq:
@@ -279,13 +269,27 @@ int op_is_relational(enum op_type o)
 		case op_lt:
 		case op_ge:
 		case op_gt:
-		case op_andsc:
-		case op_orsc:
 			return 1;
 		default:
 			break;
 	}
 	return 0;
+}
+
+int op_is_shortcircuit(enum op_type o)
+{
+	switch(o){
+		case op_andsc:
+		case op_orsc:
+			return 1;
+		default:
+			return 0;
+	}
+}
+
+int op_is_relational(enum op_type o)
+{
+	return op_is_comparison(o) || op_is_shortcircuit(o);
 }
 
 const char *type_to_str(const type *t)
@@ -294,16 +298,7 @@ const char *type_to_str(const type *t)
 	static char buf[TYPE_STATIC_BUFSIZ];
 	char *bufp = buf;
 
-	if(t->type_of)     bufp += snprintf(bufp, BUF_SIZE, "typedef ");
-
-	{
-		const char *tmp = type_qual_to_str(t->qual);
-		bufp += snprintf(bufp, BUF_SIZE, "%s", tmp);
-	}
-
-	if(t->store)      bufp += snprintf(bufp, BUF_SIZE, "%s ", type_store_to_str(t->store));
 	if(!t->is_signed) bufp += snprintf(bufp, BUF_SIZE, "unsigned ");
-	if( t->is_inline) bufp += snprintf(bufp, BUF_SIZE, "inline ");
 
 	if(t->sue){
 		snprintf(bufp, BUF_SIZE, "%s%s %s",
@@ -313,30 +308,26 @@ const char *type_to_str(const type *t)
 
 	}else{
 		switch(t->primitive){
-#define SAPPEND(s) snprintf(bufp, BUF_SIZE, "%s", s); break
-#define APPEND(t) case type_ ## t: SAPPEND(#t)
-			APPEND(void);
-			APPEND(_Bool);
-			APPEND(char);
-			APPEND(short);
-			APPEND(int);
-			APPEND(long);
-			APPEND(float);
-			APPEND(double);
-			APPEND(intptr_t);
-			APPEND(ptrdiff_t);
-
-			case type_llong:   SAPPEND("long long");
-			case type_ldouble: SAPPEND("long double");
+			case type_void:
+			case type__Bool:
+			case type_char:
+			case type_short:
+			case type_int:
+			case type_long:
+			case type_float:
+			case type_double:
+			case type_llong:
+			case type_ldouble:
+				snprintf(bufp, BUF_SIZE, "%s",
+						type_primitive_to_str(t->primitive));
+				break;
 
 			case type_unknown:
 				ICE("unknown type primitive (%s)", where_str(&t->where));
 			case type_enum:
-				ICE("enum without ->enu");
 			case type_struct:
 			case type_union:
-				ICE("struct/union without ->struct_union");
-#undef APPEND
+				ICE("struct/union/enum without ->sue");
 		}
 	}
 

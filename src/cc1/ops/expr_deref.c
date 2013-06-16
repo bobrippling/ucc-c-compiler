@@ -3,49 +3,66 @@
 
 const char *str_expr_deref()
 {
-	return "deref";
+	return "dereference";
 }
 
 void fold_expr_deref(expr *e, symtable *stab)
 {
-	expr *const ptr = expr_deref_what(e);
+	expr *ptr;
 
-	fold_expr(ptr, stab);
+	ptr = FOLD_EXPR(expr_deref_what(e), stab);
 
-	if(decl_attr_present(ptr->tree_type->attr, attr_noderef))
+	if(expr_attr_present(ptr, attr_noderef))
 		WARN_AT(&ptr->where, "dereference of noderef expression");
 
 	/* check for *&x */
 	if(expr_kind(ptr, addr) && !ptr->expr_addr_implicit)
 		WARN_AT(&ptr->where, "possible optimisation for *& expression");
 
-	e->tree_type = decl_ptr_depth_dec(decl_copy(ptr->tree_type), &e->where);
+	e->tree_type = type_ref_ptr_depth_dec(ptr->tree_type, &e->where);
 }
 
-void gen_expr_deref_lea(expr *e, symtable *stab)
+void gen_expr_deref_lea(expr *e)
 {
 	/* a dereference */
-	gen_expr(expr_deref_what(e), stab); /* skip over the *() bit */
+	gen_expr(expr_deref_what(e)); /* skip over the *() bit */
 }
 
-void gen_expr_deref(expr *e, symtable *stab)
+void gen_expr_deref(expr *e)
 {
-	gen_expr(expr_deref_what(e), stab);
+	gen_expr_deref_lea(e);
 	out_deref();
 }
 
-void gen_expr_str_deref(expr *e, symtable *stab)
+void gen_expr_str_deref(expr *e)
 {
-	(void)stab;
-	idt_printf("deref, size: %s\n", decl_to_str(e->tree_type));
+	idt_printf("deref, size: %s\n", type_ref_to_str(e->tree_type));
 	gen_str_indent++;
 	print_expr(expr_deref_what(e));
 	gen_str_indent--;
 }
 
+void const_expr_deref(expr *e, consty *k)
+{
+	expr *from = expr_deref_what(e);
+
+	const_fold(from, k);
+
+	switch(k->type){
+		case CONST_VAL:
+		case CONST_ADDR:
+		case CONST_STRK:
+			k->type = CONST_ADDR_OR_NEED_TREF(from->tree_type);
+			/* *(int [10])a -> still need_addr */
+		default:
+			break;
+	}
+}
+
 void mutate_expr_deref(expr *e)
 {
 	e->f_lea = gen_expr_deref_lea;
+	e->f_const_fold = const_expr_deref;
 }
 
 expr *expr_new_deref(expr *of)
@@ -55,5 +72,9 @@ expr *expr_new_deref(expr *of)
 	return e;
 }
 
-void gen_expr_style_deref(expr *e, symtable *stab)
-{ (void)e; (void)stab; /* TODO */ }
+void gen_expr_style_deref(expr *e)
+{
+	stylef("*(");
+	gen_expr(expr_deref_what(e));
+	stylef(")");
+}

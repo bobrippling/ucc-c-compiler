@@ -7,5 +7,3 @@ func_gen         gen_expr_struct;
 
 func_gen         gen_expr_str_struct;
 func_gen         gen_expr_style_struct;
-
-#define struct_offset(rhs) rhs->tree_type->struct_offset

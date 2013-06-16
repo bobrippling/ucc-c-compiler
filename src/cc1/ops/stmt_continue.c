@@ -17,4 +17,4 @@ void mutate_stmt_continue(stmt *s)
 	s->f_passable = fold_passable_no;
 }
 
-func_gen_stmt *gen_stmt_continue = gen_stmt_goto;
+STMT_GOTO_DEFS(continue);

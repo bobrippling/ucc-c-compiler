@@ -22,13 +22,22 @@ void gen_stmt_do(stmt *s)
 	gen_stmt(s->lhs);
 
 	out_label(s->lbl_continue);
-	gen_expr(s->expr, s->symtab);
+	gen_expr(s->expr);
 
 	out_jtrue(begin);
 
 	out_label(s->lbl_break);
 
 	free(begin);
+}
+
+void style_stmt_do(stmt *s)
+{
+	stylef("do");
+	gen_stmt(s->lhs);
+	stylef("while(");
+	gen_expr(s->expr);
+	stylef(");");
 }
 
 void mutate_stmt_do(stmt *s)

@@ -1,0 +1,19 @@
+__compound_literal.0:
+.long 2
+x:
+.quad __compound_literal.0
+__compound_literal.1:
+.long 2
+.long 3
+y:
+.quad __compound_literal.1
+__compound_literal.2:
+.long 2
+.long 3
+z:
+.quad __compound_literal.2+4
+.LC0:
+s:
+.quad .LC0
+p:
+.quad .LC0+2

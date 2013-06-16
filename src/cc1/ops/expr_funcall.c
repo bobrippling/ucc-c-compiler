@@ -3,16 +3,11 @@
 #include <stdlib.h>
 
 #include "ops.h"
+#include "expr_funcall.h"
 #include "../../util/dynarray.h"
 #include "../../util/platform.h"
 #include "../../util/alloc.h"
-
-static int func_is_asm(const char *sp)
-{
-	return fopt_mode & FOPT_ENABLE_ASM
-		&& sp
-		&& !strcmp(sp, ASM_INLINE_FNAME);
-}
+#include "../funcargs.h"
 
 const char *str_expr_funcall()
 {
@@ -25,14 +20,298 @@ int const_fold_expr_funcall(expr *e)
 	return 1; /* could extend to have int x() const; */
 }
 
+enum printf_attr
+{
+	printf_attr_long = 1 << 0
+};
+
+static void format_check_printf_1(char fmt, type_ref *tt,
+		where *w, enum printf_attr attr)
+{
+	int allow_long = 0;
+
+	switch(fmt){
+		enum type_primitive prim;
+
+		case 's': prim = type_char; goto ptr;
+		case 'p': prim = type_void; goto ptr;
+		case 'n': prim = type_int;  goto ptr;
+ptr:
+			tt = type_ref_is_type(type_ref_is_ptr(tt), prim);
+			if(!tt){
+				WARN_AT(w, "format %%%c expects '%s *' argument",
+						fmt, type_primitive_to_str(prim));
+			}
+			break;
+
+		case 'x':
+		case 'X':
+		case 'u':
+		case 'o':
+			/* unsigned ... */
+		case '*':
+		case 'c':
+		case 'd':
+		case 'i':
+			allow_long = 1;
+			if(!type_ref_is_integral(tt))
+				WARN_AT(w, "format %%%c expects integral argument", fmt);
+			if((attr & printf_attr_long) && !type_ref_is_type(tt, type_long))
+				WARN_AT(w, "format %%l%c expects long argument", fmt);
+			break;
+
+		case 'e':
+		case 'E':
+		case 'f':
+		case 'F':
+		case 'g':
+		case 'G':
+		case 'a':
+		case 'A':
+			if(!type_ref_is_floating(tt))
+				WARN_AT(w, "format %%d expects double argument");
+			break;
+
+		default:
+			WARN_AT(w, "unknown conversion character 0x%x", fmt);
+	}
+
+	if(!allow_long && attr & printf_attr_long)
+		WARN_AT(w, "format %%%c expects a long", fmt);
+}
+
+static void format_check_printf_str(
+		expr **args,
+		const char *fmt, const int len,
+		int var_arg, where *w)
+{
+	int n_arg = 0;
+	int i;
+
+	for(i = 0; i < len && fmt[i];){
+		if(fmt[i++] == '%'){
+			int fin;
+			enum printf_attr attr;
+			expr *e;
+
+			if(fmt[i] == '%'){
+				i++;
+				continue;
+			}
+
+recheck:
+			attr = 0;
+			fin = 0;
+			do switch(fmt[i]){
+				 case 'l':
+					/* TODO: multiple check.. */
+					attr |= printf_attr_long;
+
+				case '1': case '2': case '3':
+				case '4': case '5': case '6':
+				case '7': case '8': case '9':
+
+				case '0': case '#': case '-':
+				case ' ': case '+': case '.':
+
+				case 'h': case 'L':
+					i++;
+					break;
+				default:
+					fin = 1;
+			}while(!fin);
+
+			e = args[var_arg + n_arg++];
+
+			if(!e){
+				WARN_AT(w, "too few arguments for format (%%%c)", fmt[i]);
+				break;
+			}
+
+			format_check_printf_1(fmt[i], e->tree_type, &e->where, attr);
+			if(fmt[i] == '*'){
+				i++;
+				goto recheck;
+			}
+		}
+	}
+
+	if((!fmt[i] || i == len) && args[var_arg + n_arg])
+		WARN_AT(w, "too many arguments for format");
+}
+
+static void format_check_printf(
+		expr *str_arg,
+		expr **args,
+		unsigned var_arg,
+		where *w)
+{
+	stringval *fmt_str;
+	consty k;
+
+	const_fold(str_arg, &k);
+
+	switch(k.type){
+		case CONST_NO:
+		case CONST_NEED_ADDR:
+			/* check for the common case printf(x?"":"", ...) */
+			if(expr_kind(str_arg, if)){
+				format_check_printf(str_arg->lhs, args, var_arg, w);
+				format_check_printf(str_arg->rhs, args, var_arg, w);
+				return;
+			}
+
+			WARN_AT(w, "format argument isn't constant");
+			return;
+
+		case CONST_VAL:
+			if(k.bits.iv.val == 0)
+				return; /* printf(NULL, ...) */
+			/* fall */
+
+		case CONST_ADDR:
+			WARN_AT(w, "format argument isn't a string constant");
+			return;
+
+		case CONST_STRK:
+			fmt_str = k.bits.str;
+			break;
+	}
+
+	{
+		const char *fmt = fmt_str->str;
+		const int   len = fmt_str->len;
+
+		if(k.offset >= len)
+			WARN_AT(w, "undefined printf-format argument");
+		else
+			format_check_printf_str(args, fmt + k.offset, len, var_arg, w);
+	}
+}
+
+static void format_check(where *w, type_ref *ref, expr **args, const int variadic)
+{
+	decl_attr *attr = type_attr_present(ref, attr_format);
+	int n, fmt_arg, var_arg;
+
+	if(!attr)
+		return;
+
+	if(!variadic)
+		DIE_AT(w, "variadic function required for format check");
+
+	fmt_arg = attr->bits.format.fmt_arg;
+	var_arg = attr->bits.format.var_arg;
+
+	if(!variadic){
+		if(var_arg >= 0)
+			WARN_AT(w, "variadic function required for format check");
+		return;
+	}
+
+	n = dynarray_count(args);
+
+	if(fmt_arg >= n)
+		DIE_AT(w, "format argument out of bounds (%d >= %d)", fmt_arg, n);
+	if(var_arg > n)
+		DIE_AT(w, "variadic argument out of bounds (%d >= %d)", var_arg, n);
+	if(var_arg <= fmt_arg)
+		DIE_AT(w, "variadic argument %s format argument", var_arg == fmt_arg ? "at" : "before");
+
+	switch(attr->bits.format.fmt_func){
+		case attr_fmt_printf:
+			format_check_printf(args[fmt_arg], args, var_arg, w);
+			break;
+
+		case attr_fmt_scanf:
+			ICW("scanf check");
+			break;
+	}
+}
+
+#define ATTR_WARN_RET(w, ...) do{ WARN_AT(w, __VA_ARGS__); return; }while(0)
+
+static void sentinel_check(where *w, type_ref *ref, expr **args,
+		const int variadic, const int nstdargs)
+{
+	decl_attr *attr = type_attr_present(ref, attr_sentinel);
+	int i, nvs;
+	expr *sentinel;
+
+	if(!attr)
+		return;
+
+	if(!variadic)
+		return; /* warning emitted elsewhere, on the decl */
+
+	i = attr->bits.sentinel;
+	nvs = dynarray_count(args) - nstdargs;
+
+	if(nvs == 0)
+		ATTR_WARN_RET(w, "not enough variadic arguments for a sentinel");
+
+	UCC_ASSERT(nvs >= 0, "too few args");
+
+	if(i >= nvs)
+		ATTR_WARN_RET(w, "sentinel index is not a variadic argument");
+
+	sentinel = args[(nstdargs + nvs - 1) - i];
+
+	if(!expr_is_null_ptr(sentinel, 0))
+		ATTR_WARN_RET(&sentinel->where, "sentinel argument expected (got %s)",
+				type_ref_to_str(sentinel->tree_type));
+
+}
+
+static void static_array_check(
+		decl *arg_decl, expr *arg_expr)
+{
+	/* if ty_func is x[static %d], check counts */
+	type_ref *ty_expr = arg_expr->tree_type;
+	type_ref *ty_decl = decl_is_decayed_array(arg_decl);
+	consty k_decl;
+
+	if(!ty_decl || !ty_decl->bits.ptr.is_static || !ty_decl->bits.ptr.size)
+		return;
+
+	if(expr_is_null_ptr(arg_expr, 1 /* int */)){
+		WARN_AT(&arg_expr->where, "passing null-pointer where array expected");
+		return;
+	}
+
+	const_fold(ty_decl->bits.ptr.size, &k_decl);
+
+	if(!(ty_expr = type_ref_is_decayed_array(ty_expr))){
+		WARN_AT(&arg_expr->where,
+				(k_decl.type == CONST_VAL) ?
+				"array of size >= %" INTVAL_FMT_D " expected for parameter" :
+				"array expected for parameter", (intval_t)k_decl.bits.iv.val);
+		return;
+	}
+
+	/* ty_expr is the type_ref_ptr, decayed from array */
+	if(ty_expr->bits.ptr.size){
+		consty k_arg;
+
+		const_fold(ty_expr->bits.ptr.size, &k_arg);
+
+		if(k_decl.type == CONST_VAL && k_arg.bits.iv.val < k_decl.bits.iv.val)
+			WARN_AT(&arg_expr->where,
+					"array of size %" INTVAL_FMT_D " passed where size %" INTVAL_FMT_D " needed",
+					k_arg.bits.iv.val, k_decl.bits.iv.val);
+	}
+}
+
 void fold_expr_funcall(expr *e, symtable *stab)
 {
-	const char *sp = e->expr->spel;
-	decl *df;
+	type_ref *type_func;
 	funcargs *args_from_decl;
+	char *sp = NULL;
+	int count_decl = 0;
+	char *desc;
 
-	if(func_is_asm(sp)){
 #if 0
+	if(func_is_asm(sp)){
 		expr *arg1;
 		const char *str;
 		int i;
@@ -56,97 +335,97 @@ invalid:
 		/* TODO: allow a long return, e.g. __asm__(("movq $5, %rax")) */
 		e->tree_type = decl_new_void();
 		return;
-#else
 		ICE("TODO: __asm__");
-#endif
 	}
+#endif
 
 
-	if(!sp)
-		sp = "<anon func>";
-
-	if(expr_kind(e->expr, identifier) && e->expr->spel){
+	if(expr_kind(e->expr, identifier) && (sp = e->expr->bits.ident.spel)){
 		/* check for implicit function */
-		if(!(e->expr->sym = symtab_search(stab, sp))){
-			df = decl_new();
+		if(!(e->expr->bits.ident.sym = symtab_search(stab, sp))){
+			funcargs *args = funcargs_new();
+			decl *df;
 
-			df->type->primitive = type_int;
-			df->type->store     = store_extern;
+			funcargs_empty(args); /* set up the funcargs as if it's "x()" - i.e. any args */
+
+			type_func = type_ref_new_func(type_ref_new_type(type_new_primitive(type_int)), args);
 
 			cc1_warn_at(&e->where, 0, 1, WARN_IMPLICIT_FUNC, "implicit declaration of function \"%s\"", sp);
 
-			decl_set_spel(df, e->expr->spel);
+			df = decl_new();
+			df->ref = type_func;
+			df->spel = e->expr->bits.ident.spel;
 
-			df->desc = decl_desc_func_new(df, NULL);
-			df->desc->bits.func = funcargs_new();
-
-			/* set up the funcargs as if it's "x()" - i.e. any args */
-			function_empty_args(df->desc->bits.func);
+			fold_decl(df, stab); /* update calling conv, for e.g. */
 
 			/* not declared - generate a sym ourselves */
-			e->expr->sym = SYMTAB_ADD(stab, df, sym_local);
-
-			df->is_definition = 1; /* needed since it's a local var */
+			e->expr->bits.ident.sym = sym_new_stab(stab, df, sym_global);
 		}
 	}
 
-	fold_expr(e->expr, stab);
-	df = e->expr->tree_type;
+	desc = ustrprintf("function argument to %s", sp);
+	FOLD_EXPR(e->expr, stab);
+	type_func = e->expr->tree_type;
 
-	if(!decl_is_callable(df)){
-		DIE_AT(&e->expr->where, "expression %s (%s) not callable",
-				e->expr->f_str(),
-				decl_to_str(df));
+	if(!type_ref_is_callable(type_func)){
+		DIE_AT(&e->expr->where, "%s-expression (type '%s') not callable",
+				e->expr->f_str(), type_ref_to_str(type_func));
 	}
 
 	if(expr_kind(e->expr, deref)
-	&& decl_is_fptr(expr_deref_what(e->expr)->tree_type)){
+	&& type_ref_is(type_ref_is_ptr(expr_deref_what(e->expr)->tree_type), type_ref_func)){
 		/* XXX: memleak */
 		/* (*f)() - dereffing to a function, then calling - remove the deref */
 		e->expr = expr_deref_what(e->expr);
 	}
 
-	df = e->tree_type = decl_func_deref(decl_copy(df), &args_from_decl);
+	e->tree_type = type_ref_func_call(type_func, &args_from_decl);
 
 	/* func count comparison, only if the func has arg-decls, or the func is f(void) */
-	UCC_ASSERT(args_from_decl, "no funcargs for decl %s", df->spel);
+	UCC_ASSERT(args_from_decl, "no funcargs for decl %s", sp);
 
+
+	/* this block is purely count checking */
+	if(args_from_decl->arglist || args_from_decl->args_void){
+		const int count_arg  = dynarray_count(e->funcargs);
+
+		count_decl = dynarray_count(args_from_decl->arglist);
+
+		if(count_decl != count_arg && (args_from_decl->variadic ? count_arg < count_decl : 1)){
+			DIE_AT(&e->where, "too %s arguments to function %s (got %d, need %d)",
+					count_arg > count_decl ? "many" : "few",
+					sp, count_arg, count_decl);
+		}
+	}else if(args_from_decl->args_void_implicit && e->funcargs){
+		WARN_AT(&e->where, "too many arguments to implicitly (void)-function");
+	}
+
+	/* this block folds the args and type-checks */
 	if(e->funcargs){
-		int i;
-		expr *arg;
+		unsigned long nonnulls = 0;
+		int i, j;
+		decl_attr *da;
 
-		for(i = 0; (arg = e->funcargs[i]); i++){
-			char *desc;
+		if((da = type_attr_present(type_func, attr_nonnull)))
+			nonnulls = da->bits.nonnull_args;
 
-			fold_expr(arg, stab);
-
-			desc = ustrprintf("function argument to %s", sp);
-
-			/* promote to pointer, if array */
-			if(decl_is_array(arg->tree_type)){
-				fold_insert_casts(
-						decl_copy(arg->tree_type), /* the copy removes the array */
-						&arg, stab, &arg->where, desc);
-
-				e->funcargs[i] = arg;
-			}
+		for(i = j = 0; e->funcargs[i]; i++){
+			expr *arg = FOLD_EXPR(e->funcargs[i], stab);
 
 			fold_need_expr(arg, desc, 0);
 			fold_disallow_st_un(arg, desc);
 
-			free(desc);
+			if((nonnulls & (1 << i)) && expr_is_null_ptr(arg, 1))
+				WARN_AT(&arg->where, "null passed where non-null required (arg %d)", i + 1);
 		}
 	}
 
+	/* this block is purely type checking */
 	if(args_from_decl->arglist || args_from_decl->args_void){
-		expr **iter_arg;
-		decl **iter_decl;
-		int count_decl, count_arg;
+		int count_arg;
 
-		count_decl = count_arg = 0;
-
-		for(iter_arg  = e->funcargs;       iter_arg  && *iter_arg;  iter_arg++,  count_arg++);
-		for(iter_decl = args_from_decl->arglist; iter_decl && *iter_decl; iter_decl++, count_decl++);
+		count_arg  = dynarray_count(e->funcargs);
+		count_decl = dynarray_count(args_from_decl->arglist);
 
 		if(count_decl != count_arg && (args_from_decl->variadic ? count_arg < count_decl : 1)){
 			DIE_AT(&e->where, "too %s arguments to function %s (got %d, need %d)",
@@ -155,34 +434,66 @@ invalid:
 		}
 
 		if(e->funcargs){
-			funcargs *args_from_expr = funcargs_new();
+			int i;
 
-			for(iter_arg = e->funcargs; *iter_arg; iter_arg++)
-				dynarray_add((void ***)&args_from_expr->arglist, (*iter_arg)->tree_type);
+			for(i = 0; ; i++){
+				expr *arg      = e->funcargs[i];
+				decl *decl_arg = args_from_decl->arglist[i];
+				int eq;
+				char arg_buf[TYPE_REF_STATIC_BUFSIZ];
+				char exp_buf[TYPE_REF_STATIC_BUFSIZ];
 
-			if(funcargs_equal(args_from_decl, args_from_expr, 0, sp) == funcargs_cmp_mismatch_count)
-				DIE_AT(&e->where, "mismatching argument count to %s", sp);
+				if(!decl_arg)
+					break;
 
-			funcargs_free(args_from_expr, 0);
+				eq = fold_type_ref_equal(
+						decl_arg->ref, arg->tree_type, &arg->where,
+						WARN_ARG_MISMATCH, 0,
+						"mismatching argument %d to %s (%s <-- %s)",
+						i, sp,
+						type_ref_to_str_r(exp_buf, decl_arg->ref),
+						type_ref_to_str_r(arg_buf, arg->tree_type));
+
+				if(!eq){
+					fold_insert_casts(decl_arg->ref, &e->funcargs[i],
+							stab, &arg->where, desc);
+
+					arg = e->funcargs[i];
+				}
+
+				/* f(int [static 5]) check */
+				static_array_check(decl_arg, arg);
+			}
 		}
+	}
 
-		/*funcargs_free(args_from_decl, 1); XXX memleak*/
+	free(desc), desc = NULL;
+
+	/* each arg needs casting up to int size, if smaller */
+	if(e->funcargs){
+		int i;
+		for(i = 0; e->funcargs[i]; i++)
+			expr_promote_int_if_smaller(&e->funcargs[i], stab);
 	}
 
 	fold_disallow_st_un(e, "return");
 
-	if(decl_attr_present(e->tree_type->attr, attr_format))
-		ICW("TODO: format checks on funcall at %s", where_str(&e->where));
+	/* attr */
+	{
+		type_ref *r = e->expr->tree_type;
 
-	if(decl_attr_present(e->tree_type->attr, attr_warn_unused))
+		format_check(&e->where, r, e->funcargs, args_from_decl->variadic);
+		sentinel_check(&e->where, r, e->funcargs, args_from_decl->variadic, count_decl);
+	}
+
+	/* check the subexp tree type to get the funcall decl_attrs */
+	if(expr_attr_present(e->expr, attr_warn_unused))
 		e->freestanding = 0; /* needs use */
 }
 
-void gen_expr_funcall(expr *e, symtable *stab)
+void gen_expr_funcall(expr *e)
 {
-	const char *const fname = e->expr->spel;
-
-	if(func_is_asm(fname)){
+	if(0){
 		out_comment("start manual __asm__");
 		ICE("same");
 #if 0
@@ -191,17 +502,11 @@ void gen_expr_funcall(expr *e, symtable *stab)
 		out_comment("end manual __asm__");
 	}else{
 		/* continue with normal funcall */
-		sym *const sym = e->expr->sym;
 		int nargs = 0;
 
-		if(sym && !decl_is_fptr(sym->decl))
-			out_push_lbl(sym->decl->spel, 0, NULL);
-		else
-			gen_expr(e->expr, stab);
+		gen_expr(e->expr);
 
 		if(e->funcargs){
-			decl *dint = decl_new_type(type_int);
-			const int int_sz = decl_size(dint);
 			expr **aiter;
 
 			for(aiter = e->funcargs; *aiter; aiter++, nargs++);
@@ -209,11 +514,10 @@ void gen_expr_funcall(expr *e, symtable *stab)
 			for(aiter--; aiter >= e->funcargs; aiter--){
 				expr *earg = *aiter;
 
-				gen_expr(earg, stab);
-
-				/* each arg needs casting up to int size, if smaller */
-				if(decl_size(earg->tree_type) < int_sz)
-					out_cast(earg->tree_type, dint);
+				/* should be of size int or larger (for integral types)
+				 * or double (for floating types)
+				 */
+				gen_expr(earg);
 			}
 		}
 
@@ -221,11 +525,9 @@ void gen_expr_funcall(expr *e, symtable *stab)
 	}
 }
 
-void gen_expr_str_funcall(expr *e, symtable *stab)
+void gen_expr_str_funcall(expr *e)
 {
 	expr **iter;
-
-	(void)stab;
 
 	idt_printf("funcall, calling:\n");
 
@@ -254,6 +556,12 @@ void mutate_expr_funcall(expr *e)
 	(void)e;
 }
 
+int expr_func_passable(expr *e)
+{
+	/* need to check the sub-expr, i.e. the function */
+	return !expr_attr_present(e->expr, attr_noreturn);
+}
+
 expr *expr_new_funcall()
 {
 	expr *e = expr_new_wrapper(funcall);
@@ -261,5 +569,18 @@ expr *expr_new_funcall()
 	return e;
 }
 
-void gen_expr_style_funcall(expr *e, symtable *stab)
-{ (void)e; (void)stab; /* TODO */ }
+void gen_expr_style_funcall(expr *e)
+{
+	stylef("(");
+	gen_expr(e->expr);
+	stylef(")(");
+	if(e->funcargs){
+		expr **i;
+		for(i = e->funcargs; i && *i; i++){
+			gen_expr(*i);
+			if(i[1])
+				stylef(", ");
+		}
+	}
+	stylef(")");
+}

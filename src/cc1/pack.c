@@ -1,28 +1,41 @@
+#include <assert.h>
+
 #include "pack.h"
 #include "../util/platform.h"
 
-void pack_next(int *poffset, int *pthis, int sz, int align)
+int pack_to_align(int o, int align)
 {
-	static int word_size;
-	int offset = *poffset, this;
+	assert(align > 0);
 
-	if(!word_size)
-		word_size = platform_word_size();
+#ifdef SLOW
+	if(o % align)
+		o += align - o % align;
 
-	if(sz > word_size){
-		/* allocating a large chunk - struct
-		 * add on the starting offset
-		 * since we start at the bottom and work up the stack
-		 */
-		offset += sz - word_size;
-	}
+	return o;
+#else
+	return (o + align - 1) & -align;
+#endif
+}
 
-	if(offset % align)
-		offset += align - offset % align;
+int pack_to_word(int o)
+{
+	static int pws;
+	if(!pws)
+		pws = platform_word_size();
+	return pack_to_align(o, pws);
+}
 
-	this = offset;
+void pack_next(int *poffset, int *after_space, int sz, int align)
+{
+	/* insert space as necessary */
+	int offset = pack_to_align(*poffset, align);
 
+	if(after_space)
+		*after_space = offset;
+
+	/* gap for the actual decl */
 	offset += sz;
 
-	*poffset = offset, *pthis = this;
+	/* return */
+	*poffset = offset;
 }

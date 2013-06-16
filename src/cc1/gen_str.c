@@ -1,9 +1,11 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <unistd.h>
+#include <string.h>
 
 #include "../util/util.h"
 #include "../util/platform.h"
+#include "../util/dynarray.h"
 #include "data_structs.h"
 #include "macros.h"
 #include "sym.h"
@@ -12,7 +14,8 @@
 #include "gen_str.h"
 #include "str.h"
 #include "const.h"
-#include "ops/stmt_code.h" /* FOR_INIT_AND_CODE */
+#include "decl_init.h"
+#include "funcargs.h"
 
 #define ENGLISH_PRINT_ARGLIST
 
@@ -53,14 +56,21 @@ void print_expr_val(expr *e)
 
 	UCC_ASSERT((iv.suffix & VAL_UNSIGNED) == 0, "TODO: unsigned");
 
-	fprintf(cc1_out, "%ld", iv.val);
+	fprintf(cc1_out, INTVAL_FMT_D, iv.val);
 }
 
 void print_decl_init(decl_init *di)
 {
 	switch(di->type){
 		case decl_init_scalar:
+			idt_printf("scalar:\n");
+			gen_str_indent++;
 			print_expr(di->bits.expr);
+			gen_str_indent--;
+			break;
+
+		case decl_init_copy:
+			ICE("copy in print");
 			break;
 
 		case decl_init_brace:
@@ -68,49 +78,89 @@ void print_decl_init(decl_init *di)
 			decl_init *s;
 			int i;
 
-			for(i = 0; (s = di->bits.inits[i]); i++){
-				const int need_brace = decl_init_is_brace(s);
+			idt_printf("brace\n");
 
-				/* ->member not printed */
+			gen_str_indent++;
+			for(i = 0; (s = di->bits.ar.inits[i]); i++){
+				if(s == DYNARRAY_NULL){
+					idt_printf("[%d] = <zero init>\n", i);
+				}else if(s->type == decl_init_copy){
+					idt_printf("[%d] = copy from range_store[%ld]\n",
+							i, DECL_INIT_COPY_IDX(s, di));
+				}else{
+					const int need_brace = s->type == decl_init_brace;
+
+					/* ->member not printed */
 #ifdef DINIT_WITH_STRUCT
-				if(s->spel)
-					idt_printf(".%s", s->spel);
-				else
+					if(s->spel)
+						idt_printf(".%s", s->spel);
+					else
 #endif
-					idt_printf("[%d]", i);
+						idt_printf("[%d]", i);
 
-				fprintf(cc1_out, " = %s\n", need_brace ? "{" : "");
+					fprintf(cc1_out, " = %s\n", need_brace ? "{" : "");
 
-				gen_str_indent++;
-				print_decl_init(s);
-				gen_str_indent--;
+					gen_str_indent++;
+					print_decl_init(s);
+					gen_str_indent--;
 
-				if(need_brace)
-					idt_printf("}\n");
+					if(need_brace)
+						idt_printf("}\n");
+				}
 			}
-			break;
+			gen_str_indent--;
+
+			if(di->bits.ar.range_inits){
+				struct init_cpy *icpy;
+
+				idt_printf("range store:\n");
+				gen_str_indent++;
+
+				for(i = 0; (icpy = di->bits.ar.range_inits[i]); i++){
+					idt_printf("store[%d]:\n", i);
+					gen_str_indent++;
+					print_decl_init(icpy->range_init);
+					gen_str_indent--;
+					if(icpy->first_instance){
+						idt_printf("first expr:\n");
+						gen_str_indent++;
+						print_expr(icpy->first_instance);
+						gen_str_indent--;
+					}
+				}
+				gen_str_indent--;
+			}
 		}
 	}
 }
 
-void print_decl_desc_eng(decl_desc *dp)
+void print_type_ref_eng(type_ref *ref)
 {
-	if(dp->child)
-		print_decl_desc_eng(dp->child);
+	if(!ref)
+		return;
 
-	switch(dp->type){
-		case decl_desc_ptr:
-			fprintf(cc1_out, "%spointer to ", type_qual_to_str(dp->bits.qual));
+	print_type_ref_eng(ref->ref);
+
+	switch(ref->type){
+		case type_ref_cast:
+			if(ref->bits.cast.is_signed_cast)
+				fprintf(cc1_out, "%s ", ref->bits.cast.signed_true ? "signed" : "unsigned");
+			else
+				fprintf(cc1_out, "%s", type_qual_to_str(ref->bits.cast.qual, 1));
 			break;
 
-		case decl_desc_block:
+		case type_ref_ptr:
+			fprintf(cc1_out, "%spointer to ", type_qual_to_str(ref->bits.ptr.qual, 1));
+			break;
+
+		case type_ref_block:
 			fprintf(cc1_out, "block returning ");
 			break;
 
-		case decl_desc_func:
+		case type_ref_func:
 		{
 #ifdef ENGLISH_PRINT_ARGLIST
-			funcargs *fargs = dp->bits.func;
+			funcargs *fargs = ref->bits.func;
 			decl **iter;
 #endif
 
@@ -139,13 +189,19 @@ void print_decl_desc_eng(decl_desc *dp)
 			break;
 		}
 
-		case decl_desc_array:
-			if(dp->bits.array_size){
-				fputs("array[", cc1_out);
-				print_expr_val(dp->bits.array_size);
-				fputs("] of ", cc1_out);
-			}
+		case type_ref_array:
+			fputs("array[", cc1_out);
+			if(ref->bits.array.size)
+				print_expr_val(ref->bits.array.size);
+			fputs("] of ", cc1_out);
 			break;
+
+		case type_ref_type:
+			fprintf(cc1_out, "%s", type_to_str(ref->bits.type));
+			break;
+
+		case type_ref_tdef:
+			ICE("TODO");
 	}
 }
 
@@ -154,10 +210,7 @@ void print_decl_eng(decl *d)
 	if(d->spel)
 		fprintf(cc1_out, "\"%s\": ", d->spel);
 
-	if(d->desc)
-		print_decl_desc_eng(d->desc);
-
-	fprintf(cc1_out, "%s", type_to_str(d->type));
+	print_type_ref_eng(d->ref);
 }
 
 void print_funcargs(funcargs *fargs)
@@ -178,60 +231,61 @@ void print_funcargs(funcargs *fargs)
 	fprintf(cc1_out, "%s)", fargs->variadic ? ", ..." : "");
 }
 
-void print_decl_desc(decl_desc *dp, decl *d)
+void print_type_ref(type_ref *ref, decl *d)
 {
-	const int need_paren = dp->parent_desc && dp->parent_desc->type != dp->type;
+	char buf[TYPE_REF_STATIC_BUFSIZ];
+	fprintf(cc1_out, "%s",
+			type_ref_to_str_r_spel(buf, ref, d ? d->spel : NULL));
+}
 
-	if(need_paren)
-		fputc('(', cc1_out);
+void print_decl_attr(decl_attr *da)
+{
+	for(; da; da = da->next){
+		idt_printf("__attribute__((%s))\n", decl_attr_to_str(da));
 
-	switch(dp->type){
-		case decl_desc_ptr:
-			fprintf(cc1_out, "*%s", type_qual_to_str(dp->bits.qual));
-			break;
+		gen_str_indent++;
+		switch(da->type){
+			case attr_section:
+				idt_printf("section \"%s\"\n", da->bits.section);
+				break;
+			case attr_nonnull:
+			{
+				unsigned long l = da->bits.nonnull_args;
 
-		case decl_desc_block:
-			fputc('^', cc1_out);
-			break;
+				idt_printf("nonnull: ");
+				if(l == ~0UL){
+					fprintf(cc1_out, "all");
+				}else{
+					const char *sep = "";
+					int i;
 
-		case decl_desc_array:
-			/* done below */
-			break;
+					for(i = 0; i <= 32; i++)
+						if(l & (1 << i)){
+							fprintf(cc1_out, "%s%d", sep, i);
+							sep = ", ";
+						}
+				}
 
-		case decl_desc_func:
-			break;
-	}
+				fputc('\n', cc1_out);
+				break;
+			}
 
-	if(dp->child)
-		print_decl_desc(dp->child, d);
-	else if(d->spel)
-		fputs(d->spel, cc1_out);
-
-	switch(dp->type){
-		case decl_desc_func:
-			print_funcargs(dp->bits.func);
-			break;
-
-		case decl_desc_array:
-		{
-			intval sz;
-
-			const_fold_need_val(dp->bits.array_size, &sz);
-
-			if(sz.val)
-				fprintf(cc1_out, "[%ld]", sz.val);
-			else
-				fprintf(cc1_out, "[]");
-			break;
+			default:
+				break;
 		}
-
-		case decl_desc_ptr:
-		case decl_desc_block:
-			break;
+		gen_str_indent--;
 	}
+}
 
-	if(need_paren)
-		fputc(')', cc1_out);
+void print_type_attr(type_ref *r)
+{
+	enum decl_attr_type i;
+
+	for(i = 0; i < attr_LAST; i++){
+		decl_attr *da;
+		if((da = type_attr_present(r, i)))
+			print_decl_attr(da);
+	}
 }
 
 void print_decl(decl *d, enum pdeclargs mode)
@@ -239,43 +293,13 @@ void print_decl(decl *d, enum pdeclargs mode)
 	if(mode & PDECL_INDENT)
 		idt_print();
 
-	if((mode & PDECL_PISDEF)){
-		int one = !d->is_definition || d->inline_only;
-
-		if(one)
-			fputc('(', cc1_out);
-
-		if(!d->is_definition)
-			fprintf(cc1_out, "not definition");
-
-		if(d->inline_only)
-			fprintf(cc1_out, "%sinline-only", d->is_definition ? "" : ", ");
-
-		if(one)
-			fputc(')', cc1_out);
-	}
-
-	if(d->type->type_of){
-		fputc('\n', cc1_out);
-		gen_str_indent++;
-		idt_printf("typeof expr:\n");
-		gen_str_indent++;
-		print_expr(d->type->type_of);
-		gen_str_indent -= 2;
-		idt_print();
-	}
+	if(d->store)
+		fprintf(cc1_out, "%s ", decl_store_to_str(d->store));
 
 	if(fopt_mode & FOPT_ENGLISH){
 		print_decl_eng(d);
 	}else{
-		fputs(type_to_str(d->type), cc1_out);
-
-		if(d->desc){
-			fputc(' ', cc1_out);
-			print_decl_desc(d->desc, d);
-		}else if(d->spel){
-			fprintf(cc1_out, " %s", d->spel);
-		}
+		print_type_ref(d->ref, d);
 	}
 
 	if(mode & PDECL_SYM_OFFSET){
@@ -285,12 +309,12 @@ void print_decl(decl *d, enum pdeclargs mode)
 			fprintf(cc1_out, " (no sym)");
 	}
 
-	if(mode & PDECL_SIZE && !decl_is_func(d)){
-		if(decl_has_incomplete_array(d)){
-			fprintf(cc1_out, " incomplete array in decl");
-		}else{
+	if(mode & PDECL_SIZE && !DECL_IS_FUNC(d)){
+		if(type_ref_is_complete(d->ref)){
 			const int sz = decl_size(d);
 			fprintf(cc1_out, " size %d bytes. %d platform-word(s)", sz, sz / platform_word_size());
+		}else{
+			fprintf(cc1_out, " incomplete decl");
 		}
 	}
 
@@ -303,11 +327,13 @@ void print_decl(decl *d, enum pdeclargs mode)
 		gen_str_indent--;
 	}
 
-	if((mode & PDECL_ATTR) && d->attr){
-		decl_attr *da = d->attr;
+	if(mode & PDECL_ATTR){
 		gen_str_indent++;
-		for(; da; da = da->next)
-			idt_printf("__attribute__((%s))\n", decl_attr_to_str(da->type));
+		if(d->align)
+			idt_printf("[align={as_int=%d, resolved=%d}]\n",
+					d->align->as_int, d->align->resolved);
+		print_decl_attr(d->attr);
+		print_type_attr(d->ref);
 		gen_str_indent--;
 	}
 
@@ -330,7 +356,7 @@ void print_decl(decl *d, enum pdeclargs mode)
 void print_sym(sym *s)
 {
 	idt_printf("sym: type=%s, offset=%d, type: ", sym_to_str(s->type), s->offset);
-	print_decl(s->decl, PDECL_NEWLINE | PDECL_PISDEF);
+	print_decl(s->decl, PDECL_NEWLINE);
 }
 
 void print_expr(expr *e)
@@ -339,11 +365,15 @@ void print_expr(expr *e)
 	if(e->tree_type){ /* might be a label */
 		idt_printf("tree_type: ");
 		gen_str_indent++;
-		print_decl(e->tree_type, PDECL_NEWLINE);
+		print_type_ref(e->tree_type, NULL);
 		gen_str_indent--;
+		fputc('\n', cc1_out);
 	}
 	gen_str_indent++;
-	e->f_gen(e, NULL);
+	if(e->f_gen)
+		e->f_gen(e);
+	else
+		idt_printf("builtin/%s::%s\n", e->f_str(), e->expr->bits.ident.spel);
 	gen_str_indent--;
 }
 
@@ -356,7 +386,7 @@ void print_struct(struct_union_enum_st *sue)
 		return;
 	}
 
-	idt_printf("%s %s (size %d):\n", sue_str(sue), sue->spel, sue_size(sue));
+	idt_printf("%s %s (size %d):\n", sue_str(sue), sue->spel, sue_size(sue, &sue->where));
 
 	gen_str_indent++;
 	for(iter = sue->members; iter && *iter; iter++){
@@ -364,13 +394,15 @@ void print_struct(struct_union_enum_st *sue)
 
 		idt_printf("offset %d:\n", d->struct_offset);
 
+#ifdef FIELD_WIDTH_TODO
 		if(d->field_width){
 			intval iv;
 
 			const_fold_need_val(d->field_width, &iv);
 
-			idt_printf("field width %ld\n", iv.val);
+			idt_printf("field width %" INTVAL_FMT_D "\n", iv.val);
 		}
+#endif
 
 		gen_str_indent++;
 		print_decl(d, PDECL_INDENT | PDECL_NEWLINE | PDECL_ATTR);
@@ -389,19 +421,15 @@ void print_enum(struct_union_enum_st *et)
 	for(mi = et->members; *mi; mi++){
 		enum_member *m = (*mi)->enum_member;
 
-		idt_printf("member %s = %d\n", m->spel, m->val->val.iv.val);
+		idt_printf("member %s = %" INTVAL_FMT_D "\n", m->spel, (intval_t)m->val->bits.iv.val);
 	}
 	gen_str_indent--;
 }
 
-int has_st_en_tdef(symtable *stab)
-{
-	return stab->sues || stab->typedefs;
-}
-
-void print_st_en_tdef(symtable *stab)
+void print_sues_static_asserts(symtable *stab)
 {
 	struct_union_enum_st **sit;
+	static_assert **stati;
 	int nl = 0;
 
 	for(sit = stab->sues; sit && *sit; sit++){
@@ -410,16 +438,15 @@ void print_st_en_tdef(symtable *stab)
 		nl = 1;
 	}
 
-	if(stab->typedefs){
-		decl **tit;
+	for(stati = stab->static_asserts; stati && *stati; stati++){
+		static_assert *sa = *stati;
 
-		idt_printf("typedefs:\n");
+		idt_printf("static assertion: %s\n", sa->s);
 		gen_str_indent++;
-		for(tit = stab->typedefs; tit && *tit; tit++){
-			print_decl(*tit, PDECL_INDENT | PDECL_NEWLINE | PDECL_ATTR);
-			nl = 1;
-		}
+		print_expr(sa->e);
 		gen_str_indent--;
+
+		nl = 1;
 	}
 
 	if(nl)
@@ -428,25 +455,6 @@ void print_st_en_tdef(symtable *stab)
 
 void print_stmt_flow(stmt_flow *t)
 {
-	idt_printf("flow:\n");
-
-	if(t->for_init_decls){
-		decl **i;
-
-		idt_printf("inits:\n");
-		gen_str_indent++;
-
-		for(i = t->for_init_decls; *i; i++)
-			print_decl(*i, PDECL_INDENT
-					| PDECL_NEWLINE
-					| PDECL_SYM_OFFSET
-					| PDECL_PISDEF
-					| PDECL_PINIT
-					| PDECL_ATTR);
-
-		gen_str_indent--;
-	}
-
 	idt_printf("for parts:\n");
 
 	gen_str_indent++;
@@ -471,62 +479,63 @@ void print_stmt(stmt *t)
 	PRINT_IF(t, rhs,  print_stmt);
 	PRINT_IF(t, rhs,  print_stmt);
 
-	if(stmt_kind(t, code) && t->symtab && has_st_en_tdef(t->symtab)){
-		idt_printf("structs, enums and tdefs in this block:\n");
+	if(stmt_kind(t, code)){
+		idt_printf("structs/unions/enums:\n");
 		gen_str_indent++;
-		print_st_en_tdef(t->symtab);
+		print_sues_static_asserts(t->symtab);
 		gen_str_indent--;
 	}
 
-	if(t->decls){
+	if(t->symtab){
 		decl **iter;
 
 		idt_printf("stack space %d\n", t->symtab->auto_total_size);
 		idt_printf("decls:\n");
 
-		for(iter = t->symtab->decls; *iter; iter++){
+		for(iter = t->symtab->decls; iter && *iter; iter++){
 			decl *d = *iter;
 
 			gen_str_indent++;
 			print_decl(d, PDECL_INDENT
 					| PDECL_NEWLINE
 					| PDECL_SYM_OFFSET
-					| PDECL_PISDEF
 					| PDECL_ATTR
 					| PDECL_PINIT);
 			gen_str_indent--;
 		}
 	}
 
-	if(t->codes || t->inits){
+	if(t->codes){
 		stmt **iter;
-		int done_code;
 
-		idt_printf("inits and code:\n");
+		idt_printf("code:\n");
 
-		FOR_INIT_AND_CODE(iter, t, done_code,
+		for(iter = t->codes; *iter; iter++){
 			gen_str_indent++;
 			print_stmt(*iter);
 			gen_str_indent--;
-		)
+		}
 	}
 }
 
-void gen_str(symtable *symtab)
+void gen_str(symtable_global *symtab)
 {
 	decl **diter;
 
-	print_st_en_tdef(symtab);
+	print_sues_static_asserts(&symtab->stab);
 
-	for(diter = symtab->decls; diter && *diter; diter++){
+	for(diter = symtab->stab.decls; diter && *diter; diter++){
 		decl *const d = *diter;
 
 		print_decl(d, PDECL_INDENT
 				| PDECL_NEWLINE
-				| PDECL_PISDEF
 				| PDECL_FUNC_DESCEND
 				| PDECL_SIZE
 				| PDECL_PINIT
 				| PDECL_ATTR);
+
+		if(gen_str_indent != 0)
+			fprintf(stderr, "indent (%d) not reset after %s\n",
+					gen_str_indent, d->spel);
 	}
 }

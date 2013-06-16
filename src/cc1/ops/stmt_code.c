@@ -3,8 +3,8 @@
 
 #include "ops.h"
 #include "stmt_code.h"
-#include "../out/lbl.h"
-
+#include "../decl_init.h"
+#include "../../util/dynarray.h"
 
 const char *str_stmt_code()
 {
@@ -13,49 +13,34 @@ const char *str_stmt_code()
 
 void fold_stmt_code(stmt *s)
 {
-	decl **diter;
 	stmt **siter;
+	stmt *inits = NULL;
+	decl **diter;
 	int warned = 0;
 
-	fold_symtab_scope(s->symtab);
+	fold_symtab_scope(s->symtab, &inits);
+	if(inits)
+		dynarray_prepend(&s->codes, inits);
 
-	/* NOTE: this only folds + adds decls, not args */
-	for(diter = s->decls; diter && *diter; diter++){
-		decl *d = *diter;
+	/* check for invalid function redefinitions */
+	for(diter = s->symtab->decls; diter && *diter; diter++){
+		decl *const d = *diter;
+		decl *found;
+		if(DECL_IS_FUNC(d) && (found = symtab_search_d(s->symtab->parent, d->spel))){
+			/* allow functions redefined as decls and vice versa */
+			if(DECL_IS_FUNC(found) && !decl_equal(d, found, DECL_CMP_EXACT_MATCH)){
+				char buf[WHERE_BUF_SIZ];
 
-		if(d->func_code)
-			DIE_AT(&d->func_code->where, "can't nest functions");
-		else if(decl_is_func(d) && d->type->store == store_static)
-			DIE_AT(&d->where, "block-scoped function cannot have static storage");
-
-		fold_decl(d, s->symtab);
-
-		if(d->init){
-			/* this creates the below s->inits array */
-			if(d->type->store == store_static){
-				fold_decl_global_init(d->init, s->symtab);
-			}else{
-				EOF_WHERE(&d->where,
-						fold_gen_init_assignment(d, s)
-					);
-
-				/* folded below */
+				DIE_AT(&d->where,
+						"incompatible redefinition of \"%s\"\n"
+						"%s: note: previous definition",
+						d->spel, where_str_r(buf, &found->where));
 			}
 		}
-
-		d->is_definition = 1; /* always the def for non-globals */
-
-		SYMTAB_ADD(s->symtab, d,
-				type_store_static_or_extern(d->type->store) ? sym_global : sym_local);
-	}
-
-	for(siter = s->inits; siter && *siter; siter++){
-		stmt *const st = *siter;
-		EOF_WHERE(&st->where, fold_stmt(st));
 	}
 
 	for(siter = s->codes; siter && *siter; siter++){
-		stmt  *const st = *siter;
+		stmt *const st = *siter;
 
 		EOF_WHERE(&st->where, fold_stmt(st));
 
@@ -73,21 +58,6 @@ void fold_stmt_code(stmt *s)
 			warned = 1;
 		}
 	}
-
-	/* static folding */
-	if(s->decls){
-		decl **siter;
-
-		for(siter = s->decls; *siter; siter++){
-			decl *d = *siter;
-			/*
-			 * check static decls - after we fold,
-			 * so we've linked the syms and can change ->spel
-			 */
-			if(d->type->store == store_static)
-				decl_set_spel(d, out_label_static_local(curdecl_func->spel, d->spel));
-		}
-	}
 }
 
 void gen_code_decls(symtable *stab)
@@ -99,15 +69,13 @@ void gen_code_decls(symtable *stab)
 		decl *d = *diter;
 		int func;
 
-		if((func = decl_is_func(d)) || type_store_static_or_extern(d->type->store)){
+		if((func = !!type_ref_is(d->ref, type_ref_func)) || decl_store_static_or_extern(d->store)){
 			int gen = 1;
 
 			if(func){
 				/* check if the func is defined globally */
-				symtable *globs;
+				symtable *globs = symtab_root(stab);
 				decl **i;
-
-				for(globs = stab; globs->parent; globs = globs->parent);
 
 				for(i = globs->decls; i && *i; i++){
 					if(!strcmp(d->spel, (*i)->spel)){
@@ -126,28 +94,41 @@ void gen_code_decls(symtable *stab)
 void gen_stmt_code(stmt *s)
 {
 	stmt **titer;
-	int done_inits;
 
-	/* stmt_for needs to do this too */
+	/* stmt_for/if/while/do needs to do this too */
 	gen_code_decls(s->symtab);
 
-	FOR_INIT_AND_CODE(titer, s, done_inits,
+	for(titer = s->codes; titer && *titer; titer++)
 		gen_stmt(*titer);
-	)
+}
+
+void style_stmt_code(stmt *s)
+{
+	stmt **i_s;
+	decl **i_d;
+
+	stylef("{\n");
+
+	for(i_d = s->symtab->decls; i_d && *i_d; i_d++)
+		gen_style_decl(*i_d);
+
+	for(i_s = s->codes; i_s && *i_s; i_s++)
+		gen_stmt(*i_s);
+
+	stylef("\n}\n");
 }
 
 static int code_passable(stmt *s)
 {
 	stmt **i;
-	int done_inits;
 
-	/* note: check for inits which call noreturn funcs */
+	/* note: this also checks for inits which call noreturn funcs */
 
-	FOR_INIT_AND_CODE(i, s, done_inits,
+	for(i = s->codes; i && *i; i++){
 		stmt *sub = *i;
 		if(!fold_passable(sub))
 			return 0;
-	)
+	}
 
 	return 1;
 }

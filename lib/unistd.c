@@ -27,9 +27,7 @@ int brk(void *p)
 
 void *sbrk(int inc)
 {
-	void *new;
-
-	new = ucc_brk(NULL) + inc;
+	void *new = (char *)ucc_brk(NULL) + inc;
 
 	if(brk(new) == -1){
 		/*errno = ENOMEM;*/
@@ -95,7 +93,7 @@ int rmdir(const char *d)
 	return __syscall(SYS_rmdir, d);
 }
 
-int pipe(int fd[2])
+int pipe(int fd[static 2])
 {
 	return __syscall(SYS_pipe, fd);
 }

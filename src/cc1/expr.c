@@ -31,7 +31,6 @@ void expr_mutate(expr *e, func_mutate_expr *f,
 	}
 
 	e->f_const_fold = NULL;
-	e->f_static_addr = NULL;
 	e->f_lea = NULL;
 
 	f(e);
@@ -53,7 +52,7 @@ expr *expr_new(func_mutate_expr *f,
 expr *expr_new_intval(intval *iv)
 {
 	expr *e = expr_new_val(0);
-	memcpy(&e->val.iv, iv, sizeof e->val.iv);
+	memcpy_safe(&e->bits.iv, iv);
 	return e;
 }
 
@@ -83,8 +82,27 @@ expr *expr_new_array_decl_init(decl *d, int ival, int idx)
 }
 #endif
 
-int expr_is_null_ptr(expr *e)
+int expr_is_null_ptr(expr *e, int allow_int)
 {
-	return const_expr_and_zero(e)
-		&& (decl_is_void_ptr(e->tree_type) || decl_is_integral(e->tree_type));
+	int b = 0;
+
+	if(type_ref_is_type(type_ref_is_ptr(e->tree_type), type_void))
+		b = 1;
+	else if(allow_int && type_ref_is_integral(e->tree_type))
+		b = 1;
+
+	return b && const_expr_and_zero(e);
+}
+
+expr *expr_new_array_idx_e(expr *base, expr *idx)
+{
+	expr *op = expr_new_op(op_plus);
+	op->lhs = base;
+	op->rhs = idx;
+	return expr_new_deref(op);
+}
+
+expr *expr_new_array_idx(expr *base, int i)
+{
+	return expr_new_array_idx_e(base, expr_new_val(i));
 }

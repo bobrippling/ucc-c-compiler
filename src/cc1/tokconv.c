@@ -43,7 +43,7 @@ enum type_qualifier curtok_to_type_qualifier()
 	}
 }
 
-enum type_storage curtok_to_type_storage()
+enum decl_storage curtok_to_decl_storage()
 {
 	switch(curtok){
 		case token_auto:     return store_auto;
@@ -99,9 +99,9 @@ int curtok_is_type_qual()
 	return curtok_to_type_qualifier() != qual_none;
 }
 
-int curtok_is_type_store()
+int curtok_is_decl_store()
 {
-	return curtok_to_type_storage() != (enum type_storage)-1;
+	return curtok_to_decl_storage() != (enum decl_storage)-1;
 }
 
 enum op_type curtok_to_compound_op()
@@ -147,6 +147,7 @@ const char *token_to_str(enum token t)
 		CASE_STR_PREFIX(token,  default);
 		CASE_STR_PREFIX(token,  continue);
 		CASE_STR_PREFIX(token,  goto);
+		CASE_STR_PREFIX(token,  asm);
 
 		CASE_STR_PREFIX(token,  sizeof);
 		CASE_STR_PREFIX(token,  typeof);
@@ -159,6 +160,8 @@ const char *token_to_str(enum token t)
 		CASE_STR_PREFIX(token,  static);
 		CASE_STR_PREFIX(token,  auto);
 		CASE_STR_PREFIX(token,  register);
+		CASE_STR_PREFIX(token, _Alignof);
+		CASE_STR_PREFIX(token, _Alignas);
 
 		/* sort-of storage */
 		CASE_STR_PREFIX(token,  inline);
@@ -185,73 +188,69 @@ const char *token_to_str(enum token t)
 		CASE_STR_PREFIX(token,  struct);
 		CASE_STR_PREFIX(token,  union);
 		CASE_STR_PREFIX(token,  enum);
+		CASE_STR_PREFIX(token,  __builtin_va_list);
 
 		CASE_STR_PREFIX(token,  identifier);
 		CASE_STR_PREFIX(token,  integer);
 		CASE_STR_PREFIX(token,  character);
-		CASE_STR_PREFIX(token,  elipsis);
 		CASE_STR_PREFIX(token,  string);
-		CASE_STR_PREFIX(token,  open_paren);
-		CASE_STR_PREFIX(token,  open_block);
-		CASE_STR_PREFIX(token,  open_square);
-		CASE_STR_PREFIX(token,  close_paren);
-		CASE_STR_PREFIX(token,  close_block);
-		CASE_STR_PREFIX(token,  close_square);
-		CASE_STR_PREFIX(token,  comma);
-		CASE_STR_PREFIX(token,  semicolon);
-		CASE_STR_PREFIX(token,  colon);
-		CASE_STR_PREFIX(token,  plus);
-		CASE_STR_PREFIX(token,  minus);
-		CASE_STR_PREFIX(token,  multiply);
-		CASE_STR_PREFIX(token,  divide);
-		CASE_STR_PREFIX(token,  modulus);
-		CASE_STR_PREFIX(token,  increment);
-		CASE_STR_PREFIX(token,  decrement);
-		CASE_STR_PREFIX(token,  assign);
-		CASE_STR_PREFIX(token,  dot);
-		CASE_STR_PREFIX(token,  eq);
-		CASE_STR_PREFIX(token,  le);
-		CASE_STR_PREFIX(token,  lt);
-		CASE_STR_PREFIX(token,  ge);
-		CASE_STR_PREFIX(token,  gt);
-		CASE_STR_PREFIX(token,  ne);
-		CASE_STR_PREFIX(token,  not);
-		CASE_STR_PREFIX(token,  bnot);
-		CASE_STR_PREFIX(token,  andsc);
-		CASE_STR_PREFIX(token,  and);
-		CASE_STR_PREFIX(token,  orsc);
-		CASE_STR_PREFIX(token,  or);
-		CASE_STR_PREFIX(token,  eof);
-		CASE_STR_PREFIX(token,  unknown);
-		CASE_STR_PREFIX(token,  question);
-		CASE_STR_PREFIX(token,  plus_assign);
-		CASE_STR_PREFIX(token,  minus_assign);
-		CASE_STR_PREFIX(token,  multiply_assign);
-		CASE_STR_PREFIX(token,  divide_assign);
-		CASE_STR_PREFIX(token,  modulus_assign);
-		CASE_STR_PREFIX(token,  not_assign);
-		CASE_STR_PREFIX(token,  bnot_assign);
-		CASE_STR_PREFIX(token,  and_assign);
-		CASE_STR_PREFIX(token,  or_assign);
-		CASE_STR_PREFIX(token,  xor);
-		CASE_STR_PREFIX(token,  xor_assign);
-		CASE_STR_PREFIX(token,  shiftl);
-		CASE_STR_PREFIX(token,  shiftr);
-		CASE_STR_PREFIX(token,  shiftl_assign);
-		CASE_STR_PREFIX(token,  shiftr_assign);
-		CASE_STR_PREFIX(token,  ptr);
 
-		CASE_STR_PREFIX(token,  attribute);
+#define MAP(t, s) case token_##t: return s
+		MAP(attribute,       "__attribute__");
+		MAP(elipsis,         "'...'");
+		MAP(open_paren,      "'('");
+		MAP(open_block,      "'{'");
+		MAP(open_square,     "'['");
+		MAP(close_paren,     "')'");
+		MAP(close_block,     "'}'");
+		MAP(close_square,    "']'");
+		MAP(comma,           "','");
+		MAP(semicolon,       "';'");
+		MAP(colon,           "':'");
+		MAP(plus,            "'+'");
+		MAP(minus,           "'-'");
+		MAP(multiply,        "'*'");
+		MAP(divide,          "'/'");
+		MAP(modulus,         "'%'");
+		MAP(increment,       "'++'");
+		MAP(decrement,       "'--'");
+		MAP(assign,          "'='");
+		MAP(dot,             "'.'");
+		MAP(eq,              "'=='");
+		MAP(le,              "'<='");
+		MAP(lt,              "'<'");
+		MAP(ge,              "'>='");
+		MAP(gt,              "'>'");
+		MAP(ne,              "'!='");
+		MAP(not,             "'!'");
+		MAP(bnot,            "'~'");
+		MAP(andsc,           "'&&'");
+		MAP(and,             "'&'");
+		MAP(orsc,            "'||'");
+		MAP(or,              "'|'");
+		MAP(xor,             "'^'");
+		MAP(question,        "'?'");
+		MAP(plus_assign,     "'+='");
+		MAP(minus_assign,    "'-='");
+		MAP(multiply_assign, "'*='");
+		MAP(divide_assign,   "'/='");
+		MAP(modulus_assign,  "'%='");
+		MAP(not_assign,      "'!='");
+		MAP(bnot_assign,     "'~='");
+		MAP(and_assign,      "'&='");
+		MAP(or_assign,       "'|='");
+		MAP(xor_assign,      "'^='");
+		MAP(shiftl,          "'<<'");
+		MAP(shiftr,          "'>>'");
+		MAP(shiftl_assign,   "'<<='");
+		MAP(shiftr_assign,   "'>>='");
+		MAP(ptr,             "'->'");
+#undef MAP
+
+		case token_eof:             return  "eof";
+		case token_unknown:         return  NULL;
 	}
 	return NULL;
-}
-
-void warn_at_print_error(const char *fmt, ...)
-{
-	va_list l;
-	va_start(l, fmt);
-	vwarn(NULL, 1, 1, fmt, l);
-	va_end(l);
 }
 
 void eat2(enum token t, const char *fnam, int line, int die)
@@ -260,7 +259,7 @@ void eat2(enum token t, const char *fnam, int line, int die)
 		const int ident = curtok == token_identifier;
 		parse_had_error = 1;
 
-		warn_at_print_error(
+		warn_at_print_error(NULL,
 				"expecting token %s, got %s %s%s%s(%s:%d)",
 				token_to_str(t), token_to_str(curtok),
 				ident ? "\"" : "",
@@ -294,6 +293,12 @@ int accept(enum token t)
 void uneat(enum token t)
 {
 	UCC_ASSERT(curtok_save == token_unknown, "curtok regurgitate buffer full");
+
+	/* if current is an identifier, abort,
+	 * since we can't hold two in currentspelling */
+	UCC_ASSERT(curtok_save == token_identifier ? t != token_identifier : 1,
+			"can't save another identifier");
+
 	curtok_save = curtok;
 	curtok = t;
 }
@@ -327,12 +332,18 @@ char *token_current_spel_peek(void)
 	return currentspelling;
 }
 
-void token_get_current_str(char **ps, int *pl)
+void token_get_current_str(char **ps, int *pl, int *pwide)
 {
 	extern char *currentstring;
 	extern int   currentstringlen;
+	extern int   currentstringwide;
 
 	*ps = currentstring;
+
+	if(pwide)
+		*pwide = currentstringwide;
+	else if(currentstringwide)
+		DIE_AT(NULL, "wide string not wanted");
 
 	if(pl){
 		*pl = currentstringlen;

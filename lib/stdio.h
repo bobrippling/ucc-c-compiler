@@ -1,10 +1,6 @@
 #ifndef __STDIO_H
 #define __STDIO_H
 
-#ifndef __GOT_SHORT_LONG
-# define long int
-#endif
-
 typedef struct __FILE FILE;
 
 extern FILE *stdin, *stdout, *stderr;

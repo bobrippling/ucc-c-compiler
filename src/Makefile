@@ -1,5 +1,3 @@
-include src_config.mk
-
 MAKE_DIR = make -C $@
 
 all: cc1 cpp2 ucc
@@ -15,6 +13,11 @@ cpp2: util
 
 util:
 	${MAKE_DIR}
+
+deps:
+	make -BCutil deps
+	make -BCcpp2 deps
+	make -BCcc1 deps
 
 clean:
 	make -C cc1  clean

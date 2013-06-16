@@ -7,57 +7,26 @@
 #include "ucc.h"
 #include "ucc_ext.h"
 #include "ucc_lib.h"
+#include "cfg.h"
+#include "str.h"
 
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
 
-#define LIB_PATH "../../lib/"
-
-#define LIBS          \
-		"stdio.o",        \
-		"stdlib.o",       \
-		"string.o",       \
-		"unistd.o",       \
-		"syscall.o",      \
-		"signal.o",       \
-		"assert.o",       \
-		"ctype.o",        \
-		"dirent.o",       \
-		"ucc.o",          \
-		"alloca.o",       \
-		"sys/fcntl.o",    \
-		"sys/wait.o",     \
-		"sys/mman.o",     \
-		"sys/socket.o",   \
-		"sys/utsname.o",  \
-		"sys/select.o",   \
-		"sys/time.o"
-
-#define lib_actual_path(lib) actual_path(LIB_PATH, lib)
-
-char **objfiles_stdlib(void)
+char **ld_stdlib_args(void)
 {
-	static char **ret = NULL;
+	static char **ret;
 
-	if(!ret){
-		const char *names[] = {
-			LIBS,
-			NULL
-		};
-
-		int i;
-
-		for(i = 0; names[i]; i++)
-			dynarray_add((void ***)&ret, lib_actual_path(names[i]));
-	}
+	if(!ret)
+		ret = strsplit(UCC_STDLIB, ":");
 
 	return ret;
 }
 
-char *objfiles_start(void)
+char **ld_crt_args(void)
 {
-	static char *p;
-  if(!p)
-		p = lib_actual_path("crt.o");
-	return p;
+	static char **ret;
+  if(!ret)
+		ret = strsplit(UCC_CRT, ":");
+	return ret;
 }
