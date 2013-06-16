@@ -52,6 +52,9 @@ char *ustrdup2(const char *a, const char *b)
 	assert(b >= a);
 	ret = umalloc(len + 1);
 	strncpy(ret, a, len);
+	/* no need to nul-terminate,
+	 * we have zeroed memory from umalloc up to len+1,
+	 * and we copy up to len */
 	return ret;
 }
 

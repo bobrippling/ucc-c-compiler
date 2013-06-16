@@ -389,7 +389,7 @@ void decl_attr_append(decl_attr **loc, decl_attr *new)
 	*loc = /*decl_attr_copy(*/new/*)*/;
 }
 
-decl_attr *decl_attr_present(decl_attr *da, enum decl_attr_type t)
+decl_attr *attr_present(decl_attr *da, enum decl_attr_type t)
 {
 	for(; da; da = da->next)
 		if(da->type == t)
@@ -413,26 +413,26 @@ decl_attr *type_attr_present(type_ref *r, enum decl_attr_type t)
 	while(r){
 		decl_attr *da;
 
-		if((da = decl_attr_present(r->attr, t)))
+		if((da = attr_present(r->attr, t)))
 			return da;
 
 		switch(r->type){
 			case type_ref_type:
 			{
 				struct_union_enum_st *sue = r->bits.type->sue;
-				if((da = decl_attr_present(r->bits.type->attr, t)))
+				if((da = attr_present(r->bits.type->attr, t)))
 					return da;
-				return sue ? decl_attr_present(sue->attr, t) : NULL;
+				return sue ? attr_present(sue->attr, t) : NULL;
 			}
 
 			case type_ref_tdef:
 			{
 				decl *d = r->bits.tdef.decl;
 
-				if(d && (da = decl_attr_present(d->attr, t)))
+				if(d && (da = attr_present(d->attr, t)))
 					return da;
 
-				return type_attr_present(r->bits.tdef.type_of->tree_type, t);
+				return expr_attr_present(r->bits.tdef.type_of, t);
 			}
 
 			case type_ref_ptr:
@@ -447,15 +447,38 @@ decl_attr *type_attr_present(type_ref *r, enum decl_attr_type t)
 	return NULL;
 }
 
-decl_attr *decl_has_attr(decl *d, enum decl_attr_type t)
+decl_attr *decl_attr_present(decl *d, enum decl_attr_type t)
 {
 	/* check the attr on the decl _and_ its type */
 	decl_attr *da;
-	if((da = decl_attr_present(d->attr, t)))
+	if((da = attr_present(d->attr, t)))
 		return da;
 	if((da = type_attr_present(d->ref, t)))
 		return da;
-	return NULL;
+
+	return d->proto ? decl_attr_present(d->proto, t) : NULL;
+}
+
+decl_attr *expr_attr_present(expr *e, enum decl_attr_type t)
+{
+	decl_attr *da;
+
+	if(expr_kind(e, cast)){
+		da = expr_attr_present(e->expr, t);
+		if(da)
+			return da;
+	}
+
+	if(expr_kind(e, identifier)){
+		sym *s = e->bits.ident.sym;
+		if(s){
+			da = decl_attr_present(s->decl, t);
+			if(da)
+				return da;
+		}
+	}
+
+	return type_attr_present(e->tree_type, t);
 }
 
 const char *decl_attr_to_str(decl_attr *da)
@@ -541,7 +564,7 @@ void decl_attr_free(decl_attr *a)
 
 #include "decl_is.c"
 
-unsigned type_ref_size(type_ref *r, where const *from)
+unsigned type_ref_size(type_ref *r, where *from)
 {
 	switch(r->type){
 		case type_ref_type:
@@ -575,10 +598,13 @@ unsigned type_ref_size(type_ref *r, where const *from)
 		{
 			intval sz;
 
-			const_fold_need_val(r->bits.array.size, &sz);
+			if(type_ref_is_void(r->ref))
+				DIE_AT(from, "array of void");
 
-			if(sz.val == 0)
+			if(!r->bits.array.size)
 				DIE_AT(from, "incomplete array size attempt");
+
+			const_fold_need_val(r->bits.array.size, &sz);
 
 			return sz.val * type_ref_size(r->ref, from);
 		}
@@ -589,6 +615,9 @@ unsigned type_ref_size(type_ref *r, where const *from)
 
 unsigned decl_size(decl *d)
 {
+	if(type_ref_is_void(d->ref))
+		DIE_AT(&d->where, "%s is void", d->spel);
+
 #ifdef FIELD_WIDTH_TODO
 	if(d->field_width){
 		intval iv;
@@ -670,19 +699,23 @@ static int type_ref_equal_r(
 
 		case type_ref_array:
 		{
-			intval av, bv;
+			const int a_complete = !!a->bits.array.size,
+			          b_complete = !!b->bits.array.size;
 
-			const_fold_need_val(a->bits.array.size, &av);
-			const_fold_need_val(b->bits.array.size, &bv);
+			if(a_complete && b_complete){
+				intval av, bv;
 
-			if(av.val != bv.val){
-				/* if exact match, they're not equal, otherwise allow av.val to be zero */
-				if(mode & DECL_CMP_EXACT_MATCH)
+				const_fold_need_val(a->bits.array.size, &av);
+				const_fold_need_val(b->bits.array.size, &bv);
+
+				if(av.val != bv.val)
 					return 0;
-				if(av.val != 0)
+			}else if(a_complete != b_complete){
+				if((mode & DECL_CMP_ALLOW_TENATIVE_ARRAY) == 0)
 					return 0;
 			}
 
+			/* next */
 			break;
 		}
 
@@ -736,7 +769,14 @@ int decl_equal(decl *a, decl *b, enum decl_cmp mode)
 
 int decl_sort_cmp(const decl **pa, const decl **pb)
 {
-	return strcmp((*pa)->spel, (*pb)->spel);
+	const decl *const a = *pa, *const b = *pb;
+	int cmp = strcmp(a->spel, b->spel);
+
+	if(cmp != 0)
+		return cmp; /* names take priority */
+
+	/* assume functions - sort by whether they have code */
+	return !!a->func_code - !!b->func_code;
 }
 
 int type_ref_is_variadic_func(type_ref *r)
@@ -785,12 +825,6 @@ type_ref *type_ref_ptr_depth_inc(type_ref *r)
 	}
 
 	return type_ref_new_ptr(r, qual_none);
-}
-
-decl *decl_func_called(decl *d, funcargs **pfuncargs)
-{
-	d->ref = type_ref_func_call(d->ref, pfuncargs);
-	return d;
 }
 
 int decl_conv_array_func_to_ptr(decl *d)
@@ -908,23 +942,19 @@ static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
 				break;
 			/* fall */
 		case type_ref_array:
-		{
-			intval iv;
-
-			const_fold_need_val(r->bits.array.size, &iv);
-
 			BUF_ADD("[");
+			if(r->bits.array.size){
+				intval iv;
 
-			if(r->bits.array.is_static)
-				BUF_ADD("static ");
-			BUF_ADD("%s", type_qual_to_str(r->bits.array.qual, 1));
+				if(r->bits.array.is_static)
+					BUF_ADD("static ");
+				BUF_ADD("%s", type_qual_to_str(r->bits.array.qual, 1));
 
-			if(iv.val)
-				BUF_ADD("%ld]", iv.val);
-			else
-				BUF_ADD("]");
+				const_fold_need_val(r->bits.array.size, &iv);
+				BUF_ADD("%" INTVAL_FMT_D, iv.val);
+			}
+			BUF_ADD("]");
 			break;
-		}
 	}
 
 	if(need_paren)

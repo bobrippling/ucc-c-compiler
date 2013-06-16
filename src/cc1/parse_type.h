@@ -10,10 +10,15 @@ decl *parse_decl_single(enum decl_mode mode);
 decl **parse_decls_one_type(void);
 
 /* type ident...; type ident...; - multiple of the above */
-void parse_decls_multi_type(enum decl_multi_mode mode, decl ***);
+void parse_decls_multi_type(
+		enum decl_multi_mode mode,
+		symtable *scope,
+		decl ***pnew);
 
 funcargs *parse_func_arglist(void);
 
 decl_init *parse_initialisation(void); /* expr or {{...}} */
+
+int parse_at_decl(void);
 
 #endif

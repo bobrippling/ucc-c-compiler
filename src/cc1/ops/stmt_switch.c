@@ -17,7 +17,7 @@ void fold_switch_dups(stmt *sw)
 {
 	typedef int (*qsort_f)(const void *, const void *);
 
-	int n = dynarray_count((void **)sw->codes);
+	int n = dynarray_count(sw->codes);
 	struct
 	{
 		intval start, end;
@@ -70,7 +70,7 @@ void fold_switch_dups(stmt *sw)
 			DIE_AT(&vals[i-1].cse->where, "%s case statements %s %ld (from %s)",
 					overlap ? "overlapping" : "duplicate",
 					overlap ? "starting at" : "for",
-					vals[i].start.val,
+					(long)vals[i].start.val,
 					where_str_r(buf, &vals[i].cse->where));
 		}
 	}
@@ -88,7 +88,7 @@ void fold_switch_enum(stmt *sw, const type *enum_type)
 	/* for each case/default/case_range... */
 	for(titer = sw->codes; titer && *titer; titer++){
 		stmt *cse = *titer;
-		int v, w;
+		intval_t v, w;
 		intval iv;
 
 		if(cse->expr->expr_is_default)
@@ -164,7 +164,7 @@ void fold_stmt_switch(stmt *s)
 			fold_switch_enum(s, typ);
 
 			/* warn if we switch on an enum bitmask */
-			if(decl_attr_present(typ->sue->attr, attr_enum_bitmask))
+			if(attr_present(typ->sue->attr, attr_enum_bitmask))
 				WARN_AT(&s->where, "switch on enum with enum_bitmask attribute");
 		}
 	}
@@ -176,7 +176,7 @@ void gen_stmt_switch(stmt *s)
 
 	tdefault = NULL;
 
-	gen_expr(s->expr, s->symtab);
+	gen_expr(s->expr);
 
 	out_comment("switch on this");
 
@@ -236,6 +236,14 @@ void gen_stmt_switch(stmt *s)
 	gen_stmt(s->lhs); /* the actual code inside the switch */
 
 	out_label(s->lbl_break);
+}
+
+void style_stmt_switch(stmt *s)
+{
+	stylef("switch(");
+	gen_expr(s->expr);
+	stylef(")");
+	gen_stmt(s->lhs);
 }
 
 int switch_passable(stmt *s)

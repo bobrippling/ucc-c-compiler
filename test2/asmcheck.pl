@@ -1,13 +1,18 @@
 #!/usr/bin/perl
 use warnings;
 
+sub mapchomper
+{
+	return map { chomp; $_ } @_;
+}
+
 sub file_contents
 {
 	my $f = shift;
 	open S, '<', $f or die "open $f: $!\n";
-	my @l = <STDIN>;
+	my @l = <S>;
 	close S;
-	return @l;
+	return mapchomper @l;
 }
 
 my $src = shift;
@@ -16,17 +21,21 @@ die "Usage: $0 src\n" unless @ARGV == 0 and defined($src);
 
 (my $chk = $src) =~ s/c$/chk.s/;
 
-my @asm_src = file_contents($src);
-my @asm_chk = file_contents($chk);
+die "no \$UCC" unless exists $ENV{UCC};
+my @src = mapchomper `$ENV{UCC} -S -o- $src 2>/dev/null`;
+my @chk = file_contents($chk);
 
-# @asm_chk is a list of strings:
+# @chk is a list of strings:
 # /type: *match/
 #   type is either "absent" or "present"
 #   string is: string =~ m_^/.*/$_ ? regex : &index
 
-for my $line (@asm_chk){
+for my $line (@chk){
 	chomp($line);
-	die "bad asmcheck line $line\n" unless /^([a-z]+): *(.*)/;
+
+	next if $line =~ /^(#.*|)$/;
+
+	die "bad asmcheck line '$line'\n" unless $line =~ /^([a-z]+): *(.*)/;
 
 	my $present;
 	if($1 eq 'present'){
@@ -38,8 +47,9 @@ for my $line (@asm_chk){
 	}
 
 	my($matcher, $is_regex) = ($2, 0);
-	if($matcher =~ /^\//){
+	if($matcher =~ m#^/(.*)/$#){
 		$is_regex = 1;
+		$matcher = $1;
 	}
 
 	sub match
@@ -55,7 +65,8 @@ for my $line (@asm_chk){
 	}
 
 	# run the match
-	if(!match($matcher, $is_regex, @asm_src)){
-		die "couldn't match { .s = /$matcher/, .is_regex = $is_regex }\n";
+	if($present != match($matcher, $is_regex, @src)){
+		my $desc = $present ? "couldn't find" : "found";
+		die "$desc { .s = /$matcher/, .is_regex = $is_regex }\n";
 	}
 }

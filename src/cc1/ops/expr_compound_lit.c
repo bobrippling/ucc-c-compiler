@@ -24,7 +24,8 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 		d->store = store_static;
 	}
 
-	e->bits.complit.sym = sym_new_stab(stab, d, stab->parent ? sym_local : sym_global);
+	e->bits.complit.sym = sym_new_stab(
+			stab, d, stab->parent ? sym_local : sym_global);
 
 	/* fold the initialiser */
 	UCC_ASSERT(d->init, "no init for comp.literal");
@@ -38,8 +39,14 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 	e->tree_type = d->ref;
 
 	if(stab->parent){
-		/* create the code for assignemnts */
-		e->code = stmt_new_wrapper(code, stab);
+		/* create the code for assignemnts
+		 *
+		 * - we must create a nested scope,
+		 *   otherwise any other decls in stab's scope will
+		 *   be generated twice - once for the scope we're nested in (stab),
+		 *   and again on our call to gen_stmt() in our gen function
+		 */
+		e->code = stmt_new_wrapper(code, symtab_new(stab));
 		decl_init_create_assignments_base(d->init, d->ref, e, e->code);
 
 		fold_stmt_code(e->code);
@@ -53,16 +60,15 @@ static void gen_expr_compound_lit_code(expr *e)
 	if(!e->expr_comp_lit_cgen){
 		e->expr_comp_lit_cgen = 1;
 
-		UCC_ASSERT(e->code->symtab->parent, "global compound initialiser tried for code");
+		UCC_ASSERT(e->code->symtab->parent,
+				"global compound initialiser tried for code");
 
 		gen_stmt(e->code);
 	}
 }
 
-void gen_expr_compound_lit(expr *e, symtable *stab)
+void gen_expr_compound_lit(expr *e)
 {
-	(void)stab;
-
 	/* allow (int){2}, but not (struct...){...} */
 	fold_disallow_st_un(e, "compound literal");
 
@@ -71,10 +77,8 @@ void gen_expr_compound_lit(expr *e, symtable *stab)
 	out_push_sym_val(e->bits.complit.sym);
 }
 
-static void lea_expr_compound_lit(expr *e, symtable *stab)
+static void lea_expr_compound_lit(expr *e)
 {
-	(void)stab;
-
 	gen_expr_compound_lit_code(e);
 
 	out_push_sym(e->bits.complit.sym);
@@ -94,7 +98,7 @@ void const_expr_compound_lit(expr *e, consty *k)
 	}
 }
 
-void gen_expr_str_compound_lit(expr *e, symtable *stab)
+void gen_expr_str_compound_lit(expr *e)
 {
 	decl *const d = e->bits.complit.decl;
 
@@ -103,7 +107,6 @@ void gen_expr_str_compound_lit(expr *e, symtable *stab)
 
 	e->op = 1;
 	{
-		(void)stab;
 		idt_printf("(%s){\n", decl_to_str(d));
 
 		gen_str_indent++;
@@ -113,7 +116,6 @@ void gen_expr_str_compound_lit(expr *e, symtable *stab)
 				PDECL_NEWLINE      |
 				PDECL_SYM_OFFSET   |
 				PDECL_FUNC_DESCEND |
-				PDECL_PISDEF       |
 				PDECL_PINIT        |
 				PDECL_SIZE         |
 				PDECL_ATTR);
@@ -126,8 +128,11 @@ void gen_expr_str_compound_lit(expr *e, symtable *stab)
 	e->op = 0;
 }
 
-void gen_expr_style_compound_lit(expr *e, symtable *stab)
-{ (void)e; (void)stab; /* TODO */ }
+void gen_expr_style_compound_lit(expr *e)
+{
+	stylef("(%s)", type_ref_to_str(e->bits.complit.decl->ref));
+	gen_style_dinit(e->bits.complit.decl->init);
+}
 
 void mutate_expr_compound_lit(expr *e)
 {
@@ -141,7 +146,6 @@ static decl *compound_lit_decl(type_ref *t, decl_init *init)
 
 	d->ref = t;
 	d->init = init;
-	d->is_definition = 1;
 
 	return d;
 }

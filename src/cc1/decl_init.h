@@ -20,12 +20,21 @@ struct decl_init
 		struct
 		{
 			decl_init **inits;
-			decl_init **range_inits;
+			struct init_cpy
+			{
+				decl_init *range_init;
+				expr *first_instance;
+			} **range_inits;
+
 			/* see decl_init.doc */
 		} ar;
-		decl_init **range_copy;
+		struct init_cpy **range_copy;
+#define DECL_INIT_COPY_IDX_INITS(this, inits) \
+		((this)->bits.range_copy - (inits))
+
 #define DECL_INIT_COPY_IDX(this, array) \
-		((this)->bits.range_copy - (array)->bits.ar.range_inits)
+		DECL_INIT_COPY_IDX_INITS(this,      \
+				(array)->bits.ar.range_inits)
 
 	} bits;
 
@@ -43,11 +52,15 @@ struct decl_init
 #define DESIG_TO_STR(t) ((t) == desig_ar ? "array" : "struct")
 
 decl_init *decl_init_new(enum decl_init_type);
+decl_init *decl_init_new_w(enum decl_init_type, where *);
 const char *decl_init_to_str(enum decl_init_type);
 int         decl_init_is_const(decl_init *dinit, symtable *stab);
 int         decl_init_is_zero(decl_init *dinit);
 
 void decl_init_brace_up_fold(decl *d, symtable *); /* normalises braces */
+
+/* used for default initialising tenatives */
+void decl_default_init(decl *d, symtable *stab);
 
 /* creates assignment exprs - only used for local inits */
 void decl_init_create_assignments_base(

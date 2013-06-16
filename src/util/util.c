@@ -8,9 +8,6 @@
 #include "util.h"
 #include "alloc.h"
 
-#define WHERE_FMT "%s:%d:%d"
-#define WHERE_ARGS w->fname, w->line, w->chr + 1
-
 enum
 {
 	colour_black,
@@ -39,31 +36,13 @@ static const char *const colour_strs[] = {
 
 int warning_count = 0;
 
-const char *where_str_r(char buf[WHERE_BUF_SIZ], const struct where *w)
-{
-	snprintf(buf, WHERE_BUF_SIZ, WHERE_FMT, WHERE_ARGS);
-	return buf;
-}
-
-const char *where_str(const struct where *w)
-{
-	static char buf[WHERE_BUF_SIZ];
-	return where_str_r(buf, w);
-}
-
-const struct where *default_where(const struct where *w)
+static struct where *default_where(struct where *w)
 {
 	if(!w){
-		extern const char *current_fname, *current_line_str;
-		extern int current_line, current_chr;
 		static struct where instead;
 
 		w = &instead;
-
-		instead.fname    = current_fname;
-		instead.line     = current_line;
-		instead.chr      = current_chr;
-		instead.line_str = current_line_str;
+		where_current(w);
 	}
 
 	return w;
@@ -111,15 +90,26 @@ static void warn_show_line(const struct where *w)
 	}
 }
 
-void vwarn(const struct where *w, int err, int show_line, const char *fmt, va_list l)
+void warn_colour(int on, int err)
 {
 	static enum { f = 0, t = 1, need_init = 2 } is_tty = need_init;
 
 	if(is_tty == need_init)
 		is_tty = isatty(2);
 
-	if(is_tty)
-		fputs(colour_strs[err ? colour_err : colour_warn], stderr);
+	if(is_tty){
+		if(on)
+			fputs(colour_strs[err ? colour_err : colour_warn], stderr);
+		else
+			fprintf(stderr, "\033[m");
+	}
+}
+
+void vwarn(struct where *w, int err, int show_line, const char *fmt, va_list l)
+{
+	include_bt(stderr);
+
+	warn_colour(1, err);
 
 	w = default_where(w);
 
@@ -135,20 +125,28 @@ void vwarn(const struct where *w, int err, int show_line, const char *fmt, va_li
 		fputc('\n', stderr);
 	}
 
-	if(is_tty)
-		fprintf(stderr, "\033[m");
+	warn_colour(0, err);
 
 	if(show_line)
 		warn_show_line(w);
 }
 
-void vdie(const struct where *w, int show_line, const char *fmt, va_list l)
+void warn_at_print_error(struct where *w, const char *fmt, ...)
+{
+	va_list l;
+	va_start(l, fmt);
+	vwarn(w, 1, 1, fmt, l);
+	va_end(l);
+}
+
+
+void vdie(struct where *w, int show_line, const char *fmt, va_list l)
 {
 	vwarn(w, 1, show_line, fmt, l);
 	exit(1);
 }
 
-void warn_at(const struct where *w, int show_line, const char *fmt, ...)
+void warn_at(struct where *w, int show_line, const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
@@ -156,7 +154,7 @@ void warn_at(const struct where *w, int show_line, const char *fmt, ...)
 	va_end(l);
 }
 
-void die_at(const struct where *w, int show_line, const char *fmt, ...)
+void die_at(struct where *w, int show_line, const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
@@ -174,23 +172,33 @@ void die(const char *fmt, ...)
 	/* unreachable */
 }
 
-#define ICE_STR(s)  \
-	va_list l; \
-	const struct where *w = default_where(NULL); \
-	fprintf(stderr, WHERE_FMT ": " s " %s:%d (%s): ", WHERE_ARGS, f, line, fn); \
-	va_start(l, fmt); \
-	vfprintf(stderr, fmt, l); \
-	fputc('\n', stderr)
+static void ice_msg(const char *pre,
+		const char *f, int line, const char *fn, const char *fmt, va_list l)
+{
+	const struct where *w = default_where(NULL);
+
+	fprintf(stderr, "%s: %s %s:%d (%s): ",
+			where_str(w), pre, f, line, fn);
+
+	vfprintf(stderr, fmt, l);
+	fputc('\n', stderr);
+}
 
 void ice(const char *f, int line, const char *fn, const char *fmt, ...)
 {
-	ICE_STR("ICE");
+	va_list l;
+	va_start(l, fmt);
+	ice_msg("ICE", f, line, fn, fmt, l);
+	va_end(l);
 	abort();
 }
 
 void icw(const char *f, int line, const char *fn, const char *fmt, ...)
 {
-	ICE_STR("ICW");
+	va_list l;
+	va_start(l, fmt);
+	ice_msg("ICW", f, line, fn, fmt, l);
+	va_end(l);
 }
 
 char *fline(FILE *f)
@@ -218,8 +226,9 @@ char *fline(FILE *f)
 
 		line[pos++] = c;
 		if(pos == len){
+			const size_t old = len;
 			len *= 2;
-			line = urealloc1(line, len);
+			line = urealloc(line, len, old);
 			line[pos] = '\0';
 		}
 

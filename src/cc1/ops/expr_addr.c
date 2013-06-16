@@ -54,7 +54,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 	}
 }
 
-void gen_expr_addr(expr *e, symtable *stab)
+void gen_expr_addr(expr *e)
 {
 	if(e->bits.ident.spel){
 		out_push_lbl(e->bits.ident.spel, 1); /* GNU &&lbl */
@@ -64,14 +64,12 @@ void gen_expr_addr(expr *e, symtable *stab)
 		 * let lea_expr catch it
 		 */
 
-		lea_expr(e->lhs, stab);
+		lea_expr(e->lhs);
 	}
 }
 
-void gen_expr_str_addr(expr *e, symtable *stab)
+void gen_expr_str_addr(expr *e)
 {
-	(void)stab;
-
 	if(e->bits.ident.spel){
 		idt_printf("address of label \"%s\"\n", e->bits.ident.spel);
 	}else{
@@ -132,5 +130,9 @@ void mutate_expr_addr(expr *e)
 	e->f_const_fold = const_expr_addr;
 }
 
-void gen_expr_style_addr(expr *e, symtable *stab)
-{ (void)e; (void)stab; /* TODO */ }
+void gen_expr_style_addr(expr *e)
+{
+	stylef("&(");
+	gen_expr(e->lhs);
+	stylef(")");
+}

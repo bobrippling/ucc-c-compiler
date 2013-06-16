@@ -44,6 +44,7 @@ void out_comment(const char *, ...) ucc_printflike(1, 2);
 void out_assert_vtop_null(void);
 void out_dump(void);
 void out_undefined(void);
+void out_push_overflow(void);
 
 void out_push_frame_ptr(int nframes);
 void out_push_reg_save_ptr(void);

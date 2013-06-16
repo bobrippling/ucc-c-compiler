@@ -37,7 +37,6 @@ void fold_expr_str(expr *e, symtable *stab)
 	d->ref = e->tree_type;
 	d->spel_asm = sv->lbl;
 
-	d->is_definition = 1;
 	d->store = store_static;
 
 	d->init = decl_init_new(decl_init_brace);
@@ -62,17 +61,15 @@ void fold_expr_str(expr *e, symtable *stab)
 	fold_decl_global_init(d, stab);
 }
 
-void gen_expr_str(expr *e, symtable *stab)
+void gen_expr_str(expr *e)
 {
-	(void)stab;
 	/*gen_asm_local(e->bits.str.sym.decl); - done for the decl we create */
 	out_push_lbl(e->bits.str.sv.lbl, 1);
 }
 
-void gen_expr_str_str(expr *e, symtable *stab)
+void gen_expr_str_str(expr *e)
 {
 	stringval *sv = &e->bits.str.sv;
-	(void)stab;
 
 	idt_printf("%sstring at %s\n", sv->wide ? "wide " : "", sv->lbl);
 	gen_str_indent++;
@@ -118,5 +115,7 @@ expr *expr_new_str(char *s, int l, int wide)
 	return e;
 }
 
-void gen_expr_style_str(expr *e, symtable *stab)
-{ (void)e; (void)stab; /* TODO */ }
+void gen_expr_style_str(expr *e)
+{
+	literal_print(cc1_out, e->bits.str.sv.str, e->bits.str.sv.len);
+}

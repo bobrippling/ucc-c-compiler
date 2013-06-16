@@ -40,6 +40,10 @@ for(@ARGV){
 (my $target = basename($file)) =~ s/\.[a-z]+$/.out/;
 $target = "./$target";
 
+END {
+	unlink $target;
+}
+
 my %vars = (
 	's'         => $file,
 	't'         => $target,
@@ -52,6 +56,8 @@ my %vars = (
 );
 
 my $ran = 0;
+
+$ENV{UCC} = $ucc; # export for sub-programs
 
 open F, '<', $file or die2 "$file: $!";
 while(<F>){
@@ -73,8 +79,6 @@ while(<F>){
 	}
 }
 close F;
-
-unlink $target;
 
 if($ran){
 	exit 0;

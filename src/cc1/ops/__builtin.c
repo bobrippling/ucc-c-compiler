@@ -122,9 +122,9 @@ expr *builtin_parse(const char *sp)
 	return NULL;
 }
 
-void builtin_gen_print(expr *e, symtable *stab)
+void builtin_gen_print(expr *e)
 {
-	const enum pdeclargs dflags =
+	/*const enum pdeclargs dflags =
 		  PDECL_INDENT
 		| PDECL_NEWLINE
 		| PDECL_SYM_OFFSET
@@ -132,9 +132,8 @@ void builtin_gen_print(expr *e, symtable *stab)
 		| PDECL_PISDEF
 		| PDECL_PINIT
 		| PDECL_SIZE
-		| PDECL_ATTR;
+		| PDECL_ATTR;*/
 
-	(void)stab;
 	idt_printf("%s(\n", BUILTIN_SPEL(e->expr));
 
 #define PRINT_ARGS(type, from, func)      \
@@ -153,8 +152,8 @@ void builtin_gen_print(expr *e, symtable *stab)
 	if(e->funcargs)
 		PRINT_ARGS(expr, e->funcargs, print_expr(*i))
 
-	if(e->bits.block_args)
-		PRINT_ARGS(decl, e->bits.block_args->arglist, print_decl(*i, dflags))
+	/*if(e->bits.block_args)
+		PRINT_ARGS(decl, e->bits.block_args->arglist, print_decl(*i, dflags))*/
 
 	idt_printf(");\n");
 }
@@ -168,10 +167,9 @@ static void wur_builtin(expr *e)
 	e->freestanding = 0; /* needs use */
 }
 
-static void builtin_gen_undefined(expr *e, symtable *stab)
+static void builtin_gen_undefined(expr *e)
 {
 	(void)e;
-	(void)stab;
 	out_undefined();
 	out_push_noop(); /* needed for function return pop */
 }
@@ -198,7 +196,7 @@ static void fold_memset(expr *e, symtable *stab)
 	e->tree_type = type_ref_cached_VOID_PTR();
 }
 
-static void builtin_gen_memset(expr *e, symtable *stab)
+static void builtin_gen_memset(expr *e)
 {
 	size_t n, rem;
 	unsigned i;
@@ -214,7 +212,7 @@ static void builtin_gen_memset(expr *e, symtable *stab)
 	if((textra = rem ? type_ref_cached_MAX_FOR(rem) : NULL))
 		textrap = type_ref_new_ptr(textra, qual_none);
 
-	gen_expr(e->lhs, stab);
+	gen_expr(e->lhs);
 
 	out_change_type(type_ref_new_ptr(tzero, qual_none));
 
@@ -331,7 +329,7 @@ static void builtin_memcpy_single(void)
 	out_swap(); /* DS */
 }
 
-void builtin_gen_memcpy(expr *e, symtable *stab)
+void builtin_gen_memcpy(expr *e)
 {
 #ifdef BUILTIN_USE_LIBC
 	/* TODO - also with memset */
@@ -357,8 +355,8 @@ void builtin_gen_memcpy(expr *e, symtable *stab)
 				qual_none);
 	unsigned tptr_sz = type_ref_size(tptr, &e->where);
 
-	lea_expr(e->lhs, stab); /* d */
-	lea_expr(e->rhs, stab); /* ds */
+	lea_expr(e->lhs); /* d */
+	lea_expr(e->rhs); /* ds */
 
 	while(i > 0){
 		/* as many copies as we can */
@@ -392,7 +390,7 @@ expr *builtin_new_memcpy(expr *to, expr *from, size_t len)
 	fcall->expr = expr_new_identifier("__builtin_memcpy");
 
 	expr_mutate_builtin(fcall, memcpy);
-	fcall->f_gen = builtin_gen_memcpy;
+	BUILTIN_SET_GEN(fcall, builtin_gen_memcpy);
 
 	fcall->lhs = to;
 	fcall->rhs = from;
@@ -434,7 +432,8 @@ static expr *parse_unreachable(void)
 	expr *fcall = expr_new_funcall();
 
 	expr_mutate_builtin(fcall, unreachable);
-	fcall->f_gen = BUILTIN_GEN(builtin_gen_undefined);
+
+	BUILTIN_SET_GEN(fcall, builtin_gen_undefined);
 
 	return fcall;
 }
@@ -525,7 +524,7 @@ static void fold_frame_address(expr *e, symtable *stab)
 	FOLD_EXPR(e->funcargs[0], stab);
 
 	const_fold(e->funcargs[0], &k);
-	if(k.type != CONST_VAL || k.bits.iv.val < 0)
+	if(k.type != CONST_VAL || (sintval_t)k.bits.iv.val < 0)
 		DIE_AT(&e->where, "%s needs a positive constant value argument", BUILTIN_SPEL(e->expr));
 
 	memcpy_safe(&e->bits.iv, &k.bits.iv);
@@ -539,11 +538,9 @@ static void fold_frame_address(expr *e, symtable *stab)
 	wur_builtin(e);
 }
 
-static void builtin_gen_frame_address(expr *e, symtable *stab)
+static void builtin_gen_frame_address(expr *e)
 {
 	const int depth = e->bits.iv.val;
-
-	(void)stab;
 
 	out_push_frame_ptr(depth + 1);
 }
@@ -551,7 +548,7 @@ static void builtin_gen_frame_address(expr *e, symtable *stab)
 static expr *builtin_frame_address_mutate(expr *e)
 {
 	expr_mutate_builtin(e, frame_address);
-	e->f_gen = BUILTIN_GEN(builtin_gen_frame_address);
+	BUILTIN_SET_GEN(e, builtin_gen_frame_address);
 	return e;
 }
 
@@ -577,10 +574,9 @@ void fold_reg_save_area(expr *e, symtable *stab)
 	e->tree_type = type_ref_cached_CHAR_PTR();
 }
 
-void gen_reg_save_area(expr *e, symtable *stab)
+void gen_reg_save_area(expr *e)
 {
 	(void)e;
-	(void)stab;
 	out_comment("stack local offset:");
 	out_push_reg_save_ptr();
 }
@@ -590,7 +586,7 @@ expr *builtin_new_reg_save_area(void)
 	expr *e = expr_new_funcall();
 
 	expr_mutate_builtin(e, reg_save_area);
-	e->f_gen = BUILTIN_GEN(gen_reg_save_area);
+	BUILTIN_SET_GEN(e, gen_reg_save_area);
 
 	return e;
 }
@@ -616,11 +612,11 @@ static void fold_expect(expr *e, symtable *stab)
 	wur_builtin(e);
 }
 
-static void builtin_gen_expect(expr *e, symtable *stab)
+static void builtin_gen_expect(expr *e)
 {
-	gen_expr(e->funcargs[1], stab); /* not needed if it's const, but gcc and clang do this */
+	gen_expr(e->funcargs[1]); /* not needed if it's const, but gcc and clang do this */
 	out_pop();
-	gen_expr(e->funcargs[0], stab);
+	gen_expr(e->funcargs[0]);
 }
 
 static void const_expect(expr *e, consty *k)
@@ -633,7 +629,7 @@ static expr *parse_expect(void)
 {
 	expr *fcall = parse_any_args();
 	expr_mutate_builtin_const(fcall, expect);
-	fcall->f_gen = BUILTIN_GEN(builtin_gen_expect);
+	BUILTIN_SET_GEN(fcall, builtin_gen_expect);
 	return fcall;
 }
 

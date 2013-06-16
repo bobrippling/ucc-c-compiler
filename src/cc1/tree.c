@@ -59,13 +59,21 @@ final:
 
 int intval_cmp(const intval *a, const intval *b)
 {
-	const long la = a->val, lb = b->val;
+	const intval_t la = a->val, lb = b->val;
 
 	if(la > lb)
 		return 1;
 	if(la < lb)
 		return -1;
 	return 0;
+}
+
+int intval_str(char *buf, size_t nbuf, intval_t v, int is_signed)
+{
+	return snprintf(
+			buf, nbuf,
+			is_signed ? "%" INTVAL_FMT_D : "%" INTVAL_FMT_U,
+			v);
 }
 
 static type *type_new_primitive1(enum type_primitive p)
@@ -116,11 +124,9 @@ unsigned type_primitive_size(enum type_primitive tp)
 			/* 4 on 32-bit */
 			if(cc1_m32)
 				return 4;
-			return 8;
-
+			/* fall */
 		case type_llong:
-			ICW("TODO: long long");
-			return 16;
+			return 8;
 
 		case type_ldouble:
 			/* 80-bit float */
@@ -136,11 +142,12 @@ unsigned type_primitive_size(enum type_primitive tp)
 			break;
 	}
 
-	ICE("type %s in type_size()", type_primitive_to_str(tp));
+	ICE("type %s in %s()",
+			type_primitive_to_str(tp), __func__);
 	return -1;
 }
 
-unsigned type_size(const type *t, where const *from)
+unsigned type_size(const type *t, where *from)
 {
 	if(t->sue)
 		return sue_size(t->sue, from);

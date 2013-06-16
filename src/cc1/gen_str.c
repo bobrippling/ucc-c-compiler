@@ -15,6 +15,7 @@
 #include "str.h"
 #include "const.h"
 #include "decl_init.h"
+#include "funcargs.h"
 
 #define ENGLISH_PRINT_ARGLIST
 
@@ -55,7 +56,7 @@ void print_expr_val(expr *e)
 
 	UCC_ASSERT((iv.suffix & VAL_UNSIGNED) == 0, "TODO: unsigned");
 
-	fprintf(cc1_out, "%ld", iv.val);
+	fprintf(cc1_out, INTVAL_FMT_D, iv.val);
 }
 
 void print_decl_init(decl_init *di)
@@ -82,9 +83,10 @@ void print_decl_init(decl_init *di)
 			gen_str_indent++;
 			for(i = 0; (s = di->bits.ar.inits[i]); i++){
 				if(s == DYNARRAY_NULL){
-					idt_printf("[%d] = <zero init> ; %p\n", i, (void *)s);
+					idt_printf("[%d] = <zero init>\n", i);
 				}else if(s->type == decl_init_copy){
-					idt_printf("[%d] = copy from %ld\n", i, (long)DECL_INIT_COPY_IDX(s, di));
+					idt_printf("[%d] = copy from range_store[%ld]\n",
+							i, DECL_INIT_COPY_IDX(s, di));
 				}else{
 					const int need_brace = s->type == decl_init_brace;
 
@@ -109,13 +111,22 @@ void print_decl_init(decl_init *di)
 			gen_str_indent--;
 
 			if(di->bits.ar.range_inits){
+				struct init_cpy *icpy;
+
 				idt_printf("range store:\n");
 				gen_str_indent++;
-				for(i = 0; (s = di->bits.ar.range_inits[i]); i++){
+
+				for(i = 0; (icpy = di->bits.ar.range_inits[i]); i++){
 					idt_printf("store[%d]:\n", i);
 					gen_str_indent++;
-					print_decl_init(s);
+					print_decl_init(icpy->range_init);
 					gen_str_indent--;
+					if(icpy->first_instance){
+						idt_printf("first expr:\n");
+						gen_str_indent++;
+						print_expr(icpy->first_instance);
+						gen_str_indent--;
+					}
 				}
 				gen_str_indent--;
 			}
@@ -179,11 +190,10 @@ void print_type_ref_eng(type_ref *ref)
 		}
 
 		case type_ref_array:
-			if(ref->bits.array.size){
-				fputs("array[", cc1_out);
+			fputs("array[", cc1_out);
+			if(ref->bits.array.size)
 				print_expr_val(ref->bits.array.size);
-				fputs("] of ", cc1_out);
-			}
+			fputs("] of ", cc1_out);
 			break;
 
 		case type_ref_type:
@@ -283,22 +293,6 @@ void print_decl(decl *d, enum pdeclargs mode)
 	if(mode & PDECL_INDENT)
 		idt_print();
 
-	if((mode & PDECL_PISDEF)){
-		int one = !d->is_definition || d->inline_only;
-
-		if(one)
-			fputc('(', cc1_out);
-
-		if(!d->is_definition)
-			fprintf(cc1_out, "not definition");
-
-		if(d->inline_only)
-			fprintf(cc1_out, "%sinline-only", d->is_definition ? "" : ", ");
-
-		if(one)
-			fputc(')', cc1_out);
-	}
-
 	if(d->store)
 		fprintf(cc1_out, "%s ", decl_store_to_str(d->store));
 
@@ -316,11 +310,11 @@ void print_decl(decl *d, enum pdeclargs mode)
 	}
 
 	if(mode & PDECL_SIZE && !DECL_IS_FUNC(d)){
-		if(type_ref_is_incomplete_array(d->ref)){
-			fprintf(cc1_out, " incomplete array in decl");
-		}else{
+		if(type_ref_is_complete(d->ref)){
 			const int sz = decl_size(d);
 			fprintf(cc1_out, " size %d bytes. %d platform-word(s)", sz, sz / platform_word_size());
+		}else{
+			fprintf(cc1_out, " incomplete decl");
 		}
 	}
 
@@ -362,7 +356,7 @@ void print_decl(decl *d, enum pdeclargs mode)
 void print_sym(sym *s)
 {
 	idt_printf("sym: type=%s, offset=%d, type: ", sym_to_str(s->type), s->offset);
-	print_decl(s->decl, PDECL_NEWLINE | PDECL_PISDEF);
+	print_decl(s->decl, PDECL_NEWLINE);
 }
 
 void print_expr(expr *e)
@@ -377,7 +371,7 @@ void print_expr(expr *e)
 	}
 	gen_str_indent++;
 	if(e->f_gen)
-		e->f_gen(e, NULL);
+		e->f_gen(e);
 	else
 		idt_printf("builtin/%s::%s\n", e->f_str(), e->expr->bits.ident.spel);
 	gen_str_indent--;
@@ -406,7 +400,7 @@ void print_struct(struct_union_enum_st *sue)
 
 			const_fold_need_val(d->field_width, &iv);
 
-			idt_printf("field width %ld\n", iv.val);
+			idt_printf("field width %" INTVAL_FMT_D "\n", iv.val);
 		}
 #endif
 
@@ -427,7 +421,7 @@ void print_enum(struct_union_enum_st *et)
 	for(mi = et->members; *mi; mi++){
 		enum_member *m = (*mi)->enum_member;
 
-		idt_printf("member %s = %ld\n", m->spel, m->val->bits.iv.val);
+		idt_printf("member %s = %" INTVAL_FMT_D "\n", m->spel, (intval_t)m->val->bits.iv.val);
 	}
 	gen_str_indent--;
 }
@@ -505,7 +499,6 @@ void print_stmt(stmt *t)
 			print_decl(d, PDECL_INDENT
 					| PDECL_NEWLINE
 					| PDECL_SYM_OFFSET
-					| PDECL_PISDEF
 					| PDECL_ATTR
 					| PDECL_PINIT);
 			gen_str_indent--;
@@ -536,7 +529,6 @@ void gen_str(symtable_global *symtab)
 
 		print_decl(d, PDECL_INDENT
 				| PDECL_NEWLINE
-				| PDECL_PISDEF
 				| PDECL_FUNC_DESCEND
 				| PDECL_SIZE
 				| PDECL_PINIT

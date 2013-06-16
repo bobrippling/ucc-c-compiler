@@ -47,12 +47,12 @@ typedef struct
 } init_iter;
 
 #define ITER_WHERE(it, def) \
-	(it && it->pos[0] && it->pos[0] != DYNARRAY_NULL \
+	(it && it->pos && it->pos[0] && it->pos[0] != DYNARRAY_NULL \
 	 ? &it->pos[0]->where \
 	 : def)
 
 typedef decl_init **aggregate_brace_f(
-		decl_init **current, decl_init ***range_store,
+		decl_init **current, struct init_cpy ***range_store,
 		init_iter *,
 		symtable *,
 		void *, int);
@@ -70,6 +70,13 @@ static decl_init *decl_init_brace_up_aggregate(
 #define DINIT_NULL_CHECK(di) \
 	if(di == DYNARRAY_NULL)    \
 		return 1
+
+static struct init_cpy *init_cpy_from_dinit(decl_init *di)
+{
+	struct init_cpy *cpy = umalloc(sizeof *cpy);
+	cpy->range_init = di;
+	return cpy;
+}
 
 int decl_init_is_const(decl_init *dinit, symtable *stab)
 {
@@ -132,10 +139,13 @@ int decl_init_is_zero(decl_init *dinit)
 		}
 
 		case decl_init_copy:
-			return decl_init_is_zero(*dinit->bits.range_copy);
+		{
+			struct init_cpy *cpy = *dinit->bits.range_copy;
+			return decl_init_is_zero(cpy->range_init);
+		}
 	}
 
-	ICE("bad decl init");
+	ICE("bad decl init type %d", dinit->type);
 	return -1;
 }
 
@@ -157,7 +167,12 @@ decl_init *decl_init_new(enum decl_init_type t)
 
 static decl_init *decl_init_copy_const(decl_init *di)
 {
-	decl_init *ret = umalloc(sizeof *ret);
+	decl_init *ret;
+
+	if(di == DYNARRAY_NULL)
+		return di;
+
+	ret = umalloc(sizeof *ret);
 	memcpy_safe(ret, di);
 
 	switch(ret->type){
@@ -185,11 +200,13 @@ static decl_init *decl_init_copy_const(decl_init *di)
 static void decl_init_resolve_copy(decl_init **arr, const size_t idx)
 {
 	decl_init *resolved = arr[idx];
+	struct init_cpy *cpy;
 
 	UCC_ASSERT(resolved->type == decl_init_copy,
 			"resolving a non-copy (%d)", resolved->type);
 
-	memcpy_safe(resolved, decl_init_copy_const(*resolved->bits.range_copy));
+	cpy = *resolved->bits.range_copy;
+	memcpy_safe(resolved, decl_init_copy_const(cpy->range_init));
 }
 
 void decl_init_free_1(decl_init *di)
@@ -280,8 +297,40 @@ static decl_init *decl_init_brace_up_scalar(
 	return first_init;
 }
 
+static void range_store_add(
+		struct init_cpy ***range_store,
+		struct init_cpy *entry,
+		decl_init **updataable_refs)
+{
+	long *offsets = NULL, *off;
+	decl_init **i;
+
+	for(i = updataable_refs; i && *i; i++){
+		decl_init *ent = *i;
+		if(ent != DYNARRAY_NULL && ent->type == decl_init_copy){
+			/* this entry's copy points into range_store,
+			 * and will need updating */
+			dynarray_add(&offsets, 1 + DECL_INIT_COPY_IDX_INITS(ent, *range_store));
+
+			/* +1 because dynarray doesn't allow NULL */
+		}
+	}
+
+	dynarray_add(range_store, entry);
+
+	off = offsets;
+	for(i = updataable_refs; i && *i; i++){
+		decl_init *ent = *i;
+		if(ent != DYNARRAY_NULL && ent->type == decl_init_copy)
+			/* -1 explained above */
+			ent->bits.range_copy = *range_store + (*off++ - 1);
+	}
+
+	free(offsets);
+}
+
 static decl_init **decl_init_brace_up_array2(
-		decl_init **current, decl_init ***range_store,
+		decl_init **current, struct init_cpy ***range_store,
 		init_iter *iter,
 		symtable *stab,
 		type_ref *next_type, const int limit)
@@ -316,12 +365,12 @@ static decl_init **decl_init_brace_up_array2(
 			if(k[0].type != CONST_VAL || k[1].type != CONST_VAL)
 				DIE_AT(&this->where, "non-constant array-designator");
 
-			if(k[0].bits.iv.val < 0 || k[1].bits.iv.val < 0)
+			if((sintval_t)k[0].bits.iv.val < 0 || (sintval_t)k[1].bits.iv.val < 0)
 				DIE_AT(&this->where, "negative array index initialiser");
 
 			if(limit > -1
-			&& (k[0].bits.iv.val >= (long)limit
-			||  k[1].bits.iv.val >= (long)limit))
+			&& (k[0].bits.iv.val >= (intval_t)limit
+			||  k[1].bits.iv.val >= (intval_t)limit))
 			{
 				DIE_AT(&this->where, "designating outside of array bounds (%d)", limit);
 			}
@@ -406,11 +455,12 @@ static decl_init **decl_init_brace_up_array2(
 
 				/* keep track of the initial copy ({ 1, 3 })
 				 * aggregate in .range_store */
-				dynarray_add(range_store, braced);
+				range_store_add(range_store, init_cpy_from_dinit(braced), current);
 
 				if(replace_save){
 					/* keep track of what we replaced */
-					dynarray_add(range_store, replace_save);
+					range_store_add(range_store,
+							init_cpy_from_dinit(replace_save), current);
 				}
 
 				for(replace_idx = i; replace_idx <= j; replace_idx++){
@@ -855,6 +905,35 @@ static expr *decl_init_create_assignments_sue_base(
 			expr_new_identifier(smem->spel));
 }
 
+static void decl_init_create_assignment_from_copy(
+		decl_init *di, stmt *code,
+		type_ref *next_type, expr *new_base)
+{
+	/* TODO: ideally when the backend is sufficiently optimised
+	 * it'll pick it up the memcpy well
+	 */
+	struct init_cpy *icpy = *di->bits.range_copy;
+
+	UCC_ASSERT(next_type, "no next type for array");
+
+	/* memcpy from the previous init */
+	if(icpy->first_instance){
+		expr *last_base = icpy->first_instance;
+
+		expr *memcp = builtin_new_memcpy(
+				new_base, last_base, type_ref_size(next_type, &di->where));
+
+		dynarray_add(&code->codes,
+				expr_to_stmt(memcp, code->symtab));
+	}else{
+		/* the initial assignment from the range_copy */
+		icpy->first_instance = new_base;
+
+		decl_init_create_assignments_base(icpy->range_init,
+				next_type, new_base, code);
+	}
+}
+
 void decl_init_create_assignments_base(
 		decl_init *init,
 		type_ref *tfor, expr *base,
@@ -890,6 +969,8 @@ zero_init:
 		case decl_init_brace:
 		{
 			struct_union_enum_st *sue = type_ref_is_s_or_u(tfor);
+			/* type_ref_array_len() below:
+			 * we're already braced so there are no incomplete arrays */
 			const size_t n = sue ? dynarray_count(sue->members) : type_ref_array_len(tfor);
 			decl_init **i;
 			unsigned idx;
@@ -959,43 +1040,8 @@ zero_init:
 						next_type = type_ref_next(tfor);
 
 					if(di && di != DYNARRAY_NULL && di->type == decl_init_copy){
-						/* TODO: ideally when the backend is sufficiently optimised, we
-						 * will always be able to use the memcpy case, and it'll pick it up
-						 */
-						size_t copy_idx = DECL_INIT_COPY_IDX(di, init);
-
-						if(0){ //di->type == decl_init_scalar){
-#if 0
-							size_t n = dynarray_count(code->codes);
-							stmt *last_assign;
-
-							UCC_ASSERT(n > 0 && copy_idx < n,
-									"bad range init - bad index (n=%ld, idx=%ld)",
-									(long)n, (long)idx);
-
-							last_assign = code->codes[copy_idx];
-
-							/* insert like so:
-							 *
-							 * this = (prev_assign = ...)
-							 *        ^-----------------^
-							 *          already present
-							 */
-							last_assign->expr = expr_new_assign_init(new_base, last_assign->expr);
-#endif
-						}else{
-							/* memcpy from the previous init */
-							expr *memcp;
-							expr *last_base = code->codes[copy_idx]->expr->lhs;
-
-							UCC_ASSERT(next_type, "no next type for array (i=%d)", idx);
-
-							memcp = builtin_new_memcpy(
-									new_base, last_base, type_ref_size(next_type, &di->where));
-
-							dynarray_add(&code->codes,
-									expr_to_stmt(memcp, code->symtab));
-						}
+						decl_init_create_assignment_from_copy(
+								di, code, next_type, new_base);
 						continue;
 					}
 				}
@@ -1005,4 +1051,12 @@ zero_init:
 			break;
 		}
 	}
+}
+
+void decl_default_init(decl *d, symtable *stab)
+{
+	UCC_ASSERT(!d->init, "already initialised?");
+
+	d->init = decl_init_new_w(decl_init_brace, &d->where);
+	decl_init_brace_up_fold(d, stab);
 }

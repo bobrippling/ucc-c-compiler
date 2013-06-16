@@ -67,7 +67,6 @@ void fold_expr_block(expr *e, symtable *stab)
 		df->spel = out_label_block(curdecl_func->spel);
 		e->bits.block_sym = sym_new_stab(symtab_root(stab), df, sym_global);
 
-		df->is_definition = 1; /* necessary for code-gen */
 		df->func_code = e->code;
 		df->ref = e->tree_type;
 
@@ -75,27 +74,23 @@ void fold_expr_block(expr *e, symtable *stab)
 	}
 }
 
-void gen_expr_block(expr *e, symtable *stab)
+void gen_expr_block(expr *e)
 {
-	(void)stab;
-
 	out_push_lbl(e->bits.block_sym->decl->spel, 1);
 }
 
-void gen_expr_str_block(expr *e, symtable *stab)
+void gen_expr_str_block(expr *e)
 {
-	(void)stab;
 	idt_printf("block, type: %s, code:\n", type_ref_to_str(e->tree_type));
 	gen_str_indent++;
 	print_stmt(e->code);
 	gen_str_indent--;
 }
 
-void gen_expr_style_block(expr *e, symtable *stab)
+void gen_expr_style_block(expr *e)
 {
-	(void)e;
-	(void)stab;
-	/* TODO */
+	stylef("^%s", type_ref_to_str(e->tree_type));
+	gen_stmt(e->code);
 }
 
 void mutate_expr_block(expr *e)

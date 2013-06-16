@@ -13,13 +13,14 @@
 #include "pack.h"
 #include "sue.h"
 #include "out/out.h"
-#include "typedef.h"
 #include "fold.h"
 
 
 #define RW_TEST(var)                              \
 						s->var == 0                           \
 						&& s->decl->spel                      \
+						&& (s->decl->store & STORE_MASK_STORE)\
+						        != store_typedef              \
 						&& !DECL_IS_ARRAY(s->decl)            \
 						&& !DECL_IS_FUNC(s->decl)             \
 						&& !DECL_IS_S_OR_U(s->decl)
@@ -40,11 +41,11 @@
 
 int symtab_fold(symtable *tab, int current)
 {
+#define LOCAL_SCOPE !!(tab->parent)
 	const int this_start = current;
 	char wbuf[WHERE_BUF_SIZ];
 
-	decl **all_spels = NULL;
-	const int check_dups = !!tab->parent;
+	decl **all_decls = NULL;
 
 	if(tab->decls){
 		decl **diter;
@@ -61,19 +62,17 @@ int symtab_fold(symtable *tab, int current)
 
 			fold_decl(d, tab);
 
-			if(s->type == sym_arg){
+			if(s->type == sym_arg)
 				s->offset = arg_idx++;
-				s->decl->is_definition = 1; /* just for completeness */
-			}
 		}
 
 		for(diter = tab->decls; *diter; diter++){
 			decl *d = *diter;
 			sym *s = d->sym;
-			const int has_unused_attr = !!decl_has_attr(d, attr_unused);
+			const int has_unused_attr = !!decl_attr_present(d, attr_unused);
 
-			if(check_dups && d->spel)
-				dynarray_add(&all_spels, d);
+			if(d->spel)
+				dynarray_add(&all_decls, d);
 
 			switch(s->type){
 				case sym_local: /* warn on unused args and locals */
@@ -150,27 +149,60 @@ int symtab_fold(symtable *tab, int current)
 		}
 	}
 
-	if(all_spels){
+	if(all_decls){
 		/* check_clashes */
 		decl **di;
 
-		qsort(all_spels,
-				dynarray_count(all_spels),
-				sizeof *all_spels,
+		qsort(all_decls,
+				dynarray_count(all_decls),
+				sizeof *all_decls,
 				(int (*)(const void *, const void *))decl_sort_cmp);
 
-		for(di = all_spels; di[1]; di++){
+		for(di = all_decls; di[1]; di++){
 			decl *a = di[0], *b = di[1];
-			/* functions are checked elsewhere */
+			char *clash = NULL;
+
+			/* we allow multiple function declarations,
+			 * and multiple declarations at global scope,
+			 * but not definitions
+			 */
 			if(!strcmp(a->spel, b->spel)){
+				const int a_func = !!DECL_IS_FUNC(a);
+
+				if(!!DECL_IS_FUNC(b) != a_func
+				|| !decl_equal(a, b,
+					DECL_CMP_EXACT_MATCH | DECL_CMP_ALLOW_TENATIVE_ARRAY))
+				{
+					clash = "mismatching";
+				}else{
+					if(LOCAL_SCOPE){
+						/* allow multiple functions or multiple externs */
+						if(a_func){
+							/* fine - we know they're equal */
+						}else if((a->store & STORE_MASK_STORE) == store_extern
+								  && (b->store & STORE_MASK_STORE) == store_extern){
+							/* both are extern declarations */
+						}else{
+							clash = "extern/non-extern";
+						}
+					}else if(a_func && a->func_code && b->func_code){
+						clash = "duplicate";
+					}
+				}
+			}
+
+			if(clash){
 				/* XXX: note */
-				DIE_AT(&a->where, "clashing definitions of \"%s\"\n%s: note: other definition",
-						a->spel, where_str_r(wbuf, &b->where));
+				DIE_AT(&a->where,
+						"%s definitions of \"%s\"\n"
+						"%s: note: other definition",
+						clash, a->spel,
+						where_str_r(wbuf, &b->where));
 			}
 		}
 
 
-		dynarray_free(&all_spels, NULL);
+		dynarray_free(decl **, &all_decls, NULL);
 	}
 
 	{
@@ -188,4 +220,5 @@ int symtab_fold(symtable *tab, int current)
 	}
 
 	return tab->auto_total_size;
+#undef LOCAL_SCOPE
 }

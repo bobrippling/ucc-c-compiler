@@ -21,12 +21,6 @@ enum decl_multi_mode
 
 extern enum token curtok;
 
-#define parse_possible_decl()      \
-		(  curtok == token_identifier  \
-		|| curtok == token_multiply    \
-		|| curtok == token_xor         \
-		|| curtok == token_open_paren)
-
 #define parse_expr_no_comma() parse_expr_assignment()
 
 /* these need to be visible to parse_type.c */

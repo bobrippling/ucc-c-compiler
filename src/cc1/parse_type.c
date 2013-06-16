@@ -3,12 +3,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <assert.h>
 
 #include "../util/util.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
 #include "data_structs.h"
-#include "typedef.h"
 #include "decl_init.h"
 #include "funcargs.h"
 
@@ -63,6 +63,8 @@ type_ref *parse_type_sue(enum type_primitive prim)
 	sue_member **members = NULL;
 	decl_attr *this_sue_attr = NULL;
 
+	parse_add_attr(&this_sue_attr); /* struct __attr__(()) name { ... } ... */
+
 	if(curtok == token_identifier){
 		spel = token_current_spel();
 		EAT(token_identifier);
@@ -111,6 +113,7 @@ type_ref *parse_type_sue(enum type_primitive prim)
 					| DECL_MULTI_ACCEPT_FIELD_WIDTH
 					| DECL_MULTI_NAMELESS
 					| DECL_MULTI_ALLOW_ALIGNAS,
+					NULL,
 					&dmembers);
 
 			if(!dmembers){
@@ -120,7 +123,7 @@ type_ref *parse_type_sue(enum type_primitive prim)
 					dynarray_add(&members,
 							sue_member_from_decl(*i));
 
-				dynarray_free(&dmembers, NULL);
+				dynarray_free(decl **, &dmembers, NULL);
 			}
 		}
 		EAT(token_close_block);
@@ -165,6 +168,56 @@ static void parse_add_attr(decl_attr **append)
 
 		EAT(token_close_paren);
 		EAT(token_close_paren);
+	}
+}
+
+static decl *parse_at_tdef(void)
+{
+	if(curtok == token_identifier){
+		decl *d = symtab_search_d(current_scope, token_current_spel_peek());
+		if(d && d->store == store_typedef)
+			return d;
+	}
+	return NULL;
+}
+
+int parse_at_decl(void)
+{
+	/* this is similar to parse_btype() initial test logic */
+	switch(curtok){
+		default:
+			return curtok_is_type_qual()
+				|| curtok_is_decl_store()
+				|| curtok_is_type_primitive();
+
+		case token_signed:
+		case token_unsigned:
+		case token_inline:
+		case token__Noreturn:
+		case token_struct:
+		case token_union:
+		case token_enum:
+		case token_typeof:
+		case token___builtin_va_list:
+		case token_attribute:
+		case token__Alignas:
+			return 1;
+
+		case token_identifier:
+			return !!parse_at_tdef();
+	}
+}
+
+static int parse_at_decl_spec(void)
+{
+	switch(curtok){
+		case token_identifier:
+		case token_multiply:
+		case token_xor:
+		case token_open_paren:
+			return 1;
+		default:
+			return 0;
 	}
 }
 
@@ -221,6 +274,7 @@ static type_ref *parse_btype(
 #define INT(x)   x == type_int
 #define SHORT(x) x == type_short
 #define LONG(x)  x == type_long
+#define LLONG(x) x == type_llong
 #define DBL(x)   x == type_double
 
 					if(      INT(got) && (SHORT(primitive) || LONG(primitive))){
@@ -233,11 +287,11 @@ static type_ref *parse_btype(
 						if(primitive_mode == PRIMITIVE_MAYBE_MORE){
 							/* special case for long long and long double */
 							if(LONG(primitive) && LONG(got))
-								primitive = type_llong, die = 0;
+								primitive = type_llong, die = 0; /* allow "int" after this */
+							else if(LLONG(primitive) && INT(got))
+								primitive_mode = PRIMITIVE_NO_MORE, die = 0;
 							else if((LONG(primitive) && DBL(got)) || (DBL(primitive) && LONG(got)))
-								primitive = type_ldouble, die = 0;
-
-							primitive_mode = PRIMITIVE_NO_MORE;
+								primitive = type_ldouble, die = 0, primitive_mode = PRIMITIVE_NO_MORE;
 						}
 
 						if(die)
@@ -248,7 +302,8 @@ static type_ref *parse_btype(
 						switch(primitive){
 							case type_int:
 							case type_long:
-								/* allow short int, long int and long long */
+							case type_llong:
+								/* allow short int, long int and long long and long long int */
 								break;
 							default:
 								primitive_mode = PRIMITIVE_NO_MORE;
@@ -333,7 +388,7 @@ static type_ref *parse_btype(
 				DIE_AT(NULL, "typeof specifier after primitive");
 
 			tdef_typeof = parse_expr_sizeof_typeof_alignof(what_typeof);
-			primitive_mode = PRIMITIVE_NO_MORE;
+			primitive_mode = TYPEOF;
 
 		}else if(accept(token___builtin_va_list)){
 			if(primitive_mode != NONE)
@@ -344,10 +399,8 @@ static type_ref *parse_btype(
 			primitive = type_struct;
 
 		}else if(!signed_set /* can't sign a typedef */
-		&& curtok == token_identifier
-		&& (tdef_decl_test = scope_find(current_scope, token_current_spel_peek())))
+		&& (tdef_decl_test = parse_at_tdef()))
 		{
-
 			/* typedef name or decl:
 			 * if we find a decl named this in our scope,
 			 * we're a reference to that, not a type, e.g.
@@ -364,11 +417,7 @@ static type_ref *parse_btype(
 								*      { short td; }
 								*/
 
-			if(tdef_decl_test->store != store_typedef){
-				/* found an identifier instead */
-				tdef_decl_test = NULL;
-				break;
-			}
+			assert(tdef_decl_test->store == store_typedef);
 
 			tdef_decl = tdef_decl_test;
 			tdef_typeof = expr_new_sizeof_type(tdef_decl->ref, 1);
@@ -481,6 +530,9 @@ static type_ref *parse_btype(
 			case PRIMITIVE_NO_MORE:
 			case PRIMITIVE_MAYBE_MORE:
 			case NONE:
+				if(primitive_mode != NONE && primitive == type_llong)
+					C99_LONGLONG();
+
 				r = type_ref_new_type(
 						type_new_primitive_signed(
 							primitive_mode == NONE ? type_int : primitive,
@@ -544,7 +596,8 @@ int parse_curtok_is_type(void)
 
 funcargs *parse_func_arglist()
 {
-	const enum decl_mode flags = DECL_CAN_DEFAULT;
+	/* don't allow default - we handle that manually in old-func parsing */
+	const enum decl_mode flags = 0;
 	funcargs *args;
 	decl *argdecl;
 
@@ -693,20 +746,9 @@ static type_ref *parse_type_ref_array(enum decl_mode mode, char **sp)
 			EAT(curtok);
 		}
 
-		/* skip int x[restrict|static ...] for now. TODO: update qual/whatever-for-static */
-		while(curtok == token_restrict || curtok == token_static){
-			static int warned = 0;
-			if(!warned){
-				warned = 1;
-				WARN_AT(NULL, "restrict/static in arrays is currently ignored");
-			}
-			EAT(curtok);
-		}
-
 		if(accept(token_close_square)){
 			/* take size as zero */
-			size = expr_new_val(0);
-			/* FIXME - incomplete, not zero */
+			size = NULL;
 		}else{
 			/* fold.c checks for const-ness */
 			size = parse_expr_exp();
@@ -915,7 +957,7 @@ static int is_old_func(decl *d)
 	return r && r->bits.func->args_old_proto;
 }
 
-static void check_old_func(decl *d, decl **old_args)
+static void check_and_replace_old_func(decl *d, decl **old_args)
 {
 	/* check then replace old args */
 	int n_proto_decls, n_old_args;
@@ -967,10 +1009,65 @@ static void check_old_func(decl *d, decl **old_args)
 	free(old_args);
 }
 
-void parse_decls_multi_type(enum decl_multi_mode mode, decl ***pdecls)
+static void decl_pull_to_func(decl *const d_this, decl *const d_prev)
+{
+	char wbuf[WHERE_BUF_SIZ];
+
+	if(!type_ref_is(d_prev->ref, type_ref_func))
+		return; /* error caught later */
+
+	if(d_prev->func_code){
+		/* just warn that we have a declaration
+		 * after a definition, then get out.
+		 *
+		 * any declarations after this aren't warned about
+		 * (since d_prev is different), but one warning is fine
+		 */
+		WARN_AT(&d_this->where,
+				"declaration of \"%s\" after definition is ignored\n"
+				"%s: note: definition here",
+				d_this->spel,
+				where_str_r(wbuf, &d_prev->where));
+		return;
+	}
+
+	if(d_this->spel_asm){
+		if(d_prev->spel_asm){
+			parse_had_error = 1;
+			warn_at_print_error(&d_this->where,
+					"second asm() rename on \"%s\"\n"
+					"%s: note: previous definition here",
+					d_this->spel, where_str_r(wbuf, &d_prev->where));
+		}
+	}else if(d_prev->spel_asm){
+		d_this->spel_asm = d_prev->spel_asm;
+	}
+
+	/* propagate static and inline */
+	if((d_prev->store & STORE_MASK_STORE) == store_static)
+		d_this->store = (d_this->store & ~STORE_MASK_STORE) | store_static;
+
+	d_this->store |= (d_prev->store & STORE_MASK_EXTRA);
+
+	/* update the f(void) bools */
+	{
+		funcargs *fargs_this = type_ref_funcargs(d_this->ref),
+		         *fargs_prev = type_ref_funcargs(d_prev->ref);
+
+		fargs_this->args_void          |= fargs_prev->args_void;
+		fargs_this->args_void_implicit |= fargs_prev->args_void_implicit;
+	}
+}
+
+void parse_decls_multi_type(
+		enum decl_multi_mode mode,
+		symtable *scope,
+		decl ***pdecls)
 {
 	const enum decl_mode parse_flag = (mode & DECL_MULTI_CAN_DEFAULT ? DECL_CAN_DEFAULT : 0);
 	decl *last;
+
+	UCC_ASSERT(scope || pdecls, "what shall I do?");
 
 	/* read a type, then *spels separated by commas, then a semi colon, then repeat */
 	for(;;){
@@ -986,7 +1083,7 @@ void parse_decls_multi_type(enum decl_multi_mode mode, decl ***pdecls)
 
 		if(!this_ref){
 			/* can_default makes sure we don't parse { int *p; *p = 5; } the latter as a decl */
-			if(parse_possible_decl() && (mode & DECL_MULTI_CAN_DEFAULT)){
+			if(parse_at_decl_spec() && (mode & DECL_MULTI_CAN_DEFAULT)){
 				this_ref = default_type();
 			}else{
 				return; /* normal exit */
@@ -996,7 +1093,7 @@ void parse_decls_multi_type(enum decl_multi_mode mode, decl ***pdecls)
 		if(store != store_typedef){
 			struct_union_enum_st *sue = PARSE_type_ref_is_s_or_u(this_ref);
 
-			if(sue && !parse_possible_decl()){
+			if(sue && !parse_at_decl_spec()){
 				/*
 				 * struct { int i; }; - continue to next one
 				 * this is either struct or union, not enum
@@ -1101,9 +1198,10 @@ void parse_decls_multi_type(enum decl_multi_mode mode, decl ***pdecls)
 					parse_add_attr(&d->ref->attr);
 				}else{
 					decl **old_args = NULL;
-					parse_decls_multi_type(0, &old_args);
+					/* NULL - we don't want these in a scope */
+					parse_decls_multi_type(0, NULL, &old_args);
 					if(old_args){
-						check_old_func(d, old_args);
+						check_and_replace_old_func(d, old_args);
 
 						/* old function with decls after the close paren,
 						 * need a function */
@@ -1123,7 +1221,30 @@ void parse_decls_multi_type(enum decl_multi_mode mode, decl ***pdecls)
 			}
 
 add:
-			dynarray_add(pdecls, d);
+			{
+				/* Look for a previous declaration of d->spel.
+				 * if found, we pull its asm() and attributes to the current,
+				 * thus propagating them down in O(1) to the eventual definition.
+				 * Do this before adding, so we don't find 'd'
+				 *
+				 * This also means any use of d will have the most up to date
+				 * attribute information about it
+				 */
+				decl *d_prev = symtab_search_d(current_scope, d->spel);
+
+				if(d_prev){
+					/* link the proto chain for __attribute__ checking */
+					d->proto = d_prev;
+
+					if(PARSE_DECL_IS_FUNC(d_prev))
+						decl_pull_to_func(d, d_prev);
+				}
+
+				if(scope)
+					dynarray_add(&scope->decls, d);
+				if(pdecls)
+					dynarray_add(pdecls, d);
+			}
 
 			/* FIXME: check later for functions, not here - typedefs */
 			if(PARSE_DECL_IS_FUNC(d)){
@@ -1157,7 +1278,7 @@ add:
 		if(last && !last->func_code){
 next:
 			/* end of type, if we have an identifier, '(' or '*', it's an unknown type name */
-			if(parse_possible_decl() && last)
+			if(parse_at_decl_spec() && last)
 				DIE_AT(NULL, "unknown type name '%s'", last->spel);
 			/* else die here: */
 			EAT(token_semicolon);

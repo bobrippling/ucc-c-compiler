@@ -53,6 +53,8 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 
 		e->tree_type = lvalue->tree_type;
 
+		fold_disallow_st_un(e, "compound assignment");
+
 		(void)resolved;
 		/*type_ref_free_1(resolved); XXX: memleak */
 	}
@@ -60,11 +62,9 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 	/* type check is done in op_required_promotion() */
 }
 
-void gen_expr_assign_compound(expr *e, symtable *stab)
+void gen_expr_assign_compound(expr *e)
 {
-	fold_disallow_st_un(e, "copy (TODO)"); /* yes this is meant to be in gen */
-
-	gen_expr(e->lhs, stab);
+	gen_expr(e->lhs);
 
 	if(e->assign_is_post){
 		out_dup();
@@ -77,7 +77,7 @@ void gen_expr_assign_compound(expr *e, symtable *stab)
 	out_dup();
 	out_deref();
 
-	gen_expr(e->rhs, stab);
+	gen_expr(e->rhs);
 
 	out_op(e->op);
 
@@ -87,9 +87,8 @@ void gen_expr_assign_compound(expr *e, symtable *stab)
 		out_pop();
 }
 
-void gen_expr_str_assign_compound(expr *e, symtable *stab)
+void gen_expr_str_assign_compound(expr *e)
 {
-	(void)stab;
 	idt_printf("compound %s%s-assignment expr:\n",
 			e->assign_is_post ? "post-" : "",
 			op_to_str(e->op));
@@ -120,5 +119,9 @@ expr *expr_new_assign_compound(expr *to, expr *from, enum op_type op)
 	return e;
 }
 
-void gen_expr_style_assign_compound(expr *e, symtable *stab)
-{ (void)e; (void)stab; /* TODO */ }
+void gen_expr_style_assign_compound(expr *e)
+{
+	gen_expr(e->lhs->lhs);
+	stylef(" %s= ", op_to_str(e->op));
+	gen_expr(e->rhs);
+}

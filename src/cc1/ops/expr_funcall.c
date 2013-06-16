@@ -271,7 +271,7 @@ static void static_array_check(
 	type_ref *ty_decl = decl_is_decayed_array(arg_decl);
 	consty k_decl;
 
-	if(!ty_decl || !ty_decl->bits.ptr.is_static)
+	if(!ty_decl || !ty_decl->bits.ptr.is_static || !ty_decl->bits.ptr.size)
 		return;
 
 	if(expr_is_null_ptr(arg_expr, 1 /* int */)){
@@ -284,20 +284,20 @@ static void static_array_check(
 	if(!(ty_expr = type_ref_is_decayed_array(ty_expr))){
 		WARN_AT(&arg_expr->where,
 				(k_decl.type == CONST_VAL) ?
-				"array of size >= %ld expected for parameter" :
-				"array expected for parameter", k_decl.bits.iv.val);
+				"array of size >= %" INTVAL_FMT_D " expected for parameter" :
+				"array expected for parameter", (intval_t)k_decl.bits.iv.val);
 		return;
 	}
 
 	/* ty_expr is the type_ref_ptr, decayed from array */
-	{
+	if(ty_expr->bits.ptr.size){
 		consty k_arg;
 
 		const_fold(ty_expr->bits.ptr.size, &k_arg);
 
 		if(k_decl.type == CONST_VAL && k_arg.bits.iv.val < k_decl.bits.iv.val)
 			WARN_AT(&arg_expr->where,
-					"array of size %ld passed where size %ld needed",
+					"array of size %" INTVAL_FMT_D " passed where size %" INTVAL_FMT_D " needed",
 					k_arg.bits.iv.val, k_decl.bits.iv.val);
 	}
 }
@@ -355,7 +355,6 @@ invalid:
 			df = decl_new();
 			df->ref = type_func;
 			df->spel = e->expr->bits.ident.spel;
-			df->is_definition = 1; /* needed since it's a local var */
 
 			fold_decl(df, stab); /* update calling conv, for e.g. */
 
@@ -388,9 +387,9 @@ invalid:
 
 	/* this block is purely count checking */
 	if(args_from_decl->arglist || args_from_decl->args_void){
-		const int count_arg  = dynarray_count((void **)e->funcargs);
+		const int count_arg  = dynarray_count(e->funcargs);
 
-		count_decl = dynarray_count((void **)args_from_decl->arglist);
+		count_decl = dynarray_count(args_from_decl->arglist);
 
 		if(count_decl != count_arg && (args_from_decl->variadic ? count_arg < count_decl : 1)){
 			DIE_AT(&e->where, "too %s arguments to function %s (got %d, need %d)",
@@ -425,8 +424,8 @@ invalid:
 	if(args_from_decl->arglist || args_from_decl->args_void){
 		int count_arg;
 
-		count_arg  = dynarray_count((void **)e->funcargs);
-		count_decl = dynarray_count((void **)args_from_decl->arglist);
+		count_arg  = dynarray_count(e->funcargs);
+		count_decl = dynarray_count(args_from_decl->arglist);
 
 		if(count_decl != count_arg && (args_from_decl->variadic ? count_arg < count_decl : 1)){
 			DIE_AT(&e->where, "too %s arguments to function %s (got %d, need %d)",
@@ -488,11 +487,11 @@ invalid:
 	}
 
 	/* check the subexp tree type to get the funcall decl_attrs */
-	if(type_attr_present(e->expr->tree_type, attr_warn_unused))
+	if(expr_attr_present(e->expr, attr_warn_unused))
 		e->freestanding = 0; /* needs use */
 }
 
-void gen_expr_funcall(expr *e, symtable *stab)
+void gen_expr_funcall(expr *e)
 {
 	if(0){
 		out_comment("start manual __asm__");
@@ -505,7 +504,7 @@ void gen_expr_funcall(expr *e, symtable *stab)
 		/* continue with normal funcall */
 		int nargs = 0;
 
-		gen_expr(e->expr, stab);
+		gen_expr(e->expr);
 
 		if(e->funcargs){
 			expr **aiter;
@@ -518,7 +517,7 @@ void gen_expr_funcall(expr *e, symtable *stab)
 				/* should be of size int or larger (for integral types)
 				 * or double (for floating types)
 				 */
-				gen_expr(earg, stab);
+				gen_expr(earg);
 			}
 		}
 
@@ -526,11 +525,9 @@ void gen_expr_funcall(expr *e, symtable *stab)
 	}
 }
 
-void gen_expr_str_funcall(expr *e, symtable *stab)
+void gen_expr_str_funcall(expr *e)
 {
 	expr **iter;
-
-	(void)stab;
 
 	idt_printf("funcall, calling:\n");
 
@@ -562,7 +559,7 @@ void mutate_expr_funcall(expr *e)
 int expr_func_passable(expr *e)
 {
 	/* need to check the sub-expr, i.e. the function */
-	return !type_attr_present(e->expr->tree_type, attr_noreturn);
+	return !expr_attr_present(e->expr, attr_noreturn);
 }
 
 expr *expr_new_funcall()
@@ -572,5 +569,18 @@ expr *expr_new_funcall()
 	return e;
 }
 
-void gen_expr_style_funcall(expr *e, symtable *stab)
-{ (void)e; (void)stab; /* TODO */ }
+void gen_expr_style_funcall(expr *e)
+{
+	stylef("(");
+	gen_expr(e->expr);
+	stylef(")(");
+	if(e->funcargs){
+		expr **i;
+		for(i = e->funcargs; i && *i; i++){
+			gen_expr(*i);
+			if(i[1])
+				stylef(", ");
+		}
+	}
+	stylef(")");
+}

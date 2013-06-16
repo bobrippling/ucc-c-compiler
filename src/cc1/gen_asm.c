@@ -18,26 +18,35 @@
 #include "out/out.h"
 #include "out/lbl.h"
 #include "out/asm.h"
+#include "gen_style.h"
 
 char *curfunc_lblfin; /* extern */
 
-void gen_expr(expr *e, symtable *stab)
+void gen_expr(expr *e)
 {
 	consty k;
 
 	const_fold(e, &k);
 
-	if(k.type == CONST_VAL) /* TODO: -O0 skips this */
-		out_push_iv(e->tree_type, &k.bits.iv);
-	else
-		EOF_WHERE(&e->where, e->f_gen(e, stab));
+	if(k.type == CONST_VAL){ /* TODO: -O0 skips this */
+		if(cc1_backend == BACKEND_ASM)
+			out_push_iv(e->tree_type, &k.bits.iv);
+		else
+			stylef("%" INTVAL_FMT_D, k.bits.iv.val);
+	}else{
+		if(cc1_gdebug)
+			out_comment("at %s", where_str(&e->where));
+
+		EOF_WHERE(&e->where, e->f_gen(e));
+	}
 }
 
-void lea_expr(expr *e, symtable *stab)
+void lea_expr(expr *e)
 {
-	UCC_ASSERT(e->f_lea, "invalid store expression %s (no f_store())", e->f_str());
+	UCC_ASSERT(e->f_lea,
+			"invalid store expression expr-%s (no f_store())", e->f_str());
 
-	e->f_lea(e, stab);
+	e->f_lea(e);
 }
 
 void gen_stmt(stmt *t)
@@ -117,10 +126,7 @@ void gen_asm_global(decl *d)
 {
 	decl_attr *sec;
 
-	if(!d->is_definition)
-		return;
-
-	if((sec = decl_has_attr(d, attr_section))){
+	if((sec = decl_attr_present(d, attr_section))){
 		ICW("%s: TODO: section attribute \"%s\" on %s",
 				where_str(&d->attr->where),
 				sec->bits.section, d->spel);
@@ -185,17 +191,7 @@ void gen_asm(symtable_global *globs)
 				iasm = NULL;
 		}
 
-		/* inline_only aren't currently inlined */
-		if(!d->is_definition)
-			continue;
-
-		if(d->inline_only){
-			/* emit an extern for it anyway */
-			asm_predeclare_extern(d);
-			continue;
-		}
-
-		switch(d->store & STORE_MASK_STORE){
+		switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
 			case store_inline:
 			case store_auto:
 			case store_register:
@@ -206,18 +202,43 @@ void gen_asm(symtable_global *globs)
 			case store_typedef:
 				continue;
 
+			case store_extern:
+			case store_default:
 			case store_static:
 				break;
-
-			case store_extern:
-				if(!DECL_IS_FUNC(d) || !d->func_code)
-					break;
-				/* else extern func with definition */
-
-			case store_default:
-				asm_predeclare_global(d);
 		}
 
+		if(DECL_IS_FUNC(d)){
+			if(d->store & store_inline){
+				/*
+				 * inline semantics
+				 *
+				 * "" = inline only
+				 * "static" = code emitted, decl is static
+				 * "extern" mentioned, or "inline" not mentioned = code emitted, decl is extern
+				 */
+				if((d->store & STORE_MASK_STORE) == store_default){
+					/* inline only - emit an extern for it anyway */
+					asm_predeclare_extern(d);
+					continue;
+				}
+			}
+
+			if(!d->func_code){
+				asm_predeclare_extern(d);
+				continue;
+			}
+		}else{
+			/* variable - if there's no init,
+			 * it's tenative and not output */
+			if(!d->init){
+				asm_predeclare_extern(d);
+				continue;
+			}
+		}
+
+		if((d->store & STORE_MASK_STORE) != store_static)
+			asm_predeclare_global(d);
 		gen_asm_global(d);
 
 		UCC_ASSERT(out_vcount() == 0, "non empty vstack after global gen");

@@ -12,6 +12,7 @@
 #include "../../util/platform.h"
 #include "../cc1.h"
 #include "asm.h"
+#include "../pack.h"
 
 #define v_check_type(t) if(!t) t = type_ref_cached_VOID_PTR()
 
@@ -302,13 +303,14 @@ static int v_alloc_stack(int sz)
 		word_size = platform_word_size();
 
 	if(sz){
-		const int extra = sz % word_size ? word_size - sz % word_size : 0;
+		/* sz must be a multiple of mstack_align */
+		sz = pack_to_align(sz, cc1_mstack_align);
 
 		vpush(NULL);
 		vtop->type = REG;
 		vtop->bits.reg = REG_SP;
 
-		out_push_i(type_ref_cached_INTPTR_T(), sz += extra);
+		out_push_i(type_ref_cached_INTPTR_T(), sz);
 		out_op(op_minus);
 		out_pop();
 	}
@@ -422,19 +424,23 @@ void v_freeup_regs(const int a, const int b)
 void v_inv_cmp(struct vstack *vp)
 {
 	switch(vp->bits.flag.cmp){
-#define OPPOSITE(from, to) case flag_ ## from: vp->bits.flag.cmp = flag_ ## to; return
+#define OPPOSITE2(from, to) \
+		case flag_ ## from: vp->bits.flag.cmp = flag_ ## to; return
+
+#define OPPOSITE(from, to) OPPOSITE2(from, to); OPPOSITE2(to, from)
+
 		OPPOSITE(eq, ne);
-		OPPOSITE(ne, eq);
 
 		OPPOSITE(le, gt);
-		OPPOSITE(gt, le);
 
 		OPPOSITE(lt, ge);
-		OPPOSITE(ge, lt);
+
+		OPPOSITE(overflow, no_overflow);
 
 		/*OPPOSITE(z, nz);
 		OPPOSITE(nz, z);*/
 #undef OPPOSITE
+#undef OPPOSITE2
 	}
 	ICE("invalid op");
 }
@@ -458,9 +464,7 @@ const char *v_val_str(struct vstack *vp)
 
 	UCC_ASSERT(vp->type == CONST, "val?");
 
-	snprintf(buf, sizeof buf,
-			type_ref_is_signed(vp->t) ? "%ld" : "%lu",
-			vp->bits.val);
+	intval_str(buf, sizeof buf, vp->bits.val, type_ref_is_signed(vp->t));
 
 	return buf;
 }
@@ -862,14 +866,19 @@ void out_op_unary(enum op_type op)
 
 void out_cast(type_ref *from, type_ref *to)
 {
+	v_cast(vtop, from, to);
+}
+
+void v_cast(struct vstack *vp, type_ref *from, type_ref *to)
+{
 	/* casting vtop - don't bother if it's a constant, just change the size */
-	if(vtop->type != CONST){
+	if(vp->type != CONST){
 		int szfrom = asm_type_size(from),
 				szto   = asm_type_size(to);
 
 		if(szfrom != szto){
 			if(szto > szfrom){
-				impl_cast_load(from, to,
+				impl_cast_load(vp, from, to,
 						type_ref_is_signed(from));
 			}else{
 				char buf[TYPE_REF_STATIC_BUFSIZ];
@@ -882,7 +891,7 @@ void out_cast(type_ref *from, type_ref *to)
 		}
 	}
 
-	out_change_type(to);
+	vp->t = to;
 }
 
 void out_change_type(type_ref *t)
@@ -980,7 +989,7 @@ void out_func_prologue(type_ref *rf, int stack_res, int nargs, int variadic)
 	stack_local_offset    = stack_sz;
 
 	if(stack_res)
-		stack_sz += v_alloc_stack(stack_res);
+		v_alloc_stack(stack_res);
 }
 
 void out_func_epilogue(type_ref *rf)
@@ -998,6 +1007,12 @@ void out_undefined(void)
 {
 	out_flush_volatile();
 	impl_undefined();
+}
+
+void out_push_overflow(void)
+{
+	vpush(type_ref_cached_BOOL());
+	impl_set_overflow();
 }
 
 void out_push_frame_ptr(int nframes)

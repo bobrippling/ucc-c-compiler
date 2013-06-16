@@ -17,6 +17,7 @@
 #include "../out/lbl.h"
 #include "../pack.h"
 #include "../sue.h"
+#include "../funcargs.h"
 
 #include "__builtin_va.h"
 
@@ -64,7 +65,7 @@ static void fold_va_start(expr *e, symtable *stab)
 	int n_args;
 	expr *va_l;
 
-	if(dynarray_count((void **)e->funcargs) != 2)
+	if(dynarray_count(e->funcargs) != 2)
 		DIE_AT(&e->where, "%s requires two arguments", BUILTIN_SPEL(e->expr));
 
 	va_l = e->funcargs[0];
@@ -126,7 +127,7 @@ static void fold_va_start(expr *e, symtable *stab)
 	e->tree_type = type_ref_cached_VOID();
 }
 
-static void builtin_gen_va_start(expr *e, symtable *stab)
+static void builtin_gen_va_start(expr *e)
 {
 #ifdef UCC_VA_ABI
 	/*
@@ -144,8 +145,6 @@ static void builtin_gen_va_start(expr *e, symtable *stab)
 	out_push_i(type_ref_new_INTPTR_T(), 0);
 	out_store();
 #else
-	(void)stab;
-
 	out_comment("va_start() begin");
 	gen_stmt(e->bits.variadic_setup);
 	out_push_noop();
@@ -163,7 +162,7 @@ expr *parse_va_start(void)
 	return fcall;
 }
 
-static void builtin_gen_va_arg(expr *e, symtable *stab)
+static void builtin_gen_va_arg(expr *e)
 {
 #ifdef UCC_VA_ABI
 	/*
@@ -263,7 +262,7 @@ static void builtin_gen_va_arg(expr *e, symtable *stab)
 	out_push_i(type_ref_new_LONG(), type_ref_size(e->bits.tref, NULL));
 	/* 0 - abi.c's gen_reg. this is temporary until we have builtin_va_arg proper */
 	out_push_i(type_ref_new_INT(), 0);
-	gen_expr(e->lhs, stab);
+	gen_expr(e->lhs);
 
 	extern void *funcargs_new(); /* XXX: temporary hack for the call */
 
@@ -301,7 +300,7 @@ stack:
 			VA_DECL(reg_save_area);
 			VA_DECL(overflow_arg_area);
 
-			gen_expr(e->lhs, stab); /* va_list */
+			gen_expr(e->lhs); /* va_list */
 			out_change_type(type_ref_cached_VOID_PTR());
 			out_dup(); /* va, va */
 
@@ -345,7 +344,7 @@ stack:
 			/* prepare for joining later */
 			out_phi_pop_to();
 
-			gen_expr(e->lhs, stab);
+			gen_expr(e->lhs);
 			/* va */
 			out_change_type(type_ref_cached_VOID_PTR());
 			out_push_i(type_ref_cached_LONG(), mem_overflow_arg_area->struct_offset);
@@ -448,16 +447,15 @@ expr *parse_va_arg(void)
 	return fcall;
 }
 
-static void builtin_gen_va_end(expr *e, symtable *stab)
+static void builtin_gen_va_end(expr *e)
 {
 	(void)e;
-	(void)stab;
 	out_push_noop();
 }
 
 static void fold_va_end(expr *e, symtable *stab)
 {
-	if(dynarray_count((void **)e->funcargs) != 1)
+	if(dynarray_count(e->funcargs) != 1)
 		DIE_AT(&e->where, "%s requires one argument", BUILTIN_SPEL(e->expr));
 
 	FOLD_EXPR(e->funcargs[0], stab);

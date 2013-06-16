@@ -148,20 +148,20 @@ void fold_expr_if(expr *e, symtable *stab)
 }
 
 
-void gen_expr_if(expr *e, symtable *stab)
+void gen_expr_if(expr *e)
 {
 	char *lblfin;
 
 	lblfin = out_label_code("ifexp_fi");
 
-	gen_expr(e->expr, stab);
+	gen_expr(e->expr);
 
 	if(e->lhs){
 		char *lblelse = out_label_code("ifexp_else");
 
 		out_jfalse(lblelse);
 
-		gen_expr(e->lhs, stab);
+		gen_expr(e->lhs);
 
 		out_push_lbl(lblfin, 0);
 		out_jmp();
@@ -177,15 +177,14 @@ void gen_expr_if(expr *e, symtable *stab)
 
 	out_pop();
 
-	gen_expr(e->rhs, stab);
+	gen_expr(e->rhs);
 	out_label(lblfin);
 
 	free(lblfin);
 }
 
-void gen_expr_str_if(expr *e, symtable *stab)
+void gen_expr_str_if(expr *e)
 {
-	(void)stab;
 	idt_printf("if expression:\n");
 	gen_str_indent++;
 #define SUB_PRINT(nam) \
@@ -220,5 +219,12 @@ expr *expr_new_if(expr *test)
 	return e;
 }
 
-void gen_expr_style_if(expr *e, symtable *stab)
-{ (void)e; (void)stab; /* TODO */ }
+void gen_expr_style_if(expr *e)
+{
+	gen_expr(e->expr);
+	stylef(" ? ");
+	if(e->lhs)
+		gen_expr(e->lhs);
+	stylef(" : ");
+	gen_expr(e->rhs);
+}

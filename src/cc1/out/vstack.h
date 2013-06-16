@@ -37,6 +37,7 @@ struct vstack
 				flag_eq, flag_ne,
 				flag_le, flag_lt,
 				flag_ge, flag_gt,
+				flag_overflow, flag_no_overflow
 			} cmp;
 			int is_signed;
 		} flag;
@@ -55,6 +56,8 @@ void vpop(void);
 void vswap(void);
 
 void v_clear(struct vstack *vp, type_ref *);
+
+void v_cast(struct vstack *vp, type_ref *from, type_ref *to);
 
 void v_to_reg_const(struct vstack *vp);
 

@@ -16,6 +16,8 @@
 #include "../util/dynarray.h"
 #include "../util/util.h"
 #include "../util/platform.h"
+#include "str.h"
+#include "cfg.h"
 
 enum mode
 {
@@ -126,8 +128,8 @@ compile:
 assemb:
 			case 'S':
 				file->preproc_asm = 1;
-after_compile:
 				ASSIGN(preproc); /* preprocess .S assembly files by default */
+after_compile:
 			case 's':
 				ASSIGN(assemb);
 				file->out = file->assemb;
@@ -239,14 +241,14 @@ void process_files(enum mode mode, char **inputs, char *output, char **args[4], 
 	const int ninputs = dynarray_count(inputs);
 	int i;
 	struct cc_file *files;
-	char **links;
+	char **links = NULL;
 
 	files = umalloc(ninputs * sizeof *files);
 
-	links = gopts.nostdlib ? NULL : objfiles_stdlib();
-
+	/* crt must come first */
 	if(!gopts.nostartfiles)
-		dynarray_add(&links, objfiles_start());
+		dynarray_add_array(&links, ld_crt_args());
+
 
 	if(backend){
 		dynarray_add(&args[mode_compile], ustrdup("-X"));
@@ -261,12 +263,21 @@ void process_files(enum mode mode, char **inputs, char *output, char **args[4], 
 		dynarray_add(&links, ustrdup(files[i].out));
 	}
 
-	if(mode == mode_link)
-		link_all(links, output ? output : "a.out", args[mode_link]);
-	else
-		rename_files(files, ninputs, output, mode);
+	if(mode == mode_link){
+		/* An object file's unresolved symbols must
+		 * be _later_ in the linker's argv array.
+		 * crt, user files, then stdlib
+		 */
+		if(!gopts.nostdlib)
+			/* ld_crt_args() refers to static memory */
+			dynarray_add_array(&links, ld_stdlib_args());
 
-	dynarray_free(&links, free);
+		link_all(links, output ? output : "a.out", args[mode_link]);
+	}else{
+		rename_files(files, ninputs, output, mode);
+	}
+
+	dynarray_free(char **, &links, free);
 
 	/*for(i = 0; i < ninputs; i++)
 		free_file(&files[i]);*/
@@ -297,16 +308,25 @@ void die(const char *fmt, ...)
 
 void ice(const char *f, int line, const char *fn, const char *fmt, ...)
 {
-	(void)f;
-	(void)line;
-	(void)fn;
-	die("ICE: %s", fmt);
+	va_list l;
+	fprintf(stderr, "ICE: %s:%d:%s: ", f, line, fn);
+	va_start(l, fmt);
+	vfprintf(stderr, fmt, l);
+	va_end(l);
+	abort();
+}
+
+static void add_cfg_args(char ***par, const char *args)
+{
+	dynarray_add_tmparray(par, strsplit(args, " "));
 }
 
 int main(int argc, char **argv)
 {
 	enum mode mode = mode_link;
 	int i, syntax_only = 0;
+	int stdinc = 1;
+	char **includes = NULL;
 	char **inputs = NULL;
 	char **args[4] = { 0 };
 	char *output = NULL;
@@ -330,16 +350,14 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	/* do before arg processing, so these can be removed */
-	switch(platform_sys()){
-		case PLATFORM_LINUX:
-		case PLATFORM_FREEBSD:
-			break;
-		case PLATFORM_CYGWIN:
-		case PLATFORM_DARWIN:
-			dynarray_add(&args[mode_compile], ustrdup("-fleading-underscore"));
-			dynarray_add(&args[mode_preproc], ustrdup("-D__LEADING_UNDERSCORE"));
-	}
+	/* we don't want the initial temporary fname "/tmp/tmp.xyz" tracked
+	 * or showing up in error messages
+	 */
+	dynarray_add(&args[mode_compile], ustrdup("-fno-track-initial-fname"));
+
+	/* bring in CPPFLAGS and CFLAGS */
+	add_cfg_args(&args[mode_compile], UCC_CFLAGS);
+	add_cfg_args(&args[mode_preproc], UCC_CPPFLAGS);
 
 
 	for(i = 1; i < argc; i++){
@@ -379,18 +397,24 @@ int main(int argc, char **argv)
 						syntax_only = 1;
 						continue;
 					}
+					else if(!strcmp(argv[i], "-ffreestanding")){
+						/* preproc gets this too */
+						ADD_ARG(mode_preproc);
+					}
 
 				case 'w':
 				case 'm':
-arg_cc1:
 					ADD_ARG(mode_compile);
 					continue;
 
+				case 'P':
 				case 'D':
 				case 'U':
-				case 'I':
 arg_cpp:
 					ADD_ARG(mode_preproc);
+					continue;
+				case 'I':
+					dynarray_add(&includes, ustrdup(arg));
 					continue;
 
 arg_asm:
@@ -422,9 +446,13 @@ arg_ld:
 					/* debug */
 					if(argv[i][2])
 						die("-g... unexpected");
-					/*ADD_ARG(mode_compile); TODO */
+					ADD_ARG(mode_compile);
 					ADD_ARG(mode_assemb);
 					continue;
+
+				case 'M':
+				case 'd':
+					goto arg_cpp;
 
 				case 'x':
 				{
@@ -441,10 +469,12 @@ arg_ld:
 					/* TODO: order-sensitive -x */
 					if(!strcmp(arg, "c"))
 						gopts.assume = mode_preproc;
-					else if(!strcmp(arg, "cpp"))
+					else if(!strcmp(arg, "cpp-output"))
 						gopts.assume = mode_compile;
 					else if(!strcmp(arg, "asm"))
 						gopts.assume = mode_assemb;
+					else if(!strcmp(arg, "none"))
+						gopts.assume = -1; /* reset */
 					else
 						die("-x accepts \"c\", \"cpp\", or \"asm\", not \"%s\"", arg);
 					continue;
@@ -455,12 +485,16 @@ arg_ld:
 					goto input;
 
 				default:
-					if(!strncmp(argv[i], "-std=", 5) || !strcmp(argv[i], "-ansi"))
-						goto arg_cc1;
+					if(!strncmp(argv[i], "-std=", 5) || !strcmp(argv[i], "-ansi")){
+						ADD_ARG(mode_compile);
+						ADD_ARG(mode_preproc);
+					}
 					else if(!strcmp(argv[i], "-nostdlib"))
 						gopts.nostdlib = 1;
 					else if(!strcmp(argv[i], "-nostartfiles"))
 						gopts.nostartfiles = 1;
+					else if(!strcmp(argv[i], "-nostdinc"))
+						stdinc = 0;
 					else if(!strcmp(argv[i], "-###"))
 						ucc_ext_cmds_show(1), ucc_ext_cmds_noop(1);
 					else if(!strcmp(argv[i], "-v"))
@@ -525,12 +559,19 @@ input:	dynarray_add(&inputs, argv[i]);
 			output = "-";
 	}
 
+	/* default include paths */
+	if(stdinc)
+		add_cfg_args(&args[mode_preproc], UCC_INC);
+	/* custom incldue paths */
+	if(includes)
+		dynarray_add_tmparray(&args[mode_preproc], includes);
+
 	/* got arguments, a mode, and files to link */
 	process_files(mode, inputs, output, args, backend);
 
 	for(i = 0; i < 4; i++)
-		dynarray_free(&args[i], free);
-	dynarray_free(&inputs, NULL);
+		dynarray_free(char **, &args[i], free);
+	dynarray_free(char **, &inputs, NULL);
 
 	return 0;
 }

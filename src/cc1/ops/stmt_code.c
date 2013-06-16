@@ -15,11 +15,29 @@ void fold_stmt_code(stmt *s)
 {
 	stmt **siter;
 	stmt *inits = NULL;
+	decl **diter;
 	int warned = 0;
 
 	fold_symtab_scope(s->symtab, &inits);
 	if(inits)
 		dynarray_prepend(&s->codes, inits);
+
+	/* check for invalid function redefinitions */
+	for(diter = s->symtab->decls; diter && *diter; diter++){
+		decl *const d = *diter;
+		decl *found;
+		if(DECL_IS_FUNC(d) && (found = symtab_search_d(s->symtab->parent, d->spel))){
+			/* allow functions redefined as decls and vice versa */
+			if(DECL_IS_FUNC(found) && !decl_equal(d, found, DECL_CMP_EXACT_MATCH)){
+				char buf[WHERE_BUF_SIZ];
+
+				DIE_AT(&d->where,
+						"incompatible redefinition of \"%s\"\n"
+						"%s: note: previous definition",
+						d->spel, where_str_r(buf, &found->where));
+			}
+		}
+	}
 
 	for(siter = s->codes; siter && *siter; siter++){
 		stmt *const st = *siter;
@@ -82,6 +100,22 @@ void gen_stmt_code(stmt *s)
 
 	for(titer = s->codes; titer && *titer; titer++)
 		gen_stmt(*titer);
+}
+
+void style_stmt_code(stmt *s)
+{
+	stmt **i_s;
+	decl **i_d;
+
+	stylef("{\n");
+
+	for(i_d = s->symtab->decls; i_d && *i_d; i_d++)
+		gen_style_decl(*i_d);
+
+	for(i_s = s->codes; i_s && *i_s; i_s++)
+		gen_stmt(*i_s);
+
+	stylef("\n}\n");
 }
 
 static int code_passable(stmt *s)

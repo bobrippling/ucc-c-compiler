@@ -685,88 +685,59 @@ void parse_static_assert(void)
 	}
 }
 
-stmt *parse_stmt_and_decls()
+static stmt *parse_stmt_and_decls(void)
 {
-	stmt *codes = STAT_NEW_NEST(code);
-	int last;
+	stmt *code_stmt = STAT_NEW_NEST(code);
 
-	current_scope = codes->symtab;
+	current_scope = code_stmt->symtab;
 
-	last = 0;
-	do{
-		size_t count = dynarray_count(current_scope->decls);
-		decl **decls;
-		stmt *sub;
+	parse_static_assert();
+
+	parse_decls_multi_type(
+			DECL_MULTI_ACCEPT_FUNC_DECL
+			| DECL_MULTI_ALLOW_STORE
+			| DECL_MULTI_ALLOW_ALIGNAS,
+			current_scope,
+			NULL);
+
+	if(curtok != token_close_block){
+		/* fine with a normal statement */
+		int at_decl = 0;
 
 		parse_static_assert();
 
-		parse_decls_multi_type(
-				  DECL_MULTI_ACCEPT_FUNC_DECL
-				| DECL_MULTI_ALLOW_STORE
-				| DECL_MULTI_ALLOW_ALIGNAS,
-				&current_scope->decls);
+		while(curtok != token_close_block && !(at_decl = parse_at_decl()))
+			dynarray_add(&code_stmt->codes, parse_stmt());
 
-		decls = &current_scope->decls[count];
-		sub = NULL;
+		if(at_decl){
+			if(code_stmt->codes){
+				stmt *nest = parse_stmt_and_decls();
 
-		if(decls && *decls){
-			/*
-			 * create an implicit block for the decl i.e.
-			 *
-			 * int i;              int i;
-			 * i = 5;              i = 5;
-			 *                     {
-			 * int j;   ---->        int j;
-			 * j = 2;                j = 2;
-			 *                     }
-			 */
-
-			/* optimise - initial-block-decls doesn't need a sub-block */
-			if(!codes->codes){
-				goto normal;
-			}else if(cc1_std < STD_C99){
-				static int warned = 0;
-				if(!warned){
-					warned = 1;
-					cc1_warn_at(&decls[0]->where, 0, 1, WARN_MIXED_CODE_DECLS,
-							"mixed code and declarations");
+				if(cc1_std < STD_C99){
+					static int warned = 0;
+					if(!warned){
+						warned = 1;
+						cc1_warn_at(&nest->where, 0, 1, WARN_MIXED_CODE_DECLS,
+								"mixed code and declarations");
+					}
 				}
-			}
 
-			/* new sub block */
-			if(curtok != token_close_block)
-				sub = parse_stmt_and_decls();
+				/* mark as internal - for duplicate checks */
+				nest->symtab->internal_nest = 1;
 
-			if(!sub){
-				/* decls aren't useless - { int i = f(); } - f called */
-				sub = STAT_NEW(code);
-			}
-
-			/* mark as internal - for duplicate checks */
-			sub->symtab->internal_nest = 1;
-
-			last = 1;
-		}else{
-normal:
-			if(curtok != token_close_block){
-				/* fine with a normal statement */
-				sub = parse_stmt();
+				dynarray_add(&code_stmt->codes, nest);
 			}else{
-				last = 1;
+				ICE("got another decl - should've been handled already");
 			}
 		}
+	}
 
-		if(sub)
-			dynarray_add(&codes->codes, sub);
-	}while(!last);
-
-
-	/*current_scope = codes->symtab->parent;
+	/*current_scope = code_stmt->symtab->parent;
 	 * don't - we use ->parent for scope leak checks
 	 */
 	current_scope = current_scope->parent;
 
-	return codes;
+	return code_stmt;
 }
 
 #ifdef SYMTAB_DEBUG
@@ -993,24 +964,23 @@ void parse(symtable_global *globals)
 
 	for(;;){
 		int cont = 0;
-		const int current = dynarray_count(current_scope->decls);
-		decl **new;
+		decl **new = NULL;
 
 		parse_decls_multi_type(
 				  DECL_MULTI_CAN_DEFAULT
 				| DECL_MULTI_ACCEPT_FUNC_CODE
 				| DECL_MULTI_ALLOW_STORE
 				| DECL_MULTI_ALLOW_ALIGNAS,
-				&current_scope->decls);
+				current_scope,
+				&new);
 
-		if(current_scope->decls
-		&& *(new = current_scope->decls + current))
-		{
+		if(new){
 			symtable_gasm **i;
 
 			for(i = last_gasms; i && *i; i++)
 				(*i)->before = *new;
-			dynarray_free(&last_gasms, NULL);
+			dynarray_free(symtable_gasm **, &last_gasms, NULL);
+			dynarray_free(decl **, &new, NULL);
 		}
 
 		/* global asm */
@@ -1026,7 +996,7 @@ void parse(symtable_global *globals)
 			break;
 	}
 
-	dynarray_free(&last_gasms, NULL);
+	dynarray_free(symtable_gasm **, &last_gasms, NULL);
 
 	EAT(token_eof);
 

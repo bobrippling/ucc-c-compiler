@@ -37,6 +37,7 @@ void fold_const_expr_cast(expr *e, consty *k)
 
 			}else{
 				const int sz = type_ref_size(e->tree_type, &e->where);
+				const intval_t old = piv->val;
 
 				/* TODO: disallow for ptrs/non-ints */
 
@@ -62,6 +63,11 @@ void fold_const_expr_cast(expr *e, consty *k)
 					ICW("can't const fold cast expr of type %s size %d",
 							type_ref_to_str(e->tree_type), sz);
 				}
+
+				if(e->expr_cast_implicit && old != piv->val)
+					WARN_AT(&e->where,
+							"implicit cast changes value from %" INTVAL_FMT_D " to %" INTVAL_FMT_D,
+							old, piv->val);
 			}
 #undef piv
 			break;
@@ -191,11 +197,11 @@ void fold_expr_cast(expr *e, symtable *stab)
 	fold_expr_cast_descend(e, stab, 1);
 }
 
-void gen_expr_cast(expr *e, symtable *stab)
+void gen_expr_cast(expr *e)
 {
 	type_ref *tto, *tfrom;
 
-	gen_expr(e->expr, stab);
+	gen_expr(e->expr);
 
 	tto = e->tree_type;
 	tfrom = e->expr->tree_type;
@@ -239,9 +245,8 @@ void gen_expr_cast(expr *e, symtable *stab)
 		out_normalise();
 }
 
-void gen_expr_str_cast(expr *e, symtable *stab)
+void gen_expr_str_cast(expr *e)
 {
-	(void)stab;
 	idt_printf("cast expr:\n");
 	gen_str_indent++;
 	print_expr(e->expr);
@@ -261,5 +266,8 @@ expr *expr_new_cast(type_ref *to, int implicit)
 	return e;
 }
 
-void gen_expr_style_cast(expr *e, symtable *stab)
-{ (void)e; (void)stab; /* TODO */ }
+void gen_expr_style_cast(expr *e)
+{
+	stylef("(%s)", type_ref_to_str(e->bits.tref));
+	gen_expr(e->expr);
+}

@@ -5,12 +5,17 @@
 #include <stdarg.h>
 #include <time.h>
 
-#include "macro.h"
-#include "preproc.h"
 #include "../util/util.h"
 #include "../util/dynarray.h"
 #include "../util/alloc.h"
 #include "../util/platform.h"
+#include "../util/std.h"
+
+#include "main.h"
+#include "macro.h"
+#include "preproc.h"
+#include "include.h"
+#include "directive.h"
 
 static const struct
 {
@@ -18,7 +23,7 @@ static const struct
 } initial_defs[] = {
 	/* standard */
 	{ "__unix__",       "1"  },
-	/* __STDC__ TODO */
+	{ "__STDC__",       "1"  },
 
 #define TYPE(ty, c) { "__" #ty "_TYPE__", #c  }
 
@@ -42,33 +47,41 @@ static const struct
 	{ NULL,             NULL }
 };
 
-const char *current_fname, *current_line_str;
+char *current_fname;
+char *current_line_str;
 int show_current_line = 1;
+int no_output = 0;
 
 char cpp_time[16], cpp_date[16];
 
-char **dirnames = NULL;
+char **cd_stack = NULL;
 
 int option_debug     = 0;
 int option_line_info = 1;
 
+void debug_push_line(char *s)
+{
+	debug_pop_line(); /* currently only a single level */
+	current_line_str = ustrdup(s);
+}
+
+void debug_pop_line(void)
+{
+	free(current_line_str), current_line_str = NULL;
+}
 
 void dirname_push(char *d)
 {
 	/*fprintf(stderr, "dirname_push(%s = %p)\n", d, d);*/
-	dynarray_add(&dirnames, d);
+	dynarray_add(&cd_stack, d);
 }
 
 char *dirname_pop()
 {
-	char *r = dynarray_pop(char *, &dirnames);
-	(void)r;
-	/*fprintf(stderr, "dirname_pop() = %s (%p)\n", r, r);
-	return r; TODO - free*/
-	return NULL;
+	return dynarray_pop(char *, &cd_stack);
 }
 
-void calctime(void)
+static void calctime(void)
 {
 	time_t t;
 	struct tm *now;
@@ -90,12 +103,18 @@ void calctime(void)
 
 int main(int argc, char **argv)
 {
-	const char *infname, *outfname;
+	char *infname, *outfname;
 	int ret = 0;
+	enum { NONE, MACROS, STATS } dump = NONE;
 	int i;
 	int platform_win32 = 0;
+	int freestanding = 0;
+	enum c_std std = STD_C99;
 
 	infname = outfname = NULL;
+
+	current_fname = "<builtin>";
+	current_line = 1;
 
 	for(i = 0; initial_defs[i].nam; i++)
 		macro_add(initial_defs[i].nam, initial_defs[i].val);
@@ -104,6 +123,7 @@ int main(int argc, char **argv)
 		case PLATFORM_x86_64:
 			macro_add("__LP64__", "1");
 			macro_add("__x86_64__", "1");
+			/* TODO: __i386__ for 32 bit */
 			break;
 
 		case PLATFORM_mipsel_32:
@@ -140,7 +160,7 @@ int main(int argc, char **argv)
 		switch(argv[i][1]){
 			case 'I':
 				if(argv[i][2])
-					macro_add_dir(argv[i]+2);
+					include_add_dir(argv[i]+2);
 				else
 					goto usage;
 				break;
@@ -157,7 +177,7 @@ int main(int argc, char **argv)
 					goto usage;
 				break;
 
-			case 'L':
+			case 'P':
 				option_line_info = 0;
 				break;
 
@@ -174,20 +194,20 @@ int main(int argc, char **argv)
 			{
 				char *arg = argv[i] + 2;
 				char *eq;
+
 				if(!*arg)
 					goto usage;
 
 				eq = strchr(arg, '=');
 				if(eq){
-					/* FIXME: this is hacky and doesn't
-					 * work for things like "-D531,31;5=a".
-					 * Should be pushed through the parser */
-					if(strchr(arg, '('))
-						die("can't handle function-like macros via -D yet");
+					char *directive;
 
-					*eq++ = '\0';
+					*eq = '\0';
 
-					macro_add(arg, eq);
+					directive = ustrprintf("define %s %s", arg, eq+1);
+
+					parse_internal_directive(directive);
+					free(directive);
 				}else{
 					macro_add(arg, "1"); /* -Dhello means #define hello 1 */
 				}
@@ -201,16 +221,49 @@ int main(int argc, char **argv)
 				break;
 
 			case 'd':
-				option_debug++;
+				if(argv[i][3])
+					goto usage;
+				switch(argv[i][2]){
+					case 'M':
+					case 'S':
+						/* list #defines */
+						dump = argv[i][2] == 'M' ? MACROS : STATS;
+						no_output = 1;
+						option_line_info = 0;
+						break;
+					default:
+						goto usage;
+				}
 				break;
 
 			case '\0':
 				/* we've been passed "-" as a filename */
 				break;
 
+			case 'f':
+				if(!strcmp(argv[i]+2, "freestanding"))
+					freestanding = 1;
+				else
+					goto usage;
+				break;
+
 			default:
-				goto usage;
+				if(std_from_str(argv[i], &std) == 0){
+					/* we have an std */
+				}else{
+					goto usage;
+				}
 		}
+	}
+
+	macro_add("__STDC_HOSTED__",  freestanding ? "0" : "1");
+	switch(std){
+		case STD_C89:
+		case STD_C90:
+			/* no */
+			break;
+		case STD_C99:
+			macro_add("__STDC_VERSION__", "199901L");
 	}
 
 	if(i < argc){
@@ -245,14 +298,18 @@ int main(int argc, char **argv)
 
 	current_fname = infname;
 
-	if(DEBUG_VERB < option_debug){
-		extern macro **macros;
-		for(i = 0; macros[i]; i++)
-			fprintf(stderr, "### macro \"%s\" = \"%s\"\n",
-					macros[i]->nam, macros[i]->val);
-	}
-
 	preprocess();
+
+	switch(dump){
+		case NONE:
+			break;
+		case MACROS:
+			macros_dump();
+			break;
+		case STATS:
+			macros_stats();
+			break;
+	}
 
 	free(dirname_pop());
 
@@ -269,8 +326,10 @@ usage:
 				"  -Dxyz[=abc]: Define xyz (to equal abc)\n"
 				"  -Uxyz: Undefine xyz\n"
 				"  -o output: output file\n"
-				"  -d: increase debug tracing\n"
-				"  -L: don't add #line directives\n"
+				"  -P: don't add #line directives\n"
+				"  -dM: debug output\n"
+				"  -dS: print macro usage stats\n"
+				"  -MM: generate Makefile dependencies\n"
 				, stderr);
 	return 1;
 }

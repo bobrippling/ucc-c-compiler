@@ -10,8 +10,8 @@
 #include "../util/alloc.h"
 #include "macros.h"
 #include "../util/dynarray.h"
-#include "typedef.h"
 #include "sue.h"
+#include "funcargs.h"
 
 sym *sym_new(decl *d, enum sym_type t)
 {
@@ -63,43 +63,38 @@ symtable *symtab_root(symtable *child)
 	return child;
 }
 
-static sym *symtab_search2(symtable *tab, const void *item, int (*cmp)(const void *, decl *), int descend)
+decl *symtab_search_d(symtable *tab, const char *spel)
 {
-	decl **diter;
+	decl **const decls = tab->decls;
+	int i;
 
-	for(diter = tab->decls; diter && *diter; diter++)
-		if(cmp(item, *diter))
-			return (*diter)->sym;
+	/* must search in reverse order - find the most
+	 * recent decl first (e.g. function prototype propagation)
+	 */
+	for(i = dynarray_count(decls) - 1; i >= 0; i--){
+		decl *d = decls[i];
+		if(d->spel && !strcmp(spel, d->spel))
+			return d;
+	}
 
-	if(tab->parent && (descend || tab->internal_nest))
-		return symtab_search2(tab->parent, item, cmp, descend);
+	if(tab->parent)
+		return symtab_search_d(tab->parent, spel);
 
 	return NULL;
+
 }
 
-static int spel_cmp(const void *test, decl *item)
+sym *symtab_search(symtable *tab, const char *sp)
 {
-	char *sp = item->spel;
-	return sp && item->sym && !strcmp(test, sp);
+	decl *d = symtab_search_d(tab, sp);
+	/* d->sym may be null if it's not been assigned yet */
+	return d ? d->sym : NULL;
 }
 
-sym *symtab_search(symtable *tab, const char *spel)
+int typedef_visible(symtable *stab, const char *spel)
 {
-	if(!spel)
-		ICE("symtab_search() with NULL spel");
-	return symtab_search2(tab, spel, spel_cmp, 1);
-}
-
-static int decl_cmp(const void *test, decl *item)
-{
-	return (const decl *)test == item;
-}
-
-sym *symtab_has(symtable *tab, decl *d)
-{
-	if(!d)
-		ICE("symtab_has() with NULL decl");
-	return symtab_search2(tab, d, decl_cmp, 1);
+	decl *d = symtab_search_d(stab, spel);
+	return d && (d->store & STORE_MASK_STORE) == store_typedef;
 }
 
 void symtab_add_args(

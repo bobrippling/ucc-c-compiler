@@ -37,8 +37,8 @@ enum funcargs_cmp funcargs_equal(
 		funcargs *args_to, funcargs *args_from,
 		int exact, const char *fspel)
 {
-	const int count_to = dynarray_count((void **)args_to->arglist);
-	const int count_from = dynarray_count((void **)args_from->arglist);
+	const int count_to = dynarray_count(args_to->arglist);
+	const int count_from = dynarray_count(args_from->arglist);
 
 	if((count_to   == 0 && !args_to->args_void)
 	|| (count_from == 0 && !args_from->args_void)){

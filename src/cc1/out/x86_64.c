@@ -15,7 +15,7 @@
 #include "common.h"
 #include "out.h"
 #include "lbl.h"
-#include "../pack.h"
+#include "../funcargs.h"
 
 
 #define NUM_FMT "%d"
@@ -318,7 +318,8 @@ void impl_pop_func_ret(type_ref *r)
 	(void)r;
 
 	/* FIXME: merge with mips */
-	impl_load(vtop, REG_RET);
+	/* v_to_reg since we don't handle lea/load ourselves */
+	v_to_reg2(vtop, REG_RET);
 	vpop();
 }
 
@@ -333,6 +334,9 @@ static const char *x86_cmp(struct flag_opts *flag)
 		OP(ge, "ge", "ae");
 		OP(gt, "g",  "a");
 #undef OP
+
+		case flag_overflow: return "o";
+		case flag_no_overflow: return "no";
 
 		/*case flag_z:  return "z";
 		case flag_nz: return "nz";*/
@@ -503,7 +507,8 @@ void impl_op(enum op_type op)
 			vstack_str_r(bufv, &vtop[-1]);
 
 			out_asm("%s%c %s, %s",
-					op == op_shiftl ? "shl" : "shr",
+					op == op_shiftl      ? "shl" :
+					type_ref_is_signed(vtop[-1].t) ? "sar" : "shr",
 					asm_type_ch(vtop[-1].t),
 					bufs, bufv);
 
@@ -726,25 +731,25 @@ void impl_op_unary(enum op_type op)
 	out_asm("%s %s", opc, vstack_str(vtop));
 }
 
-void impl_cast_load(type_ref *small, type_ref *big, int is_signed)
+void impl_cast_load(struct vstack *vp, type_ref *small, type_ref *big, int is_signed)
 {
 	/* we are always up-casting here, i.e. int -> long */
 	const unsigned int_sz = type_primitive_size(type_int);
 	char buf_small[VSTACK_STR_SZ];
 
-	switch(vtop->type){
+	switch(vp->type){
 		case STACK:
 		case STACK_SAVE:
 		case LBL:
 			/* something like movsx -8(%rbp), %rax */
-			vstack_str_r(buf_small, vtop);
+			vstack_str_r(buf_small, vp);
 			break;
 
 		case CONST:
 		case FLAG:
-			v_to_reg(vtop);
+			v_to_reg(vp);
 		case REG:
-			strcpy(buf_small, x86_reg_str(vtop->bits.reg, small));
+			strcpy(buf_small, x86_reg_str(vp->bits.reg, small));
 
 			if(!is_signed
 			&& type_ref_size(big,   NULL) > int_sz
@@ -764,8 +769,8 @@ void impl_cast_load(type_ref *small, type_ref *big, int is_signed)
 		const char *rstr_big = x86_reg_str(r, big);
 		out_asm("mov%cx %%%s, %%%s", "zs"[is_signed], buf_small, rstr_big);
 
-		vtop->type = REG;
-		vtop->bits.reg = r;
+		vp->type = REG;
+		vp->bits.reg = r;
 	}
 }
 
@@ -901,7 +906,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 
 		/* can't push non-word sized vtops */
 		if(vp->t && type_ref_size(vp->t, NULL) != platform_word_size())
-			out_cast(vp->t, type_ref_cached_VOID_PTR());
+			v_cast(vp, vp->t, type_ref_cached_VOID_PTR());
 
 		switch(vtop->type){
 			case STACK_SAVE:
@@ -944,6 +949,12 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 void impl_undefined(void)
 {
 	out_asm("ud2");
+}
+
+void impl_set_overflow(void)
+{
+	vtop->type = FLAG;
+	vtop->bits.flag.cmp = flag_overflow;
 }
 
 int impl_frame_ptr_to_reg(int nframes)

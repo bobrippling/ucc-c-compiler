@@ -52,7 +52,7 @@ int sue_enum_size(struct_union_enum_st *st)
 	return st->size = type_primitive_size(type_int);
 }
 
-int sue_size(struct_union_enum_st *st, const where *w)
+int sue_size(struct_union_enum_st *st, where *w)
 {
 	if(sue_incomplete(st))
 		DIE_AT(w, "%s %s is incomplete", sue_str(st), st->spel);
@@ -185,7 +185,7 @@ new_type:
 			sue_get_decls(members, &decls);
 
 			qsort(decls,
-					dynarray_count((void **)decls), sizeof *decls,
+					dynarray_count(decls), sizeof *decls,
 					decl_spel_cmp);
 
 			for(i = 0; decls && decls[i]; i++){
@@ -206,7 +206,7 @@ new_type:
 				}
 			}
 
-			dynarray_free((void ***)&decls, NULL);
+			dynarray_free(sue_member **, &decls, NULL);
 		}
 	}
 

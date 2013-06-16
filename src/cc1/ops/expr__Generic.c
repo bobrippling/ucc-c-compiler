@@ -54,16 +54,14 @@ void fold_expr__Generic(expr *e, symtable *stab)
 	e->tree_type = e->bits.generic.chosen->e->tree_type;
 }
 
-void gen_expr__Generic(expr *e, symtable *stab)
+void gen_expr__Generic(expr *e)
 {
-	gen_expr(e->bits.generic.chosen->e, stab);
+	gen_expr(e->bits.generic.chosen->e);
 }
 
-void gen_expr_str__Generic(expr *e, symtable *stab)
+void gen_expr_str__Generic(expr *e)
 {
 	struct generic_lbl **i;
-
-	(void)stab;
 
 	idt_printf("_Generic expr:\n");
 	gen_str_indent++;
@@ -116,5 +114,19 @@ expr *expr_new__Generic(expr *test, struct generic_lbl **lbls)
 	return e;
 }
 
-void gen_expr_style__Generic(expr *e, symtable *stab)
-{ (void)e; (void)stab; /* TODO */ }
+void gen_expr_style__Generic(expr *e)
+{
+	struct generic_lbl **i;
+
+	stylef("_Generic(");
+	gen_expr(e->expr);
+
+	for(i = e->bits.generic.list; i && *i; i++){
+		struct generic_lbl *l = *i;
+
+		idt_printf("%s: ",
+				l->t ? type_ref_to_str(l->t) : "default");
+
+		gen_expr(l->e);
+	}
+}

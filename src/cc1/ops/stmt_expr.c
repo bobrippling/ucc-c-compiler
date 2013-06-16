@@ -21,7 +21,7 @@ void gen_stmt_expr(stmt *s)
 	int pre_vcount = out_vcount();
 	char *sp;
 
-	gen_expr(s->expr, s->symtab);
+	gen_expr(s->expr);
 
 	if((fopt_mode & FOPT_ENABLE_ASM) == 0
 	|| !s->expr
@@ -41,6 +41,12 @@ void gen_stmt_expr(stmt *s)
 				s->expr->f_str(),
 				out_vcount(), pre_vcount);
 	}
+}
+
+void style_stmt_expr(stmt *s)
+{
+	gen_expr(s->expr);
+	stylef(";\n");
 }
 
 static int expr_passable(stmt *s)

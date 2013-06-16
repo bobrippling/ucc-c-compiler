@@ -34,8 +34,11 @@ struct
 	const char *arg;
 	int mask;
 } args[] = {
+	/* TODO - wall picks sensible, extra = more, everything = ~0 */
 	{ 0,  "all",             ~0 },
 	{ 0,  "extra",            0 },
+	{ 0,  "everything",      ~0 },
+
 
 	{ 0,  "mismatch-arg",    WARN_ARG_MISMATCH                      },
 	{ 0,  "array-comma",     WARN_ARRAY_COMMA                       },
@@ -67,6 +70,10 @@ struct
 	{ 0, "mixed-code-decls", WARN_MIXED_CODE_DECLS                  },
 
 	{ 0, "loss-of-precision", WARN_LOSS_PRECISION                   },
+
+	{ 0, "pad",               WARN_PAD },
+
+	{ 0, "tenative-init",     WARN_TENATIVE_INIT },
 
 	/* TODO: W_QUAL (ops/expr_cast) */
 
@@ -109,6 +116,9 @@ struct
 	{ 1,  "ms-extensions",    FOPT_MS_EXTENSIONS    },
 	{ 1,  "plan9-extensions", FOPT_PLAN9_EXTENSIONS },
 	{ 1,  "leading-underscore", FOPT_LEADING_UNDERSCORE },
+	{ 1,  "trapv",              FOPT_TRAPV },
+	{ 1,  "track-initial-fname", FOPT_TRACK_INITIAL_FNAM },
+	{ 1,  "freestanding",        FOPT_FREESTANDING },
 
 	{ 0,  NULL, 0 }
 };
@@ -133,19 +143,23 @@ enum warning warn_mode = ~(
 		| WARN_IMPLICIT_INT
 		| WARN_LOSS_PRECISION
 		| WARN_SIGN_COMPARE
+		| WARN_PAD
+		| WARN_TENATIVE_INIT
 		);
 
 enum fopt fopt_mode = FOPT_CONST_FOLD
                     | FOPT_SHOW_LINE
                     | FOPT_PIC
                     | FOPT_BUILTIN
-                    | FOPT_MS_EXTENSIONS;
+                    | FOPT_MS_EXTENSIONS
+										| FOPT_TRACK_INITIAL_FNAM;
 enum cc1_backend cc1_backend = BACKEND_ASM;
 
 int cc1_m32 = UCC_M32;
 int cc1_mstack_align; /* align stack to n, platform_word_size by default */
+int cc1_gdebug;
 
-enum cc1_std cc1_std = STD_C99;
+enum c_std cc1_std = STD_C99;
 
 int cc1_max_errors = 16;
 
@@ -322,7 +336,7 @@ int main(int argc, char **argv)
 	fname = NULL;
 
 	/* defaults */
-	cc1_mstack_align = platform_word_size();
+	cc1_mstack_align = log2f(platform_word_size());
 
 	for(i = 1; i < argc; i++){
 		if(!strcmp(argv[i], "-X")){
@@ -338,6 +352,9 @@ int main(int argc, char **argv)
 			else
 				goto usage;
 
+		}else if(!strcmp(argv[i], "-g")){
+			cc1_gdebug = 1;
+
 		}else if(!strcmp(argv[i], "-o")){
 			if(++i == argc)
 				goto usage;
@@ -350,36 +367,15 @@ int main(int argc, char **argv)
 				}
 			}
 
-		}else if(!strncmp(argv[i], "-std=", 5)){
-			const char *std = argv[i] + 5;
-
-			if(!strcmp(std, "c99"))
-				cc1_std = STD_C99;
-			else if(!strcmp(std, "c90"))
-std_c90: cc1_std = STD_C90;
-			else if(!strcmp(std, "c89"))
-				cc1_std = STD_C89;
-			else
-				ccdie(0, "-std argument \"%s\" not recognised", std);
-
-		}else if(!strcmp(argv[i], "-ansi")){
-			goto std_c90;
+		}else if(!strncmp(argv[i], "-std=", 5) || !strcmp(argv[i], "-ansi")){
+			if(std_from_str(argv[i], &cc1_std))
+				ccdie(0, "-std argument \"%s\" not recognised", argv[i]);
 
 		}else if(!strcmp(argv[i], "-w")){
 			warn_mode = WARN_NONE;
 
 		}else if(!strcmp(argv[i], "-Werror")){
 			werror = 1;
-
-		}else if(!strncmp(argv[i], "-m", 2)){
-			int n;
-
-			if(sscanf(argv[i] + 2, "%d", &n) != 1 || (n != 32 && n != 64)){
-				fprintf(stderr, "-m needs either 32 or 64\n");
-				goto usage;
-			}
-
-			cc1_m32 = n == 32;
 
 		}else if(argv[i][0] == '-'
 		&& (argv[i][1] == 'W' || argv[i][1] == 'f' || argv[i][1] == 'm')){
@@ -446,6 +442,16 @@ unrecognised:
 				goto usage;
 			}
 
+		}else if(!strncmp(argv[i], "-m", 2)){
+			int n;
+
+			if(sscanf(argv[i] + 2, "%d", &n) != 1 || (n != 32 && n != 64)){
+				fprintf(stderr, "-m needs either 32 or 64\n");
+				goto usage;
+			}
+
+			cc1_m32 = n == 32;
+
 		}else if(!fname){
 			fname = argv[i];
 		}else{
@@ -458,7 +464,7 @@ usage:
 	{
 		const unsigned new = powf(2, cc1_mstack_align);
 		if(new < platform_word_size())
-			ccdie(1, "stack alignment must be >= platform word size (2^%d)",
+			ccdie(0, "stack alignment must be >= platform word size (2^%d)",
 					(int)log2f(platform_word_size()));
 
 		cc1_mstack_align = new;

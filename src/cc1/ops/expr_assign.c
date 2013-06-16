@@ -26,6 +26,9 @@ int expr_is_lvalue(expr *e)
 	if(type_ref_is(e->tree_type, type_ref_func))
 		return 0;
 
+	if(type_ref_is(e->tree_type, type_ref_array))
+		return 0;
+
 	if(expr_kind(e, deref))
 		return 1;
 
@@ -34,9 +37,6 @@ int expr_is_lvalue(expr *e)
 
 	if(expr_kind(e, compound_lit))
 		return 1;
-
-	if(type_ref_is(e->tree_type, type_ref_array))
-		return 0;
 
 	if(expr_kind(e, identifier))
 		return 1;
@@ -60,11 +60,9 @@ void fold_expr_assign(expr *e, symtable *stab)
 		DIE_AT(&e->where, "assignment from void expression");
 
 	if(!expr_is_lvalue(e->lhs)){
-		DIE_AT(&e->lhs->where, "not an lvalue (%s%s%s)",
-				e->lhs->f_str(),
-				expr_kind(e->lhs, op) ? " - " : "",
-				expr_kind(e->lhs, op) ? op_to_str(e->lhs->op) : ""
-			);
+		DIE_AT(&e->lhs->where, "assignment to %s/%s - not an lvalue",
+				type_ref_to_str(e->lhs->tree_type),
+				e->lhs->f_str());
 	}
 
 	if(!e->assign_is_init && type_ref_is_const(e->lhs->tree_type))
@@ -99,26 +97,25 @@ void fold_expr_assign(expr *e, symtable *stab)
 	}
 }
 
-void gen_expr_assign(expr *e, symtable *stab)
+void gen_expr_assign(expr *e)
 {
 	UCC_ASSERT(!e->assign_is_post, "assign_is_post set for non-compound assign");
 
 	if(type_ref_is_s_or_u(e->tree_type)){
 		/* memcpy */
-		gen_expr(e->expr, stab);
+		gen_expr(e->expr);
 	}else{
 		/* optimisation: do this first, since rhs might also be a store */
-		gen_expr(e->rhs, stab);
-		lea_expr(e->lhs, stab);
+		gen_expr(e->rhs);
+		lea_expr(e->lhs);
 		out_swap();
 
 		out_store();
 	}
 }
 
-void gen_expr_str_assign(expr *e, symtable *stab)
+void gen_expr_str_assign(expr *e)
 {
-	(void)stab;
 	idt_printf("assignment, expr:\n");
 	idt_printf("assign to:\n");
 	gen_str_indent++;
@@ -152,5 +149,9 @@ expr *expr_new_assign_init(expr *to, expr *from)
 	return e;
 }
 
-void gen_expr_style_assign(expr *e, symtable *stab)
-{ (void)e; (void)stab; /* TODO */ }
+void gen_expr_style_assign(expr *e)
+{
+	gen_expr(e->lhs);
+	stylef(" = ");
+	gen_expr(e->rhs);
+}

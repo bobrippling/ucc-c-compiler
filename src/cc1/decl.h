@@ -104,17 +104,7 @@ struct type_ref
 		} cast;
 
 		/* ref_func */
-		struct funcargs
-		{
-			where where;
-
-			int args_void_implicit; /* f(){} - implicitly (void) */
-			int args_void; /* true if "spel(void);" otherwise if !args, then we have "spel();" */
-			int args_old_proto; /* true if f(a, b); where a and b are identifiers */
-			decl **arglist;
-			int variadic;
-			enum calling_conv conv;
-		} *func;
+		struct funcargs *func;
 
 		/* ref_block */
 		struct
@@ -168,16 +158,15 @@ struct decl
 	} *align;
 
 	int init_normalised;
+	int flag;
+
+	/* a reference to a previous prototype, used for attribute checks */
+	decl *proto;
 
 	sym *sym;
 
 	decl_init *init; /* initialiser - converted to an assignment for non-globals */
 	stmt *func_code;
-
-	int is_definition;
-	/* true if this is the definition of the decl - may have init or func_code */
-	int inline_only;
-	/* only inline code - no standalone obj-code generated */
 };
 
 const char *decl_asm_spel(decl *);
@@ -187,6 +176,7 @@ enum decl_cmp
 	DECL_CMP_EXACT_MATCH    = 1 << 0,
 	DECL_CMP_ALLOW_VOID_PTR = 1 << 1,
 	DECL_CMP_ALLOW_SIGNED_UNSIGNED = 1 << 2,
+	DECL_CMP_ALLOW_TENATIVE_ARRAY = 1 << 3,
 };
 
 decl        *decl_new(void);
@@ -216,7 +206,7 @@ const char  *decl_attr_to_str(decl_attr *da);
 
 unsigned decl_size(decl *);
 unsigned decl_align(decl *);
-unsigned type_ref_size(type_ref *, where const *from);
+unsigned type_ref_size(type_ref *, where *from);
 
 int   decl_equal(decl *a, decl *b, enum decl_cmp mode);
 int   type_ref_equal(type_ref *a, type_ref *b, enum decl_cmp mode);
@@ -234,9 +224,10 @@ int decl_conv_array_func_to_ptr(decl *d);
 type_ref *decl_is_decayed_array(decl *);
 type_ref *type_ref_is_decayed_array(type_ref *);
 
-decl_attr *decl_attr_present(decl_attr *, enum decl_attr_type);
+decl_attr *attr_present(decl_attr *, enum decl_attr_type);
 decl_attr *type_attr_present(type_ref *, enum decl_attr_type);
-decl_attr *decl_has_attr(decl *, enum decl_attr_type);
+decl_attr *decl_attr_present(decl *, enum decl_attr_type);
+decl_attr *expr_attr_present(expr *, enum decl_attr_type);
 
 const char *decl_to_str(decl *d);
 const char *decl_to_str_r(char buf[ucc_static_param DECL_STATIC_BUFSIZ], decl *);
@@ -247,9 +238,6 @@ const char *type_ref_to_str(type_ref *);
 const char *decl_store_to_str(const enum decl_storage);
 
 void decl_attr_free(decl_attr *a);
-
-/* decl_is_* */
-#define decl_is_definition(d) ((d)->init || (d)->func_code)
 
 #define DECL_IS_FUNC(d)   type_ref_is((d)->ref, type_ref_func)
 #define DECL_IS_ARRAY(d)  type_ref_is((d)->ref, type_ref_array)
@@ -276,7 +264,7 @@ enum type_qualifier type_ref_qual(const type_ref *);
 
 funcargs *type_ref_funcargs(type_ref *);
 
-unsigned type_ref_align(type_ref *, where const *from);
+unsigned type_ref_align(type_ref *, where *from);
 long type_ref_array_len(type_ref *);
 type_ref *type_ref_is(type_ref *, enum type_ref_type);
 type_ref *type_ref_is_type(type_ref *, enum type_primitive);
@@ -290,9 +278,6 @@ type_ref *type_ref_is_scalar(type_ref *);
 struct_union_enum_st *type_ref_is_s_or_u(type_ref *);
 struct_union_enum_st *type_ref_is_s_or_u_or_e(type_ref *);
 type_ref *type_ref_skip_casts(type_ref *);
-
-#define decl_is_void(d) decl_is_type(d, type_void)
-#define decl_is_bool(d) (decl_is_ptr(d) || decl_is_integral(d))
 
 /* note: returns static references */
 #define type_ref_cached_VOID()       type_ref_new_type(type_new_primitive(type_void))
