@@ -179,12 +179,12 @@ static struct calling_conv_desc *x86_conv_lookup(type_ref *fr)
 
 static int x86_caller_cleanup(type_ref *fr)
 {
-	const int cc = x86_conv_lookup(fr)->caller_cleanup;
+	const int cr_clean = x86_conv_lookup(fr)->caller_cleanup;
 
-	if(cc && type_ref_is_variadic_func(fr))
+	if(!cr_clean && type_ref_is_variadic_func(fr))
 		DIE_AT(&fr->where, "variadic functions can't be callee cleanup");
 
-	return cc;
+	return cr_clean;
 }
 
 static void x86_call_regs(type_ref *fr, int *pn, int **par)
