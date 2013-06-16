@@ -28,7 +28,10 @@ struct vstack
 	union
 	{
 		unsigned long val;
-		int reg;
+		struct vreg
+		{
+			unsigned short idx, is_float;
+		} reg;
 		int off_from_bp;
 		struct flag_opts
 		{
@@ -67,7 +70,7 @@ int  v_to_reg(struct vstack *conv);
 void v_to_reg2(struct vstack *from, int reg);
 
 
-int  v_unused_reg(int stack_as_backup);
+int  v_unused_reg(int stack_as_backup, int fp);
 void v_freeup_regp(struct vstack *);
 void v_freeup_reg(int r, int allowable_stack);
 void v_freeup_regs(int a, int b);

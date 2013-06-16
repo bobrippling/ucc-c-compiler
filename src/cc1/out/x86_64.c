@@ -777,6 +777,9 @@ void impl_cast_load(struct vstack *vp, type_ref *small, type_ref *big, int is_si
 void impl_i2f(struct vstack *vp, type_ref *t_i, type_ref *t_f)
 {
 	ICE("TODO");
+
+	int xmmr = v_unused_reg(1, 1 /* floating */);
+	out_asm("cvtsd2ss %%%s, %%%s", vstack_str_r());
 }
 
 void impl_f2i(struct vstack *vp, type_ref *t_f, type_ref *t_i)
