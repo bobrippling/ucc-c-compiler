@@ -344,7 +344,7 @@ void v_save_reg(struct vstack *vp)
 	vp->t = type_ref_ptr_depth_dec(vp->t, NULL);
 }
 
-void v_save_regs(int n_ignore)
+void v_save_regs(int n_ignore, type_ref *func_ty)
 {
 	struct vstack *p;
 	int n;
@@ -358,10 +358,28 @@ void v_save_regs(int n_ignore)
 	if(n_ignore >= n)
 		return;
 
+	/* save all registers,
+	 * except callee save regs unless we need to
+	 */
 	for(p = vstack; p < vtop - n_ignore; p++)
 		/* TODO: v_to_mem (__asm__ branch) */
-		if(p->type == REG || p->type == FLAG)
-			v_save_reg(p);
+		switch(p->type){
+			case FLAG:
+				v_to_reg(p);
+
+			case REG:
+				if(func_ty && impl_reg_is_callee_save(p->bits.reg, func_ty)){
+					out_comment("not saving reg %d - callee save", p->bits.reg);
+					break;
+				}
+				v_save_reg(p);
+
+			case CONST:
+			case STACK:
+			case STACK_SAVE:
+			case LBL:
+				break;
+		}
 }
 
 void v_freeup_reg(int r, int allowable_stack)

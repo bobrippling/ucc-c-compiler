@@ -36,6 +36,9 @@ int  impl_frame_ptr_to_reg(int nframes);
 int impl_reg_to_scratch(int);
 int impl_scratch_to_reg(int);
 
+/* callee save register bools */
+int impl_reg_is_callee_save(int r, type_ref *fr);
+
 enum p_opts
 {
 	P_NO_INDENT = 1 << 0,

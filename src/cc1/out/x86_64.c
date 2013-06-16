@@ -35,11 +35,14 @@ const struct asm_type_table asm_type_table[ASM_TABLE_LEN] = {
 	{ 8,  'q', "quad" },
 };
 
+/* TODO: each register has a class, smarter than this */
 static struct calling_conv_desc
 {
 	int caller_cleanup;
 	int n_call_regs;
 	int call_regs[6];
+	int n_callee_save_regs;
+	int callee_save_regs[6];
 } calling_convs[] = {
 	[conv_x64_sysv] = {
 		1,
@@ -48,6 +51,16 @@ static struct calling_conv_desc
 			X86_64_REG_RDI, X86_64_REG_RSI,
 			X86_64_REG_RDX, X86_64_REG_RCX,
 			X86_64_REG_R8,  X86_64_REG_R9
+		},
+		6,
+		{
+			X86_64_REG_RBX,
+			X86_64_REG_RBP,
+
+			X86_64_REG_R12,
+			X86_64_REG_R13,
+			X86_64_REG_R14,
+			X86_64_REG_R15
 		}
 	},
 
@@ -200,6 +213,17 @@ static int x86_func_nargs(type_ref *rf)
 	return dynarray_count(type_ref_funcargs(rf)->arglist);
 }
 
+int impl_reg_is_callee_save(int r, type_ref *fr)
+{
+	struct calling_conv_desc *ent = x86_conv_lookup(fr);
+	int i;
+
+	for(i = 0; i < ent->n_callee_save_regs; i++)
+		if(ent->callee_save_regs[i] == r)
+			return 1;
+
+	return 0;
+}
 
 int impl_n_call_regs(type_ref *rf)
 {
@@ -868,7 +892,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 	 * otherwise we may have a vstack entry in a call
 	 * register, which will mess everything up
 	 */
-	v_save_regs(ncleanup);
+	v_save_regs(ncleanup, r_func);
 
 	/* push remaining args onto the stack, left to right */
 	for(; i < nargs; i++){
