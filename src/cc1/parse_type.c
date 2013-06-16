@@ -183,14 +183,28 @@ static decl *parse_at_tdef(void)
 
 int parse_at_decl(void)
 {
+	/* this is similar to parse_btype() initial test logic */
 	switch(curtok){
-		case token_identifier:
-			return !!parse_at_tdef();
-
 		default:
 			return curtok_is_type_qual()
-				|| curtok_is_type_primitive()
-				|| curtok_is_decl_store();
+				|| curtok_is_decl_store()
+				|| curtok_is_type_primitive();
+
+		case token_signed:
+		case token_unsigned:
+		case token_inline:
+		case token__Noreturn:
+		case token_struct:
+		case token_union:
+		case token_enum:
+		case token_typeof:
+		case token___builtin_va_list:
+		case token_attribute:
+		case token__Alignas:
+			return 1;
+
+		case token_identifier:
+			return !!parse_at_tdef();
 	}
 }
 
