@@ -289,20 +289,6 @@ void impl_func_epilogue(type_ref *rf)
 	}
 }
 
-int impl_arg_offset(sym *s)
-{
-	/*
-	 * if it's less than N_CALL_ARGS, it's below rbp, otherwise it's above
-	 */
-	int n_call_regs;
-	x86_call_regs(s->owning_func, &n_call_regs, NULL);
-
-	return (s->offset < n_call_regs
-			? -(s->offset + 1)
-			:   s->offset - n_call_regs + 2)
-		* platform_word_size();
-}
-
 void impl_pop_func_ret(type_ref *r)
 {
 	(void)r;

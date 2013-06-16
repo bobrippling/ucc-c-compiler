@@ -1,6 +1,0 @@
-name mangling for stdcall and fastcall
-
-correct -m32 behaviour - need to set platform_word_size()
-(especially for implicit casts and calling conv checks)
-
-mips backend needs integrating, should just be a few signatures

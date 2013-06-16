@@ -573,7 +573,7 @@ void out_push_sym(sym *s)
 
 		case sym_arg:
 			vtop->type = STACK;
-			vtop->bits.off_from_bp = impl_arg_offset(s);
+			vtop->bits.off_from_bp = impl_arg_offset(s) * platform_word_size();
 			break;
 
 		case sym_global:
