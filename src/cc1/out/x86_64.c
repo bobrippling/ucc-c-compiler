@@ -382,6 +382,7 @@ void impl_lea(struct vstack *of, int reg)
 void impl_store(struct vstack *from, struct vstack *to)
 {
 	char buf[VSTACK_STR_SZ];
+	int ptr = 1;
 
 	/* from must be either a reg, value or flag */
 	if(from->type == FLAG && to->type == REG){
@@ -398,14 +399,15 @@ void impl_store(struct vstack *from, struct vstack *to)
 		case STACK_SAVE:
 			ICE("invalid store %d", to->type);
 
+		case LBL:
+			ptr = 0;
 		case REG:
 		case CONST:
 		case STACK:
-		case LBL:
 			out_asm("mov%c %s, %s",
 					asm_type_ch(from->t),
 					vstack_str_r(buf, from),
-					vstack_str_ptr(to, 1));
+					vstack_str_ptr(to, ptr));
 			break;
 	}
 }
