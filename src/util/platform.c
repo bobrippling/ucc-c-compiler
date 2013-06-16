@@ -54,7 +54,7 @@ unsigned platform_word_size()
 
 int platform_32bit(void)
 {
-	return 1; //platform_word_size() == 4;
+	return platform_word_size() == 4;
 }
 
 enum platform platform_type()
