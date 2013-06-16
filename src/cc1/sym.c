@@ -107,8 +107,15 @@ void symtab_add_args(
 		const char *func_spel, decl *d_func)
 {
 	if(fargs->arglist){
-		int i;
-		for(i = 0; fargs->arglist[i]; i++){
+		int i, nargs;
+
+		/* necessary as we assign sym offsets
+		 * in the order they are in the symtable
+		 * - FIXME: shouldn't base it on symtable order
+		 */
+		for(nargs = 0; fargs->arglist[nargs]; nargs++);
+
+		for(i = nargs - 1; i >= 0; i--){
 			if(!fargs->arglist[i]->spel){
 				DIE_AT(&fargs->where, "function \"%s\" has unnamed arguments (%d)",
 						func_spel, i + 1);
