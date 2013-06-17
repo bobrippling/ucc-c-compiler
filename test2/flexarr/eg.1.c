@@ -1,3 +1,5 @@
+// RUN: %ucc -o %t %s
+// RUN: %t | %output_check 1 2 1 2 3 4 5
 #include <stdarg.h>
 
 struct A
@@ -22,6 +24,9 @@ struct A *make(int first, ...)
 	va_end(l);
 
 	struct A *r = malloc(sizeof *r + i * sizeof r->vals[0]);
+
+	_Static_assert((sizeof *r + sizeof r->vals[0]) == 8, "bad size");
+
 	for(int j = 0; j < i; j++)
 		r->vals[j] = list[j];
 

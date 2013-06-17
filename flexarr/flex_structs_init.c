@@ -17,7 +17,7 @@ print(struct A *p)
 
 main()
 {
-	struct A x = {
+	static struct A x = {
 		2,
 		{
 			{ "hi", 5 },
