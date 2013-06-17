@@ -604,6 +604,12 @@ static decl_init **decl_init_brace_up_sue2(
 			if(i < n && current[i] != DYNARRAY_NULL)
 				replacing = current[i];
 
+			if(type_ref_is_incomplete_array(
+						mem->struct_member->ref))
+			{
+				WARN_AT(&this->where, "initialisation of flexible array (GNU)");
+			}
+
 			if(!braced_sub){
 				braced_sub = decl_init_brace_up_r(
 						replacing, iter,
