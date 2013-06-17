@@ -1,3 +1,4 @@
+// RUN: %ucc -fsyntax-only %s
 struct A
 {
 	char c;

@@ -1,3 +1,4 @@
+// RUN: %ocheck 8 %s
 struct s
 {
 	int n;
@@ -7,5 +8,5 @@ struct s
 
 main()
 {
-	f(sizeof(struct s) + sizeof(long[2]));
+	return sizeof(struct s);
 }

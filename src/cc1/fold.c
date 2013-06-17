@@ -247,7 +247,7 @@ normal:
 						DIE_AT(&d->where, "flexible array not at end of struct");
 					else if(sue->primitive != type_struct)
 						DIE_AT(&d->where, "flexible array in a %s", sue_str(sue));
-					else if(offset == 0) /* nothing currently */
+					else if(i == sue->members) /* nothing currently */
 						WARN_AT(&d->where, "struct with just a flex-array is an extension");
 
 					sz = 0; /* not counted in struct size */

@@ -1,3 +1,4 @@
+// RUN: %ocheck 1 %s
 struct F
 {
 	int n;
