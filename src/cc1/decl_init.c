@@ -943,6 +943,12 @@ void decl_init_create_assignments_base(
 		expr *zero;
 
 zero_init:
+		if(type_ref_is_incomplete_array(tfor)){
+			/* error caught elsewhere,
+			 * where we can print the location */
+			return;
+		}
+
 		zero = builtin_new_memset(
 				expr_new_addr(base),
 				0,
@@ -969,9 +975,7 @@ zero_init:
 		case decl_init_brace:
 		{
 			struct_union_enum_st *sue = type_ref_is_s_or_u(tfor);
-			/* type_ref_array_len() below:
-			 * we're already braced so there are no incomplete arrays */
-			const size_t n = sue ? dynarray_count(sue->members) : type_ref_array_len(tfor);
+			size_t n;
 			decl_init **i;
 			unsigned idx;
 
@@ -993,6 +997,23 @@ zero_init:
 				}
 			}
 
+			/* type_ref_array_len()
+			 * we're already braced so there are no incomplete arrays
+			 * except for C99 flexible arrays
+			 */
+			if(sue){
+				n = dynarray_count(sue->members);
+			}else if(type_ref_is_incomplete_array(tfor)){
+				n = dynarray_count(init->bits.ar.inits);
+
+				/* it's fine if there's nothing for it */
+				if(n > 0)
+					DIE_AT(&init->where, "non-static initialisation of flexible array");
+			}else{
+				n = type_ref_array_len(tfor);
+			}
+
+			/* check union */
 			if(sue && sue->primitive == type_union){
 				decl *smem;
 				expr *sue_base;
