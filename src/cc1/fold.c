@@ -235,6 +235,8 @@ int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 
 				if(sub_sue == sue)
 					DIE_AT(&d->where, "nested %s", sue_str(sue));
+				else if(sub_sue->flexarr && i[1])
+					WARN_AT(&d->where, "embedded struct with flex-array not final member");
 
 				sz = sue_size(sub_sue, &d->where);
 				align = sub_sue->align;
@@ -250,6 +252,7 @@ normal:
 					else if(i == sue->members) /* nothing currently */
 						WARN_AT(&d->where, "struct with just a flex-array is an extension");
 
+					sue->flexarr = 1;
 					sz = 0; /* not counted in struct size */
 				}else{
 					sz = decl_size(d);
