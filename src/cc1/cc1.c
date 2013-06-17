@@ -119,6 +119,7 @@ struct
 	{ 1,  "trapv",              FOPT_TRAPV },
 	{ 1,  "track-initial-fname", FOPT_TRACK_INITIAL_FNAM },
 	{ 1,  "freestanding",        FOPT_FREESTANDING },
+	{ 1,  "show-static-asserts", FOPT_SHOW_STATIC_ASSERTS },
 
 	{ 0,  NULL, 0 }
 };

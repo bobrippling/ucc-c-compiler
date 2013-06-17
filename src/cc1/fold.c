@@ -991,6 +991,11 @@ void fold(symtable *globs)
 
 			if(!k.bits.iv.val)
 				DIE_AT(&sa->e->where, "static assertion failure: %s", sa->s);
+
+			if(fopt_mode & FOPT_SHOW_STATIC_ASSERTS){
+				fprintf(stderr, "%s: static assert passed: %s-expr, msg: %s\n",
+						where_str(&sa->e->where), sa->e->f_str(), sa->s);
+			}
 		}
 	}
 
