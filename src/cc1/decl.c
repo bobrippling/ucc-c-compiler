@@ -560,7 +560,7 @@ unsigned type_ref_size(type_ref *r, where *from)
 				DIE_AT(from, "array of void");
 
 			if(!r->bits.array.size)
-				DIE_AT(from, "incomplete array size attempt");
+				DIE_AT(from, "array has an incomplete size");
 
 			const_fold_need_val(r->bits.array.size, &sz);
 
