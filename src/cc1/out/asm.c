@@ -66,8 +66,11 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 		init = NULL;
 
 	if(!init){
-		asm_declare_pad(f, type_ref_size(tfor, NULL),
-				"null init"/*, type_ref_to_str(tfor)*/);
+		/* don't initialise flex-arrays */
+		if(!type_ref_is_incomplete_array(tfor)){
+			asm_declare_pad(f, type_ref_size(tfor, NULL),
+					"null init"/*, type_ref_to_str(tfor)*/);
+		}
 
 	}else if((r = type_ref_is_type(tfor, type_struct))){
 		/* array of stmts for each member
@@ -86,6 +89,7 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 				mem++)
 		{
 			decl *d_mem = (*mem)->struct_member;
+			unsigned last_sz;
 
 			asm_declare_pad(f, d_mem->struct_offset - end_of_last, "struct padding");
 
@@ -94,18 +98,29 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 			if(i && !*++i)
 				i = NULL; /* reached end */
 
-			end_of_last = d_mem->struct_offset + type_ref_size(d_mem->ref, NULL);
+			if(type_ref_is_incomplete_array(d_mem->ref)){
+				UCC_ASSERT(!mem[1], "flex-arr not at end");
+			}else{
+				last_sz = type_ref_size(d_mem->ref, NULL);
+				end_of_last = d_mem->struct_offset + last_sz;
+			}
 		}
 
 	}else if((r = type_ref_is(tfor, type_ref_array))){
-		size_t i;
+		size_t i, len;
 		decl_init **p;
 		type_ref *next = type_ref_next(tfor);
 
 		UCC_ASSERT(init->type == decl_init_brace, "unbraced struct");
-		UCC_ASSERT(type_ref_is_complete(tfor), "incomplete array init");
 
-		for(i = type_ref_array_len(tfor), p = init->bits.ar.inits;
+		if(type_ref_is_incomplete_array(tfor)){
+			len = dynarray_count(init->bits.ar.inits);
+		}else{
+			UCC_ASSERT(type_ref_is_complete(tfor), "incomplete array/type init");
+			len = type_ref_array_len(tfor);
+		}
+
+		for(i = len, p = init->bits.ar.inits;
 				i > 0;
 				i--)
 		{
