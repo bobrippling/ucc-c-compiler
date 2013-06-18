@@ -456,7 +456,7 @@ static expr *expr_is_array_cast(expr *e)
 	return NULL;
 }
 
-static void op_bound(expr *e)
+void fold_check_bounds(expr *e, int chk_one_past_end)
 {
 	/* this could be in expr_deref, but it catches more in expr_op */
 	expr *array;
@@ -485,11 +485,17 @@ static void op_bound(expr *e)
 				idx.val = -idx.val;
 
 			/* index is allowed to be one past the end, i.e. idx.val == sz */
-			if((sintval_t)idx.val < 0 || idx.val > sz)
+			if((sintval_t)idx.val < 0
+			|| (chk_one_past_end ? idx.val > sz : idx.val == sz))
+			{
+				/* XXX: note */
+				char buf[WHERE_BUF_SIZ];
+
 				WARN_AT(&e->where,
-						"index %" INTVAL_FMT_D " out of bounds of array, size %ld",
-						idx.val, (long)sz);
-			/* TODO: "note: array here" */
+						"index %" INTVAL_FMT_D " out of bounds of array, size %ld\n"
+						"%s: note: array declared here",
+						idx.val, (long)sz, where_str_r(buf, &array->tree_type->where));
+			}
 #undef idx
 		}
 	}
@@ -579,7 +585,7 @@ void fold_expr_op(expr *e, symtable *stab)
 		e->tree_type = op_promote_types(e->op, op_to_str(e->op),
 				&e->lhs, &e->rhs, &e->where, stab);
 
-		op_bound(e);
+		fold_check_bounds(e, 1);
 		op_check_precedence(e);
 		op_unsigned_cmp_check(e);
 

@@ -235,6 +235,8 @@ int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 
 				if(sub_sue == sue)
 					DIE_AT(&d->where, "nested %s", sue_str(sue));
+				else if(sub_sue->flexarr && i[1])
+					WARN_AT(&d->where, "embedded struct with flex-array not final member");
 
 				sz = sue_size(sub_sue, &d->where);
 				align = sub_sue->align;
@@ -242,7 +244,19 @@ int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 			}else{
 normal:
 				align = decl_align(d);
-				sz = decl_size(d);
+				if(type_ref_is_incomplete_array(d->ref)){
+					if(i[1])
+						DIE_AT(&d->where, "flexible array not at end of struct");
+					else if(sue->primitive != type_struct)
+						DIE_AT(&d->where, "flexible array in a %s", sue_str(sue));
+					else if(i == sue->members) /* nothing currently */
+						WARN_AT(&d->where, "struct with just a flex-array is an extension");
+
+					sue->flexarr = 1;
+					sz = 0; /* not counted in struct size */
+				}else{
+					sz = decl_size(d);
+				}
 			}
 
 
@@ -991,6 +1005,11 @@ void fold(symtable *globs)
 
 			if(!k.bits.iv.val)
 				DIE_AT(&sa->e->where, "static assertion failure: %s", sa->s);
+
+			if(fopt_mode & FOPT_SHOW_STATIC_ASSERTS){
+				fprintf(stderr, "%s: static assert passed: %s-expr, msg: %s\n",
+						where_str(&sa->e->where), sa->e->f_str(), sa->s);
+			}
 		}
 	}
 
