@@ -244,6 +244,11 @@ static void override_warn(
 			where_str_r(buf, old));
 }
 
+static void excess_init(where *w, type_ref *ty)
+{
+	WARN_AT(w, "excess initialiser for '%s'", type_ref_to_str(ty));
+}
+
 static decl_init *decl_init_brace_up_scalar(
 		decl_init *current, init_iter *iter, type_ref *const tfor,
 		symtable *stab)
@@ -276,11 +281,8 @@ static decl_init *decl_init_brace_up_scalar(
 		it.pos = first_init->bits.ar.inits;
 
 		n = dynarray_count(it.pos);
-		if(n > 1){
-			WARN_AT(&first_init->where,
-					"%d excess initialiser%s for scalar",
-					n - 1, n == 2 ? "" : "s");
-		}
+		if(n > 1)
+			excess_init(&first_init->where, tfor);
 
 		return decl_init_brace_up_r(current, &it, tfor, stab);
 	}
@@ -712,6 +714,12 @@ static decl_init *decl_init_brace_up_aggregate(
 					&first->bits.ar.range_inits,
 					&it,
 					stab, arg1, arg2);
+
+			if(it.pos[0]){
+				/* we know we're in a brace,
+				 * so it.pos... etc aren't for anything else */
+				excess_init(&it.pos[0]->where, tfor);
+			}
 
 			free(old_subs);
 
