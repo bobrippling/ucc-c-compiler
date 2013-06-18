@@ -86,7 +86,7 @@ void print_decl_init(decl_init *di)
 					idt_printf("[%d] = <zero init>\n", i);
 				}else if(s->type == decl_init_copy){
 					idt_printf("[%d] = copy from range_store[%ld]\n",
-							i, DECL_INIT_COPY_IDX(s, di));
+							i, (long)DECL_INIT_COPY_IDX(s, di));
 				}else{
 					const int need_brace = s->type == decl_init_brace;
 

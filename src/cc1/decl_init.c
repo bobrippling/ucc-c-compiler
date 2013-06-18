@@ -322,7 +322,8 @@ static void range_store_add(
 		if(ent != DYNARRAY_NULL && ent->type == decl_init_copy){
 			/* this entry's copy points into range_store,
 			 * and will need updating */
-			dynarray_add(&offsets, 1 + DECL_INIT_COPY_IDX_INITS(ent, *range_store));
+			dynarray_add(&offsets,
+					(long)(1 + DECL_INIT_COPY_IDX_INITS(ent, *range_store)));
 
 			/* +1 because dynarray doesn't allow NULL */
 		}

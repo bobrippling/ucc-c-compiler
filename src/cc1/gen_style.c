@@ -35,7 +35,8 @@ void gen_style_dinit(decl_init *di)
 				if(s == DYNARRAY_NULL){
 					stylef("0");
 				}else if(s->type == decl_init_copy){
-					stylef("<copy from store %ld>", DECL_INIT_COPY_IDX(s, di));
+					stylef("<copy from store %ld>",
+							(long)DECL_INIT_COPY_IDX(s, di));
 				}else{
 					gen_style_dinit(s);
 				}
