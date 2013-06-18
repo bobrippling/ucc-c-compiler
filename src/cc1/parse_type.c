@@ -637,6 +637,8 @@ funcargs *parse_func_arglist()
 
 			/* continue loop */
 			argdecl = parse_decl_single(flags);
+			if(!argdecl)
+				DIE_AT(NULL, "type expected (got %s)", token_to_str(curtok));
 		}
 
 fin:;
