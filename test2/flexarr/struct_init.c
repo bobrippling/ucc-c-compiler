@@ -1,3 +1,6 @@
+// RUN: %ucc -o %t %s
+// RUN: %t | %output_check '[0] = hi 5' '[1] = yo 2'
+// RUN: %t; [ $? -eq 8 ]
 struct A
 {
 	int n;
