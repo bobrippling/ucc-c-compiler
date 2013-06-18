@@ -70,12 +70,15 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 		if(!type_ref_is_incomplete_array(tfor)){
 			asm_declare_pad(f, type_ref_size(tfor, NULL),
 					"null init"/*, type_ref_to_str(tfor)*/);
+		}else{
+			fprintf(f, "# flex array init skipped\n");
 		}
 
 	}else if((r = type_ref_is_type(tfor, type_struct))){
 		/* array of stmts for each member
 		 * assumes the ->bits.inits order is member order
 		 */
+		struct_union_enum_st *const sue = r->bits.type->sue;
 		sue_member **mem;
 		decl_init **i;
 		int end_of_last = 0;
@@ -84,12 +87,11 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 		i = init->bits.ar.inits;
 
 		/* iterate using members, not inits */
-		for(mem = r->bits.type->sue->members;
+		for(mem = sue->members;
 				mem && *mem;
 				mem++)
 		{
 			decl *d_mem = (*mem)->struct_member;
-			unsigned last_sz;
 
 			asm_declare_pad(f, d_mem->struct_offset - end_of_last, "struct padding");
 
@@ -101,10 +103,15 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 			if(type_ref_is_incomplete_array(d_mem->ref)){
 				UCC_ASSERT(!mem[1], "flex-arr not at end");
 			}else{
-				last_sz = type_ref_size(d_mem->ref, NULL);
+				unsigned last_sz = type_ref_size(d_mem->ref, NULL);
 				end_of_last = d_mem->struct_offset + last_sz;
 			}
 		}
+
+		/* need to pad to struct size */
+		asm_declare_pad(f,
+				sue_size(sue, NULL) - end_of_last,
+				"struct tail");
 
 	}else if((r = type_ref_is(tfor, type_ref_array))){
 		size_t i, len;
