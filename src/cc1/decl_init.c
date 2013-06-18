@@ -271,7 +271,17 @@ static decl_init *decl_init_brace_up_scalar(
 
 	if(first_init->type == decl_init_brace){
 		init_iter it;
+		unsigned n;
+
 		it.pos = first_init->bits.ar.inits;
+
+		n = dynarray_count(it.pos);
+		if(n > 1){
+			WARN_AT(&first_init->where,
+					"%d excess initialiser%s for scalar",
+					n - 1, n == 2 ? "" : "s");
+		}
+
 		return decl_init_brace_up_r(current, &it, tfor, stab);
 	}
 
