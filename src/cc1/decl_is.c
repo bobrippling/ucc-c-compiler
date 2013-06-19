@@ -237,7 +237,7 @@ unsigned type_ref_align(type_ref *r, where *from)
 	}
 
 	if((test = type_ref_is(r, type_ref_type)))
-		return type_size(test->bits.type, from);
+		return type_align(test->bits.type, from);
 
 	if((test = type_ref_is(r, type_ref_array)))
 		return type_ref_align(test->ref, from);
@@ -480,14 +480,10 @@ int type_ref_is_const(type_ref *r)
 
 long type_ref_array_len(type_ref *r)
 {
-	intval iv;
-
 	r = type_ref_is(r, type_ref_array);
 
 	UCC_ASSERT(r, "not an array");
 	UCC_ASSERT(r->bits.array.size, "array len of []");
 
-	const_fold_need_val(r->bits.array.size, &iv);
-
-	return iv.val;
+	return const_fold_val(r->bits.array.size);
 }

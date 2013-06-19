@@ -187,6 +187,14 @@ static void fold_memset(expr *e, symtable *stab)
 {
 	FOLD_EXPR(e->lhs, stab);
 
+	if(!expr_is_addressable(e->lhs)){
+		/* this is pretty much an ICE, except it may be
+		 * user-callable in the future
+		 */
+		DIE_AT(&e->where, "can't memset %s - not addressable",
+				e->lhs->f_str());
+	}
+
 	if(e->bits.builtin_memset.len == 0)
 		WARN_AT(&e->where, "zero size memset");
 
@@ -212,7 +220,8 @@ static void builtin_gen_memset(expr *e)
 	if((textra = rem ? type_ref_cached_MAX_FOR(rem) : NULL))
 		textrap = type_ref_new_ptr(textra, qual_none);
 
-	gen_expr(e->lhs);
+	/* works fine for bitfields - struct lea acts appropriately */
+	lea_expr(e->lhs);
 
 	out_change_type(type_ref_new_ptr(tzero, qual_none));
 

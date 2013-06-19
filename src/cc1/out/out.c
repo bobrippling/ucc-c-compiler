@@ -13,6 +13,7 @@
 #include "../cc1.h"
 #include "asm.h"
 #include "../pack.h"
+#include "../defs.h"
 
 #define v_check_type(t) if(!t) t = type_ref_cached_VOID_PTR()
 
@@ -143,8 +144,11 @@ void out_dump(void)
 	int i;
 
 	for(i = 0; &vstack[i] <= vtop; i++)
-		fprintf(stderr, "vstack[%d] = { %d, %d }\n",
-				i, vstack[i].type, vstack[i].bits.reg);
+		fprintf(stderr,
+				"vstack[%d] = { .type = %d, .reg = %d, "
+				".bitfield = { .nbits = %u, .off = %u } }\n",
+				i, vstack[i].type, vstack[i].bits.reg,
+				vstack[i].bitfield.nbits, vstack[i].bitfield.off);
 }
 
 void vswap(void)
@@ -402,17 +406,7 @@ void out_push_iv(type_ref *t, intval *iv)
 
 	vtop->type = CONST;
 	vtop->bits.val = iv->val;
-}
-
-const char *v_val_str(struct vstack *vp)
-{
-	static char buf[64];
-
-	UCC_ASSERT(vp->type == CONST, "val?");
-
-	intval_str(buf, sizeof buf, vp->bits.val, type_ref_is_signed(vp->t));
-
-	return buf;
+	impl_load_iv(vtop);
 }
 
 void out_push_i(type_ref *t, int i)
@@ -484,12 +478,87 @@ void out_pulltop(int i)
 	memcpy_safe(vtop, &tmp);
 }
 
+/* expects vtop to be the value to merge with,
+ * and &vtop[-1] to be a pointer to the word of memory */
+void bitfield_scalar_merge(const struct vbitfield *const bf)
+{
+	/* load in,
+	 * &-out where we want our value (to 0),
+	 * &-out our value (so we don't affect other bits),
+	 * |-in our new value,
+	 * store
+	 */
+
+	type_ref *const ty = type_ref_ptr_depth_dec(vtop[-1].t, NULL);
+	unsigned long mask_leading_1s, mask_back_0s, mask_rm;
+
+	/* coerce vtop to a vtop[-1] type */
+	out_cast(ty);
+
+	/* load the pointer to the store, forgetting the bitfield */
+	/* stack: store, val */
+	out_swap();
+	out_dup();
+	vtop->bitfield.nbits = 0;
+	/* stack: val, store, store-less-bitfield */
+
+	/* load the bitfield without using bitfield semantics */
+	out_deref();
+	/* stack: val, store, orig-val */
+	out_pulltop(2);
+	/* stack: store, orig-val, val */
+	out_swap();
+	/* stack: store, val, orig-val */
+
+	/* e.g. width of 3, offset of 2:
+	 * 111100000
+	 *     ^~~^~
+	 *     |  |- offset
+	 *     +- width
+	 */
+
+	mask_leading_1s = -1UL << (bf->off + bf->nbits);
+
+	/* e.g. again:
+	 *
+	 * -1 = 11111111
+	 * << = 11111100
+	 * ~  = 00000011
+	 */
+	mask_back_0s = ~(-1UL << bf->off);
+
+	/* | = 111100011 */
+	mask_rm = mask_leading_1s | mask_back_0s;
+
+	/* &-out our value */
+	out_push_i(ty, mask_rm);
+	out_comment("bitmask/rm = %#lx", mask_rm);
+	out_op(op_and);
+
+	/* stack: store, val, orig-val-masked */
+	/* bring the value to the top */
+	out_swap();
+
+	/* mask and shift our value up */
+	out_push_i(ty, ~(-1UL << bf->nbits));
+	out_op(op_and);
+
+	out_push_i(ty, bf->off);
+	out_op(op_shiftl);
+
+	/* | our value in with the dereferenced store value */
+	out_op(op_or);
+}
+
 void out_store()
 {
 	struct vstack *store, *val;
 
 	val   = &vtop[0];
 	store = &vtop[-1];
+
+	if(store->bitfield.nbits)
+		bitfield_scalar_merge(&store->bitfield);
 
 	impl_store(val, store);
 
@@ -634,6 +703,8 @@ void out_op(enum op_type op)
 			case op_minus:
 			case op_or:
 			case op_xor:
+			case op_shiftl: /* if we're shifting 0, or shifting _by_ zero, noop */
+			case op_shiftr:
 				if(t_const->bits.val == 0)
 					goto ignore_const;
 			default:
@@ -646,8 +717,7 @@ void out_op(enum op_type op)
 				break;
 
 			case op_and:
-				/* FIXME/signed: signed check */
-				if((long)t_const->bits.val == -1)
+				if((sintval_t)t_const->bits.val == -1)
 					goto ignore_const;
 				break;
 		}
@@ -725,6 +795,37 @@ def:
 	}
 }
 
+void out_set_bitfield(unsigned off, unsigned nbits)
+{
+	vtop->bitfield.off   = off;
+	vtop->bitfield.nbits = nbits;
+}
+
+void bitfield_to_scalar(const struct vbitfield *bf)
+{
+	type_ref *const ty = vtop->t;
+
+	/* shift right, then mask */
+	out_push_i(ty, bf->off);
+	out_op(op_shiftr);
+
+	out_push_i(ty, ~(-1UL << bf->nbits));
+	out_op(op_and);
+
+	/* if it's signed we need to sign extend
+	 * using a signed right shift to copy its MSB
+	 */
+	if(type_ref_is_signed(ty)){
+		const unsigned ty_sz = type_ref_size(ty, NULL);
+		const unsigned nshift = CHAR_BIT * ty_sz - bf->nbits;
+
+		out_push_i(ty, nshift);
+		out_op(op_shiftl);
+		out_push_i(ty, nshift);
+		out_op(op_shiftr);
+	}
+}
+
 void v_deref_decl(struct vstack *vp)
 {
 	/* XXX: memleak */
@@ -733,6 +834,7 @@ void v_deref_decl(struct vstack *vp)
 
 void out_deref()
 {
+	const struct vbitfield bf = vtop->bitfield;
 #define DEREF_CHECK
 #ifdef DEREF_CHECK
 	type_ref *const vtop_t = vtop->t;
@@ -779,6 +881,9 @@ void out_deref()
 #ifdef DEREF_CHECK
 	UCC_ASSERT(vtop_t != vtop->t, "no depth change");
 #endif
+
+	if(bf.nbits)
+		bitfield_to_scalar(&bf);
 }
 
 
@@ -822,15 +927,17 @@ void out_op_unary(enum op_type op)
 	impl_op_unary(op);
 }
 
-void out_cast(type_ref *from, type_ref *to)
+void out_cast(type_ref *to)
 {
-	v_cast(vtop, from, to);
+	v_cast(vtop, to);
 }
 
-void v_cast(struct vstack *vp, type_ref *from, type_ref *to)
+void v_cast(struct vstack *vp, type_ref *to)
 {
 	/* casting vtop - don't bother if it's a constant, just change the size */
 	if(vp->type != CONST){
+		type_ref *from = vp->t;
+
 		int szfrom = asm_type_size(from),
 				szto   = asm_type_size(to);
 
@@ -857,6 +964,14 @@ void out_change_type(type_ref *t)
 	v_check_type(t);
 	/* XXX: memleak */
 	vtop->t = t;
+
+	/* we can't change type for large integer values,
+	 * they need truncating
+	 */
+	UCC_ASSERT(
+			vtop->type != CONST
+			|| !intval_is_64_bit(vtop->bits.val, vtop->t),
+			"can't %s for large constant %" INTVAL_FMT_X, __func__, vtop->bits.val);
 }
 
 void v_save_regs()

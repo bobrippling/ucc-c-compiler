@@ -44,6 +44,51 @@ int expr_is_lvalue(expr *e)
 	return 0;
 }
 
+void bitfield_trunc_check(decl *mem, expr *from)
+{
+	consty k;
+
+	if(expr_kind(from, cast)){
+		/* we'll warn about bitfield truncation, prevent warnings
+		 * about cast truncation
+		 */
+		from->expr_cast_implicit = 0;
+	}
+
+	const_fold(from, &k);
+
+	if(k.type == CONST_VAL){
+		const sintval_t kexp = k.bits.iv.val;
+		/* highest may be -1 - k.bits.iv.val is zero */
+		const int highest = val_highest_bit(k.bits.iv.val);
+		const int is_signed = type_ref_is_signed(mem->field_width->tree_type);
+
+		const_fold(mem->field_width, &k);
+
+		UCC_ASSERT(k.type == CONST_VAL, "bitfield size not val?");
+
+		if(highest > (sintval_t)k.bits.iv.val
+		|| (is_signed && highest == (sintval_t)k.bits.iv.val))
+		{
+			sintval_t kexp_to = kexp & ~(-1UL << k.bits.iv.val);
+
+			WARN_AT(&from->where,
+					"truncation in store to bitfield alters value: "
+					"%" INTVAL_FMT_D " -> %" INTVAL_FMT_D,
+					kexp, kexp_to);
+		}
+	}
+}
+
+void expr_must_lvalue(expr *e)
+{
+	if(!expr_is_lvalue(e)){
+		DIE_AT(&e->where, "assignment to %s/%s - not an lvalue",
+				type_ref_to_str(e->tree_type),
+				e->f_str());
+	}
+}
+
 void fold_expr_assign(expr *e, symtable *stab)
 {
 	sym *lhs_sym = NULL;
@@ -59,11 +104,7 @@ void fold_expr_assign(expr *e, symtable *stab)
 	if(type_ref_is_type(e->rhs->tree_type, type_void))
 		DIE_AT(&e->where, "assignment from void expression");
 
-	if(!expr_is_lvalue(e->lhs)){
-		DIE_AT(&e->lhs->where, "assignment to %s/%s - not an lvalue",
-				type_ref_to_str(e->lhs->tree_type),
-				e->lhs->f_str());
-	}
+	expr_must_lvalue(e->lhs);
 
 	if(!e->assign_is_init && type_ref_is_const(e->lhs->tree_type))
 		DIE_AT(&e->where, "can't modify const expression %s", e->lhs->f_str());
@@ -87,6 +128,19 @@ void fold_expr_assign(expr *e, symtable *stab)
 
 	/* do the typecheck after the equal-check, since the typecheck inserts casts */
 	fold_insert_casts(e->lhs->tree_type, &e->rhs, stab, &e->where, "assignment");
+
+	/* the only way to get a value into a bitfield (aside from memcpy / indirection) is via this
+	 * hence we're fine doing the truncation check here
+	 */
+	{
+		decl *mem;
+		if(expr_kind(e->lhs, struct)
+		&& (mem = e->lhs->bits.struct_mem.d)->field_width)
+		{
+			bitfield_trunc_check(mem, e->rhs);
+		}
+	}
+
 
 	if(type_ref_is_s_or_u(e->tree_type)){
 		e->expr = builtin_new_memcpy(

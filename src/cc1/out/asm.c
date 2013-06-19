@@ -15,6 +15,18 @@
 #include "../const.h"
 #include "../gen_asm.h"
 #include "../decl_init.h"
+#include "../pack.h"
+
+#define ASSERT_SCALAR(di)                  \
+	UCC_ASSERT(di->type == decl_init_scalar, \
+			"scalar expected for bitfield init")
+
+struct bitfield_val
+{
+	intval_t val;
+	unsigned offset;
+	unsigned width;
+};
 
 int asm_table_lookup(type_ref *r)
 {
@@ -58,6 +70,76 @@ static void asm_declare_pad(FILE *f, unsigned pad, const char *why)
 		fprintf(f, ".space %u # %s\n", pad, why);
 }
 
+static void asm_declare_init_type(FILE *f, type_ref *ty)
+{
+	fprintf(f, ".%s ", asm_type_directive(ty));
+}
+
+static void asm_declare_init_bitfields(
+		FILE *f,
+		struct bitfield_val *vals, unsigned n,
+		type_ref *ty)
+{
+#define BITFIELD_DBG(...) /*fprintf(stderr, __VA_ARGS__)*/
+	intval_t v = 0;
+	unsigned i;
+
+	BITFIELD_DBG("bitfield out -- new\n");
+	for(i = 0; i < n; i++){
+		intval_t this = intval_truncate_bits(
+				vals[i].val, vals[i].width);
+
+		BITFIELD_DBG("bitfield out: 0x%llx << %u gives ",
+				this, vals[i].offset);
+
+		v |= this << vals[i].offset;
+
+		BITFIELD_DBG("0x%llx\n", v);
+	}
+
+	BITFIELD_DBG("bitfield done with 0x%llx\n", v);
+
+	asm_declare_init_type(f, ty);
+	fprintf(f, "%" INTVAL_FMT_D "\n", v);
+}
+
+static void bitfields_out(
+		FILE *f,
+		struct bitfield_val *bfs, unsigned *pn,
+		type_ref *ty)
+{
+	asm_declare_init_bitfields(f, bfs, *pn, ty);
+	*pn = 0;
+}
+
+static void bitfield_val_set(
+		struct bitfield_val *bfv, expr *kval, expr *field_w)
+{
+	bfv->val = kval ? const_fold_val(kval) : 0;
+	bfv->offset = 0;
+	bfv->width = const_fold_val(field_w);
+}
+
+static struct bitfield_val *bitfields_add(
+		struct bitfield_val *bfs, unsigned *pn,
+		decl *mem, decl_init *di)
+{
+	const unsigned i = *pn;
+
+	bfs = urealloc1(bfs, (*pn += 1) * sizeof *bfs);
+
+	if(di)
+		ASSERT_SCALAR(di);
+
+	bitfield_val_set(&bfs[i],
+			di ? di->bits.expr : NULL,
+			mem->field_width);
+
+	bfs[i].offset = mem->struct_offset_bitfield;
+
+	return bfs;
+}
+
 static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 {
 	type_ref *r;
@@ -82,6 +164,9 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 		sue_member **mem;
 		decl_init **i;
 		int end_of_last = 0;
+		struct bitfield_val *bitfields = NULL;
+		unsigned nbitfields = 0;
+		decl *first_bf = NULL;
 
 		UCC_ASSERT(init->type == decl_init_brace, "unbraced struct");
 		i = init->bits.ar.inits;
@@ -92,12 +177,44 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 				mem++)
 		{
 			decl *d_mem = (*mem)->struct_member;
+			int inc_iter = 1;
 
-			asm_declare_pad(f, d_mem->struct_offset - end_of_last, "struct padding");
+			/* only pad if we're not on a bitfield or we're on the first bitfield */
+			if(!d_mem->field_width || !first_bf)
+				asm_declare_pad(f, d_mem->struct_offset - end_of_last, "struct padding");
 
-			asm_declare_init(f, i ? *i : NULL, d_mem->ref);
+			if(d_mem->field_width){
+				decl_init *di_to_use = NULL;
 
-			if(i && !*++i)
+				if(!first_bf || d_mem->first_bitfield){
+					if(first_bf){
+						/* next bitfield group - store the current */
+						bitfields_out(f, bitfields, &nbitfields, first_bf->ref);
+					}
+					first_bf = d_mem;
+				}
+
+				if(d_mem->spel && i){
+					if((di_to_use = *i) == DYNARRAY_NULL)
+						di_to_use = NULL;
+				}else{
+					inc_iter = 0;
+				}
+
+				bitfields = bitfields_add(
+						bitfields, &nbitfields,
+						d_mem, di_to_use);
+
+			}else{
+				if(nbitfields){
+					bitfields_out(f, bitfields, &nbitfields, first_bf->ref);
+					first_bf = NULL;
+				}
+
+				asm_declare_init(f, i ? *i : NULL, d_mem->ref);
+			}
+
+			if(inc_iter && i && !*++i)
 				i = NULL; /* reached end */
 
 			if(type_ref_is_incomplete_array(d_mem->ref)){
@@ -107,6 +224,10 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 				end_of_last = d_mem->struct_offset + last_sz;
 			}
 		}
+
+		if(nbitfields)
+			bitfields_out(f, bitfields, &nbitfields, first_bf->ref);
+		free(bitfields);
 
 		/* need to pad to struct size */
 		asm_declare_pad(f,
@@ -151,21 +272,33 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 		 * then NULL/end of the init-array */
 		struct_union_enum_st *sue = type_ref_is_s_or_u(r);
 		unsigned i, sub = 0;
+		decl_init *u_init;
 
 		UCC_ASSERT(init->type == decl_init_brace, "brace init expected");
 
 		/* skip the empties until we get to one */
 		for(i = 0; init->bits.ar.inits[i] == DYNARRAY_NULL; i++);
 
-		if(init->bits.ar.inits[i]){
-			/* null union init */
-			type_ref *mem_r = sue->members[i]->struct_member->ref;
+		if((u_init = init->bits.ar.inits[i])){
+			decl *mem = sue->members[i]->struct_member;
+			type_ref *mem_r = mem->ref;
 
 			/* union init, member at index `i' */
-			asm_declare_init(f, init->bits.ar.inits[i], mem_r);
+			if(mem->field_width){
+				/* we know it's integral */
+				struct bitfield_val bfv;
+
+				ASSERT_SCALAR(u_init);
+
+				bitfield_val_set(&bfv, u_init->bits.expr, mem->field_width);
+
+				asm_declare_init_bitfields(f, &bfv, 1, mem_r);
+			}else{
+				asm_declare_init(f, u_init, mem_r);
+			}
 
 			sub = type_ref_size(mem_r, NULL);
-		}
+		} /* else null union init */
 
 		asm_declare_pad(f,
 				type_ref_size(r, NULL) - sub,
@@ -192,7 +325,7 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 		}
 
 		/* use tfor, since "abc" has type (char[]){(int)'a', (int)'b', ...} */
-		fprintf(f, ".%s ", asm_type_directive(tfor));
+		asm_declare_init_type(f, tfor);
 		static_addr(exp);
 		fputc('\n', f);
 	}

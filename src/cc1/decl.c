@@ -229,12 +229,11 @@ type_ref *type_ref_new_cast_add(type_ref *to, enum type_qualifier add)
 
 type_ref *type_ref_new_cast_signed(type_ref *to, int is_signed)
 {
-	type_ref *r = type_ref_new_cast_is_additive(to, qual_none, 1);
-	/* `to' may be returned */
-	if(r->type == type_ref_cast){
-		r->bits.cast.is_signed_cast = 1;
-		r->bits.cast.signed_true = is_signed;
-	}
+	type_ref *r = type_ref_new(type_ref_cast, to);
+
+	r->bits.cast.is_signed_cast = 1;
+	r->bits.cast.signed_true = is_signed;
+
 	return r;
 }
 
@@ -321,9 +320,7 @@ void decl_free(decl *d, int free_ref)
 	if(free_ref)
 		type_ref_free(d->ref);
 
-#ifdef FIELD_WIDTH_TODO
-	expr_free(d->field_width);
-#endif
+	expr_free(d->field_width); /* XXX: bad? */
 
 	free(d);
 }
@@ -554,7 +551,7 @@ unsigned type_ref_size(type_ref *r, where *from)
 
 		case type_ref_array:
 		{
-			intval sz;
+			intval_t sz;
 
 			if(type_ref_is_void(r->ref))
 				DIE_AT(from, "array of void");
@@ -562,9 +559,9 @@ unsigned type_ref_size(type_ref *r, where *from)
 			if(!r->bits.array.size)
 				DIE_AT(from, "array has an incomplete size");
 
-			const_fold_need_val(r->bits.array.size, &sz);
+			sz = const_fold_val(r->bits.array.size);
 
-			return sz.val * type_ref_size(r->ref, from);
+			return sz * type_ref_size(r->ref, from);
 		}
 	}
 
@@ -576,18 +573,8 @@ unsigned decl_size(decl *d)
 	if(type_ref_is_void(d->ref))
 		DIE_AT(&d->where, "%s is void", d->spel);
 
-#ifdef FIELD_WIDTH_TODO
-	if(d->field_width){
-		intval iv;
-
-		ICW("use of field width - brace for incorrect code (%s)",
-				where_str(&d->where));
-
-		const_fold_need_val(d->field_width, &iv);
-
-		return iv.val;
-	}
-#endif
+	if(d->field_width)
+		DIE_AT(&d->where, "can't take size of a bitfield");
 
 	return type_ref_size(d->ref, &d->where);
 }
@@ -661,12 +648,10 @@ static int type_ref_equal_r(
 			          b_complete = !!b->bits.array.size;
 
 			if(a_complete && b_complete){
-				intval av, bv;
+				const intval_t av = const_fold_val(a->bits.array.size),
+				               bv = const_fold_val(b->bits.array.size);
 
-				const_fold_need_val(a->bits.array.size, &av);
-				const_fold_need_val(b->bits.array.size, &bv);
-
-				if(av.val != bv.val)
+				if(av != bv)
 					return 0;
 			}else if(a_complete != b_complete){
 				if((mode & DECL_CMP_ALLOW_TENATIVE_ARRAY) == 0)
@@ -779,9 +764,12 @@ type_ref *type_ref_ptr_depth_inc(type_ref *r)
 {
 	type_ref *test;
 	if((test = type_ref_is_type(r, type_unknown))){
-		type_ref *p = cache_ptr[test->bits.type->primitive];
-		if(p)
-			return p;
+		/* FIXME: cache unsigned types too */
+		if(test->bits.type->is_signed){
+			type_ref *p = cache_ptr[test->bits.type->primitive];
+			if(p)
+				return p;
+		}
 	}
 
 	return type_ref_new_ptr(r, qual_none);
@@ -904,16 +892,15 @@ static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
 		case type_ref_array:
 			BUF_ADD("[");
 			if(r->bits.array.size){
-				intval iv;
-
 				if(r->bits.array.is_static)
 					BUF_ADD("static ");
-				BUF_ADD("%s", type_qual_to_str(r->bits.array.qual, 1));
 
-				const_fold_need_val(r->bits.array.size, &iv);
-				BUF_ADD("%" INTVAL_FMT_D, iv.val);
+				BUF_ADD("%s ", type_qual_to_str(r->bits.array.qual, 1));
+
+				BUF_ADD("%" INTVAL_FMT_D, const_fold_val(r->bits.array.size));
 			}
 			BUF_ADD("]");
+
 			break;
 	}
 

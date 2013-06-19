@@ -112,6 +112,19 @@ void gen_expr_struct_lea(expr *e)
 	out_op(op_plus);
 
 	out_change_type(type_ref_ptr_depth_inc(e->rhs->tree_type));
+
+	{
+		decl *d = e->bits.struct_mem.d;
+
+		/* set if we're a bitfield - out_deref() and out_store()
+		 * i.e. read + write then handle this
+		 */
+		if(d->field_width){
+			unsigned w = const_fold_val(d->field_width);
+			out_set_bitfield(d->struct_offset_bitfield, w);
+			out_comment("struct bitfield lea");
+		}
+	}
 }
 
 void gen_expr_struct(expr *e)
@@ -127,9 +140,15 @@ void gen_expr_struct(expr *e)
 
 void gen_expr_str_struct(expr *e)
 {
-	idt_printf("struct/union%s%s\n",
-			e->expr_is_st_dot ? "." : "->",
-			e->bits.struct_mem.d->spel);
+	decl *mem = e->bits.struct_mem.d;
+
+	idt_printf("struct/union member %s offset %d\n",
+			mem->spel, struct_offset(e));
+
+	if(mem->field_width)
+		idt_printf("bitfield offset %u, width %u\n",
+				mem->struct_offset_bitfield,
+				(unsigned)const_fold_val(mem->field_width));
 
 	gen_str_indent++;
 	print_expr(e->lhs);

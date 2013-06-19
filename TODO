@@ -19,6 +19,8 @@ General
 cc1
 ###
 
+cache unsigned types as well as signed types
+
 -fno-builtin
 default to external memset calls, -ffreestanding to use builtin on
 

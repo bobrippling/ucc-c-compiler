@@ -15,7 +15,6 @@ typedef struct struct_union_enum_st struct_union_enum_st;
 
 typedef struct type        type;
 typedef struct decl        decl;
-typedef struct type_ref    type_ref;
 typedef struct funcargs    funcargs;
 typedef struct decl_attr   decl_attr;
 
@@ -85,9 +84,11 @@ const char *type_qual_to_str(     const enum type_qualifier, int trailing_space)
 
 int type_equal(const type *a, const type *b, enum type_cmp mode);
 int type_qual_equal(enum type_qualifier, enum type_qualifier);
-unsigned type_size(const type *, where *from);
+unsigned type_size( const type *, where *from);
+unsigned type_align(const type *, where *from);
 unsigned type_primitive_size(enum type_primitive tp);
 
+int op_is_commutative(enum op_type o);
 int op_is_relational(enum op_type o);
 int op_is_shortcircuit(enum op_type o);
 int op_is_comparison(enum op_type o);

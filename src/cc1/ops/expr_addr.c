@@ -10,6 +10,13 @@ const char *str_expr_addr()
 	return "addr";
 }
 
+int expr_is_addressable(expr *e)
+{
+	return expr_is_lvalue(e)
+		|| type_ref_is(e->tree_type, type_ref_array)
+		|| type_ref_is(e->tree_type, type_ref_func);
+}
+
 void fold_expr_addr(expr *e, symtable *stab)
 {
 	if(e->bits.ident.spel){
@@ -31,24 +38,19 @@ void fold_expr_addr(expr *e, symtable *stab)
 		FOLD_EXPR_NO_DECAY(e->lhs, stab);
 
 		/* can address: lvalues, arrays and functions */
-		if(!expr_is_lvalue(e->lhs)
-		&& !type_ref_is(e->lhs->tree_type, type_ref_array)
-		&& !type_ref_is(e->lhs->tree_type, type_ref_func))
-		{
+		if(!expr_is_addressable(e->lhs)){
 			DIE_AT(&e->lhs->where, "can't take the address of %s (%s)",
 					e->lhs->f_str(), type_ref_to_str(e->lhs->tree_type));
 		}
 
-#ifdef FIELD_WIDTH_TODO
-		if(e->lhs->tree_type->field_width)
-			DIE_AT(&e->lhs->where, "taking the address of a bit-field");
-#endif
+		if(expr_kind(e->lhs, identifier)){
+			decl *d = e->lhs->bits.ident.sym->decl;
 
-		if(expr_kind(e->lhs, identifier)
-		&& (e->lhs->bits.ident.sym->decl->store & STORE_MASK_STORE) == store_register)
-		{
-			DIE_AT(&e->lhs->where, "can't take the address of register");
+			if((d->store & STORE_MASK_STORE) == store_register)
+				DIE_AT(&e->lhs->where, "can't take the address of register");
 		}
+
+		fold_disallow_bitfield(e->lhs, "taking the address of a bit-field");
 
 		e->tree_type = type_ref_new_ptr(e->lhs->tree_type, qual_none);
 	}

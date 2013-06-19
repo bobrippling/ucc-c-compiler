@@ -50,13 +50,14 @@ void idt_printf(const char *fmt, ...)
 
 void print_expr_val(expr *e)
 {
-	intval iv;
+	consty k;
 
-	const_fold_need_val(e, &iv);
+	const_fold(e, &k);
 
-	UCC_ASSERT((iv.suffix & VAL_UNSIGNED) == 0, "TODO: unsigned");
+	UCC_ASSERT(k.type == CONST_VAL, "val expected");
+	UCC_ASSERT((k.bits.iv.suffix & VAL_UNSIGNED) == 0, "TODO: unsigned");
 
-	fprintf(cc1_out, INTVAL_FMT_D, iv.val);
+	fprintf(cc1_out, INTVAL_FMT_D, k.bits.iv.val);
 }
 
 void print_decl_init(decl_init *di)
@@ -392,20 +393,25 @@ void print_struct(struct_union_enum_st *sue)
 	for(iter = sue->members; iter && *iter; iter++){
 		decl *d = (*iter)->struct_member;
 
-		idt_printf("offset %d:\n", d->struct_offset);
-
-#ifdef FIELD_WIDTH_TODO
-		if(d->field_width){
-			intval iv;
-
-			const_fold_need_val(d->field_width, &iv);
-
-			idt_printf("field width %" INTVAL_FMT_D "\n", iv.val);
-		}
-#endif
-
+		idt_printf("decl:\n");
 		gen_str_indent++;
 		print_decl(d, PDECL_INDENT | PDECL_NEWLINE | PDECL_ATTR);
+
+#define SHOW_FIELD(nam) idt_printf("." #nam " = %u\n", d->nam)
+		SHOW_FIELD(struct_offset);
+
+		if(d->field_width){
+			intval_t v = const_fold_val(d->field_width);
+
+			gen_str_indent++;
+
+			idt_printf(".field_width = %" INTVAL_FMT_D "\n", v);
+
+			SHOW_FIELD(struct_offset_bitfield);
+
+			gen_str_indent--;
+		}
+
 		gen_str_indent--;
 	}
 	gen_str_indent--;
@@ -486,7 +492,7 @@ void print_stmt(stmt *t)
 		gen_str_indent--;
 	}
 
-	if(t->symtab){
+	if(stmt_kind(t, code) && t->symtab){
 		decl **iter;
 
 		idt_printf("stack space %d\n", t->symtab->auto_total_size);

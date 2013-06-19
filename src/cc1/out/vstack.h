@@ -27,7 +27,7 @@ struct vstack
 
 	union
 	{
-		unsigned long val;
+		intval_t val;
 		int reg;
 		int off_from_bp;
 		struct flag_opts
@@ -47,6 +47,11 @@ struct vstack
 			int pic;
 		} lbl;
 	} bits;
+
+	struct vbitfield
+	{
+		unsigned off, nbits;
+	} bitfield; /* !!width iif bitfield */
 };
 #define VSTACK_INIT(ty) { (ty), NULL, { 0 } }
 
@@ -57,7 +62,7 @@ void vswap(void);
 
 void v_clear(struct vstack *vp, type_ref *);
 
-void v_cast(struct vstack *vp, type_ref *from, type_ref *to);
+void v_cast(struct vstack *vp, type_ref *to);
 
 void v_to_reg_const(struct vstack *vp);
 
@@ -77,8 +82,6 @@ void v_reserve_reg(const int r);
 void v_unreserve_reg(const int r);
 
 void v_deref_decl(struct vstack *vp);
-
-const char *v_val_str(struct vstack *vp);
 
 int impl_n_scratch_regs(void);
 int impl_n_call_regs(void);

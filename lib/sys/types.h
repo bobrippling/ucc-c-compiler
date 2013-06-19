@@ -31,6 +31,8 @@ typedef signed   long   int64_t;
 typedef unsigned long  uint64_t;
 #endif
 
+typedef unsigned long uintmax_t;
+typedef   signed long  intmax_t;
 
 typedef unsigned long  size_t; // TODO: depend on __SIZE_TYPE__ ? same for PTRDIFF_TYPE ?
 typedef   signed long ssize_t;

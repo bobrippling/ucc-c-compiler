@@ -1266,11 +1266,7 @@ add:
 
 			if((mode & DECL_MULTI_ACCEPT_FIELD_WIDTH) && accept(token_colon)){
 				/* normal decl, check field spec */
-#ifdef FIELD_WIDTH_TODO
-				d->field_width = parse_expr_exp();
-#else
-				ICE("TODO: field width");
-#endif
+				d->field_width = parse_expr_no_comma();
 			}
 
 			last = d;
@@ -1280,16 +1276,10 @@ add:
 		if(last && !last->func_code){
 next:
 			/* end of type, if we have an identifier, '(' or '*', it's an unknown type name */
-			if(parse_at_decl_spec() && last)
+			if(parse_at_decl_spec())
 				DIE_AT(NULL, "unknown type name '%s'", last->spel);
 			/* else die here: */
 			EAT(token_semicolon);
-		}
-
-		if((mode & DECL_MULTI_ACCEPT_FIELD_WIDTH) && accept(token_colon)){
-			/* padding - struct { int i; :3 } */
-			ICE("TODO: struct/union(?) inter-var padding");
-			/* anon-decl with field width to pad? */
 		}
 	}
 }

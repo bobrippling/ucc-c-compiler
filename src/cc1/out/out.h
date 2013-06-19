@@ -20,13 +20,15 @@ void out_push_sym(sym *);
 void out_push_sym_val(sym *);
 void out_store(void); /* store stack[1] into *stack[0] */
 
+void out_set_bitfield(unsigned off, unsigned nbits);
+
 void out_op(      enum op_type); /* binary ops and comparisons */
 void out_op_unary(enum op_type); /* unary ops */
 void out_deref(void);
 void out_swap(void);
 void out_flush_volatile(void);
 
-void out_cast(type_ref *from, type_ref *to) ucc_nonnull((1, 2));
+void out_cast(type_ref *to) ucc_nonnull((1));
 void out_change_type(type_ref *) ucc_nonnull((1));
 
 void out_call(int nargs, type_ref *rt, type_ref *f) ucc_nonnull((2, 3));

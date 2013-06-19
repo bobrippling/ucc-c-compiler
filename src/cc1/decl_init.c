@@ -504,6 +504,7 @@ static decl_init **decl_init_brace_up_array2(
 	return current;
 }
 
+
 static decl_init **decl_init_brace_up_sue2(
 		decl_init **current, decl_init ***range_store,
 		init_iter *iter,
@@ -630,6 +631,13 @@ static decl_init **decl_init_brace_up_sue2(
 			}
 
 			dynarray_padinsert(&current, i, &n, braced_sub);
+
+			/* done, check bitfield truncation */
+			if(braced_sub && mem->struct_member->field_width){
+				UCC_ASSERT(braced_sub->type == decl_init_scalar,
+						"scalar init expected for union");
+				bitfield_trunc_check(mem->struct_member, braced_sub->bits.expr);
+			}
 
 			if(sue->primitive == type_union)
 				break;
@@ -974,8 +982,13 @@ zero_init:
 			return;
 		}
 
+		/* this works for zeroing bitfields,
+		 * since we don't take the address
+		 * - builtin memset calls lea_expr()
+		 *   which can handle bitfields
+		 */
 		zero = builtin_new_memset(
-				expr_new_addr(base),
+				base,
 				0,
 				type_ref_size(tfor, &base->where));
 

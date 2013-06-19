@@ -4,6 +4,7 @@
 void impl_store(struct vstack *from, struct vstack *to);
 void impl_load(struct vstack *from, int reg);
 void impl_lea( struct vstack *from, int reg);
+void impl_load_iv(struct vstack *from);
 
 void impl_reg_cp(struct vstack *from, int r);
 void impl_reg_swp(struct vstack *a, struct vstack *b);

@@ -62,14 +62,22 @@ static int const_expr_zero(expr *e, int zero)
 	return k.type == CONST_VAL && (zero ? k.bits.iv.val == 0 : k.bits.iv.val != 0);
 }
 
-void const_fold_need_val(expr *e, intval *piv)
+void const_fold_intval(expr *e, intval *piv)
 {
 	consty k;
 	const_fold(e, &k);
 
 	UCC_ASSERT(k.type == CONST_VAL, "not const");
+	UCC_ASSERT(k.offset == 0, "got offset for val?");
 
 	memcpy_safe(piv, &k.bits.iv);
+}
+
+intval_t const_fold_val(expr *e)
+{
+	intval iv;
+	const_fold_intval(e, &iv);
+	return iv.val;
 }
 
 int const_expr_and_non_zero(expr *e)

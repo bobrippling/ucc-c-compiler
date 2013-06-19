@@ -8,6 +8,7 @@
 #include "expr_cast.h"
 #include "../out/asm.h"
 #include "../sue.h"
+#include "../defs.h"
 
 const char *str_expr_cast()
 {
@@ -35,39 +36,47 @@ void fold_const_expr_cast(expr *e, consty *k)
 			if(type_ref_is_type(e->tree_type, type__Bool)){
 				piv->val = !!piv->val; /* analagous to out/out.c::out_normalise()'s constant case */
 
-			}else{
-				const int sz = type_ref_size(e->tree_type, &e->where);
+			}else if(e->expr_cast_implicit){ /* otherwise this is a no-op */
+				const unsigned sz = type_ref_size(e->tree_type, &e->where);
 				const intval_t old = piv->val;
+				const int to_sig   = type_ref_is_signed(e->tree_type);
+				const int from_sig = type_ref_is_signed(e->expr->tree_type);
+				intval_t to_iv, to_iv_sign_ext;
 
 				/* TODO: disallow for ptrs/non-ints */
 
-				switch(sz){
-					/* TODO: unsigned */
+				/* we don't save the truncated value - we keep the original
+				 * so negative numbers, for example, are preserved */
+				to_iv = intval_truncate(piv->val, sz, &to_iv_sign_ext);
 
-#define CAST(sz, t) case sz: piv->val = (t)piv->val; break
-	/*
-#define CAST(sz, t) case sz: piv->val = piv->val & ~(-1 << (sz * 8 - 1)); break
-	*/
+				if(to_sig && from_sig ? old != to_iv_sign_ext : old != to_iv){
+#define CAST_WARN(pre_fmt, pre_val, post_fmt, post_val)  \
+						WARN_AT(&e->where,                           \
+								"implicit cast changes value from %"     \
+								pre_fmt " to %" post_fmt,                \
+								pre_val, post_val)
 
-					CAST(1, char);
-					CAST(2, short);
-					CAST(4, int);
-
-#undef CAST
-
-					case 8:
-					break; /* no cast - max word size */
-
-					default:
-					k->type = CONST_NO;
-					ICW("can't const fold cast expr of type %s size %d",
-							type_ref_to_str(e->tree_type), sz);
+					/* nice... */
+					if(from_sig){
+						if(to_sig)
+							CAST_WARN(
+									INTVAL_FMT_D, (long long signed)old,
+									INTVAL_FMT_D, (long long signed)to_iv_sign_ext);
+						else
+							CAST_WARN(
+									INTVAL_FMT_D, (long long signed)old,
+									INTVAL_FMT_U, (long long unsigned)to_iv);
+					}else{
+						if(to_sig)
+							CAST_WARN(
+									INTVAL_FMT_U, (long long unsigned)old,
+									INTVAL_FMT_D, (long long signed)to_iv_sign_ext);
+						else
+							CAST_WARN(
+									INTVAL_FMT_U, (long long unsigned)old,
+									INTVAL_FMT_U, (long long unsigned)to_iv);
+					}
 				}
-
-				if(e->expr_cast_implicit && old != piv->val)
-					WARN_AT(&e->where,
-							"implicit cast changes value from %" INTVAL_FMT_D " to %" INTVAL_FMT_D,
-							old, piv->val);
 			}
 #undef piv
 			break;
@@ -100,13 +109,12 @@ void fold_const_expr_cast(expr *e, consty *k)
 						if(k->bits.addr.is_lbl){
 							k->type = CONST_NO; /* similar to strk case */
 						}else{
-							unsigned long new = k->bits.addr.bits.memaddr;
+							intval_t new = k->bits.addr.bits.memaddr;
 							const int pws = platform_word_size();
 
 							/* mask out bits so we have it truncated to `l' */
 							if(l < pws){
-								/* 8 = bits in a byte */
-								new &= ~(~0UL << (8 * l));
+								new = intval_truncate(new, l, NULL);
 
 								if(k->bits.addr.bits.memaddr != new)
 									/* can't cast without losing value - not const */
@@ -239,7 +247,7 @@ void gen_expr_cast(expr *e)
 		}
 	}
 
-	out_cast(tfrom, tto);
+	out_cast(tto);
 
 	if(type_ref_is_type(tto, type__Bool)) /* 1 or 0 */
 		out_normalise();
