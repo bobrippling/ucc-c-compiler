@@ -80,6 +80,15 @@ void bitfield_trunc_check(decl *mem, expr *from)
 	}
 }
 
+void expr_must_lvalue(expr *e)
+{
+	if(!expr_is_lvalue(e)){
+		DIE_AT(&e->where, "assignment to %s/%s - not an lvalue",
+				type_ref_to_str(e->tree_type),
+				e->f_str());
+	}
+}
+
 void fold_expr_assign(expr *e, symtable *stab)
 {
 	sym *lhs_sym = NULL;
@@ -95,11 +104,7 @@ void fold_expr_assign(expr *e, symtable *stab)
 	if(type_ref_is_type(e->rhs->tree_type, type_void))
 		DIE_AT(&e->where, "assignment from void expression");
 
-	if(!expr_is_lvalue(e->lhs)){
-		DIE_AT(&e->lhs->where, "assignment to %s/%s - not an lvalue",
-				type_ref_to_str(e->lhs->tree_type),
-				e->lhs->f_str());
-	}
+	expr_must_lvalue(e->lhs);
 
 	if(!e->assign_is_init && type_ref_is_const(e->lhs->tree_type))
 		DIE_AT(&e->where, "can't modify const expression %s", e->lhs->f_str());
