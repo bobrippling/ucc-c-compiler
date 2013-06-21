@@ -631,7 +631,7 @@ void fold_decl(decl *d, symtable *stab)
 			unsigned al = attrib->attr_extra.align;
 
 			if(al == 0)
-				al = decl_size(d);
+				al = platform_align_max();
 
 			max_al = fold_align(al, tal, max_al, &attrib->where);
 			if(!d->align)

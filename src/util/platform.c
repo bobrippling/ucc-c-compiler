@@ -52,6 +52,17 @@ unsigned platform_word_size()
 	abort();
 }
 
+unsigned platform_align_max()
+{
+	switch(platform_word_size()){
+		case 4:
+			return 8;
+		case 8:
+			return 16;
+	}
+	abort();
+}
+
 enum platform platform_type()
 {
 	INIT();
