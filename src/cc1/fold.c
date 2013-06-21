@@ -481,7 +481,8 @@ static int fold_align(int al, int min, int max, where *w)
 	if(al & (al - 1))
 		DIE_AT(w, "alignment %d isn't a power of 2", al);
 
-	if(al > 0 && al < min)
+	UCC_ASSERT(al > 0, "zero align");
+	if(al < min)
 		DIE_AT(w,
 				"can't reduce alignment (%d -> %d)",
 				min, al);
@@ -503,6 +504,10 @@ void fold_decl(decl *d, symtable *stab)
 {
 	decl_attr *attrib = NULL;
 	int can_align = 1;
+
+	if(d->folded)
+		return;
+	d->folded = 1;
 
 	fold_type_ref(d->ref, NULL, stab);
 
@@ -612,15 +617,23 @@ void fold_decl(decl *d, symtable *stab)
 				al = k.bits.iv.val;
 			}else{
 				type_ref *ty = i->bits.align_ty;
+				UCC_ASSERT(ty, "no type");
 				fold_type_ref(ty, NULL, stab);
 				al = type_ref_align(ty, &d->where);
 			}
 
+			if(al == 0)
+				al = decl_size(d);
 			max_al = fold_align(al, tal, max_al, &d->where);
 		}
 
 		if(attrib){
-			max_al = fold_align(attrib->attr_extra.align, tal, max_al, &attrib->where);
+			unsigned al = attrib->attr_extra.align;
+
+			if(al == 0)
+				al = decl_size(d);
+
+			max_al = fold_align(al, tal, max_al, &attrib->where);
 			if(!d->align)
 				d->align = umalloc(sizeof *d->align);
 		}
@@ -1023,7 +1036,7 @@ void fold_merge_tenatives(symtable *stab)
 		decl *init = NULL;
 
 		/* functions are checked via .func_code on parsing */
-		if(d->flag || !d->spel || DECL_IS_FUNC(d))
+		if(d->proto_flag || !d->spel || DECL_IS_FUNC(d))
 			continue;
 
 		switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
@@ -1036,7 +1049,7 @@ void fold_merge_tenatives(symtable *stab)
 
 		/* check for a single init between all prototypes */
 		for(; d; d = d->proto){
-			d->flag = 1;
+			d->proto_flag = 1;
 			if(d->init){
 				if(init){
 					char wbuf[WHERE_BUF_SIZ];
