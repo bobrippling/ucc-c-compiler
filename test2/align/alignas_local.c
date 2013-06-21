@@ -1,17 +1,12 @@
-// RUN: %ucc -DBOTH -c %s
-// RUN: %ucc -DBOTH -S -o- %s | grep '\$1, *-8(%rsp)'
-// RUN: %ucc -DBOTH -S -o- %s | grep '\$2, *-16(%rsp)'
+// RUN: %ucc -fsyntax-only %s
 
 f()
 {
 	// both x and y are 8-byte aligned
-	_Alignas(8) int x = 1
-#ifdef BOTH
-		,
-#else
-		; int
-#endif
-		y = 2;
+	_Alignas(8) int x = 1, y = 2;
+
+	_Static_assert(_Alignof(x) == 8, "");
+	_Static_assert(_Alignof(y) == 8, "");
 
 	g(x, y);
 }
