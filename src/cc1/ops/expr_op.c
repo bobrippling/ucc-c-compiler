@@ -353,8 +353,21 @@ ptr_relation:
 		type_ref *tlarger = NULL;
 
 		if(op == op_shiftl || op == op_shiftr){
-			/* fine with any parameter sizes - don't need to match. resolves to lhs */
-			tlarger = tlhs;
+			/* fine with any parameter sizes
+			 * don't need to match. resolves to lhs,
+			 * or int if lhs is smaller (done before this function)
+			 */
+
+			UCC_ASSERT(
+					type_ref_size(tlhs, &lhs->where)
+						>= type_primitive_size(type_int),
+					"shift operand should have been promoted");
+
+			resolved = tlhs;
+
+		}else if(op == op_andsc || op == op_orsc){
+			/* no promotion */
+			resolved = type_ref_cached_BOOL();
 
 		}else{
 			const int l_unsigned = !type_ref_is_signed(tlhs),
@@ -407,12 +420,12 @@ ptr_relation:
 
 				tlarger = *plhs = *prhs = type_ref_new_cast_signed(signed_t, 0);
 			}
-		}
 
-		/* if we have a _comparison_ (e.g. between enums), convert to int */
-		resolved = op_is_relational(op)
-			? type_ref_cached_INT()
-			: tlarger;
+			/* if we have a _comparison_ (e.g. between enums), convert to int */
+			resolved = op_is_relational(op)
+				? type_ref_cached_INT()
+				: tlarger;
+		}
 	}
 
 fin:
