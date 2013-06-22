@@ -6,23 +6,12 @@
 #include "../../util/alloc.h"
 #include "../../util/platform.h"
 #include "expr_cast.h"
-#include "../out/asm.h"
 #include "../sue.h"
 #include "../defs.h"
 
 const char *str_expr_cast()
 {
 	return "cast";
-}
-
-static void get_cast_sizes(type_ref *tlhs, type_ref *trhs, int *pl, int *pr)
-{
-	if(!type_ref_is_void(tlhs)){
-		*pl = asm_type_size(tlhs);
-		*pr = asm_type_size(trhs);
-	}else{
-		*pl = *pr = 0;
-	}
 }
 
 static void fold_const_expr_cast(expr *e, consty *k)
@@ -100,7 +89,8 @@ static void fold_const_expr_cast(expr *e, consty *k)
 					"cast to float from address");
 
 			/* allow if we're casting to a same-size type */
-			get_cast_sizes(e->tree_type, e->expr->tree_type, &l, &r);
+			l = type_ref_size(e->tree_type, &e->where);
+			r = type_ref_size(e->expr->tree_type, &e->expr->where);
 
 			if(l < r){
 				/* shouldn't fit, check if it will */
@@ -188,7 +178,8 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 				flag ? "to" : "from");
 	}
 
-	get_cast_sizes(tlhs, trhs, &size_lhs, &size_rhs);
+	size_lhs = type_ref_size(tlhs, &e->where);
+	size_rhs = type_ref_size(trhs, &e->expr->where);
 	if(size_lhs < size_rhs){
 		char buf[DECL_STATIC_BUFSIZ];
 

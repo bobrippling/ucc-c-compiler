@@ -590,6 +590,7 @@ void fold_expr_op(expr *e, symtable *stab)
 		FOLD_EXPR(e->rhs, stab);
 		fold_disallow_st_un(e->rhs, op_to_str(e->op));
 
+		/* no-op if float */
 		expr_promote_int_if_smaller(&e->lhs, stab);
 		expr_promote_int_if_smaller(&e->rhs, stab);
 
