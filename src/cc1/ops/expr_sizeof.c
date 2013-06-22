@@ -8,9 +8,23 @@
 
 #define sizeof_this tref
 
+static const char *sizeof_what(enum what_of wo)
+{
+	switch(wo){
+		case what_typeof:
+			return "typeof";
+		case what_sizeof:
+			return "sizeof";
+		case what_alignof:
+			return "alignof";
+	}
+
+	return NULL;
+}
+
 const char *str_expr_sizeof()
 {
-	return "sizeof/typeof";
+	return "sizeof/typeof/alignof";
 }
 
 void fold_expr_sizeof(expr *e, symtable *stab)
@@ -24,21 +38,10 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 
 	chosen = SIZEOF_WHAT(e);
 
-#ifdef FIELD_WIDTH_TODO
-	if(chosen->field_width){
-		if(e->expr_is_typeof){
-			WARN_AT(&e->where, "typeof applied to a bit-field - using underlying type");
-
-			chosen->field_width = NULL;
-			/* not a memleak
-			 * should still be referenced from the decl we copied,
-			 * or the struct type, etc
-			 */
-		}else{
-			DIE_AT(&e->where, "sizeof applied to a bit-field");
-		}
-	}
-#endif
+	fold_disallow_bitfield(
+			e->expr,
+			"%s applied to a bit-field",
+			sizeof_what(e->what_of));
 
 	switch(e->what_of){
 		case what_typeof:
@@ -92,7 +95,7 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 	}
 }
 
-void const_expr_sizeof(expr *e, consty *k)
+static void const_expr_sizeof(expr *e, consty *k)
 {
 	UCC_ASSERT(e->tree_type, "const_fold on sizeof before fold");
 	k->bits.iv.val.i = SIZEOF_SIZE(e);
@@ -145,14 +148,7 @@ expr *expr_new_sizeof_expr(expr *sizeof_this, enum what_of what_of)
 
 void gen_expr_style_sizeof(expr *e)
 {
-	switch(e->what_of){
-		case what_typeof:
-			stylef("typeof(");
-		case what_sizeof:
-			stylef("sizeof(");
-		case what_alignof:
-			stylef("alignof(");
-	}
+	stylef("%s(", sizeof_what(e->what_of));
 
 	if(e->expr)
 		gen_expr(e->expr);

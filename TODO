@@ -10,7 +10,6 @@ test/ - x.c and x.c.expect (output and assembly)
 General
 #######
 
--Wmissing-prototypes - increase statics (in Makefile)
 -Wredundant-decls
 -Wnested-externs
 
@@ -18,6 +17,8 @@ General
 
 cc1
 ###
+
+cache unsigned types as well as signed types
 
 -fno-builtin
 default to external memset calls, -ffreestanding to use builtin on

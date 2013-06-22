@@ -1,4 +1,3 @@
-// RUN: %ucc -S -o- %s | grep 'subq.*24'
 // align of p is 8:
 // RUN: %ucc -S -o- %s | grep -B1 '^p:' | sed -n 1p | grep ' 8'
 

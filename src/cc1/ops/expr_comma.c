@@ -6,7 +6,7 @@ const char *str_expr_comma()
 	return "comma";
 }
 
-void fold_const_expr_comma(expr *e, consty *k)
+static void fold_const_expr_comma(expr *e, consty *k)
 {
 	consty klhs;
 

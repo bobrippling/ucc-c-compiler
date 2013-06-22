@@ -229,12 +229,11 @@ type_ref *type_ref_new_cast_add(type_ref *to, enum type_qualifier add)
 
 type_ref *type_ref_new_cast_signed(type_ref *to, int is_signed)
 {
-	type_ref *r = type_ref_new_cast_is_additive(to, qual_none, 1);
-	/* `to' may be returned */
-	if(r->type == type_ref_cast){
-		r->bits.cast.is_signed_cast = 1;
-		r->bits.cast.signed_true = is_signed;
-	}
+	type_ref *r = type_ref_new(type_ref_cast, to);
+
+	r->bits.cast.is_signed_cast = 1;
+	r->bits.cast.signed_true = is_signed;
+
 	return r;
 }
 
@@ -353,9 +352,7 @@ void decl_free(decl *d, int free_ref)
 	if(free_ref)
 		type_ref_free(d->ref);
 
-#ifdef FIELD_WIDTH_TODO
-	expr_free(d->field_width);
-#endif
+	expr_free(d->field_width); /* XXX: bad? */
 
 	free(d);
 }
@@ -366,17 +363,6 @@ decl_attr *decl_attr_new(enum decl_attr_type t)
 	where_new(&da->where);
 	da->type = t;
 	return da;
-}
-
-decl_attr *decl_attr_copy(decl_attr *da)
-{
-	decl_attr *ret = decl_attr_new(da->type);
-
-	memcpy_safe(ret, da);
-
-	ret->next = da->next ? decl_attr_copy(da->next) : NULL;
-
-	return ret;
 }
 
 void decl_attr_append(decl_attr **loc, decl_attr *new)
@@ -511,20 +497,6 @@ const char *decl_attr_to_str(decl_attr *da)
 	return NULL;
 }
 
-const char *type_ref_type_str(enum type_ref_type t)
-{
-	switch(t){
-		CASE_STR_PREFIX(type_ref, type);
-		CASE_STR_PREFIX(type_ref, tdef);
-		CASE_STR_PREFIX(type_ref, ptr);
-		CASE_STR_PREFIX(type_ref, block);
-		CASE_STR_PREFIX(type_ref, func);
-		CASE_STR_PREFIX(type_ref, array);
-		CASE_STR_PREFIX(type_ref, cast);
-	}
-	return NULL;
-}
-
 const char *decl_store_to_str(const enum decl_storage s)
 {
 	static char buf[16]; /* "inline register" is the longest - just a fit */
@@ -596,17 +568,17 @@ unsigned type_ref_size(type_ref *r, where *from)
 
 		case type_ref_array:
 		{
-			numeric sz;
+			integral_t sz;
 
 			if(type_ref_is_void(r->ref))
 				DIE_AT(from, "array of void");
 
 			if(!r->bits.array.size)
-				DIE_AT(from, "incomplete array size attempt");
+				DIE_AT(from, "array has an incomplete size");
 
-			const_fold_need_val(r->bits.array.size, &sz);
+			sz = const_fold_val(r->bits.array.size);
 
-			return sz.val.i * type_ref_size(r->ref, from);
+			return sz * type_ref_size(r->ref, from);
 		}
 	}
 
@@ -618,18 +590,8 @@ unsigned decl_size(decl *d)
 	if(type_ref_is_void(d->ref))
 		DIE_AT(&d->where, "%s is void", d->spel);
 
-#ifdef FIELD_WIDTH_TODO
-	if(d->field_width){
-		numeric iv;
-
-		ICW("use of field width - brace for incorrect code (%s)",
-				where_str(&d->where));
-
-		const_fold_need_val(d->field_width, &iv);
-
-		return iv.val;
-	}
-#endif
+	if(d->field_width)
+		DIE_AT(&d->where, "can't take size of a bitfield");
 
 	return type_ref_size(d->ref, &d->where);
 }
@@ -703,12 +665,10 @@ static int type_ref_equal_r(
 			          b_complete = !!b->bits.array.size;
 
 			if(a_complete && b_complete){
-				numeric av, bv;
+				const integral_t av = const_fold_val(a->bits.array.size),
+				                bv = const_fold_val(b->bits.array.size);
 
-				const_fold_need_val(a->bits.array.size, &av);
-				const_fold_need_val(b->bits.array.size, &bv);
-
-				if(av.val.i != bv.val.i)
+				if(av != bv)
 					return 0;
 			}else if(a_complete != b_complete){
 				if((mode & DECL_CMP_ALLOW_TENATIVE_ARRAY) == 0)
@@ -784,13 +744,6 @@ int type_ref_is_variadic_func(type_ref *r)
 	return (r = type_ref_is(r, type_ref_func)) && r->bits.func->variadic;
 }
 
-type_ref *type_ref_orphan(type_ref *r)
-{
-	type_ref *ret = r->ref;
-	r->ref = NULL;
-	return ret;
-}
-
 type_ref *type_ref_ptr_depth_dec(type_ref *r, where *w)
 {
 	type_ref *const r_save = r;
@@ -819,9 +772,12 @@ type_ref *type_ref_ptr_depth_inc(type_ref *r)
 {
 	type_ref *test;
 	if((test = type_ref_is_type(r, type_unknown))){
-		type_ref *p = cache_ptr[test->bits.type->primitive];
-		if(p)
-			return p;
+		/* FIXME: cache unsigned types too */
+		if(test->bits.type->is_signed){
+			type_ref *p = cache_ptr[test->bits.type->primitive];
+			if(p)
+				return p;
+		}
 	}
 
 	return type_ref_new_ptr(r, qual_none);
@@ -944,16 +900,15 @@ static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
 		case type_ref_array:
 			BUF_ADD("[");
 			if(r->bits.array.size){
-				numeric iv;
-
 				if(r->bits.array.is_static)
 					BUF_ADD("static ");
-				BUF_ADD("%s", type_qual_to_str(r->bits.array.qual, 1));
 
-				const_fold_need_val(r->bits.array.size, &iv);
-				BUF_ADD("%" NUMERIC_FMT_D, iv.val.i);
+				BUF_ADD("%s ", type_qual_to_str(r->bits.array.qual, 1));
+
+				BUF_ADD("%" NUMERIC_FMT_D, const_fold_val(r->bits.array.size));
 			}
 			BUF_ADD("]");
+
 			break;
 	}
 

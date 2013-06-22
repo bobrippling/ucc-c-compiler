@@ -72,8 +72,14 @@ void static_addr(expr *e)
 			break;
 
 		case CONST_VAL:
-			asm_declare_partial("%ld", k.bits.iv.val.i);
+		{
+			char buf[INTEGRAL_BUF_SIZ];
+			UCC_ASSERT(0 == (k.bits.iv.suffix & VAL_FLOATING), "float output");
+
+			integral_str(buf, sizeof buf, k.bits.iv.val.i, e->tree_type);
+			asm_declare_partial("%s", buf);
 			break;
+		}
 
 		case CONST_ADDR:
 			if(k.bits.addr.is_lbl)

@@ -70,9 +70,11 @@ while(<F>){
 			my $subst_sh = apply_vars($sh);
 			print "$0: run: $subst_sh\n" if $verbose;
 
+			my $want_err = ($subst_sh =~ s/^ *! *//);
+
 			my $ec = timeout($subst_sh);
 
-			die2 "command '$subst_sh' failed" if $ec;
+			die2 "command '$subst_sh' failed" if ($want_err == !$ec);
 		}else{
 			#die2 "unrecognised command: $command";
 		}

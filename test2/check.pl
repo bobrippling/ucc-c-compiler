@@ -141,21 +141,27 @@ iter_lines(
 
 		# check all
 		for my $check (@checks){
-			my $match = $check->{check}; # /regex/
+			my $match = $check->{check}; # /regex/ or literal word(s)
 			my $rev = 0;
 
+			my($search, $is_regex);
 			if($match =~ m#^(!)?/(.*)/$#){
 				$rev = defined $1;
+				$search = $2;
+				$is_regex = 1;
+			}elsif($match =~ m#^ *(.*) *$#){
+				$rev = 0;
+				$search = $1;
+				$is_regex = 0;
 			}else{
 				die2 "invalid CHECK (line $check->{line}): '$match'"
 			}
 
 
-			my $regex = $2;
 			my $found = 0;
 
 			for(@warns){
-				if($_->{msg} =~ /$regex/){
+				if($is_regex ? $_->{msg} =~ /$search/ : index($_->{msg}, $search) != -1){
 					$found = 1;
 					$_->{msg} = ''; # silence
 					last;

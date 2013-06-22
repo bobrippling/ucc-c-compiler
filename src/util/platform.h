@@ -24,4 +24,6 @@ int platform_32bit(void);
 #endif
 unsigned platform_word_size(void) ucc_const;
 
+unsigned platform_align_max(void) ucc_const;
+
 #endif

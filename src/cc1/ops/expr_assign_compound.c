@@ -10,23 +10,13 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 {
 	expr *const lvalue = e->lhs;
 
-	{
-		expr *addr = expr_new_addr(e->lhs);
-
-		e->lhs = addr;
-		/* take the address of where we're assigning to - only eval once */
-	}
-
 	fold_inc_writes_if_sym(lvalue, stab);
 
 	FOLD_EXPR_NO_DECAY(e->lhs, stab);
 	FOLD_EXPR(e->rhs, stab);
 
 	/* skip the addr we inserted */
-	if(!expr_is_lvalue(lvalue)){
-		DIE_AT(&lvalue->where, "compound target not an lvalue (%s)",
-				lvalue->f_str());
-	}
+	expr_must_lvalue(lvalue);
 
 	if(type_ref_is_const(lvalue->tree_type))
 		DIE_AT(&e->where, "can't modify const expression %s", lvalue->f_str());
@@ -64,7 +54,7 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 
 void gen_expr_assign_compound(expr *e)
 {
-	gen_expr(e->lhs);
+	lea_expr(e->lhs);
 
 	if(e->assign_is_post){
 		out_dup();

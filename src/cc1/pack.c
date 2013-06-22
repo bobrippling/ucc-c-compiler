@@ -25,7 +25,9 @@ int pack_to_word(int o)
 	return pack_to_align(o, pws);
 }
 
-void pack_next(int *poffset, int *after_space, int sz, int align)
+void pack_next(
+		unsigned *poffset, unsigned *after_space,
+		unsigned sz, unsigned align)
 {
 	/* insert space as necessary */
 	int offset = pack_to_align(*poffset, align);

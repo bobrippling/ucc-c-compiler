@@ -57,6 +57,17 @@ int platform_32bit(void)
 	return platform_word_size() == 4;
 }
 
+unsigned platform_align_max()
+{
+	switch(platform_word_size()){
+		case 4:
+			return 8;
+		case 8:
+			return 16;
+	}
+	abort();
+}
+
 enum platform platform_type()
 {
 	INIT();

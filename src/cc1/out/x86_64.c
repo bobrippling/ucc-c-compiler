@@ -148,10 +148,21 @@ static const char *vstack_str_r_ptr(char buf[VSTACK_STR_SZ], struct vstack *vs, 
 {
 	switch(vs->type){
 		case CONST:
-			/* FIXME/signed: better output for numeric */
-			SNPRINTF(buf, VSTACK_STR_SZ, "%s%s",
-					ptr ? "" : "$", v_val_str(vs));
+		{
+			char *p = buf;
+			/* we should never get a 64-bit value here
+			 * since movabsq should load those in
+			 */
+			UCC_ASSERT(!integral_is_64_bit(vs->bits.val, vs->t),
+					"can't load 64-bit constants here (0x%llx)", vs->bits.val);
+
+			if(!ptr)
+				*p++ = '$';
+
+			integral_str(p, VSTACK_STR_SZ - (!ptr ? 1 : 0),
+					vs->bits.val, vs->t);
 			break;
+		}
 
 		case FLAG:
 			ICE("%s shouldn't be called with cmp-flag data", __func__);
@@ -420,6 +431,31 @@ static void x86_load(struct vstack *from, const struct vreg *reg, int lea)
 					vstack_str(from),
 					x86_reg_str(reg, from->t));
 			break;
+	}
+}
+
+void impl_load_iv(struct vstack *vp)
+{
+	if(integral_is_64_bit(vp->bits.val, vp->t)){
+		char buf[INTEGRAL_BUF_SIZ];
+		struct vreg r;
+		v_unused_reg(1, 0, &r);
+
+		/* TODO: 64-bit registers in general on 32-bit */
+		UCC_ASSERT(!cc1_m32, "TODO: 32-bit 64-literal loads");
+
+		UCC_ASSERT(type_ref_size(vp->t, NULL) == 8,
+				"loading 64-bit literal (%lld) for non-long? (%s)",
+				vp->bits.val, type_ref_to_str(vp->t));
+
+		integral_str(buf, sizeof buf,
+				vp->bits.val, vp->t);
+
+		out_asm("movabsq $%s, %%%s",
+				buf, x86_reg_str(&r, vp->t));
+
+		vp->type = REG;
+		memcpy_safe(&vp->bits.reg, &r);
 	}
 }
 
@@ -706,7 +742,17 @@ void impl_op(enum op_type op)
 		v_to_reg_const(vtop - 1);
 
 		/* vtop[-1] is a constant - needs to be in a reg */
-		if(vtop[-1].type != REG)
+		if(vtop[-1].type != REG){
+			/* if the op is commutative, swap */
+			if(op_is_commutative(op))
+				out_swap();
+			else
+				v_to_reg(vtop - 1);
+		}
+
+		/* if both are constants, v_to_reg one */
+		if(vtop->type == CONST && vtop[-1].type == CONST)
+			/* -1 is where the op is going (see end of this block) */
 			v_to_reg(vtop - 1);
 
 		/* TODO: -O1
@@ -915,7 +961,8 @@ void impl_jcond(int true, const char *lbl)
 		case CONST:
 			if(true == !!vtop->bits.val){
 				out_asm("jmp %s", lbl);
-				out_comment("// constant jmp condition %ld", vtop->bits.val);
+				out_comment("// constant jmp condition %" NUMERIC_FMT_D,
+						vtop->bits.val);
 			}
 			break;
 
@@ -990,7 +1037,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 
 		/* can't push non-word sized vtops */
 		if(vp->t && type_ref_size(vp->t, NULL) != platform_word_size())
-			v_cast(vp, vp->t, type_ref_cached_VOID_PTR());
+			v_cast(vp, type_ref_cached_VOID_PTR());
 
 		switch(vtop->type){
 			case STACK_SAVE:

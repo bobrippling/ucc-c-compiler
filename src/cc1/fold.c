@@ -2,7 +2,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <assert.h>
 
+#include "defs.h"
 #include "../util/util.h"
 #include "data_structs.h"
 #include "cc1.h"
@@ -163,7 +165,7 @@ expr *fold_expr(expr *e, symtable *stab)
 	return e;
 }
 
-void fold_enum(struct_union_enum_st *en, symtable *stab)
+static void fold_enum(struct_union_enum_st *en, symtable *stab)
 {
 	const int has_bitmask = !!attr_present(en->attr, attr_enum_bitmask);
 	sue_member **i;
@@ -186,18 +188,58 @@ void fold_enum(struct_union_enum_st *en, symtable *stab)
 				defval++;
 
 		}else{
-			numeric iv;
+			integral_t v;
 
 			FOLD_EXPR(e, stab);
-			const_fold_need_val(e, &iv);
+			v = const_fold_val(e);
 			m->val = e;
 
-			defval = has_bitmask ? iv.val.i << 1 : iv.val.i + 1;
+			defval = has_bitmask ? v << 1 : v + 1;
 		}
 	}
 }
 
-int fold_sue(struct_union_enum_st *const sue, symtable *stab)
+static void struct_pack(
+		decl *d, unsigned *poffset, unsigned sz, unsigned align)
+{
+	unsigned after_space;
+
+	pack_next(poffset, &after_space, sz, align);
+	/* offset is the end of the decl, after_space is the start */
+
+	d->struct_offset = after_space;
+}
+
+static void struct_pack_finish_bitfield(
+		unsigned *poffset, unsigned *pbitfield_current)
+{
+	/* gone from a bitfield to a normal field - pad by the overflow */
+	unsigned change = *pbitfield_current / CHAR_BIT;
+
+	*poffset = pack_to_align(*poffset + change, 1);
+
+	*pbitfield_current = 0;
+}
+
+static void bitfield_size_align(
+		type_ref *tref, unsigned *psz, unsigned *palign, where *from)
+{
+	/* implementation defined if ty isn't one of:
+	 * unsigned, signed or _Bool.
+	 * We make it take that align,
+	 * and reserve a max. of that size for the bitfield
+	 */
+	const type *ty;
+	tref = type_ref_is_type(tref, type_unknown);
+	assert(tref);
+
+	ty = tref->bits.type;
+
+	*psz = type_size(ty, from);
+	*palign = type_align(ty, from);
+}
+
+static int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 {
 	if(sue->size)
 		return sue->size;
@@ -211,17 +253,24 @@ int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 		return sue_enum_size(sue);
 
 	}else{
-		int align_max = 1;
-		int sz_max = 0;
-		int offset = 0;
+		unsigned bf_cur_lim;
+		unsigned align_max = 1;
+		unsigned sz_max = 0;
+		unsigned offset = 0;
+		struct
+		{
+			unsigned current_off, first_off;
+		} bitfield;
 		sue_member **i;
+
+		memset(&bitfield, 0, sizeof bitfield);
 
 		if(attr_present(sue->attr, attr_packed))
 			ICE("TODO: __attribute__((packed)) support");
 
 		for(i = sue->members; i && *i; i++){
 			decl *d = (*i)->struct_member;
-			int align, sz;
+			unsigned align, sz;
 			struct_union_enum_st *sub_sue;
 
 			fold_decl(d, stab);
@@ -235,28 +284,94 @@ int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 
 				if(sub_sue == sue)
 					DIE_AT(&d->where, "nested %s", sue_str(sue));
+				else if(sub_sue->flexarr && i[1])
+					WARN_AT(&d->where, "embedded struct with flex-array not final member");
 
 				sz = sue_size(sub_sue, &d->where);
 				align = sub_sue->align;
 
+			}else if(d->field_width){
+				const unsigned bits = const_fold_val(d->field_width);
+
+				sz = align = 0; /* don't affect sz_max or align_max */
+
+				if(bits == 0){
+					/* align next field / treat as new bitfield */
+					struct_pack_finish_bitfield(&offset, &bitfield.current_off);
+
+				}else if(!bitfield.current_off
+				|| bitfield.current_off + bits > bf_cur_lim)
+				{
+					if(bitfield.current_off){
+						/* bitfield overflow - repad */
+						WARN_AT(&d->where, "bitfield overflow (%d + %d > %d) - "
+								"moved to next boundary", bitfield.current_off, bits,
+								bf_cur_lim);
+
+						/* don't pay attention to the current bitfield offset */
+						bitfield.current_off = 0;
+						struct_pack_finish_bitfield(&offset, &bitfield.current_off);
+					}
+
+					bf_cur_lim = CHAR_BIT * type_ref_size(d->ref, &d->where);
+
+					/* Get some initial padding.
+					 * Note that we want to affect the align_max
+					 * of the struct and the size of this field
+					 */
+					bitfield_size_align(d->ref, &sz, &align, &d->where);
+
+					/* we are onto the beginning of a new group */
+					struct_pack(d, &offset, sz, align);
+					bitfield.first_off = d->struct_offset;
+					d->first_bitfield = 1;
+
+				}else{
+					/* mirror previous bitfields' offset in the struct
+					 * difference is in .struct_offset_bitfield
+					 */
+					d->struct_offset = bitfield.first_off;
+				}
+
+				d->struct_offset_bitfield = bitfield.current_off;
+				bitfield.current_off += bits; /* allowed to go above sizeof(int) */
+
+				if(bitfield.current_off == bf_cur_lim){
+					/* exactly reached the limit, reset bitfield indexing */
+					bitfield.current_off = 0;
+				}
+
 			}else{
 normal:
 				align = decl_align(d);
-				sz = decl_size(d);
+				if(type_ref_is_incomplete_array(d->ref)){
+					if(i[1])
+						DIE_AT(&d->where, "flexible array not at end of struct");
+					else if(sue->primitive != type_struct)
+						DIE_AT(&d->where, "flexible array in a %s", sue_str(sue));
+					else if(i == sue->members) /* nothing currently */
+						WARN_AT(&d->where, "struct with just a flex-array is an extension");
+
+					sue->flexarr = 1;
+					sz = 0; /* not counted in struct size */
+				}else{
+					sz = decl_size(d);
+				}
 			}
 
-
-			if(sue->primitive == type_struct){
+			if(sue->primitive == type_struct && !d->field_width){
 				const int prev_offset = offset;
-				int after_space;
 
-				pack_next(&offset, &after_space, sz, align);
-				/* offset is the end of the decl, after_space is the start */
+				if(bitfield.current_off){
+					/* we automatically pad on the next struct_pack,
+					 * don't struct_pack() here */
+					bitfield.current_off = 0;
+				}
 
-				d->struct_offset = after_space;
+				struct_pack(d, &offset, sz, align);
 
 				{
-					int pad = after_space - prev_offset;
+					int pad = d->struct_offset - prev_offset;
 					if(pad){
 						cc1_warn_at(&d->where, 0, 1, WARN_PAD,
 								"padding '%s' with %d bytes to align '%s'",
@@ -401,7 +516,8 @@ static int fold_align(int al, int min, int max, where *w)
 	if(al & (al - 1))
 		DIE_AT(w, "alignment %d isn't a power of 2", al);
 
-	if(al > 0 && al < min)
+	UCC_ASSERT(al > 0, "zero align");
+	if(al < min)
 		DIE_AT(w,
 				"can't reduce alignment (%d -> %d)",
 				min, al);
@@ -424,6 +540,10 @@ void fold_decl(decl *d, symtable *stab)
 	decl_attr *attrib = NULL;
 	int can_align = 1;
 
+	if(d->folded)
+		return;
+	d->folded = 1;
+
 	fold_type_ref(d->ref, NULL, stab);
 
 #if 0
@@ -433,33 +553,45 @@ void fold_decl(decl *d, symtable *stab)
 		DIE_AT(&d->where, "use of incomplete type - %s (%s)", d->spel, decl_to_str(d));
 #endif
 
-#ifdef FIELD_WIDTH_TODO
 	if(d->field_width){
-		enum constyness ktype;
-		numeric iv;
-		int width;
-		type *t = ;
+		consty k;
 
 		FOLD_EXPR(d->field_width, stab);
-		const_fold(d->field_width, &iv, &ktype);
+		const_fold(d->field_width, &k);
 
-		width = iv.val;
-
-		if(ktype != CONST_WITH_VAL)
+		if(k.type != CONST_VAL)
 			DIE_AT(&d->where, "constant expression required for field width");
 
-		if(width <= 0)
+		if((sintegral_t)k.bits.iv.val.i < 0)
 			DIE_AT(&d->where, "field width must be positive");
 
-		if(!decl_is_integral(d))
-			DIE_AT(&d->where, "field width on non-integral type %s", decl_to_str(d));
+		if(k.bits.iv.val.i == 0){
+			/* allow anonymous 0-width bitfields
+			 * we align the next bitfield to a boundary
+			 */
+			if(d->spel)
+				DIE_AT(&d->where,
+						"none-anonymous bitfield \"%s\" with 0-width",
+						d->spel);
+		}else{
+			const unsigned max = CHAR_BIT * type_ref_size(d->ref, &d->where);
+			if(k.bits.iv.val.i > max){
+				DIE_AT(&d->where,
+						"bitfield too large for \"%s\" (%u bits)",
+						decl_to_str(d), max);
+			}
+		}
 
-		if(width == 1 && t->is_signed)
-			WARN_AT(&d->where, "%s 1-bit field width is signed (-1 and 0)", decl_to_str(d));
+		if(!type_ref_is_integral(d->ref))
+			DIE_AT(&d->where, "field width on non-integral field %s",
+					decl_to_str(d));
+
+		if(k.bits.iv.val.i == 1 && type_ref_is_signed(d->ref))
+			WARN_AT(&d->where, "1-bit signed field \"%s\" takes values -1 and 0",
+					decl_to_str(d));
 
 		can_align = 0;
 	}
-#endif
 
 	/* allow:
 	 *   register int (*f)();
@@ -520,15 +652,23 @@ void fold_decl(decl *d, symtable *stab)
 				al = k.bits.iv.val.i;
 			}else{
 				type_ref *ty = i->bits.align_ty;
+				UCC_ASSERT(ty, "no type");
 				fold_type_ref(ty, NULL, stab);
 				al = type_ref_align(ty, &d->where);
 			}
 
+			if(al == 0)
+				al = decl_size(d);
 			max_al = fold_align(al, tal, max_al, &d->where);
 		}
 
 		if(attrib){
-			max_al = fold_align(attrib->bits.align, tal, max_al, &attrib->where);
+			unsigned al = attrib->bits.align;
+
+			if(al == 0)
+				al = platform_align_max();
+
+			max_al = fold_align(al, tal, max_al, &attrib->where);
 			if(!d->align)
 				d->align = umalloc(sizeof *d->align);
 		}
@@ -790,6 +930,21 @@ void fold_disallow_st_un(expr *e, const char *desc)
 	}
 }
 
+void fold_disallow_bitfield(expr *e, const char *desc, ...)
+{
+	if(e && expr_kind(e, struct)){
+		decl *d = e->bits.struct_mem.d;
+
+		if(d->field_width){
+			va_list l;
+			va_start(l, desc);
+			vdie(&e->where, 1, desc, l);
+			va_end(l);
+		}
+	}
+
+}
+
 #ifdef SYMTAB_DEBUG
 void print_stab(symtable *st, int current, where *w)
 {
@@ -905,7 +1060,7 @@ int fold_passable(stmt *s)
 	return s->f_passable(s);
 }
 
-void fold_merge_tenatives(symtable *stab)
+static void fold_merge_tenatives(symtable *stab)
 {
 	decl **const globs = stab->decls;
 
@@ -916,7 +1071,7 @@ void fold_merge_tenatives(symtable *stab)
 		decl *init = NULL;
 
 		/* functions are checked via .func_code on parsing */
-		if(d->flag || !d->spel || DECL_IS_FUNC(d))
+		if(d->proto_flag || !d->spel || DECL_IS_FUNC(d))
 			continue;
 
 		switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
@@ -929,7 +1084,7 @@ void fold_merge_tenatives(symtable *stab)
 
 		/* check for a single init between all prototypes */
 		for(; d; d = d->proto){
-			d->flag = 1;
+			d->proto_flag = 1;
 			if(d->init){
 				if(init){
 					char wbuf[WHERE_BUF_SIZ];
@@ -1026,6 +1181,11 @@ void fold(symtable *globs)
 
 			if(!k.bits.iv.val.i)
 				DIE_AT(&sa->e->where, "static assertion failure: %s", sa->s);
+
+			if(fopt_mode & FOPT_SHOW_STATIC_ASSERTS){
+				fprintf(stderr, "%s: static assert passed: %s-expr, msg: %s\n",
+						where_str(&sa->e->where), sa->e->f_str(), sa->s);
+			}
 		}
 	}
 

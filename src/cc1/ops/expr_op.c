@@ -1,13 +1,11 @@
 #include <string.h>
 #include <stdlib.h>
+
+#include "../defs.h"
 #include "ops.h"
 #include "expr_op.h"
 #include "../out/lbl.h"
 #include "../out/asm.h"
-
-#ifndef CHAR_BIT
-#    define CHAR_BIT 8
-#endif
 
 const char *str_expr_op()
 {
@@ -91,7 +89,7 @@ static void const_offset(consty *r, consty *val, consty *addr,
 	r->offset += change;
 }
 
-void fold_const_expr_op(expr *e, consty *k)
+static void fold_const_expr_op(expr *e, consty *k)
 {
 	consty lhs, rhs;
 
@@ -355,8 +353,21 @@ ptr_relation:
 		type_ref *tlarger = NULL;
 
 		if(op == op_shiftl || op == op_shiftr){
-			/* fine with any parameter sizes - don't need to match. resolves to lhs */
-			tlarger = tlhs;
+			/* fine with any parameter sizes
+			 * don't need to match. resolves to lhs,
+			 * or int if lhs is smaller (done before this function)
+			 */
+
+			UCC_ASSERT(
+					type_ref_size(tlhs, &lhs->where)
+						>= type_primitive_size(type_int),
+					"shift operand should have been promoted");
+
+			resolved = tlhs;
+
+		}else if(op == op_andsc || op == op_orsc){
+			/* no promotion */
+			resolved = type_ref_cached_BOOL();
 
 		}else{
 			const int l_unsigned = !type_ref_is_signed(tlhs),
@@ -409,12 +420,12 @@ ptr_relation:
 
 				tlarger = *plhs = *prhs = type_ref_new_cast_signed(signed_t, 0);
 			}
-		}
 
-		/* if we have a _comparison_ (e.g. between enums), convert to int */
-		resolved = op_is_relational(op)
-			? type_ref_cached_INT()
-			: tlarger;
+			/* if we have a _comparison_ (e.g. between enums), convert to int */
+			resolved = op_is_relational(op)
+				? type_ref_cached_INT()
+				: tlarger;
+		}
 	}
 
 fin:
@@ -456,7 +467,7 @@ static expr *expr_is_array_cast(expr *e)
 	return NULL;
 }
 
-static void op_bound(expr *e)
+void fold_check_bounds(expr *e, int chk_one_past_end)
 {
 	/* this could be in expr_deref, but it catches more in expr_op */
 	expr *array;
@@ -484,12 +495,18 @@ static void op_bound(expr *e)
 			if(e->op == op_minus)
 				idx.val.i = -idx.val.i;
 
-			/* index is allowed to be one past the end, i.e. idx.val.i == sz */
-			if((sintegral_t)idx.val.i < 0 || idx.val.i > sz)
+			/* index is allowed to be one past the end, i.e. idx.val == sz */
+			if((sintegral_t)idx.val.i < 0
+			|| (chk_one_past_end ? idx.val.i > sz : idx.val.i == sz))
+			{
+				/* XXX: note */
+				char buf[WHERE_BUF_SIZ];
+
 				WARN_AT(&e->where,
-						"index %" NUMERIC_FMT_D " out of bounds of array, size %ld",
-						idx.val.i, (long)sz);
-			/* TODO: "note: array here" */
+						"index %" NUMERIC_FMT_D " out of bounds of array, size %ld\n"
+						"%s: note: array declared here",
+						idx.val.i, (long)sz, where_str_r(buf, &array->tree_type->where));
+			}
 #undef idx
 		}
 	}
@@ -579,7 +596,7 @@ void fold_expr_op(expr *e, symtable *stab)
 		e->tree_type = op_promote_types(e->op, op_to_str(e->op),
 				&e->lhs, &e->rhs, &e->where, stab);
 
-		op_bound(e);
+		fold_check_bounds(e, 1);
 		op_check_precedence(e);
 		op_unsigned_cmp_check(e);
 

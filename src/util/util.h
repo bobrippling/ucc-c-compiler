@@ -15,7 +15,7 @@ void warn_colour(int on, int err);
 void warn_at_print_error(struct where *, const char *fmt, ...);
 
 void warn_at(struct where *, int show_line, const char *, ...) ucc_printflike(3, 4);
-void die_at( struct where *, int show_line, const char *, ...) ucc_printflike(3, 4) ucc_dead;
+void die_at(struct where *, int show_line, const char *, ...) ucc_printflike(3, 4) ucc_dead;
 void vwarn(struct where *w, int err, int show_line, const char *fmt, va_list l);
 void vdie(struct where *, int show_line, const char *, va_list) ucc_dead;
 void die(const char *fmt, ...) ucc_printflike(1, 2) ucc_dead;

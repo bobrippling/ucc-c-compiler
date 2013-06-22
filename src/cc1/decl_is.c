@@ -143,24 +143,14 @@ int type_ref_is_bool(type_ref *r)
 	}
 }
 
-type_ref *decl_is(decl *d, enum type_ref_type t)
+static type_ref *decl_is(decl *d, enum type_ref_type t)
 {
 	return type_ref_is(d->ref, t);
 }
 
-int decl_is_ptr(decl *d)
+static int decl_is_ptr(decl *d)
 {
 	return !!decl_is(d, type_ref_ptr);
-}
-
-int decl_is_block(decl *d)
-{
-	return !!decl_is(d, type_ref_block);
-}
-
-int decl_is_func(decl *d)
-{
-	return !!decl_is(d, type_ref_func);
 }
 
 int type_ref_is_fptr(type_ref *r)
@@ -179,16 +169,6 @@ int type_ref_is_nonfptr(type_ref *r)
 int type_ref_is_void_ptr(type_ref *r)
 {
 	return !!type_ref_is_type(type_ref_is_ptr(r), type_void);
-}
-
-int decl_is_integral(decl *d)
-{
-	return type_ref_is_integral(d->ref);
-}
-
-int decl_complete(decl *d)
-{
-	return type_ref_is_complete(d->ref);
 }
 
 int type_ref_is_integral(type_ref *r)
@@ -237,7 +217,7 @@ unsigned type_ref_align(type_ref *r, where *from)
 	}
 
 	if((test = type_ref_is(r, type_ref_type)))
-		return type_size(test->bits.type, from);
+		return type_align(test->bits.type, from);
 
 	if((test = type_ref_is(r, type_ref_array)))
 		return type_ref_align(test->ref, from);
@@ -480,14 +460,10 @@ int type_ref_is_const(type_ref *r)
 
 unsigned type_ref_array_len(type_ref *r)
 {
-	numeric iv;
-
 	r = type_ref_is(r, type_ref_array);
 
 	UCC_ASSERT(r, "not an array");
 	UCC_ASSERT(r->bits.array.size, "array len of []");
 
-	const_fold_need_val(r->bits.array.size, &iv);
-
-	return iv.val.i;
+	return const_fold_val(r->bits.array.size);
 }

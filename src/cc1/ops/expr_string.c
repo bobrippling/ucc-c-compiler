@@ -79,7 +79,7 @@ void gen_expr_str_str(expr *e)
 	fputc('\n', cc1_out);
 }
 
-void const_expr_string(expr *e, consty *k)
+static void const_expr_string(expr *e, consty *k)
 {
 	if(e->bits.str.sv.wide){
 		k->type = CONST_NO;

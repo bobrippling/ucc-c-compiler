@@ -196,9 +196,10 @@ static char *eval_func_macro(macro *m, char *args_str)
 							word = ustrprintf("%s%s", word,
 									neh = noeval_hash(m, ti[1], args, &free_neh, 0, "join"));
 
+							p = word;
 							if(iswordpart(*p) || (*p && iswordpart(p[1]))){
 								/* else we might have < ## < which gives << */
-								for(p = word; *p; p++)
+								for(; *p; p++)
 									if(!iswordpart(*p)){
 										CPP_WARN("pasting \"%s\" and \"%s\" doesn't give a single token",
 												old, neh);

@@ -209,7 +209,7 @@ static void decl_init_resolve_copy(decl_init **arr, const size_t idx)
 	memcpy_safe(resolved, decl_init_copy_const(cpy->range_init));
 }
 
-void decl_init_free_1(decl_init *di)
+static void decl_init_free_1(decl_init *di)
 {
 	free(di);
 }
@@ -244,6 +244,11 @@ static void override_warn(
 			where_str_r(buf, old));
 }
 
+static void excess_init(where *w, type_ref *ty)
+{
+	WARN_AT(w, "excess initialiser for '%s'", type_ref_to_str(ty));
+}
+
 static decl_init *decl_init_brace_up_scalar(
 		decl_init *current, init_iter *iter, type_ref *const tfor,
 		symtable *stab)
@@ -271,7 +276,14 @@ static decl_init *decl_init_brace_up_scalar(
 
 	if(first_init->type == decl_init_brace){
 		init_iter it;
+		unsigned n;
+
 		it.pos = first_init->bits.ar.inits;
+
+		n = dynarray_count(it.pos);
+		if(n > 1)
+			excess_init(&first_init->where, tfor);
+
 		return decl_init_brace_up_r(current, &it, tfor, stab);
 	}
 
@@ -310,7 +322,8 @@ static void range_store_add(
 		if(ent != DYNARRAY_NULL && ent->type == decl_init_copy){
 			/* this entry's copy points into range_store,
 			 * and will need updating */
-			dynarray_add(&offsets, 1 + DECL_INIT_COPY_IDX_INITS(ent, *range_store));
+			dynarray_add(&offsets,
+					(long)(1 + DECL_INIT_COPY_IDX_INITS(ent, *range_store)));
 
 			/* +1 because dynarray doesn't allow NULL */
 		}
@@ -491,6 +504,7 @@ static decl_init **decl_init_brace_up_array2(
 	return current;
 }
 
+
 static decl_init **decl_init_brace_up_sue2(
 		decl_init **current, decl_init ***range_store,
 		init_iter *iter,
@@ -604,6 +618,12 @@ static decl_init **decl_init_brace_up_sue2(
 			if(i < n && current[i] != DYNARRAY_NULL)
 				replacing = current[i];
 
+			if(type_ref_is_incomplete_array(
+						mem->struct_member->ref))
+			{
+				WARN_AT(&this->where, "initialisation of flexible array (GNU)");
+			}
+
 			if(!braced_sub){
 				braced_sub = decl_init_brace_up_r(
 						replacing, iter,
@@ -611,6 +631,13 @@ static decl_init **decl_init_brace_up_sue2(
 			}
 
 			dynarray_padinsert(&current, i, &n, braced_sub);
+
+			/* done, check bitfield truncation */
+			if(braced_sub && mem->struct_member->field_width){
+				UCC_ASSERT(braced_sub->type == decl_init_scalar,
+						"scalar init expected for union");
+				bitfield_trunc_check(mem->struct_member, braced_sub->bits.expr);
+			}
 
 			if(sue->primitive == type_union)
 				break;
@@ -702,6 +729,12 @@ static decl_init *decl_init_brace_up_aggregate(
 					&first->bits.ar.range_inits,
 					&it,
 					stab, arg1, arg2);
+
+			if(it.pos[0]){
+				/* we know we're in a brace,
+				 * so it.pos... etc aren't for anything else */
+				excess_init(&it.pos[0]->where, tfor);
+			}
 
 			free(old_subs);
 
@@ -943,8 +976,19 @@ void decl_init_create_assignments_base(
 		expr *zero;
 
 zero_init:
+		if(type_ref_is_incomplete_array(tfor)){
+			/* error caught elsewhere,
+			 * where we can print the location */
+			return;
+		}
+
+		/* this works for zeroing bitfields,
+		 * since we don't take the address
+		 * - builtin memset calls lea_expr()
+		 *   which can handle bitfields
+		 */
 		zero = builtin_new_memset(
-				expr_new_addr(base),
+				base,
 				0,
 				type_ref_size(tfor, &base->where));
 
@@ -969,9 +1013,7 @@ zero_init:
 		case decl_init_brace:
 		{
 			struct_union_enum_st *sue = type_ref_is_s_or_u(tfor);
-			/* type_ref_array_len() below:
-			 * we're already braced so there are no incomplete arrays */
-			const size_t n = sue ? (unsigned)dynarray_count(sue->members) : type_ref_array_len(tfor);
+			size_t n;
 			decl_init **i;
 			unsigned idx;
 
@@ -993,6 +1035,23 @@ zero_init:
 				}
 			}
 
+			/* type_ref_array_len()
+			 * we're already braced so there are no incomplete arrays
+			 * except for C99 flexible arrays
+			 */
+			if(sue){
+				n = dynarray_count(sue->members);
+			}else if(type_ref_is_incomplete_array(tfor)){
+				n = dynarray_count(init->bits.ar.inits);
+
+				/* it's fine if there's nothing for it */
+				if(n > 0)
+					DIE_AT(&init->where, "non-static initialisation of flexible array");
+			}else{
+				n = type_ref_array_len(tfor);
+			}
+
+			/* check union */
 			if(sue && sue->primitive == type_union){
 				decl *smem;
 				expr *sue_base;

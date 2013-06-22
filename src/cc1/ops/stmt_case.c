@@ -11,13 +11,13 @@ const char *str_stmt_case()
 
 void fold_stmt_case(stmt *t)
 {
-	numeric val;
+	integral_t val;
 
 	FOLD_EXPR(t->expr, t->symtab);
 	fold_need_expr(t->expr, "case", 0);
-	const_fold_need_val(t->expr, &val);
+	val = const_fold_val(t->expr);
 
-	t->expr->bits.ident.spel = out_label_case(CASE_CASE, val.val.i);
+	t->expr->bits.ident.spel = out_label_case(CASE_CASE, val);
 
 	fold_stmt_and_add_to_curswitch(t);
 }

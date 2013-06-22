@@ -12,6 +12,7 @@
 #include "sue.h"
 #include "decl.h"
 #include "cc1.h"
+#include "defs.h"
 
 const where *eof_where = NULL;
 
@@ -68,12 +69,76 @@ int numeric_cmp(const numeric *a, const numeric *b)
 	return 0;
 }
 
-int numeric_str(char *buf, size_t nbuf, integral_t v, int is_signed)
+int integral_str(char *buf, size_t nbuf, integral_t v, type_ref *ty)
 {
+	const int is_signed = type_ref_is_signed(ty);
+
 	return snprintf(
 			buf, nbuf,
-			is_signed ? "%" NUMERIC_FMT_D : "%" NUMERIC_FMT_U,
-			v);
+			is_signed
+				? "%" NUMERIC_FMT_D
+				: "%" NUMERIC_FMT_U,
+			v, is_signed);
+}
+
+integral_t integral_truncate_bits(integral_t val, unsigned bits)
+{
+	return val & ~(-1UL << bits);
+}
+
+integral_t integral_truncate(
+		integral_t val, unsigned bytes, integral_t *sign_extended)
+{
+	switch(bytes){
+#define CAST(sz, t)                                 \
+		case sz:                                        \
+			val = integral_truncate_bits(                   \
+					val, bytes * CHAR_BIT - 1);               \
+			if(sign_extended)                             \
+				*sign_extended = (integral_t)(unsigned t)val; \
+			break
+
+		CAST(1, char);
+		CAST(2, short);
+		CAST(4, int);
+
+#undef CAST
+
+		case 8:
+			if(sign_extended)
+				*sign_extended = val;
+			break; /* no cast - max word size */
+
+		default:
+			ICW("can't truncate numeric to %d bytes", bytes);
+	}
+
+	return val;
+}
+
+int integral_is_64_bit(const integral_t val, type_ref *ty)
+{
+	/* must apply the truncation here */
+	integral_t trunc;
+
+	if(type_ref_size(ty, &ty->where) < platform_word_size())
+		return 0;
+
+	trunc = integral_truncate(
+			val, type_ref_size(ty, &ty->where), NULL);
+
+#define INT_SHIFT (CHAR_BIT * sizeof(int))
+	if(type_ref_is_signed(ty)){
+		const sintegral_t as_signed = val;
+
+		if(as_signed < 0){
+			/* need unsigned (i.e. shr) shift */
+			return (int)((integral_t)trunc >> INT_SHIFT) != -1;
+		}
+	}
+
+	return (trunc >> INT_SHIFT) != 0;
+#undef INT_SHIFT
 }
 
 static type *type_new_primitive1(enum type_primitive p)
@@ -81,7 +146,7 @@ static type *type_new_primitive1(enum type_primitive p)
 	type *t = umalloc(sizeof *t);
 	where_new(&t->where);
 	t->primitive = p;
-	t->is_signed = 1;
+	t->is_signed = p != type__Bool;
 	return t;
 }
 
@@ -95,7 +160,7 @@ const type *type_new_primitive_sue(enum type_primitive p, struct_union_enum_st *
 const type *type_new_primitive_signed(enum type_primitive p, int sig)
 {
 	type *t = type_new_primitive1(p);
-	t->is_signed = sig;
+	t->is_signed = sig && p != type__Bool;
 	return t;
 }
 
@@ -131,7 +196,7 @@ unsigned type_primitive_size(enum type_primitive tp)
 		case type_ldouble:
 			/* 80-bit float */
 			ICW("TODO: long double");
-			return 10; /* FIXME: 32-bit? */
+			return cc1_m32 ? 12 : 16;
 
 		case type_union:
 		case type_struct:
@@ -153,6 +218,33 @@ unsigned type_size(const type *t, where *from)
 		return sue_size(t->sue, from);
 
 	return type_primitive_size(t->primitive);
+}
+
+unsigned type_align(const type *t, where *from)
+{
+	if(t->sue)
+		return sue_align(t->sue, from);
+
+	/* align to the size,
+	 * except for double and ldouble
+	 * (long changes but this is accounted for in type_primitive_size)
+	 */
+	switch(t->primitive){
+		case type_double:
+			if(cc1_m32){
+				/* 8 on Win32, 4 on Linux32 */
+				if(platform_sys() == PLATFORM_CYGWIN)
+					return 8;
+				return 4;
+			}
+			return 8; /* 8 on 64-bit */
+
+		case type_ldouble:
+			return cc1_m32 ? 4 : 16;
+
+		default:
+			return type_primitive_size(t->primitive);
+	}
 }
 
 int type_qual_equal(enum type_qualifier a, enum type_qualifier b)
@@ -260,6 +352,38 @@ int op_can_compound(enum op_type o)
 	return 0;
 }
 
+int op_is_commutative(enum op_type o)
+{
+	switch(o){
+		case op_multiply:
+		case op_plus:
+		case op_xor:
+		case op_or:
+		case op_and:
+		case op_eq:
+		case op_ne:
+			return 1;
+
+		case op_unknown:
+			ICE("bad op");
+		case op_minus:
+		case op_divide:
+		case op_modulus:
+		case op_orsc:
+		case op_andsc:
+		case op_shiftl:
+		case op_shiftr:
+		case op_le:
+		case op_lt:
+		case op_ge:
+		case op_gt:
+		case op_not:
+		case op_bnot:
+			break;
+	}
+	return 0;
+}
+
 int op_is_comparison(enum op_type o)
 {
 	switch(o){
@@ -298,7 +422,8 @@ const char *type_to_str(const type *t)
 	static char buf[TYPE_STATIC_BUFSIZ];
 	char *bufp = buf;
 
-	if(!t->is_signed) bufp += snprintf(bufp, BUF_SIZE, "unsigned ");
+	if(!t->is_signed && t->primitive != type__Bool)
+		bufp += snprintf(bufp, BUF_SIZE, "unsigned ");
 
 	if(t->sue){
 		snprintf(bufp, BUF_SIZE, "%s%s %s",

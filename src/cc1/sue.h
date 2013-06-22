@@ -21,7 +21,7 @@ struct struct_union_enum_st
 	enum type_primitive primitive; /* struct or enum or union */
 
 	char *spel; /* "<anon ...>" if anon */
-	unsigned anon : 1, complete : 1;
+	unsigned anon : 1, complete : 1, flexarr : 1;
 	int align, size;
 
 	sue_member **members;
@@ -52,7 +52,8 @@ int  enum_nentries(struct_union_enum_st *);
 void enum_member_search(enum_member **, struct_union_enum_st **, symtable *, const char *spel);
 
 /* struct/union specific */
-int sue_size(struct_union_enum_st *, where *w);
+unsigned sue_size(struct_union_enum_st *, where *w);
+unsigned sue_align(struct_union_enum_st *, where *w);
 int sue_enum_size(struct_union_enum_st *st);
 
 decl *struct_union_member_find(struct_union_enum_st *,

@@ -34,7 +34,7 @@
 #define PARSE_type_ref_is_s_or_u_or_e(r) PARSE_type_ref_is_s_or_u_or_e2(r, 1)
 #define PARSE_type_ref_is_s_or_u(r)      PARSE_type_ref_is_s_or_u_or_e2(r, 0)
 
-struct_union_enum_st *PARSE_type_ref_is_s_or_u_or_e2(type_ref *r, int allow_e)
+static struct_union_enum_st *PARSE_type_ref_is_s_or_u_or_e2(type_ref *r, int allow_e)
 {
 	r = type_ref_skip_casts(r);
 	if(r->type == type_ref_type){
@@ -56,7 +56,7 @@ static void parse_add_attr(decl_attr **append);
 static type_ref *parse_type_ref2(enum decl_mode mode, char **sp);
 
 /* sue = struct/union/enum */
-type_ref *parse_type_sue(enum type_primitive prim)
+static type_ref *parse_type_sue(enum type_primitive prim)
 {
 	int is_complete = 0;
 	char *spel = NULL;
@@ -568,7 +568,7 @@ static type_ref *parse_btype(
 	}
 }
 
-int parse_curtok_is_type(void)
+static int parse_curtok_is_type(void)
 {
 	if(curtok_is_type_qual() || curtok_is_decl_store() || curtok_is_type_primitive())
 		return 1;
@@ -637,6 +637,8 @@ funcargs *parse_func_arglist()
 
 			/* continue loop */
 			argdecl = parse_decl_single(flags);
+			if(!argdecl)
+				DIE_AT(NULL, "type expected (got %s)", token_to_str(curtok));
 		}
 
 fin:;
@@ -862,7 +864,7 @@ static void parse_add_asm(decl *d)
 	}
 }
 
-decl *parse_decl(type_ref *btype, enum decl_mode mode)
+static decl *parse_decl(type_ref *btype, enum decl_mode mode)
 {
 	char *spel = NULL;
 	decl *d = decl_new();
@@ -1264,11 +1266,7 @@ add:
 
 			if((mode & DECL_MULTI_ACCEPT_FIELD_WIDTH) && accept(token_colon)){
 				/* normal decl, check field spec */
-#ifdef FIELD_WIDTH_TODO
-				d->field_width = parse_expr_exp();
-#else
-				ICE("TODO: field width");
-#endif
+				d->field_width = parse_expr_no_comma();
 			}
 
 			last = d;
@@ -1278,16 +1276,10 @@ add:
 		if(last && !last->func_code){
 next:
 			/* end of type, if we have an identifier, '(' or '*', it's an unknown type name */
-			if(parse_at_decl_spec() && last)
+			if(parse_at_decl_spec())
 				DIE_AT(NULL, "unknown type name '%s'", last->spel);
 			/* else die here: */
 			EAT(token_semicolon);
-		}
-
-		if((mode & DECL_MULTI_ACCEPT_FIELD_WIDTH) && accept(token_colon)){
-			/* padding - struct { int i; :3 } */
-			ICE("TODO: struct/union(?) inter-var padding");
-			/* anon-decl with field width to pad? */
 		}
 	}
 }

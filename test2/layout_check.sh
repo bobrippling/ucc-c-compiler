@@ -10,7 +10,20 @@ then
 	if [ "$1" = '--help' ]
 	then usage
 	fi
-	set -- "$1" "${1}.layout"
+
+	if echo "$1" | grep '\.c$' > /dev/null
+	then
+		in="$1"
+		out="/tmp/chk.out.$$"
+
+		trap "rm -f $out" EXIT
+
+		"$UCC" -S -o"$out" "$1"
+
+		set -- "$out" "$in.layout"
+	else
+		set -- "$1" "${1}.layout"
+	fi
 fi
 
 if [ $# -ne 2 ]
@@ -26,4 +39,4 @@ set -e
 ./layout_normalise.pl "$1" > $a
 ./layout_normalise.pl "$2" > $b
 
-diff -u $a $b # set -e
+diff -u $a $b

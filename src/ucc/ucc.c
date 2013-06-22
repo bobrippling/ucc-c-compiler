@@ -86,7 +86,7 @@ static char *tmpfilenam()
 	return r;
 }
 
-void create_file(struct cc_file *file, enum mode mode, char *in)
+static void create_file(struct cc_file *file, enum mode mode, char *in)
 {
 	char *ext;
 
@@ -147,7 +147,7 @@ after_compile:
 	}
 }
 
-void gen_obj_file(struct cc_file *file, char **args[4], enum mode mode)
+static void gen_obj_file(struct cc_file *file, char **args[4], enum mode mode)
 {
 	char *in = file->in;
 
@@ -179,7 +179,7 @@ void gen_obj_file(struct cc_file *file, char **args[4], enum mode mode)
 	}
 }
 
-void rename_files(struct cc_file *files, int nfiles, char *output, enum mode mode)
+static void rename_files(struct cc_file *files, int nfiles, char *output, enum mode mode)
 {
 	const char mode_ch = MODE_ARG_CH(mode);
 	int i;
@@ -236,7 +236,7 @@ void rename_files(struct cc_file *files, int nfiles, char *output, enum mode mod
 	}
 }
 
-void process_files(enum mode mode, char **inputs, char *output, char **args[4], char *backend)
+static void process_files(enum mode mode, char **inputs, char *output, char **args[4], char *backend)
 {
 	const int ninputs = dynarray_count(inputs);
 	int i;

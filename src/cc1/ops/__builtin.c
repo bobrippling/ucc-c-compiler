@@ -187,6 +187,14 @@ static void fold_memset(expr *e, symtable *stab)
 {
 	FOLD_EXPR(e->lhs, stab);
 
+	if(!expr_is_addressable(e->lhs)){
+		/* this is pretty much an ICE, except it may be
+		 * user-callable in the future
+		 */
+		DIE_AT(&e->where, "can't memset %s - not addressable",
+				e->lhs->f_str());
+	}
+
 	if(e->bits.builtin_memset.len == 0)
 		WARN_AT(&e->where, "zero size memset");
 
@@ -212,7 +220,8 @@ static void builtin_gen_memset(expr *e)
 	if((textra = rem ? type_ref_cached_MAX_FOR(rem) : NULL))
 		textrap = type_ref_new_ptr(textra, qual_none);
 
-	gen_expr(e->lhs);
+	/* works fine for bitfields - struct lea acts appropriately */
+	lea_expr(e->lhs);
 
 	out_change_type(type_ref_new_ptr(tzero, qual_none));
 
@@ -281,7 +290,7 @@ static expr *parse_memset(void)
 
 /* --- memcpy */
 
-void fold_memcpy(expr *e, symtable *stab)
+static void fold_memcpy(expr *e, symtable *stab)
 {
 	FOLD_EXPR(e->lhs, stab);
 	FOLD_EXPR(e->rhs, stab);
@@ -329,7 +338,7 @@ static void builtin_memcpy_single(void)
 	out_swap(); /* DS */
 }
 
-void builtin_gen_memcpy(expr *e)
+static void builtin_gen_memcpy(expr *e)
 {
 #ifdef BUILTIN_USE_LIBC
 	/* TODO - also with memset */
@@ -568,13 +577,13 @@ expr *builtin_new_frame_address(int depth)
 
 /* --- reg_save_area (a basic wrapper around out_push_reg_save_ptr()) */
 
-void fold_reg_save_area(expr *e, symtable *stab)
+static void fold_reg_save_area(expr *e, symtable *stab)
 {
 	(void)stab;
 	e->tree_type = type_ref_cached_CHAR_PTR();
 }
 
-void gen_reg_save_area(expr *e)
+static void gen_reg_save_area(expr *e)
 {
 	(void)e;
 	out_comment("stack local offset:");

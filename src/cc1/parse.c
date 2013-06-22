@@ -88,7 +88,7 @@ expr *parse_expr_sizeof_typeof_alignof(enum what_of what_of)
 	return e;
 }
 
-expr *parse_expr__Generic()
+static expr *parse_expr__Generic()
 {
 	struct generic_lbl **lbls;
 	expr *test;
@@ -128,7 +128,7 @@ expr *parse_expr__Generic()
 	return expr_new__Generic(test, lbls);
 }
 
-expr *parse_expr_identifier()
+static expr *parse_expr_identifier()
 {
 	expr *e;
 
@@ -141,7 +141,7 @@ expr *parse_expr_identifier()
 	return e;
 }
 
-expr *parse_block()
+static expr *parse_block()
 {
 	funcargs *args;
 	type_ref *rt;
@@ -173,7 +173,7 @@ def_args:
 	return expr_new_block(rt, args, parse_stmt_block());
 }
 
-expr *parse_expr_primary()
+static expr *parse_expr_primary()
 {
 	switch(curtok){
 		case token_integer:
@@ -252,7 +252,7 @@ expr *parse_expr_primary()
 	}
 }
 
-expr *parse_expr_postfix()
+static expr *parse_expr_postfix()
 {
 	expr *e;
 	int flag;
@@ -363,7 +363,7 @@ expr *parse_expr_unary()
 	return e;
 }
 
-expr *parse_expr_generic(expr *(*above)(), enum token t, ...)
+static expr *parse_expr_generic(expr *(*above)(), enum token t, ...)
 {
 	expr *e = above();
 
@@ -391,7 +391,7 @@ expr *parse_expr_generic(expr *(*above)(), enum token t, ...)
 }
 
 #define PARSE_DEFINE(this, above, ...) \
-expr *parse_expr_ ## this()            \
+static expr *parse_expr_ ## this()     \
 {                                      \
 	return parse_expr_generic(           \
 			parse_expr_ ## above,            \
@@ -410,7 +410,7 @@ PARSE_DEFINE(binary_or,   binary_xor,    token_or)
 PARSE_DEFINE(logical_and, binary_or,     token_andsc)
 PARSE_DEFINE(logical_or,  logical_and,   token_orsc)
 
-expr *parse_expr_conditional()
+static expr *parse_expr_conditional()
 {
 	expr *e = parse_expr_logical_or();
 
@@ -540,7 +540,7 @@ static void parse_test_init_expr(stmt *t)
 	EAT(token_close_paren);
 }
 
-stmt *parse_if()
+static stmt *parse_if()
 {
 	stmt *t = STAT_NEW(if);
 
@@ -558,7 +558,7 @@ stmt *parse_if()
 	return t;
 }
 
-stmt *parse_switch()
+static stmt *parse_switch()
 {
 	stmt *t = STAT_NEW(switch);
 	stmt *old = current_break_target;
@@ -580,7 +580,7 @@ stmt *parse_switch()
 	return t;
 }
 
-stmt *parse_do()
+static stmt *parse_do()
 {
 	stmt *t = STAT_NEW(do);
 
@@ -599,7 +599,7 @@ stmt *parse_do()
 	return t;
 }
 
-stmt *parse_while()
+static stmt *parse_while()
 {
 	stmt *t = STAT_NEW(while);
 
@@ -616,7 +616,7 @@ stmt *parse_while()
 	return t;
 }
 
-stmt *parse_for()
+static stmt *parse_for()
 {
 	stmt *s = STAT_NEW(for);
 	stmt_flow *sf;
@@ -704,10 +704,12 @@ static stmt *parse_stmt_and_decls(void)
 		/* fine with a normal statement */
 		int at_decl = 0;
 
-		parse_static_assert();
-
-		while(curtok != token_close_block && !(at_decl = parse_at_decl()))
+		for(;;){
+			parse_static_assert();
+			if(curtok == token_close_block || (at_decl = parse_at_decl()))
+				break;
 			dynarray_add(&code_stmt->codes, parse_stmt());
+		}
 
 		if(at_decl){
 			if(code_stmt->codes){
@@ -805,7 +807,7 @@ stmt *parse_stmt_block()
 	return t;
 }
 
-stmt *parse_label_next(stmt *lbl)
+static stmt *parse_label_next(stmt *lbl)
 {
 	lbl->lhs = parse_stmt();
 	/*

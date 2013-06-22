@@ -17,15 +17,16 @@ my %sizes = (
 my %sizes_r = map { $sizes{$_} => $_ } keys %sizes;
 
 my @parts; # { size, value } or { lbl }
+my $any = 0;
 
-die "Usage: $0 fname\n" unless @ARGV == 1;
-my $fnam = shift;
-open F, '<', $fnam or die "open $fnam: $!\n";
-while(<F>){
+while(<>){
+	s/#.*//;
 	if(/^[ \t]*\.(byte|word|long|quad|zero|space)[ \t]+(.*)/){
 		my $is_zero = is_zero($1);
 
-		for(split /, */, $2){
+		(my $rest = $2) =~ s/ +$//;
+
+		for(split /, */, $rest){
 			my $r;
 			if($is_zero){
 				$r = { size  => $_,
@@ -37,11 +38,14 @@ while(<F>){
 
 			emit($r);
 		}
+		$any = 1;
 	}elsif(/(.*): *$/){
 		emit({ lbl => $1 });
+		$any = 1;
 	}
 }
-close F;
+
+die "$0: no input\n" unless $any;
 
 sub flush;
 sub emit2;

@@ -2,6 +2,7 @@
 
 typedef struct numeric numeric;
 typedef struct stringval stringval;
+typedef struct type_ref  type_ref;
 
 typedef unsigned long long integral_t;
 typedef   signed long long sintegral_t;
@@ -36,7 +37,15 @@ struct numeric
 };
 
 int numeric_cmp(const numeric *, const numeric *);
-int numeric_str(char *buf, size_t nbuf, integral_t v, int is_signed);
+
+#define INTEGRAL_BUF_SIZ 32
+int integral_str(char *buf, size_t nbuf, integral_t v, type_ref *ty);
+
+int integral_is_64_bit(const integral_t val, type_ref *ty);
+integral_t integral_truncate(
+		integral_t val, unsigned bytes, integral_t *sign_extended);
+
+integral_t integral_truncate_bits(integral_t val, unsigned bits);
 
 struct stringval
 {

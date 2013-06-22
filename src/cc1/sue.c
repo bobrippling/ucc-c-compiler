@@ -52,15 +52,30 @@ int sue_enum_size(struct_union_enum_st *st)
 	return st->size = type_primitive_size(type_int);
 }
 
-int sue_size(struct_union_enum_st *st, where *w)
+static void sue_incomplete_chk(struct_union_enum_st *st, where *w)
 {
 	if(sue_incomplete(st))
 		DIE_AT(w, "%s %s is incomplete", sue_str(st), st->spel);
+}
+
+unsigned sue_size(struct_union_enum_st *st, where *w)
+{
+	sue_incomplete_chk(st, w);
 
 	if(st->primitive == type_enum)
 		return sue_enum_size(st);
 
 	return st->size; /* can be zero */
+}
+
+unsigned sue_align(struct_union_enum_st *st, where *w)
+{
+	sue_incomplete_chk(st, w);
+
+	if(st->primitive == type_enum)
+		return sue_enum_size(st);
+
+	return st->align;
 }
 
 struct_union_enum_st *sue_find_this_scope(symtable *stab, const char *spel)
@@ -98,9 +113,11 @@ static void sue_get_decls(sue_member **mems, sue_member ***pds)
 		if(d->spel){
 			dynarray_add(pds, *mems);
 		}else{
+			/* either an anonymous struct/union OR a bitfield */
 			struct_union_enum_st *sub = type_ref_is_s_or_u(d->ref);
 
-			sue_get_decls(sub->members, pds);
+			if(sub)
+				sue_get_decls(sub->members, pds);
 		}
 	}
 }

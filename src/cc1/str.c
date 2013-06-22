@@ -132,7 +132,7 @@ const char *base_to_str(enum base b)
 	return NULL;
 }
 
-int escape_multi_char(char *pos, char *pval, int *len)
+static int escape_multi_char(char *pos, char *pval, int *len)
 {
 	/* either \x or \[1-7][0-7]* */
 	int is_oct;

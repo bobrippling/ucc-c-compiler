@@ -14,12 +14,6 @@ const char *str_expr_funcall()
 	return "funcall";
 }
 
-int const_fold_expr_funcall(expr *e)
-{
-	(void)e;
-	return 1; /* could extend to have int x() const; */
-}
-
 enum printf_attr
 {
 	printf_attr_long = 1 << 0
