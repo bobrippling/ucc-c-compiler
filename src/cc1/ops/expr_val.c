@@ -8,7 +8,7 @@
 
 const char *str_expr_val()
 {
-	return "val.i";
+	return "val";
 }
 
 int val_highest_bit(unsigned long long v)
@@ -62,6 +62,21 @@ void fold_expr_val(expr *e, symtable *stab)
 	/*fprintf(stderr, "----\n0x%" NUMERIC_FMT_X
 	      ", highest bit = %d. suff = 0x%x\n",
 	      iv->val.i, highest_bit, iv->suffix);*/
+
+	/* just bail for floats for now, apart from truncating it */
+	if(iv->suffix & VAL_FLOATING){
+		is_signed = 1;
+		/**/ if(iv->suffix & VAL_FLOAT)
+			p = type_float, iv->val.f = (float)iv->val.f;
+		else if(iv->suffix & VAL_DOUBLE)
+			p = type_double, iv->val.f = (double)iv->val.f;
+		else if(iv->suffix & VAL_LDOUBLE)
+			p = type_ldouble, iv->val.f = (long double)iv->val.f;
+		else
+			ICE("floating?");
+
+		goto chosen;
+	}
 
 	if(iv->val.i == 0){
 		assert(highest_bit == -1);
