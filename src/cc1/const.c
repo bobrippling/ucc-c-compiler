@@ -59,25 +59,32 @@ static int const_expr_zero(expr *e, int zero)
 
 	const_fold(e, &k);
 
-	return k.type == CONST_VAL && (zero ? k.bits.iv.val.i == 0 : k.bits.iv.val.i != 0);
+	if(k.type != CONST_NUM)
+		return 0;
+
+	if(K_FLOATING(k.bits.num))
+		return !k.bits.num.val.f == zero;
+
+	return !k.bits.num.val.i == zero;
 }
 
-void const_fold_numeric(expr *e, numeric *piv)
+void const_fold_integral(expr *e, numeric *piv)
 {
 	consty k;
 	const_fold(e, &k);
 
-	UCC_ASSERT(k.type == CONST_VAL, "not const");
+	UCC_ASSERT(k.type == CONST_NUM, "not const");
 	UCC_ASSERT(k.offset == 0, "got offset for val?");
+	UCC_ASSERT(K_INTEGRAL(k.bits.num), "fp?");
 
-	memcpy_safe(piv, &k.bits.iv);
+	memcpy_safe(piv, &k.bits.num);
 }
 
-integral_t const_fold_val(expr *e)
+integral_t const_fold_val_i(expr *e)
 {
-	numeric iv;
-	const_fold_numeric(e, &iv);
-	return iv.val.i;
+	numeric num;
+	const_fold_integral(e, &num);
+	return num.val.i;
 }
 
 int const_expr_and_non_zero(expr *e)

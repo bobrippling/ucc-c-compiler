@@ -48,37 +48,37 @@ oct/hex (ll|LL) suffix -> long long int, unsigned long long int
 
 void fold_expr_val(expr *e, symtable *stab)
 {
-	numeric *const iv = &e->bits.iv;
+	numeric *const num = &e->bits.num;
 
-	int is_signed = !(iv->suffix & VAL_UNSIGNED);
-	const int can_change_sign = is_signed && (iv->suffix & VAL_NON_DECIMAL);
+	int is_signed = !(num->suffix & VAL_UNSIGNED);
+	const int can_change_sign = is_signed && (num->suffix & VAL_NON_DECIMAL);
 
 	const int long_max_bit = 63; /* TODO */
-	const int highest_bit = val_highest_bit(iv->val.i);
+	const int highest_bit = val_highest_bit(num->val.i);
 	enum type_primitive p =
-		iv->suffix & VAL_LLONG ? type_llong :
-		iv->suffix & VAL_LONG  ? type_long  : type_int;
+		num->suffix & VAL_LLONG ? type_llong :
+		num->suffix & VAL_LONG  ? type_long  : type_int;
 
 	/*fprintf(stderr, "----\n0x%" NUMERIC_FMT_X
 	      ", highest bit = %d. suff = 0x%x\n",
-	      iv->val.i, highest_bit, iv->suffix);*/
+	      num->val.i, highest_bit, num->suffix);*/
 
 	/* just bail for floats for now, apart from truncating it */
-	if(iv->suffix & VAL_FLOATING){
+	if(num->suffix & VAL_FLOATING){
 		is_signed = 1;
-		/**/ if(iv->suffix & VAL_FLOAT)
-			p = type_float, iv->val.f = (float)iv->val.f;
-		else if(iv->suffix & VAL_DOUBLE)
-			p = type_double, iv->val.f = (double)iv->val.f;
-		else if(iv->suffix & VAL_LDOUBLE)
-			p = type_ldouble, iv->val.f = (long double)iv->val.f;
+		/**/ if(num->suffix & VAL_FLOAT)
+			p = type_float, num->val.f = (float)num->val.f;
+		else if(num->suffix & VAL_DOUBLE)
+			p = type_double, num->val.f = (double)num->val.f;
+		else if(num->suffix & VAL_LDOUBLE)
+			p = type_ldouble, num->val.f = (long double)num->val.f;
 		else
 			ICE("floating?");
 
 		goto chosen;
 	}
 
-	if(iv->val.i == 0){
+	if(num->val.i == 0){
 		assert(highest_bit == -1);
 		goto chosen;
 	}else{
@@ -158,19 +158,19 @@ chosen:
 
 void gen_expr_val(expr *e)
 {
-	out_push_iv(e->tree_type, &e->bits.iv);
+	out_push_iv(e->tree_type, &e->bits.num);
 }
 
 void gen_expr_str_val(expr *e)
 {
-	idt_printf("val.i: 0x%lx\n", (unsigned long)e->bits.iv.val.i);
+	idt_printf("val.i: 0x%lx\n", (unsigned long)e->bits.num.val.i);
 }
 
 static void const_expr_val(expr *e, consty *k)
 {
 	memset(k, 0, sizeof *k);
-	memcpy_safe(&k->bits.iv, &e->bits.iv);
-	k->type = CONST_VAL; /* obviously vals are const */
+	memcpy_safe(&k->bits.num, &e->bits.num);
+	k->type = CONST_NUM; /* obviously vals are const */
 }
 
 void mutate_expr_val(expr *e)
@@ -181,18 +181,21 @@ void mutate_expr_val(expr *e)
 expr *expr_new_val(int val)
 {
 	expr *e = expr_new_wrapper(val);
-	e->bits.iv.val.i = val;
+	e->bits.num.val.i = val;
 	return e;
 }
 
-expr *expr_new_numeric(numeric *iv)
+expr *expr_new_numeric(numeric *num)
 {
 	expr *e = expr_new_val(0);
-	memcpy_safe(&e->bits.iv, iv);
+	memcpy_safe(&e->bits.num, num);
 	return e;
 }
 
 void gen_expr_style_val(expr *e)
 {
-	stylef("%" NUMERIC_FMT_D, e->bits.iv.val.i);
+	if(K_FLOATING(e->bits.num))
+		stylef("%" NUMERIC_FMT_LD, e->bits.num.val.f);
+	else
+		stylef("%" NUMERIC_FMT_D, e->bits.num.val.i);
 }

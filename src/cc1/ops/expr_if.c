@@ -34,9 +34,12 @@ static void fold_const_expr_if(expr *e, consty *k)
 	}
 
 	switch(consts[0].type){
-		case CONST_VAL:
-			res = consts[0].bits.iv.val.i;
+		case CONST_NUM:
+		{
+			numeric *n = &consts[0].bits.num;
+			res = n->suffix & VAL_FLOATING ? n->val.f : n->val.i;
 			break;
+		}
 		case CONST_ADDR:
 		case CONST_STRK:
 			res = 1;

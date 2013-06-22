@@ -10,6 +10,7 @@ typedef        long double floating_t;
 #define NUMERIC_FMT_D "lld"
 #define NUMERIC_FMT_U "llu"
 #define NUMERIC_FMT_X "llx"
+#define NUMERIC_FMT_LD "Lf"
 #define NUMERIC_T_MAX ULLONG_MAX
 struct numeric
 {

@@ -78,9 +78,12 @@ static void const_offset(consty *r, consty *val, consty *addr,
 	unsigned step = type_ref_size(type_ref_next(addr_type), NULL);
 	int change;
 
+	UCC_ASSERT(K_INTEGRAL(val->bits.num),
+			"fp + address?");
+
 	memcpy_safe(r, addr);
 
-	change = val->bits.iv.val.i * step;
+	change = val->bits.num.val.i * step;
 
 	if(op == op_minus)
 		change = -change;
@@ -99,7 +102,10 @@ static void fold_const_expr_op(expr *e, consty *k)
 	if(e->rhs){
 		const_fold(e->rhs, &rhs);
 
-		if(rhs.type == CONST_VAL){
+		if(rhs.type == CONST_NUM){
+			UCC_ASSERT(K_INTEGRAL(rhs.bits.num),
+					"fp shift?");
+
 			switch(e->op){
 				case op_shiftl:
 				case op_shiftr:
@@ -108,13 +114,13 @@ static void fold_const_expr_op(expr *e, consty *k)
 					int undefined = 0;
 
 					if(type_ref_is_signed(e->rhs->tree_type)
-					&& (sintegral_t)rhs.bits.iv.val.i < 0)
+					&& (sintegral_t)rhs.bits.num.val.i < 0)
 					{
 						WARN_AT(&e->rhs->where, "shift count is negative (%"
-								NUMERIC_FMT_D ")", (sintegral_t)rhs.bits.iv.val.i);
+								NUMERIC_FMT_D ")", (sintegral_t)rhs.bits.num.val.i);
 
 						undefined = 1;
-					}else if(rhs.bits.iv.val.i >= ty_sz){
+					}else if(rhs.bits.num.val.i >= ty_sz){
 						WARN_AT(&e->rhs->where, "shift count >= width of %s (%u)",
 								type_ref_to_str(e->lhs->tree_type), ty_sz);
 
@@ -123,9 +129,9 @@ static void fold_const_expr_op(expr *e, consty *k)
 
 
 					if(undefined){
-						if(lhs.type == CONST_VAL){
+						if(lhs.type == CONST_NUM){
 							/* already 0 */
-							k->type = CONST_VAL;
+							k->type = CONST_NUM;
 						}else{
 							k->type = CONST_NO;
 						}
@@ -138,10 +144,10 @@ static void fold_const_expr_op(expr *e, consty *k)
 		}
 	}else{
 		memset(&rhs, 0, sizeof rhs);
-		rhs.type = CONST_VAL;
+		rhs.type = CONST_NUM;
 	}
 
-	if(lhs.type == CONST_VAL && rhs.type == CONST_VAL){
+	if(lhs.type == CONST_NUM && rhs.type == CONST_NUM){
 		const char *err = NULL;
 		integral_t r;
 		/* the op is signed if an operand is, not the result,
@@ -150,15 +156,16 @@ static void fold_const_expr_op(expr *e, consty *k)
 		                (e->rhs ? type_ref_is_signed(e->rhs->tree_type) : 0);
 
 		r = operate(
-				lhs.bits.iv.val.i,
-				e->rhs ? &rhs.bits.iv.val.i : NULL,
+				lhs.bits.num.val.i,
+				e->rhs ? &rhs.bits.num.val.i : NULL,
 				e->op, is_signed, &err);
 
 		if(err){
 			WARN_AT(&e->where, "%s", err);
 		}else{
-			k->type = CONST_VAL;
-			k->bits.iv.val.i = r;
+			memset(k, 0, sizeof *k);
+			k->type = CONST_NUM;
+			k->bits.num.val.i = r;
 		}
 
 	}else if((e->op == op_andsc || e->op == op_orsc)
@@ -166,7 +173,7 @@ static void fold_const_expr_op(expr *e, consty *k)
 
 		/* allow 1 || f() */
 		consty *kside = CONST_AT_COMPILE_TIME(lhs.type) ? &lhs : &rhs;
-		int is_true = !!kside->bits.iv.val.i;
+		int is_true = !!kside->bits.num.val.i;
 
 		/* TODO: to be more conformant we should disallow: a() && 0
 		 * i.e. ordering
@@ -180,9 +187,9 @@ static void fold_const_expr_op(expr *e, consty *k)
 		int lhs_addr = lhs.type == CONST_ADDR || lhs.type == CONST_STRK;
 		int rhs_addr = rhs.type == CONST_ADDR || rhs.type == CONST_STRK;
 
-		/**/if(lhs_addr && rhs.type == CONST_VAL)
+		/**/if(lhs_addr && rhs.type == CONST_NUM)
 			const_offset(k, &rhs, &lhs, e->lhs->tree_type, e->op);
-		else if(rhs_addr && lhs.type == CONST_VAL)
+		else if(rhs_addr && lhs.type == CONST_NUM)
 			const_offset(k, &lhs, &rhs, e->rhs->tree_type, e->op);
 	}
 }
@@ -488,10 +495,13 @@ void fold_check_bounds(expr *e, int chk_one_past_end)
 
 		const_fold(lhs ? e->rhs : e->lhs, &k);
 
-		if(k.type == CONST_VAL){
+		if(k.type == CONST_NUM){
 			const size_t sz = type_ref_array_len(array->tree_type);
 
-#define idx k.bits.iv
+			UCC_ASSERT(K_INTEGRAL(k.bits.num),
+					"fp index?");
+
+#define idx k.bits.num
 			if(e->op == op_minus)
 				idx.val.i = -idx.val.i;
 
@@ -527,8 +537,8 @@ static void op_unsigned_cmp_check(expr *e)
 
 				const_fold(lhs ? e->rhs : e->lhs, &k);
 
-				if(k.type == CONST_VAL){
-					const int v = k.bits.iv.val.i;
+				if(k.type == CONST_NUM && K_INTEGRAL(k.bits.num)){
+					const int v = k.bits.num.val.i;
 
 					if(v <= 0){
 						WARN_AT(&e->where,

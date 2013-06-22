@@ -576,7 +576,7 @@ unsigned type_ref_size(type_ref *r, where *from)
 			if(!r->bits.array.size)
 				DIE_AT(from, "array has an incomplete size");
 
-			sz = const_fold_val(r->bits.array.size);
+			sz = const_fold_val_i(r->bits.array.size);
 
 			return sz * type_ref_size(r->ref, from);
 		}
@@ -665,8 +665,8 @@ static int type_ref_equal_r(
 			          b_complete = !!b->bits.array.size;
 
 			if(a_complete && b_complete){
-				const integral_t av = const_fold_val(a->bits.array.size),
-				                bv = const_fold_val(b->bits.array.size);
+				const integral_t av = const_fold_val_i(a->bits.array.size),
+				                bv = const_fold_val_i(b->bits.array.size);
 
 				if(av != bv)
 					return 0;
@@ -905,7 +905,7 @@ static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
 
 				BUF_ADD("%s ", type_qual_to_str(r->bits.array.qual, 1));
 
-				BUF_ADD("%" NUMERIC_FMT_D, const_fold_val(r->bits.array.size));
+				BUF_ADD("%" NUMERIC_FMT_D, const_fold_val_i(r->bits.array.size));
 			}
 			BUF_ADD("]");
 

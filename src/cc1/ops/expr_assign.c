@@ -57,20 +57,21 @@ void bitfield_trunc_check(decl *mem, expr *from)
 
 	const_fold(from, &k);
 
-	if(k.type == CONST_VAL){
-		const sintegral_t kexp = k.bits.iv.val.i;
-		/* highest may be -1 - k.bits.iv.val is zero */
-		const int highest = val_highest_bit(k.bits.iv.val.i);
+	if(k.type == CONST_NUM){
+		const sintegral_t kexp = k.bits.num.val.i;
+		/* highest may be -1 - k.bits.num.val is zero */
+		const int highest = val_highest_bit(k.bits.num.val.i);
 		const int is_signed = type_ref_is_signed(mem->field_width->tree_type);
 
 		const_fold(mem->field_width, &k);
 
-		UCC_ASSERT(k.type == CONST_VAL, "bitfield size not val?");
+		UCC_ASSERT(k.type == CONST_NUM, "bitfield size not val?");
+		UCC_ASSERT(K_FLOATING(k.bits.num), "fp bitfield size?");
 
-		if(highest > (sintegral_t)k.bits.iv.val.i
-		|| (is_signed && highest == (sintegral_t)k.bits.iv.val.i))
+		if(highest > (sintegral_t)k.bits.num.val.i
+		|| (is_signed && highest == (sintegral_t)k.bits.num.val.i))
 		{
-			sintegral_t kexp_to = kexp & ~(-1UL << k.bits.iv.val.i);
+			sintegral_t kexp_to = kexp & ~(-1UL << k.bits.num.val.i);
 
 			WARN_AT(&from->where,
 					"truncation in store to bitfield alters value: "

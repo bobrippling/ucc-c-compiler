@@ -120,7 +120,7 @@ static void gen_expr_struct_lea(expr *e)
 		 * i.e. read + write then handle this
 		 */
 		if(d->field_width){
-			unsigned w = const_fold_val(d->field_width);
+			unsigned w = const_fold_val_i(d->field_width);
 			out_set_bitfield(d->struct_offset_bitfield, w);
 			out_comment("struct bitfield lea");
 		}
@@ -148,7 +148,7 @@ void gen_expr_str_struct(expr *e)
 	if(mem->field_width)
 		idt_printf("bitfield offset %u, width %u\n",
 				mem->struct_offset_bitfield,
-				(unsigned)const_fold_val(mem->field_width));
+				(unsigned)const_fold_val_i(mem->field_width));
 
 	gen_str_indent++;
 	print_expr(e->lhs);
@@ -179,12 +179,12 @@ static void fold_const_expr_struct(expr *e, consty *k)
 			k->offset += struct_offset(e);
 			break;
 
-		case CONST_VAL:
+		case CONST_NUM:
 			k->type = CONST_NEED_ADDR; /* e.g. &((A *)0)->b */
 
 			/* convert the val to a memaddr */
-			/* read iv.val before we clobber it */
-			k->bits.addr.bits.memaddr = k->bits.iv.val.i + struct_offset(e);
+			/* read num.val before we clobber it */
+			k->bits.addr.bits.memaddr = k->bits.num.val.i + struct_offset(e);
 			k->offset = 0;
 
 			k->bits.addr.is_lbl = 0;

@@ -25,15 +25,17 @@ static void fold_const_expr_cast(expr *e, consty *k)
 	const_fold(e->expr, k);
 
 	switch(k->type){
-		case CONST_VAL:
-#define piv (&k->bits.iv)
+		case CONST_NUM:
+			UCC_ASSERT(!(K_FLOATING(k->bits.num)), "fp const?");
+
+#define pv (&k->bits.num.val.i)
 			/* need to cast the val.i down as appropriate */
 			if(type_ref_is_type(e->tree_type, type__Bool)){
-				piv->val.i = !!piv->val.i; /* analagous to out/out.c::out_normalise()'s constant case */
+				*pv = !!*pv; /* analagous to out/out.c::out_normalise()'s constant case */
 
 			}else if(e->expr_cast_implicit){ /* otherwise this is a no-op */
 				const unsigned sz = type_ref_size(e->tree_type, &e->where);
-				const integral_t old = piv->val.i;
+				const integral_t old = *pv;
 				const int to_sig   = type_ref_is_signed(e->tree_type);
 				const int from_sig = type_ref_is_signed(e->expr->tree_type);
 				integral_t to_iv, to_iv_sign_ext;
@@ -42,7 +44,7 @@ static void fold_const_expr_cast(expr *e, consty *k)
 
 				/* we don't save the truncated value - we keep the original
 				 * so negative numbers, for example, are preserved */
-				to_iv = integral_truncate(piv->val.i, sz, &to_iv_sign_ext);
+				to_iv = integral_truncate(*pv, sz, &to_iv_sign_ext);
 
 				if(to_sig && from_sig ? old != to_iv_sign_ext : old != to_iv){
 #define CAST_WARN(pre_fmt, pre_val, post_fmt, post_val)  \
@@ -73,7 +75,7 @@ static void fold_const_expr_cast(expr *e, consty *k)
 					}
 				}
 			}
-#undef piv
+#undef pv
 			break;
 
 		case CONST_NO:

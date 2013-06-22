@@ -15,7 +15,7 @@ void fold_stmt_case(stmt *t)
 
 	FOLD_EXPR(t->expr, t->symtab);
 	fold_need_expr(t->expr, "case", 0);
-	val = const_fold_val(t->expr);
+	val = const_fold_val_i(t->expr);
 
 	t->expr->bits.ident.spel = out_label_case(CASE_CASE, val);
 

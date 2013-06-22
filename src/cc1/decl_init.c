@@ -119,13 +119,7 @@ int decl_init_is_zero(decl_init *dinit)
 
 	switch(dinit->type){
 		case decl_init_scalar:
-		{
-			consty k;
-
-			const_fold(dinit->bits.expr, &k);
-
-			return k.type == CONST_VAL && k.bits.iv.val.i == 0;
-		}
+			return const_expr_and_zero(dinit->bits.expr);
 
 		case decl_init_brace:
 		{
@@ -375,21 +369,23 @@ static decl_init **decl_init_brace_up_array2(
 				memcpy(&k[1], &k[0], sizeof k[1]);
 			}
 
-			if(k[0].type != CONST_VAL || k[1].type != CONST_VAL)
+			if(k[0].type != CONST_NUM || k[1].type != CONST_NUM)
 				DIE_AT(&this->where, "non-constant array-designator");
+			if((k[0].bits.num.suffix | k[1].bits.num.suffix) & VAL_FLOATING)
+				DIE_AT(&this->where, "non-integral array-designator");
 
-			if((sintegral_t)k[0].bits.iv.val.i < 0 || (sintegral_t)k[1].bits.iv.val.i < 0)
+			if((sintegral_t)k[0].bits.num.val.i < 0 || (sintegral_t)k[1].bits.num.val.i < 0)
 				DIE_AT(&this->where, "negative array index initialiser");
 
 			if(limit > -1
-			&& (k[0].bits.iv.val.i >= (integral_t)limit
-			||  k[1].bits.iv.val.i >= (integral_t)limit))
+			&& (k[0].bits.num.val.i >= (integral_t)limit
+			||  k[1].bits.num.val.i >= (integral_t)limit))
 			{
 				DIE_AT(&this->where, "designating outside of array bounds (%d)", limit);
 			}
 
-			i = k[0].bits.iv.val.i;
-			j = k[1].bits.iv.val.i;
+			i = k[0].bits.num.val.i;
+			j = k[1].bits.num.val.i;
 		}else if(limit > -1 && i >= (unsigned)limit){
 			break;
 		}

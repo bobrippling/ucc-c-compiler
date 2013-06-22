@@ -82,7 +82,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 
 			expr_mutate_wrapper(e, val);
 
-			e->bits.iv = m->val->bits.iv;
+			e->bits.num = m->val->bits.num;
 			FOLD_EXPR(e, stab);
 
 			e->tree_type = type_ref_new_type(

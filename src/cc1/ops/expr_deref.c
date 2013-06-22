@@ -51,7 +51,7 @@ static void const_expr_deref(expr *e, consty *k)
 	const_fold(from, k);
 
 	switch(k->type){
-		case CONST_VAL:
+		case CONST_NUM:
 		case CONST_ADDR:
 		case CONST_STRK:
 			k->type = CONST_ADDR_OR_NEED_TREF(from->tree_type);

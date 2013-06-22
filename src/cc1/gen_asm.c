@@ -28,11 +28,16 @@ void gen_expr(expr *e)
 
 	const_fold(e, &k);
 
-	if(k.type == CONST_VAL){ /* TODO: -O0 skips this */
-		if(cc1_backend == BACKEND_ASM)
-			out_push_iv(e->tree_type, &k.bits.iv);
-		else
-			stylef("%" NUMERIC_FMT_D, k.bits.iv.val.i);
+	if(k.type == CONST_NUM){
+		/* -O0 skips this? */
+		if(K_FLOATING(k.bits.num)){
+			ICE("TODO: fp const");
+		}else{
+			if(cc1_backend == BACKEND_ASM)
+				out_push_iv(e->tree_type, &k.bits.num);
+			else
+				stylef("%" NUMERIC_FMT_D, k.bits.num.val.i);
+		}
 	}else{
 		if(cc1_gdebug)
 			out_comment("at %s", where_str(&e->where));
@@ -63,6 +68,8 @@ void static_addr(expr *e)
 	const_fold(e, &k);
 
 	switch(k.type){
+		char buf[INTEGRAL_BUF_SIZ];
+
 		case CONST_NEED_ADDR:
 		case CONST_NO:
 			ICE("non-constant expr-%s const=%d%s",
@@ -71,15 +78,15 @@ void static_addr(expr *e)
 					k.type == CONST_NEED_ADDR ? " (needs addr)" : "");
 			break;
 
-		case CONST_VAL:
-		{
-			char buf[INTEGRAL_BUF_SIZ];
-			UCC_ASSERT(0 == (k.bits.iv.suffix & VAL_FLOATING), "float output");
-
-			integral_str(buf, sizeof buf, k.bits.iv.val.i, e->tree_type);
+		case CONST_NUM:
+			if(K_FLOATING(k.bits.num)){
+				/* asm fp const */
+				snprintf(buf, sizeof buf, "0x%" NUMERIC_FMT_X, k.bits.num.val.i);
+			}else{
+				integral_str(buf, sizeof buf, k.bits.num.val.i, e->tree_type);
+			}
 			asm_declare_partial("%s", buf);
 			break;
-		}
 
 		case CONST_ADDR:
 			if(k.bits.addr.is_lbl)

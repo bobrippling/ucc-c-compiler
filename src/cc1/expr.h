@@ -6,7 +6,7 @@ typedef struct consty
 	enum constyness
 	{
 		CONST_NO = 0,   /* f() */
-		CONST_VAL,      /* 5 + 2 */
+		CONST_NUM,      /* 5 + 2, float, etc */
 		/* can be offset: */
 		CONST_ADDR,     /* &f where f is global */
 		CONST_STRK,     /* string constant */
@@ -15,7 +15,7 @@ typedef struct consty
 	long offset; /* offset for addr/strk */
 	union
 	{
-		numeric iv;          /* CONST_VAL */
+		numeric num;        /* CONST_VAL_* */
 		stringval *str;     /* CONST_STRK */
 		struct
 		{
@@ -37,6 +37,9 @@ typedef struct consty
 		? CONST_ADDR : CONST_NEED_ADDR)
 
 #define CONST_ADDR_OR_NEED(d) CONST_ADDR_OR_NEED_TREF((d)->ref)
+
+#define K_FLOATING(num) (num.suffix & VAL_FLOATING)
+#define K_INTEGRAL(num) !K_FLOATING(num)
 
 
 typedef void         func_fold(          expr *, symtable *);
@@ -89,7 +92,7 @@ struct expr
 
 	union
 	{
-		numeric iv;
+		numeric num;
 
 		/* __builtin_va_start */
 		int n;

@@ -18,9 +18,9 @@ const where *eof_where = NULL;
 
 numeric *numeric_new(long v)
 {
-	numeric *iv = umalloc(sizeof *iv);
-	iv->val.i = v;
-	return iv;
+	numeric *num = umalloc(sizeof *num);
+	num->val.i = v;
+	return num;
 }
 
 void where_new(struct where *w)

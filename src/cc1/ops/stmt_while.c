@@ -53,11 +53,7 @@ void style_stmt_while(stmt *s)
 
 int while_passable(stmt *s)
 {
-	consty k;
-
-	const_fold(s->expr, &k);
-
-	if(k.type == CONST_VAL && k.bits.iv.val.i)
+	if(const_expr_and_non_zero(s->expr))
 		return fold_code_escapable(s); /* while(1) */
 
 	return 1; /* fold_passable(s->lhs) - doesn't depend on this */

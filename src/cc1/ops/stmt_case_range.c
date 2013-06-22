@@ -19,8 +19,8 @@ void fold_stmt_case_range(stmt *s)
 	fold_need_expr(s->expr,  "case", 0);
 	fold_need_expr(s->expr2, "case", 0);
 
-	lv = const_fold_val(s->expr);
-	rv = const_fold_val(s->expr2);
+	lv = const_fold_val_i(s->expr);
+	rv = const_fold_val_i(s->expr2);
 
 	if(lv >= rv)
 		DIE_AT(&s->where, "case range equal or inverse");

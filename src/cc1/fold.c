@@ -191,7 +191,7 @@ static void fold_enum(struct_union_enum_st *en, symtable *stab)
 			integral_t v;
 
 			FOLD_EXPR(e, stab);
-			v = const_fold_val(e);
+			v = const_fold_val_i(e);
 			m->val = e;
 
 			defval = has_bitmask ? v << 1 : v + 1;
@@ -291,7 +291,7 @@ static int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 				align = sub_sue->align;
 
 			}else if(d->field_width){
-				const unsigned bits = const_fold_val(d->field_width);
+				const unsigned bits = const_fold_val_i(d->field_width);
 
 				sz = align = 0; /* don't affect sz_max or align_max */
 
@@ -449,9 +449,11 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 				FOLD_EXPR(r->bits.array.size, stab);
 				const_fold(r->bits.array.size, &k);
 
-				if(k.type != CONST_VAL)
-					DIE_AT(&r->where, "not a numeric constant for array size");
-				else if((sintegral_t)k.bits.iv.val.i < 0)
+				if(k.type != CONST_NUM)
+					DIE_AT(&r->where, "not a constant for array size");
+				else if(K_FLOATING(k.bits.num))
+					DIE_AT(&r->where, "not an integral array size");
+				else if((sintegral_t)k.bits.num.val.i < 0)
 					DIE_AT(&r->where, "negative array size");
 				/* allow zero length arrays */
 			}
@@ -559,13 +561,15 @@ void fold_decl(decl *d, symtable *stab)
 		FOLD_EXPR(d->field_width, stab);
 		const_fold(d->field_width, &k);
 
-		if(k.type != CONST_VAL)
+		if(k.type != CONST_NUM)
 			DIE_AT(&d->where, "constant expression required for field width");
+		if(K_FLOATING(k.bits.num))
+			DIE_AT(&d->where, "integral expression required for field width");
 
-		if((sintegral_t)k.bits.iv.val.i < 0)
+		if((sintegral_t)k.bits.num.val.i < 0)
 			DIE_AT(&d->where, "field width must be positive");
 
-		if(k.bits.iv.val.i == 0){
+		if(k.bits.num.val.i == 0){
 			/* allow anonymous 0-width bitfields
 			 * we align the next bitfield to a boundary
 			 */
@@ -575,7 +579,7 @@ void fold_decl(decl *d, symtable *stab)
 						d->spel);
 		}else{
 			const unsigned max = CHAR_BIT * type_ref_size(d->ref, &d->where);
-			if(k.bits.iv.val.i > max){
+			if(k.bits.num.val.i > max){
 				DIE_AT(&d->where,
 						"bitfield too large for \"%s\" (%u bits)",
 						decl_to_str(d), max);
@@ -586,7 +590,7 @@ void fold_decl(decl *d, symtable *stab)
 			DIE_AT(&d->where, "field width on non-integral field %s",
 					decl_to_str(d));
 
-		if(k.bits.iv.val.i == 1 && type_ref_is_signed(d->ref))
+		if(k.bits.num.val.i == 1 && type_ref_is_signed(d->ref))
 			WARN_AT(&d->where, "1-bit signed field \"%s\" takes values -1 and 0",
 					decl_to_str(d));
 
@@ -646,10 +650,12 @@ void fold_decl(decl *d, symtable *stab)
 						FOLD_EXPR(i->bits.align_intk, stab),
 						&k);
 
-				if(k.type != CONST_VAL)
-					DIE_AT(&d->where, "alignment must be an integer constant");
+				if(k.type != CONST_NUM)
+					DIE_AT(&d->where, "alignment must be a constant");
+				if(K_FLOATING(k.bits.num))
+					DIE_AT(&d->where, "non-integral alignment");
 
-				al = k.bits.iv.val.i;
+				al = k.bits.num.val.i;
 			}else{
 				type_ref *ty = i->bits.align_ty;
 				UCC_ASSERT(ty, "no type");
@@ -1179,7 +1185,7 @@ void fold(symtable *globs)
 			if(!CONST_AT_COMPILE_TIME(k.type))
 				DIE_AT(&sa->e->where, "static assert: not a constant expression (%s)", sa->e->f_str());
 
-			if(!k.bits.iv.val.i)
+			if(!k.bits.num.val.i)
 				DIE_AT(&sa->e->where, "static assertion failure: %s", sa->s);
 
 			if(fopt_mode & FOPT_SHOW_STATIC_ASSERTS){

@@ -54,11 +54,13 @@ static void print_expr_val(expr *e)
 
 	const_fold(e, &k);
 
-	UCC_ASSERT(k.type == CONST_VAL, "val expected");
-	UCC_ASSERT((k.bits.iv.suffix & VAL_UNSIGNED) == 0, "TODO: unsigned");
-	UCC_ASSERT((k.bits.iv.suffix & VAL_FLOATING) == 0, "TODO: float");
+	UCC_ASSERT(k.type == CONST_NUM, "val expected");
+	UCC_ASSERT((k.bits.num.suffix & VAL_UNSIGNED) == 0, "TODO: unsigned");
 
-	fprintf(cc1_out, NUMERIC_FMT_D, k.bits.iv.val.i);
+	if(K_INTEGRAL(k.bits.num))
+		fprintf(cc1_out, NUMERIC_FMT_D, k.bits.num.val.i);
+	else
+		fprintf(cc1_out, NUMERIC_FMT_LD, k.bits.num.val.f);
 }
 
 static void print_decl_init(decl_init *di)
@@ -378,7 +380,7 @@ static void print_struct(struct_union_enum_st *sue)
 		SHOW_FIELD(struct_offset);
 
 		if(d->field_width){
-			integral_t v = const_fold_val(d->field_width);
+			integral_t v = const_fold_val_i(d->field_width);
 
 			gen_str_indent++;
 
@@ -404,7 +406,7 @@ static void print_enum(struct_union_enum_st *et)
 	for(mi = et->members; *mi; mi++){
 		enum_member *m = (*mi)->enum_member;
 
-		idt_printf("member %s = %" NUMERIC_FMT_D "\n", m->spel, (integral_t)m->val->bits.iv.val.i);
+		idt_printf("member %s = %" NUMERIC_FMT_D "\n", m->spel, (integral_t)m->val->bits.num.val.i);
 	}
 	gen_str_indent--;
 }

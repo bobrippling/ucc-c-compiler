@@ -110,9 +110,9 @@ static void bitfields_out(
 static void bitfield_val_set(
 		struct bitfield_val *bfv, expr *kval, expr *field_w)
 {
-	bfv->val = kval ? const_fold_val(kval) : 0;
+	bfv->val = kval ? const_fold_val_i(kval) : 0;
 	bfv->offset = 0;
-	bfv->width = const_fold_val(field_w);
+	bfv->width = const_fold_val_i(field_w);
 }
 
 static struct bitfield_val *bitfields_add(

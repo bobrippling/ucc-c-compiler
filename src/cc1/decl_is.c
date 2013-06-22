@@ -465,5 +465,5 @@ unsigned type_ref_array_len(type_ref *r)
 	UCC_ASSERT(r, "not an array");
 	UCC_ASSERT(r->bits.array.size, "array len of []");
 
-	return const_fold_val(r->bits.array.size);
+	return const_fold_val_i(r->bits.array.size);
 }
