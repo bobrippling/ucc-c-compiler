@@ -178,6 +178,7 @@ static expr *parse_expr_primary()
 	switch(curtok){
 		case token_integer:
 		case token_character:
+		case token_floater:
 		{
 			expr *e = expr_new_numeric(&currentval);
 			EAT(curtok);

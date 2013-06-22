@@ -195,6 +195,9 @@ const char *token_to_str(enum token t)
 		CASE_STR_PREFIX(token,  character);
 		CASE_STR_PREFIX(token,  string);
 
+		case token_floater:
+			return "float";
+
 #define MAP(t, s) case token_##t: return s
 		MAP(attribute,       "__attribute__");
 		MAP(elipsis,         "'...'");

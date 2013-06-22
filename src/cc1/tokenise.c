@@ -568,6 +568,7 @@ void nexttoken()
 	}
 
 	if(isdigit(c)){
+		char *const num_start = bufferpos - 1;
 		enum base mode;
 
 		if(c == '0'){
@@ -617,44 +618,22 @@ void nexttoken()
 #endif
 
 		if(peeknextchar() == '.'){
-			/* double or float */
-			int parts[2];
-			int dec_padding = 0;
+			/* floating point */
 
-			nextchar();
-
-			parts[0] = currentval.val.i;
-
-			while(*bufferpos == '0')
-				bufferpos++, dec_padding++;
-
-			read_number(DEC);
-			parts[1] = currentval.val.i;
+			currentval.val.f = strtold(num_start, &bufferpos);
 
 			if(peeknextchar() == 'f'){
+				currentval.suffix = VAL_FLOAT;
 				nextchar();
-				/* FIXME: set currentval.suffix instead of token_{int,float,double} ? */
-				curtok = token_float;
+			}else if(toupper(peeknextchar()) == 'L'){
+				currentval.suffix = VAL_LDOUBLE;
+				nextchar();
 			}else{
-				curtok = token_double;
+				currentval.suffix = VAL_DOUBLE;
 			}
 
-			/* e.g.
-			 * 12.34
-			 *
-			 * 12 + 34 * 10 ^ -2
-			 *
-			 * p0 + p1 * exp(10, strlen(sprintf(p1))
-			 */
+			curtok = token_floater;
 
-			{
-				char buf[32];
-
-				snprintf(buf, sizeof buf, "%d.%0*d", parts[0], dec_padding, parts[1]);
-				UCC_ASSERT(sscanf(buf, "%Lf", &currentval.val.f) == 1, "invalid float (%s)", buf);
-			}
-
-			ICE("TODO: float/double repr %d.%d = %Lf", parts[0], parts[1], currentval.val.f);
 		}else{
 			curtok = token_integer;
 		}

@@ -29,6 +29,7 @@ enum token
 
 	token_identifier,
 	token_integer,     /* aka [1-9] */
+	token_floater,     /* aka [1-9].[0-9]... */
 	token_character,   /* aka 'f' */
 	token_elipsis,     /* aka ... */
 	token_string,      /* aka \"...\" */

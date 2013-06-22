@@ -23,7 +23,11 @@ struct numeric
 		VAL_UNSIGNED = 1 << 0,
 		VAL_LONG     = 1 << 1,
 		VAL_LLONG    = 1 << 2,
-		VAL_FLOATING = 1 << 6,
+
+		VAL_FLOAT    = 1 << 6,
+		VAL_DOUBLE   = 1 << 7,
+		VAL_LDOUBLE  = 1 << 8,
+		VAL_FLOATING = VAL_FLOAT | VAL_DOUBLE | VAL_LDOUBLE,
 
 		/* variable was read in as:
 		 * (decimal if neither of these set)
