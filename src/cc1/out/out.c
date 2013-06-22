@@ -889,6 +889,7 @@ void out_deref()
 	type_ref *const vtop_t = vtop->t;
 #endif
 	type_ref *indir;
+	int fp;
 	/* if the pointed-to object is not an lvalue, don't deref */
 
 	indir = type_ref_ptr_depth_dec(vtop->t, NULL);
@@ -899,6 +900,9 @@ void out_deref()
 		return; /* noop */
 	}
 
+	fp = type_ref_is_floating(
+			type_ref_ptr_depth_dec(vtop->t, NULL));
+
 	/* optimisation: if we're dereffing a pointer to stack/lbl, just do a mov */
 	switch(vtop->type){
 		case FLAG:
@@ -907,15 +911,24 @@ void out_deref()
 		default:
 			v_to_reg(vtop);
 		case REG:
-			impl_deref_reg();
+		{
+			struct vreg to;
+			if(fp)
+				v_unused_reg(1, 1 /* float */, &to);
+			else
+				memcpy_safe(&to, &vtop->bits.reg);
+
+			impl_deref_reg(&to);
+
+			v_deref_decl(vtop);
+			memcpy_safe(&vtop->bits.reg, &to);
 			break;
+		}
 
 		case LBL:
 		case STACK:
 		case CONST:
 		{
-			const int fp = type_ref_is_floating(
-					type_ref_ptr_depth_dec(vtop->t, NULL));
 			struct vreg r;
 
 			v_unused_reg(1, fp, &r);
