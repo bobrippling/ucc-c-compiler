@@ -704,10 +704,12 @@ static stmt *parse_stmt_and_decls(void)
 		/* fine with a normal statement */
 		int at_decl = 0;
 
-		parse_static_assert();
-
-		while(curtok != token_close_block && !(at_decl = parse_at_decl()))
+		for(;;){
+			parse_static_assert();
+			if(curtok == token_close_block || (at_decl = parse_at_decl()))
+				break;
 			dynarray_add(&code_stmt->codes, parse_stmt());
+		}
 
 		if(at_decl){
 			if(code_stmt->codes){
