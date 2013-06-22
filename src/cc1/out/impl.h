@@ -2,10 +2,10 @@
 #define IMPL_H
 
 void impl_store(struct vstack *from, struct vstack *to);
-void impl_load(struct vstack *from, int reg);
-void impl_lea( struct vstack *from, int reg);
+void impl_load(struct vstack *from, const struct vreg *reg);
+void impl_lea( struct vstack *from, const struct vreg *reg);
 
-void impl_reg_cp(struct vstack *from, int r);
+void impl_reg_cp(struct vstack *from, const struct vreg *r);
 void impl_reg_swp(struct vstack *a, struct vstack *b);
 
 void impl_op(enum op_type);
@@ -13,7 +13,7 @@ void impl_op_unary(enum op_type); /* returns reg that the result is in */
 void impl_deref_reg(void);
 
 void impl_jmp_lbl(const char *lbl);
-void impl_jmp_reg(int r);
+void impl_jmp_reg(const struct vreg *r);
 void impl_jcond(int true, const char *lbl);
 
 void impl_i2f(struct vstack *, type_ref *t_i, type_ref *t_f);
@@ -39,11 +39,11 @@ void impl_set_overflow(void);
 int  impl_frame_ptr_to_reg(int nframes);
 
 /* scratch register indexing */
-int impl_reg_to_scratch(int);
-int impl_scratch_to_reg(int);
+int  impl_reg_to_scratch(const struct vreg *);
+void impl_scratch_to_reg(int scratch, struct vreg *);
 
 /* callee save register bools */
-int impl_reg_is_callee_save(int r, type_ref *fr);
+int impl_reg_is_callee_save(const struct vreg *r, type_ref *fr);
 
 enum p_opts
 {
@@ -68,6 +68,7 @@ enum flag_cmp op_to_flag(enum op_type op);
 
 #ifndef MIN
 #  define MIN(x, y) ((x) < (y) ? (x) : (y))
+#  define MAX(x, y) ((x) > (y) ? (x) : (y))
 #endif
 
 #endif

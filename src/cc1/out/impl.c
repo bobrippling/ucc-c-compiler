@@ -80,3 +80,8 @@ int impl_arg_offset(sym *s)
 			? -(s->offset + 1)
 			:   s->offset - n_call_regs + 2;
 }
+
+int vreg_eq(const struct vreg *a, const struct vreg *b)
+{
+	return a->idx == b->idx && a->is_float == b->is_float;
+}

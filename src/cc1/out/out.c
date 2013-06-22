@@ -51,7 +51,7 @@ struct vstack *vtop = NULL;
 static int stack_sz, stack_local_offset, stack_variadic_offset;
 
 /* we won't reserve it more than 255 times */
-static unsigned char reserved_regs[N_SCRATCH_REGS];
+static unsigned char reserved_regs[MAX(N_SCRATCH_REGS_I, N_SCRATCH_REGS_F)];
 
 int out_vcount(void)
 {
@@ -104,7 +104,7 @@ void out_phi_pop_to(void)
 	memcpy_safe(&vphi, vtop);
 
 	if(vphi.type == REG)
-		v_reserve_reg(vphi.bits.reg); /* XXX: watch me */
+		v_reserve_reg(&vphi.bits.reg); /* XXX: watch me */
 
 	out_pop();
 }
@@ -112,15 +112,15 @@ void out_phi_pop_to(void)
 void out_phi_join(void)
 {
 	if(vphi.type == REG)
-		v_unreserve_reg(vphi.bits.reg); /* XXX: voila */
+		v_unreserve_reg(&vphi.bits.reg); /* XXX: voila */
 
 	/* join vtop and the current phi-save area */
 	v_to_reg(vtop);
 	v_to_reg(&vphi);
 
-	if(vtop->bits.reg != vphi.bits.reg){
+	if(!vreg_eq(&vtop->bits.reg, &vphi.bits.reg)){
 		/* _must_ match vphi, since it's already been generated */
-		impl_reg_cp(vtop, vphi.bits.reg);
+		impl_reg_cp(vtop, &vphi.bits.reg);
 		memcpy_safe(vtop, &vphi);
 	}
 
@@ -136,15 +136,6 @@ void out_flush_volatile(void)
 void out_assert_vtop_null(void)
 {
 	UCC_ASSERT(!vtop, "vtop not null (%d entries)", out_vcount());
-}
-
-void out_dump(void)
-{
-	int i;
-
-	for(i = 0; &vstack[i] <= vtop; i++)
-		fprintf(stderr, "vstack[%d] = { %d, %d }\n",
-				i, vstack[i].type, vstack[i].bits.reg);
 }
 
 void vswap(void)
@@ -196,9 +187,9 @@ void v_to_reg_const(struct vstack *vp)
 	}
 }
 
-int v_unused_reg(int stack_as_backup)
+int v_unused_reg(int stack_as_backup, int fp, struct vreg *out)
 {
-	static unsigned char used[N_SCRATCH_REGS];
+	static unsigned char used[sizeof(reserved_regs)];
 	struct vstack *it, *first;
 	int i;
 
@@ -209,26 +200,27 @@ int v_unused_reg(int stack_as_backup)
 		if(it->type == REG){
 			if(!first)
 				first = it;
-			used[impl_reg_to_scratch(it->bits.reg)] = 1;
+			used[impl_reg_to_scratch(&it->bits.reg)] = 1;
 		}
 	}
 
-	for(i = 0; i < N_SCRATCH_REGS; i++)
-		if(!used[i])
-			return impl_scratch_to_reg(i);
+	for(i = 0; i < (fp ? N_SCRATCH_REGS_F : N_SCRATCH_REGS_I); i++)
+		if(!used[i]){
+			impl_scratch_to_reg(i, out);
+			return 0;
+		}
 
 	if(stack_as_backup){
 		/* no free regs, move `first` to the stack and claim its reg */
-		int reg = first->bits.reg;
-
 		v_freeup_regp(first);
 
-		return reg;
+		memcpy_safe(out, &first->bits.reg);
+		return 0;
 	}
 	return -1;
 }
 
-void v_to_reg2(struct vstack *from, int reg)
+void v_to_reg_given(struct vstack *from, const struct vreg *given)
 {
 	type_ref *const save = from->t;
 	int lea = 0;
@@ -244,29 +236,38 @@ void v_to_reg2(struct vstack *from, int reg)
 			break;
 	}
 
-	(lea ? impl_lea : impl_load)(from, reg);
+	(lea ? impl_lea : impl_load)(from, given);
 
 	v_clear(from, save);
 	from->type = REG;
-	from->bits.reg = reg;
+	memcpy_safe(&from->bits.reg, given);
 }
 
-int v_to_reg(struct vstack *conv)
+void v_to_reg_out(struct vstack *conv, struct vreg *out)
 {
-	if(conv->type != REG)
-		v_to_reg2(conv, v_unused_reg(1));
+	if(conv->type != REG){
+		struct vreg chosen;
+		if(!out)
+			out = &chosen;
 
-	return conv->bits.reg;
+		v_unused_reg(1, 0, out);
+		v_to_reg_given(conv, out);
+	}
 }
 
-struct vstack *v_find_reg(int reg)
+void v_to_reg(struct vstack *conv)
+{
+	v_to_reg_out(conv, NULL);
+}
+
+static struct vstack *v_find_reg(const struct vreg *reg)
 {
 	struct vstack *vp;
 	if(!vtop)
 		return NULL;
 
 	for(vp = vstack; vp <= vtop; vp++)
-		if(vp->type == REG && vp->bits.reg == reg)
+		if(vp->type == REG && vreg_eq(&vp->bits.reg, reg))
 			return vp;
 
 	return NULL;
@@ -275,19 +276,20 @@ struct vstack *v_find_reg(int reg)
 void v_freeup_regp(struct vstack *vp)
 {
 	/* freeup this reg */
-	int r;
+	struct vreg r;
+	int shifted_to_reg;
 
 	UCC_ASSERT(vp->type == REG, "not reg");
 
 	/* attempt to save to a register first */
-	r = v_unused_reg(0);
+	shifted_to_reg = (v_unused_reg(0, vp->bits.reg.is_float, &r) == 0);
 
-	if(r >= 0){
-		impl_reg_cp(vp, r);
+	if(shifted_to_reg){
+		impl_reg_cp(vp, &r);
 
 		v_clear(vp, NULL);
 		vp->type = REG;
-		vp->bits.reg = r;
+		memcpy_safe(&vp->bits.reg, &r);
 
 	}else{
 		v_save_reg(vp);
@@ -308,7 +310,8 @@ static int v_alloc_stack(int sz)
 
 		vpush(NULL);
 		vtop->type = REG;
-		vtop->bits.reg = REG_SP;
+		vtop->bits.reg.is_float = 0;
+		vtop->bits.reg.idx = REG_SP;
 
 		out_push_i(type_ref_cached_INTPTR_T(), sz);
 		out_op(op_minus);
@@ -370,8 +373,8 @@ void v_save_regs(int n_ignore, type_ref *func_ty)
 				v_to_reg(p);
 
 			case REG:
-				if(func_ty && impl_reg_is_callee_save(p->bits.reg, func_ty)){
-					out_comment("not saving reg %d - callee save", p->bits.reg);
+				if(func_ty && impl_reg_is_callee_save(&p->bits.reg, func_ty)){
+					out_comment("not saving reg %d - callee save", p->bits.reg.idx);
 					break;
 				}
 				v_save_reg(p);
@@ -384,7 +387,7 @@ void v_save_regs(int n_ignore, type_ref *func_ty)
 		}
 }
 
-void v_freeup_reg(int r, int allowable_stack)
+void v_freeup_reg(const struct vreg *r, int allowable_stack)
 {
 	struct vstack *vp = v_find_reg(r);
 
@@ -392,24 +395,24 @@ void v_freeup_reg(int r, int allowable_stack)
 		v_freeup_regp(vp);
 }
 
-static void v_alter_reservation(int r, int n)
+static void v_alter_reservation(const struct vreg *r, int n)
 {
-	r = impl_reg_to_scratch(r);
-	if(0 <= r && r < N_SCRATCH_REGS)
-		reserved_regs[r] += n;
+	int i = impl_reg_to_scratch(r);
+	if(0 <= i && i < (int)sizeof reserved_regs)
+		reserved_regs[i] += n;
 }
 
-void v_reserve_reg(int r)
+void v_reserve_reg(const struct vreg *r)
 {
 	v_alter_reservation(r, +1);
 }
 
-void v_unreserve_reg(int r)
+void v_unreserve_reg(const struct vreg *r)
 {
 	v_alter_reservation(r, -1);
 }
 
-void v_freeup_regs(const int a, const int b)
+void v_freeup_regs(const struct vreg *a, const struct vreg *b)
 {
 	v_reserve_reg(a);
 	v_reserve_reg(b);
@@ -513,11 +516,12 @@ void out_dup(void)
 		case REG:
 		{
 			/* need a new reg */
-			int r = v_unused_reg(1);
-			impl_reg_cp(&vtop[-1], r);
+			struct vreg r;
+			v_unused_reg(1, vtop[-1].bits.reg.is_float, &r);
+			impl_reg_cp(&vtop[-1], &r);
 
 			vtop->type = REG;
-			vtop->bits.reg = r;
+			memcpy_safe(&vtop->bits.reg, &r);
 			vtop->t = vtop[-1].t;
 
 			break;
@@ -805,12 +809,16 @@ void out_deref()
 		case STACK:
 		case CONST:
 		{
-			int r = v_unused_reg(1);
+			const int fp = type_ref_is_floating(
+					type_ref_ptr_depth_dec(vtop->t, NULL));
+			struct vreg r;
+
+			v_unused_reg(1, fp, &r);
 
 			v_deref_decl(vtop);
 
 			/* impl_load, since we don't want a lea switch */
-			impl_load(vtop, r);
+			impl_load(vtop, &r);
 
 			vtop->type = REG;
 			vtop->bits.reg = r;
@@ -946,12 +954,16 @@ void out_change_type(type_ref *t)
 
 void out_call(int nargs, type_ref *r_ret, type_ref *r_func)
 {
+	const int fp = type_ref_is_floating(r_ret);
+
 	impl_call(nargs, r_ret, r_func);
 
 	/* return type */
 	v_clear(vtop, r_ret);
 	vtop->type = REG;
-	vtop->bits.reg = REG_RET;
+
+	vtop->bits.reg.is_float = fp;
+	vtop->bits.reg.idx = fp ? REG_RET_F : REG_RET_I;
 }
 
 void out_jmp(void)
@@ -967,7 +979,7 @@ void out_jmp(void)
 		default:
 			v_to_reg(vtop);
 		case REG:
-			impl_jmp_reg(vtop->bits.reg);
+			impl_jmp_reg(&vtop->bits.reg);
 			break;
 
 		case LBL:
@@ -1064,7 +1076,8 @@ void out_push_frame_ptr(int nframes)
 
 	vpush(NULL);
 	vtop->type = REG;
-	vtop->bits.reg = impl_frame_ptr_to_reg(nframes);
+	vtop->bits.reg.is_float = 0;
+	vtop->bits.reg.idx = impl_frame_ptr_to_reg(nframes);
 }
 
 void out_push_reg_save_ptr(void)

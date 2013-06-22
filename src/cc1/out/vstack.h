@@ -66,19 +66,23 @@ void v_to_reg_const(struct vstack *vp);
 
 void v_inv_cmp(struct vstack *vp);
 
-int  v_to_reg(struct vstack *conv);
-void v_to_reg2(struct vstack *from, int reg);
+void v_to_reg(struct vstack *conv);
+void v_to_reg_out(struct vstack *conv, struct vreg *);
+void v_to_reg_given(struct vstack *from, const struct vreg *);
 
+int vreg_eq(const struct vreg *, const struct vreg *);
 
-int  v_unused_reg(int stack_as_backup, int fp);
+/* returns 0 on success, -1 if no regs free */
+int  v_unused_reg(int stack_as_backup, int fp, struct vreg *);
+
 void v_freeup_regp(struct vstack *);
-void v_freeup_reg(int r, int allowable_stack);
-void v_freeup_regs(int a, int b);
+void v_freeup_reg(const struct vreg *, int allowable_stack);
+void v_freeup_regs(const struct vreg *, const struct vreg *);
 void v_save_reg(struct vstack *vp);
 /* if func_ty != NULL, don't save callee-save-regs */
 void v_save_regs(int n_ignore, type_ref *func_ty);
-void v_reserve_reg(const int r);
-void v_unreserve_reg(const int r);
+void v_reserve_reg(const struct vreg *);
+void v_unreserve_reg(const struct vreg *);
 
 void v_deref_decl(struct vstack *vp);
 
