@@ -10,7 +10,6 @@ test/ - x.c and x.c.expect (output and assembly)
 General
 #######
 
--Wmissing-prototypes - increase statics (in Makefile)
 -Wredundant-decls
 -Wnested-externs
 

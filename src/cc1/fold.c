@@ -165,7 +165,7 @@ expr *fold_expr(expr *e, symtable *stab)
 	return e;
 }
 
-void fold_enum(struct_union_enum_st *en, symtable *stab)
+static void fold_enum(struct_union_enum_st *en, symtable *stab)
 {
 	const int has_bitmask = !!attr_present(en->attr, attr_enum_bitmask);
 	sue_member **i;
@@ -239,7 +239,7 @@ static void bitfield_size_align(
 	*palign = type_align(ty, from);
 }
 
-int fold_sue(struct_union_enum_st *const sue, symtable *stab)
+static int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 {
 	if(sue->size)
 		return sue->size;
@@ -1025,7 +1025,7 @@ int fold_passable(stmt *s)
 	return s->f_passable(s);
 }
 
-void fold_merge_tenatives(symtable *stab)
+static void fold_merge_tenatives(symtable *stab)
 {
 	decl **const globs = stab->decls;
 

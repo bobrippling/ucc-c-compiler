@@ -209,7 +209,7 @@ static void decl_init_resolve_copy(decl_init **arr, const size_t idx)
 	memcpy_safe(resolved, decl_init_copy_const(cpy->range_init));
 }
 
-void decl_init_free_1(decl_init *di)
+static void decl_init_free_1(decl_init *di)
 {
 	free(di);
 }

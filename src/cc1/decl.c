@@ -333,17 +333,6 @@ decl_attr *decl_attr_new(enum decl_attr_type t)
 	return da;
 }
 
-decl_attr *decl_attr_copy(decl_attr *da)
-{
-	decl_attr *ret = decl_attr_new(da->type);
-
-	memcpy_safe(ret, da);
-
-	ret->next = da->next ? decl_attr_copy(da->next) : NULL;
-
-	return ret;
-}
-
 void decl_attr_append(decl_attr **loc, decl_attr *new)
 {
 	/* may be appending from a prototype to a function def. */
@@ -462,20 +451,6 @@ const char *decl_attr_to_str(enum decl_attr_type t)
 		CASE_STR_PREFIX(attr, aligned);
 		case attr_LAST:
 			break;
-	}
-	return NULL;
-}
-
-const char *type_ref_type_str(enum type_ref_type t)
-{
-	switch(t){
-		CASE_STR_PREFIX(type_ref, type);
-		CASE_STR_PREFIX(type_ref, tdef);
-		CASE_STR_PREFIX(type_ref, ptr);
-		CASE_STR_PREFIX(type_ref, block);
-		CASE_STR_PREFIX(type_ref, func);
-		CASE_STR_PREFIX(type_ref, array);
-		CASE_STR_PREFIX(type_ref, cast);
 	}
 	return NULL;
 }
@@ -727,13 +702,6 @@ int decl_is_variadic(decl *d)
 	type_ref *r = d->ref;
 
 	return (r = type_ref_is(r, type_ref_func)) && r->bits.func->variadic;
-}
-
-type_ref *type_ref_orphan(type_ref *r)
-{
-	type_ref *ret = r->ref;
-	r->ref = NULL;
-	return ret;
 }
 
 type_ref *type_ref_ptr_depth_dec(type_ref *r, where *w)

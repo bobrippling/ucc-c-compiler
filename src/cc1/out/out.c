@@ -247,7 +247,7 @@ int v_to_reg(struct vstack *conv)
 	return conv->bits.reg;
 }
 
-struct vstack *v_find_reg(int reg)
+static struct vstack *v_find_reg(int reg)
 {
 	struct vstack *vp;
 	if(!vtop)
@@ -480,7 +480,7 @@ void out_pulltop(int i)
 
 /* expects vtop to be the value to merge with,
  * and &vtop[-1] to be a pointer to the word of memory */
-void bitfield_scalar_merge(const struct vbitfield *const bf)
+static void bitfield_scalar_merge(const struct vbitfield *const bf)
 {
 	/* load in,
 	 * &-out where we want our value (to 0),
@@ -801,7 +801,7 @@ void out_set_bitfield(unsigned off, unsigned nbits)
 	vtop->bitfield.nbits = nbits;
 }
 
-void bitfield_to_scalar(const struct vbitfield *bf)
+static void bitfield_to_scalar(const struct vbitfield *bf)
 {
 	type_ref *const ty = vtop->t;
 

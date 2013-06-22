@@ -25,7 +25,7 @@ static void get_cast_sizes(type_ref *tlhs, type_ref *trhs, int *pl, int *pr)
 	}
 }
 
-void fold_const_expr_cast(expr *e, consty *k)
+static void fold_const_expr_cast(expr *e, consty *k)
 {
 	const_fold(e->expr, k);
 

@@ -93,7 +93,7 @@ void gen_expr_str__Generic(expr *e)
 	gen_str_indent--;
 }
 
-void const_expr__Generic(expr *e, consty *k)
+static void const_expr__Generic(expr *e, consty *k)
 {
 	/* we're const if our chosen expr is */
 	UCC_ASSERT(e->bits.generic.chosen, "_Generic const check before fold");

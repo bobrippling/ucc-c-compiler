@@ -82,7 +82,7 @@ void gen_expr_str_addr(expr *e)
 	}
 }
 
-void const_expr_addr(expr *e, consty *k)
+static void const_expr_addr(expr *e, consty *k)
 {
 	if(e->bits.ident.spel){
 		/*k->sym_lbl = e->bits.ident.spel;*/

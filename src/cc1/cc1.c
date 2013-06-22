@@ -183,7 +183,7 @@ COMP_CHECK(a, sizeof warn_mode != sizeof(int));
 COMP_CHECK(b, sizeof fopt_mode != sizeof(int));
 
 
-void ccdie(int verbose, const char *fmt, ...)
+static void ccdie(int verbose, const char *fmt, ...)
 {
 	int i = strlen(fmt);
 	va_list l;
@@ -230,7 +230,7 @@ void cc1_warn_at(struct where *where, int die, int show_line, enum warning w, co
 	va_end(l);
 }
 
-void io_cleanup(void)
+static void io_cleanup(void)
 {
 	int i;
 	for(i = 0; i < NUM_SECTIONS; i++){
@@ -244,7 +244,7 @@ void io_cleanup(void)
 	}
 }
 
-void io_setup(void)
+static void io_setup(void)
 {
 	int i;
 
@@ -262,7 +262,7 @@ void io_setup(void)
 	atexit(io_cleanup);
 }
 
-void io_fin(int do_sections, const char *fname)
+static void io_fin(int do_sections, const char *fname)
 {
 	int i;
 
@@ -300,7 +300,7 @@ void io_fin(int do_sections, const char *fname)
 		ccdie(0, "close cc1 output");
 }
 
-void sigh(int sig)
+static void sigh(int sig)
 {
 	(void)sig;
 	caught_sig = 1;

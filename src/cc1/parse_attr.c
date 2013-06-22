@@ -1,4 +1,4 @@
-decl_attr *parse_attr_format()
+static decl_attr *parse_attr_format()
 {
 	/* __attribute__((format (printf, fmtarg, firstvararg))) */
 	decl_attr *da;
@@ -38,7 +38,7 @@ decl_attr *parse_attr_format()
 	return da;
 }
 
-decl_attr *parse_attr_section()
+static decl_attr *parse_attr_section()
 {
 	/* __attribute__((section ("sectionname"))) */
 	decl_attr *da;
@@ -69,7 +69,7 @@ decl_attr *parse_attr_section()
 	return da;
 }
 
-decl_attr *parse_attr_nonnull()
+static decl_attr *parse_attr_nonnull()
 {
 	/* __attribute__((nonnull(1, 2, 3, 4...)))
 	 * or
@@ -134,7 +134,7 @@ out:
 	return 0;
 }
 
-decl_attr *parse_attr_sentinel()
+static decl_attr *parse_attr_sentinel()
 {
 	decl_attr *da = decl_attr_new(attr_sentinel);
 
@@ -143,7 +143,7 @@ decl_attr *parse_attr_sentinel()
 	return da;
 }
 
-decl_attr *parse_attr_aligned()
+static decl_attr *parse_attr_aligned()
 {
 	decl_attr *da = decl_attr_new(attr_aligned);
 
@@ -153,7 +153,7 @@ decl_attr *parse_attr_aligned()
 }
 
 #define EMPTY(t)                      \
-decl_attr *parse_ ## t()              \
+static decl_attr *parse_ ## t()       \
 {                                     \
 	return decl_attr_new(t);            \
 }
@@ -193,7 +193,7 @@ static struct
 };
 #define MAX_FMT_LEN 16
 
-void parse_attr_bracket_chomp(void)
+static void parse_attr_bracket_chomp(void)
 {
 	if(accept(token_open_paren)){
 		parse_attr_bracket_chomp(); /* nest */
@@ -205,7 +205,7 @@ void parse_attr_bracket_chomp(void)
 	}
 }
 
-decl_attr *parse_attr_single(char *ident)
+static decl_attr *parse_attr_single(char *ident)
 {
 	int i;
 
@@ -227,7 +227,7 @@ decl_attr *parse_attr_single(char *ident)
 	return NULL;
 }
 
-decl_attr *parse_attr(void)
+static decl_attr *parse_attr(void)
 {
 	decl_attr *attr = NULL, **next = &attr;
 

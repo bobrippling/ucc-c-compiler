@@ -89,7 +89,7 @@ static void const_offset(consty *r, consty *val, consty *addr,
 	r->offset += change;
 }
 
-void fold_const_expr_op(expr *e, consty *k)
+static void fold_const_expr_op(expr *e, consty *k)
 {
 	consty lhs, rhs;
 

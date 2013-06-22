@@ -34,7 +34,7 @@
 #define PARSE_type_ref_is_s_or_u_or_e(r) PARSE_type_ref_is_s_or_u_or_e2(r, 1)
 #define PARSE_type_ref_is_s_or_u(r)      PARSE_type_ref_is_s_or_u_or_e2(r, 0)
 
-struct_union_enum_st *PARSE_type_ref_is_s_or_u_or_e2(type_ref *r, int allow_e)
+static struct_union_enum_st *PARSE_type_ref_is_s_or_u_or_e2(type_ref *r, int allow_e)
 {
 	r = type_ref_skip_casts(r);
 	if(r->type == type_ref_type){
@@ -56,7 +56,7 @@ static void parse_add_attr(decl_attr **append);
 static type_ref *parse_type_ref2(enum decl_mode mode, char **sp);
 
 /* sue = struct/union/enum */
-type_ref *parse_type_sue(enum type_primitive prim)
+static type_ref *parse_type_sue(enum type_primitive prim)
 {
 	int is_complete = 0;
 	char *spel = NULL;
@@ -568,7 +568,7 @@ static type_ref *parse_btype(
 	}
 }
 
-int parse_curtok_is_type(void)
+static int parse_curtok_is_type(void)
 {
 	if(curtok_is_type_qual() || curtok_is_decl_store() || curtok_is_type_primitive())
 		return 1;
@@ -864,7 +864,7 @@ static void parse_add_asm(decl *d)
 	}
 }
 
-decl *parse_decl(type_ref *btype, enum decl_mode mode)
+static decl *parse_decl(type_ref *btype, enum decl_mode mode)
 {
 	char *spel = NULL;
 	decl *d = decl_new();

@@ -11,7 +11,7 @@ const char *str_expr_if()
 	return "if";
 }
 
-void fold_const_expr_if(expr *e, consty *k)
+static void fold_const_expr_if(expr *e, consty *k)
 {
 	consty consts[3];
 	int res;

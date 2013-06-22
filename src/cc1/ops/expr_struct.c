@@ -101,7 +101,7 @@ err:
 	}
 }
 
-void gen_expr_struct_lea(expr *e)
+static void gen_expr_struct_lea(expr *e)
 {
 	ASSERT_NOT_DOT();
 
@@ -155,7 +155,7 @@ void gen_expr_str_struct(expr *e)
 	gen_str_indent--;
 }
 
-void fold_const_expr_struct(expr *e, consty *k)
+static void fold_const_expr_struct(expr *e, consty *k)
 {
 	/* if lhs is NULL (or some pointer constant),
 	 * const fold to struct offset, (obv. if !dot, which is taken care of in fold) */

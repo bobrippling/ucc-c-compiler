@@ -84,7 +84,7 @@ static void lea_expr_compound_lit(expr *e)
 	out_push_sym(e->bits.complit.sym);
 }
 
-void const_expr_compound_lit(expr *e, consty *k)
+static void const_expr_compound_lit(expr *e, consty *k)
 {
 	decl *d = e->bits.complit.decl;
 

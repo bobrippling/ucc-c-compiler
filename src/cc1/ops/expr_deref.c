@@ -24,7 +24,7 @@ void fold_expr_deref(expr *e, symtable *stab)
 	e->tree_type = type_ref_ptr_depth_dec(ptr->tree_type, &e->where);
 }
 
-void gen_expr_deref_lea(expr *e)
+static void gen_expr_deref_lea(expr *e)
 {
 	/* a dereference */
 	gen_expr(expr_deref_what(e)); /* skip over the *() bit */
@@ -44,7 +44,7 @@ void gen_expr_str_deref(expr *e)
 	gen_str_indent--;
 }
 
-void const_expr_deref(expr *e, consty *k)
+static void const_expr_deref(expr *e, consty *k)
 {
 	expr *from = expr_deref_what(e);
 

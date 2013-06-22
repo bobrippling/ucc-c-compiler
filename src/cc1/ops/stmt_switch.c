@@ -13,7 +13,7 @@ const char *str_stmt_switch()
 	return "switch";
 }
 
-void fold_switch_dups(stmt *sw)
+static void fold_switch_dups(stmt *sw)
 {
 	typedef int (*qsort_f)(const void *, const void *);
 
@@ -78,7 +78,7 @@ void fold_switch_dups(stmt *sw)
 	free(vals);
 }
 
-void fold_switch_enum(stmt *sw, const type *enum_type)
+static void fold_switch_enum(stmt *sw, const type *enum_type)
 {
 	const int nents = enum_nentries(enum_type->sue);
 	stmt **titer;
@@ -237,7 +237,7 @@ void style_stmt_switch(stmt *s)
 	gen_stmt(s->lhs);
 }
 
-int switch_passable(stmt *s)
+static int switch_passable(stmt *s)
 {
 	return fold_passable(s->lhs);
 }

@@ -151,7 +151,7 @@ void gen_expr_str_val(expr *e)
 	idt_printf("val: 0x%lx\n", (unsigned long)e->bits.iv.val);
 }
 
-void const_expr_val(expr *e, consty *k)
+static void const_expr_val(expr *e, consty *k)
 {
 	memset(k, 0, sizeof *k);
 	memcpy_safe(&k->bits.iv, &e->bits.iv);

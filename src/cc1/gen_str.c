@@ -48,7 +48,7 @@ void idt_printf(const char *fmt, ...)
 	va_end(l);
 }
 
-void print_expr_val(expr *e)
+static void print_expr_val(expr *e)
 {
 	consty k;
 
@@ -60,7 +60,7 @@ void print_expr_val(expr *e)
 	fprintf(cc1_out, INTVAL_FMT_D, k.bits.iv.val);
 }
 
-void print_decl_init(decl_init *di)
+static void print_decl_init(decl_init *di)
 {
 	switch(di->type){
 		case decl_init_scalar:
@@ -135,7 +135,7 @@ void print_decl_init(decl_init *di)
 	}
 }
 
-void print_type_ref_eng(type_ref *ref)
+static void print_type_ref_eng(type_ref *ref)
 {
 	if(!ref)
 		return;
@@ -206,30 +206,12 @@ void print_type_ref_eng(type_ref *ref)
 	}
 }
 
-void print_decl_eng(decl *d)
+static void print_decl_eng(decl *d)
 {
 	if(d->spel)
 		fprintf(cc1_out, "\"%s\": ", d->spel);
 
 	print_type_ref_eng(d->ref);
-}
-
-void print_funcargs(funcargs *fargs)
-{
-	fputc('(', cc1_out);
-	if(fargs->arglist){
-		decl **iter;
-
-		for(iter = fargs->arglist; *iter; iter++){
-			print_decl(*iter, PDECL_NONE);
-			if(iter[1])
-				fputs(", ", cc1_out);
-		}
-	}else if(fargs->args_void){
-		fputs("void", cc1_out);
-	}
-
-	fprintf(cc1_out, "%s)", fargs->variadic ? ", ..." : "");
 }
 
 void print_type_ref(type_ref *ref, decl *d)
@@ -239,7 +221,7 @@ void print_type_ref(type_ref *ref, decl *d)
 			type_ref_to_str_r_spel(buf, ref, d ? d->spel : NULL));
 }
 
-void print_decl_attr(decl_attr *da)
+static void print_decl_attr(decl_attr *da)
 {
 	for(; da; da = da->next){
 		idt_printf("__attribute__((%s))\n", decl_attr_to_str(da->type));
@@ -278,7 +260,7 @@ void print_decl_attr(decl_attr *da)
 	}
 }
 
-void print_type_attr(type_ref *r)
+static void print_type_attr(type_ref *r)
 {
 	enum decl_attr_type i;
 
@@ -354,12 +336,6 @@ void print_decl(decl *d, enum pdeclargs mode)
 	}
 }
 
-void print_sym(sym *s)
-{
-	idt_printf("sym: type=%s, offset=%d, type: ", sym_to_str(s->type), s->offset);
-	print_decl(s->decl, PDECL_NEWLINE);
-}
-
 void print_expr(expr *e)
 {
 	idt_printf("expr: %s\n", e->f_str());
@@ -378,7 +354,7 @@ void print_expr(expr *e)
 	gen_str_indent--;
 }
 
-void print_struct(struct_union_enum_st *sue)
+static void print_struct(struct_union_enum_st *sue)
 {
 	sue_member **iter;
 
@@ -417,7 +393,7 @@ void print_struct(struct_union_enum_st *sue)
 	gen_str_indent--;
 }
 
-void print_enum(struct_union_enum_st *et)
+static void print_enum(struct_union_enum_st *et)
 {
 	sue_member **mi;
 
@@ -432,7 +408,7 @@ void print_enum(struct_union_enum_st *et)
 	gen_str_indent--;
 }
 
-void print_sues_static_asserts(symtable *stab)
+static void print_sues_static_asserts(symtable *stab)
 {
 	struct_union_enum_st **sit;
 	static_assert **stati;
@@ -459,7 +435,7 @@ void print_sues_static_asserts(symtable *stab)
 		fputc('\n', cc1_out);
 }
 
-void print_stmt_flow(stmt_flow *t)
+static void print_stmt_flow(stmt_flow *t)
 {
 	idt_printf("for parts:\n");
 

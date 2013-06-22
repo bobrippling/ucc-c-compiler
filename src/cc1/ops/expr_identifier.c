@@ -10,7 +10,7 @@ const char *str_expr_identifier()
 	return "identifier";
 }
 
-void fold_const_expr_identifier(expr *e, consty *k)
+static void fold_const_expr_identifier(expr *e, consty *k)
 {
 	/*
 	 * if we are an array identifier, we are constant:
@@ -127,7 +127,7 @@ void gen_expr_identifier(expr *e)
 		out_push_sym_val(sym);
 }
 
-void gen_expr_identifier_lea(expr *e)
+static void gen_expr_identifier_lea(expr *e)
 {
 	out_push_sym(e->bits.ident.sym);
 }
