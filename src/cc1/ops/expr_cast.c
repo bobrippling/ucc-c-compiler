@@ -27,6 +27,12 @@ static void get_cast_sizes(type_ref *tlhs, type_ref *trhs, int *pl, int *pr)
 
 static void fold_const_expr_cast(expr *e, consty *k)
 {
+	if(type_ref_is_floating(e->tree_type)){
+		/* currently don't do any const-float casting */
+		k->type = CONST_NO;
+		return;
+	}
+
 	const_fold(e->expr, k);
 
 	switch(k->type){
@@ -89,6 +95,10 @@ static void fold_const_expr_cast(expr *e, consty *k)
 		case CONST_STRK:
 		{
 			int l, r;
+
+			UCC_ASSERT(!type_ref_is_floating(e->tree_type),
+					"cast to float from address");
+
 			/* allow if we're casting to a same-size type */
 			get_cast_sizes(e->tree_type, e->expr->tree_type, &l, &r);
 
@@ -153,14 +163,30 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 	fold_disallow_st_un(e->expr, "cast-expr");
 	fold_disallow_st_un(e, "cast-target");
 
-	if(!type_ref_is_complete(e->tree_type) && !type_ref_is_void(e->tree_type))
-		DIE_AT(&e->where, "cast to incomplete type %s", type_ref_to_str(e->tree_type));
-
-	if((flag = !!type_ref_is(e->tree_type, type_ref_func)) || type_ref_is(e->tree_type, type_ref_array))
-		DIE_AT(&e->where, "cast to %s type '%s'", flag ? "function" : "array", type_ref_to_str(e->tree_type));
-
 	tlhs = e->tree_type;
 	trhs = e->expr->tree_type;
+
+	if(!type_ref_is_complete(tlhs)
+	&& !type_ref_is_void(tlhs))
+	{
+		DIE_AT(&e->where, "cast to incomplete type %s",
+				type_ref_to_str(tlhs));
+	}
+
+	if((flag = !!type_ref_is(tlhs, type_ref_func))
+	|| type_ref_is(tlhs, type_ref_array))
+	{
+		DIE_AT(&e->where, "cast to %s type '%s'",
+				flag ? "function" : "array",
+				type_ref_to_str(tlhs));
+	}
+
+	if(((flag = !!type_ref_is_ptr(tlhs)) && type_ref_is_floating(trhs))
+	||           (type_ref_is_ptr(trhs)  && type_ref_is_floating(tlhs)))
+	{
+		DIE_AT(&e->where, "cast %s pointer to floating type",
+				flag ? "to" : "from");
+	}
 
 	get_cast_sizes(tlhs, trhs, &size_lhs, &size_rhs);
 	if(size_lhs < size_rhs){
