@@ -247,10 +247,6 @@ void gen_expr_cast(expr *e)
 		return;
 	}
 
-	/* check float <--> int conversion */
-	if(type_ref_is_floating(tto) != type_ref_is_floating(tfrom))
-		ICE("TODO: float <-> int casting");
-
 	if(fopt_mode & FOPT_PLAN9_EXTENSIONS){
 		/* allow b to be an anonymous member of a */
 		struct_union_enum_st *a_sue = type_ref_is_s_or_u(type_ref_is_ptr(tto)),

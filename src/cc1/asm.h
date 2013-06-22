@@ -55,7 +55,6 @@ void asm_indir(enum asm_indir mode, decl *tt, char rto, char rfrom, const char *
 void asm_label(const char *);
 void asm_sym(enum asm_sym_type, sym *, const char *);
 
-char asm_type_ch(decl *d);
 enum asm_size asm_type_size(decl *d);
 
 void asm_declare_array(enum section_type output, const char *lbl, array_decl *ad);

@@ -14,14 +14,12 @@ void asm_predeclare_global(decl *d);
 extern const struct asm_type_table
 {
 	int sz;
-	char ch;
 	const char *directive;
 } asm_type_table[];
 #define ASM_TABLE_LEN 4
 
 int         asm_table_lookup(type_ref *);
 int         asm_type_size(type_ref *);
-char        asm_type_ch(type_ref *);
 const char *asm_type_directive(type_ref *);
 
 #endif

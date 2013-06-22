@@ -198,7 +198,7 @@ int v_unused_reg(int stack_as_backup, int fp, struct vreg *out)
 	first = NULL;
 
 	for(it = vstack; it <= vtop; it++){
-		if(it->type == REG){
+		if(it->type == REG && it->bits.reg.is_float == fp){
 			if(!first)
 				first = it;
 			used[impl_reg_to_scratch(&it->bits.reg)] = 1;
@@ -208,6 +208,7 @@ int v_unused_reg(int stack_as_backup, int fp, struct vreg *out)
 	for(i = 0; i < (fp ? N_SCRATCH_REGS_F : N_SCRATCH_REGS_I); i++)
 		if(!used[i]){
 			impl_scratch_to_reg(i, out);
+			out->is_float = fp;
 			return 0;
 		}
 
@@ -297,7 +298,7 @@ void v_freeup_regp(struct vstack *vp)
 	}
 }
 
-static int v_alloc_stack(int sz)
+unsigned v_alloc_stack(unsigned sz, unsigned *psz)
 {
 	static int word_size;
 	/* sz must be a multiple of word_size */
@@ -308,6 +309,8 @@ static int v_alloc_stack(int sz)
 	if(sz){
 		/* sz must be a multiple of mstack_align */
 		sz = pack_to_align(sz, cc1_mstack_align);
+		if(psz)
+			*psz = sz;
 
 		vpush(NULL);
 		vtop->type = REG;
@@ -337,7 +340,9 @@ void v_save_reg(struct vstack *vp)
 	 * instead/TODO: impl_save_reg(vp) -> "pushq %%rax"
 	 * -O1?
 	 */
-	store.bits.off_from_bp = -v_alloc_stack(type_ref_size(store.t, NULL));
+	store.bits.off_from_bp = -v_alloc_stack(
+			type_ref_size(store.t, NULL), NULL);
+
 #ifdef DEBUG_REG_SAVE
 	out_comment("save register %d", vp->bits.reg);
 #endif
@@ -1019,7 +1024,6 @@ void v_cast(struct vstack *vp, type_ref *to)
 					"%s to fp?", type_ref_to_str(from));
 
 			impl_i2f(vp, from, to);
-
 		}
 
 	}else{
@@ -1156,7 +1160,7 @@ void out_func_prologue(type_ref *rf, int stack_res, int nargs, int variadic)
 	stack_local_offset    = stack_sz;
 
 	if(stack_res)
-		v_alloc_stack(stack_res);
+		v_alloc_stack(stack_res, NULL);
 }
 
 void out_func_epilogue(type_ref *rf)

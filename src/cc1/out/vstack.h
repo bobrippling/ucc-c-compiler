@@ -89,6 +89,8 @@ void v_save_regs(int n_ignore, type_ref *func_ty);
 void v_reserve_reg(const struct vreg *);
 void v_unreserve_reg(const struct vreg *);
 
+unsigned v_alloc_stack(unsigned sz, unsigned *psz);
+
 void v_deref_decl(struct vstack *vp);
 
 int impl_n_scratch_regs(void);

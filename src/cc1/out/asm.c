@@ -49,11 +49,6 @@ int asm_table_lookup(type_ref *r)
 	return -1;
 }
 
-char asm_type_ch(type_ref *r)
-{
-	return asm_type_table[asm_table_lookup(r)].ch;
-}
-
 const char *asm_type_directive(type_ref *r)
 {
 	return asm_type_table[asm_table_lookup(r)].directive;
