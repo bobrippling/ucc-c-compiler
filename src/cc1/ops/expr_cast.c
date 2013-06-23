@@ -23,7 +23,7 @@ static void fold_const_expr_cast(expr *e, consty *k)
 	to_fp = type_ref_is_floating(e->tree_type);
 	if(to_fp != type_ref_is_floating(e->expr->tree_type)){
 		if(to_fp){
-			type_ref *prim = type_ref_is_type(e->expr->tree_type, type_unknown);
+			type_ref *prim = type_ref_is_type(e->tree_type, type_unknown);
 
 			/* convert to float */
 			k->bits.num.val.f = k->bits.num.val.i;
