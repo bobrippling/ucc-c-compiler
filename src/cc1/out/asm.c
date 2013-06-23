@@ -16,6 +16,7 @@
 #include "../gen_asm.h"
 #include "../decl_init.h"
 #include "../pack.h"
+#include "out.h"
 
 #define ASSERT_SCALAR(di)                  \
 	UCC_ASSERT(di->type == decl_init_scalar, \
@@ -162,6 +163,7 @@ static void static_val(FILE *f, type_ref *ty, expr *e)
 						union { float f; unsigned u; } u;
 						u.f = k.bits.num.val.f;
 						fprintf(f, ".long %u\n", u.u);
+						out_comment("float %f", u.f);
 						break;
 					}
 
@@ -170,6 +172,7 @@ static void static_val(FILE *f, type_ref *ty, expr *e)
 						union { double d; unsigned long ul; } u;
 						u.d = k.bits.num.val.f;
 						fprintf(f, ".quad %lu\n", u.ul);
+						out_comment("double %f", u.d);
 						break;
 					}
 					case type_ldouble:
