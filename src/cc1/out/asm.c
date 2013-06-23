@@ -135,6 +135,76 @@ static struct bitfield_val *bitfields_add(
 	return bfs;
 }
 
+static void static_val(FILE *f, type_ref *ty, expr *e)
+{
+	consty k;
+
+	memset(&k, 0, sizeof k);
+
+	const_fold(e, &k);
+
+	switch(k.type){
+		case CONST_NEED_ADDR:
+		case CONST_NO:
+			ICE("non-constant expr-%s const=%d%s",
+					e->f_str(),
+					k.type,
+					k.type == CONST_NEED_ADDR ? " (needs addr)" : "");
+			break;
+
+		case CONST_NUM:
+			if(K_FLOATING(k.bits.num)){
+				/* asm fp const */
+				ty = type_ref_is_type(ty, type_unknown);
+				switch(ty->bits.type->primitive){
+					case type_float:
+					{
+						union { float f; unsigned u; } u;
+						u.f = k.bits.num.val.f;
+						fprintf(f, ".long %u\n", u.u);
+						break;
+					}
+
+					case type_double:
+					{
+						union { double d; unsigned long ul; } u;
+						u.d = k.bits.num.val.f;
+						fprintf(f, ".quad %lu\n", u.ul);
+						break;
+					}
+					case type_ldouble:
+						ICE("TODO");
+					default:
+						ICE("bad float type");
+				}
+			}else{
+				char buf[INTEGRAL_BUF_SIZ];
+				asm_declare_init_type(f, ty);
+				integral_str(buf, sizeof buf, k.bits.num.val.i, e->tree_type);
+				fprintf(f, "%s", buf);
+			}
+			break;
+
+		case CONST_ADDR:
+			asm_declare_init_type(f, ty);
+			if(k.bits.addr.is_lbl)
+				fprintf(f, "%s", k.bits.addr.bits.lbl);
+			else
+				fprintf(f, "%ld", k.bits.addr.bits.memaddr);
+			break;
+
+		case CONST_STRK:
+			asm_declare_init_type(f, ty);
+			fprintf(f, "%s", k.bits.str->lbl);
+			break;
+	}
+
+	/* offset in bytes, no mul needed */
+	if(k.offset)
+		fprintf(f, " + %ld", k.offset);
+	fputc('\n', f);
+}
+
 static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 {
 	type_ref *r;
@@ -320,9 +390,7 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 		}
 
 		/* use tfor, since "abc" has type (char[]){(int)'a', (int)'b', ...} */
-		asm_declare_init_type(f, tfor);
-		static_addr(exp);
-		fputc('\n', f);
+		static_val(f, tfor, exp);
 	}
 }
 

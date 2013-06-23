@@ -59,52 +59,6 @@ void gen_stmt(stmt *t)
 	EOF_WHERE(&t->where, t->f_gen(t));
 }
 
-void static_addr(expr *e)
-{
-	consty k;
-
-	memset(&k, 0, sizeof k);
-
-	const_fold(e, &k);
-
-	switch(k.type){
-		char buf[INTEGRAL_BUF_SIZ];
-
-		case CONST_NEED_ADDR:
-		case CONST_NO:
-			ICE("non-constant expr-%s const=%d%s",
-					e->f_str(),
-					k.type,
-					k.type == CONST_NEED_ADDR ? " (needs addr)" : "");
-			break;
-
-		case CONST_NUM:
-			if(K_FLOATING(k.bits.num)){
-				/* asm fp const */
-				snprintf(buf, sizeof buf, "0x%" NUMERIC_FMT_X, k.bits.num.val.i);
-			}else{
-				integral_str(buf, sizeof buf, k.bits.num.val.i, e->tree_type);
-			}
-			asm_declare_partial("%s", buf);
-			break;
-
-		case CONST_ADDR:
-			if(k.bits.addr.is_lbl)
-				asm_declare_partial("%s", k.bits.addr.bits.lbl);
-			else
-				asm_declare_partial("%d", k.bits.addr.bits.memaddr);
-			break;
-
-		case CONST_STRK:
-			asm_declare_partial("%s", k.bits.str->lbl);
-			break;
-	}
-
-	/* offset in bytes, no mul needed */
-	if(k.offset)
-		asm_declare_partial(" + %ld", k.offset);
-}
-
 #ifdef FANCY_STACK_INIT
 #define ITER_DECLS(i) for(i = df->func_code->symtab->decls; i && *i; i++)
 
