@@ -5,7 +5,8 @@ struct vstack
 {
 	enum vstore
 	{
-		CONST,          /* vtop is a constant value */
+		CONST_I,        /* vtop is a constant value */
+		CONST_F,        /* vtop is a constant float */
 		REG,            /* vtop is in a register */
 		STACK,          /* vtop pointer onto stack */
 		STACK_SAVE,     /* saved register/flag */
@@ -27,7 +28,8 @@ struct vstack
 
 	union
 	{
-		integral_t val;
+		integral_t val_i;
+		floating_t val_f;
 		struct vreg
 		{
 			unsigned short idx, is_float;

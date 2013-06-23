@@ -193,13 +193,13 @@ void gen_stmt_switch(stmt *s)
 			const_fold_integral(cse->expr2, &max);
 
 			out_dup();
-			out_push_iv(cse->expr->tree_type, &iv);
+			out_push_num(cse->expr->tree_type, &iv);
 
 			out_op(op_lt);
 			out_jtrue(skip);
 
 			out_dup();
-			out_push_iv(cse->expr2->tree_type, &max);
+			out_push_num(cse->expr2->tree_type, &max);
 			out_op(op_gt);
 
 			out_jfalse(cse->expr->bits.ident.spel);
@@ -209,7 +209,7 @@ void gen_stmt_switch(stmt *s)
 
 		}else{
 			out_dup();
-			out_push_iv(cse->expr->tree_type, &iv);
+			out_push_num(cse->expr->tree_type, &iv);
 
 			out_op(op_eq);
 

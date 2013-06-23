@@ -158,7 +158,7 @@ chosen:
 
 void gen_expr_val(expr *e)
 {
-	out_push_iv(e->tree_type, &e->bits.num);
+	out_push_num(e->tree_type, &e->bits.num);
 }
 
 void gen_expr_str_val(expr *e)

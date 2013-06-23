@@ -30,14 +30,10 @@ void gen_expr(expr *e)
 
 	if(k.type == CONST_NUM){
 		/* -O0 skips this? */
-		if(K_FLOATING(k.bits.num)){
-			ICE("TODO: fp const");
-		}else{
-			if(cc1_backend == BACKEND_ASM)
-				out_push_iv(e->tree_type, &k.bits.num);
-			else
-				stylef("%" NUMERIC_FMT_D, k.bits.num.val.i);
-		}
+		if(cc1_backend == BACKEND_ASM)
+			out_push_num(e->tree_type, &k.bits.num);
+		else
+			stylef("%" NUMERIC_FMT_D, k.bits.num.val.i);
 	}else{
 		if(cc1_gdebug)
 			out_comment("at %s", where_str(&e->where));

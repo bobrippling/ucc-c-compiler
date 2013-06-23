@@ -7,8 +7,8 @@ void out_pop_func_ret(type_ref *) ucc_nonnull((1));
 void out_phi_pop_to(void); /* put the current value into the phi-save area */
 void out_phi_join(void);   /* join vtop and the current phi-save area */
 
-void out_push_iv(type_ref *, numeric *iv) ucc_nonnull((1));
-void out_push_i( type_ref *, int i) ucc_nonnull((1));
+void out_push_num(type_ref *t, const numeric *n) ucc_nonnull((1));
+void out_push_i(type_ref *, int i) ucc_nonnull((1));
 void out_push_lbl(char *s, int pic);
 void out_push_noop(void);
 

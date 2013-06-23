@@ -183,7 +183,8 @@ void v_to_reg_const(struct vstack *vp)
 			v_to_reg(vp);
 
 		case REG:
-		case CONST:
+		case CONST_I:
+		case CONST_F:
 			break;
 	}
 }
@@ -233,7 +234,8 @@ void v_to_reg_given(struct vstack *from, const struct vreg *given)
 			lea = 1;
 		case FLAG:
 		case STACK_SAVE: /* voila */
-		case CONST:
+		case CONST_I:
+		case CONST_F:
 		case REG:
 			break;
 	}
@@ -385,7 +387,8 @@ void v_save_regs(int n_ignore, type_ref *func_ty)
 				}
 				v_save_reg(p);
 
-			case CONST:
+			case CONST_I:
+			case CONST_F:
 			case STACK:
 			case STACK_SAVE:
 			case LBL:
@@ -459,24 +462,27 @@ void out_pop(void)
 	vpop();
 }
 
-void out_push_iv(type_ref *t, numeric *iv)
+void out_push_num(type_ref *t, const numeric *n)
 {
 	vpush(t);
 
-	vtop->type = CONST;
-	vtop->bits.val = iv->val.i;
-
-	impl_load_iv(vtop);
+	if(K_INTEGRAL(*n)){
+		vtop->type = CONST_I;
+		vtop->bits.val_i = n->val.i;
+		impl_load_iv(vtop);
+	}else{
+		vtop->type = CONST_F;
+		vtop->bits.val_f = n->val.f;
+	}
 }
 
 void out_push_i(type_ref *t, int i)
 {
-	numeric iv = {
-		.val = { i },
-		.suffix = 0
-	};
+	numeric iv;
+	memset(&iv, 0, sizeof iv);
+	iv.val.i = i;
 
-	out_push_iv(t, &iv);
+	out_push_num(t, &iv);
 }
 
 void out_push_lbl(char *s, int pic)
@@ -500,7 +506,8 @@ void out_dup(void)
 	out_comment("dup");
 	vpush(NULL);
 	switch(vtop[-1].type){
-		case CONST:
+		case CONST_I:
+		case CONST_F:
 		case STACK:
 		case STACK_SAVE:
 		case LBL:
@@ -631,8 +638,13 @@ void out_store()
 void out_normalise(void)
 {
 	switch(vtop->type){
-		case CONST:
-			vtop->bits.val = !!vtop->bits.val;
+		case CONST_I:
+			vtop->bits.val_i = !!vtop->bits.val_i;
+			break;
+
+		case CONST_F:
+			vtop->bits.val_i = !!vtop->bits.val_f;
+			vtop->type = CONST_I;
 			break;
 
 		default:
@@ -733,13 +745,13 @@ void out_op(enum op_type op)
 	struct vstack *t_const, *t_stack;
 
 	/* check for adding or subtracting to stack */
-	vtop2_are(CONST, STACK, &t_const, &t_stack);
+	vtop2_are(CONST_I, STACK, &t_const, &t_stack);
 
 	if(t_const && t_stack && (op == op_plus || op == op_minus)){
 		/* t_const == vtop... should be */
 		t_stack->bits.off_from_bp +=
 			(op == op_minus ? -1 : 1) *
-			t_const->bits.val *
+			t_const->bits.val_i *
 			calc_ptr_step(t_stack->t);
 
 		goto ignore_const;
@@ -754,19 +766,19 @@ void out_op(enum op_type op)
 			case op_xor:
 			case op_shiftl: /* if we're shifting 0, or shifting _by_ zero, noop */
 			case op_shiftr:
-				if(t_const->bits.val == 0)
+				if(t_const->bits.val_i == 0)
 					goto ignore_const;
 			default:
 				break;
 
 			case op_multiply:
 			case op_divide:
-				if(t_const->bits.val == 1)
+				if(t_const->bits.val_i == 1)
 					goto ignore_const;
 				break;
 
 			case op_and:
-				if((sintegral_t)t_const->bits.val == -1)
+				if((sintegral_t)t_const->bits.val_i == -1)
 					goto ignore_const;
 				break;
 		}
@@ -802,8 +814,8 @@ def:
 						struct vstack *val = &vtop[l_ptr ? -1 : 0];
 
 						switch(val->type){
-							case CONST:
-								val->bits.val *= ptr_step;
+							case CONST_I:
+								val->bits.val_i *= ptr_step;
 								break;
 
 							default:
@@ -907,6 +919,8 @@ void out_deref()
 	switch(vtop->type){
 		case FLAG:
 			ICE("deref of flag");
+		case CONST_F:
+			ICE("deref of float");
 
 		default:
 			v_to_reg(vtop);
@@ -927,7 +941,7 @@ void out_deref()
 
 		case LBL:
 		case STACK:
-		case CONST:
+		case CONST_I:
 		{
 			struct vreg r;
 
@@ -969,9 +983,9 @@ void out_op_unary(enum op_type op)
 					}
 					break;
 
-				case CONST:
+				case CONST_I:
 					switch(op){
-#define OP(t, o) case op_ ## t: vtop->bits.val = o vtop->bits.val; return
+#define OP(t, o) case op_ ## t: vtop->bits.val_i = o vtop->bits.val_i; return
 						OP(not, !);
 						OP(minus, -);
 						OP(bnot, ~);
@@ -986,6 +1000,7 @@ void out_op_unary(enum op_type op)
 				case STACK:
 				case STACK_SAVE:
 				case LBL:
+				case CONST_F:
 					break;
 			}
 	}
@@ -1043,7 +1058,7 @@ void v_cast(struct vstack *vp, type_ref *to)
 		/* casting integral vtop
 		 * don't bother if it's a constant,
 		 * just change the size */
-		if(vp->type != CONST){
+		if(vp->type != CONST_I){
 			int szfrom = asm_type_size(from),
 					szto   = asm_type_size(to);
 
@@ -1076,9 +1091,10 @@ void out_change_type(type_ref *t)
 	 * they need truncating
 	 */
 	UCC_ASSERT(
-			vtop->type != CONST
-			|| !integral_is_64_bit(vtop->bits.val, vtop->t),
-			"can't %s for large constant %" NUMERIC_FMT_D, __func__, vtop->bits.val);
+			vtop->type != CONST_I
+			|| !integral_is_64_bit(vtop->bits.val_i, vtop->t),
+			"can't %s for large constant %" NUMERIC_FMT_D, __func__,
+			vtop->bits.val_i);
 }
 
 void out_call(int nargs, type_ref *r_ret, type_ref *r_func)
