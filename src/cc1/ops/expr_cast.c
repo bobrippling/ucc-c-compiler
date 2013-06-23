@@ -16,13 +16,43 @@ const char *str_expr_cast()
 
 static void fold_const_expr_cast(expr *e, consty *k)
 {
-	if(type_ref_is_floating(e->tree_type)){
-		/* currently don't do any const-float casting */
-		k->type = CONST_NO;
-		return;
-	}
+	int to_fp;
 
 	const_fold(e->expr, k);
+
+	to_fp = type_ref_is_floating(e->tree_type);
+	if(to_fp != type_ref_is_floating(e->expr->tree_type)){
+		if(to_fp){
+			type_ref *prim = type_ref_is_type(e->expr->tree_type, type_unknown);
+
+			/* convert to float */
+			k->bits.num.val.f = k->bits.num.val.i;
+
+			/* perform the trunc */
+			switch(prim->bits.type->primitive){
+				default:
+					ICE("fp %s?", type_ref_to_str(prim));
+
+#define TRUNC(cse, ty, bmask) \
+				case type_ ## cse: \
+					k->bits.num.val.f = (ty)k->bits.num.val.f; \
+					k->bits.num.suffix = bmask; \
+					break
+
+				TRUNC(float, float, VAL_FLOAT);
+				TRUNC(double, double, VAL_DOUBLE);
+				TRUNC(ldouble, long double, VAL_LDOUBLE);
+#undef TRUNC
+			}
+			return;
+		}else{
+			/* convert to int */
+			k->bits.num.val.i = k->bits.num.val.f;
+			k->bits.num.suffix = VAL_LONG;
+
+			/* fall through to int logic */
+		}
+	}
 
 	switch(k->type){
 		case CONST_NUM:
