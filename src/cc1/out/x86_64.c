@@ -142,7 +142,17 @@ static const char *x86_suffix(type_ref *ty)
 {
 	if(type_ref_is_floating(ty)){
 		/* TODO: float, double etc */
-		return "ss";
+		ty = type_ref_is_type(ty, type_unknown);
+		switch(ty->bits.type->primitive){
+			case type_float:
+				return "ss";
+			case type_double:
+				return "sd";
+			case type_ldouble:
+				ICE("TODO");
+			default:
+				ICE("bad float");
+		}
 	}
 
 	switch(ty ? type_ref_size(ty, NULL) : 8){
