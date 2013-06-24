@@ -26,6 +26,7 @@ enum fold_chk
 	FOLD_CHK_NO_ST_UN    = 1 << 0, /* e.g. struct A + ... */
 	FOLD_CHK_NO_BITFIELD = 1 << 1, /* e.g. &, sizeof */
 	FOLD_CHK_BOOL        = 1 << 2, /* e.g. if(...) */
+	FOLD_CHK_INTEGRAL    = 1 << 3, /* e.g. switch(...) */
 };
 void fold_check_expr(expr *e, enum fold_chk, const char *desc);
 

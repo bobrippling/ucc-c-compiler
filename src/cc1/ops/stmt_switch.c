@@ -134,7 +134,7 @@ void fold_stmt_switch(stmt *s)
 
 	FOLD_EXPR(s->expr, stab);
 
-	fold_check_expr(s->expr, FOLD_CHK_EXP, "switch");
+	fold_check_expr(s->expr, FOLD_CHK_INTEGRAL, "switch");
 
 	/* this folds sub-statements,
 	 * causing case: and default: to add themselves to ->parent->codes,
