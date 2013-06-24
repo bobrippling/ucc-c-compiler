@@ -182,8 +182,8 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 
 	fold_type_ref(e->tree_type, NULL, stab); /* struct lookup, etc */
 
-	fold_disallow_st_un(e->expr, "cast-expr");
-	fold_disallow_st_un(e, "cast-target");
+	fold_check_expr(e->expr, FOLD_CHK_NO_ST_UN, "cast-expr");
+	fold_check_expr(e,       FOLD_CHK_NO_ST_UN, "cast-target");
 
 	tlhs = e->tree_type;
 	trhs = e->expr->tree_type;

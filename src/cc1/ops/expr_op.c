@@ -594,11 +594,11 @@ void fold_expr_op(expr *e, symtable *stab)
 			where_str(&e->where));
 
 	FOLD_EXPR(e->lhs, stab);
-	fold_disallow_st_un(e->lhs, op_to_str(e->op));
+	fold_check_expr(e->lhs, FOLD_CHK_NO_ST_UN, op_to_str(e->op));
 
 	if(e->rhs){
 		FOLD_EXPR(e->rhs, stab);
-		fold_disallow_st_un(e->rhs, op_to_str(e->op));
+		fold_check_expr(e->rhs, FOLD_CHK_NO_ST_UN, op_to_str(e->op));
 
 		/* no-op if float */
 		expr_promote_int_if_smaller(&e->lhs, stab);

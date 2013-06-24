@@ -903,52 +903,51 @@ void fold_symtab_scope(symtable *stab, stmt **pinit_code)
 #undef inits
 }
 
-void fold_need_expr(expr *e, const char *stmt_desc, int is_test)
+void fold_check_expr(expr *e, enum fold_chk chk, const char *desc)
 {
+	if(!e)
+		return;
+
+	UCC_ASSERT(e->tree_type, "no tree type");
+
+	/* fatal ones first */
+
 	if(type_ref_is_void(e->tree_type))
-		DIE_AT(&e->where, "%s requires non-void expression", stmt_desc);
+		DIE_AT(&e->where, "%s requires non-void expression", desc);
+
+	if(chk & FOLD_CHK_NO_ST_UN){
+		struct_union_enum_st *sue;
+
+		if((sue = type_ref_is_s_or_u(e->tree_type))){
+			DIE_AT(&e->where, "%s involved in %s",
+					sue_str(sue), desc);
+		}
+	}
+
+	if(chk & FOLD_CHK_NO_BITFIELD){
+		if(e && expr_kind(e, struct)){
+			decl *d = e->bits.struct_mem.d;
+
+			if(d->field_width)
+				DIE_AT(&e->where, "bitfield in %s", desc);
+		}
+	}
 
 	if(!e->in_parens && expr_kind(e, assign))
-		cc1_warn_at(&e->where, 0, 1, WARN_TEST_ASSIGN, "testing an assignment in %s", stmt_desc);
+		cc1_warn_at(&e->where, 0, 1, WARN_TEST_ASSIGN, "assignment in %s", desc);
 
-	if(is_test){
+	if(chk & FOLD_CHK_BOOL){
 		if(!type_ref_is_bool(e->tree_type)){
-			cc1_warn_at(&e->where, 0, 1, WARN_TEST_BOOL, "testing a non-boolean expression, %s, in %s",
-					type_ref_to_str(e->tree_type), stmt_desc);
+			cc1_warn_at(&e->where, 0, 1, WARN_TEST_BOOL,
+					"testing a non-boolean expression (%s), in %s",
+					type_ref_to_str(e->tree_type), desc);
 		}
 
 		if(expr_kind(e, addr)){
 			cc1_warn_at(&e->where, 0, 1, WARN_TEST_BOOL/*FIXME*/,
-					"testing an address is always true");
+					"an address is always true");
 		}
 	}
-
-	fold_disallow_st_un(e, stmt_desc);
-}
-
-void fold_disallow_st_un(expr *e, const char *desc)
-{
-	struct_union_enum_st *sue;
-
-	if((sue = type_ref_is_s_or_u(e->tree_type))){
-		DIE_AT(&e->where, "%s involved in %s",
-				sue_str(sue), desc);
-	}
-}
-
-void fold_disallow_bitfield(expr *e, const char *desc, ...)
-{
-	if(e && expr_kind(e, struct)){
-		decl *d = e->bits.struct_mem.d;
-
-		if(d->field_width){
-			va_list l;
-			va_start(l, desc);
-			vdie(&e->where, 1, desc, l);
-			va_end(l);
-		}
-	}
-
 }
 
 #ifdef SYMTAB_DEBUG

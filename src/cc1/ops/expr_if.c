@@ -61,16 +61,15 @@ void fold_expr_if(expr *e, symtable *stab)
 	FOLD_EXPR(e->expr, stab);
 	const_fold(e->expr, &konst);
 
-	fold_need_expr(e->expr, "?: expr", 1);
-	fold_disallow_st_un(e->expr, "?: expr");
+	fold_check_expr(e->expr, FOLD_CHK_NO_ST_UN, "if-expr");
 
 	if(e->lhs){
 		FOLD_EXPR(e->lhs, stab);
-		fold_disallow_st_un(e->lhs, "?: lhs");
+		fold_check_expr(e->lhs, FOLD_CHK_NO_ST_UN, "if-lhs");
 	}
 
 	FOLD_EXPR(e->rhs, stab);
-	fold_disallow_st_un(e->rhs, "?: rhs");
+	fold_check_expr(e->rhs, FOLD_CHK_NO_ST_UN, "if-rhs");
 
 
 	/*

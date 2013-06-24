@@ -14,7 +14,7 @@ void fold_stmt_return(stmt *s)
 		char buf[TYPE_REF_STATIC_BUFSIZ];
 
 		FOLD_EXPR(s->expr, s->symtab);
-		fold_need_expr(s->expr, "return", 0);
+		fold_check_expr(s->expr, FOLD_CHK_EXP, s->f_str());
 
 		fold_type_ref_equal(curdecl_ref_func_called, s->expr->tree_type,
 				&s->where, WARN_RETURN_TYPE, 0,

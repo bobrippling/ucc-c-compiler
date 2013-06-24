@@ -20,7 +20,10 @@ void fold_stmt_while(stmt *s)
 	s->lbl_continue = out_label_flow("while_cont");
 
 	FOLD_EXPR(s->expr, stab);
-	fold_need_expr(s->expr, s->f_str(), 1);
+	fold_check_expr(
+			s->expr,
+			FOLD_CHK_NO_ST_UN | FOLD_CHK_BOOL,
+			s->f_str());
 
 	fold_stmt(s->lhs);
 }

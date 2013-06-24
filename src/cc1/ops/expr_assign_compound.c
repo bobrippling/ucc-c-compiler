@@ -43,7 +43,7 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 
 		e->tree_type = lvalue->tree_type;
 
-		fold_disallow_st_un(e, "compound assignment");
+		fold_check_expr(e, FOLD_CHK_NO_ST_UN, "compound assignment");
 
 		(void)resolved;
 		/*type_ref_free_1(resolved); XXX: memleak */

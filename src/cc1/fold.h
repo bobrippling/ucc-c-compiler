@@ -18,11 +18,22 @@ void fold_symtab_scope(symtable *stab, stmt **pinit_code);
 void fold_funcargs(funcargs *fargs, symtable *stab, type_ref *from);
 
 void fold_insert_casts(type_ref *dlhs, expr **prhs, symtable *stab, where *w, const char *desc);
-void fold_typecheck(expr *lhs, expr *rhs, symtable *stab, where *where);
 
+enum fold_chk
+{
+	/* implicitly must be non-void */
+	FOLD_CHK_EXP         = 0,      /* done for all */
+	FOLD_CHK_NO_ST_UN    = 1 << 0, /* e.g. struct A + ... */
+	FOLD_CHK_NO_BITFIELD = 1 << 1, /* e.g. &, sizeof */
+	FOLD_CHK_BOOL        = 1 << 2, /* e.g. if(...) */
+};
+void fold_check_expr(expr *e, enum fold_chk, const char *desc);
+
+/*
 void fold_need_expr(expr *e, const char *stmt_desc, int is_test);
 void fold_disallow_st_un(expr *e, const char *desc);
 void fold_disallow_bitfield(expr *e, const char *desc, ...);
+*/
 
 sym *fold_inc_writes_if_sym(expr *e, symtable *stab);
 

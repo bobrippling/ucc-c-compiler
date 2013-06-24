@@ -406,8 +406,7 @@ invalid:
 		for(i = j = 0; e->funcargs[i]; i++){
 			expr *arg = FOLD_EXPR(e->funcargs[i], stab);
 
-			fold_need_expr(arg, desc, 0);
-			fold_disallow_st_un(arg, desc);
+			fold_check_expr(arg, FOLD_CHK_NO_ST_UN, desc);
 
 			if((nonnulls & (1 << i)) && expr_is_null_ptr(arg, 1))
 				WARN_AT(&arg->where, "null passed where non-null required (arg %d)", i + 1);
@@ -470,7 +469,8 @@ invalid:
 			expr_promote_int_if_smaller(&e->funcargs[i], stab);
 	}
 
-	fold_disallow_st_un(e, "return");
+	if(type_ref_is_s_or_u(e->tree_type))
+		ICW("TODO: function returning a struct");
 
 	/* attr */
 	{

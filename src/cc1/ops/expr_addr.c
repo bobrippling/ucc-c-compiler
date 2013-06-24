@@ -50,7 +50,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 				DIE_AT(&e->lhs->where, "can't take the address of register");
 		}
 
-		fold_disallow_bitfield(e->lhs, "taking the address of a bit-field");
+		fold_check_expr(e->lhs, FOLD_CHK_NO_BITFIELD, "address-of");
 
 		e->tree_type = type_ref_new_ptr(e->lhs->tree_type, qual_none);
 	}

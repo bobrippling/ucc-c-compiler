@@ -40,9 +40,8 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 
 	chosen = SIZEOF_WHAT(e);
 
-	fold_disallow_bitfield(
-			e->expr,
-			"%s applied to a bit-field",
+	fold_check_expr(e->expr,
+			FOLD_CHK_NO_BITFIELD,
 			sizeof_what(e->what_of));
 
 	switch(e->what_of){
