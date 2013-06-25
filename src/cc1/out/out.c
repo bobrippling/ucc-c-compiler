@@ -254,7 +254,7 @@ void v_to_reg_out(struct vstack *conv, struct vreg *out)
 		if(!out)
 			out = &chosen;
 
-		v_unused_reg(1, 0, out);
+		v_unused_reg(1, conv->type == CONST_F, out);
 		v_to_reg_given(conv, out);
 	}
 }
