@@ -16,40 +16,44 @@ const char *str_expr_cast()
 
 static void fold_const_expr_cast(expr *e, consty *k)
 {
-	int to_fp;
+	int to_fp, from_fp;
 
 	const_fold(e->expr, k);
 
 	to_fp = type_ref_is_floating(e->tree_type);
-	if(to_fp != type_ref_is_floating(e->expr->tree_type)){
-		if(to_fp){
-			/* convert to float */
-			k->bits.num.val.f = k->bits.num.val.i;
+	from_fp = type_ref_is_floating(e->expr->tree_type);
 
-			/* perform the trunc */
-			switch(type_ref_primitive(e->tree_type)){
-				default:
-					ICE("fp expected");
+	if(to_fp){
+		if(from_fp){
+			/* float -> float - nothing to see here */
+		}else{
+			/* int -> float */
+			k->bits.num.val.f = k->bits.num.val.i;
+		}
+
+		/* perform the trunc */
+		switch(type_ref_primitive(e->tree_type)){
+			default:
+				ICE("fp expected");
 
 #define TRUNC(cse, ty, bmask) \
-				case type_ ## cse: \
-					k->bits.num.val.f = (ty)k->bits.num.val.f; \
-					k->bits.num.suffix = bmask; \
-					break
+			case type_ ## cse: \
+				k->bits.num.val.f = (ty)k->bits.num.val.f; \
+				k->bits.num.suffix = bmask; \
+				break
 
-				TRUNC(float, float, VAL_FLOAT);
-				TRUNC(double, double, VAL_DOUBLE);
-				TRUNC(ldouble, long double, VAL_LDOUBLE);
+			TRUNC(float, float, VAL_FLOAT);
+			TRUNC(double, double, VAL_DOUBLE);
+			TRUNC(ldouble, long double, VAL_LDOUBLE);
 #undef TRUNC
-			}
-			return;
-		}else{
-			/* convert to int */
-			k->bits.num.val.i = k->bits.num.val.f;
-			k->bits.num.suffix = VAL_LONG;
-
-			/* fall through to int logic */
 		}
+		return;
+	}else if(from_fp){
+		/* float -> int */
+		k->bits.num.val.i = k->bits.num.val.f;
+		k->bits.num.suffix = VAL_LONG;
+
+		/* fall through to int logic */
 	}
 
 	switch(k->type){
