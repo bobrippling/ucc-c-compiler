@@ -12,4 +12,6 @@ main()
 	struct A exp_stmt = ({ struct A sub = { 1 }; sub; });
 
 	struct A init = (struct A){ 1 };
+
+	(void)x;
 }

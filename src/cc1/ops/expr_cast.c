@@ -186,15 +186,15 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 
 	fold_type_ref(e->tree_type, NULL, stab); /* struct lookup, etc */
 
-	fold_check_expr(e->expr, FOLD_CHK_NO_ST_UN, "cast-expr");
-	fold_check_expr(e,       FOLD_CHK_NO_ST_UN, "cast-target");
-
 	tlhs = e->tree_type;
 	trhs = e->expr->tree_type;
 
-	if(!type_ref_is_complete(tlhs)
-	&& !type_ref_is_void(tlhs))
-	{
+	fold_check_expr(e->expr, FOLD_CHK_NO_ST_UN, "cast-expr");
+	if(type_ref_is_void(tlhs))
+		return; /* fine */
+	fold_check_expr(e, FOLD_CHK_NO_ST_UN, "cast-target");
+
+	if(!type_ref_is_complete(tlhs)){
 		DIE_AT(&e->where, "cast to incomplete type %s",
 				type_ref_to_str(tlhs));
 	}
