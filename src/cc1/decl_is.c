@@ -327,6 +327,17 @@ type_ref *type_ref_func_call(type_ref *fp, funcargs **pfuncargs)
 	return fp;
 }
 
+int type_ref_decayable(type_ref *r)
+{
+	switch(type_ref_skip_tdefs_casts(r)->type){
+		case type_ref_array:
+		case type_ref_func:
+			return 1;
+		default:
+			return 0;
+	}
+}
+
 type_ref *type_ref_decay(type_ref *r)
 {
 	/* f(int x[][5]) decays to f(int (*x)[5]), not f(int **x) */

@@ -122,7 +122,11 @@ static void fold_const_expr_cast(expr *e, consty *k)
 
 			/* allow if we're casting to a same-size type */
 			l = type_ref_size(e->tree_type, &e->where);
-			r = type_ref_size(e->expr->tree_type, &e->expr->where);
+
+			if(type_ref_decayable(e->expr->tree_type))
+				r = platform_word_size(); /* func-ptr or array->ptr */
+			else
+				r = type_ref_size(e->expr->tree_type, &e->expr->where);
 
 			if(l < r){
 				/* shouldn't fit, check if it will */

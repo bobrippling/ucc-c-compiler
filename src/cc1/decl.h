@@ -274,6 +274,7 @@ type_ref *type_ref_is_ptr(type_ref *); /* returns r->ref iff ptr */
 int       type_ref_is_nonfptr(type_ref *);
 type_ref *type_ref_is_array(type_ref *); /* returns r->ref iff array */
 type_ref *type_ref_func_call(type_ref *, funcargs **pfuncargs);
+int       type_ref_decayable(type_ref *r);
 type_ref *type_ref_decay(type_ref *);
 type_ref *type_ref_is_scalar(type_ref *);
 struct_union_enum_st *type_ref_is_s_or_u(type_ref *);
