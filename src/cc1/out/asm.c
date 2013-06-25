@@ -156,8 +156,7 @@ static void static_val(FILE *f, type_ref *ty, expr *e)
 		case CONST_NUM:
 			if(K_FLOATING(k.bits.num)){
 				/* asm fp const */
-				ty = type_ref_is_type(ty, type_unknown);
-				switch(ty->bits.type->primitive){
+				switch(type_ref_primitive(ty)){
 					case type_float:
 					{
 						union { float f; unsigned u; } u;

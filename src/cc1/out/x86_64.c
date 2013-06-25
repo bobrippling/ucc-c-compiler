@@ -141,9 +141,7 @@ static const char *x86_fpreg_str(unsigned i)
 static const char *x86_suffix(type_ref *ty)
 {
 	if(type_ref_is_floating(ty)){
-		/* TODO: float, double etc */
-		ty = type_ref_is_type(ty, type_unknown);
-		switch(ty->bits.type->primitive){
+		switch(type_ref_primitive(ty)){
 			case type_float:
 				return "ss";
 			case type_double:

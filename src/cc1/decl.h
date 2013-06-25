@@ -264,6 +264,7 @@ int type_ref_is_incomplete_array(type_ref *);
 enum type_qualifier type_ref_qual(const type_ref *);
 
 funcargs *type_ref_funcargs(type_ref *);
+enum type_primitive type_ref_primitive(type_ref *);
 
 unsigned type_ref_align(type_ref *, where *from);
 unsigned type_ref_array_len(type_ref *);

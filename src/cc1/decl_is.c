@@ -436,6 +436,13 @@ enum type_qualifier type_ref_qual(const type_ref *r)
 	ucc_unreach();
 }
 
+enum type_primitive type_ref_primitive(type_ref *ty)
+{
+	ty = type_ref_is_type(ty, type_unknown);
+	UCC_ASSERT(ty, "not primitive?");
+	return ty->bits.type->primitive;
+}
+
 funcargs *type_ref_funcargs(type_ref *r)
 {
 	type_ref *test;
