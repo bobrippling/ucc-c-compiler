@@ -1142,10 +1142,15 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 		struct vreg r;
 
 		if(type_ref_is_floating(vtop->t)){
+			/* NOTE: don't need to use call_regs_float,
+			 * since it's xmm0 ... 4 */
 			r.idx = nfloats++;
 			r.is_float = 1;
 
 			rp = &r;
+
+			/* FIXME: need to merge this loop and the push-args loop */
+			ICW("float call - need better '< n_call_reg' checks");
 		}else{
 			rp = &call_regs[nints++];
 		}
