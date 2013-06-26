@@ -252,18 +252,12 @@ static const char *vstack_str_ptr(struct vstack *vs, int ptr)
 
 int impl_reg_to_scratch(const struct vreg *r)
 {
-	return r->idx + (r->is_float ? N_SCRATCH_REGS_I : 0);
+	return r->idx;
 }
 
 void impl_scratch_to_reg(int scratch, struct vreg *r)
 {
-	if(scratch >= N_SCRATCH_REGS_I){
-		r->idx = scratch - N_SCRATCH_REGS_I;
-		r->is_float = 1;
-	}else{
-		r->idx = scratch;
-		r->is_float = 0;
-	}
+	r->idx = scratch;
 }
 
 static const struct calling_conv_desc *x86_conv_lookup(type_ref *fr)
