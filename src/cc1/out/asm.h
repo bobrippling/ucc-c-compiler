@@ -1,9 +1,24 @@
 #ifndef ASM_H
 #define ASM_H
 
-void asm_out_section(enum section_type, const char *fmt, ...);
+enum section_type
+{
+	SECTION_TEXT,
+	SECTION_DATA,
+	SECTION_BSS,
+	NUM_SECTIONS
+};
 
-void asm_declare_decl_init(FILE *f, decl *); /* x: .qword ... */
+extern FILE *cc_out[NUM_SECTIONS];
+extern FILE *cc1_out;
+
+void asm_out_section(enum section_type, const char *fmt, ...);
+void asm_out_sectionv(enum section_type t, const char *fmt, va_list l);
+void asm_label(enum section_type, const char *lbl, unsigned align);
+
+void asm_out_fp(enum section_type sec, type_ref *ty, floating_t f);
+
+void asm_declare_decl_init(enum section_type, decl *); /* x: .qword ... */
 
 void asm_predeclare_extern(decl *d);
 void asm_predeclare_global(decl *d);

@@ -6,14 +6,6 @@
 /*#define FANCY_STACK_INIT 1*/
 #define ASM_INLINE_FNAME "__asm__"
 
-enum section_type
-{
-	SECTION_TEXT,
-	SECTION_DATA,
-	SECTION_BSS,
-	NUM_SECTIONS
-};
-
 enum warning
 {
 	WARN_NONE                     = 0,
@@ -96,9 +88,6 @@ extern enum c_std cc1_std;
 
 void cc1_warn_atv(struct where *where, int die, int show_line, enum warning w, const char *fmt, va_list l);
 void cc1_warn_at( struct where *where, int die, int show_line, enum warning w, const char *fmt, ...) ucc_printflike(5, 6);
-
-extern FILE *cc_out[NUM_SECTIONS];
-extern FILE *cc1_out;
 
 extern int cc1_max_errors;
 

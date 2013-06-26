@@ -5,6 +5,7 @@ void impl_store(struct vstack *from, struct vstack *to);
 void impl_load(struct vstack *from, const struct vreg *reg);
 void impl_lea( struct vstack *from, const struct vreg *reg);
 void impl_load_iv(struct vstack *from);
+void impl_load_fp(struct vstack *from);
 
 void impl_reg_cp(struct vstack *from, const struct vreg *r);
 void impl_reg_swp(struct vstack *a, struct vstack *b);
@@ -54,9 +55,8 @@ enum p_opts
 };
 
 void out_asm( const char *fmt, ...) ucc_printflike(1, 2);
-void out_asm2(enum p_opts opts, const char *fmt, ...) ucc_printflike(2, 3);
 
-void impl_comment(const char *fmt, va_list l);
+void impl_comment(enum section_type, const char *fmt, va_list l);
 void impl_lbl(const char *lbl);
 
 enum flag_cmp op_to_flag(enum op_type op);

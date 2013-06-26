@@ -21,8 +21,8 @@
 #include "gen_style.h"
 #include "sym.h"
 #include "fold_sym.h"
-#include "out/out.h"
 #include "ops/__builtin.h"
+#include "out/asm.h" /* NUM_SECTIONS */
 
 #include "../as_cfg.h"
 #define QUOTE(...) #__VA_ARGS__

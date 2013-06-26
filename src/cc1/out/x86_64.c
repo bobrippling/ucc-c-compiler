@@ -9,9 +9,9 @@
 #include "../../util/platform.h"
 #include "../data_structs.h"
 #include "vstack.h"
+#include "asm.h"
 #include "impl.h"
 #include "../cc1.h"
-#include "asm.h"
 #include "common.h"
 #include "out.h"
 #include "lbl.h"
@@ -541,6 +541,29 @@ void impl_load_iv(struct vstack *vp)
 		vp->type = REG;
 		memcpy_safe(&vp->bits.reg, &r);
 	}
+}
+
+void impl_load_fp(struct vstack *from)
+{
+	/* save to a label */
+	char *lbl = out_label_data_store(0);
+	struct vreg r;
+
+	asm_label(SECTION_DATA, lbl, type_ref_align(from->t, NULL));
+	asm_out_fp(SECTION_DATA, from->t, from->bits.val_f);
+
+	from->type = LBL;
+	from->bits.lbl.str = lbl;
+	from->bits.lbl.pic = 1;
+
+	/* impl_load since we don't want a lea */
+	v_unused_reg(1, 1, &r);
+	impl_load(from, &r);
+
+	from->type = REG;
+	memcpy_safe(&from->bits.reg, &r);
+
+	free(lbl);
 }
 
 void impl_load(struct vstack *from, const struct vreg *reg)

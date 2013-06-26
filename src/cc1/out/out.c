@@ -6,12 +6,12 @@
 #include "../../util/util.h"
 #include "../../util/alloc.h"
 #include "../data_structs.h"
+#include "asm.h"
 #include "out.h"
 #include "vstack.h"
 #include "impl.h"
 #include "../../util/platform.h"
 #include "../cc1.h"
-#include "asm.h"
 #include "../pack.h"
 #include "../defs.h"
 
@@ -471,6 +471,7 @@ void out_push_num(type_ref *t, const numeric *n)
 	}else{
 		vtop->type = CONST_F;
 		vtop->bits.val_f = n->val.f;
+		impl_load_fp(vtop);
 	}
 }
 
@@ -1161,12 +1162,27 @@ void out_label(const char *lbl)
 	impl_lbl(lbl);
 }
 
+static void out_comment_vsec(
+		enum section_type sec, const char *fmt, va_list l)
+{
+	impl_comment(sec, fmt, l);
+}
+
+void out_comment_sec(enum section_type sec, const char *fmt, ...)
+{
+	va_list l;
+
+	va_start(l, fmt);
+	out_comment_vsec(sec, fmt, l);
+	va_end(l);
+}
+
 void out_comment(const char *fmt, ...)
 {
 	va_list l;
 
 	va_start(l, fmt);
-	impl_comment(fmt, l);
+	out_comment_vsec(SECTION_TEXT, fmt, l);
 	va_end(l);
 }
 

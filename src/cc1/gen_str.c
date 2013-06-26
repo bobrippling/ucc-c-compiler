@@ -16,6 +16,7 @@
 #include "const.h"
 #include "decl_init.h"
 #include "funcargs.h"
+#include "out/asm.h" /* cc*_out */
 
 #define ENGLISH_PRINT_ARGLIST
 
@@ -28,6 +29,11 @@
 	}
 
 int gen_str_indent = 0;
+
+FILE *gen_file(void)
+{
+	return cc1_out;
+}
 
 void idt_print()
 {

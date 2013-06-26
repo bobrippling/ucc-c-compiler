@@ -81,7 +81,7 @@ void gen_expr_str__Generic(expr *e)
 			gen_str_indent++;
 			print_type_ref(l->t, NULL);
 			gen_str_indent--;
-			fprintf(cc1_out, "\n");
+			fprintf(gen_file(), "\n");
 		}else{
 			idt_printf("default:\n");
 		}

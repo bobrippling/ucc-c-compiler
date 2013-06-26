@@ -42,6 +42,9 @@ void out_func_epilogue(type_ref *);
 void out_label(const char *);
 
 void out_comment(const char *, ...) ucc_printflike(1, 2);
+#ifdef ASM_H
+void out_comment_sec(enum section_type, const char *, ...) ucc_printflike(2, 3);
+#endif
 
 void out_assert_vtop_null(void);
 void out_dump(void);

@@ -12,7 +12,6 @@
 #include "../util/dynarray.h"
 #include "pack.h"
 #include "sue.h"
-#include "out/out.h"
 #include "fold.h"
 
 
