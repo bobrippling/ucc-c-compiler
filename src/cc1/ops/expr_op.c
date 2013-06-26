@@ -194,15 +194,24 @@ static void fold_const_expr_op(expr *e, consty *k)
 	}
 }
 
-void expr_promote_int_if_smaller(expr **pe, symtable *stab)
+static void expr_promote_if_smaller(expr **pe, symtable *stab, int do_float)
 {
-	static unsigned sz_int;
+	static unsigned sz_int, sz_double;
 	expr *e = *pe;
+	int fp = type_ref_is_floating(e->tree_type);
+	unsigned csz;
 
-	if(!sz_int)
+	if(fp && !do_float)
+		return;
+
+	if(!sz_int){
 		sz_int = type_primitive_size(type_int);
+		sz_double = type_primitive_size(type_double);
+	}
 
-	if(type_ref_size(e->tree_type, &e->where) < sz_int){
+	csz = fp ? sz_double : sz_int;
+
+	if(type_ref_size(e->tree_type, &e->where) < csz){
 		expr *cast;
 
 		UCC_ASSERT(!type_ref_is(e->tree_type, type_ref_ptr),
@@ -214,7 +223,9 @@ void expr_promote_int_if_smaller(expr **pe, symtable *stab)
 		 * insert down-casts too - the tree_type of the expression is still important
 		 */
 
-		cast = expr_new_cast(type_ref_new_type(type_new_primitive(type_int)), 1);
+		cast = expr_new_cast(
+				fp ? type_ref_cached_DOUBLE() : type_ref_cached_INT(),
+				1);
 
 		cast->expr = e;
 
@@ -222,6 +233,16 @@ void expr_promote_int_if_smaller(expr **pe, symtable *stab)
 
 		*pe = cast;
 	}
+}
+
+static void expr_promote_int_if_smaller(expr **pe, symtable *stab)
+{
+	expr_promote_if_smaller(pe, stab, 0);
+}
+
+void expr_promote_default(expr **pe, symtable *stab)
+{
+	expr_promote_if_smaller(pe, stab, 1);
 }
 
 type_ref *op_required_promotion(

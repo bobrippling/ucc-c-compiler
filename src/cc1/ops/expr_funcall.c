@@ -462,11 +462,11 @@ invalid:
 
 	free(desc), desc = NULL;
 
-	/* each arg needs casting up to int size, if smaller */
+	/* each unspecified arg needs default promotion, (if smaller) */
 	if(e->funcargs){
 		int i;
-		for(i = 0; e->funcargs[i]; i++)
-			expr_promote_int_if_smaller(&e->funcargs[i], stab);
+		for(i = count_decl; e->funcargs[i]; i++)
+			expr_promote_default(&e->funcargs[i], stab);
 	}
 
 	if(type_ref_is_s_or_u(e->tree_type))
