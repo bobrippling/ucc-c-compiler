@@ -1150,8 +1150,14 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 			rp = &call_regs[nints++];
 		}
 
-		v_freeup_reg(rp, 0);
-		v_to_reg_given(vtop, rp);
+		/* only bother if it's not already in the register */
+		if(vtop->type != REG || !vreg_eq(rp, &vtop->bits.reg)){
+			/* need to free it up, as
+			 * v_to_reg_given doesn't clobber check */
+			v_freeup_reg(rp, 0);
+			v_to_reg_given(vtop, rp);
+		}
+
 		v_reserve_reg(rp); /* we vpop but we don't want this reg clobbering */
 		vpop();
 	}
