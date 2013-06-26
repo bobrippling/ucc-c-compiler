@@ -39,7 +39,13 @@ int fold_type_ref_equal(
 	if(!type_ref_is(a, type_ref_ptr) && !type_ref_is(b, type_ref_ptr))
 		flags |= DECL_CMP_ALLOW_SIGNED_UNSIGNED;
 
-	/* stronger checks for blocks and pointers */
+	/* stronger checks for blocks, functions and and (non-void) pointers */
+	if(type_ref_is_nonvoid_ptr(a)
+	&& type_ref_is_nonvoid_ptr(b))
+	{
+		flags |= DECL_CMP_EXACT_MATCH;
+	}
+	else
 	if(type_ref_is(a, type_ref_block)
 	|| type_ref_is(b, type_ref_block)
 	|| type_ref_is(a, type_ref_func)

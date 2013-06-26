@@ -248,6 +248,7 @@ int type_ref_is_const(   type_ref *);
 int type_ref_is_callable(type_ref *);
 int type_ref_is_fptr(    type_ref *);
 int type_ref_is_void_ptr(type_ref *);
+int type_ref_is_nonvoid_ptr(type_ref *);
 
 type_ref *type_ref_complete_array(type_ref *r, int sz) ucc_wur;
 int type_ref_is_incomplete_array(type_ref *);

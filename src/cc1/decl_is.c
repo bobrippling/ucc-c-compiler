@@ -171,6 +171,13 @@ int type_ref_is_void_ptr(type_ref *r)
 	return !!type_ref_is_type(type_ref_is_ptr(r), type_void);
 }
 
+int type_ref_is_nonvoid_ptr(type_ref *r)
+{
+	if((r = type_ref_is_ptr(r)))
+		return !type_ref_is_type(r, type_void);
+	return 0;
+}
+
 int type_ref_is_integral(type_ref *r)
 {
 	r = type_ref_is(r, type_ref_type);
