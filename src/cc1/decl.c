@@ -46,6 +46,7 @@ void type_ref_init(symtable *stab)
 	cache_basics[type_int]  = type_ref_cached_INT();
 	cache_basics[type_char] = type_ref_cached_CHAR();
 	cache_basics[type_long] = type_ref_cached_INTPTR_T();
+	cache_basics[type_double] = type_ref_cached_DOUBLE();
 
 	cache_ptr[type_void] = type_ref_cached_VOID_PTR();
 	cache_ptr[type_long] = type_ref_cached_LONG_PTR();

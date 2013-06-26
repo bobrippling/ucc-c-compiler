@@ -1150,8 +1150,13 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 		INC_NFLOATS(vp->t);
 
 		/* can't push non-word sized vtops */
-		if(vp->t && type_ref_size(vp->t, NULL) != platform_word_size())
-			v_cast(vp, type_ref_cached_VOID_PTR());
+		if(vp->t && type_ref_size(vp->t, NULL) != platform_word_size()){
+			/* TODO: structs, unions */
+			v_cast(vp,
+					type_ref_is_floating(vp->t) ?
+						type_ref_cached_DOUBLE() :
+						type_ref_cached_VOID_PTR());
+		}
 
 		switch(vtop->type){
 			case STACK_SAVE:
