@@ -395,15 +395,7 @@ int type_ref_is_floating(type_ref *r)
 	if(!r)
 		return 0;
 
-	switch(r->bits.type->primitive){
-		case type_float:
-		case type_double:
-		case type_ldouble:
-			return 1;
-		default:
-			break;
-	}
-	return 0;
+	return type_floating(r->bits.type->primitive);
 }
 
 enum type_qualifier type_ref_qual(const type_ref *r)

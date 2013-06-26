@@ -252,6 +252,18 @@ int type_qual_equal(enum type_qualifier a, enum type_qualifier b)
  return (a | qual_restrict) == (b | qual_restrict);
 }
 
+int type_floating(enum type_primitive p)
+{
+	switch(p){
+		case type_float:
+		case type_double:
+		case type_ldouble:
+			return 1;
+		default:
+			return 0;
+	}
+}
+
 int type_equal(const type *a, const type *b, enum type_cmp mode)
 {
 	if((mode & TYPE_CMP_ALLOW_SIGNED_UNSIGNED) == 0
@@ -263,7 +275,10 @@ int type_equal(const type *a, const type *b, enum type_cmp mode)
 	if(a->sue != b->sue)
 		return 0;
 
-	return mode & TYPE_CMP_EXACT ? a->primitive == b->primitive : 1;
+	if(mode & TYPE_CMP_EXACT)
+		return a->primitive == b->primitive;
+
+	return type_floating(a->primitive) == type_floating(b->primitive);
 }
 
 const char *op_to_str(const enum op_type o)
