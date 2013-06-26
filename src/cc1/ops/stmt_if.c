@@ -39,15 +39,16 @@ void flow_fold(stmt_flow *flow, symtable **pstab)
 
 void flow_gen(stmt_flow *flow, symtable *stab)
 {
+	if(!flow)
+		return;
+
 	gen_code_decls(stab);
 
-	if(flow){
-		gen_code_decls(flow->for_init_symtab);
+	gen_code_decls(flow->for_init_symtab);
 
-		if(flow->inits)
-			gen_stmt(flow->inits);
-		/* also generates decls on the flow->inits statement */
-	}
+	if(flow->inits)
+		gen_stmt(flow->inits);
+	/* also generates decls on the flow->inits statement */
 }
 
 void fold_stmt_if(stmt *s)
