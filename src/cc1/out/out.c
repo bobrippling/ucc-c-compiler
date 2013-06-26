@@ -300,7 +300,7 @@ void v_freeup_regp(struct vstack *vp)
 	}
 }
 
-unsigned v_alloc_stack(unsigned sz, unsigned *psz)
+unsigned v_alloc_stack(unsigned sz)
 {
 	static int word_size;
 	/* sz must be a multiple of word_size */
@@ -311,8 +311,6 @@ unsigned v_alloc_stack(unsigned sz, unsigned *psz)
 	if(sz){
 		/* sz must be a multiple of mstack_align */
 		sz = pack_to_align(sz, cc1_mstack_align);
-		if(psz)
-			*psz = sz;
 
 		vpush(NULL);
 		vtop->type = REG;
@@ -343,7 +341,7 @@ void v_save_reg(struct vstack *vp)
 	 * -O1?
 	 */
 	store.bits.off_from_bp = -v_alloc_stack(
-			type_ref_size(store.t, NULL), NULL);
+			type_ref_size(store.t, NULL));
 
 #ifdef DEBUG_REG_SAVE
 	out_comment("save register %d", vp->bits.reg);
@@ -1176,10 +1174,8 @@ void out_func_prologue(type_ref *rf, int stack_res, int nargs, int variadic)
 {
 	UCC_ASSERT(stack_sz == 0, "non-empty stack for new func");
 
-	stack_sz = MIN(nargs, impl_n_call_regs(rf)) * platform_word_size();
-
-	impl_func_prologue_save_fp();
-	impl_func_prologue_save_call_regs(rf, nargs);
+	stack_sz = impl_func_prologue_save_fp();
+	stack_sz += impl_func_prologue_save_call_regs(rf, nargs, stack_sz);
 
 	if(variadic) /* save variadic call registers */
 		stack_sz += impl_func_prologue_save_variadic(rf, nargs);
@@ -1189,7 +1185,7 @@ void out_func_prologue(type_ref *rf, int stack_res, int nargs, int variadic)
 	stack_local_offset    = stack_sz;
 
 	if(stack_res)
-		v_alloc_stack(stack_res, NULL);
+		v_alloc_stack(stack_res);
 }
 
 void out_func_epilogue(type_ref *rf)

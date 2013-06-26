@@ -319,13 +319,16 @@ int impl_n_call_regs(type_ref *rf)
 	return n;
 }
 
-void impl_func_prologue_save_fp(void)
+unsigned impl_func_prologue_save_fp(void)
 {
 	out_asm("pushq %%rbp");
 	out_asm("movq %%rsp, %%rbp");
+
+	return platform_word_size(); /* push rbp */
 }
 
-void impl_func_prologue_save_call_regs(type_ref *rf, int nargs)
+unsigned impl_func_prologue_save_call_regs(
+		type_ref *rf, int nargs, unsigned stack_sz)
 {
 	if(nargs){
 		int n_call_regs;
@@ -344,30 +347,35 @@ void impl_func_prologue_save_call_regs(type_ref *rf, int nargs)
 			type_ref *const ty = fa->arglist[i]->ref;
 
 			if(type_ref_is_floating(ty)){
-				unsigned sz = type_ref_size(ty, NULL);
-				unsigned pos = v_alloc_stack(sz, &sz);
+				const unsigned new_stack = v_alloc_stack(
+						type_ref_size(ty, NULL));
 
 				out_asm("mov%s %%%s, -" NUM_FMT "(%%rbp)",
 						x86_suffix(ty),
-						/* just pass idx for the float index */
 						x86_fpreg_str(i_f++),
-						pos - sz);
+						stack_sz);
+
+				stack_sz = new_stack;
 
 			}else{
 				out_asm("push%s %%%s",
 						x86_suffix(NULL),
 						x86_reg_str(&call_regs[i_i++], NULL));
+
+				stack_sz += platform_word_size();
 			}
 		}
 	}
+
+	return stack_sz;
 }
 
-int impl_func_prologue_save_variadic(type_ref *rf, int nargs)
+unsigned impl_func_prologue_save_variadic(type_ref *rf, int nargs)
 {
 	int n_call_regs;
 	const struct vreg *call_regs;
 	char *vfin = out_label_code("va_skip_float");
-	int sz = 0;
+	unsigned sz = 0;
 	int i;
 
 	x86_call_regs(rf, &n_call_regs, &call_regs);

@@ -29,11 +29,12 @@ void impl_pop_func_ret(type_ref *r);
 
 int  impl_arg_offset(sym *);
 
-void impl_func_prologue_save_fp(void);
-void impl_func_prologue_save_call_regs(type_ref *rf, int nargs);
-int  impl_func_prologue_save_variadic(type_ref *rf, int nargs);
+unsigned impl_func_prologue_save_fp(void);
+unsigned impl_func_prologue_save_call_regs(
+		type_ref *rf, int nargs, unsigned stack_sz);
+
+unsigned impl_func_prologue_save_variadic(type_ref *rf, int nargs);
 void impl_func_epilogue(type_ref *);
-int  impl_n_call_regs(type_ref *);
 
 void impl_undefined(void);
 void impl_set_overflow(void);
