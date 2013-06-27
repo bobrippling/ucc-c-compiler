@@ -200,7 +200,7 @@ static const char *vstack_str_r_ptr(char buf[VSTACK_STR_SZ], struct vstack *vs, 
 		}
 
 		case CONST_F:
-			ICE("TODO: str float");
+			ICE("can't stringify float here");
 
 		case FLAG:
 			ICE("%s shouldn't be called with cmp-flag data", __func__);
@@ -477,37 +477,7 @@ static void x86_load(struct vstack *from, const struct vreg *reg, int lea)
 			break;
 
 		case CONST_F:
-		{
-			union { long l; double d; float f; } u;
-
-			UCC_ASSERT(!lea, "lea float constant?");
-			switch(type_ref_primitive(from->t)){
-				case type_float:
-					u.f = from->bits.val_f;
-					break;
-				case type_double:
-					u.d = from->bits.val_f;
-					break;
-				case type_ldouble:
-					ICE("TODO");
-				default:
-					ICE("bad float");
-			}
-
-			UCC_ASSERT(reg->is_float,
-					"can't load float into non-float reg");
-
-			ICE("TODO: float constant loading - can't have as operand");
-
-			out_asm("mov%s $0x%lx, %%%s",
-					x86_suffix(from->t),
-					u.l, x86_reg_str(reg, from->t));
-
-			out_comment("%s constant %Lf",
-					type_ref_to_str(from->t),
-					from->bits.val_f);
-			break;
-		}
+			ICE("trying to load fp constant - should've been labelled");
 	}
 }
 
