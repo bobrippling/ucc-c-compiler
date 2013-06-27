@@ -49,6 +49,10 @@ int fold_type_ref_equal(
 	}
 
 	if(type_ref_equal(a, b, flags)){
+		/* both floating - return 0 if there's a mismatch/cast needed */
+		if(type_ref_is_floating(a) && type_ref_is_floating(b))
+			return type_ref_primitive(a) == type_ref_primitive(b);
+
 		return 1;
 	}else{
 		int one_struct;
