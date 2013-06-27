@@ -92,6 +92,8 @@ void v_reserve_reg(const struct vreg *);
 void v_unreserve_reg(const struct vreg *);
 
 unsigned v_alloc_stack(unsigned sz);
+/* don't output an instruction - e.g. if a push is done manually */
+unsigned v_alloc_stack_n(unsigned sz);
 
 void v_deref_decl(struct vstack *vp);
 

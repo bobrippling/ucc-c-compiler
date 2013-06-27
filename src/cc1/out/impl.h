@@ -30,11 +30,10 @@ void impl_pop_func_ret(type_ref *r);
 
 int  impl_arg_offset(sym *);
 
-unsigned impl_func_prologue_save_fp(void);
-unsigned impl_func_prologue_save_call_regs(
-		type_ref *rf, int nargs, unsigned stack_sz);
+void impl_func_prologue_save_fp(void);
+void impl_func_prologue_save_call_regs(type_ref *rf, int nargs);
 
-unsigned impl_func_prologue_save_variadic(type_ref *rf, int nargs);
+void impl_func_prologue_save_variadic(type_ref *rf, int nargs);
 void impl_func_epilogue(type_ref *);
 
 void impl_undefined(void);

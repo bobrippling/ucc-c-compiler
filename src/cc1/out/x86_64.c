@@ -313,16 +313,13 @@ int impl_n_call_regs(type_ref *rf)
 	return n;
 }
 
-unsigned impl_func_prologue_save_fp(void)
+void impl_func_prologue_save_fp(void)
 {
 	out_asm("pushq %%rbp");
 	out_asm("movq %%rsp, %%rbp");
-
-	return platform_word_size(); /* push rbp */
 }
 
-unsigned impl_func_prologue_save_call_regs(
-		type_ref *rf, int nargs, unsigned stack_sz)
+void impl_func_prologue_save_call_regs(type_ref *rf, int nargs)
 {
 	if(nargs){
 		int n_call_regs;
@@ -347,24 +344,20 @@ unsigned impl_func_prologue_save_call_regs(
 				out_asm("mov%s %%%s, -" NUM_FMT "(%%rbp)",
 						x86_suffix(ty),
 						x86_fpreg_str(i_f++),
-						stack_sz);
-
-				stack_sz = new_stack;
+						new_stack);
 
 			}else{
 				out_asm("push%s %%%s",
 						x86_suffix(NULL),
 						x86_reg_str(&call_regs[i_i++], NULL));
 
-				stack_sz += platform_word_size();
+				v_alloc_stack_n(platform_word_size());
 			}
 		}
 	}
-
-	return stack_sz;
 }
 
-unsigned impl_func_prologue_save_variadic(type_ref *rf, int nargs)
+void impl_func_prologue_save_variadic(type_ref *rf, int nargs)
 {
 	int n_call_regs;
 	const struct vreg *call_regs;
@@ -394,7 +387,7 @@ unsigned impl_func_prologue_save_variadic(type_ref *rf, int nargs)
 	out_label(vfin);
 	free(vfin);
 
-	return sz;
+	v_alloc_stack_n(sz);
 }
 
 void impl_func_epilogue(type_ref *rf)
