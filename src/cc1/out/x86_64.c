@@ -962,23 +962,33 @@ void impl_cast_load(struct vstack *vp, type_ref *small, type_ref *big, int is_si
 	}
 }
 
+static void x86_fp_conv(
+		struct vstack *vp, struct vreg *r,
+		const char *sfrom, const char *sto,
+		type_ref *tfrom, type_ref *tto)
+{
+	out_asm("cvt%s2%s %%%s, %%%s",
+			sfrom, sto,
+			x86_reg_str(&vp->bits.reg, tfrom),
+			x86_reg_str(r, tto));
+}
+
 static void x86_xchg_fi(struct vstack *vp, type_ref *tfrom, type_ref *tto)
 {
 	const int to_float = type_ref_is_floating(tto);
 	struct vreg r;
 
 	UCC_ASSERT(type_ref_is_type(to_float ? tto : tfrom, type_float),
-			"TODO: non-float cast");
+			"TODO: non-float cast to/from int");
 
 	v_unused_reg(1, to_float, &r);
 
 	v_to_reg(vp);
 
-	out_asm("cvt%s2%s %%%s, %%%s",
+	x86_fp_conv(vp, &r,
 			to_float ? "si" : "ss",
 			to_float ? "ss" : "si",
-			x86_reg_str(&vp->bits.reg, tfrom),
-			x86_reg_str(&r, tto));
+			tfrom, tto);
 
 	vp->type = REG;
 	memcpy_safe(&vp->bits.reg, &r);
@@ -992,6 +1002,20 @@ void impl_i2f(struct vstack *vp, type_ref *t_i, type_ref *t_f)
 void impl_f2i(struct vstack *vp, type_ref *t_f, type_ref *t_i)
 {
 	x86_xchg_fi(vp, t_f, t_i);
+}
+
+void impl_f2f(struct vstack *vp, type_ref *from, type_ref *to)
+{
+	const char *sfrom, *sto;
+	struct vreg r;
+
+	sfrom = x86_suffix(from);
+	sto   = x86_suffix(to);
+
+	v_unused_reg(1, 1, &r);
+	x86_fp_conv(vp, &r, sfrom, sto, from, to);
+	vp->type = REG;
+	memcpy_safe(&vp->bits.reg, &r);
 }
 
 static const char *x86_call_jmp_target(struct vstack *vp, int no_rax)

@@ -1032,22 +1032,10 @@ void v_cast(struct vstack *vp, type_ref *to)
 
 	if(fp[0] || fp[1]){
 		if(fp[0] && fp[1]){
-			unsigned sz[2];
 
-			char bufa[TYPE_REF_STATIC_BUFSIZ],
-					 bufb[TYPE_REF_STATIC_BUFSIZ];
-
-			sz[0] = type_ref_size(from, NULL);
-			sz[1] = type_ref_size(to, NULL);
-
-			ICE("TODO: %s -> %s casting",
-					type_ref_to_str_r(bufa, from),
-					type_ref_to_str_r(bufb, to));
-
-			if(sz[1] > sz[0]){
-
-			}/* else truncation? */
-
+			if(type_ref_primitive(from) != type_ref_primitive(to))
+				impl_f2f(vp, from, to);
+			/* else no-op cast */
 
 		}else if(fp[0]){
 			/* float -> int */

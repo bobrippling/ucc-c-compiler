@@ -20,6 +20,7 @@ void impl_jcond(int true, const char *lbl);
 
 void impl_i2f(struct vstack *, type_ref *t_i, type_ref *t_f);
 void impl_f2i(struct vstack *, type_ref *t_f, type_ref *t_i);
+void impl_f2f(struct vstack *, type_ref *from, type_ref *to);
 void impl_cast_load(
 		struct vstack *vp,
 		type_ref *small, type_ref *big,
