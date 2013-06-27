@@ -5,6 +5,8 @@
 #include <stdarg.h>
 #include <time.h>
 
+#include <sys/stat.h>
+
 #include "../util/util.h"
 #include "../util/dynarray.h"
 #include "../util/alloc.h"
@@ -43,6 +45,7 @@ static const struct
 	{ "__COUNTER__",    NULL },
 	{ "__DATE__",       NULL },
 	{ "__TIME__",       NULL },
+	{ "__TIMESTAMP__",  NULL },
 
 	{ NULL,             NULL }
 };
@@ -52,7 +55,7 @@ char *current_line_str;
 int show_current_line = 1;
 int no_output = 0;
 
-char cpp_time[16], cpp_date[16];
+char cpp_time[16], cpp_date[16], cpp_timestamp[64];
 
 char **cd_stack = NULL;
 
@@ -81,7 +84,7 @@ char *dirname_pop()
 	return dynarray_pop(char *, &cd_stack);
 }
 
-static void calctime(void)
+static void calctime(const char *fname)
 {
 	time_t t;
 	struct tm *now;
@@ -98,6 +101,19 @@ static void calctime(void)
 
 	FTIME(cpp_time, "\"%H:%M:%S\"");
 	FTIME(cpp_date, "\"%b %d %G\"");
+
+	if(fname){
+		struct stat st;
+		if(stat(fname, &st))
+			die("stat(\"%s\"):", fname);
+		now = localtime(&st.st_mtime);
+	}else{
+		/* don't touch 'now' */
+	}
+
+	if(!strftime(cpp_timestamp, sizeof cpp_timestamp,
+				"\"%a %b %d %H:%M:%S %Y\"", now))
+		die("strftime():");
 }
 
 
@@ -150,8 +166,6 @@ int main(int argc, char **argv)
 
 	macro_add("__WCHAR_TYPE__",
 			platform_win32 ? "short" : "int");
-
-	calctime();
 
 	for(i = 1; i < argc && *argv[i] == '-'; i++){
 		if(!strcmp(argv[i]+1, "-"))
@@ -276,6 +290,8 @@ int main(int argc, char **argv)
 				goto usage;
 		}
 	}
+
+	calctime(infname);
 
 #define CHECK_FILE(var, mode, target) \
 	if(var && strcmp(var, "-")){ \
