@@ -240,6 +240,7 @@ expr *expr_new_comma2(expr *lhs, expr *rhs);
 #define expr_new_comma() expr_new_wrapper(comma)
 
 int expr_is_null_ptr(expr *, int allow_int);
+void expr_set_const(expr *, consty *);
 
 /* util */
 expr *expr_new_array_idx_e(expr *base, expr *idx);

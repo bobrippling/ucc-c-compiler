@@ -49,6 +49,12 @@ expr *expr_new(func_mutate_expr *f,
 	return e;
 }
 
+void expr_set_const(expr *e, consty *k)
+{
+	e->const_eval.const_folded = 1;
+	memcpy_safe(&e->const_eval.k, k);
+}
+
 int expr_is_null_ptr(expr *e, int allow_int)
 {
 	int b = 0;

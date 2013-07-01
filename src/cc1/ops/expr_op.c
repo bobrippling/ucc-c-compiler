@@ -101,47 +101,6 @@ static void fold_const_expr_op(expr *e, consty *k)
 	const_fold(e->lhs, &lhs);
 	if(e->rhs){
 		const_fold(e->rhs, &rhs);
-
-		if(rhs.type == CONST_NUM){
-			UCC_ASSERT(K_INTEGRAL(rhs.bits.num),
-					"fp shift?");
-
-			switch(e->op){
-				case op_shiftl:
-				case op_shiftr:
-				{
-					const unsigned ty_sz = CHAR_BIT * type_ref_size(e->lhs->tree_type, &e->lhs->where);
-					int undefined = 0;
-
-					if(type_ref_is_signed(e->rhs->tree_type)
-					&& (sintegral_t)rhs.bits.num.val.i < 0)
-					{
-						WARN_AT(&e->rhs->where, "shift count is negative (%"
-								NUMERIC_FMT_D ")", (sintegral_t)rhs.bits.num.val.i);
-
-						undefined = 1;
-					}else if(rhs.bits.num.val.i >= ty_sz){
-						WARN_AT(&e->rhs->where, "shift count >= width of %s (%u)",
-								type_ref_to_str(e->lhs->tree_type), ty_sz);
-
-						undefined = 1;
-					}
-
-
-					if(undefined){
-						if(lhs.type == CONST_NUM){
-							/* already 0 */
-							k->type = CONST_NUM;
-						}else{
-							k->type = CONST_NO;
-						}
-						return;
-					}
-				}
-				default:
-					break;
-			}
-		}
 	}else{
 		memset(&rhs, 0, sizeof rhs);
 		rhs.type = CONST_NUM;
@@ -609,6 +568,51 @@ static void op_check_precedence(expr *e)
 	}
 }
 
+static void op_shift_check(expr *e)
+{
+	switch(e->op){
+		case op_shiftl:
+		case op_shiftr:
+		{
+			const unsigned ty_sz = CHAR_BIT * type_ref_size(e->lhs->tree_type, &e->lhs->where);
+			int undefined = 0;
+			consty lhs, rhs;
+
+			const_fold(e->lhs, &lhs);
+			const_fold(e->rhs, &rhs);
+
+			if(type_ref_is_signed(e->rhs->tree_type)
+			&& (sintegral_t)rhs.bits.num.val.i < 0)
+			{
+				WARN_AT(&e->rhs->where, "shift count is negative (%"
+						NUMERIC_FMT_D ")", (sintegral_t)rhs.bits.num.val.i);
+
+				undefined = 1;
+			}else if(rhs.bits.num.val.i >= ty_sz){
+				WARN_AT(&e->rhs->where, "shift count >= width of %s (%u)",
+						type_ref_to_str(e->lhs->tree_type), ty_sz);
+
+				undefined = 1;
+			}
+
+			if(undefined){
+				consty k;
+
+				if(lhs.type == CONST_NUM){
+					k.type = CONST_NUM;
+					k.bits.num.val.i = 0;
+				}else{
+					k.type = CONST_NO;
+				}
+
+				expr_set_const(e, &k);
+			}
+		}
+		default:
+			break;
+	}
+}
+
 void fold_expr_op(expr *e, symtable *stab)
 {
 	UCC_ASSERT(e->op != op_unknown, "unknown op in expression at %s",
@@ -631,6 +635,7 @@ void fold_expr_op(expr *e, symtable *stab)
 		fold_check_bounds(e, 1);
 		op_check_precedence(e);
 		op_unsigned_cmp_check(e);
+		op_shift_check(e);
 
 	}else{
 		/* (except unary-not) can only have operations on integers,
