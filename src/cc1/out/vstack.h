@@ -77,6 +77,15 @@ void v_to_reg(struct vstack *conv);
 void v_to_reg_out(struct vstack *conv, struct vreg *);
 void v_to_reg_given(struct vstack *from, const struct vreg *);
 
+void v_to_mem(struct vstack *);
+
+enum vto
+{
+	TO_REG = 1 << 0,
+	TO_MEM = 1 << 1,
+};
+void v_to(struct vstack *, enum vto);
+
 int vreg_eq(const struct vreg *, const struct vreg *);
 
 /* returns 0 on success, -1 if no regs free */

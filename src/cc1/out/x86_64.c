@@ -610,10 +610,49 @@ void impl_reg_cp(struct vstack *from, const struct vreg *r)
 
 void impl_op(enum op_type op)
 {
+#define OP(e, s) case op_ ## e: opc = s; break
 	const char *opc;
 
+	if(type_ref_is_floating(vtop->t)){
+		if(op_is_comparison(op)){
+			ICE("TODO: fp comparison");
+		}
+
+		switch(op){
+			OP(multiply, "mul");
+			OP(divide,   "div");
+			OP(plus,     "add");
+			OP(minus,    "sub");
+
+			case op_not:
+			case op_orsc:
+			case op_andsc:
+				break; /* fall through to the ICE:s below */
+
+			default:
+				ICE("bad fp op %s", op_to_str(op));
+		}
+
+		/* memory or register */
+		v_to(vtop,      TO_REG | TO_MEM);
+		v_to(&vtop[-1], TO_REG | TO_MEM);
+
+		{
+			char b1[VSTACK_STR_SZ], b2[VSTACK_STR_SZ];
+
+			out_asm("%s%s %s, %s",
+					opc, x86_suffix(vtop->t),
+					vstack_str_r(b1, vtop),
+					vstack_str_r(b2, &vtop[-1]));
+
+			/* result in vtop-1, pop vtop */
+			vpop();
+
+			return;
+		}
+	}
+
 	switch(op){
-#define OP(e, s) case op_ ## e: opc = s; break
 		OP(multiply, "imul");
 		OP(plus,     "add");
 		OP(minus,    "sub");

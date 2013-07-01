@@ -264,6 +264,63 @@ void v_to_reg(struct vstack *conv)
 	v_to_reg_out(conv, NULL);
 }
 
+void v_to_mem(struct vstack *vp)
+{
+	switch(vp->type){
+		case CONST_I:
+		case CONST_F:
+		case FLAG:
+		case STACK_SAVE: /* pull from stack, save to stack - can be optimised */
+			v_to_reg(vp);
+
+		case REG:
+			v_save_reg(vp);
+
+		case STACK:
+		case LBL:
+			break;
+	}
+}
+
+static int v_in(enum vstore w, enum vto to)
+{
+	switch(w){
+		case CONST_I:
+		case CONST_F:
+		case STACK_SAVE:
+		case FLAG:
+			break;
+
+		case REG:
+			return !!(to & TO_REG);
+
+		case STACK:
+		case LBL:
+			return !!(to & TO_MEM);
+	}
+
+	return 0;
+}
+
+void v_to(struct vstack *vp, enum vto loc)
+{
+	if(v_in(vp->type, loc))
+		return;
+
+	/* go for register first */
+	if(loc & TO_REG){
+		v_to_reg(vp);
+		return;
+	}
+
+	if(loc & TO_MEM){
+		v_to_mem(vp);
+		return;
+	}
+
+	ICE("can't satisfy v_to 0x%x", loc);
+}
+
 static struct vstack *v_find_reg(const struct vreg *reg)
 {
 	struct vstack *vp;
