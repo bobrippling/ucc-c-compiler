@@ -679,20 +679,30 @@ void fold_expr_op(expr *e, symtable *stab)
 		 * promote to signed int
 		 */
 
-		if(e->op == op_not){
-			e->tree_type = type_ref_cached_INT();
+		expr_promote_int_if_smaller(&e->lhs, stab);
 
-		}else{
-			/* op_bnot */
-			type_ref *t_unary = e->lhs->tree_type;
+		switch(e->op){
+			default:
+				ICE("bad unary op %s", op_to_str(e->op));
 
-			if(!type_ref_is_integral(t_unary))
-				DIE_AT(&e->where, "unary %s applied to type '%s'",
-						op_to_str(e->op), type_ref_to_str(t_unary));
+			case op_not:
+				fold_check_expr(e->lhs,
+						FOLD_CHK_NO_ST_UN,
+						op_to_str(e->op));
 
-			expr_promote_int_if_smaller(&e->lhs, stab);
+				e->tree_type = type_ref_cached_INT();
+				break;
 
-			e->tree_type = e->lhs->tree_type;
+			case op_minus:
+			case op_bnot:
+				fold_check_expr(
+						e->lhs,
+						(e->op == op_bnot ? FOLD_CHK_INTEGRAL : 0)
+							| FOLD_CHK_NO_ST_UN,
+						op_to_str(e->op));
+
+				e->tree_type = e->lhs->tree_type;
+				break;
 		}
 	}
 }
