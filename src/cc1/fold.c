@@ -25,6 +25,7 @@
 
 decl     *curdecl_func;
 type_ref *curdecl_ref_func_called; /* for funcargs-local labels and return type-checking */
+int fold_had_error;
 
 static where asm_struct_enum_where;
 
@@ -1135,7 +1136,6 @@ static void fold_merge_tenatives(symtable *stab)
 void fold(symtable *globs)
 {
 #define D(x) globs->decls[x]
-	int fold_had_error = 0;
 	extern const char *current_fname;
 	int i;
 

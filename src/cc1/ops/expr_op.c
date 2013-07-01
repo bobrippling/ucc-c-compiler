@@ -620,6 +620,30 @@ static void op_shift_check(expr *e)
 	}
 }
 
+static int op_float_check(expr *e)
+{
+	type_ref *tl = e->lhs->tree_type,
+	         *tr = e->rhs->tree_type;
+
+	if((type_ref_is_floating(tl) || type_ref_is_floating(tr))
+	&& !op_can_float(e->op))
+	{
+		char buf[TYPE_REF_STATIC_BUFSIZ];
+
+		/* TODO: factor to a error-continuing function */
+		fold_had_error = 1;
+		warn_at_print_error(&e->where,
+				"binary %s between '%s' and '%s'",
+				op_to_str(e->op),
+				type_ref_to_str_r(buf, tl),
+				type_ref_to_str(       tr));
+
+		return 1;
+	}
+
+	return 0;
+}
+
 void fold_expr_op(expr *e, symtable *stab)
 {
 	UCC_ASSERT(e->op != op_unknown, "unknown op in expression at %s",
@@ -631,6 +655,12 @@ void fold_expr_op(expr *e, symtable *stab)
 	if(e->rhs){
 		FOLD_EXPR(e->rhs, stab);
 		fold_check_expr(e->rhs, FOLD_CHK_NO_ST_UN, op_to_str(e->op));
+
+		if(op_float_check(e)){
+			/* short circuit - TODO: error expr */
+			e->tree_type = type_ref_cached_INT();
+			return;
+		}
 
 		/* no-op if float */
 		expr_promote_int_if_smaller(&e->lhs, stab);

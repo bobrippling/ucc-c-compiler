@@ -51,6 +51,7 @@ void fold(symtable *);
 
 extern decl *curdecl_func;
 extern type_ref *curdecl_ref_func_called;
+extern int fold_had_error;
 
 void fold_stmt_and_add_to_curswitch(stmt *);
 

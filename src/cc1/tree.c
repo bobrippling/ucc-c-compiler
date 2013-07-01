@@ -367,6 +367,22 @@ int op_can_compound(enum op_type o)
 	return 0;
 }
 
+int op_can_float(enum op_type o)
+{
+	switch(o){
+		case op_modulus:
+		case op_xor:
+		case op_or:
+		case op_and:
+		case op_shiftl:
+		case op_shiftr:
+		case op_bnot:
+			return 0;
+		default:
+			return 1;
+	}
+}
+
 int op_is_commutative(enum op_type o)
 {
 	switch(o){

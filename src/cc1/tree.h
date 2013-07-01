@@ -94,6 +94,7 @@ int op_is_relational(enum op_type o);
 int op_is_shortcircuit(enum op_type o);
 int op_is_comparison(enum op_type o);
 int op_can_compound(enum op_type o);
+int op_can_float(enum op_type o);
 
 
 #define SPEC_STATIC_BUFSIZ      64
