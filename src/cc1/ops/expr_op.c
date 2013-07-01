@@ -96,6 +96,13 @@ static void fold_const_expr_op(expr *e, consty *k)
 {
 	consty lhs, rhs;
 
+	if(type_ref_is_floating(e->lhs->tree_type)
+	|| (e->rhs && type_ref_is_floating(e->rhs->tree_type)))
+	{
+		k->type = CONST_NO;
+		return;
+	}
+
 	memset(k, 0, sizeof *k);
 
 	const_fold(e->lhs, &lhs);
