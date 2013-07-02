@@ -32,7 +32,7 @@ $SIG{CHLD} = sub {
 	my $dead = wait;
 	my $ret = $?;
 
-	exit $ret;
+	exit !!$ret;
 };
 
 my $pid = bg @ARGV;
