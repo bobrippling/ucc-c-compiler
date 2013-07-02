@@ -615,7 +615,17 @@ void impl_op(enum op_type op)
 
 	if(type_ref_is_floating(vtop->t)){
 		if(op_is_comparison(op)){
-			ICE("TODO: fp comparison");
+			/* ucomi%s reg, reg_or_mem */
+			char b1[VSTACK_STR_SZ], b2[VSTACK_STR_SZ];
+
+			out_asm("ucomi%s %s, %s",
+					x86_suffix(vtop->t),
+					vstack_str_r(b1, vtop),
+					vstack_str_r(b2, &vtop[-1]));
+
+			vpop();
+			v_flag(op_to_flag(op), 0 /* we want seta, not setgt */);
+			return;
 		}
 
 		switch(op){
@@ -627,7 +637,7 @@ void impl_op(enum op_type op)
 			case op_not:
 			case op_orsc:
 			case op_andsc:
-				break; /* fall through to the ICE:s below */
+				ICE("unary/sc float op");
 
 			default:
 				ICE("bad fp op %s", op_to_str(op));
@@ -831,10 +841,8 @@ void impl_op(enum op_type op)
 			}
 
 			vpop();
-			v_clear(vtop, type_ref_cached_BOOL()); /* cmp creates an int/bool */
-			vtop->type = FLAG;
-			vtop->bits.flag.cmp = op_to_flag(op);
-			vtop->bits.flag.is_signed = is_signed;
+
+			v_flag(op_to_flag(op), is_signed);
 			if(inv)
 				v_inv_cmp(vtop);
 			return;
