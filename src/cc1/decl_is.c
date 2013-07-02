@@ -442,9 +442,9 @@ funcargs *type_ref_funcargs(type_ref *r)
 		r = test->ref; /* jump down past the (*)() */
 	}
 
-	r = type_ref_is(r, type_ref_func);
+	UCC_ASSERT(r, "not a function type");
 
-	return r ? r->bits.func : NULL;
+	return r->bits.func;
 }
 
 int type_ref_is_callable(type_ref *r)

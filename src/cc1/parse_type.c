@@ -1238,7 +1238,7 @@ add:
 					/* link the proto chain for __attribute__ checking */
 					d->proto = d_prev;
 
-					if(PARSE_DECL_IS_FUNC(d_prev))
+					if(PARSE_DECL_IS_FUNC(d) && PARSE_DECL_IS_FUNC(d_prev))
 						decl_pull_to_func(d, d_prev);
 				}
 
