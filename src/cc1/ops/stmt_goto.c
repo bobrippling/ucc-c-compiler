@@ -21,7 +21,9 @@ void fold_stmt_goto(stmt *s)
 
 		save = *(psp = &s->expr->bits.ident.spel);
 		/* else let the assembler check for link errors */
-		*psp = out_label_goto(save);
+		if(!curdecl_func)
+			DIE_AT(&s->where, "goto outside of a function");
+		*psp = out_label_goto(curdecl_func->spel, save);
 		free(save);
 	}
 }

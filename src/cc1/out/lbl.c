@@ -60,11 +60,11 @@ char *out_label_static_local(const char *funcsp, const char *spel)
 	return ret;
 }
 
-char *out_label_goto(char *lbl)
+char *out_label_goto(char *func, char *lbl)
 {
-	int len = strlen(lbl) + 6;
+	int len = strlen(func) + strlen(lbl) + 6;
 	char *ret = umalloc(len);
-	SNPRINTF(ret, len, ".L%s", lbl);
+	SNPRINTF(ret, len, ".L%s.%s", func, lbl);
 	return ret;
 }
 
