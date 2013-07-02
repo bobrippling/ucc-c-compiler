@@ -713,7 +713,7 @@ void impl_cast_load(struct vstack *vp, type_ref *small, type_ref *big, int is_si
 	}
 }
 
-static const char *x86_call_jmp_target(struct vstack *vp, int no_rax)
+static const char *x86_call_jmp_target(struct vstack *vp, int prevent_rax)
 {
 	static char buf[VSTACK_STR_SZ + 2];
 
@@ -733,7 +733,7 @@ static const char *x86_call_jmp_target(struct vstack *vp, int no_rax)
 		case CONST:
 			v_to_reg(vp); /* again, v_to_reg_preferred(), except that we don't want a reg */
 
-			if(no_rax && vp->bits.reg == X86_64_REG_RAX){
+			if(prevent_rax && vp->bits.reg == X86_64_REG_RAX){
 				int r = v_unused_reg(1);
 				impl_reg_cp(vp, r);
 				vp->bits.reg = r;
@@ -748,14 +748,9 @@ static const char *x86_call_jmp_target(struct vstack *vp, int no_rax)
 	return NULL;
 }
 
-void impl_jmp_lbl(const char *lbl)
+void impl_jmp(void)
 {
-	out_asm("jmp %s", lbl);
-}
-
-void impl_jmp_reg(int r)
-{
-	out_asm("jmp *%s", x86_reg_str(r, NULL));
+	out_asm("jmp %s", x86_call_jmp_target(vtop, 0));
 }
 
 void impl_jcond(int true, const char *lbl)

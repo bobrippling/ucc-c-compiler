@@ -13,8 +13,7 @@ void impl_op(enum op_type);
 void impl_op_unary(enum op_type); /* returns reg that the result is in */
 void impl_deref_reg(void);
 
-void impl_jmp_lbl(const char *lbl);
-void impl_jmp_reg(int r);
+void impl_jmp(void);
 void impl_jcond(int true, const char *lbl);
 
 void impl_cast_load(struct vstack *vp, type_ref *small, type_ref *big, int is_signed);

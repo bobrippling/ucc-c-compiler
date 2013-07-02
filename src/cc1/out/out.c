@@ -1008,17 +1008,7 @@ void out_jmp(void)
 		vtop++;
 	}
 
-	switch(vtop->type){
-		default:
-			v_to_reg(vtop);
-		case REG:
-			impl_jmp_reg(vtop->bits.reg);
-			break;
-
-		case LBL:
-			impl_jmp_lbl(vtop->bits.lbl.str);
-	}
-
+	impl_jmp();
 	vpop();
 }
 
