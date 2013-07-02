@@ -35,8 +35,7 @@ struct decl_attr
 		} format;
 		char *section;
 		unsigned long nonnull_args; /* limits to sizeof(long)*8 args, i.e. 64 */
-		unsigned long align;
-		unsigned sentinel;
+		expr *align, *sentinel;
 	} attr_extra;
 
 	decl_attr *next;

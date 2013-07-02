@@ -223,7 +223,7 @@ static void format_check(where *w, type_ref *ref, expr **args, const int variadi
 #define ATTR_WARN_RET(w, ...) do{ WARN_AT(w, __VA_ARGS__); return; }while(0)
 
 static void sentinel_check(where *w, type_ref *ref, expr **args,
-		const int variadic, const int nstdargs)
+		const int variadic, const int nstdargs, symtable *stab)
 {
 	decl_attr *attr = type_attr_present(ref, attr_sentinel);
 	int i, nvs;
@@ -235,7 +235,20 @@ static void sentinel_check(where *w, type_ref *ref, expr **args,
 	if(!variadic)
 		return; /* warning emitted elsewhere, on the decl */
 
-	i = attr->attr_extra.sentinel;
+	if(attr->attr_extra.sentinel){
+		consty k;
+
+		FOLD_EXPR(attr->attr_extra.sentinel, stab);
+		const_fold(attr->attr_extra.sentinel, &k);
+
+		if(k.type != CONST_VAL)
+			DIE_AT(&attr->where, "sentinel attribute not reducible to integer constant");
+
+		i = k.bits.iv.val;
+	}else{
+		i = 0;
+	}
+
 	nvs = dynarray_count(args) - nstdargs;
 
 	if(nvs == 0)
@@ -472,7 +485,10 @@ invalid:
 		type_ref *r = e->expr->tree_type;
 
 		format_check(&e->where, r, e->funcargs, args_from_decl->variadic);
-		sentinel_check(&e->where, r, e->funcargs, args_from_decl->variadic, count_decl);
+		sentinel_check(
+				&e->where, r,
+				e->funcargs, args_from_decl->variadic,
+				count_decl, stab);
 	}
 
 	/* check the subexp tree type to get the funcall decl_attrs */

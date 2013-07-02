@@ -110,35 +110,29 @@ static decl_attr *parse_attr_nonnull()
 	return da;
 }
 
-static unsigned long optional_parened_int(void)
+static expr *optional_parened_expr(void)
 {
 	if(accept(token_open_paren)){
-		long u;
+		expr *e;
 
 		if(accept(token_close_paren))
 			goto out;
 
-		EAT(token_integer);
-
-		u = currentval.val;
-		if(u < 0){
-			WARN_AT(NULL, "negative sentinel argument ignored");
-			u = 0;
-		}
+		e = parse_expr_no_comma();
 
 		EAT(token_close_paren);
 
-		return u;
+		return e;
 	}
 out:
-	return 0;
+	return NULL;
 }
 
 static decl_attr *parse_attr_sentinel()
 {
 	decl_attr *da = decl_attr_new(attr_sentinel);
 
-  da->attr_extra.sentinel = optional_parened_int();
+  da->attr_extra.sentinel = optional_parened_expr();
 
 	return da;
 }
@@ -147,7 +141,7 @@ static decl_attr *parse_attr_aligned()
 {
 	decl_attr *da = decl_attr_new(attr_aligned);
 
-  da->attr_extra.align = optional_parened_int();
+  da->attr_extra.align = optional_parened_expr();
 
 	return da;
 }

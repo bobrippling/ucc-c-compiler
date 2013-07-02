@@ -634,10 +634,20 @@ void fold_decl(decl *d, symtable *stab)
 		}
 
 		if(attrib){
-			unsigned al = attrib->attr_extra.align;
+			unsigned long al;
 
-			if(al == 0)
+			if(attrib->attr_extra.align){
+				consty k;
+
+				FOLD_EXPR(attrib->attr_extra.align, stab);
+				const_fold(attrib->attr_extra.align, &k);
+
+				if(k.type != CONST_VAL)
+					DIE_AT(&attrib->where, "aligned attribute not reducible to integer constant");
+				al = k.bits.iv.val;
+			}else{
 				al = platform_align_max();
+			}
 
 			max_al = fold_align(al, tal, max_al, &attrib->where);
 			if(!d->align)
@@ -1143,12 +1153,16 @@ void fold(symtable *globs)
 
 			FOLD_EXPR(sa->e, sa->scope);
 			if(!type_ref_is_integral(sa->e->tree_type))
-				DIE_AT(&sa->e->where, "static assert: not an integral expression (%s)", sa->e->f_str());
+				DIE_AT(&sa->e->where,
+						"static assert: not an integral expression (%s)",
+						sa->e->f_str());
 
 			const_fold(sa->e, &k);
 
-			if(!CONST_AT_COMPILE_TIME(k.type))
-				DIE_AT(&sa->e->where, "static assert: not a constant expression (%s)", sa->e->f_str());
+			if(k.type != CONST_VAL)
+				DIE_AT(&sa->e->where,
+						"static assert: not an integer constant expression (%s)",
+						sa->e->f_str());
 
 			if(!k.bits.iv.val)
 				DIE_AT(&sa->e->where, "static assertion failure: %s", sa->s);
