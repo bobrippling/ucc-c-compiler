@@ -1221,7 +1221,7 @@ void parse_decls_multi_type(
 			}
 
 add:
-			{
+			if(d->spel){
 				/* Look for a previous declaration of d->spel.
 				 * if found, we pull its asm() and attributes to the current,
 				 * thus propagating them down in O(1) to the eventual definition.
