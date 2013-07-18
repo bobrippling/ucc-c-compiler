@@ -316,6 +316,9 @@ void v_to(struct vstack *vp, enum vto loc)
 	if(v_in(vp->type, loc))
 		return;
 
+	/* TO_CONST can't be done - it should already be const,
+	 * or another option should be chosen */
+
 	/* go for register first */
 	if(loc & TO_REG){
 		v_to_reg(vp);

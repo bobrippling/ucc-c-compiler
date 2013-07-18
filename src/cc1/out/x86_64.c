@@ -932,7 +932,7 @@ void impl_op_unary(enum op_type op)
 {
 	const char *opc;
 
-	v_to_reg_const(vtop);
+	v_to(vtop, TO_REG | TO_CONST);
 
 	switch(op){
 		default:

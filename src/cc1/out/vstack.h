@@ -85,6 +85,7 @@ enum vto
 {
 	TO_REG = 1 << 0,
 	TO_MEM = 1 << 1,
+	TO_CONST = 1 << 2,
 };
 void v_to(struct vstack *, enum vto);
 
