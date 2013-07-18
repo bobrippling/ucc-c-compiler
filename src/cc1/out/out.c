@@ -263,7 +263,7 @@ void v_to_reg_out(struct vstack *conv, struct vreg *out)
 		if(!out)
 			out = &chosen;
 
-		v_unused_reg(1, conv->type == CONST_F, out);
+		v_unused_reg(1, type_ref_is_floating(conv->t), out);
 		v_to_reg_given(conv, out);
 	}
 }
@@ -539,16 +539,25 @@ void out_pop(void)
 
 void out_push_num(type_ref *t, const numeric *n)
 {
+	const int ty_fp = type_ref_is_floating(t),
+				n_fp = K_FLOATING(*n);
+
 	vpush(t);
 
-	if(K_INTEGRAL(*n)){
-		vtop->type = CONST_I;
-		vtop->bits.val_i = n->val.i;
-		impl_load_iv(vtop);
-	}else{
+	if(ty_fp != n_fp)
+		ICW(
+			"float type mismatch (n=%c, ty=%c)",
+			"ny"[n_fp],
+			"ny"[ty_fp]);
+
+	if(ty_fp){
 		vtop->type = CONST_F;
 		vtop->bits.val_f = n->val.f;
 		impl_load_fp(vtop);
+	}else{
+		vtop->type = CONST_I;
+		vtop->bits.val_i = n->val.i;
+		impl_load_iv(vtop);
 	}
 }
 

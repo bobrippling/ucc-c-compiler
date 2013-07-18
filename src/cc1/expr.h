@@ -38,7 +38,7 @@ typedef struct consty
 
 #define CONST_ADDR_OR_NEED(d) CONST_ADDR_OR_NEED_TREF((d)->ref)
 
-#define K_FLOATING(num) ((num).suffix & VAL_FLOATING)
+#define K_FLOATING(num) !!((num).suffix & VAL_FLOATING)
 #define K_INTEGRAL(num) !K_FLOATING(num)
 
 
