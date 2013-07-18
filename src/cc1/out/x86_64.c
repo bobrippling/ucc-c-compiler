@@ -508,25 +508,50 @@ void impl_load_iv(struct vstack *vp)
 
 void impl_load_fp(struct vstack *from)
 {
-	/* save to a label */
-	char *lbl = out_label_data_store(0);
-	struct vreg r;
+	/* if it's an int-const, we can load without a label */
+	switch(from->type){
+		case CONST_I:
+			/* CONST_I shouldn't be entered,
+			 * type prop. should cast */
+			ICE("load int into float?");
 
-	asm_label(SECTION_DATA, lbl, type_ref_align(from->t, NULL));
-	asm_out_fp(SECTION_DATA, from->t, from->bits.val_f);
+		case CONST_F:
+			if(from->bits.val_f == (integral_t)from->bits.val_f){
+				type_ref *const ty_fp = from->t;
 
-	from->type = LBL;
-	from->bits.lbl.str = lbl;
-	from->bits.lbl.pic = 1;
+				from->type = CONST_I;
+				from->bits.val_i = from->bits.val_f;
+				from->t = type_ref_cached_LLONG();
 
-	/* impl_load since we don't want a lea */
-	v_unused_reg(1, 1, &r);
-	impl_load(from, &r);
+				out_cast(ty_fp);
+				break;
+			}
+			/* fall */
 
-	from->type = REG;
-	memcpy_safe(&from->bits.reg, &r);
+		default:
+		{
+			/* save to a label */
+			char *lbl = out_label_data_store(0);
+			struct vreg r;
 
-	free(lbl);
+			asm_label(SECTION_DATA, lbl, type_ref_align(from->t, NULL));
+			asm_out_fp(SECTION_DATA, from->t, from->bits.val_f);
+
+			from->type = LBL;
+			from->bits.lbl.str = lbl;
+			from->bits.lbl.pic = 1;
+
+			/* impl_load since we don't want a lea */
+			v_unused_reg(1, 1, &r);
+			impl_load(from, &r);
+
+			from->type = REG;
+			memcpy_safe(&from->bits.reg, &r);
+
+			free(lbl);
+			break;
+		}
+	}
 }
 
 void impl_load(struct vstack *from, const struct vreg *reg)
