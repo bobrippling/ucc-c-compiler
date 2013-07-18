@@ -570,6 +570,17 @@ void out_push_i(type_ref *t, int i)
 	out_push_num(t, &iv);
 }
 
+void out_push_zero(type_ref *t)
+{
+	numeric n;
+	memset(&n, 0, sizeof n);
+
+	if(type_ref_is_floating(t))
+		n.suffix = VAL_FLOAT;
+
+	out_push_num(t, &n);
+}
+
 void out_push_lbl(char *s, int pic)
 {
 	vpush(NULL);
@@ -582,7 +593,7 @@ void out_push_lbl(char *s, int pic)
 
 void out_push_noop()
 {
-	out_push_i(type_ref_cached_INTPTR_T(), 0);
+	out_push_zero(type_ref_cached_INTPTR_T());
 }
 
 void out_dup(void)
@@ -738,7 +749,7 @@ void out_normalise(void)
 		case REG:
 			out_comment("normalise");
 
-			out_push_i(vtop->t, 0);
+			out_push_zero(vtop->t);
 			out_op(op_ne);
 			/* 0 -> `0 != 0` = 0
 			 * 1 -> `1 != 0` = 1

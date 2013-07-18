@@ -504,8 +504,8 @@ void impl_undefined(void)
 					type_new_primitive(type_char)),
 				qual_none);
 
-	out_push_i(char_ptr, 0);
-	out_push_i(char_ptr, 0);
+	out_push_zero(char_ptr);
+	out_push_zero(char_ptr);
 	out_store(); /* *(char *)0 = 0 */
 	out_pop();
 

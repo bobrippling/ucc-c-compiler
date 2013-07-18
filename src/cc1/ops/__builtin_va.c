@@ -142,7 +142,7 @@ static void builtin_gen_va_start(expr *e)
 	 *   0L
 	 */
 	lea_expr(e->funcargs[0], stab);
-	out_push_i(type_ref_new_INTPTR_T(), 0);
+	out_push_zero(type_ref_new_INTPTR_T());
 	out_store();
 #else
 	out_comment("va_start() begin");
@@ -261,7 +261,7 @@ static void builtin_gen_va_arg(expr *e)
 	/* generate a call to abi.c's __va_arg */
 	out_push_i(type_ref_new_LONG(), type_ref_size(e->bits.tref, NULL));
 	/* 0 - abi.c's gen_reg. this is temporary until we have builtin_va_arg proper */
-	out_push_i(type_ref_new_INT(), 0);
+	out_push_zero(type_ref_new_INT());
 	gen_expr(e->lhs);
 
 	extern void *funcargs_new(); /* XXX: temporary hack for the call */

@@ -9,6 +9,7 @@ void out_phi_join(void);   /* join vtop and the current phi-save area */
 
 void out_push_num(type_ref *t, const numeric *n) ucc_nonnull((1));
 void out_push_i(type_ref *, int i) ucc_nonnull((1));
+void out_push_zero(type_ref *) ucc_nonnull((1));
 void out_push_lbl(char *s, int pic);
 void out_push_noop(void);
 

@@ -945,7 +945,7 @@ void impl_op_unary(enum op_type op)
 #undef OP
 
 		case op_not:
-			out_push_i(vtop->t, 0);
+			out_push_zero(vtop->t);
 			out_op(op_eq);
 			return;
 	}

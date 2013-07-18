@@ -239,7 +239,7 @@ static void builtin_gen_memset(expr *e)
 		out_dup(); /* copy pointer */
 
 		/* *p = 0 */
-		out_push_i(tzero, 0);
+		out_push_zero(tzero);
 		out_store();
 		out_pop();
 
@@ -251,7 +251,7 @@ static void builtin_gen_memset(expr *e)
 			/* need to zero a little more */
 			out_dup();
 			out_change_type(textrap);
-			out_push_i(textra, 0);
+			out_push_zero(textra);
 			out_store();
 			out_pop();
 		}
