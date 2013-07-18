@@ -208,23 +208,24 @@ int main(int argc, char **argv)
 			{
 				char *arg = argv[i] + 2;
 				char *eq;
+				char *directive;
 
 				if(!*arg)
 					goto usage;
 
-				eq = strchr(arg, '=');
-				if(eq){
-					char *directive;
+				/* -D'yo yo' means #define yo yo 1, that is,
+				 * we literally generate the #define line */
 
+				eq = strchr(arg, '=');
+				if(eq)
 					*eq = '\0';
 
-					directive = ustrprintf("define %s %s", arg, eq+1);
+				directive = ustrprintf(
+						"define %s %s",
+						arg, eq ? eq + 1 : "1");
 
-					parse_internal_directive(directive);
-					free(directive);
-				}else{
-					macro_add(arg, "1"); /* -Dhello means #define hello 1 */
-				}
+				parse_internal_directive(directive);
+				free(directive);
 				break;
 			}
 
