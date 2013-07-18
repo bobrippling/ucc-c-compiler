@@ -618,6 +618,9 @@ void impl_op(enum op_type op)
 			/* ucomi%s reg, reg_or_mem */
 			char b1[VSTACK_STR_SZ], b2[VSTACK_STR_SZ];
 
+			v_to_reg(vtop);
+			v_to(&vtop[-1], TO_REG | TO_MEM);
+
 			out_asm("ucomi%s %s, %s",
 					x86_suffix(vtop->t),
 					vstack_str_r(b1, vtop),
