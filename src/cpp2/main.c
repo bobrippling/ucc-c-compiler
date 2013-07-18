@@ -19,6 +19,9 @@
 #include "include.h"
 #include "directive.h"
 
+#define FNAME_BUILTIN "<builtin>"
+#define FNAME_CMDLINE "<command-line>"
+
 static const struct
 {
 	const char *nam, *val;
@@ -129,8 +132,8 @@ int main(int argc, char **argv)
 
 	infname = outfname = NULL;
 
-	current_fname = "<builtin>";
 	current_line = 1;
+	current_fname = FNAME_BUILTIN;
 
 	for(i = 0; initial_defs[i].nam; i++)
 		macro_add(initial_defs[i].nam, initial_defs[i].val);
@@ -166,6 +169,8 @@ int main(int argc, char **argv)
 
 	macro_add("__WCHAR_TYPE__",
 			platform_win32 ? "short" : "int");
+
+	current_fname = FNAME_CMDLINE;
 
 	for(i = 1; i < argc && *argv[i] == '-'; i++){
 		if(!strcmp(argv[i]+1, "-"))
@@ -270,6 +275,8 @@ int main(int argc, char **argv)
 				}
 		}
 	}
+
+	current_fname = FNAME_BUILTIN;
 
 	macro_add("__STDC_HOSTED__",  freestanding ? "0" : "1");
 	switch(std){
