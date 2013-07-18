@@ -1169,12 +1169,27 @@ void impl_jcond(int true, const char *lbl)
 			v_to_reg(vtop);
 
 		case REG:
-		{
-			const char *rstr = reg_str(vtop);
+			if(type_ref_is_floating(vtop->t)){
+				numeric n;
+				memset(&n, 0, sizeof n);
 
-			out_asm("test %%%s, %%%s", rstr, rstr);
-			out_asm("j%sz %s", true ? "n" : "", lbl);
-		}
+				ICE("jcond shouldn't have to do a float-eq code - see comment");
+				/* FIXME: should be done elsewhere
+				 * the && and || shortcircuit code needs the result of this,
+				 * and various other places may break - this needs pulling out
+				 */
+
+				n.suffix = VAL_FLOAT;
+				out_push_num(vtop->t, &n);
+				out_op(op_eq);
+
+				out_asm("j%se %s", true ? "n" : "", lbl);
+			}else{
+				const char *rstr = reg_str(vtop);
+
+				out_asm("test %%%s, %%%s", rstr, rstr);
+				out_asm("j%sz %s", true ? "n" : "", lbl);
+			}
 	}
 }
 
