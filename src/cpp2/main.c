@@ -107,11 +107,14 @@ static void calctime(const char *fname)
 
 	if(fname){
 		struct stat st;
-		if(stat(fname, &st))
-			die("stat(\"%s\"):", fname);
-		now = localtime(&st.st_mtime);
+		if(stat(fname, &st) == 0){
+			now = localtime(&st.st_mtime);
+		}else{
+			/* don't touch now - can't open fname,
+			 * should get an error later */
+		}
 	}else{
-		/* don't touch 'now' */
+		/* stdin - don't touch 'now' */
 	}
 
 	if(!strftime(cpp_timestamp, sizeof cpp_timestamp,
