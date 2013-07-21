@@ -325,8 +325,9 @@ void impl_func_prologue_save_call_regs(type_ref *rf, int nargs)
 		int n_call_regs;
 		const struct vreg *call_regs;
 
-		int i, i_f, i_i;
+		int i;
 		int n_reg_args;
+		unsigned fp_cnt = 0, int_cnt = 0;
 
 		funcargs *const fa = type_ref_funcargs(rf);
 
@@ -334,25 +335,43 @@ void impl_func_prologue_save_call_regs(type_ref *rf, int nargs)
 
 		n_reg_args = MIN(nargs, n_call_regs);
 
-		for(i = i_i = i_f = 0; i < n_reg_args; i++){
-			type_ref *const ty = fa->arglist[i]->ref;
+		/* two cases
+		 * - for all integral arguments, we can just push them
+		 * - if we have floats, we must mov them to the stack
+		 * each argument takes a full word for now - subject to change
+		 * (e.g. long double, struct/union args, etc)
+		 */
+		for(i = 0; i < n_reg_args; i++)
+			if(type_ref_is_floating(fa->arglist[i]->ref))
+				fp_cnt++;
+			else
+				int_cnt++;
 
-			if(type_ref_is_floating(ty)){
-				const unsigned new_stack = v_alloc_stack(
-						type_ref_size(ty, NULL));
+		if(fp_cnt){
+			int i_i, i_f;
+
+			v_alloc_stack((fp_cnt + int_cnt) * platform_word_size());
+
+			for(i = i_i = i_f = 0; i < n_reg_args; i++){
+				type_ref *const ty = fa->arglist[i]->ref;
+				struct vreg vr;
+
+				/* use i_* for the register indexes, but just 'i' for the offset */
+				vr.idx = (vr.is_float = type_ref_is_floating(ty)) ? i_f++ : i_i++;
 
 				out_asm("mov%s %%%s, -" NUM_FMT "(%%rbp)",
 						x86_suffix(ty),
-						x86_fpreg_str(i_f++),
-						new_stack);
-
-			}else{
+						x86_reg_str(&vr, ty),
+						(i + 1) * platform_word_size());
+			}
+		}else{
+			for(i = 0; i < n_reg_args; i++){
 				out_asm("push%s %%%s",
 						x86_suffix(NULL),
-						x86_reg_str(&call_regs[i_i++], NULL));
-
-				v_alloc_stack_n(platform_word_size());
+						x86_reg_str(&call_regs[i], NULL));
 			}
+
+			v_alloc_stack_n(n_reg_args * platform_word_size());
 		}
 	}
 }
