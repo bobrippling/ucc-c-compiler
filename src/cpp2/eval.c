@@ -130,9 +130,21 @@ static char *eval_func_macro(macro *m, char *args_str)
 		, exp = dynarray_count(m->args);
 
 	if(m->type == VARIADIC ? got < exp : got != exp){
-		CPP_DIE("wrong number of args to function macro \"%s\", "
-				"got %d, expected %s%d",
-				m->nam, got, m->type == VARIADIC ? "at least " : "", exp);
+		if(got == 0 && exp == 1){
+			/* special case - invoking with empty argument list
+			 * e.g.
+			 * #define F(x) ...
+			 * F()
+			 */
+			CPP_WARN("empty argument list to single-argument macro \"%s\"",
+					m->nam, args);
+			dynarray_add(&args, ustrdup(""));
+
+		}else{
+			CPP_DIE("wrong number of args to function macro \"%s\", "
+					"got %d, expected %s%d",
+					m->nam, got, m->type == VARIADIC ? "at least " : "", exp);
+		}
 	}
 
 	if(args){
