@@ -725,17 +725,17 @@ static void op_shortcircuit(expr *e)
 	char *bail = out_label_code("shortcircuit_bail");
 
 	gen_expr(e->lhs);
+	out_normalise();
 
 	out_dup();
 	(e->op == op_andsc ? out_jfalse : out_jtrue)(bail);
 	out_pop();
 
 	gen_expr(e->rhs);
+	out_normalise();
 
 	out_label(bail);
 	free(bail);
-
-	out_normalise();
 }
 
 void gen_expr_op(expr *e)
