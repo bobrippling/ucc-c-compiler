@@ -1,11 +1,13 @@
 #ifndef OUT_H
 #define OUT_H
 
+#define OUT_VPHI_SZ 40 /* sizeof(struct vstack) */
+
 void out_pop(void);
 void out_pop_func_ret(type_ref *) ucc_nonnull((1));
 
-void out_phi_pop_to(void); /* put the current value into the phi-save area */
-void out_phi_join(void);   /* join vtop and the current phi-save area */
+void out_phi_pop_to(void *); /* put the current value into a phi-save area */
+void out_phi_join(void *);   /* join vtop and the phi-save area */
 
 void out_push_iv(type_ref *, intval *iv) ucc_nonnull((1));
 void out_push_i( type_ref *, int i) ucc_nonnull((1));

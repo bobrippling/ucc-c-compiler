@@ -290,6 +290,7 @@ stack:
 			/* register */
 			char *lbl_stack = out_label_code("va_else");
 			char *lbl_fin   = out_label_code("va_fin");
+			char vphi_buf[OUT_VPHI_SZ];
 
 			struct_union_enum_st *sue_va = type_ref_next(type_ref_cached_VA_LIST())->bits.type->sue;
 
@@ -341,7 +342,7 @@ stack:
 			out_label(lbl_stack);
 
 			/* prepare for joining later */
-			out_phi_pop_to();
+			out_phi_pop_to(&vphi_buf);
 
 			gen_expr(e->lhs);
 			/* va */
@@ -363,7 +364,7 @@ stack:
 			out_op(op_minus);
 
 			/* ensure we match the other block's final result before the merge */
-			out_phi_join();
+			out_phi_join(vphi_buf);
 
 			/* "merge" */
 			out_label(lbl_fin);
