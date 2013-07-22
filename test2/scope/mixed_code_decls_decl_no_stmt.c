@@ -4,7 +4,7 @@ main()
 {
 	int i;
 
-	f();
+	2;
 
 	int j;
 }
