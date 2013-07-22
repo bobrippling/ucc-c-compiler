@@ -61,7 +61,7 @@ expr.o: expr.c ../util/util.h ../util/where.h ../util/compiler.h \
  ops/stmt_label.h ops/stmt_noop.h ops/stmt_return.h ops/stmt_switch.h \
  ops/stmt_while.h ops/stmt_continue.h sym.h decl.h cc1.h ../util/std.h \
  const.h
-fold.o: fold.c ../util/util.h ../util/where.h ../util/compiler.h \
+fold.o: fold.c defs.h ../util/util.h ../util/where.h ../util/compiler.h \
  data_structs.h tree.h expr.h ops/expr_addr.h ops/expr_assign.h \
  ops/expr_assign_compound.h ops/expr_cast.h ops/expr_comma.h \
  ops/expr_funcall.h ops/expr_identifier.h ops/expr_if.h ops/expr_op.h \
@@ -246,7 +246,7 @@ tree.o: tree.c ../util/alloc.h ../util/util.h ../util/where.h \
  ops/stmt_expr.h ops/stmt_for.h ops/stmt_goto.h ops/stmt_if.h \
  ops/stmt_label.h ops/stmt_noop.h ops/stmt_return.h ops/stmt_switch.h \
  ops/stmt_while.h ops/stmt_continue.h sym.h decl.h macros.h \
- ../util/platform.h sue.h cc1.h ../util/std.h
+ ../util/platform.h sue.h cc1.h ../util/std.h defs.h
 ops/__builtin.o: ops/__builtin.c ops/../../util/util.h ops/../../util/where.h \
  ops/../../util/compiler.h ops/../../util/dynarray.h ops/../../util/dyn.h \
  ops/../../util/alloc.h ops/../data_structs.h ops/../tree.h ops/../expr.h \
@@ -402,7 +402,7 @@ ops/expr_cast.o: ops/expr_cast.c ops/ops.h ops/../../util/util.h \
  ops/../../util/std.h ops/../out/out.h ops/../fold.h ops/../const.h \
  ops/../gen_str.h ops/../gen_style.h ops/../gen_asm.h \
  ops/../../util/alloc.h ops/../../util/platform.h ops/expr_cast.h \
- ops/../out/asm.h ops/../sue.h
+ ops/../out/asm.h ops/../sue.h ops/../defs.h
 ops/expr_comma.o: ops/expr_comma.c ops/ops.h ops/../../util/util.h \
  ops/../../util/where.h ops/../../util/compiler.h ops/../data_structs.h \
  ops/../tree.h ops/../expr.h ops/../ops/expr_addr.h \
@@ -517,7 +517,7 @@ ops/expr_if.o: ops/expr_if.c ops/ops.h ops/../../util/util.h \
  ops/../../util/std.h ops/../out/out.h ops/../fold.h ops/../const.h \
  ops/../gen_str.h ops/../gen_style.h ops/../gen_asm.h ops/expr_if.h \
  ops/../sue.h ops/../out/lbl.h
-ops/expr_op.o: ops/expr_op.c ops/ops.h ops/../../util/util.h \
+ops/expr_op.o: ops/expr_op.c ops/../defs.h ops/ops.h ops/../../util/util.h \
  ops/../../util/where.h ops/../../util/compiler.h ops/../data_structs.h \
  ops/../tree.h ops/../expr.h ops/../ops/expr_addr.h \
  ops/../ops/expr_assign.h ops/../ops/expr_assign_compound.h \
@@ -950,7 +950,8 @@ out/asm.o: out/asm.c out/../../util/util.h out/../../util/where.h \
  out/../ops/stmt_continue.h out/../sym.h out/../decl.h out/../cc1.h \
  out/../../util/std.h out/../sym.h out/asm.h out/../../util/platform.h \
  out/../../util/alloc.h out/../../util/dynarray.h out/../../util/dyn.h \
- out/../sue.h out/../const.h out/../gen_asm.h out/../decl_init.h
+ out/../sue.h out/../const.h out/../gen_asm.h out/../decl_init.h \
+ out/../pack.h
 out/impl.o: out/impl.c out/../../util/util.h out/../../util/where.h \
  out/../../util/compiler.h out/../data_structs.h out/../tree.h \
  out/../expr.h out/../ops/expr_addr.h out/../ops/expr_assign.h \
@@ -1006,7 +1007,7 @@ out/out.o: out/out.c out/../../util/util.h out/../../util/where.h \
  out/../ops/stmt_switch.h out/../ops/stmt_while.h \
  out/../ops/stmt_continue.h out/../sym.h out/../decl.h out/out.h \
  out/vstack.h out/impl.h out/x86_64.h out/../../util/platform.h \
- out/../cc1.h out/../../util/std.h out/asm.h out/../pack.h
+ out/../cc1.h out/../../util/std.h out/asm.h out/../pack.h out/../defs.h
 out/vm.o: out/vm.c out/../../util/util.h out/../../util/where.h \
  out/../../util/compiler.h out/../data_structs.h out/../tree.h \
  out/../expr.h out/../ops/expr_addr.h out/../ops/expr_assign.h \
