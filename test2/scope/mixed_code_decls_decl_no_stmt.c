@@ -1,8 +1,10 @@
+// RUN: %ucc %s
+
 main()
 {
 	int i;
 
-	f();
+	2;
 
 	int j;
 }

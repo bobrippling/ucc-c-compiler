@@ -27,8 +27,11 @@ void fold_expr_addr(expr *e, symtable *stab)
 				type_ref_new_type(type_new_primitive(type_void)),
 				qual_none);
 
+		if(!curdecl_func)
+			DIE_AT(&e->where, "address-of-label outside a function");
 		save = e->bits.ident.spel;
-		e->bits.ident.spel = out_label_goto(e->bits.ident.spel);
+		e->bits.ident.spel = out_label_goto(
+				curdecl_func->spel, e->bits.ident.spel);
 		free(save);
 
 	}else{

@@ -334,6 +334,11 @@ static type_ref *parse_btype(
 			EAT(curtok);
 
 		}else if(curtok == token_inline){
+			if(store)
+				*store |= store_inline;
+			else
+				DIE_AT(NULL, "inline not wanted");
+
 			is_inline = 1;
 			EAT(curtok);
 
@@ -363,8 +368,8 @@ static type_ref *parse_btype(
 					ICE("wat");
 			}
 
-			if(signed_set || primitive_mode != NONE || is_inline)
-				DIE_AT(&tref->where, "primitive/signed/unsigned/inline with %s", str);
+			if(signed_set || primitive_mode != NONE)
+				DIE_AT(&tref->where, "primitive/signed/unsigned with %s", str);
 
 			/* fine... although a _Noreturn function returning a sue
 			 * is pretty daft... */
@@ -548,13 +553,6 @@ static type_ref *parse_btype(
 		}
 
 		r = type_ref_new_cast_add(r, qual);
-
-		if(is_inline){
-			if(store)
-				*store |= store_inline;
-			else
-				DIE_AT(NULL, "inline not wanted");
-		}
 
 		r->attr = attr;
 		parse_add_attr(&r->attr); /* int/struct-A __attr__ */
@@ -1223,7 +1221,7 @@ void parse_decls_multi_type(
 			}
 
 add:
-			{
+			if(d->spel){
 				/* Look for a previous declaration of d->spel.
 				 * if found, we pull its asm() and attributes to the current,
 				 * thus propagating them down in O(1) to the eventual definition.
@@ -1238,7 +1236,7 @@ add:
 					/* link the proto chain for __attribute__ checking */
 					d->proto = d_prev;
 
-					if(PARSE_DECL_IS_FUNC(d_prev))
+					if(PARSE_DECL_IS_FUNC(d) && PARSE_DECL_IS_FUNC(d_prev))
 						decl_pull_to_func(d, d_prev);
 				}
 

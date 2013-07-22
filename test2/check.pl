@@ -60,7 +60,11 @@ for(chomp_all(lines(shift))){
 		my($above, $check) = (length($1), $2);
 		my $line_resolved = $line;
 
-		--$line_resolved if defined $above;
+		if(defined $above){
+			--$line_resolved
+		}else{
+			$above = 0
+		}
 
 		push @{$lines[$line_resolved - 1]->{checks}}, {
 			check => $check,

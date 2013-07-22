@@ -1,5 +1,12 @@
 #!/bin/sh
 
+verbose=
+if [ "$1" = -v ]
+then
+	shift
+	verbose=-v
+fi
+
 error=0
 if [ "$1" = -e ]
 then
@@ -34,5 +41,5 @@ then
 	cat $e
 	exit 1
 fi >&2
-./check.pl < $e "$1"
+./check.pl $verbose < $e "$1"
 exit $?

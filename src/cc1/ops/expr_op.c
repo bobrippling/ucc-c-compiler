@@ -723,18 +723,20 @@ void gen_expr_str_op(expr *e)
 static void op_shortcircuit(expr *e)
 {
 	char *bail = out_label_code("shortcircuit_bail");
+	char vphi_buf[OUT_VPHI_SZ];
 
 	gen_expr(e->lhs);
 	out_normalise();
 
 	out_dup();
 	(e->op == op_andsc ? out_jfalse : out_jtrue)(bail);
-	out_pop();
+	out_phi_pop_to(&vphi_buf);
 
 	gen_expr(e->rhs);
 	out_normalise();
 
 	out_label(bail);
+	out_phi_join(&vphi_buf);
 	free(bail);
 }
 

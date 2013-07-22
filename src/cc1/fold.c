@@ -40,7 +40,13 @@ int fold_type_ref_equal(
 	if(!type_ref_is(a, type_ref_ptr) && !type_ref_is(b, type_ref_ptr))
 		flags |= DECL_CMP_ALLOW_SIGNED_UNSIGNED;
 
-	/* stronger checks for blocks and pointers */
+	/* stronger checks for blocks, functions and and (non-void) pointers */
+	if(type_ref_is_nonvoid_ptr(a)
+	&& type_ref_is_nonvoid_ptr(b))
+	{
+		flags |= DECL_CMP_EXACT_MATCH;
+	}
+	else
 	if(type_ref_is(a, type_ref_block)
 	|| type_ref_is(b, type_ref_block)
 	|| type_ref_is(a, type_ref_func)
@@ -674,10 +680,20 @@ void fold_decl(decl *d, symtable *stab)
 		}
 
 		if(attrib){
-			unsigned al = attrib->bits.align;
+			unsigned long al;
 
-			if(al == 0)
+			if(attrib->bits.align){
+				consty k;
+
+				FOLD_EXPR(attrib->bits.align, stab);
+				const_fold(attrib->bits.align, &k);
+
+				if(k.type != CONST_NUM || !K_INTEGRAL(k.bits.num))
+					DIE_AT(&attrib->where, "aligned attribute not reducible to integer constant");
+				al = k.bits.num.val.i;
+			}else{
 				al = platform_align_max();
+			}
 
 			max_al = fold_align(al, tal, max_al, &attrib->where);
 			if(!d->align)
@@ -1188,12 +1204,16 @@ void fold(symtable *globs)
 
 			FOLD_EXPR(sa->e, sa->scope);
 			if(!type_ref_is_integral(sa->e->tree_type))
-				DIE_AT(&sa->e->where, "static assert: not an integral expression (%s)", sa->e->f_str());
+				DIE_AT(&sa->e->where,
+						"static assert: not an integral expression (%s)",
+						sa->e->f_str());
 
 			const_fold(sa->e, &k);
 
-			if(!CONST_AT_COMPILE_TIME(k.type))
-				DIE_AT(&sa->e->where, "static assert: not a constant expression (%s)", sa->e->f_str());
+			if(k.type != CONST_NUM || !K_INTEGRAL(k.bits.num))
+				DIE_AT(&sa->e->where,
+						"static assert: not an integer constant expression (%s)",
+						sa->e->f_str());
 
 			if(!k.bits.num.val.i)
 				DIE_AT(&sa->e->where, "static assertion failure: %s", sa->s);

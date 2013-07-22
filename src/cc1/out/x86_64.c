@@ -1112,7 +1112,7 @@ void impl_f2f(struct vstack *vp, type_ref *from, type_ref *to)
 	memcpy_safe(&vp->bits.reg, &r);
 }
 
-static const char *x86_call_jmp_target(struct vstack *vp, int no_rax)
+static const char *x86_call_jmp_target(struct vstack *vp, int prevent_rax)
 {
 	static char buf[VSTACK_STR_SZ + 2];
 
@@ -1136,7 +1136,7 @@ static const char *x86_call_jmp_target(struct vstack *vp, int no_rax)
 
 			UCC_ASSERT(!vp->bits.reg.is_float, "jmp float?");
 
-			if(no_rax && vp->bits.reg.idx == X86_64_REG_RAX){
+			if(prevent_rax && vp->bits.reg.idx == X86_64_REG_RAX){
 				struct vreg r;
 				v_unused_reg(1, 0, &r);
 				impl_reg_cp(vp, &r);
@@ -1152,15 +1152,9 @@ static const char *x86_call_jmp_target(struct vstack *vp, int no_rax)
 	return NULL;
 }
 
-void impl_jmp_lbl(const char *lbl)
+void impl_jmp(void)
 {
-	out_asm("jmp %s", lbl);
-}
-
-void impl_jmp_reg(const struct vreg *r)
-{
-	UCC_ASSERT(!r->is_float, "jmp float?");
-	out_asm("jmp *%s", x86_intreg_str(r->idx, NULL));
+	out_asm("jmp %s", x86_call_jmp_target(vtop, 0));
 }
 
 void impl_jcond(int true, const char *lbl)
@@ -1175,11 +1169,13 @@ void impl_jcond(int true, const char *lbl)
 		case CONST_F:
 			ICE("jcond float");
 		case CONST_I:
-			if(true == !!vtop->bits.val_i){
+			if(true == !!vtop->bits.val_i)
 				out_asm("jmp %s", lbl);
-				out_comment("// constant jmp condition %" NUMERIC_FMT_D,
-						vtop->bits.val_i);
-			}
+
+			out_comment(
+					"constant jmp condition %" NUMERIC_FMT_D " %staken",
+					vtop->bits.val_i, vtop->bits.val_i ? "" : "not ");
+
 			break;
 
 		case STACK:
@@ -1210,8 +1206,8 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 	 * since we can only have one flag at a time)
 	 */
 	for(i = 0; i < MIN(nargs, n_call_regs); i++)
-		if(vtop->type == FLAG){
-			v_to_reg(vtop);
+		if(vtop[-i].type == FLAG){
+			v_to_reg(&vtop[-i]);
 			break;
 		}
 
