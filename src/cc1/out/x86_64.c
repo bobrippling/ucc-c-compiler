@@ -1225,6 +1225,9 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 
 			/* FIXME: need to merge this loop and the push-args loop */
 			ICW("float call - need better '< n_call_reg' checks");
+			if(nfloats > 4)
+				ICE("TODO: float argument pushing");
+
 		}else{
 			rp = &call_regs[nints++];
 		}
