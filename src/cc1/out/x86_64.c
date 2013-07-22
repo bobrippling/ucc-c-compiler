@@ -801,8 +801,8 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 	 * since we can only have one flag at a time)
 	 */
 	for(i = 0; i < MIN(nargs, N_CALL_REGS); i++)
-		if(vtop->type == FLAG){
-			v_to_reg(vtop);
+		if(vtop[-i].type == FLAG){
+			v_to_reg(&vtop[-i]);
 			break;
 		}
 
