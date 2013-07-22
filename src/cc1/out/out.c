@@ -82,8 +82,6 @@ static void vpush(type_ref *t)
 
 void v_clear(struct vstack *vp, type_ref *t)
 {
-	v_check_type(t);
-
 	memset(vp, 0, sizeof *vp);
 	vp->t = t;
 }
@@ -157,6 +155,16 @@ void vswap(void)
 	memcpy_safe(&tmp, vtop);
 	memcpy_safe(vtop, &vtop[-1]);
 	memcpy_safe(&vtop[-1], &tmp);
+}
+
+void out_dump(void)
+{
+	unsigned i;
+
+	for(i = 0; &vstack[i] <= vtop; i++)
+		out_comment("vstack[%d] = { .type=%d, .t=%s, .reg.idx = %d }",
+				i, vstack[i].type, type_ref_to_str(vstack[i].t),
+				vstack[i].bits.reg.idx);
 }
 
 void out_swap(void)
@@ -353,17 +361,17 @@ void v_freeup_regp(struct vstack *vp)
 {
 	/* freeup this reg */
 	struct vreg r;
-	int shifted_to_reg;
+	int found_reg;
 
 	UCC_ASSERT(vp->type == REG, "not reg");
 
 	/* attempt to save to a register first */
-	shifted_to_reg = (v_unused_reg(0, vp->bits.reg.is_float, &r) == 0);
+	found_reg = (v_unused_reg(0, vp->bits.reg.is_float, &r) == 0);
 
-	if(shifted_to_reg){
+	if(found_reg){
 		impl_reg_cp(vp, &r);
 
-		v_clear(vp, NULL);
+		v_clear(vp, vp->t); /* clear bitfield info, etc */
 		vp->type = REG;
 		memcpy_safe(&vp->bits.reg, &r);
 
