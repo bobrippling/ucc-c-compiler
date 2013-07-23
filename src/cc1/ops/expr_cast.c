@@ -216,11 +216,14 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 	if(((flag = !!type_ref_is_ptr(tlhs)) && type_ref_is_floating(trhs))
 	||           (type_ref_is_ptr(trhs)  && type_ref_is_floating(tlhs)))
 	{
-		DIE_AT(&e->where,
+		/* TODO: factor to a error-continuing function */
+		fold_had_error = 1;
+		warn_at_print_error(&e->where,
 				"%scast %s pointer %s floating type",
 				IMPLICIT_STR(e),
 				flag ? "to" : "from",
 				flag ? "from" : "to");
+		return;
 	}
 
 	size_lhs = type_ref_size(tlhs, &e->where);
