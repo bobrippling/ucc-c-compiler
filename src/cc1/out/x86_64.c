@@ -604,21 +604,26 @@ void impl_store(struct vstack *from, struct vstack *to)
 
 	switch(to->type){
 		case FLAG:
-		case STACK_SAVE:
 		case CONST_F:
 			ICE("invalid store %d", to->type);
+
+		case STACK_SAVE:
+			/* pull the value, then store to *that */
+			v_to_reg(to);
+			break;
 
 		case LBL:
 			ptr = 0;
 		case REG:
 		case CONST_I:
 		case STACK:
-			out_asm("mov%s %s, %s",
-					x86_suffix(from->t),
-					vstack_str_r(vbuf, from),
-					vstack_str_ptr(to, ptr));
 			break;
 	}
+
+	out_asm("mov%s %s, %s",
+			x86_suffix(from->t),
+			vstack_str_r(vbuf, from),
+			vstack_str_ptr(to, ptr));
 }
 
 void impl_reg_swp(struct vstack *a, struct vstack *b)
