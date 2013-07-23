@@ -189,27 +189,6 @@ void vrev(const int n)
 }
 #endif
 
-void v_to_reg_const(struct vstack *vp)
-{
-	switch(vp->type){
-		case STACK:
-		case LBL:
-			/* need to pull the values from the stack */
-
-		case STACK_SAVE:
-			/* ditto, impl handles pulling from stack */
-
-		case FLAG:
-			/* obviously can't have a flag in cmp/mov code */
-			v_to_reg(vp);
-
-		case REG:
-		case CONST_I:
-		case CONST_F:
-			break;
-	}
-}
-
 int v_unused_reg(int stack_as_backup, int fp, struct vreg *out)
 {
 	static unsigned char used[sizeof(reserved_regs)];

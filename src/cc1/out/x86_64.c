@@ -868,8 +868,8 @@ void impl_op(enum op_type op)
 			char buf[VSTACK_STR_SZ];
 			int inv = 0;
 
-			v_to_reg_const(vtop);
-			v_to_reg_const(vtop - 1);
+			v_to(vtop,     TO_REG | TO_CONST);
+			v_to(vtop - 1, TO_REG | TO_CONST);
 
 			/* if we have a const, it must be the first arg */
 			if(vtop[-1].type == CONST_I){

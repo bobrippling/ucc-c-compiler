@@ -71,8 +71,6 @@ void v_flag(enum flag_cmp c, int is_signed);
 
 void v_cast(struct vstack *vp, type_ref *to);
 
-void v_to_reg_const(struct vstack *vp);
-
 void v_inv_cmp(struct vstack *vp);
 
 void v_to_reg(struct vstack *conv);
