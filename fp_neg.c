@@ -1,5 +1,4 @@
-f(float f)
+float neg(float f)
 {
-	int g(float);
-	g(-f);
+	return -f;
 }

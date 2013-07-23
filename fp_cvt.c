@@ -1,14 +1,14 @@
-float cvt_l(long long l)
+float l_to_float(long long l)
 {
 	return l;
 }
 
-float cvt_i(int i)
+float i_to_float(int i)
 {
 	return i;
 }
 
-float cvt_s(int i)
+float s_to_float(int i)
 {
 	short s = i;
 	return s;
