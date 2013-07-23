@@ -1003,14 +1003,10 @@ void impl_op_unary(enum op_type op)
 void impl_cast_load(struct vstack *vp, type_ref *small, type_ref *big, int is_signed)
 {
 	/* we are always up-casting here, i.e. int -> long */
-	const unsigned int_sz = type_primitive_size(type_int);
 	char buf_small[VSTACK_STR_SZ];
 
-	UCC_ASSERT(type_ref_is_floating(small) == type_ref_is_floating(big),
-			"float <-> int mismatch");
-
-	/* temp assert */
-	UCC_ASSERT(!type_ref_is_floating(small), "can't cast-load floats yet");
+	UCC_ASSERT(!type_ref_is_floating(small) && !type_ref_is_floating(big),
+			"we don't cast-load floats");
 
 	switch(vp->type){
 		case STACK:
@@ -1021,24 +1017,14 @@ void impl_cast_load(struct vstack *vp, type_ref *small, type_ref *big, int is_si
 			break;
 
 		case CONST_F:
-			ICE("TODO: cast load float");
+			ICE("cast load float");
 		case CONST_I:
 		case FLAG:
 			v_to_reg(vp);
 		case REG:
-			strcpy(buf_small, x86_reg_str(&vp->bits.reg, small));
-
-			if(!is_signed
-			&& type_ref_size(big,   NULL) > int_sz
-			&& type_ref_size(small, NULL) == int_sz)
-			{
-				/*
-				 * movzx %eax, %rax is invalid since movl %eax, %eax
-				 * automatically zeros the top half of rax in x64 mode
-				 */
-				out_asm("movl %%%s, %%%s", buf_small, buf_small);
-				return;
-			}
+			snprintf(buf_small, sizeof buf_small,
+					"%%%s",
+					x86_reg_str(&vp->bits.reg, small));
 	}
 
 	{
@@ -1046,8 +1032,14 @@ void impl_cast_load(struct vstack *vp, type_ref *small, type_ref *big, int is_si
 
 		v_unused_reg(1, 0, &r);
 
-		out_asm("mov%cx %%%s, %%%s",
+		/* mov[zs][bwl][wlq]
+		 * avoid movzx - it's ambiguous
+		 */
+
+		out_asm("mov%c%s%s %s, %%%s",
 				"zs"[is_signed],
+				x86_suffix(small),
+				x86_suffix(big),
 				buf_small,
 				x86_reg_str(&r, big));
 
