@@ -306,10 +306,12 @@ void v_to_mem(struct vstack *vp)
 static int v_in(enum vstore w, enum vto to)
 {
 	switch(w){
-		case CONST_I:
-		case CONST_F:
 		case FLAG:
 			break;
+
+		case CONST_I:
+		case CONST_F:
+			return !!(to & TO_CONST);
 
 		case REG:
 			return !!(to & TO_REG);
