@@ -911,8 +911,8 @@ void impl_op(enum op_type op)
 	{
 		char buf[VSTACK_STR_SZ];
 
-		v_to_reg_const(vtop);
-		v_to_reg_const(vtop - 1);
+		v_to(vtop,     TO_REG | TO_CONST | TO_MEM);
+		v_to(vtop - 1, TO_REG | TO_CONST | TO_MEM);
 
 		/* vtop[-1] is a constant - needs to be in a reg */
 		if(vtop[-1].type != REG){
@@ -923,8 +923,8 @@ void impl_op(enum op_type op)
 				v_to_reg(vtop - 1);
 		}
 
-		/* if both are constants, v_to_reg one */
-		if(vtop->type == CONST_I && vtop[-1].type == CONST_I)
+		/* if neither are registers, v_to_reg one */
+		if(vtop->type != REG && vtop[-1].type != REG)
 			/* -1 is where the op is going (see end of this block) */
 			v_to_reg(vtop - 1);
 
