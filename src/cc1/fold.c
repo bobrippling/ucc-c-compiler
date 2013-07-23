@@ -56,14 +56,14 @@ int fold_type_ref_equal(
 	}
 
 	if(type_ref_equal(a, b, flags)){
-		/* both floating - return 0 if there's a mismatch/cast needed */
-		if(type_ref_is_floating(a) && type_ref_is_floating(b))
-			return type_ref_primitive(a) == type_ref_primitive(b);
-
 		return 1;
 	}else{
 		int one_struct;
 		va_list l;
+
+		/* if there's a float/non-float mismatch, shortcircuit our return */
+		if(type_ref_is_floating(a) != type_ref_is_floating(b))
+			goto fin;
 
 		if(fopt_mode & FOPT_PLAN9_EXTENSIONS){
 			/* allow b to be an anonymous member of a */
