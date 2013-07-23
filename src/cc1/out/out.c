@@ -14,6 +14,7 @@
 #include "../cc1.h"
 #include "../pack.h"
 #include "../defs.h"
+#include "../opt.h"
 
 #define v_check_type(t) if(!t) t = type_ref_cached_VOID_PTR()
 
@@ -1050,9 +1051,12 @@ void out_deref()
 		}
 
 		case STACK:
-			vtop->type = STACK_SAVE;
-			v_deref_decl(vtop);
-			break;
+			if(cc1_opts.opt_remain_stack){
+				vtop->type = STACK_SAVE;
+				v_deref_decl(vtop);
+				break;
+			}
+			/* fall */
 
 		case LBL:
 		case CONST_I:

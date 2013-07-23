@@ -23,10 +23,13 @@
 #include "fold_sym.h"
 #include "ops/__builtin.h"
 #include "out/asm.h" /* NUM_SECTIONS */
+#include "opt.h"
 
 #include "../as_cfg.h"
 #define QUOTE(...) #__VA_ARGS__
 #define EXPAND_QUOTE(y) QUOTE(y)
+
+struct opt_flags cc1_opts;
 
 struct
 {
@@ -327,6 +330,10 @@ int main(int argc, char **argv)
 	const char *fname;
 	int i;
 	int werror = 0;
+
+	/* TODO: -O[0-3] parsing and
+	 * -fremain-stack, etc */
+	cc1_opts.opt_remain_stack = 1;
 
 	/*signal(SIGINT , sigh);*/
 	signal(SIGQUIT, sigh);
