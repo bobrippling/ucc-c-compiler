@@ -9,6 +9,8 @@
 #include "../sue.h"
 #include "../defs.h"
 
+#define IMPLICIT_STR(e) ((e)->expr_cast_implicit ? "implicit " : "")
+
 const char *str_expr_cast()
 {
 	return "cast";
@@ -197,14 +199,16 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 	fold_check_expr(e, FOLD_CHK_NO_ST_UN, "cast-target");
 
 	if(!type_ref_is_complete(tlhs)){
-		DIE_AT(&e->where, "cast to incomplete type %s",
+		DIE_AT(&e->where, "%scast to incomplete type %s",
+				IMPLICIT_STR(e),
 				type_ref_to_str(tlhs));
 	}
 
 	if((flag = !!type_ref_is(tlhs, type_ref_func))
 	|| type_ref_is(tlhs, type_ref_array))
 	{
-		DIE_AT(&e->where, "cast to %s type '%s'",
+		DIE_AT(&e->where, "%scast to %s type '%s'",
+				IMPLICIT_STR(e),
 				flag ? "function" : "array",
 				type_ref_to_str(tlhs));
 	}
@@ -212,8 +216,11 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 	if(((flag = !!type_ref_is_ptr(tlhs)) && type_ref_is_floating(trhs))
 	||           (type_ref_is_ptr(trhs)  && type_ref_is_floating(tlhs)))
 	{
-		DIE_AT(&e->where, "cast %s pointer to floating type",
-				flag ? "to" : "from");
+		DIE_AT(&e->where,
+				"%scast %s pointer %s floating type",
+				IMPLICIT_STR(e),
+				flag ? "to" : "from",
+				flag ? "from" : "to");
 	}
 
 	size_lhs = type_ref_size(tlhs, &e->where);
@@ -235,7 +242,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 		char buf[TYPE_REF_STATIC_BUFSIZ];
 		WARN_AT(&e->where, "%scast from %spointer to %spointer\n"
 				"%s <- %s",
-				e->expr_cast_implicit ? "implicit " : "",
+				IMPLICIT_STR(e),
 				flag ? "" : "function-", flag ? "function-" : "",
 				type_ref_to_str(tlhs), type_ref_to_str_r(buf, trhs));
 	}
@@ -250,7 +257,8 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 		if(p >= buf && *p == ' ')
 			*p = '\0';
 
-		WARN_AT(&e->where, "casting away qualifiers (%s)", buf);
+		WARN_AT(&e->where, "%scast removes qualifiers (%s)",
+				IMPLICIT_STR(e), buf);
 	}
 #endif
 }
