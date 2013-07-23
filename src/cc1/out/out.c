@@ -307,7 +307,6 @@ static int v_in(enum vstore w, enum vto to)
 	switch(w){
 		case CONST_I:
 		case CONST_F:
-		case STACK_SAVE:
 		case FLAG:
 			break;
 
@@ -315,6 +314,7 @@ static int v_in(enum vstore w, enum vto to)
 			return !!(to & TO_REG);
 
 		case STACK:
+		case STACK_SAVE:
 		case LBL:
 			return !!(to & TO_MEM);
 	}
@@ -1049,8 +1049,12 @@ void out_deref()
 			break;
 		}
 
-		case LBL:
 		case STACK:
+			vtop->type = STACK_SAVE;
+			v_deref_decl(vtop);
+			break;
+
+		case LBL:
 		case CONST_I:
 		{
 			struct vreg r;
