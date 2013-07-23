@@ -1066,13 +1066,18 @@ void impl_cast_load(struct vstack *vp, type_ref *small, type_ref *big, int is_si
 }
 
 static void x86_fp_conv(
-		struct vstack *vp, struct vreg *r,
-		const char *sfrom, const char *sto,
-		type_ref *tfrom, type_ref *tto)
+		struct vstack *vp,
+		struct vreg *r, type_ref *tto,
+		const char *sfrom, const char *sto)
 {
-	out_asm("cvt%s2%s %%%s, %%%s",
+	char vbuf[VSTACK_STR_SZ];
+
+	/* we miss the 'q' suffix (cvtss2siq %xmm0, %rax)
+	 * as it's accepted anyway
+	 */
+	out_asm("cvt%s2%s %s, %%%s",
 			sfrom, sto,
-			x86_reg_str(&vp->bits.reg, tfrom),
+			vstack_str_r(vbuf, vp),
 			x86_reg_str(r, tto));
 }
 
@@ -1086,12 +1091,19 @@ static void x86_xchg_fi(struct vstack *vp, type_ref *tfrom, type_ref *tto)
 
 	v_unused_reg(1, to_float, &r);
 
-	v_to_reg(vp);
+	/* cvt*2* [mem|reg], xmm* */
+	v_to(vp, TO_REG | TO_MEM);
+	if(to_float){
+		/* need to promote vp to int for cvtsi2ss */
+		if(type_ref_size(tfrom, NULL) < type_primitive_size(type_int)){
+			tfrom = type_ref_cached_INT();
+			v_cast(vp, tfrom);
+		}
+	}
 
-	x86_fp_conv(vp, &r,
+	x86_fp_conv(vp, &r, tto,
 			to_float ? "si" : "ss",
-			to_float ? "ss" : "si",
-			tfrom, tto);
+			to_float ? "ss" : "si");
 
 	vp->type = REG;
 	memcpy_safe(&vp->bits.reg, &r);
@@ -1116,7 +1128,7 @@ void impl_f2f(struct vstack *vp, type_ref *from, type_ref *to)
 	sto   = x86_suffix(to);
 
 	v_unused_reg(1, 1, &r);
-	x86_fp_conv(vp, &r, sfrom, sto, from, to);
+	x86_fp_conv(vp, &r, to, sfrom, sto);
 	vp->type = REG;
 	memcpy_safe(&vp->bits.reg, &r);
 }
