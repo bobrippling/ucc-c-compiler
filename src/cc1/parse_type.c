@@ -1239,12 +1239,12 @@ add:
 					if(PARSE_DECL_IS_FUNC(d) && PARSE_DECL_IS_FUNC(d_prev))
 						decl_pull_to_func(d, d_prev);
 				}
-
-				if(scope)
-					dynarray_add(&scope->decls, d);
-				if(pdecls)
-					dynarray_add(pdecls, d);
 			}
+
+			if(scope)
+				dynarray_add(&scope->decls, d);
+			if(pdecls)
+				dynarray_add(pdecls, d);
 
 			/* FIXME: check later for functions, not here - typedefs */
 			if(PARSE_DECL_IS_FUNC(d)){
