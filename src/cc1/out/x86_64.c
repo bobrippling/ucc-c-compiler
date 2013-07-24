@@ -696,7 +696,7 @@ void impl_op(enum op_type op)
 		}
 
 		/* memory or register */
-		v_to(vtop,      TO_REG | TO_MEM);
+		v_to(vtop,      TO_REG);
 		v_to(&vtop[-1], TO_REG | TO_MEM);
 
 		{
@@ -704,10 +704,11 @@ void impl_op(enum op_type op)
 
 			out_asm("%s%s %s, %s",
 					opc, x86_suffix(vtop->t),
-					vstack_str_r(b1, vtop),
-					vstack_str_r(b2, &vtop[-1]));
+					vstack_str_r(b1, &vtop[-1]),
+					vstack_str_r(b2, vtop));
 
-			/* result in vtop-1, pop vtop */
+			/* result in vtop */
+			vswap();
 			vpop();
 
 			return;
