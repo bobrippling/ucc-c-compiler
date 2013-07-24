@@ -992,10 +992,19 @@ void impl_op_unary(enum op_type op)
 			/* noop */
 			return;
 
-#define OP(o, s) case op_ ## o: opc = #s; break
-		OP(minus, neg);
-		OP(bnot, not);
-#undef OP
+		case op_minus:
+			if(type_ref_is_floating(vtop->t)){
+				out_push_zero(vtop->t);
+				out_op(op_minus);
+				return;
+			}
+			opc = "neg";
+			break;
+
+		case op_bnot:
+			UCC_ASSERT(!type_ref_is_floating(vtop->t), "~ on float");
+			opc = "not";
+			break;
 
 		case op_not:
 			out_push_zero(vtop->t);
