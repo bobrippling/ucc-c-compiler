@@ -1068,15 +1068,19 @@ void impl_cast_load(struct vstack *vp, type_ref *small, type_ref *big, int is_si
 static void x86_fp_conv(
 		struct vstack *vp,
 		struct vreg *r, type_ref *tto,
+		type_ref *int_ty,
 		const char *sfrom, const char *sto)
 {
 	char vbuf[VSTACK_STR_SZ];
 
-	/* we miss the 'q' suffix (cvtss2siq %xmm0, %rax)
-	 * as it's accepted anyway
+	/* if we're doing an int-float conversion,
+	 * see if we need to do 64 or 32 bit
 	 */
-	out_asm("cvt%s2%s %s, %%%s",
+	const int use_64 = int_ty && type_ref_size(int_ty, NULL) == 8;
+
+	out_asm("cvt%s2%s%s %s, %%%s",
 			sfrom, sto,
+			use_64 ? "q" : "",
 			vstack_str_r(vbuf, vp),
 			x86_reg_str(r, tto));
 }
@@ -1110,6 +1114,7 @@ static void x86_xchg_fi(struct vstack *vp, type_ref *tfrom, type_ref *tto)
 	}
 
 	x86_fp_conv(vp, &r, tto,
+			to_float ? tfrom : tto,
 			to_float ? "si" : "ss",
 			to_float ? "ss" : "si");
 
@@ -1137,7 +1142,7 @@ void impl_f2f(struct vstack *vp, type_ref *from, type_ref *to)
 	sto   = x86_suffix(to);
 
 	v_unused_reg(1, 1, &r);
-	x86_fp_conv(vp, &r, to, sfrom, sto);
+	x86_fp_conv(vp, &r, to, NULL, sfrom, sto);
 	vp->type = REG;
 	memcpy_safe(&vp->bits.reg, &r);
 }
