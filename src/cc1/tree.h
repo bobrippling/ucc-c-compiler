@@ -65,8 +65,7 @@ struct type
 
 enum type_cmp
 {
-	TYPE_CMP_EXACT         = 1 << 0,
-	TYPE_CMP_ALLOW_SIGNED_UNSIGNED = 1 << 1,
+	TYPE_CMP_ALLOW_SIGNED_UNSIGNED = 1 << 0,
 };
 
 const type *type_new_primitive(enum type_primitive);

@@ -653,8 +653,6 @@ static int type_ref_equal_r(
 		{
 			enum type_cmp tmode = 0;
 
-			if(mode & DECL_CMP_EXACT_MATCH)
-				tmode |= TYPE_CMP_EXACT;
 			if(mode & DECL_CMP_ALLOW_SIGNED_UNSIGNED)
 				tmode |= TYPE_CMP_ALLOW_SIGNED_UNSIGNED;
 

@@ -275,10 +275,7 @@ int type_equal(const type *a, const type *b, enum type_cmp mode)
 	if(a->sue != b->sue)
 		return 0;
 
-	if(mode & TYPE_CMP_EXACT)
-		return a->primitive == b->primitive;
-
-	return type_floating(a->primitive) == type_floating(b->primitive);
+	return a->primitive == b->primitive;
 }
 
 const char *op_to_str(const enum op_type o)

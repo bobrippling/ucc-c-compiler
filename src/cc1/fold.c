@@ -55,36 +55,38 @@ int fold_type_ref_equal(
 		flags |= DECL_CMP_EXACT_MATCH;
 	}
 
-	if(type_ref_equal(a, b, flags)){
-		return 1;
-	}else{
-		int one_struct;
-		va_list l;
+	switch(type_ref_cmp(a, b, flags)){
+		case TYPE_EQUAL:
+		case TYPE_CONVERTIBLE:
+			return 1;
 
-		/* if there's a float/non-float mismatch, shortcircuit our return */
-		if(type_ref_is_floating(a) != type_ref_is_floating(b))
-			goto fin;
+		case TYPE_NOT_EQUAL:
+		{
+			int one_struct;
+			va_list l;
 
-		if(fopt_mode & FOPT_PLAN9_EXTENSIONS){
-			/* allow b to be an anonymous member of a */
-			struct_union_enum_st *a_sue = type_ref_is_s_or_u(type_ref_is_ptr(a)),
-													 *b_sue = type_ref_is_s_or_u(type_ref_is_ptr(b));
+			if(fopt_mode & FOPT_PLAN9_EXTENSIONS){
+				/* allow b to be an anonymous member of a */
+				struct_union_enum_st *a_sue = type_ref_is_s_or_u(type_ref_is_ptr(a)),
+															*b_sue = type_ref_is_s_or_u(type_ref_is_ptr(b));
 
-			if(a_sue && b_sue /* they aren't equal */){
-				/* b_sue has an a_sue,
-				 * the implicit cast adjusts to return said a_sue */
-				if(struct_union_member_find_sue(b_sue, a_sue))
-					goto fin;
+				if(a_sue && b_sue /* they aren't equal */){
+					/* b_sue has an a_sue,
+						* the implicit cast adjusts to return said a_sue */
+					if(struct_union_member_find_sue(b_sue, a_sue))
+						goto fin;
+				}
 			}
+
+			/*cc1_warn_at(w, 0, 0, warn, "%s vs. %s for...", decl_to_str(a), decl_to_str_r(buf, b));*/
+
+			one_struct = type_ref_is_s_or_u(a) || type_ref_is_s_or_u(b);
+
+			va_start(l, errfmt);
+			cc1_warn_atv(w, one_struct || type_ref_is_void(a) || type_ref_is_void(b), 1, warn, errfmt, l);
+			va_end(l);
+			break;
 		}
-
-		/*cc1_warn_at(w, 0, 0, warn, "%s vs. %s for...", decl_to_str(a), decl_to_str_r(buf, b));*/
-
-		one_struct = type_ref_is_s_or_u(a) || type_ref_is_s_or_u(b);
-
-		va_start(l, errfmt);
-		cc1_warn_atv(w, one_struct || type_ref_is_void(a) || type_ref_is_void(b), 1, warn, errfmt, l);
-		va_end(l);
 	}
 fin:
 	return 0;
