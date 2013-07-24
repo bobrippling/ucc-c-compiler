@@ -1089,11 +1089,17 @@ static void x86_fp_conv(
 
 static void x86_xchg_fi(struct vstack *vp, type_ref *tfrom, type_ref *tto)
 {
-	const int to_float = type_ref_is_floating(tto);
 	struct vreg r;
+	int to_float;
+	const char *fp_s;
+	type_ref *ty_fp, *ty_int;
 
-	UCC_ASSERT(type_ref_is_type(to_float ? tto : tfrom, type_float),
-			"TODO: non-float cast to/from int");
+	if((to_float = type_ref_is_floating(tto)))
+		ty_fp = tto, ty_int = tfrom;
+	else
+		ty_fp = tfrom, ty_int = tto;
+
+	fp_s = x86_suffix(ty_fp);
 
 	v_unused_reg(1, to_float, &r);
 
@@ -1101,7 +1107,7 @@ static void x86_xchg_fi(struct vstack *vp, type_ref *tfrom, type_ref *tto)
 	v_to(vp, TO_REG | TO_MEM);
 
 	/* need to promote vp to int for cvtsi2ss */
-	if(type_ref_size(to_float ? tfrom : tto, NULL) < type_primitive_size(type_int)){
+	if(type_ref_size(ty_int, NULL) < type_primitive_size(type_int)){
 		/* need to pretend we're using an int */
 		type_ref *const orig_tto = tto,
 		         *const ty = *(to_float ? &tfrom : &tto) = type_ref_cached_INT();
@@ -1117,8 +1123,8 @@ static void x86_xchg_fi(struct vstack *vp, type_ref *tfrom, type_ref *tto)
 
 	x86_fp_conv(vp, &r, tto,
 			to_float ? tfrom : tto,
-			to_float ? "si" : "ss",
-			to_float ? "ss" : "si");
+			to_float ? "si" : fp_s,
+			to_float ? fp_s : "si");
 
 	vp->type = REG;
 	memcpy_safe(&vp->bits.reg, &r);
@@ -1137,14 +1143,13 @@ void impl_f2i(struct vstack *vp, type_ref *t_f, type_ref *t_i)
 
 void impl_f2f(struct vstack *vp, type_ref *from, type_ref *to)
 {
-	const char *sfrom, *sto;
 	struct vreg r;
 
-	sfrom = x86_suffix(from);
-	sto   = x86_suffix(to);
-
 	v_unused_reg(1, 1, &r);
-	x86_fp_conv(vp, &r, to, NULL, sfrom, sto);
+	x86_fp_conv(vp, &r, to, NULL,
+			x86_suffix(from),
+			x86_suffix(to));
+
 	vp->type = REG;
 	memcpy_safe(&vp->bits.reg, &r);
 }
