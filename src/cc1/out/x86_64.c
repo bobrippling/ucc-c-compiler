@@ -695,6 +695,15 @@ void impl_op(enum op_type op)
 				ICE("bad fp op %s", op_to_str(op));
 		}
 
+		/* attempt to not do anything in the following v_to()
+		 * by swapping operands, similarly to the integral case.
+		 *
+		 * [should merge at some point - generic instructions etc]
+		 */
+
+		if(vtop->type != TO_REG && op_is_commutative(op))
+			out_swap();
+
 		/* memory or register */
 		v_to(vtop,      TO_REG);
 		v_to(&vtop[-1], TO_REG | TO_MEM);
