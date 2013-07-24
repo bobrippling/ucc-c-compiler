@@ -981,7 +981,7 @@ void impl_op_unary(enum op_type op)
 {
 	const char *opc;
 
-	v_to(vtop, TO_REG | TO_CONST);
+	v_to(vtop, TO_REG | TO_CONST | TO_MEM);
 
 	switch(op){
 		default:
@@ -1002,7 +1002,9 @@ void impl_op_unary(enum op_type op)
 			return;
 	}
 
-	out_asm("%s %s", opc, vstack_str(vtop));
+	out_asm("%s%s %s", opc,
+			x86_suffix(vtop->t),
+			vstack_str(vtop));
 }
 
 void impl_cast_load(struct vstack *vp, type_ref *small, type_ref *big, int is_signed)
