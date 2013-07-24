@@ -109,7 +109,7 @@ void gen_expr_sizeof(expr *e)
 {
 	type_ref *r = SIZEOF_WHAT(e);
 
-	out_push_i(e->tree_type, SIZEOF_SIZE(e));
+	out_push_l(e->tree_type, SIZEOF_SIZE(e));
 
 	out_comment("sizeof %s%s", e->expr ? "" : "type ", type_ref_to_str(r));
 }

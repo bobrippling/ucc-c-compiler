@@ -108,7 +108,7 @@ static void gen_expr_struct_lea(expr *e)
 	gen_expr(e->lhs);
 
 	out_change_type(type_ref_cached_VOID_PTR()); /* cast for void* arithmetic */
-	out_push_i(type_ref_cached_INTPTR_T(), struct_offset(e)); /* integral offset */
+	out_push_l(type_ref_cached_INTPTR_T(), struct_offset(e)); /* integral offset */
 	out_op(op_plus);
 
 	out_change_type(type_ref_ptr_depth_inc(e->rhs->tree_type));

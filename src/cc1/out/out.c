@@ -379,7 +379,7 @@ static unsigned v_alloc_stack2(unsigned sz, int noop)
 			vtop->type = REG;
 			vtop->bits.reg.is_float = 0;
 			vtop->bits.reg.idx = REG_SP;
-			out_push_i(type_ref_cached_INTPTR_T(), sz);
+			out_push_l(type_ref_cached_INTPTR_T(), sz);
 			out_op(op_minus);
 			out_pop();
 		}
@@ -557,11 +557,11 @@ void out_push_num(type_ref *t, const numeric *n)
 	}
 }
 
-void out_push_i(type_ref *t, int i)
+void out_push_l(type_ref *t, long l)
 {
 	numeric iv;
 	memset(&iv, 0, sizeof iv);
-	iv.val.i = i;
+	iv.val.i = l;
 
 	out_push_num(t, &iv);
 }
@@ -691,7 +691,7 @@ static void bitfield_scalar_merge(const struct vbitfield *const bf)
 	mask_rm = mask_leading_1s | mask_back_0s;
 
 	/* &-out our value */
-	out_push_i(ty, mask_rm);
+	out_push_l(ty, mask_rm);
 	out_comment("bitmask/rm = %#lx", mask_rm);
 	out_op(op_and);
 
@@ -700,10 +700,10 @@ static void bitfield_scalar_merge(const struct vbitfield *const bf)
 	out_swap();
 
 	/* mask and shift our value up */
-	out_push_i(ty, ~(-1UL << bf->nbits));
+	out_push_l(ty, ~(-1UL << bf->nbits));
 	out_op(op_and);
 
-	out_push_i(ty, bf->off);
+	out_push_l(ty, bf->off);
 	out_op(op_shiftl);
 
 	/* | our value in with the dereferenced store value */
@@ -919,7 +919,7 @@ def:
 								if((swap = (val != vtop)))
 									vswap();
 
-								out_push_i(type_ref_cached_VOID_PTR(), ptr_step);
+								out_push_l(type_ref_cached_VOID_PTR(), ptr_step);
 								out_op(op_multiply);
 
 								if(swap)
@@ -942,7 +942,7 @@ def:
 		impl_op(op);
 
 		if(div){
-			out_push_i(type_ref_cached_VOID_PTR(), div);
+			out_push_l(type_ref_cached_VOID_PTR(), div);
 			out_op(op_divide);
 		}
 	}
@@ -959,10 +959,10 @@ static void bitfield_to_scalar(const struct vbitfield *bf)
 	type_ref *const ty = vtop->t;
 
 	/* shift right, then mask */
-	out_push_i(ty, bf->off);
+	out_push_l(ty, bf->off);
 	out_op(op_shiftr);
 
-	out_push_i(ty, ~(-1UL << bf->nbits));
+	out_push_l(ty, ~(-1UL << bf->nbits));
 	out_op(op_and);
 
 	/* if it's signed we need to sign extend
@@ -972,9 +972,9 @@ static void bitfield_to_scalar(const struct vbitfield *bf)
 		const unsigned ty_sz = type_ref_size(ty, NULL);
 		const unsigned nshift = CHAR_BIT * ty_sz - bf->nbits;
 
-		out_push_i(ty, nshift);
+		out_push_l(ty, nshift);
 		out_op(op_shiftl);
-		out_push_i(ty, nshift);
+		out_push_l(ty, nshift);
 		out_op(op_shiftr);
 	}
 }

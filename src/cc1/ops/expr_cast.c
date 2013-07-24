@@ -303,7 +303,7 @@ void gen_expr_cast(expr *e)
 						mem->struct_offset);*/
 
 				out_change_type(type_ref_cached_VOID_PTR());
-				out_push_i(type_ref_cached_INTPTR_T(), mem->struct_offset);
+				out_push_l(type_ref_cached_INTPTR_T(), mem->struct_offset);
 				out_op(op_plus);
 			}
 		}

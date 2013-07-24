@@ -198,7 +198,7 @@ static void builtin_gen_va_arg(expr *e)
 	/* &va, va */
 
 	/* out_n_call_regs() has been revoked - UCC ABI is obsolete */
-	out_push_i(type_ref_new_LONG(), out_n_call_regs() - nargs);
+	out_push_l(type_ref_new_LONG(), out_n_call_regs() - nargs);
 	out_op(op_lt);
 	/* &va, (<) */
 
@@ -210,7 +210,7 @@ static void builtin_gen_va_arg(expr *e)
 	 */
 	out_push_frame_ptr(0);
 	out_change_type(type_ref_new_LONG_PTR());
-	out_push_i(type_ref_new_INTPTR_T(), nargs);
+	out_push_l(type_ref_new_INTPTR_T(), nargs);
 	out_op(op_minus);
 	/* &va, va_ptr */
 
@@ -225,7 +225,7 @@ static void builtin_gen_va_arg(expr *e)
 	out_deref();
 	/* va_ptr, &va, va */
 
-	out_push_i(type_ref_new_INTPTR_T(), 1);
+	out_push_l(type_ref_new_INTPTR_T(), 1);
 	out_op(op_plus); /* val[0]++ */
 	/* va_ptr, &va, (va+1) */
 	out_store();
@@ -259,7 +259,7 @@ static void builtin_gen_va_arg(expr *e)
 	out_push_lbl("__va_arg", 1);
 
 	/* generate a call to abi.c's __va_arg */
-	out_push_i(type_ref_new_LONG(), type_ref_size(e->bits.tref, NULL));
+	out_push_l(type_ref_new_LONG(), type_ref_size(e->bits.tref, NULL));
 	/* 0 - abi.c's gen_reg. this is temporary until we have builtin_va_arg proper */
 	out_push_zero(type_ref_new_INT());
 	gen_expr(e->lhs);
@@ -305,14 +305,14 @@ stack:
 			out_change_type(type_ref_cached_VOID_PTR());
 			out_dup(); /* va, va */
 
-			out_push_i(type_ref_cached_LONG(), mem_gp_offset->struct_offset);
+			out_push_l(type_ref_cached_LONG(), mem_gp_offset->struct_offset);
 			out_op(op_plus); /* va, &va.gp_offset */
 
 			out_change_type(type_ref_cached_INT_PTR());
 			out_dup(); /* va, &gp_o, &gp_o */
 
 			out_deref(); /* va, &gp_o, gp_o */
-			out_push_i(type_ref_cached_INT(), 6 * 8); /* N_CALL_REGS * pws */
+			out_push_l(type_ref_cached_INT(), 6 * 8); /* N_CALL_REGS * pws */
 			out_op(op_lt); /* va, &gp_o, <cond> */
 			out_jfalse(lbl_stack);
 
@@ -320,16 +320,16 @@ stack:
 			out_dup(); /* va, &gp_o, &gp_o */
 			out_deref(); /* va, &gp_o, gp_o */
 
-			out_push_i(type_ref_cached_INT(), 8); /* pws */
+			out_push_l(type_ref_cached_INT(), 8); /* pws */
 			out_op(op_plus); /* va, &gp_o, gp_o+8 */
 
 			out_store(); /* va, gp_o+8 */
-			out_push_i(type_ref_cached_INT(), 8); /* pws */
+			out_push_l(type_ref_cached_INT(), 8); /* pws */
 			out_op(op_minus); /* va, gp_o */
 			out_change_type(type_ref_cached_LONG());
 
 			out_swap(); /* gp_o, va */
-			out_push_i(type_ref_cached_LONG(), mem_reg_save_area->struct_offset);
+			out_push_l(type_ref_cached_LONG(), mem_reg_save_area->struct_offset);
 			out_op(op_plus); /* gp_o, &reg_save_area */
 			out_change_type(type_ref_cached_LONG_PTR());
 			out_deref();
@@ -348,7 +348,7 @@ stack:
 			gen_expr(e->lhs);
 			/* va */
 			out_change_type(type_ref_cached_VOID_PTR());
-			out_push_i(type_ref_cached_LONG(), mem_overflow_arg_area->struct_offset);
+			out_push_l(type_ref_cached_LONG(), mem_overflow_arg_area->struct_offset);
 			out_op(op_plus);
 			/* &overflow_a */
 
@@ -356,12 +356,12 @@ stack:
 			/* &overflow_a, overflow_a */
 
 			/* XXX: 8 = pws, but will need changing if we jump directly to stack, e.g. passing a struct */
-			out_push_i(type_ref_cached_LONG(), 8);
+			out_push_l(type_ref_cached_LONG(), 8);
 			out_op(op_plus);
 
 			out_store();
 
-			out_push_i(type_ref_cached_LONG(), 8);
+			out_push_l(type_ref_cached_LONG(), 8);
 			out_op(op_minus);
 
 			/* ensure we match the other block's final result before the merge */

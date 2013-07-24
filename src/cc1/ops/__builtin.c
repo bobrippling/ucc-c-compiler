@@ -244,7 +244,7 @@ static void builtin_gen_memset(expr *e)
 		out_pop();
 
 		/* p++ (copied pointer) */
-		out_push_i(type_ref_cached_INTPTR_T(), 1);
+		out_push_l(type_ref_cached_INTPTR_T(), 1);
 		out_op(op_plus);
 
 		if(rem){
@@ -328,11 +328,11 @@ static void builtin_memcpy_single(void)
 	out_store();    /* ds. */
 	out_pop();      /* ds */
 
-	out_push_i(t1, 1); /* ds1 */
+	out_push_l(t1, 1); /* ds1 */
 	out_op(op_plus);   /* dS */
 
 	out_swap();        /* Sd */
-	out_push_i(t1, 1); /* Sd1 */
+	out_push_l(t1, 1); /* Sd1 */
 	out_op(op_plus);   /* SD */
 
 	out_swap(); /* DS */
@@ -352,7 +352,7 @@ static void builtin_gen_memcpy(expr *e)
 			e->tree_type, fargs);
 
 	out_push_lbl("memcpy", 0);
-	out_push_i(type_ref_cached_INTPTR_T(), e->bits.num.val);
+	out_push_l(type_ref_cached_INTPTR_T(), e->bits.num.val);
 	lea_expr(e->rhs, stab);
 	lea_expr(e->lhs, stab);
 	out_call(3, e->tree_type, ctype);
