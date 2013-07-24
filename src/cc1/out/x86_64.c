@@ -106,9 +106,16 @@ static const char *vstack_str_r_ptr(char buf[VSTACK_STR_SZ], struct vstack *vs, 
 		{
 			const int pic = fopt_mode & FOPT_PIC && vs->bits.lbl.pic;
 
-			SNPRINTF(buf, VSTACK_STR_SZ, "%s%s",
-					vs->bits.lbl.str,
-					pic ? "(%rip)" : "");
+			if(vs->bits.lbl.offset){
+				SNPRINTF(buf, VSTACK_STR_SZ, "%s+%ld%s",
+						vs->bits.lbl.str,
+						vs->bits.lbl.offset,
+						pic ? "(%rip)" : "");
+			}else{
+				SNPRINTF(buf, VSTACK_STR_SZ, "%s%s",
+						vs->bits.lbl.str,
+						pic ? "(%rip)" : "");
+			}
 			break;
 		}
 
@@ -719,6 +726,11 @@ static const char *x86_call_jmp_target(struct vstack *vp, int prevent_rax)
 
 	switch(vp->type){
 		case LBL:
+			if(vp->bits.lbl.offset){
+				snprintf(buf, sizeof buf, "%s + %ld",
+						vtop->bits.lbl.str, vtop->bits.lbl.offset);
+				return buf;
+			}
 			return vp->bits.lbl.str;
 
 		case STACK:

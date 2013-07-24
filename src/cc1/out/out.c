@@ -422,14 +422,20 @@ void out_push_i(type_ref *t, int i)
 	out_push_iv(t, &iv);
 }
 
-void out_push_lbl(char *s, int pic)
+static void out_set_lbl(const char *s, int pic)
 {
-	vpush(NULL);
+	vtop->type = LBL;
 
 	vtop->bits.lbl.str = s;
 	vtop->bits.lbl.pic = pic;
+	vtop->bits.lbl.offset = 0;
+}
 
-	vtop->type = LBL;
+void out_push_lbl(const char *s, int pic)
+{
+	vpush(NULL);
+
+	out_set_lbl(s, pic);
 }
 
 void out_push_noop()
@@ -630,9 +636,7 @@ void out_push_sym(sym *s)
 
 		case sym_global:
 label:
-			vtop->type = LBL;
-			vtop->bits.lbl.str = decl_asm_spel(d);
-			vtop->bits.lbl.pic = 1;
+			out_set_lbl(decl_asm_spel(d), 1);
 			break;
 	}
 }
@@ -641,26 +645,6 @@ void out_push_sym_val(sym *s)
 {
 	out_push_sym(s);
 	out_deref();
-}
-
-static void vtop2_are(
-		enum vstore a,
-		enum vstore b,
-		struct vstack **pa, struct vstack **pb)
-{
-	if(vtop->type == a)
-		*pa = vtop;
-	else if(vtop[-1].type == a)
-		*pa = &vtop[-1];
-	else
-		*pa = NULL;
-
-	if(vtop->type == b)
-		*pb = vtop;
-	else if(vtop[-1].type == b)
-		*pb = &vtop[-1];
-	else
-		*pb = NULL;
 }
 
 static int calc_ptr_step(type_ref *t)
@@ -684,17 +668,35 @@ void out_op(enum op_type op)
 	 * the result is returned
 	 */
 
-	struct vstack *t_const, *t_stack;
+	struct vstack *t_const = NULL, *t_mem = NULL;
 
 	/* check for adding or subtracting to stack */
-	vtop2_are(CONST, STACK, &t_const, &t_stack);
+	if(op == op_plus || op == op_minus){
+#define POPULATE_TYPE(vp) \
+	switch(vp.type){        \
+		case CONST:           \
+			t_const = &vp;      \
+			break;              \
+		case STACK:           \
+		case LBL:             \
+			t_mem = &vp;        \
+		default:              \
+			break;              \
+	}
 
-	if(t_const && t_stack && (op == op_plus || op == op_minus)){
+		POPULATE_TYPE(vtop[0]);
+		POPULATE_TYPE(vtop[-1]);
+	}
+
+	if(t_const && t_mem){
 		/* t_const == vtop... should be */
-		t_stack->bits.off_from_bp +=
-			(op == op_minus ? -1 : 1) *
+		long *p = t_mem->type == STACK
+			? &t_mem->bits.off_from_bp
+			: &t_mem->bits.lbl.offset;
+
+		*p += (op == op_minus ? -1 : 1) *
 			t_const->bits.val *
-			calc_ptr_step(t_stack->t);
+			calc_ptr_step(t_mem->t);
 
 		goto ignore_const;
 

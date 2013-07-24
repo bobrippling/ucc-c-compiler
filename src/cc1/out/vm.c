@@ -29,7 +29,8 @@ static void vm_show_v(struct vstack *vs)
 			fprintf(cc1_out, "flag %d\n", vs->bits.flag);
 			break;
 		case LBL:
-			fprintf(cc1_out, "&lbl %s\n", vs->bits.lbl.str);
+			fprintf(cc1_out, "&lbl %s + %ld\n",
+					vs->bits.lbl.str, vs->bits.lbl.offset);
 			break;
 	}
 }
@@ -92,8 +93,13 @@ static const char *jmp_target(void)
 {
 	static char buf[16];
 
-	if(vtop->type == LBL)
+	if(vtop->type == LBL){
+		if(vtop->bits.lbl.offset){
+			snprintf(buf, sizeof buf, "%s + %ld",
+					vtop->bits.lbl.str, vtop->bits.lbl.offset);
+		}
 		return vtop->bits.lbl.str;
+	}
 
 	v_to_reg(vtop);
 	snprintf(buf, sizeof buf, "*reg_%d", vtop->bits.reg);
