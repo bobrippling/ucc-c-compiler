@@ -1,3 +1,5 @@
+// RUN: %ocheck 1 %s
+
 fadd(float a, float b, float c, float d)
 {
 	return a + b + c + d;
@@ -5,5 +7,5 @@ fadd(float a, float b, float c, float d)
 
 main()
 {
-	fadd(1, 2, 3, 4);
+	return 10 == (int)fadd(1, 2, 3, 4);
 }

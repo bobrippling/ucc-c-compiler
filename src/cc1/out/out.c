@@ -256,6 +256,8 @@ void v_to_reg_out(struct vstack *conv, struct vreg *out)
 
 		v_unused_reg(1, type_ref_is_floating(conv->t), out);
 		v_to_reg_given(conv, out);
+	}else{
+		memcpy_safe(out, &conv->bits.reg);
 	}
 }
 

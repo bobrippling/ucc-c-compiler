@@ -319,6 +319,14 @@ void impl_func_prologue_save_fp(void)
 	out_asm("movq %%rsp, %%rbp");
 }
 
+static void reg_to_stack(const struct vreg *vr, type_ref *ty, int where)
+{
+	out_asm("mov%s %%%s, -" NUM_FMT "(%%rbp)",
+			x86_suffix(ty),
+			x86_reg_str(vr, ty),
+			where);
+}
+
 void impl_func_prologue_save_call_regs(type_ref *rf, int nargs)
 {
 	if(nargs){
@@ -359,10 +367,7 @@ void impl_func_prologue_save_call_regs(type_ref *rf, int nargs)
 				/* use i_* for the register indexes, but just 'i' for the offset */
 				vr.idx = (vr.is_float = type_ref_is_floating(ty)) ? i_f++ : i_i++;
 
-				out_asm("mov%s %%%s, -" NUM_FMT "(%%rbp)",
-						x86_suffix(ty),
-						x86_reg_str(&vr, ty),
-						(i + 1) * platform_word_size());
+				reg_to_stack(&vr, ty, (i + 1) * platform_word_size());
 			}
 		}else{
 			for(i = 0; i < n_reg_args; i++){
@@ -1253,100 +1258,108 @@ void impl_jcond(int true, const char *lbl)
 
 void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 {
-	int n_call_regs;
-	const struct vreg *call_regs;
-	int i, ncleanup;
-	int nfloats = 0, nints = 0;
+	const unsigned pws = platform_word_size();
+	char *const float_arg = umalloc(nargs);
 
-	x86_call_regs(r_func, &n_call_regs, &call_regs);
+	const struct vreg *call_iregs;
+	int n_call_iregs;
+
+	int nfloats = 0, nints = 0;
+	int arg_stack = 0;
+	int i;
+
+	x86_call_regs(r_func, &n_call_iregs, &call_iregs);
 
 	(void)r_ret;
 
 	/* pre-scan of arguments - eliminate flags
-	 * (should only be one,
-	 * since we can only have one flag at a time)
+	 * (should only be one, since we can only have one flag at a time)
+	 *
+	 * also count floats and ints
 	 */
-	for(i = 0; i < MIN(nargs, n_call_regs); i++)
-		if(vtop[-i].type == FLAG){
-			v_to_reg(&vtop[-i]);
-			break;
-		}
+	for(i = 0; i < nargs; i++){
+		struct vstack *const vp = &vtop[-i];
 
-	for(i = 0; i < MIN(nargs, n_call_regs); i++){
-		const struct vreg *rp;
+		if(vp->type == FLAG)
+			v_to_reg(&vtop[-i]);
+
+		if((float_arg[i] = type_ref_is_floating(vp->t)))
+			nfloats++;
+		else
+			nints++;
+	}
+
+	/* FIXME: need to save regs at some point */
+	ICW("need to save regs");
+
+	/* do we need to do any stacking? */
+	if(nints > n_call_iregs || nfloats > 4){
+		int nfloats = 0, nints = 0; /* shadow */
+		int stack_pos = 0;
+
+		arg_stack = (nints + nfloats) * pws;
+
+		ICW("FIXME: alloc stack: need to get the amount rounded"); // FIXME
+		v_alloc_stack(arg_stack);
+
+		/* save in order */
+		for(i = 0; i < nargs; i++){
+			const int stack_this = float_arg[i]
+				? nfloats++ >= 4
+				: nints++ >= n_call_iregs;
+
+			if(stack_this){
+				struct vstack *const vp = &vtop[-i];
+
+				/* XXX: ensure v_to_mem* does v_to_reg first if needed */
+				v_to_mem_given(vp, stack_pos /* TODO: + initial */);
+
+				/* XXX: ensure any registers used ^ are freed */
+
+				stack_pos += pws;
+			}
+		}
+	}
+
+	nints = nfloats = 0;
+	for(i = 0; i < nargs; i++){
+		struct vstack *const vp = &vtop[-i];
+		const int is_float = type_ref_is_floating(vp->t);
+
+		const struct vreg *rp = NULL;
 		struct vreg r;
 
-		if(type_ref_is_floating(vtop->t)){
-			/* NOTE: don't need to use call_regs_float,
-			 * since it's xmm0 ... 4 */
-			r.idx = nfloats++;
-			r.is_float = 1;
+		if(is_float){
+			if(nfloats < 4){
+				/* NOTE: don't need to use call_regs_float,
+				 * since it's xmm0 ... 4 */
+				r.idx = nfloats;
+				r.is_float = 1;
 
-			rp = &r;
-
-			/* FIXME: need to merge this loop and the push-args loop */
-			ICW("float call - need better '< n_call_reg' checks");
-			if(nfloats > 4)
-				ICE("TODO: float argument pushing");
+				rp = &r;
+			}
+			nfloats++;
 
 		}else{
-			rp = &call_regs[nints++];
+			/* integral */
+			if(nints < n_call_iregs)
+				rp = &call_iregs[nints];
+
+			nints++;
 		}
 
-		/* only bother if it's not already in the register */
-		if(vtop->type != REG || !vreg_eq(rp, &vtop->bits.reg)){
-			/* need to free it up, as
-			 * v_to_reg_given doesn't clobber check */
-			v_freeup_reg(rp, 0);
-			v_to_reg_given(vtop, rp);
+		if(rp){
+			/* only bother if it's not already in the register */
+			if(vp->type != REG || !vreg_eq(rp, &vp->bits.reg)){
+				/* need to free it up, as v_to_reg_given doesn't clobber check */
+				v_freeup_reg(rp, 0);
+				v_to_reg_given(vp, rp);
+			}
 		}
-
-		v_reserve_reg(rp); /* we vpop but we don't want this reg clobbering */
-		vpop();
+		/* else already pushed */
 	}
 
-	/* amount of remaining arguments */
-	ncleanup = nargs - i;
-
-	/* save all registers before pushing remaining args
-	 * otherwise we may have a vstack entry in a call
-	 * register, which will mess everything up
-	 */
-	v_save_regs(ncleanup, r_func);
-
-	/* push remaining args onto the stack, left to right */
-	for(; i < nargs; i++){
-		struct vstack *vp = &vtop[-(nargs - i) + 1]; /* reverse order for stack push */
-#define INC_NFLOATS(t) if(t && type_ref_is_floating(t)) ++nfloats
-
-		INC_NFLOATS(vp->t);
-
-		/* can't push non-word sized vtops */
-		if(vp->t && type_ref_size(vp->t, NULL) != platform_word_size()){
-			/* TODO: structs, unions */
-			v_cast(vp,
-					type_ref_is_floating(vp->t) ?
-						type_ref_cached_DOUBLE() :
-						type_ref_cached_VOID_PTR());
-		}
-
-		switch(vtop->type){
-			case STACK_SAVE:
-			case FLAG:
-			case LBL:
-			case CONST_F:
-				/* can't push the vstack_str repr. of this */
-				v_to_reg(vtop);
-
-			case STACK:
-			case CONST_I:
-			case REG:
-				break;
-		}
-
-		out_asm("pushq %s", vstack_str(vp));
-	}
-	for(i = 0; i < ncleanup; i++)
+	for(i = 0; i < nargs; i++)
 		vpop();
 
 	{
@@ -1362,11 +1375,10 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 		out_asm("callq %s", jtarget);
 	}
 
-	for(i = 0; i < MIN(nargs, n_call_regs); i++)
-		v_unreserve_reg(&call_regs[i]);
+	if(arg_stack && x86_caller_cleanup(r_func))
+		out_asm("addq $" NUM_FMT ", %%rsp", arg_stack);
 
-	if(ncleanup && x86_caller_cleanup(r_func))
-		out_asm("addq $" NUM_FMT ", %%rsp", ncleanup * platform_word_size());
+	free(float_arg);
 }
 
 void impl_undefined(void)
