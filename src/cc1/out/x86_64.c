@@ -1093,11 +1093,19 @@ static void x86_xchg_fi(struct vstack *vp, type_ref *tfrom, type_ref *tto)
 
 	/* cvt*2* [mem|reg], xmm* */
 	v_to(vp, TO_REG | TO_MEM);
-	if(to_float){
-		/* need to promote vp to int for cvtsi2ss */
-		if(type_ref_size(tfrom, NULL) < type_primitive_size(type_int)){
-			tfrom = type_ref_cached_INT();
-			v_cast(vp, tfrom);
+
+	/* need to promote vp to int for cvtsi2ss */
+	if(type_ref_size(to_float ? tfrom : tto, NULL) < type_primitive_size(type_int)){
+		/* need to pretend we're using an int */
+		type_ref *const orig_tto = tto,
+		         *const ty = *(to_float ? &tfrom : &tto) = type_ref_cached_INT();
+
+		if(to_float){
+			/* cast up to int, then to float */
+			v_cast(vp, ty);
+		}else{
+			out_comment("float to %s - truncated from int",
+					type_ref_to_str(orig_tto));
 		}
 	}
 
@@ -1107,6 +1115,7 @@ static void x86_xchg_fi(struct vstack *vp, type_ref *tfrom, type_ref *tto)
 
 	vp->type = REG;
 	memcpy_safe(&vp->bits.reg, &r);
+	/* type set later in v_cast */
 }
 
 void impl_i2f(struct vstack *vp, type_ref *t_i, type_ref *t_f)
