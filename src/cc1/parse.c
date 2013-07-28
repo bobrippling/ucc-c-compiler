@@ -698,6 +698,7 @@ stmt *parse_asm(void)
 	stmt *asm_st;
 	asm_args *bits;
 	enum type_qualifier qual = qual_none;
+	enum { GOTO_NONE, GOTO_IS, GOTO_HAD } goto_ty = GOTO_NONE;
 
 	asm_st = STAT_NEW(asm);
 	bits = asm_st->asm_bits = umalloc(sizeof *asm_st->asm_bits);
@@ -713,6 +714,9 @@ stmt *parse_asm(void)
 				type_qual_to_str(qual));
 	}
 	bits->is_volatile = (qual & qual_volatile) == qual_volatile;
+
+	if(accept(token_goto))
+		goto_ty = GOTO_IS;
 
 	EAT(token_open_paren);
 
@@ -733,7 +737,21 @@ stmt *parse_asm(void)
 		/* clobber list */
 		if(accept(token_colon))
 			bits->clobbers = parse_asm_clobbers();
+
+		/* jump list */
+		if(goto_ty && accept(token_colon)){
+			/* gcc needs at least one identifier */
+			do
+				dynarray_add((void ***)&bits->jumps,
+						parse_expr_identifier());
+			while(accept(token_comma));
+
+			goto_ty = GOTO_HAD;
+		}
 	}
+
+	if(goto_ty == GOTO_IS)
+		WARN_AT("\"asm goto\" should have a jump list");
 
 	EAT(token_close_paren);
 	EAT(token_semicolon);

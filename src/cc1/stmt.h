@@ -20,6 +20,7 @@ typedef struct
 {
 	asm_inout **ios;
 	char **clobbers;
+	char **jumps; /* asm goto */
 	char *cmd;
 	int extended; /* is it asm("") or asm("":::) */
 	int is_volatile;

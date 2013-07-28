@@ -30,6 +30,9 @@ int          curtok_is_compound_assignment(void);
 
 const char *token_to_str(enum token t);
 
+/* this should go on merge with master */
+void warn_at_print_error(const char *fmt, ...);
+
 extern int parse_had_error;
 
 #endif
