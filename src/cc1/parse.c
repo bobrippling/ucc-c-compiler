@@ -640,8 +640,13 @@ asm_inout **parse_asm_inout(int is_output)
 {
 	asm_inout **inouts;
 
-	if(curtok != token_string)
-		return NULL;
+	switch(curtok){
+		case token_string:
+		case token_open_square:
+			break;
+		default:
+			return NULL;
+	}
 
 	inouts = NULL;
 
