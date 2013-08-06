@@ -15,6 +15,12 @@ General
 
 "note:" output, instead of DIE_AT(..., "...\n%s here", where_str(...))
 
+Major C Features
+################
+
+Floating point - experimental/float branch
+C99 VLAs - experimental/vla branch
+
 cc1
 ###
 
