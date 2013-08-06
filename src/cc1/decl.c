@@ -237,11 +237,18 @@ type_ref *type_ref_new_cast_signed(type_ref *to, int is_signed)
 	return r;
 }
 
-decl *decl_new()
+decl *decl_new_w(const where *w)
 {
 	decl *d = umalloc(sizeof *d);
-	where_new(&d->where);
+	memcpy_safe(&d->where, w);
 	return d;
+}
+
+decl *decl_new()
+{
+	where wtmp;
+	where_new(&wtmp);
+	return decl_new_w(&wtmp);
 }
 
 decl *decl_new_ty_sp(type_ref *ty, char *sp)
