@@ -49,6 +49,7 @@ eof_w:
 
 final:
 		w->line  = current_line;
+		/* XXX: current_chr positions at the end of the current token */
 		w->chr   = current_chr;
 		w->fname = current_fname;
 		w->line_str = current_line_str;

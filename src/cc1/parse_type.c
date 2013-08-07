@@ -53,7 +53,7 @@ static struct_union_enum_st *PARSE_type_ref_is_s_or_u_or_e2(type_ref *r, int all
 }
 
 static void parse_add_attr(decl_attr **append);
-static type_ref *parse_type_ref2(enum decl_mode mode, char **sp);
+static type_ref *parse_type_ref2(enum decl_mode mode, decl *dfor);
 
 /* sue = struct/union/enum */
 static type_ref *parse_type_sue(enum type_primitive prim)
@@ -688,7 +688,7 @@ declarator:
 		;
 */
 
-static type_ref *parse_type_ref_nest(enum decl_mode mode, char **sp)
+static type_ref *parse_type_ref_nest(enum decl_mode mode, decl *dfor)
 {
 	if(accept(token_open_paren)){
 		type_ref *ret;
@@ -706,15 +706,17 @@ static type_ref *parse_type_ref_nest(enum decl_mode mode, char **sp)
 			return NULL;
 		}
 
-		ret = parse_type_ref2(mode, sp);
+		ret = parse_type_ref2(mode, dfor);
 		EAT(token_close_paren);
 		return ret;
 
 	}else if(curtok == token_identifier){
-		if(!sp)
+		if(!dfor)
 			DIE_AT(NULL, "identifier unexpected");
 
-		*sp = token_current_spel();
+		/* set spel + location info */
+		dfor->spel = token_current_spel();
+		where_new(&dfor->where);
 
 		EAT(token_identifier);
 
@@ -725,9 +727,9 @@ static type_ref *parse_type_ref_nest(enum decl_mode mode, char **sp)
 	return NULL;
 }
 
-static type_ref *parse_type_ref_array(enum decl_mode mode, char **sp)
+static type_ref *parse_type_ref_array(enum decl_mode mode, decl *dfor)
 {
-	type_ref *r = parse_type_ref_nest(mode, sp);
+	type_ref *r = parse_type_ref_nest(mode, dfor);
 
 	while(accept(token_open_square)){
 		expr *size;
@@ -764,9 +766,9 @@ static type_ref *parse_type_ref_array(enum decl_mode mode, char **sp)
 	return r;
 }
 
-static type_ref *parse_type_ref_func(enum decl_mode mode, char **sp)
+static type_ref *parse_type_ref_func(enum decl_mode mode, decl *dfor)
 {
-	type_ref *sub = parse_type_ref_array(mode, sp);
+	type_ref *sub = parse_type_ref_array(mode, dfor);
 
 	while(accept(token_open_paren)){
 		type_ref *r_new = type_ref_new_func(sub, parse_func_arglist());
@@ -779,7 +781,7 @@ static type_ref *parse_type_ref_func(enum decl_mode mode, char **sp)
 	return sub;
 }
 
-static type_ref *parse_type_ref_ptr(enum decl_mode mode, char **sp)
+static type_ref *parse_type_ref_ptr(enum decl_mode mode, decl *dfor)
 {
 	int ptr;
 
@@ -794,15 +796,15 @@ static type_ref *parse_type_ref_ptr(enum decl_mode mode, char **sp)
 			EAT(curtok);
 		}
 
-		return creater(parse_type_ref2(mode, sp), qual);
+		return creater(parse_type_ref2(mode, dfor), qual);
 	}
 
-	return parse_type_ref_func(mode, sp);
+	return parse_type_ref_func(mode, dfor);
 }
 
-static type_ref *parse_type_ref2(enum decl_mode mode, char **sp)
+static type_ref *parse_type_ref2(enum decl_mode mode, decl *dfor)
 {
-	return parse_type_ref_ptr(mode, sp);
+	return parse_type_ref_ptr(mode, dfor);
 }
 
 static type_ref *type_ref_reverse(type_ref *r, type_ref *subtype)
@@ -824,9 +826,9 @@ static type_ref *type_ref_reverse(type_ref *r, type_ref *subtype)
 }
 
 static type_ref *parse_type3(
-		enum decl_mode mode, char **spel, type_ref *btype)
+		enum decl_mode mode, decl *dfor, type_ref *btype)
 {
-	return type_ref_reverse(parse_type_ref2(mode, spel), btype);
+	return type_ref_reverse(parse_type_ref2(mode, dfor), btype);
 }
 
 type_ref *parse_type()
@@ -864,12 +866,9 @@ static void parse_add_asm(decl *d)
 
 static decl *parse_decl(type_ref *btype, enum decl_mode mode)
 {
-	char *spel = NULL;
 	decl *d = decl_new();
 
-	d->ref = parse_type3(mode, &spel, btype);
-
-	d->spel = spel;
+	d->ref = parse_type3(mode, d, btype);
 
 	/* only check if it's not a function, otherwise it could be
 	 * int f(i)
@@ -916,7 +915,7 @@ static decl *parse_decl_extra(
 decl *parse_decl_single(enum decl_mode mode)
 {
 	enum decl_storage store = store_default;
-	type_ref *r = PARSE_BTYPE(mode, &store, NULL);
+	type_ref *r = PARSE_BTYPE(mode, &store, NULL /* align */);
 
 	if(!r){
 		if((mode & DECL_CAN_DEFAULT) == 0)
@@ -928,7 +927,7 @@ decl *parse_decl_single(enum decl_mode mode)
 		prevent_typedef(&r->where, store);
 	}
 
-	return parse_decl_extra(r, mode, store, NULL);
+	return parse_decl_extra(r, mode, store, NULL /* align */);
 }
 
 decl **parse_decls_one_type()
