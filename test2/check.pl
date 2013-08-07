@@ -9,11 +9,6 @@ sub die2
 	die "$0: @_\n";
 }
 
-sub chomp_all
-{
-	return map { chomp; $_ } @_;
-}
-
 sub lines
 {
 	my $f = shift;
