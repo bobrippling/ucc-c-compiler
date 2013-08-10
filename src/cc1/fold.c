@@ -569,6 +569,8 @@ void fold_decl(decl *d, symtable *stab)
 			DIE_AT(&d->where, "field width on non-integral field %s",
 					decl_to_str(d));
 
+		/* FIXME: only warn if "int" specified,
+		 * i.e. detect explicit signed/unsigned */
 		if(k.bits.iv.val == 1 && type_ref_is_signed(d->ref))
 			WARN_AT(&d->where, "1-bit signed field \"%s\" takes values -1 and 0",
 					decl_to_str(d));
