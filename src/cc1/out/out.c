@@ -672,7 +672,7 @@ void out_op(enum op_type op)
 	 * the result is returned
 	 */
 
-	struct vstack *t_const = NULL, *t_mem = NULL;
+	struct vstack *t_const = NULL, *t_mem_reg = NULL;
 
 	/* check for adding or subtracting to stack */
 #define POPULATE_TYPE(vp) \
@@ -682,7 +682,8 @@ void out_op(enum op_type op)
 			break;              \
 		case STACK:           \
 		case LBL:             \
-			t_mem = &vp;        \
+		case REG:             \
+			t_mem_reg = &vp;    \
 		default:              \
 			break;              \
 	}
@@ -690,15 +691,19 @@ void out_op(enum op_type op)
 	POPULATE_TYPE(vtop[0]);
 	POPULATE_TYPE(vtop[-1]);
 
-	if((op == op_plus || op == op_minus) && t_const && t_mem){
+	if((op == op_plus || op == op_minus) && t_const && t_mem_reg){
 		/* t_const == vtop... should be */
-		long *p = t_mem->type == STACK
-			? &t_mem->bits.off_from_bp
-			: &t_mem->bits.lbl.offset;
+		long *p;
+		switch(t_mem_reg->type){
+			case STACK: p = &t_mem_reg->bits.off_from_bp; break;
+			case LBL:   p = &t_mem_reg->bits.lbl.offset;  break;
+			case REG:   p = &t_mem_reg->bits.reg.offset;  break;
+			default: ucc_unreach();
+		}
 
 		*p += (op == op_minus ? -1 : 1) *
 			t_const->bits.val *
-			calc_ptr_step(t_mem->t);
+			calc_ptr_step(t_mem_reg->t);
 
 		goto pop_const;
 

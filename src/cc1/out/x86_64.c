@@ -120,9 +120,21 @@ static const char *vstack_str_r_ptr(char buf[VSTACK_STR_SZ], struct vstack *vs, 
 		}
 
 		case REG:
-			snprintf(buf, VSTACK_STR_SZ, "%s%%%s%s",
-					ptr ? "(" : "", reg_str(vs), ptr ? ")" : "");
+		{
+			char off_buf[16];
+
+			if(vs->bits.reg.offset)
+				snprintf(off_buf, sizeof off_buf, "%ld", vs->bits.reg.offset);
+			else
+				*off_buf = '\0';
+
+			snprintf(buf, VSTACK_STR_SZ, "%s%s%%%s%s",
+					off_buf,
+					ptr ? "(" : "",
+					reg_str(vs),
+					ptr ? ")" : "");
 			break;
+		}
 
 		case STACK:
 		case STACK_SAVE:
