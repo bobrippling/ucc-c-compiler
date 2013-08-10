@@ -12,66 +12,6 @@ const char *str_expr_op()
 	return "op";
 }
 
-static intval_t operate(
-		intval_t lval, intval_t *rval, /* rval is optional */
-		enum op_type op, int is_signed,
-		const char **error)
-{
-	typedef sintval_t S;
-	typedef  intval_t U;
-
-	/* FIXME: casts based on lval.type */
-#define piv (&konst->bits.iv)
-
-#define S_OP(o) (S)lval o (S)*rval
-#define U_OP(o) (U)lval o (U)*rval
-
-#define OP(  a, b) case a: return S_OP(b)
-#define OP_U(a, b) case a: return is_signed ? S_OP(b) : U_OP(b)
-
-	switch(op){
-		OP(op_multiply,   *);
-		OP(op_eq,         ==);
-		OP(op_ne,         !=);
-
-		OP_U(op_le,       <=);
-		OP_U(op_lt,       <);
-		OP_U(op_ge,       >=);
-		OP_U(op_gt,       >);
-
-		OP(op_xor,        ^);
-		OP(op_or,         |);
-		OP(op_and,        &);
-		OP(op_orsc,       ||);
-		OP(op_andsc,      &&);
-		OP(op_shiftl,     <<);
-		OP(op_shiftr,     >>);
-
-		case op_modulus:
-		case op_divide:
-			if(*rval)
-				return op == op_divide ? lval / *rval : lval % *rval;
-
-			*error = "division by zero";
-			return 0;
-
-		case op_plus:
-			return lval + (rval ? *rval : 0);
-
-		case op_minus:
-			return rval ? lval - *rval : -lval;
-
-		case op_not:  return !lval;
-		case op_bnot: return ~lval;
-
-		case op_unknown:
-			break;
-	}
-
-	ICE("unhandled type");
-#undef piv
-}
-
 static void const_offset(consty *r, consty *val, consty *addr,
 		type_ref *addr_type, enum op_type op)
 {
@@ -149,7 +89,7 @@ static void fold_const_expr_op(expr *e, consty *k)
 		int is_signed = type_ref_is_signed(e->lhs->tree_type) ||
 		                (e->rhs ? type_ref_is_signed(e->rhs->tree_type) : 0);
 
-		r = operate(
+		r = const_op_exec(
 				lhs.bits.iv.val,
 				e->rhs ? &rhs.bits.iv.val : NULL,
 				e->op, is_signed, &err);

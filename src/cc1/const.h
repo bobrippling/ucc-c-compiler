@@ -9,4 +9,9 @@ int const_expr_and_non_zero(expr *e);
 void const_fold_intval(expr *e, intval *);
 intval_t const_fold_val(expr *e);
 
+intval_t const_op_exec(
+		const intval_t lval, const intval_t *rval, /* rval is optional */
+		enum op_type op, int is_signed,
+		const char **error);
+
 #endif
