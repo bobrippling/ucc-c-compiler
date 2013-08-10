@@ -18,7 +18,11 @@ struct vstack
 	union
 	{
 		intval_t val;
-		int reg;
+		struct
+		{
+			int idx;
+			long offset; /* -4(%rdx) */
+		} reg;
 		long off_from_bp;
 		struct flag_opts
 		{
@@ -52,6 +56,7 @@ void vpop(void);
 void vswap(void);
 
 void v_clear(struct vstack *vp, type_ref *);
+void v_set_reg(struct vstack *vp, int r);
 
 void v_cast(struct vstack *vp, type_ref *to);
 

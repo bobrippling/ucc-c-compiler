@@ -109,7 +109,7 @@ void out_phi_pop_to(void *vvphi)
 	memcpy_safe(vphi, vtop);
 
 	if(vphi->type == REG)
-		v_reserve_reg(vphi->bits.reg); /* XXX: watch me */
+		v_reserve_reg(vphi->bits.reg.idx); /* XXX: watch me */
 
 	out_pop();
 }
@@ -119,15 +119,15 @@ void out_phi_join(void *vvphi)
 	struct vstack *const vphi = vvphi;
 
 	if(vphi->type == REG)
-		v_unreserve_reg(vphi->bits.reg); /* XXX: voila */
+		v_unreserve_reg(vphi->bits.reg.idx); /* XXX: voila */
 
 	/* join vtop and the current phi-save area */
 	v_to_reg(vtop);
 	v_to_reg(vphi);
 
-	if(vtop->bits.reg != vphi->bits.reg){
+	if(vtop->bits.reg.idx != vphi->bits.reg.idx){
 		/* _must_ match vphi, since it's already been generated */
-		impl_reg_cp(vtop, vphi->bits.reg);
+		impl_reg_cp(vtop, vphi->bits.reg.idx);
 		memcpy_safe(vtop, vphi);
 	}
 }
@@ -151,7 +151,7 @@ void out_dump(void)
 		fprintf(stderr,
 				"vstack[%d] = { .type = %d, .reg = %d, "
 				".bitfield = { .nbits = %u, .off = %u } }\n",
-				i, vstack[i].type, vstack[i].bits.reg,
+				i, vstack[i].type, vstack[i].bits.reg.idx,
 				vstack[i].bitfield.nbits, vstack[i].bitfield.off);
 }
 
@@ -201,7 +201,7 @@ int v_unused_reg(int stack_as_backup)
 		if(it->type == REG){
 			if(!first)
 				first = it;
-			used[impl_reg_to_scratch(it->bits.reg)] = 1;
+			used[impl_reg_to_scratch(it->bits.reg.idx)] = 1;
 		}
 	}
 
@@ -211,13 +211,20 @@ int v_unused_reg(int stack_as_backup)
 
 	if(stack_as_backup){
 		/* no free regs, move `first` to the stack and claim its reg */
-		int reg = first->bits.reg;
+		int reg = first->bits.reg.idx;
 
 		v_freeup_regp(first);
 
 		return reg;
 	}
 	return -1;
+}
+
+void v_set_reg(struct vstack *vp, int r)
+{
+	memset(&vp->bits.reg, 0, sizeof vp->bits.reg);
+	vp->type = REG;
+	vp->bits.reg.idx = r;
 }
 
 void v_to_reg2(struct vstack *from, int reg)
@@ -239,8 +246,7 @@ void v_to_reg2(struct vstack *from, int reg)
 	(lea ? impl_lea : impl_load)(from, reg);
 
 	v_clear(from, save);
-	from->type = REG;
-	from->bits.reg = reg;
+	v_set_reg(from, reg);
 }
 
 int v_to_reg(struct vstack *conv)
@@ -248,7 +254,7 @@ int v_to_reg(struct vstack *conv)
 	if(conv->type != REG)
 		v_to_reg2(conv, v_unused_reg(1));
 
-	return conv->bits.reg;
+	return conv->bits.reg.idx;
 }
 
 static struct vstack *v_find_reg(int reg)
@@ -258,7 +264,7 @@ static struct vstack *v_find_reg(int reg)
 		return NULL;
 
 	for(vp = vstack; vp <= vtop; vp++)
-		if(vp->type == REG && vp->bits.reg == reg)
+		if(vp->type == REG && vp->bits.reg.idx == reg)
 			return vp;
 
 	return NULL;
@@ -278,8 +284,7 @@ void v_freeup_regp(struct vstack *vp)
 		impl_reg_cp(vp, r);
 
 		v_clear(vp, NULL);
-		vp->type = REG;
-		vp->bits.reg = r;
+		v_set_reg(vp, r);
 
 	}else{
 		v_save_reg(vp);
@@ -299,8 +304,7 @@ static int v_alloc_stack(int sz)
 		sz = pack_to_align(sz, cc1_mstack_align);
 
 		vpush(NULL);
-		vtop->type = REG;
-		vtop->bits.reg = REG_SP;
+		v_set_reg(vtop, REG_SP);
 
 		out_push_i(type_ref_cached_INTPTR_T(), sz);
 		out_op(op_minus);
@@ -466,8 +470,7 @@ void out_dup(void)
 			int r = v_unused_reg(1);
 			impl_reg_cp(&vtop[-1], r);
 
-			vtop->type = REG;
-			vtop->bits.reg = r;
+			v_set_reg(vtop, r);
 			vtop->t = vtop[-1].t;
 
 			break;
@@ -891,8 +894,7 @@ void out_deref()
 			/* impl_load, since we don't want a lea switch */
 			impl_load(vtop, r);
 
-			vtop->type = REG;
-			vtop->bits.reg = r;
+			v_set_reg(vtop, r);
 			break;
 		}
 	}
@@ -1014,8 +1016,7 @@ void out_call(int nargs, type_ref *r_ret, type_ref *r_func)
 
 	/* return type */
 	v_clear(vtop, r_ret);
-	vtop->type = REG;
-	vtop->bits.reg = REG_RET;
+	v_set_reg(vtop, REG_RET);
 }
 
 void out_jmp(void)
@@ -1122,8 +1123,7 @@ void out_push_frame_ptr(int nframes)
 	out_flush_volatile();
 
 	vpush(NULL);
-	vtop->type = REG;
-	vtop->bits.reg = impl_frame_ptr_to_reg(nframes);
+	v_set_reg(vtop, impl_frame_ptr_to_reg(nframes));
 }
 
 void out_push_reg_save_ptr(void)
