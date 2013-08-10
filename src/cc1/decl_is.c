@@ -67,7 +67,7 @@ type_ref *type_ref_next(type_ref *r)
 			return r->ref;
 	}
 
-	ucc_unreach();
+	ucc_unreach(NULL);
 }
 
 type_ref *type_ref_is(type_ref *r, enum type_ref_type t)
@@ -429,7 +429,7 @@ enum type_qualifier type_ref_qual(const type_ref *r)
 			return type_ref_qual(r->bits.tdef.type_of->tree_type);
 	}
 
-	ucc_unreach();
+	ucc_unreach(qual_none);
 }
 
 funcargs *type_ref_funcargs(type_ref *r)

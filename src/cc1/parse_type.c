@@ -505,7 +505,7 @@ static type_ref *parse_btype(
 				case type_union:
 				case type_enum:
 				case type_unknown:
-					ucc_unreach();
+					ucc_unreach(NULL);
 
 				case type_char:
 				case type_int:

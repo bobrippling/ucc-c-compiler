@@ -540,7 +540,7 @@ unsigned type_ref_size(type_ref *r, where *from)
 		}
 	}
 
-	ucc_unreach();
+	ucc_unreach(0);
 }
 
 unsigned decl_size(decl *d)
