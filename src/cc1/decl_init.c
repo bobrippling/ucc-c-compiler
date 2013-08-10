@@ -942,6 +942,13 @@ static expr *decl_init_create_assignments_sue_base(
 
 	*psmem = smem = sue->members[idx]->struct_member;
 
+	/* don't create zero-width bitfield inits */
+	if(DECL_IS_ANON_BITFIELD(smem)
+	&& const_expr_and_zero(smem->field_width))
+	{
+		return NULL;
+	}
+
 	return expr_new_struct_mem(base, 1, smem);
 }
 
@@ -1070,6 +1077,8 @@ zero_init:
 					sue_base = decl_init_create_assignments_sue_base(
 							sue, base, &smem, idx, n);
 
+					UCC_ASSERT(sue_base, "zero width bitfield init in union?");
+
 					decl_init_create_assignments_base(
 							*i,
 							smem->ref,
@@ -1091,12 +1100,15 @@ zero_init:
 					di = NULL;
 
 				if(sue){
-					decl *smem;
+					decl *smem = sue->members[idx]->struct_member;
 
 					UCC_ASSERT(sue->primitive != type_union, "sneaky union");
 
 					new_base = decl_init_create_assignments_sue_base(
 							sue, base, &smem, idx, n);
+
+					if(!new_base)
+						continue; /* 0-width bitfield */
 
 					next_type = smem->ref;
 
