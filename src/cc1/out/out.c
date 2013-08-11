@@ -14,6 +14,7 @@
 #include "asm.h"
 #include "../pack.h"
 #include "../defs.h"
+#include "../const.h"
 
 #define v_check_type(t) if(!t) t = type_ref_cached_VOID_PTR()
 
@@ -671,7 +672,6 @@ void out_op(enum op_type op)
 	struct vstack *t_const = NULL, *t_mem = NULL;
 
 	/* check for adding or subtracting to stack */
-	if(op == op_plus || op == op_minus){
 #define POPULATE_TYPE(vp) \
 	switch(vp.type){        \
 		case CONST:           \
@@ -684,11 +684,10 @@ void out_op(enum op_type op)
 			break;              \
 	}
 
-		POPULATE_TYPE(vtop[0]);
-		POPULATE_TYPE(vtop[-1]);
-	}
+	POPULATE_TYPE(vtop[0]);
+	POPULATE_TYPE(vtop[-1]);
 
-	if(t_const && t_mem){
+	if((op == op_plus || op == op_minus) && t_const && t_mem){
 		/* t_const == vtop... should be */
 		long *p = t_mem->type == STACK
 			? &t_mem->bits.off_from_bp
@@ -698,11 +697,9 @@ void out_op(enum op_type op)
 			t_const->bits.val *
 			calc_ptr_step(t_mem->t);
 
-		goto ignore_const;
+		goto pop_const;
 
 	}else if(t_const){
-		/* TODO: -O1, constant folding here */
-
 		switch(op){
 			case op_plus:
 			case op_minus:
@@ -711,35 +708,52 @@ void out_op(enum op_type op)
 			case op_shiftl: /* if we're shifting 0, or shifting _by_ zero, noop */
 			case op_shiftr:
 				if(t_const->bits.val == 0)
-					goto ignore_const;
+					goto pop_const;
 			default:
 				break;
 
 			case op_multiply:
 			case op_divide:
 				if(t_const->bits.val == 1)
-					goto ignore_const;
+					goto pop_const;
 				break;
 
 			case op_and:
 				if((sintval_t)t_const->bits.val == -1)
-					goto ignore_const;
+					goto pop_const;
 				break;
+
+pop_const:
+				/* we can only do this for non-commutative ops
+				 * if t_const is the top/rhs */
+				if(!op_is_commutative(op) && t_const != vtop)
+					break;
+
+				if(t_const != vtop)
+					vswap(); /* need t_const on top for discarding */
+				vpop();
+				return;
 		}
 
-		goto def;
+		/* constant folding */
+		if((t_const == vtop ? &vtop[-1] : vtop)->type == CONST){
+			const char *err = NULL;
+			const intval_t eval = const_op_exec(
+					vtop[-1].bits.val, &vtop->bits.val,
+					op, type_ref_is_signed(vtop->t),
+					&err);
 
-ignore_const:
-		if(t_const != vtop)
-			vswap(); /* need t_const on top for discarding */
+			UCC_ASSERT(!err, "const op err %s", err);
 
-		vpop();
+			vpop();
+			vtop->type = CONST;
+			vtop->bits.val = eval;
+			return;
+		}
+	}
 
-	}else{
-		int div;
-
-def:
-		div = 0;
+	{
+		int div = 0;
 
 		switch(op){
 			case op_plus:

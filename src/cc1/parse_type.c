@@ -1122,7 +1122,12 @@ void parse_decls_multi_type(
 		do{
 			decl *d = parse_decl_extra(this_ref, parse_flag, store, align);
 
-			if(!d->spel){
+			if((mode & DECL_MULTI_ACCEPT_FIELD_WIDTH) && accept(token_colon)){
+				/* normal decl, check field spec */
+				d->field_width = parse_expr_no_comma();
+			}
+
+			if(!d->spel && !d->field_width){
 				/*
 				 * int; - fine for "int;", but "int i,;" needs to fail
 				 * struct A; - fine
@@ -1132,10 +1137,6 @@ void parse_decls_multi_type(
 				if(last == NULL){
 					int warn = 0;
 					struct_union_enum_st *sue;
-
-					/* allow "int : 5;" */
-					if(curtok == token_colon)
-						goto add;
 
 					/* check for no-fwd and anon */
 					sue = PARSE_type_ref_is_s_or_u_or_e(this_ref);
@@ -1260,11 +1261,6 @@ add:
 					DIE_AT(&d->where, "can't have a typedef function with code");
 				else if(d->init)
 					DIE_AT(&d->where, "can't init a typedef");
-			}
-
-			if((mode & DECL_MULTI_ACCEPT_FIELD_WIDTH) && accept(token_colon)){
-				/* normal decl, check field spec */
-				d->field_width = parse_expr_no_comma();
 			}
 
 			last = d;

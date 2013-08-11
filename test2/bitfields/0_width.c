@@ -24,4 +24,6 @@ main()
 
 	// should be packed like ints
 	chk(0[(int *)&a], 1[(int *)&a]);
+
+	return 0;
 }
