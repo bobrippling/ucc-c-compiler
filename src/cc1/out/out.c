@@ -730,6 +730,11 @@ void out_op(enum op_type op)
 		goto def;
 
 ignore_const:
+		/* we can only do this for non-commutative ops
+		 * if t_const is the top/rhs */
+		if(!op_is_commutative(op) && t_const != vtop)
+			goto def;
+
 		if(t_const != vtop)
 			vswap(); /* need t_const on top for discarding */
 
