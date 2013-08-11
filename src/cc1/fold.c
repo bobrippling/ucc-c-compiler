@@ -263,6 +263,7 @@ static int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 		unsigned align_max = 1;
 		unsigned sz_max = 0;
 		unsigned offset = 0;
+		int realign_next = 0;
 		struct
 		{
 			unsigned current_off, first_off;
@@ -302,17 +303,25 @@ static int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 				sz = align = 0; /* don't affect sz_max or align_max */
 
 				if(bits == 0){
-					/* align next field / treat as new bitfield */
-					struct_pack_finish_bitfield(&offset, &bitfield.current_off);
+					/* align next field / treat as new bitfield
+					 * note we don't pad here - we don't want to
+					 * take up any space with this field
+					 */
+					realign_next = 1;
 
-				}else if(!bitfield.current_off
+				}else if(realign_next
+				|| !bitfield.current_off
 				|| bitfield.current_off + bits > bf_cur_lim)
 				{
-					if(bitfield.current_off){
-						/* bitfield overflow - repad */
-						WARN_AT(&d->where, "bitfield overflow (%d + %d > %d) - "
-								"moved to next boundary", bitfield.current_off, bits,
-								bf_cur_lim);
+					if(realign_next || bitfield.current_off){
+						if(!realign_next){
+							/* bitfield overflow - repad */
+							WARN_AT(&d->where, "bitfield overflow (%d + %d > %d) - "
+									"moved to next boundary", bitfield.current_off, bits,
+									bf_cur_lim);
+						}else{
+							realign_next = 0;
+						}
 
 						/* don't pay attention to the current bitfield offset */
 						bitfield.current_off = 0;
