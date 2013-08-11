@@ -21,6 +21,8 @@
 	UCC_ASSERT(di->type == decl_init_scalar, \
 			"scalar expected for bitfield init")
 
+#define ASM_COMMENT "#"
+
 struct bitfield_val
 {
 	intval_t val;
@@ -67,7 +69,7 @@ int asm_type_size(type_ref *r)
 static void asm_declare_pad(FILE *f, unsigned pad, const char *why)
 {
 	if(pad)
-		fprintf(f, ".space %u # %s\n", pad, why);
+		fprintf(f, ".space %u " ASM_COMMENT " %s\n", pad, why);
 }
 
 static void asm_declare_init_type(FILE *f, type_ref *ty)
@@ -153,7 +155,7 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 			asm_declare_pad(f, type_ref_size(tfor, NULL),
 					"null init"/*, type_ref_to_str(tfor)*/);
 		}else{
-			fprintf(f, "# flex array init skipped\n");
+			fprintf(f, ASM_COMMENT " flex array init skipped\n");
 		}
 
 	}else if((r = type_ref_is_type(tfor, type_struct))){
@@ -320,9 +322,6 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 
 		UCC_ASSERT(init->type == decl_init_scalar, "scalar init expected");
 
-		if(exp == DYNARRAY_NULL)
-			exp = NULL;
-
 		/* exp->tree_type should match tfor */
 		{
 			char buf[TYPE_REF_STATIC_BUFSIZ];
@@ -335,6 +334,7 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 		}
 
 		/* use tfor, since "abc" has type (char[]){(int)'a', (int)'b', ...} */
+		DEBUG("  scalar init for %s:", type_ref_to_str(tfor));
 		asm_declare_init_type(f, tfor);
 		static_addr(exp);
 		fputc('\n', f);
