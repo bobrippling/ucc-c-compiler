@@ -356,7 +356,7 @@ static void asm_reserve_bytes(unsigned nbytes)
 	 * TODO: .comm buf,512,5
 	 * or    .zerofill SECTION_NAME,buf,512,5
 	 */
-	asm_out_section(SECTION_BSS, ".space %u\n", nbytes);
+	asm_declare_pad(cc_out[SECTION_BSS], nbytes, "object space");
 }
 
 void asm_predeclare_extern(decl *d)
