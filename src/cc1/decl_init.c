@@ -51,6 +51,8 @@ typedef struct
 	 ? &it->pos[0]->where \
 	 : def)
 
+#define DECL_IS_ANON_BITFIELD(d) ((d)->field_width && !(d)->spel)
+
 typedef decl_init **aggregate_brace_f(
 		decl_init **current, struct init_cpy ***range_store,
 		init_iter *,
@@ -611,23 +613,28 @@ static decl_init **decl_init_brace_up_sue2(
 		if(i < sue_nmem){
 			sue_member *mem = sue->members[i];
 			decl_init *replacing = NULL;
+			decl *d_mem;
 
 			if(!mem)
 				break;
+			d_mem = mem->struct_member;
+
+			/* skip bitfield padding
+			 * init for it is <zero> created by a dynarray_padinsert */
+			if(DECL_IS_ANON_BITFIELD(d_mem))
+				continue;
 
 			if(i < n && current[i] != DYNARRAY_NULL)
 				replacing = current[i];
 
-			if(type_ref_is_incomplete_array(
-						mem->struct_member->ref))
-			{
+			if(type_ref_is_incomplete_array(d_mem->ref)){
 				WARN_AT(&this->where, "initialisation of flexible array (GNU)");
 			}
 
 			if(!braced_sub){
 				braced_sub = decl_init_brace_up_r(
 						replacing, iter,
-						mem->struct_member->ref, stab);
+						d_mem->ref, stab);
 			}
 
 			/* XXX: padinsert will insert zero inits for skipped fields,
@@ -636,10 +643,10 @@ static decl_init **decl_init_brace_up_sue2(
 			dynarray_padinsert(&current, i, &n, braced_sub);
 
 			/* done, check bitfield truncation */
-			if(braced_sub && mem->struct_member->field_width){
+			if(braced_sub && d_mem->field_width){
 				UCC_ASSERT(braced_sub->type == decl_init_scalar,
 						"scalar init expected for bitfield");
-				bitfield_trunc_check(mem->struct_member, braced_sub->bits.expr);
+				bitfield_trunc_check(d_mem, braced_sub->bits.expr);
 			}
 
 			if(sue->primitive == type_union)
@@ -935,10 +942,7 @@ static expr *decl_init_create_assignments_sue_base(
 
 	*psmem = smem = sue->members[idx]->struct_member;
 
-	return expr_new_struct(
-			base,
-			1 /* . */,
-			expr_new_identifier(smem->spel));
+	return expr_new_struct_mem(base, 1, smem);
 }
 
 static void decl_init_create_assignment_from_copy(
@@ -1095,6 +1099,7 @@ zero_init:
 							sue, base, &smem, idx, n);
 
 					next_type = smem->ref;
+
 				}else{
 					new_base = expr_new_array_idx(base, idx);
 

@@ -25,9 +25,17 @@ void fold_expr_struct(expr *e, symtable *stab)
 	FOLD_EXPR(e->lhs, stab);
 	/* don't fold the rhs - just a member name */
 
-	UCC_ASSERT(expr_kind(e->rhs, identifier),
-			"struct/union member not identifier (%s)", e->rhs->f_str());
-	spel = e->rhs->bits.ident.spel;
+	if(e->rhs){
+		UCC_ASSERT(expr_kind(e->rhs, identifier),
+				"struct/union member not identifier (%s)", e->rhs->f_str());
+
+		UCC_ASSERT(!e->bits.struct_mem.d, "already have a struct-member");
+
+		spel = e->rhs->bits.ident.spel;
+	}else{
+		UCC_ASSERT(e->bits.struct_mem.d, "no member specified already?");
+		spel = NULL;
+	}
 
 	/* we access a struct, of the right ptr depth */
 	{
@@ -60,8 +68,8 @@ err:
 				type_ref_to_str(e->lhs->tree_type));
 	}
 
-	/* found the struct, find the member */
-	{
+	if(spel){
+		/* found the struct, find the member */
 		decl *d_mem = struct_union_member_find(sue, spel,
 				&e->bits.struct_mem.extra_off, NULL);
 
@@ -70,7 +78,7 @@ err:
 					sue_str(sue), sue->spel, spel);
 
 		e->rhs->tree_type = (e->bits.struct_mem.d = d_mem)->ref;
-	}
+	}/* else already have the member */
 
 	/*
 	 * if it's a.b, convert to (&a)->b for asm gen
@@ -97,7 +105,7 @@ err:
 	{
 		enum type_qualifier addon = type_ref_qual(e->lhs->tree_type);
 
-		e->tree_type = type_ref_new_cast_add(e->rhs->tree_type, addon);
+		e->tree_type = type_ref_new_cast_add(e->bits.struct_mem.d->ref, addon);
 	}
 }
 
@@ -111,10 +119,10 @@ static void gen_expr_struct_lea(expr *e)
 	out_push_i(type_ref_cached_INTPTR_T(), struct_offset(e)); /* integral offset */
 	out_op(op_plus);
 
-	out_change_type(type_ref_ptr_depth_inc(e->rhs->tree_type));
-
 	{
 		decl *d = e->bits.struct_mem.d;
+
+		out_change_type(type_ref_ptr_depth_inc(d->ref));
 
 		/* set if we're a bitfield - out_deref() and out_store()
 		 * i.e. read + write then handle this
@@ -196,6 +204,10 @@ void mutate_expr_struct(expr *e)
 {
 	e->f_lea = gen_expr_struct_lea;
 	e->f_const_fold = fold_const_expr_struct;
+
+	/* zero out the union/rhs if we're mutating */
+	e->bits.struct_mem.d = NULL;
+	e->rhs = NULL;
 }
 
 expr *expr_new_struct(expr *sub, int dot, expr *ident)
@@ -204,6 +216,15 @@ expr *expr_new_struct(expr *sub, int dot, expr *ident)
 	e->expr_is_st_dot = dot;
 	e->lhs = sub;
 	e->rhs = ident;
+	return e;
+}
+
+expr *expr_new_struct_mem(expr *sub, int dot, decl *d)
+{
+	expr *e = expr_new_wrapper(struct);
+	e->expr_is_st_dot = dot;
+	e->lhs = sub;
+	e->bits.struct_mem.d = d;
 	return e;
 }
 

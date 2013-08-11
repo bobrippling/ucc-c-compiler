@@ -1,0 +1,10 @@
+d:
+.quad c
+a:
+.space 0
+b:
+.space 0
+c:
+.space 0
+e:
+.space 0
