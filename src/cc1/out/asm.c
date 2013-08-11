@@ -84,12 +84,15 @@ static void asm_declare_init_bitfields(
 {
 #define BITFIELD_DBG(...) /*fprintf(stderr, __VA_ARGS__)*/
 	intval_t v = 0;
+	unsigned width = 0;
 	unsigned i;
 
 	BITFIELD_DBG("bitfield out -- new\n");
 	for(i = 0; i < n; i++){
 		intval_t this = intval_truncate_bits(
 				vals[i].val, vals[i].width);
+
+		width += vals[i].width;
 
 		BITFIELD_DBG("bitfield out: 0x%llx << %u gives ",
 				this, vals[i].offset);
@@ -101,8 +104,13 @@ static void asm_declare_init_bitfields(
 
 	BITFIELD_DBG("bitfield done with 0x%llx\n", v);
 
-	asm_declare_init_type(f, ty);
-	fprintf(f, "%" INTVAL_FMT_D "\n", v);
+	if(width > 0){
+		asm_declare_init_type(f, ty);
+		fprintf(f, "%" INTVAL_FMT_D "\n", v);
+	}else{
+		fprintf(f, ASM_COMMENT " skipping zero length bitfield%s init\n",
+				n == 1 ? "" : "s");
+	}
 }
 
 static void bitfields_out(
