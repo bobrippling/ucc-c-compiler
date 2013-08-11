@@ -5,13 +5,16 @@ struct vstack
 {
 	enum vstore
 	{
-		CONST,          /* vtop is a constant value */
-		REG,            /* vtop is in a register */
-		STACK,          /* vtop pointer onto stack */
-		STACK_SAVE,     /* saved register/flag */
-		FLAG,           /* vtop is a cpu flag */
-		LBL,            /* vtop is a pointer to label */
-	} type;
+		V_CONST = 0,      /* vtop is a constant value */
+		V_REG   = 1,      /* vtop is in a register */
+		V_STACK = 2,      /* vtop is a stack value */
+		V_FLAG  = 3,      /* vtop is a cpu flag */
+		V_LBL   = 4,      /* vtop is a label */
+
+		V_LVAL  = 8       /* vtop is an lvalue, or'd in */
+	} type_;
+#define V_TYPE(ty)   ((ty ## _) & ~V_LVAL)
+#define V_LVAL(ty) !!((ty ## _) &  V_LVAL)
 
 	type_ref *t;
 

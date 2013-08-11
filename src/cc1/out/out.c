@@ -72,7 +72,7 @@ static void vpush(type_ref *t)
 				"vstack overflow, vtop=%p, vstack=%p, diff %d",
 				(void *)vtop, (void *)vstack, out_vcount());
 
-		if(vtop->type == FLAG)
+		if(V_TYPE(vtop->type) == V_FLAG)
 			v_to_reg(vtop);
 
 		vtop++;
@@ -108,7 +108,7 @@ void out_phi_pop_to(void *vvphi)
 	/* put the current value into the phi-save area */
 	memcpy_safe(vphi, vtop);
 
-	if(vphi->type == REG)
+	if(V_TYPE(vphi->type) == V_REG)
 		v_reserve_reg(vphi->bits.reg.idx); /* XXX: watch me */
 
 	out_pop();
@@ -118,7 +118,7 @@ void out_phi_join(void *vvphi)
 {
 	struct vstack *const vphi = vvphi;
 
-	if(vphi->type == REG)
+	if(V_TYPE(vphi->type) == V_REG)
 		v_unreserve_reg(vphi->bits.reg.idx); /* XXX: voila */
 
 	/* join vtop and the current phi-save area */
@@ -151,7 +151,7 @@ void out_dump(void)
 		fprintf(stderr,
 				"vstack[%d] = { .type = %d, .reg = %d, "
 				".bitfield = { .nbits = %u, .off = %u } }\n",
-				i, vstack[i].type, vstack[i].bits.reg.idx,
+				i, vstack[i].type_, vstack[i].bits.reg.idx,
 				vstack[i].bitfield.nbits, vstack[i].bitfield.off);
 }
 
@@ -170,20 +170,17 @@ void out_swap(void)
 
 void v_to_reg_const(struct vstack *vp)
 {
-	switch(vp->type){
-		case STACK:
-		case LBL:
+	switch(V_TYPE(vp->type)){
+		case V_STACK:
+		case V_LBL:
 			/* need to pull the values from the stack */
 
-		case STACK_SAVE:
-			/* ditto, impl handles pulling from stack */
-
-		case FLAG:
+		case V_FLAG:
 			/* obviously can't have a flag in cmp/mov code */
 			v_to_reg(vp);
 
-		case REG:
-		case CONST:
+		case V_REG:
+		case V_CONST:
 			break;
 	}
 }
@@ -198,7 +195,7 @@ int v_unused_reg(int stack_as_backup)
 	first = NULL;
 
 	for(it = vstack; it <= vtop; it++){
-		if(it->type == REG){
+		if(V_TYPE(it->type) == REG){
 			if(!first)
 				first = it;
 			used[impl_reg_to_scratch(it->bits.reg.idx)] = 1;
@@ -223,7 +220,7 @@ int v_unused_reg(int stack_as_backup)
 void v_set_reg(struct vstack *vp, int r)
 {
 	memset(&vp->bits.reg, 0, sizeof vp->bits.reg);
-	vp->type = REG;
+	vp->type_ = V_REG;
 	vp->bits.reg.idx = r;
 }
 
@@ -232,14 +229,14 @@ void v_to_reg2(struct vstack *from, int reg)
 	type_ref *const save = from->t;
 	int lea = 0;
 
-	switch(from->type){
-		case STACK:
-		case LBL:
-			lea = 1;
-		case FLAG:
-		case STACK_SAVE: /* voila */
-		case CONST:
-		case REG:
+	switch(V_TYPE(from->type)){
+		case V_FLAG:
+			UCC_ASSERT(!V_LVAL(from->type), "flag lvalue");
+		case V_STACK:
+		case V_LBL:
+		case V_CONST:
+		case V_REG:
+			lea = V_LVAL(from->type);
 			break;
 	}
 
