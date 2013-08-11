@@ -451,7 +451,6 @@ void out_push_noop()
 void out_dup(void)
 {
 	/* TODO: mark reg as duped, but COW */
-	out_comment("dup");
 	vpush(NULL);
 	switch(vtop[-1].type){
 		case CONST:
@@ -468,9 +467,12 @@ void out_dup(void)
 		{
 			/* need a new reg */
 			int r = v_unused_reg(1);
+			out_comment("dup");
 			impl_reg_cp(&vtop[-1], r);
 
 			v_set_reg(vtop, r);
+			/* maintain type and offset */
+			vtop->bits.reg.offset = vtop[-1].bits.reg.offset;
 			vtop->t = vtop[-1].t;
 
 			break;
