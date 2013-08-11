@@ -160,6 +160,8 @@ char *dirname_pop()
 
 void set_current_fname(const char *new)
 {
+	if(current_fname == new)
+		return;
 	free(current_fname);
 	current_fname = ustrdup(new);
 }
