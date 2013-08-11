@@ -630,12 +630,15 @@ static decl_init **decl_init_brace_up_sue2(
 						mem->struct_member->ref, stab);
 			}
 
+			/* XXX: padinsert will insert zero inits for skipped fields,
+			 * including anonymous bitfield pads
+			 */
 			dynarray_padinsert(&current, i, &n, braced_sub);
 
 			/* done, check bitfield truncation */
 			if(braced_sub && mem->struct_member->field_width){
 				UCC_ASSERT(braced_sub->type == decl_init_scalar,
-						"scalar init expected for union");
+						"scalar init expected for bitfield");
 				bitfield_trunc_check(mem->struct_member, braced_sub->bits.expr);
 			}
 
