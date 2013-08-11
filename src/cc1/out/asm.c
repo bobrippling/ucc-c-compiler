@@ -180,8 +180,14 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 			int inc_iter = 1;
 
 			/* only pad if we're not on a bitfield or we're on the first bitfield */
-			if(!d_mem->field_width || !first_bf)
+			if(!d_mem->field_width || !first_bf){
 				asm_declare_pad(f, d_mem->struct_offset - end_of_last, "struct padding");
+
+#define DEBUG(s, ...) /*fprintf(f, "\033[35m" s "\033[m\n", __VA_ARGS__)*/
+
+				DEBUG("^ pad before \"%s\" offset %d, end_of_last = %d",
+						d_mem->spel, d_mem->struct_offset, end_of_last);
+			}
 
 			if(d_mem->field_width){
 				decl_init *di_to_use = NULL;
@@ -221,18 +227,17 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 				UCC_ASSERT(!mem[1], "flex-arr not at end");
 			}else{
 				unsigned last_sz = type_ref_size(d_mem->ref, NULL);
+
 				/* FIXME: here - zero size bitfield? */
-				fprintf(stderr, "last_sz = %u, d_mem->struc"...
 				end_of_last = d_mem->struct_offset + last_sz;
+				DEBUG("done with member \"%s\", end_of_last = %d",
+						d_mem->spel, end_of_last);
 			}
 		}
 
 		if(nbitfields)
 			bitfields_out(f, bitfields, &nbitfields, first_bf->ref);
 		free(bitfields);
-
-		fprintf(stderr, "sue_size(%s) = %u, end_of_last = %u\n",
-				sue->spel, sue_size(sue, NULL), end_of_last);
 
 		/* need to pad to struct size */
 		asm_declare_pad(f,
