@@ -674,6 +674,9 @@ void gen_expr_op(expr *e)
 				gen_expr(e->rhs);
 
 				out_op(e->op);
+
+				/* make sure we get the pointer, for example 2+(int *)p
+				 * or the int, e.g. (int *)a && (int *)b -> int */
 				out_change_type(e->tree_type);
 
 				if(fopt_mode & FOPT_TRAPV
@@ -687,8 +690,6 @@ void gen_expr_op(expr *e)
 					out_label(skip);
 					free(skip);
 				}
-				/* make sure we get the pointer, for example 2+(int *)p
-				 * or the int, e.g. (int *)a && (int *)b -> int */
 			}else{
 				out_op_unary(e->op);
 			}
