@@ -171,42 +171,56 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 		decl *first_bf = NULL;
 
 		UCC_ASSERT(init->type == decl_init_brace, "unbraced struct");
-		i = init->bits.ar.inits;
 
+#define DEBUG(s, ...) /*fprintf(f, "\033[35m" s "\033[m\n", __VA_ARGS__)*/
+
+		i = init->bits.ar.inits;
 		/* iterate using members, not inits */
 		for(mem = sue->members;
 				mem && *mem;
 				mem++)
 		{
 			decl *d_mem = (*mem)->struct_member;
-			int inc_iter = 1;
+			decl_init *di_to_use = NULL;
+
+			if(i){
+				int inc = 1;
+
+				if(*i == NULL)
+					inc = 0;
+				else if(*i != DYNARRAY_NULL)
+					di_to_use = *i;
+
+				if(inc){
+					i++;
+					if(!*i)
+						i = NULL; /* reached end */
+				}
+			}
+
+			DEBUG("init for %ld/%s, %s",
+					mem - sue->members, d_mem->spel,
+					di_to_use ? di_to_use->bits.expr->f_str() : NULL);
 
 			/* only pad if we're not on a bitfield or we're on the first bitfield */
 			if(!d_mem->field_width || !first_bf){
-				asm_declare_pad(f, d_mem->struct_offset - end_of_last, "struct padding");
+				DEBUG("prev padding, offset=%d, end_of_last=%d",
+						d_mem->struct_offset, end_of_last);
 
-#define DEBUG(s, ...) /*fprintf(f, "\033[35m" s "\033[m\n", __VA_ARGS__)*/
-
-				DEBUG("^ pad before \"%s\" offset %d, end_of_last = %d",
-						d_mem->spel, d_mem->struct_offset, end_of_last);
+				asm_declare_pad(f,
+						d_mem->struct_offset - end_of_last,
+						"prev struct padding");
 			}
 
 			if(d_mem->field_width){
-				decl_init *di_to_use = NULL;
-
 				if(!first_bf || d_mem->first_bitfield){
 					if(first_bf){
+						DEBUG("new bitfield group (%s is new boundary), old:",
+								d_mem->spel);
 						/* next bitfield group - store the current */
 						bitfields_out(f, bitfields, &nbitfields, first_bf->ref);
 					}
 					first_bf = d_mem;
-				}
-
-				if(d_mem->spel && i){
-					if((di_to_use = *i) == DYNARRAY_NULL)
-						di_to_use = NULL;
-				}else{
-					inc_iter = 0;
 				}
 
 				bitfields = bitfields_add(
@@ -215,22 +229,20 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 
 			}else{
 				if(nbitfields){
+					DEBUG("at non-bitfield, prev-bitfield out:", 0);
 					bitfields_out(f, bitfields, &nbitfields, first_bf->ref);
 					first_bf = NULL;
 				}
 
-				asm_declare_init(f, i ? *i : NULL, d_mem->ref);
+				DEBUG("normal init for %s:", d_mem->spel);
+				asm_declare_init(f, di_to_use, d_mem->ref);
 			}
-
-			if(inc_iter && i && !*++i)
-				i = NULL; /* reached end */
 
 			if(type_ref_is_incomplete_array(d_mem->ref)){
 				UCC_ASSERT(!mem[1], "flex-arr not at end");
-			}else{
+			}else if(!d_mem->field_width || d_mem->first_bitfield){
 				unsigned last_sz = type_ref_size(d_mem->ref, NULL);
 
-				/* FIXME: here - zero size bitfield? */
 				end_of_last = d_mem->struct_offset + last_sz;
 				DEBUG("done with member \"%s\", end_of_last = %d",
 						d_mem->spel, end_of_last);
