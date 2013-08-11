@@ -309,6 +309,9 @@ static int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 					 */
 					realign_next = 1;
 
+					/* also set struct_offset for 0-len bf, for pad reasons */
+					d->struct_offset = offset;
+
 				}else if(realign_next
 				|| !bitfield.current_off
 				|| bitfield.current_off + bits > bf_cur_lim)
