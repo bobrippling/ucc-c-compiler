@@ -1,3 +1,4 @@
+// RUN: ! %ucc -E %s | grep __
 __TIMESTAMP__
 __TIME__
 __DATE__
