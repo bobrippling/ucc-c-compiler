@@ -242,12 +242,16 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 	if((flag = (type_ref_is_fptr(tlhs) && type_ref_is_nonfptr(trhs)))
 	||         (type_ref_is_fptr(trhs) && type_ref_is_nonfptr(tlhs)))
 	{
-		char buf[TYPE_REF_STATIC_BUFSIZ];
-		WARN_AT(&e->where, "%scast from %spointer to %spointer\n"
-				"%s <- %s",
-				IMPLICIT_STR(e),
-				flag ? "" : "function-", flag ? "function-" : "",
-				type_ref_to_str(tlhs), type_ref_to_str_r(buf, trhs));
+		/* allow cast from NULL to func ptr */
+		if(!expr_is_null_ptr(e->expr, 0)){
+			char buf[TYPE_REF_STATIC_BUFSIZ];
+
+			WARN_AT(&e->where, "%scast from %spointer to %spointer\n"
+					"%s <- %s",
+					IMPLICIT_STR(e),
+					flag ? "" : "function-", flag ? "function-" : "",
+					type_ref_to_str(tlhs), type_ref_to_str_r(buf, trhs));
+		}
 	}
 
 #ifdef W_QUAL
