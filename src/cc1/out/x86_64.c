@@ -701,7 +701,7 @@ void impl_op(enum op_type op)
 		 * [should merge at some point - generic instructions etc]
 		 */
 
-		if(vtop->type != TO_REG && op_is_commutative(op))
+		if(vtop->type != REG && op_is_commutative(op))
 			out_swap();
 
 		/* memory or register */
