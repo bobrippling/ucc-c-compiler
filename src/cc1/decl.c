@@ -42,6 +42,7 @@ void type_ref_init(symtable *stab)
 	const where w = WHERE_INIT("<builtin>", "<builtin>", 1, 1);
 	eof_where = &w;
 
+	/* FIXME: cache unsigned types too */
 	cache_basics[type_void] = type_ref_cached_VOID();
 	cache_basics[type_int]  = type_ref_cached_INT();
 	cache_basics[type_char] = type_ref_cached_CHAR();
@@ -71,11 +72,11 @@ void type_ref_init(symtable *stab)
 		dynarray_add(&to,              \
 				sue_member_from_decl(dcl))
 
-#define ADD_SCALAR(to, ty, sp)                 \
-		ADD_DECL(to,                               \
-				decl_new_ty_sp(                        \
-					type_ref_new_type(                   \
-						type_new_primitive_signed(ty, 0)), \
+#define ADD_SCALAR(to, ty, sp)       \
+		ADD_DECL(to,                     \
+				decl_new_ty_sp(              \
+					type_ref_new_type(         \
+						type_new_primitive(ty)), \
 					ustrdup(sp)))
 
 
@@ -608,123 +609,9 @@ unsigned decl_align(decl *d)
 	return al ? al : type_ref_align(d->ref, &d->where);
 }
 
-static int type_ref_equal_r(
-		type_ref *const orig_a,
-		type_ref *const orig_b,
-		enum decl_cmp mode)
+enum type_cmp decl_cmp(decl *a, decl *b)
 {
-	type_ref *a, *b;
-
-	if(!orig_a || !orig_b)
-		return orig_a == orig_b ? 1 : 0;
-
-	/* check for signed vs unsigned */
-	if((mode & DECL_CMP_ALLOW_SIGNED_UNSIGNED) == 0
-	&& type_ref_is_signed(orig_a) != type_ref_is_signed(orig_b))
-	{
-		return 0;
-	}
-
-	/* FIXME: check qualifiers */
-#if 0
-	if(!type_qual_equal(a->qual, b->qual)){
-		if(mode & TYPE_CMP_EXACT)
-			return 0;
-
-		/* if b is const, a must be */
-		if((mode & TYPE_CMP_QUAL)
-				&& (b->qual & qual_const)
-				&& !(a->qual & qual_const))
-		{
-			return 0;
-		}
-	}
-#endif
-
-	a = type_ref_skip_tdefs_casts(orig_a);
-	b = type_ref_skip_tdefs_casts(orig_b);
-
-	/* array/func decay takes care of any array->ptr checks */
-	if(a->type != b->type)
-		return 0;
-
-	switch(a->type){
-		case type_ref_type:
-		{
-			enum type_cmp tmode = 0;
-
-			if(mode & DECL_CMP_ALLOW_SIGNED_UNSIGNED)
-				tmode |= TYPE_CMP_ALLOW_SIGNED_UNSIGNED;
-
-			return type_equal(a->bits.type, b->bits.type, tmode);
-		}
-
-		case type_ref_array:
-		{
-			const int a_complete = !!a->bits.array.size,
-			          b_complete = !!b->bits.array.size;
-
-			if(a_complete && b_complete){
-				const integral_t av = const_fold_val_i(a->bits.array.size),
-				                bv = const_fold_val_i(b->bits.array.size);
-
-				if(av != bv)
-					return 0;
-			}else if(a_complete != b_complete){
-				if((mode & DECL_CMP_ALLOW_TENATIVE_ARRAY) == 0)
-					return 0;
-			}
-
-			/* next */
-			break;
-		}
-
-		case type_ref_block:
-			if(!type_qual_equal(a->bits.block.qual, b->bits.block.qual))
-				return 0;
-			break;
-
-		case type_ref_ptr:
-			if(!type_qual_equal(a->bits.ptr.qual, b->bits.ptr.qual))
-				return 0;
-			break;
-
-		case type_ref_cast:
-		case type_ref_tdef:
-			ICE("should've been skipped");
-
-		case type_ref_func:
-			if(FUNCARGS_ARE_EQUAL != funcargs_equal(a->bits.func, b->bits.func, 1 /* exact match */, NULL))
-				return 0;
-			break;
-	}
-
-	return type_ref_equal_r(a->ref, b->ref, mode);
-}
-
-int type_ref_equal(type_ref *a, type_ref *b, enum decl_cmp mode)
-{
-	if(!(mode & DECL_CMP_EXACT_MATCH) && mode & DECL_CMP_ALLOW_VOID_PTR){
-		/* one side is void * */
-		if(type_ref_is_void_ptr(a) && type_ref_is_ptr(b))
-			return 1;
-		if(type_ref_is_void_ptr(b) && type_ref_is_ptr(a))
-			return 1;
-	}
-
-	return type_ref_equal_r(a, b, mode);
-}
-
-int decl_equal(decl *a, decl *b, enum decl_cmp mode)
-{
-	const int a_ptr = decl_is_ptr(a);
-	const int b_ptr = decl_is_ptr(b);
-
-	/* we are exact if told, or if either are a pointer - types must be equal */
-	if(a_ptr || b_ptr)
-		mode |= DECL_CMP_EXACT_MATCH;
-
-	return type_ref_equal(a->ref, b->ref, mode);
+	return type_ref_cmp(a->ref, b->ref);
 }
 
 int decl_sort_cmp(const decl **pa, const decl **pb)
@@ -772,12 +659,9 @@ type_ref *type_ref_ptr_depth_inc(type_ref *r)
 {
 	type_ref *test;
 	if((test = type_ref_is_type(r, type_unknown))){
-		/* FIXME: cache unsigned types too */
-		if(test->bits.type->is_signed){
-			type_ref *p = cache_ptr[test->bits.type->primitive];
-			if(p)
-				return p;
-		}
+		type_ref *p = cache_ptr[test->bits.type->primitive];
+		if(p)
+			return p;
 	}
 
 	return type_ref_new_ptr(r, qual_none);

@@ -143,16 +143,6 @@ int type_ref_is_bool(type_ref *r)
 	}
 }
 
-static type_ref *decl_is(decl *d, enum type_ref_type t)
-{
-	return type_ref_is(d->ref, t);
-}
-
-static int decl_is_ptr(decl *d)
-{
-	return !!decl_is(d, type_ref_ptr);
-}
-
 int type_ref_is_fptr(type_ref *r)
 {
 	return !!type_ref_is(type_ref_is_ptr(r), type_ref_func);
@@ -186,12 +176,12 @@ int type_ref_is_integral(type_ref *r)
 		return 0;
 
 	switch(r->bits.type->primitive){
-		case type_int:
-		case type_char:
+		case type_int:   case type_uint:
+		case type_char:  case type_uchar:
 		case type__Bool:
-		case type_short:
-		case type_long:
-		case type_llong:
+		case type_short: case type_ushort:
+		case type_long:  case type_ulong:
+		case type_llong: case type_ullong:
 		case type_enum:
 			return 1;
 
@@ -381,7 +371,7 @@ int type_ref_is_signed(type_ref *r)
 	while(r)
 		switch(r->type){
 			case type_ref_type:
-				return r->bits.type->is_signed;
+				return type_is_signed(r->bits.type);
 
 			case type_ref_cast:
 				if(r->bits.cast.is_signed_cast)

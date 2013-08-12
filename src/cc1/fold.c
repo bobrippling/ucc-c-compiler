@@ -29,22 +29,18 @@ int fold_had_error;
 
 static where asm_struct_enum_where;
 
-/* FIXME: don't have the callers do type_ref_to_str() */
-int fold_type_ref_equal(
-		type_ref *a, type_ref *b, where *w,
-		enum warning warn, enum decl_cmp extra_flags,
-		const char *errfmt, ...)
+void fold_type_chk_cast(
+		type_ref *lhs, expr **prhs,
+		symtable *stab, where *w,
+		const char *desc)
 {
-	enum decl_cmp flags = extra_flags | DECL_CMP_ALLOW_VOID_PTR;
+	int strict = 0;
 
-	if(!type_ref_is(a, type_ref_ptr) && !type_ref_is(b, type_ref_ptr))
-		flags |= DECL_CMP_ALLOW_SIGNED_UNSIGNED;
-
-	/* stronger checks for blocks, functions and and (non-void) pointers */
+	/* stronger checks for blocks, functions and (non-void) pointers */
 	if(type_ref_is_nonvoid_ptr(a)
 	&& type_ref_is_nonvoid_ptr(b))
 	{
-		flags |= DECL_CMP_EXACT_MATCH;
+		strict = 1;
 	}
 	else
 	if(type_ref_is(a, type_ref_block)
@@ -52,31 +48,19 @@ int fold_type_ref_equal(
 	|| type_ref_is(a, type_ref_func)
 	|| type_ref_is(b, type_ref_func))
 	{
-		flags |= DECL_CMP_EXACT_MATCH;
+		strict = 1;
 	}
 
 	switch(type_ref_cmp(a, b, flags)){
 		case TYPE_EQUAL:
 		case TYPE_CONVERTIBLE:
-			return 1;
+			return;
 
 		case TYPE_NOT_EQUAL:
 		{
 			int one_struct;
 			va_list l;
 
-			if(fopt_mode & FOPT_PLAN9_EXTENSIONS){
-				/* allow b to be an anonymous member of a */
-				struct_union_enum_st *a_sue = type_ref_is_s_or_u(type_ref_is_ptr(a)),
-															*b_sue = type_ref_is_s_or_u(type_ref_is_ptr(b));
-
-				if(a_sue && b_sue /* they aren't equal */){
-					/* b_sue has an a_sue,
-						* the implicit cast adjusts to return said a_sue */
-					if(struct_union_member_find_sue(b_sue, a_sue))
-						goto fin;
-				}
-			}
 
 			/*cc1_warn_at(w, 0, 0, warn, "%s vs. %s for...", decl_to_str(a), decl_to_str_r(buf, b));*/
 
