@@ -85,7 +85,7 @@ void gen_expr_str_assign_compound(expr *e)
 
 	idt_printf("assign to:\n");
 	gen_str_indent++;
-	print_expr(e->lhs->lhs); /* skip our addr */
+	print_expr(e->lhs);
 	gen_str_indent--;
 	idt_printf("assign from:\n");
 	gen_str_indent++;
