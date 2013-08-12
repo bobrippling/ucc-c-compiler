@@ -11,12 +11,13 @@ void fold_check_restrict(expr *lhs, expr *rhs, const char *desc, where *w);
 void fold_funcargs(funcargs *fargs, symtable *stab, type_ref *from);
 
 /* cast insertion */
-void fold_insert_casts(
-		type_ref *dlhs, expr **prhs,
-		symtable *stab, where *w,
-		const char *desc);
+void fold_insert_casts(type_ref *tlhs, expr **prhs, symtable *stab);
 
-void fold_type_chk_cast(
+int fold_type_chk_warn(
+		type_ref *lhs, type_ref *rhs,
+		where *w, const char *desc);
+
+void fold_type_chk_and_cast(
 		type_ref *lhs, expr **prhs,
 		symtable *stab, where *w,
 		const char *desc);

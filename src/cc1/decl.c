@@ -537,8 +537,6 @@ void decl_attr_free(decl_attr *a)
 	free(a);
 }
 
-#include "decl_is.c"
-
 unsigned type_ref_size(type_ref *r, where *from)
 {
 	switch(r->type){
@@ -609,9 +607,9 @@ unsigned decl_align(decl *d)
 	return al ? al : type_ref_align(d->ref, &d->where);
 }
 
-enum type_cmp decl_cmp(decl *a, decl *b)
+enum type_cmp decl_cmp(decl *a, decl *b, enum type_cmp_opts opts)
 {
-	return type_ref_cmp(a->ref, b->ref);
+	return type_ref_cmp(a->ref, b->ref, opts);
 }
 
 int decl_sort_cmp(const decl **pa, const decl **pb)

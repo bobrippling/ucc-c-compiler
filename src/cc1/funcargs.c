@@ -35,7 +35,7 @@ void funcargs_empty(funcargs *func)
 
 enum funcargs_cmp funcargs_cmp(
 		funcargs *args_to, funcargs *args_from,
-		int exact, unsigned *pbad_arg)
+		int must_exact, unsigned *pbad_arg)
 {
 	const int count_to = dynarray_count(args_to->arglist);
 	const int count_from = dynarray_count(args_from->arglist);
@@ -56,12 +56,12 @@ enum funcargs_cmp funcargs_cmp(
 		unsigned i;
 
 		for(i = 0; args_to->arglist[i]; i++){
-			switch(type_ref_cmp(args_to->arglist[i]->ref, args_from->arglist[i]->ref)){
+			switch(type_ref_cmp(args_to->arglist[i]->ref, args_from->arglist[i]->ref, 0)){
 				case TYPE_EQUAL:
 					break;
 
 				case TYPE_CONVERTIBLE:
-					if(!exact)
+					if(!must_exact)
 						break; /* allow */
 					/* fall */
 

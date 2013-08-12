@@ -66,6 +66,14 @@ struct type_ref
 };
 
 
-enum type_cmp type_ref_cmp(type_ref *, type_ref *);
+enum type_cmp_opts
+{
+	TYPE_CMP_ALLOW_TENATIVE_ARRAY = 1 << 0,
+};
+
+enum type_cmp
+type_ref_cmp(
+		type_ref *, type_ref *,
+		enum type_cmp_opts);
 
 #endif

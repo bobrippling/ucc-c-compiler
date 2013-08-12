@@ -149,8 +149,11 @@ chosen:
 			is_signed ? "" : "un",
 			type_primitive_to_str(p)); */
 
+	if(!is_signed)
+		p = TYPE_PRIMITIVE_TO_UNSIGNED(p);
+
 	EOF_WHERE(&e->where,
-		e->tree_type = type_ref_new_type(type_new_primitive_signed(p, is_signed));
+		e->tree_type = type_ref_new_type(type_new_primitive(p));
 	);
 
 	(void)stab;

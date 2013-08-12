@@ -35,10 +35,10 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 			if(tlhs != lvalue->tree_type)
 				type_ref_free_1(tlhs);
 
-			fold_insert_casts(lvalue->tree_type, &e->rhs, stab, &e->where, op_to_str(e->op));
+			fold_insert_casts(lvalue->tree_type, &e->rhs, stab);
 
 		}else if(trhs){
-			fold_insert_casts(trhs, &e->rhs, stab, &e->where, op_to_str(e->op));
+			fold_insert_casts(trhs, &e->rhs, stab);
 		}
 
 		e->tree_type = lvalue->tree_type;

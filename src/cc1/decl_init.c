@@ -284,8 +284,10 @@ static decl_init *decl_init_brace_up_scalar(
 	/* fold */
 	FOLD_EXPR(first_init->bits.expr, stab);
 
-	fold_type_chk_cast(tfor, &first_init->bits.expr, stab,
-			&first_init->bits.expr->where, "initialisation");
+	fold_type_chk_and_cast(
+			tfor, &first_init->bits.expr,
+			stab, &first_init->bits.expr->where,
+			"initialisation");
 
 	return first_init;
 }
@@ -876,7 +878,7 @@ static decl_init *decl_init_brace_up_start(
 	{
 		expr *e = FOLD_EXPR(init->bits.expr, stab);
 
-		if(type_ref_cmp(e->tree_type, tfor) != TYPE_EQUAL){
+		if(type_ref_cmp(e->tree_type, tfor, 0) != TYPE_EQUAL){
 			DIE_AT(&init->where,
 					"%s must be initialised with an initialiser list",
 					type_ref_to_str(tfor));

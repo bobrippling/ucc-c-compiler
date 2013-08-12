@@ -1,3 +1,20 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdarg.h>
+
+#include "../util/where.h"
+#include "../util/util.h"
+#include "../util/platform.h"
+
+#include "data_structs.h"
+#include "expr.h"
+#include "sue.h"
+#include "type_ref.h"
+#include "decl.h"
+#include "const.h"
+
+#include "type_ref_is.h"
+
 static type_ref *type_ref_next_1(type_ref *r)
 {
 	if(r->type == type_ref_tdef){
@@ -15,7 +32,7 @@ static type_ref *type_ref_next_1(type_ref *r)
 	return r->ref;
 }
 
-static type_ref *type_ref_skip_tdefs_casts(type_ref *r)
+type_ref *type_ref_skip_tdefs_casts(type_ref *r)
 {
 	while(r)
 		switch(r->type){
@@ -130,17 +147,7 @@ int type_ref_is_bool(type_ref *r)
 	if(!r)
 		return 0;
 
-	switch(r->bits.type->primitive){
-		case type__Bool:
-		case type_char:
-		case type_int:
-		case type_short:
-		case type_long:
-		case type_llong:
-			return 1;
-		default:
-			return 0;
-	}
+	return type_ref_is_integral(r);
 }
 
 int type_ref_is_fptr(type_ref *r)
@@ -335,29 +342,28 @@ int type_ref_decayable(type_ref *r)
 	}
 }
 
-type_ref *type_ref_decay(type_ref *r)
+type_ref *type_ref_decay(type_ref *const r)
 {
 	/* f(int x[][5]) decays to f(int (*x)[5]), not f(int **x) */
+	type_ref *test = type_ref_skip_tdefs_casts(r);
 
-	r = type_ref_skip_tdefs_casts(r);
-
-	switch(r->type){
+	switch(test->type){
 		case type_ref_array:
 		{
 			/* don't mutate a type_ref */
-			type_ref *new = type_ref_new_ptr(r->ref, qual_none);
-			new->bits.ptr = r->bits.array; /* save the old size, etc */
+			type_ref *new = type_ref_new_ptr(test->ref, qual_none);
+			new->bits.ptr = test->bits.array; /* save the old size, etc */
 			return new;
 		}
 
 		case type_ref_func:
-			return type_ref_new_ptr(r, qual_none);
+			return type_ref_new_ptr(test, qual_none);
 
 		default:
 			break;
 	}
 
-	return r;
+	return r; /* we don't return a tdef/cast skipped type_ref */
 }
 
 int type_ref_is_void(type_ref *r)

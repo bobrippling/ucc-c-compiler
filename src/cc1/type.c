@@ -1,10 +1,20 @@
+#include <stdlib.h>
+#include <stdarg.h>
+#include <stdio.h>
+
+#include "../util/where.h"
+#include "../util/util.h"
+
+#include "data_structs.h"
+#include "expr.h"
+#include "sue.h"
 #include "type.h"
 
 static int type_convertible(enum type_primitive p)
 {
 	switch(p){
 		case type__Bool:
-		case type_char:
+		case type_char:  case type_uchar:
 		case type_int:   case type_uint:
 		case type_short: case type_ushort:
 		case type_long:  case type_ulong:
@@ -13,16 +23,23 @@ static int type_convertible(enum type_primitive p)
 		case type_double:
 		case type_ldouble:
 			return 1;
-		default:
-			return 0;
+
+		case type_void:
+		case type_struct:
+		case type_union:
+		case type_enum:
+		case type_unknown:
+			break;
 	}
+	return 0;
 }
 
 enum type_cmp type_cmp(const type *a, const type *b)
 {
 	switch(a->primitive){
 		case type_void:
-			return b->primitive == type_void ? TYPE_EQUAL : TYPE_NOT_EQUAL;
+			/* allow (void) casts */
+			return b->primitive == type_void ? TYPE_EQUAL : TYPE_CONVERTIBLE;
 
 		case type_struct:
 		case type_union:
@@ -36,18 +53,18 @@ enum type_cmp type_cmp(const type *a, const type *b)
 			if(a->primitive == b->primitive)
 				return TYPE_EQUAL;
 
-			if(type_convertible(a->type) == type_convertible(b->type))
+			if(type_convertible(a->primitive) == type_convertible(b->primitive))
 				return TYPE_CONVERTIBLE;
 
 			return TYPE_NOT_EQUAL;
 	}
 
-	ucc_unreach(TYPE_NOT_EQUAL);
+	ucc_unreach(); /*TYPE_NOT_EQUAL*/
 }
 
 int type_is_signed(const type *t)
 {
-	switch(a->primitive){
+	switch(t->primitive){
 		case type_char:
 			/* XXX: note we treat char as signed */
 			/* TODO: -fsigned-char */
@@ -75,4 +92,6 @@ int type_is_signed(const type *t)
 		case type_unknown:
 			ICE("type_unknown in %s", __func__);
 	}
+
+	ICE("bad primitive");
 }

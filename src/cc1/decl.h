@@ -107,14 +107,6 @@ struct decl
 
 const char *decl_asm_spel(decl *);
 
-enum decl_cmp
-{
-	DECL_CMP_EXACT_MATCH    = 1 << 0,
-	DECL_CMP_ALLOW_VOID_PTR = 1 << 1,
-	DECL_CMP_ALLOW_SIGNED_UNSIGNED = 1 << 2,
-	DECL_CMP_ALLOW_TENATIVE_ARRAY = 1 << 3,
-};
-
 #include "type_ref.h"
 
 decl        *decl_new(void);
@@ -146,7 +138,7 @@ unsigned decl_size(decl *);
 unsigned decl_align(decl *);
 unsigned type_ref_size(type_ref *, where *from);
 
-enum type_cmp decl_cmp(decl *a, decl *b);
+enum type_cmp decl_cmp(decl *a, decl *b, enum type_cmp_opts opts);
 int   decl_store_static_or_extern(enum decl_storage);
 int   decl_sort_cmp(const decl **, const decl **);
 

@@ -28,7 +28,7 @@ void fold_stmt_code(stmt *s)
 		decl *found;
 		if(DECL_IS_FUNC(d) && (found = symtab_search_d(s->symtab->parent, d->spel))){
 			/* allow functions redefined as decls and vice versa */
-			if(DECL_IS_FUNC(found) && !decl_equal(d, found, DECL_CMP_EXACT_MATCH)){
+			if(DECL_IS_FUNC(found) && decl_cmp(d, found, 0) != TYPE_EQUAL){
 				char buf[WHERE_BUF_SIZ];
 
 				DIE_AT(&d->where,

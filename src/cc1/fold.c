@@ -29,11 +29,53 @@ int fold_had_error;
 
 static where asm_struct_enum_where;
 
-void fold_type_chk_cast(
+void fold_insert_casts(type_ref *tlhs, expr **prhs, symtable *stab)
+{
+	/* insert a cast: rhs -> lhs */
+	expr *cast = expr_new_cast(tlhs, 1);
+
+	cast->expr = *prhs;
+	*prhs = cast;
+
+	/* need to fold the cast again - mainly for "loss of precision" warning */
+	fold_expr_cast_descend(cast, stab, 0);
+}
+
+int fold_type_chk_warn(
+		type_ref *lhs, type_ref *rhs,
+		where *w, const char *desc)
+{
+	switch(type_ref_cmp(lhs, rhs, 0)){
+		case TYPE_CONVERTIBLE:
+			return 1;
+		case TYPE_EQUAL:
+			break;
+
+		case TYPE_NOT_EQUAL:
+		{
+			char buf[TYPE_REF_STATIC_BUFSIZ];
+			char wbuf[WHERE_BUF_SIZ];
+			int error = type_ref_is_s_or_u(lhs)
+			         || type_ref_is_s_or_u(rhs);
+
+			(error ? die_at : warn_at)(
+					w, 1,
+					"mismatching types, %s:\n%s: note: '%s' vs '%s'",
+					desc, where_str_r(wbuf, w),
+					type_ref_to_str_r(buf, lhs),
+					type_ref_to_str(       rhs));
+			return 1;
+		}
+	}
+	return 0;
+}
+
+void fold_type_chk_and_cast(
 		type_ref *lhs, expr **prhs,
 		symtable *stab, where *w,
 		const char *desc)
 {
+#if 0
 	int strict = 0;
 
 	/* stronger checks for blocks, functions and (non-void) pointers */
@@ -50,57 +92,11 @@ void fold_type_chk_cast(
 	{
 		strict = 1;
 	}
+#endif
 
-	switch(type_ref_cmp(a, b, flags)){
-		case TYPE_EQUAL:
-		case TYPE_CONVERTIBLE:
-			return;
-
-		case TYPE_NOT_EQUAL:
-		{
-			int one_struct;
-			va_list l;
-
-
-			/*cc1_warn_at(w, 0, 0, warn, "%s vs. %s for...", decl_to_str(a), decl_to_str_r(buf, b));*/
-
-			one_struct = type_ref_is_s_or_u(a) || type_ref_is_s_or_u(b);
-
-			va_start(l, errfmt);
-			cc1_warn_atv(w, one_struct || type_ref_is_void(a) || type_ref_is_void(b), 1, warn, errfmt, l);
-			va_end(l);
-			break;
-		}
-	}
-fin:
-	return 0;
+	if(fold_type_chk_warn(lhs, (*prhs)->tree_type, w, desc))
+		fold_insert_casts(lhs, prhs, stab);
 }
-
-void fold_insert_casts(type_ref *dlhs, expr **prhs, symtable *stab, where *w, const char *desc)
-{
-	expr *const rhs = *prhs;
-
-	if(!type_ref_equal(dlhs, rhs->tree_type,
-				DECL_CMP_ALLOW_VOID_PTR |
-				DECL_CMP_EXACT_MATCH))
-	{
-		/* insert a cast: rhs -> lhs */
-		expr *cast;
-
-		cast = expr_new_cast(dlhs, 1);
-		cast->expr = rhs;
-		*prhs = cast;
-
-		/* need to fold the cast again - mainly for "loss of precision" warning */
-		fold_expr_cast_descend(cast, stab, 0);
-	}
-
-	if(type_ref_is_signed(dlhs) != type_ref_is_signed(rhs->tree_type)){
-		cc1_warn_at(w, 0, 1, WARN_SIGN_COMPARE,
-				"operation between signed and unsigned in %s", desc);
-	}
-}
-
 
 void fold_check_restrict(expr *lhs, expr *rhs, const char *desc, where *w)
 {
@@ -149,7 +145,7 @@ expr *fold_expr(expr *e, symtable *stab)
 	EOF_WHERE(&e->where,
 			type_ref *decayed = type_ref_decay(r);
 
-			if(!type_ref_equal(decayed, r, DECL_CMP_EXACT_MATCH))
+			if(decayed != r)
 				imp_cast = expr_new_cast(decayed, 1);
 		);
 
