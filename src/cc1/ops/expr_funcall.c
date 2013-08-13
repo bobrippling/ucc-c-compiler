@@ -441,34 +441,25 @@ invalid:
 
 		if(e->funcargs){
 			int i;
+			char buf[64];
 
 			for(i = 0; ; i++){
-				expr *arg      = e->funcargs[i];
 				decl *decl_arg = args_from_decl->arglist[i];
-				int eq;
-				char arg_buf[TYPE_REF_STATIC_BUFSIZ];
-				char exp_buf[TYPE_REF_STATIC_BUFSIZ];
 
 				if(!decl_arg)
 					break;
 
-				eq = fold_type_ref_equal(
-						decl_arg->ref, arg->tree_type, &arg->where,
-						WARN_ARG_MISMATCH, 0,
-						"mismatching argument %d to %s (%s <-- %s)",
-						i, sp,
-						type_ref_to_str_r(exp_buf, decl_arg->ref),
-						type_ref_to_str_r(arg_buf, arg->tree_type));
+				snprintf(buf, sizeof buf,
+						"argument %d to %s",
+						i + 1, sp ? sp : "function");
 
-				if(!eq){
-					fold_insert_casts(decl_arg->ref, &e->funcargs[i],
-							stab, &arg->where, desc);
-
-					arg = e->funcargs[i];
-				}
+				fold_type_chk_and_cast(
+						decl_arg->ref, &e->funcargs[i],
+						stab, &e->funcargs[i]->where,
+						buf);
 
 				/* f(int [static 5]) check */
-				static_array_check(decl_arg, arg);
+				static_array_check(decl_arg, e->funcargs[i]);
 			}
 		}
 	}

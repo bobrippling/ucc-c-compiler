@@ -20,9 +20,10 @@ struct funcargs
 	enum calling_conv conv;
 };
 
-/* if fspel ! NULL, print warnings */
-enum funcargs_cmp funcargs_equal(funcargs *args_a, funcargs *args_b,
-		int strict_types, const char *fspel);
+/* pbad_arg set if FUNCARGS_ARE_MISMATCH_TYPES */
+enum funcargs_cmp funcargs_cmp(
+		funcargs *args_to, funcargs *args_from,
+		int exact, unsigned *pbad_arg);
 
 
 funcargs *funcargs_new(void);

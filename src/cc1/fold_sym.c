@@ -168,12 +168,17 @@ int symtab_fold(symtable *tab, unsigned current)
 			if(!strcmp(a->spel, b->spel)){
 				const int a_func = !!DECL_IS_FUNC(a);
 
-				if(!!DECL_IS_FUNC(b) != a_func
-				|| !decl_equal(a, b,
-					DECL_CMP_EXACT_MATCH | DECL_CMP_ALLOW_TENATIVE_ARRAY))
-				{
+				if(!!DECL_IS_FUNC(b) != a_func){
 					clash = "mismatching";
-				}else{
+				}else switch(decl_cmp(a, b, TYPE_CMP_ALLOW_TENATIVE_ARRAY)){
+					case TYPE_NOT_EQUAL:
+					case TYPE_CONVERTIBLE: /* must be an exact match */
+						clash = "mismatching";
+					case TYPE_EQUAL:
+						break;
+				}
+
+				if(!clash){
 					if(LOCAL_SCOPE){
 						/* allow multiple functions or multiple externs */
 						if(a_func){

@@ -507,11 +507,19 @@ static type_ref *parse_btype(
 				case type_unknown:
 					ucc_unreach();
 
+				case type_uchar:
+				case type_uint:
+				case type_ushort:
+				case type_ulong:
+				case type_ullong:
+					ICE("parsed unsigned type?");
 				case type_char:
 				case type_int:
 				case type_short:
 				case type_long:
 				case type_llong:
+					if(!is_signed)
+						primitive = TYPE_PRIMITIVE_TO_UNSIGNED(primitive);
 					break;
 			}
 		}
@@ -539,9 +547,8 @@ static type_ref *parse_btype(
 					C99_LONGLONG();
 
 				r = type_ref_new_type(
-						type_new_primitive_signed(
-							primitive_mode == NONE ? type_int : primitive,
-							is_signed));
+						type_new_primitive(
+							primitive_mode == NONE ? type_int : primitive));
 				break;
 		}
 

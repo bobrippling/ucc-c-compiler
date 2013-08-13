@@ -245,9 +245,13 @@ type_ref *op_required_promotion(
 
 			if(op == op_minus){
 				/* don't allow void * */
-				if(!type_ref_equal(tlhs, trhs, DECL_CMP_EXACT_MATCH)){
-					DIE_AT(w, "subtraction of distinct pointer types %s and %s",
-							type_ref_to_str(tlhs), type_ref_to_str_r(buf, trhs));
+				switch(type_ref_cmp(tlhs, trhs, 0)){
+					case TYPE_CONVERTIBLE:
+					case TYPE_NOT_EQUAL:
+						DIE_AT(w, "subtraction of distinct pointer types %s and %s",
+								type_ref_to_str(tlhs), type_ref_to_str_r(buf, trhs));
+					case TYPE_EQUAL:
+						break;
 				}
 
 				resolved = type_ref_cached_INTPTR_T();
@@ -255,12 +259,10 @@ type_ref *op_required_promotion(
 			}else if(op_is_relational(op)){
 ptr_relation:
 				if(op_is_comparison(op)){
-					if(!fold_type_ref_equal(tlhs, trhs, w,
-							WARN_COMPARE_MISMATCH, 0,
+					if(fold_type_chk_warn(tlhs, trhs, w,
 							l_ptr && r_ptr
-							? "comparison of distinct pointer types lacks a cast (%s vs %s)"
-							: "comparison between pointer and integer (%s vs %s)",
-							type_ref_to_str(tlhs), type_ref_to_str_r(buf, trhs)))
+							? "comparison of distinct pointer types lacks a cast"
+							: "comparison between pointer and integer"))
 					{
 						/* not equal - ptr vs int */
 						*(l_ptr ? prhs : plhs) = type_ref_cached_INTPTR_T();
@@ -373,15 +375,15 @@ ptr_relation:
 			if(l_unsigned == r_unsigned){
 				if(l_sz != r_sz){
 					const int l_larger = l_sz > r_sz;
-					char bufa[TYPE_REF_STATIC_BUFSIZ], bufb[TYPE_REF_STATIC_BUFSIZ];
+					char buf[64];
 
-					/* TODO: needed? */
-					fold_type_ref_equal(tlhs, trhs,
-							w, WARN_COMPARE_MISMATCH, 0,
-							"mismatching types in %s (%s and %s)",
-							op_to_str(op),
-							type_ref_to_str_r(bufa, tlhs),
-							type_ref_to_str_r(bufb, trhs));
+					snprintf(buf, sizeof buf,
+							"mismatching types in %s",
+							op_to_str(op));
+
+					fold_type_chk_warn(
+							tlhs, trhs,
+							w, buf);
 
 					*(l_larger ? prhs : plhs) = (l_larger ? tlhs : trhs);
 
@@ -430,7 +432,6 @@ fin:
 
 type_ref *op_promote_types(
 		enum op_type op,
-		const char *desc,
 		expr **plhs, expr **prhs,
 		where *w, symtable *stab)
 {
@@ -440,10 +441,10 @@ type_ref *op_promote_types(
 	resolved = op_required_promotion(op, *plhs, *prhs, w, &tlhs, &trhs);
 
 	if(tlhs)
-		fold_insert_casts(tlhs, plhs, stab, w, desc);
+		fold_insert_casts(tlhs, plhs, stab);
 
 	if(trhs)
-		fold_insert_casts(trhs, prhs, stab, w, desc);
+		fold_insert_casts(trhs, prhs, stab);
 
 	return resolved;
 }
@@ -666,7 +667,7 @@ void fold_expr_op(expr *e, symtable *stab)
 		expr_promote_int_if_smaller(&e->lhs, stab);
 		expr_promote_int_if_smaller(&e->rhs, stab);
 
-		e->tree_type = op_promote_types(e->op, op_to_str(e->op),
+		e->tree_type = op_promote_types(e->op,
 				&e->lhs, &e->rhs, &e->where, stab);
 
 		fold_check_bounds(e, 1);

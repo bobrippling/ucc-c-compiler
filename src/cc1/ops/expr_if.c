@@ -90,14 +90,15 @@ void fold_expr_if(expr *e, symtable *stab)
 	tt_r = e->rhs->tree_type;
 
 	if(type_ref_is_integral(tt_l) && type_ref_is_integral(tt_r)){
-		e->tree_type = op_promote_types(op_unknown, "?:",
+		e->tree_type = op_promote_types(
+				op_unknown,
 				(e->lhs ? &e->lhs : &e->expr), &e->rhs,
 				&e->where, stab);
 
 	}else if(type_ref_is_void(tt_l) || type_ref_is_void(tt_r)){
 		e->tree_type = type_ref_new_type(type_new_primitive(type_void));
 
-	}else if(type_ref_equal(tt_l, tt_r, DECL_CMP_EXACT_MATCH)){
+	}else if(type_ref_cmp(tt_l, tt_r, 0) == TYPE_EQUAL){
 		e->tree_type = type_ref_new_cast(tt_l,
 				type_ref_qual(tt_l) | type_ref_qual(tt_r));
 
@@ -117,13 +118,8 @@ void fold_expr_if(expr *e, symtable *stab)
 			int r_ptr = r_ptr_null || type_ref_is(tt_r, type_ref_ptr);
 
 			if(l_ptr || r_ptr){
-				char bufa[TYPE_REF_STATIC_BUFSIZ], bufb[TYPE_REF_STATIC_BUFSIZ];
-
-				fold_type_ref_equal(tt_l, tt_r, &e->where,
-						WARN_COMPARE_MISMATCH, 0, /* FIXME: enum "mismatch" */
-						"pointer type mismatch: %s and %s",
-						type_ref_to_str_r(bufa, tt_l),
-						type_ref_to_str_r(bufb, tt_r));
+				fold_type_chk_warn(
+						tt_l, tt_r, &e->where, "?: pointer type mismatch");
 
 				/* void * */
 				e->tree_type = type_ref_new_ptr(type_ref_cached_VOID(), qual_none);

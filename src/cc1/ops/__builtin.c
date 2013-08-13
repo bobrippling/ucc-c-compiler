@@ -469,7 +469,7 @@ static void const_compatible_p(expr *e, consty *k)
 
 	memset(k, 0, sizeof *k);
 	k->type = CONST_NUM;
-	k->bits.num.val.i = type_ref_equal(types[0], types[1], DECL_CMP_EXACT_MATCH);
+	k->bits.num.val.i = type_ref_cmp(types[0], types[1], 0) == TYPE_EQUAL;
 }
 
 static expr *expr_new_funcall_typelist(void)

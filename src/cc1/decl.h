@@ -50,70 +50,6 @@ struct decl_attr
 	decl_attr *next;
 };
 
-struct type_ref
-{
-	where where;
-	type_ref *ref, *tmp; /* tmp used for things like printing */
-
-	decl_attr *attr;
-	int folded;
-
-	enum type_ref_type
-	{
-		type_ref_type,  /* end - at type */
-		type_ref_tdef,  /* type reference to next ref */
-		type_ref_ptr,   /* pointer to next ref */
-		type_ref_block, /* block pointer to next ref (func) */
-		type_ref_func,  /* function */
-		type_ref_array, /* array of next ref, similar to pointer */
-		type_ref_cast   /* used for adding qualifiers */
-	} type;
-
-	union
-	{
-		/* ref_type */
-		const type *type;
-
-		/* ref_tdef */
-		struct type_ref_tdef
-		{
-			expr *type_of;
-			decl *decl;
-		} tdef;
-
-		/* ref_{ptr,array} */
-		struct
-		{
-			enum type_qualifier qual;
-			int is_static;
-			expr *size;
-			/* when we decay
-			 * f(int x[2]) -> f(int *x)
-			 * we save the size + is_static
-			 */
-		} ptr, array;
-
-		/* ref_cast */
-		struct
-		{
-			char is_signed_cast; /* if true - signed_true else qual */
-			char signed_true;
-			char additive; /* replace qual or add? */
-			enum type_qualifier qual;
-		} cast;
-
-		/* ref_func */
-		struct funcargs *func;
-
-		/* ref_block */
-		struct
-		{
-			struct funcargs *func;
-			enum type_qualifier qual;
-		} block;
-	} bits;
-};
-
 enum decl_storage
 {
   /* auto or external-linkage depending on scope + other defs */
@@ -171,13 +107,7 @@ struct decl
 
 const char *decl_asm_spel(decl *);
 
-enum decl_cmp
-{
-	DECL_CMP_EXACT_MATCH    = 1 << 0,
-	DECL_CMP_ALLOW_VOID_PTR = 1 << 1,
-	DECL_CMP_ALLOW_SIGNED_UNSIGNED = 1 << 2,
-	DECL_CMP_ALLOW_TENATIVE_ARRAY = 1 << 3,
-};
+#include "type_ref.h"
 
 decl        *decl_new(void);
 decl        *decl_new_ty_sp(type_ref *, char *);
@@ -208,8 +138,7 @@ unsigned decl_size(decl *);
 unsigned decl_align(decl *);
 unsigned type_ref_size(type_ref *, where *from);
 
-int   decl_equal(decl *a, decl *b, enum decl_cmp mode);
-int   type_ref_equal(type_ref *a, type_ref *b, enum decl_cmp mode);
+enum type_cmp decl_cmp(decl *a, decl *b, enum type_cmp_opts opts);
 int   decl_store_static_or_extern(enum decl_storage);
 int   decl_sort_cmp(const decl **, const decl **);
 
