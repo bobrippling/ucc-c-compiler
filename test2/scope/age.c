@@ -1,3 +1,7 @@
+// RUN: %ucc -o %t %s
+// RUN: [ `%t | grep '^#' | wc -l` -eq 1 ]
+// RUN: %t | grep -F '# 35 53'
+
 strcmpany(char *a, char *b)
 {
 	return (a[0] == b[0] && a[1] == b[1])
@@ -7,7 +11,7 @@ strcmpany(char *a, char *b)
 main()
 {
 	printf("hex dec\n");
-	for(int i = 1; i < 100; i++){
+	for(int i = 10; i < 100; i++){
 		char buf[2][4];
 
 		snprintf(buf[0], sizeof buf[0], "%x", i);
