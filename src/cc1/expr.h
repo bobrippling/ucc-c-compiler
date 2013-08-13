@@ -232,6 +232,7 @@ expr *expr_new__Generic(expr *test, struct generic_lbl **lbls);
 expr *expr_new_block(type_ref *rt, funcargs *args, stmt *code);
 expr *expr_new_deref(expr *);
 expr *expr_new_struct(expr *sub, int dot, expr *ident);
+expr *expr_new_struct_mem(expr *sub, int dot, decl *);
 expr *expr_new_str(char *, int len, int wide);
 expr *expr_new_addr_lbl(char *);
 expr *expr_new_addr(expr *);

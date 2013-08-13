@@ -190,7 +190,8 @@ type_ref *type_ref_new_array2(type_ref *to, expr *sz,
 type_ref *type_ref_new_func(type_ref *of, funcargs *args)
 {
 	type_ref *r = type_ref_new(type_ref_func, of);
-	r->bits.func = args;
+	r->bits.func.args = args;
+	r->bits.func.arg_scope = current_scope;
 	return r;
 }
 
@@ -316,7 +317,7 @@ void type_ref_free_1(type_ref *r)
 
 		case type_ref_func:
 			/* XXX: memleak x2 */
-			funcargs_free(r->bits.func, 1, 0);
+			funcargs_free(r->bits.func.args, 1, 0);
 			break;
 		case type_ref_block:
 			funcargs_free(r->bits.block.func, 1, 0);
@@ -583,7 +584,7 @@ unsigned type_ref_size(type_ref *r, where *from)
 		}
 	}
 
-	ucc_unreach();
+	ucc_unreach(0);
 }
 
 unsigned decl_size(decl *d)
@@ -626,7 +627,7 @@ int decl_sort_cmp(const decl **pa, const decl **pb)
 
 int type_ref_is_variadic_func(type_ref *r)
 {
-	return (r = type_ref_is(r, type_ref_func)) && r->bits.func->variadic;
+	return (r = type_ref_is(r, type_ref_func)) && r->bits.func.args->variadic;
 }
 
 type_ref *type_ref_ptr_depth_dec(type_ref *r, where *w)
@@ -762,7 +763,7 @@ static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
 		{
 			const char *comma = "";
 			decl **i;
-			funcargs *args = r->bits.func;
+			funcargs *args = r->bits.func.args;
 
 			BUF_ADD("(");
 			for(i = args->arglist; i && *i; i++){

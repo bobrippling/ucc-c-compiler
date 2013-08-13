@@ -84,7 +84,7 @@ type_ref *type_ref_next(type_ref *r)
 			return r->ref;
 	}
 
-	ucc_unreach();
+	ucc_unreach(NULL);
 }
 
 type_ref *type_ref_is(type_ref *r, enum type_ref_type t)
@@ -320,7 +320,7 @@ type_ref *type_ref_func_call(type_ref *fp, funcargs **pfuncargs)
 
 		case type_ref_func:
 			if(pfuncargs)
-				*pfuncargs = fp->bits.func;
+				*pfuncargs = fp->bits.func.args;
 			fp = fp->ref;
 			break;
 
@@ -428,7 +428,7 @@ enum type_qualifier type_ref_qual(const type_ref *r)
 			return type_ref_qual(r->bits.tdef.type_of->tree_type);
 	}
 
-	ucc_unreach();
+	ucc_unreach(qual_none);
 }
 
 enum type_primitive type_ref_primitive(type_ref *ty)
@@ -450,7 +450,7 @@ funcargs *type_ref_funcargs(type_ref *r)
 
 	UCC_ASSERT(r, "not a function type");
 
-	return r->bits.func;
+	return r->bits.func.args;
 }
 
 int type_ref_is_callable(type_ref *r)

@@ -505,7 +505,7 @@ static type_ref *parse_btype(
 				case type_union:
 				case type_enum:
 				case type_unknown:
-					ucc_unreach();
+					ucc_unreach(NULL);
 
 				case type_uchar:
 				case type_uint:
@@ -776,11 +776,13 @@ static type_ref *parse_type_ref_func(enum decl_mode mode, char **sp)
 	type_ref *sub = parse_type_ref_array(mode, sp);
 
 	while(accept(token_open_paren)){
-		type_ref *r_new = type_ref_new_func(sub, parse_func_arglist());
+		current_scope = symtab_new(current_scope);
+
+		sub = type_ref_new_func(sub, parse_func_arglist());
+
+		current_scope = current_scope->parent;
 
 		EAT(token_close_paren);
-
-		sub = r_new;
 	}
 
 	return sub;
@@ -961,7 +963,7 @@ decl **parse_decls_one_type()
 static int is_old_func(decl *d)
 {
 	type_ref *r = PARSE_type_ref_is(d->ref, type_ref_func);
-	return r && r->bits.func->args_old_proto;
+	return r && r->bits.func.args->args_old_proto;
 }
 
 static void check_and_replace_old_func(decl *d, decl **old_args)
@@ -969,7 +971,7 @@ static void check_and_replace_old_func(decl *d, decl **old_args)
 	/* check then replace old args */
 	int n_proto_decls, n_old_args;
 	int i;
-	funcargs *dfuncargs = d->ref->bits.func;
+	funcargs *dfuncargs = d->ref->bits.func.args;
 
 	UCC_ASSERT(PARSE_type_ref_is(d->ref, type_ref_func), "not func");
 
@@ -1129,7 +1131,12 @@ void parse_decls_multi_type(
 		do{
 			decl *d = parse_decl_extra(this_ref, parse_flag, store, align);
 
-			if(!d->spel){
+			if((mode & DECL_MULTI_ACCEPT_FIELD_WIDTH) && accept(token_colon)){
+				/* normal decl, check field spec */
+				d->field_width = parse_expr_no_comma();
+			}
+
+			if(!d->spel && !d->field_width){
 				/*
 				 * int; - fine for "int;", but "int i,;" needs to fail
 				 * struct A; - fine
@@ -1139,10 +1146,6 @@ void parse_decls_multi_type(
 				if(last == NULL){
 					int warn = 0;
 					struct_union_enum_st *sue;
-
-					/* allow "int : 5;" */
-					if(curtok == token_colon)
-						goto add;
 
 					/* check for no-fwd and anon */
 					sue = PARSE_type_ref_is_s_or_u_or_e(this_ref);
@@ -1218,7 +1221,20 @@ void parse_decls_multi_type(
 
 				/* clang-style allows __attribute__ and then a function block */
 				if(need_func || curtok == token_open_block){
+					type_ref *func_r = PARSE_DECL_IS_FUNC(d);
+					symtable *const old_scope = current_scope;
+
+					/* need to set scope to include function arguments,
+					 * e.g. f(struct A { ... })
+					 */
+					UCC_ASSERT(func_r, "function expected");
+					current_scope = func_r->bits.func.arg_scope;
+
 					d->func_code = parse_stmt_block();
+
+					current_scope = current_scope->parent;
+					UCC_ASSERT(current_scope == old_scope,
+							"scope change in parsing func block");
 
 					/* if:
 					 * f(){...}, then we don't have args_void, but implicitly we do
@@ -1246,12 +1262,12 @@ add:
 					if(PARSE_DECL_IS_FUNC(d) && PARSE_DECL_IS_FUNC(d_prev))
 						decl_pull_to_func(d, d_prev);
 				}
-
-				if(scope)
-					dynarray_add(&scope->decls, d);
-				if(pdecls)
-					dynarray_add(pdecls, d);
 			}
+
+			if(scope)
+				dynarray_add(&scope->decls, d);
+			if(pdecls)
+				dynarray_add(pdecls, d);
 
 			/* FIXME: check later for functions, not here - typedefs */
 			if(PARSE_DECL_IS_FUNC(d)){
@@ -1267,11 +1283,6 @@ add:
 					DIE_AT(&d->where, "can't have a typedef function with code");
 				else if(d->init)
 					DIE_AT(&d->where, "can't init a typedef");
-			}
-
-			if((mode & DECL_MULTI_ACCEPT_FIELD_WIDTH) && accept(token_colon)){
-				/* normal decl, check field spec */
-				d->field_width = parse_expr_no_comma();
 			}
 
 			last = d;

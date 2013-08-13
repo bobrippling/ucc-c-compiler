@@ -16,16 +16,6 @@ struct vstack
 
 	type_ref *t;
 
-	/*
-	 * TODO: offset to optimise multiple adds
-	 * i.e. movq x+63(%rip), %rax
-	 * instead of
-	 *      leaq x(%rip), %rax
-	 *      addq 60, %rax
-	 *      addq  3, %rax
-	 *      movq (%rax), %rax
-	 */
-
 	union
 	{
 		integral_t val_i;
@@ -34,7 +24,7 @@ struct vstack
 		{
 			unsigned short idx, is_float;
 		} reg;
-		int off_from_bp;
+		long off_from_bp;
 		struct flag_opts
 		{
 			enum flag_cmp
@@ -49,6 +39,7 @@ struct vstack
 		struct
 		{
 			const char *str;
+			long offset;
 			int pic;
 		} lbl;
 	} bits;

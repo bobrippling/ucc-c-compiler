@@ -3,7 +3,7 @@
 
 #define memcpy_safe(a, b) (*(a) = *(b))
 
-#define ucc_unreach() do{ ICE("unreachable"); return 0; }while(0)
+#define ucc_unreach(optional) do{ ICE("unreachable"); return optional; }while(0)
 
 extern int warning_count;
 

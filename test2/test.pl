@@ -41,7 +41,7 @@ for(@ARGV){
 $target = "./$target";
 
 END {
-	unlink $target;
+	unlink $target if defined $target;
 }
 
 my %vars = (

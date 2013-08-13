@@ -250,6 +250,7 @@ static int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 		unsigned align_max = 1;
 		unsigned sz_max = 0;
 		unsigned offset = 0;
+		int realign_next = 0;
 		struct
 		{
 			unsigned current_off, first_off;
@@ -289,17 +290,28 @@ static int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 				sz = align = 0; /* don't affect sz_max or align_max */
 
 				if(bits == 0){
-					/* align next field / treat as new bitfield */
-					struct_pack_finish_bitfield(&offset, &bitfield.current_off);
+					/* align next field / treat as new bitfield
+					 * note we don't pad here - we don't want to
+					 * take up any space with this field
+					 */
+					realign_next = 1;
 
-				}else if(!bitfield.current_off
+					/* also set struct_offset for 0-len bf, for pad reasons */
+					d->struct_offset = offset;
+
+				}else if(realign_next
+				|| !bitfield.current_off
 				|| bitfield.current_off + bits > bf_cur_lim)
 				{
-					if(bitfield.current_off){
-						/* bitfield overflow - repad */
-						WARN_AT(&d->where, "bitfield overflow (%d + %d > %d) - "
-								"moved to next boundary", bitfield.current_off, bits,
-								bf_cur_lim);
+					if(realign_next || bitfield.current_off){
+						if(!realign_next){
+							/* bitfield overflow - repad */
+							WARN_AT(&d->where, "bitfield overflow (%d + %d > %d) - "
+									"moved to next boundary", bitfield.current_off, bits,
+									bf_cur_lim);
+						}else{
+							realign_next = 0;
+						}
 
 						/* don't pay attention to the current bitfield offset */
 						bitfield.current_off = 0;
@@ -459,7 +471,8 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 			if(type_ref_is(parent, type_ref_ptr) && (type_ref_qual(parent) & qual_restrict))
 				DIE_AT(&r->where, "restrict qualified function pointer");
 
-			fold_funcargs(r->bits.func, stab, r);
+			fold_symtab_scope(r->bits.func.arg_scope, NULL);
+			fold_funcargs(r->bits.func.args, r->bits.func.arg_scope, r);
 			fold_calling_conv(r);
 			break;
 
@@ -583,6 +596,8 @@ void fold_decl(decl *d, symtable *stab)
 			DIE_AT(&d->where, "field width on non-integral field %s",
 					decl_to_str(d));
 
+		/* FIXME: only warn if "int" specified,
+		 * i.e. detect explicit signed/unsigned */
 		if(k.bits.num.val.i == 1 && type_ref_is_signed(d->ref))
 			WARN_AT(&d->where, "1-bit signed field \"%s\" takes values -1 and 0",
 					decl_to_str(d));
@@ -744,7 +759,7 @@ static void fold_func(decl *func_decl)
 
 		symtab_add_args(
 				func_decl->func_code->symtab,
-				fref->bits.func,
+				fref->bits.func.args,
 				func_decl->spel, func_decl);
 
 		fold_stmt(func_decl->func_code);
@@ -835,6 +850,7 @@ void fold_symtab_scope(symtable *stab, stmt **pinit_code)
 	 * e.g. a code-block (explicit or implicit),
 	 *      global scope
 	 * and an if/switch/while statement: if((struct A { int i; } *)0)...
+	 * an argument list/type_ref::func: f(struct A { int i, j; } *p, ...)
 	 */
 
 	struct_union_enum_st **sit;

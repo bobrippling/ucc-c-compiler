@@ -52,10 +52,14 @@ int sue_enum_size(struct_union_enum_st *st)
 	return st->size = type_primitive_size(type_int);
 }
 
-static void sue_incomplete_chk(struct_union_enum_st *st, where *w)
+void sue_incomplete_chk(struct_union_enum_st *st, where *w)
 {
-	if(sue_incomplete(st))
-		DIE_AT(w, "%s %s is incomplete", sue_str(st), st->spel);
+	if(sue_incomplete(st)){
+		char buf[WHERE_BUF_SIZ];
+
+		DIE_AT(w, "%s %s is incomplete\n%s: note: forward declared here",
+				sue_str(st), st->spel, where_str_r(buf, &st->where));
+	}
 }
 
 unsigned sue_size(struct_union_enum_st *st, where *w)

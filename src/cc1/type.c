@@ -59,7 +59,7 @@ enum type_cmp type_cmp(const type *a, const type *b)
 			return TYPE_NOT_EQUAL;
 	}
 
-	ucc_unreach(); /*TYPE_NOT_EQUAL*/
+	ucc_unreach(TYPE_NOT_EQUAL);
 }
 
 int type_is_signed(const type *t)

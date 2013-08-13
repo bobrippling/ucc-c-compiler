@@ -9,4 +9,10 @@ int const_expr_and_non_zero(expr *e);
 void const_fold_integral(expr *e, numeric *);
 integral_t const_fold_val_i(expr *e);
 
+integral_t const_op_exec(
+		/* rval is optional */
+		integral_t lval, const integral_t *rval,
+		enum op_type op, int is_signed,
+		const char **error);
+
 #endif

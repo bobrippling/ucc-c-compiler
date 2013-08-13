@@ -1063,7 +1063,7 @@ out/out.o: out/out.c out/../../util/util.h out/../../util/where.h \
  out/../ops/stmt_continue.h out/../sym.h out/../decl.h out/../type_ref.h \
  out/asm.h out/out.h out/vstack.h out/impl.h out/x86_64.h \
  out/../../util/platform.h out/../cc1.h out/../../util/std.h \
- out/../pack.h out/../defs.h out/../opt.h
+ out/../pack.h out/../defs.h out/../opt.h out/../const.h
 out/vm.o: out/vm.c out/../../util/util.h out/../../util/where.h \
  out/../../util/compiler.h out/../data_structs.h out/../tree.h \
  out/../type.h out/../expr.h out/../ops/expr_addr.h \

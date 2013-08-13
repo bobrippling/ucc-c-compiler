@@ -20,12 +20,19 @@
 #define F_DEBUG cc_out[SECTION_TEXT]
 #define REG_STR_SZ 4 /* r[0-31] / r[a-z][0-9a-z] */
 
-#define PIC_CHECK(vp)                 \
-			if(vp->bits.lbl.pic){           \
-				static int w;                 \
-				if(!w)                        \
-					ICW("TODO: pic on mips");   \
-			}
+#define LBL_CHECK(vp)                  \
+	do{                                  \
+			static int w;                    \
+			if(!w){                          \
+				if(vp->bits.lbl.pic){          \
+					ICW("TODO: pic on mips");    \
+					w = 1;                       \
+				}else if(vp->bits.lbl.offset){ \
+					ICW("TODO: offset on mips"); \
+					w = 1;                       \
+				}                              \
+			}                                \
+	}while(0)
 
 #define N_CALL_REGS 4 /* FIXME: todo: stack args */
 
@@ -164,7 +171,7 @@ void impl_lea(struct vstack *from, int reg)
 			out_asm("la $%s, %d($fp)", rstr, from->bits.off_from_bp);
 			break;
 		case LBL:
-			PIC_CHECK(from);
+			LBL_CHECK(from);
 			out_asm("la $%s, %s", rstr, from->bits.lbl.str);
 			break;
 	}
@@ -204,7 +211,7 @@ void impl_load(struct vstack *from, int reg)
 			ICE("FLAG in MIPS");
 
 		case LBL:
-			PIC_CHECK(from);
+			LBL_CHECK(from);
 			out_asm("l%s $%s, %s", mips_type_ch(from->t, 1),
 					rstr, from->bits.lbl.str);
 			break;
@@ -247,7 +254,7 @@ void impl_store(struct vstack *from, struct vstack *to)
 			ICE("store to %d", to->type);
 
 		case LBL:
-			PIC_CHECK(from);
+			LBL_CHECK(from);
 			out_asm("s%s $%s, %s",
 					ty_ch,
 					rstr, to->bits.lbl.str);
@@ -486,6 +493,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 			out_asm("jalr $%s", reg_str_i(vtop->bits.reg));
 			break;
 		case LBL:
+			LBL_CHECK(vtop);
 			out_asm("jal %s", vtop->bits.lbl.str);
 	}
 }

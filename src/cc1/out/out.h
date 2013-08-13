@@ -1,7 +1,7 @@
 #ifndef OUT_H
 #define OUT_H
 
-#define OUT_VPHI_SZ 48 /* sizeof(struct vstack) */
+#define OUT_VPHI_SZ 64 /* sizeof(struct vstack) */
 
 void out_pop(void);
 void out_pop_func_ret(type_ref *) ucc_nonnull((1));
@@ -12,7 +12,7 @@ void out_phi_join(void *);   /* join vtop and the phi-save area */
 void out_push_num(type_ref *t, const numeric *n) ucc_nonnull((1));
 void out_push_l(type_ref *, long) ucc_nonnull((1));
 void out_push_zero(type_ref *) ucc_nonnull((1));
-void out_push_lbl(char *s, int pic);
+void out_push_lbl(const char *s, int pic);
 void out_push_noop(void);
 
 void out_dup(void); /* duplicate top of stack */
