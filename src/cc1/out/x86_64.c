@@ -384,6 +384,8 @@ void impl_func_prologue_save_call_regs(type_ref *rf, int nargs)
 
 			v_alloc_stack_n(n_reg_args * platform_word_size());
 		}
+
+		/* out_func_prologue() does a v_stack_align() here */
 	}
 }
 
@@ -418,6 +420,9 @@ void impl_func_prologue_save_variadic(type_ref *rf, int nargs)
 	free(vfin);
 
 	v_alloc_stack_n(sz);
+	v_stack_align();
+
+	return sz;
 }
 
 void impl_func_epilogue(type_ref *rf)
@@ -1372,6 +1377,8 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 
 	for(i = 0; i < nargs; i++)
 		vpop();
+
+	v_stack_align();
 
 	{
 		funcargs *args = type_ref_funcargs(r_func);

@@ -425,6 +425,19 @@ unsigned v_alloc_stack(unsigned sz)
 	return v_alloc_stack2(sz, 0);
 }
 
+void v_stack_align(unsigned npushes)
+{
+	unsigned extra;
+
+	TODO();
+
+	stack_sz += npushes * platform_word_size();
+	extra = new % cc1_mstack_align;
+
+	if(extra)
+		v_alloc_stack(extra);
+}
+
 void v_save_reg(struct vstack *vp)
 {
 	UCC_ASSERT(vp->type == REG, "not reg");
@@ -1300,6 +1313,8 @@ void out_func_prologue(type_ref *rf, int stack_res, int nargs, int variadic)
 
 	if(stack_res)
 		v_alloc_stack(stack_res);
+
+	v_stack_align();
 }
 
 void out_func_epilogue(type_ref *rf)

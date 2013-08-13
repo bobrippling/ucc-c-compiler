@@ -97,6 +97,11 @@ unsigned v_alloc_stack(unsigned sz);
 /* don't output an instruction - e.g. if a push is done manually */
 unsigned v_alloc_stack_n(unsigned sz);
 
+/* should be called after stack pushes,
+ * to align the stack to cc1_mstack_align
+ */
+void v_stack_align(void);
+
 void v_deref_decl(struct vstack *vp);
 
 int impl_n_scratch_regs(void);
