@@ -731,7 +731,7 @@ static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
 
 		case type_ref_cast:
 			if(r->bits.cast.is_signed_cast)
-				BUF_ADD(r->bits.cast.signed_true ? "signed" : "unsigned");
+				BUF_ADD(r->bits.cast.signed_true ? "signed " : "unsigned ");
 			else
 				q = r->bits.cast.qual;
 			break;
@@ -745,7 +745,7 @@ static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
 	}
 
 	if(q)
-		BUF_ADD(" %s", type_qual_to_str(q, 0));
+		BUF_ADD("%s ", type_qual_to_str(q, 0));
 
 	type_ref_add_str(r->tmp, spel, bufp, sz);
 
@@ -785,7 +785,8 @@ static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
 				if(r->bits.array.is_static)
 					BUF_ADD("static ");
 
-				BUF_ADD("%s ", type_qual_to_str(r->bits.array.qual, 1));
+				if(r->bits.array.qual)
+					BUF_ADD("%s ", type_qual_to_str(r->bits.array.qual, 1));
 
 				BUF_ADD("%" NUMERIC_FMT_D, const_fold_val_i(r->bits.array.size));
 			}
@@ -886,13 +887,16 @@ const char *type_ref_to_str_r_spel_aka(
 
 	type_ref_add_type_str(r, &bufp, TYPE_REF_STATIC_BUFSIZ, aka);
 
-	if(!type_ref_is(r, type_ref_type) || spel)
-		strcpy(bufp++, " "); /* need the nul char */
+	strcpy(bufp++, " "); /* need the nul char */
 
 	/* print in reverse order */
 	r = type_ref_set_parent(r, NULL);
 	/* use r->tmp, since r is type_ref_t{ype,def} */
 	type_ref_add_str(r->tmp, spel, &bufp, TYPE_REF_STATIC_BUFSIZ - (bufp - buf));
+
+	/* trim trailing space */
+	if(bufp > buf && bufp[-1] == ' ')
+		bufp[-1] = '\0';
 
 	return buf;
 }
