@@ -21,26 +21,11 @@ static enum type_cmp type_ref_cmp_r(
 		type_ref *const orig_b,
 		enum type_cmp_opts opts)
 {
+	enum type_cmp ret;
 	type_ref *a, *b;
 
 	if(!orig_a || !orig_b)
 		return orig_a == orig_b ? TYPE_EQUAL : TYPE_NOT_EQUAL;
-
-	/* FIXME: check qualifiers */
-#if 0
-	if(!type_qual_equal(a->qual, b->qual)){
-		if(mode & TYPE_CMP_EXACT)
-			return ?;
-
-		/* if b is const, a must be */
-		if((mode & TYPE_CMP_QUAL)
-		&&  (b->qual & qual_const)
-		&& !(a->qual & qual_const))
-		{
-			return ?;
-		}
-	}
-#endif
 
 	a = type_ref_skip_tdefs_casts(orig_a);
 	b = type_ref_skip_tdefs_casts(orig_b);
@@ -60,7 +45,7 @@ static enum type_cmp type_ref_cmp_r(
 
 			if(a_complete && b_complete){
 				const integral_t av = const_fold_val_i(a->bits.array.size),
-				                bv = const_fold_val_i(b->bits.array.size);
+				                 bv = const_fold_val_i(b->bits.array.size);
 
 				if(av != bv)
 					return TYPE_NOT_EQUAL;
@@ -74,36 +59,8 @@ static enum type_cmp type_ref_cmp_r(
 		}
 
 		case type_ref_block:
-			if(!type_qual_equal(a->bits.block.qual, b->bits.block.qual))
-				return TYPE_NOT_EQUAL;
-			break;
-
 		case type_ref_ptr:
-			switch(type_ref_cmp_r(a->ref, b->ref, opts)){
-				case TYPE_NOT_EQUAL:
-					if(fopt_mode & FOPT_PLAN9_EXTENSIONS){
-						/* allow b to be an anonymous member of a, if pointers */
-						struct_union_enum_st *a_sue = type_ref_is_s_or_u(a),
-						                     *b_sue = type_ref_is_s_or_u(b);
-
-						if(a_sue && b_sue /* already know they aren't equal */){
-							/* b_sue has an a_sue,
-							 * the implicit cast adjusts to return said a_sue */
-							if(struct_union_member_find_sue(b_sue, a_sue))
-								return TYPE_CONVERTIBLE;
-						}
-					}
-					return TYPE_NOT_EQUAL;
-
-				case TYPE_EQUAL:
-					if(!type_qual_equal(a->bits.ptr.qual, b->bits.ptr.qual))
-						return TYPE_NOT_EQUAL;
-					return TYPE_EQUAL;
-
-				case TYPE_CONVERTIBLE:
-					return TYPE_CONVERTIBLE;
-			}
-			ucc_unreach();
+			break;
 
 		case type_ref_cast:
 		case type_ref_tdef:
@@ -118,7 +75,37 @@ static enum type_cmp type_ref_cmp_r(
 			break;
 	}
 
-	return type_ref_cmp_r(a->ref, b->ref, opts);
+	ret = type_ref_cmp_r(a->ref, b->ref, opts);
+
+	if(ret == TYPE_NOT_EQUAL
+	&& a->type == type_ref_ptr
+	&& fopt_mode & FOPT_PLAN9_EXTENSIONS)
+	{
+		/* allow b to be an anonymous member of a, if pointers */
+		struct_union_enum_st *a_sue = type_ref_is_s_or_u(a),
+		                     *b_sue = type_ref_is_s_or_u(b);
+
+		if(a_sue && b_sue /* already know they aren't equal */){
+			/* b_sue has an a_sue,
+			 * the implicit cast adjusts to return said a_sue */
+			if(struct_union_member_find_sue(b_sue, a_sue))
+				return TYPE_CONVERTIBLE;
+		}
+	}
+
+	if(ret == TYPE_EQUAL
+	&& (a->type == type_ref_ptr || a->type == type_ref_block))
+	{
+		/* check qualifiers of what we point to */
+		const enum type_qualifier qa = type_ref_qual(a->ref),
+		                          qb = type_ref_qual(b->ref);
+
+		if(type_qual_loss(qa, qb))
+			/* warns are done, but conversion allowed */
+			ret = TYPE_NOT_EQUAL;
+	}
+
+	return ret;
 }
 
 enum type_cmp type_ref_cmp(type_ref *a, type_ref *b, enum type_cmp_opts opts)

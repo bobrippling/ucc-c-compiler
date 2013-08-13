@@ -59,4 +59,7 @@ struct type
 enum type_cmp type_cmp(const type *a, const type *b);
 int type_is_signed(const type *);
 
+/* is there a loss of qualifiers going from 'b' to 'a' ? */
+int type_qual_loss(enum type_qualifier a, enum type_qualifier b);
+
 #endif

@@ -244,11 +244,6 @@ unsigned type_align(const type *t, where *from)
 	}
 }
 
-int type_qual_equal(enum type_qualifier a, enum type_qualifier b)
-{
- return (a | qual_restrict) == (b | qual_restrict);
-}
-
 int type_floating(enum type_primitive p)
 {
 	switch(p){

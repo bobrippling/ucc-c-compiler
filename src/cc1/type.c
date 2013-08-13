@@ -95,3 +95,14 @@ int type_is_signed(const type *t)
 
 	ICE("bad primitive");
 }
+
+int type_qual_loss(enum type_qualifier a, enum type_qualifier b)
+{
+	a &= ~qual_restrict,
+	b &= ~qual_restrict;
+
+	/* if we have b, remove all of a's bits and still have stuff,
+	 * e.g. const or volatile, then a takes away b's qualifiers
+	 */
+	return b & ~a ? 1 : 0;
+}
