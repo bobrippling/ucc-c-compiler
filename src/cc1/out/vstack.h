@@ -77,6 +77,7 @@ void v_to_reg(struct vstack *conv);
 void v_to_reg_out(struct vstack *conv, struct vreg *);
 void v_to_reg_given(struct vstack *from, const struct vreg *);
 
+void v_to_mem_given(struct vstack *, int stack_pos);
 void v_to_mem(struct vstack *);
 
 enum vto

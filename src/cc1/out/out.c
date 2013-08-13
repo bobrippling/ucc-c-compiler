@@ -266,6 +266,30 @@ void v_to_reg(struct vstack *conv)
 	v_to_reg_out(conv, NULL);
 }
 
+void v_to_mem_given(struct vstack *vp, int stack_pos)
+{
+	struct vstack store;
+
+	v_to_reg(vp);
+
+	memset(&store, 0, sizeof store);
+
+	store.type = STACK;
+	store.t = type_ref_ptr_depth_inc(vp->t);
+
+	/* the following gen two instructions - subq and movq
+	 * instead/TODO: impl_save_reg(vp) -> "pushq %%rax"
+	 * -O1?
+	 */
+	store.bits.off_from_bp = stack_pos;
+
+	impl_store(vp, &store);
+
+	store.type = STACK_SAVE;
+	store.t = type_ref_ptr_depth_dec(store.t, NULL);
+	memcpy_safe(vp, &store);
+}
+
 void v_to_mem(struct vstack *vp)
 {
 	switch(vp->type){
@@ -402,32 +426,11 @@ unsigned v_alloc_stack(unsigned sz)
 
 void v_save_reg(struct vstack *vp)
 {
-	struct vstack store;
-
 	UCC_ASSERT(vp->type == REG, "not reg");
 
-	memset(&store, 0, sizeof store);
-
-	store.type = STACK;
-	store.t = type_ref_ptr_depth_inc(vp->t);
-
-	/* the following gen two instructions - subq and movq
-	 * instead/TODO: impl_save_reg(vp) -> "pushq %%rax"
-	 * -O1?
-	 */
-	store.bits.off_from_bp = -v_alloc_stack(
-			type_ref_size(store.t, NULL));
-
-#ifdef DEBUG_REG_SAVE
-	out_comment("save register %d", vp->bits.reg);
-#endif
-	impl_store(vp, &store);
-
-	store.type = STACK_SAVE;
-
-	memcpy_safe(vp, &store);
-
-	vp->t = type_ref_ptr_depth_dec(vp->t, NULL);
+	v_to_mem_given(
+			vp,
+			-v_alloc_stack(type_ref_size(vp->t, NULL)));
 }
 
 void v_save_regs(int n_ignore, type_ref *func_ty)
