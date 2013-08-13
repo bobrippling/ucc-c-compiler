@@ -323,7 +323,7 @@ type_ref *type_ref_func_call(type_ref *fp, funcargs **pfuncargs)
 
 		case type_ref_func:
 			if(pfuncargs)
-				*pfuncargs = fp->bits.func;
+				*pfuncargs = fp->bits.func.args;
 			fp = fp->ref;
 			break;
 
@@ -444,7 +444,7 @@ funcargs *type_ref_funcargs(type_ref *r)
 
 	UCC_ASSERT(r, "not a function type");
 
-	return r->bits.func;
+	return r->bits.func.args;
 }
 
 int type_ref_is_callable(type_ref *r)

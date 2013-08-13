@@ -769,11 +769,13 @@ static type_ref *parse_type_ref_func(enum decl_mode mode, char **sp)
 	type_ref *sub = parse_type_ref_array(mode, sp);
 
 	while(accept(token_open_paren)){
-		type_ref *r_new = type_ref_new_func(sub, parse_func_arglist());
+		current_scope = symtab_new(current_scope);
+
+		sub = type_ref_new_func(sub, parse_func_arglist());
+
+		current_scope = current_scope->parent;
 
 		EAT(token_close_paren);
-
-		sub = r_new;
 	}
 
 	return sub;
@@ -954,7 +956,7 @@ decl **parse_decls_one_type()
 static int is_old_func(decl *d)
 {
 	type_ref *r = PARSE_type_ref_is(d->ref, type_ref_func);
-	return r && r->bits.func->args_old_proto;
+	return r && r->bits.func.args->args_old_proto;
 }
 
 static void check_and_replace_old_func(decl *d, decl **old_args)
@@ -962,7 +964,7 @@ static void check_and_replace_old_func(decl *d, decl **old_args)
 	/* check then replace old args */
 	int n_proto_decls, n_old_args;
 	int i;
-	funcargs *dfuncargs = d->ref->bits.func;
+	funcargs *dfuncargs = d->ref->bits.func.args;
 
 	UCC_ASSERT(PARSE_type_ref_is(d->ref, type_ref_func), "not func");
 
@@ -1212,7 +1214,20 @@ void parse_decls_multi_type(
 
 				/* clang-style allows __attribute__ and then a function block */
 				if(need_func || curtok == token_open_block){
+					type_ref *func_r = PARSE_DECL_IS_FUNC(d);
+					symtable *const old_scope = current_scope;
+
+					/* need to set scope to include function arguments,
+					 * e.g. f(struct A { ... })
+					 */
+					UCC_ASSERT(func_r, "function expected");
+					current_scope = func_r->bits.func.arg_scope;
+
 					d->func_code = parse_stmt_block();
+
+					current_scope = current_scope->parent;
+					UCC_ASSERT(current_scope == old_scope,
+							"scope change in parsing func block");
 
 					/* if:
 					 * f(){...}, then we don't have args_void, but implicitly we do

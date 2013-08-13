@@ -448,7 +448,8 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 			if(type_ref_is(parent, type_ref_ptr) && (type_ref_qual(parent) & qual_restrict))
 				DIE_AT(&r->where, "restrict qualified function pointer");
 
-			fold_funcargs(r->bits.func, stab, r);
+			fold_symtab_scope(r->bits.func.arg_scope, NULL);
+			fold_funcargs(r->bits.func.args, r->bits.func.arg_scope, r);
 			break;
 
 		case type_ref_block:
@@ -730,7 +731,7 @@ static void fold_func(decl *func_decl)
 
 		symtab_add_args(
 				func_decl->func_code->symtab,
-				fref->bits.func,
+				fref->bits.func.args,
 				func_decl->spel);
 
 		fold_stmt(func_decl->func_code);
@@ -821,6 +822,7 @@ void fold_symtab_scope(symtable *stab, stmt **pinit_code)
 	 * e.g. a code-block (explicit or implicit),
 	 *      global scope
 	 * and an if/switch/while statement: if((struct A { int i; } *)0)...
+	 * an argument list/type_ref::func: f(struct A { int i, j; } *p, ...)
 	 */
 
 	struct_union_enum_st **sit;

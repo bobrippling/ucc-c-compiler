@@ -161,7 +161,7 @@ static void print_type_ref_eng(type_ref *ref)
 		case type_ref_func:
 		{
 #ifdef ENGLISH_PRINT_ARGLIST
-			funcargs *fargs = ref->bits.func;
+			funcargs *fargs = ref->bits.func.args;
 			decl **iter;
 #endif
 

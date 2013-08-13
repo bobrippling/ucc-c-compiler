@@ -94,7 +94,11 @@ struct type_ref
 		} cast;
 
 		/* ref_func */
-		struct funcargs *func;
+		struct
+		{
+			struct funcargs *args;
+			symtable *arg_scope;
+		} func;
 
 		/* ref_block */
 		struct
