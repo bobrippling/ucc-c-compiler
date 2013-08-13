@@ -519,9 +519,7 @@ static decl_init **decl_init_brace_up_sue2(
 
 	(void)range_store;
 
-	if(sue_incomplete(sue))
-		DIE_AT(ITER_WHERE(iter, &sue->where), "initialising %s %s",
-				sue_str(sue), sue->spel);
+	UCC_ASSERT(!sue_incomplete(sue), "should've checked sue completeness");
 
 	/* check for copy-init */
 	if((this = *iter->pos) && this->type == decl_init_scalar){
@@ -791,6 +789,10 @@ static decl_init *decl_init_brace_up_aggregate(
 
 static void die_incomplete(init_iter *iter, type_ref *tfor)
 {
+	struct_union_enum_st *sue = type_ref_is_s_or_u(tfor);
+	if(sue)
+		sue_incomplete_chk(sue, ITER_WHERE(iter, &sue->where));
+
 	DIE_AT(ITER_WHERE(iter, &tfor->where),
 			"initialising %s", type_ref_to_str(tfor));
 }
