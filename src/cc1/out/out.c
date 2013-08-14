@@ -413,6 +413,12 @@ static unsigned v_alloc_stack2(unsigned sz, int noop)
 				to_alloc = sz; /* the whole hog */
 			}else{
 				to_alloc = sz - orig; /* the extra we need to align by */
+				if(fopt_mode & FOPT_VERBOSE_ASM){
+					out_comment("stack alignment (%u -> %u)",
+							stack_sz, stack_sz + sz);
+					out_comment("alloc_n by %u (-> %u), padding with %u",
+							orig, stack_sz + orig, to_alloc);
+				}
 			}
 
 			vpush(NULL);
@@ -1323,6 +1329,9 @@ void out_func_prologue(type_ref *rf, int stack_res, int nargs, int variadic)
 
 void out_func_epilogue(type_ref *rf)
 {
+	if(fopt_mode & FOPT_VERBOSE_ASM)
+		out_comment("epilogue, stack_sz = %u", stack_sz);
+
 	impl_func_epilogue(rf);
 	stack_local_offset = stack_sz = 0;
 }
