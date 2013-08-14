@@ -399,14 +399,27 @@ static unsigned v_alloc_stack2(unsigned sz, int noop)
 
 	if(sz){
 		/* sz must be a multiple of mstack_align */
+		unsigned const orig = sz;
+
+		/* assume stack_sz is aligned, and just
+		 * align what we add to it */
 		sz = pack_to_align(sz, cc1_mstack_align);
 
-		if(!noop){
+		/* if sz changed, we need to realign the stack */
+		if(!noop || sz != orig){
+			unsigned to_alloc;
+
+			if(!noop){
+				to_alloc = sz; /* the whole hog */
+			}else{
+				to_alloc = sz - orig; /* the extra we need to align by */
+			}
+
 			vpush(NULL);
 			vtop->type = REG;
 			vtop->bits.reg.is_float = 0;
 			vtop->bits.reg.idx = REG_SP;
-			out_push_l(type_ref_cached_INTPTR_T(), sz);
+			out_push_l(type_ref_cached_INTPTR_T(), to_alloc);
 			out_op(op_minus);
 			out_pop();
 		}
@@ -423,19 +436,6 @@ unsigned v_alloc_stack_n(unsigned sz)
 unsigned v_alloc_stack(unsigned sz)
 {
 	return v_alloc_stack2(sz, 0);
-}
-
-void v_stack_align(unsigned npushes)
-{
-	unsigned extra;
-
-	TODO();
-
-	stack_sz += npushes * platform_word_size();
-	extra = new % cc1_mstack_align;
-
-	if(extra)
-		v_alloc_stack(extra);
 }
 
 void v_save_reg(struct vstack *vp)
@@ -1314,7 +1314,11 @@ void out_func_prologue(type_ref *rf, int stack_res, int nargs, int variadic)
 	if(stack_res)
 		v_alloc_stack(stack_res);
 
-	v_stack_align();
+	/* (for the saved fp, above)
+	 * XXX: note that because this isn't in order with the
+	 * arg pushing or stack_res code, we over-allocate the stack
+	 */
+	v_alloc_stack_n(platform_word_size());
 }
 
 void out_func_epilogue(type_ref *rf)
