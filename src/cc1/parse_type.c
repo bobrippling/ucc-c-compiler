@@ -140,6 +140,11 @@ static type_ref *parse_type_sue(enum type_primitive prim)
 	}
 
 	{
+		/* TODO: link structs to prototypes.
+		 * note here if the struct is a prototype when parsing,
+		 * then we can pick this up in parsing
+		 * int f(struct A { ... })
+		 */
 		struct_union_enum_st *sue = sue_find_or_add(
 				current_scope, spel, members, prim, is_complete);
 
