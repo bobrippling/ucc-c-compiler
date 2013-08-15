@@ -247,8 +247,9 @@ static void bitfield_size_align(
 
 static int fold_sue(struct_union_enum_st *const sue, symtable *stab)
 {
-	if(sue->size)
+	if(sue->folded)
 		return sue->size;
+	sue->folded = 1;
 
 	if(sue->primitive == type_enum){
 		fold_enum(sue, stab);

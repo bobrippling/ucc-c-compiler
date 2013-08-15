@@ -141,34 +141,74 @@ sue_member *sue_member_from_decl(decl *d)
 	return sm;
 }
 
-struct_union_enum_st *sue_find_or_add(symtable *stab, char *spel,
-		sue_member **members, enum type_primitive prim, int is_complete)
+struct_union_enum_st *sue_decl(
+		symtable *stab, char *spel,
+		sue_member **members, enum type_primitive prim,
+		int is_complete, int is_declaration)
 {
 	struct_union_enum_st *sue;
 	int new = 0;
 	int descended;
 
 	if(spel && (sue = sue_find_descend(stab, spel, &descended))){
-		/* check if we're creating a new type or using an old one */
-		if(!is_complete || !descended){
-			/* using current */
-			char buf[WHERE_BUF_SIZ];
+		char wbuf[WHERE_BUF_SIZ];
 
-			snprintf(buf, sizeof buf, "%s", where_str(&sue->where));
+		/* redef checks */
+		if(sue->primitive != prim){
+			if(descended)
+				goto new_type;
+				/* struct A;
+				 * f()
+				 * {
+				 *   union A { ... }; <--- new type
+				 * }
+				 */
 
-			/* redef checks */
-			if(sue->primitive != prim)
-				DIE_AT(NULL, "trying to redefine %s as %s (from %s)",
-						sue_str(sue),
-						type_primitive_to_str(prim),
-						buf);
-
-			if(members && sue_complete(sue))
-				DIE_AT(NULL, "can't redefine %s %s's members (defined at %s)",
-						sue_str(sue), sue->spel, buf);
-		}else{
-			goto new_type;
+			DIE_AT(NULL, "trying to redefine %s as %s\n"
+					"%s: note: from here",
+					sue_str(sue),
+					type_primitive_to_str(prim),
+					where_str_r(wbuf, &sue->where));
 		}
+
+		/* check we don't have two definitions */
+		if(is_complete && sue->complete){
+			if(descended)
+				/* struct A {}; f(){ struct A {}; } */
+				goto new_type;
+
+			DIE_AT(NULL, "can't redefine %s %s's members\n"
+					"%s: note: from here",
+					sue_str(sue), sue->spel,
+					where_str_r(wbuf, &sue->where));
+		}
+
+#if 0
+		if(is_complete && !sue->complete){
+			/* we've completed a sue - need a new type
+			 * with a link back to its forward-decl
+			 * otherwise we could get:
+			 * struct A;
+			 * f(struct A *p){ return p->i; } // BAD
+			 * struct A { int i; }; // complete from now on
+			 */
+			goto new_type;
+
+			note - this would complicate things massively
+			instead we just fold functions after we parse them,
+			then move on
+		}
+#endif
+
+		/* struct A;
+		 * f()
+		 * {
+		 *   struct A; <-- new type ONLY IF it's a declaration, i.e.
+		 *   struct A a; <-- this alone wouldn't be a new type
+		 * }
+		 */
+		if(is_declaration && descended)
+			goto new_type;
 
 	}else{
 new_type:
@@ -195,7 +235,8 @@ new_type:
 
 				if(e_mem){
 					char buf[WHERE_BUF_SIZ];
-					DIE_AT(NULL, "redeclaration of enumerator %s (from %s)", spel, where_str_r(buf, &e_sue->where));
+					DIE_AT(NULL, "redeclaration of enumerator %s (from %s)",
+							spel, where_str_r(buf, &e_sue->where));
 				}
 			}
 
@@ -239,7 +280,8 @@ new_type:
 	sue_set_spel(sue, spel);
 
 	if(members){
-		UCC_ASSERT(!sue->members, "redef of struct/union should've been caught");
+		UCC_ASSERT(!sue->members,
+				"redef of struct/union should've been caught");
 		sue->members = members;
 	}
 

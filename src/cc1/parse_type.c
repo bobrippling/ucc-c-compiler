@@ -136,17 +136,19 @@ static type_ref *parse_type_sue(enum type_primitive prim)
 	}else{
 		/* predeclaring */
 		if(prim == type_enum && !sue_find_this_scope(current_scope, spel))
-			cc1_warn_at(NULL, 0, 1, WARN_PREDECL_ENUM, "predeclaration of enums is not C99");
+			cc1_warn_at(NULL, 0, 1, WARN_PREDECL_ENUM,
+					"predeclaration of enums is not C99");
 	}
 
 	{
-		/* TODO: link structs to prototypes.
-		 * note here if the struct is a prototype when parsing,
-		 * then we can pick this up in parsing
-		 * int f(struct A { ... })
+		/* struct [tag] <name | '{' | ';'>
+		 *
+		 * it's a straight declaration if we have a ';'
 		 */
-		struct_union_enum_st *sue = sue_find_or_add(
-				current_scope, spel, members, prim, is_complete);
+		struct_union_enum_st *sue = sue_decl(
+				current_scope, spel,
+				members, prim, is_complete,
+				/* isdef = */ curtok == token_semicolon);
 
 		type_ref *r = type_ref_new_type(
 				type_new_primitive_sue(prim, sue));

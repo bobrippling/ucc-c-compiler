@@ -21,7 +21,10 @@ struct struct_union_enum_st
 	enum type_primitive primitive; /* struct or enum or union */
 
 	char *spel; /* "<anon ...>" if anon */
-	unsigned anon : 1, complete : 1, flexarr : 1;
+	unsigned anon : 1,
+	         complete : 1,
+	         flexarr : 1,
+	         folded : 1;
 	int align, size;
 
 	sue_member **members;
@@ -41,8 +44,21 @@ struct struct_union_enum_st
 
 sue_member *sue_member_from_decl(decl *);
 
-struct_union_enum_st *sue_find_or_add(symtable *, char *spel, sue_member **members, enum type_primitive, int complete);
 struct_union_enum_st *sue_find_this_scope(symtable *, const char *spel);
+
+/* we need to know if the struct is a definition at this point,
+ * e.g.
+ * struct A { int i; };
+ * f()
+ * {
+ *   struct A a; // old type
+ *   struct A;   // new type
+ * }
+ */
+struct_union_enum_st *sue_decl(
+		symtable *stab, char *spel,
+		sue_member **members, enum type_primitive prim,
+		int is_complete, int is_declaration);
 
 /* enum specific */
 void enum_vals_add(sue_member ***, char *, expr *);

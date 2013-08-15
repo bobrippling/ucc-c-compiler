@@ -61,11 +61,15 @@ err:
 	}
 
 	if(!sue_complete(sue)){
-		DIE_AT(&e->lhs->where, "%s incomplete type (%s)",
+		char wbuf[WHERE_BUF_SIZ];
+
+		DIE_AT(&e->lhs->where, "%s incomplete type (%s)\n"
+				"%s: forward declared here",
 				ptr_expect
 					? "dereferencing pointer to"
 					: "accessing member of",
-				type_ref_to_str(e->lhs->tree_type));
+				type_ref_to_str(e->lhs->tree_type),
+				where_str_r(wbuf, &sue->where));
 	}
 
 	if(spel){
