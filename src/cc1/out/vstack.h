@@ -93,8 +93,10 @@ void v_save_regs(int n_ignore, type_ref *func_ty);
 void v_reserve_reg(const struct vreg *);
 void v_unreserve_reg(const struct vreg *);
 
+/* outputs stack-ptr instruction(s) */
 unsigned v_alloc_stack(unsigned sz);
-/* don't output an instruction - e.g. if a push is done manually */
+/* Will output instructions to align the stack to cc1_mstack_align
+ * e.g. if a push is done manually */
 unsigned v_alloc_stack_n(unsigned sz);
 
 void v_deref_decl(struct vstack *vp);

@@ -323,6 +323,8 @@ void impl_func_prologue_save_fp(void)
 {
 	out_asm("pushq %%rbp");
 	out_asm("movq %%rsp, %%rbp");
+	/* a v_alloc_stack_n() is done later to align,
+	 * but not interfere with argument locations */
 }
 
 static void reg_to_stack(const struct vreg *vr, type_ref *ty, int where)
@@ -382,8 +384,11 @@ void impl_func_prologue_save_call_regs(type_ref *rf, int nargs)
 						x86_reg_str(&call_regs[i], NULL));
 			}
 
+			/* this aligns the stack too */
 			v_alloc_stack_n(n_reg_args * platform_word_size());
 		}
+
+		/* out_func_prologue() does a v_stack_align() here */
 	}
 }
 
@@ -417,6 +422,7 @@ void impl_func_prologue_save_variadic(type_ref *rf, int nargs)
 	out_label(vfin);
 	free(vfin);
 
+	/* align the stack too */
 	v_alloc_stack_n(sz);
 }
 
@@ -1311,6 +1317,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 		arg_stack = (nints + nfloats) * pws;
 
 		ICW("FIXME: alloc stack: need to get the amount rounded"); // FIXME
+		/* this aligns the stack-ptr */
 		v_alloc_stack(arg_stack);
 
 		/* save in order */

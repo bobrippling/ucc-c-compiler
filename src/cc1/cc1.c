@@ -123,6 +123,7 @@ struct
 	{ 1,  "track-initial-fname", FOPT_TRACK_INITIAL_FNAM },
 	{ 1,  "freestanding",        FOPT_FREESTANDING },
 	{ 1,  "show-static-asserts", FOPT_SHOW_STATIC_ASSERTS },
+	{ 1,  "verbose-asm",         FOPT_VERBOSE_ASM },
 
 	{ 0,  NULL, 0 }
 };

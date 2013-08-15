@@ -399,14 +399,33 @@ static unsigned v_alloc_stack2(unsigned sz, int noop)
 
 	if(sz){
 		/* sz must be a multiple of mstack_align */
+		unsigned const orig = sz;
+
+		/* assume stack_sz is aligned, and just
+		 * align what we add to it */
 		sz = pack_to_align(sz, cc1_mstack_align);
 
-		if(!noop){
+		/* if sz changed, we need to realign the stack */
+		if(!noop || sz != orig){
+			unsigned to_alloc;
+
+			if(!noop){
+				to_alloc = sz; /* the whole hog */
+			}else{
+				to_alloc = sz - orig; /* the extra we need to align by */
+				if(fopt_mode & FOPT_VERBOSE_ASM){
+					out_comment("stack alignment (%u -> %u)",
+							stack_sz, stack_sz + sz);
+					out_comment("alloc_n by %u (-> %u), padding with %u",
+							orig, stack_sz + orig, to_alloc);
+				}
+			}
+
 			vpush(NULL);
 			vtop->type = REG;
 			vtop->bits.reg.is_float = 0;
 			vtop->bits.reg.idx = REG_SP;
-			out_push_l(type_ref_cached_INTPTR_T(), sz);
+			out_push_l(type_ref_cached_INTPTR_T(), to_alloc);
 			out_op(op_minus);
 			out_pop();
 		}
@@ -1300,10 +1319,19 @@ void out_func_prologue(type_ref *rf, int stack_res, int nargs, int variadic)
 
 	if(stack_res)
 		v_alloc_stack(stack_res);
+
+	/* (for the saved fp, above)
+	 * XXX: note that because this isn't in order with the
+	 * arg pushing or stack_res code, we over-allocate the stack
+	 */
+	v_alloc_stack_n(platform_word_size());
 }
 
 void out_func_epilogue(type_ref *rf)
 {
+	if(fopt_mode & FOPT_VERBOSE_ASM)
+		out_comment("epilogue, stack_sz = %u", stack_sz);
+
 	impl_func_epilogue(rf);
 	stack_local_offset = stack_sz = 0;
 }
