@@ -26,8 +26,6 @@
 decl     *curdecl_func;
 type_ref *curdecl_ref_func_called; /* for funcargs-local labels and return type-checking */
 
-static where asm_struct_enum_where;
-
 /* FIXME: don't have the callers do type_ref_to_str() */
 int fold_type_ref_equal(
 		type_ref *a, type_ref *b, where *w,
@@ -184,7 +182,7 @@ static void fold_enum(struct_union_enum_st *en, symtable *stab)
 		/* -1 because we can't do dynarray_add(..., 0) */
 		if(e == (expr *)-1){
 
-			EOF_WHERE(&asm_struct_enum_where,
+			EOF_WHERE(&en->where,
 				m->val = expr_new_val(defval)
 			);
 

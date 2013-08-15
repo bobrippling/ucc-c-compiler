@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <string.h>
 
 #include "../util/where.h"
 #include "../util/dynarray.h"
@@ -16,63 +17,39 @@
 #include "parse.h"
 #include "parse_type.h"
 
+#include "cc1.h"
+#include "fold.h"
+#include "const.h"
+
 #include "pass1.h"
 
 
 static void fold(symtable *globs)
 {
-#define D(x) globs->decls[x]
-	int fold_had_error = 0;
-	extern const char *current_fname;
 	int i;
 
-	memset(&asm_struct_enum_where, 0, sizeof asm_struct_enum_where);
-	asm_struct_enum_where.fname = current_fname;
-
-	if(fopt_mode & FOPT_ENABLE_ASM){
-		decl *df;
-		funcargs *fargs;
-		const where *old_w;
-
-		old_w = eof_where;
-		eof_where = &asm_struct_enum_where;
-
-		df = decl_new();
-		df->spel = ustrdup(ASM_INLINE_FNAME);
-
-		fargs = funcargs_new();
-		fargs->arglist    = umalloc(2 * sizeof *fargs->arglist);
-		fargs->arglist[1] = NULL;
-
-		/* const char * */
-		(fargs->arglist[0] = decl_new())->ref = type_ref_new_ptr(
-				type_ref_new_type_qual(type_char, qual_const),
-				qual_none);
-
-		df->ref = type_ref_new_func(type_ref_cached_INT(), fargs);
-
-		ICE("__asm__ symtable");
-		/*symtab_add(globs, df, sym_global, SYMTAB_NO_SYM, SYMTAB_PREPEND);*/
-
-		eof_where = old_w;
-	}
-
+	/* TODO #1: this needs calling individually when we complete
+	 * a struct, or block scope (or global scope) etc */
 	fold_symtab_scope(globs, NULL);
 
 	if(globs->decls){
-		for(i = 0; D(i); i++)
-			fold_decl_global(D(i), globs);
+		decl *d;
 
+		for(i = 0; (d = globs->decls[i]); i++)
+			/* TODO #2: do this after a single global decl parse */
+			fold_decl_global(d, globs);
+
+		/* TODO #3: do this at the very end of parse, when
+		 * we have all global decls */
 		fold_merge_tenatives(globs);
 	}
-
-	if(fold_had_error)
-		exit(1);
-#undef D
 }
 
-static void fold_static_asserts(static_assert **sas)
+static void fold_check_static_asserts(static_assert **sas)
 {
+	/* TODO #4: do this for each scope, from fold_symtab_scope() or symtab_fold()
+	 * TODO #5:                merge these functions? ^
+	 */
 	static_assert **i;
 	for(i = sas; i && *i; i++){
 		static_assert *sa = *i;
@@ -121,6 +98,7 @@ void parse_and_fold(symtable_global *globals)
 				current_scope,
 				&new);
 
+		/* TODO #6: pull out g-asm() parsing */
 		if(new){
 			symtable_gasm **i;
 
@@ -140,7 +118,8 @@ void parse_and_fold(symtable_global *globals)
 		}
 
 		/* fold */
-		fold(
+		/* TODO #7: fold after global */
+		fold();
 
 		if(!cont)
 			break;
@@ -153,7 +132,9 @@ void parse_and_fold(symtable_global *globals)
 	if(parse_had_error)
 		exit(1);
 
+	/* TODO: related to TODO #4 */
 	current_scope->static_asserts = static_asserts;
+	fold_check_static_asserts(globals->stab.static_asserts);
 
 	UCC_ASSERT(!current_scope->parent, "scope leak during parse");
 }
