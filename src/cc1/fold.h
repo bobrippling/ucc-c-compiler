@@ -1,6 +1,9 @@
 #ifndef FOLD_H
 #define FOLD_H
 
+void fold_decl_global(decl *d, symtable *stab);
+void fold_merge_tenatives(symtable *stab);
+
 void fold_decl(decl *d, symtable *stab);
 void fold_decl(decl *d, symtable *stab);
 void fold_decl_global_init(decl *d, symtable *stab);
@@ -34,8 +37,6 @@ void fold_stmt(stmt *t);
 int fold_passable(stmt *s);
 int fold_passable_yes(stmt *s);
 int fold_passable_no( stmt *s);
-
-void fold(symtable *);
 
 extern decl *curdecl_func;
 extern type_ref *curdecl_ref_func_called;

@@ -23,6 +23,7 @@
 #include "fold_sym.h"
 #include "out/out.h"
 #include "ops/__builtin.h"
+#include "pass1.h"
 
 #include "../as_cfg.h"
 #define QUOTE(...) #__VA_ARGS__
@@ -492,13 +493,13 @@ usage:
 
 	globs = symtabg_new();
 	tokenise_set_input(next_line, fname);
-	parse(globs);
+
+	parse_and_fold(globs);
+
+	symtab_fold(&globs->stab, 0);
 
 	if(infile != stdin)
 		fclose(infile), infile = NULL;
-
-	fold(&globs->stab);
-	symtab_fold(&globs->stab, 0);
 
 	if(werror && warning_count)
 		ccdie(0, "%s: Treating warnings as errors", *argv);

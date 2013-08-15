@@ -9,7 +9,13 @@ decl *parse_decl_single(enum decl_mode mode);
 /* type ident(, ident, ...) - multiple of the above */
 decl **parse_decls_one_type(void);
 
-/* type ident...; type ident...; - multiple of the above */
+/* type ident...; */
+void parse_decls_single_type(
+		enum decl_multi_mode mode,
+		symtable *scope,
+		decl ***pdecls);
+
+/* multiple of the above */
 void parse_decls_multi_type(
 		enum decl_multi_mode mode,
 		symtable *scope,

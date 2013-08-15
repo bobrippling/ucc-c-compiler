@@ -781,7 +781,7 @@ static void fold_func(decl *func_decl)
 	}
 }
 
-static void fold_decl_global(decl *d, symtable *stab)
+void fold_decl_global(decl *d, symtable *stab)
 {
 	switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
 		case store_extern:
@@ -1058,7 +1058,7 @@ int fold_passable(stmt *s)
 	return s->f_passable(s);
 }
 
-static void fold_merge_tenatives(symtable *stab)
+void fold_merge_tenatives(symtable *stab)
 {
 	decl **const globs = stab->decls;
 
@@ -1112,87 +1112,4 @@ static void fold_merge_tenatives(symtable *stab)
 					d->spel);
 		}
 	}
-}
-
-void fold(symtable *globs)
-{
-#define D(x) globs->decls[x]
-	int fold_had_error = 0;
-	extern const char *current_fname;
-	int i;
-
-	memset(&asm_struct_enum_where, 0, sizeof asm_struct_enum_where);
-	asm_struct_enum_where.fname = current_fname;
-
-	if(fopt_mode & FOPT_ENABLE_ASM){
-		decl *df;
-		funcargs *fargs;
-		const where *old_w;
-
-		old_w = eof_where;
-		eof_where = &asm_struct_enum_where;
-
-		df = decl_new();
-		df->spel = ustrdup(ASM_INLINE_FNAME);
-
-		fargs = funcargs_new();
-		fargs->arglist    = umalloc(2 * sizeof *fargs->arglist);
-		fargs->arglist[1] = NULL;
-
-		/* const char * */
-		(fargs->arglist[0] = decl_new())->ref = type_ref_new_ptr(
-				type_ref_new_type_qual(type_char, qual_const),
-				qual_none);
-
-		df->ref = type_ref_new_func(type_ref_cached_INT(), fargs);
-
-		ICE("__asm__ symtable");
-		/*symtab_add(globs, df, sym_global, SYMTAB_NO_SYM, SYMTAB_PREPEND);*/
-
-		eof_where = old_w;
-	}
-
-	fold_symtab_scope(globs, NULL);
-
-	if(globs->decls){
-		for(i = 0; D(i); i++)
-			fold_decl_global(D(i), globs);
-
-		fold_merge_tenatives(globs);
-	}
-
-	/* static assertions */
-	{
-		static_assert **i;
-		for(i = globs->static_asserts; i && *i; i++){
-			static_assert *sa = *i;
-			consty k;
-
-			FOLD_EXPR(sa->e, sa->scope);
-			if(!type_ref_is_integral(sa->e->tree_type))
-				DIE_AT(&sa->e->where,
-						"static assert: not an integral expression (%s)",
-						sa->e->f_str());
-
-			const_fold(sa->e, &k);
-
-			if(k.type != CONST_VAL)
-				DIE_AT(&sa->e->where,
-						"static assert: not an integer constant expression (%s)",
-						sa->e->f_str());
-
-			if(!k.bits.iv.val)
-				DIE_AT(&sa->e->where, "static assertion failure: %s", sa->s);
-
-			if(fopt_mode & FOPT_SHOW_STATIC_ASSERTS){
-				fprintf(stderr, "%s: static assert passed: %s-expr, msg: %s\n",
-						where_str(&sa->e->where), sa->e->f_str(), sa->s);
-			}
-		}
-	}
-
-	if(fold_had_error)
-		exit(1);
-
-#undef D
 }
