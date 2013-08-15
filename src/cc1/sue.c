@@ -54,7 +54,7 @@ int sue_enum_size(struct_union_enum_st *st)
 
 void sue_incomplete_chk(struct_union_enum_st *st, where *w)
 {
-	if(sue_incomplete(st)){
+	if(!sue_complete(st)){
 		char buf[WHERE_BUF_SIZ];
 
 		DIE_AT(w, "%s %s is incomplete\n%s: note: forward declared here",
@@ -163,7 +163,7 @@ struct_union_enum_st *sue_find_or_add(symtable *stab, char *spel,
 						type_primitive_to_str(prim),
 						buf);
 
-			if(members && !sue_incomplete(sue))
+			if(members && sue_complete(sue))
 				DIE_AT(NULL, "can't redefine %s %s's members (defined at %s)",
 						sue_str(sue), sue->spel, buf);
 		}else{

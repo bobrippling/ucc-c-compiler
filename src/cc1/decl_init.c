@@ -519,7 +519,7 @@ static decl_init **decl_init_brace_up_sue2(
 
 	(void)range_store;
 
-	UCC_ASSERT(!sue_incomplete(sue), "should've checked sue completeness");
+	UCC_ASSERT(sue_complete(sue), "should've checked sue completeness");
 
 	/* check for copy-init */
 	if((this = *iter->pos) && this->type == decl_init_scalar){

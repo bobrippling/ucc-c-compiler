@@ -60,7 +60,7 @@ err:
 		}
 	}
 
-	if(sue_incomplete(sue)){
+	if(!sue_complete(sue)){
 		DIE_AT(&e->lhs->where, "%s incomplete type (%s)",
 				ptr_expect
 					? "dereferencing pointer to"

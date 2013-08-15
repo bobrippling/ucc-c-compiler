@@ -35,10 +35,9 @@ struct struct_union_enum_st
 
 #define sue_str(x) sue_str_type((x)->primitive)
 
-/* this is fine - empty structs aren't allowed */
-#define sue_incomplete(x) (!(x)->complete)
-
 #define sue_nmembers(x) dynarray_count((x)->members)
+
+#define sue_complete(sue) ((sue)->complete)
 
 sue_member *sue_member_from_decl(decl *);
 
