@@ -30,7 +30,10 @@ struct decl_attr
 	{
 		struct
 		{
-			enum { attr_fmt_printf, attr_fmt_scanf } fmt_func;
+			enum fmt_type
+			{
+				attr_fmt_printf, attr_fmt_scanf
+			} fmt_func;
 			int fmt_arg, var_arg;
 		} format;
 		char *section;
