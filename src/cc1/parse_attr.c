@@ -228,8 +228,14 @@ static decl_attr *parse_attr(void)
 	for(;;){
 		char *ident;
 
-		if(curtok != token_identifier)
-			DIE_AT(NULL, "identifier expected for attribute (got %s)", token_to_str(curtok));
+		if(curtok != token_identifier){
+			parse_had_error = 1;
+			warn_at_print_error(NULL,
+					"identifier expected for attribute (got %s)",
+					token_to_str(curtok));
+			EAT(curtok);
+			goto comma;
+		}
 
 		ident = token_current_spel();
 		EAT(token_identifier);
@@ -241,6 +247,7 @@ static decl_attr *parse_attr(void)
 
 		free(ident);
 
+comma:
 		if(!accept(token_comma))
 			break;
 	}
