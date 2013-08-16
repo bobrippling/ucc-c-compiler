@@ -51,14 +51,16 @@ struct symtable
 };
 
 typedef struct symtable_gasm symtable_gasm;
+struct symtable_gasm
+{
+	decl *before; /* the decl this occurs before - NULL if last */
+	char *asm_str;
+};
+
 struct symtable_global
 {
 	symtable stab; /* ABI compatible with struct symtable */
-	struct symtable_gasm
-	{
-		decl *before; /* the decl this occurs before - NULL if last */
-		char *asm_str;
-	} **gasms;
+	symtable_gasm **gasms;
 };
 
 sym *sym_new(decl *d, enum sym_type t);

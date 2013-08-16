@@ -57,6 +57,22 @@ static void fold_check_static_asserts(static_assert **sas)
 	}
 }
 
+static void link_gasms(symtable_gasm ***plast_gasms, decl *prev)
+{
+	symtable_gasm **i;
+
+	for(i = *plast_gasms; i && *i; i++)
+		(*i)->before = prev;
+
+	dynarray_free(symtable_gasm **, plast_gasms, NULL);
+}
+
+static void parse_add_gasms(symtable_gasm ***plast_gasms)
+{
+	while(accept(token_asm))
+		dynarray_add(plast_gasms, parse_gasm());
+}
+
 void parse_and_fold(symtable_global *globals)
 {
 	symtable_gasm **last_gasms = NULL;
@@ -65,8 +81,7 @@ void parse_and_fold(symtable_global *globals)
 
 	type_ref_init(current_scope);
 
-	for(;;){
-		int cont = 0;
+	while(curtok != token_eof){
 		decl **new = NULL;
 		decl **di;
 
@@ -78,32 +93,21 @@ void parse_and_fold(symtable_global *globals)
 				current_scope,
 				&new);
 
-		/* TODO #6: pull out g-asm() parsing */
 		if(new){
-			symtable_gasm **i;
-
-			for(i = last_gasms; i && *i; i++)
-				(*i)->before = *new;
-			dynarray_free(symtable_gasm **, &last_gasms, NULL);
-			dynarray_free(decl **, &new, NULL);
+			link_gasms(&last_gasms, *new);
 
 			/* fold what we got */
 			for(di = new; di && *di; di++)
 				fold_decl_global(*di, current_scope);
+
+			dynarray_free(decl **, &new, NULL);
 		}
 
-		/* global asm */
-		while(accept(token_asm)){
-			symtable_gasm *g = parse_gasm();
-
-			dynarray_add(&last_gasms, g);
-			dynarray_add(&globals->gasms, g);
-			cont = 1;
-		}
-
-		if(!cont)
-			break;
+		parse_add_gasms(&last_gasms);
+		dynarray_add_array(&globals->gasms, last_gasms);
 	}
+
+	EAT(token_eof);
 
 	/* TODO #1: this needs calling individually when we complete
 	 * a struct, or block scope (or global scope) etc */
@@ -112,8 +116,6 @@ void parse_and_fold(symtable_global *globals)
 	fold_merge_tenatives(current_scope);
 
 	dynarray_free(symtable_gasm **, &last_gasms, NULL);
-
-	EAT(token_eof);
 
 	if(parse_had_error)
 		exit(1);
