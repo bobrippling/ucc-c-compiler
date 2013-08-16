@@ -23,7 +23,10 @@ static void sue_set_spel(struct_union_enum_st *sue, char *spel)
 	sue->spel = spel;
 }
 
-void enum_vals_add(sue_member ***pmembers, char *sp, expr *e)
+void enum_vals_add(
+		sue_member ***pmembers,
+		char *sp, expr *e,
+		decl_attr *attr)
 {
 	enum_member *emem = umalloc(sizeof *emem);
 	sue_member *mem = umalloc(sizeof *mem);
@@ -33,6 +36,7 @@ void enum_vals_add(sue_member ***pmembers, char *sp, expr *e)
 
 	emem->spel = sp;
 	emem->val  = e;
+	emem->attr = attr;
 
 	mem->enum_member = emem;
 

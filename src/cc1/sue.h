@@ -5,7 +5,7 @@ typedef struct enum_member
 {
 	char *spel;
 	expr *val; /* (expr *)-1 if not given */
-	int tag; /* for switch() checking */
+	decl_attr *attr; /* enum { ABC __attribute(()) [ = ... ] }; */
 } enum_member;
 
 typedef union sue_member
@@ -46,7 +46,7 @@ struct_union_enum_st *sue_find_or_add(symtable *, char *spel, sue_member **membe
 struct_union_enum_st *sue_find_this_scope(symtable *, const char *spel);
 
 /* enum specific */
-void enum_vals_add(sue_member ***, char *, expr *);
+void enum_vals_add(sue_member ***, char *, expr *, decl_attr *);
 int  enum_nentries(struct_union_enum_st *);
 
 void enum_member_search(enum_member **, struct_union_enum_st **, symtable *, const char *spel);

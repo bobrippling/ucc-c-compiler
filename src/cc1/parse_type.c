@@ -79,16 +79,19 @@ static type_ref *parse_type_sue(enum type_primitive prim)
 			for(;;){
 				expr *e;
 				char *sp;
+				decl_attr *en_attr = NULL;
 
 				sp = token_current_spel();
 				EAT(token_identifier);
+
+				parse_add_attr(&en_attr);
 
 				if(accept(token_assign))
 					e = parse_expr_no_comma(); /* no commas */
 				else
 					e = NULL;
 
-				enum_vals_add(&members, sp, e);
+				enum_vals_add(&members, sp, e, en_attr);
 
 				if(!accept(token_comma))
 					break;
