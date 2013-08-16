@@ -10,9 +10,6 @@ const char *str_expr_block(void)
 
 void fold_expr_block(expr *e, symtable *stab)
 {
-	/* add e->bits.block_args to symtable */
-	symtab_add_args(e->code->symtab, e->bits.block_args, "block-function");
-
 	/* prevent access to nested vars */
 	e->code->symtab->parent = symtab_root(e->code->symtab);
 
@@ -58,6 +55,9 @@ void fold_expr_block(expr *e, symtable *stab)
 			type_ref_new_func(e->tree_type, e->bits.block_args),
 			qual_const
 			);
+
+	/* TODO: need to bring e->bits.block_args into scope */
+
 
 	/* add the function to the global scope */
 	{

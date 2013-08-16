@@ -97,24 +97,6 @@ int typedef_visible(symtable *stab, const char *spel)
 	return d && (d->store & STORE_MASK_STORE) == store_typedef;
 }
 
-void symtab_add_args(symtable *stab, funcargs *fargs, const char *func_spel)
-{
-	int nargs, i;
-
-	if(fargs->arglist){
-		for(nargs = 0; fargs->arglist[nargs]; nargs++);
-
-		/* add args backwards, since we push them onto the stack backwards - still need to do this here? */
-		for(i = nargs - 1; i >= 0; i--){
-			if(!fargs->arglist[i]->spel){
-				DIE_AT(&fargs->where, "function \"%s\" has unnamed arguments", func_spel);
-			}else{
-				sym_new_stab(stab, fargs->arglist[i], sym_arg);
-			}
-		}
-	}
-}
-
 const char *sym_to_str(enum sym_type t)
 {
 	switch(t){

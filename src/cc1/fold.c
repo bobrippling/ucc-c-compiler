@@ -284,9 +284,15 @@ static void fold_decl_add_sym(decl *d, symtable *stab)
 				"sym (type %d) \"%s\" given symbol too early",
 				d->sym->type, d->spel);
 	}else{
-		d->sym = sym_new(d,
-				!stab->parent || decl_store_static_or_extern(d->store)
-				? sym_global : sym_local);
+		enum sym_type ty;
+
+		if(stab->are_params)
+			ty = sym_arg;
+		else
+			ty = !stab->parent || decl_store_static_or_extern(d->store)
+				? sym_global : sym_local;
+
+		d->sym = sym_new(d, ty);
 	}
 }
 
@@ -310,7 +316,8 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 
 	fold_type_ref(d->ref, NULL, stab);
 
-	fold_decl_add_sym(d, stab);
+	if(d->spel)
+		fold_decl_add_sym(d, stab);
 
 #if 0
 	/* if we have a type and it's incomplete, error */
@@ -538,12 +545,10 @@ static void fold_func(decl *func_decl)
 		if(curdecl_func->ref->type != type_ref_func)
 			WARN_AT(&curdecl_func->where, "typedef function implementation is not C");
 
-		symtab_add_args(
-				func_decl->func_code->symtab,
-				fref->bits.func.args,
-				func_decl->spel);
-
 		fold_stmt(func_decl->func_code);
+
+		/* now decls are folded, layout both parameters and local variables */
+		symtab_layout_decls(func_decl->func_code->symtab, 0);
 
 		if(decl_attr_present(curdecl_func, attr_noreturn)){
 			if(!type_ref_is_void(curdecl_ref_func_called)){

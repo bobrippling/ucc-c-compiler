@@ -30,8 +30,7 @@ struct static_assert
 struct symtable
 {
 	int auto_total_size;
-	int internal_nest;
-	int folded;
+	unsigned internal_nest : 1, folded : 1, are_params : 1;
 	/*
 	 * { int i; 5; int j; }
 	 * j's symtab is internally represented like:
@@ -77,7 +76,6 @@ symtable *symtab_root(symtable *child);
 sym  *symtab_search(symtable *, const char *);
 decl *symtab_search_d(symtable *, const char *);
 int   typedef_visible(symtable *stab, const char *spel);
-void  symtab_add_args(symtable *stab, funcargs *fargs, const char *func_spel);
 
 const char *sym_to_str(enum sym_type);
 
