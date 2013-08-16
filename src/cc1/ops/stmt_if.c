@@ -17,13 +17,12 @@ void flow_fold(stmt_flow *flow, symtable **pstab)
 		decl **i;
 
 		*pstab = flow->for_init_symtab;
-		fold_symtab_inits_sues(*pstab, &flow->inits);
-		if(flow->inits)
-			fold_stmt(flow->inits);
 
 		/* sanity check on _flow_ vars only */
 		for(i = (*pstab)->decls; i && *i; i++){
 			decl *const d = *i;
+
+			fold_decl(d, *pstab, &flow->init_blk);
 
 			switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
 				case store_auto:
@@ -35,6 +34,9 @@ void flow_fold(stmt_flow *flow, symtable **pstab)
 							decl_store_to_str(d->store));
 			}
 		}
+
+		if(flow->init_blk)
+			fold_stmt(flow->init_blk);
 	}
 }
 
@@ -45,8 +47,8 @@ void flow_gen(stmt_flow *flow, symtable *stab)
 	if(flow){
 		gen_code_decls(flow->for_init_symtab);
 
-		if(flow->inits)
-			gen_stmt(flow->inits);
+		if(flow->init_blk)
+			gen_stmt(flow->init_blk);
 		/* also generates decls on the flow->inits statement */
 	}
 }

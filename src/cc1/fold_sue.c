@@ -123,7 +123,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 			unsigned align, sz;
 			struct_union_enum_st *sub_sue;
 
-			fold_decl(d, stab);
+			fold_decl(d, stab, NULL);
 
 			if((sub_sue = type_ref_is_s_or_u_or_e(d->ref))){
 				if(sub_sue != sue)

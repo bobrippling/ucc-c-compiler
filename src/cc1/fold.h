@@ -2,11 +2,12 @@
 #define FOLD_H
 
 void fold_decl_global(decl *d, symtable *stab);
+void fold_decl_global_init(decl *d, symtable *stab);
+
 void fold_merge_tenatives(symtable *stab);
 
-void fold_decl(decl *d, symtable *stab);
-void fold_decl(decl *d, symtable *stab);
-void fold_decl_global_init(decl *d, symtable *stab);
+void fold_decl(decl *d, symtable *stab, stmt **pinit_code);
+
 void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab);
 
 int fold_type_ref_equal(

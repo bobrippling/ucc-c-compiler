@@ -69,7 +69,8 @@ void fold_expr_block(expr *e, symtable *stab)
 		df->func_code = e->code;
 		df->ref = e->tree_type;
 
-		fold_decl(df, stab); /* funcarg folding + typedef/struct lookup, etc */
+		/* funcarg folding + typedef/struct lookup, etc */
+		fold_decl(df, stab, NULL);
 	}
 }
 

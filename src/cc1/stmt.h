@@ -44,7 +44,7 @@ struct stmt
 struct stmt_flow
 {
 	symtable *for_init_symtab; /* for(int b;;){} - symtab for b */
-	stmt *inits;
+	stmt *init_blk;
 
 	/* for specific */
 	expr *for_init, *for_while, *for_inc;

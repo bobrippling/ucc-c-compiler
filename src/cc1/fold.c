@@ -234,7 +234,7 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 			FOLD_EXPR_NO_DECAY(p_expr, stab);
 
 			if(r->bits.tdef.decl)
-				fold_decl(r->bits.tdef.decl, stab);
+				fold_decl(r->bits.tdef.decl, stab, NULL);
 
 			break;
 		}
@@ -275,8 +275,32 @@ static void fold_func_attr(decl *d)
 		WARN_AT(&d->where, "variadic function required for sentinel check");
 }
 
-void fold_decl(decl *d, symtable *stab)
+static void fold_decl_add_sym(decl *d, symtable *stab)
 {
+	/* must be before fold*, since sym lookups are done */
+	if(d->sym){
+		/* arg */
+		UCC_ASSERT(d->sym->type != sym_local || !d->spel /* anon sym, e.g. strk */,
+				"sym (type %d) \"%s\" given symbol too early",
+				d->sym->type, d->spel);
+	}else{
+		d->sym = sym_new(d,
+				!stab->parent || decl_store_static_or_extern(d->store)
+				? sym_global : sym_local);
+	}
+}
+
+void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
+{
+#define inits (*pinit_code)
+	/* this is called from wherever we can define a
+	 * struct/union/enum,
+	 * e.g. a code-block (explicit or implicit),
+	 *      global scope
+	 * and an if/switch/while statement: if((struct A { int i; } *)0)...
+	 * an argument list/type_ref::func: f(struct A { int i, j; } *p, ...)
+	 */
+
 	decl_attr *attrib = NULL;
 	int can_align = 1;
 
@@ -285,6 +309,8 @@ void fold_decl(decl *d, symtable *stab)
 	d->folded = 1;
 
 	fold_type_ref(d->ref, NULL, stab);
+
+	fold_decl_add_sym(d, stab);
 
 #if 0
 	/* if we have a type and it's incomplete, error */
@@ -348,14 +374,11 @@ void fold_decl(decl *d, symtable *stab)
 				DIE_AT(&d->where, "%s storage for function", decl_store_to_str(d->store));
 		}
 
-		if(!d->func_code && d->sym && d->sym->type == sym_global){
-			/* prototype - set extern, so we get a symbol generated (if needed) */
-			switch(d->store & STORE_MASK_STORE){
-				case store_default:
-					d->store |= store_extern;
-				case store_extern:
-					break;
-			}
+		if(stab->parent){
+			if(d->func_code)
+				DIE_AT(&d->func_code->where, "nested function %s", d->spel);
+			else if((d->store & STORE_MASK_STORE) == store_static)
+				DIE_AT(&d->where, "block-scoped function cannot have static storage");
 		}
 
 		can_align = 0;
@@ -438,7 +461,37 @@ void fold_decl(decl *d, symtable *stab)
 				d->store &= ~store_extern;
 			}
 		}
+
+		/* don't generate for anonymous symbols
+		 * they're done elsewhere (e.g. compound literals)
+		 */
+		if(d->spel && pinit_code){
+			/* this creates the below s->inits array */
+			if((d->store & STORE_MASK_STORE) == store_static){
+				fold_decl_global_init(d, stab);
+			}else{
+				EOF_WHERE(&d->where,
+						if(!inits)
+							inits = stmt_new_wrapper(code, symtab_new(stab));
+
+						decl_init_brace_up_fold(d, inits->symtab);
+						decl_init_create_assignments_base(d->init,
+							d->ref, expr_new_identifier(d->spel),
+							inits);
+					);
+				/* folded elsewhere */
+			}
+		}
 	}
+
+	/* name static decls */
+	if(stab->parent
+	&& (d->store & STORE_MASK_STORE) == store_static
+	&& d->spel)
+	{
+			d->spel_asm = out_label_static_local(curdecl_func->spel, d->spel);
+	}
+#undef inits
 }
 
 void fold_decl_global_init(decl *d, symtable *stab)
@@ -556,7 +609,7 @@ void fold_decl_global(decl *d, symtable *stab)
 					DECL_IS_FUNC(d) ? "function" : "variable");
 	}
 
-	fold_decl(d, stab);
+	fold_decl(d, stab, NULL);
 
 	if(DECL_IS_FUNC(d)){
 		UCC_ASSERT(!d->init, "function has init?");
@@ -690,7 +743,7 @@ void fold_funcargs(funcargs *fargs, symtable *stab, type_ref *from)
 			decl *const d = fargs->arglist[i];
 
 			/* fold before for array checks, etc */
-			fold_decl(d, stab);
+			fold_decl(d, stab, NULL);
 
 			/* convert any array definitions and functions to pointers */
 			EOF_WHERE(&d->where,

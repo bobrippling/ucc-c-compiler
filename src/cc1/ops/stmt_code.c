@@ -15,19 +15,20 @@ const char *str_stmt_code()
 void fold_stmt_code(stmt *s)
 {
 	stmt **siter;
-	stmt *inits = NULL;
 	decl **diter;
+	stmt *init_blk = NULL;
 	int warned = 0;
-
-	fold_symtab_inits_sues(s->symtab, &inits);
-	if(inits)
-		dynarray_prepend(&s->codes, inits);
 
 	/* check for invalid function redefinitions */
 	for(diter = s->symtab->decls; diter && *diter; diter++){
 		decl *const d = *diter;
 		decl *found;
-		if(DECL_IS_FUNC(d) && (found = symtab_search_d(s->symtab->parent, d->spel))){
+
+		fold_decl(d, s->symtab, &init_blk);
+
+		if(DECL_IS_FUNC(d)
+		&& (found = symtab_search_d(s->symtab->parent, d->spel)))
+		{
 			/* allow functions redefined as decls and vice versa */
 			if(DECL_IS_FUNC(found) && !decl_equal(d, found, DECL_CMP_EXACT_MATCH)){
 				char buf[WHERE_BUF_SIZ];
@@ -39,6 +40,9 @@ void fold_stmt_code(stmt *s)
 			}
 		}
 	}
+
+	if(init_blk)
+		dynarray_prepend(&s->codes, init_blk);
 
 	for(siter = s->codes; siter && *siter; siter++){
 		stmt *const st = *siter;

@@ -109,10 +109,6 @@ void parse_and_fold(symtable_global *globals)
 
 	EAT(token_eof);
 
-	/* TODO #1: this needs calling individually when we complete
-	 * a struct, or block scope (or global scope) etc */
-	symtab_make_syms_and_inits(current_scope, NULL);
-
 	fold_merge_tenatives(current_scope);
 
 	dynarray_free(symtable_gasm **, &last_gasms, NULL);

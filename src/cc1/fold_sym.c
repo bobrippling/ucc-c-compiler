@@ -53,7 +53,7 @@ void symtab_fold_decls(symtable *tab)
 		sym *const sym = d->sym;
 		const int has_unused_attr = !!decl_attr_present(d, attr_unused);
 
-		fold_decl(d, tab);
+		fold_decl(d, tab, NULL);
 
 		if(d->spel)
 			dynarray_add(&all_decls, d);
@@ -261,79 +261,4 @@ void symtab_fold_sues(symtable *stab)
 
 	for(sit = stab->sues; sit && *sit; sit++)
 		fold_sue(*sit, stab);
-}
-
-void symtab_make_syms_and_inits(
-		symtable *stab, stmt **pinit_code)
-{
-#define inits (*pinit_code)
-	/* this is called from wherever we can define a
-	 * struct/union/enum,
-	 * e.g. a code-block (explicit or implicit),
-	 *      global scope
-	 * and an if/switch/while statement: if((struct A { int i; } *)0)...
-	 * an argument list/type_ref::func: f(struct A { int i, j; } *p, ...)
-	 */
-
-	unsigned di;
-	decl *d;
-
-	if(stab->folded)
-		return;
-	stab->folded = 1;
-
-	/* sub-calls may change the array, must iterate with an index */
-	for(di = 0; stab->decls && (d = stab->decls[di]); di++){
-		if(stab->parent){
-			if(d->func_code)
-				DIE_AT(&d->func_code->where, "can't nest functions (%s)", d->spel);
-			else if(DECL_IS_FUNC(d) && (d->store & STORE_MASK_STORE) == store_static)
-				DIE_AT(&d->where, "block-scoped function cannot have static storage");
-		}
-
-		/* must be before fold*, since sym lookups are done */
-		if(d->sym){
-			/* arg */
-			UCC_ASSERT(d->sym->type != sym_local || !d->spel /* anon sym, e.g. strk */,
-					"sym (type %d) \"%s\" given symbol too early",
-					d->sym->type, d->spel);
-		}else{
-			d->sym = sym_new(d,
-					!stab->parent || decl_store_static_or_extern(d->store) ?
-					sym_global :
-					sym_local);
-		}
-
-		/* don't generate for anonymous symbols
-		 * they're done elsewhere (e.g. compound literals)
-		 */
-		if(d->init && d->spel && pinit_code){
-			/* this creates the below s->inits array */
-			if((d->store & STORE_MASK_STORE) == store_static){
-				fold_decl_global_init(d, stab);
-			}else{
-				EOF_WHERE(&d->where,
-						if(!inits)
-							inits = stmt_new_wrapper(code, symtab_new(stab));
-
-						decl_init_brace_up_fold(d, inits->symtab);
-						decl_init_create_assignments_base(d->init,
-							d->ref, expr_new_identifier(d->spel),
-							inits);
-					);
-				/* folded elsewhere */
-			}
-		}
-
-		/* check static decls
-		 * -> doesn't need to be after fold since we change .spel_asm
-		 *
-		 * don't for anonymous symbols, they're referenced via other means
-		 */
-		if(curdecl_func){
-			if((d->store & STORE_MASK_STORE) == store_static && d->spel)
-				d->spel_asm = out_label_static_local(curdecl_func->spel, d->spel);
-		}
-	}
-#undef inits
 }
