@@ -58,7 +58,7 @@ static void bitfield_size_align(
 	*palign = type_align(ty, from);
 }
 
-void fold_enum(struct_union_enum_st *en, symtable *stab)
+static void fold_enum(struct_union_enum_st *en, symtable *stab)
 {
 	const int has_bitmask = !!attr_present(en->attr, attr_enum_bitmask);
 	sue_member **i;
@@ -94,7 +94,7 @@ void fold_enum(struct_union_enum_st *en, symtable *stab)
 
 void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 {
-	if(sue->folded)
+	if(sue->folded || !sue->complete)
 		return;
 	sue->folded = 1;
 
