@@ -24,28 +24,6 @@
 
 #include "pass1.h"
 
-
-static void fold(symtable *globs)
-{
-	int i;
-
-	/* TODO #1: this needs calling individually when we complete
-	 * a struct, or block scope (or global scope) etc */
-	symtab_make_syms_and_inits(globs, NULL);
-
-	if(globs->decls){
-		decl *d;
-
-		for(i = 0; (d = globs->decls[i]); i++)
-			/* TODO #2: do this after a single global decl parse */
-			fold_decl_global(d, globs);
-
-		/* TODO #3: do this at the very end of parse, when
-		 * we have all global decls */
-		fold_merge_tenatives(globs);
-	}
-}
-
 static void fold_check_static_asserts(static_assert **sas)
 {
 	/* TODO #4: do this for each scope, from fold_symtab_scope() or symtab_fold()
@@ -90,6 +68,7 @@ void parse_and_fold(symtable_global *globals)
 	for(;;){
 		int cont = 0;
 		decl **new = NULL;
+		decl **di;
 
 		parse_decls_single_type(
 				  DECL_MULTI_CAN_DEFAULT
@@ -107,6 +86,10 @@ void parse_and_fold(symtable_global *globals)
 				(*i)->before = *new;
 			dynarray_free(symtable_gasm **, &last_gasms, NULL);
 			dynarray_free(decl **, &new, NULL);
+
+			/* fold what we got */
+			for(di = new; di && *di; di++)
+				fold_decl_global(*di, current_scope);
 		}
 
 		/* global asm */
@@ -118,13 +101,15 @@ void parse_and_fold(symtable_global *globals)
 			cont = 1;
 		}
 
-		/* fold */
-		/* TODO #7: fold after global */
-		fold();
-
 		if(!cont)
 			break;
 	}
+
+	/* TODO #1: this needs calling individually when we complete
+	 * a struct, or block scope (or global scope) etc */
+	symtab_make_syms_and_inits(current_scope, NULL);
+
+	fold_merge_tenatives(current_scope);
 
 	dynarray_free(symtable_gasm **, &last_gasms, NULL);
 
