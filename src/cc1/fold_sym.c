@@ -194,6 +194,16 @@ unsigned symtab_layout_decls(symtable *tab, unsigned current)
 			decl *d = *diter;
 			sym *s = d->sym;
 
+			/* we might not have a symbol, e.g.
+			 * f(int (*pf)(int (*callme)()))
+			 *         ^         ^
+			 *         |         +-- nested - skipped
+			 *         +------------ `tab'
+			 */
+			if(!s)
+				continue;
+
+
 			switch(s->type){
 				case sym_local: /* warn on unused args and locals */
 					if(DECL_IS_FUNC(d))
