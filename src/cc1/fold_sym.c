@@ -180,16 +180,6 @@ unsigned symtab_layout_decls(symtable *tab, unsigned current)
 		decl **diter;
 		int arg_idx = 0;
 
-		/* need to walk backwards for args */
-		for(diter = tab->decls; *diter; diter++);
-
-		for(diter--; diter >= tab->decls; diter--){
-			sym *s = (*diter)->sym;
-
-			if(s->type == sym_arg)
-				s->offset = arg_idx++;
-		}
-
 		for(diter = tab->decls; *diter; diter++){
 			decl *d = *diter;
 			sym *s = d->sym;
@@ -205,6 +195,10 @@ unsigned symtab_layout_decls(symtable *tab, unsigned current)
 
 
 			switch(s->type){
+				case sym_arg:
+					s->offset = arg_idx++;
+					break;
+
 				case sym_local: /* warn on unused args and locals */
 					if(DECL_IS_FUNC(d))
 						continue;
@@ -237,9 +231,6 @@ unsigned symtab_layout_decls(symtable *tab, unsigned current)
 						case store_inline:
 							ICE("%s store", decl_store_to_str(d->store));
 					}
-					/* fall */
-
-				case sym_arg:
 				case sym_global:
 					break;
 			}
