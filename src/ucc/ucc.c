@@ -224,7 +224,9 @@ static void rename_files(struct cc_file *files, int nfiles, char *output, enum m
 					int len;
 					new = ustrdup(files[i].in);
 					len = strlen(new);
-					new[len - 1] = mode == mode_compile ? 's' : 'o';
+					if(len > 2 && new[len - 2] == '.')
+						new[len - 1] = mode == mode_compile ? 's' : 'o';
+					/* else stick with what we were given */
 					break;
 				}
 			}
