@@ -529,6 +529,7 @@ static void fold_func(decl *func_decl)
 			char *extra;
 			where *where;
 		} the_return = { NULL, NULL };
+		symtable *const arg_symtab = DECL_FUNC_ARG_SYMTAB(func_decl);
 
 		if(func_decl->store & store_inline
 		&& (func_decl->store & STORE_MASK_STORE) == store_default)
@@ -549,10 +550,18 @@ static void fold_func(decl *func_decl)
 			curdecl_func = func_decl;
 		}
 
+		{
+			decl **i;
+			for(i = arg_symtab->decls; i && *i; i++)
+				if(!(*i)->spel)
+					DIE_AT(&func_decl->where, "argument %ld in \"%s\" is unnamed",
+							i - arg_symtab->decls + 1, func_decl->spel);
+		}
+
 		fold_stmt(func_decl->func_code);
 
 		/* now decls are folded, layout both parameters and local variables */
-		symtab_layout_decls(DECL_FUNC_ARG_SYMTAB(func_decl), 0);
+		symtab_layout_decls(arg_symtab, 0);
 
 		if(decl_attr_present(func_decl, attr_noreturn)){
 			if(!type_ref_is_void(curdecl_ref_func_called)){
