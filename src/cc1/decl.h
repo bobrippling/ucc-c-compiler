@@ -238,6 +238,8 @@ void decl_attr_free(decl_attr *a);
 #define DECL_IS_ARRAY(d)  type_ref_is((d)->ref, type_ref_array)
 #define DECL_IS_S_OR_U(d) type_ref_is_s_or_u((d)->ref)
 
+#define DECL_FUNC_ARG_SYMTAB(d) ((d)->func_code->symtab->parent)
+
 int decl_is_variadic(decl *d);
 
 /* type_ref_is_* */

@@ -548,7 +548,7 @@ static void fold_func(decl *func_decl)
 		fold_stmt(func_decl->func_code);
 
 		/* now decls are folded, layout both parameters and local variables */
-		symtab_layout_decls(func_decl->func_code->symtab, 0);
+		symtab_layout_decls(DECL_FUNC_ARG_SYMTAB(func_decl), 0);
 
 		if(decl_attr_present(curdecl_func, attr_noreturn)){
 			if(!type_ref_is_void(curdecl_ref_func_called)){
