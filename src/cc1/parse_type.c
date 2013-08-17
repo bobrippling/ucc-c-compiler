@@ -1068,7 +1068,7 @@ static void decl_pull_to_func(decl *const d_this, decl *const d_prev)
 	}
 }
 
-void parse_decls_single_type(
+int parse_decls_single_type(
 		enum decl_multi_mode mode,
 		symtable *scope,
 		decl ***pdecls)
@@ -1079,12 +1079,9 @@ void parse_decls_single_type(
 	enum decl_storage store = store_default;
 	struct decl_align *align = NULL;
 	type_ref *this_ref;
+	decl *last = NULL;
 
 	UCC_ASSERT(scope || pdecls, "what shall I do?");
-
-	decl *last;
-
-	last = NULL;
 
 	parse_static_assert();
 
@@ -1095,7 +1092,7 @@ void parse_decls_single_type(
 		if(parse_at_decl_spec() && (mode & DECL_MULTI_CAN_DEFAULT)){
 			this_ref = default_type();
 		}else{
-			return; /* normal exit */
+			return 0; /* normal exit */
 		}
 	}
 
@@ -1297,6 +1294,8 @@ next:
 		/* else die here: */
 		EAT(token_semicolon);
 	}
+
+	return 1;
 }
 
 void parse_decls_multi_type(
@@ -1305,5 +1304,6 @@ void parse_decls_multi_type(
 		decl ***pdecls)
 {
 	for(;;)
-		parse_decls_single_type(mode, scope, pdecls);
+		if(!parse_decls_single_type(mode, scope, pdecls))
+			break;
 }

@@ -10,7 +10,7 @@ decl *parse_decl_single(enum decl_mode mode);
 decl **parse_decls_one_type(void);
 
 /* type ident...; */
-void parse_decls_single_type(
+int parse_decls_single_type(
 		enum decl_multi_mode mode,
 		symtable *scope,
 		decl ***pdecls);
