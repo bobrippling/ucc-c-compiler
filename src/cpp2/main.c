@@ -274,6 +274,7 @@ int main(int argc, char **argv)
 				if(std_from_str(argv[i], &std) == 0){
 					/* we have an std */
 				}else{
+					fprintf(stderr, "bad C standard \"%s\"\n", argv[i]);
 					goto usage;
 				}
 		}
@@ -289,6 +290,9 @@ int main(int argc, char **argv)
 			break;
 		case STD_C99:
 			macro_add("__STDC_VERSION__", "199901L");
+			break;
+		case STD_C11:
+			macro_add("__STDC_VERSION__", "201112L");
 	}
 
 	if(i < argc){
