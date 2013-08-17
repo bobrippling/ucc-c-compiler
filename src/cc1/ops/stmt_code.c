@@ -5,6 +5,7 @@
 #include "stmt_code.h"
 #include "../decl_init.h"
 #include "../../util/dynarray.h"
+#include "../fold_sym.h"
 
 const char *str_stmt_code()
 {
@@ -18,7 +19,7 @@ void fold_stmt_code(stmt *s)
 	decl **diter;
 	int warned = 0;
 
-	fold_symtab_scope(s->symtab, &inits);
+	fold_symtab_inits_sues(s->symtab, &inits);
 	if(inits)
 		dynarray_prepend(&s->codes, inits);
 

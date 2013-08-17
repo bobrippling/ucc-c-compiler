@@ -16,8 +16,6 @@ int fold_type_ref_equal(
 
 void fold_check_restrict(expr *lhs, expr *rhs, const char *desc, where *w);
 
-void fold_symtab_scope(symtable *stab, stmt **pinit_code);
-
 void fold_funcargs(funcargs *fargs, symtable *stab, type_ref *from);
 
 void fold_insert_casts(type_ref *dlhs, expr **prhs, symtable *stab, where *w, const char *desc);

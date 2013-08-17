@@ -11,6 +11,7 @@
 #include "expr.h"
 #include "decl.h"
 #include "sym.h"
+#include "fold_sym.h"
 
 #include "tokenise.h"
 #include "tokconv.h"
@@ -30,7 +31,7 @@ static void fold(symtable *globs)
 
 	/* TODO #1: this needs calling individually when we complete
 	 * a struct, or block scope (or global scope) etc */
-	fold_symtab_scope(globs, NULL);
+	symtab_make_syms_and_inits(globs, NULL);
 
 	if(globs->decls){
 		decl *d;

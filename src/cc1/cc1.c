@@ -496,8 +496,6 @@ usage:
 
 	parse_and_fold(globs);
 
-	symtab_fold(&globs->stab, 0);
-
 	if(infile != stdin)
 		fclose(infile), infile = NULL;
 

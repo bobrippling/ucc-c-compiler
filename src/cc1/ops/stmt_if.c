@@ -4,6 +4,7 @@
 #include "stmt_if.h"
 #include "stmt_for.h"
 #include "../out/lbl.h"
+#include "../fold_sym.h"
 
 const char *str_stmt_if()
 {
@@ -16,7 +17,7 @@ void flow_fold(stmt_flow *flow, symtable **pstab)
 		decl **i;
 
 		*pstab = flow->for_init_symtab;
-		fold_symtab_scope(*pstab, &flow->inits);
+		fold_symtab_inits_sues(*pstab, &flow->inits);
 		if(flow->inits)
 			fold_stmt(flow->inits);
 
