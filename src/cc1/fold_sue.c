@@ -1,3 +1,21 @@
+#include <stdio.h>
+#include <stdarg.h>
+#include <stdlib.h>
+#include <string.h>
+#include <assert.h>
+
+#include "../util/util.h"
+#include "../util/where.h"
+
+#include "data_structs.h"
+#include "cc1.h"
+#include "fold.h"
+#include "sue.h"
+#include "const.h"
+
+#include "pack.h"
+#include "defs.h"
+
 #include "fold_sue.h"
 
 static void struct_pack(
@@ -77,16 +95,11 @@ void fold_enum(struct_union_enum_st *en, symtable *stab)
 void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 {
 	if(sue->folded)
-		return sue->size;
+		return;
 	sue->folded = 1;
 
 	if(sue->primitive == type_enum){
 		fold_enum(sue, stab);
-
-		/* we don't call sue_size as that dies on a forward-enum,
-		 * we want to die later, when we have the decl location
-		 */
-		return sue_enum_size(sue);
 
 	}else{
 		unsigned bf_cur_lim;
@@ -238,7 +251,5 @@ normal:
 		sue->size = pack_to_align(
 				sue->primitive == type_struct ? offset : sz_max,
 				align_max);
-
-		return sue->size;
 	}
 }
