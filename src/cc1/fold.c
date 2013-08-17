@@ -201,8 +201,11 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 			if(type_ref_is(r->ref, type_ref_func))
 				DIE_AT(&r->where, "function returning a function");
 
-			if(type_ref_is(parent, type_ref_ptr) && (type_ref_qual(parent) & qual_restrict))
+			if(type_ref_is(parent, type_ref_ptr)
+			&& (type_ref_qual(parent) & qual_restrict))
+			{
 				DIE_AT(&r->where, "restrict qualified function pointer");
+			}
 
 			symtab_fold_sues(r->bits.func.arg_scope);
 			fold_funcargs(r->bits.func.args, r->bits.func.arg_scope, r);
@@ -527,30 +530,31 @@ static void fold_func(decl *func_decl)
 			where *where;
 		} the_return = { NULL, NULL };
 
-		type_ref *fref;
-
-		curdecl_func = func_decl;
-		fref = type_ref_is(curdecl_func->ref, type_ref_func);
-		UCC_ASSERT(fref, "not a func");
-		curdecl_ref_func_called = type_ref_func_call(fref, NULL);
-
-		if(curdecl_func->store & store_inline
-		&& (curdecl_func->store & STORE_MASK_STORE) == store_default)
+		if(func_decl->store & store_inline
+		&& (func_decl->store & STORE_MASK_STORE) == store_default)
 		{
-			WARN_AT(&curdecl_func->where,
+			WARN_AT(&func_decl->where,
 					"pure inline function will not have code emitted "
 					"(missing \"static\" or \"extern\")");
 		}
 
-		if(curdecl_func->ref->type != type_ref_func)
-			WARN_AT(&curdecl_func->where, "typedef function implementation is not C");
+		if(func_decl->ref->type != type_ref_func)
+			WARN_AT(&func_decl->where,
+					"typedef function implementation is an extension");
+
+		{
+			type_ref *fref = type_ref_is(func_decl->ref, type_ref_func);
+			UCC_ASSERT(fref, "not a func");
+			curdecl_ref_func_called = type_ref_func_call(fref, NULL);
+			curdecl_func = func_decl;
+		}
 
 		fold_stmt(func_decl->func_code);
 
 		/* now decls are folded, layout both parameters and local variables */
 		symtab_layout_decls(DECL_FUNC_ARG_SYMTAB(func_decl), 0);
 
-		if(decl_attr_present(curdecl_func, attr_noreturn)){
+		if(decl_attr_present(func_decl, attr_noreturn)){
 			if(!type_ref_is_void(curdecl_ref_func_called)){
 				cc1_warn_at(&func_decl->where, 0, 1, WARN_RETURN_UNDEF,
 						"function \"%s\" marked no-return has a non-void return value",
