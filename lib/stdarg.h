@@ -4,7 +4,7 @@
 #include "sys/types.h"
 
 #ifdef __x86_64__
-typedef __builtin_va_list va_list; // FIXME: type parsing
+typedef __builtin_va_list va_list;
 
 #  define va_start(l, arg) __builtin_va_start(l, arg)
 #  define va_arg(l, type)  __builtin_va_arg(l, type)

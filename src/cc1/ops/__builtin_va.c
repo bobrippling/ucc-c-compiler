@@ -416,7 +416,7 @@ static void fold_va_arg(expr *e, symtable *stab)
 	va_type_check(e->lhs, e->expr);
 
 	if(type_ref_size(ty, &e->lhs->where) < type_primitive_size(type_int)){
-		WARN_AT(&e->lhs->where,
+		WARN_AT(&e->where,
 				"va_arg(..., %s) has undefined behaviour - promote to int",
 				type_ref_to_str(ty));
 	}
