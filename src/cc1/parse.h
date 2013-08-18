@@ -20,6 +20,7 @@ enum decl_multi_mode
 };
 
 extern enum token curtok;
+extern static_assert **static_asserts;
 
 #define parse_expr_no_comma() parse_expr_assignment()
 
@@ -32,7 +33,6 @@ expr *parse_expr_exp(void);
 void parse_static_assert(void);
 type_ref **parse_type_list(void);
 expr **parse_funcargs(void);
-
-void parse(symtable_global *globals);
+symtable_gasm *parse_gasm(void);
 
 #endif

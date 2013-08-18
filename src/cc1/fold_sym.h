@@ -1,6 +1,11 @@
 #ifndef SYM_FOLD_H
 #define SYM_FOLD_H
 
-int symtab_fold(symtable *tab, unsigned current);
+void symtab_fold_sues(symtable *);
+
+void symtab_fold_decls(symtable *);
+
+unsigned symtab_layout_decls(
+		symtable *, unsigned current);
 
 #endif
