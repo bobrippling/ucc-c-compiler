@@ -19,6 +19,9 @@ void fold_stmt_code(stmt *s)
 	stmt *init_blk = NULL;
 	int warned = 0;
 
+	/* local struct layout-ing */
+	symtab_fold_sues(s->symtab);
+
 	/* check for invalid function redefinitions */
 	for(diter = s->symtab->decls; diter && *diter; diter++){
 		decl *const d = *diter;

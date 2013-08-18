@@ -96,6 +96,7 @@ void parse_and_fold(symtable_global *globals)
 		if(new){
 			link_gasms(&last_gasms, *new);
 
+			/* global struct layout-ing */
 			symtab_fold_sues(current_scope);
 
 			/* fold what we got */
