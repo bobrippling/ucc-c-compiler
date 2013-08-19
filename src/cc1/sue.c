@@ -96,16 +96,18 @@ struct_union_enum_st *sue_find_this_scope(symtable *stab, const char *spel)
 	return NULL;
 }
 
-static struct_union_enum_st *sue_find_descend(
+struct_union_enum_st *sue_find_descend(
 		symtable *stab, const char *spel, int *descended)
 {
-	*descended = 0;
+	if(descended)
+		*descended = 0;
 
 	for(; stab; stab = stab->parent){
 		struct_union_enum_st *sue = sue_find_this_scope(stab, spel);
 		if(sue)
 			return sue;
-		*descended = 1;
+		if(descended)
+			*descended = 1;
 	}
 
 	return NULL;

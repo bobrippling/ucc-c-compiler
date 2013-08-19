@@ -226,7 +226,24 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 
 		case type_ref_ptr:
 			/*q_to_check = r->bits.qual; - allowed */
+			break;
+
 		case type_ref_type:
+			if(stab->are_params){
+				/* check if we're a new struct/union decl */
+				struct_union_enum_st *sue = type_ref_is_s_or_u(r);
+
+				if(sue){
+					struct_union_enum_st *above = sue_find_descend(
+							stab->parent, sue->spel, NULL);
+
+					if(!above){
+						WARN_AT(&r->where,
+								"declaration of '%s %s' only visible inside function",
+								sue_str(sue), sue->spel);
+					}
+				}
+			}
 			break;
 
 		case type_ref_tdef:

@@ -44,6 +44,9 @@ struct struct_union_enum_st
 
 sue_member *sue_member_from_decl(decl *);
 
+struct_union_enum_st *sue_find_descend(
+		symtable *stab, const char *spel, int *descended);
+
 struct_union_enum_st *sue_find_this_scope(symtable *, const char *spel);
 
 /* we need to know if the struct is a definition at this point,

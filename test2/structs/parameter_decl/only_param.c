@@ -1,3 +1,3 @@
 // RUN: %check %s
 
-f(struct A *); // CHECK: /warning: struct A is declared only for this function/
+f(struct A *); // CHECK: /warning: declaration of 'struct A' only visible inside function/
