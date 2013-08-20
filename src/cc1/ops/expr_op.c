@@ -159,8 +159,18 @@ type_ref *op_required_promotion(
 {
 	type_ref *resolved = NULL;
 	type_ref *const tlhs = lhs->tree_type, *const trhs = rhs->tree_type;
+	int floating_lhs;
 
 	*plhs = *prhs = NULL;
+
+	if((floating_lhs = type_ref_is_floating(tlhs))
+			!= type_ref_is_floating(trhs))
+	{
+		/* cast _to_ the floating type */
+		return floating_lhs ? (*prhs = tlhs) : (*plhs = trhs);
+
+		/* else we pick the largest floating or intergral type */
+	}
 
 #if 0
 	If either operand is a pointer:
