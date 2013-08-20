@@ -31,10 +31,6 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 
 		if(tlhs){
 			/* can't cast the lvalue - we must cast the rhs to the correct size  */
-
-			if(tlhs != lvalue->tree_type)
-				type_ref_free_1(tlhs);
-
 			fold_insert_casts(lvalue->tree_type, &e->rhs, stab);
 
 		}else if(trhs){
