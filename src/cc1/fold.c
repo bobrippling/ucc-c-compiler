@@ -479,6 +479,9 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 	}
 
 	if(d->init){
+		const int is_static_init =
+			(d->store & STORE_MASK_STORE) == store_static || !stab->parent;
+
 		if((d->store & STORE_MASK_STORE) == store_extern){
 			/* allow for globals - remove extern since it's a definition */
 			if(stab->parent){
@@ -490,13 +493,14 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 		}
 
 		/* don't generate for anonymous symbols
-		 * they're done elsewhere (e.g. compound literals)
+		 * they're done elsewhere (e.g. compound literals and strings)
 		 */
-		if(d->spel && pinit_code){
+		if(d->spel){
 			/* this creates the below s->inits array */
-			if((d->store & STORE_MASK_STORE) == store_static){
+			if(is_static_init){
 				fold_decl_global_init(d, stab);
-			}else{
+
+			}else if(pinit_code){
 				EOF_WHERE(&d->where,
 						if(!inits)
 							inits = stmt_new_wrapper(code, symtab_new(stab));
@@ -649,12 +653,6 @@ void fold_decl_global(decl *d, symtable *stab)
 	if(DECL_IS_FUNC(d)){
 		UCC_ASSERT(!d->init, "function has init?");
 		fold_func(d);
-	}else{
-		/*
-		 * inits are normally handled in stmt_code,
-		 * but this is global, handle here
-		 */
-		fold_decl_global_init(d, stab);
 	}
 }
 
