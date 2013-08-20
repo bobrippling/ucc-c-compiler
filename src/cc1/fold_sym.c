@@ -58,7 +58,7 @@ void symtab_fold_decls(symtable *tab)
 		if(d->spel)
 			dynarray_add(&all_decls, d);
 
-		switch(sym->type){
+		if(sym) switch(sym->type){
 			case sym_local:
 			{
 				/* arg + local checks */
@@ -262,4 +262,10 @@ void symtab_fold_sues(symtable *stab)
 
 	for(sit = stab->sues; sit && *sit; sit++)
 		fold_sue(*sit, stab);
+}
+
+void symtab_fold_decls_sues(symtable *stab)
+{
+	symtab_fold_sues(stab);
+	symtab_fold_decls(stab);
 }
