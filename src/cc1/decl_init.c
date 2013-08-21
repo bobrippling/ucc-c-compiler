@@ -528,6 +528,9 @@ static decl_init **decl_init_brace_up_sue2(
 		if(type_ref_is_s_or_u(e->tree_type) == sue){
 			/* copy init */
 			dynarray_padinsert(&current, 0, &n, this);
+
+			++iter->pos;
+
 			return current;
 		}
 	}
