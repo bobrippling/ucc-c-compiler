@@ -1,3 +1,4 @@
+g(float a, float b, float c, float d, float e, float f, float g, float h, float i);
 f(int i, float f, int j, float g);
 
 main()
