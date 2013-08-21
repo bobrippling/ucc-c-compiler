@@ -215,10 +215,13 @@ int v_unused_reg(int stack_as_backup, int fp, struct vreg *out)
 		}
 
 	if(stack_as_backup){
+		/* first->bits is clobbered by the v_freeup_regp() call */
+		const struct vreg freed = first->bits.reg;
+
 		/* no free regs, move `first` to the stack and claim its reg */
 		v_freeup_regp(first);
 
-		memcpy_safe(out, &first->bits.reg);
+		memcpy_safe(out, &freed);
 		return 0;
 	}
 	return -1;
