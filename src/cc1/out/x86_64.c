@@ -1310,15 +1310,28 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 	ICW("need to save regs");
 
 	/* do we need to do any stacking? */
-	if(nints > n_call_iregs || nfloats > 4){
+	if(nints > n_call_iregs)
+		arg_stack += nints - n_call_iregs;
+
+
+	if(nfloats > N_CALL_REGS_F)
+		arg_stack += nfloats - N_CALL_REGS_F;
+
+
+	if(arg_stack > 0){
 		int nfloats = 0, nints = 0; /* shadow */
-		int stack_pos = 0;
+		int stack_pos;
 
-		arg_stack = (nints + nfloats) * pws;
+		ICW("need correct stack layout for fp args");
 
-		ICW("FIXME: alloc stack: need to get the amount rounded"); // FIXME
-		/* this aligns the stack-ptr */
-		v_alloc_stack(arg_stack);
+		out_comment("stack space for %d arguments", arg_stack);
+		/* this aligns the stack-ptr and returns arg_stack padded */
+		arg_stack = v_alloc_stack(arg_stack * pws);
+
+		/* must be called after v_alloc_stack() */
+		stack_pos = v_stack_sz() - arg_stack;
+		out_comment("arg_stack = %d, stack_pos = %d",
+				arg_stack, stack_pos);
 
 		/* save in order */
 		for(i = 0; i < nargs; i++){
@@ -1329,8 +1342,8 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 			if(stack_this){
 				struct vstack *const vp = &vtop[-i];
 
-				/* XXX: ensure v_to_mem* does v_to_reg first if needed */
-				v_to_mem_given(vp, stack_pos /* TODO: + initial */);
+				/* v_to_mem* does v_to_reg first if needed */
+				v_to_mem_given(vp, -stack_pos);
 
 				/* XXX: ensure any registers used ^ are freed */
 

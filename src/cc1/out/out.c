@@ -62,6 +62,11 @@ int out_vcount(void)
 	return vtop ? 1 + (int)(vtop - vstack) : 0;
 }
 
+int v_stack_sz()
+{
+	return stack_sz;
+}
+
 static void vpush(type_ref *t)
 {
 	v_check_type(t);
