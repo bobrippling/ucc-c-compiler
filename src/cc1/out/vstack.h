@@ -98,6 +98,7 @@ unsigned v_alloc_stack(unsigned sz);
 /* Will output instructions to align the stack to cc1_mstack_align
  * e.g. if a push is done manually */
 unsigned v_alloc_stack_n(unsigned sz);
+/* v_alloc_stack* returns the padded sz that was alloced */
 
 void v_deref_decl(struct vstack *vp);
 

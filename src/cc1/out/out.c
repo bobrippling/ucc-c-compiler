@@ -394,12 +394,6 @@ void v_freeup_regp(struct vstack *vp)
 
 static unsigned v_alloc_stack2(unsigned sz, int noop)
 {
-	static int word_size;
-	/* sz must be a multiple of word_size */
-
-	if(!word_size)
-		word_size = platform_word_size();
-
 	if(sz){
 		/* sz must be a multiple of mstack_align */
 		unsigned const orig = sz;
@@ -432,9 +426,11 @@ static unsigned v_alloc_stack2(unsigned sz, int noop)
 			out_op(op_minus);
 			out_pop();
 		}
+
+		stack_sz += sz;
 	}
 
-	return stack_sz += sz;
+	return sz;
 }
 
 unsigned v_alloc_stack_n(unsigned sz)
@@ -451,9 +447,11 @@ void v_save_reg(struct vstack *vp)
 {
 	UCC_ASSERT(vp->type == REG, "not reg");
 
+	v_alloc_stack(type_ref_size(vp->t, NULL));
+
 	v_to_mem_given(
 			vp,
-			-v_alloc_stack(type_ref_size(vp->t, NULL)));
+			-v_stack_sz());
 }
 
 void v_save_regs(int n_ignore, type_ref *func_ty)
