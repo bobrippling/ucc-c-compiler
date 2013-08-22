@@ -557,6 +557,7 @@ void impl_load_fp(struct vstack *from)
 
 				from->type = CONST_I;
 				from->bits.val_i = from->bits.val_f;
+				/* TODO: use just an int if we can get away with it */
 				from->t = type_ref_cached_LLONG();
 
 				out_cast(ty_fp);
