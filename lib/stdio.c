@@ -88,6 +88,14 @@ static void fprinto(FILE *f, uintmax_t n, int is_signed, int ty_sz)
 	fprintn(f, n, 8, is_signed, ty_sz);
 }
 
+static void fprintfp(FILE *f, double d)
+{
+	const int mantissa = d;
+	const int decimal_100 = (d - mantissa) * 100;
+
+	fprintf(f, "%d.%02d", mantissa, decimal_100);
+}
+
 /* Public */
 int feof(FILE *f)
 {
@@ -448,6 +456,22 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 					}
 					break;
 				}
+				case 'f':
+					switch(lcount){
+						case 0:
+							/* hacky float support, mainly for debugging */
+							fprintfp(file, va_arg(ap, double));
+							break;
+						case 1:
+						{
+							//long double d = va_arg(ap, long double);
+							assert(0 && "TODO: long double printf");
+							break;
+						}
+						case 2: /* 2 is max for lcount */
+							goto wat;
+					}
+					break;
 
 				default:
 wat:
