@@ -408,7 +408,7 @@ void impl_func_prologue_save_variadic(type_ref *rf, int nargs)
 		/* TODO: do this with out_save_reg */
 		out_asm("push%s %%%s",
 				x86_suffix(NULL),
-				x86_intreg_str(i, NULL));
+				x86_intreg_str(call_regs[i].idx, NULL));
 		sz += platform_word_size();
 	}
 
