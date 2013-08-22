@@ -167,8 +167,11 @@ type_ref *op_required_promotion(
 			!= type_ref_is_floating(trhs))
 	{
 		/* cast _to_ the floating type */
-		return floating_lhs ? (*prhs = tlhs) : (*plhs = trhs);
+		type_ref *res = floating_lhs ? (*prhs = tlhs) : (*plhs = trhs);
 
+		resolved = op_is_comparison(op) ? type_ref_cached_BOOL() : res;
+
+		goto fin;
 		/* else we pick the largest floating or intergral type */
 	}
 
@@ -219,7 +222,7 @@ ptr_relation:
 					}
 				}
 
-				resolved = type_ref_cached_INT();
+				resolved = type_ref_cached_BOOL();
 
 			}else{
 				DIE_AT(w, "operation between two pointers must be relational or subtraction");

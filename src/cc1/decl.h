@@ -215,7 +215,7 @@ type_ref *type_ref_skip_casts(type_ref *);
 #define type_ref_cached_VOID()       type_ref_new_type(type_new_primitive(type_void))
 #define type_ref_cached_INT()        type_ref_new_type(type_new_primitive(type_int))
 #define type_ref_cached_CHAR()       type_ref_new_type(type_new_primitive(type_char))
-#define type_ref_cached_BOOL()       type_ref_new_type(type_new_primitive(type_int))
+#define type_ref_cached_BOOL()       type_ref_new_type(type_new_primitive(type__Bool))
 #define type_ref_cached_LONG()       type_ref_new_type(type_new_primitive(type_long))
 #define type_ref_cached_LLONG()      type_ref_new_type(type_new_primitive(type_llong))
 #define type_ref_cached_ULONG()      type_ref_new_type(type_new_primitive_signed(type_long, 0))
