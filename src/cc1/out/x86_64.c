@@ -1336,7 +1336,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 		/* save in order */
 		for(i = 0; i < nargs; i++){
 			const int stack_this = float_arg[i]
-				? nfloats++ >= 4
+				? nfloats++ >= N_CALL_REGS_F
 				: nints++ >= n_call_iregs;
 
 			if(stack_this){
@@ -1361,9 +1361,9 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 		struct vreg r;
 
 		if(is_float){
-			if(nfloats < 4){
+			if(nfloats < N_CALL_REGS_F){
 				/* NOTE: don't need to use call_regs_float,
-				 * since it's xmm0 ... 4 */
+				 * since it's xmm0 ... 7 */
 				r.idx = nfloats;
 				r.is_float = 1;
 
