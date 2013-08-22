@@ -6,6 +6,7 @@
 #include "expr_op.h"
 #include "../out/lbl.h"
 #include "../out/asm.h"
+#include "../type_ref_is.h"
 
 const char *str_expr_op()
 {
@@ -102,22 +103,13 @@ static void fold_const_expr_op(expr *e, consty *k)
 
 static void expr_promote_if_smaller(expr **pe, symtable *stab, int do_float)
 {
-	static unsigned sz_int, sz_double;
 	expr *e = *pe;
-	int fp = type_ref_is_floating(e->tree_type);
-	unsigned csz;
+	type_ref *to;
 
-	if(fp && !do_float)
+	if(type_ref_is_floating(e->tree_type) && !do_float)
 		return;
 
-	if(!sz_int){
-		sz_int = type_primitive_size(type_int);
-		sz_double = type_primitive_size(type_double);
-	}
-
-	csz = fp ? sz_double : sz_int;
-
-	if(type_ref_size(e->tree_type, &e->where) < csz){
+	if(type_ref_is_promotable(e->tree_type, &to)){
 		expr *cast;
 
 		UCC_ASSERT(!type_ref_is(e->tree_type, type_ref_ptr),
@@ -129,9 +121,7 @@ static void expr_promote_if_smaller(expr **pe, symtable *stab, int do_float)
 		 * insert down-casts too - the tree_type of the expression is still important
 		 */
 
-		cast = expr_new_cast(
-				fp ? type_ref_cached_DOUBLE() : type_ref_cached_INT(),
-				1);
+		cast = expr_new_cast(to, 1);
 
 		cast->expr = e;
 

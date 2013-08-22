@@ -174,6 +174,7 @@ unsigned type_primitive_size(enum type_primitive tp)
 		case type_ushort:
 			return 2;
 
+		case type_enum:
 		case type_int:
 		case type_uint:
 		case type_float:
@@ -197,8 +198,7 @@ unsigned type_primitive_size(enum type_primitive tp)
 
 		case type_union:
 		case type_struct:
-		case type_enum:
-			ICE("sue size");
+			ICE("s/u size");
 
 		case type_unknown:
 			break;

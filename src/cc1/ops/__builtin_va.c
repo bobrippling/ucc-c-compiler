@@ -25,6 +25,8 @@
 #include "../tokconv.h"
 #include "../parse.h"
 #include "../parse_type.h"
+#include "__builtin_va.h"
+#include "../type_ref_is.h"
 
 #define CURRENT_FUNC_ARGS_CNT()      \
 	dynarray_count(                    \
@@ -279,7 +281,7 @@ static void builtin_gen_va_arg(expr *e)
 			if(typ->primitive == type_ldouble)
 				goto stack;
 
-			ICW("TODO: floating point");
+			ICE("TODO: floating point");
 
 		}else if(type_ref_is_s_or_u(ty)){
 			ICE("TODO: s/u/e va_arg");
@@ -409,16 +411,19 @@ stack:
 static void fold_va_arg(expr *e, symtable *stab)
 {
 	type_ref *const ty = e->bits.tref;
+	type_ref *to;
 
 	FOLD_EXPR(e->lhs, stab);
 	fold_type_ref(ty, NULL, stab);
 
 	va_type_check(e->lhs, e->expr);
 
-	if(type_ref_size(ty, &e->lhs->where) < type_primitive_size(type_int)){
+	if(type_ref_is_promotable(ty, &to)){
+		char tbuf[TYPE_REF_STATIC_BUFSIZ];
+
 		WARN_AT(&e->lhs->where,
-				"va_arg(..., %s) has undefined behaviour - promote to int",
-				type_ref_to_str(ty));
+				"va_arg(..., %s) has undefined behaviour - promote to %s",
+				type_ref_to_str(ty), type_ref_to_str_r(tbuf, to));
 	}
 
 	e->tree_type = ty;

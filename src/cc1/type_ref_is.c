@@ -480,3 +480,26 @@ unsigned type_ref_array_len(type_ref *r)
 
 	return const_fold_val_i(r->bits.array.size);
 }
+
+int type_ref_is_promotable(type_ref *r, type_ref **pto)
+{
+	if((r = type_ref_is_type(r, type_unknown))){
+		static unsigned sz_int, sz_double;
+		const int fp = type_floating(r->bits.type->primitive);
+		unsigned rsz;
+
+		if(!sz_int){
+			sz_int = type_primitive_size(type_int);
+			sz_double = type_primitive_size(type_double);
+		}
+
+		rsz = type_primitive_size(r->bits.type->primitive);
+
+		if(rsz < (fp ? sz_double : sz_int)){
+			*pto = fp ? type_ref_cached_DOUBLE() : type_ref_cached_INT();
+			return 1;
+		}
+	}
+
+	return 0;
+}

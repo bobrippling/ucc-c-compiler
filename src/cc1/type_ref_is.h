@@ -22,6 +22,9 @@ int type_ref_is_void_ptr(type_ref *r);
 int type_ref_is_nonvoid_ptr(type_ref *r);
 int type_ref_is_integral(type_ref *r);
 
+/* e.g. char, short, float -> int, int, double */
+int type_ref_is_promotable(type_ref *, type_ref **pto);
+
 unsigned type_ref_align(type_ref *r, where *from);
 
 int type_ref_is_complete(type_ref *r);
