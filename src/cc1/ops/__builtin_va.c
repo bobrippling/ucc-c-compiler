@@ -172,6 +172,119 @@ expr *parse_va_start(void)
 	return fcall;
 }
 
+static void va_arg_gen_read(
+		expr *const e,
+		type_ref *const ty,
+		decl *const offset_decl, /* varies - float or integral */
+		decl *const mem_reg_save_area,
+		decl *const mem_overflow_arg_area)
+{
+	char *lbl_stack = out_label_code("va_else");
+	char *lbl_fin   = out_label_code("va_fin");
+	char vphi_buf[OUT_VPHI_SZ];
+
+	gen_expr(e->lhs); /* va_list */
+	out_change_type(type_ref_cached_VOID_PTR());
+	out_dup(); /* va, va */
+
+	out_push_l(type_ref_cached_LONG(), offset_decl->struct_offset);
+	out_op(op_plus); /* va, &va.gp_offset */
+
+	out_change_type(type_ref_cached_INT_PTR());
+	out_dup(); /* va, &gp_o, &gp_o */
+
+	out_deref(); /* va, &gp_o, gp_o */
+	out_push_l(type_ref_cached_INT(), 6 * 8); /* N_CALL_REGS * pws */
+	out_op(op_lt); /* va, &gp_o, <cond> */
+	out_jfalse(lbl_stack);
+
+	/* register code */
+	out_dup(); /* va, &gp_o, &gp_o */
+	out_deref(); /* va, &gp_o, gp_o */
+
+	out_push_l(type_ref_cached_INT(), 8); /* pws */
+	out_op(op_plus); /* va, &gp_o, gp_o+8 */
+
+	out_store(); /* va, gp_o+8 */
+	out_push_l(type_ref_cached_INT(), 8); /* pws */
+	out_op(op_minus); /* va, gp_o */
+	out_change_type(type_ref_cached_LONG());
+
+	out_swap(); /* gp_o, va */
+	out_push_l(type_ref_cached_LONG(), mem_reg_save_area->struct_offset);
+	out_op(op_plus); /* gp_o, &reg_save_area */
+	out_change_type(type_ref_cached_LONG_PTR());
+	out_deref();
+	out_swap();
+	out_op(op_plus); /* reg_save_area + gp_o */
+
+	out_push_lbl(lbl_fin, 0);
+	out_jmp();
+
+	/* stack code */
+	out_label(lbl_stack);
+
+	/* prepare for joining later */
+	out_phi_pop_to(&vphi_buf);
+
+	gen_expr(e->lhs);
+	/* va */
+	out_change_type(type_ref_cached_VOID_PTR());
+	out_push_l(type_ref_cached_LONG(), mem_overflow_arg_area->struct_offset);
+	out_op(op_plus);
+	/* &overflow_a */
+
+	out_dup(), out_change_type(type_ref_cached_LONG_PTR()), out_deref();
+	/* &overflow_a, overflow_a */
+
+	/* XXX: 8 = pws, but will need changing if we jump directly to stack, e.g. passing a struct */
+	out_push_l(type_ref_cached_LONG(), 8);
+	out_op(op_plus);
+
+	out_store();
+
+	out_push_l(type_ref_cached_LONG(), 8);
+	out_op(op_minus);
+
+	/* ensure we match the other block's final result before the merge */
+	out_phi_join(vphi_buf);
+
+	/* "merge" */
+	out_label(lbl_fin);
+
+	/* now have a pointer to the right memory address */
+	{
+		type_ref *r_tmp = type_ref_new_ptr(ty, qual_none);
+		out_change_type(r_tmp);
+		out_deref();
+		type_ref_free_1(r_tmp);
+	}
+
+	/*
+	 * this works by using phi magic - we end up with something like this:
+	 *
+	 *   <reg calc>
+	 *   // pointer in rbx
+	 *   jmp fin
+	 * else:
+	 *   <stack calc>
+	 *   // pointer in rax
+	 *   <phi-merge with previous block>
+	 * fin:
+	 *   ...
+	 *
+	 * This is because the two parts of the if above are disjoint, one may
+	 * leave its result in eax, one in ebx. We need basic blocks and phi:s to
+	 * solve this properly.
+	 *
+	 * This problem exists in other code, such as &&-gen, but since we pop
+	 * and push immediately, it doesn't manifest itself.
+	 */
+
+	free(lbl_stack);
+	free(lbl_fin);
+}
+
 static void builtin_gen_va_arg(expr *e)
 {
 #ifdef UCC_VA_ABI
@@ -284,133 +397,36 @@ static void builtin_gen_va_arg(expr *e)
 	{
 		type_ref *const ty = e->bits.tref;
 
-		if(type_ref_is_floating(ty)){
-			const type *typ = type_ref_get_type(ty);
-
-			if(typ->primitive == type_ldouble)
-				goto stack;
-
-			ICE("TODO: floating point");
-
-		}else if(type_ref_is_s_or_u(ty)){
+		if(type_ref_is_s_or_u(ty)){
 			ICE("TODO: s/u/e va_arg");
 stack:
 			ICE("TODO: stack __builtin_va_arg()");
 
 		}else{
-			/* register */
-			char *lbl_stack = out_label_code("va_else");
-			char *lbl_fin   = out_label_code("va_fin");
-			char vphi_buf[OUT_VPHI_SZ];
+			const type *typ = type_ref_get_type(ty);
+			const int fp = type_floating(typ->primitive);
+			struct_union_enum_st *sue_va;
 
-			struct_union_enum_st *sue_va = type_ref_next(type_ref_cached_VA_LIST())->bits.type->sue;
+			if(typ->primitive == type_ldouble)
+				goto stack;
+
+			/* register */
+			sue_va = type_ref_next(
+					type_ref_cached_VA_LIST())->bits.type->sue;
 
 #define VA_DECL(nam) \
 			decl *mem_ ## nam = struct_union_member_find(sue_va, #nam, NULL, NULL)
 			VA_DECL(gp_offset);
+			VA_DECL(fp_offset);
 			VA_DECL(reg_save_area);
 			VA_DECL(overflow_arg_area);
 
-			gen_expr(e->lhs); /* va_list */
-			out_change_type(type_ref_cached_VOID_PTR());
-			out_dup(); /* va, va */
-
-			out_push_l(type_ref_cached_LONG(), mem_gp_offset->struct_offset);
-			out_op(op_plus); /* va, &va.gp_offset */
-
-			out_change_type(type_ref_cached_INT_PTR());
-			out_dup(); /* va, &gp_o, &gp_o */
-
-			out_deref(); /* va, &gp_o, gp_o */
-			out_push_l(type_ref_cached_INT(), 6 * 8); /* N_CALL_REGS * pws */
-			out_op(op_lt); /* va, &gp_o, <cond> */
-			out_jfalse(lbl_stack);
-
-			/* register code */
-			out_dup(); /* va, &gp_o, &gp_o */
-			out_deref(); /* va, &gp_o, gp_o */
-
-			out_push_l(type_ref_cached_INT(), 8); /* pws */
-			out_op(op_plus); /* va, &gp_o, gp_o+8 */
-
-			out_store(); /* va, gp_o+8 */
-			out_push_l(type_ref_cached_INT(), 8); /* pws */
-			out_op(op_minus); /* va, gp_o */
-			out_change_type(type_ref_cached_LONG());
-
-			out_swap(); /* gp_o, va */
-			out_push_l(type_ref_cached_LONG(), mem_reg_save_area->struct_offset);
-			out_op(op_plus); /* gp_o, &reg_save_area */
-			out_change_type(type_ref_cached_LONG_PTR());
-			out_deref();
-			out_swap();
-			out_op(op_plus); /* reg_save_area + gp_o */
-
-			out_push_lbl(lbl_fin, 0);
-			out_jmp();
-
-			/* stack code */
-			out_label(lbl_stack);
-
-			/* prepare for joining later */
-			out_phi_pop_to(&vphi_buf);
-
-			gen_expr(e->lhs);
-			/* va */
-			out_change_type(type_ref_cached_VOID_PTR());
-			out_push_l(type_ref_cached_LONG(), mem_overflow_arg_area->struct_offset);
-			out_op(op_plus);
-			/* &overflow_a */
-
-			out_dup(), out_change_type(type_ref_cached_LONG_PTR()), out_deref();
-			/* &overflow_a, overflow_a */
-
-			/* XXX: 8 = pws, but will need changing if we jump directly to stack, e.g. passing a struct */
-			out_push_l(type_ref_cached_LONG(), 8);
-			out_op(op_plus);
-
-			out_store();
-
-			out_push_l(type_ref_cached_LONG(), 8);
-			out_op(op_minus);
-
-			/* ensure we match the other block's final result before the merge */
-			out_phi_join(vphi_buf);
-
-			/* "merge" */
-			out_label(lbl_fin);
-
-			/* now have a pointer to the right memory address */
-			{
-				type_ref *r_tmp = type_ref_new_ptr(ty, qual_none);
-				out_change_type(r_tmp);
-				out_deref();
-				type_ref_free_1(r_tmp);
-			}
-
-			/*
-			 * this works by using phi magic - we end up with something like this:
-			 *
-			 *   <reg calc>
-			 *   // pointer in rbx
-			 *   jmp fin
-			 * else:
-			 *   <stack calc>
-			 *   // pointer in rax
-			 *   <phi-merge with previous block>
-			 * fin:
-			 *   ...
-			 *
-			 * This is because the two parts of the if above are disjoint, one may
-			 * leave its result in eax, one in ebx. We need basic blocks and phi:s to
-			 * solve this properly.
-			 *
-			 * This problem exists in other code, such as &&-gen, but since we pop
-			 * and push immediately, it doesn't manifest itself.
-			 */
-
-			free(lbl_stack);
-			free(lbl_fin);
+			va_arg_gen_read(
+					e,
+					ty,
+					fp ? mem_fp_offset : mem_gp_offset,
+					mem_reg_save_area,
+					mem_overflow_arg_area);
 		}
 	}
 
