@@ -183,6 +183,10 @@ static void va_arg_gen_read(
 	char *lbl_fin   = out_label_code("va_fin");
 	char vphi_buf[OUT_VPHI_SZ];
 
+	/* FIXME: this needs to reference x86_64::N_CALL_REGS_{I,F} */
+	const unsigned max_reg_args = type_ref_is_floating(ty) ? 8 : 6;
+	const unsigned ws = platform_word_size();
+
 	gen_expr(e->lhs); /* va_list */
 	out_change_type(type_ref_cached_VOID_PTR());
 	out_dup(); /* va, va */
@@ -194,7 +198,7 @@ static void va_arg_gen_read(
 	out_dup(); /* va, &gp_o, &gp_o */
 
 	out_deref(); /* va, &gp_o, gp_o */
-	out_push_l(type_ref_cached_INT(), 6 * 8); /* N_CALL_REGS * pws */
+	out_push_l(type_ref_cached_INT(), max_reg_args * ws); /* N_CALL_REGS * pws */
 	out_op(op_lt); /* va, &gp_o, <cond> */
 	out_jfalse(lbl_stack);
 
@@ -202,11 +206,11 @@ static void va_arg_gen_read(
 	out_dup(); /* va, &gp_o, &gp_o */
 	out_deref(); /* va, &gp_o, gp_o */
 
-	out_push_l(type_ref_cached_INT(), 8); /* pws */
-	out_op(op_plus); /* va, &gp_o, gp_o+8 */
+	out_push_l(type_ref_cached_INT(), ws); /* pws */
+	out_op(op_plus); /* va, &gp_o, gp_o+ws */
 
-	out_store(); /* va, gp_o+8 */
-	out_push_l(type_ref_cached_INT(), 8); /* pws */
+	out_store(); /* va, gp_o+ws */
+	out_push_l(type_ref_cached_INT(), ws); /* pws */
 	out_op(op_minus); /* va, gp_o */
 	out_change_type(type_ref_cached_LONG());
 
@@ -237,13 +241,13 @@ static void va_arg_gen_read(
 	out_dup(), out_change_type(type_ref_cached_LONG_PTR()), out_deref();
 	/* &overflow_a, overflow_a */
 
-	/* XXX: 8 = pws, but will need changing if we jump directly to stack, e.g. passing a struct */
-	out_push_l(type_ref_cached_LONG(), 8);
+	/* XXX: pws will need changing if we jump directly to stack, e.g. passing a struct */
+	out_push_l(type_ref_cached_LONG(), ws);
 	out_op(op_plus);
 
 	out_store();
 
-	out_push_l(type_ref_cached_LONG(), 8);
+	out_push_l(type_ref_cached_LONG(), ws);
 	out_op(op_minus);
 
 	/* ensure we match the other block's final result before the merge */
