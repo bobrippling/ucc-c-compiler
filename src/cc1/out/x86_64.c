@@ -573,6 +573,7 @@ void impl_load_fp(struct vstack *from)
 			asm_label(SECTION_DATA, lbl, type_ref_align(from->t, NULL));
 			asm_out_fp(SECTION_DATA, from->t, from->bits.val_f);
 
+			v_clear(from, from->t);
 			from->type = LBL;
 			from->bits.lbl.str = lbl;
 			from->bits.lbl.pic = 1;
