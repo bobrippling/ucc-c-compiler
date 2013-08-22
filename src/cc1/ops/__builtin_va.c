@@ -28,11 +28,6 @@
 #include "__builtin_va.h"
 #include "../type_ref_is.h"
 
-#define CURRENT_FUNC_ARGS_CNT()      \
-	dynarray_count(                    \
-			(void **)type_ref_funcargs(    \
-				curdecl_func->ref)->arglist)
-
 static void va_type_check(expr *va_l, expr *in)
 {
 	/* we need to check decayed, since we may have
@@ -63,7 +58,6 @@ static void va_ensure_variadic(expr *e)
 
 static void fold_va_start(expr *e, symtable *stab)
 {
-	int n_args;
 	expr *va_l;
 
 	if(dynarray_count(e->funcargs) != 2)
@@ -79,8 +73,6 @@ static void fold_va_start(expr *e, symtable *stab)
 	va_type_check(va_l, e->expr);
 
 	va_ensure_variadic(e);
-
-	n_args = CURRENT_FUNC_ARGS_CNT();
 
 #ifndef UCC_VA_ABI
 	{
@@ -100,19 +92,36 @@ static void fold_va_start(expr *e, symtable *stab)
 #define ADD_ASSIGN_VAL(memb, val) ADD_ASSIGN(memb, expr_new_val(val))
 
 		const int ws = platform_word_size();
-		const int n_args_pws = n_args * ws;
+		struct
+		{
+			unsigned gp, fp;
+		} nargs = { 0, 0 };
+		decl **di;
+		unsigned n_args_total_pws = 0;
+
+		for(di = type_ref_funcargs(curdecl_func->ref)->arglist;
+				di && *di;
+				di++)
+		{
+			if(type_ref_is_floating((*di)->ref))
+				nargs.fp++;
+			else
+				nargs.gp++;
+
+			n_args_total_pws += ws;
+		}
 
 		/* need to set the offsets to act as if we've skipped over
 		 * n call regs, since we may already have some arguments used
 		 */
-		ADD_ASSIGN_VAL("gp_offset", n_args_pws);
-		ADD_ASSIGN_VAL("fp_offset", 0); /* TODO: when we have float support */
+		ADD_ASSIGN_VAL("gp_offset", nargs.gp * ws);
+		ADD_ASSIGN_VAL("fp_offset", nargs.fp * ws);
 
 		/* adjust to take the skip into account */
 		ADD_ASSIGN("reg_save_area",
 				expr_new_op2(op_minus,
 					builtin_new_reg_save_area(), /* void arith - need _pws */
-					expr_new_val(n_args_pws)));
+					expr_new_val(n_args_total_pws)));
 
 		ADD_ASSIGN("overflow_arg_area",
 				expr_new_op2(op_plus,
@@ -430,7 +439,9 @@ static void fold_va_arg(expr *e, symtable *stab)
 
 #ifdef UCC_VA_ABI
 	/* finally store the number of arguments to this function */
-	e->bits.n = CURRENT_FUNC_ARGS_CNT();
+	e->bits.n = dynarray_count(
+			type_ref_funcargs(
+				curdecl_func->ref)->arglist)
 #endif
 }
 
