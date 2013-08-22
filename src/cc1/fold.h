@@ -25,12 +25,11 @@ void fold_type_chk_and_cast(
 /* struct / enum / integral checking */
 enum fold_chk
 {
-	/* implicitly must be non-void */
-	FOLD_CHK_EXP         = 0,      /* done for all */
 	FOLD_CHK_NO_ST_UN    = 1 << 0, /* e.g. struct A + ... */
 	FOLD_CHK_NO_BITFIELD = 1 << 1, /* e.g. &, sizeof */
 	FOLD_CHK_BOOL        = 1 << 2, /* e.g. if(...) */
 	FOLD_CHK_INTEGRAL    = 1 << 3, /* e.g. switch(...) */
+	FOLD_CHK_ALLOW_VOID  = 1 << 4,
 };
 void fold_check_expr(expr *e, enum fold_chk, const char *desc);
 

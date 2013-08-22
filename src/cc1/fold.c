@@ -931,7 +931,7 @@ void fold_check_expr(expr *e, enum fold_chk chk, const char *desc)
 
 	/* fatal ones first */
 
-	if(type_ref_is_void(e->tree_type))
+	if((chk & FOLD_CHK_ALLOW_VOID) == 0 && type_ref_is_void(e->tree_type))
 		DIE_AT(&e->where, "%s requires non-void expression", desc);
 
 	if(chk & FOLD_CHK_NO_ST_UN){

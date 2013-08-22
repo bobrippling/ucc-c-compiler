@@ -12,7 +12,7 @@ void fold_stmt_return(stmt *s)
 
 	if(s->expr){
 		FOLD_EXPR(s->expr, s->symtab);
-		fold_check_expr(s->expr, FOLD_CHK_EXP, s->f_str());
+		fold_check_expr(s->expr, 0, s->f_str());
 
 		/* void return handled implicitly with a cast to void */
 		fold_type_chk_and_cast(

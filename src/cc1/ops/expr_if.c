@@ -65,11 +65,15 @@ void fold_expr_if(expr *e, symtable *stab)
 
 	if(e->lhs){
 		FOLD_EXPR(e->lhs, stab);
-		fold_check_expr(e->lhs, FOLD_CHK_NO_ST_UN, "if-lhs");
+		fold_check_expr(e->lhs,
+				FOLD_CHK_NO_ST_UN | FOLD_CHK_ALLOW_VOID,
+				"if-lhs");
 	}
 
 	FOLD_EXPR(e->rhs, stab);
-	fold_check_expr(e->rhs, FOLD_CHK_NO_ST_UN, "if-rhs");
+	fold_check_expr(e->rhs,
+			FOLD_CHK_NO_ST_UN | FOLD_CHK_ALLOW_VOID,
+			"if-rhs");
 
 
 	/*
