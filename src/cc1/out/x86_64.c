@@ -682,11 +682,11 @@ void impl_op(enum op_type op)
 
 	if(type_ref_is_floating(vtop->t)){
 		if(op_is_comparison(op)){
-			/* ucomi%s reg, reg_or_mem */
+			/* ucomi%s reg_or_mem, reg */
 			char b1[VSTACK_STR_SZ], b2[VSTACK_STR_SZ];
 
-			v_to_reg(vtop);
-			v_to(&vtop[-1], TO_REG | TO_MEM);
+			v_to(vtop, TO_REG | TO_MEM);
+			v_to_reg(&vtop[-1]);
 
 			out_asm("ucomi%s %s, %s",
 					x86_suffix(vtop->t),
