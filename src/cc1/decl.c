@@ -610,7 +610,21 @@ unsigned decl_align(decl *d)
 
 enum type_cmp decl_cmp(decl *a, decl *b, enum type_cmp_opts opts)
 {
-	return type_ref_cmp(a->ref, b->ref, opts);
+	enum type_cmp cmp = type_ref_cmp(a->ref, b->ref, opts);
+	enum decl_storage sa = a->store & STORE_MASK_STORE,
+	                  sb = b->store & STORE_MASK_STORE;
+
+	if(cmp == TYPE_EQUAL && sa != sb){
+		/* types are equal but there's a store mismatch
+		 * only return convertible if it's a typedef or static mismatch
+		 */
+#define STORE_INCOMPAT(st) ((st) == store_typedef || (st) == store_static)
+
+		if(STORE_INCOMPAT(sa) || STORE_INCOMPAT(sb))
+			return TYPE_CONVERTIBLE;
+	}
+
+	return cmp;
 }
 
 int decl_sort_cmp(const decl **pa, const decl **pb)
