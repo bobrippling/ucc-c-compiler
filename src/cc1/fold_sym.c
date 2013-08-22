@@ -140,9 +140,9 @@ void symtab_fold_decls(symtable *tab)
 					if(IS_LOCAL_SCOPE){
 						/* allow multiple functions or multiple externs */
 						if(a_func){
-							/* fine - we know they're equal */
+							/* fine - we know they're equal from decl_equal() above */
 						}else if((a->store & STORE_MASK_STORE) == store_extern
-								  && (b->store & STORE_MASK_STORE) == store_extern){
+						      && (b->store & STORE_MASK_STORE) == store_extern){
 							/* both are extern declarations */
 						}else{
 							clash = "extern/non-extern";

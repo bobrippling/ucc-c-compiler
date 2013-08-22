@@ -829,7 +829,8 @@ void fold_merge_tenatives(symtable *stab)
 		decl *d = globs[i];
 		decl *init = NULL;
 
-		/* functions are checked via .func_code on parsing */
+		/* functions are checked in fold_sym,
+		 * where we compare local definitions too */
 		if(d->proto_flag || !d->spel || DECL_IS_FUNC(d))
 			continue;
 
