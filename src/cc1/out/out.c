@@ -1318,7 +1318,7 @@ void out_func_prologue(type_ref *rf, int stack_res, int nargs, int variadic)
 	impl_func_prologue_save_call_regs(rf, nargs);
 
 	if(variadic) /* save variadic call registers */
-		impl_func_prologue_save_variadic(rf, nargs);
+		impl_func_prologue_save_variadic(rf);
 
 	/* setup "pointers" to the right place in the stack */
 	stack_variadic_offset = stack_local_offset = stack_sz;

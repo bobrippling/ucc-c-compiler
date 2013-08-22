@@ -392,19 +392,33 @@ void impl_func_prologue_save_call_regs(type_ref *rf, int nargs)
 	}
 }
 
-void impl_func_prologue_save_variadic(type_ref *rf, int nargs)
+void impl_func_prologue_save_variadic(type_ref *rf)
 {
 	int n_call_regs;
 	const struct vreg *call_regs;
 	char *vfin = out_label_code("va_skip_float");
+	type_ref *const ty_dbl = type_ref_cached_DOUBLE();
 	unsigned sz = 0;
+	unsigned fp_top;
+	int n_int_args = 0;
 	int i;
 
 	x86_call_regs(rf, &n_call_regs, &call_regs);
 
+	{
+		decl **di;
+		for(di = type_ref_funcargs(rf)->arglist; di && *di; di++)
+			if(!type_ref_is_floating((*di)->ref))
+				n_int_args++;
+	}
+
 	/* go backwards, as we want registers pushed in reverse
-	 * so we can iterate positively */
-	for(i = n_call_regs - 1; i >= nargs; i--){
+	 * so we can iterate positively.
+	 *
+	 * note: we don't push call regs, just ones after, hence
+	 * >= n_args
+	 */
+	for(i = n_call_regs - 1; i >= n_int_args; i--){
 		/* TODO: do this with out_save_reg */
 		out_asm("push%s %%%s",
 				x86_suffix(NULL),
@@ -412,18 +426,34 @@ void impl_func_prologue_save_variadic(type_ref *rf, int nargs)
 		sz += platform_word_size();
 	}
 
+	/* align the stack */
+	v_alloc_stack_n(sz);
+
+	/* always reserve float space, for now */
+	v_alloc_stack(N_CALL_REGS_F * platform_word_size());
+
 	/* TODO: do this with out_* */
 	out_asm("testb %%al, %%al");
 	out_asm("jz %s", vfin);
 
-	out_asm(IMPL_COMMENT "pushq %%xmm0 TODO - float regs");
-	/* TODO: add to sz */
+	fp_top = v_stack_sz();
+	out_comment("fp area = %u - %u",
+			fp_top - N_CALL_REGS_F * platform_word_size(),
+			fp_top);
+
+	for(i = N_CALL_REGS_F - 1; i >= 0; i--){
+		struct vreg vr;
+
+		vr.is_float = 1;
+		vr.idx = i;
+
+		/* FIXME: check offset (3rd arg) */
+		reg_to_stack(&vr, ty_dbl, fp_top - i * platform_word_size());
+	}
+	/* note: sz is not added to here */
 
 	out_label(vfin);
 	free(vfin);
-
-	/* align the stack too */
-	v_alloc_stack_n(sz);
 }
 
 void impl_func_epilogue(type_ref *rf)
