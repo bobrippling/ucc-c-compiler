@@ -426,7 +426,7 @@ void impl_func_prologue_save_variadic(type_ref *rf)
 		sz += platform_word_size();
 	}
 
-	/* align the stack */
+	/* align the stack, FIXME: this should be done once at the end */
 	v_alloc_stack_n(sz);
 
 	/* always reserve float space, for now */
