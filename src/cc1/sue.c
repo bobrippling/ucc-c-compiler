@@ -45,10 +45,7 @@ void enum_vals_add(
 
 int enum_nentries(struct_union_enum_st *e)
 {
-	int n = 0;
-	sue_member **i;
-	for(i = e->members; *i; i++, n++);
-	return n;
+	return dynarray_count(e->members);
 }
 
 int sue_enum_size(struct_union_enum_st *st)
