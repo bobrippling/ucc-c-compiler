@@ -1,3 +1,5 @@
+// RUN: %ucc -fsyntax-only %s
+
 struct A;
 
 f(struct A *p);
