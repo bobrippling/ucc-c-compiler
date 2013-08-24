@@ -253,6 +253,17 @@ decl *decl_new_ty_sp(type_ref *ty, char *sp)
 	return d;
 }
 
+void decl_replace_with(decl *to, decl *from)
+{
+	/* XXX: memleak of .ref */
+	memcpy_safe(&to->where, &from->where);
+	to->ref      = from->ref;
+	to->attr     = from->attr;
+	to->spel_asm = from->spel_asm;
+	/* no point copying bitfield stuff */
+	to->align    = from->align;
+}
+
 const type *decl_get_type(decl *d)
 {
 	return type_ref_get_type(d->ref);

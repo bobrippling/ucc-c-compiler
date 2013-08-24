@@ -991,25 +991,24 @@ static void check_and_replace_old_func(decl *d, decl **old_args)
 	if(n_old_args > n_proto_decls)
 		DIE_AT(&d->where, "old-style function decl: too many decls");
 
-	for(i = 0; i < n_old_args; i++)
-		if(old_args[i]->init)
-			DIE_AT(&old_args[i]->where, "parameter \"%s\" is initialised", old_args[i]->spel);
-
 	for(i = 0; i < n_old_args; i++){
 		int j, found = 0;
 
+		if(old_args[i]->init)
+			DIE_AT(&old_args[i]->where, "parameter \"%s\" is initialised", old_args[i]->spel);
+
 		for(j = 0; j < n_proto_decls; j++){
 			if(!strcmp(old_args[i]->spel, dfuncargs->arglist[j]->spel)){
-				decl **replace_this;
-				decl *free_this;
 
-				/* replace the old implicit int arg */
-				replace_this = &dfuncargs->arglist[j];
+				/* replace the old implicit int arg's type
+				 *
+				 * note we don't replace the decl itself, since that's
+				 * now in an argument symtable somewhere in scope too
+				 */
+				decl_replace_with(dfuncargs->arglist[j], old_args[i]);
 
-				free_this = *replace_this;
-				*replace_this = old_args[i];
+				decl_free(old_args[i], 0);
 
-				decl_free(free_this, 0);
 				found = 1;
 				break;
 			}
@@ -1018,8 +1017,6 @@ static void check_and_replace_old_func(decl *d, decl **old_args)
 		if(!found)
 			DIE_AT(&old_args[i]->where, "no such parameter '%s'", old_args[i]->spel);
 	}
-
-	free(old_args);
 }
 
 static void decl_pull_to_func(decl *const d_this, decl *const d_prev)
@@ -1213,6 +1210,8 @@ int parse_decls_single_type(
 				parse_decls_multi_type(0, NULL, &old_args);
 				if(old_args){
 					check_and_replace_old_func(d, old_args);
+
+					dynarray_free(decl **, &old_args, NULL);
 
 					/* old function with decls after the close paren,
 					 * need a function */

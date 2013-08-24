@@ -176,6 +176,7 @@ enum decl_cmp
 
 decl        *decl_new(void);
 decl        *decl_new_ty_sp(type_ref *, char *);
+void         decl_replace_with(decl *, decl *);
 void         decl_free(decl *, int free_ref);
 void         type_ref_free(type_ref *);
 void         type_ref_free_1(type_ref *);
