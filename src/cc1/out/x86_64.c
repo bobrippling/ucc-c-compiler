@@ -38,10 +38,10 @@ static const struct calling_conv_desc
 {
 	int caller_cleanup;
 
-	int n_call_regs;
+	unsigned n_call_regs;
 	struct vreg call_regs[6 + 8];
 
-	int n_callee_save_regs;
+	unsigned n_callee_save_regs;
 	int callee_save_regs[6];
 } calling_convs[] = {
 	[conv_x64_sysv] = {
@@ -283,7 +283,9 @@ static int x86_caller_cleanup(type_ref *fr)
 	return cr_clean;
 }
 
-static void x86_call_regs(type_ref *fr, int *pn, const struct vreg **par)
+static void x86_call_regs(
+		type_ref *fr, unsigned *pn,
+		const struct vreg **par)
 {
 	const struct calling_conv_desc *ent = x86_conv_lookup(fr);
 	*pn = ent->n_call_regs;
@@ -299,7 +301,7 @@ static int x86_func_nargs(type_ref *rf)
 int impl_reg_is_callee_save(const struct vreg *r, type_ref *fr)
 {
 	const struct calling_conv_desc *ent;
-	int i;
+	unsigned i;
 
 	if(r->is_float)
 		return 0;
@@ -312,9 +314,9 @@ int impl_reg_is_callee_save(const struct vreg *r, type_ref *fr)
 	return 0;
 }
 
-int impl_n_call_regs(type_ref *rf)
+unsigned impl_n_call_regs(type_ref *rf)
 {
-	int n;
+	unsigned n;
 	x86_call_regs(rf, &n, NULL);
 	return n;
 }
@@ -335,14 +337,14 @@ static void reg_to_stack(const struct vreg *vr, type_ref *ty, int where)
 			where);
 }
 
-void impl_func_prologue_save_call_regs(type_ref *rf, int nargs)
+void impl_func_prologue_save_call_regs(type_ref *rf, unsigned nargs)
 {
 	if(nargs){
-		int n_call_regs;
+		unsigned n_call_regs;
 		const struct vreg *call_regs;
 
-		int i;
-		int n_reg_args;
+		unsigned i;
+		unsigned n_reg_args;
 		unsigned fp_cnt = 0, int_cnt = 0;
 
 		funcargs *const fa = type_ref_funcargs(rf);
@@ -394,7 +396,7 @@ void impl_func_prologue_save_call_regs(type_ref *rf, int nargs)
 
 void impl_func_prologue_save_variadic(type_ref *rf)
 {
-	int n_call_regs;
+	unsigned n_call_regs;
 	const struct vreg *call_regs;
 	char *vfin = out_label_code("va_skip_float");
 	type_ref *const ty_dbl = type_ref_cached_DOUBLE();
@@ -1311,10 +1313,10 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 	char *const float_arg = umalloc(nargs);
 
 	const struct vreg *call_iregs;
-	int n_call_iregs;
+	unsigned n_call_iregs;
 
-	int nfloats = 0, nints = 0;
-	int arg_stack = 0;
+	unsigned nfloats = 0, nints = 0;
+	unsigned arg_stack = 0;
 	int i;
 
 	x86_call_regs(r_func, &n_call_iregs, &call_iregs);
@@ -1350,8 +1352,8 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 	v_save_regs(arg_stack, r_func);
 
 	if(arg_stack > 0){
-		int nfloats = 0, nints = 0; /* shadow */
-		int stack_pos;
+		unsigned nfloats = 0, nints = 0; /* shadow */
+		unsigned stack_pos;
 
 		ICW("need correct stack layout for fp args");
 
@@ -1366,7 +1368,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 
 		/* save in order */
 		for(i = 0; i < nargs; i++){
-			const int stack_this = float_arg[i]
+			const unsigned stack_this = float_arg[i]
 				? nfloats++ >= N_CALL_REGS_F
 				: nints++ >= n_call_iregs;
 

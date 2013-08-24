@@ -104,7 +104,7 @@ unsigned v_alloc_stack_n(unsigned sz);
 void v_deref_decl(struct vstack *vp);
 
 int impl_n_scratch_regs(void);
-int impl_n_call_regs(type_ref *);
+unsigned impl_n_call_regs(type_ref *);
 int impl_ret_reg(void);
 
 #endif

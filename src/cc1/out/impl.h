@@ -31,7 +31,7 @@ void impl_pop_func_ret(type_ref *r);
 int  impl_arg_offset(sym *);
 
 void impl_func_prologue_save_fp(void);
-void impl_func_prologue_save_call_regs(type_ref *rf, int nargs);
+void impl_func_prologue_save_call_regs(type_ref *rf, unsigned nargs);
 
 void impl_func_prologue_save_variadic(type_ref *rf);
 void impl_func_epilogue(type_ref *);
