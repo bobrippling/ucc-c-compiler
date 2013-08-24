@@ -174,8 +174,16 @@ static void handle_error_warning(token **tokens, int err)
 	where_current(&w);
 	w.line--;
 
+#ifdef __clang__
+	/* this works around clang's buggy __attribute__((noreturn))
+	 * merging in a ?: expression
+	 */
+	void (*fn)(struct where *, int, const char *, ...) = err ? die_at : warn_at;
+	fn(&w, 0, "#%s:%s", err ? "error" : "warning", s);
+#else
 	(err ? die_at : warn_at)(&w, 0,
 			"#%s:%s", err ? "error" : "warning", s);
+#endif
 
 	warn_colour(0, err);
 
