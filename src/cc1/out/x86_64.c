@@ -1338,9 +1338,6 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 			nints++;
 	}
 
-	/* FIXME: need to save regs at some point */
-	ICW("need to save regs");
-
 	/* do we need to do any stacking? */
 	if(nints > n_call_iregs)
 		arg_stack += nints - n_call_iregs;
@@ -1349,6 +1346,8 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 	if(nfloats > N_CALL_REGS_F)
 		arg_stack += nfloats - N_CALL_REGS_F;
 
+	/* need to save regs before pushes/call */
+	v_save_regs(arg_stack, r_func);
 
 	if(arg_stack > 0){
 		int nfloats = 0, nints = 0; /* shadow */
