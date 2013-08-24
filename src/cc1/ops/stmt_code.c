@@ -20,7 +20,8 @@ void fold_stmt_code(stmt *s)
 	int warned = 0;
 
 	/* local struct layout-ing */
-	symtab_fold_decls_sues(s->symtab);
+	/* we fold decls ourselves, to get their inits */
+	symtab_fold_sues(s->symtab);
 
 	/* check for invalid function redefinitions */
 	for(diter = s->symtab->decls; diter && *diter; diter++){

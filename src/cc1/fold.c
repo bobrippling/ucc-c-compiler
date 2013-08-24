@@ -511,6 +511,8 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 							inits);
 					);
 				/* folded elsewhere */
+			}else{
+				ICE("fold_decl(%s) with no pinit_code?", d->spel);
 			}
 		}
 	}
