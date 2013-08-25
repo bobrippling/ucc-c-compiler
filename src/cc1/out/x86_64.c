@@ -414,7 +414,7 @@ void impl_func_prologue_save_variadic(type_ref *rf)
 	funcargs_ty_calc(type_ref_funcargs(rf), &n_int_args, &n_fp_args);
 
 	/* space for all call regs */
-	v_alloc_stack((N_CALL_REGS_I + N_CALL_REGS_F) * platform_word_size());
+	v_alloc_stack((N_CALL_REGS_I + N_CALL_REGS_F * 2) * platform_word_size());
 
 	stk_top = v_stack_sz();
 
@@ -449,7 +449,7 @@ void impl_func_prologue_save_variadic(type_ref *rf)
 
 			/* we go above the integral regs */
 			reg_to_stack(&vr, ty_dbl,
-					stk_top - (i + n_call_regs) * pws);
+					stk_top - (i * 2 + n_call_regs) * pws);
 		}
 
 		out_label(vfin);

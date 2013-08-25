@@ -104,7 +104,8 @@ static void fold_va_start(expr *e, symtable *stab)
 		 * n call regs, since we may already have some arguments used
 		 */
 		ADD_ASSIGN_VAL("gp_offset", nargs.gp * ws);
-		ADD_ASSIGN_VAL("fp_offset", nargs.fp * ws);
+		ADD_ASSIGN_VAL("fp_offset", (6 + nargs.fp) * ws);
+		/* FIXME: x86_64::N_CALL_REGS_I reference above */
 
 		/* adjust to take the skip into account */
 		ADD_ASSIGN("reg_save_area",
@@ -173,8 +174,10 @@ static void va_arg_gen_read(
 	char vphi_buf[OUT_VPHI_SZ];
 
 	/* FIXME: this needs to reference x86_64::N_CALL_REGS_{I,F} */
-	const unsigned max_reg_args = type_ref_is_floating(ty) ? 8 : 6;
+	const int fp = type_ref_is_floating(ty);
+	const unsigned max_reg_args_sz = 6 * 8 + (fp ? 16 * 16 : 0);
 	const unsigned ws = platform_word_size();
+	const unsigned increment = fp ? 2 * ws : ws;
 
 	gen_expr(e->lhs); /* va_list */
 	out_change_type(type_ref_cached_VOID_PTR());
@@ -187,7 +190,7 @@ static void va_arg_gen_read(
 	out_dup(); /* va, &gp_o, &gp_o */
 
 	out_deref(); /* va, &gp_o, gp_o */
-	out_push_l(type_ref_cached_INT(), max_reg_args * ws); /* N_CALL_REGS * pws */
+	out_push_l(type_ref_cached_INT(), max_reg_args_sz);
 	out_op(op_lt); /* va, &gp_o, <cond> */
 	out_jfalse(lbl_stack);
 
@@ -195,11 +198,14 @@ static void va_arg_gen_read(
 	out_dup(); /* va, &gp_o, &gp_o */
 	out_deref(); /* va, &gp_o, gp_o */
 
-	out_push_l(type_ref_cached_INT(), ws); /* pws */
+	/* increment either 8 for an integral, or 16 for a float argument
+	 * since xmm0 are 128-bit registers, aka 16 byte
+	 */
+	out_push_l(type_ref_cached_INT(), increment); /* pws */
 	out_op(op_plus); /* va, &gp_o, gp_o+ws */
 
 	out_store(); /* va, gp_o+ws */
-	out_push_l(type_ref_cached_INT(), ws); /* pws */
+	out_push_l(type_ref_cached_INT(), increment); /* pws */
 	out_op(op_minus); /* va, gp_o */
 	out_change_type(type_ref_cached_LONG());
 
