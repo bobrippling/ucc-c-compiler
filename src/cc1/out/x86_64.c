@@ -1105,7 +1105,7 @@ void impl_cast_load(struct vstack *vp, type_ref *small, type_ref *big, int is_si
 
 	{
 		const char *suffix_big = x86_suffix(big),
-					*suffix_small = x86_suffix(small);
+		           *suffix_small = x86_suffix(small);
 		struct vreg r;
 
 		/* mov[zs][bwl][wlq]
@@ -1114,6 +1114,8 @@ void impl_cast_load(struct vstack *vp, type_ref *small, type_ref *big, int is_si
 		 * special case: movzlq is invalid, we use movl %r, %r instead
 		 */
 
+		v_unused_reg(1, 0, &r);
+
 		if(!is_signed && *suffix_big == 'q' && *suffix_small == 'l'){
 			out_comment("movzlq:");
 			out_asm("movl %s, %%%s",
@@ -1121,8 +1123,6 @@ void impl_cast_load(struct vstack *vp, type_ref *small, type_ref *big, int is_si
 					x86_reg_str(&r, small));
 
 		}else{
-			v_unused_reg(1, 0, &r);
-
 			out_asm("mov%c%s%s %s, %%%s",
 					"zs"[is_signed],
 					suffix_small,
