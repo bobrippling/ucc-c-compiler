@@ -1349,7 +1349,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 		arg_stack += nfloats - N_CALL_REGS_F;
 
 	/* need to save regs before pushes/call */
-	v_save_regs(arg_stack, r_func);
+	v_save_regs(nargs, r_func);
 
 	if(arg_stack > 0){
 		unsigned nfloats = 0, nints = 0; /* shadow */
