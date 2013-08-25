@@ -452,6 +452,8 @@ void v_save_reg(struct vstack *vp)
 {
 	UCC_ASSERT(vp->type == REG, "not reg");
 
+	out_comment("register spill:");
+
 	v_alloc_stack(type_ref_size(vp->t, NULL));
 
 	v_to_mem_given(
