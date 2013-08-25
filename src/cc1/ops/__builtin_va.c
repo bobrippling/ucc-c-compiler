@@ -96,20 +96,9 @@ static void fold_va_start(expr *e, symtable *stab)
 		{
 			unsigned gp, fp;
 		} nargs = { 0, 0 };
-		decl **di;
-		unsigned n_args_total_pws = 0;
+		funcargs *const fa = type_ref_funcargs(curdecl_func->ref);
 
-		for(di = type_ref_funcargs(curdecl_func->ref)->arglist;
-				di && *di;
-				di++)
-		{
-			if(type_ref_is_floating((*di)->ref))
-				nargs.fp++;
-			else
-				nargs.gp++;
-
-			n_args_total_pws += ws;
-		}
+		funcargs_ty_calc(fa, &nargs.gp, &nargs.fp);
 
 		/* need to set the offsets to act as if we've skipped over
 		 * n call regs, since we may already have some arguments used

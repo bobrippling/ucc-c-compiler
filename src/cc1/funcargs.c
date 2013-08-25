@@ -94,3 +94,16 @@ funcargs *funcargs_new()
 	where_new(&r->where);
 	return r;
 }
+
+void funcargs_ty_calc(funcargs *fa, unsigned *n_int, unsigned *n_fp)
+{
+	decl **di;
+
+	*n_int = *n_fp = 0;
+
+	for(di = fa->arglist; di && *di; di++)
+		if(type_ref_is_floating((*di)->ref))
+			++*n_fp;
+		else
+			++*n_int;
+}
