@@ -1,3 +1,6 @@
+// RUN: %ucc -o %t %s
+// RUN: %t | %output_check '3'
+
 double f(int a, ...)
 {
 	__builtin_va_list l;
