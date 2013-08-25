@@ -1326,12 +1326,6 @@ void out_func_prologue(type_ref *rf, int stack_res, int nargs, int variadic)
 
 	if(stack_res)
 		v_alloc_stack(stack_res);
-
-	/* (for the saved fp, above)
-	 * XXX: note that because this isn't in order with the
-	 * arg pushing or stack_res code, we over-allocate the stack
-	 */
-	v_alloc_stack_n(platform_word_size());
 }
 
 void out_func_epilogue(type_ref *rf)
