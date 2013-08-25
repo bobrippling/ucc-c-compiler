@@ -583,7 +583,9 @@ void impl_load_fp(struct vstack *from)
 			ICE("load int into float?");
 
 		case CONST_F:
-			if(from->bits.val_f == (integral_t)from->bits.val_f){
+			if(from->bits.val_f == (integral_t)from->bits.val_f
+			&& fopt_mode & FOPT_INTEGRAL_FLOAT_LOAD)
+			{
 				type_ref *const ty_fp = from->t;
 
 				from->type = CONST_I;

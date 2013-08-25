@@ -124,6 +124,7 @@ struct
 	{ 1,  "freestanding",        FOPT_FREESTANDING },
 	{ 1,  "show-static-asserts", FOPT_SHOW_STATIC_ASSERTS },
 	{ 1,  "verbose-asm",         FOPT_VERBOSE_ASM },
+	{ 1,  "integral-float-load", FOPT_INTEGRAL_FLOAT_LOAD },
 
 	{ 0,  NULL, 0 }
 };
@@ -157,7 +158,8 @@ enum fopt fopt_mode = FOPT_CONST_FOLD
                     | FOPT_PIC
                     | FOPT_BUILTIN
                     | FOPT_MS_EXTENSIONS
-										| FOPT_TRACK_INITIAL_FNAM;
+										| FOPT_TRACK_INITIAL_FNAM
+										| FOPT_INTEGRAL_FLOAT_LOAD;
 enum cc1_backend cc1_backend = BACKEND_ASM;
 
 int cc1_m32 = UCC_M32;

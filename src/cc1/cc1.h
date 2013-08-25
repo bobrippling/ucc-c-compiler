@@ -72,6 +72,7 @@ enum fopt
 	FOPT_FREESTANDING          = 1 << 12,
 	FOPT_SHOW_STATIC_ASSERTS   = 1 << 13,
 	FOPT_VERBOSE_ASM           = 1 << 14,
+	FOPT_INTEGRAL_FLOAT_LOAD   = 1 << 15,
 };
 
 enum cc1_backend
