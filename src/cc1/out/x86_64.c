@@ -396,66 +396,65 @@ void impl_func_prologue_save_call_regs(type_ref *rf, unsigned nargs)
 
 void impl_func_prologue_save_variadic(type_ref *rf)
 {
+	const unsigned pws = platform_word_size();
+
 	unsigned n_call_regs;
 	const struct vreg *call_regs;
-	char *vfin = out_label_code("va_skip_float");
+
 	type_ref *const ty_dbl = type_ref_cached_DOUBLE();
-	unsigned sz = 0;
-	unsigned fp_top;
-	int n_int_args = 0;
-	int i;
+	type_ref *const ty_integral = type_ref_cached_INTPTR_T();
+
+	unsigned n_int_args, n_fp_args;
+
+	unsigned stk_top;
+	unsigned i;
 
 	x86_call_regs(rf, &n_call_regs, &call_regs);
 
-	{
-		decl **di;
-		for(di = type_ref_funcargs(rf)->arglist; di && *di; di++)
-			if(!type_ref_is_floating((*di)->ref))
-				n_int_args++;
-	}
+	funcargs_ty_calc(type_ref_funcargs(rf), &n_int_args, &n_fp_args);
+
+	/* space for all call regs */
+	v_alloc_stack((N_CALL_REGS_I + N_CALL_REGS_F) * platform_word_size());
+
+	stk_top = v_stack_sz();
 
 	/* go backwards, as we want registers pushed in reverse
 	 * so we can iterate positively.
 	 *
-	 * note: we don't push call regs, just ones after, hence
-	 * >= n_args
+	 * note: we don't push call regs, just variadic ones after,
+	 * hence >= n_args
 	 */
-	for(i = n_call_regs - 1; i >= n_int_args; i--){
-		/* TODO: do this with out_save_reg */
-		out_asm("push%s %%%s",
-				x86_suffix(NULL),
-				x86_intreg_str(call_regs[i].idx, NULL));
-		sz += platform_word_size();
-	}
-
-	/* align the stack, FIXME: this should be done once at the end */
-	v_alloc_stack_n(sz);
-
-	/* always reserve float space, for now */
-	v_alloc_stack(N_CALL_REGS_F * platform_word_size());
-
-	/* TODO: do this with out_* */
-	out_asm("testb %%al, %%al");
-	out_asm("jz %s", vfin);
-
-	fp_top = v_stack_sz();
-	out_comment("fp area = %u - %u",
-			fp_top - N_CALL_REGS_F * platform_word_size(),
-			fp_top);
-
-	for(i = N_CALL_REGS_F - 1; i >= 0; i--){
+	for(i = n_int_args; i < n_call_regs; i++){
+		/* intergral call regs go _below_ floating */
 		struct vreg vr;
 
-		vr.is_float = 1;
-		vr.idx = i;
+		vr.is_float = 0;
+		vr.idx = call_regs[i].idx;
 
-		/* FIXME: check offset (3rd arg) */
-		reg_to_stack(&vr, ty_dbl, fp_top - i * platform_word_size());
+		/* integral args are at the lowest address */
+		reg_to_stack(&vr, ty_integral,
+				stk_top - i * pws);
 	}
-	/* note: sz is not added to here */
 
-	out_label(vfin);
-	free(vfin);
+	{
+		char *vfin = out_label_code("va_skip_float");
+		out_asm("testb %%al, %%al");
+		out_asm("jz %s", vfin);
+
+		for(i = 0; i < N_CALL_REGS_F; i++){
+			struct vreg vr;
+
+			vr.is_float = 1;
+			vr.idx = i;
+
+			/* we go above the integral regs */
+			reg_to_stack(&vr, ty_dbl,
+					stk_top - (i + n_call_regs) * pws);
+		}
+
+		out_label(vfin);
+		free(vfin);
+	}
 }
 
 void impl_func_epilogue(type_ref *rf)

@@ -119,6 +119,10 @@ static void gen_expr_struct_lea(expr *e)
 	out_push_l(type_ref_cached_INTPTR_T(), struct_offset(e)); /* integral offset */
 	out_op(op_plus);
 
+	if(fopt_mode & FOPT_VERBOSE_ASM)
+		out_comment("struct member %s", e->bits.struct_mem.d->spel);
+
+
 	{
 		decl *d = e->bits.struct_mem.d;
 

@@ -1321,7 +1321,8 @@ void out_func_prologue(type_ref *rf, int stack_res, int nargs, int variadic)
 		impl_func_prologue_save_variadic(rf);
 
 	/* setup "pointers" to the right place in the stack */
-	stack_variadic_offset = stack_local_offset = stack_sz;
+	stack_variadic_offset = stack_sz - platform_word_size();
+	stack_local_offset = stack_sz;
 
 	if(stack_res)
 		v_alloc_stack(stack_res);

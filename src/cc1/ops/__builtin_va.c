@@ -110,7 +110,7 @@ static void fold_va_start(expr *e, symtable *stab)
 		ADD_ASSIGN("reg_save_area",
 				expr_new_op2(op_minus,
 					builtin_new_reg_save_area(), /* void arith - need _pws */
-					expr_new_val(n_args_total_pws)));
+					expr_new_val((nargs.gp + nargs.fp) * ws))); /* total arg count * ws */
 
 		ADD_ASSIGN("overflow_arg_area",
 				expr_new_op2(op_plus,
