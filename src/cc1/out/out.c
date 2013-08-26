@@ -397,6 +397,17 @@ void v_freeup_regp(struct vstack *vp)
 	}
 }
 
+static void v_stack_adj(unsigned amt, int sub)
+{
+	vpush(NULL);
+	vtop->type = REG;
+	vtop->bits.reg.is_float = 0;
+	vtop->bits.reg.idx = REG_SP;
+	out_push_l(type_ref_cached_INTPTR_T(), amt);
+	out_op(sub ? op_minus : op_plus);
+	out_pop();
+}
+
 static unsigned v_alloc_stack2(unsigned sz, int noop)
 {
 	if(sz){
@@ -423,13 +434,7 @@ static unsigned v_alloc_stack2(unsigned sz, int noop)
 				}
 			}
 
-			vpush(NULL);
-			vtop->type = REG;
-			vtop->bits.reg.is_float = 0;
-			vtop->bits.reg.idx = REG_SP;
-			out_push_l(type_ref_cached_INTPTR_T(), to_alloc);
-			out_op(op_minus);
-			out_pop();
+			v_stack_adj(to_alloc, 1);
 		}
 
 		stack_sz += sz;
@@ -446,6 +451,19 @@ unsigned v_alloc_stack_n(unsigned sz)
 unsigned v_alloc_stack(unsigned sz)
 {
 	return v_alloc_stack2(sz, 0);
+}
+
+void v_dealloc_stack(unsigned sz)
+{
+	/* callers should've snapshotted the stack previously
+	 * and be calling us with said snapshot value
+	 */
+	UCC_ASSERT((sz & (cc1_mstack_align - 1)) == 0,
+			"can't dealloc by a non-stack-align amount");
+
+	v_stack_adj(sz, 0);
+
+	stack_sz -= sz;
 }
 
 void v_save_reg(struct vstack *vp)

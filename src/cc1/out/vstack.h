@@ -101,6 +101,8 @@ unsigned v_alloc_stack(unsigned sz);
 unsigned v_alloc_stack_n(unsigned sz);
 /* v_alloc_stack* returns the padded sz that was alloced */
 
+void v_dealloc_stack(unsigned sz);
+
 void v_deref_decl(struct vstack *vp);
 
 int impl_n_scratch_regs(void);

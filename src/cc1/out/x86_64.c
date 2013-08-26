@@ -1318,6 +1318,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 
 	unsigned nfloats = 0, nints = 0;
 	unsigned arg_stack = 0;
+	unsigned stk_snapshot = 0;
 	int i;
 
 	x86_call_regs(r_func, &n_call_iregs, &call_iregs);
@@ -1356,32 +1357,41 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 		unsigned nfloats = 0, nints = 0; /* shadow */
 		unsigned stack_pos;
 
-		ICW("need correct stack layout for fp args");
-
 		out_comment("stack space for %d arguments", arg_stack);
 		/* this aligns the stack-ptr and returns arg_stack padded */
 		arg_stack = v_alloc_stack(arg_stack * pws);
 
 		/* must be called after v_alloc_stack() */
-		stack_pos = v_stack_sz() - arg_stack;
+		stack_pos = v_stack_sz();
 		out_comment("arg_stack = %d, stack_pos = %d",
 				arg_stack, stack_pos);
 
+		stk_snapshot = v_stack_sz();
+		out_comment("-- stack snapshot (%u) --", stk_snapshot);
+
 		/* save in order */
 		for(i = 0; i < nargs; i++){
-			const unsigned stack_this = float_arg[i]
+			const int stack_this = float_arg[i]
 				? nfloats++ >= N_CALL_REGS_F
 				: nints++ >= n_call_iregs;
 
 			if(stack_this){
 				struct vstack *const vp = &vtop[-i];
 
+				ICW("check correct stack layout/calculation for stack args");
+
 				/* v_to_mem* does v_to_reg first if needed */
 				v_to_mem_given(vp, -stack_pos);
 
-				/* XXX: ensure any registers used ^ are freed */
+				/* XXX: we ensure any registers used ^ are freed
+				 * by using the stack snapshot - the STACK_SAVE
+				 * space they take up isn't used after the call
+				 * and so we can mercilessly wipe it out just
+				 * before the call instruction.
+				 */
 
-				stack_pos += pws;
+				/* nth argument is higher in memory */
+				stack_pos -= pws;
 			}
 		}
 	}
@@ -1422,6 +1432,20 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 			}
 		}
 		/* else already pushed */
+	}
+
+	if(stk_snapshot){
+		/* May have touched the stack in shifting around
+		 * registers above - need to clean up the stack here
+		 * for our call.
+		 *
+		 * Should just be able to add to the stack pointer,
+		 * since we save all non-call registers before we
+		 * start anything.
+		 */
+		unsigned chg = v_stack_sz() - stk_snapshot;
+		out_comment("-- restore snapshot (%u) --", chg);
+		v_dealloc_stack(chg);
 	}
 
 	for(i = 0; i < nargs; i++)
