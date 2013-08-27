@@ -73,6 +73,7 @@ static const struct
 	enum wmode or_mask;
 } warns[] = {
 	{ "all", "turn on all warnings", ~0U },
+	{ "traditional", "warn about # in the first column", WTRADITIONAL },
 };
 
 #define ITER_WARNS(j) for(j = 0; j < sizeof(warns)/sizeof(*warns); j++)

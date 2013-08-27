@@ -31,7 +31,7 @@ void debug_pop_line(void);
 
 extern enum wmode
 {
-	WTODO = 0
+	WTRADITIONAL = 1 << 0,
 } wmode;
 
 #endif
