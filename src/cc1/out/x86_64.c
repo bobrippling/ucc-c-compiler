@@ -1372,11 +1372,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 				"call argument space");
 
 		/* must be called after v_alloc_stack() */
-		stack_pos = v_stack_sz();
-		out_comment("arg_stack = %d, stack_pos = %d",
-				arg_stack, stack_pos);
-
-		stk_snapshot = v_stack_sz();
+		stk_snapshot = stack_pos = v_stack_sz();
 		out_comment("-- stack snapshot (%u) --", stk_snapshot);
 
 		/* save in order */
