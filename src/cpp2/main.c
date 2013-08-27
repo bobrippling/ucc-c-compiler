@@ -231,8 +231,12 @@ int main(int argc, char **argv)
 				char *eq;
 				char *directive;
 
-				if(!*arg)
-					goto usage;
+				if(!*arg){
+					/* allow "-D" "arg" */
+					arg = argv[++i];
+					if(!arg)
+						goto usage;
+				}
 
 				/* -D'yo yo' means #define yo yo 1, that is,
 				 * we literally generate the #define line */
