@@ -341,10 +341,19 @@ static int /*bool*/ if_eval(token **tokens, const char *type)
 
 	/* then parse */
 	e = expr_parse(w);
-	free(w);
 
 	/* and eval (this also frees e) */
-	return !!expr_eval(e);
+	{
+		int had_ident = 0;
+		const int r = !!expr_eval(e, &had_ident);
+
+		if(had_ident)
+			CPP_WARN("undefined identifier in: \"#%s%s\"", type, w);
+
+		free(w);
+
+		return r;
+	}
 }
 
 static void handle_if(token **tokens)

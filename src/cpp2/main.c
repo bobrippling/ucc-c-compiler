@@ -74,6 +74,7 @@ static const struct
 } warns[] = {
 	{ "all", "turn on all warnings", ~0U },
 	{ "traditional", "warn about # in the first column", WTRADITIONAL },
+	{ "undef", "warn about undefined macros in #if/elif", WUNDEF },
 };
 
 #define ITER_WARNS(j) for(j = 0; j < sizeof(warns)/sizeof(*warns); j++)
