@@ -461,6 +461,9 @@ void impl_func_epilogue(type_ref *rf)
 {
 	out_asm("leaveq");
 
+	if(fopt_mode & FOPT_VERBOSE_ASM)
+		out_comment("stack at %u bytes", v_stack_sz());
+
 	/* callee cleanup */
 	if(!x86_caller_cleanup(rf)){
 		const int nargs = x86_func_nargs(rf);
