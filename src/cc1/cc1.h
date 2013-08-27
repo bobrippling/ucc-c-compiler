@@ -75,6 +75,12 @@ enum fopt
 	FOPT_INTEGRAL_FLOAT_LOAD   = 1 << 15,
 };
 
+enum mopt
+{
+	MOPT_32            = 1 << 0,
+};
+#define IS_32_BIT() (!!(mopt_mode & MOPT_32))
+
 enum cc1_backend
 {
 	BACKEND_ASM,
@@ -83,6 +89,7 @@ enum cc1_backend
 };
 
 extern enum fopt fopt_mode;
+extern enum mopt mopt_mode;
 extern enum cc1_backend cc1_backend;
 
 extern enum c_std cc1_std;
@@ -93,7 +100,6 @@ void cc1_warn_at( struct where *where, int die, int show_line, enum warning w, c
 
 extern int cc1_max_errors;
 
-extern int cc1_m32; /* 32bit mode or 64? */
 extern int cc1_mstack_align; /* 2^n */
 extern int cc1_gdebug; /* -g */
 

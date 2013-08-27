@@ -184,7 +184,7 @@ unsigned type_primitive_size(enum type_primitive tp)
 		case type_ulong:
 		case type_double:
 			/* 4 on 32-bit */
-			if(cc1_m32)
+			if(IS_32_BIT())
 				return 4;
 			/* fall */
 		case type_llong:
@@ -194,7 +194,7 @@ unsigned type_primitive_size(enum type_primitive tp)
 		case type_ldouble:
 			/* 80-bit float */
 			ICW("TODO: long double");
-			return cc1_m32 ? 12 : 16;
+			return IS_32_BIT() ? 12 : 16;
 
 		case type_union:
 		case type_struct:
@@ -228,7 +228,7 @@ unsigned type_align(const type *t, where *from)
 	 */
 	switch(t->primitive){
 		case type_double:
-			if(cc1_m32){
+			if(IS_32_BIT()){
 				/* 8 on Win32, 4 on Linux32 */
 				if(platform_sys() == PLATFORM_CYGWIN)
 					return 8;
@@ -237,7 +237,7 @@ unsigned type_align(const type *t, where *from)
 			return 8; /* 8 on 64-bit */
 
 		case type_ldouble:
-			return cc1_m32 ? 4 : 16;
+			return IS_32_BIT() ? 4 : 16;
 
 		default:
 			return type_primitive_size(t->primitive);

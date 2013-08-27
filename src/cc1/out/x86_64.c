@@ -565,7 +565,7 @@ void impl_load_iv(struct vstack *vp)
 		v_unused_reg(1, 0, &r);
 
 		/* TODO: 64-bit registers in general on 32-bit */
-		UCC_ASSERT(!cc1_m32, "TODO: 32-bit 64-literal loads");
+		UCC_ASSERT(!IS_32_BIT(), "TODO: 32-bit 64-literal loads");
 
 		UCC_ASSERT(type_ref_size(vp->t, NULL) == 8,
 				"loading 64-bit literal (%lld) for non-long? (%s)",
