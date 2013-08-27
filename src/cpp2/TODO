@@ -1,0 +1,5 @@
+-C don't strip comments
+
+-Wunused-macros
+	warn at eof, or when the macro is redefined/undefined
+	-D macros, builtin and header macros aren't warned about
