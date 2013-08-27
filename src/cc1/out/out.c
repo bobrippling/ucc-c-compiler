@@ -397,12 +397,17 @@ void v_freeup_regp(struct vstack *vp)
 	}
 }
 
-static void v_stack_adj(unsigned amt, int sub)
+static void v_push_sp(void)
 {
 	vpush(NULL);
 	vtop->type = REG;
 	vtop->bits.reg.is_float = 0;
 	vtop->bits.reg.idx = REG_SP;
+}
+
+static void v_stack_adj(unsigned amt, int sub)
+{
+	v_push_sp();
 	out_push_l(type_ref_cached_INTPTR_T(), amt);
 	out_op(sub ? op_minus : op_plus);
 	out_pop();
@@ -1340,6 +1345,15 @@ void out_func_prologue(type_ref *rf, int stack_res, int nargs, int variadic)
 	UCC_ASSERT(stack_sz == 0, "non-empty stack for new func");
 
 	impl_func_prologue_save_fp();
+
+	if(mopt_mode & MOPT_STACK_REALIGN){
+		v_push_sp();
+		out_push_l(type_ref_cached_INTPTR_T(), cc1_mstack_align - 1);
+		out_op(op_and);
+		out_pop();
+		v_alloc_stack(platform_word_size(), "stack realign");
+	}
+
 	impl_func_prologue_save_call_regs(rf, nargs);
 
 	if(variadic) /* save variadic call registers */

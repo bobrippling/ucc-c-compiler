@@ -126,6 +126,8 @@ struct
 	{ 'f',  "verbose-asm",         FOPT_VERBOSE_ASM },
 	{ 'f',  "integral-float-load", FOPT_INTEGRAL_FLOAT_LOAD },
 
+	{ 'm',  "stackrealign", MOPT_STACK_REALIGN },
+
 	{ 0,  NULL, 0 }
 };
 
