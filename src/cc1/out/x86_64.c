@@ -1468,7 +1468,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 	}
 
 	if(arg_stack && x86_caller_cleanup(r_func))
-		out_asm("addq $" NUM_FMT ", %%rsp", arg_stack);
+		v_dealloc_stack(arg_stack);
 
 	free(float_arg);
 }
