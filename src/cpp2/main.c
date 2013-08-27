@@ -65,6 +65,18 @@ char **cd_stack = NULL;
 int option_debug     = 0;
 int option_line_info = 1;
 
+enum wmode wmode = 0;
+
+static const struct
+{
+	const char *warn, *desc;
+	enum wmode or_mask;
+} warns[] = {
+	{ "all", "turn on all warnings", ~0U },
+};
+
+#define ITER_WARNS(j) for(j = 0; j < sizeof(warns)/sizeof(*warns); j++)
+
 void debug_push_line(char *s)
 {
 	debug_pop_line(); /* currently only a single level */
@@ -270,6 +282,25 @@ int main(int argc, char **argv)
 					goto usage;
 				break;
 
+			case 'W':
+			{
+				unsigned j;
+				int found = 0;
+
+				ITER_WARNS(j){
+					if(!strcmp(argv[i]+2, warns[j].warn)){
+						wmode |= warns[j].or_mask;
+						found = 1;
+						break;
+					}
+				}
+
+				if(!found)
+					goto usage;
+				break;
+			}
+
+
 			default:
 				if(std_from_str(argv[i], &std) == 0){
 					/* we have an std */
@@ -362,5 +393,12 @@ usage:
 				"  -dS: print macro usage stats\n"
 				"  -MM: generate Makefile dependencies\n"
 				, stderr);
+
+	{
+		unsigned i;
+		ITER_WARNS(i)
+			fprintf(stderr, "  -W%s: %s\n", warns[i].warn, warns[i].desc);
+	}
+
 	return 1;
 }

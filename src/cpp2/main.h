@@ -29,4 +29,9 @@ extern int no_output;
 void debug_push_line(char *);
 void debug_pop_line(void);
 
+extern enum wmode
+{
+	WTODO = 0
+} wmode;
+
 #endif
