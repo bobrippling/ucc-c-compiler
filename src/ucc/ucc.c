@@ -390,6 +390,9 @@ int main(int argc, char **argv)
 						}
 					}
 					/* else default to -Wsomething - add to cc1 */
+
+					/* also add to cpp */
+					ADD_ARG(mode_preproc);
 				}
 
 #define ADD_ARG(to) dynarray_add(&args[to], ustrdup(arg))

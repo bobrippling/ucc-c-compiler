@@ -285,18 +285,15 @@ int main(int argc, char **argv)
 			case 'W':
 			{
 				unsigned j;
-				int found = 0;
 
 				ITER_WARNS(j){
 					if(!strcmp(argv[i]+2, warns[j].warn)){
 						wmode |= warns[j].or_mask;
-						found = 1;
 						break;
 					}
 				}
 
-				if(!found)
-					goto usage;
+				/* if not found, we ignore - it was intended for cc1 */
 				break;
 			}
 
