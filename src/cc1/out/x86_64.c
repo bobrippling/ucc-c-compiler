@@ -368,7 +368,9 @@ void impl_func_prologue_save_call_regs(type_ref *rf, unsigned nargs)
 		if(fp_cnt){
 			int i_i, i_f;
 
-			v_alloc_stack((fp_cnt + int_cnt) * platform_word_size());
+			v_alloc_stack(
+					(fp_cnt + int_cnt) * platform_word_size(),
+					"save call regs float+integral");
 
 			for(i = i_i = i_f = 0; i < n_reg_args; i++){
 				type_ref *const ty = fa->arglist[i]->ref;
@@ -387,7 +389,9 @@ void impl_func_prologue_save_call_regs(type_ref *rf, unsigned nargs)
 			}
 
 			/* this aligns the stack too */
-			v_alloc_stack_n(n_reg_args * platform_word_size());
+			v_alloc_stack_n(
+					n_reg_args * platform_word_size(),
+					"save call regs push-version");
 		}
 
 		/* out_func_prologue() does a v_stack_align() here */
@@ -414,7 +418,9 @@ void impl_func_prologue_save_variadic(type_ref *rf)
 	funcargs_ty_calc(type_ref_funcargs(rf), &n_int_args, &n_fp_args);
 
 	/* space for all call regs */
-	v_alloc_stack((N_CALL_REGS_I + N_CALL_REGS_F * 2) * platform_word_size());
+	v_alloc_stack(
+			(N_CALL_REGS_I + N_CALL_REGS_F * 2) * platform_word_size(),
+			"stack call arguments");
 
 	stk_top = v_stack_sz();
 
@@ -1362,7 +1368,8 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 
 		out_comment("stack space for %d arguments", arg_stack);
 		/* this aligns the stack-ptr and returns arg_stack padded */
-		arg_stack = v_alloc_stack(arg_stack * pws);
+		arg_stack = v_alloc_stack(arg_stack * pws,
+				"call argument space");
 
 		/* must be called after v_alloc_stack() */
 		stack_pos = v_stack_sz();

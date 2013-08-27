@@ -95,10 +95,10 @@ void v_reserve_reg(const struct vreg *);
 void v_unreserve_reg(const struct vreg *);
 
 /* outputs stack-ptr instruction(s) */
-unsigned v_alloc_stack(unsigned sz);
+unsigned v_alloc_stack(unsigned sz, const char *);
 /* Will output instructions to align the stack to cc1_mstack_align
  * e.g. if a push is done manually */
-unsigned v_alloc_stack_n(unsigned sz);
+unsigned v_alloc_stack_n(unsigned sz, const char *);
 /* v_alloc_stack* returns the padded sz that was alloced */
 
 void v_dealloc_stack(unsigned sz);

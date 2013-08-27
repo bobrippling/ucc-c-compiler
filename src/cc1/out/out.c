@@ -408,49 +408,54 @@ static void v_stack_adj(unsigned amt, int sub)
 	out_pop();
 }
 
-static unsigned v_alloc_stack2(unsigned sz, int noop)
+static unsigned v_alloc_stack2(
+		const unsigned sz_initial, int noop, const char *desc)
 {
-	if(sz){
-		/* sz must be a multiple of mstack_align */
-		unsigned const orig = sz;
+	unsigned sz_rounded = sz_initial;
 
-		/* assume stack_sz is aligned, and just
-		 * align what we add to it */
-		sz = pack_to_align(sz, cc1_mstack_align);
+	if(sz_initial){
+		/* must be a multiple of mstack_align.
+		 * assume stack_sz is aligned, and just
+		 * align what we add to it
+		 */
+		sz_rounded = pack_to_align(sz_initial, cc1_mstack_align);
 
-		/* if sz changed, we need to realign the stack */
-		if(!noop || sz != orig){
+		/* if it changed, we need to realign the stack */
+		if(!noop || sz_rounded != sz_initial){
 			unsigned to_alloc;
 
 			if(!noop){
-				to_alloc = sz; /* the whole hog */
+				to_alloc = sz_rounded; /* the whole hog */
 			}else{
-				to_alloc = sz - orig; /* the extra we need to align by */
-				if(fopt_mode & FOPT_VERBOSE_ASM){
-					out_comment("stack alignment (%u -> %u)",
-							stack_sz, stack_sz + sz);
-					out_comment("alloc_n by %u (-> %u), padding with %u",
-							orig, stack_sz + orig, to_alloc);
-				}
+				/* the extra we need to align by */
+				to_alloc = sz_rounded - sz_initial;
 			}
 
 			v_stack_adj(to_alloc, 1);
+
+			if(fopt_mode & FOPT_VERBOSE_ASM){
+				out_comment("stack alignment for %s (%u -> %u)",
+						desc, stack_sz, stack_sz + sz_rounded);
+				out_comment("alloc_n by %u (-> %u), padding with %u",
+						sz_initial, stack_sz + sz_initial,
+						sz_rounded - sz_initial);
+			}
 		}
 
-		stack_sz += sz;
+		stack_sz += sz_rounded;
 	}
 
-	return sz;
+	return sz_rounded;
 }
 
-unsigned v_alloc_stack_n(unsigned sz)
+unsigned v_alloc_stack_n(unsigned sz, const char *desc)
 {
-	return v_alloc_stack2(sz, 1);
+	return v_alloc_stack2(sz, 1, desc);
 }
 
-unsigned v_alloc_stack(unsigned sz)
+unsigned v_alloc_stack(unsigned sz, const char *desc)
 {
-	return v_alloc_stack2(sz, 0);
+	return v_alloc_stack2(sz, 0, desc);
 }
 
 void v_dealloc_stack(unsigned sz)
@@ -472,7 +477,7 @@ void v_save_reg(struct vstack *vp)
 
 	out_comment("register spill:");
 
-	v_alloc_stack(type_ref_size(vp->t, NULL));
+	v_alloc_stack(type_ref_size(vp->t, NULL), "save reg");
 
 	v_to_mem_given(
 			vp,
@@ -1345,7 +1350,7 @@ void out_func_prologue(type_ref *rf, int stack_res, int nargs, int variadic)
 	stack_local_offset = stack_sz;
 
 	if(stack_res)
-		v_alloc_stack(stack_res);
+		v_alloc_stack(stack_res, "local variables");
 }
 
 void out_func_epilogue(type_ref *rf)
