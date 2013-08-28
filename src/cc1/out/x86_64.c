@@ -340,18 +340,16 @@ static void reg_to_stack(const struct vreg *vr, type_ref *ty, int where)
 void impl_func_prologue_save_call_regs(type_ref *rf, unsigned nargs)
 {
 	if(nargs){
-		unsigned n_call_regs;
+		unsigned n_call_i;
 		const struct vreg *call_regs;
 
-		unsigned i;
-		unsigned n_reg_args;
-		unsigned fp_cnt = 0, int_cnt = 0;
+		unsigned fp_cnt, int_cnt;
 
 		funcargs *const fa = type_ref_funcargs(rf);
 
-		x86_call_regs(rf, &n_call_regs, &call_regs);
+		x86_call_regs(rf, &n_call_i, &call_regs);
 
-		n_reg_args = MIN(nargs, n_call_regs);
+		funcargs_ty_calc(fa, &int_cnt, &fp_cnt);
 
 		/* two cases
 		 * - for all integral arguments, we can just push them
@@ -359,37 +357,38 @@ void impl_func_prologue_save_call_regs(type_ref *rf, unsigned nargs)
 		 * each argument takes a full word for now - subject to change
 		 * (e.g. long double, struct/union args, etc)
 		 */
-		for(i = 0; i < n_reg_args; i++)
-			if(type_ref_is_floating(fa->arglist[i]->ref))
-				fp_cnt++;
-			else
-				int_cnt++;
-
 		if(fp_cnt){
-			int i_i, i_f;
+			const unsigned n_call_f = MIN(fp_cnt, N_CALL_REGS_F);
+			unsigned i_arg, i_stk, i_i, i_f;
 
 			v_alloc_stack(
-					(fp_cnt + int_cnt) * platform_word_size(),
+					(n_call_f + n_call_i) * platform_word_size(),
 					"save call regs float+integral");
 
-			for(i = i_i = i_f = 0; i < n_reg_args; i++){
-				type_ref *const ty = fa->arglist[i]->ref;
+			for(i_arg = i_i = i_f = i_stk = 0; i_arg < nargs; i_arg++){
+				type_ref *const ty = fa->arglist[i_arg]->ref;
 				const struct vreg *rp;
 				struct vreg vr;
 
-				/* use i_* for the register indexes, but just 'i' for the offset */
 				if(type_ref_is_floating(ty)){
+					if(i_f >= n_call_f)
+						continue;
+
 					rp = &vr;
 					vr.is_float = 1;
 					vr.idx = i_f++;
 				}else{
+					if(i_i >= n_call_i)
+						continue;
+
 					rp = &call_regs[i_i++];
 				}
 
-				reg_to_stack(rp, ty, (i + 1) * platform_word_size());
+				reg_to_stack(rp, ty, ++i_stk * platform_word_size());
 			}
 		}else{
-			for(i = 0; i < n_reg_args; i++){
+			unsigned i;
+			for(i = 0; i < n_call_i; i++){
 				out_asm("push%s %%%s",
 						x86_suffix(NULL),
 						x86_reg_str(&call_regs[i], NULL));
@@ -397,11 +396,9 @@ void impl_func_prologue_save_call_regs(type_ref *rf, unsigned nargs)
 
 			/* this aligns the stack too */
 			v_alloc_stack_n(
-					n_reg_args * platform_word_size(),
+					n_call_i * platform_word_size(),
 					"save call regs push-version");
 		}
-
-		/* out_func_prologue() does a v_stack_align() here */
 	}
 }
 
