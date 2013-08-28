@@ -38,7 +38,6 @@ expr *parse_expr_unary(void);
 
 /* parse_type uses this for structs, tdefs and enums */
 symtable *current_scope;
-static static_assert **static_asserts;
 
 
 /* sometimes we can carry on after an error, but we don't want to go through to compilation etc */
@@ -681,7 +680,7 @@ void parse_static_assert(void)
 		EAT(token_close_paren);
 		EAT(token_semicolon);
 
-		dynarray_add(&static_asserts, sa);
+		dynarray_add(&current_scope->static_asserts, sa);
 	}
 }
 
@@ -943,7 +942,7 @@ flow:
 	/* unreachable */
 }
 
-static symtable_gasm *parse_gasm(void)
+symtable_gasm *parse_gasm(void)
 {
 	symtable_gasm *g = umalloc(sizeof *g);
 
@@ -954,58 +953,4 @@ static symtable_gasm *parse_gasm(void)
 	EAT(token_semicolon);
 
 	return g;
-}
-
-void parse(symtable_global *globals)
-{
-	symtable_gasm **last_gasms = NULL;
-
-	current_scope = &globals->stab;
-
-	type_ref_init(current_scope);
-
-	for(;;){
-		int cont = 0;
-		decl **new = NULL;
-
-		parse_decls_multi_type(
-				  DECL_MULTI_CAN_DEFAULT
-				| DECL_MULTI_ACCEPT_FUNC_CODE
-				| DECL_MULTI_ALLOW_STORE
-				| DECL_MULTI_ALLOW_ALIGNAS,
-				current_scope,
-				&new);
-
-		if(new){
-			symtable_gasm **i;
-
-			for(i = last_gasms; i && *i; i++)
-				(*i)->before = *new;
-			dynarray_free(symtable_gasm **, &last_gasms, NULL);
-			dynarray_free(decl **, &new, NULL);
-		}
-
-		/* global asm */
-		while(accept(token_asm)){
-			symtable_gasm *g = parse_gasm();
-
-			dynarray_add(&last_gasms, g);
-			dynarray_add(&globals->gasms, g);
-			cont = 1;
-		}
-
-		if(!cont)
-			break;
-	}
-
-	dynarray_free(symtable_gasm **, &last_gasms, NULL);
-
-	EAT(token_eof);
-
-	if(parse_had_error)
-		exit(1);
-
-	current_scope->static_asserts = static_asserts;
-
-	UCC_ASSERT(!current_scope->parent, "scope leak during parse");
 }

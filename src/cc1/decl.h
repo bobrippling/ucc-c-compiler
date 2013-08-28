@@ -179,6 +179,7 @@ enum decl_cmp
 
 decl        *decl_new(void);
 decl        *decl_new_ty_sp(type_ref *, char *);
+void         decl_replace_with(decl *, decl *);
 void         decl_free(decl *, int free_ref);
 void         type_ref_free(type_ref *);
 void         type_ref_free_1(type_ref *);
@@ -240,6 +241,8 @@ void decl_attr_free(decl_attr *a);
 #define DECL_IS_FUNC(d)   type_ref_is((d)->ref, type_ref_func)
 #define DECL_IS_ARRAY(d)  type_ref_is((d)->ref, type_ref_array)
 #define DECL_IS_S_OR_U(d) type_ref_is_s_or_u((d)->ref)
+
+#define DECL_FUNC_ARG_SYMTAB(d) ((d)->func_code->symtab->parent)
 
 int decl_is_variadic(decl *d);
 

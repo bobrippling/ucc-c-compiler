@@ -1,5 +1,4 @@
-// RUN: %ucc %s; [ $? -ne 0 ]
-// RUN: %check %s
+// RUN: %check -e %s
 
 struct A
 {
@@ -10,5 +9,5 @@ main()
 {
 	struct A a;
 
-	a->i; // CHECK: /error: '[^']+' is not a pointer to struct or union \(member i\)/
+	a->i; // CHECK: /error: .* is not a pointer to struct or union/
 }

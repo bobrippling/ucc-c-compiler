@@ -87,8 +87,8 @@ void type_ref_init(symtable *stab)
 			type_ref *va_list_struct = type_ref_new_type(
 					type_new_primitive_sue(
 						type_struct,
-						sue_find_or_add(stab, ustrdup("__va_list_struct"),
-							sue_members, type_struct, 1)));
+						sue_decl(stab, ustrdup("__va_list_struct"),
+							sue_members, type_struct, 1, 1)));
 
 
 			type_ref *builtin_ar = type_ref_new_array(
@@ -251,6 +251,17 @@ decl *decl_new_ty_sp(type_ref *ty, char *sp)
 	d->ref = ty;
 	d->spel = sp;
 	return d;
+}
+
+void decl_replace_with(decl *to, decl *from)
+{
+	/* XXX: memleak of .ref */
+	memcpy_safe(&to->where, &from->where);
+	to->ref      = from->ref;
+	to->attr     = from->attr;
+	to->spel_asm = from->spel_asm;
+	/* no point copying bitfield stuff */
+	to->align    = from->align;
 }
 
 const type *decl_get_type(decl *d)
