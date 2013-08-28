@@ -1411,7 +1411,11 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 			if(stack_this){
 				struct vstack *const vp = &vtop[-i];
 
-				ICW("check correct stack layout/calculation for stack args");
+				static int w;
+				if(!w){
+					w = 1;
+					ICW("check correct stack layout/calculation for stack args");
+				}
 
 				/* v_to_mem* does v_to_reg first if needed */
 				v_to_mem_given(vp, -stack_pos);
