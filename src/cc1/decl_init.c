@@ -500,11 +500,13 @@ static decl_init **decl_init_brace_up_sue2(
 {
 	unsigned n = dynarray_count(current), i;
 	unsigned sue_nmem;
+	int had_desig = 0;
+	where *last_loc = NULL;
 	decl_init *this;
 
 	(void)range_store;
 
-	UCC_ASSERT(!sue_incomplete(sue), "should've checked sue completeness");
+	UCC_ASSERT(sue_complete(sue), "should've checked sue completeness");
 
 	/* check for copy-init */
 	if((this = *iter->pos) && this->type == decl_init_scalar){
@@ -513,6 +515,9 @@ static decl_init **decl_init_brace_up_sue2(
 		if(type_ref_is_s_or_u(e->tree_type) == sue){
 			/* copy init */
 			dynarray_padinsert(&current, 0, &n, this);
+
+			++iter->pos;
+
 			return current;
 		}
 	}
@@ -532,6 +537,8 @@ static decl_init **decl_init_brace_up_sue2(
 		desig *des;
 		decl_init *braced_sub = NULL;
 
+		last_loc = &this->where;
+
 		if((des = this->desig)){
 			/* find member, set `i' to its index */
 			struct_union_enum_st *in;
@@ -544,6 +551,8 @@ static decl_init **decl_init_brace_up_sue2(
 						"%s designator can't designate struct",
 						DESIG_TO_STR(des->type));
 			}
+
+			had_desig = 1;
 
 			this->desig = des->next;
 
@@ -637,6 +646,19 @@ static decl_init **decl_init_brace_up_sue2(
 		}else{
 			break;
 		}
+	}
+
+	if(sue->primitive == type_struct
+	&& !had_desig /* don't warn for designated inits */
+	&& i < sue_nmem)
+	{
+		const unsigned diff = sue_nmem - i;
+		where *loc = ITER_WHERE(iter, last_loc ? last_loc : &sue->where);
+
+		WARN_AT(loc,
+				"%u missing initialiser%s for '%s %s'",
+				diff, diff == 1 ? "" : "s",
+				sue_str(sue), sue->spel);
 	}
 
 	return current;
@@ -759,8 +781,11 @@ static decl_init *decl_init_brace_up_aggregate(
 
 		return ret;
 	}else{
-		decl_init *r = decl_init_new_w(decl_init_brace,
-				ITER_WHERE(iter, NULL));
+		where *loc = ITER_WHERE(iter, NULL);
+		decl_init *r = decl_init_new_w(decl_init_brace, loc);
+
+		WARN_AT(loc, "missing braces for initialisation of sub-object '%s'",
+				type_ref_to_str(tfor));
 
 		/* we need to pull from iter, bracing up our children inits */
 		r->bits.ar.inits = brace_up_f(

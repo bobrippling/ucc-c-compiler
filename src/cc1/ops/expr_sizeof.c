@@ -69,7 +69,7 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 			if(!type_ref_is_complete(chosen))
 				DIE_AT(&e->where, "sizeof incomplete type %s", type_ref_to_str(chosen));
 
-			if((sue = type_ref_is_s_or_u(chosen)) && sue_incomplete(sue))
+			if((sue = type_ref_is_s_or_u(chosen)) && !sue_complete(sue))
 				DIE_AT(&e->where, "sizeof %s", type_ref_to_str(chosen));
 
 			if(e->what_of == what_alignof && e->expr){

@@ -124,7 +124,7 @@ void gen_asm_global(decl *d)
 		if(!d->func_code)
 			return;
 
-		arg_symtab = d->func_code->symtab;
+		arg_symtab = DECL_FUNC_ARG_SYMTAB(d);
 		for(aiter = arg_symtab->decls; aiter && *aiter; aiter++)
 			if((*aiter)->sym->type == sym_arg)
 				nargs++;

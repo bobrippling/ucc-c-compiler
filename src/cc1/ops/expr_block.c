@@ -10,10 +10,6 @@ const char *str_expr_block(void)
 
 void fold_expr_block(expr *e, symtable *stab)
 {
-	/* add e->bits.block_args to symtable */
-	symtab_add_args(e->code->symtab, e->bits.block_args,
-			"block-function", curdecl_func);
-
 	/* prevent access to nested vars */
 	e->code->symtab->parent = symtab_root(e->code->symtab);
 
@@ -60,6 +56,9 @@ void fold_expr_block(expr *e, symtable *stab)
 			qual_const
 			);
 
+	/* TODO: need to bring e->bits.block_args into scope */
+
+
 	/* add the function to the global scope */
 	{
 		decl *df = decl_new();
@@ -70,7 +69,8 @@ void fold_expr_block(expr *e, symtable *stab)
 		df->func_code = e->code;
 		df->ref = e->tree_type;
 
-		fold_decl(df, stab); /* funcarg folding + typedef/struct lookup, etc */
+		/* funcarg folding + typedef/struct lookup, etc */
+		fold_decl(df, stab, NULL);
 	}
 }
 

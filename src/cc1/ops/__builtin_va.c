@@ -445,7 +445,7 @@ static void fold_va_arg(expr *e, symtable *stab)
 	if(type_ref_is_promotable(ty, &to)){
 		char tbuf[TYPE_REF_STATIC_BUFSIZ];
 
-		WARN_AT(&e->lhs->where,
+		WARN_AT(&e->where,
 				"va_arg(..., %s) has undefined behaviour - promote to %s",
 				type_ref_to_str(ty), type_ref_to_str_r(tbuf, to));
 	}

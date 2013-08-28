@@ -246,7 +246,7 @@ static void asm_declare_init(enum section_type sec, decl_init *init, type_ref *t
 		struct_union_enum_st *const sue = r->bits.type->sue;
 		sue_member **mem;
 		decl_init **i;
-		int end_of_last = 0;
+		unsigned end_of_last = 0;
 		struct bitfield_val *bitfields = NULL;
 		unsigned nbitfields = 0;
 		decl *first_bf = NULL;
@@ -286,6 +286,13 @@ static void asm_declare_init(enum section_type sec, decl_init *init, type_ref *t
 			/* only pad if we're not on a bitfield or we're on the first bitfield */
 			if(!d_mem->field_width || !first_bf){
 				DEBUG("prev padding, offset=%d, end_of_last=%d",
+						d_mem->struct_offset, end_of_last);
+
+				UCC_ASSERT(
+						d_mem->struct_offset >= end_of_last,
+						"negative struct pad, sue %s, member %s "
+						"offset %u, end_of_last %u",
+						sue->spel, decl_to_str(d_mem),
 						d_mem->struct_offset, end_of_last);
 
 				asm_declare_pad(sec,

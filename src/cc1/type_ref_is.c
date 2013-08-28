@@ -245,7 +245,7 @@ int type_ref_is_complete(type_ref *r)
 				case type_struct:
 				case type_union:
 				case type_enum:
-					return !sue_incomplete(t->sue);
+					return sue_complete(t->sue);
 
 				default:break;
 			}

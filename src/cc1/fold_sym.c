@@ -13,133 +13,141 @@
 #include "pack.h"
 #include "sue.h"
 #include "fold.h"
+#include "fold_sue.h"
+#include "decl_init.h"
+#include "out/lbl.h"
+#include "const.h"
 
 
-#define RW_TEST(var)                              \
-						s->var == 0                           \
-						&& s->decl->spel                      \
-						&& (s->decl->store & STORE_MASK_STORE)\
-						        != store_typedef              \
-						&& !DECL_IS_ARRAY(s->decl)            \
-						&& !DECL_IS_FUNC(s->decl)             \
-						&& !DECL_IS_S_OR_U(s->decl)
+#define RW_TEST(var)                                 \
+						sym->var == 0                            \
+						&& sym->decl->spel                       \
+						&& (sym->decl->store & STORE_MASK_STORE) \
+						        != store_typedef                 \
+						&& !DECL_IS_ARRAY(sym->decl)             \
+						&& !DECL_IS_FUNC(sym->decl)              \
+						&& !DECL_IS_S_OR_U(sym->decl)
 
 #define RW_SHOW(w, str)                           \
-					cc1_warn_at(&s->decl->where, 0, 1,      \
+					cc1_warn_at(&sym->decl->where, 0, 1,    \
 							WARN_SYM_NEVER_ ## w,               \
 							"\"%s\" never " str,                \
-							s->decl->spel);                     \
+							sym->decl->spel);                   \
 
-#define RW_WARN(w, var, str)                            \
-						do{                                         \
-							if(RW_TEST(var)){                         \
-								RW_SHOW(w, str)                         \
-								s->var++;                               \
-							}                                         \
+#define RW_WARN(w, var, str)      \
+						do{                   \
+							if(RW_TEST(var)){   \
+								RW_SHOW(w, str)   \
+								sym->var++;       \
+							}                   \
 						}while(0)
 
-int symtab_fold(symtable *tab, unsigned current)
+static void symtab_check_static_asserts(static_assert **sas)
 {
-#define LOCAL_SCOPE !!(tab->parent)
-	const unsigned this_start = current;
-	char wbuf[WHERE_BUF_SIZ];
+	static_assert **i;
+	for(i = sas; i && *i; i++){
+		static_assert *sa = *i;
+		consty k;
 
-	decl **all_decls = NULL;
+		if(sa->checked)
+			continue;
+		sa->checked = 1;
 
-	if(tab->decls){
-		decl **diter;
+		FOLD_EXPR(sa->e, sa->scope);
+		if(!type_ref_is_integral(sa->e->tree_type))
+			DIE_AT(&sa->e->where,
+					"static assert: not an integral expression (%s)",
+					sa->e->f_str());
 
-		/* need to walk backwards for args */
-		for(diter = tab->decls; *diter; diter++);
+		const_fold(sa->e, &k);
 
-		for(diter--; diter >= tab->decls; diter--){
-			decl *d = *diter;
+		if(k.type != CONST_NUM || !K_INTEGRAL(k.bits.num))
+			DIE_AT(&sa->e->where,
+					"static assert: not an integer constant expression (%s)",
+					sa->e->f_str());
 
-			fold_decl(d, tab);
+		if(!k.bits.num.val.i)
+			DIE_AT(&sa->e->where, "static assertion failure: %s", sa->s);
+
+		if(fopt_mode & FOPT_SHOW_STATIC_ASSERTS){
+			fprintf(stderr, "%s: static assert passed: %s-expr, msg: %s\n",
+					where_str(&sa->e->where), sa->e->f_str(), sa->s);
 		}
+	}
+}
 
-		for(diter = tab->decls; *diter; diter++){
-			decl *d = *diter;
-			sym *s = d->sym;
-			const int has_unused_attr = !!decl_attr_present(d, attr_unused);
+void symtab_fold_decls(symtable *tab)
+{
+#define IS_LOCAL_SCOPE !!(tab->parent)
+	decl **all_decls = NULL;
+	decl **diter;
 
-			if(d->spel)
-				dynarray_add(&all_decls, d);
+	if(tab->folded)
+		return;
+	tab->folded = 1;
 
-			switch(s->type){
-				case sym_local: /* warn on unused args and locals */
-					if(DECL_IS_FUNC(d))
-						continue;
+	for(diter = tab->decls; diter && *diter; diter++){
+		decl *d = *diter;
+		sym *const sym = d->sym;
+		const int has_unused_attr = !!decl_attr_present(d, attr_unused);
 
-					switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
-							/* for now, we allocate stack space for register vars */
-						case store_register:
-						case store_default:
-						case store_auto:
-						{
-							unsigned siz = decl_size(s->decl);
-							unsigned align = decl_align(s->decl);
+		fold_decl(d, tab, NULL);
 
-							/* align greater than size - we increase
-							 * size so it can be aligned to `align'
-							 */
-							if(align > siz)
-								siz = pack_to_align(siz, align);
+		if(d->spel)
+			dynarray_add(&all_decls, d);
 
-							/* packing takes care of everything */
-							pack_next(&current, NULL, siz, align);
-							s->loc.stack_pos = current;
+		if(sym) switch(sym->type){
+			case sym_local:
+			{
+				/* arg + local checks */
+				const int unused = RW_TEST(nreads);
 
-							/* static analysis on sym (only auto-vars) */
-							if(!has_unused_attr && !d->init)
-								RW_WARN(WRITTEN, nwrites, "written to");
-							break;
-						}
+				switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
+					case store_register:
+					case store_default:
+					case store_auto:
+					case store_static:
+						/* static analysis on sym */
+						if(!has_unused_attr && !d->init)
+							RW_WARN(WRITTEN, nwrites, "written to");
+						break;
+					case store_extern:
+					case store_typedef:
+					case store_inline:
+						break;
+				}
+				/* fall */
 
-						case store_static:
-						case store_extern:
-						case store_typedef:
-							break;
-						case store_inline:
-							ICE("%s store", decl_store_to_str(d->store));
-					}
-					/* fall */
-
-				case sym_arg:
-				{
-					const int unused = RW_TEST(nreads);
-
-					if(unused){
-						if(!has_unused_attr && (d->store & STORE_MASK_STORE) != store_extern)
-							RW_SHOW(READ, "read");
-					}else if(has_unused_attr){
-						warn_at(&d->where, 1,
-								"\"%s\" declared unused, but is used", d->spel);
-					}
-
-					break;
+				if(unused){
+					if(!has_unused_attr && (d->store & STORE_MASK_STORE) != store_extern)
+						RW_SHOW(READ, "read");
+				}else if(has_unused_attr){
+					warn_at(&d->where, 1,
+							"\"%s\" declared unused, but is used", d->spel);
 				}
 
-				case sym_global:
-					break;
-			}
-
-			switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
-				case store_register:
-				case store_extern:
-					break;
-				default:
-					if(s->type != sym_global){
+			case sym_arg:
+				/* asm rename checks */
+				switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
+					case store_register:
+					case store_extern:
+					case store_static:
+						break;
+					default:
 						/* allow anonymous decls to have .spel_asm */
 						if(d->spel && d->spel_asm){
 							DIE_AT(&d->where,
 									"asm() rename on non-register non-global variable \"%s\" (%s)",
 									d->spel, d->spel_asm);
 						}
-					}
+				}
 			}
-		}
+
+			case sym_global:
+				break;
+		} /* sym switch */
 	}
+
 
 	if(all_decls){
 		/* check_clashes */
@@ -172,12 +180,12 @@ int symtab_fold(symtable *tab, unsigned current)
 				}
 
 				if(!clash){
-					if(LOCAL_SCOPE){
+					if(IS_LOCAL_SCOPE){
 						/* allow multiple functions or multiple externs */
 						if(a_func){
-							/* fine - we know they're equal */
+							/* fine - we know they're equal from decl_equal() above */
 						}else if((a->store & STORE_MASK_STORE) == store_extern
-								  && (b->store & STORE_MASK_STORE) == store_extern){
+						      && (b->store & STORE_MASK_STORE) == store_extern){
 							/* both are extern declarations */
 						}else{
 							clash = "extern/non-extern";
@@ -190,6 +198,8 @@ int symtab_fold(symtable *tab, unsigned current)
 
 			if(clash){
 				/* XXX: note */
+				char wbuf[WHERE_BUF_SIZ];
+
 				DIE_AT(&a->where,
 						"%s definitions of \"%s\"\n"
 						"%s: note: other definition",
@@ -201,13 +211,82 @@ int symtab_fold(symtable *tab, unsigned current)
 
 		dynarray_free(decl **, &all_decls, NULL);
 	}
+#undef IS_LOCAL_SCOPE
+}
+
+unsigned symtab_layout_decls(symtable *tab, unsigned current)
+{
+	const unsigned this_start = current;
+
+	if(tab->laidout)
+		goto out;
+	tab->laidout = 1;
+
+	if(tab->decls){
+		decl **diter;
+
+		for(diter = tab->decls; *diter; diter++){
+			decl *d = *diter;
+			sym *s = d->sym;
+
+			/* we might not have a symbol, e.g.
+			 * f(int (*pf)(int (*callme)()))
+			 *         ^         ^
+			 *         |         +-- nested - skipped
+			 *         +------------ `tab'
+			 */
+			if(!s)
+				continue;
+
+
+			switch(s->type){
+				case sym_arg:
+					break;
+
+				case sym_local: /* warn on unused args and locals */
+					if(DECL_IS_FUNC(d))
+						continue;
+
+					switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
+							/* for now, we allocate stack space for register vars */
+						case store_register:
+						case store_default:
+						case store_auto:
+						{
+							unsigned siz = decl_size(s->decl);
+							unsigned align = decl_align(s->decl);
+
+							/* align greater than size - we increase
+							 * size so it can be aligned to `align'
+							 */
+							if(align > siz)
+								siz = pack_to_align(siz, align);
+
+							/* packing takes care of everything */
+							pack_next(&current, NULL, siz, align);
+							s->loc.stack_pos = current;
+							break;
+						}
+
+						case store_static:
+						case store_extern:
+						case store_typedef:
+							break;
+						case store_inline:
+							ICE("%s store", decl_store_to_str(d->store));
+					}
+				case sym_global:
+					break;
+			}
+		}
+	}
 
 	{
 		symtable **tabi;
-		int subtab_max = 0;
+		unsigned subtab_max = 0;
 
 		for(tabi = tab->children; tabi && *tabi; tabi++){
-			int this = symtab_fold(*tabi, current);
+			unsigned this = symtab_layout_decls(*tabi, current);
 			if(this > subtab_max)
 				subtab_max = this;
 		}
@@ -216,6 +295,22 @@ int symtab_fold(symtable *tab, unsigned current)
 		tab->auto_total_size = current - this_start + subtab_max;
 	}
 
+out:
 	return tab->auto_total_size;
-#undef LOCAL_SCOPE
+}
+
+void symtab_fold_sues(symtable *stab)
+{
+	struct_union_enum_st **sit;
+
+	for(sit = stab->sues; sit && *sit; sit++)
+		fold_sue(*sit, stab);
+
+	symtab_check_static_asserts(stab->static_asserts);
+}
+
+void symtab_fold_decls_sues(symtable *stab)
+{
+	symtab_fold_sues(stab);
+	symtab_fold_decls(stab);
 }

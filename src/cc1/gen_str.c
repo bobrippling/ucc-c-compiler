@@ -374,7 +374,7 @@ static void print_struct(struct_union_enum_st *sue)
 {
 	sue_member **iter;
 
-	if(sue_incomplete(sue)){
+	if(!sue_complete(sue)){
 		idt_printf("incomplete %s %s\n", sue_str(sue), sue->spel);
 		return;
 	}

@@ -1,4 +1,4 @@
-// RUN: %ucc %s
+// RUN: %ucc -fplan9-extensions %s
 struct C99
 {
 	union

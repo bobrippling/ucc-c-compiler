@@ -97,31 +97,6 @@ int typedef_visible(symtable *stab, const char *spel)
 	return d && (d->store & STORE_MASK_STORE) == store_typedef;
 }
 
-void symtab_add_args(
-		symtable *stab, funcargs *fargs,
-		const char *func_spel, decl *d_func)
-{
-	if(fargs->arglist){
-		int i, nargs;
-
-		/* necessary as we assign sym offsets
-		 * in the order they are in the symtable
-		 * - FIXME: shouldn't base it on symtable order
-		 */
-		for(nargs = 0; fargs->arglist[nargs]; nargs++);
-
-		for(i = nargs - 1; i >= 0; i--){
-			if(!fargs->arglist[i]->spel){
-				DIE_AT(&fargs->where, "function \"%s\" has unnamed arguments (%d)",
-						func_spel, i + 1);
-			}else{
-				sym *s = sym_new_stab(stab, fargs->arglist[i], sym_arg);
-				s->owning_func = d_func->ref;
-			}
-		}
-	}
-}
-
 const char *sym_to_str(enum sym_type t)
 {
 	switch(t){

@@ -24,6 +24,7 @@
 #include "ops/__builtin.h"
 #include "out/asm.h" /* NUM_SECTIONS */
 #include "opt.h"
+#include "pass1.h"
 
 #include "../as_cfg.h"
 #define QUOTE(...) #__VA_ARGS__
@@ -517,13 +518,11 @@ usage:
 
 	globs = symtabg_new();
 	tokenise_set_input(next_line, fname);
-	parse(globs);
+
+	parse_and_fold(globs);
 
 	if(infile != stdin)
 		fclose(infile), infile = NULL;
-
-	fold(&globs->stab);
-	symtab_fold(&globs->stab, 0);
 
 	if(werror && warning_count)
 		ccdie(0, "%s: Treating warnings as errors", *argv);

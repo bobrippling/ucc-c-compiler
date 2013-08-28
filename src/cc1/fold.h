@@ -2,13 +2,20 @@
 #define FOLD_H
 
 /* basic folding */
-void fold_decl(decl *d, symtable *stab);
+void fold_decl_global(decl *d, symtable *stab);
 void fold_decl_global_init(decl *d, symtable *stab);
+
+void fold_merge_tenatives(symtable *stab);
+
+void fold_decl(decl *d, symtable *stab, stmt **pinit_code);
+
 void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab);
-void fold_symtab_scope(symtable *stab, stmt **pinit_code);
 
 void fold_check_restrict(expr *lhs, expr *rhs, const char *desc, where *w);
+
 void fold_funcargs(funcargs *fargs, symtable *stab, type_ref *from);
+
+void fold_stmt_and_add_to_curswitch(stmt *t);
 
 /* cast insertion */
 void fold_insert_casts(type_ref *tlhs, expr **prhs, symtable *stab);
@@ -45,11 +52,6 @@ sym *fold_inc_writes_if_sym(expr *e, symtable *stab);
 int fold_passable(stmt *s);
 int fold_passable_yes(stmt *s);
 int fold_passable_no( stmt *s);
-
-void fold_stmt_and_add_to_curswitch(stmt *);
-
-/* generic entrance point */
-void fold(symtable *);
 
 extern decl *curdecl_func;
 extern type_ref *curdecl_ref_func_called;

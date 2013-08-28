@@ -434,8 +434,7 @@ const char *type_to_str(const type *t)
 	char *bufp = buf;
 
 	if(t->sue){
-		snprintf(bufp, BUF_SIZE, "%s%s %s",
-				sue_incomplete(t->sue) ? "incomplete-" : "",
+		snprintf(bufp, BUF_SIZE, "%s %s",
 				sue_str(t->sue),
 				t->sue->spel);
 

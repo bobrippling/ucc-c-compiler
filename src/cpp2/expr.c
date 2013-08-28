@@ -256,19 +256,20 @@ expr *expr_parse(char *str)
 }
 
 /* eval */
-expr_n expr_eval(expr *e_)
+expr_n expr_eval(expr *e_, int *had_ident)
 {
 	const expr ke = *e_;
 	free(e_);
 
 	switch(ke.type){
 		case E_IDENT:
+			*had_ident = 1;
 			return 0; /* identifiers are zero */
 		case E_NUM:
 			return ke.bits.num;
 		case E_UOP:
 		{
-			expr_n n = expr_eval(ke.bits.uop.e);
+			expr_n n = expr_eval(ke.bits.uop.e, had_ident);
 			switch(ke.bits.op.op){
 #define UNARY(ch, o) case ch: return o n
 				UNARY('-', -);
@@ -283,8 +284,8 @@ expr_n expr_eval(expr *e_)
 		{
 			expr_n nums[2];
 
-			nums[0] = expr_eval(ke.bits.op.lhs);
-			nums[1] = expr_eval(ke.bits.op.rhs);
+			nums[0] = expr_eval(ke.bits.op.lhs, had_ident);
+			nums[1] = expr_eval(ke.bits.op.rhs, had_ident);
 
 			switch(ke.bits.op.op){
 				case '*':
@@ -327,9 +328,9 @@ expr_n expr_eval(expr *e_)
 		{
 			expr_n a, b, c;
 			/* must evaluate all - free the expressions */
-			a = expr_eval(ke.bits.top.e);
-			b = expr_eval(ke.bits.top.if_true);
-			c = expr_eval(ke.bits.top.if_false);
+			a = expr_eval(ke.bits.top.e, had_ident);
+			b = expr_eval(ke.bits.top.if_true, had_ident);
+			c = expr_eval(ke.bits.top.if_false, had_ident);
 			return a ? b : c;
 		}
 	}

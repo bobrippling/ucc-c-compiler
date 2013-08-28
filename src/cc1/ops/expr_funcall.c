@@ -363,7 +363,7 @@ invalid:
 			df->ref = type_func;
 			df->spel = e->expr->bits.ident.spel;
 
-			fold_decl(df, stab); /* update calling conv, for e.g. */
+			fold_decl(df, stab, NULL); /* update calling conv, for e.g. */
 
 			/* not declared - generate a sym ourselves */
 			e->expr->bits.ident.sym = sym_new_stab(stab, df, sym_global);

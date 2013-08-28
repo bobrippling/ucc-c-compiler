@@ -1,27 +1,36 @@
-static decl_attr *parse_attr_format()
+static void parse_attr_bracket_chomp(int had_open_paren);
+
+static decl_attr *parse_attr_format(void)
 {
 	/* __attribute__((format (printf, fmtarg, firstvararg))) */
 	decl_attr *da;
 	char *func;
+	enum fmt_type fmt;
 
 	EAT(token_open_paren);
 
 	func = token_current_spel();
 	EAT(token_identifier);
 
+	/* TODO: token_current_spel()
+	 * and token_get_current_str(..,..)
+	 * checks everywhere */
 	if(!func)
-		return NULL; // TODO: token_current_spel() and token_get_current_str(..,..) checkes everywhere
-
-	da = decl_attr_new(attr_format);
+		return NULL;
 
 #define CHECK(s) !strcmp(func, s) || !strcmp(func, "__" s "__")
+	if(CHECK("printf")){
+		fmt = attr_fmt_printf;
+	}else if(CHECK("scanf")){
+		fmt = attr_fmt_scanf;
+	}else{
+		WARN_AT(NULL, "unknown format func \"%s\"", func);
+		parse_attr_bracket_chomp(1);
+		return NULL;
+	}
 
-	if(CHECK("printf"))
-		da->bits.format.fmt_func = attr_fmt_printf;
-	else if(CHECK("scanf"))
-		da->bits.format.fmt_func = attr_fmt_scanf;
-	else
-		DIE_AT(&da->where, "unknown format func \"%s\"", func);
+	da = decl_attr_new(attr_format);
+	da->bits.format.fmt_func = fmt;
 
 	EAT(token_comma);
 
@@ -203,10 +212,13 @@ static struct
 };
 #define MAX_FMT_LEN 16
 
-static void parse_attr_bracket_chomp(void)
+static void parse_attr_bracket_chomp(int had_open_paren)
 {
-	if(accept(token_open_paren)){
-		parse_attr_bracket_chomp(); /* nest */
+	if(!had_open_paren && accept(token_open_paren))
+		had_open_paren = 1;
+
+	if(had_open_paren){
+		parse_attr_bracket_chomp(0); /* nest */
 
 		while(curtok != token_close_paren)
 			EAT(curtok);
@@ -232,7 +244,7 @@ static decl_attr *parse_attr_single(char *ident)
 
 	/* if there are brackets, eat them all */
 
-	parse_attr_bracket_chomp();
+	parse_attr_bracket_chomp(0);
 
 	return NULL;
 }
@@ -244,8 +256,14 @@ static decl_attr *parse_attr(void)
 	for(;;){
 		char *ident;
 
-		if(curtok != token_identifier)
-			DIE_AT(NULL, "identifier expected for attribute (got %s)", token_to_str(curtok));
+		if(curtok != token_identifier){
+			parse_had_error = 1;
+			warn_at_print_error(NULL,
+					"identifier expected for attribute (got %s)",
+					token_to_str(curtok));
+			EAT(curtok);
+			goto comma;
+		}
 
 		ident = token_current_spel();
 		EAT(token_identifier);
@@ -257,6 +275,7 @@ static decl_attr *parse_attr(void)
 
 		free(ident);
 
+comma:
 		if(!accept(token_comma))
 			break;
 	}

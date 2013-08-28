@@ -1,16 +1,13 @@
-// RUN: %ucc %s
+// RUN: %ucc -fsyntax-only %s
 
-//struct B{int i;};
 struct
 {
-	//struct A;
-	//struct B;
 	struct B{int i;};
 } jim;
 
 q()
 {
-	jim.i = 2; // error
+	jim.i = 2;
 }
 
 struct XY_or_WX
