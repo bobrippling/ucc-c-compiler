@@ -37,6 +37,7 @@ enum fold_chk
 	FOLD_CHK_BOOL        = 1 << 2, /* e.g. if(...) */
 	FOLD_CHK_INTEGRAL    = 1 << 3, /* e.g. switch(...) */
 	FOLD_CHK_ALLOW_VOID  = 1 << 4,
+	FOLD_CHK_CONST_I     = 1 << 5, /* e.g. case (...): */
 };
 void fold_check_expr(expr *e, enum fold_chk, const char *desc);
 

@@ -84,6 +84,11 @@ static void fold_enum(struct_union_enum_st *en, symtable *stab)
 			integral_t v;
 
 			FOLD_EXPR(e, stab);
+
+			fold_check_expr(e,
+					FOLD_CHK_INTEGRAL | FOLD_CHK_CONST_I,
+					"enum constant");
+
 			v = const_fold_val_i(e);
 			m->val = e;
 

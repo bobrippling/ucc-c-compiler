@@ -16,10 +16,14 @@ void fold_stmt_case_range(stmt *s)
 	FOLD_EXPR(s->expr,  s->symtab);
 	FOLD_EXPR(s->expr2, s->symtab);
 
-	fold_check_expr(s->expr,  FOLD_CHK_INTEGRAL, "case");
-	fold_check_expr(s->expr2, FOLD_CHK_INTEGRAL, "case");
-
+	fold_check_expr(s->expr,
+			FOLD_CHK_INTEGRAL | FOLD_CHK_CONST_I,
+			"case-range");
 	lv = const_fold_val_i(s->expr);
+
+	fold_check_expr(s->expr2,
+			FOLD_CHK_INTEGRAL | FOLD_CHK_CONST_I,
+			"case-range");
 	rv = const_fold_val_i(s->expr2);
 
 	if(lv >= rv)

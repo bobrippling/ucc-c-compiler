@@ -738,6 +738,14 @@ void fold_check_expr(expr *e, enum fold_chk chk, const char *desc)
 					"an address is always true");
 		}
 	}
+
+	if(chk & FOLD_CHK_CONST_I){
+		consty k;
+		const_fold(e, &k);
+
+		if(k.type != CONST_NUM || !K_INTEGRAL(k.bits.num))
+			DIE_AT(&e->where, "integral constant expected for %s", desc);
+	}
 }
 
 #ifdef SYMTAB_DEBUG

@@ -93,9 +93,20 @@ static void fold_switch_enum(stmt *sw, const type *enum_type)
 		if(cse->expr->expr_is_default)
 			goto ret;
 
+		fold_check_expr(cse->expr,
+				FOLD_CHK_INTEGRAL | FOLD_CHK_CONST_I,
+				"case value");
 		v = const_fold_val_i(cse->expr);
 
-		w = stmt_kind(cse, case_range) ? const_fold_val_i(cse->expr2) : v;
+		if(stmt_kind(cse, case_range)){
+			fold_check_expr(cse->expr2,
+					FOLD_CHK_INTEGRAL | FOLD_CHK_CONST_I,
+					"case range value");
+
+			w =  const_fold_val_i(cse->expr2);
+		}else{
+			w = v;
+		}
 
 		for(; v <= w; v++){
 			sue_member **mi;
