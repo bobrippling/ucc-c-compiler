@@ -25,12 +25,14 @@ struct static_assert
 	expr *e;
 	char *s;
 	symtable *scope;
+	int checked;
 };
 
 struct symtable
 {
 	int auto_total_size;
-	unsigned internal_nest : 1, folded : 1, are_params : 1;
+	unsigned internal_nest : 1, are_params : 1;
+	unsigned folded : 1, laidout : 1;
 	/*
 	 * { int i; 5; int j; }
 	 * j's symtab is internally represented like:

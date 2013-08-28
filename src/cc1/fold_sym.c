@@ -50,6 +50,10 @@ static void symtab_check_static_asserts(static_assert **sas)
 		static_assert *sa = *i;
 		consty k;
 
+		if(sa->checked)
+			continue;
+		sa->checked = 1;
+
 		FOLD_EXPR(sa->e, sa->scope);
 		if(!type_ref_is_integral(sa->e->tree_type))
 			DIE_AT(&sa->e->where,
@@ -79,7 +83,9 @@ void symtab_fold_decls(symtable *tab)
 	decl **all_decls = NULL;
 	decl **diter;
 
-	symtab_check_static_asserts(tab->static_asserts);
+	if(tab->folded)
+		return;
+	tab->folded = 1;
 
 	for(diter = tab->decls; diter && *diter; diter++){
 		decl *d = *diter;
@@ -209,6 +215,10 @@ unsigned symtab_layout_decls(symtable *tab, unsigned current)
 	const unsigned this_start = current;
 	int arg_space = 0;
 
+	if(tab->laidout)
+		goto out;
+	tab->laidout = 1;
+
 	if(tab->decls){
 		decl **diter;
 		int arg_idx = 0;
@@ -286,6 +296,7 @@ unsigned symtab_layout_decls(symtable *tab, unsigned current)
 		tab->auto_total_size = current - this_start + subtab_max - arg_space;
 	}
 
+out:
 	return tab->auto_total_size;
 }
 
@@ -295,6 +306,8 @@ void symtab_fold_sues(symtable *stab)
 
 	for(sit = stab->sues; sit && *sit; sit++)
 		fold_sue(*sit, stab);
+
+	symtab_check_static_asserts(stab->static_asserts);
 }
 
 void symtab_fold_decls_sues(symtable *stab)
