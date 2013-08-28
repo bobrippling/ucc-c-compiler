@@ -374,12 +374,19 @@ void impl_func_prologue_save_call_regs(type_ref *rf, unsigned nargs)
 
 			for(i = i_i = i_f = 0; i < n_reg_args; i++){
 				type_ref *const ty = fa->arglist[i]->ref;
+				const struct vreg *rp;
 				struct vreg vr;
 
 				/* use i_* for the register indexes, but just 'i' for the offset */
-				vr.idx = (vr.is_float = type_ref_is_floating(ty)) ? i_f++ : i_i++;
+				if(type_ref_is_floating(ty)){
+					rp = &vr;
+					vr.is_float = 1;
+					vr.idx = i_f++;
+				}else{
+					rp = &call_regs[i_i++];
+				}
 
-				reg_to_stack(&vr, ty, (i + 1) * platform_word_size());
+				reg_to_stack(rp, ty, (i + 1) * platform_word_size());
 			}
 		}else{
 			for(i = 0; i < n_reg_args; i++){
