@@ -38,6 +38,4 @@
 #define REG_RET_F         X86_64_REG_XMM0
 #define REG_SP            X86_64_REG_RSP
 
-#define IMPL_COMMENT "//"
-
 #endif

@@ -45,8 +45,9 @@ static void out_asm2(
 
 void impl_comment(enum section_type sec, const char *fmt, va_list l)
 {
-	out_asm2(sec, P_NO_NL, IMPL_COMMENT " ");
-	out_asmv(sec, P_NO_INDENT, fmt, l);
+	out_asm2(sec, P_NO_NL, "/* ");
+	out_asmv(sec, P_NO_INDENT | P_NO_NL, fmt, l);
+	out_asm2(sec, P_NO_INDENT, " */");
 }
 
 void impl_lbl(const char *lbl)
