@@ -48,21 +48,14 @@ int symtab_fold(symtable *tab, unsigned current)
 
 	if(tab->decls){
 		decl **diter;
-		int arg_idx;
-
-		arg_idx = 0;
 
 		/* need to walk backwards for args */
 		for(diter = tab->decls; *diter; diter++);
 
 		for(diter--; diter >= tab->decls; diter--){
 			decl *d = *diter;
-			sym *s = d->sym;
 
 			fold_decl(d, tab);
-
-			if(s->type == sym_arg)
-				s->offset = arg_idx++;
 		}
 
 		for(diter = tab->decls; *diter; diter++){
@@ -95,7 +88,7 @@ int symtab_fold(symtable *tab, unsigned current)
 
 							/* packing takes care of everything */
 							pack_next(&current, NULL, siz, align);
-							s->offset = current;
+							s->loc.stack_pos = current;
 
 							/* static analysis on sym (only auto-vars) */
 							if(!has_unused_attr && !d->init)

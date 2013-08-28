@@ -75,18 +75,6 @@ enum flag_cmp op_to_flag(enum op_type op)
 	return -1;
 }
 
-int impl_arg_offset(sym *s)
-{
-	/*
-	 * if it's less than N_CALL_ARGS, it's below rbp, otherwise it's above
-	 */
-	const int n_call_regs = impl_n_call_regs(s->owning_func);
-
-	return  s->offset < n_call_regs
-			? -(s->offset + 1)
-			:   s->offset - n_call_regs + 2;
-}
-
 int vreg_eq(const struct vreg *a, const struct vreg *b)
 {
 	return a->idx == b->idx && a->is_float == b->is_float;

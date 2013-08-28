@@ -337,9 +337,13 @@ static void reg_to_stack(const struct vreg *vr, type_ref *ty, int where)
 			where);
 }
 
-void impl_func_prologue_save_call_regs(type_ref *rf, unsigned nargs)
+void impl_func_prologue_save_call_regs(
+		type_ref *rf, unsigned nargs,
+		int arg_offsets[/*nargs*/])
 {
 	if(nargs){
+		const unsigned ws = platform_word_size();
+
 		unsigned n_call_i;
 		const struct vreg *call_regs;
 
@@ -359,39 +363,58 @@ void impl_func_prologue_save_call_regs(type_ref *rf, unsigned nargs)
 		 */
 		if(fp_cnt){
 			const unsigned n_call_f = MIN(fp_cnt, N_CALL_REGS_F);
-			unsigned i_arg, i_stk, i_i, i_f;
+			unsigned i_arg, i_stk, i_arg_stk, i_i, i_f;
 
 			v_alloc_stack(
 					(n_call_f + n_call_i) * platform_word_size(),
 					"save call regs float+integral");
 
-			for(i_arg = i_i = i_f = i_stk = 0; i_arg < nargs; i_arg++){
+			for(i_arg = i_i = i_f = i_stk = i_arg_stk = 0;
+					i_arg < nargs;
+					i_arg++)
+			{
 				type_ref *const ty = fa->arglist[i_arg]->ref;
 				const struct vreg *rp;
 				struct vreg vr;
 
 				if(type_ref_is_floating(ty)){
 					if(i_f >= n_call_f)
-						continue;
+						goto pass_via_stack;
 
 					rp = &vr;
 					vr.is_float = 1;
 					vr.idx = i_f++;
 				}else{
 					if(i_i >= n_call_i)
-						continue;
+						goto pass_via_stack;
 
 					rp = &call_regs[i_i++];
 				}
 
-				reg_to_stack(rp, ty, ++i_stk * platform_word_size());
+				{
+					int const off = ++i_stk * ws;
+
+					reg_to_stack(rp, ty, off);
+
+					arg_offsets[i_arg] = -off;
+				}
+
+				continue;
+pass_via_stack:
+				arg_offsets[i_arg] = ++i_arg_stk * ws;
 			}
 		}else{
 			unsigned i;
-			for(i = 0; i < n_call_i; i++){
-				out_asm("push%s %%%s",
-						x86_suffix(NULL),
-						x86_reg_str(&call_regs[i], NULL));
+			for(i = 0; i < nargs; i++){
+				if(i < n_call_i){
+					out_asm("push%s %%%s",
+							x86_suffix(NULL),
+							x86_reg_str(&call_regs[i], NULL));
+
+					arg_offsets[i] = -(i + 1) * ws;
+				}else{
+					arg_offsets[i] = (i + 1) * ws;
+				}
 			}
 
 			/* this aligns the stack too */

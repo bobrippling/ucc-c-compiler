@@ -6,6 +6,7 @@
 
 #include "../util/util.h"
 #include "../util/dynarray.h"
+#include "../util/alloc.h"
 #include "data_structs.h"
 #include "cc1.h"
 #include "macros.h"
@@ -85,6 +86,22 @@ void gen_func_stack(decl *df, const int offset)
 #else
 #endif
 
+static void assign_arg_offsets(decl **decls, int const offsets[])
+{
+	unsigned i, j;
+
+	for(i = j = 0; decls && decls[i]; i++){
+		sym *s = decls[i]->sym;
+
+		if(s && s->type == sym_arg){
+			if(fopt_mode & FOPT_VERBOSE_ASM)
+				out_comment("%s @ offset %d", s->decl->spel, offsets[j]);
+
+			s->loc.arg_offset = offsets[j++];
+		}
+	}
+}
+
 void gen_asm_global(decl *d)
 {
 	decl_attr *sec;
@@ -101,13 +118,18 @@ void gen_asm_global(decl *d)
 		int nargs = 0, is_vari;
 		decl **aiter;
 		const char *sp;
+		int *offsets;
+		symtable *arg_symtab;
 
 		if(!d->func_code)
 			return;
 
-		for(aiter = d->func_code->symtab->decls; aiter && *aiter; aiter++)
+		arg_symtab = d->func_code->symtab;
+		for(aiter = arg_symtab->decls; aiter && *aiter; aiter++)
 			if((*aiter)->sym->type == sym_arg)
 				nargs++;
+
+		offsets = nargs ? umalloc(nargs * sizeof *offsets) : NULL;
 
 		sp = decl_asm_spel(d);
 
@@ -116,7 +138,10 @@ void gen_asm_global(decl *d)
 		out_func_prologue(d->ref,
 				d->func_code->symtab->auto_total_size,
 				nargs,
-				is_vari = type_ref_is_variadic_func(d->ref));
+				is_vari = type_ref_is_variadic_func(d->ref),
+				offsets);
+
+		assign_arg_offsets(arg_symtab->decls, offsets);
 
 		curfunc_lblfin = out_label_code(sp);
 
@@ -127,6 +152,7 @@ void gen_asm_global(decl *d)
 		out_func_epilogue(d->ref);
 
 		free(curfunc_lblfin);
+		free(offsets);
 
 	}else{
 		/* asm takes care of .bss vs .data, etc */

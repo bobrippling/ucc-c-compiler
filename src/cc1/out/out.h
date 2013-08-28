@@ -40,7 +40,11 @@ void out_jmp(void); /* jmp to *pop() */
 void out_jtrue( const char *);
 void out_jfalse(const char *);
 
-void out_func_prologue(type_ref *rf, int stack_res, int nargs, int variadic);
+void out_func_prologue(
+		type_ref *rf,
+		int stack_res, int nargs, int variadic,
+		int arg_offsets[]);
+
 void out_func_epilogue(type_ref *);
 void out_label(const char *);
 

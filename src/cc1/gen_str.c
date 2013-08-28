@@ -295,10 +295,16 @@ void print_decl(decl *d, enum pdeclargs mode)
 	}
 
 	if(mode & PDECL_SYM_OFFSET){
-		if(d->sym)
-			fprintf(cc1_out, " (sym %s, offset = %d)", sym_to_str(d->sym->type), d->sym->offset);
-		else
+		if(d->sym){
+			const int off = d->sym->type == sym_arg
+				? d->sym->loc.arg_offset
+				: (int)d->sym->loc.stack_pos;
+
+			fprintf(cc1_out, " (sym %s, pos = %d)",
+					sym_to_str(d->sym->type), off);
+		}else{
 			fprintf(cc1_out, " (no sym)");
+		}
 	}
 
 	if(mode & PDECL_SIZE && !DECL_IS_FUNC(d)){
@@ -335,7 +341,8 @@ void print_decl(decl *d, enum pdeclargs mode)
 		gen_str_indent++;
 
 		for(iter = d->func_code->symtab->decls; iter && *iter; iter++)
-			idt_printf("offset of %s = %d\n", (*iter)->spel, (*iter)->sym->offset);
+			idt_printf("offset of %s = %d\n", (*iter)->spel,
+					(*iter)->sym->loc.stack_pos);
 
 		idt_printf("function stack space %d\n", d->func_code->symtab->auto_total_size);
 

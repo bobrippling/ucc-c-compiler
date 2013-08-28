@@ -837,12 +837,12 @@ void out_push_sym(sym *s)
 
 			vtop->type = STACK;
 			/* sym offsetting takes into account the stack growth direction */
-			vtop->bits.off_from_bp = -(s->offset + stack_local_offset);
+			vtop->bits.off_from_bp = -(s->loc.stack_pos + stack_local_offset);
 			break;
 
 		case sym_arg:
 			vtop->type = STACK;
-			vtop->bits.off_from_bp = impl_arg_offset(s) * platform_word_size();
+			vtop->bits.off_from_bp = s->loc.arg_offset;
 			break;
 
 		case sym_global:
@@ -1340,7 +1340,10 @@ void out_comment(const char *fmt, ...)
 	va_end(l);
 }
 
-void out_func_prologue(type_ref *rf, int stack_res, int nargs, int variadic)
+void out_func_prologue(
+		type_ref *rf,
+		int stack_res, int nargs, int variadic,
+		int arg_offsets[])
 {
 	UCC_ASSERT(stack_sz == 0, "non-empty stack for new func");
 
@@ -1354,7 +1357,7 @@ void out_func_prologue(type_ref *rf, int stack_res, int nargs, int variadic)
 		v_alloc_stack(platform_word_size(), "stack realign");
 	}
 
-	impl_func_prologue_save_call_regs(rf, nargs);
+	impl_func_prologue_save_call_regs(rf, nargs, arg_offsets);
 
 	if(variadic) /* save variadic call registers */
 		impl_func_prologue_save_variadic(rf);
