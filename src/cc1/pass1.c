@@ -24,39 +24,6 @@
 
 #include "pass1.h"
 
-static void fold_check_static_asserts(static_assert **sas)
-{
-	/* TODO #4: do this for each scope, from fold_symtab_scope() or symtab_fold()
-	 * TODO #5:                merge these functions? ^
-	 */
-	static_assert **i;
-	for(i = sas; i && *i; i++){
-		static_assert *sa = *i;
-		consty k;
-
-		FOLD_EXPR(sa->e, sa->scope);
-		if(!type_ref_is_integral(sa->e->tree_type))
-			DIE_AT(&sa->e->where,
-					"static assert: not an integral expression (%s)",
-					sa->e->f_str());
-
-		const_fold(sa->e, &k);
-
-		if(k.type != CONST_VAL)
-			DIE_AT(&sa->e->where,
-					"static assert: not an integer constant expression (%s)",
-					sa->e->f_str());
-
-		if(!k.bits.iv.val)
-			DIE_AT(&sa->e->where, "static assertion failure: %s", sa->s);
-
-		if(fopt_mode & FOPT_SHOW_STATIC_ASSERTS){
-			fprintf(stderr, "%s: static assert passed: %s-expr, msg: %s\n",
-					where_str(&sa->e->where), sa->e->f_str(), sa->s);
-		}
-	}
-}
-
 static void link_gasms(symtable_gasm ***plast_gasms, decl *prev)
 {
 	symtable_gasm **i;
@@ -119,10 +86,6 @@ void parse_and_fold(symtable_global *globals)
 
 	if(parse_had_error)
 		exit(1);
-
-	/* TODO: related to TODO #4 */
-	current_scope->static_asserts = static_asserts;
-	fold_check_static_asserts(globals->stab.static_asserts);
 
 	UCC_ASSERT(!current_scope->parent, "scope leak during parse");
 }

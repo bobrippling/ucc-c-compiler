@@ -17,6 +17,7 @@
 #include "fold_sue.h"
 #include "decl_init.h"
 #include "out/lbl.h"
+#include "const.h"
 
 
 #define RW_TEST(var)                                 \
@@ -42,11 +43,43 @@
 							}                   \
 						}while(0)
 
+static void symtab_check_static_asserts(static_assert **sas)
+{
+	static_assert **i;
+	for(i = sas; i && *i; i++){
+		static_assert *sa = *i;
+		consty k;
+
+		FOLD_EXPR(sa->e, sa->scope);
+		if(!type_ref_is_integral(sa->e->tree_type))
+			DIE_AT(&sa->e->where,
+					"static assert: not an integral expression (%s)",
+					sa->e->f_str());
+
+		const_fold(sa->e, &k);
+
+		if(k.type != CONST_VAL)
+			DIE_AT(&sa->e->where,
+					"static assert: not an integer constant expression (%s)",
+					sa->e->f_str());
+
+		if(!k.bits.iv.val)
+			DIE_AT(&sa->e->where, "static assertion failure: %s", sa->s);
+
+		if(fopt_mode & FOPT_SHOW_STATIC_ASSERTS){
+			fprintf(stderr, "%s: static assert passed: %s-expr, msg: %s\n",
+					where_str(&sa->e->where), sa->e->f_str(), sa->s);
+		}
+	}
+}
+
 void symtab_fold_decls(symtable *tab)
 {
 #define IS_LOCAL_SCOPE !!(tab->parent)
 	decl **all_decls = NULL;
 	decl **diter;
+
+	symtab_check_static_asserts(tab->static_asserts);
 
 	for(diter = tab->decls; diter && *diter; diter++){
 		decl *d = *diter;

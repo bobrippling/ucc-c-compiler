@@ -38,7 +38,6 @@ expr *parse_expr_unary(void);
 
 /* parse_type uses this for structs, tdefs and enums */
 symtable *current_scope;
-static_assert **static_asserts;
 
 
 /* sometimes we can carry on after an error, but we don't want to go through to compilation etc */
@@ -681,7 +680,7 @@ void parse_static_assert(void)
 		EAT(token_close_paren);
 		EAT(token_semicolon);
 
-		dynarray_add(&static_asserts, sa);
+		dynarray_add(&current_scope->static_asserts, sa);
 	}
 }
 
