@@ -68,7 +68,7 @@ static void fold_const_expr_op(expr *e, consty *k)
 				e->op, is_signed, &err);
 
 		if(err){
-			WARN_AT(&e->where, "%s", err);
+			warn_at(&e->where, "%s", err);
 		}else{
 			memset(k, 0, sizeof *k);
 			k->type = CONST_NUM;
@@ -177,7 +177,7 @@ type_ref *op_required_promotion(
 #endif
 
 	if(type_ref_is_void(tlhs) || type_ref_is_void(trhs))
-		DIE_AT(w, "use of void expression");
+		die_at(w, "use of void expression");
 
 	{
 		const int l_ptr = !!type_ref_is(tlhs, type_ref_ptr);
@@ -191,7 +191,7 @@ type_ref *op_required_promotion(
 				switch(type_ref_cmp(tlhs, trhs, 0)){
 					case TYPE_CONVERTIBLE:
 					case TYPE_NOT_EQUAL:
-						DIE_AT(w, "subtraction of distinct pointer types %s and %s",
+						die_at(w, "subtraction of distinct pointer types %s and %s",
 								type_ref_to_str(tlhs), type_ref_to_str_r(buf, trhs));
 					case TYPE_QUAL_LOSS:
 					case TYPE_EQUAL:
@@ -216,7 +216,7 @@ ptr_relation:
 				resolved = type_ref_cached_BOOL();
 
 			}else{
-				DIE_AT(w, "operation between two pointers must be relational or subtraction");
+				die_at(w, "operation between two pointers must be relational or subtraction");
 			}
 
 			goto fin;
@@ -230,11 +230,11 @@ ptr_relation:
 
 			switch(op){
 				default:
-					DIE_AT(w, "operation between pointer and integer must be + or -");
+					die_at(w, "operation between pointer and integer must be + or -");
 
 				case op_minus:
 					if(!l_ptr)
-						DIE_AT(w, "subtraction of pointer from integer");
+						die_at(w, "subtraction of pointer from integer");
 
 				case op_plus:
 					break;
@@ -251,9 +251,9 @@ ptr_relation:
 
 				if(!type_ref_is_complete(next)){
 					if(type_ref_is_void(next)){
-						WARN_AT(w, "arithmetic on void pointer");
+						warn_at(w, "arithmetic on void pointer");
 					}else{
-						DIE_AT(w, "arithmetic on pointer to incomplete type %s",
+						die_at(w, "arithmetic on pointer to incomplete type %s",
 								type_ref_to_str(next));
 					}
 					/* TODO: note: type declared at resolved->where */
@@ -262,7 +262,7 @@ ptr_relation:
 
 
 			if(type_ref_is_void_ptr(resolved))
-				WARN_AT(w, "arithmetic on void pointer");
+				warn_at(w, "arithmetic on void pointer");
 
 			goto fin;
 		}
@@ -444,7 +444,7 @@ void fold_check_bounds(expr *e, int chk_one_past_end)
 				/* XXX: note */
 				char buf[WHERE_BUF_SIZ];
 
-				WARN_AT(&e->where,
+				warn_at(&e->where,
 						"index %" NUMERIC_FMT_D " out of bounds of array, size %ld\n"
 						"%s: note: array declared here",
 						idx.val.i, (long)sz, where_str_r(buf, &array->tree_type->where));
@@ -473,7 +473,7 @@ static void op_unsigned_cmp_check(expr *e)
 					const int v = k.bits.num.val.i;
 
 					if(v <= 0){
-						WARN_AT(&e->where,
+						warn_at(&e->where,
 								"comparison of unsigned expression %s %d is always %s",
 								op_to_str(e->op), v,
 								e->op == op_lt || e->op == op_le ? "false" : "true");
@@ -492,10 +492,10 @@ static void msg_if_precedence(expr *sub, where *w,
 	if(expr_kind(sub, op)
 	&& !sub->in_parens
 	&& sub->op != binary
-	&& (*test)(sub->op))
+	&& (test ? (*test)(sub->op) : 1))
 	{
 		/* ==, !=, <, ... */
-		WARN_AT(w, "%s has higher precedence than %s",
+		warn_at(w, "%s has higher precedence than %s",
 				op_to_str(sub->op), op_to_str(binary));
 	}
 }
@@ -513,6 +513,12 @@ static void op_check_precedence(expr *e)
 		case op_orsc:
 			msg_if_precedence(e->lhs, &e->where, e->op, op_is_shortcircuit);
 			msg_if_precedence(e->rhs, &e->where, e->op, op_is_shortcircuit);
+			break;
+
+		case op_shiftl:
+		case op_shiftr:
+			msg_if_precedence(e->lhs, &e->where, e->op, NULL);
+			msg_if_precedence(e->rhs, &e->where, e->op, NULL);
 			break;
 
 		default:
@@ -536,12 +542,12 @@ static void op_shift_check(expr *e)
 			if(type_ref_is_signed(e->rhs->tree_type)
 			&& (sintegral_t)rhs.bits.num.val.i < 0)
 			{
-				WARN_AT(&e->rhs->where, "shift count is negative (%"
+				warn_at(&e->rhs->where, "shift count is negative (%"
 						NUMERIC_FMT_D ")", (sintegral_t)rhs.bits.num.val.i);
 
 				undefined = 1;
 			}else if(rhs.bits.num.val.i >= ty_sz){
-				WARN_AT(&e->rhs->where, "shift count >= width of %s (%u)",
+				warn_at(&e->rhs->where, "shift count >= width of %s (%u)",
 						type_ref_to_str(e->lhs->tree_type), ty_sz);
 
 				undefined = 1;

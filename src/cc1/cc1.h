@@ -94,10 +94,10 @@ extern enum mopt mopt_mode;
 extern enum cc1_backend cc1_backend;
 
 extern enum c_std cc1_std;
-#define C99_LONGLONG() if(cc1_std < STD_C99) WARN_AT(NULL, "long long is a C99 feature")
+#define C99_LONGLONG() if(cc1_std < STD_C99) warn_at(NULL, "long long is a C99 feature")
 
-void cc1_warn_atv(struct where *where, int die, int show_line, enum warning w, const char *fmt, va_list l);
-void cc1_warn_at( struct where *where, int die, int show_line, enum warning w, const char *fmt, ...) ucc_printflike(5, 6);
+void cc1_warn_atv(struct where *where, int die, enum warning w, const char *fmt, va_list l);
+void cc1_warn_at( struct where *where, int die, enum warning w, const char *fmt, ...) ucc_printflike(4, 5);
 
 extern int cc1_max_errors;
 

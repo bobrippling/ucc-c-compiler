@@ -138,7 +138,7 @@ void fold_expr_if(expr *e, symtable *stab)
 			}else{
 				char buf[TYPE_REF_STATIC_BUFSIZ];
 
-				WARN_AT(&e->where, "conditional type mismatch (%s vs %s)",
+				warn_at(&e->where, "conditional type mismatch (%s vs %s)",
 						type_ref_to_str(tt_l), type_ref_to_str_r(buf, tt_r));
 
 				e->tree_type = type_ref_cached_VOID();

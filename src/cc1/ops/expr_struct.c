@@ -52,7 +52,7 @@ void fold_expr_struct(expr *e, symtable *stab)
 
 		if(!(sue = type_ref_is_s_or_u(r))){
 err:
-			DIE_AT(&e->lhs->where, "'%s' (%s-expr) is not a %sstruct or union (member %s)",
+			die_at(&e->lhs->where, "'%s' (%s-expr) is not a %sstruct or union (member %s)",
 					type_ref_to_str(e->lhs->tree_type),
 					e->lhs->f_str(),
 					ptr_expect ? "pointer to " : "",
@@ -63,7 +63,7 @@ err:
 	if(!sue_complete(sue)){
 		char wbuf[WHERE_BUF_SIZ];
 
-		DIE_AT(&e->lhs->where, "%s incomplete type (%s)\n"
+		die_at(&e->lhs->where, "%s incomplete type (%s)\n"
 				"%s: forward declared here",
 				ptr_expect
 					? "dereferencing pointer to"
@@ -78,7 +78,7 @@ err:
 				&e->bits.struct_mem.extra_off, NULL);
 
 		if(!d_mem)
-			DIE_AT(&e->where, "%s %s has no member named \"%s\"",
+			die_at(&e->where, "%s %s has no member named \"%s\"",
 					sue_str(sue), sue->spel, spel);
 
 		e->rhs->tree_type = (e->bits.struct_mem.d = d_mem)->ref;

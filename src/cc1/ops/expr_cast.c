@@ -82,7 +82,7 @@ static void fold_const_expr_cast(expr *e, consty *k)
 
 				if(to_sig && from_sig ? old != to_iv_sign_ext : old != to_iv){
 #define CAST_WARN(pre_fmt, pre_val, post_fmt, post_val)  \
-						WARN_AT(&e->where,                           \
+						warn_at(&e->where,                           \
 								"implicit cast changes value from %"     \
 								pre_fmt " to %" post_fmt,                \
 								pre_val, post_val)
@@ -199,7 +199,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 	fold_check_expr(e, FOLD_CHK_NO_ST_UN, "cast-target");
 
 	if(!type_ref_is_complete(tlhs)){
-		DIE_AT(&e->where, "%scast to incomplete type %s",
+		die_at(&e->where, "%scast to incomplete type %s",
 				IMPLICIT_STR(e),
 				type_ref_to_str(tlhs));
 	}
@@ -207,7 +207,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 	if((flag = !!type_ref_is(tlhs, type_ref_func))
 	|| type_ref_is(tlhs, type_ref_array))
 	{
-		DIE_AT(&e->where, "%scast to %s type '%s'",
+		die_at(&e->where, "%scast to %s type '%s'",
 				IMPLICIT_STR(e),
 				flag ? "function" : "array",
 				type_ref_to_str(tlhs));
@@ -233,7 +233,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 
 		strcpy(buf, type_ref_to_str(trhs));
 
-		cc1_warn_at(&e->where, 0, 1, WARN_LOSS_PRECISION,
+		cc1_warn_at(&e->where, 0, WARN_LOSS_PRECISION,
 				"possible loss of precision %s, size %d <-- %s, size %d",
 				type_ref_to_str(tlhs), size_lhs,
 				buf, size_rhs);
@@ -246,7 +246,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 		if(!expr_is_null_ptr(e->expr, 0)){
 			char buf[TYPE_REF_STATIC_BUFSIZ];
 
-			WARN_AT(&e->where, "%scast from %spointer to %spointer\n"
+			warn_at(&e->where, "%scast from %spointer to %spointer\n"
 					"%s <- %s",
 					IMPLICIT_STR(e),
 					flag ? "" : "function-", flag ? "function-" : "",
@@ -264,7 +264,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 		if(p >= buf && *p == ' ')
 			*p = '\0';
 
-		WARN_AT(&e->where, "%scast removes qualifiers (%s)",
+		warn_at(&e->where, "%scast removes qualifiers (%s)",
 				IMPLICIT_STR(e), buf);
 	}
 #endif

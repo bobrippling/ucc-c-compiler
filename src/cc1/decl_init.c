@@ -232,7 +232,7 @@ static void override_warn(
 {
 	char buf[WHERE_BUF_SIZ];
 
-	WARN_AT(new,
+	warn_at(new,
 			"overriding %sinitialisation of \"%s\"\n"
 			"%s: prior initialisation here",
 			whole ? "entire " : "",
@@ -242,7 +242,7 @@ static void override_warn(
 
 static void excess_init(where *w, type_ref *ty)
 {
-	WARN_AT(w, "excess initialiser for '%s'", type_ref_to_str(ty));
+	warn_at(w, "excess initialiser for '%s'", type_ref_to_str(ty));
 }
 
 static decl_init *decl_init_brace_up_scalar(
@@ -267,7 +267,7 @@ static decl_init *decl_init_brace_up_scalar(
 	first_init = *iter->pos++;
 
 	if(first_init->desig)
-		DIE_AT(&first_init->where, "initialising scalar with %s designator",
+		die_at(&first_init->where, "initialising scalar with %s designator",
 				DESIG_TO_STR(first_init->desig->type));
 
 	if(first_init->type == decl_init_brace){
@@ -345,7 +345,7 @@ static decl_init **decl_init_brace_up_array2(
 			this->desig = des->next;
 
 			if(des->type != desig_ar){
-				DIE_AT(&this->where,
+				die_at(&this->where,
 						"%s designator can't designate array",
 						DESIG_TO_STR(des->type));
 			}
@@ -361,18 +361,18 @@ static decl_init **decl_init_brace_up_array2(
 			}
 
 			if(k[0].type != CONST_NUM || k[1].type != CONST_NUM)
-				DIE_AT(&this->where, "non-constant array-designator");
+				die_at(&this->where, "non-constant array-designator");
 			if((k[0].bits.num.suffix | k[1].bits.num.suffix) & VAL_FLOATING)
-				DIE_AT(&this->where, "non-integral array-designator");
+				die_at(&this->where, "non-integral array-designator");
 
 			if((sintegral_t)k[0].bits.num.val.i < 0 || (sintegral_t)k[1].bits.num.val.i < 0)
-				DIE_AT(&this->where, "negative array index initialiser");
+				die_at(&this->where, "negative array index initialiser");
 
 			if(limit > -1
 			&& (k[0].bits.num.val.i >= (integral_t)limit
 			||  k[1].bits.num.val.i >= (integral_t)limit))
 			{
-				DIE_AT(&this->where, "designating outside of array bounds (%d)", limit);
+				die_at(&this->where, "designating outside of array bounds (%d)", limit);
 			}
 
 			i = k[0].bits.num.val.i;
@@ -408,7 +408,7 @@ static decl_init **decl_init_brace_up_array2(
 					if(!decl_init_is_const(replacing, stab)){
 						char wbuf[WHERE_BUF_SIZ];
 
-						DIE_AT(&this->where,
+						die_at(&this->where,
 								"can't replace _part_ of array-range subobject without braces\n"
 								"%s: array range here", where_str_r(wbuf, &replacing->where));
 					}
@@ -473,7 +473,7 @@ static decl_init **decl_init_brace_up_array2(
 							old = NULL;
 
 						if(old){
-							DIE_AT(&old->where, "can't replace with a range currently");
+							die_at(&old->where, "can't replace with a range currently");
 						}
 					}
 
@@ -529,7 +529,7 @@ static decl_init **decl_init_brace_up_sue2(
 	&& (this->type != decl_init_brace
 		|| dynarray_count(this->bits.ar.inits) != 0))
 	{
-		WARN_AT(&this->where, "missing {} initialiser for empty %s",
+		warn_at(&this->where, "missing {} initialiser for empty %s",
 				sue_str(sue), sue->spel);
 	}
 
@@ -547,7 +547,7 @@ static decl_init **decl_init_brace_up_sue2(
 			int found = 0;
 
 			if(des->type != desig_struct){
-				DIE_AT(&this->where,
+				die_at(&this->where,
 						"%s designator can't designate struct",
 						DESIG_TO_STR(des->type));
 			}
@@ -564,7 +564,7 @@ static decl_init **decl_init_brace_up_sue2(
 					break;
 				}
 
-				DIE_AT(&this->where,
+				die_at(&this->where,
 						"%s %s contains no such member \"%s\"",
 						sue_str(sue), sue->spel, des->bits.member);
 			}
@@ -620,7 +620,7 @@ static decl_init **decl_init_brace_up_sue2(
 				replacing = current[i];
 
 			if(type_ref_is_incomplete_array(d_mem->ref)){
-				WARN_AT(&this->where, "initialisation of flexible array (GNU)");
+				warn_at(&this->where, "initialisation of flexible array (GNU)");
 			}
 
 			if(!braced_sub){
@@ -655,7 +655,7 @@ static decl_init **decl_init_brace_up_sue2(
 		const unsigned diff = sue_nmem - i;
 		where *loc = ITER_WHERE(iter, last_loc ? last_loc : &sue->where);
 
-		WARN_AT(loc,
+		warn_at(loc,
 				"%u missing initialiser%s for '%s %s'",
 				diff, diff == 1 ? "" : "s",
 				sue_str(sue), sue->spel);
@@ -784,7 +784,7 @@ static decl_init *decl_init_brace_up_aggregate(
 		where *loc = ITER_WHERE(iter, NULL);
 		decl_init *r = decl_init_new_w(decl_init_brace, loc);
 
-		WARN_AT(loc, "missing braces for initialisation of sub-object '%s'",
+		warn_at(loc, "missing braces for initialisation of sub-object '%s'",
 				type_ref_to_str(tfor));
 
 		/* we need to pull from iter, bracing up our children inits */
@@ -803,7 +803,7 @@ static void die_incomplete(init_iter *iter, type_ref *tfor)
 	if(sue)
 		sue_incomplete_chk(sue, ITER_WHERE(iter, &sue->where));
 
-	DIE_AT(ITER_WHERE(iter, &tfor->where),
+	die_at(ITER_WHERE(iter, &tfor->where),
 			"initialising %s", type_ref_to_str(tfor));
 }
 
@@ -916,7 +916,7 @@ static decl_init *decl_init_brace_up_start(
 		expr *e = FOLD_EXPR(init->bits.expr, stab);
 
 		if(type_ref_cmp(e->tree_type, tfor, 0) != TYPE_EQUAL){
-			DIE_AT(&init->where,
+			die_at(&init->where,
 					"%s must be initialised with an initialiser list",
 					type_ref_to_str(tfor));
 		}
@@ -1072,7 +1072,7 @@ zero_init:
 
 				/* it's fine if there's nothing for it */
 				if(n > 0)
-					DIE_AT(&init->where, "non-static initialisation of flexible array");
+					die_at(&init->where, "non-static initialisation of flexible array");
 			}else{
 				n = type_ref_array_len(tfor);
 			}

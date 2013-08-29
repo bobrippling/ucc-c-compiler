@@ -105,7 +105,7 @@ void warn_colour(int on, int err)
 	}
 }
 
-void vwarn(struct where *w, int err, int show_line, const char *fmt, va_list l)
+void vwarn(struct where *w, int err, const char *fmt, va_list l)
 {
 	include_bt(stderr);
 
@@ -127,38 +127,37 @@ void vwarn(struct where *w, int err, int show_line, const char *fmt, va_list l)
 
 	warn_colour(0, err);
 
-	if(show_line)
-		warn_show_line(w);
+	warn_show_line(w);
 }
 
 void warn_at_print_error(struct where *w, const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
-	vwarn(w, 1, 1, fmt, l);
+	vwarn(w, 1, fmt, l);
 	va_end(l);
 }
 
 
-void vdie(struct where *w, int show_line, const char *fmt, va_list l)
+void vdie(struct where *w, const char *fmt, va_list l)
 {
-	vwarn(w, 1, show_line, fmt, l);
+	vwarn(w, 1, fmt, l);
 	exit(1);
 }
 
-void warn_at(struct where *w, int show_line, const char *fmt, ...)
+void warn_at(struct where *w, const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
-	vwarn(w, 0, show_line, fmt, l);
+	vwarn(w, 0, fmt, l);
 	va_end(l);
 }
 
-void die_at(struct where *w, int show_line, const char *fmt, ...)
+void die_at(struct where *w, const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
-	vdie(w, show_line, fmt, l);
+	vdie(w, fmt, l);
 	va_end(l);
 	/* unreachable */
 }
@@ -167,7 +166,7 @@ void die(const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
-	vdie(NULL, 0, fmt, l); /* FIXME: this is called before current_fname etc is init'd */
+	vdie(NULL, fmt, l); /* FIXME: this is called before current_fname etc is init'd */
 	va_end(l);
 	/* unreachable */
 }

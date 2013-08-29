@@ -20,13 +20,13 @@ void fold_stmt_return(stmt *s)
 				s->symtab, &s->where, "return type");
 
 		if(type_ref_is_void(curdecl_ref_func_called)){
-			cc1_warn_at(&s->where, 0, 1, WARN_RETURN_TYPE,
+			cc1_warn_at(&s->where, 0, WARN_RETURN_TYPE,
 					"return with a value in void function %s",
 					curdecl_func->spel);
 		}
 
 	}else if(!void_func){
-		cc1_warn_at(&s->where, 0, 1, WARN_RETURN_TYPE,
+		cc1_warn_at(&s->where, 0, WARN_RETURN_TYPE,
 				"empty return in non-void function %s",
 				curdecl_func->spel);
 

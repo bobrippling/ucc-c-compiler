@@ -58,7 +58,7 @@ typedef int digit_test(int);
 
 static char *overflow_handle(numeric *pv, char *s, digit_test *test)
 {
-	WARN_AT(NULL, "overflow parsing integer, truncating to unsigned long long");
+	warn_at(NULL, "overflow parsing integer, truncating to unsigned long long");
 
 	while(test(*s))
 		s++;
@@ -116,7 +116,7 @@ void char_seq_to_iv(char *s, numeric *iv, int *plen, enum base mode)
 	s = read_ap_num(bases[mode].test, s, iv, bases[mode].base);
 
 	if(s == start)
-		DIE_AT(NULL, "invalid number (read 0 chars, at \"%s\")", s);
+		die_at(NULL, "invalid number (read 0 chars, at \"%s\")", s);
 
 	*plen = s - start;
 }
@@ -188,7 +188,7 @@ void escape_string(char *old_str, int *plen)
 				add = escape_char(old_str[i]);
 
 				if(add == -1)
-					DIE_AT(NULL, "unknown escape char '\\%c'", add);
+					die_at(NULL, "unknown escape char '\\%c'", add);
 			}
 		}else{
 			add = old_str[i];

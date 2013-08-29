@@ -30,7 +30,7 @@ void flow_fold(stmt_flow *flow, symtable **pstab)
 				case store_register:
 					break;
 				default:
-					DIE_AT(&d->where, "%s variable in statement-initialisation",
+					die_at(&d->where, "%s variable in statement-initialisation",
 							decl_store_to_str(d->store));
 			}
 		}

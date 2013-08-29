@@ -61,7 +61,7 @@ static void fprintn(FILE *f, uintmax_t n, int base, int is_signed, int ty_sz)
 		if(ty_sz < sizeof(uintmax_t)){
 			// force sign extension - signed right shift
 			n <<= (sizeof(long) - ty_sz) * CHAR_BIT;
-			n = (intmax_t)n >> (sizeof(long) - ty_sz) * CHAR_BIT;
+			n = (intmax_t)n >> ((sizeof(long) - ty_sz) * CHAR_BIT);
 		}
 
 		if((intmax_t)n < 0){

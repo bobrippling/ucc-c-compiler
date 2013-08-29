@@ -360,7 +360,7 @@ static void read_number(enum base mode)
 	char_seq_to_iv(bufferpos, &currentval, &nlen, mode);
 
 	if(nlen == 0)
-		DIE_AT(NULL, "%s-number expected (got '%c')",
+		die_at(NULL, "%s-number expected (got '%c')",
 				base_to_str(mode), peeknextchar());
 
 	bufferpos += nlen;
@@ -371,14 +371,14 @@ static void read_number(enum base mode)
 		case 'U':
 		case 'u':
 			if(suff & VAL_UNSIGNED)
-				DIE_AT(NULL, "duplicate U suffix");
+				die_at(NULL, "duplicate U suffix");
 			suff |= VAL_UNSIGNED;
 			nextchar();
 			break;
 		case 'L':
 		case 'l':
 			if(suff & (VAL_LLONG | VAL_LONG))
-				DIE_AT(NULL, "already have a L/LL suffix");
+				die_at(NULL, "already have a L/LL suffix");
 
 			nextchar();
 			if(peeknextchar() == c){
@@ -439,7 +439,7 @@ static void read_string(char **sptr, int *plen)
 		char *p;
 		if((p = strchr(bufferpos, '\n')))
 			*p = '\0';
-		DIE_AT(NULL, "Couldn't find terminating quote to \"%s\"", bufferpos);
+		die_at(NULL, "Couldn't find terminating quote to \"%s\"", bufferpos);
 	}
 
 	size = end - start + 1;
@@ -505,7 +505,7 @@ static void read_char(const int is_wide)
 	int c = rawnextchar();
 
 	if(c == EOF){
-		DIE_AT(NULL, "Invalid character");
+		die_at(NULL, "Invalid character");
 	}else if(c == '\\'){
 		char esc = tolower(peeknextchar());
 
@@ -517,10 +517,10 @@ static void read_char(const int is_wide)
 			read_number(esc == 'x' ? HEX : esc == 'b' ? BIN : OCT);
 
 			if(currentval.suffix & ~VAL_PREFIX_MASK)
-				DIE_AT(NULL, "invalid character sequence: suffix given");
+				die_at(NULL, "invalid character sequence: suffix given");
 
 			if(!is_wide && currentval.val.i > 0xff)
-				warn_at(NULL, 1,
+				warn_at(NULL,
 						"invalid character sequence: too large (parsed 0x%" NUMERIC_FMT_X ")",
 						currentval.val.i);
 
@@ -530,7 +530,7 @@ static void read_char(const int is_wide)
 			c = escape_char(esc);
 
 			if(c == -1)
-				DIE_AT(NULL, "invalid escape character '%c'", esc);
+				die_at(NULL, "invalid escape character '%c'", esc);
 
 			nextchar();
 		}
@@ -540,7 +540,7 @@ static void read_char(const int is_wide)
 	currentval.suffix = 0;
 
 	if((c = nextchar()) != '\'')
-		DIE_AT(NULL, "no terminating \"'\" for character (got '%c')", c);
+		die_at(NULL, "no terminating \"'\" for character (got '%c')", c);
 
 	curtok = token_character;
 }
@@ -584,7 +584,7 @@ void nexttoken()
 				default:
 					if(!isoct(c)){
 						if(isdigit(c))
-							DIE_AT(NULL, "invalid oct character '%c'", c);
+							die_at(NULL, "invalid oct character '%c'", c);
 						else
 							mode = DEC; /* just zero */
 
@@ -751,7 +751,7 @@ void nexttoken()
 						return;
 					}
 				}
-				DIE_AT(NULL, "No end to comment");
+				die_at(NULL, "No end to comment");
 				return;
 			}else if(peeknextchar() == '/'){
 				tokenise_read_line();
@@ -861,7 +861,7 @@ void nexttoken()
 			break;
 
 		default:
-			DIE_AT(NULL, "unknown character %c 0x%x %d", c, c, buffereof);
+			die_at(NULL, "unknown character %c 0x%x %d", c, c, buffereof);
 			curtok = token_unknown;
 	}
 

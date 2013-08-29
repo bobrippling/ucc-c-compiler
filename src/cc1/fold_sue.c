@@ -138,9 +138,9 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 					goto normal;
 
 				if(sub_sue == sue)
-					DIE_AT(&d->where, "nested %s", sue_str(sue));
+					die_at(&d->where, "nested %s", sue_str(sue));
 				else if(sub_sue->flexarr && i[1])
-					WARN_AT(&d->where, "embedded struct with flex-array not final member");
+					warn_at(&d->where, "embedded struct with flex-array not final member");
 
 				sz = sue_size(sub_sue, &d->where);
 				align = sub_sue->align;
@@ -167,7 +167,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 					if(realign_next || bitfield.current_off){
 						if(!realign_next){
 							/* bitfield overflow - repad */
-							WARN_AT(&d->where, "bitfield overflow (%d + %d > %d) - "
+							warn_at(&d->where, "bitfield overflow (%d + %d > %d) - "
 									"moved to next boundary", bitfield.current_off, bits,
 									bf_cur_lim);
 						}else{
@@ -212,11 +212,11 @@ normal:
 				align = decl_align(d);
 				if(type_ref_is_incomplete_array(d->ref)){
 					if(i[1])
-						DIE_AT(&d->where, "flexible array not at end of struct");
+						die_at(&d->where, "flexible array not at end of struct");
 					else if(sue->primitive != type_struct)
-						DIE_AT(&d->where, "flexible array in a %s", sue_str(sue));
+						die_at(&d->where, "flexible array in a %s", sue_str(sue));
 					else if(i == sue->members) /* nothing currently */
-						WARN_AT(&d->where, "struct with just a flex-array is an extension");
+						warn_at(&d->where, "struct with just a flex-array is an extension");
 
 					sue->flexarr = 1;
 					sz = 0; /* not counted in struct size */
@@ -239,7 +239,7 @@ normal:
 				{
 					int pad = d->struct_offset - prev_offset;
 					if(pad){
-						cc1_warn_at(&d->where, 0, 1, WARN_PAD,
+						cc1_warn_at(&d->where, 0, WARN_PAD,
 								"padding '%s' with %d bytes to align '%s'",
 								sue->spel, pad, decl_to_str(d));
 					}

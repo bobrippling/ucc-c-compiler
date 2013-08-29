@@ -191,15 +191,15 @@ static void fold_memset(expr *e, symtable *stab)
 		/* this is pretty much an ICE, except it may be
 		 * user-callable in the future
 		 */
-		DIE_AT(&e->where, "can't memset %s - not addressable",
+		die_at(&e->where, "can't memset %s - not addressable",
 				e->lhs->f_str());
 	}
 
 	if(e->bits.builtin_memset.len == 0)
-		WARN_AT(&e->where, "zero size memset");
+		warn_at(&e->where, "zero size memset");
 
 	if((unsigned)e->bits.builtin_memset.ch > 255)
-		WARN_AT(&e->where, "memset with value > UCHAR_MAX");
+		warn_at(&e->where, "memset with value > UCHAR_MAX");
 
 	e->tree_type = type_ref_cached_VOID_PTR();
 }
@@ -454,7 +454,7 @@ static void fold_compatible_p(expr *e, symtable *stab)
 	type_ref **types = e->bits.types;
 
 	if(dynarray_count(types) != 2)
-		DIE_AT(&e->where, "need two arguments for %s", BUILTIN_SPEL(e->expr));
+		die_at(&e->where, "need two arguments for %s", BUILTIN_SPEL(e->expr));
 
 	fold_type_ref(types[0], NULL, stab);
 	fold_type_ref(types[1], NULL, stab);
@@ -495,7 +495,7 @@ static expr *parse_compatible_p(void)
 static void fold_constant_p(expr *e, symtable *stab)
 {
 	if(dynarray_count(e->funcargs) != 1)
-		DIE_AT(&e->where, "%s takes a single argument", BUILTIN_SPEL(e->expr));
+		die_at(&e->where, "%s takes a single argument", BUILTIN_SPEL(e->expr));
 
 	FOLD_EXPR(e->funcargs[0], stab);
 
@@ -529,7 +529,7 @@ static void fold_frame_address(expr *e, symtable *stab)
 	consty k;
 
 	if(dynarray_count(e->funcargs) != 1)
-		DIE_AT(&e->where, "%s takes a single argument", BUILTIN_SPEL(e->expr));
+		die_at(&e->where, "%s takes a single argument", BUILTIN_SPEL(e->expr));
 
 	FOLD_EXPR(e->funcargs[0], stab);
 
@@ -538,7 +538,7 @@ static void fold_frame_address(expr *e, symtable *stab)
 	|| (K_FLOATING(k.bits.num))
 	|| (sintegral_t)k.bits.num.val.i < 0)
 	{
-		DIE_AT(&e->where, "%s needs a positive integral constant value argument", BUILTIN_SPEL(e->expr));
+		die_at(&e->where, "%s needs a positive integral constant value argument", BUILTIN_SPEL(e->expr));
 	}
 
 	memcpy_safe(&e->bits.num, &k.bits.num);
@@ -613,14 +613,14 @@ static void fold_expect(expr *e, symtable *stab)
 	int i;
 
 	if(dynarray_count(e->funcargs) != 2)
-		DIE_AT(&e->where, "%s takes two arguments", BUILTIN_SPEL(e->expr));
+		die_at(&e->where, "%s takes two arguments", BUILTIN_SPEL(e->expr));
 
 	for(i = 0; i < 2; i++)
 		FOLD_EXPR(e->funcargs[i], stab);
 
 	const_fold(e->funcargs[1], &k);
 	if(k.type != CONST_NUM)
-		WARN_AT(&e->where, "%s second argument isn't a constant value", BUILTIN_SPEL(e->expr));
+		warn_at(&e->where, "%s second argument isn't a constant value", BUILTIN_SPEL(e->expr));
 
 	e->tree_type = e->funcargs[0]->tree_type;
 	wur_builtin(e);
@@ -654,7 +654,7 @@ static void fold_is_signed(expr *e, symtable *stab)
 	type_ref **tl = e->bits.types;
 
 	if(dynarray_count(tl) != 1)
-		DIE_AT(&e->where, "need a single argument for %s", BUILTIN_SPEL(e->expr));
+		die_at(&e->where, "need a single argument for %s", BUILTIN_SPEL(e->expr));
 
 	fold_type_ref(tl[0], NULL, stab);
 

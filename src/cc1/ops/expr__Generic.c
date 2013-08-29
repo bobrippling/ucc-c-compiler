@@ -24,7 +24,7 @@ void fold_expr__Generic(expr *e, symtable *stab)
 
 			/* duplicate default checked below */
 			if(m && type_ref_cmp(m, l->t, 0) == TYPE_EQUAL)
-				DIE_AT(&m->where, "duplicate type in _Generic: %s", type_ref_to_str(l->t));
+				die_at(&m->where, "duplicate type in _Generic: %s", type_ref_to_str(l->t));
 		}
 
 
@@ -37,7 +37,7 @@ void fold_expr__Generic(expr *e, symtable *stab)
 			}
 		}else{
 			if(def)
-				DIE_AT(&def->e->where, "second default for _Generic");
+				die_at(&def->e->where, "second default for _Generic");
 			def = l;
 		}
 	}
@@ -47,7 +47,7 @@ void fold_expr__Generic(expr *e, symtable *stab)
 		if(def)
 			e->bits.generic.chosen = def;
 		else
-			DIE_AT(&e->where, "no type satisfying %s", type_ref_to_str(e->expr->tree_type));
+			die_at(&e->where, "no type satisfying %s", type_ref_to_str(e->expr->tree_type));
 	}
 
 	e->tree_type = e->bits.generic.chosen->e->tree_type;
