@@ -718,8 +718,8 @@ void fold_check_expr(expr *e, enum fold_chk chk, const char *desc)
 
 	if(chk & FOLD_CHK_INTEGRAL){
 		if(type_ref_is_floating(e->tree_type)){
-			DIE_AT(&e->where, "%s in %s",
-					type_ref_to_str(e->tree_type), desc);
+			DIE_AT(&e->where, "%s requires an integral expression (not \"%s\")",
+					desc, type_ref_to_str(e->tree_type));
 		}
 	}
 

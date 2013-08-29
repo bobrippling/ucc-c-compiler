@@ -2,6 +2,6 @@
 
 main()
 {
-	switch(1.0f){ // CHECK: /error: float in switch/
+	switch(1.0f){ // CHECK: /error: switch requires an integral expr/
 	}
 }
