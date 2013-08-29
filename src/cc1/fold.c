@@ -76,7 +76,7 @@ int fold_type_ref_equal(
 		one_struct = type_ref_is_s_or_u(a) || type_ref_is_s_or_u(b);
 
 		va_start(l, errfmt);
-		cc1_warn_atv(w, one_struct || type_ref_is_void(a) || type_ref_is_void(b), 1, warn, errfmt, l);
+		cc1_warn_atv(w, one_struct || type_ref_is_void(a) || type_ref_is_void(b), warn, errfmt, l);
 		va_end(l);
 	}
 fin:
@@ -103,7 +103,7 @@ void fold_insert_casts(type_ref *dlhs, expr **prhs, symtable *stab, where *w, co
 	}
 
 	if(type_ref_is_signed(dlhs) != type_ref_is_signed(rhs->tree_type)){
-		cc1_warn_at(w, 0, 1, WARN_SIGN_COMPARE,
+		cc1_warn_at(w, 0, WARN_SIGN_COMPARE,
 				"operation between signed and unsigned in %s", desc);
 	}
 }
@@ -116,7 +116,7 @@ void fold_check_restrict(expr *lhs, expr *rhs, const char *desc, where *w)
 				                    qr = type_ref_qual(rhs->tree_type);
 
 	if((ql & qual_restrict) && (qr & qual_restrict))
-		WARN_AT(w, "restrict pointers in %s", desc);
+		warn_at(w, "restrict pointers in %s", desc);
 }
 
 sym *fold_inc_writes_if_sym(expr *e, symtable *stab)
@@ -181,7 +181,7 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 	switch(r->type){
 		case type_ref_array:
 			if(type_ref_is(r->ref, type_ref_func))
-				DIE_AT(&r->where, "array of functions");
+				die_at(&r->where, "array of functions");
 
 			if(r->bits.array.size){
 				consty k;
@@ -190,21 +190,21 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 				const_fold(r->bits.array.size, &k);
 
 				if(k.type != CONST_VAL)
-					DIE_AT(&r->where, "not a numeric constant for array size");
+					die_at(&r->where, "not a numeric constant for array size");
 				else if((sintval_t)k.bits.iv.val < 0)
-					DIE_AT(&r->where, "negative array size");
+					die_at(&r->where, "negative array size");
 				/* allow zero length arrays */
 			}
 			break;
 
 		case type_ref_func:
 			if(type_ref_is(r->ref, type_ref_func))
-				DIE_AT(&r->where, "function returning a function");
+				die_at(&r->where, "function returning a function");
 
 			if(type_ref_is(parent, type_ref_ptr)
 			&& (type_ref_qual(parent) & qual_restrict))
 			{
-				DIE_AT(&r->where, "restrict qualified function pointer");
+				die_at(&r->where, "restrict qualified function pointer");
 			}
 
 			symtab_fold_decls_sues(r->bits.func.arg_scope);
@@ -213,7 +213,7 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 
 		case type_ref_block:
 			if(!type_ref_is(r->ref, type_ref_func))
-				DIE_AT(&r->where, "invalid block pointer - function required (got %s)",
+				die_at(&r->where, "invalid block pointer - function required (got %s)",
 						type_ref_to_str(r->ref));
 
 			/*q_to_check = r->bits.block.qual; - allowed */
@@ -238,7 +238,7 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 							stab->parent, sue->spel, NULL);
 
 					if(!above){
-						WARN_AT(&r->where,
+						warn_at(&r->where,
 								"declaration of '%s %s' only visible inside function",
 								sue_str(sue), sue->spel);
 					}
@@ -265,7 +265,7 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 	 * since typedef int *intptr; intptr restrict a; is valid
 	 */
 	if(q_to_check & qual_restrict)
-		WARN_AT(&r->where, "restrict on non-pointer type '%s'", type_ref_to_str(r));
+		warn_at(&r->where, "restrict on non-pointer type '%s'", type_ref_to_str(r));
 
 	fold_type_ref(r->ref, r, stab);
 }
@@ -274,11 +274,11 @@ static int fold_align(int al, int min, int max, where *w)
 {
 	/* allow zero */
 	if(al & (al - 1))
-		DIE_AT(w, "alignment %d isn't a power of 2", al);
+		die_at(w, "alignment %d isn't a power of 2", al);
 
 	UCC_ASSERT(al > 0, "zero align");
 	if(al < min)
-		DIE_AT(w,
+		die_at(w,
 				"can't reduce alignment (%d -> %d)",
 				min, al);
 
@@ -292,7 +292,7 @@ static void fold_func_attr(decl *d)
 	funcargs *fa = type_ref_funcargs(d->ref);
 
 	if(decl_attr_present(d, attr_sentinel) && !fa->variadic)
-		WARN_AT(&d->where, "variadic function required for sentinel check");
+		warn_at(&d->where, "variadic function required for sentinel check");
 }
 
 static void fold_decl_add_sym(decl *d, symtable *stab)
@@ -343,7 +343,7 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 	/* if we have a type and it's incomplete, error */
 	no - only on use
 	if(!type_ref_is_complete(d->ref))
-		DIE_AT(&d->where, "use of incomplete type - %s (%s)", d->spel, decl_to_str(d));
+		die_at(&d->where, "use of incomplete type - %s (%s)", d->spel, decl_to_str(d));
 #endif
 
 	if(d->field_width){
@@ -353,36 +353,36 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 		const_fold(d->field_width, &k);
 
 		if(k.type != CONST_VAL)
-			DIE_AT(&d->where, "constant expression required for field width");
+			die_at(&d->where, "constant expression required for field width");
 
 		if((sintval_t)k.bits.iv.val < 0)
-			DIE_AT(&d->where, "field width must be positive");
+			die_at(&d->where, "field width must be positive");
 
 		if(k.bits.iv.val == 0){
 			/* allow anonymous 0-width bitfields
 			 * we align the next bitfield to a boundary
 			 */
 			if(d->spel)
-				DIE_AT(&d->where,
+				die_at(&d->where,
 						"none-anonymous bitfield \"%s\" with 0-width",
 						d->spel);
 		}else{
 			const unsigned max = CHAR_BIT * type_ref_size(d->ref, &d->where);
 			if(k.bits.iv.val > max){
-				DIE_AT(&d->where,
+				die_at(&d->where,
 						"bitfield too large for \"%s\" (%u bits)",
 						decl_to_str(d), max);
 			}
 		}
 
 		if(!type_ref_is_integral(d->ref))
-			DIE_AT(&d->where, "field width on non-integral field %s",
+			die_at(&d->where, "field width on non-integral field %s",
 					decl_to_str(d));
 
 		/* FIXME: only warn if "int" specified,
 		 * i.e. detect explicit signed/unsigned */
 		if(k.bits.iv.val == 1 && type_ref_is_signed(d->ref))
-			WARN_AT(&d->where, "1-bit signed field \"%s\" takes values -1 and 0",
+			warn_at(&d->where, "1-bit signed field \"%s\" takes values -1 and 0",
 					decl_to_str(d));
 
 		can_align = 0;
@@ -398,14 +398,14 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 		switch(d->store & STORE_MASK_STORE){
 			case store_register:
 			case store_auto:
-				DIE_AT(&d->where, "%s storage for function", decl_store_to_str(d->store));
+				die_at(&d->where, "%s storage for function", decl_store_to_str(d->store));
 		}
 
 		if(stab->parent){
 			if(d->func_code)
-				DIE_AT(&d->func_code->where, "nested function %s", d->spel);
+				die_at(&d->func_code->where, "nested function %s", d->spel);
 			else if((d->store & STORE_MASK_STORE) == store_static)
-				DIE_AT(&d->where, "block-scoped function cannot have static storage");
+				die_at(&d->where, "block-scoped function cannot have static storage");
 		}
 
 		can_align = 0;
@@ -413,7 +413,7 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 		fold_func_attr(d);
 
 	}else if((d->store & STORE_MASK_EXTRA) == store_inline){
-		WARN_AT(&d->where, "inline on non-function");
+		warn_at(&d->where, "inline on non-function");
 	}
 
 	if(d->align || (attrib = decl_attr_present(d, attr_aligned))){
@@ -426,7 +426,7 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 			can_align = 0;
 
 		if(!can_align)
-			DIE_AT(&d->where, "can't align %s", decl_to_str(d));
+			die_at(&d->where, "can't align %s", decl_to_str(d));
 
 		for(i = d->align; i; i = i->next){
 			int al;
@@ -439,7 +439,7 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 						&k);
 
 				if(k.type != CONST_VAL)
-					DIE_AT(&d->where, "alignment must be an integer constant");
+					die_at(&d->where, "alignment must be an integer constant");
 
 				al = k.bits.iv.val;
 			}else{
@@ -464,7 +464,7 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 				const_fold(attrib->attr_extra.align, &k);
 
 				if(k.type != CONST_VAL)
-					DIE_AT(&attrib->where, "aligned attribute not reducible to integer constant");
+					die_at(&attrib->where, "aligned attribute not reducible to integer constant");
 				al = k.bits.iv.val;
 			}else{
 				al = platform_align_max();
@@ -485,9 +485,9 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 		if((d->store & STORE_MASK_STORE) == store_extern){
 			/* allow for globals - remove extern since it's a definition */
 			if(stab->parent){
-				DIE_AT(&d->where, "externs can't be initialised");
+				die_at(&d->where, "externs can't be initialised");
 			}else{
-				WARN_AT(&d->where, "extern initialisation");
+				warn_at(&d->where, "extern initialisation");
 				d->store &= ~store_extern;
 			}
 		}
@@ -538,7 +538,7 @@ void fold_decl_global_init(decl *d, symtable *stab)
 	);
 
 	if(!decl_init_is_const(d->init, stab)){
-		DIE_AT(&d->init->where, "%s %s initialiser not constant",
+		die_at(&d->init->where, "%s %s initialiser not constant",
 				stab->parent ? "static" : "global",
 				decl_init_to_str(d->init->type));
 	}
@@ -557,13 +557,13 @@ static void fold_func(decl *func_decl)
 		if(func_decl->store & store_inline
 		&& (func_decl->store & STORE_MASK_STORE) == store_default)
 		{
-			WARN_AT(&func_decl->where,
+			warn_at(&func_decl->where,
 					"pure inline function will not have code emitted "
 					"(missing \"static\" or \"extern\")");
 		}
 
 		if(func_decl->ref->type != type_ref_func)
-			WARN_AT(&func_decl->where,
+			warn_at(&func_decl->where,
 					"typedef function implementation is an extension");
 
 		{
@@ -577,7 +577,7 @@ static void fold_func(decl *func_decl)
 			decl **i;
 			for(i = arg_symtab->decls; i && *i; i++)
 				if(!(*i)->spel)
-					DIE_AT(&func_decl->where, "argument %ld in \"%s\" is unnamed",
+					die_at(&func_decl->where, "argument %ld in \"%s\" is unnamed",
 							i - arg_symtab->decls + 1, func_decl->spel);
 		}
 
@@ -588,7 +588,7 @@ static void fold_func(decl *func_decl)
 
 		if(decl_attr_present(func_decl, attr_noreturn)){
 			if(!type_ref_is_void(curdecl_ref_func_called)){
-				cc1_warn_at(&func_decl->where, 0, 1, WARN_RETURN_UNDEF,
+				cc1_warn_at(&func_decl->where, 0, WARN_RETURN_UNDEF,
 						"function \"%s\" marked no-return has a non-void return value",
 						func_decl->spel);
 			}
@@ -611,7 +611,7 @@ static void fold_func(decl *func_decl)
 			}
 
 			if(the_return.extra){
-				cc1_warn_at(the_return.where, 0, 1, WARN_RETURN_UNDEF,
+				cc1_warn_at(the_return.where, 0, WARN_RETURN_UNDEF,
 						"function \"%s\" marked no-return %sreturns",
 						func_decl->spel, the_return.extra);
 			}
@@ -619,7 +619,7 @@ static void fold_func(decl *func_decl)
 		}else if(!type_ref_is_void(curdecl_ref_func_called)){
 			/* non-void func - check it doesn't return */
 			if(fold_passable(func_decl->func_code)){
-				cc1_warn_at(&func_decl->where, 0, 1, WARN_RETURN_UNDEF,
+				cc1_warn_at(&func_decl->where, 0, WARN_RETURN_UNDEF,
 						"control reaches end of non-void function %s",
 						func_decl->spel);
 			}
@@ -645,7 +645,7 @@ void fold_decl_global(decl *d, symtable *stab)
 
 		case store_auto:
 		case store_register:
-			DIE_AT(&d->where, "invalid storage class %s on global scoped %s",
+			die_at(&d->where, "invalid storage class %s on global scoped %s",
 					decl_store_to_str(d->store),
 					DECL_IS_FUNC(d) ? "function" : "variable");
 	}
@@ -661,19 +661,19 @@ void fold_decl_global(decl *d, symtable *stab)
 void fold_need_expr(expr *e, const char *stmt_desc, int is_test)
 {
 	if(type_ref_is_void(e->tree_type))
-		DIE_AT(&e->where, "%s requires non-void expression", stmt_desc);
+		die_at(&e->where, "%s requires non-void expression", stmt_desc);
 
 	if(!e->in_parens && expr_kind(e, assign))
-		cc1_warn_at(&e->where, 0, 1, WARN_TEST_ASSIGN, "testing an assignment in %s", stmt_desc);
+		cc1_warn_at(&e->where, 0, WARN_TEST_ASSIGN, "testing an assignment in %s", stmt_desc);
 
 	if(is_test){
 		if(!type_ref_is_bool(e->tree_type)){
-			cc1_warn_at(&e->where, 0, 1, WARN_TEST_BOOL, "testing a non-boolean expression, %s, in %s",
+			cc1_warn_at(&e->where, 0, WARN_TEST_BOOL, "testing a non-boolean expression, %s, in %s",
 					type_ref_to_str(e->tree_type), stmt_desc);
 		}
 
 		if(expr_kind(e, addr)){
-			cc1_warn_at(&e->where, 0, 1, WARN_TEST_BOOL/*FIXME*/,
+			cc1_warn_at(&e->where, 0, WARN_TEST_BOOL/*FIXME*/,
 					"testing an address is always true");
 		}
 	}
@@ -686,7 +686,7 @@ void fold_disallow_st_un(expr *e, const char *desc)
 	struct_union_enum_st *sue;
 
 	if((sue = type_ref_is_s_or_u(e->tree_type))){
-		DIE_AT(&e->where, "%s involved in %s",
+		die_at(&e->where, "%s involved in %s",
 				sue_str(sue), desc);
 	}
 }
@@ -699,7 +699,7 @@ void fold_disallow_bitfield(expr *e, const char *desc, ...)
 		if(d->field_width){
 			va_list l;
 			va_start(l, desc);
-			vdie(&e->where, 1, desc, l);
+			vdie(&e->where, desc, l);
 			va_end(l);
 		}
 	}
@@ -752,7 +752,7 @@ void fold_stmt_and_add_to_curswitch(stmt *t)
 	fold_stmt(t->lhs); /* compound */
 
 	if(!t->parent)
-		DIE_AT(&t->where, "%s not inside switch", t->f_str());
+		die_at(&t->where, "%s not inside switch", t->f_str());
 
 	dynarray_add(&t->parent->codes, t);
 
@@ -788,7 +788,7 @@ void fold_funcargs(funcargs *fargs, symtable *stab, type_ref *from)
 			);
 
 			if(decl_store_static_or_extern(d->store)){
-				DIE_AT(&fargs->where, "function argument %d is static or extern", i + 1);
+				die_at(&fargs->where, "function argument %d is static or extern", i + 1);
 			}
 
 			/* ensure ptr */
@@ -796,17 +796,17 @@ void fold_funcargs(funcargs *fargs, symtable *stab, type_ref *from)
 			&& !type_ref_is(d->ref, type_ref_ptr)
 			&& !type_ref_is(d->ref, type_ref_block))
 			{
-				WARN_AT(&fargs->arglist[i]->where, "nonnull attribute applied to non-pointer argument '%s'",
+				warn_at(&fargs->arglist[i]->where, "nonnull attribute applied to non-pointer argument '%s'",
 						type_ref_to_str(d->ref));
 			}
 		}
 
 		if(i == 0 && nonnulls)
-			WARN_AT(&fargs->where, "nonnull attribute applied to function with no arguments");
+			warn_at(&fargs->where, "nonnull attribute applied to function with no arguments");
 		else if(nonnulls != ~0UL && nonnulls & -(1 << i))
-			WARN_AT(&fargs->where, "nonnull attributes above argument index %d ignored", i + 1);
+			warn_at(&fargs->where, "nonnull attributes above argument index %d ignored", i + 1);
 	}else if(nonnulls){
-		WARN_AT(&fargs->where, "nonnull attribute on parameterless function");
+		warn_at(&fargs->where, "nonnull attribute on parameterless function");
 	}
 }
 
@@ -850,7 +850,7 @@ void fold_merge_tenatives(symtable *stab)
 			if(d->init){
 				if(init){
 					char wbuf[WHERE_BUF_SIZ];
-					DIE_AT(&init->where, "multiple definitions of \"%s\"\n"
+					die_at(&init->where, "multiple definitions of \"%s\"\n"
 							"%s: note: other definition here", init->spel,
 							where_str_r(wbuf, &d->where));
 				}
@@ -867,11 +867,11 @@ void fold_merge_tenatives(symtable *stab)
 			decl_default_init(d, stab);
 
 			if(DECL_IS_ARRAY(d)){
-				WARN_AT(&d->where,
+				warn_at(&d->where,
 						"tenative array definition assumed to have one element");
 			}
 
-			cc1_warn_at(&d->where, 0, 1, WARN_TENATIVE_INIT,
+			cc1_warn_at(&d->where, 0, WARN_TENATIVE_INIT,
 					"default-initialising tenative definition of \"%s\"",
 					d->spel);
 		}

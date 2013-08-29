@@ -17,12 +17,12 @@ void fold_stmt_goto(stmt *s)
 		char *save, **psp;
 
 		if(!expr_kind(s->expr, identifier))
-			DIE_AT(&s->expr->where, "not a label identifier");
+			die_at(&s->expr->where, "not a label identifier");
 
 		save = *(psp = &s->expr->bits.ident.spel);
 		/* else let the assembler check for link errors */
 		if(!curdecl_func)
-			DIE_AT(&s->where, "goto outside of a function");
+			die_at(&s->where, "goto outside of a function");
 		*psp = out_label_goto(curdecl_func->spel, save);
 		free(save);
 	}

@@ -37,7 +37,7 @@ void fold_stmt_code(stmt *s)
 			if(DECL_IS_FUNC(found) && !decl_equal(d, found, DECL_CMP_EXACT_MATCH)){
 				char buf[WHERE_BUF_SIZ];
 
-				DIE_AT(&d->where,
+				die_at(&d->where,
 						"incompatible redefinition of \"%s\"\n"
 						"%s: note: previous definition",
 						d->spel, where_str_r(buf, &found->where));
@@ -63,7 +63,8 @@ void fold_stmt_code(stmt *s)
 		&& !stmt_kind(siter[1], case)
 		&& !stmt_kind(siter[1], default)
 		){
-			cc1_warn_at(&siter[1]->where, 0, 1, WARN_DEAD_CODE, "dead code after %s (%s)", st->f_str(), siter[1]->f_str());
+			cc1_warn_at(&siter[1]->where, 0, WARN_DEAD_CODE,
+					"dead code after %s (%s)", st->f_str(), siter[1]->f_str());
 			warned = 1;
 		}
 	}

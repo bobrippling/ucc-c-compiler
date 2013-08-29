@@ -51,7 +51,7 @@ static void fold_const_expr_cast(expr *e, consty *k)
 
 				if(to_sig && from_sig ? old != to_iv_sign_ext : old != to_iv){
 #define CAST_WARN(pre_fmt, pre_val, post_fmt, post_val)  \
-						WARN_AT(&e->where,                           \
+						warn_at(&e->where,                           \
 								"implicit cast changes value from %"     \
 								pre_fmt " to %" post_fmt,                \
 								pre_val, post_val)
@@ -154,10 +154,10 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 	fold_disallow_st_un(e, "cast-target");
 
 	if(!type_ref_is_complete(e->tree_type) && !type_ref_is_void(e->tree_type))
-		DIE_AT(&e->where, "cast to incomplete type %s", type_ref_to_str(e->tree_type));
+		die_at(&e->where, "cast to incomplete type %s", type_ref_to_str(e->tree_type));
 
 	if((flag = !!type_ref_is(e->tree_type, type_ref_func)) || type_ref_is(e->tree_type, type_ref_array))
-		DIE_AT(&e->where, "cast to %s type '%s'", flag ? "function" : "array", type_ref_to_str(e->tree_type));
+		die_at(&e->where, "cast to %s type '%s'", flag ? "function" : "array", type_ref_to_str(e->tree_type));
 
 	tlhs = e->tree_type;
 	trhs = e->expr->tree_type;
@@ -168,7 +168,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 
 		strcpy(buf, type_ref_to_str(trhs));
 
-		cc1_warn_at(&e->where, 0, 1, WARN_LOSS_PRECISION,
+		cc1_warn_at(&e->where, 0, WARN_LOSS_PRECISION,
 				"possible loss of precision %s, size %d <-- %s, size %d",
 				type_ref_to_str(tlhs), size_lhs,
 				buf, size_rhs);
@@ -178,7 +178,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 	||         (type_ref_is_fptr(trhs) && type_ref_is_nonfptr(tlhs)))
 	{
 		char buf[TYPE_REF_STATIC_BUFSIZ];
-		WARN_AT(&e->where, "%scast from %spointer to %spointer\n"
+		warn_at(&e->where, "%scast from %spointer to %spointer\n"
 				"%s <- %s",
 				e->expr_cast_implicit ? "implicit " : "",
 				flag ? "" : "function-", flag ? "function-" : "",
@@ -195,7 +195,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 		if(p >= buf && *p == ' ')
 			*p = '\0';
 
-		WARN_AT(&e->where, "casting away qualifiers (%s)", buf);
+		warn_at(&e->where, "casting away qualifiers (%s)", buf);
 	}
 #endif
 }

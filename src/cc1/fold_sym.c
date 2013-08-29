@@ -30,7 +30,7 @@
 						&& !DECL_IS_S_OR_U(sym->decl)
 
 #define RW_SHOW(w, str)                           \
-					cc1_warn_at(&sym->decl->where, 0, 1,    \
+					cc1_warn_at(&sym->decl->where, 0,       \
 							WARN_SYM_NEVER_ ## w,               \
 							"\"%s\" never " str,                \
 							sym->decl->spel);                   \
@@ -56,19 +56,19 @@ static void symtab_check_static_asserts(static_assert **sas)
 
 		FOLD_EXPR(sa->e, sa->scope);
 		if(!type_ref_is_integral(sa->e->tree_type))
-			DIE_AT(&sa->e->where,
+			die_at(&sa->e->where,
 					"static assert: not an integral expression (%s)",
 					sa->e->f_str());
 
 		const_fold(sa->e, &k);
 
 		if(k.type != CONST_VAL)
-			DIE_AT(&sa->e->where,
+			die_at(&sa->e->where,
 					"static assert: not an integer constant expression (%s)",
 					sa->e->f_str());
 
 		if(!k.bits.iv.val)
-			DIE_AT(&sa->e->where, "static assertion failure: %s", sa->s);
+			die_at(&sa->e->where, "static assertion failure: %s", sa->s);
 
 		if(fopt_mode & FOPT_SHOW_STATIC_ASSERTS){
 			fprintf(stderr, "%s: static assert passed: %s-expr, msg: %s\n",
@@ -123,7 +123,7 @@ void symtab_fold_decls(symtable *tab)
 					if(!has_unused_attr && (d->store & STORE_MASK_STORE) != store_extern)
 						RW_SHOW(READ, "read");
 				}else if(has_unused_attr){
-					warn_at(&d->where, 1,
+					warn_at(&d->where,
 							"\"%s\" declared unused, but is used", d->spel);
 				}
 
@@ -137,7 +137,7 @@ void symtab_fold_decls(symtable *tab)
 					default:
 						/* allow anonymous decls to have .spel_asm */
 						if(d->spel && d->spel_asm){
-							DIE_AT(&d->where,
+							die_at(&d->where,
 									"asm() rename on non-register non-global variable \"%s\" (%s)",
 									d->spel, d->spel_asm);
 						}
@@ -196,7 +196,7 @@ void symtab_fold_decls(symtable *tab)
 				/* XXX: note */
 				char wbuf[WHERE_BUF_SIZ];
 
-				DIE_AT(&a->where,
+				die_at(&a->where,
 						"%s definitions of \"%s\"\n"
 						"%s: note: other definition",
 						clash, a->spel,

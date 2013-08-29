@@ -58,7 +58,7 @@ void sue_incomplete_chk(struct_union_enum_st *st, where *w)
 	if(!sue_complete(st)){
 		char buf[WHERE_BUF_SIZ];
 
-		DIE_AT(w, "%s %s is incomplete\n%s: note: forward declared here",
+		die_at(w, "%s %s is incomplete\n%s: note: forward declared here",
 				sue_str(st), st->spel, where_str_r(buf, &st->where));
 	}
 
@@ -169,7 +169,7 @@ struct_union_enum_st *sue_decl(
 				 * }
 				 */
 
-			DIE_AT(NULL, "trying to redefine %s as %s\n"
+			die_at(NULL, "trying to redefine %s as %s\n"
 					"%s: note: from here",
 					sue_str(sue),
 					type_primitive_to_str(prim),
@@ -182,7 +182,7 @@ struct_union_enum_st *sue_decl(
 				/* struct A {}; f(){ struct A {}; } */
 				goto new_type;
 
-			DIE_AT(NULL, "can't redefine %s %s's members\n"
+			die_at(NULL, "can't redefine %s %s's members\n"
 					"%s: note: from here",
 					sue_str(sue), sue->spel,
 					where_str_r(wbuf, &sue->where));
@@ -240,7 +240,7 @@ new_type:
 
 				if(e_mem){
 					char buf[WHERE_BUF_SIZ];
-					DIE_AT(NULL, "redeclaration of enumerator %s (from %s)",
+					die_at(NULL, "redeclaration of enumerator %s (from %s)",
 							spel, where_str_r(buf, &e_sue->where));
 				}
 			}
@@ -259,7 +259,7 @@ new_type:
 				decl *d2, *d = decls[i]->struct_member;
 
 				if(d->init)
-					DIE_AT(&d->where, "%s member %s is initialised",
+					die_at(&d->where, "%s member %s is initialised",
 							sue_str(sue), d->spel);
 
 				if(decls[i + 1]
@@ -268,7 +268,7 @@ new_type:
 				{
 					char buf[WHERE_BUF_SIZ];
 
-					DIE_AT(&d2->where, "duplicate member %s (from %s)",
+					die_at(&d2->where, "duplicate member %s (from %s)",
 							d->spel, where_str_r(buf, &d->where));
 				}
 			}

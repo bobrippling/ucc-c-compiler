@@ -24,7 +24,7 @@ static decl_attr *parse_attr_format(void)
 	}else if(CHECK("scanf")){
 		fmt = attr_fmt_scanf;
 	}else{
-		WARN_AT(NULL, "unknown format func \"%s\"", func);
+		warn_at(NULL, "unknown format func \"%s\"", func);
 		parse_attr_bracket_chomp(1);
 		return NULL;
 	}
@@ -57,7 +57,7 @@ static decl_attr *parse_attr_section()
 	EAT(token_open_paren);
 
 	if(curtok != token_string)
-		DIE_AT(NULL, "string expected for section");
+		die_at(NULL, "string expected for section");
 
 	token_get_current_str(&func, &len, NULL);
 	EAT(token_string);
@@ -65,7 +65,7 @@ static decl_attr *parse_attr_section()
 	for(i = 0; i < len; i++)
 		if(!isprint(func[i])){
 			if(i < len - 1 || func[i] != '\0')
-				warn_at(NULL, 1, "character 0x%x detected in section", func[i]);
+				warn_at(NULL, "character 0x%x detected in section", func[i]);
 			break;
 		}
 
@@ -94,7 +94,7 @@ static decl_attr *parse_attr_nonnull()
 				int n = currentval.val;
 				if(n <= 0){
 					/* shouldn't ever be negative */
-					WARN_AT(NULL, "%s nonnull argument ignored", n < 0 ? "negative" : "zero");
+					warn_at(NULL, "%s nonnull argument ignored", n < 0 ? "negative" : "zero");
 					had_error = 1;
 				}else{
 					/* implicitly disallow functions with >32 args */
@@ -224,7 +224,7 @@ static decl_attr *parse_attr_single(char *ident)
 		}
 	}
 
-	warn_at(NULL, 1, "ignoring unrecognised attribute \"%s\"", ident);
+	warn_at(NULL, "ignoring unrecognised attribute \"%s\"", ident);
 
 	/* if there are brackets, eat them all */
 

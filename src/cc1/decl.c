@@ -541,10 +541,10 @@ unsigned type_ref_size(type_ref *r, where *from)
 			intval_t sz;
 
 			if(type_ref_is_void(r->ref))
-				DIE_AT(from, "array of void");
+				die_at(from, "array of void");
 
 			if(!r->bits.array.size)
-				DIE_AT(from, "array has an incomplete size");
+				die_at(from, "array has an incomplete size");
 
 			sz = const_fold_val(r->bits.array.size);
 
@@ -558,10 +558,10 @@ unsigned type_ref_size(type_ref *r, where *from)
 unsigned decl_size(decl *d)
 {
 	if(type_ref_is_void(d->ref))
-		DIE_AT(&d->where, "%s is void", d->spel);
+		die_at(&d->where, "%s is void", d->spel);
 
 	if(d->field_width)
-		DIE_AT(&d->where, "can't take size of a bitfield");
+		die_at(&d->where, "can't take size of a bitfield");
 
 	return type_ref_size(d->ref, &d->where);
 }
@@ -724,7 +724,7 @@ type_ref *type_ref_ptr_depth_dec(type_ref *r, where *w)
 	r = type_ref_is_ptr(r);
 
 	if(!r){
-		DIE_AT(w,
+		die_at(w,
 				"invalid indirection applied to %s",
 				r_save ? type_ref_to_str(r_save) : "(NULL)");
 	}
