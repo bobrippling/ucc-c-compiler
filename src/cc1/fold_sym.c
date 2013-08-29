@@ -173,7 +173,9 @@ void symtab_fold_decls(symtable *tab)
 					clash = "mismatching";
 				}else switch(decl_cmp(a, b, TYPE_CMP_ALLOW_TENATIVE_ARRAY)){
 					case TYPE_NOT_EQUAL:
-					case TYPE_CONVERTIBLE: /* must be an exact match */
+						/* must be an exact match */
+					case TYPE_QUAL_LOSS:
+					case TYPE_CONVERTIBLE:
 						clash = "mismatching";
 					case TYPE_EQUAL:
 						break;

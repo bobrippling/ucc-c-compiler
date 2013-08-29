@@ -43,18 +43,21 @@ int fold_type_chk_warn(
 		type_ref *lhs, type_ref *rhs,
 		where *w, const char *desc)
 {
+	int error = 1;
+
 	switch(type_ref_cmp(lhs, rhs, 0)){
 		case TYPE_CONVERTIBLE:
 			return 1;
 		case TYPE_EQUAL:
 			break;
 
+		case TYPE_QUAL_LOSS:
+			error = 0;
+
 		case TYPE_NOT_EQUAL:
 		{
 			char buf[TYPE_REF_STATIC_BUFSIZ];
 			char wbuf[WHERE_BUF_SIZ];
-			int error = type_ref_is_s_or_u(lhs)
-			         || type_ref_is_s_or_u(rhs);
 
 			(error ? die_at : warn_at)(
 					w, 1,

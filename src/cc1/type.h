@@ -5,7 +5,8 @@ enum type_cmp
 {
 	TYPE_EQUAL,
 	TYPE_CONVERTIBLE,
-	TYPE_NOT_EQUAL
+	TYPE_NOT_EQUAL,
+	TYPE_QUAL_LOSS
 };
 
 enum type_primitive

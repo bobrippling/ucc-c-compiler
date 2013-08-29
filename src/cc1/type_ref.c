@@ -102,7 +102,7 @@ static enum type_cmp type_ref_cmp_r(
 
 		if(type_qual_loss(qa, qb))
 			/* warns are done, but conversion allowed */
-			ret = TYPE_NOT_EQUAL;
+			ret = TYPE_QUAL_LOSS;
 	}
 
 	return ret;

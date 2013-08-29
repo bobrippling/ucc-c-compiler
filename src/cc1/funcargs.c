@@ -61,6 +61,7 @@ enum funcargs_cmp funcargs_cmp(
 					break;
 
 				case TYPE_CONVERTIBLE:
+				case TYPE_QUAL_LOSS:
 					if(!must_exact)
 						break; /* allow */
 					/* fall */
