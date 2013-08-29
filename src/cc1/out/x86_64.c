@@ -401,7 +401,7 @@ void impl_func_prologue_save_call_regs(
 
 				continue;
 pass_via_stack:
-				arg_offsets[i_arg] = ++i_arg_stk * ws;
+				arg_offsets[i_arg] = (i_arg_stk++ + 2) * ws;
 			}
 		}else{
 			unsigned i;

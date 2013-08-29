@@ -1,3 +1,6 @@
+// RUN: %ucc -o %t %s
+// RUN: %t | %output_check 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18
+
 extern printf(const char *, ...) __attribute__((format(printf, 1, 2)));
 
 f(
@@ -14,15 +17,15 @@ f(
  )
 {
 	printf(
-			"%d %.0f "
-			"%d %.0f "
-			"%d %.0f "
-			"%d %.0f "
-			"%d %.0f "
-			"%d %.0f "
-			"%d %.0f "
-			"%d %.0f "
-			"%d %.0f\n"
+			"%d\n%.0f\n"
+			"%d\n%.0f\n"
+			"%d\n%.0f\n"
+			"%d\n%.0f\n"
+			"%d\n%.0f\n"
+			"%d\n%.0f\n"
+			"%d\n%.0f\n"
+			"%d\n%.0f\n"
+			"%d\n%.0f\n"
 			,
 		i1, f1,
 		i2, f2,
