@@ -1,3 +1,5 @@
+// RUN: %ocheck 0 %s
+
 #define assert(cond) if(!(cond)) return 1
 
 int o_cnt, a_cnt;
