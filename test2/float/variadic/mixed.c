@@ -1,3 +1,5 @@
+// RUN: %ocheck 0 %s
+
 float f(int a, ...)
 {
 	double tot = a;
