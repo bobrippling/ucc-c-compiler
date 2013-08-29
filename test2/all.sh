@@ -20,22 +20,10 @@ mkdir -p $tdir || exit $?
 do
 	[ $verbose -ne 0 ] && echo "$0: $f"
 
-	b="$(basename "$f")"
-	e="$tdir/$b"
-	perl ./test.pl "$f" < /dev/null > $e 2>&1
-	r=$?
-	case $r in
-		0)
-			echo "pass: $f"
-			;;
-		*)
-			{
-				echo "fail: $f"
-				sed 's;^;  ;' < "$e"
-			} >&2
-			ec=1
-			;;
-	esac
+	./qtest.sh $verbose "$f" "$tdir"/"$(basename "$f")"
+	if [ $? -ne 0 ]
+	then ec=1
+	fi
 done
 
 exit $ec
