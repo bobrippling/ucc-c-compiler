@@ -1,0 +1,158 @@
+#!/usr/bin/perl
+use strict;
+
+my @ignores;
+
+
+sub interrupt
+{
+	exit 25
+}
+
+sub basename
+{
+	my $f = shift;
+	return $1 if $f =~ m;/([^/]+)$;;
+	return $f;
+}
+
+sub usage
+{
+	die "Usage: $0 [-v] [-i ignore-file] [tests...]\n";
+}
+
+sub read_ignores
+{
+	my $f = shift;
+	open F, '<', $f or die "open $f: $!";
+	my @f = map { chomp $_; $_ } <F>;
+	close F;
+	return @f;
+}
+
+sub test
+{
+	my %args = @_; # keys = file, output, verbose
+
+	my $pid = fork();
+	if($pid == 0){
+		# ./test.pl -v "$1" < /dev/null > "$2" 2>&1
+		open STDIN, '</dev/null' or die;
+		open STDOUT, '>', $args{output} or die;
+		open STDERR, '>&STDOUT' or die;
+
+		my @args = @args{file};
+		unshift @args, '-v' if $args{verbose};
+		exec './test.pl', @args;
+		die "exec: $!";
+	}
+	if(wait() != $pid){
+		die "bad wait return? $!";
+	}
+
+	my $r = $?;
+	return $r;
+}
+
+sub cat_indent_file
+{
+	my $f = shift;
+	open F, '<', $f or die "open $f: $!\n";
+	print "\t$_" while <F>;
+	close F;
+}
+
+sub ignored
+{
+	my $f = shift;
+	for(@ignores){
+		if(index($f, $_) != -1){
+			return 1;
+		}
+	}
+	return 0;
+}
+
+$SIG{INT} = \&interrupt;
+
+my $verbose = 0;
+my $ign_file = undef;
+my @tests;
+
+for(my $i = 0; $i < @ARGV; $i++){
+	if($ARGV[$i] eq '-v'){
+		$verbose = 1;
+	}elsif($ARGV[$i] eq '-i'){
+		my $f = $ARGV[++$i];
+		usage() unless $f;
+		$ign_file = $f;
+
+	}else{
+		push @tests, $ARGV[$i];
+	}
+}
+
+@ignores = read_ignores($ign_file) if $ign_file;
+
+my $tdir = '/tmp/ucc.test/';
+if(not -d $tdir and not mkdir($tdir)){
+	die "mkdir: $!";
+}
+
+my $ec = 0;
+
+if(@tests == 0){
+	open TEST_LIST, '-|', './list_tests.sh' or die;
+	@tests = map { chomp; $_ } <TEST_LIST>;
+	close TEST_LIST;
+}
+
+my @test_files;
+for(my $i = 0; $i < @tests; $i++){
+	$_ = $tests[$i];
+	if(-d $_){
+		push @tests, glob "$_/*";
+	}elsif($_ =~ /\.c$/){
+		push @test_files, $_;
+	}
+}
+die "$0: no tests\n" unless @test_files;
+
+for my $f (@test_files){
+	chomp($f);
+
+	print "$0: $f\n" if $verbose;
+
+	my %args = (
+		file => $f,
+		output => "$tdir/" . basename($f),
+		verbose => $verbose
+	);
+
+	my $rc = test(%args);
+
+	if($rc & 127){
+		die "test caught signal " . ($rc & 127) . "\n";
+	}
+
+	my $desc;
+	if($rc){
+		$desc = 'fail';
+	}else{
+		$desc = 'pass';
+	}
+
+	my $ignored = ignored($f);
+
+	print "$desc"
+	. ($ignored ? ' (expected)' : '')
+	. ": $f\n";
+
+	if($ignored != !!$rc){
+		$ec = 1;
+		# dump output
+		cat_indent_file($args{output});
+	}
+}
+
+exit $ec;

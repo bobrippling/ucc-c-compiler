@@ -1,0 +1,7 @@
+__asm__/inline.c
+__asm__/multiple.c
+asm/abi-test.c
+decl_parsing/vla_proto.c
+other/__asm__.c
+parsing/vla_ar.c
+type_propagation/tgmath.c
