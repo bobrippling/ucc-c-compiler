@@ -490,7 +490,7 @@ static void msg_if_precedence(expr *sub, where *w,
 	if(expr_kind(sub, op)
 	&& !sub->in_parens
 	&& sub->op != binary
-	&& (*test)(sub->op))
+	&& (test ? (*test)(sub->op) : 1))
 	{
 		/* ==, !=, <, ... */
 		WARN_AT(w, "%s has higher precedence than %s",
@@ -511,6 +511,12 @@ static void op_check_precedence(expr *e)
 		case op_orsc:
 			msg_if_precedence(e->lhs, &e->where, e->op, op_is_shortcircuit);
 			msg_if_precedence(e->rhs, &e->where, e->op, op_is_shortcircuit);
+			break;
+
+		case op_shiftl:
+		case op_shiftr:
+			msg_if_precedence(e->lhs, &e->where, e->op, NULL);
+			msg_if_precedence(e->rhs, &e->where, e->op, NULL);
 			break;
 
 		default:
