@@ -822,6 +822,25 @@ static void die_incomplete(init_iter *iter, type_ref *tfor)
 			"initialising %s", type_ref_to_str(tfor));
 }
 
+static decl_init *is_char_init(type_ref *ty, init_iter *iter)
+{
+	decl_init *this;
+
+	if(type_ref_is_char_ptr(ty)
+	&& (this = *iter->pos)
+	/* allow "xyz" or { "xyz" } */
+	&& (this->type == decl_init_scalar
+	|| (this->type == decl_init_brace &&
+		  1 == dynarray_count(this->bits.ar.inits) &&
+		  this->bits.ar.inits[0]->type == decl_init_scalar)))
+	{
+		return this->type == decl_init_scalar
+			? this : this->bits.ar.inits[0];
+	}
+
+	return NULL;
+}
+
 static decl_init *decl_init_brace_up_array_pre(
 		decl_init *current, init_iter *iter,
 		type_ref *next_type, symtable *stab)
@@ -830,26 +849,12 @@ static decl_init *decl_init_brace_up_array_pre(
 		? -1 : type_ref_array_len(next_type);
 
 	type_ref *next = type_ref_next(next_type);
-
-	const int for_str_ar = !!type_ref_is_type(
-			type_ref_is_array(next_type), type_char);
-
-	decl_init *this;
+	decl_init *strk;
 
 	if(!type_ref_is_complete(next))
 		die_incomplete(iter, next_type);
 
-	if(for_str_ar
-	&& (this = *iter->pos)
-	/* allow "xyz" or { "xyz" } */
-	&& (this->type == decl_init_scalar
-	|| (this->type == decl_init_brace &&
-		  1 == dynarray_count(this->bits.ar.inits) &&
-		  this->bits.ar.inits[0]->type == decl_init_scalar)))
-	{
-		decl_init *strk = this->type == decl_init_scalar
-			? this : this->bits.ar.inits[0];
-
+	if((strk = is_char_init(next_type, iter))){
 		consty k;
 
 		FOLD_EXPR(strk->bits.expr, stab);
@@ -921,8 +926,6 @@ static decl_init *decl_init_brace_up_start(
 	type_ref *const tfor = *ptfor;
 	decl_init *ret;
 
-	fold_type_ref(tfor, NULL, stab);
-
 	/* check for non-brace init */
 	if(init
 	&& init->type == decl_init_scalar
@@ -931,9 +934,12 @@ static decl_init *decl_init_brace_up_start(
 		expr *e = FOLD_EXPR(init->bits.expr, stab);
 
 		if(!type_ref_equal(e->tree_type, tfor, DECL_CMP_EXACT_MATCH)){
-			die_at(&init->where,
-					"%s must be initialised with an initialiser list",
-					type_ref_to_str(tfor));
+			/* allow special case of char [] with "..." */
+			if(!is_char_init(e->tree_type, &it)){
+				die_at(&init->where,
+						"%s must be initialised with an initialiser list",
+						type_ref_to_str(tfor));
+			}
 		}
 		/* else struct copy init */
 	}
