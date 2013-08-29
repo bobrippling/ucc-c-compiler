@@ -1,6 +1,6 @@
 // RUN: %ucc -o %t %s
 // RUN: %t
-// RUN: %t | %output_check '4.4'
+// RUN: %t | %output_check '4.5'
 
 main()
 {
@@ -8,7 +8,7 @@ main()
 
 	a = 1.3f, b = 3.2f;
 
-	printf("%f\n", a + b);
+	printf("%.1f\n", a + b);
 
 	return 0;
 }
