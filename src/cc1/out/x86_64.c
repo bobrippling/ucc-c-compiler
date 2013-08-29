@@ -411,9 +411,11 @@ pass_via_stack:
 							x86_suffix(NULL),
 							x86_reg_str(&call_regs[i], NULL));
 
+					/* +1 to step over saved rbp */
 					arg_offsets[i] = -(i + 1) * ws;
 				}else{
-					arg_offsets[i] = (i + 1) * ws;
+					/* +2 to step back over saved rbp and saved rip */
+					arg_offsets[i] = (i - n_call_i + 2) * ws;
 				}
 			}
 
