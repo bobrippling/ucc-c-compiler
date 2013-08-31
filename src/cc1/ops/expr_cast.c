@@ -53,7 +53,7 @@ static void fold_const_expr_cast(expr *e, consty *k)
 	}else if(from_fp){
 		/* float -> int */
 		k->bits.num.val.i = k->bits.num.val.f;
-		k->bits.num.suffix = VAL_LONG;
+		k->bits.num.suffix = 0;
 
 		/* fall through to int logic */
 	}
