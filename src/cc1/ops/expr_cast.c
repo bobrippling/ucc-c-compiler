@@ -67,7 +67,7 @@ static void fold_const_expr_cast(expr *e, consty *k)
 			if(type_ref_is_type(e->tree_type, type__Bool)){
 				*pv = !!*pv; /* analagous to out/out.c::out_normalise()'s constant case */
 
-			}else if(e->expr_cast_implicit){ /* otherwise this is a no-op */
+			}else if(e->expr_cast_implicit && !from_fp){ /* otherwise this is a no-op */
 				const unsigned sz = type_ref_size(e->tree_type, &e->where);
 				const integral_t old = *pv;
 				const int to_sig   = type_ref_is_signed(e->tree_type);
