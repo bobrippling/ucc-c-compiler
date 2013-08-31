@@ -59,13 +59,18 @@ int fold_type_chk_warn(
 			char buf[TYPE_REF_STATIC_BUFSIZ];
 			char wbuf[WHERE_BUF_SIZ];
 
-			(error ? die_at : warn_at)(
+			(error ? warn_at_print_error : warn_at)(
 					w,
 					"mismatching types, %s:\n%s: note: '%s' vs '%s'",
 					desc, where_str_r(wbuf, w),
 					type_ref_to_str_r(buf, lhs),
 					type_ref_to_str(       rhs));
-			return 1;
+
+			if(error){
+				fold_had_error = 1;
+				return 0; /* don't cast - we don't want duplicate errors */
+			}
+			return 1; /* need cast */
 		}
 	}
 	return 0;
