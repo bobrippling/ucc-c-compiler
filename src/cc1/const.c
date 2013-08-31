@@ -169,3 +169,41 @@ integral_t const_op_exec(
 	ICE("unhandled type");
 #undef piv
 }
+
+floating_t const_op_exec_fp(
+		floating_t lv, const floating_t *rv,
+		enum op_type op)
+{
+	switch(op){
+		case op_orsc:
+		case op_andsc:
+		case op_unknown:
+			/* should've been elsewhere */
+		case op_modulus:
+		case op_xor:
+		case op_or:
+		case op_and:
+		case op_shiftl:
+		case op_shiftr:
+		case op_bnot:
+			/* explicitly bad */
+			ICE("floating point %s", op_to_str(op));
+
+		case op_multiply: return lv * *rv;
+		case op_divide:   return lv / *rv; /* safe - / 0.0f is inf */
+		case op_plus:     return rv ? lv + *rv : +lv;
+		case op_minus:    return rv ? lv - *rv : -lv;
+		case op_eq:       return lv == *rv;
+		case op_ne:       return lv != *rv;
+		case op_le:       return lv <= *rv;
+		case op_lt:       return lv <  *rv;
+		case op_ge:       return lv >= *rv;
+		case op_gt:       return lv >  *rv;
+
+		case op_not:
+			UCC_ASSERT(!rv, "binary not?");
+			return !lv;
+	}
+
+	ucc_unreach(-1);
+}

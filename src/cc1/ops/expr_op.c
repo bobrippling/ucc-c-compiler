@@ -37,13 +37,6 @@ static void fold_const_expr_op(expr *e, consty *k)
 {
 	consty lhs, rhs;
 
-	if(type_ref_is_floating(e->lhs->tree_type)
-	|| (e->rhs && type_ref_is_floating(e->rhs->tree_type)))
-	{
-		k->type = CONST_NO;
-		return;
-	}
-
 	memset(k, 0, sizeof *k);
 
 	const_fold(e->lhs, &lhs);
@@ -55,24 +48,53 @@ static void fold_const_expr_op(expr *e, consty *k)
 	}
 
 	if(lhs.type == CONST_NUM && rhs.type == CONST_NUM){
-		const char *err = NULL;
-		integral_t r;
-		/* the op is signed if an operand is, not the result,
-		 * e.g. u_a < u_b produces a bool (signed) */
-		int is_signed = type_ref_is_signed(e->lhs->tree_type) ||
-		                (e->rhs ? type_ref_is_signed(e->rhs->tree_type) : 0);
+		int fp[2] = {
+			type_ref_is_floating(e->lhs->tree_type)
+		};
 
-		r = const_op_exec(
-				lhs.bits.num.val.i,
-				e->rhs ? &rhs.bits.num.val.i : NULL,
-				e->op, is_signed, &err);
+		if(e->rhs){
+			fp[1] = type_ref_is_floating(e->rhs->tree_type);
 
-		if(err){
-			warn_at(&e->where, "%s", err);
-		}else{
-			memset(k, 0, sizeof *k);
+			UCC_ASSERT(!(fp[0] ^ fp[1]),
+					"one float and one non-float?");
+		}
+
+		if(fp[0]){
+			/* float const-op */
+			floating_t r = const_op_exec_fp(
+					lhs.bits.num.val.f,
+					e->rhs ? &rhs.bits.num.val.f : 0,
+					e->op);
+
 			k->type = CONST_NUM;
-			k->bits.num.val.i = r;
+			k->bits.num.val.f = r;
+
+			switch(type_ref_get_type(e->tree_type)->primitive){
+				case type_float:   k->bits.num.suffix = VAL_FLOAT;   break;
+				case type_double:  k->bits.num.suffix = VAL_DOUBLE;  break;
+				case type_ldouble: k->bits.num.suffix = VAL_LDOUBLE; break;
+				default: ICE("bad float");
+			}
+
+		}else{
+			const char *err = NULL;
+			integral_t r;
+			/* the op is signed if an operand is, not the result,
+			 * e.g. u_a < u_b produces a bool (signed) */
+			int is_signed = type_ref_is_signed(e->lhs->tree_type) ||
+				(e->rhs ? type_ref_is_signed(e->rhs->tree_type) : 0);
+
+			r = const_op_exec(
+					lhs.bits.num.val.i,
+					e->rhs ? &rhs.bits.num.val.i : NULL,
+					e->op, is_signed, &err);
+
+			if(err){
+				warn_at(&e->where, "%s", err);
+			}else{
+				k->type = CONST_NUM;
+				k->bits.num.val.i = r;
+			}
 		}
 
 	}else if((e->op == op_andsc || e->op == op_orsc)
@@ -93,6 +115,8 @@ static void fold_const_expr_op(expr *e, consty *k)
 		/* allow one CONST_{ADDR,STRK} and one CONST_VAL for an offset const */
 		int lhs_addr = lhs.type == CONST_ADDR || lhs.type == CONST_STRK;
 		int rhs_addr = rhs.type == CONST_ADDR || rhs.type == CONST_STRK;
+
+		/* this is safe - fold() checks that we can't add floats to addresses */
 
 		/**/if(lhs_addr && rhs.type == CONST_NUM)
 			const_offset(k, &rhs, &lhs, e->lhs->tree_type, e->op);

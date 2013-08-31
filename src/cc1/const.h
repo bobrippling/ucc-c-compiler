@@ -15,4 +15,8 @@ integral_t const_op_exec(
 		enum op_type op, int is_signed,
 		const char **error);
 
+floating_t const_op_exec_fp(
+		floating_t lv, const floating_t *rv,
+		enum op_type op);
+
 #endif
