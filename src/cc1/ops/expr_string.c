@@ -112,6 +112,7 @@ expr *expr_new_str(char *s, int l, int wide)
 	expr *e = expr_new_wrapper(str);
 	expr_mutate_str(e, s, l);
 	e->bits.str.sv.wide = wide;
+	memcpy_safe(&e->bits.str.sv.where, &e->where);
 	return e;
 }
 

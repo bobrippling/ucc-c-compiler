@@ -862,14 +862,33 @@ static decl_init *decl_init_brace_up_array_pre(
 
 		if(k.type == CONST_STRK){
 			where *const w = &strk->where;
-			unsigned str_i;
+			unsigned str_i, count;
+			decl_init *braced;
 
 			if(k.bits.str->wide)
 				ICE("TODO: wide string init");
 
-			decl_init *braced = decl_init_new_w(decl_init_brace, w);
+			if(limit == -1){
+				count = k.bits.str->len;
+			}else{
+				if(k.bits.str->len <= (unsigned)limit){
+					count = k.bits.str->len;
+				}else{
+					/* only warn if it's more than one larger,
+					 * i.e. allow char[2] = "hi" <-- '\0' excluded
+					 */
+					if(k.bits.str->len - 1 > (unsigned)limit){
+						warn_at(&k.bits.str->where,
+								"string literal too long for '%s'",
+								type_ref_to_str(next_type));
+					}
+					count = limit;
+				}
+			}
 
-			for(str_i = 0; str_i < k.bits.str->len; str_i++){
+			braced = decl_init_new_w(decl_init_brace, w);
+
+			for(str_i = 0; str_i < count; str_i++){
 				decl_init *char_init = decl_init_new_w(decl_init_scalar, w);
 
 				char_init->bits.expr = expr_new_val(k.bits.str->str[str_i]);

@@ -41,6 +41,7 @@ intval_t intval_truncate_bits(intval_t val, unsigned bits);
 
 struct stringval
 {
+	where where;
 	char *lbl;
 	const char *str;
 	unsigned len;
