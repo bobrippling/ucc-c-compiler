@@ -27,10 +27,17 @@ static void fold_const_expr_cast(expr *e, consty *k)
 
 	if(to_fp){
 		if(from_fp){
+			UCC_ASSERT(K_FLOATING(k->bits.num), "i/f mismatch types");
 			/* float -> float - nothing to see here */
 		}else{
+			UCC_ASSERT(K_INTEGRAL(k->bits.num), "i/f mismatch types");
 			/* int -> float */
-			k->bits.num.val.f = k->bits.num.val.i;
+			if(k->bits.num.suffix & VAL_UNSIGNED){
+				k->bits.num.val.f = k->bits.num.val.i;
+			}else{
+				/* force a signed conversion, long long to long double */
+				k->bits.num.val.f = (sintegral_t)k->bits.num.val.i;
+			}
 		}
 
 		/* perform the trunc */
@@ -52,6 +59,7 @@ static void fold_const_expr_cast(expr *e, consty *k)
 		return;
 	}else if(from_fp){
 		/* float -> int */
+		UCC_ASSERT(K_FLOATING(k->bits.num), "i/f mismatch types");
 		k->bits.num.val.i = k->bits.num.val.f;
 		k->bits.num.suffix = 0;
 
