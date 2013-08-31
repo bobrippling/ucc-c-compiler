@@ -162,7 +162,7 @@ type_ref *op_required_promotion(
 		resolved = op_is_comparison(op) ? type_ref_cached_BOOL() : res;
 
 		goto fin;
-		/* else we pick the largest floating or intergral type */
+		/* else we pick the largest floating or integral type */
 	}
 
 #if 0
