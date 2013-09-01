@@ -344,16 +344,23 @@ void impl_func_prologue_save_call_regs(
 	if(nargs){
 		const unsigned ws = platform_word_size();
 
-		unsigned n_call_i;
-		const struct vreg *call_regs;
-
-		unsigned fp_cnt, int_cnt;
-
 		funcargs *const fa = type_ref_funcargs(rf);
 
+		unsigned n_call_i, n_call_f;
+		const struct vreg *call_regs;
+
+		n_call_f = N_CALL_REGS_F;
 		x86_call_regs(rf, &n_call_i, &call_regs);
 
-		funcargs_ty_calc(fa, &int_cnt, &fp_cnt);
+		{
+			/* trim by the number of args */
+			unsigned fp_cnt, int_cnt;
+
+			funcargs_ty_calc(fa, &int_cnt, &fp_cnt);
+
+			n_call_i = MIN(n_call_i, int_cnt);
+			n_call_f = MIN(n_call_f, fp_cnt);
+		}
 
 		/* two cases
 		 * - for all integral arguments, we can just push them
@@ -361,8 +368,7 @@ void impl_func_prologue_save_call_regs(
 		 * each argument takes a full word for now - subject to change
 		 * (e.g. long double, struct/union args, etc)
 		 */
-		if(fp_cnt){
-			const unsigned n_call_f = MIN(fp_cnt, N_CALL_REGS_F);
+		if(n_call_f){
 			unsigned i_arg, i_stk, i_arg_stk, i_i, i_f;
 
 			v_alloc_stack(

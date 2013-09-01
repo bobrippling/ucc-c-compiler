@@ -436,8 +436,6 @@ static unsigned v_alloc_stack2(
 				to_alloc = sz_rounded - sz_initial;
 			}
 
-			v_stack_adj(to_alloc, 1);
-
 			if(fopt_mode & FOPT_VERBOSE_ASM){
 				out_comment("stack alignment for %s (%u -> %u)",
 						desc, stack_sz, stack_sz + sz_rounded);
@@ -445,6 +443,8 @@ static unsigned v_alloc_stack2(
 						sz_initial, stack_sz + sz_initial,
 						sz_rounded - sz_initial);
 			}
+
+			v_stack_adj(to_alloc, 1);
 		}
 
 		stack_sz += sz_rounded;
