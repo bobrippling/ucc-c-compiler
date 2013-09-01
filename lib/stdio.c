@@ -183,7 +183,7 @@ static int fclose2(FILE *f)
 	return close(fileno(f)) == 0 ? 0 : EOF;
 }
 
-FILE *funopen(const void *cookie, __stdio_read *r, __stdio_write *w, __stdio_seek *s, __stdio_close *c)
+FILE *funopen(void *cookie, __stdio_read *r, __stdio_write *w, __stdio_seek *s, __stdio_close *c)
 {
 	FILE *f;
 
