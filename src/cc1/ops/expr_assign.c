@@ -66,7 +66,7 @@ void bitfield_trunc_check(decl *mem, expr *from)
 		const_fold(mem->field_width, &k);
 
 		UCC_ASSERT(k.type == CONST_NUM, "bitfield size not val?");
-		UCC_ASSERT(K_FLOATING(k.bits.num), "fp bitfield size?");
+		UCC_ASSERT(K_INTEGRAL(k.bits.num), "fp bitfield size?");
 
 		if(highest > (sintegral_t)k.bits.num.val.i
 		|| (is_signed && highest == (sintegral_t)k.bits.num.val.i))
