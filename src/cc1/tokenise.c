@@ -622,7 +622,7 @@ void nexttoken()
 
 			currentval.val.f = strtold(num_start, &bufferpos);
 
-			if(peeknextchar() == 'f'){
+			if(toupper(peeknextchar()) == 'F'){
 				currentval.suffix = VAL_FLOAT;
 				nextchar();
 			}else if(toupper(peeknextchar()) == 'L'){
