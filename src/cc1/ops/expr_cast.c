@@ -16,27 +16,25 @@ const char *str_expr_cast()
 	return "cast";
 }
 
-static void fold_const_expr_cast(expr *e, consty *k)
+static void fold_cast_num(expr *const e, numeric *const num)
 {
 	int to_fp, from_fp;
-
-	const_fold(e->expr, k);
 
 	to_fp = type_ref_is_floating(e->tree_type);
 	from_fp = type_ref_is_floating(e->expr->tree_type);
 
 	if(to_fp){
 		if(from_fp){
-			UCC_ASSERT(K_FLOATING(k->bits.num), "i/f mismatch types");
+			UCC_ASSERT(K_FLOATING(*num), "i/f mismatch types");
 			/* float -> float - nothing to see here */
 		}else{
-			UCC_ASSERT(K_INTEGRAL(k->bits.num), "i/f mismatch types");
+			UCC_ASSERT(K_INTEGRAL(*num), "i/f mismatch types");
 			/* int -> float */
-			if(k->bits.num.suffix & VAL_UNSIGNED){
-				k->bits.num.val.f = k->bits.num.val.i;
+			if(num->suffix & VAL_UNSIGNED){
+				num->val.f = num->val.i;
 			}else{
 				/* force a signed conversion, long long to long double */
-				k->bits.num.val.f = (sintegral_t)k->bits.num.val.i;
+				num->val.f = (sintegral_t)num->val.i;
 			}
 		}
 
@@ -47,8 +45,8 @@ static void fold_const_expr_cast(expr *e, consty *k)
 
 #define TRUNC(cse, ty, bmask) \
 			case type_ ## cse: \
-				k->bits.num.val.f = (ty)k->bits.num.val.f; \
-				k->bits.num.suffix = bmask; \
+				num->val.f = (ty)num->val.f; \
+				num->suffix = bmask; \
 				break
 
 			TRUNC(float, float, VAL_FLOAT);
@@ -59,65 +57,72 @@ static void fold_const_expr_cast(expr *e, consty *k)
 		return;
 	}else if(from_fp){
 		/* float -> int */
-		UCC_ASSERT(K_FLOATING(k->bits.num), "i/f mismatch types");
-		k->bits.num.val.i = k->bits.num.val.f;
-		k->bits.num.suffix = 0;
+		UCC_ASSERT(K_FLOATING(*num), "i/f mismatch types");
+		num->val.i = num->val.f;
+		num->suffix = 0;
 
 		/* fall through to int logic */
 	}
 
+	UCC_ASSERT(K_INTEGRAL(*num), "fp const?");
+
+#define pv (&num->val.i)
+	/* need to cast the val.i down as appropriate */
+	if(type_ref_is_type(e->tree_type, type__Bool)){
+		*pv = !!*pv; /* analagous to out/out.c::out_normalise()'s constant case */
+
+	}else if(e->expr_cast_implicit && !from_fp){ /* otherwise this is a no-op */
+		const unsigned sz = type_ref_size(e->tree_type, &e->where);
+		const integral_t old = *pv;
+		const int to_sig   = type_ref_is_signed(e->tree_type);
+		const int from_sig = type_ref_is_signed(e->expr->tree_type);
+		integral_t to_iv, to_iv_sign_ext;
+
+		/* TODO: disallow for ptrs/non-ints */
+
+		/* we don't save the truncated value - we keep the original
+		 * so negative numbers, for example, are preserved */
+		to_iv = integral_truncate(*pv, sz, &to_iv_sign_ext);
+
+		if(to_sig && from_sig ? old != to_iv_sign_ext : old != to_iv){
+#define CAST_WARN(pre_fmt, pre_val, post_fmt, post_val)  \
+			warn_at(&e->where,                           \
+					"implicit cast changes value from %"     \
+					pre_fmt " to %" post_fmt,                \
+					pre_val, post_val)
+
+			/* nice... */
+			if(from_sig){
+				if(to_sig)
+					CAST_WARN(
+							NUMERIC_FMT_D, (long long signed)old,
+							NUMERIC_FMT_D, (long long signed)to_iv_sign_ext);
+				else
+					CAST_WARN(
+							NUMERIC_FMT_D, (long long signed)old,
+							NUMERIC_FMT_U, (long long unsigned)to_iv);
+			}else{
+				if(to_sig)
+					CAST_WARN(
+							NUMERIC_FMT_U, (long long unsigned)old,
+							NUMERIC_FMT_D, (long long signed)to_iv_sign_ext);
+				else
+					CAST_WARN(
+							NUMERIC_FMT_U, (long long unsigned)old,
+							NUMERIC_FMT_U, (long long unsigned)to_iv);
+			}
+		}
+	}
+#undef pv
+}
+
+static void fold_const_expr_cast(expr *e, consty *k)
+{
+	const_fold(e->expr, k);
+
 	switch(k->type){
 		case CONST_NUM:
-			UCC_ASSERT(!(K_FLOATING(k->bits.num)), "fp const?");
-
-#define pv (&k->bits.num.val.i)
-			/* need to cast the val.i down as appropriate */
-			if(type_ref_is_type(e->tree_type, type__Bool)){
-				*pv = !!*pv; /* analagous to out/out.c::out_normalise()'s constant case */
-
-			}else if(e->expr_cast_implicit && !from_fp){ /* otherwise this is a no-op */
-				const unsigned sz = type_ref_size(e->tree_type, &e->where);
-				const integral_t old = *pv;
-				const int to_sig   = type_ref_is_signed(e->tree_type);
-				const int from_sig = type_ref_is_signed(e->expr->tree_type);
-				integral_t to_iv, to_iv_sign_ext;
-
-				/* TODO: disallow for ptrs/non-ints */
-
-				/* we don't save the truncated value - we keep the original
-				 * so negative numbers, for example, are preserved */
-				to_iv = integral_truncate(*pv, sz, &to_iv_sign_ext);
-
-				if(to_sig && from_sig ? old != to_iv_sign_ext : old != to_iv){
-#define CAST_WARN(pre_fmt, pre_val, post_fmt, post_val)  \
-						warn_at(&e->where,                           \
-								"implicit cast changes value from %"     \
-								pre_fmt " to %" post_fmt,                \
-								pre_val, post_val)
-
-					/* nice... */
-					if(from_sig){
-						if(to_sig)
-							CAST_WARN(
-									NUMERIC_FMT_D, (long long signed)old,
-									NUMERIC_FMT_D, (long long signed)to_iv_sign_ext);
-						else
-							CAST_WARN(
-									NUMERIC_FMT_D, (long long signed)old,
-									NUMERIC_FMT_U, (long long unsigned)to_iv);
-					}else{
-						if(to_sig)
-							CAST_WARN(
-									NUMERIC_FMT_U, (long long unsigned)old,
-									NUMERIC_FMT_D, (long long signed)to_iv_sign_ext);
-						else
-							CAST_WARN(
-									NUMERIC_FMT_U, (long long unsigned)old,
-									NUMERIC_FMT_U, (long long unsigned)to_iv);
-					}
-				}
-			}
-#undef pv
+			fold_cast_num(e, &k->bits.num);
 			break;
 
 		case CONST_NO:
