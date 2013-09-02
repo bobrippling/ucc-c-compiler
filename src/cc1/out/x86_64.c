@@ -1017,8 +1017,9 @@ void impl_op(enum op_type op)
 	{
 		char buf[VSTACK_STR_SZ];
 
-		v_to(vtop,     TO_REG | TO_CONST | TO_MEM);
-		v_to(vtop - 1, TO_REG | TO_CONST | TO_MEM);
+		/* FIXME: TO_MEM: temporary fix for adding from an rvalue memory operand */
+		v_to(vtop,     TO_REG | TO_CONST); /*| TO_MEM); */
+		v_to(vtop - 1, TO_REG | TO_CONST); /*| TO_MEM); */
 
 		/* vtop[-1] is a constant - needs to be in a reg */
 		if(vtop[-1].type != REG){
