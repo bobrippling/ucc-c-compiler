@@ -221,7 +221,7 @@ int main(int argc, char **argv)
 
 			case 'C':
 				if(argv[i][2] == '\0')
-					fprintf(stderr, "TODO: -C\n"); /*strip_comments = STRIP_DIRECTIVE;*/
+					strip_comments = STRIP_EXCEPT_DIRECTIVE;
 				else if(!strcmp(argv[i] + 2, "C"))
 					strip_comments = STRIP_NONE;
 				break;

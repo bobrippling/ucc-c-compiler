@@ -37,9 +37,9 @@ extern enum wmode
 
 extern enum comment_strip
 {
-	STRIP_ALL,
-	/*STRIP_EXCEPT_DIRECTIVE TODO */
-	STRIP_NONE
+	STRIP_ALL, /* <empty> */
+	STRIP_EXCEPT_DIRECTIVE, /* -C */
+	STRIP_NONE /* -CC */
 } strip_comments;
 
 #endif

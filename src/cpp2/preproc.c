@@ -175,6 +175,7 @@ re_read:
 
 static char *strip_comment(char *line)
 {
+	const int is_directive = *str_spc_skip(line) == '#';
 	char *s;
 
 	for(s = line; *s; s++){
@@ -194,26 +195,45 @@ static char *strip_comment(char *line)
 			/* finish of string */
 		}else if(*s == '/'){
 			if(s[1] == '/'){
-				if(strip_comments == STRIP_NONE){
-					/* convert to a block comment */
-					const unsigned pos_slash = s - line;
-					const unsigned len = strlen(line);
+				switch(strip_comments){
+					case STRIP_EXCEPT_DIRECTIVE:
+						if(is_directive)
+							goto strip_1line;
+						/* fall */
+					case STRIP_NONE:
+					{
+						/* convert to a block comment */
+						const unsigned pos_slash = s - line;
+						const unsigned len = strlen(line);
 
-					line = urealloc1(line, len + 2 + 1);
+						line = urealloc1(line, len + 2 + 1);
 
-					s = line + pos_slash;
-					s[1] = '*';
-					strcpy(line + len, "*/");
-				}else{
-					/* ignore //.* */
-					*s = '\0';
+						s = line + pos_slash;
+						s[1] = '*';
+						strcpy(line + len, "*/");
+						break;
+					}
+strip_1line:
+					case STRIP_ALL:
+						/* ignore //.* */
+						*s = '\0';
+						break;
 				}
 				break;
-			}else if(s[1] == '*' && strip_comments == STRIP_ALL){
-				/* wait for terminator elsewhere (i'll be back) */
-				*s = s[1] = ' ';
-				strip_in_block = 1;
-				s++;
+			}else if(s[1] == '*'){
+				switch(strip_comments){
+					case STRIP_EXCEPT_DIRECTIVE:
+						if(!is_directive)
+							break;
+						/* fall */
+					case STRIP_ALL:
+						/* wait for terminator elsewhere (i'll be back) */
+						*s = s[1] = ' ';
+						strip_in_block = 1;
+						s++;
+					case STRIP_NONE:
+						break;
+				}
 			}
 		}
 	}
