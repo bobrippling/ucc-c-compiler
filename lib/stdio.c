@@ -441,7 +441,8 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 					}
 #endif
 
-					printers[*fmt](file, n, *fmt == 'd', sizeof(int) + (lcount ? 1 : 0));
+					printers[*fmt](file, n, *fmt == 'd',
+							lcount ? sizeof(long) : sizeof(int));
 					break;
 				}
 				case 'p':
