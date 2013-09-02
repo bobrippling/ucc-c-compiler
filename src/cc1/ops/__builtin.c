@@ -32,7 +32,8 @@ static func_builtin_parse parse_unreachable,
                           parse_frame_address,
                           parse_expect,
                           parse_strlen,
-                          parse_is_signed;
+                          parse_is_signed,
+                          parse_choose_expr;
 #ifdef BUILTIN_LIBC_FUNCTIONS
                           parse_memset,
                           parse_memcpy;
@@ -56,6 +57,8 @@ builtin_table builtins[] = {
 	{ "expect", parse_expect },
 
 	{ "is_signed", parse_is_signed },
+
+	{ "choose_expr", parse_choose_expr },
 
 #define BUILTIN_VA(nam) { "va_" #nam, parse_va_ ##nam },
 #  include "__builtin_va.def"
@@ -639,6 +642,57 @@ static expr *parse_expect(void)
 	expr *fcall = parse_any_args();
 	expr_mutate_builtin_const(fcall, expect);
 	BUILTIN_SET_GEN(fcall, builtin_gen_expect);
+	return fcall;
+}
+
+/* --- choose_expr */
+
+static void fold_choose_expr(expr *e, symtable *stab)
+{
+	consty k;
+	int i;
+
+	if(dynarray_count(e->funcargs) != 3)
+		die_at(&e->where, "three arguments expected for %s",
+				BUILTIN_SPEL(e->expr));
+
+	for(i = 0; i < 3; i++)
+		FOLD_EXPR(e->funcargs[i], stab);
+
+	const_fold(e->funcargs[0], &k);
+	if(k.type != CONST_VAL){
+		die_at(&e->funcargs[0]->where,
+				"first argument to %s not constant",
+				BUILTIN_SPEL(e->expr));
+	}
+
+	memcpy_safe(&e->bits.iv, &k.bits.iv);
+
+	e->tree_type = e->funcargs[k.bits.iv.val ? 1 : 2]->tree_type;
+
+	wur_builtin(e);
+}
+
+static void const_choose_expr(expr *e, consty *k)
+{
+	/* forward to the chosen expr */
+	const_fold(e->funcargs[e->bits.iv.val ? 1 : 2], k);
+}
+
+static void gen_choose_expr(expr *e)
+{
+	/* forward to the chosen expr */
+	gen_expr(e->funcargs[e->bits.iv.val ? 1 : 2]);
+}
+
+static expr *parse_choose_expr(void)
+{
+	expr *fcall = parse_any_args();
+
+	fcall->f_fold       = fold_choose_expr;
+	fcall->f_const_fold = const_choose_expr;
+	BUILTIN_SET_GEN(fcall, gen_choose_expr);
+
 	return fcall;
 }
 
