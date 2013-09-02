@@ -65,18 +65,25 @@ static void fold_const_expr_op(expr *e, consty *k)
 					lhs.bits.num.val.f,
 					e->rhs ? &rhs.bits.num.val.f : 0,
 					e->op);
-			const type *ty = type_ref_get_type(e->tree_type);
-
-			UCC_ASSERT(ty, "no float type for float op?");
 
 			k->type = CONST_NUM;
-			k->bits.num.val.f = r;
 
-			switch(ty->primitive){
-				case type_float:   k->bits.num.suffix = VAL_FLOAT;   break;
-				case type_double:  k->bits.num.suffix = VAL_DOUBLE;  break;
-				case type_ldouble: k->bits.num.suffix = VAL_LDOUBLE; break;
-				default: ICE("bad float");
+			if(op_returns_bool(e->op)){
+				k->bits.num.val.i = r; /* convert to bool */
+
+			}else{
+				const type *ty = type_ref_get_type(e->tree_type);
+
+				UCC_ASSERT(ty, "no float type for float op?");
+
+				k->bits.num.val.f = r;
+
+				switch(ty->primitive){
+					case type_float:   k->bits.num.suffix = VAL_FLOAT;   break;
+					case type_double:  k->bits.num.suffix = VAL_DOUBLE;  break;
+					case type_ldouble: k->bits.num.suffix = VAL_LDOUBLE; break;
+					default: ICE("bad float");
+				}
 			}
 
 		}else{
