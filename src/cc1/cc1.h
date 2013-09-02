@@ -47,6 +47,9 @@ enum warning
 	WARN_PAD                      = 1 << 26,
 	WARN_TENATIVE_INIT            = 1 << 27,
 
+	WARN_SHADOW_LOCAL             = 1 << 28,
+	WARN_SHADOW_GLOBAL            = 1 << 29,
+
 	/* TODO */
 	/*
 	WARN_FORMAT                   = 1 << 23,
@@ -90,6 +93,7 @@ enum cc1_backend
 
 extern enum fopt fopt_mode;
 extern enum cc1_backend cc1_backend;
+extern enum warning warn_mode;
 
 extern enum c_std cc1_std;
 #define C99_LONGLONG() if(cc1_std < STD_C99) warn_at(NULL, "long long is a C99 feature")

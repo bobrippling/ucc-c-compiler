@@ -27,20 +27,45 @@ void fold_stmt_code(stmt *s)
 	for(diter = s->symtab->decls; diter && *diter; diter++){
 		decl *const d = *diter;
 		decl *found;
+		symtable *in;
+		int chk_shadow = 0, is_func = 0;
 
 		fold_decl(d, s->symtab, &init_blk);
 
-		if(DECL_IS_FUNC(d)
-		&& (found = symtab_search_d(s->symtab->parent, d->spel)))
-		{
-			/* allow functions redefined as decls and vice versa */
-			if(DECL_IS_FUNC(found) && !decl_equal(d, found, DECL_CMP_EXACT_MATCH)){
-				char buf[WHERE_BUF_SIZ];
+		if((is_func = !!DECL_IS_FUNC(d)))
+			chk_shadow = 1;
+		else if(warn_mode & (WARN_SHADOW_LOCAL | WARN_SHADOW_GLOBAL))
+			chk_shadow = 1;
 
+		if(chk_shadow
+		&& d->spel
+		&& (found = symtab_search_d(s->symtab->parent, d->spel, &in)))
+		{
+			char buf[WHERE_BUF_SIZ];
+
+			/* allow functions redefined as decls and vice versa */
+			if(is_func
+			&& DECL_IS_FUNC(found)
+			&& !decl_equal(d, found, DECL_CMP_EXACT_MATCH))
+			{
 				die_at(&d->where,
 						"incompatible redefinition of \"%s\"\n"
 						"%s: note: previous definition",
 						d->spel, where_str_r(buf, &found->where));
+			}else{
+				/* -Wshadow:
+				 * if it has a parent, we found it in local scope, so check the local mask
+				 * and vice versa
+				 */
+				if(warn_mode & (in->parent ? WARN_SHADOW_LOCAL : WARN_SHADOW_GLOBAL)){
+					const char *ty = in->parent ? "local" : "global";
+
+					warn_at(&d->where,
+							"declaration of \"%s\" shadows %s declaration\n"
+							"%s: note: %s declaration here",
+							d->spel, ty,
+							where_str_r(buf, &found->where), ty);
+				}
 			}
 		}
 	}

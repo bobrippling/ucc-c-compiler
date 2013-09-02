@@ -22,6 +22,10 @@ void flow_fold(stmt_flow *flow, symtable **pstab)
 		for(i = (*pstab)->decls; i && *i; i++){
 			decl *const d = *i;
 
+			/* TODO: merge this block with stmt_code::fold_decl block
+			 * particularly the shadow checks
+			 */
+
 			fold_decl(d, *pstab, &flow->init_blk);
 
 			switch((enum decl_storage)(d->store & STORE_MASK_STORE)){

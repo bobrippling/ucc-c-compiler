@@ -63,7 +63,7 @@ symtable *symtab_root(symtable *child)
 	return child;
 }
 
-decl *symtab_search_d(symtable *tab, const char *spel)
+decl *symtab_search_d(symtable *tab, const char *spel, symtable **pin)
 {
 	decl **const decls = tab->decls;
 	int i;
@@ -73,12 +73,15 @@ decl *symtab_search_d(symtable *tab, const char *spel)
 	 */
 	for(i = dynarray_count(decls) - 1; i >= 0; i--){
 		decl *d = decls[i];
-		if(d->spel && !strcmp(spel, d->spel))
+		if(d->spel && !strcmp(spel, d->spel)){
+			if(pin)
+				*pin = tab;
 			return d;
+		}
 	}
 
 	if(tab->parent)
-		return symtab_search_d(tab->parent, spel);
+		return symtab_search_d(tab->parent, spel, pin);
 
 	return NULL;
 
@@ -86,14 +89,14 @@ decl *symtab_search_d(symtable *tab, const char *spel)
 
 sym *symtab_search(symtable *tab, const char *sp)
 {
-	decl *d = symtab_search_d(tab, sp);
+	decl *d = symtab_search_d(tab, sp, NULL);
 	/* d->sym may be null if it's not been assigned yet */
 	return d ? d->sym : NULL;
 }
 
 int typedef_visible(symtable *stab, const char *spel)
 {
-	decl *d = symtab_search_d(stab, spel);
+	decl *d = symtab_search_d(stab, spel, NULL);
 	return d && (d->store & STORE_MASK_STORE) == store_typedef;
 }
 

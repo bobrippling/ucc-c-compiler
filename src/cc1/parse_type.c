@@ -184,7 +184,9 @@ static void parse_add_attr(decl_attr **append)
 static decl *parse_at_tdef(void)
 {
 	if(curtok == token_identifier){
-		decl *d = symtab_search_d(current_scope, token_current_spel_peek());
+		decl *d = symtab_search_d(current_scope,
+				token_current_spel_peek(), NULL);
+
 		if(d && d->store == store_typedef)
 			return d;
 	}
@@ -1256,7 +1258,7 @@ add:
 			 * This also means any use of d will have the most up to date
 			 * attribute information about it
 			 */
-			decl *d_prev = symtab_search_d(current_scope, d->spel);
+			decl *d_prev = symtab_search_d(current_scope, d->spel, NULL);
 
 			if(d_prev){
 				/* link the proto chain for __attribute__ checking */
