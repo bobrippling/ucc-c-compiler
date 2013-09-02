@@ -294,6 +294,9 @@ static decl_init *decl_init_brace_up_scalar(
 		char buf[TYPE_REF_STATIC_BUFSIZ];
 		expr *e = FOLD_EXPR(first_init->bits.expr, stab);
 
+		if(type_ref_is_type(e->tree_type, type_void))
+			die_at(&e->where, "initialisation from void expression");
+
 		/* for the warning */
 		fold_type_ref_equal(
 					tfor, e->tree_type, &first_init->where,
