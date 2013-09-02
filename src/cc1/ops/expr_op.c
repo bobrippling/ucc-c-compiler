@@ -213,7 +213,8 @@ type_ref *op_required_promotion(
 			if(op == op_minus){
 				/* don't allow void * */
 				switch(type_ref_cmp(tlhs, trhs, 0)){
-					case TYPE_CONVERTIBLE:
+					case TYPE_CONVERTIBLE_IMPLICIT:
+					case TYPE_CONVERTIBLE_EXPLICIT:
 					case TYPE_NOT_EQUAL:
 						die_at(w, "subtraction of distinct pointer types %s and %s",
 								type_ref_to_str(tlhs), type_ref_to_str_r(buf, trhs));

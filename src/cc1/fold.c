@@ -46,12 +46,13 @@ int fold_type_chk_warn(
 	int error = 1;
 
 	switch(type_ref_cmp(lhs, rhs, 0)){
-		case TYPE_CONVERTIBLE:
+		case TYPE_CONVERTIBLE_IMPLICIT:
 			return 1;
 		case TYPE_EQUAL:
 			break;
 
 		case TYPE_QUAL_LOSS:
+		case TYPE_CONVERTIBLE_EXPLICIT:
 			error = 0;
 
 		case TYPE_NOT_EQUAL:

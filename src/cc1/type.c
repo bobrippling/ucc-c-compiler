@@ -39,7 +39,9 @@ enum type_cmp type_cmp(const type *a, const type *b)
 	switch(a->primitive){
 		case type_void:
 			/* allow (void) casts */
-			return b->primitive == type_void ? TYPE_EQUAL : TYPE_CONVERTIBLE;
+			return b->primitive == type_void
+				? TYPE_EQUAL
+				: TYPE_CONVERTIBLE_IMPLICIT;
 
 		case type_struct:
 		case type_union:
@@ -61,7 +63,7 @@ enum type_cmp type_cmp(const type *a, const type *b)
 
 	/* only reachable for scalars and enums */
 	if(type_convertible(a->primitive) && type_convertible(b->primitive))
-		return TYPE_CONVERTIBLE;
+		return TYPE_CONVERTIBLE_IMPLICIT;
 
 	return TYPE_NOT_EQUAL;
 }

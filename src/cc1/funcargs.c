@@ -60,7 +60,9 @@ enum funcargs_cmp funcargs_cmp(
 				case TYPE_EQUAL:
 					break;
 
-				case TYPE_CONVERTIBLE:
+				case TYPE_CONVERTIBLE_EXPLICIT:
+					ICW("fixme: explicitly convertible func argument");
+				case TYPE_CONVERTIBLE_IMPLICIT:
 				case TYPE_QUAL_LOSS:
 					if(!must_exact)
 						break; /* allow */

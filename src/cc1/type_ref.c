@@ -31,8 +31,16 @@ static enum type_cmp type_ref_cmp_r(
 	b = type_ref_skip_tdefs_casts(orig_b);
 
 	/* array/func decay takes care of any array->ptr checks */
-	if(a->type != b->type)
+	if(a->type != b->type){
+		/* allow int <-> ptr */
+		if((type_ref_is_ptr(a) && type_ref_is_integral(b))
+		|| (type_ref_is_ptr(b) && type_ref_is_integral(a)))
+		{
+			return TYPE_CONVERTIBLE_EXPLICIT;
+		}
+
 		return TYPE_NOT_EQUAL;
+	}
 
 	switch(a->type){
 		case type_ref_type:
@@ -89,7 +97,7 @@ static enum type_cmp type_ref_cmp_r(
 			/* b_sue has an a_sue,
 			 * the implicit cast adjusts to return said a_sue */
 			if(struct_union_member_find_sue(b_sue, a_sue))
-				return TYPE_CONVERTIBLE;
+				return TYPE_CONVERTIBLE_IMPLICIT;
 		}
 	}
 
@@ -115,10 +123,10 @@ enum type_cmp type_ref_cmp(type_ref *a, type_ref *b, enum type_cmp_opts opts)
 	if(cmp == TYPE_NOT_EQUAL){
 		/* try for convertible */
 		if(type_ref_is_void_ptr(a) && type_ref_is_ptr(b))
-			return TYPE_CONVERTIBLE;
+			return TYPE_CONVERTIBLE_IMPLICIT;
 
 		if(type_ref_is_void_ptr(b) && type_ref_is_ptr(a))
-			return TYPE_CONVERTIBLE;
+			return TYPE_CONVERTIBLE_IMPLICIT;
 	}
 
 	return cmp;

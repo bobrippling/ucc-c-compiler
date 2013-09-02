@@ -175,7 +175,8 @@ void symtab_fold_decls(symtable *tab)
 					case TYPE_NOT_EQUAL:
 						/* must be an exact match */
 					case TYPE_QUAL_LOSS:
-					case TYPE_CONVERTIBLE:
+					case TYPE_CONVERTIBLE_IMPLICIT:
+					case TYPE_CONVERTIBLE_EXPLICIT:
 						clash = "mismatching";
 					case TYPE_EQUAL:
 						break;

@@ -632,7 +632,7 @@ enum type_cmp decl_cmp(decl *a, decl *b, enum type_cmp_opts opts)
 #define STORE_INCOMPAT(st) ((st) == store_typedef || (st) == store_static)
 
 		if(STORE_INCOMPAT(sa) || STORE_INCOMPAT(sb))
-			return TYPE_CONVERTIBLE;
+			return TYPE_CONVERTIBLE_IMPLICIT;
 	}
 
 	return cmp;
