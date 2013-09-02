@@ -22,12 +22,12 @@ static int type_convertible(enum type_primitive p)
 		case type_float:
 		case type_double:
 		case type_ldouble:
+		case type_enum:
 			return 1;
 
 		case type_void:
 		case type_struct:
 		case type_union:
-		case type_enum:
 		case type_unknown:
 			break;
 	}
@@ -43,23 +43,27 @@ enum type_cmp type_cmp(const type *a, const type *b)
 
 		case type_struct:
 		case type_union:
-		case type_enum:
 			return a->sue == b->sue ? TYPE_EQUAL : TYPE_NOT_EQUAL;
 
 		case type_unknown:
 			ICE("type unknown in %s", __func__);
 
+		case type_enum:
+			if(a->sue == b->sue)
+				return TYPE_EQUAL;
+			break; /* convertible check */
+
 		default:
 			if(a->primitive == b->primitive)
 				return TYPE_EQUAL;
-
-			if(type_convertible(a->primitive) == type_convertible(b->primitive))
-				return TYPE_CONVERTIBLE;
-
-			return TYPE_NOT_EQUAL;
+			break; /* convertible check */
 	}
 
-	ucc_unreach(TYPE_NOT_EQUAL);
+	/* only reachable for scalars and enums */
+	if(type_convertible(a->primitive) && type_convertible(b->primitive))
+		return TYPE_CONVERTIBLE;
+
+	return TYPE_NOT_EQUAL;
 }
 
 int type_is_signed(const type *t)
