@@ -403,10 +403,10 @@ stack:
 
 		}else{
 			const type *typ = type_ref_get_type(ty);
-			const int fp = type_floating(typ->primitive);
+			const int fp = typ && type_floating(typ->primitive);
 			struct_union_enum_st *sue_va;
 
-			if(typ->primitive == type_ldouble)
+			if(typ && typ->primitive == type_ldouble)
 				goto stack;
 
 			/* register */

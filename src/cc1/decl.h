@@ -150,9 +150,6 @@ type_ref *type_ref_ptr_depth_inc(type_ref *);
 type_ref *type_ref_ptr_depth_dec(type_ref *r, where *);
 type_ref *type_ref_next(type_ref *r);
 
-const type *type_ref_get_type(type_ref *);
-const type *decl_get_type(decl *);
-
 int decl_conv_array_func_to_ptr(decl *d);
 type_ref *decl_is_decayed_array(decl *);
 type_ref *type_ref_is_decayed_array(type_ref *);

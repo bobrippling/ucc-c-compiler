@@ -267,11 +267,6 @@ void decl_replace_with(decl *to, decl *from)
 	to->align    = from->align;
 }
 
-const type *decl_get_type(decl *d)
-{
-	return type_ref_get_type(d->ref);
-}
-
 const char *decl_asm_spel(decl *d)
 {
 	if(!d->spel_asm){
