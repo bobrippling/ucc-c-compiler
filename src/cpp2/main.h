@@ -35,4 +35,11 @@ extern enum wmode
 	WUNDEF       = 1 << 1,
 } wmode;
 
+extern enum comment_strip
+{
+	STRIP_ALL, /* <empty> */
+	STRIP_EXCEPT_DIRECTIVE, /* -C */
+	STRIP_NONE /* -CC */
+} strip_comments;
+
 #endif
