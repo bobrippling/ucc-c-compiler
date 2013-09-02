@@ -67,6 +67,8 @@ int option_line_info = 1;
 
 enum wmode wmode = 0;
 
+enum comment_strip strip_comments = STRIP_ALL;
+
 static const struct
 {
 	const char *warn, *desc;
@@ -215,6 +217,13 @@ int main(int argc, char **argv)
 
 			case 'P':
 				option_line_info = 0;
+				break;
+
+			case 'C':
+				if(argv[i][2] == '\0')
+					fprintf(stderr, "TODO: -C\n"); /*strip_comments = STRIP_DIRECTIVE;*/
+				else if(!strcmp(argv[i] + 2, "C"))
+					strip_comments = STRIP_NONE;
 				break;
 
 			case 'M':

@@ -194,10 +194,22 @@ static char *strip_comment(char *line)
 			/* finish of string */
 		}else if(*s == '/'){
 			if(s[1] == '/'){
-				/* ignore //.* */
-				*s = '\0';
+				if(strip_comments == STRIP_NONE){
+					/* convert to a block comment */
+					const unsigned pos_slash = s - line;
+					const unsigned len = strlen(line);
+
+					line = urealloc1(line, len + 2 + 1);
+
+					s = line + pos_slash;
+					s[1] = '*';
+					strcpy(line + len, "*/");
+				}else{
+					/* ignore //.* */
+					*s = '\0';
+				}
 				break;
-			}else if(s[1] == '*'){
+			}else if(s[1] == '*' && strip_comments == STRIP_ALL){
 				/* wait for terminator elsewhere (i'll be back) */
 				*s = s[1] = ' ';
 				strip_in_block = 1;

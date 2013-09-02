@@ -466,6 +466,7 @@ arg_ld:
 
 				case 'M':
 				case 'd':
+				case 'C': /* -C and -CC */
 					goto arg_cpp;
 
 				case 'x':
