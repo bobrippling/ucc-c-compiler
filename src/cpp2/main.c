@@ -308,7 +308,7 @@ int main(int argc, char **argv)
 				if(std_from_str(argv[i], &std) == 0){
 					/* we have an std */
 				}else{
-					fprintf(stderr, "bad C standard \"%s\"\n", argv[i]);
+					fprintf(stderr, "unrecognised option \"%s\"\n", argv[i]);
 					goto usage;
 				}
 		}
