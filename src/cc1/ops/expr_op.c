@@ -228,7 +228,7 @@ type_ref *op_required_promotion(
 
 				resolved = type_ref_cached_INTPTR_T();
 
-			}else if(op_is_relational(op)){
+			}else if(op_returns_bool(op)){
 ptr_relation:
 				if(op_is_comparison(op)){
 					if(fold_type_chk_warn(tlhs, trhs, w,
@@ -253,7 +253,7 @@ ptr_relation:
 			/* + or - */
 
 			/* cmp between pointer and integer - missing cast */
-			if(op_is_relational(op))
+			if(op_returns_bool(op))
 				goto ptr_relation;
 
 			switch(op){
@@ -390,8 +390,8 @@ ptr_relation:
 			}
 
 			/* if we have a _comparison_ (e.g. between enums), convert to int */
-			resolved = op_is_relational(op)
-				? type_ref_cached_INT()
+			resolved = op_returns_bool(op)
+				? type_ref_cached_BOOL()
 				: tlarger;
 		}
 	}

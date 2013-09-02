@@ -39,9 +39,9 @@ unsigned type_align(const type *, where *from);
 unsigned type_primitive_size(enum type_primitive tp);
 
 int op_is_commutative(enum op_type o);
-int op_is_relational(enum op_type o);
 int op_is_shortcircuit(enum op_type o);
 int op_is_comparison(enum op_type o);
+int op_returns_bool(enum op_type o); /* comparison or short circuit */
 int op_can_compound(enum op_type o);
 int op_can_float(enum op_type o);
 
