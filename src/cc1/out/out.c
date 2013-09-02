@@ -897,7 +897,9 @@ void out_op(enum op_type op)
 	POPULATE_TYPE(vtop[0]);
 	POPULATE_TYPE(vtop[-1]);
 
-	if((op == op_plus || op == op_minus) && t_const && t_mem){
+	if((op == op_plus || op == op_minus) && t_const && t_mem
+	&& (t_mem->type != LBL || (fopt_mode & FOPT_SYMBOL_ARITH)))
+	{
 		/* t_const == vtop... should be */
 		long *p = t_mem->type == STACK
 			? &t_mem->bits.off_from_bp

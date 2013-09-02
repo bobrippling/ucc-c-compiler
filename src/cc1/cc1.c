@@ -126,6 +126,7 @@ struct
 	{ 'f',  "show-static-asserts", FOPT_SHOW_STATIC_ASSERTS },
 	{ 'f',  "verbose-asm",         FOPT_VERBOSE_ASM },
 	{ 'f',  "integral-float-load", FOPT_INTEGRAL_FLOAT_LOAD },
+	{ 'f',  "symbol-arith",        FOPT_SYMBOL_ARITH },
 
 	{ 'm',  "stackrealign", MOPT_STACK_REALIGN },
 
@@ -162,7 +163,9 @@ enum fopt fopt_mode = FOPT_CONST_FOLD
                     | FOPT_BUILTIN
                     | FOPT_MS_EXTENSIONS
 										| FOPT_TRACK_INITIAL_FNAM
-										| FOPT_INTEGRAL_FLOAT_LOAD;
+										| FOPT_INTEGRAL_FLOAT_LOAD
+										| FOPT_SYMBOL_ARITH;
+
 enum cc1_backend cc1_backend = BACKEND_ASM;
 
 enum mopt mopt_mode = 0;

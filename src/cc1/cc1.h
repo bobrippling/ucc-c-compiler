@@ -73,6 +73,7 @@ enum fopt
 	FOPT_SHOW_STATIC_ASSERTS   = 1 << 13,
 	FOPT_VERBOSE_ASM           = 1 << 14,
 	FOPT_INTEGRAL_FLOAT_LOAD   = 1 << 15,
+	FOPT_SYMBOL_ARITH          = 1 << 16,
 };
 
 enum mopt
