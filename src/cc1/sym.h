@@ -25,13 +25,14 @@ struct static_assert
 	expr *e;
 	char *s;
 	symtable *scope;
+	int checked;
 };
 
 struct symtable
 {
 	int auto_total_size;
-	int internal_nest;
-	int folded;
+	unsigned internal_nest : 1, are_params : 1;
+	unsigned folded : 1, laidout : 1;
 	/*
 	 * { int i; 5; int j; }
 	 * j's symtab is internally represented like:
@@ -51,14 +52,16 @@ struct symtable
 };
 
 typedef struct symtable_gasm symtable_gasm;
+struct symtable_gasm
+{
+	decl *before; /* the decl this occurs before - NULL if last */
+	char *asm_str;
+};
+
 struct symtable_global
 {
 	symtable stab; /* ABI compatible with struct symtable */
-	struct symtable_gasm
-	{
-		decl *before; /* the decl this occurs before - NULL if last */
-		char *asm_str;
-	} **gasms;
+	symtable_gasm **gasms;
 };
 
 sym *sym_new(decl *d, enum sym_type t);
@@ -75,7 +78,6 @@ symtable *symtab_root(symtable *child);
 sym  *symtab_search(symtable *, const char *);
 decl *symtab_search_d(symtable *, const char *);
 int   typedef_visible(symtable *stab, const char *spel);
-void  symtab_add_args(symtable *stab, funcargs *fargs, const char *func_spel);
 
 const char *sym_to_str(enum sym_type);
 

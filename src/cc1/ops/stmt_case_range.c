@@ -23,7 +23,7 @@ void fold_stmt_case_range(stmt *s)
 	rv = const_fold_val(s->expr2);
 
 	if(lv >= rv)
-		DIE_AT(&s->where, "case range equal or inverse");
+		die_at(&s->where, "case range equal or inverse");
 
 	s->expr->bits.ident.spel = out_label_case(CASE_RANGE, lv);
 

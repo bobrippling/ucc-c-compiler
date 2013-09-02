@@ -54,7 +54,7 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 			if(type_ref_is_decayed_array(chosen)){
 				char ar_buf[TYPE_REF_STATIC_BUFSIZ];
 
-				WARN_AT(&e->where, "array parameter size is sizeof(%s), not sizeof(%s)",
+				warn_at(&e->where, "array parameter size is sizeof(%s), not sizeof(%s)",
 						type_ref_to_str(chosen),
 						type_ref_to_str_r_show_decayed(ar_buf, chosen));
 			}
@@ -66,10 +66,10 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 			int set = 0; /* need this, since .bits can't be relied upon to be 0 */
 
 			if(!type_ref_is_complete(chosen))
-				DIE_AT(&e->where, "sizeof incomplete type %s", type_ref_to_str(chosen));
+				die_at(&e->where, "sizeof incomplete type %s", type_ref_to_str(chosen));
 
-			if((sue = type_ref_is_s_or_u(chosen)) && sue_incomplete(sue))
-				DIE_AT(&e->where, "sizeof %s", type_ref_to_str(chosen));
+			if((sue = type_ref_is_s_or_u(chosen)) && !sue_complete(sue))
+				die_at(&e->where, "sizeof %s", type_ref_to_str(chosen));
 
 			if(e->what_of == what_alignof && e->expr){
 				decl *d = NULL;

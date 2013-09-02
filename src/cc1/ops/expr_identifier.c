@@ -58,7 +58,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 
 			/* mutate into a string literal */
 			if(!curdecl_func){
-				WARN_AT(&e->where, "__func__ is not defined outside of functions");
+				warn_at(&e->where, "__func__ is not defined outside of functions");
 				func = "";
 				len = 0;
 			}else{
@@ -78,7 +78,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 			enum_member_search(&m, &sue, stab, sp);
 
 			if(!m)
-				DIE_AT(&e->where, "undeclared identifier \"%s\"", sp);
+				die_at(&e->where, "undeclared identifier \"%s\"", sp);
 
 			expr_mutate_wrapper(e, val);
 
@@ -101,7 +101,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 	&& sym->nwrites == 0
 	&& !sym->decl->init)
 	{
-		cc1_warn_at(&e->where, 0, 1, WARN_READ_BEFORE_WRITE, "\"%s\" uninitialised on read", sp);
+		cc1_warn_at(&e->where, 0, WARN_READ_BEFORE_WRITE, "\"%s\" uninitialised on read", sp);
 		sym->nwrites = 1; /* silence future warnings */
 	}
 

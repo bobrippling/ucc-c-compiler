@@ -1,9 +1,13 @@
 #ifndef FOLD_H
 #define FOLD_H
 
-void fold_decl(decl *d, symtable *stab);
-void fold_decl(decl *d, symtable *stab);
+void fold_decl_global(decl *d, symtable *stab);
 void fold_decl_global_init(decl *d, symtable *stab);
+
+void fold_merge_tenatives(symtable *stab);
+
+void fold_decl(decl *d, symtable *stab, stmt **pinit_code);
+
 void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab);
 
 int fold_type_ref_equal(
@@ -12,8 +16,6 @@ int fold_type_ref_equal(
 		const char *errfmt, ...);
 
 void fold_check_restrict(expr *lhs, expr *rhs, const char *desc, where *w);
-
-void fold_symtab_scope(symtable *stab, stmt **pinit_code);
 
 void fold_funcargs(funcargs *fargs, symtable *stab, type_ref *from);
 
@@ -34,8 +36,6 @@ void fold_stmt(stmt *t);
 int fold_passable(stmt *s);
 int fold_passable_yes(stmt *s);
 int fold_passable_no( stmt *s);
-
-void fold(symtable *);
 
 extern decl *curdecl_func;
 extern type_ref *curdecl_ref_func_called;

@@ -86,6 +86,12 @@ cpp
 
 [fixes in feature/cpp/* branches]
 
+-Wunused-macros
+	warn at eof, or when the macro is redefined/undefined
+	-D macros, builtin and header macros aren't warned about
+
+-C: don't strip comments
+
 __TIMESTAMP__
 
 memory leaks

@@ -12,11 +12,11 @@ OBJ = \
 	../util/dynarray.o ../util/dynmap.o ../util/where.o \
 	../util/str.o ../util/std.o \
 	str.o \
-	cc1.o \
+	cc1.o pass1.o \
 	tree.o decl.o decl_init.o funcargs.o expr.o stmt.o \
 	tokconv.o tokenise.o \
 	parse.o parse_type.o \
-	fold.o fold_sym.o const.o \
+	fold.o fold_sym.o fold_sue.o const.o \
 	sym.o sue.o ops/__builtin.o ops/__builtin_va.o pack.o \
 	gen_asm.o gen_str.o gen_style.o \
 	out/out.o out/asm.o out/lbl.o out/impl.o \

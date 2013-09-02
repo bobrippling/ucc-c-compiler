@@ -38,7 +38,6 @@ expr *parse_expr_unary(void);
 
 /* parse_type uses this for structs, tdefs and enums */
 symtable *current_scope;
-static static_assert **static_asserts;
 
 
 /* sometimes we can carry on after an error, but we don't want to go through to compilation etc */
@@ -79,7 +78,7 @@ expr *parse_expr_sizeof_typeof_alignof(enum what_of what_of)
 	}else{
 		if(what_of == what_typeof)
 			/* TODO? cc1_error = 1, return expr_new_val(0) */
-			DIE_AT(NULL, "open paren expected after typeof");
+			die_at(NULL, "open paren expected after typeof");
 
 		e = expr_new_sizeof_expr(parse_expr_unary(), what_of);
 		/* don't go any higher, sizeof a - 1, means sizeof(a) - 1 */
@@ -111,7 +110,7 @@ static expr *parse_expr__Generic()
 		}else{
 			r = parse_type();
 			if(!r)
-				DIE_AT(NULL, "type expected");
+				die_at(NULL, "type expected");
 		}
 		EAT(token_colon);
 		e = parse_expr_no_comma();
@@ -133,7 +132,7 @@ static expr *parse_expr_identifier()
 	expr *e;
 
 	if(curtok != token_identifier)
-		DIE_AT(NULL, "identifier expected, got %s (%s:%d)",
+		die_at(NULL, "identifier expected, got %s (%s:%d)",
 				token_to_str(curtok), __FILE__, __LINE__);
 
 	e = expr_new_identifier(token_current_spel());
@@ -242,7 +241,7 @@ static expr *parse_expr_primary()
 
 				if(curtok != token_identifier){
 					/* TODO? cc1_error = 1, return expr_new_val(0) */
-					DIE_AT(NULL, "expression expected, got %s (%s:%d)",
+					die_at(NULL, "expression expected, got %s (%s:%d)",
 							token_to_str(curtok), __FILE__, __LINE__);
 				}
 
@@ -477,7 +476,7 @@ type_ref **parse_type_list()
 		type_ref *r = parse_type();
 
 		if(!r)
-			DIE_AT(NULL, "type expected");
+			die_at(NULL, "type expected");
 
 		dynarray_add(&types, r);
 	}while(accept(token_comma));
@@ -492,7 +491,7 @@ expr **parse_funcargs()
 	while(curtok != token_close_paren){
 		expr *arg = parse_expr_no_comma();
 		if(!arg)
-			DIE_AT(&arg->where, "expected: funcall arg");
+			die_at(&arg->where, "expected: funcall arg");
 		dynarray_add(&args, arg);
 
 		if(curtok == token_close_paren)
@@ -642,7 +641,7 @@ static stmt *parse_for()
 				dynarray_add_array(&current_scope->decls, c99inits);
 
 				if(cc1_std < STD_C99)
-					WARN_AT(NULL, "use of C99 for-init");
+					warn_at(NULL, "use of C99 for-init");
 			}else{
 				sf->for_init = parse_expr_exp();
 			}
@@ -681,7 +680,7 @@ void parse_static_assert(void)
 		EAT(token_close_paren);
 		EAT(token_semicolon);
 
-		dynarray_add(&static_asserts, sa);
+		dynarray_add(&current_scope->static_asserts, sa);
 	}
 }
 
@@ -719,7 +718,7 @@ static stmt *parse_stmt_and_decls(void)
 					static int warned = 0;
 					if(!warned){
 						warned = 1;
-						cc1_warn_at(&nest->where, 0, 1, WARN_MIXED_CODE_DECLS,
+						cc1_warn_at(&nest->where, 0, WARN_MIXED_CODE_DECLS,
 								"mixed code and declarations");
 					}
 				}
@@ -943,7 +942,7 @@ flow:
 	/* unreachable */
 }
 
-static symtable_gasm *parse_gasm(void)
+symtable_gasm *parse_gasm(void)
 {
 	symtable_gasm *g = umalloc(sizeof *g);
 
@@ -954,58 +953,4 @@ static symtable_gasm *parse_gasm(void)
 	EAT(token_semicolon);
 
 	return g;
-}
-
-void parse(symtable_global *globals)
-{
-	symtable_gasm **last_gasms = NULL;
-
-	current_scope = &globals->stab;
-
-	type_ref_init(current_scope);
-
-	for(;;){
-		int cont = 0;
-		decl **new = NULL;
-
-		parse_decls_multi_type(
-				  DECL_MULTI_CAN_DEFAULT
-				| DECL_MULTI_ACCEPT_FUNC_CODE
-				| DECL_MULTI_ALLOW_STORE
-				| DECL_MULTI_ALLOW_ALIGNAS,
-				current_scope,
-				&new);
-
-		if(new){
-			symtable_gasm **i;
-
-			for(i = last_gasms; i && *i; i++)
-				(*i)->before = *new;
-			dynarray_free(symtable_gasm **, &last_gasms, NULL);
-			dynarray_free(decl **, &new, NULL);
-		}
-
-		/* global asm */
-		while(accept(token_asm)){
-			symtable_gasm *g = parse_gasm();
-
-			dynarray_add(&last_gasms, g);
-			dynarray_add(&globals->gasms, g);
-			cont = 1;
-		}
-
-		if(!cont)
-			break;
-	}
-
-	dynarray_free(symtable_gasm **, &last_gasms, NULL);
-
-	EAT(token_eof);
-
-	if(parse_had_error)
-		exit(1);
-
-	current_scope->static_asserts = static_asserts;
-
-	UCC_ASSERT(!current_scope->parent, "scope leak during parse");
 }

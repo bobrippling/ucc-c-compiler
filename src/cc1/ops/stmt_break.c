@@ -11,7 +11,7 @@ const char *str_stmt_break()
 void fold_stmt_break_continue(stmt *t, char *lbl)
 {
 	if(!lbl)
-		DIE_AT(&t->where, "%s outside a flow-control statement", t->f_str());
+		die_at(&t->where, "%s outside a flow-control statement", t->f_str());
 
 	t->expr = expr_new_identifier(lbl);
 	memcpy_safe(&t->expr->where, &t->where);

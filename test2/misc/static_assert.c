@@ -1,28 +1,32 @@
-// RUN: [ `%ucc -fsyntax-only %s 2>&1|grep 'passed'|wc -l` -eq 9 ]
+// RUN: [ `%ucc -fshow-static-asserts -fsyntax-only %s 2>&1|grep 'passed'|wc -l` -eq 9 ]
+
+#define QUOTE_(a) #a
+#define QUOTE(a) QUOTE_(a)
+#define SA() _Static_assert(1, QUOTE(__COUNTER__))
 
 struct A
 {
-	_Static_assert(1, "");
+	SA();
 };
 
 struct B
 {
 	int i;
-	_Static_assert(1, "");
+	SA();
 	int j;
 };
 
-_Static_assert(1, "");
+SA();
 main()
 {
-	_Static_assert(1, "");
+	SA();
 	int i;
-	_Static_assert(1, "");
+	SA();
 	f();
-	_Static_assert(1, "");
+	SA();
 	int j;
-	_Static_assert(1, "");
+	SA();
 	g();
-	_Static_assert(1, "");
+	SA();
 }
-_Static_assert(1, "");
+SA();

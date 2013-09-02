@@ -39,14 +39,14 @@ static void va_type_check(expr *va_l, expr *in)
 	 * f(__builtin_va_list *l) [the array has decayed]
 	 */
 	if(!curdecl_func)
-		DIE_AT(&in->where, "%s() outside a function",
+		die_at(&in->where, "%s() outside a function",
 				BUILTIN_SPEL(in));
 
 	if(!type_ref_equal(va_l->tree_type,
 				type_ref_cached_VA_LIST_decayed(),
 				DECL_CMP_EXACT_MATCH))
 	{
-		DIE_AT(&va_l->where,
+		die_at(&va_l->where,
 				"first argument to %s should be a va_list (not %s)",
 				BUILTIN_SPEL(in), type_ref_to_str(va_l->tree_type));
 	}
@@ -57,7 +57,7 @@ static void va_ensure_variadic(expr *e)
 	funcargs *args = type_ref_funcargs(curdecl_func->ref);
 
 	if(!args->variadic)
-		DIE_AT(&e->where, "%s in non-variadic function", BUILTIN_SPEL(e->expr));
+		die_at(&e->where, "%s in non-variadic function", BUILTIN_SPEL(e->expr));
 }
 
 static void fold_va_start(expr *e, symtable *stab)
@@ -66,7 +66,7 @@ static void fold_va_start(expr *e, symtable *stab)
 	expr *va_l;
 
 	if(dynarray_count(e->funcargs) != 2)
-		DIE_AT(&e->where, "%s requires two arguments", BUILTIN_SPEL(e->expr));
+		die_at(&e->where, "%s requires two arguments", BUILTIN_SPEL(e->expr));
 
 	va_l = e->funcargs[0];
 	fold_inc_writes_if_sym(va_l, stab);
@@ -416,7 +416,7 @@ static void fold_va_arg(expr *e, symtable *stab)
 	va_type_check(e->lhs, e->expr);
 
 	if(type_ref_size(ty, &e->lhs->where) < type_primitive_size(type_int)){
-		WARN_AT(&e->lhs->where,
+		warn_at(&e->where,
 				"va_arg(..., %s) has undefined behaviour - promote to int",
 				type_ref_to_str(ty));
 	}
@@ -456,7 +456,7 @@ static void builtin_gen_va_end(expr *e)
 static void fold_va_end(expr *e, symtable *stab)
 {
 	if(dynarray_count(e->funcargs) != 1)
-		DIE_AT(&e->where, "%s requires one argument", BUILTIN_SPEL(e->expr));
+		die_at(&e->where, "%s requires one argument", BUILTIN_SPEL(e->expr));
 
 	FOLD_EXPR(e->funcargs[0], stab);
 	va_type_check(e->funcargs[0], e->expr);

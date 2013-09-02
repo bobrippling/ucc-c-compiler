@@ -248,7 +248,7 @@ int type_ref_is_complete(type_ref *r)
 				case type_struct:
 				case type_union:
 				case type_enum:
-					return !sue_incomplete(t->sue);
+					return sue_complete(t->sue);
 
 				default:break;
 			}
@@ -271,6 +271,14 @@ int type_ref_is_complete(type_ref *r)
 
 
 	return 1;
+}
+
+type_ref *type_ref_is_char_ptr(type_ref *r)
+{
+	type_ref *t = type_ref_is_array(r);
+	if(!t)
+		t = type_ref_is_ptr(r);
+	return type_ref_is_type(t, type_char);
 }
 
 int type_ref_is_incomplete_array(type_ref *r)

@@ -67,6 +67,8 @@ int option_line_info = 1;
 
 enum wmode wmode = 0;
 
+enum comment_strip strip_comments = STRIP_ALL;
+
 static const struct
 {
 	const char *warn, *desc;
@@ -218,6 +220,13 @@ int main(int argc, char **argv)
 				option_line_info = 0;
 				break;
 
+			case 'C':
+				if(argv[i][2] == '\0')
+					strip_comments = STRIP_EXCEPT_DIRECTIVE;
+				else if(!strcmp(argv[i] + 2, "C"))
+					strip_comments = STRIP_NONE;
+				break;
+
 			case 'M':
 				if(!strcmp(argv[i] + 2, "M")){
 					fprintf(stderr, "TODO\n");
@@ -309,7 +318,7 @@ int main(int argc, char **argv)
 				if(std_from_str(argv[i], &std) == 0){
 					/* we have an std */
 				}else{
-					fprintf(stderr, "bad C standard \"%s\"\n", argv[i]);
+					fprintf(stderr, "unrecognised option \"%s\"\n", argv[i]);
 					goto usage;
 				}
 		}

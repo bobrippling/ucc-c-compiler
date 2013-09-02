@@ -28,7 +28,7 @@ void fold_expr_comma(expr *e, symtable *stab)
 	e->tree_type = e->rhs->tree_type;
 
 	if(!e->lhs->freestanding)
-		WARN_AT(&e->lhs->where, "left hand side of comma is unused");
+		warn_at(&e->lhs->where, "left hand side of comma is unused");
 
 	e->freestanding = e->rhs->freestanding;
 }

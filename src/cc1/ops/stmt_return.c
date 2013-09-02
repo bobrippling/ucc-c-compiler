@@ -24,14 +24,14 @@ void fold_stmt_return(stmt *s)
 				type_ref_to_str(s->expr->tree_type));
 
 		if(void_func){
-			cc1_warn_at(&s->where, 0, 1, WARN_RETURN_TYPE,
+			cc1_warn_at(&s->where, 0, WARN_RETURN_TYPE,
 					"return with a value in void function %s", curdecl_func->spel);
 		}else{
 			fold_insert_casts(curdecl_ref_func_called, &s->expr, s->symtab, &s->expr->where, "return");
 		}
 
 	}else if(!void_func){
-		cc1_warn_at(&s->where, 0, 1, WARN_RETURN_TYPE,
+		cc1_warn_at(&s->where, 0, WARN_RETURN_TYPE,
 				"empty return in non-void function %s", curdecl_func->spel);
 
 	}

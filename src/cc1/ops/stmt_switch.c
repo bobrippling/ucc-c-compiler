@@ -35,7 +35,7 @@ static void fold_switch_dups(stmt *sw)
 			if(def){
 				char buf[WHERE_BUF_SIZ];
 
-				DIE_AT(&cse->where, "duplicate default statement (from %s)",
+				die_at(&cse->where, "duplicate default statement (from %s)",
 						where_str_r(buf, &def->where));
 			}
 			def = cse;
@@ -67,7 +67,7 @@ static void fold_switch_dups(stmt *sw)
 			const int overlap = vals[i  ].end.val != vals[i  ].start.val
 				               || vals[i-1].end.val != vals[i-1].start.val;
 
-			DIE_AT(&vals[i-1].cse->where, "%s case statements %s %ld (from %s)",
+			die_at(&vals[i-1].cse->where, "%s case statements %s %ld (from %s)",
 					overlap ? "overlapping" : "duplicate",
 					overlap ? "starting at" : "for",
 					(long)vals[i].start.val,
@@ -109,14 +109,15 @@ static void fold_switch_enum(stmt *sw, const type *enum_type)
 			}
 
 			if(!found)
-				WARN_AT(&cse->where, "'case %ld' not not a member of enum %s",
+				warn_at(&cse->where, "'case %ld' not not a member of enum %s",
 						(long)v, enum_type->sue->spel);
 		}
 	}
 
 	for(midx = 0; midx < nents; midx++)
 		if(!marks[midx])
-			cc1_warn_at(&sw->where, 0, 1, WARN_SWITCH_ENUM, "enum %s::%s not handled in switch",
+			cc1_warn_at(&sw->where, 0, WARN_SWITCH_ENUM,
+					"enum %s::%s not handled in switch",
 					enum_type->sue->anon ? "" : enum_type->sue->spel,
 					enum_type->sue->members[midx]->enum_member->spel);
 
@@ -156,7 +157,7 @@ void fold_stmt_switch(stmt *s)
 
 			/* warn if we switch on an enum bitmask */
 			if(attr_present(typ->sue->attr, attr_enum_bitmask))
-				WARN_AT(&s->where, "switch on enum with enum_bitmask attribute");
+				warn_at(&s->where, "switch on enum with enum_bitmask attribute");
 		}
 	}
 }

@@ -32,7 +32,6 @@ expr *parse_expr_exp(void);
 void parse_static_assert(void);
 type_ref **parse_type_list(void);
 expr **parse_funcargs(void);
-
-void parse(symtable_global *globals);
+symtable_gasm *parse_gasm(void);
 
 #endif
