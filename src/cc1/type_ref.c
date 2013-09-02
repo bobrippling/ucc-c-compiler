@@ -75,7 +75,7 @@ static enum type_cmp type_ref_cmp_r(
 			ICE("should've been skipped");
 
 		case type_ref_func:
-			if(funcargs_cmp(a->bits.func.args, b->bits.func.args, 1 /* exact match */, NULL)
+			if(funcargs_cmp(a->bits.func.args, b->bits.func.args)
 					!= FUNCARGS_ARE_EQUAL)
 			{
 				return TYPE_NOT_EQUAL;

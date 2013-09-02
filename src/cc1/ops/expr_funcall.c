@@ -315,7 +315,6 @@ void fold_expr_funcall(expr *e, symtable *stab)
 	funcargs *args_from_decl;
 	char *sp = NULL;
 	int count_decl = 0;
-	char *desc;
 
 #if 0
 	if(func_is_asm(sp)){
@@ -371,7 +370,6 @@ invalid:
 		}
 	}
 
-	desc = ustrprintf("function argument to %s", sp);
 	FOLD_EXPR(e->expr, stab);
 	type_func = e->expr->tree_type;
 
@@ -413,6 +411,12 @@ invalid:
 		unsigned long nonnulls = 0;
 		int i, j;
 		decl_attr *da;
+#define ARG_BUF(buf, i, sp)             \
+				snprintf(buf, sizeof buf,       \
+						"argument %d to %s",        \
+						i + 1, sp ? sp : "function")
+
+		char buf[64];
 
 		if((da = type_attr_present(type_func, attr_nonnull)))
 			nonnulls = da->bits.nonnull_args;
@@ -420,7 +424,9 @@ invalid:
 		for(i = j = 0; e->funcargs[i]; i++){
 			expr *arg = FOLD_EXPR(e->funcargs[i], stab);
 
-			fold_check_expr(arg, FOLD_CHK_NO_ST_UN, desc);
+			ARG_BUF(buf, i, sp);
+
+			fold_check_expr(arg, FOLD_CHK_NO_ST_UN, buf);
 
 			if((nonnulls & (1 << i)) && expr_is_null_ptr(arg, 1))
 				warn_at(&arg->where, "null passed where non-null required (arg %d)", i + 1);
@@ -450,9 +456,7 @@ invalid:
 				if(!decl_arg)
 					break;
 
-				snprintf(buf, sizeof buf,
-						"argument %d to %s",
-						i + 1, sp ? sp : "function");
+				ARG_BUF(buf, i, sp);
 
 				fold_type_chk_and_cast(
 						decl_arg->ref, &e->funcargs[i],
@@ -464,8 +468,6 @@ invalid:
 			}
 		}
 	}
-
-	free(desc), desc = NULL;
 
 	/* each unspecified arg needs default promotion, (if smaller) */
 	if(e->funcargs){

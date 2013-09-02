@@ -20,10 +20,7 @@ struct funcargs
 	enum calling_conv conv;
 };
 
-/* pbad_arg set if FUNCARGS_ARE_MISMATCH_TYPES */
-enum funcargs_cmp funcargs_cmp(
-		funcargs *args_to, funcargs *args_from,
-		int exact, unsigned *pbad_arg);
+enum funcargs_cmp funcargs_cmp(funcargs *args_to, funcargs *args_from);
 
 
 funcargs *funcargs_new(void);

@@ -33,9 +33,7 @@ void funcargs_empty(funcargs *func)
 	func->args_void = 0;
 }
 
-enum funcargs_cmp funcargs_cmp(
-		funcargs *args_to, funcargs *args_from,
-		int must_exact, unsigned *pbad_arg)
+enum funcargs_cmp funcargs_cmp(funcargs *args_to, funcargs *args_from)
 {
 	const int count_to = dynarray_count(args_to->arglist);
 	const int count_from = dynarray_count(args_from->arglist);
@@ -61,30 +59,11 @@ enum funcargs_cmp funcargs_cmp(
 					break;
 
 				case TYPE_CONVERTIBLE_EXPLICIT:
-					ICW("fixme: explicitly convertible func argument");
 				case TYPE_CONVERTIBLE_IMPLICIT:
 				case TYPE_QUAL_LOSS:
-					if(!must_exact)
-						break; /* allow */
-					/* fall */
-
 				case TYPE_NOT_EQUAL:
-					if(pbad_arg)
-						*pbad_arg = i;
 					return FUNCARGS_ARE_MISMATCH_TYPES;
 			}
-
-			/*fold_type_ref_equal(
-				args_to->arglist[i]->ref,
-				args_from->arglist[i]->ref,
-				&args_from->where, WARN_ARG_MISMATCH, flag,
-				"mismatching argument %d %s%s%s(%s <-- %s)",
-				i,
-				fspel ? "to " : "between declarations ",
-				fspel ? fspel : "",
-				fspel ? " " : "",
-				decl_to_str_r(buf, args_to->arglist[i]),
-				decl_to_str(       args_from->arglist[i]));*/
 		}
 	}
 
