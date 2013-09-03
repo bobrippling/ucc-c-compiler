@@ -253,9 +253,7 @@ static expr *parse_expr_primary()
 				{
 					expr *e = parse_expr_identifier();
 
-					/* we've already gone past the token, adjust */
-					w.len = strlen(e->bits.ident.spel);
-					w.chr -= w.len - 1;
+					where_adj_identifier(&w, e->bits.ident.spel);
 
 					return expr_set_where(e, &w);
 				}

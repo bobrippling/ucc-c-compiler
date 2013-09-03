@@ -60,6 +60,13 @@ final:
 	}
 }
 
+void where_adj_identifier(where *w, const char *sp)
+{
+	/* we've already gone past the token, adjust */
+	w->len = strlen(sp);
+	w->chr -= w->len - 1;
+}
+
 int intval_cmp(const intval *a, const intval *b)
 {
 	const intval_t la = a->val, lb = b->val;

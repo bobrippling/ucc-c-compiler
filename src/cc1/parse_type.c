@@ -715,8 +715,9 @@ static type_ref *parse_type_ref_nest(enum decl_mode mode, decl *dfor)
 			DIE_AT(NULL, "identifier unexpected");
 
 		/* set spel + location info */
-		dfor->spel = token_current_spel();
 		where_new(&dfor->where);
+		dfor->spel = token_current_spel();
+		where_adj_identifier(&dfor->where, dfor->spel);
 
 		EAT(token_identifier);
 
