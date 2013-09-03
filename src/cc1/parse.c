@@ -437,9 +437,10 @@ PARSE_DEFINE(logical_or,  logical_and,   token_orsc)
 static expr *parse_expr_conditional()
 {
 	expr *e = parse_expr_logical_or();
+	where w;
 
-	if(accept(token_question)){
-		expr *q = expr_new_if(e);
+	if(accept_where(token_question, &w)){
+		expr *q = expr_set_where(expr_new_if(e), &w);
 
 		if(accept(token_colon)){
 			q->lhs = NULL; /* sentinel */
