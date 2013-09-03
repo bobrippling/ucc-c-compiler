@@ -28,7 +28,10 @@ void fold_stmt_for(stmt *s)
 #undef FOLD_IF
 
 	if(s->flow->for_while)
-		fold_need_expr(s->flow->for_while, "for-while", 1);
+		fold_check_expr(
+				s->flow->for_while,
+				FOLD_CHK_NO_ST_UN | FOLD_CHK_BOOL,
+				"for-while");
 
 	fold_stmt(s->lhs);
 }
@@ -37,7 +40,7 @@ void gen_stmt_for(stmt *s)
 {
 	char *lbl_test = out_label_flow("for_test");
 
-	flow_gen(s->flow, s->symtab);
+	flow_gen(s->flow, s->flow->for_init_symtab);
 
 	/* don't else-if, possible to have both (comma-exp for init) */
 	if(s->flow->for_init){

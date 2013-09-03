@@ -19,7 +19,7 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 	expr_must_lvalue(lvalue);
 
 	if(type_ref_is_const(lvalue->tree_type))
-		DIE_AT(&e->where, "can't modify const expression %s", lvalue->f_str());
+		die_at(&e->where, "can't modify const expression %s", lvalue->f_str());
 
 	fold_check_restrict(lvalue, e->rhs, "compound assignment", &e->where);
 
@@ -31,19 +31,15 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 
 		if(tlhs){
 			/* can't cast the lvalue - we must cast the rhs to the correct size  */
-
-			if(tlhs != lvalue->tree_type)
-				type_ref_free_1(tlhs);
-
-			fold_insert_casts(lvalue->tree_type, &e->rhs, stab, &e->where, op_to_str(e->op));
+			fold_insert_casts(lvalue->tree_type, &e->rhs, stab);
 
 		}else if(trhs){
-			fold_insert_casts(trhs, &e->rhs, stab, &e->where, op_to_str(e->op));
+			fold_insert_casts(trhs, &e->rhs, stab);
 		}
 
 		e->tree_type = lvalue->tree_type;
 
-		fold_disallow_st_un(e, "compound assignment");
+		fold_check_expr(e, FOLD_CHK_NO_ST_UN, "compound assignment");
 
 		(void)resolved;
 		/*type_ref_free_1(resolved); XXX: memleak */
@@ -85,7 +81,7 @@ void gen_expr_str_assign_compound(expr *e)
 
 	idt_printf("assign to:\n");
 	gen_str_indent++;
-	print_expr(e->lhs->lhs); /* skip our addr */
+	print_expr(e->lhs);
 	gen_str_indent--;
 	idt_printf("assign from:\n");
 	gen_str_indent++;

@@ -5,6 +5,7 @@
 #include "stmt_code.h"
 #include "../decl_init.h"
 #include "../../util/dynarray.h"
+#include "../fold_sym.h"
 
 const char *str_stmt_code()
 {
@@ -14,30 +15,38 @@ const char *str_stmt_code()
 void fold_stmt_code(stmt *s)
 {
 	stmt **siter;
-	stmt *inits = NULL;
 	decl **diter;
+	stmt *init_blk = NULL;
 	int warned = 0;
 
-	fold_symtab_scope(s->symtab, &inits);
-	if(inits)
-		dynarray_prepend(&s->codes, inits);
+	/* local struct layout-ing */
+	/* we fold decls ourselves, to get their inits */
+	symtab_fold_sues(s->symtab);
 
 	/* check for invalid function redefinitions */
 	for(diter = s->symtab->decls; diter && *diter; diter++){
 		decl *const d = *diter;
 		decl *found;
-		if(DECL_IS_FUNC(d) && (found = symtab_search_d(s->symtab->parent, d->spel))){
+
+		fold_decl(d, s->symtab, &init_blk);
+
+		if(DECL_IS_FUNC(d)
+		&& (found = symtab_search_d(s->symtab->parent, d->spel)))
+		{
 			/* allow functions redefined as decls and vice versa */
-			if(DECL_IS_FUNC(found) && !decl_equal(d, found, DECL_CMP_EXACT_MATCH)){
+			if(DECL_IS_FUNC(found) && decl_cmp(d, found, 0) != TYPE_EQUAL){
 				char buf[WHERE_BUF_SIZ];
 
-				DIE_AT(&d->where,
+				die_at(&d->where,
 						"incompatible redefinition of \"%s\"\n"
 						"%s: note: previous definition",
 						d->spel, where_str_r(buf, &found->where));
 			}
 		}
 	}
+
+	if(init_blk)
+		dynarray_prepend(&s->codes, init_blk);
 
 	for(siter = s->codes; siter && *siter; siter++){
 		stmt *const st = *siter;
@@ -54,7 +63,8 @@ void fold_stmt_code(stmt *s)
 		&& !stmt_kind(siter[1], case)
 		&& !stmt_kind(siter[1], default)
 		){
-			cc1_warn_at(&siter[1]->where, 0, 1, WARN_DEAD_CODE, "dead code after %s (%s)", st->f_str(), siter[1]->f_str());
+			cc1_warn_at(&siter[1]->where, 0, WARN_DEAD_CODE,
+					"dead code after %s (%s)", st->f_str(), siter[1]->f_str());
 			warned = 1;
 		}
 	}

@@ -15,7 +15,6 @@ void fold_expr__Generic(expr *e, symtable *stab)
 	FOLD_EXPR(e->expr, stab);
 
 	for(i = e->bits.generic.list; i && *i; i++){
-		const int flags = DECL_CMP_EXACT_MATCH;
 		struct generic_lbl **j, *l = *i;
 
 		FOLD_EXPR(l->e, stab);
@@ -24,21 +23,21 @@ void fold_expr__Generic(expr *e, symtable *stab)
 			type_ref *m = (*j)->t;
 
 			/* duplicate default checked below */
-			if(m && type_ref_equal(m, l->t, flags))
-				DIE_AT(&m->where, "duplicate type in _Generic: %s", type_ref_to_str(l->t));
+			if(m && type_ref_cmp(m, l->t, 0) == TYPE_EQUAL)
+				die_at(&m->where, "duplicate type in _Generic: %s", type_ref_to_str(l->t));
 		}
 
 
 		if(l->t){
 			fold_type_ref(l->t, NULL, stab);
 
-			if(type_ref_equal(e->expr->tree_type, l->t, flags)){
+			if(type_ref_cmp(e->expr->tree_type, l->t, 0) == TYPE_EQUAL){
 				UCC_ASSERT(!e->bits.generic.chosen, "already chosen expr for _Generic");
 				e->bits.generic.chosen = l;
 			}
 		}else{
 			if(def)
-				DIE_AT(&def->e->where, "second default for _Generic");
+				die_at(&def->e->where, "second default for _Generic");
 			def = l;
 		}
 	}
@@ -48,7 +47,7 @@ void fold_expr__Generic(expr *e, symtable *stab)
 		if(def)
 			e->bits.generic.chosen = def;
 		else
-			DIE_AT(&e->where, "no type satisfying %s", type_ref_to_str(e->expr->tree_type));
+			die_at(&e->where, "no type satisfying %s", type_ref_to_str(e->expr->tree_type));
 	}
 
 	e->tree_type = e->bits.generic.chosen->e->tree_type;
@@ -81,7 +80,7 @@ void gen_expr_str__Generic(expr *e)
 			gen_str_indent++;
 			print_type_ref(l->t, NULL);
 			gen_str_indent--;
-			fprintf(cc1_out, "\n");
+			fprintf(gen_file(), "\n");
 		}else{
 			idt_printf("default:\n");
 		}

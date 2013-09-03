@@ -1,4 +1,4 @@
-// RUN: %check -Wall %s
+// RUN: %check %s -Wall
 struct A
 {
 	char c;

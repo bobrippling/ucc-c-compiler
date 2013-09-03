@@ -178,7 +178,10 @@ int atexit(void (*f)(void))
 
 int atexit_b(void (^f)(void))
 {
-	return atexit(f);
+	/* XXX: block cast to function pointer will
+	 * break when lambdas are properly implemented
+	 */
+	return atexit((void (*)(void))f);
 }
 
 void exit(int code)

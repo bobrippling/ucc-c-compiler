@@ -57,24 +57,25 @@ void bitfield_trunc_check(decl *mem, expr *from)
 
 	const_fold(from, &k);
 
-	if(k.type == CONST_VAL){
-		const sintval_t kexp = k.bits.iv.val;
-		/* highest may be -1 - k.bits.iv.val is zero */
-		const int highest = val_highest_bit(k.bits.iv.val);
+	if(k.type == CONST_NUM){
+		const sintegral_t kexp = k.bits.num.val.i;
+		/* highest may be -1 - k.bits.num.val is zero */
+		const int highest = val_highest_bit(k.bits.num.val.i);
 		const int is_signed = type_ref_is_signed(mem->field_width->tree_type);
 
 		const_fold(mem->field_width, &k);
 
-		UCC_ASSERT(k.type == CONST_VAL, "bitfield size not val?");
+		UCC_ASSERT(k.type == CONST_NUM, "bitfield size not val?");
+		UCC_ASSERT(K_INTEGRAL(k.bits.num), "fp bitfield size?");
 
-		if(highest > (sintval_t)k.bits.iv.val
-		|| (is_signed && highest == (sintval_t)k.bits.iv.val))
+		if(highest > (sintegral_t)k.bits.num.val.i
+		|| (is_signed && highest == (sintegral_t)k.bits.num.val.i))
 		{
-			sintval_t kexp_to = kexp & ~(-1UL << k.bits.iv.val);
+			sintegral_t kexp_to = kexp & ~(-1UL << k.bits.num.val.i);
 
-			WARN_AT(&from->where,
+			warn_at(&from->where,
 					"truncation in store to bitfield alters value: "
-					"%" INTVAL_FMT_D " -> %" INTVAL_FMT_D,
+					"%" NUMERIC_FMT_D " -> %" NUMERIC_FMT_D,
 					kexp, kexp_to);
 		}
 	}
@@ -83,7 +84,7 @@ void bitfield_trunc_check(decl *mem, expr *from)
 void expr_must_lvalue(expr *e)
 {
 	if(!expr_is_lvalue(e)){
-		DIE_AT(&e->where, "assignment to %s/%s - not an lvalue",
+		die_at(&e->where, "assignment to %s/%s - not an lvalue",
 				type_ref_to_str(e->tree_type),
 				e->f_str());
 	}
@@ -102,32 +103,21 @@ void fold_expr_assign(expr *e, symtable *stab)
 		lhs_sym->nreads--; /* cancel the read that fold_ident thinks it got */
 
 	if(type_ref_is_type(e->rhs->tree_type, type_void))
-		DIE_AT(&e->where, "assignment from void expression");
+		die_at(&e->where, "assignment from void expression");
 
 	expr_must_lvalue(e->lhs);
 
 	if(!e->assign_is_init && type_ref_is_const(e->lhs->tree_type))
-		DIE_AT(&e->where, "can't modify const expression %s", e->lhs->f_str());
+		die_at(&e->where, "can't modify const expression %s", e->lhs->f_str());
 
 	fold_check_restrict(e->lhs, e->rhs, "assignment", &e->where);
 
 	e->tree_type = e->lhs->tree_type;
 
 	/* type check */
-	{
-		char bufto[TYPE_REF_STATIC_BUFSIZ], buffrom[TYPE_REF_STATIC_BUFSIZ];
-
-		fold_type_ref_equal(e->lhs->tree_type, e->rhs->tree_type,
-				&e->where, WARN_ASSIGN_MISMATCH, 0,
-				"%s type mismatch: %s <-- %s",
-				e->assign_is_init ? "initialisation" : "assignment",
-				type_ref_to_str_r(bufto,   e->lhs->tree_type),
-				type_ref_to_str_r(buffrom, e->rhs->tree_type));
-	}
-
-
-	/* do the typecheck after the equal-check, since the typecheck inserts casts */
-	fold_insert_casts(e->lhs->tree_type, &e->rhs, stab, &e->where, "assignment");
+	fold_type_chk_and_cast(
+			e->lhs->tree_type, &e->rhs,
+			stab, &e->where, "assignment");
 
 	/* the only way to get a value into a bitfield (aside from memcpy / indirection) is via this
 	 * hence we're fine doing the truncation check here

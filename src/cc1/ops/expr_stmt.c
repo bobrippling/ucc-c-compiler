@@ -25,7 +25,7 @@ void fold_expr_stmt(expr *e, symtable *stab)
 
 	if(last && stmt_kind(last_stmt, expr)){
 		e->tree_type = last_stmt->expr->tree_type;
-		fold_disallow_st_un(e, "({ ... }) statement");
+		fold_check_expr(e, FOLD_CHK_NO_ST_UN, "({ ... }) statement");
 	}else{
 		e->tree_type = type_ref_cached_VOID(); /* void expr */
 	}

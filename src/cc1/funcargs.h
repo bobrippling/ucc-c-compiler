@@ -17,15 +17,16 @@ struct funcargs
 	int args_old_proto; /* true if f(a, b); where a and b are identifiers */
 	decl **arglist;
 	int variadic;
+	enum calling_conv conv;
 };
 
-/* if fspel ! NULL, print warnings */
-enum funcargs_cmp funcargs_equal(funcargs *args_a, funcargs *args_b,
-		int strict_types, const char *fspel);
+enum funcargs_cmp funcargs_cmp(funcargs *args_to, funcargs *args_from);
 
 
 funcargs *funcargs_new(void);
 void funcargs_empty(funcargs *func);
 void funcargs_free(funcargs *args, int free_decls, int free_refs);
+
+void funcargs_ty_calc(funcargs *fa, unsigned *n_int, unsigned *n_fp);
 
 #endif

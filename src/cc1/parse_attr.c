@@ -1,36 +1,45 @@
-static decl_attr *parse_attr_format()
+static void parse_attr_bracket_chomp(int had_open_paren);
+
+static decl_attr *parse_attr_format(void)
 {
 	/* __attribute__((format (printf, fmtarg, firstvararg))) */
 	decl_attr *da;
 	char *func;
+	enum fmt_type fmt;
 
 	EAT(token_open_paren);
 
 	func = token_current_spel();
 	EAT(token_identifier);
 
+	/* TODO: token_current_spel()
+	 * and token_get_current_str(..,..)
+	 * checks everywhere */
 	if(!func)
-		return NULL; // TODO: token_current_spel() and token_get_current_str(..,..) checkes everywhere
-
-	da = decl_attr_new(attr_format);
+		return NULL;
 
 #define CHECK(s) !strcmp(func, s) || !strcmp(func, "__" s "__")
+	if(CHECK("printf")){
+		fmt = attr_fmt_printf;
+	}else if(CHECK("scanf")){
+		fmt = attr_fmt_scanf;
+	}else{
+		warn_at(NULL, "unknown format func \"%s\"", func);
+		parse_attr_bracket_chomp(1);
+		return NULL;
+	}
 
-	if(CHECK("printf"))
-		da->attr_extra.format.fmt_func = attr_fmt_printf;
-	else if(CHECK("scanf"))
-		da->attr_extra.format.fmt_func = attr_fmt_scanf;
-	else
-		DIE_AT(&da->where, "unknown format func \"%s\"", func);
+	da = decl_attr_new(attr_format);
+	da->bits.format.fmt_func = fmt;
 
 	EAT(token_comma);
 
-	da->attr_extra.format.fmt_arg = currentval.val - 1;
+	da->bits.format.fmt_arg = currentval.val.i - 1;
 	EAT(token_integer);
 
 	EAT(token_comma);
 
-	da->attr_extra.format.var_arg = currentval.val - 1;
+	da->bits.format.var_arg = currentval.val.i - 1;
 	EAT(token_integer);
 
 	EAT(token_close_paren);
@@ -48,7 +57,7 @@ static decl_attr *parse_attr_section()
 	EAT(token_open_paren);
 
 	if(curtok != token_string)
-		DIE_AT(NULL, "string expected for section");
+		die_at(NULL, "string expected for section");
 
 	token_get_current_str(&func, &len, NULL);
 	EAT(token_string);
@@ -56,13 +65,13 @@ static decl_attr *parse_attr_section()
 	for(i = 0; i < len; i++)
 		if(!isprint(func[i])){
 			if(i < len - 1 || func[i] != '\0')
-				warn_at(NULL, 1, "character 0x%x detected in section", func[i]);
+				warn_at(NULL, "character 0x%x detected in section", func[i]);
 			break;
 		}
 
 	da = decl_attr_new(attr_section);
 
-	da->attr_extra.section = func;
+	da->bits.section = func;
 
 	EAT(token_close_paren);
 
@@ -82,10 +91,10 @@ static decl_attr *parse_attr_nonnull()
 	if(accept(token_open_paren)){
 		while(curtok != token_close_paren){
 			if(curtok == token_integer){
-				int n = currentval.val;
+				int n = currentval.val.i;
 				if(n <= 0){
 					/* shouldn't ever be negative */
-					WARN_AT(NULL, "%s nonnull argument ignored", n < 0 ? "negative" : "zero");
+					warn_at(NULL, "%s nonnull argument ignored", n < 0 ? "negative" : "zero");
 					had_error = 1;
 				}else{
 					/* implicitly disallow functions with >32 args */
@@ -105,7 +114,7 @@ static decl_attr *parse_attr_nonnull()
 	}
 
 	/* if we had an error, go with what we've got, (even if it's nothing), to avoid spurious warnings */
-	da->attr_extra.nonnull_args = (l || had_error) ? l : ~0UL; /* all if 0 */
+	da->bits.nonnull_args = (l || had_error) ? l : ~0UL; /* all if 0 */
 
 	return da;
 }
@@ -132,7 +141,7 @@ static decl_attr *parse_attr_sentinel()
 {
 	decl_attr *da = decl_attr_new(attr_sentinel);
 
-  da->attr_extra.sentinel = optional_parened_expr();
+  da->bits.sentinel = optional_parened_expr();
 
 	return da;
 }
@@ -141,7 +150,7 @@ static decl_attr *parse_attr_aligned()
 {
 	decl_attr *da = decl_attr_new(attr_aligned);
 
-  da->attr_extra.align = optional_parened_expr();
+  da->bits.align = optional_parened_expr();
 
 	return da;
 }
@@ -161,6 +170,18 @@ EMPTY(attr_packed)
 
 #undef EMPTY
 
+#define CALL_CONV(n)                            \
+static decl_attr *parse_attr_## n()             \
+{                                               \
+	decl_attr *a = decl_attr_new(attr_call_conv); \
+	a->bits.conv = conv_ ## n;                    \
+	return a;                                     \
+}
+
+CALL_CONV(cdecl)
+CALL_CONV(stdcall)
+CALL_CONV(fastcall)
+
 static struct
 {
 	const char *ident;
@@ -178,6 +199,10 @@ static struct
 	ATTR(packed),
 	ATTR(sentinel),
 	ATTR(aligned),
+
+	ATTR(cdecl),
+	ATTR(stdcall),
+	ATTR(fastcall),
 #undef ATTR
 
 	/* compat */
@@ -187,10 +212,13 @@ static struct
 };
 #define MAX_FMT_LEN 16
 
-static void parse_attr_bracket_chomp(void)
+static void parse_attr_bracket_chomp(int had_open_paren)
 {
-	if(accept(token_open_paren)){
-		parse_attr_bracket_chomp(); /* nest */
+	if(!had_open_paren && accept(token_open_paren))
+		had_open_paren = 1;
+
+	if(had_open_paren){
+		parse_attr_bracket_chomp(0); /* nest */
 
 		while(curtok != token_close_paren)
 			EAT(curtok);
@@ -212,11 +240,11 @@ static decl_attr *parse_attr_single(char *ident)
 		}
 	}
 
-	warn_at(NULL, 1, "ignoring unrecognised attribute \"%s\"", ident);
+	warn_at(NULL, "ignoring unrecognised attribute \"%s\"", ident);
 
 	/* if there are brackets, eat them all */
 
-	parse_attr_bracket_chomp();
+	parse_attr_bracket_chomp(0);
 
 	return NULL;
 }
@@ -228,8 +256,14 @@ static decl_attr *parse_attr(void)
 	for(;;){
 		char *ident;
 
-		if(curtok != token_identifier)
-			DIE_AT(NULL, "identifier expected for attribute (got %s)", token_to_str(curtok));
+		if(curtok != token_identifier){
+			parse_had_error = 1;
+			warn_at_print_error(NULL,
+					"identifier expected for attribute (got %s)",
+					token_to_str(curtok));
+			EAT(curtok);
+			goto comma;
+		}
 
 		ident = token_current_spel();
 		EAT(token_identifier);
@@ -241,6 +275,7 @@ static decl_attr *parse_attr(void)
 
 		free(ident);
 
+comma:
 		if(!accept(token_comma))
 			break;
 	}

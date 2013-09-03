@@ -5,3 +5,5 @@ CFLAGS = -g -Wall -Wextra -pedantic -std=c99 \
 #-Wconversion          \
 #-Wshadow              \
 #-Wstrict-prototypes   \
+
+include ../src_config_platform.mk

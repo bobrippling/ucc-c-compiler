@@ -13,11 +13,11 @@ void fold_expr_deref(expr *e, symtable *stab)
 	ptr = FOLD_EXPR(expr_deref_what(e), stab);
 
 	if(expr_attr_present(ptr, attr_noderef))
-		WARN_AT(&ptr->where, "dereference of noderef expression");
+		warn_at(&ptr->where, "dereference of noderef expression");
 
 	/* check for *&x */
 	if(expr_kind(ptr, addr) && !ptr->expr_addr_implicit)
-		WARN_AT(&ptr->where, "possible optimisation for *& expression");
+		warn_at(&ptr->where, "possible optimisation for *& expression");
 
 	fold_check_bounds(ptr, 0);
 
@@ -51,7 +51,7 @@ static void const_expr_deref(expr *e, consty *k)
 	const_fold(from, k);
 
 	switch(k->type){
-		case CONST_VAL:
+		case CONST_NUM:
 		case CONST_ADDR:
 		case CONST_STRK:
 			k->type = CONST_ADDR_OR_NEED_TREF(from->tree_type);

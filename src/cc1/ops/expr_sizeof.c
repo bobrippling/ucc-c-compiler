@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "ops.h"
 #include "expr_sizeof.h"
 #include "../sue.h"
@@ -38,9 +40,8 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 
 	chosen = SIZEOF_WHAT(e);
 
-	fold_disallow_bitfield(
-			e->expr,
-			"%s applied to a bit-field",
+	fold_check_expr(e->expr,
+			FOLD_CHK_NO_BITFIELD,
 			sizeof_what(e->what_of));
 
 	switch(e->what_of){
@@ -54,7 +55,7 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 			if(type_ref_is_decayed_array(chosen)){
 				char ar_buf[TYPE_REF_STATIC_BUFSIZ];
 
-				WARN_AT(&e->where, "array parameter size is sizeof(%s), not sizeof(%s)",
+				warn_at(&e->where, "array parameter size is sizeof(%s), not sizeof(%s)",
 						type_ref_to_str(chosen),
 						type_ref_to_str_r_show_decayed(ar_buf, chosen));
 			}
@@ -66,10 +67,10 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 			int set = 0; /* need this, since .bits can't be relied upon to be 0 */
 
 			if(!type_ref_is_complete(chosen))
-				DIE_AT(&e->where, "sizeof incomplete type %s", type_ref_to_str(chosen));
+				die_at(&e->where, "sizeof incomplete type %s", type_ref_to_str(chosen));
 
-			if((sue = type_ref_is_s_or_u(chosen)) && sue_incomplete(sue))
-				DIE_AT(&e->where, "sizeof %s", type_ref_to_str(chosen));
+			if((sue = type_ref_is_s_or_u(chosen)) && !sue_complete(sue))
+				die_at(&e->where, "sizeof %s", type_ref_to_str(chosen));
 
 			if(e->what_of == what_alignof && e->expr){
 				decl *d = NULL;
@@ -89,7 +90,7 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 							SIZEOF_WHAT(e), &e->where);
 
 			/* size_t */
-			e->tree_type = type_ref_new_type(type_new_primitive_signed(type_long, 0));
+			e->tree_type = type_ref_new_type(type_new_primitive(type_ulong));
 			break;
 		}
 	}
@@ -98,16 +99,17 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 static void const_expr_sizeof(expr *e, consty *k)
 {
 	UCC_ASSERT(e->tree_type, "const_fold on sizeof before fold");
-	k->bits.iv.val = SIZEOF_SIZE(e);
-	k->bits.iv.suffix = VAL_UNSIGNED | VAL_LONG;
-	k->type = CONST_VAL;
+	memset(k, 0, sizeof *k);
+	k->bits.num.val.i = SIZEOF_SIZE(e);
+	k->bits.num.suffix = VAL_UNSIGNED | VAL_LONG;
+	k->type = CONST_NUM;
 }
 
 void gen_expr_sizeof(expr *e)
 {
 	type_ref *r = SIZEOF_WHAT(e);
 
-	out_push_i(e->tree_type, SIZEOF_SIZE(e));
+	out_push_l(e->tree_type, SIZEOF_SIZE(e));
 
 	out_comment("sizeof %s%s", e->expr ? "" : "type ", type_ref_to_str(r));
 }

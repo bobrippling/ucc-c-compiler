@@ -34,9 +34,12 @@ static void fold_const_expr_if(expr *e, consty *k)
 	}
 
 	switch(consts[0].type){
-		case CONST_VAL:
-			res = consts[0].bits.iv.val;
+		case CONST_NUM:
+		{
+			numeric *n = &consts[0].bits.num;
+			res = n->suffix & VAL_FLOATING ? n->val.f : n->val.i;
 			break;
+		}
 		case CONST_ADDR:
 		case CONST_STRK:
 			res = 1;
@@ -58,16 +61,19 @@ void fold_expr_if(expr *e, symtable *stab)
 	FOLD_EXPR(e->expr, stab);
 	const_fold(e->expr, &konst);
 
-	fold_need_expr(e->expr, "?: expr", 1);
-	fold_disallow_st_un(e->expr, "?: expr");
+	fold_check_expr(e->expr, FOLD_CHK_NO_ST_UN, "if-expr");
 
 	if(e->lhs){
 		FOLD_EXPR(e->lhs, stab);
-		fold_disallow_st_un(e->lhs, "?: lhs");
+		fold_check_expr(e->lhs,
+				FOLD_CHK_NO_ST_UN | FOLD_CHK_ALLOW_VOID,
+				"if-lhs");
 	}
 
 	FOLD_EXPR(e->rhs, stab);
-	fold_disallow_st_un(e->rhs, "?: rhs");
+	fold_check_expr(e->rhs,
+			FOLD_CHK_NO_ST_UN | FOLD_CHK_ALLOW_VOID,
+			"if-rhs");
 
 
 	/*
@@ -88,14 +94,15 @@ void fold_expr_if(expr *e, symtable *stab)
 	tt_r = e->rhs->tree_type;
 
 	if(type_ref_is_integral(tt_l) && type_ref_is_integral(tt_r)){
-		e->tree_type = op_promote_types(op_unknown, "?:",
+		e->tree_type = op_promote_types(
+				op_unknown,
 				(e->lhs ? &e->lhs : &e->expr), &e->rhs,
 				&e->where, stab);
 
 	}else if(type_ref_is_void(tt_l) || type_ref_is_void(tt_r)){
 		e->tree_type = type_ref_new_type(type_new_primitive(type_void));
 
-	}else if(type_ref_equal(tt_l, tt_r, DECL_CMP_EXACT_MATCH)){
+	}else if(type_ref_cmp(tt_l, tt_r, 0) == TYPE_EQUAL){
 		e->tree_type = type_ref_new_cast(tt_l,
 				type_ref_qual(tt_l) | type_ref_qual(tt_r));
 
@@ -115,13 +122,8 @@ void fold_expr_if(expr *e, symtable *stab)
 			int r_ptr = r_ptr_null || type_ref_is(tt_r, type_ref_ptr);
 
 			if(l_ptr || r_ptr){
-				char bufa[TYPE_REF_STATIC_BUFSIZ], bufb[TYPE_REF_STATIC_BUFSIZ];
-
-				fold_type_ref_equal(tt_l, tt_r, &e->where,
-						WARN_COMPARE_MISMATCH, 0, /* FIXME: enum "mismatch" */
-						"pointer type mismatch: %s and %s",
-						type_ref_to_str_r(bufa, tt_l),
-						type_ref_to_str_r(bufb, tt_r));
+				fold_type_chk_warn(
+						tt_l, tt_r, &e->where, "?: pointer type mismatch");
 
 				/* void * */
 				e->tree_type = type_ref_new_ptr(type_ref_cached_VOID(), qual_none);
@@ -136,7 +138,7 @@ void fold_expr_if(expr *e, symtable *stab)
 			}else{
 				char buf[TYPE_REF_STATIC_BUFSIZ];
 
-				WARN_AT(&e->where, "conditional type mismatch (%s vs %s)",
+				warn_at(&e->where, "conditional type mismatch (%s vs %s)",
 						type_ref_to_str(tt_l), type_ref_to_str_r(buf, tt_r));
 
 				e->tree_type = type_ref_cached_VOID();

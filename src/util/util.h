@@ -14,16 +14,13 @@ void warn_colour(int on, int err);
 /* used by the *_had_error notification+continue code */
 void warn_at_print_error(struct where *, const char *fmt, ...);
 
-void warn_at(struct where *, int show_line, const char *, ...) ucc_printflike(3, 4);
-void die_at(struct where *, int show_line, const char *, ...) ucc_printflike(3, 4) ucc_dead;
-void vwarn(struct where *w, int err, int show_line, const char *fmt, va_list l);
-void vdie(struct where *, int show_line, const char *, va_list) ucc_dead;
+void warn_at(struct where *, const char *, ...) ucc_printflike(2, 3);
+void die_at(struct where *, const char *, ...) ucc_printflike(2, 3) ucc_dead;
+void vwarn(struct where *w, int err,  const char *fmt, va_list l);
+void vdie(struct where *, const char *, va_list) ucc_dead;
 void die(const char *fmt, ...) ucc_printflike(1, 2) ucc_dead;
 
 extern void include_bt(FILE *); /* implemented by the program */
-
-#define DIE_AT( w, ...) die_at( w, 1, __VA_ARGS__)
-#define WARN_AT(w, ...) warn_at(w, 1, __VA_ARGS__)
 
 char *fline(FILE *f);
 char *udirname(const char *);

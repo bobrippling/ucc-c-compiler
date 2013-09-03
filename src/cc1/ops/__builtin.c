@@ -191,15 +191,15 @@ static void fold_memset(expr *e, symtable *stab)
 		/* this is pretty much an ICE, except it may be
 		 * user-callable in the future
 		 */
-		DIE_AT(&e->where, "can't memset %s - not addressable",
+		die_at(&e->where, "can't memset %s - not addressable",
 				e->lhs->f_str());
 	}
 
 	if(e->bits.builtin_memset.len == 0)
-		WARN_AT(&e->where, "zero size memset");
+		warn_at(&e->where, "zero size memset");
 
 	if((unsigned)e->bits.builtin_memset.ch > 255)
-		WARN_AT(&e->where, "memset with value > UCHAR_MAX");
+		warn_at(&e->where, "memset with value > UCHAR_MAX");
 
 	e->tree_type = type_ref_cached_VOID_PTR();
 }
@@ -239,19 +239,19 @@ static void builtin_gen_memset(expr *e)
 		out_dup(); /* copy pointer */
 
 		/* *p = 0 */
-		out_push_i(tzero, 0);
+		out_push_zero(tzero);
 		out_store();
 		out_pop();
 
 		/* p++ (copied pointer) */
-		out_push_i(type_ref_cached_INTPTR_T(), 1);
+		out_push_l(type_ref_cached_INTPTR_T(), 1);
 		out_op(op_plus);
 
 		if(rem){
 			/* need to zero a little more */
 			out_dup();
 			out_change_type(textrap);
-			out_push_i(textra, 0);
+			out_push_zero(textra);
 			out_store();
 			out_pop();
 		}
@@ -328,11 +328,11 @@ static void builtin_memcpy_single(void)
 	out_store();    /* ds. */
 	out_pop();      /* ds */
 
-	out_push_i(t1, 1); /* ds1 */
+	out_push_l(t1, 1); /* ds1 */
 	out_op(op_plus);   /* dS */
 
 	out_swap();        /* Sd */
-	out_push_i(t1, 1); /* Sd1 */
+	out_push_l(t1, 1); /* Sd1 */
 	out_op(op_plus);   /* SD */
 
 	out_swap(); /* DS */
@@ -352,15 +352,15 @@ static void builtin_gen_memcpy(expr *e)
 			e->tree_type, fargs);
 
 	out_push_lbl("memcpy", 0);
-	out_push_i(type_ref_cached_INTPTR_T(), e->bits.iv.val);
+	out_push_l(type_ref_cached_INTPTR_T(), e->bits.num.val);
 	lea_expr(e->rhs, stab);
 	lea_expr(e->lhs, stab);
 	out_call(3, e->tree_type, ctype);
 #else
 	/* TODO: backend rep movsb */
-	unsigned i = e->bits.iv.val;
+	unsigned i = e->bits.num.val.i;
 	type_ref *tptr = type_ref_new_ptr(
-				type_ref_cached_MAX_FOR(e->bits.iv.val),
+				type_ref_cached_MAX_FOR(e->bits.num.val.i),
 				qual_none);
 	unsigned tptr_sz = type_ref_size(tptr, &e->where);
 
@@ -403,7 +403,7 @@ expr *builtin_new_memcpy(expr *to, expr *from, size_t len)
 
 	fcall->lhs = to;
 	fcall->rhs = from;
-	fcall->bits.iv.val = len;
+	fcall->bits.num.val.i = len;
 
 	return fcall;
 }
@@ -454,7 +454,7 @@ static void fold_compatible_p(expr *e, symtable *stab)
 	type_ref **types = e->bits.types;
 
 	if(dynarray_count(types) != 2)
-		DIE_AT(&e->where, "need two arguments for %s", BUILTIN_SPEL(e->expr));
+		die_at(&e->where, "need two arguments for %s", BUILTIN_SPEL(e->expr));
 
 	fold_type_ref(types[0], NULL, stab);
 	fold_type_ref(types[1], NULL, stab);
@@ -467,9 +467,9 @@ static void const_compatible_p(expr *e, consty *k)
 {
 	type_ref **types = e->bits.types;
 
-	k->type = CONST_VAL;
-
-	k->bits.iv.val = type_ref_equal(types[0], types[1], DECL_CMP_EXACT_MATCH);
+	memset(k, 0, sizeof *k);
+	k->type = CONST_NUM;
+	k->bits.num.val.i = type_ref_cmp(types[0], types[1], 0) == TYPE_EQUAL;
 }
 
 static expr *expr_new_funcall_typelist(void)
@@ -495,7 +495,7 @@ static expr *parse_compatible_p(void)
 static void fold_constant_p(expr *e, symtable *stab)
 {
 	if(dynarray_count(e->funcargs) != 1)
-		DIE_AT(&e->where, "%s takes a single argument", BUILTIN_SPEL(e->expr));
+		die_at(&e->where, "%s takes a single argument", BUILTIN_SPEL(e->expr));
 
 	FOLD_EXPR(e->funcargs[0], stab);
 
@@ -510,8 +510,9 @@ static void const_constant_p(expr *e, consty *k)
 
 	const_fold(test, &subk);
 
-	k->type = CONST_VAL;
-	k->bits.iv.val = CONST_AT_COMPILE_TIME(subk.type);
+	memset(k, 0, sizeof *k);
+	k->type = CONST_NUM;
+	k->bits.num.val.i = CONST_AT_COMPILE_TIME(subk.type);
 }
 
 static expr *parse_constant_p(void)
@@ -528,15 +529,19 @@ static void fold_frame_address(expr *e, symtable *stab)
 	consty k;
 
 	if(dynarray_count(e->funcargs) != 1)
-		DIE_AT(&e->where, "%s takes a single argument", BUILTIN_SPEL(e->expr));
+		die_at(&e->where, "%s takes a single argument", BUILTIN_SPEL(e->expr));
 
 	FOLD_EXPR(e->funcargs[0], stab);
 
 	const_fold(e->funcargs[0], &k);
-	if(k.type != CONST_VAL || (sintval_t)k.bits.iv.val < 0)
-		DIE_AT(&e->where, "%s needs a positive constant value argument", BUILTIN_SPEL(e->expr));
+	if(k.type != CONST_NUM
+	|| (K_FLOATING(k.bits.num))
+	|| (sintegral_t)k.bits.num.val.i < 0)
+	{
+		die_at(&e->where, "%s needs a positive integral constant value argument", BUILTIN_SPEL(e->expr));
+	}
 
-	memcpy_safe(&e->bits.iv, &k.bits.iv);
+	memcpy_safe(&e->bits.num, &k.bits.num);
 
 	e->tree_type = type_ref_new_ptr(
 			type_ref_new_type(
@@ -549,7 +554,7 @@ static void fold_frame_address(expr *e, symtable *stab)
 
 static void builtin_gen_frame_address(expr *e)
 {
-	const int depth = e->bits.iv.val;
+	const int depth = e->bits.num.val.i;
 
 	out_push_frame_ptr(depth + 1);
 }
@@ -608,14 +613,14 @@ static void fold_expect(expr *e, symtable *stab)
 	int i;
 
 	if(dynarray_count(e->funcargs) != 2)
-		DIE_AT(&e->where, "%s takes two arguments", BUILTIN_SPEL(e->expr));
+		die_at(&e->where, "%s takes two arguments", BUILTIN_SPEL(e->expr));
 
 	for(i = 0; i < 2; i++)
 		FOLD_EXPR(e->funcargs[i], stab);
 
 	const_fold(e->funcargs[1], &k);
-	if(k.type != CONST_VAL)
-		WARN_AT(&e->where, "%s second argument isn't a constant value", BUILTIN_SPEL(e->expr));
+	if(k.type != CONST_NUM)
+		warn_at(&e->where, "%s second argument isn't a constant value", BUILTIN_SPEL(e->expr));
 
 	e->tree_type = e->funcargs[0]->tree_type;
 	wur_builtin(e);
@@ -649,7 +654,7 @@ static void fold_is_signed(expr *e, symtable *stab)
 	type_ref **tl = e->bits.types;
 
 	if(dynarray_count(tl) != 1)
-		DIE_AT(&e->where, "need a single argument for %s", BUILTIN_SPEL(e->expr));
+		die_at(&e->where, "need a single argument for %s", BUILTIN_SPEL(e->expr));
 
 	fold_type_ref(tl[0], NULL, stab);
 
@@ -660,8 +665,8 @@ static void fold_is_signed(expr *e, symtable *stab)
 static void const_is_signed(expr *e, consty *k)
 {
 	memset(k, 0, sizeof *k);
-	k->type = CONST_VAL;
-	k->bits.iv.val = type_ref_is_signed(e->bits.types[0]);
+	k->type = CONST_NUM;
+	k->bits.num.val.i = type_ref_is_signed(e->bits.types[0]);
 }
 
 static expr *parse_is_signed(void)
@@ -693,9 +698,9 @@ static void const_strlen(expr *e, consty *k)
 			const char *p = memchr(s, '\0', sv->len);
 
 			if(p){
-				k->type = CONST_VAL;
-				k->bits.iv.val = p - s;
-				k->bits.iv.suffix = VAL_UNSIGNED;
+				k->type = CONST_NUM;
+				k->bits.num.val.i = p - s;
+				k->bits.num.suffix = VAL_UNSIGNED;
 			}
 		}
 	}

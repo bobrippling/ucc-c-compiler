@@ -1,7 +1,7 @@
 #ifndef OUT_H
 #define OUT_H
 
-#define OUT_VPHI_SZ 48 /* sizeof(struct vstack) */
+#define OUT_VPHI_SZ 64 /* sizeof(struct vstack) */
 
 void out_pop(void);
 void out_pop_func_ret(type_ref *) ucc_nonnull((1));
@@ -9,8 +9,9 @@ void out_pop_func_ret(type_ref *) ucc_nonnull((1));
 void out_phi_pop_to(void *); /* put the current value into a phi-save area */
 void out_phi_join(void *);   /* join vtop and the phi-save area */
 
-void out_push_iv(type_ref *, intval *iv) ucc_nonnull((1));
-void out_push_i( type_ref *, int i) ucc_nonnull((1));
+void out_push_num(type_ref *t, const numeric *n) ucc_nonnull((1));
+void out_push_l(type_ref *, long) ucc_nonnull((1));
+void out_push_zero(type_ref *) ucc_nonnull((1));
 void out_push_lbl(const char *s, int pic);
 void out_push_noop(void);
 
@@ -39,11 +40,18 @@ void out_jmp(void); /* jmp to *pop() */
 void out_jtrue( const char *);
 void out_jfalse(const char *);
 
-void out_func_prologue(int stack_res, int nargs, int variadic); /* push rbp, sub rsp, ... */
-void out_func_epilogue(void); /* mov rsp, rbp; ret */
+void out_func_prologue(
+		type_ref *rf,
+		int stack_res, int nargs, int variadic,
+		int arg_offsets[]);
+
+void out_func_epilogue(type_ref *);
 void out_label(const char *);
 
 void out_comment(const char *, ...) ucc_printflike(1, 2);
+#ifdef ASM_H
+void out_comment_sec(enum section_type, const char *, ...) ucc_printflike(2, 3);
+#endif
 
 void out_assert_vtop_null(void);
 void out_dump(void);
@@ -54,7 +62,5 @@ void out_push_frame_ptr(int nframes);
 void out_push_reg_save_ptr(void);
 
 int out_vcount(void);
-
-int out_n_call_regs(void); /* for va_* - TODO: move to impl */
 
 #endif

@@ -5,13 +5,14 @@ struct vstack
 {
 	enum vstore
 	{
-		V_CONST = 0,      /* vtop is a constant value */
-		V_REG   = 1,      /* vtop is in a register */
-		V_STACK = 2,      /* vtop is a stack value */
-		V_FLAG  = 3,      /* vtop is a cpu flag */
-		V_LBL   = 4,      /* vtop is a label */
+		V_CONST_I = 0, /* vtop is a constant int */
+		V_CONST_F = 1, /* vtop is a constant float */
+		V_REG     = 2, /* vtop is in a register */
+		V_STACK   = 3, /* vtop is a stack value */
+		V_FLAG    = 4, /* vtop is a cpu flag */
+		V_LBL     = 5, /* vtop is a label */
 
-		V_LVAL  = 8       /* vtop is an lvalue, or'd in */
+		V_LVAL    = 8  /* vtop is an lvalue, or'd in */
 	} type_;
 #define V_TYPE(ty)   ((ty ## _) & ~V_LVAL)
 #define V_LVAL(ty) !!((ty ## _) &  V_LVAL)
@@ -20,12 +21,15 @@ struct vstack
 
 	union
 	{
-		intval_t val;
-		struct
+		integral_t val_i;
+		floating_t val_f;
+		struct vreg
 		{
-			int idx;
+			unsigned short idx, is_float;
 			long offset; /* -4(%rdx) */
 		} reg;
+#define VREG_INIT(idx, fp) { idx, fp, 0 }
+
 		long off_from_bp;
 		struct flag_opts
 		{
@@ -59,31 +63,57 @@ void vpop(void);
 void vswap(void);
 
 void v_clear(struct vstack *vp, type_ref *);
-void v_set_reg(struct vstack *vp, int r);
+void v_set_reg(struct vstack *vp, const struct vreg *r);
+
+void v_flag(enum flag_cmp c, int is_signed);
 
 void v_cast(struct vstack *vp, type_ref *to);
 
-void v_to_reg_const(struct vstack *vp);
-
 void v_inv_cmp(struct vstack *vp);
 
-int  v_to_reg(struct vstack *conv);
-void v_to_reg2(struct vstack *from, int reg);
+void v_to_reg(struct vstack *conv);
+void v_to_reg_out(struct vstack *conv, struct vreg *);
+void v_to_reg_given(struct vstack *from, const struct vreg *);
 
+void v_to_mem_given(struct vstack *, int stack_pos);
+void v_to_mem(struct vstack *);
+int  v_stack_sz(void);
 
-int  v_unused_reg(int stack_as_backup);
+enum vto
+{
+	TO_REG = 1 << 0,
+	TO_MEM = 1 << 1,
+	TO_CONST = 1 << 2,
+};
+void v_to(struct vstack *, enum vto);
+
+int vreg_eq(const struct vreg *, const struct vreg *);
+
+/* returns 0 on success, -1 if no regs free */
+int  v_unused_reg(int stack_as_backup, int fp, struct vreg *);
+
 void v_freeup_regp(struct vstack *);
-void v_freeup_reg(int r, int allowable_stack);
-void v_freeup_regs(int a, int b);
+void v_freeup_reg(const struct vreg *, int allowable_stack);
+void v_freeup_regs(const struct vreg *, const struct vreg *);
 void v_save_reg(struct vstack *vp);
-void v_save_regs(void);
-void v_reserve_reg(const int r);
-void v_unreserve_reg(const int r);
+/* if func_ty != NULL, don't save callee-save-regs */
+void v_save_regs(int n_ignore, type_ref *func_ty);
+void v_reserve_reg(const struct vreg *);
+void v_unreserve_reg(const struct vreg *);
+
+/* outputs stack-ptr instruction(s) */
+unsigned v_alloc_stack(unsigned sz, const char *);
+/* Will output instructions to align the stack to cc1_mstack_align
+ * e.g. if a push is done manually */
+unsigned v_alloc_stack_n(unsigned sz, const char *);
+/* v_alloc_stack* returns the padded sz that was alloced */
+
+void v_dealloc_stack(unsigned sz);
 
 void v_deref_decl(struct vstack *vp);
 
 int impl_n_scratch_regs(void);
-int impl_n_call_regs(void);
+unsigned impl_n_call_regs(type_ref *);
 int impl_ret_reg(void);
 
 #endif

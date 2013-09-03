@@ -6,7 +6,7 @@ typedef struct consty
 	enum constyness
 	{
 		CONST_NO = 0,   /* f() */
-		CONST_VAL,      /* 5 + 2 */
+		CONST_NUM,      /* 5 + 2, float, etc */
 		/* can be offset: */
 		CONST_ADDR,     /* &f where f is global */
 		CONST_STRK,     /* string constant */
@@ -15,7 +15,7 @@ typedef struct consty
 	long offset; /* offset for addr/strk */
 	union
 	{
-		intval iv;          /* CONST_VAL */
+		numeric num;        /* CONST_VAL_* */
 		stringval *str;     /* CONST_STRK */
 		struct
 		{
@@ -37,6 +37,9 @@ typedef struct consty
 		? CONST_ADDR : CONST_NEED_ADDR)
 
 #define CONST_ADDR_OR_NEED(d) CONST_ADDR_OR_NEED_TREF((d)->ref)
+
+#define K_FLOATING(num) !!((num).suffix & VAL_FLOATING)
+#define K_INTEGRAL(num) !K_FLOATING(num)
 
 
 typedef void         func_fold(          expr *, symtable *);
@@ -89,7 +92,7 @@ struct expr
 
 	union
 	{
-		intval iv;
+		numeric num;
 
 		/* __builtin_va_start */
 		int n;
@@ -178,7 +181,7 @@ void expr_mutate(expr *, func_mutate_expr *, func_fold *, func_str *, func_gen *
                                         gen_expr_str_    ## type, \
                                         gen_expr_style_  ## type)
 
-expr *expr_new_intval(intval *);
+expr *expr_new_numeric(numeric *);
 
 /* simple wrappers */
 expr *expr_ptr_multiply(expr *, decl *);
@@ -238,6 +241,7 @@ expr *expr_new_comma2(expr *lhs, expr *rhs);
 #define expr_new_comma() expr_new_wrapper(comma)
 
 int expr_is_null_ptr(expr *, int allow_int);
+void expr_set_const(expr *, consty *);
 
 /* util */
 expr *expr_new_array_idx_e(expr *base, expr *idx);

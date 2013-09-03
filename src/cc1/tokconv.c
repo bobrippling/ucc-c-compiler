@@ -195,6 +195,9 @@ const char *token_to_str(enum token t)
 		CASE_STR_PREFIX(token,  character);
 		CASE_STR_PREFIX(token,  string);
 
+		case token_floater:
+			return "float";
+
 #define MAP(t, s) case token_##t: return s
 		MAP(attribute,       "__attribute__");
 		MAP(elipsis,         "'...'");
@@ -343,7 +346,7 @@ void token_get_current_str(char **ps, int *pl, int *pwide)
 	if(pwide)
 		*pwide = currentstringwide;
 	else if(currentstringwide)
-		DIE_AT(NULL, "wide string not wanted");
+		die_at(NULL, "wide string not wanted");
 
 	if(pl){
 		*pl = currentstringlen;
@@ -351,7 +354,7 @@ void token_get_current_str(char **ps, int *pl, int *pwide)
 		char *p = memchr(currentstring, '\0', currentstringlen);
 
 		if(p && p < currentstring + currentstringlen - 1)
-			WARN_AT(NULL, "nul-character terminates string early (%s)", p + 1);
+			warn_at(NULL, "nul-character terminates string early (%s)", p + 1);
 	}
 
 	currentstring = NULL;

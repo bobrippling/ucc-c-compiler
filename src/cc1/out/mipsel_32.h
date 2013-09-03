@@ -52,10 +52,7 @@
 
 #define N_SCRATCH_REGS 10 /* $t0-$t9 */
 
-#define N_CALL_REGS    4
 #define REG_RET        MIPS_REG_V0
 #define REG_SP         MIPS_REG_SP
-
-#define IMPL_COMMENT "#"
 
 #endif

@@ -4,6 +4,7 @@
 #include "stmt_if.h"
 #include "stmt_for.h"
 #include "../out/lbl.h"
+#include "../fold_sym.h"
 
 const char *str_stmt_if()
 {
@@ -16,13 +17,12 @@ void flow_fold(stmt_flow *flow, symtable **pstab)
 		decl **i;
 
 		*pstab = flow->for_init_symtab;
-		fold_symtab_scope(*pstab, &flow->inits);
-		if(flow->inits)
-			fold_stmt(flow->inits);
 
 		/* sanity check on _flow_ vars only */
 		for(i = (*pstab)->decls; i && *i; i++){
 			decl *const d = *i;
+
+			fold_decl(d, *pstab, &flow->init_blk);
 
 			switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
 				case store_auto:
@@ -30,10 +30,13 @@ void flow_fold(stmt_flow *flow, symtable **pstab)
 				case store_register:
 					break;
 				default:
-					DIE_AT(&d->where, "%s variable in statement-initialisation",
+					die_at(&d->where, "%s variable in statement-initialisation",
 							decl_store_to_str(d->store));
 			}
 		}
+
+		if(flow->init_blk)
+			fold_stmt(flow->init_blk);
 	}
 }
 
@@ -44,8 +47,8 @@ void flow_gen(stmt_flow *flow, symtable *stab)
 	if(flow){
 		gen_code_decls(flow->for_init_symtab);
 
-		if(flow->inits)
-			gen_stmt(flow->inits);
+		if(flow->init_blk)
+			gen_stmt(flow->init_blk);
 		/* also generates decls on the flow->inits statement */
 	}
 }
@@ -58,7 +61,7 @@ void fold_stmt_if(stmt *s)
 
 	FOLD_EXPR(s->expr, stab);
 
-	fold_need_expr(s->expr, s->f_str(), 1);
+	fold_check_expr(s->expr, FOLD_CHK_BOOL, s->f_str());
 
 	fold_stmt(s->lhs);
 	if(s->rhs)

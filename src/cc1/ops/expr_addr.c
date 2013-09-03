@@ -28,7 +28,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 				qual_none);
 
 		if(!curdecl_func)
-			DIE_AT(&e->where, "address-of-label outside a function");
+			die_at(&e->where, "address-of-label outside a function");
 		save = e->bits.ident.spel;
 		e->bits.ident.spel = out_label_goto(
 				curdecl_func->spel, e->bits.ident.spel);
@@ -42,7 +42,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 
 		/* can address: lvalues, arrays and functions */
 		if(!expr_is_addressable(e->lhs)){
-			DIE_AT(&e->lhs->where, "can't take the address of %s (%s)",
+			die_at(&e->lhs->where, "can't take the address of %s (%s)",
 					e->lhs->f_str(), type_ref_to_str(e->lhs->tree_type));
 		}
 
@@ -50,10 +50,10 @@ void fold_expr_addr(expr *e, symtable *stab)
 			decl *d = e->lhs->bits.ident.sym->decl;
 
 			if((d->store & STORE_MASK_STORE) == store_register)
-				DIE_AT(&e->lhs->where, "can't take the address of register");
+				die_at(&e->lhs->where, "can't take the address of register");
 		}
 
-		fold_disallow_bitfield(e->lhs, "taking the address of a bit-field");
+		fold_check_expr(e->lhs, FOLD_CHK_NO_BITFIELD, "address-of");
 
 		e->tree_type = type_ref_new_ptr(e->lhs->tree_type, qual_none);
 	}

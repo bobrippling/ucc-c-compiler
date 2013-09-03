@@ -18,6 +18,8 @@ std_c90:
 		*penu = STD_C90;
 	}else if(!strcmp(std, "c89")){
 		*penu = STD_C89;
+	}else if(!strcmp(std, "c11")){
+		*penu = STD_C11;
 	}else{
 		return 1;
 	}

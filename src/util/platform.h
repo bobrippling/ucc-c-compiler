@@ -17,6 +17,7 @@ enum platform_sys
 
 enum platform     platform_type(void);
 enum platform_sys platform_sys( void);
+int platform_32bit(void);
 
 #ifndef ucc_const
 #  define ucc_const

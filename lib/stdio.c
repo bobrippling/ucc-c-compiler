@@ -61,7 +61,7 @@ static void fprintn(FILE *f, uintmax_t n, int base, int is_signed, int ty_sz)
 		if(ty_sz < sizeof(uintmax_t)){
 			// force sign extension - signed right shift
 			n <<= (sizeof(long) - ty_sz) * CHAR_BIT;
-			n = (intmax_t)n >> (sizeof(long) - ty_sz) * CHAR_BIT;
+			n = (intmax_t)n >> ((sizeof(long) - ty_sz) * CHAR_BIT);
 		}
 
 		if((intmax_t)n < 0){
@@ -86,6 +86,14 @@ static void fprintx(FILE *f, uintmax_t n, int is_signed, int ty_sz)
 static void fprinto(FILE *f, uintmax_t n, int is_signed, int ty_sz)
 {
 	fprintn(f, n, 8, is_signed, ty_sz);
+}
+
+static void fprintfp(FILE *f, double d)
+{
+	const int mantissa = d;
+	const int decimal_100 = (d - mantissa) * 100;
+
+	fprintf(f, "%d.%02d", mantissa, decimal_100);
 }
 
 /* Public */
@@ -175,7 +183,7 @@ static int fclose2(FILE *f)
 	return close(fileno(f)) == 0 ? 0 : EOF;
 }
 
-FILE *funopen(const void *cookie, __stdio_read *r, __stdio_write *w, __stdio_seek *s, __stdio_close *c)
+FILE *funopen(void *cookie, __stdio_read *r, __stdio_write *w, __stdio_seek *s, __stdio_close *c)
 {
 	FILE *f;
 
@@ -433,7 +441,8 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 					}
 #endif
 
-					printers[*fmt](file, n, *fmt == 'd', sizeof(int) + (lcount ? 1 : 0));
+					printers[*fmt](file, n, *fmt == 'd',
+							lcount ? sizeof(long) : sizeof(int));
 					break;
 				}
 				case 'p':
@@ -448,6 +457,22 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 					}
 					break;
 				}
+				case 'f':
+					switch(lcount){
+						case 0:
+							/* hacky float support, mainly for debugging */
+							fprintfp(file, va_arg(ap, double));
+							break;
+						case 1:
+						{
+							//long double d = va_arg(ap, long double);
+							assert(0 && "TODO: long double printf");
+							break;
+						}
+						case 2: /* 2 is max for lcount */
+							goto wat;
+					}
+					break;
 
 				default:
 wat:

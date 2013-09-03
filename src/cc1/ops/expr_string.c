@@ -70,13 +70,14 @@ void gen_expr_str(expr *e)
 void gen_expr_str_str(expr *e)
 {
 	stringval *sv = &e->bits.str.sv;
+	FILE *f = gen_file();
 
 	idt_printf("%sstring at %s\n", sv->wide ? "wide " : "", sv->lbl);
 	gen_str_indent++;
 	idt_print();
-	literal_print(cc1_out, e->bits.str.sv.str, e->bits.str.sv.len);
+	literal_print(f, e->bits.str.sv.str, e->bits.str.sv.len);
 	gen_str_indent--;
-	fputc('\n', cc1_out);
+	fputc('\n', f);
 }
 
 static void const_expr_string(expr *e, consty *k)
@@ -117,5 +118,5 @@ expr *expr_new_str(char *s, int l, int wide)
 
 void gen_expr_style_str(expr *e)
 {
-	literal_print(cc1_out, e->bits.str.sv.str, e->bits.str.sv.len);
+	literal_print(gen_file(), e->bits.str.sv.str, e->bits.str.sv.len);
 }

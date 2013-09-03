@@ -65,6 +65,20 @@ char **cd_stack = NULL;
 int option_debug     = 0;
 int option_line_info = 1;
 
+enum wmode wmode = 0;
+
+static const struct
+{
+	const char *warn, *desc;
+	enum wmode or_mask;
+} warns[] = {
+	{ "all", "turn on all warnings", ~0U },
+	{ "traditional", "warn about # in the first column", WTRADITIONAL },
+	{ "undef", "warn about undefined macros in #if/elif", WUNDEF },
+};
+
+#define ITER_WARNS(j) for(j = 0; j < sizeof(warns)/sizeof(*warns); j++)
+
 void debug_push_line(char *s)
 {
 	debug_pop_line(); /* currently only a single level */
@@ -218,8 +232,12 @@ int main(int argc, char **argv)
 				char *eq;
 				char *directive;
 
-				if(!*arg)
-					goto usage;
+				if(!*arg){
+					/* allow "-D" "arg" */
+					arg = argv[++i];
+					if(!arg)
+						goto usage;
+				}
 
 				/* -D'yo yo' means #define yo yo 1, that is,
 				 * we literally generate the #define line */
@@ -270,10 +288,27 @@ int main(int argc, char **argv)
 					goto usage;
 				break;
 
+			case 'W':
+			{
+				unsigned j;
+
+				ITER_WARNS(j){
+					if(!strcmp(argv[i]+2, warns[j].warn)){
+						wmode |= warns[j].or_mask;
+						break;
+					}
+				}
+
+				/* if not found, we ignore - it was intended for cc1 */
+				break;
+			}
+
+
 			default:
 				if(std_from_str(argv[i], &std) == 0){
 					/* we have an std */
 				}else{
+					fprintf(stderr, "bad C standard \"%s\"\n", argv[i]);
 					goto usage;
 				}
 		}
@@ -289,6 +324,9 @@ int main(int argc, char **argv)
 			break;
 		case STD_C99:
 			macro_add("__STDC_VERSION__", "199901L");
+			break;
+		case STD_C11:
+			macro_add("__STDC_VERSION__", "201112L");
 	}
 
 	if(i < argc){
@@ -358,5 +396,12 @@ usage:
 				"  -dS: print macro usage stats\n"
 				"  -MM: generate Makefile dependencies\n"
 				, stderr);
+
+	{
+		unsigned i;
+		ITER_WARNS(i)
+			fprintf(stderr, "  -W%s: %s\n", warns[i].warn, warns[i].desc);
+	}
+
 	return 1;
 }

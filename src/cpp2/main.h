@@ -23,10 +23,16 @@ extern int no_output;
 		current_line++;        \
 	}while(0)
 
-#define CPP_WARN(...) CPP_X(WARN_AT, __VA_ARGS__)
-#define CPP_DIE(... ) CPP_X(DIE_AT,  __VA_ARGS__)
+#define CPP_WARN(...) CPP_X(warn_at, __VA_ARGS__)
+#define CPP_DIE(... ) CPP_X(die_at,  __VA_ARGS__)
 
 void debug_push_line(char *);
 void debug_pop_line(void);
+
+extern enum wmode
+{
+	WTRADITIONAL = 1 << 0,
+	WUNDEF       = 1 << 1,
+} wmode;
 
 #endif

@@ -38,9 +38,9 @@ int escape_char(int c)
 	return -1;
 }
 
-static int overflow_chk(intval_t *const pv, int base, int inc)
+static int overflow_chk(integral_t *const pv, int base, int inc)
 {
-	const intval_t v = *pv;
+	const integral_t v = *pv;
 
 	*pv = v * base + inc;
 
@@ -56,24 +56,24 @@ static int overflow_chk(intval_t *const pv, int base, int inc)
 
 typedef int digit_test(int);
 
-static char *overflow_handle(intval *pv, char *s, digit_test *test)
+static char *overflow_handle(numeric *pv, char *s, digit_test *test)
 {
-	WARN_AT(NULL, "overflow parsing integer, truncating to unsigned long long");
+	warn_at(NULL, "overflow parsing integer, truncating to unsigned long long");
 
 	while(test(*s))
 		s++;
 
 	/* force unsigned long long ULLONG_MAX */
-	pv->val = INTVAL_T_MAX;
+	pv->val.i = NUMERIC_T_MAX;
 	pv->suffix = VAL_LLONG | VAL_UNSIGNED;
 	return s;
 }
 
-static char *read_ap_num(digit_test test, char *s, intval *pval, int base)
+static char *read_ap_num(digit_test test, char *s, numeric *pval, int base)
 {
 	while(test(*s)){
 		int dv = isdigit(*s) ? *s - '0' : tolower(*s) - 'a' + 10;
-		if(overflow_chk(&pval->val, base, dv)){
+		if(overflow_chk(&pval->val.i, base, dv)){
 			/* advance over what's left, etc */
 			s = overflow_handle(pval, s, test);
 			break;
@@ -95,12 +95,12 @@ static int isodigit(int c)
 	return '0' <= c && c < '8';
 }
 
-void char_seq_to_iv(char *s, intval *iv, int *plen, enum base mode)
+void char_seq_to_iv(char *s, numeric *iv, int *plen, enum base mode)
 {
 	char *const start = s;
 	struct
 	{
-		enum intval_suffix suff;
+		enum numeric_suffix suff;
 		int base;
 		digit_test *test;
 	} bases[] = {
@@ -116,7 +116,7 @@ void char_seq_to_iv(char *s, intval *iv, int *plen, enum base mode)
 	s = read_ap_num(bases[mode].test, s, iv, bases[mode].base);
 
 	if(s == start)
-		DIE_AT(NULL, "invalid number (read 0 chars, at \"%s\")", s);
+		die_at(NULL, "invalid number (read 0 chars, at \"%s\")", s);
 
 	*plen = s - start;
 }
@@ -139,7 +139,7 @@ static int escape_multi_char(char *pos, char *pval, int *len)
 
 	if((is_oct = ('0' <= *pos && *pos <= '7')) || *pos == 'x'){
 		/* can't do '\b' - already defined */
-		intval iv;
+		numeric iv;
 
 		if(is_oct){
 			/*
@@ -155,7 +155,7 @@ static int escape_multi_char(char *pos, char *pval, int *len)
 
 		char_seq_to_iv(pos, &iv, len, is_oct ? OCT : HEX);
 
-		*pval = iv.val;
+		*pval = iv.val.i;
 
 		if(!is_oct)
 			++*len; /* we stepped over the 'x' */
@@ -188,7 +188,7 @@ void escape_string(char *old_str, int *plen)
 				add = escape_char(old_str[i]);
 
 				if(add == -1)
-					DIE_AT(NULL, "unknown escape char '\\%c'", add);
+					die_at(NULL, "unknown escape char '\\%c'", add);
 			}
 		}else{
 			add = old_str[i];

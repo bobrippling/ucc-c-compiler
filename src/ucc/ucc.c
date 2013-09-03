@@ -224,7 +224,9 @@ static void rename_files(struct cc_file *files, int nfiles, char *output, enum m
 					int len;
 					new = ustrdup(files[i].in);
 					len = strlen(new);
-					new[len - 1] = mode == mode_compile ? 's' : 'o';
+					if(len > 2 && new[len - 2] == '.')
+						new[len - 1] = mode == mode_compile ? 's' : 'o';
+					/* else stick with what we were given */
 					break;
 				}
 			}
@@ -372,6 +374,8 @@ int main(int argc, char **argv)
 			char *arg = argv[i];
 
 			switch(arg[1]){
+#define ADD_ARG(to) dynarray_add(&args[to], ustrdup(arg))
+
 				case 'W':
 				{
 					/* check for W%c, */
@@ -388,9 +392,10 @@ int main(int argc, char **argv)
 						}
 					}
 					/* else default to -Wsomething - add to cc1 */
-				}
 
-#define ADD_ARG(to) dynarray_add(&args[to], ustrdup(arg))
+					/* also add to cpp */
+					ADD_ARG(mode_preproc);
+				}
 
 				case 'f':
 					if(!strcmp(arg, "-fsyntax-only")){
@@ -407,11 +412,20 @@ int main(int argc, char **argv)
 					ADD_ARG(mode_compile);
 					continue;
 
-				case 'P':
 				case 'D':
 				case 'U':
+					found = 1;
+				case 'P':
 arg_cpp:
 					ADD_ARG(mode_preproc);
+					if(found){
+						if(!arg[2]){
+							/* allow a space, e.g. "-D" "arg" */
+							if(!(arg = argv[++i]))
+								die("argument expected for %s", argv[i - 1]);
+							ADD_ARG(mode_preproc);
+						}
+					}
 					continue;
 				case 'I':
 					dynarray_add(&includes, ustrdup(arg));

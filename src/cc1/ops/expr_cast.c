@@ -6,23 +6,114 @@
 #include "../../util/alloc.h"
 #include "../../util/platform.h"
 #include "expr_cast.h"
-#include "../out/asm.h"
 #include "../sue.h"
 #include "../defs.h"
+
+#define IMPLICIT_STR(e) ((e)->expr_cast_implicit ? "implicit " : "")
 
 const char *str_expr_cast()
 {
 	return "cast";
 }
 
-static void get_cast_sizes(type_ref *tlhs, type_ref *trhs, int *pl, int *pr)
+static void fold_cast_num(expr *const e, numeric *const num)
 {
-	if(!type_ref_is_void(tlhs)){
-		*pl = asm_type_size(tlhs);
-		*pr = asm_type_size(trhs);
-	}else{
-		*pl = *pr = 0;
+	int to_fp, from_fp;
+
+	to_fp = type_ref_is_floating(e->tree_type);
+	from_fp = type_ref_is_floating(e->expr->tree_type);
+
+	if(to_fp){
+		if(from_fp){
+			UCC_ASSERT(K_FLOATING(*num), "i/f mismatch types");
+			/* float -> float - nothing to see here */
+		}else{
+			UCC_ASSERT(K_INTEGRAL(*num), "i/f mismatch types");
+			/* int -> float */
+			if(num->suffix & VAL_UNSIGNED){
+				num->val.f = num->val.i;
+			}else{
+				/* force a signed conversion, long long to long double */
+				num->val.f = (sintegral_t)num->val.i;
+			}
+		}
+
+		/* perform the trunc */
+		switch(type_ref_primitive(e->tree_type)){
+			default:
+				ICE("fp expected");
+
+#define TRUNC(cse, ty, bmask) \
+			case type_ ## cse: \
+				num->val.f = (ty)num->val.f; \
+				num->suffix = bmask; \
+				break
+
+			TRUNC(float, float, VAL_FLOAT);
+			TRUNC(double, double, VAL_DOUBLE);
+			TRUNC(ldouble, long double, VAL_LDOUBLE);
+#undef TRUNC
+		}
+		return;
+	}else if(from_fp){
+		/* float -> int */
+		UCC_ASSERT(K_FLOATING(*num), "i/f mismatch types");
+		num->val.i = num->val.f;
+		num->suffix = 0;
+
+		/* fall through to int logic */
 	}
+
+	UCC_ASSERT(K_INTEGRAL(*num), "fp const?");
+
+#define pv (&num->val.i)
+	/* need to cast the val.i down as appropriate */
+	if(type_ref_is_type(e->tree_type, type__Bool)){
+		*pv = !!*pv; /* analagous to out/out.c::out_normalise()'s constant case */
+
+	}else if(e->expr_cast_implicit && !from_fp){ /* otherwise this is a no-op */
+		const unsigned sz = type_ref_size(e->tree_type, &e->where);
+		const integral_t old = *pv;
+		const int to_sig   = type_ref_is_signed(e->tree_type);
+		const int from_sig = type_ref_is_signed(e->expr->tree_type);
+		integral_t to_iv, to_iv_sign_ext;
+
+		/* TODO: disallow for ptrs/non-ints */
+
+		/* we don't save the truncated value - we keep the original
+		 * so negative numbers, for example, are preserved */
+		to_iv = integral_truncate(*pv, sz, &to_iv_sign_ext);
+
+		if(to_sig && from_sig ? old != to_iv_sign_ext : old != to_iv){
+#define CAST_WARN(pre_fmt, pre_val, post_fmt, post_val)  \
+			warn_at(&e->where,                           \
+					"implicit cast changes value from %"     \
+					pre_fmt " to %" post_fmt,                \
+					pre_val, post_val)
+
+			/* nice... */
+			if(from_sig){
+				if(to_sig)
+					CAST_WARN(
+							NUMERIC_FMT_D, (long long signed)old,
+							NUMERIC_FMT_D, (long long signed)to_iv_sign_ext);
+				else
+					CAST_WARN(
+							NUMERIC_FMT_D, (long long signed)old,
+							NUMERIC_FMT_U, (long long unsigned)to_iv);
+			}else{
+				if(to_sig)
+					CAST_WARN(
+							NUMERIC_FMT_U, (long long unsigned)old,
+							NUMERIC_FMT_D, (long long signed)to_iv_sign_ext);
+				else
+					CAST_WARN(
+							NUMERIC_FMT_U, (long long unsigned)old,
+							NUMERIC_FMT_U, (long long unsigned)to_iv);
+			}
+		}
+	}
+#undef pv
 }
 
 static void fold_const_expr_cast(expr *e, consty *k)
@@ -30,55 +121,8 @@ static void fold_const_expr_cast(expr *e, consty *k)
 	const_fold(e->expr, k);
 
 	switch(k->type){
-		case CONST_VAL:
-#define piv (&k->bits.iv)
-			/* need to cast the val down as appropriate */
-			if(type_ref_is_type(e->tree_type, type__Bool)){
-				piv->val = !!piv->val; /* analagous to out/out.c::out_normalise()'s constant case */
-
-			}else if(e->expr_cast_implicit){ /* otherwise this is a no-op */
-				const unsigned sz = type_ref_size(e->tree_type, &e->where);
-				const intval_t old = piv->val;
-				const int to_sig   = type_ref_is_signed(e->tree_type);
-				const int from_sig = type_ref_is_signed(e->expr->tree_type);
-				intval_t to_iv, to_iv_sign_ext;
-
-				/* TODO: disallow for ptrs/non-ints */
-
-				/* we don't save the truncated value - we keep the original
-				 * so negative numbers, for example, are preserved */
-				to_iv = intval_truncate(piv->val, sz, &to_iv_sign_ext);
-
-				if(to_sig && from_sig ? old != to_iv_sign_ext : old != to_iv){
-#define CAST_WARN(pre_fmt, pre_val, post_fmt, post_val)  \
-						WARN_AT(&e->where,                           \
-								"implicit cast changes value from %"     \
-								pre_fmt " to %" post_fmt,                \
-								pre_val, post_val)
-
-					/* nice... */
-					if(from_sig){
-						if(to_sig)
-							CAST_WARN(
-									INTVAL_FMT_D, (long long signed)old,
-									INTVAL_FMT_D, (long long signed)to_iv_sign_ext);
-						else
-							CAST_WARN(
-									INTVAL_FMT_D, (long long signed)old,
-									INTVAL_FMT_U, (long long unsigned)to_iv);
-					}else{
-						if(to_sig)
-							CAST_WARN(
-									INTVAL_FMT_U, (long long unsigned)old,
-									INTVAL_FMT_D, (long long signed)to_iv_sign_ext);
-						else
-							CAST_WARN(
-									INTVAL_FMT_U, (long long unsigned)old,
-									INTVAL_FMT_U, (long long unsigned)to_iv);
-					}
-				}
-			}
-#undef piv
+		case CONST_NUM:
+			fold_cast_num(e, &k->bits.num);
 			break;
 
 		case CONST_NO:
@@ -89,8 +133,17 @@ static void fold_const_expr_cast(expr *e, consty *k)
 		case CONST_STRK:
 		{
 			int l, r;
+
+			UCC_ASSERT(!type_ref_is_floating(e->tree_type),
+					"cast to float from address");
+
 			/* allow if we're casting to a same-size type */
-			get_cast_sizes(e->tree_type, e->expr->tree_type, &l, &r);
+			l = type_ref_size(e->tree_type, &e->where);
+
+			if(type_ref_decayable(e->expr->tree_type))
+				r = platform_word_size(); /* func-ptr or array->ptr */
+			else
+				r = type_ref_size(e->expr->tree_type, &e->expr->where);
 
 			if(l < r){
 				/* shouldn't fit, check if it will */
@@ -109,12 +162,12 @@ static void fold_const_expr_cast(expr *e, consty *k)
 						if(k->bits.addr.is_lbl){
 							k->type = CONST_NO; /* similar to strk case */
 						}else{
-							intval_t new = k->bits.addr.bits.memaddr;
+							integral_t new = k->bits.addr.bits.memaddr;
 							const int pws = platform_word_size();
 
 							/* mask out bits so we have it truncated to `l' */
 							if(l < pws){
-								new = intval_truncate(new, l, NULL);
+								new = integral_truncate(new, l, NULL);
 
 								if(k->bits.addr.bits.memaddr != new)
 									/* can't cast without losing value - not const */
@@ -150,25 +203,50 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 
 	fold_type_ref(e->tree_type, NULL, stab); /* struct lookup, etc */
 
-	fold_disallow_st_un(e->expr, "cast-expr");
-	fold_disallow_st_un(e, "cast-target");
-
-	if(!type_ref_is_complete(e->tree_type) && !type_ref_is_void(e->tree_type))
-		DIE_AT(&e->where, "cast to incomplete type %s", type_ref_to_str(e->tree_type));
-
-	if((flag = !!type_ref_is(e->tree_type, type_ref_func)) || type_ref_is(e->tree_type, type_ref_array))
-		DIE_AT(&e->where, "cast to %s type '%s'", flag ? "function" : "array", type_ref_to_str(e->tree_type));
-
 	tlhs = e->tree_type;
 	trhs = e->expr->tree_type;
 
-	get_cast_sizes(tlhs, trhs, &size_lhs, &size_rhs);
+	fold_check_expr(e->expr, FOLD_CHK_NO_ST_UN, "cast-expr");
+	if(type_ref_is_void(tlhs))
+		return; /* fine */
+	fold_check_expr(e, FOLD_CHK_NO_ST_UN, "cast-target");
+
+	if(!type_ref_is_complete(tlhs)){
+		die_at(&e->where, "%scast to incomplete type %s",
+				IMPLICIT_STR(e),
+				type_ref_to_str(tlhs));
+	}
+
+	if((flag = !!type_ref_is(tlhs, type_ref_func))
+	|| type_ref_is(tlhs, type_ref_array))
+	{
+		die_at(&e->where, "%scast to %s type '%s'",
+				IMPLICIT_STR(e),
+				flag ? "function" : "array",
+				type_ref_to_str(tlhs));
+	}
+
+	if(((flag = !!type_ref_is_ptr(tlhs)) && type_ref_is_floating(trhs))
+	||           (type_ref_is_ptr(trhs)  && type_ref_is_floating(tlhs)))
+	{
+		/* TODO: factor to a error-continuing function */
+		fold_had_error = 1;
+		warn_at_print_error(&e->where,
+				"%scast %s pointer %s floating type",
+				IMPLICIT_STR(e),
+				flag ? "to" : "from",
+				flag ? "from" : "to");
+		return;
+	}
+
+	size_lhs = type_ref_size(tlhs, &e->where);
+	size_rhs = type_ref_size(trhs, &e->expr->where);
 	if(size_lhs < size_rhs){
 		char buf[DECL_STATIC_BUFSIZ];
 
 		strcpy(buf, type_ref_to_str(trhs));
 
-		cc1_warn_at(&e->where, 0, 1, WARN_LOSS_PRECISION,
+		cc1_warn_at(&e->where, 0, WARN_LOSS_PRECISION,
 				"possible loss of precision %s, size %d <-- %s, size %d",
 				type_ref_to_str(tlhs), size_lhs,
 				buf, size_rhs);
@@ -177,12 +255,16 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 	if((flag = (type_ref_is_fptr(tlhs) && type_ref_is_nonfptr(trhs)))
 	||         (type_ref_is_fptr(trhs) && type_ref_is_nonfptr(tlhs)))
 	{
-		char buf[TYPE_REF_STATIC_BUFSIZ];
-		WARN_AT(&e->where, "%scast from %spointer to %spointer\n"
-				"%s <- %s",
-				e->expr_cast_implicit ? "implicit " : "",
-				flag ? "" : "function-", flag ? "function-" : "",
-				type_ref_to_str(tlhs), type_ref_to_str_r(buf, trhs));
+		/* allow cast from NULL to func ptr */
+		if(!expr_is_null_ptr(e->expr, 0)){
+			char buf[TYPE_REF_STATIC_BUFSIZ];
+
+			warn_at(&e->where, "%scast from %spointer to %spointer\n"
+					"%s <- %s",
+					IMPLICIT_STR(e),
+					flag ? "" : "function-", flag ? "function-" : "",
+					type_ref_to_str(tlhs), type_ref_to_str_r(buf, trhs));
+		}
 	}
 
 #ifdef W_QUAL
@@ -195,7 +277,8 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 		if(p >= buf && *p == ' ')
 			*p = '\0';
 
-		WARN_AT(&e->where, "casting away qualifiers (%s)", buf);
+		warn_at(&e->where, "%scast removes qualifiers (%s)",
+				IMPLICIT_STR(e), buf);
 	}
 #endif
 }
@@ -221,10 +304,6 @@ void gen_expr_cast(expr *e)
 		return;
 	}
 
-	/* check float <--> int conversion */
-	if(type_ref_is_floating(tto) != type_ref_is_floating(tfrom))
-		ICE("TODO: float <-> int casting");
-
 	if(fopt_mode & FOPT_PLAN9_EXTENSIONS){
 		/* allow b to be an anonymous member of a */
 		struct_union_enum_st *a_sue = type_ref_is_s_or_u(type_ref_is_ptr(tto)),
@@ -241,7 +320,7 @@ void gen_expr_cast(expr *e)
 						mem->struct_offset);*/
 
 				out_change_type(type_ref_cached_VOID_PTR());
-				out_push_i(type_ref_cached_INTPTR_T(), mem->struct_offset);
+				out_push_l(type_ref_cached_INTPTR_T(), mem->struct_offset);
 				out_op(op_plus);
 			}
 		}
