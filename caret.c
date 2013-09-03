@@ -24,3 +24,19 @@ main()
   int integer = 2;
   f_name(integer, 3);
 }
+
+f(int *);
+
+func2()
+{
+	int abcdef = 0;
+	f(1234);
+	f(abcdef);
+
+	char c;
+	char *p = 0;
+	f(&c);
+	f(*p);
+
+	f(sizeof(typeof(int)));
+}
