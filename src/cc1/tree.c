@@ -67,6 +67,14 @@ void where_adj_identifier(where *w, const char *sp)
 	w->chr -= w->len - 1;
 }
 
+void where_update_len(where *w)
+{
+	extern unsigned current_line, current_chr;
+
+	if(current_line == w->line)
+		w->len = current_chr - w->chr;
+}
+
 int intval_cmp(const intval *a, const intval *b)
 {
 	const intval_t la = a->val, lb = b->val;

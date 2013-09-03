@@ -272,10 +272,8 @@ static expr *parse_expr_postfix()
 	for(;;){
 		where w;
 
-		if(accept(token_open_square)){
-			expr *sum;
-
-			sum = expr_new_op(op_plus);
+		if(accept_where(token_open_square, &w)){
+			expr *sum = expr_set_where(expr_new_op(op_plus), &w);
 
 			sum->lhs  = e;
 			sum->rhs  = parse_expr_exp();
@@ -367,6 +365,7 @@ expr *parse_expr_unary()
 				e = expr_new_op(curtok_to_op());
 				EAT(curtok);
 				e->lhs = parse_expr_cast();
+				where_update_len(&e->where);
 				break;
 
 			case token_sizeof:

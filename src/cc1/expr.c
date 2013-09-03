@@ -57,11 +57,7 @@ expr *expr_set_where(expr *e, where const *w)
 
 expr *expr_set_where_len(expr *e, where *w)
 {
-	extern unsigned current_line, current_chr;
-
-	if(current_line == w->line)
-		w->len = current_chr - w->chr;
-
+	where_update_len(w);
 	return expr_set_where(e, w);
 }
 
