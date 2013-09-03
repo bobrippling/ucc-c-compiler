@@ -340,6 +340,11 @@ expr *parse_expr_unary()
 				&w);
 
 	}else{
+		where w;
+		int set_w = 1;
+
+		where_new(&w);
+
 		switch(curtok){
 			case token_andsc:
 				/* GNU &&label */
@@ -365,7 +370,6 @@ expr *parse_expr_unary()
 				e = expr_new_op(curtok_to_op());
 				EAT(curtok);
 				e->lhs = parse_expr_cast();
-				where_update_len(&e->where);
 				break;
 
 			case token_sizeof:
@@ -380,7 +384,11 @@ expr *parse_expr_unary()
 
 			default:
 				e = parse_expr_postfix();
+				set_w = 0;
 		}
+
+		if(set_w)
+			e = expr_set_where_len(e, &w);
 	}
 
 	return e;
