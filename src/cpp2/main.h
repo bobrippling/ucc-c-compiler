@@ -33,6 +33,7 @@ extern enum wmode
 {
 	WTRADITIONAL = 1 << 0,
 	WUNDEF       = 1 << 1,
+	WUNUSED      = 1 << 2,
 } wmode;
 
 extern enum comment_strip
