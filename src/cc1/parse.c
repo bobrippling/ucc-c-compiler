@@ -523,8 +523,7 @@ expr **parse_funcargs()
 
 	while(curtok != token_close_paren){
 		expr *arg = parse_expr_no_comma();
-		if(!arg)
-			DIE_AT(&arg->where, "expected: funcall arg");
+		UCC_ASSERT(arg, "no arg?");
 		dynarray_add(&args, arg);
 
 		if(curtok == token_close_paren)
