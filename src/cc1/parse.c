@@ -272,6 +272,8 @@ static expr *parse_expr_postfix()
 	e = parse_expr_primary();
 
 	for(;;){
+		where w;
+
 		if(accept(token_open_square)){
 			expr *sum;
 
@@ -304,8 +306,16 @@ static expr *parse_expr_postfix()
 		}else if((flag = accept(token_dot)) || accept(token_ptr)){
 			e = expr_new_struct(e, flag, parse_expr_identifier());
 
-		}else if((flag = accept(token_increment)) || accept(token_decrement)){
-			e = expr_new_assign_compound(e, expr_new_val(1), flag ? op_plus : op_minus);
+		}else if((flag = accept_where(token_increment, &w))
+		||               accept_where(token_decrement, &w))
+		{
+			e = expr_set_where(
+					expr_new_assign_compound(
+						e,
+						expr_new_val(1),
+						flag ? op_plus : op_minus),
+					&w);
+
 			e->assign_is_post = 1;
 
 		}else{
@@ -320,14 +330,18 @@ expr *parse_expr_unary()
 {
 	expr *e;
 	int flag;
+	where w;
 
-	if((flag = accept(token_increment)) || accept(token_decrement)){
+	if((flag = accept_where(token_increment, &w))
+	||         accept_where(token_decrement, &w))
+	{
 		/* this is a normal increment, i.e. ++x, simply translate it to x += 1 */
-
-		e = expr_new_assign_compound(
-				parse_expr_unary(), /* lval */
-				expr_new_val(1),
-				flag ? op_plus : op_minus);
+		e = expr_set_where(
+				expr_new_assign_compound(
+					parse_expr_unary(), /* lval */
+					expr_new_val(1),
+					flag ? op_plus : op_minus),
+				&w);
 
 	}else{
 		switch(curtok){
@@ -454,10 +468,16 @@ expr *parse_expr_assignment()
 	}else if(curtok_is_compound_assignment()){
 		/* +=, ... - only evaluate the lhs once*/
 		enum op_type op = curtok_to_compound_op();
+		where w;
 
+		where_new(&w);
 		EAT(curtok);
 
-		return expr_new_assign_compound(e, parse_expr_assignment(), op);
+		return expr_set_where(
+				expr_new_assign_compound(e,
+					parse_expr_assignment(),
+					op),
+				&w);
 	}
 
 	return e;
