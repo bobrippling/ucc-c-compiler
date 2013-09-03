@@ -176,6 +176,8 @@ def_args:
 static expr *parse_expr_primary()
 {
 	switch(curtok){
+		where w;
+
 		case token_integer:
 		case token_character:
 		{
@@ -203,7 +205,7 @@ static expr *parse_expr_primary()
 			return parse_block();
 
 		default:
-			if(accept(token_open_paren)){
+			if(accept_where(token_open_paren, &w)){
 				type_ref *r;
 				expr *e;
 
@@ -220,7 +222,8 @@ static expr *parse_expr_primary()
 					}else{
 						e->expr = parse_expr_cast(); /* another cast */
 					}
-					return e;
+
+					return expr_set_where_len(e, &w);
 
 				}else if(curtok == token_open_block){
 					/* ({ ... }) */
@@ -246,9 +249,18 @@ static expr *parse_expr_primary()
 							token_to_str(curtok), __FILE__, __LINE__);
 				}
 
-				return parse_expr_identifier();
+				where_new(&w);
+				{
+					expr *e = parse_expr_identifier();
+
+					/* we've already gone past the token, adjust */
+					w.len = strlen(e->bits.ident.spel);
+					w.chr -= w.len - 1;
+
+					return expr_set_where(e, &w);
+				}
 			}
-			break;
+			/* unreachable */
 	}
 }
 

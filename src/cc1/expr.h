@@ -163,6 +163,12 @@ struct expr
 expr *expr_new(          func_mutate_expr *, func_fold *, func_str *, func_gen *, func_gen *, func_gen *);
 void expr_mutate(expr *, func_mutate_expr *, func_fold *, func_str *, func_gen *, func_gen *, func_gen *);
 
+/* sets e->where */
+expr *expr_set_where(expr *, where const *);
+
+/* sets e->where and e->where.len based on the change */
+expr *expr_set_where_len(expr *, where *);
+
 #define expr_mutate_wrapper(e, type) expr_mutate(e,               \
                                         mutate_expr_     ## type, \
                                         fold_expr_       ## type, \

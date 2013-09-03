@@ -49,6 +49,22 @@ expr *expr_new(func_mutate_expr *f,
 	return e;
 }
 
+expr *expr_set_where(expr *e, where const *w)
+{
+	memcpy_safe(&e->where, w);
+	return e;
+}
+
+expr *expr_set_where_len(expr *e, where *w)
+{
+	extern unsigned current_line, current_chr;
+
+	if(current_line == w->line)
+		w->len = current_chr - w->chr;
+
+	return expr_set_where(e, w);
+}
+
 expr *expr_new_intval(intval *iv)
 {
 	expr *e = expr_new_val(0);
