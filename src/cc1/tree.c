@@ -40,7 +40,7 @@ eof_w:
 		}
 
 	}else{
-		extern int current_line, current_chr;
+		extern unsigned current_line, current_chr;
 		extern const char *current_fname, *current_line_str;
 		extern int current_fname_used, current_line_str_used;
 
@@ -53,6 +53,7 @@ final:
 		w->chr   = current_chr;
 		w->fname = current_fname;
 		w->line_str = current_line_str;
+		w->len = 0;
 
 		current_fname_used = 1;
 		current_line_str_used = 1;

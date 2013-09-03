@@ -25,4 +25,5 @@ void where_current(where *w)
 	w->line     = current_line;
 	w->chr      = current_chr;
 	w->line_str = current_line_str;
+	w->len      = 0;
 }

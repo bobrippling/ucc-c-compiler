@@ -84,7 +84,14 @@ static void warn_show_line(const struct where *w)
 
 		for(i = w->chr + 3 - (nonblank - line); i > 0; i--)
 			fputc(' ', stderr);
-		fputs("^\n", stderr);
+
+		fputc('^', stderr);
+
+		/* >1 since we've already put a '^' out */
+		for(i = w->len; i > 1; i--)
+			fputc('~', stderr);
+
+		fputc('\n', stderr);
 
 		free(line);
 	}

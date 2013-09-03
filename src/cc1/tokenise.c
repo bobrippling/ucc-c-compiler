@@ -141,8 +141,8 @@ int   currentstringlen = 0;
 int   currentstringwide = 0;
 
 /* -- */
-int current_line = 0;
-int current_chr  = 0;
+unsigned current_line = 0;
+unsigned current_chr  = 0;
 char *current_line_str = NULL;
 int current_line_str_used = 0;
 
