@@ -404,10 +404,12 @@ static expr *parse_expr_generic(expr *(*above)(), enum token t, ...)
 			break;
 
 		join = expr_new_op(curtok_to_op());
+
 		EAT(curtok);
 		join->lhs = e;
 		join->rhs = above();
-		e = join;
+
+		e = expr_set_where_len(join, &e->where);
 	}
 
 	return e;
