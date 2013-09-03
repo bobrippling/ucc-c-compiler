@@ -18,15 +18,11 @@ void flow_fold(stmt_flow *flow, symtable **pstab)
 
 		*pstab = flow->for_init_symtab;
 
+		fold_block_decls(*pstab, &flow->init_blk);
+
 		/* sanity check on _flow_ vars only */
 		for(i = (*pstab)->decls; i && *i; i++){
 			decl *const d = *i;
-
-			/* TODO: merge this block with stmt_code::fold_decl block
-			 * particularly the shadow checks
-			 */
-
-			fold_decl(d, *pstab, &flow->init_blk);
 
 			switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
 				case store_auto:
@@ -46,10 +42,10 @@ void flow_fold(stmt_flow *flow, symtable **pstab)
 
 void flow_gen(stmt_flow *flow, symtable *stab)
 {
-	gen_code_decls(stab);
+	gen_block_decls(stab);
 
 	if(flow){
-		gen_code_decls(flow->for_init_symtab);
+		gen_block_decls(flow->for_init_symtab);
 
 		if(flow->init_blk)
 			gen_stmt(flow->init_blk);

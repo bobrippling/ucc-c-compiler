@@ -12,25 +12,18 @@ const char *str_stmt_code()
 	return "code";
 }
 
-void fold_stmt_code(stmt *s)
+void fold_block_decls(symtable *stab, stmt **pinit_blk)
 {
-	stmt **siter;
 	decl **diter;
-	stmt *init_blk = NULL;
-	int warned = 0;
 
-	/* local struct layout-ing */
-	/* we fold decls ourselves, to get their inits */
-	symtab_fold_sues(s->symtab);
-
-	/* check for invalid function redefinitions */
-	for(diter = s->symtab->decls; diter && *diter; diter++){
+	/* check for invalid function redefinitions and shadows */
+	for(diter = stab->decls; diter && *diter; diter++){
 		decl *const d = *diter;
 		decl *found;
 		symtable *in;
 		int chk_shadow = 0, is_func = 0;
 
-		fold_decl(d, s->symtab, &init_blk);
+		fold_decl(d, stab, pinit_blk);
 
 		if((is_func = !!DECL_IS_FUNC(d)))
 			chk_shadow = 1;
@@ -39,7 +32,7 @@ void fold_stmt_code(stmt *s)
 
 		if(chk_shadow
 		&& d->spel
-		&& (found = symtab_search_d(s->symtab->parent, d->spel, &in)))
+		&& (found = symtab_search_d(stab->parent, d->spel, &in)))
 		{
 			char buf[WHERE_BUF_SIZ];
 
@@ -69,6 +62,19 @@ void fold_stmt_code(stmt *s)
 			}
 		}
 	}
+}
+
+void fold_stmt_code(stmt *s)
+{
+	stmt **siter;
+	stmt *init_blk = NULL;
+	int warned = 0;
+
+	/* local struct layout-ing */
+	/* we fold decls ourselves, to get their inits */
+	symtab_fold_sues(s->symtab);
+
+	fold_block_decls(s->symtab, &init_blk);
 
 	if(init_blk)
 		dynarray_prepend(&s->codes, init_blk);
@@ -95,7 +101,7 @@ void fold_stmt_code(stmt *s)
 	}
 }
 
-void gen_code_decls(symtable *stab)
+void gen_block_decls(symtable *stab)
 {
 	decl **diter;
 
@@ -131,7 +137,7 @@ void gen_stmt_code(stmt *s)
 	stmt **titer;
 
 	/* stmt_for/if/while/do needs to do this too */
-	gen_code_decls(s->symtab);
+	gen_block_decls(s->symtab);
 
 	for(titer = s->codes; titer && *titer; titer++)
 		gen_stmt(*titer);
