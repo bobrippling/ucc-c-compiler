@@ -37,5 +37,6 @@
 #define REG_RET_I         X86_64_REG_RAX
 #define REG_RET_F         X86_64_REG_XMM0
 #define REG_SP            X86_64_REG_RSP
+#define REG_BP            X86_64_REG_RBP
 
 #endif

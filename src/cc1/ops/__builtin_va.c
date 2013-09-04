@@ -186,6 +186,8 @@ static void va_arg_gen_read(
 	out_push_l(type_ref_cached_LONG(), offset_decl->struct_offset);
 	out_op(op_plus); /* va, &va.gp_offset */
 
+	/*out_set_lvalue(); * val.gp_offset is an lvalue */
+
 	out_change_type(type_ref_cached_INT_PTR());
 	out_dup(); /* va, &gp_o, &gp_o */
 
@@ -232,6 +234,8 @@ static void va_arg_gen_read(
 	out_push_l(type_ref_cached_LONG(), mem_overflow_arg_area->struct_offset);
 	out_op(op_plus);
 	/* &overflow_a */
+
+	/*out_set_lvalue(); * overflow entry in the struct is an lvalue */
 
 	out_dup(), out_change_type(type_ref_cached_LONG_PTR()), out_deref();
 	/* &overflow_a, overflow_a */

@@ -5,17 +5,14 @@ struct vstack
 {
 	enum vstore
 	{
-		V_CONST_I = 0, /* vtop is a constant int */
-		V_CONST_F = 1, /* vtop is a constant float */
-		V_REG     = 2, /* vtop is in a register */
-		V_STACK   = 3, /* vtop is a stack value */
-		V_FLAG    = 4, /* vtop is a cpu flag */
-		V_LBL     = 5, /* vtop is a label */
+		V_CONST_I, /* constant integer */
+		V_REG, /* value in a register */
+		V_REG_INDIR, /* value pointed to by a register + offset */
+		V_LBL, /* value at a memory address */
 
-		V_LVAL    = 8  /* vtop is an lvalue, or'd in */
-	} type_;
-#define V_TYPE(ty)   ((ty ## _) & ~V_LVAL)
-#define V_LVAL(ty) !!((ty ## _) &  V_LVAL)
+		V_CONST_F, /* constant float */
+		V_FLAG, /* cpu flag */
+	} type;
 
 	type_ref *t;
 
@@ -26,11 +23,15 @@ struct vstack
 		struct vreg
 		{
 			unsigned short idx, is_float;
-			long offset; /* -4(%rdx) */
 		} reg;
-#define VREG_INIT(idx, fp) { idx, fp, 0 }
+#define VREG_INIT(idx, fp) { idx, fp }
 
-		long off_from_bp;
+		struct
+		{
+			struct vreg reg;
+			long offset;
+		} reg_indir;
+
 		struct flag_opts
 		{
 			enum flag_cmp
@@ -78,6 +79,8 @@ void v_to_reg_given(struct vstack *from, const struct vreg *);
 void v_to_mem_given(struct vstack *, int stack_pos);
 void v_to_mem(struct vstack *);
 int  v_stack_sz(void);
+
+void v_to_rvalue(struct vstack *);
 
 enum vto
 {
