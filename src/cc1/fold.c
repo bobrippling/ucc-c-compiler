@@ -129,7 +129,7 @@ sym *fold_inc_writes_if_sym(expr *e, symtable *stab)
 	return NULL;
 }
 
-void FOLD_EXPR_NO_DECAY(expr *e, symtable *stab)
+void fold_expr(expr *e, symtable *stab)
 {
 	if(e->tree_type)
 		return;
@@ -139,13 +139,25 @@ void FOLD_EXPR_NO_DECAY(expr *e, symtable *stab)
 	UCC_ASSERT(e->tree_type, "no tree_type after fold (%s)", e->f_str());
 }
 
-expr *fold_expr(expr *e, symtable *stab)
+static expr *fold_expr_lval2rval(expr *e, symtable *stab)
+{
+	fold_expr(e, stab);
+
+	if(expr_is_lvalue(e)){
+		e = expr_new_cast_rval(e);
+		fold_expr_cast_descend(e, stab, 0);
+	}
+
+	return e;
+}
+
+expr *fold_expr_decay(expr *e, symtable *stab)
 {
 	/* perform array decay and pointer decay */
 	type_ref *r;
 	expr *imp_cast = NULL;
 
-	FOLD_EXPR_NO_DECAY(e, stab);
+	e = fold_expr_lval2rval(e, stab);
 
 	r = e->tree_type;
 
@@ -284,7 +296,7 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 			expr *p_expr = r->bits.tdef.type_of;
 
 			/* q_to_check = TODO */
-			FOLD_EXPR_NO_DECAY(p_expr, stab);
+			fold_expr_no_decay(p_expr, stab);
 
 			if(r->bits.tdef.decl)
 				fold_decl(r->bits.tdef.decl, stab, NULL);

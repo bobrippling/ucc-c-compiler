@@ -185,7 +185,7 @@ expr *parse_any_args(void)
 
 static void fold_memset(expr *e, symtable *stab)
 {
-	FOLD_EXPR(e->lhs, stab);
+	fold_expr_no_decay(e->lhs, stab);
 
 	if(!expr_is_addressable(e->lhs)){
 		/* this is pretty much an ICE, except it may be
@@ -292,8 +292,8 @@ static expr *parse_memset(void)
 
 static void fold_memcpy(expr *e, symtable *stab)
 {
-	FOLD_EXPR(e->lhs, stab);
-	FOLD_EXPR(e->rhs, stab);
+	fold_expr_no_decay(e->lhs, stab);
+	fold_expr_no_decay(e->rhs, stab);
 
 	e->tree_type = type_ref_cached_VOID_PTR();
 }

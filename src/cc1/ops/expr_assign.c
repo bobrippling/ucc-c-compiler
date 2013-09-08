@@ -96,7 +96,7 @@ void fold_expr_assign(expr *e, symtable *stab)
 
 	lhs_sym = fold_inc_writes_if_sym(e->lhs, stab);
 
-	FOLD_EXPR_NO_DECAY(e->lhs, stab);
+	fold_expr_no_decay(e->lhs, stab);
 	FOLD_EXPR(e->rhs, stab);
 
 	if(lhs_sym)

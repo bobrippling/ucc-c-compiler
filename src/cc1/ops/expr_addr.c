@@ -38,11 +38,11 @@ void fold_expr_addr(expr *e, symtable *stab)
 		/* if it's an identifier, act as a read */
 		fold_inc_writes_if_sym(e->lhs, stab);
 
-		FOLD_EXPR_NO_DECAY(e->lhs, stab);
+		fold_expr_no_decay(e->lhs, stab);
 
 		/* can address: lvalues, arrays and functions */
 		if(!expr_is_addressable(e->lhs)){
-			die_at(&e->lhs->where, "can't take the address of %s (%s)",
+			die_at(&e->where, "can't take the address of %s (%s)",
 					e->lhs->f_str(), type_ref_to_str(e->lhs->tree_type));
 		}
 

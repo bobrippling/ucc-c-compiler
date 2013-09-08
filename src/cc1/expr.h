@@ -217,6 +217,7 @@ expr *expr_new_decl_init(decl *d, decl_init *di);
 
 expr *expr_new_identifier(char *sp);
 expr *expr_new_cast(type_ref *cast_to, int implicit);
+expr *expr_new_cast_rval(expr *);
 expr *expr_new_val(int val);
 expr *expr_new_op(enum op_type o);
 expr *expr_new_op2(enum op_type o, expr *l, expr *r);
