@@ -921,7 +921,7 @@ pop_const:
 				if(t_const != vtop)
 					vswap(); /* need t_const on top for discarding */
 				vpop();
-				return;
+				goto out;
 		}
 
 		/* constant folding */
@@ -937,7 +937,7 @@ pop_const:
 			vpop();
 			vtop->type = V_CONST_I;
 			vtop->bits.val_i = eval;
-			return;
+			goto out;
 		}
 	}
 
@@ -1005,6 +1005,7 @@ pop_const:
 			out_op(op_divide);
 		}
 	}
+out:;
 }
 
 void out_set_bitfield(unsigned off, unsigned nbits)
