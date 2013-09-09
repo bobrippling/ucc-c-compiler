@@ -306,12 +306,12 @@ void symtab_fold_sues(symtable *stab)
 
 	for(sit = stab->sues; sit && *sit; sit++)
 		fold_sue(*sit, stab);
-
-	symtab_check_static_asserts(stab->static_asserts);
 }
 
 void symtab_fold_decls_sues(symtable *stab)
 {
 	symtab_fold_sues(stab);
 	symtab_fold_decls(stab);
+
+	symtab_check_static_asserts(stab->static_asserts);
 }
