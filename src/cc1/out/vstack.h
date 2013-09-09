@@ -7,7 +7,6 @@ struct vstack
 	{
 		V_CONST_I, /* constant integer */
 		V_REG, /* value in a register */
-		V_REG_INDIR, /* value pointed to by a register + offset */
 		V_LBL, /* value at a memory address */
 
 		V_CONST_F, /* constant float */
@@ -20,17 +19,16 @@ struct vstack
 	{
 		integral_t val_i;
 		floating_t val_f;
-		struct vreg
-		{
-			unsigned short idx, is_float;
-		} reg;
-#define VREG_INIT(idx, fp) { idx, fp }
 
 		struct
 		{
-			struct vreg reg;
+			struct vreg
+			{
+				unsigned short idx, is_float;
+			} reg;
+#define VREG_INIT(idx, fp) { idx, fp }
 			long offset;
-		} reg_indir;
+		} regoff;
 
 		struct flag_opts
 		{
@@ -65,6 +63,7 @@ void vswap(void);
 
 void v_clear(struct vstack *vp, type_ref *);
 void v_set_reg(struct vstack *vp, const struct vreg *r);
+void v_set_reg_i(struct vstack *vp, int idx);
 
 void v_flag(enum flag_cmp c, int is_signed);
 
