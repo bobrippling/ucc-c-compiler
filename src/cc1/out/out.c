@@ -22,7 +22,6 @@
 typedef char chk[OUT_VPHI_SZ == sizeof(struct vstack) ? 1 : -1];
 
 static int calc_ptr_step(type_ref *t);
-static void v_push_sp(void);
 
 /*
  * This entire stack-output idea was inspired by tinycc, and improved somewhat
@@ -86,6 +85,18 @@ static void vpush(type_ref *t)
 	}
 
 	v_clear(vtop, t);
+}
+
+static void v_push_reg(int r)
+{
+	struct vreg reg = VREG_INIT(r, 0);
+	vpush(NULL);
+	v_set_reg(vtop, &reg);
+}
+
+static void v_push_sp(void)
+{
+	v_push_reg(REG_SP);
 }
 
 void v_clear(struct vstack *vp, type_ref *t)
@@ -152,6 +163,21 @@ static void v_flush_volatile(struct vstack *vp)
 		return;
 
 	v_to_reg(vp);
+
+	/* need to flush offset regs */
+	if(vp->type == V_REG && vp->bits.regoff.offset){
+		const long off = vp->bits.regoff.offset;
+		vp->bits.regoff.offset = 0;
+
+		UCC_ASSERT(!vp->bits.regoff.reg.is_float,
+				"flush volatile float?");
+
+		v_push_reg(vp->bits.regoff.reg.idx);
+		/* make it nice */
+		out_push_l(type_ref_cached_INTPTR_T(), abs(off));
+		impl_op(off > 0 ? op_plus : op_minus);
+		vpop();
+	}
 }
 
 void out_flush_volatile(void)
@@ -231,6 +257,12 @@ void v_set_reg(struct vstack *vp, const struct vreg *r)
 	vp->bits.regoff.offset = 0;
 }
 
+void v_set_reg_i(struct vstack *vp, int i)
+{
+	const struct vreg r = VREG_INIT(i, 0);
+	v_set_reg(vp, &r);
+}
+
 void v_to_reg_given(struct vstack *from, const struct vreg *given)
 {
 	type_ref *const save = from->t;
@@ -300,9 +332,9 @@ void v_to_mem(struct vstack *vp)
 	}
 }
 
-static int v_in(enum vstore w, enum vto to)
+static int v_in(struct vstack *vp, enum vto to)
 {
-	switch(w){
+	switch(vp->type){
 		case V_FLAG:
 			break;
 
@@ -311,9 +343,8 @@ static int v_in(enum vstore w, enum vto to)
 			return !!(to & TO_CONST);
 
 		case V_REG:
-			return !!(to & TO_REG);
+			return 0; /* needs further checks */
 
-		case V_REG_INDIR:
 		case V_LBL:
 			return !!(to & TO_MEM);
 	}
@@ -323,7 +354,7 @@ static int v_in(enum vstore w, enum vto to)
 
 void v_to(struct vstack *vp, enum vto loc)
 {
-	if(v_in(vp->type, loc))
+	if(v_in(vp, loc))
 		return;
 
 	/* TO_CONST can't be done - it should already be const,
@@ -332,6 +363,9 @@ void v_to(struct vstack *vp, enum vto loc)
 	/* go for register first */
 	if(loc & TO_REG){
 		v_to_reg(vp);
+		/* need to flush any offsets */
+		if(vp->bits.regoff.offset)
+			v_flush_volatile(vp);
 		return;
 	}
 
@@ -376,15 +410,6 @@ void v_freeup_regp(struct vstack *vp)
 	}else{
 		v_save_reg(vp);
 	}
-}
-
-static void v_push_sp(void)
-{
-	struct vreg r = VREG_INIT(REG_SP, 0);
-	vpush(NULL);
-
-	vtop->type = V_REG;
-	memcpy_safe(&vtop->bits.reg_indir.reg, &r);
 }
 
 static void v_stack_adj(unsigned amt, int sub)
