@@ -675,12 +675,23 @@ void out_dup(void)
 		{
 			/* need a new reg */
 			struct vreg r;
+
+			const long off = vtop[-1].bits.regoff.offset;
+			/* if it's offset, save the offset,
+			 * copy the reg and restore the offset
+			 */
+			vtop[-1].bits.regoff.offset = 0;
+
 			v_unused_reg(1, vtop[-1].bits.regoff.reg.is_float, &r);
+
 			out_comment("dup");
 			impl_reg_cp(&vtop[-1], &r);
 
 			v_set_reg(vtop, &r);
 			vtop->t = vtop[-1].t;
+
+			/* restore offset */
+			vtop[-1].bits.regoff.offset = vtop->bits.regoff.offset = off;
 
 			break;
 		}

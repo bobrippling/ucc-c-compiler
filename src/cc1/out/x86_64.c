@@ -737,13 +737,13 @@ void impl_reg_cp(struct vstack *from, const struct vreg *r)
 	char buf_v[VSTACK_STR_SZ];
 	const char *regstr;
 
-	v_to(from, TO_REG); /* force offset normalisation */
-
 	UCC_ASSERT(from->type == V_REG,
 			"reg_cp on non register type 0x%x", from->type);
 
-	if(from->type == V_REG && vreg_eq(&from->bits.regoff.reg, r))
+	if(!from->bits.regoff.offset && vreg_eq(&from->bits.regoff.reg, r))
 		return;
+
+	v_to(from, TO_REG); /* force offset normalisation */
 
 	regstr = x86_reg_str(r, from->t);
 
