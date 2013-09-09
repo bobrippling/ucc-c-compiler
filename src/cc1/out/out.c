@@ -891,8 +891,9 @@ void out_op(enum op_type op)
 	POPULATE_TYPE(vtop[0]);
 	POPULATE_TYPE(vtop[-1]);
 
-	if((op == op_plus || op == op_minus) && t_const && t_mem_reg
-	/* lvalues implicitly disallowed */
+	if(t_const && t_mem_reg
+	/* if it's a minus, we enforce an order */
+	&& (op == op_plus || (op == op_minus && t_const == vtop))
 	&& (t_mem_reg->type != V_LBL || (fopt_mode & FOPT_SYMBOL_ARITH)))
 	{
 		/* t_const == vtop... should be */
