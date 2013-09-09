@@ -768,8 +768,8 @@ void impl_op(enum op_type op)
 
 			out_asm("ucomi%s %s, %s",
 					x86_suffix(vtop->t),
-					vstack_str_r(b1, vtop, 1),
-					vstack_str_r(b2, &vtop[-1], 1));
+					vstack_str_r(b1, vtop, 0),
+					vstack_str_r(b2, &vtop[-1], 0));
 
 			vpop();
 			v_flag(op_to_flag(op), 0 /* we want seta, not setgt */);
@@ -809,8 +809,8 @@ void impl_op(enum op_type op)
 
 			out_asm("%s%s %s, %s",
 					opc, x86_suffix(vtop->t),
-					vstack_str_r(b1, &vtop[-1], 1),
-					vstack_str_r(b2, vtop, 1));
+					vstack_str_r(b1, &vtop[-1], 0),
+					vstack_str_r(b2, vtop, 0));
 
 			/* result in vtop */
 			vswap();
@@ -866,8 +866,8 @@ void impl_op(enum op_type op)
 					break;
 			}
 
-			vstack_str_r(bufs, vtop, 1);
-			vstack_str_r(bufv, &vtop[-1], 1);
+			vstack_str_r(bufs, vtop, 0);
+			vstack_str_r(bufv, &vtop[-1], 0);
 
 			out_asm("%s%s %s, %s",
 					op == op_shiftl      ? "shl" :
@@ -995,8 +995,8 @@ void impl_op(enum op_type op)
 			}else{
 				out_asm("cmp%s %s, %s",
 						x86_suffix(vtop[-1].t), /* pick the non-const one (for type-ing) */
-						vstack_str(       vtop, 1),
-						vstack_str_r(buf, vtop - 1, 1));
+						vstack_str(       vtop, 0),
+						vstack_str_r(buf, vtop - 1, 0));
 			}
 
 			vpop();
@@ -1053,8 +1053,8 @@ void impl_op(enum op_type op)
 				{
 					out_asm("%s%s %s",
 							op == op_plus ? "inc" : "dec",
-							x86_suffix(vtop->t),
-							vstack_str(&vtop[-1], 1));
+							x86_suffix(vtop[-1].t),
+							vstack_str(&vtop[-1], 0));
 					break;
 				}
 			default:
@@ -1116,7 +1116,7 @@ void impl_op_unary(enum op_type op)
 
 	out_asm("%s%s %s", opc,
 			x86_suffix(vtop->t),
-			vstack_str(vtop, 1));
+			vstack_str(vtop, 0));
 }
 
 void impl_cast_load(struct vstack *vp, type_ref *small, type_ref *big, int is_signed)
@@ -1192,7 +1192,7 @@ static void x86_fp_conv(
 	out_asm("cvt%s2%s%s %s, %%%s",
 			sfrom, sto,
 			use_64 ? "q" : "",
-			vstack_str_r(vbuf, vp, 1),
+			vstack_str_r(vbuf, vp, 0),
 			x86_reg_str(r, tto));
 }
 
