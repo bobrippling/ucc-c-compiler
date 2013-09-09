@@ -273,6 +273,7 @@ expr *builtin_new_memset(expr *p, int ch, size_t len)
 
 	fcall->lhs = p;
 	fcall->bits.builtin_memset.ch = ch;
+	UCC_ASSERT(ch == 0, "TODO: non-zero memset");
 	fcall->bits.builtin_memset.len = len;
 
 	return fcall;
