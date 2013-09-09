@@ -226,7 +226,7 @@ static const char *vstack_str_r(
 		{
 			long off = vs->bits.regoff.offset;
 			const char *rstr = x86_reg_str(
-					&vs->bits.regoff.reg, vs->t);
+					&vs->bits.regoff.reg, deref ? NULL : vs->t);
 
 			if(off){
 				UCC_ASSERT(deref,
