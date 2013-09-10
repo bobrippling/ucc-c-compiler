@@ -58,6 +58,7 @@ struct vstack
 
 extern struct vstack *vtop;
 
+void vpush(type_ref *);
 void vpop(void);
 void vswap(void);
 

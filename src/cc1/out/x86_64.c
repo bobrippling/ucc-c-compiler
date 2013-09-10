@@ -332,12 +332,14 @@ void impl_func_prologue_save_fp(void)
 	 * but not interfere with argument locations */
 }
 
-static void reg_to_stack(const struct vreg *vr, type_ref *ty, int where)
+static void reg_to_stack(
+		const struct vreg *vr,
+		type_ref *ty, long where)
 {
-	out_asm("mov%s %%%s, -" NUM_FMT "(%%rbp)",
-			x86_suffix(ty),
-			x86_reg_str(vr, ty),
-			where);
+	vpush(ty);
+	v_set_reg(vtop, vr);
+	v_to_mem_given(vtop, -where);
+	vpop();
 }
 
 void impl_func_prologue_save_call_regs(
