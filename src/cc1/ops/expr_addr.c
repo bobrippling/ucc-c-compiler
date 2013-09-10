@@ -89,6 +89,7 @@ static void const_expr_addr(expr *e, consty *k)
 {
 	if(e->bits.ident.spel){
 		/*k->sym_lbl = e->bits.ident.spel;*/
+		CONST_FOLD_LEAF(k);
 		k->type = CONST_ADDR;
 		k->offset = 0;
 		k->bits.addr.is_lbl = 1;

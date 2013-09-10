@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "ops.h"
 #include "expr_compound_lit.h"
 #include "../out/asm.h"
@@ -89,6 +91,7 @@ static void const_expr_compound_lit(expr *e, consty *k)
 	decl *d = e->bits.complit.decl;
 
 	if(decl_init_is_const(d->init, NULL)){
+		CONST_FOLD_LEAF(k);
 		k->type = CONST_ADDR_OR_NEED(d);
 		k->bits.addr.is_lbl = 1;
 		k->bits.addr.bits.lbl = d->spel;

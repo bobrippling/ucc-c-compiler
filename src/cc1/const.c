@@ -22,7 +22,7 @@ void const_fold(expr *e, consty *k)
 			e->f_const_fold(e, &e->const_eval.k);
 		}
 
-		memcpy(k, &e->const_eval.k, sizeof *k);
+		memcpy_safe(k, &e->const_eval.k);
 	}
 }
 

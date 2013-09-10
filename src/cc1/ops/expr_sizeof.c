@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "ops.h"
 #include "expr_sizeof.h"
 #include "../sue.h"
@@ -98,6 +100,7 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 static void const_expr_sizeof(expr *e, consty *k)
 {
 	UCC_ASSERT(e->tree_type, "const_fold on sizeof before fold");
+	CONST_FOLD_LEAF(k);
 	k->bits.iv.val = SIZEOF_SIZE(e);
 	k->bits.iv.suffix = VAL_UNSIGNED | VAL_LONG;
 	k->type = CONST_VAL;

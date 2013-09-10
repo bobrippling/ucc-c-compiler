@@ -38,6 +38,8 @@ typedef struct consty
 
 #define CONST_ADDR_OR_NEED(d) CONST_ADDR_OR_NEED_TREF((d)->ref)
 
+#define CONST_FOLD_LEAF(k) memset((k), 0, sizeof *(k))
+
 
 typedef void         func_fold(          expr *, symtable *);
 typedef void         func_gen(           expr *);

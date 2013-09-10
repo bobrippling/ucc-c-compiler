@@ -26,6 +26,8 @@ static void fold_const_expr_identifier(expr *e, consty *k)
 
 		/* only a constant if global/static/extern */
 		if(sym->type == sym_global || decl_store_static_or_extern(d->store)){
+			CONST_FOLD_LEAF(k);
+
 			k->type = CONST_ADDR_OR_NEED(d);
 
 			/*

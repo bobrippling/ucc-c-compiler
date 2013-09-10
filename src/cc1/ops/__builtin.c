@@ -471,6 +471,8 @@ static void const_compatible_p(expr *e, consty *k)
 {
 	type_ref **types = e->bits.types;
 
+	CONST_FOLD_LEAF(k);
+
 	k->type = CONST_VAL;
 
 	k->bits.iv.val = type_ref_equal(types[0], types[1], DECL_CMP_EXACT_MATCH);
@@ -510,12 +512,11 @@ static void fold_constant_p(expr *e, symtable *stab)
 static void const_constant_p(expr *e, consty *k)
 {
 	expr *test = *e->funcargs;
-	consty subk;
 
-	const_fold(test, &subk);
+	const_fold(test, k);
 
+	k->bits.iv.val = CONST_AT_COMPILE_TIME(k->type);
 	k->type = CONST_VAL;
-	k->bits.iv.val = CONST_AT_COMPILE_TIME(subk.type);
 }
 
 static expr *parse_constant_p(void)
@@ -714,7 +715,7 @@ static void fold_is_signed(expr *e, symtable *stab)
 
 static void const_is_signed(expr *e, consty *k)
 {
-	memset(k, 0, sizeof *k);
+	CONST_FOLD_LEAF(k);
 	k->type = CONST_VAL;
 	k->bits.iv.val = type_ref_is_signed(e->bits.types[0]);
 }
@@ -748,6 +749,7 @@ static void const_strlen(expr *e, consty *k)
 			const char *p = memchr(s, '\0', sv->len);
 
 			if(p){
+				CONST_FOLD_LEAF(k);
 				k->type = CONST_VAL;
 				k->bits.iv.val = p - s;
 				k->bits.iv.suffix = VAL_UNSIGNED;

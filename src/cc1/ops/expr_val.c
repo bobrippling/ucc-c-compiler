@@ -153,7 +153,7 @@ void gen_expr_str_val(expr *e)
 
 static void const_expr_val(expr *e, consty *k)
 {
-	memset(k, 0, sizeof *k);
+	CONST_FOLD_LEAF(k);
 	memcpy_safe(&k->bits.iv, &e->bits.iv);
 	k->type = CONST_VAL; /* obviously vals are const */
 }

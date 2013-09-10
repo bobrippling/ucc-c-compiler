@@ -81,6 +81,7 @@ void gen_expr_str_str(expr *e)
 
 static void const_expr_string(expr *e, consty *k)
 {
+	CONST_FOLD_LEAF(k);
 	if(e->bits.str.sv.wide){
 		k->type = CONST_NO;
 		ICW("TODO: wide string const");
