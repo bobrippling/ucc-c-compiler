@@ -767,7 +767,8 @@ static type_ref *parse_type_ref_array(enum decl_mode mode, char **sp)
 			size = NULL;
 		}else{
 			/* fold.c checks for const-ness */
-			size = parse_expr_exp();
+			/* grammar says it's a conditional here, hence no-comma */
+			size = parse_expr_no_comma();
 			EAT(token_close_square);
 		}
 
