@@ -484,8 +484,14 @@ void impl_func_prologue_save_variadic(type_ref *rf)
 
 	{
 		char *vfin = out_label_code("va_skip_float");
-		out_asm("testb %%al, %%al");
-		out_asm("jz %s", vfin);
+		type_ref *const ty_ch = type_ref_cached_CHAR();
+
+		/* testb %al, %al ; jz vfin */
+		vpush(ty_ch);
+		v_set_reg_i(vtop, X86_64_REG_RAX);
+		out_push_zero(ty_ch);
+		out_op(op_eq);
+		out_jtrue(vfin);
 
 		for(i = 0; i < N_CALL_REGS_F; i++){
 			struct vreg vr;
@@ -1492,8 +1498,17 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 		const char *jtarget = x86_call_jmp_target(vtop, need_float_count);
 
 		/* if x(...) or x() */
-		if(need_float_count)
-			out_asm("movb $%d, %%al", nfloats); /* we can never have a funcptr in rax, so we're fine */
+		if(need_float_count){
+			/* movb $nfloats, %al */
+			struct vreg r;
+
+			r.idx = X86_64_REG_RAX;
+			r.is_float = 0;
+
+			out_push_l(type_ref_cached_CHAR(), nfloats);
+			v_to_reg_given(vtop, &r);
+			vpop();
+		}
 
 		out_asm("callq %s", jtarget);
 	}
