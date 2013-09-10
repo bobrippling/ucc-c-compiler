@@ -27,6 +27,7 @@ typedef struct consty
 			} bits;
 		} addr;
 	} bits;
+	expr *nonstandard_const; /* e.g. (1, 2) is not strictly const */
 } consty;
 #define CONST_AT_COMPILE_TIME(t) (t != CONST_NO && t != CONST_NEED_ADDR)
 

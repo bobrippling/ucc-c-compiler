@@ -50,6 +50,7 @@ static void fold_const_expr_if(expr *e, consty *k)
 		k->type = CONST_NO;
 	}else{
 		memcpy_safe(k, &consts[res]);
+		k->nonstandard_const = consts[res == 1 ? 2 : 1].nonstandard_const;
 	}
 }
 

@@ -32,6 +32,7 @@ static void const_offset(consty *r, consty *val, consty *addr,
 static void fold_const_expr_op(expr *e, consty *k)
 {
 	consty lhs, rhs;
+	int sum_const;
 
 	memset(k, 0, sizeof *k);
 
@@ -102,18 +103,30 @@ static void fold_const_expr_op(expr *e, consty *k)
 		}
 
 	}else if((e->op == op_andsc || e->op == op_orsc)
-	&& (CONST_AT_COMPILE_TIME(lhs.type) || CONST_AT_COMPILE_TIME(rhs.type))){
+	&& (sum_const = CONST_AT_COMPILE_TIME(lhs.type)
+	              + CONST_AT_COMPILE_TIME(rhs.type)) > 0)
+	{
 
 		/* allow 1 || f() */
 		consty *kside = CONST_AT_COMPILE_TIME(lhs.type) ? &lhs : &rhs;
 		int is_true = !!kside->bits.iv.val;
 
-		/* TODO: to be more conformant we should disallow: a() && 0
-		 * i.e. ordering
-		 */
-
-		if(e->op == (is_true ? op_orsc : op_andsc))
+		if(e->op == (is_true ? op_orsc : op_andsc)){
 			memcpy(k, kside, sizeof *k);
+
+			/* to be more conformant we set nonstandard_const on: a() && 0
+			 * i.e. ordering:
+			 * good:   0 && a()
+			 * good:   1 || b()
+			 * bad:  a() && 0
+			 * bad:  b() || 1
+			 */
+			if(sum_const < 2  /* one side isn't const */
+			&& kside != &lhs) /* the lhs isn't const */
+			{
+				k->nonstandard_const = e;
+			}
+		}
 
 	}else if(e->op == op_plus || e->op == op_minus){
 		/* allow one CONST_{ADDR,STRK} and one CONST_VAL for an offset const */
@@ -124,6 +137,11 @@ static void fold_const_expr_op(expr *e, consty *k)
 			const_offset(k, &rhs, &lhs, e->lhs->tree_type, e->op);
 		else if(rhs_addr && lhs.type == CONST_VAL)
 			const_offset(k, &lhs, &rhs, e->rhs->tree_type, e->op);
+	}
+
+	if(!k->nonstandard_const){
+		k->nonstandard_const = lhs.nonstandard_const
+			? lhs.nonstandard_const : rhs.nonstandard_const;
 	}
 }
 
