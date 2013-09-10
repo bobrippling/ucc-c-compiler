@@ -1051,6 +1051,12 @@ void impl_op(enum op_type op)
 		 * make it the result reg
 		 */
 
+#define IS_RBP(vp) ((vp)->type == V_REG \
+		&& (vp)->bits.regoff.reg.idx == X86_64_REG_RBP)
+
+		if(IS_RBP(&vtop[-1]) || IS_RBP(vtop))
+			ICW("adjusting base pointer in op");
+
 		switch(op){
 			case op_plus:
 			case op_minus:
