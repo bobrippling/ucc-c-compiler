@@ -194,6 +194,10 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 				else if((sintval_t)k.bits.iv.val < 0)
 					die_at(&r->where, "negative array size");
 				/* allow zero length arrays */
+				else if(k.nonstandard_const)
+					warn_at(&k.nonstandard_const->where,
+							"%s-expr is a non-standard constant expression (for array size)",
+							k.nonstandard_const->f_str()); /* TODO: VLA here */
 			}
 			break;
 
