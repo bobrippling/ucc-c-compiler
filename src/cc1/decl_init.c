@@ -309,6 +309,15 @@ static decl_init *decl_init_brace_up_scalar(
 		 *  - they match but we need the _Bool cast */
 		fold_insert_casts(tfor, &first_init->bits.expr, stab,
 				&first_init->bits.expr->where, "initialisation");
+
+		if(cc1_std <= STD_C89){
+			consty k;
+			const_fold(e, &k);
+
+			if(!CONST_AT_COMPILE_TIME(k.type))
+				warn_at(&first_init->bits.expr->where,
+						"initialiser is not a constant expression");
+		}
 	}
 
 	return first_init;
