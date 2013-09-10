@@ -303,7 +303,7 @@ void v_to_mem_given(struct vstack *vp, int stack_pos)
 {
 	struct vstack store;
 
-	v_to_reg(vp);
+	v_to(vp, TO_CONST | TO_REG);
 
 	v_set_stack(&store, vp->t, stack_pos);
 
