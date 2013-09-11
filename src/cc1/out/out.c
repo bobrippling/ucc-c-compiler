@@ -162,16 +162,9 @@ static int v_reg_is_const(struct vreg *r)
 	return !r->is_float && r->idx == REG_BP;
 }
 
-static void v_flush_volatile(struct vstack *vp)
+static void v_flush_volatile_reg(struct vstack *vp)
 {
-	if(!vp)
-		return;
-
-	v_to_reg(vp);
-
-	/* need to flush offset regs */
 	if(vp->type == V_REG && vp->bits.regoff.offset){
-
 		/* prevent sub-calls attempting to reflush this offset register */
 		const long off = vp->bits.regoff.offset;
 		vp->bits.regoff.offset = 0;
@@ -194,6 +187,17 @@ static void v_flush_volatile(struct vstack *vp)
 		impl_op(off > 0 ? op_plus : op_minus);
 		vpop();
 	}
+}
+
+static void v_flush_volatile(struct vstack *vp)
+{
+	if(!vp)
+		return;
+
+	v_to_reg(vp);
+
+	/* need to flush offset regs */
+	v_flush_volatile_reg(vp);
 }
 
 void out_flush_volatile(void)
@@ -811,6 +815,9 @@ void out_store()
 		bitfield_scalar_merge(&store->bitfield);
 
 	store->t = type_ref_ptr_depth_dec(store->t, NULL);
+
+	v_flush_volatile_reg(val); /* flush offset on any registers, etc
+	                            * only for the value we're assigning */
 	impl_store(val, store);
 
 	/* swap, popping the store, but not the value */
