@@ -657,44 +657,50 @@ void out_push_noop()
 	out_push_zero(type_ref_cached_INTPTR_T());
 }
 
+static int v_reg_is_const(struct vreg *r)
+{
+	return !r->is_float && r->idx == REG_BP;
+}
+
 void out_dup(void)
 {
 	/* TODO: mark reg as duped, but COW */
 	vpush(NULL);
 	switch(vtop[-1].type){
+		case V_FLAG:
+			v_to_reg(&vtop[-1]);
+			/* fall */
+		case V_REG:
+			if(v_reg_is_const(&vtop[-1].bits.regoff.reg)){
+				/* fall to memcpy */
+			}else{
+				/* need a new reg */
+				struct vreg r;
+
+				const long off = vtop[-1].bits.regoff.offset;
+				/* if it's offset, save the offset,
+				 * copy the reg and restore the offset
+				 */
+				vtop[-1].bits.regoff.offset = 0;
+
+				v_unused_reg(1, vtop[-1].bits.regoff.reg.is_float, &r);
+
+				out_comment("dup");
+				impl_reg_cp(&vtop[-1], &r);
+
+				v_set_reg(vtop, &r);
+				vtop->t = vtop[-1].t;
+
+				/* restore offset */
+				vtop[-1].bits.regoff.offset = vtop->bits.regoff.offset = off;
+				break;
+			}
 		case V_CONST_I:
 		case V_CONST_F:
 		case V_LBL:
 			/* fine */
 			memcpy_safe(&vtop[0], &vtop[-1]);
 			break;
-		case V_FLAG:
-			v_to_reg(&vtop[-1]);
-			/* fall */
-		case V_REG:
-		{
-			/* need a new reg */
-			struct vreg r;
-
-			const long off = vtop[-1].bits.regoff.offset;
-			/* if it's offset, save the offset,
-			 * copy the reg and restore the offset
-			 */
-			vtop[-1].bits.regoff.offset = 0;
-
-			v_unused_reg(1, vtop[-1].bits.regoff.reg.is_float, &r);
-
-			out_comment("dup");
-			impl_reg_cp(&vtop[-1], &r);
-
-			v_set_reg(vtop, &r);
-			vtop->t = vtop[-1].t;
-
-			/* restore offset */
-			vtop[-1].bits.regoff.offset = vtop->bits.regoff.offset = off;
-
-			break;
-		}
 	}
 }
 
