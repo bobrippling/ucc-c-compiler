@@ -331,7 +331,7 @@ void v_to_mem_given(struct vstack *vp, int stack_pos)
 	 * instead/TODO: impl_save_reg(vp) -> "pushq %%rax"
 	 * -O1?
 	 */
-	impl_store(vp, &store);
+	v_store(vp, &store);
 
 	memcpy_safe(vp, &store);
 }
@@ -811,18 +811,27 @@ void out_store()
 	val   = &vtop[0];
 	store = &vtop[-1];
 
-	if(store->bitfield.nbits)
-		bitfield_scalar_merge(&store->bitfield);
-
 	store->t = type_ref_ptr_depth_dec(store->t, NULL);
 
-	v_flush_volatile_reg(val); /* flush offset on any registers, etc
-	                            * only for the value we're assigning */
-	impl_store(val, store);
+	v_store(val, store);
 
 	/* swap, popping the store, but not the value */
 	vswap();
 	vpop();
+}
+
+void v_store(struct vstack *val, struct vstack *store)
+{
+	if(store->bitfield.nbits){
+		UCC_ASSERT(val == vtop && store == vtop-1,
+				"TODO: bitfield merging for non-vtops");
+
+		bitfield_scalar_merge(&store->bitfield);
+	}
+
+	v_flush_volatile_reg(val); /* flush offset on any registers
+	                            * only for the value we're assigning */
+	impl_store(val, store);
 }
 
 void out_normalise(void)
