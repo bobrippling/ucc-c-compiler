@@ -157,6 +157,11 @@ void out_phi_join(void *vvphi)
 	}
 }
 
+static int v_reg_is_const(struct vreg *r)
+{
+	return !r->is_float && r->idx == REG_BP;
+}
+
 static void v_flush_volatile(struct vstack *vp)
 {
 	if(!vp)
@@ -166,14 +171,25 @@ static void v_flush_volatile(struct vstack *vp)
 
 	/* need to flush offset regs */
 	if(vp->type == V_REG && vp->bits.regoff.offset){
+
+		/* prevent sub-calls attempting to reflush this offset register */
 		const long off = vp->bits.regoff.offset;
 		vp->bits.regoff.offset = 0;
 
 		UCC_ASSERT(!vp->bits.regoff.reg.is_float,
 				"flush volatile float?");
 
+		if(v_reg_is_const(&vp->bits.regoff.reg)){
+			/* move to an unused register */
+			struct vreg r;
+			v_unused_reg(1, vp->bits.regoff.reg.is_float, &r);
+			impl_reg_cp(vp, &r);
+			v_set_reg(vp, &r);
+			/* vstack updated, add to the register */
+		}
+
 		v_push_reg(vp->bits.regoff.reg.idx);
-		/* make it nice */
+		/* make it nice - abs() */
 		out_push_l(type_ref_cached_INTPTR_T(), abs(off));
 		impl_op(off > 0 ? op_plus : op_minus);
 		vpop();
@@ -655,11 +671,6 @@ void out_push_lbl(const char *s, int pic)
 void out_push_noop()
 {
 	out_push_zero(type_ref_cached_INTPTR_T());
-}
-
-static int v_reg_is_const(struct vreg *r)
-{
-	return !r->is_float && r->idx == REG_BP;
 }
 
 void out_dup(void)
