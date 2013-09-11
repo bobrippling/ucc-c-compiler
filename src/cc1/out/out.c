@@ -317,7 +317,7 @@ static void v_set_stack(struct vstack *vp, type_ref *ty, long off)
 
 void v_to_mem_given(struct vstack *vp, int stack_pos)
 {
-	struct vstack store;
+	struct vstack store = VSTACK_INIT(0);
 
 	v_to(vp, TO_CONST | TO_REG);
 
