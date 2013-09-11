@@ -34,15 +34,6 @@ int  impl_frame_ptr_to_reg(int nframes);
 int impl_reg_to_scratch(int);
 int impl_scratch_to_reg(int);
 
-enum p_opts
-{
-	P_NO_INDENT = 1 << 0,
-	P_NO_NL     = 1 << 1
-};
-
-void out_asm( const char *fmt, ...) ucc_printflike(1, 2);
-void out_asm2(enum p_opts opts, const char *fmt, ...) ucc_printflike(2, 3);
-
 void impl_comment(const char *fmt, va_list l);
 void impl_lbl(const char *lbl);
 
