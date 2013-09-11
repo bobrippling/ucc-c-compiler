@@ -123,7 +123,7 @@ gen_asm.o: gen_asm.c ../util/util.h ../util/where.h ../util/compiler.h \
  ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h ops/stmt_return.h \
  ops/stmt_switch.h ops/stmt_while.h ops/stmt_continue.h sym.h decl.h \
  cc1.h ../util/std.h macros.h ../util/platform.h gen_asm.h const.h \
- out/out.h out/lbl.h out/asm.h gen_style.h
+ out/out.h out/lbl.h out/asm.h gen_style.h out/dbg.h
 gen_c.o: gen_c.c
 gen_str.o: gen_str.c ../util/util.h ../util/where.h ../util/compiler.h \
  ../util/platform.h ../util/dynarray.h ../util/dyn.h data_structs.h \
@@ -1054,9 +1054,9 @@ out/vm.o: out/vm.c out/../../util/util.h out/../../util/where.h \
  out/../ops/stmt_switch.h out/../ops/stmt_while.h \
  out/../ops/stmt_continue.h out/../sym.h out/../decl.h out/vstack.h \
  out/impl.h out/x86_64.h out/../cc1.h out/../../util/std.h
-out/write.o: out/write.c out/write.h out/../../util/compiler.h \
- out/../../util/where.h out/../../util/compiler.h out/../cc1.h \
- out/../../util/std.h
+out/write.o: out/write.c out/../../util/where.h out/../../util/compiler.h \
+ out/../../util/alloc.h out/write.h out/../../util/compiler.h out/dbg.h \
+ out/../cc1.h out/../../util/std.h
 out/x86_64.o: out/x86_64.c out/../../util/util.h out/../../util/where.h \
  out/../../util/compiler.h out/../../util/alloc.h \
  out/../../util/platform.h out/../data_structs.h out/../tree.h \

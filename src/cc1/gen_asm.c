@@ -19,6 +19,7 @@
 #include "out/lbl.h"
 #include "out/asm.h"
 #include "gen_style.h"
+#include "out/dbg.h"
 
 char *curfunc_lblfin; /* extern */
 
@@ -28,15 +29,14 @@ void gen_expr(expr *e)
 
 	const_fold(e, &k);
 
+	out_dbg_where(&e->where);
+
 	if(k.type == CONST_VAL){ /* TODO: -O0 skips this */
 		if(cc1_backend == BACKEND_ASM)
 			out_push_iv(e->tree_type, &k.bits.iv);
 		else
 			stylef("%" INTVAL_FMT_D, k.bits.iv.val);
 	}else{
-		if(cc1_gdebug)
-			out_comment("at %s", where_str(&e->where));
-
 		EOF_WHERE(&e->where, e->f_gen(e));
 	}
 }
@@ -46,11 +46,15 @@ void lea_expr(expr *e)
 	UCC_ASSERT(e->f_lea,
 			"invalid store expression expr-%s (no f_store())", e->f_str());
 
+	out_dbg_where(&e->where);
+
 	e->f_lea(e);
 }
 
 void gen_stmt(stmt *t)
 {
+	out_dbg_where(&t->where);
+
 	EOF_WHERE(&t->where, t->f_gen(t));
 }
 
@@ -146,6 +150,8 @@ void gen_asm_global(decl *d)
 		if(!d->func_code)
 			return;
 
+		out_dbg_where(&d->where);
+
 		for(aiter = DECL_FUNC_ARG_SYMTAB(d)->decls; aiter && *aiter; aiter++)
 			if((*aiter)->sym->type == sym_arg)
 				nargs++;
@@ -164,6 +170,8 @@ void gen_asm_global(decl *d)
 		gen_stmt(d->func_code);
 
 		out_label(curfunc_lblfin);
+
+		/* TODO: out_dbg_where() for func end */
 
 		out_func_epilogue();
 

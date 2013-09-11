@@ -1,8 +1,6 @@
 #ifndef UTIL_H
 #define UTIL_H
 
-#define memcpy_safe(a, b) (*(a) = *(b))
-
 #define ucc_unreach(optional) do{ ICE("unreachable"); return optional; }while(0)
 
 extern int warning_count;
