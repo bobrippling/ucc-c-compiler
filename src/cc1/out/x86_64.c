@@ -1538,16 +1538,25 @@ void impl_set_overflow(void)
 
 int impl_frame_ptr_to_reg(int nframes)
 {
-	const char *rstr;
+	/* XXX: memleak */
+	type_ref *const void_pp = type_ref_ptr_depth_inc(
+			type_ref_cached_VOID_PTR());
+
 	struct vreg r;
+
+	vpush(void_pp);
+	v_set_reg_i(vtop, REG_BP);
 
 	v_unused_reg(1, 0, &r);
 
-	rstr = x86_reg_str(&r, NULL);
+	impl_reg_cp(vtop, &r); /* movq %rbp, <reg> */
+	while(--nframes > 0){
+		v_set_reg(vtop, &r);
+		vtop->t = void_pp;
+		impl_deref(vtop, &r); /* movq (<reg>), <reg> */
+	}
 
-	out_asm("movq %%rbp, %%%s", rstr);
-	while(--nframes > 0)
-		out_asm("movq (%%%s), %%%s", rstr, rstr);
+	vpop();
 
 	return r.idx;
 }
