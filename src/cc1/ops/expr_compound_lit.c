@@ -89,13 +89,15 @@ static void lea_expr_compound_lit(expr *e)
 static void const_expr_compound_lit(expr *e, consty *k)
 {
 	decl *d = e->bits.complit.decl;
+	expr *nonstd = NULL;
 
-	if(decl_init_is_const(d->init, NULL)){
+	if(decl_init_is_const(d->init, NULL, &nonstd)){
 		CONST_FOLD_LEAF(k);
 		k->type = CONST_ADDR_OR_NEED(d);
 		k->bits.addr.is_lbl = 1;
 		k->bits.addr.bits.lbl = d->spel;
 		k->offset = 0;
+		k->nonstandard_const = nonstd;
 	}else{
 		k->type = CONST_NO;
 	}

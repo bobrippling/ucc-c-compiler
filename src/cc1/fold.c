@@ -533,6 +533,9 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 
 void fold_decl_global_init(decl *d, symtable *stab)
 {
+	expr *nonstd = NULL;
+	const char *type;
+
 	if(!d->init)
 		return;
 
@@ -541,11 +544,21 @@ void fold_decl_global_init(decl *d, symtable *stab)
 		decl_init_brace_up_fold(d, stab);
 	);
 
-	if(!decl_init_is_const(d->init, stab)){
+	type = stab->parent ? "static" : "global";
+	if(!decl_init_is_const(d->init, stab, &nonstd)){
 		die_at(&d->init->where, "%s %s initialiser not constant",
-				stab->parent ? "static" : "global",
-				decl_init_to_str(d->init->type));
+				type, decl_init_to_str(d->init->type));
+	}else if(nonstd){
+		char wbuf[WHERE_BUF_SIZ];
+
+		warn_at(&d->init->where,
+				"%s %s initialiser contains non-standard constant expression\n"
+				"%s: note: %s expression here",
+				type, decl_init_to_str(d->init->type),
+				where_str_r(wbuf, &nonstd->where),
+				nonstd->f_str());
 	}
+
 }
 
 static void fold_func(decl *func_decl)

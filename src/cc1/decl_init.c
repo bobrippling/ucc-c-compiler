@@ -80,7 +80,8 @@ static struct init_cpy *init_cpy_from_dinit(decl_init *di)
 	return cpy;
 }
 
-int decl_init_is_const(decl_init *dinit, symtable *stab)
+int decl_init_is_const(
+		decl_init *dinit, symtable *stab, expr **nonstd)
 {
 	DINIT_NULL_CHECK(dinit);
 
@@ -93,6 +94,9 @@ int decl_init_is_const(decl_init *dinit, symtable *stab)
 			e = FOLD_EXPR(dinit->bits.expr, stab);
 			const_fold(e, &k);
 
+			if(k.nonstandard_const && nonstd && !*nonstd)
+				*nonstd = k.nonstandard_const;
+
 			return CONST_AT_COMPILE_TIME(k.type);
 		}
 
@@ -101,7 +105,7 @@ int decl_init_is_const(decl_init *dinit, symtable *stab)
 			decl_init **i;
 
 			for(i = dinit->bits.ar.inits; i && *i; i++)
-				if(!decl_init_is_const(*i, stab))
+				if(!decl_init_is_const(*i, stab, nonstd))
 					return 0;
 
 			return 1;
@@ -431,8 +435,11 @@ static decl_init **decl_init_brace_up_array2(
 				&& !type_ref_is_scalar(next_type)){
 					/* we can replace brace inits IF they're constant (as a special
 					 * case), which is usually a common usage for static/global inits
+					 * i.e.
+					 * int x[] = { [0 ... 9] = f(), [1] = `exp' };
+					 * if exp is const we can do it.
 					 */
-					if(!decl_init_is_const(replacing, stab)){
+					if(!decl_init_is_const(replacing, stab, NULL)){
 						char wbuf[WHERE_BUF_SIZ];
 
 						die_at(&this->where,
