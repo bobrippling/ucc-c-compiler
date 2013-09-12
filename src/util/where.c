@@ -18,11 +18,12 @@ const char *where_str(const struct where *w)
 
 void where_current(where *w)
 {
+	extern struct loc loc_tok;
 	extern const char *current_fname, *current_line_str;
-	extern int current_line, current_chr;
 
 	w->fname    = current_fname;
-	w->line     = current_line;
-	w->chr      = current_chr;
+	w->line     = loc_tok.line;
+	w->chr      = loc_tok.chr;
 	w->line_str = current_line_str;
+	w->len      = 0;
 }

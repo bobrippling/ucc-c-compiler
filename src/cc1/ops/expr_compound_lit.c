@@ -155,13 +155,6 @@ static decl *compound_lit_decl(type_ref *t, decl_init *init)
 	return d;
 }
 
-void expr_compound_lit_from_cast(expr *e, decl_init *init)
-{
-	e->bits.complit.decl = compound_lit_decl(e->bits.tref /* from cast */, init);
-
-	expr_mutate_wrapper(e, compound_lit);
-}
-
 expr *expr_new_compound_lit(type_ref *t, decl_init *init)
 {
 	expr *e = expr_new_wrapper(compound_lit);

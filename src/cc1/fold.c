@@ -94,8 +94,7 @@ void fold_insert_casts(type_ref *dlhs, expr **prhs, symtable *stab, where *w, co
 		/* insert a cast: rhs -> lhs */
 		expr *cast;
 
-		cast = expr_new_cast(dlhs, 1);
-		cast->expr = rhs;
+		cast = expr_new_cast(rhs, dlhs, 1);
 		*prhs = cast;
 
 		/* need to fold the cast again - mainly for "loss of precision" warning */
@@ -147,21 +146,21 @@ expr *fold_expr(expr *e, symtable *stab)
 {
 	/* perform array decay and pointer decay */
 	type_ref *r;
-	expr *imp_cast = NULL;
+	type_ref *decayed = NULL;
 
 	FOLD_EXPR_NO_DECAY(e, stab);
 
 	r = e->tree_type;
 
 	EOF_WHERE(&e->where,
-			type_ref *decayed = type_ref_decay(r);
+			decayed = type_ref_decay(r);
 
-			if(!type_ref_equal(decayed, r, DECL_CMP_EXACT_MATCH))
-				imp_cast = expr_new_cast(decayed, 1);
+			if(type_ref_equal(decayed, r, DECL_CMP_EXACT_MATCH))
+				decayed = NULL;
 		);
 
-	if(imp_cast){
-		imp_cast->expr = e;
+	if(decayed){
+		expr *imp_cast = expr_new_cast(e, decayed, 1);
 		fold_expr_cast_descend(imp_cast, stab, 0);
 		e = imp_cast;
 	}

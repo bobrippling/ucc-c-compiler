@@ -2,14 +2,11 @@
 use warnings;
 use strict;
 
+require './parser.pl';
+
 sub die2
 {
 	die "$0: @_\n";
-}
-
-sub chomp_all
-{
-	return map { chomp; $_ } @_;
 }
 
 sub lines
@@ -41,14 +38,8 @@ my $line;
 # ---------------------------
 # read warnings in
 
-for(chomp_all(<STDIN>)){
-	if(/^([^:]+):([0-9]+):(([0-9]+):)? *(.*)/){
-		my $line = $2;
-
-		my $warn = { file => $1, line => $line, col => $4 || 0, msg => $5 };
-
-		push @{$lines[$line - 1]->{warnings}}, $warn;
-	}
+for my $w (parse_warnings((<STDIN>))){
+	push @{$lines[$w->{line} - 1]->{warnings}}, $w;
 }
 
 # ---------------------------
