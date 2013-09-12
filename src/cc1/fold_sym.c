@@ -20,28 +20,28 @@
 #include "const.h"
 
 
-#define RW_TEST(var)                                 \
-						sym->var == 0                            \
-						&& sym->decl->spel                       \
-						&& (sym->decl->store & STORE_MASK_STORE) \
-						        != store_typedef                 \
-						&& !DECL_IS_ARRAY(sym->decl)             \
-						&& !DECL_IS_FUNC(sym->decl)              \
-						&& !DECL_IS_S_OR_U(sym->decl)
+#define RW_TEST(decl, var)                      \
+            decl->sym->var == 0                 \
+            && decl->spel                       \
+            && (decl->store & STORE_MASK_STORE) \
+                    != store_typedef            \
+            && !DECL_IS_ARRAY(decl)             \
+            && !DECL_IS_FUNC(decl)              \
+            && !DECL_IS_S_OR_U(decl)
 
-#define RW_SHOW(w, str)                           \
-					cc1_warn_at(&sym->decl->where, 0,       \
-							WARN_SYM_NEVER_ ## w,               \
-							"\"%s\" never " str,                \
-							sym->decl->spel);                   \
+#define RW_SHOW(decl, w, str)          \
+          cc1_warn_at(&decl->where, 0, \
+              WARN_SYM_NEVER_ ## w,    \
+              "\"%s\" never " str,     \
+              decl->spel);             \
 
-#define RW_WARN(w, var, str)      \
-						do{                   \
-							if(RW_TEST(var)){   \
-								RW_SHOW(w, str)   \
-								sym->var++;       \
-							}                   \
-						}while(0)
+#define RW_WARN(w, decl, var, str)    \
+            do{                       \
+              if(RW_TEST(decl, var)){ \
+                RW_SHOW(decl, w, str) \
+                decl->sym->var++;     \
+              }                       \
+            }while(0)
 
 static void symtab_check_static_asserts(static_assert **sas)
 {
@@ -89,7 +89,6 @@ void symtab_fold_decls(symtable *tab)
 
 	for(diter = tab->decls; diter && *diter; diter++){
 		decl *d = *diter;
-		sym *const sym = d->sym;
 		const int has_unused_attr = !!decl_attr_present(d, attr_unused);
 
 		fold_decl(d, tab, NULL);
@@ -97,37 +96,38 @@ void symtab_fold_decls(symtable *tab)
 		if(d->spel)
 			dynarray_add(&all_decls, d);
 
-		if(sym) switch(sym->type){
+		if(d->sym) switch(d->sym->type){
 			case sym_local:
+			case sym_arg:
 			{
 				/* arg + local checks */
-				const int unused = RW_TEST(nreads);
+				const int unused = RW_TEST(d, nreads);
 
-				switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
-					case store_register:
-					case store_default:
-					case store_auto:
-					case store_static:
-						/* static analysis on sym */
-						if(!has_unused_attr && !d->init)
-							RW_WARN(WRITTEN, nwrites, "written to");
-						break;
-					case store_extern:
-					case store_typedef:
-					case store_inline:
-						break;
+				if(d->sym->type != sym_arg){
+					switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
+						case store_register:
+						case store_default:
+						case store_auto:
+						case store_static:
+							/* static analysis on sym */
+							if(!has_unused_attr && !d->init)
+								RW_WARN(WRITTEN, d, nwrites, "written to");
+							break;
+						case store_extern:
+						case store_typedef:
+						case store_inline:
+							break;
+					}
 				}
-				/* fall */
 
 				if(unused){
 					if(!has_unused_attr && (d->store & STORE_MASK_STORE) != store_extern)
-						RW_SHOW(READ, "read");
+						RW_SHOW(d, READ, "read");
 				}else if(has_unused_attr){
 					warn_at(&d->where,
 							"\"%s\" declared unused, but is used", d->spel);
 				}
 
-			case sym_arg:
 				/* asm rename checks */
 				switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
 					case store_register:
