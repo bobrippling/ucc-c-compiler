@@ -266,11 +266,12 @@ void mutate_expr_cast(expr *e)
 	e->f_const_fold = fold_const_expr_cast;
 }
 
-expr *expr_new_cast(type_ref *to, int implicit)
+expr *expr_new_cast(expr *what, type_ref *to, int implicit)
 {
 	expr *e = expr_new_wrapper(cast);
 	e->bits.tref = to;
 	e->expr_cast_implicit = implicit;
+	e->expr = what;
 	return e;
 }
 

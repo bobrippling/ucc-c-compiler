@@ -210,17 +210,17 @@ static expr *parse_expr_primary()
 				expr *e;
 
 				if((r = parse_type())){
-					e = expr_new_cast(r, 0);
 					EAT(token_close_paren);
 
 					if(curtok == token_open_block){
 						/* C99 compound lit. */
-						decl_init *init = parse_initialisation();
-
-						expr_compound_lit_from_cast(e, init);
+						e = expr_new_compound_lit(
+								r, parse_initialisation());
 
 					}else{
-						e->expr = parse_expr_cast(); /* another cast */
+						/* another cast */
+						e = expr_new_cast(
+								parse_expr_cast(), r, 0);
 					}
 
 					return expr_set_where_len(e, &w);

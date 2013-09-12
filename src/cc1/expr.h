@@ -219,7 +219,7 @@ expr *expr_new_decl_init(decl *d, decl_init *di);
 #define expr_kind(exp, kind) ((exp)->f_str == str_expr_ ## kind)
 
 expr *expr_new_identifier(char *sp);
-expr *expr_new_cast(type_ref *cast_to, int implicit);
+expr *expr_new_cast(expr *, type_ref *cast_to, int implicit);
 expr *expr_new_val(int val);
 expr *expr_new_op(enum op_type o);
 expr *expr_new_op2(enum op_type o, expr *l, expr *r);

@@ -84,8 +84,8 @@ err:
 	if(!ptr_expect){
 		expr *cast, *addr;
 
-		cast = expr_new_cast(type_ref_cached_VOID_PTR(), 1);
-		cast->expr = addr = expr_new_addr(e->lhs);
+		addr = expr_new_addr(e->lhs);
+		cast = expr_new_cast(addr, type_ref_cached_VOID_PTR(), 1);
 
 		e->lhs = cast;
 		e->expr_is_st_dot = 0;

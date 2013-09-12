@@ -207,9 +207,10 @@ void expr_promote_int_if_smaller(expr **pe, symtable *stab)
 		 * insert down-casts too - the tree_type of the expression is still important
 		 */
 
-		cast = expr_new_cast(type_ref_new_type(type_new_primitive(type_int)), 1);
-
-		cast->expr = e;
+		cast = expr_new_cast(
+				e,
+				type_ref_new_type(type_new_primitive(type_int)),
+				1);
 
 		fold_expr_cast_descend(cast, stab, 0);
 
