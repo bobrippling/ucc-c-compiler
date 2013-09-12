@@ -790,6 +790,8 @@ static stmt *parse_stmt_and_decls(void)
 	 */
 	current_scope = current_scope->parent;
 
+	where_cc1_current(&code_stmt->where_cbrace);
+
 	return code_stmt;
 }
 

@@ -171,7 +171,7 @@ void gen_asm_global(decl *d)
 
 		out_label(curfunc_lblfin);
 
-		/* TODO: out_dbg_where() for func end */
+		out_dbg_where(&d->func_code->where_cbrace);
 
 		out_func_epilogue();
 

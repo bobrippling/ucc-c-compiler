@@ -12,6 +12,7 @@ typedef int         func_passable_stmt(stmt *);
 struct stmt
 {
 	where where;
+	where where_cbrace; /* '}' */
 
 	func_fold_stmt     *f_fold;
 	func_gen_stmt      *f_gen;
