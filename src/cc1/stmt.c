@@ -69,6 +69,7 @@ stmt *expr_to_stmt(expr *e, symtable *scope)
 {
 	stmt *t = stmt_new_wrapper(expr, scope);
 	t->expr = e;
+	memcpy_safe(&t->where, &e->where);
 	return t;
 }
 
