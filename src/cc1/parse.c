@@ -903,9 +903,9 @@ stmt *parse_stmt()
 				if(curtok != token_semicolon)
 					t->expr = parse_expr_exp();
 			}else{
-				EAT(token_goto);
-
 				t = STAT_NEW(goto);
+
+				EAT(token_goto);
 
 				if(accept(token_multiply)){
 					/* computed goto */
@@ -954,14 +954,17 @@ flow:
 			return parse_switch();
 
 		case token_default:
+			t = STAT_NEW(default);
 			EAT(token_default);
 			EAT(token_colon);
-			t = STAT_NEW(default);
 			t->parent = current_switch;
 			return parse_label_next(t);
 		case token_case:
 		{
 			expr *a;
+			where cse_loc;
+			where_cc1_current(&cse_loc);
+
 			EAT(token_case);
 			a = parse_expr_exp();
 			if(accept(token_elipsis)){
@@ -976,7 +979,7 @@ flow:
 			}
 
 			EAT(token_colon);
-			return parse_label_next(t);
+			return stmt_set_where(parse_label_next(t), &cse_loc);
 		}
 
 		default:

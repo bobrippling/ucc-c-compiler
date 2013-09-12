@@ -132,4 +132,6 @@ stmt_walk_enter stmt_walk_first_return; /* completes after the first return stat
 
 void stmt_walk(stmt *base, stmt_walk_enter, stmt_walk_leave, void *data);
 
+stmt *stmt_set_where(stmt *, where const *);
+
 #endif

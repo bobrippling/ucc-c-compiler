@@ -48,7 +48,9 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 		 *   be generated twice - once for the scope we're nested in (stab),
 		 *   and again on our call to gen_stmt() in our gen function
 		 */
-		e->code = stmt_new_wrapper(code, symtab_new(stab));
+		e->code = stmt_set_where(
+				stmt_new_wrapper(code, symtab_new(stab)),
+				&e->where);
 		decl_init_create_assignments_base(d->init, d->ref, e, e->code);
 
 		fold_stmt_code(e->code);

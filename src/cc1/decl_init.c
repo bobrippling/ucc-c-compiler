@@ -270,7 +270,9 @@ static decl_init *decl_init_brace_up_scalar(
 
 	if(!iter->pos || !*iter->pos){
 		first_init = decl_init_new_w(decl_init_scalar, w);
-		first_init->bits.expr = expr_new_val(0); /* default init for everything */
+		/* default init for everything */
+		first_init->bits.expr = expr_set_where(
+				expr_new_val(0), w);
 		return first_init;
 	}
 
@@ -910,7 +912,9 @@ static decl_init *decl_init_brace_up_array_pre(
 			for(str_i = 0; str_i < count; str_i++){
 				decl_init *char_init = decl_init_new_w(decl_init_scalar, w);
 
-				char_init->bits.expr = expr_new_val(k.bits.str->str[str_i]);
+				char_init->bits.expr = expr_set_where(
+						expr_new_val(k.bits.str->str[str_i]),
+						&k.bits.str->where);
 
 				dynarray_add(&braced->bits.ar.inits, char_init);
 			}
@@ -1020,7 +1024,9 @@ static expr *decl_init_create_assignments_sue_base(
 		return NULL;
 	}
 
-	return expr_new_struct_mem(base, 1, smem);
+	return expr_set_where(
+			expr_new_struct_mem(base, 1, smem),
+			&base->where);
 }
 
 static void decl_init_create_assignment_from_copy(

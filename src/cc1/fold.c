@@ -94,7 +94,7 @@ void fold_insert_casts(type_ref *dlhs, expr **prhs, symtable *stab, where *w, co
 		/* insert a cast: rhs -> lhs */
 		expr *cast;
 
-		cast = expr_new_cast(rhs, dlhs, 1);
+		cast = expr_set_where(expr_new_cast(rhs, dlhs, 1), &rhs->where);
 		*prhs = cast;
 
 		/* need to fold the cast again - mainly for "loss of precision" warning */
@@ -160,7 +160,8 @@ expr *fold_expr(expr *e, symtable *stab)
 		);
 
 	if(decayed){
-		expr *imp_cast = expr_new_cast(e, decayed, 1);
+		expr *imp_cast = expr_set_where(
+				expr_new_cast(e, decayed, 1), &e->where);
 		fold_expr_cast_descend(imp_cast, stab, 0);
 		e = imp_cast;
 	}
@@ -505,12 +506,18 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 
 			}else if(pinit_code){
 				EOF_WHERE(&d->where,
-						if(!inits)
-							inits = stmt_new_wrapper(code, symtab_new(stab));
+						if(!inits){
+							inits = stmt_set_where(
+								stmt_new_wrapper(code, symtab_new(stab)),
+								&d->where);
+						}
 
 						decl_init_brace_up_fold(d, inits->symtab);
 						decl_init_create_assignments_base(d->init,
-							d->ref, expr_new_identifier(d->spel),
+							d->ref,
+							expr_set_where(
+								expr_new_identifier(d->spel),
+								&d->where),
 							inits);
 					);
 				/* folded elsewhere */

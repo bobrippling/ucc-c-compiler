@@ -69,8 +69,13 @@ stmt *expr_to_stmt(expr *e, symtable *scope)
 {
 	stmt *t = stmt_new_wrapper(expr, scope);
 	t->expr = e;
-	memcpy_safe(&t->where, &e->where);
-	return t;
+	return stmt_set_where(t, &e->where);
+}
+
+stmt *stmt_set_where(stmt *s, where const *w)
+{
+	memcpy_safe(&s->where, w);
+	return s;
 }
 
 static void stmt_walk2(stmt *base, stmt_walk_enter enter, stmt_walk_leave leave, void *data, int *stop)

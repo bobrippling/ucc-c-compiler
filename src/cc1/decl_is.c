@@ -296,7 +296,9 @@ type_ref *type_ref_complete_array(type_ref *r, int sz)
 	UCC_ASSERT(r, "not an array");
 
 	EOF_WHERE(&r->where,
-		r = type_ref_new_array(r->ref, expr_new_val(sz))
+		r = type_ref_new_array(r->ref,
+			expr_set_where(
+				expr_new_val(sz), &r->where))
 	);
 	return r;
 }

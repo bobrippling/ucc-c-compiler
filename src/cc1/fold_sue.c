@@ -72,7 +72,9 @@ static void fold_enum(struct_union_enum_st *en, symtable *stab)
 		if(e == (expr *)-1){
 
 			EOF_WHERE(&en->where,
-				m->val = expr_new_val(defval)
+				m->val = expr_set_where(
+					expr_new_val(defval),
+					&en->where);
 			);
 
 			if(has_bitmask)
