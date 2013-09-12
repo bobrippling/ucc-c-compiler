@@ -285,7 +285,7 @@ int accept_where(enum token t, where *w)
 {
 	if(t == curtok){
 		if(w)
-			where_new(w);
+			where_cc1_current(w);
 		eat(t, NULL, 0); /* can't fail */
 		return 1;
 	}

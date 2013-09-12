@@ -74,9 +74,8 @@ const type *type_new_primitive_signed(enum type_primitive, int sig);
 const type *type_new_primitive_sue(enum type_primitive, struct_union_enum_st *);
 #define type_free(x) free(x)
 
-void where_new(struct where *w);
-void where_adj_identifier(where *w, const char *sp);
-void where_update_len(where *w);
+void where_cc1_current(struct where *w);
+void where_cc1_adj_identifier(where *w, const char *sp);
 
 const char *op_to_str(  const enum op_type o);
 const char *type_to_str(const type *t);

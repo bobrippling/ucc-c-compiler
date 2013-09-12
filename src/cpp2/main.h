@@ -11,9 +11,10 @@ extern char cpp_time[16], cpp_date[16], cpp_timestamp[64];
 extern int option_line_info;
 
 extern char *current_fname;
-extern int current_line;
 extern int no_output;
 
+extern struct loc loc_tok;
+#define current_line loc_tok.line
 
 #define CPP_X(f, ...)      \
 	do{                      \

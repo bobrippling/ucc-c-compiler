@@ -53,6 +53,7 @@ static const struct
 	{ NULL,             NULL }
 };
 
+struct loc loc_tok;
 char *current_fname;
 char *current_line_str;
 int show_current_line = 1;

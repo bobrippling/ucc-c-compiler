@@ -16,8 +16,7 @@
 
 #define ARRAY_LEN(x) (sizeof(x) / sizeof(x[0]))
 
-int current_line, current_chr;
-int strip_in_block = 0;
+static int strip_in_block = 0;
 
 struct
 {

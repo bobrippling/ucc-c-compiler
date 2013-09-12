@@ -173,7 +173,7 @@ new_type:
 
 		new = 1;
 
-		where_new(&sue->where);
+		where_cc1_current(&sue->where);
 	}
 
 	if(members){

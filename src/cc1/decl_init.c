@@ -155,7 +155,7 @@ decl_init *decl_init_new_w(enum decl_init_type t, where *w)
 	if(w)
 		memcpy_safe(&di->where, w);
 	else
-		where_new(&di->where);
+		where_cc1_current(&di->where);
 	di->type = t;
 	return di;
 }

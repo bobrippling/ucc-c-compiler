@@ -55,7 +55,7 @@ stmt *stmt_new(
 		symtable *stab)
 {
 	stmt *s = umalloc(sizeof *s);
-	where_new(&s->where);
+	where_cc1_current(&s->where);
 
 	UCC_ASSERT(stab, "no symtable for statement");
 	s->symtab = stab;

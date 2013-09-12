@@ -3,6 +3,11 @@
 
 #include "compiler.h"
 
+struct loc
+{
+	unsigned line, chr;
+};
+
 typedef struct where
 {
 	const char *fname, *line_str;

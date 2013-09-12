@@ -26,7 +26,7 @@ static type_ref *type_ref_new(enum type_ref_type t, type_ref *of)
 	if(of)
 		memcpy_safe(&r->where, &of->where);
 	else
-		where_new(&r->where);
+		where_cc1_current(&r->where);
 
 	r->type = t;
 	r->ref = of;
@@ -247,7 +247,7 @@ decl *decl_new_w(const where *w)
 decl *decl_new()
 {
 	where wtmp;
-	where_new(&wtmp);
+	where_cc1_current(&wtmp);
 	return decl_new_w(&wtmp);
 }
 
@@ -335,7 +335,7 @@ void decl_free(decl *d, int free_ref)
 decl_attr *decl_attr_new(enum decl_attr_type t)
 {
 	decl_attr *da = umalloc(sizeof *da);
-	where_new(&da->where);
+	where_cc1_current(&da->where);
 	da->type = t;
 	return da;
 }
