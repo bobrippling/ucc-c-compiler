@@ -77,31 +77,28 @@ static void symtab_check_static_asserts(static_assert **sas)
 	}
 }
 
-void symtab_fold_decls(symtable *tab)
+void symtab_check_rw(symtable *tab)
 {
-#define IS_LOCAL_SCOPE !!(tab->parent)
-	decl **all_decls = NULL;
 	decl **diter;
+	symtable **tabi;
 
-	if(tab->folded)
-		return;
-	tab->folded = 1;
+	for(tabi = tab->children; tabi && *tabi; tabi++){
+		symtab_check_rw(*tabi);
+	}
 
 	for(diter = tab->decls; diter && *diter; diter++){
-		decl *d = *diter;
-		const int has_unused_attr = !!decl_attr_present(d, attr_unused);
-
-		fold_decl(d, tab, NULL);
-
-		if(d->spel)
-			dynarray_add(&all_decls, d);
+		decl *const d = *diter;
 
 		if(d->sym) switch(d->sym->type){
-			case sym_local:
 			case sym_arg:
+        if(!tab->func_exists)
+					break;
+				/* fall */
+			case sym_local:
 			{
 				/* arg + local checks */
 				const int unused = RW_TEST(d, nreads);
+				const int has_unused_attr = !!decl_attr_present(d, attr_unused);
 
 				if(d->sym->type != sym_arg){
 					switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
@@ -127,26 +124,48 @@ void symtab_fold_decls(symtable *tab)
 					warn_at(&d->where,
 							"\"%s\" declared unused, but is used", d->spel);
 				}
-
-				/* asm rename checks */
-				switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
-					case store_register:
-					case store_extern:
-					case store_static:
-						break;
-					default:
-						/* allow anonymous decls to have .spel_asm */
-						if(d->spel && d->spel_asm){
-							die_at(&d->where,
-									"asm() rename on non-register non-global variable \"%s\" (%s)",
-									d->spel, d->spel_asm);
-						}
-				}
 			}
 
 			case sym_global:
 				break;
 		} /* sym switch */
+	}
+}
+
+void symtab_fold_decls(symtable *tab)
+{
+#define IS_LOCAL_SCOPE !!(tab->parent)
+	decl **all_decls = NULL;
+	decl **diter;
+
+	if(tab->folded)
+		return;
+	tab->folded = 1;
+
+	for(diter = tab->decls; diter && *diter; diter++){
+		decl *d = *diter;
+
+		fold_decl(d, tab, NULL);
+
+		if(d->spel)
+			dynarray_add(&all_decls, d);
+
+				/* asm rename checks */
+		if(d->sym && d->sym->type != sym_global){
+			switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
+				case store_register:
+				case store_extern:
+				case store_static:
+					break;
+				default:
+					/* allow anonymous decls to have .spel_asm */
+					if(d->spel && d->spel_asm){
+						die_at(&d->where,
+								"asm() rename on non-register non-global variable \"%s\" (%s)",
+								d->spel, d->spel_asm);
+					}
+			}
+		}
 	}
 
 

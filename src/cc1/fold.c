@@ -570,6 +570,8 @@ static void fold_func(decl *func_decl)
 		} the_return = { NULL, NULL };
 		symtable *const arg_symtab = DECL_FUNC_ARG_SYMTAB(func_decl);
 
+		arg_symtab->func_exists = 1;
+
 		if(func_decl->store & store_inline
 		&& (func_decl->store & STORE_MASK_STORE) == store_default)
 		{

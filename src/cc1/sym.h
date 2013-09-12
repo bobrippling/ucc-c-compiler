@@ -31,8 +31,9 @@ struct static_assert
 struct symtable
 {
 	int auto_total_size;
-	unsigned internal_nest : 1, are_params : 1;
 	unsigned folded : 1, laidout : 1;
+	unsigned func_exists : 1; /* should we do r/w checks on args? */
+	unsigned internal_nest : 1, are_params : 1;
 	/*
 	 * { int i; 5; int j; }
 	 * j's symtab is internally represented like:
