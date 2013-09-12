@@ -44,8 +44,26 @@ expr *expr_new(func_mutate_expr *f,
 		func_gen *f_gen_style)
 {
 	expr *e = umalloc(sizeof *e);
-	where_new(&e->where);
+	where_cc1_current(&e->where);
 	expr_mutate(e, f, f_fold, f_str, f_gen, f_gen_str, f_gen_style);
+	return e;
+}
+
+expr *expr_set_where(expr *e, where const *w)
+{
+	memcpy_safe(&e->where, w);
+	return e;
+}
+
+expr *expr_set_where_len(expr *e, where *start)
+{
+	where end;
+	where_cc1_current(&end);
+
+	expr_set_where(e, start);
+	if(start->line == end.line)
+		e->where.len = end.chr - start->chr;
+
 	return e;
 }
 

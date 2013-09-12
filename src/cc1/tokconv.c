@@ -281,13 +281,20 @@ void eat2(enum token t, const char *fnam, int line, int die)
 	}
 }
 
-int accept(enum token t)
+int accept_where(enum token t, where *w)
 {
 	if(t == curtok){
+		if(w)
+			where_cc1_current(w);
 		eat(t, NULL, 0); /* can't fail */
 		return 1;
 	}
 	return 0;
+}
+
+int accept(enum token t)
+{
+	return accept_where(t, NULL);
 }
 
 void uneat(enum token t)

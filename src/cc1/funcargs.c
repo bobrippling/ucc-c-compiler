@@ -84,6 +84,6 @@ enum funcargs_cmp funcargs_equal(
 funcargs *funcargs_new()
 {
 	funcargs *r = umalloc(sizeof *funcargs_new());
-	where_new(&r->where);
+	where_cc1_current(&r->where);
 	return r;
 }

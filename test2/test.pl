@@ -53,6 +53,7 @@ my %vars = (
 	'output_check' => './stdoutcheck.pl',
 	'ocheck'    => './retcheck.pl',
 	'layout_check' => './layout_check.sh',
+	'caret_check' => './caret_check.pl',
 );
 
 my $ran = 0;

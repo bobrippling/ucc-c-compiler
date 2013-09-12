@@ -80,6 +80,8 @@ void parse_and_fold(symtable_global *globals)
 	EAT(token_eof);
 
 	symtab_fold_decls(current_scope); /* check for dups */
+	symtab_check_rw(current_scope); /* basic static analysis */
+
 	fold_merge_tenatives(current_scope);
 
 	dynarray_free(symtable_gasm **, &last_gasms, NULL);

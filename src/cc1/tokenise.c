@@ -107,7 +107,7 @@ struct statement
 
 static tokenise_line_f *in_func;
 int buffereof = 0;
-int parse_finished = 0;
+static int parse_finished = 0;
 
 #define FNAME_STACK_N 32
 static struct fnam_stack
@@ -118,7 +118,7 @@ static struct fnam_stack
 
 static int current_fname_stack_cnt;
 char *current_fname;
-int current_fname_used;
+static int current_fname_used;
 
 static char *buffer, *bufferpos;
 static int ungetch = EOF;
@@ -140,9 +140,10 @@ char *currentstring   = NULL; /* a string literal */
 int   currentstringlen = 0;
 int   currentstringwide = 0;
 
-/* -- */
-int current_line = 0;
-int current_chr  = 0;
+/* where the parser is, and where the last parsed token was */
+static struct loc loc_now;
+struct loc loc_tok;
+
 char *current_line_str = NULL;
 int current_line_str_used = 0;
 
@@ -153,6 +154,39 @@ int current_line_str_used = 0;
 	current_## ty ##_used = 0; }while(0)
 
 #define SET_CURRENT_LINE_STR(new) SET_CURRENT(line_str, new)
+
+
+void where_cc1_current(struct where *w)
+{
+	if(parse_finished){
+eof_w:
+		if(eof_where){
+			memcpy(w, eof_where, sizeof *w);
+		}else if(current_fname){
+			/* still parsing, at EOF */
+			goto final;
+		}else{
+			ICE("where_new() after buffer eof");
+		}
+
+	}else{
+final:
+		/* XXX: current_chr positions at the end of the current token */
+		where_current(w);
+
+		if(!w->fname)
+			goto eof_w;
+
+		current_fname_used = 1;
+		current_line_str_used = 1;
+	}
+}
+
+void where_cc1_adj_identifier(where *w, const char *sp)
+{
+	w->len = strlen(sp);
+}
+
 
 static void push_fname(char *fn, int lno)
 {
@@ -258,7 +292,7 @@ static void tokenise_read_line()
 			if(lno < 0)
 				die("negative #line directive argument");
 
-			current_line = lno - 1; /* inc'd below */
+			loc_now.line = lno - 1; /* inc'd below */
 
 			ep = str_spc_skip(ep);
 
@@ -286,10 +320,12 @@ static void tokenise_read_line()
 			return;
 		}
 
-		current_chr = -1;
-		current_line++;
+		loc_now.chr = 0;
+		loc_now.line++;
+		loc_tok = loc_now;
+
 		if(current_fname_stack_cnt > 0)
-			current_fname_stack[current_fname_stack_cnt - 1].lno = current_line;
+			current_fname_stack[current_fname_stack_cnt - 1].lno = loc_now.line;
 	}
 
 	if(l)
@@ -310,7 +346,7 @@ void tokenise_set_input(tokenise_line_f *func, const char *nam)
 
 	SET_CURRENT_LINE_STR(NULL);
 
-	current_line = buffereof = parse_finished = 0;
+	loc_now.line = buffereof = parse_finished = 0;
 	nexttoken();
 }
 
@@ -325,7 +361,8 @@ static int rawnextchar()
 			return EOF;
 	}
 
-	current_chr++;
+	loc_now.chr++;
+
 	return *bufferpos++;
 }
 
@@ -561,6 +598,9 @@ void nexttoken()
 		ungetch = EOF;
 	}else{
 		c = nextchar(); /* no numbers, no more peeking */
+
+		loc_tok.chr = loc_now.chr - 1;
+
 		if(c == EOF){
 			curtok = token_eof;
 			return;

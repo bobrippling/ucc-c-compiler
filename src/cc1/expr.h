@@ -166,6 +166,12 @@ struct expr
 expr *expr_new(          func_mutate_expr *, func_fold *, func_str *, func_gen *, func_gen *, func_gen *);
 void expr_mutate(expr *, func_mutate_expr *, func_fold *, func_str *, func_gen *, func_gen *, func_gen *);
 
+/* sets e->where */
+expr *expr_set_where(expr *, where const *);
+
+/* sets e->where and e->where.len based on the change */
+expr *expr_set_where_len(expr *, where *);
+
 #define expr_mutate_wrapper(e, type) expr_mutate(e,               \
                                         mutate_expr_     ## type, \
                                         fold_expr_       ## type, \
@@ -216,7 +222,7 @@ expr *expr_new_decl_init(decl *d, decl_init *di);
 #define expr_kind(exp, kind) ((exp)->f_str == str_expr_ ## kind)
 
 expr *expr_new_identifier(char *sp);
-expr *expr_new_cast(type_ref *cast_to, int implicit);
+expr *expr_new_cast(expr *, type_ref *cast_to, int implicit);
 expr *expr_new_val(int val);
 expr *expr_new_op(enum op_type o);
 expr *expr_new_op2(enum op_type o, expr *l, expr *r);

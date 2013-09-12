@@ -23,41 +23,6 @@ intval *intval_new(long v)
 	return iv;
 }
 
-void where_new(struct where *w)
-{
-	extern const char *current_fname;
-	extern int parse_finished;
-
-	if(parse_finished){
-eof_w:
-		if(eof_where){
-			memcpy(w, eof_where, sizeof *w);
-		}else if(current_fname){
-			/* still parsing, at EOF */
-			goto final;
-		}else{
-			ICE("where_new() after buffer eof");
-		}
-
-	}else{
-		extern int current_line, current_chr;
-		extern const char *current_fname, *current_line_str;
-		extern int current_fname_used, current_line_str_used;
-
-		if(!current_fname || !current_line_str)
-			goto eof_w;
-
-final:
-		w->line  = current_line;
-		w->chr   = current_chr;
-		w->fname = current_fname;
-		w->line_str = current_line_str;
-
-		current_fname_used = 1;
-		current_line_str_used = 1;
-	}
-}
-
 int intval_cmp(const intval *a, const intval *b)
 {
 	const intval_t la = a->val, lb = b->val;
@@ -144,7 +109,7 @@ int intval_is_64_bit(const intval_t val, type_ref *ty)
 static type *type_new_primitive1(enum type_primitive p)
 {
 	type *t = umalloc(sizeof *t);
-	where_new(&t->where);
+	where_cc1_current(&t->where);
 	t->primitive = p;
 	t->is_signed = p != type__Bool;
 	return t;

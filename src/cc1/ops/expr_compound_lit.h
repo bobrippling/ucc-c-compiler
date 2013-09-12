@@ -6,4 +6,3 @@ func_mutate_expr mutate_expr_compound_lit;
 func_gen         gen_expr_style_compound_lit;
 
 expr *expr_new_compound_lit(type_ref *t, decl_init *init);
-void expr_compound_lit_from_cast(expr *e, decl_init *init);
