@@ -461,7 +461,7 @@ arg_ld:
 					if(argv[i][2])
 						die("-g... unexpected");
 					ADD_ARG(mode_compile);
-					ADD_ARG(mode_assemb);
+					/* don't pass to the assembler */
 					continue;
 
 				case 'M':
