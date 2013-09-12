@@ -992,6 +992,8 @@ zero_init:
 				0,
 				type_ref_size(tfor, &base->where));
 
+		memcpy_safe(&zero->where, &base->where);
+
 		dynarray_add(
 				&code->codes,
 				expr_to_stmt(zero, code->symtab));
@@ -1003,7 +1005,9 @@ zero_init:
 			dynarray_add(
 					&code->codes,
 					expr_to_stmt(
-						expr_new_assign_init(base, init->bits.expr),
+						expr_set_where(
+							expr_new_assign_init(base, init->bits.expr),
+							&base->where),
 						code->symtab));
 			break;
 
@@ -1093,7 +1097,9 @@ zero_init:
 
 					next_type = smem->ref;
 				}else{
-					new_base = expr_new_array_idx(base, idx);
+					new_base = expr_set_where(
+							expr_new_array_idx(base, idx),
+							&base->where);
 
 					if(!next_type)
 						next_type = type_ref_next(tfor);
