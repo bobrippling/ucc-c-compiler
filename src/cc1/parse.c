@@ -54,6 +54,10 @@ static stmt *current_continue_target,
 expr *parse_expr_sizeof_typeof_alignof(enum what_of what_of)
 {
 	expr *e;
+	where w;
+
+	where_cc1_current(&w);
+	w.chr -= what_of == what_alignof ? 7 : 6; /* go back over the *of */
 
 	if(accept(token_open_paren)){
 		type_ref *r = parse_type();
@@ -85,13 +89,16 @@ expr *parse_expr_sizeof_typeof_alignof(enum what_of what_of)
 		/* don't go any higher, sizeof a - 1, means sizeof(a) - 1 */
 	}
 
-	return e;
+	return expr_set_where_len(e, &w);
 }
 
 static expr *parse_expr__Generic()
 {
 	struct generic_lbl **lbls;
 	expr *test;
+	where w;
+
+	where_cc1_current(&w);
 
 	EAT(token__Generic);
 	EAT(token_open_paren);
@@ -125,7 +132,8 @@ static expr *parse_expr__Generic()
 			break;
 	}
 
-	return expr_new__Generic(test, lbls);
+	return expr_set_where(
+			expr_new__Generic(test, lbls), &w);
 }
 
 static expr *parse_expr_identifier()
@@ -266,6 +274,8 @@ static expr *parse_expr_postfix()
 	e = parse_expr_primary();
 
 	for(;;){
+		where w;
+
 		if(accept(token_open_square)){
 			expr *sum = expr_new_op(op_plus);
 
@@ -294,15 +304,21 @@ static expr *parse_expr_postfix()
 			e = fcall;
 
 		}else if((flag = accept(token_dot)) || accept(token_ptr)){
-			e = expr_new_struct(e, flag, parse_expr_identifier());
+			where_cc1_current(&w);
 
-		}else if((flag = accept(token_increment))
-		||               accept(token_decrement))
+			e = expr_set_where(
+					expr_new_struct(e, flag, parse_expr_identifier()),
+					&w);
+
+		}else if((flag = accept_where(token_increment, &w))
+		||               accept_where(token_decrement, &w))
 		{
-			e = expr_new_assign_compound(
+			e = expr_set_where(
+					expr_new_assign_compound(
 						e,
 						expr_new_val(1),
-						flag ? op_plus : op_minus);
+						flag ? op_plus : op_minus),
+					&w);
 
 			e->assign_is_post = 1;
 
@@ -316,8 +332,13 @@ static expr *parse_expr_postfix()
 
 expr *parse_expr_unary()
 {
+	int set_w = 1;
 	expr *e;
 	int flag;
+	where w;
+
+	/* save since we descend before creating the assignment */
+	where_cc1_current(&w);
 
 	if((flag = accept(token_increment))
 	||         accept(token_decrement))
@@ -357,19 +378,25 @@ expr *parse_expr_unary()
 				break;
 
 			case token_sizeof:
+				set_w = 0; /* no need since there's no sub-parsing here */
 				EAT(token_sizeof);
 				e = parse_expr_sizeof_typeof_alignof(what_sizeof);
 				break;
 
 			case token__Alignof:
+				set_w = 0;
 				EAT(token__Alignof);
 				e = parse_expr_sizeof_typeof_alignof(what_alignof);
 				break;
 
 			default:
+				set_w = 0;
 				e = parse_expr_postfix();
 		}
 	}
+
+	if(set_w)
+		expr_set_where(e, &w);
 
 	return e;
 }
@@ -379,8 +406,9 @@ static expr *parse_expr_generic(expr *(*above)(), enum token t, ...)
 	expr *e = above();
 
 	for(;;){
-		expr *join;
 		int have = curtok == t;
+		where w_op;
+		expr *join;
 
 		if(!have){
 			va_list l; va_start(l, t);
@@ -391,13 +419,16 @@ static expr *parse_expr_generic(expr *(*above)(), enum token t, ...)
 		if(!have)
 			break;
 
-		join = expr_new_op(curtok_to_op());
+		where_cc1_current(&w_op);
+		join = expr_set_where(
+				expr_new_op(curtok_to_op()),
+				&w_op);
 
 		EAT(curtok);
 		join->lhs = e;
 		join->rhs = above();
 
-		e = expr_set_where_len(join, &e->where);
+		e = join;
 	}
 
 	return e;
@@ -426,9 +457,10 @@ PARSE_DEFINE(logical_or,  logical_and,   token_orsc)
 static expr *parse_expr_conditional()
 {
 	expr *e = parse_expr_logical_or();
+	where w;
 
-	if(accept(token_question)){
-		expr *q = expr_new_if(e);
+	if(accept_where(token_question, &w)){
+		expr *q = expr_set_where(expr_new_if(e), &w);
 
 		if(accept(token_colon)){
 			q->lhs = NULL; /* sentinel */
@@ -446,21 +478,27 @@ static expr *parse_expr_conditional()
 expr *parse_expr_assignment()
 {
 	expr *e;
+	where w;
 
 	e = parse_expr_conditional();
 
-	if(accept(token_assign)){
-		return expr_new_assign(e, parse_expr_assignment());
+	if(accept_where(token_assign, &w)){
+		return expr_set_where(
+				expr_new_assign(e, parse_expr_assignment()),
+				&w);
 
 	}else if(curtok_is_compound_assignment()){
 		/* +=, ... - only evaluate the lhs once*/
 		enum op_type op = curtok_to_compound_op();
 
+		where_cc1_current(&w);
 		EAT(curtok);
 
-		return expr_new_assign_compound(e,
+		return expr_set_where(
+				expr_new_assign_compound(e,
 					parse_expr_assignment(),
-					op);
+					op),
+				&w);
 	}
 
 	return e;

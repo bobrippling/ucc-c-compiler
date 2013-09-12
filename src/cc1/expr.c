@@ -55,10 +55,16 @@ expr *expr_set_where(expr *e, where const *w)
 	return e;
 }
 
-expr *expr_set_where_len(expr *e, where *w)
+expr *expr_set_where_len(expr *e, where *start)
 {
-	where_cc1_current(w);
-	return expr_set_where(e, w);
+	where end;
+	where_cc1_current(&end);
+
+	expr_set_where(e, start);
+	if(start->line == end.line)
+		e->where.len = end.chr - start->chr;
+
+	return e;
 }
 
 expr *expr_new_intval(intval *iv)
