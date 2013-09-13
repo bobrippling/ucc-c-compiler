@@ -61,9 +61,14 @@ void gen_expr_assign_compound(expr *e)
 	}
 
 	out_dup();
-	out_deref();
+	/* delay the dereference until after generating rhs.
+	 * this is fine, += etc aren't sequence points
+	 */
 
 	gen_expr(e->rhs);
+
+	/* here's the delayed dereference */
+	out_swap(), out_deref(), out_swap();
 
 	out_op(e->op);
 
