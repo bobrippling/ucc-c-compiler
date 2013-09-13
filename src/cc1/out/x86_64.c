@@ -650,10 +650,16 @@ void impl_load(struct vstack *from, const struct vreg *reg)
 
 	switch(from->type){
 		case V_FLAG:
+		{
+			struct vreg reg_ordered_chk;
+			struct vstack vtmp_zero;
+
+			vtmp_zero.type = V_CONST_I;
+			vtmp_zero.bits.val_i = 0;
+			vtmp_zero.t = from->t;
+
 			out_comment("zero for set");
-			out_asm("mov%s $0, %%%s",
-					x86_suffix(from->t),
-					x86_reg_str(reg, from->t));
+			impl_load(&vtmp_zero, reg);
 
 			/* XXX: memleak */
 			from->t = type_ref_cached_CHAR(); /* force set%s to set the low byte */
@@ -661,6 +667,7 @@ void impl_load(struct vstack *from, const struct vreg *reg)
 					x86_cmp(&from->bits.flag),
 					x86_reg_str(reg, from->t));
 			break;
+		}
 
 		case V_REG_SAVE:
 		{
