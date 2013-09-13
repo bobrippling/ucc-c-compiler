@@ -69,7 +69,7 @@ void v_clear(struct vstack *vp, type_ref *);
 void v_set_reg(struct vstack *vp, const struct vreg *r);
 void v_set_reg_i(struct vstack *vp, int idx);
 
-void v_flag(enum flag_cmp c, int is_signed);
+void v_set_flag(struct vstack *vp, enum flag_cmp c, int is_signed);
 
 void v_cast(struct vstack *vp, type_ref *to);
 

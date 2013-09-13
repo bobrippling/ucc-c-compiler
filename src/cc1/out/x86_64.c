@@ -804,7 +804,8 @@ void impl_op(enum op_type op)
 					vstack_str_r(b2, &vtop[-1], 0));
 
 			vpop();
-			v_flag(op_to_flag(op), 0 /* we want seta, not setgt */);
+			v_set_flag(vtop, op_to_flag(op),
+					0 /* we want seta, not setgt */);
 			return;
 		}
 
@@ -1033,7 +1034,7 @@ void impl_op(enum op_type op)
 
 			vpop();
 
-			v_flag(op_to_flag(op), is_signed);
+			v_set_flag(vtop, op_to_flag(op), is_signed);
 			if(inv)
 				v_inv_cmp(vtop);
 			return;
