@@ -223,6 +223,7 @@ static const char *vstack_str_r(
 		}
 
 		case V_REG:
+		case V_REG_SAVE:
 		{
 			long off = vs->bits.regoff.offset;
 			const char *rstr = x86_reg_str(
@@ -661,6 +662,10 @@ void impl_load(struct vstack *from, const struct vreg *reg)
 					x86_reg_str(reg, from->t));
 			break;
 
+		case V_REG_SAVE:
+			impl_deref(from, reg);
+			break;
+
 		case V_REG:
 			if(from->bits.regoff.offset)
 				goto lea;
@@ -709,6 +714,12 @@ void impl_store(struct vstack *from, struct vstack *to)
 		case V_FLAG:
 		case V_CONST_F:
 			ICE("invalid store lvalue 0x%x", to->type);
+
+		case V_REG_SAVE:
+			/* need to load the store value from memory
+			 * aka. double indir */
+			v_to_reg(to);
+			break;
 
 		case V_REG:
 		case V_LBL:
@@ -1150,6 +1161,7 @@ void impl_cast_load(struct vstack *vp, type_ref *small, type_ref *big, int is_si
 			vstack_str_r(buf_small, vp, 1);
 			break;
 
+		case V_REG_SAVE:
 		case V_FLAG:
 			v_to_reg(vp);
 		case V_REG:
@@ -1296,6 +1308,7 @@ static const char *x86_call_jmp_target(struct vstack *vp, int prevent_rax)
 			snprintf(buf, sizeof buf, "*%s", vstack_str(vp, 1));
 			break;
 
+		case V_REG_SAVE: /* load, then jmp */
 		case V_REG: /* jmp *%rax */
 			/* TODO: v_to_reg_given() ? */
 			v_to_reg(vp);
@@ -1344,6 +1357,7 @@ void impl_jcond(int true, const char *lbl)
 			break;
 
 		case V_LBL:
+		case V_REG_SAVE:
 			v_to_reg(vtop);
 
 		case V_REG:

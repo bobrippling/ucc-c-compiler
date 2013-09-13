@@ -11,6 +11,9 @@ struct vstack
 
 		V_CONST_F, /* constant float */
 		V_FLAG, /* cpu flag */
+
+		V_REG_SAVE, /* value stored in memory,
+		             * referenced by reg+offset */
 	} type;
 
 	type_ref *t;

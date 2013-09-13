@@ -347,6 +347,7 @@ void v_to_mem(struct vstack *vp)
 		case V_REG:
 			v_save_reg(vp);
 
+		case V_REG_SAVE:
 		case V_LBL:
 			break;
 	}
@@ -363,6 +364,7 @@ static int v_in(struct vstack *vp, enum vto to)
 			return !!(to & TO_CONST);
 
 		case V_REG:
+		case V_REG_SAVE:
 			return 0; /* needs further checks */
 
 		case V_LBL:
@@ -515,6 +517,8 @@ void v_save_reg(struct vstack *vp)
 	v_to_mem_given(
 			vp,
 			-v_stack_sz());
+
+	vp->type = V_REG_SAVE;
 }
 
 void v_save_regs(int n_ignore, type_ref *func_ty)
@@ -701,6 +705,7 @@ void out_dup(void)
 			v_to_reg(&vtop[-1]);
 			/* fall */
 		case V_REG:
+		case V_REG_SAVE:
 			if(v_reg_is_const(&vtop[-1].bits.regoff.reg)){
 				/* fall to memcpy */
 			}else{
@@ -1054,6 +1059,7 @@ pop_const:
 
 							case V_LBL:
 							case V_FLAG:
+							case V_REG_SAVE:
 								v_to_reg(val);
 
 							case V_REG:
@@ -1159,9 +1165,15 @@ void out_deref()
 		case V_CONST_F:
 			ICE("deref of float");
 
+		case V_REG:
+			/* attempt to convert to v_reg_save if possible */
+			if(v_reg_is_const(&vtop->bits.regoff.reg)){
+				vtop->type = V_REG_SAVE;
+				break;
+			}
+		case V_REG_SAVE:
 		case V_LBL:
 		case V_CONST_I:
-		case V_REG:
 		{
 			struct vreg r;
 
@@ -1212,6 +1224,7 @@ void out_op_unary(enum op_type op)
 					}
 					break;
 
+				case V_REG_SAVE:
 				case V_REG:
 				case V_LBL:
 				case V_CONST_F:
