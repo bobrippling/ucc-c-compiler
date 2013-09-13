@@ -1222,14 +1222,12 @@ static void x86_fp_conv(
 {
 	char vbuf[VSTACK_STR_SZ];
 
-	/* if we're doing an int-float conversion,
-	 * see if we need to do 64 or 32 bit
-	 */
-	const int use_64 = int_ty && type_ref_size(int_ty, NULL) == 8;
-
 	out_asm("cvt%s2%s%s %s, %%%s",
 			sfrom, sto,
-			use_64 ? "q" : "",
+			/* if we're doing an int-float conversion,
+			 * see if we need to do 64 or 32 bit
+			 */
+			int_ty ? type_ref_size(int_ty, NULL) == 8 ? "q" : "l" : "",
 			vstack_str_r(vbuf, vp, 0),
 			x86_reg_str(r, tto));
 }
