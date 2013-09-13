@@ -1256,15 +1256,16 @@ static void x86_xchg_fi(struct vstack *vp, type_ref *tfrom, type_ref *tto)
 	/* need to promote vp to int for cvtsi2ss */
 	if(type_ref_size(ty_int, NULL) < type_primitive_size(type_int)){
 		/* need to pretend we're using an int */
-		type_ref *const orig_tto = tto,
-		         *const ty = *(to_float ? &tfrom : &tto) = type_ref_cached_INT();
+		type_ref *const ty = *(to_float ? &tfrom : &tto) = type_ref_cached_INT();
 
 		if(to_float){
 			/* cast up to int, then to float */
 			v_cast(vp, ty);
 		}else{
-			out_comment("float to %s - truncated from int",
-					type_ref_to_str(orig_tto));
+			char buf[TYPE_REF_STATIC_BUFSIZ];
+			out_comment("%s to %s - truncated",
+					type_ref_to_str(tfrom),
+					type_ref_to_str_r(buf, tto));
 		}
 	}
 
