@@ -663,8 +663,14 @@ void impl_load(struct vstack *from, const struct vreg *reg)
 			break;
 
 		case V_REG_SAVE:
+		{
+			/* v_reg_save loads are actually pointers to T */
+			type_ref *const inc = type_ref_ptr_depth_inc(from->t);
+			from->t = inc;
 			impl_deref(from, reg);
+			from->t = type_ref_ptr_depth_dec(from->t, NULL);
 			break;
+		}
 
 		case V_REG:
 			if(from->bits.regoff.offset)
@@ -1097,12 +1103,13 @@ void impl_op(enum op_type op)
 void impl_deref(struct vstack *vp, const struct vreg *to)
 {
 	char ptr[VSTACK_STR_SZ];
+	type_ref *r_ty = type_ref_ptr_depth_dec(vp->t, NULL);
 
 	/* loaded the pointer, now we apply the deref change */
 	out_asm("mov%s %s, %%%s",
-			x86_suffix(vtop->t),
+			x86_suffix(r_ty),
 			vstack_str_r(ptr, vp, 1),
-			x86_reg_str(to, vtop->t));
+			x86_reg_str(to, r_ty));
 }
 
 void impl_op_unary(enum op_type op)
