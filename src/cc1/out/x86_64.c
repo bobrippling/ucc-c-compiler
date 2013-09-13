@@ -1223,6 +1223,7 @@ static void x86_fp_conv(
 	char vbuf[VSTACK_STR_SZ];
 
 	out_asm("cvt%s2%s%s %s, %%%s",
+			/*truncate ? "t" : "",*/
 			sfrom, sto,
 			/* if we're doing an int-float conversion,
 			 * see if we need to do 64 or 32 bit
