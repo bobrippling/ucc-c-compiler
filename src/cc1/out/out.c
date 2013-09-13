@@ -535,16 +535,29 @@ void v_save_regs(int n_ignore, type_ref *func_ty)
 	 * except callee save regs unless we need to
 	 */
 	for(p = vstack; p < vtop - n_ignore; p++){
-		if(p->type == V_REG && !v_reg_is_const(&p->bits.regoff.reg)){
-			if(func_ty
-			&& impl_reg_is_callee_save(&p->bits.regoff.reg, func_ty)){
+		int save = 1;
+		if(p->type == V_REG){
+			if(v_reg_is_const(&p->bits.regoff.reg))
+			{
+				/* don't save stack references */
+				if(fopt_mode & FOPT_VERBOSE_ASM)
+					out_comment("not saving const-reg %d", p->bits.regoff.reg.idx);
+				save = 0;
+
+			}else if(func_ty
+			&& impl_reg_is_callee_save(&p->bits.regoff.reg, func_ty))
+			{
 				/* only comment for non-const regs */
 				out_comment("not saving reg %d - callee save",
 						p->bits.regoff.reg.idx);
+
+				save = 0;
+			}else{
+				out_comment("saving register %d", p->bits.regoff.reg.idx);
 			}
-		}else{
-			v_to_mem(p);
 		}
+		if(save)
+			v_to_mem(p);
 	}
 }
 
