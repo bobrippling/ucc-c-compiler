@@ -150,8 +150,6 @@ void gen_expr_struct(expr *e)
 	gen_expr_struct_lea(e);
 
 	out_deref();
-
-	out_comment("val from struct/union");
 }
 
 void gen_expr_str_struct(expr *e)
