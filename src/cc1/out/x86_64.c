@@ -546,7 +546,10 @@ void impl_pop_func_ret(type_ref *ty)
 static const char *x86_cmp(struct flag_opts *flag)
 {
 	switch(flag->cmp){
-#define OP(e, s, u) case flag_ ## e: return flag->is_signed ? s : u
+#define OP(e, s, u)  \
+		case flag_ ## e: \
+		return flag->mods & flag_mod_signed ? s : u
+
 		OP(eq, "e" , "e");
 		OP(ne, "ne", "ne");
 		OP(le, "le", "be");
@@ -663,6 +666,9 @@ void impl_load(struct vstack *from, const struct vreg *reg)
 
 			/* XXX: memleak */
 			from->t = type_ref_cached_CHAR(); /* force set%s to set the low byte */
+
+			/* FIXME: need to check float/orderedness */
+
 			out_asm("set%s %%%s",
 					x86_cmp(&from->bits.flag),
 					x86_reg_str(reg, from->t));
@@ -799,8 +805,8 @@ void impl_op(enum op_type op)
 					vstack_str_r(b2, &vtop[-1], 0));
 
 			vpop();
-			v_set_flag(vtop, op_to_flag(op),
-					0 /* we want seta, not setgt */);
+			v_set_flag(vtop, op_to_flag(op), flag_mod_float);
+			/* not flag_mod_signed - we want seta, not setgt */
 			return;
 		}
 
@@ -1029,7 +1035,7 @@ void impl_op(enum op_type op)
 
 			vpop();
 
-			v_set_flag(vtop, op_to_flag(op), is_signed);
+			v_set_flag(vtop, op_to_flag(op), is_signed ? flag_mod_signed : 0);
 			if(inv)
 				v_inv_cmp(vtop);
 			return;
@@ -1353,6 +1359,8 @@ void impl_jcond(int true, const char *lbl)
 		case V_FLAG:
 			UCC_ASSERT(true, "jcond(false) for flag - should've been inverted");
 
+			/* FIXME: need to check float/orderedness */
+
 			out_asm("j%s %s", x86_cmp(&vtop->bits.flag), lbl);
 			break;
 
@@ -1558,8 +1566,7 @@ void impl_undefined(void)
 
 void impl_set_overflow(void)
 {
-	vtop->type = V_FLAG;
-	vtop->bits.flag.cmp = flag_overflow;
+	v_set_flag(vtop, flag_overflow, 0);
 }
 
 int impl_frame_ptr_to_reg(int nframes)

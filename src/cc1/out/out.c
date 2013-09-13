@@ -107,13 +107,13 @@ void v_clear(struct vstack *vp, type_ref *t)
 
 void v_set_flag(
 		struct vstack *vp,
-		enum flag_cmp c, int is_signed)
+		enum flag_cmp c, enum flag_mod mods)
 {
 	v_clear(vp, type_ref_cached_BOOL());
 
 	vp->type = V_FLAG;
 	vp->bits.flag.cmp = c;
-	vp->bits.flag.is_signed = is_signed;
+	vp->bits.flag.mods = mods;
 }
 
 void vpop(void)

@@ -42,7 +42,11 @@ struct vstack
 				flag_ge, flag_gt,
 				flag_overflow, flag_no_overflow
 			} cmp;
-			int is_signed;
+			enum flag_mod
+			{
+				flag_mod_signed = 1 << 0,
+				flag_mod_float  = 1 << 1 /* e.g. unordered/nan */
+			} mods;
 		} flag;
 		struct
 		{
@@ -69,7 +73,10 @@ void v_clear(struct vstack *vp, type_ref *);
 void v_set_reg(struct vstack *vp, const struct vreg *r);
 void v_set_reg_i(struct vstack *vp, int idx);
 
-void v_set_flag(struct vstack *vp, enum flag_cmp c, int is_signed);
+void v_set_flag(
+		struct vstack *vp,
+		enum flag_cmp c,
+		enum flag_mod mods);
 
 void v_cast(struct vstack *vp, type_ref *to);
 
