@@ -1372,12 +1372,16 @@ void impl_jcond(int true, const char *lbl)
 {
 	switch(vtop->type){
 		case V_FLAG:
-			UCC_ASSERT(true, "jcond(false) for flag - should've been inverted");
+		{
+			const int inv = !true;
+			if(inv)
+				v_inv_cmp(&vtop->bits.flag);
 
 			/* FIXME: need to check float/orderedness */
 
 			out_asm("j%s %s", x86_cmp(&vtop->bits.flag), lbl);
 			break;
+		}
 
 		case V_CONST_F:
 			ICE("jcond float");
