@@ -604,13 +604,17 @@ void v_freeup_regs(const struct vreg *a, const struct vreg *b)
 	v_unreserve_reg(b);
 }
 
-void v_inv_cmp(struct vstack *vp)
+void v_inv_cmp(struct flag_opts *flag)
 {
-	switch(vp->bits.flag.cmp){
-#define OPPOSITE2(from, to) \
-		case flag_ ## from: vp->bits.flag.cmp = flag_ ## to; return
+	switch(flag->cmp){
+#define OPPOSITE2(from, to)    \
+		case flag_ ## from:        \
+			flag->cmp = flag_ ## to; \
+			return
 
-#define OPPOSITE(from, to) OPPOSITE2(from, to); OPPOSITE2(to, from)
+#define OPPOSITE(from, to) \
+		OPPOSITE2(from, to);   \
+		OPPOSITE2(to, from)
 
 		OPPOSITE(eq, ne);
 
@@ -1210,7 +1214,7 @@ void out_op_unary(enum op_type op)
 			switch(vtop->type){
 				case V_FLAG:
 					if(op == op_not){
-						v_inv_cmp(vtop);
+						v_inv_cmp(&vtop->bits.flag);
 						return;
 					}
 					break;
@@ -1352,7 +1356,7 @@ void out_jfalse(const char *lbl)
 	int cond = 0;
 
 	if(vtop->type == V_FLAG){
-		v_inv_cmp(vtop);
+		v_inv_cmp(&vtop->bits.flag);
 		cond = 1;
 	}
 

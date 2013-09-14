@@ -1052,7 +1052,7 @@ void impl_op(enum op_type op)
 
 			v_set_flag(vtop, op_to_flag(op), is_signed ? flag_mod_signed : 0);
 			if(inv)
-				v_inv_cmp(vtop);
+				v_inv_cmp(&vtop->bits.flag);
 			return;
 		}
 
