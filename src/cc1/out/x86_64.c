@@ -1377,8 +1377,8 @@ void impl_jcond(int true, const char *lbl)
 			if(inv)
 				v_inv_cmp(&vtop->bits.flag);
 
-			/* FIXME: need to check float/orderedness */
-
+			if(vtop->bits.flag.mods & flag_mod_float)
+				out_asm("j%sp %s", inv ? "n" : "", lbl);
 			out_asm("j%s %s", x86_cmp(&vtop->bits.flag), lbl);
 			break;
 		}
