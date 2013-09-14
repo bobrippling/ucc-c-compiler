@@ -1401,7 +1401,9 @@ void impl_jcond(int true, const char *lbl)
 
 		case V_REG:
 			out_normalise();
-			out_asm("j%se %s", true ? "n" : "", lbl);
+			UCC_ASSERT(vtop->type != V_REG,
+					"normalise remained as a register");
+			impl_jcond(true, lbl);
 			break;
 	}
 }
