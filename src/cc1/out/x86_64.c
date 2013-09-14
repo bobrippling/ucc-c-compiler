@@ -654,24 +654,39 @@ void impl_load(struct vstack *from, const struct vreg *reg)
 	switch(from->type){
 		case V_FLAG:
 		{
-			struct vreg reg_ordered_chk;
-			struct vstack vtmp_zero;
+			struct vstack vtmp_val = VSTACK_INIT(V_CONST_I);
+			char *parity = NULL;
 
-			vtmp_zero.type = V_CONST_I;
-			vtmp_zero.bits.val_i = 0;
-			vtmp_zero.t = from->t;
+			vtmp_val.t = from->t;
 
-			out_comment("zero for set");
-			impl_load(&vtmp_zero, reg);
+			if(from->bits.flag.mods & flag_mod_float){
+				/* check float/orderedness */
+				parity = out_label_code("parity");
+
+				/* assume parity set (i.e. nan) */
+				vtmp_val.bits.val_i = 1;
+				impl_load(&vtmp_val, reg);
+
+				out_asm("jp %s", parity);
+			}else{
+				out_comment("zero for set");
+				vtmp_val.bits.val_i = 0;
+				impl_load(&vtmp_val, reg);
+			}
 
 			/* XXX: memleak */
 			from->t = type_ref_cached_CHAR(); /* force set%s to set the low byte */
 
-			/* FIXME: need to check float/orderedness */
-
+			/* actual cmp */
 			out_asm("set%s %%%s",
 					x86_cmp(&from->bits.flag),
 					x86_reg_str(reg, from->t));
+
+			if(parity){
+				/* don't use out_label - this does a vstack flush */
+				impl_lbl(parity);
+				free(parity);
+			}
 			break;
 		}
 
