@@ -1250,7 +1250,7 @@ static void x86_fp_conv(
 			 * see if we need to do 64 or 32 bit
 			 */
 			int_ty ? type_ref_size(int_ty, NULL) == 8 ? "q" : "l" : "",
-			vstack_str_r(vbuf, vp, 0),
+			vstack_str_r(vbuf, vp, vp->type == V_REG_SAVE),
 			x86_reg_str(r, tto));
 }
 
