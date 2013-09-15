@@ -1453,6 +1453,9 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 	/* need to save regs before pushes/call */
 	v_save_regs(nargs, r_func);
 
+	/* align the stack to 16-byte, for sse insns */
+	v_stack_align(16, 0);
+
 	if(arg_stack > 0){
 		unsigned nfloats = 0, nints = 0; /* shadow */
 		unsigned stack_pos;

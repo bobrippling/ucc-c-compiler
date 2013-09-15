@@ -495,6 +495,27 @@ unsigned v_alloc_stack(unsigned sz, const char *desc)
 	return v_alloc_stack2(sz, 0, desc);
 }
 
+void v_stack_align(unsigned const align, int mask)
+{
+	if(stack_sz & (align - 1)){
+		type_ref *const ty = type_ref_cached_INTPTR_T();
+		const int new_sz = pack_to_align(stack_sz, align);
+
+		v_push_sp();
+		out_push_l(ty, new_sz - stack_sz);
+		out_op(op_minus);
+		stack_sz = new_sz;
+
+		if(mask){
+			out_push_l(ty, align - 1);
+			out_op(op_and);
+		}
+		out_flush_volatile();
+		out_pop();
+		out_comment("stack aligned to %u bytes", align);
+	}
+}
+
 void v_dealloc_stack(unsigned sz)
 {
 	/* callers should've snapshotted the stack previously
@@ -1406,14 +1427,8 @@ void out_func_prologue(
 
 	impl_func_prologue_save_fp();
 
-	if(mopt_mode & MOPT_STACK_REALIGN){
-		v_push_sp();
-		out_push_l(type_ref_cached_INTPTR_T(), cc1_mstack_align - 1);
-		out_op(op_and);
-		out_flush_volatile();
-		out_pop();
-		v_alloc_stack(platform_word_size(), "stack realign");
-	}
+	if(mopt_mode & MOPT_STACK_REALIGN)
+		v_stack_align(cc1_mstack_align, 1);
 
 	impl_func_prologue_save_call_regs(rf, nargs, arg_offsets);
 

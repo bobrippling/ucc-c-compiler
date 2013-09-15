@@ -122,8 +122,8 @@ unsigned v_alloc_stack(unsigned sz, const char *);
  * e.g. if a push is done manually */
 unsigned v_alloc_stack_n(unsigned sz, const char *);
 /* v_alloc_stack* returns the padded sz that was alloced */
-
 void v_dealloc_stack(unsigned sz);
+void v_stack_align(unsigned const align, int do_mask);
 
 void v_deref_decl(struct vstack *vp);
 
