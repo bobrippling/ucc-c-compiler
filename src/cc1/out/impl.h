@@ -41,6 +41,7 @@ void impl_func_epilogue(type_ref *);
 void impl_undefined(void);
 void impl_set_overflow(void);
 int  impl_frame_ptr_to_reg(int nframes);
+void impl_set_nan(type_ref *);
 
 /* scratch register indexing */
 int  impl_reg_to_scratch(const struct vreg *);

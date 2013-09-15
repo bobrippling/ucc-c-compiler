@@ -1613,3 +1613,17 @@ int impl_frame_ptr_to_reg(int nframes)
 
 	return r.idx;
 }
+
+void impl_set_nan(type_ref *ty)
+{
+	const union
+	{
+		unsigned l;
+		float f;
+	} u = { 0x7fc00000U };
+
+	vtop->type = V_CONST_F;
+	vtop->bits.val_f = u.f;
+	vtop->t = ty;
+	impl_load_fp(vtop);
+}

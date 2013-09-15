@@ -60,6 +60,7 @@ void out_push_overflow(void);
 
 void out_push_frame_ptr(int nframes);
 void out_push_reg_save_ptr(void);
+void out_push_nan(type_ref *ty);
 
 int out_vcount(void);
 

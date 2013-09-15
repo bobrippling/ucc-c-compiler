@@ -32,7 +32,8 @@ static func_builtin_parse parse_unreachable,
                           parse_frame_address,
                           parse_expect,
                           parse_strlen,
-                          parse_is_signed;
+                          parse_is_signed,
+                          parse_nanf;
 #ifdef BUILTIN_LIBC_FUNCTIONS
                           parse_memset,
                           parse_memcpy;
@@ -56,6 +57,8 @@ builtin_table builtins[] = {
 	{ "expect", parse_expect },
 
 	{ "is_signed", parse_is_signed },
+
+	{ "nanf", parse_nanf },
 
 #define BUILTIN_VA(nam) { "va_" #nam, parse_va_ ##nam },
 #  include "__builtin_va.def"
@@ -678,6 +681,49 @@ static expr *parse_is_signed(void)
 	fcall->f_const_fold = const_is_signed;
 
 	return fcall;
+}
+
+/* --- nanf */
+
+static void fold_nanf(expr *e, symtable *stab)
+{
+	consty k;
+
+	if(dynarray_count(e->funcargs) != 1){
+need_char_p:
+		die_at(&e->where, "%s takes a single 'char *' argument",
+				BUILTIN_SPEL(e->expr));
+	}
+
+	FOLD_EXPR(e->funcargs[0], stab);
+
+	const_fold(e->funcargs[0], &k);
+	if(k.type != CONST_STRK)
+		goto need_char_p;
+
+	if(k.bits.str->len > 1)
+		die_at(&e->where, "%s only implemented for nanf(\"\")",
+				BUILTIN_SPEL(e->expr));
+
+	e->tree_type = type_ref_cached_DOUBLE();
+	wur_builtin(e);
+}
+
+static void builtin_gen_nanf(expr *e)
+{
+	out_push_nan(e->tree_type);
+}
+
+static expr *builtin_nanf_mutate(expr *e)
+{
+	expr_mutate_builtin(e, nanf);
+	BUILTIN_SET_GEN(e, builtin_gen_nanf);
+	return e;
+}
+
+static expr *parse_nanf(void)
+{
+	return builtin_nanf_mutate(parse_any_args());
 }
 
 /* --- strlen */

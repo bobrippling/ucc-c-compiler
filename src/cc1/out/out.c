@@ -1474,3 +1474,11 @@ void out_push_reg_save_ptr(void)
 	vpush(NULL);
 	v_set_stack(vtop, NULL, -stack_variadic_offset);
 }
+
+void out_push_nan(type_ref *ty)
+{
+	UCC_ASSERT(type_ref_is_floating(ty),
+			"non-float nan?");
+	vpush(NULL);
+	impl_set_nan(ty);
+}
