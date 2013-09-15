@@ -659,12 +659,21 @@ void impl_load(struct vstack *from, const struct vreg *reg)
 
 			vtmp_val.t = from->t;
 
-			if(from->bits.flag.mods & flag_mod_float){
-				/* check float/orderedness */
+			/* check float/orderedness
+			 * if any cmp includes a nan, the cmp is false,
+			 * except for '!=', which is true.
+			 *
+			 * for x86, we only need to check nans for '==' and '!=',
+			 * since they never compare <, <=, >, >= to anything else.
+			 */
+			if(from->bits.flag.mods & flag_mod_float
+			&& (from->bits.flag.cmp == flag_eq
+			|| from->bits.flag.cmp == flag_ne))
+			{
 				parity = out_label_code("parity");
 
 				/* assume parity set (i.e. nan) */
-				vtmp_val.bits.val_i = 1;
+				vtmp_val.bits.val_i = (from->bits.flag.cmp == flag_ne);
 				impl_load(&vtmp_val, reg);
 
 				out_asm("jp %s", parity);
