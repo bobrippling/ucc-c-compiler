@@ -670,14 +670,9 @@ void impl_load(struct vstack *from, const struct vreg *reg)
 		}
 
 		case V_REG_SAVE:
-		{
 			/* v_reg_save loads are actually pointers to T */
-			type_ref *const inc = type_ref_ptr_depth_inc(from->t);
-			from->t = inc;
-			impl_deref(from, reg);
-			from->t = type_ref_ptr_depth_dec(from->t, NULL);
+			impl_deref(from, reg, from->t);
 			break;
-		}
 
 		case V_REG:
 			if(from->bits.regoff.offset)
@@ -1108,16 +1103,18 @@ void impl_op(enum op_type op)
 	}
 }
 
-void impl_deref(struct vstack *vp, const struct vreg *to)
+void impl_deref(
+		struct vstack *vp,
+		const struct vreg *to,
+		type_ref *tpointed_to)
 {
 	char ptr[VSTACK_STR_SZ];
-	type_ref *r_ty = type_ref_ptr_depth_dec(vp->t, NULL);
 
 	/* loaded the pointer, now we apply the deref change */
 	out_asm("mov%s %s, %%%s",
-			x86_suffix(r_ty),
+			x86_suffix(tpointed_to),
 			vstack_str_r(ptr, vp, 1),
-			x86_reg_str(to, r_ty));
+			x86_reg_str(to, tpointed_to));
 }
 
 void impl_op_unary(enum op_type op)
@@ -1581,8 +1578,7 @@ int impl_frame_ptr_to_reg(int nframes)
 	impl_reg_cp(vtop, &r); /* movq %rbp, <reg> */
 	while(--nframes > 0){
 		v_set_reg(vtop, &r);
-		vtop->t = void_pp;
-		impl_deref(vtop, &r); /* movq (<reg>), <reg> */
+		impl_deref(vtop, &r, void_pp); /* movq (<reg>), <reg> */
 	}
 
 	vpop();

@@ -1156,10 +1156,8 @@ void out_deref()
 		return; /* noop */
 	}
 
-	fp = type_ref_is_floating(
-			type_ref_ptr_depth_dec(vtop->t, NULL));
-
 	v_deref_decl(vtop);
+	fp = type_ref_is_floating(vtop->t);
 
 	switch(vtop->type){
 		case V_FLAG:
@@ -1181,7 +1179,7 @@ void out_deref()
 
 			v_unused_reg(1, fp, &r);
 
-			impl_deref(vtop, &r);
+			impl_deref(vtop, &r, indir);
 
 			v_set_reg(vtop, &r);
 			break;

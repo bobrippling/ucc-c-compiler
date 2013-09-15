@@ -11,7 +11,10 @@ void impl_reg_swp(struct vstack *a, struct vstack *b);
 
 void impl_op(enum op_type);
 void impl_op_unary(enum op_type);
-void impl_deref(struct vstack *vp, const struct vreg *);
+void impl_deref(
+		struct vstack *vp,
+		const struct vreg *to,
+		type_ref *tpointed_to);
 
 void impl_jmp(void);
 void impl_jcond(int true, const char *lbl);
