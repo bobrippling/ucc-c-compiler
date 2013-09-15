@@ -1386,8 +1386,14 @@ void impl_jcond(int true, const char *lbl)
 			if(inv)
 				v_inv_cmp(&vtop->bits.flag);
 
-			if(vtop->bits.flag.mods & flag_mod_float)
-				out_asm("j%sp %s", inv ? "n" : "", lbl);
+			if(vtop->bits.flag.mods & flag_mod_float){
+				/* if we have nan, the condition is false,
+				 * unless the cmp is '!='
+				 */
+				if(vtop->bits.flag.cmp == flag_ne){
+					out_asm("j%sp %s", inv ? "n" : "", lbl);
+				}
+			}
 			out_asm("j%s %s", x86_cmp(&vtop->bits.flag), lbl);
 			break;
 		}
