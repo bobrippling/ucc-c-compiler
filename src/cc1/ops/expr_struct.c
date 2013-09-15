@@ -22,7 +22,7 @@ void fold_expr_struct(expr *e, symtable *stab)
 	struct_union_enum_st *sue;
 	char *spel;
 
-	FOLD_EXPR(e->lhs, stab);
+	fold_expr_no_decay(e->lhs, stab);
 	/* don't fold the rhs - just a member name */
 
 	if(e->rhs){
@@ -150,8 +150,6 @@ void gen_expr_struct(expr *e)
 	gen_expr_struct_lea(e);
 
 	out_deref();
-
-	out_comment("val from struct/union");
 }
 
 void gen_expr_str_struct(expr *e)

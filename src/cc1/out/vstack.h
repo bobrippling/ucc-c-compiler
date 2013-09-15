@@ -5,13 +5,15 @@ struct vstack
 {
 	enum vstore
 	{
-		CONST_I,        /* vtop is a constant value */
-		CONST_F,        /* vtop is a constant float */
-		REG,            /* vtop is in a register */
-		STACK,          /* vtop pointer onto stack */
-		STACK_SAVE,     /* saved register/flag */
-		FLAG,           /* vtop is a cpu flag */
-		LBL,            /* vtop is a pointer to label */
+		V_CONST_I, /* constant integer */
+		V_REG, /* value in a register */
+		V_LBL, /* value at a memory address */
+
+		V_CONST_F, /* constant float */
+		V_FLAG, /* cpu flag */
+
+		V_REG_SAVE, /* value stored in memory,
+		             * referenced by reg+offset */
 	} type;
 
 	type_ref *t;
@@ -20,11 +22,17 @@ struct vstack
 	{
 		integral_t val_i;
 		floating_t val_f;
-		struct vreg
+
+		struct
 		{
-			unsigned short idx, is_float;
-		} reg;
-		long off_from_bp;
+			struct vreg
+			{
+				unsigned short idx, is_float;
+			} reg;
+#define VREG_INIT(idx, fp) { idx, fp }
+			long offset;
+		} regoff;
+
 		struct flag_opts
 		{
 			enum flag_cmp
@@ -53,12 +61,15 @@ struct vstack
 
 extern struct vstack *vtop;
 
+void vpush(type_ref *);
 void vpop(void);
 void vswap(void);
 
 void v_clear(struct vstack *vp, type_ref *);
+void v_set_reg(struct vstack *vp, const struct vreg *r);
+void v_set_reg_i(struct vstack *vp, int idx);
 
-void v_flag(enum flag_cmp c, int is_signed);
+void v_set_flag(struct vstack *vp, enum flag_cmp c, int is_signed);
 
 void v_cast(struct vstack *vp, type_ref *to);
 
@@ -71,6 +82,8 @@ void v_to_reg_given(struct vstack *from, const struct vreg *);
 void v_to_mem_given(struct vstack *, int stack_pos);
 void v_to_mem(struct vstack *);
 int  v_stack_sz(void);
+
+void v_to_rvalue(struct vstack *);
 
 enum vto
 {
@@ -93,6 +106,8 @@ void v_save_reg(struct vstack *vp);
 void v_save_regs(int n_ignore, type_ref *func_ty);
 void v_reserve_reg(const struct vreg *);
 void v_unreserve_reg(const struct vreg *);
+
+void v_store(struct vstack *val, struct vstack *store);
 
 /* outputs stack-ptr instruction(s) */
 unsigned v_alloc_stack(unsigned sz, const char *);

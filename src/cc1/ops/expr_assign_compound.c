@@ -12,7 +12,7 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 
 	fold_inc_writes_if_sym(lvalue, stab);
 
-	FOLD_EXPR_NO_DECAY(e->lhs, stab);
+	fold_expr_no_decay(e->lhs, stab);
 	FOLD_EXPR(e->rhs, stab);
 
 	/* skip the addr we inserted */
@@ -61,9 +61,14 @@ void gen_expr_assign_compound(expr *e)
 	}
 
 	out_dup();
-	out_deref();
+	/* delay the dereference until after generating rhs.
+	 * this is fine, += etc aren't sequence points
+	 */
 
 	gen_expr(e->rhs);
+
+	/* here's the delayed dereference */
+	out_swap(), out_deref(), out_swap();
 
 	out_op(e->op);
 

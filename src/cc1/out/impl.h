@@ -3,7 +3,6 @@
 
 void impl_store(struct vstack *from, struct vstack *to);
 void impl_load(struct vstack *from, const struct vreg *reg);
-void impl_lea( struct vstack *from, const struct vreg *reg);
 void impl_load_iv(struct vstack *from);
 void impl_load_fp(struct vstack *from);
 
@@ -11,8 +10,11 @@ void impl_reg_cp(struct vstack *from, const struct vreg *r);
 void impl_reg_swp(struct vstack *a, struct vstack *b);
 
 void impl_op(enum op_type);
-void impl_op_unary(enum op_type); /* returns reg that the result is in */
-void impl_deref_reg(const struct vreg *);
+void impl_op_unary(enum op_type);
+void impl_deref(
+		struct vstack *vp,
+		const struct vreg *to,
+		type_ref *tpointed_to);
 
 void impl_jmp(void);
 void impl_jcond(int true, const char *lbl);

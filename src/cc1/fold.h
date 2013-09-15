@@ -42,9 +42,11 @@ enum fold_chk
 void fold_check_expr(expr *e, enum fold_chk, const char *desc);
 
 /* expression + statement folding */
-#define FOLD_EXPR(e, stab) ((e) = fold_expr((e), (stab)))
-void FOLD_EXPR_NO_DECAY(expr *e, symtable *stab); /* for unary-& and sizeof */
-expr *fold_expr(expr *e, symtable *stab) ucc_wur;
+expr *fold_expr_decay(expr *e, symtable *stab) ucc_wur;
+void fold_expr(expr *e, symtable *stab);
+#define FOLD_EXPR(e, stab) ((e) = fold_expr_decay((e), (stab)))
+#define fold_expr_no_decay fold_expr
+
 void fold_stmt(stmt *t);
 
 sym *fold_inc_writes_if_sym(expr *e, symtable *stab);
