@@ -859,6 +859,10 @@ void v_store(struct vstack *val, struct vstack *store)
 void out_normalise(void)
 {
 	switch(vtop->type){
+		case V_FLAG:
+			/* already normalised */
+			break;
+
 		case V_CONST_I:
 			vtop->bits.val_i = !!vtop->bits.val_i;
 			break;
