@@ -642,6 +642,38 @@ void impl_load_fp(struct vstack *from)
 	}
 }
 
+static int x86_need_fp_parity_p(
+		struct flag_opts const *fopt, int *par_default)
+{
+	if(!(fopt->mods & flag_mod_float))
+		return 0;
+
+	/*
+	 * for x86, we check the parity flag, if set we have a nan.
+	 * ucomi* with a nan sets CF, PF and ZF
+	 *
+	 * we try to avoid checking PF by using seta instead of setb.
+	 * 'seta' and 'setb' test the carry flag, which is 1 if we have a nan.
+	 * setb => return CF
+	 * seta => return !CF
+	 *
+	 * so 'seta' doesn't need a parity check, as it'll return false if we
+	 * have a nan. 'setb' does.
+	 */
+	switch(fopt->cmp){
+		case flag_ge:
+		case flag_gt:
+			/* can skip parity checks */
+			return 0;
+
+		case flag_ne:
+			*par_default = 1; /* a != a is true if a == nan */
+			/* fall */
+		default:
+			return 1;
+	}
+}
+
 void impl_load(struct vstack *from, const struct vreg *reg)
 {
 	/* load - convert vstack to a register - if it's a pointer,
@@ -661,32 +693,8 @@ void impl_load(struct vstack *from, const struct vreg *reg)
 			vtmp_val.t = from->t;
 
 			/* check float/orderedness */
-			if(from->bits.flag.mods & flag_mod_float){
-				/*
-				 * for x86, we check the parity flag, if set we have a nan.
-				 * ucomi* with a nan sets CF, PF and ZF
-				 *
-				 * we try to avoid checking PF by using seta instead of setb.
-				 * 'seta' and 'setb' test the carry flag, which is 1 if we have a nan.
-				 * setb => return CF
-				 * seta => return !CF
-				 *
-				 * so 'seta' doesn't need a parity check, as it'll return false if we
-				 * have a nan. 'setb' does.
-				 */
-				switch(from->bits.flag.cmp){
-					case flag_ge:
-					case flag_gt:
-						/* can skip parity checks */
-						break;
-
-					case flag_ne:
-						parity_default = 1; /* a != a is true if a == nan */
-						/* fall */
-					default:
-						parity = out_label_code("parity");
-				}
-			}
+			if(x86_need_fp_parity_p(&from->bits.flag, &parity_default))
+				parity = out_label_code("parity");
 
 			vtmp_val.bits.val_i = parity_default;
 			impl_load(&vtmp_val, reg);
@@ -1394,18 +1402,39 @@ void impl_jcond(int true, const char *lbl)
 		case V_FLAG:
 		{
 			const int inv = !true;
+			int parity_chk, parity_rev = 0;
+			char *bb_lbl = NULL;
+
 			if(inv)
 				v_inv_cmp(&vtop->bits.flag);
 
-			if(vtop->bits.flag.mods & flag_mod_float){
-				/* if we have nan, the condition is false,
-				 * unless the cmp is '!='
+			parity_chk = x86_need_fp_parity_p(&vtop->bits.flag, &parity_rev);
+
+			parity_rev ^= inv;
+
+			if(parity_chk){
+				/* nan means false, unless parity_rev */
+				/* this is slightly hacky - need basic block
+				 * support to do this properly - impl_jcond
+				 * should give two labels
 				 */
-				if(vtop->bits.flag.cmp == flag_ne){
-					out_asm("j%sp %s", inv ? "n" : "", lbl);
+				if(!parity_rev){
+					/* skip */
+					bb_lbl = out_label_code("jmp_parity");
+					out_asm("jp %s", lbl);
 				}
 			}
+
 			out_asm("j%s %s", x86_cmp(&vtop->bits.flag), lbl);
+
+			if(parity_chk && parity_rev){
+				/* jump not taken, try parity */
+				out_asm("jp %s", lbl);
+			}
+			if(bb_lbl){
+				impl_lbl(bb_lbl);
+				free(bb_lbl);
+			}
 			break;
 		}
 
