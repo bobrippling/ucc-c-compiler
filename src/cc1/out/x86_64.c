@@ -656,32 +656,43 @@ void impl_load(struct vstack *from, const struct vreg *reg)
 		{
 			struct vstack vtmp_val = VSTACK_INIT(V_CONST_I);
 			char *parity = NULL;
+			int parity_default = 0;
 
 			vtmp_val.t = from->t;
 
-			/* check float/orderedness
-			 * if any cmp includes a nan, the cmp is false,
-			 * except for '!=', which is true.
-			 *
-			 * for x86, we only need to check nans for '==' and '!=',
-			 * since they never compare <, <=, >, >= to anything else.
-			 */
-			if(from->bits.flag.mods & flag_mod_float
-			&& (from->bits.flag.cmp == flag_eq
-			|| from->bits.flag.cmp == flag_ne))
-			{
-				parity = out_label_code("parity");
+			/* check float/orderedness */
+			if(from->bits.flag.mods & flag_mod_float){
+				/*
+				 * for x86, we check the parity flag, if set we have a nan.
+				 * ucomi* with a nan sets CF, PF and ZF
+				 *
+				 * we try to avoid checking PF by using seta instead of setb.
+				 * 'seta' and 'setb' test the carry flag, which is 1 if we have a nan.
+				 * setb => return CF
+				 * seta => return !CF
+				 *
+				 * so 'seta' doesn't need a parity check, as it'll return false if we
+				 * have a nan. 'setb' does.
+				 */
+				switch(from->bits.flag.cmp){
+					case flag_ge:
+					case flag_gt:
+						/* can skip parity checks */
+						break;
 
-				/* assume parity set (i.e. nan) */
-				vtmp_val.bits.val_i = (from->bits.flag.cmp == flag_ne);
-				impl_load(&vtmp_val, reg);
-
-				out_asm("jp %s", parity);
-			}else{
-				out_comment("zero for set");
-				vtmp_val.bits.val_i = 0;
-				impl_load(&vtmp_val, reg);
+					case flag_ne:
+						parity_default = 1; /* a != a is true if a == nan */
+						/* fall */
+					default:
+						parity = out_label_code("parity");
+				}
 			}
+
+			vtmp_val.bits.val_i = parity_default;
+			impl_load(&vtmp_val, reg);
+
+			if(parity)
+				out_asm("jp %s", parity);
 
 			/* XXX: memleak */
 			from->t = type_ref_cached_CHAR(); /* force set%s to set the low byte */
