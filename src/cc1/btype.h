@@ -64,6 +64,7 @@ enum type_qualifier
 	qual_const    = 1 << 0,
 	qual_volatile = 1 << 1,
 	qual_restrict = 1 << 2,
+	qual_atomic   = 1 << 3,
 };
 
 typedef struct btype btype;

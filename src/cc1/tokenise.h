@@ -63,6 +63,7 @@ enum token
 	token_register,
 	token__Alignof,
 	token__Alignas,
+	token__Atomic,
 	/**/
 	token_typedef,
 	token_struct,

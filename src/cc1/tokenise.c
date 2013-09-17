@@ -90,6 +90,7 @@ struct keyword
 	KEYWORD__(alignof, token__Alignof),
 	KEYWORD(KW_ALL, _Alignas),
 	KEYWORD__(alignas, token__Alignas),
+	KEYWORD(KW_ALL, _Atomic),
 
 	KEYWORD(KW_ALL, sizeof),
 	KEYWORD__ALL(KW_EXT, typeof),
