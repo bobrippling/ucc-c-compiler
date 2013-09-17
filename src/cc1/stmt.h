@@ -1,8 +1,10 @@
 #ifndef STAT_H
 #define STAT_H
 
+struct basic_blk;
+
 typedef void        func_fold_stmt(stmt *);
-typedef void        func_gen_stmt( stmt *);
+typedef void        func_gen_stmt( stmt *, struct basic_blk *);
 typedef const char *func_str_stmt(void);
 typedef void        func_mutate_stmt(stmt *);
 

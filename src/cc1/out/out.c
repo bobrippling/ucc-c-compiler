@@ -1354,46 +1354,6 @@ void out_call(int nargs, type_ref *r_ret, type_ref *r_func)
 	v_set_reg(vtop, &vr);
 }
 
-void out_jmp(void)
-{
-	if(vtop > vstack){
-		/* flush the stack-val we need to generate before the jump */
-		v_flush_volatile(vtop - 1);
-	}
-
-	impl_jmp();
-	vpop();
-}
-
-void out_jtrue(const char *lbl)
-{
-	impl_jcond(1, lbl);
-
-	vpop();
-}
-
-void out_jfalse(const char *lbl)
-{
-	int cond = 0;
-
-	if(vtop->type == V_FLAG){
-		v_inv_cmp(&vtop->bits.flag);
-		cond = 1;
-	}
-
-	impl_jcond(cond, lbl);
-
-	vpop();
-}
-
-void out_label(const char *lbl)
-{
-	/* if we have volatile data, ensure it's in a register */
-	out_flush_volatile();
-
-	impl_lbl(lbl);
-}
-
 static void out_comment_vsec(
 		enum section_type sec, const char *fmt, va_list l)
 {

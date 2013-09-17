@@ -7,8 +7,10 @@ void gen_asm_global(decl *d);
 void gen_asm_extern(decl *d);
 
 void gen_asm(symtable_global *);
-void gen_expr(expr *e);
-void lea_expr(expr *e);
-void gen_stmt(stmt *t);
+
+struct basic_blk;
+void gen_expr(expr *e, struct basic_blk *);
+void lea_expr(expr *e, struct basic_blk *);
+void gen_stmt(stmt *t, struct basic_blk *);
 
 #endif

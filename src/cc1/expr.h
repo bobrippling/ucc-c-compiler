@@ -41,10 +41,11 @@ typedef struct consty
 #define K_FLOATING(num) !!((num).suffix & VAL_FLOATING)
 #define K_INTEGRAL(num) !K_FLOATING(num)
 
+struct basic_blk;
 
 typedef void         func_fold(          expr *, symtable *);
-typedef void         func_gen(           expr *);
-typedef void         func_gen_lea(       expr *);
+typedef void         func_gen(           expr *, struct basic_blk *);
+typedef void         func_gen_lea(       expr *, struct basic_blk *);
 typedef void         func_const(         expr *, consty *);
 typedef const char  *func_str(void);
 typedef void         func_mutate_expr(expr *);

@@ -1,13 +1,8 @@
 #ifndef OUT_H
 #define OUT_H
 
-#define OUT_VPHI_SZ 64 /* sizeof(struct vstack) */
-
 void out_pop(void);
 void out_pop_func_ret(type_ref *) ucc_nonnull((1));
-
-void out_phi_pop_to(void *); /* put the current value into a phi-save area */
-void out_phi_join(void *);   /* join vtop and the phi-save area */
 
 void out_push_num(type_ref *t, const numeric *n) ucc_nonnull((1));
 void out_push_l(type_ref *, long) ucc_nonnull((1));
@@ -36,17 +31,12 @@ void out_change_type(type_ref *) ucc_nonnull((1));
 
 void out_call(int nargs, type_ref *rt, type_ref *f) ucc_nonnull((2, 3));
 
-void out_jmp(void); /* jmp to *pop() */
-void out_jtrue( const char *);
-void out_jfalse(const char *);
-
 void out_func_prologue(
 		type_ref *rf,
 		int stack_res, int nargs, int variadic,
 		int arg_offsets[]);
 
 void out_func_epilogue(type_ref *);
-void out_label(const char *);
 
 void out_comment(const char *, ...) ucc_printflike(1, 2);
 #ifdef ASM_H
