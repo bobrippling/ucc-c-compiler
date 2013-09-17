@@ -152,11 +152,15 @@ for_fin:
 
 static void handle_undef(token **tokens)
 {
+	char *nam;
+
 	SINGLE_TOKEN("invalid undef macro");
 
 	NOOP_RET();
 
-	macro_remove(tokens[0]->w);
+	nam = tokens[0]->w;
+	if(!macro_remove(nam))
+		CPP_WARN("macro \"%s\" not defined", nam);
 }
 
 static void handle_error_warning(token **tokens, int err)

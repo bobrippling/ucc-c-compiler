@@ -20,7 +20,7 @@ macro *macro_add_func(const char *nam, const char *val,
 		char **args, int variadic);
 
 macro *macro_find(const char *sp);
-void   macro_remove(const char *nam);
+int    macro_remove(const char *nam);
 void   macros_dump(void);
 void   macros_stats(void);
 

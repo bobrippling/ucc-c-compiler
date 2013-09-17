@@ -73,7 +73,7 @@ macro *macro_add_func(const char *nam, const char *val, char **args, int variadi
 	return m;
 }
 
-void macro_remove(const char *nam)
+int macro_remove(const char *nam)
 {
 	macro *m = macro_find(nam);
 
@@ -83,7 +83,9 @@ void macro_remove(const char *nam)
 		dynarray_free(char **, &m->args, free);
 		dynarray_rm(macros, m);
 		free(m);
+		return 1;
 	}
+	return 0;
 }
 
 void macro_use(macro *m, int adj)
