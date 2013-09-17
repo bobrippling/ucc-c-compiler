@@ -1,0 +1,1 @@
+Per C 2011 (N1570) 6.5.2.5, “Postfix ++ on an object with atomic type is a read-modify-write operation with memory_order_seq_cst memory order semantics.” 
