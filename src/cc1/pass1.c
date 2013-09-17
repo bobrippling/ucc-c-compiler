@@ -34,10 +34,14 @@ static void link_gasms(symtable_gasm ***plast_gasms, decl *prev)
 	dynarray_free(symtable_gasm **, plast_gasms, NULL);
 }
 
-static void parse_add_gasms(symtable_gasm ***plast_gasms)
+static int parse_add_gasms(symtable_gasm ***plast_gasms)
 {
-	while(accept(token_asm))
+	int r = 0;
+	while(accept(token_asm)){
 		dynarray_add(plast_gasms, parse_gasm());
+		r = 1;
+	}
+	return r;
 }
 
 void parse_and_fold(symtable_global *globals)
@@ -51,8 +55,9 @@ void parse_and_fold(symtable_global *globals)
 	while(curtok != token_eof){
 		decl **new = NULL;
 		decl **di;
+		int cont;
 
-		parse_decls_single_type(
+		cont = parse_decls_single_type(
 				  DECL_MULTI_CAN_DEFAULT
 				| DECL_MULTI_ACCEPT_FUNC_CODE
 				| DECL_MULTI_ALLOW_STORE
@@ -71,10 +76,15 @@ void parse_and_fold(symtable_global *globals)
 				fold_decl_global(*di, current_scope);
 
 			dynarray_free(decl **, &new, NULL);
+
+			cont = 1;
 		}
 
-		parse_add_gasms(&last_gasms);
+		cont |= parse_add_gasms(&last_gasms);
 		dynarray_add_array(&globals->gasms, last_gasms);
+
+		if(!cont)
+			break;
 	}
 
 	EAT(token_eof);
