@@ -4,6 +4,7 @@
 #include "stmt_if.h"
 #include "stmt_for.h"
 #include "../out/lbl.h"
+#include "../out/basic_block.h"
 #include "../fold_sym.h"
 
 const char *str_stmt_if()
@@ -68,27 +69,21 @@ void fold_stmt_if(stmt *s)
 		fold_stmt(s->rhs);
 }
 
-void gen_stmt_if(stmt *s)
+struct basic_blk *gen_stmt_if(stmt *s, struct basic_blk *b_from)
 {
-	char *lbl_else = out_label_code("else");
-	char *lbl_fi   = out_label_code("fi");
+	struct basic_blk *b_true, *b_false, *b_join;
 
-	flow_gen(s->flow, s->symtab);
-	gen_expr(s->expr);
+	b_from = gen_expr(s->expr,
+			flow_gen(s->flow, s->symtab, b_from));
 
-	out_jfalse(lbl_else);
+	bb_split(b_from, &b_true, &b_false);
 
-	gen_stmt(s->lhs);
-	out_push_lbl(lbl_fi, 0);
-	out_jmp();
+	b_true = gen_stmt(s->lhs, b_true);
 
-	out_label(lbl_else);
 	if(s->rhs)
-		gen_stmt(s->rhs);
-	out_label(lbl_fi);
+		b_false = gen_stmt(s->rhs, b_false);
 
-	free(lbl_else);
-	free(lbl_fi);
+	return bb_merge(b_true, b_false);
 }
 
 void style_stmt_if(stmt *s)
