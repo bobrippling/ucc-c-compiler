@@ -56,36 +56,6 @@ void gen_stmt(stmt *t)
 	EOF_WHERE(&t->where, t->f_gen(t));
 }
 
-#ifdef FANCY_STACK_INIT
-#define ITER_DECLS(i) for(i = df->func_code->symtab->decls; i && *i; i++)
-
-void gen_func_stack(decl *df, const int offset)
-{
-	int use_sub = 1, clever = 0;
-	decl **iter;
-
-	ITER_DECLS(iter)
-		if((*iter)->init){
-			clever = 1;
-			break;
-		}
-
-	if(use_sub){
-		asm_output_new(asm_out_type_sub,
-				asm_operand_new_reg(NULL, ASM_REG_SP),
-				asm_operand_new_val(offset));
-	}else{
-		ITER_DECLS(iter){
-			decl *d = *iter;
-			if(d->init && d->init->type != decl_init_scalar){
-				ICW("TODO: stack gen or expr for %s init", decl_to_str(d));
-			}
-		}
-	}
-}
-#else
-#endif
-
 static void assign_arg_offsets(decl **decls, int const offsets[])
 {
 	unsigned i, j;
