@@ -1,3 +1,5 @@
+// RUN: %ocheck 0 %s
+
 #define CMP(nam, op)   \
 nam(float a, float b)  \
 {                      \
