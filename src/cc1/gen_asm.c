@@ -19,11 +19,12 @@
 #include "out/out.h"
 #include "out/lbl.h"
 #include "out/asm.h"
+#include "out/basic_block.h"
 #include "gen_style.h"
 
 char *curfunc_lblfin; /* extern */
 
-void gen_expr(expr *e)
+void gen_expr(expr *e, basic_blk *bb)
 {
 	consty k;
 
@@ -32,15 +33,17 @@ void gen_expr(expr *e)
 	if(k.type == CONST_NUM){
 		/* -O0 skips this? */
 		if(cc1_backend == BACKEND_ASM)
-			out_push_num(e->tree_type, &k.bits.num);
+			out_push_num(e->tree_type, &k.bits.num); /* bb is unchanged */
 		else
 			stylef("%" NUMERIC_FMT_D, k.bits.num.val.i);
 	}else{
 		if(cc1_gdebug)
 			out_comment("at %s", where_str(&e->where));
 
-		EOF_WHERE(&e->where, e->f_gen(e));
+		EOF_WHERE(&e->where, bb = e->f_gen(e, bb));
 	}
+
+	return bb;
 }
 
 void lea_expr(expr *e)
@@ -51,9 +54,11 @@ void lea_expr(expr *e)
 	e->f_lea(e);
 }
 
-void gen_stmt(stmt *t)
+struct basic_blk *gen_stmt(stmt *t, struct basic_blk *startblk)
 {
-	EOF_WHERE(&t->where, t->f_gen(t));
+	struct basic_blk *out;
+	EOF_WHERE(&t->where, out = t->f_gen(t, startblk));
+	return out;
 }
 
 static void assign_arg_offsets(decl **decls, int const offsets[])
@@ -90,6 +95,7 @@ void gen_asm_global(decl *d)
 		const char *sp;
 		int *offsets;
 		symtable *arg_symtab;
+		struct basic_blk *bb_start, *bb_end;
 
 		if(!d->func_code)
 			return;
@@ -105,7 +111,7 @@ void gen_asm_global(decl *d)
 
 		out_label(sp);
 
-		out_func_prologue(d->ref,
+		bb_start = out_func_prologue(d->ref,
 				d->func_code->symtab->auto_total_size,
 				nargs,
 				is_vari = type_ref_is_variadic_func(d->ref),
@@ -115,11 +121,11 @@ void gen_asm_global(decl *d)
 
 		curfunc_lblfin = out_label_code(sp);
 
-		gen_stmt(d->func_code);
+		bb_end = gen_stmt(d->func_code, bb_start);
 
 		out_label(curfunc_lblfin);
 
-		out_func_epilogue(d->ref);
+		out_func_epilogue(d->ref, bb_end);
 
 		free(curfunc_lblfin);
 		free(offsets);
