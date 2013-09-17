@@ -6,6 +6,7 @@
 #include "expr_op.h"
 #include "../out/lbl.h"
 #include "../out/asm.h"
+#include "../out/basic_block.h"
 #include "../type_ref_is.h"
 
 const char *str_expr_op()
@@ -706,24 +707,26 @@ void gen_expr_str_op(expr *e)
 	gen_str_indent--;
 }
 
-static void op_shortcircuit(expr *e)
+static void op_shortcircuit(expr *e, basic_blk *from)
 {
-	char *bail = out_label_code("shortcircuit_bail");
-	char vphi_buf[OUT_VPHI_SZ];
+	basic_blk *b_shortsc, *b_end;
 
-	gen_expr(e->lhs);
+	from = gen_expr(e->lhs, from);
 	out_normalise();
 
 	out_dup();
-	(e->op == op_andsc ? out_jfalse : out_jtrue)(bail);
-	out_phi_pop_to(&vphi_buf);
 
-	gen_expr(e->rhs);
+	b_shortsc = bb_new();
+
+	b_shortsc = gen_expr(e->rhs, b_shortsc);
 	out_normalise();
 
-	out_label(bail);
-	out_phi_join(&vphi_buf);
-	free(bail);
+	if(e->op == op_andsc)
+		bb_split(b_from, b_shortsc, b_end);
+	else
+		bb_split(b_from, b_end, b_shortsc);
+	/* always straight after... hmm... */
+	bb_merge(b_shortsc, b_end);
 }
 
 void gen_expr_op(expr *e)
