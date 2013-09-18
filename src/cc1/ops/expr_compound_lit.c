@@ -20,7 +20,7 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 	e->tree_type = d->ref;
 
 	if(!stab->parent){
-		d->spel = out_label_data_store(0);
+		d->spel = out_label_data_store(b_from, 0);
 		d->store = store_static;
 	}
 
@@ -74,14 +74,14 @@ void gen_expr_compound_lit(expr *e)
 
 	gen_expr_compound_lit_code(e);
 
-	out_push_sym_val(e->bits.complit.sym);
+	out_push_sym_val(b_from, e->bits.complit.sym);
 }
 
 static void lea_expr_compound_lit(expr *e)
 {
 	gen_expr_compound_lit_code(e);
 
-	out_push_sym(e->bits.complit.sym);
+	out_push_sym(b_from, e->bits.complit.sym);
 }
 
 static void const_expr_compound_lit(expr *e, consty *k)

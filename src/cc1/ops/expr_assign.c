@@ -152,9 +152,9 @@ void gen_expr_assign(expr *e)
 		/* optimisation: do this first, since rhs might also be a store */
 		gen_expr(e->rhs);
 		lea_expr(e->lhs);
-		out_swap();
+		out_swap(b_from);
 
-		out_store();
+		out_store(b_from);
 	}
 }
 

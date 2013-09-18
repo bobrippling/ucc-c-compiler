@@ -154,33 +154,33 @@ void gen_expr_if(expr *e)
 {
 	char *lblfin;
 
-	lblfin = out_label_code("ifexp_fi");
+	lblfin = out_label_code(b_from, "ifexp_fi");
 
 	gen_expr(e->expr);
 
 	if(e->lhs){
-		char *lblelse = out_label_code("ifexp_else");
+		char *lblelse = out_label_code(b_from, "ifexp_else");
 
-		out_jfalse(lblelse);
+		out_jfalse(b_from, lblelse);
 
 		gen_expr(e->lhs);
 
-		out_push_lbl(lblfin, 0);
-		out_jmp();
+		out_push_lbl(b_from, lblfin, 0);
+		out_jmp(b_from);
 
-		out_label(lblelse);
+		out_label(b_from, lblelse);
 		free(lblelse);
 
 	}else{
-		out_dup();
+		out_dup(b_from);
 
-		out_jtrue(lblfin);
+		out_jtrue(b_from, lblfin);
 	}
 
-	out_pop();
+	out_pop(b_from);
 
 	gen_expr(e->rhs);
-	out_label(lblfin);
+	out_label(b_from, lblfin);
 
 	free(lblfin);
 }

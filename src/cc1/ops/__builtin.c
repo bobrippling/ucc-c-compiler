@@ -20,6 +20,8 @@
 #include "../gen_str.h"
 
 #include "../out/out.h"
+#include "../out/basic_block.h"
+
 #include "__builtin_va.h"
 
 #define PREFIX "__builtin_"
@@ -125,7 +127,7 @@ expr *builtin_parse(const char *sp)
 	return NULL;
 }
 
-void builtin_gen_print(expr *e)
+basic_blk *builtin_gen_print(expr *e, basic_blk *b_from)
 {
 	/*const enum pdeclargs dflags =
 		  PDECL_INDENT
@@ -159,6 +161,8 @@ void builtin_gen_print(expr *e)
 		PRINT_ARGS(decl, e->bits.block_args->arglist, print_decl(*i, dflags))*/
 
 	idt_printf(");\n");
+
+	return b_from;
 }
 
 #define expr_mutate_builtin_const(exp, to) \
@@ -170,11 +174,13 @@ static void wur_builtin(expr *e)
 	e->freestanding = 0; /* needs use */
 }
 
-static void builtin_gen_undefined(expr *e)
+static basic_blk *builtin_gen_undefined(expr *e, basic_blk *b_from)
 {
 	(void)e;
-	out_undefined();
-	out_push_noop(); /* needed for function return pop */
+	out_undefined(b_from);
+	out_push_noop(b_from); /* needed for function return pop */
+
+	return b_from;
 }
 
 expr *parse_any_args(void)
@@ -207,7 +213,7 @@ static void fold_memset(expr *e, symtable *stab)
 	e->tree_type = type_ref_cached_VOID_PTR();
 }
 
-static void builtin_gen_memset(expr *e)
+static basic_blk *builtin_gen_memset(expr *e, basic_blk *b_from)
 {
 	size_t n, rem;
 	unsigned i;
@@ -224,14 +230,14 @@ static void builtin_gen_memset(expr *e)
 		textrap = type_ref_new_ptr(textra, qual_none);
 
 	/* works fine for bitfields - struct lea acts appropriately */
-	lea_expr(e->lhs);
+	lea_expr(e->lhs, b_from);
 
-	out_change_type(type_ref_new_ptr(tzero, qual_none));
+	out_change_type(b_from, type_ref_new_ptr(tzero, qual_none));
 
-	out_dup();
+	out_dup(b_from);
 
 #ifdef MEMSET_VERBOSE
-	out_comment("memset(%s, %d, %lu), using ptr<%s>, %lu steps",
+	out_comment(b_from, "memset(%s, %d, %lu), using ptr<%s>, %lu steps",
 			e->expr->f_str(),
 			e->bits.builtin_memset.ch,
 			e->bits.builtin_memset.len,
@@ -239,28 +245,30 @@ static void builtin_gen_memset(expr *e)
 #endif
 
 	for(i = 0; i < n; i++){
-		out_dup(); /* copy pointer */
+		out_dup(b_from); /* copy pointer */
 
 		/* *p = 0 */
-		out_push_zero(tzero);
-		out_store();
-		out_pop();
+		out_push_zero(b_from, tzero);
+		out_store(b_from);
+		out_pop(b_from);
 
 		/* p++ (copied pointer) */
-		out_push_l(type_ref_cached_INTPTR_T(), 1);
-		out_op(op_plus);
+		out_push_l(b_from, type_ref_cached_INTPTR_T(), 1);
+		out_op(b_from, op_plus);
 
 		if(rem){
 			/* need to zero a little more */
-			out_dup();
-			out_change_type(textrap);
-			out_push_zero(textra);
-			out_store();
-			out_pop();
+			out_dup(b_from);
+			out_change_type(b_from, textrap);
+			out_push_zero(b_from, textra);
+			out_store(b_from);
+			out_pop(b_from);
 		}
 	}
 
-	out_pop();
+	out_pop(b_from);
+
+	return b_from;
 }
 
 expr *builtin_new_memset(expr *p, int ch, size_t len)
@@ -311,7 +319,7 @@ static decl *decl_new_tref(char *sp, type_ref *ref)
 }
 #endif
 
-static void builtin_memcpy_single(void)
+static void builtin_memcpy_single(basic_blk *b_from)
 {
 	static type_ref *t1;
 
@@ -320,28 +328,28 @@ static void builtin_memcpy_single(void)
 
 	/* ds */
 
-	out_swap(); // sd
-	out_dup();  // sdd
-	out_pulltop(2); // dds
+	out_swap(b_from); // sd
+	out_dup(b_from);  // sdd
+	out_pulltop(b_from, 2); // dds
 
-	out_dup();      /* ddss */
-	out_deref();    /* dds. */
-	out_pulltop(2); /* ds.d */
-	out_swap();     /* dsd. */
-	out_store();    /* ds. */
-	out_pop();      /* ds */
+	out_dup(b_from);      /* ddss */
+	out_deref(b_from);    /* dds. */
+	out_pulltop(b_from, 2); /* ds.d */
+	out_swap(b_from);     /* dsd. */
+	out_store(b_from);    /* ds. */
+	out_pop(b_from);      /* ds */
 
-	out_push_l(t1, 1); /* ds1 */
-	out_op(op_plus);   /* dS */
+	out_push_l(b_from, t1, 1); /* ds1 */
+	out_op(b_from, op_plus);   /* dS */
 
-	out_swap();        /* Sd */
-	out_push_l(t1, 1); /* Sd1 */
-	out_op(op_plus);   /* SD */
+	out_swap(b_from);        /* Sd */
+	out_push_l(b_from, t1, 1); /* Sd1 */
+	out_op(b_from, op_plus);   /* SD */
 
-	out_swap(); /* DS */
+	out_swap(b_from); /* DS */
 }
 
-static void builtin_gen_memcpy(expr *e)
+static basic_blk *builtin_gen_memcpy(expr *e, basic_blk *b_from)
 {
 #ifdef BUILTIN_USE_LIBC
 	/* TODO - also with memset */
@@ -354,11 +362,11 @@ static void builtin_gen_memcpy(expr *e)
 	type_ref *ctype = type_ref_new_func(
 			e->tree_type, fargs);
 
-	out_push_lbl("memcpy", 0);
-	out_push_l(type_ref_cached_INTPTR_T(), e->bits.num.val);
+	out_push_lbl(b_from, "memcpy", 0);
+	out_push_l(b_from, type_ref_cached_INTPTR_T(), e->bits.num.val);
 	lea_expr(e->rhs, stab);
 	lea_expr(e->lhs, stab);
-	out_call(3, e->tree_type, ctype);
+	out_call(b_from, 3, e->tree_type, ctype);
 #else
 	/* TODO: backend rep movsb */
 	unsigned i = e->bits.num.val.i;
@@ -367,19 +375,19 @@ static void builtin_gen_memcpy(expr *e)
 				qual_none);
 	unsigned tptr_sz = type_ref_size(tptr, &e->where);
 
-	lea_expr(e->lhs); /* d */
-	lea_expr(e->rhs); /* ds */
+	lea_expr(e->lhs, b_from); /* d */
+	lea_expr(e->rhs, b_from); /* ds */
 
 	while(i > 0){
 		/* as many copies as we can */
-		out_change_type(tptr);
-		out_swap();
-		out_change_type(tptr);
-		out_swap();
+		out_change_type(b_from, tptr);
+		out_swap(b_from);
+		out_change_type(b_from, tptr);
+		out_swap(b_from);
 
 		while(i >= tptr_sz){
 			i -= tptr_sz;
-			builtin_memcpy_single();
+			builtin_memcpy_single(b_from);
 		}
 
 		if(i > 0){
@@ -391,8 +399,10 @@ static void builtin_gen_memcpy(expr *e)
 	}
 
 	/* ds */
-	out_pop(); /* d */
+	out_pop(b_from); /* d */
 #endif
+
+	return b_from;
 }
 
 expr *builtin_new_memcpy(expr *to, expr *from, size_t len)
@@ -555,11 +565,13 @@ static void fold_frame_address(expr *e, symtable *stab)
 	wur_builtin(e);
 }
 
-static void builtin_gen_frame_address(expr *e)
+static basic_blk *builtin_gen_frame_address(expr *e, basic_blk *b_from)
 {
 	const int depth = e->bits.num.val.i;
 
-	out_push_frame_ptr(depth + 1);
+	out_push_frame_ptr(b_from, depth + 1);
+
+	return b_from;
 }
 
 static expr *builtin_frame_address_mutate(expr *e)
@@ -583,7 +595,7 @@ expr *builtin_new_frame_address(int depth)
 	return builtin_frame_address_mutate(e);
 }
 
-/* --- reg_save_area (a basic wrapper around out_push_reg_save_ptr()) */
+/* --- reg_save_area (a basic wrapper around out_push_reg_save_ptr(b_from)) */
 
 static void fold_reg_save_area(expr *e, symtable *stab)
 {
@@ -591,11 +603,13 @@ static void fold_reg_save_area(expr *e, symtable *stab)
 	e->tree_type = type_ref_cached_CHAR_PTR();
 }
 
-static void gen_reg_save_area(expr *e)
+static basic_blk *gen_reg_save_area(expr *e, basic_blk *b_from)
 {
 	(void)e;
-	out_comment("stack local offset:");
-	out_push_reg_save_ptr();
+	out_comment(b_from, "stack local offset:");
+	out_push_reg_save_ptr(b_from);
+
+	return b_from;
 }
 
 expr *builtin_new_reg_save_area(void)
@@ -629,11 +643,12 @@ static void fold_expect(expr *e, symtable *stab)
 	wur_builtin(e);
 }
 
-static void builtin_gen_expect(expr *e)
+static basic_blk *builtin_gen_expect(expr *e, basic_blk *b_from)
 {
-	gen_expr(e->funcargs[1]); /* not needed if it's const, but gcc and clang do this */
-	out_pop();
-	gen_expr(e->funcargs[0]);
+	gen_expr(e->funcargs[1], b_from); /* not needed if it's const, but gcc and clang do this */
+	out_pop(b_from);
+	gen_expr(e->funcargs[0], b_from);
+	return b_from;
 }
 
 static void const_expect(expr *e, consty *k)
@@ -709,9 +724,10 @@ need_char_p:
 	wur_builtin(e);
 }
 
-static void builtin_gen_nanf(expr *e)
+static basic_blk *builtin_gen_nanf(expr *e, basic_blk *b_from)
 {
-	out_push_nan(e->tree_type);
+	out_push_nan(b_from, e->tree_type);
+	return b_from;
 }
 
 static expr *builtin_nanf_mutate(expr *e)

@@ -16,17 +16,17 @@ void fold_stmt_do(stmt *s)
 
 void gen_stmt_do(stmt *s)
 {
-	char *begin = out_label_flow("do_start");
+	char *begin = out_label_flow(b_from, "do_start");
 
-	out_label(begin);
+	out_label(b_from, begin);
 	gen_stmt(s->lhs);
 
-	out_label(s->lbl_continue);
+	out_label(b_from, s->lbl_continue);
 	gen_expr(s->expr);
 
-	out_jtrue(begin);
+	out_jtrue(b_from, begin);
 
-	out_label(s->lbl_break);
+	out_label(b_from, s->lbl_break);
 
 	free(begin);
 }

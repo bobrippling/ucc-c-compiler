@@ -16,8 +16,8 @@ void fold_stmt_while(stmt *s)
 
 	flow_fold(s->flow, &stab);
 
-	s->lbl_break    = out_label_flow("while_break");
-	s->lbl_continue = out_label_flow("while_cont");
+	s->lbl_break    = out_label_flow(b_from, "while_break");
+	s->lbl_continue = out_label_flow(b_from, "while_cont");
 
 	FOLD_EXPR(s->expr, stab);
 	fold_check_expr(
@@ -30,20 +30,20 @@ void fold_stmt_while(stmt *s)
 
 void gen_stmt_while(stmt *s)
 {
-	out_label(s->lbl_continue);
+	out_label(b_from, s->lbl_continue);
 
 	flow_gen(s->flow, s->symtab);
 	gen_expr(s->expr);
 
-	out_op_unary(op_not);
-	out_jtrue(s->lbl_break);
+	out_op_unary(b_from, op_not);
+	out_jtrue(b_from, s->lbl_break);
 
 	gen_stmt(s->lhs);
 
-	out_push_lbl(s->lbl_continue, 0);
-	out_jmp();
+	out_push_lbl(b_from, s->lbl_continue, 0);
+	out_jmp(b_from);
 
-	out_label(s->lbl_break);
+	out_label(b_from, s->lbl_break);
 }
 
 void style_stmt_while(stmt *s)

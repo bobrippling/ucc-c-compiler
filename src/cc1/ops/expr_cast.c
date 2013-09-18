@@ -307,8 +307,8 @@ void gen_expr_cast(expr *e)
 
 		/* return if cast-to-void */
 		if(type_ref_is_void(tto)){
-			out_change_type(tto);
-			out_comment("cast to void");
+			out_change_type(b_from, tto);
+			out_comment(b_from, "cast to void");
 			return;
 		}
 
@@ -327,9 +327,9 @@ void gen_expr_cast(expr *e)
 						type_ref_to_str_r(buf, tto),
 						mem->struct_offset);*/
 
-					out_change_type(type_ref_cached_VOID_PTR());
-					out_push_l(type_ref_cached_INTPTR_T(), mem->struct_offset);
-					out_op(op_plus);
+					out_change_type(b_from, type_ref_cached_VOID_PTR());
+					out_push_l(b_from, type_ref_cached_INTPTR_T(), mem->struct_offset);
+					out_op(b_from, op_plus);
 				}
 			}
 		}
@@ -338,9 +338,9 @@ void gen_expr_cast(expr *e)
 		 * 5.3 -> 5, then normalise 5, instead of 5.3 != 0.0
 		 */
 		if(type_ref_is_type(tto, type__Bool)) /* 1 or 0 */
-			out_normalise();
+			out_normalise(b_from);
 
-		out_cast(tto);
+		out_cast(b_from, tto);
 	}
 }
 

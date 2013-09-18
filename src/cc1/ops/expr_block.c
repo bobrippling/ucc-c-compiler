@@ -63,7 +63,7 @@ void fold_expr_block(expr *e, symtable *stab)
 	{
 		decl *df = decl_new();
 
-		df->spel = out_label_block(curdecl_func->spel);
+		df->spel = out_label_block(b_from, curdecl_func->spel);
 		e->bits.block_sym = sym_new_stab(symtab_root(stab), df, sym_global);
 
 		df->func_code = e->code;
@@ -76,7 +76,7 @@ void fold_expr_block(expr *e, symtable *stab)
 
 void gen_expr_block(expr *e)
 {
-	out_push_lbl(e->bits.block_sym->decl->spel, 1);
+	out_push_lbl(b_from, e->bits.block_sym->decl->spel, 1);
 }
 
 void gen_expr_str_block(expr *e)

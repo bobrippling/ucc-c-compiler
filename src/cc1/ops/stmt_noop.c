@@ -14,7 +14,7 @@ void fold_stmt_noop(stmt *s)
 void gen_stmt_noop(stmt *s)
 {
 	(void)s;
-	out_comment("noop");
+	out_comment(b_from, "noop");
 }
 
 void style_stmt_noop(stmt *s)

@@ -36,8 +36,8 @@ void fold_expr_comma(expr *e, symtable *stab)
 void gen_expr_comma(expr *e)
 {
 	gen_expr(e->lhs);
-	out_pop();
-	out_comment("unused comma expr");
+	out_pop(b_from);
+	out_comment(b_from, "unused comma expr");
 	gen_expr(e->rhs);
 }
 

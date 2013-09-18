@@ -112,10 +112,10 @@ int impl_n_call_regs(type_ref *fr)
 
 void impl_func_prologue_save_fp(void)
 {
-	out_asm("addi  $sp, $sp, -8"); /* space for saved ret and fp */
-	out_asm("sw    $ra, 4($sp)");  /* save ret */
-	out_asm("sw    $fp,  ($sp)");  /* save fp */
-	out_asm("move  $fp, $sp");     /* new frame */
+	out_asm(b_from, "addi  $sp, $sp, -8"); /* space for saved ret and fp */
+	out_asm(b_from, "sw    $ra, 4($sp)");  /* save ret */
+	out_asm(b_from, "sw    $fp,  ($sp)");  /* save fp */
+	out_asm(b_from, "move  $fp, $sp");     /* new frame */
 }
 
 void impl_func_prologue_save_call_regs(type_ref *rf, int nargs)
@@ -146,11 +146,11 @@ int impl_func_prologue_save_variadic(type_ref *rf, int nargs)
 
 void impl_func_epilogue(type_ref *fr)
 {
-	out_asm("move $sp, $fp");
-	out_asm("lw $fp,  ($sp)");
-	out_asm("lw $ra, 4($sp)");
-	out_asm("addi $sp, $sp, 8");
-	out_asm("j $ra");
+	out_asm(b_from, "move $sp, $fp");
+	out_asm(b_from, "lw $fp,  ($sp)");
+	out_asm(b_from, "lw $ra, 4($sp)");
+	out_asm(b_from, "addi $sp, $sp, 8");
+	out_asm(b_from, "j $ra");
 }
 
 void impl_lea(struct vstack *from, int reg)
@@ -168,11 +168,11 @@ void impl_lea(struct vstack *from, int reg)
 			ICE("%s of %d", __func__, from->type);
 
 		case STACK:
-			out_asm("la $%s, %d($fp)", rstr, from->bits.off_from_bp);
+			out_asm(b_from, "la $%s, %d($fp)", rstr, from->bits.off_from_bp);
 			break;
 		case LBL:
 			LBL_CHECK(from);
-			out_asm("la $%s, %s", rstr, from->bits.lbl.str);
+			out_asm(b_from, "la $%s, %s", rstr, from->bits.lbl.str);
 			break;
 	}
 }
@@ -212,15 +212,15 @@ void impl_load(struct vstack *from, int reg)
 
 		case LBL:
 			LBL_CHECK(from);
-			out_asm("l%s $%s, %s", mips_type_ch(from->t, 1),
+			out_asm(b_from, "l%s $%s, %s", mips_type_ch(from->t, 1),
 					rstr, from->bits.lbl.str);
 			break;
 
 		case CONST:
 			if(from->bits.val == 0)
-				out_asm("move $%s, $%s", rstr, sym_regs[MIPS_REG_ZERO]);
+				out_asm(b_from, "move $%s, $%s", rstr, sym_regs[MIPS_REG_ZERO]);
 			else
-				out_asm("li%s $%s, %ld",
+				out_asm(b_from, "li%s $%s, %ld",
 						type_ref_is_signed(from->t) ? "" : "u",
 						rstr, from->bits.val);
 			break;
@@ -231,7 +231,7 @@ void impl_load(struct vstack *from, int reg)
 
 		case STACK:
 		case STACK_SAVE:
-			out_asm("l%s $%s, %d($fp)",
+			out_asm(b_from, "l%s $%s, %d($fp)",
 					mips_type_ch(from->t, 1),
 					rstr,
 					from->bits.off_from_bp);
@@ -255,25 +255,25 @@ void impl_store(struct vstack *from, struct vstack *to)
 
 		case LBL:
 			LBL_CHECK(from);
-			out_asm("s%s $%s, %s",
+			out_asm(b_from, "s%s $%s, %s",
 					ty_ch,
 					rstr, to->bits.lbl.str);
 			break;
 
 		case CONST:
-			out_asm("s%s $%s, %ld",
+			out_asm(b_from, "s%s $%s, %ld",
 					ty_ch, rstr,
 					to->bits.val);
 			break;
 
 		case REG:
-			out_asm("s%s $%s, ($%s)",
+			out_asm(b_from, "s%s $%s, ($%s)",
 					ty_ch, rstr,
 					reg_str_i(to->bits.reg));
 			break;
 
 		case STACK:
-			out_asm("s%s $%s, %d($fp)",
+			out_asm(b_from, "s%s $%s, %d($fp)",
 					ty_ch, rstr,
 					to->bits.off_from_bp);
 	}
@@ -283,7 +283,7 @@ static void impl_reg_cp_reg(int from, int to)
 {
 	char rstr[REG_STR_SZ];
 
-	out_asm("move $%s, $%s",
+	out_asm(b_from, "move $%s, $%s",
 			reg_str_i(to),
 			reg_str_r_i(rstr, from));
 }
@@ -337,7 +337,7 @@ void impl_op(enum op_type op)
 		OP(gt);
 #undef OP
 cmp:
-		out_asm("s%s%s%s $%s, $%s, $%s",
+		out_asm(b_from, "s%s%s%s $%s, $%s, $%s",
 				cmp, immediate, ssigned, r_vtop1, r_vtop1, r_vtop);
 		break;
 
@@ -361,16 +361,16 @@ cmp:
 		OP(shiftr,   "srl");
 #undef OP
 op:
-		out_asm("%s%s $%s, $%s, $%s",
+		out_asm(b_from, "%s%s $%s, $%s, $%s",
 				cmp, immediate,
 				r_vtop1, r_vtop1, r_vtop);
 
 		switch(op){
 			case op_divide:
-				out_asm("mflo $%s", r_vtop1);
+				out_asm(b_from, "mflo $%s", r_vtop1);
 				break;
 			case op_modulus:
-				out_asm("mfhi $%s", r_vtop1);
+				out_asm(b_from, "mfhi $%s", r_vtop1);
 			default:
 				break;
 		}
@@ -391,7 +391,7 @@ void impl_deref_reg()
 	/* XXX: must be before mips_type_ch(), but after reg_str() */
 	v_deref_decl(vtop);
 
-	out_asm("l%s $%s, ($%s)", mips_type_ch(vtop->t, 1), rstr, rstr);
+	out_asm(b_from, "l%s $%s, ($%s)", mips_type_ch(vtop->t, 1), rstr, rstr);
 }
 
 void impl_op_unary(enum op_type op)
@@ -410,16 +410,16 @@ void impl_op_unary(enum op_type op)
 			return;
 
 		case op_minus:
-			out_asm("sub $%s, $%s, $%s",
+			out_asm(b_from, "sub $%s, $%s, $%s",
 					r_vtop, sym_regs[MIPS_REG_ZERO], r_vtop);
 			break;
 
 		case op_bnot:
-			out_asm("not $%s, $%s", r_vtop, r_vtop);
+			out_asm(b_from, "not $%s, $%s", r_vtop, r_vtop);
 			break;
 
 		case op_not:
-			out_asm("seq $%s, $%s, $%s",
+			out_asm(b_from, "seq $%s, $%s, $%s",
 					r_vtop, r_vtop, sym_regs[MIPS_REG_ZERO]);
 	}
 }
@@ -427,7 +427,7 @@ void impl_op_unary(enum op_type op)
 void impl_cast_load(type_ref *small, type_ref *big, int is_signed)
 {
 	if(vtop->type != REG){
-		out_comment("// mips cast to %s - loading to register",
+		out_comment(b_from, "// mips cast to %s - loading to register",
 				type_ref_to_str(big));
 		v_to_reg(vtop);
 	}
@@ -435,12 +435,12 @@ void impl_cast_load(type_ref *small, type_ref *big, int is_signed)
 
 void impl_jmp_reg(int r)
 {
-	out_asm("jr $%s", reg_str_i(r));
+	out_asm(b_from, "jr $%s", reg_str_i(r));
 }
 
 void impl_jmp_lbl(const char *lbl)
 {
-	out_asm("j %s", lbl);
+	out_asm(b_from, "j %s", lbl);
 }
 
 void impl_jcond(int true, const char *lbl)
@@ -451,8 +451,8 @@ void impl_jcond(int true, const char *lbl)
 
 		case CONST:
 			if(true == !!vtop->bits.val){ /* FIXME: factor */
-				out_asm("b %s", lbl);
-				out_comment("// constant jmp condition %ld", vtop->bits.val);
+				out_asm(b_from, "b %s", lbl);
+				out_comment(b_from, "// constant jmp condition %ld", vtop->bits.val);
 			}
 			break;
 
@@ -467,7 +467,7 @@ void impl_jcond(int true, const char *lbl)
 
 			reg_str_r(buf, vtop);
 
-			out_asm("beq $%s, $%s, %s", buf, sym_regs[MIPS_REG_ZERO], lbl);
+			out_asm(b_from, "beq $%s, $%s, %s", buf, sym_regs[MIPS_REG_ZERO], lbl);
 		}
 	}
 }
@@ -490,11 +490,11 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 		default:
 			v_to_reg(vtop);
 		case REG:
-			out_asm("jalr $%s", reg_str_i(vtop->bits.reg));
+			out_asm(b_from, "jalr $%s", reg_str_i(vtop->bits.reg));
 			break;
 		case LBL:
 			LBL_CHECK(vtop);
-			out_asm("jal %s", vtop->bits.lbl.str);
+			out_asm(b_from, "jal %s", vtop->bits.lbl.str);
 	}
 }
 
@@ -512,12 +512,12 @@ void impl_undefined(void)
 					type_new_primitive(type_char)),
 				qual_none);
 
-	out_push_zero(char_ptr);
-	out_push_zero(char_ptr);
-	out_store(); /* *(char *)0 = 0 */
-	out_pop();
+	out_push_zero(b_from, char_ptr);
+	out_push_zero(b_from, char_ptr);
+	out_store(b_from); /* *(char *)0 = 0 */
+	out_pop(b_from);
 
-	out_asm("break"); /* if we're in kernel mode */
+	out_asm(b_from, "break"); /* if we're in kernel mode */
 }
 
 int impl_frame_ptr_to_reg(int nframes)

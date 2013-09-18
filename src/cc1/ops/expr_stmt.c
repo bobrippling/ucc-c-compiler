@@ -44,10 +44,10 @@ void gen_expr_stmt(expr *e)
 	{
 		int n = dynarray_count(e->code->codes);
 		if(n > 0 && !stmt_kind(e->code->codes[n-1], expr))
-			out_push_noop();
+			out_push_noop(b_from);
 	}
 
-	out_comment("end of ({...})");
+	out_comment(b_from, "end of ({...})");
 }
 
 void gen_expr_str_stmt(expr *e)

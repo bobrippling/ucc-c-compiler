@@ -37,11 +37,11 @@ void gen_stmt_return(stmt *s)
 {
 	if(s->expr){
 		gen_expr(s->expr);
-		out_pop_func_ret(s->expr->tree_type);
-		out_comment("return");
+		out_pop_func_ret(b_from, s->expr->tree_type);
+		out_comment(b_from, "return");
 	}
-	out_push_lbl(curfunc_lblfin, 0);
-	out_jmp();
+	out_push_lbl(b_from, curfunc_lblfin, 0);
+	out_jmp(b_from);
 }
 
 void style_stmt_return(stmt *s)

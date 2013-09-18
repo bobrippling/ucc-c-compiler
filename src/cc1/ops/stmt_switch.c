@@ -142,7 +142,7 @@ void fold_stmt_switch(stmt *s)
 
 	flow_fold(s->flow, &stab);
 
-	s->lbl_break = out_label_flow("switch");
+	s->lbl_break = out_label_flow(b_from, "switch");
 
 	FOLD_EXPR(s->expr, stab);
 
@@ -181,7 +181,7 @@ void gen_stmt_switch(stmt *s)
 
 	gen_expr(s->expr);
 
-	out_comment("switch on this");
+	out_comment(b_from, "switch on this");
 
 	for(titer = s->codes; titer && *titer; titer++){
 		stmt *cse = *titer;
@@ -198,47 +198,47 @@ void gen_stmt_switch(stmt *s)
 				"don't handle unsigned yet");
 
 		if(stmt_kind(cse, case_range)){
-			char *skip = out_label_code("range_skip");
+			char *skip = out_label_code(b_from, "range_skip");
 			numeric max;
 
-			/* TODO: proper signed/unsiged format - out_op() */
+			/* TODO: proper signed/unsiged format - out_op(b_from) */
 			const_fold_integral(cse->expr2, &max);
 
-			out_dup();
-			out_push_num(cse->expr->tree_type, &iv);
+			out_dup(b_from);
+			out_push_num(b_from, cse->expr->tree_type, &iv);
 
-			out_op(op_lt);
-			out_jtrue(skip);
+			out_op(b_from, op_lt);
+			out_jtrue(b_from, skip);
 
-			out_dup();
-			out_push_num(cse->expr2->tree_type, &max);
-			out_op(op_gt);
+			out_dup(b_from);
+			out_push_num(b_from, cse->expr2->tree_type, &max);
+			out_op(b_from, op_gt);
 
-			out_jfalse(cse->expr->bits.ident.spel);
+			out_jfalse(b_from, cse->expr->bits.ident.spel);
 
-			out_label(skip);
+			out_label(b_from, skip);
 			free(skip);
 
 		}else{
-			out_dup();
-			out_push_num(cse->expr->tree_type, &iv);
+			out_dup(b_from);
+			out_push_num(b_from, cse->expr->tree_type, &iv);
 
-			out_op(op_eq);
+			out_op(b_from, op_eq);
 
-			out_jtrue(cse->expr->bits.ident.spel);
+			out_jtrue(b_from, cse->expr->bits.ident.spel);
 		}
 	}
 
-	out_pop(); /* free the value we switched on asap */
+	out_pop(b_from); /* free the value we switched on asap */
 
-	out_push_lbl(tdefault ? tdefault->expr->bits.ident.spel : s->lbl_break, 0);
-	out_jmp();
+	out_push_lbl(b_from, tdefault ? tdefault->expr->bits.ident.spel : s->lbl_break, 0);
+	out_jmp(b_from);
 
 	/* out-stack must be empty from here on */
 
 	gen_stmt(s->lhs); /* the actual code inside the switch */
 
-	out_label(s->lbl_break);
+	out_label(b_from, s->lbl_break);
 }
 
 void style_stmt_switch(stmt *s)

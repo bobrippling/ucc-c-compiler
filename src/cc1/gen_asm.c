@@ -24,7 +24,7 @@
 
 char *curfunc_lblfin; /* extern */
 
-void gen_expr(expr *e, basic_blk *bb)
+basic_blk *gen_expr(expr *e, basic_blk *b_from)
 {
 	consty k;
 
@@ -33,25 +33,25 @@ void gen_expr(expr *e, basic_blk *bb)
 	if(k.type == CONST_NUM){
 		/* -O0 skips this? */
 		if(cc1_backend == BACKEND_ASM)
-			out_push_num(e->tree_type, &k.bits.num); /* bb is unchanged */
+			out_push_num(b_from, e->tree_type, &k.bits.num); /* bb is unchanged */
 		else
 			stylef("%" NUMERIC_FMT_D, k.bits.num.val.i);
 	}else{
 		if(cc1_gdebug)
-			out_comment("at %s", where_str(&e->where));
+			out_comment(b_from, "at %s", where_str(&e->where));
 
-		EOF_WHERE(&e->where, bb = e->f_gen(e, bb));
+		EOF_WHERE(&e->where, b_from = e->f_gen(e, b_from));
 	}
 
-	return bb;
+	return b_from;
 }
 
-void lea_expr(expr *e)
+basic_blk *lea_expr(expr *e, basic_blk *b_from)
 {
 	UCC_ASSERT(e->f_lea,
 			"invalid store expression expr-%s (no f_store())", e->f_str());
 
-	e->f_lea(e);
+	return e->f_lea(e, b_from);
 }
 
 struct basic_blk *gen_stmt(stmt *t, struct basic_blk *startblk)
@@ -61,7 +61,8 @@ struct basic_blk *gen_stmt(stmt *t, struct basic_blk *startblk)
 	return out;
 }
 
-static void assign_arg_offsets(decl **decls, int const offsets[])
+static void assign_arg_offsets(decl **decls, int const offsets[],
+		basic_blk *b_from)
 {
 	unsigned i, j;
 
@@ -70,7 +71,7 @@ static void assign_arg_offsets(decl **decls, int const offsets[])
 
 		if(s && s->type == sym_arg){
 			if(fopt_mode & FOPT_VERBOSE_ASM)
-				out_comment("%s @ offset %d", s->decl->spel, offsets[j]);
+				out_comment(b_from, "%s @ offset %d", s->decl->spel, offsets[j]);
 
 			s->loc.arg_offset = offsets[j++];
 		}
@@ -117,15 +118,17 @@ void gen_asm_global(decl *d)
 				is_vari = type_ref_is_variadic_func(d->ref),
 				offsets);
 
-		assign_arg_offsets(arg_symtab->decls, offsets);
+		assign_arg_offsets(arg_symtab->decls, offsets, bb_start);
 
 		curfunc_lblfin = out_label_code(sp);
 
 		bb_end = gen_stmt(d->func_code, bb_start);
 
-		out_label(curfunc_lblfin);
+		out_label(bb_end, curfunc_lblfin);
 
-		out_func_epilogue(d->ref, bb_end);
+		out_func_epilogue(bb_end, d->ref);
+
+		UCC_ASSERT(out_vcount(bb_end) == 0, "non empty vstack after func gen");
 
 		free(curfunc_lblfin);
 		free(offsets);
@@ -205,8 +208,6 @@ void gen_asm(symtable_global *globs)
 		if((d->store & STORE_MASK_STORE) != store_static)
 			asm_predeclare_global(d);
 		gen_asm_global(d);
-
-		UCC_ASSERT(out_vcount() == 0, "non empty vstack after global gen");
 	}
 
 	for(; iasm && *iasm; ++iasm)

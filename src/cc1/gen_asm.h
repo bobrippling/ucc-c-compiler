@@ -9,8 +9,8 @@ void gen_asm_extern(decl *d);
 void gen_asm(symtable_global *);
 
 struct basic_blk;
-void gen_expr(expr *e, struct basic_blk *);
-void lea_expr(expr *e, struct basic_blk *);
-void gen_stmt(stmt *t, struct basic_blk *);
+struct basic_blk *gen_expr(expr *e, struct basic_blk *);
+struct basic_blk *lea_expr(expr *e, struct basic_blk *);
+struct basic_blk *gen_stmt(stmt *t, struct basic_blk *);
 
 #endif

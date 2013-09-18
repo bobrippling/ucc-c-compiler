@@ -119,14 +119,14 @@ void gen_expr_identifier(expr *e)
 	sym *sym = e->bits.ident.sym;
 
 	if(DECL_IS_FUNC(sym->decl))
-		out_push_sym(sym);
+		out_push_sym(b_from, sym);
 	else
-		out_push_sym_val(sym);
+		out_push_sym_val(b_from, sym);
 }
 
 static void gen_expr_identifier_lea(expr *e)
 {
-	out_push_sym(e->bits.ident.sym);
+	out_push_sym(b_from, e->bits.ident.sym);
 }
 
 void mutate_expr_identifier(expr *e)

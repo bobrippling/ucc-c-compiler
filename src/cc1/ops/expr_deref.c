@@ -33,7 +33,7 @@ static void gen_expr_deref_lea(expr *e)
 void gen_expr_deref(expr *e)
 {
 	gen_expr_deref_lea(e);
-	out_deref();
+	out_deref(b_from);
 }
 
 void gen_expr_str_deref(expr *e)

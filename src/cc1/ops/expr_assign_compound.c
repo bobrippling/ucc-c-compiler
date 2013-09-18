@@ -53,14 +53,14 @@ void gen_expr_assign_compound(expr *e)
 	lea_expr(e->lhs);
 
 	if(e->assign_is_post){
-		out_dup();
-		out_deref();
-		out_flush_volatile();
-		out_swap();
-		out_comment("saved for compound op");
+		out_dup(b_from);
+		out_deref(b_from);
+		out_flush_volatile(b_from);
+		out_swap(b_from);
+		out_comment(b_from, "saved for compound op");
 	}
 
-	out_dup();
+	out_dup(b_from);
 	/* delay the dereference until after generating rhs.
 	 * this is fine, += etc aren't sequence points
 	 */
@@ -68,14 +68,14 @@ void gen_expr_assign_compound(expr *e)
 	gen_expr(e->rhs);
 
 	/* here's the delayed dereference */
-	out_swap(), out_deref(), out_swap();
+	out_swap(b_from), out_deref(), out_swap();
 
-	out_op(e->op);
+	out_op(b_from, e->op);
 
-	out_store();
+	out_store(b_from);
 
 	if(e->assign_is_post)
-		out_pop();
+		out_pop(b_from);
 }
 
 void gen_expr_str_assign_compound(expr *e)

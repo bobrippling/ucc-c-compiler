@@ -30,7 +30,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 		if(!curdecl_func)
 			die_at(&e->where, "address-of-label outside a function");
 		save = e->bits.ident.spel;
-		e->bits.ident.spel = out_label_goto(
+		e->bits.ident.spel = out_label_goto(b_from, 
 				curdecl_func->spel, e->bits.ident.spel);
 		free(save);
 
@@ -62,7 +62,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 void gen_expr_addr(expr *e)
 {
 	if(e->bits.ident.spel){
-		out_push_lbl(e->bits.ident.spel, 1); /* GNU &&lbl */
+		out_push_lbl(b_from, e->bits.ident.spel, 1); /* GNU &&lbl */
 
 	}else{
 		/* address of possibly an ident "(&a)->b" or a struct expr "&a->b"

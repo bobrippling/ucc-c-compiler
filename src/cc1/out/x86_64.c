@@ -327,8 +327,8 @@ unsigned impl_n_call_regs(type_ref *rf)
 
 void impl_func_prologue_save_fp(void)
 {
-	out_asm("pushq %%rbp");
-	out_asm("movq %%rsp, %%rbp");
+	out_asm(b_from, "pushq %%rbp");
+	out_asm(b_from, "movq %%rsp, %%rbp");
 	/* a v_alloc_stack_n() is done later to align,
 	 * but not interfere with argument locations */
 }
@@ -419,7 +419,7 @@ pass_via_stack:
 			unsigned i;
 			for(i = 0; i < nargs; i++){
 				if(i < n_call_i){
-					out_asm("push%s %%%s",
+					out_asm(b_from, "push%s %%%s",
 							x86_suffix(NULL),
 							x86_reg_str(&call_regs[i], NULL));
 
@@ -484,15 +484,15 @@ void impl_func_prologue_save_variadic(type_ref *rf)
 	}
 
 	{
-		char *vfin = out_label_code("va_skip_float");
+		char *vfin = out_label_code(b_from, "va_skip_float");
 		type_ref *const ty_ch = type_ref_cached_CHAR();
 
 		/* testb %al, %al ; jz vfin */
 		vpush(ty_ch);
 		v_set_reg_i(vtop, X86_64_REG_RAX);
-		out_push_zero(ty_ch);
-		out_op(op_eq);
-		out_jtrue(vfin);
+		out_push_zero(b_from, ty_ch);
+		out_op(b_from, op_eq);
+		out_jtrue(b_from, vfin);
 
 		for(i = 0; i < N_CALL_REGS_F; i++){
 			struct vreg vr;
@@ -505,25 +505,25 @@ void impl_func_prologue_save_variadic(type_ref *rf)
 					stk_top - (i * 2 + n_call_regs) * pws);
 		}
 
-		out_label(vfin);
+		out_label(b_from, vfin);
 		free(vfin);
 	}
 }
 
 void impl_func_epilogue(type_ref *rf)
 {
-	out_asm("leaveq");
+	out_asm(b_from, "leaveq");
 
 	if(fopt_mode & FOPT_VERBOSE_ASM)
-		out_comment("stack at %u bytes", v_stack_sz());
+		out_comment(b_from, "stack at %u bytes", v_stack_sz());
 
 	/* callee cleanup */
 	if(!x86_caller_cleanup(rf)){
 		const int nargs = x86_func_nargs(rf);
 
-		out_asm("retq $%d", nargs * platform_word_size());
+		out_asm(b_from, "retq $%d", nargs * platform_word_size());
 	}else{
-		out_asm("retq");
+		out_asm(b_from, "retq");
 	}
 }
 
@@ -584,7 +584,7 @@ void impl_load_iv(struct vstack *vp)
 		integral_str(buf, sizeof buf,
 				vp->bits.val_i, vp->t);
 
-		out_asm("movabsq $%s, %%%s",
+		out_asm(b_from, "movabsq $%s, %%%s",
 				buf, x86_reg_str(&r, vp->t));
 
 		v_set_reg(vp, &r);
@@ -611,7 +611,7 @@ void impl_load_fp(struct vstack *from)
 				/* TODO: use just an int if we can get away with it */
 				from->t = type_ref_cached_LLONG();
 
-				out_cast(ty_fp);
+				out_cast(b_from, ty_fp);
 				break;
 			}
 			/* fall */
@@ -619,7 +619,7 @@ void impl_load_fp(struct vstack *from)
 		default:
 		{
 			/* save to a label */
-			char *lbl = out_label_data_store(0);
+			char *lbl = out_label_data_store(b_from, 0);
 			struct vreg r;
 
 			asm_label(SECTION_DATA, lbl, type_ref_align(from->t, NULL));
@@ -694,19 +694,19 @@ void impl_load(struct vstack *from, const struct vreg *reg)
 
 			/* check float/orderedness */
 			if(x86_need_fp_parity_p(&from->bits.flag, &parity_default))
-				parity = out_label_code("parity");
+				parity = out_label_code(b_from, "parity");
 
 			vtmp_val.bits.val_i = parity_default;
 			impl_load(&vtmp_val, reg);
 
 			if(parity)
-				out_asm("jp %s", parity);
+				out_asm(b_from, "jp %s", parity);
 
 			/* XXX: memleak */
 			from->t = type_ref_cached_CHAR(); /* force set%s to set the low byte */
 
 			/* actual cmp */
-			out_asm("set%s %%%s",
+			out_asm(b_from, "set%s %%%s",
 					x86_cmp(&from->bits.flag),
 					x86_reg_str(reg, from->t));
 
@@ -729,7 +729,7 @@ void impl_load(struct vstack *from, const struct vreg *reg)
 			/* fall */
 
 		case V_CONST_I:
-			out_asm("mov%s %s, %%%s",
+			out_asm(b_from, "mov%s %s, %%%s",
 					x86_suffix(from->t),
 					vstack_str(from, 0),
 					x86_reg_str(reg, from->t));
@@ -739,7 +739,7 @@ lea:
 		case V_LBL:
 		{
 			const int fp = type_ref_is_floating(from->t);
-			out_asm("%s%s %s, %%%s",
+			out_asm(b_from, "%s%s %s, %%%s",
 					fp ? "mov" : "lea",
 					x86_suffix(fp ? NULL : from->t),
 					vstack_str(from, 1),
@@ -784,7 +784,7 @@ void impl_store(struct vstack *from, struct vstack *to)
 			break;
 	}
 
-	out_asm("mov%s %s, %s",
+	out_asm(b_from, "mov%s %s, %s",
 			x86_suffix(from->t),
 			vstack_str_r(vbuf, from, 0),
 			vstack_str(to, 1));
@@ -800,7 +800,7 @@ void impl_reg_swp(struct vstack *a, struct vstack *b)
 			"%s without regs (%d and %d)", __func__,
 			a->type, b->type);
 
-	out_asm("xchg %%%s, %%%s",
+	out_asm(b_from, "xchg %%%s, %%%s",
 			reg_str(a), reg_str(b));
 
 	tmp = a->bits.regoff.reg;
@@ -823,7 +823,7 @@ void impl_reg_cp(struct vstack *from, const struct vreg *r)
 
 	regstr = x86_reg_str(r, from->t);
 
-	out_asm("mov%s %s, %%%s",
+	out_asm(b_from, "mov%s %s, %%%s",
 			x86_suffix(from->t),
 			vstack_str_r(buf_v, from, 0),
 			regstr);
@@ -842,7 +842,7 @@ void impl_op(enum op_type op)
 			v_to(vtop, TO_REG | TO_MEM);
 			v_to_reg(&vtop[-1]);
 
-			out_asm("ucomi%s %s, %s",
+			out_asm(b_from, "ucomi%s %s, %s",
 					x86_suffix(vtop->t),
 					vstack_str_r(b1, vtop, 0),
 					vstack_str_r(b2, &vtop[-1], 0));
@@ -875,7 +875,7 @@ void impl_op(enum op_type op)
 		 */
 
 		if(vtop->type != V_REG && op_is_commutative(op))
-			out_swap();
+			out_swap(b_from);
 
 		/* memory or register */
 		v_to(vtop,      TO_REG);
@@ -884,7 +884,7 @@ void impl_op(enum op_type op)
 		{
 			char b1[VSTACK_STR_SZ], b2[VSTACK_STR_SZ];
 
-			out_asm("%s%s %s, %s",
+			out_asm(b_from, "%s%s %s, %s",
 					opc, x86_suffix(vtop->t),
 					vstack_str_r(b1, &vtop[-1], 0),
 					vstack_str_r(b2, vtop, 0));
@@ -946,7 +946,7 @@ void impl_op(enum op_type op)
 			vstack_str_r(bufs, vtop, 0);
 			vstack_str_r(bufv, &vtop[-1], 0);
 
-			out_asm("%s%s %s, %s",
+			out_asm(b_from, "%s%s %s, %s",
 					op == op_shiftl      ? "shl" :
 					type_ref_is_signed(vtop[-1].t) ? "sar" : "shr",
 					x86_suffix(vtop[-1].t),
@@ -1021,8 +1021,8 @@ void impl_op(enum op_type op)
 						memcpy_safe(&vtop->bits.regoff.reg, &r);
 					}
 
-					out_asm("cqto");
-					out_asm("idiv%s %s",
+					out_asm(b_from, "cqto");
+					out_asm(b_from, "idiv%s %s",
 							x86_suffix(vtop->t),
 							vstack_str(vtop, 1));
 			}
@@ -1068,9 +1068,9 @@ void impl_op(enum op_type op)
 			&& vtop->bits.val_i == 0)
 			{
 				const char *vstr = vstack_str(vtop - 1, 0); /* vtop[-1] is REG */
-				out_asm("test%s %s, %s", x86_suffix(vtop[-1].t), vstr, vstr);
+				out_asm(b_from, "test%s %s, %s", x86_suffix(vtop[-1].t), vstr, vstr);
 			}else{
-				out_asm("cmp%s %s, %s",
+				out_asm(b_from, "cmp%s %s, %s",
 						x86_suffix(vtop[-1].t), /* pick the non-const one (for type-ing) */
 						vstack_str(       vtop, 0),
 						vstack_str_r(buf, vtop - 1, 0));
@@ -1102,7 +1102,7 @@ void impl_op(enum op_type op)
 		if(vtop[-1].type != V_REG){
 			/* if the op is commutative, swap */
 			if(op_is_commutative(op))
-				out_swap();
+				out_swap(b_from);
 			else
 				v_to_reg(vtop - 1);
 		}
@@ -1134,14 +1134,14 @@ void impl_op(enum op_type op)
 				&& vtop->bits.val_i == 1
 				&& vtop[-1].type == V_REG)
 				{
-					out_asm("%s%s %s",
+					out_asm(b_from, "%s%s %s",
 							op == op_plus ? "inc" : "dec",
 							x86_suffix(vtop[-1].t),
 							vstack_str(&vtop[-1], 0));
 					break;
 				}
 			default:
-				out_asm("%s%s %s, %s", opc,
+				out_asm(b_from, "%s%s %s, %s", opc,
 						x86_suffix(vtop->t),
 						vstack_str_r(buf, &vtop[ 0], 0),
 						vstack_str(       &vtop[-1], 0));
@@ -1160,7 +1160,7 @@ void impl_deref(
 	char ptr[VSTACK_STR_SZ];
 
 	/* loaded the pointer, now we apply the deref change */
-	out_asm("mov%s %s, %%%s",
+	out_asm(b_from, "mov%s %s, %%%s",
 			x86_suffix(tpointed_to),
 			vstack_str_r(ptr, vp, 1),
 			x86_reg_str(to, tpointed_to));
@@ -1182,8 +1182,8 @@ void impl_op_unary(enum op_type op)
 
 		case op_minus:
 			if(type_ref_is_floating(vtop->t)){
-				out_push_zero(vtop->t);
-				out_op(op_minus);
+				out_push_zero(b_from, vtop->t);
+				out_op(b_from, op_minus);
 				return;
 			}
 			opc = "neg";
@@ -1195,12 +1195,12 @@ void impl_op_unary(enum op_type op)
 			break;
 
 		case op_not:
-			out_push_zero(vtop->t);
-			out_op(op_eq);
+			out_push_zero(b_from, vtop->t);
+			out_op(b_from, op_eq);
 			return;
 	}
 
-	out_asm("%s%s %s", opc,
+	out_asm(b_from, "%s%s %s", opc,
 			x86_suffix(vtop->t),
 			vstack_str(vtop, 0));
 }
@@ -1245,13 +1245,13 @@ void impl_cast_load(struct vstack *vp, type_ref *small, type_ref *big, int is_si
 		v_unused_reg(1, 0, &r);
 
 		if(!is_signed && *suffix_big == 'q' && *suffix_small == 'l'){
-			out_comment("movzlq:");
-			out_asm("movl %s, %%%s",
+			out_comment(b_from, "movzlq:");
+			out_asm(b_from, "movl %s, %%%s",
 					buf_small,
 					x86_reg_str(&r, small));
 
 		}else{
-			out_asm("mov%c%s%s %s, %%%s",
+			out_asm(b_from, "mov%c%s%s %s, %%%s",
 					"zs"[is_signed],
 					suffix_small,
 					suffix_big,
@@ -1271,7 +1271,7 @@ static void x86_fp_conv(
 {
 	char vbuf[VSTACK_STR_SZ];
 
-	out_asm("cvt%s2%s%s %s, %%%s",
+	out_asm(b_from, "cvt%s2%s%s %s, %%%s",
 			/*truncate ? "t" : "",*/
 			sfrom, sto,
 			/* if we're doing an int-float conversion,
@@ -1311,7 +1311,7 @@ static void x86_xchg_fi(struct vstack *vp, type_ref *tfrom, type_ref *tto)
 			v_cast(vp, ty);
 		}else{
 			char buf[TYPE_REF_STATIC_BUFSIZ];
-			out_comment("%s to %s - truncated",
+			out_comment(b_from, "%s to %s - truncated",
 					type_ref_to_str(tfrom),
 					type_ref_to_str_r(buf, tto));
 		}
@@ -1393,7 +1393,7 @@ static const char *x86_call_jmp_target(struct vstack *vp, int prevent_rax)
 
 void impl_jmp(void)
 {
-	out_asm("jmp %s", x86_call_jmp_target(vtop, 0));
+	out_asm(b_from, "jmp %s", x86_call_jmp_target(vtop, 0));
 }
 
 void impl_jcond(int true, const char *lbl)
@@ -1420,16 +1420,16 @@ void impl_jcond(int true, const char *lbl)
 				 */
 				if(!parity_rev){
 					/* skip */
-					bb_lbl = out_label_code("jmp_parity");
-					out_asm("jp %s", lbl);
+					bb_lbl = out_label_code(b_from, "jmp_parity");
+					out_asm(b_from, "jp %s", lbl);
 				}
 			}
 
-			out_asm("j%s %s", x86_cmp(&vtop->bits.flag), lbl);
+			out_asm(b_from, "j%s %s", x86_cmp(&vtop->bits.flag), lbl);
 
 			if(parity_chk && parity_rev){
 				/* jump not taken, try parity */
-				out_asm("jp %s", lbl);
+				out_asm(b_from, "jp %s", lbl);
 			}
 			if(bb_lbl){
 				impl_lbl(bb_lbl);
@@ -1442,9 +1442,9 @@ void impl_jcond(int true, const char *lbl)
 			ICE("jcond float");
 		case V_CONST_I:
 			if(true == !!vtop->bits.val_i)
-				out_asm("jmp %s", lbl);
+				out_asm(b_from, "jmp %s", lbl);
 
-			out_comment(
+			out_comment(b_from, 
 					"constant jmp condition %" NUMERIC_FMT_D " %staken",
 					vtop->bits.val_i, vtop->bits.val_i ? "" : "not ");
 
@@ -1455,7 +1455,7 @@ void impl_jcond(int true, const char *lbl)
 			v_to_reg(vtop);
 
 		case V_REG:
-			out_normalise();
+			out_normalise(b_from);
 			UCC_ASSERT(vtop->type != V_REG,
 					"normalise remained as a register");
 			impl_jcond(true, lbl);
@@ -1515,14 +1515,14 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 		unsigned nfloats = 0, nints = 0; /* shadow */
 		unsigned stack_pos;
 
-		out_comment("stack space for %d arguments", arg_stack);
+		out_comment(b_from, "stack space for %d arguments", arg_stack);
 		/* this aligns the stack-ptr and returns arg_stack padded */
 		arg_stack = v_alloc_stack(arg_stack * pws,
 				"call argument space");
 
 		/* must be called after v_alloc_stack() */
 		stk_snapshot = stack_pos = v_stack_sz();
-		out_comment("-- stack snapshot (%u) --", stk_snapshot);
+		out_comment(b_from, "-- stack snapshot (%u) --", stk_snapshot);
 
 		/* save in order */
 		for(i = 0; i < nargs; i++){
@@ -1603,7 +1603,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 		 * start anything.
 		 */
 		unsigned chg = v_stack_sz() - stk_snapshot;
-		out_comment("-- restore snapshot (%u) --", chg);
+		out_comment(b_from, "-- restore snapshot (%u) --", chg);
 		v_dealloc_stack(chg);
 	}
 
@@ -1624,12 +1624,12 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 			r.idx = X86_64_REG_RAX;
 			r.is_float = 0;
 
-			out_push_l(type_ref_cached_CHAR(), nfloats);
+			out_push_l(b_from, type_ref_cached_CHAR(), nfloats);
 			v_to_reg_given(vtop, &r);
 			vpop();
 		}
 
-		out_asm("callq %s", jtarget);
+		out_asm(b_from, "callq %s", jtarget);
 	}
 
 	if(arg_stack && x86_caller_cleanup(r_func))
@@ -1640,7 +1640,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 
 void impl_undefined(void)
 {
-	out_asm("ud2");
+	out_asm(b_from, "ud2");
 }
 
 void impl_set_overflow(void)

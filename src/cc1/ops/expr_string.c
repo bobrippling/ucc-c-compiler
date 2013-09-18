@@ -31,7 +31,7 @@ void fold_expr_str(expr *e, symtable *stab)
 			type_ref_new_type_qual(sv->wide ? type_wchar : type_char, qual_const),
 			sz);
 
-	sv->lbl = out_label_data_store(1);
+	sv->lbl = out_label_data_store(b_from, 1);
 
 	d = decl_new();
 	d->ref = e->tree_type;
@@ -64,7 +64,7 @@ void fold_expr_str(expr *e, symtable *stab)
 void gen_expr_str(expr *e)
 {
 	/*gen_asm_local(e->bits.str.sym.decl); - done for the decl we create */
-	out_push_lbl(e->bits.str.sv.lbl, 1);
+	out_push_lbl(b_from, e->bits.str.sv.lbl, 1);
 }
 
 void gen_expr_str_str(expr *e)

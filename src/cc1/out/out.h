@@ -1,57 +1,60 @@
 #ifndef OUT_H
 #define OUT_H
 
-void out_pop(void);
-void out_pop_func_ret(type_ref *) ucc_nonnull((1));
+#include "basic_block.tdef.h"
 
-void out_push_num(type_ref *t, const numeric *n) ucc_nonnull((1));
-void out_push_l(type_ref *, long) ucc_nonnull((1));
-void out_push_zero(type_ref *) ucc_nonnull((1));
-void out_push_lbl(const char *s, int pic);
-void out_push_noop(void);
+void out_pop(basic_blk *);
+void out_pop_func_ret(basic_blk *, type_ref *) ucc_nonnull((1));
 
-void out_dup(void); /* duplicate top of stack */
-void out_pulltop(int i); /* pull the nth stack entry to the top */
-void out_normalise(void); /* change to 0 or 1 */
+void out_push_num(basic_blk *, type_ref *t, const numeric *n) ucc_nonnull((1));
+void out_push_l(basic_blk *, type_ref *, long) ucc_nonnull((1));
+void out_push_zero(basic_blk *, type_ref *) ucc_nonnull((1));
+void out_push_lbl(basic_blk *, const char *s, int pic);
+void out_push_noop(basic_blk *);
 
-void out_push_sym(sym *);
-void out_push_sym_val(sym *);
-void out_store(void); /* store stack[1] into *stack[0] */
+void out_dup(basic_blk *); /* duplicate top of stack */
+void out_pulltop(basic_blk *, int i); /* pull the nth stack entry to the top */
+void out_normalise(basic_blk *); /* change to 0 or 1 */
 
-void out_set_bitfield(unsigned off, unsigned nbits);
+void out_push_sym(basic_blk *, sym *);
+void out_push_sym_val(basic_blk *, sym *);
+void out_store(basic_blk *); /* store stack[1] into *stack[0] */
 
-void out_op(      enum op_type); /* binary ops and comparisons */
-void out_op_unary(enum op_type); /* unary ops */
-void out_deref(void);
-void out_swap(void);
-void out_flush_volatile(void);
+void out_set_bitfield(basic_blk *, unsigned off, unsigned nbits);
 
-void out_cast(type_ref *to) ucc_nonnull((1));
-void out_change_type(type_ref *) ucc_nonnull((1));
+void out_op(basic_blk *, enum op_type); /* binary ops and comparisons */
+void out_op_unary(basic_blk *, enum op_type); /* unary ops */
+void out_deref(basic_blk *);
+void out_swap(basic_blk *);
+void out_flush_volatile(basic_blk *);
 
-void out_call(int nargs, type_ref *rt, type_ref *f) ucc_nonnull((2, 3));
+void out_cast(basic_blk *, type_ref *to) ucc_nonnull((1));
+void out_change_type(basic_blk *, type_ref *) ucc_nonnull((1));
 
-void out_func_prologue(
+void out_call(basic_blk *,
+		int nargs, type_ref *rt, type_ref *f) ucc_nonnull((3, 4));
+
+basic_blk *out_func_prologue(
 		type_ref *rf,
 		int stack_res, int nargs, int variadic,
 		int arg_offsets[]);
 
-void out_func_epilogue(type_ref *);
+void out_func_epilogue(basic_blk *, type_ref *);
 
-void out_comment(const char *, ...) ucc_printflike(1, 2);
+void out_comment(basic_blk *, const char *, ...) ucc_printflike(2, 3);
 #ifdef ASM_H
-void out_comment_sec(enum section_type, const char *, ...) ucc_printflike(2, 3);
+void out_comment_sec(basic_blk *, enum section_type, const char *, ...) ucc_printflike(3, 4);
 #endif
 
-void out_assert_vtop_null(void);
-void out_dump(void);
-void out_undefined(void);
-void out_push_overflow(void);
+void out_assert_vtop_null(basic_blk *);
+void out_dump(basic_blk *);
+void out_undefined(basic_blk *);
+void out_push_overflow(basic_blk *);
 
-void out_push_frame_ptr(int nframes);
-void out_push_reg_save_ptr(void);
-void out_push_nan(type_ref *ty);
+void out_push_frame_ptr(basic_blk *, int nframes);
+void out_push_reg_save_ptr(basic_blk *);
+void out_push_nan(basic_blk *, type_ref *ty);
 
-int out_vcount(void);
+int out_vcount(basic_blk *);
 
 #endif

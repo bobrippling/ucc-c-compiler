@@ -712,14 +712,14 @@ static void op_shortcircuit(expr *e, basic_blk *from)
 	basic_blk *b_shortsc, *b_end;
 
 	from = gen_expr(e->lhs, from);
-	out_normalise();
+	out_normalise(b_from);
 
-	out_dup();
+	out_dup(b_from);
 
 	b_shortsc = bb_new();
 
 	b_shortsc = gen_expr(e->rhs, b_shortsc);
-	out_normalise();
+	out_normalise(b_from);
 
 	if(e->op == op_andsc)
 		bb_split(b_from, b_shortsc, b_end);
@@ -746,25 +746,25 @@ void gen_expr_op(expr *e)
 			if(e->rhs){
 				gen_expr(e->rhs);
 
-				out_op(e->op);
+				out_op(b_from, e->op);
 
 				/* make sure we get the pointer, for example 2+(int *)p
 				 * or the int, e.g. (int *)a && (int *)b -> int */
-				out_change_type(e->tree_type);
+				out_change_type(b_from, e->tree_type);
 
 				if(fopt_mode & FOPT_TRAPV
 				&& type_ref_is_integral(e->tree_type)
 				&& type_ref_is_signed(e->tree_type))
 				{
-					char *skip = out_label_code("trapv");
-					out_push_overflow();
-					out_jfalse(skip);
-					out_undefined();
-					out_label(skip);
+					char *skip = out_label_code(b_from, "trapv");
+					out_push_overflow(b_from);
+					out_jfalse(b_from, skip);
+					out_undefined(b_from);
+					out_label(b_from, skip);
 					free(skip);
 				}
 			}else{
-				out_op_unary(e->op);
+				out_op_unary(b_from, e->op);
 			}
 	}
 }

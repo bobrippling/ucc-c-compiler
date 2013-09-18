@@ -119,26 +119,26 @@ static void gen_expr_struct_lea(expr *e)
 
 	gen_expr(e->lhs);
 
-	out_change_type(type_ref_cached_VOID_PTR()); /* cast for void* arithmetic */
-	out_push_l(type_ref_cached_INTPTR_T(), struct_offset(e)); /* integral offset */
-	out_op(op_plus);
+	out_change_type(b_from, type_ref_cached_VOID_PTR()); /* cast for void* arithmetic */
+	out_push_l(b_from, type_ref_cached_INTPTR_T(), struct_offset(e)); /* integral offset */
+	out_op(b_from, op_plus);
 
 	if(fopt_mode & FOPT_VERBOSE_ASM)
-		out_comment("struct member %s", e->bits.struct_mem.d->spel);
+		out_comment(b_from, "struct member %s", e->bits.struct_mem.d->spel);
 
 
 	{
 		decl *d = e->bits.struct_mem.d;
 
-		out_change_type(type_ref_ptr_depth_inc(d->ref));
+		out_change_type(b_from, type_ref_ptr_depth_inc(d->ref));
 
-		/* set if we're a bitfield - out_deref() and out_store()
+		/* set if we're a bitfield - out_deref(b_from) and out_store()
 		 * i.e. read + write then handle this
 		 */
 		if(d->field_width){
 			unsigned w = const_fold_val_i(d->field_width);
-			out_set_bitfield(d->struct_offset_bitfield, w);
-			out_comment("struct bitfield lea");
+			out_set_bitfield(b_from, d->struct_offset_bitfield, w);
+			out_comment(b_from, "struct bitfield lea");
 		}
 	}
 }
@@ -149,7 +149,7 @@ void gen_expr_struct(expr *e)
 
 	gen_expr_struct_lea(e);
 
-	out_deref();
+	out_deref(b_from);
 }
 
 void gen_expr_str_struct(expr *e)

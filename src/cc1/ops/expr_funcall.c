@@ -498,12 +498,12 @@ invalid:
 void gen_expr_funcall(expr *e)
 {
 	if(0){
-		out_comment("start manual __asm__");
+		out_comment(b_from, "start manual __asm__");
 		ICE("same");
 #if 0
 		fprintf(cc_out[SECTION_TEXT], "%s\n", e->funcargs[0]->data_store->data.str);
 #endif
-		out_comment("end manual __asm__");
+		out_comment(b_from, "end manual __asm__");
 	}else{
 		/* continue with normal funcall */
 		int nargs = 0;
@@ -525,7 +525,7 @@ void gen_expr_funcall(expr *e)
 			}
 		}
 
-		out_call(nargs, e->tree_type, e->expr->tree_type);
+		out_call(b_from, nargs, e->tree_type, e->expr->tree_type);
 	}
 }
 

@@ -3,10 +3,10 @@
 
 struct basic_blk;
 
-typedef void        func_fold_stmt(stmt *);
-typedef void        func_gen_stmt( stmt *, struct basic_blk *);
+typedef void func_fold_stmt(stmt *);
+typedef struct basic_blk *func_gen_stmt(stmt *, struct basic_blk *);
 typedef const char *func_str_stmt(void);
-typedef void        func_mutate_stmt(stmt *);
+typedef void func_mutate_stmt(stmt *);
 
 /* non-critical */
 typedef int         func_passable_stmt(stmt *);

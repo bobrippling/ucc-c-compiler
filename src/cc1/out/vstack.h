@@ -65,70 +65,70 @@ struct vstack
 
 extern struct vstack *vtop;
 
-void vpush(type_ref *);
-void vpop(void);
-void vswap(void);
+void vpush(basic_blk *b_from, type_ref *t);
+void vpop(basic_blk *b_from);
+void vswap(basic_blk *b_from);
 
-void v_clear(struct vstack *vp, type_ref *);
-void v_set_reg(struct vstack *vp, const struct vreg *r);
-void v_set_reg_i(struct vstack *vp, int idx);
+void v_clear(basic_blk *, struct vstack *vp, type_ref *);
+void v_set_reg(basic_blk *, struct vstack *vp, const struct vreg *r);
+void v_set_reg_i(basic_blk *, struct vstack *vp, int idx);
 
-void v_set_flag(
+void v_set_flag(basic_blk *,
 		struct vstack *vp,
 		enum flag_cmp c,
 		enum flag_mod mods);
 
-void v_cast(struct vstack *vp, type_ref *to);
+void v_cast(basic_blk *, struct vstack *vp, type_ref *to);
 
-void v_inv_cmp(struct flag_opts *);
+void v_inv_cmp(basic_blk *, struct flag_opts *);
 
-void v_to_reg(struct vstack *conv);
-void v_to_reg_out(struct vstack *conv, struct vreg *);
-void v_to_reg_given(struct vstack *from, const struct vreg *);
+void v_to_reg(basic_blk *, struct vstack *conv);
+void v_to_reg_out(basic_blk *, struct vstack *conv, struct vreg *);
+void v_to_reg_given(basic_blk *, struct vstack *from, const struct vreg *);
 
-void v_to_mem_given(struct vstack *, int stack_pos);
-void v_to_mem(struct vstack *);
-int  v_stack_sz(void);
+void v_to_mem_given(basic_blk *, struct vstack *, int stack_pos);
+void v_to_mem(basic_blk *, struct vstack *);
+int  v_stack_sz(basic_blk *);
 
-void v_to_rvalue(struct vstack *);
+void v_to_rvalue(basic_blk *, struct vstack *);
 
 enum vto
 {
 	TO_REG = 1 << 0,
-	TO_MEM = 1 << 1, /* TODO: allow offset(%reg) */
+	TO_MEM = 1 << 1, /* TODO: allow offset(basic_blk *, %reg) */
 	TO_CONST = 1 << 2,
 };
-void v_to(struct vstack *, enum vto);
+void v_to(basic_blk *, struct vstack *, enum vto);
 
 int vreg_eq(const struct vreg *, const struct vreg *);
 
 /* returns 0 on success, -1 if no regs free */
-int  v_unused_reg(int stack_as_backup, int fp, struct vreg *);
+int  v_unused_reg(basic_blk *, int stack_as_backup, int fp, struct vreg *);
 
-void v_freeup_regp(struct vstack *);
-void v_freeup_reg(const struct vreg *, int allowable_stack);
-void v_freeup_regs(const struct vreg *, const struct vreg *);
-void v_save_reg(struct vstack *vp);
+void v_freeup_regp(basic_blk *, struct vstack *);
+void v_freeup_reg(basic_blk *, const struct vreg *, int allowable_stack);
+void v_freeup_regs(basic_blk *, const struct vreg *, const struct vreg *);
+void v_save_reg(basic_blk *, struct vstack *vp);
 /* if func_ty != NULL, don't save callee-save-regs */
-void v_save_regs(int n_ignore, type_ref *func_ty);
-void v_reserve_reg(const struct vreg *);
-void v_unreserve_reg(const struct vreg *);
+void v_save_regs(basic_blk *, int n_ignore, type_ref *func_ty);
+void v_reserve_reg(basic_blk *, const struct vreg *);
+void v_unreserve_reg(basic_blk *, const struct vreg *);
 
-void v_store(struct vstack *val, struct vstack *store);
+void v_store(basic_blk *, struct vstack *val, struct vstack *store);
 
-/* outputs stack-ptr instruction(s) */
-unsigned v_alloc_stack(unsigned sz, const char *);
+/* outputs stack-ptr instruction(basic_blk *, s) */
+unsigned v_alloc_stack(basic_blk *, unsigned sz, const char *);
 /* Will output instructions to align the stack to cc1_mstack_align
  * e.g. if a push is done manually */
-unsigned v_alloc_stack_n(unsigned sz, const char *);
+unsigned v_alloc_stack_n(basic_blk *, unsigned sz, const char *);
 /* v_alloc_stack* returns the padded sz that was alloced */
-void v_dealloc_stack(unsigned sz);
-void v_stack_align(unsigned const align, int do_mask);
+void v_dealloc_stack(basic_blk *, unsigned sz);
+void v_stack_align(basic_blk *, unsigned const align, int do_mask);
 
-void v_deref_decl(struct vstack *vp);
+void v_deref_decl(basic_blk *, struct vstack *vp);
 
-int impl_n_scratch_regs(void);
-unsigned impl_n_call_regs(type_ref *);
-int impl_ret_reg(void);
+int impl_n_scratch_regs(basic_blk *);
+unsigned impl_n_call_regs(basic_blk *, type_ref *);
+int impl_ret_reg(basic_blk *);
 
 #endif

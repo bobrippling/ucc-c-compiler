@@ -1,6 +1,8 @@
 #ifndef __BUILTIN_H
 #define __BUILTIN_H
 
+#include "../out/basic_block.tdef.h"
+
 #define BUILTIN_SPEL(e) (e)->bits.ident.spel
 
 expr *builtin_new_reg_save_area(void);
@@ -9,7 +11,7 @@ expr *builtin_new_frame_address(int depth);
 expr *builtin_parse(const char *sp);
 expr *parse_any_args(void);
 
-void builtin_gen_print(expr *);
+basic_blk *builtin_gen_print(expr *, basic_blk *);
 #define BUILTIN_SET_GEN(exp, target)      \
 	exp->f_gen = cc1_backend == BACKEND_ASM \
 		? (target)                            \

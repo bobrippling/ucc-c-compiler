@@ -17,7 +17,7 @@ void fold_stmt_case(stmt *t)
 	fold_check_expr(t->expr, FOLD_CHK_INTEGRAL | FOLD_CHK_CONST_I, "case");
 	val = const_fold_val_i(t->expr);
 
-	t->expr->bits.ident.spel = out_label_case(CASE_CASE, val);
+	t->expr->bits.ident.spel = out_label_case(b_from, CASE_CASE, val);
 
 	fold_stmt_and_add_to_curswitch(t);
 }

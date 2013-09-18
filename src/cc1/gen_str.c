@@ -364,7 +364,7 @@ void print_expr(expr *e)
 	}
 	gen_str_indent++;
 	if(e->f_gen)
-		e->f_gen(e);
+		e->f_gen(e, NULL);
 	else
 		idt_printf("builtin/%s::%s\n", e->f_str(), e->expr->bits.ident.spel);
 	gen_str_indent--;
