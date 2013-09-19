@@ -285,7 +285,7 @@ static expr *parse_expr_postfix()
 
 			e = expr_new_deref(sum);
 
-		}else if(accept(token_open_paren)){
+		}else if(accept_where(token_open_paren, &w)){
 			expr *fcall = NULL;
 
 			/* check for specialised builtin parsing */
@@ -300,7 +300,7 @@ static expr *parse_expr_postfix()
 			fcall->expr = e;
 			EAT(token_close_paren);
 
-			e = fcall;
+			e = expr_set_where(fcall, &w);
 
 		}else if((flag = accept(token_dot)) || accept(token_ptr)){
 			where_cc1_current(&w);
