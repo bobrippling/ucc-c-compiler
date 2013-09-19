@@ -246,8 +246,8 @@ static char *filter_macros(char *line)
 	char *hash = line;
 
 	if(*hash == '#' || *(hash = str_spc_skip(hash)) == '#'){
-		if(wmode & WTRADITIONAL && *line != '#')
-			CPP_WARN("'#' for directive isn't in the first column");
+		if(*line != '#')
+			CPP_WARN(WTRADITIONAL, "'#' for directive isn't in the first column");
 
 		parse_directive(hash + 1);
 		free(line);

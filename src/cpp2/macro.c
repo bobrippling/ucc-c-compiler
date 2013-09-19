@@ -42,7 +42,7 @@ macro *macro_add(const char *nam, const char *val)
 		if(strcmp(val, m->val)){
 			char buf[WHERE_BUF_SIZ];
 
-			CPP_WARN("cpp: warning: redefining \"%s\"\n"
+			CPP_WARN(WREDEF, "cpp: warning: redefining \"%s\"\n"
 					"%s: note: previous definition here",
 					nam, where_str_r(buf, &m->where));
 		}

@@ -136,7 +136,8 @@ static char *eval_func_macro(macro *m, char *args_str)
 			 * #define F(x) ...
 			 * F()
 			 */
-			CPP_WARN("empty argument list to single-argument macro \"%s\"",
+			CPP_WARN(WEMPTY_ARG,
+					"empty argument list to single-argument macro \"%s\"",
 					m->nam, args);
 			dynarray_add(&args, ustrdup(""));
 
@@ -213,7 +214,9 @@ static char *eval_func_macro(macro *m, char *args_str)
 								/* else we might have < ## < which gives << */
 								for(; *p; p++)
 									if(!iswordpart(*p)){
-										CPP_WARN("pasting \"%s\" and \"%s\" doesn't give a single token",
+										CPP_WARN(WPASTE,
+												"pasting \"%s\" and \"%s\" doesn't "
+												"give a single token",
 												old, neh);
 										break;
 									}
@@ -339,6 +342,7 @@ static char *eval_macro_r(macro *m, char *start, char **pat)
 		if(*open_b != '('){
 			/* not an invocation - return and also knock down the use-count */
 			macro_use(m, -1);
+			CPP_WARN(WUNCALLED_FN, "ignoring non-function instance of %s", m->nam);
 			return start;
 		}
 

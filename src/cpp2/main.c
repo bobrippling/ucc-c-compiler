@@ -66,7 +66,7 @@ char **cd_stack = NULL;
 int option_debug     = 0;
 int option_line_info = 1;
 
-enum wmode wmode = 0;
+enum wmode wmode = WWHITESPACE | WTRAILING | WEMPTY_ARG | WPASTE;
 
 enum comment_strip strip_comments = STRIP_ALL;
 
@@ -77,8 +77,14 @@ static const struct
 } warns[] = {
 	{ "all", "turn on all warnings", ~0U },
 	{ "traditional", "warn about # in the first column", WTRADITIONAL },
-	{ "undef", "warn about undefined macros in #if/elif", WUNDEF },
+	{ "undef", "warn about undefined macros in #if/elif/undef", WUNDEF },
 	{ "unused-macros", "warn about unused macros", WUNUSED },
+	{ "redef", "warn about redefining macros", WREDEF },
+	{ "whitespace", "warn about no-whitespace after #define func(a)", WWHITESPACE },
+	{ "trailing", "warn about tokens after #else/endif", WTRAILING },
+	{ "empty-arg", "warn on empty argument to single-arg macro", WEMPTY_ARG },
+	{ "paste", "warn when pasting doesn't make a token", WPASTE },
+	{ "uncalled-macro", "warn when a function-macro is mentioned without ()", WUNCALLED_FN },
 };
 
 #define ITER_WARNS(j) for(j = 0; j < sizeof(warns)/sizeof(*warns); j++)
