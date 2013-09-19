@@ -350,11 +350,14 @@ invalid:
 			funcargs *args = funcargs_new();
 			decl *df;
 
-			funcargs_empty(args); /* set up the funcargs as if it's "x()" - i.e. any args */
+			/* set up the funcargs as if it's "x()" - i.e. any args */
+			funcargs_empty(args);
 
-			type_func = type_ref_new_func(type_ref_new_type(type_new_primitive(type_int)), args);
+			type_func = type_ref_new_func(
+					type_ref_new_type(type_new_primitive(type_int)), args);
 
-			cc1_warn_at(&e->where, 0, WARN_IMPLICIT_FUNC, "implicit declaration of function \"%s\"", sp);
+			cc1_warn_at(&e->where, 0, WARN_IMPLICIT_FUNC,
+					"implicit declaration of function \"%s\"", sp);
 
 			df = decl_new();
 			df->ref = type_func;
