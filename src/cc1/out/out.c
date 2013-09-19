@@ -1053,12 +1053,12 @@ pop_const:
 					op, type_ref_is_signed(vtop->t),
 					&err);
 
-			UCC_ASSERT(!err, "const op err %s", err);
-
-			vpop();
-			vtop->type = V_CONST_I;
-			vtop->bits.val_i = eval;
-			goto out;
+			if(!err){
+				vpop();
+				vtop->type = V_CONST_I;
+				vtop->bits.val_i = eval;
+				goto out;
+			}
 		}
 	}
 
