@@ -277,35 +277,31 @@ static void io_setup(void)
 
 static void io_fin(int do_sections, const char *fname)
 {
-	int i;
-
-#if 0
 	if(do_sections){
+		int i;
+
 		if(fprintf(cc1_out, "\t.file \"%s\"\n", fname) < 0)
 			ccdie(0, "write to cc1_out:");
-	}
-#else
-	(void)fname;
-#endif
 
-	for(i = 0; i < NUM_SECTIONS; i++){
-		/* cat cc_out[i] to cc1_out, with section headers */
-		if(do_sections){
-			char buf[256];
-			long last = ftell(cc_out[i]);
+		for(i = 0; i < NUM_SECTIONS; i++){
+			/* cat cc_out[i] to cc1_out, with section headers */
+			if(do_sections){
+				char buf[256];
+				long last = ftell(cc_out[i]);
 
-			if(last == -1 || fseek(cc_out[i], 0, SEEK_SET) == -1)
-				ccdie(0, "seeking on section file %d:", i);
+				if(last == -1 || fseek(cc_out[i], 0, SEEK_SET) == -1)
+					ccdie(0, "seeking on section file %d:", i);
 
-			if(fprintf(cc1_out, ".section %s\n", section_names[i]) < 0)
-				ccdie(0, "write to cc1 output:");
-
-			while(fgets(buf, sizeof buf, cc_out[i]))
-				if(fputs(buf, cc1_out) == EOF)
+				if(fprintf(cc1_out, ".section %s\n", section_names[i]) < 0)
 					ccdie(0, "write to cc1 output:");
 
-			if(ferror(cc_out[i]))
-				ccdie(0, "read from section file %d:", i);
+				while(fgets(buf, sizeof buf, cc_out[i]))
+					if(fputs(buf, cc1_out) == EOF)
+						ccdie(0, "write to cc1 output:");
+
+				if(ferror(cc_out[i]))
+					ccdie(0, "read from section file %d:", i);
+			}
 		}
 	}
 

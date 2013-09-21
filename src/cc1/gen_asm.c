@@ -118,6 +118,8 @@ void gen_asm_global(decl *d)
 
 		out_func_epilogue(bb_end, d->ref);
 
+		bb_flush(bb_start, cc_out[SECTION_TEXT]);
+
 		UCC_ASSERT(out_vcount(bb_end) == 0, "non empty vstack after func gen");
 
 		free(offsets);
