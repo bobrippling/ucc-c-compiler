@@ -4,6 +4,18 @@
 #define WHERE_FMT "%s:%d:%d"
 #define WHERE_ARGS w->fname, w->line, w->chr + 1
 
+struct where *default_where(struct where *w)
+{
+	if(!w){
+		static struct where instead;
+
+		w = &instead;
+		where_current(w);
+	}
+
+	return w;
+}
+
 const char *where_str_r(char buf[WHERE_BUF_SIZ], const struct where *w)
 {
 	snprintf(buf, WHERE_BUF_SIZ, WHERE_FMT, WHERE_ARGS);

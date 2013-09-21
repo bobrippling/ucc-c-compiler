@@ -36,18 +36,6 @@ static const char *const colour_strs[] = {
 
 int warning_count = 0;
 
-static struct where *default_where(struct where *w)
-{
-	if(!w){
-		static struct where instead;
-
-		w = &instead;
-		where_current(w);
-	}
-
-	return w;
-}
-
 static void warn_show_line(const struct where *w)
 {
 	extern int show_current_line;
@@ -169,35 +157,6 @@ void die(const char *fmt, ...)
 	vdie(NULL, fmt, l); /* FIXME: this is called before current_fname etc is init'd */
 	va_end(l);
 	/* unreachable */
-}
-
-static void ice_msg(const char *pre,
-		const char *f, int line, const char *fn, const char *fmt, va_list l)
-{
-	const struct where *w = default_where(NULL);
-
-	fprintf(stderr, "%s: %s %s:%d (%s): ",
-			where_str(w), pre, f, line, fn);
-
-	vfprintf(stderr, fmt, l);
-	fputc('\n', stderr);
-}
-
-void ice(const char *f, int line, const char *fn, const char *fmt, ...)
-{
-	va_list l;
-	va_start(l, fmt);
-	ice_msg("ICE", f, line, fn, fmt, l);
-	va_end(l);
-	abort();
-}
-
-void icw(const char *f, int line, const char *fn, const char *fmt, ...)
-{
-	va_list l;
-	va_start(l, fmt);
-	ice_msg("ICW", f, line, fn, fmt, l);
-	va_end(l);
 }
 
 char *fline(FILE *f)

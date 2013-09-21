@@ -10,6 +10,7 @@ extern int warning_count;
 void warn_colour(int on, int err);
 
 #include "where.h"
+#include "assert.h"
 
 /* used by the *_had_error notification+continue code */
 void warn_at_print_error(struct where *, const char *fmt, ...);
@@ -25,12 +26,6 @@ extern void include_bt(FILE *); /* implemented by the program */
 char *fline(FILE *f);
 char *udirname(const char *);
 char *ext_replace(const char *str, const char *ext);
-
-void ice(const char *f, int line, const char *fn, const char *fmt, ...) ucc_printflike(4, 5) ucc_dead;
-void icw(const char *f, int line, const char *fn, const char *fmt, ...) ucc_printflike(4, 5);
-#define UCC_ASSERT(b, ...) do if(!(b)) ICE(__VA_ARGS__); while(0)
-#define ICE(...) ice(__FILE__, __LINE__, __func__, __VA_ARGS__)
-#define ICW(...) icw(__FILE__, __LINE__, __func__, __VA_ARGS__)
 
 char *terminating_quote(char *);
 
