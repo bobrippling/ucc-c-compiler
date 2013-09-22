@@ -401,6 +401,7 @@ static void read_number(enum base mode)
 				base_to_str(mode), peeknextchar());
 
 	bufferpos += nlen;
+	loc_now.chr += nlen - 1; /* -1 since we've already counted the 1st digit */
 
 	/* accept either 'U' 'L' or 'LL' as atomic parts (i.e. not LUL) */
 	/* fine using nextchar() since we peeknextchar() first */
