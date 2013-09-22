@@ -15,6 +15,7 @@
 #include "common.h"
 #include "out.h"
 #include "lbl.h"
+#include "basic_block.h"
 #include "../funcargs.h"
 
 
@@ -333,7 +334,7 @@ void impl_func_prologue_save_fp(basic_blk *bb)
 	 * but not interfere with argument locations */
 }
 
-static void reg_to_stack(basic_blk *bb, 
+static void reg_to_stack(basic_blk *bb,
 		const struct vreg *vr,
 		type_ref *ty, long where)
 {
@@ -344,7 +345,7 @@ static void reg_to_stack(basic_blk *bb,
 }
 
 void impl_func_prologue_save_call_regs(
-		basic_blk *bb, 
+		basic_blk *bb,
 		type_ref *rf, unsigned nargs,
 		int arg_offsets[/*nargs*/])
 {
@@ -440,7 +441,7 @@ pass_via_stack:
 	}
 }
 
-void impl_func_prologue_save_variadic(basic_blk *bb, type_ref *rf)
+basic_blk *impl_func_prologue_save_variadic(basic_blk *bb, type_ref *rf)
 {
 	const unsigned pws = platform_word_size();
 
@@ -485,15 +486,16 @@ void impl_func_prologue_save_variadic(basic_blk *bb, type_ref *rf)
 	}
 
 	{
-		char *vfin = out_label_code("va_skip_float");
 		type_ref *const ty_ch = type_ref_cached_CHAR();
+		basic_blk *b_join, *b_fpsav;
 
-		/* testb %al, %al ; jz vfin */
+		/* testb %al, %al ; jz ... */
 		vpush(bb, ty_ch);
 		v_set_reg_i(vtop, X86_64_REG_RAX);
 		out_push_zero(bb, ty_ch);
 		out_op(bb, op_eq);
-		out_jtrue(bb, vfin);
+
+		bb_split_new(bb, /* %al==0 */&b_join, /* %al!=0 */&b_fpsav);
 
 		for(i = 0; i < N_CALL_REGS_F; i++){
 			struct vreg vr;
@@ -502,12 +504,13 @@ void impl_func_prologue_save_variadic(basic_blk *bb, type_ref *rf)
 			vr.idx = i;
 
 			/* we go above the integral regs */
-			reg_to_stack(bb, &vr, ty_dbl,
+			reg_to_stack(b_fpsav, &vr, ty_dbl,
 					stk_top - (i * 2 + n_call_regs) * pws);
 		}
 
-		out_label(bb, vfin);
-		free(vfin);
+		bb_link_forward(b_fpsav, b_join);
+
+		return b_join;
 	}
 }
 
@@ -713,7 +716,8 @@ void impl_load(basic_blk *bb, struct vstack *from, const struct vreg *reg)
 
 			if(parity){
 				/* don't use out_label - this does a vstack flush */
-				impl_lbl(parity);
+				//impl_lbl(parity);
+				out_asm(bb, "%s:", parity); /* XXX XXX XXX HACK */
 				free(parity);
 			}
 			break;
@@ -1153,7 +1157,7 @@ void impl_op(basic_blk *bb, enum op_type op)
 	}
 }
 
-void impl_deref(basic_blk *bb, 
+void impl_deref(basic_blk *bb,
 		struct vstack *vp,
 		const struct vreg *to,
 		type_ref *tpointed_to)
@@ -1264,7 +1268,7 @@ void impl_cast_load(basic_blk *bb, struct vstack *vp, type_ref *small, type_ref 
 	}
 }
 
-static void x86_fp_conv(basic_blk *bb, 
+static void x86_fp_conv(basic_blk *bb,
 		struct vstack *vp,
 		struct vreg *r, type_ref *tto,
 		type_ref *int_ty,
@@ -1447,7 +1451,7 @@ void impl_jcond(basic_blk *bb, int true, const char *lbl)
 			if(true == !!vtop->bits.val_i)
 				out_asm(bb, "jmp %s", lbl);
 
-			out_comment(bb, 
+			out_comment(bb,
 					"constant jmp condition %" NUMERIC_FMT_D " %staken",
 					vtop->bits.val_i, vtop->bits.val_i ? "" : "not ");
 
@@ -1649,6 +1653,7 @@ void impl_undefined(basic_blk *bb)
 
 void impl_set_overflow(basic_blk *bb)
 {
+	(void)bb;
 	v_set_flag(vtop, flag_overflow, 0);
 }
 

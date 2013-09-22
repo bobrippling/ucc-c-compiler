@@ -183,6 +183,8 @@ basic_blk *gen_stmt_switch(stmt *s, basic_blk *bb)
 
 	out_comment(bb, "switch on this");
 
+	ICE("TODO: switch jumps");
+
 	for(titer = s->codes; titer && *titer; titer++){
 		stmt *cse = *titer;
 		numeric iv;
@@ -208,15 +210,15 @@ basic_blk *gen_stmt_switch(stmt *s, basic_blk *bb)
 			out_push_num(bb, cse->expr->tree_type, &iv);
 
 			out_op(bb, op_lt);
-			out_jtrue(bb, skip);
+			//out_jtrue(bb, skip);
 
 			out_dup(bb);
 			out_push_num(bb, cse->expr2->tree_type, &max);
 			out_op(bb, op_gt);
 
-			out_jfalse(bb, cse->expr->bits.ident.spel);
+			//out_jfalse(bb, cse->expr->bits.ident.spel);
 
-			out_label(bb, skip);
+			//out_label(bb, skip);
 			free(skip);
 
 		}else{
@@ -225,20 +227,20 @@ basic_blk *gen_stmt_switch(stmt *s, basic_blk *bb)
 
 			out_op(bb, op_eq);
 
-			out_jtrue(bb, cse->expr->bits.ident.spel);
+			//out_jtrue(bb, cse->expr->bits.ident.spel);
 		}
 	}
 
 	out_pop(bb); /* free the value we switched on asap */
 
 	out_push_lbl(bb, tdefault ? tdefault->expr->bits.ident.spel : s->lbl_break, 0);
-	out_jmp(bb);
+	//out_jmp(bb);
 
 	/* out-stack must be empty from here on */
 
 	bb = gen_stmt(s->lhs, bb); /* the actual code inside the switch */
 
-	out_label(bb, s->lbl_break);
+	//out_label(bb, s->lbl_break);
 
 	return bb;
 }

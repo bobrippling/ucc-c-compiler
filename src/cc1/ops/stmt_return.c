@@ -40,8 +40,9 @@ basic_blk *gen_stmt_return(stmt *s, basic_blk *bb)
 		out_pop_func_ret(bb, s->expr->tree_type);
 		out_comment(bb, "return");
 	}
-	out_push_lbl(bb, curfunc_lblfin, 0);
-	out_jmp(bb);
+	//out_push_lbl(bb, curfunc_lblfin, 0);
+	//out_jmp(bb);
+	ICE("TODO: return");
 	return bb;
 }
 

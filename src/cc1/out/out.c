@@ -12,6 +12,7 @@
 #include "vstack.h"
 #include "impl.h"
 #include "basic_block.h"
+#include "basic_block_int.h"
 
 #include "../../util/platform.h"
 #include "../cc1.h"
@@ -1345,18 +1346,12 @@ void out_call(basic_blk *bb, int nargs, type_ref *r_ret, type_ref *r_func)
 	v_set_reg(vtop, &vr);
 }
 
-static void out_comment_vsec(
-		enum section_type sec, const char *fmt, va_list l)
-{
-	impl_comment(sec, fmt, l);
-}
-
 void out_comment_sec(enum section_type sec, const char *fmt, ...)
 {
 	va_list l;
 
 	va_start(l, fmt);
-	out_comment_vsec(sec, fmt, l);
+	impl_comment_sec(sec, fmt, l);
 	va_end(l);
 }
 
@@ -1365,16 +1360,19 @@ void out_comment(basic_blk *bb, const char *fmt, ...)
 	va_list l;
 
 	va_start(l, fmt);
-	/* TODO: basic-block comment */
+	bb_addv(bb, fmt, l);
 	va_end(l);
 }
 
 basic_blk *out_func_prologue(
+		const char *spel,
 		type_ref *rf,
 		int stack_res, int nargs, int variadic,
 		int arg_offsets[])
 {
 	basic_blk *bb = bb_new();
+
+	bb_label(bb, spel);
 
 	UCC_ASSERT(stack_sz == 0, "non-empty stack for new func");
 
@@ -1386,7 +1384,7 @@ basic_blk *out_func_prologue(
 	impl_func_prologue_save_call_regs(bb, rf, nargs, arg_offsets);
 
 	if(variadic) /* save variadic call registers */
-		impl_func_prologue_save_variadic(bb, rf);
+		bb = impl_func_prologue_save_variadic(bb, rf);
 
 	/* setup "pointers" to the right place in the stack */
 	stack_variadic_offset = stack_sz - platform_word_size();

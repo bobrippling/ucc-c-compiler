@@ -22,8 +22,6 @@
 #include "out/basic_block.h"
 #include "gen_style.h"
 
-char *curfunc_lblfin; /* extern */
-
 basic_blk *gen_expr(expr *e, basic_blk *b_from)
 {
 	consty k;
@@ -93,7 +91,6 @@ void gen_asm_global(decl *d)
 		/* check .func_code, since it could be a block */
 		int nargs = 0, is_vari;
 		decl **aiter;
-		const char *sp;
 		int *offsets;
 		symtable *arg_symtab;
 		struct basic_blk *bb_start, *bb_end;
@@ -108,11 +105,8 @@ void gen_asm_global(decl *d)
 
 		offsets = nargs ? umalloc(nargs * sizeof *offsets) : NULL;
 
-		sp = decl_asm_spel(d);
-
-		out_label(sp);
-
-		bb_start = out_func_prologue(d->ref,
+		bb_start = out_func_prologue(
+				decl_asm_spel(d), d->ref,
 				d->func_code->symtab->auto_total_size,
 				nargs,
 				is_vari = type_ref_is_variadic_func(d->ref),
@@ -120,17 +114,12 @@ void gen_asm_global(decl *d)
 
 		assign_arg_offsets(arg_symtab->decls, offsets, bb_start);
 
-		curfunc_lblfin = out_label_code(sp);
-
 		bb_end = gen_stmt(d->func_code, bb_start);
-
-		out_label(bb_end, curfunc_lblfin);
 
 		out_func_epilogue(bb_end, d->ref);
 
 		UCC_ASSERT(out_vcount(bb_end) == 0, "non empty vstack after func gen");
 
-		free(curfunc_lblfin);
 		free(offsets);
 
 	}else{

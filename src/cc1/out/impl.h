@@ -11,7 +11,7 @@ void impl_reg_swp(basic_blk *, struct vstack *a, struct vstack *b);
 
 void impl_op(basic_blk *, enum op_type);
 void impl_op_unary(basic_blk *, enum op_type);
-void impl_deref(basic_blk *, 
+void impl_deref(basic_blk *,
 		struct vstack *vp,
 		const struct vreg *to,
 		type_ref *tpointed_to);
@@ -22,7 +22,7 @@ void impl_deref(basic_blk *,
 void impl_i2f(basic_blk *, struct vstack *, type_ref *t_i, type_ref *t_f);
 void impl_f2i(basic_blk *, struct vstack *, type_ref *t_f, type_ref *t_i);
 void impl_f2f(basic_blk *, struct vstack *, type_ref *from, type_ref *to);
-void impl_cast_load(basic_blk *, 
+void impl_cast_load(basic_blk *,
 		struct vstack *vp,
 		type_ref *small, type_ref *big,
 		int is_signed);
@@ -37,7 +37,7 @@ void impl_func_prologue_save_call_regs(
 		type_ref *rf, unsigned nargs,
 		int arg_offsets[/*nargs*/]);
 
-void impl_func_prologue_save_variadic(basic_blk *, type_ref *rf);
+basic_blk *impl_func_prologue_save_variadic(basic_blk *, type_ref *rf);
 void impl_func_epilogue(basic_blk *, type_ref *);
 
 void impl_undefined(basic_blk *);

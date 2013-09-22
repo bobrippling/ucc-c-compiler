@@ -6,20 +6,22 @@
 #include "basic_block.tdef.h"
 
 basic_blk *bb_new(void);
+basic_blk *bb_new_after(basic_blk *);
 
-basic_blk *bb_split(
-		basic_blk *exp,
-		basic_blk *pb_true,
-		basic_blk *pb_false);
+basic_blk_phi *bb_new_phi(void);
+basic_blk *bb_phi_next(basic_blk_phi *);
 
-basic_blk *bb_merge(basic_blk *, basic_blk *);
+void bb_split(basic_blk *exp, basic_blk *b_true, basic_blk *b_false);
+#define bb_split_new(exp, pbt, pbf) \
+	*pbt = bb_new(), *pbf = bb_new(), bb_split((exp), *pbt, *pbf)
 
-#  if 0
-void out_phi_pop_to(void *); /* put the current value into a phi-save area */
-void out_phi_join(void *);   /* join vtop and the phi-save area */
+void bb_phi_incoming(basic_blk_phi *to, basic_blk *from);
+void bb_link_forward(basic_blk *from, basic_blk *to);
 
-void out_jmp(void);
-void out_jtrue( const char *);
-#  endif
+void bb_pop_to(basic_blk *from, basic_blk *to);
+
+void bb_terminates(basic_blk *);
+
+void bb_flush(basic_blk *head, FILE *);
 
 #endif

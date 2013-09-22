@@ -35,7 +35,8 @@ basic_blk *gen_stmt_goto(stmt *s, basic_blk *bb)
 	else
 		out_push_lbl(bb, s->expr->bits.ident.spel, 0);
 
-	out_jmp(bb);
+	ICE("TODO: goto");
+
 	return bb;
 }
 

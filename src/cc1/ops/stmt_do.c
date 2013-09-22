@@ -3,6 +3,7 @@
 #include "ops.h"
 #include "stmt_do.h"
 #include "../out/lbl.h"
+#include "../out/basic_block.h"
 
 const char *str_stmt_do()
 {
@@ -16,21 +17,18 @@ void fold_stmt_do(stmt *s)
 
 basic_blk *gen_stmt_do(stmt *s, basic_blk *bb)
 {
-	char *begin = out_label_flow("do_start");
+	basic_blk *loop = bb_new(),
+	          *b_break = bb_new(),
+	          *loop_head = loop;
 
-	out_label(bb, begin);
-	bb = gen_stmt(s->lhs, bb);
+	bb_link_forward(bb, loop);
 
-	out_label(bb, s->lbl_continue);
-	bb = gen_expr(s->expr, bb);
+	loop = gen_stmt(s->lhs, loop);
+	loop = gen_expr(s->expr, loop);
 
-	out_jtrue(bb, begin);
+	bb_split(loop, loop_head, b_break);
 
-	out_label(bb, s->lbl_break);
-
-	free(begin);
-
-	return bb;
+	return b_break;
 }
 
 basic_blk *style_stmt_do(stmt *s, basic_blk *bb)

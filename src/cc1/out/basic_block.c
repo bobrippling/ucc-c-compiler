@@ -1,33 +1,45 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+
 #include "../../util/where.h"
+#include "../../util/alloc.h"
+#include "../../util/assert.h"
+#include "../../util/dynarray.h"
+
 #include "../data_structs.h"
 #include "../type_ref.h"
 
 #include "vstack.h"
 #include "basic_block.h"
+#include "basic_block_int.h"
 
 struct basic_blk
 {
 	enum bb_type
 	{
-		bb_norm, bb_split, bb_phi
+		bb_norm, bb_fork, bb_phi
 	} type;
 
-	const char **insns;
 	struct basic_blk *next;
+	char **insns;
 };
 
-struct basic_blk_split
+struct basic_blk_fork
 {
 	enum bb_type type;
-	struct basic_blk *cond, *btrue, *bfalse;
+	struct basic_blk *btrue, *bfalse;
 };
 
 struct basic_blk_phi
 {
 	enum bb_type type;
-	struct basic_blk **froms;
 	struct basic_blk *next;
+	struct basic_blk **incoming;
 };
+
+#define PHI_TO_NORMAL(phi) (basic_blk *)phi
+
 
 basic_blk *bb_new(void)
 {
@@ -36,39 +48,94 @@ basic_blk *bb_new(void)
 	return bb;
 }
 
-basic_blk *bb_split(
+basic_blk_phi *bb_new_phi(void)
+{
+	basic_blk_phi *phi = umalloc(sizeof *phi);
+	phi->type = bb_phi;
+	return phi;
+}
+
+basic_blk *bb_phi_next(basic_blk_phi *phi)
+{
+	if(!phi->next)
+		phi->next = bb_new();
+	return phi->next;
+}
+
+void bb_addv(basic_blk *bb, const char *fmt, va_list l)
+{
+	char *insn = ustrvprintf(fmt, l);
+
+	UCC_ASSERT(bb->type == bb_norm, "insn on non-normal block");
+
+	dynarray_add(&bb->insns, insn);
+}
+
+void bb_add(basic_blk *bb, const char *fmt, ...)
+{
+	va_list l;
+	va_start(l, fmt);
+	bb_addv(bb, fmt, l);
+	va_end(l);
+}
+
+void bb_pop_to(basic_blk *from, basic_blk *to)
+{
+	(void)from;
+	ICW("TODO");
+	bb_add(to, "TODO: pop_to");
+}
+
+void bb_terminates(basic_blk *bb)
+{
+	(void)bb;
+}
+
+void bb_split(
 		basic_blk *exp,
 		basic_blk *b_true,
 		basic_blk *b_false)
 {
-	basic_blk_split *bb_sp = umalloc(sizeof *bb_sp);
+	struct basic_blk_fork *fork = umalloc(sizeof *fork);
 
-	bb_sp->type = bb_split;
-	bb_sp->cond = exp;
-	bb_sp->btrue = b_true;
-	bb_sp->bfalse = b_false;
+	UCC_ASSERT(!exp->next, "can't split - already have a .next");
 
-	return bb_sp;
+	exp->next = (basic_blk *)fork;
+
+	fork->type = bb_fork;
+	fork->btrue = b_true, fork->bfalse = b_false;
 }
 
-basic_blk *bb_add_merge(basic_blk *to, basic_blk *from)
+void bb_link_forward(basic_blk *from, basic_blk *to)
 {
-	basic_blk_phi *phi;
-	if(to){
-		assert(to->type == bb_merge);
-		phi = (basic_blk_phi *)to;
-	}else{
-		phi = umalloc(sizeof *phi);
-		phi->type = basic_blk_phi;
-		to = (basic_blk *)phi;
-	}
-
-	dynarray_add(&phi->froms, from);
-
-	return to;
+	UCC_ASSERT(!from->next, "forward link present");
+	from->next = to;
 }
 
-void out_jmp(basic_blk *b_from, void)
+void bb_phi_incoming(basic_blk_phi *to, basic_blk *from)
+{
+	bb_link_forward(from, PHI_TO_NORMAL(to));
+
+	dynarray_add(&to->incoming, from);
+}
+
+void bb_flush(basic_blk *head, FILE *f)
+{
+
+}
+
+#if 0
+basic_blk *bb_add
+bb_addv
+bb_new_after
+bb_new_phi
+bb_phi_next
+bb_pop_to
+bb_terminates
+#endif
+
+#if 0
+void out_jmp(basic_blk *b_from)
 {
 	if(vtop > vstack){
 		/* flush the stack-val we need to generate before the jump */
@@ -76,27 +143,6 @@ void out_jmp(basic_blk *b_from, void)
 	}
 
 	impl_jmp();
-	vpop();
-}
-
-void out_jtrue(basic_blk *b_from, const char *lbl)
-{
-	impl_cond(1, lbl);
-
-	vpop();
-}
-
-void out_jfalse(basic_blk *b_from, const char *lbl)
-{
-	int cond = 0;
-
-	if(vtop->type == V_FLAG){
-		v_inv_cmp(&vtop->bits.flag);
-		cond = 1;
-	}
-
-	impl_jcond(cond, lbl);
-
 	vpop();
 }
 
@@ -130,3 +176,4 @@ void out_phi_join(basic_blk *b_from, void *vvphi)
 		memcpy_safe(vtop, vphi);
 	}
 }
+#endif

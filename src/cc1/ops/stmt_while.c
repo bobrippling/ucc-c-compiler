@@ -4,6 +4,7 @@
 #include "stmt_while.h"
 #include "stmt_if.h"
 #include "../out/lbl.h"
+#include "../out/basic_block.h"
 
 const char *str_stmt_while()
 {
@@ -30,22 +31,27 @@ void fold_stmt_while(stmt *s)
 
 basic_blk *gen_stmt_while(stmt *s, basic_blk *bb)
 {
-	out_label(bb, s->lbl_continue);
+  /*          +----------------+
+	 *          v                |
+	 * bb -> bb_exp ?-> bb_loop -^
+	 *              ?-> bb_break
+	 */
+	struct basic_blk *bb_exp, *bb_loop, *bb_break;
 
 	bb = flow_gen(s->flow, s->symtab, bb);
-	bb = gen_expr(s->expr, bb);
 
-	out_op_unary(bb, op_not);
-	out_jtrue(bb, s->lbl_break);
+	bb_exp = bb_new();
+	bb_link_forward(bb, bb_exp);
 
-	bb = gen_stmt(s->lhs, bb);
+	bb_split_new(
+			gen_expr(s->expr, bb_exp),
+			&bb_loop,
+			&bb_break);
 
-	out_push_lbl(bb, s->lbl_continue, 0);
-	out_jmp(bb);
+	bb_loop = gen_stmt(s->lhs, bb_loop);
+	bb_link_forward(bb_loop, bb_exp);
 
-	out_label(bb, s->lbl_break);
-
-	return bb;
+	return bb_break;
 }
 
 basic_blk *style_stmt_while(stmt *s, basic_blk *bb)

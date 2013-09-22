@@ -14,7 +14,7 @@ void fold_stmt_label(stmt *s)
 
 basic_blk *gen_stmt_label(stmt *s, basic_blk *bb)
 {
-	out_label(bb, s->expr->bits.ident.spel);
+	//out_label(bb, s->expr->bits.ident.spel);
 	bb = gen_stmt(s->lhs, bb); /* the code-part of the compound statement */
 
 	return bb;

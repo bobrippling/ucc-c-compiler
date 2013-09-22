@@ -15,6 +15,8 @@
 #include "../gen_asm.h"
 #include "../out/out.h"
 #include "../out/lbl.h"
+#include "../out/basic_block.h"
+
 #include "../pack.h"
 #include "../sue.h"
 #include "../funcargs.h"
@@ -172,8 +174,8 @@ static void va_arg_gen_read(
 		decl *const mem_overflow_arg_area,
 		basic_blk *b_from)
 {
-	char *lbl_stack = out_label_code("va_else");
-	char *lbl_fin   = out_label_code("va_fin");
+	struct basic_blk *b_reg, *b_stk, *b_after;
+	struct basic_blk_phi *b_join;
 
 	/* FIXME: this needs to reference x86_64::N_CALL_REGS_{I,F} */
 	const int fp = type_ref_is_floating(ty);
@@ -196,74 +198,67 @@ static void va_arg_gen_read(
 	out_deref(b_from); /* va, &gp_o, gp_o */
 	out_push_l(b_from, type_ref_cached_INT(), max_reg_args_sz);
 	out_op(b_from, op_lt); /* va, &gp_o, <cond> */
-	out_jfalse(b_from, lbl_stack);
+
+	bb_split_new(b_from, &b_reg, &b_stk);
 
 	/* register code */
-	out_dup(b_from); /* va, &gp_o, &gp_o */
-	out_deref(b_from); /* va, &gp_o, gp_o */
+	out_dup(b_reg); /* va, &gp_o, &gp_o */
+	out_deref(b_reg); /* va, &gp_o, gp_o */
 
 	/* increment either 8 for an integral, or 16 for a float argument
 	 * since xmm0 are 128-bit registers, aka 16 byte
 	 */
-	out_push_l(b_from, type_ref_cached_INT(), increment); /* pws */
-	out_op(b_from, op_plus); /* va, &gp_o, gp_o+ws */
+	out_push_l(b_reg, type_ref_cached_INT(), increment); /* pws */
+	out_op(b_reg, op_plus); /* va, &gp_o, gp_o+ws */
 
-	out_store(b_from); /* va, gp_o+ws */
-	out_push_l(b_from, type_ref_cached_INT(), increment); /* pws */
-	out_op(b_from, op_minus); /* va, gp_o */
-	out_change_type(b_from, type_ref_cached_LONG());
+	out_store(b_reg); /* va, gp_o+ws */
+	out_push_l(b_reg, type_ref_cached_INT(), increment); /* pws */
+	out_op(b_reg, op_minus); /* va, gp_o */
+	out_change_type(b_reg, type_ref_cached_LONG());
 
-	out_swap(b_from); /* gp_o, va */
-	out_push_l(b_from, type_ref_cached_LONG(), mem_reg_save_area->struct_offset);
-	out_op(b_from, op_plus); /* gp_o, &reg_save_area */
-	out_change_type(b_from, type_ref_cached_LONG_PTR());
-	out_deref(b_from);
-	out_swap(b_from);
-	out_op(b_from, op_plus); /* reg_save_area + gp_o */
+	out_swap(b_reg); /* gp_o, va */
+	out_push_l(b_reg, type_ref_cached_LONG(), mem_reg_save_area->struct_offset);
+	out_op(b_reg, op_plus); /* gp_o, &reg_save_area */
+	out_change_type(b_reg, type_ref_cached_LONG_PTR());
+	out_deref(b_reg);
+	out_swap(b_reg);
+	out_op(b_reg, op_plus); /* reg_save_area + gp_o */
 
-	out_push_lbl(b_from, lbl_fin, 0);
-	out_jmp(b_from);
-
-	/* stack code */
-	out_label(b_from, lbl_stack);
-
-	/* prepare for joining later */
-	out_phi_pop_to(b_from, NULL);
-
-	gen_expr(e->lhs, b_from);
+	/* --- stack code */
+	gen_expr(e->lhs, b_stk);
 	/* va */
-	out_change_type(b_from, type_ref_cached_VOID_PTR());
-	out_push_l(b_from, type_ref_cached_LONG(), mem_overflow_arg_area->struct_offset);
-	out_op(b_from, op_plus);
+	out_change_type(b_stk, type_ref_cached_VOID_PTR());
+	out_push_l(b_stk, type_ref_cached_LONG(), mem_overflow_arg_area->struct_offset);
+	out_op(b_stk, op_plus);
 	/* &overflow_a */
 
 	/*out_set_lvalue(); * overflow entry in the struct is an lvalue */
 
-	out_dup(b_from),
-		out_change_type(b_from, type_ref_cached_LONG_PTR()),
-		out_deref(b_from);
+	out_dup(b_stk),
+		out_change_type(b_stk, type_ref_cached_LONG_PTR()),
+		out_deref(b_stk);
 	/* &overflow_a, overflow_a */
 
 	/* XXX: pws will need changing if we jump directly to stack, e.g. passing a struct */
-	out_push_l(b_from, type_ref_cached_LONG(), ws);
-	out_op(b_from, op_plus);
+	out_push_l(b_stk, type_ref_cached_LONG(), ws);
+	out_op(b_stk, op_plus);
 
-	out_store(b_from);
+	out_store(b_stk);
 
-	out_push_l(b_from, type_ref_cached_LONG(), ws);
-	out_op(b_from, op_minus);
+	out_push_l(b_stk, type_ref_cached_LONG(), ws);
+	out_op(b_stk, op_minus);
 
 	/* ensure we match the other block's final result before the merge */
-	out_phi_join(b_from, NULL);
-
-	/* "merge" */
-	out_label(b_from, lbl_fin);
+	b_join = bb_new_phi();
+	bb_phi_incoming(b_join, b_reg);
+	bb_phi_incoming(b_join, b_stk);
+	b_after = bb_phi_next(b_join);
 
 	/* now have a pointer to the right memory address */
 	{
 		type_ref *r_tmp = type_ref_new_ptr(ty, qual_none);
-		out_change_type(b_from, r_tmp);
-		out_deref(b_from);
+		out_change_type(b_after, r_tmp);
+		out_deref(b_after);
 		type_ref_free_1(r_tmp);
 	}
 
@@ -287,9 +282,6 @@ static void va_arg_gen_read(
 	 * This problem exists in other code, such as &&-gen, but since we pop
 	 * and push immediately, it doesn't manifest itself.
 	 */
-
-	free(lbl_stack);
-	free(lbl_fin);
 }
 
 static basic_blk *builtin_gen_va_arg(expr *e, basic_blk *b_from)

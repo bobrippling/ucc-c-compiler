@@ -5,6 +5,7 @@
 #include "expr_if.h"
 #include "../sue.h"
 #include "../out/lbl.h"
+#include "../out/basic_block.h"
 
 const char *str_expr_if()
 {
@@ -152,39 +153,26 @@ void fold_expr_if(expr *e, symtable *stab)
 
 basic_blk *gen_expr_if(expr *e, basic_blk *bb)
 {
-	char *lblfin;
-
-	lblfin = out_label_code("ifexp_fi");
+	basic_blk_phi *fin = bb_new_phi();
+	basic_blk *b_t, *b_f;
 
 	bb = gen_expr(e->expr, bb);
 
+	bb_split_new(bb, &b_t, &b_f);
+
 	if(e->lhs){
-		char *lblelse = out_label_code("ifexp_else");
-
-		out_jfalse(bb, lblelse);
-
-		bb = gen_expr(e->lhs, bb);
-
-		out_push_lbl(bb, lblfin, 0);
-		out_jmp(bb);
-
-		out_label(bb, lblelse);
-		free(lblelse);
-
+		b_t = gen_expr(e->lhs, b_t);
 	}else{
-		out_dup(bb);
-
-		out_jtrue(bb, lblfin);
+		/* we need bb's top value in b_t */
+		bb_pop_to(bb, b_t);
 	}
 
-	out_pop(bb);
+	b_f = gen_expr(e->rhs, b_f);
 
-	bb = gen_expr(e->rhs, bb);
-	out_label(bb, lblfin);
+	bb_phi_incoming(fin, b_t);
+	bb_phi_incoming(fin, b_f);
 
-	free(lblfin);
-
-	return bb;
+	return bb_phi_next(fin);
 }
 
 basic_blk *gen_expr_str_if(expr *e, basic_blk *bb)

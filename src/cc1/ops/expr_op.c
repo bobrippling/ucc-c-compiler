@@ -709,26 +709,31 @@ basic_blk *gen_expr_str_op(expr *e, basic_blk *bb)
 	return bb;
 }
 
-static void op_shortcircuit(expr *e, basic_blk *bb)
+static basic_blk *op_shortcircuit(expr *e, basic_blk *bb)
 {
-	basic_blk *b_shortsc, *b_end;
+	const int flip = e->op == op_andsc;
+
+	basic_blk *b_t, *b_f;
+	basic_blk_phi *b_end;
 
 	bb = gen_expr(e->lhs, bb);
 	out_normalise(bb);
 
-	out_dup(bb);
+	b_t = bb_new(), b_f = bb_new();
 
-	b_shortsc = bb_new();
+	bb_split(bb,
+			flip ? b_t : b_f,
+			flip ? b_f : b_t);
 
-	b_shortsc = gen_expr(e->rhs, b_shortsc);
-	out_normalise(bb);
+	b_f = gen_expr(e->rhs, b_f);
+	out_normalise(b_f);
 
-	if(e->op == op_andsc)
-		bb_split(bb, b_shortsc, b_end);
-	else
-		bb_split(bb, b_end, b_shortsc);
-	/* always straight after... hmm... */
-	bb_merge(b_shortsc, b_end);
+
+	b_end = bb_new_phi();
+	bb_phi_incoming(b_end, b_t);
+	bb_phi_incoming(b_end, b_f);
+
+	return bb_phi_next(b_end);
 }
 
 basic_blk *gen_expr_op(expr *e, basic_blk *bb)
@@ -736,7 +741,7 @@ basic_blk *gen_expr_op(expr *e, basic_blk *bb)
 	switch(e->op){
 		case op_orsc:
 		case op_andsc:
-			op_shortcircuit(e, bb);
+			bb = op_shortcircuit(e, bb);
 			break;
 
 		case op_unknown:
@@ -758,12 +763,18 @@ basic_blk *gen_expr_op(expr *e, basic_blk *bb)
 				&& type_ref_is_integral(e->tree_type)
 				&& type_ref_is_signed(e->tree_type))
 				{
-					char *skip = out_label_code("trapv");
+					basic_blk *b_of, *b_cont;
+					basic_blk_phi *b_phi;
+
 					out_push_overflow(bb);
-					out_jfalse(bb, skip);
-					out_undefined(bb);
-					out_label(bb, skip);
-					free(skip);
+					bb_split_new(bb, &b_of, &b_cont);
+
+					out_undefined(b_of);
+					bb_terminates(b_of);
+
+					b_phi = bb_new_phi();
+					bb_phi_incoming(b_phi, b_cont);
+					bb = bb_phi_next(b_phi);
 				}
 			}else{
 				out_op_unary(bb, e->op);
@@ -802,4 +813,6 @@ basic_blk *gen_expr_style_op(expr *e, basic_blk *bb)
 		stylef("%s ", op_to_str(e->op));
 		bb = gen_expr(e->lhs, bb);
 	}
+
+	return bb;
 }

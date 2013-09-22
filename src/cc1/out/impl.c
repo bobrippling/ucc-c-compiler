@@ -7,52 +7,25 @@
 #include "vstack.h"
 #include "asm.h"
 #include "impl.h"
+#include "basic_block_int.h"
 
 #include "../cc1.h"
-
-static void out_asm2v(
-		enum section_type sec, enum p_opts opts,
-		const char *fmt, va_list l)
-{
-	FILE *f = cc_out[sec];
-
-	if((opts & P_NO_INDENT) == 0)
-		fputc('\t', f);
-
-	vfprintf(f, fmt, l);
-
-	if((opts & P_NO_NL) == 0)
-		fputc('\n', f);
-}
 
 void out_asm(basic_blk *bb, const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
-	//out_asmv(SECTION_TEXT, 0, fmt, l);
-	va_end(l);
-}
-
-static void out_asm2(
-		enum section_type sec, enum p_opts opts,
-		const char *fmt, ...)
-{
-	va_list l;
-	va_start(l, fmt);
-	out_asm2v(sec, opts, fmt, l);
+	bb_addv(bb, fmt, l);
 	va_end(l);
 }
 
 void impl_comment_sec(enum section_type sec, const char *fmt, va_list l)
 {
-	out_asm2(sec, P_NO_NL, "/* ");
-	out_asm2v(sec, P_NO_INDENT | P_NO_NL, fmt, l);
-	out_asm2(sec, P_NO_INDENT, " */");
-}
+	FILE *f = cc_out[sec];
 
-void impl_lbl(const char *lbl)
-{
-	out_asm2(SECTION_TEXT, P_NO_INDENT, "%s:", lbl);
+	fprintf(f, "\t/* ");
+	vfprintf(f, fmt, l);
+	fprintf(f, " */\n");
 }
 
 enum flag_cmp op_to_flag(enum op_type op)

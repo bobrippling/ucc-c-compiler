@@ -71,21 +71,25 @@ void fold_stmt_if(stmt *s)
 		fold_stmt(s->rhs);
 }
 
-struct basic_blk *gen_stmt_if(stmt *s, struct basic_blk *b_from)
+basic_blk *gen_stmt_if(stmt *s, basic_blk *bb)
 {
-	struct basic_blk *b_true, *b_false, *b_join;
+	struct basic_blk *b_true, *b_false, *b_end;
 
-	b_from = gen_expr(s->expr,
-			flow_gen(s->flow, s->symtab, b_from));
+	b_end = bb_new();
 
-	bb_split(b_from, &b_true, &b_false);
+	bb = gen_expr(s->expr, flow_gen(s->flow, s->symtab, bb));
+
+	bb_split_new(bb, &b_true, &b_false);
 
 	b_true = gen_stmt(s->lhs, b_true);
+	bb_link_forward(b_true, b_end);
 
-	if(s->rhs)
+	if(s->rhs){
 		b_false = gen_stmt(s->rhs, b_false);
+		bb_link_forward(b_false, b_end);
+	}
 
-	return bb_merge(b_true, b_false);
+	return b_end;
 }
 
 basic_blk *style_stmt_if(stmt *s, basic_blk *bb)

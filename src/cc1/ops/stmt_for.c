@@ -5,6 +5,7 @@
 #include "stmt_for.h"
 #include "stmt_code.h"
 #include "../out/lbl.h"
+#include "../out/basic_block.h"
 #include "../decl_init.h"
 
 const char *str_stmt_for()
@@ -38,7 +39,7 @@ void fold_stmt_for(stmt *s)
 
 basic_blk *gen_stmt_for(stmt *s, basic_blk *bb)
 {
-	char *lbl_test = out_label_flow("for_test");
+	struct basic_blk *b_start, *b_loop, *b_fin;
 
 	bb = flow_gen(s->flow, s->flow->for_init_symtab, bb);
 
@@ -50,29 +51,28 @@ basic_blk *gen_stmt_for(stmt *s, basic_blk *bb)
 		out_comment(bb, "for-init");
 	}
 
-	out_label(bb, lbl_test);
+	/* start of loop, after init */
+	b_start = bb;
+	b_loop = bb_new(), b_fin = bb_new();
+
 	if(s->flow->for_while){
 		bb = gen_expr(s->flow->for_while, bb);
-		out_jfalse(bb, s->lbl_break);
+
+		bb_split(bb, b_loop, b_fin);
 	}
 
-	bb = gen_stmt(s->lhs, bb);
-	out_label(bb, s->lbl_continue);
+	bb = gen_stmt(s->lhs, b_loop);
 	if(s->flow->for_inc){
-		bb = gen_expr(s->flow->for_inc, bb);
+		b_loop = gen_expr(s->flow->for_inc, b_loop);
 
 		out_pop(bb);
 		out_comment(bb, "unused for inc");
+
+		bb_link_forward(b_loop, b_start); /* i++, then check */
 	}
 
-	out_push_lbl(bb, lbl_test, 0);
-	out_jmp(bb);
 
-	out_label(bb, s->lbl_break);
-
-	free(lbl_test);
-
-	return bb;
+	return b_fin;
 }
 
 basic_blk *style_stmt_for(stmt *s, basic_blk *bb)
