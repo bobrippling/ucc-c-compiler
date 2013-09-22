@@ -1360,7 +1360,7 @@ void out_comment(basic_blk *bb, const char *fmt, ...)
 	va_list l;
 
 	va_start(l, fmt);
-	bb_addv(bb, fmt, l);
+	bb_commentv(bb, fmt, l);
 	va_end(l);
 }
 

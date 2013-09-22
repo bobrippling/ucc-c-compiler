@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <string.h>
 
 #include "../../util/where.h"
 #include "../../util/alloc.h"
@@ -71,6 +72,22 @@ void bb_addv(basic_blk *bb, const char *fmt, va_list l)
 	dynarray_add(&bb->insns, insn);
 }
 
+void bb_commentv(basic_blk *bb, const char *fmt, va_list l)
+{
+	char **plast;
+	size_t len;
+
+	bb_addv(bb, fmt, l);
+
+	plast = &bb->insns[dynarray_count(bb->insns)-1];
+
+	len = strlen(*plast);
+	*plast = urealloc1(*plast, len + 3); /* \0, "# " */
+	memmove(*plast + 2, *plast, len + 2);
+
+	memcpy(*plast, "# ", 2);
+}
+
 void bb_add(basic_blk *bb, const char *fmt, ...)
 {
 	va_list l;
@@ -119,20 +136,41 @@ void bb_phi_incoming(basic_blk_phi *to, basic_blk *from)
 	dynarray_add(&to->incoming, from);
 }
 
-void bb_flush(basic_blk *head, FILE *f)
+static void bb_flush_fork(struct basic_blk_fork *head, FILE *f)
 {
-
+	fprintf(f, "/* TODO: fork on ^ */\n");
+	fprintf(f, "# true case:\n");
+	bb_flush(head->btrue, f);
+	fprintf(f, "# false case:\n");
+	bb_flush(head->bfalse, f);
+	fprintf(f, "# fork end\n");
 }
 
-#if 0
-basic_blk *bb_add
-bb_addv
-bb_new_after
-bb_new_phi
-bb_phi_next
-bb_pop_to
-bb_terminates
-#endif
+void bb_flush(basic_blk *head, FILE *f)
+{
+	if(!head)
+		return;
+
+	switch(head->type){
+		case bb_norm:
+		{
+			char **i;
+			for(i = head->insns; i && *i; i++)
+				fprintf(f, "%s\n", *i);
+			bb_flush(head->next, f);
+			break;
+		}
+
+		case bb_fork:
+			bb_flush_fork((struct basic_blk_fork *)head, f);
+			break;
+
+		case bb_phi:
+			fprintf(f, "/* TODO: phi node */\n", head->type);
+			bb_flush(((struct basic_blk_phi *)head)->next, f);
+			break;
+	}
+}
 
 #if 0
 void out_jmp(basic_blk *b_from)
