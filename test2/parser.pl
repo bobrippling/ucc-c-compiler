@@ -25,8 +25,9 @@ sub parse_warnings
 			};
 			push @warnings, $w;
 
-			if($i + 1 < @_ && $_[$i + 1] =~ /^ *"(.*)"/){
-				$w->{quote} = $1;
+			# check for ..."quote"...
+			if($i + 1 < @_ && $_[$i + 1] =~ /^ *(\.\.\.)?"(.*)"/){
+				$w->{quote} = $2;
 				$i++;
 			}
 			if($i + 1 < @_ && $_[$i + 1] =~ /^( +)\^/){
