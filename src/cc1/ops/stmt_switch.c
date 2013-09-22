@@ -142,7 +142,7 @@ void fold_stmt_switch(stmt *s)
 
 	flow_fold(s->flow, &stab);
 
-	s->lbl_break = out_label_flow(b_from, "switch");
+	s->lbl_break = out_label_flow("switch");
 
 	FOLD_EXPR(s->expr, stab);
 
@@ -173,15 +173,15 @@ void fold_stmt_switch(stmt *s)
 	}
 }
 
-void gen_stmt_switch(stmt *s)
+basic_blk *gen_stmt_switch(stmt *s, basic_blk *bb)
 {
 	stmt **titer, *tdefault;
 
 	tdefault = NULL;
 
-	gen_expr(s->expr);
+	bb = gen_expr(s->expr, bb);
 
-	out_comment(b_from, "switch on this");
+	out_comment(bb, "switch on this");
 
 	for(titer = s->codes; titer && *titer; titer++){
 		stmt *cse = *titer;
@@ -198,55 +198,58 @@ void gen_stmt_switch(stmt *s)
 				"don't handle unsigned yet");
 
 		if(stmt_kind(cse, case_range)){
-			char *skip = out_label_code(b_from, "range_skip");
+			char *skip = out_label_code("range_skip");
 			numeric max;
 
-			/* TODO: proper signed/unsiged format - out_op(b_from) */
+			/* TODO: proper signed/unsiged format - out_op(bb) */
 			const_fold_integral(cse->expr2, &max);
 
-			out_dup(b_from);
-			out_push_num(b_from, cse->expr->tree_type, &iv);
+			out_dup(bb);
+			out_push_num(bb, cse->expr->tree_type, &iv);
 
-			out_op(b_from, op_lt);
-			out_jtrue(b_from, skip);
+			out_op(bb, op_lt);
+			out_jtrue(bb, skip);
 
-			out_dup(b_from);
-			out_push_num(b_from, cse->expr2->tree_type, &max);
-			out_op(b_from, op_gt);
+			out_dup(bb);
+			out_push_num(bb, cse->expr2->tree_type, &max);
+			out_op(bb, op_gt);
 
-			out_jfalse(b_from, cse->expr->bits.ident.spel);
+			out_jfalse(bb, cse->expr->bits.ident.spel);
 
-			out_label(b_from, skip);
+			out_label(bb, skip);
 			free(skip);
 
 		}else{
-			out_dup(b_from);
-			out_push_num(b_from, cse->expr->tree_type, &iv);
+			out_dup(bb);
+			out_push_num(bb, cse->expr->tree_type, &iv);
 
-			out_op(b_from, op_eq);
+			out_op(bb, op_eq);
 
-			out_jtrue(b_from, cse->expr->bits.ident.spel);
+			out_jtrue(bb, cse->expr->bits.ident.spel);
 		}
 	}
 
-	out_pop(b_from); /* free the value we switched on asap */
+	out_pop(bb); /* free the value we switched on asap */
 
-	out_push_lbl(b_from, tdefault ? tdefault->expr->bits.ident.spel : s->lbl_break, 0);
-	out_jmp(b_from);
+	out_push_lbl(bb, tdefault ? tdefault->expr->bits.ident.spel : s->lbl_break, 0);
+	out_jmp(bb);
 
 	/* out-stack must be empty from here on */
 
-	gen_stmt(s->lhs); /* the actual code inside the switch */
+	bb = gen_stmt(s->lhs, bb); /* the actual code inside the switch */
 
-	out_label(b_from, s->lbl_break);
+	out_label(bb, s->lbl_break);
+
+	return bb;
 }
 
-void style_stmt_switch(stmt *s)
+basic_blk *style_stmt_switch(stmt *s, basic_blk *bb)
 {
 	stylef("switch(");
-	gen_expr(s->expr);
+	bb = gen_expr(s->expr, bb);
 	stylef(")");
-	gen_stmt(s->lhs);
+	bb = gen_stmt(s->lhs, bb);
+	return bb;
 }
 
 static int switch_passable(stmt *s)

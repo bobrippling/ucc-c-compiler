@@ -293,9 +293,9 @@ void fold_expr_cast(expr *e, symtable *stab)
 	fold_expr_cast_descend(e, stab, 1);
 }
 
-void gen_expr_cast(expr *e)
+basic_blk *gen_expr_cast(expr *e, basic_blk *bb)
 {
-	gen_expr(e->expr);
+	bb = gen_expr(e->expr, bb);
 
 	if(IS_RVAL_CAST(e)){
 		/*out_to_rvalue();*/
@@ -307,9 +307,9 @@ void gen_expr_cast(expr *e)
 
 		/* return if cast-to-void */
 		if(type_ref_is_void(tto)){
-			out_change_type(b_from, tto);
-			out_comment(b_from, "cast to void");
-			return;
+			out_change_type(bb, tto);
+			out_comment(bb, "cast to void");
+			goto out;
 		}
 
 		if(fopt_mode & FOPT_PLAN9_EXTENSIONS){
@@ -327,9 +327,9 @@ void gen_expr_cast(expr *e)
 						type_ref_to_str_r(buf, tto),
 						mem->struct_offset);*/
 
-					out_change_type(b_from, type_ref_cached_VOID_PTR());
-					out_push_l(b_from, type_ref_cached_INTPTR_T(), mem->struct_offset);
-					out_op(b_from, op_plus);
+					out_change_type(bb, type_ref_cached_VOID_PTR());
+					out_push_l(bb, type_ref_cached_INTPTR_T(), mem->struct_offset);
+					out_op(bb, op_plus);
 				}
 			}
 		}
@@ -338,18 +338,23 @@ void gen_expr_cast(expr *e)
 		 * 5.3 -> 5, then normalise 5, instead of 5.3 != 0.0
 		 */
 		if(type_ref_is_type(tto, type__Bool)) /* 1 or 0 */
-			out_normalise(b_from);
+			out_normalise(bb);
 
-		out_cast(b_from, tto);
+		out_cast(bb, tto);
 	}
+
+out:
+	return bb;
 }
 
-void gen_expr_str_cast(expr *e)
+basic_blk *gen_expr_str_cast(expr *e, basic_blk *bb)
 {
 	idt_printf("%scast expr:\n", IS_RVAL_CAST(e) ? "rvalue-" : "");
 	gen_str_indent++;
 	print_expr(e->expr);
 	gen_str_indent--;
+
+	return bb;
 }
 
 void mutate_expr_cast(expr *e)
@@ -373,8 +378,10 @@ expr *expr_new_cast_rval(expr *sub)
 	return e;
 }
 
-void gen_expr_style_cast(expr *e)
+basic_blk *gen_expr_style_cast(expr *e, basic_blk *bb)
 {
 	stylef("(%s)", type_ref_to_str(e->bits.tref));
-	gen_expr(e->expr);
+	bb = gen_expr(e->expr, bb);
+
+	return bb;
 }

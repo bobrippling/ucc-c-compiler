@@ -101,7 +101,7 @@ void gen_code_decls(symtable *stab)
 	}
 }
 
-void gen_stmt_code(stmt *s)
+basic_blk *gen_stmt_code(stmt *s, basic_blk *bb)
 {
 	stmt **titer;
 
@@ -109,10 +109,12 @@ void gen_stmt_code(stmt *s)
 	gen_code_decls(s->symtab);
 
 	for(titer = s->codes; titer && *titer; titer++)
-		gen_stmt(*titer);
+		bb = gen_stmt(*titer, bb);
+
+	return bb;
 }
 
-void style_stmt_code(stmt *s)
+basic_blk *style_stmt_code(stmt *s, basic_blk *bb)
 {
 	stmt **i_s;
 	decl **i_d;
@@ -123,9 +125,11 @@ void style_stmt_code(stmt *s)
 		gen_style_decl(*i_d);
 
 	for(i_s = s->codes; i_s && *i_s; i_s++)
-		gen_stmt(*i_s);
+		bb = gen_stmt(*i_s, bb);
 
 	stylef("\n}\n");
+
+	return bb;
 }
 
 static int code_passable(stmt *s)

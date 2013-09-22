@@ -694,7 +694,7 @@ void fold_expr_op(expr *e, symtable *stab)
 	}
 }
 
-void gen_expr_str_op(expr *e)
+basic_blk *gen_expr_str_op(expr *e, basic_blk *bb)
 {
 	idt_printf("op: %s\n", op_to_str(e->op));
 	gen_str_indent++;
@@ -705,68 +705,72 @@ void gen_expr_str_op(expr *e)
 #undef PRINT_IF
 
 	gen_str_indent--;
+
+	return bb;
 }
 
-static void op_shortcircuit(expr *e, basic_blk *from)
+static void op_shortcircuit(expr *e, basic_blk *bb)
 {
 	basic_blk *b_shortsc, *b_end;
 
-	from = gen_expr(e->lhs, from);
-	out_normalise(b_from);
+	bb = gen_expr(e->lhs, bb);
+	out_normalise(bb);
 
-	out_dup(b_from);
+	out_dup(bb);
 
 	b_shortsc = bb_new();
 
 	b_shortsc = gen_expr(e->rhs, b_shortsc);
-	out_normalise(b_from);
+	out_normalise(bb);
 
 	if(e->op == op_andsc)
-		bb_split(b_from, b_shortsc, b_end);
+		bb_split(bb, b_shortsc, b_end);
 	else
-		bb_split(b_from, b_end, b_shortsc);
+		bb_split(bb, b_end, b_shortsc);
 	/* always straight after... hmm... */
 	bb_merge(b_shortsc, b_end);
 }
 
-void gen_expr_op(expr *e)
+basic_blk *gen_expr_op(expr *e, basic_blk *bb)
 {
 	switch(e->op){
 		case op_orsc:
 		case op_andsc:
-			op_shortcircuit(e);
+			op_shortcircuit(e, bb);
 			break;
 
 		case op_unknown:
 			ICE("asm_operate: unknown operator got through");
 
 		default:
-			gen_expr(e->lhs);
+			bb = gen_expr(e->lhs, bb);
 
 			if(e->rhs){
-				gen_expr(e->rhs);
+				bb = gen_expr(e->rhs, bb);
 
-				out_op(b_from, e->op);
+				out_op(bb, e->op);
 
 				/* make sure we get the pointer, for example 2+(int *)p
 				 * or the int, e.g. (int *)a && (int *)b -> int */
-				out_change_type(b_from, e->tree_type);
+				out_change_type(bb, e->tree_type);
 
 				if(fopt_mode & FOPT_TRAPV
 				&& type_ref_is_integral(e->tree_type)
 				&& type_ref_is_signed(e->tree_type))
 				{
-					char *skip = out_label_code(b_from, "trapv");
-					out_push_overflow(b_from);
-					out_jfalse(b_from, skip);
-					out_undefined(b_from);
-					out_label(b_from, skip);
+					char *skip = out_label_code("trapv");
+					out_push_overflow(bb);
+					out_jfalse(bb, skip);
+					out_undefined(bb);
+					out_label(bb, skip);
 					free(skip);
 				}
 			}else{
-				out_op_unary(b_from, e->op);
+				out_op_unary(bb, e->op);
 			}
 	}
+
+	return bb;
 }
 
 void mutate_expr_op(expr *e)
@@ -788,14 +792,14 @@ expr *expr_new_op2(enum op_type o, expr *l, expr *r)
 	return e;
 }
 
-void gen_expr_style_op(expr *e)
+basic_blk *gen_expr_style_op(expr *e, basic_blk *bb)
 {
 	if(e->rhs){
-		gen_expr(e->lhs);
+		bb = gen_expr(e->lhs, bb);
 		stylef(" %s ", op_to_str(e->op));
-		gen_expr(e->rhs);
+		bb = gen_expr(e->rhs, bb);
 	}else{
 		stylef("%s ", op_to_str(e->op));
-		gen_expr(e->lhs);
+		bb = gen_expr(e->lhs, bb);
 	}
 }

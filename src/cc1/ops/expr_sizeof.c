@@ -105,16 +105,18 @@ static void const_expr_sizeof(expr *e, consty *k)
 	k->type = CONST_NUM;
 }
 
-void gen_expr_sizeof(expr *e)
+basic_blk *gen_expr_sizeof(expr *e, basic_blk *bb)
 {
 	type_ref *r = SIZEOF_WHAT(e);
 
-	out_push_l(b_from, e->tree_type, SIZEOF_SIZE(e));
+	out_push_l(bb, e->tree_type, SIZEOF_SIZE(e));
 
-	out_comment(b_from, "sizeof %s%s", e->expr ? "" : "type ", type_ref_to_str(r));
+	out_comment(bb, "sizeof %s%s", e->expr ? "" : "type ", type_ref_to_str(r));
+
+	return bb;
 }
 
-void gen_expr_str_sizeof(expr *e)
+basic_blk *gen_expr_str_sizeof(expr *e, basic_blk *bb)
 {
 	if(e->expr){
 		idt_printf("sizeof expr:\n");
@@ -125,6 +127,8 @@ void gen_expr_str_sizeof(expr *e)
 
 	if(e->what_of == what_sizeof)
 		idt_printf("size = %d\n", SIZEOF_SIZE(e));
+
+	return bb;
 }
 
 void mutate_expr_sizeof(expr *e)
@@ -148,14 +152,16 @@ expr *expr_new_sizeof_expr(expr *sizeof_this, enum what_of what_of)
 	return e;
 }
 
-void gen_expr_style_sizeof(expr *e)
+basic_blk *gen_expr_style_sizeof(expr *e, basic_blk *bb)
 {
 	stylef("%s(", sizeof_what(e->what_of));
 
 	if(e->expr)
-		gen_expr(e->expr);
+		bb = gen_expr(e->expr, bb);
 	else
 		stylef("%s", type_ref_to_str(e->bits.size_of.of_type));
 
 	stylef(")");
+
+	return bb;
 }

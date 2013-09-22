@@ -24,24 +24,28 @@ void fold_expr_deref(expr *e, symtable *stab)
 	e->tree_type = type_ref_ptr_depth_dec(ptr->tree_type, &e->where);
 }
 
-static void gen_expr_deref_lea(expr *e)
+static basic_blk *gen_expr_deref_lea(expr *e, basic_blk *bb)
 {
 	/* a dereference */
-	gen_expr(expr_deref_what(e)); /* skip over the *() bit */
+	bb = gen_expr(expr_deref_what(e), bb); /* skip over the *() bit */
+
+	return bb;
 }
 
-void gen_expr_deref(expr *e)
+basic_blk *gen_expr_deref(expr *e, basic_blk *bb)
 {
-	gen_expr_deref_lea(e);
-	out_deref(b_from);
+	bb = gen_expr_deref_lea(e, bb);
+	out_deref(bb);
+	return bb;
 }
 
-void gen_expr_str_deref(expr *e)
+basic_blk *gen_expr_str_deref(expr *e, basic_blk *bb)
 {
 	idt_printf("deref, size: %s\n", type_ref_to_str(e->tree_type));
 	gen_str_indent++;
 	print_expr(expr_deref_what(e));
 	gen_str_indent--;
+	return bb;
 }
 
 static void const_expr_deref(expr *e, consty *k)
@@ -74,9 +78,10 @@ expr *expr_new_deref(expr *of)
 	return e;
 }
 
-void gen_expr_style_deref(expr *e)
+basic_blk *gen_expr_style_deref(expr *e, basic_blk *bb)
 {
 	stylef("*(");
-	gen_expr(expr_deref_what(e));
+	bb = gen_expr(expr_deref_what(e), bb);
 	stylef(")");
+	return bb;
 }

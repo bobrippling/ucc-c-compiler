@@ -113,46 +113,50 @@ err:
 	}
 }
 
-static void gen_expr_struct_lea(expr *e)
+static basic_blk *gen_expr_struct_lea(expr *e, basic_blk *bb)
 {
 	ASSERT_NOT_DOT();
 
-	gen_expr(e->lhs);
+	bb = gen_expr(e->lhs, bb);
 
-	out_change_type(b_from, type_ref_cached_VOID_PTR()); /* cast for void* arithmetic */
-	out_push_l(b_from, type_ref_cached_INTPTR_T(), struct_offset(e)); /* integral offset */
-	out_op(b_from, op_plus);
+	out_change_type(bb, type_ref_cached_VOID_PTR()); /* cast for void* arithmetic */
+	out_push_l(bb, type_ref_cached_INTPTR_T(), struct_offset(e)); /* integral offset */
+	out_op(bb, op_plus);
 
 	if(fopt_mode & FOPT_VERBOSE_ASM)
-		out_comment(b_from, "struct member %s", e->bits.struct_mem.d->spel);
+		out_comment(bb, "struct member %s", e->bits.struct_mem.d->spel);
 
 
 	{
 		decl *d = e->bits.struct_mem.d;
 
-		out_change_type(b_from, type_ref_ptr_depth_inc(d->ref));
+		out_change_type(bb, type_ref_ptr_depth_inc(d->ref));
 
-		/* set if we're a bitfield - out_deref(b_from) and out_store()
+		/* set if we're a bitfield - out_deref(bb) and out_store()
 		 * i.e. read + write then handle this
 		 */
 		if(d->field_width){
 			unsigned w = const_fold_val_i(d->field_width);
-			out_set_bitfield(b_from, d->struct_offset_bitfield, w);
-			out_comment(b_from, "struct bitfield lea");
+			out_set_bitfield(bb, d->struct_offset_bitfield, w);
+			out_comment(bb, "struct bitfield lea");
 		}
 	}
+
+	return bb;
 }
 
-void gen_expr_struct(expr *e)
+basic_blk *gen_expr_struct(expr *e, basic_blk *bb)
 {
 	ASSERT_NOT_DOT();
 
-	gen_expr_struct_lea(e);
+	bb = gen_expr_struct_lea(e, bb);
 
-	out_deref(b_from);
+	out_deref(bb);
+
+	return bb;
 }
 
-void gen_expr_str_struct(expr *e)
+basic_blk *gen_expr_str_struct(expr *e, basic_blk *bb)
 {
 	decl *mem = e->bits.struct_mem.d;
 
@@ -167,6 +171,8 @@ void gen_expr_str_struct(expr *e)
 	gen_str_indent++;
 	print_expr(e->lhs);
 	gen_str_indent--;
+
+	return bb;
 }
 
 static void fold_const_expr_struct(expr *e, consty *k)
@@ -234,8 +240,10 @@ expr *expr_new_struct_mem(expr *sub, int dot, decl *d)
 	return e;
 }
 
-void gen_expr_style_struct(expr *e)
+basic_blk *gen_expr_style_struct(expr *e, basic_blk *bb)
 {
-	gen_expr(e->lhs);
+	bb = gen_expr(e->lhs, bb);
 	stylef("->%s", e->bits.struct_mem.d->spel);
+
+	return bb;
 }

@@ -150,42 +150,44 @@ void fold_expr_if(expr *e, symtable *stab)
 }
 
 
-void gen_expr_if(expr *e)
+basic_blk *gen_expr_if(expr *e, basic_blk *bb)
 {
 	char *lblfin;
 
-	lblfin = out_label_code(b_from, "ifexp_fi");
+	lblfin = out_label_code("ifexp_fi");
 
-	gen_expr(e->expr);
+	bb = gen_expr(e->expr, bb);
 
 	if(e->lhs){
-		char *lblelse = out_label_code(b_from, "ifexp_else");
+		char *lblelse = out_label_code("ifexp_else");
 
-		out_jfalse(b_from, lblelse);
+		out_jfalse(bb, lblelse);
 
-		gen_expr(e->lhs);
+		bb = gen_expr(e->lhs, bb);
 
-		out_push_lbl(b_from, lblfin, 0);
-		out_jmp(b_from);
+		out_push_lbl(bb, lblfin, 0);
+		out_jmp(bb);
 
-		out_label(b_from, lblelse);
+		out_label(bb, lblelse);
 		free(lblelse);
 
 	}else{
-		out_dup(b_from);
+		out_dup(bb);
 
-		out_jtrue(b_from, lblfin);
+		out_jtrue(bb, lblfin);
 	}
 
-	out_pop(b_from);
+	out_pop(bb);
 
-	gen_expr(e->rhs);
-	out_label(b_from, lblfin);
+	bb = gen_expr(e->rhs, bb);
+	out_label(bb, lblfin);
 
 	free(lblfin);
+
+	return bb;
 }
 
-void gen_expr_str_if(expr *e)
+basic_blk *gen_expr_str_if(expr *e, basic_blk *bb)
 {
 	idt_printf("if expression:\n");
 	gen_str_indent++;
@@ -207,6 +209,8 @@ void gen_expr_str_if(expr *e)
 #undef SUB_PRINT
 
 	gen_str_indent--;
+
+	return bb;
 }
 
 void mutate_expr_if(expr *e)
@@ -221,12 +225,13 @@ expr *expr_new_if(expr *test)
 	return e;
 }
 
-void gen_expr_style_if(expr *e)
+basic_blk *gen_expr_style_if(expr *e, basic_blk *bb)
 {
-	gen_expr(e->expr);
+	bb = gen_expr(e->expr, bb);
 	stylef(" ? ");
 	if(e->lhs)
-		gen_expr(e->lhs);
+		bb = gen_expr(e->lhs, bb);
 	stylef(" : ");
-	gen_expr(e->rhs);
+	bb = gen_expr(e->rhs, bb);
+	return bb;
 }

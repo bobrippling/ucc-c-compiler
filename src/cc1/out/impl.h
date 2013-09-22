@@ -1,47 +1,49 @@
 #ifndef IMPL_H
 #define IMPL_H
 
-void impl_store(struct vstack *from, struct vstack *to);
-void impl_load(struct vstack *from, const struct vreg *reg);
-void impl_load_iv(struct vstack *from);
-void impl_load_fp(struct vstack *from);
+void impl_store(basic_blk *, struct vstack *from, struct vstack *to);
+void impl_load(basic_blk *, struct vstack *from, const struct vreg *reg);
+void impl_load_iv(basic_blk *, struct vstack *from);
+void impl_load_fp(basic_blk *, struct vstack *from);
 
-void impl_reg_cp(struct vstack *from, const struct vreg *r);
-void impl_reg_swp(struct vstack *a, struct vstack *b);
+void impl_reg_cp(basic_blk *, struct vstack *from, const struct vreg *r);
+void impl_reg_swp(basic_blk *, struct vstack *a, struct vstack *b);
 
-void impl_op(enum op_type);
-void impl_op_unary(enum op_type);
-void impl_deref(
+void impl_op(basic_blk *, enum op_type);
+void impl_op_unary(basic_blk *, enum op_type);
+void impl_deref(basic_blk *, 
 		struct vstack *vp,
 		const struct vreg *to,
 		type_ref *tpointed_to);
 
-void impl_jmp(void);
-void impl_jcond(int true, const char *lbl);
+//void impl_jmp(void);
+//void impl_jcond(basic_blk *, int true, const char *lbl);
 
-void impl_i2f(struct vstack *, type_ref *t_i, type_ref *t_f);
-void impl_f2i(struct vstack *, type_ref *t_f, type_ref *t_i);
-void impl_f2f(struct vstack *, type_ref *from, type_ref *to);
-void impl_cast_load(
+void impl_i2f(basic_blk *, struct vstack *, type_ref *t_i, type_ref *t_f);
+void impl_f2i(basic_blk *, struct vstack *, type_ref *t_f, type_ref *t_i);
+void impl_f2f(basic_blk *, struct vstack *, type_ref *from, type_ref *to);
+void impl_cast_load(basic_blk *, 
 		struct vstack *vp,
 		type_ref *small, type_ref *big,
 		int is_signed);
 
-void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func);
-void impl_pop_func_ret(type_ref *r);
+void impl_call(basic_blk *, const int nargs, type_ref *r_ret, type_ref *r_func);
+void impl_pop_func_ret(basic_blk *, type_ref *r);
 
-void impl_func_prologue_save_fp(void);
+void impl_func_prologue_save_fp(basic_blk *);
+
 void impl_func_prologue_save_call_regs(
+		basic_blk *,
 		type_ref *rf, unsigned nargs,
 		int arg_offsets[/*nargs*/]);
 
-void impl_func_prologue_save_variadic(type_ref *rf);
-void impl_func_epilogue(type_ref *);
+void impl_func_prologue_save_variadic(basic_blk *, type_ref *rf);
+void impl_func_epilogue(basic_blk *, type_ref *);
 
-void impl_undefined(void);
-void impl_set_overflow(void);
-int  impl_frame_ptr_to_reg(int nframes);
-void impl_set_nan(type_ref *);
+void impl_undefined(basic_blk *);
+void impl_set_overflow(basic_blk *);
+int  impl_frame_ptr_to_reg(basic_blk *, int nframes);
+void impl_set_nan(basic_blk *, type_ref *);
 
 /* scratch register indexing */
 int  impl_reg_to_scratch(const struct vreg *);
@@ -56,9 +58,9 @@ enum p_opts
 	P_NO_NL     = 1 << 1
 };
 
-void out_asm( const char *fmt, ...) ucc_printflike(1, 2);
+void out_asm(basic_blk *, const char *fmt, ...) ucc_printflike(2, 3);
 
-void impl_comment(enum section_type, const char *fmt, va_list l);
+void impl_comment_sec(enum section_type, const char *fmt, va_list l);
 void impl_lbl(const char *lbl);
 
 enum flag_cmp op_to_flag(enum op_type op);

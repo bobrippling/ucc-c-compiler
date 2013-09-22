@@ -20,7 +20,7 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 	e->tree_type = d->ref;
 
 	if(!stab->parent){
-		d->spel = out_label_data_store(b_from, 0);
+		d->spel = out_label_data_store(0);
 		d->store = store_static;
 	}
 
@@ -55,33 +55,41 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 	}
 }
 
-static void gen_expr_compound_lit_code(expr *e)
+static basic_blk *gen_expr_compound_lit_code(expr *e, basic_blk *bb)
 {
 	if(!e->expr_comp_lit_cgen){
+		ICW("compound literal code-gen needs basic-block check");
+
 		e->expr_comp_lit_cgen = 1;
 
 		UCC_ASSERT(e->code->symtab->parent,
 				"global compound initialiser tried for code");
 
-		gen_stmt(e->code);
+		bb = gen_stmt(e->code, bb);
 	}
+
+	return bb;
 }
 
-void gen_expr_compound_lit(expr *e)
+basic_blk *gen_expr_compound_lit(expr *e, basic_blk *bb)
 {
 	/* allow (int){2}, but not (struct...){...} */
 	fold_check_expr(e, FOLD_CHK_NO_ST_UN, "compound literal");
 
-	gen_expr_compound_lit_code(e);
+	bb = gen_expr_compound_lit_code(e, bb);
 
-	out_push_sym_val(b_from, e->bits.complit.sym);
+	out_push_sym_val(bb, e->bits.complit.sym);
+
+	return bb;
 }
 
-static void lea_expr_compound_lit(expr *e)
+static basic_blk *lea_expr_compound_lit(expr *e, basic_blk *bb)
 {
-	gen_expr_compound_lit_code(e);
+	bb = gen_expr_compound_lit_code(e, bb);
 
-	out_push_sym(b_from, e->bits.complit.sym);
+	out_push_sym(bb, e->bits.complit.sym);
+
+	return bb;
 }
 
 static void const_expr_compound_lit(expr *e, consty *k)
@@ -98,12 +106,12 @@ static void const_expr_compound_lit(expr *e, consty *k)
 	}
 }
 
-void gen_expr_str_compound_lit(expr *e)
+basic_blk *gen_expr_str_compound_lit(expr *e, basic_blk *bb)
 {
 	decl *const d = e->bits.complit.decl;
 
 	if(e->op)
-		return;
+		goto out;
 
 	e->op = 1;
 	{
@@ -126,12 +134,16 @@ void gen_expr_str_compound_lit(expr *e)
 		print_stmt(e->code);
 	}
 	e->op = 0;
+
+out:
+	return bb;
 }
 
-void gen_expr_style_compound_lit(expr *e)
+basic_blk *gen_expr_style_compound_lit(expr *e, basic_blk *bb)
 {
 	stylef("(%s)", type_ref_to_str(e->bits.complit.decl->ref));
 	gen_style_dinit(e->bits.complit.decl->init);
+	return bb;
 }
 
 void mutate_expr_compound_lit(expr *e)

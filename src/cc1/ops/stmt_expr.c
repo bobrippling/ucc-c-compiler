@@ -16,12 +16,12 @@ void fold_stmt_expr(stmt *s)
 				"unused expression (%s)", s->expr->f_str());
 }
 
-void gen_stmt_expr(stmt *s)
+basic_blk *gen_stmt_expr(stmt *s, basic_blk *bb)
 {
-	int pre_vcount = out_vcount(b_from);
+	int pre_vcount = out_vcount(bb);
 	char *sp;
 
-	gen_expr(s->expr);
+	bb = gen_expr(s->expr, bb);
 
 	if((fopt_mode & FOPT_ENABLE_ASM) == 0
 	|| !s->expr
@@ -32,21 +32,24 @@ void gen_stmt_expr(stmt *s)
 		if(s->expr_no_pop)
 			pre_vcount++;
 		else
-			out_pop(b_from); /* cancel the implicit push from gen_expr() above */
+			out_pop(bb); /* cancel the implicit push from gen_expr() above */
 
-		out_comment(b_from, "end of %s-stmt", s->f_str());
+		out_comment(bb, "end of %s-stmt", s->f_str());
 
-		UCC_ASSERT(out_vcount() == pre_vcount,
+		UCC_ASSERT(out_vcount(bb) == pre_vcount,
 				"vcount changed over %s statement (%d -> %d)",
 				s->expr->f_str(),
-				out_vcount(b_from), pre_vcount);
+				out_vcount(bb), pre_vcount);
 	}
+
+	return bb;
 }
 
-void style_stmt_expr(stmt *s)
+basic_blk *style_stmt_expr(stmt *s, basic_blk *bb)
 {
-	gen_expr(s->expr);
+	bb = gen_expr(s->expr, bb);
 	stylef(";\n");
+	return bb;
 }
 
 static int expr_passable(stmt *s)

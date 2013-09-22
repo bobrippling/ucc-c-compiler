@@ -48,37 +48,39 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 	/* type check is done in op_required_promotion() */
 }
 
-void gen_expr_assign_compound(expr *e)
+basic_blk *gen_expr_assign_compound(expr *e, basic_blk *bb)
 {
-	lea_expr(e->lhs);
+	bb = lea_expr(e->lhs, bb);
 
 	if(e->assign_is_post){
-		out_dup(b_from);
-		out_deref(b_from);
-		out_flush_volatile(b_from);
-		out_swap(b_from);
-		out_comment(b_from, "saved for compound op");
+		out_dup(bb);
+		out_deref(bb);
+		out_flush_volatile(bb);
+		out_swap(bb);
+		out_comment(bb, "saved for compound op");
 	}
 
-	out_dup(b_from);
+	out_dup(bb);
 	/* delay the dereference until after generating rhs.
 	 * this is fine, += etc aren't sequence points
 	 */
 
-	gen_expr(e->rhs);
+	bb = gen_expr(e->rhs, bb);
 
 	/* here's the delayed dereference */
-	out_swap(b_from), out_deref(), out_swap();
+	out_swap(bb), out_deref(bb), out_swap(bb);
 
-	out_op(b_from, e->op);
+	out_op(bb, e->op);
 
-	out_store(b_from);
+	out_store(bb);
 
 	if(e->assign_is_post)
-		out_pop(b_from);
+		out_pop(bb);
+
+	return bb;
 }
 
-void gen_expr_str_assign_compound(expr *e)
+basic_blk *gen_expr_str_assign_compound(expr *e, basic_blk *bb)
 {
 	idt_printf("compound %s%s-assignment expr:\n",
 			e->assign_is_post ? "post-" : "",
@@ -92,6 +94,8 @@ void gen_expr_str_assign_compound(expr *e)
 	gen_str_indent++;
 	print_expr(e->rhs);
 	gen_str_indent--;
+
+	return bb;
 }
 
 void mutate_expr_assign_compound(expr *e)
@@ -110,9 +114,10 @@ expr *expr_new_assign_compound(expr *to, expr *from, enum op_type op)
 	return e;
 }
 
-void gen_expr_style_assign_compound(expr *e)
+basic_blk *gen_expr_style_assign_compound(expr *e, basic_blk *bb)
 {
-	gen_expr(e->lhs->lhs);
+	bb = gen_expr(e->lhs->lhs, bb);
 	stylef(" %s= ", op_to_str(e->op));
-	gen_expr(e->rhs);
+	bb = gen_expr(e->rhs, bb);
+	return bb;
 }

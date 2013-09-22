@@ -495,20 +495,20 @@ invalid:
 		e->freestanding = 0; /* needs use */
 }
 
-void gen_expr_funcall(expr *e)
+basic_blk *gen_expr_funcall(expr *e, basic_blk *bb)
 {
 	if(0){
-		out_comment(b_from, "start manual __asm__");
+		out_comment(bb, "start manual __asm__");
 		ICE("same");
 #if 0
 		fprintf(cc_out[SECTION_TEXT], "%s\n", e->funcargs[0]->data_store->data.str);
 #endif
-		out_comment(b_from, "end manual __asm__");
+		out_comment(bb, "end manual __asm__");
 	}else{
 		/* continue with normal funcall */
 		int nargs = 0;
 
-		gen_expr(e->expr);
+		bb = gen_expr(e->expr, bb);
 
 		if(e->funcargs){
 			expr **aiter;
@@ -521,15 +521,17 @@ void gen_expr_funcall(expr *e)
 				/* should be of size int or larger (for integral types)
 				 * or double (for floating types)
 				 */
-				gen_expr(earg);
+				bb = gen_expr(earg, bb);
 			}
 		}
 
-		out_call(b_from, nargs, e->tree_type, e->expr->tree_type);
+		out_call(bb, nargs, e->tree_type, e->expr->tree_type);
 	}
+
+	return bb;
 }
 
-void gen_expr_str_funcall(expr *e)
+basic_blk *gen_expr_str_funcall(expr *e, basic_blk *bb)
 {
 	expr **iter;
 
@@ -553,6 +555,8 @@ void gen_expr_str_funcall(expr *e)
 	}else{
 		idt_printf("no args\n");
 	}
+
+	return bb;
 }
 
 void mutate_expr_funcall(expr *e)
@@ -573,18 +577,20 @@ expr *expr_new_funcall()
 	return e;
 }
 
-void gen_expr_style_funcall(expr *e)
+basic_blk *gen_expr_style_funcall(expr *e, basic_blk *bb)
 {
 	stylef("(");
-	gen_expr(e->expr);
+	bb = gen_expr(e->expr, bb);
 	stylef(")(");
 	if(e->funcargs){
 		expr **i;
 		for(i = e->funcargs; i && *i; i++){
-			gen_expr(*i);
+			bb = gen_expr(*i, bb);
 			if(i[1])
 				stylef(", ");
 		}
 	}
 	stylef(")");
+
+	return bb;
 }

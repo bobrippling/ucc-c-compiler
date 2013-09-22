@@ -1,6 +1,6 @@
 // TODO
 
-void gen_asm(symtable *globs)
+basic_blk *gen_asm(symtable *globs, basic_blk *bb)
 {
 	decl **diter;
 	for(diter = globs->decls; diter && *diter; diter++){

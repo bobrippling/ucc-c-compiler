@@ -69,18 +69,18 @@ void vpush(basic_blk *b_from, type_ref *t);
 void vpop(basic_blk *b_from);
 void vswap(basic_blk *b_from);
 
-void v_clear(basic_blk *, struct vstack *vp, type_ref *);
-void v_set_reg(basic_blk *, struct vstack *vp, const struct vreg *r);
-void v_set_reg_i(basic_blk *, struct vstack *vp, int idx);
+void v_clear(struct vstack *vp, type_ref *);
+void v_set_reg(struct vstack *vp, const struct vreg *r);
+void v_set_reg_i(struct vstack *vp, int idx);
 
-void v_set_flag(basic_blk *,
+void v_set_flag(
 		struct vstack *vp,
 		enum flag_cmp c,
 		enum flag_mod mods);
 
 void v_cast(basic_blk *, struct vstack *vp, type_ref *to);
 
-void v_inv_cmp(basic_blk *, struct flag_opts *);
+void v_inv_cmp(struct flag_opts *);
 
 void v_to_reg(basic_blk *, struct vstack *conv);
 void v_to_reg_out(basic_blk *, struct vstack *conv, struct vreg *);
@@ -125,10 +125,10 @@ unsigned v_alloc_stack_n(basic_blk *, unsigned sz, const char *);
 void v_dealloc_stack(basic_blk *, unsigned sz);
 void v_stack_align(basic_blk *, unsigned const align, int do_mask);
 
-void v_deref_decl(basic_blk *, struct vstack *vp);
+void v_deref_decl(struct vstack *vp);
 
-int impl_n_scratch_regs(basic_blk *);
-unsigned impl_n_call_regs(basic_blk *, type_ref *);
-int impl_ret_reg(basic_blk *);
+int impl_n_scratch_regs(void);
+unsigned impl_n_call_regs(type_ref *);
+int impl_ret_reg(void);
 
 #endif

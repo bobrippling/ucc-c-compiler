@@ -18,8 +18,8 @@ void fold_stmt_for(stmt *s)
 	flow_fold(s->flow, &stab);
 	UCC_ASSERT(stab, "fold_flow in for didn't pick up .flow");
 
-	s->lbl_break    = out_label_flow(b_from, "for_start");
-	s->lbl_continue = out_label_flow(b_from, "for_contiune");
+	s->lbl_break    = out_label_flow("for_start");
+	s->lbl_continue = out_label_flow("for_contiune");
 
 #define FOLD_IF(x) if(x) FOLD_EXPR(x, stab)
 	FOLD_IF(s->flow->for_init);
@@ -36,60 +36,64 @@ void fold_stmt_for(stmt *s)
 	fold_stmt(s->lhs);
 }
 
-void gen_stmt_for(stmt *s)
+basic_blk *gen_stmt_for(stmt *s, basic_blk *bb)
 {
-	char *lbl_test = out_label_flow(b_from, "for_test");
+	char *lbl_test = out_label_flow("for_test");
 
-	flow_gen(s->flow, s->flow->for_init_symtab);
+	bb = flow_gen(s->flow, s->flow->for_init_symtab, bb);
 
 	/* don't else-if, possible to have both (comma-exp for init) */
 	if(s->flow->for_init){
-		gen_expr(s->flow->for_init);
+		bb = gen_expr(s->flow->for_init, bb);
 
-		out_pop(b_from);
-		out_comment(b_from, "for-init");
+		out_pop(bb);
+		out_comment(bb, "for-init");
 	}
 
-	out_label(b_from, lbl_test);
+	out_label(bb, lbl_test);
 	if(s->flow->for_while){
-		gen_expr(s->flow->for_while);
-		out_jfalse(b_from, s->lbl_break);
+		bb = gen_expr(s->flow->for_while, bb);
+		out_jfalse(bb, s->lbl_break);
 	}
 
-	gen_stmt(s->lhs);
-	out_label(b_from, s->lbl_continue);
+	bb = gen_stmt(s->lhs, bb);
+	out_label(bb, s->lbl_continue);
 	if(s->flow->for_inc){
-		gen_expr(s->flow->for_inc);
+		bb = gen_expr(s->flow->for_inc, bb);
 
-		out_pop(b_from);
-		out_comment(b_from, "unused for inc");
+		out_pop(bb);
+		out_comment(bb, "unused for inc");
 	}
 
-	out_push_lbl(b_from, lbl_test, 0);
-	out_jmp(b_from);
+	out_push_lbl(bb, lbl_test, 0);
+	out_jmp(bb);
 
-	out_label(b_from, s->lbl_break);
+	out_label(bb, s->lbl_break);
 
 	free(lbl_test);
+
+	return bb;
 }
 
-void style_stmt_for(stmt *s)
+basic_blk *style_stmt_for(stmt *s, basic_blk *bb)
 {
 	stylef("for(");
 	if(s->flow->for_init)
-		gen_expr(s->flow->for_init);
+		bb = gen_expr(s->flow->for_init, bb);
 
 	stylef("; ");
 	if(s->flow->for_while)
-		gen_expr(s->flow->for_while);
+		bb = gen_expr(s->flow->for_while, bb);
 
 	stylef("; ");
 	if(s->flow->for_inc)
-		gen_expr(s->flow->for_inc);
+		bb = gen_expr(s->flow->for_inc, bb);
 
 	stylef(")\n");
 
-	gen_stmt(s->lhs);
+	bb = gen_stmt(s->lhs, bb);
+
+	return bb;
 }
 
 struct walk_info

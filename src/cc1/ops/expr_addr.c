@@ -20,8 +20,6 @@ int expr_is_addressable(expr *e)
 void fold_expr_addr(expr *e, symtable *stab)
 {
 	if(e->bits.ident.spel){
-		char *save;
-
 		/* address of label - void * */
 		e->tree_type = type_ref_new_ptr(
 				type_ref_new_type(type_new_primitive(type_void)),
@@ -29,11 +27,6 @@ void fold_expr_addr(expr *e, symtable *stab)
 
 		if(!curdecl_func)
 			die_at(&e->where, "address-of-label outside a function");
-		save = e->bits.ident.spel;
-		e->bits.ident.spel = out_label_goto(b_from, 
-				curdecl_func->spel, e->bits.ident.spel);
-		free(save);
-
 	}else{
 		/* if it's an identifier, act as a read */
 		fold_inc_writes_if_sym(e->lhs, stab);
@@ -59,21 +52,31 @@ void fold_expr_addr(expr *e, symtable *stab)
 	}
 }
 
-void gen_expr_addr(expr *e)
+basic_blk *gen_expr_addr(expr *e, basic_blk *bb)
 {
 	if(e->bits.ident.spel){
-		out_push_lbl(b_from, e->bits.ident.spel, 1); /* GNU &&lbl */
+#if 0
+		save = e->bits.ident.spel;
+		e->bits.ident.spel = out_label_goto(b_from, 
+				curdecl_func->spel, e->bits.ident.spel);
+		free(save);
+#endif
+
+		ICE("TODO");
+		out_push_lbl(bb, e->bits.ident.spel, 1); /* GNU &&lbl */
 
 	}else{
 		/* address of possibly an ident "(&a)->b" or a struct expr "&a->b"
 		 * let lea_expr catch it
 		 */
 
-		lea_expr(e->lhs);
+		bb = lea_expr(e->lhs, bb);
 	}
+
+	return bb;
 }
 
-void gen_expr_str_addr(expr *e)
+basic_blk *gen_expr_str_addr(expr *e, basic_blk *bb)
 {
 	if(e->bits.ident.spel){
 		idt_printf("address of label \"%s\"\n", e->bits.ident.spel);
@@ -83,6 +86,8 @@ void gen_expr_str_addr(expr *e)
 		print_expr(e->lhs);
 		gen_str_indent--;
 	}
+
+	return bb;
 }
 
 static void const_expr_addr(expr *e, consty *k)
@@ -135,9 +140,10 @@ void mutate_expr_addr(expr *e)
 	e->f_const_fold = const_expr_addr;
 }
 
-void gen_expr_style_addr(expr *e)
+basic_blk *gen_expr_style_addr(expr *e, basic_blk *bb)
 {
 	stylef("&(");
-	gen_expr(e->lhs);
+	bb = gen_expr(e->lhs, bb);
 	stylef(")");
+	return bb;
 }

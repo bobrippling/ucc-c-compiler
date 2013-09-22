@@ -141,24 +141,26 @@ void fold_expr_assign(expr *e, symtable *stab)
 	}
 }
 
-void gen_expr_assign(expr *e)
+basic_blk *gen_expr_assign(expr *e, basic_blk *bb)
 {
 	UCC_ASSERT(!e->assign_is_post, "assign_is_post set for non-compound assign");
 
 	if(type_ref_is_s_or_u(e->tree_type)){
 		/* memcpy */
-		gen_expr(e->expr);
+		bb = gen_expr(e->expr, bb);
 	}else{
 		/* optimisation: do this first, since rhs might also be a store */
-		gen_expr(e->rhs);
-		lea_expr(e->lhs);
-		out_swap(b_from);
+		bb = gen_expr(e->rhs, bb);
+		bb = lea_expr(e->lhs, bb);
+		out_swap(bb);
 
-		out_store(b_from);
+		out_store(bb);
 	}
+
+	return bb;
 }
 
-void gen_expr_str_assign(expr *e)
+basic_blk *gen_expr_str_assign(expr *e, basic_blk *bb)
 {
 	idt_printf("assignment, expr:\n");
 	idt_printf("assign to:\n");
@@ -169,6 +171,8 @@ void gen_expr_str_assign(expr *e)
 	gen_str_indent++;
 	print_expr(e->rhs);
 	gen_str_indent--;
+
+	return bb;
 }
 
 void mutate_expr_assign(expr *e)
@@ -193,9 +197,11 @@ expr *expr_new_assign_init(expr *to, expr *from)
 	return e;
 }
 
-void gen_expr_style_assign(expr *e)
+basic_blk *gen_expr_style_assign(expr *e, basic_blk *bb)
 {
-	gen_expr(e->lhs);
+	bb = gen_expr(e->lhs, bb);
 	stylef(" = ");
-	gen_expr(e->rhs);
+	bb = gen_expr(e->rhs, bb);
+
+	return bb;
 }

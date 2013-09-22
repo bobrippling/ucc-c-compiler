@@ -12,16 +12,19 @@ void fold_stmt_label(stmt *s)
 	fold_stmt(s->lhs); /* compound */
 }
 
-void gen_stmt_label(stmt *s)
+basic_blk *gen_stmt_label(stmt *s, basic_blk *bb)
 {
-	out_label(b_from, s->expr->bits.ident.spel);
-	gen_stmt(s->lhs); /* the code-part of the compound statement */
+	out_label(bb, s->expr->bits.ident.spel);
+	bb = gen_stmt(s->lhs, bb); /* the code-part of the compound statement */
+
+	return bb;
 }
 
-void style_stmt_label(stmt *s)
+basic_blk *style_stmt_label(stmt *s, basic_blk *bb)
 {
 	stylef("\n%s: ", s->expr->bits.ident.spel);
-	gen_stmt(s->lhs);
+	bb = gen_stmt(s->lhs, bb);
+	return bb;
 }
 
 int label_passable(stmt *s)

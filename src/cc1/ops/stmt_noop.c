@@ -11,16 +11,18 @@ void fold_stmt_noop(stmt *s)
 	(void)s;
 }
 
-void gen_stmt_noop(stmt *s)
+basic_blk *gen_stmt_noop(stmt *s, basic_blk *bb)
 {
 	(void)s;
-	out_comment(b_from, "noop");
+	out_comment(bb, "noop");
+	return bb;
 }
 
-void style_stmt_noop(stmt *s)
+basic_blk *style_stmt_noop(stmt *s, basic_blk *bb)
 {
 	(void)s;
 	stylef(";");
+	return bb;
 }
 
 void mutate_stmt_noop(stmt *s)

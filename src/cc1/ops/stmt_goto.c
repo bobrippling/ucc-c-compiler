@@ -23,33 +23,36 @@ void fold_stmt_goto(stmt *s)
 		/* else let the assembler check for link errors */
 		if(!curdecl_func)
 			die_at(&s->where, "goto outside of a function");
-		*psp = out_label_goto(b_from, curdecl_func->spel, save);
+		*psp = out_label_goto(curdecl_func->spel, save);
 		free(save);
 	}
 }
 
-void gen_stmt_goto(stmt *s)
+basic_blk *gen_stmt_goto(stmt *s, basic_blk *bb)
 {
 	if(s->expr->expr_computed_goto)
-		gen_expr(s->expr);
+		bb = gen_expr(s->expr, bb);
 	else
-		out_push_lbl(b_from, s->expr->bits.ident.spel, 0);
+		out_push_lbl(bb, s->expr->bits.ident.spel, 0);
 
-	out_jmp(b_from);
+	out_jmp(bb);
+	return bb;
 }
 
-void style_stmt_goto(stmt *s)
+basic_blk *style_stmt_goto(stmt *s, basic_blk *bb)
 {
 	stylef("goto ");
 
 	if(s->expr->expr_computed_goto){
 		stylef("*");
-		gen_expr(s->expr);
+		bb = gen_expr(s->expr, bb);
 	}else{
 		stylef("%s", s->expr->bits.ident.spel);
 	}
 
 	stylef(";");
+
+	return bb;
 }
 
 void mutate_stmt_goto(stmt *s)

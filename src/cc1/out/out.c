@@ -6,10 +6,13 @@
 #include "../../util/util.h"
 #include "../../util/alloc.h"
 #include "../data_structs.h"
+
 #include "asm.h"
 #include "out.h"
 #include "vstack.h"
 #include "impl.h"
+#include "basic_block.h"
+
 #include "../../util/platform.h"
 #include "../cc1.h"
 #include "../pack.h"
@@ -85,14 +88,14 @@ void vpush(basic_blk *bb, type_ref *t)
 		vtop++;
 	}
 
-	v_clear(bb, vtop, t);
+	v_clear(vtop, t);
 }
 
 static void v_push_reg(basic_blk *bb, int r)
 {
 	struct vreg reg = VREG_INIT(r, 0);
 	vpush(bb, NULL);
-	v_set_reg(bb, vtop, &reg);
+	v_set_reg(vtop, &reg);
 }
 
 static void v_push_sp(basic_blk *bb)
@@ -100,18 +103,17 @@ static void v_push_sp(basic_blk *bb)
 	v_push_reg(bb, REG_SP);
 }
 
-void v_clear(basic_blk *bb, struct vstack *vp, type_ref *t)
+void v_clear(struct vstack *vp, type_ref *t)
 {
-	(void)bb;
 	memset(vp, 0, sizeof *vp);
 	vp->t = t;
 }
 
-void v_set_flag(basic_blk *bb,
+void v_set_flag(
 		struct vstack *vp,
 		enum flag_cmp c, enum flag_mod mods)
 {
-	v_clear(bb, vp, type_ref_cached_BOOL());
+	v_clear(vp, type_ref_cached_BOOL());
 
 	vp->type = V_FLAG;
 	vp->bits.flag.cmp = c;
@@ -151,15 +153,15 @@ static void v_flush_volatile_reg(basic_blk *bb, struct vstack *vp)
 			/* move to an unused register */
 			struct vreg r;
 			v_unused_reg(bb, 1, vp->bits.regoff.reg.is_float, &r);
-			impl_reg_cp(vp, &r);
-			v_set_reg(bb, vp, &r);
+			impl_reg_cp(bb, vp, &r);
+			v_set_reg(vp, &r);
 			/* vstack updated, add to the register */
 		}
 
 		v_push_reg(bb, vp->bits.regoff.reg.idx);
 		/* make it nice - abs() */
 		out_push_l(bb, type_ref_cached_INTPTR_T(), abs(off));
-		impl_op(off > 0 ? op_plus : op_minus);
+		impl_op(bb, off > 0 ? op_plus : op_minus);
 		vpop(bb);
 	}
 }
@@ -247,27 +249,27 @@ int v_unused_reg(basic_blk *bb, int stack_as_backup, int fp, struct vreg *out)
 	return -1;
 }
 
-void v_set_reg(basic_blk *bb, struct vstack *vp, const struct vreg *r)
+void v_set_reg(struct vstack *vp, const struct vreg *r)
 {
-	(void)bb;
 	vp->type = V_REG;
 	memcpy_safe(&vp->bits.regoff.reg, r);
 	vp->bits.regoff.offset = 0;
 }
 
-void v_set_reg_i(basic_blk *bb, struct vstack *vp, int i)
+void v_set_reg_i(struct vstack *vp, int i)
 {
 	const struct vreg r = VREG_INIT(i, 0);
-	v_set_reg(bb, vp, &r);
+	v_set_reg(vp, &r);
 }
 
-void v_to_reg_given(basic_blk *bb, struct vstack *from, const struct vreg *given)
+void v_to_reg_given(basic_blk *bb,
+		struct vstack *from, const struct vreg *given)
 {
 	type_ref *const save = from->t;
 
-	impl_load(from, given);
-	v_clear(bb, from, save);
-	v_set_reg(bb, from, given);
+	impl_load(bb, from, given);
+	v_clear(from, save);
+	v_set_reg(from, given);
 }
 
 void v_to_reg_out(basic_blk *bb, struct vstack *conv, struct vreg *out)
@@ -289,9 +291,9 @@ void v_to_reg(basic_blk *bb, struct vstack *conv)
 	v_to_reg_out(bb, conv, NULL);
 }
 
-static void v_set_stack(basic_blk *bb, struct vstack *vp, type_ref *ty, long off)
+static void v_set_stack(struct vstack *vp, type_ref *ty, long off)
 {
-	v_set_reg_i(bb, vp, REG_BP);
+	v_set_reg_i(vp, REG_BP);
 	if(ty)
 		vp->t = ty;
 	vp->bits.regoff.offset = off;
@@ -303,7 +305,7 @@ void v_to_mem_given(basic_blk *bb, struct vstack *vp, int stack_pos)
 
 	v_to(bb, vp, TO_CONST | TO_REG);
 
-	v_set_stack(bb, &store, vp->t, stack_pos);
+	v_set_stack(&store, vp->t, stack_pos);
 
 	/* the following gen two instructions - subq and movq
 	 * instead/TODO: impl_save_reg(vp) -> "pushq %%rax"
@@ -405,10 +407,10 @@ void v_freeup_regp(basic_blk *bb, struct vstack *vp)
 	found_reg = (v_unused_reg(bb, 0, vp->bits.regoff.reg.is_float, &r) == 0);
 
 	if(found_reg){
-		impl_reg_cp(vp, &r);
+		impl_reg_cp(bb, vp, &r);
 
-		v_clear(bb, vp, vp->t); /* clear bitfield info, etc */
-		v_set_reg(bb, vp, &r);
+		v_clear(vp, vp->t); /* clear bitfield info, etc */
+		v_set_reg(vp, &r);
 
 	}else{
 		v_save_reg(bb, vp);
@@ -606,7 +608,7 @@ void v_freeup_regs(basic_blk *bb, const struct vreg *a, const struct vreg *b)
 	v_unreserve_reg(bb, b);
 }
 
-void v_inv_cmp(basic_blk *bb, struct flag_opts *flag)
+void v_inv_cmp(struct flag_opts *flag)
 {
 	switch(flag->cmp){
 #define OPPOSITE2(from, to)    \
@@ -636,7 +638,7 @@ void v_inv_cmp(basic_blk *bb, struct flag_opts *flag)
 
 void out_pop(basic_blk *bb)
 {
-	vpop();
+	vpop(bb);
 }
 
 void out_push_num(basic_blk *bb, type_ref *t, const numeric *n)
@@ -655,11 +657,11 @@ void out_push_num(basic_blk *bb, type_ref *t, const numeric *n)
 	if(ty_fp){
 		vtop->type = V_CONST_F;
 		vtop->bits.val_f = n->val.f;
-		impl_load_fp(vtop);
+		impl_load_fp(bb, vtop);
 	}else{
 		vtop->type = V_CONST_I;
 		vtop->bits.val_i = n->val.i;
-		impl_load_iv(vtop);
+		impl_load_iv(bb, vtop);
 	}
 }
 
@@ -685,6 +687,7 @@ void out_push_zero(basic_blk *bb, type_ref *t)
 
 static void out_set_lbl(basic_blk *bb, const char *s, int pic)
 {
+	(void)bb;
 	vtop->type = V_LBL;
 
 	vtop->bits.lbl.str = s;
@@ -729,9 +732,9 @@ void out_dup(basic_blk *bb)
 				v_unused_reg(bb, 1, vtop[-1].bits.regoff.reg.is_float, &r);
 
 				out_comment(bb, "dup");
-				impl_reg_cp(&vtop[-1], &r);
+				impl_reg_cp(bb, &vtop[-1], &r);
 
-				v_set_reg(bb, vtop, &r);
+				v_set_reg(vtop, &r);
 				vtop->t = vtop[-1].t;
 
 				/* restore offset */
@@ -751,6 +754,8 @@ void out_pulltop(basic_blk *bb, int i)
 {
 	struct vstack tmp;
 	int j;
+
+	(void)bb;
 
 	memcpy_safe(&tmp, &vtop[-i]);
 
@@ -844,8 +849,8 @@ void out_store(basic_blk *bb)
 	v_store(bb, val, store);
 
 	/* swap, popping the store, but not the value */
-	vswap();
-	vpop();
+	vswap(bb);
+	vpop(bb);
 }
 
 void v_store(basic_blk *bb, struct vstack *val, struct vstack *store)
@@ -854,12 +859,12 @@ void v_store(basic_blk *bb, struct vstack *val, struct vstack *store)
 		UCC_ASSERT(val == vtop && store == vtop-1,
 				"TODO: bitfield merging for non-vtops");
 
-		bitfield_scalar_merge(&store->bitfield);
+		bitfield_scalar_merge(bb, &store->bitfield);
 	}
 
 	v_flush_volatile_reg(bb, val); /* flush offset on any registers
 	                            * only for the value we're assigning */
-	impl_store(val, store);
+	impl_store(bb, val, store);
 }
 
 void out_normalise(basic_blk *bb)
@@ -908,11 +913,11 @@ void out_push_sym(basic_blk *bb, sym *s)
 				ICW("TODO: %s asm(\"%s\")", decl_to_str(d), d->spel_asm);
 
 			/* sym offsetting takes into account the stack growth direction */
-			v_set_stack(bb, vtop, NULL, -(long)(s->loc.stack_pos + stack_local_offset));
+			v_set_stack(vtop, NULL, -(long)(s->loc.stack_pos + stack_local_offset));
 			break;
 
 		case sym_arg:
-			v_set_stack(bb, vtop, NULL, s->loc.arg_offset);
+			v_set_stack(vtop, NULL, s->loc.arg_offset);
 			break;
 
 		case sym_global:
@@ -928,7 +933,7 @@ void out_push_sym_val(basic_blk *bb, sym *s)
 	out_deref(bb);
 }
 
-static int calc_ptr_step(basic_blk *bb, type_ref *t)
+static int calc_ptr_step(type_ref *t)
 {
 	/* we are calculating the sizeof *t */
 	int mul;
@@ -947,7 +952,7 @@ static int calc_ptr_step(basic_blk *bb, type_ref *t)
 void out_op(basic_blk *bb, enum op_type op)
 {
 	/*
-	 * the implementation does a vpop() and
+	 * the implementation does a vpop(bb) and
 	 * sets vtop sufficiently to describe how
 	 * the result is returned
 	 */
@@ -1021,8 +1026,8 @@ pop_const:
 					break;
 
 				if(t_const != vtop)
-					vswap(); /* need t_const on top for discarding */
-				vpop();
+					vswap(bb); /* need t_const on top for discarding */
+				vpop(bb);
 				goto out;
 		}
 
@@ -1036,7 +1041,7 @@ pop_const:
 
 			UCC_ASSERT(!err, "const op err %s", err);
 
-			vpop();
+			vpop(bb);
 			vtop->type = V_CONST_I;
 			vtop->bits.val_i = eval;
 			goto out;
@@ -1078,13 +1083,13 @@ pop_const:
 							{
 								int swap;
 								if((swap = (val != vtop)))
-									vswap();
+									vswap(bb);
 
 								out_push_l(bb, type_ref_cached_INTPTR_T(), ptr_step);
 								out_op(bb, op_multiply);
 
 								if(swap)
-									vswap();
+									vswap(bb);
 							}
 						}
 
@@ -1100,7 +1105,7 @@ pop_const:
 				break;
 		}
 
-		impl_op(op);
+		impl_op(bb, op);
 
 		if(div){
 			out_push_l(bb, type_ref_cached_VOID_PTR(), div);
@@ -1112,6 +1117,7 @@ out:;
 
 void out_set_bitfield(basic_blk *bb, unsigned off, unsigned nbits)
 {
+	(void)bb;
 	vtop->bitfield.off   = off;
 	vtop->bitfield.nbits = nbits;
 }
@@ -1141,7 +1147,7 @@ static void bitfield_to_scalar(basic_blk *bb, const struct vbitfield *bf)
 	}
 }
 
-void v_deref_decl(basic_blk *bb, struct vstack *vp)
+void v_deref_decl(struct vstack *vp)
 {
 	/* XXX: memleak */
 	vp->t = type_ref_ptr_depth_dec(vp->t, NULL);
@@ -1166,7 +1172,7 @@ void out_deref(basic_blk *bb)
 		return; /* noop */
 	}
 
-	v_deref_decl(bb, vtop);
+	v_deref_decl(vtop);
 	fp = type_ref_is_floating(vtop->t);
 
 	switch(vtop->type){
@@ -1189,9 +1195,9 @@ void out_deref(basic_blk *bb)
 
 			v_unused_reg(bb, 1, fp, &r);
 
-			impl_deref(vtop, &r, indir);
+			impl_deref(bb, vtop, &r, indir);
 
-			v_set_reg(bb, vtop, &r);
+			v_set_reg(vtop, &r);
 			break;
 		}
 	}
@@ -1201,12 +1207,14 @@ void out_deref(basic_blk *bb)
 #endif
 
 	if(bf.nbits)
-		bitfield_to_scalar(&bf);
+		bitfield_to_scalar(bb, &bf);
 }
 
 
 void out_op_unary(basic_blk *bb, enum op_type op)
 {
+	(void)bb;
+
 	switch(op){
 		case op_plus:
 			return;
@@ -1216,7 +1224,7 @@ void out_op_unary(basic_blk *bb, enum op_type op)
 			switch(vtop->type){
 				case V_FLAG:
 					if(op == op_not){
-						v_inv_cmp(bb, &vtop->bits.flag);
+						v_inv_cmp(&vtop->bits.flag);
 						return;
 					}
 					break;
@@ -1242,7 +1250,7 @@ void out_op_unary(basic_blk *bb, enum op_type op)
 			}
 	}
 
-	impl_op_unary(op);
+	impl_op_unary(bb, op);
 }
 
 void out_cast(basic_blk *bb, type_ref *to)
@@ -1261,7 +1269,7 @@ void v_cast(basic_blk *bb, struct vstack *vp, type_ref *to)
 		if(fp[0] && fp[1]){
 
 			if(type_ref_primitive(from) != type_ref_primitive(to))
-				impl_f2f(vp, from, to);
+				impl_f2f(bb, vp, from, to);
 			/* else no-op cast */
 
 		}else if(fp[0]){
@@ -1269,14 +1277,14 @@ void v_cast(basic_blk *bb, struct vstack *vp, type_ref *to)
 			UCC_ASSERT(type_ref_is_integral(to),
 					"fp to %s?", type_ref_to_str(to));
 
-			impl_f2i(vp, from, to);
+			impl_f2i(bb, vp, from, to);
 
 		}else{
 			/* int -> float */
 			UCC_ASSERT(type_ref_is_integral(from),
 					"%s to fp?", type_ref_to_str(from));
 
-			impl_i2f(vp, from, to);
+			impl_i2f(bb, vp, from, to);
 		}
 
 	}else{
@@ -1289,7 +1297,7 @@ void v_cast(basic_blk *bb, struct vstack *vp, type_ref *to)
 
 			if(szfrom != szto){
 				if(szto > szfrom){
-					impl_cast_load(vp, from, to,
+					impl_cast_load(bb, vp, from, to,
 							type_ref_is_signed(from));
 				}else{
 					char buf[TYPE_REF_STATIC_BUFSIZ];
@@ -1308,7 +1316,9 @@ void v_cast(basic_blk *bb, struct vstack *vp, type_ref *to)
 
 void out_change_type(basic_blk *bb, type_ref *t)
 {
-	v_check_type(bb, t);
+	(void)bb;
+
+	v_check_type(t);
 	/* XXX: memleak */
 	vtop->t = t;
 
@@ -1327,26 +1337,26 @@ void out_call(basic_blk *bb, int nargs, type_ref *r_ret, type_ref *r_func)
 	const int fp = type_ref_is_floating(r_ret);
 	struct vreg vr = VREG_INIT(fp ? REG_RET_F : REG_RET_I, fp);
 
-	impl_call(nargs, r_ret, r_func);
+	impl_call(bb, nargs, r_ret, r_func);
 
 	/* return type */
-	v_clear(bb, vtop, r_ret);
+	v_clear(vtop, r_ret);
 
-	v_set_reg(bb, vtop, &vr);
+	v_set_reg(vtop, &vr);
 }
 
-static void out_comment_vsec(basic_blk *bb,
+static void out_comment_vsec(
 		enum section_type sec, const char *fmt, va_list l)
 {
 	impl_comment(sec, fmt, l);
 }
 
-void out_comment_sec(basic_blk *bb, enum section_type sec, const char *fmt, ...)
+void out_comment_sec(enum section_type sec, const char *fmt, ...)
 {
 	va_list l;
 
 	va_start(l, fmt);
-	out_comment_vsec(bb, sec, fmt, l);
+	out_comment_vsec(sec, fmt, l);
 	va_end(l);
 }
 
@@ -1355,26 +1365,28 @@ void out_comment(basic_blk *bb, const char *fmt, ...)
 	va_list l;
 
 	va_start(l, fmt);
-	out_comment_vsec(bb, SECTION_TEXT, fmt, l);
+	/* TODO: basic-block comment */
 	va_end(l);
 }
 
-void out_func_prologue(basic_blk *bb,
+basic_blk *out_func_prologue(
 		type_ref *rf,
 		int stack_res, int nargs, int variadic,
 		int arg_offsets[])
 {
+	basic_blk *bb = bb_new();
+
 	UCC_ASSERT(stack_sz == 0, "non-empty stack for new func");
 
-	impl_func_prologue_save_fp();
+	impl_func_prologue_save_fp(bb);
 
 	if(mopt_mode & MOPT_STACK_REALIGN)
 		v_stack_align(bb, cc1_mstack_align, 1);
 
-	impl_func_prologue_save_call_regs(rf, nargs, arg_offsets);
+	impl_func_prologue_save_call_regs(bb, rf, nargs, arg_offsets);
 
 	if(variadic) /* save variadic call registers */
-		impl_func_prologue_save_variadic(rf);
+		impl_func_prologue_save_variadic(bb, rf);
 
 	/* setup "pointers" to the right place in the stack */
 	stack_variadic_offset = stack_sz - platform_word_size();
@@ -1382,6 +1394,8 @@ void out_func_prologue(basic_blk *bb,
 
 	if(stack_res)
 		v_alloc_stack(bb, stack_res, "local variables");
+
+	return bb;
 }
 
 void out_func_epilogue(basic_blk *bb, type_ref *rf)
@@ -1389,38 +1403,38 @@ void out_func_epilogue(basic_blk *bb, type_ref *rf)
 	if(fopt_mode & FOPT_VERBOSE_ASM)
 		out_comment(bb, "epilogue, stack_sz = %u", stack_sz);
 
-	impl_func_epilogue(rf);
+	impl_func_epilogue(bb, rf);
 	stack_local_offset = stack_sz = 0;
 }
 
 void out_pop_func_ret(basic_blk *bb, type_ref *t)
 {
-	impl_pop_func_ret(t);
+	impl_pop_func_ret(bb, t);
 }
 
 void out_undefined(basic_blk *bb)
 {
 	out_flush_volatile(bb);
-	impl_undefined();
+	impl_undefined(bb);
 }
 
 void out_push_overflow(basic_blk *bb)
 {
 	vpush(bb, type_ref_cached_BOOL());
-	impl_set_overflow();
+	impl_set_overflow(bb);
 }
 
 void out_push_frame_ptr(basic_blk *bb, int nframes)
 {
 	struct vreg vr = VREG_INIT(
-		impl_frame_ptr_to_reg(nframes),
+		impl_frame_ptr_to_reg(bb, nframes),
 		0
 	);
 
 	out_flush_volatile(bb);
 
 	vpush(bb, NULL);
-	v_set_reg(bb, vtop, &vr);
+	v_set_reg(vtop, &vr);
 }
 
 void out_push_reg_save_ptr(basic_blk *bb)
@@ -1428,7 +1442,7 @@ void out_push_reg_save_ptr(basic_blk *bb)
 	out_flush_volatile(bb);
 
 	vpush(bb, NULL);
-	v_set_stack(bb, vtop, NULL, -stack_variadic_offset);
+	v_set_stack(vtop, NULL, -stack_variadic_offset);
 }
 
 void out_push_nan(basic_blk *bb, type_ref *ty)
@@ -1436,5 +1450,5 @@ void out_push_nan(basic_blk *bb, type_ref *ty)
 	UCC_ASSERT(type_ref_is_floating(ty),
 			"non-float nan?");
 	vpush(bb, NULL);
-	impl_set_nan(ty);
+	impl_set_nan(bb, ty);
 }

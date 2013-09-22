@@ -31,7 +31,7 @@ void fold_expr_str(expr *e, symtable *stab)
 			type_ref_new_type_qual(sv->wide ? type_wchar : type_char, qual_const),
 			sz);
 
-	sv->lbl = out_label_data_store(b_from, 1);
+	sv->lbl = out_label_data_store(1);
 
 	d = decl_new();
 	d->ref = e->tree_type;
@@ -61,13 +61,14 @@ void fold_expr_str(expr *e, symtable *stab)
 	fold_decl_global_init(d, stab);
 }
 
-void gen_expr_str(expr *e)
+basic_blk *gen_expr_str(expr *e, basic_blk *bb)
 {
 	/*gen_asm_local(e->bits.str.sym.decl); - done for the decl we create */
-	out_push_lbl(b_from, e->bits.str.sv.lbl, 1);
+	out_push_lbl(bb, e->bits.str.sv.lbl, 1);
+	return bb;
 }
 
-void gen_expr_str_str(expr *e)
+basic_blk *gen_expr_str_str(expr *e, basic_blk *bb)
 {
 	stringval *sv = &e->bits.str.sv;
 	FILE *f = gen_file();
@@ -78,6 +79,8 @@ void gen_expr_str_str(expr *e)
 	literal_print(f, e->bits.str.sv.str, e->bits.str.sv.len);
 	gen_str_indent--;
 	fputc('\n', f);
+
+	return bb;
 }
 
 static void const_expr_string(expr *e, consty *k)
@@ -116,7 +119,8 @@ expr *expr_new_str(char *s, int l, int wide)
 	return e;
 }
 
-void gen_expr_style_str(expr *e)
+basic_blk *gen_expr_style_str(expr *e, basic_blk *bb)
 {
 	literal_print(gen_file(), e->bits.str.sv.str, e->bits.str.sv.len);
+	return bb;
 }

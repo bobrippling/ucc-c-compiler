@@ -41,7 +41,7 @@ void flow_fold(stmt_flow *flow, symtable **pstab)
 	}
 }
 
-void flow_gen(stmt_flow *flow, symtable *stab)
+basic_blk *flow_gen(stmt_flow *flow, symtable *stab, basic_blk *bb)
 {
 	gen_code_decls(stab);
 
@@ -49,9 +49,11 @@ void flow_gen(stmt_flow *flow, symtable *stab)
 		gen_code_decls(flow->for_init_symtab);
 
 		if(flow->init_blk)
-			gen_stmt(flow->init_blk);
+			bb = gen_stmt(flow->init_blk, bb);
 		/* also generates decls on the flow->inits statement */
 	}
+
+	return bb;
 }
 
 void fold_stmt_if(stmt *s)
@@ -86,17 +88,19 @@ struct basic_blk *gen_stmt_if(stmt *s, struct basic_blk *b_from)
 	return bb_merge(b_true, b_false);
 }
 
-void style_stmt_if(stmt *s)
+basic_blk *style_stmt_if(stmt *s, basic_blk *bb)
 {
 	stylef("if(");
-	gen_expr(s->expr);
+	bb = gen_expr(s->expr, bb);
 	stylef(")\n");
-	gen_stmt(s->lhs);
+	bb = gen_stmt(s->lhs, bb);
 
 	if(s->rhs){
 		stylef("else\n");
-		gen_stmt(s->rhs);
+		bb = gen_stmt(s->rhs, bb);
 	}
+
+	return bb;
 }
 
 static int if_passable(stmt *s)

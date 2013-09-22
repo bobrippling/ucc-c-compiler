@@ -44,8 +44,8 @@ typedef struct consty
 #include "out/basic_block.tdef.h"
 
 typedef void         func_fold(          expr *, symtable *);
-typedef basic_blk   *func_gen(           expr *, basic_blk *);
-typedef basic_blk   *func_gen_lea(       expr *, basic_blk *);
+typedef basic_blk   *func_gen(           expr *, basic_blk *) ucc_wur;
+typedef basic_blk   *func_gen_lea(       expr *, basic_blk *) ucc_wur;
 typedef void         func_const(         expr *, consty *);
 typedef const char  *func_str(void);
 typedef void         func_mutate_expr(expr *);

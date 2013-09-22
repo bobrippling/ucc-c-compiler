@@ -11,7 +11,7 @@ const char *str_stmt_default()
 
 void fold_stmt_default(stmt *s)
 {
-	char *lbl = out_label_case(b_from, CASE_DEF, 0);
+	char *lbl = out_label_case(CASE_DEF, 0);
 
 	s->expr = expr_new_identifier(lbl);
 	memcpy_safe(&s->expr->where, &s->where);

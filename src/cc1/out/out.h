@@ -43,7 +43,8 @@ void out_func_epilogue(basic_blk *, type_ref *);
 
 void out_comment(basic_blk *, const char *, ...) ucc_printflike(2, 3);
 #ifdef ASM_H
-void out_comment_sec(basic_blk *, enum section_type, const char *, ...) ucc_printflike(3, 4);
+void out_comment_sec(enum section_type, const char *, ...)
+	ucc_printflike(2, 3);
 #endif
 
 void out_assert_vtop_null(basic_blk *);

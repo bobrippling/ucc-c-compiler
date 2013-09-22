@@ -33,22 +33,24 @@ void fold_stmt_return(stmt *s)
 	}
 }
 
-void gen_stmt_return(stmt *s)
+basic_blk *gen_stmt_return(stmt *s, basic_blk *bb)
 {
 	if(s->expr){
-		gen_expr(s->expr);
-		out_pop_func_ret(b_from, s->expr->tree_type);
-		out_comment(b_from, "return");
+		bb = gen_expr(s->expr, bb);
+		out_pop_func_ret(bb, s->expr->tree_type);
+		out_comment(bb, "return");
 	}
-	out_push_lbl(b_from, curfunc_lblfin, 0);
-	out_jmp(b_from);
+	out_push_lbl(bb, curfunc_lblfin, 0);
+	out_jmp(bb);
+	return bb;
 }
 
-void style_stmt_return(stmt *s)
+basic_blk *style_stmt_return(stmt *s, basic_blk *bb)
 {
 	stylef("return ");
-	gen_expr(s->expr);
+	bb = gen_expr(s->expr, bb);
 	stylef(";");
+	return bb;
 }
 
 void mutate_stmt_return(stmt *s)
