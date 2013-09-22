@@ -8,6 +8,10 @@
 #include "util.h"
 #include "alloc.h"
 
+#ifndef MIN
+#  define MIN(x, y) ((x) > (y) ? (y) : (x))
+#endif
+
 #define MAX_LINE_LEN 60
 
 enum
@@ -83,8 +87,10 @@ static void warn_show_line_part(char *line, int pos, unsigned wlen)
 
 	fputc('^', stderr);
 
-	/* >1 since we've already put a '^' out */
-	for(i = wlen; i > 1; i--)
+	/* don't go over */
+	for(i = MIN(wlen, (unsigned)(MAX_LINE_LEN - pos));
+			i > 1; /* >1 since we've already put a '^' out */
+			i--)
 		fputc('~', stderr);
 
 	fputc('\n', stderr);
