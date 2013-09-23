@@ -39,6 +39,7 @@ void fold_stmt_for(stmt *s)
 
 basic_blk *gen_stmt_for(stmt *s, basic_blk *bb)
 {
+#if 0
 	struct basic_blk *b_start, *b_loop, *b_fin;
 
 	bb = flow_gen(s->flow, s->flow->for_init_symtab, bb);
@@ -58,7 +59,7 @@ basic_blk *gen_stmt_for(stmt *s, basic_blk *bb)
 	if(s->flow->for_while){
 		bb = gen_expr(s->flow->for_while, bb);
 
-		bb_split(bb, b_loop, b_fin);
+		bb_split(bb, b_loop, b_fin, &phi);
 	}
 
 	bb = gen_stmt(s->lhs, b_loop);
@@ -71,8 +72,11 @@ basic_blk *gen_stmt_for(stmt *s, basic_blk *bb)
 		bb_link_forward(b_loop, b_start); /* i++, then check */
 	}
 
-
 	return b_fin;
+#else
+	(void)s, (void)bb;
+	ICE("TODO: for");
+#endif
 }
 
 basic_blk *style_stmt_for(stmt *s, basic_blk *bb)

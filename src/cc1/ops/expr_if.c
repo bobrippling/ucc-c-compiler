@@ -153,12 +153,12 @@ void fold_expr_if(expr *e, symtable *stab)
 
 basic_blk *gen_expr_if(expr *e, basic_blk *bb)
 {
-	basic_blk_phi *fin = bb_new_phi();
+	basic_blk_phi *fin;
 	basic_blk *b_t, *b_f;
 
 	bb = gen_expr(e->expr, bb);
 
-	bb_split_new(bb, &b_t, &b_f);
+	bb_split_new(bb, &b_t, &b_f, &fin, "if_exp");
 
 	if(e->lhs){
 		b_t = gen_expr(e->lhs, b_t);

@@ -7,14 +7,17 @@
 
 basic_blk *bb_new(char *label);
 
-basic_blk_phi *bb_new_phi(void);
 basic_blk *bb_phi_next(basic_blk_phi *);
 
-void bb_split(basic_blk *exp, basic_blk *b_true, basic_blk *b_false);
-#define bb_split_new(exp, pbt, pbf, lbl) \
-	*pbt = bb_new(lbl "_true"),            \
-	*pbf = bb_new(lbl "_false"),           \
-	bb_split((exp), *pbt, *pbf)
+void bb_split(
+		basic_blk *exp,
+		basic_blk *b_true, basic_blk *b_false,
+		basic_blk_phi **pphi);
+
+#define bb_split_new(exp, pbt, pbf, pphi, lbl) \
+	*pbt = bb_new(lbl "_true"),                  \
+	*pbf = bb_new(lbl "_false"),                 \
+	bb_split((exp), *pbt, *pbf, pphi)
 
 void bb_phi_incoming(basic_blk_phi *to, basic_blk *from);
 void bb_link_forward(basic_blk *from, basic_blk *to);

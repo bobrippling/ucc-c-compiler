@@ -15,6 +15,12 @@
 #include "basic_block.h"
 #include "basic_block_int.h"
 
+#include "out.h" /* needed for fork/phi ops */
+#include "lbl.h"
+#include "impl_flow.h" /* impl_{jmp,lbl} */
+
+#define bb_cmd(f, s, ...) fprintf(f, "\t" s "\n", __VA_ARGS__)
+
 struct basic_blk
 {
 	enum bb_type
@@ -31,7 +37,9 @@ struct basic_blk
 struct basic_blk_fork
 {
 	enum bb_type type;
+	struct basic_blk *exp;
 	struct basic_blk *btrue, *bfalse;
+	struct basic_blk_phi *phi;
 };
 
 struct basic_blk_phi
@@ -48,11 +56,11 @@ basic_blk *bb_new(char *label)
 {
 	basic_blk *bb = umalloc(sizeof *bb);
 	bb->type = bb_norm;
-	bb->lbl = label;
+	bb->lbl = out_label_code(label);
 	return bb;
 }
 
-basic_blk_phi *bb_new_phi(void)
+static basic_blk_phi *bb_new_phi(void)
 {
 	basic_blk_phi *phi = umalloc(sizeof *phi);
 	phi->type = bb_phi;
@@ -114,7 +122,8 @@ void bb_terminates(basic_blk *bb)
 void bb_split(
 		basic_blk *exp,
 		basic_blk *b_true,
-		basic_blk *b_false)
+		basic_blk *b_false,
+		basic_blk_phi **pphi)
 {
 	struct basic_blk_fork *fork = umalloc(sizeof *fork);
 
@@ -122,8 +131,14 @@ void bb_split(
 
 	exp->next = (basic_blk *)fork;
 
+	out_push_zero(exp, vtop->t);
+	out_op(exp, op_ne);
+	out_pop(exp);
+
 	fork->type = bb_fork;
+	fork->exp = exp;
 	fork->btrue = b_true, fork->bfalse = b_false;
+	fork->phi = *pphi = bb_new_phi();
 }
 
 void bb_link_forward(basic_blk *from, basic_blk *to)
@@ -134,24 +149,28 @@ void bb_link_forward(basic_blk *from, basic_blk *to)
 
 void bb_phi_incoming(basic_blk_phi *to, basic_blk *from)
 {
-	bb_link_forward(from, PHI_TO_NORMAL(to));
-
+	/* from doesn't link to the phi node */
 	dynarray_add(&to->incoming, from);
 }
 
 static void bb_comment(const char *s, FILE *f)
 {
-	fprintf(f, "/* %s */\n", s);
+	fprintf(f, "\t/* %s */\n", s);
 }
 
 static void bb_flush_fork(struct basic_blk_fork *head, FILE *f)
 {
+	char *lbl = head->phi->next->lbl;
+
 	bb_comment("TODO: fork on ^", f);
-	bb_comment("true case:", f);
+
 	bb_flush(head->btrue, f);
-	bb_comment("false case:", f);
+	impl_jmp(f, lbl);
+
 	bb_flush(head->bfalse, f);
-	bb_comment("fork end", f);
+	bb_comment("fall to phi", f);
+
+	bb_flush(PHI_TO_NORMAL(head->phi), f);
 }
 
 void bb_flush(basic_blk *head, FILE *f)
@@ -163,9 +182,9 @@ void bb_flush(basic_blk *head, FILE *f)
 		case bb_norm:
 		{
 			char **i;
-			fprintf(f, "%s:\n", head->lbl);
+			impl_lbl(f, head->lbl);
 			for(i = head->insns; i && *i; i++)
-				fprintf(f, "\t%s\n", *i);
+				bb_cmd(f, "%s", *i);
 			bb_flush(head->next, f);
 			break;
 		}
@@ -175,7 +194,6 @@ void bb_flush(basic_blk *head, FILE *f)
 			break;
 
 		case bb_phi:
-			bb_comment("TODO: phi node", f);
 			bb_flush(((struct basic_blk_phi *)head)->next, f);
 			break;
 	}

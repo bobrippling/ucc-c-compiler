@@ -199,7 +199,7 @@ static void va_arg_gen_read(
 	out_push_l(b_from, type_ref_cached_INT(), max_reg_args_sz);
 	out_op(b_from, op_lt); /* va, &gp_o, <cond> */
 
-	bb_split_new(b_from, &b_reg, &b_stk);
+	bb_split_new(b_from, &b_reg, &b_stk, &b_join, "va_stk");
 
 	/* register code */
 	out_dup(b_reg); /* va, &gp_o, &gp_o */
@@ -249,7 +249,6 @@ static void va_arg_gen_read(
 	out_op(b_stk, op_minus);
 
 	/* ensure we match the other block's final result before the merge */
-	b_join = bb_new_phi();
 	bb_phi_incoming(b_join, b_reg);
 	bb_phi_incoming(b_join, b_stk);
 	b_after = bb_phi_next(b_join);

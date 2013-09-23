@@ -37,6 +37,7 @@ basic_blk *gen_stmt_while(stmt *s, basic_blk *bb)
 	 *              ?-> bb_break
 	 */
 	struct basic_blk *bb_exp, *bb_loop, *bb_break;
+	struct basic_blk_phi *phi;
 
 	bb = flow_gen(s->flow, s->symtab, bb);
 
@@ -47,12 +48,15 @@ basic_blk *gen_stmt_while(stmt *s, basic_blk *bb)
 			gen_expr(s->expr, bb_exp),
 			&bb_loop,
 			&bb_break,
+			&phi,
 			"while");
 
 	bb_loop = gen_stmt(s->lhs, bb_loop);
 	bb_link_forward(bb_loop, bb_exp);
 
-	return bb_break;
+	bb_phi_incoming(phi, bb_break);
+
+	return bb_phi_next(phi);
 }
 
 basic_blk *style_stmt_while(stmt *s, basic_blk *bb)

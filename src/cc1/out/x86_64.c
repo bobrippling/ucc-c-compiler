@@ -487,7 +487,8 @@ basic_blk *impl_func_prologue_save_variadic(basic_blk *bb, type_ref *rf)
 
 	{
 		type_ref *const ty_ch = type_ref_cached_CHAR();
-		basic_blk *b_join, *b_fpsav;
+		basic_blk *b_noop, *b_fpsav;
+		basic_blk_phi *b_phi;
 
 		/* testb %al, %al ; jz ... */
 		vpush(bb, ty_ch);
@@ -495,7 +496,11 @@ basic_blk *impl_func_prologue_save_variadic(basic_blk *bb, type_ref *rf)
 		out_push_zero(bb, ty_ch);
 		out_op(bb, op_eq);
 
-		bb_split_new(bb, /* %al==0 */&b_join, /* %al!=0 */&b_fpsav,
+		bb_split_new(
+				bb,
+				/* %al==0 */&b_noop,
+				/* %al!=0 */&b_fpsav,
+				&b_phi,
 				"va_fp");
 
 		for(i = 0; i < N_CALL_REGS_F; i++){
@@ -509,9 +514,10 @@ basic_blk *impl_func_prologue_save_variadic(basic_blk *bb, type_ref *rf)
 					stk_top - (i * 2 + n_call_regs) * pws);
 		}
 
-		bb_link_forward(b_fpsav, b_join);
+		bb_phi_incoming(b_phi, b_noop);
+		bb_phi_incoming(b_phi, b_fpsav);
 
-		return b_join;
+		return bb_phi_next(b_phi);
 	}
 }
 
@@ -1396,6 +1402,16 @@ static const char *x86_call_jmp_target(
 
 	ICE("invalid jmp target");
 	return NULL;
+}
+
+void impl_lbl(FILE *f, const char *lbl)
+{
+	fprintf(f, "%s:\n", lbl);
+}
+
+void impl_jmp(FILE *f, const char *lbl)
+{
+	fprintf(f, "\tjmp %s\n", lbl);
 }
 
 #if 0

@@ -16,9 +16,6 @@ void impl_deref(basic_blk *,
 		const struct vreg *to,
 		type_ref *tpointed_to);
 
-//void impl_jmp(void);
-//void impl_jcond(basic_blk *, int true, const char *lbl);
-
 void impl_i2f(basic_blk *, struct vstack *, type_ref *t_i, type_ref *t_f);
 void impl_f2i(basic_blk *, struct vstack *, type_ref *t_f, type_ref *t_i);
 void impl_f2f(basic_blk *, struct vstack *, type_ref *from, type_ref *to);
@@ -61,9 +58,10 @@ enum p_opts
 void out_asm(basic_blk *, const char *fmt, ...) ucc_printflike(2, 3);
 
 void impl_comment_sec(enum section_type, const char *fmt, va_list l);
-void impl_lbl(const char *lbl);
 
 enum flag_cmp op_to_flag(enum op_type op);
+
+#include "impl_flow.h"
 
 /* can't do this for gen_deps.sh */
 #ifdef CC1_IMPL_FNAME
