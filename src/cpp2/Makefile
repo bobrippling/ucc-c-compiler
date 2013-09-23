@@ -24,6 +24,6 @@ clean:
 deps: Makefile.dep
 
 Makefile.dep:
-	cc ${CPPFLAGS} -MM *.c > $@
+	${CC} ${CPPFLAGS} -MM *.c > $@
 
 include Makefile.dep

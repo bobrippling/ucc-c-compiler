@@ -31,7 +31,7 @@ dynmap.o: dynmap.c
 deps: Makefile.dep
 
 Makefile.deps:
-	cc -MM ${SRC} > $@
+	${CC} -MM ${SRC} > $@
 
 clean:
 	rm -f *.o
