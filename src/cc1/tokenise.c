@@ -10,6 +10,7 @@
 #include "tokenise.h"
 #include "../util/alloc.h"
 #include "../util/str.h"
+#include "../util/escape.h"
 #include "str.h"
 #include "cc1.h"
 
@@ -359,32 +360,39 @@ static void add_suffix(enum intval_suffix s)
 
 static void read_number(enum base mode)
 {
-	int read_suffix = 1;
-	int nlen;
+	char *end;
 
-	char_seq_to_iv(bufferpos, &currentval, &nlen, mode);
+	switch(mode){
+		case BIN: currentval.suffix = VAL_BIN; break;
+		case HEX: currentval.suffix = VAL_HEX; break;
+		case OCT: currentval.suffix = VAL_OCTAL; break;
+		case DEC: currentval.suffix = 0; break;
+	}
 
-	if(nlen == 0)
+	currentval.val = char_seq_to_long(bufferpos, &end, mode);
+
+	if(end == bufferpos)
 		DIE_AT(NULL, "%s-number expected (got '%c')",
 				base_to_str(mode), peeknextchar());
 
-	bufferpos += nlen;
+	bufferpos = end;
 
-	while(read_suffix)
-		switch(peeknextchar()){
-			case 'U':
-			case 'u':
-				add_suffix(VAL_UNSIGNED);
-				nextchar();
-				break;
-			case 'L':
-			case 'l':
-				add_suffix(VAL_LONG);
-				nextchar();
-				break;
-			default:
-				read_suffix = 0;
-		}
+	for(;;) switch(peeknextchar()){
+		case 'U':
+		case 'u':
+			add_suffix(VAL_UNSIGNED);
+			nextchar();
+			break;
+		case 'L':
+		case 'l':
+			add_suffix(VAL_LONG);
+			nextchar();
+			break;
+		default:
+			goto out;
+	}
+
+out:;
 }
 
 static enum token curtok_to_xequal(void)
