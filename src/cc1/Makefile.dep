@@ -1139,7 +1139,7 @@ out/basic_block.o: out/basic_block.c out/../../util/where.h \
  out/../ops/stmt_switch.h out/../ops/stmt_while.h \
  out/../ops/stmt_continue.h out/../sym.h out/../decl.h out/../type_ref.h \
  out/../type_ref.h out/vstack.h out/basic_block.h out/basic_block.tdef.h \
- out/basic_block_int.h
+ out/basic_block_int.h out/out.h out/lbl.h out/impl_flow.h
 out/impl.o: out/impl.c out/../../util/util.h out/../../util/where.h \
  out/../../util/compiler.h out/../../util/assert.h out/../data_structs.h \
  out/../tree.h out/../type.h out/../expr.h out/../out/basic_block.tdef.h \
@@ -1157,8 +1157,8 @@ out/impl.o: out/impl.c out/../../util/util.h out/../../util/where.h \
  out/../ops/stmt_label.h out/../ops/stmt_noop.h out/../ops/stmt_return.h \
  out/../ops/stmt_switch.h out/../ops/stmt_while.h \
  out/../ops/stmt_continue.h out/../sym.h out/../decl.h out/../type_ref.h \
- out/../decl.h out/vstack.h out/asm.h out/impl.h out/x86_64.h \
- out/basic_block_int.h out/../cc1.h out/../../util/std.h
+ out/../decl.h out/vstack.h out/asm.h out/impl.h out/impl_flow.h \
+ out/x86_64.h out/basic_block_int.h out/../cc1.h out/../../util/std.h
 out/lbl.o: out/lbl.c out/../../util/alloc.h out/../../util/util.h \
  out/../../util/where.h out/../../util/compiler.h out/../../util/assert.h \
  out/common.h out/lbl.h
@@ -1180,8 +1180,9 @@ out/mipsel_32.o: out/mipsel_32.c out/../../util/util.h out/../../util/where.h \
  out/../ops/stmt_label.h out/../ops/stmt_noop.h out/../ops/stmt_return.h \
  out/../ops/stmt_switch.h out/../ops/stmt_while.h \
  out/../ops/stmt_continue.h out/../sym.h out/../decl.h out/../type_ref.h \
- out/vstack.h out/impl.h out/x86_64.h out/../cc1.h out/../../util/std.h \
- out/asm.h out/common.h out/out.h out/basic_block.tdef.h out/lbl.h
+ out/vstack.h out/impl.h out/impl_flow.h out/x86_64.h out/../cc1.h \
+ out/../../util/std.h out/asm.h out/common.h out/out.h \
+ out/basic_block.tdef.h out/lbl.h
 out/out.o: out/out.c out/../../util/util.h out/../../util/where.h \
  out/../../util/compiler.h out/../../util/assert.h out/../../util/alloc.h \
  out/../data_structs.h out/../tree.h out/../type.h out/../expr.h \
@@ -1200,7 +1201,7 @@ out/out.o: out/out.c out/../../util/util.h out/../../util/where.h \
  out/../ops/stmt_switch.h out/../ops/stmt_while.h \
  out/../ops/stmt_continue.h out/../sym.h out/../decl.h out/../type_ref.h \
  out/asm.h out/out.h out/basic_block.tdef.h out/vstack.h out/impl.h \
- out/x86_64.h out/basic_block.h out/basic_block_int.h \
+ out/impl_flow.h out/x86_64.h out/basic_block.h out/basic_block_int.h \
  out/../../util/platform.h out/../cc1.h out/../../util/std.h \
  out/../pack.h out/../defs.h out/../opt.h out/../const.h
 out/vm.o: out/vm.c out/../../util/util.h out/../../util/where.h \
@@ -1220,7 +1221,8 @@ out/vm.o: out/vm.c out/../../util/util.h out/../../util/where.h \
  out/../ops/stmt_label.h out/../ops/stmt_noop.h out/../ops/stmt_return.h \
  out/../ops/stmt_switch.h out/../ops/stmt_while.h \
  out/../ops/stmt_continue.h out/../sym.h out/../decl.h out/../type_ref.h \
- out/vstack.h out/impl.h out/x86_64.h out/../cc1.h out/../../util/std.h
+ out/vstack.h out/impl.h out/impl_flow.h out/x86_64.h out/../cc1.h \
+ out/../../util/std.h
 out/x86_64.o: out/x86_64.c out/../../util/util.h out/../../util/where.h \
  out/../../util/compiler.h out/../../util/assert.h out/../../util/alloc.h \
  out/../../util/dynarray.h out/../../util/dyn.h out/../../util/platform.h \
@@ -1239,6 +1241,6 @@ out/x86_64.o: out/x86_64.c out/../../util/util.h out/../../util/where.h \
  out/../ops/stmt_label.h out/../ops/stmt_noop.h out/../ops/stmt_return.h \
  out/../ops/stmt_switch.h out/../ops/stmt_while.h \
  out/../ops/stmt_continue.h out/../sym.h out/../decl.h out/../type_ref.h \
- out/vstack.h out/asm.h out/impl.h out/x86_64.h out/../cc1.h \
- out/../../util/std.h out/common.h out/out.h out/basic_block.tdef.h \
- out/lbl.h out/basic_block.h out/../funcargs.h
+ out/vstack.h out/asm.h out/impl.h out/impl_flow.h out/x86_64.h \
+ out/../cc1.h out/../../util/std.h out/common.h out/out.h \
+ out/basic_block.tdef.h out/lbl.h out/basic_block.h out/../funcargs.h
