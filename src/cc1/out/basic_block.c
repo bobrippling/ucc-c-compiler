@@ -37,10 +37,20 @@ struct basic_blk
 struct basic_blk_fork
 {
 	enum bb_type type;
-	struct basic_blk *exp;
+  struct vstack exp;
+
 	struct basic_blk *btrue, *bfalse;
 	struct basic_blk_phi *phi;
 };
+/*
+    fork on exp
+    /   \
+   /     \
+btrue   bfalse
+   \     /
+    \   /
+     phi
+*/
 
 struct basic_blk_phi
 {
@@ -131,12 +141,8 @@ void bb_split(
 
 	exp->next = (basic_blk *)fork;
 
-	out_push_zero(exp, vtop->t);
-	out_op(exp, op_ne);
-	out_pop(exp);
-
 	fork->type = bb_fork;
-	fork->exp = exp;
+	fork->exp = *vtop;
 	fork->btrue = b_true, fork->bfalse = b_false;
 	fork->phi = *pphi = bb_new_phi();
 }
@@ -158,7 +164,7 @@ static void bb_flush_fork(struct basic_blk_fork *head, FILE *f)
 	char *lfin = head->phi->next->lbl;
 
 	bb_flush(head->btrue, f);
-	impl_cond(f, lfin);
+	impl_jmp(f, lfin);
 
 	bb_flush(head->bfalse, f);
 	/* fall to phi */
