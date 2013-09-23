@@ -12,6 +12,7 @@ static char *str_quotefin2(char *s, char q)
 			return s;
 
 	return NULL;
+}
 
 char *char_quotefin(char *s)
 {

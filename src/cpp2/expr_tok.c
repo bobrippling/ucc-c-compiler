@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <ctype.h>
@@ -8,6 +9,7 @@
 
 #include "../util/alloc.h"
 #include "../util/str.h"
+#include "../util/util.h"
 
 static char *tok_pos;
 
