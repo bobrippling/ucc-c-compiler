@@ -153,22 +153,15 @@ void bb_phi_incoming(basic_blk_phi *to, basic_blk *from)
 	dynarray_add(&to->incoming, from);
 }
 
-static void bb_comment(const char *s, FILE *f)
-{
-	fprintf(f, "\t/* %s */\n", s);
-}
-
 static void bb_flush_fork(struct basic_blk_fork *head, FILE *f)
 {
-	char *lbl = head->phi->next->lbl;
-
-	bb_comment("TODO: fork on ^", f);
+	char *lfin = head->phi->next->lbl;
 
 	bb_flush(head->btrue, f);
-	impl_jmp(f, lbl);
+	impl_cond(f, lfin);
 
 	bb_flush(head->bfalse, f);
-	bb_comment("fall to phi", f);
+	/* fall to phi */
 
 	bb_flush(PHI_TO_NORMAL(head->phi), f);
 }
