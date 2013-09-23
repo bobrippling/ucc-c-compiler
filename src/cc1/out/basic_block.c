@@ -143,6 +143,9 @@ void bb_split(
 
 	fork->type = bb_fork;
 	fork->exp = *vtop;
+	fprintf(stderr, "SPLIT, vtop = { %d }\n", vtop->type);
+	out_pop(exp);
+
 	fork->btrue = b_true, fork->bfalse = b_false;
 	fork->phi = *pphi = bb_new_phi();
 }
@@ -162,6 +165,8 @@ void bb_phi_incoming(basic_blk_phi *to, basic_blk *from)
 static void bb_flush_fork(struct basic_blk_fork *head, FILE *f)
 {
 	char *lfin = head->phi->next->lbl;
+
+	impl_jcond(f, &head->exp, head->btrue->lbl, head->bfalse->lbl);
 
 	bb_flush(head->btrue, f);
 	impl_jmp(f, lfin);

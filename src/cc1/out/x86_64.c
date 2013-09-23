@@ -554,7 +554,7 @@ void impl_pop_func_ret(basic_blk *bb, type_ref *ty)
 	vpop(bb);
 }
 
-static const char *x86_cmp(struct flag_opts *flag)
+static const char *x86_cmp(const struct flag_opts *flag)
 {
 	switch(flag->cmp){
 #define OP(e, s, u)  \
@@ -1412,27 +1412,19 @@ void impl_lbl(FILE *f, const char *lbl)
 void impl_jmp(FILE *f, const char *lbl)
 {
 	fprintf(f, "\tjmp %s\n", lbl);
+	/*out_asm(bb, "jmp %s", x86_call_jmp_target(bb, vtop, 0));*/
 }
 
-#if 0
-void impl_jmp(basic_blk *bb)
+void impl_jcond(
+		FILE *f, const struct vstack *vp,
+		const char *ltrue, const char *lfalse)
 {
-	out_asm(bb, "jmp %s", x86_call_jmp_target(bb, vtop, 0));
-}
-
-void impl_jcond(basic_blk *bb, int true, const char *lbl)
-{
-	switch(vtop->type){
+	switch(vp->type){
 		case V_FLAG:
 		{
-			const int inv = !true;
+#ifdef TODO_PARITY
 			int parity_chk, parity_rev = 0;
-			char *bb_lbl = NULL;
-
-			if(inv)
-				v_inv_cmp(&vtop->bits.flag);
-
-			parity_chk = x86_need_fp_parity_p(&vtop->bits.flag, &parity_rev);
+			parity_chk = x86_need_fp_parity_p(&vp->bits.flag, &parity_rev);
 
 			parity_rev ^= inv;
 
@@ -1448,45 +1440,39 @@ void impl_jcond(basic_blk *bb, int true, const char *lbl)
 					out_asm(bb, "jp %s", lbl);
 				}
 			}
+#endif
 
-			out_asm(bb, "j%s %s", x86_cmp(&vtop->bits.flag), lbl);
+			fprintf(f, "j%s %s\n", x86_cmp(&vp->bits.flag), ltrue);
+			impl_jmp(f, lfalse);
 
+#ifdef TODO_PARITY
 			if(parity_chk && parity_rev){
 				/* jump not taken, try parity */
 				out_asm(bb, "jp %s", lbl);
 			}
-			if(bb_lbl){
-				impl_lbl(bb_lbl);
-				free(bb_lbl);
-			}
+#endif
 			break;
 		}
 
 		case V_CONST_F:
 			ICE("jcond float");
 		case V_CONST_I:
-			if(true == !!vtop->bits.val_i)
-				out_asm(bb, "jmp %s", lbl);
-
-			out_comment(bb,
-					"constant jmp condition %" NUMERIC_FMT_D " %staken",
-					vtop->bits.val_i, vtop->bits.val_i ? "" : "not ");
-
+			impl_jmp(f, vp->bits.val_i ? ltrue : lfalse);
 			break;
 
 		case V_LBL:
 		case V_REG_SAVE:
-			v_to_reg(bb, vtop);
+			//v_to_reg(bb, vp);
 
 		case V_REG:
-			out_normalise(bb);
-			UCC_ASSERT(vtop->type != V_REG,
+			ICE("TODO");
+			/*out_normalise(bb);
+			UCC_ASSERT(vp->type != V_REG,
 					"normalise remained as a register");
-			impl_jcond(bb, true, lbl);
+			impl_jcond(bb, true, lbl);*/
 			break;
 	}
 }
-#endif
 
 void impl_call(basic_blk *bb, const int nargs, type_ref *r_ret, type_ref *r_func)
 {
