@@ -23,6 +23,8 @@ struct basic_blk
 	} type;
 
 	struct basic_blk *next;
+
+	char *lbl;
 	char **insns;
 };
 
@@ -42,10 +44,11 @@ struct basic_blk_phi
 #define PHI_TO_NORMAL(phi) (basic_blk *)phi
 
 
-basic_blk *bb_new(void)
+basic_blk *bb_new(char *label)
 {
 	basic_blk *bb = umalloc(sizeof *bb);
 	bb->type = bb_norm;
+	bb->lbl = label;
 	return bb;
 }
 
@@ -59,7 +62,7 @@ basic_blk_phi *bb_new_phi(void)
 basic_blk *bb_phi_next(basic_blk_phi *phi)
 {
 	if(!phi->next)
-		phi->next = bb_new();
+		phi->next = bb_new("phi");
 	return phi->next;
 }
 
@@ -136,14 +139,19 @@ void bb_phi_incoming(basic_blk_phi *to, basic_blk *from)
 	dynarray_add(&to->incoming, from);
 }
 
+static void bb_comment(const char *s, FILE *f)
+{
+	fprintf(f, "/* %s */\n", s);
+}
+
 static void bb_flush_fork(struct basic_blk_fork *head, FILE *f)
 {
-	fprintf(f, "/* TODO: fork on ^ */\n");
-	fprintf(f, "# true case:\n");
+	bb_comment("TODO: fork on ^", f);
+	bb_comment("true case:", f);
 	bb_flush(head->btrue, f);
-	fprintf(f, "# false case:\n");
+	bb_comment("false case:", f);
 	bb_flush(head->bfalse, f);
-	fprintf(f, "# fork end\n");
+	bb_comment("fork end", f);
 }
 
 void bb_flush(basic_blk *head, FILE *f)
@@ -155,8 +163,9 @@ void bb_flush(basic_blk *head, FILE *f)
 		case bb_norm:
 		{
 			char **i;
+			fprintf(f, "%s:\n", head->lbl);
 			for(i = head->insns; i && *i; i++)
-				fprintf(f, "%s\n", *i);
+				fprintf(f, "\t%s\n", *i);
 			bb_flush(head->next, f);
 			break;
 		}
@@ -166,7 +175,7 @@ void bb_flush(basic_blk *head, FILE *f)
 			break;
 
 		case bb_phi:
-			fprintf(f, "/* TODO: phi node */\n", head->type);
+			bb_comment("TODO: phi node", f);
 			bb_flush(((struct basic_blk_phi *)head)->next, f);
 			break;
 	}

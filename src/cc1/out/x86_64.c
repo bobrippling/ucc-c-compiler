@@ -495,7 +495,8 @@ basic_blk *impl_func_prologue_save_variadic(basic_blk *bb, type_ref *rf)
 		out_push_zero(bb, ty_ch);
 		out_op(bb, op_eq);
 
-		bb_split_new(bb, /* %al==0 */&b_join, /* %al!=0 */&b_fpsav);
+		bb_split_new(bb, /* %al==0 */&b_join, /* %al!=0 */&b_fpsav,
+				"va_fp");
 
 		for(i = 0; i < N_CALL_REGS_F; i++){
 			struct vreg vr;

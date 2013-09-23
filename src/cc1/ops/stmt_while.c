@@ -40,13 +40,14 @@ basic_blk *gen_stmt_while(stmt *s, basic_blk *bb)
 
 	bb = flow_gen(s->flow, s->symtab, bb);
 
-	bb_exp = bb_new();
+	bb_exp = bb_new("while_exp");
 	bb_link_forward(bb, bb_exp);
 
 	bb_split_new(
 			gen_expr(s->expr, bb_exp),
 			&bb_loop,
-			&bb_break);
+			&bb_break,
+			"while");
 
 	bb_loop = gen_stmt(s->lhs, bb_loop);
 	bb_link_forward(bb_loop, bb_exp);

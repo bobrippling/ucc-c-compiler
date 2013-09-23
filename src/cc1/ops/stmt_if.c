@@ -75,11 +75,11 @@ basic_blk *gen_stmt_if(stmt *s, basic_blk *bb)
 {
 	struct basic_blk *b_true, *b_false, *b_end;
 
-	b_end = bb_new();
+	b_end = bb_new("if_end");
 
 	bb = gen_expr(s->expr, flow_gen(s->flow, s->symtab, bb));
 
-	bb_split_new(bb, &b_true, &b_false);
+	bb_split_new(bb, &b_true, &b_false, "if");
 
 	b_true = gen_stmt(s->lhs, b_true);
 	bb_link_forward(b_true, b_end);

@@ -35,7 +35,7 @@ void out_call(basic_blk *,
 		int nargs, type_ref *rt, type_ref *f) ucc_nonnull((3, 4));
 
 basic_blk *out_func_prologue(
-		const char *spel,
+		char *spel,
 		type_ref *rf,
 		int stack_res, int nargs, int variadic,
 		int arg_offsets[]);

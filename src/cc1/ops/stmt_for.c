@@ -53,7 +53,7 @@ basic_blk *gen_stmt_for(stmt *s, basic_blk *bb)
 
 	/* start of loop, after init */
 	b_start = bb;
-	b_loop = bb_new(), b_fin = bb_new();
+	b_loop = bb_new("for_loop"), b_fin = bb_new("for_fin");
 
 	if(s->flow->for_while){
 		bb = gen_expr(s->flow->for_while, bb);

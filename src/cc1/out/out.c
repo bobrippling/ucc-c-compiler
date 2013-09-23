@@ -1365,14 +1365,12 @@ void out_comment(basic_blk *bb, const char *fmt, ...)
 }
 
 basic_blk *out_func_prologue(
-		const char *spel,
+		char *spel,
 		type_ref *rf,
 		int stack_res, int nargs, int variadic,
 		int arg_offsets[])
 {
-	basic_blk *bb = bb_new();
-
-	bb_label(bb, spel);
+	basic_blk *bb = bb_new(spel);
 
 	UCC_ASSERT(stack_sz == 0, "non-empty stack for new func");
 

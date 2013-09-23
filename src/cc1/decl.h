@@ -108,7 +108,7 @@ struct decl
 	stmt *func_code;
 };
 
-const char *decl_asm_spel(decl *);
+char *decl_asm_spel(decl *);
 
 #include "type_ref.h"
 

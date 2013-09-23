@@ -267,7 +267,7 @@ void decl_replace_with(decl *to, decl *from)
 	to->align    = from->align;
 }
 
-const char *decl_asm_spel(decl *d)
+char *decl_asm_spel(decl *d)
 {
 	if(!d->spel_asm){
 		/* apply underscore prefixes, name mangling, etc */

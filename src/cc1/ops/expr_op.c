@@ -719,7 +719,7 @@ static basic_blk *op_shortcircuit(expr *e, basic_blk *bb)
 	bb = gen_expr(e->lhs, bb);
 	out_normalise(bb);
 
-	b_t = bb_new(), b_f = bb_new();
+	b_t = bb_new("sc_true"), b_f = bb_new("sc_false");
 
 	bb_split(bb,
 			flip ? b_t : b_f,
@@ -767,7 +767,7 @@ basic_blk *gen_expr_op(expr *e, basic_blk *bb)
 					basic_blk_phi *b_phi;
 
 					out_push_overflow(bb);
-					bb_split_new(bb, &b_of, &b_cont);
+					bb_split_new(bb, &b_of, &b_cont, "trapv");
 
 					out_undefined(b_of);
 					bb_terminates(b_of);
