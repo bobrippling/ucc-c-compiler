@@ -1,24 +1,38 @@
-#!/usr/bin/perl -p
+#!/usr/bin/perl
 use warnings;
 
 my %hexen;
-my $last_col = 1; # 1 to 7
+my $last_col = 1;
+my $COL_LIM = 7;
+my $c256;
 
-sub pick_col
+if(@ARGV && $ARGV[0] eq '-256'){
+	shift;
+	$COL_LIM = 256;
+	$c256 = 1;
+}
+
+sub col_idx
 {
 	my $c = $last_col++;
-	$last_col = 1 if $last_col > 7;
+	$last_col = 1 if $last_col > $COL_LIM;
 	return $c;
 }
 
 sub got_hex
 {
-	my $h = shift;
-	my $found = $hexen{$h};
+	my $txt = shift;
+	my $found = $hexen{$txt};
 	return $found if $found;
 
-	my $col = pick_col();
-	return $hexen{$h} = "\033[3${col}m$h\033[m";
+	my $icol = col_idx();
+	return $hexen{$txt} =
+		"\033[" .
+		($c256 ? "38;5;" : "3") .
+		"${icol}m$txt\033[m";
 }
 
-s/0x[0-9a-fA-F]+/got_hex($&)/eg;
+while(<>){
+	s/0x[0-9a-fA-F]+/got_hex($&)/eg;
+	print;
+}
