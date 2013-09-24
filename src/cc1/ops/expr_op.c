@@ -718,23 +718,21 @@ basic_blk *gen_expr_str_op(expr *e, basic_blk *bb)
 
 static basic_blk *op_shortcircuit(expr *e, basic_blk *bb)
 {
-	const int flip = e->op == op_andsc;
-
-	basic_blk *b_t, *b_f;
 	basic_blk_phi *b_end;
-
-	b_t = bb_new("sc_true"), b_f = bb_new("sc_false");
+	basic_blk *b_t = bb_new("sc_true"),
+	          *b_f = bb_new("sc_false"),
+	          /* if it's ||, stick another check in the false-block */
+	          *b_else = (e->op == op_orsc ? b_f : b_t);
 
 	bb = gen_expr(e->lhs, bb);
 	out_normalise(bb);
 
 	bb_split(bb,
-			flip ? b_t : b_f,
-			flip ? b_f : b_t,
+			b_t, b_f,
 			&b_end);
 
-	b_f = gen_expr(e->rhs, b_f);
-	out_normalise(b_f);
+	b_f = gen_expr(e->rhs, b_else);
+	out_normalise(b_else);
 
 
 	bb_phi_incoming(b_end, b_t);
