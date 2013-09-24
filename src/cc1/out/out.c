@@ -886,11 +886,12 @@ void out_normalise(basic_blk *bb)
 			break;
 
 		default:
+			out_comment(bb, "normalise: to-reg");
+
 			v_to_reg(bb, vtop);
 
 		case V_REG:
-			out_comment(bb, "normalise");
-
+			out_comment(bb, "normalise: eqz");
 			out_push_zero(bb, vtop->t);
 			out_op(bb, op_ne);
 			/* 0 -> `0 != 0` = 0
