@@ -1,7 +1,7 @@
 #ifndef __BUILTIN_H
 #define __BUILTIN_H
 
-#include "../out/basic_block.tdef.h"
+#include "../out/basic_block/tdefs.h"
 
 #define BUILTIN_SPEL(e) (e)->bits.ident.spel
 

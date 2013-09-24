@@ -11,8 +11,6 @@
 #include "out.h"
 #include "vstack.h"
 
-#include "basic_block.h"
-#include "basic_block_int.h"
 #include "impl.h"
 
 #include "../../util/platform.h"
@@ -21,6 +19,9 @@
 #include "../defs.h"
 #include "../opt.h"
 #include "../const.h"
+
+#include "basic_block/bb.h"
+#include "basic_block/io.h"
 
 #define v_check_type(t) if(!t) t = type_ref_cached_VOID_PTR()
 
@@ -610,7 +611,7 @@ void v_freeup_regs(basic_blk *bb, const struct vreg *a, const struct vreg *b)
 	v_unreserve_reg(bb, b);
 }
 
-void v_inv_cmp(struct flag_opts *flag)
+void v_inv_cmp(struct vstack_flag *flag)
 {
 	switch(flag->cmp){
 #define OPPOSITE2(from, to)    \

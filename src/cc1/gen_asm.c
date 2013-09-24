@@ -19,7 +19,7 @@
 #include "out/out.h"
 #include "out/lbl.h"
 #include "out/asm.h"
-#include "out/basic_block.h"
+#include "out/basic_block/flush.h"
 #include "gen_style.h"
 
 basic_blk *gen_expr(expr *e, basic_blk *b_from)

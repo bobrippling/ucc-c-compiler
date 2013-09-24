@@ -3,7 +3,7 @@
 
 #define OUT_VPHI_SZ 64 /* sizeof(struct vstack) */
 
-#include "basic_block.tdef.h"
+#include "tdefs.h"
 
 basic_blk *bb_new(char *label);
 
@@ -25,7 +25,5 @@ void bb_link_forward(basic_blk *from, basic_blk *to);
 void bb_pop_to(basic_blk *from, basic_blk *to);
 
 void bb_terminates(basic_blk *);
-
-void bb_flush(basic_blk *head, FILE *);
 
 #endif

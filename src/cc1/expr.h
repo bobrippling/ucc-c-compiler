@@ -41,7 +41,7 @@ typedef struct consty
 #define K_FLOATING(num) !!((num).suffix & VAL_FLOATING)
 #define K_INTEGRAL(num) !K_FLOATING(num)
 
-#include "out/basic_block.tdef.h"
+#include "out/basic_block/tdefs.h"
 
 typedef void         func_fold(          expr *, symtable *);
 typedef basic_blk   *func_gen(           expr *, basic_blk *) ucc_wur;

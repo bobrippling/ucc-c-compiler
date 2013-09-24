@@ -10,8 +10,7 @@
 #include "../data_structs.h"
 #include "vstack.h"
 #include "asm.h"
-#include "basic_block.h"
-#include "basic_block_int.h"
+#include "basic_block/bb.h"
 #include "impl.h"
 #include "../cc1.h"
 #include "common.h"
@@ -555,7 +554,7 @@ void impl_pop_func_ret(basic_blk *bb, type_ref *ty)
 	vpop(bb);
 }
 
-static const char *x86_cmp(const struct flag_opts *flag)
+static const char *x86_cmp(const struct vstack_flag *flag)
 {
 	switch(flag->cmp){
 #define OP(e, s, u)  \
@@ -655,7 +654,7 @@ void impl_load_fp(basic_blk *bb, struct vstack *from)
 }
 
 static int x86_need_fp_parity_p(
-		struct flag_opts const *fopt, int *par_default)
+		struct vstack_flag const *fopt, int *par_default)
 {
 	if(!(fopt->mods & flag_mod_float))
 		return 0;
@@ -1417,14 +1416,11 @@ void impl_jmp(basic_blk *bb, const char *lbl)
 	/*out_asm(bb, "jmp %s", x86_call_jmp_target(bb, vtop, 0));*/
 }
 
-void impl_jflag_make(
-		struct basic_blk_fork *b_fork,
-		struct flag_opts *flag,
+void impl_jflag(
+		FILE *f, struct vstack_flag *flag,
 		const char *ltrue, const char *lfalse)
 {
-	bb_leave(b_fork, 1, "j%s %s", x86_cmp(flag), ltrue);
-	v_inv_cmp(flag);
-	bb_leave(b_fork, 0, "j%s %s", x86_cmp(flag), lfalse);
+	fprintf(f, "\tj%s %s\n", x86_cmp(flag), ltrue);
 
 #ifdef TODO_PARITY
 	int parity_chk, parity_rev = 0;

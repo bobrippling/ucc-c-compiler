@@ -33,7 +33,7 @@ struct vstack
 			long offset;
 		} regoff;
 
-		struct flag_opts
+		struct vstack_flag
 		{
 			enum flag_cmp
 			{
@@ -80,7 +80,7 @@ void v_set_flag(
 
 void v_cast(basic_blk *, struct vstack *vp, type_ref *to);
 
-void v_inv_cmp(struct flag_opts *);
+void v_inv_cmp(struct vstack_flag *);
 
 void v_to_reg(basic_blk *, struct vstack *conv);
 void v_to_reg_out(basic_blk *, struct vstack *conv, struct vreg *);

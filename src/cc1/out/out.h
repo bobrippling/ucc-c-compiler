@@ -1,7 +1,7 @@
 #ifndef OUT_H
 #define OUT_H
 
-#include "basic_block.tdef.h"
+#include "basic_block/tdefs.h"
 
 void out_pop(basic_blk *);
 void out_pop_func_ret(basic_blk *, type_ref *) ucc_nonnull((1));

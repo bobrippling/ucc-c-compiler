@@ -4,7 +4,7 @@
 #include "stmt_while.h"
 #include "stmt_if.h"
 #include "../out/lbl.h"
-#include "../out/basic_block.h"
+#include "../out/basic_block/bb.h"
 
 const char *str_stmt_while()
 {

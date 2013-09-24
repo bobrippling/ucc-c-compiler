@@ -20,7 +20,7 @@
 #include "../gen_str.h"
 
 #include "../out/out.h"
-#include "../out/basic_block.h"
+#include "../out/basic_block/bb.h"
 
 #include "__builtin_va.h"
 

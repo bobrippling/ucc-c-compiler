@@ -5,7 +5,7 @@
 #include "expr_if.h"
 #include "../sue.h"
 #include "../out/lbl.h"
-#include "../out/basic_block.h"
+#include "../out/basic_block/bb.h"
 
 const char *str_expr_if()
 {

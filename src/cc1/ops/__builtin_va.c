@@ -15,7 +15,7 @@
 #include "../gen_asm.h"
 #include "../out/out.h"
 #include "../out/lbl.h"
-#include "../out/basic_block.h"
+#include "../out/basic_block/bb.h"
 
 #include "../pack.h"
 #include "../sue.h"

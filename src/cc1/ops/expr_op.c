@@ -6,7 +6,7 @@
 #include "expr_op.h"
 #include "../out/lbl.h"
 #include "../out/asm.h"
-#include "../out/basic_block.h"
+#include "../out/basic_block/bb.h"
 #include "../type_ref_is.h"
 
 const char *str_expr_op()
