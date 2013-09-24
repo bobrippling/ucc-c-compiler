@@ -14,9 +14,14 @@
 
 #include "../impl_flow.h"
 
+#define BLOCK_SHOW(blk, s, ...) \
+	fprintf(f, "--- %p " s "\n", (void *)blk, __VA_ARGS__)
+
 static void bb_flush_fork(struct basic_blk_fork *fork, FILE *f)
 {
-	fprintf(f, "--- fork block ---\n");
+	BLOCK_SHOW(fork, "fork block, true=%p, false=%p, phi=%p",
+			(void *)fork->btrue, (void *)fork->bfalse, (void *)fork->phi);
+
 	bb_flush(fork->btrue, f);
 	bb_flush(fork->bfalse, f);
 	bb_flush(PHI_TO_NORMAL(fork->phi), f);
@@ -31,8 +36,10 @@ void bb_flush(basic_blk *head, FILE *f)
 		case bb_norm:
 		{
 			char **i;
-			fprintf(f, "--- basic block ---\n");
-			impl_lbl(f, head->lbl);
+
+			BLOCK_SHOW(head, "basic block, next=%p", (void *)head->next);
+
+			/*impl_lbl(f, head->lbl);*/
 			for(i = head->insns; i && *i; i++)
 				bb_cmd(f, "%s", *i);
 			bb_flush(head->next, f);
@@ -44,9 +51,18 @@ void bb_flush(basic_blk *head, FILE *f)
 			break;
 
 		case bb_phi:
-			fprintf(f, "--- phi block ---\n");
-			bb_flush(((struct basic_blk_phi *)head)->next, f);
+		{
+			struct basic_blk_phi *phi = (struct basic_blk_phi *)head;
+			struct basic_blk **i;
+
+			BLOCK_SHOW(phi, "phi block, next=%p, inc:", (void *)phi->next);
+
+			for(i = phi->incoming; i && *i; i++)
+				fprintf(f, "  -> %p\n", (void *)*i);
+
+			bb_flush(phi->next, f);
 			break;
+		}
 	}
 }
 
