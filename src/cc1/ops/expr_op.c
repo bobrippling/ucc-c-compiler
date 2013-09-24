@@ -649,12 +649,19 @@ void fold_expr_op(expr *e, symtable *stab)
 			return;
 		}
 
-		/* no-op if float */
-		expr_promote_int_if_smaller(&e->lhs, stab);
-		expr_promote_int_if_smaller(&e->rhs, stab);
+		/* don't bother casting up && and || operands to int,
+		 * this messes up the flag/code gen
+		 */
+		if(!op_is_shortcircuit(e->op)){
+			/* no-op if float */
+			expr_promote_int_if_smaller(&e->lhs, stab);
+			expr_promote_int_if_smaller(&e->rhs, stab);
 
-		e->tree_type = op_promote_types(e->op,
-				&e->lhs, &e->rhs, &e->where, stab);
+			e->tree_type = op_promote_types(e->op,
+					&e->lhs, &e->rhs, &e->where, stab);
+		}else{
+			e->tree_type = type_ref_cached_BOOL();
+		}
 
 		fold_check_bounds(e, 1);
 		op_check_precedence(e);
@@ -716,10 +723,10 @@ static basic_blk *op_shortcircuit(expr *e, basic_blk *bb)
 	basic_blk *b_t, *b_f;
 	basic_blk_phi *b_end;
 
+	b_t = bb_new("sc_true"), b_f = bb_new("sc_false");
+
 	bb = gen_expr(e->lhs, bb);
 	out_normalise(bb);
-
-	b_t = bb_new("sc_true"), b_f = bb_new("sc_false");
 
 	bb_split(bb,
 			flip ? b_t : b_f,
