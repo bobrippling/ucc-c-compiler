@@ -8,10 +8,12 @@ ARCH_OBJ = out/${UCC_CPU}.o
 CFLAGS  += -Wno-missing-field-initializers
 LDFLAGS += -lm
 
-OBJ = \
+OBJ_UTIL = \
 	../util/alloc.o ../util/util.o ../util/platform.o \
 	../util/dynarray.o ../util/dynmap.o ../util/where.o \
 	../util/str.o ../util/std.o ../util/assert.o \
+
+OBJ_SRC = \
 	str.o \
 	cc1.o pass1.o \
 	tree.o decl.o decl_init.o funcargs.o expr.o stmt.o \
@@ -21,7 +23,8 @@ OBJ = \
 	fold.o fold_sym.o fold_sue.o const.o \
 	sym.o sue.o ops/__builtin.o ops/__builtin_va.o pack.o \
 	gen_asm.o gen_str.o gen_style.o \
-	out/out.o out/asm.o out/lbl.o out/impl.o out/basic_block.o \
+	out/out.o out/asm.o out/lbl.o out/impl.o \
+	out/basic_block/bb.o out/basic_block/flush.o \
 	ops/expr_addr.o ops/expr_assign.o ops/expr_cast.o ops/expr_comma.o \
 	ops/expr_funcall.o ops/expr_identifier.o ops/expr_if.o ops/expr_op.o \
 	ops/expr_sizeof.o ops/expr_val.o ops/expr_stmt.o ops/expr__Generic.o \
@@ -33,6 +36,8 @@ OBJ = \
 	ops/expr_assign_compound.o ops/expr_string.o \
 	${ARCH_OBJ}
 
+OBJ = ${OBJ_UTIL} ${OBJ_SRC}
+
 include ../../config.mk
 
 cc1: ${OBJ}
@@ -42,12 +47,11 @@ cc1: ${OBJ}
 	${CC} ${CFLAGS} -c -o $@ $<
 
 clean:
-	rm -f *.o cc1 ops/*.o out/*.o
+	rm -f cc1 ${OBJ_SRC}
 
 .PHONY: clean deps
 
-../util/alloc.o ../util/util.o ../util/platform.o ../util/dynarray.o \
-../util/dynmap.o:
+${OBJ_UTIL}:
 	@echo util must be built from util/
 	false
 
