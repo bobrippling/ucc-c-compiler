@@ -10,9 +10,10 @@
 #include "asm.h"
 #include "out.h"
 #include "vstack.h"
-#include "impl.h"
+
 #include "basic_block.h"
 #include "basic_block_int.h"
+#include "impl.h"
 
 #include "../../util/platform.h"
 #include "../cc1.h"

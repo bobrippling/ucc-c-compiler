@@ -10,12 +10,13 @@
 #include "../data_structs.h"
 #include "vstack.h"
 #include "asm.h"
+#include "basic_block.h"
+#include "basic_block_int.h"
 #include "impl.h"
 #include "../cc1.h"
 #include "common.h"
 #include "out.h"
 #include "lbl.h"
-#include "basic_block.h"
 #include "../funcargs.h"
 
 
@@ -1409,69 +1410,46 @@ void impl_lbl(FILE *f, const char *lbl)
 	fprintf(f, "%s:\n", lbl);
 }
 
-void impl_jmp(FILE *f, const char *lbl)
+void impl_jmp(basic_blk *bb, const char *lbl)
 {
-	fprintf(f, "\tjmp %s\n", lbl);
+	out_asm(bb, "jmp %s", lbl);
+	/*bb_leave(bb, "jmp %s", lbl);*/
 	/*out_asm(bb, "jmp %s", x86_call_jmp_target(bb, vtop, 0));*/
 }
 
-void impl_jcond(
-		FILE *f, const struct vstack *vp,
+void impl_jflag_make(
+		struct basic_blk_fork *b_fork,
+		struct flag_opts *flag,
 		const char *ltrue, const char *lfalse)
 {
-	switch(vp->type){
-		case V_FLAG:
-		{
-#ifdef TODO_PARITY
-			int parity_chk, parity_rev = 0;
-			parity_chk = x86_need_fp_parity_p(&vp->bits.flag, &parity_rev);
-
-			parity_rev ^= inv;
-
-			if(parity_chk){
-				/* nan means false, unless parity_rev */
-				/* this is slightly hacky - need basic block
-				 * support to do this properly - impl_jcond
-				 * should give two labels
-				 */
-				if(!parity_rev){
-					/* skip */
-					bb_lbl = out_label_code("jmp_parity");
-					out_asm(bb, "jp %s", lbl);
-				}
-			}
-#endif
-
-			fprintf(f, "j%s %s\n", x86_cmp(&vp->bits.flag), ltrue);
-			impl_jmp(f, lfalse);
+	bb_leave(b_fork, 1, "j%s %s", x86_cmp(flag), ltrue);
+	v_inv_cmp(flag);
+	bb_leave(b_fork, 0, "j%s %s", x86_cmp(flag), lfalse);
 
 #ifdef TODO_PARITY
-			if(parity_chk && parity_rev){
-				/* jump not taken, try parity */
-				out_asm(bb, "jp %s", lbl);
-			}
-#endif
-			break;
+	int parity_chk, parity_rev = 0;
+	parity_chk = x86_need_fp_parity_p(&vp->bits.flag, &parity_rev);
+
+	parity_rev ^= inv;
+
+	if(parity_chk){
+		/* nan means false, unless parity_rev */
+		/* this is slightly hacky - need basic block
+		 * support to do this properly - impl_jcond
+		 * should give two labels
+		 */
+		if(!parity_rev){
+			/* skip */
+			bb_lbl = out_label_code("jmp_parity");
+			out_asm(bb, "jp %s", lbl);
 		}
-
-		case V_CONST_F:
-			ICE("jcond float");
-		case V_CONST_I:
-			impl_jmp(f, vp->bits.val_i ? ltrue : lfalse);
-			break;
-
-		case V_LBL:
-		case V_REG_SAVE:
-			//v_to_reg(bb, vp);
-
-		case V_REG:
-			ICE("TODO");
-			/*out_normalise(bb);
-			UCC_ASSERT(vp->type != V_REG,
-					"normalise remained as a register");
-			impl_jcond(bb, true, lbl);*/
-			break;
 	}
+
+	if(parity_chk && parity_rev){
+		/* jump not taken, try parity */
+		out_asm(bb, "jp %s", lbl);
+	}
+#endif
 }
 
 void impl_call(basic_blk *bb, const int nargs, type_ref *r_ret, type_ref *r_func)

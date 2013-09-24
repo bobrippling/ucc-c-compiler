@@ -32,15 +32,17 @@ struct basic_blk
 
 	char *lbl;
 	char **insns;
+	char *leave_cmd;
 };
 
 struct basic_blk_fork
 {
 	enum bb_type type;
-  struct vstack exp;
 
-	struct basic_blk *btrue, *bfalse;
+	struct basic_blk *exp, *btrue, *bfalse;
 	struct basic_blk_phi *phi;
+
+	char *leave_cmd[2]; /* t, f */
 };
 /*
     fork on exp
@@ -93,6 +95,17 @@ void bb_addv(basic_blk *bb, const char *fmt, va_list l)
 	dynarray_add(&bb->insns, insn);
 }
 
+void bb_leave(struct basic_blk_fork *bb, int as_true, const char *fmt, ...)
+{
+	va_list l;
+
+	UCC_ASSERT(!bb->leave_cmd[as_true], "already have leave command");
+
+	va_start(l, fmt);
+	bb->leave_cmd[as_true] = ustrvprintf(fmt, l);
+	va_end(l);
+}
+
 void bb_commentv(basic_blk *bb, const char *fmt, va_list l)
 {
 	char **plast;
@@ -138,13 +151,14 @@ void bb_split(
 	struct basic_blk_fork *fork = umalloc(sizeof *fork);
 
 	UCC_ASSERT(!exp->next, "can't split - already have a .next");
-
 	exp->next = (basic_blk *)fork;
 
-	fork->type = bb_fork;
-	fork->exp = *vtop;
-	fprintf(stderr, "SPLIT, vtop = { %d }\n", vtop->type);
+	/* generate the leave_cmd[2] cmds */
+	impl_jcond_make(fork, exp, b_true->lbl, b_false->lbl);
+
 	out_pop(exp);
+
+	fork->type = bb_fork;
 
 	fork->btrue = b_true, fork->bfalse = b_false;
 	fork->phi = *pphi = bb_new_phi();
@@ -166,14 +180,20 @@ static void bb_flush_fork(struct basic_blk_fork *head, FILE *f)
 {
 	char *lfin = head->phi->next->lbl;
 
-	impl_jcond(f, &head->exp, head->btrue->lbl, head->bfalse->lbl);
+	/* create the conditional jump
+	 * here is where we can use __builtin_expect(),
+	 *
+	 * but we currently just jump to the else case if the
+	 * condition doesn't hold (false, i.e. 0-index)
+	 */
+	bb_cmd(f, "%s", head->leave_cmd[0]);
 
+	/* _insert_ the explicit true-case to end jump: */
+	impl_jmp(head->btrue, lfin);
+
+	/* flush */
 	bb_flush(head->btrue, f);
-	impl_jmp(f, lfin);
-
 	bb_flush(head->bfalse, f);
-	/* fall to phi */
-
 	bb_flush(PHI_TO_NORMAL(head->phi), f);
 }
 

@@ -6,8 +6,9 @@
 #include "../decl.h"
 #include "vstack.h"
 #include "asm.h"
-#include "impl.h"
 #include "basic_block_int.h"
+#include "impl.h"
+#include "out.h"
 
 #include "../cc1.h"
 
@@ -51,4 +52,30 @@ enum flag_cmp op_to_flag(enum op_type op)
 int vreg_eq(const struct vreg *a, const struct vreg *b)
 {
 	return a->idx == b->idx && a->is_float == b->is_float;
+}
+
+void impl_jcond_make(
+		struct basic_blk_fork *b_fork,
+		struct basic_blk *bb,
+		const char *tlbl, const char *flbl)
+{
+	switch(vtop->type){
+		case V_CONST_I:
+			//impl_jmp(bb, vp->bits.val_i ? ltrue : lfalse);
+			ICE("TODO: const jmp");
+			break;
+
+		case V_LBL:
+		case V_REG_SAVE:
+			v_to_reg(bb, vtop);
+
+		case V_CONST_F:
+		case V_REG:
+			out_normalise(bb);
+			UCC_ASSERT(vtop->type != V_REG,
+					"normalise remained as a register");
+		case V_FLAG:
+			impl_jflag_make(b_fork, &vtop->bits.flag, tlbl, flbl);
+			break;
+	}
 }
