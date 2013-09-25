@@ -52,7 +52,7 @@ clean:
 .PHONY: clean deps
 
 ${OBJ_UTIL}:
-	@echo util must be built from util/
+	@echo util/$@ must be built from util/
 	false
 
 # files that need target info
