@@ -125,6 +125,6 @@ void bb_link_forward(basic_blk *from, basic_blk *to)
 
 void bb_phi_incoming(basic_blk_phi *to, basic_blk *from)
 {
-	/* from doesn't link to the phi node */
 	dynarray_add(&to->incoming, from);
+	from->next = PHI_TO_NORMAL(to);
 }

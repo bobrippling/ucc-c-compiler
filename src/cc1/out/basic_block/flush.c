@@ -17,6 +17,18 @@
 #define BLOCK_SHOW(blk, s, ...) \
 	fprintf(f, "--- %p " s "\n", (void *)blk, __VA_ARGS__)
 
+static void bb_flush_phi(struct basic_blk_phi *phi, FILE *f)
+{
+	struct basic_blk **i;
+
+	BLOCK_SHOW(phi, "phi block, next=%p, inc:", (void *)phi->next);
+
+	for(i = phi->incoming; i && *i; i++)
+		fprintf(f, "  -> %p\n", (void *)*i);
+
+	bb_flush(phi->next, f);
+}
+
 static void bb_flush_fork(struct basic_blk_fork *fork, FILE *f)
 {
 	BLOCK_SHOW(fork, "fork block, true=%p, false=%p, phi=%p",
@@ -24,7 +36,7 @@ static void bb_flush_fork(struct basic_blk_fork *fork, FILE *f)
 
 	bb_flush(fork->btrue, f);
 	bb_flush(fork->bfalse, f);
-	bb_flush(PHI_TO_NORMAL(fork->phi), f);
+	bb_flush_phi(fork->phi, f);
 }
 
 void bb_flush(basic_blk *head, FILE *f)
@@ -51,18 +63,10 @@ void bb_flush(basic_blk *head, FILE *f)
 			break;
 
 		case bb_phi:
-		{
-			struct basic_blk_phi *phi = (struct basic_blk_phi *)head;
-			struct basic_blk **i;
-
-			BLOCK_SHOW(phi, "phi block, next=%p, inc:", (void *)phi->next);
-
-			for(i = phi->incoming; i && *i; i++)
-				fprintf(f, "  -> %p\n", (void *)*i);
-
-			bb_flush(phi->next, f);
+			/* reached a phi from a normal basic block,
+			 * don't flush here, the split code logic takes care
+			 */
 			break;
-		}
 	}
 }
 
