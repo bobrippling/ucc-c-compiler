@@ -15,7 +15,7 @@
 #include "../impl_flow.h"
 
 #define BLOCK_SHOW(blk, s, ...) \
-	fprintf(f, "--- %p " s "\n", (void *)blk, __VA_ARGS__)
+	fprintf(f, "# --- %p " s "\n", (void *)blk, __VA_ARGS__)
 
 static void bb_flush_phi(struct basic_blk_phi *phi, FILE *f)
 {
@@ -24,7 +24,7 @@ static void bb_flush_phi(struct basic_blk_phi *phi, FILE *f)
 	BLOCK_SHOW(phi, "phi block, next=%p, inc:", (void *)phi->next);
 
 	for(i = phi->incoming; i && *i; i++)
-		fprintf(f, "  -> %p\n", (void *)*i);
+		fprintf(f, "#  -> %p\n", (void *)*i);
 
 	bb_flush(phi->next, f);
 }
