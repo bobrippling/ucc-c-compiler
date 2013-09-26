@@ -554,6 +554,9 @@ static void read_quoted_char(const int is_wide)
 			if(!end)
 				DIE_AT(NULL, "no terminating quote (got '%c')", peeknextchar());
 
+			if((end - bufferpos) >= type_primitive_size(type_int))
+				WARN_AT(NULL, "multi-char constant too large");
+
 			for(; bufferpos < end; bufferpos++)
 				ch = (ch * 256) + (0xff & *bufferpos);
 
