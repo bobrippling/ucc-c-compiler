@@ -14,6 +14,10 @@
 #include "str.h"
 #include "cc1.h"
 
+#ifndef CHAR_BIT
+#  define CHAR_BIT 8
+#endif
+
 #define KEYWORD(x) { #x, token_ ## x }
 
 #define KEYWORD__(x, t) \
@@ -496,12 +500,9 @@ static void read_string_multiple(const int is_wide)
 
 static void read_char(const int is_wide)
 {
-	/* TODO: merge with read_string escape code */
 	int c = rawnextchar();
 
-	if(c == EOF){
-		DIE_AT(NULL, "Invalid character");
-	}else if(c == '\\'){
+	if(c == '\\'){
 		char esc = tolower(peeknextchar());
 
 		if(esc == 'x' || esc == 'b' || isoct(esc)){
@@ -525,16 +526,44 @@ static void read_char(const int is_wide)
 			if(c == -1)
 				DIE_AT(NULL, "invalid escape character '%c'", esc);
 
-			nextchar();
+			rawnextchar();
 		}
 	}
 
-	currentval.val = c;
 	currentval.suffix = 0;
+	currentval.val = c;
+}
 
-	if((c = nextchar()) != '\'')
-		DIE_AT(NULL, "no terminating \"'\" for character (got '%c')", c);
+static void read_quoted_char(const int is_wide)
+{
+	unsigned ch; /* unsigned for multi-char constant multiplication */
 
+	if(peeknextchar() == '\''){
+		/* '' */
+		DIE_AT(NULL, "empty char constant");
+	}else{
+		read_char(is_wide);
+		ch = currentval.val;
+
+		if(peeknextchar() == '\''){
+			nextchar();
+		}else{
+			/* multi-char constant */
+			char *end = strchr(bufferpos, '\'');
+
+			if(!end)
+				DIE_AT(NULL, "no terminating quote (got '%c')", peeknextchar());
+
+			for(; bufferpos < end; bufferpos++)
+				ch = (ch * 256) + (0xff & *bufferpos);
+
+			bufferpos++;
+
+			WARN_AT(NULL, "multi-char constant");
+		}
+	}
+
+	currentval.val = ch;
 	curtok = token_character;
 }
 
@@ -657,7 +686,7 @@ void nexttoken()
 			return;
 		case '\'':
 			nextchar();
-			read_char(1);
+			read_quoted_char(1);
 			return;
 	}
 
@@ -698,7 +727,7 @@ void nexttoken()
 			break;
 
 		case '\'':
-			read_char(0);
+			read_quoted_char(0);
 			break;
 
 		case '(':
