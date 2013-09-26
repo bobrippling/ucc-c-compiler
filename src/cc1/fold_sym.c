@@ -4,12 +4,14 @@
 #include <string.h>
 
 #include "../util/util.h"
+#include "../util/alloc.h"
+#include "../util/dynarray.h"
+#include "../util/platform.h"
+
 #include "data_structs.h"
 #include "cc1.h"
 #include "sym.h"
 #include "fold_sym.h"
-#include "../util/platform.h"
-#include "../util/dynarray.h"
 #include "pack.h"
 #include "sue.h"
 #include "out/out.h"
@@ -132,11 +134,41 @@ void symtab_check_rw(symtable *tab)
 	}
 }
 
+struct ident_loc
+{
+	where *w;
+	int has_decl;
+	union
+	{
+		decl *decl;
+		const char *spel;
+	} bits;
+};
+#define IDENT_LOC_SPEL(il) \
+	((il)->has_decl          \
+	 ? (il)->bits.decl->spel \
+	 : (il)->bits.spel)
+
+static int ident_loc_cmp(const void *a, const void *b)
+{
+	const struct ident_loc *ia = a, *ib = b;
+	return strcmp(IDENT_LOC_SPEL(ia), IDENT_LOC_SPEL(ib));
+}
+
 void symtab_fold_decls(symtable *tab)
 {
 #define IS_LOCAL_SCOPE !!(tab->parent)
-	decl **all_decls = NULL;
 	decl **diter;
+
+	struct ident_loc *all_idents = NULL;
+	size_t nidents = 0;
+#define NEW_IDENT(pw) do{                      \
+		  all_idents = urealloc1(                  \
+		      all_idents,                          \
+		      (nidents + 1) * sizeof *all_idents); \
+		  all_idents[nidents].w = pw;              \
+		  nidents++;                               \
+		}while(0)
 
 	if(tab->folded)
 		return;
@@ -147,10 +179,13 @@ void symtab_fold_decls(symtable *tab)
 
 		fold_decl(d, tab, NULL);
 
-		if(d->spel)
-			dynarray_add(&all_decls, d);
+		if(d->spel){
+			NEW_IDENT(&d->where);
+			all_idents[nidents-1].has_decl = 1;
+			all_idents[nidents-1].bits.decl = d;
+		}
 
-				/* asm rename checks */
+		/* asm rename checks */
 		if(d->sym && d->sym->type != sym_global){
 			switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
 				case store_register:
@@ -168,45 +203,85 @@ void symtab_fold_decls(symtable *tab)
 		}
 	}
 
+	/* add enums */
+	{
+		struct_union_enum_st **ei;
+		for(ei = tab->sues; ei && *ei; ei++){
+			struct_union_enum_st *e = *ei;
 
-	if(all_decls){
+			if(e->primitive == type_enum){
+				sue_member **const members = e->members;
+				int i;
+
+				for(i = 0; members && members[i]; i++){
+					NEW_IDENT(&e->where);
+					all_idents[nidents-1].has_decl = 0;
+					all_idents[nidents-1].bits.spel = members[i]->enum_member->spel;
+				}
+			}
+		}
+	}
+
+
+	if(nidents > 1){
 		/* check_clashes */
-		decl **di;
+		size_t i;
 
-		qsort(all_decls,
-				dynarray_count(all_decls),
-				sizeof *all_decls,
-				(int (*)(const void *, const void *))decl_sort_cmp);
+		qsort(all_idents, nidents,
+				sizeof *all_idents,
+				&ident_loc_cmp);
 
-		for(di = all_decls; di[1]; di++){
-			decl *a = di[0], *b = di[1];
+		for(i = 0; i < nidents - 1; i++){
+			struct ident_loc *a = all_idents + i,
+			                 *b = all_idents + i + 1;
 			char *clash = NULL;
 
 			/* we allow multiple function declarations,
 			 * and multiple declarations at global scope,
 			 * but not definitions
 			 */
-			if(!strcmp(a->spel, b->spel)){
-				const int a_func = !!DECL_IS_FUNC(a);
-
-				if(!!DECL_IS_FUNC(b) != a_func
-				|| !decl_equal(a, b,
-					DECL_CMP_EXACT_MATCH | DECL_CMP_ALLOW_TENATIVE_ARRAY))
-				{
-					clash = "mismatching";
-				}else{
-					if(IS_LOCAL_SCOPE){
-						/* allow multiple functions or multiple externs */
-						if(a_func){
-							/* fine - we know they're equal from decl_equal() above */
-						}else if((a->store & STORE_MASK_STORE) == store_extern
-						      && (b->store & STORE_MASK_STORE) == store_extern){
-							/* both are extern declarations */
-						}else{
-							clash = "extern/non-extern";
-						}
-					}else if(a_func && a->func_code && b->func_code){
+			if(!strcmp(IDENT_LOC_SPEL(a), IDENT_LOC_SPEL(b))){
+				switch(a->has_decl + b->has_decl){
+					case 0:
+						/* both enum-membs, fine?????????? or mismatch? */
 						clash = "duplicate";
+						break;
+
+					case 1:
+						/* one enum-memb, one decl */
+						clash = "mismatching";
+						break;
+
+					default:
+					{
+						const enum decl_cmp dflags =
+							DECL_CMP_EXACT_MATCH | DECL_CMP_ALLOW_TENATIVE_ARRAY;
+
+						decl *da = a->has_decl ? a->bits.decl : NULL;
+						decl *db = b->has_decl ? b->bits.decl : NULL;
+
+						const int a_func = da ? !!DECL_IS_FUNC(da) : 0;
+
+						if(!!DECL_IS_FUNC(db) != a_func
+						|| !decl_equal(da, db, dflags))
+						{
+							clash = "mismatching";
+						}else{
+							if(IS_LOCAL_SCOPE){
+								/* allow multiple functions or multiple externs */
+								if(a_func){
+									/* fine - we know they're equal from decl_equal() above */
+								}else if((da->store & STORE_MASK_STORE) == store_extern
+										&& (db->store & STORE_MASK_STORE) == store_extern){
+									/* both are extern declarations */
+								}else{
+									clash = "extern/non-extern";
+								}
+							}else if(a_func && da->func_code && db->func_code){
+								clash = "duplicate";
+							}
+						}
+						break;
 					}
 				}
 			}
@@ -215,17 +290,15 @@ void symtab_fold_decls(symtable *tab)
 				/* XXX: note */
 				char wbuf[WHERE_BUF_SIZ];
 
-				die_at(&a->where,
+				die_at(a->w,
 						"%s definitions of \"%s\"\n"
 						"%s: note: other definition",
-						clash, a->spel,
-						where_str_r(wbuf, &b->where));
+						clash, IDENT_LOC_SPEL(a),
+						where_str_r(wbuf, b->w));
 			}
 		}
-
-
-		dynarray_free(decl **, &all_decls, NULL);
 	}
+	free(all_idents);
 #undef IS_LOCAL_SCOPE
 }
 
