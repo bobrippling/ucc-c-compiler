@@ -66,7 +66,12 @@ char **cd_stack = NULL;
 int option_debug     = 0;
 int option_line_info = 1;
 
-enum wmode wmode = WWHITESPACE | WTRAILING | WEMPTY_ARG | WPASTE;
+enum wmode wmode =
+	  WWHITESPACE
+	| WTRAILING
+	| WEMPTY_ARG
+	| WPASTE
+	| WFINALESCAPE;
 
 enum comment_strip strip_comments = STRIP_ALL;
 

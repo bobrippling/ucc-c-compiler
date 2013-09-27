@@ -43,6 +43,7 @@ extern enum wmode
 	WEMPTY_ARG   = 1 << 6, /* #define F(x), F() */
 	WPASTE       = 1 << 7, /* "< ## >" */
 	WUNCALLED_FN = 1 << 8, /* #define F(x), F */
+	WFINALESCAPE = 1 << 9, /* backslash-esc at eof */
 } wmode;
 
 extern enum comment_strip

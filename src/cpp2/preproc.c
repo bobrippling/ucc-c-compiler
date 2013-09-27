@@ -119,6 +119,7 @@ re_read:
 	if(file_stack_idx < 0)
 		ICE("file stack idx = 0 on read()");
 	f = file_stack[file_stack_idx].file;
+
 	line = fline(f);
 
 	if(!line){
@@ -140,7 +141,7 @@ re_read:
 	return line;
 }
 
-static char *splice_lines(void)
+static char *splice_lines(int *peof)
 {
 	static int n_nls;
 	char *line;
@@ -152,21 +153,35 @@ static char *splice_lines(void)
 	}
 
 	line = read_line();
-	if(!line)
+	if(!line){
+		*peof = 1;
 		return NULL;
+	}
 
 	len = strlen(line);
 
 	if(len && line[len - 1] == '\\'){
-		char *next = splice_lines();
-		const size_t next_len = strlen(next);
+		char *next = splice_lines(peof);
 
-		n_nls++;
+		/* remove in any case */
 		line[len - 1] = '\0';
 
-		line = urealloc1(line, len + next_len + 1);
-		strcpy(line + len - 1, next);
-		free(next);
+		if(next){
+			const size_t next_len = strlen(next);
+
+			n_nls++;
+
+			line = urealloc1(line, len + next_len + 1);
+			strcpy(line + len - 1, next);
+			free(next);
+		}else{
+			/* backslash-newline at eof
+			 * else we may return non-null on eof,
+			 * so we need an eof-check in read_line()
+			 */
+			CPP_WARN(WFINALESCAPE, "backslash-escape at eof");
+			*peof = 1;
+		}
 	}
 
 	return line;
@@ -264,10 +279,11 @@ static char *filter_macros(char *line)
 void preprocess(void)
 {
 	char *line;
+	int eof = 0;
 
 	preproc_push(stdin, current_fname);
 
-	while((line = splice_lines())){
+	while(!eof && (line = splice_lines(&eof))){
 		debug_push_line(line);
 
 		line = filter_macros(strip_comment(line));
