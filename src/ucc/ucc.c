@@ -524,6 +524,8 @@ word:
 						if(!wrapper)
 							goto missing_arg;
 					}
+					else if(!strcmp(argv[i], "-trigraphs"))
+						ADD_ARG(mode_preproc);
 					else if(!strcmp(argv[i], "--no-rm"))
 						unlink_tmps = 0;
 					else

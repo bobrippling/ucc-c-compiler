@@ -63,8 +63,8 @@ char cpp_time[16], cpp_date[16], cpp_timestamp[64];
 
 char **cd_stack = NULL;
 
-int option_debug     = 0;
 int option_line_info = 1;
+int option_trigraphs = 0;
 
 enum wmode wmode =
 	  WWHITESPACE
@@ -329,6 +329,8 @@ int main(int argc, char **argv)
 			default:
 				if(std_from_str(argv[i], &std) == 0){
 					/* we have an std */
+				}else if(!strcmp(argv[i], "-trigraphs")){
+					option_trigraphs = 1;
 				}else{
 					fprintf(stderr, "unrecognised option \"%s\"\n", argv[i]);
 					goto usage;

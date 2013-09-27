@@ -141,6 +141,43 @@ re_read:
 	return line;
 }
 
+static char *expand_trigraphs(char *line)
+{
+	static const struct
+	{
+		char from, to;
+	} map[] = {
+		{ '(', '[' },
+		{ ')', ']' },
+		{ '<', '{' },
+		{ '>', '}' },
+		{ '=', '#' },
+		{ '/', '\\' },
+		{ '\'', '^' },
+		{ '!', '|' },
+		{ '-', '~' },
+		{ 0, 0 }
+	};
+	int i;
+
+	for(;;){
+		char *qmark = strstr(line, "??");
+
+		if(!qmark)
+			break;
+
+		for(i = 0; map[i].from; i++){
+			if(map[i].from == qmark[2]){
+				qmark[0] = map[i].to;
+				memmove(qmark + 1, qmark + 3, strlen(qmark + 3) + 1);
+				break;
+			}
+		}
+	}
+
+	return line;
+}
+
 static char *splice_lines(int *peof)
 {
 	static int n_nls;
@@ -157,6 +194,8 @@ static char *splice_lines(int *peof)
 		*peof = 1;
 		return NULL;
 	}
+	if(option_trigraphs)
+		line = expand_trigraphs(line);
 
 	len = strlen(line);
 

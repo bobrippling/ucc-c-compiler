@@ -9,6 +9,7 @@ extern char **cd_stack;
 extern char cpp_time[16], cpp_date[16], cpp_timestamp[64];
 
 extern int option_line_info;
+extern int option_trigraphs;
 
 extern char *current_fname;
 extern int no_output;
