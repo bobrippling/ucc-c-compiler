@@ -48,13 +48,21 @@ my %vars = (
 	's'         => $file,
 	't'         => $target,
 	'ucc'       => $ucc,
-	'check'     => './check.sh' . ($verbose ? " -v" : ""),
+	'check'     => './check.sh',
 	'asmcheck'  => './asmcheck.pl',
 	'output_check' => './stdoutcheck.pl',
 	'ocheck'    => './retcheck.pl',
 	'layout_check' => './layout_check.sh',
 	'caret_check' => './caret_check.pl',
 );
+
+if($verbose){
+	my @verbose_support = (
+		'check', 'ocheck'
+	);
+
+	$vars{$_} .=  " -v" for @verbose_support;
+}
 
 my $ran = 0;
 
