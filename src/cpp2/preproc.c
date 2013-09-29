@@ -233,13 +233,16 @@ static char *strip_comment(char *line)
 
 	for(s = line; *s; s++){
 		if(strip_in_block){
+			const int clear_comments = (strip_comments == STRIP_ALL);
+
 			if(*s == '*' && s[1] == '/'){
-				*s = s[1] = ' ';
-				s++;
 				strip_in_block = 0;
-			}else{
-				*s = ' ';
+				if(clear_comments)
+					*s++ = ' ';
 			}
+			if(clear_comments)
+				*s = ' ';
+
 		}else if(*s == '"'){
 			/* read until the end of the string */
 			s = terminating_quote(s + 1);
@@ -274,6 +277,8 @@ strip_1line:
 				}
 				break;
 			}else if(s[1] == '*'){
+				strip_in_block = 1;
+
 				switch(strip_comments){
 					case STRIP_EXCEPT_DIRECTIVE:
 						if(!is_directive)
@@ -282,7 +287,6 @@ strip_1line:
 					case STRIP_ALL:
 						/* wait for terminator elsewhere (i'll be back) */
 						*s = s[1] = ' ';
-						strip_in_block = 1;
 						s++;
 					case STRIP_NONE:
 						break;
@@ -325,7 +329,9 @@ void preprocess(void)
 	while(!eof && (line = splice_lines(&eof))){
 		debug_push_line(line);
 
-		line = filter_macros(strip_comment(line));
+		line = strip_comment(line);
+		if(!strip_in_block)
+			line = filter_macros(line);
 
 		debug_pop_line();
 
