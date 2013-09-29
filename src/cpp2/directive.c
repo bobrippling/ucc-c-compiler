@@ -20,11 +20,6 @@
 #include "eval.h"
 #include "expr.h"
 
-#define SINGLE_TOKEN(...) \
-	tokens = tokens_skip_whitespace(tokens);                        \
-	if(tokens_count_skip_spc(tokens) != 1 || tokens[0]->tok != TOKEN_WORD) \
-		CPP_DIE(__VA_ARGS__)
-
 #define NO_TOKEN(err) \
 	if(tokens_count_skip_spc(tokens) > 0) \
 		CPP_WARN(WTRAILING, err " directive with extra tokens")
@@ -154,7 +149,12 @@ static void handle_undef(token **tokens)
 {
 	char *nam;
 
-	SINGLE_TOKEN("invalid undef macro");
+	tokens = tokens_skip_whitespace(tokens);
+	if(tokens[0]->tok != TOKEN_WORD)
+		CPP_DIE("invalid undef macro");
+
+	if(tokens_count_skip_spc(tokens) != 1)
+		CPP_WARN(WTRAILING, "undef directive with extra tokens");
 
 	NOOP_RET();
 
@@ -302,7 +302,11 @@ static void if_pop(void)
 static void handle_somedef(token **tokens, int rev)
 {
 	tokens = tokens_skip_whitespace(tokens);
-	SINGLE_TOKEN("too many arguments to ifdef macro");
+	if(tokens_count_skip_spc(tokens) != 1
+	|| tokens[0]->tok != TOKEN_WORD)
+	{
+		CPP_DIE("too many arguments to ifdef macro");
+	}
 
 	if(noop)
 		if_push(0);
