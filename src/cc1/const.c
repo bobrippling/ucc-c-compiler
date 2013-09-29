@@ -11,12 +11,9 @@
 
 void const_fold(expr *e, consty *k)
 {
-	/* always const_fold functions, i.e. builtins */
-	const int should_fold = (fopt_mode & FOPT_CONST_FOLD) || expr_kind(e, funcall);
-
 	k->type = CONST_NO;
 
-	if(should_fold && e->f_const_fold){
+	if(e->f_const_fold){
 		if(!e->const_eval.const_folded){
 			e->const_eval.const_folded = 1;
 			e->f_const_fold(e, &e->const_eval.k);
