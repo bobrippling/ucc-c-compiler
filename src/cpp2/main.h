@@ -9,6 +9,7 @@ extern char **cd_stack;
 extern char cpp_time[16], cpp_date[16], cpp_timestamp[64];
 
 extern int option_line_info;
+extern int option_trigraphs;
 
 extern char *current_fname;
 extern int no_output;
@@ -43,6 +44,7 @@ extern enum wmode
 	WEMPTY_ARG   = 1 << 6, /* #define F(x), F() */
 	WPASTE       = 1 << 7, /* "< ## >" */
 	WUNCALLED_FN = 1 << 8, /* #define F(x), F */
+	WFINALESCAPE = 1 << 9, /* backslash-esc at eof */
 } wmode;
 
 extern enum comment_strip

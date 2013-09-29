@@ -110,66 +110,120 @@ static void preproc_pop(void)
 	preproc_out_info();
 }
 
-static char *splice_line(void)
+static char *read_line(void)
+{
+	FILE *f;
+	char *line;
+
+re_read:
+	if(file_stack_idx < 0)
+		ICE("file stack idx = 0 on read()");
+	f = file_stack[file_stack_idx].file;
+
+	line = fline(f);
+
+	if(!line){
+		if(ferror(f))
+			die("read():");
+
+		fclose(f);
+		if(file_stack_idx > 0){
+			free(dirname_pop());
+			preproc_pop();
+			goto re_read;
+		}
+
+		return NULL;
+	}
+
+	current_line++;
+
+	return line;
+}
+
+static char *expand_trigraphs(char *line)
+{
+	static const struct
+	{
+		char from, to;
+	} map[] = {
+		{ '(', '[' },
+		{ ')', ']' },
+		{ '<', '{' },
+		{ '>', '}' },
+		{ '=', '#' },
+		{ '/', '\\' },
+		{ '\'', '^' },
+		{ '!', '|' },
+		{ '-', '~' },
+		{ 0, 0 }
+	};
+	int i;
+
+	for(;;){
+		char *qmark = strstr(line, "??");
+
+		if(!qmark)
+			break;
+
+		for(i = 0; map[i].from; i++){
+			if(map[i].from == qmark[2]){
+				qmark[0] = map[i].to;
+				memmove(qmark + 1, qmark + 3, strlen(qmark + 3) + 1);
+				break;
+			}
+		}
+	}
+
+	return line;
+}
+
+static char *splice_lines(int *peof)
 {
 	static int n_nls;
-	char *last;
-	int join;
+	char *line;
+	size_t len;
 
 	if(n_nls){
 		n_nls--;
 		return ustrdup("");
 	}
 
-	last = NULL;
-	join = 0;
+	line = read_line();
+	if(!line){
+		*peof = 1;
+		return NULL;
+	}
+	if(option_trigraphs)
+		line = expand_trigraphs(line);
 
-	for(;;){
-		FILE *f;
-		int len;
-		char *line;
+	len = strlen(line);
 
-re_read:
-		if(file_stack_idx < 0)
-			ICE("file stack idx = 0 on read()");
-		f = file_stack[file_stack_idx].file;
-		line = fline(f);
+	if(len && line[len - 1] == '\\'){
+		char *next = splice_lines(peof);
 
-		if(!line){
-			if(ferror(f))
-				die("read():");
+		/* remove in any case */
+		line[len - 1] = '\0';
 
-			fclose(f);
-			if(file_stack_idx > 0){
-				free(dirname_pop());
-				preproc_pop();
-				goto re_read;
-			}
+		if(next){
+			const size_t next_len = strlen(next);
 
-			return NULL;
-		}
-
-		current_line++;
-
-		if(join){
-			join = 0;
-
-			last = urealloc1(last, strlen(last) + strlen(line) + 1);
-			strcpy(last + strlen(last), line);
-			free(line);
-			line = last;
-		}
-
-		len = strlen(line);
-		if(len && line[len - 1] == '\\'){
-			line[len - 1] = '\0';
-			join = 1;
-			last = line;
 			n_nls++;
+
+			line = urealloc1(line, len + next_len + 1);
+			strcpy(line + len - 1, next);
+			free(next);
 		}else{
-			return line;
+			/* backslash-newline at eof
+			 * else we may return non-null on eof,
+			 * so we need an eof-check in read_line()
+			 */
+			CPP_WARN(WFINALESCAPE, "backslash-escape at eof");
+			*peof = 1;
 		}
 	}
+
+	return line;
 }
 
 static char *strip_comment(char *line)
@@ -264,21 +318,21 @@ static char *filter_macros(char *line)
 void preprocess(void)
 {
 	char *line;
+	int eof = 0;
 
 	preproc_push(stdin, current_fname);
 
-	while((line = splice_line())){
-		char *s;
+	while(!eof && (line = splice_lines(&eof))){
 		debug_push_line(line);
 
-		s = filter_macros(strip_comment(line));
+		line = filter_macros(strip_comment(line));
 
 		debug_pop_line();
 
-		if(s){
+		if(line){
 			if(!no_output)
-				puts(s);
-			free(s);
+				puts(line);
+			free(line);
 		}
 	}
 
