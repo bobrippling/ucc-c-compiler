@@ -418,16 +418,24 @@ enum type_qualifier type_ref_qual(const type_ref *r)
 		return qual_none;
 
 	switch(r->type){
+		case type_ref_type:
+			if(r->bits.type->primitive == type_struct
+			|| r->bits.type->primitive == type_union)
+			{
+				if(r->bits.type->sue->contains_const)
+					return qual_const;
+			}
+
 		case type_ref_func:
 		case type_ref_array:
-		case type_ref_type:
 			return qual_none;
 
 		case type_ref_cast:
 			/* descend */
 			if(r->bits.cast.is_signed_cast)
 				return type_ref_qual(r->ref);
-			return r->bits.cast.qual | (r->bits.cast.additive ? type_ref_qual(r->ref) : qual_none);
+			return r->bits.cast.qual
+				| (r->bits.cast.additive ? type_ref_qual(r->ref) : qual_none);
 
 		case type_ref_ptr:
 		case type_ref_block:
