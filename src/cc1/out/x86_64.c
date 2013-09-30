@@ -1409,11 +1409,9 @@ void impl_lbl(FILE *f, const char *lbl)
 	fprintf(f, "%s:\n", lbl);
 }
 
-void impl_jmp(basic_blk *bb, const char *lbl)
+void impl_jmp(FILE *f, const char *lbl)
 {
-	out_asm(bb, "jmp %s", lbl);
-	/*bb_leave(bb, "jmp %s", lbl);*/
-	/*out_asm(bb, "jmp %s", x86_call_jmp_target(bb, vtop, 0));*/
+	fprintf(f, "\tjmp %s\n", lbl);
 }
 
 void impl_jflag(
@@ -1421,6 +1419,7 @@ void impl_jflag(
 		const char *ltrue, const char *lfalse)
 {
 	fprintf(f, "\tj%s %s\n", x86_cmp(flag), ltrue);
+	impl_jmp(f, lfalse);
 
 #ifdef TODO_PARITY
 	int parity_chk, parity_rev = 0;

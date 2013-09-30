@@ -40,8 +40,15 @@ static void bb_flush_fork(struct basic_blk_fork *fork, FILE *f)
 	BLOCK_SHOW(fork, "fork block, true=%p, false=%p, phi=%p",
 			(void *)fork->btrue, (void *)fork->bfalse, (void *)fork->phi);
 
-	bb_flush(fork->btrue, f);
-	bb_flush(fork->bfalse, f);
+	if(fork->on_const){
+		/*impl_jmp(f, (fork->bits.const_t ? fork->btrue : fork->bfalse)->lbl);*/
+		bb_flush(fork->bits.const_t ? fork->btrue : fork->bfalse, f);
+	}else{
+		impl_jflag(f, &fork->bits.flag, fork->btrue->lbl, fork->bfalse->lbl);
+
+		bb_flush(fork->btrue, f);
+		bb_flush(fork->bfalse, f);
+	}
 	bb_flush_phi(fork->phi, f);
 }
 
@@ -56,6 +63,8 @@ void bb_flush(basic_blk *head, FILE *f)
 			char **i;
 
 			BLOCK_SHOW(head, "basic block, next=%p", (void *)head->next);
+
+			bb_lbl(f, head->lbl);
 
 			/*impl_lbl(f, head->lbl);*/
 			for(i = head->insns; i && *i; i++)

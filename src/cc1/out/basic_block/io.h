@@ -6,5 +6,6 @@ void bb_addv(basic_blk *, const char *, va_list);
 void bb_commentv(basic_blk *, const char *, va_list);
 
 #define bb_cmd(f, s, ...) fprintf(f, "\t" s "\n", __VA_ARGS__)
+#define bb_lbl(f, l)      fprintf(f, "%s:\n", l)
 
 #endif
