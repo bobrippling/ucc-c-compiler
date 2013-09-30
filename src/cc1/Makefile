@@ -74,5 +74,6 @@ Makefile.dep:
 	${CC} ${CPPFLAGS} -MM *.c > $@
 	${CC} ${CPPFLAGS} -MM ops/*.c | sed 's#^\([^ ]\)#ops/\1#' >> $@
 	${CC} ${CPPFLAGS} -MM out/*.c | sed 's#^\([^ ]\)#out/\1#' >> $@
+	${CC} ${CPPFLAGS} -MM out/basic_block/*.c | sed 's#^\([^ ]\)#out/basic_block/\1#' >> $@
 
 include Makefile.dep

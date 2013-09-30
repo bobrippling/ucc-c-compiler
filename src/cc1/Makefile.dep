@@ -1233,3 +1233,91 @@ out/x86_64.o: out/x86_64.c out/../../util/util.h out/../../util/where.h \
  out/impl.h out/impl_flow.h out/x86_64.h out/../cc1.h \
  out/../../util/std.h out/common.h out/out.h out/basic_block/tdefs.h \
  out/lbl.h out/../funcargs.h
+out/basic_block/bb.o: out/basic_block/bb.c out/basic_block/../../../util/where.h \
+ out/basic_block/../../../util/compiler.h \
+ out/basic_block/../../../util/alloc.h \
+ out/basic_block/../../../util/assert.h \
+ out/basic_block/../../../util/where.h \
+ out/basic_block/../../../util/dynarray.h \
+ out/basic_block/../../../util/dyn.h out/basic_block/../../data_structs.h \
+ out/basic_block/../../tree.h out/basic_block/../../type.h \
+ out/basic_block/../../expr.h \
+ out/basic_block/../../out/basic_block/tdefs.h \
+ out/basic_block/../../ops/expr_addr.h \
+ out/basic_block/../../ops/expr_assign.h \
+ out/basic_block/../../ops/expr_assign_compound.h \
+ out/basic_block/../../ops/expr_cast.h \
+ out/basic_block/../../ops/expr_comma.h \
+ out/basic_block/../../ops/expr_funcall.h \
+ out/basic_block/../../ops/expr_identifier.h \
+ out/basic_block/../../ops/expr_if.h out/basic_block/../../ops/expr_op.h \
+ out/basic_block/../../ops/expr_sizeof.h \
+ out/basic_block/../../ops/expr_val.h \
+ out/basic_block/../../ops/expr_stmt.h \
+ out/basic_block/../../ops/expr_deref.h \
+ out/basic_block/../../ops/expr_struct.h \
+ out/basic_block/../../ops/expr_compound_lit.h \
+ out/basic_block/../../ops/expr_string.h out/basic_block/../../stmt.h \
+ out/basic_block/../../ops/stmt_break.h \
+ out/basic_block/../../ops/stmt_case.h \
+ out/basic_block/../../ops/stmt_case_range.h \
+ out/basic_block/../../ops/stmt_code.h \
+ out/basic_block/../../ops/stmt_default.h \
+ out/basic_block/../../ops/stmt_do.h \
+ out/basic_block/../../ops/stmt_expr.h \
+ out/basic_block/../../ops/stmt_for.h \
+ out/basic_block/../../ops/stmt_goto.h \
+ out/basic_block/../../ops/stmt_if.h \
+ out/basic_block/../../ops/stmt_label.h \
+ out/basic_block/../../ops/stmt_noop.h \
+ out/basic_block/../../ops/stmt_return.h \
+ out/basic_block/../../ops/stmt_switch.h \
+ out/basic_block/../../ops/stmt_while.h \
+ out/basic_block/../../ops/stmt_continue.h out/basic_block/../../sym.h \
+ out/basic_block/../../decl.h out/basic_block/../../type_ref.h \
+ out/basic_block/../../type_ref.h out/basic_block/../vstack.h \
+ out/basic_block/bb.h out/basic_block/tdefs.h out/basic_block/io.h \
+ out/basic_block/defs.h out/basic_block/../out.h \
+ out/basic_block/../basic_block/tdefs.h out/basic_block/../lbl.h \
+ out/basic_block/../impl_flow.h
+out/basic_block/flush.o: out/basic_block/flush.c out/basic_block/../../../util/where.h \
+ out/basic_block/../../../util/compiler.h \
+ out/basic_block/../../data_structs.h out/basic_block/../../tree.h \
+ out/basic_block/../../type.h out/basic_block/../../expr.h \
+ out/basic_block/../../out/basic_block/tdefs.h \
+ out/basic_block/../../ops/expr_addr.h \
+ out/basic_block/../../ops/expr_assign.h \
+ out/basic_block/../../ops/expr_assign_compound.h \
+ out/basic_block/../../ops/expr_cast.h \
+ out/basic_block/../../ops/expr_comma.h \
+ out/basic_block/../../ops/expr_funcall.h \
+ out/basic_block/../../ops/expr_identifier.h \
+ out/basic_block/../../ops/expr_if.h out/basic_block/../../ops/expr_op.h \
+ out/basic_block/../../ops/expr_sizeof.h \
+ out/basic_block/../../ops/expr_val.h \
+ out/basic_block/../../ops/expr_stmt.h \
+ out/basic_block/../../ops/expr_deref.h \
+ out/basic_block/../../ops/expr_struct.h \
+ out/basic_block/../../ops/expr_compound_lit.h \
+ out/basic_block/../../ops/expr_string.h out/basic_block/../../stmt.h \
+ out/basic_block/../../ops/stmt_break.h \
+ out/basic_block/../../ops/stmt_case.h \
+ out/basic_block/../../ops/stmt_case_range.h \
+ out/basic_block/../../ops/stmt_code.h \
+ out/basic_block/../../ops/stmt_default.h \
+ out/basic_block/../../ops/stmt_do.h \
+ out/basic_block/../../ops/stmt_expr.h \
+ out/basic_block/../../ops/stmt_for.h \
+ out/basic_block/../../ops/stmt_goto.h \
+ out/basic_block/../../ops/stmt_if.h \
+ out/basic_block/../../ops/stmt_label.h \
+ out/basic_block/../../ops/stmt_noop.h \
+ out/basic_block/../../ops/stmt_return.h \
+ out/basic_block/../../ops/stmt_switch.h \
+ out/basic_block/../../ops/stmt_while.h \
+ out/basic_block/../../ops/stmt_continue.h out/basic_block/../../sym.h \
+ out/basic_block/../../decl.h out/basic_block/../../type_ref.h \
+ out/basic_block/../../expr.h out/basic_block/../../decl.h \
+ out/basic_block/../vstack.h out/basic_block/defs.h \
+ out/basic_block/flush.h out/basic_block/tdefs.h out/basic_block/io.h \
+ out/basic_block/../impl_flow.h
