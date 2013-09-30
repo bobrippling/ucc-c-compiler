@@ -655,11 +655,23 @@ static expr *parse_expect(void)
 static void fold_is_signed(expr *e, symtable *stab)
 {
 	type_ref **tl = e->bits.types;
+	int incomplete;
 
 	if(dynarray_count(tl) != 1)
 		die_at(&e->where, "need a single argument for %s", BUILTIN_SPEL(e->expr));
 
 	fold_type_ref(tl[0], NULL, stab);
+
+	if((incomplete = !type_ref_is_complete(tl[0]))
+	|| !type_ref_is_scalar(tl[0]))
+	{
+		warn_at_print_error(&e->where, "%s on %s type '%s'",
+				BUILTIN_SPEL(e->expr),
+				incomplete ? "incomplete" : "non-scalar",
+				type_ref_to_str(tl[0]));
+
+		fold_had_error = 1;
+	}
 
 	e->tree_type = type_ref_cached_BOOL();
 	wur_builtin(e);

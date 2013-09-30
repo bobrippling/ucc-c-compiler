@@ -87,6 +87,15 @@ int type_is_signed(const type *t)
 		case type_ldouble:
 			return 1;
 
+		case type_struct:
+		case type_union:
+			ICE("%s(%s)",
+					__func__,
+					type_primitive_to_str(t->primitive));
+
+		case type_enum:
+			return 0; /* for now - enum types coming later */
+
 		case type_void:
 		case type__Bool:
 		case type_uchar:
@@ -94,9 +103,6 @@ int type_is_signed(const type *t)
 		case type_ushort:
 		case type_ulong:
 		case type_ullong:
-		case type_struct:
-		case type_union:
-		case type_enum:
 			return 0;
 
 		case type_unknown:
