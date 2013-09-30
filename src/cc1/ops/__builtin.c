@@ -215,7 +215,7 @@ static void builtin_gen_memset(expr *e)
 	type_ref *textra, *textrap;
 
 	if(!tzero)
-		tzero = type_ref_cached_CHAR();
+		tzero = type_ref_cached_CHAR(n);
 
 	n   = e->bits.builtin_memset.len / type_ref_size(tzero, NULL);
 	rem = e->bits.builtin_memset.len % type_ref_size(tzero, NULL);
@@ -548,7 +548,7 @@ static void fold_frame_address(expr *e, symtable *stab)
 
 	e->tree_type = type_ref_new_ptr(
 			type_ref_new_type(
-				type_new_primitive(type_char)
+				type_new_primitive(type_nchar)
 			),
 			qual_none);
 
@@ -588,7 +588,7 @@ expr *builtin_new_frame_address(int depth)
 static void fold_reg_save_area(expr *e, symtable *stab)
 {
 	(void)stab;
-	e->tree_type = type_ref_cached_CHAR_PTR();
+	e->tree_type = type_ref_cached_CHAR_PTR(n);
 }
 
 static void gen_reg_save_area(expr *e)

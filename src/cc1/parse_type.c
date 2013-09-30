@@ -517,13 +517,18 @@ static type_ref *parse_btype(
 				case type_unknown:
 					ucc_unreach(NULL);
 
+				case type_schar:
 				case type_uchar:
+					ucc_unreach(NULL);
+				case type_nchar:
+					primitive = is_signed ? type_schar : type_uchar;
+					break;
+
 				case type_uint:
 				case type_ushort:
 				case type_ulong:
 				case type_ullong:
 					ICE("parsed unsigned type?");
-				case type_char:
 				case type_int:
 				case type_short:
 				case type_long:

@@ -127,6 +127,8 @@ struct
 	{ 'f',  "verbose-asm",         FOPT_VERBOSE_ASM },
 	{ 'f',  "integral-float-load", FOPT_INTEGRAL_FLOAT_LOAD },
 	{ 'f',  "symbol-arith",        FOPT_SYMBOL_ARITH },
+	{ 'f',  "signed-char",         FOPT_SIGNED_CHAR },
+	{ 'f',  "unsigned-char",      ~FOPT_SIGNED_CHAR },
 
 	{ 'm',  "stackrealign", MOPT_STACK_REALIGN },
 
@@ -164,7 +166,8 @@ enum fopt fopt_mode = FOPT_CONST_FOLD
                     | FOPT_MS_EXTENSIONS
 										| FOPT_TRACK_INITIAL_FNAM
 										| FOPT_INTEGRAL_FLOAT_LOAD
-										| FOPT_SYMBOL_ARITH;
+										| FOPT_SYMBOL_ARITH
+										| FOPT_SIGNED_CHAR;
 
 enum cc1_backend cc1_backend = BACKEND_ASM;
 
@@ -455,10 +458,22 @@ int main(int argc, char **argv)
 
 			for(j = 0; args[j].arg; j++)
 				if(args[j].type == arg_ty && !strcmp(arg, args[j].arg)){
-					if(rev)
-						*mask &= ~args[j].mask;
-					else
-						*mask |=  args[j].mask;
+					/* if the mask isn't a single bit, treat it as
+					 * an unmask, e.g. -funsigned-char unmasks FOPT_SIGNED_CHAR
+					 */
+					const int unmask = args[j].mask & (args[j].mask - 1);
+
+					if(rev){
+						if(unmask)
+							*mask |= ~args[j].mask;
+						else
+							*mask &= ~args[j].mask;
+					}else{
+						if(unmask)
+							*mask &= args[j].mask;
+						else
+							*mask |= args[j].mask;
+					}
 					found = 1;
 					break;
 				}

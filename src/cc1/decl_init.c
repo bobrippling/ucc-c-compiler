@@ -817,7 +817,7 @@ static decl_init *decl_init_brace_up_array_pre(
 	type_ref *next = type_ref_next(next_type);
 
 	const int for_str_ar = !!type_ref_is_type(
-			type_ref_is_array(next_type), type_char);
+			type_ref_is_array(next_type), type_nchar);
 
 	decl_init *this;
 

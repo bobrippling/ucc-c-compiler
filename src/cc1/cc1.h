@@ -74,6 +74,7 @@ enum fopt
 	FOPT_VERBOSE_ASM           = 1 << 14,
 	FOPT_INTEGRAL_FLOAT_LOAD   = 1 << 15,
 	FOPT_SYMBOL_ARITH          = 1 << 16,
+	FOPT_SIGNED_CHAR           = 1 << 17,
 };
 
 enum mopt

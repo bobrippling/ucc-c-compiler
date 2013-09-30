@@ -164,8 +164,10 @@ const type *type_new_primitive(enum type_primitive p)
 unsigned type_primitive_size(enum type_primitive tp)
 {
 	switch(tp){
-		case type_char:
+		case type_schar:
 		case type_uchar:
+		case type_nchar:
+
 		case type__Bool:
 		case type_void:
 			return 1;
@@ -287,12 +289,14 @@ const char *op_to_str(const enum op_type o)
 const char *type_primitive_to_str(const enum type_primitive p)
 {
 	switch(p){
+		case type_nchar:  return "char";
+		case type_schar:  return "signed char";
+		case type_uchar:  return "unsigned char";
+
 		CASE_STR_PREFIX(type, void);
-		CASE_STR_PREFIX(type, char);
 		CASE_STR_PREFIX(type, short);
 		CASE_STR_PREFIX(type, int);
 		CASE_STR_PREFIX(type, long);
-		case type_uchar:  return "unsigned char";
 		case type_ushort: return "unsigned short";
 		case type_uint:   return "unsigned int";
 		case type_ulong:  return "unsigned long";
@@ -442,7 +446,7 @@ const char *type_to_str(const type *t)
 		switch(t->primitive){
 			case type_void:
 			case type__Bool:
-			case type_char:  case type_uchar:
+			case type_nchar: case type_schar: case type_uchar:
 			case type_short: case type_ushort:
 			case type_int:   case type_uint:
 			case type_long:  case type_ulong:

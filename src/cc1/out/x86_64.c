@@ -485,7 +485,7 @@ void impl_func_prologue_save_variadic(type_ref *rf)
 
 	{
 		char *vfin = out_label_code("va_skip_float");
-		type_ref *const ty_ch = type_ref_cached_CHAR();
+		type_ref *const ty_ch = type_ref_cached_CHAR(n);
 
 		/* testb %al, %al ; jz vfin */
 		vpush(ty_ch);
@@ -703,7 +703,7 @@ void impl_load(struct vstack *from, const struct vreg *reg)
 				out_asm("jp %s", parity);
 
 			/* XXX: memleak */
-			from->t = type_ref_cached_CHAR(); /* force set%s to set the low byte */
+			from->t = type_ref_cached_CHAR(n); /* force set%s to set the low byte */
 
 			/* actual cmp */
 			out_asm("set%s %%%s",
@@ -928,7 +928,7 @@ void impl_op(enum op_type op)
 					v_to_reg(vtop); /* TODO: v_to_reg_preferred(vtop, X86_64_REG_RCX) */
 
 				case V_REG:
-					free_this = vtop->t = type_ref_cached_CHAR();
+					free_this = vtop->t = type_ref_cached_CHAR(n);
 
 					rtmp.is_float = 0, rtmp.idx = X86_64_REG_RCX;
 					if(!vreg_eq(&vtop->bits.regoff.reg, &rtmp)){
@@ -1624,7 +1624,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 			r.idx = X86_64_REG_RAX;
 			r.is_float = 0;
 
-			out_push_l(type_ref_cached_CHAR(), nfloats);
+			out_push_l(type_ref_cached_CHAR(n), nfloats);
 			v_to_reg_given(vtop, &r);
 			vpop();
 		}

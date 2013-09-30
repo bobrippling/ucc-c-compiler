@@ -9,12 +9,13 @@
 #include "expr.h"
 #include "sue.h"
 #include "type.h"
+#include "cc1.h"
 
 static int type_convertible(enum type_primitive p)
 {
 	switch(p){
 		case type__Bool:
-		case type_char:  case type_uchar:
+		case type_nchar: case type_schar: case type_uchar:
 		case type_int:   case type_uint:
 		case type_short: case type_ushort:
 		case type_long:  case type_ulong:
@@ -71,9 +72,12 @@ enum type_cmp type_cmp(const type *a, const type *b)
 int type_is_signed(const type *t)
 {
 	switch(t->primitive){
-		case type_char:
+		case type_nchar:
 			/* XXX: note we treat char as signed */
-			/* TODO: -fsigned-char */
+			/* -fsigned-char */
+			return !!(fopt_mode & FOPT_SIGNED_CHAR);
+
+		case type_schar:
 		case type_int:
 		case type_short:
 		case type_long:

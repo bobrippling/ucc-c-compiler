@@ -16,14 +16,20 @@ enum type_primitive
 	type__Bool,
 #define type_wchar (platform_sys() == PLATFORM_CYGWIN ? type_short : type_int)
 
+	/* signed, unsigned and 'normal' */
+	type_nchar,
+	type_schar,
+	type_uchar,
+
 	/* unsigned primitive is signed primitive + 1 */
 #define TYPE_PRIMITIVE_TO_UNSIGNED(p) ((p) + 1)
 #define S_U_TY(nam) type_ ## nam, type_u ## nam
-	S_U_TY(char),
+
 	S_U_TY(int),
 	S_U_TY(short),
 	S_U_TY(long),
 	S_U_TY(llong),
+
 	type_float,
 	type_double,
 	type_ldouble,

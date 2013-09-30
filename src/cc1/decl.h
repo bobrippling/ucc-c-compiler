@@ -216,7 +216,6 @@ type_ref *type_ref_skip_casts(type_ref *);
 /* note: returns static references */
 #define type_ref_cached_VOID()       type_ref_new_type(type_new_primitive(type_void))
 #define type_ref_cached_INT()        type_ref_new_type(type_new_primitive(type_int))
-#define type_ref_cached_CHAR()       type_ref_new_type(type_new_primitive(type_char))
 #define type_ref_cached_BOOL()       type_ref_new_type(type_new_primitive(type__Bool))
 #define type_ref_cached_LONG()       type_ref_new_type(type_new_primitive(type_long))
 #define type_ref_cached_LLONG()      type_ref_new_type(type_new_primitive(type_llong))
@@ -224,8 +223,10 @@ type_ref *type_ref_skip_casts(type_ref *);
 #define type_ref_cached_DOUBLE()     type_ref_new_type(type_new_primitive(type_double))
 #define type_ref_cached_INTPTR_T()   type_ref_cached_LONG()
 
+#define type_ref_cached_CHAR(mode)   type_ref_new_type(type_new_primitive(type_##mode##char))
+
 #define type_ref_cached_VOID_PTR() type_ref_ptr_depth_inc(type_ref_cached_VOID())
-#define type_ref_cached_CHAR_PTR() type_ref_ptr_depth_inc(type_ref_cached_CHAR())
+#define type_ref_cached_CHAR_PTR(mode) type_ref_ptr_depth_inc(type_ref_cached_CHAR(mode))
 #define type_ref_cached_LONG_PTR() type_ref_ptr_depth_inc(type_ref_cached_LONG())
 #define type_ref_cached_INT_PTR()  type_ref_ptr_depth_inc(type_ref_cached_INT())
 

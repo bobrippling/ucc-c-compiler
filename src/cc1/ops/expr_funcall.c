@@ -27,7 +27,7 @@ static void format_check_printf_1(char fmt, type_ref *tt,
 	switch(fmt){
 		enum type_primitive prim;
 
-		case 's': prim = type_char; goto ptr;
+		case 's': prim = type_nchar; goto ptr;
 		case 'p': prim = type_void; goto ptr;
 		case 'n': prim = type_int;  goto ptr;
 ptr:

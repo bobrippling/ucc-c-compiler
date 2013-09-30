@@ -20,7 +20,7 @@ enum type_primitive curtok_to_type_primitive()
 		case token_void:  return type_void;
 
 		case token__Bool: return type__Bool;
-		case token_char:  return type_char;
+		case token_char:  return type_nchar;
 		case token_short: return type_short;
 		case token_int:   return type_int;
 		case token_long:  return type_long;

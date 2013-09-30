@@ -184,7 +184,7 @@ int type_ref_is_integral(type_ref *r)
 
 	switch(r->bits.type->primitive){
 		case type_int:   case type_uint:
-		case type_char:  case type_uchar:
+		case type_nchar: case type_schar: case type_uchar:
 		case type__Bool:
 		case type_short: case type_ushort:
 		case type_long:  case type_ulong:

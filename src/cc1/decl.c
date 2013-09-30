@@ -45,10 +45,13 @@ void type_ref_init(symtable *stab)
 	/* FIXME: cache unsigned types too */
 	cache_basics[type_void] = type_ref_cached_VOID();
 	cache_basics[type_int]  = type_ref_cached_INT();
-	cache_basics[type_char] = type_ref_cached_CHAR();
 	cache_basics[type_long] = type_ref_cached_INTPTR_T();
 	cache_basics[type_llong] = type_ref_cached_LLONG();
 	cache_basics[type_double] = type_ref_cached_DOUBLE();
+
+	cache_basics[type_schar] = type_ref_cached_CHAR(s);
+	cache_basics[type_uchar] = type_ref_cached_CHAR(u);
+	cache_basics[type_nchar] = type_ref_cached_CHAR(n);
 
 	cache_ptr[type_void] = type_ref_cached_VOID_PTR();
 	cache_ptr[type_long] = type_ref_cached_LONG_PTR();
@@ -198,7 +201,7 @@ type_ref *type_ref_new_func(type_ref *of, funcargs *args)
 type_ref *type_ref_cached_MAX_FOR(unsigned sz)
 {
 	enum type_primitive prims[] = {
-		type_long, type_int, type_short, type_char
+		type_long, type_int, type_short, type_nchar
 	};
 	unsigned i;
 
