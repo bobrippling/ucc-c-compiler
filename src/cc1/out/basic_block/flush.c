@@ -14,17 +14,23 @@
 
 #include "../impl_flow.h"
 
-#define BLOCK_SHOW(blk, s, ...) \
-	fprintf(f, "# --- %p " s "\n", (void *)blk, __VA_ARGS__)
+#ifdef BLOCK_DBG
+#  define BLOCK_SHOW(blk, s, ...) \
+            fprintf(f, "# --- %p " s "\n", (void *)blk, __VA_ARGS__)
+
+#else
+#  define BLOCK_SHOW(blk, s, ...)
+#endif
 
 static void bb_flush_phi(struct basic_blk_phi *phi, FILE *f)
 {
-	struct basic_blk **i;
-
 	BLOCK_SHOW(phi, "phi block, next=%p, inc:", (void *)phi->next);
 
+#ifdef BLOCK_DBG
+	struct basic_blk **i;
 	for(i = phi->incoming; i && *i; i++)
 		fprintf(f, "#  -> %p\n", (void *)*i);
+#endif
 
 	bb_flush(phi->next, f);
 }
