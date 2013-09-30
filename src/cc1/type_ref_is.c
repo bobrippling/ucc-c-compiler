@@ -379,6 +379,10 @@ int type_ref_is_signed(type_ref *r)
 			case type_ref_type:
 				return type_is_signed(r->bits.type);
 
+			case type_ref_ptr:
+				/* "unspecified" */
+				return 1;
+
 			case type_ref_cast:
 				if(r->bits.cast.is_signed_cast)
 					return r->bits.cast.signed_true;
