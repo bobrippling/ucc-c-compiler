@@ -887,6 +887,7 @@ static void parse_add_asm(decl *d)
 static decl *parse_decl(type_ref *btype, enum decl_mode mode)
 {
 	decl *d = decl_new();
+	where w_eq;
 
 	d->ref = parse_type3(mode, d, btype);
 
@@ -903,8 +904,11 @@ static decl *parse_decl(type_ref *btype, enum decl_mode mode)
 		parse_add_attr(&d->attr); /* int spel __attr__ */
 	}
 
-	if(d->spel && accept(token_assign))
+	if(d->spel && accept_where(token_assign, &w_eq)){
 		d->init = parse_initialisation();
+		/* top-level inits have their .where on the '=' token */
+		memcpy_safe(&d->init->where, &w_eq);
+	}
 
 	return d;
 }
