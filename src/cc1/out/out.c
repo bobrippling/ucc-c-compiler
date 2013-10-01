@@ -112,9 +112,8 @@ void vpop(basic_blk *bb)
 	}
 }
 
-static int v_reg_is_const(basic_blk *bb, struct vreg *r)
+static int v_reg_is_const(struct vreg *r)
 {
-	(void)bb;
 	return !r->is_float && r->idx == REG_BP;
 }
 
@@ -128,7 +127,7 @@ static void v_flush_volatile_reg(basic_blk *bb, struct vstack *vp)
 		UCC_ASSERT(!vp->bits.regoff.reg.is_float,
 				"flush volatile float?");
 
-		if(v_reg_is_const(bb, &vp->bits.regoff.reg)){
+		if(v_reg_is_const(&vp->bits.regoff.reg)){
 			/* move to an unused register */
 			struct vreg r;
 			v_unused_reg(bb, 1, vp->bits.regoff.reg.is_float, &r);
@@ -310,9 +309,8 @@ void v_to_mem(basic_blk *bb, struct vstack *vp)
 	}
 }
 
-static int v_in(basic_blk *bb, struct vstack *vp, enum vto to)
+static int v_in(struct vstack *vp, enum vto to)
 {
-	(void)bb;
 	switch(vp->type){
 		case V_FLAG:
 			break;
@@ -334,7 +332,7 @@ static int v_in(basic_blk *bb, struct vstack *vp, enum vto to)
 
 void v_to(basic_blk *bb, struct vstack *vp, enum vto loc)
 {
-	if(v_in(bb, vp, loc))
+	if(v_in(vp, loc))
 		return;
 
 	/* TO_CONST can't be done - it should already be const,
@@ -522,7 +520,7 @@ void v_save_regs(basic_blk *bb, int n_ignore, type_ref *func_ty)
 	for(p = bb->vbuf; p < bb->vtop - n_ignore; p++){
 		int save = 1;
 		if(p->type == V_REG){
-			if(v_reg_is_const(bb, &p->bits.regoff.reg))
+			if(v_reg_is_const(&p->bits.regoff.reg))
 			{
 				/* don't save stack references */
 				if(fopt_mode & FOPT_VERBOSE_ASM)
@@ -691,7 +689,7 @@ void out_dup(basic_blk *bb)
 			/* fall */
 		case V_REG:
 		case V_REG_SAVE:
-			if(v_reg_is_const(bb, &bb->vtop[-1].bits.regoff.reg)){
+			if(v_reg_is_const(&bb->vtop[-1].bits.regoff.reg)){
 				/* fall to memcpy */
 			}else{
 				/* need a new reg */
@@ -1157,7 +1155,7 @@ void out_deref(basic_blk *bb)
 
 		case V_REG:
 			/* attempt to convert to v_reg_save if possible */
-			if(v_reg_is_const(bb, &bb->vtop->bits.regoff.reg)){
+			if(v_reg_is_const(&bb->vtop->bits.regoff.reg)){
 				bb->vtop->type = V_REG_SAVE;
 				break;
 			}
