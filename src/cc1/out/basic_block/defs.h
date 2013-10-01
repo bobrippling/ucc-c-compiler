@@ -12,7 +12,6 @@ struct basic_blk
 
 	char *lbl;
 	char **insns;
-	char *leave_cmd;
 };
 
 struct basic_blk_fork

@@ -48,6 +48,7 @@ void bb_addv(basic_blk *bb, const char *fmt, va_list l)
 	char *insn = ustrvprintf(fmt, l);
 
 	UCC_ASSERT(bb->type == bb_norm, "insn on non-normal block");
+	UCC_ASSERT(!bb->next, "adding insn after jump");
 
 	dynarray_add(&bb->insns, insn);
 }
@@ -121,10 +122,11 @@ void bb_link_forward(basic_blk *from, basic_blk *to)
 {
 	UCC_ASSERT(!from->next, "forward link present");
 	from->next = to;
+	/* plain jump, nothing to do */
 }
 
 void bb_phi_incoming(basic_blk_phi *to, basic_blk *from)
 {
 	dynarray_add(&to->incoming, from);
-	from->next = PHI_TO_NORMAL(to);
+	bb_link_forward(from, PHI_TO_NORMAL(to));
 }

@@ -1,7 +1,10 @@
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdlib.h>
 
 #include "../../../util/where.h"
+#include "../../../util/dynarray.h"
+#include "../../../util/alloc.h"
 
 #include "../../data_structs.h"
 #include "../../expr.h"
@@ -22,7 +25,24 @@
 #  define BLOCK_SHOW(blk, s, ...)
 #endif
 
-static void bb_flush_phi(struct basic_blk_phi *phi, FILE *f)
+
+static void phi_join(basic_blk **ents)
+{
+	const unsigned nents = dynarray_count(ents);
+	struct vreg *regs = umalloc(sizeof *regs * (nents + 1));
+	unsigned i;
+
+	for(i = 0; ents[i]; i++){
+		basic_blk *this = ents[i];
+
+		/* haven't flushed the blocks yet - v_to_reg() them */
+		v_to_reg_out(this, this->vtop, &regs[i]); /* FIXME: waiting for vtop branch */
+	}
+
+	free(regs);
+}
+
+static void bb_finalise_phi(struct basic_blk_phi *phi, FILE *f)
 {
 	BLOCK_SHOW(phi, "phi block, next=%p, inc:", (void *)phi->next);
 
@@ -32,13 +52,17 @@ static void bb_flush_phi(struct basic_blk_phi *phi, FILE *f)
 		fprintf(f, "#  -> %p\n", (void *)*i);
 #endif
 
-	bb_flush(phi->next, f);
+	/* do the phi joining logic */
+	if(phi->incoming)
+		phi_join(phi->incoming);
 }
 
 static void bb_flush_fork(struct basic_blk_fork *fork, FILE *f)
 {
 	BLOCK_SHOW(fork, "fork block, true=%p, false=%p, phi=%p",
 			(void *)fork->btrue, (void *)fork->bfalse, (void *)fork->phi);
+
+	bb_finalise_phi(fork->phi, f);
 
 	if(fork->on_const){
 		/*impl_jmp(f, (fork->bits.const_t ? fork->btrue : fork->bfalse)->lbl);*/
@@ -49,7 +73,8 @@ static void bb_flush_fork(struct basic_blk_fork *fork, FILE *f)
 		bb_flush(fork->btrue, f);
 		bb_flush(fork->bfalse, f);
 	}
-	bb_flush_phi(fork->phi, f);
+
+	bb_flush(fork->phi->next, f);
 }
 
 void bb_flush(basic_blk *head, FILE *f)
@@ -84,37 +109,3 @@ void bb_flush(basic_blk *head, FILE *f)
 			break;
 	}
 }
-
-#if 0
-void out_phi_pop_to(basic_blk *b_from, void *vvphi)
-{
-	struct vstack *const vphi = vvphi;
-
-	/* put the current value into the phi-save area */
-	memcpy_safe(vphi, vtop);
-
-	if(vphi->type == V_REG)
-		v_reserve_reg(&vphi->bits.regoff.reg); /* XXX: watch me */
-
-	out_pop(b_from);
-}
-
-void out_phi_join(basic_blk *b_from, void *vvphi)
-{
-	struct vstack *const vphi = vvphi;
-
-	if(vphi->type == V_REG)
-		v_unreserve_reg(&vphi->bits.regoff.reg); /* XXX: voila */
-
-	/* join vtop and the current phi-save area */
-	v_to_reg(vtop);
-	v_to_reg(vphi);
-
-	if(!vreg_eq(&vtop->bits.regoff.reg, &vphi->bits.regoff.reg)){
-		/* _must_ match vphi, since it's already been generated */
-		impl_reg_cp(vtop, &vphi->bits.regoff.reg);
-		memcpy_safe(vtop, vphi);
-	}
-}
-#endif
-
