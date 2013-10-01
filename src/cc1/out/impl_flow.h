@@ -3,7 +3,7 @@
 
 void impl_lbl(FILE *, const char *);
 
-void impl_flag_or_const(struct vstack *vp, struct basic_blk *bb);
+void impl_to_flag_or_const(struct basic_blk *);
 
 void impl_jmp(FILE *, const char *lbl);
 void impl_jflag(

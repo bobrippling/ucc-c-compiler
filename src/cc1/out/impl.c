@@ -6,9 +6,11 @@
 #include "../decl.h"
 #include "vstack.h"
 #include "asm.h"
-#include "basic_block/io.h"
 #include "impl.h"
 #include "out.h"
+
+#include "basic_block/io.h"
+#include "basic_block/defs.h"
 
 #include "../cc1.h"
 
@@ -54,8 +56,10 @@ int vreg_eq(const struct vreg *a, const struct vreg *b)
 	return a->idx == b->idx && a->is_float == b->is_float;
 }
 
-void impl_flag_or_const(struct vstack *vp, struct basic_blk *bb)
+void impl_to_flag_or_const(struct basic_blk *bb)
 {
+	struct vstack *vp = bb->vtop;
+
 	switch(vp->type){
 		case V_CONST_I:
 			break;

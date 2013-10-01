@@ -41,7 +41,7 @@ basic_blk *gen_stmt_while(stmt *s, basic_blk *bb)
 
 	bb = flow_gen(s->flow, s->symtab, bb);
 
-	bb_exp = bb_new("while_exp");
+	bb_exp = bb_new_from(bb, "while_exp");
 	bb_link_forward(bb, bb_exp);
 
 	bb_split_new(

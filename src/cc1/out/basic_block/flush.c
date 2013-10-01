@@ -14,6 +14,10 @@
 
 #include "../impl_flow.h"
 
+/* TODO:
+ *	UCC_ASSERT(out_vcount(bb_end) == 0, "non empty vstack after func gen");
+ */
+
 #ifdef BLOCK_DBG
 #  define BLOCK_SHOW(blk, s, ...) \
             fprintf(f, "# --- %p " s "\n", (void *)blk, __VA_ARGS__)

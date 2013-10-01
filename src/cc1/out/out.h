@@ -57,6 +57,4 @@ void out_push_frame_ptr(basic_blk *, int nframes);
 void out_push_reg_save_ptr(basic_blk *);
 void out_push_nan(basic_blk *, type_ref *ty);
 
-int out_vcount(basic_blk *);
-
 #endif

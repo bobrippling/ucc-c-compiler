@@ -63,8 +63,6 @@ struct vstack
 };
 #define VSTACK_INIT(ty) { (ty), NULL, { 0 } }
 
-extern struct vstack *vtop;
-
 void vpush(basic_blk *b_from, type_ref *t);
 void vpop(basic_blk *b_from);
 void vswap(basic_blk *b_from);
@@ -88,7 +86,6 @@ void v_to_reg_given(basic_blk *, struct vstack *from, const struct vreg *);
 
 void v_to_mem_given(basic_blk *, struct vstack *, int stack_pos);
 void v_to_mem(basic_blk *, struct vstack *);
-int  v_stack_sz(basic_blk *);
 
 void v_to_rvalue(basic_blk *, struct vstack *);
 

@@ -17,8 +17,8 @@ void fold_stmt_do(stmt *s)
 
 basic_blk *gen_stmt_do(stmt *s, basic_blk *bb)
 {
-	basic_blk *loop = bb_new("do_loop"),
-	          *b_break = bb_new("do_break"),
+	basic_blk *loop = bb_new_from(bb, "do_loop"),
+	          *b_break = bb_new_from(bb, "do_break"),
 	          *loop_head = loop;
 	basic_blk_phi *phi;
 

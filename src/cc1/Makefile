@@ -23,7 +23,7 @@ OBJ_SRC = \
 	fold.o fold_sym.o fold_sue.o const.o \
 	sym.o sue.o ops/__builtin.o ops/__builtin_va.o pack.o \
 	gen_asm.o gen_str.o gen_style.o \
-	out/out.o out/asm.o out/lbl.o out/impl.o \
+	out/out.o out/asm.o out/lbl.o out/impl.o out/out_state.o \
 	out/basic_block/bb.o out/basic_block/flush.o \
 	ops/expr_addr.o ops/expr_assign.o ops/expr_cast.o ops/expr_comma.o \
 	ops/expr_funcall.o ops/expr_identifier.o ops/expr_if.o ops/expr_op.o \
@@ -63,6 +63,8 @@ out/x86_64.o: out/x86_64.c
 out/out.o: out/out.c out/impl.h
 	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<
 out/impl.o: out/impl.c out/impl.h
+	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<
+out/out_state.o: out/out_state.c out/out_state.h
 	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<
 
 # extra deps

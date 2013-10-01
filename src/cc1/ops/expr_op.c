@@ -719,8 +719,8 @@ basic_blk *gen_expr_str_op(expr *e, basic_blk *bb)
 static basic_blk *op_shortcircuit(expr *e, basic_blk *bb)
 {
 	basic_blk_phi *b_end;
-	basic_blk *b_t = bb_new("sc_true"),
-	          *b_f = bb_new("sc_false"),
+	basic_blk *b_t = bb_new_from(bb, "sc_true"),
+	          *b_f = bb_new_from(bb, "sc_false"),
 	          /* if it's ||, stick another check in the false-block */
 	          *b_else = (e->op == op_orsc ? b_f : b_t);
 
