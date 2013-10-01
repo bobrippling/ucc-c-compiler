@@ -120,7 +120,6 @@ void bb_split(
 		UCC_ASSERT(exp->vtop->type == V_FLAG, "impl_flag_or_const?");
 		fork->bits.flag = exp->vtop->bits.flag;
 	}
-	out_pop(exp);
 
 	fork->type = bb_fork;
 
