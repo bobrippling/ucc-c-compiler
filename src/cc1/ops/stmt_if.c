@@ -83,10 +83,10 @@ basic_blk *gen_stmt_if(stmt *s, basic_blk *bb)
 	b_true = gen_stmt(s->lhs, b_true);
 	bb_phi_incoming(b_join, b_true);
 
-	if(s->rhs){
+	if(s->rhs)
 		b_false = gen_stmt(s->rhs, b_false);
-		bb_phi_incoming(b_join, b_false);
-	}
+
+	bb_phi_incoming(b_join, b_false);
 
 	return bb_phi_next(b_join);
 }
