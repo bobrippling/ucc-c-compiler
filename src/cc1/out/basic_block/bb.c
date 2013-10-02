@@ -39,10 +39,11 @@ basic_blk *bb_new_from(basic_blk *bb, char *label)
 	return bb_new(bb->ostate, label);
 }
 
-static basic_blk_phi *bb_new_phi(void)
+static basic_blk_phi *bb_new_phi(struct out *os)
 {
 	basic_blk_phi *phi = umalloc(sizeof *phi);
 	phi->type = bb_phi;
+	phi->ostate = os;
 	return phi;
 }
 
@@ -125,7 +126,7 @@ void bb_split(
 
 	fork->exp = exp;
 	fork->btrue = b_true, fork->bfalse = b_false;
-	fork->phi = *pphi = bb_new_phi();
+	fork->phi = *pphi = bb_new_phi(exp->ostate);
 }
 
 void bb_link_forward(basic_blk *from, basic_blk *to)
