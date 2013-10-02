@@ -49,8 +49,11 @@ static basic_blk_phi *bb_new_phi(struct out *os)
 
 basic_blk *bb_phi_next(basic_blk_phi *phi)
 {
-	if(!phi->next)
+	if(!phi->next){
 		phi->next = bb_new_from(PHI_TO_NORMAL(phi), "phi");
+		ICE("FIXME: need a fake vtop in phi->next for"
+				"the frontend to out_*(phi->next->vtop) on");
+	}
 	return phi->next;
 }
 
