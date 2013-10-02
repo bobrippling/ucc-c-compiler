@@ -51,9 +51,13 @@ enum flag_cmp op_to_flag(enum op_type op)
 	return -1;
 }
 
-int vreg_eq(const struct vreg *a, const struct vreg *b)
+int vreg_cmp(const struct vreg *a, const struct vreg *b)
 {
-	return a->idx == b->idx && a->is_float == b->is_float;
+	/* rank floats after ints */
+	if(a->is_float != b->is_float)
+		return a->is_float - b->is_float;
+
+	return a->idx - b->idx;
 }
 
 void impl_to_flag_or_const(struct basic_blk *bb)

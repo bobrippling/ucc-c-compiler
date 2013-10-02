@@ -63,6 +63,9 @@ struct vstack
 };
 #define VSTACK_INIT(ty) { (ty), NULL, { 0 } }
 
+int vreg_cmp(const struct vreg *, const struct vreg *);
+#define vreg_eq(a, b) (vreg_cmp((a), (b)) == 0)
+
 void vpush(basic_blk *b_from, type_ref *t);
 void vpop(basic_blk *b_from);
 void vswap(basic_blk *b_from);
@@ -96,8 +99,6 @@ enum vto
 	TO_CONST = 1 << 2,
 };
 void v_to(basic_blk *, struct vstack *, enum vto);
-
-int vreg_eq(const struct vreg *, const struct vreg *);
 
 /* returns 0 on success, -1 if no regs free */
 int  v_unused_reg(basic_blk *, int stack_as_backup, int fp, struct vreg *);

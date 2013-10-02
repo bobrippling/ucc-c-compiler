@@ -5,6 +5,7 @@
 #include "../../../util/where.h"
 #include "../../../util/dynarray.h"
 #include "../../../util/alloc.h"
+#include "../../../util/assert.h"
 
 #include "../../data_structs.h"
 #include "../../expr.h"
@@ -32,16 +33,51 @@
 
 static void phi_join(basic_blk **ents)
 {
-	const unsigned nents = dynarray_count(ents);
-	struct vreg *regs = umalloc(sizeof *regs * (nents + 1));
+	unsigned nents;
+	struct vreg **regs;
 	unsigned i;
+	int is_void = 0;
+
+	/* look for a void entry */
+	for(i = 0; ents[i]; i++){
+		if(!ents[i]->vtop){
+			is_void = 1;
+			break;
+		}
+	}
+
+	if(is_void){
+		/* sanity */
+		for(i = 0; ents[i]; i++){
+			UCC_ASSERT(!ents[i]->vtop,
+					"phi merge with void and non-void types");
+		}
+
+		/* phi with void types, nothing to do */
+		return;
+	}
+
+	nents = dynarray_count(ents);
+	regs = umalloc(sizeof *regs * (nents + 1));
 
 	for(i = 0; ents[i]; i++){
 		basic_blk *this = ents[i];
 
-		/* haven't flushed the blocks yet - v_to_reg() them */
-		v_to_reg_out(this, this->vtop, &regs[i]); /* FIXME: waiting for vtop branch */
+		/* v_to_reg() them all */
+		v_to_reg(this, this->vtop);
+		regs[i] = &this->vtop->bits.regoff.reg;
 	}
+
+	/* if all regs are the same, fine
+	 * otherwise we need to merge them
+	 */
+	qsort(&regs, nents, sizeof *regs,
+			(int (*)(const void *, const void *))vreg_cmp);
+
+	for(i = 0; i < nents; i++)
+		if(!vreg_eq(regs[i], regs[i + 1]))
+			/* need to set regs[i+1] to go into regs[0] */
+			v_to_reg_given(ents[i], ents[i]->vtop, regs[0]);
 
 	free(regs);
 }
@@ -59,6 +95,8 @@ static void bb_finalise_phi(struct basic_blk_phi *phi, FILE *f)
 	/* do the phi joining logic */
 	if(phi->incoming)
 		phi_join(phi->incoming);
+
+	(void)f;
 }
 
 static void bb_flush_fork(struct basic_blk_fork *fork, FILE *f)
