@@ -59,7 +59,7 @@ void bb_addv(basic_blk *bb, const char *fmt, va_list l)
 	char *insn = ustrvprintf(fmt, l);
 
 	UCC_ASSERT(bb->type == bb_norm, "insn on non-normal block");
-	UCC_ASSERT(!bb->next, "adding insn after jump");
+	UCC_ASSERT(!bb->flushed, "adding insn after flush");
 
 	dynarray_add(&bb->insns, insn);
 }

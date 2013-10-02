@@ -26,6 +26,8 @@ struct basic_blk
 	/* vstack for this block */
 	struct vstack *vbuf;
 	struct vstack *vtop;
+
+	int flushed;
 };
 
 struct basic_blk_fork

@@ -93,6 +93,7 @@ void bb_flush(basic_blk *head, FILE *f)
 			char **i;
 
 			BLOCK_SHOW(head, "basic block, next=%p", (void *)head->next);
+			head->flushed = 1;
 
 			bb_lbl(f, head->lbl);
 
