@@ -70,9 +70,4 @@ enum flag_cmp op_to_flag(enum op_type op);
 #  warning "no impl defined"
 #endif
 
-#ifndef MIN
-#  define MIN(x, y) ((x) < (y) ? (x) : (y))
-#  define MAX(x, y) ((x) > (y) ? (x) : (y))
-#endif
-
 #endif

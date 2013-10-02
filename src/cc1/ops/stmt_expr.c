@@ -3,6 +3,8 @@
 #include "ops.h"
 #include "stmt_expr.h"
 
+#include "../out/basic_block/bb.h"
+
 const char *str_stmt_expr()
 {
 	return "expr";
@@ -18,7 +20,7 @@ void fold_stmt_expr(stmt *s)
 
 basic_blk *gen_stmt_expr(stmt *s, basic_blk *bb)
 {
-	int pre_vcount = out_vcount(bb);
+	unsigned pre_vcount = bb_vcount(bb);
 	char *sp;
 
 	bb = gen_expr(s->expr, bb);
@@ -36,10 +38,10 @@ basic_blk *gen_stmt_expr(stmt *s, basic_blk *bb)
 
 		out_comment(bb, "end of %s-stmt", s->f_str());
 
-		UCC_ASSERT(out_vcount(bb) == pre_vcount,
+		UCC_ASSERT(bb_vcount(bb) == pre_vcount,
 				"vcount changed over %s statement (%d -> %d)",
 				s->expr->f_str(),
-				out_vcount(bb), pre_vcount);
+				bb_vcount(bb), pre_vcount);
 	}
 
 	return bb;

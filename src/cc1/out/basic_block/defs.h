@@ -1,17 +1,31 @@
 #ifndef BBLOCK_DEFS_H
 #define BBLOCK_DEFS_H
 
+enum bb_type
+{
+	bb_norm, bb_fork, bb_phi
+};
+
+/* ABI between basic_blk{,_phi} */
+#define BB_DEFS                         \
+	enum bb_type type;                    \
+                                        \
+	struct basic_blk *next;               \
+                                        \
+	/* reserved regs, stack size, etc */  \
+	struct out *ostate
+
+
 struct basic_blk
 {
-	enum bb_type
-	{
-		bb_norm, bb_fork, bb_phi
-	} type;
-
-	struct basic_blk *next;
+	BB_DEFS;
 
 	char *lbl;
 	char **insns;
+
+	/* vstack for this block */
+	struct vstack *vbuf;
+	struct vstack *vtop;
 };
 
 struct basic_blk_fork
@@ -40,11 +54,12 @@ btrue   bfalse
 
 struct basic_blk_phi
 {
-	enum bb_type type;
-	struct basic_blk *next;
+	BB_DEFS;
+
 	struct basic_blk **incoming;
 };
 
+#undef BB_DEFS
 #define PHI_TO_NORMAL(phi) (basic_blk *)phi
 
 #endif

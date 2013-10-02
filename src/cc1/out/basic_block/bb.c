@@ -21,25 +21,36 @@
 #include "../impl_flow.h" /* impl_{jmp,lbl} */
 
 
-basic_blk *bb_new(char *label)
+basic_blk *bb_new(struct out *os, char *label)
 {
 	basic_blk *bb = umalloc(sizeof *bb);
 	bb->type = bb_norm;
 	bb->lbl = out_label_code(label);
+	UCC_ASSERT(os, "null out-state for basic block");
+	bb->ostate = os;
+
+	bb->vbuf = umalloc(sizeof *bb->vbuf * N_VSTACK);
+
 	return bb;
 }
 
-static basic_blk_phi *bb_new_phi(void)
+basic_blk *bb_new_from(basic_blk *bb, char *label)
+{
+	return bb_new(bb->ostate, label);
+}
+
+static basic_blk_phi *bb_new_phi(struct out *os)
 {
 	basic_blk_phi *phi = umalloc(sizeof *phi);
 	phi->type = bb_phi;
+	phi->ostate = os;
 	return phi;
 }
 
 basic_blk *bb_phi_next(basic_blk_phi *phi)
 {
 	if(!phi->next)
-		phi->next = bb_new("phi");
+		phi->next = bb_new_from(PHI_TO_NORMAL(phi), "phi");
 	return phi->next;
 }
 
@@ -101,21 +112,22 @@ void bb_split(
 	exp->next = (basic_blk *)fork;
 
 	/* need flag or const for our jump */
-	impl_flag_or_const(vtop, exp);
-	if((fork->on_const = (vtop->type == V_CONST_I))){
-		fork->bits.const_t = !!vtop->bits.val_i;
+	UCC_ASSERT(exp->vtop, "null vtop for split");
+	impl_to_flag_or_const(exp);
+
+	if((fork->on_const = (exp->vtop->type == V_CONST_I))){
+		fork->bits.const_t = !!exp->vtop->bits.val_i;
 	}else{
 		/* otherwise it's a flag */
-		UCC_ASSERT(vtop->type == V_FLAG, "impl_flag_or_const?");
-		fork->bits.flag = vtop->bits.flag;
+		UCC_ASSERT(exp->vtop->type == V_FLAG, "impl_flag_or_const?");
+		fork->bits.flag = exp->vtop->bits.flag;
 	}
-	out_pop(exp);
 
 	fork->type = bb_fork;
 
 	fork->exp = exp;
 	fork->btrue = b_true, fork->bfalse = b_false;
-	fork->phi = *pphi = bb_new_phi();
+	fork->phi = *pphi = bb_new_phi(exp->ostate);
 }
 
 void bb_link_forward(basic_blk *from, basic_blk *to)
@@ -129,4 +141,9 @@ void bb_phi_incoming(basic_blk_phi *to, basic_blk *from)
 {
 	dynarray_add(&to->incoming, from);
 	bb_link_forward(from, PHI_TO_NORMAL(to));
+}
+
+unsigned bb_vcount(basic_blk *bb)
+{
+	return bb->vtop ? 1 + (bb->vtop - bb->vbuf) : 0;
 }
