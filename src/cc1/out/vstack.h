@@ -51,7 +51,7 @@ extern struct vstack *vtop;
 void vpop(void);
 void vswap(void);
 
-void v_clear(struct vstack *vp, type_ref *);
+void v_clear(struct vstack *vp, type_ref *) ucc_nonnull();
 
 void v_cast(struct vstack *vp, type_ref *to);
 
