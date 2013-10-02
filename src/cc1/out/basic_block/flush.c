@@ -75,6 +75,7 @@ static void bb_flush_fork(struct basic_blk_fork *fork, FILE *f)
 		impl_jflag(f, &fork->bits.flag, fork->btrue->lbl, fork->bfalse->lbl);
 
 		bb_flush(fork->btrue, f);
+		impl_jmp(f, fork->phi->next->lbl);
 		bb_flush(fork->bfalse, f);
 	}
 
