@@ -49,11 +49,33 @@ static basic_blk_phi *bb_new_phi(struct out *os)
 
 basic_blk *bb_phi_next(basic_blk_phi *phi)
 {
-	if(!phi->next){
-		phi->next = bb_new_from(PHI_TO_NORMAL(phi), "phi");
-		ICE("FIXME: need a fake vtop in phi->next for"
-				"the frontend to out_*(phi->next->vtop) on");
+	basic_blk **i;
+
+	UCC_ASSERT(!phi->next, "phi node finalised");
+
+	UCC_ASSERT(phi->incoming,
+			"no incoming blocks to base phi on");
+
+	/* search the predicates for a register we can leave off on */
+	for(i = phi->incoming; *i; i++){
+		basic_blk *const pred = *i;
+
+		if(pred->vtop){
+			/* pred'll do */
+			v_to_reg(pred, pred->vtop);
+
+			phi->next = bb_new_from(PHI_TO_NORMAL(phi), "phi");
+
+			/* make a new vtop with register type, mirroring pred->vtop */
+			vpush(phi->next, pred->vtop->t);
+			v_set_reg(phi->next->vtop, &pred->vtop->bits.regoff.reg);
+			break;
+		}
 	}
+
+	if(!phi->next) /* void phi, e.g. if(..) ... else ... join */
+		phi->next = bb_new_from(phi->incoming[0], "void_phi");
+
 	return phi->next;
 }
 
@@ -115,7 +137,7 @@ void bb_split(
 	exp->next = (basic_blk *)fork;
 
 	/* need flag or const for our jump */
-	UCC_ASSERT(exp->vtop, "null vtop for split");
+	UCC_ASSERT(exp->vtop, "null expression/vtop for split");
 	impl_to_flag_or_const(exp);
 
 	if((fork->on_const = (exp->vtop->type == V_CONST_I))){

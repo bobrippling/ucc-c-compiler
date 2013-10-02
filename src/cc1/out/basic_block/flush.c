@@ -34,28 +34,20 @@
 static void phi_join(basic_blk **ents)
 {
 	unsigned nents;
-	struct vreg **regs;
+	struct vreg **regs, *first_reg = NULL;
 	unsigned i;
-	int is_void = 0;
+	int all_void = 1;
 
 	/* look for a void entry */
 	for(i = 0; ents[i]; i++){
-		if(!ents[i]->vtop){
-			is_void = 1;
+		if(ents[i]->vtop){
+			all_void = 0;
 			break;
 		}
 	}
 
-	if(is_void){
-		/* sanity */
-		for(i = 0; ents[i]; i++){
-			UCC_ASSERT(!ents[i]->vtop,
-					"phi merge with void and non-void types");
-		}
-
-		/* phi with void types, nothing to do */
+	if(all_void) /* phi with void types, nothing to do */
 		return;
-	}
 
 	nents = dynarray_count(ents);
 	regs = umalloc(sizeof *regs * (nents + 1));
@@ -63,9 +55,11 @@ static void phi_join(basic_blk **ents)
 	for(i = 0; ents[i]; i++){
 		basic_blk *this = ents[i];
 
-		/* v_to_reg() them all */
-		v_to_reg(this, this->vtop);
-		regs[i] = &this->vtop->bits.regoff.reg;
+		if(this->vtop){
+			/* v_to_reg() them all */
+			v_to_reg(this, this->vtop);
+			regs[i] = &this->vtop->bits.regoff.reg;
+		}
 	}
 
 	/* if all regs are the same, fine
@@ -74,10 +68,15 @@ static void phi_join(basic_blk **ents)
 	qsort(&regs, nents, sizeof *regs,
 			(int (*)(const void *, const void *))vreg_cmp);
 
-	for(i = 0; i < nents; i++)
-		if(!vreg_eq(regs[i], regs[i + 1]))
-			/* need to set regs[i+1] to go into regs[0] */
-			v_to_reg_given(ents[i], ents[i]->vtop, regs[0]);
+	for(i = 0; i < nents; i++){
+		if(regs[i] && regs[i+1] && !vreg_eq(regs[i], regs[i+1])){
+			if(!first_reg)
+				first_reg = regs[i];
+
+			/* need to set regs[i+1] to go into first_reg */
+			v_to_reg_given(ents[i], ents[i]->vtop, first_reg);
+		}
+	}
 
 	free(regs);
 }

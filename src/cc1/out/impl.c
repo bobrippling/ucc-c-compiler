@@ -53,6 +53,11 @@ enum flag_cmp op_to_flag(enum op_type op)
 
 int vreg_cmp(const struct vreg *a, const struct vreg *b)
 {
+	if(!a)
+		return -1;
+	if(!b)
+		return 1;
+
 	/* rank floats after ints */
 	if(a->is_float != b->is_float)
 		return a->is_float - b->is_float;

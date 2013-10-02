@@ -62,6 +62,6 @@ struct basic_blk_phi
 };
 
 #undef BB_DEFS
-#define PHI_TO_NORMAL(phi) (basic_blk *)phi
+#define PHI_TO_NORMAL(phi) ((basic_blk *)phi)
 
 #endif
