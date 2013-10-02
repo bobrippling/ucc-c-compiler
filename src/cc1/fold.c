@@ -271,6 +271,17 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 		warn_at(&r->where, "restrict on non-pointer type '%s'", type_ref_to_str(r));
 
 	fold_type_ref(r->ref, r, stab);
+
+	{
+		/* warn on embedded structs/unions with flexarrs */
+		struct_union_enum_st *sue = type_ref_is_s_or_u(r);
+		if(sue && sue->flexarr
+		&& (type_ref_is_array(parent) || type_ref_is_s_or_u(parent)))
+		{
+			warn_at(&r->where, "%s with flex-array embedded in %s",
+					sue_str(sue), type_ref_to_str(parent));
+		}
+	}
 }
 
 static int fold_align(int al, int min, int max, where *w)
