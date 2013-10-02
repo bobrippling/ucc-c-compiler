@@ -277,7 +277,7 @@ void v_freeup_regp(struct vstack *vp)
 	if(r >= 0){
 		impl_reg_cp(vp, r);
 
-		v_clear(vp, NULL);
+		v_clear(vp, vp->t);
 		vp->type = REG;
 		vp->bits.reg = r;
 
