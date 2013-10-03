@@ -178,6 +178,33 @@ static char *expand_trigraphs(char *line)
 	return line;
 }
 
+static char *expand_digraphs(char *line)
+{
+	static const struct
+	{
+		const char *from;
+		char to;
+	} map[] = {
+		{ "<:", '[' },
+		{ ":>", ']' },
+		{ "<%", '{' },
+		{ "%>", '}' },
+		{ "%:", '#' },
+		{ 0, 0 }
+	};
+	int i;
+
+	for(i = 0; map[i].from; i++){
+		char *pos = line;
+		while((pos = strstr(pos, map[i].from))){
+			*pos = map[i].to;
+			memmove(pos + 1, pos + 2, strlen(pos + 2) + 1);
+		}
+	}
+
+	return line;
+}
+
 static char *splice_lines(int *peof)
 {
 	static int n_nls;
@@ -328,6 +355,9 @@ void preprocess(void)
 
 	while(!eof && (line = splice_lines(&eof))){
 		debug_push_line(line);
+
+		if(option_digraphs)
+			line = expand_digraphs(line);
 
 		line = strip_comment(line);
 		if(!strip_in_block)
