@@ -27,6 +27,7 @@ int escape_char(int c)
 		{ 'e', '\33' },
 		{ '\\', '\\' },
 		{ '\'', '\'' },
+		{ '?',  '?'  }, /* for avoiding trigraphs */
 		{ '"',  '"'  }
 	};
 	unsigned int i;
