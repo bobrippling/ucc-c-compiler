@@ -33,9 +33,9 @@
 
 static void phi_join(basic_blk **ents)
 {
-	unsigned nents;
+	int nents;
 	struct vreg **regs, *first_reg = NULL;
-	unsigned i;
+	int i;
 	int all_void = 1;
 
 	/* look for a void entry */
@@ -65,10 +65,10 @@ static void phi_join(basic_blk **ents)
 	/* if all regs are the same, fine
 	 * otherwise we need to merge them
 	 */
-	qsort(&regs, nents, sizeof *regs,
+	qsort(regs, nents, sizeof *regs,
 			(int (*)(const void *, const void *))vreg_cmp);
 
-	for(i = 0; i < nents; i++){
+	for(i = 0; i < nents - 1; i++){
 		if(regs[i] && regs[i+1] && !vreg_eq(regs[i], regs[i+1])){
 			if(!first_reg)
 				first_reg = regs[i];
