@@ -188,7 +188,7 @@ void escape_string(char *old_str, int *plen)
 				add = escape_char(old_str[i]);
 
 				if(add == -1)
-					die_at(NULL, "unknown escape char '\\%c'", add);
+					die_at(NULL, "unknown escape char '\\%c'", old_str[i]);
 			}
 		}else{
 			add = old_str[i];
