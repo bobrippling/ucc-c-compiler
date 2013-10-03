@@ -419,6 +419,7 @@ usage:
 				"  -dM: debug output\n"
 				"  -dS: print macro usage stats\n"
 				"  -MM: generate Makefile dependencies\n"
+				"  -trigraphs: enable trigraphs\n"
 				, stderr);
 
 	{
