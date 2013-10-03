@@ -143,15 +143,12 @@ static void runner(int local, char *path, char **args)
 					argv[i_out++] = last;
 			}
 
-			if(local)
-				argv[i_out++] = actual_path("../", path);
-			else
-				argv[i_out++] = path;
+			argv[i_out++] = local ? actual_path("../", path) : path;
 
 			while(args[i_in])
 				argv[i_out++] = args[i_in++];
 
-			argv[++i_out] = NULL;
+			argv[i_out++] = NULL;
 
 #ifdef DEBUG
 			fprintf(stderr, "%s:\n", *argv);
@@ -163,7 +160,7 @@ static void runner(int local, char *path, char **args)
 				local = 0;
 
 			(local ? execv : execvp)(argv[0], argv);
-			die("execv(%s):", argv[0]);
+			die("execv(\"%s\"):", argv[0]);
 		}
 
 		default:
