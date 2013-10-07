@@ -10,8 +10,10 @@
 #include "../util/alloc.h"
 #include "macros.h"
 #include "../util/dynarray.h"
+#include "../util/dynmap.h"
 #include "sue.h"
 #include "funcargs.h"
+#include "label.h"
 
 sym *sym_new(decl *d, enum sym_type t)
 {
@@ -63,6 +65,13 @@ symtable *symtab_root(symtable *child)
 	return child;
 }
 
+symtable *symtab_func_root(symtable *stab)
+{
+	while(stab->parent && stab->parent->parent)
+		stab = stab->parent;
+	return stab;
+}
+
 decl *symtab_search_d(symtable *tab, const char *spel, symtable **pin)
 {
 	decl **const decls = tab->decls;
@@ -108,4 +117,24 @@ const char *sym_to_str(enum sym_type t)
 		CASE_STR_PREFIX(sym, global);
 	}
 	return NULL;
+}
+
+static void label_init(symtable **stab)
+{
+	*stab = symtab_func_root(*stab);
+	if((*stab)->labels)
+		return;
+	(*stab)->labels = dynmap_new((dynmap_cmp_f *)strcmp);
+}
+
+label *symtab_label_find(symtable *stab, char *spel)
+{
+	label_init(&stab);
+	return dynmap_get(char *, label *, stab->labels, spel);
+}
+
+void symtab_label_add(symtable *stab, label *lbl)
+{
+	label_init(&stab);
+	dynmap_set(char *, label *, stab->labels, lbl->spel, lbl);
 }

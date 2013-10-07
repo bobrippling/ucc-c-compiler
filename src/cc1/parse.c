@@ -910,9 +910,11 @@ stmt *parse_stmt()
 				if(accept(token_multiply)){
 					/* computed goto */
 					t->expr = parse_expr_exp();
-					t->expr->expr_computed_goto = 1;
+				}else if(curtok == token_identifier){
+					t->bits.lbl.spel = token_current_spel();
+					EAT(token_identifier);
 				}else{
-					t->expr = parse_expr_identifier();
+					die_at(NULL, "identifier or '*' expected for goto");
 				}
 			}
 			EAT(token_semicolon);
@@ -980,15 +982,32 @@ flow:
 		}
 
 		default:
-			t = expr_to_stmt(parse_expr_exp(), current_scope);
+		{
+			char *lbl;
+			if((lbl = tok_at_label())){
+				decl_attr *attr = NULL, *ai;
 
-			if(expr_kind(t->expr, identifier) && accept(token_colon)){
-				stmt_mutate_wrapper(t, label);
+				t = STAT_NEW(label);
+				t->bits.lbl.spel = lbl;
+
+				parse_add_attr(&attr);
+				for(ai = attr; ai; ai = ai->next)
+					if(ai->type == attr_unused)
+						t->bits.lbl.unused = 1;
+					else
+						warn_at(&ai->where,
+								"ignoring attribute \"%s\" on label",
+								decl_attr_to_str(ai->type));
+
+				decl_attr_free(attr);
+
 				return parse_label_next(t);
 			}else{
+				t = expr_to_stmt(parse_expr_exp(), current_scope);
 				EAT(token_semicolon);
 				return t;
 			}
+		}
 	}
 
 	/* unreachable */

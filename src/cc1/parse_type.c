@@ -52,7 +52,6 @@ static struct_union_enum_st *PARSE_type_ref_is_s_or_u_or_e2(type_ref *r, int all
 	return NULL;
 }
 
-static void parse_add_attr(decl_attr **append);
 static type_ref *parse_type_ref2(enum decl_mode mode, decl *dfor);
 
 /* sue = struct/union/enum */
@@ -167,7 +166,7 @@ static type_ref *parse_type_sue(enum type_primitive prim)
 #include "parse_attr.c"
 #include "parse_init.c"
 
-static void parse_add_attr(decl_attr **append)
+void parse_add_attr(decl_attr **append)
 {
 	while(accept(token_attribute)){
 		EAT(token_open_paren);

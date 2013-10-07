@@ -109,7 +109,7 @@ static int if_passable(stmt *s)
 	return (s->rhs ? fold_passable(s->rhs) : 1) || fold_passable(s->lhs);
 }
 
-void mutate_stmt_if(stmt *s)
+void init_stmt_if(stmt *s)
 {
 	s->f_passable = if_passable;
 }

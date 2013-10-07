@@ -174,7 +174,7 @@ static int code_passable(stmt *s)
 	return 1;
 }
 
-void mutate_stmt_code(stmt *s)
+void init_stmt_code(stmt *s)
 {
 	s->f_passable = code_passable;
 }

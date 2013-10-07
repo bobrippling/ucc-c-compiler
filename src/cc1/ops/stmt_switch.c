@@ -243,7 +243,7 @@ static int switch_passable(stmt *s)
 	return fold_passable(s->lhs);
 }
 
-void mutate_stmt_switch(stmt *s)
+void init_stmt_switch(stmt *s)
 {
 	s->f_passable = switch_passable;
 }

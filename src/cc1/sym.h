@@ -49,6 +49,9 @@ struct symtable
 	/* identifiers and typedefs */
 	decl **decls;
 
+	/* char * => label * */
+	struct dynmap *labels;
+
 	static_assert **static_asserts;
 };
 
@@ -75,6 +78,7 @@ void      symtab_set_parent(symtable *child, symtable *parent);
 void      symtab_rm_parent( symtable *child);
 
 symtable *symtab_root(symtable *child);
+symtable *symtab_func_root(symtable *stab);
 
 sym  *symtab_search(symtable *, const char *);
 decl *symtab_search_d(symtable *, const char *, symtable **pin);
@@ -83,5 +87,9 @@ int   typedef_visible(symtable *stab, const char *spel);
 const char *sym_to_str(enum sym_type);
 
 #define sym_free(s) free(s)
+
+/* labels */
+struct label *symtab_label_find(symtable *, char *);
+void symtab_label_add(symtable *, struct label *);
 
 #endif

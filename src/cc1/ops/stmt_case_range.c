@@ -30,9 +30,22 @@ void fold_stmt_case_range(stmt *s)
 	fold_stmt_and_add_to_curswitch(s);
 }
 
-void mutate_stmt_case_range(stmt *s)
+void gen_stmt_case_range(stmt *s)
+{
+	out_label(s->expr->bits.ident.spel);
+	gen_stmt(s->lhs);
+}
+
+void style_stmt_case_range(stmt *s)
+{
+	stylef("\ncase %ld ... %ld: ",
+			(long)const_fold_val(s->expr),
+			(long)const_fold_val(s->expr2));
+
+	gen_stmt(s->lhs);
+}
+
+void init_stmt_case_range(stmt *s)
 {
 	s->f_passable = label_passable;
 }
-
-STMT_LBL_DEFS(case_range);

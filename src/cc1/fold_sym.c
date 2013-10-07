@@ -6,6 +6,7 @@
 #include "../util/util.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
+#include "../util/dynmap.h"
 #include "../util/platform.h"
 
 #include "data_structs.h"
@@ -20,6 +21,7 @@
 #include "decl_init.h"
 #include "out/lbl.h"
 #include "const.h"
+#include "label.h"
 
 
 #define RW_TEST(decl, var)                      \
@@ -390,6 +392,27 @@ unsigned symtab_layout_decls(symtable *tab, unsigned current)
 
 out:
 	return tab->auto_total_size;
+}
+
+void symtab_chk_labels(symtable *stab)
+{
+	{
+		symtable **i;
+		for(i = stab->children; i && *i; i++)
+			symtab_chk_labels(*i);
+	}
+	if(stab->labels){
+		size_t i;
+		label *l;
+
+		for(i = 0;
+		    (l = dynmap_value(label *, stab->labels, i));
+		    i++)
+			if(!l->complete)
+				die_at(l->pw, "label '%s' undefined", l->spel);
+			else if(!l->uses && !l->unused)
+				warn_at(l->pw, "unused label '%s'", l->spel);
+	}
 }
 
 void symtab_fold_sues(symtable *stab)
