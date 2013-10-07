@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdarg.h>
+#include <assert.h>
 
 #include "dynmap.h"
 #include "alloc.h"
@@ -40,6 +41,8 @@ dynmap_nochk_pair(dynmap *map, void *key)
 {
 	pair *i;
 
+	assert(key && "null key");
+
 	for(i = map->pairs; i; i = i->next)
 		if(!map->cmp(i->key, key))
 			return i;
@@ -62,7 +65,11 @@ dynmap_nochk_get(dynmap *map, void *key)
 void
 dynmap_nochk_set(dynmap *map, void *key, void *val)
 {
-	pair *p = dynmap_nochk_pair(map, key);
+	pair *p;
+
+	assert(key && val && "null key/val");
+
+	p = dynmap_nochk_pair(map, key);
 
 	if(p){
 		p->value = val;
