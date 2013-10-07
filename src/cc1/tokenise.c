@@ -350,6 +350,18 @@ void tokenise_set_input(tokenise_line_f *func, const char *nam)
 	nexttoken();
 }
 
+char *token_current_spel()
+{
+	char *ret = currentspelling;
+	currentspelling = NULL;
+	return ret;
+}
+
+char *token_current_spel_peek(void)
+{
+	return currentspelling;
+}
+
 static int rawnextchar()
 {
 	if(buffereof)

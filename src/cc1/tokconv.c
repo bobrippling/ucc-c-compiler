@@ -324,21 +324,6 @@ int curtok_in_list(va_list l)
 	return 0;
 }
 
-#define NULL_AND_RET(fnam, cnam)  \
-char *fnam()                      \
-{                                 \
-	char *ret = cnam;               \
-	cnam = NULL;                    \
-	return ret;                     \
-}
-
-extern char *currentspelling;
-NULL_AND_RET(token_current_spel, currentspelling)
-char *token_current_spel_peek(void)
-{
-	return currentspelling;
-}
-
 void token_get_current_str(char **ps, int *pl, int *pwide)
 {
 	extern char *currentstring;

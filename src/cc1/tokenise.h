@@ -122,4 +122,7 @@ void tokenise_set_input(
 
 void nexttoken(void);
 
+char *token_current_spel(void);
+char *token_current_spel_peek(void);
+
 #endif
