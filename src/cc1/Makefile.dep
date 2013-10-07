@@ -87,6 +87,7 @@ fold_sue.o: fold_sue.c ../util/util.h ../util/where.h ../util/compiler.h \
  ops/stmt_while.h ops/stmt_continue.h sym.h decl.h cc1.h ../util/std.h \
  fold.h sue.h const.h pack.h defs.h fold_sue.h
 fold_sym.o: fold_sym.c ../util/util.h ../util/where.h ../util/compiler.h \
+ ../util/alloc.h ../util/dynarray.h ../util/dyn.h ../util/platform.h \
  data_structs.h tree.h expr.h ops/expr_addr.h ops/expr_assign.h \
  ops/expr_assign_compound.h ops/expr_cast.h ops/expr_comma.h \
  ops/expr_funcall.h ops/expr_identifier.h ops/expr_if.h ops/expr_op.h \
@@ -96,9 +97,8 @@ fold_sym.o: fold_sym.c ../util/util.h ../util/where.h ../util/compiler.h \
  ops/stmt_default.h ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h \
  ops/stmt_goto.h ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h \
  ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h ops/stmt_continue.h \
- sym.h decl.h cc1.h ../util/std.h fold_sym.h ../util/platform.h \
- ../util/dynarray.h ../util/dyn.h pack.h sue.h out/out.h fold.h \
- fold_sue.h decl_init.h out/lbl.h const.h
+ sym.h decl.h cc1.h ../util/std.h fold_sym.h pack.h sue.h out/out.h \
+ fold.h fold_sue.h decl_init.h out/lbl.h const.h
 funcargs.o: funcargs.c ../util/util.h ../util/where.h ../util/compiler.h \
  ../util/alloc.h ../util/dynarray.h ../util/dyn.h data_structs.h tree.h \
  expr.h ops/expr_addr.h ops/expr_assign.h ops/expr_assign_compound.h \
