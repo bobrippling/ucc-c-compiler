@@ -910,9 +910,11 @@ stmt *parse_stmt()
 				if(accept(token_multiply)){
 					/* computed goto */
 					t->expr = parse_expr_exp();
-					t->expr->expr_computed_goto = 1;
+				}else if(curtok == token_identifier){
+					t->bits.lbl.spel = token_current_spel();
+					EAT(token_identifier);
 				}else{
-					t->expr = parse_expr_identifier();
+					die_at(NULL, "identifier or '*' expected for goto");
 				}
 			}
 			EAT(token_semicolon);

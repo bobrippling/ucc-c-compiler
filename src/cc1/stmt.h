@@ -34,7 +34,6 @@ struct stmt
 
 	struct
 	{
-		struct label *goto_target;
 		struct
 		{
 			struct label *label;

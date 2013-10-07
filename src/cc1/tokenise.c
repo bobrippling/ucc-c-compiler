@@ -254,18 +254,12 @@ static void add_store_line(char *l)
 	store_line_last = &new->next;
 }
 
-static void tokenise_read_line()
+static ucc_wur char *tokenise_read_line()
 {
 	char *l;
 
 	if(buffereof)
-		return;
-
-	if(buffer){
-		if((fopt_mode & FOPT_SHOW_LINE) == 0)
-			free(buffer);
-		buffer = NULL;
-	}
+		return NULL;
 
 	l = in_func();
 	if(!l){
@@ -316,8 +310,7 @@ static void tokenise_read_line()
 					die("expected '\"' or nothing after #line directive (%s)", ep);
 			}
 
-			tokenise_read_line();
-			return;
+			return tokenise_read_line();
 		}
 
 		loc_now.chr = 0;
@@ -328,10 +321,22 @@ static void tokenise_read_line()
 			current_fname_stack[current_fname_stack_cnt - 1].lno = loc_now.line;
 	}
 
-	if(l)
-		SET_CURRENT_LINE_STR(ustrdup(l));
+	return l;
+}
 
-	bufferpos = buffer = l;
+static void tokenise_next_line()
+{
+	char *new = tokenise_read_line();
+
+	if(new)
+		SET_CURRENT_LINE_STR(ustrdup(new));
+
+	if(buffer){
+		if((fopt_mode & FOPT_SHOW_LINE) == 0)
+			free(buffer);
+	}
+
+	bufferpos = buffer = new;
 }
 
 void tokenise_set_input(tokenise_line_f *func, const char *nam)
@@ -362,13 +367,59 @@ char *token_current_spel_peek(void)
 	return currentspelling;
 }
 
+char *tok_at_label(void)
+{
+	/* [a-z]+:
+	 * need to cater for newlines
+	 */
+	char *p;
+
+	if(curtok != token_identifier)
+		return NULL;
+
+	/* look for a colon */
+	for(p = bufferpos; *p; p++){
+		if(*p == ':'){
+			char *ret;
+
+			bufferpos = p + 1;
+			ret = token_current_spel();
+
+			nexttoken();
+
+			return ret;
+
+		}else if(!isspace(*p)){
+			return NULL;
+		}
+	}
+
+	/* read the next line in */
+	{
+		char *const new = tokenise_read_line();
+
+		if(new){
+			size_t const newlen = strlen(new);
+			size_t const poff = p - buffer;
+			size_t const len = poff + newlen;
+
+			buffer = urealloc1(buffer, len + 1);
+			p = buffer + poff;
+			memcpy(p, new, newlen + 1);
+			bufferpos = p;
+			return tok_at_label();
+		}
+		return NULL;
+	}
+}
+
 static int rawnextchar()
 {
 	if(buffereof)
 		return EOF;
 
 	while(!bufferpos || !*bufferpos){
-		tokenise_read_line();
+		tokenise_next_line();
 		if(buffereof)
 			return EOF;
 	}
@@ -391,7 +442,7 @@ static int peeknextchar()
 {
 	/* doesn't ignore isspace() */
 	if(!bufferpos)
-		tokenise_read_line();
+		tokenise_next_line();
 
 	if(buffereof)
 		return EOF;
@@ -807,7 +858,7 @@ void nexttoken()
 				die_at(NULL, "No end to comment");
 				return;
 			}else if(peeknextchar() == '/'){
-				tokenise_read_line();
+				tokenise_next_line();
 				nexttoken();
 				return;
 			}

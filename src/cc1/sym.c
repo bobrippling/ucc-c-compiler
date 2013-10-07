@@ -65,6 +65,13 @@ symtable *symtab_root(symtable *child)
 	return child;
 }
 
+symtable *symtab_func_root(symtable *stab)
+{
+	while(stab->parent && stab->parent->parent)
+		stab = stab->parent;
+	return stab;
+}
+
 decl *symtab_search_d(symtable *tab, const char *spel, symtable **pin)
 {
 	decl **const decls = tab->decls;
@@ -112,21 +119,22 @@ const char *sym_to_str(enum sym_type t)
 	return NULL;
 }
 
-static void label_init(symtable *stab)
+static void label_init(symtable **stab)
 {
-	if(stab->labels)
+	*stab = symtab_func_root(*stab);
+	if((*stab)->labels)
 		return;
-	stab->labels = dynmap_new((dynmap_cmp_f *)strcmp);
+	(*stab)->labels = dynmap_new((dynmap_cmp_f *)strcmp);
 }
 
 label *symtab_label_find(symtable *stab, char *spel)
 {
-	label_init(stab);
+	label_init(&stab);
 	return dynmap_get(char *, label *, stab->labels, spel);
 }
 
 void symtab_label_add(symtable *stab, label *lbl)
 {
-	label_init(stab);
+	label_init(&stab);
 	dynmap_set(char *, label *, stab->labels, lbl->spel, lbl);
 }

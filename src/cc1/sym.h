@@ -78,6 +78,7 @@ void      symtab_set_parent(symtable *child, symtable *parent);
 void      symtab_rm_parent( symtable *child);
 
 symtable *symtab_root(symtable *child);
+symtable *symtab_func_root(symtable *stab);
 
 sym  *symtab_search(symtable *, const char *);
 decl *symtab_search_d(symtable *, const char *, symtable **pin);

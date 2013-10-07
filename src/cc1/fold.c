@@ -616,7 +616,7 @@ static void fold_func(decl *func_decl)
 		symtab_layout_decls(arg_symtab, 0);
 
 		/* finally, check label coherence */
-		symtab_chk_labels(func_decl->func_code->symtab);
+		symtab_chk_labels(symtab_func_root(arg_symtab));
 
 		if(decl_attr_present(func_decl, attr_noreturn)){
 			if(!type_ref_is_void(curdecl_ref_func_called)){
