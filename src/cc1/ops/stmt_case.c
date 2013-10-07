@@ -22,7 +22,7 @@ void fold_stmt_case(stmt *t)
 	fold_stmt_and_add_to_curswitch(t);
 }
 
-void mutate_stmt_case(stmt *s)
+void init_stmt_case(stmt *s)
 {
 	s->f_passable = label_passable;
 }

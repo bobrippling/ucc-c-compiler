@@ -52,7 +52,7 @@ void style_stmt_goto(stmt *s)
 	stylef(";");
 }
 
-void mutate_stmt_goto(stmt *s)
+void init_stmt_goto(stmt *s)
 {
 	s->f_passable = fold_passable_no;
 }

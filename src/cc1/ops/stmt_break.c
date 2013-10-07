@@ -24,7 +24,7 @@ void fold_stmt_break(stmt *t)
 	fold_stmt_break_continue(t, t->parent ? t->parent->lbl_break : NULL);
 }
 
-void mutate_stmt_break(stmt *s)
+void init_stmt_break(stmt *s)
 {
 	s->f_passable = fold_passable_yes;
 }

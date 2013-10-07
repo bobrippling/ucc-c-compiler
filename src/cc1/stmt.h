@@ -4,7 +4,6 @@
 typedef void        func_fold_stmt(stmt *);
 typedef void        func_gen_stmt( stmt *);
 typedef const char *func_str_stmt(void);
-typedef void        func_mutate_stmt(stmt *);
 
 /* non-critical */
 typedef int         func_passable_stmt(stmt *);
@@ -53,7 +52,7 @@ struct stmt_flow
 #define STMT_DEFS_NOGEN(ty)            \
 	func_fold_stmt   fold_stmt_ ## ty;   \
 	func_str_stmt    str_stmt_ ## ty;    \
-	func_mutate_stmt mutate_stmt_ ## ty
+	void   init_stmt_ ## ty(stmt *)
 
 #define STMT_DEFS(ty)                  \
 	STMT_DEFS_NOGEN(ty);                 \
@@ -95,30 +94,16 @@ struct stmt_flow
                                         gen_stmt_ ## type,    \
                                         style_stmt_ ## type,  \
                                         str_stmt_ ## type,    \
-                                        mutate_stmt_ ## type, \
+                                        init_stmt_ ## type,   \
                                         stab)
 
-#define stmt_mutate_wrapper(s, type)    stmt_mutate(s,           \
-                                           fold_stmt_ ## type,   \
-                                           gen_stmt_ ## type,    \
-                                           style_stmt_ ## type,  \
-                                           str_stmt_ ## type,    \
-                                           mutate_stmt_ ## type)
-
 #define stmt_kind(st, kind) ((st)->f_fold == fold_stmt_ ## kind)
-
-void stmt_mutate(stmt *,
-		func_fold_stmt *,
-		func_gen_stmt *g_asm,
-		func_gen_stmt *g_style,
-		func_str_stmt *,
-		func_mutate_stmt *);
 
 stmt *stmt_new(func_fold_stmt *,
 		func_gen_stmt *g_asm,
 		func_gen_stmt *g_style,
 		func_str_stmt *,
-		func_mutate_stmt *,
+		void (*init)(stmt *),
 		symtable *stab);
 
 stmt_flow *stmt_flow_new(symtable *parent);

@@ -30,7 +30,7 @@ void fold_stmt_case_range(stmt *s)
 	fold_stmt_and_add_to_curswitch(s);
 }
 
-void mutate_stmt_case_range(stmt *s)
+void init_stmt_case_range(stmt *s)
 {
 	s->f_passable = label_passable;
 }

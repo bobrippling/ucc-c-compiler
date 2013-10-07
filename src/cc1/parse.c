@@ -980,15 +980,19 @@ flow:
 		}
 
 		default:
-			t = expr_to_stmt(parse_expr_exp(), current_scope);
+		{
+			expr *e = parse_expr_exp();
 
-			if(expr_kind(t->expr, identifier) && accept(token_colon)){
-				stmt_mutate_wrapper(t, label);
+			if(expr_kind(e, identifier) && accept(token_colon)){
+				t = STAT_NEW(label);
+				t->expr = e;
 				return parse_label_next(t);
 			}else{
+				t = expr_to_stmt(e, current_scope);
 				EAT(token_semicolon);
 				return t;
 			}
+		}
 	}
 
 	/* unreachable */

@@ -29,7 +29,7 @@ int label_passable(stmt *s)
 	return fold_passable(s->lhs);
 }
 
-void mutate_stmt_label(stmt *s)
+void init_stmt_label(stmt *s)
 {
 	s->f_passable = label_passable;
 }

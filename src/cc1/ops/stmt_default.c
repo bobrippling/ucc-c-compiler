@@ -21,7 +21,7 @@ void fold_stmt_default(stmt *s)
 	fold_stmt_and_add_to_curswitch(s);
 }
 
-void mutate_stmt_default(stmt *s)
+void init_stmt_default(stmt *s)
 {
 	s->f_passable = label_passable;
 }

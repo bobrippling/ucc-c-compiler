@@ -161,7 +161,7 @@ static int for_passable(stmt *s)
 	return fold_code_escapable(s);
 }
 
-void mutate_stmt_for(stmt *s)
+void init_stmt_for(stmt *s)
 {
 	s->f_passable = for_passable;
 }
