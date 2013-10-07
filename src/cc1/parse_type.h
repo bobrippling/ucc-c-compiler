@@ -27,4 +27,6 @@ decl_init *parse_initialisation(void); /* expr or {{...}} */
 
 int parse_at_decl(void);
 
+void parse_add_attr(decl_attr **append);
+
 #endif

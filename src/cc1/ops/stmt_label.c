@@ -19,11 +19,13 @@ void fold_stmt_label(stmt *s)
 	}else{
 		symtab_label_add(
 				s->symtab,
-				label_new(
+				l = label_new(
 					&s->where,
 					s->bits.lbl.spel,
 					1));
 	}
+
+	l->unused = s->bits.lbl.unused;
 
 	fold_stmt(s->lhs); /* compound */
 }

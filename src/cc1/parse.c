@@ -983,14 +983,27 @@ flow:
 
 		default:
 		{
-			expr *e = parse_expr_exp();
+			char *lbl;
+			if((lbl = tok_at_label())){
+				decl_attr *attr = NULL, *ai;
 
-			if(expr_kind(e, identifier) && accept(token_colon)){
 				t = STAT_NEW(label);
-				t->expr = e;
+				t->bits.lbl.spel = lbl;
+
+				parse_add_attr(&attr);
+				for(ai = attr; ai; ai = ai->next)
+					if(ai->type == attr_unused)
+						t->bits.lbl.unused = 1;
+					else
+						warn_at(&ai->where,
+								"ignoring attribute \"%s\" on label",
+								decl_attr_to_str(ai->type));
+
+				decl_attr_free(attr);
+
 				return parse_label_next(t);
 			}else{
-				t = expr_to_stmt(e, current_scope);
+				t = expr_to_stmt(parse_expr_exp(), current_scope);
 				EAT(token_semicolon);
 				return t;
 			}

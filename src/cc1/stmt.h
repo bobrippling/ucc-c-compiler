@@ -38,6 +38,7 @@ struct stmt
 		{
 			struct label *label;
 			char *spel;
+			int unused;
 		} lbl;
 	} bits;
 
