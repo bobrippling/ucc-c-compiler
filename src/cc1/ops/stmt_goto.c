@@ -3,6 +3,7 @@
 #include "ops.h"
 #include "stmt_goto.h"
 #include "../out/lbl.h"
+#include "../label.h"
 
 const char *str_stmt_goto()
 {
@@ -11,20 +12,27 @@ const char *str_stmt_goto()
 
 void fold_stmt_goto(stmt *s)
 {
+	if(!curdecl_func)
+		die_at(&s->where, "goto outside of a function");
+
 	if(s->expr->expr_computed_goto){
 		FOLD_EXPR(s->expr, s->symtab);
 	}else{
-		char *save, **psp;
+		char *ident;
+		label *lbl;
 
 		if(!expr_kind(s->expr, identifier))
 			die_at(&s->expr->where, "not a label identifier");
 
-		save = *(psp = &s->expr->bits.ident.spel);
-		/* else let the assembler check for link errors */
-		if(!curdecl_func)
-			die_at(&s->where, "goto outside of a function");
-		*psp = out_label_goto(curdecl_func->spel, save);
-		free(save);
+		ident = s->expr->bits.ident.spel;
+
+		lbl = symtab_label_find(s->symtab, ident);
+		if(!lbl){
+			/* forward decl */
+			lbl = label_new(&s->where, ident, 0);
+			symtab_label_add(s->symtab, lbl);
+		}
+		s->bits.goto_target = lbl;
 	}
 }
 

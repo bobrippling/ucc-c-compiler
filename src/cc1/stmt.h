@@ -32,6 +32,16 @@ struct stmt
 	int kills_below_code; /* break, return, etc - for checking dead code */
 	int expr_no_pop;
 
+	struct
+	{
+		struct label *goto_target;
+		struct
+		{
+			struct label *label;
+			char *spel;
+		} lbl;
+	} bits;
+
 	stmt **codes; /* for a code block */
 
 	symtable *symtab; /* block definitions, e.g. { int i... } */
