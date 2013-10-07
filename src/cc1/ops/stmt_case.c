@@ -22,9 +22,19 @@ void fold_stmt_case(stmt *t)
 	fold_stmt_and_add_to_curswitch(t);
 }
 
+void gen_stmt_case(stmt *s)
+{
+	out_label(s->expr->bits.ident.spel);
+	gen_stmt(s->lhs);
+}
+
+void style_stmt_case(stmt *s)
+{
+	stylef("\ncase %ld: ", (long)const_fold_val(s->expr));
+	gen_stmt(s->lhs);
+}
+
 void init_stmt_case(stmt *s)
 {
 	s->f_passable = label_passable;
 }
-
-STMT_LBL_DEFS(case);

@@ -21,9 +21,19 @@ void fold_stmt_default(stmt *s)
 	fold_stmt_and_add_to_curswitch(s);
 }
 
+void gen_stmt_default(stmt *s)
+{
+	out_label(s->expr->bits.ident.spel);
+	gen_stmt(s->lhs);
+}
+
+void style_stmt_default(stmt *s)
+{
+	stylef("\ndefault: ");
+	gen_stmt(s->lhs);
+}
+
 void init_stmt_default(stmt *s)
 {
 	s->f_passable = label_passable;
 }
-
-STMT_LBL_DEFS(default);

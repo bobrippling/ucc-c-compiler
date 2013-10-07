@@ -1,1 +1,1 @@
-STMT_DEFS_PGEN(case_range);
+STMT_DEFS(case_range);
