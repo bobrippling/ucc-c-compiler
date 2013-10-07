@@ -5,7 +5,8 @@ struct label
 {
 	where *pw;
 	char *spel;
-	int complete : 1;
+	unsigned uses;
+	int complete;
 };
 typedef struct label label;
 

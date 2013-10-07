@@ -410,6 +410,8 @@ void symtab_chk_labels(symtable *stab)
 		    i++)
 			if(!l->complete)
 				die_at(l->pw, "label '%s' undefined", l->spel);
+			else if(!l->uses)
+				warn_at(l->pw, "unused label '%s'", l->spel);
 	}
 }
 

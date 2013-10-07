@@ -26,7 +26,10 @@ void fold_stmt_goto(stmt *s)
 			lbl = label_new(&s->where, ident, 0);
 			symtab_label_add(s->symtab, lbl);
 		}
+
 		s->bits.lbl.label = lbl;
+
+		lbl->uses++;
 	}
 }
 
