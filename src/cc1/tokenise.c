@@ -4,14 +4,20 @@
 #include <math.h>
 #include <ctype.h>
 #include <stdarg.h>
+#include <limits.h>
 
 #include "../util/util.h"
 #include "data_structs.h"
 #include "tokenise.h"
 #include "../util/alloc.h"
 #include "../util/str.h"
+#include "../util/escape.h"
 #include "str.h"
 #include "cc1.h"
+
+#ifndef CHAR_BIT
+#  define CHAR_BIT 8
+#endif
 
 #define KEYWORD(x) { #x, token_ ## x }
 
@@ -452,53 +458,70 @@ static int peeknextchar()
 
 static void read_number(enum base mode)
 {
-	int read_suffix = 1;
-	int nlen;
-	char c;
-	enum intval_suffix suff = 0;
+	char *end;
+	int of; /*verflow*/
 
-	char_seq_to_iv(bufferpos, &currentval, &nlen, mode);
+	switch(mode){
+		case BIN: currentval.suffix = VAL_BIN; break;
+		case HEX: currentval.suffix = VAL_HEX; break;
+		case OCT: currentval.suffix = VAL_OCTAL; break;
+		case DEC: currentval.suffix = 0; break;
+	}
 
-	if(nlen == 0)
+	currentval.val = char_seq_to_ullong(bufferpos, &end, mode, 0, &of);
+
+	if(of){
+		/* force unsigned long long ULLONG_MAX */
+		currentval.val = INTVAL_T_MAX;
+		currentval.suffix = VAL_LLONG | VAL_UNSIGNED;
+	}
+
+	if(end == bufferpos)
 		die_at(NULL, "%s-number expected (got '%c')",
 				base_to_str(mode), peeknextchar());
 
-	bufferpos += nlen;
-	loc_now.chr += nlen - 1; /* -1 since we've already counted the 1st digit */
+	loc_now.chr += end - bufferpos;
+	bufferpos = end;
 
 	/* accept either 'U' 'L' or 'LL' as atomic parts (i.e. not LUL) */
 	/* fine using nextchar() since we peeknextchar() first */
-	do switch((c = peeknextchar())){
-		case 'U':
-		case 'u':
-			if(suff & VAL_UNSIGNED)
-				die_at(NULL, "duplicate U suffix");
-			suff |= VAL_UNSIGNED;
-			nextchar();
-			break;
-		case 'L':
-		case 'l':
-			if(suff & (VAL_LLONG | VAL_LONG))
-				die_at(NULL, "already have a L/LL suffix");
+	{
+		enum intval_suffix suff = 0;
+		char c;
 
-			nextchar();
-			if(peeknextchar() == c){
-				C99_LONGLONG();
-				suff |= VAL_LLONG;
+		for(;;) switch((c = peeknextchar())){
+			case 'U':
+			case 'u':
+				if(suff & VAL_UNSIGNED)
+					die_at(NULL, "duplicate U suffix");
+				suff |= VAL_UNSIGNED;
 				nextchar();
-			}else{
-				suff |= VAL_LONG;
-			}
-			break;
-		default:
-			read_suffix = 0;
-	}while(read_suffix);
+				break;
+			case 'L':
+			case 'l':
+				if(suff & (VAL_LLONG | VAL_LONG))
+					die_at(NULL, "already have a L/LL suffix");
 
-	/* don't touch cv.suffix until after
-	 * - it may already have ULL from an
-	 * overflow in parsing
-	 */
-	currentval.suffix |= suff;
+				nextchar();
+				if(peeknextchar() == c){
+					C99_LONGLONG();
+					suff |= VAL_LLONG;
+					nextchar();
+				}else{
+					suff |= VAL_LONG;
+				}
+				break;
+			default:
+				goto out;
+		}
+
+out:
+		/* don't touch cv.suffix until after
+		 * - it may already have ULL from an
+		 * overflow in parsing
+		 */
+		currentval.suffix |= suff;
+	}
 }
 
 static enum token curtok_to_xequal(void)
@@ -533,7 +556,7 @@ static int curtok_is_xequal()
 static void read_string(char **sptr, int *plen)
 {
 	char *const start = bufferpos;
-	char *const end = terminating_quote(start);
+	char *const end = str_quotefin(start);
 	int size;
 
 	if(!end){
@@ -600,50 +623,20 @@ static void read_string_multiple(const int is_wide)
 	currentstringwide = is_wide;
 }
 
-static void read_char(const int is_wide)
+static void cc1_read_quoted_char(const int is_wide)
 {
-	/* TODO: merge with read_string escape code */
-	int c = rawnextchar();
+	int multichar;
+	long ch = read_quoted_char(bufferpos, &bufferpos, &multichar);
 
-	if(c == EOF){
-		die_at(NULL, "Invalid character");
-	}else if(c == '\\'){
-		char esc = tolower(peeknextchar());
-
-		if(esc == 'x' || esc == 'b' || isoct(esc)){
-
-			if(esc == 'x' || esc == 'b')
-				nextchar();
-
-			read_number(esc == 'x' ? HEX : esc == 'b' ? BIN : OCT);
-
-			if(currentval.suffix & ~VAL_PREFIX_MASK)
-				die_at(NULL, "invalid character sequence: suffix given");
-
-			if(!is_wide && currentval.val > 0xff)
-				warn_at(NULL,
-						"invalid character sequence: too large (parsed 0x%" INTVAL_FMT_X ")",
-						currentval.val);
-
-			c = currentval.val;
-		}else{
-			/* special parsing */
-			c = escape_char(esc);
-
-			if(c == -1)
-				die_at(NULL, "invalid escape character '%c'", esc);
-
-			nextchar();
-		}
+	if(multichar){
+		if(ch & (~0UL << (CHAR_BIT * type_primitive_size(type_int))))
+			warn_at(NULL, "multi-char constant too large");
+		else
+			warn_at(NULL, "multi-char constant");
 	}
 
-	currentval.val = c;
-	currentval.suffix = 0;
-
-	if((c = nextchar()) != '\'')
-		die_at(NULL, "no terminating \"'\" for character (got '%c')", c);
-
-	curtok = token_character;
+	currentval.val = ch;
+	curtok = is_wide ? token_integer : token_character;
 }
 
 void nexttoken()
@@ -768,7 +761,7 @@ void nexttoken()
 			return;
 		case '\'':
 			nextchar();
-			read_char(1);
+			cc1_read_quoted_char(1);
 			return;
 	}
 
@@ -809,7 +802,7 @@ void nexttoken()
 			break;
 
 		case '\'':
-			read_char(0);
+			cc1_read_quoted_char(0);
 			break;
 
 		case '(':

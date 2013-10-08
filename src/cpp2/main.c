@@ -71,7 +71,8 @@ enum wmode wmode =
 	| WTRAILING
 	| WEMPTY_ARG
 	| WPASTE
-	| WFINALESCAPE;
+	| WFINALESCAPE
+	| WMULTICHAR;
 
 enum comment_strip strip_comments = STRIP_ALL;
 

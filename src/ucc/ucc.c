@@ -494,7 +494,8 @@ arg_ld:
 					else if(!strcmp(arg, "none"))
 						gopts.assume = -1; /* reset */
 					else
-						die("-x accepts \"c\", \"cpp\", or \"asm\", not \"%s\"", arg);
+						die("-x accepts \"c\", \"cpp-output\", \"asm\" "
+								"or \"none\", not \"%s\"", arg);
 					continue;
 				}
 

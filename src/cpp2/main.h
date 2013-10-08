@@ -45,6 +45,7 @@ extern enum wmode
 	WPASTE       = 1 << 7, /* "< ## >" */
 	WUNCALLED_FN = 1 << 8, /* #define F(x), F */
 	WFINALESCAPE = 1 << 9, /* backslash-esc at eof */
+	WMULTICHAR   = 1 << 10, /* duh */
 } wmode;
 
 extern enum comment_strip

@@ -314,15 +314,3 @@ char *ext_replace(const char *str, const char *ext)
 		return ustrdup(str);
 	}
 }
-
-char *terminating_quote(char *s)
-{
-	/* accept backslashes properly "\\" */
-	char *p;
-
-	for(p = s; *p && *p != '"'; p++)
-		if(*p == '\\')
-			++p;
-
-	return *p ? p : NULL;
-}
