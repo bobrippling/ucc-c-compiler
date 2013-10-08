@@ -17,7 +17,9 @@ int escape_char(int c);
 long escape_multi_char(char *pos, char **eptr) ucc_nonnull();
 
 long char_seq_to_long(
-		char *s, char **eptr, enum base mode) ucc_nonnull();
+		char *s, char **eptr, enum base mode,
+		int char_limits) /* limit to 3 for octal? */
+	ucc_nonnull();
 
 /* we're just after the opening quote */
 long read_quoted_char(

@@ -35,9 +35,9 @@ int escape_char(int c)
 	return -1;
 }
 
-long char_seq_to_long(char *s, char **eptr, enum base mode)
+long char_seq_to_long(char *s, char **eptr, enum base mode, int limit)
 {
-#define READ_NUM(test, base)             \
+#define READ_NUM(test, base, limit)      \
 			do{                                \
 				if(!(test))                      \
 					break;                         \
@@ -45,22 +45,30 @@ long char_seq_to_long(char *s, char **eptr, enum base mode)
 				s++;                             \
 				while(*s == '_')                 \
 					s++;                           \
+				limit;                           \
 			}while(1)
 
 	long lval = 0;
 
 	switch(mode){
 		case BIN:
-			READ_NUM(*s == '0' || *s == '1', 2);
+			READ_NUM(*s == '0' || *s == '1', 2,);
 			break;
 
 		case DEC:
-			READ_NUM(isdigit(*s), 10);
+			READ_NUM(isdigit(*s), 10,);
 			break;
 
 		case OCT:
-			READ_NUM(isoct(*s), 010);
+		{
+			char *const begin = s;
+			/* limit for binary */
+			READ_NUM(isoct(*s), 010,
+					if(limit && s - begin == 3)
+						break
+				);
 			break;
+		}
 
 		case HEX:
 		{
@@ -107,14 +115,16 @@ long read_char_single(char *start, char **end)
 
 			return char_seq_to_long(
 					start, end,
-					esc == 'x' ? HEX : esc == 'b' ? BIN : OCT);
+					esc == 'x' ? HEX : esc == 'b' ? BIN : OCT, 1);
 
 		}else{
 			/* special parsing */
 			c = escape_char(esc);
 
-			if(c == -1)
-				DIE_AT(NULL, "invalid escape character '%c'", esc);
+			if(c == -1){
+				WARN_AT(NULL, "unrecognised escape character '%c'", esc);
+				c = esc;
+			}
 
 			*end = start + 1;
 		}

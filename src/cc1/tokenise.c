@@ -373,7 +373,7 @@ static void read_number(enum base mode)
 		case DEC: currentval.suffix = 0; break;
 	}
 
-	currentval.val = char_seq_to_long(bufferpos, &end, mode);
+	currentval.val = char_seq_to_long(bufferpos, &end, mode, 0);
 
 	if(end == bufferpos)
 		DIE_AT(NULL, "%s-number expected (got '%c')",
