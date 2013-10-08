@@ -313,9 +313,13 @@ void v_to_reg(struct vstack *conv)
 	v_to_reg_out(conv, NULL);
 }
 
-static void v_set_stack(struct vstack *vp, type_ref *ty, long off)
+static void v_set_stack(
+		struct vstack *vp, type_ref *ty,
+		long off, int lval)
 {
 	v_set_reg_i(vp, REG_BP);
+	if(lval)
+		vp->type = V_REG_SAVE;
 	if(ty)
 		vp->t = ty;
 	vp->bits.regoff.offset = off;
@@ -327,7 +331,7 @@ void v_to_mem_given(struct vstack *vp, int stack_pos)
 
 	v_to(vp, TO_CONST | TO_REG);
 
-	v_set_stack(&store, vp->t, stack_pos);
+	v_set_stack(&store, vp->t, stack_pos, /*lval:*/0);
 
 	/* the following gen two instructions - subq and movq
 	 * instead/TODO: impl_save_reg(vp) -> "pushq %%rax"
@@ -927,11 +931,15 @@ void out_push_sym(sym *s)
 				ICW("TODO: %s asm(\"%s\")", decl_to_str(d), d->spel_asm);
 
 			/* sym offsetting takes into account the stack growth direction */
-			v_set_stack(vtop, NULL, -(long)(s->loc.stack_pos + stack_local_offset));
+			v_set_stack(
+					vtop, NULL,
+					-(long)(s->loc.stack_pos + stack_local_offset),
+					/*lval:*/1);
 			break;
 
 		case sym_arg:
-			v_set_stack(vtop, NULL, s->loc.arg_offset);
+			v_set_stack(
+					vtop, NULL, s->loc.arg_offset, /*lval:*/1);
 			break;
 
 		case sym_global:
@@ -1489,7 +1497,7 @@ void out_push_reg_save_ptr(void)
 	out_flush_volatile();
 
 	vpush(NULL);
-	v_set_stack(vtop, NULL, -stack_variadic_offset);
+	v_set_stack(vtop, NULL, -stack_variadic_offset, /*lval:*/0);
 }
 
 void out_push_nan(type_ref *ty)

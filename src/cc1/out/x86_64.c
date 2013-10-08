@@ -1024,7 +1024,7 @@ void impl_op(enum op_type op)
 					out_asm("cqto");
 					out_asm("idiv%s %s",
 							x86_suffix(vtop->t),
-							vstack_str(vtop, 1));
+							vstack_str(vtop, 0));
 			}
 
 			v_unreserve_reg(&rtmp[1]); /* free rdx */
