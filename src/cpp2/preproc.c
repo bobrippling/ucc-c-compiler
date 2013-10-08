@@ -270,12 +270,18 @@ static char *strip_comment(char *line)
 			if(clear_comments)
 				*s = ' ';
 
-		}else if(*s == '"'){
+		}else if(*s == '"' || *s == '\''){
 			/* read until the end of the string */
-			s = str_quotefin(s + 1);
-			if(!s)
-				CPP_DIE("no terminating quote to string");
-			/* finish of string */
+			char *end = str_quotefin2(s + 1, *s);
+
+			if(!end){
+				CPP_WARN(WQUOTE, "no terminating quote to string");
+				/* skip to eol */
+				s = strchr(s, '\0') - 1;
+			}else{
+				s = end;
+			}
+
 		}else if(*s == '/'){
 			if(s[1] == '/'){
 				switch(strip_comments){

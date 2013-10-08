@@ -3,7 +3,7 @@
 
 #include "str.h"
 
-static char *str_quotefin2(char *s, char q)
+char *str_quotefin2(char *s, char q)
 {
 	for(; *s; s++)
 		if(*s == '\\')
