@@ -358,7 +358,7 @@ static int peeknextchar()
 static void add_suffix(enum intval_suffix s)
 {
 	if(currentval.suffix & s)
-		DIE_AT(NULL, "duplicate suffix %c", "_UL"[s]);
+		DIE_AT(NULL, "duplicate suffix %c", "_UL"[s & 0x3]);
 	currentval.suffix |= s;
 }
 
