@@ -431,7 +431,7 @@ static int curtok_is_xequal()
 static void read_string(char **sptr, int *plen)
 {
 	char *const start = bufferpos;
-	char *const end = terminating_quote(start);
+	char *const end = str_quotefin(start);
 	int size;
 
 	if(!end){
@@ -498,76 +498,20 @@ static void read_string_multiple(const int is_wide)
 	currentstringwide = is_wide;
 }
 
-static void read_char(const int is_wide)
+static void cc1_read_quoted_char(const int is_wide)
 {
-	int c = rawnextchar();
+	int multichar;
+	long ch = read_quoted_char(bufferpos, &bufferpos, &multichar);
 
-	if(c == '\\'){
-		char esc = tolower(peeknextchar());
-
-		if(esc == 'x' || esc == 'b' || isoct(esc)){
-
-			if(esc == 'x' || esc == 'b')
-				nextchar();
-
-			read_number(esc == 'x' ? HEX : esc == 'b' ? BIN : OCT);
-
-			if(currentval.suffix & ~VAL_PREFIX_MASK)
-				DIE_AT(NULL, "invalid character sequence: suffix given");
-
-			if(!is_wide && currentval.val > 0xff)
-				warn_at(NULL, 1, "invalid character sequence: too large (parsed 0x%lx)", currentval.val);
-
-			c = currentval.val;
-		}else{
-			/* special parsing */
-			c = escape_char(esc);
-
-			if(c == -1)
-				DIE_AT(NULL, "invalid escape character '%c'", esc);
-
-			rawnextchar();
-		}
-	}
-
-	currentval.suffix = 0;
-	currentval.val = c;
-}
-
-static void read_quoted_char(const int is_wide)
-{
-	unsigned ch; /* unsigned for multi-char constant multiplication */
-
-	if(peeknextchar() == '\''){
-		/* '' */
-		DIE_AT(NULL, "empty char constant");
-	}else{
-		read_char(is_wide);
-		ch = currentval.val;
-
-		if(peeknextchar() == '\''){
-			nextchar();
-		}else{
-			/* multi-char constant */
-			char *end = strchr(bufferpos, '\'');
-
-			if(!end)
-				DIE_AT(NULL, "no terminating quote (got '%c')", peeknextchar());
-
-			if((end - bufferpos) >= type_primitive_size(type_int))
-				WARN_AT(NULL, "multi-char constant too large");
-
-			for(; bufferpos < end; bufferpos++)
-				ch = (ch * 256) + (0xff & *bufferpos);
-
-			bufferpos++;
-
+	if(multichar){
+		if(ch & (~0UL << (CHAR_BIT * type_primitive_size(type_int))))
+			WARN_AT(NULL, "multi-char constant too large");
+		else
 			WARN_AT(NULL, "multi-char constant");
-		}
 	}
 
 	currentval.val = ch;
-	curtok = token_character;
+	curtok = is_wide ? token_integer : token_character;
 }
 
 void nexttoken()
@@ -689,7 +633,7 @@ void nexttoken()
 			return;
 		case '\'':
 			nextchar();
-			read_quoted_char(1);
+			cc1_read_quoted_char(1);
 			return;
 	}
 
@@ -730,7 +674,7 @@ void nexttoken()
 			break;
 
 		case '\'':
-			read_quoted_char(0);
+			cc1_read_quoted_char(0);
 			break;
 
 		case '(':

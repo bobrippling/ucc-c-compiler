@@ -6,6 +6,7 @@
 
 #include "escape.h"
 #include "util.h"
+#include "str.h"
 
 int escape_char(int c)
 {
@@ -31,33 +32,6 @@ int escape_char(int c)
 		if(escapechars[i].from == c)
 			return escapechars[i].to;
 
-	return -1;
-}
-
-long escape_multi_char(char *pos, char **eptr)
-{
-	int is_oct;
-
-	/* either \x or \[1-7][0-7]* */
-	if((is_oct = ('0' <= *pos && *pos <= '7')) || *pos == 'x'){
-		if(is_oct){
-			/*
-			 * special case: '\0' is not oct
-			 */
-			if(*pos == '0' && !isoct(pos[1])){
-				*eptr = pos + 1;
-				return 0;
-			}
-
-			/* else got an oct, continuez vous */
-		}else{
-			pos++; /* skip the 'x' */
-		}
-
-		return char_seq_to_long(pos, eptr, is_oct ? OCT : HEX);
-	}
-
-	*eptr = NULL;
 	return -1;
 }
 
@@ -117,6 +91,69 @@ long char_seq_to_long(char *s, char **eptr, enum base mode)
 
 	*eptr = s;
 	return lval;
+}
+
+long read_char_single(char *start, char **end)
+{
+	long c = *start++;
+
+	if(c == '\\'){
+		char esc = tolower(*start);
+
+		if(esc == 'x' || esc == 'b' || isoct(esc)){
+
+			if(esc == 'x' || esc == 'b')
+				start++;
+
+			return char_seq_to_long(
+					start, end,
+					esc == 'x' ? HEX : esc == 'b' ? BIN : OCT);
+
+		}else{
+			/* special parsing */
+			c = escape_char(esc);
+
+			if(c == -1)
+				DIE_AT(NULL, "invalid escape character '%c'", esc);
+
+			*end = start + 1;
+		}
+	}else{
+		*end = start;
+	}
+
+	return c;
+}
+
+long read_quoted_char(
+		char *start, char **end,
+		int *multichar)
+{
+	unsigned long total = 0;
+
+	*multichar = 0;
+
+	if(*start == '\'') /* '' */
+		DIE_AT(NULL, "empty char constant");
+
+	for(;;){
+		int ch;
+
+		if(!*start)
+			DIE_AT(NULL, "no terminating quote to character");
+
+		ch = read_char_single(start, &start);
+		total = (total * 256) + (0xff & ch);
+
+		if(*start == '\'')
+			break;
+
+
+		*multichar = 1;
+	}
+
+	*end = start + 1;
+	return total;
 }
 
 const char *base_to_str(enum base b)

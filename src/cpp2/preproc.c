@@ -188,7 +188,7 @@ static char *strip_comment(char *line)
 			}
 		}else if(*s == '"'){
 			/* read until the end of the string */
-			s = terminating_quote(s + 1);
+			s = str_quotefin(s + 1);
 			if(!s)
 				CPP_DIE("no terminating quote to string");
 			/* finish of string */

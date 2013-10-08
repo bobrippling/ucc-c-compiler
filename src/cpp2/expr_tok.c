@@ -7,9 +7,13 @@
 #include "expr_tok.h"
 #include "str.h"
 
+#include "preproc.h"
+#include "main.h" /* CPP_DIE */
+
 #include "../util/alloc.h"
 #include "../util/str.h"
 #include "../util/util.h"
+#include "../util/escape.h"
 
 static char *tok_pos;
 
@@ -61,10 +65,17 @@ end_ty:
 
 	if(*tok_pos == '\''){
 		/* char literal */
-		char *fin = char_quotefin(tok_pos + 1);
+		int mchar;
 
-		/* TODO: escape*() tidy up */
-		ICE("TODO: char literals");
+		tok_cur_num = read_quoted_char(++tok_pos, &tok_pos, &mchar);
+
+		if(!tok_pos)
+			CPP_DIE("missing terminating single quote (\"%s\")", tok_pos);
+
+		if(mchar)
+			CPP_WARN("multi-char constant");
+
+		tok_cur = tok_num;
 
 		return;
 	}

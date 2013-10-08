@@ -24,17 +24,12 @@ void escape_string(char *old_str, int *plen)
 		if(old_str[i] == '\\'){
 			char *end;
 
-			i++;
+      add = read_char_single(old_str + i, &end);
 
-      add = escape_multi_char(old_str + i, &end);
-			if(end){
-				i = (end - old_str) - 1;
-			}else{
-				add = escape_char(old_str[i]);
+			UCC_ASSERT(end, "bad escape?");
 
-				if(add == -1)
-					DIE_AT(NULL, "unknown escape char '\\%c'", add);
-			}
+			i = (end - old_str) - 1;
+
 		}else{
 			add = old_str[i];
 		}

@@ -10,7 +10,8 @@ OBJ = preproc.o main.o macro.o str.o \
       ../util/platform.o             \
       ../util/where.o ../util/str.o  \
       ../util/dynarray.o             \
-      ../util/std.o
+      ../util/std.o                  \
+      ../util/escape.o
 
 cpp: ${OBJ}
 	${CC} ${CFLAGS} -o $@ ${OBJ}
