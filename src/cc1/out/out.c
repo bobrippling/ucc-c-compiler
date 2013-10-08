@@ -979,6 +979,8 @@ void out_op(enum op_type op)
 		case V_CONST_I:         \
 			t_const = &vp;        \
 			break;                \
+		case V_REG_SAVE:        \
+			v_to_reg(&vp);        \
 		case V_REG:             \
 		case V_LBL:             \
 			t_mem_reg = &vp;      \
