@@ -78,12 +78,17 @@ static void fold_switch_dups(stmt *sw)
 	free(vals);
 }
 
-static void fold_switch_enum(stmt *sw, const type *enum_type)
+static void fold_switch_enum(
+		stmt *sw, struct_union_enum_st *enum_sue)
 {
-	const int nents = enum_nentries(enum_type->sue);
+	const int nents = enum_nentries(enum_sue);
 	stmt **titer;
 	char *const marks = umalloc(nents * sizeof *marks);
 	int midx;
+
+	/* warn if we switch on an enum bitmask */
+	if(expr_attr_present(sw->expr, attr_enum_bitmask))
+		warn_at(&sw->where, "switch on enum with enum_bitmask attribute");
 
 	/* for each case/default/case_range... */
 	for(titer = sw->codes; titer && *titer; titer++){
@@ -101,7 +106,7 @@ static void fold_switch_enum(stmt *sw, const type *enum_type)
 			sue_member **mi;
 			int found = 0;
 
-			for(midx = 0, mi = enum_type->sue->members; *mi; midx++, mi++){
+			for(midx = 0, mi = enum_sue->members; *mi; midx++, mi++){
 				enum_member *m = (*mi)->enum_member;
 
 				if(v == const_fold_val(m->val))
@@ -110,7 +115,7 @@ static void fold_switch_enum(stmt *sw, const type *enum_type)
 
 			if(!found)
 				warn_at(&cse->where, "'case %ld' not not a member of enum %s",
-						(long)v, enum_type->sue->spel);
+						(long)v, enum_sue->spel);
 		}
 	}
 
@@ -118,8 +123,8 @@ static void fold_switch_enum(stmt *sw, const type *enum_type)
 		if(!marks[midx])
 			cc1_warn_at(&sw->where, 0, WARN_SWITCH_ENUM,
 					"enum %s::%s not handled in switch",
-					enum_type->sue->anon ? "" : enum_type->sue->spel,
-					enum_type->sue->members[midx]->enum_member->spel);
+					enum_sue->anon ? "" : enum_sue->spel,
+					enum_sue->members[midx]->enum_member->spel);
 
 ret:
 	free(marks);
@@ -148,17 +153,11 @@ void fold_stmt_switch(stmt *s)
 
 	/* check for an enum */
 	{
-		type_ref *r = type_ref_is_type(s->expr->tree_type, type_enum);
+		struct_union_enum_st *sue = type_ref_is_s_or_u_or_e(
+					s->expr->tree_type);
 
-		if(r){
-			const type *typ = r->bits.type;
-			UCC_ASSERT(typ->sue, "no enum for enum type");
-			fold_switch_enum(s, typ);
-
-			/* warn if we switch on an enum bitmask */
-			if(attr_present(typ->sue->attr, attr_enum_bitmask))
-				warn_at(&s->where, "switch on enum with enum_bitmask attribute");
-		}
+		if(sue && sue->primitive == type_enum)
+			fold_switch_enum(s, sue);
 	}
 }
 
