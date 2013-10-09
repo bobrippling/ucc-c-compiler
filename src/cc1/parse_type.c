@@ -134,12 +134,6 @@ static type_ref *parse_type_sue(enum type_primitive prim)
 
 	}else if(!spel){
 		die_at(NULL, "expected: %s definition or name", sue_str_type(prim));
-
-	}else{
-		/* predeclaring */
-		if(prim == type_enum && !sue_find_this_scope(current_scope, spel))
-			cc1_warn_at(NULL, 0, WARN_PREDECL_ENUM,
-					"predeclaration of enums is not C99");
 	}
 
 	{

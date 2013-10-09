@@ -276,8 +276,13 @@ new_type:
 		sue->members = members;
 	}
 
-	if(new)
+	if(new){
+		if(prim == type_enum && !sue->complete)
+			cc1_warn_at(NULL, 0, WARN_PREDECL_ENUM,
+					"forward-declaration of enum %s", sue->spel);
+
 		dynarray_add(&stab->sues, sue);
+	}
 
 	return sue;
 }
