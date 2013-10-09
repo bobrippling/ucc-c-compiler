@@ -80,6 +80,8 @@ void      symtab_rm_parent( symtable *child);
 symtable *symtab_root(symtable *child);
 symtable *symtab_func_root(symtable *stab);
 
+int symtab_nested_internal(symtable *parent, symtable *nest);
+
 sym  *symtab_search(symtable *, const char *);
 decl *symtab_search_d(symtable *, const char *, symtable **pin);
 int   typedef_visible(symtable *stab, const char *spel);

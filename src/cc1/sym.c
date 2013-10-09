@@ -72,6 +72,16 @@ symtable *symtab_func_root(symtable *stab)
 	return stab;
 }
 
+int symtab_nested_internal(symtable *parent, symtable *nest)
+{
+	while(nest && nest->internal_nest){
+		if(nest->parent == parent)
+			return 1;
+		nest = nest->parent;
+	}
+	return 0;
+}
+
 decl *symtab_search_d(symtable *tab, const char *spel, symtable **pin)
 {
 	decl **const decls = tab->decls;
