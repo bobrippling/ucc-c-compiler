@@ -605,10 +605,18 @@ static void fold_func(decl *func_decl)
 
 		{
 			decl **i;
-			for(i = arg_symtab->decls; i && *i; i++)
-				if(!(*i)->spel)
+			for(i = arg_symtab->decls; i && *i; i++){
+				decl *d = *i;
+
+				if(!d->spel)
 					die_at(&func_decl->where, "argument %ld in \"%s\" is unnamed",
 							i - arg_symtab->decls + 1, func_decl->spel);
+
+				if(!type_ref_is_complete(d->ref))
+					die_at(&d->where,
+							"function argument \"%s\" has incomplete type '%s'",
+							d->spel, type_ref_to_str(d->ref));
+			}
 		}
 
 		fold_stmt(func_decl->func_code);
