@@ -10,6 +10,8 @@
 #include "../sue.h"
 #include "../defs.h"
 
+#define IMPLICIT_STR(e) ((e)->expr_cast_implicit ? "implicit " : "")
+
 const char *str_expr_cast()
 {
 	return "cast";
@@ -159,7 +161,9 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 	fold_disallow_st_un(e, "cast-target");
 
 	if(!type_ref_is_complete(e->tree_type) && !type_ref_is_void(e->tree_type))
-		die_at(&e->where, "cast to incomplete type %s", type_ref_to_str(e->tree_type));
+		die_at(&e->where, "%scast to incomplete type %s",
+				IMPLICIT_STR(e),
+				type_ref_to_str(e->tree_type));
 
 	if((flag = !!type_ref_is(e->tree_type, type_ref_func)) || type_ref_is(e->tree_type, type_ref_array))
 		die_at(&e->where, "cast to %s type '%s'", flag ? "function" : "array", type_ref_to_str(e->tree_type));
@@ -185,7 +189,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 		char buf[TYPE_REF_STATIC_BUFSIZ];
 		warn_at(&e->where, "%scast from %spointer to %spointer\n"
 				"%s <- %s",
-				e->expr_cast_implicit ? "implicit " : "",
+				IMPLICIT_STR(e),
 				flag ? "" : "function-", flag ? "function-" : "",
 				type_ref_to_str(tlhs), type_ref_to_str_r(buf, trhs));
 	}
