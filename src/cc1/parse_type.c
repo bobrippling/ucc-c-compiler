@@ -146,14 +146,13 @@ static type_ref *parse_type_sue(enum type_primitive prim)
 				members, prim, is_complete,
 				/* isdef = */ curtok == token_semicolon);
 
-		type_ref *r = type_ref_new_type(
+		parse_add_attr(&this_sue_attr); /* struct A { ... } __attr__ */
+
+		/* sue may already exist */
+		decl_attr_append(&sue->attr, this_sue_attr);
+
+		return type_ref_new_type(
 				type_new_primitive_sue(prim, sue));
-
-		sue->attr = this_sue_attr; /* struct A __attr__ { ... } */
-
-		parse_add_attr(&r->attr); /* struct A { ... } __attr__ */
-
-		return r;
 	}
 }
 
