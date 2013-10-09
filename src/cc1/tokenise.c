@@ -129,6 +129,8 @@ static int current_fname_used;
 static char *buffer, *bufferpos;
 static int ungetch = EOF;
 
+static int in_comment;
+
 static struct line_list
 {
 	char *line;
@@ -277,7 +279,7 @@ static ucc_wur char *tokenise_read_line()
 			add_store_line(l);
 
 		/* format is # line? [0-9] "filename" ([0-9])* */
-		if(*l == '#'){
+		if(!in_comment && *l == '#'){
 			int lno;
 			char *ep;
 
@@ -839,12 +841,15 @@ void nexttoken()
 			break;
 		case '/':
 			if(peeknextchar() == '*'){
-				/* comment */
+				in_comment = 1;
+
 				for(;;){
 					int c = rawnextchar();
 					if(c == '*' && *bufferpos == '/'){
 						rawnextchar(); /* eat the / */
 						nexttoken();
+
+						in_comment = 0;
 						return;
 					}
 				}
