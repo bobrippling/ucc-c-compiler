@@ -92,9 +92,10 @@ void fold_insert_casts(type_ref *dlhs, expr **prhs, symtable *stab, where *w, co
 				DECL_CMP_EXACT_MATCH))
 	{
 		/* insert a cast: rhs -> lhs */
-		expr *cast;
+		expr *cast = expr_set_where(
+				expr_new_cast(rhs, dlhs, 1),
+				&rhs->where);
 
-		cast = expr_new_cast(rhs, dlhs, 1);
 		*prhs = cast;
 
 		/* need to fold the cast again - mainly for "loss of precision" warning */
