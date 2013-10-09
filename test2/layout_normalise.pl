@@ -40,7 +40,8 @@ while(<>){
 		}
 		$any = 1;
 	}elsif(/(.*): *$/){
-		emit({ lbl => $1 });
+		(my $lbl = $1) =~ s/^_//;
+		emit({ lbl => $lbl });
 		$any = 1;
 	}
 }
