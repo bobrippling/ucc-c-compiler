@@ -819,24 +819,28 @@ void fold_funcargs(funcargs *fargs, symtable *stab, type_ref *from)
 					fold_type_ref(d->ref, NULL, stab); /* refold if we converted */
 			);
 
-			if(decl_store_static_or_extern(d->store)){
-				die_at(&fargs->where, "function argument %d is static or extern", i + 1);
-			}
+			if(decl_store_static_or_extern(d->store))
+				die_at(&fargs->where,
+						"function argument %d is static or extern",
+						i + 1);
 
 			/* ensure ptr */
 			if((nonnulls & (1 << i))
 			&& !type_ref_is(d->ref, type_ref_ptr)
 			&& !type_ref_is(d->ref, type_ref_block))
 			{
-				warn_at(&fargs->arglist[i]->where, "nonnull attribute applied to non-pointer argument '%s'",
+				warn_at(&fargs->arglist[i]->where,
+						"nonnull attribute applied to non-pointer argument '%s'",
 						type_ref_to_str(d->ref));
 			}
 		}
 
 		if(i == 0 && nonnulls)
-			warn_at(&fargs->where, "nonnull attribute applied to function with no arguments");
+			warn_at(&fargs->where,
+					"nonnull attribute applied to function with no arguments");
 		else if(nonnulls != ~0UL && nonnulls & -(1 << i))
-			warn_at(&fargs->where, "nonnull attributes above argument index %d ignored", i + 1);
+			warn_at(&fargs->where,
+					"nonnull attributes above argument index %d ignored", i + 1);
 	}else if(nonnulls){
 		warn_at(&fargs->where, "nonnull attribute on parameterless function");
 	}
