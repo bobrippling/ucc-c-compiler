@@ -1,5 +1,5 @@
 // RUN: %ucc -c %s
-// RUN: [ `%ucc %s -S -o- | grep -c '(%%r[a-d]x)'` -eq 1 ]
+// RUN: echo 'FIXME: need deref check - backend vm?'; false
 
 extern int x[][2][4];
 
