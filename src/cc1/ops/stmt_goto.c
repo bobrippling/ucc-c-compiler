@@ -18,18 +18,9 @@ void fold_stmt_goto(stmt *s)
 	if(s->expr){
 		FOLD_EXPR(s->expr, s->symtab);
 	}else{
-		char *ident = s->bits.lbl.spel;
-		label *lbl = symtab_label_find(s->symtab, ident);
-
-		if(!lbl){
-			/* forward decl */
-			lbl = label_new(&s->where, ident, 0);
-			symtab_label_add(s->symtab, lbl);
-		}
-
-		s->bits.lbl.label = lbl;
-
-		lbl->uses++;
+		(s->bits.lbl.label =
+		 symtab_label_find(s->symtab, s->bits.lbl.spel, &s->where))
+			->uses++;
 	}
 }
 

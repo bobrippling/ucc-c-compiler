@@ -137,14 +137,31 @@ static void label_init(symtable **stab)
 	(*stab)->labels = dynmap_new((dynmap_cmp_f *)strcmp);
 }
 
-label *symtab_label_find(symtable *stab, char *spel)
-{
-	label_init(&stab);
-	return dynmap_get(char *, label *, stab->labels, spel);
-}
-
 void symtab_label_add(symtable *stab, label *lbl)
 {
 	label_init(&stab);
-	dynmap_set(char *, label *, stab->labels, lbl->spel, lbl);
+
+	dynmap_set(char *, label *,
+			symtab_func_root(stab)->labels,
+			lbl->spel, lbl);
+}
+
+label *symtab_label_find(symtable *stab, char *spel, where *w)
+{
+	label *lbl;
+
+	stab = symtab_func_root(stab);
+
+	lbl = stab->labels
+		? dynmap_get(char *, label *,
+		    stab->labels, spel)
+		: NULL;
+
+	if(!lbl){
+		/* forward decl */
+		lbl = label_new(w, spel, 0);
+		symtab_label_add(stab, lbl);
+	}
+
+	return lbl;
 }

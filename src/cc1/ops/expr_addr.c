@@ -25,7 +25,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 			die_at(&e->where, "address-of-label outside a function");
 
 		(e->bits.lbl.label =
-		 symtab_label_find(stab, e->bits.lbl.spel))
+		 symtab_label_find(stab, e->bits.lbl.spel, &e->where))
 			->uses++;
 
 		/* address of label - void * */

@@ -9,7 +9,7 @@ const char *str_stmt_label()
 
 void fold_stmt_label(stmt *s)
 {
-	label *l = symtab_label_find(s->symtab, s->bits.lbl.spel);
+	label *l = symtab_label_find(s->symtab, s->bits.lbl.spel, &s->where);
 
 	if(l){
 		/* update its where */

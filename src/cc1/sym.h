@@ -91,7 +91,7 @@ const char *sym_to_str(enum sym_type);
 #define sym_free(s) free(s)
 
 /* labels */
-struct label *symtab_label_find(symtable *, char *);
+struct label *symtab_label_find(symtable *, char *, where *);
 void symtab_label_add(symtable *, struct label *);
 
 #endif
