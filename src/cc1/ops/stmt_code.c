@@ -119,28 +119,18 @@ void gen_block_decls(symtable *stab)
 {
 	decl **diter;
 
-	/* declare statics */
+	/* declare strings, extern functions and blocks */
 	for(diter = stab->decls; diter && *diter; diter++){
 		decl *d = *diter;
 		int func;
 
-		if((func = !!type_ref_is(d->ref, type_ref_func)) || decl_store_static_or_extern(d->store)){
-			int gen = 1;
-
-			if(func){
-				/* check if the func is defined globally */
-				symtable *globs = symtab_root(stab);
-				decl **i;
-
-				for(i = globs->decls; i && *i; i++){
-					if(!strcmp(d->spel, (*i)->spel)){
-						gen = 0;
-						break;
-					}
-				}
-			}
-
-			if(gen)
+		/* we may need a '.extern fn...' for prototypes... */
+		if((func = !!type_ref_is(d->ref, type_ref_func))
+		|| decl_store_static_or_extern(d->store))
+		{
+			/* if it's a string, go,
+			 * if it's the most-unnested func. prototype, go */
+			if(!func || !d->proto)
 				gen_asm_global(d);
 		}
 	}

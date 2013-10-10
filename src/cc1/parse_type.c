@@ -1258,7 +1258,10 @@ add:
 			decl *d_prev = symtab_search_d(current_scope, d->spel, NULL);
 
 			if(d_prev){
-				/* link the proto chain for __attribute__ checking */
+				/* link the proto chain for __attribute__ checking,
+				 * nested function prototype checking and
+				 * '.extern fn' code gen easing
+				 */
 				d->proto = d_prev;
 
 				if(PARSE_DECL_IS_FUNC(d) && PARSE_DECL_IS_FUNC(d_prev))
