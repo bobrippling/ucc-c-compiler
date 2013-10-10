@@ -285,25 +285,21 @@ static void static_array_check(
 
 	const_fold(ty_decl->bits.ptr.size, &k_decl);
 
-	if(!(ty_expr = type_ref_is_decayed_array(ty_expr))){
-		warn_at(&arg_expr->where,
-				(k_decl.type == CONST_VAL) ?
-				"array of size >= %" INTVAL_FMT_D " expected for parameter" :
-				"array expected for parameter", (intval_t)k_decl.bits.iv.val);
-		return;
+	if((ty_expr = type_ref_is_decayed_array(ty_expr))){
+		/* ty_expr is the type_ref_ptr, decayed from array */
+		if(ty_expr->bits.ptr.size){
+			consty k_arg;
+
+			const_fold(ty_expr->bits.ptr.size, &k_arg);
+
+			if(k_decl.type == CONST_VAL && k_arg.bits.iv.val < k_decl.bits.iv.val)
+				warn_at(&arg_expr->where,
+						"array of size %" INTVAL_FMT_D
+						" passed where size %" INTVAL_FMT_D " needed",
+						k_arg.bits.iv.val, k_decl.bits.iv.val);
+		}
 	}
-
-	/* ty_expr is the type_ref_ptr, decayed from array */
-	if(ty_expr->bits.ptr.size){
-		consty k_arg;
-
-		const_fold(ty_expr->bits.ptr.size, &k_arg);
-
-		if(k_decl.type == CONST_VAL && k_arg.bits.iv.val < k_decl.bits.iv.val)
-			warn_at(&arg_expr->where,
-					"array of size %" INTVAL_FMT_D " passed where size %" INTVAL_FMT_D " needed",
-					k_arg.bits.iv.val, k_decl.bits.iv.val);
-	}
+	/* else it's a random pointer, just be quiet */
 }
 
 void fold_expr_funcall(expr *e, symtable *stab)
