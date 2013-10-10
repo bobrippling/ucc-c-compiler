@@ -161,7 +161,9 @@ expr *fold_expr(expr *e, symtable *stab)
 		);
 
 	if(decayed){
-		expr *imp_cast = expr_new_cast(e, decayed, 1);
+		expr *imp_cast = expr_set_where(
+				expr_new_cast(e, decayed, 1),
+				&e->where);
 		fold_expr_cast_descend(imp_cast, stab, 0);
 		e = imp_cast;
 	}
