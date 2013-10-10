@@ -375,7 +375,7 @@ char *token_current_spel_peek(void)
 	return currentspelling;
 }
 
-char *tok_at_label(void)
+char *tok_at_label(where *w)
 {
 	/* [a-z]+:
 	 * need to cater for newlines
@@ -389,6 +389,8 @@ char *tok_at_label(void)
 	for(p = bufferpos; *p; p++){
 		if(*p == ':'){
 			char *ret;
+
+			where_cc1_current(w);
 
 			bufferpos = p + 1;
 			ret = token_current_spel();
@@ -415,7 +417,7 @@ char *tok_at_label(void)
 			p = buffer + poff;
 			memcpy(p, new, newlen + 1);
 			bufferpos = p;
-			return tok_at_label();
+			return tok_at_label(w);
 		}
 		return NULL;
 	}

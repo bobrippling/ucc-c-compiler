@@ -984,11 +984,14 @@ flow:
 		default:
 		{
 			char *lbl;
-			if((lbl = tok_at_label())){
+			where w;
+
+			if((lbl = tok_at_label(&w))){
 				decl_attr *attr = NULL, *ai;
 
 				t = STAT_NEW(label);
 				t->bits.lbl.spel = lbl;
+				memcpy_safe(&t->where, &w);
 
 				parse_add_attr(&attr);
 				for(ai = attr; ai; ai = ai->next)
