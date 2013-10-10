@@ -12,6 +12,9 @@ void fold_stmt_label(stmt *s)
 	label *l = symtab_label_find(s->symtab, s->bits.lbl.spel);
 
 	if(l){
+		/* update its where */
+		l->pw = &s->where;
+
 		if(l->complete)
 			die_at(&s->where, "duplicate label '%s'", s->bits.lbl.spel);
 		else
