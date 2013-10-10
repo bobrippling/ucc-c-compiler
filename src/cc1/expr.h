@@ -108,6 +108,12 @@ struct expr
 			char *spel;
 		} ident;
 
+		struct
+		{
+			char *spel;
+			struct label *label;
+		} lbl;
+
 		struct /* used in compound literal */
 		{
 			sym *sym;
