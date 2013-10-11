@@ -22,6 +22,7 @@
 #include "pack.h"
 #include "funcargs.h"
 #include "out/lbl.h"
+#include "fold_sue.h"
 
 decl     *curdecl_func;
 type_ref *curdecl_ref_func_called; /* for funcargs-local labels and return type-checking */
@@ -235,11 +236,14 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 			break;
 
 		case type_ref_type:
-			if(stab->are_params){
-				/* check if we're a new struct/union decl */
-				struct_union_enum_st *sue = type_ref_is_s_or_u(r);
+		{
+			/* check if we're a new struct/union decl */
+			struct_union_enum_st *sue = type_ref_is_s_or_u(r);
 
-				if(sue){
+			if(sue){
+				fold_sue(sue, stab);
+
+				if(stab->are_params){
 					struct_union_enum_st *above = sue_find_descend(
 							stab->parent, sue->spel, NULL);
 
@@ -251,6 +255,7 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 				}
 			}
 			break;
+		}
 
 		case type_ref_tdef:
 		{
