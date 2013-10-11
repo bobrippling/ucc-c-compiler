@@ -584,6 +584,9 @@ static void fold_func(decl *func_decl)
 		} the_return = { NULL, NULL };
 		symtable *const arg_symtab = DECL_FUNC_ARG_SYMTAB(func_decl);
 
+		decl     *const olddecl_func = curdecl_func;
+		type_ref *const olddecl_ref_func_called = curdecl_ref_func_called;
+
 		arg_symtab->func_exists = 1;
 
 		if(func_decl->store & store_inline
@@ -668,8 +671,8 @@ static void fold_func(decl *func_decl)
 			}
 		}
 
-		curdecl_ref_func_called = NULL;
-		curdecl_func = NULL;
+		curdecl_func = olddecl_func;
+		curdecl_ref_func_called = olddecl_ref_func_called;
 	}
 }
 
