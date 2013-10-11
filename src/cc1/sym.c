@@ -72,6 +72,12 @@ symtable *symtab_func_root(symtable *stab)
 	return stab;
 }
 
+void symtab_params(symtable *stab, decl **params)
+{
+	stab->are_params = 1;
+	dynarray_add_array(&stab->decls, params);
+}
+
 int symtab_nested_internal(symtable *parent, symtable *nest)
 {
 	while(nest && nest->internal_nest){

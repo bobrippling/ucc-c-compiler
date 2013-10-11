@@ -2,6 +2,7 @@
 #include "expr_block.h"
 #include "../out/lbl.h"
 #include "../../util/dynarray.h"
+#include "../funcargs.h"
 
 const char *str_expr_block(void)
 {
@@ -11,10 +12,10 @@ const char *str_expr_block(void)
 void fold_expr_block(expr *e, symtable *stab)
 {
 	/* prevent access to nested vars */
-	e->code->symtab->parent = symtab_root(e->code->symtab);
+	symtable *arg_symtab = symtab_new(symtab_root(e->code->symtab));
 
-	UCC_ASSERT(stmt_kind(e->code, code), "!code for block");
-	fold_stmt(e->code);
+	e->code->symtab->parent = arg_symtab;
+	symtab_params(arg_symtab, e->bits.block.args->arglist);
 
 	/*
 	 * TODO:
@@ -34,9 +35,9 @@ void fold_expr_block(expr *e, symtable *stab)
 	 * else the type of the first one we find
 	 */
 
-	if(e->bits.tref){
+	if(e->bits.block.retty){
 		/* just the return _type_, not (^)() qualified */
-		e->tree_type = e->bits.tref;
+		e->tree_type = e->bits.block.retty;
 
 	}else{
 		stmt *r = NULL;
@@ -52,31 +53,33 @@ void fold_expr_block(expr *e, symtable *stab)
 
 	/* copied the type, now make it a (^)() */
 	e->tree_type = type_ref_new_block(
-			type_ref_new_func(e->tree_type, e->bits.block_args),
-			qual_const
-			);
-
-	/* TODO: need to bring e->bits.block_args into scope */
-
+			type_ref_new_func(e->tree_type, e->bits.block.args),
+			qual_const);
 
 	/* add the function to the global scope */
 	{
 		decl *df = decl_new();
 
 		df->spel = out_label_block(curdecl_func->spel);
-		e->bits.block_sym = sym_new_stab(symtab_root(stab), df, sym_global);
+
+		/* add a global symbol for the block */
+		e->bits.block.sym = sym_new_stab(symtab_root(stab), df, sym_global);
 
 		df->func_code = e->code;
 		df->ref = e->tree_type;
 
-		/* funcarg folding + typedef/struct lookup, etc */
-		fold_decl(df, stab, NULL);
+		UCC_ASSERT(stmt_kind(e->code, code), "!code for block");
+
+		fold_funcargs(e->bits.block.args, arg_symtab, NULL);
+
+		fold_decl(df, stab, /*pinitcode:*/NULL);
+		fold_func(df);
 	}
 }
 
 void gen_expr_block(expr *e)
 {
-	out_push_lbl(e->bits.block_sym->decl->spel, 1);
+	out_push_sym(e->bits.block.sym);
 }
 
 void gen_expr_str_block(expr *e)
@@ -101,8 +104,8 @@ void mutate_expr_block(expr *e)
 expr *expr_new_block(type_ref *rt, funcargs *args, stmt *code)
 {
 	expr *e = expr_new_wrapper(block);
-	e->bits.block_args = args;
 	e->code = code;
-	e->bits.tref = rt; /* return type if not null */
+	e->bits.block.args = args;
+	e->bits.block.retty = rt; /* return type if not null */
 	return e;
 }

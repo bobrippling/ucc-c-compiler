@@ -126,9 +126,12 @@ struct expr
 			unsigned extra_off;
 		} struct_mem;
 
-		sym *block_sym;
-
-		funcargs *block_args; /* ^{} */
+		struct
+		{
+			funcargs *args;
+			type_ref *retty;
+			sym *sym;
+		} block;
 
 		type_ref **types; /* used in __builtin */
 

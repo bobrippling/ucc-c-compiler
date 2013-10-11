@@ -674,8 +674,7 @@ fin:;
 empty_func:
 
 	/* put our args into the scope */
-	current_scope->are_params = 1;
-	dynarray_add_array(&current_scope->decls, args->arglist);
+	symtab_params(current_scope, args->arglist);
 
 	return args;
 }

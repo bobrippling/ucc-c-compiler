@@ -574,7 +574,7 @@ void fold_decl_global_init(decl *d, symtable *stab)
 
 }
 
-static void fold_func(decl *func_decl)
+void fold_func(decl *func_decl)
 {
 	if(func_decl->func_code){
 		struct
@@ -597,13 +597,15 @@ static void fold_func(decl *func_decl)
 					"(missing \"static\" or \"extern\")");
 		}
 
-		if(func_decl->ref->type != type_ref_func)
+		if(type_ref_is_tdef(func_decl->ref))
 			warn_at(&func_decl->where,
 					"typedef function implementation is an extension");
 
 		{
-			type_ref *fref = type_ref_is(func_decl->ref, type_ref_func);
-			UCC_ASSERT(fref, "not a func");
+			type_ref *fref = type_ref_is_func_or_block(func_decl->ref);
+
+			UCC_ASSERT(fref, "not a func or block");
+
 			curdecl_ref_func_called = type_ref_func_call(fref, NULL);
 			curdecl_func = func_decl;
 		}
