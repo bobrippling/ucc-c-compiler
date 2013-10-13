@@ -1,4 +1,5 @@
-// RUN: %ucc -o %t %s && %t
+// RUN: %ucc -o %t %s
+// RUN: %t | %output_check 46 -5
 
 f()
 {
@@ -6,7 +7,14 @@ f()
 	return (char)5678;
 }
 
+g()
+{
+	// this checks sign extension when casting
+	return (char)-5;
+}
+
 main()
 {
-	return f() == 46 ? 0 : 1;
+	printf("%d\n", f());
+	printf("%d\n", g());
 }
