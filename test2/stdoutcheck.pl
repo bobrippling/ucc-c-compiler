@@ -31,10 +31,16 @@ if($ign_whitespace){
 }
 
 if(@output != @ARGV){
-	print "output:\n";
-	map { print "  $_\n" } @output;
+	if(@output){
+		print "output:\n";
+		map { print "  $_\n" } @output;
+	}
 
-	die "$0: mismatching output counts\n"
+	die "$0: mismatching output counts "
+	. scalar(@output)
+	. " vs "
+	. scalar(@ARGV)
+	. "\n";
 }
 
 for(my $i = 0; $i < @output; ++$i){

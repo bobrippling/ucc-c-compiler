@@ -26,7 +26,7 @@ static type_ref *type_ref_new(enum type_ref_type t, type_ref *of)
 	if(of)
 		memcpy_safe(&r->where, &of->where);
 	else
-		where_new(&r->where);
+		where_cc1_current(&r->where);
 
 	r->type = t;
 	r->ref = of;
@@ -244,11 +244,18 @@ type_ref *type_ref_new_cast_signed(type_ref *to, int is_signed)
 	return r;
 }
 
-decl *decl_new()
+decl *decl_new_w(const where *w)
 {
 	decl *d = umalloc(sizeof *d);
-	where_new(&d->where);
+	memcpy_safe(&d->where, w);
 	return d;
+}
+
+decl *decl_new()
+{
+	where wtmp;
+	where_cc1_current(&wtmp);
+	return decl_new_w(&wtmp);
 }
 
 decl *decl_new_ty_sp(type_ref *ty, char *sp)
@@ -373,7 +380,7 @@ void decl_free(decl *d, int free_ref)
 decl_attr *decl_attr_new(enum decl_attr_type t)
 {
 	decl_attr *da = umalloc(sizeof *da);
-	where_new(&da->where);
+	where_cc1_current(&da->where);
 	da->type = t;
 	return da;
 }
@@ -711,18 +718,21 @@ type_ref *decl_is_decayed_array(decl *d)
 	return type_ref_is_decayed_array(d->ref);
 }
 
-static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
+static void type_ref_add_str(type_ref *r, char *spel, int need_spc, char **bufp, int sz)
 {
 #define BUF_ADD(...) \
 	do{ int n = snprintf(*bufp, sz, __VA_ARGS__); *bufp += n, sz -= n; }while(0)
+#define ADD_SPC() do{ if(need_spc) BUF_ADD(" "); need_spc = 0; }while(0)
 
 	int need_paren;
 	enum type_qualifier q;
 
 	if(!r){
 		/* reached the bottom/end - spel */
-		if(spel)
+		if(spel){
+			ADD_SPC();
 			BUF_ADD("%s", spel);
+		}
 		return;
 	}
 
@@ -739,8 +749,10 @@ static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
 			need_paren = !r->tmp || r->type != r->tmp->type;
 	}
 
-	if(need_paren)
+	if(need_paren){
+		ADD_SPC();
 		BUF_ADD("(");
+	}
 
 	switch(r->type){
 		case type_ref_ptr:
@@ -749,18 +761,22 @@ static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
 				break; /* decayed array */
 #endif
 
+			ADD_SPC();
 			BUF_ADD("*");
 			q = r->bits.ptr.qual;
 			break;
 
 		case type_ref_cast:
-			if(r->bits.cast.is_signed_cast)
-				BUF_ADD(r->bits.cast.signed_true ? "signed " : "unsigned ");
-			else
+			if(r->bits.cast.is_signed_cast){
+				ADD_SPC();
+				BUF_ADD(r->bits.cast.signed_true ? "signed" : "unsigned");
+			}else{
 				q = r->bits.cast.qual;
+			}
 			break;
 
 		case type_ref_block:
+			ADD_SPC();
 			BUF_ADD("^");
 			q = r->bits.block.qual;
 			break;
@@ -768,10 +784,20 @@ static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
 		default:break;
 	}
 
-	if(q)
-		BUF_ADD("%s ", type_qual_to_str(q, 0));
+	if(q){
+		ADD_SPC();
+		BUF_ADD("%s", type_qual_to_str(q, 0));
+		need_spc = 1;
+		/* space out after qualifier, e.g.
+		 * int *const p;
+		 *           ^
+		 * int const a;
+		 *          ^
+		 */
+	}
 
-	type_ref_add_str(r->tmp, spel, bufp, sz);
+	type_ref_add_str(r->tmp, spel, need_spc, bufp, sz);
+	need_spc = 0; /* after the spel, no more spaces */
 
 	switch(r->type){
 		case type_ref_tdef:
@@ -806,13 +832,25 @@ static void type_ref_add_str(type_ref *r, char *spel, char **bufp, int sz)
 		case type_ref_array:
 			BUF_ADD("[");
 			if(r->bits.array.size){
-				if(r->bits.array.is_static)
-					BUF_ADD("static ");
+				int spc = 0;
 
-				if(r->bits.array.qual)
-					BUF_ADD("%s ", type_qual_to_str(r->bits.array.qual, 1));
+				if(r->bits.array.is_static){
+					BUF_ADD("static");
+					spc = 1;
+				}
 
-				BUF_ADD("%" NUMERIC_FMT_D, const_fold_val_i(r->bits.array.size));
+				if(r->bits.array.qual){
+					BUF_ADD(
+							"%s%s",
+							spc ? " " : "",
+							type_qual_to_str(r->bits.array.qual, 0));
+					spc = 1;
+				}
+
+				BUF_ADD(
+						"%s%" NUMERIC_FMT_D,
+						spc ? " " : "",
+						const_fold_val_i(r->bits.array.size));
 			}
 			BUF_ADD("]");
 
@@ -911,12 +949,11 @@ const char *type_ref_to_str_r_spel_aka(
 
 	type_ref_add_type_str(r, &bufp, TYPE_REF_STATIC_BUFSIZ, aka);
 
-	strcpy(bufp++, " "); /* need the nul char */
-
 	/* print in reverse order */
 	r = type_ref_set_parent(r, NULL);
 	/* use r->tmp, since r is type_ref_t{ype,def} */
-	type_ref_add_str(r->tmp, spel, &bufp, TYPE_REF_STATIC_BUFSIZ - (bufp - buf));
+	type_ref_add_str(r->tmp, spel, 1,
+			&bufp, TYPE_REF_STATIC_BUFSIZ - (bufp - buf));
 
 	/* trim trailing space */
 	if(bufp > buf && bufp[-1] == ' ')

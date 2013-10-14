@@ -80,7 +80,8 @@ static struct init_cpy *init_cpy_from_dinit(decl_init *di)
 	return cpy;
 }
 
-int decl_init_is_const(decl_init *dinit, symtable *stab)
+int decl_init_is_const(
+		decl_init *dinit, symtable *stab, expr **nonstd)
 {
 	DINIT_NULL_CHECK(dinit);
 
@@ -93,6 +94,9 @@ int decl_init_is_const(decl_init *dinit, symtable *stab)
 			e = FOLD_EXPR(dinit->bits.expr, stab);
 			const_fold(e, &k);
 
+			if(k.nonstandard_const && nonstd && !*nonstd)
+				*nonstd = k.nonstandard_const;
+
 			return CONST_AT_COMPILE_TIME(k.type);
 		}
 
@@ -101,7 +105,7 @@ int decl_init_is_const(decl_init *dinit, symtable *stab)
 			decl_init **i;
 
 			for(i = dinit->bits.ar.inits; i && *i; i++)
-				if(!decl_init_is_const(*i, stab))
+				if(!decl_init_is_const(*i, stab, nonstd))
 					return 0;
 
 			return 1;
@@ -151,7 +155,7 @@ decl_init *decl_init_new_w(enum decl_init_type t, where *w)
 	if(w)
 		memcpy_safe(&di->where, w);
 	else
-		where_new(&di->where);
+		where_cc1_current(&di->where);
 	di->type = t;
 	return di;
 }
@@ -284,12 +288,26 @@ static decl_init *decl_init_brace_up_scalar(
 	}
 
 	/* fold */
-	FOLD_EXPR(first_init->bits.expr, stab);
+	{
+		expr *e = FOLD_EXPR(first_init->bits.expr, stab);
 
-	fold_type_chk_and_cast(
-			tfor, &first_init->bits.expr,
-			stab, &first_init->bits.expr->where,
-			"initialisation");
+		if(type_ref_is_type(e->tree_type, type_void))
+			die_at(&e->where, "initialisation from void expression");
+
+		fold_type_chk_and_cast(
+				tfor, &first_init->bits.expr,
+				stab, &first_init->bits.expr->where,
+				"initialisation");
+
+		if(cc1_std <= STD_C89){
+			consty k;
+			const_fold(e, &k);
+
+			if(!CONST_AT_COMPILE_TIME(k.type))
+				warn_at(&first_init->bits.expr->where,
+						"initialiser is not a constant expression");
+		}
+	}
 
 	return first_init;
 }
@@ -404,8 +422,11 @@ static decl_init **decl_init_brace_up_array2(
 				&& !type_ref_is_scalar(next_type)){
 					/* we can replace brace inits IF they're constant (as a special
 					 * case), which is usually a common usage for static/global inits
+					 * i.e.
+					 * int x[] = { [0 ... 9] = f(), [1] = `exp' };
+					 * if exp is const we can do it.
 					 */
-					if(!decl_init_is_const(replacing, stab)){
+					if(!decl_init_is_const(replacing, stab, NULL)){
 						char wbuf[WHERE_BUF_SIZ];
 
 						die_at(&this->where,
@@ -807,6 +828,25 @@ static void die_incomplete(init_iter *iter, type_ref *tfor)
 			"initialising %s", type_ref_to_str(tfor));
 }
 
+static decl_init *is_char_init(type_ref *ty, init_iter *iter)
+{
+	decl_init *this;
+
+	if(type_ref_is_char_ptr(ty)
+	&& (this = *iter->pos)
+	/* allow "xyz" or { "xyz" } */
+	&& (this->type == decl_init_scalar
+	|| (this->type == decl_init_brace &&
+		  1 == dynarray_count(this->bits.ar.inits) &&
+		  this->bits.ar.inits[0]->type == decl_init_scalar)))
+	{
+		return this->type == decl_init_scalar
+			? this : this->bits.ar.inits[0];
+	}
+
+	return NULL;
+}
+
 static decl_init *decl_init_brace_up_array_pre(
 		decl_init *current, init_iter *iter,
 		type_ref *next_type, symtable *stab)
@@ -816,25 +856,12 @@ static decl_init *decl_init_brace_up_array_pre(
 
 	type_ref *next = type_ref_next(next_type);
 
-	const int for_str_ar = !!type_ref_is_type(
-			type_ref_is_array(next_type), type_nchar);
-
-	decl_init *this;
+	decl_init *strk;
 
 	if(!type_ref_is_complete(next))
 		die_incomplete(iter, next_type);
 
-	if(for_str_ar
-	&& (this = *iter->pos)
-	/* allow "xyz" or { "xyz" } */
-	&& (this->type == decl_init_scalar
-	|| (this->type == decl_init_brace &&
-		  1 == dynarray_count(this->bits.ar.inits) &&
-		  this->bits.ar.inits[0]->type == decl_init_scalar)))
-	{
-		decl_init *strk = this->type == decl_init_scalar
-			? this : this->bits.ar.inits[0];
-
+	if((strk = is_char_init(next_type, iter))){
 		consty k;
 
 		FOLD_EXPR(strk->bits.expr, stab);
@@ -842,14 +869,33 @@ static decl_init *decl_init_brace_up_array_pre(
 
 		if(k.type == CONST_STRK){
 			where *const w = &strk->where;
-			unsigned str_i;
+			unsigned str_i, count;
+			decl_init *braced;
 
 			if(k.bits.str->wide)
 				ICE("TODO: wide string init");
 
-			decl_init *braced = decl_init_new_w(decl_init_brace, w);
+			if(limit == -1){
+				count = k.bits.str->len;
+			}else{
+				if(k.bits.str->len <= (unsigned)limit){
+					count = k.bits.str->len;
+				}else{
+					/* only warn if it's more than one larger,
+					 * i.e. allow char[2] = "hi" <-- '\0' excluded
+					 */
+					if(k.bits.str->len - 1 > (unsigned)limit){
+						warn_at(&k.bits.str->where,
+								"string literal too long for '%s'",
+								type_ref_to_str(next_type));
+					}
+					count = limit;
+				}
+			}
 
-			for(str_i = 0; str_i < k.bits.str->len; str_i++){
+			braced = decl_init_new_w(decl_init_brace, w);
+
+			for(str_i = 0; str_i < count; str_i++){
 				decl_init *char_init = decl_init_new_w(decl_init_scalar, w);
 
 				char_init->bits.expr = expr_new_val(k.bits.str->str[str_i]);
@@ -906,8 +952,6 @@ static decl_init *decl_init_brace_up_start(
 	type_ref *const tfor = *ptfor;
 	decl_init *ret;
 
-	fold_type_ref(tfor, NULL, stab);
-
 	/* check for non-brace init */
 	if(init
 	&& init->type == decl_init_scalar
@@ -916,9 +960,12 @@ static decl_init *decl_init_brace_up_start(
 		expr *e = FOLD_EXPR(init->bits.expr, stab);
 
 		if(type_ref_cmp(e->tree_type, tfor, 0) != TYPE_EQUAL){
-			die_at(&init->where,
-					"%s must be initialised with an initialiser list",
-					type_ref_to_str(tfor));
+			/* allow special case of char [] with "..." */
+			if(!is_char_init(e->tree_type, &it)){
+				die_at(&init->where,
+						"%s must be initialised with an initialiser list",
+						type_ref_to_str(tfor));
+			}
 		}
 		/* else struct copy init */
 	}
@@ -1018,6 +1065,8 @@ zero_init:
 				0,
 				type_ref_size(tfor, &base->where));
 
+		memcpy_safe(&zero->where, &base->where);
+
 		dynarray_add(
 				&code->codes,
 				expr_to_stmt(zero, code->symtab));
@@ -1029,7 +1078,9 @@ zero_init:
 			dynarray_add(
 					&code->codes,
 					expr_to_stmt(
-						expr_new_assign_init(base, init->bits.expr),
+						expr_set_where(
+							expr_new_assign_init(base, init->bits.expr),
+							&base->where),
 						code->symtab));
 			break;
 
@@ -1125,7 +1176,9 @@ zero_init:
 					next_type = smem->ref;
 
 				}else{
-					new_base = expr_new_array_idx(base, idx);
+					new_base = expr_set_where(
+							expr_new_array_idx(base, idx),
+							&base->where);
 
 					if(!next_type)
 						next_type = type_ref_next(tfor);

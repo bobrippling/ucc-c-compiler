@@ -27,6 +27,7 @@ typedef struct consty
 			} bits;
 		} addr;
 	} bits;
+	expr *nonstandard_const; /* e.g. (1, 2) is not strictly const */
 } consty;
 #define CONST_AT_COMPILE_TIME(t) (t != CONST_NO && t != CONST_NEED_ADDR)
 
@@ -40,6 +41,8 @@ typedef struct consty
 
 #define K_FLOATING(num) !!((num).suffix & VAL_FLOATING)
 #define K_INTEGRAL(num) !K_FLOATING(num)
+
+#define CONST_FOLD_LEAF(k) memset((k), 0, sizeof *(k))
 
 
 typedef void         func_fold(          expr *, symtable *);
@@ -75,7 +78,6 @@ struct expr
 	int assign_is_post;
 	int assign_is_init;
 #define expr_is_default    assign_is_post
-#define expr_computed_goto assign_is_post
 #define expr_cast_implicit assign_is_post
 #define expr_is_st_dot     assign_is_post
 #define expr_addr_implicit assign_is_post
@@ -109,6 +111,12 @@ struct expr
 			char *spel;
 		} ident;
 
+		struct
+		{
+			char *spel;
+			struct label *label;
+		} lbl;
+
 		struct /* used in compound literal */
 		{
 			sym *sym;
@@ -121,9 +129,12 @@ struct expr
 			unsigned extra_off;
 		} struct_mem;
 
-		sym *block_sym;
-
-		funcargs *block_args; /* ^{} */
+		struct
+		{
+			funcargs *args;
+			type_ref *retty;
+			sym *sym;
+		} block;
 
 		type_ref **types; /* used in __builtin */
 
@@ -165,6 +176,12 @@ struct expr
 
 expr *expr_new(          func_mutate_expr *, func_fold *, func_str *, func_gen *, func_gen *, func_gen *);
 void expr_mutate(expr *, func_mutate_expr *, func_fold *, func_str *, func_gen *, func_gen *, func_gen *);
+
+/* sets e->where */
+expr *expr_set_where(expr *, where const *);
+
+/* sets e->where and e->where.len based on the change */
+expr *expr_set_where_len(expr *, where *);
 
 #define expr_mutate_wrapper(e, type) expr_mutate(e,               \
                                         mutate_expr_     ## type, \
@@ -216,7 +233,7 @@ expr *expr_new_decl_init(decl *d, decl_init *di);
 #define expr_kind(exp, kind) ((exp)->f_str == str_expr_ ## kind)
 
 expr *expr_new_identifier(char *sp);
-expr *expr_new_cast(type_ref *cast_to, int implicit);
+expr *expr_new_cast(expr *, type_ref *cast_to, int implicit);
 expr *expr_new_cast_rval(expr *);
 expr *expr_new_val(int val);
 expr *expr_new_op(enum op_type o);

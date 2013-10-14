@@ -79,6 +79,10 @@ struct
 
 	{ 'W', "tenative-init",     WARN_TENATIVE_INIT },
 
+	{ 0, "shadow-local",      WARN_SHADOW_LOCAL },
+	{ 0, "shadow-global",     WARN_SHADOW_GLOBAL },
+	{ 0, "shadow",            WARN_SHADOW_GLOBAL | WARN_SHADOW_LOCAL },
+
 	/* TODO: W_QUAL (ops/expr_cast) */
 
 #if 0
@@ -157,6 +161,7 @@ enum warning warn_mode = ~(
 		| WARN_SIGN_COMPARE
 		| WARN_PAD
 		| WARN_TENATIVE_INIT
+		| WARN_SHADOW_GLOBAL
 		);
 
 enum fopt fopt_mode = FOPT_CONST_FOLD

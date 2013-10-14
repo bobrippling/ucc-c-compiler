@@ -72,20 +72,21 @@ static void fold_cast_num(expr *const e, numeric *const num)
 	if(type_ref_is_type(e->tree_type, type__Bool)){
 		*pv = !!*pv; /* analagous to out/out.c::out_normalise()'s constant case */
 
-	}else if(e->expr_cast_implicit && !from_fp){ /* otherwise this is a no-op */
+	}else if(e->expr_cast_implicit && !from_fp){
 		const unsigned sz = type_ref_size(e->tree_type, &e->where);
 		const integral_t old = *pv;
 		const int to_sig   = type_ref_is_signed(e->tree_type);
 		const int from_sig = type_ref_is_signed(e->expr->tree_type);
-		integral_t to_iv, to_iv_sign_ext;
-
-		/* TODO: disallow for ptrs/non-ints */
+		integral_t to_iv;
+		sintegral_t to_iv_sign_ext;
 
 		/* we don't save the truncated value - we keep the original
 		 * so negative numbers, for example, are preserved */
 		to_iv = integral_truncate(*pv, sz, &to_iv_sign_ext);
 
-		if(to_sig && from_sig ? old != to_iv_sign_ext : old != to_iv){
+		if(e->expr_cast_implicit
+		&& (to_sig && from_sig ? (sintegral_t)old != to_iv_sign_ext : old != to_iv))
+		{
 #define CAST_WARN(pre_fmt, pre_val, post_fmt, post_val)  \
 			warn_at(&e->where,                           \
 					"implicit cast changes value from %"     \
@@ -113,12 +114,20 @@ static void fold_cast_num(expr *const e, numeric *const num)
 							NUMERIC_FMT_U, (long long unsigned)to_iv);
 			}
 		}
+
+		/* need to sign extend if signed */
+		*pv = from_sig && to_sig ? (integral_t)to_iv_sign_ext : to_iv;
 	}
 #undef pv
 }
 
 static void fold_const_expr_cast(expr *e, consty *k)
 {
+	if(type_ref_is_void(e->tree_type)){
+		k->type = CONST_NO;
+		return;
+	}
+
 	const_fold(e->expr, k);
 
 	if(IS_RVAL_CAST(e))
@@ -360,11 +369,12 @@ void mutate_expr_cast(expr *e)
 	e->f_const_fold = fold_const_expr_cast;
 }
 
-expr *expr_new_cast(type_ref *to, int implicit)
+expr *expr_new_cast(expr *what, type_ref *to, int implicit)
 {
 	expr *e = expr_new_wrapper(cast);
 	e->bits.tref = to;
 	e->expr_cast_implicit = implicit;
+	e->expr = what;
 	return e;
 }
 

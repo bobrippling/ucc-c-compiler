@@ -62,7 +62,7 @@ int while_passable(stmt *s)
 	return 1; /* fold_passable(s->lhs) - doesn't depend on this */
 }
 
-void mutate_stmt_while(stmt *s)
+void init_stmt_while(stmt *s)
 {
 	s->f_passable = while_passable;
 }

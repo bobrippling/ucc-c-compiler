@@ -24,7 +24,8 @@ struct struct_union_enum_st
 	unsigned anon : 1,
 	         complete : 1,
 	         flexarr : 1,
-	         folded : 1;
+	         folded : 1,
+	         contains_const : 1;
 	int align, size;
 
 	sue_member **members;

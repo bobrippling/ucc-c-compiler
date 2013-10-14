@@ -11,6 +11,7 @@ void eat( enum token t, const char *fnam, int line);
 void eat2(enum token t, const char *fnam, int line, int die);
 void uneat(enum token t);
 int accept(enum token t);
+int accept_where(enum token t, where *);
 
 #define EAT(t)         eat( (t), __FILE__, __LINE__)
 #define EAT_OR_DIE(t)  eat2((t), __FILE__, __LINE__, 1)
@@ -21,8 +22,6 @@ int curtok_is_decl_store(void);
 
 int curtok_in_list(va_list l);
 
-char *token_current_spel(void);
-char *token_current_spel_peek(void);
 void token_get_current_str(char **ps, int *pl, int *pwide);
 
 enum op_type curtok_to_compound_op(void);

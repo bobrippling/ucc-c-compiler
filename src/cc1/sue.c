@@ -222,28 +222,14 @@ new_type:
 
 		new = 1;
 
-		where_new(&sue->where);
+		where_cc1_current(&sue->where);
 	}
 
 	if(members){
 		if(prim == type_enum){
-			/* check for duplicates */
-			int i;
-
-			for(i = 0; members[i]; i++){
-				const char *const spel = members[i]->enum_member->spel;
-
-				struct_union_enum_st *e_sue;
-				enum_member *e_mem;
-
-				enum_member_search(&e_mem, &e_sue, stab, spel);
-
-				if(e_mem){
-					char buf[WHERE_BUF_SIZ];
-					die_at(NULL, "redeclaration of enumerator %s (from %s)",
-							spel, where_str_r(buf, &e_sue->where));
-				}
-			}
+			/* enum member duplicate check is done in fold_sym,
+			 * same as identifiers
+			 */
 
 		}else{
 			sue_member **decls = NULL;
@@ -290,8 +276,13 @@ new_type:
 		sue->members = members;
 	}
 
-	if(new)
+	if(new){
+		if(prim == type_enum && !sue->complete)
+			cc1_warn_at(NULL, 0, WARN_PREDECL_ENUM,
+					"forward-declaration of enum %s", sue->spel);
+
 		dynarray_add(&stab->sues, sue);
+	}
 
 	return sue;
 }

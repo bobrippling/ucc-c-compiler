@@ -14,13 +14,20 @@ stmt_flow *stmt_flow_new(symtable *parent)
 	return t;
 }
 
-void stmt_mutate(stmt *s,
+stmt *stmt_new(
 		func_fold_stmt *f_fold,
 		func_gen_stmt *f_gen,
 		func_gen_stmt *f_gen_style,
 		func_str_stmt *f_str,
-		func_mutate_stmt *f_mutate)
+		void (*init)(stmt *),
+		symtable *stab)
 {
+	stmt *s = umalloc(sizeof *s);
+	where_cc1_current(&s->where);
+
+	UCC_ASSERT(stab, "no symtable for statement");
+	s->symtab = stab;
+
 	s->f_fold = f_fold;
 
 	switch(cc1_backend){
@@ -37,30 +44,13 @@ void stmt_mutate(stmt *s,
 
 	s->f_str  = f_str;
 
+	init(s);
+
 	s->kills_below_code =
 		   stmt_kind(s, break)
 		|| stmt_kind(s, return)
 		|| stmt_kind(s, goto)
 		|| stmt_kind(s, continue);
-
-	f_mutate(s);
-}
-
-stmt *stmt_new(
-		func_fold_stmt *f_fold,
-		func_gen_stmt *f_gen,
-		func_gen_stmt *f_gen_style,
-		func_str_stmt *f_str,
-		func_mutate_stmt *f_mutate,
-		symtable *stab)
-{
-	stmt *s = umalloc(sizeof *s);
-	where_new(&s->where);
-
-	UCC_ASSERT(stab, "no symtable for statement");
-	s->symtab = stab;
-
-	stmt_mutate(s, f_fold, f_gen, f_gen_style, f_str, f_mutate);
 
 	return s;
 }
@@ -69,6 +59,7 @@ stmt *expr_to_stmt(expr *e, symtable *scope)
 {
 	stmt *t = stmt_new_wrapper(expr, scope);
 	t->expr = e;
+	memcpy_safe(&t->where, &e->where);
 	return t;
 }
 

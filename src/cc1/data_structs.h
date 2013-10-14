@@ -48,12 +48,16 @@ int integral_str(char *buf, size_t nbuf, integral_t v, type_ref *ty);
 
 int integral_is_64_bit(const integral_t val, type_ref *ty);
 integral_t integral_truncate(
-		integral_t val, unsigned bytes, integral_t *sign_extended);
+		integral_t val, unsigned bytes, sintegral_t *sign_extended);
 
-integral_t integral_truncate_bits(integral_t val, unsigned bits);
+integral_t integral_truncate_bits(
+		integral_t val,
+		unsigned bits,
+		sintegral_t *signed_v);
 
 struct stringval
 {
+	where where;
 	char *lbl;
 	const char *str;
 	unsigned len;

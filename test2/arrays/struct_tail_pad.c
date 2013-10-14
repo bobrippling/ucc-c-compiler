@@ -1,5 +1,5 @@
 // RUN: %ucc -o %t %s
-// RUN: %t | %output_check '(nil) 5' '(nil) 6' '(nil) 7'
+// RUN: %t | %output_check '0x0 5' '0x0 6' '0x0 7'
 #define NULL (void *)0
 
 static struct
@@ -16,5 +16,5 @@ static struct
 main()
 {
 	for(int i = 0; i < 3; i++)
-		printf("%p %d\n", tims[i].p, tims[i].i);
+		printf("0x%x %d\n", (long)tims[i].p, tims[i].i);
 }

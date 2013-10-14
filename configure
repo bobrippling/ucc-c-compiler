@@ -115,6 +115,12 @@ case "$unam" in
 		UCC_CRT="$UCC_CRT:/usr/lib/x86_64-linux-gnu/crtn.o"
 		;;
 
+
+	FreeBSD)
+		UCC_CRT="/usr/lib/crt1.o:/usr/lib/crti.o:/usr/lib/crtbegin.o:/usr/lib/crtend.o:/usr/lib/crtn.o"
+		UCC_STDLIB="-lc"
+		;;
+
 	Darwin)
 		UCC_ARCH=macho64
 		UCC_CFLAGS='-mpreferred-stack-boundary=4' # 2^4 = 16 byte aligned

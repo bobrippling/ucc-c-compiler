@@ -1684,8 +1684,11 @@ void impl_set_nan(type_ref *ty)
 		float f;
 	} u = { 0x7fc00000U };
 
+	ICW("using nan of float type for %s", type_ref_to_str(ty));
+	(void)ty;
+
 	vtop->type = V_CONST_F;
 	vtop->bits.val_f = u.f;
-	vtop->t = ty;
+	/* vtop->t should be set */
 	impl_load_fp(vtop);
 }

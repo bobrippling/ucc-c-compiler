@@ -88,6 +88,9 @@ static void runner(int local, char *path, char **args)
 	if(show){
 		int i;
 
+		if(wrapper)
+			fprintf(stderr, "WRAPPER='%s' ", wrapper);
+
 		fprintf(stderr, "%s ", path);
 		for(i = 0; args[i]; i++)
 			fprintf(stderr, "%s ", args[i]);
@@ -107,9 +110,17 @@ static void runner(int local, char *path, char **args)
 
 		case 0:
 		{
-			const int nargs = dynarray_count(args);
-			int i;
+			int nargs = dynarray_count(args);
+			int i_in = 0, i_out = 0;
 			char **argv;
+
+			/* -wrapper gdb,--args */
+			if(wrapper){
+				char *p;
+				nargs++;
+				for(p = wrapper; *p; p++)
+					nargs += *p == ',';
+			}
 
 			/*
 			 * path,
@@ -118,24 +129,38 @@ static void runner(int local, char *path, char **args)
 			 */
 			argv = umalloc((2 + nargs) * sizeof *argv);
 
-			if(local)
-				argv[0] = actual_path("../", path);
-			else
-				argv[0] = path;
+			/* wrapper */
+			if(wrapper){
+				char *p, *last;
+				for(p = last = wrapper; *p; p++)
+					if(*p == ','){
+						*p = '\0';
+						argv[i_out++] = last;
+						last = p + 1;
+					}
 
-			for(i = 0; args[i]; i++)
-				argv[i + 1] = args[i];
+				if(last != p)
+					argv[i_out++] = last;
+			}
 
-			argv[++i] = NULL;
+			argv[i_out++] = local ? actual_path("../", path) : path;
+
+			while(args[i_in])
+				argv[i_out++] = args[i_in++];
+
+			argv[i_out++] = NULL;
 
 #ifdef DEBUG
 			fprintf(stderr, "%s:\n", *argv);
-			for(i = 0; argv[i]; i++)
+			for(int i = 0; argv[i]; i++)
 				fprintf(stderr, "  [%d] = \"%s\",\n", i, argv[i]);
 #endif
 
+			if(wrapper)
+				local = 0;
+
 			(local ? execv : execvp)(argv[0], argv);
-			die("execv():");
+			die("execv(\"%s\"):", argv[0]);
 		}
 
 		default:

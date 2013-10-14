@@ -288,25 +288,25 @@ static void static_array_check(
 
 	const_fold(ty_decl->bits.ptr.size, &k_decl);
 
-	if(!(ty_expr = type_ref_is_decayed_array(ty_expr))){
-		warn_at(&arg_expr->where,
-				(k_decl.type == CONST_NUM) ?
-				"array of size >= %" NUMERIC_FMT_D " expected for parameter" :
-				"array expected for parameter", (integral_t)k_decl.bits.num.val.i);
-		return;
+	if((ty_expr = type_ref_is_decayed_array(ty_expr))){
+		/* ty_expr is the type_ref_ptr, decayed from array */
+		if(ty_expr->bits.ptr.size){
+			consty k_arg;
+
+			const_fold(ty_expr->bits.ptr.size, &k_arg);
+
+			if(k_decl.type == CONST_NUM
+			&& K_INTEGRAL(k_arg.bits.num)
+			&& k_arg.bits.num.val.i < k_decl.bits.num.val.i)
+			{
+				warn_at(&arg_expr->where,
+						"array of size %" NUMERIC_FMT_D
+						" passed where size %" NUMERIC_FMT_D " needed",
+						k_arg.bits.num.val.i, k_decl.bits.num.val.i);
+			}
+		}
 	}
-
-	/* ty_expr is the type_ref_ptr, decayed from array */
-	if(ty_expr->bits.ptr.size){
-		consty k_arg;
-
-		const_fold(ty_expr->bits.ptr.size, &k_arg);
-
-		if(k_decl.type == CONST_NUM && k_arg.bits.num.val.i < k_decl.bits.num.val.i)
-			warn_at(&arg_expr->where,
-					"array of size %" NUMERIC_FMT_D " passed where size %" NUMERIC_FMT_D " needed",
-					k_arg.bits.num.val.i, k_decl.bits.num.val.i);
-	}
+	/* else it's a random pointer, just be quiet */
 }
 
 void fold_expr_funcall(expr *e, symtable *stab)
@@ -352,11 +352,14 @@ invalid:
 			funcargs *args = funcargs_new();
 			decl *df;
 
-			funcargs_empty(args); /* set up the funcargs as if it's "x()" - i.e. any args */
+			/* set up the funcargs as if it's "x()" - i.e. any args */
+			funcargs_empty(args);
 
-			type_func = type_ref_new_func(type_ref_new_type(type_new_primitive(type_int)), args);
+			type_func = type_ref_new_func(
+					type_ref_new_type(type_new_primitive(type_int)), args);
 
-			cc1_warn_at(&e->where, 0, WARN_IMPLICIT_FUNC, "implicit declaration of function \"%s\"", sp);
+			cc1_warn_at(&e->expr->where, 0, WARN_IMPLICIT_FUNC,
+					"implicit declaration of function \"%s\"", sp);
 
 			df = decl_new();
 			df->ref = type_func;

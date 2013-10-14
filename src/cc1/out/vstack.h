@@ -66,11 +66,12 @@ struct vstack
 
 extern struct vstack *vtop;
 
-void vpush(type_ref *);
+void vpush(type_ref *) ucc_nonnull();
 void vpop(void);
 void vswap(void);
 
 void v_clear(struct vstack *vp, type_ref *);
+void v_clear(struct vstack *vp, type_ref *) ucc_nonnull();
 void v_set_reg(struct vstack *vp, const struct vreg *r);
 void v_set_reg_i(struct vstack *vp, int idx);
 

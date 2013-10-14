@@ -32,6 +32,4 @@ void icw(const char *f, int line, const char *fn, const char *fmt, ...) ucc_prin
 #define ICE(...) ice(__FILE__, __LINE__, __func__, __VA_ARGS__)
 #define ICW(...) icw(__FILE__, __LINE__, __func__, __VA_ARGS__)
 
-char *terminating_quote(char *);
-
 #endif

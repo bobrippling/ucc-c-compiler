@@ -52,8 +52,7 @@ static struct_union_enum_st *PARSE_type_ref_is_s_or_u_or_e2(type_ref *r, int all
 	return NULL;
 }
 
-static void parse_add_attr(decl_attr **append);
-static type_ref *parse_type_ref2(enum decl_mode mode, char **sp);
+static type_ref *parse_type_ref2(enum decl_mode mode, decl *dfor);
 
 /* sue = struct/union/enum */
 static type_ref *parse_type_sue(enum type_primitive prim)
@@ -135,12 +134,6 @@ static type_ref *parse_type_sue(enum type_primitive prim)
 
 	}else if(!spel){
 		die_at(NULL, "expected: %s definition or name", sue_str_type(prim));
-
-	}else{
-		/* predeclaring */
-		if(prim == type_enum && !sue_find_this_scope(current_scope, spel))
-			cc1_warn_at(NULL, 0, WARN_PREDECL_ENUM,
-					"predeclaration of enums is not C99");
 	}
 
 	{
@@ -153,21 +146,20 @@ static type_ref *parse_type_sue(enum type_primitive prim)
 				members, prim, is_complete,
 				/* isdef = */ curtok == token_semicolon);
 
-		type_ref *r = type_ref_new_type(
+		parse_add_attr(&this_sue_attr); /* struct A { ... } __attr__ */
+
+		/* sue may already exist */
+		decl_attr_append(&sue->attr, this_sue_attr);
+
+		return type_ref_new_type(
 				type_new_primitive_sue(prim, sue));
-
-		sue->attr = this_sue_attr; /* struct A __attr__ { ... } */
-
-		parse_add_attr(&r->attr); /* struct A { ... } __attr__ */
-
-		return r;
 	}
 }
 
 #include "parse_attr.c"
 #include "parse_init.c"
 
-static void parse_add_attr(decl_attr **append)
+void parse_add_attr(decl_attr **append)
 {
 	while(accept(token_attribute)){
 		EAT(token_open_paren);
@@ -184,7 +176,9 @@ static void parse_add_attr(decl_attr **append)
 static decl *parse_at_tdef(void)
 {
 	if(curtok == token_identifier){
-		decl *d = symtab_search_d(current_scope, token_current_spel_peek());
+		decl *d = symtab_search_d(current_scope,
+				token_current_spel_peek(), NULL);
+
 		if(d && d->store == store_typedef)
 			return d;
 	}
@@ -692,8 +686,7 @@ fin:;
 empty_func:
 
 	/* put our args into the scope */
-	current_scope->are_params = 1;
-	dynarray_add_array(&current_scope->decls, args->arglist);
+	symtab_params(current_scope, args->arglist);
 
 	return args;
 }
@@ -714,7 +707,7 @@ declarator:
 		;
 */
 
-static type_ref *parse_type_ref_nest(enum decl_mode mode, char **sp)
+static type_ref *parse_type_ref_nest(enum decl_mode mode, decl *dfor)
 {
 	if(accept(token_open_paren)){
 		type_ref *ret;
@@ -732,15 +725,18 @@ static type_ref *parse_type_ref_nest(enum decl_mode mode, char **sp)
 			return NULL;
 		}
 
-		ret = parse_type_ref2(mode, sp);
+		ret = parse_type_ref2(mode, dfor);
 		EAT(token_close_paren);
 		return ret;
 
 	}else if(curtok == token_identifier){
-		if(!sp)
+		if(!dfor)
 			die_at(NULL, "identifier unexpected");
 
-		*sp = token_current_spel();
+		/* set spel + location info */
+		where_cc1_current(&dfor->where);
+		dfor->spel = token_current_spel();
+		where_cc1_adj_identifier(&dfor->where, dfor->spel);
 
 		EAT(token_identifier);
 
@@ -751,9 +747,9 @@ static type_ref *parse_type_ref_nest(enum decl_mode mode, char **sp)
 	return NULL;
 }
 
-static type_ref *parse_type_ref_array(enum decl_mode mode, char **sp)
+static type_ref *parse_type_ref_array(enum decl_mode mode, decl *dfor)
 {
-	type_ref *r = parse_type_ref_nest(mode, sp);
+	type_ref *r = parse_type_ref_nest(mode, dfor);
 
 	while(accept(token_open_square)){
 		expr *size;
@@ -777,7 +773,8 @@ static type_ref *parse_type_ref_array(enum decl_mode mode, char **sp)
 			size = NULL;
 		}else{
 			/* fold.c checks for const-ness */
-			size = parse_expr_exp();
+			/* grammar says it's a conditional here, hence no-comma */
+			size = parse_expr_no_comma();
 			EAT(token_close_square);
 		}
 
@@ -790,9 +787,9 @@ static type_ref *parse_type_ref_array(enum decl_mode mode, char **sp)
 	return r;
 }
 
-static type_ref *parse_type_ref_func(enum decl_mode mode, char **sp)
+static type_ref *parse_type_ref_func(enum decl_mode mode, decl *dfor)
 {
-	type_ref *sub = parse_type_ref_array(mode, sp);
+	type_ref *sub = parse_type_ref_array(mode, dfor);
 
 	while(accept(token_open_paren)){
 		current_scope = symtab_new(current_scope);
@@ -807,7 +804,7 @@ static type_ref *parse_type_ref_func(enum decl_mode mode, char **sp)
 	return sub;
 }
 
-static type_ref *parse_type_ref_ptr(enum decl_mode mode, char **sp)
+static type_ref *parse_type_ref_ptr(enum decl_mode mode, decl *dfor)
 {
 	int ptr;
 
@@ -822,15 +819,15 @@ static type_ref *parse_type_ref_ptr(enum decl_mode mode, char **sp)
 			EAT(curtok);
 		}
 
-		return creater(parse_type_ref2(mode, sp), qual);
+		return creater(parse_type_ref2(mode, dfor), qual);
 	}
 
-	return parse_type_ref_func(mode, sp);
+	return parse_type_ref_func(mode, dfor);
 }
 
-static type_ref *parse_type_ref2(enum decl_mode mode, char **sp)
+static type_ref *parse_type_ref2(enum decl_mode mode, decl *dfor)
 {
-	return parse_type_ref_ptr(mode, sp);
+	return parse_type_ref_ptr(mode, dfor);
 }
 
 static type_ref *type_ref_reverse(type_ref *r, type_ref *subtype)
@@ -852,9 +849,9 @@ static type_ref *type_ref_reverse(type_ref *r, type_ref *subtype)
 }
 
 static type_ref *parse_type3(
-		enum decl_mode mode, char **spel, type_ref *btype)
+		enum decl_mode mode, decl *dfor, type_ref *btype)
 {
-	return type_ref_reverse(parse_type_ref2(mode, spel), btype);
+	return type_ref_reverse(parse_type_ref2(mode, dfor), btype);
 }
 
 type_ref *parse_type()
@@ -892,12 +889,10 @@ static void parse_add_asm(decl *d)
 
 static decl *parse_decl(type_ref *btype, enum decl_mode mode)
 {
-	char *spel = NULL;
 	decl *d = decl_new();
+	where w_eq;
 
-	d->ref = parse_type3(mode, &spel, btype);
-
-	d->spel = spel;
+	d->ref = parse_type3(mode, d, btype);
 
 	/* only check if it's not a function, otherwise it could be
 	 * int f(i)
@@ -912,8 +907,11 @@ static decl *parse_decl(type_ref *btype, enum decl_mode mode)
 		parse_add_attr(&d->attr); /* int spel __attr__ */
 	}
 
-	if(d->spel && accept(token_assign))
+	if(d->spel && accept_where(token_assign, &w_eq)){
 		d->init = parse_initialisation();
+		/* top-level inits have their .where on the '=' token */
+		memcpy_safe(&d->init->where, &w_eq);
+	}
 
 	return d;
 }
@@ -944,7 +942,7 @@ static decl *parse_decl_extra(
 decl *parse_decl_single(enum decl_mode mode)
 {
 	enum decl_storage store = store_default;
-	type_ref *r = PARSE_BTYPE(mode, &store, NULL);
+	type_ref *r = PARSE_BTYPE(mode, &store, NULL /* align */);
 
 	if(!r){
 		if((mode & DECL_CAN_DEFAULT) == 0)
@@ -956,7 +954,7 @@ decl *parse_decl_single(enum decl_mode mode)
 		prevent_typedef(&r->where, store);
 	}
 
-	return parse_decl_extra(r, mode, store, NULL);
+	return parse_decl_extra(r, mode, store, NULL /* align */);
 }
 
 decl **parse_decls_one_type()
@@ -1268,10 +1266,13 @@ add:
 			 * This also means any use of d will have the most up to date
 			 * attribute information about it
 			 */
-			decl *d_prev = symtab_search_d(current_scope, d->spel);
+			decl *d_prev = symtab_search_d(current_scope, d->spel, NULL);
 
 			if(d_prev){
-				/* link the proto chain for __attribute__ checking */
+				/* link the proto chain for __attribute__ checking,
+				 * nested function prototype checking and
+				 * '.extern fn' code gen easing
+				 */
 				d->proto = d_prev;
 
 				if(PARSE_DECL_IS_FUNC(d) && PARSE_DECL_IS_FUNC(d_prev))

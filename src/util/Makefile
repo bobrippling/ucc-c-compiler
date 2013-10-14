@@ -1,7 +1,8 @@
 include ../src_config.mk
 include ../../config.mk
 
-OBJ = platform.o util.o alloc.o dynarray.o dynmap.o where.o str.o std.o
+OBJ = platform.o util.o alloc.o dynarray.o dynmap.o where.o str.o \
+			std.o escape.o
 SRC = $(OBJ:.o=.c)
 
 BUILD_CC = ${CC} ${CFLAGS} -c -o $@ $<

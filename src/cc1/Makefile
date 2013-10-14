@@ -11,8 +11,8 @@ LDFLAGS += -lm
 OBJ = \
 	../util/alloc.o ../util/util.o ../util/platform.o \
 	../util/dynarray.o ../util/dynmap.o ../util/where.o \
-	../util/str.o ../util/std.o \
-	str.o \
+	../util/str.o ../util/std.o ../util/escape.o \
+	str.o label.o \
 	cc1.o pass1.o \
 	tree.o decl.o decl_init.o funcargs.o expr.o stmt.o \
 	type.o type_ref.o type_ref_is.o \

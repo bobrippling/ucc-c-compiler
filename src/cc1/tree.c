@@ -23,41 +23,6 @@ numeric *numeric_new(long v)
 	return num;
 }
 
-void where_new(struct where *w)
-{
-	extern const char *current_fname;
-	extern int parse_finished;
-
-	if(parse_finished){
-eof_w:
-		if(eof_where){
-			memcpy(w, eof_where, sizeof *w);
-		}else if(current_fname){
-			/* still parsing, at EOF */
-			goto final;
-		}else{
-			ICE("where_new() after buffer eof");
-		}
-
-	}else{
-		extern int current_line, current_chr;
-		extern const char *current_fname, *current_line_str;
-		extern int current_fname_used, current_line_str_used;
-
-		if(!current_fname || !current_line_str)
-			goto eof_w;
-
-final:
-		w->line  = current_line;
-		w->chr   = current_chr;
-		w->fname = current_fname;
-		w->line_str = current_line_str;
-
-		current_fname_used = 1;
-		current_line_str_used = 1;
-	}
-}
-
 int numeric_cmp(const numeric *a, const numeric *b)
 {
 	const integral_t la = a->val.i, lb = b->val.i;
@@ -81,26 +46,43 @@ int integral_str(char *buf, size_t nbuf, integral_t v, type_ref *ty)
 			v, is_signed);
 }
 
-integral_t integral_truncate_bits(integral_t val, unsigned bits)
+integral_t integral_truncate_bits(
+		integral_t val, unsigned bits,
+		sintegral_t *signed_iv)
 {
-	return val & ~(-1UL << bits);
+	integral_t pos_mask = ~(~0ULL << bits);
+	integral_t truncated = val & pos_mask;
+
+	if(signed_iv){
+		sintegral_t sig = truncated;
+
+		if((sintegral_t)val < 0){
+			/* sign extend */
+			unsigned revbits = sizeof(integral_t) * CHAR_BIT - bits;
+
+			sig = (sig << revbits) >> revbits;
+		}
+
+		*signed_iv = sig;
+	}
+
+	return truncated;
 }
 
 integral_t integral_truncate(
-		integral_t val, unsigned bytes, integral_t *sign_extended)
+		integral_t val, unsigned bytes,
+		sintegral_t *sign_extended)
 {
 	switch(bytes){
-#define CAST(sz, t)                                 \
+#define CAST(sz)                                    \
 		case sz:                                        \
-			val = integral_truncate_bits(                   \
-					val, bytes * CHAR_BIT - 1);               \
-			if(sign_extended)                             \
-				*sign_extended = (integral_t)(unsigned t)val; \
+			val = integral_truncate_bits(                 \
+			    val, bytes * CHAR_BIT - 1, sign_extended);\
 			break
 
-		CAST(1, char);
-		CAST(2, short);
-		CAST(4, int);
+		CAST(1);
+		CAST(2);
+		CAST(4);
 
 #undef CAST
 
@@ -144,7 +126,7 @@ int integral_is_64_bit(const integral_t val, type_ref *ty)
 static type *type_new_primitive1(enum type_primitive p)
 {
 	type *t = umalloc(sizeof *t);
-	where_new(&t->where);
+	where_cc1_current(&t->where);
 	t->primitive = p;
 	return t;
 }

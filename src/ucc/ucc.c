@@ -57,6 +57,7 @@ struct cc_file
 static char **remove_these;
 static int unlink_tmps = 1;
 const char *argv0;
+char *wrapper;
 
 static void unlink_files(void)
 {
@@ -408,6 +409,8 @@ int main(int argc, char **argv)
 					}
 
 				case 'w':
+					if(argv[i][1] == 'w' && argv[i][2])
+						goto word;
 				case 'm':
 					ADD_ARG(mode_compile);
 					continue;
@@ -422,7 +425,7 @@ arg_cpp:
 						if(!arg[2]){
 							/* allow a space, e.g. "-D" "arg" */
 							if(!(arg = argv[++i]))
-								die("argument expected for %s", argv[i - 1]);
+								goto missing_arg;
 							ADD_ARG(mode_preproc);
 						}
 					}
@@ -452,7 +455,7 @@ arg_ld:
 					}else{
 						output = argv[++i];
 						if(!output)
-							die("output argument needed");
+							goto missing_arg;
 					}
 					continue;
 
@@ -466,6 +469,7 @@ arg_ld:
 
 				case 'M':
 				case 'd':
+				case 'C': /* -C and -CC */
 					goto arg_cpp;
 
 				case 'x':
@@ -475,7 +479,7 @@ arg_ld:
 					if(argv[i][2])
 						arg = argv[i] + 2;
 					else if(!argv[++i])
-						die("-x needs an argument");
+						goto missing_arg;
 					else
 						arg = argv[i];
 
@@ -490,7 +494,8 @@ arg_ld:
 					else if(!strcmp(arg, "none"))
 						gopts.assume = -1; /* reset */
 					else
-						die("-x accepts \"c\", \"cpp\", or \"asm\", not \"%s\"", arg);
+						die("-x accepts \"c\", \"cpp-output\", \"asm\" "
+								"or \"none\", not \"%s\"", arg);
 					continue;
 				}
 
@@ -498,6 +503,7 @@ arg_ld:
 					/* "-" aka stdin */
 					goto input;
 
+word:
 				default:
 					if(!strncmp(argv[i], "-std=", 5) || !strcmp(argv[i], "-ansi")){
 						ADD_ARG(mode_compile);
@@ -513,9 +519,18 @@ arg_ld:
 						ucc_ext_cmds_show(1), ucc_ext_cmds_noop(1);
 					else if(!strcmp(argv[i], "-v"))
 						ucc_ext_cmds_show(1);
+					else if(!strcmp(argv[i], "-wrapper")){
+						/* -wrapper echo,-n etc */
+						wrapper = argv[++i];
+						if(!wrapper)
+							goto missing_arg;
+					}
+					else if(!strcmp(argv[i], "-trigraphs"))
+						ADD_ARG(mode_preproc);
+					else if(!strcmp(argv[i], "-digraphs"))
+						ADD_ARG(mode_preproc);
 					else if(!strcmp(argv[i], "--no-rm"))
 						unlink_tmps = 0;
-					/* TODO: -wrapper echo,-n etc */
 					else
 						break;
 
@@ -528,15 +543,17 @@ arg_ld:
 						*opts[j].ptr = argv[i] + 2;
 					}else{
 						if(!argv[++i])
-							die("need argument for %s", argv[i - 1]);
+							goto missing_arg;
 						*opts[j].ptr = argv[i];
 					}
 					found = 1;
 					break;
 				}
 
-			if(!found)
+			if(!found){
 unrec:	die("unrecognised option \"%s\"", argv[i]);
+missing_arg:	die("need argument for %s", argv[i - 1]);
+			}
 		}else{
 input:	dynarray_add(&inputs, argv[i]);
 		}

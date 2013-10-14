@@ -22,6 +22,7 @@
 #include "pack.h"
 #include "funcargs.h"
 #include "out/lbl.h"
+#include "fold_sue.h"
 
 decl     *curdecl_func;
 type_ref *curdecl_ref_func_called; /* for funcargs-local labels and return type-checking */
@@ -30,13 +31,12 @@ int fold_had_error;
 void fold_insert_casts(type_ref *tlhs, expr **prhs, symtable *stab)
 {
 	/* insert a cast: rhs -> lhs */
-	expr *cast = expr_new_cast(tlhs, 1);
-
-	cast->expr = *prhs;
-	*prhs = cast;
+	*prhs = expr_set_where(
+			expr_new_cast(*prhs, tlhs, 1),
+			&(*prhs)->where);
 
 	/* need to fold the cast again - mainly for "loss of precision" warning */
-	fold_expr_cast_descend(cast, stab, 0);
+	fold_expr_cast_descend(*prhs, stab, 0);
 }
 
 int fold_type_chk_warn(
@@ -47,6 +47,8 @@ int fold_type_chk_warn(
 
 	switch(type_ref_cmp(lhs, rhs, 0)){
 		case TYPE_CONVERTIBLE_IMPLICIT:
+			/* attempt to insert regardless, e.g. _Bool x = 5;
+			 *  - they match but we need the _Bool cast */
 			return 1;
 		case TYPE_EQUAL:
 			break;
@@ -155,21 +157,20 @@ expr *fold_expr_decay(expr *e, symtable *stab)
 {
 	/* perform array decay and pointer decay */
 	type_ref *r;
-	expr *imp_cast = NULL;
+	type_ref *decayed;
 
 	e = fold_expr_lval2rval(e, stab);
 
 	r = e->tree_type;
 
 	EOF_WHERE(&e->where,
-			type_ref *decayed = type_ref_decay(r);
-
-			if(decayed != r)
-				imp_cast = expr_new_cast(decayed, 1);
+			decayed = type_ref_decay(r);
 		);
 
-	if(imp_cast){
-		imp_cast->expr = e;
+	if(decayed != r){
+		expr *imp_cast = expr_set_where(
+				expr_new_cast(e, decayed, 1),
+				&e->where);
 		fold_expr_cast_descend(imp_cast, stab, 0);
 		e = imp_cast;
 	}
@@ -222,9 +223,6 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 
 	switch(r->type){
 		case type_ref_array:
-			if(type_ref_is(r->ref, type_ref_func))
-				die_at(&r->where, "array of functions");
-
 			if(r->bits.array.size){
 				consty k;
 
@@ -238,13 +236,14 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 				else if((sintegral_t)k.bits.num.val.i < 0)
 					die_at(&r->where, "negative array size");
 				/* allow zero length arrays */
+				else if(k.nonstandard_const)
+					warn_at(&k.nonstandard_const->where,
+							"%s-expr is a non-standard constant expression (for array size)",
+							k.nonstandard_const->f_str()); /* TODO: VLA here */
 			}
 			break;
 
 		case type_ref_func:
-			if(type_ref_is(r->ref, type_ref_func))
-				die_at(&r->where, "function returning a function");
-
 			if(type_ref_is(parent, type_ref_ptr)
 			&& (type_ref_qual(parent) & qual_restrict))
 			{
@@ -257,10 +256,6 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 			break;
 
 		case type_ref_block:
-			if(!type_ref_is(r->ref, type_ref_func))
-				die_at(&r->where, "invalid block pointer - function required (got %s)",
-						type_ref_to_str(r->ref));
-
 			/*q_to_check = r->bits.block.qual; - allowed */
 			break;
 
@@ -274,11 +269,14 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 			break;
 
 		case type_ref_type:
-			if(stab->are_params){
-				/* check if we're a new struct/union decl */
-				struct_union_enum_st *sue = type_ref_is_s_or_u(r);
+		{
+			/* check if we're a new struct/union decl */
+			struct_union_enum_st *sue = type_ref_is_s_or_u(r);
 
-				if(sue){
+			if(sue){
+				fold_sue(sue, stab);
+
+				if(stab->are_params){
 					struct_union_enum_st *above = sue_find_descend(
 							stab->parent, sue->spel, NULL);
 
@@ -290,6 +288,7 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 				}
 			}
 			break;
+		}
 
 		case type_ref_tdef:
 		{
@@ -313,6 +312,40 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 		warn_at(&r->where, "restrict on non-pointer type '%s'", type_ref_to_str(r));
 
 	fold_type_ref(r->ref, r, stab);
+
+	/* checks that rely on r->ref being folded... */
+	switch(r->type){
+		case type_ref_array:
+		case type_ref_func:
+			if(type_ref_is(r->ref, type_ref_func)){
+				die_at(&r->where,
+						r->type == type_ref_func
+							? "function returning a function"
+							: "array of functions");
+			}
+			break;
+
+		case type_ref_block:
+			if(!type_ref_is(r->ref, type_ref_func))
+				die_at(&r->where, "invalid block pointer - function required (got %s)",
+						type_ref_to_str(r->ref));
+			break;
+
+		default:
+			break;
+	}
+
+
+	{
+		/* warn on embedded structs/unions with flexarrs */
+		struct_union_enum_st *sue = type_ref_is_s_or_u(r);
+		if(sue && sue->flexarr
+		&& (type_ref_is_array(parent) || type_ref_is_s_or_u(parent)))
+		{
+			warn_at(&r->where, "%s with flex-array embedded in %s",
+					sue_str(sue), type_ref_to_str(parent));
+		}
+	}
 }
 
 static int fold_align(int al, int min, int max, where *w)
@@ -578,6 +611,9 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 
 void fold_decl_global_init(decl *d, symtable *stab)
 {
+	expr *nonstd = NULL;
+	const char *type;
+
 	if(!d->init)
 		return;
 
@@ -586,14 +622,24 @@ void fold_decl_global_init(decl *d, symtable *stab)
 		decl_init_brace_up_fold(d, stab);
 	);
 
-	if(!decl_init_is_const(d->init, stab)){
+	type = stab->parent ? "static" : "global";
+	if(!decl_init_is_const(d->init, stab, &nonstd)){
 		die_at(&d->init->where, "%s %s initialiser not constant",
-				stab->parent ? "static" : "global",
-				decl_init_to_str(d->init->type));
+				type, decl_init_to_str(d->init->type));
+	}else if(nonstd){
+		char wbuf[WHERE_BUF_SIZ];
+
+		warn_at(&d->init->where,
+				"%s %s initialiser contains non-standard constant expression\n"
+				"%s: note: %s expression here",
+				type, decl_init_to_str(d->init->type),
+				where_str_r(wbuf, &nonstd->where),
+				nonstd->f_str());
 	}
+
 }
 
-static void fold_func(decl *func_decl)
+void fold_func(decl *func_decl)
 {
 	if(func_decl->func_code){
 		struct
@@ -603,6 +649,11 @@ static void fold_func(decl *func_decl)
 		} the_return = { NULL, NULL };
 		symtable *const arg_symtab = DECL_FUNC_ARG_SYMTAB(func_decl);
 
+		decl     *const olddecl_func = curdecl_func;
+		type_ref *const olddecl_ref_func_called = curdecl_ref_func_called;
+
+		arg_symtab->func_exists = 1;
+
 		if(func_decl->store & store_inline
 		&& (func_decl->store & STORE_MASK_STORE) == store_default)
 		{
@@ -611,29 +662,42 @@ static void fold_func(decl *func_decl)
 					"(missing \"static\" or \"extern\")");
 		}
 
-		if(func_decl->ref->type != type_ref_func)
+		if(type_ref_is_tdef(func_decl->ref))
 			warn_at(&func_decl->where,
 					"typedef function implementation is an extension");
 
 		{
-			type_ref *fref = type_ref_is(func_decl->ref, type_ref_func);
-			UCC_ASSERT(fref, "not a func");
+			type_ref *fref = type_ref_is_func_or_block(func_decl->ref);
+
+			UCC_ASSERT(fref, "not a func or block");
+
 			curdecl_ref_func_called = type_ref_func_call(fref, NULL);
 			curdecl_func = func_decl;
 		}
 
 		{
 			decl **i;
-			for(i = arg_symtab->decls; i && *i; i++)
-				if(!(*i)->spel)
+			for(i = arg_symtab->decls; i && *i; i++){
+				decl *d = *i;
+
+				if(!d->spel)
 					die_at(&func_decl->where, "argument %ld in \"%s\" is unnamed",
 							i - arg_symtab->decls + 1, func_decl->spel);
+
+				if(!type_ref_is_complete(d->ref))
+					die_at(&d->where,
+							"function argument \"%s\" has incomplete type '%s'",
+							d->spel, type_ref_to_str(d->ref));
+			}
 		}
 
 		fold_stmt(func_decl->func_code);
 
 		/* now decls are folded, layout both parameters and local variables */
 		symtab_layout_decls(arg_symtab, 0);
+
+		/* finally, check label coherence */
+		symtab_chk_labels(symtab_func_root(arg_symtab));
 
 		if(decl_attr_present(func_decl, attr_noreturn)){
 			if(!type_ref_is_void(curdecl_ref_func_called)){
@@ -674,8 +738,8 @@ static void fold_func(decl *func_decl)
 			}
 		}
 
-		curdecl_ref_func_called = NULL;
-		curdecl_func = NULL;
+		curdecl_func = olddecl_func;
+		curdecl_ref_func_called = olddecl_ref_func_called;
 	}
 }
 
@@ -850,24 +914,28 @@ void fold_funcargs(funcargs *fargs, symtable *stab, type_ref *from)
 					fold_type_ref(d->ref, NULL, stab); /* refold if we converted */
 			);
 
-			if(decl_store_static_or_extern(d->store)){
-				die_at(&fargs->where, "function argument %d is static or extern", i + 1);
-			}
+			if(decl_store_static_or_extern(d->store))
+				die_at(&fargs->where,
+						"function argument %d is static or extern",
+						i + 1);
 
 			/* ensure ptr */
 			if((nonnulls & (1 << i))
 			&& !type_ref_is(d->ref, type_ref_ptr)
 			&& !type_ref_is(d->ref, type_ref_block))
 			{
-				warn_at(&fargs->arglist[i]->where, "nonnull attribute applied to non-pointer argument '%s'",
+				warn_at(&fargs->arglist[i]->where,
+						"nonnull attribute applied to non-pointer argument '%s'",
 						type_ref_to_str(d->ref));
 			}
 		}
 
 		if(i == 0 && nonnulls)
-			warn_at(&fargs->where, "nonnull attribute applied to function with no arguments");
+			warn_at(&fargs->where,
+					"nonnull attribute applied to function with no arguments");
 		else if(nonnulls != ~0UL && nonnulls & -(1 << i))
-			warn_at(&fargs->where, "nonnull attributes above argument index %d ignored", i + 1);
+			warn_at(&fargs->where,
+					"nonnull attributes above argument index %d ignored", i + 1);
 	}else if(nonnulls){
 		warn_at(&fargs->where, "nonnull attribute on parameterless function");
 	}

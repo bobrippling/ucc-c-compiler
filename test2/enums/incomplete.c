@@ -1,8 +1,8 @@
 // RUN: %check -e %s
 
-enum A; // CHECK: /warning: predeclaration of enums is not C99/
+enum A; // CHECK: /warning: forward-declaration of enum A/
 
 main()
 {
-	enum A a; // CHECK: /error: use of incomplete enum A/
+	enum A a; // CHECK: /error: enum A is incomplete/
 }

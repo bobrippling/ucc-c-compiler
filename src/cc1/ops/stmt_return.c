@@ -51,7 +51,7 @@ void style_stmt_return(stmt *s)
 	stylef(";");
 }
 
-void mutate_stmt_return(stmt *s)
+void init_stmt_return(stmt *s)
 {
 	s->f_passable = fold_passable_no;
 }

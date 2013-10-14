@@ -53,6 +53,10 @@ static stmt *current_continue_target,
 expr *parse_expr_sizeof_typeof_alignof(enum what_of what_of)
 {
 	expr *e;
+	where w;
+
+	where_cc1_current(&w);
+	w.chr -= what_of == what_alignof ? 7 : 6; /* go back over the *of */
 
 	if(accept(token_open_paren)){
 		type_ref *r = parse_type();
@@ -84,13 +88,16 @@ expr *parse_expr_sizeof_typeof_alignof(enum what_of what_of)
 		/* don't go any higher, sizeof a - 1, means sizeof(a) - 1 */
 	}
 
-	return e;
+	return expr_set_where_len(e, &w);
 }
 
 static expr *parse_expr__Generic()
 {
 	struct generic_lbl **lbls;
 	expr *test;
+	where w;
+
+	where_cc1_current(&w);
 
 	EAT(token__Generic);
 	EAT(token_open_paren);
@@ -124,7 +131,8 @@ static expr *parse_expr__Generic()
 			break;
 	}
 
-	return expr_new__Generic(test, lbls);
+	return expr_set_where(
+			expr_new__Generic(test, lbls), &w);
 }
 
 static expr *parse_expr_identifier()
@@ -136,6 +144,7 @@ static expr *parse_expr_identifier()
 				token_to_str(curtok), __FILE__, __LINE__);
 
 	e = expr_new_identifier(token_current_spel());
+	where_cc1_adj_identifier(&e->where, e->bits.ident.spel);
 	EAT(token_identifier);
 	return e;
 }
@@ -203,24 +212,28 @@ static expr *parse_expr_primary()
 			return parse_block();
 
 		default:
-			if(accept(token_open_paren)){
+		{
+			where loc_start;
+
+			if(accept_where(token_open_paren, &loc_start)){
 				type_ref *r;
 				expr *e;
 
 				if((r = parse_type())){
-					e = expr_new_cast(r, 0);
 					EAT(token_close_paren);
 
 					if(curtok == token_open_block){
 						/* C99 compound lit. */
-						decl_init *init = parse_initialisation();
-
-						expr_compound_lit_from_cast(e, init);
+						e = expr_new_compound_lit(
+								r, parse_initialisation());
 
 					}else{
-						e->expr = parse_expr_cast(); /* another cast */
+						/* another cast */
+						e = expr_new_cast(
+								parse_expr_cast(), r, 0);
 					}
-					return e;
+
+					return expr_set_where_len(e, &loc_start);
 
 				}else if(curtok == token_open_block){
 					/* ({ ... }) */
@@ -248,7 +261,8 @@ static expr *parse_expr_primary()
 
 				return parse_expr_identifier();
 			}
-			break;
+			/* unreachable */
+		}
 	}
 }
 
@@ -260,10 +274,10 @@ static expr *parse_expr_postfix()
 	e = parse_expr_primary();
 
 	for(;;){
-		if(accept(token_open_square)){
-			expr *sum;
+		where w;
 
-			sum = expr_new_op(op_plus);
+		if(accept(token_open_square)){
+			expr *sum = expr_new_op(op_plus);
 
 			sum->lhs  = e;
 			sum->rhs  = parse_expr_exp();
@@ -272,7 +286,7 @@ static expr *parse_expr_postfix()
 
 			e = expr_new_deref(sum);
 
-		}else if(accept(token_open_paren)){
+		}else if(accept_where(token_open_paren, &w)){
 			expr *fcall = NULL;
 
 			/* check for specialised builtin parsing */
@@ -287,13 +301,25 @@ static expr *parse_expr_postfix()
 			fcall->expr = e;
 			EAT(token_close_paren);
 
-			e = fcall;
+			e = expr_set_where(fcall, &w);
 
 		}else if((flag = accept(token_dot)) || accept(token_ptr)){
-			e = expr_new_struct(e, flag, parse_expr_identifier());
+			where_cc1_current(&w);
 
-		}else if((flag = accept(token_increment)) || accept(token_decrement)){
-			e = expr_new_assign_compound(e, expr_new_val(1), flag ? op_plus : op_minus);
+			e = expr_set_where(
+					expr_new_struct(e, flag, parse_expr_identifier()),
+					&w);
+
+		}else if((flag = accept_where(token_increment, &w))
+		||               accept_where(token_decrement, &w))
+		{
+			e = expr_set_where(
+					expr_new_assign_compound(
+						e,
+						expr_new_val(1),
+						flag ? op_plus : op_minus),
+					&w);
+
 			e->assign_is_post = 1;
 
 		}else{
@@ -306,16 +332,22 @@ static expr *parse_expr_postfix()
 
 expr *parse_expr_unary()
 {
+	int set_w = 1;
 	expr *e;
 	int flag;
+	where w;
 
-	if((flag = accept(token_increment)) || accept(token_decrement)){
+	/* save since we descend before creating the assignment */
+	where_cc1_current(&w);
+
+	if((flag = accept(token_increment))
+	||         accept(token_decrement))
+	{
 		/* this is a normal increment, i.e. ++x, simply translate it to x += 1 */
-
 		e = expr_new_assign_compound(
-				parse_expr_unary(), /* lval */
-				expr_new_val(1),
-				flag ? op_plus : op_minus);
+					parse_expr_unary(), /* lval */
+					expr_new_val(1),
+					flag ? op_plus : op_minus);
 
 	}else{
 		switch(curtok){
@@ -346,19 +378,25 @@ expr *parse_expr_unary()
 				break;
 
 			case token_sizeof:
+				set_w = 0; /* no need since there's no sub-parsing here */
 				EAT(token_sizeof);
 				e = parse_expr_sizeof_typeof_alignof(what_sizeof);
 				break;
 
 			case token__Alignof:
+				set_w = 0;
 				EAT(token__Alignof);
 				e = parse_expr_sizeof_typeof_alignof(what_alignof);
 				break;
 
 			default:
+				set_w = 0;
 				e = parse_expr_postfix();
 		}
 	}
+
+	if(set_w)
+		expr_set_where(e, &w);
 
 	return e;
 }
@@ -368,8 +406,9 @@ static expr *parse_expr_generic(expr *(*above)(), enum token t, ...)
 	expr *e = above();
 
 	for(;;){
-		expr *join;
 		int have = curtok == t;
+		where w_op;
+		expr *join;
 
 		if(!have){
 			va_list l; va_start(l, t);
@@ -380,10 +419,15 @@ static expr *parse_expr_generic(expr *(*above)(), enum token t, ...)
 		if(!have)
 			break;
 
-		join = expr_new_op(curtok_to_op());
+		where_cc1_current(&w_op);
+		join = expr_set_where(
+				expr_new_op(curtok_to_op()),
+				&w_op);
+
 		EAT(curtok);
 		join->lhs = e;
 		join->rhs = above();
+
 		e = join;
 	}
 
@@ -413,9 +457,10 @@ PARSE_DEFINE(logical_or,  logical_and,   token_orsc)
 static expr *parse_expr_conditional()
 {
 	expr *e = parse_expr_logical_or();
+	where w;
 
-	if(accept(token_question)){
-		expr *q = expr_new_if(e);
+	if(accept_where(token_question, &w)){
+		expr *q = expr_set_where(expr_new_if(e), &w);
 
 		if(accept(token_colon)){
 			q->lhs = NULL; /* sentinel */
@@ -433,19 +478,27 @@ static expr *parse_expr_conditional()
 expr *parse_expr_assignment()
 {
 	expr *e;
+	where w;
 
 	e = parse_expr_conditional();
 
-	if(accept(token_assign)){
-		return expr_new_assign(e, parse_expr_assignment());
+	if(accept_where(token_assign, &w)){
+		return expr_set_where(
+				expr_new_assign(e, parse_expr_assignment()),
+				&w);
 
 	}else if(curtok_is_compound_assignment()){
 		/* +=, ... - only evaluate the lhs once*/
 		enum op_type op = curtok_to_compound_op();
 
+		where_cc1_current(&w);
 		EAT(curtok);
 
-		return expr_new_assign_compound(e, parse_expr_assignment(), op);
+		return expr_set_where(
+				expr_new_assign_compound(e,
+					parse_expr_assignment(),
+					op),
+				&w);
 	}
 
 	return e;
@@ -491,8 +544,7 @@ expr **parse_funcargs()
 
 	while(curtok != token_close_paren){
 		expr *arg = parse_expr_no_comma();
-		if(!arg)
-			die_at(&arg->where, "expected: funcall arg");
+		UCC_ASSERT(arg, "no arg?");
 		dynarray_add(&args, arg);
 
 		if(curtok == token_close_paren)
@@ -859,9 +911,11 @@ stmt *parse_stmt()
 				if(accept(token_multiply)){
 					/* computed goto */
 					t->expr = parse_expr_exp();
-					t->expr->expr_computed_goto = 1;
+				}else if(curtok == token_identifier){
+					t->bits.lbl.spel = token_current_spel();
+					EAT(token_identifier);
 				}else{
-					t->expr = parse_expr_identifier();
+					die_at(NULL, "identifier or '*' expected for goto");
 				}
 			}
 			EAT(token_semicolon);
@@ -929,15 +983,35 @@ flow:
 		}
 
 		default:
-			t = expr_to_stmt(parse_expr_exp(), current_scope);
+		{
+			char *lbl;
+			where w;
 
-			if(expr_kind(t->expr, identifier) && accept(token_colon)){
-				stmt_mutate_wrapper(t, label);
+			if((lbl = tok_at_label(&w))){
+				decl_attr *attr = NULL, *ai;
+
+				t = STAT_NEW(label);
+				t->bits.lbl.spel = lbl;
+				memcpy_safe(&t->where, &w);
+
+				parse_add_attr(&attr);
+				for(ai = attr; ai; ai = ai->next)
+					if(ai->type == attr_unused)
+						t->bits.lbl.unused = 1;
+					else
+						warn_at(&ai->where,
+								"ignoring attribute \"%s\" on label",
+								decl_attr_to_str(ai));
+
+				decl_attr_free(attr);
+
 				return parse_label_next(t);
 			}else{
+				t = expr_to_stmt(parse_expr_exp(), current_scope);
 				EAT(token_semicolon);
 				return t;
 			}
+		}
 	}
 
 	/* unreachable */

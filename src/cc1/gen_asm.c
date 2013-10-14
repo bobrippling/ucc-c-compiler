@@ -27,7 +27,11 @@ void gen_expr(expr *e)
 {
 	consty k;
 
-	const_fold(e, &k);
+	/* always const_fold functions, i.e. builtins */
+	if(expr_kind(e, funcall) || fopt_mode & FOPT_CONST_FOLD)
+		const_fold(e, &k);
+	else
+		k.type = CONST_NO;
 
 	if(k.type == CONST_NUM){
 		/* -O0 skips this? */

@@ -127,6 +127,23 @@ type_ref *type_ref_is_scalar(type_ref *r)
 	return r;
 }
 
+type_ref *type_ref_is_func_or_block(type_ref *r)
+{
+	type_ref *t = type_ref_is(r, type_ref_func);
+	if(t)
+		return t;
+
+	t = type_ref_is(r, type_ref_block);
+	if(t){
+		t = type_ref_next(t);
+		UCC_ASSERT(t->type == type_ref_func,
+				"block->next not func?");
+		return t;
+	}
+
+	return NULL;
+}
+
 const type *type_ref_get_type(type_ref *r)
 {
 	for(; r && r->type != type_ref_type; r = r->ref);
@@ -268,6 +285,25 @@ int type_ref_is_complete(type_ref *r)
 
 
 	return 1;
+}
+
+type_ref *type_ref_is_char_ptr(type_ref *r)
+{
+	type_ref *t = type_ref_is_array(r);
+	if(!t)
+		t = type_ref_is_ptr(r);
+	t = type_ref_is_type(t, type_unknown);
+
+	if(t) switch(t->bits.type->primitive){
+		case type_schar:
+		case type_nchar:
+		case type_uchar:
+			return t;
+		default:
+			break;
+	}
+
+	return NULL;
 }
 
 int type_ref_is_incomplete_array(type_ref *r)
@@ -413,16 +449,24 @@ enum type_qualifier type_ref_qual(const type_ref *r)
 		return qual_none;
 
 	switch(r->type){
+		case type_ref_type:
+			if(r->bits.type->primitive == type_struct
+			|| r->bits.type->primitive == type_union)
+			{
+				if(r->bits.type->sue->contains_const)
+					return qual_const;
+			}
+
 		case type_ref_func:
 		case type_ref_array:
-		case type_ref_type:
 			return qual_none;
 
 		case type_ref_cast:
 			/* descend */
 			if(r->bits.cast.is_signed_cast)
 				return type_ref_qual(r->ref);
-			return r->bits.cast.qual | (r->bits.cast.additive ? type_ref_qual(r->ref) : qual_none);
+			return r->bits.cast.qual
+				| (r->bits.cast.additive ? type_ref_qual(r->ref) : qual_none);
 
 		case type_ref_ptr:
 		case type_ref_block:

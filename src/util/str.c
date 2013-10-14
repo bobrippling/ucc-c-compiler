@@ -3,17 +3,25 @@
 
 #include "str.h"
 
-char *str_quotefin(char *s)
+char *str_quotefin2(char *s, char q)
 {
-	for(; *s; s++) switch(*s){
-		case '\\':
+	for(; *s; s++)
+		if(*s == '\\')
 			s++;
-			break;
-		case '"':
+		else if(*s == q)
 			return s;
-	}
 
 	return NULL;
+}
+
+char *char_quotefin(char *s)
+{
+	return str_quotefin2(s, '\'');
+}
+
+char *str_quotefin(char *s)
+{
+	return str_quotefin2(s, '"');
 }
 
 char *str_spc_skip(char *s)

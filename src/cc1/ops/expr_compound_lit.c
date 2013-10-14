@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "ops.h"
 #include "expr_compound_lit.h"
 #include "../out/asm.h"
@@ -87,12 +89,15 @@ static void lea_expr_compound_lit(expr *e)
 static void const_expr_compound_lit(expr *e, consty *k)
 {
 	decl *d = e->bits.complit.decl;
+	expr *nonstd = NULL;
 
-	if(decl_init_is_const(d->init, NULL)){
+	if(decl_init_is_const(d->init, NULL, &nonstd)){
+		CONST_FOLD_LEAF(k);
 		k->type = CONST_ADDR_OR_NEED(d);
 		k->bits.addr.is_lbl = 1;
 		k->bits.addr.bits.lbl = d->spel;
 		k->offset = 0;
+		k->nonstandard_const = nonstd;
 	}else{
 		k->type = CONST_NO;
 	}
@@ -148,13 +153,6 @@ static decl *compound_lit_decl(type_ref *t, decl_init *init)
 	d->init = init;
 
 	return d;
-}
-
-void expr_compound_lit_from_cast(expr *e, decl_init *init)
-{
-	e->bits.complit.decl = compound_lit_decl(e->bits.tref /* from cast */, init);
-
-	expr_mutate_wrapper(e, compound_lit);
 }
 
 expr *expr_new_compound_lit(type_ref *t, decl_init *init)

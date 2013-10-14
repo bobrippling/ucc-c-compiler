@@ -1,0 +1,45 @@
+_auto_1:
+.byte 104
+.byte 105
+.zero 1
+str.1:
+.byte 104
+.byte 105
+.zero 1
+_padded:
+.byte 104
+.byte 105
+.zero 2
+str.2:
+.byte 104
+.byte 105
+.zero 1
+_exact:
+.byte 104
+.byte 105
+.zero 1
+str.3:
+.byte 104
+.byte 105
+.zero 1
+_no_nul:
+.byte 104
+.byte 105
+str.4:
+.byte 104
+.byte 105
+.zero 1
+_overflow:
+.byte 104
+.byte 101
+str.5:
+.byte 104
+.byte 101
+.byte 108
+.byte 108
+.byte 111
+.zero 1
+_zero_implicit:
+.zero 1
+_uninit:
+.zero 2

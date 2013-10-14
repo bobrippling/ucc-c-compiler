@@ -18,11 +18,11 @@ void flow_fold(stmt_flow *flow, symtable **pstab)
 
 		*pstab = flow->for_init_symtab;
 
+		fold_block_decls(*pstab, &flow->init_blk);
+
 		/* sanity check on _flow_ vars only */
 		for(i = (*pstab)->decls; i && *i; i++){
 			decl *const d = *i;
-
-			fold_decl(d, *pstab, &flow->init_blk);
 
 			switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
 				case store_auto:
@@ -42,10 +42,11 @@ void flow_fold(stmt_flow *flow, symtable **pstab)
 
 void flow_gen(stmt_flow *flow, symtable *stab)
 {
-	gen_code_decls(stab);
+	gen_block_decls(stab);
 
 	if(flow){
-		gen_code_decls(flow->for_init_symtab);
+		if(stab != flow->for_init_symtab)
+			gen_block_decls(flow->for_init_symtab);
 
 		if(flow->init_blk)
 			gen_stmt(flow->init_blk);
@@ -109,7 +110,7 @@ static int if_passable(stmt *s)
 	return (s->rhs ? fold_passable(s->rhs) : 1) || fold_passable(s->lhs);
 }
 
-void mutate_stmt_if(stmt *s)
+void init_stmt_if(stmt *s)
 {
 	s->f_passable = if_passable;
 }

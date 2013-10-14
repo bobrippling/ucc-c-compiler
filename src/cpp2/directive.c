@@ -27,7 +27,7 @@
 
 #define NO_TOKEN(err) \
 	if(tokens_count_skip_spc(tokens) > 0) \
-		CPP_WARN(err " directive with extra tokens")
+		CPP_WARN(WTRAILING, err " directive with extra tokens")
 
 #define NOOP_RET() if(parse_should_noop()) return
 
@@ -137,7 +137,7 @@ for_fin:
 
 		if(tokens[1]){
 			if(!tokens[1]->had_whitespace)
-				CPP_WARN("no whitespace after macro name (%s)", name);
+				CPP_WARN(WWHITESPACE, "no whitespace after macro name (%s)", name);
 			/* prevent initial whitespace */
 			tokens[1]->had_whitespace = 0;
 		}
@@ -152,11 +152,15 @@ for_fin:
 
 static void handle_undef(token **tokens)
 {
+	char *nam;
+
 	SINGLE_TOKEN("invalid undef macro");
 
 	NOOP_RET();
 
-	macro_remove(tokens[0]->w);
+	nam = tokens[0]->w;
+	if(!macro_remove(nam))
+		CPP_WARN(WUNDEF, "macro \"%s\" not defined", nam);
 }
 
 static void handle_error_warning(token **tokens, int err)
@@ -348,7 +352,8 @@ static int /*bool*/ if_eval(token **tokens, const char *type)
 		const int r = !!expr_eval(e, &had_ident);
 
 		if(had_ident)
-			CPP_WARN("undefined identifier in: \"#%s%s\"", type, w);
+			CPP_WARN(WUNDEF,
+					"undefined identifier in: \"#%s%s\"", type, w);
 
 		free(w);
 

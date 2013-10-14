@@ -17,8 +17,6 @@
 #include "../opt.h"
 #include "../const.h"
 
-#define v_check_type(t) if(!t) t = type_ref_cached_VOID_PTR()
-
 typedef char chk[OUT_VPHI_SZ == sizeof(struct vstack) ? 1 : -1];
 
 static int calc_ptr_step(type_ref *t);
@@ -69,8 +67,6 @@ int v_stack_sz()
 
 void vpush(type_ref *t)
 {
-	v_check_type(t);
-
 	if(!vtop){
 		vtop = vstack;
 	}else{
@@ -87,16 +83,18 @@ void vpush(type_ref *t)
 	v_clear(vtop, t);
 }
 
-static void v_push_reg(int r)
+static void
+ucc_nonnull()
+v_push_reg(int r, type_ref *ty)
 {
 	struct vreg reg = VREG_INIT(r, 0);
-	vpush(NULL);
+	vpush(ty);
 	v_set_reg(vtop, &reg);
 }
 
 static void v_push_sp(void)
 {
-	v_push_reg(REG_SP);
+	v_push_reg(REG_SP, type_ref_cached_VOID_PTR());
 }
 
 void v_clear(struct vstack *vp, type_ref *t)
@@ -183,7 +181,7 @@ static void v_flush_volatile_reg(struct vstack *vp)
 			/* vstack updated, add to the register */
 		}
 
-		v_push_reg(vp->bits.regoff.reg.idx);
+		v_push_reg(vp->bits.regoff.reg.idx, type_ref_cached_INTPTR_T());
 		/* make it nice - abs() */
 		out_push_l(type_ref_cached_INTPTR_T(), abs(off));
 		impl_op(off > 0 ? op_plus : op_minus);
@@ -432,7 +430,7 @@ void v_freeup_regp(struct vstack *vp)
 	if(found_reg){
 		impl_reg_cp(vp, &r);
 
-		v_clear(vp, vp->t); /* clear bitfield info, etc */
+		v_clear(vp, vp->t);
 		v_set_reg(vp, &r);
 
 	}else{
@@ -722,7 +720,7 @@ static void out_set_lbl(const char *s, int pic)
 
 void out_push_lbl(const char *s, int pic)
 {
-	vpush(NULL);
+	vpush(type_ref_cached_VOID_PTR());
 
 	out_set_lbl(s, pic);
 }
@@ -735,7 +733,8 @@ void out_push_noop()
 void out_dup(void)
 {
 	/* TODO: mark reg as duped, but COW */
-	vpush(NULL);
+	out_comment("dup");
+	vpush(vtop->t);
 	switch(vtop[-1].type){
 		case V_FLAG:
 			v_to_reg(&vtop[-1]);
@@ -1344,7 +1343,6 @@ void v_cast(struct vstack *vp, type_ref *to)
 
 void out_change_type(type_ref *t)
 {
-	v_check_type(t);
 	/* XXX: memleak */
 	vtop->t = t;
 
@@ -1495,7 +1493,7 @@ void out_push_frame_ptr(int nframes)
 
 	out_flush_volatile();
 
-	vpush(NULL);
+	vpush(type_ref_cached_VOID_PTR());
 	v_set_reg(vtop, &vr);
 }
 
@@ -1503,7 +1501,7 @@ void out_push_reg_save_ptr(void)
 {
 	out_flush_volatile();
 
-	vpush(NULL);
+	vpush(type_ref_cached_VOID_PTR());
 	v_set_stack(vtop, NULL, -stack_variadic_offset, /*lval:*/0);
 }
 
@@ -1511,6 +1509,6 @@ void out_push_nan(type_ref *ty)
 {
 	UCC_ASSERT(type_ref_is_floating(ty),
 			"non-float nan?");
-	vpush(NULL);
+	vpush(ty);
 	impl_set_nan(ty);
 }

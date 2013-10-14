@@ -84,6 +84,7 @@ void gen_expr_str_str(expr *e)
 
 static void const_expr_string(expr *e, consty *k)
 {
+	CONST_FOLD_LEAF(k);
 	if(e->bits.str.sv.wide){
 		k->type = CONST_NO;
 		ICW("TODO: wide string const");
@@ -115,6 +116,7 @@ expr *expr_new_str(char *s, int l, int wide)
 	expr *e = expr_new_wrapper(str);
 	expr_mutate_str(e, s, l);
 	e->bits.str.sv.wide = wide;
+	memcpy_safe(&e->bits.str.sv.where, &e->where);
 	return e;
 }
 

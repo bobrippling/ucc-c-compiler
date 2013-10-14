@@ -24,11 +24,8 @@ static void fold_const_expr_if(expr *e, consty *k)
 	else
 		consts[1] = consts[0];
 
-	/* we're only const if expr, lhs and rhs are const */
-	if(!CONST_AT_COMPILE_TIME(consts[0].type)
-	|| !CONST_AT_COMPILE_TIME(consts[1].type)
-	|| !CONST_AT_COMPILE_TIME(consts[2].type))
-	{
+	/* only evaluate lhs/rhs' constness if we need to */
+	if(!CONST_AT_COMPILE_TIME(consts[0].type)){
 		k->type = CONST_NO;
 		return;
 	}
@@ -50,7 +47,14 @@ static void fold_const_expr_if(expr *e, consty *k)
 			ICE("buh");
 	}
 
-	memcpy_safe(k, &consts[res ? 1 : 2]);
+	res = res ? 1 : 2; /* index into consts */
+
+	if(!CONST_AT_COMPILE_TIME(consts[res].type)){
+		k->type = CONST_NO;
+	}else{
+		memcpy_safe(k, &consts[res]);
+		k->nonstandard_const = consts[res == 1 ? 2 : 1].nonstandard_const;
+	}
 }
 
 void fold_expr_if(expr *e, symtable *stab)

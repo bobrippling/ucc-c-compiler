@@ -54,8 +54,15 @@ struct decl_init
 decl_init *decl_init_new(enum decl_init_type);
 decl_init *decl_init_new_w(enum decl_init_type, where *);
 const char *decl_init_to_str(enum decl_init_type);
-int         decl_init_is_const(decl_init *dinit, symtable *stab);
-int         decl_init_is_zero(decl_init *dinit);
+
+/* returns 1 if const, 0 if non const.
+ * if the init contains a non-standard constant expression (e.g. comma-expr),
+ * *nonstd is set if nonstd isn't NULL
+ */
+int decl_init_is_const(
+		decl_init *dinit, symtable *stab, expr **nonstd);
+
+int decl_init_is_zero(decl_init *dinit);
 
 void decl_init_brace_up_fold(decl *d, symtable *); /* normalises braces */
 

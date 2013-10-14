@@ -284,13 +284,20 @@ void eat2(enum token t, const char *fnam, int line, int die)
 	}
 }
 
-int accept(enum token t)
+int accept_where(enum token t, where *w)
 {
 	if(t == curtok){
+		if(w)
+			where_cc1_current(w);
 		eat(t, NULL, 0); /* can't fail */
 		return 1;
 	}
 	return 0;
+}
+
+int accept(enum token t)
+{
+	return accept_where(t, NULL);
 }
 
 void uneat(enum token t)
@@ -318,21 +325,6 @@ int curtok_in_list(va_list l)
 		if(curtok == t)
 			return 1;
 	return 0;
-}
-
-#define NULL_AND_RET(fnam, cnam)  \
-char *fnam()                      \
-{                                 \
-	char *ret = cnam;               \
-	cnam = NULL;                    \
-	return ret;                     \
-}
-
-extern char *currentspelling;
-NULL_AND_RET(token_current_spel, currentspelling)
-char *token_current_spel_peek(void)
-{
-	return currentspelling;
 }
 
 void token_get_current_str(char **ps, int *pl, int *pwide)

@@ -33,7 +33,8 @@ static func_builtin_parse parse_unreachable,
                           parse_expect,
                           parse_strlen,
                           parse_is_signed,
-                          parse_nanf;
+                          parse_nanf,
+                          parse_choose_expr;
 #ifdef BUILTIN_LIBC_FUNCTIONS
                           parse_memset,
                           parse_memcpy;
@@ -59,6 +60,8 @@ builtin_table builtins[] = {
 	{ "is_signed", parse_is_signed },
 
 	{ "nanf", parse_nanf },
+
+	{ "choose_expr", parse_choose_expr },
 
 #define BUILTIN_VA(nam) { "va_" #nam, parse_va_ ##nam },
 #  include "__builtin_va.def"
@@ -273,6 +276,7 @@ expr *builtin_new_memset(expr *p, int ch, size_t len)
 
 	fcall->lhs = p;
 	fcall->bits.builtin_memset.ch = ch;
+	UCC_ASSERT(ch == 0, "TODO: non-zero memset");
 	fcall->bits.builtin_memset.len = len;
 
 	return fcall;
@@ -470,8 +474,10 @@ static void const_compatible_p(expr *e, consty *k)
 {
 	type_ref **types = e->bits.types;
 
-	memset(k, 0, sizeof *k);
+	CONST_FOLD_LEAF(k);
+
 	k->type = CONST_NUM;
+
 	k->bits.num.val.i = type_ref_cmp(types[0], types[1], 0) == TYPE_EQUAL;
 }
 
@@ -509,13 +515,15 @@ static void fold_constant_p(expr *e, symtable *stab)
 static void const_constant_p(expr *e, consty *k)
 {
 	expr *test = *e->funcargs;
-	consty subk;
+	int is_const;
 
-	const_fold(test, &subk);
+	const_fold(test, k);
 
-	memset(k, 0, sizeof *k);
+	is_const = CONST_AT_COMPILE_TIME(k->type);
+
+	CONST_FOLD_LEAF(k);
 	k->type = CONST_NUM;
-	k->bits.num.val.i = CONST_AT_COMPILE_TIME(subk.type);
+	k->bits.num.val.i = is_const;
 }
 
 static expr *parse_constant_p(void)
@@ -650,6 +658,58 @@ static expr *parse_expect(void)
 	return fcall;
 }
 
+/* --- choose_expr */
+
+static void fold_choose_expr(expr *e, symtable *stab)
+{
+	consty k;
+	int i;
+
+	if(dynarray_count(e->funcargs) != 3)
+		die_at(&e->where, "three arguments expected for %s",
+				BUILTIN_SPEL(e->expr));
+
+	for(i = 0; i < 3; i++)
+		FOLD_EXPR(e->funcargs[i], stab);
+
+	const_fold(e->funcargs[0], &k);
+	if(k.type != CONST_NUM){
+		die_at(&e->funcargs[0]->where,
+				"first argument to %s not constant",
+				BUILTIN_SPEL(e->expr));
+	}
+
+	i = !!(K_INTEGRAL(k.bits.num) ? k.bits.num.val.i : k.bits.num.val.f);
+
+	e->bits.num.val.i = i;
+	e->tree_type = e->funcargs[i ? 1 : 2]->tree_type;
+
+	wur_builtin(e);
+}
+
+static void const_choose_expr(expr *e, consty *k)
+{
+	/* forward to the chosen expr */
+	const_fold(e->funcargs[e->bits.num.val.i ? 1 : 2], k);
+}
+
+static void gen_choose_expr(expr *e)
+{
+	/* forward to the chosen expr */
+	gen_expr(e->funcargs[e->bits.num.val.i ? 1 : 2]);
+}
+
+static expr *parse_choose_expr(void)
+{
+	expr *fcall = parse_any_args();
+
+	fcall->f_fold       = fold_choose_expr;
+	fcall->f_const_fold = const_choose_expr;
+	BUILTIN_SET_GEN(fcall, gen_choose_expr);
+
+	return fcall;
+}
+
 /* --- is_signed */
 
 static void fold_is_signed(expr *e, symtable *stab)
@@ -679,7 +739,7 @@ static void fold_is_signed(expr *e, symtable *stab)
 
 static void const_is_signed(expr *e, consty *k)
 {
-	memset(k, 0, sizeof *k);
+	CONST_FOLD_LEAF(k);
 	k->type = CONST_NUM;
 	k->bits.num.val.i = type_ref_is_signed(e->bits.types[0]);
 }
@@ -756,6 +816,7 @@ static void const_strlen(expr *e, consty *k)
 			const char *p = memchr(s, '\0', sv->len);
 
 			if(p){
+				CONST_FOLD_LEAF(k);
 				k->type = CONST_NUM;
 				k->bits.num.val.i = p - s;
 				k->bits.num.suffix = VAL_UNSIGNED;

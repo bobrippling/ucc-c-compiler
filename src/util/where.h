@@ -3,12 +3,17 @@
 
 #include "compiler.h"
 
+struct loc
+{
+	unsigned line, chr;
+};
+
 typedef struct where
 {
 	const char *fname, *line_str;
-	int line, chr;
+	unsigned short line, chr, len;
 } where;
-#define WHERE_INIT(fnam, lstr, n, c) { fnam, lstr, n, c }
+#define WHERE_INIT(fnam, lstr, n, c) { fnam, lstr, n, c, 0 }
 
 #define WHERE_BUF_SIZ 128
 const char *where_str(const struct where *w);

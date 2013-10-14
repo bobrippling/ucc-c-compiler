@@ -113,6 +113,7 @@ const char *decl_asm_spel(decl *);
 #include "type_ref.h"
 
 decl        *decl_new(void);
+decl        *decl_new_w(const where *);
 decl        *decl_new_ty_sp(type_ref *, char *);
 void         decl_replace_with(decl *, decl *);
 void         decl_free(decl *, int free_ref);
@@ -209,9 +210,11 @@ type_ref *type_ref_func_call(type_ref *, funcargs **pfuncargs);
 int       type_ref_decayable(type_ref *r);
 type_ref *type_ref_decay(type_ref *);
 type_ref *type_ref_is_scalar(type_ref *);
+type_ref *type_ref_is_func_or_block(type_ref *);
 struct_union_enum_st *type_ref_is_s_or_u(type_ref *);
 struct_union_enum_st *type_ref_is_s_or_u_or_e(type_ref *);
 type_ref *type_ref_skip_casts(type_ref *);
+type_ref *type_ref_is_char_ptr(type_ref *);
 
 /* note: returns static references */
 #define type_ref_cached_VOID()       type_ref_new_type(type_new_primitive(type_void))

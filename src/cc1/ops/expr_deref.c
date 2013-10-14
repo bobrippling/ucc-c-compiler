@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "ops.h"
 #include "expr_deref.h"
 
@@ -51,9 +53,22 @@ static void const_expr_deref(expr *e, consty *k)
 	const_fold(from, k);
 
 	switch(k->type){
+		case CONST_STRK:
+		{
+			stringval *sv = k->bits.str;
+			if(k->offset < 0 || (unsigned)k->offset > sv->len){
+				k->type = CONST_NO;
+			}else{
+				UCC_ASSERT(!sv->wide, "TODO: constant wchar_t[] deref");
+
+				CONST_FOLD_LEAF(k);
+				k->type = CONST_NUM;
+				k->bits.num.val.i = sv->str[k->offset];
+			}
+			break;
+		}
 		case CONST_NUM:
 		case CONST_ADDR:
-		case CONST_STRK:
 			k->type = CONST_ADDR_OR_NEED_TREF(from->tree_type);
 			/* *(int [10])a -> still need_addr */
 		default:
