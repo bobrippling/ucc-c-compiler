@@ -183,9 +183,6 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 
 	switch(r->type){
 		case type_ref_array:
-			if(type_ref_is(r->ref, type_ref_func))
-				die_at(&r->where, "array of functions");
-
 			if(r->bits.array.size){
 				consty k;
 
@@ -205,9 +202,6 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 			break;
 
 		case type_ref_func:
-			if(type_ref_is(r->ref, type_ref_func))
-				die_at(&r->where, "function returning a function");
-
 			if(type_ref_is(parent, type_ref_ptr)
 			&& (type_ref_qual(parent) & qual_restrict))
 			{
@@ -219,10 +213,6 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 			break;
 
 		case type_ref_block:
-			if(!type_ref_is(r->ref, type_ref_func))
-				die_at(&r->where, "invalid block pointer - function required (got %s)",
-						type_ref_to_str(r->ref));
-
 			/*q_to_check = r->bits.block.qual; - allowed */
 			break;
 
@@ -279,6 +269,29 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 		warn_at(&r->where, "restrict on non-pointer type '%s'", type_ref_to_str(r));
 
 	fold_type_ref(r->ref, r, stab);
+
+	/* checks that rely on r->ref being folded... */
+	switch(r->type){
+		case type_ref_array:
+		case type_ref_func:
+			if(type_ref_is(r->ref, type_ref_func)){
+				die_at(&r->where,
+						r->type == type_ref_func
+							? "function returning a function"
+							: "array of functions");
+			}
+			break;
+
+		case type_ref_block:
+			if(!type_ref_is(r->ref, type_ref_func))
+				die_at(&r->where, "invalid block pointer - function required (got %s)",
+						type_ref_to_str(r->ref));
+			break;
+
+		default:
+			break;
+	}
+
 
 	{
 		/* warn on embedded structs/unions with flexarrs */
