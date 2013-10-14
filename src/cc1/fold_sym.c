@@ -55,10 +55,13 @@ static void symtab_iter_children(symtable *stab, void f(symtable *))
 		f(*i);
 }
 
-static void symtab_check_static_asserts(static_assert **sas)
+void symtab_check_static_asserts(symtable *stab)
 {
 	static_assert **i;
-	for(i = sas; i && *i; i++){
+
+	symtab_iter_children(stab, symtab_check_static_asserts);
+
+	for(i = stab->static_asserts; i && *i; i++){
 		static_assert *sa = *i;
 		consty k;
 
@@ -429,6 +432,4 @@ void symtab_fold_decls_sues(symtable *stab)
 {
 	symtab_fold_sues(stab);
 	symtab_fold_decls(stab);
-
-	symtab_check_static_asserts(stab->static_asserts);
 }

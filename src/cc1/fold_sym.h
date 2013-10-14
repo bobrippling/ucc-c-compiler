@@ -14,4 +14,6 @@ void symtab_check_rw(symtable *);
 unsigned symtab_layout_decls(
 		symtable *, unsigned current);
 
+void symtab_check_static_asserts(symtable *);
+
 #endif
