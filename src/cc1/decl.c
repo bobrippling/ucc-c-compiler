@@ -864,6 +864,7 @@ static void type_ref_add_str(type_ref *r, char *spel, int need_spc, char **bufp,
 	}
 
 	type_ref_add_str(r->tmp, spel, need_spc, bufp, sz);
+	need_spc = 0; /* after the spel, no more spaces */
 
 	switch(r->type){
 		case type_ref_tdef:
@@ -880,7 +881,6 @@ static void type_ref_add_str(type_ref *r, char *spel, int need_spc, char **bufp,
 			decl **i;
 			funcargs *args = r->bits.func.args;
 
-			ADD_SPC();
 			BUF_ADD("(");
 			for(i = args->arglist; i && *i; i++){
 				char tmp_buf[DECL_STATIC_BUFSIZ];
@@ -897,8 +897,6 @@ static void type_ref_add_str(type_ref *r, char *spel, int need_spc, char **bufp,
 				break;
 			/* fall */
 		case type_ref_array:
-			need_spc = 0; /* arrays hug their left */
-
 			BUF_ADD("[");
 			if(r->bits.array.size){
 				int spc = 0;
