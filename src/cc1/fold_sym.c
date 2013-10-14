@@ -47,6 +47,14 @@
               }                       \
             }while(0)
 
+static void symtab_iter_children(symtable *stab, void f(symtable *))
+{
+	symtable **i;
+
+	for(i = stab->children; i && *i; i++)
+		f(*i);
+}
+
 static void symtab_check_static_asserts(static_assert **sas)
 {
 	static_assert **i;
@@ -84,11 +92,8 @@ static void symtab_check_static_asserts(static_assert **sas)
 void symtab_check_rw(symtable *tab)
 {
 	decl **diter;
-	symtable **tabi;
 
-	for(tabi = tab->children; tabi && *tabi; tabi++){
-		symtab_check_rw(*tabi);
-	}
+	symtab_iter_children(tab, symtab_check_rw);
 
 	for(diter = tab->decls; diter && *diter; diter++){
 		decl *const d = *diter;
@@ -396,11 +401,8 @@ out:
 
 void symtab_chk_labels(symtable *stab)
 {
-	{
-		symtable **i;
-		for(i = stab->children; i && *i; i++)
-			symtab_chk_labels(*i);
-	}
+	symtab_iter_children(stab, symtab_chk_labels);
+
 	if(stab->labels){
 		size_t i;
 		label *l;
