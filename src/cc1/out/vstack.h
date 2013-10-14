@@ -15,6 +15,7 @@ struct vstack
 		V_REG_SAVE, /* value stored in memory,
 		             * referenced by reg+offset */
 	} type;
+	int is_lval;
 
 	type_ref *t;
 
@@ -61,7 +62,7 @@ struct vstack
 		unsigned off, nbits;
 	} bitfield; /* !!width iif bitfield */
 };
-#define VSTACK_INIT(ty) { (ty), NULL, { 0 } }
+#define VSTACK_INIT(ty) { (ty), 0, NULL, { 0 } }
 
 extern struct vstack *vtop;
 

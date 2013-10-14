@@ -773,9 +773,13 @@ void impl_store(struct vstack *from, struct vstack *to)
 			ICE("invalid store lvalue 0x%x", to->type);
 
 		case V_REG_SAVE:
-			/* need to load the store value from memory
-			 * aka. double indir */
-			v_to_reg(to);
+			if(to->is_lval){
+				/* store to lval, fine */
+			}else{
+				/* need to load the store value from memory
+				 * aka. double indir */
+				v_to_reg(to);
+			}
 			break;
 
 		case V_REG:

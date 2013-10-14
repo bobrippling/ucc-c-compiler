@@ -662,6 +662,11 @@ void out_pop(void)
 	vpop();
 }
 
+void out_set_lvalue()
+{
+	vtop->is_lval = 1;
+}
+
 void out_push_num(type_ref *t, const numeric *n)
 {
 	const int ty_fp = type_ref_is_floating(t),
@@ -947,6 +952,8 @@ label:
 			out_set_lbl(decl_asm_spel(d), /*pic:*/1);
 			break;
 	}
+
+	out_set_lvalue();
 }
 
 void out_push_sym_val(sym *s)
@@ -1206,7 +1213,7 @@ void out_deref()
 
 		case V_REG:
 			/* attempt to convert to v_reg_save if possible */
-			if(v_reg_is_const(&vtop->bits.regoff.reg)){
+			if(vtop->is_lval && v_reg_is_const(&vtop->bits.regoff.reg)){
 				vtop->type = V_REG_SAVE;
 				break;
 			}

@@ -121,6 +121,9 @@ static void fold_const_expr_cast(expr *e, consty *k)
 {
 	const_fold(e->expr, k);
 
+	if(IS_RVAL_CAST(e))
+		return;
+
 	switch(k->type){
 		case CONST_NUM:
 			fold_cast_num(e, &k->bits.num);
