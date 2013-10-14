@@ -169,7 +169,7 @@ expr *fold_expr_decay(expr *e, symtable *stab)
 
 	if(decayed != r){
 		expr *imp_cast = expr_set_where(
-				expr_new_cast(e, decayed, 1),
+				expr_new_cast_decay(e, decayed),
 				&e->where);
 		fold_expr_cast_descend(imp_cast, stab, 0);
 		e = imp_cast;

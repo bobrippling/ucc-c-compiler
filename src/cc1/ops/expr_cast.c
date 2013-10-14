@@ -10,7 +10,8 @@
 #include "../defs.h"
 
 #define IMPLICIT_STR(e) ((e)->expr_cast_implicit ? "implicit " : "")
-#define IS_RVAL_CAST(e) !((e)->bits.tref)
+#define IS_RVAL_CAST(e)  (!(e)->bits.cast.tref)
+#define IS_DECAY_CAST(e) ((e)->bits.cast.tref && e->bits.cast.is_decay)
 
 const char *str_expr_cast()
 {
@@ -200,7 +201,6 @@ static void fold_const_expr_cast(expr *e, consty *k)
 
 void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 {
-	int size_lhs, size_rhs;
 	int flag;
 	type_ref *tlhs, *trhs;
 
@@ -213,90 +213,94 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 
 	}else{
 		/* casts remove restrict qualifiers */
-		enum type_qualifier q = type_ref_qual(e->bits.tref);
+		enum type_qualifier q = type_ref_qual(e->bits.cast.tref);
 
-		e->tree_type = type_ref_new_cast(e->bits.tref, q & ~qual_restrict);
+		e->tree_type = type_ref_new_cast(e->bits.cast.tref, q & ~qual_restrict);
 
 		fold_type_ref(e->tree_type, NULL, stab); /* struct lookup, etc */
 
 		tlhs = e->tree_type;
 		trhs = e->expr->tree_type;
 
-		fold_check_expr(e->expr, FOLD_CHK_NO_ST_UN, "cast-expr");
-		if(type_ref_is_void(tlhs))
-			return; /* fine */
-		fold_check_expr(e, FOLD_CHK_NO_ST_UN, "cast-target");
+		if(!IS_DECAY_CAST(e)){
+			int size_lhs, size_rhs;
 
-		if(!type_ref_is_complete(tlhs)){
-			die_at(&e->where, "%scast to incomplete type %s",
-					IMPLICIT_STR(e),
-					type_ref_to_str(tlhs));
-		}
+			fold_check_expr(e->expr, FOLD_CHK_NO_ST_UN, "cast-expr");
+			if(type_ref_is_void(tlhs))
+				return; /* fine */
+			fold_check_expr(e, FOLD_CHK_NO_ST_UN, "cast-target");
 
-		if((flag = !!type_ref_is(tlhs, type_ref_func))
-		|| type_ref_is(tlhs, type_ref_array))
-		{
-			die_at(&e->where, "%scast to %s type '%s'",
-					IMPLICIT_STR(e),
-					flag ? "function" : "array",
-					type_ref_to_str(tlhs));
-		}
-
-		if(((flag = !!type_ref_is_ptr(tlhs)) && type_ref_is_floating(trhs))
-		||           (type_ref_is_ptr(trhs)  && type_ref_is_floating(tlhs)))
-		{
-			/* TODO: factor to a error-continuing function */
-			fold_had_error = 1;
-			warn_at_print_error(&e->where,
-					"%scast %s pointer %s floating type",
-					IMPLICIT_STR(e),
-					flag ? "to" : "from",
-					flag ? "from" : "to");
-			return;
-		}
-
-		size_lhs = type_ref_size(tlhs, &e->where);
-		size_rhs = type_ref_size(trhs, &e->expr->where);
-		if(size_lhs < size_rhs){
-			char buf[DECL_STATIC_BUFSIZ];
-
-			strcpy(buf, type_ref_to_str(trhs));
-
-			cc1_warn_at(&e->where, 0, WARN_LOSS_PRECISION,
-					"possible loss of precision %s, size %d <-- %s, size %d",
-					type_ref_to_str(tlhs), size_lhs,
-					buf, size_rhs);
-		}
-
-		if((flag = (type_ref_is_fptr(tlhs) && type_ref_is_nonfptr(trhs)))
-		||         (type_ref_is_fptr(trhs) && type_ref_is_nonfptr(tlhs)))
-		{
-			/* allow cast from NULL to func ptr */
-			if(!expr_is_null_ptr(e->expr, 0)){
-				char buf[TYPE_REF_STATIC_BUFSIZ];
-
-				warn_at(&e->where, "%scast from %spointer to %spointer\n"
-						"%s <- %s",
+			if(!type_ref_is_complete(tlhs)){
+				die_at(&e->where, "%scast to incomplete type %s",
 						IMPLICIT_STR(e),
-						flag ? "" : "function-", flag ? "function-" : "",
-						type_ref_to_str(tlhs), type_ref_to_str_r(buf, trhs));
+						type_ref_to_str(tlhs));
 			}
-		}
+
+			if((flag = !!type_ref_is(tlhs, type_ref_func))
+			|| type_ref_is(tlhs, type_ref_array))
+			{
+				die_at(&e->where, "%scast to %s type '%s'",
+						IMPLICIT_STR(e),
+						flag ? "function" : "array",
+						type_ref_to_str(tlhs));
+			}
+
+			if(((flag = !!type_ref_is_ptr(tlhs)) && type_ref_is_floating(trhs))
+			||           (type_ref_is_ptr(trhs)  && type_ref_is_floating(tlhs)))
+			{
+				/* TODO: factor to a error-continuing function */
+				fold_had_error = 1;
+				warn_at_print_error(&e->where,
+						"%scast %s pointer %s floating type",
+						IMPLICIT_STR(e),
+						flag ? "to" : "from",
+						flag ? "from" : "to");
+				return;
+			}
+
+			size_lhs = type_ref_size(tlhs, &e->where);
+			size_rhs = type_ref_size(trhs, &e->expr->where);
+			if(size_lhs < size_rhs){
+				char buf[DECL_STATIC_BUFSIZ];
+
+				strcpy(buf, type_ref_to_str(trhs));
+
+				cc1_warn_at(&e->where, 0, WARN_LOSS_PRECISION,
+						"possible loss of precision %s, size %d <-- %s, size %d",
+						type_ref_to_str(tlhs), size_lhs,
+						buf, size_rhs);
+			}
+
+			if((flag = (type_ref_is_fptr(tlhs) && type_ref_is_nonfptr(trhs)))
+			||         (type_ref_is_fptr(trhs) && type_ref_is_nonfptr(tlhs)))
+			{
+				/* allow cast from NULL to func ptr */
+				if(!expr_is_null_ptr(e->expr, 0)){
+					char buf[TYPE_REF_STATIC_BUFSIZ];
+
+					warn_at(&e->where, "%scast from %spointer to %spointer\n"
+							"%s <- %s",
+							IMPLICIT_STR(e),
+							flag ? "" : "function-", flag ? "function-" : "",
+							type_ref_to_str(tlhs), type_ref_to_str_r(buf, trhs));
+				}
+			}
 
 #ifdef W_QUAL
-		if(decl_is_ptr(tlhs) && decl_is_ptr(trhs) && (tlhs->type->qual | trhs->type->qual) != tlhs->type->qual){
-			const enum type_qualifier away = trhs->type->qual & ~tlhs->type->qual;
-			char *buf = type_qual_to_str(away);
-			char *p;
+			if(decl_is_ptr(tlhs) && decl_is_ptr(trhs) && (tlhs->type->qual | trhs->type->qual) != tlhs->type->qual){
+				const enum type_qualifier away = trhs->type->qual & ~tlhs->type->qual;
+				char *buf = type_qual_to_str(away);
+				char *p;
 
-			p = &buf[strlen(buf)-1];
-			if(p >= buf && *p == ' ')
-				*p = '\0';
+				p = &buf[strlen(buf)-1];
+				if(p >= buf && *p == ' ')
+					*p = '\0';
 
-			warn_at(&e->where, "%scast removes qualifiers (%s)",
-					IMPLICIT_STR(e), buf);
-		}
+				warn_at(&e->where, "%scast removes qualifiers (%s)",
+						IMPLICIT_STR(e), buf);
+			}
 #endif
+		}
 	}
 }
 
@@ -372,7 +376,7 @@ void mutate_expr_cast(expr *e)
 expr *expr_new_cast(expr *what, type_ref *to, int implicit)
 {
 	expr *e = expr_new_wrapper(cast);
-	e->bits.tref = to;
+	e->bits.cast.tref = to;
 	e->expr_cast_implicit = implicit;
 	e->expr = what;
 	return e;
@@ -381,13 +385,25 @@ expr *expr_new_cast(expr *what, type_ref *to, int implicit)
 expr *expr_new_cast_rval(expr *sub)
 {
 	expr *e = expr_new_wrapper(cast);
-	e->bits.tref = NULL; /* mark as rvalue cast */
+	/* mark as rvalue cast */
+	e->bits.cast.tref = NULL;
+	e->bits.cast.is_decay = 0;
+	e->expr = sub;
+	return e;
+}
+
+expr *expr_new_cast_decay(expr *sub, type_ref *to)
+{
+	expr *e = expr_new_wrapper(cast);
+	/* mark as decay */
+	e->bits.cast.tref = to;
+	e->bits.cast.is_decay = 1;
 	e->expr = sub;
 	return e;
 }
 
 void gen_expr_style_cast(expr *e)
 {
-	stylef("(%s)", type_ref_to_str(e->bits.tref));
+	stylef("(%s)", type_ref_to_str(e->bits.cast.tref));
 	gen_expr(e->expr);
 }

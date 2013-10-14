@@ -398,7 +398,7 @@ static void builtin_gen_va_arg(expr *e)
 	out_deref(); /* __va_arg returns a pointer to the stack location of the argument */
 #else
 	{
-		type_ref *const ty = e->bits.tref;
+		type_ref *const ty = e->bits.va_arg_type;
 
 		if(type_ref_is_s_or_u(ty)){
 			ICE("TODO: s/u/e va_arg");
@@ -438,7 +438,7 @@ stack:
 
 static void fold_va_arg(expr *e, symtable *stab)
 {
-	type_ref *const ty = e->bits.tref;
+	type_ref *const ty = e->bits.va_arg_type;
 	type_ref *to;
 
 	FOLD_EXPR(e->lhs, stab);
@@ -475,7 +475,7 @@ expr *parse_va_arg(void)
 	ty = parse_type();
 
 	fcall->lhs = list;
-	fcall->bits.tref = ty;
+	fcall->bits.va_arg_type = ty;
 
 	expr_mutate_builtin_gen(fcall, va_arg);
 
