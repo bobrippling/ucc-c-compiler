@@ -1,3 +1,5 @@
+// RUN: %ucc -c -o %t %s
+
 struct A
 {
 	int y, x;
