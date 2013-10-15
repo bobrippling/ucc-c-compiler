@@ -73,7 +73,7 @@ int read(int fd, void *p, int size)
 	return __syscall(SYS_read, fd, p, size);
 }
 
-int write(int fd, void *p, int size)
+int write(int fd, const void *p, int size)
 {
 	return __syscall(SYS_write, fd, p, size);
 }
