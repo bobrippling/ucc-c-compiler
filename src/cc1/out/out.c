@@ -181,9 +181,10 @@ static void v_flush_volatile_reg(struct vstack *vp)
 			/* vstack updated, add to the register */
 		}
 
-		v_push_reg(vp->bits.regoff.reg.idx, type_ref_cached_INTPTR_T());
+		/* offset using the same type the register currently is */
+		v_push_reg(vp->bits.regoff.reg.idx, vp->t);
 		/* make it nice - abs() */
-		out_push_l(type_ref_cached_INTPTR_T(), abs(off));
+		out_push_l(vp->t, abs(off));
 		impl_op(off > 0 ? op_plus : op_minus);
 		vpop();
 	}
