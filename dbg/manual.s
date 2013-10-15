@@ -3,11 +3,13 @@
 .Ldbg_lowpc:
 
 .globl _start
+.Ldbg_begin_start:
 _start:
 	movl $60, %eax
 	movl $32, %edi
 	syscall
 	hlt
+.Ldbg_end_start:
 
 .Ldbg_highpc:
 
@@ -30,7 +32,26 @@ _start:
 		.byte 0 // terminate
 	.byte 0
 
+	.byte 2 // abbrev. code
+		.byte DW_TAG_subprogram, DW_CHILDREN_no
+			.byte DW_AT_name, DW_FORM_string
+			.byte DW_AT_decl_file, DW_FORM_data1
+			.byte DW_AT_decl_line, DW_FORM_data1
+			.byte DW_AT_type, DW_FORM_ref4
+			.byte DW_AT_external, DW_FORM_flag
+			.byte DW_AT_low_pc, DW_FORM_addr
+			.byte DW_AT_high_pc, DW_FORM_addr
+		.byte 0
+	.byte 0
 
+
+	.byte 3 // abbrev. code
+		.byte DW_TAG_base_type, DW_CHILDREN_no
+			.byte DW_AT_byte_size, DW_FORM_data1
+			.byte DW_AT_encoding, DW_FORM_data1
+			.byte DW_AT_name, DW_FORM_string
+		.byte 0
+	.byte 0
 
 
 .section .debug_info
@@ -48,6 +69,20 @@ _start:
 		.quad .Ldbg_lowpc
 		.quad .Ldbg_highpc
 		.asciz "."
+
+	.byte 2 // DW_TAG_subprogram reference
+		.asciz "start_fn"
+		.byte 1 // TODO: refer to decl_file / yo_synthetic.c
+		.byte 5 // line #5
+		.long 0 // TODO: DW_AT_type
+		.byte 1
+		.quad .Ldbg_begin_start
+		.quad .Ldbg_end_start
+
+	.byte 3 // DW_TAG_base_type reference
+		.byte 4 // sizeof(int)
+		.byte DW_ATE_signed
+		.asciz "int"
 
 .Ldbg_info_end:
 
