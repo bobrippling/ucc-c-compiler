@@ -51,7 +51,7 @@ static void fprintn_r(FILE *f, uintmax_t n, int base, int ty_sz)
 	uintmax_t d = n / base;
 	if(d)
 		fprintn_r(f, d, base, ty_sz);
-	fwrite("0123456789abcdef" + n % base, 1, 1, f);
+	fwrite("0123456789abcdef" + n % base, sizeof(char), 1, f);
 }
 
 static void fprintn(FILE *f, uintmax_t n, int base, int is_signed, int ty_sz)
@@ -65,7 +65,7 @@ static void fprintn(FILE *f, uintmax_t n, int base, int is_signed, int ty_sz)
 		}
 
 		if((intmax_t)n < 0){
-			fwrite("-", 1, 1, f);
+			fwrite("-", sizeof(char), 1, f);
 			n = -(intmax_t)n;
 		}
 	}
@@ -307,7 +307,7 @@ int fflush(FILE *f __unused)
 
 int fputc(int c, FILE *f)
 {
-	return fwrite(&c, 1, 1, f) == 1 ? c : EOF;
+	return fwrite(&c, sizeof(char), 1, f) == 1 ? c : EOF;
 }
 
 int putchar(int c)
@@ -340,8 +340,6 @@ size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream)
 
 size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream)
 {
-	ssize_t n;
-
 	if(FILE_FUN(stream)){
 		if(stream->f_write)
 			return stream->f_write(stream->cookie, ptr, size * nmemb);
@@ -350,7 +348,7 @@ size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream)
 		return 0;
 	}
 
-	n = write(fileno(stream), ptr, size * nmemb);
+	ssize_t n = write(fileno(stream), ptr, size * nmemb);
 	return n > 0 ? (size_t)n : 0;
 }
 
@@ -369,7 +367,7 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 #endif
 
 			if(buflen)
-				fwrite(buf, buflen, 1, file); // TODO: errors
+				fwrite(buf, sizeof *buf, buflen, file); // TODO: errors
 
 			fmt++;
 
@@ -398,7 +396,7 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 					const char *s = va_arg(ap, const char *);
 					if(!s)
 						s = "(null)";
-					fwrite(s, strlen(s), 1, file);
+					fwrite(s, sizeof *s, strlen(s), file);
 					break;
 				}
 				case 'c':
@@ -476,7 +474,8 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 
 				default:
 wat:
-					fwrite(fmt, 1, 1, file); /* default to just printing the char */
+					/* default to just printing the char */
+					fwrite(fmt, sizeof *fmt, 1, file);
 			}
 
 			buf = fmt + 1;
@@ -488,7 +487,8 @@ wat:
 	}
 
 	if(buflen)
-		fwrite(buf, buflen, 1, file);
+		fwrite(buf, sizeof *buf, buflen, file);
+
 
 	return 0;
 }
@@ -542,7 +542,7 @@ int printf(const char *fmt, ...)
 int fputs(const char *s, FILE *f)
 {
 	const size_t len = strlen(s);
-	return fwrite(s, len, 1, f) == len ? 1 : EOF;
+	return fwrite(s, sizeof *s, len, f) == len ? 1 : EOF;
 }
 
 int puts(const char *s)
