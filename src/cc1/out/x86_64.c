@@ -312,8 +312,11 @@ int impl_reg_is_callee_save(const struct vreg *r, type_ref *fr)
 
 	ent = x86_conv_lookup(fr);
 	for(i = 0; i < ent->n_callee_save_regs; i++)
-		if(ent->callee_save_regs[i] == r->idx)
+		if(ent->callee_save_regs[i] == r->idx){
+			ICW("TODO: callee-save register saving");
+			break;
 			return 1;
+		}
 
 	return 0;
 }
