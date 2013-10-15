@@ -43,18 +43,39 @@ void escape_string(char *old_str, int *plen)
 	free(new_str);
 }
 
-int literal_print(FILE *f, const char *s, int len)
+char *str_add_escape(const char *s, const size_t len)
 {
-	for(; len; s++, len--)
-		if(*s == '\\'){
-			if(fputs("\\\\", f) == EOF)
-				return EOF;
-		}else if(!isprint(*s)){
-			if(fprintf(f, "\\%03o", *s) < 0)
-				return EOF;
-		}else if(fputc(*s, f) == EOF){
-			return EOF;
+	size_t nlen = 0, i;
+	char *new, *p;
+
+	for(i = 0; i < len; i++)
+		if(*s == '\\')
+			nlen += 2;
+		else if(!isprint(s[i]))
+			nlen += 4;
+		else
+			nlen++;
+
+	p = new = umalloc(nlen + 1);
+
+	for(i = 0; i < len; i++)
+		if(s[i] == '\\'){
+			*p++ = s[i];
+			*p++ = '\\';
+		}else if(!isprint(s[i])){
+			int n = sprintf(p, "\\%03o", s[i]);
+			p += n;
+		}else{
+			*p++ = s[i];
 		}
 
-	return 0;
+	return new;
+}
+
+int literal_print(FILE *f, const char *s, size_t len)
+{
+	char *literal = str_add_escape(s, len);
+	int r = fprintf(f, "%s", literal);
+	free(literal);
+	return r;
 }

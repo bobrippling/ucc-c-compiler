@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "../../util/where.h"
 #include "../../util/alloc.h"
@@ -9,6 +10,7 @@
 #include "dbg.h"
 
 #include "../cc1.h" /* cc_out */
+#include "../str.h" /* str_add_escape */
 
 static void out_dbg_flush(void);
 
@@ -92,8 +94,11 @@ static void out_dbg_flush()
 	last_line = dbg_where.line;
 
 	/* TODO: escape w->fname */
-	if(new)
-		out_asm(".file %d \"%s\"", idx, dbg_where.fname);
+	if(new){
+		char *esc = str_add_escape(dbg_where.fname, strlen(dbg_where.fname));
+		out_asm(".file %d \"%s\"", idx, esc);
+		free(esc);
+	}
 
 	out_asm(".loc %d %d %d",
 			idx,
