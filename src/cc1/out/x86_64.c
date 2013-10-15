@@ -683,7 +683,9 @@ void impl_load(struct vstack *from, const struct vreg *reg)
 	 * the register is a pointer. for a dereference, call impl_deref()
 	 */
 
-	if(from->type == V_REG && vreg_eq(reg, &from->bits.regoff.reg))
+	if(from->type == V_REG
+	&& vreg_eq(reg, &from->bits.regoff.reg)
+	&& !from->is_lval)
 		return;
 
 	switch(from->type){
@@ -722,6 +724,9 @@ void impl_load(struct vstack *from, const struct vreg *reg)
 		}
 
 		case V_REG_SAVE:
+			if(from->is_lval)
+				goto lea;
+
 			/* v_reg_save loads are actually pointers to T */
 			impl_deref(from, reg, from->t);
 			break;
