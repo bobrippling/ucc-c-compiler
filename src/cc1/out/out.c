@@ -994,7 +994,8 @@ void out_op(enum op_type op)
 			t_const = &vp;        \
 			break;                \
 		case V_REG_SAVE:        \
-			v_to_reg(&vp);        \
+			if(!vp.is_lval)       \
+				break;              \
 		case V_REG:             \
 		case V_LBL:             \
 			t_mem_reg = &vp;      \
@@ -1013,9 +1014,17 @@ void out_op(enum op_type op)
 		/* t_const == vtop... should be */
 		long *p;
 		switch(t_mem_reg->type){
-			case V_LBL: p = &t_mem_reg->bits.lbl.offset; break;
-			case V_REG: p = &t_mem_reg->bits.regoff.offset; break;
-			default: ucc_unreach();
+			case V_LBL:
+				p = &t_mem_reg->bits.lbl.offset;
+				break;
+
+			case V_REG_SAVE:
+			case V_REG:
+				p = &t_mem_reg->bits.regoff.offset;
+				break;
+
+			default:
+				ucc_unreach();
 		}
 
 		*p += (op == op_minus ? -1 : 1) *
