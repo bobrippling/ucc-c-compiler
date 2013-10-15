@@ -4,14 +4,20 @@
 #include <math.h>
 #include <ctype.h>
 #include <stdarg.h>
+#include <limits.h>
 
 #include "../util/util.h"
 #include "data_structs.h"
 #include "tokenise.h"
 #include "../util/alloc.h"
 #include "../util/str.h"
+#include "../util/escape.h"
 #include "str.h"
 #include "cc1.h"
+
+#ifndef CHAR_BIT
+#  define CHAR_BIT 8
+#endif
 
 #define KEYWORD(x) { #x, token_ ## x }
 
@@ -122,6 +128,8 @@ static int current_fname_used;
 
 static char *buffer, *bufferpos;
 static int ungetch = EOF;
+
+static int in_comment;
 
 static struct line_list
 {
@@ -254,18 +262,12 @@ static void add_store_line(char *l)
 	store_line_last = &new->next;
 }
 
-static void tokenise_read_line()
+static ucc_wur char *tokenise_read_line()
 {
 	char *l;
 
 	if(buffereof)
-		return;
-
-	if(buffer){
-		if((fopt_mode & FOPT_SHOW_LINE) == 0)
-			free(buffer);
-		buffer = NULL;
-	}
+		return NULL;
 
 	l = in_func();
 	if(!l){
@@ -277,7 +279,7 @@ static void tokenise_read_line()
 			add_store_line(l);
 
 		/* format is # line? [0-9] "filename" ([0-9])* */
-		if(*l == '#'){
+		if(!in_comment && *l == '#'){
 			int lno;
 			char *ep;
 
@@ -316,8 +318,7 @@ static void tokenise_read_line()
 					die("expected '\"' or nothing after #line directive (%s)", ep);
 			}
 
-			tokenise_read_line();
-			return;
+			return tokenise_read_line();
 		}
 
 		loc_now.chr = 0;
@@ -328,10 +329,22 @@ static void tokenise_read_line()
 			current_fname_stack[current_fname_stack_cnt - 1].lno = loc_now.line;
 	}
 
-	if(l)
-		SET_CURRENT_LINE_STR(ustrdup(l));
+	return l;
+}
 
-	bufferpos = buffer = l;
+static void tokenise_next_line()
+{
+	char *new = tokenise_read_line();
+
+	if(new)
+		SET_CURRENT_LINE_STR(ustrdup(new));
+
+	if(buffer){
+		if((fopt_mode & FOPT_SHOW_LINE) == 0)
+			free(buffer);
+	}
+
+	bufferpos = buffer = new;
 }
 
 void tokenise_set_input(tokenise_line_f *func, const char *nam)
@@ -350,13 +363,73 @@ void tokenise_set_input(tokenise_line_f *func, const char *nam)
 	nexttoken();
 }
 
+char *token_current_spel()
+{
+	char *ret = currentspelling;
+	currentspelling = NULL;
+	return ret;
+}
+
+char *token_current_spel_peek(void)
+{
+	return currentspelling;
+}
+
+char *tok_at_label(where *w)
+{
+	/* [a-z]+:
+	 * need to cater for newlines
+	 */
+	char *p;
+
+	if(curtok != token_identifier)
+		return NULL;
+
+	/* look for a colon */
+	for(p = bufferpos; *p; p++){
+		if(*p == ':'){
+			char *ret;
+
+			where_cc1_current(w);
+
+			bufferpos = p + 1;
+			ret = token_current_spel();
+
+			nexttoken();
+
+			return ret;
+
+		}else if(!isspace(*p)){
+			return NULL;
+		}
+	}
+
+	/* read the next line in */
+	{
+		char *const new = tokenise_read_line();
+
+		if(new){
+			size_t const newlen = strlen(new);
+			size_t const poff = p - buffer;
+			size_t const len = poff + newlen;
+
+			buffer = urealloc1(buffer, len + 1);
+			p = buffer + poff;
+			memcpy(p, new, newlen + 1);
+			bufferpos = p;
+			return tok_at_label(w);
+		}
+		return NULL;
+	}
+}
+
 static int rawnextchar()
 {
 	if(buffereof)
 		return EOF;
 
 	while(!bufferpos || !*bufferpos){
-		tokenise_read_line();
+		tokenise_next_line();
 		if(buffereof)
 			return EOF;
 	}
@@ -379,7 +452,7 @@ static int peeknextchar()
 {
 	/* doesn't ignore isspace() */
 	if(!bufferpos)
-		tokenise_read_line();
+		tokenise_next_line();
 
 	if(buffereof)
 		return EOF;
@@ -389,52 +462,70 @@ static int peeknextchar()
 
 static void read_number(enum base mode)
 {
-	int read_suffix = 1;
-	int nlen;
-	char c;
-	enum intval_suffix suff = 0;
+	char *end;
+	int of; /*verflow*/
 
-	char_seq_to_iv(bufferpos, &currentval, &nlen, mode);
+	switch(mode){
+		case BIN: currentval.suffix = VAL_BIN; break;
+		case HEX: currentval.suffix = VAL_HEX; break;
+		case OCT: currentval.suffix = VAL_OCTAL; break;
+		case DEC: currentval.suffix = 0; break;
+	}
 
-	if(nlen == 0)
+	currentval.val = char_seq_to_ullong(bufferpos, &end, mode, 0, &of);
+
+	if(of){
+		/* force unsigned long long ULLONG_MAX */
+		currentval.val = INTVAL_T_MAX;
+		currentval.suffix = VAL_LLONG | VAL_UNSIGNED;
+	}
+
+	if(end == bufferpos)
 		die_at(NULL, "%s-number expected (got '%c')",
 				base_to_str(mode), peeknextchar());
 
-	bufferpos += nlen;
+	loc_now.chr += end - bufferpos;
+	bufferpos = end;
 
 	/* accept either 'U' 'L' or 'LL' as atomic parts (i.e. not LUL) */
 	/* fine using nextchar() since we peeknextchar() first */
-	do switch((c = peeknextchar())){
-		case 'U':
-		case 'u':
-			if(suff & VAL_UNSIGNED)
-				die_at(NULL, "duplicate U suffix");
-			suff |= VAL_UNSIGNED;
-			nextchar();
-			break;
-		case 'L':
-		case 'l':
-			if(suff & (VAL_LLONG | VAL_LONG))
-				die_at(NULL, "already have a L/LL suffix");
+	{
+		enum intval_suffix suff = 0;
+		char c;
 
-			nextchar();
-			if(peeknextchar() == c){
-				C99_LONGLONG();
-				suff |= VAL_LLONG;
+		for(;;) switch((c = peeknextchar())){
+			case 'U':
+			case 'u':
+				if(suff & VAL_UNSIGNED)
+					die_at(NULL, "duplicate U suffix");
+				suff |= VAL_UNSIGNED;
 				nextchar();
-			}else{
-				suff |= VAL_LONG;
-			}
-			break;
-		default:
-			read_suffix = 0;
-	}while(read_suffix);
+				break;
+			case 'L':
+			case 'l':
+				if(suff & (VAL_LLONG | VAL_LONG))
+					die_at(NULL, "already have a L/LL suffix");
 
-	/* don't touch cv.suffix until after
-	 * - it may already have ULL from an
-	 * overflow in parsing
-	 */
-	currentval.suffix |= suff;
+				nextchar();
+				if(peeknextchar() == c){
+					C99_LONGLONG();
+					suff |= VAL_LLONG;
+					nextchar();
+				}else{
+					suff |= VAL_LONG;
+				}
+				break;
+			default:
+				goto out;
+		}
+
+out:
+		/* don't touch cv.suffix until after
+		 * - it may already have ULL from an
+		 * overflow in parsing
+		 */
+		currentval.suffix |= suff;
+	}
 }
 
 static enum token curtok_to_xequal(void)
@@ -469,7 +560,7 @@ static int curtok_is_xequal()
 static void read_string(char **sptr, int *plen)
 {
 	char *const start = bufferpos;
-	char *const end = terminating_quote(start);
+	char *const end = str_quotefin(start);
 	int size;
 
 	if(!end){
@@ -536,50 +627,20 @@ static void read_string_multiple(const int is_wide)
 	currentstringwide = is_wide;
 }
 
-static void read_char(const int is_wide)
+static void cc1_read_quoted_char(const int is_wide)
 {
-	/* TODO: merge with read_string escape code */
-	int c = rawnextchar();
+	int multichar;
+	long ch = read_quoted_char(bufferpos, &bufferpos, &multichar);
 
-	if(c == EOF){
-		die_at(NULL, "Invalid character");
-	}else if(c == '\\'){
-		char esc = tolower(peeknextchar());
-
-		if(esc == 'x' || esc == 'b' || isoct(esc)){
-
-			if(esc == 'x' || esc == 'b')
-				nextchar();
-
-			read_number(esc == 'x' ? HEX : esc == 'b' ? BIN : OCT);
-
-			if(currentval.suffix & ~VAL_PREFIX_MASK)
-				die_at(NULL, "invalid character sequence: suffix given");
-
-			if(!is_wide && currentval.val > 0xff)
-				warn_at(NULL,
-						"invalid character sequence: too large (parsed 0x%" INTVAL_FMT_X ")",
-						currentval.val);
-
-			c = currentval.val;
-		}else{
-			/* special parsing */
-			c = escape_char(esc);
-
-			if(c == -1)
-				die_at(NULL, "invalid escape character '%c'", esc);
-
-			nextchar();
-		}
+	if(multichar){
+		if(ch & (~0UL << (CHAR_BIT * type_primitive_size(type_int))))
+			warn_at(NULL, "multi-char constant too large");
+		else
+			warn_at(NULL, "multi-char constant");
 	}
 
-	currentval.val = c;
-	currentval.suffix = 0;
-
-	if((c = nextchar()) != '\'')
-		die_at(NULL, "no terminating \"'\" for character (got '%c')", c);
-
-	curtok = token_character;
+	currentval.val = ch;
+	curtok = is_wide ? token_integer : token_character;
 }
 
 void nexttoken()
@@ -704,7 +765,7 @@ void nexttoken()
 			return;
 		case '\'':
 			nextchar();
-			read_char(1);
+			cc1_read_quoted_char(1);
 			return;
 	}
 
@@ -745,7 +806,7 @@ void nexttoken()
 			break;
 
 		case '\'':
-			read_char(0);
+			cc1_read_quoted_char(0);
 			break;
 
 		case '(':
@@ -782,19 +843,22 @@ void nexttoken()
 			break;
 		case '/':
 			if(peeknextchar() == '*'){
-				/* comment */
+				in_comment = 1;
+
 				for(;;){
 					int c = rawnextchar();
 					if(c == '*' && *bufferpos == '/'){
 						rawnextchar(); /* eat the / */
 						nexttoken();
+
+						in_comment = 0;
 						return;
 					}
 				}
 				die_at(NULL, "No end to comment");
 				return;
 			}else if(peeknextchar() == '/'){
-				tokenise_read_line();
+				tokenise_next_line();
 				nexttoken();
 				return;
 			}

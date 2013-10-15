@@ -22,25 +22,28 @@ my $any = 0;
 while(<>){
 	s/#.*//;
 	if(/^[ \t]*\.(byte|word|long|quad|zero|space)[ \t]+(.*)/){
+		my $sz = $1;
 		my $is_zero = is_zero($1);
 
 		(my $rest = $2) =~ s/ +$//;
 
-		for(split /, */, $rest){
+		for my $ent (split /, */, $rest){
 			my $r;
+			$ent =~ s/^_//;
 			if($is_zero){
-				$r = { size  => $_,
+				$r = { size  => $ent,
 					     value => 0 };
 			}else{
-				$r = { size  => $sizes{$1},
-					     value => $_ };
+				$r = { size  => $sizes{$sz},
+					     value => $ent };
 			}
 
 			emit($r);
 		}
 		$any = 1;
 	}elsif(/(.*): *$/){
-		emit({ lbl => $1 });
+		(my $lbl = $1) =~ s/^_//;
+		emit({ lbl => $lbl });
 		$any = 1;
 	}
 }

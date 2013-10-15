@@ -64,7 +64,7 @@ static int expr_passable(stmt *s)
 	return 1;
 }
 
-void mutate_stmt_expr(stmt *s)
+void init_stmt_expr(stmt *s)
 {
 	s->f_passable = expr_passable;
 }

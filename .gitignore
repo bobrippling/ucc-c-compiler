@@ -2,6 +2,8 @@
 
 config.mk
 
+tags
+
 src/cc1/cc1
 src/cpp2/cpp
 src/ucc/ucc

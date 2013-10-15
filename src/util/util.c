@@ -8,6 +8,12 @@
 #include "util.h"
 #include "alloc.h"
 
+#ifndef MIN
+#  define MIN(x, y) ((x) > (y) ? (y) : (x))
+#endif
+
+#define MAX_LINE_LEN 60
+
 enum
 {
 	colour_black,
@@ -48,6 +54,48 @@ static struct where *default_where(struct where *w)
 	return w;
 }
 
+static void warn_show_line_part(char *line, int pos, unsigned wlen)
+{
+	unsigned len = strlen(line);
+	int i;
+	struct { int start, end; } dotdot = { 0, 0 };
+
+	if(len > MAX_LINE_LEN){
+		/* is `pos' visible? */
+		if(pos >= MAX_LINE_LEN){
+			dotdot.start = 1;
+
+			line += pos - MAX_LINE_LEN / 2;
+			len -= pos - MAX_LINE_LEN / 2;
+
+			pos = MAX_LINE_LEN / 2;
+		}
+
+		if(len > MAX_LINE_LEN){
+			dotdot.end = 1;
+			line[MAX_LINE_LEN] = '\0';
+		}
+	}
+
+	fprintf(stderr, "  %s\"%s\"%s\n",
+			dotdot.start ? "..." : "",
+			line,
+			dotdot.end ? "..." : "");
+
+	for(i = pos + 3 + (dotdot.start ? 3 : 0); i > 0; i--)
+		fputc(' ', stderr);
+
+	fputc('^', stderr);
+
+	/* don't go over */
+	for(i = MIN(wlen, (unsigned)(MAX_LINE_LEN - pos));
+			i > 1; /* >1 since we've already put a '^' out */
+			i--)
+		fputc('~', stderr);
+
+	fputc('\n', stderr);
+}
+
 static void warn_show_line(const struct where *w)
 {
 	extern int show_current_line;
@@ -56,7 +104,6 @@ static void warn_show_line(const struct where *w)
 		static int buffed = 0;
 		char *line = ustrdup(w->line_str);
 		char *p, *nonblank;
-		int i;
 
 		if(!buffed){
 			/* line buffer stderr since we're outputting chars */
@@ -80,18 +127,7 @@ static void warn_show_line(const struct where *w)
 		if(!nonblank)
 			nonblank = line;
 
-		fprintf(stderr, "  \"%s\"\n", nonblank);
-
-		for(i = w->chr + 3 - (nonblank - line); i > 0; i--)
-			fputc(' ', stderr);
-
-		fputc('^', stderr);
-
-		/* >1 since we've already put a '^' out */
-		for(i = w->len; i > 1; i--)
-			fputc('~', stderr);
-
-		fputc('\n', stderr);
+		warn_show_line_part(nonblank, w->chr - (nonblank - line), w->len);
 
 		free(line);
 	}
@@ -277,16 +313,4 @@ char *ext_replace(const char *str, const char *ext)
 	}else{
 		return ustrdup(str);
 	}
-}
-
-char *terminating_quote(char *s)
-{
-	/* accept backslashes properly "\\" */
-	char *p;
-
-	for(p = s; *p && *p != '"'; p++)
-		if(*p == '\\')
-			++p;
-
-	return *p ? p : NULL;
 }

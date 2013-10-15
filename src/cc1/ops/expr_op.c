@@ -279,10 +279,6 @@ ptr_relation:
 				}
 			}
 
-
-			if(type_ref_is_void_ptr(resolved))
-				warn_at(w, "arithmetic on void pointer");
-
 			goto fin;
 		}
 	}

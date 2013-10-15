@@ -90,7 +90,7 @@ static void asm_declare_init_bitfields(
 	BITFIELD_DBG("bitfield out -- new\n");
 	for(i = 0; i < n; i++){
 		intval_t this = intval_truncate_bits(
-				vals[i].val, vals[i].width);
+				vals[i].val, vals[i].width, NULL);
 
 		width += vals[i].width;
 

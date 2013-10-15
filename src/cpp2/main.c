@@ -63,10 +63,17 @@ char cpp_time[16], cpp_date[16], cpp_timestamp[64];
 
 char **cd_stack = NULL;
 
-int option_debug     = 0;
 int option_line_info = 1;
+int option_trigraphs = 0, option_digraphs = 0;
 
-enum wmode wmode = 0;
+enum wmode wmode =
+	  WWHITESPACE
+	| WTRAILING
+	| WEMPTY_ARG
+	| WPASTE
+	| WFINALESCAPE
+	| WMULTICHAR
+	| WQUOTE;
 
 enum comment_strip strip_comments = STRIP_ALL;
 
@@ -77,8 +84,14 @@ static const struct
 } warns[] = {
 	{ "all", "turn on all warnings", ~0U },
 	{ "traditional", "warn about # in the first column", WTRADITIONAL },
-	{ "undef", "warn about undefined macros in #if/elif", WUNDEF },
+	{ "undef", "warn about undefined macros in #if/elif/undef", WUNDEF },
 	{ "unused-macros", "warn about unused macros", WUNUSED },
+	{ "redef", "warn about redefining macros", WREDEF },
+	{ "whitespace", "warn about no-whitespace after #define func(a)", WWHITESPACE },
+	{ "trailing", "warn about tokens after #else/endif", WTRAILING },
+	{ "empty-arg", "warn on empty argument to single-arg macro", WEMPTY_ARG },
+	{ "paste", "warn when pasting doesn't make a token", WPASTE },
+	{ "uncalled-macro", "warn when a function-macro is mentioned without ()", WUNCALLED_FN },
 };
 
 #define ITER_WARNS(j) for(j = 0; j < sizeof(warns)/sizeof(*warns); j++)
@@ -274,7 +287,7 @@ int main(int argc, char **argv)
 
 			case 'd':
 				if(argv[i][3])
-					goto usage;
+					goto defaul;
 				switch(argv[i][2]){
 					case 'M':
 					case 'S':
@@ -316,8 +329,13 @@ int main(int argc, char **argv)
 
 
 			default:
+defaul:
 				if(std_from_str(argv[i], &std) == 0){
 					/* we have an std */
+				}else if(!strcmp(argv[i], "-trigraphs")){
+					option_trigraphs = 1;
+				}else if(!strcmp(argv[i], "-digraphs")){
+					option_digraphs = 1;
 				}else{
 					fprintf(stderr, "unrecognised option \"%s\"\n", argv[i]);
 					goto usage;
@@ -406,6 +424,8 @@ usage:
 				"  -dM: debug output\n"
 				"  -dS: print macro usage stats\n"
 				"  -MM: generate Makefile dependencies\n"
+				"  -trigraphs: enable trigraphs\n"
+				"  -digraphs: enable digraphs\n"
 				, stderr);
 
 	{

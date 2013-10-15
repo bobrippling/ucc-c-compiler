@@ -75,7 +75,6 @@ struct expr
 	int assign_is_post;
 	int assign_is_init;
 #define expr_is_default    assign_is_post
-#define expr_computed_goto assign_is_post
 #define expr_cast_implicit assign_is_post
 #define expr_is_st_dot     assign_is_post
 #define expr_addr_implicit assign_is_post
@@ -109,6 +108,12 @@ struct expr
 			char *spel;
 		} ident;
 
+		struct
+		{
+			char *spel;
+			struct label *label;
+		} lbl;
+
 		struct /* used in compound literal */
 		{
 			sym *sym;
@@ -121,9 +126,12 @@ struct expr
 			unsigned extra_off;
 		} struct_mem;
 
-		sym *block_sym;
-
-		funcargs *block_args; /* ^{} */
+		struct
+		{
+			funcargs *args;
+			type_ref *retty;
+			sym *sym;
+		} block;
 
 		type_ref **types; /* used in __builtin */
 

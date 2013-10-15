@@ -46,26 +46,43 @@ int intval_str(char *buf, size_t nbuf, intval_t v, type_ref *ty)
 			v, is_signed);
 }
 
-intval_t intval_truncate_bits(intval_t val, unsigned bits)
+intval_t intval_truncate_bits(
+		intval_t val, unsigned bits,
+		sintval_t *signed_iv)
 {
-	return val & ~(-1UL << bits);
+	intval_t pos_mask = ~(~0ULL << bits);
+	intval_t truncated = val & pos_mask;
+
+	if(signed_iv){
+		sintval_t sig = truncated;
+
+		if((sintval_t)val < 0){
+			/* sign extend */
+			unsigned revbits = sizeof(intval_t) * CHAR_BIT - bits;
+
+			sig = (sig << revbits) >> revbits;
+		}
+
+		*signed_iv = sig;
+	}
+
+	return truncated;
 }
 
 intval_t intval_truncate(
-		intval_t val, unsigned bytes, intval_t *sign_extended)
+		intval_t val, unsigned bytes,
+		sintval_t *sign_extended)
 {
 	switch(bytes){
-#define CAST(sz, t)                                 \
+#define CAST(sz)                                    \
 		case sz:                                        \
 			val = intval_truncate_bits(                   \
-					val, bytes * CHAR_BIT - 1);               \
-			if(sign_extended)                             \
-				*sign_extended = (intval_t)(unsigned t)val; \
+			    val, bytes * CHAR_BIT - 1, sign_extended);\
 			break
 
-		CAST(1, char);
-		CAST(2, short);
-		CAST(4, int);
+		CAST(1);
+		CAST(2);
+		CAST(4);
 
 #undef CAST
 

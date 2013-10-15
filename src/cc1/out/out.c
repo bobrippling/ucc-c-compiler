@@ -16,8 +16,6 @@
 #include "../defs.h"
 #include "../const.h"
 
-#define v_check_type(t) if(!t) t = type_ref_cached_VOID_PTR()
-
 typedef char chk[OUT_VPHI_SZ == sizeof(struct vstack) ? 1 : -1];
 
 static int calc_ptr_step(type_ref *t);
@@ -61,10 +59,8 @@ int out_vcount(void)
 	return vtop ? 1 + (int)(vtop - vstack) : 0;
 }
 
-static void vpush(type_ref *t)
+static void ucc_nonnull() vpush(type_ref *t)
 {
-	v_check_type(t);
-
 	if(!vtop){
 		vtop = vstack;
 	}else{
@@ -83,8 +79,6 @@ static void vpush(type_ref *t)
 
 void v_clear(struct vstack *vp, type_ref *t)
 {
-	v_check_type(t);
-
 	memset(vp, 0, sizeof *vp);
 	vp->t = t;
 }
@@ -277,7 +271,7 @@ void v_freeup_regp(struct vstack *vp)
 	if(r >= 0){
 		impl_reg_cp(vp, r);
 
-		v_clear(vp, NULL);
+		v_clear(vp, vp->t);
 		vp->type = REG;
 		vp->bits.reg = r;
 
@@ -298,7 +292,7 @@ static int v_alloc_stack(int sz)
 		/* sz must be a multiple of mstack_align */
 		sz = pack_to_align(sz, cc1_mstack_align);
 
-		vpush(NULL);
+		vpush(type_ref_cached_INTPTR_T());
 		vtop->type = REG;
 		vtop->bits.reg = REG_SP;
 
@@ -434,7 +428,7 @@ static void out_set_lbl(const char *s, int pic)
 
 void out_push_lbl(const char *s, int pic)
 {
-	vpush(NULL);
+	vpush(type_ref_cached_VOID_PTR());
 
 	out_set_lbl(s, pic);
 }
@@ -448,7 +442,7 @@ void out_dup(void)
 {
 	/* TODO: mark reg as duped, but COW */
 	out_comment("dup");
-	vpush(NULL);
+	vpush(vtop->t);
 	switch(vtop[-1].type){
 		case CONST:
 		case STACK:
@@ -980,7 +974,6 @@ void v_cast(struct vstack *vp, type_ref *to)
 
 void out_change_type(type_ref *t)
 {
-	v_check_type(t);
 	/* XXX: memleak */
 	vtop->t = t;
 
@@ -1121,7 +1114,7 @@ void out_push_frame_ptr(int nframes)
 {
 	out_flush_volatile();
 
-	vpush(NULL);
+	vpush(type_ref_cached_VOID_PTR());
 	vtop->type = REG;
 	vtop->bits.reg = impl_frame_ptr_to_reg(nframes);
 }
@@ -1130,7 +1123,7 @@ void out_push_reg_save_ptr(void)
 {
 	out_flush_volatile();
 
-	vpush(NULL);
+	vpush(type_ref_cached_VOID_PTR());
 	vtop->type = STACK;
 	vtop->bits.off_from_bp = -stack_variadic_offset;
 }

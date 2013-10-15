@@ -45,7 +45,8 @@ void flow_gen(stmt_flow *flow, symtable *stab)
 	gen_block_decls(stab);
 
 	if(flow){
-		gen_block_decls(flow->for_init_symtab);
+		if(stab != flow->for_init_symtab)
+			gen_block_decls(flow->for_init_symtab);
 
 		if(flow->init_blk)
 			gen_stmt(flow->init_blk);
@@ -109,7 +110,7 @@ static int if_passable(stmt *s)
 	return (s->rhs ? fold_passable(s->rhs) : 1) || fold_passable(s->lhs);
 }
 
-void mutate_stmt_if(stmt *s)
+void init_stmt_if(stmt *s)
 {
 	s->f_passable = if_passable;
 }

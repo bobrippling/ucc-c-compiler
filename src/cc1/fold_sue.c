@@ -109,6 +109,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 		unsigned sz_max = 0;
 		unsigned offset = 0;
 		int realign_next = 0;
+		int submemb_const = 0;
 		struct
 		{
 			unsigned current_off, first_off;
@@ -127,9 +128,16 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 
 			fold_decl(d, stab, NULL);
 
+			if(type_ref_is_const(d->ref))
+				submemb_const = 1;
+
 			if((sub_sue = type_ref_is_s_or_u_or_e(d->ref))){
-				if(sub_sue != sue)
+				if(sub_sue != sue){
 					fold_sue(sub_sue, stab);
+
+					if(sub_sue->contains_const)
+						submemb_const = 1;
+				}
 
 				if(type_ref_is(d->ref, type_ref_ptr) || sub_sue->primitive == type_enum)
 					goto normal;
@@ -248,6 +256,8 @@ normal:
 			if(sz > sz_max)
 				sz_max = sz;
 		}
+
+		sue->contains_const = submemb_const;
 
 		sue->align = align_max;
 		sue->size = pack_to_align(

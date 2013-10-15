@@ -20,7 +20,7 @@ void fold_block_decls(symtable *stab, stmt **pinit_blk)
 	for(diter = stab->decls; diter && *diter; diter++){
 		decl *const d = *diter;
 		decl *found;
-		symtable *in;
+		symtable *above_scope;
 		int chk_shadow = 0, is_func = 0;
 
 		fold_decl(d, stab, pinit_blk);
@@ -32,7 +32,7 @@ void fold_block_decls(symtable *stab, stmt **pinit_blk)
 
 		if(chk_shadow
 		&& d->spel
-		&& (found = symtab_search_d(stab->parent, d->spel, &in)))
+		&& (found = symtab_search_d(stab->parent, d->spel, &above_scope)))
 		{
 			char buf[WHERE_BUF_SIZ];
 
@@ -46,12 +46,26 @@ void fold_block_decls(symtable *stab, stmt **pinit_blk)
 						"%s: note: previous definition",
 						d->spel, where_str_r(buf, &found->where));
 			}else{
+				const int same_scope = symtab_nested_internal(above_scope, stab);
+
+				/* same scope? error unless they're both extern */
+				if(same_scope && (
+					d->store != found->store
+					|| (STORE_MASK_STORE & d->store) != store_extern))
+				{
+					die_at(&d->where, "redefinition of \"%s\"\n"
+							"%s: note: previous definition here",
+							d->spel, where_str_r(buf, &found->where));
+				}
+
 				/* -Wshadow:
 				 * if it has a parent, we found it in local scope, so check the local mask
 				 * and vice versa
 				 */
-				if(warn_mode & (in->parent ? WARN_SHADOW_LOCAL : WARN_SHADOW_GLOBAL)){
-					const char *ty = in->parent ? "local" : "global";
+				if(warn_mode & (
+					above_scope->parent ? WARN_SHADOW_LOCAL : WARN_SHADOW_GLOBAL))
+				{
+					const char *ty = above_scope->parent ? "local" : "global";
 
 					warn_at(&d->where,
 							"declaration of \"%s\" shadows %s declaration\n"
@@ -105,28 +119,18 @@ void gen_block_decls(symtable *stab)
 {
 	decl **diter;
 
-	/* declare statics */
+	/* declare strings, extern functions and blocks */
 	for(diter = stab->decls; diter && *diter; diter++){
 		decl *d = *diter;
 		int func;
 
-		if((func = !!type_ref_is(d->ref, type_ref_func)) || decl_store_static_or_extern(d->store)){
-			int gen = 1;
-
-			if(func){
-				/* check if the func is defined globally */
-				symtable *globs = symtab_root(stab);
-				decl **i;
-
-				for(i = globs->decls; i && *i; i++){
-					if(!strcmp(d->spel, (*i)->spel)){
-						gen = 0;
-						break;
-					}
-				}
-			}
-
-			if(gen)
+		/* we may need a '.extern fn...' for prototypes... */
+		if((func = !!type_ref_is(d->ref, type_ref_func))
+		|| decl_store_static_or_extern(d->store))
+		{
+			/* if it's a string, go,
+			 * if it's the most-unnested func. prototype, go */
+			if(!func || !d->proto)
 				gen_asm_global(d);
 		}
 	}
@@ -174,7 +178,7 @@ static int code_passable(stmt *s)
 	return 1;
 }
 
-void mutate_stmt_code(stmt *s)
+void init_stmt_code(stmt *s)
 {
 	s->f_passable = code_passable;
 }

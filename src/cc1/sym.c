@@ -10,8 +10,10 @@
 #include "../util/alloc.h"
 #include "macros.h"
 #include "../util/dynarray.h"
+#include "../util/dynmap.h"
 #include "sue.h"
 #include "funcargs.h"
+#include "label.h"
 
 sym *sym_new(decl *d, enum sym_type t)
 {
@@ -63,6 +65,29 @@ symtable *symtab_root(symtable *child)
 	return child;
 }
 
+symtable *symtab_func_root(symtable *stab)
+{
+	while(stab->parent && stab->parent->parent)
+		stab = stab->parent;
+	return stab;
+}
+
+void symtab_params(symtable *stab, decl **params)
+{
+	stab->are_params = 1;
+	dynarray_add_array(&stab->decls, params);
+}
+
+int symtab_nested_internal(symtable *parent, symtable *nest)
+{
+	while(nest && nest->internal_nest){
+		if(nest->parent == parent)
+			return 1;
+		nest = nest->parent;
+	}
+	return 0;
+}
+
 decl *symtab_search_d(symtable *tab, const char *spel, symtable **pin)
 {
 	decl **const decls = tab->decls;
@@ -108,4 +133,41 @@ const char *sym_to_str(enum sym_type t)
 		CASE_STR_PREFIX(sym, global);
 	}
 	return NULL;
+}
+
+static void label_init(symtable **stab)
+{
+	*stab = symtab_func_root(*stab);
+	if((*stab)->labels)
+		return;
+	(*stab)->labels = dynmap_new((dynmap_cmp_f *)strcmp);
+}
+
+void symtab_label_add(symtable *stab, label *lbl)
+{
+	label_init(&stab);
+
+	dynmap_set(char *, label *,
+			symtab_func_root(stab)->labels,
+			lbl->spel, lbl);
+}
+
+label *symtab_label_find(symtable *stab, char *spel, where *w)
+{
+	label *lbl;
+
+	stab = symtab_func_root(stab);
+
+	lbl = stab->labels
+		? dynmap_get(char *, label *,
+		    stab->labels, spel)
+		: NULL;
+
+	if(!lbl){
+		/* forward decl */
+		lbl = label_new(w, spel, 0);
+		symtab_label_add(stab, lbl);
+	}
+
+	return lbl;
 }

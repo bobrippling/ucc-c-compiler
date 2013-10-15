@@ -1,1 +1,1 @@
-STMT_DEFS_PGEN(default);
+STMT_DEFS(default);

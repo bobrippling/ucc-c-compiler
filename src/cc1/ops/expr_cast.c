@@ -10,6 +10,8 @@
 #include "../sue.h"
 #include "../defs.h"
 
+#define IMPLICIT_STR(e) ((e)->expr_cast_implicit ? "implicit " : "")
+
 const char *str_expr_cast()
 {
 	return "cast";
@@ -41,20 +43,19 @@ static void fold_const_expr_cast(expr *e, consty *k)
 			if(type_ref_is_type(e->tree_type, type__Bool)){
 				piv->val = !!piv->val; /* analagous to out/out.c::out_normalise()'s constant case */
 
-			}else if(e->expr_cast_implicit){ /* otherwise this is a no-op */
+			}else{
 				const unsigned sz = type_ref_size(e->tree_type, &e->where);
 				const intval_t old = piv->val;
 				const int to_sig   = type_ref_is_signed(e->tree_type);
 				const int from_sig = type_ref_is_signed(e->expr->tree_type);
-				intval_t to_iv, to_iv_sign_ext;
+				intval_t to_iv;
+				sintval_t to_iv_sign_ext;
 
-				/* TODO: disallow for ptrs/non-ints */
-
-				/* we don't save the truncated value - we keep the original
-				 * so negative numbers, for example, are preserved */
 				to_iv = intval_truncate(piv->val, sz, &to_iv_sign_ext);
 
-				if(to_sig && from_sig ? old != to_iv_sign_ext : old != to_iv){
+				if(e->expr_cast_implicit
+				&& (to_sig && from_sig ? (sintval_t)old != to_iv_sign_ext : old != to_iv))
+				{
 #define CAST_WARN(pre_fmt, pre_val, post_fmt, post_val)  \
 						warn_at(&e->where,                           \
 								"implicit cast changes value from %"     \
@@ -82,6 +83,9 @@ static void fold_const_expr_cast(expr *e, consty *k)
 									INTVAL_FMT_U, (long long unsigned)to_iv);
 					}
 				}
+
+				/* need to sign extend if signed */
+				piv->val = from_sig && to_sig ? (intval_t)to_iv_sign_ext : to_iv;
 			}
 #undef piv
 			break;
@@ -159,7 +163,9 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 	fold_disallow_st_un(e, "cast-target");
 
 	if(!type_ref_is_complete(e->tree_type) && !type_ref_is_void(e->tree_type))
-		die_at(&e->where, "cast to incomplete type %s", type_ref_to_str(e->tree_type));
+		die_at(&e->where, "%scast to incomplete type %s",
+				IMPLICIT_STR(e),
+				type_ref_to_str(e->tree_type));
 
 	if((flag = !!type_ref_is(e->tree_type, type_ref_func)) || type_ref_is(e->tree_type, type_ref_array))
 		die_at(&e->where, "cast to %s type '%s'", flag ? "function" : "array", type_ref_to_str(e->tree_type));
@@ -185,7 +191,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 		char buf[TYPE_REF_STATIC_BUFSIZ];
 		warn_at(&e->where, "%scast from %spointer to %spointer\n"
 				"%s <- %s",
-				e->expr_cast_implicit ? "implicit " : "",
+				IMPLICIT_STR(e),
 				flag ? "" : "function-", flag ? "function-" : "",
 				type_ref_to_str(tlhs), type_ref_to_str_r(buf, trhs));
 	}

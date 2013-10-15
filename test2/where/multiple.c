@@ -20,7 +20,7 @@ return p_name += a_name;
 // initialisation
 int *p_name = 0;
 // CARETS:
-//            ^ mismatching
+//          ^ mismatching
 
 // init 2
 int func()
@@ -59,7 +59,7 @@ f(abcdef);
 char c;
 char *p = 0;
 // CARETS:
-//        ^ mismatching types
+//      ^ mismatching types
 f(c);
 // CARETS:
 //^ mismatching arg

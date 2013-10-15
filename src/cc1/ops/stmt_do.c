@@ -40,7 +40,7 @@ void style_stmt_do(stmt *s)
 	stylef(");");
 }
 
-void mutate_stmt_do(stmt *s)
+void init_stmt_do(stmt *s)
 {
 	s->f_passable = while_passable;
 }

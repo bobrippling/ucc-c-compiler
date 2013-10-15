@@ -52,7 +52,6 @@ static struct_union_enum_st *PARSE_type_ref_is_s_or_u_or_e2(type_ref *r, int all
 	return NULL;
 }
 
-static void parse_add_attr(decl_attr **append);
 static type_ref *parse_type_ref2(enum decl_mode mode, decl *dfor);
 
 /* sue = struct/union/enum */
@@ -135,12 +134,6 @@ static type_ref *parse_type_sue(enum type_primitive prim)
 
 	}else if(!spel){
 		die_at(NULL, "expected: %s definition or name", sue_str_type(prim));
-
-	}else{
-		/* predeclaring */
-		if(prim == type_enum && !sue_find_this_scope(current_scope, spel))
-			cc1_warn_at(NULL, 0, WARN_PREDECL_ENUM,
-					"predeclaration of enums is not C99");
 	}
 
 	{
@@ -153,21 +146,20 @@ static type_ref *parse_type_sue(enum type_primitive prim)
 				members, prim, is_complete,
 				/* isdef = */ curtok == token_semicolon);
 
-		type_ref *r = type_ref_new_type(
+		parse_add_attr(&this_sue_attr); /* struct A { ... } __attr__ */
+
+		/* sue may already exist */
+		decl_attr_append(&sue->attr, this_sue_attr);
+
+		return type_ref_new_type(
 				type_new_primitive_sue(prim, sue));
-
-		sue->attr = this_sue_attr; /* struct A __attr__ { ... } */
-
-		parse_add_attr(&r->attr); /* struct A { ... } __attr__ */
-
-		return r;
 	}
 }
 
 #include "parse_attr.c"
 #include "parse_init.c"
 
-static void parse_add_attr(decl_attr **append)
+void parse_add_attr(decl_attr **append)
 {
 	while(accept(token_attribute)){
 		EAT(token_open_paren);
@@ -682,8 +674,7 @@ fin:;
 empty_func:
 
 	/* put our args into the scope */
-	current_scope->are_params = 1;
-	dynarray_add_array(&current_scope->decls, args->arglist);
+	symtab_params(current_scope, args->arglist);
 
 	return args;
 }
@@ -887,6 +878,7 @@ static void parse_add_asm(decl *d)
 static decl *parse_decl(type_ref *btype, enum decl_mode mode)
 {
 	decl *d = decl_new();
+	where w_eq;
 
 	d->ref = parse_type3(mode, d, btype);
 
@@ -903,8 +895,11 @@ static decl *parse_decl(type_ref *btype, enum decl_mode mode)
 		parse_add_attr(&d->attr); /* int spel __attr__ */
 	}
 
-	if(d->spel && accept(token_assign))
+	if(d->spel && accept_where(token_assign, &w_eq)){
 		d->init = parse_initialisation();
+		/* top-level inits have their .where on the '=' token */
+		memcpy_safe(&d->init->where, &w_eq);
+	}
 
 	return d;
 }
@@ -1262,7 +1257,10 @@ add:
 			decl *d_prev = symtab_search_d(current_scope, d->spel, NULL);
 
 			if(d_prev){
-				/* link the proto chain for __attribute__ checking */
+				/* link the proto chain for __attribute__ checking,
+				 * nested function prototype checking and
+				 * '.extern fn' code gen easing
+				 */
 				d->proto = d_prev;
 
 				if(PARSE_DECL_IS_FUNC(d) && PARSE_DECL_IS_FUNC(d_prev))
