@@ -31,8 +31,6 @@ OBJ = \
 	ops/expr_assign_compound.o ops/expr_string.o \
 	${ARCH_OBJ}
 
-include ../../config.mk
-
 cc1: ${OBJ}
 	${CC} ${CFLAGS} ${LDFLAGS} -o $@ ${OBJ}
 
@@ -41,6 +39,9 @@ cc1: ${OBJ}
 
 clean:
 	rm -f *.o cc1 ops/*.o out/*.o
+
+tags:
+	ctags -R .
 
 .PHONY: clean deps
 
