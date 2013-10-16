@@ -6,6 +6,7 @@
 #include "../../util/util.h"
 #include "common.h"
 #include "lbl.h"
+#include "../../as_cfg.h"
 
 static int label_last    = 1,
 					 str_last      = 1,
@@ -35,7 +36,7 @@ char *out_label_code(const char *fmt)
 	len = strlen(fmt) + 10;
 	ret = umalloc(len + 1);
 
-	SNPRINTF(ret, len, ".L%s.%d", fmt, label_last++);
+	SNPRINTF(ret, len, ASM_PLBL_PRE "%s.%d", fmt, label_last++);
 
 	return ret;
 }
@@ -64,7 +65,7 @@ char *out_label_goto(char *func, char *lbl)
 {
 	int len = strlen(func) + strlen(lbl) + 6;
 	char *ret = umalloc(len);
-	SNPRINTF(ret, len, ".L%s.%s", func, lbl);
+	SNPRINTF(ret, len, ASM_PLBL_PRE "%s.%s", func, lbl);
 	return ret;
 }
 
@@ -74,7 +75,7 @@ char *out_label_case(enum out_label_type lbltype, int val)
 	char *ret = umalloc(len = 15 + 32);
 	switch(lbltype){
 		case CASE_DEF:
-			SNPRINTF(ret, len, ".Lcase_%d_default", switch_last);
+			SNPRINTF(ret, len, ASM_PLBL_PRE "case_%d_default", switch_last);
 			break;
 
 		case CASE_CASE:
@@ -85,7 +86,7 @@ char *out_label_case(enum out_label_type lbltype, int val)
 				val = -val;
 				extra = "m";
 			}
-			SNPRINTF(ret, len, ".Lcase%s_%d_%s%d", lbltype == CASE_RANGE ? "_rng" : "", switch_last, extra, val);
+			SNPRINTF(ret, len, ASM_PLBL_PRE "case%s_%d_%s%d", lbltype == CASE_RANGE ? "_rng" : "", switch_last, extra, val);
 			break;
 		}
 	}
@@ -98,6 +99,6 @@ char *out_label_flow(const char *fmt)
 {
 	int len = 16 + strlen(fmt);
 	char *ret = umalloc(len);
-	SNPRINTF(ret, len, ".Lflow_%s_%d", fmt, flow_last++);
+	SNPRINTF(ret, len, ASM_PLBL_PRE "flow_%s_%d", fmt, flow_last++);
 	return ret;
 }
