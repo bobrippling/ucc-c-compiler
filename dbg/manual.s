@@ -13,6 +13,12 @@ _start:
 
 .Ldbg_highpc:
 
+.section .data
+/* int i = 7 */
+.globl i
+i:
+	.long 7
+
 
 // debugging sections
 
@@ -67,6 +73,12 @@ _start:
 		.byte 0
 	.byte 0
 
+	.byte 6 // abrv for `int i'
+		.byte DW_TAG_variable, DW_CHILDREN_no
+			.byte DW_AT_name, DW_FORM_string
+			.byte DW_AT_type, DW_FORM_ref4
+		.byte 0
+	.byte 0
 
 .section .debug_info
 
@@ -93,6 +105,7 @@ _start:
 		.quad .Ldbg_begin_start
 		.quad .Ldbg_end_start
 
+.Ldbg_type_int:
 	.byte 3 // DW_TAG_base_type reference
 		.byte 4 // sizeof(int)
 		.byte DW_ATE_signed
@@ -105,6 +118,10 @@ _start:
 		.byte 8 // sizeof(int)
 		.byte DW_ATE_float
 		.asciz "double"
+
+	.byte 6
+		.asciz "i"
+		.quad .Ldbg_type_int
 
 .Ldbg_info_end:
 
