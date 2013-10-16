@@ -101,3 +101,9 @@ char *out_label_flow(const char *fmt)
 	SNPRINTF(ret, len, ".Lflow_%s_%d", fmt, flow_last++);
 	return ret;
 }
+
+char *out_label_dbg_type(void)
+{
+	static int i;
+	return ustrprintf(".Ldbg_type_%d", i++);
+}

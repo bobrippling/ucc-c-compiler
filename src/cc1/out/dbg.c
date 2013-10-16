@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "../../util/where.h"
+#include "../../util/dynmap.h"
 
 #include "../str.h"
 
@@ -13,6 +14,7 @@
 
 #include "../cc1.h" /* cc_out[] */
 
+#include "lbl.h"
 #include "dbg.h"
 
 struct dwarf_state
@@ -23,6 +25,8 @@ struct dwarf_state
 		int idx;
 		int indent;
 	} abbrev, info;
+
+	dynmap *types; /* type_ref * => char * */
 };
 
 enum dwarf_key
@@ -179,6 +183,23 @@ static void dwarf_basetype(struct dwarf_state *st, enum type_primitive prim, int
 	dwarf_end(st);
 }
 
+static void dwarf_type(struct dwarf_state *st, type_ref *ty)
+{
+	ICE("TODO: DWARF type output");
+}
+
+static char *dwarf_type_lbl(struct dwarf_state *st, type_ref *ty)
+{
+	char *lbl = dynmap_get(type_ref *, char *, st->types, ty);
+	if(!lbl){
+		lbl = out_label_dbg_type();
+		dynmap_set(type_ref *, char *, st->types, ty, lbl);
+		fprintf(st->info.f, "%s:\n", lbl);
+		dwarf_type(st, ty);
+	}
+	return lbl;
+}
+
 static void dwarf_cu(struct dwarf_state *st, const char *fname)
 {
 	dwarf_start(st);
@@ -210,19 +231,32 @@ static void dwarf_info_footer(struct dwarf_sec *sec)
 
 static void dwarf_global_variable(struct dwarf_state *st, decl *d)
 {
+	char *tyref = dwarf_type_lbl(st, d->ref);
+
 	dwarf_start(st);
 		dwarf_abbrev_start(st, DW_TAG_variable, DW_CHILDREN_no);
 			dwarf_attr(st, DW_AT_name, DW_FORM_string, d->spel);
-			dwarf_attr(st, DW_AT_type, DW_FORM_ref4, "TODO_ty_ref");
+			dwarf_attr(st, DW_AT_type, DW_FORM_ref4, tyref);
 		dwarf_sec_end(&st->abbrev);
 	dwarf_end(st);
+}
+
+static int hacky_type_ref_cmp(void *pa, void *pb)
+{
+	/* XXX: needs merge from float branch with type_ref_cmp() */
+	type_ref *a = pa, *b = pb;
+	char buf[TYPE_REF_STATIC_BUFSIZ];
+	type_ref_to_str_r(buf, a);
+
+	return strcmp(buf, type_ref_to_str(b));
 }
 
 void out_dbginfo(symtable_global *globs, const char *fname)
 {
 	struct dwarf_state st = {
 		{ cc_out[SECTION_DBG_ABBREV], 1, 1 },
-		{ cc_out[SECTION_DBG_INFO],   1, 1 }
+		{ cc_out[SECTION_DBG_INFO],   1, 1 },
+		dynmap_new(hacky_type_ref_cmp)
 	};
 
 	dwarf_info_header(&st.info);
@@ -260,4 +294,6 @@ void out_dbginfo(symtable_global *globs, const char *fname)
 	}
 
 	dwarf_info_footer(&st.info);
+
+	dynmap_free(st.types);
 }
