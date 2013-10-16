@@ -785,11 +785,11 @@ type_ref *decl_is_decayed_array(decl *d)
 	return type_ref_is_decayed_array(d->ref);
 }
 
-static void type_ref_add_str(type_ref *r, char *spel, int need_spc, char **bufp, int sz)
+static void type_ref_add_str(type_ref *r, char *spel, int *need_spc, char **bufp, int sz)
 {
 #define BUF_ADD(...) \
 	do{ int n = snprintf(*bufp, sz, __VA_ARGS__); *bufp += n, sz -= n; }while(0)
-#define ADD_SPC() do{ if(need_spc) BUF_ADD(" "); need_spc = 0; }while(0)
+#define ADD_SPC() do{ if(*need_spc) BUF_ADD(" "); *need_spc = 0; }while(0)
 
 	int need_paren;
 	enum type_qualifier q;
@@ -799,6 +799,7 @@ static void type_ref_add_str(type_ref *r, char *spel, int need_spc, char **bufp,
 		if(spel){
 			ADD_SPC();
 			BUF_ADD("%s", spel);
+			*need_spc = 0;
 		}
 		return;
 	}
@@ -854,7 +855,7 @@ static void type_ref_add_str(type_ref *r, char *spel, int need_spc, char **bufp,
 	if(q){
 		ADD_SPC();
 		BUF_ADD("%s", type_qual_to_str(q, 0));
-		need_spc = 1;
+		*need_spc = 1;
 		/* space out after qualifier, e.g.
 		 * int *const p;
 		 *           ^
@@ -864,7 +865,6 @@ static void type_ref_add_str(type_ref *r, char *spel, int need_spc, char **bufp,
 	}
 
 	type_ref_add_str(r->tmp, spel, need_spc, bufp, sz);
-	need_spc = 0; /* after the spel, no more spaces */
 
 	switch(r->type){
 		case type_ref_tdef:
@@ -881,6 +881,7 @@ static void type_ref_add_str(type_ref *r, char *spel, int need_spc, char **bufp,
 			decl **i;
 			funcargs *args = r->bits.func.args;
 
+			ADD_SPC();
 			BUF_ADD("(");
 			for(i = args->arglist; i && *i; i++){
 				char tmp_buf[DECL_STATIC_BUFSIZ];
@@ -1013,13 +1014,14 @@ const char *type_ref_to_str_r_spel_aka(
 		char *spel, const int aka)
 {
 	char *bufp = buf;
+	int spc = 1;
 
 	type_ref_add_type_str(r, &bufp, TYPE_REF_STATIC_BUFSIZ, aka);
 
 	/* print in reverse order */
 	r = type_ref_set_parent(r, NULL);
 	/* use r->tmp, since r is type_ref_t{ype,def} */
-	type_ref_add_str(r->tmp, spel, 1,
+	type_ref_add_str(r->tmp, spel, &spc,
 			&bufp, TYPE_REF_STATIC_BUFSIZ - (bufp - buf));
 
 	return buf;
