@@ -373,7 +373,8 @@ static int v_in(struct vstack *vp, enum vto to)
 			return 0; /* needs further checks */
 
 		case V_LBL:
-			return !!(to & TO_MEM);
+			if(!vp->is_lval)
+				return !!(to & TO_MEM);
 	}
 
 	return 0;
