@@ -262,4 +262,8 @@ void gen_asm(symtable_global *globs)
 
 	for(; iasm && *iasm; ++iasm)
 		gen_gasm((*iasm)->asm_str);
+
+	if(cc1_gdebug && globs->stab.decls)
+		out_dbginfo(globs, globs->stab.decls[0]->where.fname);
+
 }

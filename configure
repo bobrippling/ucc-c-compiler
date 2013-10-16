@@ -30,16 +30,22 @@ UCC_CPU     = ${UCC_CPU}
 		SECTION_TEXT="__TEXT,__text"
 		SECTION_DATA="__DATA,__data"
 		SECTION_BSS="__BSS,__bss"
+		SECTION_DBG_ABBREV="__DWARF,__debug_abbrev,regular,debug"
+		SECTION_DBG_INFO="__DWARF,__debug_info,regular,debug"
 	else
 		SECTION_TEXT=".text"
 		SECTION_DATA=".data"
 		SECTION_BSS=".bss"
+		SECTION_DBG_ABBREV=".debug_abbrev"
+		SECTION_DBG_INFO=".debug_info"
 	fi
 
 	cat > src/as_cfg.h <<!
 #define SECTION_TEXT $SECTION_TEXT
 #define SECTION_DATA $SECTION_DATA
 #define SECTION_BSS  $SECTION_BSS
+#define SECTION_DBG_ABBREV $SECTION_DBG_ABBREV
+#define SECTION_DBG_INFO $SECTION_DBG_INFO
 #define UCC_M32      ${UCC_M32}
 !
 
