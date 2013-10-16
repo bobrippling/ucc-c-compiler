@@ -12,7 +12,7 @@ const char *str_stmt_goto()
 
 void fold_stmt_goto(stmt *s)
 {
-	if(!curdecl_func)
+	if(!symtab_func(s->symtab))
 		die_at(&s->where, "goto outside of a function");
 
 	if(s->expr){

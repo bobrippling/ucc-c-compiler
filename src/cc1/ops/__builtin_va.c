@@ -26,19 +26,21 @@
 #include "../parse.h"
 #include "../parse_type.h"
 
-#define CURRENT_FUNC_ARGS_CNT()      \
-	dynarray_count(                    \
-			(void **)type_ref_funcargs(    \
-				curdecl_func->ref)->arglist)
+static unsigned current_func_args_cnt(symtable *stab)
+{
+	return dynarray_count(
+			(decl **)type_ref_funcargs(
+				symtab_func(stab)->ref)->arglist);
+}
 
-static void va_type_check(expr *va_l, expr *in)
+static void va_type_check(expr *va_l, expr *in, symtable *stab)
 {
 	/* we need to check decayed, since we may have
 	 * f(va_list l)
 	 * aka
 	 * f(__builtin_va_list *l) [the array has decayed]
 	 */
-	if(!curdecl_func)
+	if(!symtab_func(stab))
 		die_at(&in->where, "%s() outside a function",
 				BUILTIN_SPEL(in));
 
@@ -52,9 +54,9 @@ static void va_type_check(expr *va_l, expr *in)
 	}
 }
 
-static void va_ensure_variadic(expr *e)
+static void va_ensure_variadic(expr *e, symtable *stab)
 {
-	funcargs *args = type_ref_funcargs(curdecl_func->ref);
+	funcargs *args = type_ref_funcargs(symtab_func(stab)->ref);
 
 	if(!args->variadic)
 		die_at(&e->where, "%s in non-variadic function", BUILTIN_SPEL(e->expr));
@@ -75,11 +77,11 @@ static void fold_va_start(expr *e, symtable *stab)
 	FOLD_EXPR(e->funcargs[1], stab);
 
 	va_l = e->funcargs[0];
-	va_type_check(va_l, e->expr);
+	va_type_check(va_l, e->expr, stab);
 
-	va_ensure_variadic(e);
+	va_ensure_variadic(e, stab);
 
-	n_args = CURRENT_FUNC_ARGS_CNT();
+	n_args = current_func_args_cnt(stab);
 
 #ifndef UCC_VA_ABI
 	{
@@ -413,7 +415,7 @@ static void fold_va_arg(expr *e, symtable *stab)
 	FOLD_EXPR(e->lhs, stab);
 	fold_type_ref(ty, NULL, stab);
 
-	va_type_check(e->lhs, e->expr);
+	va_type_check(e->lhs, e->expr, stab);
 
 	if(type_ref_size(ty, &e->lhs->where) < type_primitive_size(type_int)){
 		warn_at(&e->where,
@@ -425,7 +427,7 @@ static void fold_va_arg(expr *e, symtable *stab)
 
 #ifdef UCC_VA_ABI
 	/* finally store the number of arguments to this function */
-	e->bits.n = CURRENT_FUNC_ARGS_CNT();
+	e->bits.n = current_func_args_cnt();
 #endif
 }
 
@@ -459,9 +461,9 @@ static void fold_va_end(expr *e, symtable *stab)
 		die_at(&e->where, "%s requires one argument", BUILTIN_SPEL(e->expr));
 
 	FOLD_EXPR(e->funcargs[0], stab);
-	va_type_check(e->funcargs[0], e->expr);
+	va_type_check(e->funcargs[0], e->expr, stab);
 
-	va_ensure_variadic(e);
+	va_ensure_variadic(e, stab);
 
 	e->tree_type = type_ref_cached_VOID();
 }

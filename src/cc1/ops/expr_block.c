@@ -59,8 +59,9 @@ void fold_expr_block(expr *e, symtable *stab)
 	/* add the function to the global scope */
 	{
 		decl *df = decl_new();
+		decl *in_func = symtab_func(stab);
 
-		df->spel = out_label_block(curdecl_func->spel);
+		df->spel = out_label_block(in_func ? in_func->spel : "globl");
 
 		/* add a global symbol for the block */
 		e->bits.block.sym = sym_new_stab(symtab_root(stab), df, sym_global);
@@ -69,6 +70,8 @@ void fold_expr_block(expr *e, symtable *stab)
 		df->ref = e->tree_type;
 
 		UCC_ASSERT(stmt_kind(e->code, code), "!code for block");
+
+		arg_symtab->in_func = df;
 
 		fold_funcargs(e->bits.block.args, arg_symtab, NULL);
 

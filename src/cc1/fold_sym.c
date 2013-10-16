@@ -103,7 +103,7 @@ void symtab_check_rw(symtable *tab)
 
 		if(d->sym) switch(d->sym->type){
 			case sym_arg:
-        if(!tab->func_exists)
+				if(!tab->in_func)
 					break;
 				/* fall */
 			case sym_local:

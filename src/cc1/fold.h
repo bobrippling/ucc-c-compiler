@@ -38,9 +38,6 @@ int fold_passable(stmt *s);
 int fold_passable_yes(stmt *s);
 int fold_passable_no( stmt *s);
 
-extern decl *curdecl_func;
-extern type_ref *curdecl_ref_func_called;
-
 void fold_stmt_and_add_to_curswitch(stmt *);
 
 #ifdef SYMTAB_DEBUG

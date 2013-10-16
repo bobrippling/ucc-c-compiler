@@ -48,6 +48,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 {
 	char *sp = e->bits.ident.spel;
 	sym *sym = e->bits.ident.sym;
+	decl *in_fn = symtab_func(stab);
 
 	if(sp && !sym)
 		e->bits.ident.sym = sym = symtab_search(stab, sp);
@@ -59,13 +60,13 @@ void fold_expr_identifier(expr *e, symtable *stab)
 			int len;
 
 			/* mutate into a string literal */
-			if(!curdecl_func){
+			if(!in_fn){
 				warn_at(&e->where, "__func__ is not defined outside of functions");
 				func = "";
 				len = 0;
 			}else{
-				func = curdecl_func->spel;
-				len = strlen(curdecl_func->spel);
+				func = in_fn->spel;
+				len = strlen(in_fn->spel);
 			}
 
 			expr_mutate_str(e, func, len + 1);
@@ -111,7 +112,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 	sym->nreads++;
 
 	if(!sym->func)
-		sym->func = curdecl_func;
+		sym->func = in_fn;
 }
 
 void gen_expr_str_identifier(expr *e)

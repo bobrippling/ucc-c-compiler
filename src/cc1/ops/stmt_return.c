@@ -8,7 +8,15 @@ const char *str_stmt_return()
 
 void fold_stmt_return(stmt *s)
 {
-	const int void_func = type_ref_is_void(curdecl_ref_func_called);
+	decl *in_func = symtab_func(s->symtab);
+	type_ref *ret_ty;
+	int void_func;
+
+	if(!in_func)
+		die_at(&s->where, "return outside a function");
+
+	ret_ty = type_ref_func_call(in_func->ref, NULL);
+	void_func = type_ref_is_void(ret_ty);
 
 	if(s->expr){
 		char buf[TYPE_REF_STATIC_BUFSIZ];
@@ -16,23 +24,24 @@ void fold_stmt_return(stmt *s)
 		FOLD_EXPR(s->expr, s->symtab);
 		fold_need_expr(s->expr, "return", 0);
 
-		fold_type_ref_equal(curdecl_ref_func_called, s->expr->tree_type,
+		fold_type_ref_equal(ret_ty, s->expr->tree_type,
 				&s->where, WARN_RETURN_TYPE, 0,
 				"mismatching return type for %s (%s <-- %s)",
-				curdecl_func->spel,
-				type_ref_to_str_r(buf, curdecl_ref_func_called),
+				in_func->spel,
+				type_ref_to_str_r(buf, ret_ty),
 				type_ref_to_str(s->expr->tree_type));
 
 		if(void_func){
 			cc1_warn_at(&s->where, 0, WARN_RETURN_TYPE,
-					"return with a value in void function %s", curdecl_func->spel);
+					"return with a value in void function %s", in_func->spel);
 		}else{
-			fold_insert_casts(curdecl_ref_func_called, &s->expr, s->symtab, &s->expr->where, "return");
+			fold_insert_casts(ret_ty, &s->expr,
+					s->symtab, &s->expr->where, "return");
 		}
 
 	}else if(!void_func){
 		cc1_warn_at(&s->where, 0, WARN_RETURN_TYPE,
-				"empty return in non-void function %s", curdecl_func->spel);
+				"empty return in non-void function %s", in_func->spel);
 
 	}
 }

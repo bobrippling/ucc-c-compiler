@@ -24,9 +24,6 @@
 #include "out/lbl.h"
 #include "fold_sue.h"
 
-decl     *curdecl_func;
-type_ref *curdecl_ref_func_called; /* for funcargs-local labels and return type-checking */
-
 /* FIXME: don't have the callers do type_ref_to_str() */
 int fold_type_ref_equal(
 		type_ref *a, type_ref *b, where *w,
@@ -557,7 +554,9 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 	&& (d->store & STORE_MASK_STORE) == store_static
 	&& d->spel)
 	{
-			d->spel_asm = out_label_static_local(curdecl_func->spel, d->spel);
+			d->spel_asm = out_label_static_local(
+					symtab_func(stab)->spel,
+					d->spel);
 	}
 #undef inits
 }
@@ -601,11 +600,9 @@ void fold_func(decl *func_decl)
 			where *where;
 		} the_return = { NULL, NULL };
 		symtable *const arg_symtab = DECL_FUNC_ARG_SYMTAB(func_decl);
+		type_ref *func_ret = type_ref_func_call(func_decl->ref, NULL);
 
-		decl     *const olddecl_func = curdecl_func;
-		type_ref *const olddecl_ref_func_called = curdecl_ref_func_called;
-
-		arg_symtab->func_exists = 1;
+		arg_symtab->in_func = func_decl;
 
 		if(func_decl->store & store_inline
 		&& (func_decl->store & STORE_MASK_STORE) == store_default)
@@ -618,15 +615,6 @@ void fold_func(decl *func_decl)
 		if(type_ref_is_tdef(func_decl->ref))
 			warn_at(&func_decl->where,
 					"typedef function implementation is an extension");
-
-		{
-			type_ref *fref = type_ref_is_func_or_block(func_decl->ref);
-
-			UCC_ASSERT(fref, "not a func or block");
-
-			curdecl_ref_func_called = type_ref_func_call(fref, NULL);
-			curdecl_func = func_decl;
-		}
 
 		{
 			decl **i;
@@ -653,7 +641,7 @@ void fold_func(decl *func_decl)
 		symtab_chk_labels(symtab_func_root(arg_symtab));
 
 		if(decl_attr_present(func_decl, attr_noreturn)){
-			if(!type_ref_is_void(curdecl_ref_func_called)){
+			if(!type_ref_is_void(func_ret)){
 				cc1_warn_at(&func_decl->where, 0, WARN_RETURN_UNDEF,
 						"function \"%s\" marked no-return has a non-void return value",
 						func_decl->spel);
@@ -682,7 +670,7 @@ void fold_func(decl *func_decl)
 						func_decl->spel, the_return.extra);
 			}
 
-		}else if(!type_ref_is_void(curdecl_ref_func_called)){
+		}else if(!type_ref_is_void(func_ret)){
 			/* non-void func - check it doesn't return */
 			if(fold_passable(func_decl->func_code)){
 				cc1_warn_at(&func_decl->where, 0, WARN_RETURN_UNDEF,
@@ -690,9 +678,6 @@ void fold_func(decl *func_decl)
 						func_decl->spel);
 			}
 		}
-
-		curdecl_func = olddecl_func;
-		curdecl_ref_func_called = olddecl_ref_func_called;
 	}
 }
 

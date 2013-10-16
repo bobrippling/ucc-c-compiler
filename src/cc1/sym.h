@@ -32,8 +32,8 @@ struct symtable
 {
 	int auto_total_size;
 	unsigned folded : 1, laidout : 1;
-	unsigned func_exists : 1; /* should we do r/w checks on args? */
 	unsigned internal_nest : 1, are_params : 1;
+	decl *in_func; /* for r/w checks on args and return-type checks */
 	/*
 	 * { int i; 5; int j; }
 	 * j's symtab is internally represented like:
@@ -81,6 +81,7 @@ void symtab_params(symtable *, decl **);
 
 symtable *symtab_root(symtable *child);
 symtable *symtab_func_root(symtable *stab);
+#define symtab_func(st) symtab_func_root(st)->in_func
 
 int symtab_nested_internal(symtable *parent, symtable *nest);
 

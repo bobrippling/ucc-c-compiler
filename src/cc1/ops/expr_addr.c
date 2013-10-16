@@ -21,7 +21,7 @@ int expr_is_addressable(expr *e)
 void fold_expr_addr(expr *e, symtable *stab)
 {
 	if(e->bits.lbl.spel){
-		if(!curdecl_func)
+		if(!symtab_func(stab))
 			die_at(&e->where, "address-of-label outside a function");
 
 		(e->bits.lbl.label =
