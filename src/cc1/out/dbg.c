@@ -49,7 +49,13 @@ enum
 	DW_CHILDREN_no = 0,
 	DW_CHILDREN_yes = 1,
 
+	DW_ATE_boolean = 0x2,
+	DW_ATE_float = 0x4,
 	DW_ATE_signed = 0x5,
+	DW_ATE_signed_char = 0x6,
+	DW_ATE_unsigned = 0x7,
+	DW_ATE_unsigned_char = 0x8,
+
 	DW_LANG_C89 = 0x1,
 	DW_LANG_C99 = 0xc
 };
@@ -151,13 +157,13 @@ static void dwarf_abbrev_start(struct dwarf_state *st, int b1, int b2)
 	st->abbrev.indent++;
 }
 
-static void dwarf_basetype(struct dwarf_state *st, enum type_primitive prim)
+static void dwarf_basetype(struct dwarf_state *st, enum type_primitive prim, int enc)
 {
 	dwarf_start(st);
 		dwarf_abbrev_start(st, DW_TAG_base_type, DW_CHILDREN_no);
 			dwarf_attr(st, DW_AT_name,      DW_FORM_string, type_primitive_to_str(prim));
 			dwarf_attr(st, DW_AT_byte_size, DW_FORM_data1,  type_primitive_size(prim));
-			dwarf_attr(st, DW_AT_encoding,  DW_FORM_data1,  DW_ATE_signed);
+			dwarf_attr(st, DW_AT_encoding,  DW_FORM_data1,  enc);
 		dwarf_sec_end(&st->abbrev);
 	dwarf_end(st);
 }
@@ -204,7 +210,18 @@ void out_dbginfo(symtable_global *globs, const char *fname)
 	dwarf_cu(&st, fname);
 
 	/* output btypes - FIXME: need a nice way to iterate over types */
-	dwarf_basetype(&st, type_int);
+	/* TODO: unsigned types */
+	dwarf_basetype(&st, type__Bool, DW_ATE_signed);
+	dwarf_basetype(&st, type_short, DW_ATE_signed);
+	dwarf_basetype(&st, type_int, DW_ATE_signed);
+	dwarf_basetype(&st, type_long, DW_ATE_signed);
+	dwarf_basetype(&st, type_llong, DW_ATE_signed);
+
+	dwarf_basetype(&st, type_char, DW_ATE_signed_char);
+
+	dwarf_basetype(&st, type_float, DW_ATE_float);
+	dwarf_basetype(&st, type_double, DW_ATE_float);
+	dwarf_basetype(&st, type_ldouble, DW_ATE_float);
 
 #if 0
 	/* output subprograms */
