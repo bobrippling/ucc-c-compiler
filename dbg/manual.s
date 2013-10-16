@@ -45,7 +45,21 @@ _start:
 	.byte 0
 
 
-	.byte 3 // abbrev. code
+	.byte 3 // abrv for int
+		.byte DW_TAG_base_type, DW_CHILDREN_no
+			.byte DW_AT_byte_size, DW_FORM_data1
+			.byte DW_AT_encoding, DW_FORM_data1
+			.byte DW_AT_name, DW_FORM_string
+		.byte 0
+	.byte 0
+	.byte 4 // abrv for long
+		.byte DW_TAG_base_type, DW_CHILDREN_no
+			.byte DW_AT_byte_size, DW_FORM_data1
+			.byte DW_AT_encoding, DW_FORM_data1
+			.byte DW_AT_name, DW_FORM_string
+		.byte 0
+	.byte 0
+	.byte 5 // abrv for double
 		.byte DW_TAG_base_type, DW_CHILDREN_no
 			.byte DW_AT_byte_size, DW_FORM_data1
 			.byte DW_AT_encoding, DW_FORM_data1
@@ -83,6 +97,14 @@ _start:
 		.byte 4 // sizeof(int)
 		.byte DW_ATE_signed
 		.asciz "int"
+	.byte 4 // DW_TAG_base_type reference
+		.byte 8
+		.byte DW_ATE_signed
+		.asciz "long"
+	.byte 5 // DW_TAG_base_type reference
+		.byte 8 // sizeof(int)
+		.byte DW_ATE_float
+		.asciz "double"
 
 .Ldbg_info_end:
 
