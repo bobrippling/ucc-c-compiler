@@ -67,6 +67,7 @@ void gen_expr_str(expr *e)
 {
 	/*gen_asm_local(e->bits.str.sym.decl); - done for the decl we create */
 	out_push_lbl(e->bits.str.sv.lbl, 1);
+	out_set_lvalue();
 }
 
 void gen_expr_str_str(expr *e)
