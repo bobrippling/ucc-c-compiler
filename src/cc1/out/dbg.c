@@ -28,6 +28,7 @@ struct dwarf_state
 enum dwarf_key
 {
 	DW_TAG_base_type = 0x24,
+	DW_TAG_variable = 0x34,
 	DW_AT_byte_size = 0xb,
 	DW_AT_encoding = 0x3e,
 	DW_AT_name = 0x3,
@@ -35,6 +36,7 @@ enum dwarf_key
 	DW_AT_low_pc = 0x11,
 	DW_AT_high_pc = 0x12,
 	DW_AT_producer = 0x25,
+	DW_AT_type = 0x49,
 };
 enum dwarf_valty
 {
@@ -42,6 +44,12 @@ enum dwarf_valty
 	DW_FORM_data1 = 0xb,
 	DW_FORM_data2 = 0x5,
 	DW_FORM_string = 0x8,
+	/*
+	DW_FORM_ref1 = 0x11,
+	DW_FORM_ref2 = 0x12,
+	DW_FORM_ref8 = 0x14,
+	*/
+	DW_FORM_ref4 = 0x13,
 };
 enum
 {
@@ -104,6 +112,9 @@ static void dwarf_attr(
 	/* info part */
 	va_start(l, val);
 	switch(val){
+		case DW_FORM_ref4:
+			fprintf(st->info.f, ".long %s", va_arg(l, char *));
+			break;
 		case DW_FORM_addr:
 			fprintf(st->info.f, ".quad 0x%lx", (long)va_arg(l, void *));
 			break;
@@ -197,6 +208,16 @@ static void dwarf_info_footer(struct dwarf_sec *sec)
 	fprintf(sec->f, ".Ldbg_info_end:\n");
 }
 
+static void dwarf_global_variable(struct dwarf_state *st, decl *d)
+{
+	dwarf_start(st);
+		dwarf_abbrev_start(st, DW_TAG_variable, DW_CHILDREN_no);
+			dwarf_attr(st, DW_AT_name, DW_FORM_string, d->spel);
+			dwarf_attr(st, DW_AT_type, DW_FORM_ref4, "TODO_ty_ref");
+		dwarf_sec_end(&st->abbrev);
+	dwarf_end(st);
+}
+
 void out_dbginfo(symtable_global *globs, const char *fname)
 {
 	struct dwarf_state st = {
@@ -223,19 +244,20 @@ void out_dbginfo(symtable_global *globs, const char *fname)
 	dwarf_basetype(&st, type_double, DW_ATE_float);
 	dwarf_basetype(&st, type_ldouble, DW_ATE_float);
 
-#if 0
 	/* output subprograms */
-	for(diter = globs->stab.decls; diter && *diter; diter++){
-		decl *d = *diter;
+	{
+		decl **diter;
+		for(diter = globs->stab.decls; diter && *diter; diter++){
+			decl *d = *diter;
 
-		if(DECL_IS_FUNC(d))
-			dwarf_subprogram_func(&st, d);
-		else
-			; /* TODO: global variables */
+			if(DECL_IS_FUNC(d)){
+				; /* TODO: dwarf_subprogram_func(&st, d); */
+			}else{
+				/* TODO: dump type unless seen */
+				dwarf_global_variable(&st, d);
+			}
+		}
 	}
-#else
-	(void)globs;
-#endif
 
 	dwarf_info_footer(&st.info);
 }
