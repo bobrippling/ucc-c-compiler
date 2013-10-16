@@ -1,7 +1,7 @@
 // RUN: %ucc -o %t %s
 // RUN: %t; [ $? -eq 0 ]
-// RUN: %t | sed -n 1p | grep 'hi 5'
-// RUN: %t | sed -n 2p | grep '^a$'
+// RUN: %t | sed -n 1p | grep '^a$'
+// RUN: %t | sed -n 2p | grep 'hi 5'
 
 main()
 {
