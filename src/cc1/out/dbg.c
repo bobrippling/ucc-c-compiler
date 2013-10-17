@@ -5,6 +5,7 @@
 
 #include "../../util/where.h"
 #include "../../util/dynmap.h"
+#include "../../util/platform.h"
 
 #include "../str.h"
 
@@ -221,7 +222,8 @@ static void dwarf_info_header(struct dwarf_sec *sec)
 			".Ldbg_info_start:\n"
 			"\t.short 2 # DWARF 2\n"
 			"\t.long 0  # abbrev offset\n"
-			"\t.byte 8  # sizeof(void *)\n");
+			"\t.byte %d  # sizeof(void *)\n",
+			platform_word_size());
 }
 
 static void dwarf_info_footer(struct dwarf_sec *sec)
