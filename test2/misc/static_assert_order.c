@@ -1,3 +1,4 @@
+// RUN: %ucc -fsyntax-only %s
 main()
 {
 	const int ki = 3;

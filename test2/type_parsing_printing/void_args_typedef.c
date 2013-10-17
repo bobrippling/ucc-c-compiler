@@ -1,18 +1,18 @@
 // RUN: %ucc -c %s
-// RUN: ! %ucc -DA -c %s
-// RUN: ! %ucc -DB -c %s
-// RUN: ! %ucc -DC -c %s
+// RUN: %ucc -DNAMED -c %s; [ $? -ne 0 ]
+// RUN: %ucc -DFIRST -c %s; [ $? -ne 0 ]
+// RUN: %ucc -DFIRST_NAMED -c %s; [ $? -ne 0 ]
 
 typedef void v;
 f(v);
 
 // should error:
-#ifdef A
+#ifdef NAMED
 g(v i);
 #endif
-#ifdef B
+#ifdef FIRST
 g(v, int);
 #endif
-#ifdef C
+#ifdef FIRST_NAMED
 g(v i, int j);
 #endif

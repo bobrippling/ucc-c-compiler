@@ -1,5 +1,5 @@
-// RUN: %ucc -fsyntax-only %s
+// RUN: %check %s
 struct node {
 	int x;
-	struct node;
+	struct node; // CHECK: !/warn/
 };
