@@ -30,8 +30,10 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 		type_ref *resolved = op_required_promotion(e->op, lvalue, e->rhs, &e->where, &tlhs, &trhs);
 
 		if(tlhs){
-			/* can't cast the lvalue - we must cast the rhs to the correct size  */
-			fold_insert_casts(lvalue->tree_type, &e->rhs, stab);
+			/* must cast the lvalue, then down cast once the operation is done
+			 * special handling for expr_kind(e->lhs, cast) is done in the gen-code
+			 */
+			fold_insert_casts(tlhs, &e->lhs, stab);
 
 		}else if(trhs){
 			fold_insert_casts(trhs, &e->rhs, stab);
@@ -50,9 +52,16 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 
 void gen_expr_assign_compound(expr *e)
 {
-	lea_expr(e->lhs);
+	const int is_upcast = expr_kind(e->lhs, cast);
+
+	/* int += float
+	 * lea int, cast up to float, add, cast down to int, store
+	 */
+	lea_expr(is_upcast ? expr_cast_child(e->lhs) : e->lhs);
 
 	if(e->assign_is_post){
+		UCC_ASSERT(!is_upcast, "can't do upcast for (%s)++", e->f_str());
+
 		out_dup();
 		out_deref();
 		out_flush_volatile();
@@ -68,9 +77,16 @@ void gen_expr_assign_compound(expr *e)
 	gen_expr(e->rhs);
 
 	/* here's the delayed dereference */
-	out_swap(), out_deref(), out_swap();
+	out_swap();
+	out_deref();
+	if(is_upcast)
+		out_cast(e->lhs->tree_type);
+	out_swap();
 
 	out_op(e->op);
+
+	if(is_upcast) /* need to cast back down to store */
+		out_cast(e->tree_type);
 
 	out_store();
 
