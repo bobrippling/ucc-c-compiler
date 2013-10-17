@@ -629,8 +629,8 @@ static int op_float_check(expr *e)
 		char buf[TYPE_REF_STATIC_BUFSIZ];
 
 		/* TODO: factor to a error-continuing function */
-		/*fold_had_error = 1; die for now */
-		die_at(&e->where,
+		fold_had_error = 1;
+		warn_at_print_error(&e->where,
 				"binary %s between '%s' and '%s'",
 				op_to_str(e->op),
 				type_ref_to_str_r(buf, tl),
