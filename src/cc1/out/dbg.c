@@ -55,6 +55,7 @@ enum dwarf_key
 	DW_AT_lower_bound = 0x22,
 	DW_AT_upper_bound = 0x2f,
 	DW_AT_prototyped = 0x27,
+	DW_AT_location = 0x2,
 };
 enum dwarf_valty
 {
@@ -69,6 +70,7 @@ enum dwarf_valty
 	*/
 	DW_FORM_ref4 = 0x13,
 	DW_FORM_flag = 0xc,
+	DW_FORM_block1 = 0xa,
 };
 enum
 {
@@ -132,6 +134,12 @@ static void dwarf_attr(
 	/* info part */
 	va_start(l, val);
 	switch(val){
+		case DW_FORM_block1:
+			fprintf(st->info.f, ".byte 9, 3\n"); /* FIXME: doesn't work? */
+			indent(st->info.f, st->info.indent);
+			fprintf(st->info.f, ".quad %s", va_arg(l, char *));
+			st->info.length += 9;
+			break;
 		case DW_FORM_ref4:
 			fprintf(st->info.f, ".long %u", va_arg(l, unsigned));
 			st->info.length += 4;
@@ -387,6 +395,7 @@ static void dwarf_global_variable(struct dwarf_state *st, decl *d)
 		dwarf_abbrev_start(st, DW_TAG_variable, DW_CHILDREN_no);
 			dwarf_attr(st, DW_AT_name, DW_FORM_string, d->spel);
 			dwarf_attr(st, DW_AT_type, DW_FORM_ref4, typos);
+			dwarf_attr(st, DW_AT_location, DW_FORM_block1, d->spel_asm);
 		dwarf_sec_end(&st->abbrev);
 	dwarf_end(st);
 }
