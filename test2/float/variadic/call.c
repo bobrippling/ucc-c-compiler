@@ -1,5 +1,4 @@
-// RUN: %ucc -o %t %s
-// RUN: %t
+// RUN: %ocheck 7 %s
 
 #include <stdarg.h>
 
@@ -7,7 +6,7 @@ float f(int a, ...)
 {
 	va_list l;
 	va_start(l, a);
-	float r = va_arg(l, float);
+	float r = va_arg(l, double);
 	va_end(l);
 	return r;
 }

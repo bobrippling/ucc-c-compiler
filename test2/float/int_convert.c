@@ -1,4 +1,4 @@
-// RUN: [ `%ucc -S -o- %s | grep 'cvtsi2ss ' | wc -l` -eq 2 ]
+// RUN: [ `%ucc -S -o- %s | grep 'cvtsi2ssl ' | wc -l` -eq 2 ]
 // RUN: [ `%ucc -S -o- %s | grep 'cvtsi2ssq ' | wc -l` -eq 1 ]
 // RUN: %ucc -c %s
 

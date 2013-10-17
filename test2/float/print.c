@@ -1,5 +1,5 @@
 // RUN: %ucc -o %t %s
-// RUN: %t | %output_check '5.2 5.2'
+// RUN: %t | %output_check '5.2 -5.2 5.2'
 
 float f1 = 5.2f;
 float f2 = -5.2f;

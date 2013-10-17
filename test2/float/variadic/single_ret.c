@@ -16,5 +16,5 @@ double f(int a, ...)
 
 main()
 {
-	printf("%f\n", f(2, (float)3));
+	printf("%.0f\n", f(2, (float)3));
 }
