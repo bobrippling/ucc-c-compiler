@@ -4,7 +4,6 @@
 #include <string.h>
 
 #include "../../util/where.h"
-#include "../../util/dynmap.h"
 #include "../../util/platform.h"
 
 #include "../str.h"
@@ -27,9 +26,9 @@ struct dwarf_state
 		FILE *f;
 		int idx;
 		int indent;
+		unsigned length;
 	} abbrev, info;
-
-	dynmap *types; /* type_ref * => char * */
+#define DWARF_SEC_INIT(fp) { (fp), 1, 1, 0 }
 };
 
 enum dwarf_key
@@ -107,6 +106,7 @@ static void dwarf_sec_byte(struct dwarf_sec *sec, int byte, ...) /* -1 terminato
 
 	do{
 		fprintf(sec->f, "%s%d", join, byte);
+		sec->length++;
 		join = ", ";
 
 		byte = va_arg(l, int);
@@ -133,23 +133,28 @@ static void dwarf_attr(
 	va_start(l, val);
 	switch(val){
 		case DW_FORM_ref4:
-			fprintf(st->info.f, ".long %s", va_arg(l, char *));
+			fprintf(st->info.f, ".long %u", va_arg(l, unsigned));
+			st->info.length += 4;
 			break;
 		case DW_FORM_addr:
 			fprintf(st->info.f, ".quad 0x%lx", (long)va_arg(l, void *));
+			st->info.length += 8;
 			break;
 		case DW_FORM_data1:
 		case DW_FORM_flag:
 			fprintf(st->info.f, ".byte %d", va_arg(l, int));
+			st->info.length++;
 			break;
 		case DW_FORM_data2:
 			fprintf(st->info.f, ".word %d", va_arg(l, int));
+			st->info.length += 2;
 			break;
 		case DW_FORM_string:
 		{
 			char *esc = va_arg(l, char *);
 			esc = str_add_escape(esc, strlen(esc));
 			fprintf(st->info.f, ".asciz \"%s\"", esc);
+			st->info.length += strlen(esc) + 1;
 			free(esc);
 			break;
 		}
@@ -200,14 +205,24 @@ static void dwarf_basetype(struct dwarf_state *st, enum type_primitive prim, int
 	dwarf_end(st);
 }
 
-static void dwarf_type(struct dwarf_state *st, type_ref *ty)
+static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 {
+	unsigned this_start;
+
 	switch(ty->type){
 		case type_ref_type:
 		{
 			/* btypes have been done - check sues */
 			struct_union_enum_st *sue = ty->bits.type->sue;
+
+			this_start = st->info.length;
+
 			if(sue){
+				fprintf(stderr, "TODO: sue\n");
+			}else{
+				/* TODO: unsigned type */
+				dwarf_basetype(st, ty->bits.type->primitive,
+						type_ref_is_floating(ty) ? DW_ATE_float : DW_ATE_signed);
 			}
 			break;
 		}
@@ -215,45 +230,56 @@ static void dwarf_type(struct dwarf_state *st, type_ref *ty)
 		case type_ref_tdef:
 			if(ty->bits.tdef.decl){
 				decl *d = ty->bits.tdef.decl;
+				const unsigned sub_pos = dwarf_type(st, d->ref);
+
+				this_start = st->info.length;
 
 				dwarf_start(st);
 					dwarf_abbrev_start(st, DW_TAG_typedef, DW_CHILDREN_yes);
 						dwarf_attr(st, DW_AT_name, DW_FORM_string, d->spel);
-						dwarf_attr(st, DW_AT_type, DW_FORM_ref4, "???");
+						dwarf_attr(st, DW_AT_type, DW_FORM_ref4, sub_pos);
 					dwarf_sec_end(&st->abbrev);
 				dwarf_end(st);
-
-				dwarf_type(st, d->ref);
 			}else{
 				/* skip typeof() */
+				this_start = st->info.length;
 				dwarf_type(st, ty->bits.tdef.type_of->tree_type);
 			}
 			break;
 
 		case type_ref_ptr:
+		{
+			const unsigned sub_pos = dwarf_type(st, ty->ref);
+
+			this_start = st->info.length;
+
 			dwarf_start(st);
 				dwarf_abbrev_start(st, DW_TAG_pointer_type, DW_CHILDREN_yes);
 					dwarf_attr(st, DW_AT_byte_size, DW_FORM_data1, platform_word_size());
-					dwarf_attr(st, DW_AT_type, DW_FORM_ref4, "???");
+					dwarf_attr(st, DW_AT_type, DW_FORM_ref4, sub_pos);
 				dwarf_sec_end(&st->abbrev);
 			dwarf_end(st);
-
-			dwarf_type(st, ty->ref);
 			break;
+		}
 
 		case type_ref_block:
 			/* skip */
+			this_start = st->info.length;
 			dwarf_type(st, ty->ref);
 			break;
 
 		case type_ref_func:
 		{
 			decl **i;
+			const unsigned pos_ref = dwarf_type(st, ty->ref);
+			/*pos_sibling = pos_ref + ??? */
+
+			this_start = st->info.length;
 
 			dwarf_start(st);
 				dwarf_abbrev_start(st, DW_TAG_subroutine_type, DW_CHILDREN_yes);
-					dwarf_attr(st, DW_AT_sibling, DW_FORM_ref4, "???");
-					dwarf_attr(st, DW_AT_type, DW_FORM_ref4, "???");
+					/*dwarf_attr(st, DW_AT_sibling, DW_FORM_ref4, pos_sibling);*/
+					dwarf_attr(st, DW_AT_type, DW_FORM_ref4, pos_ref);
 					dwarf_attr(st, DW_AT_prototyped, DW_FORM_flag, 1);
 				dwarf_sec_end(&st->abbrev);
 			dwarf_end(st);
@@ -262,16 +288,14 @@ static void dwarf_type(struct dwarf_state *st, type_ref *ty)
 			    i && *i;
 			    i++)
 			{
+				const unsigned sub_pos = dwarf_type(st, (*i)->ref);
+
 				dwarf_start(st);
 					dwarf_abbrev_start(st, DW_TAG_formal_parameter, DW_CHILDREN_no);
-						dwarf_attr(st, DW_AT_type, DW_FORM_ref4, "???");
+						dwarf_attr(st, DW_AT_type, DW_FORM_ref4, sub_pos);
 					dwarf_sec_end(&st->abbrev);
 				dwarf_end(st);
-
-				dwarf_type(st, (*i)->ref);
 			}
-
-			dwarf_type(st, ty->ref);
 			break;
 		}
 
@@ -279,14 +303,17 @@ static void dwarf_type(struct dwarf_state *st, type_ref *ty)
 		{
 			int have_sz = !!ty->bits.array.size;
 			intval_t sz;
+			const unsigned sub_pos = dwarf_type(st, ty->ref);
+
+			this_start = st->info.length;
 
 			if(have_sz)
 				sz = const_fold_val(ty->bits.array.size);
 
 			dwarf_start(st);
 				dwarf_abbrev_start(st, DW_TAG_array_type, DW_CHILDREN_yes);
-					dwarf_attr(st, DW_AT_type, DW_FORM_ref4, "???");
-					dwarf_attr(st, DW_AT_sibling, DW_FORM_ref4, "???");
+					dwarf_attr(st, DW_AT_type, DW_FORM_ref4, sub_pos);
+					/*dwarf_attr(st, DW_AT_sibling, DW_FORM_ref4, "???");*/
 				dwarf_sec_end(&st->abbrev);
 
 				if(have_sz){
@@ -296,35 +323,28 @@ static void dwarf_type(struct dwarf_state *st, type_ref *ty)
 					dwarf_sec_end(&st->abbrev);
 				}
 			dwarf_end(st);
-			dwarf_type(st, ty->ref);
 			break;
 		}
 
 		case type_ref_cast:
+		{
+			const unsigned sub_pos = dwarf_type(st, ty->ref);
+			this_start = st->info.length;
+
 			if(ty->bits.cast.is_signed_cast){
 				/* skip */
 			}else{
 				dwarf_start(st);
 					dwarf_abbrev_start(st, DW_TAG_const_type, DW_CHILDREN_yes);
-						dwarf_attr(st, DW_AT_type, DW_FORM_ref4, "???");
+						dwarf_attr(st, DW_AT_type, DW_FORM_ref4, sub_pos);
 					dwarf_sec_end(&st->abbrev);
 				dwarf_end(st);
 			}
-			dwarf_type(st, ty->ref);
 			break;
+		}
 	}
-}
 
-static char *dwarf_type_lbl(struct dwarf_state *st, type_ref *ty)
-{
-	char *lbl = dynmap_get(type_ref *, char *, st->types, ty);
-	if(!lbl){
-		lbl = out_label_dbg_type();
-		dynmap_set(type_ref *, char *, st->types, ty, lbl);
-		fprintf(st->info.f, "%s:\n", lbl);
-		dwarf_type(st, ty);
-	}
-	return lbl;
+	return this_start;
 }
 
 static void dwarf_cu(struct dwarf_state *st, const char *fname)
@@ -350,6 +370,8 @@ static void dwarf_info_header(struct dwarf_sec *sec)
 			"\t.long 0  # abbrev offset\n"
 			"\t.byte %d  # sizeof(void *)\n",
 			platform_word_size());
+
+	sec->length += 4 + 2 + 4 + 1;
 }
 
 static void dwarf_info_footer(struct dwarf_sec *sec)
@@ -359,50 +381,27 @@ static void dwarf_info_footer(struct dwarf_sec *sec)
 
 static void dwarf_global_variable(struct dwarf_state *st, decl *d)
 {
-	char *tyref = dwarf_type_lbl(st, d->ref);
+	const unsigned typos = dwarf_type(st, d->ref);
 
 	dwarf_start(st);
 		dwarf_abbrev_start(st, DW_TAG_variable, DW_CHILDREN_no);
 			dwarf_attr(st, DW_AT_name, DW_FORM_string, d->spel);
-			dwarf_attr(st, DW_AT_type, DW_FORM_ref4, tyref);
+			dwarf_attr(st, DW_AT_type, DW_FORM_ref4, typos);
 		dwarf_sec_end(&st->abbrev);
 	dwarf_end(st);
-}
-
-static int hacky_type_ref_cmp(void *pa, void *pb)
-{
-	/* XXX: needs merge from float branch with type_ref_cmp() */
-	type_ref *a = pa, *b = pb;
-
-	return type_ref_equal(a, b, DECL_CMP_EXACT_MATCH);
 }
 
 void out_dbginfo(symtable_global *globs, const char *fname)
 {
 	struct dwarf_state st = {
-		{ cc_out[SECTION_DBG_ABBREV], 1, 1 },
-		{ cc_out[SECTION_DBG_INFO],   1, 1 },
-		dynmap_new(hacky_type_ref_cmp)
+		DWARF_SEC_INIT(cc_out[SECTION_DBG_ABBREV]),
+		DWARF_SEC_INIT(cc_out[SECTION_DBG_INFO]),
 	};
 
 	dwarf_info_header(&st.info);
 
 	/* output abbrev Compile Unit header */
 	dwarf_cu(&st, fname);
-
-	/* output btypes - FIXME: need a nice way to iterate over types */
-	/* TODO: unsigned types */
-	dwarf_basetype(&st, type__Bool, DW_ATE_signed);
-	dwarf_basetype(&st, type_short, DW_ATE_signed);
-	dwarf_basetype(&st, type_int, DW_ATE_signed);
-	dwarf_basetype(&st, type_long, DW_ATE_signed);
-	dwarf_basetype(&st, type_llong, DW_ATE_signed);
-
-	dwarf_basetype(&st, type_char, DW_ATE_signed_char);
-
-	dwarf_basetype(&st, type_float, DW_ATE_float);
-	dwarf_basetype(&st, type_double, DW_ATE_float);
-	dwarf_basetype(&st, type_ldouble, DW_ATE_float);
 
 	/* output subprograms */
 	{
@@ -420,6 +419,4 @@ void out_dbginfo(symtable_global *globs, const char *fname)
 	}
 
 	dwarf_info_footer(&st.info);
-
-	dynmap_free(st.types);
 }
