@@ -24,12 +24,15 @@ sub basename
 my $ucc = '../ucc';
 my $file = undef;
 my $verbose = 0;
+my $keep_temps = 0;
 
 for(@ARGV){
 	if(/^--ucc=(.+)/){
 		$ucc = $1;
 	}elsif($_ eq '-v'){
 		$verbose = 1;
+	}elsif($_ eq '--keep'){
+		$keep_temps = 1;
 	}elsif(!defined $file){
 		$file = $_;
 	}else{
@@ -41,7 +44,7 @@ for(@ARGV){
 $target = "./$target";
 
 END {
-	unlink $target if defined $target;
+	unlink $target if defined $target and not $keep_temps;
 }
 
 my %vars = (
