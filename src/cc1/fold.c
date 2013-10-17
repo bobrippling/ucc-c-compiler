@@ -831,6 +831,12 @@ void fold_funcargs(funcargs *fargs, symtable *stab, type_ref *from)
 			/* fold before for array checks, etc */
 			fold_decl(d, stab, NULL);
 
+			if(type_ref_is_void(d->ref)){
+				/* allow if it's the first, only and unnamed */
+				if(i != 0 || fargs->arglist[1] || d->spel)
+					die_at(&d->where, "function parameter is void");
+			}
+
 			/* convert any array definitions and functions to pointers */
 			EOF_WHERE(&d->where,
 				/* must be before the decl is folded (since fold checks this) */
