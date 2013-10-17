@@ -81,6 +81,22 @@ static void fold_va_start(expr *e, symtable *stab)
 
 	va_ensure_variadic(e, stab);
 
+	/* second arg check */
+	{
+		sym *second = NULL;
+		decl **args = symtab_func_root(stab)->decls;
+		sym *arg = args[dynarray_count(args) - 1]->sym;
+
+		if(expr_kind(e->funcargs[1], identifier))
+			second = e->funcargs[1]->bits.ident.sym;
+
+
+		if(second != arg)
+			warn_at(&e->funcargs[1]->where,
+					"second parameter to va_start "
+					"isn't last named argument");
+	}
+
 	n_args = current_func_args_cnt(stab);
 
 #ifndef UCC_VA_ABI
