@@ -12,6 +12,8 @@
 #include "../data_structs.h"
 #include "../expr.h"
 #include "../tree.h"
+#include "../const.h"
+#include "../funcargs.h"
 
 #include "../cc1.h" /* cc_out[] */
 
@@ -34,6 +36,14 @@ enum dwarf_key
 {
 	DW_TAG_base_type = 0x24,
 	DW_TAG_variable = 0x34,
+	DW_TAG_typedef = 0x16,
+	DW_TAG_pointer_type = 0xf,
+	DW_TAG_array_type = 0x1,
+	DW_TAG_subrange_type = 0x21,
+	DW_TAG_const_type = 0x26,
+	DW_TAG_subroutine_type = 0x15,
+	DW_TAG_formal_parameter = 0x5,
+
 	DW_AT_byte_size = 0xb,
 	DW_AT_encoding = 0x3e,
 	DW_AT_name = 0x3,
@@ -42,6 +52,10 @@ enum dwarf_key
 	DW_AT_high_pc = 0x12,
 	DW_AT_producer = 0x25,
 	DW_AT_type = 0x49,
+	DW_AT_sibling = 0x1,
+	DW_AT_lower_bound = 0x22,
+	DW_AT_upper_bound = 0x2f,
+	DW_AT_prototyped = 0x27,
 };
 enum dwarf_valty
 {
@@ -55,6 +69,7 @@ enum dwarf_valty
 	DW_FORM_ref8 = 0x14,
 	*/
 	DW_FORM_ref4 = 0x13,
+	DW_FORM_flag = 0xc,
 };
 enum
 {
@@ -124,6 +139,7 @@ static void dwarf_attr(
 			fprintf(st->info.f, ".quad 0x%lx", (long)va_arg(l, void *));
 			break;
 		case DW_FORM_data1:
+		case DW_FORM_flag:
 			fprintf(st->info.f, ".byte %d", va_arg(l, int));
 			break;
 		case DW_FORM_data2:
@@ -186,7 +202,117 @@ static void dwarf_basetype(struct dwarf_state *st, enum type_primitive prim, int
 
 static void dwarf_type(struct dwarf_state *st, type_ref *ty)
 {
-	ICE("TODO: DWARF type output");
+	switch(ty->type){
+		case type_ref_type:
+		{
+			/* btypes have been done - check sues */
+			struct_union_enum_st *sue = ty->bits.type->sue;
+			if(sue){
+			}
+			break;
+		}
+
+		case type_ref_tdef:
+			if(ty->bits.tdef.decl){
+				decl *d = ty->bits.tdef.decl;
+
+				dwarf_start(st);
+					dwarf_abbrev_start(st, DW_TAG_typedef, DW_CHILDREN_yes);
+						dwarf_attr(st, DW_AT_name, DW_FORM_string, d->spel);
+						dwarf_attr(st, DW_AT_type, DW_FORM_ref4, "???");
+					dwarf_sec_end(&st->abbrev);
+				dwarf_end(st);
+
+				dwarf_type(st, d->ref);
+			}else{
+				/* skip typeof() */
+				dwarf_type(st, ty->bits.tdef.type_of->tree_type);
+			}
+			break;
+
+		case type_ref_ptr:
+			dwarf_start(st);
+				dwarf_abbrev_start(st, DW_TAG_pointer_type, DW_CHILDREN_yes);
+					dwarf_attr(st, DW_AT_byte_size, DW_FORM_data1, platform_word_size());
+					dwarf_attr(st, DW_AT_type, DW_FORM_ref4, "???");
+				dwarf_sec_end(&st->abbrev);
+			dwarf_end(st);
+
+			dwarf_type(st, ty->ref);
+			break;
+
+		case type_ref_block:
+			/* skip */
+			dwarf_type(st, ty->ref);
+			break;
+
+		case type_ref_func:
+		{
+			decl **i;
+
+			dwarf_start(st);
+				dwarf_abbrev_start(st, DW_TAG_subroutine_type, DW_CHILDREN_yes);
+					dwarf_attr(st, DW_AT_sibling, DW_FORM_ref4, "???");
+					dwarf_attr(st, DW_AT_type, DW_FORM_ref4, "???");
+					dwarf_attr(st, DW_AT_prototyped, DW_FORM_flag, 1);
+				dwarf_sec_end(&st->abbrev);
+			dwarf_end(st);
+
+			for(i = ty->bits.func.args->arglist;
+			    i && *i;
+			    i++)
+			{
+				dwarf_start(st);
+					dwarf_abbrev_start(st, DW_TAG_formal_parameter, DW_CHILDREN_no);
+						dwarf_attr(st, DW_AT_type, DW_FORM_ref4, "???");
+					dwarf_sec_end(&st->abbrev);
+				dwarf_end(st);
+
+				dwarf_type(st, (*i)->ref);
+			}
+
+			dwarf_type(st, ty->ref);
+			break;
+		}
+
+		case type_ref_array:
+		{
+			int have_sz = !!ty->bits.array.size;
+			intval_t sz;
+
+			if(have_sz)
+				sz = const_fold_val(ty->bits.array.size);
+
+			dwarf_start(st);
+				dwarf_abbrev_start(st, DW_TAG_array_type, DW_CHILDREN_yes);
+					dwarf_attr(st, DW_AT_type, DW_FORM_ref4, "???");
+					dwarf_attr(st, DW_AT_sibling, DW_FORM_ref4, "???");
+				dwarf_sec_end(&st->abbrev);
+
+				if(have_sz){
+					dwarf_abbrev_start(st, DW_TAG_subrange_type, DW_CHILDREN_yes);
+						dwarf_attr(st, DW_AT_lower_bound, DW_FORM_data1, 0);
+						dwarf_attr(st, DW_AT_upper_bound, DW_FORM_data1, sz);
+					dwarf_sec_end(&st->abbrev);
+				}
+			dwarf_end(st);
+			dwarf_type(st, ty->ref);
+			break;
+		}
+
+		case type_ref_cast:
+			if(ty->bits.cast.is_signed_cast){
+				/* skip */
+			}else{
+				dwarf_start(st);
+					dwarf_abbrev_start(st, DW_TAG_const_type, DW_CHILDREN_yes);
+						dwarf_attr(st, DW_AT_type, DW_FORM_ref4, "???");
+					dwarf_sec_end(&st->abbrev);
+				dwarf_end(st);
+			}
+			dwarf_type(st, ty->ref);
+			break;
+	}
 }
 
 static char *dwarf_type_lbl(struct dwarf_state *st, type_ref *ty)
@@ -247,10 +373,8 @@ static int hacky_type_ref_cmp(void *pa, void *pb)
 {
 	/* XXX: needs merge from float branch with type_ref_cmp() */
 	type_ref *a = pa, *b = pb;
-	char buf[TYPE_REF_STATIC_BUFSIZ];
-	type_ref_to_str_r(buf, a);
 
-	return strcmp(buf, type_ref_to_str(b));
+	return type_ref_equal(a, b, DECL_CMP_EXACT_MATCH);
 }
 
 void out_dbginfo(symtable_global *globs, const char *fname)
