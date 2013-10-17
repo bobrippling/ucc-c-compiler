@@ -124,10 +124,14 @@ static void fold_cast_num(expr *const e, numeric *const num)
 
 static void fold_const_expr_cast(expr *e, consty *k)
 {
+	int to_fp;
+
 	if(type_ref_is_void(e->tree_type)){
 		k->type = CONST_NO;
 		return;
 	}
+
+	to_fp = type_ref_is_floating(e->tree_type);
 
 	const_fold(e->expr, k);
 
@@ -142,14 +146,19 @@ static void fold_const_expr_cast(expr *e, consty *k)
 		case CONST_NO:
 			break;
 
-		case CONST_NEED_ADDR: /* allow if we're casting to a same-sized type */
+		case CONST_NEED_ADDR:
+			if(to_fp){
+				k->type = CONST_NO;
+				break;
+			}
+			/* fall */
+
 		case CONST_ADDR:
 		case CONST_STRK:
 		{
 			int l, r;
 
-			UCC_ASSERT(!type_ref_is_floating(e->tree_type),
-					"cast to float from address");
+			UCC_ASSERT(!to_fp, "cast to float from address");
 
 			/* allow if we're casting to a same-size type */
 			l = type_ref_size(e->tree_type, &e->where);
