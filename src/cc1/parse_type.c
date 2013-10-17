@@ -1169,12 +1169,16 @@ int parse_decls_single_type(
 					 * e.g. int (const *a)
 					 * [function with int argument, not a pointer to const int
 					 */
-#define err_nodecl "declaration doesn't declare anything"
-					if(PARSE_type_ref_is(d->ref, type_ref_type))
-						warn_at(&d->where, err_nodecl);
-					else
-						die_at(&d->where, err_nodecl);
-#undef err_nodecl
+					const char *emsg = "declaration doesn't declare anything";
+
+					if(PARSE_type_ref_is(d->ref, type_ref_type)
+					|| PARSE_type_ref_is(d->ref, type_ref_tdef))
+					{
+						warn_at(&d->where, "%s", emsg);
+					}else{
+						warn_at_print_error(&d->where, "%s", emsg);
+						parse_had_error = 1;
+					}
 				}
 
 				decl_free(d, 0);
