@@ -224,8 +224,9 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 
 		case type_ref_type:
 		{
-			/* check if we're a new struct/union decl */
-			struct_union_enum_st *sue = type_ref_is_s_or_u(r);
+			/* check if we're a new struct/union/enum decl
+			 * (yes - enums too) */
+			struct_union_enum_st *sue = type_ref_is_s_or_u_or_e(r);
 
 			if(sue){
 				fold_sue(sue, stab);
