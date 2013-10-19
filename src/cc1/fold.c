@@ -591,14 +591,84 @@ void fold_decl_global_init(decl *d, symtable *stab)
 
 }
 
-void fold_func(decl *func_decl)
+void fold_func_passable(decl *func_decl, type_ref *func_ret)
+{
+	struct
+	{
+		char *extra;
+		where *where;
+	} the_return = { NULL, NULL };
+
+	if(decl_attr_present(func_decl, attr_noreturn)){
+		if(!type_ref_is_void(func_ret)){
+			cc1_warn_at(&func_decl->where, 0, WARN_RETURN_UNDEF,
+					"function \"%s\" marked no-return has a non-void return value",
+					func_decl->spel);
+		}
+
+
+		if(fold_passable(func_decl->func_code)){
+			/* if we reach the end, it's bad */
+			the_return.extra = "implicitly ";
+			the_return.where = &func_decl->where;
+		}else{
+			stmt *ret = NULL;
+
+			stmt_walk(func_decl->func_code,
+					stmt_walk_first_return, NULL, &ret);
+
+			if(ret){
+				/* obviously returns */
+				the_return.extra = "";
+				the_return.where = &ret->where;
+			}
+		}
+
+		if(the_return.extra){
+			cc1_warn_at(the_return.where, 0, WARN_RETURN_UNDEF,
+					"function \"%s\" marked no-return %sreturns",
+					func_decl->spel, the_return.extra);
+		}
+
+	}else if(!type_ref_is_void(func_ret)){
+		/* non-void func - check it doesn't return */
+		if(fold_passable(func_decl->func_code)){
+			cc1_warn_at(&func_decl->where, 0, WARN_RETURN_UNDEF,
+					"control reaches end of non-void function %s",
+					func_decl->spel);
+		}
+	}
+}
+
+void fold_func_code(decl *func_decl, symtable *arg_symtab)
+{
+	decl **i;
+
+	for(i = arg_symtab->decls; i && *i; i++){
+		decl *d = *i;
+
+		if(!d->spel)
+			die_at(&func_decl->where, "argument %ld in \"%s\" is unnamed",
+					i - arg_symtab->decls + 1, func_decl->spel);
+
+		if(!type_ref_is_complete(d->ref))
+			die_at(&d->where,
+					"function argument \"%s\" has incomplete type '%s'",
+					d->spel, type_ref_to_str(d->ref));
+	}
+
+	fold_stmt(func_decl->func_code);
+
+	/* now decls are folded, layout both parameters and local variables */
+	symtab_layout_decls(arg_symtab, 0);
+
+	/* finally, check label coherence */
+	symtab_chk_labels(symtab_func_root(arg_symtab));
+}
+
+void fold_global_func(decl *func_decl)
 {
 	if(func_decl->func_code){
-		struct
-		{
-			char *extra;
-			where *where;
-		} the_return = { NULL, NULL };
 		symtable *const arg_symtab = DECL_FUNC_ARG_SYMTAB(func_decl);
 		type_ref *func_ret = type_ref_func_call(func_decl->ref, NULL);
 
@@ -616,68 +686,9 @@ void fold_func(decl *func_decl)
 			warn_at(&func_decl->where,
 					"typedef function implementation is an extension");
 
-		{
-			decl **i;
-			for(i = arg_symtab->decls; i && *i; i++){
-				decl *d = *i;
+		fold_func_code(func_decl, arg_symtab);
 
-				if(!d->spel)
-					die_at(&func_decl->where, "argument %ld in \"%s\" is unnamed",
-							i - arg_symtab->decls + 1, func_decl->spel);
-
-				if(!type_ref_is_complete(d->ref))
-					die_at(&d->where,
-							"function argument \"%s\" has incomplete type '%s'",
-							d->spel, type_ref_to_str(d->ref));
-			}
-		}
-
-		fold_stmt(func_decl->func_code);
-
-		/* now decls are folded, layout both parameters and local variables */
-		symtab_layout_decls(arg_symtab, 0);
-
-		/* finally, check label coherence */
-		symtab_chk_labels(symtab_func_root(arg_symtab));
-
-		if(decl_attr_present(func_decl, attr_noreturn)){
-			if(!type_ref_is_void(func_ret)){
-				cc1_warn_at(&func_decl->where, 0, WARN_RETURN_UNDEF,
-						"function \"%s\" marked no-return has a non-void return value",
-						func_decl->spel);
-			}
-
-
-			if(fold_passable(func_decl->func_code)){
-				/* if we reach the end, it's bad */
-				the_return.extra = "implicitly ";
-				the_return.where = &func_decl->where;
-			}else{
-				stmt *ret = NULL;
-
-				stmt_walk(func_decl->func_code, stmt_walk_first_return, NULL, &ret);
-
-				if(ret){
-					/* obviously returns */
-					the_return.extra = "";
-					the_return.where = &ret->where;
-				}
-			}
-
-			if(the_return.extra){
-				cc1_warn_at(the_return.where, 0, WARN_RETURN_UNDEF,
-						"function \"%s\" marked no-return %sreturns",
-						func_decl->spel, the_return.extra);
-			}
-
-		}else if(!type_ref_is_void(func_ret)){
-			/* non-void func - check it doesn't return */
-			if(fold_passable(func_decl->func_code)){
-				cc1_warn_at(&func_decl->where, 0, WARN_RETURN_UNDEF,
-						"control reaches end of non-void function %s",
-						func_decl->spel);
-			}
-		}
+		fold_func_passable(func_decl, func_ret);
 	}
 }
 
@@ -705,7 +716,7 @@ void fold_decl_global(decl *d, symtable *stab)
 
 	if(DECL_IS_FUNC(d)){
 		UCC_ASSERT(!d->init, "function has init?");
-		fold_func(d);
+		fold_global_func(d);
 	}
 }
 

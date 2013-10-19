@@ -288,6 +288,7 @@ void symtab_fold_decls(symtable *tab)
 									clash = "extern/non-extern";
 								}
 							}else if(a_func && da->func_code && db->func_code){
+								/* b_func is true */
 								clash = "duplicate";
 							}
 						}

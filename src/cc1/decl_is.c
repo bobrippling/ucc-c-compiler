@@ -350,6 +350,7 @@ type_ref *type_ref_func_call(type_ref *fp, funcargs **pfuncargs)
 			if(pfuncargs)
 				*pfuncargs = fp->bits.func.args;
 			fp = fp->ref;
+			UCC_ASSERT(fp, "no ref for func");
 			break;
 
 		default:

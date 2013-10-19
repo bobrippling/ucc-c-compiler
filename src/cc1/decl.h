@@ -165,6 +165,12 @@ struct decl
 
 	decl_init *init; /* initialiser - converted to an assignment for non-globals */
 	stmt *func_code;
+
+	/* ^(){} has a decl+sym
+	 * the decl/sym has a ref to the expr block,
+	 * for pulling off .block.args, etc
+	 */
+	expr *block_expr;
 };
 
 const char *decl_asm_spel(decl *);
