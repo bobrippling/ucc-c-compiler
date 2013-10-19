@@ -7,8 +7,9 @@ eval.o: eval.c eval.h ../util/dynarray.h ../util/dyn.h ../util/util.h \
  tokenise.h macro.h str.h main.h snapshot.h preproc.h
 expr.o: expr.c ../util/alloc.h ../util/util.h ../util/where.h \
  ../util/compiler.h expr.h expr_tok.h main.h preproc.h
-expr_tok.o: expr_tok.c expr.h expr_tok.h str.h ../util/alloc.h \
- ../util/str.h
+expr_tok.o: expr_tok.c expr.h expr_tok.h str.h preproc.h main.h \
+ ../util/alloc.h ../util/str.h ../util/util.h ../util/where.h \
+ ../util/compiler.h ../util/escape.h
 include.o: include.c ../util/dynarray.h ../util/dyn.h ../util/alloc.h \
  ../util/util.h ../util/where.h ../util/compiler.h include.h
 macro.o: macro.c ../util/util.h ../util/where.h ../util/compiler.h \

@@ -73,7 +73,8 @@ fold.o: fold.c defs.h ../util/util.h ../util/where.h ../util/compiler.h \
  ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h ops/stmt_continue.h \
  sym.h decl.h cc1.h ../util/std.h fold.h fold_sym.h ../util/platform.h \
  const.h ../util/alloc.h ../util/dynarray.h ../util/dyn.h \
- ../util/dynmap.h sue.h decl_init.h pack.h funcargs.h out/lbl.h
+ ../util/dynmap.h sue.h decl_init.h pack.h funcargs.h out/lbl.h \
+ fold_sue.h
 fold_sue.o: fold_sue.c ../util/util.h ../util/where.h ../util/compiler.h \
  ../util/where.h data_structs.h tree.h expr.h ops/expr_addr.h \
  ops/expr_assign.h ops/expr_assign_compound.h ops/expr_cast.h \
@@ -207,16 +208,17 @@ stmt.o: stmt.c ../util/util.h ../util/where.h ../util/compiler.h \
  ops/stmt_label.h ops/stmt_noop.h ops/stmt_return.h ops/stmt_switch.h \
  ops/stmt_while.h ops/stmt_continue.h sym.h decl.h cc1.h ../util/std.h
 str.o: str.c ../util/util.h ../util/where.h ../util/compiler.h \
- ../util/alloc.h data_structs.h tree.h expr.h ops/expr_addr.h \
- ops/expr_assign.h ops/expr_assign_compound.h ops/expr_cast.h \
- ops/expr_comma.h ops/expr_funcall.h ops/expr_identifier.h ops/expr_if.h \
- ops/expr_op.h ops/expr_sizeof.h ops/expr_val.h ops/expr_stmt.h \
- ops/expr_deref.h ops/expr_struct.h ops/expr_compound_lit.h \
- ops/expr_string.h stmt.h ops/stmt_break.h ops/stmt_case.h \
- ops/stmt_case_range.h ops/stmt_code.h ops/stmt_default.h ops/stmt_do.h \
- ops/stmt_expr.h ops/stmt_for.h ops/stmt_goto.h ops/stmt_if.h \
- ops/stmt_label.h ops/stmt_noop.h ops/stmt_return.h ops/stmt_switch.h \
- ops/stmt_while.h ops/stmt_continue.h sym.h decl.h str.h macros.h
+ ../util/alloc.h ../util/escape.h data_structs.h tree.h expr.h \
+ ops/expr_addr.h ops/expr_assign.h ops/expr_assign_compound.h \
+ ops/expr_cast.h ops/expr_comma.h ops/expr_funcall.h \
+ ops/expr_identifier.h ops/expr_if.h ops/expr_op.h ops/expr_sizeof.h \
+ ops/expr_val.h ops/expr_stmt.h ops/expr_deref.h ops/expr_struct.h \
+ ops/expr_compound_lit.h ops/expr_string.h stmt.h ops/stmt_break.h \
+ ops/stmt_case.h ops/stmt_case_range.h ops/stmt_code.h ops/stmt_default.h \
+ ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h ops/stmt_goto.h \
+ ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h ops/stmt_return.h \
+ ops/stmt_switch.h ops/stmt_while.h ops/stmt_continue.h sym.h decl.h \
+ str.h macros.h
 sue.o: sue.c ../util/alloc.h ../util/util.h ../util/where.h \
  ../util/compiler.h ../util/dynarray.h ../util/dyn.h data_structs.h \
  tree.h expr.h ops/expr_addr.h ops/expr_assign.h \
@@ -262,8 +264,8 @@ tokenise.o: tokenise.c ../util/util.h ../util/where.h ../util/compiler.h \
  ops/stmt_default.h ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h \
  ops/stmt_goto.h ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h \
  ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h ops/stmt_continue.h \
- sym.h decl.h tokenise.h ../util/alloc.h ../util/str.h str.h cc1.h \
- ../util/std.h
+ sym.h decl.h tokenise.h ../util/alloc.h ../util/str.h ../util/escape.h \
+ str.h cc1.h ../util/std.h
 tree.o: tree.c ../util/alloc.h ../util/util.h ../util/where.h \
  ../util/compiler.h data_structs.h tree.h expr.h ops/expr_addr.h \
  ops/expr_assign.h ops/expr_assign_compound.h ops/expr_cast.h \
@@ -354,7 +356,7 @@ ops/expr_addr.o: ops/expr_addr.c ops/ops.h ops/../../util/util.h \
  ops/../ops/stmt_continue.h ops/../sym.h ops/../decl.h ops/../cc1.h \
  ops/../../util/std.h ops/../out/out.h ops/../fold.h ops/../const.h \
  ops/../gen_str.h ops/../gen_style.h ops/../gen_asm.h ops/expr_addr.h \
- ops/../out/lbl.h
+ ops/../out/lbl.h ops/../label.h
 ops/expr_assign.o: ops/expr_assign.c ops/ops.h ops/../../util/util.h \
  ops/../../util/where.h ops/../../util/compiler.h ops/../data_structs.h \
  ops/../tree.h ops/../expr.h ops/../ops/expr_addr.h \
@@ -411,7 +413,8 @@ ops/expr_block.o: ops/expr_block.c ops/ops.h ops/../../util/util.h \
  ops/../ops/stmt_continue.h ops/../sym.h ops/../decl.h ops/../cc1.h \
  ops/../../util/std.h ops/../out/out.h ops/../fold.h ops/../const.h \
  ops/../gen_str.h ops/../gen_style.h ops/../gen_asm.h ops/expr_block.h \
- ops/../out/lbl.h ops/../../util/dynarray.h ops/../../util/dyn.h
+ ops/../out/lbl.h ops/../../util/dynarray.h ops/../../util/dyn.h \
+ ops/../funcargs.h
 ops/expr_cast.o: ops/expr_cast.c ops/ops.h ops/../../util/util.h \
  ops/../../util/where.h ops/../../util/compiler.h ops/../data_structs.h \
  ops/../tree.h ops/../expr.h ops/../ops/expr_addr.h \
@@ -1001,7 +1004,8 @@ out/impl.o: out/impl.c out/../../util/util.h out/../../util/where.h \
  out/../ops/stmt_continue.h out/../sym.h out/../decl.h out/../decl.h \
  out/vstack.h out/impl.h out/x86_64.h out/../cc1.h out/../../util/std.h
 out/lbl.o: out/lbl.c out/../../util/alloc.h out/../../util/util.h \
- out/../../util/where.h out/../../util/compiler.h out/common.h out/lbl.h
+ out/../../util/where.h out/../../util/compiler.h out/common.h out/lbl.h \
+ out/../../as_cfg.h
 out/mipsel_32.o: out/mipsel_32.c out/../../util/util.h out/../../util/where.h \
  out/../../util/compiler.h out/../../util/alloc.h \
  out/../../util/platform.h out/../data_structs.h out/../tree.h \
