@@ -1,5 +1,6 @@
 // RUN: %ucc -c %s
-// RUN: echo 'FIXME: need deref check - backend vm?'; false
+// RUN: test `%ucc -S -o- %s | grep -vF 'movq %%rsp, %%rbp' | grep -c 'mov'` -eq 1
+
 
 extern int x[][2][4];
 

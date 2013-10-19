@@ -1,5 +1,5 @@
 // RUN: %ucc -o %t %s
-// RUN: %t | %output_check '^a$' '^a$' '^a$' '^B$'
+// RUN: %t | %output_check a a a B
 
 int dispatch(int(char));
 
