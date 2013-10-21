@@ -21,6 +21,8 @@ Major C Features
 Floating point - experimental/float branch
 C99 VLAs - experimental/vla branch
 C99 _Complex types
+C11 _Thread_local / gcc __thread
+C11 _Atomic
 
 cc1
 ###
