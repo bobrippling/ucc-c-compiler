@@ -6,6 +6,8 @@
 #include "../../util/where.h"
 #include "../../util/platform.h"
 #include "../../util/util.h"
+#include "../../util/dynarray.h"
+#include "../../util/alloc.h"
 
 #include "../str.h"
 
@@ -33,6 +35,17 @@ struct dwarf_state
 #define DWARF_SEC_INIT(fp) { (fp), 1, 1, 0 }
 };
 
+struct dwarf_block
+{
+	unsigned len;
+	unsigned *vals;
+};
+
+enum dwarf_block_ops
+{
+	DW_OP_plus_uconst = 0x23
+};
+
 enum dwarf_key
 {
 	DW_TAG_base_type = 0x24,
@@ -46,6 +59,10 @@ enum dwarf_key
 	DW_TAG_formal_parameter = 0x5,
 	DW_TAG_enumeration_type = 0x4,
 	DW_TAG_enumerator = 0x28,
+	DW_TAG_structure_type = 0x13,
+	DW_TAG_union_type = 0x17,
+	DW_TAG_member = 0xd,
+	DW_AT_data_member_location = 0x38,
 
 	DW_AT_byte_size = 0xb,
 	DW_AT_encoding = 0x3e,
@@ -61,6 +78,8 @@ enum dwarf_key
 	DW_AT_prototyped = 0x27,
 	DW_AT_location = 0x2,
 	DW_AT_const_value = 0x1c,
+	DW_AT_accessibility = 0x32,
+	DW_ACCESS_public = 0x01,
 };
 enum dwarf_valty
 {
@@ -140,11 +159,20 @@ static void dwarf_attr(
 	va_start(l, val);
 	switch(val){
 		case DW_FORM_block1:
-			fprintf(st->info.f, ".byte 9, 3\n"); /* FIXME: doesn't work? */
-			indent(st->info.f, st->info.indent);
-			fprintf(st->info.f, ".quad %s", va_arg(l, char *));
-			st->info.length += 9;
+		{
+			const struct dwarf_block *blk = va_arg(l, struct dwarf_block *);
+			unsigned i;
+
+			fprintf(st->info.f, ".byte %d", blk->len);
+
+			for(i = 0; i < blk->len; i++)
+				fprintf(st->info.f, ", %d", blk->vals[i]);
+
+			fputc('\n', st->info.f);
+
+			st->info.length += 1 + blk->len;
 			break;
+		}
 		case DW_FORM_ref4:
 			fprintf(st->info.f, ".long %u", va_arg(l, unsigned));
 			st->info.length += 4;
@@ -218,6 +246,21 @@ static void dwarf_basetype(struct dwarf_state *st, enum type_primitive prim, int
 	dwarf_end(st);
 }
 
+static void dwarf_sue_header(
+		struct dwarf_state *st, struct_union_enum_st *sue,
+		int dwarf_tag, int children)
+{
+	dwarf_start(st); {
+		dwarf_abbrev_start(st, dwarf_tag, children ? DW_CHILDREN_yes : DW_CHILDREN_no); {
+			/*dwarf_attr(st, DW_AT_sibling, ... next?);*/
+			if(!sue->anon)
+				dwarf_attr(st, DW_AT_name, DW_FORM_string, sue->spel);
+			if(sue_complete(sue))
+				dwarf_attr(st, DW_AT_byte_size, DW_FORM_data1, sue_size(sue, NULL));
+		} dwarf_sec_end(&st->abbrev);
+	} dwarf_end(st);
+}
+
 static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 {
 	unsigned this_start;
@@ -238,16 +281,9 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 					{
 						sue_member **i;
 
-						/* enum */
-						dwarf_start(st); {
-							dwarf_abbrev_start(st, DW_TAG_enumeration_type, DW_CHILDREN_yes); {
-								/*dwarf_attr(st, DW_AT_sibling, ... next?);*/
-								if(!sue->anon)
-									dwarf_attr(st, DW_AT_name, DW_FORM_string, sue->spel);
-								if(sue_complete(sue))
-									dwarf_attr(st, DW_AT_byte_size, DW_FORM_data1, sue_size(sue, NULL));
-							} dwarf_sec_end(&st->abbrev);
-						} dwarf_end(st);
+						dwarf_sue_header(st, sue, DW_TAG_enumeration_type, /*children:*/0);
+
+						ICW_1("need to make enumerators siblings of the enumeration");
 
 						/* enumerators */
 						for(i = sue->members; i && *i; i++){
@@ -271,7 +307,67 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 
 					case type_union:
 					case type_struct:
-						ICW("TODO: struct/union");
+					{
+						const size_t nmem = dynarray_count(sue->members);
+						sue_member **si;
+						unsigned i;
+						unsigned *mem_offsets = nmem ? umalloc(nmem * sizeof *mem_offsets) : NULL;
+
+						ICW_1("need to make members siblings of the struct/union");
+
+						/* member types */
+						for(i = 0; i < nmem; i++)
+							mem_offsets[i] = dwarf_type(st, sue->members[i]->struct_member->ref);
+
+						/* must update since we might've output extra type information */
+						this_start = st->info.length;
+
+						dwarf_sue_header(
+								st, sue,
+								sue->primitive == type_struct
+									? DW_TAG_structure_type
+									: DW_TAG_union_type,
+								/*children:*/0);
+
+						/* members */
+						for(i = 0, si = sue->members; i < nmem; i++, si++){
+							dwarf_start(st); {
+								dwarf_abbrev_start(st, DW_TAG_member, DW_CHILDREN_no); {
+									struct dwarf_block offset;
+									unsigned offset_data[2];
+
+									decl *dmem = (*si)->struct_member;
+
+									dwarf_attr(st,
+											DW_AT_name, DW_FORM_string,
+											dmem->spel);
+
+									dwarf_attr(st,
+											DW_AT_type, DW_FORM_ref4,
+											mem_offsets[i]);
+
+									/* TODO: bitfields */
+									offset_data[0] = DW_OP_plus_uconst;
+									offset_data[1] = dmem->struct_offset;
+
+									offset.len = 2;
+									offset.vals = offset_data;
+
+									dwarf_attr(st,
+											DW_AT_data_member_location, DW_FORM_block1,
+											&offset);
+
+									dwarf_attr(st,
+											DW_AT_accessibility, DW_FORM_flag,
+											DW_ACCESS_public);
+
+								} dwarf_sec_end(&st->abbrev);
+							} dwarf_end(st);
+						}
+
+						free(mem_offsets);
+						break;
+					}
 				}
 
 			}else{
@@ -447,7 +543,7 @@ static void dwarf_global_variable(struct dwarf_state *st, decl *d)
 		dwarf_abbrev_start(st, DW_TAG_variable, DW_CHILDREN_no);
 			dwarf_attr(st, DW_AT_name, DW_FORM_string, d->spel);
 			dwarf_attr(st, DW_AT_type, DW_FORM_ref4, typos);
-			dwarf_attr(st, DW_AT_location, DW_FORM_block1, d->spel_asm);
+			/*dwarf_attr(st, DW_AT_location, DW_FORM_block1, d->spel_asm);*/
 		dwarf_sec_end(&st->abbrev);
 	dwarf_end(st);
 }
