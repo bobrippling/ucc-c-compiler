@@ -389,7 +389,12 @@ static void dwarf_info_footer(struct dwarf_sec *sec)
 
 static void dwarf_global_variable(struct dwarf_state *st, decl *d)
 {
-	const unsigned typos = dwarf_type(st, d->ref);
+	unsigned typos;
+
+	if(!d->spel)
+		return;
+
+	typos = dwarf_type(st, d->ref);
 
 	dwarf_start(st);
 		dwarf_abbrev_start(st, DW_TAG_variable, DW_CHILDREN_no);
