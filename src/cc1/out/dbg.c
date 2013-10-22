@@ -5,6 +5,7 @@
 
 #include "../../util/where.h"
 #include "../../util/platform.h"
+#include "../../util/util.h"
 
 #include "../str.h"
 
@@ -13,6 +14,7 @@
 #include "../tree.h"
 #include "../const.h"
 #include "../funcargs.h"
+#include "../sue.h"
 
 #include "../cc1.h" /* cc_out[] */
 
@@ -42,6 +44,8 @@ enum dwarf_key
 	DW_TAG_const_type = 0x26,
 	DW_TAG_subroutine_type = 0x15,
 	DW_TAG_formal_parameter = 0x5,
+	DW_TAG_enumeration_type = 0x4,
+	DW_TAG_enumerator = 0x28,
 
 	DW_AT_byte_size = 0xb,
 	DW_AT_encoding = 0x3e,
@@ -56,6 +60,7 @@ enum dwarf_key
 	DW_AT_upper_bound = 0x2f,
 	DW_AT_prototyped = 0x27,
 	DW_AT_location = 0x2,
+	DW_AT_const_value = 0x1c,
 };
 enum dwarf_valty
 {
@@ -220,13 +225,55 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 	switch(ty->type){
 		case type_ref_type:
 		{
-			/* btypes have been done - check sues */
 			struct_union_enum_st *sue = ty->bits.type->sue;
 
 			this_start = st->info.length;
 
 			if(sue){
-				fprintf(stderr, "TODO: sue\n");
+				switch(sue->primitive){
+					default:
+						ucc_unreach(0);
+
+					case type_enum:
+					{
+						sue_member **i;
+
+						/* enum */
+						dwarf_start(st); {
+							dwarf_abbrev_start(st, DW_TAG_enumeration_type, DW_CHILDREN_yes); {
+								/*dwarf_attr(st, DW_AT_sibling, ... next?);*/
+								if(!sue->anon)
+									dwarf_attr(st, DW_AT_name, DW_FORM_string, sue->spel);
+								if(sue_complete(sue))
+									dwarf_attr(st, DW_AT_byte_size, DW_FORM_data1, sue_size(sue, NULL));
+							} dwarf_sec_end(&st->abbrev);
+						} dwarf_end(st);
+
+						/* enumerators */
+						for(i = sue->members; i && *i; i++){
+							dwarf_start(st); {
+								dwarf_abbrev_start(st, DW_TAG_enumerator, DW_CHILDREN_no); {
+									enum_member *emem = (*i)->enum_member;
+
+									dwarf_attr(st,
+											DW_AT_name, DW_FORM_string,
+											emem->spel);
+
+									dwarf_attr(st,
+											DW_AT_const_value, DW_FORM_data1,
+											(int)const_fold_val(emem->val));
+
+								} dwarf_sec_end(&st->abbrev);
+							} dwarf_end(st);
+						}
+						break;
+					}
+
+					case type_union:
+					case type_struct:
+						ICW("TODO: struct/union");
+				}
+
 			}else{
 				/* TODO: unsigned type */
 				dwarf_basetype(st, ty->bits.type->primitive,
