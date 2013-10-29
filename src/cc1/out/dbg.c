@@ -35,7 +35,7 @@ struct dwarf_state
 #define DWARF_SEC_INIT(fp) { (fp), 1, 1, 0 }
 };
 
-struct dwarf_block
+struct dwarf_block /* DW_FORM_block1 */
 {
 	unsigned len;
 	unsigned *vals;
