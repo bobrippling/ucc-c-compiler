@@ -237,13 +237,13 @@ static void dwarf_abbrev_start(struct dwarf_state *st, int b1, int b2)
 
 static void dwarf_basetype(struct dwarf_state *st, enum type_primitive prim, int enc)
 {
-	dwarf_start(st);
-		dwarf_abbrev_start(st, DW_TAG_base_type, DW_CHILDREN_no);
+	dwarf_start(st); {
+		dwarf_abbrev_start(st, DW_TAG_base_type, DW_CHILDREN_no); {
 			dwarf_attr(st, DW_AT_name,      DW_FORM_string, type_primitive_to_str(prim));
 			dwarf_attr(st, DW_AT_byte_size, DW_FORM_data1,  type_primitive_size(prim));
 			dwarf_attr(st, DW_AT_encoding,  DW_FORM_data1,  enc);
-		dwarf_sec_end(&st->abbrev);
-	dwarf_end(st);
+		} dwarf_sec_end(&st->abbrev);
+	} dwarf_end(st);
 }
 
 static void dwarf_sue_header(
@@ -385,12 +385,12 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 
 				this_start = st->info.length;
 
-				dwarf_start(st);
-					dwarf_abbrev_start(st, DW_TAG_typedef, DW_CHILDREN_yes);
+				dwarf_start(st); {
+					dwarf_abbrev_start(st, DW_TAG_typedef, DW_CHILDREN_yes); {
 						dwarf_attr(st, DW_AT_name, DW_FORM_string, d->spel);
 						dwarf_attr(st, DW_AT_type, DW_FORM_ref4, sub_pos);
-					dwarf_sec_end(&st->abbrev);
-				dwarf_end(st);
+					} dwarf_sec_end(&st->abbrev);
+				} dwarf_end(st);
 			}else{
 				/* skip typeof() */
 				this_start = st->info.length;
@@ -404,12 +404,12 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 
 			this_start = st->info.length;
 
-			dwarf_start(st);
-				dwarf_abbrev_start(st, DW_TAG_pointer_type, DW_CHILDREN_yes);
+			dwarf_start(st); {
+				dwarf_abbrev_start(st, DW_TAG_pointer_type, DW_CHILDREN_yes); {
 					dwarf_attr(st, DW_AT_byte_size, DW_FORM_data1, platform_word_size());
 					dwarf_attr(st, DW_AT_type, DW_FORM_ref4, sub_pos);
-				dwarf_sec_end(&st->abbrev);
-			dwarf_end(st);
+				} dwarf_sec_end(&st->abbrev);
+			} dwarf_end(st);
 			break;
 		}
 
@@ -427,13 +427,13 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 
 			this_start = st->info.length;
 
-			dwarf_start(st);
-				dwarf_abbrev_start(st, DW_TAG_subroutine_type, DW_CHILDREN_yes);
+			dwarf_start(st); {
+				dwarf_abbrev_start(st, DW_TAG_subroutine_type, DW_CHILDREN_yes); {
 					/*dwarf_attr(st, DW_AT_sibling, DW_FORM_ref4, pos_sibling);*/
 					dwarf_attr(st, DW_AT_type, DW_FORM_ref4, pos_ref);
 					dwarf_attr(st, DW_AT_prototyped, DW_FORM_flag, 1);
-				dwarf_sec_end(&st->abbrev);
-			dwarf_end(st);
+				} dwarf_sec_end(&st->abbrev);
+			} dwarf_end(st);
 
 			for(i = ty->bits.func.args->arglist;
 			    i && *i;
@@ -441,11 +441,11 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 			{
 				const unsigned sub_pos = dwarf_type(st, (*i)->ref);
 
-				dwarf_start(st);
-					dwarf_abbrev_start(st, DW_TAG_formal_parameter, DW_CHILDREN_no);
+				dwarf_start(st); {
+					dwarf_abbrev_start(st, DW_TAG_formal_parameter, DW_CHILDREN_no); {
 						dwarf_attr(st, DW_AT_type, DW_FORM_ref4, sub_pos);
-					dwarf_sec_end(&st->abbrev);
-				dwarf_end(st);
+					} dwarf_sec_end(&st->abbrev);
+				} dwarf_end(st);
 			}
 			break;
 		}
@@ -461,19 +461,19 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 			if(have_sz)
 				sz = const_fold_val(ty->bits.array.size);
 
-			dwarf_start(st);
-				dwarf_abbrev_start(st, DW_TAG_array_type, DW_CHILDREN_yes);
+			dwarf_start(st); {
+				dwarf_abbrev_start(st, DW_TAG_array_type, DW_CHILDREN_yes); {
 					dwarf_attr(st, DW_AT_type, DW_FORM_ref4, sub_pos);
 					/*dwarf_attr(st, DW_AT_sibling, DW_FORM_ref4, "???");*/
-				dwarf_sec_end(&st->abbrev);
+				} dwarf_sec_end(&st->abbrev);
 
 				if(have_sz){
-					dwarf_abbrev_start(st, DW_TAG_subrange_type, DW_CHILDREN_yes);
+					dwarf_abbrev_start(st, DW_TAG_subrange_type, DW_CHILDREN_yes); {
 						dwarf_attr(st, DW_AT_lower_bound, DW_FORM_data1, 0);
 						dwarf_attr(st, DW_AT_upper_bound, DW_FORM_data1, sz);
-					dwarf_sec_end(&st->abbrev);
+					} dwarf_sec_end(&st->abbrev);
 				}
-			dwarf_end(st);
+			} dwarf_end(st);
 			break;
 		}
 
@@ -485,11 +485,11 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 			if(ty->bits.cast.is_signed_cast){
 				/* skip */
 			}else{
-				dwarf_start(st);
-					dwarf_abbrev_start(st, DW_TAG_const_type, DW_CHILDREN_yes);
+				dwarf_start(st); {
+					dwarf_abbrev_start(st, DW_TAG_const_type, DW_CHILDREN_yes); {
 						dwarf_attr(st, DW_AT_type, DW_FORM_ref4, sub_pos);
-					dwarf_sec_end(&st->abbrev);
-				dwarf_end(st);
+					} dwarf_sec_end(&st->abbrev);
+				} dwarf_end(st);
 			}
 			break;
 		}
@@ -500,15 +500,15 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 
 static void dwarf_cu(struct dwarf_state *st, const char *fname)
 {
-	dwarf_start(st);
-		dwarf_abbrev_start(st, DW_TAG_compile_unit, DW_CHILDREN_yes);
+	dwarf_start(st); {
+		dwarf_abbrev_start(st, DW_TAG_compile_unit, DW_CHILDREN_yes); {
 			dwarf_attr(st, DW_AT_producer, DW_FORM_string, "ucc development version");
 			dwarf_attr(st, DW_AT_language, DW_FORM_data2, DW_LANG_C99);
 			dwarf_attr(st, DW_AT_name, DW_FORM_string, fname);
 			dwarf_attr(st, DW_AT_low_pc, DW_FORM_addr, 0x12345); /* TODO */
 			dwarf_attr(st, DW_AT_high_pc, DW_FORM_addr, 0x54321);
-		dwarf_sec_end(&st->abbrev);
-	dwarf_end(st);
+		} dwarf_sec_end(&st->abbrev);
+	} dwarf_end(st);
 }
 
 static void dwarf_info_header(struct dwarf_sec *sec)
@@ -539,13 +539,13 @@ static void dwarf_global_variable(struct dwarf_state *st, decl *d)
 
 	typos = dwarf_type(st, d->ref);
 
-	dwarf_start(st);
-		dwarf_abbrev_start(st, DW_TAG_variable, DW_CHILDREN_no);
+	dwarf_start(st); {
+		dwarf_abbrev_start(st, DW_TAG_variable, DW_CHILDREN_no); {
 			dwarf_attr(st, DW_AT_name, DW_FORM_string, d->spel);
 			dwarf_attr(st, DW_AT_type, DW_FORM_ref4, typos);
 			/*dwarf_attr(st, DW_AT_location, DW_FORM_block1, d->spel_asm);*/
-		dwarf_sec_end(&st->abbrev);
-	dwarf_end(st);
+		} dwarf_sec_end(&st->abbrev);
+	} dwarf_end(st);
 }
 
 void out_dbginfo(symtable_global *globs, const char *fname)
