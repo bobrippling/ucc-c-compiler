@@ -1,5 +1,5 @@
-#ifndef __BUILTIN_H
-#define __BUILTIN_H
+#ifndef OPS_BUILTIN_H
+#define OPS_BUILTIN_H
 
 #define BUILTIN_SPEL(e) (e)->bits.ident.spel
 
