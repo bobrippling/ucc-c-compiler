@@ -119,28 +119,39 @@ static void indent(FILE *f, int idt)
 		fputc('\t', f);
 }
 
-static void dwarf_sec_byte(struct dwarf_sec *sec, int byte, ...) /* -1 terminator */
+static void dwarf_smallest(unsigned long val, const char **pty, unsigned *int_sz)
 {
-	const char *join = " ";
+	if((unsigned char)val == val)
+		*pty = "byte", *int_sz = 1;
+	else if((unsigned short)val == val)
+		*pty = "word", *int_sz = 2;
+	else if((unsigned)val == val)
+		*pty = "long", *int_sz = 4;
+	else
+		*pty = "quad", *int_sz = 8;
+}
+
+#define VAL_TERM -1L
+static void dwarf_sec_val(struct dwarf_sec *sec, long val, ...) /* -1 terminator */
+{
 	va_list l;
 
-	va_start(l, byte);
-
-	indent(sec->f, sec->indent);
-
-	fprintf(sec->f, ".byte");
+	va_start(l, val);
 
 	do{
-		fprintf(sec->f, "%s%d", join, byte);
-		sec->length++;
-		join = ", ";
+		const char *ty;
+		unsigned int_sz;
 
-		byte = va_arg(l, int);
-	}while(byte != -1);
+		dwarf_smallest(val, &ty, &int_sz);
+
+		indent(sec->f, sec->indent);
+		fprintf(sec->f, ".%s %ld\n", ty, val);
+		sec->length += int_sz;
+
+		val = va_arg(l, long);
+	}while(val != VAL_TERM);
 
 	va_end(l);
-
-	fputc('\n', sec->f);
 }
 
 static void dwarf_attr(
@@ -151,7 +162,7 @@ static void dwarf_attr(
 	va_list l;
 
 	/* abbrev part */
-	dwarf_sec_byte(&st->abbrev, key, val, -1);
+	dwarf_sec_val(&st->abbrev, key, val, VAL_TERM);
 
 	indent(st->info.f, st->info.indent);
 
@@ -163,7 +174,7 @@ static void dwarf_attr(
 			const struct dwarf_block *blk = va_arg(l, struct dwarf_block *);
 			unsigned i;
 
-			fprintf(st->info.f, ".byte %d", blk->len);
+			fprintf(st->info.f, ".byte %d", (signed char)blk->len);
 
 			for(i = 0; i < blk->len; i++)
 				fprintf(st->info.f, ", %d", blk->vals[i]);
@@ -183,11 +194,11 @@ static void dwarf_attr(
 			break;
 		case DW_FORM_data1:
 		case DW_FORM_flag:
-			fprintf(st->info.f, ".byte %d", va_arg(l, int));
+			fprintf(st->info.f, ".byte %d", (signed char)va_arg(l, int));
 			st->info.length++;
 			break;
 		case DW_FORM_data2:
-			fprintf(st->info.f, ".word %d", va_arg(l, int));
+			fprintf(st->info.f, ".word %d", (short)va_arg(l, int));
 			st->info.length += 2;
 			break;
 		case DW_FORM_string:
@@ -207,14 +218,14 @@ static void dwarf_attr(
 
 static void dwarf_sec_start(struct dwarf_sec *sec)
 {
-	dwarf_sec_byte(sec, sec->idx++, -1);
+	dwarf_sec_val(sec, sec->idx++, VAL_TERM);
 	sec->indent++;
 }
 
 static void dwarf_sec_end(struct dwarf_sec *sec)
 {
 	sec->indent--;
-	dwarf_sec_byte(sec, 0, -1);
+	dwarf_sec_val(sec, 0, VAL_TERM);
 }
 
 static void dwarf_start(struct dwarf_state *st)
@@ -231,7 +242,7 @@ static void dwarf_end(struct dwarf_state *st)
 
 static void dwarf_abbrev_start(struct dwarf_state *st, int b1, int b2)
 {
-	dwarf_sec_byte(&st->abbrev, b1, b2, -1);
+	dwarf_sec_val(&st->abbrev, b1, b2, VAL_TERM);
 	st->abbrev.indent++;
 }
 
