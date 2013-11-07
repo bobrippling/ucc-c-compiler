@@ -315,6 +315,7 @@ static void sigh(int sig)
 static char *next_line()
 {
 	char *s = fline(infile);
+	char *p;
 
 	if(!s){
 		if(feof(infile))
@@ -322,6 +323,11 @@ static char *next_line()
 		else
 			die("read():");
 	}
+
+	for(p = s; *p; p++)
+		if(*p == '\r')
+			*p = ' ';
+
 	return s;
 }
 
