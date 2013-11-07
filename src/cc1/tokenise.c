@@ -484,7 +484,8 @@ static void read_number(enum base mode)
 		die_at(NULL, "%s-number expected (got '%c')",
 				base_to_str(mode), peeknextchar());
 
-	loc_now.chr += end - bufferpos;
+	/* -1, since we've already eaten the first numeric char */
+	loc_now.chr += end - bufferpos - 1;
 	bufferpos = end;
 
 	/* accept either 'U' 'L' or 'LL' as atomic parts (i.e. not LUL) */
