@@ -32,7 +32,7 @@
 #define NOOP_RET() if(parse_should_noop()) return
 
 
-#define N_IFSTACK 32
+#define N_IFSTACK 64
 static struct
 {
 	char noop, if_chosen;
