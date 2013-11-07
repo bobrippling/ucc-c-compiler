@@ -276,6 +276,9 @@ ptr_relation:
 								type_ref_to_str(next));
 					}
 					/* TODO: note: type declared at resolved->where */
+				}else if(type_ref_is_func_or_block(next)){
+					warn_at(w, "arithmetic on function pointer '%s'",
+							type_ref_to_str(resolved));
 				}
 			}
 
