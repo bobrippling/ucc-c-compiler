@@ -94,8 +94,9 @@ static void fold_enum(struct_union_enum_st *en, symtable *stab)
 
 void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 {
-	if(sue->folded || !sue->got_membs)
+	if(sue->foldprog != SUE_FOLDED_NO || !sue->got_membs)
 		return;
+	sue->foldprog = SUE_FOLDED_PARTIAL;
 
 	if(sue->primitive == type_enum){
 		fold_enum(sue, stab);
@@ -266,5 +267,5 @@ normal:
 				align_max);
 	}
 
-	sue->folded = 1;
+	sue->foldprog = SUE_FOLDED_FULLY;
 }

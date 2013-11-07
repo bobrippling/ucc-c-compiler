@@ -62,7 +62,7 @@ void sue_incomplete_chk(struct_union_enum_st *st, where *w)
 				sue_str(st), st->spel, where_str_r(buf, &st->where));
 	}
 
-	UCC_ASSERT(st->folded, "sizeof unfolded sue");
+	UCC_ASSERT(st->foldprog == SUE_FOLDED_FULLY, "sizeof unfolded sue");
 }
 
 unsigned sue_size(struct_union_enum_st *st, where *w)

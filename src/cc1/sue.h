@@ -23,9 +23,14 @@ struct struct_union_enum_st
 	char *spel; /* "<anon ...>" if anon */
 	unsigned anon : 1,
 	         got_membs : 1, /* true if we've had {} (optionally no members) */
-	         folded : 1,
+	         foldprog : 2,
 	         flexarr : 1,
 	         contains_const : 1;
+
+#define SUE_FOLDED_NO 0
+#define SUE_FOLDED_PARTIAL 1
+#define SUE_FOLDED_FULLY 2
+
 	int align, size;
 
 	sue_member **members;
@@ -41,7 +46,8 @@ struct struct_union_enum_st
 
 #define sue_nmembers(x) dynarray_count((x)->members)
 
-#define sue_complete(sue) ((sue)->got_membs && (sue)->folded)
+#define sue_complete(sue) (\
+		(sue)->got_membs && (sue)->foldprog == SUE_FOLDED_FULLY)
 
 sue_member *sue_member_from_decl(decl *);
 
