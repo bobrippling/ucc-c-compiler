@@ -73,7 +73,8 @@ enum wmode wmode =
 	| WPASTE
 	| WFINALESCAPE
 	| WMULTICHAR
-	| WQUOTE;
+	| WQUOTE
+	| WUNDEF;
 
 enum comment_strip strip_comments = STRIP_ALL;
 
