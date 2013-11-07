@@ -11,6 +11,7 @@
 
 void const_fold(expr *e, consty *k)
 {
+	memset(k, 0, sizeof *k);
 	k->type = CONST_NO;
 
 	if(e->f_const_fold){
