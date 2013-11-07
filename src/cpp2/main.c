@@ -315,11 +315,21 @@ int main(int argc, char **argv)
 
 			case 'W':
 			{
+				int off;
 				unsigned j;
+				char *p = argv[i] + 2;
+
+				off = !strncmp(p, "no-", 3);
+				if(off)
+					p += 3;
+
 
 				ITER_WARNS(j){
-					if(!strcmp(argv[i]+2, warns[j].warn)){
-						wmode |= warns[j].or_mask;
+					if(!strcmp(p, warns[j].warn)){
+						if(off)
+							wmode &= ~warns[j].or_mask;
+						else
+							wmode |= warns[j].or_mask;
 						break;
 					}
 				}
