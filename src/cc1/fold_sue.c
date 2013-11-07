@@ -122,9 +122,40 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 		for(i = sue->members; i && *i; i++){
 			decl *d = (*i)->struct_member;
 			unsigned align, sz;
-			struct_union_enum_st *sub_sue;
+			struct_union_enum_st *sub_sue = type_ref_is_s_or_u_or_e(d->ref);
 
 			fold_decl(d, stab, NULL);
+
+			if(!d->spel){
+				/* if the decl doesn't have a name, it's
+				 * a useless decl, unless it's an anon struct/union
+				 * or a bitfield
+				 */
+				if(d->field_width){
+					/* fine */
+				}else if(sub_sue && !type_ref_is_ptr(d->ref)){
+					/* anon */
+					char *prob = NULL;
+					int ignore = 0;
+
+					if(fopt_mode & FOPT_TAG_ANON_STRUCT_EXT){
+						/* fine */
+					}else if(!sub_sue->anon){
+						prob = "ignored - tagged";
+						ignore = 1;
+					}else if(cc1_std < STD_C11){
+						prob = "is a C11 extension";
+					}
+
+					if(prob){
+						warn_at(&d->where,
+								"unnamed member '%s' %s",
+								decl_to_str(d), prob);
+						if(ignore)
+							continue;
+					}
+				}
+			}
 
 			if(!type_ref_is_complete(d->ref))
 				die_at(&d->where, "incomplete field '%s'", decl_to_str(d));
@@ -132,7 +163,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 			if(type_ref_is_const(d->ref))
 				submemb_const = 1;
 
-			if((sub_sue = type_ref_is_s_or_u_or_e(d->ref))){
+			if(sub_sue){
 				if(sub_sue != sue){
 					fold_sue(sub_sue, stab);
 
@@ -140,7 +171,8 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 						submemb_const = 1;
 				}
 
-				if(type_ref_is(d->ref, type_ref_ptr) || sub_sue->primitive == type_enum)
+				if(type_ref_is(d->ref, type_ref_ptr)
+				|| sub_sue->primitive == type_enum)
 					goto normal;
 
 				/* should've been caught by incompleteness checks */

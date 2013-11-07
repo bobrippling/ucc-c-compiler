@@ -1,5 +1,7 @@
 // RUN: %check %s
-struct node {
+
+struct node
+{
 	int x;
-	struct node; // CHECK: !/warn/
+	struct node; // CHECK: /warning: unnamed member 'struct node' ignored/
 };

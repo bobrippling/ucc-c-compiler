@@ -369,7 +369,7 @@ static void print_struct(struct_union_enum_st *sue)
 	for(iter = sue->members; iter && *iter; iter++){
 		decl *d = (*iter)->struct_member;
 
-		idt_printf("decl:\n");
+		idt_printf("decl %s:\n", d->spel ? d->spel : "<anon>");
 		gen_str_indent++;
 		print_decl(d, PDECL_INDENT | PDECL_NEWLINE | PDECL_ATTR);
 
