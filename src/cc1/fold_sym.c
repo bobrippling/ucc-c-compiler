@@ -253,7 +253,7 @@ void symtab_fold_decls(symtable *tab)
 			if(!strcmp(IDENT_LOC_SPEL(a), IDENT_LOC_SPEL(b))){
 				switch(a->has_decl + b->has_decl){
 					case 0:
-						/* both enum-membs, fine?????????? or mismatch? */
+						/* both enum-membs, mismatch */
 						clash = "duplicate";
 						break;
 
@@ -264,13 +264,16 @@ void symtab_fold_decls(symtable *tab)
 
 					default:
 					{
+						UCC_ASSERT(a->has_decl && b->has_decl, "no decls?");
+					}
+					{
 						const enum decl_cmp dflags =
 							DECL_CMP_EXACT_MATCH | DECL_CMP_ALLOW_TENATIVE_ARRAY;
 
-						decl *da = a->has_decl ? a->bits.decl : NULL;
-						decl *db = b->has_decl ? b->bits.decl : NULL;
+						decl *da = a->bits.decl;
+						decl *db = b->bits.decl;
 
-						const int a_func = da ? !!DECL_IS_FUNC(da) : 0;
+						const int a_func = !!DECL_IS_FUNC(da);
 
 						if(!!DECL_IS_FUNC(db) != a_func
 						|| !decl_equal(da, db, dflags))
@@ -282,7 +285,8 @@ void symtab_fold_decls(symtable *tab)
 								if(a_func){
 									/* fine - we know they're equal from decl_equal() above */
 								}else if((da->store & STORE_MASK_STORE) == store_extern
-										&& (db->store & STORE_MASK_STORE) == store_extern){
+								&& (db->store & STORE_MASK_STORE) == store_extern)
+								{
 									/* both are extern declarations */
 								}else{
 									clash = "extern/non-extern";
