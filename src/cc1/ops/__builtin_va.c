@@ -479,7 +479,7 @@ static void fold_va_end(expr *e, symtable *stab)
 	FOLD_EXPR(e->funcargs[0], stab);
 	va_type_check(e->funcargs[0], e->expr, stab);
 
-	va_ensure_variadic(e, stab);
+	/*va_ensure_variadic(e, stab); - va_end can be anywhere */
 
 	e->tree_type = type_ref_cached_VOID();
 }
