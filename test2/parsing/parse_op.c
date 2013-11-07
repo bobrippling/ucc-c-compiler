@@ -8,5 +8,5 @@ f()
 
 main()
 {
-	return a() & b() == c(); // CHECK: /warning: suggested parens around comparison inside &/
+	return a() & b() == c(); // CHECK: warning: == has higher precedence than &
 }

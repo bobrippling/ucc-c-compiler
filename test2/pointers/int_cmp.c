@@ -1,4 +1,3 @@
-// RUN: %ucc %s
 // RUN: %check %s
 extern *i;
 main()
