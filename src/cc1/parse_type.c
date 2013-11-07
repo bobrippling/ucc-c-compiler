@@ -572,7 +572,9 @@ static type_ref *parse_btype(
 
 static int parse_curtok_is_type(void)
 {
-	if(curtok_is_type_qual() || curtok_is_decl_store() || curtok_is_type_primitive())
+	if(curtok_is_type_qual()
+	|| curtok_is_decl_store()
+	|| curtok_is_type_primitive())
 		return 1;
 
 	switch(curtok){
@@ -705,9 +707,12 @@ static type_ref *parse_type_ref_nest(enum decl_mode mode, decl *dfor)
 		 * int (int a) - from either "^int(int...)" or "void f(int (int));"
 		 *                                ^                        ^
 		 * in which case, we've read the first "int", stop early, and unget the open paren
+		 *
+		 * we don't look for open parens - they're used for nexting, e.g.
+		 * int ((*p)(void));
 		 */
-		if(parse_curtok_is_type() || curtok == token_close_paren || curtok == token_open_paren){
-			/* int() - func decl */
+		if(parse_curtok_is_type() || curtok == token_close_paren){
+			/* int() or char(short) - func decl */
 			uneat(token_open_paren);
 			/* parse_...func will grab this as funcargs instead */
 			return NULL;
