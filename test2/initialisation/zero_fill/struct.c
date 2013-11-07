@@ -1,14 +1,4 @@
-// RUN: [ `%ucc %s -S -o- | grep 'mov.*0' | wc -l` -eq 1 ]
-// RUN: [ `%ucc %s -S -o- | grep 'mov.*[12]' | wc -l` -eq 4 ]
-// RUN: %ucc %s -S -o- | grep 'mov.*[^012]'; [ $? -ne 0 ]
-
-main()
-{
-	struct
-	{
-		int a, b, c;
-	} x = { 1, 2 /* 3 */ };
-}
+// RUN: %ocheck 0 %s
 
 f()
 {
@@ -18,5 +8,26 @@ f()
 	} a = {
 	};
 
+	if(a.i != 0 || a.j != 0)
+		abort();
+
 	struct A b = { 1, 2, 3 };
+
+	if(b.i != 1 || b.j != 2)
+		abort();
+}
+
+main()
+{
+	f();
+
+	struct
+	{
+		int a, b, c;
+	} x = { 1, 2 /* 3 */ };
+
+	if(x.c != 0)
+		abort();
+
+	return 0;
 }

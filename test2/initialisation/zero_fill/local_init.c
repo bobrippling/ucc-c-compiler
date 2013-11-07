@@ -1,4 +1,4 @@
-// RUN: %ocheck 7 %s
+// RUN: %ocheck 8 %s
 main()
 {
 	int *p = (int[]){1,2,3};
@@ -7,5 +7,6 @@ main()
 		.j = 3,
 	};
 
+	//      2   +   3    +  0     +  3
 	return p[1] + a.k[1] + a.k[0] + a.j;
 }
