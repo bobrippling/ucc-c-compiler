@@ -149,7 +149,7 @@ sue_member *sue_member_from_decl(decl *d)
 struct_union_enum_st *sue_decl(
 		symtable *stab, char *spel,
 		sue_member **members, enum type_primitive prim,
-		int is_complete, int is_declaration)
+		int got_membs, int is_declaration)
 {
 	struct_union_enum_st *sue;
 	int new = 0;
@@ -177,7 +177,7 @@ struct_union_enum_st *sue_decl(
 		}
 
 		/* check we don't have two definitions */
-		if(is_complete && sue->complete){
+		if(got_membs && sue->got_membs){
 			if(descended)
 				/* struct A {}; f(){ struct A {}; } */
 				goto new_type;
@@ -264,8 +264,8 @@ new_type:
 	}
 
 	sue->anon = !spel;
-	if(is_complete)
-		sue->complete = 1;
+	if(got_membs)
+		sue->got_membs = 1;
 	/* completeness checks done above */
 
 	sue_set_spel(sue, spel);
@@ -277,7 +277,7 @@ new_type:
 	}
 
 	if(new){
-		if(prim == type_enum && !sue->complete)
+		if(prim == type_enum && !sue->got_membs)
 			cc1_warn_at(NULL, 0, WARN_PREDECL_ENUM,
 					"forward-declaration of enum %s", sue->spel);
 

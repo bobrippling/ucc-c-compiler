@@ -22,9 +22,9 @@ struct struct_union_enum_st
 
 	char *spel; /* "<anon ...>" if anon */
 	unsigned anon : 1,
-	         complete : 1,
-	         flexarr : 1,
+	         got_membs : 1, /* true if we've had {} (optionally no members) */
 	         folded : 1,
+	         flexarr : 1,
 	         contains_const : 1;
 	int align, size;
 
@@ -41,7 +41,7 @@ struct struct_union_enum_st
 
 #define sue_nmembers(x) dynarray_count((x)->members)
 
-#define sue_complete(sue) ((sue)->complete)
+#define sue_complete(sue) ((sue)->got_membs && (sue)->folded)
 
 sue_member *sue_member_from_decl(decl *);
 
@@ -62,7 +62,7 @@ struct_union_enum_st *sue_find_this_scope(symtable *, const char *spel);
 struct_union_enum_st *sue_decl(
 		symtable *stab, char *spel,
 		sue_member **members, enum type_primitive prim,
-		int is_complete, int is_declaration);
+		int got_membs, int is_declaration);
 
 /* enum specific */
 void enum_vals_add(sue_member ***, char *, expr *, decl_attr *);

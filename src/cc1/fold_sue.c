@@ -94,9 +94,8 @@ static void fold_enum(struct_union_enum_st *en, symtable *stab)
 
 void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 {
-	if(sue->folded || !sue->complete)
+	if(sue->folded || !sue->got_membs)
 		return;
-	sue->folded = 1;
 
 	if(sue->primitive == type_enum){
 		fold_enum(sue, stab);
@@ -126,6 +125,9 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 
 			fold_decl(d, stab, NULL);
 
+			if(!type_ref_is_complete(d->ref))
+				die_at(&d->where, "incomplete field '%s'", decl_to_str(d));
+
 			if(type_ref_is_const(d->ref))
 				submemb_const = 1;
 
@@ -140,9 +142,10 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 				if(type_ref_is(d->ref, type_ref_ptr) || sub_sue->primitive == type_enum)
 					goto normal;
 
-				if(sub_sue == sue)
-					die_at(&d->where, "nested %s", sue_str(sue));
-				else if(sub_sue->flexarr && i[1])
+				/* should've been caught by incompleteness checks */
+				UCC_ASSERT(sub_sue != sue, "nested %s", sue_str(sue));
+
+				if(sub_sue->flexarr && i[1])
 					warn_at(&d->where, "embedded struct with flex-array not final member");
 
 				sz = sue_size(sub_sue, &d->where);
@@ -262,4 +265,6 @@ normal:
 				sue->primitive == type_struct ? offset : sz_max,
 				align_max);
 	}
+
+	sue->folded = 1;
 }
