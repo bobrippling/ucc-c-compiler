@@ -27,7 +27,8 @@ void token_get_current_str(char **ps, int *pl, int *pwide);
 enum op_type curtok_to_compound_op(void);
 int          curtok_is_compound_assignment(void);
 
-const char *token_to_str(enum token t);
+char *token_to_str(enum token t);
+char *curtok_to_identifier(int *alloc); /* e.g. token_const -> "const" */
 
 extern int parse_had_error;
 

@@ -211,7 +211,7 @@ static void parse_attr_bracket_chomp(int had_open_paren)
 	}
 }
 
-static decl_attr *parse_attr_single(char *ident)
+static decl_attr *parse_attr_single(const char *ident)
 {
 	int i;
 
@@ -238,9 +238,10 @@ static decl_attr *parse_attr(void)
 	decl_attr *attr = NULL, **next = &attr;
 
 	for(;;){
-		char *ident;
+		int alloc;
+		char *ident = curtok_to_identifier(&alloc);
 
-		if(curtok != token_identifier){
+		if(!ident){
 			parse_had_error = 1;
 			warn_at_print_error(NULL,
 					"identifier expected for attribute (got %s)",
@@ -249,15 +250,13 @@ static decl_attr *parse_attr(void)
 			goto comma;
 		}
 
-		ident = token_current_spel();
-		EAT(token_identifier);
-		if(!ident)
-			break;
+		EAT(curtok);
 
 		if((*next = parse_attr_single(ident)))
 			next = &(*next)->next;
 
-		free(ident);
+		if(alloc)
+			free(ident);
 
 comma:
 		if(!accept(token_comma))
