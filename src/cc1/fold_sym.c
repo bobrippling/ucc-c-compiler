@@ -180,6 +180,8 @@ void symtab_fold_decls(symtable *tab)
 		  nidents++;                               \
 		}while(0)
 
+	symtab_iter_children(tab, symtab_fold_decls);
+
 	if(tab->folded)
 		return;
 	tab->folded = 1;
