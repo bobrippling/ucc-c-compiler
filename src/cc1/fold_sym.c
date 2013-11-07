@@ -286,12 +286,16 @@ void symtab_fold_decls(symtable *tab)
 								/* allow multiple functions or multiple externs */
 								if(a_func){
 									/* fine - we know they're equal from decl_equal() above */
-								}else if((da->store & STORE_MASK_STORE) == store_extern
-								&& (db->store & STORE_MASK_STORE) == store_extern)
-								{
-									/* both are extern declarations */
 								}else{
-									clash = "extern/non-extern";
+									int a_extern = (da->store & STORE_MASK_STORE) == store_extern;
+									int b_extern = (db->store & STORE_MASK_STORE) == store_extern;
+									if(a_extern != b_extern){
+										clash = "extern/non-extern";
+									}else if(a_extern + b_extern == 0){
+										clash = "duplicate";
+									}else{
+										/* fine - both extern */
+									}
 								}
 							}else if(a_func && da->func_code && db->func_code){
 								/* b_func is true */
