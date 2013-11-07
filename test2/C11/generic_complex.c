@@ -1,5 +1,5 @@
 // RUN: %ucc -DS_OR_U=struct %s; [ $? -ne 0 ]
-// RUN: %ucc -DS_OR_U=union  %s -o %t; [ $? -eq 0 ]
+// RUN: %ucc -DS_OR_U=union %s -o %t
 // RUN: %t; [ $? -eq 1 ]
 
 main()
