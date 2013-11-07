@@ -1,3 +1,4 @@
 BUILTIN_VA(start)
 BUILTIN_VA(arg)
 BUILTIN_VA(end)
+BUILTIN_VA(copy)

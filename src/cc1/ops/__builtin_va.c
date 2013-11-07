@@ -490,3 +490,38 @@ expr *parse_va_end(void)
 	expr_mutate_builtin_gen(fcall, va_end);
 	return fcall;
 }
+
+static void builtin_gen_va_copy(expr *e)
+{
+	gen_expr(e->lhs);
+}
+
+static void fold_va_copy(expr *e, symtable *stab)
+{
+	int i;
+
+	if(dynarray_count(e->funcargs) != 2)
+		die_at(&e->where, "%s requires two arguments", BUILTIN_SPEL(e->expr));
+
+	for(i = 0; i < 2; i++){
+		FOLD_EXPR(e->funcargs[i], stab);
+		va_type_check(e->funcargs[i], e->expr, stab);
+	}
+
+	/* (*a) = (*b) */
+	e->lhs = builtin_new_memcpy(
+			expr_new_deref(e->funcargs[0]),
+			expr_new_deref(e->funcargs[1]),
+			type_ref_size(type_ref_cached_VA_LIST(), &e->where));
+
+	FOLD_EXPR(e->lhs, stab);
+
+	e->tree_type = type_ref_cached_VOID();
+}
+
+expr *parse_va_copy(void)
+{
+	expr *fcall = parse_any_args();
+	expr_mutate_builtin_gen(fcall, va_copy);
+	return fcall;
+}
