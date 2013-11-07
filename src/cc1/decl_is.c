@@ -290,6 +290,19 @@ int type_ref_is_complete(type_ref *r)
 	return 1;
 }
 
+int type_ref_is_variably_modified(type_ref *r)
+{
+	/* vlas not implemented yet */
+#if 0
+	if(type_ref_is_array(r)){
+		/* ... */
+	}
+#else
+	(void)r;
+#endif
+	return 0;
+}
+
 type_ref *type_ref_is_char_ptr(type_ref *r)
 {
 	type_ref *t = type_ref_is_array(r);

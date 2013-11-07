@@ -255,6 +255,7 @@ int decl_is_variadic(decl *d);
 
 /* type_ref_is_* */
 int type_ref_is_complete(type_ref *);
+int type_ref_is_variably_modified(type_ref *);
 int type_ref_is_void(    type_ref *);
 int type_ref_is_integral(type_ref *);
 int type_ref_is_bool(    type_ref *);
