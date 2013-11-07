@@ -158,8 +158,7 @@ enum fopt fopt_mode = FOPT_CONST_FOLD
                     | FOPT_SHOW_LINE
                     | FOPT_PIC
                     | FOPT_BUILTIN
-                    | FOPT_MS_EXTENSIONS
-										| FOPT_TRACK_INITIAL_FNAM;
+                    | FOPT_TRACK_INITIAL_FNAM;
 enum cc1_backend cc1_backend = BACKEND_ASM;
 
 int cc1_m32 = UCC_M32;
