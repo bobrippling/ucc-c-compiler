@@ -135,7 +135,7 @@ struct
 	const char *arg;
 	int *pval;
 } val_args[] = {
-	{ 'f', "max-errors",   &cc1_max_errors },
+	{ 'f', "error-limit", &cc1_error_limit },
 	{ 'm', "preferred-stack-boundary", &cc1_mstack_align },
 	{ 0, NULL, NULL }
 };
@@ -167,7 +167,7 @@ int cc1_gdebug;
 
 enum c_std cc1_std = STD_C99;
 
-int cc1_max_errors = 16;
+int cc1_error_limit = 16;
 
 int caught_sig = 0;
 

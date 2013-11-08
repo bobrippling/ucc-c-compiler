@@ -379,7 +379,7 @@ void eat2(enum token t, const char *fnam, int line, int die)
 				ident ? "\" " : "",
 				fnam, line);
 
-		if(die || --cc1_max_errors <= 0)
+		if(die || --cc1_error_limit <= 0)
 			exit(1);
 
 		/* XXX: we continue here, assuming we had the token anyway */
