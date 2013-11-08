@@ -136,6 +136,7 @@ struct
 	int *pval;
 } val_args[] = {
 	{ 'f', "error-limit", &cc1_error_limit },
+	{ 'f', "message-length", &warning_length },
 	{ 'm', "preferred-stack-boundary", &cc1_mstack_align },
 	{ 0, NULL, NULL }
 };

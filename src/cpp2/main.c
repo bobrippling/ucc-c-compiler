@@ -307,10 +307,14 @@ int main(int argc, char **argv)
 				break;
 
 			case 'f':
-				if(!strcmp(argv[i]+2, "freestanding"))
+				if(!strcmp(argv[i]+2, "freestanding")){
 					freestanding = 1;
-				else
+				}else if(!strncmp(argv[i]+2, "message-length=", 15)){
+					const char *p = argv[i] + 17;
+					warning_length = atoi(p);
+				}else{
 					goto usage;
+				}
 				break;
 
 			case 'W':
