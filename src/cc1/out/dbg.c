@@ -35,7 +35,8 @@ struct dwarf_state
 				DWARF_WORD = 2,
 				DWARF_LONG = 4,
 				DWARF_QUAD = 8,
-				DWARF_STR  = 9
+				DWARF_STR  = 9,
+				DWARF_SIBLING = 10,
 			} val_type;
 			union
 			{
@@ -179,6 +180,20 @@ static void dwarf_sec_indent(struct dwarf_sec *sec, int chg)
 	sec->values[sec->nvalues-1].indent_adj = chg;
 }
 
+static void dwarf_sibling_push(struct dwarf_state *st)
+{
+	/* no sibling mark... yet */
+	(void)st;
+}
+
+static void dwarf_sibling_pop(struct dwarf_state *st)
+{
+	struct dwarf_sec *sec = &st->info;
+
+	/* end of child mark */
+	dwarf_add_value(sec, /*byte:*/1, /*nul*/0);
+}
+
 #define VAL_TERM -1L
 static void dwarf_sec_val(struct dwarf_sec *sec, long val, ...) /* -1 terminator */
 {
@@ -290,11 +305,11 @@ static void dwarf_basetype(struct dwarf_state *st, enum type_primitive prim, int
 
 static void dwarf_sue_header(
 		struct dwarf_state *st, struct_union_enum_st *sue,
-		int dwarf_tag, int children)
+		int dwarf_tag)
 {
 	dwarf_start(st); {
-		dwarf_abbrev_start(st, dwarf_tag, children ? DW_CHILDREN_yes : DW_CHILDREN_no); {
-			/*dwarf_attr(st, DW_AT_sibling, ... next?);*/
+		dwarf_abbrev_start(st, dwarf_tag, DW_CHILDREN_yes); {
+			dwarf_sibling_push(st);
 			if(!sue->anon)
 				dwarf_attr(st, DW_AT_name, DW_FORM_string, sue->spel);
 			if(sue_complete(sue))
@@ -323,9 +338,7 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 					{
 						sue_member **i;
 
-						dwarf_sue_header(st, sue, DW_TAG_enumeration_type, /*children:*/0);
-
-						ICW_1("need to make enumerators siblings of the enumeration");
+						dwarf_sue_header(st, sue, DW_TAG_enumeration_type);
 
 						/* enumerators */
 						for(i = sue->members; i && *i; i++){
@@ -344,6 +357,8 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 								} dwarf_sec_end(&st->abbrev);
 							} dwarf_end(st);
 						}
+
+						dwarf_sibling_pop(st);
 						break;
 					}
 
@@ -368,8 +383,7 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 								st, sue,
 								sue->primitive == type_struct
 									? DW_TAG_structure_type
-									: DW_TAG_union_type,
-								/*children:*/0);
+									: DW_TAG_union_type);
 
 						/* members */
 						for(i = 0, si = sue->members; i < nmem; i++, si++){
@@ -407,6 +421,7 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 							} dwarf_end(st);
 						}
 
+						dwarf_sibling_pop(st);
 						free(mem_offsets);
 						break;
 					}
@@ -598,16 +613,7 @@ static void dwarf_flush(struct dwarf_sec *sec, FILE *f)
 
 	for(i = 0; i < sec->nvalues; i++){
 		struct dwarf_val *val = &sec->values[i];
-		const char *ty = NULL;
 		unsigned indent_adj;
-
-		switch(val->val_type){
-			case DWARF_BYTE: ty = "byte"; break;
-			case DWARF_WORD: ty = "word"; break;
-			case DWARF_LONG: ty = "long"; break;
-			case DWARF_QUAD: ty = "quad"; break;
-			case DWARF_STR: break;
-		}
 
 		/* increments take affect before, decrements, after */
 		if(val->indent_adj > 0)
@@ -617,10 +623,28 @@ static void dwarf_flush(struct dwarf_sec *sec, FILE *f)
 		if(val->indent_adj < 0)
 			indent += val->indent_adj;
 
-		if(ty){
-			fprintf(f, ".%s %lld\n", ty, val->bits.value);
-		}else{
-			fprintf(f, ".asciz \"%s\"\n", val->bits.str);
+		switch(val->val_type){
+			{
+				const char *ty;
+			case DWARF_BYTE: ty = "byte"; goto o_common;
+			case DWARF_WORD: ty = "word"; goto o_common;
+			case DWARF_LONG: ty = "long"; goto o_common;
+			case DWARF_QUAD: ty = "quad"; goto o_common;
+o_common:
+				fprintf(f, ".%s %lld\n", ty, val->bits.value);
+				break;
+			}
+
+			case DWARF_SIBLING:
+			{
+				/* don't output sibling info - they're just
+				 * used as markers for the moment */
+				break;
+			}
+
+			case DWARF_STR:
+				fprintf(f, ".asciz \"%s\"\n", val->bits.str);
+				break;
 		}
 	}
 }
