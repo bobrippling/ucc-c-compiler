@@ -27,12 +27,30 @@ struct dwarf_state
 {
 	struct dwarf_sec
 	{
-		FILE *f;
-		int idx;
-		int indent;
-		unsigned length;
+		struct dwarf_val
+		{
+			enum
+			{
+				DWARF_BYTE = 1,
+				DWARF_WORD = 2,
+				DWARF_LONG = 4,
+				DWARF_QUAD = 8,
+				DWARF_STR  = 9
+			} val_sz;
+			union
+			{
+				unsigned long long value;
+				char *str; /* FREE */
+			} bits;
+
+			int indent_adj;
+		} *values; /* FREE */
+		size_t nvalues;
+		size_t length;
+
+		int last_idx;
 	} abbrev, info;
-#define DWARF_SEC_INIT(fp) { (fp), 1, 1, 0 }
+#define DWARF_SEC_INIT() { NULL, 0, 0, 1 }
 };
 
 struct dwarf_block /* DW_FORM_block1 */
@@ -113,22 +131,52 @@ enum
 	DW_LANG_C99 = 0xc
 };
 
-static void indent(FILE *f, int idt)
-{
-	while(idt --> 0)
-		fputc('\t', f);
-}
-
-static void dwarf_smallest(unsigned long val, const char **pty, unsigned *int_sz)
+static void dwarf_smallest(
+		unsigned long val, unsigned *int_sz)
 {
 	if((unsigned char)val == val)
-		*pty = "byte", *int_sz = 1;
+		*int_sz = 1;
 	else if((unsigned short)val == val)
-		*pty = "word", *int_sz = 2;
+		*int_sz = 2;
 	else if((unsigned)val == val)
-		*pty = "long", *int_sz = 4;
+		*int_sz = 4;
 	else
-		*pty = "quad", *int_sz = 8;
+		*int_sz = 8;
+}
+
+static struct dwarf_val *dwarf_value_new(struct dwarf_sec *sec)
+{
+	sec->values = urealloc1(sec->values, ++sec->nvalues * sizeof *sec->values);
+	sec->values[sec->nvalues-1].indent_adj = 0;
+	return &sec->values[sec->nvalues - 1];
+}
+
+static void dwarf_add_value(
+		struct dwarf_sec *sec,
+		unsigned val_sz,
+		unsigned long long value)
+{
+	struct dwarf_val *val = dwarf_value_new(sec);
+
+	val->val_sz = val_sz;
+	val->bits.value = value;
+
+	sec->length += val_sz;
+}
+
+static void dwarf_add_str(struct dwarf_sec *sec, char *str)
+{
+	struct dwarf_val *val = dwarf_value_new(sec);
+
+	val->val_sz = DWARF_STR;
+	val->bits.str = str;
+
+	sec->length += strlen(str) + 1;
+}
+
+static void dwarf_sec_indent(struct dwarf_sec *sec, int chg)
+{
+	sec->values[sec->nvalues-1].indent_adj = chg;
 }
 
 #define VAL_TERM -1L
@@ -139,14 +187,11 @@ static void dwarf_sec_val(struct dwarf_sec *sec, long val, ...) /* -1 terminator
 	va_start(l, val);
 
 	do{
-		const char *ty;
 		unsigned int_sz;
 
-		dwarf_smallest(val, &ty, &int_sz);
+		dwarf_smallest(val, &int_sz);
 
-		indent(sec->f, sec->indent);
-		fprintf(sec->f, ".%s %ld\n", ty, val);
-		sec->length += int_sz;
+		dwarf_add_value(sec, int_sz, val);
 
 		val = va_arg(l, long);
 	}while(val != VAL_TERM);
@@ -164,8 +209,6 @@ static void dwarf_attr(
 	/* abbrev part */
 	dwarf_sec_val(&st->abbrev, key, val, VAL_TERM);
 
-	indent(st->info.f, st->info.indent);
-
 	/* info part */
 	va_start(l, val);
 	switch(val){
@@ -174,58 +217,46 @@ static void dwarf_attr(
 			const struct dwarf_block *blk = va_arg(l, struct dwarf_block *);
 			unsigned i;
 
-			fprintf(st->info.f, ".byte %d", (signed char)blk->len);
+			dwarf_add_value(&st->info, /*byte:*/1, (signed char)blk->len);
 
 			for(i = 0; i < blk->len; i++)
-				fprintf(st->info.f, ", %d", blk->vals[i]);
-
-			fputc('\n', st->info.f);
-
-			st->info.length += 1 + blk->len;
+				dwarf_add_value(&st->info, /*byte:*/1, blk->vals[i]);
 			break;
 		}
 		case DW_FORM_ref4:
-			fprintf(st->info.f, ".long %u", va_arg(l, unsigned));
-			st->info.length += 4;
+			dwarf_add_value(&st->info, /*long:*/4, va_arg(l, unsigned));
 			break;
 		case DW_FORM_addr:
-			fprintf(st->info.f, ".quad 0x%lx", (long)va_arg(l, void *));
-			st->info.length += 8;
+			dwarf_add_value(&st->info, /*quad:*/8, (long)va_arg(l, void *));
 			break;
 		case DW_FORM_data1:
 		case DW_FORM_flag:
-			fprintf(st->info.f, ".byte %d", (signed char)va_arg(l, int));
-			st->info.length++;
+			dwarf_add_value(&st->info, /*byte:*/1, (signed char)va_arg(l, int));
 			break;
 		case DW_FORM_data2:
-			fprintf(st->info.f, ".word %d", (short)va_arg(l, int));
-			st->info.length += 2;
+			dwarf_add_value(&st->info, /*word:*/2, (short)va_arg(l, int));
 			break;
 		case DW_FORM_string:
 		{
 			char *esc = va_arg(l, char *);
 			esc = str_add_escape(esc, strlen(esc));
-			fprintf(st->info.f, ".asciz \"%s\"", esc);
-			st->info.length += strlen(esc) + 1;
-			free(esc);
+			dwarf_add_str(&st->info, esc);
 			break;
 		}
 	}
 	va_end(l);
-
-	fputc('\n', st->info.f);
 }
 
 static void dwarf_sec_start(struct dwarf_sec *sec)
 {
-	dwarf_sec_val(sec, sec->idx++, VAL_TERM);
-	sec->indent++;
+	dwarf_sec_val(sec, sec->last_idx++, VAL_TERM);
+	dwarf_sec_indent(sec, +1);
 }
 
 static void dwarf_sec_end(struct dwarf_sec *sec)
 {
-	sec->indent--;
 	dwarf_sec_val(sec, 0, VAL_TERM);
+	dwarf_sec_indent(sec, -1);
 }
 
 static void dwarf_start(struct dwarf_state *st)
@@ -237,13 +268,13 @@ static void dwarf_start(struct dwarf_state *st)
 static void dwarf_end(struct dwarf_state *st)
 {
 	dwarf_sec_end(&st->abbrev);
-	st->info.indent--; /* we don't terminate info entries */
+	dwarf_sec_indent(&st->info, -1); /* we don't terminate info entries */
 }
 
 static void dwarf_abbrev_start(struct dwarf_state *st, int b1, int b2)
 {
 	dwarf_sec_val(&st->abbrev, b1, b2, VAL_TERM);
-	st->abbrev.indent++;
+	dwarf_sec_indent(&st->abbrev, +1);
 }
 
 static void dwarf_basetype(struct dwarf_state *st, enum type_primitive prim, int enc)
@@ -516,16 +547,16 @@ static void dwarf_cu(struct dwarf_state *st, const char *fname)
 			dwarf_attr(st, DW_AT_producer, DW_FORM_string, "ucc development version");
 			dwarf_attr(st, DW_AT_language, DW_FORM_data2, DW_LANG_C99);
 			dwarf_attr(st, DW_AT_name, DW_FORM_string, fname);
-			dwarf_attr(st, DW_AT_low_pc, DW_FORM_addr, 0x12345); /* TODO */
-			dwarf_attr(st, DW_AT_high_pc, DW_FORM_addr, 0x54321);
+			dwarf_attr(st, DW_AT_low_pc, DW_FORM_addr, 12345); /* TODO */
+			dwarf_attr(st, DW_AT_high_pc, DW_FORM_addr, 54321);
 		} dwarf_sec_end(&st->abbrev);
 	} dwarf_end(st);
 }
 
-static void dwarf_info_header(struct dwarf_sec *sec)
+static void dwarf_info_header(struct dwarf_sec *sec, FILE *f)
 {
 	/* hacky? */
-	fprintf(sec->f,
+	fprintf(f,
 			"\t.long .Ldbg_info_end - .Ldbg_info_start\n"
 			".Ldbg_info_start:\n"
 			"\t.short 2 # DWARF 2\n"
@@ -536,9 +567,10 @@ static void dwarf_info_header(struct dwarf_sec *sec)
 	sec->length += 4 + 2 + 4 + 1;
 }
 
-static void dwarf_info_footer(struct dwarf_sec *sec)
+static void dwarf_info_footer(struct dwarf_sec *sec, FILE *f)
 {
-	fprintf(sec->f, ".Ldbg_info_end:\n");
+	(void)sec;
+	fprintf(f, ".Ldbg_info_end:\n");
 }
 
 static void dwarf_global_variable(struct dwarf_state *st, decl *d)
@@ -559,14 +591,48 @@ static void dwarf_global_variable(struct dwarf_state *st, decl *d)
 	} dwarf_end(st);
 }
 
+static void dwarf_flush(struct dwarf_sec *sec, FILE *f)
+{
+	unsigned indent = 0;
+	size_t i;
+
+	for(i = 0; i < sec->nvalues; i++){
+		struct dwarf_val *val = &sec->values[i];
+		const char *ty = NULL;
+		unsigned indent_adj;
+
+		switch(val->val_sz){
+			case DWARF_BYTE: ty = "byte"; break;
+			case DWARF_WORD: ty = "word"; break;
+			case DWARF_LONG: ty = "long"; break;
+			case DWARF_QUAD: ty = "quad"; break;
+			case DWARF_STR: break;
+		}
+
+		/* increments take affect before, decrements, after */
+		if(val->indent_adj > 0)
+			indent += val->indent_adj;
+		for(indent_adj = 0; indent_adj < indent; indent_adj++)
+			fputc('\t', f);
+		if(val->indent_adj < 0)
+			indent += val->indent_adj;
+
+		if(ty){
+			fprintf(f, ".%s %lld\n", ty, val->bits.value);
+		}else{
+			fprintf(f, ".asciz \"%s\"\n", val->bits.str);
+		}
+	}
+}
+
 void out_dbginfo(symtable_global *globs, const char *fname)
 {
 	struct dwarf_state st = {
-		DWARF_SEC_INIT(cc_out[SECTION_DBG_ABBREV]),
-		DWARF_SEC_INIT(cc_out[SECTION_DBG_INFO]),
+		DWARF_SEC_INIT(),
+		DWARF_SEC_INIT()
 	};
 
-	dwarf_info_header(&st.info);
+	dwarf_info_header(&st.info, cc_out[SECTION_DBG_INFO]);
 
 	/* output abbrev Compile Unit header */
 	dwarf_cu(&st, fname);
@@ -586,5 +652,8 @@ void out_dbginfo(symtable_global *globs, const char *fname)
 		}
 	}
 
-	dwarf_info_footer(&st.info);
+	dwarf_flush(&st.abbrev, cc_out[SECTION_DBG_ABBREV]);
+	dwarf_flush(&st.info, cc_out[SECTION_DBG_INFO]);
+
+	dwarf_info_footer(&st.info, cc_out[SECTION_DBG_INFO]);
 }
