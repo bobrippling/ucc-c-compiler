@@ -147,9 +147,13 @@ static void dwarf_smallest(
 
 static struct dwarf_val *dwarf_value_new(struct dwarf_sec *sec)
 {
+	struct dwarf_val *val;
+
 	sec->values = urealloc1(sec->values, ++sec->nvalues * sizeof *sec->values);
-	sec->values[sec->nvalues-1].indent_adj = 0;
-	return &sec->values[sec->nvalues - 1];
+
+	val = &sec->values[sec->nvalues-1];
+	memset(val, 0, sizeof *val);
+	return val;
 }
 
 static void dwarf_add_value(
