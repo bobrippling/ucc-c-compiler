@@ -36,7 +36,7 @@ struct dwarf_state
 				DWARF_LONG = 4,
 				DWARF_QUAD = 8,
 				DWARF_STR  = 9
-			} val_sz;
+			} val_type;
 			union
 			{
 				unsigned long long value;
@@ -153,22 +153,22 @@ static struct dwarf_val *dwarf_value_new(struct dwarf_sec *sec)
 
 static void dwarf_add_value(
 		struct dwarf_sec *sec,
-		unsigned val_sz,
+		unsigned val_type,
 		unsigned long long value)
 {
 	struct dwarf_val *val = dwarf_value_new(sec);
 
-	val->val_sz = val_sz;
+	val->val_type = val_type;
 	val->bits.value = value;
 
-	sec->length += val_sz;
+	sec->length += val_type;
 }
 
 static void dwarf_add_str(struct dwarf_sec *sec, char *str)
 {
 	struct dwarf_val *val = dwarf_value_new(sec);
 
-	val->val_sz = DWARF_STR;
+	val->val_type = DWARF_STR;
 	val->bits.str = str;
 
 	sec->length += strlen(str) + 1;
@@ -601,7 +601,7 @@ static void dwarf_flush(struct dwarf_sec *sec, FILE *f)
 		const char *ty = NULL;
 		unsigned indent_adj;
 
-		switch(val->val_sz){
+		switch(val->val_type){
 			case DWARF_BYTE: ty = "byte"; break;
 			case DWARF_WORD: ty = "word"; break;
 			case DWARF_LONG: ty = "long"; break;
