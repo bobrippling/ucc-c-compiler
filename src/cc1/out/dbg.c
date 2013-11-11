@@ -319,8 +319,13 @@ static void dwarf_attr(
 			for(i = 0; i < blk->cnt; i++){
 				switch(blk->vals[i].type){
 					case BLOCK_N:
-						dwarf_add_value(&st->info, /*byte:*/1, blk->vals[i].bits.n);
+					{
+						unsigned long val = blk->vals[i].bits.n;
+						unsigned sz;
+						dwarf_smallest(val, &sz);
+						dwarf_add_value(&st->info, sz, val);
 						break;
+					}
 					case BLOCK_ADDR_STR:
 						dwarf_add_addr_str(&st->info, blk->vals[i].bits.addr_str);
 						break;
