@@ -37,11 +37,13 @@ struct dwarf_state
 				DWARF_QUAD = 8,
 				DWARF_STR  = 9,
 				DWARF_SIBLING = 10,
+				DWARF_ADDR_STR = 11,
 			} val_type;
 			union
 			{
 				unsigned long long value;
 				char *str; /* FREE */
+				char *addr_str; /* ref to d->spel */
 				unsigned sibling_pos; /* filled in later */
 			} bits;
 
@@ -59,13 +61,26 @@ struct dwarf_state
 
 struct dwarf_block /* DW_FORM_block1 */
 {
-	unsigned len;
-	unsigned *vals;
+	unsigned cnt; /* length is the sum of entry sizes */
+	struct dwarf_block_ent
+	{
+		enum
+		{
+			BLOCK_N,
+			BLOCK_ADDR_STR
+		} type;
+		union
+		{
+			unsigned n;
+			char *addr_str;
+		} bits;
+	} *vals;
 };
 
 enum dwarf_block_ops
 {
-	DW_OP_plus_uconst = 0x23
+	DW_OP_plus_uconst = 0x23,
+	DW_OP_addr = 0x3
 };
 
 enum dwarf_key
@@ -188,6 +203,17 @@ static void dwarf_add_str(struct dwarf_sec *sec, char *str)
 	sec->length += strlen(str) + 1;
 }
 
+static void dwarf_add_addr_str(
+		struct dwarf_sec *sec, char *addr)
+{
+	struct dwarf_val *val = dwarf_value_new(sec);
+
+	val->val_type = DWARF_ADDR_STR;
+	val->bits.addr_str = addr;
+
+	sec->length += platform_word_size();
+}
+
 static void dwarf_sec_indent(struct dwarf_sec *sec, int chg)
 {
 	sec->values[sec->nvalues-1].indent_adj = chg;
@@ -276,11 +302,30 @@ static void dwarf_attr(
 		{
 			const struct dwarf_block *blk = va_arg(l, struct dwarf_block *);
 			unsigned i;
+			unsigned len = 0;
 
-			dwarf_add_value(&st->info, /*byte:*/1, (signed char)blk->len);
+			for(i = 0; i < blk->cnt; i++)
+				switch(blk->vals[i].type){
+					case BLOCK_N:
+						len++;
+						break;
+					case BLOCK_ADDR_STR:
+						len += platform_word_size();
+						break;
+				}
 
-			for(i = 0; i < blk->len; i++)
-				dwarf_add_value(&st->info, /*byte:*/1, blk->vals[i]);
+			dwarf_add_value(&st->info, /*byte:*/1, (unsigned char)len);
+
+			for(i = 0; i < blk->cnt; i++){
+				switch(blk->vals[i].type){
+					case BLOCK_N:
+						dwarf_add_value(&st->info, /*byte:*/1, blk->vals[i].bits.n);
+						break;
+					case BLOCK_ADDR_STR:
+						dwarf_add_addr_str(&st->info, blk->vals[i].bits.addr_str);
+						break;
+				}
+			}
 			break;
 		}
 		case DW_FORM_ref4:
@@ -433,7 +478,7 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 							dwarf_start(st); {
 								dwarf_abbrev_start(st, DW_TAG_member, DW_CHILDREN_no); {
 									struct dwarf_block offset;
-									unsigned offset_data[2];
+									struct dwarf_block_ent offset_data[2];
 
 									decl *dmem = (*si)->struct_member;
 
@@ -446,10 +491,12 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 											mem_offsets[i]);
 
 									/* TODO: bitfields */
-									offset_data[0] = DW_OP_plus_uconst;
-									offset_data[1] = dmem->struct_offset;
+									offset_data[0].type = BLOCK_N;
+									offset_data[0].bits.n = DW_OP_plus_uconst;
+									offset_data[1].type = BLOCK_N;
+									offset_data[1].bits.n = dmem->struct_offset;
 
-									offset.len = 2;
+									offset.cnt = 2;
 									offset.vals = offset_data;
 
 									dwarf_attr(st,
@@ -644,9 +691,23 @@ static void dwarf_global_variable(struct dwarf_state *st, decl *d)
 		dwarf_abbrev_start(st, DW_TAG_variable, DW_CHILDREN_no); {
 			dwarf_attr(st, DW_AT_name, DW_FORM_string, d->spel);
 			dwarf_attr(st, DW_AT_type, DW_FORM_ref4, typos);
-			/*dwarf_attr(st, DW_AT_location, DW_FORM_block1, d->spel_asm);*/
 			dwarf_attr(st, DW_AT_external, DW_FORM_flag,
 					(d->store & STORE_MASK_STORE) != store_static);
+
+			{
+				struct dwarf_block locn;
+				struct dwarf_block_ent locn_data[2];
+
+				locn_data[0].type = BLOCK_N;
+				locn_data[0].bits.n = DW_OP_addr;
+				locn_data[1].type = BLOCK_ADDR_STR;
+				locn_data[1].bits.addr_str = d->spel;
+
+				locn.cnt = 2;
+				locn.vals = locn_data;
+
+				dwarf_attr(st, DW_AT_location, DW_FORM_block1, &locn);
+			}
 
 		} dwarf_sec_end(&st->abbrev);
 	} dwarf_end(st);
@@ -689,6 +750,9 @@ o_common:
 				break;
 			}
 
+			case DWARF_ADDR_STR:
+				fprintf(f, ".quad %s\n", val->bits.addr_str);
+				break;
 			case DWARF_STR:
 				fprintf(f, ".asciz \"%s\"\n", val->bits.str);
 				break;
