@@ -694,12 +694,12 @@ static void dwarf_global_variable(struct dwarf_state *st, decl *d)
 
 	dwarf_start(st); {
 		dwarf_abbrev_start(st, DW_TAG_variable, DW_CHILDREN_no); {
+			enum decl_storage const store = d->store & STORE_MASK_STORE;
+
 			dwarf_attr(st, DW_AT_name, DW_FORM_string, d->spel);
 			dwarf_attr(st, DW_AT_type, DW_FORM_ref4, typos);
-			dwarf_attr(st, DW_AT_external, DW_FORM_flag,
-					(d->store & STORE_MASK_STORE) != store_static);
 
-			{
+			if(store != store_typedef){
 				struct dwarf_block locn;
 				struct dwarf_block_ent locn_data[2];
 
@@ -712,6 +712,8 @@ static void dwarf_global_variable(struct dwarf_state *st, decl *d)
 				locn.vals = locn_data;
 
 				dwarf_attr(st, DW_AT_location, DW_FORM_block1, &locn);
+
+				dwarf_attr(st, DW_AT_external, DW_FORM_flag, store != store_static);
 			}
 
 		} dwarf_sec_end(&st->abbrev);
