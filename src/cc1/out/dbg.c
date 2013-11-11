@@ -85,6 +85,7 @@ enum dwarf_key
 	DW_TAG_union_type = 0x17,
 	DW_TAG_member = 0xd,
 	DW_AT_data_member_location = 0x38,
+	DW_AT_external = 0x3f,
 
 	DW_AT_byte_size = 0xb,
 	DW_AT_encoding = 0x3e,
@@ -644,6 +645,9 @@ static void dwarf_global_variable(struct dwarf_state *st, decl *d)
 			dwarf_attr(st, DW_AT_name, DW_FORM_string, d->spel);
 			dwarf_attr(st, DW_AT_type, DW_FORM_ref4, typos);
 			/*dwarf_attr(st, DW_AT_location, DW_FORM_block1, d->spel_asm);*/
+			dwarf_attr(st, DW_AT_external, DW_FORM_flag,
+					(d->store & STORE_MASK_STORE) != store_static);
+
 		} dwarf_sec_end(&st->abbrev);
 	} dwarf_end(st);
 }
