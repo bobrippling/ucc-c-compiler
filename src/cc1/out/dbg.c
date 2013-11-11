@@ -42,16 +42,19 @@ struct dwarf_state
 			{
 				unsigned long long value;
 				char *str; /* FREE */
+				unsigned sibling_pos; /* filled in later */
 			} bits;
 
+			unsigned sibling_nest;
 			int indent_adj;
 		} *values; /* FREE */
 		size_t nvalues;
 		size_t length;
 
 		int last_idx;
+		unsigned current_sibling_nest;
 	} abbrev, info;
-#define DWARF_SEC_INIT() { NULL, 0, 0, 1 }
+#define DWARF_SEC_INIT() { NULL, 0, 0, 1, 0 }
 };
 
 struct dwarf_block /* DW_FORM_block1 */
@@ -132,6 +135,11 @@ enum
 	DW_LANG_C99 = 0xc
 };
 
+static void dwarf_attr(
+		struct dwarf_state *st,
+		enum dwarf_key key, enum dwarf_valty val,
+		...);
+
 static void dwarf_smallest(
 		unsigned long val, unsigned *int_sz)
 {
@@ -186,13 +194,45 @@ static void dwarf_sec_indent(struct dwarf_sec *sec, int chg)
 
 static void dwarf_sibling_push(struct dwarf_state *st)
 {
-	/* no sibling mark... yet */
-	(void)st;
+	/* ref4 TBA */
+	dwarf_attr(st, DW_AT_sibling, DW_FORM_ref4, 0);
+
+	{
+		struct dwarf_sec *sec = &st->info;
+		struct dwarf_val *val = &sec->values[sec->nvalues-1];
+
+		/* val is the DW_FORM_ref4 entry in the info section */
+
+		val->val_type = DWARF_SIBLING; /* will have been DWARF_LONG */
+		val->bits.sibling_pos = 0; /* to update */
+		val->sibling_nest = ++sec->current_sibling_nest;
+	}
 }
 
 static void dwarf_sibling_pop(struct dwarf_state *st)
 {
 	struct dwarf_sec *sec = &st->info;
+	/* work our way back through siblings until we find one
+	 * at our nest level, and update its sibling pointer */
+	size_t i;
+
+	for(i = sec->nvalues - 1;; i--){
+		struct dwarf_val *val = &sec->values[i];
+
+		if(val->sibling_nest == sec->current_sibling_nest){
+			/* found */
+
+			/* restore sibling */
+			sec->current_sibling_nest--;
+
+			/* update previous sibling offset */
+			val->bits.sibling_pos = sec->length + 1 /* include the child mark */;
+			break;
+		}
+
+		if(i == 0)
+			ICE("couldn't find sibling entry for dwarf node");
+	}
 
 	/* end of child mark */
 	dwarf_add_value(sec, /*byte:*/1, /*nul*/0);
@@ -373,8 +413,6 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 						sue_member **si;
 						unsigned i;
 						unsigned *mem_offsets = nmem ? umalloc(nmem * sizeof *mem_offsets) : NULL;
-
-						ICW_1("need to make members siblings of the struct/union");
 
 						/* member types */
 						for(i = 0; i < nmem; i++)
@@ -641,8 +679,9 @@ o_common:
 
 			case DWARF_SIBLING:
 			{
-				/* don't output sibling info - they're just
-				 * used as markers for the moment */
+				const unsigned long pos = val->bits.sibling_pos;
+				UCC_ASSERT(pos, "unset sibling offset");
+				fprintf(f, ".long %lu\n", pos);
 				break;
 			}
 
