@@ -987,6 +987,8 @@ out/asm.o: out/asm.c out/../../util/util.h out/../../util/where.h \
  out/../sue.h out/../const.h out/../gen_asm.h out/../decl_init.h \
  out/../pack.h
 out/dbg.o: out/dbg.c out/../../util/where.h out/../../util/compiler.h \
+ out/../../util/platform.h out/../../util/util.h out/../../util/where.h \
+ out/../../util/dynarray.h out/../../util/dyn.h out/../../util/alloc.h \
  out/../str.h out/../data_structs.h out/../tree.h out/../expr.h \
  out/../ops/expr_addr.h out/../ops/expr_assign.h \
  out/../ops/expr_assign_compound.h out/../ops/expr_cast.h \
@@ -1002,7 +1004,8 @@ out/dbg.o: out/dbg.c out/../../util/where.h out/../../util/compiler.h \
  out/../ops/stmt_label.h out/../ops/stmt_noop.h out/../ops/stmt_return.h \
  out/../ops/stmt_switch.h out/../ops/stmt_while.h \
  out/../ops/stmt_continue.h out/../sym.h out/../decl.h out/../expr.h \
- out/../tree.h out/../cc1.h out/../../util/std.h out/dbg.h
+ out/../tree.h out/../const.h out/../funcargs.h out/../sue.h out/../cc1.h \
+ out/../../util/std.h out/lbl.h out/dbg.h
 out/impl.o: out/impl.c out/../../util/util.h out/../../util/where.h \
  out/../../util/compiler.h out/../data_structs.h out/../tree.h \
  out/../expr.h out/../ops/expr_addr.h out/../ops/expr_assign.h \
