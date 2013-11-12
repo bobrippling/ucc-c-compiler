@@ -151,8 +151,14 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 						warn_at(&d->where,
 								"unnamed member '%s' %s",
 								decl_to_str(d), prob);
-						if(ignore)
+						if(ignore){
+							/* drop the decl */
+							sue_member *dropped = sue_drop(sue, i);
+							i--;
+							decl_free(dropped->struct_member, /*free ref:*/0);
+							free(dropped);
 							continue;
+						}
 					}
 				}
 			}

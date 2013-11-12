@@ -287,6 +287,20 @@ new_type:
 	return sue;
 }
 
+sue_member *sue_drop(struct_union_enum_st *sue, sue_member **pos)
+{
+	sue_member *ret = *pos;
+
+	const size_t n = sue_nmembers(sue);
+	size_t i = pos - sue->members;
+
+	for(; i < n - 1; i++)
+		sue->members[i] = sue->members[i + 1];
+	sue->members[i] = NULL;
+
+	return ret;
+}
+
 static void *sue_member_find(
 		struct_union_enum_st *sue, const char *spel, unsigned *extra_off,
 		struct_union_enum_st **pin)

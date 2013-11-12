@@ -70,6 +70,8 @@ struct_union_enum_st *sue_decl(
 		sue_member **members, enum type_primitive prim,
 		int got_membs, int is_declaration);
 
+sue_member *sue_drop(struct_union_enum_st *sue, sue_member **pos);
+
 /* enum specific */
 void enum_vals_add(sue_member ***, char *, expr *, decl_attr *);
 int  enum_nentries(struct_union_enum_st *);
