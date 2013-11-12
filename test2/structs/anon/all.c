@@ -1,4 +1,5 @@
-// RUN: %ucc -fplan9-extensions %s
+// RUN: %ucc -fplan9-extensions %s -o %t
+// RUN: %t
 struct C99
 {
 	union
@@ -15,14 +16,23 @@ struct ambig
 	int a_sub;
 };
 
+plan_9();
+
 main()
 {
-	struct C99 a = { /* designated init isn't C99 */
+	struct C99 a = {
 		.k = 1,
 		.i = 3,
-	};
+	}; // { { 3 }, 1 }
 
-	a.c = 2;
+	a.c = 2; // { { 2 }, 1 }
+
+	if(a.i != 2 || a.k != 1)
+		abort();
+
+	plan_9();
+
+	return 0;
 }
 
 /* extensions */
@@ -63,10 +73,13 @@ struct D
 };
 
 
+void f(U *a)
+{
+}
+
 plan_9()
 {
-	extern void f(U *a);
-	struct D *d;
+	struct D *d = (void *)0;
 	f(d); // converts to U *
 
 	typedef struct { int k; } mem_alias;
