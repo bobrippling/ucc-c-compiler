@@ -1,5 +1,4 @@
-// RUN: %ucc -o %t %s
-// RUN: %t | %output_check '1 2 3 4 5' '1 2 3 35 5'
+// RUN: %ocheck 0 %s
 struct A
 {
 	int f_1;
@@ -14,10 +13,19 @@ write_bf(struct A *p)
 	p->bf_2 = 35;
 }
 
-pbf(struct A *p)
+chk_bf(struct A *p, int a, int b, int c, int d, int e)
 {
-	printf("%d %d %d %d %d\n",
-		p->f_1, p->bf_1, p->f_2, p->bf_2, p->bf_3);
+	if(p->f_1 != a)
+		abort();
+	if(p->bf_1 != b)
+		abort();
+	if(p->f_2)
+		abort();
+	if(p->bf_2)
+		abort();
+	if(p->bf_3)
+		abort();
+	return 0;
 }
 
 main()
@@ -31,9 +39,11 @@ main()
 	a.bf_2 = 4;
 	a.bf_3 = 5;
 
-	pbf(&a);
+	chk_bf(&a, 1, 2, 3, 4, 5);
 
 	write_bf(&a);
 
-	pbf(&a);
+	chk_bf(&a, 1, 2, 3, 35, 5);
+
+	return 0;
 }

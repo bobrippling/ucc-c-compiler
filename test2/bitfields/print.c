@@ -1,5 +1,4 @@
-// RUN: %ucc -o %t %s
-// RUN: %t | %output_check 'sz=16, p = -1 -1 127 -1'
+// RUN: %ocheck 0 %s
 
 struct half_bytes
 {
@@ -10,13 +9,19 @@ struct half_bytes
 	int f_2;
 };
 
-pbf(struct half_bytes *p);
-
-pbf(struct half_bytes *p)
+chk_bf(struct half_bytes *p)
 {
-	printf("sz=%d, p = %d %d %d %d\n",
-			sizeof(*p),
-			p->f_1, p->bf_1, p->bf_2, p->f_2);
+	if(sizeof(*p) != 16)
+		abort();
+	if(p->f_1 != -1)
+		abort();
+	if(p->bf_1 != -1)
+		abort();
+	if(p->bf_2 != 127)
+		abort();
+	if(p->f_2 != -1)
+		abort();
+	return 0;
 }
 
 main()
@@ -28,5 +33,6 @@ main()
 	a.bf_2 = -1UL;
 	a.f_2 = -1UL;
 
-	pbf(&a);
+	chk_bf(&a);
+	return 0;
 }
