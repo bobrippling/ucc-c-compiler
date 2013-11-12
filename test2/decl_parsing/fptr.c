@@ -3,7 +3,7 @@
 
 void inst(int i)
 {
-	printf("inst(%d)\n", i);
+	printf("%d\n", i);
 }
 
 main()
