@@ -34,7 +34,8 @@
 #define PARSE_type_ref_is_s_or_u_or_e(r) PARSE_type_ref_is_s_or_u_or_e2(r, 1)
 #define PARSE_type_ref_is_s_or_u(r)      PARSE_type_ref_is_s_or_u_or_e2(r, 0)
 
-static struct_union_enum_st *PARSE_type_ref_is_s_or_u_or_e2(type_ref *r, int allow_e)
+static struct_union_enum_st *PARSE_type_ref_is_s_or_u_or_e2(
+		type_ref *r, int allow_e)
 {
 	r = type_ref_skip_casts(r);
 	if(r->type == type_ref_type){
@@ -1152,13 +1153,13 @@ int parse_decls_single_type(
 				struct_union_enum_st *sue;
 
 				/* check for no-fwd and anon */
-				sue = PARSE_type_ref_is_s_or_u_or_e(this_ref);
+				sue = type_ref_is_s_or_u_or_e(this_ref);
 				switch(sue ? sue->primitive : type_unknown){
 					case type_struct:
 					case type_union:
 						/* don't warn for tagged struct/unions */
 						if(mode & DECL_MULTI_NAMELESS)
-					goto add;
+							goto add;
 
 						UCC_ASSERT(!sue->anon, "tagless struct should've been caught above");
 					case type_enum:
