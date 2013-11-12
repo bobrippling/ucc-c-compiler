@@ -455,7 +455,7 @@ expr *parse_va_arg(void)
 	type_ref *ty;
 
 	EAT(token_comma);
-	ty = parse_type();
+	ty = parse_type(0);
 
 	fcall->lhs = list;
 	fcall->bits.tref = ty;

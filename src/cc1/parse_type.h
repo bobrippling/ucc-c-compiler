@@ -2,16 +2,17 @@
 #define PARSE_TYPE_H
 
 /* (type *[]) */
-type_ref *parse_type(void);
+type_ref *parse_type(int newdecl);
 
-decl *parse_decl_single(enum decl_mode mode);
+decl *parse_decl_single(enum decl_mode mode, int newdecl);
 
 /* type ident(, ident, ...) - multiple of the above */
-decl **parse_decls_one_type(void);
+decl **parse_decls_one_type(int newdecl);
 
 /* type ident...; */
 int parse_decls_single_type(
 		enum decl_multi_mode mode,
+		int newdecl,
 		symtable *scope,
 		decl ***pdecls);
 

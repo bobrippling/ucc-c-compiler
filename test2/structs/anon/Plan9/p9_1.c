@@ -1,9 +1,13 @@
-// RUN: %ocheck 4 %s
+// RUN: %ocheck 4 %s -fplan9-extensions
 struct A
 {
 	int a, b;
 };
-f(struct A *p){p->a = 1, p->b = 2}
+f(struct A *p)
+{
+	p->a = 1;
+	p->b = 2;
+}
 
 main()
 {

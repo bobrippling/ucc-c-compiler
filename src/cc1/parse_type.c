@@ -55,8 +55,15 @@ static struct_union_enum_st *PARSE_type_ref_is_s_or_u_or_e2(
 
 static type_ref *parse_type_ref2(enum decl_mode mode, decl *dfor);
 
-/* sue = struct/union/enum */
-static type_ref *parse_type_sue(enum type_primitive prim)
+/* newdecl_context:
+ * struct B { int b; };
+ * {
+ *   struct A { struct B; }; // this is not a new B
+ * };
+ */
+static type_ref *parse_type_sue(
+		enum type_primitive prim,
+		int newdecl_context)
 {
 	int is_complete = 0;
 	char *spel = NULL;
@@ -145,7 +152,7 @@ static type_ref *parse_type_sue(enum type_primitive prim)
 		struct_union_enum_st *sue = sue_decl(
 				current_scope, spel,
 				members, prim, is_complete,
-				/* isdef = */ curtok == token_semicolon);
+				/* isdef = */newdecl_context && curtok == token_semicolon);
 
 		parse_add_attr(&this_sue_attr); /* struct A { ... } __attr__ */
 
@@ -226,12 +233,14 @@ static int parse_at_decl_spec(void)
 	}
 }
 
-#define PARSE_BTYPE(mode, ps, pa)                        \
+#define PARSE_BTYPE(mode, ps, pa, ndecl)                 \
 parse_btype(mode & DECL_MULTI_ALLOW_STORE   ? ps : NULL, \
-            mode & DECL_MULTI_ALLOW_ALIGNAS ? pa : NULL)
+            mode & DECL_MULTI_ALLOW_ALIGNAS ? pa : NULL, \
+            ndecl)
 
 static type_ref *parse_btype(
-		enum decl_storage *store, struct decl_align **palign)
+		enum decl_storage *store, struct decl_align **palign,
+		int newdecl_context)
 {
 	/* *store and *palign should be initialised */
 	expr *tdef_typeof = NULL;
@@ -361,7 +370,8 @@ static type_ref *parse_btype(
 			switch(tok){
 #define CASE(a)                              \
 				case token_ ## a:                    \
-					tref = parse_type_sue(type_ ## a); \
+					tref = parse_type_sue(type_ ## a,  \
+							newdecl_context);              \
 					str = #a;                          \
 					break
 
@@ -467,7 +477,7 @@ static type_ref *parse_btype(
 			EAT(token__Alignas);
 			EAT(token_open_paren);
 
-			if((as_ty = parse_type())){
+			if((as_ty = parse_type(newdecl_context))){
 				da->as_int = 0;
 				da->bits.align_ty = as_ty;
 			}else{
@@ -611,7 +621,7 @@ funcargs *parse_func_arglist()
 	if(curtok == token_close_paren)
 		goto empty_func;
 
-	argdecl = parse_decl_single(flags);
+	argdecl = parse_decl_single(flags, 0);
 
 	if(argdecl){
 
@@ -641,7 +651,7 @@ funcargs *parse_func_arglist()
 			}
 
 			/* continue loop */
-			argdecl = parse_decl_single(flags);
+			argdecl = parse_decl_single(flags, 0);
 			if(!argdecl)
 				die_at(NULL, "type expected (got %s)", token_to_str(curtok));
 		}
@@ -848,9 +858,9 @@ static type_ref *parse_type3(
 	return type_ref_reverse(parse_type_ref2(mode, dfor), btype);
 }
 
-type_ref *parse_type()
+type_ref *parse_type(int newdecl)
 {
-	type_ref *btype = parse_btype(NULL, NULL);
+	type_ref *btype = parse_btype(NULL, NULL, newdecl);
 
 	return btype ? parse_type3(0, NULL, btype) : NULL;
 }
@@ -933,10 +943,10 @@ static decl *parse_decl_extra(
 	return d;
 }
 
-decl *parse_decl_single(enum decl_mode mode)
+decl *parse_decl_single(enum decl_mode mode, int newdecl)
 {
 	enum decl_storage store = store_default;
-	type_ref *r = PARSE_BTYPE(mode, &store, NULL /* align */);
+	type_ref *r = PARSE_BTYPE(mode, &store, NULL /* align */, newdecl);
 
 	if(!r){
 		if((mode & DECL_CAN_DEFAULT) == 0)
@@ -951,11 +961,11 @@ decl *parse_decl_single(enum decl_mode mode)
 	return parse_decl_extra(r, mode, store, NULL /* align */);
 }
 
-decl **parse_decls_one_type()
+decl **parse_decls_one_type(int newdecl)
 {
 	enum decl_storage store = store_default;
 	struct decl_align *align = NULL;
-	type_ref *r = parse_btype(&store, &align);
+	type_ref *r = parse_btype(&store, &align, newdecl);
 	decl **decls = NULL;
 
 	if(!r)
@@ -1078,6 +1088,7 @@ static void decl_pull_to_func(decl *const d_this, decl *const d_prev)
 
 int parse_decls_single_type(
 		enum decl_multi_mode mode,
+		int newdecl,
 		symtable *scope,
 		decl ***pdecls)
 {
@@ -1093,7 +1104,7 @@ int parse_decls_single_type(
 
 	parse_static_assert();
 
-	this_ref = PARSE_BTYPE(mode, &store, &align);
+	this_ref = PARSE_BTYPE(mode, &store, &align, newdecl);
 
 	if(!this_ref){
 		/* can_default makes sure we don't parse { int *p; *p = 5; } the latter as a decl */
@@ -1321,6 +1332,6 @@ void parse_decls_multi_type(
 		decl ***pdecls)
 {
 	for(;;)
-		if(!parse_decls_single_type(mode, scope, pdecls))
+		if(!parse_decls_single_type(mode, 0, scope, pdecls))
 			break;
 }

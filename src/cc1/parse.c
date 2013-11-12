@@ -59,7 +59,7 @@ expr *parse_expr_sizeof_typeof_alignof(enum what_of what_of)
 	w.chr -= what_of == what_alignof ? 7 : 6; /* go back over the *of */
 
 	if(accept(token_open_paren)){
-		type_ref *r = parse_type();
+		type_ref *r = parse_type(0);
 
 		if(r){
 			EAT(token_close_paren);
@@ -115,7 +115,7 @@ static expr *parse_expr__Generic()
 		if(accept(token_default)){
 			r = NULL;
 		}else{
-			r = parse_type();
+			r = parse_type(0);
 			if(!r)
 				die_at(NULL, "type expected");
 		}
@@ -156,7 +156,7 @@ static expr *parse_block()
 
 	EAT(token_xor);
 
-	rt = parse_type();
+	rt = parse_type(0);
 
 	if(rt){
 		if(type_ref_is(rt, type_ref_func)){
@@ -218,7 +218,7 @@ static expr *parse_expr_primary()
 				type_ref *r;
 				expr *e;
 
-				if((r = parse_type())){
+				if((r = parse_type(0))){
 					EAT(token_close_paren);
 
 					if(curtok == token_open_block){
@@ -526,7 +526,7 @@ type_ref **parse_type_list()
 		return types;
 
 	do{
-		type_ref *r = parse_type();
+		type_ref *r = parse_type(0);
 
 		if(!r)
 			die_at(NULL, "type expected");
@@ -569,7 +569,7 @@ static void parse_test_init_expr(stmt *t)
 	if(cc1_std == STD_C99)
 		t->symtab = current_scope = symtab_new(current_scope);
 
-	d = parse_decl_single(DECL_SPEL_NEED);
+	d = parse_decl_single(DECL_SPEL_NEED, 0);
 	if(d){
 		t->flow = stmt_flow_new(symtab_new(current_scope));
 
@@ -688,7 +688,7 @@ static stmt *parse_for()
 	}
 
 	SEMI_WRAP(
-			decl **c99inits = parse_decls_one_type();
+			decl **c99inits = parse_decls_one_type(0);
 			if(c99inits){
 				dynarray_add_array(&current_scope->decls, c99inits);
 
