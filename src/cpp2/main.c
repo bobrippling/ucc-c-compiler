@@ -73,8 +73,7 @@ enum wmode wmode =
 	| WPASTE
 	| WFINALESCAPE
 	| WMULTICHAR
-	| WQUOTE
-	| WUNDEF;
+	| WQUOTE;
 
 enum comment_strip strip_comments = STRIP_ALL;
 
@@ -85,7 +84,8 @@ static const struct
 } warns[] = {
 	{ "all", "turn on all warnings", ~0U },
 	{ "traditional", "warn about # in the first column", WTRADITIONAL },
-	{ "undef", "warn about undefined macros in #if/elif/undef", WUNDEF },
+	{ "undef", "warn about undefined macros in #if/elif/undef", WUNDEF_IN_IF },
+	{ "undef-noop", "warn about #undef <undefined macro>", WUNDEF_NDEF },
 	{ "unused-macros", "warn about unused macros", WUNUSED },
 	{ "redef", "warn about redefining macros", WREDEF },
 	{ "whitespace", "warn about no-whitespace after #define func(a)", WWHITESPACE },

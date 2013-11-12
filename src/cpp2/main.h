@@ -39,17 +39,18 @@ void debug_pop_line(void);
 extern enum wmode
 {
 	WTRADITIONAL = 1 << 0,
-	WUNDEF       = 1 << 1, /* #if abc and #undef abc, where abc isn't defined */
-	WUNUSED      = 1 << 2,
-	WREDEF       = 1 << 3, /* #define a, #define a */
-	WWHITESPACE  = 1 << 4, /* #define f(a)a */
-	WTRAILING    = 1 << 5, /* #endif yo */
-	WEMPTY_ARG   = 1 << 6, /* #define F(x), F() */
-	WPASTE       = 1 << 7, /* "< ## >" */
-	WUNCALLED_FN = 1 << 8, /* #define F(x), F */
-	WFINALESCAPE = 1 << 9, /* backslash-esc at eof */
-	WMULTICHAR   = 1 << 10, /* duh */
-	WQUOTE       = 1 << 11, /* dodgy quoting */
+	WUNDEF_NDEF  = 1 << 1, /* #if abc, where abc isn't defined */
+	WUNDEF_IN_IF = 1 << 2, /* #undef abc, where abc isn't defined */
+	WUNUSED      = 1 << 3,
+	WREDEF       = 1 << 4, /* #define a, #define a */
+	WWHITESPACE  = 1 << 5, /* #define f(a)a */
+	WTRAILING    = 1 << 6, /* #endif yo */
+	WEMPTY_ARG   = 1 << 7, /* #define F(x), F() */
+	WPASTE       = 1 << 8, /* "< ## >" */
+	WUNCALLED_FN = 1 << 9, /* #define F(x), F */
+	WFINALESCAPE = 1 << 10, /* backslash-esc at eof */
+	WMULTICHAR   = 1 << 11, /* duh */
+	WQUOTE       = 1 << 12, /* dodgy quoting */
 } wmode;
 
 extern enum comment_strip
