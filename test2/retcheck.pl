@@ -23,13 +23,19 @@ if($ARGV[0] eq '-v'){
 
 my $exp = shift;
 
-unless(-x ($cmd = $ARGV[0])){
+unless(-x $ARGV[0]){
 	# we've been passed a source file
-	my $ucc = dirname($0) . "../ucc";
+	my($cmd, @args) = @ARGV;
+	@ARGV = ();
+
+	my $ucc = $ENV{UCC};
+	die "$0: no \$UCC" unless $ucc;
+
 	my $tmp = "/tmp/$$.out";
-	if(system_v($ucc, '-o', $tmp, $cmd)){
+	if(system_v($ucc, '-o', $tmp, $cmd, @args)){
 		die;
 	}
+
 	$ARGV[0] = $tmp;
 }
 
