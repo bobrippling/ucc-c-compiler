@@ -1,5 +1,4 @@
-// fix: -fplan9-extensions
-// RUN: %layout_check %s
+// RUN: %layout_check %s -fplan9-extensions
 typedef struct {int hi;} Embedded;
 typedef struct {Embedded;} Encapsulating;
 
