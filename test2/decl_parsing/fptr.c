@@ -1,9 +1,10 @@
-// RUN: %ucc -o %t %s
-// RUN: %t | %output_check 1 2 3 4 5 7 3 3
+// RUN: %ocheck 28 %s
+
+int t;
 
 void inst(int i)
 {
-	printf("%d\n", i);
+	t += i;
 }
 
 main()
@@ -29,4 +30,6 @@ main()
 
 	(****inst)(3);
 	(&inst)(3);
+
+	return 28;
 }
