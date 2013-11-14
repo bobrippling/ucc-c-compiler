@@ -107,8 +107,7 @@ if($ran){
 	}
 	exit 0;
 }else{
-	warn "no commands in $file\n";
-	exit 1;
+	die2 "no commands in $file";
 }
 
 # --------
