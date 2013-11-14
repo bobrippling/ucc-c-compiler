@@ -101,12 +101,6 @@ if(not -d $tdir and not mkdir($tdir)){
 
 my $ec = 0;
 
-if(@tests == 0){
-	open TEST_LIST, '-|', './list_tests.sh' or die;
-	@tests = map { chomp; $_ } <TEST_LIST>;
-	close TEST_LIST;
-}
-
 my @test_files;
 for(my $i = 0; $i < @tests; $i++){
 	$_ = $tests[$i];

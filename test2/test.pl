@@ -67,18 +67,22 @@ if($verbose){
 	$vars{$_} .=  " -v" for @verbose_support;
 }
 
+# sanity checks:
 my $ran = 0;
+my $want_check = 0;
+my $had_check = 0;
 
-$ENV{UCC} = $ucc; # export for sub-programs
+# export for sub-programs
+$ENV{UCC} = $ucc;
 
 open F, '<', $file or die2 "$file: $!";
 while(<F>){
 	chomp;
 
 	if(my($command, $sh) = m{// *([A-Z]+): *(.*)}){
-		$ran++;
-
 		if($command eq 'RUN'){
+			$ran++;
+
 			my $subst_sh = apply_vars($sh);
 			print "$0: run: $subst_sh\n" if $verbose;
 
@@ -87,6 +91,9 @@ while(<F>){
 			my $ec = timeout($subst_sh);
 
 			die2 "command '$subst_sh' failed" if ($want_err == !$ec);
+		}elsif($command eq 'CHECK'){
+			$want_check = 1;
+
 		}else{
 			#die2 "unrecognised command: $command";
 		}
@@ -95,6 +102,9 @@ while(<F>){
 close F;
 
 if($ran){
+	if($want_check and not $had_check){
+		die2 "CHECK commands found with no %check";
+	}
 	exit 0;
 }else{
 	warn "no commands in $file\n";
@@ -115,6 +125,8 @@ sub apply_vars
 	for my $regex ("^()", "([^%])"){
 		$f =~ s/$regex%([a-z_]+)/
 		$vars{$2} ? $1 . $vars{$2} : die2 "undefined variable %$2 in $file"/ge;
+
+		$had_check++ if defined $2 and $2 eq 'check';
 	}
 
 	$f =~ s/%%/%/g;
