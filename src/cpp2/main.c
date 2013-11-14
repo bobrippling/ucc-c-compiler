@@ -84,7 +84,8 @@ static const struct
 } warns[] = {
 	{ "all", "turn on all warnings", ~0U },
 	{ "traditional", "warn about # in the first column", WTRADITIONAL },
-	{ "undef", "warn about undefined macros in #if/elif/undef", WUNDEF_IN_IF },
+	{ "undef", "warn about undefined macros in #if and #undef", WUNDEF_IN_IF | WUNDEF_NDEF },
+	{ "undef-in-if", "warn about undefined macros in #if/elif", WUNDEF_IN_IF },
 	{ "undef-noop", "warn about #undef <undefined macro>", WUNDEF_NDEF },
 	{ "unused-macros", "warn about unused macros", WUNUSED },
 	{ "redef", "warn about redefining macros", WREDEF },
