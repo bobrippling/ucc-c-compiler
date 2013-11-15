@@ -7,6 +7,7 @@
 #include "../../util/platform.h"
 #include "../../util/util.h"
 #include "../../util/dynarray.h"
+#include "../../util/dynmap.h"
 #include "../../util/alloc.h"
 
 #include "../str.h"
@@ -57,6 +58,8 @@ struct dwarf_state
 		unsigned current_sibling_nest;
 	} abbrev, info;
 #define DWARF_SEC_INIT() { NULL, 0, 0, 1, 0 }
+
+	dynmap *type_ref_to_off; /* type_ref * => unsigned * */
 };
 
 struct dwarf_block /* DW_FORM_block1 */
@@ -417,6 +420,10 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 {
 	unsigned this_start;
 
+	unsigned *map_ent = dynmap_get(type_ref *, unsigned *, st->type_ref_to_off, ty);
+	if(map_ent)
+		return *map_ent;
+
 	switch(ty->type){
 		case type_ref_type:
 		{
@@ -647,6 +654,10 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 		}
 	}
 
+	map_ent = umalloc(sizeof *map_ent);
+	*map_ent = this_start;
+	dynmap_set(type_ref *, unsigned *, st->type_ref_to_off, ty, map_ent);
+
 	return this_start;
 }
 
@@ -767,12 +778,21 @@ o_common:
 	}
 }
 
+static int type_ref_cmp(void *a, void *b)
+{
+	return !type_ref_equal(a, b, DECL_CMP_EXACT_MATCH);
+}
+
 void out_dbginfo(symtable_global *globs, const char *fname)
 {
 	struct dwarf_state st = {
 		DWARF_SEC_INIT(),
-		DWARF_SEC_INIT()
+		DWARF_SEC_INIT(),
+		NULL
 	};
+
+	/* initialise type offset maps */
+	st.type_ref_to_off = dynmap_new(&type_ref_cmp);
 
 	dwarf_info_header(&st.info, cc_out[SECTION_DBG_INFO]);
 
