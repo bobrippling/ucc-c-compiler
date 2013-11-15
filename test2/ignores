@@ -9,6 +9,8 @@ decl_parsing/vla_proto.c
 
 # waiting for experimental/float:
 old_func/assign.c
+old_func/multiple.c
+old_func/works.c
 type_propagation/tgmath.c
 
 # other:
