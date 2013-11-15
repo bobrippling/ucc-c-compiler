@@ -1,7 +1,15 @@
+# waiting for __asm__()
 __asm__/inline.c
 __asm__/multiple.c
-asm/abi-test.c
-decl_parsing/vla_proto.c
 other/__asm__.c
+
+# waiting for vla:
 parsing/vla_ar.c
+decl_parsing/vla_proto.c
+
+# waiting for experimental/float:
+old_func/assign.c
 type_propagation/tgmath.c
+
+# other:
+asm/abi-test.c

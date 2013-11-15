@@ -25,7 +25,12 @@ sub read_ignores
 {
 	my $f = shift;
 	open F, '<', $f or die "open $f: $!";
-	my @f = map { chomp $_; $_ } <F>;
+
+	my @f =
+		grep { length }
+		map { s/ *#.*//; $_ }
+		map { chomp $_; $_ } <F>;
+
 	close F;
 	return @f;
 }
