@@ -139,7 +139,10 @@ static void fold_const_expr_op(expr *e, consty *k)
 			const_offset(k, &lhs, &rhs, e->rhs->tree_type, e->op);
 	}
 
-	if(!k->nonstandard_const){
+	if(!k->nonstandard_const
+	&& lhs.type != CONST_NO /* otherwise it's uninitialised */
+	&& rhs.type != CONST_NO)
+	{
 		k->nonstandard_const = lhs.nonstandard_const
 			? lhs.nonstandard_const : rhs.nonstandard_const;
 	}
