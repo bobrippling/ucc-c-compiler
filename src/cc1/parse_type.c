@@ -609,21 +609,33 @@ static int parse_curtok_is_type(void)
 	return 0;
 }
 
+static decl *parse_arg_decl(void)
+{
+	/* argument decls can default to int */
+	const enum decl_mode flags = DECL_CAN_DEFAULT;
+	decl *argdecl = parse_decl_single(flags, 0);
+	if(!argdecl)
+		die_at(NULL, "type expected (got %s)", token_to_str(curtok));
+	return argdecl;
+}
+
 funcargs *parse_func_arglist()
 {
-	/* don't allow default - we handle that manually in old-func parsing */
-	const enum decl_mode flags = 0;
-	funcargs *args;
-	decl *argdecl;
-
-	args = funcargs_new();
+	funcargs *args = funcargs_new();
 
 	if(curtok == token_close_paren)
 		goto empty_func;
 
-	argdecl = parse_decl_single(flags, 0);
-
-	if(argdecl){
+	/* we allow default-to-int here, but need to make
+	 * sure we also handle old functions.
+	 *
+	 * if we have an ident that isn't a typedef, it's an old-func
+	 *
+	 * f( <here>  (int)) = f(int (int)) = f(int (*)(int))
+	 * f( <here> ident) -> old function
+	 */
+	if(curtok != token_identifier || parse_at_tdef()){
+		decl *argdecl = parse_arg_decl();
 
 		/* check for x(void) (or an equivalent typedef) */
 		/* can't use type_ref_is, since that requires folding */
@@ -651,9 +663,7 @@ funcargs *parse_func_arglist()
 			}
 
 			/* continue loop */
-			argdecl = parse_decl_single(flags, 0);
-			if(!argdecl)
-				die_at(NULL, "type expected (got %s)", token_to_str(curtok));
+			argdecl = parse_arg_decl();
 		}
 
 fin:;
