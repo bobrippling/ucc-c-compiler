@@ -59,11 +59,13 @@ static void const_expr_deref(expr *e, consty *k)
 			if(k->offset < 0 || (unsigned)k->offset > sv->len){
 				k->type = CONST_NO;
 			}else{
+				long off = k->offset;
+
 				UCC_ASSERT(!sv->wide, "TODO: constant wchar_t[] deref");
 
 				CONST_FOLD_LEAF(k);
 				k->type = CONST_VAL;
-				k->bits.iv.val = sv->str[k->offset];
+				k->bits.iv.val = sv->str[off];
 			}
 			break;
 		}
