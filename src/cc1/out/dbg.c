@@ -574,7 +574,7 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 				this_start = st->info.length;
 
 				dwarf_start(st); {
-					dwarf_abbrev_start(st, DW_TAG_typedef, DW_CHILDREN_yes); {
+					dwarf_abbrev_start(st, DW_TAG_typedef, DW_CHILDREN_no); {
 						dwarf_attr(st, DW_AT_name, DW_FORM_string, d->spel);
 						dwarf_attr(st, DW_AT_type, DW_FORM_ref4, sub_pos);
 					} dwarf_sec_end(&st->abbrev);
@@ -593,7 +593,7 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 			this_start = st->info.length;
 
 			dwarf_start(st); {
-				dwarf_abbrev_start(st, DW_TAG_pointer_type, DW_CHILDREN_yes); {
+				dwarf_abbrev_start(st, DW_TAG_pointer_type, DW_CHILDREN_no); {
 					dwarf_attr(st, DW_AT_byte_size, DW_FORM_data1, platform_word_size());
 					dwarf_attr(st, DW_AT_type, DW_FORM_ref4, sub_pos);
 				} dwarf_sec_end(&st->abbrev);
@@ -616,7 +616,7 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 			this_start = st->info.length;
 
 			dwarf_start(st); {
-				dwarf_abbrev_start(st, DW_TAG_subroutine_type, DW_CHILDREN_yes); {
+				dwarf_abbrev_start(st, DW_TAG_subroutine_type, DW_CHILDREN_no); {
 					/*dwarf_attr(st, DW_AT_sibling, DW_FORM_ref4, pos_sibling);*/
 					dwarf_attr(st, DW_AT_type, DW_FORM_ref4, pos_ref);
 					dwarf_attr(st, DW_AT_prototyped, DW_FORM_flag, 1);
@@ -674,7 +674,7 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 				/* skip */
 			}else{
 				dwarf_start(st); {
-					dwarf_abbrev_start(st, DW_TAG_const_type, DW_CHILDREN_yes); {
+					dwarf_abbrev_start(st, DW_TAG_const_type, DW_CHILDREN_no); {
 						dwarf_attr(st, DW_AT_type, DW_FORM_ref4, sub_pos);
 					} dwarf_sec_end(&st->abbrev);
 				} dwarf_end(st);
