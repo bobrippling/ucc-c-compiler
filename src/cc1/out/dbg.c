@@ -652,16 +652,20 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 			dwarf_start(st); {
 				dwarf_abbrev_start(st, DW_TAG_array_type, DW_CHILDREN_yes); {
 					dwarf_attr(st, DW_AT_type, DW_FORM_ref4, sub_pos);
-					/*dwarf_attr(st, DW_AT_sibling, DW_FORM_ref4, "???");*/
+					dwarf_sibling_push(st);
 				} dwarf_sec_end(&st->abbrev);
-
-				if(have_sz){
-					dwarf_abbrev_start(st, DW_TAG_subrange_type, DW_CHILDREN_yes); {
-						dwarf_attr(st, DW_AT_lower_bound, DW_FORM_data1, 0);
-						dwarf_attr(st, DW_AT_upper_bound, DW_FORM_data1, sz);
-					} dwarf_sec_end(&st->abbrev);
-				}
 			} dwarf_end(st);
+
+			dwarf_start(st); {
+				dwarf_abbrev_start(st, DW_TAG_subrange_type, DW_CHILDREN_no); {
+					if(have_sz && sz > 0){
+						/*dwarf_attr(st, DW_AT_lower_bound, DW_FORM_data1, 0);*/
+						dwarf_attr(st, DW_AT_upper_bound, DW_FORM_data1, sz - 1);
+					}
+				} dwarf_sec_end(&st->abbrev);
+			} dwarf_end(st);
+
+			dwarf_sibling_pop(st);
 			break;
 		}
 
