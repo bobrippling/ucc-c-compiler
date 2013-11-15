@@ -39,6 +39,7 @@ struct dwarf_state
 				DWARF_STR  = 9,
 				DWARF_SIBLING = 10,
 				DWARF_ADDR_STR = 11,
+				DWARF_HELP = 12
 			} val_type;
 			union
 			{
@@ -46,6 +47,7 @@ struct dwarf_state
 				char *str; /* FREE */
 				char *addr_str; /* ref to d->spel */
 				unsigned sibling_pos; /* filled in later */
+				char *help; /* FREE */
 			} bits;
 
 			unsigned sibling_nest;
@@ -181,6 +183,23 @@ static struct dwarf_val *dwarf_value_new(struct dwarf_sec *sec)
 	val = &sec->values[sec->nvalues-1];
 	memset(val, 0, sizeof *val);
 	return val;
+}
+
+static void dwarf_help(
+		struct dwarf_state *st,
+		const char *fmt, ...)
+{
+	va_list l;
+	char buf[256];
+	struct dwarf_val *val;
+
+	va_start(l, fmt);
+	vsnprintf(buf, sizeof buf, fmt, l);
+	va_end(l);
+
+	val = dwarf_value_new(&st->abbrev);
+	val->val_type = DWARF_HELP;
+	val->bits.help = ustrdup(buf);
 }
 
 static void dwarf_add_value(
@@ -424,6 +443,8 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 	if(map_ent)
 		return *map_ent;
 
+	dwarf_help(st, "%s", type_ref_to_str(ty));
+
 	switch(ty->type){
 		case type_ref_type:
 		{
@@ -440,14 +461,17 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 					{
 						sue_member **i;
 
+						dwarf_help(st, "%s header", sue->spel);
 						dwarf_sue_header(st, sue, DW_TAG_enumeration_type);
 
 						/* enumerators */
 						for(i = sue->members; i && *i; i++){
+							enum_member *emem = (*i)->enum_member;
+
+							dwarf_help(st, "  %s::%s", sue->spel, emem->spel);
+
 							dwarf_start(st); {
 								dwarf_abbrev_start(st, DW_TAG_enumerator, DW_CHILDREN_no); {
-									enum_member *emem = (*i)->enum_member;
-
 									dwarf_attr(st,
 											DW_AT_name, DW_FORM_string,
 											emem->spel);
@@ -479,6 +503,7 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 						/* must update since we might've output extra type information */
 						this_start = st->info.length;
 
+						dwarf_help(st, "%s header", sue->spel);
 						dwarf_sue_header(
 								st, sue,
 								sue->primitive == type_struct
@@ -487,12 +512,14 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 
 						/* members */
 						for(i = 0, si = sue->members; i < nmem; i++, si++){
+							decl *dmem = (*si)->struct_member;
+
+							dwarf_help(st, "  %s::%s", sue->spel, decl_to_str(dmem));
+
 							dwarf_start(st); {
 								dwarf_abbrev_start(st, DW_TAG_member, DW_CHILDREN_no); {
 									struct dwarf_block offset;
 									struct dwarf_block_ent offset_data[2];
-
-									decl *dmem = (*si)->struct_member;
 
 									dwarf_attr(st,
 											DW_AT_name, DW_FORM_string,
@@ -531,6 +558,8 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 
 			}else{
 				/* TODO: unsigned type */
+				dwarf_help(st, "base type %s", type_to_str(ty->bits.type));
+
 				dwarf_basetype(st, ty->bits.type->primitive,
 						type_ref_is_floating(ty) ? DW_ATE_float : DW_ATE_signed);
 			}
@@ -703,6 +732,8 @@ static void dwarf_global_variable(struct dwarf_state *st, decl *d)
 
 	typos = dwarf_type(st, d->ref);
 
+	dwarf_help(st, "global %s", d->spel);
+
 	dwarf_start(st); {
 		dwarf_abbrev_start(st, DW_TAG_variable, DW_CHILDREN_no); {
 			enum decl_storage const store = d->store & STORE_MASK_STORE;
@@ -774,6 +805,10 @@ o_common:
 			case DWARF_STR:
 				fprintf(f, ".asciz \"%s\"\n", val->bits.str);
 				break;
+
+			case DWARF_HELP:
+				fprintf(f, "# %s\n", val->bits.help);
+				break;
 		}
 	}
 }
@@ -793,6 +828,9 @@ static void dwarf_sec_free(struct dwarf_sec *sec)
 					break;
 				case DWARF_STR:
 					free(val->bits.str);
+					break;
+				case DWARF_HELP:
+					free(val->bits.help);
 					break;
 		}
 	}
@@ -845,6 +883,7 @@ void out_dbginfo(symtable_global *globs, const char *fname)
 		for(diter = globs->stab.decls; diter && *diter; diter++){
 			decl *d = *diter;
 
+			dwarf_help(&st, "decl %s", decl_to_str(d));
 			if(DECL_IS_FUNC(d)){
 				; /* TODO: dwarf_subprogram_func(&st, d); */
 			}else{
