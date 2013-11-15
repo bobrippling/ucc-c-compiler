@@ -776,8 +776,13 @@ static void dwarf_flush(struct dwarf_sec *sec, FILE *f)
 			indent += val->indent_adj;
 		for(indent_adj = 0; indent_adj < indent; indent_adj++)
 			fputc('\t', f);
-		if(val->indent_adj < 0)
-			indent += val->indent_adj;
+		if(val->indent_adj < 0){
+			if((unsigned)-val->indent_adj > indent){
+				indent = 0;
+			}else{
+				indent += val->indent_adj;
+			}
+		}
 
 		switch(val->val_type){
 			{
