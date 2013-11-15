@@ -1,4 +1,4 @@
-// RUN: %check %s -E
+// RUN: %check %s -E -Wundef
 
 #if undefined_word // CHECK: /warning: undefined identifier/
 never see me

@@ -1,3 +1,4 @@
+// RUN: %check -e %s
 f(a)
 {
 	switch(a){

@@ -1,4 +1,23 @@
 x:
-.LC0:
+.byte 104
+.byte 101
+.byte 108
+.byte 108
+.byte 111
+.zero 1
+
+str.1:
+.byte 104
+.byte 101
+.byte 108
+.byte 108
+.byte 111
+.zero 1
+
 p:
-.quad .LC0
+.quad str.2
+
+str.2:
+.byte 121
+.byte 111
+.zero 1

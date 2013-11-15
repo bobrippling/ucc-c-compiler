@@ -1,3 +1,5 @@
+// RUN: %check %s
+
 f(a)
 	char *a;
 {

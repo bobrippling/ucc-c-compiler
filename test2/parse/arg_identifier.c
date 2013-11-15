@@ -1,8 +1,7 @@
-// RUN: %ucc -c %s
+// gcc treats this as an error, as does tcc. clang accepts
+// RUN: %check -e %s
 
-f(int i, int j, va_list);
-// parsed as:
-//f(int i, int j, int va_list);
+f(int i, int j, va_list); // CHECK: /error: type expected/
 
 main()
 {

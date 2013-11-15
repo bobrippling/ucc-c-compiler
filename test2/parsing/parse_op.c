@@ -1,5 +1,4 @@
-// RUN: %ucc -c %s
-// RUN: %ucc -c %s 2>&1 | %check %s
+// RUN: %check %s
 
 a(), b(), c();
 
