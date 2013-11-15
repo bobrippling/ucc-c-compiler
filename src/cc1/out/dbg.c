@@ -778,6 +778,46 @@ o_common:
 	}
 }
 
+static void dwarf_sec_free(struct dwarf_sec *sec)
+{
+	size_t i;
+	for(i = 0; i < sec->nvalues; i++){
+		struct dwarf_val *val = &sec->values[i];
+		switch(val->val_type){
+				case DWARF_BYTE:
+				case DWARF_WORD:
+				case DWARF_LONG:
+				case DWARF_QUAD:
+				case DWARF_ADDR_STR:
+				case DWARF_SIBLING:
+					break;
+				case DWARF_STR:
+					free(val->bits.str);
+					break;
+		}
+	}
+	free(sec->values);
+}
+
+static void dwarf_st_free(struct dwarf_state *st)
+{
+	size_t i;
+	unsigned *pos;
+
+	for(i = 0;
+	    (pos = dynmap_value(unsigned *, st->type_ref_to_off, i));
+	    i++)
+	{
+		free(pos);
+	}
+
+	dynmap_free(st->type_ref_to_off);
+	st->type_ref_to_off = NULL;
+
+	dwarf_sec_free(&st->abbrev);
+	dwarf_sec_free(&st->info);
+}
+
 static int type_ref_cmp(void *a, void *b)
 {
 	return !type_ref_equal(a, b, DECL_CMP_EXACT_MATCH);
@@ -818,4 +858,6 @@ void out_dbginfo(symtable_global *globs, const char *fname)
 	dwarf_flush(&st.info, cc_out[SECTION_DBG_INFO]);
 
 	dwarf_info_footer(&st.info, cc_out[SECTION_DBG_INFO]);
+
+	dwarf_st_free(&st);
 }
