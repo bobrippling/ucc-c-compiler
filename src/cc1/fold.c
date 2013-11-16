@@ -102,8 +102,15 @@ void fold_type_chk_and_cast(
 		strict = 1;
 	}
 #endif
+	int cast = 0;
 
-	if(fold_type_chk_warn(lhs, (*prhs)->tree_type, w, desc))
+	/* special case - allow assignment to pointer from 0-constant */
+	if(type_ref_is_ptr(lhs) && expr_is_null_ptr(*prhs, 1))
+		cast = 1; /* no warning, but still sign extend the zero */
+	else if(fold_type_chk_warn(lhs, (*prhs)->tree_type, w, desc))
+		cast = 1;
+
+	if(cast)
 		fold_insert_casts(lhs, prhs, stab);
 }
 
