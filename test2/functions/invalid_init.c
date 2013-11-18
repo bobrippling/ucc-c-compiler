@@ -1,2 +1,2 @@
 // RUN: %check -e %s
-f() = 2; // CHECK: /error: expecting token ?/
+f() = 2; // CHECK: /error: initialisation of function 'f'/

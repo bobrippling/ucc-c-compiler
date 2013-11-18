@@ -515,6 +515,9 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 		const int is_static_init =
 			(d->store & STORE_MASK_STORE) == store_static || !stab->parent;
 
+		if(DECL_IS_FUNC(d))
+			die_at(&d->where, "initialisation of function '%s'", d->spel);
+
 		if((d->store & STORE_MASK_STORE) == store_extern){
 			/* allow for globals - remove extern since it's a definition */
 			if(stab->parent){
