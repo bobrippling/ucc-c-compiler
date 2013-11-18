@@ -348,11 +348,11 @@ void symtab_fold_decls(symtable *tab)
 				/* XXX: note */
 				char wbuf[WHERE_BUF_SIZ];
 
-				die_at(a->w,
+				die_at(b->w,
 						"%s definitions of \"%s\"\n"
-						"%s: note: other definition",
+						"%s: note: previous definition",
 						clash, IDENT_LOC_SPEL(a),
-						where_str_r(wbuf, b->w));
+						where_str_r(wbuf, a->w));
 			}
 		}
 	}
