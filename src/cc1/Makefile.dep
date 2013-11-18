@@ -926,7 +926,8 @@ ops/stmt_return.o: ops/stmt_return.c ops/ops.h ops/../../util/util.h \
  ops/../ops/stmt_switch.h ops/../ops/stmt_while.h \
  ops/../ops/stmt_continue.h ops/../sym.h ops/../decl.h ops/../cc1.h \
  ops/../../util/std.h ops/../out/out.h ops/../fold.h ops/../const.h \
- ops/../gen_str.h ops/../gen_style.h ops/../gen_asm.h ops/stmt_return.h
+ ops/../gen_str.h ops/../gen_style.h ops/../gen_asm.h ops/stmt_return.h \
+ ops/expr_block.h ops/../funcargs.h
 ops/stmt_switch.o: ops/stmt_switch.c ops/ops.h ops/../../util/util.h \
  ops/../../util/where.h ops/../../util/compiler.h ops/../data_structs.h \
  ops/../tree.h ops/../expr.h ops/../ops/expr_addr.h \
