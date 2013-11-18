@@ -595,13 +595,15 @@ static void read_string_multiple(const int is_wide)
 	curtok = token_string;
 
 	for(;;){
-		int c = nextchar();
+		int c = peeknextchar();
 		if(c == '"'){
 			/* "abc" "def"
 			 *       ^
 			 */
 			char *new, *alloc;
 			int newlen;
+
+			nextchar();
 
 			read_string(&new, &newlen);
 
@@ -616,9 +618,6 @@ static void read_string_multiple(const int is_wide)
 			str = alloc;
 			len += newlen - 1;
 		}else{
-			if(ungetch != EOF)
-				ICE("ungetch");
-			ungetch = c;
 			break;
 		}
 	}

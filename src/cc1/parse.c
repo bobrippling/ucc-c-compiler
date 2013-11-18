@@ -195,13 +195,16 @@ static expr *parse_expr_primary()
 		case token_string:
 		/*case token_open_block: - not allowed here */
 		{
+			where w;
 			char *s;
 			int l, wide;
 
+			where_cc1_current(&w);
 			token_get_current_str(&s, &l, &wide);
 			EAT(token_string);
 
-			return expr_new_str(s, l, wide);
+			return expr_set_where(
+					expr_new_str(s, l, wide), &w);
 		}
 
 		case token__Generic:
