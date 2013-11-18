@@ -1,3 +1,4 @@
+// RUN: %check %s
 main()
 {
 	int test(void), test2(void);
