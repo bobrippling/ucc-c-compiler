@@ -841,6 +841,8 @@ void fold_funcargs(funcargs *fargs, symtable *stab, type_ref *from)
 			decl *const d = fargs->arglist[i];
 
 			/* fold before for array checks, etc */
+			if(d->init)
+				die_at(&d->where, "parameter '%s' is initialised", d->spel);
 			fold_decl(d, stab, NULL);
 
 			if(type_ref_is_void(d->ref)){
