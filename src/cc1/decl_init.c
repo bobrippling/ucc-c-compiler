@@ -687,12 +687,19 @@ static decl_init **decl_init_brace_up_sue2(
 	&& i < sue_nmem)
 	{
 		const unsigned diff = sue_nmem - i;
-		where *loc = ITER_WHERE(iter, last_loc ? last_loc : &sue->where);
 
-		warn_at(loc,
-				"%u missing initialiser%s for '%s %s'",
-				diff, diff == 1 ? "" : "s",
-				sue_str(sue), sue->spel);
+		if(diff == 1
+		&& type_ref_is_incomplete_array(sue->members[i]->struct_member->ref))
+		{
+			/* don't warn for flexarr */
+		}else{
+			where *loc = ITER_WHERE(iter, last_loc ? last_loc : &sue->where);
+
+			warn_at(loc,
+					"%u missing initialiser%s for '%s %s'",
+					diff, diff == 1 ? "" : "s",
+					sue_str(sue), sue->spel);
+		}
 	}
 
 	return current;
