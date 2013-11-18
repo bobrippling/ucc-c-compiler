@@ -19,7 +19,8 @@ void fold_stmt_goto(stmt *s)
 		FOLD_EXPR(s->expr, s->symtab);
 	}else{
 		(s->bits.lbl.label =
-		 symtab_label_find(s->symtab, s->bits.lbl.spel, &s->where))
+		 symtab_label_find_or_new(
+			 s->symtab, s->bits.lbl.spel, &s->where))
 			->uses++;
 	}
 }
@@ -29,7 +30,7 @@ void gen_stmt_goto(stmt *s)
 	if(s->expr)
 		gen_expr(s->expr);
 	else
-		out_push_lbl(s->bits.lbl.spel, 0);
+		out_push_lbl(s->bits.lbl.label->mangled, 0);
 
 	out_jmp();
 }

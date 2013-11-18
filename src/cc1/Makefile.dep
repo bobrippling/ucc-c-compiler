@@ -153,7 +153,7 @@ gen_style.o: gen_style.c ../util/util.h ../util/where.h \
  ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h ops/stmt_continue.h \
  sym.h decl.h cc1.h ../util/std.h gen_style.h gen_asm.h decl_init.h
 label.o: label.c ../util/where.h ../util/compiler.h ../util/alloc.h \
- label.h
+ label.h out/lbl.h
 pack.o: pack.c pack.h ../util/platform.h
 parse.o: parse.c ../util/util.h ../util/where.h ../util/compiler.h \
  data_structs.h tree.h expr.h ops/expr_addr.h ops/expr_assign.h \

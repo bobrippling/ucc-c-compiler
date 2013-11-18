@@ -25,7 +25,8 @@ void fold_expr_addr(expr *e, symtable *stab)
 			die_at(&e->where, "address-of-label outside a function");
 
 		(e->bits.lbl.label =
-		 symtab_label_find(stab, e->bits.lbl.spel, &e->where))
+		 symtab_label_find_or_new(
+			 stab, e->bits.lbl.spel, &e->where))
 			->uses++;
 
 		/* address of label - void * */
@@ -61,7 +62,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 void gen_expr_addr(expr *e)
 {
 	if(e->bits.lbl.spel){
-		out_push_lbl(e->bits.lbl.label->spel, 1); /* GNU &&lbl */
+		out_push_lbl(e->bits.lbl.label->mangled, 1); /* GNU &&lbl */
 
 	}else{
 		/* address of possibly an ident "(&a)->b" or a struct expr "&a->b"

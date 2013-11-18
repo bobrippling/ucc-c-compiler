@@ -152,7 +152,7 @@ void symtab_label_add(symtable *stab, label *lbl)
 			lbl->spel, lbl);
 }
 
-label *symtab_label_find(symtable *stab, char *spel, where *w)
+label *symtab_label_find_or_new(symtable *stab, char *spel, where *w)
 {
 	label *lbl;
 
@@ -165,7 +165,7 @@ label *symtab_label_find(symtable *stab, char *spel, where *w)
 
 	if(!lbl){
 		/* forward decl */
-		lbl = label_new(w, spel, 0);
+		lbl = label_new(w, symtab_func(stab)->spel, spel, 0);
 		symtab_label_add(stab, lbl);
 	}
 
