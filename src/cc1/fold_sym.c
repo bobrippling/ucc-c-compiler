@@ -162,7 +162,16 @@ struct ident_loc
 static int ident_loc_cmp(const void *a, const void *b)
 {
 	const struct ident_loc *ia = a, *ib = b;
-	return strcmp(IDENT_LOC_SPEL(ia), IDENT_LOC_SPEL(ib));
+	int r = strcmp(IDENT_LOC_SPEL(ia), IDENT_LOC_SPEL(ib));
+
+	/* sort according to spel, then according to func_code
+	 * so it makes checking redefinitions easier, e.g.
+	 * f(){} f(); f(){}
+	 */
+	if(r == 0 && ia->has_decl && ib->has_decl)
+		r = !!ia->bits.decl->func_code - !!ib->bits.decl->func_code;
+
+	return r;
 }
 
 static void warn_c11_retypedef(decl *a, decl *b)
