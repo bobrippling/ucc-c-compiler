@@ -8,5 +8,5 @@ struct A
 main()
 {
 	struct A x;
-	return sizeof(x.vals); // CHECK: /error: sizeof incomplete type int \[\]/
+	return sizeof(x.vals); // CHECK: /error: sizeof incomplete type int\[\]/
 }
