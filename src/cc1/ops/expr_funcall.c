@@ -340,7 +340,7 @@ invalid:
 #endif
 
 
-	if(expr_kind(e->expr, identifier) && (sp = e->expr->bits.ident.spel)){
+	if(!e->expr->in_parens && expr_kind(e->expr, identifier) && (sp = e->expr->bits.ident.spel)){
 		/* check for implicit function */
 		if(!(e->expr->bits.ident.sym = symtab_search(stab, sp))){
 			funcargs *args = funcargs_new();
