@@ -165,6 +165,19 @@ static int ident_loc_cmp(const void *a, const void *b)
 	return strcmp(IDENT_LOC_SPEL(ia), IDENT_LOC_SPEL(ib));
 }
 
+static void warn_c11_retypedef(decl *a, decl *b)
+{
+	/* repeated typedefs are allowed in C11 - 6.7.3 */
+	if(cc1_std < STD_C11){
+		char buf[WHERE_BUF_SIZ];
+
+		warn_at(&b->where,
+				"typedef '%s' redefinition is a C11 extension\n"
+				"%s: note: other definition here",
+				a->spel, where_str_r(buf, &a->where));
+	}
+}
+
 void symtab_fold_decls(symtable *tab)
 {
 #define IS_LOCAL_SCOPE !!(tab->parent)
@@ -287,19 +300,34 @@ void symtab_fold_decls(symtable *tab)
 								if(a_func){
 									/* fine - we know they're equal from decl_equal() above */
 								}else{
-									int a_extern = (da->store & STORE_MASK_STORE) == store_extern;
-									int b_extern = (db->store & STORE_MASK_STORE) == store_extern;
+									enum decl_storage a_store = da->store & STORE_MASK_STORE;
+									enum decl_storage b_store = db->store & STORE_MASK_STORE;
+									int a_extern = a_store == store_extern;
+									int b_extern = b_store == store_extern;
+
+									/* local scope - any decl without linkage can be
+									 * specified once and once only - C99 6.7.3
+									 */
 									if(a_extern != b_extern){
 										clash = "extern/non-extern";
 									}else if(a_extern + b_extern == 0){
-										clash = "duplicate";
+										/* redefinition at local scope - allow typedef */
+										if(a_store & store_typedef && b_store & store_typedef){
+											warn_c11_retypedef(da, db);
+										}else{
+											clash = "duplicate";
+										}
 									}else{
 										/* fine - both extern */
 									}
 								}
-							}else if(a_func && da->func_code && db->func_code){
-								/* b_func is true */
-								clash = "duplicate";
+							}else{
+								if(a_func && da->func_code && db->func_code){
+									/* b_func is true */
+									clash = "duplicate";
+								}else if((da->store & STORE_MASK_STORE) == store_typedef){
+									warn_c11_retypedef(da, db);
+								}
 							}
 						}
 						break;

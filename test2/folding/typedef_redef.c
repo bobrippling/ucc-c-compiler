@@ -1,4 +1,4 @@
-// RUN: %check -e %s
+// RUN: %check %s
 
 typedef enum abc {
     No,
@@ -6,4 +6,4 @@ typedef enum abc {
     Two
 } abc;
 
-typedef enum abc abc; // CHECK: /error: redefinition of typedef from:/
+typedef enum abc abc; // CHECK: /warning: typedef 'abc' redef/
