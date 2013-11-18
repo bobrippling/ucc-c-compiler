@@ -1,3 +1,5 @@
+// RUN: %check %s
+
 f(int i); // CHECK: !/warn/
 g(int (*pf)(int x, int y)); // CHECK: !/warn/
 

@@ -1,6 +1,6 @@
-// RUN: %ucc -DCALL=trapv -o %t %s
+// RUN: %ucc -ftrapv -DCALL=trapv -o %t %s
 // RUN: %t; [ $? -ne 0 ]
-// RUN: %ucc -DCALL=notrapv -o %t %s
+// RUN: %ucc -ftrapv -DCALL=notrapv -o %t %s
 // RUN: %t
 
 trapv(int i)
