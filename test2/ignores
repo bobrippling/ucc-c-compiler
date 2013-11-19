@@ -13,6 +13,10 @@ old_func/multiple.c
 old_func/works.c
 type_propagation/tgmath.c
 const/nonstandard_float.c
+C11/_Generic_multiple.c
+C11/generic.c
+C99/bool_conv.c
+literals/all_constants.c
 
 # other:
 asm/abi-test.c
