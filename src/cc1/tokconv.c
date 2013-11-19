@@ -436,7 +436,8 @@ int curtok_in_list(va_list l)
 	return 0;
 }
 
-void token_get_current_str(char **ps, int *pl, int *pwide)
+void token_get_current_str(
+		char **ps, int *pl, int *pwide, where *w)
 {
 	extern char *currentstring;
 	extern int   currentstringlen;
@@ -448,6 +449,11 @@ void token_get_current_str(char **ps, int *pl, int *pwide)
 		*pwide = currentstringwide;
 	else if(currentstringwide)
 		die_at(NULL, "wide string not wanted");
+
+	if(w){
+		extern where currentstringwhere;
+		memcpy_safe(w, &currentstringwhere);
+	}
 
 	if(pl){
 		*pl = currentstringlen;

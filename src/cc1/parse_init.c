@@ -64,6 +64,7 @@ decl_init *parse_initialisation(void)
 	}else{
 		di = decl_init_new(decl_init_scalar);
 		di->bits.expr = parse_expr_no_comma();
+		memcpy_safe(&di->where, &di->bits.expr->where);
 
 #ifdef DEBUG_DECL_INIT
 		fprintf(stderr, "new scalar %p\n", (void *)di);

@@ -199,8 +199,7 @@ static expr *parse_expr_primary()
 			char *s;
 			int l, wide;
 
-			where_cc1_current(&w);
-			token_get_current_str(&s, &l, &wide);
+			token_get_current_str(&s, &l, &wide, &w);
 			EAT(token_string);
 
 			return expr_set_where(
@@ -729,7 +728,7 @@ void parse_static_assert(void)
 		sa->e = parse_expr_no_comma();
 		EAT(token_comma);
 
-		token_get_current_str(&sa->s, NULL, NULL);
+		token_get_current_str(&sa->s, NULL, NULL, NULL);
 
 		EAT(token_string);
 		EAT(token_close_paren);
@@ -1024,7 +1023,7 @@ symtable_gasm *parse_gasm(void)
 	symtable_gasm *g = umalloc(sizeof *g);
 
 	EAT(token_open_paren);
-	token_get_current_str(&g->asm_str, NULL, NULL);
+	token_get_current_str(&g->asm_str, NULL, NULL, NULL);
 	EAT(token_string);
 	EAT(token_close_paren);
 	EAT(token_semicolon);

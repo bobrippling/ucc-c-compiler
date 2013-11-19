@@ -22,7 +22,8 @@ int curtok_is_decl_store(void);
 
 int curtok_in_list(va_list l);
 
-void token_get_current_str(char **ps, int *pl, int *pwide);
+void token_get_current_str(
+		char **ps, int *pl, int *pwide, where *w);
 
 enum op_type curtok_to_compound_op(void);
 int          curtok_is_compound_assignment(void);

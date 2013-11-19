@@ -59,7 +59,7 @@ static decl_attr *parse_attr_section()
 	if(curtok != token_string)
 		die_at(NULL, "string expected for section");
 
-	token_get_current_str(&func, &len, NULL);
+	token_get_current_str(&func, &len, NULL, NULL);
 	EAT(token_string);
 
 	for(i = 0; i < len; i++)

@@ -147,6 +147,7 @@ char *currentspelling = NULL; /* e.g. name of a variable */
 char *currentstring   = NULL; /* a string literal */
 int   currentstringlen = 0;
 int   currentstringwide = 0;
+where currentstringwhere;
 
 /* where the parser is, and where the last parsed token was */
 static struct loc loc_now;
@@ -590,20 +591,20 @@ static void read_string_multiple(const int is_wide)
 	char *str;
 	int len;
 
+	where_cc1_current(&currentstringwhere);
+
 	read_string(&str, &len);
 
 	curtok = token_string;
 
 	for(;;){
-		int c = peeknextchar();
+		int c = nextchar();
 		if(c == '"'){
 			/* "abc" "def"
 			 *       ^
 			 */
 			char *new, *alloc;
 			int newlen;
-
-			nextchar();
 
 			read_string(&new, &newlen);
 
@@ -618,6 +619,9 @@ static void read_string_multiple(const int is_wide)
 			str = alloc;
 			len += newlen - 1;
 		}else{
+			if(ungetch != EOF)
+				ICE("ungetch");
+			ungetch = c;
 			break;
 		}
 	}
