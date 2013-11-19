@@ -129,6 +129,7 @@ enum dwarf_valty
 	DW_FORM_addr = 0x1,
 	DW_FORM_data1 = 0xb,
 	DW_FORM_data2 = 0x5,
+	DW_FORM_dataN = 0x6, /* use data4 as a no-clobber placeholder */
 	DW_FORM_string = 0x8,
 	/*
 	DW_FORM_ref1 = 0x11,
@@ -368,6 +369,14 @@ static void dwarf_attr(
 		case DW_FORM_data2:
 			dwarf_add_value(&st->info, /*word:*/2, (short)va_arg(l, int));
 			break;
+		case DW_FORM_dataN:
+		{
+			long long val = va_arg(l, long long);
+			unsigned sz;
+			dwarf_smallest(val, &sz);
+			dwarf_add_value(&st->info, sz, val);
+			break;
+		}
 		case DW_FORM_string:
 		{
 			char *esc = va_arg(l, char *);
@@ -430,7 +439,7 @@ static void dwarf_sue_header(
 			if(!sue->anon)
 				dwarf_attr(st, DW_AT_name, DW_FORM_string, sue->spel);
 			if(sue_complete(sue))
-				dwarf_attr(st, DW_AT_byte_size, DW_FORM_data1, sue_size(sue, NULL));
+				dwarf_attr(st, DW_AT_byte_size, DW_FORM_dataN, (long long)sue_size(sue, NULL));
 		} dwarf_sec_end(&st->abbrev);
 	} dwarf_end(st);
 }
@@ -477,8 +486,8 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 											emem->spel);
 
 									dwarf_attr(st,
-											DW_AT_const_value, DW_FORM_data1,
-											(int)const_fold_val(emem->val));
+											DW_AT_const_value, DW_FORM_dataN,
+											(long long)const_fold_val(emem->val));
 
 								} dwarf_sec_end(&st->abbrev);
 							} dwarf_end(st);
@@ -660,7 +669,7 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 				dwarf_abbrev_start(st, DW_TAG_subrange_type, DW_CHILDREN_no); {
 					if(have_sz && sz > 0){
 						/*dwarf_attr(st, DW_AT_lower_bound, DW_FORM_data1, 0);*/
-						dwarf_attr(st, DW_AT_upper_bound, DW_FORM_data1, sz - 1);
+						dwarf_attr(st, DW_AT_upper_bound, DW_FORM_dataN, (long long)(sz - 1));
 					}
 				} dwarf_sec_end(&st->abbrev);
 			} dwarf_end(st);
