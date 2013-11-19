@@ -47,6 +47,36 @@
               }                       \
             }while(0)
 
+/*#define SYMTAB_DEBUG*/
+#ifdef SYMTAB_DEBUG
+static void print_stab(symtable *st, int indent)
+{
+#define STAB_INDENT() for(i = 0; i < indent; i++) fputs("  ", stderr)
+	int i;
+
+	STAB_INDENT();
+
+	fprintf(stderr, "table %p, children %d, vars %d, parent: %p\n",
+			(void *)st,
+			dynarray_count(st->children),
+			dynarray_count(st->decls),
+			(void *)st->parent);
+
+	decl **di;
+	for(di = st->decls; di && *di; di++){
+		decl *d = *di;
+		STAB_INDENT();
+		fprintf(stderr, "  (%s, %s)\n",
+				d->sym ? sym_to_str(d->sym->type) : NULL,
+				decl_to_str(d));
+	}
+
+	symtable **si;
+	for(si = st->children; si && *si; si++)
+		print_stab(*si, indent + 1);
+}
+#endif
+
 static void symtab_iter_children(symtable *stab, void f(symtable *))
 {
 	symtable **i;
@@ -201,6 +231,11 @@ void symtab_fold_decls(symtable *tab)
 		  all_idents[nidents].w = pw;              \
 		  nidents++;                               \
 		}while(0)
+
+#ifdef SYMTAB_DEBUG
+	if(!tab->parent)
+		print_stab(tab, 0);
+#endif
 
 	symtab_iter_children(tab, symtab_fold_decls);
 

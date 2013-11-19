@@ -772,43 +772,9 @@ void fold_disallow_bitfield(expr *e, const char *desc, ...)
 
 }
 
-#ifdef SYMTAB_DEBUG
-void print_stab(symtable *st, int current, where *w)
-{
-	decl **i;
-
-	if(st->parent)
-		print_stab(st->parent, 0, NULL);
-
-	if(current)
-		fprintf(stderr, "[34m");
-
-	fprintf(stderr, "\ttable %p, children %d, vars %d, parent: %p",
-			(void *)st,
-			dynarray_count(st->children),
-			dynarray_count(st->decls),
-			(void *)st->parent);
-
-	if(current)
-		fprintf(stderr, "[m%s%s", w ? " at " : "", w ? where_str(w) : "");
-
-	fputc('\n', stderr);
-
-	for(i = st->decls; i && *i; i++)
-		fprintf(stderr, "\t\tdecl %s\n", (*i)->spel);
-}
-#endif
-
 void fold_stmt(stmt *t)
 {
 	UCC_ASSERT(t->symtab->parent, "symtab has no parent");
-
-#ifdef SYMTAB_DEBUG
-	if(stmt_kind(t, code)){
-		fprintf(stderr, "fold-code, symtab:\n");
-		PRINT_STAB(t, 1);
-	}
-#endif
 
 	t->f_fold(t);
 }
