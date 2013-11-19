@@ -23,6 +23,10 @@ if($ARGV[0] eq '-v'){
 
 my $exp = shift;
 
+if($exp !~ /^[0-9]+$/){
+	die "$exp not numeric";
+}
+
 unless(-x $ARGV[0]){
 	# we've been passed a source file
 	my($cmd, @args) = @ARGV;
