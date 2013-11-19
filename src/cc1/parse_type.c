@@ -84,10 +84,12 @@ static type_ref *parse_type_sue(
 	if(accept(token_open_block)){
 		if(prim == type_enum){
 			for(;;){
+				where w;
 				expr *e;
 				char *sp;
 				decl_attr *en_attr = NULL;
 
+				where_cc1_current(&w);
 				sp = token_current_spel();
 				EAT(token_identifier);
 
@@ -98,7 +100,7 @@ static type_ref *parse_type_sue(
 				else
 					e = NULL;
 
-				enum_vals_add(&members, sp, e, en_attr);
+				enum_vals_add(&members, &w, sp, e, en_attr);
 
 				if(!accept(token_comma))
 					break;

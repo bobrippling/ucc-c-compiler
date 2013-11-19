@@ -283,9 +283,10 @@ void symtab_fold_decls(symtable *tab)
 				int i;
 
 				for(i = 0; members && members[i]; i++){
-					NEW_IDENT(&e->where);
+					enum_member *emem = members[i]->enum_member;
+					NEW_IDENT(&emem->where);
 					all_idents[nidents-1].has_decl = 0;
-					all_idents[nidents-1].bits.spel = members[i]->enum_member->spel;
+					all_idents[nidents-1].bits.spel = emem->spel;
 				}
 			}
 		}

@@ -3,6 +3,7 @@
 
 typedef struct enum_member
 {
+	where where;
 	char *spel;
 	expr *val; /* (expr *)-1 if not given */
 	decl_attr *attr; /* enum { ABC __attribute(()) [ = ... ] }; */
@@ -73,7 +74,7 @@ struct_union_enum_st *sue_decl(
 sue_member *sue_drop(struct_union_enum_st *sue, sue_member **pos);
 
 /* enum specific */
-void enum_vals_add(sue_member ***, char *, expr *, decl_attr *);
+void enum_vals_add(sue_member ***, where *, char *, expr *, decl_attr *);
 int  enum_nentries(struct_union_enum_st *);
 
 void enum_member_search(enum_member **, struct_union_enum_st **, symtable *, const char *spel);

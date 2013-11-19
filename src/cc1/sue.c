@@ -25,6 +25,7 @@ static void sue_set_spel(struct_union_enum_st *sue, char *spel)
 
 void enum_vals_add(
 		sue_member ***pmembers,
+		where *w,
 		char *sp, expr *e,
 		decl_attr *attr)
 {
@@ -37,6 +38,7 @@ void enum_vals_add(
 	emem->spel = sp;
 	emem->val  = e;
 	emem->attr = attr;
+	memcpy_safe(&emem->where, w);
 
 	mem->enum_member = emem;
 
