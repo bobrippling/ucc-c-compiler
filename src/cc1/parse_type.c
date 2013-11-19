@@ -125,6 +125,7 @@ static type_ref *parse_type_sue(
 					| DECL_MULTI_ACCEPT_FIELD_WIDTH
 					| DECL_MULTI_NAMELESS
 					| DECL_MULTI_ALLOW_ALIGNAS,
+					/*newdecl_context:*/0,
 					NULL,
 					&dmembers);
 
@@ -1241,7 +1242,7 @@ int parse_decls_single_type(
 			}else{
 				decl **old_args = NULL;
 				/* NULL - we don't want these in a scope */
-				parse_decls_multi_type(0, NULL, &old_args);
+				parse_decls_multi_type(0, /*newdecl_context:*/0, NULL, &old_args);
 				if(old_args){
 					check_and_replace_old_func(d, old_args);
 
@@ -1340,10 +1341,12 @@ next:
 
 void parse_decls_multi_type(
 		enum decl_multi_mode mode,
+		int newdecl_context,
 		symtable *scope,
 		decl ***pdecls)
 {
 	for(;;)
-		if(!parse_decls_single_type(mode, 0, scope, pdecls))
+		if(!parse_decls_single_type(mode,
+					newdecl_context, scope, pdecls))
 			break;
 }

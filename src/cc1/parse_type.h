@@ -19,6 +19,7 @@ int parse_decls_single_type(
 /* multiple of the above */
 void parse_decls_multi_type(
 		enum decl_multi_mode mode,
+		int newdecl_context,
 		symtable *scope,
 		decl ***pnew);
 

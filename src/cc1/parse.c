@@ -762,6 +762,7 @@ static stmt *parse_stmt_and_decls(void)
 			DECL_MULTI_ACCEPT_FUNC_DECL
 			| DECL_MULTI_ALLOW_STORE
 			| DECL_MULTI_ALLOW_ALIGNAS,
+			/*newdecl_context:*/1,
 			current_scope,
 			NULL);
 
