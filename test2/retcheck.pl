@@ -13,7 +13,11 @@ sub dirname
 sub system_v
 {
 	print "$0: run: @_\n" if $verbose;
-	return system @_;
+	my $r = system @_;
+	if($r & 127){
+		die "$0 $_[0] killed with " . ($r & 127) . "\n";
+	}
+	return $r;
 }
 
 if($ARGV[0] eq '-v'){
