@@ -77,7 +77,7 @@ symtable *symtab_new(symtable *parent);
 void      symtab_set_parent(symtable *child, symtable *parent);
 void      symtab_rm_parent( symtable *child);
 
-void symtab_params(symtable *, decl **);
+void symtab_add_params(symtable *, decl **);
 
 symtable *symtab_root(symtable *child);
 symtable *symtab_func_root(symtable *stab);

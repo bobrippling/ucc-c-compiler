@@ -151,8 +151,16 @@ static expr *parse_expr_identifier()
 
 static expr *parse_block()
 {
+	symtable *const arg_symtab = symtab_new(
+			symtab_root(current_scope));
+
 	funcargs *args;
 	type_ref *rt;
+	symtable *orig_scope;
+	expr *r;
+
+	orig_scope = current_scope;
+	current_scope = arg_symtab;
 
 	EAT(token_xor);
 
@@ -169,7 +177,7 @@ static expr *parse_block()
 
 	}else if(accept(token_open_paren)){
 		/* ^(args...) */
-		args = parse_func_arglist();
+		args = parse_func_arglist(arg_symtab);
 		EAT(token_close_paren);
 	}else{
 		/* ^{...} */
@@ -178,7 +186,11 @@ def_args:
 		args->args_void = 1;
 	}
 
-	return expr_new_block(rt, args, parse_stmt_block());
+	r = expr_new_block(rt, args, parse_stmt_block());
+
+	current_scope = orig_scope;
+
+	return r;
 }
 
 static expr *parse_expr_primary()

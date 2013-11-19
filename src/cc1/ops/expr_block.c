@@ -33,23 +33,21 @@ void expr_block_set_ty(decl *db, type_ref *retty)
 void fold_expr_block(expr *e, symtable *scope_stab)
 {
 	/* prevent access to nested vars */
-	symtable *arg_symtab = symtab_new(symtab_root(e->code->symtab));
+	symtable *const arg_symtab = e->code->symtab;
+	symtable *const sym_root = symtab_root(arg_symtab);
 	decl *df = decl_new();
-	decl *in_func = symtab_func(scope_stab);
 
-	arg_symtab->in_func = df;
+	(void)scope_stab;
 
-	/* setup symbol tables + arguments */
-	e->code->symtab->parent = arg_symtab;
-	symtab_params(arg_symtab, e->bits.block.args->arglist);
+	symtab_func_root(arg_symtab)->in_func = df;
 
 	/* add a global symbol for the block */
-	e->bits.block.sym = sym_new_stab(arg_symtab->parent, df, sym_global);
+	e->bits.block.sym = sym_new_stab(sym_root, df, sym_global);
 
 	/* fold block code (needs to be done before return-type of block) */
 	UCC_ASSERT(stmt_kind(e->code, code), "!code for block");
 
-	df->spel = out_label_block(in_func ? in_func->spel : "globl");
+	df->spel = out_label_block("globl");
 	df->func_code = e->code;
 	df->block_expr = e;
 
@@ -61,7 +59,7 @@ void fold_expr_block(expr *e, symtable *scope_stab)
 	}
 
 	fold_funcargs(e->bits.block.args, arg_symtab, NULL);
-	fold_decl(df, scope_stab, /*pinitcode:*/NULL);
+	fold_decl(df, arg_symtab, /*pinitcode:*/NULL);
 	fold_func_code(df, arg_symtab);
 
 	/* if we didn't hit any returns, we're a void block */

@@ -22,7 +22,7 @@ void parse_decls_multi_type(
 		symtable *scope,
 		decl ***pnew);
 
-funcargs *parse_func_arglist(void);
+funcargs *parse_func_arglist(symtable *scope);
 
 decl_init *parse_initialisation(void); /* expr or {{...}} */
 
