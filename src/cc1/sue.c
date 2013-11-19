@@ -178,16 +178,19 @@ struct_union_enum_st *sue_decl(
 					where_str_r(wbuf, &sue->where));
 		}
 
-		/* check we don't have two definitions */
-		if(got_membs && sue->got_membs){
-			if(descended)
+		if(got_membs){
+			if(descended){
 				/* struct A {}; f(){ struct A {}; } */
 				goto new_type;
+			}
 
-			die_at(NULL, "can't redefine %s %s's members\n"
-					"%s: note: from here",
-					sue_str(sue), sue->spel,
-					where_str_r(wbuf, &sue->where));
+			/* check we don't have two definitions */
+			if(sue->got_membs){
+				die_at(NULL, "can't redefine %s %s's members\n"
+						"%s: note: from here",
+						sue_str(sue), sue->spel,
+						where_str_r(wbuf, &sue->where));
+			}
 		}
 
 #if 0
