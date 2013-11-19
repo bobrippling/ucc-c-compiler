@@ -1,3 +1,3 @@
 // RUN: %check -e %s
-typedef unsigned long size_t; // CHECK: mismatching definitions
-typedef int size_t;
+typedef unsigned long size_t;
+typedef int size_t; // CHECK: mismatching definitions
