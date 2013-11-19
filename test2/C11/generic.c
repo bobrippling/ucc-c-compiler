@@ -1,5 +1,4 @@
 // RUN: echo TODO; false
-#include <stdio.h>
 
 // generic lib
 typedef struct { int _; } types_dd;
