@@ -324,20 +324,23 @@ static void dwarf_attr(
 		case DW_FORM_block1:
 		{
 			const struct dwarf_block *blk = va_arg(l, struct dwarf_block *);
-			unsigned i;
-			unsigned len = 0;
+			size_t i;
+			unsigned long len = 0;
+			unsigned sz;
 
 			for(i = 0; i < blk->cnt; i++)
 				switch(blk->vals[i].type){
 					case BLOCK_N:
-						len++;
+						dwarf_smallest(blk->vals[i].bits.n, &sz);
+						len += sz;
 						break;
 					case BLOCK_ADDR_STR:
 						len += platform_word_size();
 						break;
 				}
 
-			dwarf_add_value(&st->info, /*byte:*/1, (unsigned char)len);
+			dwarf_smallest(len, &sz);
+			dwarf_add_value(&st->info, sz, len);
 
 			for(i = 0; i < blk->cnt; i++){
 				switch(blk->vals[i].type){
