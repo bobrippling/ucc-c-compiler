@@ -78,7 +78,30 @@ fail (expected): ./asm/abi-test.c
 pass: ./asm/abi_vararg_nulfptr.c
 pass: ./asm/asm_bend.c
 pass: ./asm/assigns.c
-pass: ./asm/call.c
+fail: ./asm/call.c
+	./asm/call.c:9:1: warning: control reaches end of non-void function p
+	  "p()"
+	   ^
+	./asm/call.c:14:28: warning: old-style function declaration
+	  "q(a, b, c, d, e, f, g, h, j)"
+	                              ^
+	./asm/call.c:23:3: warning: implicit declaration of function "abort"
+	  "abort();"
+	   ^~~~~
+	./asm/call.c:30:3: warning: implicit declaration of function "abort"
+	  "abort();"
+	   ^~~~~
+	./asm/call.c:32:3: warning: implicit declaration of function "abort"
+	  "abort();"
+	   ^~~~~
+	./asm/call.c:4:7: warning: "a" never read
+	  "f(int a, int b, int c)"
+	         ^
+	./asm/call.c:4:21: warning: "c" never read
+	  "f(int a, int b, int c)"
+	                       ^
+	./retcheck.pl /tmp/11636.out killed with 6
+	./test.pl: command './retcheck.pl 0 ./asm/call.c' failed
 pass: ./asm/call_or.c
 pass: ./asm/call_ptr.c
 pass: ./asm/cast.c
@@ -121,7 +144,36 @@ pass: ./bitfields/max.c
 pass: ./bitfields/max_anon.c
 pass: ./bitfields/pack_overflow.c
 pass: ./bitfields/parsing.c
-pass: ./bitfields/print.c
+fail: ./bitfields/print.c
+	./bitfields/print.c:15:3: warning: implicit declaration of function "abort"
+	  "abort();"
+	   ^~~~~
+	./bitfields/print.c:17:3: warning: implicit declaration of function "abort"
+	  "abort();"
+	   ^~~~~
+	./bitfields/print.c:19:3: warning: implicit declaration of function "abort"
+	  "abort();"
+	   ^~~~~
+	./bitfields/print.c:21:3: warning: implicit declaration of function "abort"
+	  "abort();"
+	   ^~~~~
+	./bitfields/print.c:23:3: warning: implicit declaration of function "abort"
+	  "abort();"
+	   ^~~~~
+	./bitfields/print.c:32:11: warning: truncation in store to bitfield alters value: 2147483647 -> 7
+	  "a.bf_1 = -1UL;"
+	            ^
+	./bitfields/print.c:33:11: warning: truncation in store to bitfield alters value: 2147483647 -> 127
+	  "a.bf_2 = -1UL;"
+	            ^
+	./bitfields/print.c:31:10: warning: implicit cast changes value from 18446744073709551615 to -1
+	  "a.f_1 = -1UL;"
+	           ^
+	./bitfields/print.c:34:10: warning: implicit cast changes value from 18446744073709551615 to -1
+	  "a.f_2 = -1UL;"
+	           ^
+	./retcheck.pl /tmp/12043.out killed with 6
+	./test.pl: command './retcheck.pl 0 ./bitfields/print.c' failed
 pass: ./bitfields/read.c
 pass: ./bitfields/rw_align.c
 pass: ./bitfields/size_conform.c
@@ -131,86 +183,132 @@ pass: ./bitfields/truncation.c
 pass: ./bitfields/typeof.c
 pass: ./bitfields/union_init.c
 pass: ./bitfields/union_init_skip.c
-pass: ./bitfields/write.c
+fail: ./bitfields/write.c
+	./bitfields/write.c:11:1: warning: control reaches end of non-void function write_bf
+	  "write_bf(struct A *p)"
+	   ^~~~~~~~
+	./bitfields/write.c:19:3: warning: implicit declaration of function "abort"
+	  "abort();"
+	   ^~~~~
+	./bitfields/write.c:21:3: warning: implicit declaration of function "abort"
+	  "abort();"
+	   ^~~~~
+	./bitfields/write.c:23:3: warning: implicit declaration of function "abort"
+	  "abort();"
+	   ^~~~~
+	./bitfields/write.c:25:3: warning: implicit declaration of function "abort"
+	  "abort();"
+	   ^~~~~
+	./bitfields/write.c:27:3: warning: implicit declaration of function "abort"
+	  "abort();"
+	   ^~~~~
+	./bitfields/write.c:16:39: warning: "c" never read
+	  "chk_bf(struct A *p, int a, int b, int c, int d, int e)"
+	                                         ^
+	./bitfields/write.c:16:46: warning: "d" never read
+	  "chk_bf(struct A *p, int a, int b, int c, int d, int e)"
+	                                                ^
+	./bitfields/write.c:16:53: warning: "e" never read
+	  "chk_bf(struct A *p, int a, int b, int c, int d, int e)"
+	                                                       ^
+	./retcheck.pl /tmp/12188.out killed with 6
+	./test.pl: command './retcheck.pl 0 ./bitfields/write.c' failed
 pass: ./bitfields/zero_mem_affect.c
 pass: ./bitfields/zero_size.c
 pass: ./blocks/basic.c
 pass: ./blocks/block_const.c
-pass: ./blocks/block_decl.c
-pass: ./blocks/block_ret.c
-pass: ./blocks/blocks_args.c
+fail: ./blocks/block_decl.c
+	./blocks/block_decl.c:6:5: warning: control reaches end of non-void function dispatch
+	  "int dispatch(int x(char))"
+	       ^~~~~~~~
+	./blocks/block_decl.c:13:2: warning: implicit declaration of function "printf"
+	  "printf("%c\n", c);"
+	   ^~~~~~
+	./blocks/block_decl.c:11:1: warning: control reaches end of non-void function pc
+	  "pc(char c)"
+	   ^~
+	./blocks/block_decl.c:18:34: warning: implicit declaration of function "printf"
+	  "int (^x)(char) = ^int(char tim){printf("%c\n", tim);};"
+	                                   ^~~~~~
+	./blocks/block_decl.c:18:44: error: undeclared identifier "tim"
+	  "int (^x)(char) = ^int(char tim){printf("%c\n", tim);};"
+	                                             ^~~
+	../ucc: cc1/cc1 returned 1
+	./test.pl: command '../ucc -o ./block_decl.out ./blocks/block_decl.c' failed
+fail: ./blocks/block_ret.c
+	./blocks/block_ret.c:8:32: warning: implicit declaration of function "printf"
+	  "int (^f)(int) = ^int (int i) {printf("hi %d\n", i); return 0;};"
+	                                 ^~~~~~
+	./blocks/block_ret.c:8:42: error: undeclared identifier "i"
+	  "int (^f)(int) = ^int (int i) {printf("hi %d\n", i); return 0;};"
+	                                           ^
+	../ucc: cc1/cc1 returned 1
+	./test.pl: command '../ucc -o ./block_ret.out ./blocks/block_ret.c' failed
+fail: ./blocks/blocks_args.c
+	./blocks/blocks_args.c:7:10: warning: "a" uninitialised on read
+	  "return a + 2;"
+	          ^
+	./test.pl: command './blocks_args.out; [ $? -eq 5 ]' failed
 pass: ./blocks/blocks_simple.c
 fail: ./blocks/blocks_state.c
+	./blocks/blocks_state.c:8:25: warning: "a" uninitialised on read
+	  "return ^(int a){return a + the_i;};"
+	                          ^
 	./blocks/blocks_state.c:17:2: warning: implicit declaration of function "printf"
 	  "printf("%d\n", (*i)());"
 	   ^~~~~~
 	./blocks/blocks_state.c:24:19: warning: implicit declaration of function "printf"
 	  "^(const char *s){printf("%s\n", s);}("hi");"
 	                    ^~~~~~
+	./blocks/blocks_state.c:24:29: warning: "s" uninitialised on read
+	  "^(const char *s){printf("%s\n", s);}("hi");"
+	                              ^
 	./blocks/blocks_state.c:11:1: warning: control reaches end of non-void function main
 	  "main()"
 	   ^~~~
-	./stdoutcheck.pl: mismatching output counts 5 vs 4
-	output:
-	  2
-	  7
-	  5
-	  %d
-	  
+	mismatching lines [1]: '1133161797' and '7'
 	./test.pl: command './blocks_state.out | ./stdoutcheck.pl 2 7 5 hi' failed
 pass: ./blocks/deep.c
 pass: ./blocks/equal.c
-fail: ./blocks/folding.c
-	./blocks/folding.c:16:22: warning: arithmetic on void pointer
-	  "b = (a = (void *)2) + 1 - 1;"
-	                       ^
-	./blocks/folding.c:16:26: warning: arithmetic on void pointer
-	  "b = (a = (void *)2) + 1 - 1;"
-	                           ^
-	./test.pl: command './folding.out; [ $? -eq 1 ]' failed
-pass: ./blocks/full_decl.c
+pass: ./blocks/folding.c
+fail: ./blocks/full_decl.c
+	./blocks/full_decl.c:9:10: warning: "a" uninitialised on read
+	  "return a + 1;"
+	          ^
+	./test.pl: command './full_decl.out; [ $? -eq 6 ]' failed
 fail: ./blocks/mismatch_ret.c
 	no error expected
 	./blocks/mismatch_ret.c:7:10: warning: dead code after return (return)
 	  "return 3; "
 	          ^
-	./blocks/mismatch_ret.c:7:10: warning: return with a value in void function main.block_1
+	./blocks/mismatch_ret.c:7:10: warning: return with a value in void function globl.block_1
 	  "return 3; "
 	          ^
-	./blocks/mismatch_ret.c:8:10: error: mismatching return type for main.block_1 (void <-- char *)
+	./blocks/mismatch_ret.c:8:10: error: mismatching return type for globl.block_1 (void <-- char *)
 	  "return (char *)3; "
 	          ^
 	../ucc: cc1/cc1 returned 1
 	./test.pl: command './check.sh ./blocks/mismatch_ret.c' failed
 fail: ./blocks/nest.c
-	./test.pl: command './nest.out; [ $? -eq 5 ]' failed
+	./blocks/nest.c:11:15: warning: "f" uninitialised on read
+	  "int a = f;"
+	           ^
+	./blocks/nest.c:14:6: warning: "a" uninitialised on read
+	  "}(a);"
+	     ^
+	./blocks/nest.c:17:12: warning: "i" uninitialised on read
+	  "return b(i);"
+	            ^
+	./retcheck.pl: expected 5, got 104, from /tmp/12323.out
+	./test.pl: command './retcheck.pl 5 ./blocks/nest.c' failed
 pass: ./builtin/all.c
 pass: ./builtin/expect.c
 pass: ./builtin/frame_address.c
 pass: ./builtin/propagation.c
 pass: ./builtin/sizeof.c
 pass: ./builtin/unused.c
-fail: ./C11/_Generic_multiple.c
-	./C11/_Generic_multiple.c:29:2: warning: implicit declaration of function "printf"
-	  "printf("size_t is '%s'\n",             _Generic((s), _Bool: "_Bool", uns"...
-	   ^~~~~~
-	./C11/_Generic_multiple.c:29:34: warning: "s" uninitialised on read
-	  "printf("size_t is '%s'\n",             _Generic((s), _Bool: "_Bool", uns"...
-	                                   ^
-	./C11/_Generic_multiple.c:30:31: warning: "p" uninitialised on read
-	  "printf("ptrdiff_t is '%s'\n",          _Generic((p), _Bool: "_Bool", uns"...
-	                                ^
-	./C11/_Generic_multiple.c:31:32: warning: "i" uninitialised on read
-	  "printf("intmax_t is '%s'\n",           _Generic((i), _Bool: "_Bool", uns"...
-	                                 ^
-	./C11/_Generic_multiple.c:39:1: warning: control reaches end of non-void function main
-	  "main()"
-	   ^~~~
-	mismatching lines [7]: 'array of int is 'pointer to int'' and 'array of int is 'other''
-	./test.pl: command './_Generic_multiple.out | ./stdoutcheck.pl "size_t is 'unsigned long int'" "ptrdiff_t is 'long int'" "intmax_t is 'long long int'" "character constant is 'int'" "0x7FFFFFFF is 'int'" "0xFFFFFFFF is 'unsigned int'" "0x7FFFFFFFU is 'unsigned int'" "array of int is 'other'"' failed
-fail: ./C11/generic.c
-	TODO
-	./test.pl: command 'echo TODO; false' failed
+fail (expected): ./C11/_Generic_multiple.c
+fail (expected): ./C11/generic.c
 pass: ./C11/generic_bad_array.c
 pass: ./C11/generic_bad_fn.c
 fail: ./C11/generic_complex.c
@@ -238,7 +336,24 @@ fail: ./C11/generic_complex.c
 pass: ./C11/generic_default.c
 pass: ./C11/generic_dup.c
 pass: ./C11/generic_fn.c
-pass: ./C11/generic_good_array.c
+fail: ./C11/generic_good_array.c
+	./C11/generic_good_array.c:6:3: warning: implicit declaration of function "abort"
+	  "abort();"
+	   ^~~~~
+	./C11/generic_good_array.c:2:1: warning: control reaches end of non-void function f
+	  "f()"
+	   ^
+	./C11/generic_good_array.c:12:15: warning: left hand side of comma is unused
+	  "if(_Generic((0, x), int *: 1, int[2]: 3) != 1)"
+	                ^
+	./C11/generic_good_array.c:13:3: warning: implicit declaration of function "abort"
+	  "abort();"
+	   ^~~~~
+	./C11/generic_good_array.c:9:1: warning: control reaches end of non-void function g
+	  "g()"
+	   ^
+	./retcheck.pl /tmp/12464.out killed with 6
+	./test.pl: command './retcheck.pl 0 ./C11/generic_good_array.c' failed
 pass: ./C11/generic_nomatch.c
 pass: ./C11/generic_simple.c
 fail: ./C99/__func__.c
@@ -253,11 +368,9 @@ fail: ./C99/__func__.c
 	   ^~~~~
 	./C99/__func__.c:14:1: ICE gen_asm.c:51 (lea_expr): invalid store expression expr-string (no f_store())
 	../ucc: cc1/cc1 caught signal 6
-	Died at ./retcheck.pl line 36.
+	Died at ./retcheck.pl line 44.
 	./test.pl: command './retcheck.pl 0 ./C99/__func__.c' failed
-fail: ./C99/bool_conv.c
-	check !/warn/ found in warnings on line 13
-	./test.pl: command './check.sh ./C99/bool_conv.c' failed
+fail (expected): ./C99/bool_conv.c
 pass: ./C99/C99_for.c
 pass: ./C99/enum_scope.c
 pass: ./C99/if_scope.c
@@ -292,6 +405,8 @@ pass: ./compound_literal/sizeof.c
 pass: ./compound_literal/sizeof2.c
 pass: ./const/const_int.c
 pass: ./const/if_expr.c
+fail (expected): ./const/nonstandard_float.c
+pass: ./const/nonstandard_ptr.c
 pass: ./const/struct_assign.c
 pass: ./cpp/arg-D.c
 pass: ./cpp/colon.c
@@ -364,51 +479,67 @@ pass: ./enums/predecl-5.c
 pass: ./enums/predecl.c
 pass: ./escape/1.c
 pass: ./escape/hex.c
-pass: ./escape/limit.c
+fail: ./escape/limit.c
+	./escape/limit.c:9:1: warning: integer constant is so large it is unsigned
+	  "main()"
+	   ^
+	./escape/limit.c:9:1: warning: implicit cast changes value from 18446744073709551549 to 61
+	  "main()"
+	   ^
+	./escape/limit.c:11:5: warning: implicit declaration of function "strcmp"
+	  "if(strcmp(oct, "a.3"))"
+	      ^~~~~~
+	./escape/limit.c:12:3: warning: implicit declaration of function "abort"
+	  "abort();"
+	   ^~~~~
+	./escape/limit.c:14:5: warning: implicit declaration of function "strcmp"
+	  "if(strcmp(hexterm, (char[]){ 017, 'g', 'h', 0 }))"
+	      ^~~~~~
+	./escape/limit.c:15:3: warning: implicit declaration of function "abort"
+	  "abort();"
+	   ^~~~~
+	./escape/limit.c:17:5: warning: implicit declaration of function "strcmp"
+	  "if(strcmp(s, "h\275\03321\n345"))"
+	      ^~~~~~
+	./escape/limit.c:21:1: warning: integer constant is so large it is unsigned
+	  "}"
+	   ^
+	./escape/limit.c:21:1: warning: implicit cast changes value from 18446744073709551549 to 61
+	  "}"
+	   ^
+	./escape/limit.c:18:3: warning: implicit declaration of function "abort"
+	  "abort();"
+	   ^~~~~
+	./retcheck.pl /tmp/13610.out killed with 6
+	./test.pl: command './retcheck.pl 0 ./escape/limit.c' failed
 pass: ./escape/unknown.c
 pass: ./flexarr/0-hack.c
 pass: ./flexarr/align.c
 pass: ./flexarr/alloc.c
 pass: ./flexarr/basic_init.c
 pass: ./flexarr/copy.c
+pass: ./flexarr/desig.c
 pass: ./flexarr/eg.1.c
 pass: ./flexarr/embed.c
 pass: ./flexarr/empty_struct.c
-fail: ./flexarr/init.c
-	check !/warn/ found in warnings on line 9
-	./test.pl: command './check.sh ./flexarr/init.c' failed
+pass: ./flexarr/init.c
+pass: ./flexarr/init_excess.c
 pass: ./flexarr/init_tdef.c
 pass: ./flexarr/middle.c
 pass: ./flexarr/only_1.c
 pass: ./flexarr/pad.c
 pass: ./flexarr/single.c
-fail: ./flexarr/sizeof_mem.c
-	check /error: sizeof incomplete type int \[\]/ not found in warnings on line 11
-	./test.pl: command './check.sh -e ./flexarr/sizeof_mem.c' failed
+pass: ./flexarr/sizeof_mem.c
 pass: ./flexarr/stack_init.c
 pass: ./flexarr/struct_ar_init.c
-fail: ./flexarr/struct_init.c
-	./flexarr/struct_init.c:18:3: warning: implicit declaration of function "printf"
-	  "printf("[%d] = %s %d\n", i, p->ents[i].nam, p->ents[i].type);"
-	   ^~~~~~
-	./flexarr/struct_init.c:15:1: warning: control reaches end of non-void function print
-	  "print(struct A *p)"
-	   ^~~~~
-	./flexarr/struct_init.c:26:4: warning: initialisation of flexible array (GNU)
-	  "{ "hi", 5 },"
-	   ^
-	../ucc: cc1/cc1 caught signal 11
-	./test.pl: command '../ucc -o ./struct_init.out ./flexarr/struct_init.c' failed
+pass: ./flexarr/struct_init.c
 pass: ./flexarr/structs.c
 pass: ./flexarr/tdef.c
 pass: ./flexarr/union.c
 pass: ./folding/array_param.c
 pass: ./folding/const_str_deref.c
-fail: ./folding/sym_read_write.c
-	./test.pl: no commands in ./folding/sym_read_write.c
-fail: ./folding/typedef_redef.c
-	error expected
-	./test.pl: command './check.sh -e ./folding/typedef_redef.c' failed
+pass: ./folding/sym_read_write.c
+pass: ./folding/typedef_redef.c
 pass: ./format/fmt.c
 fail: ./format/fmt_invalid.c
 	check /error: variadic argument out of bounds/ not found in warnings on line 3
@@ -433,15 +564,11 @@ pass: ./format/null.c
 pass: ./format/str.c
 pass: ./format/too_few.c
 pass: ./format/too_many.c
-fail: ./functions/implicitly_void.c
-	./test.pl: CHECK commands found with no %check
+pass: ./functions/implicit_bad.c
+pass: ./functions/implicitly_void.c
 pass: ./functions/invalid_arg_func.c
-fail: ./functions/invalid_arg_init.c
-	check /error ... ?/ not found in warnings on line 2
-	./test.pl: command './check.sh -e ./functions/invalid_arg_init.c' failed
-fail: ./functions/invalid_init.c
-	check /error: expecting token ?/ not found in warnings on line 2
-	./test.pl: command './check.sh -e ./functions/invalid_init.c' failed
+pass: ./functions/invalid_arg_init.c
+pass: ./functions/invalid_init.c
 pass: ./functions/lea.c
 pass: ./functions/push.c
 pass: ./functions/redef_1.c
@@ -449,81 +576,38 @@ pass: ./functions/redef_2.c
 pass: ./functions/return_outside.c
 pass: ./functions/stret.c
 pass: ./functions/type_redef.c
-pass: ./gen/array_add.c
-fail: ./gen/cmp.c
-	./gen/cmp.c:8:2: warning: implicit declaration of function "write"
-	  "write(1, "\n", 1);"
+fail: ./gen/array_add.c
+	./gen/array_add.c:6:11: warning: index 7 out of bounds of array, size 1
+	./gen/array_add.c:3:10: note: array declared here
+	  "return g + 7;"
+	            ^
+	./gen/array_add.c:11:9: warning: mismatching types in initialisation (int * <-- char *)
+	  "int *p = g;"
+	          ^
+	./gen/array_add.c:12:9: warning: comparison of distinct pointer types lacks a cast (char const * vs int *)
+	  "if(f() != p + 7)"
+	          ^
+	./gen/array_add.c:13:3: warning: implicit declaration of function "abort"
+	  "abort();"
 	   ^~~~~
-	./gen/cmp.c:6:1: warning: control reaches end of non-void function nl
-	  "nl()"
-	   ^~
-	./gen/cmp.c:13:2: warning: implicit declaration of function "write"
-	  "write(1, &"0123456789"[argc], 1);"
-	   ^~~~~
-	./gen/cmp.c:18:21: warning: implicit declaration of function "strlen"
-	  "write(1, argv[i], strlen(argv[i])), nl();"
-	                     ^~~~~~
-	./gen/cmp.c:11:1: warning: control reaches end of non-void function main
-	  "main(int argc, char **argv, char **envp)"
-	   ^~~~
-	./gen/cmp.c:11:36: warning: "envp" never read
-	  "main(int argc, char **argv, char **envp)"
-	                                      ^~~~
-	./test.pl: command './cmp.out hi | sed -n 1p | grep '^1'' failed
+	./retcheck.pl /tmp/14182.out killed with 6
+	./test.pl: command './retcheck.pl 0 ./gen/array_add.c' failed
 pass: ./gen/cmp2.c
 pass: ./gen/compound_assign_freeup.c
 pass: ./gen/deref.c
-fail: ./gen/flag_argument.c
-	./gen/flag_argument.c:4:1: warning: control reaches end of non-void function f
-	  "f(){}"
-	   ^
-	./gen/flag_argument.c:9:3: warning: too many arguments to implicitly (void)-function
-	  "f((char *)0 == i);"
-	    ^
-	./gen/flag_argument.c:9:17: warning: "i" uninitialised on read
-	  "f((char *)0 == i);"
-	                  ^
-	./gen/flag_argument.c:9:14: warning: comparison of distinct pointer types lacks a cast (char * vs int *)
-	  "f((char *)0 == i);"
-	               ^
-	./gen/flag_argument.c:6:1: warning: control reaches end of non-void function main
-	  "main()"
-	   ^~~~
-	couldn't find { .s = /cmpq %rbx, %rax/, .is_regex = 0 }
-	./test.pl: command './asmcheck.pl ./gen/flag_argument.c' failed
+pass: ./gen/flag_argument.c
 pass: ./gen/for_C99.c
 pass: ./gen/lbl_offset.c
-fail: ./gen/maths.c
-	./test.pl: no commands in ./gen/maths.c
-fail: ./gen/normalise.c
-	./test.pl: no commands in ./gen/normalise.c
-fail: ./gen/out_dup.c
-	./test.pl: no commands in ./gen/out_dup.c
+pass: ./gen/maths.c
+pass: ./gen/normalise.c
+pass: ./gen/out_dup.c
 pass: ./gen/signed.c
-fail: ./gen/stack_save.c
-	./test.pl: no commands in ./gen/stack_save.c
+pass: ./gen/stack_save.c
 pass: ./gen/stmt_expr_with_stmt.c
-fail: ./gen/trapv.c
-	./gen/trapv.c:18:12: warning: implicit cast changes value from 18446744073709551615 to -1
-	  "int max = 0xffffffffffffffff;"
-	             ^
-	./test.pl: command './trapv.out; [ $? -ne 0 ]' failed
+pass: ./gen/trapv.c
 pass: ./gen/vtop_check.c
-fail: ./goto/addr_lbl.c
-	./goto/addr_lbl.c:18:1: warning: unused label 'y'
-	  "y:;"
-	   ^
-	./goto/addr_lbl.c:16:1: warning: control reaches end of non-void function f
-	  "f()"
-	   ^
-	/tmp/fileorZxMO: Assembler messages:
-	/tmp/fileorZxMO:29: Error: symbol `y' is already defined
-	../ucc: as returned 1
-	Died at ./retcheck.pl line 36.
-	./test.pl: command './retcheck.pl 3 ./goto/addr_lbl.c' failed
-fail: ./goto/computed.c
-	check !/warning/ found in warnings on line 6
-	./test.pl: command './check.sh ./goto/computed.c' failed
+pass: ./goto/addr_lbl.c
+pass: ./goto/computed.c
 pass: ./goto/invalid.c
 pass: ./initialisation/comma.c
 fail: ./initialisation/const_init.c
@@ -548,9 +632,9 @@ fail: ./initialisation/init_with_void.c
 fail: ./initialisation/obscure_override.c
 	./test.pl: no commands in ./initialisation/obscure_override.c
 pass: ./inline/struct.c
-fail: ./labels/attribute.c
-	./test.pl: no commands in ./labels/attribute.c
+pass: ./labels/attribute.c
 pass: ./labels/lbl.c
+pass: ./labels/namespace.c
 pass: ./labels/no-decl.c
 pass: ./labels/parsing_newline.c
 pass: ./labels/unused.c
@@ -559,10 +643,7 @@ pass: ./literals/0.c
 pass: ./literals/64_bit.c
 pass: ./literals/64_bit_negative.c
 pass: ./literals/64_simple.c
-fail: ./literals/all_constants.c
-	./literals/all_constants.c:18:2: ICE tokenise.c:738 (nexttoken): TODO: float/double repr (2.3)
-	../ucc: cc1/cc1 caught signal 6
-	./test.pl: command '../ucc -fsyntax-only ./literals/all_constants.c' failed
+fail (expected): ./literals/all_constants.c
 fail: ./literals/constants.c
 	no error expected
 	./literals/constants.c:25:45: error: static assertion failure: 0x10000000000000000's type isn't unsigned long long
@@ -592,43 +673,12 @@ pass: ./misc/confusion_parsing.c
 pass: ./misc/printf_args.c
 pass: ./misc/static_assert.c
 pass: ./misc/static_assert_order.c
-fail: ./old_func/assign.c
-	./test.pl: no commands in ./old_func/assign.c
+fail (expected): ./old_func/assign.c
+pass: ./old_func/default_int.c
 pass: ./old_func/errors.c
-fail: ./old_func/multiple.c
-	no error expected
-	./old_func/multiple.c:4:8: warning: old-style function declaration
-	  "f(hello); "
-	          ^
-	./old_func/multiple.c:6:4: warning: old-style function declaration
-	  "g(a)"
-	      ^
-	./old_func/multiple.c:16:4: warning: old-style function declaration
-	  "f(a)"
-	      ^
-	./old_func/multiple.c:4:1: error: mismatching definitions of "f"
-	./old_func/multiple.c:16:1: note: other definition
-	  "f(hello); "
-	   ^
-	../ucc: cc1/cc1 returned 1
-	./test.pl: command './check.sh ./old_func/multiple.c' failed
+fail (expected): ./old_func/multiple.c
 pass: ./old_func/type.c
-fail: ./old_func/works.c
-	./old_func/works.c:3:4: warning: old-style function declaration
-	  "f(i);"
-	      ^
-	./old_func/works.c:5:4: warning: old-style function declaration
-	  "f(i)"
-	      ^
-	./old_func/works.c:11:7: warning: old-style function declaration
-	  "g(i, j)"
-	         ^
-	./old_func/works.c:3:1: error: mismatching definitions of "f"
-	./old_func/works.c:5:1: note: other definition
-	  "f(i);"
-	   ^
-	../ucc: cc1/cc1 returned 1
-	./test.pl: command '../ucc -o ./works.out ./old_func/works.c' failed
+fail (expected): ./old_func/works.c
 fail (expected): ./other/__asm__.c
 fail: ./other/__file__.c
 	./other/__file__.c:23:1: error: endif expected
@@ -638,29 +688,27 @@ pass: ./other/_Generic.c
 pass: ./other/_Generic_const.c
 pass: ./other/_Static_assert.c
 pass: ./other/addr.c
-fail: ./other/alphabet.c
-	./other/alphabet.c:23:1: error: endif expected
-	../ucc: cpp2/cpp returned 1
-	./test.pl: command '../ucc -o ./alphabet.out ./other/alphabet.c' failed
 pass: ./other/ar_addr.c
 pass: ./other/args_definitions.c
 fail: ./other/array_addressof.c
-	./other/array_addressof.c:32:1: error: endif expected
-	../ucc: cpp2/cpp returned 1
-	./test.pl: command '../ucc ./other/array_addressof.c -o ./array_addressof.out' failed
+	./other/array_addressof.c:6:3: warning: implicit declaration of function "abort"
+	  "abort();"
+	   ^~~~~
+	./other/array_addressof.c:3:1: warning: control reaches end of non-void function assert
+	  "assert(_Bool cond)"
+	   ^~~~~~
+	./other/array_addressof.c:9:1: warning: control reaches end of non-void function set
+	  "set(int *p, int v)"
+	   ^~~
+	./other/array_addressof.c:28:12: warning: comparison of distinct pointer types lacks a cast (int * vs int (*)[2])
+	  "assert( x == &x);"
+	             ^
+	./retcheck.pl /tmp/14796.out killed with 6
+	./test.pl: command './retcheck.pl 0 ./other/array_addressof.c' failed
 pass: ./other/array_size_check.c
 pass: ./other/assert.c
 pass: ./other/assign_order.c
-fail: ./other/atexit.c
-	./other/atexit.c:37:1: error: endif expected
-	../ucc: cpp2/cpp returned 1
-	./test.pl: command '../ucc -o ./atexit.out ./other/atexit.c' failed
-fail: ./parse/arg_identifier.c
-	./parse/arg_identifier.c:3:17: error: type expected (got identifier)
-	  "f(int i, int j, va_list);"
-	                   ^
-	../ucc: cc1/cc1 returned 1
-	./test.pl: command '../ucc -c ./parse/arg_identifier.c' failed
+pass: ./parse/arg_identifier.c
 pass: ./parse/array_comma.c
 pass: ./parse/backslash_r.c
 pass: ./parse/empty.c
@@ -676,26 +724,11 @@ pass: ./parsing/empty_array.c
 pass: ./parsing/eof_mid.c
 pass: ./parsing/logical_precedence.c
 pass: ./parsing/multiple_funcs.c
-fail: ./parsing/no_btype_func_arg.c
-	./parsing/no_btype_func_arg.c:3:22: error: expecting token identifier, got '(' (parse_type.c:667)
-	  "int f(               (int *));"
-	                        ^
-	./parsing/no_btype_func_arg.c:3:22: error: expecting token identifier, got '(' (parse_type.c:674)
-	  "int f(               (int *));"
-	                        ^
-	./parsing/no_btype_func_arg.c:3:22: error: expecting token ',', got '(' (parse_type.c:679)
-	  "int f(               (int *));"
-	                        ^
-	../ucc: cc1/cc1 returned 1
-	./test.pl: command '../ucc -fsyntax-only ./parsing/no_btype_func_arg.c' failed
+pass: ./parsing/no_btype_func_arg.c
 pass: ./parsing/numbers.c
 pass: ./parsing/old_func.c
 pass: ./parsing/parse_comma.c
-fail: ./parsing/parse_op.c
-	./parsing/parse_op.c:13:13: warning: == has higher precedence than &
-	  "return a() & b() == c(); "
-	              ^
-	./test.pl: CHECK commands found with no %check
+pass: ./parsing/parse_op.c
 pass: ./parsing/restrict_ar.c
 pass: ./parsing/struct_decl_eof.c
 pass: ./parsing/uneat.c
@@ -710,15 +743,12 @@ pass: ./pointers/ptr_cmp.c
 pass: ./pointers/ptr_sub.c
 pass: ./pointers/void_arith.c
 pass: ./precedence/same.c
-fail: ./quote/pedantic.c
-	./test.pl: no commands in ./quote/pedantic.c
+pass: ./quote/pedantic.c
 pass: ./quote/quote.c
 pass: ./redefinition/args_void.c
 pass: ./redefinition/array.c
 pass: ./redefinition/attribute_propagate.c
-fail: ./redefinition/dup.c
-	check /error: duplicate definitions of "f"/ not found in warnings on line 3
-	./test.pl: command './check.sh -e ./redefinition/dup.c' failed
+pass: ./redefinition/dup.c
 pass: ./redefinition/enum_func_namespace.c
 pass: ./redefinition/for_loop.c
 pass: ./redefinition/global_bad_func.c
@@ -751,12 +781,9 @@ pass: ./scope/mixed_code_decls_empty.c
 pass: ./scope/scope.c
 pass: ./scope/shadow_for.c
 pass: ./scope/shadow_global.c
-fail: ./scope/shadow_local.c
-	./test.pl: no commands in ./scope/shadow_local.c
-fail: ./scope/shadow_param.c
-	./test.pl: no commands in ./scope/shadow_param.c
-fail: ./scope/shadow_type.c
-	./test.pl: no commands in ./scope/shadow_type.c
+pass: ./scope/shadow_local.c
+pass: ./scope/shadow_param.c
+pass: ./scope/shadow_type.c
 pass: ./scope/stmt_init.c
 pass: ./scope/str_gen.c
 pass: ./scope/symtable.c
@@ -771,7 +798,47 @@ pass: ./sign/short_vs_int.c
 pass: ./sign/unsigned_op.c
 pass: ./simple/simple.c
 pass: ./stack/clobber.c
-pass: ./stack/packing.c
+fail: ./stack/packing.c
+	./stack/packing.c:9:17: warning: missing braces for initialisation of sub-object 'int[2]'
+	  "int a[][2] = { 1, 2, 3, 4 };"
+	                  ^
+	./stack/packing.c:9:23: warning: missing braces for initialisation of sub-object 'int[2]'
+	  "int a[][2] = { 1, 2, 3, 4 };"
+	                        ^
+	./stack/packing.c:10:12: warning: comparison between pointer and integer (int * vs int)
+	  "if(!(a[0] == 1)) abort();"
+	             ^
+	./stack/packing.c:11:12: warning: comparison between pointer and integer (int * vs int)
+	  "if(!(a[1] == 2)) abort();"
+	             ^
+	./stack/packing.c:12:9: warning: index 2 out of bounds of array, size 2
+	./stack/packing.c:9:9: note: array declared here
+	  "if(!(a[2] == 3)) abort();"
+	          ^
+	./stack/packing.c:12:12: warning: comparison between pointer and integer (int * vs int)
+	  "if(!(a[2] == 3)) abort();"
+	             ^
+	./stack/packing.c:13:9: warning: index 3 out of bounds of array, size 2
+	./stack/packing.c:9:9: note: array declared here
+	  "if(!(a[3] == 4)) abort();"
+	          ^
+	./stack/packing.c:13:12: warning: comparison between pointer and integer (int * vs int)
+	  "if(!(a[3] == 4)) abort();"
+	             ^
+	./stack/packing.c:7:1: warning: control reaches end of non-void function f
+	  "f()"
+	   ^
+	./stack/packing.c:25:13: warning: missing braces for initialisation of sub-object 'struct <anon struct @ ./stack/packing.c:24:5>'
+	  "} b = { 1, 2, 3 };"
+	              ^
+	./stack/packing.c:16:1: warning: control reaches end of non-void function g
+	  "g()"
+	   ^
+	./stack/packing.c:31:1: warning: control reaches end of non-void function h
+	  "h()"
+	   ^
+	./retcheck.pl ./packing.out killed with 6
+	./test.pl: command './retcheck.pl 0 ./packing.out' failed
 pass: ./stack/reg_saving.c
 pass: ./stack/register.c
 pass: ./std/C99_block_scope.c
@@ -782,44 +849,14 @@ pass: ./std/initialiser.c
 pass: ./std/scope_fail.c
 pass: ./std/trailing.c
 pass: ./strings/basic.c
-fail: ./strings/global.c
-	--- /tmp/11344.chk.a	2013-11-14 20:19:24.346095482 +0000
-	+++ /tmp/11344.chk.b	2013-11-14 20:19:24.351095482 +0000
-	@@ -1,20 +1,4 @@
-	 x:
-	-.byte 104
-	-.byte 101
-	-.byte 108
-	-.byte 108
-	-.byte 111
-	-.zero 1
-	-str.1:
-	-.byte 104
-	-.byte 101
-	-.byte 108
-	-.byte 108
-	-.byte 111
-	-.zero 1
-	+.LC0:
-	 p:
-	-.quad str.2
-	-str.2:
-	-.byte 121
-	-.byte 111
-	-.zero 1
-	+.quad .LC0
-	./test.pl: command './layout_check.sh ./strings/global.c' failed
+pass: ./strings/global.c
+pass: ./structs/assign_comp.c
 pass: ./structs/copy.c
 pass: ./structs/decl_after.c
 pass: ./structs/forward_decl.c
 pass: ./structs/nested.c
 pass: ./structs/nested_decl.c
-fail: ./structs/nested_redecl.c
-	error expected
-	./structs/nested_redecl.c:5:1: warning: control reaches end of non-void function f
-	  "f(struct A *p)"
-	   ^
-	./test.pl: command './check.sh -e ./structs/nested_redecl.c' failed
+pass: ./structs/nested_redecl.c
 pass: ./structs/offset_sizeof.c
 pass: ./structs/padding.c
 pass: ./structs/simple.c
@@ -831,8 +868,7 @@ pass: ./switch/case_range_default.c
 pass: ./switch/default_collision.c
 pass: ./switch/enum.c
 pass: ./switch/enum_int.c
-fail: ./switch/equal_range.c
-	./test.pl: no commands in ./switch/equal_range.c
+pass: ./switch/equal_range.c
 pass: ./switch/inverse.c
 pass: ./switch/range_case_collision.c
 pass: ./switch/range_range_collision.c
@@ -856,6 +892,7 @@ pass: ./type_parsing_printing/typeof_to_str.c
 pass: ./type_parsing_printing/void_args_typedef.c
 pass: ./type_propagation/bool_static.c
 pass: ./type_propagation/compound_literal_typeof.c
+pass: ./type_propagation/division.c
 pass: ./type_propagation/if-expr.c
 pass: ./type_propagation/if_expr_fptr.c
 pass: ./type_propagation/if_expr_void.c
@@ -863,6 +900,7 @@ pass: ./type_propagation/sshift.c
 fail (expected): ./type_propagation/tgmath.c
 pass: ./type_propagation/void.c
 pass: ./type_propagation/void_extern.c
+pass: ./typedef/retypedef.c
 pass: ./typedef/scoping.c
 pass: ./typedef/scoping2.c
 pass: ./typedef/scoping3.c
@@ -898,6 +936,7 @@ pass: ./where/multiple.c
 pass: ./where/operator.c
 pass: ./where/parse.c
 pass: ./where/statements.c
+pass: ./where/string.c
 pass: ./arrays/as_params/decay_typedef.c
 pass: ./arrays/as_params/declarations.c
 pass: ./arrays/as_params/empty.c
@@ -933,35 +972,10 @@ pass: ./cpp/if/nested_elif.c
 pass: ./cpp/if/paren.c
 pass: ./cpp/inc/a.c
 pass: ./cpp/space/ifdef.c
-fail: ./cpp/warnings/if_elif.c
-	check /warning: undefined identifier/ not found in warnings on line 3
-	./test.pl: command './check.sh ./cpp/warnings/if_elif.c -E' failed
-fail: ./decl_parsing/atexit/atexit.c
-	./decl_parsing/atexit/atexit.c:5:2: warning: implicit declaration of function "printf"
-	  "printf("beet\n");"
-	   ^~~~~~
-	./decl_parsing/atexit/atexit.c:3:1: warning: control reaches end of non-void function p_hi
-	  "p_hi()"
-	   ^~~~
-	./decl_parsing/atexit/atexit.c:10:2: warning: implicit declaration of function "printf"
-	  "printf("bye\n");"
-	   ^~~~~~
-	./decl_parsing/atexit/atexit.c:8:1: warning: control reaches end of non-void function p_bye
-	  "p_bye()"
-	   ^~~~~
-	./decl_parsing/atexit/atexit.c:15:2: warning: implicit declaration of function "atexit"
-	  "atexit(p_hi);"
-	   ^~~~~~
-	./decl_parsing/atexit/atexit.c:13:1: warning: control reaches end of non-void function main
-	  "main()"
-	   ^~~~
-	mismatching lines [0]: 'bye' and '^bye$'
-	./test.pl: command './atexit.out | ./stdoutcheck.pl '^bye$' '^beet$'' failed
+pass: ./cpp/warnings/if_elif.c
+pass: ./decl_parsing/atexit/atexit.c
 pass: ./decl_parsing/atexit/atexit2.c
 pass: ./decl_parsing/atexit/atexit_simplified.c
-fail: ./gen/x86_64/idiv.c
-	open ./gen/x86_64/idiv.chk.s: No such file or directory
-	./test.pl: command './asmcheck.pl ./gen/x86_64/idiv.c' failed
 fail: ./initialisation/aggregate/copy.c
 	./initialisation/aggregate/copy.c:11:3: warning: implicit declaration of function "printf"
 	  "printf("x[%d] = { %d, %d }\n","
@@ -1321,10 +1335,10 @@ fail: ./initialisation/designated/overwrite.c
 	./initialisation/designated/overwrite.c:26:10: warning: 1 missing initialiser for 'struct <anon struct @ ./initialisation/designated/overwrite.c:24:22>'
 	  "[2]   = 2,"
 	           ^
-	./initialisation/designated/overwrite.c:17:5: error: mismatching definitions of "x"
-	./initialisation/designated/overwrite.c:24:22: note: other definition
-	  "int x[][2] = {"
-	       ^
+	./initialisation/designated/overwrite.c:24:22: error: mismatching definitions of "x"
+	./initialisation/designated/overwrite.c:17:5: note: previous definition
+	  "struct { int x, y; } x[] = {"
+	                        ^
 	../ucc: cc1/cc1 returned 1
 	Can't open /tmp/chk.out.12896: No such file or directory at ./layout_normalise.pl line 22.
 	./layout_normalise.pl: no input
@@ -1464,6 +1478,10 @@ fail: ./initialisation/global/struct_fn.c
 	int (*)() <- void *
 	  "} _stdin  = { (void *)0 };"
 	                 ^~~~~~~~~~
+	./initialisation/global/struct_fn.c:6:11: warning: global brace initialiser contains non-standard constant expression
+	./initialisation/global/struct_fn.c:6:15: note: cast expression here
+	  "} _stdin  = { (void *)0 };"
+	             ^
 	open ./initialisation/global/struct_fn.chk.s: No such file or directory
 	./test.pl: command './asmcheck.pl ./initialisation/global/struct_fn.c' failed
 fail: ./initialisation/global/struct_offset.c
@@ -1832,6 +1850,7 @@ fail: ./initialisation/unbraced/multiple.c
 	./initialisation/unbraced/multiple.c:9:1: warning: control reaches end of non-void function g
 	  "g()"
 	   ^
+	Usage: ./asmcheck.pl src
 	./initialisation/unbraced/multiple.c:6:17: warning: missing braces for initialisation of sub-object 'int[2]'
 	  "int x[][2] = { 1, 2, 3, 4 };"
 	                  ^
@@ -1927,8 +1946,8 @@ fail: ./initialisation/union/local.c
 	./initialisation/union/local.c:72:1: warning: control reaches end of non-void function main
 	  "main()"
 	   ^~~~
-	Aborted (core dumped)
 	diff: ./initialisation/union/local.c.out: No such file or directory
+	Aborted (core dumped)
 	./test.pl: command './local.out | diff -u - ./initialisation/union/local.c.out' failed
 pass: ./initialisation/union/size.c
 pass: ./initialisation/zero_fill/array.c
@@ -1953,15 +1972,12 @@ pass: ./structs/parameter_decl/only_param.c
 pass: ./structs/parameter_decl/struct.c
 pass: ./structs/parameter_decl/struct2.c
 pass: ./structs/parameter_decl/struct3.c
-fail: ./structs/parameter_decl/struct_fine.c
-	./test.pl: no commands in ./structs/parameter_decl/struct_fine.c
+pass: ./structs/parameter_decl/struct_fine.c
 pass: ./structs/redecl/normal.c
 pass: ./structs/scope/late_def.c
 pass: ./structs/scope/nested.c
 pass: ./structs/scope/redecl_same_scope.c
-fail: ./structs/scope/reprototype.c
-	error expected
-	./test.pl: command './check.sh -e ./structs/scope/reprototype.c' failed
+pass: ./structs/scope/reprototype.c
 pass: ./cpp/if/nested_noop/jim.c
 pass: ./cpp/if/nested_noop/yo.c
 fail: ./initialisation/designated/aggregate_replacement/replace_subobj.c
@@ -2102,32 +2118,7 @@ fail: ./initialisation/struct/empty/warn_missing_empty.c
 pass: ./structs/anon/fopt/C11.c
 pass: ./structs/anon/fopt/ms.c
 pass: ./structs/anon/fopt/p9.c
-fail: ./structs/anon/Plan9/all.c
-	./structs/anon/Plan9/all.c:43:1: warning: control reaches end of non-void function assign
-	  "assign()"
-	   ^~~~~~
-	./structs/anon/Plan9/all.c:53:1: warning: control reaches end of non-void function do_lock
-	  "do_lock(Lock *l)"
-	   ^~~~~~~
-	./structs/anon/Plan9/all.c:62:3: warning: implicit declaration of function "abort"
-	  "abort();"
-	   ^~~~~
-	./structs/anon/Plan9/all.c:58:1: warning: control reaches end of non-void function call
-	  "call()"
-	   ^~~~
-	./structs/anon/Plan9/all.c:78:3: warning: implicit declaration of function "abort"
-	  "abort();"
-	   ^~~~~
-	./structs/anon/Plan9/all.c:74:1: warning: control reaches end of non-void function address
-	  "address()"
-	   ^~~~~~~
-	./structs/anon/Plan9/all.c:81:1: warning: control reaches end of non-void function main
-	  "main()"
-	   ^~~~
-	./structs/anon/Plan9/all.c:76:8: warning: "l" never read
-	  "Lock *l = &node.Lock;"
-	         ^
-	./test.pl: command './all.out' failed
+pass: ./structs/anon/Plan9/all.c
 pass: ./structs/anon/Plan9/oo.c
 pass: ./structs/anon/Plan9/p9_1.c
 pass: ./structs/anon/Plan9/p9_2.c
