@@ -585,6 +585,21 @@ static void read_string(char **sptr, int *plen)
 	bufferpos += size;
 }
 
+static void ungetchar(char ch)
+{
+	if(ungetch != EOF)
+		ICE("ungetch");
+
+	ungetch = ch;
+}
+
+static int getungetchar(void)
+{
+	const int ch = ungetch;
+	ungetch = EOF;
+	return ch;
+}
+
 static void read_string_multiple(const int is_wide)
 {
 	/* TODO: read in "hello\\" - parse string char by char, rather than guessing and escaping later */
@@ -619,9 +634,7 @@ static void read_string_multiple(const int is_wide)
 			str = alloc;
 			len += newlen - 1;
 		}else{
-			if(ungetch != EOF)
-				ICE("ungetch");
-			ungetch = c;
+			ungetchar(c);
 			break;
 		}
 	}
@@ -658,11 +671,8 @@ void nexttoken()
 		return;
 	}
 
-	if(ungetch != EOF){
-		c = ungetch;
-		ungetch = EOF;
-	}else{
-		c = nextchar(); /* no numbers, no more peeking */
+	if((c = getungetchar()) == EOF){
+		c = nextchar();
 
 		loc_tok.chr = loc_now.chr - 1;
 
