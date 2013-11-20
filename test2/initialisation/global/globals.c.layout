@@ -5,20 +5,20 @@ off:
 x:
 .zero 168
 p:
-.quad x+28
+.quad x + 28
 p2:
-.quad x+8400
+.quad x + 8400
 k:
-.quad a+4
+.quad a + 4
 p_to_array:
-.quad x+12
+.quad x + 12
 c_to_array:
-.quad x+7
+.quad x + 7
 k_str_plus:
-.quad .str.1 + 2
+.quad str.1 + 2
 k_str:
-.quad .str.2
+.quad str.2
 str_cast:
-.quad .str.3 + 2
+.quad str.3 + 2
 i:
 .long 3
