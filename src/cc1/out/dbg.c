@@ -39,7 +39,8 @@ struct dwarf_state
 				DWARF_STR  = 9,
 				DWARF_SIBLING = 10,
 				DWARF_ADDR_STR = 11,
-				DWARF_HELP = 12
+				DWARF_HELP = 12,
+				DWARF_LEB128 = 13,
 			} val_type;
 			union
 			{
@@ -72,7 +73,8 @@ struct dwarf_block /* DW_FORM_block1 */
 		enum
 		{
 			BLOCK_N,
-			BLOCK_ADDR_STR
+			BLOCK_ADDR_STR,
+			BLOCK_LEB128
 		} type;
 		union
 		{
@@ -216,6 +218,31 @@ static void dwarf_add_value(
 	sec->length += val_type;
 }
 
+static unsigned dwarf_leb128_length(unsigned long long value)
+{
+	unsigned len;
+	for(len = 0;;){
+		value >>= 7;
+
+		len++;
+		if(value) /* more */
+			continue;
+		break;
+	}
+	return len;
+}
+
+static void dwarf_add_leb128(
+		struct dwarf_sec *sec, unsigned long long value)
+{
+	struct dwarf_val *val = dwarf_value_new(sec);
+
+	val->val_type = DWARF_LEB128;
+	val->bits.value = value;
+
+	sec->length += dwarf_leb128_length(value);
+}
+
 static void dwarf_add_str(struct dwarf_sec *sec, char *str)
 {
 	struct dwarf_val *val = dwarf_value_new(sec);
@@ -330,6 +357,9 @@ static void dwarf_attr(
 
 			for(i = 0; i < blk->cnt; i++)
 				switch(blk->vals[i].type){
+					case BLOCK_LEB128:
+						len += dwarf_leb128_length(blk->vals[i].bits.n);
+						break;
 					case BLOCK_N:
 						dwarf_smallest(blk->vals[i].bits.n, &sz);
 						len += sz;
@@ -344,6 +374,9 @@ static void dwarf_attr(
 
 			for(i = 0; i < blk->cnt; i++){
 				switch(blk->vals[i].type){
+					case BLOCK_LEB128:
+						dwarf_add_leb128(&st->info, blk->vals[i].bits.n);
+						break;
 					case BLOCK_N:
 					{
 						unsigned long val = blk->vals[i].bits.n;
@@ -544,7 +577,7 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 									/* TODO: bitfields */
 									offset_data[0].type = BLOCK_N;
 									offset_data[0].bits.n = DW_OP_plus_uconst;
-									offset_data[1].type = BLOCK_N;
+									offset_data[1].type = BLOCK_LEB128;
 									offset_data[1].bits.n = dmem->struct_offset;
 
 									offset.cnt = 2;
@@ -812,6 +845,32 @@ o_common:
 				break;
 			}
 
+			case DWARF_LEB128:
+			{
+				unsigned long long v = val->bits.value;
+				const char *join = "";
+
+				fputs(".byte ", f);
+				for(;;){
+					unsigned char byte = v & 0x7f;
+
+					v >>= 7;
+					if(v){
+						/* more */
+						byte |= 0x80; /* 0b_1000_0000 */
+					}
+
+					fprintf(f, "%s%d", join, byte);
+					join = ", ";
+
+					if(byte & 0x80)
+						continue;
+					break;
+				}
+				fprintf(f, " # uleb128 of %llu\n", val->bits.value);
+				break;
+			}
+
 			case DWARF_SIBLING:
 			{
 				const unsigned long pos = val->bits.sibling_pos;
@@ -846,6 +905,7 @@ static void dwarf_sec_free(struct dwarf_sec *sec)
 				case DWARF_QUAD:
 				case DWARF_ADDR_STR:
 				case DWARF_SIBLING:
+				case DWARF_LEB128:
 					break;
 				case DWARF_STR:
 					free(val->bits.str);
