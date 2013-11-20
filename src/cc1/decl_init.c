@@ -970,17 +970,19 @@ static decl_init *decl_init_brace_up_start(
 	init_iter it = { inits };
 	type_ref *const tfor = *ptfor;
 	decl_init *ret;
+	int for_array;
 
 	/* check for non-brace init */
 	if(init
 	&& init->type == decl_init_scalar
-	&& type_ref_is_array(tfor))
+	&& ((for_array = !!type_ref_is_array(tfor))
+		|| type_ref_is_s_or_u(tfor)))
 	{
 		expr *e = FOLD_EXPR(init->bits.expr, stab);
 
 		if(!type_ref_equal(e->tree_type, tfor, DECL_CMP_EXACT_MATCH)){
 			/* allow special case of char [] with "..." */
-			if(!is_char_init(e->tree_type, &it)){
+			if(!for_array || !is_char_init(e->tree_type, &it)){
 				die_at(&init->where,
 						"%s must be initialised with an initialiser list",
 						type_ref_to_str(tfor));
