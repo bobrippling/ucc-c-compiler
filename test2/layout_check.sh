@@ -52,4 +52,4 @@ set -e
 ./layout_normalise.pl "$1" $cc_args > $a
 ./layout_normalise.pl "$2" $cc_args > $b
 
-diff -u $a $b
+diff -u $b $a
