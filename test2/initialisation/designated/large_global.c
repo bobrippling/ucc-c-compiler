@@ -21,7 +21,7 @@ typedef struct
 
 enum { A, B, C };
 
-static const struct
+const struct
 {
 	Color bg,
 				sel,

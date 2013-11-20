@@ -1,0 +1,19 @@
+sigs:
+// 0
+.long 5
+.long 6
+// 1
+.long 5
+.long 2
+// 2
+.long 5
+.long 6
+// 3
+.long 5
+.long 6
+// 4
+.long 5
+.long 6
+// 5
+.long 5
+.long 6

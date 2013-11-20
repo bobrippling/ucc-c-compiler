@@ -1,2 +1,2 @@
-// RUN: %layout_check %s
-struct A x[] = {{{{}}}};//{},{}};
+// RUN: %check -e %s
+struct A x[] = {{{{}}}}; // CHECK: error: initialising struct A[]
