@@ -779,6 +779,7 @@ static void dwarf_info_footer(struct dwarf_sec *sec, FILE *f)
 
 static void dwarf_global_variable(struct dwarf_state *st, decl *d)
 {
+	enum decl_storage const store = d->store & STORE_MASK_STORE;
 	unsigned typos;
 
 	if(!d->spel)
@@ -786,15 +787,17 @@ static void dwarf_global_variable(struct dwarf_state *st, decl *d)
 
 	typos = dwarf_type(st, d->ref);
 
-	dwarf_help(st, "global %s", d->spel);
+	dwarf_help(st, "global %s", decl_to_str(d));
 
 	dwarf_start(st); {
-		dwarf_abbrev_start(st, DW_TAG_variable, DW_CHILDREN_no); {
-			enum decl_storage const store = d->store & STORE_MASK_STORE;
-
+		dwarf_abbrev_start(st,
+				store == store_typedef ? DW_TAG_typedef : DW_TAG_variable,
+				DW_CHILDREN_no);
+		{
 			dwarf_attr(st, DW_AT_name, DW_FORM_string, d->spel);
 			dwarf_attr(st, DW_AT_type, DW_FORM_ref4, typos);
 
+			/* typedefs don't exist in the file, or have extern properties */
 			if(store != store_typedef){
 				struct dwarf_block locn;
 				struct dwarf_block_ent locn_data[2];
@@ -806,7 +809,6 @@ static void dwarf_global_variable(struct dwarf_state *st, decl *d)
 
 				locn.cnt = 2;
 				locn.vals = locn_data;
-
 				dwarf_attr(st, DW_AT_location, DW_FORM_block1, &locn);
 
 				dwarf_attr(st, DW_AT_external, DW_FORM_flag, store != store_static);
