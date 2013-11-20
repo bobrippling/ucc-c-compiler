@@ -142,8 +142,12 @@ static void fold_const_expr_cast(expr *e, consty *k)
 
 	/* if casting from pointer to int, it's not a constant
 	 * but we treat it as such, as an extension */
-	if(type_ref_is_ptr(e->expr->tree_type) && !k->nonstandard_const)
+	if(type_ref_is_ptr(e->expr->tree_type)
+	&& !type_ref_is_ptr(e->tree_type)
+	&& !k->nonstandard_const)
+	{
 		k->nonstandard_const = e;
+	}
 }
 
 void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
