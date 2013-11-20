@@ -527,7 +527,7 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 											emem->spel);
 
 									dwarf_attr(st,
-											DW_AT_const_value, DW_FORM_dataN,
+											DW_AT_const_value, DW_FORM_data4,
 											(long long)const_fold_val(emem->val));
 
 								} dwarf_sec_end(&st->abbrev);
