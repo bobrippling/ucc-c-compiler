@@ -14,13 +14,11 @@ p_to_array:
 .quad x+12
 c_to_array:
 .quad x+7
-.LC0:
 k_str_plus:
-.quad .LC0+2
-.LC1:
+.quad .str.1 + 2
 k_str:
-.quad .LC1
+.quad .str.2
 str_cast:
-.quad .LC0+2
+.quad .str.3 + 2
 i:
 .long 3

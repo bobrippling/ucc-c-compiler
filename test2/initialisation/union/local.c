@@ -1,7 +1,4 @@
-// RUN: %ucc -o %t %s
-// RUN: %t | diff -u - %s.out
-
-#define PEXP(fmt, exp) printf(#exp " = " fmt "\n", (exp))
+// RUN: %ocheck 0 %s
 
 union A
 {
@@ -22,7 +19,7 @@ union_ar()
 
 	if(sizeof(ar)/sizeof(*ar) != 2)
 		abort();
-	if(sizeof(ar) != 16) // 12, padded to 16 for .p alignment
+	if(sizeof(ar) != 2 * 16) // 12, padded to 16 for .p alignment
 		abort();
 
 	if(ar[0].a.i != 1

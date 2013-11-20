@@ -1,4 +1,4 @@
-a:
-.zero 4
 p:
 .quad a
+a:
+.zero 4

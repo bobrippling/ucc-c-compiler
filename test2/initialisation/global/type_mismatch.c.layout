@@ -1,0 +1,4 @@
+p:
+.quad 5
+# static label ignored
+.quad 5
