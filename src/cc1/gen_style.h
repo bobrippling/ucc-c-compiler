@@ -5,6 +5,6 @@
 
 void gen_style_dinit(decl_init *);
 void gen_style_decl(decl *);
-void gen_style(symtable_global *);
+void gen_style(symtable_global *, const char *);
 
 #endif

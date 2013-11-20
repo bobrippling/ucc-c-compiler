@@ -143,6 +143,7 @@ struct
 FILE *cc_out[NUM_SECTIONS];     /* temporary section files */
 char  fnames[NUM_SECTIONS][32]; /* duh */
 FILE *cc1_out;                  /* final output */
+char *cc1_first_fname;
 
 enum warning warn_mode = ~(
 		  WARN_VOID_ARITH
@@ -331,7 +332,7 @@ static char *next_line()
 int main(int argc, char **argv)
 {
 	static symtable_global *globs;
-	void (*gf)(symtable_global *);
+	void (*gf)(symtable_global *, const char *);
 	const char *fname;
 	int i;
 	int werror = 0;
@@ -509,7 +510,7 @@ usage:
 	if(werror && warning_count)
 		ccdie(0, "%s: Treating warnings as errors", *argv);
 
-	gf(globs);
+	gf(globs, cc1_first_fname ? cc1_first_fname : fname);
 
 	io_fin(gf == gen_asm, fname);
 

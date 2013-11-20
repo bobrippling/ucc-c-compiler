@@ -227,6 +227,9 @@ static void handle_line_file_directive(char *fnam, int lno)
 	/* logic for knowing when to pop and when to push */
 	int i;
 
+	if(!cc1_first_fname)
+		cc1_first_fname = ustrdup(fnam);
+
 	for(i = current_fname_stack_cnt - 1; i >= 0; i--){
 		struct fnam_stack *stk = &current_fname_stack[i];
 

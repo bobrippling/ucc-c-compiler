@@ -192,7 +192,7 @@ static void gen_gasm(char *asm_str)
 	fprintf(cc_out[SECTION_TEXT], "%s\n", asm_str);
 }
 
-void gen_asm(symtable_global *globs)
+void gen_asm(symtable_global *globs, const char *fname)
 {
 	decl **diter;
 	struct symtable_gasm **iasm = globs->gasms;
@@ -264,6 +264,6 @@ void gen_asm(symtable_global *globs)
 		gen_gasm((*iasm)->asm_str);
 
 	if(cc1_gdebug && globs->stab.decls)
-		out_dbginfo(globs, globs->stab.decls[0]->where.fname);
+		out_dbginfo(globs, fname);
 
 }
