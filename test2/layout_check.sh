@@ -49,7 +49,7 @@ trap "rm -f $a $b" EXIT
 
 set -e
 
-./layout_normalise.pl "$1" $cc_args > $a
-./layout_normalise.pl "$2" $cc_args > $b
+./layout_normalise.pl "$1" $cc_args | ./layout_sort.pl > $a
+./layout_normalise.pl "$2" $cc_args | ./layout_sort.pl > $b
 
 diff -u $b $a
