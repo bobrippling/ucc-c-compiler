@@ -1,12 +1,12 @@
 // RUN: %ocheck 0 %s
 int i = 5;
 
-f(int a, int b, int c)
+g(int a, int b, int c)
 {
 	return b;
 }
 
-p()
+p(void)
 {
 	i++;
 }
@@ -28,7 +28,7 @@ main()
 
 	if(i != 8)
 		abort();
-	if(f(1, 2, 3) != 2)
+	if(g(1, 2, 3) != 2)
 		abort();
 
 	return 0;
