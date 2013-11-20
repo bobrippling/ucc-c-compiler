@@ -784,7 +784,7 @@ static void dwarf_flush(struct dwarf_sec *sec, FILE *f)
 	size_t i;
 
 	for(i = 0; i < sec->nvalues; i++){
-		struct dwarf_val *val = &sec->values[i];
+		const struct dwarf_val *val = &sec->values[i];
 		unsigned indent_adj;
 
 		/* increments take affect before, decrements, after */
