@@ -1,6 +1,7 @@
 // http://www.open-std.org/jtc1/sc22/wg14/www/docs/dr_413.htm
 
 // RUN: %layout_check %s
+// RUN: %ocheck 0 %s
 
 typedef struct {
 	int k;
@@ -24,7 +25,9 @@ f()
 
 main()
 {
-	return f();
+	if(f() != 0)
+		abort();
+	return 0;
 }
 
 
