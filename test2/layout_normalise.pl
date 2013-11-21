@@ -43,8 +43,12 @@ while(<>){
 		$any = 1;
 	}elsif(/(.*): *$/){
 		(my $lbl = $1) =~ s/^_//;
-		emit({ lbl => $lbl });
-		$any = 1;
+
+		# ignore private labels
+		if($lbl !~ /^[^a-zA-Z]*L.*\./){
+			emit({ lbl => $lbl });
+			$any = 1;
+		}
 	}
 }
 
