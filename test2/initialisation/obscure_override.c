@@ -1,5 +1,7 @@
 // http://www.open-std.org/jtc1/sc22/wg14/www/docs/dr_413.htm
 
+// RUN: %layout_check %s
+
 typedef struct {
 	int k;
 	int l;
@@ -12,6 +14,7 @@ typedef struct {
 } S;
 
 T x = {.l = 43, .k = 42, .a[1] = 19, .a[0] = 18 };
+// { 42, 43, 18, 19 }
 
 f()
 {
