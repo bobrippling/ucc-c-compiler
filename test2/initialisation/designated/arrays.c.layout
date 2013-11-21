@@ -24,6 +24,6 @@ c:
 .long 3
 .zero 12
 d:
-.zero 16
+.long 0, 3, 0, 0
 e:
-.zero 16
+.long 0, 3, 0, 0

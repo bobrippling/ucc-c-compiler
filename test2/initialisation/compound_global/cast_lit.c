@@ -1,3 +1,3 @@
-// RUN: %ucc -S -o- %s | grep -E '\.long +5'
+// RUN: %check -e %s
 
-int i = (int)(int){5};
+int i = (int)(int){5}; // CHECK: /error:.*not constant/

@@ -1,26 +1,28 @@
-// RUN: %ucc -o %t %s
-// RUN: %t | %output_check Leto Paul Tim Paul
+// RUN: %ocheck 0 %s
 
-typedef struct User {
+typedef struct
+{
 	const char *name;
 } User;
 
 modify(User *u)
 {
-	u->name = "Paul";
+	u->name = "Mod";
 }
 
+int i;
 run(User *u)
 {
-	printf("%s\n", u->name);
+	if(strcmp(u->name, i++ == 0 ? "Norm" : "Tim"))
+		abort();
 	modify(u);
-	printf("%s\n", u->name);
+	if(strcmp(u->name, "Mod"))
+		abort();
 }
 
 main()
 {
-	User *u = (User[]){{ .name = "Leto" }};
-	run(u);
-
+	run((User[]){{ .name = "Norm" }});
 	run(&(User){ .name = "Tim" });
+	return 0;
 }

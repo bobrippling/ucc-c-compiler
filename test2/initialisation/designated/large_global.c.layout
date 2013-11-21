@@ -1,5 +1,5 @@
 .align 8
-_defaultColours:
+colours:
 .long 16777215
 .long 10
 .long 161006
@@ -104,13 +104,13 @@ _defaultColours:
 .long 22
 
 .align 4
-_data.1:
+data.1:
 .long 0
 .long 0
 .long 2147483644
 
 .align 4
-_data.2:
+data.2:
 .long -99
 .long 16777215
 .long 0
@@ -125,7 +125,7 @@ _data.2:
 .long 2147483644
 
 .align 4
-_data.3:
+data.3:
 .long -99
 .long 62551
 .long 100
@@ -143,7 +143,7 @@ _data.3:
 .long 2147483644
 
 .align 4
-_data.4:
+data.4:
 .long -99
 .long 10727352
 .long 80
@@ -161,7 +161,7 @@ _data.4:
 .long 2147483644
 
 .align 4
-_data.5:
+data.5:
 .long -9
 .long 16777215
 .long 0
@@ -176,7 +176,7 @@ _data.5:
 .long 2147483644
 
 .align 4
-_data.6:
+data.6:
 .long -9
 .long 363765
 .long 0
@@ -188,7 +188,7 @@ _data.6:
 .long 2147483644
 
 .align 4
-_data.7:
+data.7:
 .long -99
 .long 16777215
 .long 0
@@ -209,7 +209,7 @@ _data.7:
 .long 2147483644
 
 .align 4
-_data.8:
+data.8:
 .long -9
 .long 16777215
 .long 20
@@ -224,7 +224,7 @@ _data.8:
 .long 2147483644
 
 .align 4
-_data.9:
+data.9:
 .long -9
 .long 16777215
 .long 0
@@ -239,7 +239,7 @@ _data.9:
 .long 2147483644
 
 .align 4
-_data.10:
+data.10:
 .long -9
 .long 363765
 .long 0
@@ -251,7 +251,7 @@ _data.10:
 .long 2147483644
 
 .align 4
-_data.11:
+data.11:
 .long -99
 .long 16777215
 .long 0
@@ -272,7 +272,7 @@ _data.11:
 .long 2147483644
 
 .align 4
-_data.12:
+data.12:
 .long -9
 .long 16777215
 .long 20

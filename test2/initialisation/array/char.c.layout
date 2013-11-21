@@ -1,0 +1,60 @@
+abc:
+.byte 97, 98, 99, 0
+
+# this should be gotten rid of:
+str.1:
+.byte 97, 98, 99, 0
+
+p:
+.quad str.2
+
+str.2:
+.byte 104, 105, 0
+
+s:
+.byte 104, 105, 0, 0,0,0
+.byte 116, 104, 101, 114, 101, 0
+
+x:
+.long 1
+.byte 104, 105, 0, 0
+
+xs:
+.long 1
+.byte 111, 0, 0, 0
+.long 0
+.byte 100, 101, 115, 0
+.long 2
+.byte 116, 0, 0, 0
+
+str.3:
+.byte 104
+.byte 105
+.zero 1
+
+str.4:
+.byte 116
+.byte 104
+.byte 101
+.byte 114
+.byte 101
+.zero 1
+
+str.5:
+.byte 104
+.byte 105
+.zero 1
+
+str.6:
+.byte 111
+.zero 1
+
+str.7:
+.byte 100
+.byte 101
+.byte 115
+.zero 1
+
+str.8:
+.byte 116
+.zero 1

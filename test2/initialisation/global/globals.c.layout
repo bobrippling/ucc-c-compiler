@@ -12,6 +12,21 @@ k:
 .quad a + 4
 p_to_array:
 .quad x + 12
+str.1:
+.byte 104
+.byte 105
+.zero 1
+str.2:
+.byte 104
+.byte 101
+.byte 108
+.byte 108
+.byte 111
+.zero 1
+str.3:
+.byte 104
+.byte 105
+.zero 1
 c_to_array:
 .quad x + 7
 k_str_plus:

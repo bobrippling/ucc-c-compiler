@@ -1,4 +1,4 @@
-// RUN: %asmcheck %s
+// RUN: %layout_check %s
 
 int *x = &(int){2};
 int *y = (int[]){2, 3};

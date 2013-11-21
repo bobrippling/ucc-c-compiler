@@ -2,4 +2,4 @@
 struct __FILE
 {
 	int (*f_read)();
-} _stdin  = { (void *)0 };
+} stdin  = { (void *)0 };

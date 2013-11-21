@@ -1,0 +1,46 @@
+desig_st:
+.long 1
+.long 2
+.long 1
+.long 2
+desig_st2:
+.zero 8
+.long 1
+.long 2
+x:
+.long 1
+.long 2
+.long 3
+.long 4
+x_:
+.long 1
+.long 2
+.long 3
+.long 4
+x_2:
+.long 1
+.long 2
+.long 3
+.long 4
+y:
+.long 1
+.long 2
+.long 3
+.long 4
+y_:
+.long 1
+.long 2
+.long 3
+.long 4
+y_2:
+.long 1
+.long 2
+.long 3
+.long 4
+y_fine:
+.long 1
+.long 2
+.long 3
+.long 4
+.long 5
+.long 0

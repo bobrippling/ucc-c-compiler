@@ -1,4 +1,5 @@
-p:
+f:
+f.static1_p:
 .quad 5
-# static label ignored
+p:
 .quad 5

@@ -1,17 +1,16 @@
-// RUN: echo TODO %s
-// RUN: false
+// RUN: %check -e %s
 
-int *p[] = &(int[]){1, 2, 3}; // yes
+int (*p)[] = &(int[]){1, 2, 3}; // CHECK: !/error:/
 
-int   a[]  =  (int[]){1, 2, 3}; // yes
-int (*p)[] = &(int[]){1, 2, 3}; // yes
-int  *p[]  = &(int[]){1, 2, 3}; // no
+int   a[]  =  (int[]){1, 2, 3}; // CHECK: /error:/
+int (*p)[] = &(int[]){1, 2, 3}; // CHECK: !/error:/
+int  *p[]  = &(int[]){1, 2, 3}; // CHECK: /error:/
 
 f()
 {
-	static int   a[] = (int[]){1, 2, 3}; // yes
-	static char  b[] = (int[]){1, 2, 3}; // no
-	       char  c[] = (int[]){1, 2, 3}; // no
-	        char  *d = (int[]){1, 2, 3}; // yes
-	static char   *e = (int[]){1, 2, 3}; // no
+	static int   a[] = (int[]){1, 2, 3}; // CHECK: /error:/
+	static char  b[] = (int[]){1, 2, 3}; // CHECK: /error:/
+	       char  c[] = (int[]){1, 2, 3}; // CHECK: /error:/
+	        char  *d = (int[]){1, 2, 3}; // CHECK: !/error:/
+	static char   *e = (int[]){1, 2, 3}; // CHECK: !/error:/
 }

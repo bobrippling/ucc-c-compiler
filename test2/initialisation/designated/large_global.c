@@ -40,7 +40,7 @@ const struct
 
 	hline hlines[4];
 
-} _defaultColours[] = {
+} colours[] = {
 	[A] = {
 		.bg = { 0xFFFFFF, 10 },
 		.sel = { 0x0274ee, 10 },

@@ -1,5 +1,4 @@
-// RUN: %ucc %s -c
-// RUN: %asmcheck %s
+// RUN: %layout_check %s
 
 char abc[] = "abc";
 

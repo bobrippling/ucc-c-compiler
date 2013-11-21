@@ -1,5 +1,4 @@
-// RUN: %ucc %s -o %t
-// RUN: %t | %output_check '5 {1,2,3}, { {1,2,hi}, {2,0,(null)}, {5,6,yo} }'
+// RUN: %ocheck 0 %s
 
 main()
 {
@@ -15,9 +14,15 @@ main()
 		{ 5, 6, "yo" }
 	};
 
-	printf("%d {%d,%d,%d}, { {%d,%d,%s}, {%d,%d,%s}, {%d,%d,%s} }\n",
-			i, x[0], x[1], x[2],
-			y[0].i, y[0].j, y[0].s,
-			y[1].i, y[1].j, y[1].s,
-			y[2].i, y[2].j, y[2].s);
+	if(i != 5 || x[0] != 1 || x[1] != 2 || x[2] != 3)
+		abort();
+
+	if(y[0].i != 1 ||  y[0].j != 2 || strcmp(y[0].s, "hi"))
+		abort();
+	if(y[1].i != 2 ||  y[1].j != 0 || y[1].s != 0)
+		abort();
+	if(y[2].i != 5 ||  y[2].j != 6 || strcmp(y[2].s, "yo"))
+		abort();
+
+	return 0;
 }

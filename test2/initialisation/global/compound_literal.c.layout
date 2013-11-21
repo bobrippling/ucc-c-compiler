@@ -3,13 +3,13 @@ i:
 x:
 .quad i
 y:
-.quad i+8
-__compound_literal.0:
+.quad i + 8
+data.1:
 .long 2
 cp:
-.quad __compound_literal.0
-__compound_literal.1:
+.quad data.1
+data.2:
 .long 2
 .long 3
 cpa:
-.quad __compound_literal.1
+.quad data.2
