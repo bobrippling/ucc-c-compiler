@@ -825,8 +825,12 @@ static decl_init *decl_init_brace_up_aggregate(
 		where *loc = ITER_WHERE(iter, NULL);
 		decl_init *r = decl_init_new_w(decl_init_brace, loc);
 
-		warn_at(loc, "missing braces for initialisation of sub-object '%s'",
-				type_ref_to_str(tfor));
+		/* only warn if we're not designated */
+		if(!iter->pos[0]->desig){
+			warn_at(loc,
+					"missing braces for initialisation of sub-object '%s'",
+					type_ref_to_str(tfor));
+		}
 
 		/* we need to pull from iter, bracing up our children inits */
 		r->bits.ar.inits = brace_up_f(
