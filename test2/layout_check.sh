@@ -32,6 +32,10 @@ then
 
 		# $@ are the optional compiler args
 		"$UCC" -S -o"$out" "$in" "$@"
+		r=$?
+		if [ $r -ne 0 ]
+		then exit $r
+		fi
 
 		set -- "$out" "$in.layout"
 	else
