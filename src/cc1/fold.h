@@ -47,4 +47,6 @@ void fold_stmt_and_add_to_curswitch(stmt *);
 void print_stab(symtable *st, int current, where *w);
 #endif
 
+extern int fold_had_error;
+
 #endif

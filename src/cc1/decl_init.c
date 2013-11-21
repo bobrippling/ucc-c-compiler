@@ -983,9 +983,11 @@ static decl_init *decl_init_brace_up_start(
 		if(!type_ref_equal(e->tree_type, tfor, DECL_CMP_EXACT_MATCH)){
 			/* allow special case of char [] with "..." */
 			if(!for_array || !is_char_init(e->tree_type, &it)){
-				die_at(&init->where,
+				fold_had_error = 1;
+				warn_at_print_error(&init->where,
 						"%s must be initialised with an initialiser list",
 						type_ref_to_str(tfor));
+				return init;
 			}
 		}
 		/* else struct copy init */

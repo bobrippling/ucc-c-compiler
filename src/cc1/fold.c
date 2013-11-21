@@ -24,6 +24,8 @@
 #include "out/lbl.h"
 #include "fold_sue.h"
 
+int fold_had_error;
+
 /* FIXME: don't have the callers do type_ref_to_str() */
 int fold_type_ref_equal(
 		type_ref *a, type_ref *b, where *w,
