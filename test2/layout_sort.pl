@@ -8,7 +8,7 @@ while(<>){
 	chomp;
 	if(/(.*):$/){
 		$curlbl = $1;
-		@{$labels{curlbl}} = ();
+		@{$labels{$curlbl}} = ();
 	}else{
 		push @{$labels{$curlbl}}, $_;
 	}
