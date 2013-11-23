@@ -19,11 +19,11 @@ chk_bf(struct A *p, int a, int b, int c, int d, int e)
 		abort();
 	if(p->bf_1 != b)
 		abort();
-	if(p->f_2)
+	if(p->f_2 != c)
 		abort();
-	if(p->bf_2)
+	if(p->bf_2 != d)
 		abort();
-	if(p->bf_3)
+	if(p->bf_3 != e)
 		abort();
 	return 0;
 }
