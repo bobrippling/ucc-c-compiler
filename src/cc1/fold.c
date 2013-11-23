@@ -544,8 +544,10 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 							inits = stmt_new_wrapper(code, symtab_new(stab));
 
 						decl_init_brace_up_fold(d, inits->symtab);
-						decl_init_create_assignments_base(d->init,
-							d->ref, expr_new_identifier(d->spel),
+						decl_init_create_assignments_base(
+							d->init, d->ref,
+							expr_set_where(
+								expr_new_identifier(d->spel), &d->where),
 							inits);
 					);
 				/* folded elsewhere */

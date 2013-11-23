@@ -1017,9 +1017,9 @@ void decl_init_brace_up_fold(decl *d, symtable *stab)
 }
 
 
-static expr *decl_init_create_assignments_sue_base(
+static expr *sue_base_for_init_assignment(
 		struct_union_enum_st *sue, expr *base,
-		decl **psmem,
+		decl **psmem, where *w,
 		unsigned idx, unsigned n)
 {
 	decl *smem;
@@ -1035,7 +1035,7 @@ static expr *decl_init_create_assignments_sue_base(
 		return NULL;
 	}
 
-	return expr_new_struct_mem(base, 1, smem);
+	return expr_set_where(expr_new_struct_mem(base, 1, smem), w);
 }
 
 static void decl_init_create_assignment_from_copy(
@@ -1164,8 +1164,8 @@ zero_init:
 				for(idx = 0, i = init->bits.ar.inits; *i == DYNARRAY_NULL; i++, idx++);
 
 				if(*i){
-					sue_base = decl_init_create_assignments_sue_base(
-							sue, base, &smem, idx, n);
+					sue_base = sue_base_for_init_assignment(
+							sue, base, &smem, &init->where, idx, n);
 
 					UCC_ASSERT(sue_base, "zero width bitfield init in union?");
 
@@ -1194,8 +1194,8 @@ zero_init:
 
 					UCC_ASSERT(sue->primitive != type_union, "sneaky union");
 
-					new_base = decl_init_create_assignments_sue_base(
-							sue, base, &smem, idx, n);
+					new_base = sue_base_for_init_assignment(
+							sue, base, &smem, di ? &di->where : &init->where, idx, n);
 
 					if(!new_base)
 						continue; /* 0-width bitfield */
@@ -1203,6 +1203,7 @@ zero_init:
 					next_type = smem->ref;
 
 				}else{
+					/* array case */
 					new_base = expr_set_where(
 							expr_new_array_idx(base, idx),
 							&base->where);
