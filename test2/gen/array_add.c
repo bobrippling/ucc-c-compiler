@@ -8,7 +8,7 @@ const char *f()
 
 main()
 {
-	int *p = g;
+	char *p = g;
 	if(f() != p + 7)
 		abort();
 	return 0;
