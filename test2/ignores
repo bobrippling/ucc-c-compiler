@@ -15,6 +15,7 @@ type_propagation/tgmath.c
 const/nonstandard_float.c
 C11/_Generic_multiple.c
 C11/generic.c
+C11/generic_const.c
 C99/bool_conv.c
 literals/all_constants.c
 
