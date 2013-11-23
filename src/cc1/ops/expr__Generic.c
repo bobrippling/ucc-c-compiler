@@ -12,7 +12,8 @@ void fold_expr__Generic(expr *e, symtable *stab)
 
 	def = NULL;
 
-	FOLD_EXPR(e->expr, stab);
+	/* we use the non-decayed type */
+	FOLD_EXPR_NO_DECAY(e->expr, stab);
 
 	for(i = e->bits.generic.list; i && *i; i++){
 		const int flags = DECL_CMP_EXACT_MATCH;
