@@ -106,15 +106,22 @@ if(not -d $tdir and not mkdir($tdir)){
 
 my $ec = 0;
 
-my @test_files;
-for(my $i = 0; $i < @tests; $i++){
-	$_ = $tests[$i];
-	if(-d $_){
-		push @tests, glob "$_/*";
-	}elsif($_ =~ /\.c$/){
-		push @test_files, $_;
+sub find_tests
+{
+	# DFS
+	my @found;
+	for(my $i = 0; $i < @_; $i++){
+		$_ = $_[$i];
+		if(-d $_){
+			push @found, find_tests(glob "$_/*");
+		}elsif($_ =~ /\.c$/){
+			push @found, $_;
+		}
 	}
+	return @found;
 }
+
+my @test_files = find_tests(@tests);
 die "$0: no tests\n" unless @test_files;
 
 for my $f (@test_files){
