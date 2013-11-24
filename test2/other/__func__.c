@@ -3,8 +3,6 @@
 // RUN: %t | grep 'overridden, in hi'
 // RUN: %t | grep 'in main (2 = i)'
 
-#include <stdio.h>
-
 void
 q()
 {
