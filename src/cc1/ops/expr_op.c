@@ -379,9 +379,9 @@ ptr_relation:
 				tlarger = *plhs = *prhs = type_ref_new_cast_signed(signed_t, 0);
 			}
 
-			/* if we have a _comparison_ (e.g. between enums), convert to int */
+			/* if we have a _comparison_ (e.g. between enums), convert to _Bool */
 			resolved = op_is_relational(op)
-				? type_ref_cached_INT()
+				? type_ref_cached_BOOL()
 				: tlarger;
 		}
 	}
