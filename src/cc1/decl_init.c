@@ -895,19 +895,19 @@ static decl_init *decl_init_brace_up_array_pre(
 			unsigned str_i, count;
 			decl_init *braced;
 
-			if(k.bits.str->wide)
+			if(k.bits.str->lit->wide)
 				ICE("TODO: wide string init");
 
 			if(limit == -1){
-				count = k.bits.str->len;
+				count = k.bits.str->lit->len;
 			}else{
-				if(k.bits.str->len <= (unsigned)limit){
-					count = k.bits.str->len;
+				if(k.bits.str->lit->len <= (unsigned)limit){
+					count = k.bits.str->lit->len;
 				}else{
 					/* only warn if it's more than one larger,
 					 * i.e. allow char[2] = "hi" <-- '\0' excluded
 					 */
-					if(k.bits.str->len - 1 > (unsigned)limit){
+					if(k.bits.str->lit->len - 1 > (unsigned)limit){
 						warn_at(&k.bits.str->where,
 								"string literal too long for '%s'",
 								type_ref_to_str(next_type));
@@ -921,7 +921,7 @@ static decl_init *decl_init_brace_up_array_pre(
 			for(str_i = 0; str_i < count; str_i++){
 				decl_init *char_init = decl_init_new_w(decl_init_scalar, w);
 
-				char_init->bits.expr = expr_new_val(k.bits.str->str[str_i]);
+				char_init->bits.expr = expr_new_val(k.bits.str->lit->str[str_i]);
 
 				dynarray_add(&braced->bits.ar.inits, char_init);
 			}

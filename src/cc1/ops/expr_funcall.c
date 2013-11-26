@@ -140,7 +140,7 @@ static void format_check_printf(
 		unsigned var_arg,
 		where *w)
 {
-	stringval *fmt_str;
+	stringlit *fmt_str;
 	consty k;
 
 	const_fold(str_arg, &k);
@@ -168,7 +168,7 @@ static void format_check_printf(
 			return;
 
 		case CONST_STRK:
-			fmt_str = k.bits.str;
+			fmt_str = k.bits.str->lit;
 			break;
 	}
 

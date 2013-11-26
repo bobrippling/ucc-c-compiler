@@ -66,6 +66,7 @@ struct symtable_global
 {
 	symtable stab; /* ABI compatible with struct symtable */
 	symtable_gasm **gasms;
+	dynmap *literals;
 };
 
 sym *sym_new(decl *d, enum sym_type t);
@@ -82,6 +83,7 @@ void symtab_add_params(symtable *, decl **);
 symtable *symtab_root(symtable *child);
 symtable *symtab_func_root(symtable *stab);
 #define symtab_func(st) symtab_func_root(st)->in_func
+symtable_global *symtab_global(symtable *);
 
 int symtab_nested_internal(symtable *parent, symtable *nest);
 

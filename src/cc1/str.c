@@ -46,8 +46,8 @@ void escape_string(char *old_str, int *plen)
 int literal_print(FILE *f, const char *s, int len)
 {
 	for(; len; s++, len--)
-		if(*s == '\\'){
-			if(fputs("\\\\", f) == EOF)
+		if(*s == '\\' || *s == '"'){
+			if(fprintf(f, "\\%c", *s) < 0)
 				return EOF;
 		}else if(!isprint(*s)){
 			if(fprintf(f, "\\%03o", *s) < 0)

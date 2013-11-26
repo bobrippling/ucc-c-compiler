@@ -18,6 +18,7 @@
 #include "const.h"
 #include "ops/__builtin.h"
 #include "funcargs.h"
+#include "strings.h"
 
 #define STAT_NEW(type)      stmt_new_wrapper(type, current_scope)
 #define STAT_NEW_NEST(type) stmt_new_wrapper(type, symtab_new(current_scope))
@@ -205,7 +206,6 @@ static expr *parse_expr_primary()
 		}
 
 		case token_string:
-		/*case token_open_block: - not allowed here */
 		{
 			where w;
 			char *s;
@@ -214,8 +214,11 @@ static expr *parse_expr_primary()
 			token_get_current_str(&s, &l, &wide, &w);
 			EAT(token_string);
 
-			return expr_set_where(
-					expr_new_str(s, l, wide), &w);
+			return expr_new_str(
+					strings_lookup(
+						&symtab_global(current_scope)->literals,
+						s, l, wide),
+					&w);
 		}
 
 		case token__Generic:

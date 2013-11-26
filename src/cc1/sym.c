@@ -59,10 +59,10 @@ symtable_global *symtabg_new(void)
 	return umalloc(sizeof *symtabg_new());
 }
 
-symtable *symtab_root(symtable *child)
+symtable *symtab_root(symtable *stab)
 {
-	for(; child->parent; child = child->parent);
-	return child;
+	for(; stab->parent; stab = stab->parent);
+	return stab;
 }
 
 symtable *symtab_func_root(symtable *stab)
@@ -70,6 +70,11 @@ symtable *symtab_func_root(symtable *stab)
 	while(stab->parent && stab->parent->parent)
 		stab = stab->parent;
 	return stab;
+}
+
+symtable_global *symtab_global(symtable *stab)
+{
+	return (symtable_global *)symtab_root(stab);
 }
 
 void symtab_add_params(symtable *stab, decl **params)

@@ -55,7 +55,7 @@ static void const_expr_deref(expr *e, consty *k)
 	switch(k->type){
 		case CONST_STRK:
 		{
-			stringval *sv = k->bits.str;
+			stringlit *sv = k->bits.str->lit;
 			if(k->offset < 0 || (unsigned)k->offset > sv->len){
 				k->type = CONST_NO;
 			}else{

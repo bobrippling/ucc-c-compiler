@@ -5,6 +5,8 @@ void asm_out_section(enum section_type, const char *fmt, ...);
 
 #define asm_declare_partial(...) asm_out_section(SECTION_DATA, __VA_ARGS__)
 
+void asm_declare_stringlit(FILE *, const stringlit *);
+
 void asm_declare_decl_init(FILE *f, decl *); /* x: .qword ... */
 
 void asm_predeclare_extern(decl *d);

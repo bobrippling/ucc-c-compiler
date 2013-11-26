@@ -92,6 +92,9 @@ dynmap_nochk_idx(dynmap *map, int i)
 {
 	pair *p;
 
+	if(!map)
+		return NULL;
+
 	for(p = map->pairs; p && i > 0; p = p->next, i--);
 
 	return p;

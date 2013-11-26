@@ -744,9 +744,9 @@ static void const_strlen(expr *e, consty *k)
 
 		const_fold(s, &subk);
 		if(subk.type == CONST_STRK){
-			stringval *sv = subk.bits.str;
-			const char *s = sv->str;
-			const char *p = memchr(s, '\0', sv->len);
+			stringlit *lit = subk.bits.str->lit;
+			const char *s = lit->str;
+			const char *p = memchr(s, '\0', lit->len);
 
 			if(p){
 				CONST_FOLD_LEAF(k);

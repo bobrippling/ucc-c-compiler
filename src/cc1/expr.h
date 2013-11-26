@@ -1,6 +1,14 @@
 #ifndef EXPR_H
 #define EXPR_H
 
+#include "strings.h"
+
+typedef struct stringlit_at
+{
+	where where;
+	stringlit *lit;
+} stringlit_at;
+
 typedef struct consty
 {
 	enum constyness
@@ -16,7 +24,7 @@ typedef struct consty
 	union
 	{
 		intval iv;          /* CONST_VAL */
-		stringval *str;     /* CONST_STRK */
+		stringlit_at *str; /* CONST_STRK */
 		struct
 		{
 			int is_lbl;
@@ -96,11 +104,7 @@ struct expr
 		/* __builtin_va_start */
 		int n;
 
-		struct
-		{
-			sym *sym;
-			stringval sv; /* for strings */
-		} str;
+		stringlit_at strlit; /* for strings */
 
 		struct
 		{
@@ -247,7 +251,7 @@ expr *expr_new_block(type_ref *rt, funcargs *args, stmt *code);
 expr *expr_new_deref(expr *);
 expr *expr_new_struct(expr *sub, int dot, expr *ident);
 expr *expr_new_struct_mem(expr *sub, int dot, decl *);
-expr *expr_new_str(char *, int len, int wide);
+expr *expr_new_str(stringlit *, where *);
 expr *expr_new_addr_lbl(char *);
 expr *expr_new_addr(expr *);
 
