@@ -89,23 +89,26 @@ void mutate_expr_str(expr *e)
 	e->f_const_fold = const_expr_string;
 }
 
-void expr_mutate_str(expr *e, char *s, int len)
+void expr_mutate_str(
+		expr *e,
+		char *s, size_t len,
+		int wide,
+		where *w)
 {
 	expr_mutate_wrapper(e, str);
 
-	ICE("mutate str");
-	(void)s;
-	(void)len;
-}
+	e->bits.strlit.lit = strings_lookup(
+			&symtab_global(current_scope)->literals,
+			s, len, wide);
 
-expr *expr_new_str(stringlit *lit, where *w)
-{
-	expr *e = expr_new_wrapper(str);
-
-	e->bits.strlit.lit = lit;
 	memcpy_safe(&e->bits.strlit.where, w);
 	memcpy_safe(&e->where, w);
+}
 
+expr *expr_new_str(char *s, size_t l, int wide, where *w)
+{
+	expr *e = expr_new_wrapper(str);
+	expr_mutate_str(e, s, l, wide, w);
 	return e;
 }
 

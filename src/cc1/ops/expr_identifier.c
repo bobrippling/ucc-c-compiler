@@ -69,7 +69,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 				len = strlen(in_fn->spel);
 			}
 
-			expr_mutate_str(e, func, len + 1);
+			expr_mutate_str(e, func, len + 1, /*wide:*/0, &e->where);
 			/* +1 - take the null byte */
 
 			FOLD_EXPR(e, stab);

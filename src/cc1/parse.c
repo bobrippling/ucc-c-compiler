@@ -209,16 +209,13 @@ static expr *parse_expr_primary()
 		{
 			where w;
 			char *s;
-			int l, wide;
+			size_t l;
+			int wide;
 
 			token_get_current_str(&s, &l, &wide, &w);
 			EAT(token_string);
 
-			return expr_new_str(
-					strings_lookup(
-						&symtab_global(current_scope)->literals,
-						s, l, wide),
-					&w);
+			return expr_new_str(s, l, wide, &w);
 		}
 
 		case token__Generic:
