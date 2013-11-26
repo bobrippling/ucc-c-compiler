@@ -59,6 +59,17 @@ void gen_expr_str(expr *e)
 	out_push_lbl(e->bits.strlit.lit->lbl, 1);
 }
 
+static void lea_expr_str(expr *e)
+{
+	/* looks the same - a lea, but the type is different
+	 * gen_expr_str :: char *
+	 * lea_expr_str :: char (*)[]
+	 *
+	 * just like char x[] :: x vs &x
+	 */
+	gen_expr_str(e);
+}
+
 void gen_expr_str_str(expr *e)
 {
 	stringlit *lit = e->bits.strlit.lit;
@@ -87,6 +98,7 @@ static void const_expr_string(expr *e, consty *k)
 void mutate_expr_str(expr *e)
 {
 	e->f_const_fold = const_expr_string;
+	e->f_lea = lea_expr_str;
 }
 
 void expr_mutate_str(
