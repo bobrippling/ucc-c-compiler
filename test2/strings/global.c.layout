@@ -6,18 +6,10 @@ x:
 .byte 111
 .zero 1
 
-str.1:
-.byte 104
-.byte 101
-.byte 108
-.byte 108
-.byte 111
-.zero 1
-
 p:
-.quad str.2
+.quad str.1
 
-str.2:
+str.1:
 .byte 121
 .byte 111
 .zero 1

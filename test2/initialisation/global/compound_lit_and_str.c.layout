@@ -17,14 +17,6 @@ str.4:
 .byte 111
 .zero 1
 
-str.5:
-.byte 104
-.byte 101
-.byte 108
-.byte 108
-.byte 111
-.zero 1
-
 x:
 .quad data.1
 
@@ -38,4 +30,4 @@ s:
 .quad str.4
 
 p:
-.quad str.5 + 2
+.quad str.4 + 2

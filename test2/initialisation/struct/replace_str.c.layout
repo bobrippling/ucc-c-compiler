@@ -1,6 +1,7 @@
 sigs:
-.align 8
-sigs:
+.quad str.1
+.long 6
+.space 4 # struct tail
 .quad str.2
 .long 6
 .space 4 # struct tail
@@ -61,257 +62,97 @@ sigs:
 .quad str.21
 .long 6
 .space 4 # struct tail
-.quad str.1
+.quad str.21
 .long 6
 .space 4 # struct tail
-.quad str.1
+.quad str.21
 .long 6
 .space 4 # struct tail
-.quad str.1
+.quad str.21
 .long 6
 .space 4 # struct tail
-.quad str.1
+.quad str.21
 .long 6
 .space 4 # struct tail
-.quad str.1
+.quad str.21
 .long 6
 .space 4 # struct tail
-.quad str.1
+.quad str.21
 .long 6
 .space 4 # struct tail
-.quad str.1
+.quad str.21
 .long 6
 .space 4 # struct tail
-.quad str.1
+.quad str.21
 .long 6
 .space 4 # struct tail
-.quad str.1
+.quad str.21
 .long 6
 .space 4 # struct tail
-.quad str.1
+.quad str.21
 .long 6
 .space 4 # struct tail
-.quad str.1
-.long 6
-.space 4 # struct tail
-
-.align 1
-str.1:
-.byte 63
-.byte 0
-
-.align 1
-str.2:
-.byte 83
-.byte 73
-.byte 71
-.byte 72
-.byte 85
-.byte 80
-.byte 0
-
-.align 1
-str.3:
-.byte 83
-.byte 73
-.byte 71
-.byte 73
-.byte 78
-.byte 84
-.byte 0
-
-.align 1
-str.4:
-.byte 83
-.byte 73
-.byte 71
-.byte 81
-.byte 85
-.byte 73
-.byte 84
-.byte 0
-
-.align 1
-str.5:
-.byte 83
-.byte 73
-.byte 71
-.byte 73
-.byte 76
-.byte 76
-.byte 0
-
-.align 1
-str.6:
-.byte 83
-.byte 73
-.byte 71
-.byte 84
-.byte 82
-.byte 65
-.byte 80
-.byte 0
-
-.align 1
-str.7:
-.byte 83
-.byte 73
-.byte 71
-.byte 65
-.byte 66
-.byte 82
-.byte 84
-.byte 0
-
-.align 1
-str.8:
-.byte 83
-.byte 73
-.byte 71
-.byte 70
-.byte 80
-.byte 69
-.byte 0
-
-.align 1
-str.9:
-.byte 83
-.byte 73
-.byte 71
-.byte 75
-.byte 73
-.byte 76
-.byte 76
-.byte 0
-
-.align 1
-str.10:
-.byte 83
-.byte 73
-.byte 71
-.byte 85
-.byte 83
-.byte 82
-.byte 49
-.byte 0
-
-.align 1
-str.11:
-.byte 83
-.byte 73
-.byte 71
-.byte 83
-.byte 69
-.byte 71
-.byte 86
-.byte 0
-
-.align 1
-str.12:
-.byte 83
-.byte 73
-.byte 71
-.byte 85
-.byte 83
-.byte 82
-.byte 50
-.byte 0
-
-.align 1
-str.13:
-.byte 83
-.byte 73
-.byte 71
-.byte 80
-.byte 73
-.byte 80
-.byte 69
-.byte 0
-
-.align 1
-str.14:
-.byte 83
-.byte 73
-.byte 71
-.byte 65
-.byte 76
-.byte 82
-.byte 77
-.byte 0
-
-.align 1
-str.15:
-.byte 83
-.byte 73
-.byte 71
-.byte 84
-.byte 69
-.byte 82
-.byte 77
-.byte 0
-
-.align 1
-str.16:
-.byte 83
-.byte 73
-.byte 71
-.byte 67
-.byte 72
-.byte 76
-.byte 68
-.byte 0
-
-.align 1
-str.17:
-.byte 83
-.byte 73
-.byte 71
-.byte 67
-.byte 79
-.byte 78
-.byte 84
-.byte 0
-
-.align 1
-str.18:
-.byte 83
-.byte 73
-.byte 71
-.byte 83
-.byte 84
-.byte 79
-.byte 80
-.byte 0
-
-.align 1
-str.19:
-.byte 83
-.byte 73
-.byte 71
-.byte 84
-.byte 83
-.byte 84
-.byte 80
-.byte 0
-
-.align 1
-str.20:
-.byte 83
-.byte 73
-.byte 71
-.byte 84
-.byte 84
-.byte 73
-.byte 78
-.byte 0
 
 .align 1
 str.21:
-.byte 83
-.byte 73
-.byte 71
-.byte 84
-.byte 84
-.byte 79
-.byte 85
-.byte 0
+.ascii "?\000"
+.align 1
+str.1:
+.ascii "SIGHUP\000"
+.align 1
+str.2:
+.ascii "SIGINT\000"
+.align 1
+str.3:
+.ascii "SIGQUIT\000"
+.align 1
+str.4:
+.ascii "SIGILL\000"
+.align 1
+str.5:
+.ascii "SIGTRAP\000"
+.align 1
+str.6:
+.ascii "SIGABRT\000"
+.align 1
+str.7:
+.ascii "SIGFPE\000"
+.align 1
+str.8:
+.ascii "SIGKILL\000"
+.align 1
+str.9:
+.ascii "SIGUSR1\000"
+.align 1
+str.10:
+.ascii "SIGSEGV\000"
+.align 1
+str.11:
+.ascii "SIGUSR2\000"
+.align 1
+str.12:
+.ascii "SIGPIPE\000"
+.align 1
+str.13:
+.ascii "SIGALRM\000"
+.align 1
+str.14:
+.ascii "SIGTERM\000"
+.align 1
+str.15:
+.ascii "SIGCHLD\000"
+.align 1
+str.16:
+.ascii "SIGCONT\000"
+.align 1
+str.17:
+.ascii "SIGSTOP\000"
+.align 1
+str.18:
+.ascii "SIGTSTP\000"
+.align 1
+str.19:
+.ascii "SIGTTIN\000"
+.align 1
+str.20:
+.ascii "SIGTTOU\000"
