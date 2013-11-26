@@ -548,6 +548,22 @@ static int op_check_precedence(expr *e)
 	}
 }
 
+static int str_cmp_check(expr *e)
+{
+	if(op_is_comparison(e->op)){
+		consty kl, kr;
+
+		const_fold(e->lhs, &kl);
+		const_fold(e->rhs, &kr);
+
+		if(kl.type == CONST_STRK || kr.type == CONST_STRK){
+			warn_at(&e->rhs->where, "comparison with string literal is undefined");
+			return 1;
+		}
+	}
+	return 0;
+}
+
 void fold_expr_op(expr *e, symtable *stab)
 {
 	UCC_ASSERT(e->op != op_unknown, "unknown op in expression at %s",
@@ -569,7 +585,8 @@ void fold_expr_op(expr *e, symtable *stab)
 		(void)(
 				fold_check_bounds(e, 1) ||
 				op_check_precedence(e) ||
-				op_unsigned_cmp_check(e));
+				op_unsigned_cmp_check(e) ||
+				str_cmp_check(e));
 
 	}else{
 		/* (except unary-not) can only have operations on integers,
