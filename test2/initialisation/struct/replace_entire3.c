@@ -1,3 +1,4 @@
+// RUN: %ocheck 0 %s
 struct A
 {
 	struct B
