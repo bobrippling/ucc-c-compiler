@@ -12,10 +12,10 @@
 #include "str.h"
 #include "macros.h"
 
-void escape_string(char *old_str, int *plen)
+void escape_string(char *old_str, size_t *plen)
 {
 	char *new_str = umalloc(*plen);
-	int i, new_i;
+	size_t i, new_i;
 
 	/* "parse" into another string */
 

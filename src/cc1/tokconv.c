@@ -437,10 +437,10 @@ int curtok_in_list(va_list l)
 }
 
 void token_get_current_str(
-		char **ps, int *pl, int *pwide, where *w)
+		char **ps, size_t *pl, int *pwide, where *w)
 {
 	extern char *currentstring;
-	extern int   currentstringlen;
+	extern size_t currentstringlen;
 	extern int   currentstringwide;
 
 	*ps = currentstring;

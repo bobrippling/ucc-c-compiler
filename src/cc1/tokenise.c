@@ -145,7 +145,7 @@ intval currentval = { 0, 0 }; /* an integer literal */
 char *currentspelling = NULL; /* e.g. name of a variable */
 
 char *currentstring   = NULL; /* a string literal */
-int   currentstringlen = 0;
+size_t currentstringlen = 0;
 int   currentstringwide = 0;
 where currentstringwhere;
 
@@ -559,11 +559,11 @@ static int curtok_is_xequal()
 	return curtok_to_xequal() != token_unknown;
 }
 
-static void read_string(char **sptr, int *plen)
+static void read_string(char **sptr, size_t *plen)
 {
 	char *const start = bufferpos;
 	char *const end = str_quotefin(start);
-	int size;
+	size_t size;
 
 	if(!end){
 		char *p;
@@ -604,7 +604,7 @@ static void read_string_multiple(const int is_wide)
 {
 	/* TODO: read in "hello\\" - parse string char by char, rather than guessing and escaping later */
 	char *str;
-	int len;
+	size_t len;
 
 	where_cc1_current(&currentstringwhere);
 
@@ -619,7 +619,7 @@ static void read_string_multiple(const int is_wide)
 			 *       ^
 			 */
 			char *new, *alloc;
-			int newlen;
+			size_t newlen;
 
 			read_string(&new, &newlen);
 

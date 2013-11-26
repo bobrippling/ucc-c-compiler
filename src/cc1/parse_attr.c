@@ -52,7 +52,7 @@ static decl_attr *parse_attr_section()
 	/* __attribute__((section ("sectionname"))) */
 	decl_attr *da;
 	char *func;
-	int len, i;
+	size_t len, i;
 
 	EAT(token_open_paren);
 
