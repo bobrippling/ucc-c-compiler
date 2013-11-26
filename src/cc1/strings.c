@@ -26,9 +26,14 @@ stringlit *strings_lookup(
 		lit->str = s;
 		lit->len = len;
 		lit->wide = wide;
-		lit->lbl = out_label_data_store(1);
 		dynmap_set(char *, stringlit *, lit_tbl, s, lit);
 	}
 
 	return lit;
+}
+
+void stringlit_use(stringlit *s)
+{
+	if(s->use_cnt++ == 0)
+		s->lbl = out_label_data_store(1);
 }
