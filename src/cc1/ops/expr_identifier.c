@@ -56,20 +56,17 @@ void fold_expr_identifier(expr *e, symtable *stab)
 	/* special cases */
 	if(!sym){
 		if(!strcmp(sp, "__func__")){
-			char *func;
-			int len;
+			char *sp;
 
-			/* mutate into a string literal */
 			if(!in_fn){
 				warn_at(&e->where, "__func__ is not defined outside of functions");
-				func = "";
-				len = 0;
+
+				sp = "";
 			}else{
-				func = in_fn->spel;
-				len = strlen(in_fn->spel);
+				sp = in_fn->spel;
 			}
 
-			expr_mutate_str(e, func, len + 1, /*wide:*/0, &e->where);
+			expr_mutate_str(e, sp, strlen(sp) + 1, /*wide:*/0, &e->where);
 			/* +1 - take the null byte */
 
 			FOLD_EXPR(e, stab);
