@@ -2,6 +2,7 @@
 use warnings;
 
 sub emit;
+sub emit_string;
 
 sub is_zero
 {
@@ -49,6 +50,8 @@ while(<>){
 			emit({ lbl => $lbl });
 			$any = 1;
 		}
+	}elsif(/^[ \t]*\.ascii[ \t]+"(.*)"$/){
+		emit_string($1);
 	}
 }
 
@@ -59,6 +62,37 @@ sub emit2;
 my $last;
 END {
 	flush();
+}
+
+sub emit_string
+{
+	my $str = shift;
+
+	for(my $i = 0; $i < length $str; $i++){
+		my $ch = substr($str, $i, 1);
+		my $val;
+
+		if($ch eq "\\"){
+			$ch = substr($str, ++$i);
+			if($ch =~ /["\\]/){
+				$val = ord $ch;
+			}else{
+				# either [0-7]{3} or quote or backslash
+				my $rest = substr($str, $i);
+
+				if($rest =~ /^([0-9]{3})/){
+					$val = oct($1);
+					$i += 2;
+				}else{
+					die "couldn't match string byte from '$str'";
+				}
+			}
+		}else{
+			$val = ord($ch);
+		}
+
+		emit({ size => 1, value => $val });
+	}
 }
 
 sub flush
