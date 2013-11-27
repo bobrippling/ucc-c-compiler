@@ -21,9 +21,11 @@ void fold_expr_str(expr *e, symtable *stab)
 	sz = expr_new_val(strlit->len);
 	FOLD_EXPR(sz, stab);
 
-	/* (char []) */
+	/* (const? char []) */
 	e->tree_type = type_ref_new_array(
-			type_ref_new_type_primitive(strlit->wide ? type_wchar : type_char),
+			type_ref_new_type_qual(
+				strlit->wide ? type_wchar : type_char,
+				e->bits.strlit.is_func ? qual_const : qual_none),
 			sz);
 }
 
