@@ -15,7 +15,7 @@ const char *str_expr_str(void)
 
 void fold_expr_str(expr *e, symtable *stab)
 {
-	const stringlit *const strlit = e->bits.strlit.lit;
+	const stringlit *const strlit = e->bits.strlit.lit_at.lit;
 	expr *sz;
 
 	sz = expr_new_val(strlit->len);
@@ -29,8 +29,8 @@ void fold_expr_str(expr *e, symtable *stab)
 
 void gen_expr_str(expr *e)
 {
-	stringlit_use(e->bits.strlit.lit);
-	out_push_lbl(e->bits.strlit.lit->lbl, 1);
+	stringlit_use(e->bits.strlit.lit_at.lit);
+	out_push_lbl(e->bits.strlit.lit_at.lit->lbl, 1);
 }
 
 static void lea_expr_str(expr *e)
@@ -46,12 +46,16 @@ static void lea_expr_str(expr *e)
 
 void gen_expr_str_str(expr *e)
 {
-	stringlit *lit = e->bits.strlit.lit;
+	stringlit *lit = e->bits.strlit.lit_at.lit;
 
 	idt_printf("%sstring at %s\n", lit->wide ? "wide " : "", lit->lbl);
 	gen_str_indent++;
 	idt_print();
-	literal_print(cc1_out, e->bits.strlit.lit->str, e->bits.strlit.lit->len);
+
+	literal_print(cc1_out,
+			e->bits.strlit.lit_at.lit->str,
+			e->bits.strlit.lit_at.lit->len);
+
 	gen_str_indent--;
 	fputc('\n', cc1_out);
 }
@@ -59,12 +63,12 @@ void gen_expr_str_str(expr *e)
 static void const_expr_string(expr *e, consty *k)
 {
 	CONST_FOLD_LEAF(k);
-	if(e->bits.strlit.lit->wide){
+	if(e->bits.strlit.lit_at.lit->wide){
 		k->type = CONST_NO;
 		ICW("TODO: wide string const");
 	}else{
 		k->type = CONST_STRK;
-		k->bits.str = &e->bits.strlit;
+		k->bits.str = &e->bits.strlit.lit_at;
 		k->offset = 0;
 	}
 }
@@ -83,11 +87,11 @@ void expr_mutate_str(
 {
 	expr_mutate_wrapper(e, str);
 
-	e->bits.strlit.lit = strings_lookup(
+	e->bits.strlit.lit_at.lit = strings_lookup(
 			&symtab_global(current_scope)->literals,
 			s, len, wide);
 
-	memcpy_safe(&e->bits.strlit.where, w);
+	memcpy_safe(&e->bits.strlit.lit_at.where, w);
 	memcpy_safe(&e->where, w);
 }
 
@@ -101,6 +105,6 @@ expr *expr_new_str(char *s, size_t l, int wide, where *w)
 void gen_expr_style_str(expr *e)
 {
 	literal_print(cc1_out,
-			e->bits.strlit.lit->str,
-			e->bits.strlit.lit->len);
+			e->bits.strlit.lit_at.lit->str,
+			e->bits.strlit.lit_at.lit->len);
 }

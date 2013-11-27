@@ -124,3 +124,10 @@ expr *expr_new_array_idx(expr *base, int i)
 {
 	return expr_new_array_idx_e(base, expr_new_val(i));
 }
+
+expr *expr_skip_casts(expr *e)
+{
+	while(expr_kind(e, cast))
+		e = e->expr;
+	return e;
+}

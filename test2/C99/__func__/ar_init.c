@@ -1,6 +1,6 @@
-// RUN: %check -e %s
+// RUN: %check %s
 
 main()
 {
-	char x[] = __func__; // CHECK: /error:.*must be initialised with an initialiser list/
+	static char x[] = __func__; // CHECK: warning: initialisation of char[] from __func__ is an extension
 }

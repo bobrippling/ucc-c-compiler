@@ -104,7 +104,11 @@ struct expr
 		/* __builtin_va_start */
 		int n;
 
-		stringlit_at strlit; /* for strings */
+		struct
+		{
+			stringlit_at lit_at; /* for strings */
+			int is_func; /* __func__ ? */
+		} strlit;
 
 		struct
 		{
@@ -263,5 +267,7 @@ int expr_is_null_ptr(expr *, int allow_int);
 /* util */
 expr *expr_new_array_idx_e(expr *base, expr *idx);
 expr *expr_new_array_idx(expr *base, int i);
+
+expr *expr_skip_casts(expr *);
 
 #endif

@@ -992,6 +992,13 @@ static decl_init *decl_init_brace_up_start(
 						"%s must be initialised with an initialiser list",
 						type_ref_to_str(tfor));
 				return init;
+			}else{
+				e = expr_skip_casts(e);
+				if(expr_kind(e, str) && e->bits.strlit.is_func){
+					warn_at(&init->where,
+							"initialisation of %s from __func__ is an extension",
+							type_ref_to_str(tfor));
+				}
 			}
 		}
 		/* else struct copy init */

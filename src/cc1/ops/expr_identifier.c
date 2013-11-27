@@ -68,6 +68,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 
 			expr_mutate_str(e, sp, strlen(sp) + 1, /*wide:*/0, &e->where);
 			/* +1 - take the null byte */
+			e->bits.strlit.is_func = 1;
 
 			FOLD_EXPR(e, stab);
 		}else{
