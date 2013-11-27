@@ -65,14 +65,9 @@ void gen_expr_str_str(expr *e)
 static void const_expr_string(expr *e, consty *k)
 {
 	CONST_FOLD_LEAF(k);
-	if(e->bits.strlit.lit_at.lit->wide){
-		k->type = CONST_NO;
-		ICW("TODO: wide string const");
-	}else{
-		k->type = CONST_STRK;
-		k->bits.str = &e->bits.strlit.lit_at;
-		k->offset = 0;
-	}
+	k->type = CONST_STRK;
+	k->bits.str = &e->bits.strlit.lit_at;
+	k->offset = 0;
 }
 
 void mutate_expr_str(expr *e)

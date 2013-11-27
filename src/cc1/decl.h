@@ -289,7 +289,7 @@ type_ref *type_ref_is_func_or_block(type_ref *);
 struct_union_enum_st *type_ref_is_s_or_u(type_ref *);
 struct_union_enum_st *type_ref_is_s_or_u_or_e(type_ref *);
 type_ref *type_ref_skip_casts(type_ref *);
-type_ref *type_ref_is_char_ptr(type_ref *);
+type_ref *type_ref_is_str_type(type_ref *); /* char * or wchar_t (aka int) * */
 
 /* note: returns static references */
 #define type_ref_cached_VOID()       type_ref_new_type(type_new_primitive(type_void))

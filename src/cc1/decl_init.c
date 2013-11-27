@@ -856,7 +856,7 @@ static decl_init *is_char_init(type_ref *ty, init_iter *iter)
 {
 	decl_init *this;
 
-	if(type_ref_is_char_ptr(ty)
+	if(type_ref_is_str_type(ty)
 	&& (this = *iter->pos)
 	/* allow "xyz" or { "xyz" } */
 	&& (this->type == decl_init_scalar
@@ -894,9 +894,6 @@ static decl_init *decl_init_brace_up_array_pre(
 			where *const w = &strk->where;
 			unsigned str_i, count;
 			decl_init *braced;
-
-			if(k.bits.str->lit->wide)
-				ICE("TODO: wide string init");
 
 			if(limit == -1){
 				count = k.bits.str->lit->len;

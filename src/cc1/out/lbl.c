@@ -41,10 +41,16 @@ char *out_label_code(const char *fmt)
 	return ret;
 }
 
-char *out_label_data_store(int str)
+char *out_label_data_store(enum out_label_store ty)
 {
 	char *ret = umalloc(16);
-	SNPRINTF(ret, 16, "%s.%d", str ? "str" : "data", str_last++);
+	const char *pre;
+	switch(ty){
+		case STORE_P_CHAR: pre = "str"; break;
+		case STORE_P_WCHAR: pre = "wstr"; break;
+		case STORE_COMP_LIT: pre = "data"; break;
+	}
+	SNPRINTF(ret, 16, "%s.%d", pre, str_last++);
 	return ret;
 }
 

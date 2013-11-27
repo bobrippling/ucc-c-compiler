@@ -410,9 +410,23 @@ void asm_declare_stringlit(FILE *f, const stringlit *lit)
 {
 	/* could be SECTION_RODATA */
 	asm_nam_begin3(f, lit->lbl, /*align:*/1);
-	fprintf(f, ".ascii \"");
-	literal_print(f, lit->str, lit->len);
-	fprintf(f, "\"\n");
+	if(lit->wide){
+		const char *join = "";
+		size_t i;
+
+		fprintf(f, ".long ");
+		for(i = 0; i < lit->len; i++){
+			fprintf(f, "%s%d", join, lit->str[i]);
+			join = ", ";
+		}
+
+	}else{
+		fprintf(f, ".ascii \"");
+		literal_print(f, lit->str, lit->len);
+		fputc('"', f);
+	}
+
+	fputc('\n', f);
 }
 
 void asm_declare_decl_init(FILE *f, decl *d)

@@ -303,12 +303,21 @@ int type_ref_is_variably_modified(type_ref *r)
 	return 0;
 }
 
-type_ref *type_ref_is_char_ptr(type_ref *r)
+type_ref *type_ref_is_str_type(type_ref *r)
 {
 	type_ref *t = type_ref_is_array(r);
 	if(!t)
 		t = type_ref_is_ptr(r);
-	return type_ref_is_type(t, type_char);
+	t = type_ref_is_type(t, type_unknown);
+	if(!t)
+		return NULL;
+	switch(t->bits.type->primitive){
+		case type_char:
+		case type_int:
+			return t;
+		default:
+			return NULL;
+	}
 }
 
 int type_ref_is_incomplete_array(type_ref *r)

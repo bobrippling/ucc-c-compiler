@@ -35,5 +35,5 @@ stringlit *strings_lookup(
 void stringlit_use(stringlit *s)
 {
 	if(s->use_cnt++ == 0)
-		s->lbl = out_label_data_store(1);
+		s->lbl = out_label_data_store(s->wide ? STORE_P_WCHAR : STORE_P_CHAR);
 }

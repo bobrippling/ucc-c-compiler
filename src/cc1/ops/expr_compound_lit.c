@@ -22,7 +22,7 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 	e->tree_type = d->ref;
 
 	if(!stab->parent){
-		d->spel = out_label_data_store(0);
+		d->spel = out_label_data_store(STORE_COMP_LIT);
 		d->store = store_static;
 	}
 
