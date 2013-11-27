@@ -27,6 +27,76 @@ static void get_cast_sizes(type_ref *tlhs, type_ref *trhs, int *pl, int *pr)
 	}
 }
 
+static intval_t convert_intval_to_intval(
+		intval_t in,
+		unsigned sz_in, int signed_in,
+		unsigned sz_out, int signed_out)
+{
+	/*
+	 * C99
+	 * 6.3.1.3 Signed and unsigned integers
+	 *
+	 * When a value with integer type is converted to another integer type
+	 * other than _Bool, if the value can be represented by the new type, it
+	 * is unchanged.
+	 *
+	 * Otherwise, if the new type is unsigned, the value is converted by
+	 * repeatedly adding or subtracting one more than the maximum value that
+	 * can be represented in the new type until the value is in the range of
+	 * the new type.
+	 *
+	 * Otherwise, the new type is signed and the value cannot be represented
+	 * in it; either the result is implementation-defined or an
+	 * implementation-defined signal is raised.
+	 */
+
+	/* representable
+	 * if size(out) > size(in)
+	 * or if size(out) == size(in)
+	 *    and conversion is not unsigned -> signed
+	 * or conversion is unsigned -> signed and in < signed-max
+	 */
+
+	sintval_t to_iv_sign_ext;
+	intval_t to_iv = intval_truncate(in, sz_in, &to_iv_sign_ext);
+
+#if 0
+	if(e->expr_cast_implicit
+	&& (to_sig && from_sig ? (sintval_t)old != to_iv_sign_ext : old != to_iv))
+	{
+#define CAST_WARN(pre_fmt, pre_val, post_fmt, post_val)  \
+		warn_at(&e->where,                           \
+				"implicit cast changes value from %"     \
+				pre_fmt " to %" post_fmt,                \
+				pre_val, post_val)
+
+		/* nice... */
+		if(from_sig){
+			if(to_sig)
+				CAST_WARN(
+						INTVAL_FMT_D, (long long signed)old,
+						INTVAL_FMT_D, (long long signed)to_iv_sign_ext);
+			else
+				CAST_WARN(
+						INTVAL_FMT_D, (long long signed)old,
+						INTVAL_FMT_U, (long long unsigned)to_iv);
+		}else{
+			if(to_sig)
+				CAST_WARN(
+						INTVAL_FMT_U, (long long unsigned)old,
+						INTVAL_FMT_D, (long long signed)to_iv_sign_ext);
+			else
+				CAST_WARN(
+						INTVAL_FMT_U, (long long unsigned)old,
+						INTVAL_FMT_U, (long long unsigned)to_iv);
+		}
+	}
+#endif
+
+	/* need to sign extend if signed */
+	return signed_in || signed_out ? (intval_t)to_iv_sign_ext : to_iv;
+}
+
 static void fold_const_expr_cast(expr *e, consty *k)
 {
 	if(type_ref_is_void(e->tree_type)){
@@ -44,48 +114,13 @@ static void fold_const_expr_cast(expr *e, consty *k)
 				piv->val = !!piv->val; /* analagous to out/out.c::out_normalise()'s constant case */
 
 			}else{
-				const unsigned sz = type_ref_size(e->tree_type, &e->where);
-				const intval_t old = piv->val;
-				const int to_sig   = type_ref_is_signed(e->tree_type);
-				const int from_sig = type_ref_is_signed(e->expr->tree_type);
-				intval_t to_iv;
-				sintval_t to_iv_sign_ext;
+				const int in_sig = type_ref_is_signed(e->expr->tree_type);
+				const int out_sig = type_ref_is_signed(e->tree_type);
 
-				to_iv = intval_truncate(piv->val, sz, &to_iv_sign_ext);
-
-				if(e->expr_cast_implicit
-				&& (to_sig && from_sig ? (sintval_t)old != to_iv_sign_ext : old != to_iv))
-				{
-#define CAST_WARN(pre_fmt, pre_val, post_fmt, post_val)  \
-						warn_at(&e->where,                           \
-								"implicit cast changes value from %"     \
-								pre_fmt " to %" post_fmt,                \
-								pre_val, post_val)
-
-					/* nice... */
-					if(from_sig){
-						if(to_sig)
-							CAST_WARN(
-									INTVAL_FMT_D, (long long signed)old,
-									INTVAL_FMT_D, (long long signed)to_iv_sign_ext);
-						else
-							CAST_WARN(
-									INTVAL_FMT_D, (long long signed)old,
-									INTVAL_FMT_U, (long long unsigned)to_iv);
-					}else{
-						if(to_sig)
-							CAST_WARN(
-									INTVAL_FMT_U, (long long unsigned)old,
-									INTVAL_FMT_D, (long long signed)to_iv_sign_ext);
-						else
-							CAST_WARN(
-									INTVAL_FMT_U, (long long unsigned)old,
-									INTVAL_FMT_U, (long long unsigned)to_iv);
-					}
-				}
-
-				/* need to sign extend if signed */
-				piv->val = from_sig && to_sig ? (intval_t)to_iv_sign_ext : to_iv;
+				piv->val = convert_intval_to_intval(
+						piv->val,
+						type_ref_size(e->expr->tree_type, &e->expr->where), in_sig,
+						type_ref_size(e->tree_type, &e->where), out_sig);
 			}
 #undef piv
 			break;
