@@ -852,20 +852,35 @@ static void die_incomplete(init_iter *iter, type_ref *tfor)
 			"initialising %s", type_ref_to_str(tfor));
 }
 
-static decl_init *is_char_init(type_ref *ty, init_iter *iter)
+static decl_init *is_char_init(
+		type_ref *ty, init_iter *iter,
+		symtable *stab, int *mismatch)
 {
 	decl_init *this;
 
-	if(type_ref_is_str_type(ty)
-	&& (this = *iter->pos)
+	if((this = *iter->pos)
 	/* allow "xyz" or { "xyz" } */
 	&& (this->type == decl_init_scalar
 	|| (this->type == decl_init_brace &&
 		  1 == dynarray_count(this->bits.ar.inits) &&
 		  this->bits.ar.inits[0]->type == decl_init_scalar)))
 	{
-		return this->type == decl_init_scalar
+		enum type_ref_str_type ty_expr, ty_decl;
+
+		decl_init *chosen = this->type == decl_init_scalar
 			? this : this->bits.ar.inits[0];
+
+		FOLD_EXPR_NO_DECAY(chosen->bits.expr, stab);
+
+		ty_expr = type_ref_str_type(chosen->bits.expr->tree_type);
+		ty_decl = type_ref_str_type(ty);
+
+		if(ty_expr == type_ref_str_no)
+			; /* fine - not a string init */
+		else if(ty_expr == ty_decl)
+			return chosen;
+		else if(mismatch)
+			*mismatch = 1;
 	}
 
 	return NULL;
@@ -884,7 +899,7 @@ static decl_init *decl_init_brace_up_array_pre(
 	if(!type_ref_is_complete(next))
 		die_incomplete(iter, next_type);
 
-	if((strk = is_char_init(next_type, iter))){
+	if((strk = is_char_init(next_type, iter, stab, NULL))){
 		consty k;
 
 		FOLD_EXPR(strk->bits.expr, stab);
@@ -979,14 +994,22 @@ static decl_init *decl_init_brace_up_start(
 	&& ((for_array = !!type_ref_is_array(tfor))
 		|| type_ref_is_s_or_u(tfor)))
 	{
-		expr *e = FOLD_EXPR(init->bits.expr, stab);
+		expr *e;
+		FOLD_EXPR_NO_DECAY(e = init->bits.expr, stab);
 
 		if(!type_ref_equal(e->tree_type, tfor, DECL_CMP_EXACT_MATCH)){
 			/* allow special case of char [] with "..." */
-			if(!for_array || !is_char_init(e->tree_type, &it)){
+			int str_mismatch = 0;
+
+			if(!for_array
+			|| !is_char_init(tfor, &it, stab, &str_mismatch))
+			{
 				fold_had_error = 1;
+
 				warn_at_print_error(&init->where,
-						"%s must be initialised with an initialiser list",
+						str_mismatch
+							? "incorrect string literal initialiser for %s"
+							: "%s must be initialised with an initialiser list",
 						type_ref_to_str(tfor));
 				return init;
 			}else{
