@@ -17,11 +17,6 @@ void fold_expr_str(expr *e, symtable *stab)
 {
 	const stringlit *const strlit = e->bits.strlit.lit;
 	expr *sz;
-	decl *d;
-	unsigned i;
-
-	if(e->code)
-		return; /* called from a sub-assignment */
 
 	sz = expr_new_val(strlit->len);
 	FOLD_EXPR(sz, stab);
@@ -30,27 +25,6 @@ void fold_expr_str(expr *e, symtable *stab)
 	e->tree_type = type_ref_new_array(
 			type_ref_new_type_primitive(strlit->wide ? type_wchar : type_char),
 			sz);
-
-	d = decl_new();
-	d->ref = e->tree_type;
-	d->spel_asm = strlit->lbl;
-
-	d->store = store_static;
-
-	d->init = decl_init_new(decl_init_brace);
-	for(i = 0; i < strlit->len; i++){
-		decl_init *di = decl_init_new(decl_init_scalar);
-
-		di->bits.expr = expr_new_val(strlit->str[i]);
-
-		dynarray_add(&d->init->bits.ar.inits, di);
-	}
-
-	decl_init_brace_up_fold(d, stab);
-
-	/* no non-global folding,
-	 * all strks are static globals/read from the init */
-	fold_decl_global_init(d, stab);
 }
 
 void gen_expr_str(expr *e)
