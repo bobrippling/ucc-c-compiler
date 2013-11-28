@@ -583,6 +583,7 @@ static void read_string(char **sptr, size_t *plen)
 	escape_string(*sptr, plen);
 
 	bufferpos += size;
+	loc_now.chr += size;
 }
 
 static void ungetchar(char ch)
