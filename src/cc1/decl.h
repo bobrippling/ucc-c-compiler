@@ -79,7 +79,8 @@ struct type_ref
 		struct
 		{
 			enum type_qualifier qual;
-			int is_static;
+			unsigned is_static : 1;
+			unsigned decayed : 1; /* old size may be NULL - track here */
 			expr *size;
 			/* when we decay
 			 * f(int x[2]) -> f(int *x)

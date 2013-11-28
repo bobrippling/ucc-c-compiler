@@ -774,7 +774,7 @@ int decl_conv_array_func_to_ptr(decl *d)
 
 type_ref *type_ref_is_decayed_array(type_ref *r)
 {
-	if((r = type_ref_is(r, type_ref_ptr)) && r->bits.ptr.size)
+	if((r = type_ref_is(r, type_ref_ptr)) && r->bits.ptr.decayed)
 		return r;
 
 	return NULL;

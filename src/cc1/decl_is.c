@@ -391,6 +391,7 @@ type_ref *type_ref_decay(type_ref *r)
 			/* don't mutate a type_ref */
 			type_ref *new = type_ref_new_ptr(r->ref, qual_none);
 			new->bits.ptr = r->bits.array; /* save the old size, etc */
+			new->bits.ptr.decayed = 1; /* old size may be NULL */
 			return new;
 		}
 
