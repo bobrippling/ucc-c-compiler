@@ -126,14 +126,18 @@ recheck:
 					fin = 1;
 			}while(!fin);
 
-			e = args[var_idx + n_arg++];
+			/* don't check for format(printf, $x, 0) */
+			if(var_idx != -1){
+				e = args[var_idx + n_arg++];
 
-			if(!e){
-				warn_at(w, "too few arguments for format (%%%c)", fmt[i]);
-				break;
+				if(!e){
+					warn_at(w, "too few arguments for format (%%%c)", fmt[i]);
+					break;
+				}
+
+				format_check_printf_1(fmt[i], e->tree_type, &e->where, attr);
 			}
 
-			format_check_printf_1(fmt[i], e->tree_type, &e->where, attr);
 			if(fmt[i] == '*'){
 				i++;
 				goto recheck;
@@ -141,7 +145,7 @@ recheck:
 		}
 	}
 
-	if((!fmt[i] || i == len) && args[var_idx + n_arg])
+	if(var_idx != -1 && (!fmt[i] || i == len) && args[var_idx + n_arg])
 		warn_at(w, "too many arguments for format");
 }
 
@@ -210,10 +214,14 @@ void format_check_call(
 	n = dynarray_count(args);
 
 	/* do bounds checks here, but no warnings
-	 * warnings are on the decl */
+	 * warnings are on the decl
+	 *
+	 * if var_idx is zero we only check the format string,
+	 * not the arguments
+	 */
 	if(fmt_idx >= n
 	|| var_idx > n
-	|| var_idx <= fmt_idx)
+	|| (var_idx > -1 && var_idx <= fmt_idx))
 	{
 		return;
 	}
