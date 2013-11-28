@@ -1,16 +1,16 @@
 // RUN: %check %s
-// RUN: %ucc %s -c
-// RUN: [ `%ucc %s -c 2>&1 | wc -l` -eq 0 ]
+
+f(char restrict *p); // CHECK: warning: restrict on non-pointer type 'char restrict'
 
 int *restrict f8(void)
 {
-	extern int i, *p, *r;
-	int *q = (void *)0;
+	extern int i, *p, *r; // CHECK: !/warn/
+	int *q = (void *)0; // CHECK: !/warn/
 
-	r = (int * restrict)q;
+	r = (int * restrict)q; // CHECK: !/warn/
 
-	for(i = 0; i < 100; i++)
-		*(int * restrict)p++ = r[i];
+	for(i = 0; i < 100; i++) // CHECK: !/warn/
+		*(int * restrict)p++ = r[i]; // CHECK: !/warn/
 
-	return p;
+	return p; // CHECK: !/warn/
 }
