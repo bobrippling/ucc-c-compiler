@@ -34,6 +34,7 @@ my $line;
 #   [1] = { warnings = [], checks = [] },
 #   ...
 # )
+my $nchecks = 0;
 
 # ---------------------------
 # read warnings in
@@ -62,6 +63,7 @@ for(chomp_all(lines(shift))){
 			line => $line_resolved,
 			above => $above,
 		};
+		$nchecks++;
 	}
 	$line++;
 }
@@ -121,6 +123,12 @@ iter_lines(
 		print "    " . h2s($_) . "\n" for @checks;
 	}
 ) if $verbose;
+
+# ---------------------------
+# make sure we have at least one check
+if($nchecks == 0){
+	die "$0: no checks";
+}
 
 # ---------------------------
 # make sure all checks are fulfilled. don't check all warnings have checks
