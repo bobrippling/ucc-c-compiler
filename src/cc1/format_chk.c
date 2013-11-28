@@ -287,5 +287,10 @@ void format_check_decl(decl *d, decl_attr *da)
 		assert(var_idx > fmt_idx);
 	}
 
+	if(type_ref_str_type(fargs->arglist[fmt_idx]->ref) != type_ref_str_char){
+		warn_at(&da->where, "format argument not a string type");
+		return;
+	}
+
 	da->attr_extra.format.valid = 1;
 }
