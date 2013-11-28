@@ -166,7 +166,7 @@ static void format_check_printf(
 				return;
 			}
 
-			warn_at(w, "format argument isn't constant");
+			warn_at(&str_arg->where, "format argument isn't constant");
 			return;
 
 		case CONST_VAL:
@@ -175,7 +175,7 @@ static void format_check_printf(
 			/* fall */
 
 		case CONST_ADDR:
-			warn_at(w, "format argument isn't a string constant");
+			warn_at(&str_arg->where, "format argument isn't a string constant");
 			return;
 
 		case CONST_STRK:
@@ -188,7 +188,7 @@ static void format_check_printf(
 		const int   len = fmt_str->len;
 
 		if(k.offset >= len)
-			warn_at(w, "undefined printf-format argument");
+			warn_at(&str_arg->where, "undefined printf-format argument");
 		else
 			format_check_printf_str(args, fmt + k.offset, len, var_idx, w);
 	}
