@@ -99,6 +99,13 @@ static void format_check_printf_str(
 			enum printf_attr attr;
 			expr *e;
 
+			if(i == len){
+				where strloc = *w;
+				strloc.chr += i + 1; /* +1 since we start on the '(' */
+				warn_at(&strloc, "incomplete format specifier");
+				return;
+			}
+
 			if(fmt[i] == '%'){
 				i++;
 				continue;
@@ -189,9 +196,11 @@ static void format_check_printf(
 
 	{
 		const char *fmt = fmt_str->str;
-		const int   len = fmt_str->len;
+		const int   len = fmt_str->len - 1;
 
-		if(k.offset >= len)
+		if(len <= 0)
+			;
+		else if(k.offset >= len)
 			warn_at(&str_arg->where, "undefined printf-format argument");
 		else
 			format_check_printf_str(args, fmt + k.offset, len, var_idx, w);
