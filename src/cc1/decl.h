@@ -34,7 +34,7 @@ struct decl_attr
 			{
 				attr_fmt_printf, attr_fmt_scanf
 			} fmt_func;
-			int fmt_idx, var_idx;
+			int fmt_idx, var_idx, valid;
 		} format;
 		char *section;
 		unsigned long nonnull_args; /* limits to sizeof(long)*8 args, i.e. 64 */

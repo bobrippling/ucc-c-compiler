@@ -76,7 +76,7 @@ fold.o: fold.c defs.h ../util/util.h ../util/where.h ../util/compiler.h \
  ops/stmt_switch.h ops/stmt_while.h ops/stmt_continue.h sym.h decl.h \
  cc1.h ../util/std.h fold.h fold_sym.h ../util/platform.h const.h \
  ../util/alloc.h ../util/dynarray.h sue.h decl_init.h pack.h funcargs.h \
- out/lbl.h fold_sue.h
+ out/lbl.h fold_sue.h format_chk.h
 fold_sue.o: fold_sue.c ../util/util.h ../util/where.h ../util/compiler.h \
  ../util/where.h data_structs.h tree.h expr.h strings.h ../util/dynmap.h \
  ../util/dyn.h ops/expr_addr.h ops/expr_assign.h \
@@ -115,7 +115,8 @@ format_chk.o: format_chk.c ../util/where.h ../util/compiler.h \
  ops/stmt_case_range.h ops/stmt_code.h ops/stmt_default.h ops/stmt_do.h \
  ops/stmt_expr.h ops/stmt_for.h ops/stmt_goto.h ops/stmt_if.h \
  ops/stmt_label.h ops/stmt_noop.h ops/stmt_return.h ops/stmt_switch.h \
- ops/stmt_while.h ops/stmt_continue.h sym.h decl.h const.h format_chk.h
+ ops/stmt_while.h ops/stmt_continue.h sym.h decl.h const.h funcargs.h \
+ format_chk.h
 funcargs.o: funcargs.c ../util/util.h ../util/where.h ../util/compiler.h \
  ../util/alloc.h ../util/dynarray.h ../util/dyn.h data_structs.h tree.h \
  expr.h strings.h ../util/dynmap.h ops/expr_addr.h ops/expr_assign.h \

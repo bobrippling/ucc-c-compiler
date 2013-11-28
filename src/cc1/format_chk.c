@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#include <assert.h>
 
 #include "../util/where.h"
 #include "../util/util.h"
@@ -11,6 +12,7 @@
 #include "expr.h"
 #include "decl.h"
 #include "const.h"
+#include "funcargs.h"
 
 #include "format_chk.h"
 
@@ -217,7 +219,7 @@ void format_check_call(
 	decl_attr *attr = type_attr_present(ref, attr_format);
 	int n, fmt_idx, var_idx;
 
-	if(!attr || !variadic)
+	if(!attr || !attr->attr_extra.format.valid || !variadic)
 		return;
 
 	fmt_idx = attr->attr_extra.format.fmt_idx;
@@ -249,26 +251,41 @@ void format_check_call(
 	}
 }
 
-#if 0
-void format_check_decl()
+void format_check_decl(decl *d, decl_attr *da)
 {
-	if(!variadic){
-		if(var_idx >= 0)
-			warn_at(w, "variadic function required for format check");
+	type_ref *r_func = type_ref_is_func_or_block(d->ref);
+	funcargs *fargs;
+	int fmt_idx, var_idx, nargs;
+
+	assert(r_func);
+	fargs = r_func->bits.func.args;
+
+	if(!fargs->variadic){
+		warn_at(&da->where, "variadic function required for format attribute");
 		return;
 	}
 
-	if(fmt_idx >= n){
-		warn_at(w, "format argument out of bounds (%d >= %d)", fmt_idx, n);
+	nargs = dynarray_count(fargs->arglist);
+	fmt_idx = da->attr_extra.format.fmt_idx;
+	var_idx = da->attr_extra.format.var_idx;
+
+	/* format string index must be < nargs */
+	if(fmt_idx >= nargs){
+		warn_at(&da->where, "format argument out of bounds (%d >= %d)",
+				fmt_idx, nargs);
 		return;
 	}
-	if(var_idx > n){
-		die_at(w, "variadic argument out of bounds (%d >= %d)", var_idx, n);
-		return;
+
+	if(var_idx != -1){
+		/* variadic index must be nargs */
+		if(var_idx != nargs){
+			warn_at(&da->where, "variadic argument out of bounds (should be %d)",
+					nargs + 1); /* +1 to get to the "..." index as 1-based */
+			return;
+		}
+
+		assert(var_idx > fmt_idx);
 	}
-	if(var_idx <= fmt_idx){
-		die_at(w, "variadic argument %s format argument", var_idx == fmt_idx ? "at" : "before");
-		return;
-	}
+
+	da->attr_extra.format.valid = 1;
 }
-#endif

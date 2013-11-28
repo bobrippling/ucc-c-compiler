@@ -23,6 +23,7 @@
 #include "funcargs.h"
 #include "out/lbl.h"
 #include "fold_sue.h"
+#include "format_chk.h"
 
 int fold_had_error;
 
@@ -325,9 +326,13 @@ static int fold_align(int al, int min, int max, where *w)
 static void fold_func_attr(decl *d)
 {
 	funcargs *fa = type_ref_funcargs(d->ref);
+	decl_attr *da;
 
 	if(decl_attr_present(d, attr_sentinel) && !fa->variadic)
 		warn_at(&d->where, "variadic function required for sentinel check");
+
+	if((da = decl_attr_present(d, attr_format)))
+		format_check_decl(d, da);
 }
 
 static void fold_decl_add_sym(decl *d, symtable *stab)
