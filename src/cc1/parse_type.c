@@ -829,14 +829,23 @@ static type_ref *parse_type_ref_ptr(enum decl_mode mode, decl *dfor)
 		typedef type_ref *(*ptr_creator_f)(type_ref *, enum type_qualifier);
 		ptr_creator_f creater = ptr ? type_ref_new_ptr : type_ref_new_block;
 
+		type_ref *r_ptr;
+		decl_attr *attr = NULL;
+
 		enum type_qualifier qual = qual_none;
 
-		while(curtok_is_type_qual()){
-			qual |= curtok_to_type_qualifier();
-			EAT(curtok);
+		while(curtok_is_type_qual() || curtok == token_attribute){
+			if(curtok == token_attribute){
+				parse_add_attr(&attr);
+			}else{
+				qual |= curtok_to_type_qualifier();
+				EAT(curtok);
+			}
 		}
 
-		return creater(parse_type_ref2(mode, dfor), qual);
+		r_ptr = creater(parse_type_ref2(mode, dfor), qual);
+		r_ptr->attr = attr;
+		return r_ptr;
 	}
 
 	return parse_type_ref_func(mode, dfor);
