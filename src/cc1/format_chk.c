@@ -172,13 +172,15 @@ static void format_check_printf(
 		case CONST_NEED_ADDR:
 			/* check for the common case printf(x?"":"", ...) */
 			if(expr_kind(str_arg, if)){
-				format_check_printf(str_arg->lhs, args, var_idx, w);
+
+				format_check_printf(
+						str_arg->lhs ? str_arg->lhs : str_arg->expr,
+						args, var_idx, w);
+
 				format_check_printf(str_arg->rhs, args, var_idx, w);
 				return;
 			}
-
-			warn_at(&str_arg->where, "format argument isn't constant");
-			return;
+			goto not_string;
 
 		case CONST_VAL:
 			if(k.bits.iv.val == 0)
@@ -186,6 +188,7 @@ static void format_check_printf(
 			/* fall */
 
 		case CONST_ADDR:
+not_string:
 			warn_at(&str_arg->where, "format argument isn't a string constant");
 			return;
 
