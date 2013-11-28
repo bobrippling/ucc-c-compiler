@@ -34,12 +34,12 @@ static decl_attr *parse_attr_format(void)
 
 	EAT(token_comma);
 
-	da->attr_extra.format.fmt_arg = currentval.val - 1;
+	da->attr_extra.format.fmt_idx = currentval.val - 1;
 	EAT(token_integer);
 
 	EAT(token_comma);
 
-	da->attr_extra.format.var_arg = currentval.val - 1;
+	da->attr_extra.format.var_idx = currentval.val - 1;
 	EAT(token_integer);
 
 	EAT(token_close_paren);

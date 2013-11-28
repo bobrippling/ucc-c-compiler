@@ -88,7 +88,7 @@ ptr:
 static void format_check_printf_str(
 		expr **args,
 		const char *fmt, const int len,
-		int var_arg, where *w)
+		int var_idx, where *w)
 {
 	int n_arg = 0;
 	int i;
@@ -126,7 +126,7 @@ recheck:
 					fin = 1;
 			}while(!fin);
 
-			e = args[var_arg + n_arg++];
+			e = args[var_idx + n_arg++];
 
 			if(!e){
 				warn_at(w, "too few arguments for format (%%%c)", fmt[i]);
@@ -141,14 +141,14 @@ recheck:
 		}
 	}
 
-	if((!fmt[i] || i == len) && args[var_arg + n_arg])
+	if((!fmt[i] || i == len) && args[var_idx + n_arg])
 		warn_at(w, "too many arguments for format");
 }
 
 static void format_check_printf(
 		expr *str_arg,
 		expr **args,
-		unsigned var_arg,
+		unsigned var_idx,
 		where *w)
 {
 	stringlit *fmt_str;
@@ -161,8 +161,8 @@ static void format_check_printf(
 		case CONST_NEED_ADDR:
 			/* check for the common case printf(x?"":"", ...) */
 			if(expr_kind(str_arg, if)){
-				format_check_printf(str_arg->lhs, args, var_arg, w);
-				format_check_printf(str_arg->rhs, args, var_arg, w);
+				format_check_printf(str_arg->lhs, args, var_idx, w);
+				format_check_printf(str_arg->rhs, args, var_idx, w);
 				return;
 			}
 
@@ -190,7 +190,7 @@ static void format_check_printf(
 		if(k.offset >= len)
 			warn_at(w, "undefined printf-format argument");
 		else
-			format_check_printf_str(args, fmt + k.offset, len, var_arg, w);
+			format_check_printf_str(args, fmt + k.offset, len, var_idx, w);
 	}
 }
 
@@ -199,28 +199,28 @@ void format_check_call(
 		expr **args, const int variadic)
 {
 	decl_attr *attr = type_attr_present(ref, attr_format);
-	int n, fmt_arg, var_arg;
+	int n, fmt_idx, var_idx;
 
 	if(!attr || !variadic)
 		return;
 
-	fmt_arg = attr->attr_extra.format.fmt_arg;
-	var_arg = attr->attr_extra.format.var_arg;
+	fmt_idx = attr->attr_extra.format.fmt_idx;
+	var_idx = attr->attr_extra.format.var_idx;
 
 	n = dynarray_count(args);
 
 	/* do bounds checks here, but no warnings
 	 * warnings are on the decl */
-	if(fmt_arg >= n
-	|| var_arg > n
-	|| var_arg <= fmt_arg)
+	if(fmt_idx >= n
+	|| var_idx > n
+	|| var_idx <= fmt_idx)
 	{
 		return;
 	}
 
 	switch(attr->attr_extra.format.fmt_func){
 		case attr_fmt_printf:
-			format_check_printf(args[fmt_arg], args, var_arg, w);
+			format_check_printf(args[fmt_idx], args, var_idx, w);
 			break;
 
 		case attr_fmt_scanf:
@@ -233,21 +233,21 @@ void format_check_call(
 void format_check_decl()
 {
 	if(!variadic){
-		if(var_arg >= 0)
+		if(var_idx >= 0)
 			warn_at(w, "variadic function required for format check");
 		return;
 	}
 
-	if(fmt_arg >= n){
-		warn_at(w, "format argument out of bounds (%d >= %d)", fmt_arg, n);
+	if(fmt_idx >= n){
+		warn_at(w, "format argument out of bounds (%d >= %d)", fmt_idx, n);
 		return;
 	}
-	if(var_arg > n){
-		die_at(w, "variadic argument out of bounds (%d >= %d)", var_arg, n);
+	if(var_idx > n){
+		die_at(w, "variadic argument out of bounds (%d >= %d)", var_idx, n);
 		return;
 	}
-	if(var_arg <= fmt_arg){
-		die_at(w, "variadic argument %s format argument", var_arg == fmt_arg ? "at" : "before");
+	if(var_idx <= fmt_idx){
+		die_at(w, "variadic argument %s format argument", var_idx == fmt_idx ? "at" : "before");
 		return;
 	}
 }
