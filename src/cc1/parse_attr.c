@@ -238,6 +238,8 @@ static decl_attr *parse_attr(void)
 	decl_attr *attr = NULL, **next = &attr;
 
 	for(;;){
+		decl_attr *this;
+		where w;
 		int alloc;
 		char *ident = curtok_to_identifier(&alloc);
 
@@ -250,10 +252,15 @@ static decl_attr *parse_attr(void)
 			goto comma;
 		}
 
+		where_cc1_current(&w);
+		where_cc1_adj_identifier(&w, ident);
+
 		EAT(curtok);
 
-		if((*next = parse_attr_single(ident)))
+		if((this = *next = parse_attr_single(ident))){
+			memcpy_safe(&this->where, &w);
 			next = &(*next)->next;
+		}
 
 		if(alloc)
 			free(ident);
