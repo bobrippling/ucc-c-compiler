@@ -31,16 +31,23 @@
 
 #define NOOP_RET() if(parse_should_noop()) return
 
+enum if_elif_state
+{
+	NO_TRUTH,
+	GOT_TRUTH,
+	LAST_ELSE
+};
 
 #define N_IFSTACK 64
 static struct
 {
-	char noop, if_chosen;
+	enum if_elif_state if_chosen;
+	char noop;
 } if_stack[N_IFSTACK] = {{ 0, 0 }};
 
 static int if_idx = 0;
 static int noop = 0;
-static int if_elif_chosen = 0;
+static enum if_elif_state if_elif_chosen = NO_TRUTH;
 
 
 int parse_should_noop(void)
@@ -285,7 +292,7 @@ static void if_push(int is_true)
 
 	noop = !is_true;
 	/* we've found a true #if/#ifdef/#ifndef ? */
-	if_elif_chosen = is_true;
+	if_elif_chosen = is_true ? GOT_TRUTH : NO_TRUTH;
 }
 
 static void if_pop(void)
@@ -382,11 +389,16 @@ static void handle_elif(token **tokens)
 {
 	got_else("elif");
 
-	if(if_elif_chosen){
-		noop = 1;
-	}else{
-		if_elif_chosen = if_eval(tokens, "elif");
-		noop = !if_elif_chosen;
+	switch(if_elif_chosen){
+		case GOT_TRUTH:
+			noop = 1;
+			break;
+		case NO_TRUTH:
+			if_elif_chosen = if_eval(tokens, "elif");
+			noop = !if_elif_chosen;
+			break;
+		case LAST_ELSE:
+			CPP_DIE("#else already encountered (now at #elif)");
 	}
 }
 
@@ -396,7 +408,17 @@ static void handle_else(token **tokens)
 
 	got_else("else");
 
-	noop = if_elif_chosen;
+	switch(if_elif_chosen){
+		case GOT_TRUTH:
+			noop = 1;
+			break;
+		case NO_TRUTH:
+			noop = 0;
+			break;
+		case LAST_ELSE:
+			CPP_DIE("#else already encountered (now at #else)");
+	}
+	if_elif_chosen = LAST_ELSE;
 }
 
 static void handle_endif(token **tokens)
