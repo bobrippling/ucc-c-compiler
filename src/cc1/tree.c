@@ -9,6 +9,7 @@
 #include "macros.h"
 #include "sym.h"
 #include "../util/platform.h"
+#include "../util/limits.h"
 #include "sue.h"
 #include "decl.h"
 #include "cc1.h"
@@ -192,6 +193,39 @@ unsigned type_primitive_size(enum type_primitive tp)
 	ICE("type %s in %s()",
 			type_primitive_to_str(tp), __func__);
 	return -1;
+}
+
+unsigned long long
+type_primitive_max(enum type_primitive p, int is_signed)
+{
+	unsigned long long max;
+
+	switch(p){
+		case type__Bool: return 1;
+		case type_char:  max = UCC_SCHAR_MAX;     break;
+		case type_short: max = UCC_SHRT_MAX;      break;
+		case type_int:   max = UCC_INT_MAX;       break;
+		case type_long:  max = UCC_LONG_MAX;      break;
+		case type_llong: max = UCC_LONG_LONG_MAX; break;
+
+		case type_float:
+		case type_double:
+		case type_ldouble:
+			/* 80-bit float */
+			ICE("TODO: float max");
+
+		case type_union:
+		case type_struct:
+		case type_enum:
+			ICE("sue max");
+
+		case type_void:
+		case type_unknown:
+		default:
+			ICE("bad primitive %s", type_primitive_to_str(p));
+	}
+
+	return is_signed ? max : max * 2 + 1;
 }
 
 unsigned type_size(const type *t, where *from)
