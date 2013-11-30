@@ -975,15 +975,7 @@ void v_cast(struct vstack *vp, type_ref *to)
 void out_change_type(type_ref *t)
 {
 	/* XXX: memleak */
-	vtop->t = t;
-
-	/* we can't change type for large integer values,
-	 * they need truncating
-	 */
-	UCC_ASSERT(
-			vtop->type != CONST
-			|| !intval_is_64_bit(vtop->bits.val, vtop->t),
-			"can't %s for large constant %" INTVAL_FMT_X, __func__, vtop->bits.val);
+	impl_change_type(t);
 }
 
 void v_save_regs()

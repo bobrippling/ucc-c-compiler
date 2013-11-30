@@ -682,6 +682,19 @@ void impl_op_unary(enum op_type op)
 	out_asm("%s %s", opc, vstack_str(vtop));
 }
 
+void impl_change_type(type_ref *t)
+{
+	vtop->t = t;
+
+	/* we can't change type for large integer values,
+	 * they need truncating
+	 */
+	UCC_ASSERT(
+			vtop->type != CONST
+			|| !intval_is_64_bit(vtop->bits.val, vtop->t),
+			"can't %s for large constant %" INTVAL_FMT_X, __func__, vtop->bits.val);
+}
+
 void impl_cast_load(struct vstack *vp, type_ref *small, type_ref *big, int is_signed)
 {
 	/* we are always up-casting here, i.e. int -> long */
