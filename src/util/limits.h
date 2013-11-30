@@ -1,0 +1,11 @@
+#ifndef UCC_LIMITS_H
+#define UCC_LIMITS_H
+
+#define UCC_SCHAR_MAX     127
+#define UCC_SHRT_MAX      32767
+#define UCC_INT_MAX       2147483647
+/* FIXME: 32-bit long */
+#define UCC_LONG_MAX      9223372036854775807L
+#define UCC_LONG_LONG_MAX 9223372036854775807LL
+
+#endif
