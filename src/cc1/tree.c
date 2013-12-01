@@ -99,29 +99,20 @@ intval_t intval_truncate(
 	return val;
 }
 
-int intval_is_64_bit(const intval_t val, type_ref *ty)
+int intval_high_bit(intval_t val, type_ref *ty)
 {
-	/* must apply the truncation here */
-	intval_t trunc;
-
-	if(type_ref_size(ty, &ty->where) < platform_word_size())
-		return 0;
-
-	trunc = intval_truncate(
-			val, type_ref_size(ty, &ty->where), NULL);
-
-#define INT_SHIFT (CHAR_BIT * sizeof(int))
 	if(type_ref_is_signed(ty)){
 		const sintval_t as_signed = val;
 
-		if(as_signed < 0){
-			/* need unsigned (i.e. shr) shift */
-			return (int)((intval_t)trunc >> INT_SHIFT) != -1;
-		}
+		if(as_signed < 0)
+			val = intval_truncate(val, type_ref_size(ty, &ty->where), NULL);
 	}
 
-	return (trunc >> INT_SHIFT) != 0;
-#undef INT_SHIFT
+	{
+		int r;
+		for(r = -1; val; r++, val >>= 1);
+		return r;
+	}
 }
 
 static type *type_new_primitive1(enum type_primitive p)

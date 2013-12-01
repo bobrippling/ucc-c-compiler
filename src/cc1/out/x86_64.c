@@ -88,7 +88,7 @@ static const char *vstack_str_r_ptr(char buf[VSTACK_STR_SZ], struct vstack *vs, 
 			/* we should never get a 64-bit value here
 			 * since movabsq should load those in
 			 */
-			UCC_ASSERT(!intval_is_64_bit(vs->bits.val, vs->t),
+			UCC_ASSERT(intval_high_bit(vs->bits.val, vs->t) < 32,
 					"can't load 64-bit constants here (0x%llx)", vs->bits.val);
 
 			if(!ptr)
@@ -295,7 +295,7 @@ static void x86_load(struct vstack *from, int reg, int lea)
 
 void impl_load_iv(struct vstack *vp)
 {
-	if(intval_is_64_bit(vp->bits.val, vp->t)){
+	if(intval_high_bit(vp->bits.val, vp->t) >= 32){
 		int r = v_unused_reg(1);
 		char buf[INTVAL_BUF_SIZ];
 
@@ -689,10 +689,13 @@ void impl_change_type(type_ref *t)
 	/* we can't change type for large integer values,
 	 * they need truncating
 	 */
-	UCC_ASSERT(
-			vtop->type != CONST
-			|| !intval_is_64_bit(vtop->bits.val, vtop->t),
-			"can't %s for large constant %" INTVAL_FMT_X, __func__, vtop->bits.val);
+	if(vtop->type == CONST){
+		UCC_ASSERT(
+				intval_high_bit(vtop->bits.val, vtop->t) < 32,
+				"can't %s for large constant %" INTVAL_FMT_X,
+				__func__,
+				vtop->bits.val);
+	}
 }
 
 void impl_cast_load(struct vstack *vp, type_ref *small, type_ref *big, int is_signed)
