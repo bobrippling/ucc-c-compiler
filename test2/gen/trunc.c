@@ -1,4 +1,8 @@
-// RUN: %ucc -c %s -o %t 2>&1 | grep '65536'; [ $? -ne 0 ]
+// RUN: %ucc -S %s -o %t
+// RUN: %ucc -c -x asm %t 2>&1 | grep '65536'; [ $? -ne 0 ]
+// RUN: %layout_check %s
+
+char x = 65536;
 
 main()
 {

@@ -37,7 +37,11 @@ int intval_cmp(const intval *a, const intval *b)
 
 int intval_str(char *buf, size_t nbuf, intval_t v, type_ref *ty)
 {
+	/* the final resting place for an intval */
 	const int is_signed = type_ref_is_signed(ty);
+
+	if(ty)
+		v = intval_truncate(v, type_ref_size(ty, NULL), NULL);
 
 	return snprintf(
 			buf, nbuf,
