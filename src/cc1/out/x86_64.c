@@ -22,6 +22,8 @@
  */
 #define AS_MAX_MOV_BIT 31
 
+#define intval_high_bit_ABS(v, t) intval_high_bit(llabs(v), t)
+
 #define NUM_FMT "%d"
 /* format for movl $5, -0x6(%rbp) asm output
                         ^~~                    */
@@ -93,7 +95,7 @@ static const char *vstack_str_r_ptr(char buf[VSTACK_STR_SZ], struct vstack *vs, 
 			/* we should never get a 64-bit value here
 			 * since movabsq should load those in
 			 */
-			UCC_ASSERT(intval_high_bit(vs->bits.val, vs->t) < AS_MAX_MOV_BIT,
+			UCC_ASSERT(intval_high_bit_ABS(vs->bits.val, vs->t) < AS_MAX_MOV_BIT,
 					"can't load 64-bit constants here (0x%llx)", vs->bits.val);
 
 			if(!ptr)
@@ -300,7 +302,7 @@ static void x86_load(struct vstack *from, int reg, int lea)
 
 void impl_load_iv(struct vstack *vp)
 {
-	const int high_bit = intval_high_bit(vp->bits.val, vp->t);
+	const int high_bit = intval_high_bit_ABS(vp->bits.val, vp->t);
 
 	if(high_bit >= AS_MAX_MOV_BIT){
 		int r = v_unused_reg(1);
@@ -704,7 +706,7 @@ void impl_change_type(type_ref *t)
 	 */
 	if(vtop->type == CONST){
 		UCC_ASSERT(
-				intval_high_bit(vtop->bits.val, vtop->t) < AS_MAX_MOV_BIT,
+				intval_high_bit_ABS(vtop->bits.val, vtop->t) < AS_MAX_MOV_BIT,
 				"can't %s for large constant %" INTVAL_FMT_X,
 				__func__,
 				vtop->bits.val);
