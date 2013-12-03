@@ -54,7 +54,8 @@ intval_t intval_truncate_bits(
 	intval_t pos_mask = ~(~0ULL << bits);
 	intval_t truncated = val & pos_mask;
 
-	/* we use sizeof our types so our conversions match the target conversions */
+	if(fopt_mode & FOPT_CAST_W_BUILTIN_TYPES){
+		/* we use sizeof our types so our conversions match the target conversions */
 #define BUILTIN(type)                    \
 		if(bits == sizeof(type) * CHAR_BIT){ \
 			if(signed_iv)                      \
@@ -62,11 +63,12 @@ intval_t intval_truncate_bits(
 			return (unsigned type)val;         \
 		}
 
-	BUILTIN(char);
-	BUILTIN(short);
-	BUILTIN(int);
-	BUILTIN(long);
-	BUILTIN(long long);
+		BUILTIN(char);
+		BUILTIN(short);
+		BUILTIN(int);
+		BUILTIN(long);
+		BUILTIN(long long);
+	}
 
 	/* not builtin - bitfield, etc */
 	if(signed_iv){

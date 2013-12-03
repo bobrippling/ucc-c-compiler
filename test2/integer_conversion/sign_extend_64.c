@@ -1,4 +1,5 @@
-// RUN: %ocheck 0 %s
+// RUN: %ocheck 0 %s    -fcast-with-builtin-types
+// RUN: %ocheck 0 %s -fno-cast-with-builtin-types
 
 typedef unsigned long long uint64_t;
 
