@@ -213,6 +213,7 @@ const char  *decl_attr_to_str(enum decl_attr_type);
 unsigned decl_size(decl *);
 unsigned decl_align(decl *);
 unsigned type_ref_size(type_ref *, where *from);
+intval_t type_ref_max(type_ref *, where *from);
 
 int   decl_equal(decl *a, decl *b, enum decl_cmp mode);
 int   type_ref_equal(type_ref *a, type_ref *b, enum decl_cmp mode);

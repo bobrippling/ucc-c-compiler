@@ -27,9 +27,10 @@ static void get_cast_sizes(type_ref *tlhs, type_ref *trhs, int *pl, int *pr)
 	}
 }
 
-static intval_t convert_intval_to_intval(
-		intval_t in, unsigned sz_in,
-		int signed_in, int signed_out)
+static intval_t convert_intval_to_intval_warn(
+		const intval_t in, type_ref *tin,
+		type_ref *tout,
+		int do_warn, where *w)
 {
 	/*
 	 * C99
@@ -56,47 +57,44 @@ static intval_t convert_intval_to_intval(
 	 * or conversion is unsigned -> signed and in < signed-max
 	 */
 
+	const unsigned sz_in = type_ref_size(tin, w);
+	const int signed_in = type_ref_is_signed(tin);
+	const int signed_out = type_ref_is_signed(tout);
 	sintval_t to_iv_sign_ext;
 	intval_t to_iv = intval_truncate(in, sz_in, &to_iv_sign_ext);
-
-#if 0
-	if(e->expr_cast_implicit
-	&& (to_sig && from_sig ? (sintval_t)old != to_iv_sign_ext : old != to_iv))
-	{
-#define CAST_WARN(pre_fmt, pre_val, post_fmt, post_val)  \
-		warn_at(&e->where,                           \
-				"implicit cast changes value from %"     \
-				pre_fmt " to %" post_fmt,                \
-				pre_val, post_val)
-
-		/* nice... */
-		if(from_sig){
-			if(to_sig)
-				CAST_WARN(
-						INTVAL_FMT_D, (long long signed)old,
-						INTVAL_FMT_D, (long long signed)to_iv_sign_ext);
-			else
-				CAST_WARN(
-						INTVAL_FMT_D, (long long signed)old,
-						INTVAL_FMT_U, (long long unsigned)to_iv);
-		}else{
-			if(to_sig)
-				CAST_WARN(
-						INTVAL_FMT_U, (long long unsigned)old,
-						INTVAL_FMT_D, (long long signed)to_iv_sign_ext);
-			else
-				CAST_WARN(
-						INTVAL_FMT_U, (long long unsigned)old,
-						INTVAL_FMT_U, (long long unsigned)to_iv);
-		}
-	}
-#endif
+	intval_t ret;
 
 	/* need to sign extend if signed */
 	if(signed_in || signed_out)
-		return (intval_t)to_iv_sign_ext;
+		ret = (intval_t)to_iv_sign_ext;
 	else
-		return to_iv;
+		ret = to_iv;
+
+	if(do_warn){
+		if(ret != in){
+			warn_at(w,
+					"implicit cast changes value from %lld to %lld",
+					in, ret);
+
+		}else if(signed_out && !signed_in && (sintval_t)ret < 0){
+			warn_at(w,
+					"implicit cast to negative changes value from %llu to %lld",
+					in, (sintval_t)to_iv_sign_ext);
+
+		}else if(signed_out ? (sintval_t)ret > 0 : 1){
+			/* ret > 0 - don't warn for -1 <-- -1L */
+			int in_high = intval_high_bit(in, tin);
+			int out_high = intval_high_bit(type_ref_max(tout, w), tout);
+
+			if(in_high > out_high){
+				warn_at(w,
+						"implicit cast truncates value from %lld to %lld",
+						in, ret & ((1ULL << (out_high + 1)) - 1));
+			}
+		}
+	}
+
+	return ret;
 }
 
 static void fold_const_expr_cast(expr *e, consty *k)
@@ -116,13 +114,10 @@ static void fold_const_expr_cast(expr *e, consty *k)
 				piv->val = !!piv->val; /* analagous to out/out.c::out_normalise()'s constant case */
 
 			}else{
-				const int in_sig = type_ref_is_signed(e->expr->tree_type);
-				const int out_sig = type_ref_is_signed(e->tree_type);
-
-				piv->val = convert_intval_to_intval(
-						piv->val,
-						type_ref_size(e->expr->tree_type, &e->expr->where),
-						in_sig, out_sig);
+				piv->val = convert_intval_to_intval_warn(
+						piv->val, e->expr->tree_type,
+						e->tree_type,
+						e->expr_cast_implicit, &e->where);
 			}
 #undef piv
 			break;

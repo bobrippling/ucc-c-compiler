@@ -14,6 +14,7 @@
 #include "cc1.h"
 #include "fold.h"
 #include "funcargs.h"
+#include "defs.h"
 
 #define ITER_DESC_TYPE(d, dp, typ)     \
 	for(dp = d->desc; dp; dp = dp->child) \
@@ -512,6 +513,13 @@ void decl_attr_free(decl_attr *a)
 }
 
 #include "decl_is.c"
+
+intval_t type_ref_max(type_ref *r, where *from)
+{
+	unsigned sz = type_ref_size(r, from);
+
+	return 1ULL << (sz * CHAR_BIT - 1);
+}
 
 unsigned type_ref_size(type_ref *r, where *from)
 {
