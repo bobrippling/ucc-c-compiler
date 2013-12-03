@@ -70,16 +70,12 @@ intval_t intval_truncate_bits(
 
 	/* not builtin - bitfield, etc */
 	if(signed_iv){
-		sintval_t sig = truncated;
+		const unsigned shamt = CHAR_BIT * sizeof(val) - bits;
 
-		if((sintval_t)val < 0){
-			/* sign extend */
-			unsigned revbits = sizeof(intval_t) * CHAR_BIT - bits;
-
-			sig = (sig << revbits) >> revbits;
-		}
-
-		*signed_iv = sig;
+		/* implementation specific signed right shift.
+		 * this is to sign extend the value
+		 */
+		*signed_iv = (sintval_t)val << shamt >> shamt;
 	}
 
 	return truncated;
