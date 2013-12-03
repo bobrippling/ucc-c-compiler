@@ -54,6 +54,21 @@ intval_t intval_truncate_bits(
 	intval_t pos_mask = ~(~0ULL << bits);
 	intval_t truncated = val & pos_mask;
 
+	/* we use sizeof our types so our conversions match the target conversions */
+#define BUILTIN(type)                    \
+		if(bits == sizeof(type) * CHAR_BIT){ \
+			if(signed_iv)                      \
+				*signed_iv = (signed type)val;   \
+			return (unsigned type)val;         \
+		}
+
+	BUILTIN(char);
+	BUILTIN(short);
+	BUILTIN(int);
+	BUILTIN(long);
+	BUILTIN(long long);
+
+	/* not builtin - bitfield, etc */
 	if(signed_iv){
 		sintval_t sig = truncated;
 
@@ -74,29 +89,9 @@ intval_t intval_truncate(
 		intval_t val, unsigned bytes,
 		sintval_t *sign_extended)
 {
-	switch(bytes){
-#define CAST(sz)                                    \
-		case sz:                                        \
-			val = intval_truncate_bits(                   \
-			    val, bytes * CHAR_BIT - 1, sign_extended);\
-			break
-
-		CAST(1);
-		CAST(2);
-		CAST(4);
-
-#undef CAST
-
-		case 8:
-			if(sign_extended)
-				*sign_extended = val;
-			break; /* no cast - max word size */
-
-		default:
-			ICW("can't truncate intval to %d bytes", bytes);
-	}
-
-	return val;
+	return intval_truncate_bits(
+			val, bytes * CHAR_BIT,
+			sign_extended);
 }
 
 int intval_high_bit(intval_t val, type_ref *ty)
