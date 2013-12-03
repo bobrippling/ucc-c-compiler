@@ -956,6 +956,11 @@ void v_cast(struct vstack *vp, type_ref *to)
 
 		if(szfrom != szto){
 			if(szto > szfrom){
+				/* we take from's signedness for our sign-extension,
+				 * e.g. uint64_t x = (int)0x8000_0000;
+				 * sign extends the int to an int64_t, then changes
+				 * the type
+				 */
 				impl_cast_load(vp, from, to,
 						type_ref_is_signed(from));
 			}else{
