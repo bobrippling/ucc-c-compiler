@@ -129,12 +129,19 @@ type_ref *type_ref_is_func_or_block(type_ref *r)
 
 const type *type_ref_get_type(type_ref *r)
 {
-	for(; r && r->type != type_ref_type; r = r->ref);
+	for(; r; )
+		switch(r->type){
+			case type_ref_tdef:
+				r = type_ref_skip_tdefs_casts(r);
+				break;
+			case type_ref_type:
+				return r->bits.type;
+			default:
+				goto no;
+		}
 
-	if(r && r->type == type_ref_tdef)
-		return type_ref_get_type(type_ref_skip_tdefs_casts(r));
-
-	return r ? r->bits.type : NULL;
+no:
+	return NULL;
 }
 
 int type_ref_is_bool(type_ref *r)
