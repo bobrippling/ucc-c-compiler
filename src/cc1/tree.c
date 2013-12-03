@@ -146,15 +146,17 @@ const type *type_new_primitive(enum type_primitive p)
 unsigned type_primitive_size(enum type_primitive tp)
 {
 	switch(tp){
-		case type_char:
 		case type__Bool:
 		case type_void:
 			return 1;
+		case type_char:
+			return UCC_SZ_CHAR;
 
 		case type_short:
-			return 2;
+			return UCC_SZ_SHORT;
 
 		case type_int:
+			return UCC_SZ_INT;
 		case type_float:
 			return 4;
 
@@ -162,10 +164,11 @@ unsigned type_primitive_size(enum type_primitive tp)
 		case type_double:
 			/* 4 on 32-bit */
 			if(cc1_m32)
-				return 4;
-			/* fall */
+				return 4; /* FIXME: 32-bit long */
+			return UCC_SZ_LONG;
+
 		case type_llong:
-			return 8;
+			return UCC_SZ_LONG_LONG;
 
 		case type_ldouble:
 			/* 80-bit float */
