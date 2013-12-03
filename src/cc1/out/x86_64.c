@@ -300,22 +300,30 @@ static void x86_load(struct vstack *from, int reg, int lea)
 
 void impl_load_iv(struct vstack *vp)
 {
-	if(intval_high_bit(vp->bits.val, vp->t) >= AS_MAX_MOV_BIT){
+	const int high_bit = intval_high_bit(vp->bits.val, vp->t);
+
+	if(high_bit >= AS_MAX_MOV_BIT){
 		int r = v_unused_reg(1);
 		char buf[INTVAL_BUF_SIZ];
+		type_ref *ty;
 
 		/* TODO: 64-bit registers in general on 32-bit */
 		UCC_ASSERT(!cc1_m32, "TODO: 32-bit 64-literal loads");
 
-		UCC_ASSERT(type_ref_size(vp->t, NULL) == 8,
-				"loading 64-bit literal (%lld) for non-long? (%s)",
-				vp->bits.val, type_ref_to_str(vp->t));
+		if(high_bit > 31 /* not necessarily AS_MAX_MOV_BIT */){
+			/* must be loading a long */
+			UCC_ASSERT(type_ref_size(vp->t, NULL) == 8,
+					"loading 64-bit literal (%lld) for non-long? (%s)",
+					vp->bits.val, type_ref_to_str(vp->t));
 
-		intval_str(buf, sizeof buf,
-				vp->bits.val, vp->t);
+			ty = vp->t;
+		}else{
+			ty = NULL;
+		}
 
-		out_asm("movabsq $%s, %%%s",
-				buf, x86_reg_str(r, vp->t));
+		intval_str(buf, sizeof buf, vp->bits.val, ty);
+
+		out_asm("movabsq $%s, %%%s", buf, x86_reg_str(r, ty));
 
 		vp->type = REG;
 		vp->bits.reg = r;
