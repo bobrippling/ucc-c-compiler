@@ -28,9 +28,8 @@ static void get_cast_sizes(type_ref *tlhs, type_ref *trhs, int *pl, int *pr)
 }
 
 static intval_t convert_intval_to_intval(
-		intval_t in,
-		unsigned sz_in, int signed_in,
-		unsigned sz_out, int signed_out)
+		intval_t in, unsigned sz_in,
+		int signed_in, int signed_out)
 {
 	/*
 	 * C99
@@ -94,7 +93,10 @@ static intval_t convert_intval_to_intval(
 #endif
 
 	/* need to sign extend if signed */
-	return signed_in || signed_out ? (intval_t)to_iv_sign_ext : to_iv;
+	if(signed_in || signed_out)
+		return (intval_t)to_iv_sign_ext;
+	else
+		return to_iv;
 }
 
 static void fold_const_expr_cast(expr *e, consty *k)
@@ -119,8 +121,8 @@ static void fold_const_expr_cast(expr *e, consty *k)
 
 				piv->val = convert_intval_to_intval(
 						piv->val,
-						type_ref_size(e->expr->tree_type, &e->expr->where), in_sig,
-						type_ref_size(e->tree_type, &e->where), out_sig);
+						type_ref_size(e->expr->tree_type, &e->expr->where),
+						in_sig, out_sig);
 			}
 #undef piv
 			break;
