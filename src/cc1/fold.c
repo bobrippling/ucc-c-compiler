@@ -683,7 +683,8 @@ void fold_global_func(decl *func_decl)
 {
 	if(func_decl->func_code){
 		symtable *const arg_symtab = DECL_FUNC_ARG_SYMTAB(func_decl);
-		type_ref *func_ret = type_ref_func_call(func_decl->ref, NULL);
+		funcargs *args;
+		type_ref *func_ret = type_ref_func_call(func_decl->ref, &args);
 
 		arg_symtab->in_func = func_decl;
 

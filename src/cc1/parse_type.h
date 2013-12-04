@@ -23,6 +23,9 @@ void parse_decls_multi_type(
 		symtable *scope,
 		decl ***pnew);
 
+/* if scope is NULL, args are returned, otherwise
+ * args are also added to scope's ->decls
+ */
 funcargs *parse_func_arglist(symtable *scope);
 
 decl_init *parse_initialisation(void); /* expr or {{...}} */

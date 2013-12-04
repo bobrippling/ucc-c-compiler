@@ -698,8 +698,8 @@ fin:;
 	}
 
 empty_func:
-
-	symtab_add_params(scope, args->arglist);
+	if(scope)
+		symtab_add_params(scope, args->arglist);
 
 	return args;
 }

@@ -178,7 +178,7 @@ static expr *parse_block()
 
 	}else if(accept(token_open_paren)){
 		/* ^(args...) */
-		args = parse_func_arglist(arg_symtab);
+		args = parse_func_arglist(NULL); /* no args here thanks */
 		EAT(token_close_paren);
 	}else{
 		/* ^{...} */
@@ -186,6 +186,8 @@ def_args:
 		args = funcargs_new();
 		args->args_void = 1;
 	}
+
+	symtab_add_params(arg_symtab, args->arglist);
 
 	r = expr_new_block(rt, args, parse_stmt_block());
 
