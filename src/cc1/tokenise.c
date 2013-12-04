@@ -461,7 +461,7 @@ static int peeknextchar()
 	return *bufferpos;
 }
 
-static void read_number(enum base mode)
+static void read_number(const enum base mode)
 {
 	char *end;
 	int of; /*verflow*/
@@ -687,6 +687,9 @@ void nexttoken()
 		enum base mode;
 
 		if(c == '0'){
+			/* note the '0' */
+			loc_now.chr++;
+
 			switch(tolower(c = peeknextchar())){
 				case 'x':
 					mode = HEX;
@@ -704,6 +707,7 @@ void nexttoken()
 							mode = DEC; /* just zero */
 
 						bufferpos--; /* have the zero */
+						loc_now.chr--;
 					}else{
 						mode = OCT;
 					}
