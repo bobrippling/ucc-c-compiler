@@ -40,8 +40,12 @@ int intval_str(char *buf, size_t nbuf, intval_t v, type_ref *ty)
 	/* the final resting place for an intval */
 	const int is_signed = type_ref_is_signed(ty);
 
-	if(ty)
-		v = intval_truncate(v, type_ref_size(ty, NULL), NULL);
+	if(ty){
+		sintval_t sv;
+		v = intval_truncate(v, type_ref_size(ty, NULL), &sv);
+		if(is_signed)
+			v = sv;
+	}
 
 	return snprintf(
 			buf, nbuf,
