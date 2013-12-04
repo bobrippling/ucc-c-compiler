@@ -59,10 +59,10 @@ symtable_global *symtabg_new(void)
 	return umalloc(sizeof *symtabg_new());
 }
 
-symtable *symtab_root(symtable *child)
+symtable *symtab_root(symtable *stab)
 {
-	for(; child->parent; child = child->parent);
-	return child;
+	for(; stab->parent; stab = stab->parent);
+	return stab;
 }
 
 symtable *symtab_func_root(symtable *stab)
@@ -72,7 +72,12 @@ symtable *symtab_func_root(symtable *stab)
 	return stab;
 }
 
-void symtab_params(symtable *stab, decl **params)
+symtable_global *symtab_global(symtable *stab)
+{
+	return (symtable_global *)symtab_root(stab);
+}
+
+void symtab_add_params(symtable *stab, decl **params)
 {
 	stab->are_params = 1;
 	dynarray_add_array(&stab->decls, params);
@@ -152,7 +157,7 @@ void symtab_label_add(symtable *stab, label *lbl)
 			lbl->spel, lbl);
 }
 
-label *symtab_label_find(symtable *stab, char *spel, where *w)
+label *symtab_label_find_or_new(symtable *stab, char *spel, where *w)
 {
 	label *lbl;
 
@@ -165,7 +170,7 @@ label *symtab_label_find(symtable *stab, char *spel, where *w)
 
 	if(!lbl){
 		/* forward decl */
-		lbl = label_new(w, spel, 0);
+		lbl = label_new(w, symtab_func(stab)->spel, spel, 0);
 		symtab_label_add(stab, lbl);
 	}
 

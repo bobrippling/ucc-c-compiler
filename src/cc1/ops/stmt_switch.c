@@ -125,7 +125,7 @@ static void fold_switch_enum(
 			}
 
 			if(!found)
-				warn_at(&cse->where, "'case %ld' not not a member of enum %s",
+				warn_at(&cse->where, "'case %ld' not a member of enum %s",
 						(long)v, enum_sue->spel);
 		}
 	}

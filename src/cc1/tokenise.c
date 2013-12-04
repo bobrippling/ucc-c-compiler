@@ -145,8 +145,9 @@ numeric currentval = { { 0 } }; /* an integer literal */
 char *currentspelling = NULL; /* e.g. name of a variable */
 
 char *currentstring   = NULL; /* a string literal */
-int   currentstringlen = 0;
+size_t currentstringlen = 0;
 int   currentstringwide = 0;
+where currentstringwhere;
 
 /* where the parser is, and where the last parsed token was */
 static struct loc loc_now;
@@ -460,7 +461,7 @@ static int peeknextchar()
 	return *bufferpos;
 }
 
-static void read_number(enum base mode)
+static void read_number(const enum base mode)
 {
 	char *end;
 	int of; /*verflow*/
@@ -484,7 +485,8 @@ static void read_number(enum base mode)
 		die_at(NULL, "%s-number expected (got '%c')",
 				base_to_str(mode), peeknextchar());
 
-	loc_now.chr += end - bufferpos;
+	/* -1, since we've already eaten the first numeric char */
+	loc_now.chr += end - bufferpos - 1;
 	bufferpos = end;
 
 	/* accept either 'U' 'L' or 'LL' as atomic parts (i.e. not LUL) */
@@ -557,11 +559,11 @@ static int curtok_is_xequal()
 	return curtok_to_xequal() != token_unknown;
 }
 
-static void read_string(char **sptr, int *plen)
+static void read_string(char **sptr, size_t *plen)
 {
 	char *const start = bufferpos;
 	char *const end = str_quotefin(start);
-	int size;
+	size_t size;
 
 	if(!end){
 		char *p;
@@ -581,13 +583,31 @@ static void read_string(char **sptr, int *plen)
 	escape_string(*sptr, plen);
 
 	bufferpos += size;
+	loc_now.chr += size;
+}
+
+static void ungetchar(char ch)
+{
+	if(ungetch != EOF)
+		ICE("ungetch");
+
+	ungetch = ch;
+}
+
+static int getungetchar(void)
+{
+	const int ch = ungetch;
+	ungetch = EOF;
+	return ch;
 }
 
 static void read_string_multiple(const int is_wide)
 {
 	/* TODO: read in "hello\\" - parse string char by char, rather than guessing and escaping later */
 	char *str;
-	int len;
+	size_t len;
+
+	where_cc1_current(&currentstringwhere);
 
 	read_string(&str, &len);
 
@@ -600,7 +620,7 @@ static void read_string_multiple(const int is_wide)
 			 *       ^
 			 */
 			char *new, *alloc;
-			int newlen;
+			size_t newlen;
 
 			read_string(&new, &newlen);
 
@@ -615,9 +635,7 @@ static void read_string_multiple(const int is_wide)
 			str = alloc;
 			len += newlen - 1;
 		}else{
-			if(ungetch != EOF)
-				ICE("ungetch");
-			ungetch = c;
+			ungetchar(c);
 			break;
 		}
 	}
@@ -655,11 +673,8 @@ void nexttoken()
 		return;
 	}
 
-	if(ungetch != EOF){
-		c = ungetch;
-		ungetch = EOF;
-	}else{
-		c = nextchar(); /* no numbers, no more peeking */
+	if((c = getungetchar()) == EOF){
+		c = nextchar();
 
 		loc_tok.chr = loc_now.chr - 1;
 
@@ -674,6 +689,9 @@ void nexttoken()
 		enum base mode;
 
 		if(c == '0'){
+			/* note the '0' */
+			loc_now.chr++;
+
 			switch(tolower(c = peeknextchar())){
 				case 'x':
 					mode = HEX;
@@ -691,6 +709,7 @@ void nexttoken()
 							mode = DEC; /* just zero */
 
 						bufferpos--; /* have the zero */
+						loc_now.chr--;
 					}else{
 						mode = OCT;
 					}

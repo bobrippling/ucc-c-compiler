@@ -1,7 +1,9 @@
-// RUN: %ucc -DCALL=trapv -o %t %s
+// RUN: %ucc -ftrapv -DCALL=trapv -o %t %s
 // RUN: %t; [ $? -ne 0 ]
-// RUN: %ucc -DCALL=notrapv -o %t %s
+// RUN: %ucc -ftrapv -DCALL=notrapv -o %t %s
 // RUN: %t
+
+#define INT_MAX 2147483647
 
 trapv(int i)
 {
@@ -15,7 +17,7 @@ notrapv(unsigned i)
 
 main()
 {
-	int max = 0xffffffffffffffff;
+	int max = INT_MAX;
 	CALL(max);
 	return 0;
 }

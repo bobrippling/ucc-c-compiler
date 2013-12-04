@@ -1,0 +1,28 @@
+many:
+.long 1
+.long 2
+.long 3
+.long 4
+
+more:
+.long 1, 0
+.long 2, 3
+.long 4, 0
+
+two_a:
+.long 1, 0
+.long 2, 3
+
+two_b:
+.long 1, 0
+.long 2, 3
+
+x:
+.long 1
+.long 2
+y:
+.long 1
+.long 2
+z:
+.long 1
+.long 2

@@ -1,5 +1,4 @@
-// RUN: %ucc -o %t %s
-// RUN: %t | %output_check '{ 1 2, 0, 0 }'
+// RUN: %ocheck 0 %s
 
 struct Pt
 {
@@ -19,9 +18,9 @@ struct Rect
 
 f(struct Rect *r)
 {
-	printf("{ %d %d, %d %d }\n",
-			r->pt.x, r->pt.y,
-			r->sz.w, r->sz.h);
+	if(r->pt.x != 1 || r->pt.y != 2
+	|| r->sz.h || r->sz.w)
+		abort();
 }
 
 g(struct Pt *pt)
@@ -32,4 +31,5 @@ g(struct Pt *pt)
 main()
 {
 	g((struct Pt[]){ 1, 2 });
+	return 0;
 }

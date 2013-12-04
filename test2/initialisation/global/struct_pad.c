@@ -1,4 +1,4 @@
-// RUN: %asmcheck %s
+// RUN: %layout_check %s
 struct A
 {
 	char a; /* b c d */

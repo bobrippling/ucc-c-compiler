@@ -17,6 +17,7 @@
 #include "../decl_init.h"
 #include "../pack.h"
 #include "out.h"
+#include "../str.h"
 
 #define ASSERT_SCALAR(di)                  \
 	UCC_ASSERT(di->type == decl_init_scalar, \
@@ -212,8 +213,9 @@ static void static_val(enum section_type sec, type_ref *ty, expr *e)
 			break;
 
 		case CONST_STRK:
+			stringlit_use(k.bits.str->lit); /* must be before the label access */
 			asm_declare_init_type(sec, ty);
-			asm_out_section(sec, "%s", k.bits.str->lbl);
+			asm_out_section(sec, "%s", k.bits.str->lit->lbl);
 			break;
 	}
 
@@ -439,12 +441,17 @@ static void asm_declare_init(enum section_type sec, decl_init *init, type_ref *t
 	}
 }
 
-void asm_label(enum section_type sec, const char *lbl, unsigned align)
+void asm_nam_begin3(enum section_type sec, const char *lbl, unsigned align)
 {
 	asm_out_section(sec,
 			".align %u\n"
 			"%s:\n",
 			align, lbl);
+}
+
+static void asm_nam_begin(enum section_type sec, decl *d)
+{
+	asm_nam_begin3(sec, decl_asm_spel(d), decl_align(d));
 }
 
 static void asm_reserve_bytes(enum section_type sec, unsigned nbytes)
@@ -471,19 +478,45 @@ void asm_predeclare_global(decl *d)
 	asm_out_section(SECTION_TEXT, ".globl %s\n", decl_asm_spel(d));
 }
 
+void asm_declare_stringlit(enum section_type sec, const stringlit *lit)
+{
+	FILE *const f = cc_out[sec];
+
+	/* could be SECTION_RODATA */
+	asm_nam_begin3(sec, lit->lbl, /*align:*/1);
+
+	if(lit->wide){
+		const char *join = "";
+		size_t i;
+
+		fprintf(f, ".long ");
+		for(i = 0; i < lit->len; i++){
+			fprintf(f, "%s%d", join, lit->str[i]);
+			join = ", ";
+		}
+
+	}else{
+		fprintf(f, ".ascii \"");
+		literal_print(f, lit->str, lit->len);
+		fputc('"', f);
+	}
+
+	fputc('\n', f);
+}
+
 void asm_declare_decl_init(enum section_type sec, decl *d)
 {
 	if((d->store & STORE_MASK_STORE) == store_extern){
 		asm_predeclare_extern(d);
 
 	}else if(d->init && !decl_init_is_zero(d->init)){
-		asm_label(sec, decl_asm_spel(d), decl_align(d));
+		asm_nam_begin(sec, d);
 		asm_declare_init(sec, d->init, d->ref);
 		asm_out_section(sec, "\n");
 
 	}else{
 		/* always resB, since we use decl_size() */
-		asm_label(SECTION_BSS, decl_asm_spel(d), decl_align(d));
+		asm_nam_begin(SECTION_BSS, d);
 		asm_reserve_bytes(SECTION_BSS, decl_size(d));
 	}
 }

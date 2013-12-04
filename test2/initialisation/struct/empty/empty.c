@@ -17,13 +17,13 @@ struct Pre
 	int j;
 };
 
-_main()
+main()
 {
 	struct A a;
 	struct Containter b;
 	struct Pre c;
 
-	_printf("%d %d %d %d\n",
+	printf("%d %d %d %d\n",
 			sizeof(struct A),
 			sizeof a,
 			sizeof b,

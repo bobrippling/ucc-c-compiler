@@ -13,7 +13,7 @@ __syscall:
 	syscall
 
 #ifdef __linux__
-	jne -1, $v0, .fin
+	jlt $v0, 0, .fin
 	neg $v0 # get positive errno
 #else
 	jnc .fin # MIPS???

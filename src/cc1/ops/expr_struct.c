@@ -64,7 +64,7 @@ err:
 		char wbuf[WHERE_BUF_SIZ];
 
 		die_at(&e->lhs->where, "%s incomplete type (%s)\n"
-				"%s: forward declared here",
+				"%s: note: forward declared here",
 				ptr_expect
 					? "dereferencing pointer to"
 					: "accessing member of",

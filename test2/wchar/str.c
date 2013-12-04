@@ -1,7 +1,9 @@
-// RUN: %ocheck 66 %s
+// RUN: %ocheck 0 %s
 // RUN: %ucc -o %t %s
 // RUN: %t | %output_check 'Yo'
-#include <wchar.h>
+
+//#include <wchar.h>
+typedef __WCHAR_TYPE__ wchar_t;
 
 main()
 {
@@ -9,6 +11,7 @@ main()
 
 	wprintf(L"Yo\n");
 
-	// TODO: return L'a';
-	return s[1]; // 66
+	if(L'A' + s[1] != 131) // 65 + 66
+		abort();
+	return 0;
 }

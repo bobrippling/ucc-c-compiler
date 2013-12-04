@@ -22,7 +22,7 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 	e->tree_type = d->ref;
 
 	if(!stab->parent){
-		d->spel = out_label_data_store(0);
+		d->spel = out_label_data_store(STORE_COMP_LIT);
 		d->store = store_static;
 	}
 
@@ -95,7 +95,7 @@ static void const_expr_compound_lit(expr *e, consty *k)
 		CONST_FOLD_LEAF(k);
 		k->type = CONST_ADDR_OR_NEED(d);
 		k->bits.addr.is_lbl = 1;
-		k->bits.addr.bits.lbl = d->spel;
+		k->bits.addr.bits.lbl = decl_asm_spel(d);
 		k->offset = 0;
 		k->nonstandard_const = nonstd;
 	}else{

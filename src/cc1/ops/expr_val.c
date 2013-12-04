@@ -11,16 +11,6 @@ const char *str_expr_val()
 	return "val";
 }
 
-int val_highest_bit(unsigned long long v)
-{
-	int i;
-	/* XXX: assumption about sizeof v */
-	for(i = 63; i >= 0; i--)
-		if(v & (1ULL << i))
-			return i;
-	return -1;
-}
-
 /*
 -- no suffix --
 [0-9]+ -> int, long int, long long int
@@ -54,7 +44,7 @@ void fold_expr_val(expr *e, symtable *stab)
 	const int can_change_sign = is_signed && (num->suffix & VAL_NON_DECIMAL);
 
 	const int long_max_bit = 63; /* TODO */
-	const int highest_bit = val_highest_bit(num->val.i);
+	const int highest_bit = integral_high_bit(num->val.i, e->tree_type);
 	enum type_primitive p =
 		num->suffix & VAL_LLONG ? type_llong :
 		num->suffix & VAL_LONG  ? type_long  : type_int;

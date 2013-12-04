@@ -1,5 +1,4 @@
-// RUN: %ucc -c %s
-// RUN: %layoutcheck %s
+// RUN: %layout_check %s
 
 typedef int (*fp)();
 typedef struct __FILE FILE;
@@ -26,7 +25,7 @@ struct __FILE
 	*/
 };
 
-FILE static _stdin = {
+FILE static stdin = {
 	.status = file_status_fine,
 	.fd = 1
 };

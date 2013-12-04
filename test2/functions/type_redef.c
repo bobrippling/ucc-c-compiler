@@ -1,8 +1,8 @@
 // RUN: %check -e %s
 
-typedef int f; // CHECK: /error: mismatching definitions of "f"/
+typedef int f; // CHECK: /note: previous definition/
 
-int f() // CHECK: /note: other definition/
+int f() // CHECK: /error: mismatching definitions of "f"/
 {
 	return 3;
 }

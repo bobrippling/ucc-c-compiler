@@ -19,5 +19,7 @@ void expr_promote_default(expr **pe, symtable *stab);
  * op code checks for 0 to len-1,
  * deref code checks for *len.
  * This way there's no duplicate warnings
+ *
+ * returns 1 if a warning was printed, 0 otherwise
  */
-void fold_check_bounds(expr *e, int chk_one_past_end);
+int fold_check_bounds(expr *e, int chk_one_past_end);

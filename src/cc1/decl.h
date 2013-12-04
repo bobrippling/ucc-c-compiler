@@ -35,7 +35,7 @@ struct decl_attr
 			{
 				attr_fmt_printf, attr_fmt_scanf
 			} fmt_func;
-			int fmt_arg, var_arg;
+			int fmt_idx, var_idx, valid;
 		} format;
 		char *section;
 		enum calling_conv
@@ -106,6 +106,12 @@ struct decl
 
 	decl_init *init; /* initialiser - converted to an assignment for non-globals */
 	stmt *func_code;
+
+	/* ^(){} has a decl+sym
+	 * the decl/sym has a ref to the expr block,
+	 * for pulling off .block.args, etc
+	 */
+	expr *block_expr;
 };
 
 const char *decl_asm_spel(decl *);
@@ -142,6 +148,7 @@ const char  *decl_attr_to_str(decl_attr *da);
 unsigned decl_size(decl *);
 unsigned decl_align(decl *);
 unsigned type_ref_size(type_ref *, where *from);
+integral_t type_ref_max(type_ref *, where *from);
 
 enum type_cmp decl_cmp(decl *a, decl *b, enum type_cmp_opts opts);
 int   decl_store_static_or_extern(enum decl_storage);
@@ -179,6 +186,7 @@ int type_ref_is_variadic_func(type_ref *);
 
 /* type_ref_is_* */
 int type_ref_is_complete(type_ref *);
+int type_ref_is_variably_modified(type_ref *);
 int type_ref_is_void(    type_ref *);
 int type_ref_is_integral(type_ref *);
 int type_ref_is_bool(    type_ref *);
@@ -214,7 +222,17 @@ type_ref *type_ref_is_func_or_block(type_ref *);
 struct_union_enum_st *type_ref_is_s_or_u(type_ref *);
 struct_union_enum_st *type_ref_is_s_or_u_or_e(type_ref *);
 type_ref *type_ref_skip_casts(type_ref *);
-type_ref *type_ref_is_char_ptr(type_ref *);
+
+
+/* char[] and char *, etc */
+enum type_ref_str_type
+{
+	type_ref_str_no,
+	type_ref_str_char,
+	type_ref_str_wchar
+};
+enum type_ref_str_type
+type_ref_str_type(type_ref *);
 
 /* note: returns static references */
 #define type_ref_cached_VOID()       type_ref_new_type(type_new_primitive(type_void))

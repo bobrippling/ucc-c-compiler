@@ -1,0 +1,17 @@
+a:
+.quad wstr.1
+
+b:
+.quad str.2
+
+c:
+.quad wstr.1
+
+d:
+.quad str.2
+
+wstr.1:
+.long 104, 101, 108, 108, 111, 0
+
+str.2:
+.ascii "hello\000"

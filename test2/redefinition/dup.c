@@ -1,11 +1,11 @@
 // RUN: %check -e %s
 
-f() // CHECK: /error: duplicate definitions of "f"/
+f() // CHECK: /note:/
 {
 }
 
 f();
 
-f()
+f() // CHECK: /error: duplicate definitions of "f"/
 {
 }

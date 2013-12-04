@@ -9,6 +9,7 @@
 #include "macros.h"
 #include "sym.h"
 #include "../util/platform.h"
+#include "../util/limits.h"
 #include "sue.h"
 #include "decl.h"
 #include "cc1.h"
@@ -25,18 +26,41 @@ numeric *numeric_new(long v)
 
 int numeric_cmp(const numeric *a, const numeric *b)
 {
-	const integral_t la = a->val.i, lb = b->val.i;
+	UCC_ASSERT(
+			(a->suffix & VAL_FLOATING) == (b->suffix & VAL_FLOATING),
+			"cmp int and float?");
 
-	if(la > lb)
-		return 1;
-	if(la < lb)
-		return -1;
-	return 0;
+	if(a->suffix & VAL_FLOATING){
+		const floating_t fa = a->val.f, fb = b->val.f;
+
+		if(fa > fb)
+			return 1;
+		if(fa < fb)
+			return -1;
+		return 0;
+
+	}else{
+		const integral_t la = a->val.i, lb = b->val.i;
+
+		if(la > lb)
+			return 1;
+		if(la < lb)
+			return -1;
+		return 0;
+	}
 }
 
 int integral_str(char *buf, size_t nbuf, integral_t v, type_ref *ty)
 {
+	/* the final resting place for an integral */
 	const int is_signed = type_ref_is_signed(ty);
+
+	if(ty){
+		sintegral_t sv;
+		v = integral_truncate(v, type_ref_size(ty, NULL), &sv);
+		if(is_signed)
+			v = sv;
+	}
 
 	return snprintf(
 			buf, nbuf,
@@ -53,17 +77,30 @@ integral_t integral_truncate_bits(
 	integral_t pos_mask = ~(~0ULL << bits);
 	integral_t truncated = val & pos_mask;
 
-	if(signed_iv){
-		sintegral_t sig = truncated;
-
-		if((sintegral_t)val < 0){
-			/* sign extend */
-			unsigned revbits = sizeof(integral_t) * CHAR_BIT - bits;
-
-			sig = (sig << revbits) >> revbits;
+	if(fopt_mode & FOPT_CAST_W_BUILTIN_TYPES){
+		/* we use sizeof our types so our conversions match the target conversions */
+#define BUILTIN(type)                    \
+		if(bits == sizeof(type) * CHAR_BIT){ \
+			if(signed_iv)                      \
+				*signed_iv = (signed type)val;   \
+			return (unsigned type)val;         \
 		}
 
-		*signed_iv = sig;
+		BUILTIN(char);
+		BUILTIN(short);
+		BUILTIN(int);
+		BUILTIN(long);
+		BUILTIN(long long);
+	}
+
+	/* not builtin - bitfield, etc */
+	if(signed_iv){
+		const unsigned shamt = CHAR_BIT * sizeof(val) - bits;
+
+		/* implementation specific signed right shift.
+		 * this is to sign extend the value
+		 */
+		*signed_iv = (sintegral_t)val << shamt >> shamt;
 	}
 
 	return truncated;
@@ -73,54 +110,25 @@ integral_t integral_truncate(
 		integral_t val, unsigned bytes,
 		sintegral_t *sign_extended)
 {
-	switch(bytes){
-#define CAST(sz)                                    \
-		case sz:                                        \
-			val = integral_truncate_bits(                 \
-			    val, bytes * CHAR_BIT - 1, sign_extended);\
-			break
-
-		CAST(1);
-		CAST(2);
-		CAST(4);
-
-#undef CAST
-
-		case 8:
-			if(sign_extended)
-				*sign_extended = val;
-			break; /* no cast - max word size */
-
-		default:
-			ICW("can't truncate numeric to %d bytes", bytes);
-	}
-
-	return val;
+	return integral_truncate_bits(
+			val, bytes * CHAR_BIT,
+			sign_extended);
 }
 
-int integral_is_64_bit(const integral_t val, type_ref *ty)
+int integral_high_bit(integral_t val, type_ref *ty)
 {
-	/* must apply the truncation here */
-	integral_t trunc;
-
-	if(type_ref_size(ty, &ty->where) < platform_word_size())
-		return 0;
-
-	trunc = integral_truncate(
-			val, type_ref_size(ty, &ty->where), NULL);
-
-#define INT_SHIFT (CHAR_BIT * sizeof(int))
 	if(type_ref_is_signed(ty)){
 		const sintegral_t as_signed = val;
 
-		if(as_signed < 0){
-			/* need unsigned (i.e. shr) shift */
-			return (int)((integral_t)trunc >> INT_SHIFT) != -1;
-		}
+		if(as_signed < 0)
+			val = integral_truncate(val, type_ref_size(ty, &ty->where), NULL);
 	}
 
-	return (trunc >> INT_SHIFT) != 0;
-#undef INT_SHIFT
+	{
+		int r;
+		for(r = -1; val; r++, val >>= 1);
+		return r;
+	}
 }
 
 static type *type_new_primitive1(enum type_primitive p)
@@ -146,34 +154,40 @@ const type *type_new_primitive(enum type_primitive p)
 unsigned type_primitive_size(enum type_primitive tp)
 {
 	switch(tp){
-		case type_schar:
-		case type_uchar:
-		case type_nchar:
-
 		case type__Bool:
 		case type_void:
 			return 1;
 
+		case type_schar:
+		case type_uchar:
+		case type_nchar:
+			return UCC_SZ_CHAR;
+
 		case type_short:
 		case type_ushort:
-			return 2;
+			return UCC_SZ_SHORT;
 
-		case type_enum:
 		case type_int:
 		case type_uint:
+			return UCC_SZ_INT;
+
+		case type_enum:
 		case type_float:
 			return 4;
 
 		case type_long:
 		case type_ulong:
-		case type_double:
 			/* 4 on 32-bit */
 			if(IS_32_BIT())
-				return 4;
-			/* fall */
+				return 4; /* FIXME: 32-bit long */
+			return UCC_SZ_LONG;
+
 		case type_llong:
 		case type_ullong:
-			return 8;
+			return UCC_SZ_LONG_LONG;
+
+		case type_double:
+			return IS_32_BIT() ? 4 : 8;
 
 		case type_ldouble:
 			/* 80-bit float */
@@ -191,6 +205,44 @@ unsigned type_primitive_size(enum type_primitive tp)
 	ICE("type %s in %s()",
 			type_primitive_to_str(tp), __func__);
 	return -1;
+}
+
+unsigned long long
+type_primitive_max(enum type_primitive p, int is_signed)
+{
+	unsigned long long max;
+
+	switch(p){
+		case type__Bool: return 1;
+		case type_nchar:
+		case type_schar:
+		case type_uchar:
+			max = UCC_SCHAR_MAX;
+			break;
+
+		case type_short: max = UCC_SHRT_MAX;      break;
+		case type_int:   max = UCC_INT_MAX;       break;
+		case type_long:  max = UCC_LONG_MAX;      break;
+		case type_llong: max = UCC_LONG_LONG_MAX; break;
+
+		case type_float:
+		case type_double:
+		case type_ldouble:
+			/* 80-bit float */
+			ICE("TODO: float max");
+
+		case type_union:
+		case type_struct:
+		case type_enum:
+			ICE("sue max");
+
+		case type_void:
+		case type_unknown:
+		default:
+			ICE("bad primitive %s", type_primitive_to_str(p));
+	}
+
+	return is_signed ? max : max * 2 + 1;
 }
 
 unsigned type_size(const type *t, where *from)

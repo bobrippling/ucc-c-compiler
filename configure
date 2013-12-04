@@ -41,6 +41,7 @@ UCC_CPU     = ${UCC_CPU}
 #define SECTION_DATA $SECTION_DATA
 #define SECTION_BSS  $SECTION_BSS
 #define UCC_M32      ${UCC_M32}
+#define ASM_PLBL_PRE "$ASM_PLBL"
 !
 
 	if ! which perl > /dev/null
@@ -89,6 +90,7 @@ UCC_LDFLAGS=''
 UCC_CFLAGS=''
 UCC_CPU=x86_64
 UCC_M32=0
+ASM_PLBL=.L
 
 unam="$(uname -s)"
 
@@ -127,6 +129,7 @@ case "$unam" in
 		UCC_STDLIB='-lSystem'
 		UCC_CRT='-lcrt1.o'
 		UCC_LDFLAGS='-macosx_version_min 10.5'
+		ASM_PLBL=L
 		leading_underscore
 		;;
 

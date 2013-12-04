@@ -23,9 +23,8 @@
 #include "funcargs.h"
 #include "out/lbl.h"
 #include "fold_sue.h"
+#include "format_chk.h"
 
-decl     *curdecl_func;
-type_ref *curdecl_ref_func_called; /* for funcargs-local labels and return type-checking */
 int fold_had_error;
 
 void fold_insert_casts(type_ref *tlhs, expr **prhs, symtable *stab)
@@ -260,7 +259,7 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 				die_at(&r->where, "restrict qualified function pointer");
 			}
 
-			symtab_fold_decls_sues(r->bits.func.arg_scope);
+			symtab_fold_sues(r->bits.func.arg_scope);
 			fold_funcargs(r->bits.func.args, r->bits.func.arg_scope, r);
 			fold_calling_conv(r);
 			break;
@@ -280,8 +279,9 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 
 		case type_ref_type:
 		{
-			/* check if we're a new struct/union decl */
-			struct_union_enum_st *sue = type_ref_is_s_or_u(r);
+			/* check if we're a new struct/union/enum decl
+			 * (yes - enums too) */
+			struct_union_enum_st *sue = type_ref_is_s_or_u_or_e(r);
 
 			if(sue){
 				fold_sue(sue, stab);
@@ -378,9 +378,13 @@ static int fold_align(int al, int min, int max, where *w)
 static void fold_func_attr(decl *d)
 {
 	funcargs *fa = type_ref_funcargs(d->ref);
+	decl_attr *da;
 
 	if(decl_attr_present(d, attr_sentinel) && !fa->variadic)
 		warn_at(&d->where, "variadic function required for sentinel check");
+
+	if((da = decl_attr_present(d, attr_format)))
+		format_check_decl(d, da);
 }
 
 static void fold_decl_add_sym(decl *d, symtable *stab)
@@ -574,6 +578,9 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 		const int is_static_init =
 			(d->store & STORE_MASK_STORE) == store_static || !stab->parent;
 
+		if(DECL_IS_FUNC(d))
+			die_at(&d->where, "initialisation of function '%s'", d->spel);
+
 		if((d->store & STORE_MASK_STORE) == store_extern){
 			/* allow for globals - remove extern since it's a definition */
 			if(stab->parent){
@@ -598,8 +605,10 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 							inits = stmt_new_wrapper(code, symtab_new(stab));
 
 						decl_init_brace_up_fold(d, inits->symtab);
-						decl_init_create_assignments_base(d->init,
-							d->ref, expr_new_identifier(d->spel),
+						decl_init_create_assignments_base(
+							d->init, d->ref,
+							expr_set_where(
+								expr_new_identifier(d->spel), &d->where),
 							inits);
 					);
 				/* folded elsewhere */
@@ -614,7 +623,9 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 	&& (d->store & STORE_MASK_STORE) == store_static
 	&& d->spel)
 	{
-			d->spel_asm = out_label_static_local(curdecl_func->spel, d->spel);
+			d->spel_asm = out_label_static_local(
+					symtab_func(stab)->spel,
+					d->spel);
 	}
 #undef inits
 }
@@ -649,20 +660,89 @@ void fold_decl_global_init(decl *d, symtable *stab)
 
 }
 
-void fold_func(decl *func_decl)
+void fold_func_passable(decl *func_decl, type_ref *func_ret)
+{
+	struct
+	{
+		char *extra;
+		where *where;
+	} the_return = { NULL, NULL };
+
+	if(decl_attr_present(func_decl, attr_noreturn)){
+		if(!type_ref_is_void(func_ret)){
+			cc1_warn_at(&func_decl->where, 0, WARN_RETURN_UNDEF,
+					"function \"%s\" marked no-return has a non-void return value",
+					func_decl->spel);
+		}
+
+
+		if(fold_passable(func_decl->func_code)){
+			/* if we reach the end, it's bad */
+			the_return.extra = "implicitly ";
+			the_return.where = &func_decl->where;
+		}else{
+			stmt *ret = NULL;
+
+			stmt_walk(func_decl->func_code,
+					stmt_walk_first_return, NULL, &ret);
+
+			if(ret){
+				/* obviously returns */
+				the_return.extra = "";
+				the_return.where = &ret->where;
+			}
+		}
+
+		if(the_return.extra){
+			cc1_warn_at(the_return.where, 0, WARN_RETURN_UNDEF,
+					"function \"%s\" marked no-return %sreturns",
+					func_decl->spel, the_return.extra);
+		}
+
+	}else if(!type_ref_is_void(func_ret)){
+		/* non-void func - check it doesn't return */
+		if(fold_passable(func_decl->func_code)){
+			cc1_warn_at(&func_decl->where, 0, WARN_RETURN_UNDEF,
+					"control reaches end of non-void function %s",
+					func_decl->spel);
+		}
+	}
+}
+
+void fold_func_code(decl *func_decl, symtable *arg_symtab)
+{
+	decl **i;
+
+	for(i = arg_symtab->decls; i && *i; i++){
+		decl *d = *i;
+
+		if(!d->spel)
+			die_at(&func_decl->where, "argument %ld in \"%s\" is unnamed",
+					i - arg_symtab->decls + 1, func_decl->spel);
+
+		if(!type_ref_is_complete(d->ref))
+			die_at(&d->where,
+					"function argument \"%s\" has incomplete type '%s'",
+					d->spel, type_ref_to_str(d->ref));
+	}
+
+	fold_stmt(func_decl->func_code);
+
+	/* now decls are folded, layout both parameters and local variables */
+	symtab_layout_decls(arg_symtab, 0);
+
+	/* finally, check label coherence */
+	symtab_chk_labels(symtab_func_root(arg_symtab));
+}
+
+void fold_global_func(decl *func_decl)
 {
 	if(func_decl->func_code){
-		struct
-		{
-			char *extra;
-			where *where;
-		} the_return = { NULL, NULL };
 		symtable *const arg_symtab = DECL_FUNC_ARG_SYMTAB(func_decl);
+		funcargs *args;
+		type_ref *func_ret = type_ref_func_call(func_decl->ref, &args);
 
-		decl     *const olddecl_func = curdecl_func;
-		type_ref *const olddecl_ref_func_called = curdecl_ref_func_called;
-
-		arg_symtab->func_exists = 1;
+		arg_symtab->in_func = func_decl;
 
 		if(func_decl->store & store_inline
 		&& (func_decl->store & STORE_MASK_STORE) == store_default)
@@ -676,80 +756,9 @@ void fold_func(decl *func_decl)
 			warn_at(&func_decl->where,
 					"typedef function implementation is an extension");
 
-		{
-			type_ref *fref = type_ref_is_func_or_block(func_decl->ref);
+		fold_func_code(func_decl, arg_symtab);
 
-			UCC_ASSERT(fref, "not a func or block");
-
-			curdecl_ref_func_called = type_ref_func_call(fref, NULL);
-			curdecl_func = func_decl;
-		}
-
-		{
-			decl **i;
-			for(i = arg_symtab->decls; i && *i; i++){
-				decl *d = *i;
-
-				if(!d->spel)
-					die_at(&func_decl->where, "argument %ld in \"%s\" is unnamed",
-							i - arg_symtab->decls + 1, func_decl->spel);
-
-				if(!type_ref_is_complete(d->ref))
-					die_at(&d->where,
-							"function argument \"%s\" has incomplete type '%s'",
-							d->spel, type_ref_to_str(d->ref));
-			}
-		}
-
-		fold_stmt(func_decl->func_code);
-
-		/* now decls are folded, layout both parameters and local variables */
-		symtab_layout_decls(arg_symtab, 0);
-
-		/* finally, check label coherence */
-		symtab_chk_labels(symtab_func_root(arg_symtab));
-
-		if(decl_attr_present(func_decl, attr_noreturn)){
-			if(!type_ref_is_void(curdecl_ref_func_called)){
-				cc1_warn_at(&func_decl->where, 0, WARN_RETURN_UNDEF,
-						"function \"%s\" marked no-return has a non-void return value",
-						func_decl->spel);
-			}
-
-
-			if(fold_passable(func_decl->func_code)){
-				/* if we reach the end, it's bad */
-				the_return.extra = "implicitly ";
-				the_return.where = &func_decl->where;
-			}else{
-				stmt *ret = NULL;
-
-				stmt_walk(func_decl->func_code, stmt_walk_first_return, NULL, &ret);
-
-				if(ret){
-					/* obviously returns */
-					the_return.extra = "";
-					the_return.where = &ret->where;
-				}
-			}
-
-			if(the_return.extra){
-				cc1_warn_at(the_return.where, 0, WARN_RETURN_UNDEF,
-						"function \"%s\" marked no-return %sreturns",
-						func_decl->spel, the_return.extra);
-			}
-
-		}else if(!type_ref_is_void(curdecl_ref_func_called)){
-			/* non-void func - check it doesn't return */
-			if(fold_passable(func_decl->func_code)){
-				cc1_warn_at(&func_decl->where, 0, WARN_RETURN_UNDEF,
-						"control reaches end of non-void function %s",
-						func_decl->spel);
-			}
-		}
-
-		curdecl_func = olddecl_func;
-		curdecl_ref_func_called = olddecl_ref_func_called;
+		fold_func_passable(func_decl, func_ret);
 	}
 }
 
@@ -777,7 +786,7 @@ void fold_decl_global(decl *d, symtable *stab)
 
 	if(DECL_IS_FUNC(d)){
 		UCC_ASSERT(!d->init, "function has init?");
-		fold_func(d);
+		fold_global_func(d);
 	}
 }
 
@@ -843,43 +852,9 @@ void fold_check_expr(expr *e, enum fold_chk chk, const char *desc)
 	}
 }
 
-#ifdef SYMTAB_DEBUG
-void print_stab(symtable *st, int current, where *w)
-{
-	decl **i;
-
-	if(st->parent)
-		print_stab(st->parent, 0, NULL);
-
-	if(current)
-		fprintf(stderr, "[34m");
-
-	fprintf(stderr, "\ttable %p, children %d, vars %d, parent: %p",
-			(void *)st,
-			dynarray_count(st->children),
-			dynarray_count(st->decls),
-			(void *)st->parent);
-
-	if(current)
-		fprintf(stderr, "[m%s%s", w ? " at " : "", w ? where_str(w) : "");
-
-	fputc('\n', stderr);
-
-	for(i = st->decls; i && *i; i++)
-		fprintf(stderr, "\t\tdecl %s\n", (*i)->spel);
-}
-#endif
-
 void fold_stmt(stmt *t)
 {
 	UCC_ASSERT(t->symtab->parent, "symtab has no parent");
-
-#ifdef SYMTAB_DEBUG
-	if(stmt_kind(t, code)){
-		fprintf(stderr, "fold-code, symtab:\n");
-		PRINT_STAB(t, 1);
-	}
-#endif
 
 	t->f_fold(t);
 }
@@ -915,7 +890,15 @@ void fold_funcargs(funcargs *fargs, symtable *stab, type_ref *from)
 			decl *const d = fargs->arglist[i];
 
 			/* fold before for array checks, etc */
+			if(d->init)
+				die_at(&d->where, "parameter '%s' is initialised", d->spel);
 			fold_decl(d, stab, NULL);
+
+			if(type_ref_is_void(d->ref)){
+				/* allow if it's the first, only and unnamed */
+				if(i != 0 || fargs->arglist[1] || d->spel)
+					die_at(&d->where, "function parameter is void");
+			}
 
 			/* convert any array definitions and functions to pointers */
 			EOF_WHERE(&d->where,

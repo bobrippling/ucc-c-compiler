@@ -132,7 +132,7 @@ int curtok_is_compound_assignment()
 	return curtok_to_compound_op() != op_unknown;
 }
 
-const char *token_to_str(enum token t)
+char *token_to_str(enum token t)
 {
 	switch(t){
 		CASE_STR_PREFIX(token,  do);
@@ -256,6 +256,119 @@ const char *token_to_str(enum token t)
 	return NULL;
 }
 
+char *curtok_to_identifier(int *alloc)
+{
+	switch(curtok){
+		case token_do:
+		case token_if:
+		case token_else:
+		case token_while:
+		case token_for:
+		case token_break:
+		case token_return:
+		case token_switch:
+		case token_case:
+		case token_default:
+		case token_continue:
+		case token_goto:
+		case token_asm:
+		case token_sizeof:
+		case token_typeof:
+		case token__Generic:
+		case token__Static_assert:
+		case token_extern:
+		case token_static:
+		case token_auto:
+		case token_register:
+		case token__Alignof:
+		case token__Alignas:
+		case token_inline:
+		case token__Noreturn:
+		case token_const:
+		case token_volatile:
+		case token_restrict:
+		case token_void:
+		case token_char:
+		case token_short:
+		case token_int:
+		case token_long:
+		case token_float:
+		case token_double:
+		case token__Bool:
+		case token_signed:
+		case token_unsigned:
+		case token_typedef:
+		case token_struct:
+		case token_union:
+		case token_enum:
+		case token___builtin_va_list:
+		case token_attribute:
+			/* we can stringify these */
+			*alloc = 0;
+			return token_to_str(curtok);
+		case token_identifier:
+			*alloc = 1;
+			return token_current_spel();
+
+		case token_integer:
+		case token_floater:
+		case token_character:
+		case token_string:
+		case token_elipsis:
+		case token_open_paren:
+		case token_open_block:
+		case token_open_square:
+		case token_close_paren:
+		case token_close_block:
+		case token_close_square:
+		case token_comma:
+		case token_semicolon:
+		case token_colon:
+		case token_plus:
+		case token_minus:
+		case token_multiply:
+		case token_divide:
+		case token_modulus:
+		case token_increment:
+		case token_decrement:
+		case token_assign:
+		case token_dot:
+		case token_eq:
+		case token_le:
+		case token_lt:
+		case token_ge:
+		case token_gt:
+		case token_ne:
+		case token_not:
+		case token_bnot:
+		case token_andsc:
+		case token_and:
+		case token_orsc:
+		case token_or:
+		case token_xor:
+		case token_question:
+		case token_plus_assign:
+		case token_minus_assign:
+		case token_multiply_assign:
+		case token_divide_assign:
+		case token_modulus_assign:
+		case token_not_assign:
+		case token_bnot_assign:
+		case token_and_assign:
+		case token_or_assign:
+		case token_xor_assign:
+		case token_shiftl:
+		case token_shiftr:
+		case token_shiftl_assign:
+		case token_shiftr_assign:
+		case token_ptr:
+		case token_eof:
+		case token_unknown:
+			break;
+	}
+	return NULL;
+}
+
 void eat2(enum token t, const char *fnam, int line, int die)
 {
 	if(t != curtok){
@@ -270,7 +383,7 @@ void eat2(enum token t, const char *fnam, int line, int die)
 				ident ? "\" " : "",
 				fnam, line);
 
-		if(die || --cc1_max_errors <= 0)
+		if(die || --cc1_error_limit <= 0)
 			exit(1);
 
 		/* XXX: we continue here, assuming we had the token anyway */
@@ -327,10 +440,11 @@ int curtok_in_list(va_list l)
 	return 0;
 }
 
-void token_get_current_str(char **ps, int *pl, int *pwide)
+void token_get_current_str(
+		char **ps, size_t *pl, int *pwide, where *w)
 {
 	extern char *currentstring;
-	extern int   currentstringlen;
+	extern size_t currentstringlen;
 	extern int   currentstringwide;
 
 	*ps = currentstring;
@@ -339,6 +453,11 @@ void token_get_current_str(char **ps, int *pl, int *pwide)
 		*pwide = currentstringwide;
 	else if(currentstringwide)
 		die_at(NULL, "wide string not wanted");
+
+	if(w){
+		extern where currentstringwhere;
+		memcpy_safe(w, &currentstringwhere);
+	}
 
 	if(pl){
 		*pl = currentstringlen;

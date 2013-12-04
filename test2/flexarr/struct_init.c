@@ -1,6 +1,5 @@
-// RUN: %ucc -o %t %s
-// RUN: %t | %output_check '[0] = hi 5' '[1] = yo 2'
-// RUN: %t; [ $? -eq 8 ]
+// RUN: %ocheck 0 %s
+
 struct A
 {
 	int n;
@@ -12,10 +11,12 @@ struct A
 	} ents[];
 };
 
-print(struct A *p)
+check(struct Ent *p, char *s, int n)
 {
-	for(int i = 0; i < p->n; i++)
-		printf("[%d] = %s %d\n", i, p->ents[i].nam, p->ents[i].type);
+	if(strcmp(p->nam, s))
+		abort();
+	if(p->type != n)
+		abort();
 }
 
 main()
@@ -28,7 +29,14 @@ main()
 		}
 	};
 
-	print(&x);
+	if(x.n != 2)
+		abort();
 
-	return sizeof(x);
+	check(&x.ents[0], "hi", 5);
+	check(&x.ents[1], "yo", 2);
+
+	if(sizeof(x) != 8)
+		abort();
+
+	return 0;
 }

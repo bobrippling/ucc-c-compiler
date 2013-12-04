@@ -12,27 +12,60 @@ void fold_expr__Generic(expr *e, symtable *stab)
 
 	def = NULL;
 
-	FOLD_EXPR(e->expr, stab);
+	/* we use the non-decayed type */
+	fold_expr_no_decay(e->expr, stab);
 
 	for(i = e->bits.generic.list; i && *i; i++){
 		struct generic_lbl **j, *l = *i;
 
-		FOLD_EXPR(l->e, stab);
+		fold_expr_no_decay(l->e, stab);
 
 		for(j = i + 1; *j; j++){
 			type_ref *m = (*j)->t;
 
 			/* duplicate default checked below */
 			if(m && type_ref_cmp(m, l->t, 0) == TYPE_EQUAL)
-				die_at(&m->where, "duplicate type in _Generic: %s", type_ref_to_str(l->t));
+				die_at(&m->where, "duplicate type in _Generic: %s",
+						type_ref_to_str(l->t));
 		}
 
 
 		if(l->t){
+			enum { OKAY, INCOMPLETE, VARIABLE, FUNC } prob = OKAY;
+			const char *sprob;
+
 			fold_type_ref(l->t, NULL, stab);
 
+			if(!type_ref_is_complete(l->t))
+				prob = INCOMPLETE;
+			else if(type_ref_is_variably_modified(l->t))
+				prob = VARIABLE;
+			else if(type_ref_is_func_or_block(l->t))
+				prob = FUNC;
+
+			switch(prob){
+				case INCOMPLETE:
+					sprob = "incomplete";
+					break;
+				case VARIABLE:
+					sprob = "variably-modified";
+					break;
+				case FUNC:
+					sprob = "function";
+					break;
+				case OKAY:
+					sprob = NULL;
+					break;
+			}
+
+			if(sprob){
+				die_at(&l->e->where, "%s type '%s' in _Generic",
+						sprob, type_ref_to_str(l->t));
+			}
+
 			if(type_ref_cmp(e->expr->tree_type, l->t, 0) == TYPE_EQUAL){
-				UCC_ASSERT(!e->bits.generic.chosen, "already chosen expr for _Generic");
+				UCC_ASSERT(!e->bits.generic.chosen,
+						"already chosen expr for _Generic");
 				e->bits.generic.chosen = l;
 			}
 		}else{

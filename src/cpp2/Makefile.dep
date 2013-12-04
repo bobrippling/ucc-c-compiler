@@ -11,13 +11,15 @@ expr_tok.o: expr_tok.c expr.h expr_tok.h str.h preproc.h main.h \
  ../util/alloc.h ../util/str.h ../util/util.h ../util/where.h \
  ../util/compiler.h ../util/escape.h
 include.o: include.c ../util/dynarray.h ../util/dyn.h ../util/alloc.h \
- ../util/util.h ../util/where.h ../util/compiler.h include.h
+ ../util/util.h ../util/where.h ../util/compiler.h include.h main.h \
+ preproc.h
 macro.o: macro.c ../util/util.h ../util/where.h ../util/compiler.h \
  ../util/alloc.h ../util/dynarray.h ../util/dyn.h macro.h main.h \
  preproc.h
 main.o: main.c ../util/util.h ../util/where.h ../util/compiler.h \
  ../util/dynarray.h ../util/dyn.h ../util/alloc.h ../util/platform.h \
- ../util/std.h main.h macro.h preproc.h include.h directive.h
+ ../util/std.h ../util/limits.h main.h macro.h preproc.h include.h \
+ directive.h
 preproc.o: preproc.c ../util/util.h ../util/where.h ../util/compiler.h \
  ../util/alloc.h ../util/str.h main.h preproc.h directive.h eval.h str.h
 snapshot.o: snapshot.c ../util/dynarray.h ../util/dyn.h ../util/alloc.h \

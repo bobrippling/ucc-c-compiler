@@ -59,8 +59,8 @@ void bitfield_trunc_check(decl *mem, expr *from)
 
 	if(k.type == CONST_NUM){
 		const sintegral_t kexp = k.bits.num.val.i;
-		/* highest may be -1 - k.bits.num.val is zero */
-		const int highest = val_highest_bit(k.bits.num.val.i);
+		/* highest may be -1 - kexp is zero */
+		const int highest = integral_high_bit(k.bits.num.val.i, from->tree_type);
 		const int is_signed = type_ref_is_signed(mem->field_width->tree_type);
 
 		const_fold(mem->field_width, &k);

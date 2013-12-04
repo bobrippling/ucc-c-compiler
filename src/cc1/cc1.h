@@ -78,6 +78,7 @@ enum fopt
 	FOPT_INTEGRAL_FLOAT_LOAD   = 1 << 15,
 	FOPT_SYMBOL_ARITH          = 1 << 16,
 	FOPT_SIGNED_CHAR           = 1 << 17,
+	FOPT_CAST_W_BUILTIN_TYPES  = 1 << 18,
 };
 
 enum mopt
@@ -105,7 +106,7 @@ extern enum c_std cc1_std;
 void cc1_warn_atv(struct where *where, int die, enum warning w, const char *fmt, va_list l);
 void cc1_warn_at( struct where *where, int die, enum warning w, const char *fmt, ...) ucc_printflike(4, 5);
 
-extern int cc1_max_errors;
+extern int cc1_error_limit;
 
 extern int cc1_mstack_align; /* 2^n */
 extern int cc1_gdebug; /* -g */

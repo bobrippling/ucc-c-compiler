@@ -1,5 +1,5 @@
 a:
-.zero 1
+.quad 0
 b:
 .long 1
 .zero 4

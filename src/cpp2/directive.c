@@ -32,7 +32,7 @@
 #define NOOP_RET() if(parse_should_noop()) return
 
 
-#define N_IFSTACK 32
+#define N_IFSTACK 64
 static struct
 {
 	char noop, if_chosen;
@@ -160,7 +160,7 @@ static void handle_undef(token **tokens)
 
 	nam = tokens[0]->w;
 	if(!macro_remove(nam))
-		CPP_WARN(WUNDEF, "macro \"%s\" not defined", nam);
+		CPP_WARN(WUNDEF_NDEF, "macro \"%s\" not defined", nam);
 }
 
 static void handle_error_warning(token **tokens, int err)
@@ -352,7 +352,7 @@ static int /*bool*/ if_eval(token **tokens, const char *type)
 		const int r = !!expr_eval(e, &had_ident);
 
 		if(had_ident)
-			CPP_WARN(WUNDEF,
+			CPP_WARN(WUNDEF_IN_IF,
 					"undefined identifier in: \"#%s%s\"", type, w);
 
 		free(w);

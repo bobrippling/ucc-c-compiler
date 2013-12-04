@@ -1,7 +1,5 @@
-// RUN: %asmcheck %s
+// RUN: %ucc -c %s
 
-int i = sizeof(int);
-int p = sizeof(int *);
 main()
 {
 	return *(int *)5;

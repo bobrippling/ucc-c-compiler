@@ -1,5 +1,4 @@
-// RUN: %ucc -c %s
-// RUN: %ucc -S -o- %s | grep -F '.long 5'
+// RUN: %layout_check %s
 
 int *p = 5;
 

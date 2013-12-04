@@ -12,10 +12,10 @@
 #include "str.h"
 #include "macros.h"
 
-void escape_string(char *old_str, int *plen)
+void escape_string(char *old_str, size_t *plen)
 {
 	char *new_str = umalloc(*plen);
-	int i, new_i;
+	size_t i, new_i;
 
 	/* "parse" into another string */
 
@@ -46,8 +46,8 @@ void escape_string(char *old_str, int *plen)
 int literal_print(FILE *f, const char *s, int len)
 {
 	for(; len; s++, len--)
-		if(*s == '\\'){
-			if(fputs("\\\\", f) == EOF)
+		if(*s == '\\' || *s == '"'){
+			if(fprintf(f, "\\%c", *s) < 0)
 				return EOF;
 		}else if(!isprint(*s)){
 			if(fprintf(f, "\\%03o", *s) < 0)

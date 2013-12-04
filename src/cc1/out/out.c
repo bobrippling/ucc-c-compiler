@@ -1335,6 +1335,11 @@ void v_cast(struct vstack *vp, type_ref *to)
 
 			if(szfrom != szto){
 				if(szto > szfrom){
+					/* we take from's signedness for our sign-extension,
+					 * e.g. uint64_t x = (int)0x8000_0000;
+					 * sign extends the int to an int64_t, then changes
+					 * the type
+					 */
 					impl_cast_load(vp, from, to,
 							type_ref_is_signed(from));
 				}else{
@@ -1354,17 +1359,7 @@ void v_cast(struct vstack *vp, type_ref *to)
 
 void out_change_type(type_ref *t)
 {
-	/* XXX: memleak */
-	vtop->t = t;
-
-	/* we can't change type for large integer values,
-	 * they need truncating
-	 */
-	UCC_ASSERT(
-			vtop->type != V_CONST_I
-			|| !integral_is_64_bit(vtop->bits.val_i, vtop->t),
-			"can't %s for large constant %" NUMERIC_FMT_D, __func__,
-			vtop->bits.val_i);
+	impl_change_type(t);
 }
 
 void out_call(int nargs, type_ref *r_ret, type_ref *r_func)

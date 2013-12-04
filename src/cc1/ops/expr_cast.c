@@ -13,6 +13,12 @@
 #define IS_RVAL_CAST(e)  (!(e)->bits.cast.tref)
 #define IS_DECAY_CAST(e) ((e)->bits.cast.tref && e->bits.cast.is_decay)
 
+static integral_t convert_integral_to_integral_warn(
+		const integral_t in, type_ref *tin,
+		type_ref *tout,
+		int do_warn, where *w);
+
+
 const char *str_expr_cast()
 {
 	return "cast";
@@ -73,53 +79,83 @@ static void fold_cast_num(expr *const e, numeric *const num)
 	if(type_ref_is_type(e->tree_type, type__Bool)){
 		*pv = !!*pv; /* analagous to out/out.c::out_normalise()'s constant case */
 
-	}else if(e->expr_cast_implicit && !from_fp){
-		const unsigned sz = type_ref_size(e->tree_type, &e->where);
-		const integral_t old = *pv;
-		const int to_sig   = type_ref_is_signed(e->tree_type);
-		const int from_sig = type_ref_is_signed(expr_cast_child(e)->tree_type);
-		integral_t to_iv;
-		sintegral_t to_iv_sign_ext;
-
-		/* we don't save the truncated value - we keep the original
-		 * so negative numbers, for example, are preserved */
-		to_iv = integral_truncate(*pv, sz, &to_iv_sign_ext);
-
-		if(e->expr_cast_implicit
-		&& (to_sig && from_sig ? (sintegral_t)old != to_iv_sign_ext : old != to_iv))
-		{
-#define CAST_WARN(pre_fmt, pre_val, post_fmt, post_val)  \
-			warn_at(&e->where,                           \
-					"implicit cast changes value from %"     \
-					pre_fmt " to %" post_fmt,                \
-					pre_val, post_val)
-
-			/* nice... */
-			if(from_sig){
-				if(to_sig)
-					CAST_WARN(
-							NUMERIC_FMT_D, (long long signed)old,
-							NUMERIC_FMT_D, (long long signed)to_iv_sign_ext);
-				else
-					CAST_WARN(
-							NUMERIC_FMT_D, (long long signed)old,
-							NUMERIC_FMT_U, (long long unsigned)to_iv);
-			}else{
-				if(to_sig)
-					CAST_WARN(
-							NUMERIC_FMT_U, (long long unsigned)old,
-							NUMERIC_FMT_D, (long long signed)to_iv_sign_ext);
-				else
-					CAST_WARN(
-							NUMERIC_FMT_U, (long long unsigned)old,
-							NUMERIC_FMT_U, (long long unsigned)to_iv);
-			}
-		}
-
-		/* need to sign extend if signed */
-		*pv = from_sig && to_sig ? (integral_t)to_iv_sign_ext : to_iv;
+	}else if(!from_fp){
+		*pv = convert_integral_to_integral_warn(
+				*pv, e->expr->tree_type,
+				e->tree_type,
+				e->expr_cast_implicit, &e->where);
 	}
 #undef pv
+}
+
+static integral_t convert_integral_to_integral_warn(
+		const integral_t in, type_ref *tin,
+		type_ref *tout,
+		int do_warn, where *w)
+{
+	/*
+	 * C99
+	 * 6.3.1.3 Signed and unsigned integers
+	 *
+	 * When a value with integer type is converted to another integer type
+	 * other than _Bool, if the value can be represented by the new type, it
+	 * is unchanged.
+	 *
+	 * Otherwise, if the new type is unsigned, the value is converted by
+	 * repeatedly adding or subtracting one more than the maximum value that
+	 * can be represented in the new type until the value is in the range of
+	 * the new type.
+	 *
+	 * Otherwise, the new type is signed and the value cannot be represented
+	 * in it; either the result is implementation-defined or an
+	 * implementation-defined signal is raised.
+	 */
+
+	/* representable
+	 * if size(out) > size(in)
+	 * or if size(out) == size(in)
+	 *    and conversion is not unsigned -> signed
+	 * or conversion is unsigned -> signed and in < signed-max
+	 */
+
+	const unsigned sz_in = type_ref_size(tin, w);
+	const int signed_in = type_ref_is_signed(tin);
+	const int signed_out = type_ref_is_signed(tout);
+	sintegral_t to_iv_sign_ext;
+	integral_t to_iv = integral_truncate(in, sz_in, &to_iv_sign_ext);
+	integral_t ret;
+
+	/* need to sign extend if signed */
+	if(signed_in || signed_out)
+		ret = (integral_t)to_iv_sign_ext;
+	else
+		ret = to_iv;
+
+	if(do_warn){
+		if(ret != in){
+			warn_at(w,
+					"implicit cast changes value from %lld to %lld",
+					in, ret);
+
+		}else if(signed_out && !signed_in && (sintegral_t)ret < 0){
+			warn_at(w,
+					"implicit cast to negative changes value from %llu to %lld",
+					in, (sintegral_t)to_iv_sign_ext);
+
+		}else if(signed_out ? (sintegral_t)ret > 0 : 1){
+			/* ret > 0 - don't warn for -1 <-- -1L */
+			int in_high = integral_high_bit(in, tin);
+			int out_high = integral_high_bit(type_ref_max(tout, w), tout);
+
+			if(in_high > out_high){
+				warn_at(w,
+						"implicit cast truncates value from %lld to %lld",
+						in, ret & ((1ULL << (out_high + 1)) - 1));
+			}
+		}
+	}
+
+	return ret;
 }
 
 static void fold_const_expr_cast(expr *e, consty *k)
@@ -205,6 +241,15 @@ static void fold_const_expr_cast(expr *e, consty *k)
 			}
 			break;
 		}
+	}
+
+	/* if casting from pointer to int, it's not a constant
+	 * but we treat it as such, as an extension */
+	if(type_ref_is_ptr(e->expr->tree_type)
+	&& !type_ref_is_ptr(e->tree_type)
+	&& !k->nonstandard_const)
+	{
+		k->nonstandard_const = e;
 	}
 }
 

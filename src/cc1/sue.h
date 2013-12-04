@@ -3,6 +3,7 @@
 
 typedef struct enum_member
 {
+	where where;
 	char *spel;
 	expr *val; /* (expr *)-1 if not given */
 	decl_attr *attr; /* enum { ABC __attribute(()) [ = ... ] }; */
@@ -22,10 +23,15 @@ struct struct_union_enum_st
 
 	char *spel; /* "<anon ...>" if anon */
 	unsigned anon : 1,
-	         complete : 1,
+	         got_membs : 1, /* true if we've had {} (optionally no members) */
+	         foldprog : 2,
 	         flexarr : 1,
-	         folded : 1,
 	         contains_const : 1;
+
+#define SUE_FOLDED_NO 0
+#define SUE_FOLDED_PARTIAL 1
+#define SUE_FOLDED_FULLY 2
+
 	int align, size;
 
 	sue_member **members;
@@ -41,7 +47,8 @@ struct struct_union_enum_st
 
 #define sue_nmembers(x) dynarray_count((x)->members)
 
-#define sue_complete(sue) ((sue)->complete)
+#define sue_complete(sue) (\
+		(sue)->got_membs && (sue)->foldprog == SUE_FOLDED_FULLY)
 
 sue_member *sue_member_from_decl(decl *);
 
@@ -62,10 +69,12 @@ struct_union_enum_st *sue_find_this_scope(symtable *, const char *spel);
 struct_union_enum_st *sue_decl(
 		symtable *stab, char *spel,
 		sue_member **members, enum type_primitive prim,
-		int is_complete, int is_declaration);
+		int got_membs, int is_declaration);
+
+sue_member *sue_drop(struct_union_enum_st *sue, sue_member **pos);
 
 /* enum specific */
-void enum_vals_add(sue_member ***, char *, expr *, decl_attr *);
+void enum_vals_add(sue_member ***, where *, char *, expr *, decl_attr *);
 int  enum_nentries(struct_union_enum_st *);
 
 void enum_member_search(enum_member **, struct_union_enum_st **, symtable *, const char *spel);

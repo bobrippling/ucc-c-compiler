@@ -62,6 +62,7 @@ void parse_and_fold(symtable_global *globals)
 				| DECL_MULTI_ACCEPT_FUNC_CODE
 				| DECL_MULTI_ALLOW_STORE
 				| DECL_MULTI_ALLOW_ALIGNAS,
+				/*newdecl:*/1,
 				current_scope,
 				&new);
 

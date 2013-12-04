@@ -15,7 +15,7 @@ f(int a, ...)
 	return ret;
 }
 
-_main()
+main()
 {
 	return f(5, 2, 3, 4);
 }

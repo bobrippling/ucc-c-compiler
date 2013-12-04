@@ -139,6 +139,15 @@ static void gen_gasm(char *asm_str)
 	fprintf(cc_out[SECTION_TEXT], "%s\n", asm_str);
 }
 
+static void gen_stringlits(dynmap *litmap)
+{
+	const stringlit *lit;
+	size_t i;
+	for(i = 0; (lit = dynmap_value(stringlit *, litmap, i)); i++)
+		if(lit->use_cnt > 0)
+			asm_declare_stringlit(SECTION_DATA, lit);
+}
+
 void gen_asm(symtable_global *globs)
 {
 	decl **diter;
@@ -209,4 +218,6 @@ void gen_asm(symtable_global *globs)
 
 	for(; iasm && *iasm; ++iasm)
 		gen_gasm((*iasm)->asm_str);
+
+	gen_stringlits(globs->literals);
 }

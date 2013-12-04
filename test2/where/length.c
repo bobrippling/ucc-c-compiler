@@ -1,5 +1,5 @@
 // we don't want length overrunning, clip at 12
-// RUN: [ `%ucc -fsyntax-only %s 2>&1| perl -e 'my $l = join("", <>); $n = ($l =~ s/~//g); print "$n\n"'` -le 12 ]
+// RUN: [ `%ucc -fsyntax-only %s 2>&1| grep -F ... | wc -c` -le 80 ]
 
 f();
 

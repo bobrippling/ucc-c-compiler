@@ -1,4 +1,5 @@
 // RUN: %check %s
+// RUN: %ucc -c %s -o %t
 
 enum
 {

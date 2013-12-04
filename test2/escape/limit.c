@@ -11,7 +11,7 @@ main()
 	if(strcmp(oct, "a.3"))
 		abort();
 
-	if(strcmp(hexterm, (char[]){ 017, 'g', 'h', 0 }))
+	if(strcmp(hexterm, (char[]){ 10, 'g', 'h', 0 }))
 		abort();
 
 	if(strcmp(s, "h\275\03321\n345"))

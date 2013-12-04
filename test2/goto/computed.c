@@ -3,5 +3,6 @@
 main()
 {
 	// 'a' is used
-a: &&a; // CHECK: !/warning/
+a: // CHECK: !/warning/
+	&&a;
 }
