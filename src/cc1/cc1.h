@@ -82,6 +82,7 @@ enum fopt
 	FOPT_TRACK_INITIAL_FNAM    = 1 << 11,
 	FOPT_FREESTANDING          = 1 << 12,
 	FOPT_SHOW_STATIC_ASSERTS   = 1 << 13,
+	FOPT_CAST_W_BUILTIN_TYPES  = 1 << 14,
 };
 
 enum cc1_backend

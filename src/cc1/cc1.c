@@ -125,6 +125,7 @@ struct
 	{ 1,  "track-initial-fname", FOPT_TRACK_INITIAL_FNAM },
 	{ 1,  "freestanding",        FOPT_FREESTANDING },
 	{ 1,  "show-static-asserts", FOPT_SHOW_STATIC_ASSERTS },
+	{ 1,  "cast-with-builtin-types", FOPT_CAST_W_BUILTIN_TYPES },
 
 	{ 0,  NULL, 0 }
 };
@@ -159,7 +160,8 @@ enum fopt fopt_mode = FOPT_CONST_FOLD
                     | FOPT_SHOW_LINE
                     | FOPT_PIC
                     | FOPT_BUILTIN
-                    | FOPT_TRACK_INITIAL_FNAM;
+                    | FOPT_TRACK_INITIAL_FNAM
+                    | FOPT_CAST_W_BUILTIN_TYPES;
 enum cc1_backend cc1_backend = BACKEND_ASM;
 
 int cc1_m32 = UCC_M32;

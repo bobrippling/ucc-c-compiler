@@ -9,6 +9,7 @@
 #include "macros.h"
 #include "sym.h"
 #include "../util/platform.h"
+#include "../util/limits.h"
 #include "sue.h"
 #include "decl.h"
 #include "cc1.h"
@@ -36,7 +37,15 @@ int intval_cmp(const intval *a, const intval *b)
 
 int intval_str(char *buf, size_t nbuf, intval_t v, type_ref *ty)
 {
+	/* the final resting place for an intval */
 	const int is_signed = type_ref_is_signed(ty);
+
+	if(ty){
+		sintval_t sv;
+		v = intval_truncate(v, type_ref_size(ty, NULL), &sv);
+		if(is_signed)
+			v = sv;
+	}
 
 	return snprintf(
 			buf, nbuf,
@@ -53,17 +62,30 @@ intval_t intval_truncate_bits(
 	intval_t pos_mask = ~(~0ULL << bits);
 	intval_t truncated = val & pos_mask;
 
-	if(signed_iv){
-		sintval_t sig = truncated;
-
-		if((sintval_t)val < 0){
-			/* sign extend */
-			unsigned revbits = sizeof(intval_t) * CHAR_BIT - bits;
-
-			sig = (sig << revbits) >> revbits;
+	if(fopt_mode & FOPT_CAST_W_BUILTIN_TYPES){
+		/* we use sizeof our types so our conversions match the target conversions */
+#define BUILTIN(type)                    \
+		if(bits == sizeof(type) * CHAR_BIT){ \
+			if(signed_iv)                      \
+				*signed_iv = (signed type)val;   \
+			return (unsigned type)val;         \
 		}
 
-		*signed_iv = sig;
+		BUILTIN(char);
+		BUILTIN(short);
+		BUILTIN(int);
+		BUILTIN(long);
+		BUILTIN(long long);
+	}
+
+	/* not builtin - bitfield, etc */
+	if(signed_iv){
+		const unsigned shamt = CHAR_BIT * sizeof(val) - bits;
+
+		/* implementation specific signed right shift.
+		 * this is to sign extend the value
+		 */
+		*signed_iv = (sintval_t)val << shamt >> shamt;
 	}
 
 	return truncated;
@@ -73,54 +95,25 @@ intval_t intval_truncate(
 		intval_t val, unsigned bytes,
 		sintval_t *sign_extended)
 {
-	switch(bytes){
-#define CAST(sz)                                    \
-		case sz:                                        \
-			val = intval_truncate_bits(                   \
-			    val, bytes * CHAR_BIT - 1, sign_extended);\
-			break
-
-		CAST(1);
-		CAST(2);
-		CAST(4);
-
-#undef CAST
-
-		case 8:
-			if(sign_extended)
-				*sign_extended = val;
-			break; /* no cast - max word size */
-
-		default:
-			ICW("can't truncate intval to %d bytes", bytes);
-	}
-
-	return val;
+	return intval_truncate_bits(
+			val, bytes * CHAR_BIT,
+			sign_extended);
 }
 
-int intval_is_64_bit(const intval_t val, type_ref *ty)
+int intval_high_bit(intval_t val, type_ref *ty)
 {
-	/* must apply the truncation here */
-	intval_t trunc;
-
-	if(type_ref_size(ty, &ty->where) < platform_word_size())
-		return 0;
-
-	trunc = intval_truncate(
-			val, type_ref_size(ty, &ty->where), NULL);
-
-#define INT_SHIFT (CHAR_BIT * sizeof(int))
 	if(type_ref_is_signed(ty)){
 		const sintval_t as_signed = val;
 
-		if(as_signed < 0){
-			/* need unsigned (i.e. shr) shift */
-			return (int)((intval_t)trunc >> INT_SHIFT) != -1;
-		}
+		if(as_signed < 0)
+			val = intval_truncate(val, type_ref_size(ty, &ty->where), NULL);
 	}
 
-	return (trunc >> INT_SHIFT) != 0;
-#undef INT_SHIFT
+	{
+		int r;
+		for(r = -1; val; r++, val >>= 1);
+		return r;
+	}
 }
 
 static type *type_new_primitive1(enum type_primitive p)
@@ -154,15 +147,17 @@ const type *type_new_primitive(enum type_primitive p)
 unsigned type_primitive_size(enum type_primitive tp)
 {
 	switch(tp){
-		case type_char:
 		case type__Bool:
 		case type_void:
 			return 1;
+		case type_char:
+			return UCC_SZ_CHAR;
 
 		case type_short:
-			return 2;
+			return UCC_SZ_SHORT;
 
 		case type_int:
+			return UCC_SZ_INT;
 		case type_float:
 			return 4;
 
@@ -170,10 +165,11 @@ unsigned type_primitive_size(enum type_primitive tp)
 		case type_double:
 			/* 4 on 32-bit */
 			if(cc1_m32)
-				return 4;
-			/* fall */
+				return 4; /* FIXME: 32-bit long */
+			return UCC_SZ_LONG;
+
 		case type_llong:
-			return 8;
+			return UCC_SZ_LONG_LONG;
 
 		case type_ldouble:
 			/* 80-bit float */
@@ -192,6 +188,39 @@ unsigned type_primitive_size(enum type_primitive tp)
 	ICE("type %s in %s()",
 			type_primitive_to_str(tp), __func__);
 	return -1;
+}
+
+unsigned long long
+type_primitive_max(enum type_primitive p, int is_signed)
+{
+	unsigned long long max;
+
+	switch(p){
+		case type__Bool: return 1;
+		case type_char:  max = UCC_SCHAR_MAX;     break;
+		case type_short: max = UCC_SHRT_MAX;      break;
+		case type_int:   max = UCC_INT_MAX;       break;
+		case type_long:  max = UCC_LONG_MAX;      break;
+		case type_llong: max = UCC_LONG_LONG_MAX; break;
+
+		case type_float:
+		case type_double:
+		case type_ldouble:
+			/* 80-bit float */
+			ICE("TODO: float max");
+
+		case type_union:
+		case type_struct:
+		case type_enum:
+			ICE("sue max");
+
+		case type_void:
+		case type_unknown:
+		default:
+			ICE("bad primitive %s", type_primitive_to_str(p));
+	}
+
+	return is_signed ? max : max * 2 + 1;
 }
 
 unsigned type_size(const type *t, where *from)

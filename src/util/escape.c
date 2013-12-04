@@ -41,12 +41,16 @@ int escape_char(int c)
 
 static int inc_and_chk(unsigned long long *val, unsigned base, unsigned inc)
 {
+	/* unsigned overflow is well defined */
 	unsigned long long new = *val * base + inc;
 
-	/* unsigned overflow is well defined
-	 * if we're adding zero, ignore, e.g. a bare 0
+	/* can't just check: new < *val
+	 * since if base=16, inc=15 (0xff),
+	 * then: 0xffff..ff * 16 = 0xffff..00
+	 *  and: + 0xff = 0xffff..ff
+	 * and we start again.
 	 */
-	int of = (inc > 0 && new < *val);
+	int of = new < *val || *val * base < *val;
 
 	*val = new;
 
@@ -80,6 +84,8 @@ static unsigned long long read_ap_num(
 			/* advance over what's left, etc */
 			overflow_handle(s, end, test);
 			*of = 1;
+			while(test(*s) || *s == '_')
+				s++;
 			break;
 		}
 		s++;

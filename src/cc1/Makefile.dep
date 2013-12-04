@@ -36,7 +36,7 @@ decl.o: decl.c ../util/util.h ../util/where.h ../util/compiler.h \
  ops/stmt_expr.h ops/stmt_for.h ops/stmt_goto.h ops/stmt_if.h \
  ops/stmt_label.h ops/stmt_noop.h ops/stmt_return.h ops/stmt_switch.h \
  ops/stmt_while.h ops/stmt_continue.h sym.h decl.h macros.h sue.h const.h \
- cc1.h ../util/std.h fold.h funcargs.h decl_is.c
+ cc1.h ../util/std.h fold.h funcargs.h defs.h decl_is.c
 decl_init.o: decl_init.c ../util/util.h ../util/where.h \
  ../util/compiler.h ../util/dynarray.h ../util/dyn.h ../util/dynmap.h \
  ../util/alloc.h data_structs.h tree.h expr.h strings.h ops/expr_addr.h \
@@ -301,8 +301,8 @@ tree.o: tree.c ../util/alloc.h ../util/util.h ../util/where.h \
  ops/stmt_default.h ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h \
  ops/stmt_goto.h ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h \
  ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h ops/stmt_continue.h \
- sym.h decl.h macros.h ../util/platform.h sue.h cc1.h ../util/std.h \
- defs.h
+ sym.h decl.h macros.h ../util/platform.h ../util/limits.h sue.h cc1.h \
+ ../util/std.h defs.h
 ops/__builtin.o: ops/__builtin.c ops/../../util/util.h ops/../../util/where.h \
  ops/../../util/compiler.h ops/../../util/dynarray.h ops/../../util/dyn.h \
  ops/../../util/alloc.h ops/../data_structs.h ops/../tree.h ops/../expr.h \

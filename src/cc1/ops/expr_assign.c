@@ -60,7 +60,7 @@ void bitfield_trunc_check(decl *mem, expr *from)
 	if(k.type == CONST_VAL){
 		const sintval_t kexp = k.bits.iv.val;
 		/* highest may be -1 - k.bits.iv.val is zero */
-		const int highest = val_highest_bit(k.bits.iv.val);
+		const int highest = intval_high_bit(k.bits.iv.val, from->tree_type);
 		const int is_signed = type_ref_is_signed(mem->field_width->tree_type);
 
 		const_fold(mem->field_width, &k);
