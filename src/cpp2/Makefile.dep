@@ -18,7 +18,8 @@ macro.o: macro.c ../util/util.h ../util/where.h ../util/compiler.h \
  preproc.h
 main.o: main.c ../util/util.h ../util/where.h ../util/compiler.h \
  ../util/dynarray.h ../util/dyn.h ../util/alloc.h ../util/platform.h \
- ../util/std.h main.h macro.h preproc.h include.h directive.h
+ ../util/std.h ../util/limits.h main.h macro.h preproc.h include.h \
+ directive.h
 preproc.o: preproc.c ../util/util.h ../util/where.h ../util/compiler.h \
  ../util/alloc.h ../util/str.h main.h preproc.h directive.h eval.h str.h
 snapshot.o: snapshot.c ../util/dynarray.h ../util/dyn.h ../util/alloc.h \
