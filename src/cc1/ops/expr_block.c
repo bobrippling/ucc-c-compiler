@@ -33,13 +33,13 @@ void expr_block_set_ty(decl *db, type_ref *retty)
 void fold_expr_block(expr *e, symtable *scope_stab)
 {
 	/* prevent access to nested vars */
-	symtable *const arg_symtab = e->code->symtab;
+	symtable *const arg_symtab = e->code->symtab->parent;
 	symtable *const sym_root = symtab_root(arg_symtab);
 	decl *df = decl_new();
 
 	(void)scope_stab;
 
-	symtab_func_root(arg_symtab)->in_func = df;
+	arg_symtab->in_func = df;
 
 	/* add a global symbol for the block */
 	e->bits.block.sym = sym_new_stab(sym_root, df, sym_global);
