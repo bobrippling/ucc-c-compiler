@@ -121,6 +121,14 @@ static enum type_cmp type_ref_cmp_r(
 		}
 	}
 
+	/* allow ptr <-> ptr */
+	if(ret == TYPE_NOT_EQUAL && type_ref_is_ptr(a) && type_ref_is_ptr(b))
+		ret = TYPE_CONVERTIBLE_EXPLICIT;
+
+	/* char * and int * are explicitly conv., even though char and int are implicit */
+	if(ret == TYPE_CONVERTIBLE_IMPLICIT && a->type == type_ref_ptr)
+		ret = TYPE_CONVERTIBLE_EXPLICIT;
+
 	if(ret == TYPE_EQUAL
 	&& (a->type == type_ref_ptr || a->type == type_ref_block))
 	{
@@ -140,8 +148,8 @@ enum type_cmp type_ref_cmp(type_ref *a, type_ref *b, enum type_cmp_opts opts)
 {
 	const enum type_cmp cmp = type_ref_cmp_r(a, b, opts);
 
-	if(cmp == TYPE_NOT_EQUAL){
-		/* try for convertible */
+	if(cmp == TYPE_CONVERTIBLE_EXPLICIT){
+		/* try for implicit void * conversion */
 		if(type_ref_is_void_ptr(a) && type_ref_is_ptr(b))
 			return TYPE_CONVERTIBLE_IMPLICIT;
 
