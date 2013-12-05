@@ -19,5 +19,9 @@ C99/bool_conv.c
 literals/all_constants.c
 blocks/mismatch_ret.c
 
+# waiting for calling convention asm helpers
+calling_conv/callee_save.c
+calling_conv/fptr.c
+
 # other:
 asm/abi-test.c

@@ -1,4 +1,4 @@
-// should both generate _cdecl calls on win32
+// should both generate _cdecl calls on win32, i.e. push
 
 main()
 {
