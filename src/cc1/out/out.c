@@ -800,15 +800,17 @@ static void bitfield_scalar_merge(const struct vbitfield *const bf)
 	 * store
 	 */
 
-	type_ref *const ty = type_ref_ptr_depth_dec(vtop[-1].t, NULL);
+	/* we get the lvalue type - change to pointer */
+	type_ref *const ty = vtop[-1].t, *ty_ptr = type_ref_ptr_depth_inc(ty);
 	unsigned long mask_leading_1s, mask_back_0s, mask_rm;
 
 	/* coerce vtop to a vtop[-1] type */
-	out_cast(ty);
+	out_cast(vtop[-1].t);
 
 	/* load the pointer to the store, forgetting the bitfield */
 	/* stack: store, val */
 	out_swap();
+	out_change_type(ty_ptr); /* XXX: memleak */
 	out_dup();
 	vtop->bitfield.nbits = 0;
 	/* stack: val, store, store-less-bitfield */
