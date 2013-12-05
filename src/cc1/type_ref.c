@@ -78,12 +78,21 @@ static enum type_cmp type_ref_cmp_r(
 			if(funcargs_cmp(a->bits.func.args, b->bits.func.args)
 					!= FUNCARGS_ARE_EQUAL)
 			{
-				return TYPE_NOT_EQUAL;
+				/* "void (int)" and "void (int, int)" aren't equal,
+				 * but a cast can soon fix it */
+				return TYPE_CONVERTIBLE_EXPLICIT;
 			}
 			break;
 	}
 
 	ret = type_ref_cmp_r(a->ref, b->ref, opts);
+
+	if(ret == TYPE_NOT_EQUAL
+	&& a->type == type_ref_func)
+	{
+		/* "int (int)" and "void (int)" aren't equal - but castable */
+		ret = TYPE_CONVERTIBLE_EXPLICIT;
+	}
 
 	if(ret == TYPE_NOT_EQUAL
 	&& a->type == type_ref_ptr
