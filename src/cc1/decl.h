@@ -212,6 +212,7 @@ type_ref *type_ref_is(type_ref *, enum type_ref_type);
 type_ref *type_ref_is_type(type_ref *, enum type_primitive);
 decl     *type_ref_is_tdef(type_ref *);
 type_ref *type_ref_is_ptr(type_ref *); /* returns r->ref iff ptr */
+type_ref *type_ref_is_ptr_or_block(type_ref *);
 int       type_ref_is_nonfptr(type_ref *);
 type_ref *type_ref_is_array(type_ref *); /* returns r->ref iff array */
 type_ref *type_ref_func_call(type_ref *, funcargs **pfuncargs);

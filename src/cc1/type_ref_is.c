@@ -114,6 +114,13 @@ type_ref *type_ref_is_ptr(type_ref *r)
 	return r ? r->ref : NULL;
 }
 
+type_ref *type_ref_is_ptr_or_block(type_ref *r)
+{
+	type_ref *t = type_ref_is_ptr(r);
+
+	return t ? t : type_ref_is(r, type_ref_block);
+}
+
 type_ref *type_ref_is_array(type_ref *r)
 {
 	r = type_ref_is(r, type_ref_array);
