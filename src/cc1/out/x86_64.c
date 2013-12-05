@@ -1694,30 +1694,6 @@ void impl_set_overflow(void)
 	v_set_flag(vtop, flag_overflow, 0);
 }
 
-int impl_frame_ptr_to_reg(int nframes)
-{
-	/* XXX: memleak */
-	type_ref *const void_pp = type_ref_ptr_depth_inc(
-			type_ref_cached_VOID_PTR());
-
-	struct vreg r;
-
-	vpush(void_pp);
-	v_set_reg_i(vtop, REG_BP);
-
-	v_unused_reg(1, 0, &r);
-
-	impl_reg_cp(vtop, &r); /* movq %rbp, <reg> */
-	while(--nframes > 0){
-		v_set_reg(vtop, &r);
-		impl_deref(vtop, &r, void_pp); /* movq (<reg>), <reg> */
-	}
-
-	vpop();
-
-	return r.idx;
-}
-
 void impl_set_nan(type_ref *ty)
 {
 	const union

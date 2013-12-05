@@ -1494,15 +1494,22 @@ void out_push_overflow(void)
 
 void out_push_frame_ptr(int nframes)
 {
-	struct vreg vr = VREG_INIT(
-		impl_frame_ptr_to_reg(nframes),
-		0
-	);
+	/* XXX: memleak */
+	struct vreg r;
+	type_ref *const void_pp = type_ref_ptr_depth_inc(
+			type_ref_cached_VOID_PTR());
 
-	out_flush_volatile();
+	vpush(void_pp);
+	v_set_reg_i(vtop, REG_BP);
 
-	vpush(type_ref_cached_VOID_PTR());
-	v_set_reg(vtop, &vr);
+	if(nframes > 1){
+		v_unused_reg(1, 0, &r);
+		impl_reg_cp(vtop, &r);
+		v_set_reg(vtop, &r);
+	}
+
+	while(--nframes > 0)
+		impl_deref(vtop, &r, void_pp); /* movq (<reg>), <reg> */
 }
 
 void out_push_reg_save_ptr(void)
