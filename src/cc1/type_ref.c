@@ -39,6 +39,10 @@ static enum type_cmp type_ref_cmp_r(
 			return TYPE_CONVERTIBLE_EXPLICIT;
 		}
 
+		/* allow void <- anything */
+		if(type_ref_is_void(a))
+			return TYPE_CONVERTIBLE_IMPLICIT;
+
 		/* allow block <-> fnptr */
 		if((type_ref_is_fptr(a) && type_ref_is(b, type_ref_block))
 		|| (type_ref_is_fptr(b) && type_ref_is(a, type_ref_block)))
