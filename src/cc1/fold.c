@@ -44,7 +44,7 @@ int fold_type_chk_warn(
 {
 	int error = 1;
 
-	switch(type_ref_cmp(lhs, rhs, 0)){
+	switch(type_ref_cmp(lhs, rhs, TYPE_CMP_ALLOW_TENATIVE_ARRAY)){
 		case TYPE_CONVERTIBLE_IMPLICIT:
 			/* attempt to insert regardless, e.g. _Bool x = 5;
 			 *  - they match but we need the _Bool cast */
