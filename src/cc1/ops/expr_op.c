@@ -369,15 +369,10 @@ ptr_relation:
 			if(l_unsigned == r_unsigned){
 				if(l_sz != r_sz){
 					const int l_larger = l_sz > r_sz;
-					char buf[64];
-
-					snprintf(buf, sizeof buf,
-							"mismatching types in %s",
-							op_to_str(op));
 
 					fold_type_chk_warn(
 							tlhs, trhs,
-							w, buf);
+							w, op_to_str(op));
 
 					*(l_larger ? prhs : plhs) = (l_larger ? tlhs : trhs);
 
