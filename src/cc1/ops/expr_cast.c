@@ -64,9 +64,16 @@ static void fold_cast_num(expr *const e, numeric *const num)
 		}
 		return;
 	}else if(from_fp){
-		/* float -> int */
 		UCC_ASSERT(K_FLOATING(*num), "i/f mismatch types");
-		num->val.i = num->val.f;
+
+		/* special case _Bool */
+		if(type_ref_is_type(e->tree_type, type__Bool)){
+			num->val.i = !!num->val.f;
+		}else{
+			/* float -> int */
+			num->val.i = num->val.f;
+		}
+
 		num->suffix = 0;
 
 		/* fall through to int logic */
