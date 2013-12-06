@@ -499,9 +499,9 @@ unsigned v_alloc_stack(unsigned sz, const char *desc)
 	return v_alloc_stack2(sz, 0, desc);
 }
 
-void v_stack_align(unsigned const align, int mask)
+void v_stack_align(unsigned const align, int force_mask)
 {
-	if(stack_sz & (align - 1)){
+	if(force_mask || (stack_sz & (align - 1))){
 		type_ref *const ty = type_ref_cached_INTPTR_T();
 		const int new_sz = pack_to_align(stack_sz, align);
 
@@ -510,7 +510,7 @@ void v_stack_align(unsigned const align, int mask)
 		out_op(op_minus);
 		stack_sz = new_sz;
 
-		if(mask){
+		if(force_mask){
 			out_push_l(ty, align - 1);
 			out_op(op_and);
 		}
