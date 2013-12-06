@@ -58,6 +58,9 @@ static void fold_const_expr_op(expr *e, consty *k)
 
 			UCC_ASSERT(!(fp[0] ^ fp[1]),
 					"one float and one non-float?");
+
+			if(!k->nonstandard_const)
+				k->nonstandard_const = e;
 		}
 
 		if(fp[0]){
