@@ -79,9 +79,9 @@ struct
 
 	{ 'W', "tenative-init",     WARN_TENATIVE_INIT },
 
-	{ 0, "shadow-local",      WARN_SHADOW_LOCAL },
-	{ 0, "shadow-global",     WARN_SHADOW_GLOBAL },
-	{ 0, "shadow",            WARN_SHADOW_GLOBAL | WARN_SHADOW_LOCAL },
+	{ 'W', "shadow-local",      WARN_SHADOW_LOCAL },
+	{ 'W', "shadow-global",     WARN_SHADOW_GLOBAL },
+	{ 'W', "shadow",            WARN_SHADOW_GLOBAL | WARN_SHADOW_LOCAL },
 
 	/* TODO: W_QUAL (ops/expr_cast) */
 
