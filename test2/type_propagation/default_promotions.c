@@ -1,4 +1,4 @@
-// RUN: [ `./ucc -Xprint default_promotions.c | grep -A1 'expr: cast' | grep tree_type | grep ': double'` -eq 2 ]
+// RUN: [ `%ucc -S -o- %s | grep -c cvtss2sd` -eq 2 ]
 // exactly two promotions
 
 vari(float f, double d, ...);
