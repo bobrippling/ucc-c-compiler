@@ -1419,7 +1419,7 @@ static const char *x86_call_jmp_target(struct vstack *vp, int prevent_rax)
 
 		case V_CONST_I:   /* jmp *5 */
 			snprintf(buf, sizeof buf, "*%s", vstack_str(vp, 1));
-			break;
+			return buf;
 
 		case V_REG_SAVE: /* load, then jmp */
 		case V_REG: /* jmp *%rax */
@@ -1439,7 +1439,7 @@ static const char *x86_call_jmp_target(struct vstack *vp, int prevent_rax)
 			return buf;
 	}
 
-	ICE("invalid jmp target");
+	ICE("invalid jmp target type 0x%x", vp->type);
 	return NULL;
 }
 
