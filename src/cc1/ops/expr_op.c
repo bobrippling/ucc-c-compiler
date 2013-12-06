@@ -623,6 +623,8 @@ static int op_shift_check(expr *e)
 			if(undefined){
 				consty k;
 
+				memset(&k, 0, sizeof k);
+
 				if(lhs.type == CONST_NUM){
 					k.type = CONST_NUM;
 					k.bits.num.val.i = 0;
