@@ -538,6 +538,8 @@ static int op_unsigned_cmp_check(expr *e)
 static int msg_if_precedence(expr *sub, where *w,
 		enum op_type binary, int (*test)(enum op_type))
 {
+	sub = expr_skip_casts(sub);
+
 	if(expr_kind(sub, op)
 	&& !sub->in_parens
 	&& sub->op != binary
