@@ -89,9 +89,9 @@ int expr_is_null_ptr(expr *e, enum null_strictness ty)
 	/* void * always qualifies */
 	if(type_ref_is_type(type_ref_is_ptr(e->tree_type), type_void))
 		b = 1;
-	else if(ty >= NULL_STRICT_ANY_PTR && type_ref_is_ptr(e->tree_type))
+	else if(ty == NULL_STRICT_INT && type_ref_is_integral(e->tree_type))
 		b = 1;
-	else if(ty >= NULL_STRICT_INT && type_ref_is_integral(e->tree_type))
+	else if(ty == NULL_STRICT_ANY_PTR && type_ref_is_ptr(e->tree_type))
 		b = 1;
 
 	return b && const_expr_and_zero(e);

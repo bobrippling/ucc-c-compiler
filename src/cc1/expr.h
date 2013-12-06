@@ -286,10 +286,9 @@ expr *expr_new_comma2(expr *lhs, expr *rhs);
 
 enum null_strictness
 {
-	/* ordered by strength */
 	NULL_STRICT_VOID_PTR,
-	NULL_STRICT_ANY_PTR,
-	NULL_STRICT_INT
+	NULL_STRICT_INT,
+	NULL_STRICT_ANY_PTR
 };
 
 int expr_is_null_ptr(expr *, enum null_strictness);

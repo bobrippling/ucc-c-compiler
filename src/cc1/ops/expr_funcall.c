@@ -75,7 +75,8 @@ static void static_array_check(
 	if(!ty_decl || !ty_decl->bits.ptr.is_static)
 		return;
 
-	if(expr_is_null_ptr(arg_expr, NULL_STRICT_INT)){
+	/* want to check any pointer type */
+	if(expr_is_null_ptr(arg_expr, NULL_STRICT_ANY_PTR)){
 		warn_at(&arg_expr->where, "passing null-pointer where array expected");
 		return;
 	}
