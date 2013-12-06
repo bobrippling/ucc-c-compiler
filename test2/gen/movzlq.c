@@ -1,4 +1,4 @@
-// RUN: %ucc -S -o- %s | grep 'movzlq'; [ $? -ne 0 ]
+// RUN: %ucc -S -o- %s | grep 'movzlq'
 struct timespec
 {
 	long tv_sec, tv_nsec;
@@ -6,6 +6,8 @@ struct timespec
 
 zlq(unsigned int sec)
 {
+	int f(struct timespec *);
 	struct timespec tsp;
 	tsp.tv_sec = sec;
+	f(&tsp);
 }

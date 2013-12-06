@@ -1,4 +1,4 @@
-// RUN: %ucc -o %t %s && %t
+// RUN: %ocheck 0 %s
 
 #define NULL (void *)0
 
@@ -24,4 +24,6 @@ main()
 			, "def"
 #endif
 			);
+
+	return 0;
 }
