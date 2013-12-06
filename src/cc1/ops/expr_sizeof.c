@@ -41,7 +41,10 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 	chosen = SIZEOF_WHAT(e);
 
 	fold_check_expr(e->expr,
-			FOLD_CHK_NO_BITFIELD,
+			FOLD_CHK_NO_BITFIELD
+			| (e->what_of == what_typeof
+					? FOLD_CHK_ALLOW_VOID
+					: 0),
 			sizeof_what(e->what_of));
 
 	switch(e->what_of){
