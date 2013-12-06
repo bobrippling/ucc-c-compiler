@@ -541,6 +541,7 @@ static int msg_if_precedence(expr *sub, where *w,
 	sub = expr_skip_casts(sub);
 
 	if(expr_kind(sub, op)
+	&& sub->rhs /* don't warn for (1 << -5) : (-5) is a unary op */
 	&& !sub->in_parens
 	&& sub->op != binary
 	&& (test ? (*test)(sub->op) : 1))
