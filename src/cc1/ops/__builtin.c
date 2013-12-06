@@ -649,6 +649,8 @@ static expr *parse_expect(void)
 
 /* --- choose_expr */
 
+#define CHOOSE_EXPR_CHOSEN(e) ((e)->funcargs[(e)->bits.iv.val ? 1 : 2])
+
 static void fold_choose_expr(expr *e, symtable *stab)
 {
 	consty k;
@@ -670,7 +672,7 @@ static void fold_choose_expr(expr *e, symtable *stab)
 
 	memcpy_safe(&e->bits.iv, &k.bits.iv);
 
-	e->tree_type = e->funcargs[k.bits.iv.val ? 1 : 2]->tree_type;
+	e->tree_type = CHOOSE_EXPR_CHOSEN(e)->tree_type;
 
 	wur_builtin(e);
 }
@@ -678,13 +680,13 @@ static void fold_choose_expr(expr *e, symtable *stab)
 static void const_choose_expr(expr *e, consty *k)
 {
 	/* forward to the chosen expr */
-	const_fold(e->funcargs[e->bits.iv.val ? 1 : 2], k);
+	const_fold(CHOOSE_EXPR_CHOSEN(e), k);
 }
 
 static void gen_choose_expr(expr *e)
 {
 	/* forward to the chosen expr */
-	gen_expr(e->funcargs[e->bits.iv.val ? 1 : 2]);
+	gen_expr(CHOOSE_EXPR_CHOSEN(e));
 }
 
 static expr *parse_choose_expr(void)
