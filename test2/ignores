@@ -19,6 +19,9 @@ C99/bool_conv.c
 literals/all_constants.c
 blocks/mismatch_ret.c
 
+# waiting for long double
+float/long_double/ll_to_ld.c
+
 # waiting for calling convention asm helpers
 calling_conv/callee_save.c
 calling_conv/fptr.c
