@@ -359,7 +359,7 @@ void symtab_fold_decls(symtable *tab)
 										/* redefinition at local scope - allow typedef */
 										if(a_store & store_typedef && b_store & store_typedef){
 											warn_c11_retypedef(da, db);
-										}else{
+										}else if(!a_func){ /* functions can repeat */
 											clash = "duplicate";
 										}
 									}else{
