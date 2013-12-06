@@ -7,16 +7,6 @@ other/__asm__.c
 parsing/vla_ar.c
 decl_parsing/vla_proto.c
 
-# waiting for experimental/float:
-old_func/assign.c
-type_propagation/tgmath.c
-const/nonstandard_float.c
-C11/generic.c
-C11/generic_const.c
-C99/bool_conv.c
-literals/all_constants.c
-blocks/mismatch_ret.c
-
 # waiting for long double
 float/long_double/ll_to_ld.c
 
