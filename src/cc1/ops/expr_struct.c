@@ -208,6 +208,7 @@ void mutate_expr_struct(expr *e)
 {
 	e->f_lea = gen_expr_struct_lea;
 	e->f_const_fold = fold_const_expr_struct;
+	e->f_is_lval = expr_is_lval_yes;
 
 	/* zero out the union/rhs if we're mutating */
 	e->bits.struct_mem.d = NULL;

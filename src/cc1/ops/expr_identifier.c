@@ -133,10 +133,22 @@ static void gen_expr_identifier_lea(expr *e)
 	out_push_sym(e->bits.ident.sym);
 }
 
+static int identifier_is_lval(expr *e)
+{
+	if(type_ref_is(e->tree_type, type_ref_func))
+		return 0;
+
+	if(type_ref_is(e->tree_type, type_ref_array))
+		return 0;
+
+	return 1;
+}
+
 void mutate_expr_identifier(expr *e)
 {
-	e->f_lea         = gen_expr_identifier_lea;
+	e->f_lea = gen_expr_identifier_lea;
 	e->f_const_fold  = fold_const_expr_identifier;
+	e->f_is_lval = identifier_is_lval;
 }
 
 expr *expr_new_identifier(char *sp)

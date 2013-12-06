@@ -56,6 +56,7 @@ typedef void func_gen_lea(expr *);
 typedef void func_const(expr *, consty *);
 typedef const char *func_str(void);
 typedef void func_mutate_expr(expr *);
+typedef int func_is_lvalue(expr *);
 
 struct expr
 {
@@ -67,6 +68,7 @@ struct expr
 
 	func_const *f_const_fold; /* optional, used in static/global init */
 	func_gen_lea *f_lea; /* optional */
+	func_is_lvalue *f_is_lval; /* optional, not an lval if NULL */
 
 
 	int freestanding; /* e.g. 1; needs use, whereas x(); doesn't - freestanding */
@@ -263,6 +265,8 @@ expr *expr_new_comma2(expr *lhs, expr *rhs);
 #define expr_new_comma() expr_new_wrapper(comma)
 
 int expr_is_null_ptr(expr *, int allow_int);
+int expr_is_lval(expr *);
+int expr_is_lval_yes(expr *);
 
 /* util */
 expr *expr_new_array_idx_e(expr *base, expr *idx);
