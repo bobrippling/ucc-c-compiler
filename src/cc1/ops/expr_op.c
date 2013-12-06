@@ -715,6 +715,7 @@ void fold_expr_op(expr *e, symtable *stab)
 				e->tree_type = type_ref_cached_INT();
 				break;
 
+			case op_plus:
 			case op_minus:
 			case op_bnot:
 				fold_check_expr(
