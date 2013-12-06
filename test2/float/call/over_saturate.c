@@ -1,6 +1,10 @@
 // RUN: %ocheck 1 %s
 
-#include <stdarg.h>
+//#include <stdarg.h>
+typedef __builtin_va_list va_list;
+#define va_start(l, p) __builtin_va_start(l, p)
+#define va_end(l)      __builtin_va_end(l)
+#define va_arg(l, ty)  __builtin_va_arg(l, ty)
 
 enum ab { INT, FP, END };
 
