@@ -32,6 +32,10 @@ static enum type_cmp type_ref_cmp_r(
 
 	/* array/func decay takes care of any array->ptr checks */
 	if(a->type != b->type){
+		/* allow _Bool <- pointer */
+		if(type_ref_is_type(a, type__Bool) && type_ref_is_ptr(b))
+			return TYPE_CONVERTIBLE_IMPLICIT;
+
 		/* allow int <-> ptr */
 		if((type_ref_is_ptr(a) && type_ref_is_integral(b))
 		|| (type_ref_is_ptr(b) && type_ref_is_integral(a)))
