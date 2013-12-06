@@ -296,10 +296,15 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 		if(!IS_DECAY_CAST(e)){
 			int size_lhs, size_rhs;
 
-			fold_check_expr(expr_cast_child(e), FOLD_CHK_NO_ST_UN, "cast-expr");
+			fold_check_expr(expr_cast_child(e),
+					FOLD_CHK_NO_ST_UN | FOLD_CHK_ALLOW_VOID,
+					"cast-expr");
+
 			if(type_ref_is_void(tlhs))
 				return; /* fine */
-			fold_check_expr(e, FOLD_CHK_NO_ST_UN, "cast-target");
+			fold_check_expr(e,
+					FOLD_CHK_NO_ST_UN | FOLD_CHK_ALLOW_VOID,
+					"cast-target");
 
 			if(!type_ref_is_complete(tlhs)){
 				die_at(&e->where, "%scast to incomplete type %s",
