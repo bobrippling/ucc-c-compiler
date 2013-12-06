@@ -473,8 +473,11 @@ int main(int argc, char **argv)
 				if(args[j].type == arg_ty && !strcmp(arg, args[j].arg)){
 					/* if the mask isn't a single bit, treat it as
 					 * an unmask, e.g. -funsigned-char unmasks FOPT_SIGNED_CHAR
+					 *
+					 * special case where we don't - warnings
 					 */
-					const int unmask = args[j].mask & (args[j].mask - 1);
+					const int unmask = args[j].type != 'W'
+						&& args[j].mask & (args[j].mask - 1);
 
 					if(rev){
 						if(unmask)
