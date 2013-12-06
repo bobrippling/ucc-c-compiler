@@ -20,7 +20,7 @@ return p_name += a_name;
 // initialisation
 int *p_name = 0;
 // CARETS:
-//          ^ mismatching
+//          ^ note:
 
 // init 2
 int func()
@@ -38,12 +38,12 @@ main()
 // argument
 f_name((void *)0, (int *)5);
 // CARETS:
-//                ^ mismatching arg
+//                ^ note:
 
 int integer = 2;
 f_name(integer, 3);
 // CARETS:
-//     ^ mismatching arg
+//     ^ note:
 }
 
 f(int *);
@@ -53,27 +53,27 @@ func2()
 int abcdef = 0;
 f(1234);
 // CARETS:
-//^ mismatching arg
+//^ note:
 f(abcdef);
 
 char c;
 char *p = 0;
 // CARETS:
-//      ^ mismatching types
+//      ^ note:
 f(c);
 // CARETS:
-//^ mismatching arg
+//^ note:
 f(&c);
 // CARETS:
-//^ mismatching arg
+//^ note:
 f(  *p);
 // CARETS:
-//  ^ mismatching arg
+//  ^ note:
 f(5 + 2);
 // CARETS:
-//  ^ mismatching arg
+//  ^ note:
 
 f(    sizeof(typeof(int)));
 // CARETS:
-//    ^ mismatching arg
+//    ^ note:
 }

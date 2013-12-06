@@ -6,5 +6,5 @@ main()
 {
 "hello", f((void *)0);
 // CARETS:
-//         ^ mismatching
+//         ^ note:
 }
