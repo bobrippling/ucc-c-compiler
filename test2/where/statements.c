@@ -10,16 +10,16 @@ a = b;
 
 if(a = c);
 // CARETS:
-//   ^ testing an assignment
+//   ^ assignment in
 while(a = c);
 // CARETS:
-//      ^ testing an assignment
+//      ^ assignment in
 do ; while(a = c);
 // CARETS:
-//           ^ testing an assignment
+//           ^ assignment in
 for(;a = c;);
 // CARETS:
-//     ^ testing an assignment
+//     ^ assignment in
 
 return _Generic(0, char: 5);
 // CARETS:
