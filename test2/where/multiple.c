@@ -18,9 +18,9 @@ return p_name += a_name;
 }
 
 // initialisation
-int *p_name = 0;
+int *p_name = (char *)0;
 // CARETS:
-//          ^ note:
+//            ^ note:
 
 // init 2
 int func()
@@ -30,7 +30,7 @@ int func()
 void q();
 (void)(1 ? f_name : q);
 // CARETS:
-//       ^ pointer type mismatch
+//       ^ note:
 }
 
 main()
@@ -58,8 +58,6 @@ f(abcdef);
 
 char c;
 char *p = 0;
-// CARETS:
-//      ^ note:
 f(c);
 // CARETS:
 //^ note:
