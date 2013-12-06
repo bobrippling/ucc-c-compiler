@@ -9,8 +9,6 @@ decl_parsing/vla_proto.c
 
 # waiting for experimental/float:
 old_func/assign.c
-old_func/multiple.c
-old_func/works.c
 type_propagation/tgmath.c
 const/nonstandard_float.c
 C11/generic.c
@@ -25,6 +23,7 @@ float/long_double/ll_to_ld.c
 # waiting for calling convention asm helpers
 calling_conv/callee_save.c
 calling_conv/fptr.c
+mangling/calling_conv.c
 
 # other:
 asm/abi-test.c
