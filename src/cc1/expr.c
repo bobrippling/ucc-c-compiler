@@ -75,6 +75,15 @@ void expr_set_const(expr *e, consty *k)
 
 int expr_is_null_ptr(expr *e, enum null_strictness ty)
 {
+	/* 6.3.2.3:
+	 *
+	 * An integer constant expression with the value 0, or such an expression
+	 * cast to type void *, is called a null pointer constant
+	 *
+	 * NULL_STRICT_ANY_PTR is used for sentinel checks,
+	 * i.e. any null type pointer
+	 */
+
 	int b = 0;
 
 	/* void * always qualifies */

@@ -107,15 +107,16 @@ void fold_expr_if(expr *e, symtable *stab)
 		e->tree_type = type_ref_new_type(type_new_primitive(type_void));
 
 	}else if(type_ref_cmp(tt_l, tt_r, 0) == TYPE_EQUAL){
+		/* pointer to 'compatible' type */
 		e->tree_type = type_ref_new_cast(tt_l,
 				type_ref_qual(tt_l) | type_ref_qual(tt_r));
 
 	}else{
 		/* brace yourself. */
 		int l_ptr_null = expr_is_null_ptr(
-				e->lhs ? e->lhs : e->expr, NULL_STRICT_INT);
+				e->lhs ? e->lhs : e->expr, NULL_STRICT_VOID_PTR);
 
-		int r_ptr_null = expr_is_null_ptr(e->rhs, NULL_STRICT_INT);
+		int r_ptr_null = expr_is_null_ptr(e->rhs, NULL_STRICT_VOID_PTR);
 
 		int l_complete = !l_ptr_null && type_ref_is_complete(tt_l);
 		int r_complete = !r_ptr_null && type_ref_is_complete(tt_r);
