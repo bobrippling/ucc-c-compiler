@@ -786,6 +786,9 @@ void gen_expr_op(expr *e)
 				 * or the int, e.g. (int *)a && (int *)b -> int */
 				out_change_type(e->tree_type);
 
+				/* need to flush the op */
+				out_flush_volatile();
+
 				if(fopt_mode & FOPT_TRAPV
 				&& type_ref_is_integral(e->tree_type)
 				&& type_ref_is_signed(e->tree_type))
