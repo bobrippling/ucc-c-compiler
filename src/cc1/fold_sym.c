@@ -340,7 +340,9 @@ void symtab_fold_decls(symtable *tab)
 							case TYPE_QUAL_LOSS:
 							case TYPE_CONVERTIBLE_IMPLICIT:
 							case TYPE_CONVERTIBLE_EXPLICIT:
-								clash = "mismatching";
+								/* allow static/non-static redecl for non-functions */
+								if(a_func || (da->store & STORE_MASK_STORE) != store_static)
+									clash = "mismatching";
 								break;
 
 							case TYPE_EQUAL:
