@@ -6,6 +6,11 @@ const char *str_expr__Generic()
 	return "_Generic";
 }
 
+static void generic_lea(expr *e)
+{
+	lea_expr(e->bits.generic.chosen->e);
+}
+
 void fold_expr__Generic(expr *e, symtable *stab)
 {
 	struct generic_lbl **i, *def;
@@ -84,7 +89,15 @@ void fold_expr__Generic(expr *e, symtable *stab)
 			die_at(&e->where, "no type satisfying %s", type_ref_to_str(e->expr->tree_type));
 	}
 
+	if(expr_is_lval(e->bits.generic.chosen->e)){
+		e->f_is_lval = expr_is_lval_yes;
+		e->f_lea = generic_lea;
+	}
+
 	e->tree_type = e->bits.generic.chosen->e->tree_type;
+
+	/* direct our location to the sub-expression */
+	memcpy_safe(&e->where, &e->bits.generic.chosen->e->where);
 }
 
 void gen_expr__Generic(expr *e)
