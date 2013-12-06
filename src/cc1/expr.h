@@ -107,6 +107,8 @@ struct expr
 		/* __builtin_va_start */
 		int n;
 
+		int compound_upcast;
+
 		struct
 		{
 			stringlit_at lit_at; /* for strings */
