@@ -1,4 +1,4 @@
-// RUN: echo TODO; false
+// RUN: %ocheck 0 %s
 
 // generic lib
 typedef struct { int _; } types_dd;
