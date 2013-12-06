@@ -4,7 +4,7 @@
  * anything else is not.
  */
 
-#define TY_EQ(a, b) _Static_assert(__builtin_types_compatible_p(a, b), "mismatch")
+#define TY_EQ(ty, exp) _Static_assert(_Generic(exp, ty: 1) == 1, "mismatch")
 
-TY_EQ(int  *, typeof(1 ? (int *)0 : (void *)0)); // null pointer constant -> other operand's type
-TY_EQ(void *, typeof(1 ? (int *)0 : (void *)1)); // neither n-p-c, types go to void *
+TY_EQ(int  *, 1 ? (int *)0 : (void *)0); // null pointer constant -> other operand's type
+TY_EQ(void *, 1 ? (int *)0 : (void *)1); // neither n-p-c, types go to void *
