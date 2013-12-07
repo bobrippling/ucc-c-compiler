@@ -29,14 +29,14 @@ void fold_stmt_case_range(stmt *s)
 	if(lv >= rv)
 		die_at(&s->where, "case range equal or inverse");
 
-	s->expr->bits.ident.spel = out_label_case(CASE_RANGE, lv);
+	s->lbl_break = out_label_case(CASE_RANGE, lv);
 
 	fold_stmt_and_add_to_curswitch(s);
 }
 
 void gen_stmt_case_range(stmt *s)
 {
-	out_label(s->expr->bits.ident.spel);
+	out_label(s->lbl_break);
 	gen_stmt(s->lhs);
 }
 

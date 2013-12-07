@@ -25,6 +25,7 @@ struct stmt
 	stmt_flow *flow; /* for, switch (do and while are simple enough for ->[lr]hs) */
 
 	/* specific data */
+#define stmt_is_default val
 	int val;
 	char *lbl_break, *lbl_continue;
 

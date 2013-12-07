@@ -13,17 +13,15 @@ void fold_stmt_default(stmt *s)
 {
 	char *lbl = out_label_case(CASE_DEF, 0);
 
-	s->expr = expr_new_identifier(lbl);
-	memcpy_safe(&s->expr->where, &s->where);
-
-	s->expr->expr_is_default = 1;
+	s->lbl_break = lbl;
+	s->stmt_is_default = 1;
 
 	fold_stmt_and_add_to_curswitch(s);
 }
 
 void gen_stmt_default(stmt *s)
 {
-	out_label(s->expr->bits.ident.spel);
+	out_label(s->lbl_break);
 	gen_stmt(s->lhs);
 }
 

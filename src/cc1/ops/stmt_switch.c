@@ -31,7 +31,7 @@ static void fold_switch_dups(stmt *sw)
 	for(i = 0, titer = sw->codes; titer && *titer; titer++){
 		stmt *cse = *titer;
 
-		if(cse->expr->expr_is_default){
+		if(cse->stmt_is_default){
 			if(def){
 				char buf[WHERE_BUF_SIZ];
 
@@ -40,19 +40,18 @@ static void fold_switch_dups(stmt *sw)
 			}
 			def = cse;
 			n--;
-			continue;
+		}else{
+			vals[i].cse = cse;
+
+			const_fold_integral(cse->expr, &vals[i].start);
+
+			if(stmt_kind(cse, case_range))
+				const_fold_integral(cse->expr2, &vals[i].end);
+			else
+				memcpy(&vals[i].end, &vals[i].start, sizeof vals[i].end);
+
+			i++;
 		}
-
-		vals[i].cse = cse;
-
-		const_fold_integral(cse->expr, &vals[i].start);
-
-		if(stmt_kind(cse, case_range))
-			const_fold_integral(cse->expr2, &vals[i].end);
-		else
-			memcpy(&vals[i].end, &vals[i].start, sizeof vals[i].end);
-
-		i++;
 	}
 
 	/* sort vals for comparison */
@@ -95,7 +94,7 @@ static void fold_switch_enum(
 		stmt *cse = *titer;
 		integral_t v, w;
 
-		if(cse->expr->expr_is_default)
+		if(cse->stmt_is_default)
 			goto ret;
 
 		fold_check_expr(cse->expr,
@@ -186,14 +185,14 @@ void gen_stmt_switch(stmt *s)
 		stmt *cse = *titer;
 		numeric iv;
 
-		if(cse->expr->expr_is_default){
+		if(cse->stmt_is_default){
 			tdefault = cse;
 			continue;
 		}
 
 		const_fold_integral(cse->expr, &iv);
 
-		UCC_ASSERT(cse->expr->expr_is_default || !(iv.suffix & VAL_UNSIGNED),
+		UCC_ASSERT(cse->stmt_is_default || !(iv.suffix & VAL_UNSIGNED),
 				"don't handle unsigned yet");
 
 		if(stmt_kind(cse, case_range)){
@@ -213,7 +212,7 @@ void gen_stmt_switch(stmt *s)
 			out_push_num(cse->expr2->tree_type, &max);
 			out_op(op_gt);
 
-			out_jfalse(cse->expr->bits.ident.spel);
+			out_jfalse(cse->lbl_break);
 
 			out_label(skip);
 			free(skip);
@@ -224,13 +223,13 @@ void gen_stmt_switch(stmt *s)
 
 			out_op(op_eq);
 
-			out_jtrue(cse->expr->bits.ident.spel);
+			out_jtrue(cse->lbl_break);
 		}
 	}
 
 	out_pop(); /* free the value we switched on asap */
 
-	out_push_lbl(tdefault ? tdefault->expr->bits.ident.spel : s->lbl_break, 0);
+	out_push_lbl((tdefault ? tdefault : s)->lbl_break, 0);
 	out_jmp();
 
 	/* out-stack must be empty from here on */
