@@ -16,6 +16,7 @@
 #include "../gen_asm.h"
 #include "../decl_init.h"
 #include "../pack.h"
+#include "out.h"
 #include "../str.h"
 
 #define ASSERT_SCALAR(di)                  \
@@ -26,7 +27,7 @@
 
 struct bitfield_val
 {
-	intval_t val;
+	integral_t val;
 	unsigned offset;
 	unsigned width;
 };
@@ -52,11 +53,6 @@ int asm_table_lookup(type_ref *r)
 	return -1;
 }
 
-char asm_type_ch(type_ref *r)
-{
-	return asm_type_table[asm_table_lookup(r)].ch;
-}
-
 const char *asm_type_directive(type_ref *r)
 {
 	return asm_type_table[asm_table_lookup(r)].directive;
@@ -67,30 +63,30 @@ int asm_type_size(type_ref *r)
 	return asm_type_table[asm_table_lookup(r)].sz;
 }
 
-static void asm_declare_pad(FILE *f, unsigned pad, const char *why)
+static void asm_declare_pad(enum section_type sec, unsigned pad, const char *why)
 {
 	if(pad)
-		fprintf(f, ".space %u " ASM_COMMENT " %s\n", pad, why);
+		asm_out_section(sec, ".space %u " ASM_COMMENT " %s\n", pad, why);
 }
 
-static void asm_declare_init_type(FILE *f, type_ref *ty)
+static void asm_declare_init_type(enum section_type sec, type_ref *ty)
 {
-	fprintf(f, ".%s ", asm_type_directive(ty));
+	asm_out_section(sec, ".%s ", asm_type_directive(ty));
 }
 
 static void asm_declare_init_bitfields(
-		FILE *f,
+		enum section_type sec,
 		struct bitfield_val *vals, unsigned n,
 		type_ref *ty)
 {
 #define BITFIELD_DBG(...) /*fprintf(stderr, __VA_ARGS__)*/
-	intval_t v = 0;
+	integral_t v = 0;
 	unsigned width = 0;
 	unsigned i;
 
 	BITFIELD_DBG("bitfield out -- new\n");
 	for(i = 0; i < n; i++){
-		intval_t this = intval_truncate_bits(
+		integral_t this = integral_truncate_bits(
 				vals[i].val, vals[i].width, NULL);
 
 		width += vals[i].width;
@@ -106,29 +102,30 @@ static void asm_declare_init_bitfields(
 	BITFIELD_DBG("bitfield done with 0x%llx\n", v);
 
 	if(width > 0){
-		asm_declare_init_type(f, ty);
-		fprintf(f, "%" INTVAL_FMT_D "\n", v);
+		asm_declare_init_type(sec, ty);
+		asm_out_section(sec, "%" NUMERIC_FMT_D "\n", v);
 	}else{
-		fprintf(f, ASM_COMMENT " skipping zero length bitfield%s init\n",
+		asm_out_section(sec,
+				ASM_COMMENT " skipping zero length bitfield%s init\n",
 				n == 1 ? "" : "s");
 	}
 }
 
 static void bitfields_out(
-		FILE *f,
+		enum section_type sec,
 		struct bitfield_val *bfs, unsigned *pn,
 		type_ref *ty)
 {
-	asm_declare_init_bitfields(f, bfs, *pn, ty);
+	asm_declare_init_bitfields(sec, bfs, *pn, ty);
 	*pn = 0;
 }
 
 static void bitfield_val_set(
 		struct bitfield_val *bfv, expr *kval, expr *field_w)
 {
-	bfv->val = kval ? const_fold_val(kval) : 0;
+	bfv->val = kval ? const_fold_val_i(kval) : 0;
 	bfv->offset = 0;
-	bfv->width = const_fold_val(field_w);
+	bfv->width = const_fold_val_i(field_w);
 }
 
 static struct bitfield_val *bitfields_add(
@@ -151,7 +148,84 @@ static struct bitfield_val *bitfields_add(
 	return bfs;
 }
 
-static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
+void asm_out_fp(enum section_type sec, type_ref *ty, floating_t f)
+{
+	switch(type_ref_primitive(ty)){
+		case type_float:
+			{
+				union { float f; unsigned u; } u;
+				u.f = f;
+				asm_out_section(sec, ".long %u\n", u.u);
+				out_comment_sec(sec, "float %f", u.f);
+				break;
+			}
+
+		case type_double:
+			{
+				union { double d; unsigned long ul; } u;
+				u.d = f;
+				asm_out_section(sec, ".quad %lu\n", u.ul);
+				out_comment_sec(sec, "double %f", u.d);
+				break;
+			}
+		case type_ldouble:
+			ICE("TODO");
+		default:
+			ICE("bad float type");
+	}
+}
+
+static void static_val(enum section_type sec, type_ref *ty, expr *e)
+{
+	consty k;
+
+	memset(&k, 0, sizeof k);
+
+	const_fold(e, &k);
+
+	switch(k.type){
+		case CONST_NEED_ADDR:
+		case CONST_NO:
+			ICE("non-constant expr-%s const=%d%s",
+					e->f_str(),
+					k.type,
+					k.type == CONST_NEED_ADDR ? " (needs addr)" : "");
+			break;
+
+		case CONST_NUM:
+			if(K_FLOATING(k.bits.num)){
+				/* asm fp const */
+				asm_out_fp(sec, ty, k.bits.num.val.f);
+			}else{
+				char buf[INTEGRAL_BUF_SIZ];
+				asm_declare_init_type(sec, ty);
+				integral_str(buf, sizeof buf, k.bits.num.val.i, e->tree_type);
+				asm_out_section(sec, "%s", buf);
+			}
+			break;
+
+		case CONST_ADDR:
+			asm_declare_init_type(sec, ty);
+			if(k.bits.addr.is_lbl)
+				asm_out_section(sec, "%s", k.bits.addr.bits.lbl);
+			else
+				asm_out_section(sec, "%ld", k.bits.addr.bits.memaddr);
+			break;
+
+		case CONST_STRK:
+			stringlit_use(k.bits.str->lit); /* must be before the label access */
+			asm_declare_init_type(sec, ty);
+			asm_out_section(sec, "%s", k.bits.str->lit->lbl);
+			break;
+	}
+
+	/* offset in bytes, no mul needed */
+	if(k.offset)
+		asm_out_section(sec, " + %ld", k.offset);
+	asm_out_section(sec, "\n");
+}
+
+static void asm_declare_init(enum section_type sec, decl_init *init, type_ref *tfor)
 {
 	type_ref *r;
 
@@ -161,10 +235,10 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 	if(!init){
 		/* don't initialise flex-arrays */
 		if(!type_ref_is_incomplete_array(tfor)){
-			asm_declare_pad(f, type_ref_size(tfor, NULL),
+			asm_declare_pad(sec, type_ref_size(tfor, NULL),
 					"null init"/*, type_ref_to_str(tfor)*/);
 		}else{
-			fprintf(f, ASM_COMMENT " flex array init skipped\n");
+			asm_out_section(sec, ASM_COMMENT " flex array init skipped\n");
 		}
 
 	}else if((r = type_ref_is_type(tfor, type_struct))){
@@ -223,7 +297,7 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 						sue->spel, decl_to_str(d_mem),
 						d_mem->struct_offset, end_of_last);
 
-				asm_declare_pad(f,
+				asm_declare_pad(sec,
 						d_mem->struct_offset - end_of_last,
 						"prev struct padding");
 			}
@@ -234,7 +308,7 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 						DEBUG("new bitfield group (%s is new boundary), old:",
 								d_mem->spel);
 						/* next bitfield group - store the current */
-						bitfields_out(f, bitfields, &nbitfields, first_bf->ref);
+						bitfields_out(sec, bitfields, &nbitfields, first_bf->ref);
 					}
 					first_bf = d_mem;
 				}
@@ -246,12 +320,12 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 			}else{
 				if(nbitfields){
 					DEBUG("at non-bitfield, prev-bitfield out:", 0);
-					bitfields_out(f, bitfields, &nbitfields, first_bf->ref);
+					bitfields_out(sec, bitfields, &nbitfields, first_bf->ref);
 					first_bf = NULL;
 				}
 
 				DEBUG("normal init for %s:", d_mem->spel);
-				asm_declare_init(f, di_to_use, d_mem->ref);
+				asm_declare_init(sec, di_to_use, d_mem->ref);
 			}
 
 			if(type_ref_is_incomplete_array(d_mem->ref)){
@@ -266,11 +340,11 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 		}
 
 		if(nbitfields)
-			bitfields_out(f, bitfields, &nbitfields, first_bf->ref);
+			bitfields_out(sec, bitfields, &nbitfields, first_bf->ref);
 		free(bitfields);
 
 		/* need to pad to struct size */
-		asm_declare_pad(f,
+		asm_declare_pad(sec,
 				sue_size(sue, NULL) - end_of_last,
 				"struct tail");
 
@@ -304,7 +378,7 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 				}
 			}
 
-			asm_declare_init(f, this, next);
+			asm_declare_init(sec, this, next);
 		}
 
 	}else if((r = type_ref_is_type(tfor, type_union))){
@@ -332,15 +406,15 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 
 				bitfield_val_set(&bfv, u_init->bits.expr, mem->field_width);
 
-				asm_declare_init_bitfields(f, &bfv, 1, mem_r);
+				asm_declare_init_bitfields(sec, &bfv, 1, mem_r);
 			}else{
-				asm_declare_init(f, u_init, mem_r);
+				asm_declare_init(sec, u_init, mem_r);
 			}
 
 			sub = type_ref_size(mem_r, NULL);
 		} /* else null union init */
 
-		asm_declare_pad(f,
+		asm_declare_pad(sec,
 				type_ref_size(r, NULL) - sub,
 				"union extra");
 
@@ -354,8 +428,8 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 		{
 			char buf[TYPE_REF_STATIC_BUFSIZ];
 
-			UCC_ASSERT(type_ref_equal(exp->tree_type, tfor,
-						DECL_CMP_ALLOW_VOID_PTR | DECL_CMP_ALLOW_SIGNED_UNSIGNED),
+			UCC_ASSERT(
+					type_ref_cmp(exp->tree_type, tfor, TYPE_CMP_ALLOW_TENATIVE_ARRAY) != TYPE_NOT_EQUAL,
 					"mismatching init types: %s and %s",
 					type_ref_to_str_r(buf, exp->tree_type),
 					type_ref_to_str(tfor));
@@ -363,32 +437,30 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 
 		/* use tfor, since "abc" has type (char[]){(int)'a', (int)'b', ...} */
 		DEBUG("  scalar init for %s:", type_ref_to_str(tfor));
-		asm_declare_init_type(f, tfor);
-		static_addr(exp);
-		fputc('\n', f);
+		static_val(sec, tfor, exp);
 	}
 }
 
-static void asm_nam_begin3(FILE *f, const char *lbl, unsigned align)
+void asm_nam_begin3(enum section_type sec, const char *lbl, unsigned align)
 {
-	fprintf(f,
+	asm_out_section(sec,
 			".align %u\n"
 			"%s:\n",
 			align, lbl);
 }
 
-static void asm_nam_begin(FILE *f, decl *d)
+static void asm_nam_begin(enum section_type sec, decl *d)
 {
-	asm_nam_begin3(f, decl_asm_spel(d), decl_align(d));
+	asm_nam_begin3(sec, decl_asm_spel(d), decl_align(d));
 }
 
-static void asm_reserve_bytes(unsigned nbytes)
+static void asm_reserve_bytes(enum section_type sec, unsigned nbytes)
 {
 	/*
 	 * TODO: .comm buf,512,5
 	 * or    .zerofill SECTION_NAME,buf,512,5
 	 */
-	asm_declare_pad(cc_out[SECTION_BSS], nbytes, "object space");
+	asm_declare_pad(sec, nbytes, "object space");
 }
 
 void asm_predeclare_extern(decl *d)
@@ -406,10 +478,13 @@ void asm_predeclare_global(decl *d)
 	asm_out_section(SECTION_TEXT, ".globl %s\n", decl_asm_spel(d));
 }
 
-void asm_declare_stringlit(FILE *f, const stringlit *lit)
+void asm_declare_stringlit(enum section_type sec, const stringlit *lit)
 {
+	FILE *const f = cc_out[sec];
+
 	/* could be SECTION_RODATA */
-	asm_nam_begin3(f, lit->lbl, /*align:*/1);
+	asm_nam_begin3(sec, lit->lbl, /*align:*/1);
+
 	if(lit->wide){
 		const char *join = "";
 		size_t i;
@@ -429,27 +504,32 @@ void asm_declare_stringlit(FILE *f, const stringlit *lit)
 	fputc('\n', f);
 }
 
-void asm_declare_decl_init(FILE *f, decl *d)
+void asm_declare_decl_init(enum section_type sec, decl *d)
 {
 	if((d->store & STORE_MASK_STORE) == store_extern){
 		asm_predeclare_extern(d);
 
 	}else if(d->init && !decl_init_is_zero(d->init)){
-		asm_nam_begin(f, d);
-		asm_declare_init(f, d->init, d->ref);
-		fputc('\n', f);
+		asm_nam_begin(sec, d);
+		asm_declare_init(sec, d->init, d->ref);
+		asm_out_section(sec, "\n");
 
 	}else{
 		/* always resB, since we use decl_size() */
-		asm_nam_begin(cc_out[SECTION_BSS], d);
-		asm_reserve_bytes(decl_size(d));
+		asm_nam_begin(SECTION_BSS, d);
+		asm_reserve_bytes(SECTION_BSS, decl_size(d));
 	}
+}
+
+void asm_out_sectionv(enum section_type t, const char *fmt, va_list l)
+{
+	vfprintf(cc_out[t], fmt, l);
 }
 
 void asm_out_section(enum section_type t, const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
-	vfprintf(cc_out[t], fmt, l);
+	asm_out_sectionv(t, fmt, l);
 	va_end(l);
 }

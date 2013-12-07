@@ -25,10 +25,16 @@ static void fold_const_expr_comma(expr *e, consty *k)
 void fold_expr_comma(expr *e, symtable *stab)
 {
 	FOLD_EXPR(e->lhs, stab);
-	fold_disallow_st_un(e->lhs, "comma-expr");
+	fold_check_expr(
+			e->lhs,
+			FOLD_CHK_NO_ST_UN | FOLD_CHK_ALLOW_VOID,
+			"comma-expr");
 
 	FOLD_EXPR(e->rhs, stab);
-	fold_disallow_st_un(e->lhs, "comma-expr");
+	fold_check_expr(
+			e->rhs,
+			FOLD_CHK_NO_ST_UN | FOLD_CHK_ALLOW_VOID,
+			"comma-expr");
 
 	e->tree_type = e->rhs->tree_type;
 

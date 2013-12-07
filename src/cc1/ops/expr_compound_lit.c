@@ -72,7 +72,7 @@ static void gen_expr_compound_lit_code(expr *e)
 void gen_expr_compound_lit(expr *e)
 {
 	/* allow (int){2}, but not (struct...){...} */
-	fold_disallow_st_un(e, "compound literal");
+	fold_check_expr(e, FOLD_CHK_NO_ST_UN, "compound literal");
 
 	gen_expr_compound_lit_code(e);
 
@@ -143,6 +143,7 @@ void mutate_expr_compound_lit(expr *e)
 {
 	e->f_lea = lea_expr_compound_lit;
 	e->f_const_fold = const_expr_compound_lit;
+	e->f_is_lval = expr_is_lval_yes;
 }
 
 static decl *compound_lit_decl(type_ref *t, decl_init *init)

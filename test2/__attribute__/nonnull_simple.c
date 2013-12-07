@@ -9,5 +9,5 @@ main()
 
 	f((void *)0); // CHECK: /warning: null passed where non-null required/
 	f(&i);
-	f(0); // CHECK: /warning: mismatch/
+	f(0); // CHECK: /warning: null passed where/
 }

@@ -9,6 +9,7 @@ src/cpp2/cpp
 src/ucc/ucc
 src/ucc/cfg.h
 src/as_cfg.h
+src/src_config_platform.mk
 
 lib/libc.a
 lib/crt.a

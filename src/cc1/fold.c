@@ -27,22 +27,70 @@
 
 int fold_had_error;
 
-/* FIXME: don't have the callers do type_ref_to_str() */
-int fold_type_ref_equal(
-		type_ref *a, type_ref *b, where *w,
-		enum warning warn, enum decl_cmp extra_flags,
-		const char *errfmt, ...)
+void fold_insert_casts(type_ref *tlhs, expr **prhs, symtable *stab)
 {
-	enum decl_cmp flags = extra_flags | DECL_CMP_ALLOW_VOID_PTR;
+	/* insert a cast: rhs -> lhs */
+	*prhs = expr_set_where(
+			expr_new_cast(*prhs, tlhs, 1),
+			&(*prhs)->where);
 
-	if(!type_ref_is(a, type_ref_ptr) && !type_ref_is(b, type_ref_ptr))
-		flags |= DECL_CMP_ALLOW_SIGNED_UNSIGNED;
+	/* need to fold the cast again - mainly for "loss of precision" warning */
+	fold_expr_cast_descend(*prhs, stab, 0);
+}
 
-	/* stronger checks for blocks, functions and and (non-void) pointers */
+int fold_type_chk_warn(
+		type_ref *lhs, type_ref *rhs,
+		where *w, const char *desc)
+{
+	int error = 1;
+
+	switch(type_ref_cmp(lhs, rhs, TYPE_CMP_ALLOW_TENATIVE_ARRAY)){
+		case TYPE_CONVERTIBLE_IMPLICIT:
+			/* attempt to insert regardless, e.g. _Bool x = 5;
+			 *  - they match but we need the _Bool cast */
+			return 1;
+		case TYPE_EQUAL:
+			break;
+
+		case TYPE_QUAL_LOSS:
+		case TYPE_CONVERTIBLE_EXPLICIT:
+			error = 0;
+
+		case TYPE_NOT_EQUAL:
+		{
+			char buf[TYPE_REF_STATIC_BUFSIZ];
+			char wbuf[WHERE_BUF_SIZ];
+
+			(error ? warn_at_print_error : warn_at)(
+					w,
+					"mismatching types, %s:\n%s: note: '%s' vs '%s'",
+					desc, where_str_r(wbuf, w),
+					type_ref_to_str_r(buf, lhs),
+					type_ref_to_str(       rhs));
+
+			if(error){
+				fold_had_error = 1;
+				return 0; /* don't cast - we don't want duplicate errors */
+			}
+			return 1; /* need cast */
+		}
+	}
+	return 0;
+}
+
+void fold_type_chk_and_cast(
+		type_ref *lhs, expr **prhs,
+		symtable *stab, where *w,
+		const char *desc)
+{
+#if 0
+	int strict = 0;
+
+	/* stronger checks for blocks, functions and (non-void) pointers */
 	if(type_ref_is_nonvoid_ptr(a)
 	&& type_ref_is_nonvoid_ptr(b))
 	{
-		flags |= DECL_CMP_EXACT_MATCH;
+		strict = 1;
 	}
 	else
 	if(type_ref_is(a, type_ref_block)
@@ -50,65 +98,20 @@ int fold_type_ref_equal(
 	|| type_ref_is(a, type_ref_func)
 	|| type_ref_is(b, type_ref_func))
 	{
-		flags |= DECL_CMP_EXACT_MATCH;
+		strict = 1;
 	}
+#endif
+	int cast = 0;
 
-	if(type_ref_equal(a, b, flags)){
-		return 1;
-	}else{
-		int one_struct;
-		va_list l;
+	/* special case - allow assignment to pointer from 0-constant */
+	if(type_ref_is_ptr_or_block(lhs) && expr_is_null_ptr(*prhs, NULL_STRICT_INT))
+		cast = 1; /* no warning, but still sign extend the zero */
+	else if(fold_type_chk_warn(lhs, (*prhs)->tree_type, w, desc))
+		cast = 1;
 
-		if(fopt_mode & FOPT_PLAN9_EXTENSIONS){
-			/* allow b to be an anonymous member of a */
-			struct_union_enum_st *a_sue = type_ref_is_s_or_u(type_ref_is_ptr(a)),
-													 *b_sue = type_ref_is_s_or_u(type_ref_is_ptr(b));
-
-			if(a_sue && b_sue /* they aren't equal */){
-				/* b_sue has an a_sue,
-				 * the implicit cast adjusts to return said a_sue */
-				if(struct_union_member_find_sue(b_sue, a_sue))
-					goto fin;
-			}
-		}
-
-		/*cc1_warn_at(w, 0, 0, warn, "%s vs. %s for...", decl_to_str(a), decl_to_str_r(buf, b));*/
-
-		one_struct = type_ref_is_s_or_u(a) || type_ref_is_s_or_u(b);
-
-		va_start(l, errfmt);
-		cc1_warn_atv(w, one_struct || type_ref_is_void(a) || type_ref_is_void(b), warn, errfmt, l);
-		va_end(l);
-	}
-fin:
-	return 0;
+	if(cast)
+		fold_insert_casts(lhs, prhs, stab);
 }
-
-void fold_insert_casts(type_ref *dlhs, expr **prhs, symtable *stab, where *w, const char *desc)
-{
-	expr *const rhs = *prhs;
-
-	if(!type_ref_equal(dlhs, rhs->tree_type,
-				DECL_CMP_ALLOW_VOID_PTR |
-				DECL_CMP_EXACT_MATCH))
-	{
-		/* insert a cast: rhs -> lhs */
-		expr *cast = expr_set_where(
-				expr_new_cast(rhs, dlhs, 1),
-				&rhs->where);
-
-		*prhs = cast;
-
-		/* need to fold the cast again - mainly for "loss of precision" warning */
-		fold_expr_cast_descend(cast, stab, 0);
-	}
-
-	if(type_ref_is_signed(dlhs) != type_ref_is_signed(rhs->tree_type)){
-		cc1_warn_at(w, 0, WARN_SIGN_COMPARE,
-				"operation between signed and unsigned in %s", desc);
-	}
-}
-
 
 void fold_check_restrict(expr *lhs, expr *rhs, const char *desc, where *w)
 {
@@ -134,7 +137,7 @@ sym *fold_inc_writes_if_sym(expr *e, symtable *stab)
 	return NULL;
 }
 
-void FOLD_EXPR_NO_DECAY(expr *e, symtable *stab)
+void fold_expr(expr *e, symtable *stab)
 {
 	if(e->tree_type)
 		return;
@@ -144,32 +147,78 @@ void FOLD_EXPR_NO_DECAY(expr *e, symtable *stab)
 	UCC_ASSERT(e->tree_type, "no tree_type after fold (%s)", e->f_str());
 }
 
-expr *fold_expr(expr *e, symtable *stab)
+static expr *fold_expr_lval2rval(expr *e, symtable *stab)
+{
+	fold_expr(e, stab);
+
+	if(expr_is_lval(e)){
+		e = expr_set_where(
+				expr_new_cast_rval(e),
+				&e->where);
+
+		fold_expr_cast_descend(e, stab, 0);
+	}
+
+	return e;
+}
+
+expr *fold_expr_decay(expr *e, symtable *stab)
 {
 	/* perform array decay and pointer decay */
 	type_ref *r;
-	type_ref *decayed = NULL;
+	type_ref *decayed;
 
-	FOLD_EXPR_NO_DECAY(e, stab);
+	e = fold_expr_lval2rval(e, stab);
 
 	r = e->tree_type;
 
 	EOF_WHERE(&e->where,
 			decayed = type_ref_decay(r);
-
-			if(type_ref_equal(decayed, r, DECL_CMP_EXACT_MATCH))
-				decayed = NULL;
 		);
 
-	if(decayed){
+	if(decayed != r){
 		expr *imp_cast = expr_set_where(
-				expr_new_cast(e, decayed, 1),
+				expr_new_cast_decay(e, decayed),
 				&e->where);
 		fold_expr_cast_descend(imp_cast, stab, 0);
 		e = imp_cast;
 	}
 
 	return e;
+}
+
+static void fold_calling_conv(type_ref *r)
+{
+	enum calling_conv conv;
+	decl_attr *found;
+
+	/* don't currently check for a second one... */
+	found = type_attr_present(r, attr_call_conv);
+
+	if(found){
+		conv = found->bits.conv;
+	}else{
+		static int init = 0;
+		static enum calling_conv def_conv;
+
+		if(!init){
+			init = 1;
+
+			if(platform_32bit()){
+				def_conv = conv_cdecl;
+			}else{
+				/* 64-bit - MS or SYSV */
+				if(platform_sys() == PLATFORM_CYGWIN)
+					def_conv = conv_x64_ms;
+				else
+					def_conv = conv_x64_sysv;
+			}
+		}
+
+		conv = def_conv;
+	}
+
+	type_ref_funcargs(r)->conv = conv;
 }
 
 void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
@@ -189,9 +238,11 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 				FOLD_EXPR(r->bits.array.size, stab);
 				const_fold(r->bits.array.size, &k);
 
-				if(k.type != CONST_VAL)
-					die_at(&r->where, "not a numeric constant for array size");
-				else if((sintval_t)k.bits.iv.val < 0)
+				if(k.type != CONST_NUM)
+					die_at(&r->where, "not a constant for array size");
+				else if(K_FLOATING(k.bits.num))
+					die_at(&r->where, "not an integral array size");
+				else if((sintegral_t)k.bits.num.val.i < 0)
 					die_at(&r->where, "negative array size");
 				/* allow zero length arrays */
 				else if(k.nonstandard_const)
@@ -210,6 +261,7 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 
 			symtab_fold_sues(r->bits.func.arg_scope);
 			fold_funcargs(r->bits.func.args, r->bits.func.arg_scope, r);
+			fold_calling_conv(r);
 			break;
 
 		case type_ref_block:
@@ -253,7 +305,7 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 			expr *p_expr = r->bits.tdef.type_of;
 
 			/* q_to_check = TODO */
-			FOLD_EXPR_NO_DECAY(p_expr, stab);
+			fold_expr_no_decay(p_expr, stab);
 
 			if(r->bits.tdef.decl)
 				fold_decl(r->bits.tdef.decl, stab, NULL);
@@ -392,13 +444,15 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 		FOLD_EXPR(d->field_width, stab);
 		const_fold(d->field_width, &k);
 
-		if(k.type != CONST_VAL)
+		if(k.type != CONST_NUM)
 			die_at(&d->where, "constant expression required for field width");
+		if(K_FLOATING(k.bits.num))
+			die_at(&d->where, "integral expression required for field width");
 
-		if((sintval_t)k.bits.iv.val < 0)
+		if((sintegral_t)k.bits.num.val.i < 0)
 			die_at(&d->where, "field width must be positive");
 
-		if(k.bits.iv.val == 0){
+		if(k.bits.num.val.i == 0){
 			/* allow anonymous 0-width bitfields
 			 * we align the next bitfield to a boundary
 			 */
@@ -408,7 +462,7 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 						d->spel);
 		}else{
 			const unsigned max = CHAR_BIT * type_ref_size(d->ref, &d->where);
-			if(k.bits.iv.val > max){
+			if(k.bits.num.val.i > max){
 				die_at(&d->where,
 						"bitfield too large for \"%s\" (%u bits)",
 						decl_to_str(d), max);
@@ -421,7 +475,7 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 
 		/* FIXME: only warn if "int" specified,
 		 * i.e. detect explicit signed/unsigned */
-		if(k.bits.iv.val == 1 && type_ref_is_signed(d->ref))
+		if(k.bits.num.val.i == 1 && type_ref_is_signed(d->ref))
 			warn_at(&d->where, "1-bit signed field \"%s\" takes values -1 and 0",
 					decl_to_str(d));
 
@@ -478,10 +532,12 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 						FOLD_EXPR(i->bits.align_intk, stab),
 						&k);
 
-				if(k.type != CONST_VAL)
-					die_at(&d->where, "alignment must be an integer constant");
+				if(k.type != CONST_NUM)
+					die_at(&d->where, "alignment must be a constant");
+				if(K_FLOATING(k.bits.num))
+					die_at(&d->where, "non-integral alignment");
 
-				al = k.bits.iv.val;
+				al = k.bits.num.val.i;
 			}else{
 				type_ref *ty = i->bits.align_ty;
 				UCC_ASSERT(ty, "no type");
@@ -497,15 +553,15 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 		if(attrib){
 			unsigned long al;
 
-			if(attrib->attr_extra.align){
+			if(attrib->bits.align){
 				consty k;
 
-				FOLD_EXPR(attrib->attr_extra.align, stab);
-				const_fold(attrib->attr_extra.align, &k);
+				FOLD_EXPR(attrib->bits.align, stab);
+				const_fold(attrib->bits.align, &k);
 
-				if(k.type != CONST_VAL)
+				if(k.type != CONST_NUM || !K_INTEGRAL(k.bits.num))
 					die_at(&attrib->where, "aligned attribute not reducible to integer constant");
-				al = k.bits.iv.val;
+				al = k.bits.num.val.i;
 			}else{
 				al = platform_align_max();
 			}
@@ -683,7 +739,8 @@ void fold_global_func(decl *func_decl)
 {
 	if(func_decl->func_code){
 		symtable *const arg_symtab = DECL_FUNC_ARG_SYMTAB(func_decl);
-		type_ref *func_ret = type_ref_func_call(func_decl->ref, NULL);
+		funcargs *args;
+		type_ref *func_ret = type_ref_func_call(func_decl->ref, &args);
 
 		arg_symtab->in_func = func_decl;
 
@@ -733,52 +790,66 @@ void fold_decl_global(decl *d, symtable *stab)
 	}
 }
 
-void fold_need_expr(expr *e, const char *stmt_desc, int is_test)
+void fold_check_expr(expr *e, enum fold_chk chk, const char *desc)
 {
-	if(type_ref_is_void(e->tree_type))
-		die_at(&e->where, "%s requires non-void expression", stmt_desc);
+	if(!e)
+		return;
+
+	UCC_ASSERT(e->tree_type, "no tree type");
+
+	/* fatal ones first */
+
+	if((chk & FOLD_CHK_ALLOW_VOID) == 0 && type_ref_is_void(e->tree_type))
+		die_at(&e->where, "%s requires non-void expression", desc);
+
+	if(chk & FOLD_CHK_NO_ST_UN){
+		struct_union_enum_st *sue;
+
+		if((sue = type_ref_is_s_or_u(e->tree_type))){
+			die_at(&e->where, "%s involved in %s",
+					sue_str(sue), desc);
+		}
+	}
+
+	if(chk & FOLD_CHK_NO_BITFIELD){
+		if(e && expr_kind(e, struct)){
+			decl *d = e->bits.struct_mem.d;
+
+			if(d->field_width)
+				die_at(&e->where, "bitfield in %s", desc);
+		}
+	}
+
+	if(chk & FOLD_CHK_INTEGRAL){
+		if(type_ref_is_floating(e->tree_type)){
+			die_at(&e->where, "%s requires an integral expression (not \"%s\")",
+					desc, type_ref_to_str(e->tree_type));
+		}
+	}
 
 	if(!e->in_parens && expr_kind(e, assign))
-		cc1_warn_at(&e->where, 0, WARN_TEST_ASSIGN, "testing an assignment in %s", stmt_desc);
+		cc1_warn_at(&e->where, 0,WARN_TEST_ASSIGN, "assignment in %s", desc);
 
-	if(is_test){
+	if(chk & FOLD_CHK_BOOL){
 		if(!type_ref_is_bool(e->tree_type)){
-			cc1_warn_at(&e->where, 0, WARN_TEST_BOOL, "testing a non-boolean expression, %s, in %s",
-					type_ref_to_str(e->tree_type), stmt_desc);
+			cc1_warn_at(&e->where, 0, WARN_TEST_BOOL,
+					"testing a non-boolean expression (%s), in %s",
+					type_ref_to_str(e->tree_type), desc);
 		}
 
 		if(expr_kind(e, addr)){
 			cc1_warn_at(&e->where, 0, WARN_TEST_BOOL/*FIXME*/,
-					"testing an address is always true");
+					"an address is always true");
 		}
 	}
 
-	fold_disallow_st_un(e, stmt_desc);
-}
+	if(chk & FOLD_CHK_CONST_I){
+		consty k;
+		const_fold(e, &k);
 
-void fold_disallow_st_un(expr *e, const char *desc)
-{
-	struct_union_enum_st *sue;
-
-	if((sue = type_ref_is_s_or_u(e->tree_type))){
-		die_at(&e->where, "%s involved in %s",
-				sue_str(sue), desc);
+		if(k.type != CONST_NUM || !K_INTEGRAL(k.bits.num))
+			die_at(&e->where, "integral constant expected for %s", desc);
 	}
-}
-
-void fold_disallow_bitfield(expr *e, const char *desc, ...)
-{
-	if(e && expr_kind(e, struct)){
-		decl *d = e->bits.struct_mem.d;
-
-		if(d->field_width){
-			va_list l;
-			va_start(l, desc);
-			vdie(&e->where, desc, l);
-			va_end(l);
-		}
-	}
-
 }
 
 void fold_stmt(stmt *t)
@@ -809,7 +880,7 @@ void fold_funcargs(funcargs *fargs, symtable *stab, type_ref *from)
 
 	/* check nonnull corresponds to a pointer arg */
 	if((da = type_attr_present(from, attr_nonnull)))
-		nonnulls = da->attr_extra.nonnull_args;
+		nonnulls = da->bits.nonnull_args;
 
 	if(fargs->arglist){
 		/* check for unnamed params and extern/static specs */
@@ -841,8 +912,9 @@ void fold_funcargs(funcargs *fargs, symtable *stab, type_ref *from)
 						"function argument %d is static or extern",
 						i + 1);
 
-			/* ensure ptr */
-			if((nonnulls & (1 << i))
+			/* ensure ptr, unless __attribute__((nonnull)) */
+			if(nonnulls != ~0UL
+			&& (nonnulls & (1 << i))
 			&& !type_ref_is(d->ref, type_ref_ptr)
 			&& !type_ref_is(d->ref, type_ref_block))
 			{

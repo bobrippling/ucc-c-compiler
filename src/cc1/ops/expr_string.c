@@ -24,15 +24,19 @@ void fold_expr_str(expr *e, symtable *stab)
 	/* (const? char []) */
 	e->tree_type = type_ref_new_array(
 			type_ref_new_type_qual(
-				strlit->wide ? type_wchar : type_char,
+				strlit->wide ? type_wchar : type_nchar,
 				e->bits.strlit.is_func ? qual_const : qual_none),
 			sz);
 }
 
 void gen_expr_str(expr *e)
 {
-	stringlit_use(e->bits.strlit.lit_at.lit);
-	out_push_lbl(e->bits.strlit.lit_at.lit->lbl, 1);
+	stringlit *strl = e->bits.strlit.lit_at.lit;
+
+	stringlit_use(strl);
+
+	out_push_lbl(strl->lbl, 1);
+	out_set_lvalue();
 }
 
 static void lea_expr_str(expr *e)
@@ -48,18 +52,19 @@ static void lea_expr_str(expr *e)
 
 void gen_expr_str_str(expr *e)
 {
+	FILE *f = gen_file();
 	stringlit *lit = e->bits.strlit.lit_at.lit;
 
 	idt_printf("%sstring at %s\n", lit->wide ? "wide " : "", lit->lbl);
 	gen_str_indent++;
 	idt_print();
 
-	literal_print(cc1_out,
+	literal_print(f,
 			e->bits.strlit.lit_at.lit->str,
 			e->bits.strlit.lit_at.lit->len);
 
 	gen_str_indent--;
-	fputc('\n', cc1_out);
+	fputc('\n', f);
 }
 
 static void const_expr_string(expr *e, consty *k)
@@ -101,7 +106,7 @@ expr *expr_new_str(char *s, size_t l, int wide, where *w)
 
 void gen_expr_style_str(expr *e)
 {
-	literal_print(cc1_out,
+	literal_print(gen_file(),
 			e->bits.strlit.lit_at.lit->str,
 			e->bits.strlit.lit_at.lit->len);
 }

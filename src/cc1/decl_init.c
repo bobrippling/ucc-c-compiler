@@ -125,13 +125,7 @@ int decl_init_is_zero(decl_init *dinit)
 
 	switch(dinit->type){
 		case decl_init_scalar:
-		{
-			consty k;
-
-			const_fold(dinit->bits.expr, &k);
-
-			return k.type == CONST_VAL && k.bits.iv.val == 0;
-		}
+			return const_expr_and_zero(dinit->bits.expr);
 
 		case decl_init_brace:
 		{
@@ -295,24 +289,15 @@ static decl_init *decl_init_brace_up_scalar(
 
 	/* fold */
 	{
-		char buf[TYPE_REF_STATIC_BUFSIZ];
 		expr *e = FOLD_EXPR(first_init->bits.expr, stab);
 
 		if(type_ref_is_type(e->tree_type, type_void))
 			die_at(&e->where, "initialisation from void expression");
 
-		/* for the warning */
-		fold_type_ref_equal(
-					tfor, e->tree_type, &first_init->where,
-					WARN_ASSIGN_MISMATCH,
-					DECL_CMP_ALLOW_VOID_PTR | DECL_CMP_ALLOW_SIGNED_UNSIGNED,
-					"mismatching types in initialisation (%s <-- %s)",
-					type_ref_to_str_r(buf, tfor), type_ref_to_str(e->tree_type));
-
-		/* attempt to insert regardless, e.g. _Bool x = 5;
-		 *  - they match but we need the _Bool cast */
-		fold_insert_casts(tfor, &first_init->bits.expr, stab,
-				&first_init->bits.expr->where, "initialisation");
+		fold_type_chk_and_cast(
+				tfor, &first_init->bits.expr,
+				stab, &first_init->bits.expr->where,
+				"initialisation");
 
 		if(cc1_std <= STD_C89){
 			consty k;
@@ -393,21 +378,23 @@ static decl_init **decl_init_brace_up_array2(
 				memcpy(&k[1], &k[0], sizeof k[1]);
 			}
 
-			if(k[0].type != CONST_VAL || k[1].type != CONST_VAL)
+			if(k[0].type != CONST_NUM || k[1].type != CONST_NUM)
 				die_at(&this->where, "non-constant array-designator");
+			if((k[0].bits.num.suffix | k[1].bits.num.suffix) & VAL_FLOATING)
+				die_at(&this->where, "non-integral array-designator");
 
-			if((sintval_t)k[0].bits.iv.val < 0 || (sintval_t)k[1].bits.iv.val < 0)
+			if((sintegral_t)k[0].bits.num.val.i < 0 || (sintegral_t)k[1].bits.num.val.i < 0)
 				die_at(&this->where, "negative array index initialiser");
 
 			if(limit > -1
-			&& (k[0].bits.iv.val >= (intval_t)limit
-			||  k[1].bits.iv.val >= (intval_t)limit))
+			&& (k[0].bits.num.val.i >= (integral_t)limit
+			||  k[1].bits.num.val.i >= (integral_t)limit))
 			{
 				die_at(&this->where, "designating outside of array bounds (%d)", limit);
 			}
 
-			i = k[0].bits.iv.val;
-			j = k[1].bits.iv.val;
+			i = k[0].bits.num.val.i;
+			j = k[1].bits.num.val.i;
 		}else if(limit > -1 && i >= (unsigned)limit){
 			break;
 		}
@@ -870,7 +857,7 @@ static decl_init *is_char_init(
 		decl_init *chosen = this->type == decl_init_scalar
 			? this : this->bits.ar.inits[0];
 
-		FOLD_EXPR_NO_DECAY(chosen->bits.expr, stab);
+		fold_expr_no_decay(chosen->bits.expr, stab);
 
 		ty_expr = type_ref_str_type(chosen->bits.expr->tree_type);
 		ty_decl = type_ref_str_type(ty);
@@ -891,9 +878,10 @@ static decl_init *decl_init_brace_up_array_pre(
 		type_ref *next_type, symtable *stab)
 {
 	const int limit = type_ref_is_incomplete_array(next_type)
-		? -1 : type_ref_array_len(next_type);
+		? -1 : (signed)type_ref_array_len(next_type);
 
 	type_ref *next = type_ref_next(next_type);
+
 	decl_init *strk;
 
 	if(!type_ref_is_complete(next))
@@ -995,9 +983,9 @@ static decl_init *decl_init_brace_up_start(
 		|| type_ref_is_s_or_u(tfor)))
 	{
 		expr *e;
-		FOLD_EXPR_NO_DECAY(e = init->bits.expr, stab);
+		fold_expr_no_decay(e = init->bits.expr, stab);
 
-		if(!type_ref_equal(e->tree_type, tfor, DECL_CMP_EXACT_MATCH)){
+		if(type_ref_cmp(e->tree_type, tfor, 0) != TYPE_EQUAL){
 			/* allow special case of char [] with "..." */
 			int str_mismatch = 0;
 

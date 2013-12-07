@@ -27,25 +27,18 @@ void fold_stmt_return(stmt *s)
 	}
 
 	if(s->expr){
-		char buf[TYPE_REF_STATIC_BUFSIZ];
-
 		FOLD_EXPR(s->expr, s->symtab);
-		fold_need_expr(s->expr, "return", 0);
+		fold_check_expr(s->expr, 0, s->f_str());
 
 		if(ret_ty){
-			fold_type_ref_equal(ret_ty, s->expr->tree_type,
-					&s->where, WARN_RETURN_TYPE, 0,
-					"mismatching return type for %s (%s <-- %s)",
-					in_func->spel,
-					type_ref_to_str_r(buf, ret_ty),
-					type_ref_to_str(s->expr->tree_type));
+			/* void return handled implicitly with a cast to void */
+			fold_type_chk_and_cast(
+					ret_ty, &s->expr,
+					s->symtab, &s->where, "return type");
 
 			if(void_func){
 				cc1_warn_at(&s->where, 0, WARN_RETURN_TYPE,
 						"return with a value in void function %s", in_func->spel);
-			}else{
-				fold_insert_casts(ret_ty, &s->expr,
-						s->symtab, &s->expr->where, "return");
 			}
 		}else{
 			/* in a block */

@@ -34,15 +34,17 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 	type_ref *chosen;
 
 	if(e->expr)
-		FOLD_EXPR_NO_DECAY(e->expr, stab);
+		fold_expr_no_decay(e->expr, stab);
 	else
 		fold_type_ref(e->bits.size_of.of_type, NULL, stab);
 
 	chosen = SIZEOF_WHAT(e);
 
-	fold_disallow_bitfield(
-			e->expr,
-			"%s applied to a bit-field",
+	fold_check_expr(e->expr,
+			FOLD_CHK_NO_BITFIELD
+			| (e->what_of == what_typeof
+					? FOLD_CHK_ALLOW_VOID
+					: 0),
 			sizeof_what(e->what_of));
 
 	switch(e->what_of){
@@ -92,7 +94,7 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 							SIZEOF_WHAT(e), &e->where);
 
 			/* size_t */
-			e->tree_type = type_ref_new_type(type_new_primitive_signed(type_long, 0));
+			e->tree_type = type_ref_new_type(type_new_primitive(type_ulong));
 			break;
 		}
 	}
@@ -102,16 +104,16 @@ static void const_expr_sizeof(expr *e, consty *k)
 {
 	UCC_ASSERT(e->tree_type, "const_fold on sizeof before fold");
 	CONST_FOLD_LEAF(k);
-	k->bits.iv.val = SIZEOF_SIZE(e);
-	k->bits.iv.suffix = VAL_UNSIGNED | VAL_LONG;
-	k->type = CONST_VAL;
+	k->bits.num.val.i = SIZEOF_SIZE(e);
+	k->bits.num.suffix = VAL_UNSIGNED | VAL_LONG;
+	k->type = CONST_NUM;
 }
 
 void gen_expr_sizeof(expr *e)
 {
 	type_ref *r = SIZEOF_WHAT(e);
 
-	out_push_i(e->tree_type, SIZEOF_SIZE(e));
+	out_push_l(e->tree_type, SIZEOF_SIZE(e));
 
 	out_comment("sizeof %s%s", e->expr ? "" : "type ", type_ref_to_str(r));
 }

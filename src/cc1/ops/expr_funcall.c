@@ -30,16 +30,16 @@ static void sentinel_check(where *w, type_ref *ref, expr **args,
 	if(!variadic)
 		return; /* warning emitted elsewhere, on the decl */
 
-	if(attr->attr_extra.sentinel){
+	if(attr->bits.sentinel){
 		consty k;
 
-		FOLD_EXPR(attr->attr_extra.sentinel, stab);
-		const_fold(attr->attr_extra.sentinel, &k);
+		FOLD_EXPR(attr->bits.sentinel, stab);
+		const_fold(attr->bits.sentinel, &k);
 
-		if(k.type != CONST_VAL)
+		if(k.type != CONST_NUM || !K_INTEGRAL(k.bits.num))
 			die_at(&attr->where, "sentinel attribute not reducible to integer constant");
 
-		i = k.bits.iv.val;
+		i = k.bits.num.val.i;
 	}else{
 		i = 0;
 	}
@@ -56,7 +56,8 @@ static void sentinel_check(where *w, type_ref *ref, expr **args,
 
 	sentinel = args[(nstdargs + nvs - 1) - i];
 
-	if(!expr_is_null_ptr(sentinel, 0))
+	/* must be of a pointer type, printf("%p\n", 0) is undefined */
+	if(!expr_is_null_ptr(sentinel, NULL_STRICT_ANY_PTR))
 		ATTR_WARN_RET(&sentinel->where, "sentinel argument expected (got %s)",
 				type_ref_to_str(sentinel->tree_type));
 
@@ -71,13 +72,17 @@ static void static_array_check(
 	type_ref *ty_decl = decl_is_decayed_array(arg_decl);
 	consty k_decl;
 
-	if(!ty_decl || !ty_decl->bits.ptr.is_static || !ty_decl->bits.ptr.size)
+	if(!ty_decl || !ty_decl->bits.ptr.is_static)
 		return;
 
-	if(expr_is_null_ptr(arg_expr, 1 /* int */)){
+	/* want to check any pointer type */
+	if(expr_is_null_ptr(arg_expr, NULL_STRICT_ANY_PTR)){
 		warn_at(&arg_expr->where, "passing null-pointer where array expected");
 		return;
 	}
+
+	if(!ty_decl->bits.ptr.size)
+		return;
 
 	const_fold(ty_decl->bits.ptr.size, &k_decl);
 
@@ -88,11 +93,15 @@ static void static_array_check(
 
 			const_fold(ty_expr->bits.ptr.size, &k_arg);
 
-			if(k_decl.type == CONST_VAL && k_arg.bits.iv.val < k_decl.bits.iv.val)
+			if(k_decl.type == CONST_NUM
+			&& K_INTEGRAL(k_arg.bits.num)
+			&& k_arg.bits.num.val.i < k_decl.bits.num.val.i)
+			{
 				warn_at(&arg_expr->where,
-						"array of size %" INTVAL_FMT_D
-						" passed where size %" INTVAL_FMT_D " needed",
-						k_arg.bits.iv.val, k_decl.bits.iv.val);
+						"array of size %" NUMERIC_FMT_D
+						" passed where size %" NUMERIC_FMT_D " needed",
+						k_arg.bits.num.val.i, k_decl.bits.num.val.i);
+			}
 		}
 	}
 	/* else it's a random pointer, just be quiet */
@@ -104,7 +113,6 @@ void fold_expr_funcall(expr *e, symtable *stab)
 	funcargs *args_from_decl;
 	char *sp = NULL;
 	int count_decl = 0;
-	char *desc;
 
 #if 0
 	if(func_is_asm(sp)){
@@ -155,12 +163,14 @@ invalid:
 			df->ref = type_func;
 			df->spel = e->expr->bits.ident.spel;
 
-			/* not declared - generate a sym ourselves */
-			e->expr->bits.ident.sym = sym_new_stab(stab, df, sym_global);
+			fold_decl(df, stab, NULL); /* update calling conv, for e.g. */
+
+			df->sym->type = sym_global;
+
+			e->expr->bits.ident.sym = df->sym;
 		}
 	}
 
-	desc = ustrprintf("function argument to %s", sp);
 	FOLD_EXPR(e->expr, stab);
 	type_func = e->expr->tree_type;
 
@@ -202,18 +212,26 @@ invalid:
 		unsigned long nonnulls = 0;
 		int i, j;
 		decl_attr *da;
+#define ARG_BUF(buf, i, sp)             \
+				snprintf(buf, sizeof buf,       \
+						"argument %d to %s",        \
+						i + 1, sp ? sp : "function")
+
+		char buf[64];
 
 		if((da = type_attr_present(type_func, attr_nonnull)))
-			nonnulls = da->attr_extra.nonnull_args;
+			nonnulls = da->bits.nonnull_args;
 
 		for(i = j = 0; e->funcargs[i]; i++){
 			expr *arg = FOLD_EXPR(e->funcargs[i], stab);
 
-			fold_need_expr(arg, desc, 0);
-			fold_disallow_st_un(arg, desc);
+			ARG_BUF(buf, i, sp);
 
-			if((nonnulls & (1 << i)) && expr_is_null_ptr(arg, 1))
-				warn_at(&arg->where, "null passed where non-null required (arg %d)", i + 1);
+			fold_check_expr(arg, FOLD_CHK_NO_ST_UN, buf);
+
+			if((nonnulls & (1 << i)) && expr_is_null_ptr(arg, NULL_STRICT_INT))
+				warn_at(&arg->where, "null passed where non-null required (arg %d)",
+						i + 1);
 		}
 	}
 
@@ -232,48 +250,36 @@ invalid:
 
 		if(e->funcargs){
 			int i;
+			char buf[64];
 
 			for(i = 0; ; i++){
-				expr *arg      = e->funcargs[i];
 				decl *decl_arg = args_from_decl->arglist[i];
-				int eq;
-				char arg_buf[TYPE_REF_STATIC_BUFSIZ];
-				char exp_buf[TYPE_REF_STATIC_BUFSIZ];
 
 				if(!decl_arg)
 					break;
 
-				eq = fold_type_ref_equal(
-						decl_arg->ref, arg->tree_type, &arg->where,
-						WARN_ARG_MISMATCH, 0,
-						"mismatching argument %d to %s (%s <-- %s)",
-						i, sp,
-						type_ref_to_str_r(exp_buf, decl_arg->ref),
-						type_ref_to_str_r(arg_buf, arg->tree_type));
+				ARG_BUF(buf, i, sp);
 
-				if(!eq){
-					fold_insert_casts(decl_arg->ref, &e->funcargs[i],
-							stab, &arg->where, desc);
-
-					arg = e->funcargs[i];
-				}
+				fold_type_chk_and_cast(
+						decl_arg->ref, &e->funcargs[i],
+						stab, &e->funcargs[i]->where,
+						buf);
 
 				/* f(int [static 5]) check */
-				static_array_check(decl_arg, arg);
+				static_array_check(decl_arg, e->funcargs[i]);
 			}
 		}
 	}
 
-	free(desc), desc = NULL;
-
-	/* each arg needs casting up to int size, if smaller */
+	/* each unspecified arg needs default promotion, (if smaller) */
 	if(e->funcargs){
 		int i;
-		for(i = 0; e->funcargs[i]; i++)
-			expr_promote_int_if_smaller(&e->funcargs[i], stab);
+		for(i = count_decl; e->funcargs[i]; i++)
+			expr_promote_default(&e->funcargs[i], stab);
 	}
 
-	fold_disallow_st_un(e, "return");
+	if(type_ref_is_s_or_u(e->tree_type))
+		ICW("TODO: function returning a struct");
 
 	/* attr */
 	{

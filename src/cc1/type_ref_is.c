@@ -1,3 +1,20 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdarg.h>
+
+#include "../util/where.h"
+#include "../util/util.h"
+#include "../util/platform.h"
+
+#include "data_structs.h"
+#include "expr.h"
+#include "sue.h"
+#include "type_ref.h"
+#include "decl.h"
+#include "const.h"
+
+#include "type_ref_is.h"
+
 static type_ref *type_ref_next_1(type_ref *r)
 {
 	if(r->type == type_ref_tdef){
@@ -15,7 +32,7 @@ static type_ref *type_ref_next_1(type_ref *r)
 	return r->ref;
 }
 
-static type_ref *type_ref_skip_tdefs_casts(type_ref *r)
+type_ref *type_ref_skip_tdefs_casts(type_ref *r)
 {
 	while(r)
 		switch(r->type){
@@ -97,6 +114,13 @@ type_ref *type_ref_is_ptr(type_ref *r)
 	return r ? r->ref : NULL;
 }
 
+type_ref *type_ref_is_ptr_or_block(type_ref *r)
+{
+	type_ref *t = type_ref_is_ptr(r);
+
+	return t ? t : type_ref_is(r, type_ref_block);
+}
+
 type_ref *type_ref_is_array(type_ref *r)
 {
 	r = type_ref_is(r, type_ref_array);
@@ -129,12 +153,19 @@ type_ref *type_ref_is_func_or_block(type_ref *r)
 
 const type *type_ref_get_type(type_ref *r)
 {
-	for(; r && r->type != type_ref_type; r = r->ref);
+	for(; r; )
+		switch(r->type){
+			case type_ref_tdef:
+				r = type_ref_skip_tdefs_casts(r);
+				break;
+			case type_ref_type:
+				return r->bits.type;
+			default:
+				goto no;
+		}
 
-	if(r && r->type == type_ref_tdef)
-		return type_ref_get_type(type_ref_skip_tdefs_casts(r));
-
-	return r ? r->bits.type : NULL;
+no:
+	return NULL;
 }
 
 int type_ref_is_bool(type_ref *r)
@@ -147,27 +178,7 @@ int type_ref_is_bool(type_ref *r)
 	if(!r)
 		return 0;
 
-	switch(r->bits.type->primitive){
-		case type__Bool:
-		case type_char:
-		case type_int:
-		case type_short:
-		case type_long:
-		case type_llong:
-			return 1;
-		default:
-			return 0;
-	}
-}
-
-static type_ref *decl_is(decl *d, enum type_ref_type t)
-{
-	return type_ref_is(d->ref, t);
-}
-
-static int decl_is_ptr(decl *d)
-{
-	return !!decl_is(d, type_ref_ptr);
+	return type_ref_is_integral(r);
 }
 
 int type_ref_is_fptr(type_ref *r)
@@ -203,12 +214,12 @@ int type_ref_is_integral(type_ref *r)
 		return 0;
 
 	switch(r->bits.type->primitive){
-		case type_int:
-		case type_char:
+		case type_int:   case type_uint:
+		case type_nchar: case type_schar: case type_uchar:
 		case type__Bool:
-		case type_short:
-		case type_long:
-		case type_llong:
+		case type_short: case type_ushort:
+		case type_long:  case type_ulong:
+		case type_llong: case type_ullong:
 		case type_enum:
 			return 1;
 
@@ -311,9 +322,16 @@ type_ref_str_type(type_ref *r)
 		t = type_ref_is_ptr(r);
 	t = type_ref_is_type(t, type_unknown);
 	switch(t ? t->bits.type->primitive : type_unknown){
-		case type_char: return type_ref_str_char;
-		case type_int: return type_ref_str_wchar;
-		default: return type_ref_str_no;
+		case type_schar:
+		case type_nchar:
+		case type_uchar:
+			return type_ref_str_char;
+
+		case type_int:
+			return type_ref_str_wchar;
+
+		default:
+			return type_ref_str_no;
 	}
 }
 
@@ -379,30 +397,40 @@ type_ref *type_ref_func_call(type_ref *fp, funcargs **pfuncargs)
 	return fp;
 }
 
-type_ref *type_ref_decay(type_ref *r)
+int type_ref_decayable(type_ref *r)
+{
+	switch(type_ref_skip_tdefs_casts(r)->type){
+		case type_ref_array:
+		case type_ref_func:
+			return 1;
+		default:
+			return 0;
+	}
+}
+
+type_ref *type_ref_decay(type_ref *const r)
 {
 	/* f(int x[][5]) decays to f(int (*x)[5]), not f(int **x) */
+	type_ref *test = type_ref_skip_tdefs_casts(r);
 
-	r = type_ref_skip_tdefs_casts(r);
-
-	switch(r->type){
+	switch(test->type){
 		case type_ref_array:
 		{
 			/* don't mutate a type_ref */
-			type_ref *new = type_ref_new_ptr(r->ref, qual_none);
-			new->bits.ptr = r->bits.array; /* save the old size, etc */
+			type_ref *new = type_ref_new_ptr(test->ref, qual_none);
+			new->bits.ptr = test->bits.array; /* save the old size, etc */
 			new->bits.ptr.decayed = 1; /* old size may be NULL */
 			return new;
 		}
 
 		case type_ref_func:
-			return type_ref_new_ptr(r, qual_none);
+			return type_ref_new_ptr(test, qual_none);
 
 		default:
 			break;
 	}
 
-	return r;
+	return r; /* we don't return a tdef/cast skipped type_ref */
 }
 
 int type_ref_is_void(type_ref *r)
@@ -416,7 +444,11 @@ int type_ref_is_signed(type_ref *r)
 	while(r)
 		switch(r->type){
 			case type_ref_type:
-				return r->bits.type->is_signed;
+				return type_is_signed(r->bits.type);
+
+			case type_ref_ptr:
+				/* "unspecified" */
+				return 1;
 
 			case type_ref_cast:
 				if(r->bits.cast.is_signed_cast)
@@ -437,15 +469,7 @@ int type_ref_is_floating(type_ref *r)
 	if(!r)
 		return 0;
 
-	switch(r->bits.type->primitive){
-		case type_float:
-		case type_double:
-		case type_ldouble:
-			return 1;
-		default:
-			break;
-	}
-	return 0;
+	return type_floating(r->bits.type->primitive);
 }
 
 enum type_qualifier type_ref_qual(const type_ref *r)
@@ -486,6 +510,13 @@ enum type_qualifier type_ref_qual(const type_ref *r)
 	ucc_unreach(qual_none);
 }
 
+enum type_primitive type_ref_primitive(type_ref *ty)
+{
+	ty = type_ref_is_type(ty, type_unknown);
+	UCC_ASSERT(ty, "not primitive?");
+	return ty->bits.type->primitive;
+}
+
 funcargs *type_ref_funcargs(type_ref *r)
 {
 	type_ref *test;
@@ -519,12 +550,35 @@ int type_ref_is_const(type_ref *r)
 	return !!(type_ref_qual(r) & qual_const);
 }
 
-long type_ref_array_len(type_ref *r)
+unsigned type_ref_array_len(type_ref *r)
 {
 	r = type_ref_is(r, type_ref_array);
 
 	UCC_ASSERT(r, "not an array");
 	UCC_ASSERT(r->bits.array.size, "array len of []");
 
-	return const_fold_val(r->bits.array.size);
+	return const_fold_val_i(r->bits.array.size);
+}
+
+int type_ref_is_promotable(type_ref *r, type_ref **pto)
+{
+	if((r = type_ref_is_type(r, type_unknown))){
+		static unsigned sz_int, sz_double;
+		const int fp = type_floating(r->bits.type->primitive);
+		unsigned rsz;
+
+		if(!sz_int){
+			sz_int = type_primitive_size(type_int);
+			sz_double = type_primitive_size(type_double);
+		}
+
+		rsz = type_primitive_size(r->bits.type->primitive);
+
+		if(rsz < (fp ? sz_double : sz_int)){
+			*pto = fp ? type_ref_cached_DOUBLE() : type_ref_cached_INT();
+			return 1;
+		}
+	}
+
+	return 0;
 }

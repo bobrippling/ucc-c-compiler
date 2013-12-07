@@ -12,8 +12,11 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 
 	fold_inc_writes_if_sym(lvalue, stab);
 
-	FOLD_EXPR_NO_DECAY(e->lhs, stab);
+	fold_expr_no_decay(e->lhs, stab);
 	FOLD_EXPR(e->rhs, stab);
+
+	fold_check_expr(e->lhs, FOLD_CHK_NO_ST_UN, "compound assignment");
+	fold_check_expr(e->rhs, FOLD_CHK_NO_ST_UN, "compound assignment");
 
 	/* skip the addr we inserted */
 	expr_must_lvalue(lvalue);
@@ -30,20 +33,20 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 		type_ref *resolved = op_required_promotion(e->op, lvalue, e->rhs, &e->where, &tlhs, &trhs);
 
 		if(tlhs){
-			/* can't cast the lvalue - we must cast the rhs to the correct size  */
+			/* must cast the lvalue, then down cast once the operation is done
+			 * special handling for expr_kind(e->lhs, cast) is done in the gen-code
+			 */
+			fold_insert_casts(tlhs, &e->lhs, stab);
 
-			if(tlhs != lvalue->tree_type)
-				type_ref_free_1(tlhs);
-
-			fold_insert_casts(lvalue->tree_type, &e->rhs, stab, &e->where, op_to_str(e->op));
+			/* casts may be inserted anyway, and don't want to rely on
+			 * .implicit_cast stuff */
+			e->bits.compound_upcast = 1;
 
 		}else if(trhs){
-			fold_insert_casts(trhs, &e->rhs, stab, &e->where, op_to_str(e->op));
+			fold_insert_casts(trhs, &e->rhs, stab);
 		}
 
 		e->tree_type = lvalue->tree_type;
-
-		fold_disallow_st_un(e, "compound assignment");
 
 		(void)resolved;
 		/*type_ref_free_1(resolved); XXX: memleak */
@@ -54,9 +57,14 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 
 void gen_expr_assign_compound(expr *e)
 {
-	lea_expr(e->lhs);
+	/* int += float
+	 * lea int, cast up to float, add, cast down to int, store
+	 */
+	lea_expr(e->bits.compound_upcast ? expr_cast_child(e->lhs) : e->lhs);
 
 	if(e->assign_is_post){
+		UCC_ASSERT(!e->bits.compound_upcast, "can't do upcast for (%s)++", e->lhs->f_str());
+
 		out_dup();
 		out_deref();
 		out_flush_volatile();
@@ -65,11 +73,23 @@ void gen_expr_assign_compound(expr *e)
 	}
 
 	out_dup();
-	out_deref();
+	/* delay the dereference until after generating rhs.
+	 * this is fine, += etc aren't sequence points
+	 */
 
 	gen_expr(e->rhs);
 
+	/* here's the delayed dereference */
+	out_swap();
+	out_deref();
+	if(e->bits.compound_upcast)
+		out_cast(e->lhs->tree_type);
+	out_swap();
+
 	out_op(e->op);
+
+	if(e->bits.compound_upcast) /* need to cast back down to store */
+		out_cast(e->tree_type);
 
 	out_store();
 

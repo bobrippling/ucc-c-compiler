@@ -15,7 +15,6 @@
 #include "fold_sym.h"
 #include "pack.h"
 #include "sue.h"
-#include "out/out.h"
 #include "fold.h"
 #include "fold_sue.h"
 #include "decl_init.h"
@@ -107,12 +106,12 @@ void symtab_check_static_asserts(symtable *stab)
 
 		const_fold(sa->e, &k);
 
-		if(k.type != CONST_VAL)
+		if(k.type != CONST_NUM || !K_INTEGRAL(k.bits.num))
 			die_at(&sa->e->where,
 					"static assert: not an integer constant expression (%s)",
 					sa->e->f_str());
 
-		if(!k.bits.iv.val)
+		if(!k.bits.num.val.i)
 			die_at(&sa->e->where, "static assertion failure: %s", sa->s);
 
 		if(fopt_mode & FOPT_SHOW_STATIC_ASSERTS){
@@ -324,27 +323,30 @@ void symtab_fold_decls(symtable *tab)
 
 					default:
 					{
+						/* non-null based on switch */
 						UCC_ASSERT(a->has_decl && b->has_decl, "no decls?");
 					}
 					{
-						const enum decl_cmp dflags =
-							DECL_CMP_EXACT_MATCH | DECL_CMP_ALLOW_TENATIVE_ARRAY;
-
 						decl *da = a->bits.decl;
 						decl *db = b->bits.decl;
 
 						const int a_func = !!DECL_IS_FUNC(da);
 
-						if(!!DECL_IS_FUNC(db) != a_func
-						|| !decl_equal(da, db, dflags))
-						{
+						if(!!DECL_IS_FUNC(db) != a_func){
 							clash = "mismatching";
-						}else{
-							if(IS_LOCAL_SCOPE){
-								/* allow multiple functions or multiple externs */
-								if(a_func){
-									/* fine - we know they're equal from decl_equal() above */
-								}else{
+						}else switch(decl_cmp(da, db, TYPE_CMP_ALLOW_TENATIVE_ARRAY)){
+							case TYPE_NOT_EQUAL:
+								/* must be an exact match */
+							case TYPE_QUAL_LOSS:
+							case TYPE_CONVERTIBLE_IMPLICIT:
+							case TYPE_CONVERTIBLE_EXPLICIT:
+								/* allow static/non-static redecl for non-functions */
+								if(a_func || (da->store & STORE_MASK_STORE) != store_static)
+									clash = "mismatching";
+								break;
+
+							case TYPE_EQUAL:
+								if(IS_LOCAL_SCOPE){
 									enum decl_storage a_store = da->store & STORE_MASK_STORE;
 									enum decl_storage b_store = db->store & STORE_MASK_STORE;
 									int a_extern = a_store == store_extern;
@@ -359,21 +361,18 @@ void symtab_fold_decls(symtable *tab)
 										/* redefinition at local scope - allow typedef */
 										if(a_store & store_typedef && b_store & store_typedef){
 											warn_c11_retypedef(da, db);
-										}else{
+										}else if(!a_func){ /* functions can repeat */
 											clash = "duplicate";
 										}
 									}else{
 										/* fine - both extern */
 									}
-								}
-							}else{
-								if(a_func && da->func_code && db->func_code){
-									/* b_func is true */
+								}else if(a_func && da->func_code && db->func_code){
 									clash = "duplicate";
 								}else if((da->store & STORE_MASK_STORE) == store_typedef){
 									warn_c11_retypedef(da, db);
 								}
-							}
+								break;
 						}
 						break;
 					}
@@ -399,7 +398,6 @@ void symtab_fold_decls(symtable *tab)
 unsigned symtab_layout_decls(symtable *tab, unsigned current)
 {
 	const unsigned this_start = current;
-	int arg_space = 0;
 
 	if(tab->laidout)
 		goto out;
@@ -407,7 +405,6 @@ unsigned symtab_layout_decls(symtable *tab, unsigned current)
 
 	if(tab->decls){
 		decl **diter;
-		int arg_idx = 0;
 
 		for(diter = tab->decls; *diter; diter++){
 			decl *d = *diter;
@@ -425,7 +422,6 @@ unsigned symtab_layout_decls(symtable *tab, unsigned current)
 
 			switch(s->type){
 				case sym_arg:
-					s->offset = arg_idx++;
 					break;
 
 				case sym_local: /* warn on unused args and locals */
@@ -449,7 +445,7 @@ unsigned symtab_layout_decls(symtable *tab, unsigned current)
 
 							/* packing takes care of everything */
 							pack_next(&current, NULL, siz, align);
-							s->offset = current;
+							s->loc.stack_pos = current;
 							break;
 						}
 
@@ -476,10 +472,8 @@ unsigned symtab_layout_decls(symtable *tab, unsigned current)
 				subtab_max = this;
 		}
 
-		/* don't account the args in the space,
-		 * just use for offsetting them
-		 */
-		tab->auto_total_size = current - this_start + subtab_max - arg_space;
+		/* don't account the args in the space */
+		tab->auto_total_size = current - this_start + subtab_max;
 	}
 
 out:

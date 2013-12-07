@@ -14,6 +14,7 @@
 #include "cc1.h"
 #include "fold.h"
 #include "funcargs.h"
+#include "defs.h"
 
 #define ITER_DESC_TYPE(d, dp, typ)     \
 	for(dp = d->desc; dp; dp = dp->child) \
@@ -42,10 +43,16 @@ void type_ref_init(symtable *stab)
 	const where w = WHERE_INIT("<builtin>", "<builtin>", 1, 1);
 	eof_where = &w;
 
+	/* FIXME: cache unsigned types too */
 	cache_basics[type_void] = type_ref_cached_VOID();
 	cache_basics[type_int]  = type_ref_cached_INT();
-	cache_basics[type_char] = type_ref_cached_CHAR();
 	cache_basics[type_long] = type_ref_cached_INTPTR_T();
+	cache_basics[type_llong] = type_ref_cached_LLONG();
+	cache_basics[type_double] = type_ref_cached_DOUBLE();
+
+	cache_basics[type_schar] = type_ref_cached_CHAR(s);
+	cache_basics[type_uchar] = type_ref_cached_CHAR(u);
+	cache_basics[type_nchar] = type_ref_cached_CHAR(n);
 
 	cache_ptr[type_void] = type_ref_cached_VOID_PTR();
 	cache_ptr[type_long] = type_ref_cached_LONG_PTR();
@@ -69,11 +76,11 @@ void type_ref_init(symtable *stab)
 		dynarray_add(&to,              \
 				sue_member_from_decl(dcl))
 
-#define ADD_SCALAR(to, ty, sp)                 \
-		ADD_DECL(to,                               \
-				decl_new_ty_sp(                        \
-					type_ref_new_type(                   \
-						type_new_primitive_signed(ty, 0)), \
+#define ADD_SCALAR(to, ty, sp)       \
+		ADD_DECL(to,                     \
+				decl_new_ty_sp(              \
+					type_ref_new_type(         \
+						type_new_primitive(ty)), \
 					ustrdup(sp)))
 
 
@@ -195,7 +202,7 @@ type_ref *type_ref_new_func(type_ref *of, funcargs *args)
 type_ref *type_ref_cached_MAX_FOR(unsigned sz)
 {
 	enum type_primitive prims[] = {
-		type_long, type_int, type_short, type_char
+		type_long, type_int, type_short, type_nchar
 	};
 	unsigned i;
 
@@ -271,18 +278,45 @@ void decl_replace_with(decl *to, decl *from)
 	to->align    = from->align;
 }
 
-const type *decl_get_type(decl *d)
-{
-	return type_ref_get_type(d->ref);
-}
-
 const char *decl_asm_spel(decl *d)
 {
-	if(d->spel_asm)
-		return d->spel_asm;
+	if(!d->spel_asm){
+		/* apply underscore prefixes, name mangling, etc */
+		type_ref *rf = DECL_IS_FUNC(d);
+		char *pre, suff[8];
 
-	return d->spel_asm = ((fopt_mode & FOPT_LEADING_UNDERSCORE)
-			? ustrprintf("_%s", d->spel) : d->spel);
+		pre = fopt_mode & FOPT_LEADING_UNDERSCORE ? "_" : "";
+		*suff = '\0';
+
+		if(rf){
+			funcargs *fa = type_ref_funcargs(rf);
+
+			switch(fa->conv){
+				case conv_fastcall:
+					pre = "@";
+
+				case conv_stdcall:
+					snprintf(suff, sizeof suff,
+							"@%d",
+							dynarray_count(fa->arglist) * platform_word_size());
+
+				case conv_x64_sysv:
+				case conv_x64_ms:
+				case conv_cdecl:
+					break;
+			}
+		}
+
+		if(*pre || *suff)
+			d->spel_asm = ustrprintf(
+					"%s%s%s", pre, d->spel, suff);
+
+
+		if(!d->spel_asm)
+			d->spel_asm = d->spel;
+	}
+
+	return d->spel_asm;
 }
 
 void type_ref_free_1(type_ref *r)
@@ -454,9 +488,9 @@ decl_attr *expr_attr_present(expr *e, enum decl_attr_type t)
 	return type_attr_present(e->tree_type, t);
 }
 
-const char *decl_attr_to_str(enum decl_attr_type t)
+const char *decl_attr_to_str(decl_attr *da)
 {
-	switch(t){
+	switch(da->type){
 		CASE_STR_PREFIX(attr, format);
 		CASE_STR_PREFIX(attr, unused);
 		CASE_STR_PREFIX(attr, warn_unused);
@@ -468,6 +502,16 @@ const char *decl_attr_to_str(enum decl_attr_type t)
 		CASE_STR_PREFIX(attr, packed);
 		CASE_STR_PREFIX(attr, sentinel);
 		CASE_STR_PREFIX(attr, aligned);
+
+		case attr_call_conv:
+			switch(da->bits.conv){
+				case conv_x64_sysv: return "x64 SYSV";
+				case conv_x64_ms:   return "x64 MS";
+				CASE_STR_PREFIX(conv, cdecl);
+				CASE_STR_PREFIX(conv, stdcall);
+				CASE_STR_PREFIX(conv, fastcall);
+			}
+
 		case attr_LAST:
 			break;
 	}
@@ -511,7 +555,12 @@ void decl_attr_free(decl_attr *a)
 	free(a);
 }
 
-#include "decl_is.c"
+integral_t type_ref_max(type_ref *r, where *from)
+{
+	unsigned sz = type_ref_size(r, from);
+
+	return 1ULL << (sz * CHAR_BIT - 1);
+}
 
 unsigned type_ref_size(type_ref *r, where *from)
 {
@@ -545,7 +594,7 @@ unsigned type_ref_size(type_ref *r, where *from)
 
 		case type_ref_array:
 		{
-			intval_t sz;
+			integral_t sz;
 
 			if(type_ref_is_void(r->ref))
 				die_at(from, "array of void");
@@ -553,7 +602,7 @@ unsigned type_ref_size(type_ref *r, where *from)
 			if(!r->bits.array.size)
 				die_at(from, "array has an incomplete size");
 
-			sz = const_fold_val(r->bits.array.size);
+			sz = const_fold_val_i(r->bits.array.size);
 
 			return sz * type_ref_size(r->ref, from);
 		}
@@ -583,126 +632,23 @@ unsigned decl_align(decl *d)
 	return al ? al : type_ref_align(d->ref, &d->where);
 }
 
-static int type_ref_equal_r(
-		type_ref *const orig_a,
-		type_ref *const orig_b,
-		enum decl_cmp mode)
+enum type_cmp decl_cmp(decl *a, decl *b, enum type_cmp_opts opts)
 {
-	type_ref *a, *b;
+	enum type_cmp cmp = type_ref_cmp(a->ref, b->ref, opts);
+	enum decl_storage sa = a->store & STORE_MASK_STORE,
+	                  sb = b->store & STORE_MASK_STORE;
 
-	if(!orig_a || !orig_b)
-		return orig_a == orig_b ? 1 : 0;
+	if(cmp == TYPE_EQUAL && sa != sb){
+		/* types are equal but there's a store mismatch
+		 * only return convertible if it's a typedef or static mismatch
+		 */
+#define STORE_INCOMPAT(st) ((st) == store_typedef || (st) == store_static)
 
-	/* check for signed vs unsigned */
-	if((mode & DECL_CMP_ALLOW_SIGNED_UNSIGNED) == 0
-	&& type_ref_is_signed(orig_a) != type_ref_is_signed(orig_b))
-	{
-		return 0;
+		if(STORE_INCOMPAT(sa) || STORE_INCOMPAT(sb))
+			return TYPE_CONVERTIBLE_IMPLICIT;
 	}
 
-	/* FIXME: check qualifiers */
-#if 0
-	if(!type_qual_equal(a->qual, b->qual)){
-		if(mode & TYPE_CMP_EXACT)
-			return 0;
-
-		/* if b is const, a must be */
-		if((mode & TYPE_CMP_QUAL)
-				&& (b->qual & qual_const)
-				&& !(a->qual & qual_const))
-		{
-			return 0;
-		}
-	}
-#endif
-
-	a = type_ref_skip_tdefs_casts(orig_a);
-	b = type_ref_skip_tdefs_casts(orig_b);
-
-	/* array/func decay takes care of any array->ptr checks */
-	if(a->type != b->type)
-		return 0;
-
-	switch(a->type){
-		case type_ref_type:
-		{
-			enum type_cmp tmode = 0;
-
-			if(mode & DECL_CMP_EXACT_MATCH)
-				tmode |= TYPE_CMP_EXACT;
-			if(mode & DECL_CMP_ALLOW_SIGNED_UNSIGNED)
-				tmode |= TYPE_CMP_ALLOW_SIGNED_UNSIGNED;
-
-			return type_equal(a->bits.type, b->bits.type, tmode);
-		}
-
-		case type_ref_array:
-		{
-			const int a_complete = !!a->bits.array.size,
-			          b_complete = !!b->bits.array.size;
-
-			if(a_complete && b_complete){
-				const intval_t av = const_fold_val(a->bits.array.size),
-				               bv = const_fold_val(b->bits.array.size);
-
-				if(av != bv)
-					return 0;
-			}else if(a_complete != b_complete){
-				if((mode & DECL_CMP_ALLOW_TENATIVE_ARRAY) == 0)
-					return 0;
-			}
-
-			/* next */
-			break;
-		}
-
-		case type_ref_block:
-			if(!type_qual_equal(a->bits.block.qual, b->bits.block.qual))
-				return 0;
-			break;
-
-		case type_ref_ptr:
-			if(!type_qual_equal(a->bits.ptr.qual, b->bits.ptr.qual))
-				return 0;
-			break;
-
-		case type_ref_cast:
-		case type_ref_tdef:
-			ICE("should've been skipped");
-
-		case type_ref_func:
-			if(FUNCARGS_ARE_EQUAL != funcargs_equal(
-						a->bits.func.args, b->bits.func.args, 1 /* exact match */, NULL))
-				return 0;
-			break;
-	}
-
-	return type_ref_equal_r(a->ref, b->ref, mode);
-}
-
-int type_ref_equal(type_ref *a, type_ref *b, enum decl_cmp mode)
-{
-	if(!(mode & DECL_CMP_EXACT_MATCH) && mode & DECL_CMP_ALLOW_VOID_PTR){
-		/* one side is void * */
-		if(type_ref_is_void_ptr(a) && type_ref_is_ptr(b))
-			return 1;
-		if(type_ref_is_void_ptr(b) && type_ref_is_ptr(a))
-			return 1;
-	}
-
-	return type_ref_equal_r(a, b, mode);
-}
-
-int decl_equal(decl *a, decl *b, enum decl_cmp mode)
-{
-	const int a_ptr = decl_is_ptr(a);
-	const int b_ptr = decl_is_ptr(b);
-
-	/* we are exact if told, or if either are a pointer - types must be equal */
-	if(a_ptr || b_ptr)
-		mode |= DECL_CMP_EXACT_MATCH;
-
-	return type_ref_equal(a->ref, b->ref, mode);
+	return cmp;
 }
 
 int decl_sort_cmp(const decl **pa, const decl **pb)
@@ -717,10 +663,8 @@ int decl_sort_cmp(const decl **pa, const decl **pb)
 	return !!a->func_code - !!b->func_code;
 }
 
-int decl_is_variadic(decl *d)
+int type_ref_is_variadic_func(type_ref *r)
 {
-	type_ref *r = d->ref;
-
 	return (r = type_ref_is(r, type_ref_func)) && r->bits.func.args->variadic;
 }
 
@@ -752,12 +696,9 @@ type_ref *type_ref_ptr_depth_inc(type_ref *r)
 {
 	type_ref *test;
 	if((test = type_ref_is_type(r, type_unknown))){
-		/* FIXME: cache unsigned types too */
-		if(test->bits.type->is_signed){
-			type_ref *p = cache_ptr[test->bits.type->primitive];
-			if(p)
-				return p;
-		}
+		type_ref *p = cache_ptr[test->bits.type->primitive];
+		if(p)
+			return p;
 	}
 
 	return type_ref_new_ptr(r, qual_none);
@@ -916,9 +857,9 @@ static void type_ref_add_str(type_ref *r, char *spel, int *need_spc, char **bufp
 				}
 
 				BUF_ADD(
-						"%s%" INTVAL_FMT_D,
+						"%s%" NUMERIC_FMT_D,
 						spc ? " " : "",
-						const_fold_val(r->bits.array.size));
+						const_fold_val_i(r->bits.array.size));
 			}
 			BUF_ADD("]");
 
@@ -1023,6 +964,10 @@ const char *type_ref_to_str_r_spel_aka(
 	/* use r->tmp, since r is type_ref_t{ype,def} */
 	type_ref_add_str(r->tmp, spel, &spc,
 			&bufp, TYPE_REF_STATIC_BUFSIZ - (bufp - buf));
+
+	/* trim trailing space */
+	if(bufp > buf && bufp[-1] == ' ')
+		bufp[-1] = '\0';
 
 	return buf;
 }

@@ -3,7 +3,11 @@
 
 struct sym
 {
-	int offset; /* stack offset / arg index */
+	union
+	{
+		int arg_offset;
+		unsigned stack_pos;
+	} loc;
 
 	enum sym_type
 	{
@@ -12,7 +16,8 @@ struct sym
 		sym_arg
 	} type;
 
-	decl *decl, *func;
+	decl *decl;
+	type_ref *owning_func; /* only for sym_arg */
 
 	/* static analysis */
 	int nreads, nwrites;

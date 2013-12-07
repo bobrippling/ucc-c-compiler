@@ -14,7 +14,7 @@ typedef struct consty
 	enum constyness
 	{
 		CONST_NO = 0,   /* f() */
-		CONST_VAL,      /* 5 + 2 */
+		CONST_NUM,      /* 5 + 2, float, etc */
 		/* can be offset: */
 		CONST_ADDR,     /* &f where f is global */
 		CONST_STRK,     /* string constant */
@@ -23,7 +23,7 @@ typedef struct consty
 	long offset; /* offset for addr/strk */
 	union
 	{
-		intval iv;          /* CONST_VAL */
+		numeric num;        /* CONST_VAL_* */
 		stringlit_at *str; /* CONST_STRK */
 		struct
 		{
@@ -47,26 +47,31 @@ typedef struct consty
 
 #define CONST_ADDR_OR_NEED(d) CONST_ADDR_OR_NEED_TREF((d)->ref)
 
+#define K_FLOATING(num) !!((num).suffix & VAL_FLOATING)
+#define K_INTEGRAL(num) !K_FLOATING(num)
+
 #define CONST_FOLD_LEAF(k) memset((k), 0, sizeof *(k))
 
 
-typedef void         func_fold(          expr *, symtable *);
-typedef void         func_gen(           expr *);
-typedef void         func_gen_lea(       expr *);
-typedef void         func_const(         expr *, consty *);
-typedef const char  *func_str(void);
-typedef void         func_mutate_expr(expr *);
+typedef void func_fold(expr *, symtable *);
+typedef void func_gen(expr *);
+typedef void func_gen_lea(expr *);
+typedef void func_const(expr *, consty *);
+typedef const char *func_str(void);
+typedef void func_mutate_expr(expr *);
+typedef int func_is_lvalue(expr *);
 
 struct expr
 {
 	where where;
 
-	func_fold        *f_fold;
-	func_gen         *f_gen;
-	func_str         *f_str;
+	func_fold *f_fold;
+	func_gen *f_gen;
+	func_str *f_str;
 
-	func_const       *f_const_fold; /* optional, used in static/global init */
-	func_gen_lea     *f_lea;        /* optional */
+	func_const *f_const_fold; /* optional, used in static/global init */
+	func_gen_lea *f_lea; /* optional */
+	func_is_lvalue *f_is_lval; /* optional, not an lval if NULL */
 
 
 	int freestanding; /* e.g. 1; needs use, whereas x(); doesn't - freestanding */
@@ -99,10 +104,12 @@ struct expr
 
 	union
 	{
-		intval iv;
+		numeric num;
 
 		/* __builtin_va_start */
 		int n;
+
+		int compound_upcast;
 
 		struct
 		{
@@ -143,7 +150,20 @@ struct expr
 
 		type_ref **types; /* used in __builtin */
 
-		type_ref *tref; /* from cast */
+		type_ref *va_arg_type;
+
+		struct
+		{
+			type_ref *tref; /* from cast */
+			int is_decay;
+			/* cast type:
+			 * tref == NULL
+			 *   ? lval-to-rval
+			 *   : is_decay
+			 *     ? decay
+			 *     : normal
+			 */
+		} cast;
 
 		struct
 		{
@@ -203,7 +223,7 @@ expr *expr_set_where_len(expr *, where *);
                                         gen_expr_str_    ## type, \
                                         gen_expr_style_  ## type)
 
-expr *expr_new_intval(intval *);
+expr *expr_new_numeric(numeric *);
 
 /* simple wrappers */
 expr *expr_ptr_multiply(expr *, decl *);
@@ -239,6 +259,10 @@ expr *expr_new_decl_init(decl *d, decl_init *di);
 
 expr *expr_new_identifier(char *sp);
 expr *expr_new_cast(expr *, type_ref *cast_to, int implicit);
+expr *expr_new_cast_rval(expr *);
+expr *expr_new_cast_decay(expr *, type_ref *cast_to);
+
+expr *expr_new_identifier(char *sp);
 expr *expr_new_val(int val);
 expr *expr_new_op(enum op_type o);
 expr *expr_new_op2(enum op_type o, expr *l, expr *r);
@@ -262,7 +286,19 @@ expr *expr_new_addr(expr *);
 expr *expr_new_comma2(expr *lhs, expr *rhs);
 #define expr_new_comma() expr_new_wrapper(comma)
 
-int expr_is_null_ptr(expr *, int allow_int);
+enum null_strictness
+{
+	NULL_STRICT_VOID_PTR,
+	NULL_STRICT_INT,
+	NULL_STRICT_ANY_PTR
+};
+
+int expr_is_null_ptr(expr *, enum null_strictness);
+
+int expr_is_lval(expr *);
+int expr_is_lval_yes(expr *);
+
+void expr_set_const(expr *, consty *);
 
 /* util */
 expr *expr_new_array_idx_e(expr *base, expr *idx);

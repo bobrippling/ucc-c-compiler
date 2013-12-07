@@ -81,10 +81,15 @@ static void fold_enum(struct_union_enum_st *en, symtable *stab)
 				defval++;
 
 		}else{
-			intval_t v;
+			integral_t v;
 
 			FOLD_EXPR(e, stab);
-			v = const_fold_val(e);
+
+			fold_check_expr(e,
+					FOLD_CHK_INTEGRAL | FOLD_CHK_CONST_I,
+					"enum constant");
+
+			v = const_fold_val_i(e);
 			m->val = e;
 
 			defval = has_bitmask ? v << 1 : v + 1;
@@ -194,7 +199,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 				align = sub_sue->align;
 
 			}else if(d->field_width){
-				const unsigned bits = const_fold_val(d->field_width);
+				const unsigned bits = const_fold_val_i(d->field_width);
 
 				sz = align = 0; /* don't affect sz_max or align_max */
 

@@ -12,6 +12,7 @@
 #include "../util/alloc.h"
 #include "../util/platform.h"
 #include "../util/std.h"
+#include "../util/limits.h"
 
 #include "main.h"
 #include "macro.h"
@@ -155,6 +156,20 @@ static void calctime(const char *fname)
 		die("strftime():");
 }
 
+static void macro_add_limits(void)
+{
+#define QUOTE_(x) #x
+#define QUOTE(x) QUOTE_(x)
+#define MACRO_ADD_LIM(m) macro_add("__" #m "__", QUOTE(__ ## m ## __))
+	MACRO_ADD_LIM(SCHAR_MAX);
+	MACRO_ADD_LIM(SHRT_MAX);
+	MACRO_ADD_LIM(INT_MAX);
+	MACRO_ADD_LIM(LONG_MAX);
+	MACRO_ADD_LIM(LONG_LONG_MAX);
+#undef MACRO_ADD_LIM
+#undef QUOTE
+#undef QUOTE_
+}
 
 int main(int argc, char **argv)
 {
@@ -170,6 +185,8 @@ int main(int argc, char **argv)
 
 	current_line = 1;
 	current_fname = FNAME_BUILTIN;
+
+	macro_add_limits();
 
 	for(i = 0; initial_defs[i].nam; i++)
 		macro_add(initial_defs[i].nam, initial_defs[i].val);

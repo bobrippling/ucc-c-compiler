@@ -1,8 +1,7 @@
-// RUN: %check -e %s
+// RUN: %ucc -fsyntax-only %s
 
-main()
-{
-	__typeof__(*(0 ? (int*)0 : (void*)1)) x; // CHECK: !/warn|error/
-
-	f(*x); // CHECK: error: invalid indirection applied to typeof(expr: dereference) (aka 'void')
-}
+_Static_assert(
+		__builtin_types_compatible_p( // can't use _Generic - void is incomplete
+			__typeof(*(0 ? (int*)0 : (void*)1)),
+			void),
+		"bad null pointer logic");

@@ -21,110 +21,121 @@
 #include "gen_style.h"
 #include "sym.h"
 #include "fold_sym.h"
-#include "out/out.h"
 #include "ops/__builtin.h"
+#include "out/asm.h" /* NUM_SECTIONS */
+#include "opt.h"
 #include "pass1.h"
 
 #include "../as_cfg.h"
 #define QUOTE(...) #__VA_ARGS__
 #define EXPAND_QUOTE(y) QUOTE(y)
 
+struct opt_flags cc1_opts;
+
 struct
 {
-	int is_opt;
+	char type;
 	const char *arg;
 	int mask;
 } args[] = {
 	/* TODO - wall picks sensible, extra = more, everything = ~0 */
-	{ 0,  "all",             ~0 },
-	{ 0,  "extra",            0 },
-	{ 0,  "everything",      ~0 },
+	{ 'W',  "all",             ~0 },
+	{ 'W',  "extra",            0 },
+	{ 'W',  "everything",      ~0 },
 
 
-	{ 0,  "mismatch-arg",    WARN_ARG_MISMATCH                      },
-	{ 0,  "array-comma",     WARN_ARRAY_COMMA                       },
-	{ 0,  "mismatch-assign", WARN_ASSIGN_MISMATCH | WARN_COMPARE_MISMATCH | WARN_RETURN_TYPE },
-	{ 0,  "return-type",     WARN_RETURN_TYPE                       },
+	{ 'W',  "mismatch-arg",    WARN_ARG_MISMATCH                      },
+	{ 'W',  "array-comma",     WARN_ARRAY_COMMA                       },
+	{ 'W',  "mismatch-assign", WARN_ASSIGN_MISMATCH | WARN_COMPARE_MISMATCH | WARN_RETURN_TYPE },
+	{ 'W',  "return-type",     WARN_RETURN_TYPE                       },
 
-	{ 0,  "sign-compare",    WARN_SIGN_COMPARE                      },
-	{ 0,  "extern-assume",   WARN_EXTERN_ASSUME                     },
+	{ 'W',  "sign-compare",    WARN_SIGN_COMPARE                      },
+	{ 'W',  "extern-assume",   WARN_EXTERN_ASSUME                     },
 
-	{ 0,  "implicit-int",    WARN_IMPLICIT_INT                      },
-	{ 0,  "implicit-func",   WARN_IMPLICIT_FUNC                     },
-	{ 0,  "implicit",        WARN_IMPLICIT_FUNC | WARN_IMPLICIT_INT },
+	{ 'W',  "implicit-int",    WARN_IMPLICIT_INT                      },
+	{ 'W',  "implicit-func",   WARN_IMPLICIT_FUNC                     },
+	{ 'W',  "implicit",        WARN_IMPLICIT_FUNC | WARN_IMPLICIT_INT },
 
-	{ 0,  "switch-enum",     WARN_SWITCH_ENUM                       },
-	{ 0,  "enum-compare",    WARN_ENUM_CMP                          },
+	{ 'W',  "switch-enum",     WARN_SWITCH_ENUM                       },
+	{ 'W',  "enum-compare",    WARN_ENUM_CMP                          },
 
-	{ 0,  "incomplete-use",  WARN_INCOMPLETE_USE                    },
+	{ 'W',  "incomplete-use",  WARN_INCOMPLETE_USE                    },
 
-	{ 0,  "unused-expr",     WARN_UNUSED_EXPR                       },
+	{ 'W',  "unused-expr",     WARN_UNUSED_EXPR                       },
 
-	{ 0,  "test-in-assign",  WARN_TEST_ASSIGN                       },
-	{ 0,  "test-bool",       WARN_TEST_BOOL                         },
+	{ 'W',  "test-in-assign",  WARN_TEST_ASSIGN                       },
+	{ 'W',  "test-bool",       WARN_TEST_BOOL                         },
 
-	{ 0,  "dead-code",       WARN_DEAD_CODE                         },
+	{ 'W',  "dead-code",       WARN_DEAD_CODE                         },
 
-	{ 0,  "predecl-enum",    WARN_PREDECL_ENUM,                     },
+	{ 'W',  "predecl-enum",    WARN_PREDECL_ENUM,                     },
 
 
-	{ 0, "mixed-code-decls", WARN_MIXED_CODE_DECLS                  },
+	{ 'W', "mixed-code-decls", WARN_MIXED_CODE_DECLS                  },
 
-	{ 0, "loss-of-precision", WARN_LOSS_PRECISION                   },
+	{ 'W', "loss-of-precision", WARN_LOSS_PRECISION                   },
 
-	{ 0, "pad",               WARN_PAD },
+	{ 'W', "pad",               WARN_PAD },
 
-	{ 0, "tenative-init",     WARN_TENATIVE_INIT },
+	{ 'W', "tenative-init",     WARN_TENATIVE_INIT },
 
-	{ 0, "shadow-local",      WARN_SHADOW_LOCAL },
-	{ 0, "shadow-global",     WARN_SHADOW_GLOBAL },
-	{ 0, "shadow",            WARN_SHADOW_GLOBAL | WARN_SHADOW_LOCAL },
+	{ 'W', "shadow-local",      WARN_SHADOW_LOCAL },
+	{ 'W', "shadow-global",     WARN_SHADOW_GLOBAL },
+	{ 'W', "shadow",            WARN_SHADOW_GLOBAL | WARN_SHADOW_LOCAL },
 
 	/* TODO: W_QUAL (ops/expr_cast) */
 
 #if 0
 	/* TODO */
-	{ 0,  "unused-parameter", WARN_UNUSED_PARAM },
-	{ 0,  "unused-variable",  WARN_UNUSED_VAR   },
-	{ 0,  "unused-value",     WARN_UNUSED_VAL   },
-	{ 0,  "unused",           WARN_UNUSED_PARAM | WARN_UNUSED_VAR | WARN_UNUSED_VAL },
+	{ 'W',  "unused-parameter", WARN_UNUSED_PARAM },
+	{ 'W',  "unused-variable",  WARN_UNUSED_VAR   },
+	{ 'W',  "unused-value",     WARN_UNUSED_VAL   },
+	{ 'W',  "unused",           WARN_UNUSED_PARAM | WARN_UNUSED_VAR | WARN_UNUSED_VAL },
 
 	/* TODO */
-	{ 0,  "uninitialised",    WARN_UNINITIALISED },
+	{ 'W',  "uninitialised",    WARN_UNINITIALISED },
 
 	/* TODO */
-	{ 0,  "array-bounds",     WARN_ARRAY_BOUNDS },
+	{ 'W',  "array-bounds",     WARN_ARRAY_BOUNDS },
 
 	/* TODO */
-	{ 0,  "shadow",           WARN_SHADOW },
+	{ 'W',  "shadow",           WARN_SHADOW },
 
 	/* TODO */
-	{ 0,  "format",           WARN_FORMAT },
+	{ 'W',  "format",           WARN_FORMAT },
 
 	/* TODO */
-	{ 0,  "pointer-arith",    WARN_PTR_ARITH  }, /* void *x; x++; */
-	{ 0,  "int-ptr-cast",     WARN_INT_TO_PTR },
+	{ 'W',  "pointer-arith",    WARN_PTR_ARITH  }, /* void *x; x++; */
+	{ 'W',  "int-ptr-cast",     WARN_INT_TO_PTR },
 #endif
 
-	{ 0,  "optimisation",     WARN_OPT_POSSIBLE },
+	{ 'W',  "optimisation",     WARN_OPT_POSSIBLE },
 
 
 /* --- options --- */
 
-	{ 1,  "enable-asm",    FOPT_ENABLE_ASM      },
-	{ 1,  "const-fold",    FOPT_CONST_FOLD      },
-	{ 1,  "english",       FOPT_ENGLISH         },
-	{ 1,  "show-line",     FOPT_SHOW_LINE       },
-	{ 1,  "pic",           FOPT_PIC             },
-	{ 1,  "pic-pcrel",     FOPT_PIC_PCREL       },
-	{ 1,  "builtin",       FOPT_BUILTIN         },
-	{ 1,  "ms-extensions",    FOPT_MS_EXTENSIONS    },
-	{ 1,  "plan9-extensions", FOPT_PLAN9_EXTENSIONS },
-	{ 1,  "leading-underscore", FOPT_LEADING_UNDERSCORE },
-	{ 1,  "trapv",              FOPT_TRAPV },
-	{ 1,  "track-initial-fname", FOPT_TRACK_INITIAL_FNAM },
-	{ 1,  "freestanding",        FOPT_FREESTANDING },
-	{ 1,  "show-static-asserts", FOPT_SHOW_STATIC_ASSERTS },
+	{ 'f',  "enable-asm",    FOPT_ENABLE_ASM      },
+	{ 'f',  "const-fold",    FOPT_CONST_FOLD      },
+	{ 'f',  "english",       FOPT_ENGLISH         },
+	{ 'f',  "show-line",     FOPT_SHOW_LINE       },
+	{ 'f',  "pic",           FOPT_PIC             },
+	{ 'f',  "pic-pcrel",     FOPT_PIC_PCREL       },
+	{ 'f',  "builtin",       FOPT_BUILTIN         },
+	{ 'f',  "ms-extensions",    FOPT_MS_EXTENSIONS    },
+	{ 'f',  "plan9-extensions", FOPT_PLAN9_EXTENSIONS },
+	{ 'f',  "leading-underscore", FOPT_LEADING_UNDERSCORE },
+	{ 'f',  "trapv",              FOPT_TRAPV },
+	{ 'f',  "track-initial-fname", FOPT_TRACK_INITIAL_FNAM },
+	{ 'f',  "freestanding",        FOPT_FREESTANDING },
+	{ 'f',  "show-static-asserts", FOPT_SHOW_STATIC_ASSERTS },
+	{ 'f',  "verbose-asm",         FOPT_VERBOSE_ASM },
+	{ 'f',  "integral-float-load", FOPT_INTEGRAL_FLOAT_LOAD },
+	{ 'f',  "symbol-arith",        FOPT_SYMBOL_ARITH },
+	{ 'f',  "signed-char",         FOPT_SIGNED_CHAR },
+	{ 'f',  "unsigned-char",      ~FOPT_SIGNED_CHAR },
+	{ 'f',  "cast-with-builtin-types", FOPT_CAST_W_BUILTIN_TYPES },
+
+	{ 'm',  "stackrealign", MOPT_STACK_REALIGN },
 
 	{ 0,  NULL, 0 }
 };
@@ -159,10 +170,16 @@ enum fopt fopt_mode = FOPT_CONST_FOLD
                     | FOPT_SHOW_LINE
                     | FOPT_PIC
                     | FOPT_BUILTIN
-                    | FOPT_TRACK_INITIAL_FNAM;
+										| FOPT_TRACK_INITIAL_FNAM
+										| FOPT_INTEGRAL_FLOAT_LOAD
+										| FOPT_SYMBOL_ARITH
+										| FOPT_SIGNED_CHAR
+                    | FOPT_CAST_W_BUILTIN_TYPES;
+
 enum cc1_backend cc1_backend = BACKEND_ASM;
 
-int cc1_m32 = UCC_M32;
+enum mopt mopt_mode = 0;
+
 int cc1_mstack_align; /* align stack to n, platform_word_size by default */
 int cc1_gdebug;
 
@@ -208,7 +225,7 @@ static void ccdie(int verbose, const char *fmt, ...)
 	if(verbose){
 		fputs("warnings + options:\n", stderr);
 		for(i = 0; args[i].arg; i++)
-			fprintf(stderr, "  -%c%s\n", args[i].is_opt["Wf"], args[i].arg);
+			fprintf(stderr, "  -%c%s\n", args[i].type, args[i].arg);
 		for(i = 0; val_args[i].arg; i++)
 			fprintf(stderr, "  -%c%s=value\n", val_args[i].pref, val_args[i].arg);
 	}
@@ -340,6 +357,10 @@ int main(int argc, char **argv)
 	int i;
 	int werror = 0;
 
+	/* TODO: -O[0-3] parsing and
+	 * -fremain-stack, etc */
+	cc1_opts.opt_remain_stack = 1;
+
 	/*signal(SIGINT , sigh);*/
 	signal(SIGQUIT, sigh);
 	signal(SIGTERM, sigh);
@@ -397,7 +418,7 @@ int main(int argc, char **argv)
 			int *mask;
 			int j, found, rev;
 
-			j = rev = found = 0;
+			rev = found = 0;
 
 			if(!strncmp(arg, "no-", 3)){
 				arg += 3;
@@ -432,19 +453,43 @@ int main(int argc, char **argv)
 						goto unrecognised;
 					continue;
 				}
-
-				mask = (int *)&fopt_mode;
-				for(; !args[j].is_opt; j++);
-			}else{
-				mask = (int *)&warn_mode;
 			}
 
-			for(; args[j].arg; j++)
-				if(!strcmp(arg, args[j].arg)){
-					if(rev)
-						*mask &= ~args[j].mask;
-					else
-						*mask |=  args[j].mask;
+			switch(arg_ty){
+				case 'W':
+					mask = (int *)&warn_mode;
+					break;
+				case 'f':
+					mask = (int *)&fopt_mode;
+					break;
+				case 'm':
+					mask = (int *)&mopt_mode;
+					break;
+				default:
+					ucc_unreach(1);
+			}
+
+			for(j = 0; args[j].arg; j++)
+				if(args[j].type == arg_ty && !strcmp(arg, args[j].arg)){
+					/* if the mask isn't a single bit, treat it as
+					 * an unmask, e.g. -funsigned-char unmasks FOPT_SIGNED_CHAR
+					 *
+					 * special case where we don't - warnings
+					 */
+					const int unmask = args[j].type != 'W'
+						&& args[j].mask & (args[j].mask - 1);
+
+					if(rev){
+						if(unmask)
+							*mask |= ~args[j].mask;
+						else
+							*mask &= ~args[j].mask;
+					}else{
+						if(unmask)
+							*mask &= args[j].mask;
+						else
+							*mask |= args[j].mask;
+					}
 					found = 1;
 					break;
 				}
@@ -463,7 +508,10 @@ unrecognised:
 				goto usage;
 			}
 
-			cc1_m32 = n == 32;
+			if(n == 32)
+				mopt_mode |= MOPT_32;
+			else
+				mopt_mode &= ~MOPT_32;
 
 		}else if(!fname){
 			fname = argv[i];

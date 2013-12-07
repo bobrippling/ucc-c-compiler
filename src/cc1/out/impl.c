@@ -5,13 +5,16 @@
 #include "../data_structs.h"
 #include "../decl.h"
 #include "vstack.h"
+#include "asm.h"
 #include "impl.h"
 
 #include "../cc1.h"
 
-static void out_asmv(enum p_opts opts, const char *fmt, va_list l)
+static void out_asmv(
+		enum section_type sec, enum p_opts opts,
+		const char *fmt, va_list l)
 {
-	FILE *f = cc_out[SECTION_TEXT];
+	FILE *f = cc_out[sec];
 
 	if((opts & P_NO_INDENT) == 0)
 		fputc('\t', f);
@@ -26,27 +29,30 @@ void out_asm(const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
-	out_asmv(0, fmt, l);
+	out_asmv(SECTION_TEXT, 0, fmt, l);
 	va_end(l);
 }
 
-void out_asm2(enum p_opts opts, const char *fmt, ...)
+static void out_asm2(
+		enum section_type sec, enum p_opts opts,
+		const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
-	out_asmv(opts, fmt, l);
+	out_asmv(sec, opts, fmt, l);
 	va_end(l);
 }
 
-void impl_comment(const char *fmt, va_list l)
+void impl_comment(enum section_type sec, const char *fmt, va_list l)
 {
-	out_asm2(P_NO_NL, IMPL_COMMENT " ");
-	out_asmv(P_NO_INDENT, fmt, l);
+	out_asm2(sec, P_NO_NL, "/* ");
+	out_asmv(sec, P_NO_INDENT | P_NO_NL, fmt, l);
+	out_asm2(sec, P_NO_INDENT, " */");
 }
 
 void impl_lbl(const char *lbl)
 {
-	out_asm2(P_NO_INDENT, "%s:", lbl);
+	out_asm2(SECTION_TEXT, P_NO_INDENT, "%s:", lbl);
 }
 
 enum flag_cmp op_to_flag(enum op_type op)
@@ -67,4 +73,9 @@ enum flag_cmp op_to_flag(enum op_type op)
 
 	ICE("invalid op");
 	return -1;
+}
+
+int vreg_eq(const struct vreg *a, const struct vreg *b)
+{
+	return a->idx == b->idx && a->is_float == b->is_float;
 }

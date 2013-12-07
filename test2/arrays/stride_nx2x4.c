@@ -1,10 +1,8 @@
-// RUN: %ucc -c %s
-// RUN: test `%ucc -S -o- %s | grep -vF 'movq %%rsp, %%rbp' | grep -c 'mov'` -eq 1
+// RUN: %ocheck 0 %s
 
-
-extern int x[][2][4];
+int x[2][2][4];
 
 main()
 {
-	return x[1][2][3]; // only one dereference
+	return x[1][1][3]; // only one dereference
 }

@@ -140,7 +140,7 @@ static struct line_list
 /* -- */
 enum token curtok, curtok_uneat;
 
-intval currentval = { 0, 0 }; /* an integer literal */
+numeric currentval = { { 0 } }; /* an integer literal */
 
 char *currentspelling = NULL; /* e.g. name of a variable */
 
@@ -461,7 +461,7 @@ static int peeknextchar()
 	return *bufferpos;
 }
 
-static void read_number(enum base mode)
+static void read_number(const enum base mode)
 {
 	char *end;
 	int of; /*verflow*/
@@ -473,11 +473,11 @@ static void read_number(enum base mode)
 		case DEC: currentval.suffix = 0; break;
 	}
 
-	currentval.val = char_seq_to_ullong(bufferpos, &end, mode, 0, &of);
+	currentval.val.i = char_seq_to_ullong(bufferpos, &end, mode, 0, &of);
 
 	if(of){
 		/* force unsigned long long ULLONG_MAX */
-		currentval.val = INTVAL_T_MAX;
+		currentval.val.i = NUMERIC_T_MAX;
 		currentval.suffix = VAL_LLONG | VAL_UNSIGNED;
 	}
 
@@ -492,7 +492,7 @@ static void read_number(enum base mode)
 	/* accept either 'U' 'L' or 'LL' as atomic parts (i.e. not LUL) */
 	/* fine using nextchar() since we peeknextchar() first */
 	{
-		enum intval_suffix suff = 0;
+		enum numeric_suffix suff = 0;
 		char c;
 
 		for(;;) switch((c = peeknextchar())){
@@ -657,7 +657,8 @@ static void cc1_read_quoted_char(const int is_wide)
 			warn_at(NULL, "multi-char constant");
 	}
 
-	currentval.val = ch;
+	currentval.val.i = ch;
+	currentval.suffix = 0;
 	curtok = is_wide ? token_integer : token_character;
 }
 
@@ -684,9 +685,13 @@ void nexttoken()
 	}
 
 	if(isdigit(c)){
+		char *const num_start = bufferpos - 1;
 		enum base mode;
 
 		if(c == '0'){
+			/* note the '0' */
+			loc_now.chr++;
+
 			switch(tolower(c = peeknextchar())){
 				case 'x':
 					mode = HEX;
@@ -704,6 +709,7 @@ void nexttoken()
 							mode = DEC; /* just zero */
 
 						bufferpos--; /* have the zero */
+						loc_now.chr--;
 					}else{
 						mode = OCT;
 					}
@@ -733,23 +739,22 @@ void nexttoken()
 #endif
 
 		if(peeknextchar() == '.'){
-			/* double or float */
-			int parts[2];
-			nextchar();
+			/* floating point */
 
-			parts[0] = currentval.val;
-			read_number(DEC);
-			parts[1] = currentval.val;
+			currentval.val.f = strtold(num_start, &bufferpos);
 
-			if(peeknextchar() == 'f'){
+			if(toupper(peeknextchar()) == 'F'){
+				currentval.suffix = VAL_FLOAT;
 				nextchar();
-				/* FIXME: set currentval.suffix instead of token_{int,float,double} ? */
-				curtok = token_float;
+			}else if(toupper(peeknextchar()) == 'L'){
+				currentval.suffix = VAL_LDOUBLE;
+				nextchar();
 			}else{
-				curtok = token_double;
+				currentval.suffix = VAL_DOUBLE;
 			}
 
-			ICE("TODO: float/double repr (%d.%d)", parts[0], parts[1]);
+			curtok = token_floater;
+
 		}else{
 			curtok = token_integer;
 		}

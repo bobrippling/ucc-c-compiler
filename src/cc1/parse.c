@@ -178,7 +178,7 @@ static expr *parse_block()
 
 	}else if(accept(token_open_paren)){
 		/* ^(args...) */
-		args = parse_func_arglist(arg_symtab);
+		args = parse_func_arglist(NULL); /* no args here thanks */
 		EAT(token_close_paren);
 	}else{
 		/* ^{...} */
@@ -186,6 +186,8 @@ def_args:
 		args = funcargs_new();
 		args->args_void = 1;
 	}
+
+	symtab_add_params(arg_symtab, args->arglist);
 
 	r = expr_new_block(rt, args, parse_stmt_block());
 
@@ -199,8 +201,9 @@ static expr *parse_expr_primary()
 	switch(curtok){
 		case token_integer:
 		case token_character:
+		case token_floater:
 		{
-			expr *e = expr_new_intval(&currentval);
+			expr *e = expr_new_numeric(&currentval);
 			EAT(curtok);
 			return e;
 		}
@@ -1015,7 +1018,7 @@ flow:
 					else
 						warn_at(&ai->where,
 								"ignoring attribute \"%s\" on label",
-								decl_attr_to_str(ai->type));
+								decl_attr_to_str(ai));
 
 				decl_attr_free(attr);
 
