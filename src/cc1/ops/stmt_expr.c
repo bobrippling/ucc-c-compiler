@@ -25,9 +25,10 @@ void gen_stmt_expr(stmt *s)
 
 	if((fopt_mode & FOPT_ENABLE_ASM) == 0
 	|| !s->expr
-	|| expr_kind(s->expr, funcall)
-	|| !(sp = s->expr->bits.ident.spel)
-	|| strcmp(sp, ASM_INLINE_FNAME))
+	|| (expr_kind(s->expr, funcall)
+		&& expr_kind(s->expr->expr, identifier)
+		&& (sp = s->expr->bits.ident.bits.ident.spel)
+		&& strcmp(sp, ASM_INLINE_FNAME)))
 	{
 		if(s->expr_no_pop)
 			pre_vcount++;

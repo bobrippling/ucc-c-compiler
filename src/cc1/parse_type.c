@@ -557,7 +557,7 @@ static type_ref *parse_btype(
 				/* signed size_t x; */
 				if(signed_set){
 					die_at(NULL, "signed/unsigned not allowed with typedef instance (%s)",
-							tdef_typeof->bits.ident.spel);
+							tdef_typeof->bits.ident.bits.ident.spel);
 				}
 
 				r = type_ref_new_tdef(tdef_typeof, tdef_decl);

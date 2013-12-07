@@ -16,42 +16,45 @@ static void fold_const_expr_identifier(expr *e, consty *k)
 	 * if we are an array identifier, we are constant:
 	 * int x[];
 	 */
-	sym *sym;
-
 	k->type = CONST_NO;
 
 	/* may not have e->sym if we're the struct-member-identifier */
-	if((sym = e->bits.ident.sym) && sym->decl){
-		decl *const d = sym->decl;
+	switch(e->bits.ident.type){
+		case IDENT_NORM:
+		{
+			sym *sym = e->bits.ident.bits.ident.sym;
 
-		/* only a constant if global/static/extern */
-		if(sym->type == sym_global || decl_store_static_or_extern(d->store)){
-			CONST_FOLD_LEAF(k);
+			if(sym && sym->decl){
+				decl *const d = sym->decl;
 
-			k->type = CONST_ADDR_OR_NEED(d);
+				/* only a constant if global/static/extern */
+				if(sym->type == sym_global || decl_store_static_or_extern(d->store)){
+					CONST_FOLD_LEAF(k);
 
-			/*
-			 * don't use e->spel
-			 * static int i;
-			 * int x;
-			 * x = i; // e->spel is "i". sym->decl->spel is "func_name.static_i"
-			 */
-			k->bits.addr.bits.lbl = decl_asm_spel(sym->decl);
+					k->type = CONST_ADDR_OR_NEED(d);
 
-			k->bits.addr.is_lbl = 1;
-			k->offset = 0;
+					k->bits.addr.bits.lbl = decl_asm_spel(sym->decl);
+
+					k->bits.addr.is_lbl = 1;
+					k->offset = 0;
+				}
+			}
+			break;
 		}
+		case IDENT_ENUM:
+			const_fold(e->bits.ident.bits.enum_mem->val, k);
+			break;
 	}
 }
 
 void fold_expr_identifier(expr *e, symtable *stab)
 {
-	char *sp = e->bits.ident.spel;
-	sym *sym = e->bits.ident.sym;
+	char *sp = e->bits.ident.bits.ident.spel;
+	sym *sym = e->bits.ident.bits.ident.sym;
 	decl *in_fn = symtab_func(stab);
 
 	if(sp && !sym)
-		e->bits.ident.sym = sym = symtab_search(stab, sp);
+		e->bits.ident.bits.ident.sym = sym = symtab_search(stab, sp);
 
 	/* special cases */
 	if(!sym){
@@ -81,10 +84,8 @@ void fold_expr_identifier(expr *e, symtable *stab)
 			if(!m)
 				die_at(&e->where, "undeclared identifier \"%s\"", sp);
 
-			expr_mutate_wrapper(e, val);
-
-			e->bits.num = m->val->bits.num;
-			FOLD_EXPR(e, stab);
+			e->bits.ident.type = IDENT_ENUM;
+			e->bits.ident.bits.enum_mem = m;
 
 			e->tree_type = type_ref_cached_INT();
 			/*type_ref_new_type(type_new_primitive_sue(type_enum, sue));*/
@@ -92,6 +93,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 		return;
 	}
 
+	e->bits.ident.type = IDENT_NORM;
 	e->tree_type = sym->decl->ref;
 
 	if(sym->type == sym_local
@@ -112,12 +114,14 @@ void fold_expr_identifier(expr *e, symtable *stab)
 
 void gen_expr_str_identifier(expr *e)
 {
-	idt_printf("identifier: \"%s\" (sym %p)\n", e->bits.ident.spel, (void *)e->bits.ident.sym);
+	idt_printf("identifier: \"%s\" (sym %p)\n",
+			e->bits.ident.bits.ident.spel,
+			(void *)e->bits.ident.bits.ident.sym);
 }
 
 void gen_expr_identifier(expr *e)
 {
-	sym *sym = e->bits.ident.sym;
+	sym *sym = e->bits.ident.bits.ident.sym;
 
 	if(DECL_IS_FUNC(sym->decl))
 		out_push_sym(sym);
@@ -127,7 +131,7 @@ void gen_expr_identifier(expr *e)
 
 static void gen_expr_identifier_lea(expr *e)
 {
-	out_push_sym(e->bits.ident.sym);
+	out_push_sym(e->bits.ident.bits.ident.sym);
 }
 
 static int identifier_is_lval(expr *e)
@@ -152,11 +156,11 @@ expr *expr_new_identifier(char *sp)
 {
 	expr *e = expr_new_wrapper(identifier);
 	UCC_ASSERT(sp, "NULL spel for identifier");
-	e->bits.ident.spel = sp;
+	e->bits.ident.bits.ident.spel = sp;
 	return e;
 }
 
 void gen_expr_style_identifier(expr *e)
 {
-	stylef("%s", e->bits.ident.spel);
+	stylef("%s", e->bits.ident.bits.ident.spel);
 }

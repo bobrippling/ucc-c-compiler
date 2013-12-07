@@ -477,7 +477,7 @@ decl_attr *expr_attr_present(expr *e, enum decl_attr_type t)
 	}
 
 	if(expr_kind(e, identifier)){
-		sym *s = e->bits.ident.sym;
+		sym *s = e->bits.ident.bits.ident.sym;
 		if(s){
 			da = decl_attr_present(s->decl, t);
 			if(da)

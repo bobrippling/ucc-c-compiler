@@ -80,7 +80,7 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 				decl *d = NULL;
 
 				if(expr_kind(e->expr, identifier))
-					d = e->expr->bits.ident.sym->decl;
+					d = e->expr->bits.ident.bits.ident.sym->decl;
 				else if(expr_kind(e->expr, struct))
 					d = e->expr->bits.struct_mem.d;
 

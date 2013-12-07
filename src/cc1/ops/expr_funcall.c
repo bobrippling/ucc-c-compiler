@@ -144,9 +144,11 @@ invalid:
 #endif
 
 
-	if(!e->expr->in_parens && expr_kind(e->expr, identifier) && (sp = e->expr->bits.ident.spel)){
+	if(!e->expr->in_parens && expr_kind(e->expr, identifier)
+	&& (sp = e->expr->bits.ident.bits.ident.spel))
+	{
 		/* check for implicit function */
-		if(!(e->expr->bits.ident.sym = symtab_search(stab, sp))){
+		if(!(e->expr->bits.ident.bits.ident.sym = symtab_search(stab, sp))){
 			funcargs *args = funcargs_new();
 			decl *df;
 
@@ -161,13 +163,13 @@ invalid:
 
 			df = decl_new();
 			df->ref = type_func;
-			df->spel = e->expr->bits.ident.spel;
+			df->spel = e->expr->bits.ident.bits.ident.spel;
 
 			fold_decl(df, stab, NULL); /* update calling conv, for e.g. */
 
 			df->sym->type = sym_global;
 
-			e->expr->bits.ident.sym = df->sym;
+			e->expr->bits.ident.bits.ident.sym = df->sym;
 		}
 	}
 

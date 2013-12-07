@@ -31,7 +31,7 @@ void fold_expr_struct(expr *e, symtable *stab)
 
 		UCC_ASSERT(!e->bits.struct_mem.d, "already have a struct-member");
 
-		spel = e->rhs->bits.ident.spel;
+		spel = e->rhs->bits.ident.bits.ident.spel;
 	}else{
 		UCC_ASSERT(e->bits.struct_mem.d, "no member specified already?");
 		spel = NULL;

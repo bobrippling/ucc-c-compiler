@@ -47,7 +47,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 		}
 
 		if(expr_kind(e->lhs, identifier)){
-			decl *d = e->lhs->bits.ident.sym->decl;
+			decl *d = e->lhs->bits.ident.bits.ident.sym->decl;
 
 			if((d->store & STORE_MASK_STORE) == store_register)
 				die_at(&e->lhs->where, "can't take the address of register");

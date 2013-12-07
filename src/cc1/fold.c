@@ -126,7 +126,7 @@ void fold_check_restrict(expr *lhs, expr *rhs, const char *desc, where *w)
 sym *fold_inc_writes_if_sym(expr *e, symtable *stab)
 {
 	if(expr_kind(e, identifier)){
-		sym *sym = symtab_search(stab, e->bits.ident.spel);
+		sym *sym = symtab_search(stab, e->bits.ident.bits.ident.spel);
 
 		if(sym){
 			sym->nwrites++;

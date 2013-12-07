@@ -145,7 +145,7 @@ static expr *parse_expr_identifier()
 				token_to_str(curtok), __FILE__, __LINE__);
 
 	e = expr_new_identifier(token_current_spel());
-	where_cc1_adj_identifier(&e->where, e->bits.ident.spel);
+	where_cc1_adj_identifier(&e->where, e->bits.ident.bits.ident.spel);
 	EAT(token_identifier);
 	return e;
 }
@@ -307,7 +307,7 @@ static expr *parse_expr_postfix()
 
 			/* check for specialised builtin parsing */
 			if(expr_kind(e, identifier))
-				fcall = builtin_parse(e->bits.ident.spel);
+				fcall = builtin_parse(e->bits.ident.bits.ident.spel);
 
 			if(!fcall){
 				fcall = expr_new_funcall();
