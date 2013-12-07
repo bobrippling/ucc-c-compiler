@@ -7,43 +7,6 @@ const char *str_expr_assign()
 	return "assign";
 }
 
-int expr_is_lvalue(expr *e)
-{
-	/*
-	 * valid lvaluess:
-	 *
-	 *   x              = 5; // non-func identifier
-	 *   *(expr)        = 5; // dereference
-	 *   struct.member  = 5; // struct
-	 *   struct->member = 5; // struct
-	 *
-	 * also can't be const, checked in fold_assign (since we allow const inits)
-	 *
-	 * order is important
-	 */
-
-	/* _lvalue_ addressing makes an exception for this */
-	if(type_ref_is(e->tree_type, type_ref_func))
-		return 0;
-
-	if(type_ref_is(e->tree_type, type_ref_array))
-		return 0;
-
-	if(expr_kind(e, deref))
-		return 1;
-
-	if(expr_kind(e, struct))
-		return 1;
-
-	if(expr_kind(e, compound_lit))
-		return 1;
-
-	if(expr_kind(e, identifier))
-		return 1;
-
-	return 0;
-}
-
 void bitfield_trunc_check(decl *mem, expr *from)
 {
 	consty k;
@@ -83,7 +46,7 @@ void bitfield_trunc_check(decl *mem, expr *from)
 
 void expr_must_lvalue(expr *e)
 {
-	if(!expr_is_lvalue(e)){
+	if(!expr_is_lval(e)){
 		die_at(&e->where, "assignment to %s/%s - not an lvalue",
 				type_ref_to_str(e->tree_type),
 				e->f_str());

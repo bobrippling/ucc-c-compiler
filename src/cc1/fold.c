@@ -151,7 +151,7 @@ static expr *fold_expr_lval2rval(expr *e, symtable *stab)
 {
 	fold_expr(e, stab);
 
-	if(expr_is_lvalue(e)){
+	if(expr_is_lval(e)){
 		e = expr_set_where(
 				expr_new_cast_rval(e),
 				&e->where);

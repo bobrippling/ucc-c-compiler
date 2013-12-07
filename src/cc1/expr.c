@@ -97,6 +97,17 @@ int expr_is_null_ptr(expr *e, enum null_strictness ty)
 	return b && const_expr_and_zero(e);
 }
 
+int expr_is_lval_yes(expr *e)
+{
+	(void)e;
+	return 1;
+}
+
+int expr_is_lval(expr *e)
+{
+	return e->f_is_lval ? e->f_is_lval(e) : 0;
+}
+
 expr *expr_new_array_idx_e(expr *base, expr *idx)
 {
 	expr *op = expr_new_op(op_plus);

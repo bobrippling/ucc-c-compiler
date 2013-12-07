@@ -660,17 +660,25 @@ static expr *parse_expect(void)
 
 /* --- choose_expr */
 
+#define CHOOSE_EXPR_CHOSEN(e) ((e)->funcargs[(e)->bits.num.val.i ? 1 : 2])
+
+static void choose_expr_lea(expr *e)
+{
+	lea_expr(CHOOSE_EXPR_CHOSEN(e));
+}
+
 static void fold_choose_expr(expr *e, symtable *stab)
 {
 	consty k;
 	int i;
+	expr *c;
 
 	if(dynarray_count(e->funcargs) != 3)
 		die_at(&e->where, "three arguments expected for %s",
 				BUILTIN_SPEL(e->expr));
 
 	for(i = 0; i < 3; i++)
-		FOLD_EXPR(e->funcargs[i], stab);
+		fold_expr_no_decay(e->funcargs[i], stab);
 
 	const_fold(e->funcargs[0], &k);
 	if(k.type != CONST_NUM){
@@ -680,23 +688,29 @@ static void fold_choose_expr(expr *e, symtable *stab)
 	}
 
 	i = !!(K_INTEGRAL(k.bits.num) ? k.bits.num.val.i : k.bits.num.val.f);
-
 	e->bits.num.val.i = i;
-	e->tree_type = e->funcargs[i ? 1 : 2]->tree_type;
+
+	c = CHOOSE_EXPR_CHOSEN(e);
+	e->tree_type = c->tree_type;
 
 	wur_builtin(e);
+
+	if(expr_is_lval(c)){
+		e->f_lea = choose_expr_lea;
+		e->f_is_lval = expr_is_lval_yes;
+	}
 }
 
 static void const_choose_expr(expr *e, consty *k)
 {
 	/* forward to the chosen expr */
-	const_fold(e->funcargs[e->bits.num.val.i ? 1 : 2], k);
+	const_fold(CHOOSE_EXPR_CHOSEN(e), k);
 }
 
 static void gen_choose_expr(expr *e)
 {
 	/* forward to the chosen expr */
-	gen_expr(e->funcargs[e->bits.num.val.i ? 1 : 2]);
+	gen_expr(CHOOSE_EXPR_CHOSEN(e));
 }
 
 static expr *parse_choose_expr(void)

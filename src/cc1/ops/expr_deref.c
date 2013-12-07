@@ -82,6 +82,7 @@ void mutate_expr_deref(expr *e)
 {
 	e->f_lea = gen_expr_deref_lea;
 	e->f_const_fold = const_expr_deref;
+	e->f_is_lval = expr_is_lval_yes;
 }
 
 expr *expr_new_deref(expr *of)

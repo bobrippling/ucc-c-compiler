@@ -13,7 +13,7 @@ const char *str_expr_addr()
 
 int expr_is_addressable(expr *e)
 {
-	return expr_is_lvalue(e)
+	return expr_is_lval(e)
 		|| type_ref_is(e->tree_type, type_ref_array)
 		|| type_ref_is(e->tree_type, type_ref_func);
 }
