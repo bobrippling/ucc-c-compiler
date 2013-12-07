@@ -25,19 +25,36 @@ _Generic( (Y),              \
 
 
 // generic client
+enum
+{
+	int_int,
+	int_double,
+	double_double,
+	double_int,
+	unknown
+};
 
-#define print(X, Y)                   \
-_Generic( typeof2(X, Y),               \
-    types_ii: printf("int, int\n"),     \
-    types_id: printf("int, double\n"),   \
-    types_dd: printf("double, double\n"), \
-    types_di: printf("double, int\n"),     \
-    default: printf("Something Else\n")     )
+#define pair_type(X, Y)      \
+_Generic( typeof2(X, Y),     \
+    types_ii: int_int,       \
+    types_id: int_double,    \
+    types_dd: double_double, \
+    types_di: double_int,    \
+    default: unknown)
 
 int main()
 {
-    print(1, 2);
-    print(1, 2.0);
-    print(1.0, 2.0);
-    print(1.0, 2);
+	if(pair_type(1, 2) != int_int)
+		abort();
+
+	if(pair_type(1, 2.0) != int_double)
+		abort();
+
+	if(pair_type(1.0, 2.0) != double_double)
+		abort();
+
+	if(pair_type(1.0, 2) != double_int)
+		abort();
+
+	return 0;
 }
