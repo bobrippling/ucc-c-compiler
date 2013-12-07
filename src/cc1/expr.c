@@ -120,7 +120,7 @@ int expr_is_lval_yes(expr *e)
 
 int expr_is_lval(expr *e)
 {
-	return e->f_is_lval ? e->f_is_lval(e) : 0;
+	return !!e->f_lea;
 }
 
 expr *expr_new_array_idx_e(expr *base, expr *idx)

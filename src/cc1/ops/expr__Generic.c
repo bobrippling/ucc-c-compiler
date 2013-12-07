@@ -89,10 +89,8 @@ void fold_expr__Generic(expr *e, symtable *stab)
 			die_at(&e->where, "no type satisfying %s", type_ref_to_str(e->expr->tree_type));
 	}
 
-	if(expr_is_lval(e->bits.generic.chosen->e)){
-		e->f_is_lval = expr_is_lval_yes;
+	if(expr_is_lval(e->bits.generic.chosen->e))
 		e->f_lea = generic_lea;
-	}
 
 	e->tree_type = e->bits.generic.chosen->e->tree_type;
 
