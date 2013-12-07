@@ -190,11 +190,11 @@ static void fold_memset(expr *e, symtable *stab)
 {
 	FOLD_EXPR(e->lhs, stab);
 
-	if(!expr_is_addressable(e->lhs)){
+	if(!expr_is_lval(e->lhs)){
 		/* this is pretty much an ICE, except it may be
 		 * user-callable in the future
 		 */
-		die_at(&e->where, "can't memset %s - not addressable",
+		die_at(&e->where, "can't memset %s - not lvalue",
 				e->lhs->f_str());
 	}
 
