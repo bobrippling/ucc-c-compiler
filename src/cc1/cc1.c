@@ -135,6 +135,8 @@ struct
 	{ 'f',  "unsigned-char",      ~FOPT_SIGNED_CHAR },
 	{ 'f',  "cast-with-builtin-types", FOPT_CAST_W_BUILTIN_TYPES },
 
+	{ 'm',  "32", MOPT_32 },
+	{ 'm',  "64", ~MOPT_32 },
 	{ 'm',  "stackrealign", MOPT_STACK_REALIGN },
 
 	{ 0,  NULL, 0 }
@@ -369,8 +371,10 @@ int main(int argc, char **argv)
 
 	fname = NULL;
 
-	/* defaults */
-	cc1_mstack_align = log2f(platform_word_size());
+	if(platform_word_size() == 4)
+		mopt_mode |= MOPT_32;
+	else
+		mopt_mode &= ~MOPT_32;
 
 	for(i = 1; i < argc; i++){
 		if(!strcmp(argv[i], "-X")){
@@ -499,19 +503,6 @@ unrecognised:
 				fprintf(stderr, "\"%s\" unrecognised\n", argv[i]);
 				goto usage;
 			}
-
-		}else if(!strncmp(argv[i], "-m", 2)){
-			int n;
-
-			if(sscanf(argv[i] + 2, "%d", &n) != 1 || (n != 32 && n != 64)){
-				fprintf(stderr, "-m needs either 32 or 64\n");
-				goto usage;
-			}
-
-			if(n == 32)
-				mopt_mode |= MOPT_32;
-			else
-				mopt_mode &= ~MOPT_32;
 
 		}else if(!fname){
 			fname = argv[i];
