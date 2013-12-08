@@ -19,7 +19,7 @@ BUILD_CMD = ${UCC_CC} ${CPPFLAGS} -c -o $@ $<
 
 include ../config.mk
 
-ARCH_DIR = arch/${UCC_CPU}
+ARCH_DIR = arch/${UCC_SUBARCH}
 
 all: ${LIBC} ${CRT}
 

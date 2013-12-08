@@ -13,7 +13,7 @@ alloc.o: alloc.c
 	${BUILD_CC}
 
 platform.o: platform.c
-	${BUILD_CC} -DUCC_PLATFORM=PLATFORM_${UCC_CPU}
+	${BUILD_CC} -DUCC_PLATFORM=PLATFORM_${UCC_ARCH}
 
 util.o: util.c
 	${BUILD_CC}

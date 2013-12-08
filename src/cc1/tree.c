@@ -167,20 +167,17 @@ unsigned type_primitive_size(enum type_primitive tp)
 		case type_ushort:
 			return UCC_SZ_SHORT;
 
+		case type_enum: /* FIXME: enum size */
 		case type_int:
 		case type_uint:
 			return UCC_SZ_INT;
 
-		case type_enum:
 		case type_float:
 			return 4;
 
 		case type_long:
 		case type_ulong:
-			/* 4 on 32-bit */
-			if(IS_32_BIT())
-				return 4; /* FIXME: 32-bit long */
-			return UCC_SZ_LONG;
+			return IS_32_BIT() ? UCC_SZ_INT : UCC_SZ_LONG;
 
 		case type_llong:
 		case type_ullong:
@@ -266,7 +263,7 @@ unsigned type_align(const type *t, where *from)
 		case type_double:
 			if(IS_32_BIT()){
 				/* 8 on Win32, 4 on Linux32 */
-				if(platform_sys() == PLATFORM_CYGWIN)
+				if(platform_os() == PLATFORM_CYGWIN)
 					return 8;
 				return 4;
 			}

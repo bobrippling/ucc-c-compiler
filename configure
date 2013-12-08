@@ -6,15 +6,14 @@ os_cfg(){
 	cat > config.mk <<!
 UCC_AS      = ${UCC_AS}
 UCC_LD      = ${UCC_LD}
-UCC_BINFMT  = ${UCC_BINFMT}
 UCC_LDFLAGS = ${UCC_LDFLAGS}
-UCC_CPU     = ${UCC_CPU}
+UCC_ARCH    = ${UCC_ARCH}
+UCC_SUBARCH = $(uname -m)
 !
 
 	cat > src/ucc/cfg.h <<!
 #define UCC_AS      "${UCC_AS}"
 #define UCC_LD      "${UCC_LD}"
-#define UCC_BINFMT  "${UCC_BINFMT}"
 #define UCC_INC     "${UCC_INC}"
 
 #define UCC_CPPFLAGS "${UCC_CPPFLAGS}"
@@ -40,7 +39,6 @@ UCC_CPU     = ${UCC_CPU}
 #define SECTION_TEXT $SECTION_TEXT
 #define SECTION_DATA $SECTION_DATA
 #define SECTION_BSS  $SECTION_BSS
-#define UCC_M32      ${UCC_M32}
 #define ASM_PLBL_PRE "$ASM_PLBL"
 !
 
@@ -67,7 +65,7 @@ UCC_CPU     = ${UCC_CPU}
 	then echo "CFLAGS += -Wno-char-subscripts"
 	fi > src/src_config_platform.mk
 
-	echo "Configured for $UCC_CPU $1"
+	echo "Configured for $UCC_ARCH $1"
 }
 
 usage(){
@@ -88,17 +86,26 @@ UCC_LD=ld
 UCC_BINFMT=elf64
 UCC_LDFLAGS=''
 UCC_CFLAGS=''
-UCC_CPU=x86_64
-UCC_M32=0
 ASM_PLBL=.L
 
-unam="$(uname -s)"
+case "$(uname -m)" in
+	i?86|x86_64)
+		UCC_ARCH=x86
+		;;
+	mipsel)
+		UCC_ARCH=mipsel
+		;;
+	*)
+		echo >&2 "$0: unknown arch '$(uname -m)'"
+		exit 1
+esac
 
 # setup include paths
 # TODO: option to use local ./lib path
 UCC_INC="-I/usr/include"
 
 # defaults for an OS
+unam="$(uname -s)"
 case "$unam" in
 	Linux)
 		# assume gcc
@@ -124,7 +131,6 @@ case "$unam" in
 		;;
 
 	Darwin)
-		UCC_BINFMT=macho64
 		UCC_CFLAGS='-mpreferred-stack-boundary=4' # 2^4 = 16 byte aligned
 		UCC_STDLIB='-lSystem'
 		UCC_CRT='-lcrt1.o'
@@ -134,8 +140,6 @@ case "$unam" in
 		;;
 
 	CYGWIN_NT-*)
-		UCC_BINFMT=win32
-		UCC_M32=1
 		leading_underscore
 		;;
 esac
@@ -160,10 +164,6 @@ do
 				echo >&2 "$UCC_CPU invalid, choices are:"
 				(cd $ARCH_DIR; ls -d *)
 				usage
-			fi
-			if echo "$UCC_CPU" | grep 64 > /dev/null
-			then UCC_M32=0
-			else UCC_M32=1
 			fi
 			;;
 		--with-ucc-lib)

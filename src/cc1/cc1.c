@@ -521,6 +521,11 @@ usage:
 		}
 	}
 
+	/* defaults */
+	platform_set_word_size(mopt_mode & MOPT_32 ? 4 : 8);
+	if(!cc1_mstack_align)
+		cc1_mstack_align = log2f(platform_word_size());
+
 	/* sanity checks */
 	{
 		const unsigned new = powf(2, cc1_mstack_align);

@@ -5,16 +5,18 @@
 
 #include "platform.h"
 
-static int init = 0;
-static const enum platform platform_t = UCC_PLATFORM;
-static enum platform_sys platform_s; /* TODO: sys is decided at compile time */
+/* TODO: sys is decided at compile time */
 
-#define INIT() \
-	do{ \
-		if(!init){ \
+static const enum platform_arch arch = UCC_PLATFORM;
+static enum platform_os os;
+
+static unsigned word_size;
+
+
+#define INIT()         \
+	do{                  \
+		if(!word_size)     \
 			platform_init(); \
-			init = 1; \
-		} \
 	}while(0)
 
 static void platform_init()
@@ -27,34 +29,33 @@ static void platform_init()
 	}
 
 	if(!strcmp(u.sysname, "Linux")){
-		platform_s = PLATFORM_LINUX;
+		os = PLATFORM_LINUX;
 	}else if(!strcmp(u.sysname, "FreeBSD")){
-		platform_s = PLATFORM_FREEBSD;
+		os = PLATFORM_FREEBSD;
 	}else if(!strcmp(u.sysname, "Darwin")){
-		platform_s = PLATFORM_DARWIN;
+		os = PLATFORM_DARWIN;
 	}else if(!strncmp(u.sysname, "CYGWIN_NT-", 10)){
-		platform_s = PLATFORM_CYGWIN;
+		os = PLATFORM_CYGWIN;
 	}else{
 		fprintf(stderr, "unrecognised machine system: \"%s\"\n", u.sysname);
 		exit(1);
 	}
+
+	if(strstr(u.machine, "64"))
+		word_size = 8;
+	else
+		word_size = 4;
 }
 
 unsigned platform_word_size()
 {
 	INIT();
-	switch(platform_t){
-		case PLATFORM_mipsel_32:
-		 return 4;
-		case PLATFORM_x86_64:
-		 return 8;
-	}
-	abort();
+	return word_size;
 }
 
-int platform_32bit(void)
+void platform_set_word_size(unsigned sz)
 {
-	return platform_word_size() == 4;
+	word_size = sz;
 }
 
 unsigned platform_align_max()
@@ -68,14 +69,14 @@ unsigned platform_align_max()
 	abort();
 }
 
-enum platform platform_type()
+enum platform_arch platform_arch()
 {
 	INIT();
-	return platform_t;
+	return arch;
 }
 
-enum platform_sys platform_sys()
+enum platform_os platform_os()
 {
 	INIT();
-	return platform_s;
+	return os;
 }

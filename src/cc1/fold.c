@@ -204,11 +204,11 @@ static void fold_calling_conv(type_ref *r)
 		if(!init){
 			init = 1;
 
-			if(platform_32bit()){
+			if(IS_32_BIT()){
 				def_conv = conv_cdecl;
 			}else{
 				/* 64-bit - MS or SYSV */
-				if(platform_sys() == PLATFORM_CYGWIN)
+				if(platform_os() == PLATFORM_CYGWIN)
 					def_conv = conv_x64_ms;
 				else
 					def_conv = conv_x64_sysv;
@@ -718,7 +718,7 @@ void fold_func_code(decl *func_decl, symtable *arg_symtab)
 
 		if(!d->spel)
 			die_at(&func_decl->where, "argument %ld in \"%s\" is unnamed",
-					i - arg_symtab->decls + 1, func_decl->spel);
+					(long)(i - arg_symtab->decls + 1), func_decl->spel);
 
 		if(!type_ref_is_complete(d->ref))
 			die_at(&d->where,

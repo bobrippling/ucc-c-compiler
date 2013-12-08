@@ -1,9 +1,9 @@
 include ../src_config.mk
 include ../../config.mk
 
-CPPFLAGS = -DCC1_IMPL_FNAME=\"${UCC_CPU}.h\"
+CPPFLAGS = -DCC1_IMPL_FNAME=\"${UCC_ARCH}.h\"
 
-ARCH_OBJ = out/${UCC_CPU}.o
+ARCH_OBJ = out/${UCC_ARCH}.o
 
 CFLAGS  += -Wno-missing-field-initializers
 LDFLAGS += -lm
@@ -55,7 +55,7 @@ tags:
 # files that need target info
 out/mipsel_32.o: out/mipsel_32.c
 	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<
-out/x86_64.o: out/x86_64.c
+out/x86.o: out/x86.c
 	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<
 out/out.o: out/out.c out/impl.h
 	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<
@@ -63,7 +63,7 @@ out/impl.o: out/impl.c out/impl.h
 	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<
 
 # extra deps
-out/impl.h: out/x86_64.h out/mipsel_32.h
+out/impl.h: out/x86.h out/mipsel_32.h
 
 deps: Makefile.dep
 
