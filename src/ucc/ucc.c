@@ -4,6 +4,7 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <assert.h>
+#include <ctype.h>
 
 /* umask */
 #include <sys/types.h>
@@ -416,6 +417,8 @@ int main(int argc, char **argv)
 						goto word;
 				case 'm':
 					ADD_ARG(mode_compile);
+					if(isdigit(argv[i][2])) /* -m32, etc */
+						ADD_ARG(mode_preproc);
 					continue;
 
 				case 'D':

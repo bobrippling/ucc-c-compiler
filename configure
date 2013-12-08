@@ -8,7 +8,7 @@ UCC_AS      = ${UCC_AS}
 UCC_LD      = ${UCC_LD}
 UCC_LDFLAGS = ${UCC_LDFLAGS}
 UCC_ARCH    = ${UCC_ARCH}
-UCC_SUBARCH = $(uname -m)
+UCC_SUBARCH = ${UCC_SUBARCH}
 !
 
 	cat > src/ucc/cfg.h <<!
@@ -88,15 +88,22 @@ UCC_LDFLAGS=''
 UCC_CFLAGS=''
 ASM_PLBL=.L
 
-case "$(uname -m)" in
+uname_m=$(uname -m)
+case "$uname_m" in
 	i?86|x86_64)
 		UCC_ARCH=x86
+		# map all i?86 archs to i386
+		if [ "$uname_m" = x86_64 ]
+		then UCC_SUBARCH=x86
+		else UCC_SUBARCH=i386
+		fi
 		;;
 	mipsel)
 		UCC_ARCH=mipsel
+		UCC_SUBARCH=mipsel
 		;;
 	*)
-		echo >&2 "$0: unknown arch '$(uname -m)'"
+		echo >&2 "$0: unknown arch '$uname_m'"
 		exit 1
 esac
 
