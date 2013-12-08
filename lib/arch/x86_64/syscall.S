@@ -1,5 +1,5 @@
 #include "../../../src/as_cfg.h"
-#include "defs.h"
+#include "../defs.h"
 .section SECTION_BSS
 	.globl SYMBL(errno)
 SYMBL(errno):
