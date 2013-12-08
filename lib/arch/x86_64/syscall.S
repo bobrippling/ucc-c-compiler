@@ -30,13 +30,14 @@ SYMBL(__syscall):
 #else
 
 	// x64 convention: %rdi, %rsi, %rdx, %rcx, %r8, %r9
-	// convert our args to syscall args
+	// kernel conv.:   %rdi, %rsi, %rdx, %r10, %r8, %r9
 
+	// convert our args to syscall args
 	movq %rdi, %rax
 	movq %rsi, %rdi
 	movq %rdx, %rsi
 	movq %rcx, %rdx
-	movq %r8 , %rcx # r10?
+	movq %r8 , %r10
 	movq %r9 , %r8
 	movq 0x8(%rbp), %r9
 
