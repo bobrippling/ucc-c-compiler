@@ -213,7 +213,9 @@ static const char *vstack_str_r(
 
 		case V_LBL:
 		{
-			const int pic = fopt_mode & FOPT_PIC && vs->bits.lbl.pic;
+			const int pic = IS_32_BIT()
+				? 0 /* TODO: 32-bit PIC */
+				: fopt_mode & FOPT_PIC && vs->bits.lbl.pic;
 
 			if(vs->bits.lbl.offset){
 				SNPRINTF(buf, VSTACK_STR_SZ, "%s+%ld%s",
@@ -336,8 +338,13 @@ unsigned impl_n_call_regs(type_ref *rf)
 
 void impl_func_prologue_save_fp(void)
 {
-	out_asm("pushq %%rbp");
-	out_asm("movq %%rsp, %%rbp");
+	const char *bp = x86_intreg_str(X86_64_REG_RBP, NULL);
+
+	out_asm("push %%%s", bp);
+	out_asm("mov %%%s, %%%s",
+			x86_intreg_str(X86_64_REG_RSP, NULL),
+			bp);
+
 	/* a v_alloc_stack_n() is done later to align,
 	 * but not interfere with argument locations */
 }
@@ -521,7 +528,7 @@ void impl_func_prologue_save_variadic(type_ref *rf)
 
 void impl_func_epilogue(type_ref *rf)
 {
-	out_asm("leaveq");
+	out_asm("leave");
 
 	if(fopt_mode & FOPT_VERBOSE_ASM)
 		out_comment("stack at %u bytes", v_stack_sz());
@@ -530,9 +537,9 @@ void impl_func_epilogue(type_ref *rf)
 	if(!x86_caller_cleanup(rf)){
 		const int nargs = x86_func_nargs(rf);
 
-		out_asm("retq $%d", nargs * platform_word_size());
+		out_asm("ret $%d", nargs * platform_word_size());
 	}else{
-		out_asm("retq");
+		out_asm("ret");
 	}
 }
 
@@ -1044,6 +1051,9 @@ void impl_op(enum op_type op)
 					/* fall */
 
 				case V_REG:
+				{
+					const unsigned sz = type_ref_size(vtop->t, NULL);
+
 					if(vtop->bits.regoff.reg.idx == X86_64_REG_RDX){
 						/* prevent rdx in division operand */
 						struct vreg r;
@@ -1052,10 +1062,29 @@ void impl_op(enum op_type op)
 						memcpy_safe(&vtop->bits.regoff.reg, &r);
 					}
 
-					out_asm("cqto");
+					/* zero the top half */
+					if(IS_32_BIT()){
+						if(sz == 4){
+							/* convert dword -> quad
+							 * eax -> edx:eax
+							 */
+							out_asm("cdq");
+						}
+					}else{
+						if(sz == 8){
+							/* convert quad -> oct
+							 * rax -> rdx:rax
+							 */
+							out_asm("cqo");
+						}
+					}
+
 					out_asm("idiv%s %s",
 							x86_suffix(vtop->t),
 							vstack_str(vtop, 0));
+
+					break;
+				}
 			}
 
 			v_unreserve_reg(&rtmp[1]); /* free rdx */
@@ -1303,6 +1332,7 @@ void impl_cast_load(struct vstack *vp, type_ref *small, type_ref *big, int is_si
 					x86_reg_str(&r, small));
 
 		}else{
+			/* FIXME: long long on 32-bit */
 			out_asm("mov%c%s%s %s, %%%s",
 					"zs"[is_signed],
 					suffix_small,
@@ -1323,7 +1353,8 @@ static void x86_fp_conv(
 {
 	char vbuf[VSTACK_STR_SZ];
 
-	out_asm("cvt%s2%s%s %s, %%%s",
+	/* FIXME: long long on 32-bit */
+	out_asm("cvt%s2%s%s %s, %%%s # tto=%s, int_ty=%s",
 			/*truncate ? "t" : "",*/
 			sfrom, sto,
 			/* if we're doing an int-float conversion,
@@ -1331,7 +1362,10 @@ static void x86_fp_conv(
 			 */
 			int_ty ? type_ref_size(int_ty, NULL) == 8 ? "q" : "l" : "",
 			vstack_str_r(vbuf, vp, vp->type == V_REG_SAVE),
-			x86_reg_str(r, tto));
+			x86_reg_str(r, tto),
+
+			type_ref_to_str_r((char[TYPE_REF_STATIC_BUFSIZ]){0}, tto),
+			type_ref_to_str_r((char[TYPE_REF_STATIC_BUFSIZ]){0}, int_ty));
 }
 
 static void x86_xchg_fi(struct vstack *vp, type_ref *tfrom, type_ref *tto)
@@ -1675,7 +1709,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 			vpop();
 		}
 
-		out_asm("callq %s", jtarget);
+		out_asm("call %s", jtarget);
 	}
 
 	if(arg_stack && x86_caller_cleanup(r_func))
