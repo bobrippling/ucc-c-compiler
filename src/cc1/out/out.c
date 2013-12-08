@@ -17,7 +17,7 @@
 #include "../opt.h"
 #include "../const.h"
 
-typedef char chk[OUT_VPHI_SZ == sizeof(struct vstack) ? 1 : -1];
+typedef char chk[OUT_VPHI_SZ >= sizeof(struct vstack) ? 1 : -1];
 
 static int calc_ptr_step(type_ref *t);
 
