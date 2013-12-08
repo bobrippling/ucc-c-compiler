@@ -17,18 +17,6 @@ SYMBL(__syscall):
 	pushq %rcx
 	pushq %r11
 
-#ifdef OLD_CONV
-
-	movq 16(%rbp), %rax # eax
-	movq 24(%rbp), %rdi # ebx
-	movq 32(%rbp), %rsi # ecx
-	movq 40(%rbp), %rdx # edx
-	movq 48(%rbp), %r10 # edi
-	movq 56(%rbp), %r8  # esi
-	movq 64(%rbp), %r9  # e8?
-
-#else
-
 	// x64 convention: %rdi, %rsi, %rdx, %rcx, %r8, %r9
 	// kernel conv.:   %rdi, %rsi, %rdx, %r10, %r8, %r9
 
@@ -40,8 +28,6 @@ SYMBL(__syscall):
 	movq %r8 , %r10
 	movq %r9 , %r8
 	movq 0x8(%rbp), %r9
-
-#endif
 
 	syscall
 #ifdef __linux__
