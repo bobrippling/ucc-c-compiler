@@ -159,7 +159,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 		for(i = sue->members; i && *i; i++){
 			decl *d = (*i)->struct_member;
 			unsigned align, sz;
-			struct_union_enum_st *sub_sue = type_ref_is_s_or_u_or_e(d->ref);
+			struct_union_enum_st *sub_sue = type_ref_is_s_or_u(d->ref);
 
 			fold_decl(d, stab, NULL);
 
@@ -170,7 +170,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 				 */
 				if(d->field_width){
 					/* fine */
-				}else if(sub_sue && !type_ref_is_ptr(d->ref)){
+				}else if(sub_sue){
 					/* anon */
 					char *prob = NULL;
 					int ignore = 0;
@@ -210,16 +210,12 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 				submemb_const = 1;
 
 			if(sub_sue){
-				if(sub_sue != sue){
+				if(sub_sue && sub_sue != sue){
 					fold_sue(sub_sue, stab);
 
 					if(sub_sue->contains_const)
 						submemb_const = 1;
 				}
-
-				if(type_ref_is(d->ref, type_ref_ptr)
-				|| sub_sue->primitive == type_enum)
-					goto normal;
 
 				/* should've been caught by incompleteness checks */
 				UCC_ASSERT(sub_sue != sue, "nested %s", sue_str(sue));
@@ -293,7 +289,6 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 				}
 
 			}else{
-normal:
 				align = decl_align(d);
 				if(type_ref_is_incomplete_array(d->ref)){
 					if(i[1])
