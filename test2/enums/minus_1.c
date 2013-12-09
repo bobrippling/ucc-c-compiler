@@ -1,8 +1,8 @@
 // RUN: %ucc -fsyntax-only %s
 
-enum
+enum E
 {
-	sh_enu = (short)-1
+	NEG_1 = -1
 };
 
-_Static_assert(sh_enu != -1, "enums shouldn't compare equal to -1");
+_Static_assert(NEG_1 == -1, "NEG_1 is an int - should be comparable");
