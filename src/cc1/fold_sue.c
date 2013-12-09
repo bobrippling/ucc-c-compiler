@@ -6,6 +6,7 @@
 
 #include "../util/util.h"
 #include "../util/where.h"
+#include "../util/limits.h"
 
 #include "data_structs.h"
 #include "cc1.h"
@@ -67,6 +68,7 @@ static void fold_enum(struct_union_enum_st *en, symtable *stab)
 	for(i = en->members; i && *i; i++){
 		enum_member *m = (*i)->enum_member;
 		expr *e = m->val;
+		integral_t v;
 
 		/* -1 because we can't do dynarray_add(..., 0) */
 		if(e == (expr *)-1){
@@ -75,13 +77,12 @@ static void fold_enum(struct_union_enum_st *en, symtable *stab)
 				m->val = expr_new_val(defval)
 			);
 
-			if(has_bitmask)
-				defval <<= 1;
-			else
-				defval++;
+			v = defval;
 
 		}else{
-			integral_t v;
+			numeric n;
+			int oob;
+			int negative;
 
 			m->val = FOLD_EXPR(e, stab);
 
@@ -89,10 +90,39 @@ static void fold_enum(struct_union_enum_st *en, symtable *stab)
 					FOLD_CHK_INTEGRAL | FOLD_CHK_CONST_I,
 					"enum constant");
 
-			v = const_fold_val_i(e);
+			const_fold_integral(e, &n);
 
-			defval = has_bitmask ? v << 1 : v + 1;
+			v = n.val.i;
+			if(n.suffix & VAL_UNSIGNED)
+				negative = 0;
+			else
+				negative = (sintegral_t)v < 0;
+
+			/* enum constants must have type representable in 'int' */
+			if(negative)
+				oob = (sintegral_t)v < UCC_INT_MIN || (sintegral_t)v > UCC_INT_MAX;
+			else
+				oob = v > UCC_INT_MAX; /* int max - stick to int, not uint */
+
+			if(oob){
+				warn_at_print_error(&m->where,
+						negative
+						? "enumerator value %" NUMERIC_FMT_D " out of 'int' range"
+						: "enumerator value %" NUMERIC_FMT_U " out of 'int' range",
+						integral_truncate(v, type_primitive_size(type_int), NULL));
+				fold_had_error = 1;
+			}
 		}
+
+		/* overflow here is a violation */
+		if(v == UCC_INT_MAX && i[1] && i[1]->enum_member->val == (expr *)-1){
+			m = i[1]->enum_member;
+			warn_at_print_error(&m->where, "overflow for enum member %s::%s",
+					en->spel, m->spel);
+			fold_had_error = 1;
+		}
+
+		defval = has_bitmask ? v << 1 : v + 1;
 	}
 }
 
