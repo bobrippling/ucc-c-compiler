@@ -58,6 +58,7 @@ struct type
 	enum type_primitive primitive;
 
 	/* NULL unless this is a struct, union or enum */
+	/* special case - if we're an int, this may refer to the enum the int came from */
 	struct_union_enum_st *sue;
 
 	/* attr applied to all decls whose type is this type */

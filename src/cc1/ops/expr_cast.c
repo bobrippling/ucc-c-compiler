@@ -334,6 +334,18 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 				return;
 			}
 
+			{
+				struct_union_enum_st *ea, *eb;
+				if((ea = type_ref_is_enum(tlhs))
+				&& (eb = type_ref_is_enum(trhs))
+				&& ea != eb)
+				{
+					char buf[TYPE_REF_STATIC_BUFSIZ];
+					warn_at(&e->where, "implicit conversion from '%s' to '%s'",
+							type_ref_to_str_r(buf, trhs), type_ref_to_str(tlhs));
+				}
+			}
+
 			size_lhs = type_ref_size(tlhs, &e->where);
 			size_rhs = type_ref_size(trhs, &expr_cast_child(e)->where);
 			if(size_lhs < size_rhs){

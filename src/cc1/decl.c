@@ -137,6 +137,15 @@ type_ref *type_ref_new_type(const type *t)
 	return r;
 }
 
+type_ref *type_ref_new_int_enum(struct_union_enum_st *enu)
+{
+	UCC_ASSERT(enu->primitive == type_enum, "enum?");
+
+	return type_ref_new_type(
+			type_new_primitive_sue(
+				type_int, enu));
+}
+
 type_ref *type_ref_new_type_primitive(enum type_primitive p)
 {
 	type_ref *r;

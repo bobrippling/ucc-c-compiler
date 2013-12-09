@@ -50,6 +50,9 @@ int fold_type_chk_warn(
 			 *  - they match but we need the _Bool cast */
 			return 1;
 		case TYPE_EQUAL:
+			/* for enum types, we still want the cast, for warnings' sake */
+			if(type_ref_is_enum(lhs) != type_ref_is_enum(rhs))
+				return 1;
 			break;
 
 		case TYPE_QUAL_LOSS:

@@ -87,7 +87,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 			e->bits.ident.type = IDENT_ENUM;
 			e->bits.ident.bits.enum_mem = m;
 
-			e->tree_type = type_ref_cached_INT();
+			e->tree_type = type_ref_new_int_enum(sue);
 			/*type_ref_new_type(type_new_primitive_sue(type_enum, sue));*/
 		}
 		return;

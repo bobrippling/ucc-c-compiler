@@ -139,6 +139,7 @@ type_ref *type_ref_new_func( type_ref *to, funcargs *args);
 type_ref *type_ref_new_cast( type_ref *from, enum type_qualifier new);
 type_ref *type_ref_new_cast_signed(type_ref *from, int is_signed);
 type_ref *type_ref_new_cast_add(type_ref *from, enum type_qualifier extra);
+type_ref *type_ref_new_int_enum(struct_union_enum_st *);
 
 
 decl_attr   *decl_attr_new(enum decl_attr_type);

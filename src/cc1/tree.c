@@ -209,7 +209,7 @@ unsigned type_primitive_size(enum type_primitive tp)
 
 unsigned type_size(const type *t, where *from)
 {
-	if(t->sue)
+	if(t->sue && t->primitive != type_int)
 		return sue_size(t->sue, from);
 
 	return type_primitive_size(t->primitive);
