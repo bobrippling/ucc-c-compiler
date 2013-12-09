@@ -272,16 +272,13 @@ unsigned type_size(const type *t, where *from)
 	return type_primitive_size(t->primitive);
 }
 
-unsigned type_align(const type *t, where *from)
+unsigned type_primitive_align(enum type_primitive p)
 {
-	if(t->sue)
-		return sue_align(t->sue, from);
-
 	/* align to the size,
 	 * except for double and ldouble
 	 * (long changes but this is accounted for in type_primitive_size)
 	 */
-	switch(t->primitive){
+	switch(p){
 		case type_double:
 			if(IS_32_BIT()){
 				/* 8 on Win32, 4 on Linux32 */
@@ -295,8 +292,15 @@ unsigned type_align(const type *t, where *from)
 			return IS_32_BIT() ? 4 : 16;
 
 		default:
-			return type_primitive_size(t->primitive);
+			return type_primitive_size(p);
 	}
+}
+
+unsigned type_align(const type *t, where *from)
+{
+	return t->sue
+		? sue_align(t->sue, from)
+		: type_primitive_align(t->primitive);
 }
 
 int type_floating(enum type_primitive p)

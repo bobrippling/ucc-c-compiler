@@ -38,6 +38,7 @@ int type_floating(enum type_primitive);
 unsigned type_size( const type *, where *from);
 unsigned type_align(const type *, where *from);
 unsigned type_primitive_size(enum type_primitive tp);
+unsigned type_primitive_align(enum type_primitive p);
 unsigned long long
 type_primitive_max(enum type_primitive p);
 
