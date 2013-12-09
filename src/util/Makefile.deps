@@ -8,3 +8,4 @@ where.o: where.c where.h compiler.h
 str.o: str.c str.h
 std.o: std.c std.h
 escape.o: escape.c escape.h compiler.h util.h where.h str.h
+math.o: math.c math.h
