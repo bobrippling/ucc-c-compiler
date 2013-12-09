@@ -1122,8 +1122,8 @@ out/impl.o: out/impl.c out/../../util/util.h out/../../util/where.h \
  out/../ops/stmt_label.h out/../ops/stmt_noop.h out/../ops/stmt_return.h \
  out/../ops/stmt_switch.h out/../ops/stmt_while.h \
  out/../ops/stmt_continue.h out/../sym.h out/../decl.h out/../type_ref.h \
- out/../decl.h out/vstack.h out/asm.h out/impl.h out/x86.h \
- out/../cc1.h out/../../util/std.h
+ out/../decl.h out/vstack.h out/asm.h out/impl.h out/x86.h out/../cc1.h \
+ out/../../util/std.h
 out/lbl.o: out/lbl.c out/../../util/alloc.h out/../../util/util.h \
  out/../../util/where.h out/../../util/compiler.h out/common.h out/lbl.h \
  out/../../as_cfg.h
