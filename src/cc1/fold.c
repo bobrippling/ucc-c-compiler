@@ -387,6 +387,23 @@ static void fold_func_attr(decl *d)
 		format_check_decl(d, da);
 }
 
+static void fold_check_enum_bitfield(
+		struct_union_enum_st *en,
+		unsigned bitwidth, decl *d)
+{
+	sue_member **i;
+
+	for(i = en->members; i && *i; i++){
+		enum_member *mem = (*i)->enum_member;
+
+		integral_t val = const_fold_val_i(mem->val);
+
+		if(integral_truncate_bits(val, bitwidth, NULL) != val)
+			warn_at(&mem->where, "enumerator %s (%lld) too large for its type (%s)",
+					mem->spel, val, d->spel);
+	}
+}
+
 static void fold_decl_add_sym(decl *d, symtable *stab)
 {
 	/* must be before fold*, since sym lookups are done */
@@ -478,6 +495,12 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 		if(k.bits.num.val.i == 1 && type_ref_is_signed(d->ref))
 			warn_at(&d->where, "1-bit signed field \"%s\" takes values -1 and 0",
 					decl_to_str(d));
+
+		{
+			struct_union_enum_st *e;
+			if((e = type_ref_is_s_or_u_or_e(d->ref)))
+				fold_check_enum_bitfield(e, k.bits.num.val.i, d);
+		}
 
 		can_align = 0;
 	}

@@ -1,23 +1,23 @@
-// RUN: %ucc -fsyntax-only %s
-
-#define SIGNED(mem, t)             \
-_Static_assert(                    \
-		__builtin_is_signed(mem) == t, \
-		#mem " signed != " #t);
+// RUN: %check %s
 
 struct
 {
 	// implicitly unsigned
-	enum { A = 8, B = 2 } x : 3; // CHECK: /enum member A too large for type/
+	enum
+	{
+		A = 8, // CHECK: warning: enumerator A (8) too large for its type (x)
+		B = 2  // CHECK: !/warn/
+	} x : 3;
 	// 3 bits can represent 0-7
 	// - should warn for A
 
 
 	// implicitly signed
-	enum { X = -5, Y = 3 } y : 3; // CHECK: /enum member X too large for type/
+	enum
+	{
+		X = -5, // CHECK: warning: enumerator X (-5) too large for its type (y)
+		Y = 3   // CHECK: !/warn/
+	} y : 3;
 	// 3 bits can represent -4-3
 	// - should warn for X
 } a;
-
-SIGNED(a.x, 0);
-SIGNED(a.y, 1);
