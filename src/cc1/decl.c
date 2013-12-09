@@ -95,7 +95,7 @@ void type_ref_init(symtable *stab)
 					type_new_primitive_sue(
 						type_struct,
 						sue_decl(stab, ustrdup("__va_list_struct"),
-							sue_members, type_struct, 1, 1)));
+							sue_members, type_struct, 1, 1, NULL)));
 
 
 			type_ref *builtin_ar = type_ref_new_array(

@@ -151,7 +151,7 @@ sue_member *sue_member_from_decl(decl *d)
 struct_union_enum_st *sue_decl(
 		symtable *stab, char *spel,
 		sue_member **members, enum type_primitive prim,
-		int got_membs, int is_declaration)
+		int got_membs, int is_declaration, where *w)
 {
 	struct_union_enum_st *sue;
 	int new = 0;
@@ -227,7 +227,10 @@ new_type:
 
 		new = 1;
 
-		where_cc1_current(&sue->where);
+		if(w)
+			memcpy_safe(&sue->where, w);
+		else
+			where_cc1_current(&sue->where);
 	}
 
 	if(members){

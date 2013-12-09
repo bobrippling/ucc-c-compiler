@@ -69,12 +69,16 @@ static type_ref *parse_type_sue(
 	char *spel = NULL;
 	sue_member **members = NULL;
 	decl_attr *this_sue_attr = NULL;
+	where sue_loc;
 
 	parse_add_attr(&this_sue_attr); /* struct __attr__(()) name { ... } ... */
+
+	where_cc1_current(&sue_loc);
 
 	if(curtok == token_identifier){
 		spel = token_current_spel();
 		EAT(token_identifier);
+		where_cc1_adj_identifier(&sue_loc, spel);
 	}
 
 	/* FIXME: struct A { int i; };
@@ -155,7 +159,8 @@ static type_ref *parse_type_sue(
 		struct_union_enum_st *sue = sue_decl(
 				current_scope, spel,
 				members, prim, is_complete,
-				/* isdef = */newdecl_context && curtok == token_semicolon);
+				/* isdef = */newdecl_context && curtok == token_semicolon,
+				&sue_loc);
 
 		parse_add_attr(&this_sue_attr); /* struct A { ... } __attr__ */
 

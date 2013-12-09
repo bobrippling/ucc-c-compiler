@@ -69,7 +69,7 @@ struct_union_enum_st *sue_find_this_scope(symtable *, const char *spel);
 struct_union_enum_st *sue_decl(
 		symtable *stab, char *spel,
 		sue_member **members, enum type_primitive prim,
-		int got_membs, int is_declaration);
+		int got_membs, int is_declaration, where *);
 
 sue_member *sue_drop(struct_union_enum_st *sue, sue_member **pos);
 
