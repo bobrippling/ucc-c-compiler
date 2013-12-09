@@ -108,6 +108,19 @@ static void fold_const_expr_op(expr *e, consty *k)
 			}else{
 				k->type = CONST_NUM;
 				k->bits.num.val.i = r;
+
+				if(!is_signed)
+					k->bits.num.suffix = VAL_UNSIGNED;
+
+				switch(type_ref_get_type(e->tree_type)->primitive){
+					case type_long:
+						k->bits.num.suffix |= VAL_LONG;
+						break;
+					case type_llong:
+						k->bits.num.suffix |= VAL_LLONG;
+					default:
+						break;
+				}
 			}
 		}
 
