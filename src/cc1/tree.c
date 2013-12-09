@@ -171,7 +171,6 @@ unsigned type_primitive_size(enum type_primitive tp)
 		case type_uint:
 			return UCC_SZ_INT;
 
-		case type_enum:
 		case type_float:
 			return 4;
 
@@ -194,9 +193,10 @@ unsigned type_primitive_size(enum type_primitive tp)
 			ICW("TODO: long double");
 			return IS_32_BIT() ? 12 : 16;
 
+		case type_enum:
 		case type_union:
 		case type_struct:
-			ICE("s/u size");
+			ICE("s/u/e size");
 
 		case type_unknown:
 			break;

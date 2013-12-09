@@ -124,6 +124,9 @@ static void fold_enum(struct_union_enum_st *en, symtable *stab)
 
 		defval = has_bitmask ? v << 1 : v + 1;
 	}
+
+	en->size = type_primitive_size(type_int);
+	en->align = type_primitive_align(type_int);
 }
 
 void fold_sue(struct_union_enum_st *const sue, symtable *stab)

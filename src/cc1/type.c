@@ -94,7 +94,7 @@ int type_is_signed(const type *t)
 					type_primitive_to_str(t->primitive));
 
 		case type_enum:
-			return 0; /* for now - enum types coming later */
+			return 1;
 
 		case type_void:
 		case type__Bool:

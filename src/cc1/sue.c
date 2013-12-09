@@ -50,11 +50,6 @@ int enum_nentries(struct_union_enum_st *e)
 	return dynarray_count(e->members);
 }
 
-int sue_enum_size(struct_union_enum_st *st)
-{
-	return st->size = type_primitive_size(type_int);
-}
-
 void sue_incomplete_chk(struct_union_enum_st *st, where *w)
 {
 	if(!sue_complete(st)){
@@ -65,14 +60,13 @@ void sue_incomplete_chk(struct_union_enum_st *st, where *w)
 	}
 
 	UCC_ASSERT(st->foldprog == SUE_FOLDED_FULLY, "sizeof unfolded sue");
+	if(st->primitive == type_enum)
+		UCC_ASSERT(st->size > 0, "zero-sized enum");
 }
 
 unsigned sue_size(struct_union_enum_st *st, where *w)
 {
 	sue_incomplete_chk(st, w);
-
-	if(st->primitive == type_enum)
-		return sue_enum_size(st);
 
 	return st->size; /* can be zero */
 }
@@ -80,9 +74,6 @@ unsigned sue_size(struct_union_enum_st *st, where *w)
 unsigned sue_align(struct_union_enum_st *st, where *w)
 {
 	sue_incomplete_chk(st, w);
-
-	if(st->primitive == type_enum)
-		return sue_enum_size(st);
 
 	return st->align;
 }
