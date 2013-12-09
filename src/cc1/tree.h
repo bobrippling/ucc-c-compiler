@@ -39,7 +39,7 @@ unsigned type_size( const type *, where *from);
 unsigned type_align(const type *, where *from);
 unsigned type_primitive_size(enum type_primitive tp);
 unsigned long long
-type_primitive_max(enum type_primitive p, int is_signed);
+type_primitive_max(enum type_primitive p);
 
 int op_is_commutative(enum op_type o);
 int op_is_shortcircuit(enum op_type o);

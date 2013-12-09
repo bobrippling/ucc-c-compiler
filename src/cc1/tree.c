@@ -208,22 +208,42 @@ unsigned type_primitive_size(enum type_primitive tp)
 }
 
 unsigned long long
-type_primitive_max(enum type_primitive p, int is_signed)
+type_primitive_max(enum type_primitive p)
 {
 	unsigned long long max;
+	int is_signed = 0;
 
 	switch(p){
-		case type__Bool: return 1;
-		case type_nchar:
+		case type__Bool:
+			return 1;
+
+		case type_nchar: /* XXX: char has signed type */
 		case type_schar:
+			is_signed = 1;
 		case type_uchar:
 			max = UCC_SCHAR_MAX;
 			break;
 
-		case type_short: max = UCC_SHRT_MAX;      break;
-		case type_int:   max = UCC_INT_MAX;       break;
-		case type_long:  max = UCC_LONG_MAX;      break;
-		case type_llong: max = UCC_LONG_LONG_MAX; break;
+		case type_short:
+			is_signed = 1;
+		case type_ushort:
+			max = UCC_SHRT_MAX;
+			break;
+		case type_int:
+			is_signed = 1;
+		case type_uint:
+			max = UCC_INT_MAX;
+			break;
+		case type_long:
+			is_signed = 1;
+		case type_ulong:
+			max = UCC_LONG_MAX;
+			break;
+		case type_llong:
+			is_signed = 1;
+		case type_ullong:
+			max = UCC_LONG_LONG_MAX;
+			break;
 
 		case type_float:
 		case type_double:
@@ -238,7 +258,6 @@ type_primitive_max(enum type_primitive p, int is_signed)
 
 		case type_void:
 		case type_unknown:
-		default:
 			ICE("bad primitive %s", type_primitive_to_str(p));
 	}
 
