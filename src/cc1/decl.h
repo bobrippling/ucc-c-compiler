@@ -241,7 +241,6 @@ type_ref_str_type(type_ref *);
 #define type_ref_cached_BOOL()       type_ref_new_type(type_new_primitive(type__Bool))
 #define type_ref_cached_LONG()       type_ref_new_type(type_new_primitive(type_long))
 #define type_ref_cached_LLONG()      type_ref_new_type(type_new_primitive(type_llong))
-#define type_ref_cached_ULONG()      type_ref_new_type(type_new_primitive_signed(type_long, 0))
 #define type_ref_cached_DOUBLE()     type_ref_new_type(type_new_primitive(type_double))
 #define type_ref_cached_INTPTR_T()   type_ref_cached_LONG()
 

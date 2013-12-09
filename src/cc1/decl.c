@@ -201,14 +201,9 @@ type_ref *type_ref_new_func(type_ref *of, funcargs *args)
 
 type_ref *type_ref_cached_MAX_FOR(unsigned sz)
 {
-	enum type_primitive prims[] = {
-		type_long, type_int, type_short, type_nchar
-	};
-	unsigned i;
-
-	for(i = 0; i < sizeof(prims)/sizeof(*prims); i++)
-		if(sz >= type_primitive_size(prims[i]))
-			return type_ref_new_type(type_new_primitive(prims[i]));
+	enum type_primitive p = type_primitive_not_less_than_size(sz);
+	if(p != type_unknown)
+		return type_ref_new_type(type_new_primitive(p));
 	return NULL;
 }
 

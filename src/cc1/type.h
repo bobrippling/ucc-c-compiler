@@ -70,4 +70,7 @@ int type_is_signed(const type *);
 /* is there a loss of qualifiers going from 'b' to 'a' ? */
 int type_qual_loss(enum type_qualifier a, enum type_qualifier b);
 
+/* returns the largest type to hold a type of size 'sz' */
+enum type_primitive type_primitive_not_less_than_size(unsigned sz);
+
 #endif
