@@ -54,6 +54,9 @@ enum type_cmp type_cmp(const type *a, const type *b)
 		case type_enum:
 			if(a->sue == b->sue)
 				return TYPE_EQUAL;
+			/* enums _are_ ints */
+			if(b->primitive == type_int)
+				return TYPE_EQUAL;
 			break; /* convertible check */
 
 		default:
