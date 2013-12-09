@@ -567,12 +567,15 @@ int type_ref_is_promotable(type_ref *r, type_ref **pto)
 		const int fp = type_floating(r->bits.type->primitive);
 		unsigned rsz;
 
+		if(!type_ref_is_integral(r))
+			return 0;
+
 		if(!sz_int){
 			sz_int = type_primitive_size(type_int);
 			sz_double = type_primitive_size(type_double);
 		}
 
-		rsz = type_primitive_size(r->bits.type->primitive);
+		rsz = type_size(r->bits.type, &r->where);
 
 		if(rsz < (fp ? sz_double : sz_int)){
 			*pto = fp ? type_ref_cached_DOUBLE() : type_ref_cached_INT();
