@@ -355,6 +355,12 @@ type_ref *type_ref_complete_array(type_ref *r, int sz)
 	return r;
 }
 
+struct_union_enum_st *type_ref_is_enum(type_ref *r)
+{
+	type_ref *test = type_ref_is_type(r, type_enum);
+	return test ? test->bits.type->sue : NULL;
+}
+
 struct_union_enum_st *type_ref_is_s_or_u_or_e(type_ref *r)
 {
 	type_ref *test = type_ref_is(r, type_ref_type);

@@ -222,6 +222,7 @@ type_ref *type_ref_is_scalar(type_ref *);
 type_ref *type_ref_is_func_or_block(type_ref *);
 struct_union_enum_st *type_ref_is_s_or_u(type_ref *);
 struct_union_enum_st *type_ref_is_s_or_u_or_e(type_ref *);
+struct_union_enum_st *type_ref_is_enum(type_ref *);
 type_ref *type_ref_skip_casts(type_ref *);
 
 

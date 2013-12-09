@@ -498,7 +498,7 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 
 		{
 			struct_union_enum_st *e;
-			if((e = type_ref_is_s_or_u_or_e(d->ref)))
+			if((e = type_ref_is_enum(d->ref)))
 				fold_check_enum_bitfield(e, k.bits.num.val.i, d);
 		}
 
