@@ -94,7 +94,7 @@ case "$uname_m" in
 		UCC_ARCH=x86
 		# map all i?86 archs to i386
 		if [ "$uname_m" = x86_64 ]
-		then UCC_SUBARCH=x86
+		then UCC_SUBARCH=x86_64
 		else UCC_SUBARCH=i386
 		fi
 		;;
