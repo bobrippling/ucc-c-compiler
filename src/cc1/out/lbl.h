@@ -13,6 +13,7 @@ enum out_label_store
 	STORE_P_CHAR,
 	STORE_P_WCHAR,
 	STORE_COMP_LIT,
+	STORE_FLOAT
 };
 
 char *out_label_code(const char *fmt);

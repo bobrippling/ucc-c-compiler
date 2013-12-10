@@ -633,7 +633,7 @@ void impl_load_fp(struct vstack *from)
 		default:
 		{
 			/* save to a label */
-			char *lbl = out_label_data_store(0);
+			char *lbl = out_label_data_store(STORE_FLOAT);
 			struct vreg r;
 
 			asm_nam_begin3(SECTION_DATA, lbl, type_ref_align(from->t, NULL));

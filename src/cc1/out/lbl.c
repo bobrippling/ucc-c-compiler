@@ -49,6 +49,7 @@ char *out_label_data_store(enum out_label_store ty)
 		case STORE_P_CHAR: pre = "str"; break;
 		case STORE_P_WCHAR: pre = "wstr"; break;
 		case STORE_COMP_LIT: pre = "data"; break;
+		case STORE_FLOAT: pre = "float"; break;
 	}
 	SNPRINTF(ret, 16, "%s.%d", pre, str_last++);
 	return ret;
