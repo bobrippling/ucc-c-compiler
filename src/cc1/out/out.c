@@ -1510,6 +1510,9 @@ void out_push_frame_ptr(int nframes)
 
 	while(--nframes > 0)
 		impl_deref(vtop, &r, void_pp); /* movq (<reg>), <reg> */
+
+	/* force to void * */
+	out_change_type(type_ref_ptr_depth_dec(void_pp, NULL));
 }
 
 void out_push_reg_save_ptr(void)
