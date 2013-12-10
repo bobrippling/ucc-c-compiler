@@ -1524,7 +1524,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 	unsigned n_call_iregs;
 
 	unsigned nfloats = 0, nints = 0;
-	unsigned arg_stack = 0;
+	unsigned arg_stack = 0, align_stack = 0;
 	unsigned stk_snapshot = 0;
 	int i;
 
@@ -1568,7 +1568,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 	}
 
 	/* align the stack to 16-byte, for sse insns */
-	v_stack_align(16, 0);
+	align_stack = v_stack_align(16, 0);
 
 	if(arg_stack > 0){
 		unsigned nfloats = 0, nints = 0; /* shadow */
@@ -1682,6 +1682,8 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 
 	if(arg_stack && x86_caller_cleanup(r_func))
 		v_dealloc_stack(arg_stack);
+	if(align_stack)
+		v_dealloc_stack(align_stack);
 
 	free(float_arg);
 }
