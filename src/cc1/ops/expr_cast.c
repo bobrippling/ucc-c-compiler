@@ -201,7 +201,11 @@ static void fold_const_expr_cast(expr *e, consty *k)
 		{
 			int l, r;
 
-			UCC_ASSERT(!to_fp, "cast to float from address");
+			if(to_fp){
+				/* had an error - reported in fold() */
+				k->type = CONST_NO;
+				return;
+			}
 
 			/* allow if we're casting to a same-size type */
 			l = type_ref_size(e->tree_type, &e->where);
