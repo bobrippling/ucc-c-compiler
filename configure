@@ -2,167 +2,58 @@
 
 set -e
 
-os_cfg(){
-	cat > config.mk <<!
-UCC_AS      = ${UCC_AS}
-UCC_LD      = ${UCC_LD}
-UCC_LDFLAGS = ${UCC_LDFLAGS}
-UCC_ARCH    = ${UCC_ARCH}
-UCC_SUBARCH = ${UCC_SUBARCH}
-!
+warn(){
+	echo "$@" >&2
+}
 
-	cat > src/ucc/cfg.h <<!
-#define UCC_AS      "${UCC_AS}"
-#define UCC_LD      "${UCC_LD}"
-#define UCC_INC     "${UCC_INC}"
-
-#define UCC_CPPFLAGS "${UCC_CPPFLAGS}"
-#define UCC_CFLAGS   "${UCC_CFLAGS}"
-#define UCC_LDFLAGS  "${UCC_LDFLAGS}"
-
-#define UCC_STDLIB "${UCC_STDLIB}"
-#define UCC_CRT    "${UCC_CRT}"
-
-#define UCC_AS_ARGS_M32 ${UCC_AS_ARGS_M32}
-#define UCC_AS_ARGS_M64 ${UCC_AS_ARGS_M64}
-!
-
-	if [ $1 = Darwin ]
-	then
-		SECTION_TEXT="__TEXT,__text"
-		SECTION_DATA="__DATA,__data"
-		SECTION_BSS="__BSS,__bss"
-	else
-		SECTION_TEXT=".text"
-		SECTION_DATA=".data"
-		SECTION_BSS=".bss"
-	fi
-
-	cat > src/as_cfg.h <<!
-#define SECTION_TEXT $SECTION_TEXT
-#define SECTION_DATA $SECTION_DATA
-#define SECTION_BSS  $SECTION_BSS
-#define ASM_PLBL_PRE "$ASM_PLBL"
-!
-
-	if ! which perl > /dev/null
-	then
-		if [ $1 = Darwin ]
-		then m=" (and darwin syscalls)"
-		fi
-		echo >&2 "Perl not found, generate strerror$m yourself"
-	else
-		perl -e '
-		for(1 .. 100){
-			$! = $_;
-			printf "\t\"%s\",\n", $!;
-		}
-		' > lib/string_strerrs.h
-
-		if [ $1 = Darwin ]
-		then perl lib/syscalls_darwin.pl < lib/syscalls_darwin_unix.h > lib/syscalls_darwin.h
-		fi
-	fi
-
-	if [ $1 = Cygwin ]
-	then echo "CFLAGS += -Wno-char-subscripts"
-	fi > src/src_config_platform.mk
-
-	echo "Configured for $UCC_ARCH $1"
+err(){
+	warn "$@"
+	exit 1
 }
 
 usage(){
 	cat >&2 <<!
-Usage: $0 [--as=path/to/as] [--cpu=...] [--with-ucc-lib] [clean]
+Usage: $0 [--as=path/to/as] [--target=...] [--with-ucc-lib] [clean]
 !
 	exit 1
 }
 
-leading_underscore(){
+set_leading_underscore(){
 	UCC_CPPFLAGS="-D__LEADING_UNDERSCORE $UCC_CPPFLAGS"
 	UCC_CFLAGS="-fleading-underscore $UCC_CFLAGS"
 }
 
-UCC_AS=as
-UCC_LD=ld
+guess_arch(){
+	uname -m
+}
 
-UCC_BINFMT=elf64
-UCC_LDFLAGS=''
-UCC_CFLAGS=''
+# -D__LEADING_UNDERSCORE, etc
+UCC_CPPFLAGS=
+
+# -fleading-underscore, etc
+UCC_CFLAGS=
+
+# system assembler to use
+UCC_AS=as
+
+# assembler 'private' label prefix
 ASM_PLBL=.L
 
-# assume GNU as:
+# assume GNU as - specify word size
 UCC_AS_ARGS_M32='"--32"'
 UCC_AS_ARGS_M64='"--64"'
 
+# system linker to use, and flags it needs
+UCC_LD=ld
+UCC_LDFLAGS=
 
-uname_m=$(uname -m)
-case "$uname_m" in
-	i?86|x86_64)
-		UCC_ARCH=x86
-		# map all i?86 archs to i386
-		if [ "$uname_m" = x86_64 ]
-		then UCC_SUBARCH=x86_64
-		else UCC_SUBARCH=i386
-		fi
-		;;
-	mipsel)
-		UCC_ARCH=mipsel
-		UCC_SUBARCH=mipsel
-		;;
-	*)
-		echo >&2 "$0: unknown arch '$uname_m'"
-		exit 1
-esac
-
-# setup include paths
+# cpp's include path(s)
 # TODO: option to use local ./lib path
 UCC_INC="-I/usr/include"
 
-# defaults for an OS
-unam="$(uname -s)"
-case "$unam" in
-	Linux)
-		# assume gcc
-		unam_lc="$(echo "$unam" | tr A-Z a-z)"
-		# FIXME: gcc specific + version specific
-		UCC_INC="$UCC_INC -I/usr/include/$UCC_CPU-$unam_lc-gnu -I/usr/lib/gcc/$UCC_CPU-$unam_lc-gnu/4.7.2/include"
 
-		UCC_LDFLAGS="$UCC_LDFLAGS"
-		UCC_DYN="-dynamic-linker /lib64/ld-linux-x86-64.so.2"
-		UCC_STDLIB="-lc"
-
-		UCC_CRT="$UCC_CRT:/usr/lib/x86_64-linux-gnu/crt1.o"
-		UCC_CRT="$UCC_CRT:/usr/lib/x86_64-linux-gnu/crti.o"
-		UCC_CRT="$UCC_CRT:/usr/lib/gcc/x86_64-linux-gnu/4.6/crtbegin.o"
-		UCC_CRT="$UCC_CRT:/usr/lib/gcc/x86_64-linux-gnu/4.6/crtend.o"
-		UCC_CRT="$UCC_CRT:/usr/lib/x86_64-linux-gnu/crtn.o"
-		;;
-
-
-	FreeBSD)
-		UCC_CRT="/usr/lib/crt1.o:/usr/lib/crti.o:/usr/lib/crtbegin.o:/usr/lib/crtend.o:/usr/lib/crtn.o"
-		UCC_STDLIB="-lc"
-		;;
-
-	Darwin)
-		UCC_CFLAGS='-mpreferred-stack-boundary=4' # 2^4 = 16 byte aligned
-		UCC_STDLIB='-lSystem'
-		UCC_CRT='-lcrt1.o'
-		UCC_LDFLAGS='-macosx_version_min 10.5'
-		ASM_PLBL=L
-		UCC_AS_ARGS_M32='"-arch", "i386"'
-		UCC_AS_ARGS_M64='"-arch", "x86_64"'
-		leading_underscore
-		;;
-
-	CYGWIN_NT-*)
-		leading_underscore
-		;;
-esac
-
+# arguments
 clean=0
-
 get_arg='echo "$arg" | cut -d= -f2'
 
 i=1
@@ -173,12 +64,12 @@ do
 		--as=*)
 			UCC_AS="`eval $get_arg`"
 			;;
-		--cpu=*)
-			UCC_CPU="`eval $get_arg`"
+		--target=*)
+			UCC_ARCH="`eval $get_arg`"
 			ARCH_DIR=lib/arch
-			if ! [ -d $ARCH_DIR/"$UCC_CPU" ]
+			if ! [ -d $ARCH_DIR/"$UCC_ARCH" ]
 			then
-				echo >&2 "$UCC_CPU invalid, choices are:"
+				warn "target '$UCC_ARCH' invalid, choices are:"
 				(cd $ARCH_DIR; ls -d *)
 				usage
 			fi
@@ -204,27 +95,155 @@ then
 	exit
 fi
 
-UCC_LDFLAGS="$UCC_LDFLAGS $UCC_DYN"
+# guess arch if not specified
+if [ -z "$UCC_ARCH" ]
+then UCC_ARCH=$(guess_arch)
+fi
 
-case "$unam" in
-	Darwin)
-		os_cfg Darwin
+# normalise arch
+case "$UCC_ARCH" in
+	i?86|x86_64|amd64)
+		# map all i?86 archs to i386
+		if [ "$UCC_ARCH" = x86_64 ] || [ "$UCC_ARCH" = amd64 ]
+		then UCC_SUBARCH=x86_64
+		else UCC_SUBARCH=i386
+		fi
+		UCC_ARCH=x86
 		;;
+	mipsel)
+		UCC_ARCH=mipsel
+		UCC_SUBARCH=mipsel
+		;;
+	*)
+		err "$0: unknown arch '$UCC_ARCH'"
+esac
 
+# defaults for an OS
+unam_os="$(uname -s)"
+case "$unam_os" in
 	Linux)
-		os_cfg Linux
+		# assume gcc
+		unam_lc="$(echo "$unam_os" | tr A-Z a-z)"
+		# FIXME: gcc specific + version specific
+		UCC_INC="$UCC_INC -I/usr/include/$UCC_ARCH-$unam_lc-gnu -I/usr/lib/gcc/$UCC_ARCH-$unam_lc-gnu/4.7.2/include"
+
+		UCC_DYN="-dynamic-linker /lib64/ld-linux-x86-64.so.2"
+		UCC_STDLIB="-lc"
+
+		UCC_CRT="$UCC_CRT:/usr/lib/x86_64-linux-gnu/crt1.o"
+		UCC_CRT="$UCC_CRT:/usr/lib/x86_64-linux-gnu/crti.o"
+		UCC_CRT="$UCC_CRT:/usr/lib/gcc/x86_64-linux-gnu/4.6/crtbegin.o"
+		UCC_CRT="$UCC_CRT:/usr/lib/gcc/x86_64-linux-gnu/4.6/crtend.o"
+		UCC_CRT="$UCC_CRT:/usr/lib/x86_64-linux-gnu/crtn.o"
 		;;
 
 	FreeBSD)
-		os_cfg FreeBSD
+		UCC_CRT="/usr/lib/crt1.o:/usr/lib/crti.o:/usr/lib/crtbegin.o:/usr/lib/crtend.o:/usr/lib/crtn.o"
+		UCC_STDLIB="-lc"
+		;;
+
+	Darwin)
+		UCC_CFLAGS='-mpreferred-stack-boundary=4' # 2^4 = 16 byte aligned
+		UCC_STDLIB='-lSystem'
+		UCC_CRT='-lcrt1.o'
+		UCC_LDFLAGS='-macosx_version_min 10.5'
+		ASM_PLBL=L
+		set_leading_underscore
 		;;
 
 	CYGWIN_NT-*)
-		os_cfg Cygwin
+		set_leading_underscore
+		;;
+esac
+
+# join dynamic linker flags to ld-flags
+UCC_LDFLAGS="$UCC_LDFLAGS $UCC_DYN"
+
+# figure out OS
+case "$unam_os" in
+	Darwin|Linux|FreeBSD)
+		# these are fine verbatim
+		;;
+
+	CYGWIN_NT-*)
+		unam_os=Cygwin
 		;;
 
 	*)
-		echo "unknown OS ($unam)" >&2
-		exit 1
+		err "unknown OS ($unam_os)"
 		;;
 esac
+
+# write out settings:
+
+# variables for lib/Makefile
+cat > config.mk <<!
+UCC_AS      = ${UCC_AS}
+UCC_LD      = ${UCC_LD}
+UCC_LDFLAGS = ${UCC_LDFLAGS}
+UCC_ARCH    = ${UCC_ARCH}
+UCC_SUBARCH = ${UCC_SUBARCH}
+!
+
+# variables used by the ucc driver
+cat > src/ucc/cfg.h <<!
+#define UCC_AS      "${UCC_AS}"
+#define UCC_LD      "${UCC_LD}"
+#define UCC_INC     "${UCC_INC}"
+
+#define UCC_CPPFLAGS "${UCC_CPPFLAGS}"
+#define UCC_CFLAGS   "${UCC_CFLAGS}"
+#define UCC_LDFLAGS  "${UCC_LDFLAGS}"
+
+#define UCC_STDLIB "${UCC_STDLIB}"
+#define UCC_CRT    "${UCC_CRT}"
+
+#define UCC_AS_ARGS_M32 ${UCC_AS_ARGS_M32}
+#define UCC_AS_ARGS_M64 ${UCC_AS_ARGS_M64}
+!
+
+
+# section names and asm private label prefix
+if [ "$unam_os" = Darwin ]
+then
+	SECTION_TEXT="__TEXT,__text"
+	SECTION_DATA="__DATA,__data"
+	SECTION_BSS="__BSS,__bss"
+else
+	SECTION_TEXT=".text"
+	SECTION_DATA=".data"
+	SECTION_BSS=".bss"
+fi
+cat > src/as_cfg.h <<!
+#define SECTION_TEXT $SECTION_TEXT
+#define SECTION_DATA $SECTION_DATA
+#define SECTION_BSS  $SECTION_BSS
+#define ASM_PLBL_PRE "$ASM_PLBL"
+!
+
+# lib/syscall headers
+if ! which perl > /dev/null
+then
+	if [ "$unam_os" = Darwin ]
+	then m=" (and darwin syscalls)"
+	fi
+	warn "Perl not found, generate strerror$m yourself"
+else
+	perl -e '
+	for(1 .. 100){
+		$! = $_;
+		printf "\t\"%s\",\n", $!;
+	}' > lib/string_strerrs.h
+
+	if [ "$unam_os" = Darwin ]
+	then perl lib/syscalls_darwin.pl < lib/syscalls_darwin_unix.h > lib/syscalls_darwin.h
+	fi
+fi
+
+# src/ warnings
+if [ "$unam_os" = Cygwin ]
+then echo "CFLAGS += -Wno-char-subscripts"
+fi > src/src_config_platform.mk
+
+
+echo "Configured for $UCC_SUBARCH $unam_os"
