@@ -70,7 +70,7 @@ do
 			if ! [ -d $ARCH_DIR/"$UCC_ARCH" ]
 			then
 				warn "target '$UCC_ARCH' invalid, choices are:"
-				(cd $ARCH_DIR; ls -d *)
+				(cd $ARCH_DIR; ls -d */)
 				usage
 			fi
 			;;
