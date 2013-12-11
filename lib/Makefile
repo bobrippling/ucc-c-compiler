@@ -15,7 +15,7 @@ LIBDEPS = ${UCC_CC} ../src/cc1/cc1 ../src/cpp2/cpp
 
 CPPFLAGS = -nostdinc
 
-BUILD_CMD = ${UCC_CC} ${CPPFLAGS} -c -o $@ $<
+BUILD_CMD = ${UCC_CC} ${CPPFLAGS} ${CFLAGS} -c -o $@ $<
 
 include ../config.mk
 

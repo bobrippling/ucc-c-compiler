@@ -51,6 +51,9 @@ UCC_LDFLAGS=
 # TODO: option to use local ./lib path
 UCC_INC="-I/usr/include"
 
+# lib settings
+LIB_CFLAGS=
+
 
 # arguments
 clean=0
@@ -105,8 +108,12 @@ case "$UCC_ARCH" in
 	i?86|x86_64|amd64)
 		# map all i?86 archs to i386
 		if [ "$UCC_ARCH" = x86_64 ] || [ "$UCC_ARCH" = amd64 ]
-		then UCC_SUBARCH=x86_64
-		else UCC_SUBARCH=i386
+		then
+			UCC_SUBARCH=x86_64
+			LIB_CFLAGS=-m64
+		else
+			UCC_SUBARCH=i386
+			LIB_CFLAGS=-m32
 		fi
 		UCC_ARCH=x86
 		;;
@@ -183,6 +190,7 @@ UCC_LD      = ${UCC_LD}
 UCC_LDFLAGS = ${UCC_LDFLAGS}
 UCC_ARCH    = ${UCC_ARCH}
 UCC_SUBARCH = ${UCC_SUBARCH}
+CFLAGS      = ${LIB_CFLAGS}
 !
 
 # variables used by the ucc driver
