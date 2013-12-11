@@ -243,6 +243,47 @@ static void handle_line_file_directive(char *fnam, int lno)
 	push_fname(fnam, lno);
 }
 
+static void parse_line_directive(char *l)
+{
+	int lno;
+	char *ep;
+
+	l = str_spc_skip(l + 1);
+	if(!strncmp(l, "line", 4))
+		l += 4;
+
+	lno = strtol(l, &ep, 0);
+	if(ep == l)
+		die("couldn't parse number for #line directive (%s)", ep);
+
+	if(lno < 0)
+		die("negative #line directive argument");
+
+	loc_now.line = lno - 1; /* inc'd below */
+
+	ep = str_spc_skip(ep);
+
+	switch(*ep){
+		case '"':
+			{
+				char *p = str_quotefin(++ep);
+				if(!p)
+					die("no terminating quote to #line directive (%s)", l);
+				handle_line_file_directive(ustrdup2(ep, p), lno);
+				/*l = str_spc_skip(p + 1);
+					if(*l)
+					die("characters after #line?");
+					- gcc puts characters after the string */
+				break;
+			}
+		case '\0':
+			break;
+
+		default:
+			die("expected '\"' or nothing after #line directive (%s)", ep);
+	}
+}
+
 void include_bt(FILE *f)
 {
 	int i;
@@ -281,44 +322,7 @@ static ucc_wur char *tokenise_read_line()
 
 		/* format is # line? [0-9] "filename" ([0-9])* */
 		if(!in_comment && *l == '#'){
-			int lno;
-			char *ep;
-
-			l = str_spc_skip(l + 1);
-			if(!strncmp(l, "line", 4))
-				l += 4;
-
-			lno = strtol(l, &ep, 0);
-			if(ep == l)
-				die("couldn't parse number for #line directive (%s)", ep);
-
-			if(lno < 0)
-				die("negative #line directive argument");
-
-			loc_now.line = lno - 1; /* inc'd below */
-
-			ep = str_spc_skip(ep);
-
-			switch(*ep){
-				case '"':
-				{
-					char *p = str_quotefin(++ep);
-					if(!p)
-						die("no terminating quote to #line directive (%s)", l);
-					handle_line_file_directive(ustrdup2(ep, p), lno);
-					/*l = str_spc_skip(p + 1);
-					if(*l)
-						die("characters after #line?");
-						- gcc puts characters after the string */
-					break;
-				}
-				case '\0':
-					break;
-
-				default:
-					die("expected '\"' or nothing after #line directive (%s)", ep);
-			}
-
+			parse_line_directive(l);
 			return tokenise_read_line();
 		}
 
@@ -376,32 +380,27 @@ char *token_current_spel_peek(void)
 	return currentspelling;
 }
 
-char *tok_at_label(where *w)
+int tok_at_label(void)
 {
 	/* [a-z]+:
 	 * need to cater for newlines
 	 */
-	char *p;
+	char *p = bufferpos;
 
 	if(curtok != token_identifier)
-		return NULL;
+		return 0;
 
-	/* look for a colon */
-	for(p = bufferpos; *p; p++){
+	/* if we're on a #line, ignore */
+	if(*bufferpos == '#'){
+		parse_line_directive(bufferpos);
+
+	}else for(; *p; p++){
 		if(*p == ':'){
-			char *ret;
 
-			where_cc1_current(w);
-
-			bufferpos = p + 1;
-			ret = token_current_spel();
-
-			nexttoken();
-
-			return ret;
+			return 1;
 
 		}else if(!isspace(*p)){
-			return NULL;
+			return 0;
 		}
 	}
 
@@ -418,9 +417,9 @@ char *tok_at_label(where *w)
 			p = buffer + poff;
 			memcpy(p, new, newlen + 1);
 			bufferpos = p;
-			return tok_at_label(w);
+			return tok_at_label();
 		}
-		return NULL;
+		return 0;
 	}
 }
 

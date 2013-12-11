@@ -1000,11 +1000,17 @@ flow:
 
 		default:
 		{
-			char *lbl;
-			where w;
-
-			if((lbl = tok_at_label(&w))){
+			if(tok_at_label()){
+				where w;
+				char *lbl;
 				decl_attr *attr = NULL, *ai;
+
+				where_cc1_current(&w);
+				lbl = token_current_spel();
+				where_cc1_adj_identifier(&w, lbl);
+
+				EAT(token_identifier);
+				EAT(token_colon);
 
 				t = STAT_NEW(label);
 				t->bits.lbl.spel = lbl;
