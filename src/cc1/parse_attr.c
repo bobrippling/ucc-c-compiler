@@ -34,12 +34,12 @@ static decl_attr *parse_attr_format(void)
 
 	EAT(token_comma);
 
-	da->attr_extra.format.fmt_arg = currentval.val - 1;
+	da->attr_extra.format.fmt_idx = currentval.val - 1;
 	EAT(token_integer);
 
 	EAT(token_comma);
 
-	da->attr_extra.format.var_arg = currentval.val - 1;
+	da->attr_extra.format.var_idx = currentval.val - 1;
 	EAT(token_integer);
 
 	EAT(token_close_paren);
@@ -52,14 +52,14 @@ static decl_attr *parse_attr_section()
 	/* __attribute__((section ("sectionname"))) */
 	decl_attr *da;
 	char *func;
-	int len, i;
+	size_t len, i;
 
 	EAT(token_open_paren);
 
 	if(curtok != token_string)
 		die_at(NULL, "string expected for section");
 
-	token_get_current_str(&func, &len, NULL);
+	token_get_current_str(&func, &len, NULL, NULL);
 	EAT(token_string);
 
 	for(i = 0; i < len; i++)
@@ -211,7 +211,7 @@ static void parse_attr_bracket_chomp(int had_open_paren)
 	}
 }
 
-static decl_attr *parse_attr_single(char *ident)
+static decl_attr *parse_attr_single(const char *ident)
 {
 	int i;
 
@@ -238,9 +238,12 @@ static decl_attr *parse_attr(void)
 	decl_attr *attr = NULL, **next = &attr;
 
 	for(;;){
-		char *ident;
+		decl_attr *this;
+		where w;
+		int alloc;
+		char *ident = curtok_to_identifier(&alloc);
 
-		if(curtok != token_identifier){
+		if(!ident){
 			parse_had_error = 1;
 			warn_at_print_error(NULL,
 					"identifier expected for attribute (got %s)",
@@ -249,15 +252,18 @@ static decl_attr *parse_attr(void)
 			goto comma;
 		}
 
-		ident = token_current_spel();
-		EAT(token_identifier);
-		if(!ident)
-			break;
+		where_cc1_current(&w);
+		where_cc1_adj_identifier(&w, ident);
 
-		if((*next = parse_attr_single(ident)))
+		EAT(curtok);
+
+		if((this = *next = parse_attr_single(ident))){
+			memcpy_safe(&this->where, &w);
 			next = &(*next)->next;
+		}
 
-		free(ident);
+		if(alloc)
+			free(ident);
 
 comma:
 		if(!accept(token_comma))

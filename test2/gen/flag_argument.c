@@ -1,5 +1,4 @@
 // RUN: %ucc %s
-// RUN: %asmcheck %s
 
 f(){}
 

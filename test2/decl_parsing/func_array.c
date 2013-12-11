@@ -1,17 +1,17 @@
-// RUN: %ucc %s -o %t
-// RUN: %t | %output_check 'p1 1' 'p2 2' 'p3 3' 'p4 4'
+// RUN: %ocheck 20 %s
 
 (*f[4])(int);
+int t;
 
 _Static_assert(sizeof(f) == 32, "bad fptr sz");
 
 #define P(n) \
-void n(int i){printf("%s %d\n", __func__, i);}
+void p ## n(int i){ t += i * n; }
 
-P(p1)
-P(p2)
-P(p3)
-P(p4)
+P(1)
+P(2)
+P(3)
+P(4)
 
 main()
 {
@@ -22,4 +22,6 @@ main()
 
 	for(int i = 0; i < 4; i++)
 		f[i](i);
+
+	return t;
 }

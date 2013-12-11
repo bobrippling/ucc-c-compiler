@@ -1,19 +1,33 @@
-__compound_literal.0:
+data.1:
 .long 2
+
+data.3:
+.long 2
+.long 3
+
+data.2:
+.long 2
+.long 3
+
+str.4:
+.byte 104
+.byte 101
+.byte 108
+.byte 108
+.byte 111
+.zero 1
+
 x:
-.quad __compound_literal.0
-__compound_literal.1:
-.long 2
-.long 3
+.quad data.1
+
 y:
-.quad __compound_literal.1
-__compound_literal.2:
-.long 2
-.long 3
+.quad data.2
+
 z:
-.quad __compound_literal.2+4
-.LC0:
+.quad data.3 + 4
+
 s:
-.quad .LC0
+.quad str.4
+
 p:
-.quad .LC0+2
+.quad str.4 + 2

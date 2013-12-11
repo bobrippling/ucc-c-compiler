@@ -8,223 +8,18 @@
 #include "../../util/platform.h"
 #include "../../util/alloc.h"
 #include "../funcargs.h"
+#include "../format_chk.h"
 
 const char *str_expr_funcall()
 {
 	return "funcall";
 }
 
-enum printf_attr
-{
-	printf_attr_long = 1 << 0
-};
-
-static void format_check_printf_1(char fmt, type_ref *tt,
-		where *w, enum printf_attr attr)
-{
-	int allow_long = 0;
-
-	switch(fmt){
-		enum type_primitive prim;
-
-		case 's': prim = type_char; goto ptr;
-		case 'p': prim = type_void; goto ptr;
-		case 'n': prim = type_int;  goto ptr;
-ptr:
-			tt = type_ref_is_type(type_ref_is_ptr(tt), prim);
-			if(!tt){
-				warn_at(w, "format %%%c expects '%s *' argument",
-						fmt, type_primitive_to_str(prim));
-			}
-			break;
-
-		case 'x':
-		case 'X':
-		case 'u':
-		case 'o':
-			/* unsigned ... */
-		case '*':
-		case 'c':
-		case 'd':
-		case 'i':
-			allow_long = 1;
-			if(!type_ref_is_integral(tt))
-				warn_at(w, "format %%%c expects integral argument", fmt);
-			if((attr & printf_attr_long) && !type_ref_is_type(tt, type_long))
-				warn_at(w, "format %%l%c expects long argument", fmt);
-			break;
-
-		case 'e':
-		case 'E':
-		case 'f':
-		case 'F':
-		case 'g':
-		case 'G':
-		case 'a':
-		case 'A':
-			if(!type_ref_is_floating(tt))
-				warn_at(w, "format %%d expects double argument");
-			break;
-
-		default:
-			warn_at(w, "unknown conversion character 0x%x", fmt);
-	}
-
-	if(!allow_long && attr & printf_attr_long)
-		warn_at(w, "format %%%c expects a long", fmt);
-}
-
-static void format_check_printf_str(
-		expr **args,
-		const char *fmt, const int len,
-		int var_arg, where *w)
-{
-	int n_arg = 0;
-	int i;
-
-	for(i = 0; i < len && fmt[i];){
-		if(fmt[i++] == '%'){
-			int fin;
-			enum printf_attr attr;
-			expr *e;
-
-			if(fmt[i] == '%'){
-				i++;
-				continue;
-			}
-
-recheck:
-			attr = 0;
-			fin = 0;
-			do switch(fmt[i]){
-				 case 'l':
-					/* TODO: multiple check.. */
-					attr |= printf_attr_long;
-
-				case '1': case '2': case '3':
-				case '4': case '5': case '6':
-				case '7': case '8': case '9':
-
-				case '0': case '#': case '-':
-				case ' ': case '+': case '.':
-
-				case 'h': case 'L':
-					i++;
-					break;
-				default:
-					fin = 1;
-			}while(!fin);
-
-			e = args[var_arg + n_arg++];
-
-			if(!e){
-				warn_at(w, "too few arguments for format (%%%c)", fmt[i]);
-				break;
-			}
-
-			format_check_printf_1(fmt[i], e->tree_type, &e->where, attr);
-			if(fmt[i] == '*'){
-				i++;
-				goto recheck;
-			}
-		}
-	}
-
-	if((!fmt[i] || i == len) && args[var_arg + n_arg])
-		warn_at(w, "too many arguments for format");
-}
-
-static void format_check_printf(
-		expr *str_arg,
-		expr **args,
-		unsigned var_arg,
-		where *w)
-{
-	stringval *fmt_str;
-	consty k;
-
-	const_fold(str_arg, &k);
-
-	switch(k.type){
-		case CONST_NO:
-		case CONST_NEED_ADDR:
-			/* check for the common case printf(x?"":"", ...) */
-			if(expr_kind(str_arg, if)){
-				format_check_printf(str_arg->lhs, args, var_arg, w);
-				format_check_printf(str_arg->rhs, args, var_arg, w);
-				return;
-			}
-
-			warn_at(w, "format argument isn't constant");
-			return;
-
-		case CONST_VAL:
-			if(k.bits.iv.val == 0)
-				return; /* printf(NULL, ...) */
-			/* fall */
-
-		case CONST_ADDR:
-			warn_at(w, "format argument isn't a string constant");
-			return;
-
-		case CONST_STRK:
-			fmt_str = k.bits.str;
-			break;
-	}
-
-	{
-		const char *fmt = fmt_str->str;
-		const int   len = fmt_str->len;
-
-		if(k.offset >= len)
-			warn_at(w, "undefined printf-format argument");
-		else
-			format_check_printf_str(args, fmt + k.offset, len, var_arg, w);
-	}
-}
-
-static void format_check(where *w, type_ref *ref, expr **args, const int variadic)
-{
-	decl_attr *attr = type_attr_present(ref, attr_format);
-	int n, fmt_arg, var_arg;
-
-	if(!attr)
-		return;
-
-	fmt_arg = attr->attr_extra.format.fmt_arg;
-	var_arg = attr->attr_extra.format.var_arg;
-
-	if(!variadic){
-		if(var_arg >= 0)
-			warn_at(w, "variadic function required for format check");
-		return;
-	}
-
-	n = dynarray_count(args);
-
-	if(fmt_arg >= n)
-		die_at(w, "format argument out of bounds (%d >= %d)", fmt_arg, n);
-	if(var_arg > n)
-		die_at(w, "variadic argument out of bounds (%d >= %d)", var_arg, n);
-	if(var_arg <= fmt_arg)
-		die_at(w, "variadic argument %s format argument", var_arg == fmt_arg ? "at" : "before");
-
-	switch(attr->attr_extra.format.fmt_func){
-		case attr_fmt_printf:
-			format_check_printf(args[fmt_arg], args, var_arg, w);
-			break;
-
-		case attr_fmt_scanf:
-			ICW("scanf check");
-			break;
-	}
-}
-
-#define ATTR_WARN_RET(w, ...) do{ warn_at(w, __VA_ARGS__); return; }while(0)
-
 static void sentinel_check(where *w, type_ref *ref, expr **args,
 		const int variadic, const int nstdargs, symtable *stab)
 {
+#define ATTR_WARN_RET(w, ...) do{ warn_at(w, __VA_ARGS__); return; }while(0)
+
 	decl_attr *attr = type_attr_present(ref, attr_sentinel);
 	int i, nvs;
 	expr *sentinel;
@@ -265,6 +60,7 @@ static void sentinel_check(where *w, type_ref *ref, expr **args,
 		ATTR_WARN_RET(&sentinel->where, "sentinel argument expected (got %s)",
 				type_ref_to_str(sentinel->tree_type));
 
+#undef ATTR_WARN_RET
 }
 
 static void static_array_check(
@@ -285,25 +81,21 @@ static void static_array_check(
 
 	const_fold(ty_decl->bits.ptr.size, &k_decl);
 
-	if(!(ty_expr = type_ref_is_decayed_array(ty_expr))){
-		warn_at(&arg_expr->where,
-				(k_decl.type == CONST_VAL) ?
-				"array of size >= %" INTVAL_FMT_D " expected for parameter" :
-				"array expected for parameter", (intval_t)k_decl.bits.iv.val);
-		return;
+	if((ty_expr = type_ref_is_decayed_array(ty_expr))){
+		/* ty_expr is the type_ref_ptr, decayed from array */
+		if(ty_expr->bits.ptr.size){
+			consty k_arg;
+
+			const_fold(ty_expr->bits.ptr.size, &k_arg);
+
+			if(k_decl.type == CONST_VAL && k_arg.bits.iv.val < k_decl.bits.iv.val)
+				warn_at(&arg_expr->where,
+						"array of size %" INTVAL_FMT_D
+						" passed where size %" INTVAL_FMT_D " needed",
+						k_arg.bits.iv.val, k_decl.bits.iv.val);
+		}
 	}
-
-	/* ty_expr is the type_ref_ptr, decayed from array */
-	if(ty_expr->bits.ptr.size){
-		consty k_arg;
-
-		const_fold(ty_expr->bits.ptr.size, &k_arg);
-
-		if(k_decl.type == CONST_VAL && k_arg.bits.iv.val < k_decl.bits.iv.val)
-			warn_at(&arg_expr->where,
-					"array of size %" INTVAL_FMT_D " passed where size %" INTVAL_FMT_D " needed",
-					k_arg.bits.iv.val, k_decl.bits.iv.val);
-	}
+	/* else it's a random pointer, just be quiet */
 }
 
 void fold_expr_funcall(expr *e, symtable *stab)
@@ -344,7 +136,7 @@ invalid:
 #endif
 
 
-	if(expr_kind(e->expr, identifier) && (sp = e->expr->bits.ident.spel)){
+	if(!e->expr->in_parens && expr_kind(e->expr, identifier) && (sp = e->expr->bits.ident.spel)){
 		/* check for implicit function */
 		if(!(e->expr->bits.ident.sym = symtab_search(stab, sp))){
 			funcargs *args = funcargs_new();
@@ -487,7 +279,10 @@ invalid:
 	{
 		type_ref *r = e->expr->tree_type;
 
-		format_check(&e->where, r, e->funcargs, args_from_decl->variadic);
+		format_check_call(
+				&e->where, r,
+				e->funcargs, args_from_decl->variadic);
+
 		sentinel_check(
 				&e->where, r,
 				e->funcargs, args_from_decl->variadic,

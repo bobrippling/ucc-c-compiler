@@ -10,6 +10,8 @@
 #include "../sue.h"
 #include "../defs.h"
 
+#define IMPLICIT_STR(e) ((e)->expr_cast_implicit ? "implicit " : "")
+
 const char *str_expr_cast()
 {
 	return "cast";
@@ -23,6 +25,76 @@ static void get_cast_sizes(type_ref *tlhs, type_ref *trhs, int *pl, int *pr)
 	}else{
 		*pl = *pr = 0;
 	}
+}
+
+static intval_t convert_intval_to_intval_warn(
+		const intval_t in, type_ref *tin,
+		type_ref *tout,
+		int do_warn, where *w)
+{
+	/*
+	 * C99
+	 * 6.3.1.3 Signed and unsigned integers
+	 *
+	 * When a value with integer type is converted to another integer type
+	 * other than _Bool, if the value can be represented by the new type, it
+	 * is unchanged.
+	 *
+	 * Otherwise, if the new type is unsigned, the value is converted by
+	 * repeatedly adding or subtracting one more than the maximum value that
+	 * can be represented in the new type until the value is in the range of
+	 * the new type.
+	 *
+	 * Otherwise, the new type is signed and the value cannot be represented
+	 * in it; either the result is implementation-defined or an
+	 * implementation-defined signal is raised.
+	 */
+
+	/* representable
+	 * if size(out) > size(in)
+	 * or if size(out) == size(in)
+	 *    and conversion is not unsigned -> signed
+	 * or conversion is unsigned -> signed and in < signed-max
+	 */
+
+	const unsigned sz_in = type_ref_size(tin, w);
+	const int signed_in = type_ref_is_signed(tin);
+	const int signed_out = type_ref_is_signed(tout);
+	sintval_t to_iv_sign_ext;
+	intval_t to_iv = intval_truncate(in, sz_in, &to_iv_sign_ext);
+	intval_t ret;
+
+	/* need to sign extend if signed */
+	if(signed_in || signed_out)
+		ret = (intval_t)to_iv_sign_ext;
+	else
+		ret = to_iv;
+
+	if(do_warn){
+		if(ret != in){
+			warn_at(w,
+					"implicit cast changes value from %lld to %lld",
+					in, ret);
+
+		}else if(signed_out && !signed_in && (sintval_t)ret < 0){
+			warn_at(w,
+					"implicit cast to negative changes value from %llu to %lld",
+					in, (sintval_t)to_iv_sign_ext);
+
+		}else if(signed_out ? (sintval_t)ret > 0 : 1){
+			/* ret > 0 - don't warn for -1 <-- -1L */
+			int in_high = intval_high_bit(in, tin);
+			int out_high = intval_high_bit(type_ref_max(tout, w), tout);
+
+			if(in_high > out_high){
+				warn_at(w,
+						"implicit cast truncates value from %lld to %lld",
+						in, ret & ((1ULL << (out_high + 1)) - 1));
+			}
+		}
+	}
+
+	return ret;
 }
 
 static void fold_const_expr_cast(expr *e, consty *k)
@@ -41,47 +113,11 @@ static void fold_const_expr_cast(expr *e, consty *k)
 			if(type_ref_is_type(e->tree_type, type__Bool)){
 				piv->val = !!piv->val; /* analagous to out/out.c::out_normalise()'s constant case */
 
-			}else if(e->expr_cast_implicit){ /* otherwise this is a no-op */
-				const unsigned sz = type_ref_size(e->tree_type, &e->where);
-				const intval_t old = piv->val;
-				const int to_sig   = type_ref_is_signed(e->tree_type);
-				const int from_sig = type_ref_is_signed(e->expr->tree_type);
-				intval_t to_iv, to_iv_sign_ext;
-
-				/* TODO: disallow for ptrs/non-ints */
-
-				/* we don't save the truncated value - we keep the original
-				 * so negative numbers, for example, are preserved */
-				to_iv = intval_truncate(piv->val, sz, &to_iv_sign_ext);
-
-				if(to_sig && from_sig ? old != to_iv_sign_ext : old != to_iv){
-#define CAST_WARN(pre_fmt, pre_val, post_fmt, post_val)  \
-						warn_at(&e->where,                           \
-								"implicit cast changes value from %"     \
-								pre_fmt " to %" post_fmt,                \
-								pre_val, post_val)
-
-					/* nice... */
-					if(from_sig){
-						if(to_sig)
-							CAST_WARN(
-									INTVAL_FMT_D, (long long signed)old,
-									INTVAL_FMT_D, (long long signed)to_iv_sign_ext);
-						else
-							CAST_WARN(
-									INTVAL_FMT_D, (long long signed)old,
-									INTVAL_FMT_U, (long long unsigned)to_iv);
-					}else{
-						if(to_sig)
-							CAST_WARN(
-									INTVAL_FMT_U, (long long unsigned)old,
-									INTVAL_FMT_D, (long long signed)to_iv_sign_ext);
-						else
-							CAST_WARN(
-									INTVAL_FMT_U, (long long unsigned)old,
-									INTVAL_FMT_U, (long long unsigned)to_iv);
-					}
-				}
+			}else{
+				piv->val = convert_intval_to_intval_warn(
+						piv->val, e->expr->tree_type,
+						e->tree_type,
+						e->expr_cast_implicit, &e->where);
 			}
 #undef piv
 			break;
@@ -135,6 +171,15 @@ static void fold_const_expr_cast(expr *e, consty *k)
 			break;
 		}
 	}
+
+	/* if casting from pointer to int, it's not a constant
+	 * but we treat it as such, as an extension */
+	if(type_ref_is_ptr(e->expr->tree_type)
+	&& !type_ref_is_ptr(e->tree_type)
+	&& !k->nonstandard_const)
+	{
+		k->nonstandard_const = e;
+	}
 }
 
 void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
@@ -159,7 +204,9 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 	fold_disallow_st_un(e, "cast-target");
 
 	if(!type_ref_is_complete(e->tree_type) && !type_ref_is_void(e->tree_type))
-		die_at(&e->where, "cast to incomplete type %s", type_ref_to_str(e->tree_type));
+		die_at(&e->where, "%scast to incomplete type %s",
+				IMPLICIT_STR(e),
+				type_ref_to_str(e->tree_type));
 
 	if((flag = !!type_ref_is(e->tree_type, type_ref_func)) || type_ref_is(e->tree_type, type_ref_array))
 		die_at(&e->where, "cast to %s type '%s'", flag ? "function" : "array", type_ref_to_str(e->tree_type));
@@ -185,7 +232,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 		char buf[TYPE_REF_STATIC_BUFSIZ];
 		warn_at(&e->where, "%scast from %spointer to %spointer\n"
 				"%s <- %s",
-				e->expr_cast_implicit ? "implicit " : "",
+				IMPLICIT_STR(e),
 				flag ? "" : "function-", flag ? "function-" : "",
 				type_ref_to_str(tlhs), type_ref_to_str_r(buf, trhs));
 	}

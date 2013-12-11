@@ -407,6 +407,9 @@ int main(int argc, char **argv)
 						/* preproc gets this too */
 						ADD_ARG(mode_preproc);
 					}
+					else if(!strncmp(argv[i], "-fmessage-length=", 17)){
+						ADD_ARG(mode_preproc);
+					}
 
 				case 'w':
 					if(argv[i][1] == 'w' && argv[i][2])
@@ -494,7 +497,8 @@ arg_ld:
 					else if(!strcmp(arg, "none"))
 						gopts.assume = -1; /* reset */
 					else
-						die("-x accepts \"c\", \"cpp\", or \"asm\", not \"%s\"", arg);
+						die("-x accepts \"c\", \"cpp-output\", \"asm\" "
+								"or \"none\", not \"%s\"", arg);
 					continue;
 				}
 

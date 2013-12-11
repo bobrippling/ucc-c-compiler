@@ -1,8 +1,9 @@
+// RUN: %check -e %s
 f()
 {
 	switch(5){
 		default:;
 		case 3:;
-		default:;
+		default:; // CHECK: error: duplicate default statement
 	}
 }

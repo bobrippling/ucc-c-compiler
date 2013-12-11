@@ -8,6 +8,6 @@ main()
 
 #warning timmy // CHECK: /timmy/
 
-f()
-{ // CHECK: /control reaches end of non-void function/
+f() // CHECK: /control reaches end of non-void function/
+{
 }

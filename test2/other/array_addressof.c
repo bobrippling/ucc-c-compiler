@@ -1,8 +1,10 @@
-// RUN: %ucc %s -o %t
-// RUN: %t
+// RUN: %ocheck 0 %s
 
-#include <stdio.h>
-#include <assert.h>
+assert(_Bool cond)
+{
+	if(!cond)
+		abort();
+}
 
 set(int *p, int v)
 {

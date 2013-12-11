@@ -1,0 +1,28 @@
+# waiting for __asm__()
+__asm__/inline.c
+__asm__/multiple.c
+other/__asm__.c
+
+# waiting for vla:
+parsing/vla_ar.c
+decl_parsing/vla_proto.c
+
+# waiting for experimental/float:
+old_func/assign.c
+old_func/multiple.c
+old_func/works.c
+type_propagation/tgmath.c
+const/nonstandard_float.c
+C11/generic.c
+C11/generic_const.c
+C99/bool_conv.c
+literals/all_constants.c
+blocks/mismatch_ret.c
+
+# other:
+asm/abi-test.c
+
+# struct-copy initialisation bug:
+initialisation/obscure_override.c
+initialisation/struct/replace_entire.c
+initialisation/struct/replace_entire2.c

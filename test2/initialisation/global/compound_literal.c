@@ -1,4 +1,4 @@
-// RUN: %asmcheck %s
+// RUN: %layout_check %s
 
 int i = (int)&((struct A { int x, a; } *)0)->a;
 

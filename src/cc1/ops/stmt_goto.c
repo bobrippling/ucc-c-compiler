@@ -12,24 +12,16 @@ const char *str_stmt_goto()
 
 void fold_stmt_goto(stmt *s)
 {
-	if(!curdecl_func)
+	if(!symtab_func(s->symtab))
 		die_at(&s->where, "goto outside of a function");
 
 	if(s->expr){
 		FOLD_EXPR(s->expr, s->symtab);
 	}else{
-		char *ident = s->bits.lbl.spel;
-		label *lbl = symtab_label_find(s->symtab, ident);
-
-		if(!lbl){
-			/* forward decl */
-			lbl = label_new(&s->where, ident, 0);
-			symtab_label_add(s->symtab, lbl);
-		}
-
-		s->bits.lbl.label = lbl;
-
-		lbl->uses++;
+		(s->bits.lbl.label =
+		 symtab_label_find_or_new(
+			 s->symtab, s->bits.lbl.spel, &s->where))
+			->uses++;
 	}
 }
 
@@ -38,7 +30,7 @@ void gen_stmt_goto(stmt *s)
 	if(s->expr)
 		gen_expr(s->expr);
 	else
-		out_push_lbl(s->bits.lbl.spel, 0);
+		out_push_lbl(s->bits.lbl.label->mangled, 0);
 
 	out_jmp();
 }

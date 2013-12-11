@@ -31,10 +31,16 @@ if($ign_whitespace){
 }
 
 if(@output != @ARGV){
-	print "output:\n";
-	map { print "  $_\n" } @output;
+	if(@output){
+		print "output:\n";
+		map { print "  $_\n" } @output;
+	}
 
-	die "$0: mismatching output counts\n"
+	die "$0: mismatching output counts "
+	. scalar(@output)
+	. " vs "
+	. scalar(@ARGV)
+	. "\n";
 }
 
 for(my $i = 0; $i < @output; ++$i){
@@ -45,5 +51,16 @@ for(my $i = 0; $i < @output; ++$i){
 		$b = trim($b);
 	}
 
-	die "mismatching lines [$i]: '$a' and '$b'\n" unless $a eq $b;
+	my $match;
+	my $regex;
+	if($regex = ($b =~ m;^/(.*)/$;)){
+		$match = ($a =~ /$1/);
+	}else{
+		$match = $a eq $b;
+	}
+
+	die "mismatching "
+	. ($regex ? "regex " : "")
+	. "lines [$i]: '$a' and '$b'\n"
+	unless $match;
 }

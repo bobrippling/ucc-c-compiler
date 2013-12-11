@@ -1,5 +1,6 @@
 // RUN: %ucc -c %s
-// RUN: [ `%ucc %s -S -o- | grep -c '(%%r[a-d]x)'` -eq 1 ]
+// RUN: test `%ucc -S -o- %s | grep -vF 'movq %%rsp, %%rbp' | grep -c 'mov'` -eq 1
+
 
 extern int x[][2][4];
 

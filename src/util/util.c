@@ -4,6 +4,7 @@
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
+#include <limits.h>
 
 #include "util.h"
 #include "alloc.h"
@@ -11,8 +12,6 @@
 #ifndef MIN
 #  define MIN(x, y) ((x) > (y) ? (y) : (x))
 #endif
-
-#define MAX_LINE_LEN 60
 
 enum
 {
@@ -41,6 +40,7 @@ static const char *const colour_strs[] = {
 };
 
 int warning_count = 0;
+int warning_length = 72 + 8;
 
 static struct where *default_where(struct where *w)
 {
@@ -56,24 +56,31 @@ static struct where *default_where(struct where *w)
 
 static void warn_show_line_part(char *line, int pos, unsigned wlen)
 {
-	unsigned len = strlen(line);
+	int len = strlen(line);
 	int i;
 	struct { int start, end; } dotdot = { 0, 0 };
 
-	if(len > MAX_LINE_LEN){
-		/* is `pos' visible? */
-		if(pos >= MAX_LINE_LEN){
-			dotdot.start = 1;
+	int warning_length_normalise = INT_MAX;
+	if(warning_length > 0){
+		warning_length_normalise = warning_length - 8;
+		if(warning_length_normalise <= 0)
+			warning_length_normalise = 1;
 
-			line += pos - MAX_LINE_LEN / 2;
-			len -= pos - MAX_LINE_LEN / 2;
+		if(len > warning_length_normalise){
+			/* is `pos' visible? */
+			if(pos >= warning_length_normalise){
+				dotdot.start = 1;
 
-			pos = MAX_LINE_LEN / 2;
-		}
+				line += pos - warning_length_normalise / 2;
+				len -= pos - warning_length_normalise / 2;
 
-		if(len > MAX_LINE_LEN){
-			dotdot.end = 1;
-			line[MAX_LINE_LEN] = '\0';
+				pos = warning_length_normalise / 2;
+			}
+
+			if(len > warning_length_normalise){
+				dotdot.end = 1;
+				line[warning_length_normalise] = '\0';
+			}
 		}
 	}
 
@@ -88,7 +95,7 @@ static void warn_show_line_part(char *line, int pos, unsigned wlen)
 	fputc('^', stderr);
 
 	/* don't go over */
-	for(i = MIN(wlen, (unsigned)(MAX_LINE_LEN - pos));
+	for(i = MIN(wlen, (unsigned)(warning_length_normalise - pos));
 			i > 1; /* >1 since we've already put a '^' out */
 			i--)
 		fputc('~', stderr);
@@ -313,16 +320,4 @@ char *ext_replace(const char *str, const char *ext)
 	}else{
 		return ustrdup(str);
 	}
-}
-
-char *terminating_quote(char *s)
-{
-	/* accept backslashes properly "\\" */
-	char *p;
-
-	for(p = s; *p && *p != '"'; p++)
-		if(*p == '\\')
-			++p;
-
-	return *p ? p : NULL;
 }

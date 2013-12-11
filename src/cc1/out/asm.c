@@ -16,6 +16,7 @@
 #include "../gen_asm.h"
 #include "../decl_init.h"
 #include "../pack.h"
+#include "../str.h"
 
 #define ASSERT_SCALAR(di)                  \
 	UCC_ASSERT(di->type == decl_init_scalar, \
@@ -90,7 +91,7 @@ static void asm_declare_init_bitfields(
 	BITFIELD_DBG("bitfield out -- new\n");
 	for(i = 0; i < n; i++){
 		intval_t this = intval_truncate_bits(
-				vals[i].val, vals[i].width);
+				vals[i].val, vals[i].width, NULL);
 
 		width += vals[i].width;
 
@@ -368,13 +369,17 @@ static void asm_declare_init(FILE *f, decl_init *init, type_ref *tfor)
 	}
 }
 
-static void asm_nam_begin(FILE *f, decl *d)
+static void asm_nam_begin3(FILE *f, const char *lbl, unsigned align)
 {
 	fprintf(f,
 			".align %u\n"
 			"%s:\n",
-			decl_align(d),
-			decl_asm_spel(d));
+			align, lbl);
+}
+
+static void asm_nam_begin(FILE *f, decl *d)
+{
+	asm_nam_begin3(f, decl_asm_spel(d), decl_align(d));
 }
 
 static void asm_reserve_bytes(unsigned nbytes)
@@ -399,6 +404,29 @@ void asm_predeclare_global(decl *d)
 {
 	/* FIXME: section cleanup - along with __attribute__((section("..."))) */
 	asm_out_section(SECTION_TEXT, ".globl %s\n", decl_asm_spel(d));
+}
+
+void asm_declare_stringlit(FILE *f, const stringlit *lit)
+{
+	/* could be SECTION_RODATA */
+	asm_nam_begin3(f, lit->lbl, /*align:*/1);
+	if(lit->wide){
+		const char *join = "";
+		size_t i;
+
+		fprintf(f, ".long ");
+		for(i = 0; i < lit->len; i++){
+			fprintf(f, "%s%d", join, lit->str[i]);
+			join = ", ";
+		}
+
+	}else{
+		fprintf(f, ".ascii \"");
+		literal_print(f, lit->str, lit->len);
+		fputc('"', f);
+	}
+
+	fputc('\n', f);
 }
 
 void asm_declare_decl_init(FILE *f, decl *d)

@@ -1,6 +1,14 @@
 #ifndef EXPR_H
 #define EXPR_H
 
+#include "strings.h"
+
+typedef struct stringlit_at
+{
+	where where;
+	stringlit *lit;
+} stringlit_at;
+
 typedef struct consty
 {
 	enum constyness
@@ -16,7 +24,7 @@ typedef struct consty
 	union
 	{
 		intval iv;          /* CONST_VAL */
-		stringval *str;     /* CONST_STRK */
+		stringlit_at *str; /* CONST_STRK */
 		struct
 		{
 			int is_lbl;
@@ -42,23 +50,23 @@ typedef struct consty
 #define CONST_FOLD_LEAF(k) memset((k), 0, sizeof *(k))
 
 
-typedef void         func_fold(          expr *, symtable *);
-typedef void         func_gen(           expr *);
-typedef void         func_gen_lea(       expr *);
-typedef void         func_const(         expr *, consty *);
-typedef const char  *func_str(void);
-typedef void         func_mutate_expr(expr *);
+typedef void func_fold(expr *, symtable *);
+typedef void func_gen(expr *);
+typedef void func_gen_lea(expr *);
+typedef void func_const(expr *, consty *);
+typedef const char *func_str(void);
+typedef void func_mutate_expr(expr *);
 
 struct expr
 {
 	where where;
 
-	func_fold        *f_fold;
-	func_gen         *f_gen;
-	func_str         *f_str;
+	func_fold *f_fold;
+	func_gen *f_gen;
+	func_str *f_str;
 
-	func_const       *f_const_fold; /* optional, used in static/global init */
-	func_gen_lea     *f_lea;        /* optional */
+	func_const *f_const_fold; /* optional, used in static/global init */
+	func_gen_lea *f_lea; /* optional */
 
 
 	int freestanding; /* e.g. 1; needs use, whereas x(); doesn't - freestanding */
@@ -98,15 +106,21 @@ struct expr
 
 		struct
 		{
-			sym *sym;
-			stringval sv; /* for strings */
-		} str;
+			stringlit_at lit_at; /* for strings */
+			int is_func; /* __func__ ? */
+		} strlit;
 
 		struct
 		{
 			sym *sym;
 			char *spel;
 		} ident;
+
+		struct
+		{
+			char *spel;
+			struct label *label;
+		} lbl;
 
 		struct /* used in compound literal */
 		{
@@ -120,9 +134,12 @@ struct expr
 			unsigned extra_off;
 		} struct_mem;
 
-		sym *block_sym;
-
-		funcargs *block_args; /* ^{} */
+		struct
+		{
+			funcargs *args;
+			type_ref *retty;
+			sym *sym;
+		} block;
 
 		type_ref **types; /* used in __builtin */
 
@@ -238,7 +255,7 @@ expr *expr_new_block(type_ref *rt, funcargs *args, stmt *code);
 expr *expr_new_deref(expr *);
 expr *expr_new_struct(expr *sub, int dot, expr *ident);
 expr *expr_new_struct_mem(expr *sub, int dot, decl *);
-expr *expr_new_str(char *, int len, int wide);
+expr *expr_new_str(char *, size_t, int wide, where *);
 expr *expr_new_addr_lbl(char *);
 expr *expr_new_addr(expr *);
 
@@ -246,9 +263,13 @@ expr *expr_new_comma2(expr *lhs, expr *rhs);
 #define expr_new_comma() expr_new_wrapper(comma)
 
 int expr_is_null_ptr(expr *, int allow_int);
+int expr_is_lval(expr *);
+int expr_is_lval_yes(expr *);
 
 /* util */
 expr *expr_new_array_idx_e(expr *base, expr *idx);
 expr *expr_new_array_idx(expr *base, int i);
+
+expr *expr_skip_casts(expr *);
 
 #endif

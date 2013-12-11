@@ -1,0 +1,9 @@
+main:
+
+p:
+.long 1
+.long 2
+
+q:
+.long 1
+.long 2

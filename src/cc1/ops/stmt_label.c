@@ -9,21 +9,18 @@ const char *str_stmt_label()
 
 void fold_stmt_label(stmt *s)
 {
-	label *l = symtab_label_find(s->symtab, s->bits.lbl.spel);
+	label *l = symtab_label_find_or_new(
+			s->symtab, s->bits.lbl.spel, &s->where);
 
-	if(l){
-		if(l->complete)
-			die_at(&s->where, "duplicate label '%s'", s->bits.lbl.spel);
-		else
-			l->complete = 1;
-	}else{
-		symtab_label_add(
-				s->symtab,
-				l = label_new(
-					&s->where,
-					s->bits.lbl.spel,
-					1));
-	}
+	/* update its where */
+	l->pw = &s->where;
+
+	if(l->complete)
+		die_at(&s->where, "duplicate label '%s'", s->bits.lbl.spel);
+	else
+		l->complete = 1;
+
+	s->bits.lbl.label = l;
 
 	l->unused = s->bits.lbl.unused;
 
@@ -32,7 +29,7 @@ void fold_stmt_label(stmt *s)
 
 void gen_stmt_label(stmt *s)
 {
-	out_label(s->bits.lbl.spel);
+	out_label(s->bits.lbl.label->mangled);
 	gen_stmt(s->lhs); /* the code-part of the compound statement */
 }
 

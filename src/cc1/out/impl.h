@@ -16,6 +16,7 @@ void impl_deref_reg(void);
 void impl_jmp(void);
 void impl_jcond(int true, const char *lbl);
 
+void impl_change_type(type_ref *t);
 void impl_cast_load(struct vstack *vp, type_ref *small, type_ref *big, int is_signed);
 
 void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func);

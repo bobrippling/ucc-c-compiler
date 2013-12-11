@@ -1,4 +1,4 @@
-// RUN: %ucc -S -o- %s | %asmcheck %s
+// RUN: %layout_check %s
 struct
 {
 	int *i; /* ######## */

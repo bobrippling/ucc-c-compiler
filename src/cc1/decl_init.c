@@ -687,12 +687,19 @@ static decl_init **decl_init_brace_up_sue2(
 	&& i < sue_nmem)
 	{
 		const unsigned diff = sue_nmem - i;
-		where *loc = ITER_WHERE(iter, last_loc ? last_loc : &sue->where);
 
-		warn_at(loc,
-				"%u missing initialiser%s for '%s %s'",
-				diff, diff == 1 ? "" : "s",
-				sue_str(sue), sue->spel);
+		if(diff == 1
+		&& type_ref_is_incomplete_array(sue->members[i]->struct_member->ref))
+		{
+			/* don't warn for flexarr */
+		}else{
+			where *loc = ITER_WHERE(iter, last_loc ? last_loc : &sue->where);
+
+			warn_at(loc,
+					"%u missing initialiser%s for '%s %s'",
+					diff, diff == 1 ? "" : "s",
+					sue_str(sue), sue->spel);
+		}
 	}
 
 	return current;
@@ -818,8 +825,12 @@ static decl_init *decl_init_brace_up_aggregate(
 		where *loc = ITER_WHERE(iter, NULL);
 		decl_init *r = decl_init_new_w(decl_init_brace, loc);
 
-		warn_at(loc, "missing braces for initialisation of sub-object '%s'",
-				type_ref_to_str(tfor));
+		/* only warn if we're not designated */
+		if(!iter->pos[0]->desig){
+			warn_at(loc,
+					"missing braces for initialisation of sub-object '%s'",
+					type_ref_to_str(tfor));
+		}
 
 		/* we need to pull from iter, bracing up our children inits */
 		r->bits.ar.inits = brace_up_f(
@@ -841,20 +852,35 @@ static void die_incomplete(init_iter *iter, type_ref *tfor)
 			"initialising %s", type_ref_to_str(tfor));
 }
 
-static decl_init *is_char_init(type_ref *ty, init_iter *iter)
+static decl_init *is_char_init(
+		type_ref *ty, init_iter *iter,
+		symtable *stab, int *mismatch)
 {
 	decl_init *this;
 
-	if(type_ref_is_char_ptr(ty)
-	&& (this = *iter->pos)
+	if((this = *iter->pos)
 	/* allow "xyz" or { "xyz" } */
 	&& (this->type == decl_init_scalar
 	|| (this->type == decl_init_brace &&
 		  1 == dynarray_count(this->bits.ar.inits) &&
 		  this->bits.ar.inits[0]->type == decl_init_scalar)))
 	{
-		return this->type == decl_init_scalar
+		enum type_ref_str_type ty_expr, ty_decl;
+
+		decl_init *chosen = this->type == decl_init_scalar
 			? this : this->bits.ar.inits[0];
+
+		FOLD_EXPR_NO_DECAY(chosen->bits.expr, stab);
+
+		ty_expr = type_ref_str_type(chosen->bits.expr->tree_type);
+		ty_decl = type_ref_str_type(ty);
+
+		if(ty_expr == type_ref_str_no)
+			; /* fine - not a string init */
+		else if(ty_expr == ty_decl)
+			return chosen;
+		else if(mismatch)
+			*mismatch = 1;
 	}
 
 	return NULL;
@@ -873,7 +899,7 @@ static decl_init *decl_init_brace_up_array_pre(
 	if(!type_ref_is_complete(next))
 		die_incomplete(iter, next_type);
 
-	if((strk = is_char_init(next_type, iter))){
+	if((strk = is_char_init(next_type, iter, stab, NULL))){
 		consty k;
 
 		FOLD_EXPR(strk->bits.expr, stab);
@@ -884,19 +910,16 @@ static decl_init *decl_init_brace_up_array_pre(
 			unsigned str_i, count;
 			decl_init *braced;
 
-			if(k.bits.str->wide)
-				ICE("TODO: wide string init");
-
 			if(limit == -1){
-				count = k.bits.str->len;
+				count = k.bits.str->lit->len;
 			}else{
-				if(k.bits.str->len <= (unsigned)limit){
-					count = k.bits.str->len;
+				if(k.bits.str->lit->len <= (unsigned)limit){
+					count = k.bits.str->lit->len;
 				}else{
 					/* only warn if it's more than one larger,
 					 * i.e. allow char[2] = "hi" <-- '\0' excluded
 					 */
-					if(k.bits.str->len - 1 > (unsigned)limit){
+					if(k.bits.str->lit->len - 1 > (unsigned)limit){
 						warn_at(&k.bits.str->where,
 								"string literal too long for '%s'",
 								type_ref_to_str(next_type));
@@ -910,7 +933,7 @@ static decl_init *decl_init_brace_up_array_pre(
 			for(str_i = 0; str_i < count; str_i++){
 				decl_init *char_init = decl_init_new_w(decl_init_scalar, w);
 
-				char_init->bits.expr = expr_new_val(k.bits.str->str[str_i]);
+				char_init->bits.expr = expr_new_val(k.bits.str->lit->str[str_i]);
 
 				dynarray_add(&braced->bits.ar.inits, char_init);
 			}
@@ -963,20 +986,39 @@ static decl_init *decl_init_brace_up_start(
 	init_iter it = { inits };
 	type_ref *const tfor = *ptfor;
 	decl_init *ret;
+	int for_array;
 
 	/* check for non-brace init */
 	if(init
 	&& init->type == decl_init_scalar
-	&& type_ref_is_array(tfor))
+	&& ((for_array = !!type_ref_is_array(tfor))
+		|| type_ref_is_s_or_u(tfor)))
 	{
-		expr *e = FOLD_EXPR(init->bits.expr, stab);
+		expr *e;
+		FOLD_EXPR_NO_DECAY(e = init->bits.expr, stab);
 
 		if(!type_ref_equal(e->tree_type, tfor, DECL_CMP_EXACT_MATCH)){
 			/* allow special case of char [] with "..." */
-			if(!is_char_init(e->tree_type, &it)){
-				die_at(&init->where,
-						"%s must be initialised with an initialiser list",
+			int str_mismatch = 0;
+
+			if(!for_array
+			|| !is_char_init(tfor, &it, stab, &str_mismatch))
+			{
+				fold_had_error = 1;
+
+				warn_at_print_error(&init->where,
+						str_mismatch
+							? "incorrect string literal initialiser for %s"
+							: "%s must be initialised with an initialiser list",
 						type_ref_to_str(tfor));
+				return init;
+			}else{
+				e = expr_skip_casts(e);
+				if(expr_kind(e, str) && e->bits.strlit.is_func){
+					warn_at(&init->where,
+							"initialisation of %s from __func__ is an extension",
+							type_ref_to_str(tfor));
+				}
 			}
 		}
 		/* else struct copy init */
@@ -1002,9 +1044,9 @@ void decl_init_brace_up_fold(decl *d, symtable *stab)
 }
 
 
-static expr *decl_init_create_assignments_sue_base(
+static expr *sue_base_for_init_assignment(
 		struct_union_enum_st *sue, expr *base,
-		decl **psmem,
+		decl **psmem, where *w,
 		unsigned idx, unsigned n)
 {
 	decl *smem;
@@ -1020,7 +1062,7 @@ static expr *decl_init_create_assignments_sue_base(
 		return NULL;
 	}
 
-	return expr_new_struct_mem(base, 1, smem);
+	return expr_set_where(expr_new_struct_mem(base, 1, smem), w);
 }
 
 static void decl_init_create_assignment_from_copy(
@@ -1149,8 +1191,8 @@ zero_init:
 				for(idx = 0, i = init->bits.ar.inits; *i == DYNARRAY_NULL; i++, idx++);
 
 				if(*i){
-					sue_base = decl_init_create_assignments_sue_base(
-							sue, base, &smem, idx, n);
+					sue_base = sue_base_for_init_assignment(
+							sue, base, &smem, &init->where, idx, n);
 
 					UCC_ASSERT(sue_base, "zero width bitfield init in union?");
 
@@ -1179,8 +1221,8 @@ zero_init:
 
 					UCC_ASSERT(sue->primitive != type_union, "sneaky union");
 
-					new_base = decl_init_create_assignments_sue_base(
-							sue, base, &smem, idx, n);
+					new_base = sue_base_for_init_assignment(
+							sue, base, &smem, di ? &di->where : &init->where, idx, n);
 
 					if(!new_base)
 						continue; /* 0-width bitfield */
@@ -1188,6 +1230,7 @@ zero_init:
 					next_type = smem->ref;
 
 				}else{
+					/* array case */
 					new_base = expr_set_where(
 							expr_new_array_idx(base, idx),
 							&base->where);

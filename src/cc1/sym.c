@@ -59,10 +59,10 @@ symtable_global *symtabg_new(void)
 	return umalloc(sizeof *symtabg_new());
 }
 
-symtable *symtab_root(symtable *child)
+symtable *symtab_root(symtable *stab)
 {
-	for(; child->parent; child = child->parent);
-	return child;
+	for(; stab->parent; stab = stab->parent);
+	return stab;
 }
 
 symtable *symtab_func_root(symtable *stab)
@@ -70,6 +70,27 @@ symtable *symtab_func_root(symtable *stab)
 	while(stab->parent && stab->parent->parent)
 		stab = stab->parent;
 	return stab;
+}
+
+symtable_global *symtab_global(symtable *stab)
+{
+	return (symtable_global *)symtab_root(stab);
+}
+
+void symtab_add_params(symtable *stab, decl **params)
+{
+	stab->are_params = 1;
+	dynarray_add_array(&stab->decls, params);
+}
+
+int symtab_nested_internal(symtable *parent, symtable *nest)
+{
+	while(nest && nest->internal_nest){
+		if(nest->parent == parent)
+			return 1;
+		nest = nest->parent;
+	}
+	return 0;
 }
 
 decl *symtab_search_d(symtable *tab, const char *spel, symtable **pin)
@@ -127,14 +148,31 @@ static void label_init(symtable **stab)
 	(*stab)->labels = dynmap_new((dynmap_cmp_f *)strcmp);
 }
 
-label *symtab_label_find(symtable *stab, char *spel)
-{
-	label_init(&stab);
-	return dynmap_get(char *, label *, stab->labels, spel);
-}
-
 void symtab_label_add(symtable *stab, label *lbl)
 {
 	label_init(&stab);
-	dynmap_set(char *, label *, stab->labels, lbl->spel, lbl);
+
+	dynmap_set(char *, label *,
+			symtab_func_root(stab)->labels,
+			lbl->spel, lbl);
+}
+
+label *symtab_label_find_or_new(symtable *stab, char *spel, where *w)
+{
+	label *lbl;
+
+	stab = symtab_func_root(stab);
+
+	lbl = stab->labels
+		? dynmap_get(char *, label *,
+		    stab->labels, spel)
+		: NULL;
+
+	if(!lbl){
+		/* forward decl */
+		lbl = label_new(w, symtab_func(stab)->spel, spel, 0);
+		symtab_label_add(stab, lbl);
+	}
+
+	return lbl;
 }

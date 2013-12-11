@@ -276,6 +276,9 @@ ptr_relation:
 								type_ref_to_str(next));
 					}
 					/* TODO: note: type declared at resolved->where */
+				}else if(type_ref_is_func_or_block(next)){
+					warn_at(w, "arithmetic on function pointer '%s'",
+							type_ref_to_str(resolved));
 				}
 			}
 
@@ -376,9 +379,9 @@ ptr_relation:
 				tlarger = *plhs = *prhs = type_ref_new_cast_signed(signed_t, 0);
 			}
 
-			/* if we have a _comparison_ (e.g. between enums), convert to int */
+			/* if we have a _comparison_ (e.g. between enums), convert to _Bool */
 			resolved = op_is_relational(op)
-				? type_ref_cached_INT()
+				? type_ref_cached_BOOL()
 				: tlarger;
 		}
 	}
@@ -422,7 +425,7 @@ static expr *expr_is_array_cast(expr *e)
 	return NULL;
 }
 
-void fold_check_bounds(expr *e, int chk_one_past_end)
+int fold_check_bounds(expr *e, int chk_one_past_end)
 {
 	/* this could be in expr_deref, but it catches more in expr_op */
 	expr *array;
@@ -430,7 +433,7 @@ void fold_check_bounds(expr *e, int chk_one_past_end)
 
 	/* check bounds */
 	if(e->op != op_plus && e->op != op_minus)
-		return;
+		return 0;
 
 	array = expr_is_array_cast(e->lhs);
 	if(array)
@@ -461,13 +464,16 @@ void fold_check_bounds(expr *e, int chk_one_past_end)
 						"index %" INTVAL_FMT_D " out of bounds of array, size %ld\n"
 						"%s: note: array declared here",
 						idx.val, (long)sz, where_str_r(buf, &array->tree_type->where));
+				return 1;
 			}
 #undef idx
 		}
 	}
+
+	return 0;
 }
 
-static void op_unsigned_cmp_check(expr *e)
+static int op_unsigned_cmp_check(expr *e)
 {
 	switch(e->op){
 			int lhs;
@@ -490,16 +496,17 @@ static void op_unsigned_cmp_check(expr *e)
 								"comparison of unsigned expression %s %d is always %s",
 								op_to_str(e->op), v,
 								e->op == op_lt || e->op == op_le ? "false" : "true");
+						return 1;
 					}
 				}
 			}
 
 		default:
-			break;
+			return 0;
 	}
 }
 
-static void msg_if_precedence(expr *sub, where *w,
+static int msg_if_precedence(expr *sub, where *w,
 		enum op_type binary, int (*test)(enum op_type))
 {
 	if(expr_kind(sub, op)
@@ -510,33 +517,51 @@ static void msg_if_precedence(expr *sub, where *w,
 		/* ==, !=, <, ... */
 		warn_at(w, "%s has higher precedence than %s",
 				op_to_str(sub->op), op_to_str(binary));
+		return 1;
 	}
+	return 0;
 }
 
-static void op_check_precedence(expr *e)
+static int op_check_precedence(expr *e)
 {
 	switch(e->op){
 		case op_or:
 		case op_and:
-			msg_if_precedence(e->lhs, &e->where, e->op, op_is_comparison);
-			msg_if_precedence(e->rhs, &e->where, e->op, op_is_comparison);
+			return msg_if_precedence(e->lhs, &e->where, e->op, op_is_comparison)
+				||   msg_if_precedence(e->rhs, &e->where, e->op, op_is_comparison);
 			break;
 
 		case op_andsc:
 		case op_orsc:
-			msg_if_precedence(e->lhs, &e->where, e->op, op_is_shortcircuit);
-			msg_if_precedence(e->rhs, &e->where, e->op, op_is_shortcircuit);
+			return msg_if_precedence(e->lhs, &e->where, e->op, op_is_shortcircuit)
+				||   msg_if_precedence(e->rhs, &e->where, e->op, op_is_shortcircuit);
 			break;
 
 		case op_shiftl:
 		case op_shiftr:
-			msg_if_precedence(e->lhs, &e->where, e->op, NULL);
-			msg_if_precedence(e->rhs, &e->where, e->op, NULL);
+			return msg_if_precedence(e->lhs, &e->where, e->op, NULL)
+				|| msg_if_precedence(e->rhs, &e->where, e->op, NULL);
 			break;
 
 		default:
-			break;
+			return 0;
 	}
+}
+
+static int str_cmp_check(expr *e)
+{
+	if(op_is_comparison(e->op)){
+		consty kl, kr;
+
+		const_fold(e->lhs, &kl);
+		const_fold(e->rhs, &kr);
+
+		if(kl.type == CONST_STRK || kr.type == CONST_STRK){
+			warn_at(&e->rhs->where, "comparison with string literal is undefined");
+			return 1;
+		}
+	}
+	return 0;
 }
 
 void fold_expr_op(expr *e, symtable *stab)
@@ -557,9 +582,11 @@ void fold_expr_op(expr *e, symtable *stab)
 		e->tree_type = op_promote_types(e->op, op_to_str(e->op),
 				&e->lhs, &e->rhs, &e->where, stab);
 
-		fold_check_bounds(e, 1);
-		op_check_precedence(e);
-		op_unsigned_cmp_check(e);
+		(void)(
+				fold_check_bounds(e, 1) ||
+				op_check_precedence(e) ||
+				op_unsigned_cmp_check(e) ||
+				str_cmp_check(e));
 
 	}else{
 		/* (except unary-not) can only have operations on integers,

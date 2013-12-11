@@ -7,6 +7,8 @@
 
 #define struct_offset(e) ((e)->bits.struct_mem.d->struct_offset + (e)->bits.struct_mem.extra_off)
 
+static void gen_expr_struct_lea(expr *e);
+
 const char *str_expr_struct()
 {
 	return "struct";
@@ -64,7 +66,7 @@ err:
 		char wbuf[WHERE_BUF_SIZ];
 
 		die_at(&e->lhs->where, "%s incomplete type (%s)\n"
-				"%s: forward declared here",
+				"%s: note: forward declared here",
 				ptr_expect
 					? "dereferencing pointer to"
 					: "accessing member of",
@@ -111,6 +113,10 @@ err:
 
 		e->tree_type = type_ref_new_cast_add(e->bits.struct_mem.d->ref, addon);
 	}
+
+	/* an lvalue, unless array */
+	if(!type_ref_is_array(e->tree_type))
+		e->f_lea = gen_expr_struct_lea;
 }
 
 static void gen_expr_struct_lea(expr *e)
@@ -206,7 +212,6 @@ static void fold_const_expr_struct(expr *e, consty *k)
 
 void mutate_expr_struct(expr *e)
 {
-	e->f_lea = gen_expr_struct_lea;
 	e->f_const_fold = fold_const_expr_struct;
 
 	/* zero out the union/rhs if we're mutating */

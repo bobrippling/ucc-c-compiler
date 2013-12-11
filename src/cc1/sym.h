@@ -32,8 +32,8 @@ struct symtable
 {
 	int auto_total_size;
 	unsigned folded : 1, laidout : 1;
-	unsigned func_exists : 1; /* should we do r/w checks on args? */
 	unsigned internal_nest : 1, are_params : 1;
+	decl *in_func; /* for r/w checks on args and return-type checks */
 	/*
 	 * { int i; 5; int j; }
 	 * j's symtab is internally represented like:
@@ -66,6 +66,7 @@ struct symtable_global
 {
 	symtable stab; /* ABI compatible with struct symtable */
 	symtable_gasm **gasms;
+	dynmap *literals;
 };
 
 sym *sym_new(decl *d, enum sym_type t);
@@ -77,8 +78,14 @@ symtable *symtab_new(symtable *parent);
 void      symtab_set_parent(symtable *child, symtable *parent);
 void      symtab_rm_parent( symtable *child);
 
+void symtab_add_params(symtable *, decl **);
+
 symtable *symtab_root(symtable *child);
 symtable *symtab_func_root(symtable *stab);
+#define symtab_func(st) symtab_func_root(st)->in_func
+symtable_global *symtab_global(symtable *);
+
+int symtab_nested_internal(symtable *parent, symtable *nest);
 
 sym  *symtab_search(symtable *, const char *);
 decl *symtab_search_d(symtable *, const char *, symtable **pin);
@@ -89,7 +96,7 @@ const char *sym_to_str(enum sym_type);
 #define sym_free(s) free(s)
 
 /* labels */
-struct label *symtab_label_find(symtable *, char *);
+struct label *symtab_label_find_or_new(symtable *, char *, where *);
 void symtab_label_add(symtable *, struct label *);
 
 #endif

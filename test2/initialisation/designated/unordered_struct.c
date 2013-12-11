@@ -1,6 +1,5 @@
-// RUN: %ucc -c %s
 // RUN: %check %s
-// RUN: %asmcheck %s
+// RUN: %layout_check %s
 
 struct
 {
@@ -10,5 +9,5 @@ struct
 } x = {
 	.j = 1,
 	2,
-	3, // CHECK: /warning: excess struct initialiser/
+	3, // CHECK: /warning: excess/
 };

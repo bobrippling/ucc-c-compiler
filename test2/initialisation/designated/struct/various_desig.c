@@ -1,4 +1,4 @@
-// RUN: %asmcheck %s
+// RUN: %layout_check %s
 
 struct
 {
@@ -13,4 +13,4 @@ c = { .j = 5, 32 },
 
 d = { .j = 7, .i = 6, },
 
-e = { .i = 5, .i = 6, }; // FIXME: override with 6, don't chose the first one
+e = { .i = 5, .i = 6, };

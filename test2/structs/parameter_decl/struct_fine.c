@@ -1,3 +1,5 @@
+// RUN: %check %s
+
 struct A;
 
 f(struct A *);

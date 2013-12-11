@@ -1,4 +1,4 @@
-// RUN: %ucc %s -o %t
+// RUN: %ucc %s -fsyntax-only
 
 extern void v;
 

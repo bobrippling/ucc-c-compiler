@@ -110,14 +110,38 @@ type_ref *type_ref_is_scalar(type_ref *r)
 	return r;
 }
 
+type_ref *type_ref_is_func_or_block(type_ref *r)
+{
+	type_ref *t = type_ref_is(r, type_ref_func);
+	if(t)
+		return t;
+
+	t = type_ref_is(r, type_ref_block);
+	if(t){
+		t = type_ref_next(t);
+		UCC_ASSERT(t->type == type_ref_func,
+				"block->next not func?");
+		return t;
+	}
+
+	return NULL;
+}
+
 const type *type_ref_get_type(type_ref *r)
 {
-	for(; r && r->type != type_ref_type; r = r->ref);
+	for(; r; )
+		switch(r->type){
+			case type_ref_tdef:
+				r = type_ref_skip_tdefs_casts(r);
+				break;
+			case type_ref_type:
+				return r->bits.type;
+			default:
+				goto no;
+		}
 
-	if(r && r->type == type_ref_tdef)
-		return type_ref_get_type(type_ref_skip_tdefs_casts(r));
-
-	return r ? r->bits.type : NULL;
+no:
+	return NULL;
 }
 
 int type_ref_is_bool(type_ref *r)
@@ -273,12 +297,31 @@ int type_ref_is_complete(type_ref *r)
 	return 1;
 }
 
-type_ref *type_ref_is_char_ptr(type_ref *r)
+int type_ref_is_variably_modified(type_ref *r)
+{
+	/* vlas not implemented yet */
+#if 0
+	if(type_ref_is_array(r)){
+		/* ... */
+	}
+#else
+	(void)r;
+#endif
+	return 0;
+}
+
+enum type_ref_str_type
+type_ref_str_type(type_ref *r)
 {
 	type_ref *t = type_ref_is_array(r);
 	if(!t)
 		t = type_ref_is_ptr(r);
-	return type_ref_is_type(t, type_char);
+	t = type_ref_is_type(t, type_unknown);
+	switch(t ? t->bits.type->primitive : type_unknown){
+		case type_char: return type_ref_str_char;
+		case type_int: return type_ref_str_wchar;
+		default: return type_ref_str_no;
+	}
 }
 
 int type_ref_is_incomplete_array(type_ref *r)
@@ -333,6 +376,7 @@ type_ref *type_ref_func_call(type_ref *fp, funcargs **pfuncargs)
 			if(pfuncargs)
 				*pfuncargs = fp->bits.func.args;
 			fp = fp->ref;
+			UCC_ASSERT(fp, "no ref for func");
 			break;
 
 		default:
@@ -354,6 +398,7 @@ type_ref *type_ref_decay(type_ref *r)
 			/* don't mutate a type_ref */
 			type_ref *new = type_ref_new_ptr(r->ref, qual_none);
 			new->bits.ptr = r->bits.array; /* save the old size, etc */
+			new->bits.ptr.decayed = 1; /* old size may be NULL */
 			return new;
 		}
 

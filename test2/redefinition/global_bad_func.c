@@ -1,5 +1,5 @@
 // RUN: %check -e %s
 
-int f(void); // CHECK: /error: mismatching definitions of "f"/
+int f(void);
 
-int f(int);
+int f(int); // CHECK: /error: mismatching definitions of "f"/

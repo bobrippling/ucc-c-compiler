@@ -16,6 +16,13 @@
 #include "lbl.h"
 #include "../funcargs.h"
 
+/* Darwin's `as' can only create movq:s with
+ * immediate operands whose highest bit is bit
+ * 31 or lower (i.e. up to UINT_MAX)
+ */
+#define AS_MAX_MOV_BIT 31
+
+#define intval_high_bit_ABS(v, t) intval_high_bit(llabs(v), t)
 
 #define NUM_FMT "%d"
 /* format for movl $5, -0x6(%rbp) asm output
@@ -88,7 +95,7 @@ static const char *vstack_str_r_ptr(char buf[VSTACK_STR_SZ], struct vstack *vs, 
 			/* we should never get a 64-bit value here
 			 * since movabsq should load those in
 			 */
-			UCC_ASSERT(!intval_is_64_bit(vs->bits.val, vs->t),
+			UCC_ASSERT(intval_high_bit_ABS(vs->bits.val, vs->t) < AS_MAX_MOV_BIT,
 					"can't load 64-bit constants here (0x%llx)", vs->bits.val);
 
 			if(!ptr)
@@ -295,22 +302,27 @@ static void x86_load(struct vstack *from, int reg, int lea)
 
 void impl_load_iv(struct vstack *vp)
 {
-	if(intval_is_64_bit(vp->bits.val, vp->t)){
+	const int high_bit = intval_high_bit_ABS(vp->bits.val, vp->t);
+
+	if(high_bit >= AS_MAX_MOV_BIT){
 		int r = v_unused_reg(1);
 		char buf[INTVAL_BUF_SIZ];
 
 		/* TODO: 64-bit registers in general on 32-bit */
 		UCC_ASSERT(!cc1_m32, "TODO: 32-bit 64-literal loads");
 
-		UCC_ASSERT(type_ref_size(vp->t, NULL) == 8,
-				"loading 64-bit literal (%lld) for non-long? (%s)",
-				vp->bits.val, type_ref_to_str(vp->t));
+		if(high_bit > 31 /* not necessarily AS_MAX_MOV_BIT */){
+			/* must be loading a long */
+			if(type_ref_size(vp->t, NULL) != 8){
+				/* FIXME: enums don't auto-size currently */
+				ICW("loading 64-bit literal (%lld) for non-8-byte type? (%s)",
+						vp->bits.val, type_ref_to_str(vp->t));
+			}
+		}
 
-		intval_str(buf, sizeof buf,
-				vp->bits.val, vp->t);
+		intval_str(buf, sizeof buf, vp->bits.val, NULL);
 
-		out_asm("movabsq $%s, %%%s",
-				buf, x86_reg_str(r, vp->t));
+		out_asm("movabsq $%s, %%%s", buf, x86_reg_str(r, NULL));
 
 		vp->type = REG;
 		vp->bits.reg = r;
@@ -539,25 +551,30 @@ void impl_op(enum op_type op)
 			const int is_signed = type_ref_is_signed(vtop->t);
 			char buf[VSTACK_STR_SZ];
 			int inv = 0;
+			struct vstack *vconst = NULL;
 
 			v_to_reg_const(vtop);
 			v_to_reg_const(vtop - 1);
 
-			/* if we have a const, it must be the first arg */
-			if(vtop[-1].type == CONST){
-				vswap();
-				inv = 1;
-			}
+			if(vtop->type == CONST)
+				vconst = vtop;
+			else if(vtop[-1].type == CONST)
+				vconst = vtop - 1;
 
-			/* if we have a CONST, it'll be in vtop,
-			 * try a test instruction */
+			/* if we have a CONST try a test instruction */
 			if((op == op_eq || op == op_ne)
-			&& vtop->type == CONST
-			&& vtop->bits.val == 0)
+			&& vconst && vconst->bits.val == 0)
 			{
-				const char *vstr = vstack_str(vtop - 1); /* vtop[-1] is REG */
-				out_asm("test%c %s, %s", asm_type_ch(vtop[-1].t), vstr, vstr);
+				struct vstack *vother = vconst == vtop ? vtop - 1 : vtop;
+				const char *vstr = vstack_str(vother); /* reg */
+				out_asm("test%c %s, %s", asm_type_ch(vother->t), vstr, vstr);
 			}else{
+				/* if we have a const, it must be the first arg */
+				if(vtop[-1].type == CONST){
+					vswap();
+					inv = 1;
+				}
+
 				out_asm("cmp%c %s, %s",
 						asm_type_ch(vtop[-1].t), /* pick the non-const one (for type-ing) */
 						vstack_str(       vtop),
@@ -675,6 +692,22 @@ void impl_op_unary(enum op_type op)
 	}
 
 	out_asm("%s %s", opc, vstack_str(vtop));
+}
+
+void impl_change_type(type_ref *t)
+{
+	vtop->t = t;
+
+	/* we can't change type for large integer values,
+	 * they need truncating
+	 */
+	if(vtop->type == CONST){
+		UCC_ASSERT(
+				intval_high_bit_ABS(vtop->bits.val, vtop->t) < AS_MAX_MOV_BIT,
+				"can't %s for large constant %" INTVAL_FMT_X,
+				__func__,
+				vtop->bits.val);
+	}
 }
 
 void impl_cast_load(struct vstack *vp, type_ref *small, type_ref *big, int is_signed)

@@ -15,66 +15,49 @@ const char *str_expr_str(void)
 
 void fold_expr_str(expr *e, symtable *stab)
 {
-	stringval *const sv = &e->bits.str.sv;
+	const stringlit *const strlit = e->bits.strlit.lit_at.lit;
 	expr *sz;
-	decl *d;
-	unsigned i;
 
-	if(e->code)
-		return; /* called from a sub-assignment */
-
-	sz = expr_new_val(sv->len);
+	sz = expr_new_val(strlit->len);
 	FOLD_EXPR(sz, stab);
 
-	/* (const char []) */
+	/* (const? char []) */
 	e->tree_type = type_ref_new_array(
-			type_ref_new_type_qual(sv->wide ? type_wchar : type_char, qual_const),
+			type_ref_new_type_qual(
+				strlit->wide ? type_wchar : type_char,
+				e->bits.strlit.is_func ? qual_const : qual_none),
 			sz);
-
-	sv->lbl = out_label_data_store(1);
-
-	d = decl_new();
-	d->ref = e->tree_type;
-	d->spel_asm = sv->lbl;
-
-	d->store = store_static;
-
-	d->init = decl_init_new(decl_init_brace);
-	for(i = 0; i < sv->len; i++){
-		decl_init *di = decl_init_new(decl_init_scalar);
-
-		di->bits.expr = expr_new_val(sv->str[i]);
-
-		dynarray_add(&d->init->bits.ar.inits, di);
-	}
-
-	/* add a sym so the data store gets gen'd */
-	e->bits.str.sym = sym_new_stab(
-			stab,
-			d,
-			stab->parent ? sym_local : sym_global);
-
-	decl_init_brace_up_fold(d, stab);
-
-	/* no non-global folding,
-	 * all strks are static globals/read from the init */
-	fold_decl_global_init(d, stab);
 }
 
 void gen_expr_str(expr *e)
 {
-	/*gen_asm_local(e->bits.str.sym.decl); - done for the decl we create */
-	out_push_lbl(e->bits.str.sv.lbl, 1);
+	stringlit_use(e->bits.strlit.lit_at.lit);
+	out_push_lbl(e->bits.strlit.lit_at.lit->lbl, 1);
+}
+
+static void lea_expr_str(expr *e)
+{
+	/* looks the same - a lea, but the type is different
+	 * gen_expr_str :: char *
+	 * lea_expr_str :: char (*)[]
+	 *
+	 * just like char x[] :: x vs &x
+	 */
+	gen_expr_str(e);
 }
 
 void gen_expr_str_str(expr *e)
 {
-	stringval *sv = &e->bits.str.sv;
+	stringlit *lit = e->bits.strlit.lit_at.lit;
 
-	idt_printf("%sstring at %s\n", sv->wide ? "wide " : "", sv->lbl);
+	idt_printf("%sstring at %s\n", lit->wide ? "wide " : "", lit->lbl);
 	gen_str_indent++;
 	idt_print();
-	literal_print(cc1_out, e->bits.str.sv.str, e->bits.str.sv.len);
+
+	literal_print(cc1_out,
+			e->bits.strlit.lit_at.lit->str,
+			e->bits.strlit.lit_at.lit->len);
+
 	gen_str_indent--;
 	fputc('\n', cc1_out);
 }
@@ -82,42 +65,43 @@ void gen_expr_str_str(expr *e)
 static void const_expr_string(expr *e, consty *k)
 {
 	CONST_FOLD_LEAF(k);
-	if(e->bits.str.sv.wide){
-		k->type = CONST_NO;
-		ICW("TODO: wide string const");
-	}else{
-		k->type = CONST_STRK;
-		k->bits.str = &e->bits.str.sv;
-		k->offset = 0;
-	}
+	k->type = CONST_STRK;
+	k->bits.str = &e->bits.strlit.lit_at;
+	k->offset = 0;
 }
 
 void mutate_expr_str(expr *e)
 {
 	e->f_const_fold = const_expr_string;
+	e->f_lea = lea_expr_str;
 }
 
-void expr_mutate_str(expr *e, char *s, int len)
+void expr_mutate_str(
+		expr *e,
+		char *s, size_t len,
+		int wide,
+		where *w)
 {
-	stringval *sv = &e->bits.str.sv;
-
 	expr_mutate_wrapper(e, str);
 
-	memset(sv, 0, sizeof *sv);
-	sv->str = s;
-	sv->len = len;
+	e->bits.strlit.lit_at.lit = strings_lookup(
+			&symtab_global(current_scope)->literals,
+			s, len, wide);
+
+	memcpy_safe(&e->bits.strlit.lit_at.where, w);
+	memcpy_safe(&e->where, w);
 }
 
-expr *expr_new_str(char *s, int l, int wide)
+expr *expr_new_str(char *s, size_t l, int wide, where *w)
 {
 	expr *e = expr_new_wrapper(str);
-	expr_mutate_str(e, s, l);
-	e->bits.str.sv.wide = wide;
-	memcpy_safe(&e->bits.str.sv.where, &e->where);
+	expr_mutate_str(e, s, l, wide, w);
 	return e;
 }
 
 void gen_expr_style_str(expr *e)
 {
-	literal_print(cc1_out, e->bits.str.sv.str, e->bits.str.sv.len);
+	literal_print(cc1_out,
+			e->bits.strlit.lit_at.lit->str,
+			e->bits.strlit.lit_at.lit->len);
 }

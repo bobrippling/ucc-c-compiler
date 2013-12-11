@@ -6,7 +6,7 @@ main()
 
 	printf("%d\n", i);
 
-	int i = 3; // CHECK: /error: "i" already declared/
+	int i = 3; // CHECK: /error: redefinition of "i"/
 
 	return i;
 }

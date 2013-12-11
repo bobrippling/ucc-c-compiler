@@ -1,5 +1,5 @@
-// RUN: echo TODO %s
-// RUN: false
+// RUN: %layout_check %s
+// RUN: %check %s
 
 typedef struct
 {
@@ -8,16 +8,18 @@ typedef struct
 
 triplet nlist[2][3] =
 {
-	{ {  1, 2, 3 }, {  4, 5, 6 }, {  7, 8, 9 } },  /* Row 1 */
-	{ { 10,11,12 }, { 13,14,15 }, { 16,17,18 } }   /* Row 2 */
+	{ {  1, 2, 3 }, {  4, 5, 6 }, {  7, 8, 9 } },
+	{ { 10,11,12 }, { 13,14,15 }, { 16,17,18 } }
 };
 
 
 
 triplet nlist2[2][3] =
 {
-	{  1, 2, 3 },{  4, 5, 6 },{  7, 8, 9 },   /* Line 1 */
-	{ 10,11,12 },{ 13,14,15 },{ 16,17,18 }    /* Line 2 */
+	{  1, 2, 3 /* ..., ... */ }, // CHECK: /warning: missing braces/
+	{  4, 5, 6 }, // CHECK: /warning: missing braces/
+	{  7, 8, 9 }, // CHECK: /warning: excess/
+	{ 10,11,12 },{ 13,14,15 },{ 16,17,18 }
 };
 
 
@@ -25,19 +27,23 @@ triplet nlist2[2][3] =
 struct list
 {
 	int i, j, k;
+#ifdef FLOATS
 	float m[2][3];
+#endif
 } x = {
 	1,
 	2,
 	3,
+#ifdef FLOATS
 	{4.0, 4.0, 4.0}
+#endif
 };
 
 
 union
 {
 	char x[2][3];
-	int i, j, k;
+	int i, j, k; // _separate_ unions ents
 } y = {
 	/*char[2][3]*/{
 		/*char[3]*/{'1'},

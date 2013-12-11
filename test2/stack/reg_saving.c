@@ -1,3 +1,4 @@
+// RUN: %ocheck 0 %s
 char gc;
 
 void g(int a, int b, int c, char *src, int line, char *fname, char *func)
@@ -21,4 +22,5 @@ void f(char *src, int line, char *fname, char *func)
 main()
 {
 	f(&gc, 7, &gc + 1, &gc + 2);
+	return 0;
 }

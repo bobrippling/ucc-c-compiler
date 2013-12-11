@@ -1,5 +1,4 @@
-// RUN: %ucc -o %t %s
-// RUN: %t | %output_check '^1 2 0 0$' '^1 2 0 0$' '^1 2 0 0$' '^1 2 0 0$'
+// RUN: %ocheck 0 %s
 
 main()
 {
@@ -8,9 +7,9 @@ main()
 	};
 
 	for(int i = 0; i <= 3; i++)
-		printf("%d %d %d %d\n",
-				ar[i].i,
-				ar[i].j,
-				ar[i].k,
-				ar[i].abc);
+		if(ar[i].i != 1 || ar[i].j != 2
+		|| ar[i].k || ar[i].abc)
+			abort();
+
+	return 0;
 }

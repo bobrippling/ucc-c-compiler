@@ -1,5 +1,7 @@
-// RUN: %ucc -fsyntax-only %s
-struct node {
+// RUN: %check %s
+
+struct node
+{
 	int x;
-	struct node;
+	struct node; // CHECK: /warning: unnamed member 'struct node' ignored/
 };

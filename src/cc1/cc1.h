@@ -82,6 +82,7 @@ enum fopt
 	FOPT_TRACK_INITIAL_FNAM    = 1 << 11,
 	FOPT_FREESTANDING          = 1 << 12,
 	FOPT_SHOW_STATIC_ASSERTS   = 1 << 13,
+	FOPT_CAST_W_BUILTIN_TYPES  = 1 << 14,
 };
 
 enum cc1_backend
@@ -104,7 +105,7 @@ void cc1_warn_at( struct where *where, int die, enum warning w, const char *fmt,
 extern FILE *cc_out[NUM_SECTIONS];
 extern FILE *cc1_out;
 
-extern int cc1_max_errors;
+extern int cc1_error_limit;
 
 extern int cc1_m32; /* 32bit mode or 64? */
 extern int cc1_mstack_align; /* 2^n */

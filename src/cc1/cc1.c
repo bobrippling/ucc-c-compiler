@@ -125,6 +125,7 @@ struct
 	{ 1,  "track-initial-fname", FOPT_TRACK_INITIAL_FNAM },
 	{ 1,  "freestanding",        FOPT_FREESTANDING },
 	{ 1,  "show-static-asserts", FOPT_SHOW_STATIC_ASSERTS },
+	{ 1,  "cast-with-builtin-types", FOPT_CAST_W_BUILTIN_TYPES },
 
 	{ 0,  NULL, 0 }
 };
@@ -135,7 +136,8 @@ struct
 	const char *arg;
 	int *pval;
 } val_args[] = {
-	{ 'f', "max-errors",   &cc1_max_errors },
+	{ 'f', "error-limit", &cc1_error_limit },
+	{ 'f', "message-length", &warning_length },
 	{ 'm', "preferred-stack-boundary", &cc1_mstack_align },
 	{ 0, NULL, NULL }
 };
@@ -158,8 +160,8 @@ enum fopt fopt_mode = FOPT_CONST_FOLD
                     | FOPT_SHOW_LINE
                     | FOPT_PIC
                     | FOPT_BUILTIN
-                    | FOPT_MS_EXTENSIONS
-										| FOPT_TRACK_INITIAL_FNAM;
+                    | FOPT_TRACK_INITIAL_FNAM
+                    | FOPT_CAST_W_BUILTIN_TYPES;
 enum cc1_backend cc1_backend = BACKEND_ASM;
 
 int cc1_m32 = UCC_M32;
@@ -168,7 +170,7 @@ int cc1_gdebug;
 
 enum c_std cc1_std = STD_C99;
 
-int cc1_max_errors = 16;
+int cc1_error_limit = 16;
 
 int caught_sig = 0;
 
@@ -316,6 +318,7 @@ static void sigh(int sig)
 static char *next_line()
 {
 	char *s = fline(infile);
+	char *p;
 
 	if(!s){
 		if(feof(infile))
@@ -323,6 +326,11 @@ static char *next_line()
 		else
 			die("read():");
 	}
+
+	for(p = s; *p; p++)
+		if(*p == '\r')
+			*p = ' ';
+
 	return s;
 }
 

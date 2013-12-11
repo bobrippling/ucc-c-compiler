@@ -7,6 +7,9 @@ void fold_decl_global_init(decl *d, symtable *stab);
 void fold_merge_tenatives(symtable *stab);
 
 void fold_decl(decl *d, symtable *stab, stmt **pinit_code);
+void fold_global_func(decl *);
+void fold_func_code(decl *, symtable *);
+void fold_func_passable(decl *, type_ref *);
 
 void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab);
 
@@ -37,14 +40,13 @@ int fold_passable(stmt *s);
 int fold_passable_yes(stmt *s);
 int fold_passable_no( stmt *s);
 
-extern decl *curdecl_func;
-extern type_ref *curdecl_ref_func_called;
-
 void fold_stmt_and_add_to_curswitch(stmt *);
 
 #ifdef SYMTAB_DEBUG
 #  define PRINT_STAB(st, cur) print_stab(st->symtab, cur, &st->where)
 void print_stab(symtable *st, int current, where *w);
 #endif
+
+extern int fold_had_error;
 
 #endif

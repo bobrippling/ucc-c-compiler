@@ -10,9 +10,9 @@ use constant
 require './parser.pl';
 
 my $src = shift;
-die "Usage: $0 source.c\n" if @ARGV;
+die "Usage: $0 source.c [ucc-args...]\n" unless $src;
 
-my @warns = find_warnings($src); # lineno, offset, msg
+my @warns = find_warnings($src, @ARGV); # lineno, offset, msg
 my @carets = find_carets($src); # lineno, offset, msg
 
 my %warnmap;
@@ -100,7 +100,7 @@ sub find_carets
 
 sub find_warnings
 {
-	my $src = shift;
+	my($src, @args) = @_;
 	die "$0: no \$UCC\n" unless $ENV{UCC};
 
 	return map {
@@ -108,5 +108,5 @@ sub find_warnings
 		msg    => $_->{msg},
 		lineno => $_->{line},
 	}, parse_warnings(chomp_all(
-			`$ENV{UCC} -fsyntax-only '$src' 2>&1`));
+			`$ENV{UCC} -fsyntax-only '$src' @args 2>&1`));
 }

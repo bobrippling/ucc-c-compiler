@@ -15,8 +15,8 @@ struct
 struct three
 {
 	int a, b, c;
-} trio = { 1 }, // CHECK: /warning: 2 missing initialisers for 'three'/
-	duo = { 1, 2 }; // CHECK: /warning: 1 missing initialiser for 'three'/
+} trio = { 1 }, // CHECK: /warning: 2 missing initialisers for 'struct three'/
+	duo = { 1, 2 }; // CHECK: /warning: 1 missing initialiser for 'struct three'/
 
 
 struct desig

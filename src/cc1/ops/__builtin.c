@@ -190,11 +190,11 @@ static void fold_memset(expr *e, symtable *stab)
 {
 	FOLD_EXPR(e->lhs, stab);
 
-	if(!expr_is_addressable(e->lhs)){
+	if(!expr_is_lval(e->lhs)){
 		/* this is pretty much an ICE, except it may be
 		 * user-callable in the future
 		 */
-		die_at(&e->where, "can't memset %s - not addressable",
+		die_at(&e->where, "can't memset %s - not lvalue",
 				e->lhs->f_str());
 	}
 
@@ -649,17 +649,25 @@ static expr *parse_expect(void)
 
 /* --- choose_expr */
 
+#define CHOOSE_EXPR_CHOSEN(e) ((e)->funcargs[(e)->bits.iv.val ? 1 : 2])
+
+static void choose_expr_lea(expr *e)
+{
+	lea_expr(CHOOSE_EXPR_CHOSEN(e));
+}
+
 static void fold_choose_expr(expr *e, symtable *stab)
 {
 	consty k;
 	int i;
+	expr *c;
 
 	if(dynarray_count(e->funcargs) != 3)
 		die_at(&e->where, "three arguments expected for %s",
 				BUILTIN_SPEL(e->expr));
 
 	for(i = 0; i < 3; i++)
-		FOLD_EXPR(e->funcargs[i], stab);
+		FOLD_EXPR_NO_DECAY(e->funcargs[i], stab);
 
 	const_fold(e->funcargs[0], &k);
 	if(k.type != CONST_VAL){
@@ -670,21 +678,25 @@ static void fold_choose_expr(expr *e, symtable *stab)
 
 	memcpy_safe(&e->bits.iv, &k.bits.iv);
 
-	e->tree_type = e->funcargs[k.bits.iv.val ? 1 : 2]->tree_type;
+	c = CHOOSE_EXPR_CHOSEN(e);
+	e->tree_type = c->tree_type;
 
 	wur_builtin(e);
+
+	if(expr_is_lval(c))
+		e->f_lea = choose_expr_lea;
 }
 
 static void const_choose_expr(expr *e, consty *k)
 {
 	/* forward to the chosen expr */
-	const_fold(e->funcargs[e->bits.iv.val ? 1 : 2], k);
+	const_fold(CHOOSE_EXPR_CHOSEN(e), k);
 }
 
 static void gen_choose_expr(expr *e)
 {
 	/* forward to the chosen expr */
-	gen_expr(e->funcargs[e->bits.iv.val ? 1 : 2]);
+	gen_expr(CHOOSE_EXPR_CHOSEN(e));
 }
 
 static expr *parse_choose_expr(void)
@@ -744,9 +756,9 @@ static void const_strlen(expr *e, consty *k)
 
 		const_fold(s, &subk);
 		if(subk.type == CONST_STRK){
-			stringval *sv = subk.bits.str;
-			const char *s = sv->str;
-			const char *p = memchr(s, '\0', sv->len);
+			stringlit *lit = subk.bits.str->lit;
+			const char *s = lit->str;
+			const char *p = memchr(s, '\0', lit->len);
 
 			if(p){
 				CONST_FOLD_LEAF(k);

@@ -1,4 +1,4 @@
-// RUN: %ucc -fleading-underscore %s
+// RUN: %ucc -c -fleading-underscore %s
 // RUN: ! %ucc -S -o- -fleading-underscore %s | grep '_no_leading'
 // RUN: %ucc -S -o- -fleading-underscore %s | grep '_main'
 

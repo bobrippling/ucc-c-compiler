@@ -1,4 +1,4 @@
-// RUN: [ `%ucc %s -S -o- | grep '[1234]' | wc -l` -eq 16 ]
+// RUN: %layout_check %s
 
 int a[] = { {{1}}, 2, { 3 }, 4 };
 int b[][2] = { 1, 2 };

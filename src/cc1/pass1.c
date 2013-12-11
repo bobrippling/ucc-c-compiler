@@ -62,6 +62,7 @@ void parse_and_fold(symtable_global *globals)
 				| DECL_MULTI_ACCEPT_FUNC_CODE
 				| DECL_MULTI_ALLOW_STORE
 				| DECL_MULTI_ALLOW_ALIGNAS,
+				/*newdecl:*/1,
 				current_scope,
 				&new);
 
@@ -90,15 +91,16 @@ void parse_and_fold(symtable_global *globals)
 	EAT(token_eof);
 
 	symtab_fold_sues(current_scope); /* superflous except for empty
-																		* files/trailing struct defs */
+	                                  * files/trailing struct defs */
 	symtab_fold_decls(current_scope); /* check for dups */
 	symtab_check_rw(current_scope); /* basic static analysis */
+	symtab_check_static_asserts(current_scope);
 
 	fold_merge_tenatives(current_scope);
 
 	dynarray_free(symtable_gasm **, &last_gasms, NULL);
 
-	if(parse_had_error)
+	if(parse_had_error || fold_had_error)
 		exit(1);
 
 	UCC_ASSERT(!current_scope->parent, "scope leak during parse");

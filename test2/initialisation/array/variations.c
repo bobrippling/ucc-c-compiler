@@ -1,12 +1,12 @@
-// RUN: %ucc %s
-// RUN: [ `%ucc %s -S -o- | grep 'mov.*[0123]' | wc -l` -eq 12 ]
+// RUN: %ocheck 0 %s
 
-p(int (*a)[2])
+chk(int (*p)[2], int a, int b, int c, int d)
 {
-	int i, j;
-	for(i = 0; i < 2; i++)
-		for(j = 0; j < 2; j++)
-			printf("[%d][%d] = %d\n", i, j, a[i][j]);
+	if(p[0][0] != a
+	|| p[0][1] != b
+	|| p[1][0] != c
+	|| p[1][1] != d)
+		abort();
 }
 
 main()
@@ -16,8 +16,10 @@ main()
 	int c[][2] = { {1}, 2, 3 };
 	int d[][2] = { 1, 2, {3} };
 
-	p(a);
-	p(b);
-	p(c);
-	p(d);
+	chk(a, 0, 1, 2, 3);
+	chk(b, 1, 0, 2, 0);
+	chk(c, 1, 0, 2, 3);
+	chk(d, 1, 2, 3, 0);
+
+	return 0;
 }

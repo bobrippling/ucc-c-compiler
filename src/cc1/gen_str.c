@@ -217,8 +217,15 @@ static void print_decl_eng(decl *d)
 void print_type_ref(type_ref *ref, decl *d)
 {
 	char buf[TYPE_REF_STATIC_BUFSIZ];
+	decl_attr *da;
+
 	fprintf(cc1_out, "%s",
 			type_ref_to_str_r_spel(buf, ref, d ? d->spel : NULL));
+
+	for(da = ref->attr; da; da = da->next){
+		fprintf(cc1_out, " __attribute__((%s))",
+				decl_attr_to_str(da->type));
+	}
 }
 
 static void print_decl_attr(decl_attr *da)
@@ -369,7 +376,7 @@ static void print_struct(struct_union_enum_st *sue)
 	for(iter = sue->members; iter && *iter; iter++){
 		decl *d = (*iter)->struct_member;
 
-		idt_printf("decl:\n");
+		idt_printf("decl %s:\n", d->spel ? d->spel : "<anon>");
 		gen_str_indent++;
 		print_decl(d, PDECL_INDENT | PDECL_NEWLINE | PDECL_ATTR);
 

@@ -1,12 +1,12 @@
-// RUN: %check -e %s
+// RUN: %check %s -Wshadow
 
-typedef unsigned long size_t;
+typedef unsigned long size_t; // CHECK: note: global declaration here
 
 main()
 {
-	typedef void *size_t; // CHECK: /warning: shadowing definition of size_t, from:/
+	typedef void *size_t; // CHECK: warning: declaration of "size_t" shadows global declaration
 
-	size_t p = 5;
+	size_t p = (void *)5;
 
-	return p;
+	return (int)p;
 }

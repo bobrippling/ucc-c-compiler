@@ -1,7 +1,6 @@
 #include <stdint.h>
 
 typedef struct intval intval;
-typedef struct stringval stringval;
 typedef struct type_ref  type_ref;
 
 typedef unsigned long long intval_t;
@@ -33,20 +32,14 @@ struct intval
 #define INTVAL_BUF_SIZ 32
 int intval_cmp(const intval *, const intval *);
 int intval_str(char *buf, size_t nbuf, intval_t v, type_ref *ty);
-int intval_is_64_bit(const intval_t val, type_ref *ty);
 intval_t intval_truncate(
-		intval_t val, unsigned bytes, intval_t *sign_extended);
+		intval_t val, unsigned bytes, sintval_t *sign_extended);
 
-intval_t intval_truncate_bits(intval_t val, unsigned bits);
+intval_t intval_truncate_bits(
+		intval_t val, unsigned bits,
+		sintval_t *signed_iv);
 
-struct stringval
-{
-	where where;
-	char *lbl;
-	const char *str;
-	unsigned len;
-	int wide;
-};
+int intval_high_bit(const intval_t val, type_ref *ty);
 
 enum op_type
 {

@@ -10,13 +10,13 @@ LDFLAGS += -lm
 OBJ = \
 	../util/alloc.o ../util/util.o ../util/platform.o \
 	../util/dynarray.o ../util/dynmap.o ../util/where.o \
-	../util/str.o ../util/std.o \
-	str.o label.o \
+	../util/str.o ../util/std.o ../util/escape.o \
+	str.o label.o strings.o \
 	cc1.o pass1.o \
 	tree.o decl.o decl_init.o funcargs.o expr.o stmt.o \
 	tokconv.o tokenise.o \
 	parse.o parse_type.o \
-	fold.o fold_sym.o fold_sue.o const.o \
+	fold.o fold_sym.o fold_sue.o const.o format_chk.o \
 	sym.o sue.o ops/__builtin.o ops/__builtin_va.o pack.o \
 	gen_asm.o gen_str.o gen_style.o \
 	out/out.o out/asm.o out/lbl.o out/impl.o \
@@ -31,8 +31,6 @@ OBJ = \
 	ops/expr_assign_compound.o ops/expr_string.o \
 	${ARCH_OBJ}
 
-include ../../config.mk
-
 cc1: ${OBJ}
 	${CC} ${CFLAGS} ${LDFLAGS} -o $@ ${OBJ}
 
@@ -41,6 +39,9 @@ cc1: ${OBJ}
 
 clean:
 	rm -f *.o cc1 ops/*.o out/*.o
+
+tags:
+	ctags -R .
 
 .PHONY: clean deps
 

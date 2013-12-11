@@ -1,4 +1,5 @@
-// RUN: %asmcheck %s
+// RUN: %layout_check %s
+// RUN: %check %s
 
 union A
 {
@@ -8,7 +9,7 @@ union A
 	} a;
 	int i;
 	char *p;
-} x = { .i = 1, 2, 3 };
+} x = { .i = 1, 2, 3 }; // CHECK: /warning:.*excess/
 
 y = sizeof(x);
 

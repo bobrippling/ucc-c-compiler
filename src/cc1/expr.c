@@ -112,6 +112,17 @@ int expr_is_null_ptr(expr *e, int allow_int)
 	return b && const_expr_and_zero(e);
 }
 
+int expr_is_lval_yes(expr *e)
+{
+	(void)e;
+	return 1;
+}
+
+int expr_is_lval(expr *e)
+{
+	return !!e->f_lea;
+}
+
 expr *expr_new_array_idx_e(expr *base, expr *idx)
 {
 	expr *op = expr_new_op(op_plus);
@@ -123,4 +134,11 @@ expr *expr_new_array_idx_e(expr *base, expr *idx)
 expr *expr_new_array_idx(expr *base, int i)
 {
 	return expr_new_array_idx_e(base, expr_new_val(i));
+}
+
+expr *expr_skip_casts(expr *e)
+{
+	while(expr_kind(e, cast))
+		e = e->expr;
+	return e;
 }

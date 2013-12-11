@@ -4,35 +4,35 @@
 #include "ops.h"
 #include "expr_addr.h"
 #include "../out/lbl.h"
+#include "../label.h"
 
 const char *str_expr_addr()
 {
 	return "addr";
 }
 
-int expr_is_addressable(expr *e)
+static int expr_is_addressable(expr *e)
 {
-	return expr_is_lvalue(e)
+	return expr_is_lval(e)
 		|| type_ref_is(e->tree_type, type_ref_array)
 		|| type_ref_is(e->tree_type, type_ref_func);
 }
 
 void fold_expr_addr(expr *e, symtable *stab)
 {
-	if(e->bits.ident.spel){
-		char *save;
+	if(e->bits.lbl.spel){
+		if(!symtab_func(stab))
+			die_at(&e->where, "address-of-label outside a function");
+
+		(e->bits.lbl.label =
+		 symtab_label_find_or_new(
+			 stab, e->bits.lbl.spel, &e->where))
+			->uses++;
 
 		/* address of label - void * */
 		e->tree_type = type_ref_new_ptr(
 				type_ref_new_type(type_new_primitive(type_void)),
 				qual_none);
-
-		if(!curdecl_func)
-			die_at(&e->where, "address-of-label outside a function");
-		save = e->bits.ident.spel;
-		e->bits.ident.spel = out_label_goto(
-				curdecl_func->spel, e->bits.ident.spel);
-		free(save);
 
 	}else{
 		/* if it's an identifier, act as a read */
@@ -61,22 +61,32 @@ void fold_expr_addr(expr *e, symtable *stab)
 
 void gen_expr_addr(expr *e)
 {
-	if(e->bits.ident.spel){
-		out_push_lbl(e->bits.ident.spel, 1); /* GNU &&lbl */
+	if(e->bits.lbl.spel){
+		out_push_lbl(e->bits.lbl.label->mangled, 1); /* GNU &&lbl */
 
 	}else{
-		/* address of possibly an ident "(&a)->b" or a struct expr "&a->b"
-		 * let lea_expr catch it
+		/* special case - can't lea_expr() functions because they
+		 * aren't lvalues
 		 */
+		expr *sub = e->lhs;
 
-		lea_expr(e->lhs);
+		if(!sub->f_lea){
+			sub = expr_skip_casts(sub);
+			UCC_ASSERT(expr_kind(sub, identifier),
+					"&[not-identifier], got %s",
+					sub->f_str());
+
+			out_push_sym(sub->bits.ident.sym);
+		}else{
+			lea_expr(sub);
+		}
 	}
 }
 
 void gen_expr_str_addr(expr *e)
 {
-	if(e->bits.ident.spel){
-		idt_printf("address of label \"%s\"\n", e->bits.ident.spel);
+	if(e->bits.lbl.spel){
+		idt_printf("address of label \"%s\"\n", e->bits.lbl.spel);
 	}else{
 		idt_printf("address of expr:\n");
 		gen_str_indent++;
@@ -87,13 +97,13 @@ void gen_expr_str_addr(expr *e)
 
 static void const_expr_addr(expr *e, consty *k)
 {
-	if(e->bits.ident.spel){
-		/*k->sym_lbl = e->bits.ident.spel;*/
+	if(e->bits.lbl.spel){
+		/*k->sym_lbl = e->bits.lbl.spel;*/
 		CONST_FOLD_LEAF(k);
 		k->type = CONST_ADDR;
 		k->offset = 0;
 		k->bits.addr.is_lbl = 1;
-		k->bits.addr.bits.lbl = e->bits.ident.spel;
+		k->bits.addr.bits.lbl = e->bits.lbl.label->spel;
 	}else{
 		const_fold(e->lhs, k);
 
@@ -127,7 +137,7 @@ expr *expr_new_addr(expr *sub)
 expr *expr_new_addr_lbl(char *lbl)
 {
 	expr *e = expr_new_wrapper(addr);
-	e->bits.ident.spel = lbl;
+	e->bits.lbl.spel = lbl;
 	return e;
 }
 

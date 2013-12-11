@@ -1,6 +1,7 @@
 // RUN: %ucc -o %t %s
+// RUN: %t
 // RUN: %t | %output_check a b c
-// RUN: %ucc -Xprint %s | grep -F 'fs.* size 24 bytes'
+
 void (*fs[3])(void);
 int f_i;
 
@@ -12,7 +13,6 @@ add(void (*f)())
 run()
 {
 	int i;
-	printf("fs = %p\n", fs);
 	for(i = 0; i < f_i; i++)
 		fs[i]();
 }
@@ -30,4 +30,9 @@ main()
 	add(&c);
 
 	run();
+
+	if(sizeof fs != 3 * 8)
+		abort();
+
+	return 0;
 }

@@ -1,0 +1,5 @@
+f:
+f.static1_p:
+.quad 5
+p:
+.quad 5

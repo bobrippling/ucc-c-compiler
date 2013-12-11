@@ -1,5 +1,7 @@
 // RUN: %ocheck 97 %s
-#include <wchar.h>
+
+//#include <wchar.h>
+typedef __WCHAR_TYPE__ wchar_t;
 
 main()
 {

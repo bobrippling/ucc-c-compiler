@@ -1,4 +1,3 @@
-// RUN: %check -DCLASH -e %s
 // RUN: %check %s
 
 typedef unsigned t;
@@ -36,17 +35,17 @@ main()
 
 	{
 		typedef const t yo; // CHECK: !/warn/
-		typedef signed t;   // CHECK: /warning: shadowing definition of t/
-#ifdef CLASH
-		t t; // CHECK: /error: clashing definitions/
-#endif
+		typedef signed t; // empty decl
 
 		yo a = 2;
 
 		r = a;
 	}
 
-	(void)(a.t + b.t + c.t + d.t + e.t + e.i);
-
 	return r;
+}
+
+chk_members()
+{
+	(void)(a.t + b.t + c.t + d.t + e.t + e.i);
 }

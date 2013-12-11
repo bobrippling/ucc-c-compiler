@@ -34,7 +34,7 @@ struct decl_attr
 			{
 				attr_fmt_printf, attr_fmt_scanf
 			} fmt_func;
-			int fmt_arg, var_arg;
+			int fmt_idx, var_idx, valid;
 		} format;
 		char *section;
 		unsigned long nonnull_args; /* limits to sizeof(long)*8 args, i.e. 64 */
@@ -79,7 +79,8 @@ struct type_ref
 		struct
 		{
 			enum type_qualifier qual;
-			int is_static;
+			unsigned is_static : 1;
+			unsigned decayed : 1; /* old size may be NULL - track here */
 			expr *size;
 			/* when we decay
 			 * f(int x[2]) -> f(int *x)
@@ -165,6 +166,12 @@ struct decl
 
 	decl_init *init; /* initialiser - converted to an assignment for non-globals */
 	stmt *func_code;
+
+	/* ^(){} has a decl+sym
+	 * the decl/sym has a ref to the expr block,
+	 * for pulling off .block.args, etc
+	 */
+	expr *block_expr;
 };
 
 const char *decl_asm_spel(decl *);
@@ -207,6 +214,7 @@ const char  *decl_attr_to_str(enum decl_attr_type);
 unsigned decl_size(decl *);
 unsigned decl_align(decl *);
 unsigned type_ref_size(type_ref *, where *from);
+intval_t type_ref_max(type_ref *, where *from);
 
 int   decl_equal(decl *a, decl *b, enum decl_cmp mode);
 int   type_ref_equal(type_ref *a, type_ref *b, enum decl_cmp mode);
@@ -249,6 +257,7 @@ int decl_is_variadic(decl *d);
 
 /* type_ref_is_* */
 int type_ref_is_complete(type_ref *);
+int type_ref_is_variably_modified(type_ref *);
 int type_ref_is_void(    type_ref *);
 int type_ref_is_integral(type_ref *);
 int type_ref_is_bool(    type_ref *);
@@ -278,10 +287,21 @@ type_ref *type_ref_is_array(type_ref *); /* returns r->ref iff array */
 type_ref *type_ref_func_call(type_ref *, funcargs **pfuncargs);
 type_ref *type_ref_decay(type_ref *);
 type_ref *type_ref_is_scalar(type_ref *);
+type_ref *type_ref_is_func_or_block(type_ref *);
 struct_union_enum_st *type_ref_is_s_or_u(type_ref *);
 struct_union_enum_st *type_ref_is_s_or_u_or_e(type_ref *);
 type_ref *type_ref_skip_casts(type_ref *);
-type_ref *type_ref_is_char_ptr(type_ref *);
+
+
+/* char[] and char *, etc */
+enum type_ref_str_type
+{
+	type_ref_str_no,
+	type_ref_str_char,
+	type_ref_str_wchar
+};
+enum type_ref_str_type
+type_ref_str_type(type_ref *);
 
 /* note: returns static references */
 #define type_ref_cached_VOID()       type_ref_new_type(type_new_primitive(type_void))

@@ -11,6 +11,7 @@
 
 void const_fold(expr *e, consty *k)
 {
+	memset(k, 0, sizeof *k);
 	k->type = CONST_NO;
 
 	if(e->f_const_fold){
@@ -109,8 +110,6 @@ intval_t const_op_exec(
 	typedef  intval_t U;
 
 	/* FIXME: casts based on lval.type */
-#define piv (&konst->bits.iv)
-
 #define S_OP(o) (S)lval o (S)*rval
 #define U_OP(o) (U)lval o (U)*rval
 
@@ -157,5 +156,4 @@ intval_t const_op_exec(
 	}
 
 	ICE("unhandled type");
-#undef piv
 }

@@ -18,6 +18,7 @@
 #include "const.h"
 #include "ops/__builtin.h"
 #include "funcargs.h"
+#include "strings.h"
 
 #define STAT_NEW(type)      stmt_new_wrapper(type, current_scope)
 #define STAT_NEW_NEST(type) stmt_new_wrapper(type, symtab_new(current_scope))
@@ -59,7 +60,7 @@ expr *parse_expr_sizeof_typeof_alignof(enum what_of what_of)
 	w.chr -= what_of == what_alignof ? 7 : 6; /* go back over the *of */
 
 	if(accept(token_open_paren)){
-		type_ref *r = parse_type();
+		type_ref *r = parse_type(0);
 
 		if(r){
 			EAT(token_close_paren);
@@ -115,7 +116,7 @@ static expr *parse_expr__Generic()
 		if(accept(token_default)){
 			r = NULL;
 		}else{
-			r = parse_type();
+			r = parse_type(0);
 			if(!r)
 				die_at(NULL, "type expected");
 		}
@@ -151,12 +152,20 @@ static expr *parse_expr_identifier()
 
 static expr *parse_block()
 {
+	symtable *const arg_symtab = symtab_new(
+			symtab_root(current_scope));
+
 	funcargs *args;
 	type_ref *rt;
+	symtable *orig_scope;
+	expr *r;
+
+	orig_scope = current_scope;
+	current_scope = arg_symtab;
 
 	EAT(token_xor);
 
-	rt = parse_type();
+	rt = parse_type(0);
 
 	if(rt){
 		if(type_ref_is(rt, type_ref_func)){
@@ -169,7 +178,7 @@ static expr *parse_block()
 
 	}else if(accept(token_open_paren)){
 		/* ^(args...) */
-		args = parse_func_arglist();
+		args = parse_func_arglist(NULL); /* no args here thanks */
 		EAT(token_close_paren);
 	}else{
 		/* ^{...} */
@@ -178,7 +187,13 @@ def_args:
 		args->args_void = 1;
 	}
 
-	return expr_new_block(rt, args, parse_stmt_block());
+	symtab_add_params(arg_symtab, args->arglist);
+
+	r = expr_new_block(rt, args, parse_stmt_block());
+
+	current_scope = orig_scope;
+
+	return r;
 }
 
 static expr *parse_expr_primary()
@@ -193,15 +208,16 @@ static expr *parse_expr_primary()
 		}
 
 		case token_string:
-		/*case token_open_block: - not allowed here */
 		{
+			where w;
 			char *s;
-			int l, wide;
+			size_t l;
+			int wide;
 
-			token_get_current_str(&s, &l, &wide);
+			token_get_current_str(&s, &l, &wide, &w);
 			EAT(token_string);
 
-			return expr_new_str(s, l, wide);
+			return expr_new_str(s, l, wide, &w);
 		}
 
 		case token__Generic:
@@ -218,7 +234,7 @@ static expr *parse_expr_primary()
 				type_ref *r;
 				expr *e;
 
-				if((r = parse_type())){
+				if((r = parse_type(0))){
 					EAT(token_close_paren);
 
 					if(curtok == token_open_block){
@@ -526,7 +542,7 @@ type_ref **parse_type_list()
 		return types;
 
 	do{
-		type_ref *r = parse_type();
+		type_ref *r = parse_type(0);
 
 		if(!r)
 			die_at(NULL, "type expected");
@@ -569,7 +585,7 @@ static void parse_test_init_expr(stmt *t)
 	if(cc1_std == STD_C99)
 		t->symtab = current_scope = symtab_new(current_scope);
 
-	d = parse_decl_single(DECL_SPEL_NEED);
+	d = parse_decl_single(DECL_SPEL_NEED, 0);
 	if(d){
 		t->flow = stmt_flow_new(symtab_new(current_scope));
 
@@ -688,7 +704,7 @@ static stmt *parse_for()
 	}
 
 	SEMI_WRAP(
-			decl **c99inits = parse_decls_one_type();
+			decl **c99inits = parse_decls_one_type(0);
 			if(c99inits){
 				dynarray_add_array(&current_scope->decls, c99inits);
 
@@ -726,7 +742,7 @@ void parse_static_assert(void)
 		sa->e = parse_expr_no_comma();
 		EAT(token_comma);
 
-		token_get_current_str(&sa->s, NULL, NULL);
+		token_get_current_str(&sa->s, NULL, NULL, NULL);
 
 		EAT(token_string);
 		EAT(token_close_paren);
@@ -748,6 +764,7 @@ static stmt *parse_stmt_and_decls(void)
 			DECL_MULTI_ACCEPT_FUNC_DECL
 			| DECL_MULTI_ALLOW_STORE
 			| DECL_MULTI_ALLOW_ALIGNAS,
+			/*newdecl_context:*/1,
 			current_scope,
 			NULL);
 
@@ -984,11 +1001,14 @@ flow:
 		default:
 		{
 			char *lbl;
-			if((lbl = tok_at_label())){
+			where w;
+
+			if((lbl = tok_at_label(&w))){
 				decl_attr *attr = NULL, *ai;
 
 				t = STAT_NEW(label);
 				t->bits.lbl.spel = lbl;
+				memcpy_safe(&t->where, &w);
 
 				parse_add_attr(&attr);
 				for(ai = attr; ai; ai = ai->next)
@@ -1018,7 +1038,7 @@ symtable_gasm *parse_gasm(void)
 	symtable_gasm *g = umalloc(sizeof *g);
 
 	EAT(token_open_paren);
-	token_get_current_str(&g->asm_str, NULL, NULL);
+	token_get_current_str(&g->asm_str, NULL, NULL, NULL);
 	EAT(token_string);
 	EAT(token_close_paren);
 	EAT(token_semicolon);

@@ -44,10 +44,16 @@ static void fold_const_expr_identifier(expr *e, consty *k)
 	}
 }
 
+static void gen_expr_identifier_lea(expr *e)
+{
+	out_push_sym(e->bits.ident.sym);
+}
+
 void fold_expr_identifier(expr *e, symtable *stab)
 {
 	char *sp = e->bits.ident.spel;
 	sym *sym = e->bits.ident.sym;
+	decl *in_fn = symtab_func(stab);
 
 	if(sp && !sym)
 		e->bits.ident.sym = sym = symtab_search(stab, sp);
@@ -55,21 +61,19 @@ void fold_expr_identifier(expr *e, symtable *stab)
 	/* special cases */
 	if(!sym){
 		if(!strcmp(sp, "__func__")){
-			char *func;
-			int len;
+			char *sp;
 
-			/* mutate into a string literal */
-			if(!curdecl_func){
+			if(!in_fn){
 				warn_at(&e->where, "__func__ is not defined outside of functions");
-				func = "";
-				len = 0;
+
+				sp = "";
 			}else{
-				func = curdecl_func->spel;
-				len = strlen(curdecl_func->spel);
+				sp = in_fn->spel;
 			}
 
-			expr_mutate_str(e, func, len + 1);
+			expr_mutate_str(e, sp, strlen(sp) + 1, /*wide:*/0, &e->where);
 			/* +1 - take the null byte */
+			e->bits.strlit.is_func = 1;
 
 			FOLD_EXPR(e, stab);
 		}else{
@@ -95,6 +99,14 @@ void fold_expr_identifier(expr *e, symtable *stab)
 
 	e->tree_type = sym->decl->ref;
 
+	/* set if lvalue */
+	e->f_lea =
+		type_ref_is(e->tree_type, type_ref_func)
+		|| type_ref_is(e->tree_type, type_ref_array)
+		? NULL
+		: gen_expr_identifier_lea;
+
+
 	if(sym->type == sym_local
 	&& !decl_store_static_or_extern(sym->decl->store)
 	&& !DECL_IS_ARRAY(sym->decl)
@@ -111,7 +123,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 	sym->nreads++;
 
 	if(!sym->func)
-		sym->func = curdecl_func;
+		sym->func = in_fn;
 }
 
 void gen_expr_str_identifier(expr *e)
@@ -129,14 +141,8 @@ void gen_expr_identifier(expr *e)
 		out_push_sym_val(sym);
 }
 
-static void gen_expr_identifier_lea(expr *e)
-{
-	out_push_sym(e->bits.ident.sym);
-}
-
 void mutate_expr_identifier(expr *e)
 {
-	e->f_lea         = gen_expr_identifier_lea;
 	e->f_const_fold  = fold_const_expr_identifier;
 }
 

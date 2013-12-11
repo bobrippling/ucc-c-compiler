@@ -1,7 +1,7 @@
 // RUN: %ucc -c %s
-// RUN: %ucc -S -o- %s | tr -d '\n' | grep '.globl 0.*A.*B.*C.*D.*E.*F'
+// RUN: %ucc -S -o- %s | tr -d '\n' | grep '.globl Z.*A.*B.*C.*D.*E.*F'
 
-__asm__(".globl 0");
+__asm__(".globl Z");
 A(){}
 asm(".globl B");
 C(){}
