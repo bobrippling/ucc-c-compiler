@@ -22,6 +22,9 @@ UCC_SUBARCH = ${UCC_SUBARCH}
 
 #define UCC_STDLIB "${UCC_STDLIB}"
 #define UCC_CRT    "${UCC_CRT}"
+
+#define UCC_AS_ARGS_M32 ${UCC_AS_ARGS_M32}
+#define UCC_AS_ARGS_M64 ${UCC_AS_ARGS_M64}
 !
 
 	if [ $1 = Darwin ]
@@ -88,6 +91,11 @@ UCC_LDFLAGS=''
 UCC_CFLAGS=''
 ASM_PLBL=.L
 
+# assume GNU as:
+UCC_AS_ARGS_M32='"--32"'
+UCC_AS_ARGS_M64='"--64"'
+
+
 uname_m=$(uname -m)
 case "$uname_m" in
 	i?86|x86_64)
@@ -143,6 +151,8 @@ case "$unam" in
 		UCC_CRT='-lcrt1.o'
 		UCC_LDFLAGS='-macosx_version_min 10.5'
 		ASM_PLBL=L
+		UCC_AS_ARGS_M32='"-arch", "i386"'
+		UCC_AS_ARGS_M64='"-arch", "x86_64"'
 		leading_underscore
 		;;
 

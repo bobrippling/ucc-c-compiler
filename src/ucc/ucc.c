@@ -20,6 +20,8 @@
 #include "str.h"
 #include "cfg.h"
 
+#define ARRAY_LEN(ar) (sizeof(ar) / sizeof *(ar))
+
 enum mode
 {
 	mode_preproc,
@@ -417,8 +419,34 @@ int main(int argc, char **argv)
 						goto word;
 				case 'm':
 					ADD_ARG(mode_compile);
-					if(isdigit(argv[i][2])) /* -m32, etc */
+					if(isdigit(argv[i][2])){
+						/* -m32, etc */
+						static const char *m32[] = {
+							/* -arch i386, --32, etc */
+							UCC_AS_ARGS_M32
+						};
+						static const char *m64[] = {
+							/* -arch x86_64, --64, etc */
+							UCC_AS_ARGS_M64
+						};
+						const char **chosen;
+						int chosen_cnt;
+						int arch = atoi(argv[i] + 2);
+						int i;
+
+						if(arch == 32)
+							chosen = m32, chosen_cnt = ARRAY_LEN(m32);
+						else if(arch == 64)
+							chosen = m64, chosen_cnt = ARRAY_LEN(m64);
+						else
+							die("-m%d ?", arch);
+
+						for(i = 0; i < chosen_cnt; i++)
+							dynarray_add(&args[mode_assemb], ustrdup(chosen[i]));
+
+						/* cpp needs arch for __i386__, etc */
 						ADD_ARG(mode_preproc);
+					}
 					continue;
 
 				case 'D':
@@ -543,7 +571,7 @@ word:
 					continue;
 			}
 
-			for(j = 0; j < sizeof(opts) / sizeof(opts[0]); j++)
+			for(j = 0; j < ARRAY_LEN(opts); j++)
 				if(argv[i][1] == opts[j].optn){
 					if(argv[i][2]){
 						*opts[j].ptr = argv[i] + 2;
