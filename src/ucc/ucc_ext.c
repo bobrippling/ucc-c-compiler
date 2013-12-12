@@ -38,7 +38,7 @@ bname(char *path)
 }
 
 static char *
-where()
+where(void)
 {
 	static char where[1024];
 
@@ -69,7 +69,7 @@ where()
 	return where;
 }
 
-char *actual_path(const char *prefix, const char *path)
+static char *actual_path(const char *prefix, const char *path)
 {
 	char *w = where();
 	char *buf;

@@ -3,7 +3,6 @@
 
 extern char **include_paths;
 
-char *actual_path(const char *prefix, const char *path);
 void rename_or_move(char *old, char *new);
 void cat(char *in, char *out, int append);
 
