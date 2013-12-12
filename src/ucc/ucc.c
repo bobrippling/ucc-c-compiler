@@ -58,6 +58,7 @@ static char **remove_these;
 static int unlink_tmps = 1;
 const char *argv0;
 char *wrapper;
+char *Bprefix;
 
 static void unlink_files(void)
 {
@@ -502,6 +503,21 @@ arg_ld:
 					continue;
 				}
 
+				case 'B':
+				{
+					size_t l;
+					if(Bprefix) /* not exactly gcc/clang compatible */
+						die("-Bprefix already given");
+
+					Bprefix = argv[i] + 2;
+					l = strlen(Bprefix);
+					if(l == 0)
+						die("need argument for -Bprefix");
+					if(Bprefix[l - 1] != '/')
+						Bprefix = ustrprintf("%s/", Bprefix); /* static data, no leak */
+					continue;
+				}
+
 				case '\0':
 					/* "-" aka stdin */
 					goto input;
@@ -561,6 +577,9 @@ missing_arg:	die("need argument for %s", argv[i - 1]);
 input:	dynarray_add(&inputs, argv[i]);
 		}
 	}
+
+	if(!Bprefix)
+		Bprefix = "../"; /* ../{cc1,cpp2}/... */
 
 	{
 		const int ninputs = dynarray_count(inputs);

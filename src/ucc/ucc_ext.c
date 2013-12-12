@@ -71,7 +71,10 @@ where(void)
 
 static char *actual_path(const char *prefix, const char *path)
 {
-	char *w = where();
+	/* we only prepend our cwd if Bprefix is relative
+	 * FIXME: need to not have cpp2/cpp, etc
+	 */
+	char *w = *Bprefix == '/' ? "" : where();
 	char *buf;
 
 	buf = umalloc(strlen(w) + strlen(prefix) + strlen(path) + 2);
@@ -143,7 +146,7 @@ static void runner(int local, char *path, char **args)
 					argv[i_out++] = last;
 			}
 
-			argv[i_out++] = local ? actual_path("../", path) : path;
+			argv[i_out++] = local ? actual_path(Bprefix, path) : path;
 
 			while(args[i_in])
 				argv[i_out++] = args[i_in++];
