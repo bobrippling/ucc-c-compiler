@@ -28,4 +28,6 @@ ALL_SRC = $(shell find . -iname '*.[ch]')
 tags: ${ALL_SRC}
 	ctags -R .
 
+include bootstrap.mak
+
 .PHONY: all clean cleanall configure
