@@ -25,7 +25,7 @@
 
 char **include_paths;
 
-static int show, noop;
+static int show, show_path, noop;
 
 void ucc_ext_cmds_show(int s)
 { show = s; }
@@ -33,6 +33,8 @@ void ucc_ext_cmds_show(int s)
 void ucc_ext_cmds_noop(int n)
 { noop = n; }
 
+void ucc_ext_cmds_show_path(int p)
+{ show_path = p; }
 
 static void runner(struct cmdpath *path, char **args)
 {
@@ -41,6 +43,9 @@ static void runner(struct cmdpath *path, char **args)
 	if(show){
 		int i;
 
+		if(show_path)
+			fprintf(stderr, "PATH_TYPE='%s'\n", cmdpath_type(path->type));
+
 		if(wrapper)
 			fprintf(stderr, "WRAPPER='%s' ", wrapper);
 
@@ -48,6 +53,12 @@ static void runner(struct cmdpath *path, char **args)
 		for(i = 0; args[i]; i++)
 			fprintf(stderr, "%s ", args[i]);
 		fputc('\n', stderr);
+
+		if(show_path){
+			char *res = cmdpath_resolve(path, NULL);
+			fprintf(stderr, "RESOLVED_PATH='%s'\n", res);
+			free(res);
+		}
 	}
 
 	if(noop)

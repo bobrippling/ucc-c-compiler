@@ -13,5 +13,6 @@ void link_all(char **objs, char *out, char **args);
 
 void ucc_ext_cmds_show(int);
 void ucc_ext_cmds_noop(int);
+void ucc_ext_cmds_show_path(int);
 
 #endif
