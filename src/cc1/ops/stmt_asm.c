@@ -24,7 +24,7 @@ void fold_stmt_asm(stmt *s)
 	asm_inout **it;
 	int n_inouts = 0;
 
-	for(it = s->asm_bits->ios; it && *it; it++, n_inouts++){
+	for(it = s->bits.asm_args->ios; it && *it; it++, n_inouts++){
 		asm_inout *io = *it;
 
 		check_constraint(io, s->symtab, io->is_output);
@@ -33,11 +33,11 @@ void fold_stmt_asm(stmt *s)
 			die_at(&io->exp->where, "asm output not an lvalue");
 	}
 
-	/* validate asm string - s->asm_bits->cmd */
-	if(s->asm_bits->extended){
+	/* validate asm string - s->bits.asm_args->cmd */
+	if(s->bits.asm_args->extended){
 		char *str;
 
-		for(str = s->asm_bits->cmd; *str; str++)
+		for(str = s->bits.asm_args->cmd; *str; str++)
 			if(*str == '%'){
 				if(str[1] == '%'){
 					str++;
@@ -66,17 +66,17 @@ void gen_stmt_asm(stmt *s)
 	asm_inout **ios;
 	int npops = 0;
 
-	for(ios = s->asm_bits->ios; ios && *ios; ios++, npops++){
+	for(ios = s->bits.asm_args->ios; ios && *ios; ios++, npops++){
 		asm_inout *io = *ios;
 
 		(io->is_output ? lea_expr : gen_expr)(io->exp);
 	}
 
 	out_comment("### begin asm(%s) from %s",
-			s->asm_bits->extended ? ":::" : "",
+			s->bits.asm_args->extended ? ":::" : "",
 			where_str(&s->where));
 
-	out_asm_inline(s->asm_bits, &s->where);
+	out_asm_inline(s->bits.asm_args, &s->where);
 
 	out_comment("### end asm()");
 }
@@ -90,8 +90,8 @@ void style_stmt_asm(stmt *s)
 {
 	stylef(
 			"asm%s(%s",
-			s->asm_bits->is_volatile ? " volatile" : "",
-			s->asm_bits->cmd);
+			s->bits.asm_args->is_volatile ? " volatile" : "",
+			s->bits.asm_args->cmd);
 
 	stylef(")\n");
 }

@@ -817,7 +817,7 @@ static stmt *parse_asm(void)
 	enum { GOTO_NONE, GOTO_IS, GOTO_HAD } goto_ty = GOTO_NONE;
 
 	asm_st = STAT_NEW(asm);
-	bits = asm_st->asm_bits = umalloc(sizeof *asm_st->asm_bits);
+	bits = asm_st->bits.asm_args = umalloc(sizeof *asm_st->bits.asm_args);
 
 	EAT(token_asm);
 	while(curtok_is_type_qual()){

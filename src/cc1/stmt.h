@@ -57,11 +57,11 @@ struct stmt
 			char *spel;
 			int unused;
 		} lbl;
+
+		asm_args *asm_args;
 	} bits;
 
 	stmt **codes; /* for a code block */
-
-	asm_args *asm_bits;
 
 	symtable *symtab; /* block definitions, e.g. { int i... } */
 
