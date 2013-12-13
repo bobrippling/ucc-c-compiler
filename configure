@@ -47,22 +47,25 @@ UCC_CPU     = ${UCC_CPU}
 #define ASM_PLBL_PRE "$ASM_PLBL"
 !
 
-	if ! which perl > /dev/null
+	if [ -d lib ]
 	then
-		if [ $1 = Darwin ]
-		then m=" (and darwin syscalls)"
-		fi
-		echo >&2 "Perl not found, generate strerror$m yourself"
-	else
-		perl -e '
-		for(1 .. 100){
-			$! = $_;
-			printf "\t\"%s\",\n", $!;
-		}
-		' > lib/string_strerrs.h
+		if ! which perl > /dev/null
+		then
+			if [ $1 = Darwin ]
+			then m=" (and darwin syscalls)"
+			fi
+			echo >&2 "Perl not found, generate strerror$m yourself"
+		else
+			perl -e '
+			for(1 .. 100){
+				$! = $_;
+				printf "\t\"%s\",\n", $!;
+			}
+			' > lib/string_strerrs.h
 
-		if [ $1 = Darwin ]
-		then perl lib/syscalls_darwin.pl < lib/syscalls_darwin_unix.h > lib/syscalls_darwin.h
+			if [ $1 = Darwin ]
+			then perl lib/syscalls_darwin.pl < lib/syscalls_darwin_unix.h > lib/syscalls_darwin.h
+			fi
 		fi
 	fi
 
@@ -195,6 +198,46 @@ then
 fi
 
 UCC_LDFLAGS="$UCC_LDFLAGS $UCC_DYN"
+
+srcdir="$(dirname "$0")"
+
+symlink_r(){
+	# args = path-to-link target
+	local searching
+	local link_output
+	local dotdot
+
+	searching="$1"
+	link_output="$2"
+	dotdot="$3"
+
+	mkdir -p "$link_output"
+	for ent in "$searching"/*
+	do
+		if [ -d "$ent" ]
+		then
+			here="$link_output"/"$(basename "$ent")"
+			symlink_r "$ent" "$here"/ "$dotdot"/..
+		elif [ -f "$ent" ]
+		then
+			if ! echo "$ent" | grep >/dev/null '\.o$'
+			then
+				ln -sf "$dotdot"/"$ent" "$link_output"
+			fi
+		else
+			echo >&2 "ignoring $ent"
+		fi
+	done
+}
+
+# out-of-tree builds
+if [ "$srcdir" != . ]
+then
+	echo "Linking Makefile for out-of-tree build ($srcdir)"
+
+	symlink_r "$srcdir"/src src ..
+	ln -sf "$srcdir"/Makefile
+fi
 
 case "$unam" in
 	Darwin)
