@@ -26,6 +26,7 @@ enum token
 
 	token_asm,
 	token_attribute,
+	token_extension,
 
 	token_identifier,
 	token_integer,     /* aka [1-9] */

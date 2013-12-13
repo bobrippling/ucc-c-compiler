@@ -200,6 +200,7 @@ char *token_to_str(enum token t)
 
 #define MAP(t, s) case token_##t: return s
 		MAP(attribute,       "__attribute__");
+		MAP(extension,       "__extension__");
 		MAP(elipsis,         "'...'");
 		MAP(open_paren,      "'('");
 		MAP(open_block,      "'{'");
@@ -303,6 +304,7 @@ char *curtok_to_identifier(int *alloc)
 		case token_enum:
 		case token___builtin_va_list:
 		case token_attribute:
+		case token_extension:
 			/* we can stringify these */
 			*alloc = 0;
 			return token_to_str(curtok);

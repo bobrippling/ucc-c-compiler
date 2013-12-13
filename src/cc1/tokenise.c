@@ -109,6 +109,7 @@ struct statement
 	KEYWORD__ALL(typeof),
 
 	KEYWORD__(attribute, token_attribute),
+	KEYWORD__(extension, token_extension)
 };
 
 static tokenise_line_f *in_func;
@@ -806,6 +807,8 @@ void nexttoken()
 		for(i = 0; i < sizeof(statements) / sizeof(statements[0]); i++)
 			if(strlen(statements[i].str) == len && !strncmp(statements[i].str, start, len)){
 				curtok = statements[i].tok;
+				if(curtok == token_extension)
+					nexttoken(); /* ignore __extension__ */
 				return;
 			}
 
