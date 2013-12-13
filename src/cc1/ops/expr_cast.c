@@ -484,6 +484,14 @@ expr *expr_new_cast_decay(expr *sub, type_ref *to)
 
 void gen_expr_style_cast(expr *e)
 {
-	stylef("(%s)", type_ref_to_str(e->bits.cast.tref));
+	if(IS_RVAL_CAST(e))
+		;
+	else if(e->bits.cast.is_decay)
+		;
+	else if(e->expr_cast_implicit)
+		;
+	else
+		stylef("(%s)", type_ref_to_str(e->bits.cast.tref));
+
 	gen_expr(expr_cast_child(e));
 }
