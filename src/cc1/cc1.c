@@ -284,7 +284,12 @@ static void io_setup(void)
 	atexit(io_cleanup);
 }
 
-static void io_fin(int do_sections, const char *fname)
+enum flushtype
+{
+	FLUSH_ALL,
+	FLUSH_TEXT
+};
+static void io_fin(enum flushtype flushtype, const char *fname)
 {
 	int i;
 
@@ -299,22 +304,31 @@ static void io_fin(int do_sections, const char *fname)
 
 	for(i = 0; i < NUM_SECTIONS; i++){
 		/* cat cc_out[i] to cc1_out, with section headers */
-		if(do_sections){
-			char buf[256];
-			long last = ftell(cc_out[i]);
 
-			if(last == -1 || fseek(cc_out[i], 0, SEEK_SET) == -1)
-				ccdie(0, "seeking on section file %d:", i);
+		switch(flushtype){
+				char buf[256];
+				long last;
 
-			if(fprintf(cc1_out, ".section %s\n", section_names[i]) < 0)
-				ccdie(0, "write to cc1 output:");
+			case FLUSH_TEXT:
+				if(i != SECTION_TEXT)
+					break;
 
-			while(fgets(buf, sizeof buf, cc_out[i]))
-				if(fputs(buf, cc1_out) == EOF)
+			case FLUSH_ALL:
+				last	= ftell(cc_out[i]);
+				if(last == -1 || fseek(cc_out[i], 0, SEEK_SET) == -1)
+					ccdie(0, "seeking on section file %d:", i);
+
+				if(flushtype == FLUSH_ALL && fprintf(cc1_out, ".section %s\n", section_names[i]) < 0)
 					ccdie(0, "write to cc1 output:");
 
-			if(ferror(cc_out[i]))
-				ccdie(0, "read from section file %d:", i);
+				while(fgets(buf, sizeof buf, cc_out[i]))
+					if(fputs(buf, cc1_out) == EOF)
+						ccdie(0, "write to cc1 output:");
+
+				if(ferror(cc_out[i]))
+					ccdie(0, "read from section file %d:", i);
+
+				break;
 		}
 	}
 
@@ -355,6 +369,7 @@ int main(int argc, char **argv)
 	const char *fname;
 	int i;
 	int werror = 0;
+	enum flushtype flushtype = FLUSH_ALL;
 
 	/* TODO: -O[0-3] parsing and
 	 * -fremain-stack, etc */
@@ -541,8 +556,8 @@ usage:
 
 	switch(cc1_backend){
 		case BACKEND_ASM:   gf = gen_asm;   break;
-		case BACKEND_STYLE: gf = gen_style; break;
-		case BACKEND_PRINT: gf = gen_str;   break;
+		case BACKEND_STYLE: gf = gen_style; flushtype = FLUSH_TEXT; break;
+		case BACKEND_PRINT: gf = gen_str;   flushtype = FLUSH_TEXT; break;
 	}
 
 	io_setup();
@@ -562,7 +577,7 @@ usage:
 
 	gf(globs);
 
-	io_fin(gf == gen_asm, fname);
+	io_fin(flushtype, fname);
 
 	return 0;
 }
