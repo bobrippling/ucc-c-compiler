@@ -124,6 +124,7 @@ void fold_expr_assign(expr *e, symtable *stab)
 
 		/* set f_lea, so we can participate in struct-copy chains
 		 * FIXME: don't interpret as an lvalue, e.g. (a = b) = c;
+		 * this is currently special cased in expr_is_lval()
 		 */
 		e->f_lea = lea_assign_lhs;
 
