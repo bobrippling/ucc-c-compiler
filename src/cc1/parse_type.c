@@ -569,9 +569,10 @@ static type_ref *parse_btype(
 				if(primitive_mode != NONE && primitive == type_llong)
 					C99_LONGLONG();
 
-				r = type_ref_new_type(
-						type_new_primitive(
-							primitive_mode == NONE ? type_int : primitive));
+				if(primitive_mode == NONE && !signed_set)
+					primitive = type_int;
+
+				r = type_ref_new_type(type_new_primitive(primitive));
 				break;
 		}
 
