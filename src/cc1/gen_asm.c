@@ -47,8 +47,11 @@ void gen_expr(expr *e)
 
 void lea_expr(expr *e)
 {
+	char buf[WHERE_BUF_SIZ];
+
 	UCC_ASSERT(e->f_lea,
-			"invalid store expression expr-%s (no f_store())", e->f_str());
+			"invalid store expression expr-%s @ %s (no f_lea())",
+			e->f_str(), where_str_r(buf, &e->where));
 
 	e->f_lea(e);
 }

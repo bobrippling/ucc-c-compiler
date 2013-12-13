@@ -52,6 +52,16 @@ void expr_must_lvalue(expr *e)
 	}
 }
 
+static void lea_assign_lhs(expr *e)
+{
+	/* generate our assignment, then lea
+	 * our lhs, i.e. the struct identifier
+	 * we're assigning to */
+	gen_expr(e);
+	out_pop();
+	lea_expr(e->lhs);
+}
+
 void fold_expr_assign(expr *e, symtable *stab)
 {
 	sym *lhs_sym = NULL;
@@ -111,6 +121,13 @@ void fold_expr_assign(expr *e, symtable *stab)
 				type_ref_size(e->rhs->tree_type, &e->rhs->where));
 
 		FOLD_EXPR(e->expr, stab);
+
+		/* set f_lea, so we can participate in struct-copy chains
+		 * FIXME: don't interpret as an lvalue, e.g. (a = b) = c;
+		 * this is currently special cased in expr_is_lval()
+		 */
+		e->f_lea = lea_assign_lhs;
+
 	}
 }
 
