@@ -37,9 +37,9 @@ UCC_CPU     = ${UCC_CPU}
 	fi
 
 	cat > src/as_cfg.h <<!
-#define SECTION_TEXT $SECTION_TEXT
-#define SECTION_DATA $SECTION_DATA
-#define SECTION_BSS  $SECTION_BSS
+#define SECTION_NAME_TEXT $SECTION_TEXT
+#define SECTION_NAME_DATA $SECTION_DATA
+#define SECTION_NAME_BSS  $SECTION_BSS
 #define UCC_M32      ${UCC_M32}
 #define ASM_PLBL_PRE "$ASM_PLBL"
 !

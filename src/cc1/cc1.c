@@ -191,9 +191,9 @@ int caught_sig = 0;
 int show_current_line;
 
 const char *section_names[NUM_SECTIONS] = {
-	EXPAND_QUOTE(SECTION_TEXT),
-	EXPAND_QUOTE(SECTION_DATA),
-	EXPAND_QUOTE(SECTION_BSS),
+	EXPAND_QUOTE(SECTION_NAME_TEXT),
+	EXPAND_QUOTE(SECTION_NAME_DATA),
+	EXPAND_QUOTE(SECTION_NAME_BSS),
 };
 
 static FILE *infile;
