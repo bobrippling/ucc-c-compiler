@@ -329,7 +329,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 			||         (type_ref_is_fptr(trhs) && type_ref_is_nonfptr(tlhs)))
 			{
 				/* allow cast from NULL to func ptr */
-				if(!expr_is_null_ptr(expr_cast_child(e), 0)){
+				if(!expr_is_null_ptr(expr_cast_child(e), NULL_STRICT_VOID_PTR)){
 					char buf[TYPE_REF_STATIC_BUFSIZ];
 
 					warn_at(&e->where, "%scast from %spointer to %spointer\n"

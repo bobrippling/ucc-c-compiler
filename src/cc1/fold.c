@@ -104,7 +104,7 @@ void fold_type_chk_and_cast(
 	int cast = 0;
 
 	/* special case - allow assignment to pointer from 0-constant */
-	if(type_ref_is_ptr(lhs) && expr_is_null_ptr(*prhs, 1))
+	if(type_ref_is_ptr(lhs) && expr_is_null_ptr(*prhs, NULL_STRICT_INT))
 		cast = 1; /* no warning, but still sign extend the zero */
 	else if(fold_type_chk_warn(lhs, (*prhs)->tree_type, w, desc))
 		cast = 1;

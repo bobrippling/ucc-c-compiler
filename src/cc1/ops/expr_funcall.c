@@ -56,7 +56,8 @@ static void sentinel_check(where *w, type_ref *ref, expr **args,
 
 	sentinel = args[(nstdargs + nvs - 1) - i];
 
-	if(!expr_is_null_ptr(sentinel, 0))
+	/* must be of a pointer type, printf("%p\n", 0) is undefined */
+	if(!expr_is_null_ptr(sentinel, NULL_STRICT_ANY_PTR))
 		ATTR_WARN_RET(&sentinel->where, "sentinel argument expected (got %s)",
 				type_ref_to_str(sentinel->tree_type));
 
@@ -74,7 +75,7 @@ static void static_array_check(
 	if(!ty_decl || !ty_decl->bits.ptr.is_static)
 		return;
 
-	if(expr_is_null_ptr(arg_expr, 1 /* int */)){
+	if(expr_is_null_ptr(arg_expr, NULL_STRICT_INT)){
 		warn_at(&arg_expr->where, "passing null-pointer where array expected");
 		return;
 	}
@@ -227,8 +228,9 @@ invalid:
 
 			fold_check_expr(arg, FOLD_CHK_NO_ST_UN, buf);
 
-			if((nonnulls & (1 << i)) && expr_is_null_ptr(arg, 1))
-				warn_at(&arg->where, "null passed where non-null required (arg %d)", i + 1);
+			if((nonnulls & (1 << i)) && expr_is_null_ptr(arg, NULL_STRICT_INT))
+				warn_at(&arg->where, "null passed where non-null required (arg %d)",
+						i + 1);
 		}
 	}
 

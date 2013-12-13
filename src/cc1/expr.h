@@ -282,7 +282,15 @@ expr *expr_new_addr(expr *);
 expr *expr_new_comma2(expr *lhs, expr *rhs);
 #define expr_new_comma() expr_new_wrapper(comma)
 
-int expr_is_null_ptr(expr *, int allow_int);
+enum null_strictness
+{
+	/* ordered by strength */
+	NULL_STRICT_VOID_PTR,
+	NULL_STRICT_ANY_PTR,
+	NULL_STRICT_INT
+};
+
+int expr_is_null_ptr(expr *, enum null_strictness);
 void expr_set_const(expr *, consty *);
 
 /* util */
