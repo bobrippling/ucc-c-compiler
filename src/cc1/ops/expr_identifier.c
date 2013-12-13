@@ -55,7 +55,8 @@ void fold_expr_identifier(expr *e, symtable *stab)
 
 	/* special cases */
 	if(!sym){
-		if(!strcmp(sp, "__func__")){
+		/* GNU: __PRETTY_FUNCTION__ */
+		if(!strcmp(sp, "__func__") || !strcmp(sp, "__PRETTY_FUNCTION__")){
 			char *sp;
 
 			if(!in_fn){
