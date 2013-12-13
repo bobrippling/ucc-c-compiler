@@ -71,13 +71,16 @@ static void static_array_check(
 	type_ref *ty_decl = decl_is_decayed_array(arg_decl);
 	consty k_decl;
 
-	if(!ty_decl || !ty_decl->bits.ptr.is_static || !ty_decl->bits.ptr.size)
+	if(!ty_decl || !ty_decl->bits.ptr.is_static)
 		return;
 
 	if(expr_is_null_ptr(arg_expr, 1 /* int */)){
 		warn_at(&arg_expr->where, "passing null-pointer where array expected");
 		return;
 	}
+
+	if(!ty_decl->bits.ptr.size)
+		return;
 
 	const_fold(ty_decl->bits.ptr.size, &k_decl);
 
