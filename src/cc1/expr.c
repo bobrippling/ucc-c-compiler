@@ -112,12 +112,6 @@ int expr_is_null_ptr(expr *e, int allow_int)
 	return b && const_expr_and_zero(e);
 }
 
-int expr_is_lval_yes(expr *e)
-{
-	(void)e;
-	return 1;
-}
-
 int expr_is_lval(expr *e)
 {
 	if(!e->f_lea)

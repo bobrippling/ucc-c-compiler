@@ -264,7 +264,6 @@ expr *expr_new_comma2(expr *lhs, expr *rhs);
 
 int expr_is_null_ptr(expr *, int allow_int);
 int expr_is_lval(expr *);
-int expr_is_lval_yes(expr *);
 
 /* util */
 expr *expr_new_array_idx_e(expr *base, expr *idx);
