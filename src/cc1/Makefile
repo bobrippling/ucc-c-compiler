@@ -72,4 +72,4 @@ Makefile.dep:
 	cc ${CPPFLAGS} -MM ops/*.c | sed 's#^\([^ ]\)#ops/\1#' >> $@
 	cc ${CPPFLAGS} -MM out/*.c | sed 's#^\([^ ]\)#out/\1#' >> $@
 
-include Makefile.dep
+-include Makefile.dep

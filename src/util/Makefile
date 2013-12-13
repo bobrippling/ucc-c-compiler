@@ -43,4 +43,4 @@ clean:
 
 platform.o: platform.c ../../config.mk
 
-include Makefile.deps
+-include Makefile.deps

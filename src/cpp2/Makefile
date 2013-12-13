@@ -26,4 +26,4 @@ deps: Makefile.dep
 Makefile.dep:
 	cc ${CPPFLAGS} -MM *.c > $@
 
-include Makefile.dep
+-include Makefile.dep
