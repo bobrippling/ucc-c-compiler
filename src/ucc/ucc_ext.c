@@ -1,18 +1,23 @@
-#define _POSIX_C_SOURCE 200112L
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/wait.h>
+#include <stdlib.h>
 #include <stdarg.h>
 
-#include "ucc_ext.h"
-#include "ucc.h"
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/wait.h>
+
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
+
+#include "ucc.h"
+#include "ucc_ext.h"
+#include "ucc_path.h"
+
 #include "str.h"
+
 #include "cfg.h"
+
 
 #ifndef UCC_AS
 # error "ucc needs reconfiguring"
@@ -29,62 +34,7 @@ void ucc_ext_cmds_noop(int n)
 { noop = n; }
 
 
-static void
-bname(char *path)
-{
-	char *p = strrchr(path, '/');
-	if(p)
-		p[1] = '\0';
-}
-
-static char *
-where(void)
-{
-	static char where[1024];
-
-	if(!where[0]){
-		char link[1024];
-		ssize_t nb;
-
-		if((nb = readlink(argv0, link, sizeof link)) == -1){
-			snprintf(where, sizeof where, "%s", argv0);
-		}else{
-			char *argv_dup;
-
-			link[nb] = '\0';
-			/* need to tag argv0's dirname onto the start */
-			argv_dup = ustrdup(argv0);
-
-			bname(argv_dup);
-
-			snprintf(where, sizeof where, "%s/%s", argv_dup, link);
-
-			free(argv_dup);
-		}
-
-		/* dirname */
-		bname(where);
-	}
-
-	return where;
-}
-
-static char *actual_path(const char *prefix, const char *path)
-{
-	/* we only prepend our cwd if Bprefix is relative
-	 * FIXME: need to not have cpp2/cpp, etc
-	 */
-	char *w = *Bprefix == '/' ? "" : where();
-	char *buf;
-
-	buf = umalloc(strlen(w) + strlen(prefix) + strlen(path) + 2);
-
-	sprintf(buf, "%s/%s%s", w, prefix, path);
-
-	return buf;
-}
-
-static void runner(int local, char *path, char **args)
+static void runner(struct cmdpath *path, char **args)
 {
 	pid_t pid;
 
@@ -94,7 +44,7 @@ static void runner(int local, char *path, char **args)
 		if(wrapper)
 			fprintf(stderr, "WRAPPER='%s' ", wrapper);
 
-		fprintf(stderr, "%s ", path);
+		fprintf(stderr, "%s ", path->path);
 		for(i = 0; args[i]; i++)
 			fprintf(stderr, "%s ", args[i]);
 		fputc('\n', stderr);
@@ -116,6 +66,7 @@ static void runner(int local, char *path, char **args)
 			int nargs = dynarray_count(args);
 			int i_in = 0, i_out = 0;
 			char **argv;
+			cmdpath_exec_fn *execfn;
 
 			/* -wrapper gdb,--args */
 			if(wrapper){
@@ -146,7 +97,7 @@ static void runner(int local, char *path, char **args)
 					argv[i_out++] = last;
 			}
 
-			argv[i_out++] = local ? actual_path(Bprefix, path) : path;
+			argv[i_out++] = cmdpath_resolve(path, &execfn);
 
 			while(args[i_in])
 				argv[i_out++] = args[i_in++];
@@ -159,10 +110,7 @@ static void runner(int local, char *path, char **args)
 				fprintf(stderr, "  [%d] = \"%s\",\n", i, argv[i]);
 #endif
 
-			if(wrapper)
-				local = 0;
-
-			(local ? execv : execvp)(argv[0], argv);
+			(*execfn)(argv[0], argv);
 			die("execv(\"%s\"):", argv[0]);
 		}
 
@@ -173,9 +121,9 @@ static void runner(int local, char *path, char **args)
 				die("wait()");
 
 			if(WIFEXITED(status) && (i = WEXITSTATUS(status)) != 0)
-				die("%s returned %d", path, i);
+				die("%s returned %d", path->path, i);
 			else if(WIFSIGNALED(status))
-				die("%s caught signal %d", path, WTERMSIG(status));
+				die("%s caught signal %d", path->path, WTERMSIG(status));
 		}
 	}
 }
@@ -189,6 +137,7 @@ void rename_or_move(char *old, char *new)
 		"cat", old, ">", new, NULL
 	};
 	char *fixed[3];
+	struct cmdpath shpath;
 
 	for(i = 0, len = 1; args[i]; i++)
 		len += strlen(args[i]) + 1; /* space */
@@ -202,7 +151,9 @@ void rename_or_move(char *old, char *new)
 	fixed[1] = cmd;
 	fixed[2] = NULL;
 
-	runner(0, "sh", fixed);
+	shpath.path = "sh";
+	shpath.type = USE_PATH;
+	runner(&shpath, fixed);
 
 	free(cmd);
 }
@@ -243,7 +194,10 @@ void cat(char *fnin, char *fnout, int append)
 		die("close():");
 }
 
-static void runner_1(int local, char *path, char *in, char *out, char **args)
+static void runner_single_arg(
+		struct cmdpath *path,
+		char *in, char *out,
+		char **args)
 {
 	char **all = NULL;
 
@@ -255,15 +209,29 @@ static void runner_1(int local, char *path, char *in, char *out, char **args)
 
 	dynarray_add(&all, in);
 
-	runner(local, path, all);
+	runner(path, all);
 
 	dynarray_free(char **, &all, NULL);
+}
+
+static void make_cmdpath(
+		struct cmdpath *p,
+		const char *bprefix, const char *ucc_relative)
+{
+	if(Bprefix){
+		p->path = bprefix;
+		p->type = FROM_Bprefix;
+	}else{
+		p->path = ucc_relative;
+		p->type = RELATIVE_TO_UCC;
+	}
 }
 
 void preproc(char *in, char *out, char **args)
 {
 	char **all = NULL;
 	char **i;
+	struct cmdpath pp_path;
 
 	if(args)
 		dynarray_add_array(&all, args);
@@ -275,7 +243,7 @@ void preproc(char *in, char *out, char **args)
 		if(*this == '/'){
 			f_this = 0;
 		}else{
-			this = actual_path(this, "");
+			this = path_prepend_relative(this);
 		}
 
 		inc = ustrprintf("-I%s", this);
@@ -285,24 +253,33 @@ void preproc(char *in, char *out, char **args)
 			free(this);
 	}
 
-	runner_1(1, "cpp2/cpp", in, out, all);
+	make_cmdpath(&pp_path, "cpp", UCC_CPP);
+
+	runner_single_arg(&pp_path, in, out, all);
 
 	dynarray_free(char **, &all, NULL);
 }
 
 void compile(char *in, char *out, char **args)
 {
-	runner_1(1, "cc1/cc1", in, out, args);
+	struct cmdpath cc1path;
+
+	make_cmdpath(&cc1path, "cc1", UCC_CC1);
+
+	runner_single_arg(&cc1path, in, out, args);
 }
 
 void assemble(char *in, char *out, char **args)
 {
 	char **copy = NULL;
+	struct cmdpath aspath;
 
 	if(args)
 		dynarray_add_array(&copy, args);
 
-	runner_1(0, UCC_AS, in, out, copy);
+	aspath.path = "as";
+	aspath.type = USE_PATH;
+	runner_single_arg(&aspath, in, out, copy);
 
 	dynarray_free(char **, &copy, NULL);
 }
@@ -310,6 +287,7 @@ void assemble(char *in, char *out, char **args)
 void link_all(char **objs, char *out, char **args)
 {
 	char **all = NULL;
+	struct cmdpath ldpath;
 
 	dynarray_add(&all, (char *)"-o");
 	dynarray_add(&all, out);
@@ -325,7 +303,10 @@ void link_all(char **objs, char *out, char **args)
 	if(args)
 		dynarray_add_array(&all, args);
 
-	runner(0, "ld", all);
+	ldpath.path = "ld";
+	ldpath.type = USE_PATH;
+
+	runner(&ldpath, all);
 
 	dynarray_free(char **, &all, NULL);
 }

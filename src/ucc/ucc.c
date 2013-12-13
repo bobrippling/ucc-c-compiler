@@ -578,9 +578,6 @@ input:	dynarray_add(&inputs, argv[i]);
 		}
 	}
 
-	if(!Bprefix)
-		Bprefix = "../"; /* ../{cc1,cpp2}/... */
-
 	{
 		const int ninputs = dynarray_count(inputs);
 
