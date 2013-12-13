@@ -14,7 +14,10 @@ static void check_constraint(asm_inout *io, symtable *stab, int output)
 	if(output)
 		fold_inc_writes_if_sym(io->exp, stab);
 
-	FOLD_EXPR(io->exp, stab);
+	if(output)
+		fold_expr_no_decay (io->exp, stab);
+	else
+		FOLD_EXPR(io->exp, stab);
 
 	out_constraint_check(&io->exp->where, io->constraints, output);
 }
