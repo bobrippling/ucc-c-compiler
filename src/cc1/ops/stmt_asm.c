@@ -89,12 +89,44 @@ void init_stmt_asm(stmt *s)
 	s->f_passable = fold_passable_yes;
 }
 
+static void style_asm_bits(asm_inout *io)
+{
+	stylef("\"%s\" (", io->constraints);
+	gen_expr(io->exp);
+	stylef(")");
+}
+
+static void style_asm_ios(asm_inout **i, int outputs)
+{
+	int comma = 0;
+
+	stylef(" : ");
+	for(; i && *i; i++){
+		asm_inout *io = *i;
+
+		if(io->is_output == outputs){
+			if(comma){
+				stylef(", ");
+				comma = 0;
+			}
+
+			style_asm_bits(*i);
+			comma = 1;
+		}
+	}
+}
+
 void style_stmt_asm(stmt *s)
 {
 	stylef(
-			"asm%s(%s",
+			"asm%s(\"%s\"",
 			s->bits.asm_args->is_volatile ? " volatile" : "",
 			s->bits.asm_args->cmd);
+
+	if(s->bits.asm_args->extended){
+		style_asm_ios(s->bits.asm_args->ios, 1);
+		style_asm_ios(s->bits.asm_args->ios, 0);
+	}
 
 	stylef(")\n");
 }
