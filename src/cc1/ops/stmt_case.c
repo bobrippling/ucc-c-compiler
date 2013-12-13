@@ -11,20 +11,30 @@ const char *str_stmt_case()
 
 void fold_stmt_case(stmt *t)
 {
-	intval val;
+	integral_t val;
 
 	FOLD_EXPR(t->expr, t->symtab);
-	fold_need_expr(t->expr, "case", 0);
-	const_fold_need_val(t->expr, &val);
+	fold_check_expr(t->expr, FOLD_CHK_INTEGRAL | FOLD_CHK_CONST_I, "case");
+	val = const_fold_val_i(t->expr);
 
-	t->expr->bits.ident.spel = out_label_case(CASE_CASE, val.val);
+	t->expr->bits.ident.spel = out_label_case(CASE_CASE, val);
 
 	fold_stmt_and_add_to_curswitch(t);
 }
 
-void mutate_stmt_case(stmt *s)
+void gen_stmt_case(stmt *s)
+{
+	out_label(s->expr->bits.ident.spel);
+	gen_stmt(s->lhs);
+}
+
+void style_stmt_case(stmt *s)
+{
+	stylef("\ncase %ld: ", (long)const_fold_val_i(s->expr));
+	gen_stmt(s->lhs);
+}
+
+void init_stmt_case(stmt *s)
 {
 	s->f_passable = label_passable;
 }
-
-func_gen_stmt *gen_stmt_case = gen_stmt_label;

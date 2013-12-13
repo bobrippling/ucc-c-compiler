@@ -10,26 +10,19 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 {
 	expr *const lvalue = e->lhs;
 
-	{
-		expr *addr = expr_new_addr(e->lhs);
-
-		e->lhs = addr;
-		/* take the address of where we're assigning to - only eval once */
-	}
-
 	fold_inc_writes_if_sym(lvalue, stab);
 
-	FOLD_EXPR_NO_DECAY(e->lhs, stab);
+	fold_expr_no_decay(e->lhs, stab);
 	FOLD_EXPR(e->rhs, stab);
 
+	fold_check_expr(e->lhs, FOLD_CHK_NO_ST_UN, "compound assignment");
+	fold_check_expr(e->rhs, FOLD_CHK_NO_ST_UN, "compound assignment");
+
 	/* skip the addr we inserted */
-	if(!expr_is_lvalue(lvalue)){
-		DIE_AT(&lvalue->where, "compound target not an lvalue (%s)",
-				lvalue->f_str());
-	}
+	expr_must_lvalue(lvalue);
 
 	if(type_ref_is_const(lvalue->tree_type))
-		DIE_AT(&e->where, "can't modify const expression %s", lvalue->f_str());
+		die_at(&e->where, "can't modify const expression %s", lvalue->f_str());
 
 	fold_check_restrict(lvalue, e->rhs, "compound assignment", &e->where);
 
@@ -40,15 +33,17 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 		type_ref *resolved = op_required_promotion(e->op, lvalue, e->rhs, &e->where, &tlhs, &trhs);
 
 		if(tlhs){
-			/* can't cast the lvalue - we must cast the rhs to the correct size  */
+			/* must cast the lvalue, then down cast once the operation is done
+			 * special handling for expr_kind(e->lhs, cast) is done in the gen-code
+			 */
+			fold_insert_casts(tlhs, &e->lhs, stab);
 
-			if(tlhs != lvalue->tree_type)
-				type_ref_free_1(tlhs);
-
-			fold_insert_casts(lvalue->tree_type, &e->rhs, stab, &e->where, op_to_str(e->op));
+			/* casts may be inserted anyway, and don't want to rely on
+			 * .implicit_cast stuff */
+			e->bits.compound_upcast = 1;
 
 		}else if(trhs){
-			fold_insert_casts(trhs, &e->rhs, stab, &e->where, op_to_str(e->op));
+			fold_insert_casts(trhs, &e->rhs, stab);
 		}
 
 		e->tree_type = lvalue->tree_type;
@@ -60,13 +55,16 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 	/* type check is done in op_required_promotion() */
 }
 
-void gen_expr_assign_compound(expr *e, symtable *stab)
+void gen_expr_assign_compound(expr *e)
 {
-	fold_disallow_st_un(e, "copy (TODO)"); /* yes this is meant to be in gen */
-
-	gen_expr(e->lhs, stab);
+	/* int += float
+	 * lea int, cast up to float, add, cast down to int, store
+	 */
+	lea_expr(e->bits.compound_upcast ? expr_cast_child(e->lhs) : e->lhs);
 
 	if(e->assign_is_post){
+		UCC_ASSERT(!e->bits.compound_upcast, "can't do upcast for (%s)++", e->lhs->f_str());
+
 		out_dup();
 		out_deref();
 		out_flush_volatile();
@@ -75,11 +73,23 @@ void gen_expr_assign_compound(expr *e, symtable *stab)
 	}
 
 	out_dup();
-	out_deref();
+	/* delay the dereference until after generating rhs.
+	 * this is fine, += etc aren't sequence points
+	 */
 
-	gen_expr(e->rhs, stab);
+	gen_expr(e->rhs);
+
+	/* here's the delayed dereference */
+	out_swap();
+	out_deref();
+	if(e->bits.compound_upcast)
+		out_cast(e->lhs->tree_type);
+	out_swap();
 
 	out_op(e->op);
+
+	if(e->bits.compound_upcast) /* need to cast back down to store */
+		out_cast(e->tree_type);
 
 	out_store();
 
@@ -87,16 +97,15 @@ void gen_expr_assign_compound(expr *e, symtable *stab)
 		out_pop();
 }
 
-void gen_expr_str_assign_compound(expr *e, symtable *stab)
+void gen_expr_str_assign_compound(expr *e)
 {
-	(void)stab;
 	idt_printf("compound %s%s-assignment expr:\n",
 			e->assign_is_post ? "post-" : "",
 			op_to_str(e->op));
 
 	idt_printf("assign to:\n");
 	gen_str_indent++;
-	print_expr(e->lhs->lhs); /* skip our addr */
+	print_expr(e->lhs);
 	gen_str_indent--;
 	idt_printf("assign from:\n");
 	gen_str_indent++;
@@ -120,5 +129,9 @@ expr *expr_new_assign_compound(expr *to, expr *from, enum op_type op)
 	return e;
 }
 
-void gen_expr_style_assign_compound(expr *e, symtable *stab)
-{ (void)e; (void)stab; /* TODO */ }
+void gen_expr_style_assign_compound(expr *e)
+{
+	gen_expr(e->lhs->lhs);
+	stylef(" %s= ", op_to_str(e->op));
+	gen_expr(e->rhs);
+}

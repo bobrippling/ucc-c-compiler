@@ -1,4 +1,4 @@
-// RUN: %ucc %s -c 2>&1 | %check %s
+// RUN: %check %s
 
 f(i) // CHECK: /warning: control reaches end of non-void function f/
 {

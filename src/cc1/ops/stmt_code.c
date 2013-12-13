@@ -3,59 +3,100 @@
 
 #include "ops.h"
 #include "stmt_code.h"
-#include "../out/lbl.h"
 #include "../decl_init.h"
 #include "../../util/dynarray.h"
+#include "../fold_sym.h"
 
 const char *str_stmt_code()
 {
 	return "code";
 }
 
-void fold_stmt_code(stmt *s)
+void fold_block_decls(symtable *stab, stmt **pinit_blk)
 {
-	decl **diter;
-	stmt **siter;
-	stmt *inits = NULL;
-	int warned = 0;
+	/* must iterate using an index, since the array may
+	 * resize under us */
+	size_t i;
 
-	fold_symtab_scope(s->symtab);
+	if(!stab->decls)
+		return;
 
-	/* NOTE: this only folds + adds decls, not args */
-	for(diter = s->decls; diter && *diter; diter++){
-		decl *d = *diter;
+	/* check for invalid function redefinitions and shadows */
+	for(i = 0; stab->decls[i]; i++){
+		decl *const d = stab->decls[i];
+		decl *found;
+		symtable *above_scope;
+		int chk_shadow = 0, is_func = 0;
 
-		if(d->func_code)
-			DIE_AT(&d->func_code->where, "can't nest functions");
-		else if(DECL_IS_FUNC(d) && (d->store & STORE_MASK_STORE) == store_static)
-			DIE_AT(&d->where, "block-scoped function cannot have static storage");
+		fold_decl(d, stab, pinit_blk);
 
-		fold_decl(d, s->symtab);
+		if((is_func = !!DECL_IS_FUNC(d)))
+			chk_shadow = 1;
+		else if(warn_mode & (WARN_SHADOW_LOCAL | WARN_SHADOW_GLOBAL))
+			chk_shadow = 1;
 
-		d->is_definition = 1; /* always the def for non-globals */
+		if(chk_shadow
+		&& d->spel
+		&& (found = symtab_search_d(stab->parent, d->spel, &above_scope)))
+		{
+			char buf[WHERE_BUF_SIZ];
 
-		/* must be before fold*, since sym lookups are done */
-		SYMTAB_ADD(s->symtab, d,
-				decl_store_static_or_extern(d->store) ? sym_global : sym_local);
-
-		if(d->init){
-			/* this creates the below s->inits array */
-			if((d->store & STORE_MASK_STORE) == store_static){
-				fold_decl_global_init(d, s->symtab);
+			/* allow functions redefined as decls and vice versa */
+			if(is_func
+			&& DECL_IS_FUNC(found)
+			&& decl_cmp(d, found, 0) != TYPE_EQUAL)
+			{
+				die_at(&d->where,
+						"incompatible redefinition of \"%s\"\n"
+						"%s: note: previous definition",
+						d->spel, where_str_r(buf, &found->where));
 			}else{
-				EOF_WHERE(&d->where,
-						if(!inits)
-							inits = stmt_new_wrapper(code, symtab_new(s->symtab));
+				const int same_scope = symtab_nested_internal(above_scope, stab);
 
-						decl_init_create_assignments_for_spel(d, inits);
-					);
-				/* folded below */
+				/* same scope? error unless they're both extern */
+				if(same_scope && (
+					d->store != found->store
+					|| (STORE_MASK_STORE & d->store) != store_extern))
+				{
+					die_at(&d->where, "redefinition of \"%s\"\n"
+							"%s: note: previous definition here",
+							d->spel, where_str_r(buf, &found->where));
+				}
+
+				/* -Wshadow:
+				 * if it has a parent, we found it in local scope, so check the local mask
+				 * and vice versa
+				 */
+				if(warn_mode & (
+					above_scope->parent ? WARN_SHADOW_LOCAL : WARN_SHADOW_GLOBAL))
+				{
+					const char *ty = above_scope->parent ? "local" : "global";
+
+					warn_at(&d->where,
+							"declaration of \"%s\" shadows %s declaration\n"
+							"%s: note: %s declaration here",
+							d->spel, ty,
+							where_str_r(buf, &found->where), ty);
+				}
 			}
 		}
 	}
+}
 
-	if(inits)
-		dynarray_prepend((void ***)&s->codes, inits);
+void fold_stmt_code(stmt *s)
+{
+	stmt **siter;
+	stmt *init_blk = NULL;
+	int warned = 0;
+
+	/* local struct layout-ing */
+	/* we fold decls ourselves, to get their inits */
+	symtab_fold_sues(s->symtab);
+
+	fold_block_decls(s->symtab, &init_blk);
+
+	if(init_blk)
+		dynarray_prepend(&s->codes, init_blk);
 
 	for(siter = s->codes; siter && *siter; siter++){
 		stmt *const st = *siter;
@@ -72,56 +113,29 @@ void fold_stmt_code(stmt *s)
 		&& !stmt_kind(siter[1], case)
 		&& !stmt_kind(siter[1], default)
 		){
-			cc1_warn_at(&siter[1]->where, 0, 1, WARN_DEAD_CODE, "dead code after %s (%s)", st->f_str(), siter[1]->f_str());
+			cc1_warn_at(&siter[1]->where, 0, WARN_DEAD_CODE,
+					"dead code after %s (%s)", st->f_str(), siter[1]->f_str());
 			warned = 1;
-		}
-	}
-
-	/* static folding */
-	if(s->decls){
-		decl **siter;
-
-		for(siter = s->decls; *siter; siter++){
-			decl *d = *siter;
-			/*
-			 * check static decls - after we fold,
-			 * so we've linked the syms and can change ->spel
-			 */
-			if((d->store & STORE_MASK_STORE) == store_static){
-				char *old = d->spel;
-				d->spel = out_label_static_local(curdecl_func->spel, d->spel);
-				free(old);
-			}
 		}
 	}
 }
 
-void gen_code_decls(symtable *stab)
+void gen_block_decls(symtable *stab)
 {
 	decl **diter;
 
-	/* declare statics */
+	/* declare strings, extern functions and blocks */
 	for(diter = stab->decls; diter && *diter; diter++){
 		decl *d = *diter;
 		int func;
 
-		if((func = !!type_ref_is(d->ref, type_ref_func)) || decl_store_static_or_extern(d->store)){
-			int gen = 1;
-
-			if(func){
-				/* check if the func is defined globally */
-				symtable *globs = symtab_root(stab);
-				decl **i;
-
-				for(i = globs->decls; i && *i; i++){
-					if(!strcmp(d->spel, (*i)->spel)){
-						gen = 0;
-						break;
-					}
-				}
-			}
-
-			if(gen)
+		/* we may need a '.extern fn...' for prototypes... */
+		if((func = !!type_ref_is(d->ref, type_ref_func))
+		|| decl_store_static_or_extern(d->store))
+		{
+			/* if it's a string, go,
+			 * if it's the most-unnested func. prototype, go */
+			if(!func || !d->proto)
 				gen_asm_global(d);
 		}
 	}
@@ -131,11 +145,27 @@ void gen_stmt_code(stmt *s)
 {
 	stmt **titer;
 
-	/* stmt_for needs to do this too */
-	gen_code_decls(s->symtab);
+	/* stmt_for/if/while/do needs to do this too */
+	gen_block_decls(s->symtab);
 
 	for(titer = s->codes; titer && *titer; titer++)
 		gen_stmt(*titer);
+}
+
+void style_stmt_code(stmt *s)
+{
+	stmt **i_s;
+	decl **i_d;
+
+	stylef("{\n");
+
+	for(i_d = s->symtab->decls; i_d && *i_d; i_d++)
+		gen_style_decl(*i_d);
+
+	for(i_s = s->codes; i_s && *i_s; i_s++)
+		gen_stmt(*i_s);
+
+	stylef("\n}\n");
 }
 
 static int code_passable(stmt *s)
@@ -153,7 +183,7 @@ static int code_passable(stmt *s)
 	return 1;
 }
 
-void mutate_stmt_code(stmt *s)
+void init_stmt_code(stmt *s)
 {
 	s->f_passable = code_passable;
 }

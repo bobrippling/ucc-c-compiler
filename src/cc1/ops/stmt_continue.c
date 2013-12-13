@@ -12,9 +12,19 @@ void fold_stmt_continue(stmt *t)
 	fold_stmt_break_continue(t, t->parent ? t->parent->lbl_continue : NULL);
 }
 
-void mutate_stmt_continue(stmt *s)
+void gen_stmt_continue(stmt *s)
+{
+	out_push_lbl(s->parent->lbl_continue, 0);
+	out_jmp();
+}
+
+void style_stmt_continue(stmt *s)
+{
+	stylef("continue;");
+	gen_stmt(s->lhs);
+}
+
+void init_stmt_continue(stmt *s)
 {
 	s->f_passable = fold_passable_no;
 }
-
-func_gen_stmt *gen_stmt_continue = gen_stmt_goto;

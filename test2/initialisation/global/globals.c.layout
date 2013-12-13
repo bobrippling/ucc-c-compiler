@@ -1,0 +1,35 @@
+a:
+.zero 8
+off:
+.long 4
+x:
+.zero 168
+p:
+.quad x + 28
+p2:
+.quad x + 8400
+k:
+.quad a + 4
+p_to_array:
+.quad x + 12
+str.1:
+.byte 104
+.byte 105
+.zero 1
+str.2:
+.byte 104
+.byte 101
+.byte 108
+.byte 108
+.byte 111
+.zero 1
+c_to_array:
+.quad x + 7
+k_str_plus:
+.quad str.1 + 2
+k_str:
+.quad str.2
+str_cast:
+.quad str.1 + 2
+i:
+.long 3

@@ -1,0 +1,6 @@
+i:
+.long 3
+p:
+.zero 8
+x:
+.zero 8

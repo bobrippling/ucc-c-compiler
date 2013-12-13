@@ -1,5 +1,0 @@
-typedef void vf();
-
-vf
-{
-}

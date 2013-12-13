@@ -1,4 +1,0 @@
-commit d0d536e4b292ba2594f0917f5b1fd68b346e8ec9
-	Fixes for variadic function calls - non-standard
-commit a500e5437f2801b7070741d8cb25eff2eb529ab2
-	Changed variadic calling convention

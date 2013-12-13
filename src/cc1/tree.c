@@ -9,53 +9,133 @@
 #include "macros.h"
 #include "sym.h"
 #include "../util/platform.h"
+#include "../util/limits.h"
 #include "sue.h"
 #include "decl.h"
 #include "cc1.h"
+#include "defs.h"
 
 const where *eof_where = NULL;
 
-intval *intval_new(long v)
+numeric *numeric_new(long v)
 {
-	intval *iv = umalloc(sizeof *iv);
-	iv->val = v;
-	return iv;
+	numeric *num = umalloc(sizeof *num);
+	num->val.i = v;
+	return num;
 }
 
-void where_new(struct where *w)
+int numeric_cmp(const numeric *a, const numeric *b)
 {
-	extern int parse_finished;
+	UCC_ASSERT(
+			(a->suffix & VAL_FLOATING) == (b->suffix & VAL_FLOATING),
+			"cmp int and float?");
 
-	if(parse_finished){
-		if(eof_where)
-			memcpy(w, eof_where, sizeof *w);
-		else
-			ICE("where_new() after buffer eof");
+	if(a->suffix & VAL_FLOATING){
+		const floating_t fa = a->val.f, fb = b->val.f;
+
+		if(fa > fb)
+			return 1;
+		if(fa < fb)
+			return -1;
+		return 0;
 
 	}else{
-		extern int current_line, current_chr;
-		extern const char *current_fname, *current_line_str;
-		extern int current_fname_used, current_line_str_used;
+		const integral_t la = a->val.i, lb = b->val.i;
 
-		w->line  = current_line;
-		w->chr   = current_chr;
-		w->fname = current_fname;
-		w->line_str = current_line_str;
+		if(la > lb)
+			return 1;
+		if(la < lb)
+			return -1;
+		return 0;
+	}
+}
 
-		UCC_ASSERT(current_fname, "no current fname");
-		UCC_ASSERT(current_line_str, "no current line");
+int integral_str(char *buf, size_t nbuf, integral_t v, type_ref *ty)
+{
+	/* the final resting place for an integral */
+	const int is_signed = type_ref_is_signed(ty);
 
-		current_fname_used = 1;
-		current_line_str_used = 1;
+	if(ty){
+		sintegral_t sv;
+		v = integral_truncate(v, type_ref_size(ty, NULL), &sv);
+		if(is_signed)
+			v = sv;
+	}
+
+	return snprintf(
+			buf, nbuf,
+			is_signed
+				? "%" NUMERIC_FMT_D
+				: "%" NUMERIC_FMT_U,
+			v, is_signed);
+}
+
+integral_t integral_truncate_bits(
+		integral_t val, unsigned bits,
+		sintegral_t *signed_iv)
+{
+	integral_t pos_mask = ~(~0ULL << bits);
+	integral_t truncated = val & pos_mask;
+
+	if(fopt_mode & FOPT_CAST_W_BUILTIN_TYPES){
+		/* we use sizeof our types so our conversions match the target conversions */
+#define BUILTIN(type)                    \
+		if(bits == sizeof(type) * CHAR_BIT){ \
+			if(signed_iv)                      \
+				*signed_iv = (signed type)val;   \
+			return (unsigned type)val;         \
+		}
+
+		BUILTIN(char);
+		BUILTIN(short);
+		BUILTIN(int);
+		BUILTIN(long);
+		BUILTIN(long long);
+	}
+
+	/* not builtin - bitfield, etc */
+	if(signed_iv){
+		const unsigned shamt = CHAR_BIT * sizeof(val) - bits;
+
+		/* implementation specific signed right shift.
+		 * this is to sign extend the value
+		 */
+		*signed_iv = (sintegral_t)val << shamt >> shamt;
+	}
+
+	return truncated;
+}
+
+integral_t integral_truncate(
+		integral_t val, unsigned bytes,
+		sintegral_t *sign_extended)
+{
+	return integral_truncate_bits(
+			val, bytes * CHAR_BIT,
+			sign_extended);
+}
+
+int integral_high_bit(integral_t val, type_ref *ty)
+{
+	if(type_ref_is_signed(ty)){
+		const sintegral_t as_signed = val;
+
+		if(as_signed < 0)
+			val = integral_truncate(val, type_ref_size(ty, &ty->where), NULL);
+	}
+
+	{
+		int r;
+		for(r = -1; val; r++, val >>= 1);
+		return r;
 	}
 }
 
 static type *type_new_primitive1(enum type_primitive p)
 {
 	type *t = umalloc(sizeof *t);
-	where_new(&t->where);
+	where_cc1_current(&t->where);
 	t->primitive = p;
-	t->is_signed = 1;
 	return t;
 }
 
@@ -66,63 +146,106 @@ const type *type_new_primitive_sue(enum type_primitive p, struct_union_enum_st *
 	return t;
 }
 
-const type *type_new_primitive_signed(enum type_primitive p, int sig)
-{
-	type *t = type_new_primitive1(p);
-	t->is_signed = sig;
-	return t;
-}
-
 const type *type_new_primitive(enum type_primitive p)
 {
 	return type_new_primitive1(p);
 }
 
-int type_primitive_size(enum type_primitive tp)
+unsigned type_primitive_size(enum type_primitive tp)
 {
 	switch(tp){
-		case type_char:
 		case type__Bool:
 		case type_void:
 			return 1;
 
+		case type_schar:
+		case type_uchar:
+		case type_nchar:
+			return UCC_SZ_CHAR;
+
 		case type_short:
-			return 2;
+		case type_ushort:
+			return UCC_SZ_SHORT;
 
 		case type_int:
+		case type_uint:
+			return UCC_SZ_INT;
+
+		case type_enum:
 		case type_float:
 			return 4;
 
 		case type_long:
-		case type_double:
+		case type_ulong:
 			/* 4 on 32-bit */
-			if(m32)
-				return 4;
-			return 8;
+			if(IS_32_BIT())
+				return 4; /* FIXME: 32-bit long */
+			return UCC_SZ_LONG;
 
 		case type_llong:
-			ICW("TODO: long long");
-			return 16;
+		case type_ullong:
+			return UCC_SZ_LONG_LONG;
+
+		case type_double:
+			return IS_32_BIT() ? 4 : 8;
 
 		case type_ldouble:
 			/* 80-bit float */
 			ICW("TODO: long double");
-			return 10; /* FIXME: 32-bit? */
+			return IS_32_BIT() ? 12 : 16;
 
 		case type_union:
 		case type_struct:
-		case type_enum:
-			ICE("sue size");
+			ICE("s/u size");
 
 		case type_unknown:
 			break;
 	}
 
-	ICE("type %s in type_size()", type_primitive_to_str(tp));
+	ICE("type %s in %s()",
+			type_primitive_to_str(tp), __func__);
 	return -1;
 }
 
-int type_size(const type *t, where const *from)
+unsigned long long
+type_primitive_max(enum type_primitive p, int is_signed)
+{
+	unsigned long long max;
+
+	switch(p){
+		case type__Bool: return 1;
+		case type_nchar:
+		case type_schar:
+		case type_uchar:
+			max = UCC_SCHAR_MAX;
+			break;
+
+		case type_short: max = UCC_SHRT_MAX;      break;
+		case type_int:   max = UCC_INT_MAX;       break;
+		case type_long:  max = UCC_LONG_MAX;      break;
+		case type_llong: max = UCC_LONG_LONG_MAX; break;
+
+		case type_float:
+		case type_double:
+		case type_ldouble:
+			/* 80-bit float */
+			ICE("TODO: float max");
+
+		case type_union:
+		case type_struct:
+		case type_enum:
+			ICE("sue max");
+
+		case type_void:
+		case type_unknown:
+		default:
+			ICE("bad primitive %s", type_primitive_to_str(p));
+	}
+
+	return is_signed ? max : max * 2 + 1;
+}
+
+unsigned type_size(const type *t, where *from)
 {
 	if(t->sue)
 		return sue_size(t->sue, from);
@@ -130,23 +253,43 @@ int type_size(const type *t, where const *from)
 	return type_primitive_size(t->primitive);
 }
 
-int type_qual_equal(enum type_qualifier a, enum type_qualifier b)
+unsigned type_align(const type *t, where *from)
 {
- return (a | qual_restrict) == (b | qual_restrict);
+	if(t->sue)
+		return sue_align(t->sue, from);
+
+	/* align to the size,
+	 * except for double and ldouble
+	 * (long changes but this is accounted for in type_primitive_size)
+	 */
+	switch(t->primitive){
+		case type_double:
+			if(IS_32_BIT()){
+				/* 8 on Win32, 4 on Linux32 */
+				if(platform_sys() == PLATFORM_CYGWIN)
+					return 8;
+				return 4;
+			}
+			return 8; /* 8 on 64-bit */
+
+		case type_ldouble:
+			return IS_32_BIT() ? 4 : 16;
+
+		default:
+			return type_primitive_size(t->primitive);
+	}
 }
 
-int type_equal(const type *a, const type *b, enum type_cmp mode)
+int type_floating(enum type_primitive p)
 {
-	if((mode & TYPE_CMP_ALLOW_SIGNED_UNSIGNED) == 0
-	&& a->is_signed != b->is_signed)
-	{
-		return 0;
+	switch(p){
+		case type_float:
+		case type_double:
+		case type_ldouble:
+			return 1;
+		default:
+			return 0;
 	}
-
-	if(a->sue != b->sue)
-		return 0;
-
-	return mode & TYPE_CMP_EXACT ? a->primitive == b->primitive : 1;
 }
 
 const char *op_to_str(const enum op_type o)
@@ -165,7 +308,7 @@ const char *op_to_str(const enum op_type o)
 		case op_gt:       return ">";
 		case op_or:       return "|";
 		case op_xor:      return "^";
-		case op_and:      return "|";
+		case op_and:      return "&";
 		case op_orsc:     return "||";
 		case op_andsc:    return "&&";
 		case op_not:      return "!";
@@ -180,16 +323,23 @@ const char *op_to_str(const enum op_type o)
 const char *type_primitive_to_str(const enum type_primitive p)
 {
 	switch(p){
+		case type_nchar:  return "char";
+		case type_schar:  return "signed char";
+		case type_uchar:  return "unsigned char";
+
 		CASE_STR_PREFIX(type, void);
-		CASE_STR_PREFIX(type, char);
 		CASE_STR_PREFIX(type, short);
 		CASE_STR_PREFIX(type, int);
 		CASE_STR_PREFIX(type, long);
+		case type_ushort: return "unsigned short";
+		case type_uint:   return "unsigned int";
+		case type_ulong:  return "unsigned long";
 		CASE_STR_PREFIX(type, float);
 		CASE_STR_PREFIX(type, double);
 		CASE_STR_PREFIX(type, _Bool);
 
 		case type_llong:   return "long long";
+		case type_ullong:  return "unsigned long long";
 		case type_ldouble: return "long double";
 
 		CASE_STR_PREFIX(type, struct);
@@ -201,14 +351,15 @@ const char *type_primitive_to_str(const enum type_primitive p)
 	return NULL;
 }
 
-char *type_qual_to_str(const enum type_qualifier qual)
+const char *type_qual_to_str(const enum type_qualifier qual, int trailing_space)
 {
 	static char buf[32];
 	/* trailing space is purposeful */
-	snprintf(buf, sizeof buf, "%s%s%s",
-		qual & qual_const    ? "const "    : "",
-		qual & qual_volatile ? "volatile " : "",
-		qual & qual_restrict ? "restrict " : "");
+	snprintf(buf, sizeof buf, "%s%s%s%s",
+		qual & qual_const    ? "const"    : "",
+		qual & qual_volatile ? "volatile" : "",
+		qual & qual_restrict ? "restrict" : "",
+		qual && trailing_space ? " " : "");
 	return buf;
 }
 
@@ -229,6 +380,54 @@ int op_can_compound(enum op_type o)
 		case op_shiftr:
 			return 1;
 		default:
+			break;
+	}
+	return 0;
+}
+
+int op_can_float(enum op_type o)
+{
+	switch(o){
+		case op_modulus:
+		case op_xor:
+		case op_or:
+		case op_and:
+		case op_shiftl:
+		case op_shiftr:
+		case op_bnot:
+			return 0;
+		default:
+			return 1;
+	}
+}
+
+int op_is_commutative(enum op_type o)
+{
+	switch(o){
+		case op_multiply:
+		case op_plus:
+		case op_xor:
+		case op_or:
+		case op_and:
+		case op_eq:
+		case op_ne:
+			return 1;
+
+		case op_unknown:
+			ICE("bad op");
+		case op_minus:
+		case op_divide:
+		case op_modulus:
+		case op_orsc:
+		case op_andsc:
+		case op_shiftl:
+		case op_shiftr:
+		case op_le:
+		case op_lt:
+		case op_ge:
+		case op_gt:
+		case op_not:
+		case op_bnot:
 			break;
 	}
 	return 0;
@@ -261,7 +460,7 @@ int op_is_shortcircuit(enum op_type o)
 	}
 }
 
-int op_is_relational(enum op_type o)
+int op_returns_bool(enum op_type o)
 {
 	return op_is_comparison(o) || op_is_shortcircuit(o);
 }
@@ -272,38 +471,33 @@ const char *type_to_str(const type *t)
 	static char buf[TYPE_STATIC_BUFSIZ];
 	char *bufp = buf;
 
-	if(!t->is_signed) bufp += snprintf(bufp, BUF_SIZE, "unsigned ");
-
 	if(t->sue){
-		snprintf(bufp, BUF_SIZE, "%s%s %s",
-				sue_incomplete(t->sue) ? "incomplete-" : "",
+		snprintf(bufp, BUF_SIZE, "%s %s",
 				sue_str(t->sue),
 				t->sue->spel);
 
 	}else{
 		switch(t->primitive){
-#define SAPPEND(s) snprintf(bufp, BUF_SIZE, "%s", s); break
-#define APPEND(t) case type_ ## t: SAPPEND(#t)
-			APPEND(void);
-			APPEND(_Bool);
-			APPEND(char);
-			APPEND(short);
-			APPEND(int);
-			APPEND(long);
-			APPEND(float);
-			APPEND(double);
-
-			case type_llong:   SAPPEND("long long");
-			case type_ldouble: SAPPEND("long double");
+			case type_void:
+			case type__Bool:
+			case type_nchar: case type_schar: case type_uchar:
+			case type_short: case type_ushort:
+			case type_int:   case type_uint:
+			case type_long:  case type_ulong:
+			case type_float:
+			case type_double:
+			case type_llong: case type_ullong:
+			case type_ldouble:
+				snprintf(bufp, BUF_SIZE, "%s",
+						type_primitive_to_str(t->primitive));
+				break;
 
 			case type_unknown:
 				ICE("unknown type primitive (%s)", where_str(&t->where));
 			case type_enum:
-				ICE("enum without ->enu");
 			case type_struct:
 			case type_union:
-				ICE("struct/union without ->struct_union");
-#undef APPEND
+				ICE("struct/union/enum without ->sue");
 		}
 	}
 

@@ -2,11 +2,17 @@
 
 config.mk
 
+tags
+
 src/cc1/cc1
 src/cpp2/cpp
 src/ucc/ucc
 src/ucc/cfg.h
 src/as_cfg.h
+src/src_config_platform.mk
+
+lib/libc.a
+lib/crt.a
 
 lib/syscall.s
 lib/syscall_err.s

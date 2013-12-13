@@ -17,7 +17,13 @@ enum platform_sys
 
 enum platform     platform_type(void);
 enum platform_sys platform_sys( void);
+int platform_32bit(void);
 
-int platform_word_size(void);
+#ifndef ucc_const
+#  define ucc_const
+#endif
+unsigned platform_word_size(void) ucc_const;
+
+unsigned platform_align_max(void) ucc_const;
 
 #endif

@@ -1,0 +1,6 @@
+a:
+.long 3
+.long 2
+b:
+.long 3
+.long 2

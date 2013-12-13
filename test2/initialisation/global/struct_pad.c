@@ -1,3 +1,4 @@
+// RUN: %layout_check %s
 struct A
 {
 	char a; /* b c d */

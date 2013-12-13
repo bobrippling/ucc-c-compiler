@@ -3,22 +3,14 @@
 
 /* TODO: cygwin */
 
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__)
 #  include "syscalls_32.h"
-#else
-#ifdef __DARWIN__
+#elif defined(__DARWIN__)
 #  include "syscalls_darwin.h"
-#else
-#ifdef __x86_64__
+#elif defined(__x86_64__)
 #  include "syscalls_64.h"
 #else
 #  include "syscalls_32.h"
-#endif
-#endif
-#endif
-
-#ifndef __GOT_SHORT_LONG
-# define long int
 #endif
 
 extern long __syscall(int, ...);

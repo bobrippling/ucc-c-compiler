@@ -11,11 +11,14 @@
 #include "ucc.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
+#include "str.h"
 #include "cfg.h"
 
 #ifndef UCC_AS
 # error "ucc needs reconfiguring"
 #endif
+
+char **include_paths;
 
 static int show, noop;
 
@@ -85,10 +88,13 @@ static void runner(int local, char *path, char **args)
 	if(show){
 		int i;
 
-		printf("%s ", path);
+		if(wrapper)
+			fprintf(stderr, "WRAPPER='%s' ", wrapper);
+
+		fprintf(stderr, "%s ", path);
 		for(i = 0; args[i]; i++)
-			printf("%s ", args[i]);
-		putchar('\n');
+			fprintf(stderr, "%s ", args[i]);
+		fputc('\n', stderr);
 	}
 
 	if(noop)
@@ -104,9 +110,17 @@ static void runner(int local, char *path, char **args)
 
 		case 0:
 		{
-			const int nargs = dynarray_count((void **)args);
-			int i;
+			int nargs = dynarray_count(args);
+			int i_in = 0, i_out = 0;
 			char **argv;
+
+			/* -wrapper gdb,--args */
+			if(wrapper){
+				char *p;
+				nargs++;
+				for(p = wrapper; *p; p++)
+					nargs += *p == ',';
+			}
 
 			/*
 			 * path,
@@ -115,24 +129,38 @@ static void runner(int local, char *path, char **args)
 			 */
 			argv = umalloc((2 + nargs) * sizeof *argv);
 
-			if(local)
-				argv[0] = actual_path("../", path);
-			else
-				argv[0] = path;
+			/* wrapper */
+			if(wrapper){
+				char *p, *last;
+				for(p = last = wrapper; *p; p++)
+					if(*p == ','){
+						*p = '\0';
+						argv[i_out++] = last;
+						last = p + 1;
+					}
 
-			for(i = 0; args[i]; i++)
-				argv[i + 1] = args[i];
+				if(last != p)
+					argv[i_out++] = last;
+			}
 
-			argv[++i] = NULL;
+			argv[i_out++] = local ? actual_path("../", path) : path;
+
+			while(args[i_in])
+				argv[i_out++] = args[i_in++];
+
+			argv[i_out++] = NULL;
 
 #ifdef DEBUG
 			fprintf(stderr, "%s:\n", *argv);
-			for(i = 0; argv[i]; i++)
+			for(int i = 0; argv[i]; i++)
 				fprintf(stderr, "  [%d] = \"%s\",\n", i, argv[i]);
 #endif
 
+			if(wrapper)
+				local = 0;
+
 			(local ? execv : execvp)(argv[0], argv);
-			die("execv():");
+			die("execv(\"%s\"):", argv[0]);
 		}
 
 		default:
@@ -183,7 +211,7 @@ void cat(char *fnin, char *fnout, int append)
 	size_t n;
 
 	if(show)
-		printf("cat %s >%s %s\n", fnin, append ? ">" : "", fnout ? fnout : "<stdout>");
+		fprintf(stderr, "cat %s >%s %s\n", fnin, append ? ">" : "", fnout ? fnout : "<stdout>");
 	if(noop)
 		return;
 
@@ -217,37 +245,46 @@ static void runner_1(int local, char *path, char *in, char *out, char **args)
 	char **all = NULL;
 
 	if(args)
-		dynarray_add_array((void ***)&all, (void **)args);
+		dynarray_add_array(&all, args);
 
-	dynarray_add((void ***)&all, "-o");
-	dynarray_add((void ***)&all, out);
+	dynarray_add(&all, (char *)"-o");
+	dynarray_add(&all, out);
 
-	dynarray_add((void ***)&all, in);
+	dynarray_add(&all, in);
 
 	runner(local, path, all);
 
-	dynarray_free((void ***)&all, NULL);
+	dynarray_free(char **, &all, NULL);
 }
 
 void preproc(char *in, char *out, char **args)
 {
 	char **all = NULL;
-	char *inc_path;
-	char *inc;
+	char **i;
 
 	if(args)
-		dynarray_add_array((void ***)&all, (void **)args);
+		dynarray_add_array(&all, args);
 
-	inc_path = actual_path("../../lib/", "");
-	inc = ustrprintf("-I%s", inc_path);
+	for(i = include_paths; i && *i; i++){
+		char *this = *i, *inc;
+		int f_this = 1;
 
-	dynarray_add((void ***)&all, inc);
+		if(*this == '/'){
+			f_this = 0;
+		}else{
+			this = actual_path(this, "");
+		}
+
+		inc = ustrprintf("-I%s", this);
+
+		dynarray_add(&all, inc);
+		if(f_this)
+			free(this);
+	}
 
 	runner_1(1, "cpp2/cpp", in, out, all);
 
-	free(inc);
-	free(inc_path);
-	dynarray_free((void ***)&all, NULL);
+	dynarray_free(char **, &all, NULL);
 }
 
 void compile(char *in, char *out, char **args)
@@ -260,35 +297,32 @@ void assemble(char *in, char *out, char **args)
 	char **copy = NULL;
 
 	if(args)
-		dynarray_add_array((void ***)&copy, (void **)args);
+		dynarray_add_array(&copy, args);
 
 	runner_1(0, UCC_AS, in, out, copy);
 
-	dynarray_free((void ***)&copy, NULL);
+	dynarray_free(char **, &copy, NULL);
 }
 
 void link_all(char **objs, char *out, char **args)
 {
 	char **all = NULL;
-	char *tok, *dup;
 
-	dynarray_add((void ***)&all, "-o");
-	dynarray_add((void ***)&all, out);
+	dynarray_add(&all, (char *)"-o");
+	dynarray_add(&all, out);
 
-	dup = ustrdup(UCC_LDFLAGS);
+	/* note: order is important - can't just group all objs at the end
+	 * this is handled in configure
+	 */
 
-	for(tok = strtok(dup, " "); tok; tok = strtok(NULL, " "))
-		dynarray_add((void ***)&all, tok);
+	dynarray_add_tmparray(&all, strsplit(UCC_LDFLAGS, " "));
 
-	dynarray_add_array((void ***)&all, (void **)objs);
-
-	/* TODO: order is important - can't just group all objs at the end, etc */
+	dynarray_add_array(&all, objs);
 
 	if(args)
-		dynarray_add_array((void ***)&all, (void **)args);
+		dynarray_add_array(&all, args);
 
 	runner(0, "ld", all);
 
-	dynarray_free((void ***)&all, NULL);
-	free(dup);
+	dynarray_free(char **, &all, NULL);
 }

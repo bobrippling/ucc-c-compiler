@@ -44,52 +44,86 @@ expr *expr_new(func_mutate_expr *f,
 		func_gen *f_gen_style)
 {
 	expr *e = umalloc(sizeof *e);
-	where_new(&e->where);
+	where_cc1_current(&e->where);
 	expr_mutate(e, f, f_fold, f_str, f_gen, f_gen_str, f_gen_style);
 	return e;
 }
 
-expr *expr_new_intval(intval *iv)
+expr *expr_set_where(expr *e, where const *w)
 {
-	expr *e = expr_new_val(0);
-	memcpy_safe(&e->bits.iv, iv);
+	memcpy_safe(&e->where, w);
 	return e;
 }
 
-expr *expr_new_decl_init(decl *d, decl_init *di)
+expr *expr_set_where_len(expr *e, where *start)
 {
-	ICE("TODO - only allow simple expr inits");
-	(void)d;
-	(void)di;
-	/*UCC_ASSERT(d->init, "no init");
-	return expr_new_assign_init(expr_new_identifier(d->spel), d->init);*/
-	return 0;
+	where end;
+	where_cc1_current(&end);
+
+	expr_set_where(e, start);
+	if(start->line == end.line)
+		e->where.len = end.chr - start->chr;
+
+	return e;
 }
 
-#if 0
-expr *expr_new_array_decl_init(decl *d, int ival, int idx)
+void expr_set_const(expr *e, consty *k)
 {
-	expr *sum;
-
-	UCC_ASSERT(d->init, "no init");
-
-	sum = expr_new_op(op_plus);
-
-	sum->lhs = expr_new_identifier(d->spel);
-	sum->rhs = expr_new_val(idx);
-
-	return expr_new_assign(expr_new_deref(sum), expr_new_val(ival));
+	e->const_eval.const_folded = 1;
+	memcpy_safe(&e->const_eval.k, k);
 }
-#endif
 
-int expr_is_null_ptr(expr *e, int allow_int)
+int expr_is_null_ptr(expr *e, enum null_strictness ty)
 {
+	/* 6.3.2.3:
+	 *
+	 * An integer constant expression with the value 0, or such an expression
+	 * cast to type void *, is called a null pointer constant
+	 *
+	 * NULL_STRICT_ANY_PTR is used for sentinel checks,
+	 * i.e. any null type pointer
+	 */
+
 	int b = 0;
 
+	/* void * always qualifies */
 	if(type_ref_is_type(type_ref_is_ptr(e->tree_type), type_void))
 		b = 1;
-	else if(allow_int && type_ref_is_integral(e->tree_type))
+	else if(ty == NULL_STRICT_INT && type_ref_is_integral(e->tree_type))
+		b = 1;
+	else if(ty == NULL_STRICT_ANY_PTR && type_ref_is_ptr(e->tree_type))
 		b = 1;
 
 	return b && const_expr_and_zero(e);
+}
+
+int expr_is_lval_yes(expr *e)
+{
+	(void)e;
+	return 1;
+}
+
+int expr_is_lval(expr *e)
+{
+	return e->f_is_lval ? e->f_is_lval(e) : 0;
+}
+
+expr *expr_new_array_idx_e(expr *base, expr *idx)
+{
+	expr *op = expr_new_op(op_plus);
+	op->lhs = base;
+	op->rhs = idx;
+	return expr_new_deref(op);
+}
+
+expr *expr_new_array_idx(expr *base, int i)
+{
+	return expr_new_array_idx_e(base, expr_new_val(i));
+}
+
+expr *expr_skip_casts(expr *e)
+{
+	while(expr_kind(e, cast))
+		e = e->expr;
+	return e;
 }

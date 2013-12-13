@@ -1,3 +1,5 @@
+// RUN: %layout_check %s
+
 typedef struct A
 {
 	int i, j;

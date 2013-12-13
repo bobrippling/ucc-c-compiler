@@ -1,3 +1,4 @@
+// RUN: %ucc %s; [ $? -ne 0 ]
 main()
 {
 	q();

@@ -1,7 +1,23 @@
-DIRS = assignment/ blocks/ decl_parsing/ inline/ lib/ structs/ type_parsing/ \
-			 other/ pointers/ types/ arrays/ stack_save/ lvalue/                   \
-			 initialisation/array/ initialisation/scalar/ initialisation/structs/  \
-			 builtin/
+DIRS =                        \
+	arrays/                     \
+	anywhere_decl/              \
+	assignment/                 \
+	blocks/                     \
+	builtin/                    \
+	decl_parsing/               \
+	initialisation/array/       \
+	initialisation/scalar/      \
+	initialisation/structs/     \
+	inline/                     \
+	lib/                        \
+	lvalue/                     \
+	messing                     \
+	other/                      \
+	pointers/                   \
+	stack_save/                 \
+	structs/                    \
+	type_parsing/               \
+	types/
 
 MAKEFILES = ${DIRS:/=/Makefile}
 
@@ -39,14 +55,8 @@ help:
 # apply/
 # asm/
 # C99/
-# cil/
 # clang/
-# hai/
-# input/
 # messing around/
-# misc/
 # packing/
-# parse/
 # programs/
 # promotion/
-# Unsorted/

@@ -1,0 +1,15 @@
+a:
+.long 1
+.long 2
+b:
+.long 3
+.long 4
+c:
+.zero 4
+.long 5
+d:
+.long 6
+.long 7
+e:
+.long 6
+.zero 4

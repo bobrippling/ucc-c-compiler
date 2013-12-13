@@ -8,5 +8,5 @@ struct A
 
 main()
 {
-	return sizeof(struct A) == 16 ? 0 : 1;
+	return sizeof(struct A) == 12 ? 0 : 1;
 }

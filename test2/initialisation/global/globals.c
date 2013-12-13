@@ -1,3 +1,5 @@
+// RUN: %layout_check %s
+
 #define offsetof(ty, m) (long)&(((ty *)0)->m)
 struct A
 {

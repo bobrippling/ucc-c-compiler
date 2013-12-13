@@ -22,7 +22,7 @@ void gen_stmt_do(stmt *s)
 	gen_stmt(s->lhs);
 
 	out_label(s->lbl_continue);
-	gen_expr(s->expr, s->symtab);
+	gen_expr(s->expr);
 
 	out_jtrue(begin);
 
@@ -31,7 +31,16 @@ void gen_stmt_do(stmt *s)
 	free(begin);
 }
 
-void mutate_stmt_do(stmt *s)
+void style_stmt_do(stmt *s)
+{
+	stylef("do");
+	gen_stmt(s->lhs);
+	stylef("while(");
+	gen_expr(s->expr);
+	stylef(");");
+}
+
+void init_stmt_do(stmt *s)
 {
 	s->f_passable = while_passable;
 }

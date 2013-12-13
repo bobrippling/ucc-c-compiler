@@ -9,7 +9,7 @@
 typedef int pid_t;
 
 int read( int fd, void *p, int size);
-int write(int fd, void *p, int size);
+int write(int fd, const void *p, int size);
 int close(int fd);
 
 #ifndef __DARWIN__
@@ -27,7 +27,7 @@ ssize_t readlink(const char *restrict path, char *restrict buf, size_t bufsize);
 int link(const char *from, const char *new);
 int symlink(const char *link, const char *new);
 
-int pipe(int [2]);
+int pipe(int [static 2]);
 
 extern char **environ;
 

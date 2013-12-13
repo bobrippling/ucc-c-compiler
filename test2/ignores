@@ -1,0 +1,24 @@
+# waiting for __asm__()
+__asm__/inline.c
+__asm__/multiple.c
+other/__asm__.c
+
+# waiting for vla:
+parsing/vla_ar.c
+decl_parsing/vla_proto.c
+
+# waiting for long double
+float/long_double/ll_to_ld.c
+
+# waiting for calling convention asm helpers
+calling_conv/callee_save.c
+calling_conv/fptr.c
+mangling/calling_conv.c
+
+# other:
+asm/abi-test.c
+
+# struct-copy initialisation bug:
+initialisation/obscure_override.c
+initialisation/struct/replace_entire.c
+initialisation/struct/replace_entire2.c

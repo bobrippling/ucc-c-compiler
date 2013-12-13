@@ -1,7 +1,7 @@
 #ifndef token_ise_h
 #define token_ise_h
 
-extern intval currentval;
+extern numeric currentval;
 
 enum token
 {
@@ -29,6 +29,7 @@ enum token
 
 	token_identifier,
 	token_integer,     /* aka [1-9] */
+	token_floater,     /* aka [1-9].[0-9]... */
 	token_character,   /* aka 'f' */
 	token_elipsis,     /* aka ... */
 	token_string,      /* aka \"...\" */
@@ -41,6 +42,7 @@ enum token
 	token_float,
 	token_double,
 	token__Bool,
+	token___builtin_va_list,
 
 	token_inline,
 	token__Noreturn,
@@ -57,6 +59,8 @@ enum token
 	token_static,
 	token_extern,
 	token_register,
+	token__Alignof,
+	token__Alignas,
 	/**/
 	token_typedef,
 	token_struct,
@@ -111,7 +115,17 @@ enum token
 	token_unknown
 };
 
-void tokenise_set_file(FILE *f, const char *nam);
+typedef char *tokenise_line_f(void);
+
+void tokenise_set_input(
+		tokenise_line_f *,
+		const char *nam);
+
 void nexttoken(void);
+
+char *token_current_spel(void);
+char *token_current_spel_peek(void);
+
+char *tok_at_label(where *);
 
 #endif

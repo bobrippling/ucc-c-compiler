@@ -1,3 +1,5 @@
+// RUN: %layout_check %s
+
 struct A
 {
 	int i;

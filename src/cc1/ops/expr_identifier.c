@@ -10,7 +10,7 @@ const char *str_expr_identifier()
 	return "identifier";
 }
 
-void fold_const_expr_identifier(expr *e, consty *k)
+static void fold_const_expr_identifier(expr *e, consty *k)
 {
 	/*
 	 * if we are an array identifier, we are constant:
@@ -26,7 +26,9 @@ void fold_const_expr_identifier(expr *e, consty *k)
 
 		/* only a constant if global/static/extern */
 		if(sym->type == sym_global || decl_store_static_or_extern(d->store)){
-			k->type = CONST_FROM_ARRAY(d);
+			CONST_FOLD_LEAF(k);
+
+			k->type = CONST_ADDR_OR_NEED(d);
 
 			/*
 			 * don't use e->spel
@@ -46,28 +48,27 @@ void fold_expr_identifier(expr *e, symtable *stab)
 {
 	char *sp = e->bits.ident.spel;
 	sym *sym = e->bits.ident.sym;
+	decl *in_fn = symtab_func(stab);
 
 	if(sp && !sym)
 		e->bits.ident.sym = sym = symtab_search(stab, sp);
 
+	/* special cases */
 	if(!sym){
-
 		if(!strcmp(sp, "__func__")){
-			char *func;
-			int len;
+			char *sp;
 
-			/* mutate into a string literal */
-			if(!curdecl_func){
-				WARN_AT(&e->where, "__func__ is not defined outside of functions");
-				func = "";
-				len = 0;
+			if(!in_fn){
+				warn_at(&e->where, "__func__ is not defined outside of functions");
+
+				sp = "";
 			}else{
-				func = curdecl_func->spel;
-				len = strlen(curdecl_func->spel);
+				sp = in_fn->spel;
 			}
 
-			expr_mutate_str(e, func, len + 1);
+			expr_mutate_str(e, sp, strlen(sp) + 1, /*wide:*/0, &e->where);
 			/* +1 - take the null byte */
+			e->bits.strlit.is_func = 1;
 
 			FOLD_EXPR(e, stab);
 		}else{
@@ -78,54 +79,45 @@ void fold_expr_identifier(expr *e, symtable *stab)
 			enum_member_search(&m, &sue, stab, sp);
 
 			if(!m)
-				DIE_AT(&e->where, "undeclared identifier \"%s\"", sp);
+				die_at(&e->where, "undeclared identifier \"%s\"", sp);
 
 			expr_mutate_wrapper(e, val);
 
-			e->bits.iv = m->val->bits.iv;
-			/*FOLD_EXPR(e, stab);*/
+			e->bits.num = m->val->bits.num;
+			FOLD_EXPR(e, stab);
 
 			e->tree_type = type_ref_new_type(
 					type_new_primitive_sue(type_enum, sue));
 		}
-	}else{
-		e->tree_type = sym->decl->ref;
-
-#if 0
-Except when it is the operand of the sizeof operator or the unary
-& operator, or is a string literal used to initialize an array, an
-expression that has type `array of type` is converted to an expression
-with type `pointer to type` that points to the initial element of the
-array object and is not an lvalue.
-#endif
-
-		if(sym->type == sym_local
-		&& !decl_store_static_or_extern(sym->decl->store)
-		&& !DECL_IS_ARRAY(sym->decl)
-		&& !DECL_IS_S_OR_U(sym->decl)
-		&& !DECL_IS_FUNC(sym->decl)
-		&& sym->nwrites == 0
-		&& !sym->decl->init)
-		{
-			cc1_warn_at(&e->where, 0, 1, WARN_READ_BEFORE_WRITE, "\"%s\" uninitialised on read", sp);
-			sym->nwrites = 1; /* silence future warnings */
-		}
-
-		/* this is cancelled by expr_assign in the case we fold for an assignment to us */
-		sym->nreads++;
+		return;
 	}
+
+	e->tree_type = sym->decl->ref;
+
+	if(sym->type == sym_local
+	&& !decl_store_static_or_extern(sym->decl->store)
+	&& !DECL_IS_ARRAY(sym->decl)
+	&& !DECL_IS_S_OR_U(sym->decl)
+	&& !DECL_IS_FUNC(sym->decl)
+	&& sym->nwrites == 0
+	&& !sym->decl->init)
+	{
+		cc1_warn_at(&e->where, 0, WARN_READ_BEFORE_WRITE, "\"%s\" uninitialised on read", sp);
+		sym->nwrites = 1; /* silence future warnings */
+	}
+
+	/* this is cancelled by expr_assign in the case we fold for an assignment to us */
+	sym->nreads++;
 }
 
-void gen_expr_str_identifier(expr *e, symtable *stab)
+void gen_expr_str_identifier(expr *e)
 {
-	(void)stab;
-	idt_printf("identifier: \"%s\" (sym %p)\n", e->bits.ident.spel, e->bits.ident.sym);
+	idt_printf("identifier: \"%s\" (sym %p)\n", e->bits.ident.spel, (void *)e->bits.ident.sym);
 }
 
-void gen_expr_identifier(expr *e, symtable *stab)
+void gen_expr_identifier(expr *e)
 {
 	sym *sym = e->bits.ident.sym;
-	(void)stab;
 
 	if(DECL_IS_FUNC(sym->decl))
 		out_push_sym(sym);
@@ -133,25 +125,38 @@ void gen_expr_identifier(expr *e, symtable *stab)
 		out_push_sym_val(sym);
 }
 
-void gen_expr_identifier_lea(expr *e, symtable *stab)
+static void gen_expr_identifier_lea(expr *e)
 {
-	(void)stab;
-
 	out_push_sym(e->bits.ident.sym);
+}
+
+static int identifier_is_lval(expr *e)
+{
+	if(type_ref_is(e->tree_type, type_ref_func))
+		return 0;
+
+	if(type_ref_is(e->tree_type, type_ref_array))
+		return 0;
+
+	return 1;
 }
 
 void mutate_expr_identifier(expr *e)
 {
-	e->f_lea         = gen_expr_identifier_lea;
+	e->f_lea = gen_expr_identifier_lea;
 	e->f_const_fold  = fold_const_expr_identifier;
+	e->f_is_lval = identifier_is_lval;
 }
 
 expr *expr_new_identifier(char *sp)
 {
 	expr *e = expr_new_wrapper(identifier);
+	UCC_ASSERT(sp, "NULL spel for identifier");
 	e->bits.ident.spel = sp;
 	return e;
 }
 
-void gen_expr_style_identifier(expr *e, symtable *stab)
-{ (void)e; (void)stab; /* TODO */ }
+void gen_expr_style_identifier(expr *e)
+{
+	stylef("%s", e->bits.ident.spel);
+}

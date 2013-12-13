@@ -1,3 +1,6 @@
+// RUN: %ucc %s -o %t
+// RUN: %t | diff -u - %s.ocheck
+
 struct X
 {
 	struct Y
@@ -15,24 +18,6 @@ struct X
 
 main()
 {
-#ifndef NESTED
-	struct B { int j, k ; };
-#endif
-
-	struct A
-	{
-		int i;
-#ifdef NESTED
-		struct B
-		{
-			int j, k;
-		}
-#else
-		struct B
-#endif
-		a;
-	} x;
-
 #define offsetof(s, m) (unsigned long)&((struct s *)0)->m
 #define P(x) printf(#x " = %u\n", x)
 

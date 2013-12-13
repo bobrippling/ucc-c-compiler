@@ -1,0 +1,18 @@
+x:
+.long 104
+.long 101
+.long 108
+.long 108
+.long 111
+.long 0
+
+y:
+.quad wstr.1
+
+wstr.1:
+.long 104
+.long 101
+.long 108
+.long 108
+.long 111
+.long 0

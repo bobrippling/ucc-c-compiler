@@ -1,4 +1,4 @@
-// %ucc %s; [ $? -ne 0 ]
+// RUN: ! %ucc %s
 
 f(int *x)
 {

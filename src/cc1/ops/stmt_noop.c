@@ -17,7 +17,13 @@ void gen_stmt_noop(stmt *s)
 	out_comment("noop");
 }
 
-void mutate_stmt_noop(stmt *s)
+void style_stmt_noop(stmt *s)
+{
+	(void)s;
+	stylef(";");
+}
+
+void init_stmt_noop(stmt *s)
 {
 	s->f_passable = fold_passable_yes;
 }

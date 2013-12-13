@@ -12,94 +12,39 @@ const char *str_stmt_for()
 	return "for";
 }
 
-expr *fold_for_if_init_decls(stmt *s)
-{
-	decl **i;
-	expr *init_exp = NULL;
-
-	for(i = s->flow->for_init_decls; *i; i++){
-		decl *const d = *i;
-
-		fold_decl(d, s->flow->for_init_symtab);
-
-		switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
-			case store_auto:
-			case store_default:
-			case store_register:
-				break;
-			default:
-				DIE_AT(&d->where, "%s variable in %s declaration initialisation",
-						decl_store_to_str(d->store), s->f_str());
-		}
-
-		SYMTAB_ADD(s->flow->for_init_symtab, d, sym_local);
-
-		/* make the for-init a expr-stmt with all our inits */
-		if(d->init){
-			stmt *init_code;
-
-			init_code = stmt_new_wrapper(code, s->flow->for_init_symtab);
-			decl_init_create_assignments_for_spel(d, init_code);
-
-			init_exp = expr_new_stmt(init_code);
-
-			fold_stmt(init_code); /* folds each assignment */
-		}
-	}
-
-	return init_exp;
-}
-
 void fold_stmt_for(stmt *s)
 {
+	symtable *stab = NULL;
+	flow_fold(s->flow, &stab);
+	UCC_ASSERT(stab, "fold_flow in for didn't pick up .flow");
+
 	s->lbl_break    = out_label_flow("for_start");
 	s->lbl_continue = out_label_flow("for_contiune");
 
-	if(s->flow->for_init_decls){
-		expr *init_exp = fold_for_if_init_decls(s);
-
-		UCC_ASSERT(!s->flow->for_init, "for init in C99 for-decl mode");
-
-		s->flow->for_init = init_exp;
-	}
-
-#define FOLD_IF(x) if(x) FOLD_EXPR(x, s->flow->for_init_symtab)
+#define FOLD_IF(x) if(x) FOLD_EXPR(x, stab)
 	FOLD_IF(s->flow->for_init);
 	FOLD_IF(s->flow->for_while);
 	FOLD_IF(s->flow->for_inc);
 #undef FOLD_IF
 
-	if(s->flow->for_while){
-		fold_need_expr(s->flow->for_while, "for-while", 1);
-	}
+	if(s->flow->for_while)
+		fold_check_expr(
+				s->flow->for_while,
+				FOLD_CHK_NO_ST_UN | FOLD_CHK_BOOL,
+				"for-while");
 
 	fold_stmt(s->lhs);
-
-	/*
-	 * need an extra generation for for_init,
-	 * since it's generated unlike other loops (symtab_new() in parse.c)
-	 */
-	gen_code_decls(s->flow->for_init_symtab);
-
-#ifdef SYMTAB_DEBUG
-	fprintf(stderr, "for-code st:\n");
-	PRINT_STAB(s->lhs, 1);
-
-	fprintf(stderr, "for-init st:\n");
-	print_stab(s->flow->for_init_symtab, 0, NULL);
-
-	fprintf(stderr, "for enclosing scope st:\n");
-	PRINT_STAB(s, 0);
-#endif
 }
 
 void gen_stmt_for(stmt *s)
 {
 	char *lbl_test = out_label_flow("for_test");
 
+	flow_gen(s->flow, s->flow->for_init_symtab);
+
 	/* don't else-if, possible to have both (comma-exp for init) */
 	if(s->flow->for_init){
-		gen_expr(s->flow->for_init, s->flow->for_init_symtab);
+		gen_expr(s->flow->for_init);
 
 		out_pop();
 		out_comment("for-init");
@@ -107,14 +52,14 @@ void gen_stmt_for(stmt *s)
 
 	out_label(lbl_test);
 	if(s->flow->for_while){
-		gen_expr(s->flow->for_while, s->flow->for_init_symtab);
+		gen_expr(s->flow->for_while);
 		out_jfalse(s->lbl_break);
 	}
 
 	gen_stmt(s->lhs);
 	out_label(s->lbl_continue);
 	if(s->flow->for_inc){
-		gen_expr(s->flow->for_inc, s->flow->for_init_symtab);
+		gen_expr(s->flow->for_inc);
 
 		out_pop();
 		out_comment("unused for inc");
@@ -126,6 +71,25 @@ void gen_stmt_for(stmt *s)
 	out_label(s->lbl_break);
 
 	free(lbl_test);
+}
+
+void style_stmt_for(stmt *s)
+{
+	stylef("for(");
+	if(s->flow->for_init)
+		gen_expr(s->flow->for_init);
+
+	stylef("; ");
+	if(s->flow->for_while)
+		gen_expr(s->flow->for_while);
+
+	stylef("; ");
+	if(s->flow->for_inc)
+		gen_expr(s->flow->for_inc);
+
+	stylef(")\n");
+
+	gen_stmt(s->lhs);
 }
 
 struct walk_info
@@ -180,14 +144,27 @@ int fold_code_escapable(stmt *s)
 
 static int for_passable(stmt *s)
 {
-	/* if we don't have a condition, check for breaks, etc etc */
-	if(s->flow->for_while)
-		return 1;
+	/* if we don't have a condition, it's an infinite loop;
+	 * check for breaks, etc
+	 *
+	 * if we have a condition that is constant-non-zero, infinite loop;
+	 * check for breaks, etc
+	 */
+
+	if(s->flow->for_while){
+		if(const_expr_and_non_zero(s->flow->for_while)){
+			/* need to check */
+		}else{
+			return 1; /* non-constant expr or zero-expr - passable */
+		}
+	}else{
+		/* need to check - break */
+	}
 
 	return fold_code_escapable(s);
 }
 
-void mutate_stmt_for(stmt *s)
+void init_stmt_for(stmt *s)
 {
 	s->f_passable = for_passable;
 }

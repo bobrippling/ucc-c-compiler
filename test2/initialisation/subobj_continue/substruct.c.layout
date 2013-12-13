@@ -1,0 +1,5 @@
+def:
+.long 4
+.long 2
+.long 5
+.zero 4

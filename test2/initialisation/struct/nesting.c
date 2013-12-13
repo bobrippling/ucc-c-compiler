@@ -1,5 +1,4 @@
-// RUN: %ucc -DO='{' -DC='}' -S -o- %s | %asmcheck %s
-// RUN: %ucc -DO=    -DC=    -S -o- %s | %asmcheck %s
+// RUN: %layout_check %s
 
 struct
 {
@@ -8,4 +7,5 @@ struct
 		int i;
 	} b;
 	int j;
-} a = { O 3 C, 2 };
+} a = { { 3 }, 2 },
+  b = {   3  , 2 };

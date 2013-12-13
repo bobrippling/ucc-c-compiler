@@ -1,3 +1,5 @@
+// RUN: %ucc %s
+
 #include "printf.h"
 #define NULL (void *)0
 

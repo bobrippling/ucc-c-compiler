@@ -18,9 +18,17 @@
 #include "const.h"
 #include "ops/__builtin.h"
 #include "funcargs.h"
+#include "strings.h"
 
 #define STAT_NEW(type)      stmt_new_wrapper(type, current_scope)
 #define STAT_NEW_NEST(type) stmt_new_wrapper(type, symtab_new(current_scope))
+
+#define STMT_SCOPE_RECOVER(t)              \
+	if(t->flow)                              \
+		current_scope = current_scope->parent; \
+	if(cc1_std == STD_C99)                   \
+		current_scope = current_scope->parent
+/* ^ recover C99's if/switch/while scoping */
 
 stmt *parse_stmt_block(void);
 stmt *parse_stmt(void);
@@ -31,7 +39,6 @@ expr *parse_expr_unary(void);
 
 /* parse_type uses this for structs, tdefs and enums */
 symtable *current_scope;
-static_assert **static_asserts;
 
 
 /* sometimes we can carry on after an error, but we don't want to go through to compilation etc */
@@ -44,12 +51,16 @@ static stmt *current_continue_target,
 						*current_switch;
 
 
-expr *parse_expr_sizeof_typeof(int is_typeof)
+expr *parse_expr_sizeof_typeof_alignof(enum what_of what_of)
 {
 	expr *e;
+	where w;
+
+	where_cc1_current(&w);
+	w.chr -= what_of == what_alignof ? 7 : 6; /* go back over the *of */
 
 	if(accept(token_open_paren)){
-		type_ref *r = parse_type();
+		type_ref *r = parse_type(0);
 
 		if(r){
 			EAT(token_close_paren);
@@ -59,32 +70,35 @@ expr *parse_expr_sizeof_typeof(int is_typeof)
 				e = expr_new_sizeof_expr(
 							expr_new_compound_lit(r,
 								parse_initialisation()),
-							is_typeof);
+							what_of);
 			else
-				e = expr_new_sizeof_type(r, is_typeof);
+				e = expr_new_sizeof_type(r, what_of);
 
 		}else{
 			/* parse a full one, since we're in brackets */
-			e = expr_new_sizeof_expr(parse_expr_exp(), is_typeof);
+			e = expr_new_sizeof_expr(parse_expr_exp(), what_of);
 			EAT(token_close_paren);
 		}
 
 	}else{
-		if(is_typeof)
+		if(what_of == what_typeof)
 			/* TODO? cc1_error = 1, return expr_new_val(0) */
-			DIE_AT(NULL, "open paren expected after typeof");
+			die_at(NULL, "open paren expected after typeof");
 
-		e = expr_new_sizeof_expr(parse_expr_unary(), is_typeof);
+		e = expr_new_sizeof_expr(parse_expr_unary(), what_of);
 		/* don't go any higher, sizeof a - 1, means sizeof(a) - 1 */
 	}
 
-	return e;
+	return expr_set_where_len(e, &w);
 }
 
-expr *parse_expr__Generic()
+static expr *parse_expr__Generic()
 {
 	struct generic_lbl **lbls;
 	expr *test;
+	where w;
+
+	where_cc1_current(&w);
 
 	EAT(token__Generic);
 	EAT(token_open_paren);
@@ -102,9 +116,9 @@ expr *parse_expr__Generic()
 		if(accept(token_default)){
 			r = NULL;
 		}else{
-			r = parse_type();
+			r = parse_type(0);
 			if(!r)
-				DIE_AT(NULL, "type expected");
+				die_at(NULL, "type expected");
 		}
 		EAT(token_colon);
 		e = parse_expr_no_comma();
@@ -112,36 +126,46 @@ expr *parse_expr__Generic()
 		lbl = umalloc(sizeof *lbl);
 		lbl->e = e;
 		lbl->t = r;
-		dynarray_add((void ***)&lbls, lbl);
+		dynarray_add(&lbls, lbl);
 
 		if(accept(token_close_paren))
 			break;
 	}
 
-	return expr_new__Generic(test, lbls);
+	return expr_set_where(
+			expr_new__Generic(test, lbls), &w);
 }
 
-expr *parse_expr_identifier()
+static expr *parse_expr_identifier()
 {
 	expr *e;
 
 	if(curtok != token_identifier)
-		DIE_AT(NULL, "identifier expected, got %s (%s:%d)",
+		die_at(NULL, "identifier expected, got %s (%s:%d)",
 				token_to_str(curtok), __FILE__, __LINE__);
 
 	e = expr_new_identifier(token_current_spel());
+	where_cc1_adj_identifier(&e->where, e->bits.ident.spel);
 	EAT(token_identifier);
 	return e;
 }
 
-expr *parse_block()
+static expr *parse_block()
 {
+	symtable *const arg_symtab = symtab_new(
+			symtab_root(current_scope));
+
 	funcargs *args;
 	type_ref *rt;
+	symtable *orig_scope;
+	expr *r;
+
+	orig_scope = current_scope;
+	current_scope = arg_symtab;
 
 	EAT(token_xor);
 
-	rt = parse_type();
+	rt = parse_type(0);
 
 	if(rt){
 		if(type_ref_is(rt, type_ref_func)){
@@ -154,7 +178,7 @@ expr *parse_block()
 
 	}else if(accept(token_open_paren)){
 		/* ^(args...) */
-		args = parse_func_arglist();
+		args = parse_func_arglist(NULL); /* no args here thanks */
 		EAT(token_close_paren);
 	}else{
 		/* ^{...} */
@@ -163,30 +187,38 @@ def_args:
 		args->args_void = 1;
 	}
 
-	return expr_new_block(rt, args, parse_stmt_block());
+	symtab_add_params(arg_symtab, args->arglist);
+
+	r = expr_new_block(rt, args, parse_stmt_block());
+
+	current_scope = orig_scope;
+
+	return r;
 }
 
-expr *parse_expr_primary()
+static expr *parse_expr_primary()
 {
 	switch(curtok){
 		case token_integer:
 		case token_character:
+		case token_floater:
 		{
-			expr *e = expr_new_intval(&currentval);
+			expr *e = expr_new_numeric(&currentval);
 			EAT(curtok);
 			return e;
 		}
 
 		case token_string:
-		/*case token_open_block: - not allowed here */
 		{
+			where w;
 			char *s;
-			int l;
+			size_t l;
+			int wide;
 
-			token_get_current_str(&s, &l);
+			token_get_current_str(&s, &l, &wide, &w);
 			EAT(token_string);
 
-			return expr_new_str(s, l);
+			return expr_new_str(s, l, wide, &w);
 		}
 
 		case token__Generic:
@@ -196,24 +228,28 @@ expr *parse_expr_primary()
 			return parse_block();
 
 		default:
-			if(accept(token_open_paren)){
+		{
+			where loc_start;
+
+			if(accept_where(token_open_paren, &loc_start)){
 				type_ref *r;
 				expr *e;
 
-				if((r = parse_type())){
-					e = expr_new_cast(r, 0);
+				if((r = parse_type(0))){
 					EAT(token_close_paren);
 
 					if(curtok == token_open_block){
 						/* C99 compound lit. */
-						decl_init *init = parse_initialisation();
-
-						expr_compound_lit_from_cast(e, init);
+						e = expr_new_compound_lit(
+								r, parse_initialisation());
 
 					}else{
-						e->expr = parse_expr_cast(); /* another cast */
+						/* another cast */
+						e = expr_new_cast(
+								parse_expr_cast(), r, 0);
 					}
-					return e;
+
+					return expr_set_where_len(e, &loc_start);
 
 				}else if(curtok == token_open_block){
 					/* ({ ... }) */
@@ -231,17 +267,18 @@ expr *parse_expr_primary()
 
 				if(curtok != token_identifier){
 					/* TODO? cc1_error = 1, return expr_new_val(0) */
-					DIE_AT(NULL, "expression expected, got %s (%s:%d)",
+					die_at(NULL, "expression expected, got %s (%s:%d)",
 							token_to_str(curtok), __FILE__, __LINE__);
 				}
 
 				return parse_expr_identifier();
 			}
-			break;
+			/* unreachable */
+		}
 	}
 }
 
-expr *parse_expr_postfix()
+static expr *parse_expr_postfix()
 {
 	expr *e;
 	int flag;
@@ -249,10 +286,10 @@ expr *parse_expr_postfix()
 	e = parse_expr_primary();
 
 	for(;;){
-		if(accept(token_open_square)){
-			expr *sum;
+		where w;
 
-			sum = expr_new_op(op_plus);
+		if(accept(token_open_square)){
+			expr *sum = expr_new_op(op_plus);
 
 			sum->lhs  = e;
 			sum->rhs  = parse_expr_exp();
@@ -261,7 +298,7 @@ expr *parse_expr_postfix()
 
 			e = expr_new_deref(sum);
 
-		}else if(accept(token_open_paren)){
+		}else if(accept_where(token_open_paren, &w)){
 			expr *fcall = NULL;
 
 			/* check for specialised builtin parsing */
@@ -276,13 +313,25 @@ expr *parse_expr_postfix()
 			fcall->expr = e;
 			EAT(token_close_paren);
 
-			e = fcall;
+			e = expr_set_where(fcall, &w);
 
 		}else if((flag = accept(token_dot)) || accept(token_ptr)){
-			e = expr_new_struct(e, flag, parse_expr_identifier());
+			where_cc1_current(&w);
 
-		}else if((flag = accept(token_increment)) || accept(token_decrement)){
-			e = expr_new_assign_compound(e, expr_new_val(1), flag ? op_plus : op_minus);
+			e = expr_set_where(
+					expr_new_struct(e, flag, parse_expr_identifier()),
+					&w);
+
+		}else if((flag = accept_where(token_increment, &w))
+		||               accept_where(token_decrement, &w))
+		{
+			e = expr_set_where(
+					expr_new_assign_compound(
+						e,
+						expr_new_val(1),
+						flag ? op_plus : op_minus),
+					&w);
+
 			e->assign_is_post = 1;
 
 		}else{
@@ -295,16 +344,22 @@ expr *parse_expr_postfix()
 
 expr *parse_expr_unary()
 {
+	int set_w = 1;
 	expr *e;
 	int flag;
+	where w;
 
-	if((flag = accept(token_increment)) || accept(token_decrement)){
+	/* save since we descend before creating the assignment */
+	where_cc1_current(&w);
+
+	if((flag = accept(token_increment))
+	||         accept(token_decrement))
+	{
 		/* this is a normal increment, i.e. ++x, simply translate it to x += 1 */
-
 		e = expr_new_assign_compound(
-				parse_expr_unary(), /* lval */
-				expr_new_val(1),
-				flag ? op_plus : op_minus);
+					parse_expr_unary(), /* lval */
+					expr_new_val(1),
+					flag ? op_plus : op_minus);
 
 	}else{
 		switch(curtok){
@@ -335,38 +390,64 @@ expr *parse_expr_unary()
 				break;
 
 			case token_sizeof:
+				set_w = 0; /* no need since there's no sub-parsing here */
 				EAT(token_sizeof);
-				e = parse_expr_sizeof_typeof(0);
+				e = parse_expr_sizeof_typeof_alignof(what_sizeof);
+				break;
+
+			case token__Alignof:
+				set_w = 0;
+				EAT(token__Alignof);
+				e = parse_expr_sizeof_typeof_alignof(what_alignof);
 				break;
 
 			default:
+				set_w = 0;
 				e = parse_expr_postfix();
 		}
 	}
 
+	if(set_w)
+		expr_set_where(e, &w);
+
 	return e;
 }
 
-expr *parse_expr_generic(expr *(*above)(), enum token t, ...)
+static expr *parse_expr_generic(expr *(*above)(), enum token t, ...)
 {
 	expr *e = above();
-	va_list l;
 
-	va_start(l, t);
-	while(curtok == t || curtok_in_list(l)){
-		expr *join = expr_new_op(curtok_to_op());
+	for(;;){
+		int have = curtok == t;
+		where w_op;
+		expr *join;
+
+		if(!have){
+			va_list l; va_start(l, t);
+			have = curtok_in_list(l);
+			va_end(l);
+		}
+
+		if(!have)
+			break;
+
+		where_cc1_current(&w_op);
+		join = expr_set_where(
+				expr_new_op(curtok_to_op()),
+				&w_op);
+
 		EAT(curtok);
 		join->lhs = e;
 		join->rhs = above();
+
 		e = join;
 	}
 
-	va_end(l);
 	return e;
 }
 
 #define PARSE_DEFINE(this, above, ...) \
-expr *parse_expr_ ## this()            \
+static expr *parse_expr_ ## this()     \
 {                                      \
 	return parse_expr_generic(           \
 			parse_expr_ ## above,            \
@@ -385,12 +466,13 @@ PARSE_DEFINE(binary_or,   binary_xor,    token_or)
 PARSE_DEFINE(logical_and, binary_or,     token_andsc)
 PARSE_DEFINE(logical_or,  logical_and,   token_orsc)
 
-expr *parse_expr_conditional()
+static expr *parse_expr_conditional()
 {
 	expr *e = parse_expr_logical_or();
+	where w;
 
-	if(accept(token_question)){
-		expr *q = expr_new_if(e);
+	if(accept_where(token_question, &w)){
+		expr *q = expr_set_where(expr_new_if(e), &w);
 
 		if(accept(token_colon)){
 			q->lhs = NULL; /* sentinel */
@@ -408,19 +490,27 @@ expr *parse_expr_conditional()
 expr *parse_expr_assignment()
 {
 	expr *e;
+	where w;
 
 	e = parse_expr_conditional();
 
-	if(accept(token_assign)){
-		return expr_new_assign(e, parse_expr_assignment());
+	if(accept_where(token_assign, &w)){
+		return expr_set_where(
+				expr_new_assign(e, parse_expr_assignment()),
+				&w);
 
 	}else if(curtok_is_compound_assignment()){
 		/* +=, ... - only evaluate the lhs once*/
 		enum op_type op = curtok_to_compound_op();
 
+		where_cc1_current(&w);
 		EAT(curtok);
 
-		return expr_new_assign_compound(e, parse_expr_assignment(), op);
+		return expr_set_where(
+				expr_new_assign_compound(e,
+					parse_expr_assignment(),
+					op),
+				&w);
 	}
 
 	return e;
@@ -449,12 +539,12 @@ type_ref **parse_type_list()
 		return types;
 
 	do{
-		type_ref *r = parse_type();
+		type_ref *r = parse_type(0);
 
 		if(!r)
-			DIE_AT(NULL, "type expected");
+			die_at(NULL, "type expected");
 
-		dynarray_add((void ***)&types, r);
+		dynarray_add(&types, r);
 	}while(accept(token_comma));
 
 	return types;
@@ -466,9 +556,8 @@ expr **parse_funcargs()
 
 	while(curtok != token_close_paren){
 		expr *arg = parse_expr_no_comma();
-		if(!arg)
-			DIE_AT(&arg->where, "expected: funcall arg");
-		dynarray_add((void ***)&args, arg);
+		UCC_ASSERT(arg, "no arg?");
+		dynarray_add(&args, arg);
 
 		if(curtok == token_close_paren)
 			break;
@@ -478,19 +567,36 @@ expr **parse_funcargs()
 	return args;
 }
 
-void parse_test_init_expr(stmt *t)
+static void parse_test_init_expr(stmt *t)
 {
-	decl **c99_ucc_inits;
+	decl *d;
 
 	EAT(token_open_paren);
 
-	c99_ucc_inits = parse_decls_one_type();
-	if(c99_ucc_inits){
-		t->flow = stmt_flow_new(symtab_new(t->symtab));
+	/* if C99, we create a new scope here, for e.g.
+	 * if(5 > (enum { a, b })a){ return a; } return b;
+	 * "return b" can't see 'b' since its scope is only the if
+	 *
+	 * C90 drags the scope of the enum up to the enclosing block
+	 */
+	if(cc1_std == STD_C99)
+		t->symtab = current_scope = symtab_new(current_scope);
+
+	d = parse_decl_single(DECL_SPEL_NEED, 0);
+	if(d){
+		t->flow = stmt_flow_new(symtab_new(current_scope));
 
 		current_scope = t->flow->for_init_symtab;
 
-		t->flow->for_init_decls = c99_ucc_inits;
+		dynarray_add(&current_scope->decls, d);
+
+		if(accept(token_comma)){
+			/* if(int i = 5, i > f()){ ... } */
+			t->expr = parse_expr_exp();
+		}else{
+			/* if(int i = 5) -> if(i) */
+			t->expr = expr_new_identifier(d->spel);
+		}
 	}else{
 		t->expr = parse_expr_exp();
 	}
@@ -498,7 +604,7 @@ void parse_test_init_expr(stmt *t)
 	EAT(token_close_paren);
 }
 
-stmt *parse_if()
+static stmt *parse_if()
 {
 	stmt *t = STAT_NEW(if);
 
@@ -511,13 +617,12 @@ stmt *parse_if()
 	if(accept(token_else))
 		t->rhs = parse_stmt();
 
-	if(t->flow)
-		current_scope = current_scope->parent;
+	STMT_SCOPE_RECOVER(t);
 
 	return t;
 }
 
-stmt *parse_switch()
+static stmt *parse_switch()
 {
 	stmt *t = STAT_NEW(switch);
 	stmt *old = current_break_target;
@@ -534,10 +639,12 @@ stmt *parse_switch()
 	current_break_target = old;
 	current_switch = old_sw;
 
+	STMT_SCOPE_RECOVER(t);
+
 	return t;
 }
 
-stmt *parse_do()
+static stmt *parse_do()
 {
 	stmt *t = STAT_NEW(do);
 
@@ -556,7 +663,7 @@ stmt *parse_do()
 	return t;
 }
 
-stmt *parse_while()
+static stmt *parse_while()
 {
 	stmt *t = STAT_NEW(while);
 
@@ -568,10 +675,12 @@ stmt *parse_while()
 
 	t->lhs = parse_stmt();
 
+	STMT_SCOPE_RECOVER(t);
+
 	return t;
 }
 
-stmt *parse_for()
+static stmt *parse_for()
 {
 	stmt *s = STAT_NEW(for);
 	stmt_flow *sf;
@@ -592,11 +701,15 @@ stmt *parse_for()
 	}
 
 	SEMI_WRAP(
-			decl **c99inits = parse_decls_one_type();
-			if(c99inits)
-				sf->for_init_decls = c99inits;
-			else
-				sf->for_init = parse_expr_exp()
+			decl **c99inits = parse_decls_one_type(0);
+			if(c99inits){
+				dynarray_add_array(&current_scope->decls, c99inits);
+
+				if(cc1_std < STD_C99)
+					warn_at(NULL, "use of C99 for-init");
+			}else{
+				sf->for_init = parse_expr_exp();
+			}
 	);
 
 	SEMI_WRAP(sf->for_while = parse_expr_exp());
@@ -626,17 +739,17 @@ void parse_static_assert(void)
 		sa->e = parse_expr_no_comma();
 		EAT(token_comma);
 
-		token_get_current_str(&sa->s, NULL);
+		token_get_current_str(&sa->s, NULL, NULL, NULL);
 
 		EAT(token_string);
 		EAT(token_close_paren);
 		EAT(token_semicolon);
 
-		dynarray_add((void ***)&static_asserts, sa);
+		dynarray_add(&current_scope->static_asserts, sa);
 	}
 }
 
-asm_inout **parse_asm_inout(int is_output)
+static asm_inout **parse_asm_inout(int is_output)
 {
 	asm_inout **inouts;
 
@@ -660,7 +773,10 @@ asm_inout **parse_asm_inout(int is_output)
 			EAT(token_close_square);
 		}
 
-		token_get_current_str(&io->constraints, NULL);
+		token_get_current_str(
+				&io->constraints,
+				/* wide, len, where: */NULL, NULL, NULL);
+
 		EAT(token_string);
 
 		EAT(token_open_paren);
@@ -669,23 +785,23 @@ asm_inout **parse_asm_inout(int is_output)
 
 		io->is_output = is_output;
 
-		dynarray_add((void ***)&inouts, io);
+		dynarray_add(&inouts, io);
 	}while(accept(token_comma));
 
 	return inouts;
 }
 
-char **parse_asm_clobbers(void)
+static char **parse_asm_clobbers(void)
 {
 	char **ret = NULL;
 
 	while(curtok == token_string){
 		char *s;
 
-		token_get_current_str(&s, NULL);
+		token_get_current_str(&s, NULL, NULL, NULL);
 		EAT(token_string);
 
-		dynarray_add((void ***)&ret, s);
+		dynarray_add(&ret, s);
 		if(!accept(token_comma))
 			break;
 	}
@@ -693,7 +809,7 @@ char **parse_asm_clobbers(void)
 	return ret;
 }
 
-stmt *parse_asm(void)
+static stmt *parse_asm(void)
 {
 	stmt *asm_st;
 	asm_args *bits;
@@ -710,8 +826,8 @@ stmt *parse_asm(void)
 	}
 
 	if(qual & ~qual_volatile){
-		WARN_AT(&asm_st->where, "Ignoring extra qualifiers after asm (%s)",
-				type_qual_to_str(qual));
+		warn_at(&asm_st->where, "Ignoring extra qualifiers after asm (%s)",
+				type_qual_to_str(qual, 0));
 	}
 	bits->is_volatile = (qual & qual_volatile) == qual_volatile;
 
@@ -720,7 +836,7 @@ stmt *parse_asm(void)
 
 	EAT(token_open_paren);
 
-	token_get_current_str(&bits->cmd, NULL);
+	token_get_current_str(&bits->cmd, NULL, NULL, NULL);
 	EAT(token_string);
 
 	/* output operands */
@@ -741,17 +857,20 @@ stmt *parse_asm(void)
 		/* jump list */
 		if(goto_ty && accept(token_colon)){
 			/* gcc needs at least one identifier */
-			do
-				dynarray_add((void ***)&bits->jumps,
-						parse_expr_identifier());
-			while(accept(token_comma));
+			do{
+				if(curtok != token_identifier)
+					die_at(NULL, "label identifier expected");
+				dynarray_add(&bits->jumps,
+						token_current_spel());
+				EAT(token_identifier);
+			}while(accept(token_comma));
 
 			goto_ty = GOTO_HAD;
 		}
 	}
 
 	if(goto_ty == GOTO_IS)
-		WARN_AT("\"asm goto\" should have a jump list");
+		warn_at(NULL, "\"asm goto\" should have a jump list");
 
 	EAT(token_close_paren);
 	EAT(token_semicolon);
@@ -759,89 +878,62 @@ stmt *parse_asm(void)
 	return asm_st;
 }
 
-void parse_got_decls(decl **decls, stmt *codes_init)
+static stmt *parse_stmt_and_decls(void)
 {
-	dynarray_add_array((void ***)&codes_init->decls, (void **)decls);
-}
+	stmt *code_stmt = STAT_NEW_NEST(code);
 
-stmt *parse_stmt_and_decls()
-{
-	stmt *codes = STAT_NEW_NEST(code);
-	int last;
+	current_scope = code_stmt->symtab;
 
-	current_scope = codes->symtab;
+	parse_static_assert();
 
-	last = 0;
-	do{
-		decl **decls;
-		stmt *sub;
+	parse_decls_multi_type(
+			DECL_MULTI_ACCEPT_FUNC_DECL
+			| DECL_MULTI_ALLOW_STORE
+			| DECL_MULTI_ALLOW_ALIGNAS,
+			/*newdecl_context:*/1,
+			current_scope,
+			NULL);
 
-		parse_static_assert();
+	if(curtok != token_close_block){
+		/* fine with a normal statement */
+		int at_decl = 0;
 
-		decls = parse_decls_multi_type(DECL_MULTI_ACCEPT_FUNC_DECL | DECL_MULTI_ALLOW_STORE);
-		sub = NULL;
-
-		if(decls){
-			/*
-			 * create an implicit block for the decl i.e.
-			 *
-			 * int i;              int i;
-			 * i = 5;              i = 5;
-			 *                     {
-			 * int j;   ---->        int j;
-			 * j = 2;                j = 2;
-			 *                     }
-			 */
-
-			/* optimise - initial-block-decls doesn't need a sub-block */
-			if(!codes->codes){
-				parse_got_decls(decls, codes);
-				goto normal;
-			}else{
-				static int warned = 0;
-				if(!warned){
-					warned = 1;
-					cc1_warn_at(&decls[0]->where, 0, 1, WARN_MIXED_CODE_DECLS,
-							"mixed code and declarations");
-				}
-			}
-
-			/* new sub block */
-			if(curtok != token_close_block)
-				sub = parse_stmt_and_decls();
-
-			if(!sub){
-				/* decls aren't useless - { int i = f(); } - f called */
-				sub = STAT_NEW(code);
-			}
-
-			/* mark as internal - for duplicate checks */
-			sub->symtab->internal_nest = 1;
-
-			parse_got_decls(decls, sub);
-
-			last = 1;
-		}else{
-normal:
-			if(curtok != token_close_block){
-				/* fine with a normal statement */
-				sub = parse_stmt();
-			}else{
-				last = 1;
-			}
+		for(;;){
+			parse_static_assert();
+			if(curtok == token_close_block || (at_decl = parse_at_decl()))
+				break;
+			dynarray_add(&code_stmt->codes, parse_stmt());
 		}
 
-		if(decls)
-			dynarray_free((void ***)&decls, NULL);
+		if(at_decl){
+			if(code_stmt->codes){
+				stmt *nest = parse_stmt_and_decls();
 
-		if(sub)
-			dynarray_add((void ***)&codes->codes, sub);
-	}while(!last);
+				if(cc1_std < STD_C99){
+					static int warned = 0;
+					if(!warned){
+						warned = 1;
+						cc1_warn_at(&nest->where, 0, WARN_MIXED_CODE_DECLS,
+								"mixed code and declarations");
+					}
+				}
 
+				/* mark as internal - for duplicate checks */
+				nest->symtab->internal_nest = 1;
 
-	current_scope = codes->symtab->parent;
+				dynarray_add(&code_stmt->codes, nest);
+			}else{
+				ICE("got another decl - should've been handled already");
+			}
+		}
+	}
 
-	return codes;
+	/*current_scope = code_stmt->symtab->parent;
+	 * don't - we use ->parent for scope leak checks
+	 */
+	current_scope = current_scope->parent;
+
+	return code_stmt;
 }
 
 #ifdef SYMTAB_DEBUG
@@ -909,7 +1001,7 @@ stmt *parse_stmt_block()
 	return t;
 }
 
-stmt *parse_label_next(stmt *lbl)
+static stmt *parse_label_next(stmt *lbl)
 {
 	lbl->lhs = parse_stmt();
 	/*
@@ -961,9 +1053,11 @@ stmt *parse_stmt()
 				if(accept(token_multiply)){
 					/* computed goto */
 					t->expr = parse_expr_exp();
-					t->expr->expr_computed_goto = 1;
+				}else if(curtok == token_identifier){
+					t->bits.lbl.spel = token_current_spel();
+					EAT(token_identifier);
 				}else{
-					t->expr = parse_expr_identifier();
+					die_at(NULL, "identifier or '*' expected for goto");
 				}
 			}
 			EAT(token_semicolon);
@@ -1034,88 +1128,49 @@ flow:
 		}
 
 		default:
-			t = expr_to_stmt(parse_expr_exp(), current_scope);
+		{
+			char *lbl;
+			where w;
 
-			if(expr_kind(t->expr, identifier) && accept(token_colon)){
-				stmt_mutate_wrapper(t, label);
+			if((lbl = tok_at_label(&w))){
+				decl_attr *attr = NULL, *ai;
+
+				t = STAT_NEW(label);
+				t->bits.lbl.spel = lbl;
+				memcpy_safe(&t->where, &w);
+
+				parse_add_attr(&attr);
+				for(ai = attr; ai; ai = ai->next)
+					if(ai->type == attr_unused)
+						t->bits.lbl.unused = 1;
+					else
+						warn_at(&ai->where,
+								"ignoring attribute \"%s\" on label",
+								decl_attr_to_str(ai));
+
+				decl_attr_free(attr);
+
 				return parse_label_next(t);
 			}else{
+				t = expr_to_stmt(parse_expr_exp(), current_scope);
 				EAT(token_semicolon);
 				return t;
 			}
+		}
 	}
 
 	/* unreachable */
 }
 
-static symtable_gasm *parse_gasm(void)
+symtable_gasm *parse_gasm(void)
 {
 	symtable_gasm *g = umalloc(sizeof *g);
 
 	EAT(token_open_paren);
-	token_get_current_str(&g->asm_str, NULL);
+	token_get_current_str(&g->asm_str, NULL, NULL, NULL);
 	EAT(token_string);
 	EAT(token_close_paren);
 	EAT(token_semicolon);
 
 	return g;
-}
-
-symtable_global *parse()
-{
-	symtable_global *globals;
-	decl **decls = NULL;
-	symtable_gasm **last_gasms = NULL;
-
-	globals = symtabg_new();
-	current_scope = &globals->stab;
-
-	for(;;){
-		int cont = 0;
-
-		decl **new = parse_decls_multi_type(
-				  DECL_MULTI_CAN_DEFAULT
-				| DECL_MULTI_ACCEPT_FUNC_CODE
-				| DECL_MULTI_ALLOW_STORE);
-
-		if(new){
-			symtable_gasm **i;
-
-			for(i = last_gasms; i && *i; i++)
-				(*i)->before = *new;
-			dynarray_free((void ***)&last_gasms, NULL);
-
-			dynarray_add_array((void ***)&decls, (void **)new);
-			free(new);
-		}
-
-		/* global asm */
-		while(accept(token_asm)){
-			symtable_gasm *g = parse_gasm();
-
-			dynarray_add((void ***)&last_gasms, g);
-			dynarray_add((void ***)&globals->gasms, g);
-			cont = 1;
-		}
-
-		if(!cont)
-			break;
-	}
-
-	dynarray_free((void ***)&last_gasms, NULL);
-
-	EAT(token_eof);
-
-	if(parse_had_error)
-		exit(1);
-
-	if(decls){
-		int i;
-		for(i = 0; decls[i]; i++)
-			symtab_add(current_scope, decls[i], sym_global, SYMTAB_NO_SYM, SYMTAB_APPEND);
-	}
-
-	current_scope->static_asserts = static_asserts;
-
-	return globals;
 }

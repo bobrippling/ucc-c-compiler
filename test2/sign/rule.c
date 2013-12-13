@@ -1,3 +1,4 @@
+// RUN: %asmcheck %s
 main()
 {
 	// rule #1 - diff type

@@ -1,0 +1,15 @@
+i:
+.long 4
+x:
+.quad i
+y:
+.quad i + 8
+data.1:
+.long 2
+cp:
+.quad data.1
+data.2:
+.long 2
+.long 3
+cpa:
+.quad data.2

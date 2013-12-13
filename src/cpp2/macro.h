@@ -1,48 +1,31 @@
 #ifndef MACRO_H
 #define MACRO_H
 
-typedef struct
-{
-	enum tok
-	{
-		TOKEN_WORD,
-		TOKEN_OPEN_PAREN,
-		TOKEN_CLOSE_PAREN,
-		TOKEN_COMMA,
-		TOKEN_ELIPSIS,
-		TOKEN_OTHER
-	} tok;
-	char *w;
-	int had_whitespace;
-} token;
-
+#define DEFINED_STR "defined"
+/*#define EVAL_DEBUG*/
 
 typedef struct
 {
+	where where;
 	char *nam, *val;
 	enum { MACRO, FUNC, VARIADIC } type;
 	char **args;
-	int used_in_loop;
+	int blue; /* being evaluated? */
+	int use_cnt; /* track usage for double-eval */
+	int use_dump; /* for -dS */
 } macro;
 
 macro *macro_add(     const char *nam, const char *val);
-macro *macro_add_func(const char *nam, const char *val, char **args, int variadic);
+macro *macro_add_func(const char *nam, const char *val,
+		char **args, int variadic);
 
 macro *macro_find(const char *sp);
-void   macro_add_dir(char *d);
-void   macro_remove(const char *nam);
+int    macro_remove(const char *nam);
+void   macros_dump(void);
+void   macros_stats(void);
 
-void filter_macro(char **line);
-void macro_finish(void);
+extern macro **macros;
 
-enum
-{
-	DEBUG_NORM = 0,
-	DEBUG_VERB = 1,
-};
-extern int option_debug;
-#define DEBUG(level, ...) do{ if(level < option_debug) fprintf(stderr, ">>> " __VA_ARGS__); }while(0)
-
-extern char **lib_dirs;
+void macro_use(macro *m, int adj);
 
 #endif

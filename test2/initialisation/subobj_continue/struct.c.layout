@@ -1,0 +1,5 @@
+x:
+.zero 4
+.long 2
+.long 3
+.long 4

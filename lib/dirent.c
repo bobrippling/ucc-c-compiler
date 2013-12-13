@@ -55,7 +55,6 @@ void rewinddir(DIR *dirp __unused)
 	// TODO
 }
 
-#ifdef __GOT_SHORT_LONG
 void seekdir(DIR *dirp __unused, long pos __unused)
 {
 	// TODO
@@ -66,7 +65,6 @@ long telldir(DIR *dirp __unused)
 	// TODO
 	return -1;
 }
-#endif
 
 int scandir(const char *restrict dir __unused,
 						struct dirent ***restrict namelist __unused,

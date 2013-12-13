@@ -27,9 +27,7 @@ int brk(void *p)
 
 void *sbrk(int inc)
 {
-	void *new;
-
-	new = ucc_brk(NULL) + inc;
+	void *new = (char *)ucc_brk(NULL) + inc;
 
 	if(brk(new) == -1){
 		/*errno = ENOMEM;*/
@@ -75,7 +73,7 @@ int read(int fd, void *p, int size)
 	return __syscall(SYS_read, fd, p, size);
 }
 
-int write(int fd, void *p, int size)
+int write(int fd, const void *p, int size)
 {
 	return __syscall(SYS_write, fd, p, size);
 }
@@ -95,7 +93,7 @@ int rmdir(const char *d)
 	return __syscall(SYS_rmdir, d);
 }
 
-int pipe(int fd[2])
+int pipe(int fd[static 2])
 {
 	return __syscall(SYS_pipe, fd);
 }
@@ -117,7 +115,7 @@ int symlink(const char *link, const char *new)
 
 off_t lseek(int fd, off_t offset, int whence)
 {
-	return (unsigned)__syscall(SYS_lseek, fd, offset, whence);
+	return (off_t)__syscall(SYS_lseek, fd, offset, whence);
 }
 
 void _exit(int code)

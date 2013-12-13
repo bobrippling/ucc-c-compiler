@@ -6,42 +6,54 @@ const char *str_expr_comma()
 	return "comma";
 }
 
-void fold_const_expr_comma(expr *e, consty *k)
+static void fold_const_expr_comma(expr *e, consty *k)
 {
 	consty klhs;
 
 	const_fold(e->lhs, &klhs);
 	const_fold(e->rhs, k);
 
-	if(!is_const(klhs.type))
+	/* klhs.nonstandard_const || k->nonstandard_const
+	 * ^ doesn't matter - comma expressions are nonstandard-const anyway
+	 */
+	k->nonstandard_const = e;
+
+	if(!CONST_AT_COMPILE_TIME(klhs.type))
 		k->type = CONST_NO;
 }
 
 void fold_expr_comma(expr *e, symtable *stab)
 {
 	FOLD_EXPR(e->lhs, stab);
-	fold_disallow_st_un(e->lhs, "comma-expr");
+	fold_check_expr(
+			e->lhs,
+			FOLD_CHK_NO_ST_UN | FOLD_CHK_ALLOW_VOID,
+			"comma-expr");
 
 	FOLD_EXPR(e->rhs, stab);
-	fold_disallow_st_un(e->lhs, "comma-expr");
+	fold_check_expr(
+			e->rhs,
+			FOLD_CHK_NO_ST_UN | FOLD_CHK_ALLOW_VOID,
+			"comma-expr");
 
 	e->tree_type = e->rhs->tree_type;
 
-	/* TODO: warn if either of the sub-exps are not freestanding */
-	e->freestanding = e->lhs->freestanding || e->rhs->freestanding;
+	if(!e->lhs->freestanding && !type_ref_is_void(e->lhs->tree_type))
+		warn_at(&e->lhs->where, "left hand side of comma is unused");
+
+	e->freestanding = e->rhs->freestanding;
 }
 
-void gen_expr_comma(expr *e, symtable *stab)
+void gen_expr_comma(expr *e)
 {
-	gen_expr(e->lhs, stab);
+	gen_expr(e->lhs);
 	out_pop();
 	out_comment("unused comma expr");
-	gen_expr(e->rhs, stab);
+	gen_expr(e->rhs);
 }
 
-void gen_expr_str_comma(expr *e, symtable *stab)
+void gen_expr_str_comma(expr *e)
 {
-	(void)stab;
 	idt_printf("comma expression\n");
 	idt_printf("comma lhs:\n");
 	gen_str_indent++;
@@ -53,10 +65,21 @@ void gen_expr_str_comma(expr *e, symtable *stab)
 	gen_str_indent--;
 }
 
+expr *expr_new_comma2(expr *lhs, expr *rhs)
+{
+	expr *e = expr_new_comma();
+	e->lhs = lhs, e->rhs = rhs;
+	return e;
+}
+
 void mutate_expr_comma(expr *e)
 {
 	e->f_const_fold = fold_const_expr_comma;
 }
 
-void gen_expr_style_comma(expr *e, symtable *stab)
-{ (void)e; (void)stab; /* TODO */ }
+void gen_expr_style_comma(expr *e)
+{
+	gen_expr(e->lhs);
+	stylef(", ");
+	gen_expr(e->rhs);
+}

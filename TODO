@@ -1,19 +1,48 @@
+Testing
+#######
+
+%output_check anchors regex by default
+%ocheck [0-9]+ src compiles + runs + checks return code
+
 update bugs/
 test/ - x.c and x.c.expect (output and assembly)
 
-type_ref_new_*() static references
+General
+#######
+
+-Wredundant-decls
+-Wnested-externs
+
+"note:" output, instead of DIE_AT(..., "...\n%s here", where_str(...))
+
+Major C Features
+################
+
+Floating point - experimental/float branch
+C99 VLAs - experimental/vla branch
+C99 _Complex types
+C11 _Thread_local / gcc __thread
+C11 _Atomic
+
+cc1
+###
+
+cache unsigned types as well as signed types
+
+-fno-builtin
+default to external memset calls, -ffreestanding to use builtin on
 
 cc1.h - remove unused warnings
 
 struct initialisation
 	Update all compound lit. tests with structs when parsing complete (and then designated inits when complete)
 
-static store and static address-of store
-	i.e. int x = 5; vs int *x = &(int){5};
+-fcommon: .comm nam,sz,align
 
-machine target - currently between x86_64 and vm
-
----------------------------------------------------- cc1
+out/gen-optimisations:
+	constant folding
+	rearrangement of 1+f()+1 to f() + 1 + 1 - avoid pre-call reg saves
+	out/* - constant offset for symbols - x+61(%rsp), etc
 
 X-Macros instead of switches for enums
 
@@ -26,18 +55,9 @@ __alignof__/_Alignof, _Alignas(type/const-expr):
 		longs + doubles + ptrs change as their sizeof changes (x86 vs x64)
 	for structs/unions, it is the alignment of the largest type
 
--Wmissing-prototypes - increase statics (in Makefile)
-	redundant-decls
-	nested-externs
-
-initialisers [partially complete]
-	arrays and structs:
-		{ { 0 }, 5, {{{2}}} }
-		e.g. int a[] = { ... };
-	c99 struct/union init
-		{ .a = 5 }
-
 static analysis for labels - flag unused labels
+
+phi/basic-block backend gen
 
 bitfields: must be ints,
 	can't be addressed,
@@ -46,11 +66,6 @@ bitfields: must be ints,
 
 32-bit code gen
 
--fms-extensions - MS unnamed struct members
-
-general lhs assignment (gnu extension):
-	(b ? x : y) = 5;
-
 __attribute__((pure))
 - function with no side effects (e.g. strlen())
 
@@ -58,15 +73,33 @@ stabs/dwarf debugging annotations
 
 __attribute__((fastcall)), cdecl, etc
 - see Windows name mangling - https://en.wikipedia.org/wiki/Name_mangling
+[this is in the experimental/calling_conv branch]
 
 extensions:
 	namespace [str] { ... }
 	classes?
 	__attribute__((overloadable)) - clang
 
----------------------------------------------------- cpp
+warn on more C99 uses in -std=c(89|90)|ansi:
+	e.g. compound literals, _Generic, _Static_assert, etc
 
-fix memory leaks
+
+cpp
+###
+
+[fixes in feature/cpp/* branches]
+
+-Wunused-macros
+	warn at eof, or when the macro is redefined/undefined
+	-D macros, builtin and header macros aren't warned about
+
+-C: don't strip comments
+
+__TIMESTAMP__
+
+memory leaks
+
+-Df(x)=x+1
 
 fix dir-relative file opening (for #include <>):
 	cc -E dir/x.c
@@ -83,6 +116,8 @@ macros over multiple lines
 		2
 	)
 
----------------------------------------------------- lib
+
+lib
+###
 
 stdio buffers, etc

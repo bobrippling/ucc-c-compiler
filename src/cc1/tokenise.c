@@ -4,16 +4,28 @@
 #include <math.h>
 #include <ctype.h>
 #include <stdarg.h>
+#include <limits.h>
 
 #include "../util/util.h"
 #include "data_structs.h"
 #include "tokenise.h"
 #include "../util/alloc.h"
-#include "../util/util.h"
+#include "../util/str.h"
+#include "../util/escape.h"
 #include "str.h"
 #include "cc1.h"
 
+#ifndef CHAR_BIT
+#  define CHAR_BIT 8
+#endif
+
 #define KEYWORD(x) { #x, token_ ## x }
+
+#define KEYWORD__(x, t) \
+	{ "__" #x,      t },  \
+	{ "__" #x "__", t }
+
+#define KEYWORD__ALL(x) KEYWORD(x), KEYWORD__(x, token_ ## x)
 
 struct statement
 {
@@ -53,9 +65,7 @@ struct statement
 	KEYWORD(for),
 	KEYWORD(asm),
 
-	KEYWORD(asm),
-	{ "__asm",    token_asm },
-	{ "__asm__",  token_asm },
+	KEYWORD__ALL(asm),
 
 	KEYWORD(void),
 	KEYWORD(char),
@@ -71,43 +81,57 @@ struct statement
 	KEYWORD(extern),
 	KEYWORD(register),
 
-	KEYWORD(inline),
+	KEYWORD__ALL(inline),
 	KEYWORD(_Noreturn),
 
-	KEYWORD(const),
-	KEYWORD(volatile),
-	KEYWORD(restrict),
+	KEYWORD__ALL(const),
+	KEYWORD__ALL(volatile),
+	KEYWORD__ALL(restrict),
 
-	KEYWORD(signed),
-	KEYWORD(unsigned),
+	KEYWORD__ALL(signed),
+	KEYWORD__ALL(unsigned),
 
 	KEYWORD(typedef),
 	KEYWORD(struct),
 	KEYWORD(union),
 	KEYWORD(enum),
 
+	KEYWORD(_Alignof),
+	KEYWORD__(alignof, token__Alignof),
+	KEYWORD(_Alignas),
+	KEYWORD__(alignas, token__Alignas),
+
+	{ "__builtin_va_list", token___builtin_va_list },
+
 	KEYWORD(sizeof),
 	KEYWORD(_Generic),
 	KEYWORD(_Static_assert),
 
-	{ "__asm",   token_asm },
-	{ "__asm__", token_asm },
+	KEYWORD__ALL(asm),
+	KEYWORD__ALL(typeof),
 
-	{ "__typeof",    token_typeof },
-	{ "__typeof__",  token_typeof },
-
-	{ "__attribute",   token_attribute },
-	{ "__attribute__", token_attribute }
+	KEYWORD__(attribute, token_attribute),
 };
 
-static FILE *infile;
-char *current_fname;
+static tokenise_line_f *in_func;
 int buffereof = 0;
-int current_fname_used;
-int parse_finished = 0;
+static int parse_finished = 0;
+
+#define FNAME_STACK_N 32
+static struct fnam_stack
+{
+	char *fnam;
+	int    lno;
+} current_fname_stack[FNAME_STACK_N];
+
+static int current_fname_stack_cnt;
+char *current_fname;
+static int current_fname_used;
 
 static char *buffer, *bufferpos;
 static int ungetch = EOF;
+
+static int in_comment;
 
 static struct line_list
 {
@@ -118,18 +142,119 @@ static struct line_list
 /* -- */
 enum token curtok, curtok_uneat;
 
-intval currentval = { 0, 0 }; /* an integer literal */
+numeric currentval = { { 0 } }; /* an integer literal */
 
 char *currentspelling = NULL; /* e.g. name of a variable */
 
 char *currentstring   = NULL; /* a string literal */
-int   currentstringlen = 0;
+size_t currentstringlen = 0;
+int   currentstringwide = 0;
+where currentstringwhere;
 
-/* -- */
-int current_line = 0;
-int current_chr  = 0;
+/* where the parser is, and where the last parsed token was */
+static struct loc loc_now;
+struct loc loc_tok;
+
 char *current_line_str = NULL;
 int current_line_str_used = 0;
+
+#define SET_CURRENT(ty, new) do{\
+	if(!current_ ## ty ## _used)  \
+		free(current_ ## ty);       \
+	current_## ty = new;          \
+	current_## ty ##_used = 0; }while(0)
+
+#define SET_CURRENT_LINE_STR(new) SET_CURRENT(line_str, new)
+
+
+void where_cc1_current(struct where *w)
+{
+	if(parse_finished){
+eof_w:
+		if(eof_where){
+			memcpy(w, eof_where, sizeof *w);
+		}else if(current_fname){
+			/* still parsing, at EOF */
+			goto final;
+		}else{
+			ICE("where_new() after buffer eof");
+		}
+
+	}else{
+final:
+		/* XXX: current_chr positions at the end of the current token */
+		where_current(w);
+
+		if(!w->fname)
+			goto eof_w;
+
+		current_fname_used = 1;
+		current_line_str_used = 1;
+	}
+}
+
+void where_cc1_adj_identifier(where *w, const char *sp)
+{
+	w->len = strlen(sp);
+}
+
+
+static void push_fname(char *fn, int lno)
+{
+	current_fname = fn;
+	if(current_fname_stack_cnt < FNAME_STACK_N){
+		struct fnam_stack *p = &current_fname_stack[current_fname_stack_cnt++];
+		p->fnam = ustrdup(fn);
+		p->lno = lno;
+	}
+}
+
+static void pop_fname(void)
+{
+	if(current_fname_stack_cnt > 0){
+		struct fnam_stack *p = &current_fname_stack[--current_fname_stack_cnt];
+		free(p->fnam);
+	}
+}
+
+static void handle_line_file_directive(char *fnam, int lno)
+{
+	/*
+# 1 "inc.c"
+# 5 "yo.h"  // include "yo.h"
+            // if we get an error here,
+            // we want to know we're included from inc.c:1
+# 2 "inc.c" // include end - the line no. doesn't have to be prev+1
+	 */
+
+	/* logic for knowing when to pop and when to push */
+	int i;
+
+	for(i = current_fname_stack_cnt - 1; i >= 0; i--){
+		struct fnam_stack *stk = &current_fname_stack[i];
+
+		if(!strcmp(fnam, stk->fnam)){
+			/* found another "inc.c" */
+			/* pop `n` stack entries, then push our new one */
+			while(current_fname_stack_cnt > i)
+				pop_fname();
+			break;
+		}
+	}
+
+	push_fname(fnam, lno);
+}
+
+void include_bt(FILE *f)
+{
+	int i;
+	for(i = 0; i < current_fname_stack_cnt - 1; i++){
+		struct fnam_stack *stk = &current_fname_stack[i];
+
+		fprintf(f, "%s:%d: included from here\n",
+				stk->fnam, stk->lno);
+	}
+}
 
 static void add_store_line(char *l)
 {
@@ -140,103 +265,165 @@ static void add_store_line(char *l)
 	store_line_last = &new->next;
 }
 
-static void tokenise_read_line()
+static ucc_wur char *tokenise_read_line()
 {
 	char *l;
 
 	if(buffereof)
-		return;
+		return NULL;
 
-	if(buffer){
-		if((fopt_mode & FOPT_SHOW_LINE) == 0)
-			free(buffer);
-		buffer = NULL;
-	}
-
-	l = fline(infile);
+	l = in_func();
 	if(!l){
-		if(feof(infile))
-			buffereof = 1;
-		else
-			die("read():");
+		buffereof = 1;
 	}else{
 		/* check for preprocessor line info */
-		int lno;
-
 		/* but first - add to store_lines */
 		if(fopt_mode & FOPT_SHOW_LINE)
 			add_store_line(l);
 
-		/* format is # [0-9] "filename" ([0-9])* */
-		if(sscanf(l, "# %d", &lno) == 1){
-			char *p = strchr(l, '"');
-			char *fin;
+		/* format is # line? [0-9] "filename" ([0-9])* */
+		if(!in_comment && *l == '#'){
+			int lno;
+			char *ep;
 
-			if(p){
-				fin = p + 1;
-				for(;;){
-					fin = strchr(fin, '"');
+			l = str_spc_skip(l + 1);
+			if(!strncmp(l, "line", 4))
+				l += 4;
 
-					if(!fin)
-						die("no terminating quote for pre-proc info");
+			lno = strtol(l, &ep, 0);
+			if(ep == l)
+				die("couldn't parse number for #line directive (%s)", ep);
 
-					if(fin[-1] != '\\')
-						break;
-					fin++;
+			if(lno < 0)
+				die("negative #line directive argument");
+
+			loc_now.line = lno - 1; /* inc'd below */
+
+			ep = str_spc_skip(ep);
+
+			switch(*ep){
+				case '"':
+				{
+					char *p = str_quotefin(++ep);
+					if(!p)
+						die("no terminating quote to #line directive (%s)", l);
+					handle_line_file_directive(ustrdup2(ep, p), lno);
+					/*l = str_spc_skip(p + 1);
+					if(*l)
+						die("characters after #line?");
+						- gcc puts characters after the string */
+					break;
 				}
+				case '\0':
+					break;
 
-				if(!current_fname_used)
-					free(current_fname); /* else it's been taken by one or more where_new()s */
-
-				current_fname = ustrdup2(p + 1, fin);
-				current_fname_used = 0;
-			}else{
-				/* check there's nothing left */
-				for(p = l + 2; isdigit(*p); p++);
-				for(; isspace(*p); p++);
-
-				if(*p != '\0')
-					die("extra text after # 0-9: \"%s\"", p);
+				default:
+					die("expected '\"' or nothing after #line directive (%s)", ep);
 			}
 
-			current_line = lno - 1; /* inc'd below */
-
-			tokenise_read_line();
-
-			return;
+			return tokenise_read_line();
 		}
 
-		current_line++;
-		current_chr = -1;
+		loc_now.chr = 0;
+		loc_now.line++;
+		loc_tok = loc_now;
+
+		if(current_fname_stack_cnt > 0)
+			current_fname_stack[current_fname_stack_cnt - 1].lno = loc_now.line;
 	}
 
-	if(l){
-		if(!current_line_str_used)
-			free(current_line_str);
-		current_line_str = ustrdup(l);
-		current_line_str_used = 0;
-	}
-
-	bufferpos = buffer = l;
+	return l;
 }
 
-void tokenise_set_file(FILE *f, const char *nam)
+static void tokenise_next_line()
 {
-	infile = f;
+	char *new = tokenise_read_line();
 
-	if(!current_fname_used)
-		free(current_fname);
-	current_fname = ustrdup(nam);
-	current_fname_used = 0;
+	if(new)
+		SET_CURRENT_LINE_STR(ustrdup(new));
 
-	if(!current_line_str_used)
-		free(current_line_str);
-	current_line_str = NULL;
-	current_line_str_used = 0;
+	if(buffer){
+		if((fopt_mode & FOPT_SHOW_LINE) == 0)
+			free(buffer);
+	}
 
-	current_line = 0;
-	buffereof = 0;
+	bufferpos = buffer = new;
+}
+
+void tokenise_set_input(tokenise_line_f *func, const char *nam)
+{
+	char *nam_dup = ustrdup(nam);
+	in_func = func;
+
+	if(fopt_mode & FOPT_TRACK_INITIAL_FNAM)
+		push_fname(nam_dup, 1);
+	else
+		current_fname = nam_dup;
+
+	SET_CURRENT_LINE_STR(NULL);
+
+	loc_now.line = buffereof = parse_finished = 0;
 	nexttoken();
+}
+
+char *token_current_spel()
+{
+	char *ret = currentspelling;
+	currentspelling = NULL;
+	return ret;
+}
+
+char *token_current_spel_peek(void)
+{
+	return currentspelling;
+}
+
+char *tok_at_label(where *w)
+{
+	/* [a-z]+:
+	 * need to cater for newlines
+	 */
+	char *p;
+
+	if(curtok != token_identifier)
+		return NULL;
+
+	/* look for a colon */
+	for(p = bufferpos; *p; p++){
+		if(*p == ':'){
+			char *ret;
+
+			where_cc1_current(w);
+
+			bufferpos = p + 1;
+			ret = token_current_spel();
+
+			nexttoken();
+
+			return ret;
+
+		}else if(!isspace(*p)){
+			return NULL;
+		}
+	}
+
+	/* read the next line in */
+	{
+		char *const new = tokenise_read_line();
+
+		if(new){
+			size_t const newlen = strlen(new);
+			size_t const poff = p - buffer;
+			size_t const len = poff + newlen;
+
+			buffer = urealloc1(buffer, len + 1);
+			p = buffer + poff;
+			memcpy(p, new, newlen + 1);
+			bufferpos = p;
+			return tok_at_label(w);
+		}
+		return NULL;
+	}
 }
 
 static int rawnextchar()
@@ -245,12 +432,13 @@ static int rawnextchar()
 		return EOF;
 
 	while(!bufferpos || !*bufferpos){
-		tokenise_read_line();
+		tokenise_next_line();
 		if(buffereof)
 			return EOF;
 	}
 
-	current_chr++;
+	loc_now.chr++;
+
 	return *bufferpos++;
 }
 
@@ -267,7 +455,7 @@ static int peeknextchar()
 {
 	/* doesn't ignore isspace() */
 	if(!bufferpos)
-		tokenise_read_line();
+		tokenise_next_line();
 
 	if(buffereof)
 		return EOF;
@@ -275,33 +463,76 @@ static int peeknextchar()
 	return *bufferpos;
 }
 
-void read_number(enum base mode)
+static void read_number(const enum base mode)
 {
-	int read_suffix = 1;
-	int nlen;
+	char *end;
+	int of; /*verflow*/
 
-	char_seq_to_iv(bufferpos, &currentval, &nlen, mode);
+	switch(mode){
+		case BIN: currentval.suffix = VAL_BIN; break;
+		case HEX: currentval.suffix = VAL_HEX; break;
+		case OCT: currentval.suffix = VAL_OCTAL; break;
+		case DEC: currentval.suffix = 0; break;
+	}
 
-	bufferpos += nlen;
-	currentval.suffix = 0;
+	currentval.val.i = char_seq_to_ullong(bufferpos, &end, mode, 0, &of);
 
-	while(read_suffix)
-		switch(peeknextchar()){
+	if(of){
+		/* force unsigned long long ULLONG_MAX */
+		currentval.val.i = NUMERIC_T_MAX;
+		currentval.suffix = VAL_LLONG | VAL_UNSIGNED;
+	}
+
+	if(end == bufferpos)
+		die_at(NULL, "%s-number expected (got '%c')",
+				base_to_str(mode), peeknextchar());
+
+	/* -1, since we've already eaten the first numeric char */
+	loc_now.chr += end - bufferpos - 1;
+	bufferpos = end;
+
+	/* accept either 'U' 'L' or 'LL' as atomic parts (i.e. not LUL) */
+	/* fine using nextchar() since we peeknextchar() first */
+	{
+		enum numeric_suffix suff = 0;
+		char c;
+
+		for(;;) switch((c = peeknextchar())){
 			case 'U':
-				currentval.suffix = VAL_UNSIGNED;
+			case 'u':
+				if(suff & VAL_UNSIGNED)
+					die_at(NULL, "duplicate U suffix");
+				suff |= VAL_UNSIGNED;
 				nextchar();
 				break;
 			case 'L':
-				currentval.suffix = VAL_LONG;
+			case 'l':
+				if(suff & (VAL_LLONG | VAL_LONG))
+					die_at(NULL, "already have a L/LL suffix");
+
 				nextchar();
-				ICE("TODO: long integer suffix");
+				if(peeknextchar() == c){
+					C99_LONGLONG();
+					suff |= VAL_LLONG;
+					nextchar();
+				}else{
+					suff |= VAL_LONG;
+				}
 				break;
 			default:
-				read_suffix = 0;
+				goto out;
 		}
+
+out:
+		/* don't touch cv.suffix until after
+		 * - it may already have ULL from an
+		 * overflow in parsing
+		 */
+		currentval.suffix |= suff;
+	}
 }
 
-static enum token curtok_to_xequal()
+static enum token curtok_to_xequal(void)
 {
 #define MAP(x) case x: return x ## _assign
 	switch(curtok){
@@ -327,20 +558,20 @@ static enum token curtok_to_xequal()
 
 static int curtok_is_xequal()
 {
-	return curtok_to_xequal(curtok) != token_unknown;
+	return curtok_to_xequal() != token_unknown;
 }
 
-void read_string(char **sptr, int *plen)
+static void read_string(char **sptr, size_t *plen)
 {
 	char *const start = bufferpos;
-	char *const end = terminating_quote(start);
-	int size;
+	char *const end = str_quotefin(start);
+	size_t size;
 
 	if(!end){
 		char *p;
 		if((p = strchr(bufferpos, '\n')))
 			*p = '\0';
-		DIE_AT(NULL, "Couldn't find terminating quote to \"%s\"", bufferpos);
+		die_at(NULL, "Couldn't find terminating quote to \"%s\"", bufferpos);
 	}
 
 	size = end - start + 1;
@@ -354,6 +585,83 @@ void read_string(char **sptr, int *plen)
 	escape_string(*sptr, plen);
 
 	bufferpos += size;
+	loc_now.chr += size;
+}
+
+static void ungetchar(char ch)
+{
+	if(ungetch != EOF)
+		ICE("ungetch");
+
+	ungetch = ch;
+}
+
+static int getungetchar(void)
+{
+	const int ch = ungetch;
+	ungetch = EOF;
+	return ch;
+}
+
+static void read_string_multiple(const int is_wide)
+{
+	/* TODO: read in "hello\\" - parse string char by char, rather than guessing and escaping later */
+	char *str;
+	size_t len;
+
+	where_cc1_current(&currentstringwhere);
+
+	read_string(&str, &len);
+
+	curtok = token_string;
+
+	for(;;){
+		int c = nextchar();
+		if(c == '"'){
+			/* "abc" "def"
+			 *       ^
+			 */
+			char *new, *alloc;
+			size_t newlen;
+
+			read_string(&new, &newlen);
+
+			alloc = umalloc(newlen + len);
+
+			memcpy(alloc, str, len);
+			memcpy(alloc + len - 1, new, newlen);
+
+			free(str);
+			free(new);
+
+			str = alloc;
+			len += newlen - 1;
+		}else{
+			ungetchar(c);
+			break;
+		}
+	}
+
+	currentstring    = str;
+	currentstringlen = len;
+	currentstringwide = is_wide;
+}
+
+static void cc1_read_quoted_char(const int is_wide)
+{
+	int multichar;
+	long ch = read_quoted_char(bufferpos, &bufferpos, &multichar);
+
+	if(multichar){
+		if(ch & (~0UL << (CHAR_BIT * type_primitive_size(type_int))))
+			warn_at(NULL, "multi-char constant too large");
+		else
+			warn_at(NULL, "multi-char constant");
+	}
+
+	currentval.val.i = ch;
+	currentval.suffix = 0;
+	curtok = is_wide ? token_integer : token_character;
 }
 
 void nexttoken()
@@ -367,11 +675,11 @@ void nexttoken()
 		return;
 	}
 
-	if(ungetch != EOF){
-		c = ungetch;
-		ungetch = EOF;
-	}else{
-		c = nextchar(); /* no numbers, no more peeking */
+	if((c = getungetchar()) == EOF){
+		c = nextchar();
+
+		loc_tok.chr = loc_now.chr - 1;
+
 		if(c == EOF){
 			curtok = token_eof;
 			return;
@@ -379,27 +687,34 @@ void nexttoken()
 	}
 
 	if(isdigit(c)){
+		char *const num_start = bufferpos - 1;
 		enum base mode;
 
 		if(c == '0'){
-			switch((c = nextchar())){
+			/* note the '0' */
+			loc_now.chr++;
+
+			switch(tolower(c = peeknextchar())){
 				case 'x':
 					mode = HEX;
+					nextchar();
 					break;
 				case 'b':
 					mode = BIN;
+					nextchar();
 					break;
 				default:
 					if(!isoct(c)){
 						if(isdigit(c))
-							DIE_AT(NULL, "invalid oct character '%c'", c);
+							die_at(NULL, "invalid oct character '%c'", c);
 						else
 							mode = DEC; /* just zero */
+
+						bufferpos--; /* have the zero */
+						loc_now.chr--;
 					}else{
 						mode = OCT;
 					}
-
-					bufferpos--; /* rewind over c */
 					break;
 			}
 		}else{
@@ -426,23 +741,22 @@ void nexttoken()
 #endif
 
 		if(peeknextchar() == '.'){
-			/* double or float */
-			int parts[2];
-			nextchar();
+			/* floating point */
 
-			parts[0] = currentval.val;
-			read_number(DEC);
-			parts[1] = currentval.val;
+			currentval.val.f = strtold(num_start, &bufferpos);
 
-			if(peeknextchar() == 'f'){
+			if(toupper(peeknextchar()) == 'F'){
+				currentval.suffix = VAL_FLOAT;
 				nextchar();
-				/* FIXME: set currentval.suffix instead of token_{int,float,double} ? */
-				curtok = token_float;
+			}else if(toupper(peeknextchar()) == 'L'){
+				currentval.suffix = VAL_LDOUBLE;
+				nextchar();
 			}else{
-				curtok = token_double;
+				currentval.suffix = VAL_DOUBLE;
 			}
 
-			ICE("TODO: float/double repr (%d.%d)", parts[0], parts[1]);
+			curtok = token_floater;
+
 		}else{
 			curtok = token_integer;
 		}
@@ -451,19 +765,30 @@ void nexttoken()
 	}
 
 	if(c == '.'){
+		curtok = token_dot;
+
 		if(peeknextchar() == '.'){
 			nextchar();
 			if(peeknextchar() == '.'){
 				nextchar();
 				curtok = token_elipsis;
-			}else{
-				DIE_AT(NULL, "unknown token \"..\"\n");
 			}
-			return;
-		}else{
-			curtok = token_dot;
-			return;
+			/* else leave it at token_dot and next as token_dot;
+			 * parser will get an error */
 		}
+		return;
+	}
+
+	switch(c == 'L' ? peeknextchar() : 0){
+		case '"':
+			/* wchar_t string */
+			nextchar();
+			read_string_multiple(1);
+			return;
+		case '\'':
+			nextchar();
+			cc1_read_quoted_char(1);
+			return;
 	}
 
 	if(isalpha(c) || c == '_' || c == '$'){
@@ -499,92 +824,12 @@ void nexttoken()
 
 	switch(c){
 		case '"':
-		{
-			/* TODO: read in "hello\\" - parse string char by char, rather than guessing and escaping later */
-			char *str;
-			int len;
-
-			read_string(&str, &len);
-
-			curtok = token_string;
-
-recheck:
-			c = nextchar();
-			if(c == '"'){
-				char *new, *alloc;
-				int newlen;
-
-				read_string(&new, &newlen);
-
-				alloc = umalloc(newlen + len);
-
-				memcpy(alloc, str, len);
-				memcpy(alloc + len - 1, new, newlen);
-
-				free(str);
-				free(new);
-
-				str = alloc;
-				len += newlen - 1;
-
-				goto recheck;
-			}else{
-				if(ungetch != EOF)
-					ICE("ungetch");
-				ungetch = c;
-			}
-
-			currentstring    = str;
-			currentstringlen = len;
+			read_string_multiple(0);
 			break;
-		}
 
 		case '\'':
-		{
-			c = rawnextchar();
-
-			if(c == EOF){
-				DIE_AT(NULL, "Invalid character");
-			}else if(c == '\\'){
-				char esc = peeknextchar();
-
-				if(esc == 'x' || esc == 'b' || isoct(esc)){
-
-					if(esc == 'x' || esc == 'b')
-						nextchar();
-
-					read_number(esc == 'x' ? HEX : esc == 'b' ? BIN : OCT);
-
-					if(currentval.suffix)
-						DIE_AT(NULL, "invalid character sequence: suffix given");
-
-					if(currentval.val > 0xff)
-						warn_at(NULL, 1, "invalid character sequence: too large (parsed 0x%lx)", currentval.val);
-
-					c = currentval.val;
-				}else{
-					/* special parsing */
-					c = escape_char(esc);
-
-					if(c == -1)
-						DIE_AT(NULL, "invalid escape character '%c'", esc);
-
-					nextchar();
-				}
-			}
-
-			currentval.val = c;
-			currentval.suffix = 0;
-
-			if((c = nextchar()) == '\''){
-				curtok = token_character;
-			}else{
-				DIE_AT(NULL, "no terminating \"'\" for character (got '%c')", c);
-			}
-
+			cc1_read_quoted_char(0);
 			break;
-		}
-
 
 		case '(':
 			curtok = token_open_paren;
@@ -620,19 +865,22 @@ recheck:
 			break;
 		case '/':
 			if(peeknextchar() == '*'){
-				/* comment */
+				in_comment = 1;
+
 				for(;;){
 					int c = rawnextchar();
 					if(c == '*' && *bufferpos == '/'){
 						rawnextchar(); /* eat the / */
 						nexttoken();
+
+						in_comment = 0;
 						return;
 					}
 				}
-				DIE_AT(NULL, "No end to comment");
+				die_at(NULL, "No end to comment");
 				return;
 			}else if(peeknextchar() == '/'){
-				tokenise_read_line();
+				tokenise_next_line();
 				nexttoken();
 				return;
 			}
@@ -739,7 +987,7 @@ recheck:
 			break;
 
 		default:
-			DIE_AT(NULL, "unknown character %c 0x%x %d", c, c, buffereof);
+			die_at(NULL, "unknown character %c 0x%x %d", c, c, buffereof);
 			curtok = token_unknown;
 	}
 

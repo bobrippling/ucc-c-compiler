@@ -1,13 +1,12 @@
+// RUN: %ucc -o %t %s
+// RUN: %t; [ $? -eq 1 ]
+
+int f(int i){ return i + 1; }
+
 main()
 {
-	asm("call __Z4sizeIiEiv\n"
-			"mov %%eax, %0\n"
-			"jmp .after_tim\n"
-			".LSTR_tim: .byte 104, 105, 32, 37, 100, 0\n"
-			".after_tim:\n"
-			"pushl .LSTR_tim\n"
-			"pushl %%eax\n"
-			"call _printf\n"
-			"add $8, %%esp\n"
-			: "=r"(i));
+	asm("movl $0, %edi\n"
+			"call f\n"
+			"ret\n");
+	abort();
 }

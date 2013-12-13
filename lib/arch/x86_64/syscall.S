@@ -1,12 +1,13 @@
 #include "../../../src/as_cfg.h"
+#include "defs.h"
 .section SECTION_BSS
-	.globl errno
-errno:
+	.globl SYMBL(errno)
+SYMBL(errno):
 	.long 0
 
 .section SECTION_TEXT
-	.globl __syscall
-__syscall:
+	.globl SYMBL(__syscall)
+SYMBL(__syscall):
 	pushq %rbp
 	movq  %rsp, %rbp
 
@@ -50,7 +51,7 @@ __syscall:
 	jnc .fin
 	// carry - err is in rax
 #endif
-	movl %eax, errno(%rip)
+	movl %eax, SYMBL(errno)(%rip)
 	movq $-1, %rax
 .fin:
 

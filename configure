@@ -15,7 +15,14 @@ UCC_CPU     = ${UCC_CPU}
 #define UCC_AS      "${UCC_AS}"
 #define UCC_LD      "${UCC_LD}"
 #define UCC_ARCH    "${UCC_ARCH}"
-#define UCC_LDFLAGS "${UCC_LDFLAGS}"
+#define UCC_INC     "${UCC_INC}"
+
+#define UCC_CPPFLAGS "${UCC_CPPFLAGS}"
+#define UCC_CFLAGS   "${UCC_CFLAGS}"
+#define UCC_LDFLAGS  "${UCC_LDFLAGS}"
+
+#define UCC_STDLIB "${UCC_STDLIB}"
+#define UCC_CRT    "${UCC_CRT}"
 !
 
 	if [ $1 = Darwin ]
@@ -33,6 +40,8 @@ UCC_CPU     = ${UCC_CPU}
 #define SECTION_TEXT $SECTION_TEXT
 #define SECTION_DATA $SECTION_DATA
 #define SECTION_BSS  $SECTION_BSS
+#define UCC_M32      ${UCC_M32}
+#define ASM_PLBL_PRE "$ASM_PLBL"
 !
 
 	if ! which perl > /dev/null
@@ -54,24 +63,82 @@ UCC_CPU     = ${UCC_CPU}
 		fi
 	fi
 
+	if [ $1 = Cygwin ]
+	then echo "CFLAGS += -Wno-char-subscripts"
+	fi > src/src_config_platform.mk
+
 	echo "Configured for $UCC_CPU $1"
 }
 
-
 usage(){
 	cat >&2 <<!
-Usage: $0 [--as=path/to/as] [--cpu=...] [clean]
+Usage: $0 [--as=path/to/as] [--cpu=...] [--with-ucc-lib] [clean]
 !
 	exit 1
 }
 
+leading_underscore(){
+	UCC_CPPFLAGS="-D__LEADING_UNDERSCORE $UCC_CPPFLAGS"
+	UCC_CFLAGS="-fleading-underscore $UCC_CFLAGS"
+}
 
 UCC_AS=as
 UCC_LD=ld
 
 UCC_ARCH=elf64
 UCC_LDFLAGS=''
+UCC_CFLAGS=''
 UCC_CPU=x86_64
+UCC_M32=0
+ASM_PLBL=.L
+
+unam="$(uname -s)"
+
+# setup include paths
+# TODO: option to use local ./lib path
+UCC_INC="-I/usr/include"
+
+# defaults for an OS
+case "$unam" in
+	Linux)
+		# assume gcc
+		unam_lc="$(echo "$unam" | tr A-Z a-z)"
+		# FIXME: gcc specific + version specific
+		UCC_INC="$UCC_INC -I/usr/include/$UCC_CPU-$unam_lc-gnu -I/usr/lib/gcc/$UCC_CPU-$unam_lc-gnu/4.7.2/include"
+
+		UCC_LDFLAGS="$UCC_LDFLAGS"
+		UCC_DYN="-dynamic-linker /lib64/ld-linux-x86-64.so.2"
+		UCC_STDLIB="-lc"
+
+		UCC_CRT="$UCC_CRT:/usr/lib/x86_64-linux-gnu/crt1.o"
+		UCC_CRT="$UCC_CRT:/usr/lib/x86_64-linux-gnu/crti.o"
+		UCC_CRT="$UCC_CRT:/usr/lib/gcc/x86_64-linux-gnu/4.6/crtbegin.o"
+		UCC_CRT="$UCC_CRT:/usr/lib/gcc/x86_64-linux-gnu/4.6/crtend.o"
+		UCC_CRT="$UCC_CRT:/usr/lib/x86_64-linux-gnu/crtn.o"
+		;;
+
+
+	FreeBSD)
+		UCC_CRT="/usr/lib/crt1.o:/usr/lib/crti.o:/usr/lib/crtbegin.o:/usr/lib/crtend.o:/usr/lib/crtn.o"
+		UCC_STDLIB="-lc"
+		;;
+
+	Darwin)
+		UCC_ARCH=macho64
+		UCC_CFLAGS='-mpreferred-stack-boundary=4' # 2^4 = 16 byte aligned
+		UCC_STDLIB='-lSystem'
+		UCC_CRT='-lcrt1.o'
+		UCC_LDFLAGS='-macosx_version_min 10.5'
+		ASM_PLBL=L
+		leading_underscore
+		;;
+
+	CYGWIN_NT-*)
+		UCC_ARCH=win32
+		UCC_M32=1
+		leading_underscore
+		;;
+esac
 
 clean=0
 
@@ -94,6 +161,16 @@ do
 				(cd $ARCH_DIR; ls -d *)
 				usage
 			fi
+			if echo "$UCC_CPU" | grep 64 > /dev/null
+			then UCC_M32=0
+			else UCC_M32=1
+			fi
+			;;
+		--with-ucc-lib)
+			UCC_INC="-Ilib/"
+			UCC_CRT="lib/crt.a"
+			UCC_STDLIB="lib/libc.a"
+			UCC_DYN=''
 			;;
 		clean)
 			clean=1
@@ -110,10 +187,10 @@ then
 	exit
 fi
 
-case "$(uname -s)" in
+UCC_LDFLAGS="$UCC_LDFLAGS $UCC_DYN"
+
+case "$unam" in
 	Darwin)
-		UCC_ARCH=macho64
-		UCC_LDFLAGS='-e _start -macosx_version_min 10.5'
 		os_cfg Darwin
 		;;
 
@@ -126,12 +203,11 @@ case "$(uname -s)" in
 		;;
 
 	CYGWIN_NT-*)
-		UCC_ARCH=win32
 		os_cfg Cygwin
 		;;
 
 	*)
-		echo "unknown OS ($(uname -a))" >&2
+		echo "unknown OS ($unam)" >&2
 		exit 1
 		;;
 esac

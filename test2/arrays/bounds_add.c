@@ -1,8 +1,8 @@
-// RUN: %ucc -o /dev/null -S %s 2>&1 | %check %s
+// RUN: %check %s
 
 int *f()
 {
 	static int a[2];
 
-	return a + 2; // CHECK: /index 2 out of bounds/
+	return a + 3; // CHECK: /index 3 out of bounds/
 }

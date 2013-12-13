@@ -1,0 +1,29 @@
+f:
+.long 1
+.long 2
+.long 5
+.long 4
+x:
+.long 1
+.long 2
+.long 3
+.zero 4
+y:
+.long 1
+.long 2
+.long 3
+a:
+.zero 4
+.long 3
+.zero 8
+b:
+.zero 4
+.long 3
+.zero 8
+c:
+.long 3
+.zero 12
+d:
+.long 0, 3, 0, 0
+e:
+.long 0, 3, 0, 0

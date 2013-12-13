@@ -1,5 +1,5 @@
-// RUN: %ucc -DTYPE='int[]' etc etc...
-// RUN: %ucc -DTYPE='int()' etc etc...
+// RUN: ! %ucc -DTYPE='int[]' %s
+// RUN: ! %ucc -DTYPE='int()' %s
 
 main()
 {

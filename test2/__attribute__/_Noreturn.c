@@ -1,3 +1,6 @@
+// RUN: %ucc -c %s
+// RUN: %check %s
+
 _Noreturn void f() // CHECK: /function "f" marked no-return implicitly returns/
 {
 }

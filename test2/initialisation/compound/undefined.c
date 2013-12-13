@@ -1,28 +1,24 @@
-// RUN: echo TODO %s
-// RUN: false
+// 9 * 9 =
+// RUN: %ocheck 45 %s
 
-#include <stdio.h>
-
-typedef struct int_struct
+typedef struct
 {
 	int x;
-} int_struct;
+} int_1;
 
 #define MAX_INTS 10
 
 int main(void){
-	size_t i;
-	int_struct *ints[MAX_INTS];
+	int_1 *ints[MAX_INTS];
 
-	for (i = 0; i < MAX_INTS; i++) {
-		ints[i] = &(int_struct){i}; // needs struct-init parsing/fold/gen
-	}
+	for(int i = 0; i < MAX_INTS; i++)
+		ints[i] = &(int_1){ i };
+	// undefined once scope is left
 
 	int sum = 0;
-	for (i = 0; i < MAX_INTS; i++) {
+	for(int i = 0; i < MAX_INTS; i++)
 		sum += ints[i]->x;
-		//printf("%d\n", ints[i]->x);
-	}
+
 
 	return sum;
 }

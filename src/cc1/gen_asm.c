@@ -6,6 +6,7 @@
 
 #include "../util/util.h"
 #include "../util/dynarray.h"
+#include "../util/alloc.h"
 #include "data_structs.h"
 #include "cc1.h"
 #include "macros.h"
@@ -18,26 +19,40 @@
 #include "out/out.h"
 #include "out/lbl.h"
 #include "out/asm.h"
+#include "gen_style.h"
 
 char *curfunc_lblfin; /* extern */
 
-void gen_expr(expr *e, symtable *stab)
+void gen_expr(expr *e)
 {
 	consty k;
 
-	const_fold(e, &k);
-
-	if(k.type == CONST_VAL) /* TODO: -O0 skips this */
-		out_push_iv(e->tree_type, &k.bits.iv);
+	/* always const_fold functions, i.e. builtins */
+	if(expr_kind(e, funcall) || fopt_mode & FOPT_CONST_FOLD)
+		const_fold(e, &k);
 	else
-		EOF_WHERE(&e->where, e->f_gen(e, stab));
+		k.type = CONST_NO;
+
+	if(k.type == CONST_NUM){
+		/* -O0 skips this? */
+		if(cc1_backend == BACKEND_ASM)
+			out_push_num(e->tree_type, &k.bits.num);
+		else
+			stylef("%" NUMERIC_FMT_D, k.bits.num.val.i);
+	}else{
+		if(cc1_gdebug)
+			out_comment("at %s", where_str(&e->where));
+
+		EOF_WHERE(&e->where, e->f_gen(e));
+	}
 }
 
-void lea_expr(expr *e, symtable *stab)
+void lea_expr(expr *e)
 {
-	UCC_ASSERT(e->f_lea, "invalid store expression %s (no f_store())", e->f_str());
+	UCC_ASSERT(e->f_lea,
+			"invalid store expression expr-%s (no f_store())", e->f_str());
 
-	e->f_lea(e, stab);
+	e->f_lea(e);
 }
 
 void gen_stmt(stmt *t)
@@ -46,109 +61,62 @@ void gen_stmt(stmt *t)
 	/* can't assert vtop != null here, since ({}) depend on this */
 }
 
-void static_addr(expr *e)
+static void assign_arg_offsets(decl **decls, int const offsets[])
 {
-	consty k;
+	unsigned i, j;
 
-	memset(&k, 0, sizeof k);
+	for(i = j = 0; decls && decls[i]; i++){
+		sym *s = decls[i]->sym;
 
-	const_fold(e, &k);
+		if(s && s->type == sym_arg){
+			if(fopt_mode & FOPT_VERBOSE_ASM)
+				out_comment("%s @ offset %d", s->decl->spel, offsets[j]);
 
-	switch(k.type){
-		case CONST_NEED_ADDR:
-		case CONST_NO:
-			ICE("non-constant expr-%s const=%d%s",
-					e->f_str(),
-					k.type,
-					k.type == CONST_NEED_ADDR ? " (needs addr)" : "");
-			break;
-
-		case CONST_VAL:
-			asm_declare_partial("%ld", k.bits.iv.val);
-			break;
-
-		case CONST_ADDR:
-			if(k.bits.addr.is_lbl)
-				asm_declare_partial("%s", k.bits.addr.bits.lbl);
-			else
-				asm_declare_partial("%d", k.bits.addr.bits.memaddr);
-			break;
-
-		case CONST_STRK:
-			asm_declare_partial("%s", k.bits.str->lbl);
-			break;
-	}
-
-	/* offset in bytes, no mul needed */
-	if(k.offset)
-		asm_declare_partial(" + %ld", k.offset);
-}
-
-#ifdef FANCY_STACK_INIT
-#define ITER_DECLS(i) for(i = df->func_code->symtab->decls; i && *i; i++)
-
-void gen_func_stack(decl *df, const int offset)
-{
-	int use_sub = 1, clever = 0;
-	decl **iter;
-
-	ITER_DECLS(iter)
-		if((*iter)->init){
-			clever = 1;
-			break;
-		}
-
-	if(use_sub){
-		asm_output_new(asm_out_type_sub,
-				asm_operand_new_reg(NULL, ASM_REG_SP),
-				asm_operand_new_val(offset));
-	}else{
-		ITER_DECLS(iter){
-			decl *d = *iter;
-			if(d->init && d->init->type != decl_init_scalar){
-				ICW("TODO: stack gen or expr for %s init", decl_to_str(d));
-			}
+			s->loc.arg_offset = offsets[j++];
 		}
 	}
 }
-#else
-#endif
 
 void gen_asm_global(decl *d)
 {
 	decl_attr *sec;
 
-	if(!d->is_definition)
-		return;
-
-	if((sec = decl_has_attr(d, attr_section))){
+	if((sec = decl_attr_present(d, attr_section))){
 		ICW("%s: TODO: section attribute \"%s\" on %s",
-				where_str(&d->attr->where),
-				sec->attr_extra.section, d->spel);
+				where_str(&sec->where),
+				sec->bits.section, d->spel);
 	}
 
 	/* order of the if matters */
 	if(DECL_IS_FUNC(d) || type_ref_is(d->ref, type_ref_block)){
 		/* check .func_code, since it could be a block */
-		int nargs = 0;
+		int nargs = 0, is_vari;
 		decl **aiter;
-		char *sp;
+		const char *sp;
+		int *offsets;
+		symtable *arg_symtab;
 
 		if(!d->func_code)
 			return;
 
-		for(aiter = d->func_code->symtab->decls; aiter && *aiter; aiter++)
+		arg_symtab = DECL_FUNC_ARG_SYMTAB(d);
+		for(aiter = arg_symtab->decls; aiter && *aiter; aiter++)
 			if((*aiter)->sym->type == sym_arg)
 				nargs++;
+
+		offsets = nargs ? umalloc(nargs * sizeof *offsets) : NULL;
 
 		sp = decl_asm_spel(d);
 
 		out_label(sp);
 
-		out_func_prologue(
+		out_func_prologue(d->ref,
 				d->func_code->symtab->auto_total_size,
 				nargs,
-				decl_is_variadic(d));
+				is_vari = type_ref_is_variadic_func(d->ref),
+				offsets);
+
+		assign_arg_offsets(arg_symtab->decls, offsets);
 
 		curfunc_lblfin = out_label_code(sp);
 
@@ -156,19 +124,29 @@ void gen_asm_global(decl *d)
 
 		out_label(curfunc_lblfin);
 
-		out_func_epilogue();
+		out_func_epilogue(d->ref);
 
 		free(curfunc_lblfin);
+		free(offsets);
 
 	}else{
 		/* asm takes care of .bss vs .data, etc */
-		asm_declare_decl_init(cc_out[SECTION_DATA], d);
+		asm_declare_decl_init(SECTION_DATA, d);
 	}
 }
 
 static void gen_gasm(char *asm_str)
 {
 	fprintf(cc_out[SECTION_TEXT], "%s\n", asm_str);
+}
+
+static void gen_stringlits(dynmap *litmap)
+{
+	const stringlit *lit;
+	size_t i;
+	for(i = 0; (lit = dynmap_value(stringlit *, litmap, i)); i++)
+		if(lit->use_cnt > 0)
+			asm_declare_stringlit(SECTION_DATA, lit);
 }
 
 void gen_asm(symtable_global *globs)
@@ -186,37 +164,54 @@ void gen_asm(symtable_global *globs)
 				iasm = NULL;
 		}
 
-		/* inline_only aren't currently inlined */
-		if(!d->is_definition)
-			continue;
-
-		if(d->inline_only){
-			/* emit an extern for it anyway */
-			asm_predeclare_extern(d);
-			continue;
-		}
-
-		switch(d->store & STORE_MASK_STORE){
+		switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
 			case store_inline:
 			case store_auto:
 			case store_register:
-			case store_typedef:
 				ICE("%s storage on global %s",
 						decl_store_to_str(d->store),
 						decl_to_str(d));
 
-			case store_static:
-				break;
+			case store_typedef:
+				continue;
 
 			case store_extern:
-				if(!DECL_IS_FUNC(d) || !d->func_code)
-					break;
-				/* else extern func with definition */
-
 			case store_default:
-				asm_predeclare_global(d);
+			case store_static:
+				break;
 		}
 
+		if(DECL_IS_FUNC(d)){
+			if(d->store & store_inline){
+				/*
+				 * inline semantics
+				 *
+				 * "" = inline only
+				 * "static" = code emitted, decl is static
+				 * "extern" mentioned, or "inline" not mentioned = code emitted, decl is extern
+				 */
+				if((d->store & STORE_MASK_STORE) == store_default){
+					/* inline only - emit an extern for it anyway */
+					asm_predeclare_extern(d);
+					continue;
+				}
+			}
+
+			if(!d->func_code){
+				asm_predeclare_extern(d);
+				continue;
+			}
+		}else{
+			/* variable - if there's no init,
+			 * it's tenative and not output */
+			if(!d->init){
+				asm_predeclare_extern(d);
+				continue;
+			}
+		}
+
+		if((d->store & STORE_MASK_STORE) != store_static)
+			asm_predeclare_global(d);
 		gen_asm_global(d);
 
 		UCC_ASSERT(out_vcount() == 0, "non empty vstack after global gen");
@@ -224,4 +219,6 @@ void gen_asm(symtable_global *globs)
 
 	for(; iasm && *iasm; ++iasm)
 		gen_gasm((*iasm)->asm_str);
+
+	gen_stringlits(globs->literals);
 }

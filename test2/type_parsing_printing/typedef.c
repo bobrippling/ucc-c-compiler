@@ -1,3 +1,4 @@
+// RUN: %ucc -c %s
 typedef int tdef_int;
 
 tdef_int i;

@@ -1,5 +1,5 @@
-// RUN: %ucc -c %c -o /dev/null
-// RUN: %ucc -c %c -o /dev/null 2>&1 | %check %s
+// RUN: %ucc -c %s -o /dev/null
+// RUN: %check %s
 
 f(int *restrict a, int *restrict b)
 {

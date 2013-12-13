@@ -1,0 +1,10 @@
+stdin:
+.long 1
+.long 0
+.quad 0, 0, 0, 0, 0
+
+i:
+.long 2
+
+j:
+.word 2, 3

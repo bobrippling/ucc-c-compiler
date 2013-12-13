@@ -1,3 +1,5 @@
+// RUN: %layout_check %s
+
 int i = (int)&((struct A { int x, a; } *)0)->a;
 
 int *x = &i;

@@ -1,6 +1,4 @@
-func_fold_stmt fold_stmt_code;
-func_gen_stmt  gen_stmt_code;
-func_str_stmt  str_stmt_code;
+STMT_DEFS(code);
 
-void gen_code_decls(symtable *stab);
-func_mutate_stmt mutate_stmt_code;
+void gen_block_decls(symtable *stab);
+void fold_block_decls(symtable *stab, stmt **pinit_blk);

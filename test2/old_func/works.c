@@ -1,3 +1,5 @@
+// RUN: %ucc -o %t %s
+// RUN: %ocheck 5 %t
 f(i);
 
 f(i)

@@ -1,0 +1,30 @@
+x:
+.long 13
+.long 14
+.long 15
+.long 0
+
+.long 0
+.long 0
+.long 0
+.long 9
+
+b:
+.long 1
+.long 0
+
+a:
+.long 0
+.long 0
+
+y:
+.quad 0
+.quad 0
+.quad 0
+.quad 0
+.quad 0
+.quad 0
+.quad 0
+.quad 0
+.quad 0
+.quad 0

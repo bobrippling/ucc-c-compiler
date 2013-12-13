@@ -1,9 +1,12 @@
+#include <string.h>
+
 #include "ops.h"
 #include "expr_string.h"
 #include "../decl_init.h"
 #include "../str.h"
 #include "../out/lbl.h"
 #include "../../util/dynarray.h"
+#include "../../util/platform.h"
 
 const char *str_expr_str(void)
 {
@@ -12,94 +15,98 @@ const char *str_expr_str(void)
 
 void fold_expr_str(expr *e, symtable *stab)
 {
-	expr *sz = expr_new_val(e->bits.str.sv.len);
-	decl *d;
-	unsigned i;
+	const stringlit *const strlit = e->bits.strlit.lit_at.lit;
+	expr *sz;
 
-	if(e->code)
-		return; /* called from a sub-assignment */
-
+	sz = expr_new_val(strlit->len);
 	FOLD_EXPR(sz, stab);
 
-	/* (const char []) */
+	/* (const? char []) */
 	e->tree_type = type_ref_new_array(
-			type_ref_new_type_qual(type_char, qual_const),
+			type_ref_new_type_qual(
+				strlit->wide ? type_wchar : type_nchar,
+				e->bits.strlit.is_func ? qual_const : qual_none),
 			sz);
-
-	e->bits.str.sv.lbl = out_label_data_store(1);
-
-	d = decl_new();
-	d->ref = e->tree_type;
-	d->spel = e->bits.str.sv.lbl;
-
-	d->is_definition = 1;
-	d->store = store_static;
-
-	d->init = decl_init_new(decl_init_brace);
-	for(i = 0; i < e->bits.str.sv.len; i++){
-		decl_init *di = decl_init_new(decl_init_scalar);
-
-		di->bits.expr = expr_new_val(e->bits.str.sv.str[i]);
-
-		dynarray_add((void ***)&d->init->bits.inits, di);
-	}
-
-	/* add a sym so the data store gets gen'd */
-	e->bits.str.sym = SYMTAB_ADD(stab, d, stab->parent ? sym_local : sym_global);
-
-	e->code = stmt_new_wrapper(code, stab);
-	decl_init_create_assignments_for_base(d, e, e->code);
-
-	/* no non-global folding,
-	 * all strks are static globals/read from the init */
-	fold_decl_global_init(d, stab);
 }
 
-void gen_expr_str(expr *e, symtable *stab)
+void gen_expr_str(expr *e)
 {
-	(void)stab;
-	out_push_lbl(e->bits.str.sv.lbl, 1);
+	stringlit *strl = e->bits.strlit.lit_at.lit;
+
+	stringlit_use(strl);
+
+	out_push_lbl(strl->lbl, 1);
+	out_set_lvalue();
 }
 
-void gen_expr_str_str(expr *e, symtable *stab)
+static void lea_expr_str(expr *e)
 {
-	(void)stab;
-	idt_printf("address of datastore %s\n", e->bits.str.sv.lbl);
+	/* looks the same - a lea, but the type is different
+	 * gen_expr_str :: char *
+	 * lea_expr_str :: char (*)[]
+	 *
+	 * just like char x[] :: x vs &x
+	 */
+	gen_expr_str(e);
+}
+
+void gen_expr_str_str(expr *e)
+{
+	FILE *f = gen_file();
+	stringlit *lit = e->bits.strlit.lit_at.lit;
+
+	idt_printf("%sstring at %s\n", lit->wide ? "wide " : "", lit->lbl);
 	gen_str_indent++;
 	idt_print();
-	literal_print(cc1_out, e->bits.str.sv.str, e->bits.str.sv.len);
+
+	literal_print(f,
+			e->bits.strlit.lit_at.lit->str,
+			e->bits.strlit.lit_at.lit->len);
+
 	gen_str_indent--;
-	fputc('\n', cc1_out);
+	fputc('\n', f);
 }
 
-void const_expr_string(expr *e, consty *k)
+static void const_expr_string(expr *e, consty *k)
 {
+	CONST_FOLD_LEAF(k);
 	k->type = CONST_STRK;
-	k->bits.str = &e->bits.str.sv;
+	k->bits.str = &e->bits.strlit.lit_at;
 	k->offset = 0;
 }
 
 void mutate_expr_str(expr *e)
 {
 	e->f_const_fold = const_expr_string;
+	e->f_lea = lea_expr_str;
 }
 
-void expr_mutate_str(expr *e, char *s, int len)
+void expr_mutate_str(
+		expr *e,
+		char *s, size_t len,
+		int wide,
+		where *w)
 {
-	stringval *sv = &e->bits.str.sv;
-
 	expr_mutate_wrapper(e, str);
 
-	sv->str = s;
-	sv->len = len;
+	e->bits.strlit.lit_at.lit = strings_lookup(
+			&symtab_global(current_scope)->literals,
+			s, len, wide);
+
+	memcpy_safe(&e->bits.strlit.lit_at.where, w);
+	memcpy_safe(&e->where, w);
 }
 
-expr *expr_new_str(char *s, int l)
+expr *expr_new_str(char *s, size_t l, int wide, where *w)
 {
 	expr *e = expr_new_wrapper(str);
-	expr_mutate_str(e, s, l);
+	expr_mutate_str(e, s, l, wide, w);
 	return e;
 }
 
-void gen_expr_style_str(expr *e, symtable *stab)
-{ (void)e; (void)stab; /* TODO */ }
+void gen_expr_style_str(expr *e)
+{
+	literal_print(gen_file(),
+			e->bits.strlit.lit_at.lit->str,
+			e->bits.strlit.lit_at.lit->len);
+}

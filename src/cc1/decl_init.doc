@@ -1,0 +1,37 @@
+store range inits separately, e.g.
+
+struct A
+{
+	int i, j;
+} x[] = {
+  [0 ... 5] = { 1, 2, },
+};
+
+We store the init { 1, 2 } in .range_inits (immutable once stored).
+This is along with an initially null "first_instance" expr.
+Then each of .inits[0 ... 5] is of type decl_init_copy, and its .bits.range_copy
+points into the .range_inits.
+
+If we have
+x[] = { [0 ... 3 ] = f() },
+the .range_inits[0] = { .range_copy = `expr: f()`, .first_instance = 0x0 }
+Then when we generate x[0], this generates an expression (type int), which
+we store in .range_inits[0].first_instance, so subsequent inits for x[1] and x[2]
+can pull out this expr for a builtin_memcpy().
+
+For replacements:
+if we then have:
+  [1].j = 3,
+
+this takes the .range_copy, and if its constant, we copy it
+into *di, and alter it accordingly, if it's constant.
+
+The another annoying case is that we're replacing something with a range-init,
+e.g.
+struct A x[] = {
+	{ 1, 2 },
+	[0 ... 5].j = 99
+};
+
+This should generate { { 1, 99 }, { 0, 99 }... }
+i.e. the first range init should partially replace [0].

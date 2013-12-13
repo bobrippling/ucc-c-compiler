@@ -1,4 +1,4 @@
-// RUN: %ucc -o /dev/null -S %s 2>&1 | %check %s
+// RUN: %check %s
 
 f()
 {

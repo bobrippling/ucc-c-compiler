@@ -28,37 +28,31 @@
 /* Callee saved.
  * A subroutine using one of these must save original and restore it before exiting.
  * Preserved across procedure calls */
-#define MIPS_REG_SAVE_0 17
-#define MIPS_REG_SAVE_1 18
-#define MIPS_REG_SAVE_2 19
-#define MIPS_REG_SAVE_3 20
-#define MIPS_REG_SAVE_4 21
-#define MIPS_REG_SAVE_5 22
-#define MIPS_REG_SAVE_6 23
+#define MIPS_REG_SAVE_0 16
+#define MIPS_REG_SAVE_1 17
+#define MIPS_REG_SAVE_2 18
+#define MIPS_REG_SAVE_3 19
+#define MIPS_REG_SAVE_4 20
+#define MIPS_REG_SAVE_5 21
+#define MIPS_REG_SAVE_6 22
+#define MIPS_REG_SAVE_7 23
 
 /* (temporaries) Caller saved if needed.
  * Subroutines can use w/out saving.
  * These are in addition to $t0 - $t7 above.
  * Not preserved across procedure calls. */
-#define MIPS_REG_TMP_8  17
-#define MIPS_REG_TMP_9  18
-#define MIPS_REG_TMP_10 19
-#define MIPS_REG_TMP_11 20
-#define MIPS_REG_TMP_12 21
-#define MIPS_REG_TMP_13 22
-#define MIPS_REG_TMP_14 23
+#define MIPS_REG_TMP_8  24
+#define MIPS_REG_TMP_9  25
+
+/* $26 - $27 = kernel, $28 = $gp */
 
 #define MIPS_REG_SP 29
 #define MIPS_REG_FP 30
 #define MIPS_REG_RA 31
 
-#define N_SCRATCH_REGS 15 /* $t0-$t14 */
-#define FIRST_SCRATCH_REG MIPS_REG_TMP_0
+#define N_SCRATCH_REGS 10 /* $t0-$t9 */
 
-#define N_CALL_REGS    4
 #define REG_RET        MIPS_REG_V0
 #define REG_SP         MIPS_REG_SP
-
-#define IMPL_COMMENT "#"
 
 #endif

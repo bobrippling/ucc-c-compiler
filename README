@@ -1,4 +1,4 @@
-It should be fairly obvious what this program does
+It's a compiler!
 
 It doesn't use system include files nor libraries yet, just some simple ones in lib/
 
@@ -9,7 +9,7 @@ Requirements
 as (I use gnu as, but any should be fine)
 ld (any form should be fine)
 
-Obviously you need a compiler to compiler this compiler with.
+Obviously you need a compiler to compile this compiler with.
 
 
 Compiling (the compiler)
@@ -22,16 +22,21 @@ make
 Compiling C files
 =================
 
-Pretty much the standard args
+Pretty much the standard arguments.
 I haven't made an install make target yet, ucc finds libraries + includes locally
 
-All programs compiled by ucc are staticly linked.
+All programs compiled by ucc are statically linked.
 
 
 Major C-Features Todo
 =============
 
-floating point numbers, long + short types (asm_backend_recode branch)
+Floating point numbers (experimental/float)
+C99 VLAs (experimental/vla)
+By-value argument passing and function return for:
+	- structure/union types
+	- long-double types
+	- long long types on 32-bit archs
 
 
 Examples
@@ -41,7 +46,7 @@ Examples
 - preprocess, compile, assemble and link hello.c into hello
 
 ./ucc -o- -S test.c
-- output assmebly code for test.c
+- output assembly code for test.c
 
 ./ucc -o- -S -Xprint test.c
 - show the abstract parse tree with type annotation and stack offsets, etc

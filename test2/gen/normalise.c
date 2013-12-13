@@ -1,3 +1,4 @@
+// RUN: %asmcheck %s
 // both of these should generate a testl %eax, %eax
 f(int i)
 {

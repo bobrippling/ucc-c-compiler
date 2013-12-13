@@ -7,18 +7,18 @@
 #include "dynarray.h"
 #include "util.h"
 
-void dynarray_add(void ***par, void *new)
+void dynarray_nochk_add(void ***par, void *new)
 {
 	void **ar = *par;
 	int idx = 0;
 
-	UCC_ASSERT(new, "dynarray_add(): adding NULL");
+	UCC_ASSERT(new, "dynarray_nochk_add(): adding NULL");
 
 	if(!ar){
 		ar = umalloc(2 * sizeof *ar);
 	}else{
-		idx = dynarray_count(ar);
-		ar = urealloc(ar, (idx + 2) * sizeof *ar);
+		idx = dynarray_nochk_count(ar);
+		ar = urealloc1(ar, (idx + 2) * sizeof *ar);
 	}
 
 	ar[idx] = new;
@@ -27,17 +27,48 @@ void dynarray_add(void ***par, void *new)
 	*par = ar;
 }
 
-void *dynarray_pop(void ***par)
+void *dynarray_nochk_padinsert(
+		void ***par, unsigned i, unsigned *pn, void *ins)
+{
+	void **ar = *par;
+	unsigned n = *pn;
+
+	if(i < n){
+		/* already have one, replace */
+		void **p = &ar[i],
+				 *out = *p;
+
+		*p = ins;
+
+		return out == DYNARRAY_NULL ? NULL : out;
+	}else{
+		/* pad up to it */
+		unsigned j;
+		for(j = i - n; j > 0; j--){
+			dynarray_add(par, DYNARRAY_NULL);
+			n++;
+		}
+
+		/* add */
+		dynarray_add(par, ins);
+		n++;
+
+		*pn = n;
+		return NULL;
+	}
+}
+
+char *dynarray_nochk_pop(void ***par)
 {
 	void **ar = *par;
 	void *r;
 	int i;
 
-	i = dynarray_count(ar) - 1;
+	i = dynarray_nochk_count(ar) - 1;
 	r = ar[i];
 	ar[i] = NULL;
 
-	UCC_ASSERT(r, "dynarray_pop(): empty array");
+	UCC_ASSERT(r, "dynarray_nochk_pop(): empty array");
 
 	if(i == 0){
 		free(ar);
@@ -47,21 +78,21 @@ void *dynarray_pop(void ***par)
 	return r;
 }
 
-void dynarray_prepend(void ***par, void *new)
+void dynarray_nochk_prepend(void ***par, void *new)
 {
 	void **ar;
 	int i;
 
-	dynarray_add(par, new);
+	dynarray_nochk_add(par, new);
 
 	ar = *par;
 
 //#define SLOW
 #ifdef SLOW
-	for(i = dynarray_count(ar) - 2; i >= 0; i--)
+	for(i = dynarray_nochk_count(ar) - 2; i >= 0; i--)
 		ar[i + 1] = ar[i];
 #else
-	i = dynarray_count(ar) - 1;
+	i = dynarray_nochk_count(ar) - 1;
 	if(i > 0)
 		memmove(ar + 1, ar, i * sizeof *ar);
 #endif
@@ -69,13 +100,13 @@ void dynarray_prepend(void ***par, void *new)
 	ar[0] = new;
 }
 
-void dynarray_rm(void **ar, void *x)
+void dynarray_nochk_rm(void **ar, void *x)
 {
 	int i, n;
 
-	n = dynarray_count(ar);
+	n = dynarray_nochk_count(ar);
 
-	UCC_ASSERT(n, "dynarray_rm(): empty array");
+	UCC_ASSERT(n, "dynarray_nochk_rm(): empty array");
 
 	for(i = 0; ar[i]; i++)
 		if(ar[i] == x){
@@ -84,7 +115,7 @@ void dynarray_rm(void **ar, void *x)
 		}
 }
 
-int dynarray_count(void **ar)
+int dynarray_nochk_count(void **ar)
 {
 	int len = 0;
 
@@ -97,7 +128,7 @@ int dynarray_count(void **ar)
 	return len;
 }
 
-void dynarray_free(void ***par, void (*f)(void *))
+void dynarray_nochk_free(void ***par, void (*f)(void *))
 {
 	void **ar = *par;
 
@@ -112,15 +143,16 @@ void dynarray_free(void ***par, void (*f)(void *))
 	}
 }
 
-void dynarray_add_array(void ***par, void **ar2)
+void dynarray_nochk_add_array(void ***par, void **ar2)
 {
 	void **ar = *par;
 	int n, n2, total;
 
-	UCC_ASSERT(ar2, "dynarray_add_array(): empty array");
+	if(!ar2)
+		return;
 
 	if(!ar){
-		n = dynarray_count(ar2);
+		n = dynarray_nochk_count(ar2);
 		ar = umalloc((n + 1) * sizeof *ar);
 		memcpy(ar, ar2, n * sizeof *ar2);
 		ar[n] = NULL;
@@ -128,13 +160,22 @@ void dynarray_add_array(void ***par, void **ar2)
 		return;
 	}
 
-	n  = dynarray_count(ar);
-	n2 = dynarray_count(ar2);
+	n  = dynarray_nochk_count(ar);
+	n2 = dynarray_nochk_count(ar2);
 
 	total = n + n2;
 
-	ar = urealloc(ar, (total + 1) * sizeof *ar);
+	ar = urealloc1(ar, (total + 1) * sizeof *ar);
 	memcpy(ar + n, ar2, (n2 + 1) * sizeof *ar2);
 
 	*par = ar;
+}
+
+void dynarray_nochk_add_tmparray(void ***par, void **ar2)
+{
+	dynarray_nochk_add_array(par, ar2);
+	dynarray_nochk_free(&ar2, NULL);
+	/* can't have ***par2 since it might not be an lvalue in the macro,
+	 * e.g. dynarray_add_tmparray(&ar, f())
+	 */
 }

@@ -1,3 +1,4 @@
+// RUN: %ucc -fsyntax-only %s
 binary(a, b)
 {
 	p(a + b);

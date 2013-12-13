@@ -12,25 +12,33 @@ void fold_stmt_expr(stmt *s)
 {
 	FOLD_EXPR(s->expr, s->symtab);
 	if(!s->freestanding && !s->expr->freestanding && !type_ref_is_void(s->expr->tree_type))
-		cc1_warn_at(&s->expr->where, 0, 1, WARN_UNUSED_EXPR,
+		cc1_warn_at(&s->expr->where, 0, WARN_UNUSED_EXPR,
 				"unused expression (%s)", s->expr->f_str());
 }
 
 void gen_stmt_expr(stmt *s)
 {
-	const int pre_vcount = out_vcount();
+	int pre_vcount = out_vcount();
 
-	gen_expr(s->expr, s->symtab);
+	gen_expr(s->expr);
 
-	if(!s->expr_no_pop){
+	if(s->expr_no_pop)
+		pre_vcount++;
+	else
 		out_pop(); /* cancel the implicit push from gen_expr() above */
-		out_comment("end of %s-stmt", s->f_str());
 
-		UCC_ASSERT(out_vcount() == pre_vcount,
-				"vcount changed over %s statement (%d -> %d)",
-				s->expr->f_str(),
-				out_vcount(), pre_vcount);
-	}
+	out_comment("end of %s-stmt", s->f_str());
+
+	UCC_ASSERT(out_vcount() == pre_vcount,
+			"vcount changed over %s statement (%d -> %d)",
+			s->expr->f_str(),
+			out_vcount(), pre_vcount);
+}
+
+void style_stmt_expr(stmt *s)
+{
+	gen_expr(s->expr);
+	stylef(";\n");
 }
 
 static int expr_passable(stmt *s)
@@ -48,7 +56,7 @@ static int expr_passable(stmt *s)
 	return 1;
 }
 
-void mutate_stmt_expr(stmt *s)
+void init_stmt_expr(stmt *s)
 {
 	s->f_passable = expr_passable;
 }

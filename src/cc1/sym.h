@@ -3,7 +3,11 @@
 
 struct sym
 {
-	int offset; /* stack offset */
+	union
+	{
+		int arg_offset;
+		unsigned stack_pos;
+	} loc;
 
 	enum sym_type
 	{
@@ -13,6 +17,7 @@ struct sym
 	} type;
 
 	decl *decl;
+	type_ref *owning_func; /* only for sym_arg */
 
 	/* static analysis */
 	int nreads, nwrites;
@@ -25,12 +30,15 @@ struct static_assert
 	expr *e;
 	char *s;
 	symtable *scope;
+	int checked;
 };
 
 struct symtable
 {
 	int auto_total_size;
-	int internal_nest;
+	unsigned folded : 1, laidout : 1;
+	unsigned internal_nest : 1, are_params : 1;
+	decl *in_func; /* for r/w checks on args and return-type checks */
 	/*
 	 * { int i; 5; int j; }
 	 * j's symtab is internally represented like:
@@ -41,25 +49,33 @@ struct symtable
 
 	symtable *parent, **children;
 
-	decl                 **decls;
 	struct_union_enum_st **sues;
-	decl                 **typedefs;
 
-	static_assert        **static_asserts;
+	/* identifiers and typedefs */
+	decl **decls;
+
+	/* char * => label * */
+	struct dynmap *labels;
+
+	static_assert **static_asserts;
 };
 
 typedef struct symtable_gasm symtable_gasm;
+struct symtable_gasm
+{
+	decl *before; /* the decl this occurs before - NULL if last */
+	char *asm_str;
+};
+
 struct symtable_global
 {
 	symtable stab; /* ABI compatible with struct symtable */
-	struct symtable_gasm
-	{
-		decl *before; /* the decl this occurs before - NULL if last */
-		char *asm_str;
-	} **gasms;
+	symtable_gasm **gasms;
+	dynmap *literals;
 };
 
 sym *sym_new(decl *d, enum sym_type t);
+sym *sym_new_stab(symtable *, decl *d, enum sym_type t);
 
 symtable_global *symtabg_new(void);
 
@@ -67,23 +83,25 @@ symtable *symtab_new(symtable *parent);
 void      symtab_set_parent(symtable *child, symtable *parent);
 void      symtab_rm_parent( symtable *child);
 
+void symtab_add_params(symtable *, decl **);
+
 symtable *symtab_root(symtable *child);
+symtable *symtab_func_root(symtable *stab);
+#define symtab_func(st) symtab_func_root(st)->in_func
+symtable_global *symtab_global(symtable *);
 
-#define SYMTAB_APPEND  0
-#define SYMTAB_PREPEND 1
+int symtab_nested_internal(symtable *parent, symtable *nest);
 
-#define SYMTAB_NO_SYM   0
-#define SYMTAB_WITH_SYM 1
-
-#define SYMTAB_ADD(tab, decl, type) symtab_add(tab, decl, type, SYMTAB_WITH_SYM, SYMTAB_APPEND)
-
-sym  *symtab_add(   symtable *, decl *, enum sym_type, int with_sym, int prepend);
 sym  *symtab_search(symtable *, const char *);
-sym  *symtab_has(   symtable *, decl *);
-void  symtab_add_args(symtable *stab, funcargs *fargs, const char *func_spel);
+decl *symtab_search_d(symtable *, const char *, symtable **pin);
+int   typedef_visible(symtable *stab, const char *spel);
 
 const char *sym_to_str(enum sym_type);
 
 #define sym_free(s) free(s)
+
+/* labels */
+struct label *symtab_label_find_or_new(symtable *, char *, where *);
+void symtab_label_add(symtable *, struct label *);
 
 #endif

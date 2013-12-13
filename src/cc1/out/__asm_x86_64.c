@@ -8,8 +8,10 @@
 #include "../../util/dynarray.h"
 #include "../../util/dynmap.h"
 #include "../../util/alloc.h"
+
 #include "../data_structs.h"
 #include "vstack.h"
+#include "asm.h"
 #include "out.h"
 #include "x86_64.h"
 #include "__asm.h"
@@ -50,7 +52,7 @@ void out_constraint_check(where *w, const char *constraint, int output)
 	size_t first_not = strspn(constraint, "gabcdSDmirqf&=");
 
 	if(first_not != strlen(constraint))
-		DIE_AT(w, "invalid constraint \"%c\"", constraint[first_not]);
+		die_at(w, "invalid constraint \"%c\"", constraint[first_not]);
 
 	{
 		char reg_chosen, mem_chosen, write_only, const_chosen;
@@ -90,10 +92,10 @@ void out_constraint_check(where *w, const char *constraint, int output)
 			}
 
 #define BAD_CONSTRAINT(err) \
-		DIE_AT(w, "bad constraint \"%s\": " err, orig)
+		die_at(w, "bad constraint \"%s\": " err, orig)
 
 		if(output != write_only)
-			DIE_AT(w, "%s output constraint", output ? "missing" : "unwanted");
+			die_at(w, "%s output constraint", output ? "missing" : "unwanted");
 
 		if(output && const_chosen)
 			BAD_CONSTRAINT("can't output to a constant");
@@ -129,15 +131,15 @@ struct chosen_constraint
 
 	union
 	{
-		int reg;
+		struct vreg reg;
 		unsigned long stack;
 		unsigned long k;
 	} bits;
 };
 
 #define CONSTRAINT_EQ_OUT_STORE(cc, oo) (            \
-	((cc) == C_REG && (oo) == REG) ||                  \
-	((cc) == C_MEM && ((oo) == STACK || (oo) == LBL)))
+	((cc) == C_REG && (oo) == V_REG) ||                \
+	((cc) == C_MEM && (oo) == V_REG_SAVE))
 
 static void out_unconstrain(const int lval_vp_offset, struct chosen_constraint *cc)
 {
@@ -151,18 +153,19 @@ static void out_unconstrain(const int lval_vp_offset, struct chosen_constraint *
 			switch(vp->type){
 				/* only certain ones are valid,
 				 * may need mem->reg, reg->mem, etc */
-				case CONST:
-				case STACK_SAVE:
-				case FLAG:
+				case V_CONST_I:
+				case V_CONST_F:
+				case V_FLAG:
 					goto bad;
 
-				case STACK:
-				case LBL:
-				case REG:
+				case V_REG_SAVE:
+				case V_LBL:
+				case V_REG:
 					/* create a mem-pointer vstack to assign to */
 					vpush(type_ref_ptr_depth_inc(vp->t));
-					vtop->type = STACK; /* FIXME: what about labels? */
-					vtop->bits.off_from_bp = cc->bits.stack;
+
+					/* FIXME: what about labels? */
+					v_set_stack(vtop, NULL, cc->bits.stack, 1);
 
 					/* vstack is:
 					 * vp  { type = REG }
@@ -176,25 +179,26 @@ static void out_unconstrain(const int lval_vp_offset, struct chosen_constraint *
 			switch(vp->type){
 				/* only certain ones are valid,
 				 * may need mem->reg, reg->mem, etc */
-				case CONST:
-				case STACK_SAVE:
-				case FLAG:
+				case V_CONST_I:
+				case V_CONST_F:
+				case V_FLAG:
 					goto bad;
 
-				case STACK:
-				case LBL:
+				case V_REG_SAVE:
+				case V_LBL:
 					/* FIXME: this doesn't work */
 					vpush(vp->t);
 
-					vtop->type = STACK; /* FIXME: also what about labels? */
-					vtop->bits.off_from_bp = cc->bits.stack;
+					v_set_stack(vtop, NULL, cc->bits.stack, 1);
+					/* FIXME: also what about labels? */
 
 					impl_store(vp, vtop);
 					out_pop();
 					break;
 
-				case REG:
-					impl_reg_cp_rev(vp, cc->bits.reg);
+				case V_REG:
+					ICE("TODO");
+					/*impl_reg_cp_rev(vp, cc->bits.reg);*/
 			}
 			break;
 
@@ -251,7 +255,8 @@ static void populate_constraint(const char *constraint, struct chosen_constraint
 
 	}else{
 		con->type = C_REG;
-		con->bits.reg = reg;
+		con->bits.reg.is_float = 0;
+		con->bits.reg.idx	= reg;
 	}
 }
 
@@ -260,14 +265,14 @@ static void out_constrain(
 		struct vstack *vp,
 		struct chosen_constraint *cc,
 		const int already_set,
-		const where *const err_w)
+		where *const err_w)
 {
 	/* pick one */
 	populate_constraint(io->constraints, cc);
 
 	if(already_set){
 		if(!CONSTRAINT_EQ_OUT_STORE(cc->type, vp->type))
-			DIE_AT(err_w, "couldn't satisfy mismatching constraints");
+			die_at(err_w, "couldn't satisfy mismatching constraints");
 
 	}else{
 		/* fill it with the right values */
@@ -275,29 +280,30 @@ static void out_constrain(
 			case C_MEM:
 				/* vp into memory */
 				v_to_mem(vp);
-				cc->bits.stack = vp->bits.off_from_bp;
+				cc->bits.stack = vp->bits.regoff.offset;
 				break;
 
 			case C_CONST:
-				if(vp->type != CONST)
-					DIE_AT(&io->exp->where, "invalid operand for const-constraint");
-				cc->bits.k = vp->bits.val;
+				if(vp->type != V_CONST_I)
+					die_at(&io->exp->where, "invalid operand for const-constraint");
+				cc->bits.k = vp->bits.val_i;
 				break;
 
 			case C_REG:
-				if(cc->bits.reg == -1){
-					if(vp->type == REG){
-						cc->bits.reg = vp->bits.reg;
+				if(cc->bits.reg.idx == (short unsigned)-1){
+					if(vp->type == V_REG){
+						cc->bits.reg = vp->bits.regoff.reg;
 					}else{
-						cc->bits.reg = v_unused_reg(1);
-						v_freeup_reg(cc->bits.reg, 1);
+						v_unused_reg(1, 0, &cc->bits.reg);
+
+						v_freeup_reg(&cc->bits.reg, 1);
 						v_to_reg(vp); /* TODO: v_to_reg_preferred */
 					}
 				}
 
-				if(vp->bits.reg != cc->bits.reg){
-					impl_reg_cp(vp, cc->bits.reg);
-					vp->bits.reg = cc->bits.reg;
+				if(vp->bits.regoff.reg.idx != cc->bits.reg.idx){
+					impl_reg_cp(vp, &cc->bits.reg);
+					vp->bits.regoff.reg = cc->bits.reg;
 				}
 				break;
 		}
@@ -309,12 +315,12 @@ static void buf_add(char **pbuf, const char *s)
 	char *buf = *pbuf;
 	const int len = (buf ? strlen(buf) : 0);
 
-	*pbuf = buf = urealloc(buf, len + strlen(s) + 1);
+	*pbuf = buf = urealloc1(buf, len + strlen(s) + 1);
 
 	strcpy(buf + len, s);
 }
 
-void out_asm_inline(asm_args *cmd, const where *const err_w)
+void out_asm_inline(asm_args *cmd, where *const err_w)
 {
 	FILE *const out = cc_out[SECTION_TEXT];
 
@@ -359,9 +365,13 @@ void out_asm_inline(asm_args *cmd, const where *const err_w)
 					vp = vtop;
 					n_output_derefs++;
 				}
-				out_constrain(io, vp, &constraints[this_index], constraint_set[this_index]++, err_w);
+				out_constrain(
+						io, vp,
+						&constraints[this_index],
+						constraint_set[this_index]++,
+						err_w);
 
-				buf_add(&asm_cmd, vstack_str(vp));
+				buf_add(&asm_cmd, vstack_str(vp, 0));
 
 			}else{
 				char to_add[2];
@@ -391,7 +401,7 @@ void out_asm_inline(asm_args *cmd, const where *const err_w)
 				if(io->is_output){
 					fprintf(stderr, "found output, index %d, expr %s, constraint %s, exists in TYPE=%d, bits=%d\n",
 							i, cmd->ios[i]->exp->f_str(), cmd->ios[i]->constraints,
-							constraints[i].type, constraints[i].bits.reg);
+							constraints[i].type, constraints[i].bits.reg.idx);
 
 					out_unconstrain(IO_IDX_TO_VTOP_IDX(i), &constraints[i]);
 				}

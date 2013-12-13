@@ -1,8 +1,17 @@
 include ../src_config.mk
 
-OBJ = preproc.o main.o macro.o str.o parse.o \
-			../util/util.o ../util/alloc.o \
-			../util/platform.o ../util/dynarray.o
+CFLAGS += -Wmissing-prototypes
+
+OBJ = preproc.o main.o macro.o str.o \
+      directive.o tokenise.o eval.o  \
+      snapshot.o include.o           \
+      expr.o expr_tok.o              \
+      ../util/util.o ../util/alloc.o \
+      ../util/platform.o             \
+      ../util/where.o ../util/str.o  \
+      ../util/dynarray.o             \
+      ../util/std.o                  \
+      ../util/escape.o
 
 cpp: ${OBJ}
 	${CC} ${CFLAGS} -o $@ ${OBJ}
@@ -12,12 +21,9 @@ clean:
 
 .PHONY: clean
 
-macro.o: macro.c macro.h parse.h ../util/alloc.h ../util/dynarray.h \
- ../util/util.h str.h main.h
-main.o: main.c macro.h preproc.h ../util/util.h ../util/dynarray.h \
- ../util/alloc.h ../util/platform.h
-parse.o: parse.c parse.h macro.h ../util/alloc.h ../util/dynarray.h \
- ../util/util.h preproc.h main.h str.h
-preproc.o: preproc.c ../util/util.h ../util/alloc.h ../util/dynarray.h \
- macro.h parse.h main.h
-str.o: str.c str.h ../util/alloc.h ../util/util.h macro.h
+deps: Makefile.dep
+
+Makefile.dep:
+	cc ${CPPFLAGS} -MM *.c > $@
+
+include Makefile.dep

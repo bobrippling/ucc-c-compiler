@@ -6,11 +6,7 @@
 
 typedef	struct fd_set
 {
-#ifdef __GOT_SHORT_LONG
 	int32_t fds_bits[32];
-#else
-	int32_t fds_bits[16]; // each is 64 bits
-#endif
 } fd_set;
 
 

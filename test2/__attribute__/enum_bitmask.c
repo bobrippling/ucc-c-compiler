@@ -1,3 +1,6 @@
+// RUN: %ucc %s
+// RUN: %check %s
+
 enum e
 {
 	A, B, C

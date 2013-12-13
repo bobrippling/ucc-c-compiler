@@ -11,12 +11,12 @@ const char *str_stmt_break()
 void fold_stmt_break_continue(stmt *t, char *lbl)
 {
 	if(!lbl)
-		DIE_AT(&t->where, "%s outside a flow-control statement", t->f_str());
+		die_at(&t->where, "%s outside a flow-control statement", t->f_str());
 
 	t->expr = expr_new_identifier(lbl);
 	memcpy_safe(&t->expr->where, &t->where);
 
-	t->expr->tree_type = type_ref_new_VOID();
+	t->expr->tree_type = type_ref_cached_VOID();
 }
 
 void fold_stmt_break(stmt *t)
@@ -24,9 +24,19 @@ void fold_stmt_break(stmt *t)
 	fold_stmt_break_continue(t, t->parent ? t->parent->lbl_break : NULL);
 }
 
-void mutate_stmt_break(stmt *s)
+void gen_stmt_break(stmt *s)
+{
+	out_push_lbl(s->parent->lbl_break, 0);
+	out_jmp();
+}
+
+void style_stmt_break(stmt *s)
+{
+	stylef("break;");
+	gen_stmt(s->lhs);
+}
+
+void init_stmt_break(stmt *s)
 {
 	s->f_passable = fold_passable_yes;
 }
-
-func_gen_stmt *gen_stmt_break = gen_stmt_goto;

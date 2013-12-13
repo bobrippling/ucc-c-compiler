@@ -40,7 +40,7 @@ static void platform_init()
 	}
 }
 
-int platform_word_size()
+unsigned platform_word_size()
 {
 	INIT();
 	switch(platform_t){
@@ -48,6 +48,22 @@ int platform_word_size()
 		 return 4;
 		case PLATFORM_x86_64:
 		 return 8;
+	}
+	abort();
+}
+
+int platform_32bit(void)
+{
+	return platform_word_size() == 4;
+}
+
+unsigned platform_align_max()
+{
+	switch(platform_word_size()){
+		case 4:
+			return 8;
+		case 8:
+			return 16;
 	}
 	abort();
 }
