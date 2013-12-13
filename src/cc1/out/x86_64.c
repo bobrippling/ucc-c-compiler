@@ -758,11 +758,19 @@ lea:
 		case V_LBL:
 		{
 			const int fp = type_ref_is_floating(from->t);
+			/* leab doesn't work as an instruction */
+			type_ref *suff_ty = fp ? NULL : from->t;
+			type_ref *chosen_ty = from->t;
+
+			/* just go with leaq for small sizes */
+			if(suff_ty && type_ref_size(suff_ty, NULL) < 4)
+				suff_ty = chosen_ty = NULL;
+
 			out_asm("%s%s %s, %%%s",
 					fp ? "mov" : "lea",
-					x86_suffix(fp ? NULL : from->t),
+					x86_suffix(suff_ty),
 					vstack_str(from, 1),
-					x86_reg_str(reg, from->t));
+					x86_reg_str(reg, chosen_ty));
 			break;
 		}
 
