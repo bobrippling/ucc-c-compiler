@@ -15,6 +15,9 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 	fold_expr_no_decay(e->lhs, stab);
 	FOLD_EXPR(e->rhs, stab);
 
+	fold_check_expr(e->lhs, FOLD_CHK_NO_ST_UN, "compound assignment");
+	fold_check_expr(e->rhs, FOLD_CHK_NO_ST_UN, "compound assignment");
+
 	/* skip the addr we inserted */
 	expr_must_lvalue(lvalue);
 
@@ -40,8 +43,6 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 		}
 
 		e->tree_type = lvalue->tree_type;
-
-		fold_check_expr(e, FOLD_CHK_NO_ST_UN, "compound assignment");
 
 		(void)resolved;
 		/*type_ref_free_1(resolved); XXX: memleak */
