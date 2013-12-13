@@ -912,8 +912,9 @@ void fold_funcargs(funcargs *fargs, symtable *stab, type_ref *from)
 						"function argument %d is static or extern",
 						i + 1);
 
-			/* ensure ptr */
-			if((nonnulls & (1 << i))
+			/* ensure ptr, unless __attribute__((nonnull)) */
+			if(nonnulls != ~0UL
+			&& (nonnulls & (1 << i))
 			&& !type_ref_is(d->ref, type_ref_ptr)
 			&& !type_ref_is(d->ref, type_ref_block))
 			{
