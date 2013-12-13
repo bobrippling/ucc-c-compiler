@@ -142,10 +142,11 @@ long read_char_single(char *start, char **end)
 	if(c == '\\'){
 		char esc = tolower(*start);
 
-		if(esc == 'x' || esc == 'b' || isoct(esc)){
+		if(esc == 'x' || isoct(esc)){
 			int of; /* XXX: overflow ignored */
 
-			if(esc == 'x' || esc == 'b')
+			/* don't handle '\b01010' here - '\b' is taken */
+			if(esc == 'x')
 				start++;
 
 			return char_seq_to_ullong(
