@@ -256,7 +256,7 @@ ptr_relation:
 				if(op_is_comparison(op)){
 					if(fold_type_chk_warn(tlhs, trhs, w,
 							l_ptr && r_ptr
-							? "comparison of distinct pointer types lacks a cast"
+							? "comparison lacks a cast"
 							: "comparison between pointer and integer"))
 					{
 						/* not equal - ptr vs int */
