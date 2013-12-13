@@ -18,6 +18,7 @@ deps:
 	make -BCutil deps
 	make -BCcpp2 deps
 	make -BCcc1 deps
+	make -BCucc deps
 
 clean:
 	make -C cc1  clean

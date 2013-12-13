@@ -1,0 +1,15 @@
+ucc.o: ucc.c ucc.h ../util/compiler.h ucc_ext.h ucc_lib.h ../util/alloc.h \
+ ../util/dynarray.h ../util/dyn.h ../util/util.h ../util/where.h \
+ ../util/compiler.h ../util/platform.h str.h cfg.h
+ucc_ext.o: ucc_ext.c ../util/alloc.h ../util/dynarray.h ../util/dyn.h \
+ ucc.h ../util/compiler.h ucc_ext.h ucc_path.h str.h cfg.h
+ucc_lib.o: ucc_lib.c ucc.h ../util/compiler.h ucc_ext.h ucc_lib.h cfg.h \
+ str.h ../util/alloc.h ../util/dynarray.h ../util/dyn.h
+ucc_path.o: ucc_path.c ucc.h ../util/compiler.h ucc_path.h \
+ ../util/alloc.h
+str.o: str.c ../util/alloc.h ../util/dynarray.h ../util/dyn.h str.h
+alloc.o: ../util/alloc.c ../util/../util/util.h ../util/../util/where.h \
+ ../util/../util/compiler.h ../util/alloc.h
+dynarray.o: ../util/dynarray.c ../util/alloc.h ../util/dynarray.h \
+ ../util/dyn.h ../util/util.h ../util/where.h ../util/compiler.h
+platform.o: ../util/platform.c ../util/platform.h
