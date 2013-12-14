@@ -113,10 +113,6 @@ err:
 
 		e->tree_type = type_ref_new_cast_add(e->bits.struct_mem.d->ref, addon);
 	}
-
-	/* an lvalue, unless array */
-	if(!type_ref_is_array(e->tree_type))
-		e->f_lea = gen_expr_struct_lea;
 }
 
 static void gen_expr_struct_lea(expr *e)
@@ -213,6 +209,7 @@ static void fold_const_expr_struct(expr *e, consty *k)
 void mutate_expr_struct(expr *e)
 {
 	e->f_const_fold = fold_const_expr_struct;
+	e->f_lea = gen_expr_struct_lea;
 
 	/* zero out the union/rhs if we're mutating */
 	e->bits.struct_mem.d = NULL;
