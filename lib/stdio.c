@@ -416,8 +416,14 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 
 					const uintmax_t n =
 						lcount == 0 ? va_arg(ap, int)  :
+#ifdef __LP64__
 						lcount == 1 ? va_arg(ap, long) :
-						              va_arg(ap, long long);
+						              va_arg(ap, long long)
+#else
+#  warning printf long long disabled
+						              va_arg(ap, long)
+#endif
+													;
 
 #ifdef PRINTF_ENABLE_PADDING
 					if(pad){
