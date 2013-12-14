@@ -188,7 +188,7 @@ expr *parse_any_args(void)
 
 static void fold_memset(expr *e, symtable *stab)
 {
-	FOLD_EXPR(e->lhs, stab);
+	FOLD_EXPR_NO_DECAY(e->lhs, stab);
 
 	if(!expr_is_lval(e->lhs)){
 		/* this is pretty much an ICE, except it may be
