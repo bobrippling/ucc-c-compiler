@@ -38,6 +38,7 @@ UCC_AS=as
 
 # assembler 'private' label prefix
 ASM_PLBL=.L
+AS_MAX_INTMOV_BIT=31
 
 # assume GNU as - specify word size
 UCC_AS_ARGS_M32='"--32"'
@@ -155,6 +156,7 @@ case "$unam_os" in
 		UCC_CRT='-lcrt1.o'
 		UCC_LDFLAGS='-macosx_version_min 10.5'
 		ASM_PLBL=L
+		AS_MAX_INTMOV_BIT=30
 		set_leading_underscore
 		;;
 
@@ -227,6 +229,11 @@ cat > src/as_cfg.h <<!
 #define SECTION_DATA $SECTION_DATA
 #define SECTION_BSS  $SECTION_BSS
 #define ASM_PLBL_PRE "$ASM_PLBL"
+/* Darwin's 'as' can only create movq:s with
+ * immediate operands whose highest bit is bit
+ * 31 or lower (i.e. up to UINT_MAX)
+ */
+#define AS_MAX_INTMOV_BIT $AS_MAX_INTMOV_BIT
 !
 
 # lib/syscall headers

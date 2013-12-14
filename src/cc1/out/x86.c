@@ -18,12 +18,8 @@
 #include "out.h"
 #include "lbl.h"
 #include "../funcargs.h"
-
-/* Darwin's `as' can only create movq:s with
- * immediate operands whose highest bit is bit
- * 31 or lower (i.e. up to UINT_MAX)
- */
-#define AS_MAX_MOV_BIT 31
+#include "../../as_cfg.h"
+#undef SECTION_DATA /* HACK until macro renamed */
 
 #define integral_high_bit_ABS(v, t) integral_high_bit(llabs(v), t)
 
@@ -196,7 +192,10 @@ static const char *vstack_str_r(
 			/* we should never get a 64-bit value here
 			 * since movabsq should load those in
 			 */
-			UCC_ASSERT(integral_high_bit_ABS(vs->bits.val_i, vs->t) < AS_MAX_MOV_BIT,
+			UCC_ASSERT(
+					integral_high_bit_ABS(vs->bits.val_i, vs->t)
+					<=
+					AS_MAX_INTMOV_BIT,
 					"can't load 64-bit constants here (0x%llx)", vs->bits.val_i);
 
 			if(deref == 0)
@@ -589,15 +588,16 @@ void impl_load_iv(struct vstack *vp)
 {
 	const int high_bit = integral_high_bit_ABS(vp->bits.val_i, vp->t);
 
-	if(high_bit >= AS_MAX_MOV_BIT){
+	if(high_bit > AS_MAX_INTMOV_BIT){
 		char buf[INTEGRAL_BUF_SIZ];
 		struct vreg r;
 		v_unused_reg(1, 0, &r);
 
 		/* TODO: 64-bit registers in general on 32-bit */
-		UCC_ASSERT(!IS_32_BIT(), "TODO: 32-bit 64-literal loads");
+		UCC_ASSERT(!IS_32_BIT(), "TODO: 32-bit 64-literal loads "
+				"(%lld, high bit %d)", vp->bits.val_i, high_bit);
 
-		if(high_bit > 31 /* not necessarily AS_MAX_MOV_BIT */){
+		if(high_bit > 31 /* not necessarily AS_MAX_INTMOV_BIT */){
 			/* must be loading a long */
 			if(type_ref_size(vp->t, NULL) != 8){
 				/* FIXME: enums don't auto-size currently */
@@ -1284,7 +1284,7 @@ void impl_change_type(type_ref *t)
 	 */
 	if(vtop->type == V_CONST_I){
 		UCC_ASSERT(
-				integral_high_bit_ABS(vtop->bits.val_i, vtop->t) < AS_MAX_MOV_BIT,
+				integral_high_bit_ABS(vtop->bits.val_i, vtop->t) <= AS_MAX_INTMOV_BIT,
 				"can't %s for large constant %" NUMERIC_FMT_X,
 				__func__,
 				vtop->bits.val_i);
