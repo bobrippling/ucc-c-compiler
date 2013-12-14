@@ -190,13 +190,8 @@ static void fold_memset(expr *e, symtable *stab)
 {
 	FOLD_EXPR_NO_DECAY(e->lhs, stab);
 
-	if(!expr_is_lval(e->lhs)){
-		/* this is pretty much an ICE, except it may be
-		 * user-callable in the future
-		 */
-		die_at(&e->where, "can't memset %s - not lvalue",
-				e->lhs->f_str());
-	}
+	if(!expr_is_addressable(e->lhs))
+		ICE("can't memset %s - not addressable", e->lhs->f_str());
 
 	if(e->bits.builtin_memset.len == 0)
 		warn_at(&e->where, "zero size memset");

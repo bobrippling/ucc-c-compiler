@@ -11,7 +11,7 @@ const char *str_expr_addr()
 	return "addr";
 }
 
-static int expr_is_addressable(expr *e)
+int expr_is_addressable(expr *e)
 {
 	return expr_is_lval(e)
 		|| type_ref_is(e->tree_type, type_ref_array)
