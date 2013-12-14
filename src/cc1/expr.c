@@ -124,6 +124,9 @@ int expr_is_lval(expr *e)
 	if(expr_kind(e, assign) && type_ref_is_s_or_u(e->tree_type))
 		return 0;
 
+	if(type_ref_is_array(e->tree_type))
+		return 0;
+
 	return 1;
 }
 

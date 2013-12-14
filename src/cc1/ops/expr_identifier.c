@@ -99,10 +99,9 @@ void fold_expr_identifier(expr *e, symtable *stab)
 
 	e->tree_type = sym->decl->ref;
 
-	/* set if lvalue */
+	/* set if lvalue - expr_is_lval() checks for arrays */
 	e->f_lea =
 		type_ref_is(e->tree_type, type_ref_func)
-		|| type_ref_is(e->tree_type, type_ref_array)
 		? NULL
 		: gen_expr_identifier_lea;
 

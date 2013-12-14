@@ -3,5 +3,5 @@
 f(int (*pa)[2])
 {
 	int x[2];
-	*pa = x; // CHECK: error: cast to array type 'int[2]'
+	*pa = x; // CHECK: error: assignment to int[2]/dereference - not an lvalue
 }
