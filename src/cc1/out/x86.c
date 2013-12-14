@@ -7,6 +7,8 @@
 #include "../../util/alloc.h"
 #include "../../util/dynarray.h"
 #include "../../util/platform.h"
+#include "../../util/limits.h"
+
 #include "../data_structs.h"
 #include "vstack.h"
 #include "asm.h"
@@ -629,8 +631,11 @@ void impl_load_fp(struct vstack *from)
 
 				from->type = V_CONST_I;
 				from->bits.val_i = from->bits.val_f;
-				/* TODO: use just an int if we can get away with it */
-				from->t = type_ref_cached_LLONG();
+
+				/* use just an int if we can get away with it */
+				from->t = from->bits.val_i < UCC_INT_MAX
+					? type_ref_cached_INT()
+					: type_ref_cached_LLONG();
 
 				out_cast(ty_fp);
 				break;
