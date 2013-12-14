@@ -21,8 +21,3 @@ blocks/mismatch_ret.c
 
 # other:
 asm/abi-test.c
-
-# struct-copy initialisation bug:
-initialisation/obscure_override.c
-initialisation/struct/replace_entire.c
-initialisation/struct/replace_entire2.c

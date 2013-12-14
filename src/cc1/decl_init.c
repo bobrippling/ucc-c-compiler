@@ -650,8 +650,35 @@ static decl_init **decl_init_brace_up_sue2(
 			if(DECL_IS_ANON_BITFIELD(d_mem))
 				continue;
 
-			if(i < n && current[i] != DYNARRAY_NULL)
+			if(i < n && current[i] != DYNARRAY_NULL){
 				replacing = current[i];
+
+				/* check for full-object replacement, e.g.
+				 * struct Sub sub;
+				 * struct A a = { .obj = sub, .obj.memb = 1 };
+				 *                            ^~~~~~~~~
+				 * this causes the original '.obj' init to be dropped
+				 */
+				if(/* next designator:*/this->desig
+				&& /* current designator:*/ des
+				/* replacing { obj } init type: */
+				&& replacing->type == decl_init_brace
+				&& dynarray_count(replacing->bits.ar.inits) == 1
+				&& replacing->bits.ar.inits[0]->type == decl_init_scalar
+				&& type_ref_is_s_or_u(replacing->bits.ar.inits[0]->bits.expr->tree_type))
+				{
+					char wb[WHERE_BUF_SIZ];
+
+					warn_at(&this->where,
+							"designating into object discards entire previous initialisation\n"
+							"%s: note: previous initialisation",
+							where_str_r(wb, &replacing->where));
+
+					/* XXX: memleak */
+					replacing = NULL;
+					current[i] = DYNARRAY_NULL;
+				}
+			}
 
 			if(type_ref_is_incomplete_array(d_mem->ref)){
 				warn_at(&this->where, "initialisation of flexible array (GNU)");
