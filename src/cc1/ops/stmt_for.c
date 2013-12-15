@@ -31,7 +31,7 @@ void fold_stmt_for(stmt *s)
 		fold_check_expr(
 				s->flow->for_while,
 				FOLD_CHK_NO_ST_UN | FOLD_CHK_BOOL,
-				"for-while");
+				"for-test");
 
 	fold_stmt(s->lhs);
 }

@@ -70,14 +70,14 @@ void fold_expr_if(expr *e, symtable *stab)
 	if(e->lhs){
 		FOLD_EXPR(e->lhs, stab);
 		fold_check_expr(e->lhs,
-				FOLD_CHK_NO_ST_UN | FOLD_CHK_ALLOW_VOID,
-				"if-lhs");
+				FOLD_CHK_ALLOW_VOID,
+				"?: left operand");
 	}
 
 	FOLD_EXPR(e->rhs, stab);
 	fold_check_expr(e->rhs,
-			FOLD_CHK_NO_ST_UN | FOLD_CHK_ALLOW_VOID,
-			"if-rhs");
+			FOLD_CHK_ALLOW_VOID,
+			"?: right operand");
 
 
 	/*

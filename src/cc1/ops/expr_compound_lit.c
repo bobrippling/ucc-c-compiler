@@ -71,9 +71,6 @@ static void gen_expr_compound_lit_code(expr *e)
 
 void gen_expr_compound_lit(expr *e)
 {
-	/* allow (int){2}, but not (struct...){...} */
-	fold_check_expr(e, FOLD_CHK_NO_ST_UN, "compound literal");
-
 	gen_expr_compound_lit_code(e);
 
 	out_push_sym_val(e->bits.complit.sym);

@@ -227,7 +227,7 @@ invalid:
 
 			ARG_BUF(buf, i, sp);
 
-			fold_check_expr(arg, FOLD_CHK_NO_ST_UN, buf);
+			fold_check_expr(arg, 0, buf);
 
 			if((nonnulls & (1 << i)) && expr_is_null_ptr(arg, NULL_STRICT_INT))
 				warn_at(&arg->where, "null passed where non-null required (arg %d)",
