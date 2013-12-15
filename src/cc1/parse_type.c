@@ -243,6 +243,19 @@ static int parse_at_decl_spec(void)
 	}
 }
 
+static void btype_set_store(
+		enum decl_storage *store, int *pstore_set, enum decl_storage st)
+{
+	if(!store)
+		die_at(NULL, "storage unwanted (%s)", decl_store_to_str(st));
+
+	if(*pstore_set)
+		die_at(NULL, "second store %s", decl_store_to_str(st));
+
+	*store = st;
+	*pstore_set = 1;
+}
+
 #define PARSE_BTYPE(mode, ps, pa, ndecl)                 \
 parse_btype(mode & DECL_MULTI_ALLOW_STORE   ? ps : NULL, \
             mode & DECL_MULTI_ALLOW_ALIGNAS ? pa : NULL, \
@@ -277,16 +290,8 @@ static type_ref *parse_btype(
 			EAT(curtok);
 
 		}else if(curtok_is_decl_store()){
-			const enum decl_storage st = curtok_to_decl_storage();
 
-			if(!store)
-				die_at(NULL, "storage unwanted (%s)", decl_store_to_str(st));
-
-			if(store_set)
-				die_at(NULL, "second store %s", decl_store_to_str(st));
-
-			*store = st;
-			store_set = 1;
+			btype_set_store(store, &store_set, curtok_to_decl_storage());
 			EAT(curtok);
 
 		}else if(curtok_is_type_primitive()){
@@ -370,10 +375,14 @@ static type_ref *parse_btype(
 			is_noreturn = 1;
 			EAT(curtok);
 
-		}else if(curtok == token_struct || curtok == token_union || curtok == token_enum){
+		}else if(curtok == token_struct
+				|| curtok == token_union
+				|| curtok == token_enum)
+		{
 			const enum token tok = curtok;
 			const char *str;
 			type_ref *tref;
+			int is_qual;
 
 			EAT(curtok);
 
@@ -403,10 +412,13 @@ static type_ref *parse_btype(
 
 			/*
 			 * struct A { ... } const x;
-			 * accept qualifiers for the type, not decl
+			 * accept qualifiers and storage for the type, not decl
 			 */
-			while(curtok_is_type_qual()){
-				qual |= curtok_to_type_qualifier();
+			while((is_qual = curtok_is_type_qual()) || curtok_is_decl_store()){
+				if(is_qual)
+					qual |= curtok_to_type_qualifier();
+				else
+					btype_set_store(store, &store_set, curtok_to_decl_storage());
 				EAT(curtok);
 			}
 
