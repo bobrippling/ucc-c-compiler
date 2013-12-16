@@ -154,7 +154,7 @@ static const char *x86_suffix(type_ref *ty)
 			case type_double:
 				return "sd";
 			case type_ldouble:
-				ICE("TODO");
+				ICE("TODO: ldouble");
 			default:
 				ICE("bad float");
 		}
