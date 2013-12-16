@@ -118,7 +118,9 @@ static expr *parse_expr__Generic()
 		}else{
 			r = parse_type(0);
 			if(!r)
-				die_at(NULL, "type expected");
+				die_at(NULL,
+						"type expected for _Generic (got %s)",
+						token_to_str(curtok));
 		}
 		EAT(token_colon);
 		e = parse_expr_no_comma();
@@ -752,6 +754,54 @@ void parse_static_assert(void)
 	}
 }
 
+static stmt *parse_label_next(stmt *lbl)
+{
+	lbl->lhs = parse_stmt();
+	/*
+	 * a label must have a block of code after it:
+	 *
+	 * if(x)
+	 *   lbl:
+	 *   printf("yo\n");
+	 *
+	 * both the label and the printf statements are in the if
+	 * as a compound statement
+	 */
+	return lbl;
+}
+
+static stmt *parse_label(void)
+{
+	where w;
+	char *lbl;
+	decl_attr *attr = NULL, *ai;
+	stmt *lblstmt;
+
+	where_cc1_current(&w);
+	lbl = token_current_spel();
+	where_cc1_adj_identifier(&w, lbl);
+
+	EAT(token_identifier);
+	EAT(token_colon);
+
+	lblstmt = STAT_NEW(label);
+	lblstmt->bits.lbl.spel = lbl;
+	memcpy_safe(&lblstmt->where, &w);
+
+	parse_add_attr(&attr);
+	for(ai = attr; ai; ai = ai->next)
+		if(ai->type == attr_unused)
+			lblstmt->bits.lbl.unused = 1;
+		else
+			warn_at(&ai->where,
+					"ignoring attribute \"%s\" on label",
+					decl_attr_to_str(ai->type));
+
+	decl_attr_free(attr);
+
+	return parse_label_next(lblstmt);
+}
+
 static stmt *parse_stmt_and_decls(void)
 {
 	stmt *code_stmt = STAT_NEW_NEST(code);
@@ -773,10 +823,30 @@ static stmt *parse_stmt_and_decls(void)
 		int at_decl = 0;
 
 		for(;;){
+			stmt *this;
+
 			parse_static_assert();
-			if(curtok == token_close_block || (at_decl = parse_at_decl()))
+
+			/* check for a following colon, in the case of
+			 * typedef int x;
+			 * x:;
+			 *
+			 * we check this here, as in some contexts we we always want a type,
+			 * e.g. _Generic(expr, typedef_name: ...)
+			 *                     ^~~~~~~~~~~~~
+			 * labels are checked for in two places:
+			 * 1) here, to disambiguate from decls
+			 * 2) in parse_stmt() where we look for a standalone label and aren't
+			 *    bothered about decls
+			 */
+			if(curtok == token_identifier && tok_at_label())
+				this = parse_label();
+			else if(curtok == token_close_block || (at_decl = parse_at_decl()))
 				break;
-			dynarray_add(&code_stmt->codes, parse_stmt());
+			else
+				this = parse_stmt();
+
+			dynarray_add(&code_stmt->codes, this);
 		}
 
 		if(at_decl){
@@ -873,22 +943,6 @@ stmt *parse_stmt_block()
 #endif
 
 	return t;
-}
-
-static stmt *parse_label_next(stmt *lbl)
-{
-	lbl->lhs = parse_stmt();
-	/*
-	 * a label must have a block of code after it:
-	 *
-	 * if(x)
-	 *   lbl:
-	 *   printf("yo\n");
-	 *
-	 * both the label and the printf statements are in the if
-	 * as a compound statement
-	 */
-	return lbl;
 }
 
 stmt *parse_stmt()
@@ -999,41 +1053,13 @@ flow:
 		}
 
 		default:
-		{
-			if(tok_at_label()){
-				where w;
-				char *lbl;
-				decl_attr *attr = NULL, *ai;
-
-				where_cc1_current(&w);
-				lbl = token_current_spel();
-				where_cc1_adj_identifier(&w, lbl);
-
-				EAT(token_identifier);
-				EAT(token_colon);
-
-				t = STAT_NEW(label);
-				t->bits.lbl.spel = lbl;
-				memcpy_safe(&t->where, &w);
-
-				parse_add_attr(&attr);
-				for(ai = attr; ai; ai = ai->next)
-					if(ai->type == attr_unused)
-						t->bits.lbl.unused = 1;
-					else
-						warn_at(&ai->where,
-								"ignoring attribute \"%s\" on label",
-								decl_attr_to_str(ai->type));
-
-				decl_attr_free(attr);
-
-				return parse_label_next(t);
+			if(curtok == token_identifier && tok_at_label()){
+				t = parse_label();
 			}else{
 				t = expr_to_stmt(parse_expr_exp(), current_scope);
 				EAT(token_semicolon);
-				return t;
 			}
-		}
+			return t;
 	}
 
 	/* unreachable */

@@ -187,15 +187,7 @@ void parse_add_attr(decl_attr **append)
 static decl *parse_at_tdef(void)
 {
 	if(curtok == token_identifier){
-		decl *d;
-
-		/* check for a following colon, in the case of
-		 * typedef int x;
-		 * x:; */
-		if(tok_at_label())
-			return NULL;
-
-		d = symtab_search_d(current_scope, token_current_spel_peek(), NULL);
+		decl *d = symtab_search_d(current_scope, token_current_spel_peek(), NULL);
 
 		if(d && d->store == store_typedef)
 			return d;
