@@ -186,6 +186,11 @@ struct expr
 			int ch;
 		} builtin_memset;
 
+		enum
+		{
+			builtin_nanf, builtin_nan, builtin_nanl
+		} builtin_nantype;
+
 		stmt *variadic_setup;
 	} bits;
 

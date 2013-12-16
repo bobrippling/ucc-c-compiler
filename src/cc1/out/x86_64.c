@@ -1700,17 +1700,35 @@ void impl_set_overflow(void)
 
 void impl_set_nan(type_ref *ty)
 {
-	const union
-	{
-		unsigned l;
-		float f;
-	} u = { 0x7fc00000U };
+	UCC_ASSERT(type_ref_is_floating(ty),
+			"%s for non %s", __func__, type_ref_to_str(ty));
 
-	ICW("using nan of float type for %s", type_ref_to_str(ty));
-	(void)ty;
+	switch(type_ref_size(ty, NULL)){
+		case 4:
+		{
+			const union
+			{
+				unsigned l;
+				float f;
+			} u = { 0x7fc00000u };
+			vtop->bits.val_f = u.f;
+			break;
+		}
+		case 8:
+		{
+			const union
+			{
+				unsigned long l;
+				double d;
+			} u = { 0x7ff8000000000000u };
+			vtop->bits.val_f = u.d;
+			break;
+		}
+		default:
+			ICE("TODO: long double nan");
+	}
 
 	vtop->type = V_CONST_F;
-	vtop->bits.val_f = u.f;
 	/* vtop->t should be set */
 	impl_load_fp(vtop);
 }

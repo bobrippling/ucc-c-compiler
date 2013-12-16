@@ -24,7 +24,7 @@
 
 #define PREFIX "__builtin_"
 
-typedef expr *func_builtin_parse(void);
+typedef expr *func_builtin_parse(const char *ident);
 
 static func_builtin_parse parse_unreachable,
                           parse_compatible_p,
@@ -33,7 +33,7 @@ static func_builtin_parse parse_unreachable,
                           parse_expect,
                           parse_strlen,
                           parse_is_signed,
-                          parse_nanf,
+                          parse_nan,
                           parse_choose_expr;
 #ifdef BUILTIN_LIBC_FUNCTIONS
                           parse_memset,
@@ -59,7 +59,9 @@ builtin_table builtins[] = {
 
 	{ "is_signed", parse_is_signed },
 
-	{ "nanf", parse_nanf },
+	{ "nan",  parse_nan },
+	{ "nanf", parse_nan },
+	{ "nanl", parse_nan },
 
 	{ "choose_expr", parse_choose_expr },
 
@@ -119,10 +121,10 @@ expr *builtin_parse(const char *sp)
 	builtin_table *b;
 
 	if((fopt_mode & FOPT_BUILTIN) && (b = builtin_find(sp))){
-		expr *(*f)(void) = b->parser;
+		expr *(*f)(const char *) = b->parser;
 
 		if(f)
-			return f();
+			return f(sp);
 	}
 
 	return NULL;
@@ -183,6 +185,7 @@ static void builtin_gen_undefined(expr *e)
 expr *parse_any_args(void)
 {
 	expr *fcall = expr_new_funcall();
+
 	fcall->funcargs = parse_funcargs();
 	return fcall;
 }
@@ -443,9 +446,11 @@ static void fold_unreachable(expr *e, symtable *stab)
 	wur_builtin(e);
 }
 
-static expr *parse_unreachable(void)
+static expr *parse_unreachable(const char *ident)
 {
 	expr *fcall = expr_new_funcall();
+
+	(void)ident;
 
 	expr_mutate_builtin(fcall, unreachable);
 
@@ -490,9 +495,11 @@ static expr *expr_new_funcall_typelist(void)
 	return fcall;
 }
 
-static expr *parse_compatible_p(void)
+static expr *parse_compatible_p(const char *ident)
 {
 	expr *fcall = expr_new_funcall_typelist();
+
+	(void)ident;
 
 	expr_mutate_builtin_const(fcall, compatible_p);
 
@@ -526,9 +533,11 @@ static void const_constant_p(expr *e, consty *k)
 	k->bits.num.val.i = is_const;
 }
 
-static expr *parse_constant_p(void)
+static expr *parse_constant_p(const char *ident)
 {
 	expr *fcall = parse_any_args();
+	(void)ident;
+
 	expr_mutate_builtin_const(fcall, constant_p);
 	return fcall;
 }
@@ -577,8 +586,10 @@ static expr *builtin_frame_address_mutate(expr *e)
 	return e;
 }
 
-static expr *parse_frame_address(void)
+static expr *parse_frame_address(const char *ident)
 {
+	(void)ident;
+
 	return builtin_frame_address_mutate(parse_any_args());
 }
 
@@ -650,9 +661,12 @@ static void const_expect(expr *e, consty *k)
 	const_fold(e->funcargs[0], k);
 }
 
-static expr *parse_expect(void)
+static expr *parse_expect(const char *ident)
 {
 	expr *fcall = parse_any_args();
+
+	(void)ident;
+
 	expr_mutate_builtin_const(fcall, expect);
 	BUILTIN_SET_GEN(fcall, builtin_gen_expect);
 	return fcall;
@@ -713,9 +727,11 @@ static void gen_choose_expr(expr *e)
 	gen_expr(CHOOSE_EXPR_CHOSEN(e));
 }
 
-static expr *parse_choose_expr(void)
+static expr *parse_choose_expr(const char *ident)
 {
 	expr *fcall = parse_any_args();
+
+	(void)ident;
 
 	fcall->f_fold       = fold_choose_expr;
 	fcall->f_const_fold = const_choose_expr;
@@ -758,9 +774,11 @@ static void const_is_signed(expr *e, consty *k)
 	k->bits.num.val.i = type_ref_is_signed(e->bits.types[0]);
 }
 
-static expr *parse_is_signed(void)
+static expr *parse_is_signed(const char *ident)
 {
 	expr *fcall = expr_new_funcall_typelist();
+
+	(void)ident;
 
 	/* simply set the const vtable ent */
 	fcall->f_fold       = fold_is_signed;
@@ -769,10 +787,11 @@ static expr *parse_is_signed(void)
 	return fcall;
 }
 
-/* --- nanf */
+/* --- nan */
 
-static void fold_nanf(expr *e, symtable *stab)
+static void fold_nan(expr *e, symtable *stab)
 {
+	enum type_primitive prim = type_void;
 	consty k;
 
 	if(dynarray_count(e->funcargs) != 1){
@@ -787,29 +806,49 @@ need_char_p:
 	if(k.type != CONST_STRK)
 		goto need_char_p;
 
-	if(k.bits.str->lit->len > 1)
-		die_at(&e->where, "%s only implemented for nanf(\"\")",
+	if(!stringlit_empty(k.bits.str->lit))
+		die_at(&e->where, "only implemented for %s(\"\")",
 				BUILTIN_SPEL(e->expr));
 
-	e->tree_type = type_ref_cached_DOUBLE();
+	switch(e->bits.builtin_nantype){
+		case builtin_nanf: prim = type_float; break;
+		case builtin_nan:  prim = type_double; break;
+		case builtin_nanl: prim = type_ldouble; break;
+	}
+	e->tree_type = type_ref_new_type(type_new_primitive(prim));
+
 	wur_builtin(e);
 }
 
-static void builtin_gen_nanf(expr *e)
+static void builtin_gen_nan(expr *e)
 {
 	out_push_nan(e->tree_type);
 }
 
-static expr *builtin_nanf_mutate(expr *e)
+static expr *builtin_nan_mutate(expr *e)
 {
-	expr_mutate_builtin(e, nanf);
-	BUILTIN_SET_GEN(e, builtin_gen_nanf);
+	expr_mutate_builtin(e, nan);
+	BUILTIN_SET_GEN(e, builtin_gen_nan);
 	return e;
 }
 
-static expr *parse_nanf(void)
+static expr *parse_nan(const char *ident)
 {
-	return builtin_nanf_mutate(parse_any_args());
+	expr *e = builtin_nan_mutate(parse_any_args());
+
+	if(!strncmp(ident, PREFIX, strlen(PREFIX)))
+		ident += strlen(PREFIX);
+
+	if(!strcmp(ident, "nan"))
+		e->bits.builtin_nantype = builtin_nan;
+	else if(!strcmp(ident, "nanf"))
+		e->bits.builtin_nantype = builtin_nanf;
+	else if(!strcmp(ident, "nanl"))
+		e->bits.builtin_nantype = builtin_nanl;
+	else
+		ICE("bad nantype '%s'", ident);
+
+	return e;
 }
 
 /* --- strlen */
@@ -839,9 +878,11 @@ static void const_strlen(expr *e, consty *k)
 	}
 }
 
-static expr *parse_strlen(void)
+static expr *parse_strlen(const char *ident)
 {
 	expr *fcall = parse_any_args();
+
+	(void)ident;
 
 	/* simply set the const vtable ent */
 	fcall->f_const_fold = const_strlen;
