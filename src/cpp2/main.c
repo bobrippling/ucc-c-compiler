@@ -31,6 +31,10 @@ static const struct
 	{ "__unix__",       "1"  },
 	{ "__STDC__",       "1"  },
 
+	/* _Atomic and _Thread_local aren't supported yet */
+	{ "__STDC_NO_ATOMICS__" , "1" },
+	{ "__STDC_NO_THREADS__" , "1" },
+
 #define TYPE(ty, c) { "__" #ty "_TYPE__", #c  }
 
 	TYPE(SIZE, unsigned long),
