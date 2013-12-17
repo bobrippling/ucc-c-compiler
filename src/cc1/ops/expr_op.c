@@ -564,6 +564,16 @@ static int str_cmp_check(expr *e)
 	return 0;
 }
 
+void expr_check_sign(const char *desc,
+		type_ref *lhs, type_ref *rhs, where *w)
+{
+	if(type_ref_is_scalar(lhs) && type_ref_is_scalar(rhs)
+	&& type_ref_is_signed(lhs) != type_ref_is_signed(rhs))
+	{
+		warn_at(w, "signed and unsigned types in '%s'", desc);
+	}
+}
+
 void fold_expr_op(expr *e, symtable *stab)
 {
 	UCC_ASSERT(e->op != op_unknown, "unknown op in expression at %s",
@@ -578,6 +588,13 @@ void fold_expr_op(expr *e, symtable *stab)
 
 		expr_promote_int_if_smaller(&e->lhs, stab);
 		expr_promote_int_if_smaller(&e->rhs, stab);
+
+		/* must check signs before casting */
+		expr_check_sign(
+				op_to_str(e->op),
+				e->lhs->tree_type,
+				e->rhs->tree_type,
+				&e->where);
 
 		e->tree_type = op_promote_types(e->op, op_to_str(e->op),
 				&e->lhs, &e->rhs, &e->where, stab);
