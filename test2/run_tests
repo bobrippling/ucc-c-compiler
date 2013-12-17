@@ -156,7 +156,7 @@ for my $f (@test_files){
 	my $ignored = ignored($f);
 
 	print "$desc"
-	. ($ignored ? ' (expected)' : '')
+	. ($ignored ? ' (fail expected)' : '')
 	. ": $f";
 
 	if(!!$ignored != !!$rc){

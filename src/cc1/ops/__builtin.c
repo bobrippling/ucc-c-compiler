@@ -196,13 +196,8 @@ static void fold_memset(expr *e, symtable *stab)
 {
 	fold_expr_no_decay(e->lhs, stab);
 
-	if(!expr_is_addressable(e->lhs)){
-		/* this is pretty much an ICE, except it may be
-		 * user-callable in the future
-		 */
-		die_at(&e->where, "can't memset %s - not addressable",
-				e->lhs->f_str());
-	}
+	if(!expr_is_addressable(e->lhs))
+		ICE("can't memset %s - not addressable", e->lhs->f_str());
 
 	if(e->bits.builtin_memset.len == 0)
 		warn_at(&e->where, "zero size memset");
@@ -709,10 +704,8 @@ static void fold_choose_expr(expr *e, symtable *stab)
 
 	wur_builtin(e);
 
-	if(expr_is_lval(c)){
+	if(expr_is_lval(c))
 		e->f_lea = choose_expr_lea;
-		e->f_is_lval = expr_is_lval_yes;
-	}
 }
 
 static void const_choose_expr(expr *e, consty *k)

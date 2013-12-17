@@ -98,10 +98,13 @@ void fold_expr_if(expr *e, symtable *stab)
 	tt_r = e->rhs->tree_type;
 
 	if(type_ref_is_integral(tt_l) && type_ref_is_integral(tt_r)){
+		expr **middle_op = e->lhs ? &e->lhs : &e->expr;
+
+		expr_check_sign("?:", *middle_op, e->rhs, &e->where);
+
 		e->tree_type = op_promote_types(
 				op_unknown,
-				(e->lhs ? &e->lhs : &e->expr), &e->rhs,
-				&e->where, stab);
+				middle_op, &e->rhs, &e->where, stab);
 
 	}else if(type_ref_is_void(tt_l) || type_ref_is_void(tt_r)){
 		e->tree_type = type_ref_new_type(type_new_primitive(type_void));
