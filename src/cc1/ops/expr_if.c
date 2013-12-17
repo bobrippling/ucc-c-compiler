@@ -94,7 +94,7 @@ void fold_expr_if(expr *e, symtable *stab)
 	if(type_ref_is_integral(tt_l) && type_ref_is_integral(tt_r)){
 		expr **middle_op = e->lhs ? &e->lhs : &e->expr;
 
-		expr_check_sign("?:", (*middle_op)->tree_type, e->rhs->tree_type, &e->where);
+		expr_check_sign("?:", *middle_op, e->rhs, &e->where);
 
 		e->tree_type = op_promote_types(op_unknown, "?:",
 				middle_op, &e->rhs, &e->where, stab);

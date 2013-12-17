@@ -25,4 +25,4 @@ void expr_promote_int_if_smaller(expr **pe, symtable *stab);
 int fold_check_bounds(expr *e, int chk_one_past_end);
 
 void expr_check_sign(const char *desc,
-		type_ref *lhs, type_ref *rhs, where *w);
+		expr *lhs, expr *rhs, where *w);
