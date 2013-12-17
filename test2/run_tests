@@ -156,23 +156,21 @@ for my $f (@test_files){
 	my $ignored = ignored($f);
 
 	print "$desc"
-	. ($ignored ? ' (expected)' : '')
+	. ($ignored ? ' (fail expected)' : '')
 	. ": $f";
 
-	my $endl = "\n";
+	if(!!$ignored != !!$rc){
+		print "\n";
 
-	if($ignored){
-		if($ignored != !!$rc){
-			$ec = 1;
-			# dump output
-			cat_indent_file($args{output});
-		}
+		$ec = 1;
+		# dump output
+		cat_indent_file($args{output});
 	}elsif($quiet){
 		# clear to eol, move cursor to start
-		$endl = "\e[K\r";
+		print "\e[K\r";
+	}else{
+		print "\n";
 	}
-
-	print $endl;
 }
 
 exit $ec;

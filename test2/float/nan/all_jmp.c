@@ -1,3 +1,5 @@
+// RUN: %ocheck 0 %s
+
 main()
 {
 	float const nan = __builtin_nanf("");

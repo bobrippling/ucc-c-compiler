@@ -126,6 +126,6 @@ void nexttoken(void);
 char *token_current_spel(void);
 char *token_current_spel_peek(void);
 
-char *tok_at_label(where *);
+int tok_at_label(void);
 
 #endif
