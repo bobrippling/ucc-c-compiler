@@ -157,6 +157,15 @@ case "$unam_os" in
 		UCC_LDFLAGS='-macosx_version_min 10.5'
 		ASM_PLBL=L
 		AS_MAX_INTMOV_BIT=30
+
+		if [ "$UCC_ARCH" = x86 ]
+		then
+			UCC_AS_ARGS_M32="\"-arch\", \"i386\""
+			UCC_AS_ARGS_M64="\"-arch\", \"x86_64\""
+		else
+			echo >&2 "Darwin on non-x86?"
+			exit 1
+		fi
 		set_leading_underscore
 		;;
 
