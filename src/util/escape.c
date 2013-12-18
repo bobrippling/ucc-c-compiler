@@ -39,10 +39,10 @@ int escape_char(int c)
 	return -1;
 }
 
-static int inc_and_chk(unsigned long long *val, unsigned base, unsigned inc)
+static int inc_and_chk(unsigned long long *const val, unsigned base, unsigned inc)
 {
 	/* unsigned overflow is well defined */
-	unsigned long long new = *val * base + inc;
+	const unsigned long long new = *val * base + inc;
 
 	/* can't just check: new < *val
 	 * since if base=16, inc=15 (0xff),

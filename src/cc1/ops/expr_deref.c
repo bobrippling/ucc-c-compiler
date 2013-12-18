@@ -64,12 +64,12 @@ static void const_expr_deref(expr *e, consty *k)
 				UCC_ASSERT(!sv->wide, "TODO: constant wchar_t[] deref");
 
 				CONST_FOLD_LEAF(k);
-				k->type = CONST_VAL;
-				k->bits.iv.val = sv->str[off];
+				k->type = CONST_NUM;
+				k->bits.num.val.i = sv->str[off];
 			}
 			break;
 		}
-		case CONST_VAL:
+		case CONST_NUM:
 		case CONST_ADDR:
 			k->type = CONST_ADDR_OR_NEED_TREF(from->tree_type);
 			/* *(int [10])a -> still need_addr */

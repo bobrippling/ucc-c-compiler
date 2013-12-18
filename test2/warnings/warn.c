@@ -3,7 +3,7 @@
 main()
 {
 #warning hello      // CHECK: /hello/
-	return (void *)5; // CHECK: /mismatching return type/
+	return (void *)5; // CHECK: /mismatching types, return type/
 }
 
 #warning timmy // CHECK: /timmy/

@@ -88,7 +88,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 
 			expr_mutate_wrapper(e, val);
 
-			e->bits.iv = m->val->bits.iv;
+			e->bits.num = m->val->bits.num;
 			FOLD_EXPR(e, stab);
 
 			e->tree_type = type_ref_new_type(
@@ -120,9 +120,6 @@ void fold_expr_identifier(expr *e, symtable *stab)
 
 	/* this is cancelled by expr_assign in the case we fold for an assignment to us */
 	sym->nreads++;
-
-	if(!sym->func)
-		sym->func = in_fn;
 }
 
 void gen_expr_str_identifier(expr *e)

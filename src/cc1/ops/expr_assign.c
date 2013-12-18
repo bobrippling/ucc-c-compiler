@@ -20,24 +20,25 @@ void bitfield_trunc_check(decl *mem, expr *from)
 
 	const_fold(from, &k);
 
-	if(k.type == CONST_VAL){
-		const sintval_t kexp = k.bits.iv.val;
-		/* highest may be -1 - k.bits.iv.val is zero */
-		const int highest = intval_high_bit(k.bits.iv.val, from->tree_type);
+	if(k.type == CONST_NUM){
+		const sintegral_t kexp = k.bits.num.val.i;
+		/* highest may be -1 - kexp is zero */
+		const int highest = integral_high_bit(k.bits.num.val.i, from->tree_type);
 		const int is_signed = type_ref_is_signed(mem->field_width->tree_type);
 
 		const_fold(mem->field_width, &k);
 
-		UCC_ASSERT(k.type == CONST_VAL, "bitfield size not val?");
+		UCC_ASSERT(k.type == CONST_NUM, "bitfield size not val?");
+		UCC_ASSERT(K_INTEGRAL(k.bits.num), "fp bitfield size?");
 
-		if(highest > (sintval_t)k.bits.iv.val
-		|| (is_signed && highest == (sintval_t)k.bits.iv.val))
+		if(highest > (sintegral_t)k.bits.num.val.i
+		|| (is_signed && highest == (sintegral_t)k.bits.num.val.i))
 		{
-			sintval_t kexp_to = kexp & ~(-1UL << k.bits.iv.val);
+			sintegral_t kexp_to = kexp & ~(-1UL << k.bits.num.val.i);
 
 			warn_at(&from->where,
 					"truncation in store to bitfield alters value: "
-					"%" INTVAL_FMT_D " -> %" INTVAL_FMT_D,
+					"%" NUMERIC_FMT_D " -> %" NUMERIC_FMT_D,
 					kexp, kexp_to);
 		}
 	}
@@ -68,7 +69,7 @@ void fold_expr_assign(expr *e, symtable *stab)
 
 	lhs_sym = fold_inc_writes_if_sym(e->lhs, stab);
 
-	FOLD_EXPR_NO_DECAY(e->lhs, stab);
+	fold_expr_no_decay(e->lhs, stab);
 	FOLD_EXPR(e->rhs, stab);
 
 	if(lhs_sym)
@@ -87,20 +88,9 @@ void fold_expr_assign(expr *e, symtable *stab)
 	e->tree_type = e->lhs->tree_type;
 
 	/* type check */
-	{
-		char bufto[TYPE_REF_STATIC_BUFSIZ], buffrom[TYPE_REF_STATIC_BUFSIZ];
-
-		fold_type_ref_equal(e->lhs->tree_type, e->rhs->tree_type,
-				&e->where, WARN_ASSIGN_MISMATCH, 0,
-				"%s type mismatch: %s <-- %s",
-				e->assign_is_init ? "initialisation" : "assignment",
-				type_ref_to_str_r(bufto,   e->lhs->tree_type),
-				type_ref_to_str_r(buffrom, e->rhs->tree_type));
-	}
-
-
-	/* do the typecheck after the equal-check, since the typecheck inserts casts */
-	fold_insert_casts(e->lhs->tree_type, &e->rhs, stab, &e->where, "assignment");
+	fold_type_chk_and_cast(
+			e->lhs->tree_type, &e->rhs,
+			stab, &e->where, "assignment");
 
 	/* the only way to get a value into a bitfield (aside from memcpy / indirection) is via this
 	 * hence we're fine doing the truncation check here

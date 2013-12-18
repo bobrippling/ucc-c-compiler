@@ -20,7 +20,7 @@ static void fold_switch_dups(stmt *sw)
 	int n = dynarray_count(sw->codes);
 	struct
 	{
-		intval start, end;
+		numeric start, end;
 		stmt *cse;
 	} *const vals = malloc(n * sizeof *vals);
 
@@ -45,10 +45,10 @@ static void fold_switch_dups(stmt *sw)
 
 		vals[i].cse = cse;
 
-		const_fold_intval(cse->expr, &vals[i].start);
+		const_fold_integral(cse->expr, &vals[i].start);
 
 		if(stmt_kind(cse, case_range))
-			const_fold_intval(cse->expr2, &vals[i].end);
+			const_fold_integral(cse->expr2, &vals[i].end);
 		else
 			memcpy(&vals[i].end, &vals[i].start, sizeof vals[i].end);
 
@@ -56,21 +56,21 @@ static void fold_switch_dups(stmt *sw)
 	}
 
 	/* sort vals for comparison */
-	qsort(vals, n, sizeof(*vals), (qsort_f)intval_cmp); /* struct layout guarantees this */
+	qsort(vals, n, sizeof(*vals), (qsort_f)numeric_cmp); /* struct layout guarantees this */
 
 	for(i = 1; i < n; i++){
-		const long last_prev  = vals[i-1].end.val;
-		const long first_this = vals[i].start.val;
+		const long last_prev  = vals[i-1].end.val.i;
+		const long first_this = vals[i].start.val.i;
 
 		if(last_prev >= first_this){
 			char buf[WHERE_BUF_SIZ];
-			const int overlap = vals[i  ].end.val != vals[i  ].start.val
-				               || vals[i-1].end.val != vals[i-1].start.val;
+			const int overlap = vals[i  ].end.val.i != vals[i  ].start.val.i
+				               || vals[i-1].end.val.i != vals[i-1].start.val.i;
 
 			die_at(&vals[i-1].cse->where, "%s case statements %s %ld (from %s)",
 					overlap ? "overlapping" : "duplicate",
 					overlap ? "starting at" : "for",
-					(long)vals[i].start.val,
+					(long)vals[i].start.val.i,
 					where_str_r(buf, &vals[i].cse->where));
 		}
 	}
@@ -93,14 +93,25 @@ static void fold_switch_enum(
 	/* for each case/default/case_range... */
 	for(titer = sw->codes; titer && *titer; titer++){
 		stmt *cse = *titer;
-		intval_t v, w;
+		integral_t v, w;
 
 		if(cse->expr->expr_is_default)
 			goto ret;
 
-		v = const_fold_val(cse->expr);
+		fold_check_expr(cse->expr,
+				FOLD_CHK_INTEGRAL | FOLD_CHK_CONST_I,
+				"case value");
+		v = const_fold_val_i(cse->expr);
 
-		w = stmt_kind(cse, case_range) ? const_fold_val(cse->expr2) : v;
+		if(stmt_kind(cse, case_range)){
+			fold_check_expr(cse->expr2,
+					FOLD_CHK_INTEGRAL | FOLD_CHK_CONST_I,
+					"case range value");
+
+			w =  const_fold_val_i(cse->expr2);
+		}else{
+			w = v;
+		}
 
 		for(; v <= w; v++){
 			sue_member **mi;
@@ -109,7 +120,7 @@ static void fold_switch_enum(
 			for(midx = 0, mi = enum_sue->members; *mi; midx++, mi++){
 				enum_member *m = (*mi)->enum_member;
 
-				if(v == const_fold_val(m->val))
+				if(v == const_fold_val_i(m->val))
 					marks[midx]++, found = 1;
 			}
 
@@ -140,7 +151,7 @@ void fold_stmt_switch(stmt *s)
 
 	FOLD_EXPR(s->expr, stab);
 
-	fold_need_expr(s->expr, "switch", 0);
+	fold_check_expr(s->expr, FOLD_CHK_INTEGRAL, "switch");
 
 	/* this folds sub-statements,
 	 * causing case: and default: to add themselves to ->parent->codes,
@@ -173,33 +184,33 @@ void gen_stmt_switch(stmt *s)
 
 	for(titer = s->codes; titer && *titer; titer++){
 		stmt *cse = *titer;
-		intval iv;
+		numeric iv;
 
 		if(cse->expr->expr_is_default){
 			tdefault = cse;
 			continue;
 		}
 
-		const_fold_intval(cse->expr, &iv);
+		const_fold_integral(cse->expr, &iv);
 
 		UCC_ASSERT(cse->expr->expr_is_default || !(iv.suffix & VAL_UNSIGNED),
 				"don't handle unsigned yet");
 
 		if(stmt_kind(cse, case_range)){
 			char *skip = out_label_code("range_skip");
-			intval max;
+			numeric max;
 
 			/* TODO: proper signed/unsiged format - out_op() */
-			const_fold_intval(cse->expr2, &max);
+			const_fold_integral(cse->expr2, &max);
 
 			out_dup();
-			out_push_iv(cse->expr->tree_type, &iv);
+			out_push_num(cse->expr->tree_type, &iv);
 
 			out_op(op_lt);
 			out_jtrue(skip);
 
 			out_dup();
-			out_push_iv(cse->expr2->tree_type, &max);
+			out_push_num(cse->expr2->tree_type, &max);
 			out_op(op_gt);
 
 			out_jfalse(cse->expr->bits.ident.spel);
@@ -209,7 +220,7 @@ void gen_stmt_switch(stmt *s)
 
 		}else{
 			out_dup();
-			out_push_iv(cse->expr->tree_type, &iv);
+			out_push_num(cse->expr->tree_type, &iv);
 
 			out_op(op_eq);
 

@@ -62,7 +62,7 @@ void fold_stmt_if(stmt *s)
 
 	FOLD_EXPR(s->expr, stab);
 
-	fold_need_expr(s->expr, s->f_str(), 1);
+	fold_check_expr(s->expr, FOLD_CHK_BOOL, s->f_str());
 
 	fold_stmt(s->lhs);
 	if(s->rhs)

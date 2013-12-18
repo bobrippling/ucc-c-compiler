@@ -12,7 +12,7 @@ struct A
 
 	if(!init){
 		init = 1;
-		a.f = ret_me; // CHECK: /warning: assignment type mismatch/
+		a.f = ret_me; // CHECK: /warning: mismatching types, assignment/
 	}
 
 	printf("%d\n", i);

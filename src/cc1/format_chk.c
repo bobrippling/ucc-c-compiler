@@ -33,7 +33,7 @@ static void format_check_printf_1(char fmt, type_ref *const t_in,
 		enum type_primitive prim;
 		type_ref *tt;
 
-		case 's': prim = type_char; goto ptr;
+		case 's': prim = type_nchar; goto ptr;
 		case 'p': prim = type_void; goto ptr;
 		case 'n': prim = type_int;  goto ptr;
 ptr:
@@ -184,10 +184,10 @@ static void format_check_printf(
 			}
 			goto not_string;
 
-		case CONST_VAL:
-			if(k.bits.iv.val == 0)
+		case CONST_NUM:
+			if(K_INTEGRAL(k.bits.num) && k.bits.num.val.i == 0)
 				return; /* printf(NULL, ...) */
-			/* fall */
+			/* fall - printf(5, ...) or printf(2.3f, ...) */
 
 		case CONST_ADDR:
 not_string:
@@ -219,11 +219,11 @@ void format_check_call(
 	decl_attr *attr = type_attr_present(ref, attr_format);
 	int n, fmt_idx, var_idx;
 
-	if(!attr || !attr->attr_extra.format.valid || !variadic)
+	if(!attr || !attr->bits.format.valid || !variadic)
 		return;
 
-	fmt_idx = attr->attr_extra.format.fmt_idx;
-	var_idx = attr->attr_extra.format.var_idx;
+	fmt_idx = attr->bits.format.fmt_idx;
+	var_idx = attr->bits.format.var_idx;
 
 	n = dynarray_count(args);
 
@@ -240,7 +240,7 @@ void format_check_call(
 		return;
 	}
 
-	switch(attr->attr_extra.format.fmt_func){
+	switch(attr->bits.format.fmt_func){
 		case attr_fmt_printf:
 			format_check_printf(args[fmt_idx], args, var_idx, w);
 			break;
@@ -266,8 +266,8 @@ void format_check_decl(decl *d, decl_attr *da)
 	}
 
 	nargs = dynarray_count(fargs->arglist);
-	fmt_idx = da->attr_extra.format.fmt_idx;
-	var_idx = da->attr_extra.format.var_idx;
+	fmt_idx = da->bits.format.fmt_idx;
+	var_idx = da->bits.format.var_idx;
 
 	/* format string index must be < nargs */
 	if(fmt_idx >= nargs){
@@ -292,5 +292,5 @@ void format_check_decl(decl *d, decl_attr *da)
 		return;
 	}
 
-	da->attr_extra.format.valid = 1;
+	da->bits.format.valid = 1;
 }

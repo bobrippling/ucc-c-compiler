@@ -3,5 +3,5 @@
 
 main()
 {
-	return (char *)0 == (int *)5; // CHECK: /warning: comparison of distinct pointer types lacks a cast/
+	return (char *)0 == (int *)5; // CHECK: /warning: mismatching types, comparison lacks a cast/
 }

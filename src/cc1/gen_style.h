@@ -1,7 +1,7 @@
 #ifndef GEN_STYLE_H
 #define GEN_STYLE_H
 
-#define stylef(...) fprintf(cc1_out, __VA_ARGS__)
+void stylef(const char *, ...) ucc_printflike(1, 2);
 
 void gen_style_dinit(decl_init *);
 void gen_style_decl(decl *);

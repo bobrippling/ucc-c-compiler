@@ -6,6 +6,7 @@
 #include "expr_op.h"
 #include "../out/lbl.h"
 #include "../out/asm.h"
+#include "../type_ref_is.h"
 
 const char *str_expr_op()
 {
@@ -18,9 +19,12 @@ static void const_offset(consty *r, consty *val, consty *addr,
 	unsigned step = type_ref_size(type_ref_next(addr_type), NULL);
 	int change;
 
+	UCC_ASSERT(K_INTEGRAL(val->bits.num),
+			"fp + address?");
+
 	memcpy_safe(r, addr);
 
-	change = val->bits.iv.val * step;
+	change = val->bits.num.val.i * step;
 
 	if(op == op_minus)
 		change = -change;
@@ -39,67 +43,73 @@ static void fold_const_expr_op(expr *e, consty *k)
 	const_fold(e->lhs, &lhs);
 	if(e->rhs){
 		const_fold(e->rhs, &rhs);
-
-		if(rhs.type == CONST_VAL){
-			switch(e->op){
-				case op_shiftl:
-				case op_shiftr:
-				{
-					const unsigned ty_sz = CHAR_BIT * type_ref_size(e->lhs->tree_type, &e->lhs->where);
-					int undefined = 0;
-
-					if(type_ref_is_signed(e->rhs->tree_type)
-					&& (sintval_t)rhs.bits.iv.val < 0)
-					{
-						warn_at(&e->rhs->where, "shift count is negative (%"
-								INTVAL_FMT_D ")", (sintval_t)rhs.bits.iv.val);
-
-						undefined = 1;
-					}else if(rhs.bits.iv.val >= ty_sz){
-						warn_at(&e->rhs->where, "shift count >= width of %s (%u)",
-								type_ref_to_str(e->lhs->tree_type), ty_sz);
-
-						undefined = 1;
-					}
-
-
-					if(undefined){
-						if(lhs.type == CONST_VAL){
-							/* already 0 */
-							k->type = CONST_VAL;
-						}else{
-							k->type = CONST_NO;
-						}
-						return;
-					}
-				}
-				default:
-					break;
-			}
-		}
 	}else{
 		memset(&rhs, 0, sizeof rhs);
-		rhs.type = CONST_VAL;
+		rhs.type = CONST_NUM;
 	}
 
-	if(lhs.type == CONST_VAL && rhs.type == CONST_VAL){
-		const char *err = NULL;
-		intval_t r;
-		/* the op is signed if an operand is, not the result,
-		 * e.g. u_a < u_b produces a bool (signed) */
-		int is_signed = type_ref_is_signed(e->lhs->tree_type) ||
-		                (e->rhs ? type_ref_is_signed(e->rhs->tree_type) : 0);
+	if(lhs.type == CONST_NUM && rhs.type == CONST_NUM){
+		int fp[2] = {
+			type_ref_is_floating(e->lhs->tree_type)
+		};
 
-		r = const_op_exec(
-				lhs.bits.iv.val,
-				e->rhs ? &rhs.bits.iv.val : NULL,
-				e->op, is_signed, &err);
+		if(e->rhs){
+			fp[1] = type_ref_is_floating(e->rhs->tree_type);
 
-		if(err){
-			warn_at(&e->where, "%s", err);
+			UCC_ASSERT(!(fp[0] ^ fp[1]),
+					"one float and one non-float?");
+		}
+
+		if(fp[0]){
+			/* float const-op */
+			floating_t r = const_op_exec_fp(
+					lhs.bits.num.val.f,
+					e->rhs ? &rhs.bits.num.val.f : 0,
+					e->op);
+
+			k->type = CONST_NUM;
+
+			/* both relational and normal */
+			if(!k->nonstandard_const)
+				k->nonstandard_const = e;
+
+			if(op_returns_bool(e->op)){
+				k->bits.num.val.i = r; /* convert to bool */
+
+			}else{
+				const type *ty = type_ref_get_type(e->tree_type);
+
+				UCC_ASSERT(ty, "no float type for float op?");
+
+				k->bits.num.val.f = r;
+
+				switch(ty->primitive){
+					case type_float:   k->bits.num.suffix = VAL_FLOAT;   break;
+					case type_double:  k->bits.num.suffix = VAL_DOUBLE;  break;
+					case type_ldouble: k->bits.num.suffix = VAL_LDOUBLE; break;
+					default: ICE("bad float");
+				}
+			}
+
 		}else{
-			k->type = CONST_VAL;
-			k->bits.iv.val = r;
+			const char *err = NULL;
+			integral_t r;
+			/* the op is signed if an operand is, not the result,
+			 * e.g. u_a < u_b produces a bool (signed) */
+			int is_signed = type_ref_is_signed(e->lhs->tree_type) ||
+				(e->rhs ? type_ref_is_signed(e->rhs->tree_type) : 0);
+
+			r = const_op_exec(
+					lhs.bits.num.val.i,
+					e->rhs ? &rhs.bits.num.val.i : NULL,
+					e->op, is_signed, &err);
+
+			if(err){
+				warn_at(&e->where, "%s", err);
+			}else{
+				k->type = CONST_NUM;
+				k->bits.num.val.i = r;
+			}
 		}
 
 	}else if((e->op == op_andsc || e->op == op_orsc)
@@ -109,7 +119,7 @@ static void fold_const_expr_op(expr *e, consty *k)
 
 		/* allow 1 || f() */
 		consty *kside = CONST_AT_COMPILE_TIME(lhs.type) ? &lhs : &rhs;
-		int is_true = !!kside->bits.iv.val;
+		int is_true = !!kside->bits.num.val.i;
 
 		if(e->op == (is_true ? op_orsc : op_andsc)){
 			memcpy(k, kside, sizeof *k);
@@ -133,9 +143,11 @@ static void fold_const_expr_op(expr *e, consty *k)
 		int lhs_addr = lhs.type == CONST_ADDR || lhs.type == CONST_STRK;
 		int rhs_addr = rhs.type == CONST_ADDR || rhs.type == CONST_STRK;
 
-		/**/if(lhs_addr && rhs.type == CONST_VAL)
+		/* this is safe - fold() checks that we can't add floats to addresses */
+
+		/**/if(lhs_addr && rhs.type == CONST_NUM)
 			const_offset(k, &rhs, &lhs, e->lhs->tree_type, e->op);
-		else if(rhs_addr && lhs.type == CONST_VAL)
+		else if(rhs_addr && lhs.type == CONST_NUM)
 			const_offset(k, &lhs, &rhs, e->rhs->tree_type, e->op);
 	}
 
@@ -145,15 +157,15 @@ static void fold_const_expr_op(expr *e, consty *k)
 	}
 }
 
-void expr_promote_int_if_smaller(expr **pe, symtable *stab)
+static void expr_promote_if_smaller(expr **pe, symtable *stab, int do_float)
 {
-	static unsigned sz_int;
 	expr *e = *pe;
+	type_ref *to;
 
-	if(!sz_int)
-		sz_int = type_primitive_size(type_int);
+	if(type_ref_is_floating(e->tree_type) && !do_float)
+		return;
 
-	if(type_ref_size(e->tree_type, &e->where) < sz_int){
+	if(type_ref_is_promotable(e->tree_type, &to)){
 		expr *cast;
 
 		UCC_ASSERT(!type_ref_is(e->tree_type, type_ref_ptr),
@@ -165,15 +177,22 @@ void expr_promote_int_if_smaller(expr **pe, symtable *stab)
 		 * insert down-casts too - the tree_type of the expression is still important
 		 */
 
-		cast = expr_new_cast(
-				e,
-				type_ref_new_type(type_new_primitive(type_int)),
-				1);
+		cast = expr_new_cast(e, to, 1);
 
 		fold_expr_cast_descend(cast, stab, 0);
 
 		*pe = cast;
 	}
+}
+
+static void expr_promote_int_if_smaller(expr **pe, symtable *stab)
+{
+	expr_promote_if_smaller(pe, stab, 0);
+}
+
+void expr_promote_default(expr **pe, symtable *stab)
+{
+	expr_promote_if_smaller(pe, stab, 1);
 }
 
 type_ref *op_required_promotion(
@@ -184,8 +203,21 @@ type_ref *op_required_promotion(
 {
 	type_ref *resolved = NULL;
 	type_ref *const tlhs = lhs->tree_type, *const trhs = rhs->tree_type;
+	int floating_lhs;
 
 	*plhs = *prhs = NULL;
+
+	if((floating_lhs = type_ref_is_floating(tlhs))
+			!= type_ref_is_floating(trhs))
+	{
+		/* cast _to_ the floating type */
+		type_ref *res = floating_lhs ? (*prhs = tlhs) : (*plhs = trhs);
+
+		resolved = op_is_comparison(op) ? type_ref_cached_BOOL() : res;
+
+		goto fin;
+		/* else we pick the largest floating or integral type */
+	}
 
 #if 0
 	If either operand is a pointer:
@@ -210,29 +242,33 @@ type_ref *op_required_promotion(
 
 			if(op == op_minus){
 				/* don't allow void * */
-				if(!type_ref_equal(tlhs, trhs, DECL_CMP_EXACT_MATCH)){
-					die_at(w, "subtraction of distinct pointer types %s and %s",
-							type_ref_to_str(tlhs), type_ref_to_str_r(buf, trhs));
+				switch(type_ref_cmp(tlhs, trhs, 0)){
+					case TYPE_CONVERTIBLE_IMPLICIT:
+					case TYPE_CONVERTIBLE_EXPLICIT:
+					case TYPE_NOT_EQUAL:
+						die_at(w, "subtraction of distinct pointer types %s and %s",
+								type_ref_to_str(tlhs), type_ref_to_str_r(buf, trhs));
+					case TYPE_QUAL_LOSS:
+					case TYPE_EQUAL:
+						break;
 				}
 
 				resolved = type_ref_cached_INTPTR_T();
 
-			}else if(op_is_relational(op)){
+			}else if(op_returns_bool(op)){
 ptr_relation:
 				if(op_is_comparison(op)){
-					if(!fold_type_ref_equal(tlhs, trhs, w,
-							WARN_COMPARE_MISMATCH, 0,
+					if(fold_type_chk_warn(tlhs, trhs, w,
 							l_ptr && r_ptr
-							? "comparison of distinct pointer types lacks a cast (%s vs %s)"
-							: "comparison between pointer and integer (%s vs %s)",
-							type_ref_to_str(tlhs), type_ref_to_str_r(buf, trhs)))
+							? "comparison lacks a cast"
+							: "comparison between pointer and integer"))
 					{
 						/* not equal - ptr vs int */
 						*(l_ptr ? prhs : plhs) = type_ref_cached_INTPTR_T();
 					}
 				}
 
-				resolved = type_ref_cached_INT();
+				resolved = type_ref_cached_BOOL();
 
 			}else{
 				die_at(w, "operation between two pointers must be relational or subtraction");
@@ -244,7 +280,7 @@ ptr_relation:
 			/* + or - */
 
 			/* cmp between pointer and integer - missing cast */
-			if(op_is_relational(op))
+			if(op_returns_bool(op))
 				goto ptr_relation;
 
 			switch(op){
@@ -337,15 +373,10 @@ ptr_relation:
 			if(l_unsigned == r_unsigned){
 				if(l_sz != r_sz){
 					const int l_larger = l_sz > r_sz;
-					char bufa[TYPE_REF_STATIC_BUFSIZ], bufb[TYPE_REF_STATIC_BUFSIZ];
 
-					/* TODO: needed? */
-					fold_type_ref_equal(tlhs, trhs,
-							w, WARN_COMPARE_MISMATCH, 0,
-							"mismatching types in %s (%s and %s)",
-							op_to_str(op),
-							type_ref_to_str_r(bufa, tlhs),
-							type_ref_to_str_r(bufb, trhs));
+					fold_type_chk_warn(
+							tlhs, trhs,
+							w, op_to_str(op));
 
 					*(l_larger ? prhs : plhs) = (l_larger ? tlhs : trhs);
 
@@ -380,7 +411,7 @@ ptr_relation:
 			}
 
 			/* if we have a _comparison_ (e.g. between enums), convert to _Bool */
-			resolved = op_is_relational(op)
+			resolved = op_returns_bool(op)
 				? type_ref_cached_BOOL()
 				: tlarger;
 		}
@@ -394,7 +425,6 @@ fin:
 
 type_ref *op_promote_types(
 		enum op_type op,
-		const char *desc,
 		expr **plhs, expr **prhs,
 		where *w, symtable *stab)
 {
@@ -404,10 +434,10 @@ type_ref *op_promote_types(
 	resolved = op_required_promotion(op, *plhs, *prhs, w, &tlhs, &trhs);
 
 	if(tlhs)
-		fold_insert_casts(tlhs, plhs, stab, w, desc);
+		fold_insert_casts(tlhs, plhs, stab);
 
 	if(trhs)
-		fold_insert_casts(trhs, prhs, stab, w, desc);
+		fold_insert_casts(trhs, prhs, stab);
 
 	return resolved;
 }
@@ -446,24 +476,27 @@ int fold_check_bounds(expr *e, int chk_one_past_end)
 
 		const_fold(lhs ? e->rhs : e->lhs, &k);
 
-		if(k.type == CONST_VAL){
+		if(k.type == CONST_NUM){
 			const size_t sz = type_ref_array_len(array->tree_type);
 
-#define idx k.bits.iv
+			UCC_ASSERT(K_INTEGRAL(k.bits.num),
+					"fp index?");
+
+#define idx k.bits.num
 			if(e->op == op_minus)
-				idx.val = -idx.val;
+				idx.val.i = -idx.val.i;
 
 			/* index is allowed to be one past the end, i.e. idx.val == sz */
-			if((sintval_t)idx.val < 0
-			|| (chk_one_past_end ? idx.val > sz : idx.val == sz))
+			if((sintegral_t)idx.val.i < 0
+			|| (chk_one_past_end ? idx.val.i > sz : idx.val.i == sz))
 			{
 				/* XXX: note */
 				char buf[WHERE_BUF_SIZ];
 
 				warn_at(&e->where,
-						"index %" INTVAL_FMT_D " out of bounds of array, size %ld\n"
+						"index %" NUMERIC_FMT_D " out of bounds of array, size %ld\n"
 						"%s: note: array declared here",
-						idx.val, (long)sz, where_str_r(buf, &array->tree_type->where));
+						idx.val.i, (long)sz, where_str_r(buf, &array->tree_type->where));
 				return 1;
 			}
 #undef idx
@@ -488,8 +521,8 @@ static int op_unsigned_cmp_check(expr *e)
 
 				const_fold(lhs ? e->rhs : e->lhs, &k);
 
-				if(k.type == CONST_VAL){
-					const int v = k.bits.iv.val;
+				if(k.type == CONST_NUM && K_INTEGRAL(k.bits.num)){
+					const int v = k.bits.num.val.i;
 
 					if(v <= 0){
 						warn_at(&e->where,
@@ -509,7 +542,10 @@ static int op_unsigned_cmp_check(expr *e)
 static int msg_if_precedence(expr *sub, where *w,
 		enum op_type binary, int (*test)(enum op_type))
 {
+	sub = expr_skip_casts(sub);
+
 	if(expr_kind(sub, op)
+	&& sub->rhs /* don't warn for (1 << -5) : (-5) is a unary op */
 	&& !sub->in_parens
 	&& sub->op != binary
 	&& (test ? (*test)(sub->op) : 1))
@@ -564,6 +600,79 @@ static int str_cmp_check(expr *e)
 	return 0;
 }
 
+static int op_shift_check(expr *e)
+{
+	switch(e->op){
+		case op_shiftl:
+		case op_shiftr:
+		{
+			const unsigned ty_sz = CHAR_BIT * type_ref_size(e->lhs->tree_type, &e->lhs->where);
+			int undefined = 0;
+			consty lhs, rhs;
+
+			const_fold(e->lhs, &lhs);
+			const_fold(e->rhs, &rhs);
+
+			if(type_ref_is_signed(e->rhs->tree_type)
+			&& (sintegral_t)rhs.bits.num.val.i < 0)
+			{
+				warn_at(&e->rhs->where, "shift count is negative (%"
+						NUMERIC_FMT_D ")", (sintegral_t)rhs.bits.num.val.i);
+
+				undefined = 1;
+			}else if(rhs.bits.num.val.i >= ty_sz){
+				warn_at(&e->rhs->where, "shift count >= width of %s (%u)",
+						type_ref_to_str(e->lhs->tree_type), ty_sz);
+
+				undefined = 1;
+			}
+
+			if(undefined){
+				consty k;
+
+				memset(&k, 0, sizeof k);
+
+				if(lhs.type == CONST_NUM){
+					k.type = CONST_NUM;
+					k.bits.num.val.i = 0;
+				}else{
+					k.type = CONST_NO;
+				}
+
+				expr_set_const(e, &k);
+			}
+
+			return undefined; /* aka, warned */
+		}
+		default:
+			return 0;
+	}
+}
+
+static int op_float_check(expr *e)
+{
+	type_ref *tl = e->lhs->tree_type,
+	         *tr = e->rhs->tree_type;
+
+	if((type_ref_is_floating(tl) || type_ref_is_floating(tr))
+	&& !op_can_float(e->op))
+	{
+		char buf[TYPE_REF_STATIC_BUFSIZ];
+
+		/* TODO: factor to a error-continuing function */
+		fold_had_error = 1;
+		warn_at_print_error(&e->where,
+				"binary %s between '%s' and '%s'",
+				op_to_str(e->op),
+				type_ref_to_str_r(buf, tl),
+				type_ref_to_str(       tr));
+
+		return 1;
+	}
+
+	return 0;
+}
+
 void expr_check_sign(const char *desc,
 		expr *lhs, expr *rhs, where *w)
 {
@@ -573,8 +682,8 @@ void expr_check_sign(const char *desc,
 	const_fold(rhs, &kr);
 
 	/* don't bother for literals */
-	if(kl.type != CONST_VAL
-	&& kr.type != CONST_VAL
+	if(kl.type != CONST_NUM
+	&& kr.type != CONST_NUM
 	&& type_ref_is_scalar(lhs->tree_type) && type_ref_is_scalar(rhs->tree_type)
 	&& type_ref_is_signed(lhs->tree_type) != type_ref_is_signed(rhs->tree_type))
 	{
@@ -588,12 +697,19 @@ void fold_expr_op(expr *e, symtable *stab)
 			where_str(&e->where));
 
 	FOLD_EXPR(e->lhs, stab);
-	fold_disallow_st_un(e->lhs, op_to_str(e->op));
+	fold_check_expr(e->lhs, FOLD_CHK_NO_ST_UN, op_to_str(e->op));
 
 	if(e->rhs){
 		FOLD_EXPR(e->rhs, stab);
-		fold_disallow_st_un(e->rhs, op_to_str(e->op));
+		fold_check_expr(e->rhs, FOLD_CHK_NO_ST_UN, op_to_str(e->op));
 
+		if(op_float_check(e)){
+			/* short circuit - TODO: error expr */
+			e->tree_type = type_ref_cached_INT();
+			return;
+		}
+
+		/* no-op if float */
 		expr_promote_int_if_smaller(&e->lhs, stab);
 		expr_promote_int_if_smaller(&e->rhs, stab);
 
@@ -606,13 +722,14 @@ void fold_expr_op(expr *e, symtable *stab)
 					&e->where);
 		}
 
-		e->tree_type = op_promote_types(e->op, op_to_str(e->op),
+		e->tree_type = op_promote_types(e->op,
 				&e->lhs, &e->rhs, &e->where, stab);
 
 		(void)(
 				fold_check_bounds(e, 1) ||
 				op_check_precedence(e) ||
 				op_unsigned_cmp_check(e) ||
+				op_shift_check(e) ||
 				str_cmp_check(e));
 
 	}else{
@@ -620,20 +737,31 @@ void fold_expr_op(expr *e, symtable *stab)
 		 * promote to signed int
 		 */
 
-		if(e->op == op_not){
-			e->tree_type = type_ref_cached_INT();
+		expr_promote_int_if_smaller(&e->lhs, stab);
 
-		}else{
-			/* op_bnot */
-			type_ref *t_unary = e->lhs->tree_type;
+		switch(e->op){
+			default:
+				ICE("bad unary op %s", op_to_str(e->op));
 
-			if(!type_ref_is_integral(t_unary))
-				die_at(&e->where, "unary %s applied to type '%s'",
-						op_to_str(e->op), type_ref_to_str(t_unary));
+			case op_not:
+				fold_check_expr(e->lhs,
+						FOLD_CHK_NO_ST_UN,
+						op_to_str(e->op));
 
-			expr_promote_int_if_smaller(&e->lhs, stab);
+				e->tree_type = type_ref_cached_INT();
+				break;
 
-			e->tree_type = e->lhs->tree_type;
+			case op_plus:
+			case op_minus:
+			case op_bnot:
+				fold_check_expr(
+						e->lhs,
+						(e->op == op_bnot ? FOLD_CHK_INTEGRAL : 0)
+							| FOLD_CHK_NO_ST_UN,
+						op_to_str(e->op));
+
+				e->tree_type = e->lhs->tree_type;
+				break;
 		}
 	}
 }
@@ -657,18 +785,18 @@ static void op_shortcircuit(expr *e)
 	char vphi_buf[OUT_VPHI_SZ];
 
 	gen_expr(e->lhs);
+	out_normalise();
 
 	out_dup();
 	(e->op == op_andsc ? out_jfalse : out_jtrue)(bail);
 	out_phi_pop_to(&vphi_buf);
 
 	gen_expr(e->rhs);
+	out_normalise();
 
 	out_label(bail);
 	out_phi_join(&vphi_buf);
 	free(bail);
-
-	out_normalise();
 }
 
 void gen_expr_op(expr *e)
@@ -693,6 +821,9 @@ void gen_expr_op(expr *e)
 				/* make sure we get the pointer, for example 2+(int *)p
 				 * or the int, e.g. (int *)a && (int *)b -> int */
 				out_change_type(e->tree_type);
+
+				/* need to flush the op */
+				out_flush_volatile();
 
 				if(fopt_mode & FOPT_TRAPV
 				&& type_ref_is_integral(e->tree_type)

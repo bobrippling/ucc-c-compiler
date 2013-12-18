@@ -18,19 +18,18 @@ void fold_expr__Generic(expr *e, symtable *stab)
 	def = NULL;
 
 	/* we use the non-decayed type */
-	FOLD_EXPR_NO_DECAY(e->expr, stab);
+	fold_expr_no_decay(e->expr, stab);
 
 	for(i = e->bits.generic.list; i && *i; i++){
-		const int flags = DECL_CMP_EXACT_MATCH;
 		struct generic_lbl **j, *l = *i;
 
-		FOLD_EXPR_NO_DECAY(l->e, stab);
+		fold_expr_no_decay(l->e, stab);
 
 		for(j = i + 1; *j; j++){
 			type_ref *m = (*j)->t;
 
 			/* duplicate default checked below */
-			if(m && type_ref_equal(m, l->t, flags))
+			if(m && type_ref_cmp(m, l->t, 0) == TYPE_EQUAL)
 				die_at(&m->where, "duplicate type in _Generic: %s",
 						type_ref_to_str(l->t));
 		}
@@ -69,7 +68,7 @@ void fold_expr__Generic(expr *e, symtable *stab)
 						sprob, type_ref_to_str(l->t));
 			}
 
-			if(type_ref_equal(e->expr->tree_type, l->t, flags)){
+			if(type_ref_cmp(e->expr->tree_type, l->t, 0) == TYPE_EQUAL){
 				UCC_ASSERT(!e->bits.generic.chosen,
 						"already chosen expr for _Generic");
 				e->bits.generic.chosen = l;
@@ -125,7 +124,7 @@ void gen_expr_str__Generic(expr *e)
 			gen_str_indent++;
 			print_type_ref(l->t, NULL);
 			gen_str_indent--;
-			fprintf(cc1_out, "\n");
+			fprintf(gen_file(), "\n");
 		}else{
 			idt_printf("default:\n");
 		}

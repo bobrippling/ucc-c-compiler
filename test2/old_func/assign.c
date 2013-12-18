@@ -20,6 +20,6 @@ test()
 	ifp = f; // CHECK: !/warn/
 	cpfp = h; // CHECK: !/warn/
 
-	cpfp = f; // CHECK: warning: assignment type mismatch: char *((*)(char *)) <-- int (*)()
-	ifp = h; // CHECK: warning: assignment type mismatch: int (*)(char *) <-- char *(*)()
+	cpfp = f; // CHECK: warning: mismatching types, assignment:
+	ifp = h; // CHECK: warning: mismatching types, assignment:
 }

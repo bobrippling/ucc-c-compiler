@@ -203,8 +203,9 @@ static expr *parse_expr_primary()
 	switch(curtok){
 		case token_integer:
 		case token_character:
+		case token_floater:
 		{
-			expr *e = expr_new_intval(&currentval);
+			expr *e = expr_new_numeric(&currentval);
 			EAT(curtok);
 			return e;
 		}
@@ -795,7 +796,7 @@ static stmt *parse_label(void)
 		else
 			warn_at(&ai->where,
 					"ignoring attribute \"%s\" on label",
-					decl_attr_to_str(ai->type));
+					decl_attr_to_str(ai));
 
 	decl_attr_free(attr);
 

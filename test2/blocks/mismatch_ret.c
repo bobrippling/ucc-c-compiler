@@ -11,6 +11,6 @@ main()
 	^{
 		return 3;
 		return; // CHECK: /warning: empty return/
-		return (char *)3; // CHECK: /warning: mismatching return types/
+		return (char *)3; // CHECK: /warning: mismatching types, return type/
 	}();
 }

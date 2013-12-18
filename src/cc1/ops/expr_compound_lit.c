@@ -72,7 +72,7 @@ static void gen_expr_compound_lit_code(expr *e)
 void gen_expr_compound_lit(expr *e)
 {
 	/* allow (int){2}, but not (struct...){...} */
-	fold_disallow_st_un(e, "compound literal");
+	fold_check_expr(e, FOLD_CHK_NO_ST_UN, "compound literal");
 
 	gen_expr_compound_lit_code(e);
 

@@ -63,6 +63,10 @@ UCC_CPU     = ${UCC_CPU}
 		fi
 	fi
 
+	if [ $1 = Cygwin ]
+	then echo "CFLAGS += -Wno-char-subscripts"
+	fi > src/src_config_platform.mk
+
 	echo "Configured for $UCC_CPU $1"
 }
 

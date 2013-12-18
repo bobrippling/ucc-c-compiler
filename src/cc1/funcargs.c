@@ -33,9 +33,7 @@ void funcargs_empty(funcargs *func)
 	func->args_void = 0;
 }
 
-enum funcargs_cmp funcargs_equal(
-		funcargs *args_to, funcargs *args_from,
-		int exact, const char *fspel)
+enum funcargs_cmp funcargs_cmp(funcargs *args_to, funcargs *args_from)
 {
 	const int count_to = dynarray_count(args_to->arglist);
 	const int count_from = dynarray_count(args_from->arglist);
@@ -47,34 +45,25 @@ enum funcargs_cmp funcargs_equal(
 	}
 
 	if(args_to->args_old_proto || args_from->args_old_proto)
-		return 1;
+		return FUNCARGS_ARE_EQUAL;
 
 	if(!(args_to->variadic ? count_to <= count_from : count_to == count_from))
 		return FUNCARGS_ARE_MISMATCH_COUNT;
 
 	if(count_to){
-		const enum decl_cmp flag = exact ? DECL_CMP_EXACT_MATCH : 0;
-
-		int i;
+		unsigned i;
 
 		for(i = 0; args_to->arglist[i]; i++){
-			/* FIXME: this is not an output function */
-			char buf[DECL_STATIC_BUFSIZ];
+			switch(type_ref_cmp(args_to->arglist[i]->ref, args_from->arglist[i]->ref, 0)){
+				case TYPE_EQUAL:
+					break;
 
-			int eq = fold_type_ref_equal(
-					args_to->arglist[i]->ref,
-					args_from->arglist[i]->ref,
-					&args_from->where, WARN_ARG_MISMATCH, flag,
-					"mismatching argument %d %s%s%s(%s <-- %s)",
-					i,
-					fspel ? "to " : "between declarations ",
-					fspel ? fspel : "",
-					fspel ? " " : "",
-					decl_to_str_r(buf, args_to->arglist[i]),
-					decl_to_str(       args_from->arglist[i]));
-
-			if(!eq)
-				return FUNCARGS_ARE_MISMATCH_TYPES;
+				case TYPE_CONVERTIBLE_EXPLICIT:
+				case TYPE_CONVERTIBLE_IMPLICIT:
+				case TYPE_QUAL_LOSS:
+				case TYPE_NOT_EQUAL:
+					return FUNCARGS_ARE_MISMATCH_TYPES;
+			}
 		}
 	}
 
@@ -86,4 +75,17 @@ funcargs *funcargs_new()
 	funcargs *r = umalloc(sizeof *funcargs_new());
 	where_cc1_current(&r->where);
 	return r;
+}
+
+void funcargs_ty_calc(funcargs *fa, unsigned *n_int, unsigned *n_fp)
+{
+	decl **di;
+
+	*n_int = *n_fp = 0;
+
+	for(di = fa->arglist; di && *di; di++)
+		if(type_ref_is_floating((*di)->ref))
+			++*n_fp;
+		else
+			++*n_int;
 }

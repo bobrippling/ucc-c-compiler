@@ -20,7 +20,10 @@ void fold_stmt_while(stmt *s)
 	s->lbl_continue = out_label_flow("while_cont");
 
 	FOLD_EXPR(s->expr, stab);
-	fold_need_expr(s->expr, s->f_str(), 1);
+	fold_check_expr(
+			s->expr,
+			FOLD_CHK_NO_ST_UN | FOLD_CHK_BOOL,
+			s->f_str());
 
 	fold_stmt(s->lhs);
 }
@@ -53,11 +56,7 @@ void style_stmt_while(stmt *s)
 
 int while_passable(stmt *s)
 {
-	consty k;
-
-	const_fold(s->expr, &k);
-
-	if(k.type == CONST_VAL && k.bits.iv.val)
+	if(const_expr_and_non_zero(s->expr))
 		return fold_code_escapable(s); /* while(1) */
 
 	return 1; /* fold_passable(s->lhs) - doesn't depend on this */
