@@ -26,7 +26,7 @@ main()
 
 	struct A init = (struct A){ .j = 1 };
 
-	//(void)x;
+	(void)x;
 
 	print_A(&y);
 	print_A(&z);
