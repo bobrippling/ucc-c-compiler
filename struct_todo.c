@@ -3,9 +3,6 @@ struct A
 	int i, j, k;
 };
 
-f(struct A);
-struct A get();
-
 pred(){ return 1; }
 
 print_A(struct A const *p)
