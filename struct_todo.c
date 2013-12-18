@@ -22,7 +22,7 @@ main()
 
 	struct A comma = (y, z);
 
-	//struct A exp_stmt = ({ struct A sub = { .k = 1 }; sub; });
+	struct A exp_stmt = ({ struct A sub = { .k = 1 }; sub; });
 
 	struct A init = (struct A){ .j = 1 };
 
@@ -32,6 +32,6 @@ main()
 	print_A(&z);
 	print_A(&x);
 	print_A(&comma);
-	//print_A(&exp_stmt);
+	print_A(&exp_stmt);
 	print_A(&init);
 }
