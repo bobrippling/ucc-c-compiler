@@ -16,6 +16,3 @@ type_propagation/tgmath.c
 calling_conv/callee_save.c
 calling_conv/fptr.c
 mangling/calling_conv.c
-
-# other:
-asm/abi-test.c
