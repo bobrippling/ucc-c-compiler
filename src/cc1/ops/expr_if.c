@@ -6,6 +6,8 @@
 #include "../sue.h"
 #include "../out/lbl.h"
 
+static void lea_expr_if(expr *);
+
 const char *str_expr_if()
 {
 	return "if";
@@ -114,6 +116,9 @@ void fold_expr_if(expr *e, symtable *stab)
 		e->tree_type = type_ref_new_cast(tt_l,
 				type_ref_qual(tt_l) | type_ref_qual(tt_r));
 
+		if(type_ref_is_s_or_u(tt_l))
+			e->f_lea = lea_expr_if;
+
 	}else{
 		/* brace yourself. */
 		int l_ptr_null = expr_is_null_ptr(
@@ -159,13 +164,13 @@ void fold_expr_if(expr *e, symtable *stab)
 	e->freestanding = (e->lhs ? e->lhs : e->expr)->freestanding || e->rhs->freestanding;
 }
 
-
-void gen_expr_if(expr *e)
+static void gen_expr_if_via(expr *e, void fn(expr *))
 {
 	char *lblfin;
 
 	lblfin = out_label_code("ifexp_fi");
 
+	/* always gen here */
 	gen_expr(e->expr);
 
 	if(e->lhs){
@@ -173,7 +178,7 @@ void gen_expr_if(expr *e)
 
 		out_jfalse(lblelse);
 
-		gen_expr(e->lhs);
+		(*fn)(e->lhs);
 
 		out_push_lbl(lblfin, 0);
 		out_jmp();
@@ -182,6 +187,10 @@ void gen_expr_if(expr *e)
 		free(lblelse);
 
 	}else{
+		/* shouldn't be doing a lea here - can't have:
+		 * <struct> ?: <struct>
+		 * since <struct> doesn't have operator bool()
+		 */
 		out_dup();
 
 		out_jtrue(lblfin);
@@ -189,10 +198,20 @@ void gen_expr_if(expr *e)
 
 	out_pop();
 
-	gen_expr(e->rhs);
+	(*fn)(e->rhs);
 	out_label(lblfin);
 
 	free(lblfin);
+}
+
+void gen_expr_if(expr *e)
+{
+	gen_expr_if_via(e, gen_expr);
+}
+
+void lea_expr_if(expr *e)
+{
+	gen_expr_if_via(e, lea_expr);
 }
 
 void gen_expr_str_if(expr *e)

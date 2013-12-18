@@ -109,6 +109,9 @@ int expr_is_lval(expr *e)
 	if(expr_kind(e, assign) && type_ref_is_s_or_u(e->tree_type))
 		return 0;
 
+	if(expr_kind(e, if))
+		return 0; /* again, special case - needs pulling out into f_is_lval() */
+
 	if(type_ref_is_array(e->tree_type))
 		return 0;
 
