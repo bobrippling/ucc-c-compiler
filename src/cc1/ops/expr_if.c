@@ -116,8 +116,10 @@ void fold_expr_if(expr *e, symtable *stab)
 		e->tree_type = type_ref_new_cast(tt_l,
 				type_ref_qual(tt_l) | type_ref_qual(tt_r));
 
-		if(type_ref_is_s_or_u(tt_l))
+		if(type_ref_is_s_or_u(tt_l)){
 			e->f_lea = lea_expr_if;
+			e->lvalue_internal = 1;
+		}
 
 	}else{
 		/* brace yourself. */

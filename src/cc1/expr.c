@@ -99,18 +99,8 @@ int expr_is_null_ptr(expr *e, enum null_strictness ty)
 
 int expr_is_lval(expr *e)
 {
-	if(!e->f_lea)
+	if(!e->f_lea || e->lvalue_internal)
 		return 0;
-
-	/* special case:
-	 * (a = b) = c
-	 * ^~~~~~~ not an lvalue, but internally we handle it as one
-	 */
-	if(expr_kind(e, assign) && type_ref_is_s_or_u(e->tree_type))
-		return 0;
-
-	if(expr_kind(e, if))
-		return 0; /* again, special case - needs pulling out into f_is_lval() */
 
 	if(type_ref_is_array(e->tree_type))
 		return 0;

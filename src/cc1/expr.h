@@ -71,6 +71,8 @@ struct expr
 	func_const *f_const_fold; /* optional, used in static/global init */
 	func_gen_lea *f_lea; /* optional */
 
+	/* not a user lvalue, e.g. a?b:c, where the operands are structs */
+	int lvalue_internal;
 
 	int freestanding; /* e.g. 1; needs use, whereas x(); doesn't - freestanding */
 	struct
