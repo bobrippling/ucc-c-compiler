@@ -2,6 +2,8 @@
 #include "expr_stmt.h"
 #include "../../util/dynarray.h"
 
+static void expr_stmt_lea(expr *);
+
 const char *str_expr_stmt()
 {
 	return "statement";
@@ -24,10 +26,17 @@ void fold_expr_stmt(expr *e, symtable *stab)
 	fold_stmt(e->code); /* symtab should've been set by parse */
 
 	if(last && stmt_kind(last_stmt, expr)){
-		e->tree_type = last_stmt->expr->tree_type;
+		expr *last_expr = last_stmt->expr;
+
+		e->tree_type = last_expr->tree_type;
 		fold_check_expr(e,
 				FOLD_CHK_ALLOW_VOID,
 				"({ ... }) statement");
+
+		if(expr_is_lval(last_expr)){
+			e->f_lea = expr_stmt_lea;
+			e->lvalue_internal = 1;
+		}
 	}else{
 		e->tree_type = type_ref_cached_VOID(); /* void expr */
 	}
@@ -35,21 +44,36 @@ void fold_expr_stmt(expr *e, symtable *stab)
 	e->freestanding = 1; /* ({ ... }) on its own is freestanding */
 }
 
-void gen_expr_stmt(expr *e)
+static void expr_stmt_maybe_push(expr *e)
 {
-	gen_stmt(e->code);
 	/* last stmt is told to leave its result on the stack
 	 *
 	 * if the last stmt isn't an expression, we put something
 	 * on the stack for it
 	 */
-	{
-		int n = dynarray_count(e->code->codes);
-		if(n == 0 || !stmt_kind(e->code->codes[n-1], expr))
-			out_push_noop();
-	}
+	int n = dynarray_count(e->code->codes);
+	if(n == 0 || !stmt_kind(e->code->codes[n-1], expr))
+		out_push_noop();
+}
+
+void gen_expr_stmt(expr *e)
+{
+	gen_stmt(e->code);
+
+	expr_stmt_maybe_push(e);
 
 	out_comment("end of ({...})");
+}
+
+static void expr_stmt_lea(expr *e)
+{
+	size_t n;
+
+	gen_stmt_code_m1(e->code, 1);
+	/* vstack hasn't changed, no implicit pops done for ^ */
+
+	n = dynarray_count(e->code->codes);
+	lea_expr(e->code->codes[n - 1]->expr);
 }
 
 void gen_expr_str_stmt(expr *e)

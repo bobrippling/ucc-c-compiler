@@ -141,15 +141,27 @@ void gen_block_decls(symtable *stab)
 	}
 }
 
-void gen_stmt_code(stmt *s)
+/* this is done for lea_expr_stmt(), i.e.
+ * struct A x = ({ struct A y; y.i = 1; y; });
+ * so we can lea the final expr
+ */
+void gen_stmt_code_m1(stmt *s, int m1)
 {
 	stmt **titer;
 
 	/* stmt_for/if/while/do needs to do this too */
 	gen_block_decls(s->symtab);
 
-	for(titer = s->codes; titer && *titer; titer++)
+	for(titer = s->codes; titer && *titer; titer++){
+		if(m1 && !titer[1])
+			break;
 		gen_stmt(*titer);
+	}
+}
+
+void gen_stmt_code(stmt *s)
+{
+	gen_stmt_code_m1(s, 0);
 }
 
 void style_stmt_code(stmt *s)
