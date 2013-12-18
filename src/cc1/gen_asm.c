@@ -58,6 +58,11 @@ void lea_expr(expr *e)
 	e->f_lea(e);
 }
 
+void gen_unused_expr(expr *e)
+{
+	(e->f_lea ? lea_expr : gen_expr)(e);
+}
+
 void gen_stmt(stmt *t)
 {
 	EOF_WHERE(&t->where, t->f_gen(t));

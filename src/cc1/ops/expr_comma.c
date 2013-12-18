@@ -24,7 +24,7 @@ static void fold_const_expr_comma(expr *e, consty *k)
 
 static void comma_lea(expr *e)
 {
-	lea_expr(e->lhs);
+	gen_unused_expr(e->lhs);
 	out_pop();
 	lea_expr(e->rhs);
 }
@@ -58,7 +58,9 @@ void fold_expr_comma(expr *e, symtable *stab)
 
 void gen_expr_comma(expr *e)
 {
-	lea_expr(e->lhs); /* only lea, don't want full struct dereference */
+	/* attempt lea, don't want full struct dereference */
+	gen_unused_expr(e->lhs);
+
 	out_pop();
 	out_comment("unused comma expr");
 	gen_expr(e->rhs);

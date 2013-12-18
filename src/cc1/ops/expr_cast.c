@@ -394,7 +394,7 @@ void gen_expr_cast(expr *e)
 	const int cast_to_void = type_ref_is_void(tto);
 
 	/* avoid a struct dereference for (void) <struct> */
-	(cast_to_void ? lea_expr : gen_expr)(expr_cast_child(e));
+	(cast_to_void ? gen_unused_expr : gen_expr)(expr_cast_child(e));
 
 	if(IS_RVAL_CAST(e)){
 		/*out_to_rvalue();*/

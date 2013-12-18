@@ -8,6 +8,7 @@ void gen_asm_extern(decl *d);
 
 void gen_asm(symtable_global *);
 void gen_expr(expr *e);
+void gen_unused_expr(expr *e); /* attempts a lea first */
 void lea_expr(expr *e);
 void gen_stmt(stmt *t);
 
