@@ -390,22 +390,25 @@ void fold_expr_cast(expr *e, symtable *stab)
 
 void gen_expr_cast(expr *e)
 {
-	gen_expr(expr_cast_child(e));
+	type_ref *tto = e->tree_type;
+	const int cast_to_void = type_ref_is_void(tto);
+
+	/* avoid a struct dereference for (void) <struct> */
+	(cast_to_void ? lea_expr : gen_expr)(expr_cast_child(e));
 
 	if(IS_RVAL_CAST(e)){
 		/*out_to_rvalue();*/
 	}else{
-		type_ref *tto, *tfrom;
-
-		tto = e->tree_type;
-		tfrom = expr_cast_child(e)->tree_type;
+		type_ref *tfrom;
 
 		/* return if cast-to-void */
-		if(type_ref_is_void(tto)){
+		if(cast_to_void){
 			out_change_type(tto);
 			out_comment("cast to void");
 			return;
 		}
+
+		tfrom = expr_cast_child(e)->tree_type;
 
 		if(fopt_mode & FOPT_PLAN9_EXTENSIONS){
 			/* allow b to be an anonymous member of a */
