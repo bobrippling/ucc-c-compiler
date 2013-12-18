@@ -22,6 +22,13 @@ static void fold_const_expr_comma(expr *e, consty *k)
 		k->type = CONST_NO;
 }
 
+static void comma_lea(expr *e)
+{
+	gen_expr(e->lhs);
+	out_pop();
+	lea_expr(e->rhs);
+}
+
 void fold_expr_comma(expr *e, symtable *stab)
 {
 	FOLD_EXPR(e->lhs, stab);
@@ -42,6 +49,11 @@ void fold_expr_comma(expr *e, symtable *stab)
 		warn_at(&e->lhs->where, "left hand side of comma is unused");
 
 	e->freestanding = e->rhs->freestanding;
+
+	if(expr_is_lval(e->rhs)){
+		e->f_lea = comma_lea;
+		e->lvalue_internal = 1;
+	}
 }
 
 void gen_expr_comma(expr *e)
