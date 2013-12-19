@@ -192,6 +192,13 @@ static unsigned x86_stret(type_ref *r)
 	return 0;
 }
 
+static void x86_set_stret_ptr(struct vstack *vp)
+{
+	v_set_stack(vp, NULL,
+			/* stret is always the first argument:*/ - (long) platform_word_size(),
+			/* pull the value out:*/1);
+}
+
 static const char *x86_reg_str(const struct vreg *reg, type_ref *r)
 {
 	/* must be sync'd with header */
@@ -583,11 +590,27 @@ void impl_pop_func_ret(type_ref *ty_f)
 	type_ref *called = type_ref_func_call(ty_f, NULL);
 	struct vreg r;
 
+	if(x86_stret(called)){
+		/* copy from *%rax to *%rdi (first argument) */
+		out_comment("stret copy");
 
-	r.idx =
-		(r.is_float = type_ref_is_floating(called))
-		? REG_RET_F
-		: REG_RET_I;
+		vpush(type_ref_cached_VOID_PTR());
+		x86_set_stret_ptr(vtop);
+
+		out_swap();
+		out_memcpy(type_ref_size(called, NULL));
+
+		out_pop();
+
+		/* return the stret pointer argument */
+		x86_set_stret_ptr(vtop);
+
+		r.is_float = 0;
+		r.idx = REG_RET_I;
+	}else{
+		r.is_float = type_ref_is_floating(called);
+		r.idx = r.is_float ? REG_RET_F : REG_RET_I;
+	}
 
 	/* v_to_reg since we don't handle lea/load ourselves */
 	v_to_reg_given(vtop, &r);
