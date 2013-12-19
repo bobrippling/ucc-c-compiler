@@ -58,7 +58,7 @@ void lea_expr(expr *e)
 	e->f_lea(e);
 }
 
-void gen_unused_expr(expr *e)
+void gen_maybe_struct_expr(expr *e)
 {
 	(e->f_lea ? lea_expr : gen_expr)(e);
 }
