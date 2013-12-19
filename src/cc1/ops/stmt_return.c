@@ -65,8 +65,10 @@ void fold_stmt_return(stmt *s)
 void gen_stmt_return(stmt *s)
 {
 	if(s->expr){
+		decl *in_func = symtab_func(s->symtab);
+
 		gen_maybe_struct_expr(s->expr);
-		out_pop_func_ret(s->expr->tree_type);
+		out_pop_func_ret(in_func->ref);
 		out_comment("return");
 	}
 	out_push_lbl(curfunc_lblfin, 0);

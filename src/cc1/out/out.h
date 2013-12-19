@@ -4,7 +4,7 @@
 #define OUT_VPHI_SZ 64 /* sizeof(struct vstack) */
 
 void out_pop(void);
-void out_pop_func_ret(type_ref *) ucc_nonnull((1));
+void out_pop_func_ret(type_ref *func_ty) ucc_nonnull((1));
 
 void out_phi_pop_to(void *); /* put the current value into a phi-save area */
 void out_phi_join(void *);   /* join vtop and the phi-save area */

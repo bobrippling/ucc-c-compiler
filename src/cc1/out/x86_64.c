@@ -549,14 +549,15 @@ void impl_func_epilogue(type_ref *rf)
 	}
 }
 
-void impl_pop_func_ret(type_ref *ty)
+void impl_pop_func_ret(type_ref *ty_f)
 {
+	/* FIXME: merge with mips */
+	type_ref *called = type_ref_func_call(ty_f, NULL);
 	struct vreg r;
 
-	/* FIXME: merge with mips */
 
 	r.idx =
-		(r.is_float = type_ref_is_floating(ty))
+		(r.is_float = type_ref_is_floating(called))
 		? REG_RET_F
 		: REG_RET_I;
 
