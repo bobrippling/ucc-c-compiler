@@ -31,6 +31,8 @@ void out_deref(void);
 void out_swap(void);
 void out_flush_volatile(void);
 
+void out_memcpy(unsigned long bytes);
+
 void out_cast(type_ref *to) ucc_nonnull((1));
 void out_change_type(type_ref *) ucc_nonnull((1));
 void out_set_lvalue(void);
