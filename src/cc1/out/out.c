@@ -312,7 +312,7 @@ void v_to_reg(struct vstack *conv)
 	v_to_reg_out(conv, NULL);
 }
 
-static void v_set_stack(
+void v_set_stack(
 		struct vstack *vp, type_ref *ty,
 		long off, int lval)
 {

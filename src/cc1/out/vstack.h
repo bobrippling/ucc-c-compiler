@@ -80,6 +80,10 @@ void v_set_flag(
 		enum flag_cmp c,
 		enum flag_mod mods);
 
+void v_set_stack(
+		struct vstack *vp, type_ref *ty,
+		long off, int lval);
+
 void v_cast(struct vstack *vp, type_ref *to);
 
 void v_inv_cmp(struct flag_opts *);

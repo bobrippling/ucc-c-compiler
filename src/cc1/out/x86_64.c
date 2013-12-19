@@ -1528,6 +1528,16 @@ void impl_jcond(int true, const char *lbl)
 	}
 }
 
+static unsigned x86_stret(type_ref *r)
+{
+	if(type_ref_is_s_or_u(r)){
+		unsigned sz = type_ref_size(r, NULL);
+		if(sz > platform_word_size())
+			return sz;
+	}
+	return 0;
+}
+
 void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 {
 	const unsigned pws = platform_word_size();
@@ -1538,8 +1548,10 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 
 	unsigned nfloats = 0, nints = 0;
 	unsigned arg_stack = 0, align_stack = 0;
+	unsigned stret_stack = 0, stret_pos = 0;
 	unsigned stk_snapshot = 0;
 	int i;
+	int stret = 0;
 
 	x86_call_regs(r_func, &n_call_iregs, &call_iregs);
 
@@ -1560,6 +1572,14 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 			nfloats++;
 		else
 			nints++;
+	}
+
+	/* hidden stret argument */
+	if((stret_stack = x86_stret(r_ret))){
+		nints++;
+		stret = 1;
+		stret_stack = v_alloc_stack(stret_stack, "stret space");
+		stret_pos = v_stack_sz();
 	}
 
 	/* do we need to do any stacking? */
@@ -1617,6 +1637,21 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 	}
 
 	nints = nfloats = 0;
+	/* hidden stret pointer */
+	if(stret){
+		const struct vreg *stret_reg = &call_iregs[nints];
+		nints++;
+
+		out_comment("stret pointer @ %u-%u for struct, size %u",
+				stret_pos, stret_pos - stret_stack, stret_stack);
+		vpush(type_ref_cached_VOID_PTR());
+		v_set_stack(vtop, NULL, -(long)stret_pos, /*lval:*/0);
+
+		v_freeup_reg(stret_reg, 0);
+		v_to_reg_given(vtop, stret_reg);
+		vpop();
+	}
+
 	for(i = 0; i < nargs; i++){
 		struct vstack *const vp = &vtop[-i];
 		const int is_float = type_ref_is_floating(vp->t);
@@ -1697,6 +1732,8 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 		v_dealloc_stack(arg_stack);
 	if(align_stack)
 		v_dealloc_stack(align_stack);
+	if(stret_stack)
+		v_dealloc_stack(stret_stack);
 
 	free(float_arg);
 }
