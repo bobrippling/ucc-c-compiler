@@ -182,6 +182,16 @@ static const char *x86_suffix(type_ref *ty)
 	ICE("no suffix for %s", type_ref_to_str(ty));
 }
 
+static unsigned x86_stret(type_ref *r)
+{
+	if(type_ref_is_s_or_u(r)){
+		unsigned sz = type_ref_size(r, NULL);
+		if(sz > platform_word_size())
+			return sz;
+	}
+	return 0;
+}
+
 static const char *x86_reg_str(const struct vreg *reg, type_ref *r)
 {
 	/* must be sync'd with header */
@@ -1527,16 +1537,6 @@ void impl_jcond(int true, const char *lbl)
 			impl_jcond(true, lbl);
 			break;
 	}
-}
-
-static unsigned x86_stret(type_ref *r)
-{
-	if(type_ref_is_s_or_u(r)){
-		unsigned sz = type_ref_size(r, NULL);
-		if(sz > platform_word_size())
-			return sz;
-	}
-	return 0;
 }
 
 void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
