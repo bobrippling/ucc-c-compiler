@@ -738,7 +738,6 @@ void out_push_noop()
 void out_dup(void)
 {
 	/* TODO: mark reg as duped, but COW */
-	out_comment("dup");
 	vpush(vtop->t);
 	switch(vtop[-1].type){
 		case V_FLAG:
@@ -760,7 +759,6 @@ void out_dup(void)
 
 				v_unused_reg(1, vtop[-1].bits.regoff.reg.is_float, &r);
 
-				out_comment("dup");
 				impl_reg_cp(&vtop[-1], &r);
 
 				v_set_reg(vtop, &r);
