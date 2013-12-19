@@ -107,6 +107,12 @@ static void static_array_check(
 	/* else it's a random pointer, just be quiet */
 }
 
+static void lea_expr_funcall(expr *e)
+{
+	/* handled transparently by the backend */
+	gen_expr(e);
+}
+
 void fold_expr_funcall(expr *e, symtable *stab)
 {
 	type_ref *type_func;
@@ -278,8 +284,10 @@ invalid:
 			expr_promote_default(&e->funcargs[i], stab);
 	}
 
-	if(type_ref_is_s_or_u(e->tree_type))
-		ICW("TODO: function returning a struct");
+	if(type_ref_is_s_or_u(e->tree_type)){
+		e->f_lea = lea_expr_funcall;
+		e->lvalue_internal = 1;
+	}
 
 	/* attr */
 	{
