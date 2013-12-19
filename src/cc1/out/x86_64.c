@@ -375,10 +375,26 @@ static void reg_to_stack(
 	vpop();
 }
 
+static void set_arg_offset(
+		int arg_offsets[/*nargs*/],
+		unsigned idx,
+		unsigned stret,
+		int val)
+{
+	if(idx >= stret)
+		arg_offsets[idx - stret] = val;
+}
+
 void impl_func_prologue_save_call_regs(
 		type_ref *rf, unsigned nargs,
 		int arg_offsets[/*nargs*/])
 {
+	unsigned stret = 0;
+
+	/* save the stret hidden argument */
+	if((stret = x86_stret(type_ref_func_call(rf, NULL))))
+		nargs++;
+
 	if(nargs){
 		const unsigned ws = platform_word_size();
 
@@ -395,6 +411,8 @@ void impl_func_prologue_save_call_regs(
 			unsigned fp_cnt, int_cnt;
 
 			funcargs_ty_calc(fa, &int_cnt, &fp_cnt);
+
+			int_cnt += stret;
 
 			n_call_i = MIN(n_call_i, int_cnt);
 			n_call_f = MIN(n_call_f, fp_cnt);
@@ -440,12 +458,12 @@ void impl_func_prologue_save_call_regs(
 
 					reg_to_stack(rp, ty, off);
 
-					arg_offsets[i_arg] = -off;
+					set_arg_offset(arg_offsets, i_arg, stret, -off);
 				}
 
 				continue;
 pass_via_stack:
-				arg_offsets[i_arg] = (i_arg_stk++ + 2) * ws;
+				set_arg_offset(arg_offsets, i_arg, stret, (i_arg_stk++ + 2) * ws);
 			}
 		}else{
 			unsigned i;
@@ -456,10 +474,10 @@ pass_via_stack:
 							x86_reg_str(&call_regs[i], NULL));
 
 					/* +1 to step over saved rbp */
-					arg_offsets[i] = -(i + 1) * ws;
+					set_arg_offset(arg_offsets, i, stret, -(i + 1) * ws);
 				}else{
 					/* +2 to step back over saved rbp and saved rip */
-					arg_offsets[i] = (i - n_call_i + 2) * ws;
+					set_arg_offset(arg_offsets, i, stret, (i - n_call_i + 2) * ws);
 				}
 			}
 
