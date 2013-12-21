@@ -9,6 +9,7 @@
 #include "asm.h"
 #include "write.h"
 #include "dbg.h"
+#include "lbl.h"
 
 #include "../cc1.h" /* cc_out */
 #include "../str.h" /* str_add_escape */

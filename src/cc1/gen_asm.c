@@ -136,6 +136,12 @@ void gen_asm_global(decl *d)
 
 		out_func_epilogue(d->ref);
 
+		{
+			char *end = out_dbg_func_end(decl_asm_spel(d));
+			out_label(end);
+			free(end);
+		}
+
 		free(curfunc_lblfin);
 		free(offsets);
 

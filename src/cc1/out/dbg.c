@@ -48,7 +48,7 @@ struct dwarf_state
 			{
 				unsigned long long value;
 				char *str; /* FREE */
-				char *addr_str; /* ref to d->spel */
+				char *addr_str; /* FREE */
 				unsigned sibling_pos; /* filled in later */
 				char *help; /* FREE */
 			} bits;
@@ -102,6 +102,7 @@ enum dwarf_key
 	DW_TAG_subrange_type = 0x21,
 	DW_TAG_const_type = 0x26,
 	DW_TAG_subroutine_type = 0x15,
+	DW_TAG_subprogram = 0x2e,
 	DW_TAG_formal_parameter = 0x5,
 	DW_TAG_enumeration_type = 0x4,
 	DW_TAG_enumerator = 0x28,
@@ -861,6 +862,37 @@ static void dwarf_info_footer(struct dwarf_sec *sec, FILE *f)
 	fprintf(f, ".Ldbg_info_end:\n");
 }
 
+static void dwarf_attr_decl(
+		struct dwarf_state *st,
+		decl *d,
+		unsigned typos, int show_extern)
+{
+	dwarf_attr(st, DW_AT_name, DW_FORM_string, d->spel);
+	dwarf_attr(st, DW_AT_type, DW_FORM_ref4, typos);
+
+	if(show_extern)
+		dwarf_attr(st, DW_AT_external, DW_FORM_flag,
+				(d->store & STORE_MASK_STORE) != store_static);
+}
+
+static void dwarf_attr_lbl(
+		struct dwarf_state *st,
+		int dwtype, char *lbl)
+{
+	struct dwarf_block locn;
+	struct dwarf_block_ent locn_data[2];
+
+	locn_data[0].type = BLOCK_N;
+	locn_data[0].bits.n = DW_OP_addr;
+
+	locn_data[1].type = BLOCK_ADDR_STR;
+	locn_data[1].bits.addr_str = lbl;
+
+	locn.cnt = 2;
+	locn.vals = locn_data;
+	dwarf_attr(st, dwtype, DW_FORM_block1, &locn);
+}
+
 static void dwarf_global_variable(struct dwarf_state *st, decl *d)
 {
 	enum decl_storage const store = d->store & STORE_MASK_STORE;
@@ -878,28 +910,47 @@ static void dwarf_global_variable(struct dwarf_state *st, decl *d)
 				store == store_typedef ? DW_TAG_typedef : DW_TAG_variable,
 				DW_CHILDREN_no);
 		{
-			dwarf_attr(st, DW_AT_name, DW_FORM_string, d->spel);
-			dwarf_attr(st, DW_AT_type, DW_FORM_ref4, typos);
+			int tdef = store == store_typedef;
+
+			dwarf_attr_decl(st, d, typos, !tdef);
 
 			/* typedefs don't exist in the file, or have extern properties */
-			if(store != store_typedef){
-				struct dwarf_block locn;
-				struct dwarf_block_ent locn_data[2];
-
-				locn_data[0].type = BLOCK_N;
-				locn_data[0].bits.n = DW_OP_addr;
-				locn_data[1].type = BLOCK_ADDR_STR;
-				locn_data[1].bits.addr_str = d->spel;
-
-				locn.cnt = 2;
-				locn.vals = locn_data;
-				dwarf_attr(st, DW_AT_location, DW_FORM_block1, &locn);
-
-				dwarf_attr(st, DW_AT_external, DW_FORM_flag, store != store_static);
+			if(!tdef){
+				dwarf_attr_lbl(st, DW_AT_location, ustrdup(d->spel));
 			}
 
 		} dwarf_sec_end(&st->abbrev);
 	} dwarf_end(st);
+}
+
+static void dwarf_stmt_scope(struct dwarf_state *st, stmt *code)
+{
+	(void)st;
+	(void)code;
+}
+
+static void dwarf_subprogram_func(struct dwarf_state *st, decl *d)
+{
+	unsigned typos = dwarf_type(st, d->ref);
+
+	dwarf_start(st); {
+		dwarf_abbrev_start(st, DW_TAG_subprogram, DW_CHILDREN_yes); {
+			const char *asmsp = decl_asm_spel(d);
+
+			dwarf_sibling_push(st);
+
+			dwarf_attr_decl(st, d, typos, /*show_extern:*/1);
+
+			dwarf_attr_lbl(st, DW_AT_low_pc, ustrdup(asmsp));
+			dwarf_attr_lbl(st, DW_AT_high_pc, out_dbg_func_end(asmsp));
+
+		} dwarf_sec_end(&st->abbrev);
+	} dwarf_end(st);
+
+	/* siblings: */
+	dwarf_stmt_scope(st, d->func_code);
+
+	dwarf_sibling_pop(st);
 }
 
 static void dwarf_flush(struct dwarf_sec *sec, FILE *f)
@@ -1057,7 +1108,7 @@ void out_dbginfo(symtable_global *globs, const char *fname)
 
 			dwarf_help(&st, "decl %s", decl_to_str(d));
 			if(DECL_IS_FUNC(d)){
-				; /* TODO: dwarf_subprogram_func(&st, d); */
+				dwarf_subprogram_func(&st, d);
 			}else{
 				dwarf_global_variable(&st, d);
 			}

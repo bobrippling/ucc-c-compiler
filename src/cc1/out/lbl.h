@@ -25,6 +25,7 @@ char *out_label_flow(const char *fmt);
 char *out_label_block(const char *funcsp);
 
 char *out_label_dbg_type(void);
+char *out_dbg_func_end(const char *fn);
 
 void out_label(const char *);
 
