@@ -459,8 +459,52 @@ static void dwarf_abbrev_start(struct dwarf_state *st, int b1, int b2)
 	dwarf_sec_indent(&st->abbrev, +1);
 }
 
-static void dwarf_basetype(struct dwarf_state *st, enum type_primitive prim, int enc)
+static void dwarf_basetype(struct dwarf_state *st, enum type_primitive prim)
 {
+	int enc;
+	switch(prim){
+		case type__Bool:
+			enc = DW_ATE_boolean;
+			break;
+
+		case type_nchar:
+		case type_schar:
+			enc = DW_ATE_signed_char;
+			break;
+		case type_uchar:
+			enc = DW_ATE_unsigned_char;
+			break;
+
+		case type_short:
+		case type_int:
+		case type_long:
+		case type_llong:
+			enc = DW_ATE_signed;
+			break;
+
+		case type_ushort:
+		case type_uint:
+		case type_ulong:
+		case type_ullong:
+			enc = DW_ATE_unsigned;
+			break;
+
+		case type_float:
+		case type_double:
+		case type_ldouble:
+			enc = DW_ATE_float;
+			break;
+
+		case type_void:
+		case type_struct:
+		case type_union:
+		case type_enum:
+		case type_unknown:
+			ICE("bad type");
+	}
+
+	dwarf_help(st, "base type %s", type_primitive_to_str(prim));
+
 	dwarf_start(st); {
 		dwarf_abbrev_start(st, DW_TAG_base_type, DW_CHILDREN_no); {
 			dwarf_attr(st, DW_AT_name,      DW_FORM_string, type_primitive_to_str(prim));
@@ -607,11 +651,7 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 				}
 
 			}else{
-				/* TODO: unsigned type */
-				dwarf_help(st, "base type %s", type_to_str(ty->bits.type));
-
-				dwarf_basetype(st, ty->bits.type->primitive,
-						type_ref_is_floating(ty) ? DW_ATE_float : DW_ATE_signed);
+				dwarf_basetype(st, ty->bits.type->primitive);
 			}
 			break;
 		}
