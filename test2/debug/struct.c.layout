@@ -1,0 +1,553 @@
+.section .text
+.globl x
+.section .data
+.align 8
+x:
+.space 1 # null init
+.space 1 # prev struct padding
+.word 5
+.space 1 # null init
+.space 3 # prev struct padding
+.space 4 # null init
+.space 4 # prev struct padding
+.space 8 # null init
+.quad str.1
+.byte 104
+.byte 101
+.byte 108
+.byte 108
+.byte 111
+.byte 104
+.byte 101
+.byte 108
+.byte 108
+.byte 111
+.byte 0
+.space 1 # prev struct padding
+.long 1114557645
+	/* float 59.700001 */
+
+.space 4 # null init
+.long 1084227584
+	/* float 5.000000 */
+
+.quad 4614503019994308149
+	/* double 3.251000 */
+
+
+.align 1
+str.1:
+.ascii "hello\000"
+.section .bss
+.section .debug_abbrev
+	.byte 1
+	.byte 17
+		.byte 1
+		.byte 37
+		.byte 8
+		.byte 19
+		.byte 5
+		.byte 3
+		.byte 8
+		.byte 17
+		.byte 1
+		.byte 18
+		.byte 1
+		.byte 0
+	.byte 0
+# decl typedef float fp
+# float
+# base type float
+	.byte 2
+	.byte 36
+		.byte 0
+		.byte 3
+		.byte 8
+		.byte 11
+		.byte 6
+		.byte 62
+		.byte 11
+		.byte 0
+	.byte 0
+# global typedef float fp
+	.byte 3
+	.byte 22
+		.byte 0
+		.byte 3
+		.byte 8
+		.byte 73
+		.byte 19
+		.byte 0
+	.byte 0
+# decl typedef struct A A
+# struct A
+# char
+# base type char
+	.byte 4
+	.byte 36
+		.byte 0
+		.byte 3
+		.byte 8
+		.byte 11
+		.byte 6
+		.byte 62
+		.byte 11
+		.byte 0
+	.byte 0
+# short
+# base type short
+	.byte 5
+	.byte 36
+		.byte 0
+		.byte 3
+		.byte 8
+		.byte 11
+		.byte 6
+		.byte 62
+		.byte 11
+		.byte 0
+	.byte 0
+# int
+# base type int
+	.byte 6
+	.byte 36
+		.byte 0
+		.byte 3
+		.byte 8
+		.byte 11
+		.byte 6
+		.byte 62
+		.byte 11
+		.byte 0
+	.byte 0
+# long
+# base type long
+	.byte 7
+	.byte 36
+		.byte 0
+		.byte 3
+		.byte 8
+		.byte 11
+		.byte 6
+		.byte 62
+		.byte 11
+		.byte 0
+	.byte 0
+# char *
+	.byte 8
+	.byte 15
+		.byte 0
+		.byte 11
+		.byte 6
+		.byte 73
+		.byte 19
+		.byte 0
+	.byte 0
+# char[5]
+	.byte 9
+	.byte 1
+		.byte 1
+		.byte 73
+		.byte 19
+		.byte 1
+		.byte 19
+		.byte 0
+	.byte 0
+	.byte 10
+	.byte 33
+		.byte 0
+		.byte 47
+		.byte 6
+		.byte 0
+	.byte 0
+# char[6]
+	.byte 11
+	.byte 1
+		.byte 1
+		.byte 73
+		.byte 19
+		.byte 1
+		.byte 19
+		.byte 0
+	.byte 0
+	.byte 12
+	.byte 33
+		.byte 0
+		.byte 47
+		.byte 6
+		.byte 0
+	.byte 0
+# fp (aka 'float')[2]
+	.byte 13
+	.byte 1
+		.byte 1
+		.byte 73
+		.byte 19
+		.byte 1
+		.byte 19
+		.byte 0
+	.byte 0
+	.byte 14
+	.byte 33
+		.byte 0
+		.byte 47
+		.byte 6
+		.byte 0
+	.byte 0
+# double
+# base type double
+	.byte 15
+	.byte 36
+		.byte 0
+		.byte 3
+		.byte 8
+		.byte 11
+		.byte 6
+		.byte 62
+		.byte 11
+		.byte 0
+	.byte 0
+# A header
+	.byte 16
+	.byte 19
+		.byte 1
+		.byte 1
+		.byte 19
+		.byte 3
+		.byte 8
+		.byte 11
+		.byte 6
+		.byte 0
+	.byte 0
+#   A::char c
+	.byte 17
+	.byte 13
+		.byte 0
+		.byte 3
+		.byte 8
+		.byte 73
+		.byte 19
+		.byte 56
+		.byte 10
+		.byte 50
+		.byte 12
+		.byte 0
+	.byte 0
+#   A::short s
+	.byte 18
+	.byte 13
+		.byte 0
+		.byte 3
+		.byte 8
+		.byte 73
+		.byte 19
+		.byte 56
+		.byte 10
+		.byte 50
+		.byte 12
+		.byte 0
+	.byte 0
+#   A::char pad
+	.byte 19
+	.byte 13
+		.byte 0
+		.byte 3
+		.byte 8
+		.byte 73
+		.byte 19
+		.byte 56
+		.byte 10
+		.byte 50
+		.byte 12
+		.byte 0
+	.byte 0
+#   A::int i
+	.byte 20
+	.byte 13
+		.byte 0
+		.byte 3
+		.byte 8
+		.byte 73
+		.byte 19
+		.byte 56
+		.byte 10
+		.byte 50
+		.byte 12
+		.byte 0
+	.byte 0
+#   A::long l
+	.byte 21
+	.byte 13
+		.byte 0
+		.byte 3
+		.byte 8
+		.byte 73
+		.byte 19
+		.byte 56
+		.byte 10
+		.byte 50
+		.byte 12
+		.byte 0
+	.byte 0
+#   A::char *p
+	.byte 22
+	.byte 13
+		.byte 0
+		.byte 3
+		.byte 8
+		.byte 73
+		.byte 19
+		.byte 56
+		.byte 10
+		.byte 50
+		.byte 12
+		.byte 0
+	.byte 0
+#   A::char buf[5]
+	.byte 23
+	.byte 13
+		.byte 0
+		.byte 3
+		.byte 8
+		.byte 73
+		.byte 19
+		.byte 56
+		.byte 10
+		.byte 50
+		.byte 12
+		.byte 0
+	.byte 0
+#   A::char buf2[6]
+	.byte 24
+	.byte 13
+		.byte 0
+		.byte 3
+		.byte 8
+		.byte 73
+		.byte 19
+		.byte 56
+		.byte 10
+		.byte 50
+		.byte 12
+		.byte 0
+	.byte 0
+#   A::fp (aka 'float') f
+	.byte 25
+	.byte 13
+		.byte 0
+		.byte 3
+		.byte 8
+		.byte 73
+		.byte 19
+		.byte 56
+		.byte 10
+		.byte 50
+		.byte 12
+		.byte 0
+	.byte 0
+#   A::fp (aka 'float') fs[2]
+	.byte 26
+	.byte 13
+		.byte 0
+		.byte 3
+		.byte 8
+		.byte 73
+		.byte 19
+		.byte 56
+		.byte 10
+		.byte 50
+		.byte 12
+		.byte 0
+	.byte 0
+#   A::double d
+	.byte 27
+	.byte 13
+		.byte 0
+		.byte 3
+		.byte 8
+		.byte 73
+		.byte 19
+		.byte 56
+		.byte 10
+		.byte 50
+		.byte 12
+		.byte 0
+	.byte 0
+# global typedef struct A A
+	.byte 28
+	.byte 22
+		.byte 0
+		.byte 3
+		.byte 8
+		.byte 73
+		.byte 19
+		.byte 0
+	.byte 0
+# decl A (aka 'struct A') x
+# global A (aka 'struct A') x
+	.byte 29
+	.byte 52
+		.byte 0
+		.byte 3
+		.byte 8
+		.byte 73
+		.byte 19
+		.byte 2
+		.byte 10
+		.byte 63
+		.byte 12
+		.byte 0
+	.byte 0
+.section .debug_info
+	.long .Ldbg_info_end - .Ldbg_info_start
+.Ldbg_info_start:
+	.short 2 # DWARF 2
+	.long 0  # abbrev offset
+	.byte 8  # sizeof(void *)
+	.byte 1
+	.asciz "ucc development version"
+	.word 12
+	.asciz "debug/struct.c"
+	.quad 12345
+	.quad 54321
+	.byte 2
+	.asciz "float"
+	.long 4
+	.byte 4
+	.byte 3
+	.asciz "fp"
+	.long 69
+	.byte 4
+	.asciz "char"
+	.long 1
+	.byte 6
+	.byte 5
+	.asciz "short"
+	.long 2
+	.byte 5
+	.byte 6
+	.asciz "int"
+	.long 4
+	.byte 5
+	.byte 7
+	.asciz "long"
+	.long 8
+	.byte 5
+	.byte 8
+	.long 8
+	.long 89
+	.byte 9
+	.long 89
+	.long 157
+	.byte 10
+	.long 4
+.byte 0
+	.byte 11
+	.long 89
+	.long 172
+	.byte 12
+	.long 5
+.byte 0
+	.byte 13
+	.long 69
+	.long 187
+	.byte 14
+	.long 1
+.byte 0
+	.byte 15
+	.asciz "double"
+	.long 8
+	.byte 4
+	.byte 16
+	.long 341
+	.asciz "A"
+	.long 64
+	.byte 17
+	.asciz "c"
+	.long 89
+	.byte 2
+	.byte 35
+	.byte 0 # uleb128 of 0
+	.byte 1
+	.byte 18
+	.asciz "s"
+	.long 100
+	.byte 2
+	.byte 35
+	.byte 2 # uleb128 of 2
+	.byte 1
+	.byte 19
+	.asciz "pad"
+	.long 89
+	.byte 2
+	.byte 35
+	.byte 4 # uleb128 of 4
+	.byte 1
+	.byte 20
+	.asciz "i"
+	.long 112
+	.byte 2
+	.byte 35
+	.byte 8 # uleb128 of 8
+	.byte 1
+	.byte 21
+	.asciz "l"
+	.long 122
+	.byte 2
+	.byte 35
+	.byte 16 # uleb128 of 16
+	.byte 1
+	.byte 22
+	.asciz "p"
+	.long 133
+	.byte 2
+	.byte 35
+	.byte 24 # uleb128 of 24
+	.byte 1
+	.byte 23
+	.asciz "buf"
+	.long 142
+	.byte 2
+	.byte 35
+	.byte 32 # uleb128 of 32
+	.byte 1
+	.byte 24
+	.asciz "buf2"
+	.long 157
+	.byte 2
+	.byte 35
+	.byte 37 # uleb128 of 37
+	.byte 1
+	.byte 25
+	.asciz "f"
+	.long 69
+	.byte 2
+	.byte 35
+	.byte 44 # uleb128 of 44
+	.byte 1
+	.byte 26
+	.asciz "fs"
+	.long 172
+	.byte 2
+	.byte 35
+	.byte 48 # uleb128 of 48
+	.byte 1
+	.byte 27
+	.asciz "d"
+	.long 187
+	.byte 2
+	.byte 35
+	.byte 56 # uleb128 of 56
+	.byte 1
+.byte 0
+	.byte 28
+	.asciz "A"
+	.long 200
+	.byte 29
+	.asciz "x"
+	.long 200
+	.byte 9
+	.byte 3
+	.quad x
+	.byte 1
+.Ldbg_info_end:
