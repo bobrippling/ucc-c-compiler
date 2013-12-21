@@ -1,3 +1,4 @@
+// RUN: %ucc -fsyntax-only %s
 f(int a)
 {
 	switch(a){

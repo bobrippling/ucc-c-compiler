@@ -7,6 +7,8 @@
 
 #define struct_offset(e) ((e)->bits.struct_mem.d->struct_offset + (e)->bits.struct_mem.extra_off)
 
+static void gen_expr_struct_lea(expr *e);
+
 const char *str_expr_struct()
 {
 	return "struct";
@@ -22,7 +24,7 @@ void fold_expr_struct(expr *e, symtable *stab)
 	struct_union_enum_st *sue;
 	char *spel;
 
-	FOLD_EXPR(e->lhs, stab);
+	fold_expr_no_decay(e->lhs, stab);
 	/* don't fold the rhs - just a member name */
 
 	if(e->rhs){
@@ -64,7 +66,7 @@ err:
 		char wbuf[WHERE_BUF_SIZ];
 
 		die_at(&e->lhs->where, "%s incomplete type (%s)\n"
-				"%s: forward declared here",
+				"%s: note: forward declared here",
 				ptr_expect
 					? "dereferencing pointer to"
 					: "accessing member of",
@@ -120,8 +122,12 @@ static void gen_expr_struct_lea(expr *e)
 	gen_expr(e->lhs);
 
 	out_change_type(type_ref_cached_VOID_PTR()); /* cast for void* arithmetic */
-	out_push_i(type_ref_cached_INTPTR_T(), struct_offset(e)); /* integral offset */
+	out_push_l(type_ref_cached_INTPTR_T(), struct_offset(e)); /* integral offset */
 	out_op(op_plus);
+
+	if(fopt_mode & FOPT_VERBOSE_ASM)
+		out_comment("struct member %s", e->bits.struct_mem.d->spel);
+
 
 	{
 		decl *d = e->bits.struct_mem.d;
@@ -132,7 +138,7 @@ static void gen_expr_struct_lea(expr *e)
 		 * i.e. read + write then handle this
 		 */
 		if(d->field_width){
-			unsigned w = const_fold_val(d->field_width);
+			unsigned w = const_fold_val_i(d->field_width);
 			out_set_bitfield(d->struct_offset_bitfield, w);
 			out_comment("struct bitfield lea");
 		}
@@ -146,8 +152,6 @@ void gen_expr_struct(expr *e)
 	gen_expr_struct_lea(e);
 
 	out_deref();
-
-	out_comment("val from struct/union");
 }
 
 void gen_expr_str_struct(expr *e)
@@ -160,7 +164,7 @@ void gen_expr_str_struct(expr *e)
 	if(mem->field_width)
 		idt_printf("bitfield offset %u, width %u\n",
 				mem->struct_offset_bitfield,
-				(unsigned)const_fold_val(mem->field_width));
+				(unsigned)const_fold_val_i(mem->field_width));
 
 	gen_str_indent++;
 	print_expr(e->lhs);
@@ -191,12 +195,12 @@ static void fold_const_expr_struct(expr *e, consty *k)
 			k->offset += struct_offset(e);
 			break;
 
-		case CONST_VAL:
+		case CONST_NUM:
 			k->type = CONST_NEED_ADDR; /* e.g. &((A *)0)->b */
 
 			/* convert the val to a memaddr */
-			/* read iv.val before we clobber it */
-			k->bits.addr.bits.memaddr = k->bits.iv.val + struct_offset(e);
+			/* read num.val before we clobber it */
+			k->bits.addr.bits.memaddr = k->bits.num.val.i + struct_offset(e);
 			k->offset = 0;
 
 			k->bits.addr.is_lbl = 0;
@@ -206,8 +210,8 @@ static void fold_const_expr_struct(expr *e, consty *k)
 
 void mutate_expr_struct(expr *e)
 {
-	e->f_lea = gen_expr_struct_lea;
 	e->f_const_fold = fold_const_expr_struct;
+	e->f_lea = gen_expr_struct_lea;
 
 	/* zero out the union/rhs if we're mutating */
 	e->bits.struct_mem.d = NULL;

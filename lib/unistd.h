@@ -9,7 +9,7 @@
 typedef int pid_t;
 
 int read( int fd, void *p, int size);
-int write(int fd, void *p, int size);
+int write(int fd, const void *p, int size);
 int close(int fd);
 
 #ifndef __DARWIN__

@@ -14,11 +14,16 @@ const char *str_stmt_code()
 
 void fold_block_decls(symtable *stab, stmt **pinit_blk)
 {
-	decl **diter;
+	/* must iterate using an index, since the array may
+	 * resize under us */
+	size_t i;
+
+	if(!stab->decls)
+		return;
 
 	/* check for invalid function redefinitions and shadows */
-	for(diter = stab->decls; diter && *diter; diter++){
-		decl *const d = *diter;
+	for(i = 0; stab->decls[i]; i++){
+		decl *const d = stab->decls[i];
 		decl *found;
 		symtable *above_scope;
 		int chk_shadow = 0, is_func = 0;
@@ -39,7 +44,7 @@ void fold_block_decls(symtable *stab, stmt **pinit_blk)
 			/* allow functions redefined as decls and vice versa */
 			if(is_func
 			&& DECL_IS_FUNC(found)
-			&& !decl_equal(d, found, DECL_CMP_EXACT_MATCH))
+			&& decl_cmp(d, found, 0) != TYPE_EQUAL)
 			{
 				die_at(&d->where,
 						"incompatible redefinition of \"%s\"\n"

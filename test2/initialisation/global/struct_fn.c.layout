@@ -1,2 +1,2 @@
-_stdin:
+stdin:
 .zero 8

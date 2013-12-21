@@ -1,4 +1,4 @@
-// RUN: %check %s -E
+// RUN: %check %s -E -Wundef
 
 #define A    entry
 #define F(a) a + 1

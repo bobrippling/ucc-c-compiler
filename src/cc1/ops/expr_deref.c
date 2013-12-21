@@ -55,19 +55,21 @@ static void const_expr_deref(expr *e, consty *k)
 	switch(k->type){
 		case CONST_STRK:
 		{
-			stringval *sv = k->bits.str;
+			stringlit *sv = k->bits.str->lit;
 			if(k->offset < 0 || (unsigned)k->offset > sv->len){
 				k->type = CONST_NO;
 			}else{
+				long off = k->offset;
+
 				UCC_ASSERT(!sv->wide, "TODO: constant wchar_t[] deref");
 
 				CONST_FOLD_LEAF(k);
-				k->type = CONST_VAL;
-				k->bits.iv.val = sv->str[k->offset];
+				k->type = CONST_NUM;
+				k->bits.num.val.i = sv->str[off];
 			}
 			break;
 		}
-		case CONST_VAL:
+		case CONST_NUM:
 		case CONST_ADDR:
 			k->type = CONST_ADDR_OR_NEED_TREF(from->tree_type);
 			/* *(int [10])a -> still need_addr */
@@ -78,8 +80,10 @@ static void const_expr_deref(expr *e, consty *k)
 
 void mutate_expr_deref(expr *e)
 {
-	e->f_lea = gen_expr_deref_lea;
 	e->f_const_fold = const_expr_deref;
+
+	/* unconditionally an lvalue */
+	e->f_lea = gen_expr_deref_lea;
 }
 
 expr *expr_new_deref(expr *of)

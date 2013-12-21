@@ -12,6 +12,15 @@
 #include "gen_style.h"
 #include "gen_asm.h" /* FIXME: gen_stmt/_expr should be in gen.h */
 #include "decl_init.h"
+#include "out/asm.h" /* cc*_out */
+
+void stylef(const char *fmt, ...)
+{
+	va_list l;
+	va_start(l, fmt);
+	asm_out_sectionv(SECTION_TEXT, fmt, l);
+	va_end(l);
+}
 
 void gen_style_dinit(decl_init *di)
 {

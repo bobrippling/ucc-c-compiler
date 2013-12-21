@@ -15,7 +15,6 @@
 #include "fold_sym.h"
 #include "pack.h"
 #include "sue.h"
-#include "out/out.h"
 #include "fold.h"
 #include "fold_sue.h"
 #include "decl_init.h"
@@ -47,6 +46,36 @@
               }                       \
             }while(0)
 
+/*#define SYMTAB_DEBUG*/
+#ifdef SYMTAB_DEBUG
+static void print_stab(symtable *st, int indent)
+{
+#define STAB_INDENT() for(i = 0; i < indent; i++) fputs("  ", stderr)
+	int i;
+
+	STAB_INDENT();
+
+	fprintf(stderr, "table %p, children %d, vars %d, parent: %p\n",
+			(void *)st,
+			dynarray_count(st->children),
+			dynarray_count(st->decls),
+			(void *)st->parent);
+
+	decl **di;
+	for(di = st->decls; di && *di; di++){
+		decl *d = *di;
+		STAB_INDENT();
+		fprintf(stderr, "  (%s, %s)\n",
+				d->sym ? sym_to_str(d->sym->type) : NULL,
+				decl_to_str(d));
+	}
+
+	symtable **si;
+	for(si = st->children; si && *si; si++)
+		print_stab(*si, indent + 1);
+}
+#endif
+
 static void symtab_iter_children(symtable *stab, void f(symtable *))
 {
 	symtable **i;
@@ -77,12 +106,12 @@ void symtab_check_static_asserts(symtable *stab)
 
 		const_fold(sa->e, &k);
 
-		if(k.type != CONST_VAL)
+		if(k.type != CONST_NUM || !K_INTEGRAL(k.bits.num))
 			die_at(&sa->e->where,
 					"static assert: not an integer constant expression (%s)",
 					sa->e->f_str());
 
-		if(!k.bits.iv.val)
+		if(!k.bits.num.val.i)
 			die_at(&sa->e->where, "static assertion failure: %s", sa->s);
 
 		if(fopt_mode & FOPT_SHOW_STATIC_ASSERTS){
@@ -103,7 +132,7 @@ void symtab_check_rw(symtable *tab)
 
 		if(d->sym) switch(d->sym->type){
 			case sym_arg:
-        if(!tab->func_exists)
+				if(!tab->in_func)
 					break;
 				/* fall */
 			case sym_local:
@@ -162,7 +191,29 @@ struct ident_loc
 static int ident_loc_cmp(const void *a, const void *b)
 {
 	const struct ident_loc *ia = a, *ib = b;
-	return strcmp(IDENT_LOC_SPEL(ia), IDENT_LOC_SPEL(ib));
+	int r = strcmp(IDENT_LOC_SPEL(ia), IDENT_LOC_SPEL(ib));
+
+	/* sort according to spel, then according to func_code
+	 * so it makes checking redefinitions easier, e.g.
+	 * f(){} f(); f(){}
+	 */
+	if(r == 0 && ia->has_decl && ib->has_decl)
+		r = !!ia->bits.decl->func_code - !!ib->bits.decl->func_code;
+
+	return r;
+}
+
+static void warn_c11_retypedef(decl *a, decl *b)
+{
+	/* repeated typedefs are allowed in C11 - 6.7.3 */
+	if(cc1_std < STD_C11){
+		char buf[WHERE_BUF_SIZ];
+
+		warn_at(&b->where,
+				"typedef '%s' redefinition is a C11 extension\n"
+				"%s: note: other definition here",
+				a->spel, where_str_r(buf, &a->where));
+	}
 }
 
 void symtab_fold_decls(symtable *tab)
@@ -179,6 +230,13 @@ void symtab_fold_decls(symtable *tab)
 		  all_idents[nidents].w = pw;              \
 		  nidents++;                               \
 		}while(0)
+
+#ifdef SYMTAB_DEBUG
+	if(!tab->parent)
+		print_stab(tab, 0);
+#endif
+
+	symtab_iter_children(tab, symtab_fold_decls);
 
 	if(tab->folded)
 		return;
@@ -224,9 +282,10 @@ void symtab_fold_decls(symtable *tab)
 				int i;
 
 				for(i = 0; members && members[i]; i++){
-					NEW_IDENT(&e->where);
+					enum_member *emem = members[i]->enum_member;
+					NEW_IDENT(&emem->where);
 					all_idents[nidents-1].has_decl = 0;
-					all_idents[nidents-1].bits.spel = members[i]->enum_member->spel;
+					all_idents[nidents-1].bits.spel = emem->spel;
 				}
 			}
 		}
@@ -253,7 +312,7 @@ void symtab_fold_decls(symtable *tab)
 			if(!strcmp(IDENT_LOC_SPEL(a), IDENT_LOC_SPEL(b))){
 				switch(a->has_decl + b->has_decl){
 					case 0:
-						/* both enum-membs, fine?????????? or mismatch? */
+						/* both enum-membs, mismatch */
 						clash = "duplicate";
 						break;
 
@@ -264,32 +323,56 @@ void symtab_fold_decls(symtable *tab)
 
 					default:
 					{
-						const enum decl_cmp dflags =
-							DECL_CMP_EXACT_MATCH | DECL_CMP_ALLOW_TENATIVE_ARRAY;
+						/* non-null based on switch */
+						UCC_ASSERT(a->has_decl && b->has_decl, "no decls?");
+					}
+					{
+						decl *da = a->bits.decl;
+						decl *db = b->bits.decl;
 
-						decl *da = a->has_decl ? a->bits.decl : NULL;
-						decl *db = b->has_decl ? b->bits.decl : NULL;
+						const int a_func = !!DECL_IS_FUNC(da);
 
-						const int a_func = da ? !!DECL_IS_FUNC(da) : 0;
-
-						if(!!DECL_IS_FUNC(db) != a_func
-						|| !decl_equal(da, db, dflags))
-						{
+						if(!!DECL_IS_FUNC(db) != a_func){
 							clash = "mismatching";
-						}else{
-							if(IS_LOCAL_SCOPE){
-								/* allow multiple functions or multiple externs */
-								if(a_func){
-									/* fine - we know they're equal from decl_equal() above */
-								}else if((da->store & STORE_MASK_STORE) == store_extern
-										&& (db->store & STORE_MASK_STORE) == store_extern){
-									/* both are extern declarations */
-								}else{
-									clash = "extern/non-extern";
+						}else switch(decl_cmp(da, db, TYPE_CMP_ALLOW_TENATIVE_ARRAY)){
+							case TYPE_NOT_EQUAL:
+								/* must be an exact match */
+							case TYPE_QUAL_LOSS:
+							case TYPE_CONVERTIBLE_IMPLICIT:
+							case TYPE_CONVERTIBLE_EXPLICIT:
+								/* allow static/non-static redecl for non-functions */
+								if(a_func || (da->store & STORE_MASK_STORE) != store_static)
+									clash = "mismatching";
+								break;
+
+							case TYPE_EQUAL:
+								if(IS_LOCAL_SCOPE){
+									enum decl_storage a_store = da->store & STORE_MASK_STORE;
+									enum decl_storage b_store = db->store & STORE_MASK_STORE;
+									int a_extern = a_store == store_extern;
+									int b_extern = b_store == store_extern;
+
+									/* local scope - any decl without linkage can be
+									 * specified once and once only - C99 6.7.3
+									 */
+									if(a_extern != b_extern){
+										clash = "extern/non-extern";
+									}else if(a_extern + b_extern == 0){
+										/* redefinition at local scope - allow typedef */
+										if(a_store & store_typedef && b_store & store_typedef){
+											warn_c11_retypedef(da, db);
+										}else if(!a_func){ /* functions can repeat */
+											clash = "duplicate";
+										}
+									}else{
+										/* fine - both extern */
+									}
+								}else if(a_func && da->func_code && db->func_code){
+									clash = "duplicate";
+								}else if((da->store & STORE_MASK_STORE) == store_typedef){
+									warn_c11_retypedef(da, db);
 								}
-							}else if(a_func && da->func_code && db->func_code){
-								clash = "duplicate";
-							}
+								break;
 						}
 						break;
 					}
@@ -300,11 +383,11 @@ void symtab_fold_decls(symtable *tab)
 				/* XXX: note */
 				char wbuf[WHERE_BUF_SIZ];
 
-				die_at(a->w,
+				die_at(b->w,
 						"%s definitions of \"%s\"\n"
-						"%s: note: other definition",
+						"%s: note: previous definition",
 						clash, IDENT_LOC_SPEL(a),
-						where_str_r(wbuf, b->w));
+						where_str_r(wbuf, a->w));
 			}
 		}
 	}
@@ -315,7 +398,6 @@ void symtab_fold_decls(symtable *tab)
 unsigned symtab_layout_decls(symtable *tab, unsigned current)
 {
 	const unsigned this_start = current;
-	int arg_space = 0;
 
 	if(tab->laidout)
 		goto out;
@@ -323,7 +405,6 @@ unsigned symtab_layout_decls(symtable *tab, unsigned current)
 
 	if(tab->decls){
 		decl **diter;
-		int arg_idx = 0;
 
 		for(diter = tab->decls; *diter; diter++){
 			decl *d = *diter;
@@ -341,7 +422,6 @@ unsigned symtab_layout_decls(symtable *tab, unsigned current)
 
 			switch(s->type){
 				case sym_arg:
-					s->offset = arg_idx++;
 					break;
 
 				case sym_local: /* warn on unused args and locals */
@@ -365,7 +445,7 @@ unsigned symtab_layout_decls(symtable *tab, unsigned current)
 
 							/* packing takes care of everything */
 							pack_next(&current, NULL, siz, align);
-							s->offset = current;
+							s->loc.stack_pos = current;
 							break;
 						}
 
@@ -392,10 +472,8 @@ unsigned symtab_layout_decls(symtable *tab, unsigned current)
 				subtab_max = this;
 		}
 
-		/* don't account the args in the space,
-		 * just use for offsetting them
-		 */
-		tab->auto_total_size = current - this_start + subtab_max - arg_space;
+		/* don't account the args in the space */
+		tab->auto_total_size = current - this_start + subtab_max;
 	}
 
 out:

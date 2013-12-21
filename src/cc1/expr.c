@@ -67,49 +67,52 @@ expr *expr_set_where_len(expr *e, where *start)
 	return e;
 }
 
-expr *expr_new_intval(intval *iv)
+void expr_set_const(expr *e, consty *k)
 {
-	expr *e = expr_new_val(0);
-	memcpy_safe(&e->bits.iv, iv);
-	return e;
+	e->const_eval.const_folded = 1;
+	memcpy_safe(&e->const_eval.k, k);
 }
 
-expr *expr_new_decl_init(decl *d, decl_init *di)
+int expr_is_null_ptr(expr *e, enum null_strictness ty)
 {
-	ICE("TODO - only allow simple expr inits");
-	(void)d;
-	(void)di;
-	/*UCC_ASSERT(d->init, "no init");
-	return expr_new_assign_init(expr_new_identifier(d->spel), d->init);*/
-	return 0;
-}
+	/* 6.3.2.3:
+	 *
+	 * An integer constant expression with the value 0, or such an expression
+	 * cast to type void *, is called a null pointer constant
+	 *
+	 * NULL_STRICT_ANY_PTR is used for sentinel checks,
+	 * i.e. any null type pointer
+	 */
 
-#if 0
-expr *expr_new_array_decl_init(decl *d, int ival, int idx)
-{
-	expr *sum;
-
-	UCC_ASSERT(d->init, "no init");
-
-	sum = expr_new_op(op_plus);
-
-	sum->lhs = expr_new_identifier(d->spel);
-	sum->rhs = expr_new_val(idx);
-
-	return expr_new_assign(expr_new_deref(sum), expr_new_val(ival));
-}
-#endif
-
-int expr_is_null_ptr(expr *e, int allow_int)
-{
 	int b = 0;
 
+	/* void * always qualifies */
 	if(type_ref_is_type(type_ref_is_ptr(e->tree_type), type_void))
 		b = 1;
-	else if(allow_int && type_ref_is_integral(e->tree_type))
+	else if(ty == NULL_STRICT_INT && type_ref_is_integral(e->tree_type))
+		b = 1;
+	else if(ty == NULL_STRICT_ANY_PTR && type_ref_is_ptr(e->tree_type))
 		b = 1;
 
 	return b && const_expr_and_zero(e);
+}
+
+int expr_is_lval(expr *e)
+{
+	if(!e->f_lea)
+		return 0;
+
+	/* special case:
+	 * (a = b) = c
+	 * ^~~~~~~ not an lvalue, but internally we handle it as one
+	 */
+	if(expr_kind(e, assign) && type_ref_is_s_or_u(e->tree_type))
+		return 0;
+
+	if(type_ref_is_array(e->tree_type))
+		return 0;
+
+	return 1;
 }
 
 expr *expr_new_array_idx_e(expr *base, expr *idx)
@@ -123,4 +126,11 @@ expr *expr_new_array_idx_e(expr *base, expr *idx)
 expr *expr_new_array_idx(expr *base, int i)
 {
 	return expr_new_array_idx_e(base, expr_new_val(i));
+}
+
+expr *expr_skip_casts(expr *e)
+{
+	while(expr_kind(e, cast))
+		e = e->expr;
+	return e;
 }

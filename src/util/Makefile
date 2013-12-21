@@ -23,6 +23,8 @@ str.o: str.c
 	${BUILD_CC}
 std.o: std.c
 	${BUILD_CC}
+escape.o: escape.c
+	${BUILD_CC}
 
 dynarray.o: dynarray.c
 	${BUILD_CC}

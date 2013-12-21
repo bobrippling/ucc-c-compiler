@@ -1,7 +1,7 @@
 #ifndef token_ise_h
 #define token_ise_h
 
-extern intval currentval;
+extern numeric currentval;
 
 enum token
 {
@@ -29,6 +29,7 @@ enum token
 
 	token_identifier,
 	token_integer,     /* aka [1-9] */
+	token_floater,     /* aka [1-9].[0-9]... */
 	token_character,   /* aka 'f' */
 	token_elipsis,     /* aka ... */
 	token_string,      /* aka \"...\" */
@@ -125,6 +126,6 @@ void nexttoken(void);
 char *token_current_spel(void);
 char *token_current_spel_peek(void);
 
-char *tok_at_label(where *);
+int tok_at_label(void);
 
 #endif

@@ -12,6 +12,7 @@
 #include "../util/alloc.h"
 #include "../util/platform.h"
 #include "../util/std.h"
+#include "../util/limits.h"
 
 #include "main.h"
 #include "macro.h"
@@ -29,6 +30,10 @@ static const struct
 	/* standard */
 	{ "__unix__",       "1"  },
 	{ "__STDC__",       "1"  },
+
+	/* _Atomic and _Thread_local aren't supported yet */
+	{ "__STDC_NO_ATOMICS__" , "1" },
+	{ "__STDC_NO_THREADS__" , "1" },
 
 #define TYPE(ty, c) { "__" #ty "_TYPE__", #c  }
 
@@ -84,7 +89,9 @@ static const struct
 } warns[] = {
 	{ "all", "turn on all warnings", ~0U },
 	{ "traditional", "warn about # in the first column", WTRADITIONAL },
-	{ "undef", "warn about undefined macros in #if/elif/undef", WUNDEF },
+	{ "undef", "warn about undefined macros in #if and #undef", WUNDEF_IN_IF | WUNDEF_NDEF },
+	{ "undef-in-if", "warn about undefined macros in #if/elif", WUNDEF_IN_IF },
+	{ "undef-noop", "warn about #undef <undefined macro>", WUNDEF_NDEF },
 	{ "unused-macros", "warn about unused macros", WUNUSED },
 	{ "redef", "warn about redefining macros", WREDEF },
 	{ "whitespace", "warn about no-whitespace after #define func(a)", WWHITESPACE },
@@ -153,6 +160,20 @@ static void calctime(const char *fname)
 		die("strftime():");
 }
 
+static void macro_add_limits(void)
+{
+#define QUOTE_(x) #x
+#define QUOTE(x) QUOTE_(x)
+#define MACRO_ADD_LIM(m) macro_add("__" #m "__", QUOTE(__ ## m ## __))
+	MACRO_ADD_LIM(SCHAR_MAX);
+	MACRO_ADD_LIM(SHRT_MAX);
+	MACRO_ADD_LIM(INT_MAX);
+	MACRO_ADD_LIM(LONG_MAX);
+	MACRO_ADD_LIM(LONG_LONG_MAX);
+#undef MACRO_ADD_LIM
+#undef QUOTE
+#undef QUOTE_
+}
 
 int main(int argc, char **argv)
 {
@@ -168,6 +189,8 @@ int main(int argc, char **argv)
 
 	current_line = 1;
 	current_fname = FNAME_BUILTIN;
+
+	macro_add_limits();
 
 	for(i = 0; initial_defs[i].nam; i++)
 		macro_add(initial_defs[i].nam, initial_defs[i].val);
@@ -306,19 +329,33 @@ int main(int argc, char **argv)
 				break;
 
 			case 'f':
-				if(!strcmp(argv[i]+2, "freestanding"))
+				if(!strcmp(argv[i]+2, "freestanding")){
 					freestanding = 1;
-				else
+				}else if(!strncmp(argv[i]+2, "message-length=", 15)){
+					const char *p = argv[i] + 17;
+					warning_length = atoi(p);
+				}else{
 					goto usage;
+				}
 				break;
 
 			case 'W':
 			{
+				int off;
 				unsigned j;
+				char *p = argv[i] + 2;
+
+				off = !strncmp(p, "no-", 3);
+				if(off)
+					p += 3;
+
 
 				ITER_WARNS(j){
-					if(!strcmp(argv[i]+2, warns[j].warn)){
-						wmode |= warns[j].or_mask;
+					if(!strcmp(p, warns[j].warn)){
+						if(off)
+							wmode &= ~warns[j].or_mask;
+						else
+							wmode |= warns[j].or_mask;
 						break;
 					}
 				}

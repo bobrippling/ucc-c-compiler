@@ -1,6 +1,6 @@
-// RUN: %check -e %s
+// RUN: %check %s
 
-f(char *) __attribute__((format(printf, 1, 2))); // CHECK: /error: non variadic/
+f(char *) __attribute__((format(printf, 1, 2))); // CHECK: warning: variadic function required
 
 main()
 {

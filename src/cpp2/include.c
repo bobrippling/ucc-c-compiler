@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <string.h>
 #include <errno.h>
 
 #include "../util/dynarray.h"
@@ -8,6 +9,10 @@
 #include "../util/util.h"
 
 #include "include.h"
+
+/* CPP_DIE() */
+#include "main.h"
+#include "preproc.h"
 
 static char **include_dirs;
 
@@ -18,12 +23,18 @@ void include_add_dir(char *d)
 
 FILE *include_fopen(const char *fnam)
 {
-	FILE *f = fopen(fnam, "r");
+	FILE *f;
+	char *rslash = strrchr(fnam, '/');
+
+	if(!(rslash ? rslash[1] : *fnam))
+		CPP_DIE("empty filename");
+
+	f = fopen(fnam, "r");
 	if(f)
 		return f;
 
 	if(errno != ENOENT)
-		die("open: %s:", fnam);
+		CPP_DIE("open: %s:", fnam);
 
 	return NULL;
 }

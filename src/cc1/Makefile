@@ -5,18 +5,20 @@ CPPFLAGS = -DCC1_IMPL_FNAME=\"${UCC_CPU}.h\"
 
 ARCH_OBJ = out/${UCC_CPU}.o
 
+CFLAGS  += -Wno-missing-field-initializers
 LDFLAGS += -lm
 
 OBJ = \
 	../util/alloc.o ../util/util.o ../util/platform.o \
 	../util/dynarray.o ../util/dynmap.o ../util/where.o \
 	../util/str.o ../util/std.o ../util/escape.o \
-	str.o label.o \
+	str.o label.o strings.o \
 	cc1.o pass1.o \
 	tree.o decl.o decl_init.o funcargs.o expr.o stmt.o \
+	type.o type_ref.o type_ref_is.o \
 	tokconv.o tokenise.o \
 	parse.o parse_type.o \
-	fold.o fold_sym.o fold_sue.o const.o \
+	fold.o fold_sym.o fold_sue.o const.o format_chk.o \
 	sym.o sue.o ops/__builtin.o ops/__builtin_va.o pack.o \
 	gen_asm.o gen_str.o gen_style.o \
 	out/out.o out/asm.o out/lbl.o out/impl.o out/write.o out/dbg.o \

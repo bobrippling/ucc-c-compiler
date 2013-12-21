@@ -1,8 +1,18 @@
-// RUN: %ucc -o %t %s
-// RUN: %t | %output_check 'x\[0\] = 0' 'x\[1\] = 0' 'x\[2\] = 0' 'x\[3\] = 0' 'x\[4\] = 8' 'x\[5\] = 7' 'x\[6\] = 7' 'x\[7\] = 7' 'x\[8\] = 7' 'x\[9\] = 7' 'x\[10\] = 0' 'x\[11\] = 0' 'x\[12\] = 0' 'x\[13\] = 0' 'x\[14\] = 0' 'x\[15\] = 0' 'x\[16\] = 0' 'x\[17\] = 0' 'x\[18\] = 0' 'x\[19\] = 0' 'y\[0\] = { 0, 0 }' 'y\[1\] = { 0, 0 }' 'y\[2\] = { 0, 0 }' 'y\[3\] = { 1, 2 }' 'y\[4\] = { 1, 2 }'
+// RUN: %ocheck 0 %s
 
-f(){return 7;}
-q(){return 8;}
+f_calls;
+f()
+{
+	f_calls++;
+	return 7;
+}
+
+q_calls;
+q()
+{
+	q_calls++;
+	return 8;
+}
 
 main()
 {
@@ -15,9 +25,34 @@ main()
 		[3 ... 4] = { 1, 2 }
 	};
 
-	for(int i = 0; i < 20; i++)
-		printf("x[%d] = %d\n", i, x[i]);
+	if(f_calls != 1 || q_calls != 1)
+		abort();
 
-	for(int i = 0; i < 5; i++)
-		printf("y[%d] = { %d, %d }\n", i, y[i].i, y[i].j);
+	for(int i = 0; i < 4; i++)
+		if(x[i] != 0)
+			abort();
+
+	if(x[4] != 8) abort();
+	if(x[5] != 7) abort();
+	if(x[6] != 7) abort();
+	if(x[7] != 7) abort();
+	if(x[8] != 7) abort();
+	if(x[9] != 7) abort();
+
+	for(int i = 10; i < 20; i++)
+		if(x[i] != 0)
+			abort();
+
+	if(y[0].i || y[0].j)
+		abort();
+	if(y[1].i || y[1].j)
+		abort();
+	if(y[2].i || y[2].j)
+		abort();
+	if(y[3].i != 1 || y[3].j != 2)
+		abort();
+	if(y[3].i != 1 || y[3].j != 2)
+		abort();
+
+	return 0;
 }

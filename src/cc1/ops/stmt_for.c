@@ -28,7 +28,10 @@ void fold_stmt_for(stmt *s)
 #undef FOLD_IF
 
 	if(s->flow->for_while)
-		fold_need_expr(s->flow->for_while, "for-while", 1);
+		fold_check_expr(
+				s->flow->for_while,
+				FOLD_CHK_NO_ST_UN | FOLD_CHK_BOOL,
+				"for-while");
 
 	fold_stmt(s->lhs);
 }

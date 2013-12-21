@@ -13,7 +13,7 @@ const char *str_expr_addr()
 
 int expr_is_addressable(expr *e)
 {
-	return expr_is_lvalue(e)
+	return expr_is_lval(e)
 		|| type_ref_is(e->tree_type, type_ref_array)
 		|| type_ref_is(e->tree_type, type_ref_func);
 }
@@ -21,11 +21,12 @@ int expr_is_addressable(expr *e)
 void fold_expr_addr(expr *e, symtable *stab)
 {
 	if(e->bits.lbl.spel){
-		if(!curdecl_func)
+		if(!symtab_func(stab))
 			die_at(&e->where, "address-of-label outside a function");
 
 		(e->bits.lbl.label =
-		 symtab_label_find(stab, e->bits.lbl.spel, &e->where))
+		 symtab_label_find_or_new(
+			 stab, e->bits.lbl.spel, &e->where))
 			->uses++;
 
 		/* address of label - void * */
@@ -37,11 +38,11 @@ void fold_expr_addr(expr *e, symtable *stab)
 		/* if it's an identifier, act as a read */
 		fold_inc_writes_if_sym(e->lhs, stab);
 
-		FOLD_EXPR_NO_DECAY(e->lhs, stab);
+		fold_expr_no_decay(e->lhs, stab);
 
 		/* can address: lvalues, arrays and functions */
 		if(!expr_is_addressable(e->lhs)){
-			die_at(&e->lhs->where, "can't take the address of %s (%s)",
+			die_at(&e->where, "can't take the address of %s (%s)",
 					e->lhs->f_str(), type_ref_to_str(e->lhs->tree_type));
 		}
 
@@ -52,7 +53,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 				die_at(&e->lhs->where, "can't take the address of register");
 		}
 
-		fold_disallow_bitfield(e->lhs, "taking the address of a bit-field");
+		fold_check_expr(e->lhs, FOLD_CHK_NO_BITFIELD, "address-of");
 
 		e->tree_type = type_ref_new_ptr(e->lhs->tree_type, qual_none);
 	}
@@ -61,14 +62,24 @@ void fold_expr_addr(expr *e, symtable *stab)
 void gen_expr_addr(expr *e)
 {
 	if(e->bits.lbl.spel){
-		out_push_lbl(e->bits.lbl.label->spel, 1); /* GNU &&lbl */
+		out_push_lbl(e->bits.lbl.label->mangled, 1); /* GNU &&lbl */
 
 	}else{
-		/* address of possibly an ident "(&a)->b" or a struct expr "&a->b"
-		 * let lea_expr catch it
+		/* special case - can't lea_expr() functions because they
+		 * aren't lvalues
 		 */
+		expr *sub = e->lhs;
 
-		lea_expr(e->lhs);
+		if(!sub->f_lea){
+			sub = expr_skip_casts(sub);
+			UCC_ASSERT(expr_kind(sub, identifier),
+					"&[not-identifier], got %s",
+					sub->f_str());
+
+			out_push_sym(sub->bits.ident.sym);
+		}else{
+			lea_expr(sub);
+		}
 	}
 }
 

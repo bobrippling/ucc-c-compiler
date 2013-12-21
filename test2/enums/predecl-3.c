@@ -4,5 +4,5 @@ enum A;
 
 struct Yo
 {
-	enum A x; // CHECK: /error: enum A is incomplete/
+	enum A x; // CHECK: /error: incomplete field/
 };

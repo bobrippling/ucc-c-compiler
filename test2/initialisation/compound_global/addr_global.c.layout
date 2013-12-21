@@ -1,0 +1,5 @@
+p:
+.quad data.1
+
+data.1:
+.long 1, 2, 3

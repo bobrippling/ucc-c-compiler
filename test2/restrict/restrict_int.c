@@ -2,5 +2,5 @@
 
 main()
 {
-	int restrict a; // WARN: /restrict on non-pointer type/
+	int restrict a; // CHECK: /restrict on non-pointer type/
 }

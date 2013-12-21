@@ -6,6 +6,7 @@
 #include "../../util/where.h"
 #include "../../util/alloc.h"
 
+#include "asm.h"
 #include "write.h"
 #include "dbg.h"
 
@@ -15,9 +16,11 @@
 static void out_dbg_flush(void);
 
 
-void out_asmv(enum p_opts opts, const char *fmt, va_list l)
+void out_asmv(
+		enum section_type sec, enum p_opts opts,
+		const char *fmt, va_list l)
 {
-	FILE *f = cc_out[SECTION_TEXT];
+	FILE *f = cc_out[sec];
 
 	out_dbg_flush();
 
@@ -34,15 +37,17 @@ void out_asm(const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
-	out_asmv(0, fmt, l);
+	out_asmv(SECTION_TEXT, 0, fmt, l);
 	va_end(l);
 }
 
-void out_asm2(enum p_opts opts, const char *fmt, ...)
+void out_asm2(
+		enum section_type sec, enum p_opts opts,
+		const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
-	out_asmv(opts, fmt, l);
+	out_asmv(sec, opts, fmt, l);
 	va_end(l);
 }
 

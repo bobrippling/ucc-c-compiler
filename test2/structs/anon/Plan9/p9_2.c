@@ -1,5 +1,5 @@
-// RUN: %ucc -o %t %s
-// RUN: %t; [ $? -eq 5 ]
+// RUN: %ocheck 5 %s -fplan9-extensions
+
 typedef struct B
 {
 	int k;

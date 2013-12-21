@@ -1,0 +1,36 @@
+x:
+.quad 0
+.long 0
+.long 0
+.byte 49
+.zero 7
+
+.quad 0
+.long 0
+.long 2
+.byte 51
+.zero 7
+
+.quad 0
+.long 0
+.long 0
+.byte 53
+.zero 7
+
+.quad 0
+.long 0
+.long 0
+.byte 54
+.zero 7
+
+.quad 0
+.long 0
+.long 1
+.byte 56
+.zero 7
+
+.quad 0
+.long 0
+.long 0
+.byte 48
+.zero 7

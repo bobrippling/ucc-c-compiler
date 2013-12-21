@@ -16,6 +16,7 @@
 #include "const.h"
 #include "decl_init.h"
 #include "funcargs.h"
+#include "out/asm.h" /* cc*_out */
 
 #define ENGLISH_PRINT_ARGLIST
 
@@ -28,6 +29,11 @@
 	}
 
 int gen_str_indent = 0;
+
+FILE *gen_file(void)
+{
+	return cc1_out;
+}
 
 void idt_print()
 {
@@ -54,10 +60,13 @@ static void print_expr_val(expr *e)
 
 	const_fold(e, &k);
 
-	UCC_ASSERT(k.type == CONST_VAL, "val expected");
-	UCC_ASSERT((k.bits.iv.suffix & VAL_UNSIGNED) == 0, "TODO: unsigned");
+	UCC_ASSERT(k.type == CONST_NUM, "val expected");
+	UCC_ASSERT((k.bits.num.suffix & VAL_UNSIGNED) == 0, "TODO: unsigned");
 
-	fprintf(cc1_out, INTVAL_FMT_D, k.bits.iv.val);
+	if(K_INTEGRAL(k.bits.num))
+		fprintf(cc1_out, NUMERIC_FMT_D, k.bits.num.val.i);
+	else
+		fprintf(cc1_out, NUMERIC_FMT_LD, k.bits.num.val.f);
 }
 
 static void print_decl_init(decl_init *di)
@@ -217,23 +226,30 @@ static void print_decl_eng(decl *d)
 void print_type_ref(type_ref *ref, decl *d)
 {
 	char buf[TYPE_REF_STATIC_BUFSIZ];
+	decl_attr *da;
+
 	fprintf(cc1_out, "%s",
 			type_ref_to_str_r_spel(buf, ref, d ? d->spel : NULL));
+
+	for(da = ref->attr; da; da = da->next){
+		fprintf(cc1_out, " __attribute__((%s))",
+				decl_attr_to_str(da));
+	}
 }
 
 static void print_decl_attr(decl_attr *da)
 {
 	for(; da; da = da->next){
-		idt_printf("__attribute__((%s))\n", decl_attr_to_str(da->type));
+		idt_printf("__attribute__((%s))\n", decl_attr_to_str(da));
 
 		gen_str_indent++;
 		switch(da->type){
 			case attr_section:
-				idt_printf("section \"%s\"\n", da->attr_extra.section);
+				idt_printf("section \"%s\"\n", da->bits.section);
 				break;
 			case attr_nonnull:
 			{
-				unsigned long l = da->attr_extra.nonnull_args;
+				unsigned long l = da->bits.nonnull_args;
 
 				idt_printf("nonnull: ");
 				if(l == ~0UL){
@@ -286,10 +302,16 @@ void print_decl(decl *d, enum pdeclargs mode)
 	}
 
 	if(mode & PDECL_SYM_OFFSET){
-		if(d->sym)
-			fprintf(cc1_out, " (sym %s, offset = %d)", sym_to_str(d->sym->type), d->sym->offset);
-		else
+		if(d->sym){
+			const int off = d->sym->type == sym_arg
+				? d->sym->loc.arg_offset
+				: (int)d->sym->loc.stack_pos;
+
+			fprintf(cc1_out, " (sym %s, pos = %d)",
+					sym_to_str(d->sym->type), off);
+		}else{
 			fprintf(cc1_out, " (no sym)");
+		}
 	}
 
 	if(mode & PDECL_SIZE && !DECL_IS_FUNC(d)){
@@ -326,7 +348,8 @@ void print_decl(decl *d, enum pdeclargs mode)
 		gen_str_indent++;
 
 		for(iter = d->func_code->symtab->decls; iter && *iter; iter++)
-			idt_printf("offset of %s = %d\n", (*iter)->spel, (*iter)->sym->offset);
+			idt_printf("offset of %s = %d\n", (*iter)->spel,
+					(*iter)->sym->loc.stack_pos);
 
 		idt_printf("function stack space %d\n", d->func_code->symtab->auto_total_size);
 
@@ -369,7 +392,7 @@ static void print_struct(struct_union_enum_st *sue)
 	for(iter = sue->members; iter && *iter; iter++){
 		decl *d = (*iter)->struct_member;
 
-		idt_printf("decl:\n");
+		idt_printf("decl %s:\n", d->spel ? d->spel : "<anon>");
 		gen_str_indent++;
 		print_decl(d, PDECL_INDENT | PDECL_NEWLINE | PDECL_ATTR);
 
@@ -377,11 +400,11 @@ static void print_struct(struct_union_enum_st *sue)
 		SHOW_FIELD(struct_offset);
 
 		if(d->field_width){
-			intval_t v = const_fold_val(d->field_width);
+			integral_t v = const_fold_val_i(d->field_width);
 
 			gen_str_indent++;
 
-			idt_printf(".field_width = %" INTVAL_FMT_D "\n", v);
+			idt_printf(".field_width = %" NUMERIC_FMT_D "\n", v);
 
 			SHOW_FIELD(struct_offset_bitfield);
 
@@ -403,7 +426,7 @@ static void print_enum(struct_union_enum_st *et)
 	for(mi = et->members; *mi; mi++){
 		enum_member *m = (*mi)->enum_member;
 
-		idt_printf("member %s = %" INTVAL_FMT_D "\n", m->spel, (intval_t)m->val->bits.iv.val);
+		idt_printf("member %s = %" NUMERIC_FMT_D "\n", m->spel, (integral_t)m->val->bits.num.val.i);
 	}
 	gen_str_indent--;
 }

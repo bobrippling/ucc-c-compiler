@@ -2,6 +2,8 @@
 // RUN: %ucc -DSTORE=static %s
 // RUN: %ucc -DSTORE=extern %s
 
+int a;
+
 main()
 {
 	STORE int a;

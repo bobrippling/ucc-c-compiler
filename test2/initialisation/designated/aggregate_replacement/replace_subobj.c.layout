@@ -1,0 +1,7 @@
+x:
+.long 1, 2
+.long 1, 2
+.long 1, 7
+.long 1, 2
+.long 1, 2
+.long 1, 2

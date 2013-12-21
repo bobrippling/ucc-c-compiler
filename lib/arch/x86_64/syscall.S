@@ -46,7 +46,7 @@ SYMBL(__syscall):
 #ifdef __linux__
 	cmpq $-1, %rax
 	jg .fin
-	negq %rax # get positive SYMBL(errno)
+	negq %rax # get positive errno
 #else
 	jnc .fin
 	// carry - err is in rax

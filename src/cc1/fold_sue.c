@@ -83,10 +83,15 @@ static void fold_enum(struct_union_enum_st *en, symtable *stab)
 				defval++;
 
 		}else{
-			intval_t v;
+			integral_t v;
 
 			FOLD_EXPR(e, stab);
-			v = const_fold_val(e);
+
+			fold_check_expr(e,
+					FOLD_CHK_INTEGRAL | FOLD_CHK_CONST_I,
+					"enum constant");
+
+			v = const_fold_val_i(e);
 			m->val = e;
 
 			defval = has_bitmask ? v << 1 : v + 1;
@@ -96,9 +101,9 @@ static void fold_enum(struct_union_enum_st *en, symtable *stab)
 
 void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 {
-	if(sue->folded || !sue->complete)
+	if(sue->foldprog != SUE_FOLDED_NO || !sue->got_membs)
 		return;
-	sue->folded = 1;
+	sue->foldprog = SUE_FOLDED_PARTIAL;
 
 	if(sue->primitive == type_enum){
 		fold_enum(sue, stab);
@@ -124,14 +129,57 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 		for(i = sue->members; i && *i; i++){
 			decl *d = (*i)->struct_member;
 			unsigned align, sz;
-			struct_union_enum_st *sub_sue;
+			struct_union_enum_st *sub_sue = type_ref_is_s_or_u_or_e(d->ref);
 
 			fold_decl(d, stab, NULL);
+
+			if(!d->spel){
+				/* if the decl doesn't have a name, it's
+				 * a useless decl, unless it's an anon struct/union
+				 * or a bitfield
+				 */
+				if(d->field_width){
+					/* fine */
+				}else if(sub_sue && !type_ref_is_ptr(d->ref)){
+					/* anon */
+					char *prob = NULL;
+					int ignore = 0;
+
+					if(fopt_mode & FOPT_TAG_ANON_STRUCT_EXT){
+						/* fine */
+					}else if(!sub_sue->anon){
+						prob = "ignored - tagged";
+						ignore = 1;
+					}else if(cc1_std < STD_C11){
+						prob = "is a C11 extension";
+					}
+
+					if(prob){
+						warn_at(&d->where,
+								"unnamed member '%s' %s",
+								decl_to_str(d), prob);
+						if(ignore){
+							/* drop the decl */
+							sue_member *dropped = sue_drop(sue, i);
+							i--;
+							decl_free(dropped->struct_member, /*free ref:*/0);
+							free(dropped);
+							continue;
+						}
+					}
+				}
+			}
+
+			if(!type_ref_is_complete(d->ref)
+			&& !type_ref_is_incomplete_array(d->ref)) /* allow flexarrays */
+			{
+				die_at(&d->where, "incomplete field '%s'", decl_to_str(d));
+			}
 
 			if(type_ref_is_const(d->ref))
 				submemb_const = 1;
 
-			if((sub_sue = type_ref_is_s_or_u_or_e(d->ref))){
+			if(sub_sue){
 				if(sub_sue != sue){
 					fold_sue(sub_sue, stab);
 
@@ -139,19 +187,21 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 						submemb_const = 1;
 				}
 
-				if(type_ref_is(d->ref, type_ref_ptr) || sub_sue->primitive == type_enum)
+				if(type_ref_is(d->ref, type_ref_ptr)
+				|| sub_sue->primitive == type_enum)
 					goto normal;
 
-				if(sub_sue == sue)
-					die_at(&d->where, "nested %s", sue_str(sue));
-				else if(sub_sue->flexarr && i[1])
+				/* should've been caught by incompleteness checks */
+				UCC_ASSERT(sub_sue != sue, "nested %s", sue_str(sue));
+
+				if(sub_sue->flexarr && i[1])
 					warn_at(&d->where, "embedded struct with flex-array not final member");
 
 				sz = sue_size(sub_sue, &d->where);
 				align = sub_sue->align;
 
 			}else if(d->field_width){
-				const unsigned bits = const_fold_val(d->field_width);
+				const unsigned bits = const_fold_val_i(d->field_width);
 
 				sz = align = 0; /* don't affect sz_max or align_max */
 
@@ -264,4 +314,6 @@ normal:
 				sue->primitive == type_struct ? offset : sz_max,
 				align_max);
 	}
+
+	sue->foldprog = SUE_FOLDED_FULLY;
 }

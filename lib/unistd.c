@@ -73,7 +73,7 @@ int read(int fd, void *p, int size)
 	return __syscall(SYS_read, fd, p, size);
 }
 
-int write(int fd, void *p, int size)
+int write(int fd, const void *p, int size)
 {
 	return __syscall(SYS_write, fd, p, size);
 }
@@ -115,7 +115,7 @@ int symlink(const char *link, const char *new)
 
 off_t lseek(int fd, off_t offset, int whence)
 {
-	return (unsigned)__syscall(SYS_lseek, fd, offset, whence);
+	return (off_t)__syscall(SYS_lseek, fd, offset, whence);
 }
 
 void _exit(int code)

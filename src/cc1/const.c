@@ -11,6 +11,7 @@
 
 void const_fold(expr *e, consty *k)
 {
+	memset(k, 0, sizeof *k);
 	k->type = CONST_NO;
 
 	if(e->f_const_fold){
@@ -56,25 +57,32 @@ static int const_expr_zero(expr *e, int zero)
 
 	const_fold(e, &k);
 
-	return k.type == CONST_VAL && (zero ? k.bits.iv.val == 0 : k.bits.iv.val != 0);
+	if(k.type != CONST_NUM)
+		return 0;
+
+	if(K_FLOATING(k.bits.num))
+		return !k.bits.num.val.f == zero;
+
+	return !k.bits.num.val.i == zero;
 }
 
-void const_fold_intval(expr *e, intval *piv)
+void const_fold_integral(expr *e, numeric *piv)
 {
 	consty k;
 	const_fold(e, &k);
 
-	UCC_ASSERT(k.type == CONST_VAL, "not const");
+	UCC_ASSERT(k.type == CONST_NUM, "not const");
 	UCC_ASSERT(k.offset == 0, "got offset for val?");
+	UCC_ASSERT(K_INTEGRAL(k.bits.num), "fp?");
 
-	memcpy_safe(piv, &k.bits.iv);
+	memcpy_safe(piv, &k.bits.num);
 }
 
-intval_t const_fold_val(expr *e)
+integral_t const_fold_val_i(expr *e)
 {
-	intval iv;
-	const_fold_intval(e, &iv);
-	return iv.val;
+	numeric num;
+	const_fold_integral(e, &num);
+	return num.val.i;
 }
 
 int const_expr_and_non_zero(expr *e)
@@ -91,7 +99,7 @@ int const_expr_and_zero(expr *e)
 long const_expr_value(expr *e)
 {
 	enum constyness k;
-	intval val;
+	numeric val;
 
 	const_fold(e, &val, &k);
 	UCC_ASSERT(k == CONST_WITH_VAL, "not a constant");
@@ -100,17 +108,15 @@ long const_expr_value(expr *e)
 }
 */
 
-intval_t const_op_exec(
-		const intval_t lval, const intval_t *rval,
+integral_t const_op_exec(
+		integral_t lval, const integral_t *rval, /* rval is optional */
 		enum op_type op, int is_signed,
 		const char **error)
 {
-	typedef sintval_t S;
-	typedef  intval_t U;
+	typedef sintegral_t S;
+	typedef  integral_t U;
 
 	/* FIXME: casts based on lval.type */
-#define piv (&konst->bits.iv)
-
 #define S_OP(o) (S)lval o (S)*rval
 #define U_OP(o) (U)lval o (U)*rval
 
@@ -157,5 +163,42 @@ intval_t const_op_exec(
 	}
 
 	ICE("unhandled type");
-#undef piv
+}
+
+floating_t const_op_exec_fp(
+		floating_t lv, const floating_t *rv,
+		enum op_type op)
+{
+	switch(op){
+		case op_orsc:
+		case op_andsc:
+		case op_unknown:
+			/* should've been elsewhere */
+		case op_modulus:
+		case op_xor:
+		case op_or:
+		case op_and:
+		case op_shiftl:
+		case op_shiftr:
+		case op_bnot:
+			/* explicitly bad */
+			ICE("floating point %s", op_to_str(op));
+
+		case op_multiply: return lv * *rv;
+		case op_divide:   return lv / *rv; /* safe - / 0.0f is inf */
+		case op_plus:     return rv ? lv + *rv : +lv;
+		case op_minus:    return rv ? lv - *rv : -lv;
+		case op_eq:       return lv == *rv;
+		case op_ne:       return lv != *rv;
+		case op_le:       return lv <= *rv;
+		case op_lt:       return lv <  *rv;
+		case op_ge:       return lv >= *rv;
+		case op_gt:       return lv >  *rv;
+
+		case op_not:
+			UCC_ASSERT(!rv, "binary not?");
+			return !lv;
+	}
+
+	ucc_unreach(-1);
 }

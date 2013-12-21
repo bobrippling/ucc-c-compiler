@@ -1,4 +1,4 @@
-// RUN: %asmcheck %s
+// RUN: %layout_check %s
 
 struct A
 {
@@ -28,8 +28,8 @@ c = {
 	.x = 3
 },
 d = {
-	//[1] = 3
+	.x[1] = 3
 },
 e = {
-	//[1] = { 3 }
+	.x[1] = { 3 }
 };

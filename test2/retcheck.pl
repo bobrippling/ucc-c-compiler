@@ -13,7 +13,11 @@ sub dirname
 sub system_v
 {
 	print "$0: run: @_\n" if $verbose;
-	return system @_;
+	my $r = system @_;
+	if($r & 127){
+		die "$0 $_[0] killed with " . ($r & 127) . "\n";
+	}
+	return $r;
 }
 
 if($ARGV[0] eq '-v'){
@@ -23,13 +27,23 @@ if($ARGV[0] eq '-v'){
 
 my $exp = shift;
 
-unless(-x ($cmd = $ARGV[0])){
+if($exp !~ /^[0-9]+$/){
+	die "$exp not numeric";
+}
+
+unless(-x $ARGV[0]){
 	# we've been passed a source file
-	my $ucc = dirname($0) . "../ucc";
+	my($cmd, @args) = @ARGV;
+	@ARGV = ();
+
+	my $ucc = $ENV{UCC};
+	die "$0: no \$UCC" unless $ucc;
+
 	my $tmp = "/tmp/$$.out";
-	if(system_v($ucc, '-o', $tmp, $cmd)){
+	if(system_v($ucc, '-o', $tmp, $cmd, @args)){
 		die;
 	}
+
 	$ARGV[0] = $tmp;
 }
 

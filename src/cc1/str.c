@@ -12,10 +12,10 @@
 #include "str.h"
 #include "macros.h"
 
-void escape_string(char *old_str, int *plen)
+void escape_string(char *old_str, size_t *plen)
 {
 	char *new_str = umalloc(*plen);
-	int i, new_i;
+	size_t i, new_i;
 
 	/* "parse" into another string */
 
@@ -49,7 +49,7 @@ char *str_add_escape(const char *s, const size_t len)
 	char *new, *p;
 
 	for(i = 0; i < len; i++)
-		if(*s == '\\')
+		if(*s == '\\' || *s == '"')
 			nlen += 2;
 		else if(!isprint(s[i]))
 			nlen += 4;
@@ -59,9 +59,9 @@ char *str_add_escape(const char *s, const size_t len)
 	p = new = umalloc(nlen + 1);
 
 	for(i = 0; i < len; i++)
-		if(s[i] == '\\'){
-			*p++ = s[i];
+		if(s[i] == '\\' || s[i] == '"'){
 			*p++ = '\\';
+			*p++ = s[i];
 		}else if(!isprint(s[i])){
 			int n = sprintf(p, "\\%03o", s[i]);
 			p += n;

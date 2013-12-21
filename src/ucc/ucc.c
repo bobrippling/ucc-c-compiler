@@ -407,6 +407,9 @@ int main(int argc, char **argv)
 						/* preproc gets this too */
 						ADD_ARG(mode_preproc);
 					}
+					else if(!strncmp(argv[i], "-fmessage-length=", 17)){
+						ADD_ARG(mode_preproc);
+					}
 
 				case 'w':
 					if(argv[i][1] == 'w' && argv[i][2])

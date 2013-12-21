@@ -140,13 +140,14 @@ static struct line_list
 /* -- */
 enum token curtok, curtok_uneat;
 
-intval currentval = { 0, 0 }; /* an integer literal */
+numeric currentval = { { 0 } }; /* an integer literal */
 
 char *currentspelling = NULL; /* e.g. name of a variable */
 
 char *currentstring   = NULL; /* a string literal */
-int   currentstringlen = 0;
+size_t currentstringlen = 0;
 int   currentstringwide = 0;
+where currentstringwhere;
 
 /* where the parser is, and where the last parsed token was */
 static struct loc loc_now;
@@ -245,6 +246,47 @@ static void handle_line_file_directive(char *fnam, int lno)
 	push_fname(fnam, lno);
 }
 
+static void parse_line_directive(char *l)
+{
+	int lno;
+	char *ep;
+
+	l = str_spc_skip(l + 1);
+	if(!strncmp(l, "line", 4))
+		l += 4;
+
+	lno = strtol(l, &ep, 0);
+	if(ep == l)
+		die("couldn't parse number for #line directive (%s)", ep);
+
+	if(lno < 0)
+		die("negative #line directive argument");
+
+	loc_now.line = lno - 1; /* inc'd below */
+
+	ep = str_spc_skip(ep);
+
+	switch(*ep){
+		case '"':
+			{
+				char *p = str_quotefin(++ep);
+				if(!p)
+					die("no terminating quote to #line directive (%s)", l);
+				handle_line_file_directive(ustrdup2(ep, p), lno);
+				/*l = str_spc_skip(p + 1);
+					if(*l)
+					die("characters after #line?");
+					- gcc puts characters after the string */
+				break;
+			}
+		case '\0':
+			break;
+
+		default:
+			die("expected '\"' or nothing after #line directive (%s)", ep);
+	}
+}
+
 void include_bt(FILE *f)
 {
 	int i;
@@ -283,44 +325,7 @@ static ucc_wur char *tokenise_read_line()
 
 		/* format is # line? [0-9] "filename" ([0-9])* */
 		if(!in_comment && *l == '#'){
-			int lno;
-			char *ep;
-
-			l = str_spc_skip(l + 1);
-			if(!strncmp(l, "line", 4))
-				l += 4;
-
-			lno = strtol(l, &ep, 0);
-			if(ep == l)
-				die("couldn't parse number for #line directive (%s)", ep);
-
-			if(lno < 0)
-				die("negative #line directive argument");
-
-			loc_now.line = lno - 1; /* inc'd below */
-
-			ep = str_spc_skip(ep);
-
-			switch(*ep){
-				case '"':
-				{
-					char *p = str_quotefin(++ep);
-					if(!p)
-						die("no terminating quote to #line directive (%s)", l);
-					handle_line_file_directive(ustrdup2(ep, p), lno);
-					/*l = str_spc_skip(p + 1);
-					if(*l)
-						die("characters after #line?");
-						- gcc puts characters after the string */
-					break;
-				}
-				case '\0':
-					break;
-
-				default:
-					die("expected '\"' or nothing after #line directive (%s)", ep);
-			}
-
+			parse_line_directive(l);
 			return tokenise_read_line();
 		}
 
@@ -378,32 +383,27 @@ char *token_current_spel_peek(void)
 	return currentspelling;
 }
 
-char *tok_at_label(where *w)
+int tok_at_label(void)
 {
 	/* [a-z]+:
 	 * need to cater for newlines
 	 */
-	char *p;
+	char *p = bufferpos;
 
 	if(curtok != token_identifier)
-		return NULL;
+		return 0;
 
-	/* look for a colon */
-	for(p = bufferpos; *p; p++){
+	/* if we're on a #line, ignore */
+	if(*bufferpos == '#'){
+		parse_line_directive(bufferpos);
+
+	}else for(; *p; p++){
 		if(*p == ':'){
-			char *ret;
 
-			where_cc1_current(w);
-
-			bufferpos = p + 1;
-			ret = token_current_spel();
-
-			nexttoken();
-
-			return ret;
+			return 1;
 
 		}else if(!isspace(*p)){
-			return NULL;
+			return 0;
 		}
 	}
 
@@ -420,9 +420,9 @@ char *tok_at_label(where *w)
 			p = buffer + poff;
 			memcpy(p, new, newlen + 1);
 			bufferpos = p;
-			return tok_at_label(w);
+			return tok_at_label();
 		}
-		return NULL;
+		return 0;
 	}
 }
 
@@ -463,7 +463,7 @@ static int peeknextchar()
 	return *bufferpos;
 }
 
-static void read_number(enum base mode)
+static void read_number(const enum base mode)
 {
 	char *end;
 	int of; /*verflow*/
@@ -475,11 +475,11 @@ static void read_number(enum base mode)
 		case DEC: currentval.suffix = 0; break;
 	}
 
-	currentval.val = char_seq_to_ullong(bufferpos, &end, mode, 0, &of);
+	currentval.val.i = char_seq_to_ullong(bufferpos, &end, mode, 0, &of);
 
 	if(of){
 		/* force unsigned long long ULLONG_MAX */
-		currentval.val = INTVAL_T_MAX;
+		currentval.val.i = NUMERIC_T_MAX;
 		currentval.suffix = VAL_LLONG | VAL_UNSIGNED;
 	}
 
@@ -487,13 +487,14 @@ static void read_number(enum base mode)
 		die_at(NULL, "%s-number expected (got '%c')",
 				base_to_str(mode), peeknextchar());
 
-	loc_now.chr += end - bufferpos;
+	/* -1, since we've already eaten the first numeric char */
+	loc_now.chr += end - bufferpos - 1;
 	bufferpos = end;
 
 	/* accept either 'U' 'L' or 'LL' as atomic parts (i.e. not LUL) */
 	/* fine using nextchar() since we peeknextchar() first */
 	{
-		enum intval_suffix suff = 0;
+		enum numeric_suffix suff = 0;
 		char c;
 
 		for(;;) switch((c = peeknextchar())){
@@ -560,11 +561,11 @@ static int curtok_is_xequal()
 	return curtok_to_xequal() != token_unknown;
 }
 
-static void read_string(char **sptr, int *plen)
+static void read_string(char **sptr, size_t *plen)
 {
 	char *const start = bufferpos;
 	char *const end = str_quotefin(start);
-	int size;
+	size_t size;
 
 	if(!end){
 		char *p;
@@ -584,13 +585,31 @@ static void read_string(char **sptr, int *plen)
 	escape_string(*sptr, plen);
 
 	bufferpos += size;
+	loc_now.chr += size;
+}
+
+static void ungetchar(char ch)
+{
+	if(ungetch != EOF)
+		ICE("ungetch");
+
+	ungetch = ch;
+}
+
+static int getungetchar(void)
+{
+	const int ch = ungetch;
+	ungetch = EOF;
+	return ch;
 }
 
 static void read_string_multiple(const int is_wide)
 {
 	/* TODO: read in "hello\\" - parse string char by char, rather than guessing and escaping later */
 	char *str;
-	int len;
+	size_t len;
+
+	where_cc1_current(&currentstringwhere);
 
 	read_string(&str, &len);
 
@@ -603,7 +622,7 @@ static void read_string_multiple(const int is_wide)
 			 *       ^
 			 */
 			char *new, *alloc;
-			int newlen;
+			size_t newlen;
 
 			read_string(&new, &newlen);
 
@@ -618,9 +637,7 @@ static void read_string_multiple(const int is_wide)
 			str = alloc;
 			len += newlen - 1;
 		}else{
-			if(ungetch != EOF)
-				ICE("ungetch");
-			ungetch = c;
+			ungetchar(c);
 			break;
 		}
 	}
@@ -642,7 +659,8 @@ static void cc1_read_quoted_char(const int is_wide)
 			warn_at(NULL, "multi-char constant");
 	}
 
-	currentval.val = ch;
+	currentval.val.i = ch;
+	currentval.suffix = 0;
 	curtok = is_wide ? token_integer : token_character;
 }
 
@@ -657,11 +675,8 @@ void nexttoken()
 		return;
 	}
 
-	if(ungetch != EOF){
-		c = ungetch;
-		ungetch = EOF;
-	}else{
-		c = nextchar(); /* no numbers, no more peeking */
+	if((c = getungetchar()) == EOF){
+		c = nextchar();
 
 		loc_tok.chr = loc_now.chr - 1;
 
@@ -672,9 +687,13 @@ void nexttoken()
 	}
 
 	if(isdigit(c)){
+		char *const num_start = bufferpos - 1;
 		enum base mode;
 
 		if(c == '0'){
+			/* note the '0' */
+			loc_now.chr++;
+
 			switch(tolower(c = peeknextchar())){
 				case 'x':
 					mode = HEX;
@@ -692,6 +711,7 @@ void nexttoken()
 							mode = DEC; /* just zero */
 
 						bufferpos--; /* have the zero */
+						loc_now.chr--;
 					}else{
 						mode = OCT;
 					}
@@ -721,23 +741,22 @@ void nexttoken()
 #endif
 
 		if(peeknextchar() == '.'){
-			/* double or float */
-			int parts[2];
-			nextchar();
+			/* floating point */
 
-			parts[0] = currentval.val;
-			read_number(DEC);
-			parts[1] = currentval.val;
+			currentval.val.f = strtold(num_start, &bufferpos);
 
-			if(peeknextchar() == 'f'){
+			if(toupper(peeknextchar()) == 'F'){
+				currentval.suffix = VAL_FLOAT;
 				nextchar();
-				/* FIXME: set currentval.suffix instead of token_{int,float,double} ? */
-				curtok = token_float;
+			}else if(toupper(peeknextchar()) == 'L'){
+				currentval.suffix = VAL_LDOUBLE;
+				nextchar();
 			}else{
-				curtok = token_double;
+				currentval.suffix = VAL_DOUBLE;
 			}
 
-			ICE("TODO: float/double repr (%d.%d)", parts[0], parts[1]);
+			curtok = token_floater;
+
 		}else{
 			curtok = token_integer;
 		}

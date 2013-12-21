@@ -1,5 +1,5 @@
 // RUN: %ucc -E %s -P | %output_check -w '><' '><' '><' '><'
-// RUN: %check %s
+// RUN: %check %s -E -fmessage-length=0
 
 #define F(a) >a<
 #define G(...) >__VA_ARGS__<

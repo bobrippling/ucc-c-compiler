@@ -18,6 +18,7 @@
 #include "const.h"
 #include "ops/__builtin.h"
 #include "funcargs.h"
+#include "strings.h"
 
 #define STAT_NEW(type)      stmt_new_wrapper(type, current_scope)
 #define STAT_NEW_NEST(type) stmt_new_wrapper(type, symtab_new(current_scope))
@@ -59,7 +60,7 @@ expr *parse_expr_sizeof_typeof_alignof(enum what_of what_of)
 	w.chr -= what_of == what_alignof ? 7 : 6; /* go back over the *of */
 
 	if(accept(token_open_paren)){
-		type_ref *r = parse_type();
+		type_ref *r = parse_type(0);
 
 		if(r){
 			EAT(token_close_paren);
@@ -115,9 +116,11 @@ static expr *parse_expr__Generic()
 		if(accept(token_default)){
 			r = NULL;
 		}else{
-			r = parse_type();
+			r = parse_type(0);
 			if(!r)
-				die_at(NULL, "type expected");
+				die_at(NULL,
+						"type expected for _Generic (got %s)",
+						token_to_str(curtok));
 		}
 		EAT(token_colon);
 		e = parse_expr_no_comma();
@@ -151,12 +154,20 @@ static expr *parse_expr_identifier()
 
 static expr *parse_block()
 {
+	symtable *const arg_symtab = symtab_new(
+			symtab_root(current_scope));
+
 	funcargs *args;
 	type_ref *rt;
+	symtable *orig_scope;
+	expr *r;
+
+	orig_scope = current_scope;
+	current_scope = arg_symtab;
 
 	EAT(token_xor);
 
-	rt = parse_type();
+	rt = parse_type(0);
 
 	if(rt){
 		if(type_ref_is(rt, type_ref_func)){
@@ -169,7 +180,7 @@ static expr *parse_block()
 
 	}else if(accept(token_open_paren)){
 		/* ^(args...) */
-		args = parse_func_arglist();
+		args = parse_func_arglist(NULL); /* no args here thanks */
 		EAT(token_close_paren);
 	}else{
 		/* ^{...} */
@@ -178,7 +189,13 @@ def_args:
 		args->args_void = 1;
 	}
 
-	return expr_new_block(rt, args, parse_stmt_block());
+	symtab_add_params(arg_symtab, args->arglist);
+
+	r = expr_new_block(rt, args, parse_stmt_block());
+
+	current_scope = orig_scope;
+
+	return r;
 }
 
 static expr *parse_expr_primary()
@@ -186,22 +203,24 @@ static expr *parse_expr_primary()
 	switch(curtok){
 		case token_integer:
 		case token_character:
+		case token_floater:
 		{
-			expr *e = expr_new_intval(&currentval);
+			expr *e = expr_new_numeric(&currentval);
 			EAT(curtok);
 			return e;
 		}
 
 		case token_string:
-		/*case token_open_block: - not allowed here */
 		{
+			where w;
 			char *s;
-			int l, wide;
+			size_t l;
+			int wide;
 
-			token_get_current_str(&s, &l, &wide);
+			token_get_current_str(&s, &l, &wide, &w);
 			EAT(token_string);
 
-			return expr_new_str(s, l, wide);
+			return expr_new_str(s, l, wide, &w);
 		}
 
 		case token__Generic:
@@ -218,7 +237,7 @@ static expr *parse_expr_primary()
 				type_ref *r;
 				expr *e;
 
-				if((r = parse_type())){
+				if((r = parse_type(0))){
 					EAT(token_close_paren);
 
 					if(curtok == token_open_block){
@@ -526,7 +545,7 @@ type_ref **parse_type_list()
 		return types;
 
 	do{
-		type_ref *r = parse_type();
+		type_ref *r = parse_type(0);
 
 		if(!r)
 			die_at(NULL, "type expected");
@@ -569,7 +588,7 @@ static void parse_test_init_expr(stmt *t)
 	if(cc1_std == STD_C99)
 		t->symtab = current_scope = symtab_new(current_scope);
 
-	d = parse_decl_single(DECL_SPEL_NEED);
+	d = parse_decl_single(DECL_SPEL_NEED, 0);
 	if(d){
 		t->flow = stmt_flow_new(symtab_new(current_scope));
 
@@ -688,7 +707,7 @@ static stmt *parse_for()
 	}
 
 	SEMI_WRAP(
-			decl **c99inits = parse_decls_one_type();
+			decl **c99inits = parse_decls_one_type(0);
 			if(c99inits){
 				dynarray_add_array(&current_scope->decls, c99inits);
 
@@ -726,7 +745,7 @@ void parse_static_assert(void)
 		sa->e = parse_expr_no_comma();
 		EAT(token_comma);
 
-		token_get_current_str(&sa->s, NULL, NULL);
+		token_get_current_str(&sa->s, NULL, NULL, NULL);
 
 		EAT(token_string);
 		EAT(token_close_paren);
@@ -734,6 +753,54 @@ void parse_static_assert(void)
 
 		dynarray_add(&current_scope->static_asserts, sa);
 	}
+}
+
+static stmt *parse_label_next(stmt *lbl)
+{
+	lbl->lhs = parse_stmt();
+	/*
+	 * a label must have a block of code after it:
+	 *
+	 * if(x)
+	 *   lbl:
+	 *   printf("yo\n");
+	 *
+	 * both the label and the printf statements are in the if
+	 * as a compound statement
+	 */
+	return lbl;
+}
+
+static stmt *parse_label(void)
+{
+	where w;
+	char *lbl;
+	decl_attr *attr = NULL, *ai;
+	stmt *lblstmt;
+
+	where_cc1_current(&w);
+	lbl = token_current_spel();
+	where_cc1_adj_identifier(&w, lbl);
+
+	EAT(token_identifier);
+	EAT(token_colon);
+
+	lblstmt = STAT_NEW(label);
+	lblstmt->bits.lbl.spel = lbl;
+	memcpy_safe(&lblstmt->where, &w);
+
+	parse_add_attr(&attr);
+	for(ai = attr; ai; ai = ai->next)
+		if(ai->type == attr_unused)
+			lblstmt->bits.lbl.unused = 1;
+		else
+			warn_at(&ai->where,
+					"ignoring attribute \"%s\" on label",
+					decl_attr_to_str(ai));
+
+	decl_attr_free(attr);
+
+	return parse_label_next(lblstmt);
 }
 
 static stmt *parse_stmt_and_decls(void)
@@ -748,6 +815,7 @@ static stmt *parse_stmt_and_decls(void)
 			DECL_MULTI_ACCEPT_FUNC_DECL
 			| DECL_MULTI_ALLOW_STORE
 			| DECL_MULTI_ALLOW_ALIGNAS,
+			/*newdecl_context:*/1,
 			current_scope,
 			NULL);
 
@@ -756,10 +824,30 @@ static stmt *parse_stmt_and_decls(void)
 		int at_decl = 0;
 
 		for(;;){
+			stmt *this;
+
 			parse_static_assert();
-			if(curtok == token_close_block || (at_decl = parse_at_decl()))
+
+			/* check for a following colon, in the case of
+			 * typedef int x;
+			 * x:;
+			 *
+			 * we check this here, as in some contexts we we always want a type,
+			 * e.g. _Generic(expr, typedef_name: ...)
+			 *                     ^~~~~~~~~~~~~
+			 * labels are checked for in two places:
+			 * 1) here, to disambiguate from decls
+			 * 2) in parse_stmt() where we look for a standalone label and aren't
+			 *    bothered about decls
+			 */
+			if(curtok == token_identifier && tok_at_label())
+				this = parse_label();
+			else if(curtok == token_close_block || (at_decl = parse_at_decl()))
 				break;
-			dynarray_add(&code_stmt->codes, parse_stmt());
+			else
+				this = parse_stmt();
+
+			dynarray_add(&code_stmt->codes, this);
 		}
 
 		if(at_decl){
@@ -858,22 +946,6 @@ stmt *parse_stmt_block()
 #endif
 
 	return t;
-}
-
-static stmt *parse_label_next(stmt *lbl)
-{
-	lbl->lhs = parse_stmt();
-	/*
-	 * a label must have a block of code after it:
-	 *
-	 * if(x)
-	 *   lbl:
-	 *   printf("yo\n");
-	 *
-	 * both the label and the printf statements are in the if
-	 * as a compound statement
-	 */
-	return lbl;
 }
 
 stmt *parse_stmt()
@@ -987,35 +1059,13 @@ flow:
 		}
 
 		default:
-		{
-			char *lbl;
-			where w;
-
-			if((lbl = tok_at_label(&w))){
-				decl_attr *attr = NULL, *ai;
-
-				t = STAT_NEW(label);
-				t->bits.lbl.spel = lbl;
-				memcpy_safe(&t->where, &w);
-
-				parse_add_attr(&attr);
-				for(ai = attr; ai; ai = ai->next)
-					if(ai->type == attr_unused)
-						t->bits.lbl.unused = 1;
-					else
-						warn_at(&ai->where,
-								"ignoring attribute \"%s\" on label",
-								decl_attr_to_str(ai->type));
-
-				decl_attr_free(attr);
-
-				return parse_label_next(t);
+			if(curtok == token_identifier && tok_at_label()){
+				t = parse_label();
 			}else{
 				t = expr_to_stmt(parse_expr_exp(), current_scope);
 				EAT(token_semicolon);
-				return t;
 			}
-		}
+			return t;
 	}
 
 	/* unreachable */
@@ -1026,7 +1076,7 @@ symtable_gasm *parse_gasm(void)
 	symtable_gasm *g = umalloc(sizeof *g);
 
 	EAT(token_open_paren);
-	token_get_current_str(&g->asm_str, NULL, NULL);
+	token_get_current_str(&g->asm_str, NULL, NULL, NULL);
 	EAT(token_string);
 	EAT(token_close_paren);
 	EAT(token_semicolon);

@@ -1,9 +1,8 @@
-// RUN: %ucc -c %s
-// RUN: echo 'FIXME: need deref check - backend vm?'; false
+// RUN: %ocheck 0 %s
 
-extern int x[][2][4];
+int x[2][2][4];
 
 main()
 {
-	return x[1][2][3]; // only one dereference
+	return x[1][1][3]; // only one dereference
 }

@@ -430,10 +430,12 @@ char *eval_expand_macros(char *line)
 			switch(*line){
 				case '"':
 				case '\'':
+				{
 					/* skip quotes */
-					line = str_quotefin(line + 1);
-					assert(line);
+					char *p = str_quotefin(line + 1);
+					UCC_ASSERT(p, "no matching quote on line '%s' @ '%s'", anchor, line);
 					break;
+				}
 			}
 
 		}else{

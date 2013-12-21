@@ -1,4 +1,4 @@
-// RUN: %layoutcheck %s
+// RUN: %layout_check %s
 typedef int tdef_int;
 
 typedef tdef_int tdef_int2;

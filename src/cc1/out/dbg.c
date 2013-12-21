@@ -19,7 +19,7 @@
 #include "../funcargs.h"
 #include "../sue.h"
 
-#include "../cc1.h" /* cc_out[] */
+#include "asm.h" /* cc_out[] */
 
 #include "lbl.h"
 #include "dbg.h"
@@ -528,7 +528,7 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 
 									dwarf_attr(st,
 											DW_AT_const_value, DW_FORM_data4,
-											(long long)const_fold_val(emem->val));
+											(long long)const_fold_val_i(emem->val));
 
 								} dwarf_sec_end(&st->abbrev);
 							} dwarf_end(st);
@@ -691,13 +691,13 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 		case type_ref_array:
 		{
 			int have_sz = !!ty->bits.array.size;
-			intval_t sz;
+			integral_t sz;
 			const unsigned sub_pos = dwarf_type(st, ty->ref);
 
 			this_start = st->info.length;
 
 			if(have_sz)
-				sz = const_fold_val(ty->bits.array.size);
+				sz = const_fold_val_i(ty->bits.array.size);
 
 			dwarf_start(st); {
 				dwarf_abbrev_start(st, DW_TAG_array_type, DW_CHILDREN_yes); {
@@ -944,9 +944,9 @@ static void dwarf_st_free(struct dwarf_state *st)
 	dwarf_sec_free(&st->info);
 }
 
-static int type_ref_cmp(void *a, void *b)
+static int type_ref_cmp_bool(void *a, void *b)
 {
-	return !type_ref_equal(a, b, DECL_CMP_EXACT_MATCH);
+	return type_ref_cmp(a, b, 0) != TYPE_EQUAL;
 }
 
 void out_dbginfo(symtable_global *globs, const char *fname)
@@ -958,7 +958,7 @@ void out_dbginfo(symtable_global *globs, const char *fname)
 	};
 
 	/* initialise type offset maps */
-	st.type_ref_to_off = dynmap_new(&type_ref_cmp);
+	st.type_ref_to_off = dynmap_new(&type_ref_cmp_bool);
 
 	dwarf_info_header(&st.info, cc_out[SECTION_DBG_INFO]);
 

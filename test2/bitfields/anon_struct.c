@@ -1,13 +1,12 @@
-// RUN: %ocheck 0 %s
-
-struct bit
-{
-	int bit : 1;
-};
+// RUN: %ocheck 0 %s -std=c11
 
 struct bits
 {
-	struct bit; // `second' is not packed into this
+	struct
+	{
+		int bit : 1;
+	}; // `second' is not packed into this
+
 	unsigned second : 1;
 };
 

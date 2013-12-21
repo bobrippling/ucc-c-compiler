@@ -1,3 +1,4 @@
+// RUN: %check %s
 main()
 {
 	typedef int int_t;

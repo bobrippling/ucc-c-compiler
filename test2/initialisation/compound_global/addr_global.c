@@ -1,8 +1,3 @@
-// RUN: echo TODO %s
-// RUN: false
+// RUN: %layout_check %s
 
 int (*p)[] = &(int[]){1, 2, 3};
-
-main()
-{
-}

@@ -4,6 +4,7 @@
 #define ucc_unreach(optional) do{ ICE("unreachable"); return optional; }while(0)
 
 extern int warning_count;
+extern int warning_length; /* -fmessage-length */
 
 void warn_colour(int on, int err);
 

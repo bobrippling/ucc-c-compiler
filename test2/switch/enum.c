@@ -1,3 +1,4 @@
+// RUN: %check -e %s
 enum A
 {
 	A,
@@ -10,7 +11,7 @@ main()
 	switch((enum A)0){
 		case A:
 		case B:
-		case C:
+		case C: // CHECK: error: duplicate case statements for 0
 			;
 	}
 }

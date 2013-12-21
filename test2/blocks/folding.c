@@ -1,5 +1,4 @@
-// RUN: %ucc -o %t %s
-// RUN: %t; [ $? -eq 1 ]
+// RUN: %ocheck 1 %s
 
 typedef void *Ptr;
 typedef int Integer;

@@ -1,10 +1,10 @@
 // RUN: %check -e %s
 
-int f(); // CHECK: error: mismatching definitions of "f"
+int f();
 
 enum
 {
-	f
+	f // CHECK: error: mismatching definitions of "f"
 };
 
 main()

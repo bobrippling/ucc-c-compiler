@@ -1,3 +1,3 @@
-// RUN: %ucc -S %s
+// RUN: %ucc -fsyntax-only %s
 
 int f(/*int unnamed*/(int *));

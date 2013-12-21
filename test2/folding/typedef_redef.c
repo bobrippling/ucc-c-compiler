@@ -1,10 +1,9 @@
-// RUN: %ucc -c %s; [ $? -ne 0 ]
-// RUN: %ucc -S -o- %s 2>&1 | %check %s
+// RUN: %check %s
 
-typedef enum SGridDraggingDecision {
-    NoDecision,
-    DragCols,
-    DragRows
-} SGridDraggingDecision;
+typedef enum abc {
+    No,
+    One,
+    Two
+} abc;
 
-typedef enum SGridDraggingDecision SGridDraggingDecision; // CHECK: /error: redefinition of typedef from:/
+typedef enum abc abc; // CHECK: /warning: typedef 'abc' redef/

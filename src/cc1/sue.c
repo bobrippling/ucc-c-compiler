@@ -25,6 +25,7 @@ static void sue_set_spel(struct_union_enum_st *sue, char *spel)
 
 void enum_vals_add(
 		sue_member ***pmembers,
+		where *w,
 		char *sp, expr *e,
 		decl_attr *attr)
 {
@@ -37,6 +38,7 @@ void enum_vals_add(
 	emem->spel = sp;
 	emem->val  = e;
 	emem->attr = attr;
+	memcpy_safe(&emem->where, w);
 
 	mem->enum_member = emem;
 
@@ -62,7 +64,7 @@ void sue_incomplete_chk(struct_union_enum_st *st, where *w)
 				sue_str(st), st->spel, where_str_r(buf, &st->where));
 	}
 
-	UCC_ASSERT(st->folded, "sizeof unfolded sue");
+	UCC_ASSERT(st->foldprog == SUE_FOLDED_FULLY, "sizeof unfolded sue");
 }
 
 unsigned sue_size(struct_union_enum_st *st, where *w)
@@ -149,7 +151,7 @@ sue_member *sue_member_from_decl(decl *d)
 struct_union_enum_st *sue_decl(
 		symtable *stab, char *spel,
 		sue_member **members, enum type_primitive prim,
-		int is_complete, int is_declaration)
+		int got_membs, int is_declaration)
 {
 	struct_union_enum_st *sue;
 	int new = 0;
@@ -176,16 +178,19 @@ struct_union_enum_st *sue_decl(
 					where_str_r(wbuf, &sue->where));
 		}
 
-		/* check we don't have two definitions */
-		if(is_complete && sue->complete){
-			if(descended)
+		if(got_membs){
+			if(descended){
 				/* struct A {}; f(){ struct A {}; } */
 				goto new_type;
+			}
 
-			die_at(NULL, "can't redefine %s %s's members\n"
-					"%s: note: from here",
-					sue_str(sue), sue->spel,
-					where_str_r(wbuf, &sue->where));
+			/* check we don't have two definitions */
+			if(sue->got_membs){
+				die_at(NULL, "can't redefine %s %s's members\n"
+						"%s: note: from here",
+						sue_str(sue), sue->spel,
+						where_str_r(wbuf, &sue->where));
+			}
 		}
 
 #if 0
@@ -264,8 +269,8 @@ new_type:
 	}
 
 	sue->anon = !spel;
-	if(is_complete)
-		sue->complete = 1;
+	if(got_membs)
+		sue->got_membs = 1;
 	/* completeness checks done above */
 
 	sue_set_spel(sue, spel);
@@ -277,7 +282,7 @@ new_type:
 	}
 
 	if(new){
-		if(prim == type_enum && !sue->complete)
+		if(prim == type_enum && !sue->got_membs)
 			cc1_warn_at(NULL, 0, WARN_PREDECL_ENUM,
 					"forward-declaration of enum %s", sue->spel);
 
@@ -285,6 +290,20 @@ new_type:
 	}
 
 	return sue;
+}
+
+sue_member *sue_drop(struct_union_enum_st *sue, sue_member **pos)
+{
+	sue_member *ret = *pos;
+
+	const size_t n = sue_nmembers(sue);
+	size_t i = pos - sue->members;
+
+	for(; i < n - 1; i++)
+		sue->members[i] = sue->members[i + 1];
+	sue->members[i] = NULL;
+
+	return ret;
 }
 
 static void *sue_member_find(

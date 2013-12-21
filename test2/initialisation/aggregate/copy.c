@@ -1,5 +1,4 @@
-// RUN: %ucc -o %t %s
-// RUN: %t | %output_check '^x\[0\] = { 0, 0 }$' '^x\[1\] = { 1, 2 }$' '^x\[2\] = { 1, 2 }$' '^x\[3\] = { 1, 2 }$' '^x\[4\] = { 1, 2 }$' '^x\[5\] = { 1, 2 }$'
+// RUN: %ocheck 0 %s
 
 main()
 {
@@ -7,7 +6,12 @@ main()
 		[1 ... 5] = { 1, 2 } // a memcpy is performed for these structs
 	};
 
-	for(int i = 0; i < 6; i++)
-		printf("x[%d] = { %d, %d }\n",
-				i, x[i].i, x[i].j);
+	if(x[0].i || x[0].j)
+		abort();
+
+	for(int i = 1; i < 6; i++)
+		if(x[i].i != 1 || x[i].j != 2)
+			abort();
+
+	return 0;
 }

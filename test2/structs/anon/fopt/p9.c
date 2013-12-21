@@ -1,5 +1,4 @@
 // RUN: %ucc -c %s; [ $? -ne 0 ]
-// RUN: %ucc -fno-ms-extensions -c %s; [ $? -ne 0 ]
 // RUN: %ucc -fplan9-extensions -c %s
 
 typedef union name

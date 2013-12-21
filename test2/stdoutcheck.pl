@@ -51,5 +51,16 @@ for(my $i = 0; $i < @output; ++$i){
 		$b = trim($b);
 	}
 
-	die "mismatching lines [$i]: '$a' and '$b'\n" unless $a eq $b;
+	my $match;
+	my $regex;
+	if($regex = ($b =~ m;^/(.*)/$;)){
+		$match = ($a =~ /$1/);
+	}else{
+		$match = $a eq $b;
+	}
+
+	die "mismatching "
+	. ($regex ? "regex " : "")
+	. "lines [$i]: '$a' and '$b'\n"
+	unless $match;
 }

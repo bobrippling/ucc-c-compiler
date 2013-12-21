@@ -1,9 +1,8 @@
-// RUN: %ucc -o %t %s
-// RUN: %t; [ $? -eq 4 ]
+// RUN: %ocheck 4 %s
 
 main()
 {
-	int *p = (int[][2]){
+	int (*p)[2] = (int[][2]){
 		1, 2,
 		{ 3, 4, 5 }
 	};

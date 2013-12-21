@@ -1,5 +1,5 @@
-// RUN: %ucc %s 2>&1 | grep .; [ $? -ne 0 ]
-// RUN: %check -std=c89 %s
+// RUN: %ucc %s 2>&1 | grep 'C99 for-init'; [ $? -ne 0 ]
+// RUN: %check %s -std=c89
 
 main()
 {

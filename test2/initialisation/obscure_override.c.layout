@@ -1,0 +1,9 @@
+x:
+.long 42, 43, 18, 19
+
+f:
+main:
+L_f.1:
+L_main.2:
+Lelse.3:
+Lfi.4:

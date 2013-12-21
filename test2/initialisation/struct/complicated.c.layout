@@ -1,0 +1,19 @@
+nlist:
+.long 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18
+.zero 
+
+nlist2:
+.long 1, 2, 3
+.zero 12
+.zero 12
+.long 4, 5, 6
+.zero 12
+.zero 12
+
+x:
+.long 1, 2, 3
+
+y:
+.byte 49, 0, 0
+.byte 52, 0, 0
+.byte 0, 0

@@ -1,4 +1,4 @@
-// RUN: %ucc -fsyntax-only %s
+// RUN: %ocheck 0 %s -fms-extensions
 
 struct
 {
@@ -30,4 +30,13 @@ f()
 	struct XY_or_WX tim;
 
 	tim.x = 2;
+
+	if(tim.w != 2)
+		abort();
+}
+
+main()
+{
+	f();
+	return 0;
 }

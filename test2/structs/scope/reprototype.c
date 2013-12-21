@@ -6,7 +6,7 @@ struct A
 
 f()
 {
-	struct A; // new struct A
+	struct A; // CHECK: /note: forward/
 	struct A a;
 
 	return a.i; // CHECK: /error: .*incomplete/

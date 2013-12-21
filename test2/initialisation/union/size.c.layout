@@ -1,0 +1,10 @@
+sz_U:
+.long 16
+sz_S:
+.long 12
+sz_st:
+.long 12
+st:
+.zero 12
+data.1:
+.zero 16

@@ -1,0 +1,4 @@
+a:
+.long 1
+.long 5
+.long 3

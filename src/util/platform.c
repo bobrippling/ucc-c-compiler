@@ -52,6 +52,11 @@ unsigned platform_word_size()
 	abort();
 }
 
+int platform_32bit(void)
+{
+	return platform_word_size() == 4;
+}
+
 unsigned platform_align_max()
 {
 	switch(platform_word_size()){

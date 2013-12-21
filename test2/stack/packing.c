@@ -1,5 +1,4 @@
-// RUN: %ucc -o %t %s
-// RUN: %ocheck 0 %t
+// RUN: %ocheck 0 %s
 
 abort();
 #define assert(x) if(!(x)) abort()
@@ -7,10 +6,10 @@ abort();
 f()
 {
 	int a[][2] = { 1, 2, 3, 4 };
-	assert(a[0] == 1);
-	assert(a[1] == 2);
-	assert(a[2] == 3);
-	assert(a[3] == 4);
+	assert(a[0][0] == 1);
+	assert(a[0][1] == 2);
+	assert(a[1][0] == 3);
+	assert(a[1][1] == 4);
 }
 
 g()

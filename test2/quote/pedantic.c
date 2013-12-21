@@ -1,3 +1,5 @@
+// RUN: %check %s -E
+
 #define MACRO instance
 
 \"MACRO yo \" MACRO abc // CHECK: /warning: no terminating/
