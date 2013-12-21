@@ -50,8 +50,10 @@ while(<>){
 			emit({ lbl => $lbl });
 			$any = 1;
 		}
-	}elsif(/^[ \t]*\.ascii[ \t]+"(.*)"$/){
-		emit_string($1);
+	}elsif(/^[ \t]*\.asci([iz])[ \t]+"(.*)"$/){
+		my $asciz = $1 eq 'z';
+		emit_string($asciz, $2);
+		$any = 1;
 	}
 }
 
@@ -66,7 +68,7 @@ END {
 
 sub emit_string
 {
-	my $str = shift;
+	my($asciz, $str) = @_;
 
 	for(my $i = 0; $i < length $str; $i++){
 		my $ch = substr($str, $i, 1);
@@ -93,6 +95,8 @@ sub emit_string
 
 		emit({ size => 1, value => $val });
 	}
+
+	emit({ size => 1, value => 0 }) if $asciz;
 }
 
 sub flush
