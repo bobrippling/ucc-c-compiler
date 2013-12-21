@@ -21,6 +21,8 @@
 
 #include "asm.h" /* cc_out[] */
 
+#include "../defs.h" /* CHAR_BIT */
+
 #include "lbl.h"
 #include "dbg.h"
 
@@ -111,6 +113,9 @@ enum dwarf_key
 
 	DW_AT_byte_size = 0xb,
 	DW_AT_encoding = 0x3e,
+	DW_AT_bit_offset = 0xc,
+	DW_AT_bit_size = 0xd,
+
 	DW_AT_name = 0x3,
 	DW_AT_language = 0x13,
 	DW_AT_low_pc = 0x11,
@@ -610,6 +615,10 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 
 							dwarf_help(st, "  %s::%s", sue->spel, decl_to_str(dmem));
 
+							/* skip, otherwise dwarf thinks we've a field and messes up */
+							if(!dmem->spel)
+								continue;
+
 							dwarf_start(st); {
 								dwarf_abbrev_start(st, DW_TAG_member, DW_CHILDREN_no); {
 									struct dwarf_block offset;
@@ -623,7 +632,6 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 											DW_AT_type, DW_FORM_ref4,
 											mem_offsets[i]);
 
-									/* TODO: bitfields */
 									offset_data[0].type = BLOCK_N;
 									offset_data[0].bits.n = DW_OP_plus_uconst;
 									offset_data[1].type = BLOCK_LEB128;
@@ -635,6 +643,30 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 									dwarf_attr(st,
 											DW_AT_data_member_location, DW_FORM_block1,
 											&offset);
+
+									/* bitfield */
+									if(dmem->field_width){
+										unsigned width = const_fold_val_i(dmem->field_width);
+										unsigned whole_sz = type_ref_size(dmem->ref, NULL);
+
+										/* address of top-end */
+										unsigned off =
+											(whole_sz * CHAR_BIT)
+											- (width + dmem->struct_offset_bitfield);
+
+										dwarf_help(st, "bitfield %u-%u (sz=%u off=%u)",
+												width + dmem->struct_offset_bitfield,
+												dmem->struct_offset_bitfield,
+												off, width);
+
+										dwarf_attr(st,
+												DW_AT_bit_offset, DW_FORM_data1,
+												off);
+
+										dwarf_attr(st,
+												DW_AT_bit_size, DW_FORM_data1,
+												width);
+									}
 
 									dwarf_attr(st,
 											DW_AT_accessibility, DW_FORM_flag,
