@@ -57,7 +57,7 @@ while(<>){
 	}
 }
 
-die "$0: no input\n" unless $any;
+die "$0: no asm found in input\n" unless $any;
 
 sub flush;
 sub emit2;
