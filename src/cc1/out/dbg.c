@@ -1047,7 +1047,6 @@ void out_dbginfo(symtable_global *globs, const char *fname)
 			if(DECL_IS_FUNC(d)){
 				; /* TODO: dwarf_subprogram_func(&st, d); */
 			}else{
-				/* TODO: dump type unless seen */
 				dwarf_global_variable(&st, d);
 			}
 		}
