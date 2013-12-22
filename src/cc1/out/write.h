@@ -20,4 +20,6 @@ void out_asm2(enum section_type,
 		enum p_opts opts,
 		const char *fmt, ...) ucc_printflike(3, 4);
 
+int dbg_add_file(const char *nam, int *new);
+
 #endif

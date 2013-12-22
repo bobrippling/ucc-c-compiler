@@ -25,6 +25,7 @@
 
 #include "lbl.h"
 #include "dbg.h"
+#include "write.h" /* dbg_add_file */
 
 struct dwarf_state
 {
@@ -116,6 +117,9 @@ enum dwarf_key
 	DW_AT_encoding = 0x3e,
 	DW_AT_bit_offset = 0xc,
 	DW_AT_bit_size = 0xd,
+
+	DW_AT_decl_file = 0x3a,
+	DW_AT_decl_line = 0x3b,
 
 	DW_AT_name = 0x3,
 	DW_AT_language = 0x13,
@@ -874,6 +878,12 @@ static void dwarf_attr_decl(
 {
 	dwarf_attr(st, DW_AT_name, DW_FORM_string, d->spel);
 	dwarf_attr(st, DW_AT_type, DW_FORM_ref4, typos);
+
+	dwarf_attr(st, DW_AT_decl_file,
+			DW_FORM_data1, dbg_add_file(d->where.fname, NULL));
+
+	dwarf_attr(st, DW_AT_decl_line,
+			DW_FORM_data1, d->where.line);
 
 	if(show_extern)
 		dwarf_attr(st, DW_AT_external, DW_FORM_flag,

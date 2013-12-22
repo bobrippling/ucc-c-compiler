@@ -64,18 +64,20 @@ static where dbg_where;
 
 static int last_file = -1, last_line = -1;
 
-static int add_file(const char *nam, int *new)
+int dbg_add_file(const char *nam, int *new)
 {
 	struct file_idx **p;
 	int i = 1; /* indexes start at 1 */
 
-	*new = 0;
+	if(new)
+		*new = 0;
 
 	for(p = &file_head; *p; p = &(*p)->next, i++)
 		if(!strcmp(nam, (*p)->fname))
 			return i;
 
-	*new = 1;
+	if(new)
+		*new = 1;
 	*p = umalloc(sizeof **p);
 	(*p)->fname = nam;
 	return i;
@@ -91,7 +93,7 @@ static void out_dbg_flush()
 	if(!dbg_where.fname || !cc1_gdebug)
 		return;
 
-	idx = add_file(dbg_where.fname, &new);
+	idx = dbg_add_file(dbg_where.fname, &new);
 
 	if(last_file == idx && last_line == dbg_where.line)
 		return;
