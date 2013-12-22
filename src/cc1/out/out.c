@@ -10,6 +10,7 @@
 #include "out.h"
 #include "vstack.h"
 #include "impl.h"
+#include "lbl.h"
 #include "../../util/platform.h"
 #include "../cc1.h"
 #include "../pack.h"

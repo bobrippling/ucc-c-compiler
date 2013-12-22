@@ -26,4 +26,6 @@ char *out_label_block(const char *funcsp);
 
 char *out_label_dbg_type(void);
 
+void out_label(const char *);
+
 #endif

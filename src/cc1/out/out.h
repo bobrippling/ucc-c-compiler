@@ -47,7 +47,6 @@ void out_func_prologue(
 		int arg_offsets[]);
 
 void out_func_epilogue(type_ref *);
-void out_label(const char *);
 
 void out_comment(const char *, ...) ucc_printflike(1, 2);
 #ifdef ASM_H

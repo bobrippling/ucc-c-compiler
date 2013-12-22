@@ -1,6 +1,7 @@
 #include "ops.h"
 #include "stmt_label.h"
 #include "../label.h"
+#include "../out/lbl.h"
 
 const char *str_stmt_label()
 {
