@@ -1,4 +1,6 @@
-sum(double d, ...)
+printf(char *, ...) __attribute((format(printf, 1, 2)));
+
+double sum(double d, ...)
 {
 	__builtin_va_list l;
 

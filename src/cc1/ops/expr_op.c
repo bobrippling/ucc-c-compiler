@@ -58,9 +58,6 @@ static void fold_const_expr_op(expr *e, consty *k)
 
 			UCC_ASSERT(!(fp[0] ^ fp[1]),
 					"one float and one non-float?");
-
-			if(!k->nonstandard_const)
-				k->nonstandard_const = e;
 		}
 
 		if(fp[0]){
@@ -71,6 +68,10 @@ static void fold_const_expr_op(expr *e, consty *k)
 					e->op);
 
 			k->type = CONST_NUM;
+
+			/* both relational and normal */
+			if(!k->nonstandard_const)
+				k->nonstandard_const = e;
 
 			if(op_returns_bool(e->op)){
 				k->bits.num.val.i = r; /* convert to bool */
@@ -672,6 +673,24 @@ static int op_float_check(expr *e)
 	return 0;
 }
 
+void expr_check_sign(const char *desc,
+		expr *lhs, expr *rhs, where *w)
+{
+	consty kl, kr;
+
+	const_fold(lhs, &kl);
+	const_fold(rhs, &kr);
+
+	/* don't bother for literals */
+	if(kl.type != CONST_NUM
+	&& kr.type != CONST_NUM
+	&& type_ref_is_scalar(lhs->tree_type) && type_ref_is_scalar(rhs->tree_type)
+	&& type_ref_is_signed(lhs->tree_type) != type_ref_is_signed(rhs->tree_type))
+	{
+		warn_at(w, "signed and unsigned types in '%s'", desc);
+	}
+}
+
 void fold_expr_op(expr *e, symtable *stab)
 {
 	UCC_ASSERT(e->op != op_unknown, "unknown op in expression at %s",
@@ -693,6 +712,15 @@ void fold_expr_op(expr *e, symtable *stab)
 		/* no-op if float */
 		expr_promote_int_if_smaller(&e->lhs, stab);
 		expr_promote_int_if_smaller(&e->rhs, stab);
+
+		/* must check signs before casting */
+		if(op_is_comparison(e->op)){
+			expr_check_sign(
+					op_to_str(e->op),
+					e->lhs,
+					e->rhs,
+					&e->where);
+		}
 
 		e->tree_type = op_promote_types(e->op,
 				&e->lhs, &e->rhs, &e->where, stab);

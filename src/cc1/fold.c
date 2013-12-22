@@ -328,7 +328,8 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 		case type_ref_array:
 		case type_ref_func:
 			if(type_ref_is(r->ref, type_ref_func)){
-				die_at(&r->where,
+				fold_had_error = 1;
+				warn_at_print_error(&r->where,
 						r->type == type_ref_func
 							? "function returning a function"
 							: "array of functions");
@@ -336,9 +337,11 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 			break;
 
 		case type_ref_block:
-			if(!type_ref_is(r->ref, type_ref_func))
-				die_at(&r->where, "invalid block pointer - function required (got %s)",
+			if(!type_ref_is(r->ref, type_ref_func)){
+				fold_had_error = 1;
+				warn_at_print_error(&r->where, "invalid block pointer - function required (got %s)",
 						type_ref_to_str(r->ref));
+			}
 			break;
 
 		default:

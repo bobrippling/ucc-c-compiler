@@ -58,3 +58,14 @@ void stringlit_use(stringlit *s)
 	if(s->use_cnt++ == 0)
 		s->lbl = out_label_data_store(s->wide ? STORE_P_WCHAR : STORE_P_CHAR);
 }
+
+int stringlit_empty(const stringlit *str)
+{
+	switch(str->len){
+		case 0:
+			return 1;
+		case 1:
+			return *str->str == '\0';
+	}
+	return 0;
+}

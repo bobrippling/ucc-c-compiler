@@ -65,11 +65,21 @@ void gen_expr_addr(expr *e)
 		out_push_lbl(e->bits.lbl.label->mangled, 1); /* GNU &&lbl */
 
 	}else{
-		/* address of possibly an ident "(&a)->b" or a struct expr "&a->b"
-		 * let lea_expr catch it
+		/* special case - can't lea_expr() functions because they
+		 * aren't lvalues
 		 */
+		expr *sub = e->lhs;
 
-		lea_expr(e->lhs);
+		if(!sub->f_lea){
+			sub = expr_skip_casts(sub);
+			UCC_ASSERT(expr_kind(sub, identifier),
+					"&[not-identifier], got %s",
+					sub->f_str());
+
+			out_push_sym(sub->bits.ident.sym);
+		}else{
+			lea_expr(sub);
+		}
 	}
 }
 

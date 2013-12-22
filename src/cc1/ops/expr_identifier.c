@@ -44,6 +44,11 @@ static void fold_const_expr_identifier(expr *e, consty *k)
 	}
 }
 
+static void gen_expr_identifier_lea(expr *e)
+{
+	out_push_sym(e->bits.ident.sym);
+}
+
 void fold_expr_identifier(expr *e, symtable *stab)
 {
 	char *sp = e->bits.ident.spel;
@@ -95,6 +100,13 @@ void fold_expr_identifier(expr *e, symtable *stab)
 
 	e->tree_type = sym->decl->ref;
 
+	/* set if lvalue - expr_is_lval() checks for arrays */
+	e->f_lea =
+		type_ref_is(e->tree_type, type_ref_func)
+		? NULL
+		: gen_expr_identifier_lea;
+
+
 	if(sym->type == sym_local
 	&& !decl_store_static_or_extern(sym->decl->store)
 	&& !DECL_IS_ARRAY(sym->decl)
@@ -126,27 +138,9 @@ void gen_expr_identifier(expr *e)
 		out_push_sym_val(sym);
 }
 
-static void gen_expr_identifier_lea(expr *e)
-{
-	out_push_sym(e->bits.ident.sym);
-}
-
-static int identifier_is_lval(expr *e)
-{
-	if(type_ref_is(e->tree_type, type_ref_func))
-		return 0;
-
-	if(type_ref_is(e->tree_type, type_ref_array))
-		return 0;
-
-	return 1;
-}
-
 void mutate_expr_identifier(expr *e)
 {
-	e->f_lea = gen_expr_identifier_lea;
 	e->f_const_fold  = fold_const_expr_identifier;
-	e->f_is_lval = identifier_is_lval;
 }
 
 expr *expr_new_identifier(char *sp)

@@ -94,7 +94,20 @@ static const struct calling_conv_desc
 		}
 	},
 
-	[conv_cdecl]    = { 1, 0 },
+	[conv_cdecl] = {
+		1,
+		0,
+		{
+			{ 0 }
+		},
+		3,
+		{
+			X86_64_REG_RBX,
+			X86_64_REG_RDI,
+			X86_64_REG_RSI
+		}
+	},
+
 	[conv_stdcall]  = { 0, 0 },
 
 	[conv_fastcall] = {
@@ -154,7 +167,7 @@ static const char *x86_suffix(type_ref *ty)
 			case type_double:
 				return "sd";
 			case type_ldouble:
-				ICE("TODO");
+				ICE("TODO: ldouble");
 			default:
 				ICE("bad float");
 		}
@@ -1672,7 +1685,9 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 			r.idx = X86_64_REG_RAX;
 			r.is_float = 0;
 
-			out_push_l(type_ref_cached_CHAR(n), nfloats);
+			/* only the register arguments - glibc's printf of x86_64 linux
+			 * segfaults if this is 9 or greater */
+			out_push_l(type_ref_cached_CHAR(n), MIN(nfloats, N_CALL_REGS_F));
 			v_to_reg_given(vtop, &r);
 			vpop();
 		}
@@ -1700,17 +1715,35 @@ void impl_set_overflow(void)
 
 void impl_set_nan(type_ref *ty)
 {
-	const union
-	{
-		unsigned l;
-		float f;
-	} u = { 0x7fc00000U };
+	UCC_ASSERT(type_ref_is_floating(ty),
+			"%s for non %s", __func__, type_ref_to_str(ty));
 
-	ICW("using nan of float type for %s", type_ref_to_str(ty));
-	(void)ty;
+	switch(type_ref_size(ty, NULL)){
+		case 4:
+		{
+			const union
+			{
+				unsigned l;
+				float f;
+			} u = { 0x7fc00000u };
+			vtop->bits.val_f = u.f;
+			break;
+		}
+		case 8:
+		{
+			const union
+			{
+				unsigned long l;
+				double d;
+			} u = { 0x7ff8000000000000u };
+			vtop->bits.val_f = u.d;
+			break;
+		}
+		default:
+			ICE("TODO: long double nan");
+	}
 
 	vtop->type = V_CONST_F;
-	vtop->bits.val_f = u.f;
 	/* vtop->t should be set */
 	impl_load_fp(vtop);
 }

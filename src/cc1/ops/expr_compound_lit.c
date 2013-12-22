@@ -141,9 +141,9 @@ void gen_expr_style_compound_lit(expr *e)
 
 void mutate_expr_compound_lit(expr *e)
 {
+	/* unconditionally an lvalue */
 	e->f_lea = lea_expr_compound_lit;
 	e->f_const_fold = const_expr_compound_lit;
-	e->f_is_lval = expr_is_lval_yes;
 }
 
 static decl *compound_lit_decl(type_ref *t, decl_init *init)

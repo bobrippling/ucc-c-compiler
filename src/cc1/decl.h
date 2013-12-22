@@ -42,7 +42,7 @@ struct decl_attr
 		{
 			conv_x64_sysv, /* Linux, FreeBSD and Mac OS X, x64 */
 			conv_x64_ms,   /* Windows x64 */
-			conv_cdecl,    /* Windows x86 stack, caller cleanup */
+			conv_cdecl,    /* All 32-bit x86 systems, stack, caller cleanup */
 			conv_stdcall,  /* Windows x86 stack, callee cleanup */
 			conv_fastcall  /* Windows x86, ecx, edx, caller cleanup */
 		} conv;

@@ -1,4 +1,4 @@
-// RUN: %ucc -o %t %s && %t
+// RUN: %ocheck 0 %s
 enum
 {
 	a,
@@ -9,7 +9,7 @@ enum
 	f
 };
 
-#define assert(x) if(!(x)) return 1
+#define assert(x) if(!(x)) abort()
 
 main()
 {

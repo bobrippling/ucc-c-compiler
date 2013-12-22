@@ -167,12 +167,13 @@ static void builtin_gen_va_start(expr *e)
 #endif
 }
 
-expr *parse_va_start(void)
+expr *parse_va_start(const char *ident)
 {
 	/* va_start(__builtin_va_list &, identifier)
 	 * second argument may be any expression - we don't use it
 	 */
 	expr *fcall = parse_any_args();
+	(void)ident;
 	expr_mutate_builtin_gen(fcall, va_start);
 	return fcall;
 }
@@ -479,12 +480,14 @@ static void fold_va_arg(expr *e, symtable *stab)
 #endif
 }
 
-expr *parse_va_arg(void)
+expr *parse_va_arg(const char *ident)
 {
 	/* va_arg(list, type) */
 	expr *fcall = expr_new_funcall();
 	expr *list = parse_expr_no_comma();
 	type_ref *ty;
+
+	(void)ident;
 
 	EAT(token_comma);
 	ty = parse_type(0);
@@ -516,9 +519,11 @@ static void fold_va_end(expr *e, symtable *stab)
 	e->tree_type = type_ref_cached_VOID();
 }
 
-expr *parse_va_end(void)
+expr *parse_va_end(const char *ident)
 {
 	expr *fcall = parse_any_args();
+
+	(void)ident;
 	expr_mutate_builtin_gen(fcall, va_end);
 	return fcall;
 }
@@ -551,9 +556,10 @@ static void fold_va_copy(expr *e, symtable *stab)
 	e->tree_type = type_ref_cached_VOID();
 }
 
-expr *parse_va_copy(void)
+expr *parse_va_copy(const char *ident)
 {
 	expr *fcall = parse_any_args();
+	(void)ident;
 	expr_mutate_builtin_gen(fcall, va_copy);
 	return fcall;
 }
