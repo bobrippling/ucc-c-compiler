@@ -171,6 +171,10 @@ static void dwarf_attr(
 		enum dwarf_key key, enum dwarf_valty val,
 		...);
 
+static unsigned dwarf_type(
+		struct dwarf_state *st, type_ref *ty);
+
+
 static void dwarf_smallest(
 		unsigned long val, unsigned *int_sz)
 {
@@ -534,6 +538,142 @@ static void dwarf_sue_header(
 	} dwarf_end(st);
 }
 
+static void dwarf_suetype(
+		struct dwarf_state *st,
+		struct_union_enum_st *sue,
+		unsigned *pthis_start)
+{
+	switch(sue->primitive){
+		default:
+			ucc_unreach();
+
+		case type_enum:
+		{
+			sue_member **i;
+
+			dwarf_help(st, "%s header", sue->spel);
+			dwarf_sue_header(st, sue, DW_TAG_enumeration_type);
+
+			/* enumerators */
+			for(i = sue->members; i && *i; i++){
+				enum_member *emem = (*i)->enum_member;
+
+				dwarf_help(st, "  %s::%s", sue->spel, emem->spel);
+
+				dwarf_start(st); {
+					dwarf_abbrev_start(st, DW_TAG_enumerator, DW_CHILDREN_no); {
+						dwarf_attr(st,
+								DW_AT_name, DW_FORM_string,
+								emem->spel);
+
+						dwarf_attr(st,
+								DW_AT_const_value, DW_FORM_data4,
+								(long long)const_fold_val_i(emem->val));
+
+					} dwarf_sec_end(&st->abbrev);
+				} dwarf_end(st);
+			}
+
+			dwarf_sibling_pop(st);
+			break;
+		}
+
+		case type_union:
+		case type_struct:
+		{
+			const size_t nmem = dynarray_count(sue->members);
+			sue_member **si;
+			unsigned i;
+			unsigned *mem_offsets = nmem ? umalloc(nmem * sizeof *mem_offsets) : NULL;
+
+			/* member types */
+			for(i = 0; i < nmem; i++)
+				mem_offsets[i] = dwarf_type(st, sue->members[i]->struct_member->ref);
+
+			/* must update since we might've output extra type information */
+			*pthis_start = st->info.length;
+
+			dwarf_help(st, "%s header", sue->spel);
+			dwarf_sue_header(
+					st, sue,
+					sue->primitive == type_struct
+					? DW_TAG_structure_type
+					: DW_TAG_union_type);
+
+			/* members */
+			for(i = 0, si = sue->members; i < nmem; i++, si++){
+				decl *dmem = (*si)->struct_member;
+
+				dwarf_help(st, "  %s::%s", sue->spel, decl_to_str(dmem));
+
+				/* skip, otherwise dwarf thinks we've a field and messes up */
+				if(!dmem->spel)
+					continue;
+
+				dwarf_start(st); {
+					dwarf_abbrev_start(st, DW_TAG_member, DW_CHILDREN_no); {
+						struct dwarf_block offset;
+						struct dwarf_block_ent offset_data[2];
+
+						dwarf_attr(st,
+								DW_AT_name, DW_FORM_string,
+								dmem->spel);
+
+						dwarf_attr(st,
+								DW_AT_type, DW_FORM_ref4,
+								mem_offsets[i]);
+
+						offset_data[0].type = BLOCK_N;
+						offset_data[0].bits.n = DW_OP_plus_uconst;
+						offset_data[1].type = BLOCK_LEB128;
+						offset_data[1].bits.n = dmem->struct_offset;
+
+						offset.cnt = 2;
+						offset.vals = offset_data;
+
+						dwarf_attr(st,
+								DW_AT_data_member_location, DW_FORM_block1,
+								&offset);
+
+						/* bitfield */
+						if(dmem->field_width){
+							unsigned width = const_fold_val_i(dmem->field_width);
+							unsigned whole_sz = type_ref_size(dmem->ref, NULL);
+
+							/* address of top-end */
+							unsigned off =
+								(whole_sz * CHAR_BIT)
+								- (width + dmem->struct_offset_bitfield);
+
+							dwarf_help(st, "bitfield %u-%u (sz=%u off=%u)",
+									width + dmem->struct_offset_bitfield,
+									dmem->struct_offset_bitfield,
+									off, width);
+
+							dwarf_attr(st,
+									DW_AT_bit_offset, DW_FORM_data1,
+									off);
+
+							dwarf_attr(st,
+									DW_AT_bit_size, DW_FORM_data1,
+									width);
+						}
+
+						dwarf_attr(st,
+								DW_AT_accessibility, DW_FORM_flag,
+								DW_ACCESS_public);
+
+					} dwarf_sec_end(&st->abbrev);
+				} dwarf_end(st);
+			}
+
+			dwarf_sibling_pop(st);
+			free(mem_offsets);
+			break;
+		}
+	}
+}
+
 static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 {
 	unsigned this_start;
@@ -552,135 +692,7 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 			this_start = st->info.length;
 
 			if(sue){
-				switch(sue->primitive){
-					default:
-						ucc_unreach(0);
-
-					case type_enum:
-					{
-						sue_member **i;
-
-						dwarf_help(st, "%s header", sue->spel);
-						dwarf_sue_header(st, sue, DW_TAG_enumeration_type);
-
-						/* enumerators */
-						for(i = sue->members; i && *i; i++){
-							enum_member *emem = (*i)->enum_member;
-
-							dwarf_help(st, "  %s::%s", sue->spel, emem->spel);
-
-							dwarf_start(st); {
-								dwarf_abbrev_start(st, DW_TAG_enumerator, DW_CHILDREN_no); {
-									dwarf_attr(st,
-											DW_AT_name, DW_FORM_string,
-											emem->spel);
-
-									dwarf_attr(st,
-											DW_AT_const_value, DW_FORM_data4,
-											(long long)const_fold_val_i(emem->val));
-
-								} dwarf_sec_end(&st->abbrev);
-							} dwarf_end(st);
-						}
-
-						dwarf_sibling_pop(st);
-						break;
-					}
-
-					case type_union:
-					case type_struct:
-					{
-						const size_t nmem = dynarray_count(sue->members);
-						sue_member **si;
-						unsigned i;
-						unsigned *mem_offsets = nmem ? umalloc(nmem * sizeof *mem_offsets) : NULL;
-
-						/* member types */
-						for(i = 0; i < nmem; i++)
-							mem_offsets[i] = dwarf_type(st, sue->members[i]->struct_member->ref);
-
-						/* must update since we might've output extra type information */
-						this_start = st->info.length;
-
-						dwarf_help(st, "%s header", sue->spel);
-						dwarf_sue_header(
-								st, sue,
-								sue->primitive == type_struct
-									? DW_TAG_structure_type
-									: DW_TAG_union_type);
-
-						/* members */
-						for(i = 0, si = sue->members; i < nmem; i++, si++){
-							decl *dmem = (*si)->struct_member;
-
-							dwarf_help(st, "  %s::%s", sue->spel, decl_to_str(dmem));
-
-							/* skip, otherwise dwarf thinks we've a field and messes up */
-							if(!dmem->spel)
-								continue;
-
-							dwarf_start(st); {
-								dwarf_abbrev_start(st, DW_TAG_member, DW_CHILDREN_no); {
-									struct dwarf_block offset;
-									struct dwarf_block_ent offset_data[2];
-
-									dwarf_attr(st,
-											DW_AT_name, DW_FORM_string,
-											dmem->spel);
-
-									dwarf_attr(st,
-											DW_AT_type, DW_FORM_ref4,
-											mem_offsets[i]);
-
-									offset_data[0].type = BLOCK_N;
-									offset_data[0].bits.n = DW_OP_plus_uconst;
-									offset_data[1].type = BLOCK_LEB128;
-									offset_data[1].bits.n = dmem->struct_offset;
-
-									offset.cnt = 2;
-									offset.vals = offset_data;
-
-									dwarf_attr(st,
-											DW_AT_data_member_location, DW_FORM_block1,
-											&offset);
-
-									/* bitfield */
-									if(dmem->field_width){
-										unsigned width = const_fold_val_i(dmem->field_width);
-										unsigned whole_sz = type_ref_size(dmem->ref, NULL);
-
-										/* address of top-end */
-										unsigned off =
-											(whole_sz * CHAR_BIT)
-											- (width + dmem->struct_offset_bitfield);
-
-										dwarf_help(st, "bitfield %u-%u (sz=%u off=%u)",
-												width + dmem->struct_offset_bitfield,
-												dmem->struct_offset_bitfield,
-												off, width);
-
-										dwarf_attr(st,
-												DW_AT_bit_offset, DW_FORM_data1,
-												off);
-
-										dwarf_attr(st,
-												DW_AT_bit_size, DW_FORM_data1,
-												width);
-									}
-
-									dwarf_attr(st,
-											DW_AT_accessibility, DW_FORM_flag,
-											DW_ACCESS_public);
-
-								} dwarf_sec_end(&st->abbrev);
-							} dwarf_end(st);
-						}
-
-						dwarf_sibling_pop(st);
-						free(mem_offsets);
-						break;
-					}
-				}
+				dwarf_suetype(st, sue, &this_start);
 
 			}else{
 				dwarf_basetype(st, ty->bits.type->primitive);
