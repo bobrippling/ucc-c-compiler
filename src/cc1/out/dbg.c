@@ -931,7 +931,7 @@ static void dwarf_stmt_scope(struct dwarf_state *st, stmt *code)
 
 static void dwarf_subprogram_func(struct dwarf_state *st, decl *d)
 {
-	unsigned typos = dwarf_type(st, d->ref);
+	unsigned typos = dwarf_type(st, type_ref_func_call(d->ref, NULL));
 
 	dwarf_start(st); {
 		dwarf_abbrev_start(st, DW_TAG_subprogram, DW_CHILDREN_yes); {
