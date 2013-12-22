@@ -23,6 +23,8 @@
 
 #include "../defs.h" /* CHAR_BIT */
 
+#include "leb.h" /* leb128 */
+
 #include "lbl.h"
 #include "dbg.h"
 #include "write.h" /* dbg_add_file */
@@ -43,7 +45,8 @@ struct dwarf_state
 				DWARF_SIBLING = 10,
 				DWARF_ADDR_STR = 11,
 				DWARF_HELP = 12,
-				DWARF_LEB128 = 13,
+				DWARF_LEB128_U = 13,
+				DWARF_LEB128_S = 14,
 			} val_type;
 			union
 			{
@@ -77,11 +80,12 @@ struct dwarf_block /* DW_FORM_block1 */
 		{
 			BLOCK_N,
 			BLOCK_ADDR_STR,
-			BLOCK_LEB128
+			BLOCK_LEB128_S,
+			BLOCK_LEB128_U,
 		} type;
 		union
 		{
-			unsigned n;
+			unsigned long long n;
 			char *addr_str;
 		} bits;
 	} *vals;
@@ -233,29 +237,16 @@ static void dwarf_add_value(
 	sec->length += val_type;
 }
 
-static unsigned dwarf_leb128_length(unsigned long long value)
-{
-	unsigned len;
-	for(len = 0;;){
-		value >>= 7;
-
-		len++;
-		if(value) /* more */
-			continue;
-		break;
-	}
-	return len;
-}
-
 static void dwarf_add_leb128(
-		struct dwarf_sec *sec, unsigned long long value)
+		struct dwarf_sec *sec, unsigned long long value,
+		int is_signed)
 {
 	struct dwarf_val *val = dwarf_value_new(sec);
 
-	val->val_type = DWARF_LEB128;
+	val->val_type = is_signed ? DWARF_LEB128_S : DWARF_LEB128_U;
 	val->bits.value = value;
 
-	sec->length += dwarf_leb128_length(value);
+	sec->length += leb128_length(value, is_signed);
 }
 
 static void dwarf_add_str(struct dwarf_sec *sec, char *str)
@@ -372,8 +363,10 @@ static void dwarf_attr(
 
 			for(i = 0; i < blk->cnt; i++)
 				switch(blk->vals[i].type){
-					case BLOCK_LEB128:
-						len += dwarf_leb128_length(blk->vals[i].bits.n);
+					case BLOCK_LEB128_S: sz = 1; goto leb_sum;
+					case BLOCK_LEB128_U: sz = 0; goto leb_sum;
+leb_sum:
+						len += leb128_length(blk->vals[i].bits.n, sz);
 						break;
 					case BLOCK_N:
 						dwarf_smallest(blk->vals[i].bits.n, &sz);
@@ -389,8 +382,10 @@ static void dwarf_attr(
 
 			for(i = 0; i < blk->cnt; i++){
 				switch(blk->vals[i].type){
-					case BLOCK_LEB128:
-						dwarf_add_leb128(&st->info, blk->vals[i].bits.n);
+					case BLOCK_LEB128_S: sz = 1; goto leb_out;
+					case BLOCK_LEB128_U: sz = 0; goto leb_out;
+leb_out:
+						dwarf_add_leb128(&st->info, blk->vals[i].bits.n, sz);
 						break;
 					case BLOCK_N:
 					{
@@ -629,7 +624,7 @@ static void dwarf_suetype(
 
 						offset_data[0].type = BLOCK_N;
 						offset_data[0].bits.n = DW_OP_plus_uconst;
-						offset_data[1].type = BLOCK_LEB128;
+						offset_data[1].type = BLOCK_LEB128_U;
 						offset_data[1].bits.n = dmem->struct_offset;
 
 						offset.cnt = 2;
@@ -1034,28 +1029,13 @@ o_common:
 				break;
 			}
 
-			case DWARF_LEB128:
 			{
-				unsigned long long v = val->bits.value;
-				const char *join = "";
-
+				int sig;
+			case DWARF_LEB128_S: sig = 1; goto leb;
+			case DWARF_LEB128_U: sig = 0; goto leb;
+leb:
 				fputs(".byte ", f);
-				for(;;){
-					unsigned char byte = v & 0x7f;
-
-					v >>= 7;
-					if(v){
-						/* more */
-						byte |= 0x80; /* 0b_1000_0000 */
-					}
-
-					fprintf(f, "%s%d", join, byte);
-					join = ", ";
-
-					if(byte & 0x80)
-						continue;
-					break;
-				}
+				leb128_out(f, val->bits.value, sig);
 				fprintf(f, " # uleb128 of %llu\n", val->bits.value);
 				break;
 			}
@@ -1093,7 +1073,8 @@ static void dwarf_sec_free(struct dwarf_sec *sec)
 				case DWARF_LONG:
 				case DWARF_QUAD:
 				case DWARF_SIBLING:
-				case DWARF_LEB128:
+				case DWARF_LEB128_S:
+				case DWARF_LEB128_U:
 					break;
 				case DWARF_ADDR_STR:
 					free(val->bits.addr_str);
