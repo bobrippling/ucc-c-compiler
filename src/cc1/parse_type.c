@@ -248,11 +248,6 @@ static void btype_set_store(
 	*pstore_set = 1;
 }
 
-#define PARSE_BTYPE(mode, ps, pa, ndecl)                 \
-parse_btype(mode & DECL_MULTI_ALLOW_STORE   ? ps : NULL, \
-            mode & DECL_MULTI_ALLOW_ALIGNAS ? pa : NULL, \
-            ndecl)
-
 static type_ref *parse_btype(
 		enum decl_storage *store, struct decl_align **palign,
 		int newdecl_context)
@@ -983,7 +978,10 @@ static decl *parse_decl_extra(
 decl *parse_decl_single(enum decl_mode mode, int newdecl)
 {
 	enum decl_storage store = store_default;
-	type_ref *r = PARSE_BTYPE(mode, &store, NULL /* align */, newdecl);
+	type_ref *r = parse_btype(
+			mode & DECL_ALLOW_STORE ? &store : NULL,
+			/*align:*/NULL,
+			newdecl);
 
 	if(!r){
 		if((mode & DECL_CAN_DEFAULT) == 0)
@@ -1141,7 +1139,10 @@ int parse_decls_single_type(
 
 	parse_static_assert();
 
-	this_ref = PARSE_BTYPE(mode, &store, &align, newdecl);
+	this_ref = parse_btype(
+			mode & DECL_MULTI_ALLOW_STORE ? &store : NULL,
+			mode & DECL_MULTI_ALLOW_ALIGNAS ? &align : NULL,
+			newdecl);
 
 	if(!this_ref){
 		/* can_default makes sure we don't parse { int *p; *p = 5; } the latter as a decl */
