@@ -94,7 +94,9 @@ struct dwarf_block /* DW_FORM_block1 */
 enum dwarf_block_ops
 {
 	DW_OP_plus_uconst = 0x23,
-	DW_OP_addr = 0x3
+	DW_OP_addr = 0x3,
+
+	DW_OP_breg6 = 0x76,
 };
 
 enum dwarf_key
@@ -704,8 +706,19 @@ static void dwarf_type_func_end(
 			dwarf_abbrev_start(st, DW_TAG_formal_parameter, DW_CHILDREN_no); {
 
 				dwarf_attr(st, DW_AT_type, DW_FORM_ref4, (*ptyarray)[i]);
-				if(param->spel)
+				if(param->spel){
+					struct dwarf_block locn;
+					struct dwarf_block_ent locn_data[] = {
+						{ BLOCK_N, { DW_OP_breg6 }}, /* rbp */
+						{ BLOCK_LEB128_S, { param->sym->loc.arg_offset }},
+					};
+
+					locn.cnt = ARRAY_LEN(locn_data);
+					locn.vals = locn_data;
+					dwarf_attr(st, DW_AT_location, DW_FORM_block1, &locn);
+
 					dwarf_attr(st, DW_AT_name, DW_FORM_string, param->spel);
+				}
 
 			} dwarf_sec_end(&st->abbrev);
 		} dwarf_end(st);
