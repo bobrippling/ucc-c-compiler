@@ -625,10 +625,24 @@ static int parse_curtok_is_type(void)
 static decl *parse_arg_decl(void)
 {
 	/* argument decls can default to int */
-	const enum decl_mode flags = DECL_CAN_DEFAULT;
+	const enum decl_mode flags = DECL_CAN_DEFAULT | DECL_ALLOW_STORE;
 	decl *argdecl = parse_decl_single(flags, 0);
+
 	if(!argdecl)
 		die_at(NULL, "type expected (got %s)", token_to_str(curtok));
+
+	switch(argdecl->store & STORE_MASK_STORE){
+		default:
+			parse_had_error = 1;
+			warn_at_print_error(NULL, "%s storage on parameter",
+					decl_store_to_str(argdecl->store));
+			break;
+
+		case store_default:/* aka: no store */
+		case store_register:
+			break;
+	}
+
 	return argdecl;
 }
 

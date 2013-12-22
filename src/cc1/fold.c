@@ -495,7 +495,10 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 		switch(d->store & STORE_MASK_STORE){
 			case store_register:
 			case store_auto:
-				die_at(&d->where, "%s storage for function", decl_store_to_str(d->store));
+				fold_had_error = 1;
+				warn_at_print_error(&d->where,
+						"%s storage for function",
+						decl_store_to_str(d->store));
 		}
 
 		if(stab->parent){
@@ -780,7 +783,9 @@ void fold_decl_global(decl *d, symtable *stab)
 
 		case store_auto:
 		case store_register:
-			die_at(&d->where, "invalid storage class %s on global scoped %s",
+			fold_had_error = 1;
+			warn_at_print_error(&d->where,
+					"invalid storage class '%s' on global scoped %s",
 					decl_store_to_str(d->store),
 					DECL_IS_FUNC(d) ? "function" : "variable");
 	}
