@@ -19,9 +19,9 @@ cleantest:
 	make -Ctest clean
 # no need to clean test2
 
-test: all
-	make -Ctest test
-	cd test2; sh all.sh
+check: all
+	cd test2; ./run_tests -q -i ignores .
+	# test/ pending
 
 ALL_SRC = $(shell find . -iname '*.[ch]')
 
