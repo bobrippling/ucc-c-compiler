@@ -207,81 +207,59 @@ assuming `a' is in rdi.
 Data Structures
 ---------------------------------------
 
-The expression data structre is pretty easy, an expression has a left and a right hand side, etc etc
+The expression data structre is pretty easy, an expression has a left and a
+right hand side, etc etc
 
 The complicated bit is the type/decl structure.
 
-TODO
+There are several different instances that a type_ref can be in, these are
+defined in type_ref.h. Some examples:
 
-e.g.
-	const int ***x;
-is represented as
-	decl { .spel = "x", .type = { .primitive = int, .spec = const } }
-		.decl_ptr
-			.decl_ptr
-				.decl_ptr
+int = {
+	.type = type_ref_type,
+	.bits.type = <"int" btype>      // ".bits" is the convention for unions
+}
 
-e.g.
-	int y;
-is represented as
-	decl { .spel = "y", .type = { .primitive = int } }
+char * = {
+	.type = type_ref_ptr,
+	.next = {
+		.type = type_ref_type,
+		.bits.type = <"char" btype>
+	}
+}
 
-e.g.
-	int *const z;
-is represented as
-	decl { .spel = "y", .type = { .primitive = int } }
-		.decl_ptr { .is_const = 1 }
+void (*func)() = {
+	.type = type_ref_ptr,
+	.next = {
+		.type = type_ref_func,
+		.bits.func = <information on function arguments>
 
-e.g.
-	int (*f)();
-is represented as
-	decl { .spel = "y", .type = { .primitive = int } }
-		.decl_func { .funcargs = { } }
-			.decl_ptr
-
-e.g.
-	int *(*g)(int, char);
-is represented as
-	decl { .spel = "y", .type = { .primitive = int } }
-		.decl_ptr
-			.decl_func { .funcargs = { int, char } }
-				.decl_ptr
+		.next = {
+			.type = type_ref_type,
+			.bits.type = <"void" btype>
+		}
+	}
+}
 
 
-dereferencing a decl removes its lowest decl_ptr/leaf node.
-in the case that we have:
+So stepping down the '.next' chain in type_refs, we step down the type
+structure.
 
-int **x;
-*x;
+Dereferencing a pointer type returns the .next type in the chain, calling a
+function type moves down the chain to pull out the return type, and so on.
 
-*x's decl looks like this:
+Variables are represented by the "decl" struct, which is essentially a name and
+a type:
 
-decl { .spel = "x", .type = { .primitive = int } }
-	.decl_ptr
+int a;
 
+decl = {
+	.spel = "a",
+	.ref = {
+		.type = type_ref_type,
+		.bits.type = <"int" btype>
+	}
+}
 
-int ***(*func_returning_lots)();
-	decl { .spel = "func_returning_lots", .type = { .primitive = int } }
-		.decl_ptr
-			.decl_ptr
-				.decl_ptr
-					.decl_func { .funcargs = {} }
-						.decl_ptr
-
-dereferenced and called [ (*func_returning_lots)() ], becomes:
-int ***;
-	decl { .spel = "func_returning_lots", .type = { .primitive = int } }
-		.decl_ptr
-			.decl_ptr
-				.decl_ptr
-
-
-finally:
-
-int *(*(*func_returning_fptr)(int))(char);
-	decl { .spel = "func_returning_fptr", .type = { .primitive = int } }
-		.decl_ptr
-			.decl_func { .funcargs = { char } }
-				.decl_ptr
-					.decl_func { .funcargs = { int } }
-						.decl_ptr
+Decls also hold information on things like bitfields and storage (static,
+extern, typedef, etc).
