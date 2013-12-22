@@ -175,7 +175,6 @@ static void dwarf_attr(
 static unsigned dwarf_type(
 		struct dwarf_state *st, type_ref *ty);
 
-
 static void dwarf_smallest(
 		unsigned long val, unsigned *int_sz)
 {
@@ -408,7 +407,7 @@ static void dwarf_attr(
 			dwarf_add_value(&st->info, /*long:*/4, va_arg(l, unsigned));
 			break;
 		case DW_FORM_addr:
-			dwarf_add_value(&st->info, /*quad:*/8, (long)va_arg(l, void *));
+			dwarf_add_addr_str(&st->info, va_arg(l, char *));
 			break;
 		{
 			unsigned sz;
@@ -829,15 +828,21 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 	return this_start;
 }
 
-static void dwarf_cu(struct dwarf_state *st, const char *fname)
+static void dwarf_cu(
+		struct dwarf_state *st, const char *fname,
+		const char *lbl_first_insn, const char *lbl_last_insn)
 {
 	dwarf_start(st); {
 		dwarf_abbrev_start(st, DW_TAG_compile_unit, DW_CHILDREN_yes); {
 			dwarf_attr(st, DW_AT_producer, DW_FORM_string, "ucc development version");
 			dwarf_attr(st, DW_AT_language, DW_FORM_data2, DW_LANG_C99);
 			dwarf_attr(st, DW_AT_name, DW_FORM_string, fname);
-			dwarf_attr(st, DW_AT_low_pc, DW_FORM_addr, 12345); /* TODO */
-			dwarf_attr(st, DW_AT_high_pc, DW_FORM_addr, 54321);
+
+			if(lbl_first_insn){
+				dwarf_attr(st, DW_AT_low_pc, DW_FORM_addr, ustrdup(lbl_first_insn));
+				dwarf_attr(st, DW_AT_high_pc, DW_FORM_addr, ustrdup(lbl_last_insn));
+			}
+
 		} dwarf_sec_end(&st->abbrev);
 	} dwarf_end(st);
 }
@@ -941,8 +946,8 @@ static void dwarf_subprogram_func(struct dwarf_state *st, decl *d)
 
 			dwarf_attr_decl(st, d, typos, /*show_extern:*/1);
 
-			dwarf_attr_lbl(st, DW_AT_low_pc, ustrdup(asmsp));
-			dwarf_attr_lbl(st, DW_AT_high_pc, out_dbg_func_end(asmsp));
+			dwarf_attr(st, DW_AT_low_pc, DW_FORM_addr, ustrdup(asmsp));
+			dwarf_attr(st, DW_AT_high_pc, DW_FORM_addr, out_dbg_func_end(asmsp));
 
 		} dwarf_sec_end(&st->abbrev);
 	} dwarf_end(st);
@@ -1100,7 +1105,20 @@ void out_dbginfo(symtable_global *globs, const char *fname)
 	dwarf_info_header(&st.info, cc_out[SECTION_DBG_INFO]);
 
 	/* output abbrev Compile Unit header */
-	dwarf_cu(&st, fname);
+	{
+		const char *lbl1 = NULL, *lblN = NULL;
+		decl **diter;
+
+		for(diter = globs->stab.decls; diter && *diter; diter++){
+			if(!lbl1)
+				lbl1 = decl_asm_spel(*diter);
+
+			if(!diter[1])
+				lblN = decl_asm_spel(*diter);
+		}
+
+		dwarf_cu(&st, fname, lbl1, lblN);
+	}
 
 	/* output subprograms */
 	{
