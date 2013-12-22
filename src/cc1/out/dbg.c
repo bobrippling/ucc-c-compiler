@@ -921,24 +921,6 @@ static void dwarf_attr_decl(
 				(d->store & STORE_MASK_STORE) != store_static);
 }
 
-static void dwarf_attr_lbl(
-		struct dwarf_state *st,
-		int dwtype, char *lbl)
-{
-	struct dwarf_block locn;
-	struct dwarf_block_ent locn_data[2];
-
-	locn_data[0].type = BLOCK_N;
-	locn_data[0].bits.n = DW_OP_addr;
-
-	locn_data[1].type = BLOCK_ADDR_STR;
-	locn_data[1].bits.addr_str = lbl;
-
-	locn.cnt = 2;
-	locn.vals = locn_data;
-	dwarf_attr(st, dwtype, DW_FORM_block1, &locn);
-}
-
 static void dwarf_global_variable(struct dwarf_state *st, decl *d)
 {
 	enum decl_storage const store = d->store & STORE_MASK_STORE;
@@ -962,7 +944,18 @@ static void dwarf_global_variable(struct dwarf_state *st, decl *d)
 
 			/* typedefs don't exist in the file, or have extern properties */
 			if(!tdef){
-				dwarf_attr_lbl(st, DW_AT_location, ustrdup(d->spel));
+				struct dwarf_block locn;
+				struct dwarf_block_ent locn_data[2];
+
+				locn_data[0].type = BLOCK_N;
+				locn_data[0].bits.n = DW_OP_addr;
+
+				locn_data[1].type = BLOCK_ADDR_STR;
+				locn_data[1].bits.addr_str = ustrdup(d->spel);
+
+				locn.cnt = 2;
+				locn.vals = locn_data;
+				dwarf_attr(st, DW_AT_location, DW_FORM_block1, &locn);
 			}
 
 		} dwarf_sec_end(&st->abbrev);
