@@ -678,6 +678,47 @@ static void dwarf_suetype(
 	}
 }
 
+static void dwarf_type_func_begin(
+		struct dwarf_state *st,
+		funcargs *args, unsigned **ptyarray)
+{
+	size_t i;
+	unsigned *param_typos;
+
+	param_typos = umalloc(dynarray_count(args->arglist) * sizeof *param_typos);
+
+	/* generate the types for all params first */
+	for(i = 0; args->arglist && args->arglist[i]; i++){
+		decl *param = args->arglist[i];
+		param_typos[i] = dwarf_type(st, param->ref);
+	}
+
+	*ptyarray = param_typos;
+}
+
+static void dwarf_type_func_end(
+		struct dwarf_state *st,
+		funcargs *args, unsigned **ptyarray)
+{
+	size_t i;
+
+	for(i = 0; args->arglist && args->arglist[i]; i++){
+		decl *param = args->arglist[i];
+
+		dwarf_start(st); {
+			dwarf_abbrev_start(st, DW_TAG_formal_parameter, DW_CHILDREN_no); {
+
+				dwarf_attr(st, DW_AT_type, DW_FORM_ref4, (*ptyarray)[i]);
+				if(param->spel)
+					dwarf_attr(st, DW_AT_name, DW_FORM_string, param->spel);
+
+			} dwarf_sec_end(&st->abbrev);
+		} dwarf_end(st);
+	}
+
+	free(*ptyarray), *ptyarray = NULL;
+}
+
 static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 {
 	unsigned this_start;
@@ -747,11 +788,12 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 
 		case type_ref_func:
 		{
-			decl **i;
 			const unsigned pos_ref = dwarf_type(st, ty->ref);
-			/*pos_sibling = pos_ref + ??? */
+			unsigned *param_typos;
 
 			this_start = st->info.length;
+
+			dwarf_type_func_begin(st, ty->bits.func.args, &param_typos);
 
 			dwarf_start(st); {
 				dwarf_abbrev_start(st, DW_TAG_subroutine_type, DW_CHILDREN_no); {
@@ -761,18 +803,7 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 				} dwarf_sec_end(&st->abbrev);
 			} dwarf_end(st);
 
-			for(i = ty->bits.func.args->arglist;
-			    i && *i;
-			    i++)
-			{
-				const unsigned sub_pos = dwarf_type(st, (*i)->ref);
-
-				dwarf_start(st); {
-					dwarf_abbrev_start(st, DW_TAG_formal_parameter, DW_CHILDREN_no); {
-						dwarf_attr(st, DW_AT_type, DW_FORM_ref4, sub_pos);
-					} dwarf_sec_end(&st->abbrev);
-				} dwarf_end(st);
-			}
+			dwarf_type_func_end(st, ty->bits.func.args, &param_typos);
 			break;
 		}
 
@@ -947,7 +978,12 @@ static void dwarf_stmt_scope(struct dwarf_state *st, stmt *code)
 static void dwarf_subprogram_func(struct dwarf_state *st, decl *d)
 {
 	unsigned typos = dwarf_type(st, type_ref_func_call(d->ref, NULL));
+	funcargs *args = type_ref_funcargs(d->ref);
+	unsigned *param_typos;
 
+	dwarf_type_func_begin(st, args, &param_typos);
+
+	/* generate the DW_TAG_subprogram */
 	dwarf_start(st); {
 		dwarf_abbrev_start(st, DW_TAG_subprogram, DW_CHILDREN_yes); {
 			const char *asmsp = decl_asm_spel(d);
@@ -962,7 +998,10 @@ static void dwarf_subprogram_func(struct dwarf_state *st, decl *d)
 		} dwarf_sec_end(&st->abbrev);
 	} dwarf_end(st);
 
-	/* siblings: */
+	/* formal parameters */
+	dwarf_type_func_end(st, args, &param_typos);
+
+	/* lexical scope */
 	dwarf_stmt_scope(st, d->func_code);
 
 	dwarf_sibling_pop(st);
