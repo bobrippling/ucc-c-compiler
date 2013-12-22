@@ -264,7 +264,13 @@ void preproc(char *in, char *out, char **args)
 			free(this);
 	}
 
+#if 0
 	make_cmdpath(&pp_path, "cpp", UCC_CPP);
+#else
+	/* use the system preproc. for now */
+	pp_path.type = USE_PATH;
+	pp_path.path = "cpp";
+#endif
 
 	runner_single_arg(&pp_path, in, out, all);
 
