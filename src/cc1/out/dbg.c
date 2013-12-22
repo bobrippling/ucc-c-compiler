@@ -1045,9 +1045,11 @@ static void dwarf_sec_free(struct dwarf_sec *sec)
 				case DWARF_WORD:
 				case DWARF_LONG:
 				case DWARF_QUAD:
-				case DWARF_ADDR_STR:
 				case DWARF_SIBLING:
 				case DWARF_LEB128:
+					break;
+				case DWARF_ADDR_STR:
+					free(val->bits.addr_str);
 					break;
 				case DWARF_STR:
 					free(val->bits.str);
