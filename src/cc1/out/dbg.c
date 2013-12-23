@@ -55,20 +55,17 @@ struct dwarf_state
 				unsigned long long value;
 				char *str; /* FREE */
 				char *addr_str; /* FREE */
-				unsigned sibling_pos; /* filled in later */
 				char *help; /* FREE */
 			} bits;
 
-			unsigned sibling_nest;
 			int indent_adj;
 		} *values; /* FREE */
 		size_t nvalues;
 		size_t length;
 
 		int last_idx;
-		unsigned current_sibling_nest;
 	} abbrev, info;
-#define DWARF_SEC_INIT() { NULL, 0, 0, 1, 0 }
+#define DWARF_SEC_INIT() { NULL, 0, 0, 1 }
 
 	dynmap *type_ref_to_off; /* type_ref * => unsigned * */
 };
@@ -292,8 +289,7 @@ static void dwarf_sibling_push(struct dwarf_state *st)
 		/* val is the DW_FORM_ref4 entry in the info section */
 
 		val->val_type = DWARF_SIBLING; /* will have been DWARF_LONG */
-		val->bits.sibling_pos = 0; /* to update */
-		val->sibling_nest = ++sec->current_sibling_nest;
+		val->bits.value = 0; /* to update */
 	}
 }
 
@@ -307,14 +303,12 @@ static void dwarf_sibling_pop(struct dwarf_state *st)
 	for(i = sec->nvalues - 1;; i--){
 		struct dwarf_val *val = &sec->values[i];
 
-		if(val->sibling_nest == sec->current_sibling_nest){
+		if(val->val_type == DWARF_SIBLING){
 			/* found */
+			val->val_type = DWARF_LONG;
 
-			/* restore sibling */
-			sec->current_sibling_nest--;
-
-			/* update previous sibling offset */
-			val->bits.sibling_pos = sec->length + 1 /* include the child mark */;
+			/* update sibling offset */
+			val->bits.value = sec->length + 1 /* include the child mark */;
 			break;
 		}
 
@@ -1070,12 +1064,7 @@ leb:
 			}
 
 			case DWARF_SIBLING:
-			{
-				const unsigned long pos = val->bits.sibling_pos;
-				UCC_ASSERT(pos, "unset sibling offset");
-				fprintf(f, ".long %lu\n", pos);
-				break;
-			}
+				ICE("missed sibling entry");
 
 			case DWARF_ADDR_STR:
 				fprintf(f, ".quad %s\n", val->bits.addr_str);
