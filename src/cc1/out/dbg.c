@@ -185,7 +185,7 @@ static void dwarf_attr(
 		enum dwarf_key key, enum dwarf_valty val,
 		...);
 
-static unsigned dwarf_type(
+static int dwarf_type(
 		struct dwarf_state *st, type_ref *ty);
 
 static void dwarf_smallest(
@@ -545,7 +545,7 @@ static void dwarf_sue_header(
 static void dwarf_suetype(
 		struct dwarf_state *st,
 		struct_union_enum_st *sue,
-		unsigned *pthis_start)
+		int *pthis_start)
 {
 	switch(sue->primitive){
 		default:
@@ -588,7 +588,7 @@ static void dwarf_suetype(
 			const size_t nmem = dynarray_count(sue->members);
 			sue_member **si;
 			unsigned i;
-			unsigned *mem_offsets = nmem ? umalloc(nmem * sizeof *mem_offsets) : NULL;
+			int *mem_offsets = nmem ? umalloc(nmem * sizeof *mem_offsets) : NULL;
 
 			/* member types */
 			for(i = 0; i < nmem; i++)
@@ -680,10 +680,10 @@ static void dwarf_suetype(
 
 static void dwarf_type_func_begin(
 		struct dwarf_state *st,
-		funcargs *args, unsigned **ptyarray)
+		funcargs *args, int **ptyarray)
 {
 	size_t i;
-	unsigned *param_typos;
+	int *param_typos;
 
 	param_typos = umalloc(dynarray_count(args->arglist) * sizeof *param_typos);
 
@@ -698,7 +698,7 @@ static void dwarf_type_func_begin(
 
 static void dwarf_type_func_end(
 		struct dwarf_state *st,
-		funcargs *args, unsigned **ptyarray)
+		funcargs *args, int **ptyarray)
 {
 	size_t i;
 
@@ -730,11 +730,11 @@ static void dwarf_type_func_end(
 	free(*ptyarray), *ptyarray = NULL;
 }
 
-static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
+static int dwarf_type(struct dwarf_state *st, type_ref *ty)
 {
-	unsigned this_start;
+	int this_start;
 
-	unsigned *map_ent = dynmap_get(type_ref *, unsigned *, st->type_ref_to_off, ty);
+	int *map_ent = dynmap_get(type_ref *, int *, st->type_ref_to_off, ty);
 	if(map_ent)
 		return *map_ent;
 
@@ -751,6 +751,9 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 				dwarf_suetype(st, sue, &this_start);
 
 			}else{
+				if(ty->bits.type->primitive == type_void)
+					return -1;
+
 				dwarf_basetype(st, ty->bits.type->primitive);
 			}
 			break;
@@ -759,14 +762,15 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 		case type_ref_tdef:
 			if(ty->bits.tdef.decl){
 				decl *d = ty->bits.tdef.decl;
-				const unsigned sub_pos = dwarf_type(st, d->ref);
+				const int sub_pos = dwarf_type(st, d->ref);
 
 				this_start = st->info.length;
 
 				dwarf_start(st); {
 					dwarf_abbrev_start(st, DW_TAG_typedef, DW_CHILDREN_no); {
 						dwarf_attr(st, DW_AT_name, DW_FORM_string, d->spel);
-						dwarf_attr(st, DW_AT_type, DW_FORM_ref4, sub_pos);
+						if(sub_pos != -1)
+							dwarf_attr(st, DW_AT_type, DW_FORM_ref4, sub_pos);
 					} dwarf_sec_end(&st->abbrev);
 				} dwarf_end(st);
 			}else{
@@ -778,14 +782,15 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 
 		case type_ref_ptr:
 		{
-			const unsigned sub_pos = dwarf_type(st, ty->ref);
+			const int sub_pos = dwarf_type(st, ty->ref);
 
 			this_start = st->info.length;
 
 			dwarf_start(st); {
 				dwarf_abbrev_start(st, DW_TAG_pointer_type, DW_CHILDREN_no); {
 					dwarf_attr(st, DW_AT_byte_size, DW_FORM_data4, platform_word_size());
-					dwarf_attr(st, DW_AT_type, DW_FORM_ref4, sub_pos);
+					if(sub_pos != -1)
+						dwarf_attr(st, DW_AT_type, DW_FORM_ref4, sub_pos);
 				} dwarf_sec_end(&st->abbrev);
 			} dwarf_end(st);
 			break;
@@ -799,8 +804,8 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 
 		case type_ref_func:
 		{
-			const unsigned pos_ref = dwarf_type(st, ty->ref);
-			unsigned *param_typos;
+			const int pos_ref = dwarf_type(st, ty->ref);
+			int *param_typos;
 
 			this_start = st->info.length;
 
@@ -809,7 +814,8 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 			dwarf_start(st); {
 				dwarf_abbrev_start(st, DW_TAG_subroutine_type, DW_CHILDREN_no); {
 					/*dwarf_attr(st, DW_AT_sibling, DW_FORM_ref4, pos_sibling);*/
-					dwarf_attr(st, DW_AT_type, DW_FORM_ref4, pos_ref);
+					if(pos_ref != -1)
+						dwarf_attr(st, DW_AT_type, DW_FORM_ref4, pos_ref);
 					dwarf_attr(st, DW_AT_prototyped, DW_FORM_flag, 1);
 				} dwarf_sec_end(&st->abbrev);
 			} dwarf_end(st);
@@ -822,7 +828,7 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 		{
 			int have_sz = !!ty->bits.array.size;
 			integral_t sz;
-			const unsigned sub_pos = dwarf_type(st, ty->ref);
+			const int sub_pos = dwarf_type(st, ty->ref);
 
 			this_start = st->info.length;
 
@@ -831,6 +837,7 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 
 			dwarf_start(st); {
 				dwarf_abbrev_start(st, DW_TAG_array_type, DW_CHILDREN_yes); {
+					/* should never have array of void */
 					dwarf_attr(st, DW_AT_type, DW_FORM_ref4, sub_pos);
 					dwarf_sibling_push(st);
 				} dwarf_sec_end(&st->abbrev);
@@ -851,7 +858,7 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 
 		case type_ref_cast:
 		{
-			const unsigned sub_pos = dwarf_type(st, ty->ref);
+			const int sub_pos = dwarf_type(st, ty->ref);
 			this_start = st->info.length;
 
 			if(ty->bits.cast.is_signed_cast){
@@ -859,7 +866,8 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 			}else{
 				dwarf_start(st); {
 					dwarf_abbrev_start(st, DW_TAG_const_type, DW_CHILDREN_no); {
-						dwarf_attr(st, DW_AT_type, DW_FORM_ref4, sub_pos);
+						if(sub_pos != -1)
+							dwarf_attr(st, DW_AT_type, DW_FORM_ref4, sub_pos);
 					} dwarf_sec_end(&st->abbrev);
 				} dwarf_end(st);
 			}
@@ -869,7 +877,7 @@ static unsigned dwarf_type(struct dwarf_state *st, type_ref *ty)
 
 	map_ent = umalloc(sizeof *map_ent);
 	*map_ent = this_start;
-	dynmap_set(type_ref *, unsigned *, st->type_ref_to_off, ty, map_ent);
+	dynmap_set(type_ref *, int *, st->type_ref_to_off, ty, map_ent);
 
 	return this_start;
 }
@@ -918,10 +926,12 @@ static void dwarf_info_footer(struct dwarf_sec *sec, FILE *f)
 static void dwarf_attr_decl(
 		struct dwarf_state *st,
 		decl *d,
-		unsigned typos, int show_extern)
+		int typos, int show_extern)
 {
 	dwarf_attr(st, DW_AT_name, DW_FORM_string, d->spel);
-	dwarf_attr(st, DW_AT_type, DW_FORM_ref4, typos);
+
+	if(typos != -1)
+		dwarf_attr(st, DW_AT_type, DW_FORM_ref4, typos);
 
 	dwarf_attr(st, DW_AT_decl_file,
 			DW_FORM_data1, dbg_add_file(d->where.fname, NULL));
@@ -937,7 +947,7 @@ static void dwarf_attr_decl(
 static void dwarf_global_variable(struct dwarf_state *st, decl *d)
 {
 	enum decl_storage const store = d->store & STORE_MASK_STORE;
-	unsigned typos;
+	int typos;
 
 	if(!d->spel)
 		return;
@@ -983,9 +993,9 @@ static void dwarf_stmt_scope(struct dwarf_state *st, stmt *code)
 
 static void dwarf_subprogram_func(struct dwarf_state *st, decl *d)
 {
-	unsigned typos = dwarf_type(st, type_ref_func_call(d->ref, NULL));
+	int typos = dwarf_type(st, type_ref_func_call(d->ref, NULL));
 	funcargs *args = type_ref_funcargs(d->ref);
-	unsigned *param_typos;
+	int *param_typos;
 
 	dwarf_type_func_begin(st, args, &param_typos);
 
