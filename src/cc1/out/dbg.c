@@ -1054,7 +1054,8 @@ o_common:
 leb:
 				fputs(".byte ", f);
 				leb128_out(f, val->bits.value, sig);
-				fprintf(f, " # uleb128 of %llu\n", val->bits.value);
+				fprintf(f, " # %cleb128 of 0x%llx\n",
+						"us"[!!sig], val->bits.value);
 				break;
 			}
 
