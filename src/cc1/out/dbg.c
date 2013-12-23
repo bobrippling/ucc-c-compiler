@@ -29,6 +29,8 @@
 #include "dbg.h"
 #include "write.h" /* dbg_add_file */
 
+#define DEBUG_LINE_MARKER ".Ldbg_line0"
+
 struct dwarf_state
 {
 	struct dwarf_sec
@@ -127,6 +129,7 @@ enum dwarf_key
 	DW_AT_decl_file = 0x3a,
 	DW_AT_decl_line = 0x3b,
 
+	DW_AT_stmt_list = 0x10,
 	DW_AT_name = 0x3,
 	DW_AT_language = 0x13,
 	DW_AT_low_pc = 0x11,
@@ -881,6 +884,8 @@ static void dwarf_cu(
 			dwarf_attr(st, DW_AT_language, DW_FORM_data2, DW_LANG_C99);
 			dwarf_attr(st, DW_AT_name, DW_FORM_string, fname);
 
+			dwarf_attr(st, DW_AT_stmt_list, DW_FORM_addr, ustrdup(DEBUG_LINE_MARKER));
+
 			if(lbl_first_insn){
 				dwarf_attr(st, DW_AT_low_pc, DW_FORM_addr, ustrdup(lbl_first_insn));
 				dwarf_attr(st, DW_AT_high_pc, DW_FORM_addr, ustrdup(lbl_last_insn));
@@ -1175,6 +1180,8 @@ void out_dbginfo(symtable_global *globs, const char *fname)
 	dwarf_flush(&st.info, cc_out[SECTION_DBG_INFO]);
 
 	dwarf_info_footer(&st.info, cc_out[SECTION_DBG_INFO]);
+
+	fprintf(cc_out[SECTION_DBG_LINE], DEBUG_LINE_MARKER ":\n");
 
 	dwarf_st_free(&st);
 }
