@@ -1148,17 +1148,26 @@ void out_dbginfo(symtable_global *globs, const char *fname)
 	/* output abbrev Compile Unit header */
 	{
 		const char *lbl1 = NULL, *lblN = NULL;
+		char *free_me = NULL;
 		decl **diter;
 
 		for(diter = globs->stab.decls; diter && *diter; diter++){
 			if(!lbl1)
 				lbl1 = decl_asm_spel(*diter);
 
-			if(!diter[1])
-				lblN = decl_asm_spel(*diter);
+			if(!diter[1]){
+				decl *d = *diter;
+
+				/* if it's a function, we want the end */
+				if(DECL_IS_FUNC(d))
+					lblN = free_me = out_dbg_func_end(decl_asm_spel(d));
+				else
+					lblN = decl_asm_spel(d);
+			}
 		}
 
 		dwarf_cu(&st, fname, lbl1, lblN);
+		free(free_me);
 	}
 
 	/* output subprograms */
