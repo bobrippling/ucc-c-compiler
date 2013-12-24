@@ -46,7 +46,8 @@
 	X(DW_TAG_union_type, 0x17)           \
 	X(DW_TAG_variable, 0x34)             \
 	X(DW_TAG_formal_parameter, 0x5)      \
-	X(DW_TAG_member, 0xd)
+	X(DW_TAG_member, 0xd)                \
+	X(DW_TAG_lexical_block, 0x0b)
 
 #define DW_ATTRS                       \
 	X(DW_AT_data_member_location, 0x38)  \
@@ -798,17 +799,65 @@ static struct DIE *dwarf_global_variable(struct DIE_compile_unit *cu, decl *d)
 	return vardie;
 }
 
-#if 0
-static void dwarf_stmt_scope(struct dwarf_state *st, stmt *code)
+static struct DIE *dwarf_stmt_scope(
+		struct DIE_compile_unit *cu, stmt *code)
 {
-	(void)st;
-	(void)code;
+	struct DIE *lexblk;
+	decl **di;
+	stmt **si;
+
+	if(!code || !stmt_kind(code, code))
+		return NULL;
+
+	lexblk = dwarf_die_new(DW_TAG_lexical_block);
+
+	/*dwarf_attr(cu, DW_AT_low_pc, DW_FORM_data4, 0);*/
+
+	/* generate variable DIEs */
+	for(di = code->symtab->decls; di && *di; di++){
+		decl *d = *di;
+		struct DIE *var = dwarf_die_new(DW_TAG_variable);
+
+		struct dwarf_block_ent *locn_ents;
+		struct dwarf_block *locn;
+
+		locn = umalloc(sizeof *locn);
+		locn_ents = umalloc(2 * sizeof *locn_ents);
+
+		locn->cnt = 2;
+		locn->ents = locn_ents;
+
+		locn_ents[0].type = BLOCK_HEADER;
+		locn_ents[0].bits.v = DW_OP_breg6; /* rbp */
+
+		/* XXX FIXME HACK: the -16 is horrible, we need to get
+		 * out.c:stack_local_offset, nicely.
+		 */
+		locn_ents[1].type = BLOCK_LEB128_S;
+		locn_ents[1].bits.v = -(long)d->sym->loc.stack_pos - 16;
+
+		dwarf_attr_decl(cu, var, d, d->ref, /*show_extern:*/0);
+
+		dwarf_attr(var, DW_AT_location, DW_FORM_block1, locn);
+
+		dwarf_child(lexblk, var);
+	}
+
+	/* children lex_scope DIEs */
+	for(si = code->codes; si && *si; si++){
+		struct DIE *child = dwarf_stmt_scope(cu, *si);
+
+		if(child)
+			dwarf_child(lexblk, child);
+	}
+
+	return lexblk;
 }
-#endif
 
 static struct DIE *dwarf_subprogram_func(struct DIE_compile_unit *cu, decl *d)
 {
 	struct DIE *subprog = dwarf_die_new(DW_TAG_subprogram);
+	struct DIE *lexblk;
 
 	funcargs *args = type_ref_funcargs(d->ref);
 
@@ -826,7 +875,9 @@ static struct DIE *dwarf_subprogram_func(struct DIE_compile_unit *cu, decl *d)
 		dwarf_children(subprog, dwarf_formal_params(cu, args));
 	}
 
-	//dwarf_stmt_scope(st, d->func_code);
+	lexblk = dwarf_stmt_scope(cu, d->func_code);
+	if(lexblk)
+		dwarf_child(subprog, lexblk);
 
 	return subprog;
 }
