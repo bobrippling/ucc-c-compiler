@@ -1,6 +1,26 @@
+PREFIX ?= /usr/local
+
+BINDIR = ${DESTDIR}${PREFIX}/bin
+LIBDIR = ${DESTDIR}${PREFIX}/lib/ucc
+INCDIR = ${DESTDIR}${PREFIX}/lib/ucc/include
+
 all: configure
 	make -C src
 	make -C lib
+
+install: all
+	mkdir -p ${BINDIR}
+	# TODO: setup ucc with ${LIBDIR} path
+	cp ucc ${BINDIR}
+	mkdir -p ${LIBDIR}
+	cp src/cc1/cc1 ${LIBDIR}
+	cp src/cpp2/cpp ${LIBDIR}
+	mkdir -p ${INCDIR}
+	cp include/* ${INCDIR}
+
+uninstall:
+	rm -f ${BINDIR}/ucc
+	rm -r ${LIBDIR}
 
 deps:
 	make -Csrc deps
@@ -30,4 +50,4 @@ tags: ${ALL_SRC}
 
 -include bootstrap.mak
 
-.PHONY: all clean cleanall configure
+.PHONY: all clean cleanall configure install uninstall
