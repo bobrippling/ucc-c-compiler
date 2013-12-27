@@ -31,73 +31,77 @@
 
 #define DEBUG_LINE_MARKER ".Ldbg_line0"
 
+#define DW_TAGS                        \
+	X(DW_TAG_compile_unit, 0x11)         \
+	X(DW_TAG_subprogram, 0x2e)           \
+	X(DW_TAG_base_type, 0x24)            \
+	X(DW_TAG_typedef, 0x16)              \
+	X(DW_TAG_pointer_type, 0xf)          \
+	X(DW_TAG_array_type, 0x1)            \
+	X(DW_TAG_subrange_type, 0x21)        \
+	X(DW_TAG_const_type, 0x26)           \
+	X(DW_TAG_subroutine_type, 0x15)      \
+	X(DW_TAG_enumeration_type, 0x4)      \
+	X(DW_TAG_enumerator, 0x28)           \
+	X(DW_TAG_structure_type, 0x13)       \
+	X(DW_TAG_union_type, 0x17)           \
+	X(DW_TAG_variable, 0x34)             \
+	X(DW_TAG_formal_parameter, 0x5)      \
+	X(DW_TAG_member, 0xd)
+
+#define DW_ATTRS                       \
+	X(DW_AT_data_member_location, 0x38)  \
+	X(DW_AT_external, 0x3f)              \
+	X(DW_AT_byte_size, 0xb)              \
+	X(DW_AT_encoding, 0x3e)              \
+	X(DW_AT_bit_offset, 0xc)             \
+	X(DW_AT_bit_size, 0xd)               \
+	X(DW_AT_decl_file, 0x3a)             \
+	X(DW_AT_decl_line, 0x3b)             \
+	X(DW_AT_stmt_list, 0x10)             \
+	X(DW_AT_name, 0x3)                   \
+	X(DW_AT_language, 0x13)              \
+	X(DW_AT_low_pc, 0x11)                \
+	X(DW_AT_high_pc, 0x12)               \
+	X(DW_AT_producer, 0x25)              \
+	X(DW_AT_type, 0x49)                  \
+	X(DW_AT_sibling, 0x1)                \
+	X(DW_AT_lower_bound, 0x22)           \
+	X(DW_AT_upper_bound, 0x2f)           \
+	X(DW_AT_prototyped, 0x27)            \
+	X(DW_AT_location, 0x2)               \
+	X(DW_AT_const_value, 0x1c)           \
+	X(DW_AT_accessibility, 0x32)
+
+#define DW_ENCS            \
+	X(DW_FORM_addr, 0x1)     \
+	X(DW_FORM_data1, 0xb)    \
+	X(DW_FORM_data2, 0x5)    \
+	X(DW_FORM_data4, 0x6)    \
+	X(DW_FORM_string, 0x8)   \
+	X(DW_FORM_ref4, 0x13)    \
+	X(DW_FORM_flag, 0xc)     \
+	X(DW_FORM_block1, 0xa)
 
 enum dwarf_tag
 {
-	DW_TAG_compile_unit = 0x11,
-
-	DW_TAG_subprogram = 0x2e,
-
-	DW_TAG_base_type = 0x24,
-	DW_TAG_typedef = 0x16,
-	DW_TAG_pointer_type = 0xf,
-	DW_TAG_array_type = 0x1,
-	DW_TAG_subrange_type = 0x21,
-	DW_TAG_const_type = 0x26,
-	DW_TAG_subroutine_type = 0x15,
-
-	DW_TAG_enumeration_type = 0x4,
-	DW_TAG_enumerator = 0x28,
-	DW_TAG_structure_type = 0x13,
-	DW_TAG_union_type = 0x17,
-
-	DW_TAG_variable = 0x34,
-	DW_TAG_formal_parameter = 0x5,
-
-	DW_TAG_member = 0xd,
+#define X(nam, val) nam = val,
+	DW_TAGS
+#undef X
 };
 
 enum dwarf_attribute
 {
-	DW_AT_data_member_location = 0x38,
-	DW_AT_external = 0x3f,
-
-	DW_AT_byte_size = 0xb,
-	DW_AT_encoding = 0x3e,
-	DW_AT_bit_offset = 0xc,
-	DW_AT_bit_size = 0xd,
-
-	DW_AT_decl_file = 0x3a,
-	DW_AT_decl_line = 0x3b,
-
-	DW_AT_stmt_list = 0x10,
-	DW_AT_name = 0x3,
-	DW_AT_language = 0x13,
-
-	DW_AT_low_pc = 0x11,
-	DW_AT_high_pc = 0x12,
-
-	DW_AT_producer = 0x25,
-	DW_AT_type = 0x49,
-	DW_AT_sibling = 0x1,
-	DW_AT_lower_bound = 0x22,
-	DW_AT_upper_bound = 0x2f,
-	DW_AT_prototyped = 0x27,
-	DW_AT_location = 0x2,
-	DW_AT_const_value = 0x1c,
-	DW_AT_accessibility = 0x32,
+#define X(nam, val) nam = val,
+	DW_ATTRS
+#undef X
 };
 
 enum dwarf_attr_encoding
 {
-	DW_FORM_addr = 0x1,
-	DW_FORM_data1 = 0xb,
-	DW_FORM_data2 = 0x5,
-	DW_FORM_data4 = 0x6,
-	DW_FORM_string = 0x8,
-	DW_FORM_ref4 = 0x13,
-	DW_FORM_flag = 0xc,
-	DW_FORM_block1 = 0xa,
+#define X(nam, val) nam = val,
+	DW_ENCS
+#undef X
 };
 
 enum dwarf_block_ops
