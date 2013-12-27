@@ -949,9 +949,28 @@ form_data:
 			case DW_FORM_block1:
 			{
 				int i;
+				unsigned len = 0;
+
+				for(i = 0; i < a->bits.blk->cnt; i++){
+					struct dwarf_block_ent *e = &a->bits.blk->ents[i];
+
+					switch(e->type){
+						case BLOCK_HEADER:
+							len++;
+							break;
+						case BLOCK_LEB128_S:
+						case BLOCK_LEB128_U:
+							len += leb128_length(e->bits.v,
+									e->type == BLOCK_LEB128_S);
+							break;
+						case BLOCK_ADDR_STR:
+							len += platform_word_size();
+							break;
+					}
+				}
 
 				dwarf_printf(&state->info, BYTE, "%d # block count\n",
-						a->bits.blk->cnt);
+						len);
 
 				for(i = 0; i < a->bits.blk->cnt; i++)
 					dwarf_flush_die_block(
