@@ -875,10 +875,20 @@ static void dwarf_flush_die_block(
 	}
 }
 
-static void dwarf_flush_die(
+static void dwarf_flush_die_1(
+		struct DIE *die, struct DIE_flush *state);
+
+static void dwarf_flush_die_children(
 		struct DIE *die, struct DIE_flush *state)
 {
 	struct DIE **i;
+	for(i = die->children; i && *i; i++)
+		dwarf_flush_die_1(*i, state);
+}
+
+static void dwarf_flush_die_1(
+		struct DIE *die, struct DIE_flush *state)
+{
 	struct DIE_attr **at;
 	unsigned abbrev_code = ++state->abbrev_code;
 
@@ -953,9 +963,6 @@ form_data:
 			"\t.byte 0, 0 # end of abbrev %d\n",
 			abbrev_code);
 	state->abbrev.byte_cnt += 2;
-
-	for(i = die->children; i && *i; i++)
-		dwarf_flush_die(*i, state);
 }
 
 static void dwarf_flush_free(struct DIE_compile_unit *cu,
@@ -969,15 +976,18 @@ static void dwarf_flush_free(struct DIE_compile_unit *cu,
 	flush.info.f = info;
 	flush.abbrev.f = abbrev;
 
+	dwarf_flush_die_1(&cu->die, &flush);
+
 	/* type dies first */
 	for(i = 0;
 	    (tydie = dynmap_value(struct DIE *, cu->types_to_dies, i));
 	    i++)
 	{
-		dwarf_flush_die(tydie, &flush);
+		dwarf_flush_die_1(tydie, &flush);
+		dwarf_flush_die_children(tydie, &flush);
 	}
 
-	dwarf_flush_die(&cu->die, &flush);
+	dwarf_flush_die_children(&cu->die, &flush);
 
 	fprintf(abbrev, "\t.byte 0 # end\n");
 }
