@@ -28,9 +28,10 @@ unsigned leb128_length(unsigned long long value, int is_signed)
 	return len;
 }
 
-void leb128_out(FILE *f, unsigned long long v, int sig)
+unsigned leb128_out(FILE *f, unsigned long long v, int sig)
 {
 	const char *join = "";
+	unsigned len = 1;
 
 	if(sig){
 		signed long long sv = v;
@@ -52,6 +53,7 @@ void leb128_out(FILE *f, unsigned long long v, int sig)
 			else
 			{
 				byte |= 0x80;
+				len++;
 			}
 		}
 	}else{
@@ -67,9 +69,13 @@ void leb128_out(FILE *f, unsigned long long v, int sig)
 			fprintf(f, "%s%d", join, byte);
 			join = ", ";
 
-			if(byte & 0x80)
+			if(byte & 0x80){
+				len++;
 				continue;
+			}
 			break;
 		}
 	}
+
+	return len;
 }

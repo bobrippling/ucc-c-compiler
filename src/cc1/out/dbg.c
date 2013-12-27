@@ -83,6 +83,11 @@
 	X(DW_FORM_flag, 0xc)     \
 	X(DW_FORM_block1, 0xa)
 
+#define DW_OPS               \
+	X(DW_OP_plus_uconst, 0x23) \
+	X(DW_OP_addr, 0x3)         \
+	X(DW_OP_breg6, 0x76)
+
 enum dwarf_tag
 {
 #define X(nam, val) nam = val,
@@ -101,6 +106,13 @@ enum dwarf_attr_encoding
 {
 #define X(nam, val) nam = val,
 	DW_ENCS
+#undef X
+};
+
+enum dwarf_block_ops
+{
+#define X(nam, val) nam = val,
+	DW_OPS
 #undef X
 };
 
@@ -134,12 +146,15 @@ static const char *die_enc_to_str(enum dwarf_attr_encoding e)
 	return NULL;
 }
 
-enum dwarf_block_ops
+static const char *die_op_to_str(enum dwarf_block_ops o)
 {
-	DW_OP_plus_uconst = 0x23,
-	DW_OP_addr = 0x3,
-	DW_OP_breg6 = 0x76,
-};
+	switch(o){
+#define X(nam, val) case nam: return # nam;
+		DW_OPS
+#undef X
+	}
+	return NULL;
+}
 
 struct dwarf_block_ent
 {
@@ -829,6 +844,37 @@ static void dwarf_printf(
 	f->byte_cnt += sz;
 }
 
+static void dwarf_flush_die_block(
+		struct dwarf_block_ent *e, struct DIE_flush *state)
+{
+	switch(e->type){
+		case BLOCK_HEADER:
+			dwarf_printf(&state->info, BYTE,
+					"%d # DW_FORM_block %s\n",
+					(int)e->bits.v, die_op_to_str(e->bits.v));
+			break;
+
+		case BLOCK_LEB128_S:
+		case BLOCK_LEB128_U:
+			fprintf(state->info.f, "\t.byte ");
+			state->info.byte_cnt += leb128_out(
+					state->info.f, e->bits.v,
+					e->type == BLOCK_LEB128_S);
+
+			fprintf(state->info.f,
+					" # DW_FORM_block, LEB%c 0x%lx\n",
+					"US"[e->type == BLOCK_LEB128_S],
+					e->bits.v);
+			break;
+
+		case BLOCK_ADDR_STR:
+			dwarf_printf(&state->info, QUAD,
+					"%s # DW_FORM_block, address\n",
+					e->bits.str);
+			break;
+	}
+}
+
 static void dwarf_flush_die(
 		struct DIE *die, struct DIE_flush *state)
 {
@@ -887,9 +933,18 @@ form_data:
 				dwarf_printf(&state->info, BYTE, "%d", (int)a->bits.value);
 				break;
 			case DW_FORM_block1:
-				ICW("TODO: DW_FORM_block");
-				fprintf(state->info.f, "\t.%s ...", s_enc);
+			{
+				int i;
+
+				dwarf_printf(&state->info, BYTE, "%d # block count\n",
+						a->bits.blk->cnt);
+
+				for(i = 0; i < a->bits.blk->cnt; i++)
+					dwarf_flush_die_block(
+							&a->bits.blk->ents[i],
+							state);
 				break;
+			}
 		}
 		fprintf(state->info.f, " # %s\n", s_attr);
 	}
