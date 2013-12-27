@@ -788,21 +788,64 @@ static struct DIE *dwarf_subprogram_func(struct DIE_compile_unit *cu, decl *d)
 	return subprog;
 }
 
-static void dwarf_flush_die(struct DIE *die,
-		FILE *abbrev, FILE *info, unsigned *idx)
+struct DIE_flush
+{
+	unsigned abbrev_code;
+	struct DIE_flush_file
+	{
+		FILE *f;
+		unsigned long byte_cnt;
+	} abbrev, info;
+};
+
+enum flush_type
+{
+	BYTE = 1,
+	WORD = 2,
+	LONG = 4,
+	QUAD = 8
+};
+
+static void dwarf_printf(
+		struct DIE_flush_file *f,
+		enum flush_type sz,
+		const char *fmt, ...)
+{
+	va_list l;
+	const char *ty = NULL;
+	switch(sz){
+		case BYTE: ty = "byte"; break;
+		case WORD: ty = "word"; break;
+		case LONG: ty = "long"; break;
+		case QUAD: ty = "quad"; break;
+	}
+
+	fprintf(f->f, "\t.%s ", ty);
+
+	va_start(l, fmt);
+	vfprintf(f->f, fmt, l);
+	va_end(l);
+
+	f->byte_cnt += sz;
+}
+
+static void dwarf_flush_die(
+		struct DIE *die, struct DIE_flush *state)
 {
 	struct DIE **i;
 	struct DIE_attr **at;
-	unsigned abbrev_code = ++*idx;
+	unsigned abbrev_code = ++state->abbrev_code;
+
+	die->locn = state->info.byte_cnt;
 
 	/* FIXME: 2 n-sized byte/word/longs here */
-	fprintf(abbrev, "\t.byte %d  # Abbrev. Code\n", abbrev_code);
-	fprintf(info,   "\t.byte %d  # Abbrev. Code\n", abbrev_code);
+	dwarf_printf(&state->abbrev, BYTE, "%d  # Abbrev. Code\n", abbrev_code);
+	dwarf_printf(&state->info,   BYTE, "%d  # Abbrev. Code\n", abbrev_code);
 
-	fprintf(abbrev, "\t.byte %d  # %s\n",
+	dwarf_printf(&state->abbrev, BYTE, "%d  # %s\n",
 			die->tag, die_tag_to_str(die->tag));
 
-	fprintf(abbrev, "\t.byte %d  # DW_CHILDREN_%s\n",
+	dwarf_printf(&state->abbrev, BYTE, "%d  # DW_CHILDREN_%s\n",
 			!!die->children, die->children ? "yes" : "no");
 
 
@@ -811,54 +854,76 @@ static void dwarf_flush_die(struct DIE *die,
 		const char *s_attr = die_attr_to_str(a->attr);
 		const char *s_enc = die_enc_to_str(a->enc);
 
-		fprintf(abbrev, "\t.byte %d  # %s\n",
+		dwarf_printf(&state->abbrev, BYTE, "%d  # %s\n",
 				a->attr, s_attr);
 
-		fprintf(abbrev, "\t.byte %d  # %s\n",
+		dwarf_printf(&state->abbrev, BYTE, "%d  # %s\n",
 				a->enc, s_enc);
 
-		fprintf(info, "\t");
 		switch(a->enc){
-				const char *ty;
-			case DW_FORM_data1: ty = "byte"; goto form_data;
-			case DW_FORM_data2: ty = "word"; goto form_data;
-			case DW_FORM_data4: ty = "long"; goto form_data;
+				enum flush_type fty;
+			case DW_FORM_data1: fty = BYTE; goto form_data;
+			case DW_FORM_data2: fty = WORD; goto form_data;
+			case DW_FORM_data4: fty = LONG; goto form_data;
 form_data:
-				fprintf(info, ".%s %ld", ty, a->bits.value);
+				dwarf_printf(&state->info, fty, "%ld", a->bits.value);
 				break;
 			case DW_FORM_addr:
-				fprintf(info, ".quad %s", a->bits.str);
+				dwarf_printf(&state->info, QUAD, "%s", a->bits.str);
 				break;
+
 			case DW_FORM_string:
-				fprintf(info, ".ascii \"%s\"\n", a->bits.str);
-				fprintf(info, "\t.byte 0");
+				fprintf(state->info.f, "\t.ascii \"%s\"\n", a->bits.str);
+				state->info.byte_cnt += strlen(a->bits.str);
+
+				dwarf_printf(&state->info, BYTE, "0");
 				break;
+
 			case DW_FORM_ref4:
-				//UCC_ASSERT(a->bits.type_die->locn, "unset DIE location");
-				fprintf(info, ".long %lu", a->bits.type_die->locn);
+				UCC_ASSERT(a->bits.type_die->locn, "unset DIE location");
+				dwarf_printf(&state->info, LONG, "%lu", a->bits.type_die->locn);
 				break;
 			case DW_FORM_flag:
-				fprintf(info, ".byte %d", (int)a->bits.value);
+				dwarf_printf(&state->info, BYTE, "%d", (int)a->bits.value);
 				break;
 			case DW_FORM_block1:
 				ICW("TODO: DW_FORM_block");
-				fprintf(info, "\t.%s ...", s_enc);
+				fprintf(state->info.f, "\t.%s ...", s_enc);
 				break;
 		}
-		fprintf(info, " # %s\n", s_attr);
+		fprintf(state->info.f, " # %s\n", s_attr);
 	}
 
-	fprintf(abbrev, "\t.byte 0, 0 # end of abbrev %d\n", abbrev_code);
+	fprintf(state->abbrev.f,
+			"\t.byte 0, 0 # end of abbrev %d\n",
+			abbrev_code);
+	state->abbrev.byte_cnt += 2;
 
 	for(i = die->children; i && *i; i++)
-		dwarf_flush_die(*i, abbrev, info, idx);
+		dwarf_flush_die(*i, state);
 }
 
 static void dwarf_flush_free(struct DIE_compile_unit *cu,
-		FILE *abbrev, FILE *info)
+		FILE *abbrev, FILE *info, long initial_offset)
 {
-	unsigned idx = 0;
-	dwarf_flush_die(&cu->die, abbrev, info, &idx);
+	unsigned i;
+	struct DIE *tydie;
+	struct DIE_flush flush = { 0 };
+
+	flush.info.byte_cnt = initial_offset;
+	flush.info.f = info;
+	flush.abbrev.f = abbrev;
+
+	/* type dies first */
+	for(i = 0;
+	    (tydie = dynmap_value(struct DIE *, cu->types_to_dies, i));
+	    i++)
+	{
+		dwarf_flush_die(tydie, &flush);
+	}
+
+	dwarf_flush_die(&cu->die, &flush);
+
 	fprintf(abbrev, "\t.byte 0 # end\n");
 }
 
@@ -909,7 +974,8 @@ void out_dbginfo(symtable_global *globs, const char *fname)
 	}
 
 	dwarf_flush_free(compile_unit,
-			cc_out[SECTION_DBG_ABBREV], cc_out[SECTION_DBG_INFO]);
+			cc_out[SECTION_DBG_ABBREV], cc_out[SECTION_DBG_INFO],
+			info_offset);
 
 	dwarf_info_footer(cc_out[SECTION_DBG_INFO]);
 
