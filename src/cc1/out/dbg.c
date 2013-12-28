@@ -410,6 +410,7 @@ static struct DIE *dwarf_type_die(
 			}
 			break;
 
+		case type_ref_block: /* act as if type_ref_ptr */
 		case type_ref_ptr:
 		{
 			long sz = platform_word_size();
@@ -423,11 +424,6 @@ static struct DIE *dwarf_type_die(
 					dwarf_type_die(cu, parent, ty->ref));
 			break;
 		}
-
-		case type_ref_block:
-			/* skip */
-			tydie = dwarf_type_die(cu, parent, ty->ref);
-			break;
 
 		case type_ref_func:
 		{
