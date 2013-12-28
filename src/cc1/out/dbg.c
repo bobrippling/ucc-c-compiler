@@ -365,7 +365,7 @@ static int type_ref_cmp_bool(void *a, void *b)
 	return type_ref_cmp(a, b, 0) != TYPE_EQUAL;
 }
 
-static void dwarf_attr_type(
+static void dwarf_set_DW_AT_type(
 		struct DIE *in,
 		struct DIE_compile_unit *cu,
 		struct DIE *parent,
@@ -414,7 +414,7 @@ static struct DIE *dwarf_type_die(
 
 				dwarf_attr(tydie, DW_AT_name, DW_FORM_string, d->spel);
 
-				dwarf_attr_type(tydie, cu, parent, d->ref);
+				dwarf_set_DW_AT_type(tydie, cu, parent, d->ref);
 
 			}else{
 				/* skip typeof() */
@@ -433,7 +433,7 @@ static struct DIE *dwarf_type_die(
 			dwarf_attr(tydie, DW_AT_byte_size,
 					DW_FORM_data4, &sz);
 
-			dwarf_attr_type(tydie, cu, parent, ty->ref);
+			dwarf_set_DW_AT_type(tydie, cu, parent, ty->ref);
 			break;
 		}
 
@@ -443,7 +443,7 @@ static struct DIE *dwarf_type_die(
 
 			tydie = dwarf_die_new(DW_TAG_subroutine_type);
 
-			dwarf_attr_type(tydie, cu, parent, ty->ref);
+			dwarf_set_DW_AT_type(tydie, cu, parent, ty->ref);
 
 			dwarf_attr(tydie, DW_AT_prototyped, DW_FORM_flag, &flag);
 
@@ -458,7 +458,7 @@ static struct DIE *dwarf_type_die(
 
 			tydie = dwarf_die_new(DW_TAG_array_type);
 
-			dwarf_attr_type(tydie, cu, parent, ty->ref);
+			dwarf_set_DW_AT_type(tydie, cu, parent, ty->ref);
 
 			szdie = dwarf_die_new(DW_TAG_subrange_type);
 			if(have_sz){
@@ -485,7 +485,7 @@ static struct DIE *dwarf_type_die(
 				tydie = dwarf_type_die(cu, parent, ty->ref);
 			}else{
 				tydie = dwarf_die_new(DW_TAG_const_type);
-				dwarf_attr_type(tydie, cu, parent, ty->ref);
+				dwarf_set_DW_AT_type(tydie, cu, parent, ty->ref);
 			}
 			break;
 		}
@@ -582,7 +582,7 @@ static struct DIE *dwarf_suetype(
 						DW_AT_name, DW_FORM_string,
 						dmem->spel);
 
-				dwarf_attr_type(memdie, cu, NULL, dmem->ref);
+				dwarf_set_DW_AT_type(memdie, cu, NULL, dmem->ref);
 
 				blkents = umalloc(2 * sizeof *blkents);
 
@@ -643,7 +643,7 @@ static struct DIE **dwarf_formal_params(
 
 		struct DIE *param = dwarf_die_new(DW_TAG_formal_parameter);
 
-		dwarf_attr_type(param, cu, NULL, d->ref);
+		dwarf_set_DW_AT_type(param, cu, NULL, d->ref);
 
 		if(d->spel){
 			struct dwarf_block *locn = umalloc(sizeof *locn);
@@ -723,7 +723,7 @@ static void dwarf_attr_decl(
 
 	dwarf_attr(in, DW_AT_name, DW_FORM_string, d->spel);
 
-	dwarf_attr_type(in, cu, NULL, ty);
+	dwarf_set_DW_AT_type(in, cu, NULL, ty);
 
 	dwarf_attr(in, DW_AT_decl_file,
 			DW_FORM_data1,
