@@ -1038,7 +1038,7 @@ void out_dbginfo(symtable_global *globs, const char *fname)
 		for(diter = globs->stab.decls; diter && *diter; diter++){
 			decl *d = *diter;
 
-			struct DIE *new = (DECL_IS_FUNC(d)
+			struct DIE *new = (type_ref_is_func_or_block(d->ref)
 					? dwarf_subprogram_func
 					: dwarf_global_variable)(compile_unit, d);
 
