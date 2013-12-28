@@ -940,7 +940,10 @@ form_data:
 				break;
 
 			case DW_FORM_ref4:
-				UCC_ASSERT(a->bits.type_die->locn, "unset DIE location");
+				UCC_ASSERT(a->bits.type_die->locn,
+						"unset DIE/%s location",
+						die_tag_to_str(a->bits.type_die->tag));
+
 				dwarf_printf(&state->info, LONG, "%lu", a->bits.type_die->locn);
 				break;
 			case DW_FORM_flag:
