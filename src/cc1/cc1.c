@@ -27,8 +27,6 @@
 #include "pass1.h"
 
 #include "../as_cfg.h"
-#define QUOTE(...) #__VA_ARGS__
-#define EXPAND_QUOTE(y) QUOTE(y)
 
 struct opt_flags cc1_opts;
 
@@ -193,12 +191,12 @@ int caught_sig = 0;
 int show_current_line;
 
 const char *section_names[NUM_SECTIONS] = {
-	EXPAND_QUOTE(SECTION_TEXT),
-	EXPAND_QUOTE(SECTION_DATA),
-	EXPAND_QUOTE(SECTION_BSS),
-	EXPAND_QUOTE(SECTION_DBG_ABBREV),
-	EXPAND_QUOTE(SECTION_DBG_INFO),
-	EXPAND_QUOTE(SECTION_DBG_LINE),
+	QUOTE(SECTION_NAME_TEXT),
+	QUOTE(SECTION_NAME_DATA),
+	QUOTE(SECTION_NAME_BSS),
+	QUOTE(SECTION_NAME_DBG_ABBREV),
+	QUOTE(SECTION_NAME_DBG_INFO),
+	QUOTE(SECTION_NAME_DBG_LINE),
 };
 
 static FILE *infile;
