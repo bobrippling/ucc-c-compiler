@@ -881,9 +881,13 @@ static void dwarf_flush_die_1(
 static void dwarf_flush_die_children(
 		struct DIE *die, struct DIE_flush *state)
 {
-	struct DIE **i;
-	for(i = die->children; i && *i; i++)
-		dwarf_flush_die_1(*i, state);
+	if(die->children){
+		struct DIE **i;
+		for(i = die->children; *i; i++)
+			dwarf_flush_die_1(*i, state);
+
+		dwarf_printf(&state->info, BYTE, "0 # end of children\n");
+	}
 }
 
 static void dwarf_flush_die_1(
