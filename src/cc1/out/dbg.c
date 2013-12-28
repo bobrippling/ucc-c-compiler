@@ -22,14 +22,13 @@
 #include "asm.h" /* cc_out[] */
 
 #include "../defs.h" /* CHAR_BIT */
+#include "../../as_cfg.h" /* section names, private label */
 
 #include "leb.h" /* leb128 */
 
 #include "lbl.h"
 #include "dbg.h"
 #include "write.h" /* dbg_add_file */
-
-#define DEBUG_LINE_MARKER ".Ldbg_line0"
 
 #define DW_TAGS                        \
 	X(DW_TAG_compile_unit, 0x11)         \
@@ -668,25 +667,33 @@ static struct DIE **dwarf_formal_params(
 	return dieargs;
 }
 
-static struct DIE_compile_unit *dwarf_cu(
-		const char *fname,
-		const char *lbl_first_insn,
-		const char *lbl_last_insn)
+static struct DIE_compile_unit *dwarf_cu(const char *fname)
 {
 	struct DIE_compile_unit *cu = umalloc(sizeof *cu);
 	long attrv;
 
 	dwarf_die_new_at(&cu->die, DW_TAG_compile_unit);
 
-	dwarf_attr(&cu->die, DW_AT_producer, DW_FORM_string, "ucc development version");
-	dwarf_attr(&cu->die, DW_AT_language, DW_FORM_data2, ((attrv = DW_LANG_C99), &attrv));
-	dwarf_attr(&cu->die, DW_AT_name, DW_FORM_string, ustrdup(fname));
-	dwarf_attr(&cu->die, DW_AT_stmt_list, DW_FORM_addr, ustrdup(DEBUG_LINE_MARKER));
+	dwarf_attr(&cu->die, DW_AT_producer, DW_FORM_string,
+			"ucc development version");
 
-	if(lbl_first_insn){
-		dwarf_attr(&cu->die, DW_AT_low_pc, DW_FORM_addr, ustrdup(lbl_first_insn));
-		dwarf_attr(&cu->die, DW_AT_high_pc, DW_FORM_addr, ustrdup(lbl_last_insn));
-	}
+	dwarf_attr(&cu->die, DW_AT_language, DW_FORM_data2,
+			((attrv = DW_LANG_C99), &attrv));
+
+	dwarf_attr(&cu->die, DW_AT_name, DW_FORM_string, ustrdup(fname));
+
+	dwarf_attr(&cu->die, DW_AT_stmt_list,
+			DW_FORM_addr,
+			ustrprintf("%s%s", SECTION_BEGIN,
+				QUOTE(SECTION_NAME_DBG_LINE)));
+
+	dwarf_attr(&cu->die, DW_AT_low_pc, DW_FORM_addr,
+			ustrprintf("%s%s", SECTION_BEGIN,
+				QUOTE(SECTION_NAME_TEXT)));
+
+	dwarf_attr(&cu->die, DW_AT_high_pc, DW_FORM_addr,
+			ustrprintf("%s%s", SECTION_END,
+				QUOTE(SECTION_NAME_TEXT)));
 
 	return cu;
 }
@@ -695,19 +702,15 @@ static long dwarf_info_header(FILE *f)
 {
 	/* hacky? */
 	fprintf(f,
-			"\t.long .Ldbg_info_end - .Ldbg_info_start\n"
+			"\t.long %s%s - .Ldbg_info_start\n"
 			".Ldbg_info_start:\n"
 			"\t.short 2 # DWARF 2\n"
 			"\t.long 0  # abbrev offset\n"
 			"\t.byte %d  # sizeof(void *)\n",
+			SECTION_END, QUOTE(SECTION_NAME_DBG_INFO),
 			platform_word_size());
 
 	return 4 + 2 + 4 + 1;
-}
-
-static void dwarf_info_footer(FILE *f)
-{
-	fprintf(f, ".Ldbg_info_end:\n");
 }
 
 static void dwarf_attr_decl(
@@ -1024,29 +1027,7 @@ void out_dbginfo(symtable_global *globs, const char *fname)
 
 	long info_offset = dwarf_info_header(cc_out[SECTION_DBG_INFO]);
 
-	{
-		const char *lbl1 = NULL, *lblN = NULL;
-		char *free_me = NULL;
-		decl **diter;
-
-		for(diter = globs->stab.decls; diter && *diter; diter++){
-			if(!lbl1)
-				lbl1 = decl_asm_spel(*diter);
-
-			if(!diter[1]){
-				decl *d = *diter;
-
-				/* if it's a function, we want the end */
-				if(DECL_IS_FUNC(d))
-					lblN = free_me = out_dbg_func_end(decl_asm_spel(d));
-				else
-					lblN = decl_asm_spel(d);
-			}
-		}
-
-		compile_unit = dwarf_cu(fname, lbl1, lblN);
-		free(free_me);
-	}
+	compile_unit = dwarf_cu(fname);
 
 	/* output subprograms */
 	{
@@ -1067,8 +1048,4 @@ void out_dbginfo(symtable_global *globs, const char *fname)
 	dwarf_flush_free(compile_unit,
 			cc_out[SECTION_DBG_ABBREV], cc_out[SECTION_DBG_INFO],
 			info_offset);
-
-	dwarf_info_footer(cc_out[SECTION_DBG_INFO]);
-
-	fprintf(cc_out[SECTION_DBG_LINE], DEBUG_LINE_MARKER ":\n");
 }
