@@ -252,6 +252,7 @@ type_ref *op_required_promotion(
 						die_at(w, "subtraction of distinct pointer types %s and %s",
 								type_ref_to_str(tlhs), type_ref_to_str_r(buf, trhs));
 					case TYPE_QUAL_LOSS:
+					case TYPE_QUAL_CHANGE:
 					case TYPE_EQUAL:
 						break;
 				}

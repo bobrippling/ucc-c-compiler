@@ -7,7 +7,8 @@ enum type_cmp
 	TYPE_CONVERTIBLE_IMPLICIT,
 	TYPE_CONVERTIBLE_EXPLICIT,
 	TYPE_NOT_EQUAL,
-	TYPE_QUAL_LOSS
+	TYPE_QUAL_LOSS,
+	TYPE_QUAL_CHANGE /* const int -> int, etc */
 };
 
 enum type_primitive

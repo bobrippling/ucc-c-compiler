@@ -50,6 +50,7 @@ int fold_type_chk_warn(
 			 *  - they match but we need the _Bool cast */
 			return 1;
 		case TYPE_EQUAL:
+		case TYPE_QUAL_CHANGE:
 			break;
 
 		case TYPE_QUAL_LOSS:

@@ -16,6 +16,47 @@
 
 #include "type_ref_is.h"
 
+static int type_ref_qual_cmp(type_ref *a, type_ref *b)
+{
+	int at = a->type == type_ref_cast;
+	int bt = b->type == type_ref_cast;
+
+	switch(at - bt){
+		case -1:
+		case 1:
+			/* different */
+			return 1;
+
+		default:
+			ucc_unreach(0);
+
+		case 0:
+			if(!at)
+				return 0; /* neither are casts */
+			/* equal: compare qualifiers */
+			break;
+	}
+
+	switch(a->bits.cast.is_signed_cast - b->bits.cast.is_signed_cast){
+		case -1:
+		case 1:
+			return 1;
+
+		default:
+			ucc_unreach(0);
+
+		case 0:
+			break;
+	}
+
+	if(a->bits.cast.is_signed_cast){
+		/* not bothered */
+		return 0;
+	}
+
+	return type_qual_loss(a->bits.cast.qual, b->bits.cast.qual);
+}
+
 static enum type_cmp type_ref_cmp_r(
 		type_ref *const orig_a,
 		type_ref *const orig_b,
@@ -23,6 +64,7 @@ static enum type_cmp type_ref_cmp_r(
 {
 	enum type_cmp ret;
 	type_ref *a, *b;
+	int subchk = 1;
 
 	if(!orig_a || !orig_b)
 		return orig_a == orig_b ? TYPE_EQUAL : TYPE_NOT_EQUAL;
@@ -59,7 +101,9 @@ static enum type_cmp type_ref_cmp_r(
 
 	switch(a->type){
 		case type_ref_type:
-			return type_cmp(a->bits.type, b->bits.type);
+			subchk = 0;
+			ret = type_cmp(a->bits.type, b->bits.type);
+			break;
 
 		case type_ref_array:
 		{
@@ -100,7 +144,8 @@ static enum type_cmp type_ref_cmp_r(
 			break;
 	}
 
-	ret = type_ref_cmp_r(a->ref, b->ref, opts);
+	if(subchk)
+		ret = type_ref_cmp_r(a->ref, b->ref, opts);
 
 	if(ret == TYPE_NOT_EQUAL
 	&& a->type == type_ref_func)
@@ -129,7 +174,8 @@ static enum type_cmp type_ref_cmp_r(
 	if(ret == TYPE_NOT_EQUAL && type_ref_is_ptr(a) && type_ref_is_ptr(b))
 		ret = TYPE_CONVERTIBLE_EXPLICIT;
 
-	/* char * and int * are explicitly conv., even though char and int are implicit */
+	/* char * and int * are explicitly conv.,
+	 * even though char and int are implicit */
 	if(ret == TYPE_CONVERTIBLE_IMPLICIT && a->type == type_ref_ptr)
 		ret = TYPE_CONVERTIBLE_EXPLICIT;
 
@@ -143,6 +189,12 @@ static enum type_cmp type_ref_cmp_r(
 		if(type_qual_loss(qa, qb))
 			/* warns are done, but conversion allowed */
 			ret = TYPE_QUAL_LOSS;
+	}
+
+	/* check int <- int const */
+	if(ret == TYPE_EQUAL){
+		if(type_ref_qual_cmp(orig_a, orig_b))
+			ret = TYPE_QUAL_CHANGE;
 	}
 
 	return ret;

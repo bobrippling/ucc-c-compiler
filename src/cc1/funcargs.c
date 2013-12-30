@@ -56,6 +56,7 @@ enum funcargs_cmp funcargs_cmp(funcargs *args_to, funcargs *args_from)
 		for(i = 0; args_to->arglist[i]; i++){
 			switch(type_ref_cmp(args_to->arglist[i]->ref, args_from->arglist[i]->ref, 0)){
 				case TYPE_EQUAL:
+				case TYPE_QUAL_CHANGE: /* f(const int) and f(int) */
 					break;
 
 				case TYPE_CONVERTIBLE_EXPLICIT:
