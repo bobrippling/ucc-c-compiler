@@ -309,11 +309,13 @@ static struct DIE *dwarf_basetype(enum type_primitive prim)
 			break;
 
 		case type_nchar:
+			if(type_primitive_is_signed(prim)){
 		case type_schar:
-			enc = DW_ATE_signed_char;
-			break;
+				enc = DW_ATE_signed_char;
+			}else{
 		case type_uchar:
-			enc = DW_ATE_unsigned_char;
+				enc = DW_ATE_unsigned_char;
+			}
 			break;
 
 		case type_short:

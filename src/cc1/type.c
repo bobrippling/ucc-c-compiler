@@ -69,9 +69,9 @@ enum type_cmp type_cmp(const type *a, const type *b)
 	return TYPE_NOT_EQUAL;
 }
 
-int type_is_signed(const type *t)
+int type_primitive_is_signed(enum type_primitive p)
 {
-	switch(t->primitive){
+	switch(p){
 		case type_nchar:
 			/* XXX: note we treat char as signed */
 			/* -fsigned-char */
@@ -91,7 +91,7 @@ int type_is_signed(const type *t)
 		case type_union:
 			ICE("%s(%s)",
 					__func__,
-					type_primitive_to_str(t->primitive));
+					type_primitive_to_str(p));
 
 		case type_enum:
 			return 0; /* for now - enum types coming later */
@@ -109,7 +109,12 @@ int type_is_signed(const type *t)
 			ICE("type_unknown in %s", __func__);
 	}
 
-	ICE("bad primitive");
+	ucc_unreach(0);
+}
+
+int type_is_signed(const type *t)
+{
+	return type_primitive_is_signed(t->primitive);
 }
 
 int type_qual_loss(enum type_qualifier a, enum type_qualifier b)

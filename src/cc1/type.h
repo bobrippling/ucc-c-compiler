@@ -66,6 +66,7 @@ struct type
 };
 
 enum type_cmp type_cmp(const type *a, const type *b);
+int type_primitive_is_signed(enum type_primitive);
 int type_is_signed(const type *);
 
 /* is there a loss of qualifiers going from 'b' to 'a' ? */
