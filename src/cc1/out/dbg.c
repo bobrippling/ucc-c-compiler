@@ -619,13 +619,6 @@ static struct DIE *dwarf_suetype(
 							DW_AT_bit_size, DW_FORM_data1,
 							&width);
 				}
-
-				{
-					long access = DW_ACCESS_public;
-					dwarf_attr(memdie,
-							DW_AT_accessibility, DW_FORM_flag,
-							&access);
-				}
 			}
 			break;
 		}
