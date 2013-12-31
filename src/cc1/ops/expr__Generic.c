@@ -29,7 +29,7 @@ void fold_expr__Generic(expr *e, symtable *stab)
 			type_ref *m = (*j)->t;
 
 			/* duplicate default checked below */
-			if(m && type_ref_cmp(m, l->t, 0) == TYPE_EQUAL)
+			if(m && (type_ref_cmp(m, l->t, 0) & TYPE_EQUAL_ANY))
 				die_at(&m->where, "duplicate type in _Generic: %s",
 						type_ref_to_str(l->t));
 		}
@@ -68,7 +68,7 @@ void fold_expr__Generic(expr *e, symtable *stab)
 						sprob, type_ref_to_str(l->t));
 			}
 
-			if(type_ref_cmp(e->expr->tree_type, l->t, 0) == TYPE_EQUAL){
+			if(type_ref_cmp(e->expr->tree_type, l->t, 0) & TYPE_EQUAL_ANY){
 				UCC_ASSERT(!e->bits.generic.chosen,
 						"already chosen expr for _Generic");
 				e->bits.generic.chosen = l;

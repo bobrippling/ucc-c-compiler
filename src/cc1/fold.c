@@ -51,6 +51,7 @@ int fold_type_chk_warn(
 			return 1;
 		case TYPE_EQUAL:
 		case TYPE_QUAL_CHANGE:
+		case TYPE_EQUAL_TYPEDEF:
 			break;
 
 		case TYPE_QUAL_LOSS:

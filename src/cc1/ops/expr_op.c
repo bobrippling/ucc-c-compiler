@@ -254,6 +254,7 @@ type_ref *op_required_promotion(
 					case TYPE_QUAL_LOSS:
 					case TYPE_QUAL_CHANGE:
 					case TYPE_EQUAL:
+					case TYPE_EQUAL_TYPEDEF:
 						break;
 				}
 

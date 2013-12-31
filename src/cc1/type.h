@@ -3,13 +3,18 @@
 
 enum type_cmp
 {
-	TYPE_EQUAL,
-	TYPE_CONVERTIBLE_IMPLICIT,
-	TYPE_CONVERTIBLE_EXPLICIT,
-	TYPE_NOT_EQUAL,
-	TYPE_QUAL_LOSS,
-	TYPE_QUAL_CHANGE /* const int -> int, etc */
+	TYPE_EQUAL = 1 << 0,
+	TYPE_EQUAL_TYPEDEF = 1 << 1, /* size_t <-> unsigned long */
+
+	TYPE_QUAL_LOSS = 1 << 2,
+	TYPE_QUAL_CHANGE = 1 << 3, /* const int -> int, etc */
+
+	TYPE_CONVERTIBLE_IMPLICIT = 1 << 4,
+	TYPE_CONVERTIBLE_EXPLICIT = 1 << 5,
+
+	TYPE_NOT_EQUAL = 1 << 6
 };
+#define TYPE_EQUAL_ANY (TYPE_EQUAL | TYPE_EQUAL_TYPEDEF)
 
 enum type_primitive
 {

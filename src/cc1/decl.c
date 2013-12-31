@@ -638,7 +638,7 @@ enum type_cmp decl_cmp(decl *a, decl *b, enum type_cmp_opts opts)
 	enum decl_storage sa = a->store & STORE_MASK_STORE,
 	                  sb = b->store & STORE_MASK_STORE;
 
-	if(cmp == TYPE_EQUAL && sa != sb){
+	if(cmp & TYPE_EQUAL_ANY && sa != sb){
 		/* types are equal but there's a store mismatch
 		 * only return convertible if it's a typedef or static mismatch
 		 */

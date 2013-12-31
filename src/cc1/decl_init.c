@@ -1016,7 +1016,7 @@ static decl_init *decl_init_brace_up_start(
 		expr *e;
 		fold_expr_no_decay(e = init->bits.expr, stab);
 
-		if(type_ref_cmp(e->tree_type, tfor, 0) != TYPE_EQUAL){
+		if(!(type_ref_cmp(e->tree_type, tfor, 0) & TYPE_EQUAL_ANY)){
 			/* allow special case of char [] with "..." */
 			int str_mismatch = 0;
 

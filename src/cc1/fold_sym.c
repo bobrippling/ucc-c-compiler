@@ -346,6 +346,7 @@ void symtab_fold_decls(symtable *tab)
 									clash = "mismatching";
 								break;
 
+							case TYPE_EQUAL_TYPEDEF:
 							case TYPE_EQUAL:
 								if(IS_LOCAL_SCOPE){
 									enum decl_storage a_store = da->store & STORE_MASK_STORE;

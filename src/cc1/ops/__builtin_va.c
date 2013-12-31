@@ -38,8 +38,8 @@ static void va_type_check(expr *va_l, expr *in, symtable *stab)
 		die_at(&in->where, "%s() outside a function",
 				BUILTIN_SPEL(in));
 
-	if(type_ref_cmp(va_l->tree_type, type_ref_cached_VA_LIST_decayed(), 0)
-				!= TYPE_EQUAL)
+	if(!(type_ref_cmp(va_l->tree_type, type_ref_cached_VA_LIST_decayed(), 0)
+				& TYPE_EQUAL_ANY))
 	{
 		die_at(&va_l->where,
 				"first argument to %s should be a va_list (not %s)",

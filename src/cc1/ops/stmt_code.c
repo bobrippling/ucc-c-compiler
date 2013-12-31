@@ -44,7 +44,7 @@ void fold_block_decls(symtable *stab, stmt **pinit_blk)
 			/* allow functions redefined as decls and vice versa */
 			if(is_func
 			&& DECL_IS_FUNC(found)
-			&& decl_cmp(d, found, 0) != TYPE_EQUAL)
+			&& !(decl_cmp(d, found, 0) & TYPE_EQUAL_ANY))
 			{
 				die_at(&d->where,
 						"incompatible redefinition of \"%s\"\n"

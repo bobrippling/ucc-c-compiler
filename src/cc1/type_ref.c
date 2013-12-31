@@ -179,7 +179,7 @@ static enum type_cmp type_ref_cmp_r(
 	if(ret == TYPE_CONVERTIBLE_IMPLICIT && a->type == type_ref_ptr)
 		ret = TYPE_CONVERTIBLE_EXPLICIT;
 
-	if(ret == TYPE_EQUAL
+	if(ret & TYPE_EQUAL_ANY
 	&& (a->type == type_ref_ptr || a->type == type_ref_block))
 	{
 		/* check qualifiers of what we point to */
@@ -192,9 +192,25 @@ static enum type_cmp type_ref_cmp_r(
 	}
 
 	/* check int <- int const */
-	if(ret == TYPE_EQUAL){
+	if(ret & TYPE_EQUAL_ANY){
 		if(type_ref_qual_cmp(orig_a, orig_b))
 			ret = TYPE_QUAL_CHANGE;
+	}
+
+	if(ret == TYPE_EQUAL){
+		int at = orig_a->type == type_ref_tdef;
+		int bt = orig_b->type == type_ref_tdef;
+
+		if(at != bt){
+			/* one is a typedef */
+			ret = TYPE_EQUAL_TYPEDEF;
+		}else if(at){
+			/* both typedefs */
+			if(orig_a->bits.tdef.decl != orig_b->bits.tdef.decl){
+				ret = TYPE_EQUAL_TYPEDEF;
+			}
+		}
+		/* else no typedefs */
 	}
 
 	return ret;

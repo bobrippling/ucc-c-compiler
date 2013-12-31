@@ -109,7 +109,7 @@ void fold_expr_if(expr *e, symtable *stab)
 	}else if(type_ref_is_void(tt_l) || type_ref_is_void(tt_r)){
 		e->tree_type = type_ref_new_type(type_new_primitive(type_void));
 
-	}else if(type_ref_cmp(tt_l, tt_r, 0) == TYPE_EQUAL){
+	}else if(type_ref_cmp(tt_l, tt_r, 0) & TYPE_EQUAL_ANY){
 		/* pointer to 'compatible' type */
 		e->tree_type = type_ref_new_cast(tt_l,
 				type_ref_qual(tt_l) | type_ref_qual(tt_r));
