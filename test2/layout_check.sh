@@ -16,6 +16,12 @@ if [ "$1" = '--help' ]
 then usage
 fi
 
+rmfiles(){
+	test -z "$rmfiles" || rm -f $rmfiles
+}
+rmfiles=
+trap rmfiles EXIT
+
 if [ $# -ge 1 ]
 then
 	if echo "$1" | grep '\.c$' > /dev/null
@@ -24,7 +30,7 @@ then
 		shift
 		out="/tmp/chk.out.$$"
 
-		trap "rm -f $out" EXIT
+		rmfiles="$rmfiles $out"
 
 		if [ $verbose -ne 0 ]
 		then echo "$0: ucc -S -o'$out' '$in' $@"
@@ -49,7 +55,7 @@ fi
 
 a=/tmp/$$.chk.a
 b=/tmp/$$.chk.b
-trap "rm -f $a $b" EXIT
+rmfiles="$rmfiles $a $b"
 
 set -e
 
