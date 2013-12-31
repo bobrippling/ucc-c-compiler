@@ -808,9 +808,9 @@ static struct DIE *dwarf_subprogram_func(struct DIE_compile_unit *cu, decl *d)
 	if(d->func_code){
 		dwarf_attr(subprog, DW_AT_low_pc, DW_FORM_addr, ustrdup(asmsp));
 		dwarf_attr(subprog, DW_AT_high_pc, DW_FORM_addr, out_dbg_func_end(asmsp));
-	}
 
-	dwarf_children(subprog, dwarf_formal_params(cu, args));
+		dwarf_children(subprog, dwarf_formal_params(cu, args));
+	}
 
 	//dwarf_stmt_scope(st, d->func_code);
 
