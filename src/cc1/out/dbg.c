@@ -875,7 +875,7 @@ static void dwarf_flush_die_block(
 	}
 }
 
-static void dwarf_flush_die_1(
+static void dwarf_flush_die(
 		struct DIE *die, struct DIE_flush *state);
 
 static void dwarf_flush_die_children(
@@ -884,7 +884,7 @@ static void dwarf_flush_die_children(
 	if(die->children){
 		struct DIE **i;
 		for(i = die->children; *i; i++)
-			dwarf_flush_die_1(*i, state);
+			dwarf_flush_die(*i, state);
 
 		dwarf_printf(&state->info, BYTE, "0 # end of children\n");
 	}
@@ -1004,6 +1004,13 @@ form_data:
 	fprintf(state->info.f, "\n");
 }
 
+static void dwarf_flush_die(
+		struct DIE *die, struct DIE_flush *state)
+{
+	dwarf_flush_die_1(die, state);
+	dwarf_flush_die_children(die, state);
+}
+
 static void dwarf_flush_free(struct DIE_compile_unit *cu,
 		FILE *abbrev, FILE *info, long initial_offset)
 {
@@ -1022,8 +1029,7 @@ static void dwarf_flush_free(struct DIE_compile_unit *cu,
 	    (tydie = dynmap_value(struct DIE *, cu->types_to_dies, i));
 	    i++)
 	{
-		dwarf_flush_die_1(tydie, &flush);
-		dwarf_flush_die_children(tydie, &flush);
+		dwarf_flush_die(tydie, &flush);
 	}
 
 	dwarf_flush_die_children(&cu->die, &flush);
