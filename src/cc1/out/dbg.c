@@ -728,8 +728,8 @@ static void dwarf_attr_decl(
 			DW_FORM_data1, ((attrv = d->where.line), &attrv));
 
 	if(show_extern){
-	attrv = (d->store & STORE_MASK_STORE) != store_static;
-	dwarf_attr(in, DW_AT_external, DW_FORM_flag, &attrv);
+		attrv = (d->store & STORE_MASK_STORE) != store_static;
+		dwarf_attr(in, DW_AT_external, DW_FORM_flag, &attrv);
 	}
 }
 
