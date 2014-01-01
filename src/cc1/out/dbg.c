@@ -76,8 +76,9 @@
 	X(DW_FORM_addr, 0x1)     \
 	X(DW_FORM_data1, 0xb)    \
 	X(DW_FORM_data2, 0x5)    \
-	X(DW_FORM_ULEB, 0x2)     \
 	X(DW_FORM_data4, 0x6)    \
+	X(DW_FORM_data8, 0x7)    \
+	X(DW_FORM_ULEB, 0x2)     \
 	X(DW_FORM_string, 0x8)   \
 	X(DW_FORM_ref4, 0x13)    \
 	X(DW_FORM_flag, 0xc)     \
@@ -291,7 +292,18 @@ static void dwarf_attr(
 		case DW_FORM_data1:
 		case DW_FORM_data2:
 		case DW_FORM_data4:
+		case DW_FORM_data8:
 			at->bits.value = *(long *)data;
+
+			if(enc == DW_FORM_ULEB){
+				switch(leb128_length(at->bits.value, 0)){
+					case 1: at->enc = DW_FORM_data1; break;
+					case 2: at->enc = DW_FORM_data2; break;
+					case 4: at->enc = DW_FORM_data4; break;
+					case 8: at->enc = DW_FORM_data8; break;
+					default: ucc_unreach();
+				}
+			}
 			break;
 
 		case DW_FORM_string:
@@ -937,6 +949,7 @@ static void dwarf_flush_die_1(
 			case DW_FORM_data1: fty = BYTE; goto form_data;
 			case DW_FORM_data2: fty = WORD; goto form_data;
 			case DW_FORM_data4: fty = LONG; goto form_data;
+			case DW_FORM_data8: fty = QUAD; goto form_data;
 form_data:
 				dwarf_printf(&state->info, fty, "%ld", a->bits.value);
 				break;
