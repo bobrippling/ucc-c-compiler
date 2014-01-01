@@ -76,6 +76,7 @@
 	X(DW_FORM_addr, 0x1)     \
 	X(DW_FORM_data1, 0xb)    \
 	X(DW_FORM_data2, 0x5)    \
+	X(DW_FORM_ULEB, 0x2)     \
 	X(DW_FORM_data4, 0x6)    \
 	X(DW_FORM_string, 0x8)   \
 	X(DW_FORM_ref4, 0x13)    \
@@ -285,6 +286,7 @@ static void dwarf_attr(
 			at->bits.str = data;
 			break;
 
+		case DW_FORM_ULEB:
 		case DW_FORM_flag:
 		case DW_FORM_data1:
 		case DW_FORM_data2:
@@ -721,11 +723,11 @@ static void dwarf_attr_decl(
 	dwarf_set_DW_AT_type(in, cu, NULL, ty);
 
 	dwarf_attr(in, DW_AT_decl_file,
-			DW_FORM_data1,
+			DW_FORM_ULEB,
 			((attrv = dbg_add_file(d->where.fname, NULL)), &attrv));
 
 	dwarf_attr(in, DW_AT_decl_line,
-			DW_FORM_data1, ((attrv = d->where.line), &attrv));
+			DW_FORM_ULEB, ((attrv = d->where.line), &attrv));
 
 	if(show_extern){
 		attrv = (d->store & STORE_MASK_STORE) != store_static;
@@ -844,6 +846,14 @@ static void dwarf_printf(
 	f->byte_cnt += sz;
 }
 
+static void dwarf_leb_printf(
+		struct DIE_flush_file *f,
+		unsigned long uleb, int is_sig)
+{
+	fprintf(f->f, "\t.byte ");
+	f->byte_cnt += leb128_out(f->f, uleb, is_sig);
+}
+
 static void dwarf_flush_die_block(
 		struct dwarf_block_ent *e, struct DIE_flush *state)
 {
@@ -856,10 +866,8 @@ static void dwarf_flush_die_block(
 
 		case BLOCK_LEB128_S:
 		case BLOCK_LEB128_U:
-			fprintf(state->info.f, "\t.byte ");
-			state->info.byte_cnt += leb128_out(
-					state->info.f, e->bits.v,
-					e->type == BLOCK_LEB128_S);
+			dwarf_leb_printf(&state->info,
+					e->bits.v, e->type == BLOCK_LEB128_S);
 
 			fprintf(state->info.f,
 					" # DW_FORM_block, LEB%c 0x%lx\n",
@@ -890,16 +898,6 @@ static void dwarf_flush_die_children(
 	}
 }
 
-static void dwarf_leb_printf(
-		struct DIE_flush_file *f,
-		unsigned long uleb,
-		const char *post)
-{
-	fprintf(f->f, "\t.byte ");
-	f->byte_cnt += leb128_out(f->f, uleb, 0);
-	fprintf(f->f, "%s", post);
-}
-
 static void dwarf_flush_die_1(
 		struct DIE *die, struct DIE_flush *state)
 {
@@ -909,8 +907,11 @@ static void dwarf_flush_die_1(
 	die->locn = state->info.byte_cnt;
 
 	/* FIXME: 2 n-sized byte/word/longs here */
-	dwarf_leb_printf(&state->abbrev, abbrev_code, "  # Abbrev. Code\n");
-	dwarf_leb_printf(&state->info,   abbrev_code, "  # Abbrev. Code\n");
+	dwarf_leb_printf(&state->abbrev, abbrev_code, 0),
+		fprintf(state->abbrev.f, "  # Abbrev. Code\n");
+
+	dwarf_leb_printf(&state->info, abbrev_code, 0),
+		fprintf(state->info.f, "  # Abbrev. Code\n");
 
 	/* tags are technically ULEBs */
 	dwarf_printf(&state->abbrev, BYTE, "%d  # %s\n",
@@ -939,6 +940,12 @@ static void dwarf_flush_die_1(
 form_data:
 				dwarf_printf(&state->info, fty, "%ld", a->bits.value);
 				break;
+
+			case DW_FORM_ULEB:
+				dwarf_leb_printf(&state->info, a->bits.value, 0);
+				fputc('\n', state->info.f);
+				break;
+
 			case DW_FORM_addr:
 				dwarf_printf(&state->info, QUAD, "%s", a->bits.str);
 				break;
