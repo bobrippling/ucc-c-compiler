@@ -1,9 +1,6 @@
 all: src
 	make -C lib
 
-debug: src
-	make -C lib CFLAGS+=-g
-
 src: configure
 	make -C src
 
@@ -33,4 +30,4 @@ ALL_SRC = $(shell find . -iname '*.[ch]')
 tags: ${ALL_SRC}
 	ctags -R .
 
-.PHONY: all clean cleanall configure src debug
+.PHONY: all clean cleanall configure src
