@@ -997,9 +997,11 @@ form_data:
 	}
 
 	fprintf(state->abbrev.f,
-			"\t.byte 0, 0 # end of abbrev %d\n",
+			"\t.byte 0, 0 # name/val abbrev %d end\n\n",
 			abbrev_code);
 	state->abbrev.byte_cnt += 2;
+
+	fprintf(state->info.f, "\n");
 }
 
 static void dwarf_flush_free(struct DIE_compile_unit *cu,
