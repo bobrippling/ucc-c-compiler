@@ -890,6 +890,16 @@ static void dwarf_flush_die_children(
 	}
 }
 
+static void dwarf_leb_printf(
+		struct DIE_flush_file *f,
+		unsigned long uleb,
+		const char *post)
+{
+	fprintf(f->f, "\t.byte ");
+	f->byte_cnt += leb128_out(f->f, uleb, 0);
+	fprintf(f->f, "%s", post);
+}
+
 static void dwarf_flush_die_1(
 		struct DIE *die, struct DIE_flush *state)
 {
@@ -899,9 +909,10 @@ static void dwarf_flush_die_1(
 	die->locn = state->info.byte_cnt;
 
 	/* FIXME: 2 n-sized byte/word/longs here */
-	dwarf_printf(&state->abbrev, BYTE, "%d  # Abbrev. Code\n", abbrev_code);
-	dwarf_printf(&state->info,   BYTE, "%d  # Abbrev. Code\n", abbrev_code);
+	dwarf_leb_printf(&state->abbrev, abbrev_code, "  # Abbrev. Code\n");
+	dwarf_leb_printf(&state->info,   abbrev_code, "  # Abbrev. Code\n");
 
+	/* tags are technically ULEBs */
 	dwarf_printf(&state->abbrev, BYTE, "%d  # %s\n",
 			die->tag, die_tag_to_str(die->tag));
 
