@@ -9,6 +9,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#include "cfg.h"
+
 #include "ucc.h"
 #include "ucc_ext.h"
 #include "ucc_lib.h"
@@ -17,7 +19,6 @@
 #include "../util/util.h"
 #include "../util/platform.h"
 #include "str.h"
-#include "cfg.h"
 
 enum mode
 {
@@ -56,6 +57,7 @@ struct cc_file
 
 static char **remove_these;
 static int unlink_tmps = 1;
+static int gdebug = 0;
 const char *argv0;
 char *wrapper;
 
@@ -275,7 +277,13 @@ static void process_files(enum mode mode, char **inputs, char *output, char **ar
 			/* ld_crt_args() refers to static memory */
 			dynarray_add_array(&links, ld_stdlib_args());
 
-		link_all(links, output ? output : "a.out", args[mode_link]);
+		if(!output)
+			output = "a.out";
+
+		link_all(links, output, args[mode_link]);
+
+		if(NEED_DSYM && gdebug)
+			dsym(output);
 	}else{
 		rename_files(files, ninputs, output, mode);
 	}
@@ -467,6 +475,7 @@ arg_ld:
 					if(argv[i][2])
 						die("-g... unexpected");
 					ADD_ARG(mode_compile);
+					gdebug = 1;
 					/* don't pass to the assembler */
 					continue;
 

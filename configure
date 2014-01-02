@@ -17,6 +17,8 @@ UCC_CPU     = ${UCC_CPU}
 #define UCC_ARCH    "${UCC_ARCH}"
 #define UCC_INC     "${UCC_INC}"
 
+#define NEED_DSYM $NEED_DSYM
+
 #define UCC_CPPFLAGS "${UCC_CPPFLAGS}"
 #define UCC_CFLAGS   "${UCC_CFLAGS}"
 #define UCC_LDFLAGS  "${UCC_LDFLAGS}"
@@ -103,6 +105,7 @@ UCC_CFLAGS=''
 UCC_CPU=x86_64
 UCC_M32=0
 ASM_PLBL=.L
+NEED_DSYM=0
 
 unam="$(uname -s)"
 
@@ -142,6 +145,7 @@ case "$unam" in
 		UCC_CRT='-lcrt1.o'
 		UCC_LDFLAGS='-macosx_version_min 10.5'
 		ASM_PLBL=L
+		NEED_DSYM=1
 		leading_underscore
 		;;
 

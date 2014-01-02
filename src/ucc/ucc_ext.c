@@ -7,12 +7,13 @@
 #include <sys/wait.h>
 #include <stdarg.h>
 
+#include "cfg.h"
+
 #include "ucc_ext.h"
 #include "ucc.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
 #include "str.h"
-#include "cfg.h"
 
 #ifndef UCC_AS
 # error "ucc needs reconfiguring"
@@ -325,4 +326,10 @@ void link_all(char **objs, char *out, char **args)
 	runner(0, "ld", all);
 
 	dynarray_free(char **, &all, NULL);
+}
+
+void dsym(char *exe)
+{
+	char *args[] = { exe, NULL };
+	runner(0, "dsymutil", args);
 }
