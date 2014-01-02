@@ -31,7 +31,8 @@ UCC_CPU     = ${UCC_CPU}
 		SECTION_DATA="__DATA,__data"
 		SECTION_BSS="__BSS,__bss"
 		SECTION_DBG_ABBREV="__DWARF,__debug_abbrev,regular,debug"
-		SECTION_DBG_INFO="__DWARF,__debug_line,regular,debug"
+		SECTION_DBG_INFO="__DWARF,__debug_info,regular,debug"
+		SECTION_DBG_LINE="__DWARF,__debug_line,regular,debug"
 	else
 		SECTION_TEXT=".text"
 		SECTION_DATA=".data"
