@@ -5,7 +5,9 @@
 void out_dbg_where(where *);
 
 #ifdef SYM_H
-void out_dbginfo(symtable_global *, const char *fname);
+void out_dbginfo(symtable_global *globs,
+		const char *fname,
+		const char *compdir);
 #endif
 
 #endif

@@ -5,6 +5,6 @@ void stylef(const char *, ...) ucc_printflike(1, 2);
 
 void gen_style_dinit(decl_init *);
 void gen_style_decl(decl *);
-void gen_style(symtable_global *, const char *);
+void gen_style(symtable_global *);
 
 #endif

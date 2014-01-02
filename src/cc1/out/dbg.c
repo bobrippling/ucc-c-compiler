@@ -63,6 +63,7 @@
 	X(DW_AT_low_pc, 0x11)                \
 	X(DW_AT_high_pc, 0x12)               \
 	X(DW_AT_producer, 0x25)              \
+	X(DW_AT_comp_dir, 0x1b)              \
 	X(DW_AT_type, 0x49)                  \
 	X(DW_AT_sibling, 0x1)                \
 	X(DW_AT_lower_bound, 0x22)           \
@@ -676,7 +677,8 @@ static struct DIE **dwarf_formal_params(
 	return dieargs;
 }
 
-static struct DIE_compile_unit *dwarf_cu(const char *fname)
+static struct DIE_compile_unit *dwarf_cu(
+		const char *fname, const char *compdir)
 {
 	struct DIE_compile_unit *cu = umalloc(sizeof *cu);
 	long attrv;
@@ -690,6 +692,8 @@ static struct DIE_compile_unit *dwarf_cu(const char *fname)
 			((attrv = DW_LANG_C99), &attrv));
 
 	dwarf_attr(&cu->die, DW_AT_name, DW_FORM_string, ustrdup(fname));
+
+	dwarf_attr(&cu->die, DW_AT_comp_dir, DW_FORM_string, ustrdup(compdir));
 
 	dwarf_attr(&cu->die, DW_AT_stmt_list,
 			DW_FORM_addr,
@@ -1060,13 +1064,15 @@ static void dwarf_flush_free(struct DIE_compile_unit *cu,
 	fprintf(abbrev, "\t.byte 0 # end\n");
 }
 
-void out_dbginfo(symtable_global *globs, const char *fname)
+void out_dbginfo(symtable_global *globs,
+		const char *fname,
+		const char *compdir)
 {
 	struct DIE_compile_unit *compile_unit;
 
 	long info_offset = dwarf_info_header(cc_out[SECTION_DBG_INFO]);
 
-	compile_unit = dwarf_cu(fname);
+	compile_unit = dwarf_cu(fname, compdir);
 
 	/* output subprograms */
 	{

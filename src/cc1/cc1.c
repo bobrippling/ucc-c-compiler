@@ -353,7 +353,7 @@ static char *next_line()
 int main(int argc, char **argv)
 {
 	static symtable_global *globs;
-	void (*gf)(symtable_global *, const char *);
+	void (*gf)(symtable_global *) = NULL;
 	const char *fname;
 	int i;
 	int werror = 0;
@@ -541,12 +541,6 @@ usage:
 		fname = "-";
 	}
 
-	switch(cc1_backend){
-		case BACKEND_ASM:   gf = gen_asm;   break;
-		case BACKEND_STYLE: gf = gen_style; break;
-		case BACKEND_PRINT: gf = gen_str;   break;
-	}
-
 	io_setup();
 
 	show_current_line = fopt_mode & FOPT_SHOW_LINE;
@@ -562,9 +556,42 @@ usage:
 	if(werror && warning_count)
 		ccdie(0, "%s: Treating warnings as errors", *argv);
 
-	gf(globs, cc1_first_fname ? cc1_first_fname : fname);
+	switch(cc1_backend){
+		case BACKEND_STYLE:
+			gf = gen_style;
+			if(0){
+		case BACKEND_PRINT:
+				gf = gen_str;
+			}
+			gf(globs);
+			break;
 
-	io_fin(gf == gen_asm, fname);
+		case BACKEND_ASM:
+		{
+			char buf[4096];
+			char *compdir;
+
+			compdir = getcwd(NULL, 0);
+			if(!compdir){
+				/* no auto-malloc */
+				compdir = getcwd(buf, sizeof(buf)-1);
+				/* PATH_MAX may not include the  ^ nul byte */
+				if(!compdir)
+					die("getcwd():");
+			}
+
+			gen_asm(globs,
+					cc1_first_fname ? cc1_first_fname : fname,
+					compdir);
+
+			if(compdir != buf)
+				free(compdir);
+			break;
+		}
+	}
+
+
+	io_fin(gf == NULL, fname);
 
 	return 0;
 }

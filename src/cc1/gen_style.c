@@ -75,11 +75,9 @@ void gen_style_decl(decl *d)
 	stylef(";\n");
 }
 
-void gen_style(symtable_global *stab, const char *fname)
+void gen_style(symtable_global *stab)
 {
 	decl **i;
-
-	(void)fname;
 
 	for(i = stab->stab.decls; i && *i; i++)
 		gen_style_decl(*i);

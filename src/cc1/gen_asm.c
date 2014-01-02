@@ -165,7 +165,7 @@ static void gen_stringlits(dynmap *litmap)
 			asm_declare_stringlit(SECTION_DATA, lit);
 }
 
-void gen_asm(symtable_global *globs, const char *fname)
+void gen_asm(symtable_global *globs, const char *fname, const char *compdir)
 {
 	decl **diter;
 	struct symtable_gasm **iasm = globs->gasms;
@@ -239,5 +239,5 @@ void gen_asm(symtable_global *globs, const char *fname)
 	gen_stringlits(globs->literals);
 
 	if(cc1_gdebug && globs->stab.decls)
-		out_dbginfo(globs, fname);
+		out_dbginfo(globs, fname, compdir);
 }

@@ -523,11 +523,9 @@ void print_stmt(stmt *t)
 	}
 }
 
-void gen_str(symtable_global *symtab, const char *fname)
+void gen_str(symtable_global *symtab)
 {
 	decl **diter;
-
-	(void)fname;
 
 	print_sues_static_asserts(&symtab->stab);
 
