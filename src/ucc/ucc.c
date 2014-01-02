@@ -109,7 +109,7 @@ static void create_file(struct cc_file *file, enum mode mode, char *in)
 			goto assume_obj;
 	}
 
-#define ASSIGN(x)                \
+#define FILL_WITH_TMP(x)         \
 			if(!file->x){              \
 				file->x = tmpfilenam();  \
 				if(mode == mode_ ## x){  \
@@ -123,18 +123,18 @@ static void create_file(struct cc_file *file, enum mode mode, char *in)
 		switch(ext[1]){
 preproc:
 			case 'c':
-				ASSIGN(preproc);
+				FILL_WITH_TMP(preproc);
 compile:
 			case 'i':
-				ASSIGN(compile);
+				FILL_WITH_TMP(compile);
 				goto after_compile;
 assemb:
 			case 'S':
 				file->preproc_asm = 1;
-				ASSIGN(preproc); /* preprocess .S assembly files by default */
+				FILL_WITH_TMP(preproc); /* preprocess .S assembly files by default */
 after_compile:
 			case 's':
-				ASSIGN(assemb);
+				FILL_WITH_TMP(assemb);
 				file->out = file->assemb;
 				break;
 
