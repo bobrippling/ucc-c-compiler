@@ -709,9 +709,10 @@ static struct DIE_compile_unit *dwarf_cu(const char *fname)
 
 static long dwarf_info_header(FILE *f)
 {
-	/* hacky? */
+#define VAR_LEN ASM_PLBL_PRE "info_len"
 	fprintf(f,
-			"\t.long %s%s - .Ldbg_info_start\n"
+			VAR_LEN " = %s%s - %s%s\n"
+			"\t.long " VAR_LEN "\n"
 			".Ldbg_info_start:\n"
 			"\t.short 2 # DWARF 2\n"
 			"\t.long 0  # abbrev offset\n"

@@ -12,8 +12,8 @@ enum section_type
 	NUM_SECTIONS
 };
 
-#define SECTION_BEGIN ".Lsection_begin_"
-#define SECTION_END   ".Lsection_end_"
+#define SECTION_BEGIN ASM_PLBL_PRE "section_begin_"
+#define SECTION_END   ASM_PLBL_PRE "section_end_"
 #define QUOTE_(...) #__VA_ARGS__
 #define QUOTE(y) QUOTE_(y)
 
