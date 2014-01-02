@@ -1,6 +1,6 @@
 #include "../../../src/as_cfg.h"
 #include "defs.h"
-.section SECTION_TEXT
+.section SECTION_NAME_TEXT
 // start is special, since it's an asm-only symbol
 
 #ifdef __LEADING_UNDERSCORE
