@@ -694,15 +694,15 @@ static struct DIE_compile_unit *dwarf_cu(const char *fname)
 	dwarf_attr(&cu->die, DW_AT_stmt_list,
 			DW_FORM_addr,
 			ustrprintf("%s%s", SECTION_BEGIN,
-				QUOTE(SECTION_NAME_DBG_LINE)));
+				sections[SECTION_DBG_LINE].desc));
 
 	dwarf_attr(&cu->die, DW_AT_low_pc, DW_FORM_addr,
 			ustrprintf("%s%s", SECTION_BEGIN,
-				QUOTE(SECTION_NAME_TEXT)));
+				sections[SECTION_TEXT].desc));
 
 	dwarf_attr(&cu->die, DW_AT_high_pc, DW_FORM_addr,
 			ustrprintf("%s%s", SECTION_END,
-				QUOTE(SECTION_NAME_TEXT)));
+				sections[SECTION_TEXT].desc));
 
 	return cu;
 }
@@ -716,7 +716,8 @@ static long dwarf_info_header(FILE *f)
 			"\t.short 2 # DWARF 2\n"
 			"\t.long 0  # abbrev offset\n"
 			"\t.byte %d  # sizeof(void *)\n",
-			SECTION_END, QUOTE(SECTION_NAME_DBG_INFO),
+			SECTION_END, sections[SECTION_DBG_INFO].desc,
+			SECTION_BEGIN, sections[SECTION_DBG_INFO].desc,
 			platform_word_size());
 
 	return 4 + 2 + 4 + 1;

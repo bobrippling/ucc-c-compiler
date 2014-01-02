@@ -17,6 +17,12 @@ enum section_type
 #define QUOTE_(...) #__VA_ARGS__
 #define QUOTE(y) QUOTE_(y)
 
+extern struct section
+{
+	const char *desc;
+	const char *name;
+} sections[];
+
 extern FILE *cc_out[NUM_SECTIONS];
 extern FILE *cc1_out;
 

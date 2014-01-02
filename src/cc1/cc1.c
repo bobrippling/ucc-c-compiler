@@ -190,13 +190,13 @@ int caught_sig = 0;
 
 int show_current_line;
 
-const char *section_names[NUM_SECTIONS] = {
-	QUOTE(SECTION_NAME_TEXT),
-	QUOTE(SECTION_NAME_DATA),
-	QUOTE(SECTION_NAME_BSS),
-	QUOTE(SECTION_NAME_DBG_ABBREV),
-	QUOTE(SECTION_NAME_DBG_INFO),
-	QUOTE(SECTION_NAME_DBG_LINE),
+struct section sections[NUM_SECTIONS] = {
+	{ "text", QUOTE(SECTION_NAME_TEXT) },
+	{ "data", QUOTE(SECTION_NAME_DATA) },
+	{ "bss",  QUOTE(SECTION_NAME_BSS) },
+	{ "dbg_abrv", QUOTE(SECTION_NAME_DBG_ABBREV) },
+	{ "dbg_info", QUOTE(SECTION_NAME_DBG_INFO) },
+	{ "dbg_line", QUOTE(SECTION_NAME_DBG_LINE) },
 };
 
 static FILE *infile;
@@ -302,8 +302,8 @@ static void io_fin(int do_sections, const char *fname)
 			if(last == -1 || fseek(cc_out[i], 0, SEEK_SET) == -1)
 				ccdie(0, "seeking on section file %d:", i);
 
-			if(fprintf(cc1_out, ".section %s\n", section_names[i]) < 0
-			|| fprintf(cc1_out, "%s%s:\n", SECTION_BEGIN, section_names[i]) < 0)
+			if(fprintf(cc1_out, ".section %s\n", sections[i].name) < 0
+			|| fprintf(cc1_out, "%s%s:\n", SECTION_BEGIN, sections[i].desc) < 0)
 			{
 				ccdie(0, "write to cc1 output:");
 			}
@@ -315,7 +315,7 @@ static void io_fin(int do_sections, const char *fname)
 			if(ferror(cc_out[i]))
 				ccdie(0, "read from section file %d:", i);
 
-			if(fprintf(cc1_out, "%s%s:\n", SECTION_END, section_names[i]) < 0)
+			if(fprintf(cc1_out, "%s%s:\n", SECTION_END, sections[i].desc) < 0)
 				ccdie(0, "terminating section %d:", i);
 		}
 	}
