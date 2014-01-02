@@ -711,7 +711,8 @@ static long dwarf_info_header(FILE *f)
 {
 #define VAR_LEN ASM_PLBL_PRE "info_len"
 	fprintf(f,
-			VAR_LEN " = %s%s - %s%s\n"
+			/* -4: don't include the length spec itself */
+			VAR_LEN " = %s%s - %s%s - 4\n"
 			"\t.long " VAR_LEN "\n"
 			".Ldbg_info_start:\n"
 			"\t.short 2 # DWARF 2\n"
