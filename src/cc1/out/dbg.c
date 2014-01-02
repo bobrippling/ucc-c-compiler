@@ -697,8 +697,10 @@ static struct DIE_compile_unit *dwarf_cu(
 
 	dwarf_attr(&cu->die, DW_AT_stmt_list,
 			DW_FORM_addr,
-			ustrprintf("%s%s", SECTION_BEGIN,
-				sections[SECTION_DBG_LINE].desc));
+			DWARF_STMT_LIST
+			? ustrprintf("%s%s", SECTION_BEGIN,
+				sections[SECTION_DBG_LINE].desc)
+			: NULL);
 
 	dwarf_attr(&cu->die, DW_AT_low_pc, DW_FORM_addr,
 			ustrprintf("%s%s", SECTION_BEGIN,
@@ -967,7 +969,8 @@ form_data:
 				break;
 
 			case DW_FORM_addr:
-				dwarf_printf(&state->info, QUAD, "%s", a->bits.str);
+				dwarf_printf(&state->info, QUAD, "%s",
+						a->bits.str ?  a->bits.str : "0");
 				break;
 
 			case DW_FORM_string:
