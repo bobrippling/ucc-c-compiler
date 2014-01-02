@@ -57,7 +57,7 @@ struct cc_file
 
 static char **remove_these;
 static int unlink_tmps = 1;
-static int gdebug = 0;
+static int gdebug = 0, generated_temp_obj = 0;
 const char *argv0;
 char *wrapper;
 
@@ -134,6 +134,9 @@ assemb:
 				FILL_WITH_TMP(preproc); /* preprocess .S assembly files by default */
 after_compile:
 			case 's':
+				if(NEED_DSYM && !file->assemb)
+					generated_temp_obj = 1;
+
 				FILL_WITH_TMP(assemb);
 				file->out = file->assemb;
 				break;
@@ -282,8 +285,10 @@ static void process_files(enum mode mode, char **inputs, char *output, char **ar
 
 		link_all(links, output, args[mode_link]);
 
-		if(NEED_DSYM && gdebug)
+		if(NEED_DSYM && gdebug && generated_temp_obj){
+			/* only need dsym if we use temporary .o files */
 			dsym(output);
+		}
 	}else{
 		rename_files(files, ninputs, output, mode);
 	}
