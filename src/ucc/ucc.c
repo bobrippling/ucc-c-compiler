@@ -12,6 +12,7 @@
 #include "ucc.h"
 #include "ucc_ext.h"
 #include "ucc_lib.h"
+#include "specs.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
 #include "../util/util.h"
@@ -353,6 +354,8 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Usage: %s [options] input(s)\n", *argv);
 		return 1;
 	}
+
+	specs_read();
 
 	/* we don't want the initial temporary fname "/tmp/tmp.xyz" tracked
 	 * or showing up in error messages

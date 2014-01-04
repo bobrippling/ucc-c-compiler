@@ -12,9 +12,6 @@ UCC_CPU     = ${UCC_CPU}
 !
 
 	cat > src/ucc/cfg.h <<!
-#define UCC_CC1     "${UCC_CC1}"
-#define UCC_CPP     "${UCC_CPP}"
-
 #define UCC_AS      "${UCC_AS}"
 #define UCC_LD      "${UCC_LD}"
 #define UCC_ARCH    "${UCC_ARCH}"
@@ -100,9 +97,6 @@ try_set(){
 }
 
 # these will change with 'make install'
-UCC_CPP=../cpp2/cpp
-UCC_CC1=../cc1/cc1
-
 UCC_AS=as
 UCC_LD=ld
 

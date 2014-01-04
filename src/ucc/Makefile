@@ -1,6 +1,8 @@
 include ../src_config.mk
 
-OBJ = ucc.o ucc_ext.o ucc_lib.o ucc_path.o str.o \
+CFLAGS += -D_POSIX_C_SOURCE=200112L
+
+OBJ = ucc.o ucc_ext.o ucc_lib.o ucc_path.o specs.o str.o \
 			../util/alloc.o ../util/dynarray.o ../util/platform.o
 
 ucc: ${OBJ}

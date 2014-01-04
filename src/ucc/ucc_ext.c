@@ -13,6 +13,7 @@
 #include "ucc.h"
 #include "ucc_ext.h"
 #include "ucc_path.h"
+#include "specs.h"
 
 #include "str.h"
 
@@ -265,7 +266,7 @@ void preproc(char *in, char *out, char **args)
 	}
 
 #if 0
-	make_cmdpath(&pp_path, "cpp", UCC_CPP);
+	make_cmdpath(&pp_path, "cpp", specs.cpp);
 #else
 	/* use the system preproc. for now */
 	pp_path.type = USE_PATH;
@@ -281,7 +282,7 @@ void compile(char *in, char *out, char **args)
 {
 	struct cmdpath cc1path;
 
-	make_cmdpath(&cc1path, "cc1", UCC_CC1);
+	make_cmdpath(&cc1path, "cc1", specs.cc1);
 
 	runner_single_arg(&cc1path, in, out, args);
 }

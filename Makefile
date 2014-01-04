@@ -4,14 +4,14 @@ BINDIR = ${DESTDIR}${PREFIX}/bin
 LIBDIR = ${DESTDIR}${PREFIX}/lib/ucc
 INCDIR = ${DESTDIR}${PREFIX}/lib/ucc/include
 
-all: configure
+all: configure specs-src
 	make -C src
 	make -C lib
 
-install: all
+install: all specs-install
 	mkdir -p ${BINDIR}
 	# TODO: setup ucc with ${LIBDIR} path
-	cp ucc ${BINDIR}
+	cp src/ucc/ucc src/ucc/ucc.specs ${BINDIR}
 	mkdir -p ${LIBDIR}
 	cp src/cc1/cc1 ${LIBDIR}
 	cp src/cpp2/cpp ${LIBDIR}
@@ -21,6 +21,14 @@ install: all
 uninstall:
 	rm -f ${BINDIR}/ucc
 	rm -r ${LIBDIR}
+
+specs-src:
+	echo cpp: ../cpp2/cpp >src/ucc/ucc.specs
+	echo cc1: ../cc1/cc1  >>src/ucc/ucc.specs
+
+specs-install:
+	echo cpp: ../lib/ucc/cpp >src/ucc/ucc.specs
+	echo cc1: ../lib/ucc/cc1 >>src/ucc/ucc.specs
 
 deps:
 	make -Csrc deps
