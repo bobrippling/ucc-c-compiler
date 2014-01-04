@@ -2,7 +2,7 @@ PREFIX ?= /usr/local
 
 BINDIR = ${DESTDIR}${PREFIX}/bin
 LIBDIR = ${DESTDIR}${PREFIX}/lib/ucc
-INCDIR = ${DESTDIR}${PREFIX}/lib/ucc/include
+INCDIR = ${LIBDIR}/include
 
 all: configure specs-src
 	make -C src
