@@ -646,7 +646,7 @@ static decl *parse_arg_decl(void)
 	return argdecl;
 }
 
-funcargs *parse_func_arglist(symtable *scope)
+funcargs *parse_func_arglist()
 {
 	funcargs *args = funcargs_new();
 
@@ -722,9 +722,6 @@ fin:;
 	}
 
 empty_func:
-	if(scope)
-		symtab_add_params(scope, args->arglist);
-
 	return args;
 }
 
@@ -834,8 +831,7 @@ static type_ref *parse_type_ref_func(enum decl_mode mode, decl *dfor)
 	while(accept(token_open_paren)){
 		current_scope = symtab_new(current_scope);
 
-		sub = type_ref_new_func(sub,
-				parse_func_arglist(current_scope));
+		sub = type_ref_new_func(sub, parse_func_arglist());
 
 		current_scope = current_scope->parent;
 

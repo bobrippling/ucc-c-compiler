@@ -770,6 +770,8 @@ void fold_global_func(decl *func_decl)
 
 void fold_decl_global(decl *d, symtable *stab)
 {
+	int is_fn;
+
 	switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
 		case store_extern:
 		case store_default:
@@ -790,9 +792,15 @@ void fold_decl_global(decl *d, symtable *stab)
 					DECL_IS_FUNC(d) ? "function" : "variable");
 	}
 
+	if((is_fn = !!DECL_IS_FUNC(d)) && d->func_code){
+		symtab_add_params(
+				DECL_FUNC_ARG_SYMTAB(d),
+				type_ref_funcargs(d->ref)->arglist);
+	}
+
 	fold_decl(d, stab, NULL);
 
-	if(DECL_IS_FUNC(d)){
+	if(is_fn){
 		UCC_ASSERT(!d->init, "function has init?");
 		fold_global_func(d);
 	}
