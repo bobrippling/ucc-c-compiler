@@ -63,6 +63,15 @@ static void lea_assign_lhs(expr *e)
 	lea_expr(e->lhs);
 }
 
+void expr_assign_const_check(expr *e, where *w)
+{
+	if(type_ref_is_const(e->tree_type)){
+		fold_had_error = 1;
+		warn_at_print_error(w, "can't modify const expression %s",
+				e->f_str());
+	}
+}
+
 void fold_expr_assign(expr *e, symtable *stab)
 {
 	sym *lhs_sym = NULL;
@@ -80,8 +89,8 @@ void fold_expr_assign(expr *e, symtable *stab)
 
 	expr_must_lvalue(e->lhs);
 
-	if(!e->assign_is_init && type_ref_is_const(e->lhs->tree_type))
-		die_at(&e->where, "can't modify const expression %s", e->lhs->f_str());
+	if(!e->assign_is_init)
+		expr_assign_const_check(e->lhs, &e->where);
 
 	fold_check_restrict(e->lhs, e->rhs, "assignment", &e->where);
 

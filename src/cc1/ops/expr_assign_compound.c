@@ -21,8 +21,7 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 	/* skip the addr we inserted */
 	expr_must_lvalue(lvalue);
 
-	if(type_ref_is_const(lvalue->tree_type))
-		die_at(&e->where, "can't modify const expression %s", lvalue->f_str());
+	expr_assign_const_check(lvalue, &e->where);
 
 	fold_check_restrict(lvalue, e->rhs, "compound assignment", &e->where);
 
