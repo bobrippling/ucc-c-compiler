@@ -59,7 +59,7 @@ rmfiles="$rmfiles $a $b"
 
 set -e
 
-./layout_normalise.pl "$1" $cc_args | ./layout_sort.pl > $a
-./layout_normalise.pl "$2" $cc_args | ./layout_sort.pl > $b
+./layout_normalise.pl "$1" | ./layout_sort.pl > $a
+./layout_normalise.pl "$2" | ./layout_sort.pl > $b
 
 diff -u $b $a
