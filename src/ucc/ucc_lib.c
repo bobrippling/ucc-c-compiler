@@ -30,3 +30,11 @@ char **ld_crt_args(void)
 		ret = strsplit(UCC_CRT, ":");
 	return ret;
 }
+
+char **pp_inc_args(void)
+{
+	static char **ret;
+	if(!ret)
+		ret = strsplit(UCC_INC, ":");
+	return ret;
+}

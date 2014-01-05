@@ -112,7 +112,7 @@ unam="$(uname -s)"
 
 # setup include paths
 # TODO: option to use local ./lib path
-UCC_INC="-I/usr/include"
+UCC_INC="/usr/include"
 
 # defaults for an OS
 case "$unam" in
@@ -131,8 +131,7 @@ case "$unam" in
 			/usr/lib/$machine_path/crti.o \
 			/usr/lib/$machine_path/crtn.o
 
-		try_set UCC_INC "/usr/include/$machine_path"
-		try_set UCC_INC "$gcc_inc/include"
+		try_set UCC_INC : "/usr/include/$machine_path"
 		;;
 
 
@@ -185,7 +184,7 @@ do
 			fi
 			;;
 		--with-ucc-lib)
-			UCC_INC="-Ilib/"
+			UCC_INC="lib/"
 			UCC_CRT="lib/crt.a"
 			UCC_STDLIB="lib/libc.a"
 			UCC_DYN=''
