@@ -20,4 +20,6 @@ char *cmdpath_resolve(const struct cmdpath *, cmdpath_exec_fn **);
 /* free()s argument */
 char *path_prepend_relative(char *);
 
+const char *ucc_argv0_path(void);
+
 #endif

@@ -6,6 +6,7 @@
 
 #include "specs.h"
 #include "ucc.h"
+#include "ucc_path.h"
 #include "../util/alloc.h"
 
 #define BUF_LEN 4096
@@ -13,27 +14,6 @@
 #define SPECS_FILE "ucc.specs"
 
 struct specs specs;
-
-static void find_us(char path[], ssize_t len)
-{
-	ssize_t n;
-
-	memset(path, 0, len);
-
-	n = readlink("/proc/self/exe", path, len);
-
-	if(n == -1){
-		/* not linux, try something else */
-	}else if(n == len && path[len - 1]){
-		die("readlink(self), path too large");
-	}else{
-		/* readlink was fine */
-		return;
-	}
-
-	/* search $PATH for us */
-	die("TODO");
-}
 
 static int specs_line(FILE *f, char *path, char buf[BUF_LEN])
 {
@@ -70,19 +50,9 @@ static int specs_line(FILE *f, char *path, char buf[BUF_LEN])
 
 void specs_read(void)
 {
-	char path[4096];
+	char *path = ustrprintf("%s/" SPECS_FILE, ucc_argv0_path());
 	char buf[BUF_LEN];
-	char *p;
 	FILE *f;
-
-	find_us(path, sizeof(path) - strlen(SPECS_FILE));
-
-	/* specs file */
-	p = strrchr(path, '/');
-	if(p)
-		*++p = '\0';
-
-	strcat(path, SPECS_FILE);
 
 	f = fopen(path, "r");
 	if(!f)

@@ -3,6 +3,10 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <errno.h>
+
+#include <sys/types.h>
+#include <dirent.h>
 
 #include <unistd.h>
 
@@ -10,44 +14,96 @@
 #include "ucc_path.h"
 #include "../util/alloc.h"
 
-static void
-bname(char *path)
+static int path_search_self(char buf[], size_t len)
 {
-	char *p = strrchr(path, '/');
-	if(p)
-		p[1] = '\0';
-}
+	char *path = getenv("PATH");
+	char *p;
 
-static char *
-dirname_ucc(void)
-{
-	static char where[1024];
+	*buf = '\0';
 
-	if(!where[0]){
-		char link[1024];
-		ssize_t nb;
+	if(!path)
+		die("no $PATH to find ucc");
+	path = ustrdup(path);
 
-		if((nb = readlink(argv0, link, sizeof link)) == -1){
-			snprintf(where, sizeof where, "%s", argv0);
-		}else{
-			char *argv_dup;
+	for(p = strtok(path, ":"); p; p = strtok(NULL, ":")){
+		DIR *d = opendir(p);
+		struct dirent *ent;
 
-			link[nb] = '\0';
-			/* need to tag argv0's dirname onto the start */
-			argv_dup = ustrdup(argv0);
+		if(!d)
+			continue;
 
-			bname(argv_dup);
+		while(errno = 0, ent = readdir(d)){
+			if(!strcmp(ent->d_name, argv0)){
+				int written = snprintf(buf, len, "%s/%s", p, ent->d_name);
 
-			snprintf(where, sizeof where, "%s/%s", argv_dup, link);
+				if((size_t)written >= len)
+					die("ucc path too long: \"%s/%s\"", p, ent->d_name);
 
-			free(argv_dup);
+				p = NULL; /* terminate loop */
+				break;
+			}
 		}
+		if(errno)
+			die("readdir(%s):", p);
 
-		/* dirname */
-		bname(where);
+		closedir(d);
 	}
 
-	return where;
+	free(path);
+
+	return !!*buf;
+}
+
+static char *ucc_readlink(const char *path, char *out, ssize_t outlen)
+{
+	ssize_t n = readlink(path, out, outlen);
+
+	if(n == -1)
+		return NULL;
+
+	if(n == outlen && path[outlen - 1])
+		die("readlink(%s), source too large", path);
+
+	return out;
+}
+
+static void resolve_argv0_symlink(char buf[], size_t len)
+{
+	if(strlen(argv0) >= len)
+		die("argv[0] too long");
+	strcpy(buf, argv0);
+
+	while(ucc_readlink(buf, buf, len));
+}
+
+const char *ucc_argv0_path(void)
+{
+	static char path[4096];
+
+	if(*path)
+		return path;
+
+	if(!ucc_readlink("/proc/self/exe", path, sizeof path)){
+		/* not linux, try something else */
+	}else{
+		/* readlink was fine */
+		goto out;
+	}
+
+	if(strchr(argv0, '/')){
+		resolve_argv0_symlink(path, sizeof path);
+
+	}else if(!path_search_self(path, sizeof path)){
+		die("can't find ucc in $PATH");
+	}
+
+out:
+	{
+		char *p = strrchr(path, '/');
+		if(p)
+			*p = '\0';
+		return path;
+	}
 }
 
 static char *path_prepend(const char *pre, const char *path)
@@ -62,7 +118,7 @@ static char *path_prepend(const char *pre, const char *path)
 
 static char *path_prepend_relative_nofree(const char *path)
 {
-	return path_prepend(dirname_ucc(), path);
+	return path_prepend(ucc_argv0_path(), path);
 }
 
 char *path_prepend_relative(char *path)
