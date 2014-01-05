@@ -19,3 +19,14 @@ char **strsplit(const char *s, const char *sep)
 
 	return ret;
 }
+
+char **strprepend(const char *j, char **args)
+{
+	char **i;
+	for(i = args; i && *i; i++){
+		char *old = *i;
+		*i = ustrprintf("%s%s", j, old);
+		free(old);
+	}
+	return args;
+}

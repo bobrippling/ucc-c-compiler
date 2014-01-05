@@ -616,7 +616,9 @@ input:	dynarray_add(&inputs, argv[i]);
 
 	/* default include paths */
 	if(stdinc)
-		add_cfg_args(&args[mode_preproc], UCC_INC);
+		dynarray_add_array(&args[mode_preproc],
+				strprepend("-I", pp_inc_args()));
+
 	/* custom incldue paths */
 	if(includes)
 		dynarray_add_tmparray(&args[mode_preproc], includes);

@@ -86,12 +86,13 @@ leading_underscore(){
 }
 
 try_set(){
-	var="$1"
-	shift
+	var="$1"; shift
+	join="$1"; shift
+
 	for ent in $@
 	do
-		if test -f "$ent"
-		then eval "$var=\"\$$var:$ent\""
+		if test -e "$ent"
+		then eval "$var=\"\$$var$join$ent\""
 		fi
 	done
 }
@@ -116,20 +117,19 @@ UCC_INC="-I/usr/include"
 # defaults for an OS
 case "$unam" in
 	Linux)
-		# assume gcc
 		unam_lc="$(echo "$unam" | tr A-Z a-z)"
 
-		UCC_DYN="-dynamic-linker /lib64/ld-linux-x86-64.so.2"
 		UCC_STDLIB="-lc"
 
 		machine_path="$UCC_CPU-$unam_lc-gnu"
 
-		gcc=$(echo /usr/lib/gcc/$machine_path/*/ | tr ' ' '\n' | sort | tail -1)
+		UCC_DYN="-dynamic-linker"
+		try_set UCC_DYN ' ' /lib/$machine_path/ld-*.so
 
-		echo "Borrowing gcc-$(basename "$gcc")'s crt and include files"
-
-		try_set UCC_CRT /usr/lib/crt1.o /usr/lib/crti.o /usr/lib/crtn.o
-		try_set UCC_CRT "$gcc/crtbegin.o" "$gcc/crtend.o"
+		try_set UCC_CRT : \
+			/usr/lib/$machine_path/crt1.o \
+			/usr/lib/$machine_path/crti.o \
+			/usr/lib/$machine_path/crtn.o
 
 		try_set UCC_INC "/usr/include/$machine_path"
 		try_set UCC_INC "$gcc_inc/include"
