@@ -80,6 +80,7 @@
 	X(DW_FORM_data4, 0x6)    \
 	X(DW_FORM_data8, 0x7)    \
 	X(DW_FORM_ULEB, 0x2)     \
+	X(DW_FORM_ADDR4, 0x3)    \
 	X(DW_FORM_string, 0x8)   \
 	X(DW_FORM_ref4, 0x13)    \
 	X(DW_FORM_flag, 0xc)     \
@@ -285,6 +286,10 @@ static void dwarf_attr(
 			at->bits.type_die = data;
 			break;
 		case DW_FORM_addr:
+			at->bits.str = data;
+			break;
+
+		case DW_FORM_ADDR4:
 			at->bits.str = data;
 			break;
 
@@ -696,7 +701,7 @@ static struct DIE_compile_unit *dwarf_cu(
 	dwarf_attr(&cu->die, DW_AT_comp_dir, DW_FORM_string, ustrdup(compdir));
 
 	dwarf_attr(&cu->die, DW_AT_stmt_list,
-			DW_FORM_addr,
+			DW_FORM_ADDR4,
 			DWARF_STMT_LIST
 			? ustrprintf("%s%s", SECTION_BEGIN,
 				sections[SECTION_DBG_LINE].desc)
@@ -946,12 +951,16 @@ static void dwarf_flush_die_1(
 		struct DIE_attr *a = *at;
 		const char *s_attr = die_attr_to_str(a->attr);
 		const char *s_enc = die_enc_to_str(a->enc);
+		enum dwarf_attr_encoding enc = a->enc;
 
 		dwarf_printf(&state->abbrev, BYTE, "%d  # %s\n",
 				a->attr, s_attr);
 
+		if(enc == DW_FORM_ADDR4)
+			enc = DW_FORM_data4;
+
 		dwarf_printf(&state->abbrev, BYTE, "%d  # %s\n",
-				a->enc, s_enc);
+				enc, s_enc);
 
 		switch(a->enc){
 				enum flush_type fty;
@@ -968,8 +977,10 @@ form_data:
 				fputc('\n', state->info.f);
 				break;
 
-			case DW_FORM_addr:
-				dwarf_printf(&state->info, QUAD, "%s",
+			case DW_FORM_ADDR4: fty = LONG; goto addr;
+			case DW_FORM_addr: fty = QUAD; goto addr;
+addr:
+				dwarf_printf(&state->info, fty, "%s",
 						a->bits.str ?  a->bits.str : "0");
 				break;
 
