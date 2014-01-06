@@ -18,7 +18,7 @@ char **ld_stdlib_args(void)
 	static char **ret;
 
 	if(!ret)
-		ret = strsplit(UCC_STDLIB, ":");
+		ret = strsplit(UCC_STDLIB, " ");
 
 	return ret;
 }
