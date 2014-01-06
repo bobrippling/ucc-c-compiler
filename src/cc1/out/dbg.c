@@ -763,6 +763,15 @@ static void dwarf_attr_decl(
 	}
 }
 
+static void dwarf_location_addr(struct dwarf_block_ent *locn_ents, decl *d)
+{
+	locn_ents[0].type = BLOCK_HEADER;
+	locn_ents[0].bits.v = DW_OP_addr;
+
+	locn_ents[1].type = BLOCK_ADDR_STR;
+	locn_ents[1].bits.str = ustrdup(decl_asm_spel(d));
+}
+
 static struct DIE *dwarf_global_variable(struct DIE_compile_unit *cu, decl *d)
 {
 	const enum decl_storage store = d->store & STORE_MASK_STORE;
@@ -785,11 +794,7 @@ static struct DIE *dwarf_global_variable(struct DIE_compile_unit *cu, decl *d)
 		locn = umalloc(sizeof *locn);
 		locn_ents = umalloc(2 * sizeof *locn_ents);
 
-		locn_ents[0].type = BLOCK_HEADER;
-		locn_ents[0].bits.v = DW_OP_addr;
-
-		locn_ents[1].type = BLOCK_ADDR_STR;
-		locn_ents[1].bits.str = ustrdup(d->spel);
+		dwarf_location_addr(locn_ents, d);
 
 		locn->cnt = 2;
 		locn->ents = locn_ents;
@@ -833,12 +838,23 @@ static struct DIE *dwarf_stmt_scope(
 			locn->cnt = 2;
 			locn->ents = locn_ents;
 
-			locn_ents[0].type = BLOCK_HEADER;
-			locn_ents[0].bits.v = DW_OP_breg6; /* rbp */
+			switch(d->sym->type){
+				case sym_local:
+					locn_ents[0].type = BLOCK_HEADER;
+					locn_ents[0].bits.v = DW_OP_breg6; /* rbp */
 
-			locn_ents[1].type = BLOCK_LEB128_S;
-			locn_ents[1].bits.v = -(long)(
-					d->sym->loc.stack_pos + var_offset);
+					locn_ents[1].type = BLOCK_LEB128_S;
+					locn_ents[1].bits.v = -(long)(
+							d->sym->loc.stack_pos + var_offset);
+					break;
+
+				case sym_global:
+					dwarf_location_addr(locn_ents, d);
+					break;
+
+				case sym_arg:
+					ICE("sym_arg in function");
+			}
 
 			dwarf_attr(var, DW_AT_location, DW_FORM_block1, locn);
 		}
