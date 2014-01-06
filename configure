@@ -170,6 +170,8 @@ case "$unam_os" in
 		;;
 
 	CYGWIN_NT-*)
+		UCC_CRT=/usr/lib/crt0.o
+		UCC_STDLIB='-lcygwin -lkernel32'
 		set_leading_underscore
 		;;
 esac
