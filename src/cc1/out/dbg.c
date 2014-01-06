@@ -812,7 +812,11 @@ static struct DIE *dwarf_stmt_scope(
 
 	lexblk = dwarf_die_new(DW_TAG_lexical_block);
 
-	/*dwarf_attr(cu, DW_AT_low_pc, DW_FORM_data4, 0);*/
+	dwarf_attr(lexblk, DW_AT_low_pc,
+			DW_FORM_addr, code->bits.code.lbl_begin);
+
+	dwarf_attr(lexblk, DW_AT_high_pc,
+			DW_FORM_addr, code->bits.code.lbl_end);
 
 	/* generate variable DIEs */
 	for(di = code->symtab->decls; di && *di; di++){

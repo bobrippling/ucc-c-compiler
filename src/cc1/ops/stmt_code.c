@@ -6,6 +6,7 @@
 #include "../decl_init.h"
 #include "../../util/dynarray.h"
 #include "../fold_sym.h"
+#include "../out/lbl.h"
 
 const char *str_stmt_code()
 {
@@ -148,8 +149,18 @@ void gen_stmt_code(stmt *s)
 	/* stmt_for/if/while/do needs to do this too */
 	gen_block_decls(s->symtab);
 
+	if(cc1_gdebug){
+		s->bits.code.lbl_begin = out_label_code("dbg_begin");
+		out_label(s->bits.code.lbl_begin);
+	}
+
 	for(titer = s->bits.code.stmts; titer && *titer; titer++)
 		gen_stmt(*titer);
+
+	if(cc1_gdebug){
+		s->bits.code.lbl_end = out_label_code("dbg_end");
+		out_label(s->bits.code.lbl_end);
+	}
 }
 
 void style_stmt_code(stmt *s)
