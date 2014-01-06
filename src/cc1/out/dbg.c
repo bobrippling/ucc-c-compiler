@@ -728,10 +728,11 @@ static long dwarf_info_header(FILE *f)
 			"\t.long " VAR_LEN "\n"
 			".Ldbg_info_start:\n"
 			"\t.short 2 # DWARF 2\n"
-			"\t.long 0  # abbrev offset\n"
+			"\t.long %s%s  # abbrev offset\n"
 			"\t.byte %d  # sizeof(void *)\n",
 			SECTION_END, sections[SECTION_DBG_INFO].desc,
 			SECTION_BEGIN, sections[SECTION_DBG_INFO].desc,
+			SECTION_BEGIN, sections[SECTION_DBG_ABBREV].desc,
 			platform_word_size());
 
 	return 4 + 2 + 4 + 1;
