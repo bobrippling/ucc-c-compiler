@@ -46,6 +46,7 @@
 	X(DW_TAG_union_type, 0x17)           \
 	X(DW_TAG_variable, 0x34)             \
 	X(DW_TAG_formal_parameter, 0x5)      \
+	X(DW_TAG_unspecified_parameters, 0x18) \
 	X(DW_TAG_member, 0xd)                \
 	X(DW_TAG_lexical_block, 0x0b)
 
@@ -678,6 +679,11 @@ static struct DIE **dwarf_formal_params(
 		}
 
 		dynarray_add(&dieargs, param);
+	}
+
+	if(args->variadic){
+		dynarray_add(&dieargs,
+				dwarf_die_new(DW_TAG_unspecified_parameters));
 	}
 
 	return dieargs;
