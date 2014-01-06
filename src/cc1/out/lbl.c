@@ -110,12 +110,6 @@ char *out_label_flow(const char *fmt)
 	return ret;
 }
 
-char *out_label_dbg_type(void)
-{
-	static int i;
-	return ustrprintf(".Ldbg_type_%d", i++);
-}
-
 char *out_dbg_func_end(const char *fn)
 {
 	return ustrprintf(".Lfuncend_%s", fn);
