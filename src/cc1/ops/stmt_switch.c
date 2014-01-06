@@ -17,7 +17,7 @@ static void fold_switch_dups(stmt *sw)
 {
 	typedef int (*qsort_f)(const void *, const void *);
 
-	int n = dynarray_count(sw->codes);
+	int n = dynarray_count(sw->bits.code.stmts);
 	struct
 	{
 		numeric start, end;
@@ -28,7 +28,7 @@ static void fold_switch_dups(stmt *sw)
 	int i;
 
 	/* gather all switch values */
-	for(i = 0, titer = sw->codes; titer && *titer; titer++){
+	for(i = 0, titer = sw->bits.code.stmts; titer && *titer; titer++){
 		stmt *cse = *titer;
 
 		if(cse->expr->expr_is_default){
@@ -91,7 +91,7 @@ static void fold_switch_enum(
 		warn_at(&sw->where, "switch on enum with enum_bitmask attribute");
 
 	/* for each case/default/case_range... */
-	for(titer = sw->codes; titer && *titer; titer++){
+	for(titer = sw->bits.code.stmts; titer && *titer; titer++){
 		stmt *cse = *titer;
 		integral_t v, w;
 
@@ -154,8 +154,8 @@ void fold_stmt_switch(stmt *s)
 	fold_check_expr(s->expr, FOLD_CHK_INTEGRAL, "switch");
 
 	/* this folds sub-statements,
-	 * causing case: and default: to add themselves to ->parent->codes,
-	 * i.e. s->codes
+	 * causing case: and default: to add themselves to ->parent->bits.code.stmts,
+	 * i.e. s->bits.code.stmts
 	 */
 	fold_stmt(s->lhs);
 
@@ -182,7 +182,7 @@ void gen_stmt_switch(stmt *s)
 
 	out_comment("switch on this");
 
-	for(titer = s->codes; titer && *titer; titer++){
+	for(titer = s->bits.code.stmts; titer && *titer; titer++){
 		stmt *cse = *titer;
 		numeric iv;
 

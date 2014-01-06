@@ -845,7 +845,7 @@ static struct DIE *dwarf_stmt_scope(
 	}
 
 	/* children lex_scope DIEs */
-	for(si = code->codes; si && *si; si++){
+	for(si = code->bits.code.stmts; si && *si; si++){
 		struct DIE *child = dwarf_stmt_scope(cu, *si);
 
 		if(child)

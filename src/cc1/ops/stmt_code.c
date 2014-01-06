@@ -96,9 +96,9 @@ void fold_stmt_code(stmt *s)
 	fold_block_decls(s->symtab, &init_blk);
 
 	if(init_blk)
-		dynarray_prepend(&s->codes, init_blk);
+		dynarray_prepend(&s->bits.code.stmts, init_blk);
 
-	for(siter = s->codes; siter && *siter; siter++){
+	for(siter = s->bits.code.stmts; siter && *siter; siter++){
 		stmt *const st = *siter;
 
 		EOF_WHERE(&st->where, fold_stmt(st));
@@ -148,7 +148,7 @@ void gen_stmt_code(stmt *s)
 	/* stmt_for/if/while/do needs to do this too */
 	gen_block_decls(s->symtab);
 
-	for(titer = s->codes; titer && *titer; titer++)
+	for(titer = s->bits.code.stmts; titer && *titer; titer++)
 		gen_stmt(*titer);
 }
 
@@ -162,7 +162,7 @@ void style_stmt_code(stmt *s)
 	for(i_d = s->symtab->decls; i_d && *i_d; i_d++)
 		gen_style_decl(*i_d);
 
-	for(i_s = s->codes; i_s && *i_s; i_s++)
+	for(i_s = s->bits.code.stmts; i_s && *i_s; i_s++)
 		gen_stmt(*i_s);
 
 	stylef("\n}\n");
@@ -174,7 +174,7 @@ static int code_passable(stmt *s)
 
 	/* note: this also checks for inits which call noreturn funcs */
 
-	for(i = s->codes; i && *i; i++){
+	for(i = s->bits.code.stmts; i && *i; i++){
 		stmt *sub = *i;
 		if(!fold_passable(sub))
 			return 0;

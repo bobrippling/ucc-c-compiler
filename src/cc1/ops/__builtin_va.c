@@ -101,7 +101,7 @@ static void fold_va_start(expr *e, symtable *stab)
 					expr_new_identifier(memb)),       \
 				exp);                               \
 		                                        \
-		dynarray_add(&assigns->codes,           \
+		dynarray_add(&assigns->bits.code.stmts, \
 				expr_to_stmt(assign, stab))
 
 #define ADD_ASSIGN_VAL(memb, val) ADD_ASSIGN(memb, expr_new_val(val))

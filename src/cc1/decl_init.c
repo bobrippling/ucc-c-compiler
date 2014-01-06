@@ -1104,7 +1104,7 @@ static void decl_init_create_assignment_from_copy(
 		expr *memcp = builtin_new_memcpy(
 				new_base, last_base, type_ref_size(next_type, &di->where));
 
-		dynarray_add(&code->codes,
+		dynarray_add(&code->bits.code.stmts,
 				expr_to_stmt(memcp, code->symtab));
 	}else{
 		/* the initial assignment from the range_copy */
@@ -1143,7 +1143,7 @@ zero_init:
 		memcpy_safe(&zero->where, &base->where);
 
 		dynarray_add(
-				&code->codes,
+				&code->bits.code.stmts,
 				expr_to_stmt(zero, code->symtab));
 		return;
 	}
@@ -1151,7 +1151,7 @@ zero_init:
 	switch(init->type){
 		case decl_init_scalar:
 			dynarray_add(
-					&code->codes,
+					&code->bits.code.stmts,
 					expr_to_stmt(
 						expr_set_where(
 							expr_new_assign_init(base, init->bits.expr),
@@ -1178,7 +1178,7 @@ zero_init:
 
 				if(type_ref_is_s_or_u(e->tree_type) == sue){
 					dynarray_add(
-							&code->codes,
+							&code->bits.code.stmts,
 							expr_to_stmt(
 								builtin_new_memcpy(
 									base, e, type_ref_size(e->tree_type, &e->where)),

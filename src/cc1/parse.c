@@ -847,11 +847,11 @@ static stmt *parse_stmt_and_decls(void)
 			else
 				this = parse_stmt();
 
-			dynarray_add(&code_stmt->codes, this);
+			dynarray_add(&code_stmt->bits.code.stmts, this);
 		}
 
 		if(at_decl){
-			if(code_stmt->codes){
+			if(code_stmt->bits.code.stmts){
 				stmt *nest = parse_stmt_and_decls();
 
 				if(cc1_std < STD_C99){
@@ -866,7 +866,7 @@ static stmt *parse_stmt_and_decls(void)
 				/* mark as internal - for duplicate checks */
 				nest->symtab->internal_nest = 1;
 
-				dynarray_add(&code_stmt->codes, nest);
+				dynarray_add(&code_stmt->bits.code.stmts, nest);
 			}else{
 				ICE("got another decl - should've been handled already");
 			}

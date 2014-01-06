@@ -41,9 +41,14 @@ struct stmt
 			char *spel;
 			int unused;
 		} lbl;
-	} bits;
 
-	stmt **codes; /* for a code block */
+		/* for a code block */
+		struct
+		{
+			stmt **stmts;
+			char *lbl_begin, *lbl_end; /* for debug - lexical block */
+		} code;
+	} bits;
 
 	symtable *symtab; /* block definitions, e.g. { int i... } */
 
