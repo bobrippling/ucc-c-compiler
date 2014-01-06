@@ -651,18 +651,6 @@ enum type_cmp decl_cmp(decl *a, decl *b, enum type_cmp_opts opts)
 	return cmp;
 }
 
-int decl_sort_cmp(const decl **pa, const decl **pb)
-{
-	const decl *const a = *pa, *const b = *pb;
-	int cmp = strcmp(a->spel, b->spel);
-
-	if(cmp != 0)
-		return cmp; /* names take priority */
-
-	/* assume functions - sort by whether they have code */
-	return !!a->func_code - !!b->func_code;
-}
-
 int type_ref_is_variadic_func(type_ref *r)
 {
 	return (r = type_ref_is(r, type_ref_func)) && r->bits.func.args->variadic;

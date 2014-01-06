@@ -152,7 +152,6 @@ integral_t type_ref_max(type_ref *, where *from);
 
 enum type_cmp decl_cmp(decl *a, decl *b, enum type_cmp_opts opts);
 int   decl_store_static_or_extern(enum decl_storage);
-int   decl_sort_cmp(const decl **, const decl **);
 
 type_ref *type_ref_ptr_depth_inc(type_ref *);
 type_ref *type_ref_ptr_depth_dec(type_ref *r, where *);
