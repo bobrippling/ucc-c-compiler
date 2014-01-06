@@ -670,7 +670,7 @@ static struct DIE **dwarf_formal_params(
 			locn_data[1].type = BLOCK_LEB128_S;
 			locn_data[1].bits.v = d->sym->loc.arg_offset;
 
-			locn->cnt = ARRAY_LEN(locn_data);
+			locn->cnt = 2;
 			locn->ents = locn_data;
 			dwarf_attr(param, DW_AT_location, DW_FORM_block1, locn);
 
@@ -1075,6 +1075,7 @@ addr:
 					}
 				}
 
+				UCC_ASSERT(len > 0, "zero length block, count %d", a->bits.blk->cnt);
 				dwarf_printf(&state->info, BYTE, "%d # block count\n",
 						len);
 
