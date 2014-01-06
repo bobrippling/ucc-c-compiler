@@ -122,7 +122,7 @@ void gen_asm_global(decl *d)
 				d->func_code->symtab->auto_total_size,
 				nargs,
 				is_vari = type_ref_is_variadic_func(d->ref),
-				offsets);
+				offsets, &d->func_var_offset);
 
 		assign_arg_offsets(arg_symtab->decls, offsets);
 

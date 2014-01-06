@@ -44,7 +44,7 @@ void out_jfalse(const char *);
 void out_func_prologue(
 		type_ref *rf,
 		int stack_res, int nargs, int variadic,
-		int arg_offsets[]);
+		int arg_offsets[], int *local_offset);
 
 void out_func_epilogue(type_ref *);
 

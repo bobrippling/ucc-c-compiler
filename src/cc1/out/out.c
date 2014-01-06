@@ -1448,7 +1448,7 @@ void out_comment(const char *fmt, ...)
 void out_func_prologue(
 		type_ref *rf,
 		int stack_res, int nargs, int variadic,
-		int arg_offsets[])
+		int arg_offsets[], int *local_offset)
 {
 	UCC_ASSERT(stack_sz == 0, "non-empty stack for new func");
 
@@ -1465,6 +1465,7 @@ void out_func_prologue(
 	/* setup "pointers" to the right place in the stack */
 	stack_variadic_offset = stack_sz - platform_word_size();
 	stack_local_offset = stack_sz;
+	*local_offset = stack_local_offset;
 
 	if(stack_res)
 		v_alloc_stack(stack_res, "local variables");

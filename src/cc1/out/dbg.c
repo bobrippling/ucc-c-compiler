@@ -801,7 +801,7 @@ static struct DIE *dwarf_global_variable(struct DIE_compile_unit *cu, decl *d)
 }
 
 static struct DIE *dwarf_stmt_scope(
-		struct DIE_compile_unit *cu, stmt *code)
+		struct DIE_compile_unit *cu, stmt *code, int var_offset)
 {
 	struct DIE *lexblk;
 	decl **di;
@@ -823,34 +823,34 @@ static struct DIE *dwarf_stmt_scope(
 		decl *d = *di;
 		struct DIE *var = dwarf_die_new(DW_TAG_variable);
 
-		struct dwarf_block_ent *locn_ents;
-		struct dwarf_block *locn;
+		if(d->sym){
+			struct dwarf_block_ent *locn_ents;
+			struct dwarf_block *locn;
 
-		locn = umalloc(sizeof *locn);
-		locn_ents = umalloc(2 * sizeof *locn_ents);
+			locn = umalloc(sizeof *locn);
+			locn_ents = umalloc(2 * sizeof *locn_ents);
 
-		locn->cnt = 2;
-		locn->ents = locn_ents;
+			locn->cnt = 2;
+			locn->ents = locn_ents;
 
-		locn_ents[0].type = BLOCK_HEADER;
-		locn_ents[0].bits.v = DW_OP_breg6; /* rbp */
+			locn_ents[0].type = BLOCK_HEADER;
+			locn_ents[0].bits.v = DW_OP_breg6; /* rbp */
 
-		/* XXX FIXME HACK: the -16 is horrible, we need to get
-		 * out.c:stack_local_offset, nicely.
-		 */
-		locn_ents[1].type = BLOCK_LEB128_S;
-		locn_ents[1].bits.v = -(long)d->sym->loc.stack_pos - 16;
+			locn_ents[1].type = BLOCK_LEB128_S;
+			locn_ents[1].bits.v = -(long)(
+					d->sym->loc.stack_pos + var_offset);
+
+			dwarf_attr(var, DW_AT_location, DW_FORM_block1, locn);
+		}
 
 		dwarf_attr_decl(cu, var, d, d->ref, /*show_extern:*/0);
-
-		dwarf_attr(var, DW_AT_location, DW_FORM_block1, locn);
 
 		dwarf_child(lexblk, var);
 	}
 
 	/* children lex_scope DIEs */
 	for(si = code->bits.code.stmts; si && *si; si++){
-		struct DIE *child = dwarf_stmt_scope(cu, *si);
+		struct DIE *child = dwarf_stmt_scope(cu, *si, var_offset);
 
 		if(child)
 			dwarf_child(lexblk, child);
@@ -880,7 +880,7 @@ static struct DIE *dwarf_subprogram_func(struct DIE_compile_unit *cu, decl *d)
 		dwarf_children(subprog, dwarf_formal_params(cu, args));
 	}
 
-	lexblk = dwarf_stmt_scope(cu, d->func_code);
+	lexblk = dwarf_stmt_scope(cu, d->func_code, d->func_var_offset);
 	if(lexblk)
 		dwarf_child(subprog, lexblk);
 

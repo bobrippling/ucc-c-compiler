@@ -106,6 +106,7 @@ struct decl
 
 	decl_init *init; /* initialiser - converted to an assignment for non-globals */
 	stmt *func_code;
+	int func_var_offset;
 
 	/* ^(){} has a decl+sym
 	 * the decl/sym has a ref to the expr block,
