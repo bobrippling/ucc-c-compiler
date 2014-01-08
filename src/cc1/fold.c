@@ -259,6 +259,8 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 				die_at(&r->where, "restrict qualified function pointer");
 			}
 
+			r->bits.func.arg_scope->are_params = 1;
+
 			symtab_fold_sues(r->bits.func.arg_scope);
 			fold_funcargs(r->bits.func.args, r->bits.func.arg_scope, r);
 			fold_calling_conv(r);
