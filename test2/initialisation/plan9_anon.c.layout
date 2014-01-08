@@ -1,0 +1,14 @@
+ent1:
+.long 0, 1, 0, 2
+
+ent2:
+.long 0, 0, 2, 3
+ent3:
+.long 0, 0, 2, 3
+
+ent4:
+.long 1, 2, 3, 0
+ent5:
+.long 0, 0, 0, 1
+ent6:
+.long 1, 2, 3, 0

@@ -1,0 +1,10 @@
+ent1:
+.long 1
+.zero 20
+.long 2
+.zero 20
+ent2:
+.long 1
+.zero 20
+.long 2
+.zero 20

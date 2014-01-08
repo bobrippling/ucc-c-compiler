@@ -131,10 +131,15 @@ void gen_expr_identifier(expr *e)
 {
 	sym *sym = e->bits.ident.sym;
 
-	if(DECL_IS_FUNC(sym->decl))
+	if(DECL_IS_FUNC(sym->decl)){
+		UCC_ASSERT(sym->type != sym_arg,
+				"function as argument?");
+
 		out_push_sym(sym);
-	else
+	}else{
 		out_push_sym_val(sym);
+	}
+
 }
 
 void mutate_expr_identifier(expr *e)

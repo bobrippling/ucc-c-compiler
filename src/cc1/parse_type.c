@@ -831,7 +831,7 @@ static type_ref *parse_type_ref_func(enum decl_mode mode, decl *dfor)
 	while(accept(token_open_paren)){
 		current_scope = symtab_new(current_scope);
 
-		sub = type_ref_new_func(sub, parse_func_arglist());
+		sub = type_ref_new_func(sub, parse_func_arglist(), current_scope);
 
 		current_scope = current_scope->parent;
 

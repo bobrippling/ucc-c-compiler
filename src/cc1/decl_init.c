@@ -418,7 +418,6 @@ static decl_init **decl_init_brace_up_array2(
 				 * ^ fine, as we can't replace subobjects of scalars
 				 */
 				if(replacing != DYNARRAY_NULL
-				&& this->type != decl_init_brace
 				&& !type_ref_is_scalar(next_type)){
 					/* we can replace brace inits IF they're constant (as a special
 					 * case), which is usually a common usage for static/global inits

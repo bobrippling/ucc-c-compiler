@@ -259,6 +259,8 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 				die_at(&r->where, "restrict qualified function pointer");
 			}
 
+			r->bits.func.arg_scope->are_params = 1;
+
 			symtab_fold_sues(r->bits.func.arg_scope);
 			fold_funcargs(r->bits.func.args, r->bits.func.arg_scope, r);
 			fold_calling_conv(r);
@@ -792,7 +794,9 @@ void fold_decl_global(decl *d, symtable *stab)
 					DECL_IS_FUNC(d) ? "function" : "variable");
 	}
 
-	if((is_fn = !!DECL_IS_FUNC(d)) && d->func_code){
+	/* can't check typedefs here - not folded.
+	 * functions can't be typedefs anyway */
+	if((is_fn = d->ref->type == type_ref_func) && d->func_code){
 		symtab_add_params(
 				DECL_FUNC_ARG_SYMTAB(d),
 				type_ref_funcargs(d->ref)->arglist);

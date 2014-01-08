@@ -55,10 +55,11 @@ static void print_stab(symtable *st, int indent)
 
 	STAB_INDENT();
 
-	fprintf(stderr, "table %p, children %d, vars %d, parent: %p\n",
+	fprintf(stderr, "table %p, children %d, vars %d, are_params %d, parent: %p\n",
 			(void *)st,
 			dynarray_count(st->children),
 			dynarray_count(st->decls),
+			st->are_params,
 			(void *)st->parent);
 
 	decl **di;

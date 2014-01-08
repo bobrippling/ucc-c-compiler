@@ -58,7 +58,7 @@ void fold_stmt_return(stmt *s)
 	if(!ret_ty){
 		/* first return of a block */
 		ret_ty = s->expr ? s->expr->tree_type : type_ref_cached_VOID();
-		expr_block_set_ty(in_func, ret_ty);
+		expr_block_set_ty(in_func, ret_ty, s->symtab);
 	}
 }
 

@@ -1,6 +1,5 @@
 // RUN: %ocheck 0 %s
 
-
 f_calls;
 
 f()
@@ -24,16 +23,17 @@ main()
 	struct A x[] = {
 		{ 1, 2, 3 },
 		{ 1, 2, 3 },
-		[1 ... 3] = { f(), 5, 6 }
+		[2 ... 5] = { f(), 5, 6 }
 	};
 
 	if(f_calls != 1)
 		abort();
 
 	check(&x[0], 1, 2, 3);
-	check(&x[0], 1, 2, 3);
-	check(&x[1], 7, 5, 6);
+	check(&x[1], 1, 2, 3);
 	check(&x[2], 7, 5, 6);
 	check(&x[3], 7, 5, 6);
+	check(&x[4], 7, 5, 6);
+	check(&x[5], 7, 5, 6);
 	return 0;
 }
