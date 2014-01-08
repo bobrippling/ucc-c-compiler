@@ -1,0 +1,12 @@
+ent:
+.long 1
+.long 2
+.long 2
+.long 5
+.long 2
+.long 2
+.long 0
+.long 0
+.long 0
+.long 0
+.long 3

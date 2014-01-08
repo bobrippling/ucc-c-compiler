@@ -1,0 +1,7 @@
+ent1:
+.zero 64
+.long 1
+.zero 56
+.long 2
+.long 3
+.zero 28

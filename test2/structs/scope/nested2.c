@@ -1,3 +1,5 @@
+// RUN: %check -e %s
+
 f1()
 {
 	typedef struct A A; // CHECK: !/error/

@@ -1,5 +1,5 @@
-// RUN: %layout_check %s
 // RUN: %ocheck 0 %s
+// RUN: %layout_check %s
 
 static const struct
 {
@@ -8,8 +8,9 @@ static const struct
 	enum { GREY, GREEN, RED } colour;
 	enum { CHANGE_NO, CHANGE_UP, CHANGE_DOWN } change;
 } ent1[][3] = {
-	// bug #1: some are missed in here
 	[0][0] = { "3/1/13", 500, GREY,  CHANGE_NO,   },
+	// [0][1] = {}
+	// [0][2] = {}
 
 	[1][0] = { "3/2/13", 600, GREEN, CHANGE_UP,   },
 	[1][1] = { "3/6/13", 200, GREEN, CHANGE_UP,   },
@@ -30,7 +31,5 @@ f(int x, int y)
 
 main()
 {
-	f(1, 2);
-
-	return 0;
+	return f(1, 2);
 }

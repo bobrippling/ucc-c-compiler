@@ -1,0 +1,5 @@
+ent1:
+.zero 8
+.long 5
+.long 2
+.zero 24
