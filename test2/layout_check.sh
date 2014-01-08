@@ -53,6 +53,12 @@ if [ $# -ne 2 ]
 then usage
 fi
 
+if ! test -e "$2"
+then
+	echo >&2 "$0: $2 doesn't exist"
+	exit 1
+fi
+
 a=/tmp/$$.chk.a
 b=/tmp/$$.chk.b
 rmfiles="$rmfiles $a $b"
