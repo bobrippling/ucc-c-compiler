@@ -1,8 +1,0 @@
-dup-cow
-addition-caching (TODO in vstack.h)
-generalise instructions, i.e.
-	struct { enum xyz required{lhs,rhs}; const char *inst; } instructions[] = {
-		MEM | REG | CONST, "call"
-		REG | CONST, REG | CONST | MEM, "imul"
-	};
-	etc
