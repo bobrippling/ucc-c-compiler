@@ -120,12 +120,12 @@ case "$unam" in
 
 		machine_path="$UCC_CPU-$unam_lc-gnu"
 
-		gcc=$(echo /usr/lib/gcc/$machine_path/*/ | tr ' ' '\n' | sort | tail -1)
+		try_set UCC_CRT /usr/lib/"${machine_path}"/crt1.o
+		try_set UCC_CRT /usr/lib/"${machine_path}"/crti.o
+		try_set UCC_CRT /usr/lib/"${machine_path}"/crtn.o
 
-		echo "Borrowing gcc-$(basename "$gcc")'s crt and include files"
-
-		try_set UCC_CRT /usr/lib/crt1.o /usr/lib/crti.o /usr/lib/crtn.o
-		try_set UCC_CRT "$gcc/crtbegin.o" "$gcc/crtend.o"
+		gcc_inc=$(echo /usr/lib/gcc/$machine_path/*/ | tr ' ' '\n' | sort | tail -1)
+		echo "Borrowing gcc-$(basename "$gcc_inc")'s include/"
 
 		try_set UCC_INC "/usr/include/$machine_path"
 		try_set UCC_INC "$gcc_inc/include"
