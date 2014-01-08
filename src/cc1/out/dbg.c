@@ -709,7 +709,7 @@ static struct DIE_compile_unit *dwarf_cu(
 
 	dwarf_attr(&cu->die, DW_AT_stmt_list,
 			DW_FORM_ADDR4,
-			DWARF_STMT_LIST
+			DWARF_INFO_SECTION_LINK
 			? ustrprintf("%s%s", SECTION_BEGIN,
 				sections[SECTION_DBG_LINE].desc)
 			: NULL);
@@ -734,11 +734,19 @@ static long dwarf_info_header(FILE *f)
 			"\t.long " VAR_LEN "\n"
 			".Ldbg_info_start:\n"
 			"\t.short 2 # DWARF 2\n"
-			"\t.long %s%s  # abbrev offset\n"
+			"\t.long "
+#if DWARF_INFO_SECTION_LINK
+			"%s%s"
+#else
+			"0"
+#endif
+			"  # abbrev offset\n"
 			"\t.byte %d  # sizeof(void *)\n",
 			SECTION_END, sections[SECTION_DBG_INFO].desc,
 			SECTION_BEGIN, sections[SECTION_DBG_INFO].desc,
+#if DWARF_INFO_SECTION_LINK
 			SECTION_BEGIN, sections[SECTION_DBG_ABBREV].desc,
+#endif
 			platform_word_size());
 
 	return 4 + 2 + 4 + 1;
