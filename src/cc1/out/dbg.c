@@ -187,7 +187,8 @@ struct dwarf_block
 struct DIE
 {
 	enum dwarf_tag tag;
-	unsigned long locn; /* when output, this is set */
+	unsigned long locn;
+	unsigned long abbrev_code;
 
 	struct DIE_attr
 	{
@@ -235,7 +236,8 @@ enum dwarf_encoding
 
 static struct DIE *dwarf_suetype(
 		struct DIE_compile_unit *cu,
-		struct_union_enum_st *sue);
+		struct_union_enum_st *sue,
+		type_ref *suety);
 
 static struct DIE **dwarf_formal_params(
 		struct DIE_compile_unit *cu, funcargs *args);
@@ -400,6 +402,14 @@ static void dwarf_set_DW_AT_type(
 		dwarf_attr(in, DW_AT_type, DW_FORM_ref4, tydie);
 }
 
+static void dwarf_add_tydie(
+		struct DIE_compile_unit *cu, type_ref *ty, struct DIE *tydie)
+{
+	if(!cu->types_to_dies)
+		cu->types_to_dies = dynmap_new(&type_ref_cmp_bool);
+	dynmap_set(type_ref *, struct DIE *, cu->types_to_dies, ty, tydie);
+}
+
 static struct DIE *dwarf_type_die(
 		struct DIE_compile_unit *cu,
 		struct DIE *parent, type_ref *ty)
@@ -419,7 +429,7 @@ static struct DIE *dwarf_type_die(
 			struct_union_enum_st *sue = ty->bits.type->sue;
 
 			if(sue){
-				tydie = dwarf_suetype(cu, sue);
+				tydie = dwarf_suetype(cu, sue, ty);
 
 			}else{
 				if(ty->bits.type->primitive == type_void)
@@ -515,9 +525,7 @@ static struct DIE *dwarf_type_die(
 		}
 	}
 
-	if(!cu->types_to_dies)
-		cu->types_to_dies = dynmap_new(&type_ref_cmp_bool);
-	dynmap_set(type_ref *, struct DIE *, cu->types_to_dies, ty, tydie);
+	dwarf_add_tydie(cu, ty, tydie);
 
 	return tydie;
 }
@@ -541,7 +549,8 @@ static struct DIE *dwarf_sue_header(struct_union_enum_st *sue, int dwarf_tag)
 
 static struct DIE *dwarf_suetype(
 		struct DIE_compile_unit *cu,
-		struct_union_enum_st *sue)
+		struct_union_enum_st *sue,
+		type_ref *suety)
 {
 	struct DIE *suedie;
 
@@ -584,6 +593,12 @@ static struct DIE *dwarf_suetype(
 					sue->primitive == type_struct
 					? DW_TAG_structure_type
 					: DW_TAG_union_type);
+
+			/* add our type here, so if we have:
+			 * struct A { struct A *next; };
+			 * the next field's type lookup will find us,
+			 * rather than infinitly recursing */
+			dwarf_add_tydie(cu, suety, suedie);
 
 			/* members */
 			for(si = sue->members; si && *si; si++){
@@ -1017,7 +1032,10 @@ static void dwarf_flush_die_1(
 	struct DIE_attr **at;
 	unsigned abbrev_code = ++state->abbrev_code;
 
-	die->locn = state->info.byte_cnt;
+	UCC_ASSERT(die->locn == state->info.byte_cnt,
+			"mismatching dwarf %s offset %ld vs %ld",
+			die_tag_to_str(die->tag),
+			die->locn, state->info.byte_cnt);
 
 	/* FIXME: 2 n-sized byte/word/longs here */
 	dwarf_leb_printf(&state->abbrev, abbrev_code, 0),
@@ -1143,27 +1161,92 @@ static void dwarf_flush_die(
 static void dwarf_flush_free(struct DIE_compile_unit *cu,
 		FILE *abbrev, FILE *info, long initial_offset)
 {
-	unsigned i;
-	struct DIE *tydie;
 	struct DIE_flush flush = { 0 };
 
 	flush.info.byte_cnt = initial_offset;
 	flush.info.f = info;
 	flush.abbrev.f = abbrev;
 
-	dwarf_flush_die_1(&cu->die, &flush);
-
-	/* type dies first */
-	for(i = 0;
-	    (tydie = dynmap_value(struct DIE *, cu->types_to_dies, i));
-	    i++)
-	{
-		dwarf_flush_die(tydie, &flush);
-	}
-
-	dwarf_flush_die_children(&cu->die, &flush);
+	dwarf_flush_die(&cu->die, &flush);
 
 	fprintf(abbrev, "\t.byte 0 # end\n");
+}
+
+static unsigned long dwarf_offset_die(
+		struct DIE *die, unsigned long off)
+{
+	struct DIE_attr **at;
+
+	die->locn = off;
+
+	/* abbrev code */
+	off += leb128_length(die->abbrev_code, 0);
+
+	for(at = die->attrs; at && *at; at++){
+		struct DIE_attr *a = *at;
+
+		enum dwarf_attr_encoding enc = a->enc;
+
+		switch(enc){
+			case DW_FORM_addr:  off += QUAD; break;
+			case DW_FORM_ADDR4: off += LONG; break;
+
+			case DW_FORM_data1: off += BYTE; break;
+			case DW_FORM_data2: off += WORD; break;
+			case DW_FORM_data4: off += LONG; break;
+			case DW_FORM_data8: off += QUAD; break;
+
+			case DW_FORM_ULEB:
+				off += leb128_length(a->bits.value, 0);
+				break;
+
+			case DW_FORM_string:
+				off += strlen(a->bits.str) + 1;
+				break;
+
+			case DW_FORM_ref4:
+				off += LONG;
+				break;
+			case DW_FORM_flag:
+				off++;
+				break;
+			case DW_FORM_block1:
+			{
+				int i;
+
+				off++; /* block count byte */
+
+				for(i = 0; i < a->bits.blk->cnt; i++){
+					struct dwarf_block_ent *e = &a->bits.blk->ents[i];
+
+					switch(e->type){
+						case BLOCK_HEADER:
+							off++;
+							break;
+						case BLOCK_LEB128_S:
+						case BLOCK_LEB128_U:
+							off += leb128_length(e->bits.v,
+									e->type == BLOCK_LEB128_S);
+							break;
+						case BLOCK_ADDR_STR:
+							off += platform_word_size();
+							break;
+					}
+				}
+				break;
+			}
+		}
+	}
+
+	if(die->children){
+		struct DIE **i;
+		for(i = die->children; *i; i++)
+			off = dwarf_offset_die(*i, off);
+
+		off++; /* end of children mark */
+	}
+
+	return off;
 }
 
 void out_dbginfo(symtable_global *globs,
@@ -1171,12 +1254,12 @@ void out_dbginfo(symtable_global *globs,
 		const char *compdir)
 {
 	struct DIE_compile_unit *compile_unit;
-
+	struct DIE *tydie;
+	size_t i;
 	long info_offset = dwarf_info_header(cc_out[SECTION_DBG_INFO]);
 
 	compile_unit = dwarf_cu(fname, compdir);
 
-	/* output subprograms */
 	{
 		decl **diter;
 
@@ -1192,7 +1275,17 @@ void out_dbginfo(symtable_global *globs,
 		}
 	}
 
+	for(i = 0;
+	    (tydie = dynmap_value(struct DIE *, compile_unit->types_to_dies, i));
+	    i++)
+	{
+		dynarray_add(&compile_unit->die.children, tydie);
+	}
+
+	dwarf_offset_die(&compile_unit->die, info_offset);
+
 	dwarf_flush_free(compile_unit,
-			cc_out[SECTION_DBG_ABBREV], cc_out[SECTION_DBG_INFO],
+			cc_out[SECTION_DBG_ABBREV],
+			cc_out[SECTION_DBG_INFO],
 			info_offset);
 }
