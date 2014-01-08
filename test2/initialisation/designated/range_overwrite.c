@@ -1,3 +1,4 @@
+// RUN: %ocheck 0 %s
 main()
 {
 	int ent1[] = {

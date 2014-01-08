@@ -1,3 +1,5 @@
+// RUN: %ocheck 0 %s
+
 main()
 {
 	struct { int i, j; } x[] = {

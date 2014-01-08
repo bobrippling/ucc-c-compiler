@@ -1,3 +1,6 @@
+// RUN: %layout_check %s
+// RUN: %ocheck 0 %s
+
 static const struct
 {
 	const char *date;
