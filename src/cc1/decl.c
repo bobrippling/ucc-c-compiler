@@ -191,11 +191,12 @@ type_ref *type_ref_new_array2(type_ref *to, expr *sz,
 	return r;
 }
 
-type_ref *type_ref_new_func(type_ref *of, funcargs *args)
+type_ref *type_ref_new_func(
+		type_ref *of, funcargs *args, symtable *arg_scope)
 {
 	type_ref *r = type_ref_new(type_ref_func, of);
 	r->bits.func.args = args;
-	r->bits.func.arg_scope = current_scope;
+	r->bits.func.arg_scope = arg_scope;
 	return r;
 }
 
