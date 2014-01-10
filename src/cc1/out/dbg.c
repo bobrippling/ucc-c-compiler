@@ -935,7 +935,8 @@ enum flush_type
 	QUAD = 8
 };
 
-static void dwarf_printf(
+static void ucc_printflike(3, 4)
+	dwarf_printf(
 		struct DIE_flush_file *f,
 		enum flush_type sz,
 		const char *fmt, ...)
