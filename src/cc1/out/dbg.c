@@ -1044,7 +1044,6 @@ static void dwarf_flush_die_1(
 			die_tag_to_str(die->tag),
 			die->locn, state->info.byte_cnt);
 
-	/* FIXME: 2 n-sized byte/word/longs here */
 	dwarf_leb_printf(&state->abbrev, die->abbrev_code, 0),
 		fprintf(state->abbrev.f, "  # Abbrev. Code %lu\n",
 				die->abbrev_code);
