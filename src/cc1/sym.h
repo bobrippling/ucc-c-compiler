@@ -38,14 +38,15 @@ struct symtable
 	int auto_total_size;
 	unsigned folded : 1, laidout : 1;
 	unsigned internal_nest : 1, are_params : 1;
-	decl *in_func; /* for r/w checks on args and return-type checks */
 	/*
 	 * { int i; 5; int j; }
 	 * j's symtab is internally represented like:
 	 * { int i; 5; { int j; } }
 	 *
-	 * this marks if it is so, for duplicate checking
+	 * internal_nest marks if it is so, for duplicate checking
 	 */
+
+	decl *in_func; /* for r/w checks on args and return-type checks */
 
 	symtable *parent, **children;
 
