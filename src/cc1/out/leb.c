@@ -39,22 +39,26 @@ unsigned leb128_out(FILE *f, unsigned long long v, int sig)
 		for(;;){
 			unsigned char byte = sv & 0x7f;
 			int sign_bit_set = !!(byte & 0x40);
+			int done = 0;
 
 			sv >>= 7; /* XXX: assume signed right shift */
-
-			fprintf(f, "%s%d", join, byte);
-			join = ", ";
 
 			if((sv == 0 && !sign_bit_set)
 			|| (sv == -1 && sign_bit_set))
 			{
-				break;
+				done = 1;
 			}
 			else
 			{
 				byte |= 0x80;
 				len++;
 			}
+
+			fprintf(f, "%s%d", join, byte);
+			join = ", ";
+
+			if(done)
+				break;
 		}
 	}else{
 		for(;;){
