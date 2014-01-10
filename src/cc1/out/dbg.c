@@ -934,7 +934,6 @@ static struct DIE *dwarf_subprogram_func(struct DIE_compile_unit *cu, decl *d)
 
 struct DIE_flush
 {
-	unsigned abbrev_code;
 	struct DIE_flush_file
 	{
 		FILE *f;
@@ -1030,7 +1029,6 @@ static void dwarf_flush_die_1(
 		struct DIE *die, struct DIE_flush *state)
 {
 	struct DIE_attr **at;
-	unsigned abbrev_code = ++state->abbrev_code;
 
 	UCC_ASSERT(die->locn == state->info.byte_cnt,
 			"mismatching dwarf %s offset %ld vs %ld",
@@ -1038,10 +1036,10 @@ static void dwarf_flush_die_1(
 			die->locn, state->info.byte_cnt);
 
 	/* FIXME: 2 n-sized byte/word/longs here */
-	dwarf_leb_printf(&state->abbrev, abbrev_code, 0),
+	dwarf_leb_printf(&state->abbrev, die->abbrev_code, 0),
 		fprintf(state->abbrev.f, "  # Abbrev. Code\n");
 
-	dwarf_leb_printf(&state->info, abbrev_code, 0),
+	dwarf_leb_printf(&state->info, die->abbrev_code, 0),
 		fprintf(state->info.f, "  # Abbrev. Code\n");
 
 	/* tags are technically ULEBs */
@@ -1144,8 +1142,8 @@ addr:
 	}
 
 	fprintf(state->abbrev.f,
-			"\t.byte 0, 0 # name/val abbrev %d end\n\n",
-			abbrev_code);
+			"\t.byte 0, 0 # name/val abbrev %lu end\n\n",
+			die->abbrev_code);
 	state->abbrev.byte_cnt += 2;
 
 	fprintf(state->info.f, "\n");
@@ -1161,7 +1159,7 @@ static void dwarf_flush_die(
 static void dwarf_flush_free(struct DIE_compile_unit *cu,
 		FILE *abbrev, FILE *info, long initial_offset)
 {
-	struct DIE_flush flush = { 0 };
+	struct DIE_flush flush = {{ 0 }};
 
 	flush.info.byte_cnt = initial_offset;
 	flush.info.f = info;
@@ -1173,13 +1171,14 @@ static void dwarf_flush_free(struct DIE_compile_unit *cu,
 }
 
 static unsigned long dwarf_offset_die(
-		struct DIE *die, unsigned long off)
+		struct DIE *die,
+		unsigned long *abbrev, unsigned long off)
 {
 	struct DIE_attr **at;
 
 	die->locn = off;
 
-	/* abbrev code */
+	die->abbrev_code = ++*abbrev;
 	off += leb128_length(die->abbrev_code, 0);
 
 	for(at = die->attrs; at && *at; at++){
@@ -1241,7 +1240,7 @@ static unsigned long dwarf_offset_die(
 	if(die->children){
 		struct DIE **i;
 		for(i = die->children; *i; i++)
-			off = dwarf_offset_die(*i, off);
+			off = dwarf_offset_die(*i, abbrev, off);
 
 		off++; /* end of children mark */
 	}
@@ -1257,6 +1256,7 @@ void out_dbginfo(symtable_global *globs,
 	struct DIE *tydie;
 	size_t i;
 	long info_offset = dwarf_info_header(cc_out[SECTION_DBG_INFO]);
+	unsigned long abbrev = 0;
 
 	compile_unit = dwarf_cu(fname, compdir);
 
@@ -1282,7 +1282,7 @@ void out_dbginfo(symtable_global *globs,
 		dynarray_add(&compile_unit->die.children, tydie);
 	}
 
-	dwarf_offset_die(&compile_unit->die, info_offset);
+	dwarf_offset_die(&compile_unit->die, &abbrev, info_offset);
 
 	dwarf_flush_free(compile_unit,
 			cc_out[SECTION_DBG_ABBREV],
