@@ -80,13 +80,13 @@ void gen_expr_assign_compound(expr *e)
 	out_swap();
 	out_deref();
 	if(e->bits.compound_upcast)
-		out_cast(e->lhs->tree_type);
+		out_cast(e->lhs->tree_type, /*normalise_bool:*/1);
 	out_swap();
 
 	out_op(e->op);
 
 	if(e->bits.compound_upcast) /* need to cast back down to store */
-		out_cast(e->tree_type);
+		out_cast(e->tree_type, /*normalise_bool:*/1);
 
 	out_store();
 

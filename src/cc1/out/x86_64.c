@@ -638,7 +638,7 @@ void impl_load_fp(struct vstack *from)
 				/* TODO: use just an int if we can get away with it */
 				from->t = type_ref_cached_LLONG();
 
-				out_cast(ty_fp);
+				out_cast(ty_fp, /*normalise_bool:*/1);
 				break;
 			}
 			/* fall */

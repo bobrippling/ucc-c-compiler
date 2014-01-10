@@ -808,7 +808,7 @@ static void bitfield_scalar_merge(const struct vbitfield *const bf)
 	unsigned long mask_leading_1s, mask_back_0s, mask_rm;
 
 	/* coerce vtop to a vtop[-1] type */
-	out_cast(vtop[-1].t);
+	out_cast(vtop[-1].t, 0);
 
 	/* load the pointer to the store, forgetting the bitfield */
 	/* stack: store, val */
@@ -1296,8 +1296,14 @@ void out_op_unary(enum op_type op)
 	impl_op_unary(op);
 }
 
-void out_cast(type_ref *to)
+void out_cast(type_ref *to, int normalise_bool)
 {
+	/* normalise before the cast, otherwise we do things like
+	 * 5.3 -> 5, then normalise 5, instead of 5.3 != 0.0
+	 */
+	if(normalise_bool && type_ref_is_type(to, type__Bool))
+		out_normalise();
+
 	v_cast(vtop, to);
 }
 
