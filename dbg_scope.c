@@ -1,4 +1,4 @@
-struct A
+struct A // not output - unused
 {
 	enum E
 	{
@@ -29,7 +29,7 @@ main(int argc, char *argv[])
 	};
 
 	for(; x.i > 0; x.i--){
-		int add = x.i; // BUG: 'add' not in scope
+		int add = x.i;
 		x.j += f(add);
 	}
 
