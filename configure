@@ -35,7 +35,7 @@ UCC_CPU     = ${UCC_CPU}
 		SECTION_DBG_ABBREV="__DWARF,__debug_abbrev,regular,debug"
 		SECTION_DBG_INFO="__DWARF,__debug_info,regular,debug"
 		SECTION_DBG_LINE="__DWARF,__debug_line,regular,debug"
-		DWARF_INFO_SECTION_LINK=0
+		DWARF_INDIRECT_SECTION_LINKS=1
 	else
 		SECTION_TEXT=".text"
 		SECTION_DATA=".data"
@@ -43,7 +43,7 @@ UCC_CPU     = ${UCC_CPU}
 		SECTION_DBG_ABBREV=".debug_abbrev"
 		SECTION_DBG_INFO=".debug_info"
 		SECTION_DBG_LINE=".debug_line"
-		DWARF_INFO_SECTION_LINK=1
+		DWARF_INDIRECT_SECTION_LINKS=0
 	fi
 
 	cat > src/as_cfg.h <<!
@@ -54,7 +54,7 @@ UCC_CPU     = ${UCC_CPU}
 #define SECTION_NAME_DBG_INFO $SECTION_DBG_INFO
 #define SECTION_NAME_DBG_LINE $SECTION_DBG_LINE
 #define UCC_M32      ${UCC_M32}
-#define DWARF_INFO_SECTION_LINK $DWARF_INFO_SECTION_LINK
+#define DWARF_INDIRECT_SECTION_LINKS $DWARF_INDIRECT_SECTION_LINKS
 #define ASM_PLBL_PRE "$ASM_PLBL"
 !
 

@@ -724,10 +724,12 @@ static struct DIE_compile_unit *dwarf_cu(
 
 	dwarf_attr(&cu->die, DW_AT_stmt_list,
 			DW_FORM_ADDR4,
-			DWARF_INFO_SECTION_LINK
-			? ustrprintf("%s%s", SECTION_BEGIN,
-				sections[SECTION_DBG_LINE].desc)
-			: NULL);
+			DWARF_INDIRECT_SECTION_LINKS
+				? NULL
+				: ustrprintf(
+						"%s%s",
+						SECTION_BEGIN,
+						sections[SECTION_DBG_LINE].desc));
 
 	dwarf_attr(&cu->die, DW_AT_low_pc, DW_FORM_addr,
 			ustrprintf("%s%s", SECTION_BEGIN,
@@ -742,27 +744,34 @@ static struct DIE_compile_unit *dwarf_cu(
 
 static long dwarf_info_header(FILE *f)
 {
-#define VAR_LEN ASM_PLBL_PRE "info_len"
+#if DWARF_INDIRECT_SECTION_LINKS
+#  define VAR_LEN ASM_PLBL_PRE "info_len"
+#  define VAR_OFF ASM_PLBL_PRE "abrv_off"
+
 	fprintf(f,
 			/* -4: don't include the length spec itself */
 			VAR_LEN " = %s%s - %s%s - 4\n"
+			VAR_OFF " = %s%s - %s%s\n"
 			"\t.long " VAR_LEN "\n"
-			".Ldbg_info_start:\n"
 			"\t.short 2 # DWARF 2\n"
-			"\t.long "
-#if DWARF_INFO_SECTION_LINK
-			"%s%s"
-#else
-			"0"
-#endif
-			"  # abbrev offset\n"
+			"\t.long " VAR_OFF "  # abbrev offset\n"
 			"\t.byte %d  # sizeof(void *)\n",
 			SECTION_END, sections[SECTION_DBG_INFO].desc,
 			SECTION_BEGIN, sections[SECTION_DBG_INFO].desc,
-#if DWARF_INFO_SECTION_LINK
 			SECTION_BEGIN, sections[SECTION_DBG_ABBREV].desc,
-#endif
+			SECTION_BEGIN, sections[SECTION_DBG_ABBREV].desc,
 			platform_word_size());
+#else
+	fprintf(f,
+			"\t.long %s%s - %s%s - 4\n"
+			"\t.short 2 # DWARF 2\n"
+			"\t.long %s%s  # abbrev offset\n"
+			"\t.byte %d  # sizeof(void *)\n",
+			SECTION_END, sections[SECTION_DBG_INFO].desc,
+			SECTION_BEGIN, sections[SECTION_DBG_INFO].desc,
+			SECTION_BEGIN, sections[SECTION_DBG_ABBREV].desc,
+			platform_word_size());
+#endif
 
 	return 4 + 2 + 4 + 1;
 }
