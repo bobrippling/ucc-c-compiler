@@ -62,8 +62,6 @@ void gen_expr_assign_compound(expr *e)
 	lea_expr(e->bits.compound_upcast ? expr_cast_child(e->lhs) : e->lhs);
 
 	if(e->assign_is_post){
-		UCC_ASSERT(!e->bits.compound_upcast, "can't do upcast for (%s)++", e->lhs->f_str());
-
 		out_dup();
 		out_deref();
 		out_flush_volatile();
