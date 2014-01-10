@@ -1228,7 +1228,7 @@ static unsigned long dwarf_offset_die(
 									e->type == BLOCK_LEB128_S);
 							break;
 						case BLOCK_ADDR_STR:
-							off += platform_word_size();
+							off += QUAD;
 							break;
 					}
 				}
