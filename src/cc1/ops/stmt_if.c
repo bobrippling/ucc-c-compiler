@@ -42,16 +42,25 @@ void flow_fold(stmt_flow *flow, symtable **pstab)
 
 void flow_gen(stmt_flow *flow, symtable *stab)
 {
-	gen_block_decls(stab);
+	const char *endlbl;
+	gen_block_decls(stab, &endlbl);
 
 	if(flow){
+		const char *flowendlbl = NULL;
+
 		if(stab != flow->for_init_symtab)
-			gen_block_decls(flow->for_init_symtab);
+			gen_block_decls(flow->for_init_symtab, &flowendlbl);
 
 		if(flow->init_blk)
 			gen_stmt(flow->init_blk);
 		/* also generates decls on the flow->inits statement */
+
+		if(endlbl)
+			out_label(endlbl);
 	}
+
+	if(endlbl)
+		out_label(endlbl);
 }
 
 void fold_stmt_if(stmt *s)

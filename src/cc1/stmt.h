@@ -46,7 +46,6 @@ struct stmt
 		struct
 		{
 			stmt **stmts;
-			char *lbl_begin, *lbl_end; /* for debug - lexical block */
 		} code;
 	} bits;
 

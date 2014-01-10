@@ -121,9 +121,19 @@ void fold_stmt_code(stmt *s)
 	}
 }
 
-void gen_block_decls(symtable *stab)
+void gen_block_decls(symtable *stab, const char **dbg_end_lbl)
 {
 	decl **diter;
+
+	if(cc1_gdebug && !stab->lbl_begin){
+		stab->lbl_begin = out_label_code("dbg_begin");
+		stab->lbl_end = out_label_code("dbg_end");
+
+		out_label(stab->lbl_begin);
+		*dbg_end_lbl = stab->lbl_end;
+	}else{
+		*dbg_end_lbl = NULL;
+	}
 
 	/* declare strings, extern functions and blocks */
 	for(diter = stab->decls; diter && *diter; diter++){
@@ -145,22 +155,16 @@ void gen_block_decls(symtable *stab)
 void gen_stmt_code(stmt *s)
 {
 	stmt **titer;
+	const char *endlbl;
 
 	/* stmt_for/if/while/do needs to do this too */
-	gen_block_decls(s->symtab);
-
-	if(cc1_gdebug){
-		s->bits.code.lbl_begin = out_label_code("dbg_begin");
-		out_label(s->bits.code.lbl_begin);
-	}
+	gen_block_decls(s->symtab, &endlbl);
 
 	for(titer = s->bits.code.stmts; titer && *titer; titer++)
 		gen_stmt(*titer);
 
-	if(cc1_gdebug){
-		s->bits.code.lbl_end = out_label_code("dbg_end");
-		out_label(s->bits.code.lbl_end);
-	}
+	if(endlbl)
+		out_label(endlbl);
 }
 
 void style_stmt_code(stmt *s)

@@ -843,26 +843,24 @@ static struct DIE *dwarf_global_variable(struct DIE_compile_unit *cu, decl *d)
 	return vardie;
 }
 
-static struct DIE *dwarf_stmt_scope(
-		struct DIE_compile_unit *cu, stmt *code, int var_offset)
+static struct DIE *dwarf_symtable_scope(
+		struct DIE_compile_unit *cu,
+		symtable *symtab, int var_offset)
 {
 	struct DIE *lexblk;
 	decl **di;
-	stmt **si;
-
-	if(!code || !stmt_kind(code, code))
-		return NULL;
+	symtable **si;
 
 	lexblk = dwarf_die_new(DW_TAG_lexical_block);
 
 	dwarf_attr(lexblk, DW_AT_low_pc,
-			DW_FORM_addr, code->bits.code.lbl_begin);
+			DW_FORM_addr, symtab->lbl_begin);
 
 	dwarf_attr(lexblk, DW_AT_high_pc,
-			DW_FORM_addr, code->bits.code.lbl_end);
+			DW_FORM_addr, symtab->lbl_end);
 
 	/* generate variable DIEs */
-	for(di = code->symtab->decls; di && *di; di++){
+	for(di = symtab->decls; di && *di; di++){
 		decl *d = *di;
 		struct DIE *var = dwarf_die_new(DW_TAG_variable);
 
@@ -903,8 +901,8 @@ static struct DIE *dwarf_stmt_scope(
 	}
 
 	/* children lex_scope DIEs */
-	for(si = code->bits.code.stmts; si && *si; si++){
-		struct DIE *child = dwarf_stmt_scope(cu, *si, var_offset);
+	for(si = symtab->children; si && *si; si++){
+		struct DIE *child = dwarf_symtable_scope(cu, *si, var_offset);
 
 		if(child)
 			dwarf_child(lexblk, child);
@@ -934,7 +932,7 @@ static struct DIE *dwarf_subprogram_func(struct DIE_compile_unit *cu, decl *d)
 		dwarf_children(subprog, dwarf_formal_params(cu, args));
 	}
 
-	lexblk = dwarf_stmt_scope(cu, d->func_code, d->func_var_offset);
+	lexblk = dwarf_symtable_scope(cu, d->func_code->symtab, d->func_var_offset);
 	if(lexblk)
 		dwarf_child(subprog, lexblk);
 

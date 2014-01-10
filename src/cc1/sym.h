@@ -48,6 +48,8 @@ struct symtable
 
 	decl *in_func; /* for r/w checks on args and return-type checks */
 
+	char *lbl_begin, *lbl_end; /* for debug - lexical block */
+
 	symtable *parent, **children;
 
 	struct_union_enum_st **sues;
