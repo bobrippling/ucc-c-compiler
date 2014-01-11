@@ -930,11 +930,11 @@ static struct DIE *dwarf_subprogram_func(struct DIE_compile_unit *cu, decl *d)
 		dwarf_attr(subprog, DW_AT_high_pc, DW_FORM_addr, out_dbg_func_end(asmsp));
 
 		dwarf_children(subprog, dwarf_formal_params(cu, args));
-	}
 
-	lexblk = dwarf_symtable_scope(cu, d->func_code->symtab, d->func_var_offset);
-	if(lexblk)
-		dwarf_child(subprog, lexblk);
+		lexblk = dwarf_symtable_scope(cu, d->func_code->symtab, d->func_var_offset);
+		if(lexblk)
+			dwarf_child(subprog, lexblk);
+	}
 
 	return subprog;
 }
