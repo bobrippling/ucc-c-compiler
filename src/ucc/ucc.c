@@ -469,28 +469,33 @@ int main(int argc, char **argv)
 					ADD_ARG(mode_compile);
 					if(isdigit(argv[i][2])){
 						/* -m32, etc */
-						static const char *m32[] = {
-							/* -arch i386, --32, etc */
-							UCC_AS_ARGS_M32
+						static const struct arch_args
+						{
+							const char *as, *ld;
+						} m32 = {
+							UCC_AS_ARGS_M32,
+							UCC_LD_ARGS_M32
+						}, m64 = {
+							UCC_AS_ARGS_M64,
+							UCC_LD_ARGS_M64
 						};
-						static const char *m64[] = {
-							/* -arch x86_64, --64, etc */
-							UCC_AS_ARGS_M64
-						};
-						const char **chosen;
-						int chosen_cnt;
+						const struct arch_args *chosen;
 						int arch = atoi(argv[i] + 2);
-						int i;
 
 						if(arch == 32)
-							chosen = m32, chosen_cnt = ARRAY_LEN(m32);
+							chosen = &m32;
 						else if(arch == 64)
-							chosen = m64, chosen_cnt = ARRAY_LEN(m64);
+							chosen = &m64;
 						else
 							die("-m%d ?", arch);
 
-						for(i = 0; i < chosen_cnt; i++)
-							dynarray_add(&args[mode_assemb], ustrdup(chosen[i]));
+						dynarray_add_tmparray(
+								&args[mode_assemb],
+								strsplit(chosen->as, " "));
+
+						dynarray_add_tmparray(
+								&args[mode_link],
+								strsplit(chosen->ld, " "));
 
 						/* cpp needs arch for __i386__, etc */
 						ADD_ARG(mode_preproc);
