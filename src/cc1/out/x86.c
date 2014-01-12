@@ -872,72 +872,78 @@ void impl_reg_cp(struct vstack *from, const struct vreg *r)
 			regstr);
 }
 
-void impl_op(enum op_type op)
+static void fp_op(enum op_type op)
 {
 #define OP(e, s) case op_ ## e: opc = s; break
 	const char *opc;
 
+	if(op_is_comparison(op)){
+		/* ucomi%s reg_or_mem, reg */
+		char b1[VSTACK_STR_SZ], b2[VSTACK_STR_SZ];
+
+		v_to(vtop, TO_REG | TO_MEM);
+		v_to_reg(&vtop[-1]);
+
+		out_asm("ucomi%s %s, %s",
+				x86_suffix(vtop->t),
+				vstack_str_r(b1, vtop, 0),
+				vstack_str_r(b2, &vtop[-1], 0));
+
+		vpop();
+		v_set_flag(vtop, op_to_flag(op), flag_mod_float);
+		/* not flag_mod_signed - we want seta, not setgt */
+		return;
+	}
+
+	switch(op){
+		OP(multiply, "mul");
+		OP(divide,   "div");
+		OP(plus,     "add");
+		OP(minus,    "sub");
+
+		case op_not:
+		case op_orsc:
+		case op_andsc:
+			ICE("unary/sc float op");
+
+		default:
+			ICE("bad fp op %s", op_to_str(op));
+	}
+
+	/* attempt to not do anything in the following v_to()
+	 * by swapping operands, similarly to the integral case.
+	 *
+	 * [should merge at some point - generic instructions etc]
+	 */
+
+	if(vtop->type != V_REG && op_is_commutative(op))
+		out_swap();
+
+	/* memory or register */
+	v_to(vtop,      TO_REG);
+	v_to(&vtop[-1], TO_REG | TO_MEM);
+
+	{
+		char b1[VSTACK_STR_SZ], b2[VSTACK_STR_SZ];
+
+		out_asm("%s%s %s, %s",
+				opc, x86_suffix(vtop->t),
+				vstack_str_r(b1, &vtop[-1], 0),
+				vstack_str_r(b2, vtop, 0));
+
+		/* result in vtop */
+		vswap();
+		vpop();
+	}
+}
+
+void impl_op(enum op_type op)
+{
+	const char *opc;
+
 	if(type_ref_is_floating(vtop->t)){
-		if(op_is_comparison(op)){
-			/* ucomi%s reg_or_mem, reg */
-			char b1[VSTACK_STR_SZ], b2[VSTACK_STR_SZ];
-
-			v_to(vtop, TO_REG | TO_MEM);
-			v_to_reg(&vtop[-1]);
-
-			out_asm("ucomi%s %s, %s",
-					x86_suffix(vtop->t),
-					vstack_str_r(b1, vtop, 0),
-					vstack_str_r(b2, &vtop[-1], 0));
-
-			vpop();
-			v_set_flag(vtop, op_to_flag(op), flag_mod_float);
-			/* not flag_mod_signed - we want seta, not setgt */
-			return;
-		}
-
-		switch(op){
-			OP(multiply, "mul");
-			OP(divide,   "div");
-			OP(plus,     "add");
-			OP(minus,    "sub");
-
-			case op_not:
-			case op_orsc:
-			case op_andsc:
-				ICE("unary/sc float op");
-
-			default:
-				ICE("bad fp op %s", op_to_str(op));
-		}
-
-		/* attempt to not do anything in the following v_to()
-		 * by swapping operands, similarly to the integral case.
-		 *
-		 * [should merge at some point - generic instructions etc]
-		 */
-
-		if(vtop->type != V_REG && op_is_commutative(op))
-			out_swap();
-
-		/* memory or register */
-		v_to(vtop,      TO_REG);
-		v_to(&vtop[-1], TO_REG | TO_MEM);
-
-		{
-			char b1[VSTACK_STR_SZ], b2[VSTACK_STR_SZ];
-
-			out_asm("%s%s %s, %s",
-					opc, x86_suffix(vtop->t),
-					vstack_str_r(b1, &vtop[-1], 0),
-					vstack_str_r(b2, vtop, 0));
-
-			/* result in vtop */
-			vswap();
-			vpop();
-
-			return;
-		}
+		fp_op(op);
+		return;
 	}
 
 	switch(op){
