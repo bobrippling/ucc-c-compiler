@@ -220,6 +220,7 @@ UCC_LD      = ${UCC_LD}
 UCC_LDFLAGS = ${UCC_LDFLAGS}
 UCC_ARCH    = ${UCC_ARCH}
 UCC_SUBARCH = ${UCC_SUBARCH}
+LIB_CFLAGS += ${LIB_CFLAGS}
 !
 
 # variables used by the ucc driver
