@@ -884,6 +884,8 @@ static void fp_op(enum op_type op)
 		v_to(vtop, TO_REG | TO_MEM);
 		v_to_reg(&vtop[-1]);
 
+		// TODO: fp-32-bit
+
 		out_asm("ucomi%s %s, %s",
 				x86_suffix(vtop->t),
 				vstack_str_r(b1, vtop, 0),
@@ -926,7 +928,12 @@ static void fp_op(enum op_type op)
 	{
 		char b1[VSTACK_STR_SZ], b2[VSTACK_STR_SZ];
 
-		out_asm("%s%s %s, %s",
+		/* x86_64: addss, addsd, etc
+		 * x86:    fadds, faddl, faddp, etc
+		 */
+
+		out_asm("%s%s%s %s, %s",
+				IS_32_BIT() ? "f" : "",
 				opc, x86_suffix(vtop->t),
 				vstack_str_r(b1, &vtop[-1], 0),
 				vstack_str_r(b2, vtop, 0));
