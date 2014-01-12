@@ -148,11 +148,11 @@ static const char *x86_suffix(type_ref *ty)
 	if(type_ref_is_floating(ty)){
 		switch(type_ref_primitive(ty)){
 			case type_float:
-				return "ss";
+				return IS_32_BIT() ? "s" : "ss";
 			case type_double:
-				return "sd";
+				return IS_32_BIT() ? "l" : "sd";
 			case type_ldouble:
-				ICE("TODO");
+				return IS_32_BIT() ? "p" : (ICE("TODO"), "");
 			default:
 				ICE("bad float");
 		}
