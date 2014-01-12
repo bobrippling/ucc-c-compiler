@@ -32,9 +32,9 @@ SYMBL(__syscall):
 	int $0x80
 
 #ifdef __linux__
-	cmpq $-1, %rax
+	cmpl $-1, %eax
 	jg .fin
-	negq %rax # get positive errno
+	negl %eax # get positive errno
 #else
 	jnc .fin
 	// carry - err is in rax
