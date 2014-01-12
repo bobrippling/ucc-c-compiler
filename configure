@@ -41,8 +41,11 @@ ASM_PLBL=.L
 AS_MAX_INTMOV_BIT=31
 
 # assume GNU as - specify word size
-UCC_AS_ARGS_M32='"--32"'
-UCC_AS_ARGS_M64='"--64"'
+UCC_AS_ARGS_M32='--32'
+UCC_AS_ARGS_M64='--64'
+
+UCC_LD_ARGS_M32='-m elf_i386'
+UCC_LD_ARGS_M64='-m elf_x86_64'
 
 # system linker to use, and flags it needs
 UCC_LD=ld
@@ -160,8 +163,8 @@ case "$unam_os" in
 
 		if [ "$UCC_ARCH" = x86 ]
 		then
-			UCC_AS_ARGS_M32="\"-arch\", \"i386\""
-			UCC_AS_ARGS_M64="\"-arch\", \"x86_64\""
+			UCC_AS_ARGS_M32='-arch i386'
+			UCC_AS_ARGS_M64='-arch x86_64'
 		else
 			echo >&2 "Darwin on non-x86?"
 			exit 1
@@ -219,8 +222,11 @@ cat > src/ucc/cfg.h <<!
 #define UCC_STDLIB "${UCC_STDLIB}"
 #define UCC_CRT    "${UCC_CRT}"
 
-#define UCC_AS_ARGS_M32 ${UCC_AS_ARGS_M32}
-#define UCC_AS_ARGS_M64 ${UCC_AS_ARGS_M64}
+#define UCC_AS_ARGS_M32 "${UCC_AS_ARGS_M32}"
+#define UCC_AS_ARGS_M64 "${UCC_AS_ARGS_M64}"
+
+#define UCC_LD_ARGS_M32 "${UCC_LD_ARGS_M32}"
+#define UCC_LD_ARGS_M64 "${UCC_LD_ARGS_M64}"
 !
 
 
