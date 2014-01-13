@@ -902,7 +902,7 @@ static decl_init *is_char_init(
 	return NULL;
 }
 
-static decl_init *decl_init_brace_up_array_pre(
+static decl_init *decl_init_brace_up_array_chk_char(
 		decl_init *current, init_iter *iter,
 		type_ref *next_type, symtable *stab)
 {
@@ -977,7 +977,7 @@ static decl_init *decl_init_brace_up_r(
 	fold_type_ref(tfor, NULL, stab);
 
 	if(type_ref_is(tfor, type_ref_array))
-		return decl_init_brace_up_array_pre(
+		return decl_init_brace_up_array_chk_char(
 				current, iter, tfor, stab);
 
 	/* incomplete check _after_ array, since we allow T x[] */
