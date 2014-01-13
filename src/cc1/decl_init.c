@@ -755,6 +755,19 @@ static int find_desig(decl_init **const ar)
 	return -1;
 }
 
+static int decl_init_is_struct_copy(decl_init *di)
+{
+	if(di->type == decl_init_brace
+	&& dynarray_count(di->bits.ar.inits) == 1)
+	{
+		decl_init *sub = di->bits.ar.inits[0];
+		if(sub->type == decl_init_scalar
+		&& type_ref_is_s_or_u(sub->bits.expr->tree_type))
+			return 1;
+	}
+	return 0;
+}
+
 static decl_init *decl_init_brace_up_aggregate(
 		decl_init *current,
 		init_iter *iter,
@@ -863,19 +876,21 @@ static decl_init *decl_init_brace_up_aggregate(
 	}else{
 		where *loc = ITER_WHERE(iter, NULL);
 		decl_init *r = decl_init_new_w(decl_init_brace, loc);
-
-		/* only warn if we're not designated */
-		if(!iter->pos[0]->desig){
-			warn_at(loc,
-					"missing braces for initialisation of sub-object '%s'",
-					type_ref_to_str(tfor));
-		}
+		int was_desig = !!iter->pos[0]->desig;
 
 		/* we need to pull from iter, bracing up our children inits */
 		r->bits.ar.inits = brace_up_f(
 				current ? current->bits.ar.inits : NULL,
 				&r->bits.ar.range_inits,
 				iter, stab, arg1, arg2, allow_struct_copy);
+
+		/* only warn if it's not designated
+		 * and it's not a struct copy */
+		if(!was_desig && !decl_init_is_struct_copy(r)){
+			warn_at(loc,
+					"missing braces for initialisation of sub-object '%s' %d",
+					type_ref_to_str(tfor), allow_struct_copy);
+		}
 
 		return r;
 	}
