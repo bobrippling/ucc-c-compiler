@@ -784,7 +784,8 @@ static void dwarf_attr_decl(
 {
 	long attrv;
 
-	dwarf_attr(in, DW_AT_name, DW_FORM_string, d->spel);
+	if(d->spel)
+		dwarf_attr(in, DW_AT_name, DW_FORM_string, d->spel);
 
 	dwarf_set_DW_AT_type(in, cu, NULL, ty);
 
