@@ -155,7 +155,7 @@ invalid:
 
 			type_func = type_ref_new_func(
 					type_ref_new_type(type_new_primitive(type_int)),
-					args, stab);
+					args, /*new symtable for args:*/ symtab_new(stab));
 
 			cc1_warn_at(&e->expr->where, 0, WARN_IMPLICIT_FUNC,
 					"implicit declaration of function \"%s\"", sp);
