@@ -1,2 +1,4 @@
-.cfi_* and symbol info for local variables
-global variable symbols
+va_* / fputs location problem
+.cfi_* ?
+move dbg_*
+tests
