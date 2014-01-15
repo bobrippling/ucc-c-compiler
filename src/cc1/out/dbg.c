@@ -1048,8 +1048,8 @@ static void dwarf_flush_die_1(
 				die->abbrev_code);
 
 	dwarf_leb_printf(&state->info, die->abbrev_code, 0),
-		fprintf(state->info.f, "  # Abbrev. Code %lu\n",
-				die->abbrev_code);
+		fprintf(state->info.f, "  # Abbrev. Code %lu %s\n",
+				die->abbrev_code, die_tag_to_str(die->tag));
 
 	/* tags are technically ULEBs */
 	dwarf_printf(&state->abbrev, BYTE, "%d  # %s\n",
