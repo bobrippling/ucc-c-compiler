@@ -1,0 +1,19 @@
+All types start at the base - int, short, struct, union, etc
+We then get to other types with qualifiers, pointers, arrays and functions.
+e.g.
+
+int
+\- typedef int int32_t
+   \- int32_t get_int32(<reference to struct A *>)
+
+char
+\- const char
+   \- const char *
+	 	  \- const char *const
+
+struct A
+\- struct A [2]
+\- struct A [10]
+\- struct A []
+
+Each array type is different if it has a different size.
