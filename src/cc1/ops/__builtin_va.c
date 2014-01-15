@@ -91,20 +91,26 @@ static void fold_va_start(expr *e, symtable *stab)
 
 #ifndef UCC_VA_ABI
 	{
-		stmt *assigns = stmt_new_wrapper(code, symtab_new(stab));
+		stmt *assigns = stmt_set_where(
+				stmt_new_wrapper(code, symtab_new(stab)),
+				&e->where);
 		expr *assign;
 
-#define ADD_ASSIGN(memb, exp)               \
-		assign = expr_new_assign(               \
-				expr_new_struct(                    \
-					va_l, 0 /* ->  since it's [1] */, \
-					expr_new_identifier(memb)),       \
-				exp);                               \
-		                                        \
-		dynarray_add(&assigns->bits.code.stmts, \
-				expr_to_stmt(assign, stab))
+#define W(exp) expr_set_where((exp), &e->where)
 
-#define ADD_ASSIGN_VAL(memb, val) ADD_ASSIGN(memb, expr_new_val(val))
+#define ADD_ASSIGN(memb, exp)                     \
+		assign = W(expr_new_assign(                   \
+		        W(expr_new_struct(                    \
+		          va_l, 0 /* ->  since it's [1] */,   \
+		            W(expr_new_identifier(memb)))),   \
+		        exp));                                \
+                                                  \
+		      dynarray_add(&assigns->bits.code.stmts, \
+		        stmt_set_where(                       \
+		          expr_to_stmt(assign, stab),         \
+		          &e->where))
+
+#define ADD_ASSIGN_VAL(memb, val) ADD_ASSIGN(memb, W(expr_new_val(val)))
 
 		const int ws = platform_word_size();
 		struct
@@ -124,19 +130,25 @@ static void fold_va_start(expr *e, symtable *stab)
 
 		/* adjust to take the skip into account */
 		ADD_ASSIGN("reg_save_area",
-				expr_new_op2(op_minus,
-					builtin_new_reg_save_area(), /* void arith - need _pws */
-					expr_new_val((nargs.gp + nargs.fp) * ws))); /* total arg count * ws */
+				W(expr_new_op2(op_minus,
+					W(builtin_new_reg_save_area()),
+					/* void arith - need _pws
+					 * total arg count * ws */
+					W(expr_new_val((nargs.gp + nargs.fp) * ws)))));
 
 		ADD_ASSIGN("overflow_arg_area",
-				expr_new_op2(op_plus,
-					builtin_new_frame_address(0), /* *2 to step over saved-rbp and saved-ret */
-					expr_new_val(ws * 2)));
+				W(expr_new_op2(op_plus,
+					W(builtin_new_frame_address(0)),
+					/* *2 to step over saved-rbp and saved-ret */
+					W(expr_new_val(ws * 2)))));
 
 
 		fold_stmt(assigns);
 		e->bits.variadic_setup = assigns;
 	}
+#undef ADD_ASSIGN
+#undef ADD_ASSIGN_VAL
+#undef W
 #endif
 
 	e->tree_type = type_ref_cached_VOID();
