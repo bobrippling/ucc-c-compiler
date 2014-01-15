@@ -39,8 +39,9 @@ void fold_stmt_for(stmt *s)
 void gen_stmt_for(stmt *s)
 {
 	char *lbl_test = out_label_flow("for_test");
+	const char *el[2];
 
-	flow_gen(s->flow, s->flow->for_init_symtab);
+	flow_gen(s->flow, s->flow->for_init_symtab, el);
 
 	/* don't else-if, possible to have both (comma-exp for init) */
 	if(s->flow->for_init){
@@ -69,6 +70,7 @@ void gen_stmt_for(stmt *s)
 	out_jmp();
 
 	out_label(s->lbl_break);
+	flow_end(el);
 
 	free(lbl_test);
 }
