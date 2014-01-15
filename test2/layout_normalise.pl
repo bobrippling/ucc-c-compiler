@@ -46,7 +46,7 @@ while(<>){
 		(my $lbl = $1) =~ s/^_//;
 
 		# ignore private labels
-		if($lbl !~ /^[^a-zA-Z]*L.*\./){
+		if($lbl !~ /^[ \t]*\.?L/){
 			emit({ lbl => $lbl });
 			$any = 1;
 		}
