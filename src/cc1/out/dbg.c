@@ -113,6 +113,7 @@ enum dwarf_attr_encoding
 	DW_ENCS
 #undef X
 };
+typedef integral_t form_data_t;
 
 enum dwarf_block_ops
 {
@@ -303,7 +304,7 @@ static void dwarf_attr(
 		case DW_FORM_data2:
 		case DW_FORM_data4:
 		case DW_FORM_data8:
-			at->bits.value = *(long *)data;
+			at->bits.value = *(form_data_t *)data;
 
 			if(enc == DW_FORM_ULEB){
 				switch(leb128_length(at->bits.value, 0)){
@@ -324,7 +325,7 @@ static void dwarf_attr(
 
 static struct DIE *dwarf_basetype(enum type_primitive prim)
 {
-	long enc;
+	form_data_t enc;
 	struct DIE *tydie;
 
 	switch(prim){
@@ -460,7 +461,7 @@ static struct DIE *dwarf_type_die(
 		case type_ref_block: /* act as if type_ref_ptr */
 		case type_ref_ptr:
 		{
-			long sz = platform_word_size();
+			form_data_t sz = platform_word_size();
 
 			tydie = dwarf_die_new(DW_TAG_pointer_type);
 
@@ -496,7 +497,7 @@ static struct DIE *dwarf_type_die(
 
 			szdie = dwarf_die_new(DW_TAG_subrange_type);
 			if(have_sz){
-				integral_t sz = const_fold_val_i(ty->bits.array.size);
+				form_data_t sz = const_fold_val_i(ty->bits.array.size);
 
 				/*dwarf_attr(szdie, DW_AT_lower_bound, DW_FORM_data4, 0);*/
 
@@ -538,7 +539,7 @@ static struct DIE *dwarf_sue_header(struct_union_enum_st *sue, int dwarf_tag)
 		dwarf_attr(suedie, DW_AT_name, DW_FORM_string, sue->spel);
 
 	if(sue_complete(sue)){
-		long sz = sue_size(sue, NULL);
+		form_data_t sz = sue_size(sue, NULL);
 
 		dwarf_attr(suedie, DW_AT_byte_size,
 				DW_FORM_data4, &sz);
@@ -568,7 +569,7 @@ static struct DIE *dwarf_suetype(
 			for(i = sue->members; i && *i; i++){
 				enum_member *emem = (*i)->enum_member;
 				struct DIE *memdie = dwarf_die_new(DW_TAG_enumerator);
-				long sz = const_fold_val_i(emem->val);
+				form_data_t sz = const_fold_val_i(emem->val);
 
 				dwarf_attr(memdie,
 						DW_AT_name, DW_FORM_string,
@@ -640,11 +641,11 @@ static struct DIE *dwarf_suetype(
 
 				/* bitfield */
 				if(dmem->field_width){
-					unsigned width = const_fold_val_i(dmem->field_width);
-					unsigned whole_sz = type_ref_size(dmem->ref, NULL);
+					form_data_t width = const_fold_val_i(dmem->field_width);
+					form_data_t whole_sz = type_ref_size(dmem->ref, NULL);
 
 					/* address of top-end */
-					unsigned off =
+					form_data_t off =
 						(whole_sz * CHAR_BIT)
 						- (width + dmem->struct_offset_bitfield);
 
@@ -708,7 +709,7 @@ static struct DIE_compile_unit *dwarf_cu(
 		const char *fname, const char *compdir)
 {
 	struct DIE_compile_unit *cu = umalloc(sizeof *cu);
-	long attrv;
+	form_data_t attrv;
 
 	dwarf_die_new_at(&cu->die, DW_TAG_compile_unit);
 
