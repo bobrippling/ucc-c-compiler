@@ -16,6 +16,12 @@ if [ "$1" = '--help' ]
 then usage
 fi
 
+rmfiles(){
+	test -z "$rmfiles" || rm -f $rmfiles
+}
+rmfiles=
+trap rmfiles EXIT
+
 if [ $# -ge 1 ]
 then
 	if echo "$1" | grep '\.c$' > /dev/null
@@ -24,7 +30,7 @@ then
 		shift
 		out="/tmp/chk.out.$$"
 
-		trap "rm -f $out" EXIT
+		rmfiles="$rmfiles $out"
 
 		if [ $verbose -ne 0 ]
 		then echo "$0: ucc -S -o'$out' '$in' $@"
@@ -47,13 +53,19 @@ if [ $# -ne 2 ]
 then usage
 fi
 
+if ! test -e "$2"
+then
+	echo >&2 "$0: $2 doesn't exist"
+	exit 1
+fi
+
 a=/tmp/$$.chk.a
 b=/tmp/$$.chk.b
-trap "rm -f $a $b" EXIT
+rmfiles="$rmfiles $a $b"
 
 set -e
 
-./layout_normalise.pl "$1" $cc_args | ./layout_sort.pl > $a
-./layout_normalise.pl "$2" $cc_args | ./layout_sort.pl > $b
+./layout_normalise.pl "$1" | ./layout_sort.pl > $a
+./layout_normalise.pl "$2" | ./layout_sort.pl > $b
 
 diff -u $b $a

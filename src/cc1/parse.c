@@ -180,7 +180,7 @@ static expr *parse_block()
 
 	}else if(accept(token_open_paren)){
 		/* ^(args...) */
-		args = parse_func_arglist(NULL); /* no args here thanks */
+		args = parse_func_arglist();
 		EAT(token_close_paren);
 	}else{
 		/* ^{...} */

@@ -26,4 +26,6 @@ do
 	fi
 done
 
+rm -r $tdir
+
 exit $ec

@@ -248,11 +248,6 @@ static void btype_set_store(
 	*pstore_set = 1;
 }
 
-#define PARSE_BTYPE(mode, ps, pa, ndecl)                 \
-parse_btype(mode & DECL_MULTI_ALLOW_STORE   ? ps : NULL, \
-            mode & DECL_MULTI_ALLOW_ALIGNAS ? pa : NULL, \
-            ndecl)
-
 static type_ref *parse_btype(
 		enum decl_storage *store, struct decl_align **palign,
 		int newdecl_context)
@@ -630,14 +625,28 @@ static int parse_curtok_is_type(void)
 static decl *parse_arg_decl(void)
 {
 	/* argument decls can default to int */
-	const enum decl_mode flags = DECL_CAN_DEFAULT;
+	const enum decl_mode flags = DECL_CAN_DEFAULT | DECL_ALLOW_STORE;
 	decl *argdecl = parse_decl_single(flags, 0);
+
 	if(!argdecl)
 		die_at(NULL, "type expected (got %s)", token_to_str(curtok));
+
+	switch(argdecl->store & STORE_MASK_STORE){
+		default:
+			parse_had_error = 1;
+			warn_at_print_error(NULL, "%s storage on parameter",
+					decl_store_to_str(argdecl->store));
+			break;
+
+		case store_default:/* aka: no store */
+		case store_register:
+			break;
+	}
+
 	return argdecl;
 }
 
-funcargs *parse_func_arglist(symtable *scope)
+funcargs *parse_func_arglist()
 {
 	funcargs *args = funcargs_new();
 
@@ -713,9 +722,6 @@ fin:;
 	}
 
 empty_func:
-	if(scope)
-		symtab_add_params(scope, args->arglist);
-
 	return args;
 }
 
@@ -825,8 +831,7 @@ static type_ref *parse_type_ref_func(enum decl_mode mode, decl *dfor)
 	while(accept(token_open_paren)){
 		current_scope = symtab_new(current_scope);
 
-		sub = type_ref_new_func(sub,
-				parse_func_arglist(current_scope));
+		sub = type_ref_new_func(sub, parse_func_arglist(), current_scope);
 
 		current_scope = current_scope->parent;
 
@@ -983,7 +988,10 @@ static decl *parse_decl_extra(
 decl *parse_decl_single(enum decl_mode mode, int newdecl)
 {
 	enum decl_storage store = store_default;
-	type_ref *r = PARSE_BTYPE(mode, &store, NULL /* align */, newdecl);
+	type_ref *r = parse_btype(
+			mode & DECL_ALLOW_STORE ? &store : NULL,
+			/*align:*/NULL,
+			newdecl);
 
 	if(!r){
 		if((mode & DECL_CAN_DEFAULT) == 0)
@@ -1141,7 +1149,10 @@ int parse_decls_single_type(
 
 	parse_static_assert();
 
-	this_ref = PARSE_BTYPE(mode, &store, &align, newdecl);
+	this_ref = parse_btype(
+			mode & DECL_MULTI_ALLOW_STORE ? &store : NULL,
+			mode & DECL_MULTI_ALLOW_ALIGNAS ? &align : NULL,
+			newdecl);
 
 	if(!this_ref){
 		/* can_default makes sure we don't parse { int *p; *p = 5; } the latter as a decl */

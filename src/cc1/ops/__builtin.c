@@ -434,7 +434,7 @@ static void fold_unreachable(expr *e, symtable *stab)
 
 	e->tree_type = type_ref_func_call(
 			e->expr->tree_type = type_ref_new_func(
-				type_ref_cached_VOID(), funcargs_new()), NULL);
+				type_ref_cached_VOID(), funcargs_new(), stab), NULL);
 
 	decl_attr_append(&e->tree_type->attr, decl_attr_new(attr_noreturn));
 

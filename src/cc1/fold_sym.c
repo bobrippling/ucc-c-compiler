@@ -55,10 +55,11 @@ static void print_stab(symtable *st, int indent)
 
 	STAB_INDENT();
 
-	fprintf(stderr, "table %p, children %d, vars %d, parent: %p\n",
+	fprintf(stderr, "table %p, children %d, vars %d, are_params %d, parent: %p\n",
 			(void *)st,
 			dynarray_count(st->children),
 			dynarray_count(st->decls),
+			st->are_params,
 			(void *)st->parent);
 
 	decl **di;
@@ -231,6 +232,12 @@ void symtab_fold_decls(symtable *tab)
 		  nidents++;                               \
 		}while(0)
 
+#define NEW_DECL(d) do{                     \
+		  NEW_IDENT(&(d)->where);               \
+		  all_idents[nidents-1].has_decl = 1;   \
+		  all_idents[nidents-1].bits.decl = d;  \
+		}while(0)
+
 #ifdef SYMTAB_DEBUG
 	if(!tab->parent)
 		print_stab(tab, 0);
@@ -247,11 +254,8 @@ void symtab_fold_decls(symtable *tab)
 
 		fold_decl(d, tab, NULL);
 
-		if(d->spel){
-			NEW_IDENT(&d->where);
-			all_idents[nidents-1].has_decl = 1;
-			all_idents[nidents-1].bits.decl = d;
-		}
+		if(d->spel)
+			NEW_DECL(d);
 
 		/* asm rename checks */
 		if(d->sym && d->sym->type != sym_global){
@@ -291,6 +295,10 @@ void symtab_fold_decls(symtable *tab)
 		}
 	}
 
+	/* add args */
+	if(tab->parent && tab->parent->are_params)
+		for(diter = tab->parent->decls; diter && *diter; diter++)
+			NEW_DECL(*diter);
 
 	if(nidents > 1){
 		/* check_clashes */

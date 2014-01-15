@@ -1,0 +1,21 @@
+ent1:
+.quad str.1
+
+ent2:
+.byte 104
+.byte 101
+.byte 108
+.byte 108
+.byte 111
+.byte 0
+
+ent3:
+.byte 104
+.byte 101
+.byte 108
+.byte 108
+.byte 111
+.byte 0
+
+str.1:
+.ascii "hello\000"

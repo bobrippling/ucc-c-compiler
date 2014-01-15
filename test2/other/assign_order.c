@@ -1,7 +1,8 @@
 // RUN: %ucc -fno-const-fold -o %t %s
 // RUN: %t
 
-#include <assert.h>
+//#include <assert.h>
+#define assert(x) ((x) ? (void)0 : abort())
 
 int f()
 {

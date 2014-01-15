@@ -430,13 +430,7 @@ void gen_expr_cast(expr *e)
 			}
 		}
 
-		/* normalise before the cast, otherwise we do things like
-		 * 5.3 -> 5, then normalise 5, instead of 5.3 != 0.0
-		 */
-		if(type_ref_is_type(tto, type__Bool)) /* 1 or 0 */
-			out_normalise();
-
-		out_cast(tto);
+		out_cast(tto, /*normalise_bool:*/1);
 	}
 }
 

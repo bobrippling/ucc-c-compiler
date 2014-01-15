@@ -136,7 +136,7 @@ type_ref *type_ref_new_ptr(  type_ref *to, enum type_qualifier);
 type_ref *type_ref_new_block(type_ref *to, enum type_qualifier);
 type_ref *type_ref_new_array(type_ref *to, expr *sz);
 type_ref *type_ref_new_array2(type_ref *to, expr *sz, enum type_qualifier, int is_static);
-type_ref *type_ref_new_func( type_ref *to, funcargs *args);
+type_ref *type_ref_new_func(type_ref *, funcargs *, symtable *arg_scope);
 type_ref *type_ref_new_cast( type_ref *from, enum type_qualifier new);
 type_ref *type_ref_new_cast_signed(type_ref *from, int is_signed);
 type_ref *type_ref_new_cast_add(type_ref *from, enum type_qualifier extra);

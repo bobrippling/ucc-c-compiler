@@ -261,6 +261,8 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 				die_at(&r->where, "restrict qualified function pointer");
 			}
 
+			r->bits.func.arg_scope->are_params = 1;
+
 			symtab_fold_sues(r->bits.func.arg_scope);
 			fold_funcargs(r->bits.func.args, r->bits.func.arg_scope, r);
 			fold_calling_conv(r);
@@ -497,7 +499,10 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 		switch(d->store & STORE_MASK_STORE){
 			case store_register:
 			case store_auto:
-				die_at(&d->where, "%s storage for function", decl_store_to_str(d->store));
+				fold_had_error = 1;
+				warn_at_print_error(&d->where,
+						"%s storage for function",
+						decl_store_to_str(d->store));
 		}
 
 		if(stab->parent){
@@ -773,6 +778,8 @@ void fold_global_func(decl *func_decl)
 
 void fold_decl_global(decl *d, symtable *stab)
 {
+	int is_fn;
+
 	switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
 		case store_extern:
 		case store_default:
@@ -786,14 +793,24 @@ void fold_decl_global(decl *d, symtable *stab)
 
 		case store_auto:
 		case store_register:
-			die_at(&d->where, "invalid storage class %s on global scoped %s",
+			fold_had_error = 1;
+			warn_at_print_error(&d->where,
+					"invalid storage class '%s' on global scoped %s",
 					decl_store_to_str(d->store),
 					DECL_IS_FUNC(d) ? "function" : "variable");
 	}
 
+	/* can't check typedefs here - not folded.
+	 * functions can't be typedefs anyway */
+	if((is_fn = d->ref->type == type_ref_func) && d->func_code){
+		symtab_add_params(
+				DECL_FUNC_ARG_SYMTAB(d),
+				type_ref_funcargs(d->ref)->arglist);
+	}
+
 	fold_decl(d, stab, NULL);
 
-	if(DECL_IS_FUNC(d)){
+	if(is_fn){
 		UCC_ASSERT(!d->init, "function has init?");
 		fold_global_func(d);
 	}
