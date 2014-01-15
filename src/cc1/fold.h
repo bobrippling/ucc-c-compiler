@@ -61,11 +61,6 @@ int fold_passable_no( stmt *s);
 
 void fold_stmt_and_add_to_curswitch(stmt *);
 
-#ifdef SYMTAB_DEBUG
-#  define PRINT_STAB(st, cur) print_stab(st->symtab, cur, &st->where)
-void print_stab(symtable *st, int current, where *w);
-#endif
-
 extern int fold_had_error;
 
 #endif

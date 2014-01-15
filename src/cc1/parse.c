@@ -888,26 +888,23 @@ static int print_indent = 0;
 
 #define INDENT(...) indent(), fprintf(stderr, __VA_ARGS__)
 
-void indent()
+static void indent()
 {
 	for(int c = print_indent; c; c--)
 		fputc('\t', stderr);
 }
 
-void print_stmt_and_decls(stmt *t)
+static void print_stmt_and_decls(stmt *t)
 {
 	INDENT("decls: (symtab %p, parent %p)\n", t->symtab, t->symtab->parent);
 
 	print_indent++;
-	for(decl **i = t->decls; i && *i; i++)
+	for(decl **i = t->symtab->decls; i && *i; i++)
 		INDENT("%s\n", (*i)->spel);
 	print_indent--;
 
-	if(!t->decls)
-		print_indent++, INDENT("NONE\n"), print_indent--;
-
 	INDENT("codes:\n");
-	for(stmt **i = t->codes; i && *i; i++){
+	for(stmt **i = t->bits.code.stmts; i && *i; i++){
 		stmt *s = *i;
 		if(stmt_kind(s, code)){
 			print_indent++;
@@ -925,8 +922,6 @@ void print_stmt_and_decls(stmt *t)
 			print_indent--;
 		}
 	}
-	if(!t->codes)
-		print_indent++, INDENT("NONE\n"), print_indent--;
 }
 #endif
 
