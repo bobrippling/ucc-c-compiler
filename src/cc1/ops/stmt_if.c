@@ -55,8 +55,8 @@ void flow_gen(stmt_flow *flow, symtable *stab)
 			gen_stmt(flow->init_blk);
 		/* also generates decls on the flow->inits statement */
 
-		if(endlbl)
-			out_label(endlbl);
+		if(flowendlbl)
+			out_label(flowendlbl);
 	}
 
 	if(endlbl)
