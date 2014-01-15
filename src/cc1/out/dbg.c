@@ -270,6 +270,68 @@ static void dwarf_children(struct DIE *parent, struct DIE **children)
 	dynarray_add_tmparray(&parent->children, children);
 }
 
+static void dwarf_die_free_1(struct DIE *die)
+{
+	struct DIE_attr **ai;
+
+	for(ai = die->attrs; ai && *ai; ai++){
+		struct DIE_attr *a = *ai;
+
+		switch(a->enc){
+			case DW_FORM_block1:
+			{
+				int i;
+
+				for(i = 0; i < a->bits.blk->cnt; i++){
+					struct dwarf_block_ent *e = &a->bits.blk->ents[i];
+					if(e->type == BLOCK_ADDR_STR)
+						free(e->bits.str);
+				}
+				free(a->bits.blk->ents);
+				free(a->bits.blk);
+				break;
+			}
+
+			case DW_FORM_ref4:
+				/* tydie */
+				break;
+
+			case DW_FORM_addr:
+			case DW_FORM_ADDR4:
+				free(a->bits.str);
+				break;
+
+			case DW_FORM_ULEB:
+			case DW_FORM_flag:
+			case DW_FORM_data1:
+			case DW_FORM_data2:
+			case DW_FORM_data4:
+			case DW_FORM_data8:
+				/* just a value */
+				break;
+
+			case DW_FORM_string:
+				free(a->bits.str);
+				break;
+		}
+
+		free(a);
+	}
+
+	free(die->attrs);
+	free(die->children);
+	free(die);
+}
+
+static void dwarf_die_free_r(struct DIE *die)
+{
+	struct DIE **child;
+	for(child = die->children; child && *child; child++)
+		dwarf_die_free_r(*child);
+
+	dwarf_die_free_1(die);
+}
+
 static void dwarf_attr(
 		struct DIE *die,
 		enum dwarf_attribute attr,
@@ -375,7 +437,7 @@ static struct DIE *dwarf_basetype(enum type_primitive prim)
 
 	dwarf_attr(tydie, DW_AT_name,
 			DW_FORM_string,
-			ustrdup(type_primitive_to_str(prim)));
+			(char *)type_primitive_to_str(prim));
 
 	dwarf_attr(tydie, DW_AT_encoding,
 			DW_FORM_data1, &enc);
@@ -719,9 +781,9 @@ static struct DIE_compile_unit *dwarf_cu(
 	dwarf_attr(&cu->die, DW_AT_language, DW_FORM_data2,
 			((attrv = DW_LANG_C99), &attrv));
 
-	dwarf_attr(&cu->die, DW_AT_name, DW_FORM_string, ustrdup(fname));
+	dwarf_attr(&cu->die, DW_AT_name, DW_FORM_string, (char *)fname);
 
-	dwarf_attr(&cu->die, DW_AT_comp_dir, DW_FORM_string, ustrdup(compdir));
+	dwarf_attr(&cu->die, DW_AT_comp_dir, DW_FORM_string, (char *)compdir);
 
 	dwarf_attr(&cu->die, DW_AT_stmt_list,
 			DW_FORM_ADDR4,
@@ -859,10 +921,10 @@ static void dwarf_symtable_scope(
 		lexblk = dwarf_die_new(DW_TAG_lexical_block);
 
 		dwarf_attr(lexblk, DW_AT_low_pc,
-				DW_FORM_addr, symtab->lbl_begin);
+				DW_FORM_addr, ustrdup_or_null(symtab->lbl_begin));
 
 		dwarf_attr(lexblk, DW_AT_high_pc,
-				DW_FORM_addr, symtab->lbl_end);
+				DW_FORM_addr, ustrdup_or_null(symtab->lbl_end));
 
 		/* generate variable DIEs */
 		for(di = symtab->decls; di && *di; di++){
@@ -1166,7 +1228,7 @@ static void dwarf_flush_die(
 	dwarf_flush_die_children(die, state);
 }
 
-static void dwarf_flush_free(struct DIE_compile_unit *cu,
+static void dwarf_flush(struct DIE_compile_unit *cu,
 		FILE *abbrev, FILE *info, long initial_offset)
 {
 	struct DIE_flush flush = {{ 0 }};
@@ -1294,8 +1356,12 @@ void out_dbginfo(symtable_global *globs,
 
 	dwarf_offset_die(&compile_unit->die, &abbrev, info_offset);
 
-	dwarf_flush_free(compile_unit,
+	dwarf_flush(compile_unit,
 			cc_out[SECTION_DBG_ABBREV],
 			cc_out[SECTION_DBG_INFO],
 			info_offset);
+
+	dynmap_free(compile_unit->types_to_dies);
+
+	dwarf_die_free_r(&compile_unit->die);
 }

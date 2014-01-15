@@ -45,6 +45,11 @@ char *ustrdup(const char *s)
 	return r;
 }
 
+char *ustrdup_or_null(const char *s)
+{
+	return s ? ustrdup(s) : NULL;
+}
+
 char *ustrdup2(const char *a, const char *b)
 {
 	int len = b - a;
