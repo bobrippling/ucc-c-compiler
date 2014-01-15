@@ -844,78 +844,80 @@ static struct DIE *dwarf_global_variable(struct DIE_compile_unit *cu, decl *d)
 	return vardie;
 }
 
-static struct DIE *dwarf_symtable_scope(
+static void dwarf_symtable_scope(
 		struct DIE_compile_unit *cu,
+		struct DIE *scope_parent,
 		symtable *symtab, int var_offset)
 {
-	struct DIE *lexblk;
-	decl **di;
 	symtable **si;
+	struct DIE *lexblk = NULL;
 
-	lexblk = dwarf_die_new(DW_TAG_lexical_block);
+	if(symtab->decls){
+		decl **di;
 
-	dwarf_attr(lexblk, DW_AT_low_pc,
-			DW_FORM_addr, symtab->lbl_begin);
+		lexblk = dwarf_die_new(DW_TAG_lexical_block);
 
-	dwarf_attr(lexblk, DW_AT_high_pc,
-			DW_FORM_addr, symtab->lbl_end);
+		dwarf_attr(lexblk, DW_AT_low_pc,
+				DW_FORM_addr, symtab->lbl_begin);
 
-	/* generate variable DIEs */
-	for(di = symtab->decls; di && *di; di++){
-		decl *d = *di;
-		struct DIE *var = dwarf_die_new(DW_TAG_variable);
+		dwarf_attr(lexblk, DW_AT_high_pc,
+				DW_FORM_addr, symtab->lbl_end);
 
-		if(d->sym){
-			struct dwarf_block_ent *locn_ents;
-			struct dwarf_block *locn;
+		/* generate variable DIEs */
+		for(di = symtab->decls; di && *di; di++){
+			decl *d = *di;
+			struct DIE *var = dwarf_die_new(DW_TAG_variable);
 
-			locn = umalloc(sizeof *locn);
-			locn_ents = umalloc(2 * sizeof *locn_ents);
+			if(d->sym){
+				struct dwarf_block_ent *locn_ents;
+				struct dwarf_block *locn;
 
-			locn->cnt = 2;
-			locn->ents = locn_ents;
+				locn = umalloc(sizeof *locn);
+				locn_ents = umalloc(2 * sizeof *locn_ents);
 
-			switch(d->sym->type){
-				case sym_local:
-					locn_ents[0].type = BLOCK_HEADER;
-					locn_ents[0].bits.v = DW_OP_breg6; /* rbp */
+				locn->cnt = 2;
+				locn->ents = locn_ents;
 
-					locn_ents[1].type = BLOCK_LEB128_S;
-					locn_ents[1].bits.v = -(long)(
-							d->sym->loc.stack_pos + var_offset);
-					break;
+				switch(d->sym->type){
+					case sym_local:
+						locn_ents[0].type = BLOCK_HEADER;
+						locn_ents[0].bits.v = DW_OP_breg6; /* rbp */
 
-				case sym_global:
-					dwarf_location_addr(locn_ents, d);
-					break;
+						locn_ents[1].type = BLOCK_LEB128_S;
+						locn_ents[1].bits.v = -(long)(
+								d->sym->loc.stack_pos + var_offset);
+						break;
 
-				case sym_arg:
-					ICE("sym_arg in function");
+					case sym_global:
+						dwarf_location_addr(locn_ents, d);
+						break;
+
+					case sym_arg:
+						ICE("sym_arg in function");
+				}
+
+				dwarf_attr(var, DW_AT_location, DW_FORM_block1, locn);
 			}
 
-			dwarf_attr(var, DW_AT_location, DW_FORM_block1, locn);
+			dwarf_attr_decl(cu, var, d, d->ref, /*show_extern:*/0);
+
+			dwarf_child(lexblk, var);
 		}
 
-		dwarf_attr_decl(cu, var, d, d->ref, /*show_extern:*/0);
-
-		dwarf_child(lexblk, var);
+		dwarf_child(scope_parent, lexblk);
 	}
 
-	/* children lex_scope DIEs */
-	for(si = symtab->children; si && *si; si++){
-		struct DIE *child = dwarf_symtable_scope(cu, *si, var_offset);
+	/* children lex blocks - add to our parent if we are empty */
+	if(!lexblk)
+		lexblk = scope_parent;
 
-		if(child)
-			dwarf_child(lexblk, child);
-	}
-
-	return lexblk;
+	for(si = symtab->children; si && *si; si++)
+		dwarf_symtable_scope(cu, lexblk, *si, var_offset);
 }
 
 static struct DIE *dwarf_subprogram_func(struct DIE_compile_unit *cu, decl *d)
 {
 	struct DIE *subprog = dwarf_die_new(DW_TAG_subprogram);
-	struct DIE *lexblk;
 
 	funcargs *args = type_ref_funcargs(d->ref);
 
@@ -932,9 +934,7 @@ static struct DIE *dwarf_subprogram_func(struct DIE_compile_unit *cu, decl *d)
 
 		dwarf_children(subprog, dwarf_formal_params(cu, args));
 
-		lexblk = dwarf_symtable_scope(cu, d->func_code->symtab, d->func_var_offset);
-		if(lexblk)
-			dwarf_child(subprog, lexblk);
+		dwarf_symtable_scope(cu, subprog, d->func_code->symtab, d->func_var_offset);
 	}
 
 	return subprog;
