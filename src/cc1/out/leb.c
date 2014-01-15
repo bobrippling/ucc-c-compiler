@@ -10,10 +10,16 @@ unsigned leb128_length(unsigned long long value, int is_signed)
 		signed long long sv = value;
 
 		for(;;){
+			int sign_bit_set = !!(sv & 0x40);
+
 			sv >>= 7;
 
-			if(!sv || sv == -1)
+			if((sv == 0 && !sign_bit_set)
+			|| (sv == -1 && sign_bit_set))
+			{
 				break;
+			}
+
 			len++;
 		}
 	}else{
