@@ -1,4 +1,4 @@
-// RUN: %ucc -g %s -o %t
+// RUN: %debug_check %s
 
 struct A // not output - unused
 {

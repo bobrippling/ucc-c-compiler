@@ -1,4 +1,4 @@
-// RUN: %layout_check %s -g
+// RUN: %debug_check %s
 
 signed char sc = 'a';
 unsigned char uc = 'b';

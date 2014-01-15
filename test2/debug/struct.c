@@ -1,4 +1,4 @@
-// RUN: %layout_check %s -g
+// RUN: %debug_check %s
 
 typedef float fp;
 
