@@ -1,3 +1,5 @@
+// RUN: %ucc -g %s -o %t
+
 struct A // not output - unused
 {
 	enum E
@@ -7,15 +9,19 @@ struct A // not output - unused
 	int i, j;
 };
 
-static long f(int x)
+struct B
+{
+	enum E2
+	{
+		X321, Y321, Z321
+	} e;
+	int i, j;
+} b;
+
+static int f(int i)
 {
 	static int si = 3;
-
-	si += x;
-
-	x = 3;
-
-	return si;
+	return i + si;
 }
 
 main(int argc, char *argv[])
@@ -27,11 +33,4 @@ main(int argc, char *argv[])
 		f(52),
 		3
 	};
-
-	for(; x.i > 0; x.i--){
-		int add = x.i;
-		x.j += f(add);
-	}
-
-	return x.i;
 }

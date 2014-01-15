@@ -1,8 +1,10 @@
+// RUN: %ucc -g %s -o %t
+
 f()
 {
 	int i = 2;
-	for(int i = 99; i > 95; i--){
-		;
+	for(int i = 90; i < 95; i++){
+		int x = 10;
 	}
 	return i;
 }

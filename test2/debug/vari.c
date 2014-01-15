@@ -1,3 +1,5 @@
+// RUN: %ucc -g %s -o %t
+
 typedef __builtin_va_list va_list;
 
 #define va_start(l, arg) __builtin_va_start(l, arg)
@@ -9,7 +11,7 @@ sum(int a, ...)
 	va_list l;
 	va_start(l, a);
 
-	int t = 0; // BUG: 't' can't be printed - bad SLEB128
+	int t = 0;
 	for(t += a;
 			a > 0;
 			a = va_arg(l, int))
@@ -21,5 +23,5 @@ sum(int a, ...)
 
 main()
 {
-	printf("%d\n", sum(1, 2, 3, 0));
+	return sum(1, 2, 3, 0);
 }

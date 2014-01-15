@@ -1,11 +1,9 @@
-//#include <stdbool.h>
-//#include <stdarg.h>
-//#include <stdnoreturn.h>
+// RUN: %ucc -g %s -o %t
 
 struct A
 {
 	int i, j;
-	//struct A *next;
+	struct A *next;
 } glob_a = { 1, 2 };
 
 struct A *a(void)
@@ -14,17 +12,13 @@ struct A *a(void)
 	return &yo;
 }
 
-pa(struct A *p)
-{
-	printf("{%d, %d}\n", p->i, p->j);
-}
+pa(struct A *p);
 
 int main(int argc, char **argv)
 {
 	int hi = 1;
 	{
 		int hi = 5;
-		printf("%d\n", hi);
 
 		struct A *f = a();
 		glob_a = *f;
@@ -33,7 +27,6 @@ int main(int argc, char **argv)
 	}
 	{
 		int hi = 2;
-		printf("%d\n", hi);
 	}
 	return hi;
 }
