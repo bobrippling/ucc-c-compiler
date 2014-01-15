@@ -112,5 +112,5 @@ char *out_label_flow(const char *fmt)
 
 char *out_dbg_func_end(const char *fn)
 {
-	return ustrprintf(".Lfuncend_%s", fn);
+	return ustrprintf(ASM_PLBL_PRE "funcend_%s", fn);
 }
