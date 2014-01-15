@@ -24,6 +24,12 @@ sub can_exec
 	return exists $exes{$e};
 }
 
+my $verbose = 0;
+if($ARGV[0] eq '-v'){
+	$verbose = 1;
+	shift;
+}
+
 if(@ARGV != 1){
 	die "Usage: $0 [-v] path/to/source\n";
 }
@@ -60,6 +66,10 @@ for my $dumper (@dumpers){
 	$cmd .= " $out >/dev/null";
 
 	next unless can_exec($dumper->{exe});
+
+	if($verbose){
+		print STDERR "$0: exec($cmd)\n";
+	}
 
 	open SUB, '|-', $cmd or die "exec $dumper->{exe}: $!";
 	{
