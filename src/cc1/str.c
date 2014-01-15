@@ -49,8 +49,8 @@ char *str_add_escape(const char *s, const size_t len)
 	char *new, *p;
 
 	for(i = 0; i < len; i++)
-		if(*s == '\\' || *s == '"')
-			nlen += 2;
+		if(s[i] == '\\' || s[i] == '"')
+			nlen += 3;
 		else if(!isprint(s[i]))
 			nlen += 4;
 		else
