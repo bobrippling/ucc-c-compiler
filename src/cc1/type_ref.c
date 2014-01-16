@@ -54,7 +54,7 @@ static int type_ref_qual_cmp(type_ref *a, type_ref *b)
 		return 0;
 	}
 
-	return a->bits.cast.qual == b->bits.cast.qual;
+	return type_qual_loss(a->bits.cast.qual, b->bits.cast.qual);
 }
 
 static enum type_cmp type_ref_cmp_r(
