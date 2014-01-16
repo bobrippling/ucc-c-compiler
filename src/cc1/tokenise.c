@@ -7,13 +7,14 @@
 #include <limits.h>
 
 #include "../util/util.h"
-#include "data_structs.h"
 #include "tokenise.h"
 #include "../util/alloc.h"
 #include "../util/str.h"
 #include "../util/escape.h"
 #include "str.h"
 #include "cc1.h"
+#include "cc1_where.h"
+#include "btype.h"
 
 #ifndef CHAR_BIT
 #  define CHAR_BIT 8
@@ -167,28 +168,11 @@ int current_line_str_used = 0;
 
 void where_cc1_current(struct where *w)
 {
-	if(parse_finished){
-eof_w:
-		if(eof_where){
-			memcpy(w, eof_where, sizeof *w);
-		}else if(current_fname){
-			/* still parsing, at EOF */
-			goto final;
-		}else{
-			ICE("where_new() after buffer eof");
-		}
+	/* XXX: current_chr positions at the end of the current token */
+	where_current(w);
 
-	}else{
-final:
-		/* XXX: current_chr positions at the end of the current token */
-		where_current(w);
-
-		if(!w->fname)
-			goto eof_w;
-
-		current_fname_used = 1;
-		current_line_str_used = 1;
-	}
+	current_fname_used = 1;
+	current_line_str_used = 1;
 }
 
 void where_cc1_adj_identifier(where *w, const char *sp)

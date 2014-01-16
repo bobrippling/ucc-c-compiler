@@ -1,12 +1,17 @@
 #ifndef TYPE_H
 #define TYPE_H
 
+#include "num.h"
+#include "btype.h"
+
+typedef struct type type;
+
 struct type
 {
 	where where;
 	type *ref, *tmp; /* tmp used for things like printing */
 
-	decl_attr *attr;
+	struct decl_attr *attr;
 	int folded;
 
 	enum type_kind
@@ -28,8 +33,8 @@ struct type
 		/* ref_tdef */
 		struct type_tdef
 		{
-			expr *type_of;
-			decl *decl;
+			struct expr *type_of;
+			struct decl *decl;
 		} tdef;
 
 		/* ref_{ptr,array} */
@@ -38,7 +43,7 @@ struct type
 			enum type_qualifier qual;
 			unsigned is_static : 1;
 			unsigned decayed : 1; /* old size may be NULL - track here */
-			expr *size;
+			struct expr *size;
 			/* when we decay
 			 * f(int x[2]) -> f(int *x)
 			 * we save the size + is_static
@@ -58,7 +63,7 @@ struct type
 		struct
 		{
 			struct funcargs *args;
-			symtable *arg_scope;
+			struct symtable *arg_scope;
 		} func;
 
 		/* ref_block */
@@ -80,5 +85,35 @@ enum type_cmp
 type_cmp(
 		type *, type *,
 		enum type_cmp_opts);
+
+unsigned type_size(type *r, where *from);
+unsigned type_align(type *r, where *from);
+
+#define TYPE_STATIC_BUFSIZ 512
+
+const char *type_to_str_r_spel(
+		char buf[TYPE_STATIC_BUFSIZ],
+		type *r, char *spel);
+
+const char *type_to_str_r_show_decayed(
+		char buf[TYPE_STATIC_BUFSIZ], type *r);
+
+const char *type_to_str_r(char buf[TYPE_STATIC_BUFSIZ], type *r);
+
+const char *type_to_str(type *r);
+
+
+/* char[] and char *, etc */
+enum type_str_type
+{
+	type_str_no,
+	type_str_char,
+	type_str_wchar
+};
+enum type_str_type type_str_type(type *);
+
+integral_t type_max(type *r, where *from);
+
+type *type_skip_casts(type *);
 
 #endif

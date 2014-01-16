@@ -56,7 +56,7 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 		{
 			/* check for sizeof array parameter */
 			if(type_is_decayed_array(chosen)){
-				char ar_buf[TYPE_REF_STATIC_BUFSIZ];
+				char ar_buf[TYPE_STATIC_BUFSIZ];
 
 				warn_at(&e->where,
 						"array-argument evaluates to sizeof(%s), not sizeof(%s)",

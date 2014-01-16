@@ -2,7 +2,6 @@
 #include <stdarg.h>
 
 #include "../../util/util.h"
-#include "../data_structs.h"
 #include "../decl.h"
 #include "vstack.h"
 #include "asm.h"

@@ -4,7 +4,6 @@
 #include "../util/util.h"
 #include "../util/dynarray.h"
 
-#include "data_structs.h"
 #include "expr.h"
 #include "stmt.h"
 #include "cc1.h"

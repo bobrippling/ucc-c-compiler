@@ -6,9 +6,12 @@
 #include "../util/alloc.h"
 #include "../util/util.h"
 #include "../util/dynarray.h"
-#include "data_structs.h"
 #include "sue.h"
 #include "cc1.h"
+#include "cc1_where.h"
+#include "expr.h"
+#include "decl.h"
+#include "type_is.h"
 
 static void sue_set_spel(struct_union_enum_st *sue, char *spel)
 {

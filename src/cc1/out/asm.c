@@ -4,7 +4,6 @@
 #include <stdlib.h>
 
 #include "../../util/util.h"
-#include "../data_structs.h"
 #include "../cc1.h"
 #include "../sym.h"
 #include "asm.h"
@@ -426,7 +425,7 @@ static void asm_declare_init(enum section_type sec, decl_init *init, type *tfor)
 
 		/* exp->tree_type should match tfor */
 		{
-			char buf[TYPE_REF_STATIC_BUFSIZ];
+			char buf[TYPE_STATIC_BUFSIZ];
 
 			UCC_ASSERT(
 					type_cmp(exp->tree_type, tfor, TYPE_CMP_ALLOW_TENATIVE_ARRAY) != TYPE_NOT_EQUAL,

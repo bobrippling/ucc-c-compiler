@@ -5,8 +5,10 @@
 #include "../util/where.h"
 #include "../util/util.h"
 #include "../util/platform.h"
+#include "../util/limits.h"
 
-#include "data_structs.h"
+#include "macros.h"
+
 #include "expr.h"
 #include "sue.h"
 #include "btype.h"
@@ -167,7 +169,7 @@ unsigned btype_align(const btype *t, where *from)
 const char *btype_to_str(const btype *t)
 {
 #define BUF_SIZE (sizeof(buf) - (bufp - buf))
-	static char buf[TYPE_STATIC_BUFSIZ];
+	static char buf[BTYPE_STATIC_BUFSIZ];
 	char *bufp = buf;
 
 	if(t->sue){
@@ -192,7 +194,7 @@ const char *btype_to_str(const btype *t)
 				break;
 
 			case type_unknown:
-				ICE("unknown type primitive (%s)", where_str(&t->where));
+				ICE("unknown type primitive");
 			case type_enum:
 			case type_struct:
 			case type_union:
@@ -202,3 +204,153 @@ const char *btype_to_str(const btype *t)
 
 	return buf;
 }
+
+unsigned type_primitive_size(enum type_primitive tp)
+{
+	switch(tp){
+		case type__Bool:
+		case type_void:
+			return 1;
+
+		case type_schar:
+		case type_uchar:
+		case type_nchar:
+			return UCC_SZ_CHAR;
+
+		case type_short:
+		case type_ushort:
+			return UCC_SZ_SHORT;
+
+		case type_int:
+		case type_uint:
+			return UCC_SZ_INT;
+
+		case type_enum:
+		case type_float:
+			return 4;
+
+		case type_long:
+		case type_ulong:
+			/* 4 on 32-bit */
+			if(IS_32_BIT())
+				return 4; /* FIXME: 32-bit long */
+			return UCC_SZ_LONG;
+
+		case type_llong:
+		case type_ullong:
+			return UCC_SZ_LONG_LONG;
+
+		case type_double:
+			return IS_32_BIT() ? 4 : 8;
+
+		case type_ldouble:
+			/* 80-bit float */
+			ICW("TODO: long double");
+			return IS_32_BIT() ? 12 : 16;
+
+		case type_union:
+		case type_struct:
+			ICE("s/u size");
+
+		case type_unknown:
+			break;
+	}
+
+	ICE("type %s in %s()",
+			type_primitive_to_str(tp), __func__);
+	return -1;
+}
+
+unsigned long long
+type_primitive_max(enum type_primitive p, int is_signed)
+{
+	unsigned long long max;
+
+	switch(p){
+		case type__Bool: return 1;
+		case type_nchar:
+		case type_schar:
+		case type_uchar:
+			max = UCC_SCHAR_MAX;
+			break;
+
+		case type_short: max = UCC_SHRT_MAX;      break;
+		case type_int:   max = UCC_INT_MAX;       break;
+		case type_long:  max = UCC_LONG_MAX;      break;
+		case type_llong: max = UCC_LONG_LONG_MAX; break;
+
+		case type_float:
+		case type_double:
+		case type_ldouble:
+			/* 80-bit float */
+			ICE("TODO: float max");
+
+		case type_union:
+		case type_struct:
+		case type_enum:
+			ICE("sue max");
+
+		case type_void:
+		case type_unknown:
+		default:
+			ICE("bad primitive %s", type_primitive_to_str(p));
+	}
+
+	return is_signed ? max : max * 2 + 1;
+}
+
+int type_floating(enum type_primitive p)
+{
+	switch(p){
+		case type_float:
+		case type_double:
+		case type_ldouble:
+			return 1;
+		default:
+			return 0;
+	}
+}
+
+const char *type_primitive_to_str(const enum type_primitive p)
+{
+	switch(p){
+		case type_nchar:  return "char";
+		case type_schar:  return "signed char";
+		case type_uchar:  return "unsigned char";
+
+		CASE_STR_PREFIX(type, void);
+		CASE_STR_PREFIX(type, short);
+		CASE_STR_PREFIX(type, int);
+		CASE_STR_PREFIX(type, long);
+		case type_ushort: return "unsigned short";
+		case type_uint:   return "unsigned int";
+		case type_ulong:  return "unsigned long";
+		CASE_STR_PREFIX(type, float);
+		CASE_STR_PREFIX(type, double);
+		CASE_STR_PREFIX(type, _Bool);
+
+		case type_llong:   return "long long";
+		case type_ullong:  return "unsigned long long";
+		case type_ldouble: return "long double";
+
+		CASE_STR_PREFIX(type, struct);
+		CASE_STR_PREFIX(type, union);
+		CASE_STR_PREFIX(type, enum);
+
+		CASE_STR_PREFIX(type, unknown);
+	}
+	return NULL;
+}
+
+const char *type_qual_to_str(const enum type_qualifier qual, int trailing_space)
+{
+	static char buf[32];
+	/* trailing space is purposeful */
+	snprintf(buf, sizeof buf, "%s%s%s%s",
+		qual & qual_const    ? "const"    : "",
+		qual & qual_volatile ? "volatile" : "",
+		qual & qual_restrict ? "restrict" : "",
+		qual && trailing_space ? " " : "");
+	return buf;
+}
+

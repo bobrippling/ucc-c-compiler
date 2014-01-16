@@ -2,64 +2,20 @@
 #define EXPR_H
 
 #include "strings.h"
+#include "type.h"
+#include "op.h"
+#include "sym.h"
+#include "decl.h"
+#include "const.h"
 
-typedef struct stringlit_at
-{
-	where where;
-	stringlit *lit;
-} stringlit_at;
-
-typedef struct consty
-{
-	enum constyness
-	{
-		CONST_NO = 0,   /* f() */
-		CONST_NUM,      /* 5 + 2, float, etc */
-		/* can be offset: */
-		CONST_ADDR,     /* &f where f is global */
-		CONST_STRK,     /* string constant */
-		CONST_NEED_ADDR, /* a.x, b->y, p where p is global int p */
-	} type;
-	long offset; /* offset for addr/strk */
-	union
-	{
-		numeric num;        /* CONST_VAL_* */
-		stringlit_at *str; /* CONST_STRK */
-		struct
-		{
-			int is_lbl;
-			union
-			{
-				const char *lbl;
-				unsigned long memaddr;
-			} bits;
-		} addr;
-	} bits;
-	expr *nonstandard_const; /* e.g. (1, 2) is not strictly const */
-} consty;
-#define CONST_AT_COMPILE_TIME(t) (t != CONST_NO && t != CONST_NEED_ADDR)
-
-#define CONST_ADDR_OR_NEED_TREF(r)  \
-	(  type_is_array(r)           \
-	|| type_is_decayed_array(r)   \
-	|| type_is(r, type_func)  \
-		? CONST_ADDR : CONST_NEED_ADDR)
-
-#define CONST_ADDR_OR_NEED(d) CONST_ADDR_OR_NEED_TREF((d)->ref)
-
-#define K_FLOATING(num) !!((num).suffix & VAL_FLOATING)
-#define K_INTEGRAL(num) !K_FLOATING(num)
-
-#define CONST_FOLD_LEAF(k) memset((k), 0, sizeof *(k))
-
-
-typedef void func_fold(expr *, symtable *);
-typedef void func_gen(expr *);
-typedef void func_gen_lea(expr *);
-typedef void func_const(expr *, consty *);
+typedef void func_fold(struct expr *, struct symtable *);
+typedef void func_gen(struct expr *);
+typedef void func_gen_lea(struct expr *);
+typedef void func_const(struct expr *, consty *);
 typedef const char *func_str(void);
-typedef void func_mutate_expr(expr *);
+typedef void func_mutate_expr(struct expr *);
 
+typedef struct expr expr;
 struct expr
 {
 	where where;
@@ -141,7 +97,7 @@ struct expr
 
 		struct
 		{
-			funcargs *args;
+			struct funcargs *args;
 			type *retty;
 			sym *sym;
 		} block;
@@ -189,13 +145,13 @@ struct expr
 			builtin_nanf, builtin_nan, builtin_nanl
 		} builtin_nantype;
 
-		stmt *variadic_setup;
+		struct stmt *variadic_setup;
 	} bits;
 
 	int in_parens; /* for if((x = 5)) testing */
 
 	expr **funcargs;
-	stmt *code; /* ({ ... }), comp. lit. assignments */
+	struct stmt *code; /* ({ ... }), comp. lit. assignments */
 
 	/* type propagation */
 	type *tree_type;
@@ -230,7 +186,7 @@ expr *expr_new_numeric(numeric *);
 
 /* simple wrappers */
 expr *expr_ptr_multiply(expr *, decl *);
-expr *expr_new_decl_init(decl *d, decl_init *di);
+expr *expr_new_decl_init(decl *d, struct decl_init *di);
 
 #include "ops/expr_addr.h"
 #include "ops/expr_assign.h"
@@ -270,7 +226,7 @@ expr *expr_new_val(int val);
 expr *expr_new_op(enum op_type o);
 expr *expr_new_op2(enum op_type o, expr *l, expr *r);
 expr *expr_new_if(expr *test);
-expr *expr_new_stmt(stmt *code);
+expr *expr_new_stmt(struct stmt *code);
 expr *expr_new_sizeof_type(type *, enum what_of what_of);
 expr *expr_new_sizeof_expr(expr *, enum what_of what_of);
 expr *expr_new_funcall(void);
@@ -278,7 +234,7 @@ expr *expr_new_assign(         expr *to, expr *from);
 expr *expr_new_assign_init(    expr *to, expr *from);
 expr *expr_new_assign_compound(expr *to, expr *from, enum op_type);
 expr *expr_new__Generic(expr *test, struct generic_lbl **lbls);
-expr *expr_new_block(type *rt, funcargs *args, stmt *code);
+expr *expr_new_block(type *rt, struct funcargs *args, struct stmt *code);
 expr *expr_new_deref(expr *);
 expr *expr_new_struct(expr *sub, int dot, expr *ident);
 expr *expr_new_struct_mem(expr *sub, int dot, decl *);

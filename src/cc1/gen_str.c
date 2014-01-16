@@ -6,7 +6,6 @@
 #include "../util/util.h"
 #include "../util/platform.h"
 #include "../util/dynarray.h"
-#include "data_structs.h"
 #include "macros.h"
 #include "sym.h"
 #include "cc1.h"
@@ -225,7 +224,7 @@ static void print_decl_eng(decl *d)
 
 void print_type(type *ref, decl *d)
 {
-	char buf[TYPE_REF_STATIC_BUFSIZ];
+	char buf[TYPE_STATIC_BUFSIZ];
 	decl_attr *da;
 
 	fprintf(cc1_out, "%s",

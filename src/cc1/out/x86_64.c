@@ -7,7 +7,6 @@
 #include "../../util/alloc.h"
 #include "../../util/dynarray.h"
 #include "../../util/platform.h"
-#include "../data_structs.h"
 #include "vstack.h"
 #include "asm.h"
 #include "impl.h"
@@ -1376,7 +1375,7 @@ static void x86_xchg_fi(struct vstack *vp, type *tfrom, type *tto)
 			/* cast up to int, then to float */
 			v_cast(vp, ty);
 		}else{
-			char buf[TYPE_REF_STATIC_BUFSIZ];
+			char buf[TYPE_STATIC_BUFSIZ];
 			out_comment("%s to %s - truncated",
 					type_to_str(tfrom),
 					type_to_str_r(buf, tto));

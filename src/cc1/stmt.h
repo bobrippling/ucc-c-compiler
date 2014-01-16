@@ -1,13 +1,14 @@
 #ifndef STAT_H
 #define STAT_H
 
-typedef void        func_fold_stmt(stmt *);
-typedef void        func_gen_stmt( stmt *);
+typedef void        func_fold_stmt(struct stmt *);
+typedef void        func_gen_stmt(struct stmt *);
 typedef const char *func_str_stmt(void);
 
 /* non-critical */
-typedef int         func_passable_stmt(stmt *);
+typedef int         func_passable_stmt(struct stmt *);
 
+typedef struct stmt stmt;
 struct stmt
 {
 	where where;
@@ -20,10 +21,10 @@ struct stmt
 	                                   no for return + things containing return, etc */
 
 	stmt *lhs, *rhs;
-	expr *expr; /* test expr for if and do, etc */
-	expr *expr2;
+	struct expr *expr; /* test expr for if and do, etc */
+	struct expr *expr2;
 
-	stmt_flow *flow; /* for, switch (do and while are simple enough for ->[lr]hs) */
+	struct stmt_flow *flow; /* for, switch (do and while are simple enough for ->[lr]hs) */
 
 	/* specific data */
 	int val;
@@ -55,13 +56,14 @@ struct stmt
 	stmt *parent;
 };
 
+typedef struct stmt_flow stmt_flow;
 struct stmt_flow
 {
 	symtable *for_init_symtab; /* for(int b;;){} - symtab for b */
 	stmt *init_blk;
 
 	/* for specific */
-	expr *for_init, *for_while, *for_inc;
+	struct expr *for_init, *for_while, *for_inc;
 };
 
 #define STMT_DEFS(ty)                  \
@@ -107,7 +109,7 @@ stmt *stmt_new(func_fold_stmt *,
 
 stmt_flow *stmt_flow_new(symtable *parent);
 
-stmt *expr_to_stmt(expr *e, symtable *scope);
+stmt *expr_to_stmt(struct expr *e, symtable *scope);
 
 typedef void stmt_walk_enter(stmt *current, int *stop, int *descend, void *);
 typedef void stmt_walk_leave(stmt *current, void *);

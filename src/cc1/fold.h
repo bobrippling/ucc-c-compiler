@@ -1,6 +1,12 @@
 #ifndef FOLD_H
 #define FOLD_H
 
+#include "decl.h"
+#include "sym.h"
+#include "stmt.h"
+#include "expr.h"
+#include "funcargs.h"
+
 /* basic folding */
 void fold_decl_global(decl *d, symtable *stab);
 void fold_decl_global_init(decl *d, symtable *stab);

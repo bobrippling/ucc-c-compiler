@@ -3,9 +3,9 @@
 
 #include "../util/util.h"
 #include "../util/alloc.h"
-#include "data_structs.h"
 #include "stmt.h"
 #include "cc1.h"
+#include "cc1_where.h"
 
 stmt_flow *stmt_flow_new(symtable *parent)
 {

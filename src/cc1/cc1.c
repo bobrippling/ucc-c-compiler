@@ -11,7 +11,6 @@
 
 #include "../util/util.h"
 #include "../util/platform.h"
-#include "data_structs.h"
 #include "tokenise.h"
 #include "parse.h"
 #include "cc1.h"
@@ -25,6 +24,7 @@
 #include "out/asm.h" /* NUM_SECTIONS */
 #include "opt.h"
 #include "pass1.h"
+#include "type_root.h"
 
 #include "../as_cfg.h"
 

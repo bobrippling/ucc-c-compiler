@@ -241,7 +241,7 @@ type *op_required_promotion(
 		const int r_ptr = !!type_is(trhs, type_ptr);
 
 		if(l_ptr && r_ptr){
-			char buf[TYPE_REF_STATIC_BUFSIZ];
+			char buf[TYPE_STATIC_BUFSIZ];
 
 			if(op == op_minus){
 				/* don't allow void * */
@@ -662,7 +662,7 @@ static int op_float_check(expr *e)
 	if((type_is_floating(tl) || type_is_floating(tr))
 	&& !op_can_float(e->op))
 	{
-		char buf[TYPE_REF_STATIC_BUFSIZ];
+		char buf[TYPE_STATIC_BUFSIZ];
 
 		/* TODO: factor to a error-continuing function */
 		fold_had_error = 1;

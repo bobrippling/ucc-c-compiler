@@ -1,6 +1,8 @@
 #ifndef BTYPE_H
 #define BTYPE_H
 
+#include "../util/where.h"
+
 enum type_cmp
 {
 	TYPE_EQUAL = 1 << 0,
@@ -46,6 +48,7 @@ enum type_primitive
 
 	type_unknown
 };
+#define type_intptr_t type_long
 
 enum type_qualifier
 {
@@ -59,26 +62,30 @@ typedef struct btype btype;
 
 struct btype
 {
-	where where;
-
 	enum type_primitive primitive;
 
 	/* NULL unless this is a struct, union or enum */
-	struct_union_enum_st *sue;
-
-	/* attr applied to all decls whose type is this type */
-	decl_attr *attr;
+	struct struct_union_enum_st *sue;
 };
 
 enum type_cmp btype_cmp(const btype *a, const btype *b);
 int type_primitive_is_signed(enum type_primitive);
 int btype_is_signed(const btype *);
 
+#define BTYPE_STATIC_BUFSIZ 128
 const char *btype_to_str(const btype *t);
 unsigned btype_size( const btype *, where *from);
 unsigned btype_align(const btype *, where *from);
 
 /* is there a loss of qualifiers going from 'b' to 'a' ? */
 int type_qual_loss(enum type_qualifier a, enum type_qualifier b);
+
+const char *type_primitive_to_str(const enum type_primitive);
+const char *type_qual_to_str(     const enum type_qualifier, int trailing_space);
+
+int type_floating(enum type_primitive);
+unsigned type_primitive_size(enum type_primitive tp);
+unsigned long long
+type_primitive_max(enum type_primitive p, int is_signed);
 
 #endif

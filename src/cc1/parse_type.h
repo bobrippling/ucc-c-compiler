@@ -23,9 +23,9 @@ void parse_decls_multi_type(
 		symtable *scope,
 		decl ***pnew);
 
-funcargs *parse_func_arglist(void);
+struct funcargs *parse_func_arglist(void);
 
-decl_init *parse_initialisation(void); /* expr or {{...}} */
+struct decl_init *parse_initialisation(void); /* expr or {{...}} */
 
 int parse_at_decl(void);
 

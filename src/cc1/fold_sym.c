@@ -9,7 +9,6 @@
 #include "../util/dynmap.h"
 #include "../util/platform.h"
 
-#include "data_structs.h"
 #include "cc1.h"
 #include "sym.h"
 #include "fold_sym.h"
@@ -21,6 +20,7 @@
 #include "out/lbl.h"
 #include "const.h"
 #include "label.h"
+#include "type_is.h"
 
 
 #define RW_TEST(decl, var)                      \

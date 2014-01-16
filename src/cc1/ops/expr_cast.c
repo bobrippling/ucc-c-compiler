@@ -356,7 +356,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 			{
 				/* allow cast from NULL to func ptr */
 				if(!expr_is_null_ptr(expr_cast_child(e), NULL_STRICT_VOID_PTR)){
-					char buf[TYPE_REF_STATIC_BUFSIZ];
+					char buf[TYPE_STATIC_BUFSIZ];
 
 					warn_at(&e->where, "%scast from %spointer to %spointer\n"
 							"%s <- %s",
@@ -417,7 +417,7 @@ void gen_expr_cast(expr *e)
 				decl *mem = struct_union_member_find_sue(b_sue, a_sue);
 
 				if(mem){
-					/*char buf[TYPE_REF_STATIC_BUFSIZ];
+					/*char buf[TYPE_STATIC_BUFSIZ];
 						fprintf(stderr, "CAST %s -> %s, adj by %d\n",
 						type_to_str(tfrom),
 						type_to_str_r(buf, tto),

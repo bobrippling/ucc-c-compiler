@@ -5,7 +5,6 @@
 
 #include "../../util/util.h"
 #include "../../util/alloc.h"
-#include "../data_structs.h"
 #include "asm.h"
 #include "out.h"
 #include "vstack.h"
@@ -1355,7 +1354,7 @@ void v_cast(struct vstack *vp, type *to)
 					impl_cast_load(vp, from, to,
 							type_is_signed(from));
 				}else{
-					char buf[TYPE_REF_STATIC_BUFSIZ];
+					char buf[TYPE_STATIC_BUFSIZ];
 
 					out_comment("truncate cast from %s to %s, size %d -> %d",
 							from ? type_to_str_r(buf, from) : "",

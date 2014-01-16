@@ -8,7 +8,6 @@
 #include "../util/util.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
-#include "data_structs.h"
 #include "decl_init.h"
 #include "funcargs.h"
 
@@ -19,11 +18,14 @@
 #include "sym.h"
 
 #include "cc1.h"
+#include "cc1_where.h"
 
 #include "parse.h"
 #include "parse_type.h"
 
 #include "expr.h"
+#include "type_root.h"
+#include "type_is.h"
 
 /*#define PARSE_DECL_VERBOSE*/
 
@@ -162,8 +164,7 @@ static type *parse_type_sue(
 		/* sue may already exist */
 		decl_attr_append(&sue->attr, this_sue_attr);
 
-		return type_new_type(
-				type_new_primitive_sue(prim, sue));
+		return type_root_suetype(cc1_type_root, sue);
 	}
 }
 
@@ -410,7 +411,7 @@ static type *parse_btype(
 			}
 
 			/* *store is assigned elsewhere */
-			return type_new_cast_add(tref, qual);
+			return type_qualify(tref, qual);
 
 		}else if(accept(token_typeof)){
 			if(primitive_mode != NONE)
@@ -545,7 +546,7 @@ static type *parse_btype(
 		}
 
 		if(is_va_list){
-			r = type_cached_VA_LIST();
+			r = type_root_va_list(cc1_type_root);
 
 		}else switch(primitive_mode){
 			case TYPEDEF:
@@ -557,7 +558,7 @@ static type *parse_btype(
 							tdef_typeof->bits.ident.spel);
 				}
 
-				r = type_new_tdef(tdef_typeof, tdef_decl);
+				r = type_tdef_of(tdef_typeof, tdef_decl);
 				break;
 
 			case PRIMITIVE_NO_MORE:
@@ -569,7 +570,7 @@ static type *parse_btype(
 				if(primitive_mode == NONE && !signed_set)
 					primitive = type_int;
 
-				r = type_new_type(type_new_primitive(primitive));
+				r = type_root_btype(cc1_type_root, primitive);
 				break;
 		}
 
@@ -580,7 +581,7 @@ static type *parse_btype(
 			die_at(NULL, "typedefs can't be aligned");
 		}
 
-		r = type_new_cast_add(r, qual);
+		r = type_qualify(r, qual);
 
 		r->attr = attr;
 		parse_add_attr(&r->attr); /* int/struct-A __attr__ */
@@ -703,7 +704,7 @@ fin:;
 			if(curtok != token_identifier)
 				EAT(token_identifier); /* error */
 
-			d->ref = type_new_type(type_new_primitive(type_int));
+			d->ref = type_root_btype(cc1_type_root, type_int);
 
 			d->spel = token_current_spel();
 			dynarray_add(&args->arglist, d);
@@ -818,7 +819,7 @@ static type *parse_type_array(enum decl_mode mode, decl *dfor)
 		if(is_static > 1)
 			die_at(NULL, "multiple static specifiers in array size");
 
-		r = type_new_array2(r, size, q, is_static);
+		r = type_array_of_qual(r, size, q, is_static);
 	}
 
 	return r;
@@ -829,11 +830,7 @@ static type *parse_type_func(enum decl_mode mode, decl *dfor)
 	type *sub = parse_type_array(mode, dfor);
 
 	while(accept(token_open_paren)){
-		current_scope = symtab_new(current_scope);
-
-		sub = type_new_func(sub, parse_func_arglist(), current_scope);
-
-		current_scope = current_scope->parent;
+		sub = type_func_of(sub, parse_func_arglist());
 
 		EAT(token_close_paren);
 	}
@@ -846,8 +843,8 @@ static type *parse_type_ptr(enum decl_mode mode, decl *dfor)
 	int ptr;
 
 	if((ptr = accept(token_multiply)) || accept(token_xor)){
-		typedef type *(*ptr_creator_f)(type *, enum type_qualifier);
-		ptr_creator_f creater = ptr ? type_new_ptr : type_new_block;
+		typedef type *(*ptr_creator_f)(type *);
+		ptr_creator_f creater = ptr ? type_ptr_to : type_block_of;
 
 		type *r_ptr;
 		decl_attr *attr = NULL;
@@ -863,7 +860,10 @@ static type *parse_type_ptr(enum decl_mode mode, decl *dfor)
 			}
 		}
 
-		r_ptr = creater(parse_type2(mode, dfor), qual);
+		r_ptr = type_qualify(
+				creater(parse_type2(mode, dfor)),
+				qual);
+
 		r_ptr->attr = attr;
 		return r_ptr;
 	}
@@ -972,7 +972,7 @@ static type *default_type(void)
 {
 	cc1_warn_at(NULL, 0, WARN_IMPLICIT_INT, "defaulting type to int");
 
-	return type_new_type(type_new_primitive(type_int));
+	return type_root_btype(cc1_type_root, type_int);
 }
 
 static decl *parse_decl_extra(
@@ -1069,7 +1069,7 @@ static void check_and_replace_old_func(decl *d, decl **old_args)
 				 */
 				decl_replace_with(dfuncargs->arglist[j], old_args[i]);
 
-				decl_free(old_args[i], 0);
+				decl_free(old_args[i]);
 
 				found = 1;
 				break;
@@ -1246,7 +1246,7 @@ int parse_decls_single_type(
 					}
 				}
 
-				decl_free(d, 0);
+				decl_free(d);
 				goto next;
 			}
 			die_at(&d->where, "identifier expected after decl (got %s)", token_to_str(curtok));

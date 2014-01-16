@@ -1,6 +1,10 @@
 #ifndef SYM_H
 #define SYM_H
 
+#include "decl.h"
+#include "../util/dynmap.h"
+
+typedef struct sym sym;
 struct sym
 {
 	union
@@ -24,15 +28,15 @@ struct sym
 };
 
 typedef struct static_assert static_assert;
-
 struct static_assert
 {
-	expr *e;
+	struct expr *e;
 	char *s;
-	symtable *scope;
+	struct symtable *scope;
 	int checked;
 };
 
+typedef struct symtable symtable;
 struct symtable
 {
 	int auto_total_size;
@@ -52,7 +56,7 @@ struct symtable
 
 	symtable *parent, **children;
 
-	struct_union_enum_st **sues;
+	struct struct_union_enum_st **sues;
 
 	/* identifiers and typedefs */
 	decl **decls;
@@ -70,6 +74,7 @@ struct symtable_gasm
 	char *asm_str;
 };
 
+typedef struct symtable_global symtable_global;
 struct symtable_global
 {
 	symtable stab; /* ABI compatible with struct symtable */

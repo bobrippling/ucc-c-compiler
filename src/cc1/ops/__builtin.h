@@ -1,6 +1,8 @@
 #ifndef OPS_BUILTIN_H
 #define OPS_BUILTIN_H
 
+#include "../expr.h"
+
 #define BUILTIN_SPEL(e) (e)->bits.ident.spel
 
 expr *builtin_new_reg_save_area(void);

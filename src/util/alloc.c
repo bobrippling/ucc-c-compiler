@@ -15,6 +15,14 @@ void *umalloc(size_t l)
 	return p;
 }
 
+void *ucalloc(size_t n, size_t sz)
+{
+	void *p = calloc(n, sz);
+	if(!p)
+		ICE("calloc(%ld, %ld):", n, sz);
+	return p;
+}
+
 void *urealloc(void *p, size_t new, size_t old)
 {
 	void *r = realloc(p, new);

@@ -6,12 +6,13 @@
 #include "../util/util.h"
 #include "../util/platform.h"
 
-#include "data_structs.h"
 #include "expr.h"
 #include "sue.h"
 #include "type.h"
+#include "type_root.h"
 #include "decl.h"
 #include "const.h"
+#include "funcargs.h"
 
 #include "type_is.h"
 
@@ -236,30 +237,6 @@ int type_is_integral(type *r)
 	return 0;
 }
 
-unsigned type_align(type *r, where *from)
-{
-	struct_union_enum_st *sue;
-	type *test;
-
-	if((sue = type_is_s_or_u(r)))
-		/* safe - can't have an instance without a ->sue */
-		return sue->align;
-
-	if(type_is(r, type_ptr)
-	|| type_is(r, type_block))
-	{
-		return platform_word_size();
-	}
-
-	if((test = type_is(r, type_btype)))
-		return btype_align(test->bits.type, from);
-
-	if((test = type_is(r, type_array)))
-		return type_align(test->ref, from);
-
-	return 1;
-}
-
 int type_is_complete(type *r)
 {
 	/* decl is "void" or incomplete-struct or array[] */
@@ -349,11 +326,11 @@ type *type_complete_array(type *r, int sz)
 
 	UCC_ASSERT(r, "not an array");
 
-	EOF_WHERE(&r->where,
-		r = type_new_array(r->ref,
+	r = type_array_of(r->ref,
 			expr_set_where(
-				expr_new_val(sz), &r->where))
-	);
+				expr_new_val(sz),
+				&r->where));
+
 	return r;
 }
 
@@ -419,14 +396,14 @@ type *type_decay(type *const r)
 		case type_array:
 		{
 			/* don't mutate a type */
-			type *new = type_new_ptr(test->ref, qual_none);
+			type *new = type_ptr_to(test->ref);
 			new->bits.ptr = test->bits.array; /* save the old size, etc */
 			new->bits.ptr.decayed = 1; /* old size may be NULL */
 			return new;
 		}
 
 		case type_func:
-			return type_new_ptr(test, qual_none);
+			return type_ptr_to(test);
 
 		default:
 			break;
@@ -577,10 +554,23 @@ int type_is_promotable(type *r, type **pto)
 		rsz = type_primitive_size(r->bits.type->primitive);
 
 		if(rsz < (fp ? sz_double : sz_int)){
-			*pto = fp ? type_cached_DOUBLE() : type_cached_INT();
+			*pto = type_root_btype(cc1_type_root, fp ? type_double : type_int);
 			return 1;
 		}
 	}
 
 	return 0;
+}
+
+int type_is_variadic_func(type *r)
+{
+	return (r = type_is(r, type_func)) && r->bits.func.args->variadic;
+}
+
+type *type_is_decayed_array(type *r)
+{
+	if((r = type_is(r, type_ptr)) && r->bits.ptr.decayed)
+		return r;
+
+	return NULL;
 }

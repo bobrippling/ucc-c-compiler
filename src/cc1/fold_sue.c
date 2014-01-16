@@ -7,7 +7,6 @@
 #include "../util/util.h"
 #include "../util/where.h"
 
-#include "data_structs.h"
 #include "cc1.h"
 #include "fold.h"
 #include "sue.h"
@@ -17,6 +16,7 @@
 #include "defs.h"
 
 #include "fold_sue.h"
+#include "type_is.h"
 
 static void struct_pack(
 		decl *d, unsigned *poffset, unsigned sz, unsigned align)
@@ -71,11 +71,9 @@ static void fold_enum(struct_union_enum_st *en, symtable *stab)
 		/* -1 because we can't do dynarray_add(..., 0) */
 		if(e == (expr *)-1){
 
-			EOF_WHERE(&en->where,
-				m->val = expr_set_where(
+			m->val = expr_set_where(
 					expr_new_val(defval),
 					&en->where);
-			);
 
 			if(has_bitmask)
 				defval <<= 1;
@@ -162,7 +160,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 							/* drop the decl */
 							sue_member *dropped = sue_drop(sue, i);
 							i--;
-							decl_free(dropped->struct_member, /*free ref:*/0);
+							decl_free(dropped->struct_member);
 							free(dropped);
 							continue;
 						}

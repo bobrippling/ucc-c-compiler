@@ -5,7 +5,6 @@
 #include "../../util/util.h"
 #include "../../util/dynarray.h"
 #include "../../util/platform.h"
-#include "../data_structs.h"
 #include "../expr.h"
 #include "__builtin.h"
 #include "__builtin_va.h"
@@ -475,7 +474,7 @@ static void fold_va_arg(expr *e, symtable *stab)
 	va_type_check(e->lhs, e->expr, stab);
 
 	if(type_is_promotable(ty, &to)){
-		char tbuf[TYPE_REF_STATIC_BUFSIZ];
+		char tbuf[TYPE_STATIC_BUFSIZ];
 
 		warn_at(&e->where,
 				"va_arg(..., %s) has undefined behaviour - promote to %s",

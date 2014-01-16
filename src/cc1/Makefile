@@ -5,7 +5,7 @@ CPPFLAGS = -DCC1_IMPL_FNAME=\"${UCC_CPU}.h\"
 
 ARCH_OBJ = out/${UCC_CPU}.o
 
-CFLAGS  += -Wno-missing-field-initializers
+CFLAGS  += -Wno-missing-field-initializers -Werror
 LDFLAGS += -lm
 
 OBJ = \
@@ -14,8 +14,8 @@ OBJ = \
 	../util/str.o ../util/std.o ../util/escape.o \
 	str.o label.o strings.o \
 	cc1.o pass1.o \
-	tree.o decl.o decl_init.o funcargs.o expr.o stmt.o \
-	btype.o type.o type_is.o \
+	decl.o decl_init.o funcargs.o expr.o stmt.o \
+	btype.o type.o type_is.o type_root.o \
 	tokconv.o tokenise.o \
 	parse.o parse_type.o \
 	fold.o fold_sym.o fold_sue.o const.o format_chk.o \

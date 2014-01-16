@@ -1,6 +1,9 @@
 #ifndef PARSE_H
 #define PARSE_H
 
+#include "expr.h"
+#include "stmt.h"
+
 enum decl_mode
 {
 	DECL_SPEL_NEED    = 1 << 0,
@@ -20,6 +23,7 @@ enum decl_multi_mode
 };
 
 extern enum token curtok;
+extern symtable *current_scope;
 
 #define parse_expr_no_comma() parse_expr_assignment()
 

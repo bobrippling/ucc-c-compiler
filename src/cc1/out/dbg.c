@@ -12,9 +12,7 @@
 
 #include "../str.h"
 
-#include "../data_structs.h"
 #include "../expr.h"
-#include "../tree.h"
 #include "../const.h"
 #include "../funcargs.h"
 #include "../sue.h"

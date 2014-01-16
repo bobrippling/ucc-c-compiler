@@ -8,7 +8,6 @@
 #include "../util/util.h"
 #include "../util/alloc.h"
 #include "../util/escape.h"
-#include "data_structs.h"
 #include "str.h"
 #include "macros.h"
 

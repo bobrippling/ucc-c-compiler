@@ -146,7 +146,7 @@ void fold_expr_if(expr *e, symtable *stab)
 				}
 
 			}else{
-				char buf[TYPE_REF_STATIC_BUFSIZ];
+				char buf[TYPE_STATIC_BUFSIZ];
 
 				warn_at(&e->where, "conditional type mismatch (%s vs %s)",
 						type_to_str(tt_l), type_to_str_r(buf, tt_r));

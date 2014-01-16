@@ -6,7 +6,6 @@
 
 #include "defs.h"
 #include "../util/util.h"
-#include "data_structs.h"
 #include "cc1.h"
 #include "fold.h"
 #include "fold_sym.h"
@@ -24,6 +23,7 @@
 #include "out/lbl.h"
 #include "fold_sue.h"
 #include "format_chk.h"
+#include "type_is.h"
 
 int fold_had_error;
 
@@ -60,7 +60,7 @@ int fold_type_chk_warn(
 
 		case TYPE_NOT_EQUAL:
 		{
-			char buf[TYPE_REF_STATIC_BUFSIZ];
+			char buf[TYPE_STATIC_BUFSIZ];
 			char wbuf[WHERE_BUF_SIZ];
 
 			(error ? warn_at_print_error : warn_at)(
@@ -144,7 +144,7 @@ void fold_expr(expr *e, symtable *stab)
 	if(e->tree_type)
 		return;
 
-	EOF_WHERE(&e->where, e->f_fold(e, stab));
+	e->f_fold(e, stab);
 
 	UCC_ASSERT(e->tree_type, "no tree_type after fold (%s)", e->f_str());
 }
@@ -174,9 +174,7 @@ expr *fold_expr_decay(expr *e, symtable *stab)
 
 	r = e->tree_type;
 
-	EOF_WHERE(&e->where,
-			decayed = type_decay(r);
-		);
+	decayed = type_decay(r);
 
 	if(decayed != r){
 		expr *imp_cast = expr_set_where(
@@ -610,21 +608,19 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 				fold_decl_global_init(d, stab);
 
 			}else if(pinit_code){
-				EOF_WHERE(&d->where,
-						if(!inits){
-							inits = stmt_set_where(
-								stmt_new_wrapper(code, symtab_new(stab)),
-								&d->where);
-						}
+				if(!inits){
+					inits = stmt_set_where(
+							stmt_new_wrapper(code, symtab_new(stab)),
+							&d->where);
+				}
 
-						decl_init_brace_up_fold(d, inits->symtab);
-						decl_init_create_assignments_base(
-							d->init, d->ref,
-							expr_set_where(
-								expr_new_identifier(d->spel),
-								&d->where),
-							inits);
-					);
+				decl_init_brace_up_fold(d, inits->symtab);
+				decl_init_create_assignments_base(
+						d->init, d->ref,
+						expr_set_where(
+							expr_new_identifier(d->spel),
+							&d->where),
+						inits);
 				/* folded elsewhere */
 			}else{
 				ICE("fold_decl(%s) with no pinit_code?", d->spel);
@@ -652,10 +648,8 @@ void fold_decl_global_init(decl *d, symtable *stab)
 	if(!d->init)
 		return;
 
-	EOF_WHERE(&d->where,
-		/* this completes the array, if any */
-		decl_init_brace_up_fold(d, stab);
-	);
+	/* this completes the array, if any */
+	decl_init_brace_up_fold(d, stab);
 
 	type = stab->parent ? "static" : "global";
 	if(!decl_init_is_const(d->init, stab, &nonstd)){
@@ -927,11 +921,9 @@ void fold_funcargs(funcargs *fargs, symtable *stab, type *from)
 			}
 
 			/* convert any array definitions and functions to pointers */
-			EOF_WHERE(&d->where,
-				/* must be before the decl is folded (since fold checks this) */
-				if(decl_conv_array_func_to_ptr(d))
-					fold_type(d->ref, NULL, stab); /* refold if we converted */
-			);
+			/* must be before the decl is folded (since fold checks this) */
+			if(decl_conv_array_func_to_ptr(d))
+				fold_type(d->ref, NULL, stab); /* refold if we converted */
 
 			if(decl_store_static_or_extern(d->store))
 				die_at(&fargs->where,

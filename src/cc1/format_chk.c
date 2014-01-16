@@ -8,11 +8,11 @@
 #include "../util/util.h"
 #include "../util/dynarray.h"
 
-#include "data_structs.h"
 #include "expr.h"
 #include "decl.h"
 #include "const.h"
 #include "funcargs.h"
+#include "type_is.h"
 
 #include "format_chk.h"
 
@@ -25,7 +25,7 @@ static void format_check_printf_1(char fmt, type *const t_in,
 		where *w, enum printf_attr attr)
 {
 	int allow_long = 0;
-	char expected[TYPE_STATIC_BUFSIZ];
+	char expected[BTYPE_STATIC_BUFSIZ];
 
 	expected[0] = '\0';
 

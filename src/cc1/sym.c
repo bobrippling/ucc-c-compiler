@@ -5,7 +5,6 @@
 #include <stdarg.h>
 
 #include "../util/util.h"
-#include "data_structs.h"
 #include "sym.h"
 #include "../util/alloc.h"
 #include "macros.h"

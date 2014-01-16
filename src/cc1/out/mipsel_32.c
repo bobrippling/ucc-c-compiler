@@ -6,7 +6,6 @@
 #include "../../util/util.h"
 #include "../../util/alloc.h"
 #include "../../util/platform.h"
-#include "../data_structs.h"
 #include "vstack.h"
 #include "impl.h"
 #include "../cc1.h"

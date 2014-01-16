@@ -9,15 +9,15 @@
 #include "../util/dynarray.h"
 #include "../util/dynmap.h"
 #include "../util/alloc.h"
-#include "data_structs.h"
 #include "cc1.h"
 #include "fold.h"
 #include "const.h"
 #include "macros.h"
 #include "sue.h"
 #include "ops/__builtin.h"
-
+#include "cc1_where.h"
 #include "decl_init.h"
+#include "type_is.h"
 
 #ifdef DEBUG_DECL_INIT
 static int init_debug_depth;

@@ -7,7 +7,6 @@
 #include "../util/dynarray.h"
 #include "../util/util.h"
 
-#include "data_structs.h"
 #include "expr.h"
 #include "decl.h"
 #include "sym.h"
@@ -21,6 +20,7 @@
 #include "cc1.h"
 #include "fold.h"
 #include "const.h"
+#include "type_root.h"
 
 #include "pass1.h"
 
@@ -49,8 +49,6 @@ void parse_and_fold(symtable_global *globals)
 	symtable_gasm **last_gasms = NULL;
 
 	current_scope = &globals->stab;
-
-	type_init(current_scope);
 
 	while(curtok != token_eof){
 		decl **new = NULL;

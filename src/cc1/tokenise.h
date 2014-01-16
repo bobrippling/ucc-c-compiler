@@ -1,5 +1,7 @@
-#ifndef token_ise_h
-#define token_ise_h
+#ifndef TOKENISE_H
+#define TOKENISE_H
+
+#include "num.h"
 
 extern numeric currentval;
 

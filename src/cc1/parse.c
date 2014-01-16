@@ -4,7 +4,6 @@
 #include <string.h>
 
 #include "../util/util.h"
-#include "data_structs.h"
 #include "tokenise.h"
 #include "parse.h"
 #include "../util/alloc.h"
@@ -19,6 +18,8 @@
 #include "ops/__builtin.h"
 #include "funcargs.h"
 #include "strings.h"
+#include "cc1_where.h"
+#include "type_is.h"
 
 #define STAT_NEW(type)      stmt_new_wrapper(type, current_scope)
 #define STAT_NEW_NEST(type) stmt_new_wrapper(type, symtab_new(current_scope))
